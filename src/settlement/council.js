@@ -87,7 +87,7 @@ function hold(w, present, total) {
   }
   c.decision = decision; c.args = args.slice(0, 6); c.present = present.length; c.total = total;
   const quotes = args.slice(0, 3).map(x => `${x.name}: ${BUILDINGS.get(x.key).name.toLowerCase()}, ${x.why}`).join('; ');
-  log(w, `Совет у костра (${present.length} из ${total}). ${quotes ? quotes + '. ' : ''}${decision}`);
+  log(w, `Совет у костра (${present.length} из ${total}). ${quotes ? quotes + '. ' : ''}${decision}`, 'council');
   for (const a of colonists(w)) {
     for (const k of Object.keys(a.mem)) a.mem[k] *= 0.4;
     if (a.task?.id === 'council') a.task = null;

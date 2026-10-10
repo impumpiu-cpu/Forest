@@ -63,7 +63,7 @@ export function wear(w, a, inst, amount = 1) {
   recalcGear(a);
   if (a.faction === 'colony') {
     w.stats.broken++; a.mem.broken += 0.4;
-    log(w, `У <b>${esc(a.name)}</b> сломался предмет: ${def(inst).short}.`);
+    log(w, `У <b>${esc(a.name)}</b> сломался предмет: ${def(inst).short}.`, 'craft');
   }
 }
 

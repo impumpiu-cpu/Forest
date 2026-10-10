@@ -17,7 +17,7 @@ export const TOOLS = {
         if (!inBounds(w, x, y)) continue; const i = y * w.w + x;
         if (w.grid.fuel[i] > 0.05) { w.grid.fire[i] = 0.6; w.grid.temp[i] = 300; }
       }
-      w.nav.dirty('fire'); log(w, 'Кто-то поджёг траву.');
+      w.nav.dirty('fire'); log(w, 'Кто-то поджёг траву.', 'weather', 'notice');
     },
   },
   rain: {
@@ -27,7 +27,7 @@ export const TOOLS = {
         if (!inBounds(w, x, y) || (x - cx) ** 2 + (y - cy) ** 2 > 49) continue;
         const i = y * w.w + x; g.fire[i] = 0; g.temp[i] = Math.min(g.temp[i], amb - 2); g.smoke[i] *= 0.3;
       }
-      w.nav.dirty('fire'); log(w, 'Прошёл короткий ливень.');
+      w.nav.dirty('fire'); log(w, 'Прошёл короткий ливень.', 'weather');
     },
   },
 };

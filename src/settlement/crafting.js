@@ -49,17 +49,25 @@ export function pickRecipe(w, station, ctx = craftContext(w)) {
   return best;
 }
 
-// does a station of this kind have something to do right now? (cached per tick)
-export function stationHasWork(w, station) {
+// who is at the bench: worker id → last tick worked
+function busyOthers(w, b, a) {
+  if (!b.workers) return 0;
+  let n = 0;
+  for (const [id, t] of b.workers) { if (w.tick - t > 3) b.workers.delete(id); else if (!a || id !== a.id) n++; }
+  return n;
+}
+
+// does a station of this kind have something to do, and a free bench for `a`? (orders cached per tick)
+export function stationHasWork(w, station, a) {
   const c = w.cache.orders || (w.cache.orders = {});
   if (c.tick !== w.tick) { c.tick = w.tick; c.map = {}; c.ctx = null; }
-  if (station in c.map) return c.map[station];
   const b = w.buildings.find(x => x.key === station && x.done);
-  let ok = false;
-  if (b) ok = !!b.order || !!pickRecipe(w, station, c.ctx || (c.ctx = craftContext(w)));
-  c.map[station] = ok;
-  return ok;
+  if (!b || busyOthers(w, b, a) >= (BUILDINGS.get(station).benches || 1)) return false;
+  if (!(station in c.map)) c.map[station] = !!b.order || !!pickRecipe(w, station, c.ctx || (c.ctx = craftContext(w)));
+  return c.map[station];
 }
+
+export function markWorking(w, b, a) { (b.workers || (b.workers = new Map())).set(a.id, w.tick); }
 
 // add labour at a station building; starts an order if none is running
 export function workAt(w, b, amount) {
@@ -77,7 +85,7 @@ export function workAt(w, b, amount) {
   if (r.makes.item) {
     w.armory.push(newItem(r.makes.item));
     w.armoryVersion = (w.armoryVersion || 0) + 1;
-    log(w, `Сделано: ${ITEMS.get(r.makes.item).label.toLowerCase()}.`);
+    log(w, `Сделано: ${ITEMS.get(r.makes.item).label.toLowerCase()}.`, 'craft');
   } else {
     w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
   }

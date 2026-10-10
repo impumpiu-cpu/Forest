@@ -59,17 +59,17 @@ export function kill(w, a, cause, by) {
   a.dead = true; a.hp = 0;
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
-  if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> погиб(ла) в бою.` : `<b>${esc(a.name)}</b> не пережил(а) ${cause}.`);
+  if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> погиб(ла) в бою.` : `<b>${esc(a.name)}</b> не пережил(а) ${cause}.`, 'death');
   else if (sp.id === 'wolf' && by?.faction === 'colony') {
     // a wolf killed in a fight: its hide and bones are brought home
     for (const [r, n] of Object.entries(sp.yields || {})) w.stock[r] = (w.stock[r] || 0) + n;
-    log(w, `<b>${esc(by.name)}</b> убил(а) волка. Шкура и кости — в лагерь.`);
+    log(w, `<b>${esc(by.name)}</b> убил(а) волка. Шкура и кости — в лагерь.`, 'danger', 'notice');
   } else if (a.faction === 'raiders' && by) {
     const got = [];
     stripAll(a, got);
     const loot = got.filter(it => it.dur > 0);
     w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1;
-    log(w, `Налётчик убит, его сразил(а) <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`);
+    log(w, `Налётчик убит, его сразил(а) <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }
   // a fallen colonist's gear goes back to the store
   if (a.faction === 'colony' && a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }

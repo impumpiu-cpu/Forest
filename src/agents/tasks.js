@@ -100,10 +100,16 @@ TASKS.registerAll([
   {id: 'assault', label: () => 'идёт к складу', step(w, a) {
     if (follow(w, a, 'camp') !== 'arrived') return;
     const took = plunder(w);
-    if (took > 0.5 && w.tick - w.stats.lastSteal > 40) log(w, 'Налётчики грабят склад.');
+    if (took > 0.5 && w.tick - w.stats.lastSteal > 40) log(w, 'Налётчики грабят склад.', 'danger');
     w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
   }},
   {id: 'leave', label: () => 'уходит', step(w, a) { if (follow(w, a, 'edge') === 'arrived') a.gone = true; }},
+
+  // gather by the fire when raiders come; done as soon as the alarm is over
+  {id: 'muster', label: () => 'собирается по тревоге', step(w, a, task) {
+    if (!w.agents.some(o => o.faction === 'raiders' && !o.dead)) { done(a); return; }
+    if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+  }},
 
   // run for the settlement zone when something is hunting you
   {id: 'runHome', label: () => 'бежит к поселению', step(w, a) {

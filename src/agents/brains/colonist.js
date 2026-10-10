@@ -13,6 +13,7 @@ import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies} from '../../set
 import {councilDue, goalNeed} from '../../settlement/council.js';
 import {stationHasWork} from '../../settlement/crafting.js';
 import {outfit} from '../equipment.js';
+import {agentInZone} from '../../settlement/zone.js';
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
@@ -22,7 +23,7 @@ function decide(w, a) {
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
   const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,
     preyCount: ofSpecies(w, 'hare').length,
-    orders: new Proxy({}, {get: (o, station) => stationHasWork(w, station)})};
+    orders: new Proxy({}, {get: (o, station) => stationHasWork(w, station, a)})};
   const opts = [];
   for (const id of SPECIES.get(a.species).needs) {
     const n = NEEDS.get(id);
@@ -48,7 +49,12 @@ function decide(w, a) {
     opts.push(brave * a.hp > 0.85 ? [{id: 'fight', target: hunter}, 1.5] : [{id: 'runHome'}, 1.5]);
   }
   const enemy = nearestHostile(w, a, 16);
-  if (enemy && a.hp > 0.3) opts.push([{id: 'fight', target: enemy}, 1.1 * brave]);
+  // alarm: while raiders are on the map everyone gathers inside the settlement zone and meets them
+  // together; the wounded fall back
+  const raid = w.agents.some(o => o.faction === 'raiders' && !o.dead);
+  if (raid && !enemy) opts.push([{id: 'muster'}, 1.25]);
+  if (enemy && a.hp > 0.3) opts.push([{id: 'fight', target: enemy}, (raid ? 1.35 : 1.1) * brave]);
+  if (enemy && a.hp <= 0.3 && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6]);
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);

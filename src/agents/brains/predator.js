@@ -48,7 +48,7 @@ export const predatorBrain = {
 
     // wounded, starving with nothing to hunt, or facing a crowd: leave for good
     if (a.task?.id === 'leave' || a.hp < sp.hp * 0.35) {
-      if (a.task?.id !== 'leave') { a.task = {id: 'leave'}; if (packOf(w, a)[0] === a) log(w, 'Раненые волки уходят из леса.'); }
+      if (a.task?.id !== 'leave') { a.task = {id: 'leave'}; if (packOf(w, a)[0] === a) log(w, 'Раненые волки уходят из леса.', 'wildlife'); }
       if (follow(w, a, 'edge', 1.2) === 'arrived') a.gone = true;
       return;
     }
@@ -101,7 +101,7 @@ export const predatorBrain = {
         const v = nearest(w, a, P.victims, P.sight * 0.8, o => isAlone(w, o, P));
         if (v) {
           a.task = {id: 'maul', target: v}; w.stats.wolfAttacks++;
-          log(w, `Волки нападают! <b>${v.name}</b> далеко от лагеря и без помощи.`);
+          log(w, `Волки нападают! <b>${v.name}</b> далеко от лагеря и без помощи.`, 'danger');
           for (const m of packOf(w, a)) if (m !== a && dist(m, a) < 10 && m.task?.id !== 'feed') { m.task = {id: 'maul', target: v}; m.calmUntil = w.tick + 500; }
           a.calmUntil = w.tick + 500;
           return;

@@ -5,7 +5,8 @@
 //   best.* keeps the largest value (one quarry is enough, a second adds nothing).
 // `zone` is the radius of the settlement zone around the building (default ZONE.building);
 // zones of the camp and all buildings merge into one protected area (settlement/zone.js).
-// `station: true` makes the building a workplace for crafting recipes (data/recipes.js).
+// `station: true` makes the building a workplace for crafting recipes (data/recipes.js);
+// `benches` is how many people can work there at once.
 // `motive(agent, ctx)` gives the council arguments: [[score, 'why'], ...].
 import {Registry} from '../core/registry.js';
 
@@ -70,14 +71,14 @@ BUILDINGS.registerAll([
     wish: 'хочет защиты от чужаков',
     motive: (a) => [[a.mem.raid * 1.5, 'дрался(ась) с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
-  {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true,
+  {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
     effect: 'Здесь делают одежду, оружие, инструменты, колчаны и стрелы из дерева, кости и кожи.',
     effects: {},
     wish: 'хочет делать снаряжение',
     motive: (a, c) => [[0.35 + c.unarmed * 0.6, 'нечем отбиваться'], [a.mem.wolf + a.mem.raid, 'видел(а) опасность без оружия'],
       [(a.prefs.craft - 1) * 1.4, 'любит мастерить'], [a.mem.cold * 0.5, 'нужна тёплая одежда']]},
 
-  {id: 'tannery', name: 'Дубильня', gender: 'f', cost: {wood: 18, stone: 6}, work: 180, max: 1, wooden: false, color: '#7a5a3a', mark: 'Д', station: true, needs: 'crafthut',
+  {id: 'tannery', name: 'Дубильня', gender: 'f', cost: {wood: 18, stone: 6}, work: 180, max: 1, wooden: false, color: '#7a5a3a', mark: 'Д', station: true, benches: 1, needs: 'crafthut',
     effect: 'Сырые шкуры выделывают в кожу. Кожа нужна для курток, укреплённой брони и луков.',
     effects: {},
     wish: 'хочет выделывать кожи',

@@ -26,19 +26,19 @@ export function spawnGroup(w, id, size) {
   const n = size ?? def.size(w, w.rng);
   if (!n) return [];
   const [e, side] = edgeCell(w, def.minDist ?? 30);
-  if (e < 0) { if (id === 'raiders') log(w, 'Налётчики не нашли дороги к лагерю.'); return []; }
+  if (e < 0) { if (id === 'raiders') log(w, 'Налётчики не нашли дороги к лагерю.', 'danger', 'notice'); return []; }
   const ex = e % w.w, ey = (e / w.w) | 0, group = [];
   for (let k = 0; k < n; k++) {
     let x = clamp(ex + 0.5 + Math.random() * 3 - 1.5, 0.2, w.w - 0.2), y = clamp(ey + 0.5 + Math.random() * 3 - 1.5, 0.2, w.h - 0.2);
     if (!walkable(w, (y | 0) * w.w + (x | 0))) { x = ex + 0.5; y = ey + 0.5; }
     const a = createAgent(w, def.species, def.faction, x, y);
     if (def.init) def.init(a, w);
-    if (def.kit && a.equip) dress(a, def.kit(w.rng), def.ammo || 0);
+    if (def.kit && a.equip) dress(a, def.kit(w.rng, w), def.ammo || 0);
     group.push(a);
   }
   if (def.groupInit) def.groupInit(group, w);
   const msg = def.message?.(w, group, side);
-  if (msg) log(w, msg);
+  if (msg) log(w, msg, def.topic || 'people', def.level);
   return group;
 }
 

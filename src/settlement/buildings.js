@@ -42,7 +42,7 @@ export function laySite(w, key) {
   const d = BUILDINGS.get(key);
   if (!eligible(w, key) || !canAfford(w, d.cost)) return null;
   const lot = findLot(w);
-  if (lot < 0) { log(w, 'Вокруг лагеря не осталось места под постройку.'); return null; }
+  if (lot < 0) { log(w, 'Вокруг лагеря не осталось места под постройку.', 'build'); return null; }
   for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
   const b = {id: w.bldSeq++, key, x: lot % w.w, y: (lot / w.w) | 0, progress: 0, done: false, cells: []};
   const g = w.grid;
@@ -53,7 +53,7 @@ export function laySite(w, key) {
   w.buildings.push(b);
   recomputeZone(w);
   for (const id of ['sites', 'berries', 'trees']) w.nav.dirty(id);
-  log(w, `Заложен${ending(d)} ${d.name.toLowerCase()}. Нужно ${d.work} человеко-тиков работы.`);
+  log(w, `Заложен${ending(d)} ${d.name.toLowerCase()}. Нужно ${d.work} человеко-тиков работы.`, 'build');
   return b;
 }
 
@@ -83,7 +83,7 @@ export function addLabour(w, b, amount) {
   if (d.onFinish) (typeof d.onFinish === 'function' ? d.onFinish : FINISH_HOOKS[d.onFinish])(w, b);
   w.nav.dirty('sites'); w.nav.dirty('rockface');
   for (const id of w.nav.order) if (id.startsWith('station:')) w.nav.dirty(id);
-  log(w, `Построен${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`);
+  log(w, `Построен${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`, 'build');
 }
 
 export function burnBuilding(w, id) {
@@ -95,7 +95,7 @@ export function burnBuilding(w, id) {
   recomputeZone(w);
   w.nav.dirty('sites');
   const d = BUILDINGS.get(b.key);
-  log(w, `${b.done ? 'Сгорел' + ending(d) : 'Сгорела стройка:'} <b>${d.name.toLowerCase()}</b>.`);
+  log(w, `${b.done ? 'Сгорел' + ending(d) : 'Сгорела стройка:'} <b>${d.name.toLowerCase()}</b>.`, 'build', 'alert');
 }
 
 export const resLabel = id => RESOURCES.get(id).label;

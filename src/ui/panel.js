@@ -13,6 +13,7 @@ import {taskLabel} from '../agents/tasks.js';
 import {cellOf} from '../world/grid.js';
 import {BY_CODE} from '../data/terrain.js';
 import {$} from './dom.js';
+import {LEVELS, LOG_TOPICS} from '../data/logTopics.js';
 import {ITEMS, SLOTS} from '../data/items.js';
 import {gearText, allItems, def as itemDef} from '../agents/equipment.js';
 import {orderText} from '../settlement/crafting.js';
@@ -27,7 +28,38 @@ export function traitsText(a) {
 }
 
 export class Panel {
-  constructor() { this.sig = {}; this.lastTick = 0; this.lastT = performance.now(); }
+  constructor() {
+    this.sig = {}; this.lastTick = 0; this.lastT = performance.now();
+    this.hidden = this.loadFilter();
+    this.buildFilters();
+  }
+
+  // ── journal filters: levels and topics can be switched off; remembered in this browser
+  loadFilter() {
+    try { return new Set(JSON.parse(localStorage.getItem('forest.logHidden') || '[]')); } catch (e) { return new Set(); }
+  }
+  saveFilter() { try { localStorage.setItem('forest.logHidden', JSON.stringify([...this.hidden])); } catch (e) { /* storage unavailable */ } }
+
+  buildFilters() {
+    const chip = (key, label, dot) => `<button type="button" data-key="${key}" aria-pressed="${!this.hidden.has(key)}">${dot ? `<i style="background:${dot}"></i>` : ''}${label}</button>`;
+    $('logLevels').innerHTML = LEVELS.map(l => chip('lv:' + l.id, l.label, l.color)).join('');
+    $('logTopics').innerHTML = LOG_TOPICS.all().map(t => chip('t:' + t.id, t.label)).join('');
+    for (const box of [$('logLevels'), $('logTopics')]) box.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const k = b.dataset.key;
+      if (this.hidden.has(k)) this.hidden.delete(k); else this.hidden.add(k);
+      b.setAttribute('aria-pressed', String(!this.hidden.has(k)));
+      this.saveFilter(); this.sig.log = null;
+      if (this.lastWorld) this.renderLog(this.lastWorld);
+    });
+  }
+
+  renderLog(w) {
+    this.lastWorld = w;
+    const lines = w.logLines.filter(l => !this.hidden.has('lv:' + l.level) && !this.hidden.has('t:' + l.topic));
+    this.set('log', lines.map(l => `<div class="lv-${l.level}"><span>${l.when}</span> · <b>${l.html}</b></div>`).join('') ||
+      '<div class="empty">Нет событий в выбранных рубриках.</div>');
+  }
 
   // replace innerHTML only when the content changed, so clicks are not lost
   set(id, html) { if (this.sig[id] === html) return; this.sig[id] = html; $(id).innerHTML = html; }
@@ -53,7 +85,7 @@ export class Panel {
     const now = performance.now();
     $('pT').textContent = view.speed ? ((w.tick - this.lastTick) / ((now - this.lastT) / 1000)).toFixed(0) : '0';
     this.lastTick = w.tick; this.lastT = now;
-    this.set('log', w.logLines.map(l => `<div><span>${l.when}</span> · <b>${l.html}</b></div>`).join(''));
+    this.renderLog(w);
   }
 
   renderCouncil(w) {

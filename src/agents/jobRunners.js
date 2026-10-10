@@ -8,7 +8,7 @@ import {deposit} from '../settlement/stock.js';
 import {addLabour} from '../settlement/buildings.js';
 import {buildingById} from '../settlement/query.js';
 import {jobSpeedOf} from '../settlement/mods.js';
-import {workAt, stationHasWork} from '../settlement/crafting.js';
+import {workAt, stationHasWork, markWorking} from '../settlement/crafting.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
 
@@ -65,10 +65,11 @@ export const RUNNERS = {
   // work the current order at a station building (crafthut, tannery…)
   craft(w, a, task) {
     const job = JOBS.get(task.job), map = 'station:' + job.station;
-    if (!stationHasWork(w, job.station)) { done(a); a.think = 20; return; }
+    if (!stationHasWork(w, job.station, a)) { done(a); a.think = 20; return; }   // nothing to make or the bench is taken
     const r = follow(w, a, map);
     if (r === 'arrived') {
       const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
+      if (b) markWorking(w, b, a);
       if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id))) { done(a); a.think = 20; }
     } else if (r === 'none') { w.nav.dirty(map); done(a); a.think = 20; }
   },

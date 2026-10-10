@@ -26,7 +26,7 @@ export function newGame(cfg) {
   for (const t of st.kit) w.armory.push(newItem(t));
   w.armoryVersion = 1;
   for (const a of w.agents) outfit(w, a);
-  log(w, `${n} ${plural(n, 'поселенец', 'поселенца', 'поселенцев')} ${n === 1 ? 'разбил' : 'разбили'} лагерь «${esc(cfg.name)}».`);
+  log(w, `${n} ${plural(n, 'поселенец', 'поселенца', 'поселенцев')} ${n === 1 ? 'разбил' : 'разбили'} лагерь «${esc(cfg.name)}».`, 'people');
   return w;
 }
 
