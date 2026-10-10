@@ -35,11 +35,18 @@ function personality(w, a) {
   a.mods.bravery *= 0.85 + rng() * 0.3;
 }
 
+// the next name from the list that no living colonist carries
+function freshName(w, names) {
+  const used = new Set(w.agents.filter(o => o.faction === 'colony' && !o.dead).map(o => o.name));
+  for (let k = 0; k < names.length; k++) { const n = names[w.nameIdx++ % names.length]; if (!used.has(n)) return n; }
+  return names[w.nameIdx++ % names.length];
+}
+
 export function createAgent(w, speciesId, factionId, x, y) {
   const sp = SPECIES.get(speciesId), fa = FACTIONS.get(factionId);
   const a = {
     id: w.nextId++, species: speciesId, faction: factionId, brain: sp.brain || fa.brain,
-    name: sp.names ? sp.names[w.nameIdx++ % sp.names.length] : sp.label,
+    name: sp.names && factionId === 'colony' ? freshName(w, sp.names) : sp.label,
     x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(),
     task: null, think: (w.rng() * 15) | 0, cd: 0, carry: null, sleeping: false,
   };

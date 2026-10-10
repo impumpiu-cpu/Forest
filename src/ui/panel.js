@@ -17,6 +17,9 @@ import {LEVELS, LOG_TOPICS} from '../data/logTopics.js';
 import {ITEMS, SLOTS} from '../data/items.js';
 import {gearText, allItems, def as itemDef} from '../agents/equipment.js';
 import {orderText} from '../settlement/crafting.js';
+import {raidThreat, raidSize} from '../settlement/threat.js';
+import {DAY, HOUR} from '../core/time.js';
+import {RAIDS} from '../data/presets.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -73,6 +76,8 @@ export class Panel {
     this.set('stock', RESOURCES.all().map(r => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join('') +
       `<dt>Костёр</dt><dd>${w.campLit ? 'горит' : w.stock.wood > 0.05 ? 'не нужен' : 'нет дров'}</dd>` +
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
+      `<dt>Новый поселенец</dt><dd>${this.waitText(w, w.migration.settlers)}</dd>` +
+      `<dt>Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` · ${this.waitText(w, w.migration.raiders)}` : ''}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>`);
     this.renderCouncil(w);
@@ -86,6 +91,13 @@ export class Panel {
     $('pT').textContent = view.speed ? ((w.tick - this.lastTick) / ((now - this.lastT) / 1000)).toFixed(0) : '0';
     this.lastTick = w.tick; this.lastT = now;
     this.renderLog(w);
+  }
+
+  waitText(w, at) {
+    if (!Number.isFinite(at)) return 'нет';
+    const t = at - w.tick;
+    if (t <= 0) return 'скоро';
+    return t >= DAY ? `через ${(t / DAY).toFixed(1).replace('.0', '')} дн.` : `через ${Math.max(1, Math.round(t / HOUR))} ч`;
   }
 
   renderCouncil(w) {

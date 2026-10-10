@@ -98,7 +98,7 @@ export const predatorBrain = {
       if (prey) { a.task = {id: 'chase', target: prey}; return; }
       const bold = w.tick > (a.calmUntil || 0) && (hunger < 0.3 || (night > 0.6 && packOf(w, a).length >= 2));
       if (bold) {
-        const v = nearest(w, a, P.victims, P.sight * 0.8, o => isAlone(w, o, P));
+        const v = nearest(w, a, P.victims, P.sight * 0.8, o => o.faction === 'colony' && isAlone(w, o, P));
         if (v) {
           a.task = {id: 'maul', target: v}; w.stats.wolfAttacks++;
           log(w, `Волки нападают! <b>${v.name}</b> далеко от лагеря и без помощи.`, 'danger');

@@ -562,15 +562,444 @@ button.quiet{background:transparent;color:var(--muted)}
   var popCap = (w) => 8 + w.mods.add.popCap;
   var jobUnlocked = (w, job) => !job.requires || has(w, job.requires);
 
+  // src/data/items.js
+  var SLOTS = [
+    { id: "left", label: "\u043B\u0435\u0432\u0430\u044F \u0440\u0443\u043A\u0430", hand: true },
+    { id: "right", label: "\u043F\u0440\u0430\u0432\u0430\u044F \u0440\u0443\u043A\u0430", hand: true },
+    { id: "body", label: "\u0442\u0435\u043B\u043E" },
+    { id: "back", label: "\u0441\u043F\u0438\u043D\u0430" }
+  ];
+  var ITEMS = new Registry("item");
+  ITEMS.registerAll([
+    // one-handed
+    { id: "club", label: "\u0414\u0443\u0431\u0438\u043D\u0430", short: "\u0434\u0443\u0431\u0438\u043D\u0430", slot: "hand", hands: 1, melee: { dmg: 1.3, cd: 12 }, dur: 70, glyph: "club" },
+    { id: "spear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, melee: { dmg: 1.55, cd: 13 }, dur: 55, glyph: "spear" },
+    { id: "axe", label: "\u0422\u043E\u043F\u043E\u0440 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C \u043A\u043B\u0438\u043D\u043E\u043C", short: "\u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, melee: { dmg: 1.3, cd: 13 }, tool: { chop: 1.6 }, dur: 90, glyph: "axe" },
+    { id: "shield", label: "\u0429\u0438\u0442 \u0438\u0437 \u0436\u0435\u0440\u0434\u0435\u0439 \u0438 \u0448\u043A\u0443\u0440\u044B", short: "\u0449\u0438\u0442", slot: "hand", hands: 1, block: 0.32, dur: 35, glyph: "shield" },
+    // two-handed
+    { id: "staff", label: "\u041F\u043E\u0441\u043E\u0445", short: "\u043F\u043E\u0441\u043E\u0445", slot: "hand", hands: 2, melee: { dmg: 1.1, cd: 11 }, block: 0.15, speed: 1.05, dur: 80, glyph: "staff" },
+    { id: "maul", label: "\u0414\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u0439 \u043C\u043E\u043B\u043E\u0442", short: "\u043C\u043E\u043B\u043E\u0442", slot: "hand", hands: 2, melee: { dmg: 1.9, cd: 18 }, tool: { build: 1.45, mine: 1.35 }, dur: 90, glyph: "maul" },
+    {
+      id: "bow",
+      label: "\u041B\u0443\u043A",
+      short: "\u043B\u0443\u043A",
+      slot: "hand",
+      hands: 2,
+      melee: { dmg: 0.6, cd: 14 },
+      ranged: { dmg: 1.7, range: 7, cd: 22, ammo: "arrows" },
+      dur: 90,
+      glyph: "bow"
+    },
+    // stones lie everywhere: no ammo, but the sling is far weaker and shorter; a quarry gives better stones
+    {
+      id: "sling",
+      label: "\u041F\u0440\u0430\u0449\u0430",
+      short: "\u043F\u0440\u0430\u0449\u0430",
+      slot: "hand",
+      hands: 2,
+      melee: { dmg: 0.5, cd: 14 },
+      ranged: { dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: "slingStones" },
+      dur: 60,
+      glyph: "sling"
+    },
+    // body
+    { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", armor: 0.08, warmth: 0.35, dur: 50, color: "#c9b38a" },
+    { id: "jerkin", label: "\u041A\u043E\u0436\u0430\u043D\u0430\u044F \u043A\u0443\u0440\u0442\u043A\u0430", short: "\u043A\u043E\u0436\u0430", slot: "body", armor: 0.2, warmth: 0.55, dur: 70, color: "#8a5a2b" },
+    { id: "hardleather", label: "\u041A\u043E\u0436\u0430 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C\u0438 \u043F\u043B\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438", short: "\u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u0436\u0430", slot: "body", armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, color: "#e0d6c0" },
+    // back
+    { id: "quiver", label: "\u041A\u043E\u043B\u0447\u0430\u043D", short: "\u043A\u043E\u043B\u0447\u0430\u043D", slot: "back", holds: { ammo: "arrows", max: 15 }, dur: Infinity },
+    { id: "basket", label: "\u0417\u0430\u043F\u043B\u0435\u0447\u043D\u044B\u0439 \u043A\u043E\u0440\u043E\u0431", short: "\u043A\u043E\u0440\u043E\u0431", slot: "back", carry: 2, dur: Infinity }
+  ]);
+  var isWeapon = (def2) => !!(def2.melee || def2.ranged);
+
+  // src/data/species.js
+  var SPECIES = new Registry("species");
+  var HUMAN_NAMES = [
+    "\u041C\u0438\u043B\u0430\u0432\u0430",
+    "\u0416\u0434\u0430\u043D",
+    "\u0413\u043E\u0440\u0438\u0441\u043B\u0430\u0432",
+    "\u0412\u0435\u0441\u0435\u043B\u0438\u043D\u0430",
+    "\u0422\u0438\u0445\u043E\u043D",
+    "\u041B\u044E\u0431\u0430\u0432\u0430",
+    "\u041C\u0438\u0440\u043E\u043D",
+    "\u0417\u043B\u0430\u0442\u0430",
+    "\u042F\u0440\u043E\u0441\u043B\u0430\u0432",
+    "\u0414\u0430\u0440\u0438\u043D\u0430",
+    "\u0420\u0430\u0442\u0438\u0431\u043E\u0440",
+    "\u0421\u043D\u0435\u0436\u0430\u043D\u0430",
+    "\u0411\u043E\u044F\u043D",
+    "\u0417\u0430\u0431\u0430\u0432\u0430",
+    "\u0421\u0432\u0435\u0442\u043E\u0437\u0430\u0440",
+    "\u0410\u0433\u043D\u0438\u044F",
+    "\u0412\u0435\u043B\u0438\u043C\u0438\u0440",
+    "\u041E\u043B\u0435\u0441\u044F",
+    "\u0414\u043E\u0431\u0440\u044B\u043D\u044F",
+    "\u0412\u0430\u0441\u0438\u043B\u0438\u0441\u0430",
+    "\u0420\u0430\u0434\u0438\u043C",
+    "\u0412\u0435\u0434\u0430\u043D\u0430"
+  ];
+  SPECIES.registerAll([
+    {
+      id: "human",
+      label: "\u0447\u0435\u043B\u043E\u0432\u0435\u043A",
+      hp: 1,
+      speed: 0.13,
+      needs: ["food", "rest", "warmth"],
+      heatHarm: 70,
+      look: { shape: "person", size: 0.62 },
+      names: HUMAN_NAMES,
+      sentient: true,
+      inventory: true,
+      attack: { power: 1, cooldown: 12 }
+    },
+    // Hares graze, rest at night, bolt from people and fire. They never breed here:
+    // their numbers change only through migration (see migrations.js).
+    {
+      id: "hare",
+      label: "\u0437\u0430\u044F\u0446",
+      hp: 0.12,
+      speed: 0.17,
+      needs: [],
+      brain: "grazer",
+      heatHarm: 60,
+      look: { shape: "hare", size: 0.42, color: "#cdbb9a" },
+      yields: { meat: 2, hide: 1, bone: 1 },
+      flee: { radius: 4.5, sprint: 1.45, from: ["human", "wolf"], stamina: 7e-3 },
+      grazes: { terrain: ["grass"], eatsBerries: 4e-3 },
+      leaveChance: 4e-4
+    },
+    // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
+    // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
+    // or when the hares run out. Like everyone else they only arrive and depart by migration.
+    {
+      id: "wolf",
+      label: "\u0432\u043E\u043B\u043A",
+      hp: 0.8,
+      speed: 0.14,
+      needs: ["food"],
+      brain: "predator",
+      mods: { hunger: 0.55 },
+      heatHarm: 60,
+      look: { shape: "wolf", size: 0.58, color: "#8d8f96" },
+      attack: { power: 0.85, cooldown: 14 },
+      yields: { meat: 1, hide: 2, bone: 2 },
+      killMessage: (name) => `\u0412\u043E\u043B\u043A\u0438 \u0437\u0430\u0433\u0440\u044B\u0437\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
+      predator: {
+        prey: ["hare"],
+        // what it hunts for food
+        victims: ["human"],
+        // what it attacks only when the target is alone
+        sprint: 1.9,
+        stamina: 3e-3,
+        sight: 22,
+        // how far it notices prey
+        loneRadius: 6,
+        // nobody else of the victim's kind this close → the victim is alone
+        zoneShy: 2,
+        zoneShyNight: 5,
+        // keeps this many cells outside the settlement zone (more at night)
+        groupFear: 3,
+        // this many people together make it back off
+        feedTicks: 90
+      }
+    }
+  ]);
+
+  // src/data/logTopics.js
+  var LEVELS = [
+    { id: "alert", label: "\u0442\u0440\u0435\u0432\u043E\u0433\u0430", color: "var(--raider)" },
+    { id: "notice", label: "\u0432\u0430\u0436\u043D\u043E\u0435", color: "#e2b84a" },
+    { id: "info", label: "\u043F\u0440\u043E\u0447\u0435\u0435", color: "var(--good)" }
+  ];
+  var LOG_TOPICS = new Registry("log topic");
+  LOG_TOPICS.registerAll([
+    { id: "danger", label: "\u043D\u0430\u043B\u0451\u0442\u044B \u0438 \u043D\u0430\u043F\u0430\u0434\u0435\u043D\u0438\u044F", level: "alert" },
+    { id: "death", label: "\u0441\u043C\u0435\u0440\u0442\u0438", level: "alert" },
+    { id: "build", label: "\u0441\u0442\u0440\u043E\u0439\u043A\u0430", level: "notice" },
+    { id: "people", label: "\u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u044B", level: "notice" },
+    { id: "council", label: "\u0441\u043E\u0432\u0435\u0442", level: "notice" },
+    { id: "craft", label: "\u0440\u0435\u043C\u0435\u0441\u043B\u043E", level: "info" },
+    { id: "wildlife", label: "\u0437\u0432\u0435\u0440\u0438", level: "info" },
+    { id: "weather", label: "\u043F\u043E\u0433\u043E\u0434\u0430 \u0438 \u043E\u0433\u043E\u043D\u044C", level: "info" }
+  ]);
+
+  // src/core/log.js
+  var MAX_LINES = 150;
+  function log(w, html, topic = "people", level) {
+    const lv = level || (LOG_TOPICS.has(topic) ? LOG_TOPICS.get(topic).level : "info");
+    w.logLines.unshift({ t: w.tick, html, when: clockStr(w.tick), topic, level: lv });
+    if (w.logLines.length > MAX_LINES) w.logLines.pop();
+    w.logVersion++;
+  }
+
+  // src/agents/equipment.js
+  var def = (inst) => ITEMS.get(inst.type);
+  var newItem = (type, extra = {}) => ({ type, dur: ITEMS.get(type).dur, ...extra });
+  var emptySlots = () => Object.fromEntries(SLOTS.map((s) => [s.id, null]));
+  function handItems(a) {
+    const e = a.equip;
+    if (!e) return [];
+    return e.left && e.left === e.right ? [e.left] : [e.left, e.right].filter(Boolean);
+  }
+  var allItems = (a) => a.equip ? [...handItems(a), a.equip.body, a.equip.back].filter(Boolean) : [];
+  function rangedAmmo(a, d) {
+    if (!d.ranged.ammo) return Infinity;
+    const back = a.equip.back;
+    return back && def(back).holds?.ammo === d.ranged.ammo ? back.ammo || 0 : 0;
+  }
+  function recalcGear(a) {
+    const sp = SPECIES.get(a.species), base = sp.attack || { power: 1, cooldown: 12 };
+    const g = {
+      melee: { dmg: base.power, cd: base.cooldown, item: null },
+      ranged: null,
+      rangedReady: false,
+      block: 0,
+      blockItem: null,
+      armor: 0,
+      warmth: 0,
+      speed: 1,
+      tool: {},
+      toolItem: {},
+      carry: 0
+    };
+    if (!a.equip) {
+      a.gear = g;
+      return g;
+    }
+    for (const it of handItems(a)) {
+      const d = def(it);
+      if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = { dmg: d.melee.dmg, cd: d.melee.cd, item: it };
+      if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = { ...d.ranged, item: it };
+      if ((d.block || 0) > g.block) {
+        g.block = d.block;
+        g.blockItem = it;
+      }
+      if (d.speed) g.speed *= d.speed;
+    }
+    if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;
+    const body = a.equip.body;
+    if (body) {
+      const d = def(body);
+      g.armor = d.armor || 0;
+      g.warmth = d.warmth || 0;
+      if (d.speed) g.speed *= d.speed;
+    }
+    for (const it of [...handItems(a), a.equip.back].filter(Boolean)) {
+      for (const [job, m] of Object.entries(def(it).tool || {})) if (m > (g.tool[job] || 1)) {
+        g.tool[job] = m;
+        g.toolItem[job] = it;
+      }
+    }
+    if (a.equip.back) g.carry = def(a.equip.back).carry || 0;
+    a.gear = g;
+    return g;
+  }
+  function removeEverywhere(a, inst) {
+    for (const s of SLOTS) if (a.equip[s.id] === inst) a.equip[s.id] = null;
+  }
+  function wear(w, a, inst, amount = 1) {
+    if (!inst || !Number.isFinite(inst.dur)) return;
+    inst.dur -= amount * (a.faction === "colony" ? w.mods.mul.wear : 1);
+    if (inst.dur > 0) return;
+    removeEverywhere(a, inst);
+    recalcGear(a);
+    if (a.faction === "colony") {
+      w.stats.broken++;
+      a.mem.broken += 0.4;
+      log(w, `\u0423 <b>${esc(a.name)}</b> \u0441\u043B\u043E\u043C\u0430\u043B\u0441\u044F \u043F\u0440\u0435\u0434\u043C\u0435\u0442: ${def(inst).short}.`, "craft");
+    }
+  }
+  function putOn(a, inst, slot, spill) {
+    const d = def(inst);
+    const drop = (x) => {
+      if (x && !allItems(a).includes(x)) spill.push(x);
+    };
+    if (slot === "hands2") {
+      const old = handItems(a);
+      a.equip.left = a.equip.right = inst;
+      old.forEach(drop);
+    } else if (slot === "left" || slot === "right") {
+      const old = a.equip[slot];
+      if (old && old === (slot === "left" ? a.equip.right : a.equip.left)) {
+        a.equip.left = a.equip.right = null;
+      }
+      a.equip[slot] = inst;
+      drop(old);
+    } else {
+      const old = a.equip[slot];
+      a.equip[slot] = inst;
+      drop(old);
+    }
+    recalcGear(a);
+    return d;
+  }
+  function dress(a, types, ammo = 0) {
+    const spill = [];
+    for (const t of types) {
+      const inst = newItem(t), d = def(inst);
+      if (d.holds) inst.ammo = ammo;
+      if (d.slot === "body") putOn(a, inst, "body", spill);
+      else if (d.slot === "back") putOn(a, inst, "back", spill);
+      else if (d.hands === 2) putOn(a, inst, "hands2", spill);
+      else putOn(a, inst, a.equip.right ? "left" : "right", spill);
+    }
+    return spill;
+  }
+  function stripAll(a, target) {
+    for (const it of allItems(a)) target.push(it);
+    if (a.equip) a.equip = emptySlots();
+    recalcGear(a);
+  }
+  function value(a, d, w) {
+    const brave = 0.5 + 0.5 * a.mods.bravery;
+    let v = 0;
+    if (d.melee) v += (d.melee.dmg - 1) * 0.6 * brave + 0.15;
+    if (d.ranged) {
+      const boost = d.ranged.boost ? w.mods.best[d.ranged.boost] || 1 : 1;
+      v += d.ranged.dmg * boost * 0.55 * (a.prefs.hunt ?? 1) + 0.1;
+      if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= 0.3;
+    }
+    if (d.block) v += d.block * 1.6 * brave;
+    for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.4 * (a.prefs[job] ?? 1);
+    if (d.speed && d.slot === "hand") v += (d.speed - 1) * 2;
+    return v;
+  }
+  function bodyValue(a, d) {
+    return (d.armor || 0) * (0.6 + 0.4 * a.mods.bravery) * 2 + (d.warmth || 0) * 0.8 * a.mods.cold - (1 - (d.speed || 1)) * 2;
+  }
+  function backValue(a, d, w, handsDefs) {
+    if (d.holds) return handsDefs.some((h) => h.ranged?.ammo === d.holds.ammo) ? 3 : 0;
+    if (d.carry) return 0.25 + d.carry * 0.15 * Math.max(a.prefs.gather ?? 1, a.prefs.chop ?? 1);
+    let v = 0;
+    for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.3 * (a.prefs[job] ?? 1);
+    return v + (isWeapon(d) ? 0.05 : 0);
+  }
+  function handsValue(w, a, hands) {
+    if (!hands.length) return 0;
+    let v = value(a, def(hands[0]), w);
+    if (hands[1] && hands[1] !== hands[0]) {
+      const od = def(hands[1]);
+      v += (od.block || 0) * 1.6 * (0.5 + 0.5 * a.mods.bravery) + 0.05 + Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * 1.4 * (a.prefs[j] ?? 1), 0);
+    }
+    return v;
+  }
+  function bestLoadout(w, a, pool) {
+    const byType = /* @__PURE__ */ new Map();
+    for (const it of pool) {
+      const k = byType.get(it.type);
+      if (!k || it.dur > k.dur) byType.set(it.type, it);
+    }
+    const items = [...byType.values()];
+    const hand = items.filter((it) => def(it).slot === "hand");
+    const opts = [{ hands: [] }];
+    for (const it of hand) {
+      if (def(it).hands === 2) {
+        opts.push({ hands: [it], two: true });
+        continue;
+      }
+      opts.push({ hands: [it] });
+      for (const o of hand) if (o !== it && def(o).hands === 1) opts.push({ hands: [it, o] });
+    }
+    let best = null;
+    for (const h of opts) {
+      const hd = h.hands.map(def), rest = items.filter((it) => !h.hands.includes(it));
+      let body = null, bv = 0, back = null, kv = 0;
+      for (const it of rest) {
+        const d = def(it);
+        if (d.slot === "body") {
+          const v = bodyValue(a, d);
+          if (v > bv) {
+            bv = v;
+            body = it;
+          }
+        }
+      }
+      for (const it of rest) {
+        if (def(it).slot === "body") continue;
+        const v = backValue(a, def(it), w, hd);
+        if (v > kv) {
+          kv = v;
+          back = it;
+        }
+      }
+      const score = handsValue(w, a, h.hands) + bv + kv;
+      if (!best || score > best.score) best = { hands: h.hands, two: h.two, body, back, score };
+    }
+    return best;
+  }
+  function currentScore(w, a) {
+    const hs = handItems(a), e = a.equip;
+    let s = handsValue(w, a, e.right ? [e.right, e.left].filter(Boolean) : hs);
+    if (e.body) s += bodyValue(a, def(e.body));
+    if (e.back) s += backValue(a, def(e.back), w, hs.map(def));
+    return s;
+  }
+  function outfit(w, a) {
+    if (!a.equip) return false;
+    let changed = false;
+    const own = allItems(a), pool = [...own, ...w.armory];
+    const best = bestLoadout(w, a, pool);
+    if (best && best.score > currentScore(w, a) + 0.12) {
+      const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
+      for (const it of own) if (!keep.has(it)) w.armory.push(it);
+      for (const it of keep) {
+        const k = w.armory.indexOf(it);
+        if (k >= 0) w.armory.splice(k, 1);
+      }
+      a.equip = emptySlots();
+      if (best.two) a.equip.left = a.equip.right = best.hands[0];
+      else {
+        a.equip.right = best.hands[0] || null;
+        a.equip.left = best.hands[1] || null;
+      }
+      a.equip.body = best.body;
+      a.equip.back = best.back;
+      w.armoryVersion = (w.armoryVersion || 0) + 1;
+      changed = true;
+    }
+    const back = a.equip.back;
+    if (back && def(back).holds) {
+      const { ammo, max } = def(back).holds, take = Math.min(max - (back.ammo || 0), Math.floor(w.stock[ammo] || 0));
+      if (take > 0) {
+        back.ammo = (back.ammo || 0) + take;
+        w.stock[ammo] -= take;
+        changed = true;
+      }
+    }
+    recalcGear(a);
+    return changed;
+  }
+  function gearText(a) {
+    if (!a.equip) return "";
+    const hs = handItems(a).map((it) => def(it).short);
+    const parts = [hs.length ? hs.join(" + ") : "\u0431\u0435\u0437\u043E\u0440\u0443\u0436\u0435\u043D"];
+    if (a.equip.body) parts.push(def(a.equip.body).short);
+    const b = a.equip.back;
+    if (b) parts.push(def(b).holds ? `${def(b).short} ${b.ammo || 0}` : `\u0437\u0430 \u0441\u043F\u0438\u043D\u043E\u0439 ${def(b).short}`);
+    return parts.join(" \xB7 ");
+  }
+
+  // src/settlement/threat.js
+  function raidThreat(w) {
+    const col = colonists(w);
+    const armed = col.filter((a) => handItems(a).some((it) => isWeapon(def(it)))).length;
+    const armour = col.reduce((s, a) => s + (a.gear?.armor || 0), 0);
+    return w.tick / DAY * 0.4 + w.stats.raids * 1 + col.length * 0.25 + armed * 0.2 + armour * 2;
+  }
+  var raidSize = (w) => colonists(w).length ? Math.min(16, 2 + Math.floor(raidThreat(w) / 3)) : 0;
+  var settlerWaitDays = (pop) => Math.max(1, pop - 7);
+
   // src/data/migrations.js
   var MIGRATIONS = new Registry("migration");
   MIGRATIONS.registerAll([
+    // one newcomer at a time; after an arrival the wait grows with the colony,
+    // and if nobody could come (no food to spare, no room) they check again a couple of hours later
     {
       id: "settlers",
       species: "human",
       faction: "colony",
-      interval: 900,
       topic: "people",
+      nextAt: (w, rng, arrived) => arrived === 0 ? w.tick + 2 * HOUR : w.tick + settlerWaitDays(colonists(w).length) * DAY,
       size: (w) => foodTotal(w) > colonists(w).length * 5 && colonists(w).length < popCap(w) ? 1 : 0,
       message: (w, group) => `\u041A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0430 \u043D\u043E\u0432\u0430\u044F \u0434\u0443\u0448\u0430: <b>${group[0].name}</b>.`
     },
@@ -621,22 +1050,29 @@ button.quiet{background:transparent;color:var(--muted)}
       faction: "raiders",
       minDist: 40,
       topic: "danger",
-      // scheduled by the start-menu setting, or triggered by the «Набег» button
-      nextAt: (w, rng) => RAIDS[w.cfg.raids].every ? w.tick + RAIDS[w.cfg.raids].every * (0.6 + rng() * 0.8) : Infinity,
-      size: (w) => colonists(w).length ? 2 + Math.floor(colonists(w).length / 4) : 0,
-      init: (a) => {
-        a.name = "\u0412\u043E\u043B\u043A";
-        a.hp = 0.75;
+      // scheduled by the start-menu setting (each raid brings the next one a little closer),
+      // or triggered by the «Набег» button. Size, gear, toughness and aim grow with the threat.
+      nextAt: (w, rng) => RAIDS[w.cfg.raids].every ? w.tick + RAIDS[w.cfg.raids].every * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) : Infinity,
+      size: (w) => raidSize(w),
+      groupInit: (group, w) => {
+        const t = raidThreat(w);
+        w.stats.raids++;
+        for (const a of group) {
+          a.hp = 0.75 + Math.min(0.35, t * 0.012);
+          a.skill = { hunt: Math.min(0.7, 0.1 + t * 0.025) };
+        }
       },
-      // raiders come armed, and better armed as the days go by: early bands carry clubs and slings
-      // in rags, later ones spears, shields, bows and leather
+      init: (a) => {
+        a.name = "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A";
+      },
+      // early bands carry clubs and slings in rags, later ones spears, shields, bows and leather
       kit: (rng, w) => {
-        const day = Math.floor(w.tick / 1200);
+        const t = raidThreat(w);
         const early = [["club"], ["club"], ["spear"], ["sling"], ["staff"]];
         const late = [["spear", "shield"], ["club", "shield"], ["maul"], ["bow", "quiver"], ["spear"], ["sling"]];
-        const pool = rng() < Math.min(0.85, day * 0.07) ? late : early;
+        const pool = rng() < Math.min(0.9, t * 0.04) ? late : early;
         const set = pool[Math.floor(rng() * pool.length)];
-        const r = rng(), leather = Math.min(0.55, day * 0.04), plates = day > 10 ? Math.min(0.2, (day - 10) * 0.02) : 0;
+        const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
         return [...set, ...r < plates ? ["hardleather"] : r < plates + leather ? ["jerkin"] : r < plates + leather + 0.4 ? ["clothes"] : []];
       },
       ammo: 8,
@@ -917,33 +1353,6 @@ button.quiet{background:transparent;color:var(--muted)}
     return false;
   }
 
-  // src/data/logTopics.js
-  var LEVELS = [
-    { id: "alert", label: "\u0442\u0440\u0435\u0432\u043E\u0433\u0430", color: "var(--raider)" },
-    { id: "notice", label: "\u0432\u0430\u0436\u043D\u043E\u0435", color: "#e2b84a" },
-    { id: "info", label: "\u043F\u0440\u043E\u0447\u0435\u0435", color: "var(--good)" }
-  ];
-  var LOG_TOPICS = new Registry("log topic");
-  LOG_TOPICS.registerAll([
-    { id: "danger", label: "\u043D\u0430\u043B\u0451\u0442\u044B \u0438 \u043D\u0430\u043F\u0430\u0434\u0435\u043D\u0438\u044F", level: "alert" },
-    { id: "death", label: "\u0441\u043C\u0435\u0440\u0442\u0438", level: "alert" },
-    { id: "build", label: "\u0441\u0442\u0440\u043E\u0439\u043A\u0430", level: "notice" },
-    { id: "people", label: "\u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u044B", level: "notice" },
-    { id: "council", label: "\u0441\u043E\u0432\u0435\u0442", level: "notice" },
-    { id: "craft", label: "\u0440\u0435\u043C\u0435\u0441\u043B\u043E", level: "info" },
-    { id: "wildlife", label: "\u0437\u0432\u0435\u0440\u0438", level: "info" },
-    { id: "weather", label: "\u043F\u043E\u0433\u043E\u0434\u0430 \u0438 \u043E\u0433\u043E\u043D\u044C", level: "info" }
-  ]);
-
-  // src/core/log.js
-  var MAX_LINES = 150;
-  function log(w, html, topic = "people", level) {
-    const lv = level || (LOG_TOPICS.has(topic) ? LOG_TOPICS.get(topic).level : "info");
-    w.logLines.unshift({ t: w.tick, html, when: clockStr(w.tick), topic, level: lv });
-    if (w.logLines.length > MAX_LINES) w.logLines.pop();
-    w.logVersion++;
-  }
-
   // src/world/weather.js
   function setWind(w) {
     const a = w.wind.dir * Math.PI / 180;
@@ -1100,7 +1509,7 @@ button.quiet{background:transparent;color:var(--muted)}
       bldSeq: 0,
       wind: { dir: cfg.windDir, str: cfg.windStr / 100, x: 0, y: 0 },
       weather: { rain: 0, rainLeft: 0 },
-      stats: { fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0, crafted: 0, broken: 0 },
+      stats: { fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0, crafted: 0, broken: 0, raids: 0 },
       campLit: false,
       mods: emptyMods(),
       cache: {},
@@ -1413,99 +1822,6 @@ button.quiet{background:transparent;color:var(--muted)}
     growth(w);
     spoil(w);
   }
-
-  // src/data/species.js
-  var SPECIES = new Registry("species");
-  var HUMAN_NAMES = [
-    "\u041C\u0438\u043B\u0430\u0432\u0430",
-    "\u0416\u0434\u0430\u043D",
-    "\u0413\u043E\u0440\u0438\u0441\u043B\u0430\u0432",
-    "\u0412\u0435\u0441\u0435\u043B\u0438\u043D\u0430",
-    "\u0422\u0438\u0445\u043E\u043D",
-    "\u041B\u044E\u0431\u0430\u0432\u0430",
-    "\u041C\u0438\u0440\u043E\u043D",
-    "\u0417\u043B\u0430\u0442\u0430",
-    "\u042F\u0440\u043E\u0441\u043B\u0430\u0432",
-    "\u0414\u0430\u0440\u0438\u043D\u0430",
-    "\u0420\u0430\u0442\u0438\u0431\u043E\u0440",
-    "\u0421\u043D\u0435\u0436\u0430\u043D\u0430",
-    "\u0411\u043E\u044F\u043D",
-    "\u0417\u0430\u0431\u0430\u0432\u0430",
-    "\u0421\u0432\u0435\u0442\u043E\u0437\u0430\u0440",
-    "\u0410\u0433\u043D\u0438\u044F",
-    "\u0412\u0435\u043B\u0438\u043C\u0438\u0440",
-    "\u041E\u043B\u0435\u0441\u044F",
-    "\u0414\u043E\u0431\u0440\u044B\u043D\u044F",
-    "\u0412\u0430\u0441\u0438\u043B\u0438\u0441\u0430",
-    "\u0420\u0430\u0434\u0438\u043C",
-    "\u0412\u0435\u0434\u0430\u043D\u0430"
-  ];
-  SPECIES.registerAll([
-    {
-      id: "human",
-      label: "\u0447\u0435\u043B\u043E\u0432\u0435\u043A",
-      hp: 1,
-      speed: 0.13,
-      needs: ["food", "rest", "warmth"],
-      heatHarm: 70,
-      look: { shape: "person", size: 0.62 },
-      names: HUMAN_NAMES,
-      sentient: true,
-      inventory: true,
-      attack: { power: 1, cooldown: 12 }
-    },
-    // Hares graze, rest at night, bolt from people and fire. They never breed here:
-    // their numbers change only through migration (see migrations.js).
-    {
-      id: "hare",
-      label: "\u0437\u0430\u044F\u0446",
-      hp: 0.12,
-      speed: 0.17,
-      needs: [],
-      brain: "grazer",
-      heatHarm: 60,
-      look: { shape: "hare", size: 0.42, color: "#cdbb9a" },
-      yields: { meat: 2, hide: 1, bone: 1 },
-      flee: { radius: 4.5, sprint: 1.45, from: ["human", "wolf"], stamina: 7e-3 },
-      grazes: { terrain: ["grass"], eatsBerries: 4e-3 },
-      leaveChance: 4e-4
-    },
-    // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
-    // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
-    // or when the hares run out. Like everyone else they only arrive and depart by migration.
-    {
-      id: "wolf",
-      label: "\u0432\u043E\u043B\u043A",
-      hp: 0.8,
-      speed: 0.14,
-      needs: ["food"],
-      brain: "predator",
-      mods: { hunger: 0.55 },
-      heatHarm: 60,
-      look: { shape: "wolf", size: 0.58, color: "#8d8f96" },
-      attack: { power: 0.85, cooldown: 14 },
-      yields: { meat: 1, hide: 2, bone: 2 },
-      killMessage: (name) => `\u0412\u043E\u043B\u043A\u0438 \u0437\u0430\u0433\u0440\u044B\u0437\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
-      predator: {
-        prey: ["hare"],
-        // what it hunts for food
-        victims: ["human"],
-        // what it attacks only when the target is alone
-        sprint: 1.9,
-        stamina: 3e-3,
-        sight: 22,
-        // how far it notices prey
-        loneRadius: 6,
-        // nobody else of the victim's kind this close → the victim is alone
-        zoneShy: 2,
-        zoneShyNight: 5,
-        // keeps this many cells outside the settlement zone (more at night)
-        groupFear: 3,
-        // this many people together make it back off
-        feedTicks: 90
-      }
-    }
-  ]);
 
   // src/data/navmaps.js
   var NAVMAPS = new Registry("navmap");
@@ -1997,303 +2313,6 @@ button.quiet{background:transparent;color:var(--muted)}
   var DISLIKE_RANGE = [0.45, 0.65];
   var NEUTRAL_RANGE = [0.85, 1.15];
 
-  // src/data/items.js
-  var SLOTS = [
-    { id: "left", label: "\u043B\u0435\u0432\u0430\u044F \u0440\u0443\u043A\u0430", hand: true },
-    { id: "right", label: "\u043F\u0440\u0430\u0432\u0430\u044F \u0440\u0443\u043A\u0430", hand: true },
-    { id: "body", label: "\u0442\u0435\u043B\u043E" },
-    { id: "back", label: "\u0441\u043F\u0438\u043D\u0430" }
-  ];
-  var ITEMS = new Registry("item");
-  ITEMS.registerAll([
-    // one-handed
-    { id: "club", label: "\u0414\u0443\u0431\u0438\u043D\u0430", short: "\u0434\u0443\u0431\u0438\u043D\u0430", slot: "hand", hands: 1, melee: { dmg: 1.3, cd: 12 }, dur: 70, glyph: "club" },
-    { id: "spear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, melee: { dmg: 1.55, cd: 13 }, dur: 55, glyph: "spear" },
-    { id: "axe", label: "\u0422\u043E\u043F\u043E\u0440 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C \u043A\u043B\u0438\u043D\u043E\u043C", short: "\u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, melee: { dmg: 1.3, cd: 13 }, tool: { chop: 1.6 }, dur: 90, glyph: "axe" },
-    { id: "shield", label: "\u0429\u0438\u0442 \u0438\u0437 \u0436\u0435\u0440\u0434\u0435\u0439 \u0438 \u0448\u043A\u0443\u0440\u044B", short: "\u0449\u0438\u0442", slot: "hand", hands: 1, block: 0.32, dur: 35, glyph: "shield" },
-    // two-handed
-    { id: "staff", label: "\u041F\u043E\u0441\u043E\u0445", short: "\u043F\u043E\u0441\u043E\u0445", slot: "hand", hands: 2, melee: { dmg: 1.1, cd: 11 }, block: 0.15, speed: 1.05, dur: 80, glyph: "staff" },
-    { id: "maul", label: "\u0414\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u0439 \u043C\u043E\u043B\u043E\u0442", short: "\u043C\u043E\u043B\u043E\u0442", slot: "hand", hands: 2, melee: { dmg: 1.9, cd: 18 }, tool: { build: 1.45, mine: 1.35 }, dur: 90, glyph: "maul" },
-    {
-      id: "bow",
-      label: "\u041B\u0443\u043A",
-      short: "\u043B\u0443\u043A",
-      slot: "hand",
-      hands: 2,
-      melee: { dmg: 0.6, cd: 14 },
-      ranged: { dmg: 1.7, range: 7, cd: 22, ammo: "arrows" },
-      dur: 90,
-      glyph: "bow"
-    },
-    // stones lie everywhere: no ammo, but the sling is far weaker and shorter; a quarry gives better stones
-    {
-      id: "sling",
-      label: "\u041F\u0440\u0430\u0449\u0430",
-      short: "\u043F\u0440\u0430\u0449\u0430",
-      slot: "hand",
-      hands: 2,
-      melee: { dmg: 0.5, cd: 14 },
-      ranged: { dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: "slingStones" },
-      dur: 60,
-      glyph: "sling"
-    },
-    // body
-    { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", armor: 0.08, warmth: 0.35, dur: 50, color: "#c9b38a" },
-    { id: "jerkin", label: "\u041A\u043E\u0436\u0430\u043D\u0430\u044F \u043A\u0443\u0440\u0442\u043A\u0430", short: "\u043A\u043E\u0436\u0430", slot: "body", armor: 0.2, warmth: 0.55, dur: 70, color: "#8a5a2b" },
-    { id: "hardleather", label: "\u041A\u043E\u0436\u0430 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C\u0438 \u043F\u043B\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438", short: "\u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u0436\u0430", slot: "body", armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, color: "#e0d6c0" },
-    // back
-    { id: "quiver", label: "\u041A\u043E\u043B\u0447\u0430\u043D", short: "\u043A\u043E\u043B\u0447\u0430\u043D", slot: "back", holds: { ammo: "arrows", max: 15 }, dur: Infinity },
-    { id: "basket", label: "\u0417\u0430\u043F\u043B\u0435\u0447\u043D\u044B\u0439 \u043A\u043E\u0440\u043E\u0431", short: "\u043A\u043E\u0440\u043E\u0431", slot: "back", carry: 2, dur: Infinity }
-  ]);
-  var isWeapon = (def2) => !!(def2.melee || def2.ranged);
-
-  // src/agents/equipment.js
-  var def = (inst) => ITEMS.get(inst.type);
-  var newItem = (type, extra = {}) => ({ type, dur: ITEMS.get(type).dur, ...extra });
-  var emptySlots = () => Object.fromEntries(SLOTS.map((s) => [s.id, null]));
-  function handItems(a) {
-    const e = a.equip;
-    if (!e) return [];
-    return e.left && e.left === e.right ? [e.left] : [e.left, e.right].filter(Boolean);
-  }
-  var allItems = (a) => a.equip ? [...handItems(a), a.equip.body, a.equip.back].filter(Boolean) : [];
-  function rangedAmmo(a, d) {
-    if (!d.ranged.ammo) return Infinity;
-    const back = a.equip.back;
-    return back && def(back).holds?.ammo === d.ranged.ammo ? back.ammo || 0 : 0;
-  }
-  function recalcGear(a) {
-    const sp = SPECIES.get(a.species), base = sp.attack || { power: 1, cooldown: 12 };
-    const g = {
-      melee: { dmg: base.power, cd: base.cooldown, item: null },
-      ranged: null,
-      rangedReady: false,
-      block: 0,
-      blockItem: null,
-      armor: 0,
-      warmth: 0,
-      speed: 1,
-      tool: {},
-      toolItem: {},
-      carry: 0
-    };
-    if (!a.equip) {
-      a.gear = g;
-      return g;
-    }
-    for (const it of handItems(a)) {
-      const d = def(it);
-      if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = { dmg: d.melee.dmg, cd: d.melee.cd, item: it };
-      if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = { ...d.ranged, item: it };
-      if ((d.block || 0) > g.block) {
-        g.block = d.block;
-        g.blockItem = it;
-      }
-      if (d.speed) g.speed *= d.speed;
-    }
-    if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;
-    const body = a.equip.body;
-    if (body) {
-      const d = def(body);
-      g.armor = d.armor || 0;
-      g.warmth = d.warmth || 0;
-      if (d.speed) g.speed *= d.speed;
-    }
-    for (const it of [...handItems(a), a.equip.back].filter(Boolean)) {
-      for (const [job, m] of Object.entries(def(it).tool || {})) if (m > (g.tool[job] || 1)) {
-        g.tool[job] = m;
-        g.toolItem[job] = it;
-      }
-    }
-    if (a.equip.back) g.carry = def(a.equip.back).carry || 0;
-    a.gear = g;
-    return g;
-  }
-  function removeEverywhere(a, inst) {
-    for (const s of SLOTS) if (a.equip[s.id] === inst) a.equip[s.id] = null;
-  }
-  function wear(w, a, inst, amount = 1) {
-    if (!inst || !Number.isFinite(inst.dur)) return;
-    inst.dur -= amount * (a.faction === "colony" ? w.mods.mul.wear : 1);
-    if (inst.dur > 0) return;
-    removeEverywhere(a, inst);
-    recalcGear(a);
-    if (a.faction === "colony") {
-      w.stats.broken++;
-      a.mem.broken += 0.4;
-      log(w, `\u0423 <b>${esc(a.name)}</b> \u0441\u043B\u043E\u043C\u0430\u043B\u0441\u044F \u043F\u0440\u0435\u0434\u043C\u0435\u0442: ${def(inst).short}.`, "craft");
-    }
-  }
-  function putOn(a, inst, slot, spill) {
-    const d = def(inst);
-    const drop = (x) => {
-      if (x && !allItems(a).includes(x)) spill.push(x);
-    };
-    if (slot === "hands2") {
-      const old = handItems(a);
-      a.equip.left = a.equip.right = inst;
-      old.forEach(drop);
-    } else if (slot === "left" || slot === "right") {
-      const old = a.equip[slot];
-      if (old && old === (slot === "left" ? a.equip.right : a.equip.left)) {
-        a.equip.left = a.equip.right = null;
-      }
-      a.equip[slot] = inst;
-      drop(old);
-    } else {
-      const old = a.equip[slot];
-      a.equip[slot] = inst;
-      drop(old);
-    }
-    recalcGear(a);
-    return d;
-  }
-  function dress(a, types, ammo = 0) {
-    const spill = [];
-    for (const t of types) {
-      const inst = newItem(t), d = def(inst);
-      if (d.holds) inst.ammo = ammo;
-      if (d.slot === "body") putOn(a, inst, "body", spill);
-      else if (d.slot === "back") putOn(a, inst, "back", spill);
-      else if (d.hands === 2) putOn(a, inst, "hands2", spill);
-      else putOn(a, inst, a.equip.right ? "left" : "right", spill);
-    }
-    return spill;
-  }
-  function stripAll(a, target) {
-    for (const it of allItems(a)) target.push(it);
-    if (a.equip) a.equip = emptySlots();
-    recalcGear(a);
-  }
-  function value(a, d, w) {
-    const brave = 0.5 + 0.5 * a.mods.bravery;
-    let v = 0;
-    if (d.melee) v += (d.melee.dmg - 1) * 0.6 * brave + 0.15;
-    if (d.ranged) {
-      const boost = d.ranged.boost ? w.mods.best[d.ranged.boost] || 1 : 1;
-      v += d.ranged.dmg * boost * 0.55 * (a.prefs.hunt ?? 1) + 0.1;
-      if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= 0.3;
-    }
-    if (d.block) v += d.block * 1.6 * brave;
-    for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.4 * (a.prefs[job] ?? 1);
-    if (d.speed && d.slot === "hand") v += (d.speed - 1) * 2;
-    return v;
-  }
-  function bodyValue(a, d) {
-    return (d.armor || 0) * (0.6 + 0.4 * a.mods.bravery) * 2 + (d.warmth || 0) * 0.8 * a.mods.cold - (1 - (d.speed || 1)) * 2;
-  }
-  function backValue(a, d, w, handsDefs) {
-    if (d.holds) return handsDefs.some((h) => h.ranged?.ammo === d.holds.ammo) ? 3 : 0;
-    if (d.carry) return 0.25 + d.carry * 0.15 * Math.max(a.prefs.gather ?? 1, a.prefs.chop ?? 1);
-    let v = 0;
-    for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.3 * (a.prefs[job] ?? 1);
-    return v + (isWeapon(d) ? 0.05 : 0);
-  }
-  function handsValue(w, a, hands) {
-    if (!hands.length) return 0;
-    let v = value(a, def(hands[0]), w);
-    if (hands[1] && hands[1] !== hands[0]) {
-      const od = def(hands[1]);
-      v += (od.block || 0) * 1.6 * (0.5 + 0.5 * a.mods.bravery) + 0.05 + Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * 1.4 * (a.prefs[j] ?? 1), 0);
-    }
-    return v;
-  }
-  function bestLoadout(w, a, pool) {
-    const byType = /* @__PURE__ */ new Map();
-    for (const it of pool) {
-      const k = byType.get(it.type);
-      if (!k || it.dur > k.dur) byType.set(it.type, it);
-    }
-    const items = [...byType.values()];
-    const hand = items.filter((it) => def(it).slot === "hand");
-    const opts = [{ hands: [] }];
-    for (const it of hand) {
-      if (def(it).hands === 2) {
-        opts.push({ hands: [it], two: true });
-        continue;
-      }
-      opts.push({ hands: [it] });
-      for (const o of hand) if (o !== it && def(o).hands === 1) opts.push({ hands: [it, o] });
-    }
-    let best = null;
-    for (const h of opts) {
-      const hd = h.hands.map(def), rest = items.filter((it) => !h.hands.includes(it));
-      let body = null, bv = 0, back = null, kv = 0;
-      for (const it of rest) {
-        const d = def(it);
-        if (d.slot === "body") {
-          const v = bodyValue(a, d);
-          if (v > bv) {
-            bv = v;
-            body = it;
-          }
-        }
-      }
-      for (const it of rest) {
-        if (def(it).slot === "body") continue;
-        const v = backValue(a, def(it), w, hd);
-        if (v > kv) {
-          kv = v;
-          back = it;
-        }
-      }
-      const score = handsValue(w, a, h.hands) + bv + kv;
-      if (!best || score > best.score) best = { hands: h.hands, two: h.two, body, back, score };
-    }
-    return best;
-  }
-  function currentScore(w, a) {
-    const hs = handItems(a), e = a.equip;
-    let s = handsValue(w, a, e.right ? [e.right, e.left].filter(Boolean) : hs);
-    if (e.body) s += bodyValue(a, def(e.body));
-    if (e.back) s += backValue(a, def(e.back), w, hs.map(def));
-    return s;
-  }
-  function outfit(w, a) {
-    if (!a.equip) return false;
-    let changed = false;
-    const own = allItems(a), pool = [...own, ...w.armory];
-    const best = bestLoadout(w, a, pool);
-    if (best && best.score > currentScore(w, a) + 0.12) {
-      const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
-      for (const it of own) if (!keep.has(it)) w.armory.push(it);
-      for (const it of keep) {
-        const k = w.armory.indexOf(it);
-        if (k >= 0) w.armory.splice(k, 1);
-      }
-      a.equip = emptySlots();
-      if (best.two) a.equip.left = a.equip.right = best.hands[0];
-      else {
-        a.equip.right = best.hands[0] || null;
-        a.equip.left = best.hands[1] || null;
-      }
-      a.equip.body = best.body;
-      a.equip.back = best.back;
-      w.armoryVersion = (w.armoryVersion || 0) + 1;
-      changed = true;
-    }
-    const back = a.equip.back;
-    if (back && def(back).holds) {
-      const { ammo, max } = def(back).holds, take = Math.min(max - (back.ammo || 0), Math.floor(w.stock[ammo] || 0));
-      if (take > 0) {
-        back.ammo = (back.ammo || 0) + take;
-        w.stock[ammo] -= take;
-        changed = true;
-      }
-    }
-    recalcGear(a);
-    return changed;
-  }
-  function gearText(a) {
-    if (!a.equip) return "";
-    const hs = handItems(a).map((it) => def(it).short);
-    const parts = [hs.length ? hs.join(" + ") : "\u0431\u0435\u0437\u043E\u0440\u0443\u0436\u0435\u043D"];
-    if (a.equip.body) parts.push(def(a.equip.body).short);
-    const b = a.equip.back;
-    if (b) parts.push(def(b).holds ? `${def(b).short} ${b.ammo || 0}` : `\u0437\u0430 \u0441\u043F\u0438\u043D\u043E\u0439 ${def(b).short}`);
-    return parts.join(" \xB7 ");
-  }
-
   // src/agents/agent.js
   var newMemory = () => new Proxy({}, { get: (t, k) => typeof k === "string" ? t[k] ?? 0 : t[k] });
   var between = (rng, [a, b]) => a + rng() * (b - a);
@@ -2324,6 +2343,14 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     a.mods.bravery *= 0.85 + rng() * 0.3;
   }
+  function freshName(w, names) {
+    const used = new Set(w.agents.filter((o) => o.faction === "colony" && !o.dead).map((o) => o.name));
+    for (let k = 0; k < names.length; k++) {
+      const n = names[w.nameIdx++ % names.length];
+      if (!used.has(n)) return n;
+    }
+    return names[w.nameIdx++ % names.length];
+  }
   function createAgent(w, speciesId, factionId, x, y) {
     const sp = SPECIES.get(speciesId), fa = FACTIONS.get(factionId);
     const a = {
@@ -2331,7 +2358,7 @@ button.quiet{background:transparent;color:var(--muted)}
       species: speciesId,
       faction: factionId,
       brain: sp.brain || fa.brain,
-      name: sp.names ? sp.names[w.nameIdx++ % sp.names.length] : sp.label,
+      name: sp.names && factionId === "colony" ? freshName(w, sp.names) : sp.label,
       x,
       y,
       hp: sp.hp,
@@ -3389,7 +3416,7 @@ button.quiet{background:transparent;color:var(--muted)}
         }
         const bold = w.tick > (a.calmUntil || 0) && (hunger < 0.3 || night > 0.6 && packOf(w, a).length >= 2);
         if (bold) {
-          const v = nearest(w, a, P.victims, P.sight * 0.8, (o) => isAlone(w, o, P));
+          const v = nearest(w, a, P.victims, P.sight * 0.8, (o) => o.faction === "colony" && isAlone(w, o, P));
           if (v) {
             a.task = { id: "maul", target: v };
             w.stats.wolfAttacks++;
@@ -3479,8 +3506,8 @@ button.quiet{background:transparent;color:var(--muted)}
   function stepMigration(w) {
     for (const def2 of MIGRATIONS.all()) {
       if (w.tick < w.migration[def2.id]) continue;
-      spawnGroup(w, def2.id);
-      w.migration[def2.id] = def2.nextAt ? def2.nextAt(w, w.rng) : w.tick + def2.interval;
+      const group = spawnGroup(w, def2.id);
+      w.migration[def2.id] = def2.nextAt ? def2.nextAt(w, w.rng, group.length) : w.tick + def2.interval;
     }
   }
 
@@ -4204,7 +4231,7 @@ button.quiet{background:transparent;color:var(--muted)}
       $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       $("fires").textContent = w.stats.fireCount;
       const col = colonists(w), raiders = w.agents.filter((a) => a.faction === "raiders").length, hares = ofSpecies(w, "hare").length;
-      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u043E\u0432"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd><dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd>`);
+      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u043E\u0432"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.waitText(w, w.migration.settlers)}</dd><dt>\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` \xB7 ${this.waitText(w, w.migration.raiders)}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd><dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd>`);
       this.renderCouncil(w);
       this.renderGear(w);
       this.renderBuildings(w);
@@ -4219,6 +4246,12 @@ button.quiet{background:transparent;color:var(--muted)}
       this.lastTick = w.tick;
       this.lastT = now;
       this.renderLog(w);
+    }
+    waitText(w, at) {
+      if (!Number.isFinite(at)) return "\u043D\u0435\u0442";
+      const t = at - w.tick;
+      if (t <= 0) return "\u0441\u043A\u043E\u0440\u043E";
+      return t >= DAY ? `\u0447\u0435\u0440\u0435\u0437 ${(t / DAY).toFixed(1).replace(".0", "")} \u0434\u043D.` : `\u0447\u0435\u0440\u0435\u0437 ${Math.max(1, Math.round(t / HOUR))} \u0447`;
     }
     renderCouncil(w) {
       const c = w.council, due = councilDue(w), h = hourOf(w.tick);

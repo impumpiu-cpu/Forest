@@ -45,7 +45,7 @@ export function spawnGroup(w, id, size) {
 export function stepMigration(w) {
   for (const def of MIGRATIONS.all()) {
     if (w.tick < w.migration[def.id]) continue;
-    spawnGroup(w, def.id);
-    w.migration[def.id] = def.nextAt ? def.nextAt(w, w.rng) : w.tick + def.interval;
+    const group = spawnGroup(w, def.id);
+    w.migration[def.id] = def.nextAt ? def.nextAt(w, w.rng, group.length) : w.tick + def.interval;
   }
 }

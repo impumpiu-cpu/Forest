@@ -1,16 +1,22 @@
 // Arrivals and departures. Nobody is born here: populations change only by migration.
-// A migration checks every `interval` ticks (or on its own schedule) how big a group should come,
-// then spawns it at a map edge reachable from the camp.
+// A migration checks every `interval` ticks, or when its own `nextAt(w, rng, arrived)` says,
+// how big a group should come, then spawns it at a map edge reachable from the camp.
+// `arrived` is the size of the group that just came (0 if the check found nobody).
 import {Registry} from '../core/registry.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {RAIDS, WILDLIFE, PREDATORS} from './presets.js';
 import {T} from './terrain.js';
+import {DAY, HOUR} from '../core/time.js';
+import {raidThreat, raidSize, settlerWaitDays} from '../settlement/threat.js';
 
 export const MIGRATIONS = new Registry('migration');
 
 MIGRATIONS.registerAll([
-  {id: 'settlers', species: 'human', faction: 'colony', interval: 900, topic: 'people',
+  // one newcomer at a time; after an arrival the wait grows with the colony,
+  // and if nobody could come (no food to spare, no room) they check again a couple of hours later
+  {id: 'settlers', species: 'human', faction: 'colony', topic: 'people',
+    nextAt: (w, rng, arrived) => (arrived === 0 ? w.tick + 2 * HOUR : w.tick + settlerWaitDays(colonists(w).length) * DAY),
     size: w => (foodTotal(w) > colonists(w).length * 5 && colonists(w).length < popCap(w) ? 1 : 0),
     message: (w, group) => `К лагерю пришла новая душа: <b>${group[0].name}</b>.`},
 
@@ -36,19 +42,24 @@ MIGRATIONS.registerAll([
     message: (w, group, side) => `С ${side} пришла стая волков: ${group.length}. Одному в лес лучше не ходить.`},
 
   {id: 'raiders', species: 'human', faction: 'raiders', minDist: 40, topic: 'danger',
-    // scheduled by the start-menu setting, or triggered by the «Набег» button
-    nextAt: (w, rng) => (RAIDS[w.cfg.raids].every ? w.tick + RAIDS[w.cfg.raids].every * (0.6 + rng() * 0.8) : Infinity),
-    size: w => (colonists(w).length ? 2 + Math.floor(colonists(w).length / 4) : 0),
-    init: a => { a.name = 'Волк'; a.hp = 0.75; },
-    // raiders come armed, and better armed as the days go by: early bands carry clubs and slings
-    // in rags, later ones spears, shields, bows and leather
+    // scheduled by the start-menu setting (each raid brings the next one a little closer),
+    // or triggered by the «Набег» button. Size, gear, toughness and aim grow with the threat.
+    nextAt: (w, rng) => (RAIDS[w.cfg.raids].every
+      ? w.tick + RAIDS[w.cfg.raids].every * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) : Infinity),
+    size: w => raidSize(w),
+    groupInit: (group, w) => {
+      const t = raidThreat(w); w.stats.raids++;
+      for (const a of group) { a.hp = 0.75 + Math.min(0.35, t * 0.012); a.skill = {hunt: Math.min(0.7, 0.1 + t * 0.025)}; }
+    },
+    init: a => { a.name = 'Налётчик'; },
+    // early bands carry clubs and slings in rags, later ones spears, shields, bows and leather
     kit: (rng, w) => {
-      const day = Math.floor(w.tick / 1200);
+      const t = raidThreat(w);
       const early = [['club'], ['club'], ['spear'], ['sling'], ['staff']];
       const late = [['spear', 'shield'], ['club', 'shield'], ['maul'], ['bow', 'quiver'], ['spear'], ['sling']];
-      const pool = rng() < Math.min(0.85, day * 0.07) ? late : early;
+      const pool = rng() < Math.min(0.9, t * 0.04) ? late : early;
       const set = pool[Math.floor(rng() * pool.length)];
-      const r = rng(), leather = Math.min(0.55, day * 0.04), plates = day > 10 ? Math.min(0.2, (day - 10) * 0.02) : 0;
+      const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
       return [...set, ...(r < plates ? ['hardleather'] : r < plates + leather ? ['jerkin'] : r < plates + leather + 0.4 ? ['clothes'] : [])];
     },
     ammo: 8,
