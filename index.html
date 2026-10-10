@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тёплый Брод</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans+SC:wght@500;700&family=PT+Sans:wght@400;700&family=PT+Mono&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="colonyName">Тёплый Брод</h1>
+    <p id="worldInfo">Прототип локальной карты: поля температуры, огня и дыма считаются на сетке, поверх живут колонисты с потребностями и ходят по полям течения.</p>
+  </header>
+
+  <!-- ───────── start menu ───────── -->
+  <section id="menu" class="menu" aria-labelledby="menuTitle">
+    <div class="menu-form">
+      <h2 id="menuTitle" class="menu-title">Новый мир</h2>
+      <div class="field">
+        <label for="cfgName">Название поселения</label>
+        <input id="cfgName" type="text" maxlength="32" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="cfgSeed">Сид мира</label>
+        <div class="row">
+          <input id="cfgSeed" type="text" maxlength="24" autocomplete="off">
+          <button type="button" id="seedRandom">Случайный</button>
+        </div>
+        <small>Число или любое слово. Один и тот же сид с теми же настройками даёт тот же мир.</small>
+      </div>
+      <div class="field"><span class="lbl">Размер мира</span><div class="seg wrapseg" data-key="size"></div><small data-note="size"></small></div>
+      <div class="field-grid">
+        <div class="field"><span class="lbl">Вода</span><div class="seg" data-key="water"></div></div>
+        <div class="field"><span class="lbl">Лес</span><div class="seg" data-key="forest"></div></div>
+        <div class="field"><span class="lbl">Горы</span><div class="seg" data-key="rock"></div></div>
+      </div>
+      <div class="field"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
+      <div class="field">
+        <label for="cfgColonists">Поселенцев на старте: <output id="colonistsOut">8</output></label>
+        <input id="cfgColonists" type="range" min="3" max="14" value="8">
+      </div>
+      <div class="field-grid two">
+        <div class="field"><span class="lbl">Запасы</span><div class="seg" data-key="stock"></div></div>
+        <div class="field"><span class="lbl">Набеги «Серых волков»</span><div class="seg" data-key="raids"></div></div>
+      </div>
+      <label class="check"><input id="cfgLightning" type="checkbox"> Молнии поджигают лес в жаркие часы</label>
+      <div class="row actions">
+        <button type="button" id="startGame" class="primary">Основать поселение</button>
+        <button type="button" id="backToGame" hidden>Вернуться к игре</button>
+        <button type="button" id="resetCfg" class="quiet">Сбросить настройки</button>
+      </div>
+    </div>
+    <div class="menu-preview">
+      <div class="preview-box"><canvas id="preview" width="256" height="192" aria-label="Предпросмотр карты"></canvas></div>
+      <dl class="kv" id="previewStats"></dl>
+      <small>Белый круг — место лагеря. Карта перерисовывается при каждом изменении настроек.</small>
+    </div>
+  </section>
+
+  <div class="main" id="game" hidden>
+    <section class="stage">
+      <div class="toolbar">
+        <div class="group"><span>Клик</span>
+          <div class="seg" id="tools">
+            <button data-tool="inspect" aria-pressed="true">Осмотр</button>
+            <button data-tool="ignite" aria-pressed="false">Поджечь</button>
+            <button data-tool="rain" aria-pressed="false">Ливень</button>
+          </div>
+        </div>
+        <div class="group"><span>Слой</span>
+          <div class="seg" id="layers">
+            <button data-layer="world" aria-pressed="true">Мир</button>
+            <button data-layer="temp" aria-pressed="false">Температура</button>
+            <button data-layer="res" aria-pressed="false">Ресурсы</button>
+            <button data-layer="nav" aria-pressed="false">Навигация</button>
+          </div>
+        </div>
+        <div class="group"><span>Скорость</span>
+          <div class="seg" id="speeds">
+            <button data-speed="0" aria-pressed="false" title="Пробел">Пауза</button>
+            <button data-speed="1" aria-pressed="true">1×</button>
+            <button data-speed="3" aria-pressed="false">3×</button>
+            <button data-speed="10" aria-pressed="false">10×</button>
+          </div>
+        </div>
+        <div class="group"><span>Ветер</span>
+          <span id="windArrow" aria-hidden="true" style="display:inline-block;color:var(--fg);font-size:16px">→</span>
+          <input type="range" id="windDir" min="0" max="359" value="20" aria-label="Направление ветра">
+          <input type="range" id="windStr" min="0" max="100" value="35" aria-label="Сила ветра">
+        </div>
+        <div class="group">
+          <button id="raid" class="danger">Набег</button>
+          <button id="openMenu">Меню мира</button>
+        </div>
+      </div>
+      <div class="canvas-box"><canvas id="map" width="768" height="576"></canvas></div>
+      <div class="readout" id="readout">Наведите на карту, чтобы увидеть значения полей в клетке.</div>
+      <div class="legend">
+        <span><i style="background:var(--colony)"></i>колонисты</span>
+        <span><i style="background:var(--raider)"></i>налётчики</span>
+        <span><i style="background:var(--food)"></i>ягоды</span>
+        <span><i style="background:var(--ember)"></i>огонь и костёр</span>
+        <span>пунктирный круг — лагерь со складом</span>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <h2>Время и погода</h2>
+        <div class="clock" id="clock">День 1, 07:00</div>
+        <dl class="kv">
+          <dt>Воздух</dt><dd id="amb">—</dd>
+          <dt>Ветер</dt><dd id="windTxt">—</dd>
+          <dt>Горит клеток</dt><dd id="fires">0</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Склад лагеря</h2>
+        <dl class="kv">
+          <dt>Еда</dt><dd id="sFood">—</dd>
+          <dt>Дрова</dt><dd id="sWood">—</dd>
+          <dt>Костёр</dt><dd id="sFire">—</dd>
+          <dt>Население</dt><dd id="pop">—</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Колонисты</h2>
+        <div class="people" id="people"></div>
+      </div>
+      <div class="card">
+        <h2>Расчёт за тик, мс</h2>
+        <dl class="kv">
+          <dt id="pFlabel">Поля</dt><dd id="pF">—</dd>
+          <dt>Навигация (Дейкстра)</dt><dd id="pN">—</dd>
+          <dt>Агенты</dt><dd id="pA">—</dd>
+          <dt>Отрисовка кадра</dt><dd id="pR">—</dd>
+          <dt>Тиков в секунду</dt><dd id="pT">—</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Журнал</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="explain" id="explain">
+    <div class="card"><span class="tag">слой 1 · поля</span><h3>Тепло, огонь, дым</h3><p>Каждый тик температура расплывается к соседям (диффузия) и сносится ветром (полулагранжева адвекция, как в stable fluids). Горящая клетка греет соседей и поджигает их, когда те перегреваются. Лес горит охотно, трава — неохотно.</p></div>
+    <div class="card"><span class="tag">слой 2 · навигация</span><h3>Поля течения</h3><p>Для лагеря, ягод, леса, пожара и края карты строится карта расстояний алгоритмом Дейкстры. Огонь, жар и дым делают клетки «дорогими», поэтому люди обходят пожар. Агент просто спускается по полю к цели.</p></div>
+    <div class="card"><span class="tag">слой 3 · агенты</span><h3>Utility AI</h3><p>У колониста есть сытость, бодрость, тепло и здоровье. Он оценивает дела (есть, спать, греться, собирать, рубить, тушить, драться) и берёт самое срочное. Тепло он получает из поля температуры, поэтому костёр работает через физику.</p></div>
+    <div class="card"><span class="tag">что попробовать</span><h3>Эксперименты</h3><p>Подожгите лес с наветренной стороны лагеря. Устройте набег ночью, когда люди спят. Переключите слой «Температура» в сумерках и посмотрите, как остывает карта и держится тёплое пятно у костра.</p></div>
+  </section>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
