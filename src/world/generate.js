@@ -9,6 +9,7 @@ import {MIGRATIONS} from '../data/migrations.js';
 import {emptyMods} from '../settlement/mods.js';
 import {isCampArea} from './grid.js';
 import {setWind} from './weather.js';
+import {recomputeZone} from '../settlement/zone.js';
 
 function noiseLayer(rnd, w, h, cell) {
   const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
@@ -70,11 +71,11 @@ export function createWorld(cfg) {
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, food: f32(), wood: f32(), fuel: f32(), fire: f32(),
       temp: f32(), temp2: f32(), smoke: f32(), smoke2: f32(), bush: new Uint8Array(n), bld: new Int16Array(n).fill(-1)},
     camp: {x: t.cx, y: t.cy, cells: [], set: null},
-    stock: {}, agents: [], buildings: [], gardenCells: [],
+    stock: {}, agents: [], buildings: [], gardenCells: [], armory: [], fx: [],
     nextId: 1, nameIdx: 0, bldSeq: 0,
     wind: {dir: cfg.windDir, str: cfg.windStr / 100, x: 0, y: 0},
     weather: {rain: 0, rainLeft: 0},
-    stats: {fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0},
+    stats: {fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0, crafted: 0, broken: 0},
     campLit: false, mods: emptyMods(), cache: {}, migration: {},
     council: {lastDay: -1, goal: null, votes: [], args: [], decision: 'Первый совет соберётся сегодня вечером у костра.'},
     logLines: [], logVersion: 0, nav: null,
@@ -92,6 +93,7 @@ export function createWorld(cfg) {
     g.temp[i] = amb;
   }
   for (const r of RESOURCES.all()) world.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
+  recomputeZone(world);
   for (const m of MIGRATIONS.all()) world.migration[m.id] = m.nextAt ? m.nextAt(world, t.rng) : world.tick + (m.interval || 0);
   setWind(world);
   return world;

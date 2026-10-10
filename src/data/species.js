@@ -9,14 +9,14 @@ export const HUMAN_NAMES = ['Милава', 'Ждан', 'Горислав', 'В�
 
 SPECIES.registerAll([
   {id: 'human', label: 'человек', hp: 1, speed: 0.13, needs: ['food', 'rest', 'warmth'],
-    heatHarm: 70, look: {shape: 'person', size: 0.62}, names: HUMAN_NAMES, sentient: true,
+    heatHarm: 70, look: {shape: 'person', size: 0.62}, names: HUMAN_NAMES, sentient: true, inventory: true,
     attack: {power: 1, cooldown: 12}},
 
   // Hares graze, rest at night, bolt from people and fire. They never breed here:
   // their numbers change only through migration (see migrations.js).
-  {id: 'hare', label: 'заяц', hp: 0.3, speed: 0.17, needs: [], brain: 'grazer',
+  {id: 'hare', label: 'заяц', hp: 0.12, speed: 0.17, needs: [], brain: 'grazer',
     heatHarm: 60, look: {shape: 'hare', size: 0.42, color: '#cdbb9a'},
-    yields: {resource: 'meat', amount: 2},
+    yields: {meat: 2, hide: 1, bone: 1},
     flee: {radius: 4.5, sprint: 1.45, from: ['human', 'wolf'], stamina: 0.007},
     grazes: {terrain: ['grass'], eatsBerries: 0.004},
     leaveChance: 0.0004},
@@ -28,6 +28,7 @@ SPECIES.registerAll([
     mods: {hunger: 0.55},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
     attack: {power: 0.85, cooldown: 14},
+    yields: {meat: 1, hide: 2, bone: 2},
     killMessage: name => `Волки загрызли поселенца: <b>${name}</b>.`,
     predator: {
       prey: ['hare'],            // what it hunts for food
@@ -35,7 +36,7 @@ SPECIES.registerAll([
       sprint: 1.9, stamina: 0.003,
       sight: 22,                 // how far it notices prey
       loneRadius: 6,             // nobody else of the victim's kind this close → the victim is alone
-      campShy: 11,               // keeps this far from a lit camp
+      zoneShy: 2, zoneShyNight: 5, // keeps this many cells outside the settlement zone (more at night)
       groupFear: 3,              // this many people together make it back off
       feedTicks: 90,
     }},

@@ -8,6 +8,8 @@ import {nextToRock} from '../world/grid.js';
 import {ambientTemp} from '../core/time.js';
 import {SPECIES} from './species.js';
 import {cellOf} from '../world/grid.js';
+import {BUILDINGS} from './buildings.js';
+import {inZone} from '../settlement/zone.js';
 
 export const NAVMAPS = new Registry('navmap');
 
@@ -25,6 +27,8 @@ NAVMAPS.registerAll([
   {id: 'prey', active: w => w.agents.some(a => a.task?.job === 'hunt'),
     prepare: w => new Set(w.agents.filter(a => SPECIES.get(a.species).yields).map(a => cellOf(w, a))),
     seed: (w, i, cells) => cells.has(i)},
+  // the settlement zone: where people run when something hunts them
+  {id: 'zone', seed: (w, i) => inZone(w, i)},
   // only fires that threaten the camp are worth fighting
   {id: 'fire', active: w => w.stats.fireCount > 0,
     seed: (w, i) => w.grid.fire[i] > 0.05 && ((i % w.w) - w.camp.x) ** 2 + (((i / w.w) | 0) - w.camp.y) ** 2 < 400},
@@ -33,3 +37,10 @@ NAVMAPS.registerAll([
     prepare: w => ambientTemp(w) + 14,
     seed: (w, i, lim) => w.grid.temp[i] < lim && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6},
 ]);
+
+// one map per crafting station: its finished building cells
+for (const b of BUILDINGS.filter(d => d.station)) {
+  NAVMAPS.register({id: 'station:' + b.id, active: w => has(w, b.id),
+    prepare: w => new Set(w.buildings.filter(x => x.key === b.id && x.done).flatMap(x => x.cells)),
+    seed: (w, i, cells) => cells.has(i)});
+}

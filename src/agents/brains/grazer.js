@@ -44,8 +44,10 @@ export const grazerBrain = {
     const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});
     if (!t.spot || Math.random() < 0.01) {
       const ok = new Set(sp.grazes.terrain.map(id => TERRAIN.get(id).code));
+      // mostly nibble nearby, now and then wander off to another meadow
+      const reach = Math.random() < 0.15 ? 30 : 7;
       for (let k = 0; k < 12; k++) {
-        const x = a.x + (Math.random() * 12 - 6), y = a.y + (Math.random() * 12 - 6);
+        const x = a.x + (Math.random() * 2 - 1) * reach, y = a.y + (Math.random() * 2 - 1) * reach;
         if (!inBounds(w, x | 0, y | 0)) continue;
         const j = (y | 0) * w.w + (x | 0);
         if (walkable(w, j) && ok.has(w.grid.terr[j])) { t.spot = [x, y]; break; }

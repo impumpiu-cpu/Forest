@@ -6,7 +6,7 @@ import {NEEDS} from '../data/needs.js';
 import {ambientTemp} from '../core/time.js';
 import {cellOf} from '../world/grid.js';
 import {follow, moveToward, escapeHeat, nearFire} from './movement.js';
-import {attack} from './combat.js';
+import {attack, shoot} from './combat.js';
 import {RUNNERS} from './jobRunners.js';
 import {eatMeal, plunder} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
@@ -62,10 +62,20 @@ TASKS.registerAll([
     if (w.grid.temp[cellOf(w, a)] < ambientTemp(w) + 16 && !nearFire(w, a, 3)) done(a);
   }},
 
-  {id: 'fight', label: () => 'дерётся', step(w, a, task) {
+  // fight: archers and slingers keep their distance and shoot, everyone else closes in
+  {id: 'fight', label: t => (t.shooting ? 'стреляет' : 'дерётся'), step(w, a, task) {
     const t = task.target;
     if (!t || t.dead || !w.agents.includes(t)) { done(a); return; }
-    if (Math.hypot(t.x - a.x, t.y - a.y) > 0.9) { if (moveToward(w, a, t.x, t.y, 1.1) === null) follow(w, a, 'camp'); }
+    const d = Math.hypot(t.x - a.x, t.y - a.y), g = a.gear;
+    if (g?.rangedReady && d > 1.4) {
+      const range = g.ranged.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
+      task.shooting = true;
+      if (d > range * 0.9) { if (moveToward(w, a, t.x, t.y, 1.0) === null) follow(w, a, 'camp'); }
+      else shoot(w, a, t, 'hunt');
+      return;
+    }
+    task.shooting = false;
+    if (d > 0.9) { if (moveToward(w, a, t.x, t.y, 1.1) === null) follow(w, a, 'camp'); }
     else attack(w, a, t);
   }},
 
@@ -95,9 +105,9 @@ TASKS.registerAll([
   }},
   {id: 'leave', label: () => 'уходит', step(w, a) { if (follow(w, a, 'edge') === 'arrived') a.gone = true; }},
 
-  // run for the camp when something is hunting you
-  {id: 'runHome', label: () => 'бежит в лагерь', step(w, a) {
-    if (follow(w, a, 'camp', 1.3) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) done(a);
+  // run for the settlement zone when something is hunting you
+  {id: 'runHome', label: () => 'бежит к поселению', step(w, a) {
+    if (follow(w, a, 'zone', 1.3) === 'arrived') done(a);
   }},
 
   // animal states: the animal's brain moves it itself, these entries only name the state

@@ -7,6 +7,7 @@ import {dayOf, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {colonists, count, has, popCap, openSites, ofSpecies} from './query.js';
 import {canAfford, eligible, laySite, missing} from './buildings.js';
+import {handItems, allItems, def} from '../agents/equipment.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
 
@@ -59,6 +60,9 @@ function hold(w, present, total) {
       const ctx = {
         crowded: colonists(w).length >= popCap(w) - 1, spoiled: w.stats.spoiledToday, burnt: w.stats.burntCells,
         preyCount: ofSpecies(w, 'hare').length, wolves: ofSpecies(w, 'wolf').length, count: k => count(w, k),
+        unarmed: colonists(w).filter(a => !handItems(a).some(it => def(it).melee || def(it).ranged)).length / Math.max(1, colonists(w).length),
+        hides: w.stock.hide || 0, broken: w.stats.broken,
+        items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
         wantStone: !has(w, 'quarry') && cands.some(k => BUILDINGS.get(k).needs === 'quarry' || (BUILDINGS.get(k).cost.stone || 0) > 0),
       };
       const tally = {}, weight = {};

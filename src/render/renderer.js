@@ -103,9 +103,48 @@ export class Renderer {
     ctx.fillStyle = w.campLit ? '#ffb15a' : '#5a4a3a'; ctx.beginPath(); ctx.arc(cx, cy, S * 0.55, 0, Math.PI * 2); ctx.fill();
 
     if (view.layer === 'nav') this.drawArrows(w);
+    this.drawZone(w);
     this.drawBuildings(w);
     this.drawAgents(w, view.selected);
+    this.drawShots(w);
     this.ms = this.ms * 0.9 + (performance.now() - t0) * 0.1;
+  }
+
+  // the settlement zone: a soft tint inside and a dashed rim along its merged edge
+  drawZone(w) {
+    if (this.zoneVer !== w.zoneVersion) {
+      this.zoneVer = w.zoneVersion;
+      const c = this.zoneCanvas || (this.zoneCanvas = document.createElement('canvas'));
+      c.width = this.cv.width; c.height = this.cv.height;
+      const z = c.getContext('2d'), S = this.S, W = w.w, H = w.h;
+      z.fillStyle = 'rgba(231,227,207,0.05)';
+      for (let i = 0; i < w.n; i++) if (w.zone[i]) z.fillRect((i % W) * S, ((i / W) | 0) * S, S, S);
+      z.strokeStyle = 'rgba(231,227,207,0.5)'; z.lineWidth = 1.2; z.setLineDash([3, 3]); z.beginPath();
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (!w.zone[y * W + x]) continue;
+        const px = x * S, py = y * S;
+        if (x === 0 || !w.zone[y * W + x - 1]) { z.moveTo(px, py); z.lineTo(px, py + S); }
+        if (x === W - 1 || !w.zone[y * W + x + 1]) { z.moveTo(px + S, py); z.lineTo(px + S, py + S); }
+        if (y === 0 || !w.zone[(y - 1) * W + x]) { z.moveTo(px, py); z.lineTo(px + S, py); }
+        if (y === H - 1 || !w.zone[(y + 1) * W + x]) { z.moveTo(px, py + S); z.lineTo(px + S, py + S); }
+      }
+      z.stroke();
+    }
+    this.ctx.drawImage(this.zoneCanvas, 0, 0);
+  }
+
+  // arrows and sling stones in flight, fading
+  drawShots(w) {
+    const ctx = this.ctx, S = this.S;
+    for (const f of w.fx) {
+      const k = f.t / 8, x2 = f.x2 * S, y2 = f.y2 * S, x1 = f.x1 * S, y1 = f.y1 * S;
+      const hx = x1 + (x2 - x1) * (1 - k), hy = y1 + (y2 - y1) * (1 - k);
+      ctx.strokeStyle = f.kind === 'arrow' ? `rgba(240,225,180,${k})` : `rgba(200,195,180,${k})`;
+      ctx.lineWidth = f.kind === 'arrow' ? 1.4 : 1; ctx.beginPath();
+      if (f.kind === 'arrow') { const dx = x2 - x1, dy = y2 - y1, l = Math.hypot(dx, dy) || 1; ctx.moveTo(hx - dx / l * S * 1.2, hy - dy / l * S * 1.2); ctx.lineTo(hx, hy); }
+      else { ctx.arc(hx, hy, Math.max(1.2, S * 0.18), 0, Math.PI * 2); }
+      ctx.stroke();
+    }
   }
 
   drawRain(w, Wpx, Hpx) {
@@ -165,7 +204,7 @@ export class Renderer {
       if (a === selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 4, 0, Math.PI * 2); ctx.stroke(); }
       LOOKS[look.shape](ctx, a, px, py, r, color, S);
       if (a.flash) { ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 2, 0, Math.PI * 2); ctx.stroke(); }
-      if (a.carry?.n > 0) { ctx.fillStyle = RESOURCES.get(a.carry.res).color; ctx.fillRect(px + r * 0.4, py - r * 1.1, Math.max(3, S * 0.55), Math.max(3, S * 0.55)); }
+      if (a.carry?.n > 0) { ctx.fillStyle = RESOURCES.get(Object.keys(a.carry.res)[0]).color; ctx.fillRect(px + r * 0.4, py - r * 1.1, Math.max(3, S * 0.55), Math.max(3, S * 0.55)); }
       if (a.hp < sp.hp * 0.999 && sp.sentient) {
         ctx.fillStyle = '#2a1414'; ctx.fillRect(px - S, py + r + 2, S * 2, 2);
         ctx.fillStyle = a.hp > sp.hp * 0.5 ? '#8fbf5a' : '#e0b040'; ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(a.hp / sp.hp, 0, 1), 2);

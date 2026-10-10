@@ -1,11 +1,17 @@
 // Buildings. Cost is paid when the council lays the site; colonists then add `work` labour.
 // `effects` are merged into world.mods when a building is finished (see settlement/mods.js):
 //   numbers under add.*  are summed, numbers under mul.* are multiplied,
-//   yield.<resource> and jobSpeed.<job> multiply production.
+//   yield.<resource> and jobSpeed.<job> multiply production,
+//   best.* keeps the largest value (one quarry is enough, a second adds nothing).
+// `zone` is the radius of the settlement zone around the building (default ZONE.building);
+// zones of the camp and all buildings merge into one protected area (settlement/zone.js).
+// `station: true` makes the building a workplace for crafting recipes (data/recipes.js).
 // `motive(agent, ctx)` gives the council arguments: [[score, 'why'], ...].
 import {Registry} from '../core/registry.js';
 
 export const BUILDINGS = new Registry('building');
+
+export const ZONE = {camp: 8, building: 5};
 
 BUILDINGS.registerAll([
   {id: 'hut', name: 'Шалаш', gender: 'm', cost: {wood: 18}, work: 160, max: 4, wooden: true, color: '#b88a52', mark: 'Ш',
@@ -35,8 +41,8 @@ BUILDINGS.registerAll([
       [c.wolves ? 0.25 : 0, 'волки перехватывают зайцев']]},
 
   {id: 'quarry', name: 'Каменоломня', gender: 'f', cost: {wood: 20}, work: 180, max: 1, wooden: true, color: '#9b9688', mark: 'К',
-    effect: 'Открывает добычу камня у скал. Камень нужен для сложных построек.',
-    effects: {},  // the 'mine' job lists it in `requires`
+    effect: 'Открывает добычу камня у скал. Отборные камни для пращи: праща бьёт в 1,6 раза сильнее.',
+    effects: {best: {slingStones: 1.6}},  // the 'mine' job lists it in `requires`
     wish: 'говорит, что нужен камень',
     motive: (a, c) => [[0.35 + (c.wantStone ? 0.35 : 0), 'без камня дальше не построиться'], [(a.prefs.mine - 1) * 1.5, 'любит работать с камнем']]},
 
@@ -63,4 +69,29 @@ BUILDINGS.registerAll([
     effects: {mul: {defense: 0.6, loot: 0.5}},
     wish: 'хочет защиты от чужаков',
     motive: (a) => [[a.mem.raid * 1.5, 'дрался(ась) с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
+
+  {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true,
+    effect: 'Здесь делают одежду, оружие, инструменты, колчаны и стрелы из дерева, кости и кожи.',
+    effects: {},
+    wish: 'хочет делать снаряжение',
+    motive: (a, c) => [[0.35 + c.unarmed * 0.6, 'нечем отбиваться'], [a.mem.wolf + a.mem.raid, 'видел(а) опасность без оружия'],
+      [(a.prefs.craft - 1) * 1.4, 'любит мастерить'], [a.mem.cold * 0.5, 'нужна тёплая одежда']]},
+
+  {id: 'tannery', name: 'Дубильня', gender: 'f', cost: {wood: 18, stone: 6}, work: 180, max: 1, wooden: false, color: '#7a5a3a', mark: 'Д', station: true, needs: 'crafthut',
+    effect: 'Сырые шкуры выделывают в кожу. Кожа нужна для курток, укреплённой брони и луков.',
+    effects: {},
+    wish: 'хочет выделывать кожи',
+    motive: (a, c) => [[c.hides * 0.08, 'шкуры пропадают зря'], [(a.prefs.tan - 1) * 1.4, 'любит выделывать кожи'], [a.mem.cold * 0.6, 'мёрзнет без кожаной одежды']]},
+
+  {id: 'armory', name: 'Оружейный навес', gender: 'm', cost: {wood: 20, bone: 4}, work: 160, max: 1, wooden: true, color: '#a07850', mark: 'Он', needs: 'crafthut',
+    effect: 'Снаряжение чинят и хранят под навесом: оно изнашивается вдвое медленнее.',
+    effects: {mul: {wear: 0.5}},
+    wish: 'хочет беречь снаряжение',
+    motive: (a, c) => [[a.mem.broken * 1.3, 'снаряжение ломается'], [Math.max(0, c.broken - 1) * 0.2, 'снаряжение ломается слишком часто']]},
+
+  {id: 'watchtower', name: 'Сторожевая вышка', gender: 'f', cost: {wood: 30, bone: 4}, work: 220, max: 2, wooden: true, color: '#9c8b6e', mark: 'Вш', zone: 11,
+    effect: 'Расширяет зону поселения на 11 клеток вокруг себя: здесь защитники сильнее, а волки не охотятся.',
+    effects: {},
+    wish: 'хочет видеть опасность издалека',
+    motive: (a) => [[a.mem.wolf * 1.2 + a.mem.raid * 0.8, 'хочет видеть опасность издалека']]},
 ]);

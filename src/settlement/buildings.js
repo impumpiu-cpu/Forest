@@ -6,6 +6,7 @@ import {log} from '../core/log.js';
 import {walkable, isCampArea} from '../world/grid.js';
 import {count, has, buildingById} from './query.js';
 import {recomputeMods} from './mods.js';
+import {recomputeZone} from './zone.js';
 
 const ending = d => (d.gender === 'f' ? 'а' : '');
 
@@ -50,6 +51,7 @@ export function laySite(w, key) {
     g.bld[j] = b.id; g.terr[j] = T.GRASS; g.bush[j] = 0; g.food[j] = 0; g.wood[j] = 0; g.fuel[j] = d.wooden ? 0.9 : 0;
   }
   w.buildings.push(b);
+  recomputeZone(w);
   for (const id of ['sites', 'berries', 'trees']) w.nav.dirty(id);
   log(w, `Заложен${ending(d)} ${d.name.toLowerCase()}. Нужно ${d.work} человеко-тиков работы.`);
   return b;
@@ -80,6 +82,7 @@ export function addLabour(w, b, amount) {
   recomputeMods(w);
   if (d.onFinish) (typeof d.onFinish === 'function' ? d.onFinish : FINISH_HOOKS[d.onFinish])(w, b);
   w.nav.dirty('sites'); w.nav.dirty('rockface');
+  for (const id of w.nav.order) if (id.startsWith('station:')) w.nav.dirty(id);
   log(w, `Построен${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`);
 }
 
@@ -89,6 +92,7 @@ export function burnBuilding(w, id) {
   w.buildings = w.buildings.filter(x => x !== b);
   if (b.plots) { const own = new Set(b.plots); w.gardenCells = w.gardenCells.filter(j => !own.has(j)); }
   recomputeMods(w);
+  recomputeZone(w);
   w.nav.dirty('sites');
   const d = BUILDINGS.get(b.key);
   log(w, `${b.done ? 'Сгорел' + ending(d) : 'Сгорела стройка:'} <b>${d.name.toLowerCase()}</b>.`);

@@ -16,7 +16,8 @@ NEEDS.registerAll([
     urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w.tick) > 0.6 && v < 0.75 ? 0.35 : 0)},
   // warmth follows the temperature field under the agent's feet
   {id: 'warmth', label: 'тепло', color: 'var(--ember)', task: 'warm', memory: 'cold', start: [0.9, 0.9],
-    decay: (w, a, T) => (T < 14 ? (14 - T) * 0.00012 * a.mods.cold : T > 18 ? -0.003 : 0),
+    // clothing keeps part of the cold out
+    decay: (w, a, T) => (T < 14 ? (14 - T) * 0.00012 * a.mods.cold * (1 - (a.gear?.warmth || 0)) : T > 18 ? -0.003 : 0),
     harm: 0.0007, harmBelow: 0.15, cause: 'холода',
     urge: (w, a, v) => (1 - v) ** 2 * 2.0},
 ]);

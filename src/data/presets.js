@@ -17,10 +17,13 @@ export const CLIMATES = {
 
 export const LEVELS3 = ['мало', 'обычно', 'много'];
 
+// starting supplies; `kit` items go to the colony's gear store and are handed out at once,
+// `clothes` is the share of settlers who arrive dressed
 export const STOCKS = {
-  poor:   {label: 'Скудные', stock: {berries: 8, wood: 6}},
-  normal: {label: 'Обычные', stock: {berries: 22, wood: 16}},
-  rich:   {label: 'Щедрые',  stock: {berries: 45, wood: 35}},
+  poor:   {label: 'Скудные', stock: {berries: 8, wood: 6}, clothes: 0.5, kit: ['sling', 'club']},
+  normal: {label: 'Обычные', stock: {berries: 22, wood: 16, bone: 2, hide: 2}, clothes: 1, kit: ['sling', 'sling', 'club', 'spear']},
+  rich:   {label: 'Щедрые',  stock: {berries: 45, wood: 35, bone: 6, hide: 4, leather: 2, arrows: 15}, clothes: 1,
+    kit: ['bow', 'quiver', 'sling', 'spear', 'shield', 'axe', 'club']},
 };
 
 export const RAIDS = {

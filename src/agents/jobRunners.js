@@ -5,30 +5,39 @@ import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
 import {follow, moveToward} from './movement.js';
 import {deposit} from '../settlement/stock.js';
-import {addLabour, } from '../settlement/buildings.js';
+import {addLabour} from '../settlement/buildings.js';
 import {buildingById} from '../settlement/query.js';
 import {jobSpeedOf} from '../settlement/mods.js';
-import {kill} from './agent.js';
+import {workAt, stationHasWork} from '../settlement/crafting.js';
+import {wear} from './equipment.js';
+import {shoot} from './combat.js';
 
-// skilled hands work faster; practice slowly builds skill
+// skilled hands work faster, the right tool helps; practice slowly builds skill
 export function workRate(w, a, jobId) {
   a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 0.0006);
-  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId);
+  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1);
 }
+const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount); };
 
 const done = (a) => { a.task = null; a.think = 0; };
+
+// what an agent carries: {res: {resource: units}, n: total}
+export function load(a, res, n) {
+  if (!a.carry) a.carry = {res: {}, n: 0};
+  a.carry.res[res] = (a.carry.res[res] || 0) + n; a.carry.n += n;
+}
 
 // carry what you hold back to the camp stock
 function haulHome(w, a) {
   if (follow(w, a, 'camp') !== 'arrived') return;
-  deposit(w, a.carry.res, a.carry.n);
+  for (const [res, n] of Object.entries(a.carry.res)) deposit(w, res, n);
   a.carry = null; done(a);
 }
 
 export const RUNNERS = {
   harvest(w, a, task) {
-    const job = JOBS.get(task.job);
-    if (a.carry && (a.carry.n >= job.carry || (task.eatNow && a.carry.n >= 1))) {
+    const job = JOBS.get(task.job), cap = job.carry + (a.gear?.carry || 0);
+    if (a.carry && (a.carry.n >= cap || (task.eatNow && a.carry.n >= 1))) {
       if (task.eatNow) { a.needs.food = Math.min(1, a.needs.food + 0.4 * a.carry.n); a.carry = null; done(a); return; }
       haulHome(w, a); return;
     }
@@ -38,35 +47,50 @@ export const RUNNERS = {
       task.work = (task.work || 0) + workRate(w, a, job.id);
       if (task.work < job.time) return;
       task.work = 0; job.take(w, i);
-      if (!a.carry) a.carry = {res: job.resource, n: 0};
-      a.carry.n++;
+      load(a, job.resource, 1);
+      toolWear(w, a, job.id);
     } else if (r === 'none') {
-      if (a.carry?.n) a.carry.n = job.carry; else { a.task = {id: 'idle'}; a.think = 20; }
+      if (a.carry?.n) a.carry.n = cap; else { a.task = {id: 'idle'}; a.think = 20; }
     }
     if (job.memory && r === 'moving' && !a.carry) { const d = w.nav.get(job.nav)[i]; if (d > 25) a.mem[job.memory] += 0.003; }
   },
 
   build(w, a, task) {
     const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
-    if (site && !site.done && w.grid.fire[i] === 0) { addLabour(w, site, workRate(w, a, 'build')); return; }
+    if (site && !site.done && w.grid.fire[i] === 0) { addLabour(w, site, workRate(w, a, 'build')); toolWear(w, a, 'build', 0.05); return; }
     const r = follow(w, a, 'sites');
     if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); done(a); a.think = 10; }
   },
 
-  // stalk the nearest prey, creep up within bow range, shoot; a miss sends the animal running
+  // work the current order at a station building (crafthut, tannery…)
+  craft(w, a, task) {
+    const job = JOBS.get(task.job), map = 'station:' + job.station;
+    if (!stationHasWork(w, job.station)) { done(a); a.think = 20; return; }
+    const r = follow(w, a, map);
+    if (r === 'arrived') {
+      const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
+      if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id))) { done(a); a.think = 20; }
+    } else if (r === 'none') { w.nav.dirty(map); done(a); a.think = 20; }
+  },
+
+  // stalk the nearest prey, creep up within range of the bow or sling, shoot; a miss or a wound
+  // sends the animal running
   hunt(w, a, task) {
     const job = JOBS.get(task.job);
-    if (a.carry) { a.stalking = false; haulHome(w, a); return; }
+    // carrying game: head home, unless there is room for another animal close by
+    if (a.carry && !task.oneMore) { a.stalking = false; haulHome(w, a); return; }
+    if (!a.gear?.rangedReady) { a.stalking = false; done(a); return; }   // out of arrows
     task.age = (task.age || 0) + 1;
     let prey = task.prey;
-    if (!prey || prey.dead || !w.agents.includes(prey)) {
+    // the flow field leads to whichever animal is nearest by path, so keep retargeting to the nearest one
+    if (!prey || prey.dead || !w.agents.includes(prey) || (task.age % 40 === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > 9)) {
       prey = null; let bd = 80 * 80;
       for (const o of w.agents) if (job.prey.includes(o.species) && !o.dead) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
       task.prey = prey;
       if (!prey) { done(a); a.think = 30; a.stalking = false; return; }
     }
-    if (task.age > 700) { a.mem.chase += 0.2; a.stalking = false; done(a); return; }   // gave up
-    const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = job.range + w.mods.add.huntRange;
+    if (task.age > 900) { a.mem.chase += 0.2; a.stalking = false; done(a); return; }   // gave up
+    const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = a.gear.ranged.range + w.mods.add.huntRange;
     a.stalking = d < 10;
     if (d > range * 0.85) {
       // far away: walk the prey flow field around lakes and rocks; close: creep straight at it
@@ -76,17 +100,16 @@ export const RUNNERS = {
       } else if (moveToward(w, a, prey.x, prey.y, 0.55) === null) follow(w, a, job.nav, 0.55);
       return;
     }
-    task.work = (task.work || 0) + workRate(w, a, job.id);
-    if (task.work < job.time) return;
-    task.work = 0;
-    const hit = 0.32 + 0.45 * a.skill[job.id] - (d / range) * 0.15;
-    if (Math.random() < hit) {
-      const y = SPECIES.get(prey.species).yields;
-      kill(w, prey, 'стрелы', a); w.stats.hunted++;
-      a.carry = {res: y.resource, n: y.amount}; a.stalking = false;
-    } else {
-      prey.spooked = 40;   // the arrow whistles past: the hare bolts
-      a.mem.chase += 0.05;
+    a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 0.0003);
+    const res = shoot(w, a, prey, job.id);
+    if (res === 'kill') {
+      w.stats.hunted++; a.stalking = false;
+      for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
+      const near = w.agents.some(o => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
+      task.oneMore = a.carry.n < 8 && near; task.prey = null; task.age = 0;
+    } else if (res === 'miss' || res === 'hit') {
+      prey.spooked = 40;   // the shot whistles past or wounds: the hare bolts
+      if (res === 'miss') a.mem.chase += 0.05;
     }
   },
 };

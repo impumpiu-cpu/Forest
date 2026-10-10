@@ -40,5 +40,13 @@ MIGRATIONS.registerAll([
     nextAt: (w, rng) => (RAIDS[w.cfg.raids].every ? w.tick + RAIDS[w.cfg.raids].every * (0.6 + rng() * 0.8) : Infinity),
     size: w => (colonists(w).length ? 2 + Math.floor(colonists(w).length / 4) : 0),
     init: a => { a.name = 'Волк'; a.hp = 0.75; },
+    // raiders come armed: one of these hand sets, and some kind of armour more often than not
+    kit: rng => {
+      const hands = [['club'], ['spear'], ['spear', 'shield'], ['club', 'shield'], ['maul'], ['sling'], ['bow', 'quiver']];
+      const set = hands[Math.floor(rng() * hands.length)];
+      const r = rng();
+      return [...set, ...(r < 0.35 ? ['clothes'] : r < 0.75 ? ['jerkin'] : r < 0.9 ? ['hardleather'] : [])];
+    },
+    ammo: 8,
     message: (w, group, side) => `Набег! ${group.length} ${plural(group.length, 'налётчик', 'налётчика', 'налётчиков')} из «Серых волков» ${group.length === 1 ? 'идёт' : 'идут'} с ${side}.`},
 ]);

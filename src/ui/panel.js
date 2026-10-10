@@ -13,6 +13,9 @@ import {taskLabel} from '../agents/tasks.js';
 import {cellOf} from '../world/grid.js';
 import {BY_CODE} from '../data/terrain.js';
 import {$} from './dom.js';
+import {ITEMS, SLOTS} from '../data/items.js';
+import {gearText, allItems, def as itemDef} from '../agents/equipment.js';
+import {orderText} from '../settlement/crafting.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -41,6 +44,7 @@ export class Panel {
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>`);
     this.renderCouncil(w);
+    this.renderGear(w);
     this.renderBuildings(w);
     this.renderPeople(w, view.selected);
     $('pFlabel').textContent = `Поля (${w.n.toLocaleString('ru-RU')} клеток)`;
@@ -66,6 +70,24 @@ export class Panel {
     this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}`);
   }
 
+  // stations at work and the gear store
+  renderGear(w) {
+    const stations = BUILDINGS.filter(d => d.station);
+    const rows = stations.map(d => {
+      const b = w.buildings.find(x => x.key === d.id && x.done);
+      return `<div class="srow"><b>${d.name}</b><span>${b ? orderText(b) : 'не построена'}</span></div>`;
+    }).join('');
+    const counts = {};
+    for (const it of w.armory) counts[it.type] = (counts[it.type] || 0) + 1;
+    const store = Object.entries(counts).map(([t, n]) => `<span class="cost">${ITEMS.get(t).short}${n > 1 ? ' ×' + n : ''}</span>`).join('') || '<span class="muted">пусто, всё на руках</span>';
+    const worn = {};
+    for (const a of colonists(w)) for (const it of allItems(a)) worn[it.type] = (worn[it.type] || 0) + 1;
+    const wornTxt = Object.entries(worn).map(([t, n]) => `${ITEMS.get(t).short} ${n}`).join(', ') || 'ничего';
+    this.set('gearbox', `${rows}<div class="slabel">На складе снаряжения</div><div class="costs">${store}</div>
+      <div class="slabel">На поселенцах</div><p class="muted">${wornTxt}</p>
+      <div class="slabel">Сделано ${w.stats.crafted}, сломалось ${w.stats.broken}</div>`);
+  }
+
   renderBuildings(w) {
     this.set('build', BUILDINGS.all().map(d => {
       const n = count(w, d.id), site = w.buildings.find(b => b.key === d.id && !b.done);
@@ -81,7 +103,7 @@ export class Panel {
     const col = colonists(w);
     const needs = SPECIES.get('human').needs.map(id => NEEDS.get(id));
     this.set('people', col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
-      <span class="nm">${esc(a.name)}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span>
+      <span class="nm">${esc(a.name)}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
       <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(a.hp, 'var(--good)')}</div></div>`).join('')
       || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>');
   }
@@ -90,10 +112,11 @@ export class Panel {
     const el = $('readout');
     if (selected && !selected.dead) {
       const a = selected, sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
-      if (!a.prefs) { el.textContent = `${sp.label}: ${taskLabel(a)} · здоровье ${Math.round(a.hp / sp.hp * 100)}% · под ногами ${T} °C`; return; }
+      if (!a.prefs) { el.textContent = `${a.name !== sp.label ? a.name + ', ' : ''}${sp.label}: ${taskLabel(a)}${a.equip ? ' · ' + gearText(a) : ''} · здоровье ${Math.round(a.hp / sp.hp * 100)}% · под ногами ${T} °C`; return; }
       const needs = sp.needs.map(id => `${NEEDS.get(id).label} ${Math.round(a.needs[id] * 100)}%`).join(' · ');
       const skills = JOBS.filter(j => j.preferable).map(j => `${j.short} ${Math.round((a.skill[j.id] || 0) * 100)}`).join(', ');
-      el.textContent = `${a.name}: ${taskLabel(a)} · ${traitsText(a)} · навыки: ${skills} · ${needs} · здоровье ${Math.round(a.hp * 100)}% · под ногами ${T} °C`;
+      const slots = SLOTS.map(s => { const it = a.equip?.[s.id]; return `${s.label}: ${it ? itemDef(it).short + (Number.isFinite(it.dur) ? ` (${Math.max(0, Math.round(it.dur / itemDef(it).dur * 100))}%)` : '') + (it.ammo != null ? `, стрел ${it.ammo}` : '') : '—'}`; }).join('; ');
+      el.textContent = `${a.name}: ${taskLabel(a)} · ${traitsText(a)} · ${slots} · навыки: ${skills} · ${needs} · здоровье ${Math.round(a.hp * 100)}% · под ногами ${T} °C`;
       return;
     }
     if (hoverCell < 0) return;

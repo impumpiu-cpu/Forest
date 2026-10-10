@@ -124,4 +124,12 @@ button.quiet{background:transparent;color:var(--muted)}
 .bcard.built{opacity:.75}
 .bneed{font-size:11.5px;color:var(--muted)}
 .kv dt .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.person .gear{grid-column:1;font-size:11.5px;color:var(--fg);opacity:.85}
+.bars{grid-row:1/5}
+.gearbox{display:flex;flex-direction:column;gap:5px;font-size:12.5px}
+.gearbox .srow{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.gearbox .srow span{color:var(--muted)}
+.gearbox .slabel{font-size:12px;color:var(--muted);margin-top:4px}
+.gearbox p{margin:0}
+.muted{color:var(--muted)}
 [hidden]{display:none!important}

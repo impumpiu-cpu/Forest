@@ -6,7 +6,8 @@
 import {SPECIES} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable} from '../../world/grid.js';
-import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover} from '../movement.js';
+import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, ascend} from '../movement.js';
+import {agentInZone} from '../../settlement/zone.js';
 import {attack} from '../combat.js';
 import {stepBody} from '../body.js';
 import {kill} from '../agent.js';
@@ -24,9 +25,9 @@ function nearest(w, a, species, r, filter = () => true) {
 }
 
 // alone = nobody else of its kind nearby and well away from the camp
+// alone = outside the settlement zone with nobody else of its kind nearby
 function isAlone(w, v, P) {
-  const campD = Math.hypot(v.x - w.camp.x - 0.5, v.y - w.camp.y - 0.5);
-  if (campD < P.campShy) return false;
+  if (agentInZone(w, v)) return false;
   return !w.agents.some(o => o !== v && !o.dead && o.species === v.species && dist(o, v) < P.loneRadius);
 }
 
@@ -42,7 +43,7 @@ export const predatorBrain = {
     if (T > 45 || nearFire(w, a, 2.5)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.4); return; }
 
     const hunger = a.needs.food, night = nightness(w.tick);
-    const campD = Math.hypot(a.x - w.camp.x - 0.5, a.y - w.camp.y - 0.5);
+    const dZone = w.nav.get('zone')[i], shy = night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy;
     const people = w.agents.filter(o => !o.dead && P.victims.includes(o.species) && dist(o, a) < 6);
 
     // wounded, starving with nothing to hunt, or facing a crowd: leave for good
@@ -52,10 +53,8 @@ export const predatorBrain = {
       return;
     }
     if (people.length >= P.groupFear) { a.task = {id: 'bolt'}; bolt(w, a, people, sprintMul(a, P.sprint, P.stamina)); return; }
-    // the campfire keeps wolves at bay
-    if (w.campLit && campD < P.campShy && a.task?.id !== 'maul') {
-      a.task = {id: 'roam'}; bolt(w, a, [{x: w.camp.x + 0.5, y: w.camp.y + 0.5}], 1); return;
-    }
+    // the settlement zone keeps wolves at bay (wider at night, when the fire is lit)
+    if (dZone < shy && a.task?.id !== 'maul') { a.task = {id: 'roam'}; ascend(w, a, 'zone', 1); return; }
 
     const t = a.task;
     if (t?.id === 'feed') {
@@ -66,7 +65,7 @@ export const predatorBrain = {
     if (t?.id === 'chase') {
       const prey = t.target;
       if (a.stamina <= 0.05) { a.task = {id: 'rest'}; return; }   // out of breath: lie down before the next try
-      if (!prey || prey.dead || !w.agents.includes(prey) || dist(a, prey) > P.sight * 1.3) { a.task = {id: 'roam'}; return; }
+      if (!prey || prey.dead || !w.agents.includes(prey) || dist(a, prey) > P.sight * 1.3 || agentInZone(w, prey)) { a.task = {id: 'roam'}; return; }
       approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina));
       if (dist(a, prey) < 0.7) {
         kill(w, prey, 'зубов', a); w.stats.wolfKills++;
@@ -81,7 +80,7 @@ export const predatorBrain = {
       const helpers = v && w.agents.filter(o => o !== v && !o.dead && o.species === v.species && dist(o, v) < 5).length;
       if (a.stamina <= 0.05) { a.task = {id: 'rest'}; return; }
       if (!v || v.dead || !w.agents.includes(v) || helpers >= 2 ||
-          Math.hypot(v.x - w.camp.x - 0.5, v.y - w.camp.y - 0.5) < P.campShy * 0.6) {
+          agentInZone(w, v)) {
         // the victim got help or reached the camp: the pack backs off and won't try again for a while
         for (const m of packOf(w, a)) { m.calmUntil = w.tick + 500; if (m.task?.id === 'maul') m.task = {id: 'roam'}; }
         return;
@@ -95,7 +94,7 @@ export const predatorBrain = {
     if (t?.id === 'rest') { recover(a); recover(a); if (a.stamina < 0.7) return; a.task = null; }
     // hungry: hares first; a lone person only when starving or under cover of night with the pack
     if (hunger < 0.65) {
-      const prey = nearest(w, a, P.prey, P.sight);
+      const prey = nearest(w, a, P.prey, P.sight, o => !agentInZone(w, o));
       if (prey) { a.task = {id: 'chase', target: prey}; return; }
       const bold = w.tick > (a.calmUntil || 0) && (hunger < 0.3 || (night > 0.6 && packOf(w, a).length >= 2));
       if (bold) {
@@ -127,7 +126,8 @@ export const predatorBrain = {
     if (!r.spot || dist(a, {x: r.spot[0], y: r.spot[1]}) < 1.5 || Math.random() < 0.002) {
       for (let k = 0; k < 20; k++) {
         const x = 2 + Math.random() * (w.w - 4), y = 2 + Math.random() * (w.h - 4);
-        if (!walkable(w, (y | 0) * w.w + (x | 0)) || Math.hypot(x - w.camp.x, y - w.camp.y) < P.campShy + 6) continue;
+        const j = (y | 0) * w.w + (x | 0);
+        if (!walkable(w, j) || w.nav.get('zone')[j] < P.zoneShyNight + 6) continue;
         r.spot = [x, y]; break;
       }
     }

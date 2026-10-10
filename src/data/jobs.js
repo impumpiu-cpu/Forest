@@ -6,6 +6,8 @@
 //   'harvest' — walk to a cell on `nav`, work `time` ticks, take one unit, carry `carry` units home
 //   'hunt'    — stalk the nearest prey of `prey` species and shoot it from `range`
 //   'build'   — walk to a construction site and add labour
+//   'craft'   — walk to the job's `station` building and work its current order (settlement/crafting.js)
+// canDo(w, agent): optional personal condition (hunting needs a usable ranged weapon)
 import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
 
@@ -38,8 +40,17 @@ JOBS.registerAll([
     take: () => {}},
 
   {id: 'hunt', label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
-    runner: 'hunt', nav: 'prey', prey: ['hare'], range: 4.5, carry: 1, time: 18,
-    desire: (w, ctx) => (ctx.preyCount > 0 ? want(ctx.food, ctx.pop, 4, 8) * 0.8 + 0.08 : -1)},
+    runner: 'hunt', nav: 'prey', prey: ['hare'],
+    canDo: (w, a) => !!a.gear?.rangedReady,
+    desire: (w, ctx) => (ctx.preyCount > 0 ? want(ctx.food, ctx.pop, 4, 8) * 0.8 + 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0) : -1)},
+
+  {id: 'craft', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
+    runner: 'craft', station: 'crafthut', requires: 'crafthut',
+    desire: (w, ctx) => (ctx.orders.crafthut ? 0.55 : -1)},
+
+  {id: 'tan', label: 'выделывать кожи', short: 'кожи', verb: 'выделывает кожи', preferable: true,
+    runner: 'craft', station: 'tannery', requires: 'tannery',
+    desire: (w, ctx) => (ctx.orders.tannery ? 0.5 : -1)},
 
   {id: 'build', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,
     runner: 'build', nav: 'sites',

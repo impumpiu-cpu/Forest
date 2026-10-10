@@ -5,7 +5,7 @@ import {cellOf, walkable, inBounds, DX, DY} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 
 export function speedOf(w, a) {
-  return SPECIES.get(a.species).speed * a.mods.speed * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
+  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
 }
 
 // returns true when arrived, false while moving, null when the step is blocked
@@ -79,6 +79,17 @@ export function approach(w, a, tx, ty, mul = 1) {
     const d = Math.hypot(tx - nx, ty - ny); if (d < bd) { bd = d; best = [nx, ny]; }
   }
   if (best) moveToward(w, a, best[0], best[1], mul);
+}
+
+// walk uphill on a flow field: away from whatever seeds it (wolves leaving the settlement zone)
+export function ascend(w, a, mapId, mul = 1) {
+  const dist = w.nav.get(mapId), i = cellOf(w, a), x = i % w.w, y = (i / w.w) | 0;
+  let best = dist[i], bj = -1;
+  for (let k = 0; k < 8; k++) {
+    const nx = x + DX[k], ny = y + DY[k]; if (!inBounds(w, nx, ny)) continue;
+    const j = ny * w.w + nx; if (walkable(w, j) && dist[j] > best && dist[j] < FAR) { best = dist[j]; bj = j; }
+  }
+  if (bj >= 0) moveToward(w, a, (bj % w.w) + 0.5, ((bj / w.w) | 0) + 0.5, mul);
 }
 
 // sprinting drains stamina; a tired animal slows down and gets it back while walking

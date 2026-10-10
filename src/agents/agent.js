@@ -7,6 +7,7 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS, BASE_MODS, LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../data/traits.js';
 import {shuffle, weighted, esc} from '../core/util.js';
 import {log} from '../core/log.js';
+import {emptySlots, recalcGear, stripAll, def} from './equipment.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 const newMemory = () => new Proxy({}, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
@@ -46,6 +47,8 @@ export function createAgent(w, speciesId, factionId, x, y) {
   a.stamina = 1;
   for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rng, n.start); }
   if (sp.sentient && factionId === 'colony') personality(w, a);
+  if (sp.inventory) a.equip = emptySlots();
+  recalcGear(a);
   w.agents.push(a);
   return a;
 }
@@ -57,7 +60,18 @@ export function kill(w, a, cause, by) {
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
   if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> погиб(ла) в бою.` : `<b>${esc(a.name)}</b> не пережил(а) ${cause}.`);
-  else if (sp.id === 'wolf' && by?.faction === 'colony') log(w, `<b>${esc(by.name)}</b> убил(а) волка.`);
-  else if (a.faction === 'raiders' && by) log(w, `Налётчик убит, его сразил(а) <b>${esc(by.name)}</b>.`);
+  else if (sp.id === 'wolf' && by?.faction === 'colony') {
+    // a wolf killed in a fight: its hide and bones are brought home
+    for (const [r, n] of Object.entries(sp.yields || {})) w.stock[r] = (w.stock[r] || 0) + n;
+    log(w, `<b>${esc(by.name)}</b> убил(а) волка. Шкура и кости — в лагерь.`);
+  } else if (a.faction === 'raiders' && by) {
+    const got = [];
+    stripAll(a, got);
+    const loot = got.filter(it => it.dur > 0);
+    w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1;
+    log(w, `Налётчик убит, его сразил(а) <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`);
+  }
+  // a fallen colonist's gear goes back to the store
+  if (a.faction === 'colony' && a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }
   else if (sp.yields && by) { /* game killed by a hunter: the hunter logs nothing, the meat speaks for itself */ }
 }

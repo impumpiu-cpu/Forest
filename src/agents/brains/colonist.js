@@ -11,6 +11,8 @@ import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
 import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies} from '../../settlement/query.js';
 import {councilDue, goalNeed} from '../../settlement/council.js';
+import {stationHasWork} from '../../settlement/crafting.js';
+import {outfit} from '../equipment.js';
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
@@ -19,14 +21,15 @@ function decide(w, a) {
   let campHot = 0; for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
   const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,
-    preyCount: ofSpecies(w, 'hare').length};
+    preyCount: ofSpecies(w, 'hare').length,
+    orders: new Proxy({}, {get: (o, station) => stationHasWork(w, station)})};
   const opts = [];
   for (const id of SPECIES.get(a.species).needs) {
     const n = NEEDS.get(id);
     opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk]);
   }
   for (const job of JOBS.all()) {
-    if (!jobUnlocked(w, job)) continue;
+    if (!jobUnlocked(w, job) || (job.canDo && !job.canDo(w, a))) continue;
     const base = job.desire(w, ctx);
     if (base < 0) continue;
     const res = job.resource;
@@ -74,6 +77,10 @@ export const colonistBrain = {
       if (!busy) decide(w, a);
     }
     if (!a.task) decide(w, a);
+    // passing through the camp: swap gear with the store, top up arrows
+    if (w.nav.get('camp')[cellOf(w, a)] < 3 && (w.tick - (a.outfitAt || -999) > 300 || a.seenArmory !== w.armoryVersion) && a.task?.id !== 'fight') {
+      a.outfitAt = w.tick; a.seenArmory = w.armoryVersion; outfit(w, a);
+    }
     TASKS.get(a.task.id).step(w, a, a.task);
     if (a.cd > 0) a.cd--;
   },

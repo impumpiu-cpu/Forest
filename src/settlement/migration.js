@@ -5,6 +5,7 @@ import {createAgent} from '../agents/agent.js';
 import {walkable} from '../world/grid.js';
 import {clamp} from '../core/util.js';
 import {FAR} from '../nav/navigation.js';
+import {dress} from '../agents/equipment.js';
 
 const SIDE = ['запада', 'востока', 'севера', 'юга'];
 
@@ -32,6 +33,7 @@ export function spawnGroup(w, id, size) {
     if (!walkable(w, (y | 0) * w.w + (x | 0))) { x = ex + 0.5; y = ey + 0.5; }
     const a = createAgent(w, def.species, def.faction, x, y);
     if (def.init) def.init(a, w);
+    if (def.kit && a.equip) dress(a, def.kit(w.rng), def.ammo || 0);
     group.push(a);
   }
   if (def.groupInit) def.groupInit(group, w);
