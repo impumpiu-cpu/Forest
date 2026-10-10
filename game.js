@@ -6,7 +6,30 @@ const TCAP = 400, HEAT = 50, P_F = 0.02, P_G = 0.008;
 const DAY = 1200, HOUR = DAY / 24;
 const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
 const NAMES = ['Милава','Ждан','Горислав','Веселина','Тихон','Любава','Мирон','Злата','Ярослав','Дарина','Ратибор','Снежана','Боян','Забава','Светозар','Агния','Велимир','Олеся','Добрыня','Василиса','Радим','Ведана'];
-const TASK_RU = {eat:'ест', sleep:'спит', warm:'греется у костра', gather:'собирает ягоды', chop:'рубит лес', douse:'тушит пожар', fight:'дерётся', flee:'бежит от огня', haul:'несёт на склад', idle:'думает', camp:'идёт в лагерь', leave:'уходит с добычей'};
+const TASK_RU = {eat:'ест', sleep:'спит', warm:'греется у костра', gather:'собирает ягоды', chop:'рубит лес', douse:'тушит пожар', fight:'дерётся', flee:'бежит от огня', haul:'несёт на склад', idle:'думает', camp:'идёт в лагерь', leave:'уходит с добычей', build:'строит', mine:'добывает камень'};
+
+// Buildings: cost is paid when the site is laid, then colonists build it with labour (agent-ticks)
+const BUILDINGS = {
+  hut:       {name: 'Шалаш',       cost: {wood: 18},            work: 160, max: 4, wooden: true,  color: '#b88a52', mark: 'Ш',
+              effect: 'Сон на 60% быстрее, ночью спящие не мёрзнут. +4 к числу жителей, которых примет лагерь.'},
+  granary:   {name: 'Амбар',       cost: {wood: 25},            work: 200, max: 1, wooden: true,  color: '#c9a24a', mark: 'А',
+              effect: 'Еда на складе портится в 6 раз медленнее.'},
+  garden:    {name: 'Ягодный огород', cost: {wood: 12, food: 10}, work: 140, max: 2, wooden: false, color: '#c45c95', mark: 'О',
+              effect: 'Рядом высаживаются 12 кустов, они плодоносят втрое быстрее диких.'},
+  quarry:    {name: 'Каменоломня', cost: {wood: 20},            work: 180, max: 1, wooden: true,  color: '#9b9688', mark: 'К',
+              effect: 'Открывает добычу камня у скал. Камень нужен для сложных построек.'},
+  sawmill:   {name: 'Лесопилка',   cost: {wood: 30, stone: 10}, work: 240, max: 1, wooden: true,  color: '#8a6a3c', mark: 'Л',
+              effect: 'Рубка идёт на 40% быстрее, каждое бревно даёт в полтора раза больше дров.', needs: 'quarry'},
+  smokehouse:{name: 'Коптильня',   cost: {wood: 15, stone: 15}, work: 220, max: 1, wooden: false, color: '#a85a3a', mark: 'Кп',
+              effect: 'Собранные ягоды перерабатываются: +40% еды, порча вдвое медленнее.', needs: 'quarry'},
+  well:      {name: 'Колодец',     cost: {stone: 25},           work: 200, max: 1, wooden: false, color: '#5d93b8', mark: 'В',
+              effect: 'Тушение вдвое эффективнее, клетки у лагеря остывают быстрее.', needs: 'quarry'},
+  palisade:  {name: 'Частокол',    cost: {wood: 45, stone: 10}, work: 300, max: 1, wooden: true,  color: '#6f5a3c', mark: 'Ч',
+              effect: 'В лагере защитники получают на 40% меньше урона, налётчики уносят вдвое меньше.', needs: 'quarry'},
+};
+const GENDER = {quarry: 'f', sawmill: 'f', smokehouse: 'f'};
+const ending = key => GENDER[key] === 'f' ? 'а' : '';
+const RES_RU = {food: 'еда', wood: 'дрова', stone: 'камень'};
 
 // World settings chosen in the start menu
 const SIZES = {
@@ -29,14 +52,15 @@ const DEFAULT_CFG = {name: 'Тёплый Брод', seed: '20261010', size: 'med
 let W = 128, H = 96, N = W * H, S = 8;
 let cfg = {...DEFAULT_CFG}, clim = CLIMATES.temperate, IGN_F = 80, IGN_G = 120;
 let rand, terr, hgt, fert, food, wood, fuel, fire, temp, temp2, smoke, smoke2, bush, costCache;
-let dCamp, dFood, dWood, dEdge, dFire, dSafe;
+let dCamp, dFood, dWood, dEdge, dFire, dSafe, dSite, dRock;
+let bld, buildings, bldSeq, gardenCells;
 let hpI, hpD, closed, hn = 0, popI = 0, popD = 0;
 let camp = {x: 64, y: 48, cells: []};
 let lastSteal = -999, stock, agents, tick, nextId, logLines, fireCount, fireNearCamp, campLit, selected, nameIdx, nextRaid, navEvery;
 let wind = {x: 0, y: 0, dir: 20, str: 0.35};
 let speed = 1, tool = 'inspect', layer = 'world', running = false;
 const perf = {f: 0, n: 0, a: 0, r: 0, tps: 0};
-const dirty = {camp: true, food: true, wood: true, edge: true, fire: true, safe: true};
+const dirty = {camp: true, food: true, wood: true, edge: true, fire: true, safe: true, site: true, rock: true};
 
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -104,7 +128,8 @@ function generate(c) {
   food = new Float32Array(N); wood = new Float32Array(N);
   fuel = new Float32Array(N); fire = new Float32Array(N); temp = new Float32Array(N); temp2 = new Float32Array(N);
   smoke = new Float32Array(N); smoke2 = new Float32Array(N); bush = new Uint8Array(N); costCache = new Float32Array(N);
-  dCamp = new Float64Array(N); dFood = new Float64Array(N); dWood = new Float64Array(N); dEdge = new Float64Array(N); dFire = new Float64Array(N); dSafe = new Float64Array(N);
+  dCamp = new Float64Array(N); dFood = new Float64Array(N); dWood = new Float64Array(N); dEdge = new Float64Array(N); dFire = new Float64Array(N); dSafe = new Float64Array(N); dSite = new Float64Array(N); dRock = new Float64Array(N);
+  bld = new Int16Array(N).fill(-1); buildings = []; bldSeq = 0; gardenCells = [];
   hpI = new Int32Array(N * 9); hpD = new Float64Array(N * 9); closed = new Uint8Array(N);
   // bigger maps rebuild each flow field less often, so a tick stays cheap
   navEvery = Math.max(1, Math.round(N / 12288));
@@ -116,7 +141,7 @@ function generate(c) {
     else if (tt === GRASS) { fuel[i] = 0.4; if (rand() < 0.07 * fert[i] && !isCampArea(i)) { bush[i] = 1; food[i] = 0.5 + 0.5 * rand(); fuel[i] += 0.2; } }
     temp[i] = ambientTemp(7 * HOUR);
   }
-  const st = STOCKS[cfg.stock]; stock = {food: st.food, wood: st.wood};
+  const st = STOCKS[cfg.stock]; stock = {food: st.food, wood: st.wood, stone: 0};
   agents = []; nextId = 1; tick = 7 * HOUR; logLines = []; selected = null; nameIdx = 0; fireCount = 0; fireNearCamp = 0; campLit = false; lastSteal = -999;
   nextRaid = RAIDS[cfg.raids].every ? tick + RAIDS[cfg.raids].every * (0.6 + rand() * 0.6) : Infinity;
   wind.dir = cfg.windDir; wind.str = cfg.windStr / 100; setWind();
@@ -174,7 +199,7 @@ function stepFields() {
       fuel[i] -= 0.018 * f;
       if (fuel[i] <= 0) {
         fuel[i] = 0; fire[i] = f * 0.85;
-        if (fire[i] < 0.03) { fire[i] = 0; if (terr[i] !== WATER && terr[i] !== ROCK) terr[i] = BURNT; wood[i] = 0; food[i] = 0; bush[i] = 0; dirty.wood = dirty.food = true; }
+        if (fire[i] < 0.03) { fire[i] = 0; if (terr[i] !== WATER && terr[i] !== ROCK) terr[i] = BURNT; wood[i] = 0; food[i] = 0; bush[i] = 0; dirty.wood = dirty.food = true; if (bld[i] >= 0) burnBuilding(bld[i]); }
       } else fire[i] = Math.min(1, f + 0.06);
       if (fire[i] > 0) {
         fireCount++;
@@ -187,16 +212,24 @@ function stepFields() {
       if (temp[i] > (forest ? IGN_F : IGN_G) && Math.random() < (forest ? P_F : P_G)) { fire[i] = 0.2; dirty.fire = true; }
     }
   }
+  // planted garden bushes regrow fast; the well cools the camp area
+  for (const g of gardenCells) if (bush[g] && fire[g] === 0 && food[g] < 1) { food[g] = Math.min(1, food[g] + 0.0035); if (food[g] > 0.35 && food[g] < 0.354) dirty.food = true; }
+  if (has('well')) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
+    const x = camp.x + xx, y = camp.y + yy; if (x < 0 || y < 0 || x >= W || y >= H) continue;
+    const j = y * W + x; if (temp[j] > 40) temp[j] -= (temp[j] - 40) * 0.08;
+  }
+  // stored food spoils unless there is a granary (and slower with a smokehouse)
+  stock.food = Math.max(0, stock.food - stock.food * 0.00015 * (has('granary') ? 1 / 6 : 1) * (has('smokehouse') ? 0.5 : 1));
   // slow regrowth: sample random cells
   const samples = Math.round(160 * N / 12288 * clim.regrow);
   for (let k = 0; k < samples; k++) {
-    const i = (Math.random() * N) | 0; if (fire[i] > 0) continue;
+    const i = (Math.random() * N) | 0; if (fire[i] > 0 || bld[i] >= 0) continue;
     const t = terr[i];
     if (t === BURNT) { if (Math.random() < 0.02) { terr[i] = GRASS; fuel[i] = 0.1; } }
     else if (t === GRASS) {
       if (fuel[i] < 0.4) fuel[i] = Math.min(0.4, fuel[i] + 0.02);
       if (bush[i]) { food[i] = Math.min(1, food[i] + 0.05 * fert[i]); if (food[i] > 0.35) dirty.food = true; }
-      else if (!isCampArea(i) && Math.random() < 0.004 * fert[i]) { bush[i] = 1; food[i] = 0.1; fuel[i] += 0.2; }
+      else if (!isCampArea(i) && Math.random() < 0.0025 * fert[i]) { bush[i] = 1; food[i] = 0.1; fuel[i] += 0.2; }
       if (Math.random() < 0.0015 * fert[i] && fert[i] > 0.55 && !isCampArea(i)) { terr[i] = FOREST; wood[i] = 0.3; fuel[i] = 1.5; bush[i] = 0; }
     } else if (t === FOREST && wood[i] < 1) { wood[i] = Math.min(1, wood[i] + 0.03); fuel[i] = 1.2 + wood[i]; }
   }
@@ -235,25 +268,103 @@ const MAPS = {
   edge: () => buildMap(dEdge, i => { const x = i % W, y = (i / W) | 0; return x === 0 || y === 0 || x === W - 1 || y === H - 1; }),
   // only fires that threaten the camp are worth fighting
   fire: () => buildMap(dFire, i => fire[i] > 0.05 && ((i % W) - camp.x) ** 2 + (((i / W) | 0) - camp.y) ** 2 < 20 * 20),
+  site: () => buildMap(dSite, i => bld[i] >= 0 && !bById(bld[i]).done),
+  rock: () => buildMap(dRock, i => fire[i] === 0 && bld[i] < 0 && nextToRock(i)),
   // escape map: seeds are cells barely warmer than the air; fire is made almost impassable
   safe: () => { const lim = ambientTemp() + 14; buildMap(dSafe, i => temp[i] < lim && fire[i] === 0 && smoke[i] < 0.6, 25); },
 };
-const ORDER = ['camp', 'food', 'wood', 'edge', 'fire', 'safe'];
+const ORDER = ['camp', 'food', 'wood', 'edge', 'fire', 'safe', 'site', 'rock'];
 function rebuildAll() { for (const k of ORDER) { MAPS[k](); dirty[k] = false; } }
 function stepNav() {
   // one scheduled map every navEvery ticks (1 on the medium map), plus one dirty map if any
   if (tick % navEvery !== 0) return;
   const slot = (tick / navEvery) | 0, k = ORDER[slot % ORDER.length];
-  if ((k !== 'fire' && k !== 'safe') || fireCount > 0 || dirty[k]) { MAPS[k](); dirty[k] = false; }
+  const idle = (k === 'fire' || k === 'safe') && fireCount === 0 || k === 'site' && !buildings.some(b => !b.done) || k === 'rock' && !has('quarry');
+  if (!idle || dirty[k]) { MAPS[k](); dirty[k] = false; }
   for (const d of ORDER) if (dirty[d]) { MAPS[d](); dirty[d] = false; break; }
   // while something burns, the escape map is refreshed every other slot
   if (fireCount > 0 && k !== 'safe' && slot % 2 === 0) MAPS.safe();
 }
 
+// ───────────────────────────── buildings
+function count(key, any = false) { return buildings.filter(b => b.key === key && (any || b.done)).length; }
+function has(key) { return buildings.some(b => b.key === key && b.done); }
+function bById(id) { return buildings.find(b => b.id === id); }
+function nextToRock(i) {
+  if (!walkable(i)) return false; const x = i % W, y = (i / W) | 0;
+  for (let k = 0; k < 4; k++) { const nx = x + DX[k], ny = y + DY[k]; if (nx >= 0 && ny >= 0 && nx < W && ny < H && terr[ny * W + nx] === ROCK) return true; }
+  return false;
+}
+function canAfford(cost) { return Object.entries(cost).every(([r, v]) => stock[r] >= v); }
+function buildStatus(key) {
+  const d = BUILDINGS[key];
+  if (count(key, true) >= d.max) return {ok: false, why: d.max === 1 ? 'уже есть' : 'предел ' + d.max};
+  if (d.needs && !has(d.needs)) return {ok: false, why: 'нужна ' + BUILDINGS[d.needs].name.toLowerCase()};
+  if (!canAfford(d.cost)) return {ok: false, why: 'не хватает ресурсов'};
+  return {ok: true, why: ''};
+}
+// a 2×2 lot on dry land, in a ring around the camp, away from other buildings
+function findLot() {
+  let best = -1, bd = 1e9;
+  for (let y = camp.y - 14; y <= camp.y + 13; y++) for (let x = camp.x - 14; x <= camp.x + 13; x++) {
+    if (x < 1 || y < 1 || x >= W - 2 || y >= H - 2) continue;
+    const d = (x + 1 - camp.x) ** 2 + (y + 1 - camp.y) ** 2; if (d < 25 || d >= bd) continue;
+    let ok = true;
+    for (let yy = -1; yy <= 2 && ok; yy++) for (let xx = -1; xx <= 2; xx++) {
+      const j = (y + yy) * W + x + xx, inner = xx >= 0 && xx <= 1 && yy >= 0 && yy <= 1;
+      if (bld[j] >= 0 || (inner && (!walkable(j) || fire[j] > 0 || isCampArea(j)))) { ok = false; break; }
+    }
+    if (ok) { bd = d; best = y * W + x; }
+  }
+  return best;
+}
+function orderBuilding(key) {
+  const d = BUILDINGS[key]; if (!buildStatus(key).ok) return false;
+  const lot = findLot(); if (lot < 0) { log('Вокруг лагеря не осталось места под постройку.'); return false; }
+  for (const [r, v] of Object.entries(d.cost)) stock[r] -= v;
+  const b = {id: bldSeq++, key, x: lot % W, y: (lot / W) | 0, progress: 0, done: false, cells: []};
+  for (let yy = 0; yy < 2; yy++) for (let xx = 0; xx < 2; xx++) {
+    const j = (b.y + yy) * W + b.x + xx; b.cells.push(j);
+    bld[j] = b.id; terr[j] = GRASS; bush[j] = 0; food[j] = 0; wood[j] = 0; fuel[j] = d.wooden ? 0.9 : 0;
+  }
+  buildings.push(b); dirty.site = dirty.food = dirty.wood = true;
+  log(`Заложен${ending(key)} ${d.name.toLowerCase()}. Нужно ${d.work} человеко-тиков работы.`);
+  renderBuildPanel(true);
+  return true;
+}
+function finishBuilding(b) {
+  b.done = true; dirty.site = true;
+  const d = BUILDINGS[b.key];
+  log(`Построен${ending(b.key)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`);
+  if (b.key === 'garden') {
+    // plant bushes on free grass around the garden
+    const cand = [];
+    for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
+      const x = b.x + xx, y = b.y + yy; if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      const j = y * W + x; if ((terr[j] === GRASS || terr[j] === BURNT) && bld[j] < 0 && !isCampArea(j) && !bush[j]) cand.push([j, xx * xx + yy * yy]);
+    }
+    cand.sort((p, q) => p[1] - q[1]);
+    for (const [j] of cand.slice(0, 12)) { terr[j] = GRASS; bush[j] = 1; food[j] = 0.5; fuel[j] = 0.6; fert[j] = 1; gardenCells.push(j); }
+    dirty.food = true;
+  }
+  if (b.key === 'quarry') dirty.rock = true;
+  renderBuildPanel(true);
+}
+function burnBuilding(id) {
+  const b = bById(id); if (!b) return;
+  for (const j of b.cells) bld[j] = -1;
+  buildings = buildings.filter(x => x !== b); dirty.site = true;
+  if (b.key === 'garden') { const own = new Set(); for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) own.add((b.y + yy) * W + b.x + xx); gardenCells = gardenCells.filter(j => !own.has(j)); }
+  log(`${b.done ? 'Сгорел' + ending(b.key) : 'Сгорела стройка:'} <b>${BUILDINGS[b.key].name.toLowerCase()}</b>.`);
+  renderBuildPanel(true);
+}
+function yieldOf(kind) { return kind === 'food' ? (has('smokehouse') ? 1.4 : 1) : kind === 'wood' ? (has('sawmill') ? 1.5 : 1) : 1; }
+function popCap() { return 8 + 4 * count('hut'); }
+
 // ───────────────────────────── layer 3: agents
 function spawnColonist(x, y) {
   const a = {id: nextId++, tribe: 0, name: NAMES[nameIdx++ % NAMES.length], x, y, hp: 1, food: 0.6 + rand() * 0.4, rest: 0.6 + rand() * 0.4, warm: 0.9,
-    task: null, tgt: null, work: 0, carry: null, n: 0, eatDirect: false, cd: 0, think: (rand() * 15) | 0, bias: {gather: rand() * 0.15, chop: rand() * 0.15}};
+    task: null, tgt: null, work: 0, carry: null, n: 0, eatDirect: false, cd: 0, think: (rand() * 15) | 0, bias: {gather: rand() * 0.15, chop: rand() * 0.15, build: rand() * 0.15, mine: rand() * 0.15}};
   agents.push(a); return a;
 }
 function spawnRaider(x, y) { const a = {id: nextId++, tribe: 1, name: 'Волк', x, y, hp: 0.75, task: 'camp', tgt: null, cd: 0, stolen: false, think: 0}; agents.push(a); return a; }
@@ -306,6 +417,8 @@ function decide(a) {
     ['chop', (stock.wood < 40 ? 0.2 : 0.03) + (stock.wood < 25 ? 0.35 : 0) + a.bias.chop - night * 0.2],
     ['idle', 0.15],
   ];
+  if (buildings.some(b => !b.done)) opts.push(['build', 0.62 + a.bias.build - night * 0.3]);
+  if (has('quarry')) opts.push(['mine', (stock.stone < 40 ? 0.18 : 0.03) + (stock.stone < 20 ? 0.3 : 0) + a.bias.mine - night * 0.2]);
   if (fireNearCamp > 0 && a.hp > 0.6) opts.push(['douse', 0.8]);
   if (enemy && a.hp > 0.3) opts.push(['fight', 1.1]);
   let best = null, bs = -1;
@@ -318,7 +431,8 @@ function attack(a, t) {
   if (a.cd > 0) return;
   // defenders fight harder next to their own camp
   const home = a.tribe === 0 && dCamp[cellOf(a)] < 8 ? 1.5 : 1;
-  a.cd = 12; t.hp -= (0.1 + Math.random() * 0.12) * home; a.flash = 4;
+  const wall = t.tribe === 0 && has('palisade') && dCamp[cellOf(t)] < 8 ? 0.6 : 1;
+  a.cd = 12; t.hp -= (0.1 + Math.random() * 0.12) * home * wall; a.flash = 4;
   if (t.hp <= 0) log(t.tribe === 0 ? `<b>${t.name}</b> погиб(ла) в бою.` : `Налётчик убит, его сразил(а) <b>${a.name}</b>.`);
 }
 
@@ -368,7 +482,12 @@ function stepColonist(a) {
     case 'sleep': case 'warm': {
       const r = follow(a, dCamp);
       if (r === 'arrived') {
-        if (a.task === 'sleep') { a.sleeping = true; a.rest = Math.min(1, a.rest + 0.004); if (a.rest >= 1) { a.task = null; a.think = 0; } }
+        if (a.task === 'sleep') {
+          const beds = Math.min(1, 4 * count('hut') / Math.max(1, colonistPop()));
+          a.sleeping = true; a.rest = Math.min(1, a.rest + 0.004 * (1 + 0.6 * beds));
+          if (beds > 0) a.warm = Math.min(1, a.warm + 0.002 * beds);
+          if (a.rest >= 1) { a.task = null; a.think = 0; }
+        }
         else if (a.warm > 0.92) { a.task = null; a.think = 0; }
         // drift inside the camp so people don't stack
         if (Math.random() < 0.05) { const c = camp.cells[(Math.random() * camp.cells.length) | 0]; a.tx = (c % W) + 0.2 + Math.random() * 0.6; a.ty = ((c / W) | 0) + 0.2 + Math.random() * 0.6; }
@@ -380,20 +499,42 @@ function stepColonist(a) {
       const isFood = a.task === 'gather', cap = isFood ? 3 : 2, kind = isFood ? 'food' : 'wood';
       if (a.carry === kind && (a.n >= cap || (a.eatDirect && a.n >= 1))) {
         if (a.eatDirect) { a.food = Math.min(1, a.food + 0.4 * a.n); a.n = 0; a.carry = null; a.task = null; a.think = 0; break; }
-        if (follow(a, dCamp) === 'arrived') { stock[kind] += a.n; a.n = 0; a.carry = null; a.task = null; a.think = 0; }
+        if (follow(a, dCamp) === 'arrived') { stock[kind] += a.n * yieldOf(kind); a.n = 0; a.carry = null; a.task = null; a.think = 0; }
         break;
       }
       const field = isFood ? food : wood, dist = isFood ? dFood : dWood;
       const r = follow(a, dist);
       if (r === 'arrived') {
         if (field[i] > (isFood ? 0.3 : 0.25) && fire[i] === 0) {
-          if (++a.work >= (isFood ? 12 : 26)) {
+          if (++a.work >= (isFood ? 12 : has('sawmill') ? 16 : 26)) {
             a.work = 0; field[i] -= isFood ? 0.34 : 0.35; a.carry = kind; a.n++;
             if (!isFood && wood[i] < 0.1) { terr[i] = GRASS; fuel[i] = 0.4; wood[i] = 0; }
             dirty[kind] = true;
           }
         } else { dirty[kind] = true; a.work = 0; }
       } else if (r === 'none') { if (a.n > 0) a.n = isFood ? 3 : 2; else { a.task = 'idle'; a.think = 20; } }
+      break;
+    }
+    case 'build': {
+      const site = bld[i] >= 0 ? bById(bld[i]) : null;
+      if (site && !site.done && fire[i] === 0) {
+        site.progress++; a.work++;
+        if (site.progress >= BUILDINGS[site.key].work) finishBuilding(site);
+      } else {
+        const r = follow(a, dSite);
+        if (r === 'none' || (r === 'arrived' && !site)) { dirty.site = true; a.task = null; a.think = 10; }
+        else if (r === 'arrived' && site && site.done) { a.task = null; a.think = 0; }
+      }
+      break;
+    }
+    case 'mine': {
+      if (a.carry === 'stone' && a.n >= 2) {
+        if (follow(a, dCamp) === 'arrived') { stock.stone += a.n; a.n = 0; a.carry = null; a.task = null; a.think = 0; }
+        break;
+      }
+      const r = follow(a, dRock);
+      if (r === 'arrived') { if (++a.work >= 30) { a.work = 0; a.carry = 'stone'; a.n++; } }
+      else if (r === 'none') { a.task = 'idle'; a.think = 30; }
       break;
     }
     case 'douse': {
@@ -403,7 +544,7 @@ function stepColonist(a) {
         for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
           if (x < 0 || y < 0 || x >= W || y >= H) continue; const j = y * W + x;
           if ((x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 > 2.9) continue;
-          if (fire[j] > 0) { fire[j] = Math.max(0, fire[j] - 0.05); temp[j] -= 6; if (fire[j] === 0) temp[j] = Math.min(temp[j], 60); }
+          if (fire[j] > 0) { fire[j] = Math.max(0, fire[j] - (has('well') ? 0.1 : 0.05)); temp[j] -= 6; if (fire[j] === 0) temp[j] = Math.min(temp[j], 60); }
         }
       } else if (follow(a, dFire) !== 'moving') { a.task = null; a.think = 10; }
       break;
@@ -429,7 +570,7 @@ function stepRaider(a) {
     else { const d = Math.hypot(t.x - a.x, t.y - a.y); if (d > 0.9) { moveToward(a, t.x, t.y, 1.05); if (!walkable(cellOf(a))) follow(a, dCamp); } else attack(a, t); }
   } else if (a.task === 'camp') {
     if (follow(a, dCamp) === 'arrived') {
-      const tf = Math.min(stock.food, 5), tw = Math.min(stock.wood, 4); stock.food -= tf; stock.wood -= tw; a.stolen = true; if (tf + tw > 0.5 && tick - lastSteal > 40) log(`Налётчики грабят склад.`); lastSteal = tick; a.task = 'leave';
+      const loot = has('palisade') ? 0.5 : 1, tf = Math.min(stock.food, 5 * loot), tw = Math.min(stock.wood, 4 * loot), ts = Math.min(stock.stone, 3 * loot); stock.stone -= ts; stock.food -= tf; stock.wood -= tw; a.stolen = true; if (tf + tw > 0.5 && tick - lastSteal > 40) log(`Налётчики грабят склад.`); lastSteal = tick; a.task = 'leave';
     }
   } else if (a.task === 'leave') {
     if (follow(a, dEdge) === 'arrived') a.gone = true;
@@ -453,7 +594,7 @@ function stepAgents() {
   if (selected && !agents.includes(selected)) selected = null;
   separate();
   // newcomers arrive while the colony is fed
-  if (tick % 900 === 0 && stock.food > colonistPop() * 5 && colonistPop() < 16) {
+  if (tick % 900 === 0 && stock.food > colonistPop() * 5 && colonistPop() < popCap()) {
     const e = randomEdgeCell(); if (e >= 0) { const a = spawnColonist((e % W) + 0.5, ((e / W) | 0) + 0.5); log(`К лагерю пришла новая душа: <b>${a.name}</b>.`); }
   }
 }
@@ -609,6 +750,19 @@ function render() {
       ctx.lineTo(px + ux * L - (ux * 0.8 - uy * 0.5) * S * 0.8, py + uy * L - (uy * 0.8 + ux * 0.5) * S * 0.8); ctx.stroke();
     }
   }
+  // buildings: finished ones are solid blocks with a letter, sites are dashed with a progress bar
+  for (const b of buildings) {
+    const d = BUILDINGS[b.key], x = b.x * S, y = b.y * S, w = 2 * S;
+    if (b.done) {
+      ctx.fillStyle = d.color; ctx.fillRect(x + 1, y + 1, w - 2, w - 2);
+      ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, w - 2, w - 2);
+      if (S >= 5) { ctx.fillStyle = '#14160f'; ctx.font = `bold ${Math.max(8, S * 0.95)}px "PT Sans", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.mark, x + w / 2, y + w / 2 + 1); ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic'; }
+    } else {
+      ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = d.color; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, w - 2, w - 2); ctx.restore();
+      ctx.fillStyle = 'rgba(20,22,15,0.7)'; ctx.fillRect(x, y + w + 1, w, 3);
+      ctx.fillStyle = d.color; ctx.fillRect(x, y + w + 1, w * b.progress / d.work, 3);
+    }
+  }
   // agents
   for (const a of agents) {
     const px = a.x * S, py = a.y * S, r = Math.max(S * 0.62, 3.4);
@@ -617,7 +771,7 @@ function render() {
     ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     if (a.flash) { ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 2, 0, Math.PI * 2); ctx.stroke(); }
-    if (a.carry && a.n > 0) { ctx.fillStyle = a.carry === 'food' ? '#c45c95' : '#a5794a'; ctx.fillRect(px + r * 0.4, py - r * 1.1, S * 0.55, S * 0.55); }
+    if (a.carry && a.n > 0) { ctx.fillStyle = a.carry === 'food' ? '#c45c95' : a.carry === 'stone' ? '#b9b4a6' : '#a5794a'; ctx.fillRect(px + r * 0.4, py - r * 1.1, S * 0.55, S * 0.55); }
     if (a.hp < 0.999) { ctx.fillStyle = '#2a1414'; ctx.fillRect(px - S, py + r + 2, S * 2, 2); ctx.fillStyle = a.hp > 0.5 ? '#8fbf5a' : '#e0b040'; ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(a.hp, 0, 1), 2); }
     if (a.task === 'flee') { ctx.fillStyle = '#ffe0a0'; ctx.font = `bold ${S * 1.6}px PT Sans, sans-serif`; ctx.fillText('!', px + r, py - r); }
   }
@@ -636,6 +790,27 @@ function renderPeople(force) {
     <span class="nm">${esc(a.name)}</span><span class="task">${TASK_RU[a.task || 'idle']}${a.carry && a.n ? ` · несёт ${a.n}` : ''}</span>
     <div class="bars" title="сытость · бодрость · тепло · здоровье">${bar(a.food, 'var(--food)')}${bar(a.rest, '#7d9be0')}${bar(a.warm, 'var(--ember)')}${bar(a.hp, 'var(--good)')}</div></div>`).join('') || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>';
 }
+let buildSig = '';
+function costHtml(cost) {
+  return Object.entries(cost).map(([r, v]) => `<span class="cost${stock[r] >= v ? '' : ' short'}">${v} ${RES_RU[r]}</span>`).join('');
+}
+// rebuilt only when something visible changes, so buttons are not replaced under the cursor
+function renderBuildPanel(force) {
+  const rows = Object.keys(BUILDINGS).map(k => {
+    const st = buildStatus(k), site = buildings.find(b => b.key === k && !b.done);
+    return [k, st.ok, st.why, count(k), site ? Math.floor(site.progress / BUILDINGS[k].work * 20) : -1];
+  });
+  const sig = JSON.stringify(rows) + Object.values(BUILDINGS).map(d => Object.entries(d.cost).map(([r, v]) => stock[r] >= v)).join();
+  if (!force && sig === buildSig) return; buildSig = sig;
+  $('build').innerHTML = rows.map(([k, ok, why, n, prog]) => {
+    const d = BUILDINGS[k];
+    const state = prog >= 0 ? `<span class="bstate">строится ${prog * 5}%</span>` : n ? `<span class="bstate done">построено${d.max > 1 ? ' ×' + n : ''}</span>` : '';
+    return `<div class="bcard"><div class="bhead"><i class="bmark" style="background:${d.color}">${d.mark}</i><b>${d.name}</b>${state}</div>
+      <p>${d.effect}</p>
+      <div class="bfoot"><span class="costs">${costHtml(d.cost)}</span>
+      <button type="button" data-b="${k}" ${ok ? '' : 'disabled'} title="${why}">${ok ? 'Заложить' : why}</button></div></div>`;
+  }).join('');
+}
 let lastTicks = 0, lastTpsT = performance.now();
 function renderPanel() {
   $('clock').textContent = clockStr();
@@ -643,13 +818,15 @@ function renderPanel() {
   $('windTxt').textContent = wind.str < 0.03 ? 'штиль' : `${DIRS[Math.round((((wind.dir + 180) % 360) / 45)) % 8]}, ${(wind.str * 10).toFixed(1)} м/с`;
   $('fires').textContent = fireCount;
   const pop = colonistPop(), raiders = agents.length - pop;
-  $('sFood').textContent = stock.food.toFixed(1); $('sWood').textContent = stock.wood.toFixed(1);
+  $('sFood').textContent = stock.food.toFixed(1); $('sWood').textContent = stock.wood.toFixed(1); $('sStone').textContent = stock.stone.toFixed(1);
+  $('pop').title = `лагерь примет до ${popCap()} жителей`;
   $('sFire').textContent = campLit ? 'горит' : stock.wood > 0.05 ? 'не нужен' : 'нет дров';
   $('pop').textContent = pop + (raiders ? ` · налётчиков ${raiders}` : '');
   $('pFlabel').textContent = `Поля (${N.toLocaleString('ru-RU')} клеток)`;
   $('pF').textContent = perf.f.toFixed(2); $('pN').textContent = perf.n.toFixed(2); $('pA').textContent = perf.a.toFixed(2); $('pR').textContent = perf.r.toFixed(2);
   const now = performance.now(); const tps = (tick - lastTicks) / ((now - lastTpsT) / 1000); lastTicks = tick; lastTpsT = now; perf.tps = tps; $('pT').textContent = speed ? tps.toFixed(0) : '0';
   renderPeople();
+  renderBuildPanel();
 }
 
 // ───────────────────────────── input
@@ -677,6 +854,7 @@ $('people').addEventListener('click', e => { const p = e.target.closest('.person
 $('windDir').addEventListener('input', e => { wind.dir = +e.target.value; setWind(); });
 $('windStr').addEventListener('input', e => { wind.str = +e.target.value / 100; setWind(); });
 $('raid').addEventListener('click', raid);
+$('build').addEventListener('click', e => { const b = e.target.closest('button[data-b]'); if (b && !b.disabled) orderBuilding(b.dataset.b); });
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' && running && e.target === document.body) { e.preventDefault(); const nv = speed ? 0 : 1; speed = nv; $('speeds').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.speed === nv)); }
 });
@@ -786,5 +964,6 @@ function frame(now) {
 }
 buildMenu();
 showMenu();
+window.__forest = {orderBuilding, stepSim, generate, ignite: (x, y) => { const t = tool; tool = 'ignite'; applyTool(x, y); tool = t; }, state: () => ({stock, buildings, agents, tick})};
 requestAnimationFrame(frame);
 })();
