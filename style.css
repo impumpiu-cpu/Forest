@@ -123,4 +123,5 @@ button.quiet{background:transparent;color:var(--muted)}
 .args b{color:var(--fg);font-weight:400}
 .bcard.built{opacity:.75}
 .bneed{font-size:11.5px;color:var(--muted)}
+.kv dt .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
 [hidden]{display:none!important}

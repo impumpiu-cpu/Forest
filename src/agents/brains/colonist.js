@@ -1,0 +1,71 @@
+// Colonist brain: utility AI. Every option gets a score; the best one becomes the task.
+// Needs come from NEEDS, work from JOBS (weighted by personal preference), plus emergencies.
+import {NEEDS} from '../../data/needs.js';
+import {JOBS} from '../../data/jobs.js';
+import {SPECIES} from '../../data/species.js';
+import {nightness, ambientTemp} from '../../core/time.js';
+import {cellOf} from '../../world/grid.js';
+import {nearFire} from '../movement.js';
+import {nearestHostile} from '../combat.js';
+import {TASKS} from '../tasks.js';
+import {stepBody} from '../body.js';
+import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies} from '../../settlement/query.js';
+import {councilDue, goalNeed} from '../../settlement/council.js';
+
+const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
+
+function decide(w, a) {
+  const night = nightness(w.tick), camp = w.camp.cells, g = w.grid;
+  let campHot = 0; for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
+  const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
+  const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,
+    preyCount: ofSpecies(w, 'hare').length};
+  const opts = [];
+  for (const id of SPECIES.get(a.species).needs) {
+    const n = NEEDS.get(id);
+    opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk]);
+  }
+  for (const job of JOBS.all()) {
+    if (!jobUnlocked(w, job)) continue;
+    const base = job.desire(w, ctx);
+    if (base < 0) continue;
+    const res = job.resource;
+    const goal = res ? goalNeed(w, res) : 0;
+    const dayWork = job.runner === 'build' ? night * 0.3 : night * 0.2;
+    opts.push([{id: 'job', job: job.id}, (base + goal - dayWork) * (a.prefs[job.id] ?? 1)]);
+  }
+  opts.push([{id: 'idle'}, 0.15]);
+  if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);
+  const brave = a.mods.bravery;
+  if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave]);
+  const enemy = nearestHostile(w, a, 16);
+  if (enemy && a.hp > 0.3) opts.push([{id: 'fight', target: enemy}, 1.1 * brave]);
+
+  let best = null, bs = -Infinity;
+  const cur = key(a.task);
+  for (const [t, s] of opts) { const sc = s + (key(t) === cur ? 0.12 : 0); if (sc > bs) { bs = sc; best = t; } }
+  if (key(best) !== cur) a.task = best;
+  else if (best.id === 'fight') a.task.target = best.target;
+}
+
+export const colonistBrain = {
+  id: 'colonist',
+  step(w, a) {
+    const T = stepBody(w, a);   // reads last tick's `sleeping`
+    if (a.dead) return;
+    a.sleeping = false;
+    const tid = a.task?.id;
+    // reflex: heat overrides everything (firefighters hold out a little longer)
+    if (tid !== 'douse' && (T > 55 || nearFire(w, a, 1.5))) a.task = {id: 'flee'};
+    if (tid === 'douse' && (T > 58 || a.hp < 0.6)) a.task = {id: 'flee'};
+    if (a.task?.id === 'flee' || a.task?.id === 'douse') a.mem.fire += 0.006;
+    if (a.task?.id !== 'flee' && --a.think <= 0) {
+      a.think = 15;
+      const busy = a.task?.id === 'job' && a.carry?.n > 0;   // finish delivering first
+      if (!busy) decide(w, a);
+    }
+    if (!a.task) decide(w, a);
+    TASKS.get(a.task.id).step(w, a, a.task);
+    if (a.cd > 0) a.cd--;
+  },
+};

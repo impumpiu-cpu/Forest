@@ -1,0 +1,3094 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тёплый Брод</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans+SC:wght@500;700&family=PT+Sans:wght@400;700&family=PT+Mono&display=swap">
+<style>
+/* Layout: map-first game screen. Canvas fills the left column, a field journal panel sits on the right, stacks below on phones. */
+:root{
+  --bg:#14160f;
+  --panel:#1d2017;
+  --line:#33372a;
+  --fg:#e7e3cf;
+  --muted:#9d9b84;
+  --ember:#e8893a;
+  --colony:#62c6b9;
+  --raider:#d9585e;
+  --food:#c45c95;
+  --good:#8fbf5a;
+  --font-display:"Alegreya Sans SC","PT Sans",system-ui,sans-serif;
+  --font-body:"PT Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"PT Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{margin:0;font-family:var(--font-body);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:14px 32px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+h1{font-family:var(--font-display);font-weight:700;font-size:28px;letter-spacing:.02em;margin:0;text-wrap:balance}
+header p{margin:0;color:var(--muted);max-width:70ch}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:start}
+@media (max-width:900px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{display:flex;flex-direction:column;gap:10px;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.group{display:flex;align-items:center;gap:6px}
+.group > span{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);border-radius:0}
+.seg button:last-child{border-right:0}
+button{font:inherit;font-size:13px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{background:#272b1f}
+button[aria-pressed="true"]{background:var(--ember);color:#1b130a;font-weight:700}
+button.danger{border-color:#5c2c2e;color:#f0b0b2}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+input[type=range]{accent-color:var(--ember);width:84px}
+.canvas-box{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0d0f0a}
+canvas#map{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+.readout{font-family:var(--font-mono);font-size:12px;color:var(--muted);min-height:1.5em;overflow-wrap:anywhere}
+aside{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.card h2{font-family:var(--font-display);font-size:15px;letter-spacing:.06em;margin:0;color:var(--muted);font-weight:500}
+.clock{font-family:var(--font-display);font-size:22px}
+.kv{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-family:var(--font-mono);font-size:13px}
+.people{display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto}
+.person{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:2px 8px;padding:4px 6px;border-radius:4px;cursor:pointer;border:1px solid transparent}
+.person:hover{background:#262a1e}
+.person.sel{border-color:var(--colony)}
+.person .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person .task{color:var(--muted);font-size:12px;grid-column:1}
+.bars{grid-row:1/3;grid-column:2;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.bar{height:4px;background:#2c3024;border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%}
+.log{font-size:12.5px;display:flex;flex-direction:column;gap:3px;max-height:170px;overflow-y:auto}
+.log div{color:var(--muted)} .log b{color:var(--fg);font-weight:400}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+.explain{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.explain .card p{margin:0;color:var(--muted)}
+.explain .card h3{margin:0;font-size:14px}
+.tag{font-family:var(--font-mono);font-size:11px;color:var(--ember)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ───── start menu ───── */
+.menu{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:20px;align-items:start}
+@media (max-width:900px){.menu{grid-template-columns:minmax(0,1fr)}.menu-preview{order:-1}}
+.menu-form{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.menu-title{font-family:var(--font-display);font-size:22px;margin:0;letter-spacing:.04em}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label,.field .lbl{font-family:var(--font-display);font-size:14px;letter-spacing:.05em;color:var(--muted)}
+.field small,.menu-preview small{color:var(--muted);font-size:12.5px}
+.field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.wrapseg{flex-wrap:wrap}
+.seg.wrapseg button{flex:1 1 auto}
+input[type=text]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0}
+.row input[type=text]{flex:1 1 160px}
+.menu .seg button{flex:1 1 0;white-space:nowrap}
+#cfgColonists{width:100%;max-width:320px}
+.check{display:flex;gap:8px;align-items:center;cursor:pointer}
+.check input{accent-color:var(--ember);width:16px;height:16px}
+.actions{padding-top:4px}
+button.primary{background:var(--ember);color:#1b130a;font-weight:700;border-color:var(--ember);padding:8px 16px;font-size:14px}
+button.primary:hover{background:#f19a50}
+button.quiet{background:transparent;color:var(--muted)}
+.menu-preview{display:flex;flex-direction:column;gap:10px;position:sticky;top:env(safe-area-inset-top,0px)}
+.preview-box{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0d0f0a}
+#preview{display:block;width:100%;height:auto;aspect-ratio:4/3;image-rendering:pixelated}
+
+
+/* ───── buildings ───── */
+.buildlist{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto}
+.bcard{border:1px solid var(--line);border-radius:5px;padding:7px 8px;display:flex;flex-direction:column;gap:4px}
+.bhead{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.bmark{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 3px;border-radius:3px;color:#14160f;font-style:normal;font-weight:700;font-size:11px}
+.bstate{margin-left:auto;font-size:12px;color:var(--ember)}
+.bstate.done{color:var(--good)}
+.bcard p{margin:0;font-size:12.5px;color:var(--muted)}
+.bfoot{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
+.costs{display:flex;flex-wrap:wrap;gap:4px}
+.cost{font-family:var(--font-mono);font-size:11.5px;padding:1px 5px;border-radius:3px;background:#2a2e21}
+.cost.short{color:#f0a0a2;background:#3a2224}
+.bfoot button{font-size:12px;padding:3px 9px}
+.bfoot button:disabled{opacity:.55;cursor:not-allowed;background:transparent}
+
+/* ───── council ───── */
+.person .likes{grid-column:1;font-size:11.5px;color:var(--muted);opacity:.8}
+.bars{grid-row:1/4}
+.council{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.council .when{font-size:12px;color:var(--ember)}
+.council .decision{margin:0}
+.goal{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12.5px;color:var(--muted)}
+.votes{display:flex;flex-direction:column;gap:3px}
+.vote{display:grid;grid-template-columns:110px minmax(0,1fr) 20px;gap:6px;align-items:center;font-size:12px}
+.vote span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.vote i{display:block;height:6px;border-radius:3px}
+.vote b{font-family:var(--font-mono);font-weight:400;text-align:right}
+.args{margin:0;padding-left:16px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.args b{color:var(--fg);font-weight:400}
+.bcard.built{opacity:.75}
+.bneed{font-size:11.5px;color:var(--muted)}
+.kv dt .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="colonyName">Тёплый Брод</h1>
+    <p id="worldInfo">Прототип локальной карты: поля температуры, огня и дыма считаются на сетке, поверх живут колонисты с потребностями и ходят по полям течения.</p>
+  </header>
+
+  <!-- ───────── start menu ───────── -->
+  <section id="menu" class="menu" aria-labelledby="menuTitle">
+    <div class="menu-form">
+      <h2 id="menuTitle" class="menu-title">Новый мир</h2>
+      <div class="field">
+        <label for="cfgName">Название поселения</label>
+        <input id="cfgName" type="text" maxlength="32" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="cfgSeed">Сид мира</label>
+        <div class="row">
+          <input id="cfgSeed" type="text" maxlength="24" autocomplete="off">
+          <button type="button" id="seedRandom">Случайный</button>
+        </div>
+        <small>Число или любое слово. Один и тот же сид с теми же настройками даёт тот же мир.</small>
+      </div>
+      <div class="field"><span class="lbl">Размер мира</span><div class="seg wrapseg" data-key="size"></div><small data-note="size"></small></div>
+      <div class="field-grid">
+        <div class="field"><span class="lbl">Вода</span><div class="seg" data-key="water"></div></div>
+        <div class="field"><span class="lbl">Лес</span><div class="seg" data-key="forest"></div></div>
+        <div class="field"><span class="lbl">Горы</span><div class="seg" data-key="rock"></div></div>
+      </div>
+      <div class="field"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
+      <div class="field">
+        <label for="cfgColonists">Поселенцев на старте: <output id="colonistsOut">8</output></label>
+        <input id="cfgColonists" type="range" min="3" max="14" value="8">
+      </div>
+      <div class="field-grid">
+        <div class="field"><span class="lbl">Запасы</span><div class="seg" data-key="stock"></div></div>
+        <div class="field"><span class="lbl">Набеги «Серых волков»</span><div class="seg" data-key="raids"></div></div>
+        <div class="field"><span class="lbl">Зайцы</span><div class="seg" data-key="wildlife"></div></div>
+      </div>
+      <label class="check"><input id="cfgLightning" type="checkbox"> Молнии поджигают лес в жаркие часы</label>
+      <div class="row actions">
+        <button type="button" id="startGame" class="primary">Основать поселение</button>
+        <button type="button" id="backToGame" hidden>Вернуться к игре</button>
+        <button type="button" id="resetCfg" class="quiet">Сбросить настройки</button>
+      </div>
+    </div>
+    <div class="menu-preview">
+      <div class="preview-box"><canvas id="preview" width="256" height="192" aria-label="Предпросмотр карты"></canvas></div>
+      <dl class="kv" id="previewStats"></dl>
+      <small>Белый круг — место лагеря. Карта перерисовывается при каждом изменении настроек.</small>
+    </div>
+  </section>
+
+  <div class="main" id="game" hidden>
+    <section class="stage">
+      <div class="toolbar">
+        <div class="group"><span>Клик</span>
+          <div class="seg" id="tools">
+            <button data-tool="inspect" aria-pressed="true">Осмотр</button>
+            <button data-tool="ignite" aria-pressed="false">Поджечь</button>
+            <button data-tool="rain" aria-pressed="false">Ливень</button>
+          </div>
+        </div>
+        <div class="group"><span>Слой</span>
+          <div class="seg" id="layers">
+            <button data-layer="world" aria-pressed="true">Мир</button>
+            <button data-layer="temp" aria-pressed="false">Температура</button>
+            <button data-layer="res" aria-pressed="false">Ресурсы</button>
+            <button data-layer="nav" aria-pressed="false">Навигация</button>
+          </div>
+        </div>
+        <div class="group"><span>Скорость</span>
+          <div class="seg" id="speeds">
+            <button data-speed="0" aria-pressed="false" title="Пробел">Пауза</button>
+            <button data-speed="1" aria-pressed="true">1×</button>
+            <button data-speed="3" aria-pressed="false">3×</button>
+            <button data-speed="10" aria-pressed="false">10×</button>
+          </div>
+        </div>
+        <div class="group"><span>Ветер</span>
+          <span id="windArrow" aria-hidden="true" style="display:inline-block;color:var(--fg);font-size:16px">→</span>
+          <input type="range" id="windDir" min="0" max="359" value="20" aria-label="Направление ветра">
+          <input type="range" id="windStr" min="0" max="100" value="35" aria-label="Сила ветра">
+        </div>
+        <div class="group">
+          <button id="raid" class="danger">Набег</button>
+          <button id="openMenu">Меню мира</button>
+        </div>
+      </div>
+      <div class="canvas-box"><canvas id="map" width="768" height="576"></canvas></div>
+      <div class="readout" id="readout">Наведите на карту, чтобы увидеть значения полей в клетке.</div>
+      <div class="legend">
+        <span><i style="background:var(--colony)"></i>колонисты</span>
+        <span><i style="background:var(--raider)"></i>налётчики</span>
+        <span><i style="background:#cdbb9a"></i>зайцы</span>
+        <span><i style="background:var(--food)"></i>ягоды</span>
+        <span><i style="background:var(--ember)"></i>огонь и костёр</span>
+        <span>пунктирный круг — лагерь со складом</span>
+      </div>
+    </section>
+
+    <aside>
+      <div class="card">
+        <h2>Время и погода</h2>
+        <div class="clock" id="clock">День 1, 07:00</div>
+        <dl class="kv">
+          <dt>Воздух</dt><dd id="amb">—</dd>
+          <dt>Ветер</dt><dd id="windTxt">—</dd>
+          <dt>Горит клеток</dt><dd id="fires">0</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Склад лагеря</h2>
+        <dl class="kv" id="stock"></dl>
+      </div>
+      <div class="card">
+        <h2>Совет у костра</h2>
+        <div class="council" id="council"></div>
+      </div>
+      <div class="card">
+        <h2>Постройки</h2>
+        <div class="buildlist" id="build"></div>
+      </div>
+      <div class="card">
+        <h2>Колонисты</h2>
+        <div class="people" id="people"></div>
+      </div>
+      <div class="card">
+        <h2>Расчёт за тик, мс</h2>
+        <dl class="kv">
+          <dt id="pFlabel">Поля</dt><dd id="pF">—</dd>
+          <dt>Навигация (Дейкстра)</dt><dd id="pN">—</dd>
+          <dt>Агенты</dt><dd id="pA">—</dd>
+          <dt>Отрисовка кадра</dt><dd id="pR">—</dd>
+          <dt>Тиков в секунду</dt><dd id="pT">—</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>Журнал</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="explain" id="explain">
+    <div class="card"><span class="tag">слой 1 · поля</span><h3>Тепло, огонь, дым</h3><p>Каждый тик температура расплывается к соседям (диффузия) и сносится ветром (полулагранжева адвекция, как в stable fluids). Горящая клетка греет соседей и поджигает их, когда те перегреваются. Лес горит охотно, трава — неохотно.</p></div>
+    <div class="card"><span class="tag">слой 2 · навигация</span><h3>Поля течения</h3><p>Для лагеря, ягод, леса, пожара и края карты строится карта расстояний алгоритмом Дейкстры. Огонь, жар и дым делают клетки «дорогими», поэтому люди обходят пожар. Агент просто спускается по полю к цели.</p></div>
+    <div class="card"><span class="tag">слой 3 · агенты</span><h3>Utility AI</h3><p>У колониста есть потребности, любимая работа и черты характера. Он оценивает дела (есть, спать, греться, собирать, рубить, тушить, драться) и берёт самое срочное. Тепло он получает из поля температуры, поэтому костёр работает через физику.</p></div>
+    <div class="card"><span class="tag">слой 4 · поселение</span><h3>Совет и постройки</h3><p>Каждый вечер поселенцы собираются у костра. Каждый голосует за постройку, которая помогла бы ему: кто мёрз, хочет шалаш, кто видел пожар — колодец. Если хватает ресурсов, стройку закладывают, иначе копят. У каждого есть любимая и нелюбимая работа, а навыки растут с практикой. Готовые постройки меняют правила: ускоряют сон, перерабатывают сырьё, охлаждают лагерь. Деревянные постройки горят, как лес, и могут сгореть дотла.</p></div>
+    <div class="card"><span class="tag">что попробовать</span><h3>Эксперименты</h3><p>Подожгите лес с наветренной стороны лагеря. Устройте набег ночью, когда люди спят. Переключите слой «Температура» в сумерках и посмотрите, как остывает карта и держится тёплое пятно у костра.</p></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  // src/core/rng.js
+  function mulberry(a) {
+    return function() {
+      a |= 0;
+      a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function seedNumber(text) {
+    const t = String(text).trim();
+    if (/^\d{1,9}$/.test(t)) return +t;
+    let h = 2166136261;
+    for (const ch of t) {
+      h ^= ch.codePointAt(0);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  // src/core/util.js
+  var clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  function plural(n, one, few, many) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+    return many;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  }
+  function shuffle(rng, arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function weighted(rng, items) {
+    const total = items.reduce((s, it) => s + Math.max(0, it[1]), 0);
+    let r = rng() * total;
+    for (const [v, w] of items) {
+      r -= Math.max(0, w);
+      if (r <= 0) return v;
+    }
+    return items.length ? items[items.length - 1][0] : void 0;
+  }
+
+  // src/core/time.js
+  var DAY = 1200;
+  var HOUR = DAY / 24;
+  var TICK_MS = 50;
+  var hourOf = (t) => t % DAY / HOUR;
+  var dayOf = (t) => Math.floor(t / DAY);
+  function clockStr(t) {
+    const d = dayOf(t) + 1, h = hourOf(t), hh = Math.floor(h), mm = Math.floor((h - hh) * 6) * 10;
+    return `\u0414\u0435\u043D\u044C ${d}, ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  }
+  function nightness(t) {
+    const sun = Math.sin(2 * Math.PI * (hourOf(t) - 6) / 24);
+    return clamp((0.2 - sun) * 2.2, 0, 1);
+  }
+  function ambientTemp(world2, t = world2.tick) {
+    return 11 + world2.climate.tOff + 9 * Math.sin(2 * Math.PI * (hourOf(t) - 9) / 24);
+  }
+
+  // src/core/registry.js
+  var Registry = class {
+    constructor(kind) {
+      this.kind = kind;
+      this.items = /* @__PURE__ */ new Map();
+    }
+    register(def) {
+      if (!def || !def.id) throw new Error(`${this.kind}: definition without id`);
+      if (this.items.has(def.id)) throw new Error(`${this.kind}: duplicate id "${def.id}"`);
+      this.items.set(def.id, def);
+      return def;
+    }
+    registerAll(defs) {
+      for (const d of defs) this.register(d);
+      return this;
+    }
+    get(id) {
+      const d = this.items.get(id);
+      if (!d) throw new Error(`${this.kind}: unknown id "${id}"`);
+      return d;
+    }
+    has(id) {
+      return this.items.has(id);
+    }
+    all() {
+      return [...this.items.values()];
+    }
+    ids() {
+      return [...this.items.keys()];
+    }
+    filter(fn) {
+      return this.all().filter(fn);
+    }
+  };
+
+  // src/data/terrain.js
+  var TERRAIN = new Registry("terrain");
+  TERRAIN.registerAll([
+    {
+      id: "water",
+      code: 0,
+      label: "\u0432\u043E\u0434\u0430",
+      walkable: false,
+      pathCost: 0,
+      speed: 1,
+      fuel: 0,
+      color: (h) => [30 + h * 40, 64 + h * 60, 86 + h * 50]
+    },
+    {
+      id: "grass",
+      code: 1,
+      label: "\u0442\u0440\u0430\u0432\u0430",
+      walkable: true,
+      pathCost: 1,
+      speed: 1,
+      fuel: 0.4,
+      color: (h, f) => [98 - f * 26 + h * 20, 112 + f * 18 + h * 16, 56 - f * 8]
+    },
+    {
+      id: "forest",
+      code: 2,
+      label: "\u043B\u0435\u0441",
+      walkable: true,
+      pathCost: 1.6,
+      speed: 0.7,
+      fuel: 1.2,
+      color: (h, f, wood) => [40 + (1 - wood) * 30, 70 + (1 - wood) * 30, 40 + (1 - wood) * 8]
+    },
+    {
+      id: "rock",
+      code: 3,
+      label: "\u0441\u043A\u0430\u043B\u0430",
+      walkable: false,
+      pathCost: 0,
+      speed: 1,
+      fuel: 0,
+      color: (h) => [100 + h * 30, 97 + h * 28, 88 + h * 24]
+    },
+    {
+      id: "burnt",
+      code: 4,
+      label: "\u0433\u0430\u0440\u044C",
+      walkable: true,
+      pathCost: 1,
+      speed: 1,
+      fuel: 0,
+      color: () => [50, 43, 37]
+    }
+  ]);
+  var T = { WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4 };
+  var BY_CODE = [];
+  for (const d of TERRAIN.all()) BY_CODE[d.code] = d;
+  var WALKABLE = Uint8Array.from(BY_CODE.map((d) => d.walkable ? 1 : 0));
+
+  // src/data/presets.js
+  var SIZES = {
+    small: { w: 96, h: 72, label: "\u041C\u0430\u043B\u044B\u0439", note: "96 \xD7 72, \u0431\u044B\u0441\u0442\u0440\u044B\u0439" },
+    medium: { w: 128, h: 96, label: "\u0421\u0440\u0435\u0434\u043D\u0438\u0439", note: "128 \xD7 96" },
+    large: { w: 192, h: 144, label: "\u0411\u043E\u043B\u044C\u0448\u043E\u0439", note: "192 \xD7 144" },
+    huge: { w: 256, h: 192, label: "\u041E\u0433\u0440\u043E\u043C\u043D\u044B\u0439", note: "256 \xD7 192, \u0442\u044F\u0436\u0435\u043B\u0435\u0435 \u0434\u043B\u044F \u043D\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438" }
+  };
+  var CLIMATES = {
+    cold: { label: "\u0425\u043E\u043B\u043E\u0434\u043D\u044B\u0439", note: "\u043D\u043E\u0447\u0438 \u0443 \u043D\u0443\u043B\u044F, \u043A\u043E\u0441\u0442\u0451\u0440 \u043D\u0443\u0436\u0435\u043D \u0432\u0441\u0435\u0433\u0434\u0430, \u0447\u0430\u0441\u0442\u043E \u0434\u043E\u0436\u0434\u0438", tOff: -8, ign: 25, regrow: 0.7, rain: 0.5 },
+    temperate: { label: "\u0423\u043C\u0435\u0440\u0435\u043D\u043D\u044B\u0439", note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u0434\u043D\u0438, \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u044B\u0435 \u043D\u043E\u0447\u0438, \u0434\u043E\u0436\u0434\u0438 \u0447\u0435\u0440\u0435\u0437 \u0434\u0435\u043D\u044C-\u0434\u0432\u0430", tOff: 0, ign: 0, regrow: 1, rain: 0.4 },
+    dry: { label: "\u0417\u0430\u0441\u0443\u0448\u043B\u0438\u0432\u044B\u0439", note: "\u0436\u0430\u0440\u043A\u043E, \u0434\u043E\u0436\u0434\u0438 \u0440\u0435\u0434\u043A\u0438, \u043B\u0435\u0441 \u0432\u0441\u043F\u044B\u0445\u0438\u0432\u0430\u0435\u0442 \u043B\u0435\u0433\u0447\u0435", tOff: 7, ign: -5, regrow: 0.75, rain: 0.22 }
+  };
+  var LEVELS3 = ["\u043C\u0430\u043B\u043E", "\u043E\u0431\u044B\u0447\u043D\u043E", "\u043C\u043D\u043E\u0433\u043E"];
+  var STOCKS = {
+    poor: { label: "\u0421\u043A\u0443\u0434\u043D\u044B\u0435", stock: { berries: 8, wood: 6 } },
+    normal: { label: "\u041E\u0431\u044B\u0447\u043D\u044B\u0435", stock: { berries: 22, wood: 16 } },
+    rich: { label: "\u0429\u0435\u0434\u0440\u044B\u0435", stock: { berries: 45, wood: 35 } }
+  };
+  var RAIDS = {
+    off: { label: "\u041D\u0435\u0442", every: 0 },
+    rare: { label: "\u0420\u0435\u0434\u043A\u0438\u0435", every: 3 * DAY },
+    often: { label: "\u0427\u0430\u0441\u0442\u044B\u0435", every: 1.4 * DAY }
+  };
+  var WILDLIFE = {
+    none: { label: "\u041D\u0435\u0442", hares: 0 },
+    few: { label: "\u041C\u0430\u043B\u043E", hares: 0.5 },
+    many: { label: "\u041C\u043D\u043E\u0433\u043E", hares: 1.2 }
+  };
+  var DEFAULT_CFG = {
+    name: "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434",
+    seed: "20261010",
+    size: "medium",
+    water: 1,
+    forest: 1,
+    rock: 1,
+    climate: "temperate",
+    colonists: 8,
+    stock: "normal",
+    raids: "off",
+    wildlife: "few",
+    lightning: false,
+    windDir: 20,
+    windStr: 35
+  };
+
+  // src/data/resources.js
+  var RESOURCES = new Registry("resource");
+  RESOURCES.registerAll([
+    { id: "berries", label: "\u044F\u0433\u043E\u0434\u044B", short: "\u044F\u0433\u043E\u0434\u044B", tags: ["food"], nutrition: 1, spoil: 1, loot: 4, color: "#c45c95" },
+    { id: "meat", label: "\u043C\u044F\u0441\u043E", short: "\u043C\u044F\u0441\u043E", tags: ["food"], nutrition: 1.3, spoil: 2.5, loot: 3, color: "#d0786a" },
+    { id: "wood", label: "\u0434\u0440\u043E\u0432\u0430", short: "\u0434\u0440\u043E\u0432\u0430", tags: ["fuel", "material"], loot: 4, color: "#a5794a" },
+    { id: "stone", label: "\u043A\u0430\u043C\u0435\u043D\u044C", short: "\u043A\u0430\u043C\u0435\u043D\u044C", tags: ["material"], loot: 2, color: "#b9b4a6" }
+  ]);
+
+  // src/settlement/query.js
+  var count = (w, key2, any = false) => w.buildings.reduce((n, b) => n + (b.key === key2 && (any || b.done) ? 1 : 0), 0);
+  var has = (w, key2) => w.buildings.some((b) => b.key === key2 && b.done);
+  var openSites = (w) => w.buildings.filter((b) => !b.done);
+  var buildingById = (w, id) => w.buildings.find((b) => b.id === id);
+  var colonists = (w) => w.agents.filter((a) => a.faction === "colony");
+  var ofSpecies = (w, id) => w.agents.filter((a) => a.species === id);
+  var FOOD = () => RESOURCES.filter((r) => r.tags.includes("food"));
+  var foodTotal = (w) => FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
+  var popCap = (w) => 8 + w.mods.add.popCap;
+  var jobUnlocked = (w, job) => !job.requires || has(w, job.requires);
+
+  // src/data/migrations.js
+  var MIGRATIONS = new Registry("migration");
+  MIGRATIONS.registerAll([
+    {
+      id: "settlers",
+      species: "human",
+      faction: "colony",
+      interval: 900,
+      size: (w) => foodTotal(w) > colonists(w).length * 5 && colonists(w).length < popCap(w) ? 1 : 0,
+      message: (w, group) => `\u041A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0430 \u043D\u043E\u0432\u0430\u044F \u0434\u0443\u0448\u0430: <b>${group[0].name}</b>.`
+    },
+    // hares drift in while the meadows can feed more of them; grazers also wander off on their own
+    {
+      id: "hares",
+      species: "hare",
+      faction: "wild",
+      interval: 240,
+      minDist: 20,
+      size: (w, rng) => {
+        const k = WILDLIFE[w.cfg.wildlife].hares;
+        if (!k) return 0;
+        if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
+        const cap = Math.round(w.cache.grass / 500 * k), n = ofSpecies(w, "hare").length;
+        return n < cap ? Math.min(cap - n, 1 + Math.floor(rng() * 3)) : 0;
+      },
+      message: (w, group, side) => group.length > 1 ? `\u0421 ${side} \u043F\u0440\u0438\u0431\u0435\u0436\u0430\u043B\u0438 \u0437\u0430\u0439\u0446\u044B: ${group.length}.` : null
+    },
+    {
+      id: "raiders",
+      species: "human",
+      faction: "raiders",
+      minDist: 40,
+      // scheduled by the start-menu setting, or triggered by the «Набег» button
+      nextAt: (w, rng) => RAIDS[w.cfg.raids].every ? w.tick + RAIDS[w.cfg.raids].every * (0.6 + rng() * 0.8) : Infinity,
+      size: (w) => colonists(w).length ? 2 + Math.floor(colonists(w).length / 4) : 0,
+      init: (a) => {
+        a.name = "\u0412\u043E\u043B\u043A";
+        a.hp = 0.75;
+      },
+      message: (w, group, side) => `\u041D\u0430\u0431\u0435\u0433! ${group.length} ${plural(group.length, "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A", "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430", "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432")} \u0438\u0437 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB ${group.length === 1 ? "\u0438\u0434\u0451\u0442" : "\u0438\u0434\u0443\u0442"} \u0441 ${side}.`
+    }
+  ]);
+
+  // src/data/buildings.js
+  var BUILDINGS = new Registry("building");
+  BUILDINGS.registerAll([
+    {
+      id: "hut",
+      name: "\u0428\u0430\u043B\u0430\u0448",
+      gender: "m",
+      cost: { wood: 18 },
+      work: 160,
+      max: 4,
+      wooden: true,
+      color: "#b88a52",
+      mark: "\u0428",
+      effect: "\u0421\u043E\u043D \u043D\u0430 60% \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043D\u043E\u0447\u044C\u044E \u0441\u043F\u044F\u0449\u0438\u0435 \u043D\u0435 \u043C\u0451\u0440\u0437\u043D\u0443\u0442. \u041B\u0430\u0433\u0435\u0440\u044C \u043F\u0440\u0438\u043C\u0435\u0442 \u043D\u0430 4 \u0436\u0438\u0442\u0435\u043B\u0435\u0439 \u0431\u043E\u043B\u044C\u0448\u0435.",
+      effects: { add: { beds: 4, popCap: 4 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0441\u0432\u043E\u0451 \u0436\u0438\u043B\u044C\u0451",
+      motive: (a, c) => [
+        [a.mem.cold * 1.2, "\u043C\u0451\u0440\u0437\u043D\u0435\u0442 \u043F\u043E \u043D\u043E\u0447\u0430\u043C"],
+        [a.mem.tired, "\u043D\u0435 \u0432\u044B\u0441\u044B\u043F\u0430\u0435\u0442\u0441\u044F"],
+        [c.crowded ? 0.8 : 0, "\u0432 \u043B\u0430\u0433\u0435\u0440\u0435 \u0442\u0435\u0441\u043D\u043E"],
+        [c.count("hut") === 0 ? 0.3 : 0, "\u0445\u043E\u0447\u0435\u0442 \u043A\u0440\u044B\u0448\u0443 \u043D\u0430\u0434 \u0433\u043E\u043B\u043E\u0432\u043E\u0439"]
+      ]
+    },
+    {
+      id: "granary",
+      name: "\u0410\u043C\u0431\u0430\u0440",
+      gender: "m",
+      cost: { wood: 25 },
+      work: 200,
+      max: 1,
+      wooden: true,
+      color: "#c9a24a",
+      mark: "\u0410",
+      effect: "\u0415\u0434\u0430 \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0435 \u043F\u043E\u0440\u0442\u0438\u0442\u0441\u044F \u0432 6 \u0440\u0430\u0437 \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435.",
+      effects: { mul: { spoil: 1 / 6 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u043D\u0430\u0434\u0451\u0436\u043D\u043E \u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0437\u0430\u043F\u0430\u0441\u044B",
+      motive: (a, c) => [[c.spoiled * 0.08, "\u0436\u0430\u043B\u043A\u043E \u0438\u0441\u043F\u043E\u0440\u0447\u0435\u043D\u043D\u0443\u044E \u0435\u0434\u0443"]]
+    },
+    {
+      id: "garden",
+      name: "\u042F\u0433\u043E\u0434\u043D\u044B\u0439 \u043E\u0433\u043E\u0440\u043E\u0434",
+      gender: "m",
+      cost: { wood: 12, berries: 10 },
+      work: 140,
+      max: 2,
+      wooden: false,
+      color: "#c45c95",
+      mark: "\u041E",
+      effect: "\u0420\u044F\u0434\u043E\u043C \u0432\u044B\u0441\u0430\u0436\u0438\u0432\u0430\u044E\u0442\u0441\u044F 12 \u043A\u0443\u0441\u0442\u043E\u0432, \u043E\u043D\u0438 \u043F\u043B\u043E\u0434\u043E\u043D\u043E\u0441\u044F\u0442 \u0432\u0442\u0440\u043E\u0435 \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u0434\u0438\u043A\u0438\u0445.",
+      effects: {},
+      onFinish: "plantGarden",
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0435\u0434\u0443 \u043F\u043E\u0431\u043B\u0438\u0436\u0435 \u043A \u0434\u043E\u043C\u0443",
+      motive: (a) => [[a.mem.hunger * 1.2, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442"], [a.mem.walkFood, "\u0434\u0430\u043B\u0435\u043A\u043E \u0445\u043E\u0434\u0438\u0442\u044C \u0437\u0430 \u044F\u0433\u043E\u0434\u0430\u043C\u0438"], [(a.prefs.gather - 1) * 0.6, "\u043B\u044E\u0431\u0438\u0442 \u0432\u043E\u0437\u0438\u0442\u044C\u0441\u044F \u0441 \u044F\u0433\u043E\u0434\u0430\u043C\u0438"]]
+    },
+    {
+      id: "lodge",
+      name: "\u041E\u0445\u043E\u0442\u043D\u0438\u0447\u0438\u0439 \u043D\u0430\u0432\u0435\u0441",
+      gender: "m",
+      cost: { wood: 20 },
+      work: 160,
+      max: 1,
+      wooden: true,
+      color: "#9a7b56",
+      mark: "\u041D",
+      effect: "\u041B\u0443\u043A\u0438 \u0431\u044C\u044E\u0442 \u0434\u0430\u043B\u044C\u0448\u0435 \u043D\u0430 2 \u043A\u043B\u0435\u0442\u043A\u0438, \u043A\u0430\u0436\u0434\u044B\u0439 \u0437\u0430\u044F\u0446 \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u043C\u044F\u0441\u0430.",
+      effects: { add: { huntRange: 2 }, yield: { meat: 1.5 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F \u0443\u0434\u0430\u0447\u043D\u0435\u0435",
+      motive: (a, c) => [[(a.prefs.hunt - 1) * 1.3, "\u043B\u044E\u0431\u0438\u0442 \u043E\u0445\u043E\u0442\u0443"], [a.mem.chase * 1.2, "\u0437\u0430\u0439\u0446\u044B \u0443\u0445\u043E\u0434\u044F\u0442 \u043E\u0442 \u0441\u0442\u0440\u0435\u043B"], [c.preyCount > 6 ? 0.3 : 0, "\u0432\u043E\u043A\u0440\u0443\u0433 \u043C\u043D\u043E\u0433\u043E \u0437\u0430\u0439\u0446\u0435\u0432"]]
+    },
+    {
+      id: "quarry",
+      name: "\u041A\u0430\u043C\u0435\u043D\u043E\u043B\u043E\u043C\u043D\u044F",
+      gender: "f",
+      cost: { wood: 20 },
+      work: 180,
+      max: 1,
+      wooden: true,
+      color: "#9b9688",
+      mark: "\u041A",
+      effect: "\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u0435\u0442 \u0434\u043E\u0431\u044B\u0447\u0443 \u043A\u0430\u043C\u043D\u044F \u0443 \u0441\u043A\u0430\u043B. \u041A\u0430\u043C\u0435\u043D\u044C \u043D\u0443\u0436\u0435\u043D \u0434\u043B\u044F \u0441\u043B\u043E\u0436\u043D\u044B\u0445 \u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043A.",
+      effects: {},
+      // the 'mine' job lists it in `requires`
+      wish: "\u0433\u043E\u0432\u043E\u0440\u0438\u0442, \u0447\u0442\u043E \u043D\u0443\u0436\u0435\u043D \u043A\u0430\u043C\u0435\u043D\u044C",
+      motive: (a, c) => [[0.35 + (c.wantStone ? 0.35 : 0), "\u0431\u0435\u0437 \u043A\u0430\u043C\u043D\u044F \u0434\u0430\u043B\u044C\u0448\u0435 \u043D\u0435 \u043F\u043E\u0441\u0442\u0440\u043E\u0438\u0442\u044C\u0441\u044F"], [(a.prefs.mine - 1) * 1.5, "\u043B\u044E\u0431\u0438\u0442 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0441 \u043A\u0430\u043C\u043D\u0435\u043C"]]
+    },
+    {
+      id: "sawmill",
+      name: "\u041B\u0435\u0441\u043E\u043F\u0438\u043B\u043A\u0430",
+      gender: "f",
+      cost: { wood: 30, stone: 10 },
+      work: 240,
+      max: 1,
+      wooden: true,
+      color: "#8a6a3c",
+      mark: "\u041B",
+      needs: "quarry",
+      effect: "\u0420\u0443\u0431\u043A\u0430 \u0438\u0434\u0451\u0442 \u043D\u0430 60% \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043A\u0430\u0436\u0434\u043E\u0435 \u0431\u0440\u0435\u0432\u043D\u043E \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u0434\u0440\u043E\u0432.",
+      effects: { jobSpeed: { chop: 1.6 }, yield: { wood: 1.5 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0435 \u0434\u0440\u043E\u0432",
+      motive: (a) => [[a.mem.walkWood, "\u0434\u0430\u043B\u0435\u043A\u043E \u0445\u043E\u0434\u0438\u0442\u044C \u0437\u0430 \u043B\u0435\u0441\u043E\u043C"], [(a.prefs.chop - 1) * 1.4 + a.skill.chop * 0.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u0443\u0431\u0438\u0442\u044C \u043B\u0435\u0441"]]
+    },
+    {
+      id: "smokehouse",
+      name: "\u041A\u043E\u043F\u0442\u0438\u043B\u044C\u043D\u044F",
+      gender: "f",
+      cost: { wood: 15, stone: 15 },
+      work: 220,
+      max: 1,
+      wooden: false,
+      color: "#a85a3a",
+      mark: "\u041A\u043F",
+      needs: "quarry",
+      effect: "\u042F\u0433\u043E\u0434\u044B \u0438 \u043C\u044F\u0441\u043E \u043F\u0435\u0440\u0435\u0440\u0430\u0431\u0430\u0442\u044B\u0432\u0430\u044E\u0442\u0441\u044F: +40% \u0435\u0434\u044B, \u043F\u043E\u0440\u0447\u0430 \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435.",
+      effects: { yield: { berries: 1.4, meat: 1.4 }, mul: { spoil: 0.5 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u043F\u0430\u0441\u043E\u0432 \u043D\u0430 \u0447\u0451\u0440\u043D\u044B\u0439 \u0434\u0435\u043D\u044C",
+      motive: (a, c) => [[a.mem.hunger * 0.8, "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u043F\u0430\u0441\u043E\u0432 \u0435\u0434\u044B"], [(a.prefs.gather - 1) * 0.6 + (a.prefs.hunt - 1) * 0.6, "\u0434\u043E\u0431\u044B\u0432\u0430\u0435\u0442 \u0435\u0434\u0443 \u0438 \u0445\u043E\u0447\u0435\u0442 \u0435\u0451 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"], [c.spoiled * 0.04, "\u0435\u0434\u0430 \u043F\u043E\u0440\u0442\u0438\u0442\u0441\u044F"]]
+    },
+    {
+      id: "well",
+      name: "\u041A\u043E\u043B\u043E\u0434\u0435\u0446",
+      gender: "m",
+      cost: { stone: 25 },
+      work: 200,
+      max: 1,
+      wooden: false,
+      color: "#5d93b8",
+      mark: "\u0412",
+      needs: "quarry",
+      effect: "\u0422\u0443\u0448\u0435\u043D\u0438\u0435 \u0432\u0434\u0432\u043E\u0435 \u044D\u0444\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0435\u0435, \u043A\u043B\u0435\u0442\u043A\u0438 \u0443 \u043B\u0430\u0433\u0435\u0440\u044F \u043E\u0441\u0442\u044B\u0432\u0430\u044E\u0442 \u0431\u044B\u0441\u0442\u0440\u0435\u0435.",
+      effects: { mul: { douse: 2 }, add: { coolCamp: 1 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0432\u043E\u0434\u0443 \u0440\u044F\u0434\u043E\u043C \u0441 \u043B\u0430\u0433\u0435\u0440\u0435\u043C",
+      motive: (a, c) => [[a.mem.fire * 1.5, "\u0432\u0438\u0434\u0435\u043B(\u0430) \u043F\u043E\u0436\u0430\u0440"], [c.burnt > 0 ? 0.4 : 0, "\u0431\u043E\u0438\u0442\u0441\u044F \u043E\u0433\u043D\u044F"]]
+    },
+    {
+      id: "palisade",
+      name: "\u0427\u0430\u0441\u0442\u043E\u043A\u043E\u043B",
+      gender: "m",
+      cost: { wood: 45, stone: 10 },
+      work: 300,
+      max: 1,
+      wooden: true,
+      color: "#6f5a3c",
+      mark: "\u0427",
+      needs: "quarry",
+      effect: "\u0412 \u043B\u0430\u0433\u0435\u0440\u0435 \u0437\u0430\u0449\u0438\u0442\u043D\u0438\u043A\u0438 \u043F\u043E\u043B\u0443\u0447\u0430\u044E\u0442 \u043D\u0430 40% \u043C\u0435\u043D\u044C\u0448\u0435 \u0443\u0440\u043E\u043D\u0430, \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u0443\u043D\u043E\u0441\u044F\u0442 \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u043D\u044C\u0448\u0435.",
+      effects: { mul: { defense: 0.6, loot: 0.5 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u0449\u0438\u0442\u044B \u043E\u0442 \u0447\u0443\u0436\u0430\u043A\u043E\u0432",
+      motive: (a) => [[a.mem.raid * 1.5, "\u0434\u0440\u0430\u043B\u0441\u044F(\u0430\u0441\u044C) \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438"]]
+    }
+  ]);
+
+  // src/settlement/mods.js
+  function emptyMods() {
+    return {
+      add: { beds: 0, popCap: 0, coolCamp: 0, huntRange: 0 },
+      mul: { spoil: 1, defense: 1, loot: 1, douse: 1 },
+      yield: {},
+      jobSpeed: {}
+    };
+  }
+  function recomputeMods(w) {
+    const m = emptyMods();
+    for (const b of w.buildings) {
+      if (!b.done) continue;
+      const e = BUILDINGS.get(b.key).effects || {};
+      for (const [k, v] of Object.entries(e.add || {})) m.add[k] = (m.add[k] || 0) + v;
+      for (const [k, v] of Object.entries(e.mul || {})) m.mul[k] = (m.mul[k] ?? 1) * v;
+      for (const [k, v] of Object.entries(e.yield || {})) m.yield[k] = (m.yield[k] ?? 1) * v;
+      for (const [k, v] of Object.entries(e.jobSpeed || {})) m.jobSpeed[k] = (m.jobSpeed[k] ?? 1) * v;
+    }
+    w.mods = m;
+  }
+  var yieldOf = (w, res) => w.mods.yield[res] ?? 1;
+  var jobSpeedOf = (w, job) => w.mods.jobSpeed[job] ?? 1;
+
+  // src/world/grid.js
+  var inBounds = (w, x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
+  var walkable = (w, i) => WALKABLE[w.grid.terr[i]] === 1;
+  var cellOf = (w, a) => clamp(a.y | 0, 0, w.h - 1) * w.w + clamp(a.x | 0, 0, w.w - 1);
+  var isCampArea = (w, i) => Math.abs(i % w.w - w.camp.x) <= 3 && Math.abs((i / w.w | 0) - w.camp.y) <= 3;
+  var distToCamp2 = (w, i) => (i % w.w - w.camp.x) ** 2 + ((i / w.w | 0) - w.camp.y) ** 2;
+  var DX = [1, -1, 0, 0, 1, 1, -1, -1];
+  var DY = [0, 0, 1, -1, 1, -1, 1, -1];
+  function nextToRock(w, i) {
+    if (!walkable(w, i)) return false;
+    const x = i % w.w, y = i / w.w | 0;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DX[k], ny = y + DY[k];
+      if (inBounds(w, nx, ny) && w.grid.terr[ny * w.w + nx] === T.ROCK) return true;
+    }
+    return false;
+  }
+
+  // src/core/log.js
+  var MAX_LINES = 60;
+  function log(world2, html) {
+    world2.logLines.unshift({ t: world2.tick, html, when: clockStr(world2.tick) });
+    if (world2.logLines.length > MAX_LINES) world2.logLines.pop();
+    world2.logVersion++;
+  }
+
+  // src/world/weather.js
+  function setWind(w) {
+    const a = w.wind.dir * Math.PI / 180;
+    w.wind.x = Math.cos(a) * w.wind.str * 0.5;
+    w.wind.y = Math.sin(a) * w.wind.str * 0.5;
+  }
+  function stepWeather(w) {
+    const wx = w.weather, fires = w.stats.fireCount;
+    if (wx.rainLeft > 0) {
+      wx.rainLeft--;
+      wx.rain = Math.min(1, wx.rain + 0.02);
+      if (wx.rainLeft === 0) log(w, "\u0414\u043E\u0436\u0434\u044C \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F.");
+    } else {
+      wx.rain = Math.max(0, wx.rain - 0.01);
+      const fireClouds = 1 + fires / 20;
+      if (Math.random() < w.climate.rain * fireClouds / DAY) {
+        wx.rainLeft = Math.round(HOUR * (1.5 + Math.random() * 3));
+        log(w, fires > 40 ? "\u041D\u0430\u0434 \u043F\u043E\u0436\u0430\u0440\u043E\u043C \u0441\u043E\u0431\u0440\u0430\u043B\u0438\u0441\u044C \u0442\u0443\u0447\u0438, \u043F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C." : fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C.");
+      }
+    }
+    if (w.cfg.lightning) lightning(w);
+  }
+  function lightning(w) {
+    const h = hourOf(w.tick), dry = w.cfg.climate === "dry" ? 2 : w.cfg.climate === "cold" ? 0.4 : 1;
+    if (h < 11 || h > 19 || w.weather.rain > 0.2 || Math.random() >= 25e-5 * dry * w.n / 12288) return;
+    for (let k = 0; k < 40; k++) {
+      const i = Math.random() * w.n | 0, x = i % w.w, y = i / w.w | 0;
+      if (w.grid.terr[i] !== T.FOREST || w.grid.fire[i] > 0 || (x - w.camp.x) ** 2 + (y - w.camp.y) ** 2 < 22 * 22) continue;
+      w.grid.fire[i] = 0.7;
+      w.grid.temp[i] = 350;
+      w.nav.dirty("fire");
+      log(w, `\u041C\u043E\u043B\u043D\u0438\u044F \u0443\u0434\u0430\u0440\u0438\u043B\u0430 \u0432 \u043B\u0435\u0441 \u0432 ${Math.round(Math.hypot(x - w.camp.x, y - w.camp.y))} \u043A\u043B\u0435\u0442\u043A\u0430\u0445 \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F.`);
+      return;
+    }
+  }
+
+  // src/world/generate.js
+  function noiseLayer(rnd, w, h, cell) {
+    const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
+    const g = new Float32Array(gw * gh);
+    for (let i = 0; i < g.length; i++) g[i] = rnd();
+    const out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const fx = x / cell, fy = y / cell, ix = fx | 0, iy = fy | 0;
+      let tx = fx - ix, ty = fy - iy;
+      tx = tx * tx * (3 - 2 * tx);
+      ty = ty * ty * (3 - 2 * ty);
+      const a = g[iy * gw + ix], b = g[iy * gw + ix + 1], c = g[(iy + 1) * gw + ix], d = g[(iy + 1) * gw + ix + 1];
+      out[y * w + x] = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+    }
+    return out;
+  }
+  function fbm(rnd, w, h) {
+    const k = Math.sqrt(w * h / (128 * 96));
+    const layers = [[36 * Math.min(k, 1.3), 0.5], [18, 0.27], [9, 0.15], [4, 0.08]].map(([c, wt]) => [noiseLayer(rnd, w, h, c), wt]);
+    const n = w * h, o = new Float32Array(n);
+    let mn = 1e9, mx = -1e9;
+    for (let i = 0; i < n; i++) {
+      let v = 0;
+      for (const [l, wt] of layers) v += l[i] * wt;
+      o[i] = v;
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+    }
+    for (let i = 0; i < n; i++) o[i] = (o[i] - mn) / (mx - mn);
+    return o;
+  }
+  function makeTerrain(cfg) {
+    const { w, h } = SIZES[cfg.size], n = w * h;
+    const rng = mulberry(seedNumber(cfg.seed));
+    const hgt = fbm(rng, w, h), moist = fbm(rng, w, h);
+    const waterLvl = [0.2, 0.3, 0.4][cfg.water], rockLvl = [0.88, 0.8, 0.7][cfg.rock], forestLvl = [0.66, 0.56, 0.44][cfg.forest];
+    const terr = new Uint8Array(n), fert = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const hh = hgt[i], m = moist[i];
+      terr[i] = hh < waterLvl ? T.WATER : hh > rockLvl ? T.ROCK : m > forestLvl ? T.FOREST : T.GRASS;
+      fert[i] = clamp(m * 1.25 - (hh - 0.5) * 0.6, 0.05, 1);
+    }
+    let best = -1, bd = 1e9;
+    const mx = Math.round(w * 0.12), my = Math.round(h * 0.12);
+    const blocked = (t) => !BY_CODE[t].walkable;
+    for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) {
+      if (blocked(terr[y * w + x])) continue;
+      let ok = true;
+      for (let yy = -3; yy <= 3 && ok; yy++) for (let xx = -3; xx <= 3; xx++) if (blocked(terr[(y + yy) * w + x + xx])) {
+        ok = false;
+        break;
+      }
+      if (!ok) continue;
+      const d = (x - w / 2) ** 2 + (y - h / 2) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = y * w + x;
+      }
+    }
+    if (best < 0) best = (h >> 1) * w + (w >> 1);
+    const cx = best % w, cy = best / w | 0;
+    for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) terr[(cy + yy) * w + cx + xx] = T.GRASS;
+    return { w, h, terr, hgt, fert, cx, cy, rng };
+  }
+  function createWorld(cfg) {
+    const t = makeTerrain(cfg), n = t.w * t.h;
+    const f32 = () => new Float32Array(n);
+    const world2 = {
+      cfg: { ...cfg },
+      climate: CLIMATES[cfg.climate],
+      w: t.w,
+      h: t.h,
+      n,
+      rng: t.rng,
+      tick: Math.round(7 * HOUR),
+      grid: {
+        terr: t.terr,
+        hgt: t.hgt,
+        fert: t.fert,
+        food: f32(),
+        wood: f32(),
+        fuel: f32(),
+        fire: f32(),
+        temp: f32(),
+        temp2: f32(),
+        smoke: f32(),
+        smoke2: f32(),
+        bush: new Uint8Array(n),
+        bld: new Int16Array(n).fill(-1)
+      },
+      camp: { x: t.cx, y: t.cy, cells: [], set: null },
+      stock: {},
+      agents: [],
+      buildings: [],
+      gardenCells: [],
+      nextId: 1,
+      nameIdx: 0,
+      bldSeq: 0,
+      wind: { dir: cfg.windDir, str: cfg.windStr / 100, x: 0, y: 0 },
+      weather: { rain: 0, rainLeft: 0 },
+      stats: { fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0 },
+      campLit: false,
+      mods: emptyMods(),
+      cache: {},
+      migration: {},
+      council: { lastDay: -1, goal: null, votes: [], args: [], decision: "\u041F\u0435\u0440\u0432\u044B\u0439 \u0441\u043E\u0432\u0435\u0442 \u0441\u043E\u0431\u0435\u0440\u0451\u0442\u0441\u044F \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u0432\u0435\u0447\u0435\u0440\u043E\u043C \u0443 \u043A\u043E\u0441\u0442\u0440\u0430." },
+      logLines: [],
+      logVersion: 0,
+      nav: null
+    };
+    const g = world2.grid;
+    for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) world2.camp.cells.push((t.cy + yy) * t.w + t.cx + xx);
+    world2.camp.set = new Set(world2.camp.cells);
+    const amb = ambientTemp(world2);
+    for (let i = 0; i < n; i++) {
+      const tt = g.terr[i];
+      g.fuel[i] = BY_CODE[tt].fuel;
+      if (tt === T.FOREST) {
+        g.wood[i] = 0.6 + 0.4 * t.rng();
+        g.fuel[i] += g.wood[i];
+      } else if (tt === T.GRASS && t.rng() < 0.07 * g.fert[i] && !isCampArea(world2, i)) {
+        g.bush[i] = 1;
+        g.food[i] = 0.5 + 0.5 * t.rng();
+        g.fuel[i] += 0.2;
+      }
+      g.temp[i] = amb;
+    }
+    for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
+    for (const m of MIGRATIONS.all()) world2.migration[m.id] = m.nextAt ? m.nextAt(world2, t.rng) : world2.tick + (m.interval || 0);
+    setWind(world2);
+    return world2;
+  }
+
+  // src/settlement/buildings.js
+  var ending = (d) => d.gender === "f" ? "\u0430" : "";
+  function canAfford(w, cost) {
+    return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v);
+  }
+  function missing(w, cost) {
+    return Object.entries(cost).filter(([r, v]) => (w.stock[r] || 0) < v).map(([r, v]) => [r, Math.ceil(v - (w.stock[r] || 0))]);
+  }
+  function eligible(w, key2) {
+    const d = BUILDINGS.get(key2);
+    return count(w, key2, true) < d.max && (!d.needs || has(w, d.needs));
+  }
+  function findLot(w) {
+    const g = w.grid;
+    let best = -1, bd = 1e9;
+    for (let y = w.camp.y - 14; y <= w.camp.y + 13; y++) for (let x = w.camp.x - 14; x <= w.camp.x + 13; x++) {
+      if (x < 1 || y < 1 || x >= w.w - 2 || y >= w.h - 2) continue;
+      const d = (x + 1 - w.camp.x) ** 2 + (y + 1 - w.camp.y) ** 2;
+      if (d < 25 || d >= bd) continue;
+      let ok = true;
+      for (let yy = -1; yy <= 2 && ok; yy++) for (let xx = -1; xx <= 2; xx++) {
+        const j = (y + yy) * w.w + x + xx, inner = xx >= 0 && xx <= 1 && yy >= 0 && yy <= 1;
+        if (g.bld[j] >= 0 || inner && (!walkable(w, j) || g.fire[j] > 0 || isCampArea(w, j))) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        bd = d;
+        best = y * w.w + x;
+      }
+    }
+    return best;
+  }
+  function laySite(w, key2) {
+    const d = BUILDINGS.get(key2);
+    if (!eligible(w, key2) || !canAfford(w, d.cost)) return null;
+    const lot = findLot(w);
+    if (lot < 0) {
+      log(w, "\u0412\u043E\u043A\u0440\u0443\u0433 \u043B\u0430\u0433\u0435\u0440\u044F \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043C\u0435\u0441\u0442\u0430 \u043F\u043E\u0434 \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0443.");
+      return null;
+    }
+    for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
+    const b = { id: w.bldSeq++, key: key2, x: lot % w.w, y: lot / w.w | 0, progress: 0, done: false, cells: [] };
+    const g = w.grid;
+    for (let yy = 0; yy < 2; yy++) for (let xx = 0; xx < 2; xx++) {
+      const j = (b.y + yy) * w.w + b.x + xx;
+      b.cells.push(j);
+      g.bld[j] = b.id;
+      g.terr[j] = T.GRASS;
+      g.bush[j] = 0;
+      g.food[j] = 0;
+      g.wood[j] = 0;
+      g.fuel[j] = d.wooden ? 0.9 : 0;
+    }
+    w.buildings.push(b);
+    for (const id of ["sites", "berries", "trees"]) w.nav.dirty(id);
+    log(w, `\u0417\u0430\u043B\u043E\u0436\u0435\u043D${ending(d)} ${d.name.toLowerCase()}. \u041D\u0443\u0436\u043D\u043E ${d.work} \u0447\u0435\u043B\u043E\u0432\u0435\u043A\u043E-\u0442\u0438\u043A\u043E\u0432 \u0440\u0430\u0431\u043E\u0442\u044B.`);
+    return b;
+  }
+  var FINISH_HOOKS = {
+    plantGarden(w, b) {
+      const g = w.grid, cand = [];
+      for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
+        const x = b.x + xx, y = b.y + yy;
+        if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
+        const j = y * w.w + x;
+        if ((g.terr[j] === T.GRASS || g.terr[j] === T.BURNT) && g.bld[j] < 0 && !isCampArea(w, j) && !g.bush[j]) cand.push([j, xx * xx + yy * yy]);
+      }
+      cand.sort((p, q) => p[1] - q[1]);
+      b.plots = [];
+      for (const [j] of cand.slice(0, 12)) {
+        g.terr[j] = T.GRASS;
+        g.bush[j] = 1;
+        g.food[j] = 0.5;
+        g.fuel[j] = 0.6;
+        g.fert[j] = 1;
+        w.gardenCells.push(j);
+        b.plots.push(j);
+      }
+      w.nav.dirty("berries");
+    }
+  };
+  function addLabour(w, b, amount) {
+    if (b.done) return;
+    b.progress += amount;
+    const d = BUILDINGS.get(b.key);
+    if (b.progress < d.work) return;
+    b.done = true;
+    recomputeMods(w);
+    if (d.onFinish) (typeof d.onFinish === "function" ? d.onFinish : FINISH_HOOKS[d.onFinish])(w, b);
+    w.nav.dirty("sites");
+    w.nav.dirty("rockface");
+    log(w, `\u041F\u043E\u0441\u0442\u0440\u043E\u0435\u043D${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`);
+  }
+  function burnBuilding(w, id) {
+    const b = buildingById(w, id);
+    if (!b) return;
+    for (const j of b.cells) w.grid.bld[j] = -1;
+    w.buildings = w.buildings.filter((x) => x !== b);
+    if (b.plots) {
+      const own = new Set(b.plots);
+      w.gardenCells = w.gardenCells.filter((j) => !own.has(j));
+    }
+    recomputeMods(w);
+    w.nav.dirty("sites");
+    const d = BUILDINGS.get(b.key);
+    log(w, `${b.done ? "\u0421\u0433\u043E\u0440\u0435\u043B" + ending(d) : "\u0421\u0433\u043E\u0440\u0435\u043B\u0430 \u0441\u0442\u0440\u043E\u0439\u043A\u0430:"} <b>${d.name.toLowerCase()}</b>.`);
+  }
+
+  // src/settlement/stock.js
+  var foods = () => RESOURCES.filter((r) => r.tags.includes("food"));
+  function deposit(w, res, amount) {
+    w.stock[res] = (w.stock[res] || 0) + amount * yieldOf(w, res);
+  }
+  function eatMeal(w) {
+    let best = null;
+    for (const r of foods()) if (w.stock[r.id] >= 1 && (!best || w.stock[r.id] > w.stock[best.id])) best = r;
+    if (!best) return 0;
+    w.stock[best.id] -= 1;
+    return best.nutrition;
+  }
+  function spoil(w) {
+    for (const r of foods()) {
+      const lost = w.stock[r.id] * 15e-5 * r.spoil * w.mods.mul.spoil;
+      w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
+      w.stats.spoiledToday += lost;
+    }
+  }
+  function burnStock(w, frac) {
+    for (const r of RESOURCES.all()) w.stock[r.id] = Math.max(0, w.stock[r.id] * (1 - frac));
+  }
+  function plunder(w) {
+    let total = 0;
+    for (const r of RESOURCES.all()) {
+      const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot);
+      w.stock[r.id] -= take;
+      total += take;
+    }
+    return total;
+  }
+
+  // src/world/fields.js
+  var FIRE = { cap: 320, heat: 46, pF: 0.011, pG: 5e-3, burn: 0.03, wetIgn: 80, outBase: 2e-3, outWet: 0.012, ignForest: 80, ignGrass: 120 };
+  function advect(w, src, dst, ux, uy) {
+    const W = w.w, H = w.h;
+    if (ux === 0 && uy === 0) {
+      dst.set(src);
+      return;
+    }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const sx = clamp(x - ux, 0, W - 1.001), sy = clamp(y - uy, 0, H - 1.001);
+      const x0 = sx | 0, y0 = sy | 0, tx = sx - x0, ty = sy - y0, i0 = y0 * W + x0;
+      dst[y * W + x] = (src[i0] * (1 - tx) + src[i0 + 1] * tx) * (1 - ty) + (src[i0 + W] * (1 - tx) + src[i0 + W + 1] * tx) * ty;
+    }
+  }
+  function heatAndSmoke(w) {
+    const g = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain = w.weather.rain;
+    advect(w, g.smoke, g.smoke2, w.wind.x, w.wind.y);
+    [g.smoke, g.smoke2] = [g.smoke2, g.smoke];
+    advect(w, g.temp, g.temp2, w.wind.x * 0.35, w.wind.y * 0.35);
+    [g.temp, g.temp2] = [g.temp2, g.temp];
+    const { temp, temp2, smoke, smoke2, fire, terr } = g;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
+      const Tc = temp[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
+      const Tn = Tc + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * Tc) + (relax + rain * 0.03) * (amb - Tc) + fire[i] * FIRE.heat;
+      temp2[i] = Tn > FIRE.cap ? FIRE.cap : Tn;
+      const Sm = smoke[i], Sn = Sm + 0.12 * (smoke[l] + smoke[r] + smoke[u] + smoke[d] - 4 * Sm) - 0.012 * Sm + fire[i] * 0.25;
+      smoke2[i] = Sn > 4 ? 4 : Sn;
+    }
+    [g.temp, g.temp2] = [g.temp2, g.temp];
+    [g.smoke, g.smoke2] = [g.smoke2, g.smoke];
+  }
+  function campfire(w) {
+    const cold = colonists(w).some((a) => a.needs.warmth < 0.6);
+    w.campLit = w.stock.wood > 0.05 && (nightness(w.tick) > 0.3 || cold);
+    if (!w.campLit) return;
+    w.stock.wood = Math.max(0, w.stock.wood - 4e-3);
+    for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
+  }
+  function burn(w) {
+    const g = w.grid, rain = w.weather.rain, st = w.stats;
+    const ignF = FIRE.ignForest + w.climate.ign, ignG = FIRE.ignGrass + w.climate.ign;
+    st.fireCount = 0;
+    st.fireNearCamp = 0;
+    for (let i = 0; i < w.n; i++) {
+      const f = g.fire[i];
+      if (f > 0) {
+        const wet = g.fert[i];
+        g.fuel[i] -= FIRE.burn * f;
+        let nf = g.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
+        if (Math.random() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;
+        nf -= rain * 0.045;
+        if (g.fuel[i] <= 0) g.fuel[i] = 0;
+        if (nf < 0.03) {
+          g.fire[i] = 0;
+          if (g.fuel[i] < 0.25) {
+            if (g.terr[i] !== T.WATER && g.terr[i] !== T.ROCK) g.terr[i] = T.BURNT;
+            g.wood[i] = 0;
+            g.food[i] = 0;
+            g.bush[i] = 0;
+            st.burntCells++;
+            w.nav.dirty("trees");
+            w.nav.dirty("berries");
+            if (g.bld[i] >= 0) burnBuilding(w, g.bld[i]);
+          } else {
+            g.wood[i] = Math.min(g.wood[i], Math.max(0, g.fuel[i] - 1.2));
+            w.nav.dirty("trees");
+          }
+        } else g.fire[i] = nf;
+        if (g.fire[i] > 0) {
+          st.fireCount++;
+          if (distToCamp2(w, i) < 400) st.fireNearCamp++;
+          if (isCampArea(w, i)) burnStock(w, 15e-4);
+        }
+      } else if (g.fuel[i] > 0.12) {
+        const forest = g.fuel[i] > 1, wet = g.fert[i];
+        if (g.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && Math.random() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) {
+          g.fire[i] = 0.2;
+          w.nav.dirty("fire");
+        }
+      }
+    }
+  }
+  function growth(w) {
+    const g = w.grid;
+    for (const c of w.gardenCells) if (g.bush[c] && g.fire[c] === 0 && g.food[c] < 1) {
+      g.food[c] = Math.min(1, g.food[c] + 35e-4);
+      if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty("berries");
+    }
+    if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
+      const x = w.camp.x + xx, y = w.camp.y + yy;
+      if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
+      const j = y * w.w + x;
+      if (g.temp[j] > 40) g.temp[j] -= (g.temp[j] - 40) * 0.08;
+    }
+    const samples = Math.round(160 * w.n / 12288 * w.climate.regrow);
+    for (let k = 0; k < samples; k++) {
+      const i = Math.random() * w.n | 0;
+      if (g.fire[i] > 0 || g.bld[i] >= 0) continue;
+      const t = g.terr[i], f = g.fert[i];
+      if (t === T.BURNT) {
+        if (Math.random() < 0.02) {
+          g.terr[i] = T.GRASS;
+          g.fuel[i] = 0.1;
+        }
+      } else if (t === T.GRASS) {
+        if (g.fuel[i] < 0.4) g.fuel[i] = Math.min(0.4, g.fuel[i] + 0.02);
+        if (g.bush[i]) {
+          g.food[i] = Math.min(1, g.food[i] + 0.05 * f);
+          if (g.food[i] > 0.35) w.nav.dirty("berries");
+        } else if (!isCampArea(w, i) && Math.random() < 25e-4 * f) {
+          g.bush[i] = 1;
+          g.food[i] = 0.1;
+          g.fuel[i] += 0.2;
+        }
+        if (Math.random() < 15e-4 * f && f > 0.55 && !isCampArea(w, i)) {
+          g.terr[i] = T.FOREST;
+          g.wood[i] = 0.3;
+          g.fuel[i] = 1.5;
+          g.bush[i] = 0;
+        }
+      } else if (t === T.FOREST && g.wood[i] < 1) {
+        g.wood[i] = Math.min(1, g.wood[i] + 0.03);
+        g.fuel[i] = 1.2 + g.wood[i];
+      }
+    }
+  }
+  function stepFields(w) {
+    heatAndSmoke(w);
+    campfire(w);
+    burn(w);
+    growth(w);
+    spoil(w);
+  }
+
+  // src/data/species.js
+  var SPECIES = new Registry("species");
+  var HUMAN_NAMES = [
+    "\u041C\u0438\u043B\u0430\u0432\u0430",
+    "\u0416\u0434\u0430\u043D",
+    "\u0413\u043E\u0440\u0438\u0441\u043B\u0430\u0432",
+    "\u0412\u0435\u0441\u0435\u043B\u0438\u043D\u0430",
+    "\u0422\u0438\u0445\u043E\u043D",
+    "\u041B\u044E\u0431\u0430\u0432\u0430",
+    "\u041C\u0438\u0440\u043E\u043D",
+    "\u0417\u043B\u0430\u0442\u0430",
+    "\u042F\u0440\u043E\u0441\u043B\u0430\u0432",
+    "\u0414\u0430\u0440\u0438\u043D\u0430",
+    "\u0420\u0430\u0442\u0438\u0431\u043E\u0440",
+    "\u0421\u043D\u0435\u0436\u0430\u043D\u0430",
+    "\u0411\u043E\u044F\u043D",
+    "\u0417\u0430\u0431\u0430\u0432\u0430",
+    "\u0421\u0432\u0435\u0442\u043E\u0437\u0430\u0440",
+    "\u0410\u0433\u043D\u0438\u044F",
+    "\u0412\u0435\u043B\u0438\u043C\u0438\u0440",
+    "\u041E\u043B\u0435\u0441\u044F",
+    "\u0414\u043E\u0431\u0440\u044B\u043D\u044F",
+    "\u0412\u0430\u0441\u0438\u043B\u0438\u0441\u0430",
+    "\u0420\u0430\u0434\u0438\u043C",
+    "\u0412\u0435\u0434\u0430\u043D\u0430"
+  ];
+  SPECIES.registerAll([
+    {
+      id: "human",
+      label: "\u0447\u0435\u043B\u043E\u0432\u0435\u043A",
+      hp: 1,
+      speed: 0.13,
+      needs: ["food", "rest", "warmth"],
+      heatHarm: 70,
+      look: { shape: "person", size: 0.62 },
+      names: HUMAN_NAMES,
+      sentient: true
+    },
+    // Hares graze, rest at night, bolt from people and fire. They never breed here:
+    // their numbers change only through migration (see migrations.js).
+    {
+      id: "hare",
+      label: "\u0437\u0430\u044F\u0446",
+      hp: 0.3,
+      speed: 0.17,
+      needs: [],
+      brain: "grazer",
+      heatHarm: 60,
+      look: { shape: "hare", size: 0.42, color: "#cdbb9a" },
+      yields: { resource: "meat", amount: 2 },
+      flee: { radius: 4.5, sprint: 1.45 },
+      grazes: { terrain: ["grass"], eatsBerries: 4e-3 },
+      leaveChance: 4e-4
+    }
+  ]);
+
+  // src/data/navmaps.js
+  var NAVMAPS = new Registry("navmap");
+  NAVMAPS.registerAll([
+    { id: "camp", seed: (w, i) => w.camp.set.has(i) },
+    { id: "edge", seed: (w, i) => {
+      const x = i % w.w, y = i / w.w | 0;
+      return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1;
+    } },
+    { id: "berries", seed: (w, i) => w.grid.food[i] > 0.35 && w.grid.fire[i] === 0 },
+    { id: "trees", seed: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.3 && w.grid.fire[i] === 0 },
+    {
+      id: "rockface",
+      active: (w) => has(w, "quarry"),
+      seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && nextToRock(w, i)
+    },
+    {
+      id: "sites",
+      active: (w) => openSites(w).length > 0,
+      prepare: (w) => new Set(openSites(w).flatMap((b) => b.cells)),
+      seed: (w, i, cells) => cells.has(i)
+    },
+    // game animals: hunters walk this field until they are close enough to stalk directly
+    {
+      id: "prey",
+      active: (w) => w.agents.some((a) => a.task?.job === "hunt"),
+      prepare: (w) => new Set(w.agents.filter((a) => SPECIES.get(a.species).yields).map((a) => cellOf(w, a))),
+      seed: (w, i, cells) => cells.has(i)
+    },
+    // only fires that threaten the camp are worth fighting
+    {
+      id: "fire",
+      active: (w) => w.stats.fireCount > 0,
+      seed: (w, i) => w.grid.fire[i] > 0.05 && (i % w.w - w.camp.x) ** 2 + ((i / w.w | 0) - w.camp.y) ** 2 < 400
+    },
+    // escape map: seeds are cells barely warmer than the air; fire is made almost impassable
+    {
+      id: "safe",
+      active: (w) => w.stats.fireCount > 0,
+      hazard: 25,
+      urgent: true,
+      prepare: (w) => ambientTemp(w) + 14,
+      seed: (w, i, lim) => w.grid.temp[i] < lim && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6
+    }
+  ]);
+
+  // src/nav/navigation.js
+  var FAR = 1e9;
+  var Navigation = class {
+    constructor(world2) {
+      this.w = world2;
+      const n = world2.n;
+      this.dist = {};
+      for (const d of NAVMAPS.all()) this.dist[d.id] = new Float64Array(n).fill(FAR);
+      this.dirtySet = new Set(NAVMAPS.ids());
+      this.order = NAVMAPS.ids();
+      this.cost = new Float32Array(n);
+      this.closed = new Uint8Array(n);
+      this.heapI = new Int32Array(n * 9);
+      this.heapD = new Float64Array(n * 9);
+      this.every = Math.max(1, Math.round(n / 12288));
+    }
+    get(id) {
+      return this.dist[id];
+    }
+    dirty(id) {
+      this.dirtySet.add(id);
+    }
+    // fire, heat and smoke make cells expensive; `hazard` scales that for the escape map
+    computeCost(hazard) {
+      const g = this.w.grid, cost = this.cost;
+      for (let i = 0; i < this.w.n; i++) {
+        const t = g.terr[i];
+        if (!WALKABLE[t]) {
+          cost[i] = -1;
+          continue;
+        }
+        let c = BY_CODE[t].pathCost + (g.fire[i] * 60 + g.smoke[i] * 1.5) * hazard;
+        if (g.temp[i] > 45) c += (g.temp[i] - 45) * 0.3 * hazard;
+        cost[i] = c;
+      }
+    }
+    build(id) {
+      const def = NAVMAPS.get(id), w = this.w, W = w.w, H = w.h;
+      const dist = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
+      this.computeCost(def.hazard ?? 1);
+      const ctx = def.prepare ? def.prepare(w) : null;
+      dist.fill(FAR);
+      closed.fill(0);
+      let hn = 0;
+      const push = (i, d) => {
+        let k = hn++;
+        while (k > 0) {
+          const p = k - 1 >> 1;
+          if (hD[p] <= d) break;
+          hI[k] = hI[p];
+          hD[k] = hD[p];
+          k = p;
+        }
+        hI[k] = i;
+        hD[k] = d;
+      };
+      for (let i = 0; i < w.n; i++) if (cost[i] >= 0 && def.seed(w, i, ctx)) {
+        dist[i] = 0;
+        push(i, 0);
+      }
+      while (hn > 0) {
+        const i = hI[0], d = hD[0];
+        hn--;
+        const li = hI[hn], ld = hD[hn];
+        let k = 0;
+        for (; ; ) {
+          let c = 2 * k + 1;
+          if (c >= hn) break;
+          if (c + 1 < hn && hD[c + 1] < hD[c]) c++;
+          if (hD[c] >= ld) break;
+          hI[k] = hI[c];
+          hD[k] = hD[c];
+          k = c;
+        }
+        hI[k] = li;
+        hD[k] = ld;
+        if (closed[i] || d > dist[i]) continue;
+        closed[i] = 1;
+        const x = i % W, y = i / W | 0;
+        for (let q = 0; q < 8; q++) {
+          const nx = x + DX[q], ny = y + DY[q];
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const j = ny * W + nx;
+          let c = cost[j];
+          if (c < 0) continue;
+          if (q >= 4) {
+            if (cost[y * W + nx] < 0 || cost[ny * W + x] < 0) continue;
+            c *= 1.414;
+          }
+          const nd = d + c;
+          if (nd < dist[j]) {
+            dist[j] = nd;
+            push(j, nd);
+          }
+        }
+      }
+      this.dirtySet.delete(id);
+    }
+    buildAll() {
+      for (const id of this.order) this.build(id);
+    }
+    step() {
+      const w = this.w;
+      if (w.tick % this.every !== 0) return;
+      const slot = w.tick / this.every | 0, id = this.order[slot % this.order.length], def = NAVMAPS.get(id);
+      if (!def.active || def.active(w) || this.dirtySet.has(id)) this.build(id);
+      for (const d of this.order) if (this.dirtySet.has(d)) {
+        this.build(d);
+        break;
+      }
+      for (const d of NAVMAPS.filter((m) => m.urgent)) if (d.id !== id && slot % 2 === 0 && d.active(w)) this.build(d.id);
+    }
+  };
+
+  // src/data/needs.js
+  var NEEDS = new Registry("need");
+  NEEDS.registerAll([
+    {
+      id: "food",
+      label: "\u0441\u044B\u0442\u043E\u0441\u0442\u044C",
+      color: "var(--food)",
+      task: "eat",
+      memory: "hunger",
+      start: [0.6, 1],
+      decay: (w, a) => 6e-4 * a.mods.hunger,
+      harm: 8e-4,
+      cause: "\u0433\u043E\u043B\u043E\u0434\u0430",
+      urge: (w, a, v) => (1 - v) ** 2 * 2.2
+    },
+    {
+      id: "rest",
+      label: "\u0431\u043E\u0434\u0440\u043E\u0441\u0442\u044C",
+      color: "#7d9be0",
+      task: "sleep",
+      memory: "tired",
+      start: [0.6, 1],
+      decay: (w, a) => a.sleeping ? 0 : 45e-5,
+      harm: 0,
+      cause: "\u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438",
+      urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w.tick) > 0.6 && v < 0.75 ? 0.35 : 0)
+    },
+    // warmth follows the temperature field under the agent's feet
+    {
+      id: "warmth",
+      label: "\u0442\u0435\u043F\u043B\u043E",
+      color: "var(--ember)",
+      task: "warm",
+      memory: "cold",
+      start: [0.9, 0.9],
+      decay: (w, a, T2) => T2 < 14 ? (14 - T2) * 12e-5 * a.mods.cold : T2 > 18 ? -3e-3 : 0,
+      harm: 7e-4,
+      harmBelow: 0.15,
+      cause: "\u0445\u043E\u043B\u043E\u0434\u0430",
+      urge: (w, a, v) => (1 - v) ** 2 * 2
+    }
+  ]);
+
+  // src/data/jobs.js
+  var JOBS = new Registry("job");
+  var want = (stock, pop, low, enough) => stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04;
+  JOBS.registerAll([
+    {
+      id: "gather",
+      label: "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C \u044F\u0433\u043E\u0434\u044B",
+      short: "\u0441\u0431\u043E\u0440",
+      verb: "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u044F\u0433\u043E\u0434\u044B",
+      preferable: true,
+      runner: "harvest",
+      nav: "berries",
+      resource: "berries",
+      carry: 3,
+      time: 12,
+      memory: "walkFood",
+      desire: (w, ctx) => want(ctx.food, ctx.pop, 4, 8),
+      valid: (w, i) => w.grid.food[i] > 0.3 && w.grid.fire[i] === 0,
+      take: (w, i) => {
+        w.grid.food[i] -= 0.34;
+        w.nav.dirty("berries");
+      }
+    },
+    {
+      id: "chop",
+      label: "\u0440\u0443\u0431\u0438\u0442\u044C \u043B\u0435\u0441",
+      short: "\u0440\u0443\u0431\u043A\u0430",
+      verb: "\u0440\u0443\u0431\u0438\u0442 \u043B\u0435\u0441",
+      preferable: true,
+      runner: "harvest",
+      nav: "trees",
+      resource: "wood",
+      carry: 2,
+      time: 26,
+      memory: "walkWood",
+      desire: (w, ctx) => w.stock.wood < 25 ? 0.55 : w.stock.wood < 40 ? 0.2 : 0.03,
+      valid: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.25 && w.grid.fire[i] === 0,
+      take: (w, i) => {
+        const g = w.grid;
+        g.wood[i] -= 0.35;
+        if (g.wood[i] < 0.1) {
+          g.terr[i] = T.GRASS;
+          g.fuel[i] = 0.4;
+          g.wood[i] = 0;
+        }
+        w.nav.dirty("trees");
+      }
+    },
+    {
+      id: "mine",
+      label: "\u0434\u043E\u0431\u044B\u0432\u0430\u0442\u044C \u043A\u0430\u043C\u0435\u043D\u044C",
+      short: "\u043A\u0430\u043C\u0435\u043D\u044C",
+      verb: "\u0434\u043E\u0431\u044B\u0432\u0430\u0435\u0442 \u043A\u0430\u043C\u0435\u043D\u044C",
+      preferable: true,
+      runner: "harvest",
+      nav: "rockface",
+      resource: "stone",
+      carry: 2,
+      time: 30,
+      requires: "quarry",
+      desire: (w) => w.stock.stone < 20 ? 0.48 : w.stock.stone < 40 ? 0.18 : 0.03,
+      valid: (w, i) => w.grid.fire[i] === 0,
+      take: () => {
+      }
+    },
+    {
+      id: "hunt",
+      label: "\u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F",
+      short: "\u043E\u0445\u043E\u0442\u0430",
+      verb: "\u043E\u0445\u043E\u0442\u0438\u0442\u0441\u044F",
+      preferable: true,
+      runner: "hunt",
+      nav: "prey",
+      prey: ["hare"],
+      range: 4.5,
+      carry: 1,
+      time: 18,
+      desire: (w, ctx) => ctx.preyCount > 0 ? want(ctx.food, ctx.pop, 4, 8) * 0.8 + 0.08 : -1
+    },
+    {
+      id: "build",
+      label: "\u0441\u0442\u0440\u043E\u0438\u0442\u044C",
+      short: "\u0441\u0442\u0440\u043E\u0439\u043A\u0430",
+      verb: "\u0441\u0442\u0440\u043E\u0438\u0442",
+      preferable: true,
+      runner: "build",
+      nav: "sites",
+      desire: (w, ctx) => ctx.openSites ? 0.6 : -1
+    }
+  ]);
+
+  // src/agents/movement.js
+  function speedOf(w, a) {
+    return SPECIES.get(a.species).speed * a.mods.speed * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
+  }
+  function moveToward(w, a, tx, ty, mul = 1) {
+    const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy), sp = speedOf(w, a) * mul;
+    if (len <= sp) {
+      a.x = tx;
+      a.y = ty;
+      return true;
+    }
+    const nx = a.x + dx / len * sp, ny = a.y + dy / len * sp;
+    if (!walkable(w, (Math.max(0, ny) | 0) * w.w + (Math.max(0, nx) | 0))) return null;
+    a.x = nx;
+    a.y = ny;
+    return false;
+  }
+  function follow(w, a, mapId, mul = 1) {
+    const dist = w.nav.get(mapId), i = cellOf(w, a);
+    if (dist[i] === 0) return "arrived";
+    const x = i % w.w, y = i / w.w | 0;
+    let best = dist[i], bj = -1;
+    for (let k = 0; k < 8; k++) {
+      const nx = x + DX[k], ny = y + DY[k];
+      if (!inBounds(w, nx, ny)) continue;
+      const j = ny * w.w + nx;
+      if (dist[j] < best) {
+        best = dist[j];
+        bj = j;
+      }
+    }
+    if (bj < 0) return dist[i] >= FAR ? "none" : "stuck";
+    const sp = speedOf(w, a) * mul, tx = bj % w.w + 0.5, ty = (bj / w.w | 0) + 0.5;
+    const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy);
+    if (len <= sp) {
+      a.x = tx;
+      a.y = ty;
+    } else {
+      a.x += dx / len * sp;
+      a.y += dy / len * sp;
+    }
+    return "moving";
+  }
+  var danger = (w, i) => w.grid.temp[i] + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
+  function nearFire(w, a, r) {
+    const cx = a.x | 0, cy = a.y | 0, R = Math.ceil(r);
+    for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
+      if (!inBounds(w, x, y)) continue;
+      if (w.grid.fire[y * w.w + x] > 0.05 && (x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 <= r * r) return true;
+    }
+    return false;
+  }
+  function escapeHeat(w, a, mul = 1.35) {
+    if (follow(w, a, "safe", mul) === "moving") return;
+    const i = cellOf(w, a), x = i % w.w, y = i / w.w | 0;
+    let bj = i, bd = danger(w, i);
+    for (let k = 0; k < 8; k++) {
+      const nx = x + DX[k], ny = y + DY[k];
+      if (!inBounds(w, nx, ny)) continue;
+      const j = ny * w.w + nx;
+      if (walkable(w, j) && danger(w, j) < bd) {
+        bd = danger(w, j);
+        bj = j;
+      }
+    }
+    moveToward(w, a, bj % w.w + 0.5, (bj / w.w | 0) + 0.5, mul);
+  }
+  function bolt(w, a, threats, mul) {
+    let best = null, bs = -Infinity;
+    for (let k = 0; k < 16; k++) {
+      const ang = k / 16 * Math.PI * 2, tx = a.x + Math.cos(ang) * 1.5, ty = a.y + Math.sin(ang) * 1.5;
+      if (!inBounds(w, tx | 0, ty | 0) || !walkable(w, (ty | 0) * w.w + (tx | 0))) continue;
+      let s = 0;
+      for (const t of threats) s += Math.min(8, Math.hypot(tx - t.x, ty - t.y));
+      if (s > bs) {
+        bs = s;
+        best = [tx, ty];
+      }
+    }
+    if (best) moveToward(w, a, best[0], best[1], mul);
+  }
+  function separate(w) {
+    const ags = w.agents;
+    for (let p = 0; p < ags.length; p++) for (let q = p + 1; q < ags.length; q++) {
+      const A = ags[p], B = ags[q], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy;
+      if (d2 >= 0.16 || d2 < 1e-6) continue;
+      const d = Math.sqrt(d2), push = (0.4 - d) * 0.25, ux = dx / d * push, uy = dy / d * push;
+      const ok = (x, y) => inBounds(w, x | 0, y | 0) && walkable(w, (y | 0) * w.w + (x | 0));
+      if (ok(A.x - ux, A.y - uy)) {
+        A.x -= ux;
+        A.y -= uy;
+      }
+      if (ok(B.x + ux, B.y + uy)) {
+        B.x += ux;
+        B.y += uy;
+      }
+    }
+  }
+
+  // src/data/factions.js
+  var FACTIONS = new Registry("faction");
+  FACTIONS.registerAll([
+    { id: "colony", label: "\u043A\u043E\u043B\u043E\u043D\u0438\u044F", brain: "colonist", color: "#62c6b9", hostile: ["raiders"] },
+    { id: "raiders", label: "\u0421\u0435\u0440\u044B\u0435 \u0432\u043E\u043B\u043A\u0438", brain: "raider", color: "#d9585e", hostile: ["colony"] },
+    { id: "wild", label: "\u0434\u0438\u043A\u0438\u0435 \u0437\u0432\u0435\u0440\u0438", brain: null, color: "#cdbb9a", hostile: [] }
+  ]);
+  function isHostile(a, b) {
+    return FACTIONS.get(a.faction).hostile.includes(b.faction);
+  }
+
+  // src/data/traits.js
+  var TRAITS = new Registry("trait");
+  TRAITS.registerAll([
+    { id: "brave", label: "\u0441\u043C\u0435\u043B\u044B\u0439", group: "courage", weight: 1, mods: { bravery: 0.45 } },
+    { id: "timid", label: "\u0440\u043E\u0431\u043A\u0438\u0439", group: "courage", weight: 1, mods: { bravery: -0.4 } },
+    { id: "hardy", label: "\u0437\u0430\u043A\u0430\u043B\u0451\u043D\u043D\u044B\u0439", group: "cold", weight: 1, mods: { cold: 0.6 } },
+    { id: "chilly", label: "\u043C\u0435\u0440\u0437\u043B\u044F\u0432\u044B\u0439", group: "cold", weight: 1, mods: { cold: 1.5 } },
+    { id: "glutton", label: "\u043E\u0431\u0436\u043E\u0440\u0430", group: "appetite", weight: 1, mods: { hunger: 1.35 } },
+    { id: "frugal", label: "\u043D\u0435\u043F\u0440\u0438\u0445\u043E\u0442\u043B\u0438\u0432\u044B\u0439", group: "appetite", weight: 1, mods: { hunger: 0.75 } },
+    { id: "quick", label: "\u0448\u0443\u0441\u0442\u0440\u044B\u0439", group: "pace", weight: 1, mods: { speed: 1.15 } },
+    { id: "diligent", label: "\u0443\u0441\u0435\u0440\u0434\u043D\u044B\u0439", group: "work", weight: 1, mods: { work: 1.2 } },
+    { id: "lazy", label: "\u043B\u0435\u043D\u0438\u0432\u044B\u0439", group: "work", weight: 1, mods: { work: 0.8 } }
+  ]);
+  var BASE_MODS = { bravery: 1, cold: 1, hunger: 1, speed: 1, work: 1 };
+  var LIKE_RANGE = [1.45, 1.65];
+  var DISLIKE_RANGE = [0.45, 0.65];
+  var NEUTRAL_RANGE = [0.85, 1.15];
+
+  // src/agents/agent.js
+  var newMemory = () => new Proxy({}, { get: (t, k) => typeof k === "string" ? t[k] ?? 0 : t[k] });
+  var between = (rng, [a, b]) => a + rng() * (b - a);
+  function personality(w, a) {
+    const rng = w.rng, pool = shuffle(rng, JOBS.filter((j) => j.preferable).map((j) => j.id));
+    a.prefs = {};
+    a.skill = {};
+    for (const id of JOBS.ids()) {
+      a.prefs[id] = between(rng, NEUTRAL_RANGE);
+      a.skill[id] = rng() * 0.15;
+    }
+    a.likes = pool[0];
+    a.dislikes = pool[1];
+    a.prefs[a.likes] = between(rng, LIKE_RANGE);
+    a.skill[a.likes] = 0.3;
+    a.prefs[a.dislikes] = between(rng, DISLIKE_RANGE);
+    a.traits = [];
+    const groups = /* @__PURE__ */ new Set(), want2 = rng() < 0.25 ? 0 : rng() < 0.6 ? 1 : 2;
+    for (let k = 0; k < want2; k++) {
+      const opts = TRAITS.filter((t2) => !groups.has(t2.group)).map((t2) => [t2, t2.weight]);
+      const t = weighted(rng, opts);
+      if (!t) break;
+      a.traits.push(t.id);
+      groups.add(t.group);
+    }
+    for (const id of a.traits) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) {
+      a.mods[k] = k === "bravery" ? a.mods[k] + v : a.mods[k] * v;
+    }
+    a.mods.bravery *= 0.85 + rng() * 0.3;
+  }
+  function createAgent(w, speciesId, factionId, x, y) {
+    const sp = SPECIES.get(speciesId), fa = FACTIONS.get(factionId);
+    const a = {
+      id: w.nextId++,
+      species: speciesId,
+      faction: factionId,
+      brain: sp.brain || fa.brain,
+      name: sp.names ? sp.names[w.nameIdx++ % sp.names.length] : sp.label,
+      x,
+      y,
+      hp: sp.hp,
+      mods: { ...BASE_MODS },
+      needs: {},
+      mem: newMemory(),
+      task: null,
+      think: w.rng() * 15 | 0,
+      cd: 0,
+      carry: null,
+      sleeping: false
+    };
+    for (const id of sp.needs) {
+      const n = NEEDS.get(id);
+      a.needs[id] = between(w.rng, n.start);
+    }
+    if (sp.sentient && factionId === "colony") personality(w, a);
+    w.agents.push(a);
+    return a;
+  }
+  function kill(w, a, cause, by) {
+    if (a.dead) return;
+    a.dead = true;
+    a.hp = 0;
+    const sp = SPECIES.get(a.species);
+    if (a.faction === "colony") log(w, by ? `<b>${esc(a.name)}</b> \u043F\u043E\u0433\u0438\u0431(\u043B\u0430) \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> \u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B(\u0430) ${cause}.`);
+    else if (a.faction === "raiders" && by) log(w, `\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A \u0443\u0431\u0438\u0442, \u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B(\u0430) <b>${esc(by.name)}</b>.`);
+    else if (sp.yields && by) {
+    }
+  }
+
+  // src/agents/combat.js
+  function nearestHostile(w, a, r) {
+    let best = null, bd = r * r;
+    for (const o of w.agents) {
+      if (o === a || o.dead || !isHostile(a, o)) continue;
+      const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = o;
+      }
+    }
+    return best;
+  }
+  function attack(w, a, t) {
+    if (a.cd > 0) return;
+    const dCamp = w.nav.get("camp");
+    const home = a.faction === "colony" && dCamp[cellOf(w, a)] < 8 ? 1.5 : 1;
+    const wall = t.faction === "colony" && dCamp[cellOf(w, t)] < 8 ? w.mods.mul.defense : 1;
+    a.cd = 12;
+    a.flash = 4;
+    t.hp -= (0.1 + Math.random() * 0.12) * home * wall;
+    if (t.faction === "colony") t.mem.raid += 0.25;
+    else if (a.faction === "colony") a.mem.raid += 0.1;
+    if (t.hp <= 0) kill(w, t, "\u0440\u0430\u043D", a);
+  }
+
+  // src/agents/jobRunners.js
+  function workRate(w, a, jobId) {
+    a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 6e-4);
+    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId);
+  }
+  var done = (a) => {
+    a.task = null;
+    a.think = 0;
+  };
+  function haulHome(w, a) {
+    if (follow(w, a, "camp") !== "arrived") return;
+    deposit(w, a.carry.res, a.carry.n);
+    a.carry = null;
+    done(a);
+  }
+  var RUNNERS = {
+    harvest(w, a, task) {
+      const job = JOBS.get(task.job);
+      if (a.carry && (a.carry.n >= job.carry || task.eatNow && a.carry.n >= 1)) {
+        if (task.eatNow) {
+          a.needs.food = Math.min(1, a.needs.food + 0.4 * a.carry.n);
+          a.carry = null;
+          done(a);
+          return;
+        }
+        haulHome(w, a);
+        return;
+      }
+      const r = follow(w, a, job.nav), i = cellOf(w, a);
+      if (r === "arrived") {
+        if (!job.valid(w, i)) {
+          w.nav.dirty(job.nav);
+          task.work = 0;
+          return;
+        }
+        task.work = (task.work || 0) + workRate(w, a, job.id);
+        if (task.work < job.time) return;
+        task.work = 0;
+        job.take(w, i);
+        if (!a.carry) a.carry = { res: job.resource, n: 0 };
+        a.carry.n++;
+      } else if (r === "none") {
+        if (a.carry?.n) a.carry.n = job.carry;
+        else {
+          a.task = { id: "idle" };
+          a.think = 20;
+        }
+      }
+      if (job.memory && r === "moving" && !a.carry) {
+        const d = w.nav.get(job.nav)[i];
+        if (d > 25) a.mem[job.memory] += 3e-3;
+      }
+    },
+    build(w, a, task) {
+      const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
+      if (site && !site.done && w.grid.fire[i] === 0) {
+        addLabour(w, site, workRate(w, a, "build"));
+        return;
+      }
+      const r = follow(w, a, "sites");
+      if (r === "none" || r === "arrived") {
+        w.nav.dirty("sites");
+        done(a);
+        a.think = 10;
+      }
+    },
+    // stalk the nearest prey, creep up within bow range, shoot; a miss sends the animal running
+    hunt(w, a, task) {
+      const job = JOBS.get(task.job);
+      if (a.carry) {
+        a.stalking = false;
+        haulHome(w, a);
+        return;
+      }
+      task.age = (task.age || 0) + 1;
+      let prey = task.prey;
+      if (!prey || prey.dead || !w.agents.includes(prey)) {
+        prey = null;
+        let bd = 80 * 80;
+        for (const o of w.agents) if (job.prey.includes(o.species) && !o.dead) {
+          const d2 = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
+          if (d2 < bd) {
+            bd = d2;
+            prey = o;
+          }
+        }
+        task.prey = prey;
+        if (!prey) {
+          done(a);
+          a.think = 30;
+          a.stalking = false;
+          return;
+        }
+      }
+      if (task.age > 700) {
+        a.mem.chase += 0.2;
+        a.stalking = false;
+        done(a);
+        return;
+      }
+      const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = job.range + w.mods.add.huntRange;
+      a.stalking = d < 10;
+      if (d > range * 0.85) {
+        if (d > 9) {
+          const r = follow(w, a, job.nav);
+          if (r !== "moving") {
+            w.nav.dirty(job.nav);
+            moveToward(w, a, prey.x, prey.y);
+          }
+        } else if (moveToward(w, a, prey.x, prey.y, 0.55) === null) follow(w, a, job.nav, 0.55);
+        return;
+      }
+      task.work = (task.work || 0) + workRate(w, a, job.id);
+      if (task.work < job.time) return;
+      task.work = 0;
+      const hit = 0.32 + 0.45 * a.skill[job.id] - d / range * 0.15;
+      if (Math.random() < hit) {
+        const y = SPECIES.get(prey.species).yields;
+        kill(w, prey, "\u0441\u0442\u0440\u0435\u043B\u044B", a);
+        w.stats.hunted++;
+        a.carry = { res: y.resource, n: y.amount };
+        a.stalking = false;
+      } else {
+        prey.spooked = 40;
+        a.mem.chase += 0.05;
+      }
+    }
+  };
+
+  // src/settlement/council.js
+  var COUNCIL_FROM = 19;
+  var COUNCIL_TO = 21.5;
+  function councilDue(w) {
+    const h = hourOf(w.tick);
+    return h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
+  }
+  function goalNeed(w, res) {
+    const g = w.council.goal;
+    if (!g) return 0;
+    const need = BUILDINGS.get(g).cost[res] || 0;
+    return (w.stock[res] || 0) < need ? 0.3 : 0;
+  }
+  function motive(w, a, def, ctx) {
+    const args = def.motive ? def.motive(a, ctx) : [];
+    let best = [0, ""];
+    for (const o of args) if (o[0] > best[0]) best = o;
+    const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + w.rng() * 0.25;
+    return [score, best[0] > 0.05 ? best[1] : def.wish];
+  }
+  function stepCouncil(w) {
+    const day = dayOf(w.tick), h = hourOf(w.tick);
+    if (!councilDue(w)) {
+      if (w.council.lastDay !== day && h >= COUNCIL_TO && colonists(w).length) w.council.lastDay = day;
+      return;
+    }
+    const col = colonists(w), present = col.filter((a) => a.task?.id === "council" && a.task.seated);
+    if (!present.length || present.length < Math.ceil(col.length * 0.7) && h < COUNCIL_TO - 0.3) return;
+    hold(w, present, col.length);
+  }
+  function hold(w, present, total) {
+    const c = w.council;
+    c.lastDay = dayOf(w.tick);
+    const site = openSites(w)[0];
+    const args = [];
+    let decision;
+    if (site) {
+      const d = BUILDINGS.get(site.key);
+      decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u0441\u043D\u0430\u0447\u0430\u043B\u0430 \u0434\u043E\u0441\u0442\u0440\u043E\u0438\u0442\u044C: ${d.name.toLowerCase()} (${Math.floor(site.progress / d.work * 100)}%).`;
+      c.votes = [];
+    } else {
+      const cands = BUILDINGS.ids().filter((k) => eligible(w, k));
+      if (!cands.length) {
+        decision = "\u0412\u0441\u0451 \u0437\u0430\u0434\u0443\u043C\u0430\u043D\u043D\u043E\u0435 \u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E. \u0421\u043E\u0432\u0435\u0442 \u043F\u0440\u043E\u0441\u0442\u043E \u043F\u043E\u0441\u0438\u0434\u0435\u043B \u0443 \u043E\u0433\u043D\u044F.";
+        c.votes = [];
+        c.goal = null;
+      } else {
+        const ctx = {
+          crowded: colonists(w).length >= popCap(w) - 1,
+          spoiled: w.stats.spoiledToday,
+          burnt: w.stats.burntCells,
+          preyCount: ofSpecies(w, "hare").length,
+          count: (k) => count(w, k),
+          wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
+        };
+        const tally = {}, weight = {};
+        for (const a of present) {
+          let best = null, bs = -1, why = "";
+          for (const k of cands) {
+            const [sc, r] = motive(w, a, BUILDINGS.get(k), ctx);
+            if (sc > bs) {
+              bs = sc;
+              best = k;
+              why = r;
+            }
+          }
+          tally[best] = (tally[best] || 0) + 1;
+          weight[best] = (weight[best] || 0) + bs;
+          args.push({ name: a.name, key: best, why });
+        }
+        const ranked = Object.keys(tally).sort((x, y) => tally[y] - tally[x] || weight[y] - weight[x]);
+        const win = ranked[0], d = BUILDINGS.get(win);
+        c.votes = ranked.map((k) => [k, tally[k]]);
+        if (canAfford(w, d.cost) && laySite(w, win)) {
+          c.goal = null;
+          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u0441\u0442\u0440\u043E\u0438\u0442\u044C: ${d.name.toLowerCase()} (${tally[win]} \u0438\u0437 ${present.length}). \u041C\u0435\u0441\u0442\u043E \u043F\u043E\u0434 \u0441\u0442\u0440\u043E\u0439\u043A\u0443 \u0443\u0436\u0435 \u0440\u0430\u0437\u043C\u0435\u0447\u0435\u043D\u043E.`;
+        } else {
+          c.goal = win;
+          const lack = missing(w, d.cost).map(([r, v]) => `${RESOURCES.get(r).label} ${v}`).join(", ");
+          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u043A\u043E\u043F\u0438\u0442\u044C \u043D\u0430: ${d.name.toLowerCase()} (${tally[win]} \u0438\u0437 ${present.length}). \u041D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442: ${lack}.`;
+        }
+      }
+    }
+    c.decision = decision;
+    c.args = args.slice(0, 6);
+    c.present = present.length;
+    c.total = total;
+    const quotes = args.slice(0, 3).map((x) => `${x.name}: ${BUILDINGS.get(x.key).name.toLowerCase()}, ${x.why}`).join("; ");
+    log(w, `\u0421\u043E\u0432\u0435\u0442 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 (${present.length} \u0438\u0437 ${total}). ${quotes ? quotes + ". " : ""}${decision}`);
+    for (const a of colonists(w)) {
+      for (const k of Object.keys(a.mem)) a.mem[k] *= 0.4;
+      if (a.task?.id === "council") a.task = null;
+    }
+    w.stats.spoiledToday = 0;
+  }
+
+  // src/agents/tasks.js
+  var TASKS = new Registry("task");
+  var done2 = (a) => {
+    a.task = null;
+    a.think = 0;
+  };
+  function mill(w, a, task, radius = 1.2) {
+    if (!task.spot || Math.random() < 0.02) {
+      const ang = Math.random() * Math.PI * 2, r = Math.random() * radius;
+      task.spot = [w.camp.x + 0.5 + Math.cos(ang) * r, w.camp.y + 0.5 + Math.sin(ang) * r];
+    }
+    moveToward(w, a, task.spot[0], task.spot[1], 0.5);
+  }
+  TASKS.registerAll([
+    { id: "eat", label: () => "\u0435\u0441\u0442", step(w, a) {
+      if (follow(w, a, "camp") !== "arrived") return;
+      const fed = eatMeal(w);
+      if (fed) {
+        a.needs.food = Math.min(1, a.needs.food + fed);
+        done2(a);
+      } else a.task = { id: "job", job: "gather", eatNow: true };
+    } },
+    { id: "sleep", label: () => "\u0441\u043F\u0438\u0442", step(w, a, task) {
+      if (follow(w, a, "camp") !== "arrived") return;
+      const beds = Math.min(1, w.mods.add.beds / Math.max(1, w.agents.filter((o) => o.faction === "colony").length));
+      a.sleeping = true;
+      a.needs.rest = Math.min(1, a.needs.rest + 4e-3 * (1 + 0.6 * beds));
+      if (beds > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 2e-3 * beds);
+      mill(w, a, task, 1.2);
+      if (a.needs.rest >= 1) done2(a);
+    } },
+    { id: "warm", label: () => "\u0433\u0440\u0435\u0435\u0442\u0441\u044F \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
+      if (follow(w, a, "camp") !== "arrived") return;
+      mill(w, a, task, 1.2);
+      if (a.needs.warmth > 0.92) done2(a);
+    } },
+    { id: "council", label: () => "\u043D\u0430 \u0441\u043E\u0432\u0435\u0442\u0435 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
+      if (!councilDue(w)) {
+        done2(a);
+        return;
+      }
+      if (follow(w, a, "camp") !== "arrived") return;
+      task.seated = true;
+      if (!task.spot) {
+        const ang = Math.random() * Math.PI * 2;
+        task.spot = [w.camp.x + 0.5 + Math.cos(ang) * 1.6, w.camp.y + 0.5 + Math.sin(ang) * 1.6];
+      }
+      moveToward(w, a, task.spot[0], task.spot[1], 0.5);
+    } },
+    { id: "flee", label: () => "\u0431\u0435\u0436\u0438\u0442 \u043E\u0442 \u043E\u0433\u043D\u044F", step(w, a) {
+      escapeHeat(w, a);
+      if (w.grid.temp[cellOf(w, a)] < ambientTemp(w) + 16 && !nearFire(w, a, 3)) done2(a);
+    } },
+    { id: "fight", label: () => "\u0434\u0435\u0440\u0451\u0442\u0441\u044F", step(w, a, task) {
+      const t = task.target;
+      if (!t || t.dead || !w.agents.includes(t)) {
+        done2(a);
+        return;
+      }
+      if (Math.hypot(t.x - a.x, t.y - a.y) > 0.9) {
+        if (moveToward(w, a, t.x, t.y, 1.1) === null) follow(w, a, "camp");
+      } else attack(w, a, t);
+    } },
+    { id: "douse", label: () => "\u0442\u0443\u0448\u0438\u0442 \u043F\u043E\u0436\u0430\u0440", step(w, a) {
+      if (w.stats.fireNearCamp === 0) {
+        done2(a);
+        return;
+      }
+      if (!nearFire(w, a, 1.7)) {
+        if (follow(w, a, "fire") !== "moving") {
+          done2(a);
+          a.think = 10;
+        }
+        return;
+      }
+      const g = w.grid, cx = a.x | 0, cy = a.y | 0, power = 0.05 * w.mods.mul.douse;
+      for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
+        if (x < 0 || y < 0 || x >= w.w || y >= w.h || (x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 > 2.9) continue;
+        const j = y * w.w + x;
+        if (g.fire[j] > 0) {
+          g.fire[j] = Math.max(0, g.fire[j] - power);
+          g.temp[j] -= 6;
+          if (g.fire[j] === 0) g.temp[j] = Math.min(g.temp[j], 60);
+        }
+      }
+    } },
+    { id: "job", label: (t) => JOBS.get(t.job).verb, step(w, a, task) {
+      RUNNERS[JOBS.get(task.job).runner](w, a, task);
+    } },
+    { id: "idle", label: () => "\u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442", step(w, a, task) {
+      if (follow(w, a, "camp") === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 4) mill(w, a, task, 2.5);
+    } },
+    // raiders
+    { id: "assault", label: () => "\u0438\u0434\u0451\u0442 \u043A \u0441\u043A\u043B\u0430\u0434\u0443", step(w, a) {
+      if (follow(w, a, "camp") !== "arrived") return;
+      const took = plunder(w);
+      if (took > 0.5 && w.tick - w.stats.lastSteal > 40) log(w, "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u0433\u0440\u0430\u0431\u044F\u0442 \u0441\u043A\u043B\u0430\u0434.");
+      w.stats.lastSteal = w.tick;
+      a.looted = true;
+      a.task = { id: "leave" };
+    } },
+    { id: "leave", label: () => "\u0443\u0445\u043E\u0434\u0438\u0442", step(w, a) {
+      if (follow(w, a, "edge") === "arrived") a.gone = true;
+    } },
+    // animal states: the grazer brain moves the animal itself, these entries only name the state
+    { id: "graze", label: () => "\u043F\u0430\u0441\u0451\u0442\u0441\u044F", step() {
+    } },
+    { id: "rest", label: () => "\u0434\u0440\u0435\u043C\u043B\u0435\u0442", step() {
+    } },
+    { id: "bolt", label: () => "\u0443\u0431\u0435\u0433\u0430\u0435\u0442", step() {
+    } }
+  ]);
+  var taskLabel = (a) => a.task ? TASKS.get(a.task.id).label(a.task) : "\u0434\u0443\u043C\u0430\u0435\u0442";
+
+  // src/agents/body.js
+  var REMEMBER_BELOW = { food: 0.3, rest: 0.25, warmth: 0.4 };
+  function stepBody(w, a) {
+    const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
+    let starving = null;
+    for (const id of sp.needs) {
+      const n = NEEDS.get(id);
+      a.needs[id] = Math.min(1, Math.max(0, a.needs[id] - n.decay(w, a, T2)));
+      if (a.needs[id] <= (n.harmBelow ?? 0) && n.harm) {
+        a.hp -= n.harm;
+        starving = n.cause;
+      }
+      if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 4e-3;
+    }
+    if (T2 > sp.heatHarm) a.hp -= Math.min(5e-3, (T2 - sp.heatHarm) * 4e-5);
+    const comfy = sp.needs.every((id) => a.needs[id] > 0.4);
+    if (comfy && T2 < 45) a.hp = Math.min(sp.hp, a.hp + 3e-4 * sp.hp);
+    if (a.hp <= 0) kill(w, a, starving || (T2 > 60 ? "\u043F\u043E\u0436\u0430\u0440\u0430" : "\u0440\u0430\u043D"));
+    return T2;
+  }
+
+  // src/agents/brains/colonist.js
+  var key = (t) => t ? t.id === "job" ? "job:" + t.job : t.id : "";
+  function decide(w, a) {
+    const night = nightness(w.tick), camp = w.camp.cells, g = w.grid;
+    let campHot = 0;
+    for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
+    const campOk = campHot < 40 ? 1 : 0.1;
+    const ctx = {
+      pop: colonists(w).length,
+      food: foodTotal(w),
+      openSites: openSites(w).length,
+      preyCount: ofSpecies(w, "hare").length
+    };
+    const opts = [];
+    for (const id of SPECIES.get(a.species).needs) {
+      const n = NEEDS.get(id);
+      opts.push([{ id: n.task }, n.urge(w, a, a.needs[id]) * campOk]);
+    }
+    for (const job of JOBS.all()) {
+      if (!jobUnlocked(w, job)) continue;
+      const base = job.desire(w, ctx);
+      if (base < 0) continue;
+      const res = job.resource;
+      const goal = res ? goalNeed(w, res) : 0;
+      const dayWork = job.runner === "build" ? night * 0.3 : night * 0.2;
+      opts.push([{ id: "job", job: job.id }, (base + goal - dayWork) * (a.prefs[job.id] ?? 1)]);
+    }
+    opts.push([{ id: "idle" }, 0.15]);
+    if (councilDue(w)) opts.push([{ id: "council" }, 1.3]);
+    const brave = a.mods.bravery;
+    if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{ id: "douse" }, 0.8 * brave]);
+    const enemy = nearestHostile(w, a, 16);
+    if (enemy && a.hp > 0.3) opts.push([{ id: "fight", target: enemy }, 1.1 * brave]);
+    let best = null, bs = -Infinity;
+    const cur = key(a.task);
+    for (const [t, s] of opts) {
+      const sc = s + (key(t) === cur ? 0.12 : 0);
+      if (sc > bs) {
+        bs = sc;
+        best = t;
+      }
+    }
+    if (key(best) !== cur) a.task = best;
+    else if (best.id === "fight") a.task.target = best.target;
+  }
+  var colonistBrain = {
+    id: "colonist",
+    step(w, a) {
+      const T2 = stepBody(w, a);
+      if (a.dead) return;
+      a.sleeping = false;
+      const tid = a.task?.id;
+      if (tid !== "douse" && (T2 > 55 || nearFire(w, a, 1.5))) a.task = { id: "flee" };
+      if (tid === "douse" && (T2 > 58 || a.hp < 0.6)) a.task = { id: "flee" };
+      if (a.task?.id === "flee" || a.task?.id === "douse") a.mem.fire += 6e-3;
+      if (a.task?.id !== "flee" && --a.think <= 0) {
+        a.think = 15;
+        const busy = a.task?.id === "job" && a.carry?.n > 0;
+        if (!busy) decide(w, a);
+      }
+      if (!a.task) decide(w, a);
+      TASKS.get(a.task.id).step(w, a, a.task);
+      if (a.cd > 0) a.cd--;
+    }
+  };
+
+  // src/agents/brains/raider.js
+  var raiderBrain = {
+    id: "raider",
+    step(w, a) {
+      const T2 = w.grid.temp[cellOf(w, a)], sp = SPECIES.get(a.species);
+      if (T2 > sp.heatHarm) a.hp -= Math.min(6e-3, (T2 - sp.heatHarm) * 5e-5);
+      if (a.hp <= 0) {
+        a.dead = true;
+        return;
+      }
+      if (T2 > 50 || nearFire(w, a, 1.5)) {
+        escapeHeat(w, a);
+        return;
+      }
+      if (a.hp < 0.3) a.task = { id: "leave" };
+      if (a.task?.id !== "leave") {
+        const e = nearestHostile(w, a, 10);
+        if (e) {
+          if (a.task?.id !== "fight" || a.task.target !== e) a.task = { id: "fight", target: e };
+        } else if (!a.task || a.task.id === "fight") a.task = { id: a.looted ? "leave" : "assault" };
+      }
+      TASKS.get(a.task.id).step(w, a, a.task);
+      if (!a.task) a.task = { id: a.looted ? "leave" : "assault" };
+      if (a.cd > 0) a.cd--;
+    }
+  };
+
+  // src/agents/brains/grazer.js
+  function threatsNear(w, a, radius) {
+    const out = [];
+    for (const o of w.agents) {
+      if (o === a || o.dead || !SPECIES.get(o.species).sentient) continue;
+      const r = radius * (o.stalking ? 0.55 : 1);
+      if ((o.x - a.x) ** 2 + (o.y - a.y) ** 2 < r * r) out.push(o);
+    }
+    return out;
+  }
+  var grazerBrain = {
+    id: "grazer",
+    step(w, a) {
+      const sp = SPECIES.get(a.species), i = cellOf(w, a), T2 = w.grid.temp[i];
+      if (T2 > sp.heatHarm) {
+        a.hp -= Math.min(0.01, (T2 - sp.heatHarm) * 1e-4);
+        if (a.hp <= 0) {
+          kill(w, a, "\u043E\u0433\u043D\u044F");
+          return;
+        }
+      }
+      if (T2 > 45 || nearFire(w, a, 2)) {
+        a.task = { id: "bolt" };
+        escapeHeat(w, a, sp.flee.sprint);
+        return;
+      }
+      const threats = threatsNear(w, a, sp.flee.radius);
+      if (threats.length || a.spooked > 0) {
+        a.spooked = Math.max(0, (a.spooked || 0) - 1);
+        a.task = { id: "bolt" };
+        bolt(w, a, threats.length ? threats : w.agents.filter((o) => SPECIES.get(o.species).sentient && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 100), sp.flee.sprint);
+        return;
+      }
+      if (a.task?.id === "leave" || Math.random() < sp.leaveChance) {
+        a.task = { id: "leave" };
+        if (follow(w, a, "edge") === "arrived") a.gone = true;
+        return;
+      }
+      if (nightness(w.tick) > 0.7) {
+        a.task = { id: "rest" };
+        return;
+      }
+      const t = a.task?.id === "graze" ? a.task : a.task = { id: "graze" };
+      if (!t.spot || Math.random() < 0.01) {
+        const ok = new Set(sp.grazes.terrain.map((id) => TERRAIN.get(id).code));
+        for (let k = 0; k < 12; k++) {
+          const x = a.x + (Math.random() * 12 - 6), y = a.y + (Math.random() * 12 - 6);
+          if (!inBounds(w, x | 0, y | 0)) continue;
+          const j = (y | 0) * w.w + (x | 0);
+          if (walkable(w, j) && ok.has(w.grid.terr[j])) {
+            t.spot = [x, y];
+            break;
+          }
+        }
+      }
+      if (t.spot && moveToward(w, a, t.spot[0], t.spot[1], 0.35) !== false) t.spot = null;
+      if (w.grid.food[i] > 0.05) w.grid.food[i] = Math.max(0, w.grid.food[i] - sp.grazes.eatsBerries);
+    }
+  };
+
+  // src/agents/brains/index.js
+  var BRAINS = new Registry("brain");
+  BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain]);
+
+  // src/settlement/migration.js
+  var SIDE = ["\u0437\u0430\u043F\u0430\u0434\u0430", "\u0432\u043E\u0441\u0442\u043E\u043A\u0430", "\u0441\u0435\u0432\u0435\u0440\u0430", "\u044E\u0433\u0430"];
+  function edgeCell(w, minDist) {
+    const dCamp = w.nav.get("camp");
+    for (let k = 0; k < 300; k++) {
+      const s = Math.random() * 4 | 0, t = Math.random();
+      const x = s === 0 ? 0 : s === 1 ? w.w - 1 : t * w.w | 0, y = s === 2 ? 0 : s === 3 ? w.h - 1 : t * w.h | 0;
+      const i = y * w.w + x;
+      if (walkable(w, i) && dCamp[i] < FAR && dCamp[i] > minDist) return [i, SIDE[s]];
+    }
+    return [-1, ""];
+  }
+  function spawnGroup(w, id, size) {
+    const def = MIGRATIONS.get(id);
+    const n = size ?? def.size(w, w.rng);
+    if (!n) return [];
+    const [e, side] = edgeCell(w, def.minDist ?? 30);
+    if (e < 0) {
+      if (id === "raiders") log(w, "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u043D\u0430\u0448\u043B\u0438 \u0434\u043E\u0440\u043E\u0433\u0438 \u043A \u043B\u0430\u0433\u0435\u0440\u044E.");
+      return [];
+    }
+    const ex = e % w.w, ey = e / w.w | 0, group = [];
+    for (let k = 0; k < n; k++) {
+      let x = clamp(ex + 0.5 + Math.random() * 3 - 1.5, 0.2, w.w - 0.2), y = clamp(ey + 0.5 + Math.random() * 3 - 1.5, 0.2, w.h - 0.2);
+      if (!walkable(w, (y | 0) * w.w + (x | 0))) {
+        x = ex + 0.5;
+        y = ey + 0.5;
+      }
+      const a = createAgent(w, def.species, def.faction, x, y);
+      if (def.init) def.init(a, w);
+      group.push(a);
+    }
+    const msg = def.message?.(w, group, side);
+    if (msg) log(w, msg);
+    return group;
+  }
+  function stepMigration(w) {
+    for (const def of MIGRATIONS.all()) {
+      if (w.tick < w.migration[def.id]) continue;
+      spawnGroup(w, def.id);
+      w.migration[def.id] = def.nextAt ? def.nextAt(w, w.rng) : w.tick + def.interval;
+    }
+  }
+
+  // src/sim.js
+  function newGame(cfg) {
+    const w = createWorld(cfg);
+    w.nav = new Navigation(w);
+    w.nav.buildAll();
+    w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
+    const n = cfg.colonists;
+    for (let k = 0; k < n; k++) createAgent(w, "human", "colony", w.camp.x + 0.5 + (w.rng() * 5 - 2.5), w.camp.y + 0.5 + (w.rng() * 5 - 2.5));
+    log(w, `${n} ${plural(n, "\u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446", "\u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430", "\u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0435\u0432")} ${n === 1 ? "\u0440\u0430\u0437\u0431\u0438\u043B" : "\u0440\u0430\u0437\u0431\u0438\u043B\u0438"} \u043B\u0430\u0433\u0435\u0440\u044C \xAB${esc(cfg.name)}\xBB.`);
+    return w;
+  }
+  var ema = (old, v) => old * 0.95 + v * 0.05;
+  function step(w) {
+    const t0 = performance.now();
+    stepFields(w);
+    stepWeather(w);
+    const t1 = performance.now();
+    w.nav.step();
+    const t2 = performance.now();
+    for (const a of w.agents) {
+      if (!a.dead) BRAINS.get(a.brain).step(w, a);
+      if (a.flash) a.flash--;
+    }
+    w.agents = w.agents.filter((a) => !a.dead && !a.gone);
+    separate(w);
+    stepCouncil(w);
+    stepMigration(w);
+    const t3 = performance.now();
+    w.perf.fields = ema(w.perf.fields, t1 - t0);
+    w.perf.nav = ema(w.perf.nav, t2 - t1);
+    w.perf.agents = ema(w.perf.agents, t3 - t2);
+    w.tick++;
+  }
+
+  // src/render/looks.js
+  var LOOKS = {
+    person(ctx, a, px, py, r, color, S) {
+      ctx.fillStyle = a.sleeping ? shade(color, 0.65) : color;
+      ctx.strokeStyle = "#0e100b";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    },
+    hare(ctx, a, px, py, r, color) {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = "#0e100b";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(px, py, r * 1.1, r * 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      const up = a.task?.id === "rest" ? 0.4 : 1;
+      ctx.beginPath();
+      ctx.ellipse(px - r * 0.35, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(px + r * 0.15, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  function shade(hex, k) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16 & 255) * k, g = (n >> 8 & 255) * k, b = (n & 255) * k;
+    return `rgb(${r | 0},${g | 0},${b | 0})`;
+  }
+
+  // src/render/renderer.js
+  var TSTOPS = [[-5, 52, 84, 196], [8, 64, 150, 186], [16, 104, 186, 102], [24, 222, 206, 84], [45, 240, 132, 46], [120, 220, 44, 40], [500, 255, 236, 214]];
+  function tempColor(t) {
+    if (t <= TSTOPS[0][0]) return TSTOPS[0].slice(1);
+    for (let k = 1; k < TSTOPS.length; k++) if (t <= TSTOPS[k][0]) {
+      const a = TSTOPS[k - 1], b = TSTOPS[k], f = (t - a[0]) / (b[0] - a[0]);
+      return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, a[3] + (b[3] - a[3]) * f];
+    }
+    return TSTOPS[TSTOPS.length - 1].slice(1);
+  }
+  function layer(w) {
+    const c = document.createElement("canvas");
+    c.width = w.w;
+    c.height = w.h;
+    const ctx = c.getContext("2d");
+    return { c, ctx, img: ctx.createImageData(w.w, w.h) };
+  }
+  var Renderer = class {
+    constructor(canvas) {
+      this.cv = canvas;
+      this.ctx = canvas.getContext("2d");
+      this.ms = 0;
+    }
+    setup(w) {
+      this.S = Math.max(4, Math.floor(1024 / w.w));
+      this.cv.width = w.w * this.S;
+      this.cv.height = w.h * this.S;
+      this.terrain = layer(w);
+      this.field = layer(w);
+      this.glow = layer(w);
+      this.smoke = layer(w);
+    }
+    paintTerrain(w) {
+      const d = this.terrain.img.data, g = w.grid;
+      for (let i = 0; i < w.n; i++) {
+        let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
+        if (g.bush[i] && g.food[i] > 0.2) {
+          const k = g.food[i] * 0.55;
+          r = r * (1 - k) + 196 * k;
+          gg = gg * (1 - k) + 92 * k;
+          b = b * (1 - k) + 149 * k;
+        }
+        const o = i * 4;
+        d[o] = r;
+        d[o + 1] = gg;
+        d[o + 2] = b;
+        d[o + 3] = 255;
+      }
+      this.terrain.ctx.putImageData(this.terrain.img, 0, 0);
+    }
+    paintGlowSmoke(w) {
+      const gd = this.glow.img.data, sd = this.smoke.img.data, g = w.grid;
+      for (let i = 0; i < w.n; i++) {
+        const f = g.fire[i], o = i * 4, hot = clamp((g.temp[i] - 60) / 400, 0, 1);
+        gd[o] = 255;
+        gd[o + 1] = 120 + f * 90;
+        gd[o + 2] = 40 + f * 40;
+        gd[o + 3] = Math.min(255, f * 255 + hot * 120);
+        const sm = Math.min(1, g.smoke[i] * 0.6);
+        sd[o] = 150;
+        sd[o + 1] = 150;
+        sd[o + 2] = 144;
+        sd[o + 3] = sm * 190;
+      }
+      this.glow.ctx.putImageData(this.glow.img, 0, 0);
+      this.smoke.ctx.putImageData(this.smoke.img, 0, 0);
+    }
+    paintField(w, mode) {
+      const d = this.field.img.data, g = w.grid, dCamp = w.nav.get("camp");
+      for (let i = 0; i < w.n; i++) {
+        const o = i * 4;
+        let r = 0, gg = 0, b = 0, a = 0;
+        if (mode === "temp") {
+          [r, gg, b] = tempColor(g.temp[i]);
+          a = 205;
+        } else if (mode === "res") {
+          if (g.food[i] > 0.05) {
+            r = 214;
+            gg = 84;
+            b = 160;
+            a = 60 + g.food[i] * 190;
+          } else if (g.terr[i] === T.FOREST) {
+            r = 120;
+            gg = 210;
+            b = 90;
+            a = g.wood[i] * 170;
+          } else {
+            r = 20;
+            gg = 20;
+            b = 16;
+            a = 150;
+          }
+        } else if (mode === "nav") {
+          const v = dCamp[i];
+          if (v >= FAR) {
+            r = 20;
+            gg = 16;
+            b = 16;
+            a = 170;
+          } else {
+            const band = Math.floor(v / 8) % 2, k = clamp(v / 140, 0, 1);
+            r = 98 + 120 * k;
+            gg = 198 - 90 * k;
+            b = 185 - 100 * k;
+            a = band ? 120 : 70;
+          }
+        }
+        d[o] = r;
+        d[o + 1] = gg;
+        d[o + 2] = b;
+        d[o + 3] = a;
+      }
+      this.field.ctx.putImageData(this.field.img, 0, 0);
+    }
+    draw(w, view2) {
+      const t0 = performance.now(), ctx = this.ctx, S = this.S, Wpx = w.w * S, Hpx = w.h * S;
+      this.paintTerrain(w);
+      this.paintGlowSmoke(w);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(this.terrain.c, 0, 0, Wpx, Hpx);
+      ctx.imageSmoothingEnabled = true;
+      if (view2.layer !== "world") {
+        this.paintField(w, view2.layer);
+        ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx);
+      }
+      ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
+      const night = nightness(w.tick);
+      if (view2.layer === "world" && night > 0) {
+        ctx.fillStyle = `rgba(8,12,30,${night * 0.62})`;
+        ctx.fillRect(0, 0, Wpx, Hpx);
+      }
+      if (w.weather.rain > 0.05) this.drawRain(w, Wpx, Hpx);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.drawImage(this.glow.c, 0, 0, Wpx, Hpx);
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(this.glow.c, -S * 1.5, -S * 1.5, Wpx + S * 3, Hpx + S * 3);
+      ctx.globalAlpha = 1;
+      const cx = (w.camp.x + 0.5) * S, cy = (w.camp.y + 0.5) * S;
+      if (w.campLit) {
+        const fl = 0.9 + Math.random() * 0.1, gr = ctx.createRadialGradient(cx, cy, 2, cx, cy, S * 9 * fl);
+        gr.addColorStop(0, `rgba(255,160,70,${0.55 + night * 0.25})`);
+        gr.addColorStop(1, "rgba(255,120,40,0)");
+        ctx.fillStyle = gr;
+        ctx.beginPath();
+        ctx.arc(cx, cy, S * 9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = "rgba(231,227,207,0.55)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, S * 3.4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = w.campLit ? "#ffb15a" : "#5a4a3a";
+      ctx.beginPath();
+      ctx.arc(cx, cy, S * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      if (view2.layer === "nav") this.drawArrows(w);
+      this.drawBuildings(w);
+      this.drawAgents(w, view2.selected);
+      this.ms = this.ms * 0.9 + (performance.now() - t0) * 0.1;
+    }
+    drawRain(w, Wpx, Hpx) {
+      const ctx = this.ctx, r = w.weather.rain;
+      ctx.fillStyle = `rgba(40,60,90,${r * 0.18})`;
+      ctx.fillRect(0, 0, Wpx, Hpx);
+      ctx.strokeStyle = `rgba(190,210,235,${r * 0.35})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const n = Math.round(r * 260), off = w.tick * 7 % 40;
+      for (let k = 0; k < n; k++) {
+        const x = k * 97.3 % Wpx, y = (k * 53.1 + off * 9) % Hpx;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 3, y + 9);
+      }
+      ctx.stroke();
+    }
+    drawArrows(w) {
+      const ctx = this.ctx, S = this.S, dCamp = w.nav.get("camp");
+      ctx.strokeStyle = "rgba(240,236,220,0.75)";
+      ctx.lineWidth = 1;
+      for (let y = 2; y < w.h; y += 4) for (let x = 2; x < w.w; x += 4) {
+        const i = y * w.w + x;
+        if (dCamp[i] >= FAR || dCamp[i] === 0) continue;
+        let bj = -1, bd = dCamp[i];
+        for (let k = 0; k < 8; k++) {
+          const nx = x + DX[k], ny = y + DY[k];
+          if (nx < 0 || ny < 0 || nx >= w.w || ny >= w.h) continue;
+          const j = ny * w.w + nx;
+          if (dCamp[j] < bd) {
+            bd = dCamp[j];
+            bj = j;
+          }
+        }
+        if (bj < 0) continue;
+        const ddx = bj % w.w - x, ddy = (bj / w.w | 0) - y, l = Math.hypot(ddx, ddy);
+        const px = (x + 0.5) * S, py = (y + 0.5) * S, ux = ddx / l, uy = ddy / l, L = S * 1.4;
+        ctx.beginPath();
+        ctx.moveTo(px - ux * L, py - uy * L);
+        ctx.lineTo(px + ux * L, py + uy * L);
+        ctx.lineTo(px + ux * L - (ux * 0.8 - uy * 0.5) * S * 0.8, py + uy * L - (uy * 0.8 + ux * 0.5) * S * 0.8);
+        ctx.stroke();
+      }
+    }
+    // finished buildings are solid blocks with a letter, sites are dashed with a progress bar
+    drawBuildings(w) {
+      const ctx = this.ctx, S = this.S;
+      for (const b of w.buildings) {
+        const d = BUILDINGS.get(b.key), x = b.x * S, y = b.y * S, s = 2 * S;
+        if (b.done) {
+          ctx.fillStyle = d.color;
+          ctx.fillRect(x + 1, y + 1, s - 2, s - 2);
+          ctx.strokeStyle = "#0e100b";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
+          if (S >= 5) {
+            ctx.fillStyle = "#14160f";
+            ctx.font = `bold ${Math.max(8, S * 0.95)}px "PT Sans", sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(d.mark, x + s / 2, y + s / 2 + 1);
+            ctx.textAlign = "start";
+            ctx.textBaseline = "alphabetic";
+          }
+        } else {
+          ctx.save();
+          ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = d.color;
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
+          ctx.restore();
+          ctx.fillStyle = "rgba(20,22,15,0.7)";
+          ctx.fillRect(x, y + s + 1, s, 3);
+          ctx.fillStyle = d.color;
+          ctx.fillRect(x, y + s + 1, s * Math.min(1, b.progress / d.work), 3);
+        }
+      }
+    }
+    drawAgents(w, selected) {
+      const ctx = this.ctx, S = this.S;
+      for (const a of w.agents) {
+        const sp = SPECIES.get(a.species), look = sp.look, px = a.x * S, py = a.y * S;
+        const r = Math.max(S * look.size, look.shape === "hare" ? 2.6 : 3.4);
+        const color = look.color || FACTIONS.get(a.faction).color;
+        if (a === selected) {
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, py, r + 4, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        LOOKS[look.shape](ctx, a, px, py, r, color, S);
+        if (a.flash) {
+          ctx.strokeStyle = "#fff3c4";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, py, r + 2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (a.carry?.n > 0) {
+          ctx.fillStyle = RESOURCES.get(a.carry.res).color;
+          ctx.fillRect(px + r * 0.4, py - r * 1.1, Math.max(3, S * 0.55), Math.max(3, S * 0.55));
+        }
+        if (a.hp < sp.hp * 0.999 && sp.sentient) {
+          ctx.fillStyle = "#2a1414";
+          ctx.fillRect(px - S, py + r + 2, S * 2, 2);
+          ctx.fillStyle = a.hp > sp.hp * 0.5 ? "#8fbf5a" : "#e0b040";
+          ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(a.hp / sp.hp, 0, 1), 2);
+        }
+        if (a.task?.id === "flee") {
+          ctx.fillStyle = "#ffe0a0";
+          ctx.font = `bold ${Math.max(10, S * 1.6)}px "PT Sans", sans-serif`;
+          ctx.fillText("!", px + r, py - r);
+        }
+      }
+    }
+  };
+
+  // src/ui/dom.js
+  var $ = (id) => document.getElementById(id);
+  function segmented(box, attr, onPick) {
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b || !box.contains(b)) return;
+      box.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      onPick(b.dataset[attr]);
+    });
+  }
+  function press(box, value, attr) {
+    box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset[attr] === String(value))));
+  }
+
+  // src/ui/menu.js
+  var OPTS = {
+    size: Object.entries(SIZES).map(([k, v]) => [k, v.label]),
+    water: LEVELS3.map((l, i) => [i, l]),
+    forest: LEVELS3.map((l, i) => [i, l]),
+    rock: LEVELS3.map((l, i) => [i, l]),
+    climate: Object.entries(CLIMATES).map(([k, v]) => [k, v.label]),
+    stock: Object.entries(STOCKS).map(([k, v]) => [k, v.label]),
+    raids: Object.entries(RAIDS).map(([k, v]) => [k, v.label]),
+    wildlife: Object.entries(WILDLIFE).map(([k, v]) => [k, v.label])
+  };
+  var NOTES = { size: (v) => SIZES[v].note, climate: (v) => CLIMATES[v].note };
+  var STORE = "forest.cfg";
+  var Menu = class {
+    constructor({ onStart, onResume }) {
+      this.cfg = this.load();
+      this.onStart = onStart;
+      this.onResume = onResume;
+      this.build();
+    }
+    load() {
+      try {
+        const raw = localStorage.getItem(STORE);
+        if (raw) return { ...DEFAULT_CFG, ...JSON.parse(raw) };
+      } catch (e) {
+      }
+      return { ...DEFAULT_CFG };
+    }
+    save() {
+      try {
+        localStorage.setItem(STORE, JSON.stringify(this.cfg));
+      } catch (e) {
+      }
+    }
+    build() {
+      document.querySelectorAll("#menu .seg[data-key]").forEach((box) => {
+        const key2 = box.dataset.key;
+        box.innerHTML = OPTS[key2].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join("");
+        box.addEventListener("click", (e) => {
+          const b = e.target.closest("button");
+          if (!b) return;
+          this.cfg[key2] = typeof DEFAULT_CFG[key2] === "number" ? +b.dataset.val : b.dataset.val;
+          this.save();
+          this.sync();
+        });
+      });
+      $("cfgName").addEventListener("input", (e) => {
+        this.cfg.name = e.target.value.trim() || DEFAULT_CFG.name;
+        this.save();
+      });
+      $("cfgSeed").addEventListener("input", (e) => {
+        this.cfg.seed = e.target.value.trim() || "1";
+        this.save();
+        this.schedulePreview();
+      });
+      $("seedRandom").addEventListener("click", () => {
+        this.cfg.seed = String(1e5 + Math.floor(Math.random() * 899999));
+        this.save();
+        this.sync();
+      });
+      $("cfgColonists").addEventListener("input", (e) => {
+        this.cfg.colonists = +e.target.value;
+        $("colonistsOut").textContent = this.cfg.colonists;
+        this.save();
+      });
+      $("cfgLightning").addEventListener("change", (e) => {
+        this.cfg.lightning = e.target.checked;
+        this.save();
+      });
+      $("resetCfg").addEventListener("click", () => {
+        this.cfg = { ...DEFAULT_CFG };
+        this.save();
+        this.sync();
+      });
+      $("startGame").addEventListener("click", () => {
+        this.save();
+        this.onStart({ ...this.cfg });
+      });
+      $("backToGame").addEventListener("click", () => this.onResume());
+    }
+    sync() {
+      const c = this.cfg;
+      $("cfgName").value = c.name;
+      $("cfgSeed").value = c.seed;
+      $("cfgColonists").value = c.colonists;
+      $("colonistsOut").textContent = c.colonists;
+      $("cfgLightning").checked = !!c.lightning;
+      document.querySelectorAll("#menu .seg[data-key]").forEach((box) => {
+        const key2 = box.dataset.key;
+        box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.val === String(c[key2]))));
+      });
+      for (const [key2, fn] of Object.entries(NOTES)) {
+        const el = document.querySelector(`[data-note="${key2}"]`);
+        if (el) el.textContent = fn(c[key2]);
+      }
+      this.schedulePreview();
+    }
+    schedulePreview() {
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.preview(), 60);
+    }
+    preview() {
+      const t = makeTerrain(this.cfg), pc = $("preview"), px = pc.getContext("2d");
+      pc.width = t.w;
+      pc.height = t.h;
+      const img = px.createImageData(t.w, t.h), d = img.data, n = t.w * t.h, cnt = [];
+      for (let i = 0; i < n; i++) {
+        const code = t.terr[i];
+        cnt[code] = (cnt[code] || 0) + 1;
+        const [r, g, b] = BY_CODE[code].color(t.hgt[i], t.fert[i], 0.8);
+        const o = i * 4;
+        d[o] = r;
+        d[o + 1] = g;
+        d[o + 2] = b;
+        d[o + 3] = 255;
+      }
+      px.putImageData(img, 0, 0);
+      px.strokeStyle = "#ffffff";
+      px.lineWidth = Math.max(1, t.w / 128);
+      px.beginPath();
+      px.arc(t.cx + 0.5, t.cy + 0.5, 4.5, 0, Math.PI * 2);
+      px.stroke();
+      const pct = (code) => ((cnt[code] || 0) / n * 100).toFixed(0) + "%";
+      $("previewStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${n.toLocaleString("ru-RU")}</dd>` + [T.WATER, T.FOREST, T.GRASS, T.ROCK].map((c) => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct(c)}</dd>`).join("") + `<dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(this.cfg.seed)}</dd>`;
+    }
+  };
+
+  // src/ui/panel.js
+  var DIRS = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
+  var bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
+  var costHtml = (w, cost) => Object.entries(cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? "" : " short"}">${v} ${RESOURCES.get(r).label}</span>`).join("");
+  function traitsText(a) {
+    const t = a.traits.map((id) => TRAITS.get(id).label);
+    return `\u043B\u044E\u0431\u0438\u0442: ${JOBS.get(a.likes).short} \xB7 \u043D\u0435 \u043B\u044E\u0431\u0438\u0442: ${JOBS.get(a.dislikes).short}${t.length ? " \xB7 " + t.join(", ") : ""}`;
+  }
+  var Panel = class {
+    constructor() {
+      this.sig = {};
+      this.lastTick = 0;
+      this.lastT = performance.now();
+    }
+    // replace innerHTML only when the content changed, so clicks are not lost
+    set(id, html) {
+      if (this.sig[id] === html) return;
+      this.sig[id] = html;
+      $(id).innerHTML = html;
+    }
+    render(w, view2) {
+      $("clock").textContent = clockStr(w.tick);
+      $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? ", \u0434\u043E\u0436\u0434\u044C" : "");
+      $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
+      $("fires").textContent = w.stats.fireCount;
+      const col = colonists(w), raiders = w.agents.filter((a) => a.faction === "raiders").length, hares = ofSpecies(w, "hare").length;
+      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u043E\u0432"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>`);
+      this.renderCouncil(w);
+      this.renderBuildings(w);
+      this.renderPeople(w, view2.selected);
+      $("pFlabel").textContent = `\u041F\u043E\u043B\u044F (${w.n.toLocaleString("ru-RU")} \u043A\u043B\u0435\u0442\u043E\u043A)`;
+      $("pF").textContent = w.perf.fields.toFixed(2);
+      $("pN").textContent = w.perf.nav.toFixed(2);
+      $("pA").textContent = w.perf.agents.toFixed(2);
+      $("pR").textContent = view2.renderMs.toFixed(2);
+      const now = performance.now();
+      $("pT").textContent = view2.speed ? ((w.tick - this.lastTick) / ((now - this.lastT) / 1e3)).toFixed(0) : "0";
+      this.lastTick = w.tick;
+      this.lastT = now;
+      this.set("log", w.logLines.map((l) => `<div><span>${l.when}</span> \xB7 <b>${l.html}</b></div>`).join(""));
+    }
+    renderCouncil(w) {
+      const c = w.council, due = councilDue(w), h = hourOf(w.tick);
+      const when = due ? "\u0438\u0434\u0451\u0442 \u0441\u0431\u043E\u0440 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430" : c.lastDay === dayOf(w.tick) || h >= COUNCIL_FROM ? "\u0437\u0430\u0432\u0442\u0440\u0430 \u0432 19:00" : "\u0441\u0435\u0433\u043E\u0434\u043D\u044F \u0432 19:00";
+      const maxV = Math.max(1, ...c.votes.map((v) => v[1]));
+      const votes = c.votes.map(([k, n]) => {
+        const d = BUILDINGS.get(k);
+        return `<div class="vote"><span>${d.name}</span><i style="width:${n / maxV * 100}%;background:${d.color}"></i><b>${n}</b></div>`;
+      }).join("");
+      const args = c.args.map((x) => `<li><b>${esc(x.name)}</b> \u0437\u0430 ${BUILDINGS.get(x.key).name.toLowerCase()}: ${x.why}</li>`).join("");
+      let goal = "";
+      if (c.goal) {
+        const d = BUILDINGS.get(c.goal);
+        goal = `<div class="goal">\u041A\u043E\u043F\u0438\u043C \u043D\u0430 ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? "" : " short"}">${RESOURCES.get(r).label} ${Math.min(v, Math.floor(w.stock[r] || 0))}/${v}</span>`).join(" ")}</div>`;
+      }
+      this.set("council", `<div class="when">\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0441\u043E\u0432\u0435\u0442: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ""}${args ? `<ul class="args">${args}</ul>` : ""}`);
+    }
+    renderBuildings(w) {
+      this.set("build", BUILDINGS.all().map((d) => {
+        const n = count(w, d.id), site = w.buildings.find((b) => b.key === d.id && !b.done);
+        const state = site ? `<span class="bstate">\u0441\u0442\u0440\u043E\u0438\u0442\u0441\u044F ${Math.floor(site.progress / d.work * 20) * 5}%</span>` : n ? `<span class="bstate done">\u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E${d.max > 1 ? " \xD7" + n : ""}</span>` : w.council.goal === d.id ? '<span class="bstate">\u0446\u0435\u043B\u044C \u0441\u043E\u0432\u0435\u0442\u0430</span>' : "";
+        const note = n >= d.max || site ? "" : d.needs && !has(w, d.needs) ? `<span class="bneed">\u043F\u043E\u0441\u043B\u0435: ${BUILDINGS.get(d.needs).name.toLowerCase()}</span>` : "";
+        return `<div class="bcard${n ? " built" : ""}"><div class="bhead"><i class="bmark" style="background:${d.color}">${d.mark}</i><b>${d.name}</b>${state}</div>
+        <p>${d.effect}</p><div class="bfoot"><span class="costs">${costHtml(w, d.cost)}</span>${note}</div></div>`;
+      }).join(""));
+    }
+    renderPeople(w, selected) {
+      const col = colonists(w);
+      const needs = SPECIES.get("human").needs.map((id) => NEEDS.get(id));
+      this.set("people", col.map((a) => `<div class="person${a === selected ? " sel" : ""}" data-id="${a.id}">
+      <span class="nm">${esc(a.name)}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` \xB7 \u043D\u0435\u0441\u0451\u0442 ${a.carry.n}` : ""}</span><span class="likes">${traitsText(a)}</span>
+      <div class="bars" title="${needs.map((n) => n.label).join(" \xB7 ")} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435">${needs.map((n) => bar(a.needs[n.id], n.color)).join("")}${bar(a.hp, "var(--good)")}</div></div>`).join("") || '<div class="task">\u041A\u043E\u043B\u043E\u043D\u0438\u044F \u043F\u043E\u0433\u0438\u0431\u043B\u0430. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \xAB\u041C\u0435\u043D\u044E \u043C\u0438\u0440\u0430\xBB, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0447\u0430\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E.</div>');
+    }
+    readout(w, selected, hoverCell) {
+      const el = $("readout");
+      if (selected && !selected.dead) {
+        const a = selected, sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)].toFixed(1);
+        if (!a.prefs) {
+          el.textContent = `${sp.label}: ${taskLabel(a)} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(a.hp / sp.hp * 100)}% \xB7 \u043F\u043E\u0434 \u043D\u043E\u0433\u0430\u043C\u0438 ${T2} \xB0C`;
+          return;
+        }
+        const needs = sp.needs.map((id) => `${NEEDS.get(id).label} ${Math.round(a.needs[id] * 100)}%`).join(" \xB7 ");
+        const skills = JOBS.filter((j) => j.preferable).map((j) => `${j.short} ${Math.round((a.skill[j.id] || 0) * 100)}`).join(", ");
+        el.textContent = `${a.name}: ${taskLabel(a)} \xB7 ${traitsText(a)} \xB7 \u043D\u0430\u0432\u044B\u043A\u0438: ${skills} \xB7 ${needs} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(a.hp * 100)}% \xB7 \u043F\u043E\u0434 \u043D\u043E\u0433\u0430\u043C\u0438 ${T2} \xB0C`;
+        return;
+      }
+      if (hoverCell < 0) return;
+      const g = w.grid, i = hoverCell, d = w.nav.get("camp")[i];
+      el.textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g.terr[i]].label} \xB7 ${g.temp[i].toFixed(1)} \xB0C \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
+    }
+  };
+
+  // src/ui/tools.js
+  var TOOLS = {
+    inspect: {
+      apply(w, cx, cy, view2) {
+        let best = null, bd = 4;
+        for (const a of w.agents) {
+          const d = (a.x - cx - 0.5) ** 2 + (a.y - cy - 0.5) ** 2;
+          if (d < bd) {
+            bd = d;
+            best = a;
+          }
+        }
+        view2.selected = best;
+      }
+    },
+    ignite: {
+      apply(w, cx, cy) {
+        for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) {
+          if (!inBounds(w, x, y)) continue;
+          const i = y * w.w + x;
+          if (w.grid.fuel[i] > 0.05) {
+            w.grid.fire[i] = 0.6;
+            w.grid.temp[i] = 300;
+          }
+        }
+        w.nav.dirty("fire");
+        log(w, "\u041A\u0442\u043E-\u0442\u043E \u043F\u043E\u0434\u0436\u0451\u0433 \u0442\u0440\u0430\u0432\u0443.");
+      }
+    },
+    rain: {
+      apply(w, cx, cy) {
+        const g = w.grid, amb = ambientTemp(w);
+        for (let y = cy - 7; y <= cy + 7; y++) for (let x = cx - 7; x <= cx + 7; x++) {
+          if (!inBounds(w, x, y) || (x - cx) ** 2 + (y - cy) ** 2 > 49) continue;
+          const i = y * w.w + x;
+          g.fire[i] = 0;
+          g.temp[i] = Math.min(g.temp[i], amb - 2);
+          g.smoke[i] *= 0.3;
+        }
+        w.nav.dirty("fire");
+        log(w, "\u041F\u0440\u043E\u0448\u0451\u043B \u043A\u043E\u0440\u043E\u0442\u043A\u0438\u0439 \u043B\u0438\u0432\u0435\u043D\u044C.");
+      }
+    }
+  };
+
+  // src/main.js
+  var renderer = new Renderer($("map"));
+  var panel = new Panel();
+  var view = { layer: "world", selected: null, speed: 1, tool: "inspect", hover: -1, renderMs: 0 };
+  var world = null;
+  var running = false;
+  var menu = new Menu({ onStart: start, onResume: showGame });
+  function start(cfg) {
+    world = newGame(cfg);
+    renderer.setup(world);
+    view.selected = null;
+    showGame();
+  }
+  function showMenu() {
+    running = false;
+    $("menu").hidden = false;
+    $("game").hidden = true;
+    $("explain").hidden = true;
+    $("backToGame").hidden = !world;
+    $("colonyName").textContent = "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434";
+    $("worldInfo").textContent = "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0430\u0437\u043C\u0435\u0440 \u043C\u0438\u0440\u0430, \u0441\u0438\u0434 \u0438 \u0443\u0441\u043B\u043E\u0432\u0438\u044F \u0436\u0438\u0437\u043D\u0438. \u041D\u0430 \u043F\u0440\u0435\u0432\u044C\u044E \u2014 \u043A\u0430\u0440\u0442\u0430, \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u0441\u044F.";
+    menu.sync();
+  }
+  function showGame() {
+    const c = world.cfg, sz = SIZES[c.size];
+    $("menu").hidden = true;
+    $("game").hidden = false;
+    $("explain").hidden = false;
+    $("colonyName").textContent = c.name;
+    $("worldInfo").innerHTML = esc(`\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${CLIMATES[c.climate].label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`);
+    $("windDir").value = world.wind.dir;
+    $("windStr").value = Math.round(world.wind.str * 100);
+    $("windArrow").style.transform = `rotate(${world.wind.dir}deg)`;
+    running = true;
+    last = performance.now();
+    acc = 0;
+    panel.render(world, view);
+  }
+  function eventCell(e) {
+    const r = $("map").getBoundingClientRect();
+    return [Math.floor((e.clientX - r.left) / r.width * world.w), Math.floor((e.clientY - r.top) / r.height * world.h)];
+  }
+  $("map").addEventListener("pointermove", (e) => {
+    if (!world) return;
+    const [x, y] = eventCell(e);
+    view.hover = x >= 0 && y >= 0 && x < world.w && y < world.h ? y * world.w + x : -1;
+  });
+  $("map").addEventListener("pointerleave", () => {
+    view.hover = -1;
+  });
+  $("map").addEventListener("pointerdown", (e) => {
+    if (!world) return;
+    const [x, y] = eventCell(e);
+    if (x >= 0 && y >= 0 && x < world.w && y < world.h) TOOLS[view.tool].apply(world, x, y, view);
+  });
+  segmented($("tools"), "tool", (v) => {
+    view.tool = v;
+    if (v !== "inspect") view.selected = null;
+  });
+  segmented($("layers"), "layer", (v) => {
+    view.layer = v;
+  });
+  segmented($("speeds"), "speed", (v) => {
+    view.speed = +v;
+  });
+  $("people").addEventListener("click", (e) => {
+    const p = e.target.closest(".person");
+    if (!p) return;
+    const a = world.agents.find((x) => x.id === +p.dataset.id);
+    view.selected = view.selected === a ? null : a;
+  });
+  $("windDir").addEventListener("input", (e) => {
+    world.wind.dir = +e.target.value;
+    setWind(world);
+    $("windArrow").style.transform = `rotate(${world.wind.dir}deg)`;
+  });
+  $("windStr").addEventListener("input", (e) => {
+    world.wind.str = +e.target.value / 100;
+    setWind(world);
+  });
+  $("raid").addEventListener("click", () => spawnGroup(world, "raiders"));
+  $("openMenu").addEventListener("click", showMenu);
+  document.addEventListener("keydown", (e) => {
+    if (e.code !== "Space" || !running || e.target !== document.body) return;
+    e.preventDefault();
+    view.speed = view.speed ? 0 : 1;
+    press($("speeds"), view.speed, "speed");
+  });
+  var acc = 0;
+  var last = performance.now();
+  var panelT = 0;
+  function frame(now) {
+    if (running) {
+      const dt = Math.min(250, now - last);
+      last = now;
+      acc += dt * view.speed;
+      const budget = now + 22;
+      let n = 0;
+      while (acc >= TICK_MS && n < 40 && performance.now() < budget) {
+        step(world);
+        acc -= TICK_MS;
+        n++;
+      }
+      if (acc > 500) acc = 0;
+      if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
+      renderer.draw(world, view);
+      view.renderMs = renderer.ms;
+      panel.readout(world, view.selected, view.hover);
+      if (now - panelT > 300) {
+        panelT = now;
+        panel.render(world, view);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  showMenu();
+  requestAnimationFrame(frame);
+  window.forest = { get world() {
+    return world;
+  }, step: () => step(world), start, view };
+})();
+</script>
+</body>
+</html>

@@ -43,9 +43,10 @@
         <label for="cfgColonists">Поселенцев на старте: <output id="colonistsOut">8</output></label>
         <input id="cfgColonists" type="range" min="3" max="14" value="8">
       </div>
-      <div class="field-grid two">
+      <div class="field-grid">
         <div class="field"><span class="lbl">Запасы</span><div class="seg" data-key="stock"></div></div>
         <div class="field"><span class="lbl">Набеги «Серых волков»</span><div class="seg" data-key="raids"></div></div>
+        <div class="field"><span class="lbl">Зайцы</span><div class="seg" data-key="wildlife"></div></div>
       </div>
       <label class="check"><input id="cfgLightning" type="checkbox"> Молнии поджигают лес в жаркие часы</label>
       <div class="row actions">
@@ -102,6 +103,7 @@
       <div class="legend">
         <span><i style="background:var(--colony)"></i>колонисты</span>
         <span><i style="background:var(--raider)"></i>налётчики</span>
+        <span><i style="background:#cdbb9a"></i>зайцы</span>
         <span><i style="background:var(--food)"></i>ягоды</span>
         <span><i style="background:var(--ember)"></i>огонь и костёр</span>
         <span>пунктирный круг — лагерь со складом</span>
@@ -120,13 +122,7 @@
       </div>
       <div class="card">
         <h2>Склад лагеря</h2>
-        <dl class="kv">
-          <dt>Еда</dt><dd id="sFood">—</dd>
-          <dt>Дрова</dt><dd id="sWood">—</dd>
-          <dt>Камень</dt><dd id="sStone">—</dd>
-          <dt>Костёр</dt><dd id="sFire">—</dd>
-          <dt>Население</dt><dd id="pop">—</dd>
-        </dl>
+        <dl class="kv" id="stock"></dl>
       </div>
       <div class="card">
         <h2>Совет у костра</h2>
@@ -160,12 +156,12 @@
   <section class="explain" id="explain">
     <div class="card"><span class="tag">слой 1 · поля</span><h3>Тепло, огонь, дым</h3><p>Каждый тик температура расплывается к соседям (диффузия) и сносится ветром (полулагранжева адвекция, как в stable fluids). Горящая клетка греет соседей и поджигает их, когда те перегреваются. Лес горит охотно, трава — неохотно.</p></div>
     <div class="card"><span class="tag">слой 2 · навигация</span><h3>Поля течения</h3><p>Для лагеря, ягод, леса, пожара и края карты строится карта расстояний алгоритмом Дейкстры. Огонь, жар и дым делают клетки «дорогими», поэтому люди обходят пожар. Агент просто спускается по полю к цели.</p></div>
-    <div class="card"><span class="tag">слой 3 · агенты</span><h3>Utility AI</h3><p>У колониста есть сытость, бодрость, тепло и здоровье. Он оценивает дела (есть, спать, греться, собирать, рубить, тушить, драться) и берёт самое срочное. Тепло он получает из поля температуры, поэтому костёр работает через физику.</p></div>
+    <div class="card"><span class="tag">слой 3 · агенты</span><h3>Utility AI</h3><p>У колониста есть потребности, любимая работа и черты характера. Он оценивает дела (есть, спать, греться, собирать, рубить, тушить, драться) и берёт самое срочное. Тепло он получает из поля температуры, поэтому костёр работает через физику.</p></div>
     <div class="card"><span class="tag">слой 4 · поселение</span><h3>Совет и постройки</h3><p>Каждый вечер поселенцы собираются у костра. Каждый голосует за постройку, которая помогла бы ему: кто мёрз, хочет шалаш, кто видел пожар — колодец. Если хватает ресурсов, стройку закладывают, иначе копят. У каждого есть любимая и нелюбимая работа, а навыки растут с практикой. Готовые постройки меняют правила: ускоряют сон, перерабатывают сырьё, охлаждают лагерь. Деревянные постройки горят, как лес, и могут сгореть дотла.</p></div>
     <div class="card"><span class="tag">что попробовать</span><h3>Эксперименты</h3><p>Подожгите лес с наветренной стороны лагеря. Устройте набег ночью, когда люди спят. Переключите слой «Температура» в сумерках и посмотрите, как остывает карта и держится тёплое пятно у костра.</p></div>
   </section>
 </div>
 
-<script src="game.js"></script>
+<script type="module" src="src/main.js"></script>
 </body>
 </html>

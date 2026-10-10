@@ -1,0 +1,14 @@
+{
+  "name": "forest",
+  "private": true,
+  "type": "module",
+  "description": "Тёплый Брод — симуляция поселения: поля, навигация, агенты",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node tools/smoke.mjs",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0"
+  }
+}
