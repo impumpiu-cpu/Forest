@@ -8,6 +8,8 @@ FACTIONS.registerAll([
   {id: 'colony',  label: 'колония',      brain: 'colonist', color: '#62c6b9', hostile: ['raiders']},
   {id: 'raiders', label: 'Серые волки',  brain: 'raider',   color: '#d9585e', hostile: ['colony']},
   {id: 'wild',    label: 'дикие звери',  brain: null,       color: '#cdbb9a', hostile: []},
+  // predators are not at war with anyone: they pick fights one victim at a time (see combat.js)
+  {id: 'predators', label: 'хищники',     brain: null,       color: '#8d8f96', hostile: []},
 ]);
 
 export function isHostile(a, b) {

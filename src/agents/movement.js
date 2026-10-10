@@ -11,6 +11,7 @@ export function speedOf(w, a) {
 // returns true when arrived, false while moving, null when the step is blocked
 export function moveToward(w, a, tx, ty, mul = 1) {
   const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy), sp = speedOf(w, a) * mul;
+  if (Math.abs(dx) > 0.01) a.faceX = Math.sign(dx);
   if (len <= sp) { a.x = tx; a.y = ty; return true; }
   const nx = a.x + dx / len * sp, ny = a.y + dy / len * sp;
   if (!walkable(w, (Math.max(0, ny) | 0) * w.w + (Math.max(0, nx) | 0))) return null;   // blocked
@@ -67,6 +68,25 @@ export function bolt(w, a, threats, mul) {
   }
   if (best) moveToward(w, a, best[0], best[1], mul);
 }
+
+// head for a moving target, sidestepping water and rocks: pick the open direction that gets closest
+export function approach(w, a, tx, ty, mul = 1) {
+  if (moveToward(w, a, tx, ty, mul) !== null) return;
+  let best = null, bd = Infinity;
+  for (let k = 0; k < 16; k++) {
+    const ang = k / 16 * Math.PI * 2, nx = a.x + Math.cos(ang), ny = a.y + Math.sin(ang);
+    if (!inBounds(w, nx | 0, ny | 0) || !walkable(w, (ny | 0) * w.w + (nx | 0))) continue;
+    const d = Math.hypot(tx - nx, ty - ny); if (d < bd) { bd = d; best = [nx, ny]; }
+  }
+  if (best) moveToward(w, a, best[0], best[1], mul);
+}
+
+// sprinting drains stamina; a tired animal slows down and gets it back while walking
+export function sprintMul(a, sprint, drain) {
+  a.stamina = Math.max(0, a.stamina - drain);
+  return a.stamina > 0.15 ? sprint : 1;
+}
+export const recover = a => { a.stamina = Math.min(1, a.stamina + 0.002); };
 
 // soft push so agents don't stack on the same spot
 export function separate(w) {

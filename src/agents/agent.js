@@ -42,6 +42,8 @@ export function createAgent(w, speciesId, factionId, x, y) {
     x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(),
     task: null, think: (w.rng() * 15) | 0, cd: 0, carry: null, sleeping: false,
   };
+  for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
+  a.stamina = 1;
   for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rng, n.start); }
   if (sp.sentient && factionId === 'colony') personality(w, a);
   w.agents.push(a);
@@ -53,7 +55,9 @@ export function kill(w, a, cause, by) {
   if (a.dead) return;
   a.dead = true; a.hp = 0;
   const sp = SPECIES.get(a.species);
-  if (a.faction === 'colony') log(w, by ? `<b>${esc(a.name)}</b> погиб(ла) в бою.` : `<b>${esc(a.name)}</b> не пережил(а) ${cause}.`);
+  const killer = by ? SPECIES.get(by.species) : null;
+  if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> погиб(ла) в бою.` : `<b>${esc(a.name)}</b> не пережил(а) ${cause}.`);
+  else if (sp.id === 'wolf' && by?.faction === 'colony') log(w, `<b>${esc(by.name)}</b> убил(а) волка.`);
   else if (a.faction === 'raiders' && by) log(w, `Налётчик убит, его сразил(а) <b>${esc(by.name)}</b>.`);
   else if (sp.yields && by) { /* game killed by a hunter: the hunter logs nothing, the meat speaks for itself */ }
 }

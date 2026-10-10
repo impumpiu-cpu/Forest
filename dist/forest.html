@@ -175,6 +175,7 @@ button.quiet{background:transparent;color:var(--muted)}
         <div class="field"><span class="lbl">Запасы</span><div class="seg" data-key="stock"></div></div>
         <div class="field"><span class="lbl">Набеги «Серых волков»</span><div class="seg" data-key="raids"></div></div>
         <div class="field"><span class="lbl">Зайцы</span><div class="seg" data-key="wildlife"></div></div>
+        <div class="field"><span class="lbl">Волки</span><div class="seg" data-key="predators"></div></div>
       </div>
       <label class="check"><input id="cfgLightning" type="checkbox"> Молнии поджигают лес в жаркие часы</label>
       <div class="row actions">
@@ -232,6 +233,7 @@ button.quiet{background:transparent;color:var(--muted)}
         <span><i style="background:var(--colony)"></i>колонисты</span>
         <span><i style="background:var(--raider)"></i>налётчики</span>
         <span><i style="background:#cdbb9a"></i>зайцы</span>
+        <span><i style="background:#8d8f96"></i>волки</span>
         <span><i style="background:var(--food)"></i>ягоды</span>
         <span><i style="background:var(--ember)"></i>огонь и костёр</span>
         <span>пунктирный круг — лагерь со складом</span>
@@ -482,6 +484,11 @@ button.quiet{background:transparent;color:var(--muted)}
     few: { label: "\u041C\u0430\u043B\u043E", hares: 0.5 },
     many: { label: "\u041C\u043D\u043E\u0433\u043E", hares: 1.2 }
   };
+  var PREDATORS = {
+    none: { label: "\u041D\u0435\u0442", wolves: 0 },
+    few: { label: "\u0420\u0435\u0434\u043A\u043E", wolves: 0.5 },
+    many: { label: "\u0421\u0442\u0430\u0438", wolves: 1 }
+  };
   var DEFAULT_CFG = {
     name: "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434",
     seed: "20261010",
@@ -494,6 +501,7 @@ button.quiet{background:transparent;color:var(--muted)}
     stock: "normal",
     raids: "off",
     wildlife: "few",
+    predators: "few",
     lightning: false,
     windDir: 20,
     windStr: 35
@@ -546,6 +554,28 @@ button.quiet{background:transparent;color:var(--muted)}
         return n < cap ? Math.min(cap - n, 1 + Math.floor(rng() * 3)) : 0;
       },
       message: (w, group, side) => group.length > 1 ? `\u0421 ${side} \u043F\u0440\u0438\u0431\u0435\u0436\u0430\u043B\u0438 \u0437\u0430\u0439\u0446\u044B: ${group.length}.` : null
+    },
+    // a wolf pack comes only while there are hares to eat and no other pack around
+    {
+      id: "wolves",
+      species: "wolf",
+      faction: "predators",
+      interval: 1500,
+      minDist: 30,
+      size: (w, rng) => {
+        const k = PREDATORS[w.cfg.predators].wolves;
+        if (!k || ofSpecies(w, "wolf").length || ofSpecies(w, "hare").length < 5 || rng() > k) return 0;
+        return 2 + Math.floor(rng() * (k >= 1 ? 3 : 2));
+      },
+      // members share a pack id; the first one leads
+      groupInit: (group) => {
+        const pack = group[0].id;
+        for (const a of group) {
+          a.pack = pack;
+          a.name = "\u0412\u043E\u043B\u043A";
+        }
+      },
+      message: (w, group, side) => `\u0421 ${side} \u043F\u0440\u0438\u0448\u043B\u0430 \u0441\u0442\u0430\u044F \u0432\u043E\u043B\u043A\u043E\u0432: ${group.length}. \u041E\u0434\u043D\u043E\u043C\u0443 \u0432 \u043B\u0435\u0441 \u043B\u0443\u0447\u0448\u0435 \u043D\u0435 \u0445\u043E\u0434\u0438\u0442\u044C.`
     },
     {
       id: "raiders",
@@ -630,7 +660,12 @@ button.quiet{background:transparent;color:var(--muted)}
       effect: "\u041B\u0443\u043A\u0438 \u0431\u044C\u044E\u0442 \u0434\u0430\u043B\u044C\u0448\u0435 \u043D\u0430 2 \u043A\u043B\u0435\u0442\u043A\u0438, \u043A\u0430\u0436\u0434\u044B\u0439 \u0437\u0430\u044F\u0446 \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u043C\u044F\u0441\u0430.",
       effects: { add: { huntRange: 2 }, yield: { meat: 1.5 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F \u0443\u0434\u0430\u0447\u043D\u0435\u0435",
-      motive: (a, c) => [[(a.prefs.hunt - 1) * 1.3, "\u043B\u044E\u0431\u0438\u0442 \u043E\u0445\u043E\u0442\u0443"], [a.mem.chase * 1.2, "\u0437\u0430\u0439\u0446\u044B \u0443\u0445\u043E\u0434\u044F\u0442 \u043E\u0442 \u0441\u0442\u0440\u0435\u043B"], [c.preyCount > 6 ? 0.3 : 0, "\u0432\u043E\u043A\u0440\u0443\u0433 \u043C\u043D\u043E\u0433\u043E \u0437\u0430\u0439\u0446\u0435\u0432"]]
+      motive: (a, c) => [
+        [(a.prefs.hunt - 1) * 1.3, "\u043B\u044E\u0431\u0438\u0442 \u043E\u0445\u043E\u0442\u0443"],
+        [a.mem.chase * 1.2, "\u0437\u0430\u0439\u0446\u044B \u0443\u0445\u043E\u0434\u044F\u0442 \u043E\u0442 \u0441\u0442\u0440\u0435\u043B"],
+        [c.preyCount > 6 ? 0.3 : 0, "\u0432\u043E\u043A\u0440\u0443\u0433 \u043C\u043D\u043E\u0433\u043E \u0437\u0430\u0439\u0446\u0435\u0432"],
+        [c.wolves ? 0.25 : 0, "\u0432\u043E\u043B\u043A\u0438 \u043F\u0435\u0440\u0435\u0445\u0432\u0430\u0442\u044B\u0432\u0430\u044E\u0442 \u0437\u0430\u0439\u0446\u0435\u0432"]
+      ]
     },
     {
       id: "quarry",
@@ -710,7 +745,7 @@ button.quiet{background:transparent;color:var(--muted)}
       effect: "\u0412 \u043B\u0430\u0433\u0435\u0440\u0435 \u0437\u0430\u0449\u0438\u0442\u043D\u0438\u043A\u0438 \u043F\u043E\u043B\u0443\u0447\u0430\u044E\u0442 \u043D\u0430 40% \u043C\u0435\u043D\u044C\u0448\u0435 \u0443\u0440\u043E\u043D\u0430, \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u0443\u043D\u043E\u0441\u044F\u0442 \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u043D\u044C\u0448\u0435.",
       effects: { mul: { defense: 0.6, loot: 0.5 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u0449\u0438\u0442\u044B \u043E\u0442 \u0447\u0443\u0436\u0430\u043A\u043E\u0432",
-      motive: (a) => [[a.mem.raid * 1.5, "\u0434\u0440\u0430\u043B\u0441\u044F(\u0430\u0441\u044C) \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438"]]
+      motive: (a) => [[a.mem.raid * 1.5, "\u0434\u0440\u0430\u043B\u0441\u044F(\u0430\u0441\u044C) \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438"], [a.mem.wolf * 1.4, "\u0431\u043E\u0438\u0442\u0441\u044F \u0432\u043E\u043B\u043A\u043E\u0432"]]
     }
   ]);
 
@@ -900,7 +935,7 @@ button.quiet{background:transparent;color:var(--muted)}
       bldSeq: 0,
       wind: { dir: cfg.windDir, str: cfg.windStr / 100, x: 0, y: 0 },
       weather: { rain: 0, rainLeft: 0 },
-      stats: { fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0 },
+      stats: { fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0 },
       campLit: false,
       mods: emptyMods(),
       cache: {},
@@ -1246,7 +1281,8 @@ button.quiet{background:transparent;color:var(--muted)}
       heatHarm: 70,
       look: { shape: "person", size: 0.62 },
       names: HUMAN_NAMES,
-      sentient: true
+      sentient: true,
+      attack: { power: 1, cooldown: 12 }
     },
     // Hares graze, rest at night, bolt from people and fire. They never breed here:
     // their numbers change only through migration (see migrations.js).
@@ -1260,9 +1296,42 @@ button.quiet{background:transparent;color:var(--muted)}
       heatHarm: 60,
       look: { shape: "hare", size: 0.42, color: "#cdbb9a" },
       yields: { resource: "meat", amount: 2 },
-      flee: { radius: 4.5, sprint: 1.45 },
+      flee: { radius: 4.5, sprint: 1.45, from: ["human", "wolf"], stamina: 7e-3 },
       grazes: { terrain: ["grass"], eatsBerries: 4e-3 },
       leaveChance: 4e-4
+    },
+    // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
+    // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
+    // or when the hares run out. Like everyone else they only arrive and depart by migration.
+    {
+      id: "wolf",
+      label: "\u0432\u043E\u043B\u043A",
+      hp: 0.8,
+      speed: 0.14,
+      needs: ["food"],
+      brain: "predator",
+      mods: { hunger: 0.55 },
+      heatHarm: 60,
+      look: { shape: "wolf", size: 0.58, color: "#8d8f96" },
+      attack: { power: 0.85, cooldown: 14 },
+      killMessage: (name) => `\u0412\u043E\u043B\u043A\u0438 \u0437\u0430\u0433\u0440\u044B\u0437\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
+      predator: {
+        prey: ["hare"],
+        // what it hunts for food
+        victims: ["human"],
+        // what it attacks only when the target is alone
+        sprint: 1.9,
+        stamina: 3e-3,
+        sight: 22,
+        // how far it notices prey
+        loneRadius: 6,
+        // nobody else of the victim's kind this close → the victim is alone
+        campShy: 11,
+        // keeps this far from a lit camp
+        groupFear: 3,
+        // this many people together make it back off
+        feedTicks: 90
+      }
     }
   ]);
 
@@ -1349,10 +1418,10 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     build(id) {
       const def = NAVMAPS.get(id), w = this.w, W = w.w, H = w.h;
-      const dist = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
+      const dist2 = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
       this.computeCost(def.hazard ?? 1);
       const ctx = def.prepare ? def.prepare(w) : null;
-      dist.fill(FAR);
+      dist2.fill(FAR);
       closed.fill(0);
       let hn = 0;
       const push = (i, d) => {
@@ -1368,7 +1437,7 @@ button.quiet{background:transparent;color:var(--muted)}
         hD[k] = d;
       };
       for (let i = 0; i < w.n; i++) if (cost[i] >= 0 && def.seed(w, i, ctx)) {
-        dist[i] = 0;
+        dist2[i] = 0;
         push(i, 0);
       }
       while (hn > 0) {
@@ -1387,7 +1456,7 @@ button.quiet{background:transparent;color:var(--muted)}
         }
         hI[k] = li;
         hD[k] = ld;
-        if (closed[i] || d > dist[i]) continue;
+        if (closed[i] || d > dist2[i]) continue;
         closed[i] = 1;
         const x = i % W, y = i / W | 0;
         for (let q = 0; q < 8; q++) {
@@ -1401,8 +1470,8 @@ button.quiet{background:transparent;color:var(--muted)}
             c *= 1.414;
           }
           const nd = d + c;
-          if (nd < dist[j]) {
-            dist[j] = nd;
+          if (nd < dist2[j]) {
+            dist2[j] = nd;
             push(j, nd);
           }
         }
@@ -1565,6 +1634,7 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   function moveToward(w, a, tx, ty, mul = 1) {
     const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy), sp = speedOf(w, a) * mul;
+    if (Math.abs(dx) > 0.01) a.faceX = Math.sign(dx);
     if (len <= sp) {
       a.x = tx;
       a.y = ty;
@@ -1577,20 +1647,20 @@ button.quiet{background:transparent;color:var(--muted)}
     return false;
   }
   function follow(w, a, mapId, mul = 1) {
-    const dist = w.nav.get(mapId), i = cellOf(w, a);
-    if (dist[i] === 0) return "arrived";
+    const dist2 = w.nav.get(mapId), i = cellOf(w, a);
+    if (dist2[i] === 0) return "arrived";
     const x = i % w.w, y = i / w.w | 0;
-    let best = dist[i], bj = -1;
+    let best = dist2[i], bj = -1;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (!inBounds(w, nx, ny)) continue;
       const j = ny * w.w + nx;
-      if (dist[j] < best) {
-        best = dist[j];
+      if (dist2[j] < best) {
+        best = dist2[j];
         bj = j;
       }
     }
-    if (bj < 0) return dist[i] >= FAR ? "none" : "stuck";
+    if (bj < 0) return dist2[i] >= FAR ? "none" : "stuck";
     const sp = speedOf(w, a) * mul, tx = bj % w.w + 0.5, ty = (bj / w.w | 0) + 0.5;
     const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy);
     if (len <= sp) {
@@ -1640,6 +1710,27 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     if (best) moveToward(w, a, best[0], best[1], mul);
   }
+  function approach(w, a, tx, ty, mul = 1) {
+    if (moveToward(w, a, tx, ty, mul) !== null) return;
+    let best = null, bd = Infinity;
+    for (let k = 0; k < 16; k++) {
+      const ang = k / 16 * Math.PI * 2, nx = a.x + Math.cos(ang), ny = a.y + Math.sin(ang);
+      if (!inBounds(w, nx | 0, ny | 0) || !walkable(w, (ny | 0) * w.w + (nx | 0))) continue;
+      const d = Math.hypot(tx - nx, ty - ny);
+      if (d < bd) {
+        bd = d;
+        best = [nx, ny];
+      }
+    }
+    if (best) moveToward(w, a, best[0], best[1], mul);
+  }
+  function sprintMul(a, sprint, drain) {
+    a.stamina = Math.max(0, a.stamina - drain);
+    return a.stamina > 0.15 ? sprint : 1;
+  }
+  var recover = (a) => {
+    a.stamina = Math.min(1, a.stamina + 2e-3);
+  };
   function separate(w) {
     const ags = w.agents;
     for (let p = 0; p < ags.length; p++) for (let q = p + 1; q < ags.length; q++) {
@@ -1663,7 +1754,9 @@ button.quiet{background:transparent;color:var(--muted)}
   FACTIONS.registerAll([
     { id: "colony", label: "\u043A\u043E\u043B\u043E\u043D\u0438\u044F", brain: "colonist", color: "#62c6b9", hostile: ["raiders"] },
     { id: "raiders", label: "\u0421\u0435\u0440\u044B\u0435 \u0432\u043E\u043B\u043A\u0438", brain: "raider", color: "#d9585e", hostile: ["colony"] },
-    { id: "wild", label: "\u0434\u0438\u043A\u0438\u0435 \u0437\u0432\u0435\u0440\u0438", brain: null, color: "#cdbb9a", hostile: [] }
+    { id: "wild", label: "\u0434\u0438\u043A\u0438\u0435 \u0437\u0432\u0435\u0440\u0438", brain: null, color: "#cdbb9a", hostile: [] },
+    // predators are not at war with anyone: they pick fights one victim at a time (see combat.js)
+    { id: "predators", label: "\u0445\u0438\u0449\u043D\u0438\u043A\u0438", brain: null, color: "#8d8f96", hostile: [] }
   ]);
   function isHostile(a, b) {
     return FACTIONS.get(a.faction).hostile.includes(b.faction);
@@ -1737,6 +1830,8 @@ button.quiet{background:transparent;color:var(--muted)}
       carry: null,
       sleeping: false
     };
+    for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
+    a.stamina = 1;
     for (const id of sp.needs) {
       const n = NEEDS.get(id);
       a.needs[id] = between(w.rng, n.start);
@@ -1750,17 +1845,20 @@ button.quiet{background:transparent;color:var(--muted)}
     a.dead = true;
     a.hp = 0;
     const sp = SPECIES.get(a.species);
-    if (a.faction === "colony") log(w, by ? `<b>${esc(a.name)}</b> \u043F\u043E\u0433\u0438\u0431(\u043B\u0430) \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> \u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B(\u0430) ${cause}.`);
+    const killer = by ? SPECIES.get(by.species) : null;
+    if (a.faction === "colony") log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> \u043F\u043E\u0433\u0438\u0431(\u043B\u0430) \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> \u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B(\u0430) ${cause}.`);
+    else if (sp.id === "wolf" && by?.faction === "colony") log(w, `<b>${esc(by.name)}</b> \u0443\u0431\u0438\u043B(\u0430) \u0432\u043E\u043B\u043A\u0430.`);
     else if (a.faction === "raiders" && by) log(w, `\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A \u0443\u0431\u0438\u0442, \u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B(\u0430) <b>${esc(by.name)}</b>.`);
     else if (sp.yields && by) {
     }
   }
 
   // src/agents/combat.js
+  var aggressor = (a, o) => o.task?.id === "maul" && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
   function nearestHostile(w, a, r) {
     let best = null, bd = r * r;
     for (const o of w.agents) {
-      if (o === a || o.dead || !isHostile(a, o)) continue;
+      if (o === a || o.dead || !(isHostile(a, o) || aggressor(a, o))) continue;
       const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
       if (d < bd) {
         bd = d;
@@ -1774,11 +1872,13 @@ button.quiet{background:transparent;color:var(--muted)}
     const dCamp = w.nav.get("camp");
     const home = a.faction === "colony" && dCamp[cellOf(w, a)] < 8 ? 1.5 : 1;
     const wall = t.faction === "colony" && dCamp[cellOf(w, t)] < 8 ? w.mods.mul.defense : 1;
-    a.cd = 12;
+    const atk = SPECIES.get(a.species).attack || { power: 1, cooldown: 12 };
+    a.cd = atk.cooldown;
     a.flash = 4;
-    t.hp -= (0.1 + Math.random() * 0.12) * home * wall;
-    if (t.faction === "colony") t.mem.raid += 0.25;
-    else if (a.faction === "colony") a.mem.raid += 0.1;
+    t.hp -= (0.1 + Math.random() * 0.12) * atk.power * home * wall;
+    const memKey = a.species === "wolf" || t.species === "wolf" ? "wolf" : "raid";
+    if (t.faction === "colony") t.mem[memKey] += 0.25;
+    else if (a.faction === "colony") a.mem[memKey] += 0.1;
     if (t.hp <= 0) kill(w, t, "\u0440\u0430\u043D", a);
   }
 
@@ -1963,6 +2063,7 @@ button.quiet{background:transparent;color:var(--muted)}
           spoiled: w.stats.spoiledToday,
           burnt: w.stats.burntCells,
           preyCount: ofSpecies(w, "hare").length,
+          wolves: ofSpecies(w, "wolf").length,
           count: (k) => count(w, k),
           wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
         };
@@ -2111,12 +2212,24 @@ button.quiet{background:transparent;color:var(--muted)}
     { id: "leave", label: () => "\u0443\u0445\u043E\u0434\u0438\u0442", step(w, a) {
       if (follow(w, a, "edge") === "arrived") a.gone = true;
     } },
-    // animal states: the grazer brain moves the animal itself, these entries only name the state
+    // run for the camp when something is hunting you
+    { id: "runHome", label: () => "\u0431\u0435\u0436\u0438\u0442 \u0432 \u043B\u0430\u0433\u0435\u0440\u044C", step(w, a) {
+      if (follow(w, a, "camp", 1.3) === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 3) done2(a);
+    } },
+    // animal states: the animal's brain moves it itself, these entries only name the state
     { id: "graze", label: () => "\u043F\u0430\u0441\u0451\u0442\u0441\u044F", step() {
     } },
     { id: "rest", label: () => "\u0434\u0440\u0435\u043C\u043B\u0435\u0442", step() {
     } },
     { id: "bolt", label: () => "\u0443\u0431\u0435\u0433\u0430\u0435\u0442", step() {
+    } },
+    { id: "roam", label: () => "\u0440\u044B\u0449\u0435\u0442", step() {
+    } },
+    { id: "chase", label: () => "\u0433\u043E\u043D\u0438\u0442 \u0434\u043E\u0431\u044B\u0447\u0443", step() {
+    } },
+    { id: "maul", label: () => "\u043D\u0430\u043F\u0430\u0434\u0430\u0435\u0442", step() {
+    } },
+    { id: "feed", label: () => "\u0435\u0441\u0442 \u0434\u043E\u0431\u044B\u0447\u0443", step() {
     } }
   ]);
   var taskLabel = (a) => a.task ? TASKS.get(a.task.id).label(a.task) : "\u0434\u0443\u043C\u0430\u0435\u0442";
@@ -2173,6 +2286,11 @@ button.quiet{background:transparent;color:var(--muted)}
     if (councilDue(w)) opts.push([{ id: "council" }, 1.3]);
     const brave = a.mods.bravery;
     if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{ id: "douse" }, 0.8 * brave]);
+    const hunter = w.agents.find((o) => !o.dead && o.task?.id === "maul" && o.task.target === a);
+    if (hunter) {
+      a.mem.wolf += 0.05;
+      opts.push(brave * a.hp > 0.85 ? [{ id: "fight", target: hunter }, 1.5] : [{ id: "runHome" }, 1.5]);
+    }
     const enemy = nearestHostile(w, a, 16);
     if (enemy && a.hp > 0.3) opts.push([{ id: "fight", target: enemy }, 1.1 * brave]);
     let best = null, bs = -Infinity;
@@ -2197,6 +2315,8 @@ button.quiet{background:transparent;color:var(--muted)}
       if (tid !== "douse" && (T2 > 55 || nearFire(w, a, 1.5))) a.task = { id: "flee" };
       if (tid === "douse" && (T2 > 58 || a.hp < 0.6)) a.task = { id: "flee" };
       if (a.task?.id === "flee" || a.task?.id === "douse") a.mem.fire += 6e-3;
+      const tid2 = a.task?.id;
+      if (tid2 !== "fight" && tid2 !== "runHome" && tid2 !== "flee" && w.agents.some((o) => o.task?.id === "maul" && o.task.target === a)) a.think = 0;
       if (a.task?.id !== "flee" && --a.think <= 0) {
         a.think = 15;
         const busy = a.task?.id === "job" && a.carry?.n > 0;
@@ -2236,10 +2356,10 @@ button.quiet{background:transparent;color:var(--muted)}
   };
 
   // src/agents/brains/grazer.js
-  function threatsNear(w, a, radius) {
+  function threatsNear(w, a, radius, from) {
     const out = [];
     for (const o of w.agents) {
-      if (o === a || o.dead || !SPECIES.get(o.species).sentient) continue;
+      if (o === a || o.dead || !from.includes(o.species)) continue;
       const r = radius * (o.stalking ? 0.55 : 1);
       if ((o.x - a.x) ** 2 + (o.y - a.y) ** 2 < r * r) out.push(o);
     }
@@ -2261,13 +2381,15 @@ button.quiet{background:transparent;color:var(--muted)}
         escapeHeat(w, a, sp.flee.sprint);
         return;
       }
-      const threats = threatsNear(w, a, sp.flee.radius);
+      const threats = threatsNear(w, a, sp.flee.radius, sp.flee.from);
       if (threats.length || a.spooked > 0) {
         a.spooked = Math.max(0, (a.spooked || 0) - 1);
         a.task = { id: "bolt" };
-        bolt(w, a, threats.length ? threats : w.agents.filter((o) => SPECIES.get(o.species).sentient && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 100), sp.flee.sprint);
+        const from = threats.length ? threats : threatsNear(w, a, 10, sp.flee.from);
+        bolt(w, a, from, sprintMul(a, sp.flee.sprint, sp.flee.stamina));
         return;
       }
+      recover(a);
       if (a.task?.id === "leave" || Math.random() < sp.leaveChance) {
         a.task = { id: "leave" };
         if (follow(w, a, "edge") === "arrived") a.gone = true;
@@ -2295,9 +2417,170 @@ button.quiet{background:transparent;color:var(--muted)}
     }
   };
 
+  // src/agents/brains/predator.js
+  var dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  function nearest(w, a, species, r, filter = () => true) {
+    let best = null, bd = r;
+    for (const o of w.agents) {
+      if (o.dead || !species.includes(o.species) || !filter(o)) continue;
+      const d = dist(a, o);
+      if (d < bd) {
+        bd = d;
+        best = o;
+      }
+    }
+    return best;
+  }
+  function isAlone(w, v, P) {
+    const campD = Math.hypot(v.x - w.camp.x - 0.5, v.y - w.camp.y - 0.5);
+    if (campD < P.campShy) return false;
+    return !w.agents.some((o) => o !== v && !o.dead && o.species === v.species && dist(o, v) < P.loneRadius);
+  }
+  function packOf(w, a) {
+    return w.agents.filter((o) => !o.dead && o.pack === a.pack);
+  }
+  var predatorBrain = {
+    id: "predator",
+    step(w, a) {
+      const sp = SPECIES.get(a.species), P = sp.predator, i = cellOf(w, a), T2 = w.grid.temp[i];
+      stepBody(w, a);
+      if (a.dead) return;
+      if (a.cd > 0) a.cd--;
+      if (T2 > 45 || nearFire(w, a, 2.5)) {
+        a.task = { id: "bolt" };
+        escapeHeat(w, a, 1.4);
+        return;
+      }
+      const hunger = a.needs.food, night = nightness(w.tick);
+      const campD = Math.hypot(a.x - w.camp.x - 0.5, a.y - w.camp.y - 0.5);
+      const people = w.agents.filter((o) => !o.dead && P.victims.includes(o.species) && dist(o, a) < 6);
+      if (a.task?.id === "leave" || a.hp < sp.hp * 0.35) {
+        if (a.task?.id !== "leave") {
+          a.task = { id: "leave" };
+          if (packOf(w, a)[0] === a) log(w, "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u0432\u043E\u043B\u043A\u0438 \u0443\u0445\u043E\u0434\u044F\u0442 \u0438\u0437 \u043B\u0435\u0441\u0430.");
+        }
+        if (follow(w, a, "edge", 1.2) === "arrived") a.gone = true;
+        return;
+      }
+      if (people.length >= P.groupFear) {
+        a.task = { id: "bolt" };
+        bolt(w, a, people, sprintMul(a, P.sprint, P.stamina));
+        return;
+      }
+      if (w.campLit && campD < P.campShy && a.task?.id !== "maul") {
+        a.task = { id: "roam" };
+        bolt(w, a, [{ x: w.camp.x + 0.5, y: w.camp.y + 0.5 }], 1);
+        return;
+      }
+      const t = a.task;
+      if (t?.id === "feed") {
+        a.needs.food = Math.min(1, a.needs.food + 0.012);
+        recover(a);
+        if (--t.left <= 0) a.task = null;
+        return;
+      }
+      if (t?.id === "chase") {
+        const prey = t.target;
+        if (a.stamina <= 0.05) {
+          a.task = { id: "rest" };
+          return;
+        }
+        if (!prey || prey.dead || !w.agents.includes(prey) || dist(a, prey) > P.sight * 1.3) {
+          a.task = { id: "roam" };
+          return;
+        }
+        approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina));
+        if (dist(a, prey) < 0.7) {
+          kill(w, prey, "\u0437\u0443\u0431\u043E\u0432", a);
+          w.stats.wolfKills++;
+          for (const m of packOf(w, a)) if (dist(m, a) < 8) m.task = { id: "feed", left: P.feedTicks };
+          a.task = { id: "feed", left: P.feedTicks };
+        }
+        return;
+      }
+      if (t?.id === "maul") {
+        const v = t.target;
+        const helpers = v && w.agents.filter((o) => o !== v && !o.dead && o.species === v.species && dist(o, v) < 5).length;
+        if (a.stamina <= 0.05) {
+          a.task = { id: "rest" };
+          return;
+        }
+        if (!v || v.dead || !w.agents.includes(v) || helpers >= 2 || Math.hypot(v.x - w.camp.x - 0.5, v.y - w.camp.y - 0.5) < P.campShy * 0.6) {
+          for (const m of packOf(w, a)) {
+            m.calmUntil = w.tick + 500;
+            if (m.task?.id === "maul") m.task = { id: "roam" };
+          }
+          return;
+        }
+        if (dist(a, v) > 0.9) approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6));
+        else {
+          attack(w, a, v);
+          if (v.dead) a.needs.food = 1;
+        }
+        return;
+      }
+      recover(a);
+      if (t?.id === "rest") {
+        recover(a);
+        recover(a);
+        if (a.stamina < 0.7) return;
+        a.task = null;
+      }
+      if (hunger < 0.65) {
+        const prey = nearest(w, a, P.prey, P.sight);
+        if (prey) {
+          a.task = { id: "chase", target: prey };
+          return;
+        }
+        const bold = w.tick > (a.calmUntil || 0) && (hunger < 0.3 || night > 0.6 && packOf(w, a).length >= 2);
+        if (bold) {
+          const v = nearest(w, a, P.victims, P.sight * 0.8, (o) => isAlone(w, o, P));
+          if (v) {
+            a.task = { id: "maul", target: v };
+            w.stats.wolfAttacks++;
+            log(w, `\u0412\u043E\u043B\u043A\u0438 \u043D\u0430\u043F\u0430\u0434\u0430\u044E\u0442! <b>${v.name}</b> \u0434\u0430\u043B\u0435\u043A\u043E \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F \u0438 \u0431\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438.`);
+            for (const m of packOf(w, a)) if (m !== a && dist(m, a) < 10 && m.task?.id !== "feed") {
+              m.task = { id: "maul", target: v };
+              m.calmUntil = w.tick + 500;
+            }
+            a.calmUntil = w.tick + 500;
+            return;
+          }
+        }
+        if (hunger < 0.12 && !w.agents.some((o) => P.prey.includes(o.species))) {
+          a.task = { id: "leave" };
+          return;
+        }
+      }
+      const pack = packOf(w, a), leader = pack[0];
+      if (!t || t.id !== "roam") a.task = { id: "roam" };
+      if (leader !== a && leader) {
+        if (dist(a, leader) > 2.5) approach(w, a, leader.x + (a.id % 3 - 1), leader.y + ((a.id >> 1) % 3 - 1), 0.9);
+        return;
+      }
+      const r = a.task;
+      if (hunger < 0.65) {
+        const scent = nearest(w, a, P.prey, Infinity);
+        if (scent) {
+          approach(w, a, scent.x, scent.y, 0.8);
+          return;
+        }
+      }
+      if (!r.spot || dist(a, { x: r.spot[0], y: r.spot[1] }) < 1.5 || Math.random() < 2e-3) {
+        for (let k = 0; k < 20; k++) {
+          const x = 2 + Math.random() * (w.w - 4), y = 2 + Math.random() * (w.h - 4);
+          if (!walkable(w, (y | 0) * w.w + (x | 0)) || Math.hypot(x - w.camp.x, y - w.camp.y) < P.campShy + 6) continue;
+          r.spot = [x, y];
+          break;
+        }
+      }
+      if (r.spot) approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.8 : 0.55);
+    }
+  };
+
   // src/agents/brains/index.js
   var BRAINS = new Registry("brain");
-  BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain]);
+  BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain, predatorBrain]);
 
   // src/settlement/migration.js
   var SIDE = ["\u0437\u0430\u043F\u0430\u0434\u0430", "\u0432\u043E\u0441\u0442\u043E\u043A\u0430", "\u0441\u0435\u0432\u0435\u0440\u0430", "\u044E\u0433\u0430"];
@@ -2331,6 +2614,7 @@ button.quiet{background:transparent;color:var(--muted)}
       if (def.init) def.init(a, w);
       group.push(a);
     }
+    if (def.groupInit) def.groupInit(group, w);
     const msg = def.message?.(w, group, side);
     if (msg) log(w, msg);
     return group;
@@ -2401,6 +2685,36 @@ button.quiet{background:transparent;color:var(--muted)}
       ctx.ellipse(px - r * 0.35, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, -0.2, 0, Math.PI * 2);
       ctx.ellipse(px + r * 0.15, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, 0.2, 0, Math.PI * 2);
       ctx.fill();
+    },
+    // long grey body, pointed ears, tail; facing the way it last moved
+    wolf(ctx, a, px, py, r, color) {
+      const dir = a.faceX ?? 1;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(dir < 0 ? -1 : 1, 1);
+      ctx.fillStyle = a.task?.id === "maul" ? "#b06a6a" : color;
+      ctx.strokeStyle = "#0e100b";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.35, r * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(r * 1.3, -r * 0.35, r * 0.55, r * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(r * 1.15, -r * 0.7);
+      ctx.lineTo(r * 1.3, -r * 1.25);
+      ctx.lineTo(r * 1.5, -r * 0.75);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-r * 1.3, -r * 0.1);
+      ctx.quadraticCurveTo(-r * 2.1, -r * 0.2, -r * 2.2, r * 0.4);
+      ctx.lineWidth = Math.max(1.5, r * 0.35);
+      ctx.strokeStyle = color;
+      ctx.stroke();
+      ctx.restore();
     }
   };
   function shade(hex, k) {
@@ -2654,7 +2968,7 @@ button.quiet{background:transparent;color:var(--muted)}
       const ctx = this.ctx, S = this.S;
       for (const a of w.agents) {
         const sp = SPECIES.get(a.species), look = sp.look, px = a.x * S, py = a.y * S;
-        const r = Math.max(S * look.size, look.shape === "hare" ? 2.6 : 3.4);
+        const r = Math.max(S * look.size, look.shape === "person" ? 3.4 : 2.8);
         const color = look.color || FACTIONS.get(a.faction).color;
         if (a === selected) {
           ctx.strokeStyle = "#fff";
@@ -2713,7 +3027,8 @@ button.quiet{background:transparent;color:var(--muted)}
     climate: Object.entries(CLIMATES).map(([k, v]) => [k, v.label]),
     stock: Object.entries(STOCKS).map(([k, v]) => [k, v.label]),
     raids: Object.entries(RAIDS).map(([k, v]) => [k, v.label]),
-    wildlife: Object.entries(WILDLIFE).map(([k, v]) => [k, v.label])
+    wildlife: Object.entries(WILDLIFE).map(([k, v]) => [k, v.label]),
+    predators: Object.entries(PREDATORS).map(([k, v]) => [k, v.label])
   };
   var NOTES = { size: (v) => SIZES[v].note, climate: (v) => CLIMATES[v].note };
   var STORE = "forest.cfg";
@@ -2857,7 +3172,7 @@ button.quiet{background:transparent;color:var(--muted)}
       $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       $("fires").textContent = w.stats.fireCount;
       const col = colonists(w), raiders = w.agents.filter((a) => a.faction === "raiders").length, hares = ofSpecies(w, "hare").length;
-      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u043E\u0432"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>`);
+      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u043E\u0432"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd><dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd>`);
       this.renderCouncil(w);
       this.renderBuildings(w);
       this.renderPeople(w, view2.selected);
@@ -2997,7 +3312,7 @@ button.quiet{background:transparent;color:var(--muted)}
     $("game").hidden = false;
     $("explain").hidden = false;
     $("colonyName").textContent = c.name;
-    $("worldInfo").innerHTML = esc(`\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${CLIMATES[c.climate].label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`);
+    $("worldInfo").innerHTML = esc(`\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${CLIMATES[c.climate].label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}, \u0432\u043E\u043B\u043A\u0438: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`);
     $("windDir").value = world.wind.dir;
     $("windStr").value = Math.round(world.wind.str * 100);
     $("windArrow").style.transform = `rotate(${world.wind.dir}deg)`;

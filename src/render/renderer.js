@@ -160,7 +160,7 @@ export class Renderer {
     const ctx = this.ctx, S = this.S;
     for (const a of w.agents) {
       const sp = SPECIES.get(a.species), look = sp.look, px = a.x * S, py = a.y * S;
-      const r = Math.max(S * look.size, look.shape === 'hare' ? 2.6 : 3.4);
+      const r = Math.max(S * look.size, look.shape === 'person' ? 3.4 : 2.8);
       const color = look.color || FACTIONS.get(a.faction).color;
       if (a === selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 4, 0, Math.PI * 2); ctx.stroke(); }
       LOOKS[look.shape](ctx, a, px, py, r, color, S);

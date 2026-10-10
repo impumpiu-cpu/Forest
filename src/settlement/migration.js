@@ -34,6 +34,7 @@ export function spawnGroup(w, id, size) {
     if (def.init) def.init(a, w);
     group.push(a);
   }
+  if (def.groupInit) def.groupInit(group, w);
   const msg = def.message?.(w, group, side);
   if (msg) log(w, msg);
   return group;

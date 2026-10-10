@@ -35,8 +35,14 @@ export const WILDLIFE = {
   many: {label: 'Много', hares: 1.2},
 };
 
+export const PREDATORS = {
+  none: {label: 'Нет',     wolves: 0},
+  few:  {label: 'Редко',   wolves: 0.5},
+  many: {label: 'Стаи',    wolves: 1},
+};
+
 export const DEFAULT_CFG = {
   name: 'Тёплый Брод', seed: '20261010', size: 'medium', water: 1, forest: 1, rock: 1,
-  climate: 'temperate', colonists: 8, stock: 'normal', raids: 'off', wildlife: 'few', lightning: false,
+  climate: 'temperate', colonists: 8, stock: 'normal', raids: 'off', wildlife: 'few', predators: 'few', lightning: false,
   windDir: 20, windStr: 35,
 };

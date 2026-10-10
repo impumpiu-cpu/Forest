@@ -95,10 +95,19 @@ TASKS.registerAll([
   }},
   {id: 'leave', label: () => 'уходит', step(w, a) { if (follow(w, a, 'edge') === 'arrived') a.gone = true; }},
 
-  // animal states: the grazer brain moves the animal itself, these entries only name the state
+  // run for the camp when something is hunting you
+  {id: 'runHome', label: () => 'бежит в лагерь', step(w, a) {
+    if (follow(w, a, 'camp', 1.3) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) done(a);
+  }},
+
+  // animal states: the animal's brain moves it itself, these entries only name the state
   {id: 'graze', label: () => 'пасётся', step() {}},
   {id: 'rest', label: () => 'дремлет', step() {}},
   {id: 'bolt', label: () => 'убегает', step() {}},
+  {id: 'roam', label: () => 'рыщет', step() {}},
+  {id: 'chase', label: () => 'гонит добычу', step() {}},
+  {id: 'maul', label: () => 'нападает', step() {}},
+  {id: 'feed', label: () => 'ест добычу', step() {}},
 ]);
 
 export const taskLabel = a => (a.task ? TASKS.get(a.task.id).label(a.task) : 'думает');

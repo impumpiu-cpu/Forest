@@ -38,6 +38,12 @@ function decide(w, a) {
   if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);
   const brave = a.mods.bravery;
   if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave]);
+  // something is hunting me: brave and healthy people fight back, the rest run for the camp
+  const hunter = w.agents.find(o => !o.dead && o.task?.id === 'maul' && o.task.target === a);
+  if (hunter) {
+    a.mem.wolf += 0.05;
+    opts.push(brave * a.hp > 0.85 ? [{id: 'fight', target: hunter}, 1.5] : [{id: 'runHome'}, 1.5]);
+  }
   const enemy = nearestHostile(w, a, 16);
   if (enemy && a.hp > 0.3) opts.push([{id: 'fight', target: enemy}, 1.1 * brave]);
 
@@ -59,6 +65,9 @@ export const colonistBrain = {
     if (tid !== 'douse' && (T > 55 || nearFire(w, a, 1.5))) a.task = {id: 'flee'};
     if (tid === 'douse' && (T > 58 || a.hp < 0.6)) a.task = {id: 'flee'};
     if (a.task?.id === 'flee' || a.task?.id === 'douse') a.mem.fire += 0.006;
+    // being attacked can't wait for the next think
+    const tid2 = a.task?.id;
+    if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && w.agents.some(o => o.task?.id === 'maul' && o.task.target === a)) a.think = 0;
     if (a.task?.id !== 'flee' && --a.think <= 0) {
       a.think = 15;
       const busy = a.task?.id === 'job' && a.carry?.n > 0;   // finish delivering first

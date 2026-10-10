@@ -4,13 +4,13 @@ import {SPECIES} from '../../data/species.js';
 import {TERRAIN} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds} from '../../world/grid.js';
-import {moveToward, escapeHeat, nearFire, bolt, follow} from '../movement.js';
+import {moveToward, escapeHeat, nearFire, bolt, follow, sprintMul, recover} from '../movement.js';
 import {kill} from '../agent.js';
 
-function threatsNear(w, a, radius) {
+function threatsNear(w, a, radius, from) {
   const out = [];
   for (const o of w.agents) {
-    if (o === a || o.dead || !SPECIES.get(o.species).sentient) continue;
+    if (o === a || o.dead || !from.includes(o.species)) continue;
     const r = radius * (o.stalking ? 0.55 : 1);   // a creeping hunter is noticed much later
     if ((o.x - a.x) ** 2 + (o.y - a.y) ** 2 < r * r) out.push(o);
   }
@@ -24,13 +24,15 @@ export const grazerBrain = {
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (T > 45 || nearFire(w, a, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, sp.flee.sprint); return; }
 
-    const threats = threatsNear(w, a, sp.flee.radius);
+    const threats = threatsNear(w, a, sp.flee.radius, sp.flee.from);
     if (threats.length || a.spooked > 0) {
       a.spooked = Math.max(0, (a.spooked || 0) - 1);
       a.task = {id: 'bolt'};
-      bolt(w, a, threats.length ? threats : w.agents.filter(o => SPECIES.get(o.species).sentient && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 100), sp.flee.sprint);
+      const from = threats.length ? threats : threatsNear(w, a, 10, sp.flee.from);
+      bolt(w, a, from, sprintMul(a, sp.flee.sprint, sp.flee.stamina));
       return;
     }
+    recover(a);
     if (a.task?.id === 'leave' || Math.random() < sp.leaveChance) {
       a.task = {id: 'leave'};
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;

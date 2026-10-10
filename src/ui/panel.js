@@ -38,7 +38,8 @@ export class Panel {
     this.set('stock', RESOURCES.all().map(r => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join('') +
       `<dt>Костёр</dt><dd>${w.campLit ? 'горит' : w.stock.wood > 0.05 ? 'не нужен' : 'нет дров'}</dd>` +
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
-      `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>`);
+      `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
+      `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>`);
     this.renderCouncil(w);
     this.renderBuildings(w);
     this.renderPeople(w, view.selected);

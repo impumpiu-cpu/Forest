@@ -58,7 +58,7 @@ function hold(w, present, total) {
     else {
       const ctx = {
         crowded: colonists(w).length >= popCap(w) - 1, spoiled: w.stats.spoiledToday, burnt: w.stats.burntCells,
-        preyCount: ofSpecies(w, 'hare').length, count: k => count(w, k),
+        preyCount: ofSpecies(w, 'hare').length, wolves: ofSpecies(w, 'wolf').length, count: k => count(w, k),
         wantStone: !has(w, 'quarry') && cands.some(k => BUILDINGS.get(k).needs === 'quarry' || (BUILDINGS.get(k).cost.stone || 0) > 0),
       };
       const tally = {}, weight = {};

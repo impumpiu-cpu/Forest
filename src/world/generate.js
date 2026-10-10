@@ -74,7 +74,7 @@ export function createWorld(cfg) {
     nextId: 1, nameIdx: 0, bldSeq: 0,
     wind: {dir: cfg.windDir, str: cfg.windStr / 100, x: 0, y: 0},
     weather: {rain: 0, rainLeft: 0},
-    stats: {fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0},
+    stats: {fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0},
     campLit: false, mods: emptyMods(), cache: {}, migration: {},
     council: {lastDay: -1, goal: null, votes: [], args: [], decision: 'Первый совет соберётся сегодня вечером у костра.'},
     logLines: [], logVersion: 0, nav: null,

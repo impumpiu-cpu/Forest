@@ -7,7 +7,7 @@ import {TOOLS} from './ui/tools.js';
 import {$, segmented, press} from './ui/dom.js';
 import {setWind} from './world/weather.js';
 import {spawnGroup} from './settlement/migration.js';
-import {SIZES, CLIMATES, RAIDS, WILDLIFE} from './data/presets.js';
+import {SIZES, CLIMATES, RAIDS, WILDLIFE, PREDATORS} from './data/presets.js';
 import {TICK_MS} from './core/time.js';
 import {esc} from './core/util.js';
 
@@ -38,7 +38,7 @@ function showGame() {
   const c = world.cfg, sz = SIZES[c.size];
   $('menu').hidden = true; $('game').hidden = false; $('explain').hidden = false;
   $('colonyName').textContent = c.name;
-  $('worldInfo').innerHTML = esc(`Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${CLIMATES[c.climate].label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`);
+  $('worldInfo').innerHTML = esc(`Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${CLIMATES[c.climate].label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`);
   $('windDir').value = world.wind.dir; $('windStr').value = Math.round(world.wind.str * 100);
   $('windArrow').style.transform = `rotate(${world.wind.dir}deg)`;
   running = true; last = performance.now(); acc = 0;
