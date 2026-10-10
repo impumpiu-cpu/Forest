@@ -2,11 +2,12 @@
 'use strict';
 // ───────────────────────────── constants
 const WATER = 0, GRASS = 1, FOREST = 2, ROCK = 3, BURNT = 4;
-const TCAP = 400, HEAT = 50, P_F = 0.02, P_G = 0.008;
+// Fire model knobs. Wet ground (high fertility) is harder to ignite and puts fires out by itself.
+const FIRE = {cap: 320, heat: 46, pF: 0.011, pG: 0.005, burn: 0.03, wetIgn: 80, outBase: 0.002, outWet: 0.012};
 const DAY = 1200, HOUR = DAY / 24;
 const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
 const NAMES = ['Милава','Ждан','Горислав','Веселина','Тихон','Любава','Мирон','Злата','Ярослав','Дарина','Ратибор','Снежана','Боян','Забава','Светозар','Агния','Велимир','Олеся','Добрыня','Василиса','Радим','Ведана'];
-const TASK_RU = {eat:'ест', sleep:'спит', warm:'греется у костра', gather:'собирает ягоды', chop:'рубит лес', douse:'тушит пожар', fight:'дерётся', flee:'бежит от огня', haul:'несёт на склад', idle:'думает', camp:'идёт в лагерь', leave:'уходит с добычей', build:'строит', mine:'добывает камень'};
+const TASK_RU = {eat:'ест', sleep:'спит', warm:'греется у костра', gather:'собирает ягоды', chop:'рубит лес', douse:'тушит пожар', fight:'дерётся', flee:'бежит от огня', haul:'несёт на склад', idle:'думает', camp:'идёт в лагерь', leave:'уходит с добычей', build:'строит', mine:'добывает камень', council:'на совете у костра'};
 
 // Buildings: cost is paid when the site is laid, then colonists build it with labour (agent-ticks)
 const BUILDINGS = {
@@ -39,9 +40,9 @@ const SIZES = {
   huge:   {w: 256, h: 192, label: 'Огромный', note: '256 × 192, тяжелее для навигации'},
 };
 const CLIMATES = {
-  cold:      {label: 'Холодный', note: 'ночи у нуля, костёр нужен всегда', tOff: -8, ign: 25, regrow: 0.7},
-  temperate: {label: 'Умеренный', note: 'тёплые дни, прохладные ночи', tOff: 0, ign: 0, regrow: 1},
-  dry:       {label: 'Засушливый', note: 'жарко, лес вспыхивает легче', tOff: 7, ign: -20, regrow: 0.75},
+  cold:      {label: 'Холодный', note: 'ночи у нуля, костёр нужен всегда, часто дожди', tOff: -8, ign: 25, regrow: 0.7, rain: 0.5},
+  temperate: {label: 'Умеренный', note: 'тёплые дни, прохладные ночи, дожди через день-два', tOff: 0, ign: 0, regrow: 1, rain: 0.4},
+  dry:       {label: 'Засушливый', note: 'жарко, дожди редки, лес вспыхивает легче', tOff: 7, ign: -5, regrow: 0.75, rain: 0.22},
 };
 const LEVELS3 = ['мало', 'обычно', 'много'];
 const STOCKS = {poor: {food: 8, wood: 6, label: 'Скудные'}, normal: {food: 22, wood: 16, label: 'Обычные'}, rich: {food: 45, wood: 35, label: 'Щедрые'}};
@@ -51,9 +52,11 @@ const DEFAULT_CFG = {name: 'Тёплый Брод', seed: '20261010', size: 'med
 // ───────────────────────────── state
 let W = 128, H = 96, N = W * H, S = 8;
 let cfg = {...DEFAULT_CFG}, clim = CLIMATES.temperate, IGN_F = 80, IGN_G = 120;
+let rain = 0, rainLeft = 0, burntCells = 0;
 let rand, terr, hgt, fert, food, wood, fuel, fire, temp, temp2, smoke, smoke2, bush, costCache;
 let dCamp, dFood, dWood, dEdge, dFire, dSafe, dSite, dRock;
 let bld, buildings, bldSeq, gardenCells;
+let council, spoiledToday = 0;
 let hpI, hpD, closed, hn = 0, popI = 0, popD = 0;
 let camp = {x: 64, y: 48, cells: []};
 let lastSteal = -999, stock, agents, tick, nextId, logLines, fireCount, fireNearCamp, campLit, selected, nameIdx, nextRaid, navEvery;
@@ -143,6 +146,8 @@ function generate(c) {
   }
   const st = STOCKS[cfg.stock]; stock = {food: st.food, wood: st.wood, stone: 0};
   agents = []; nextId = 1; tick = 7 * HOUR; logLines = []; selected = null; nameIdx = 0; fireCount = 0; fireNearCamp = 0; campLit = false; lastSteal = -999;
+  rain = 0; rainLeft = 0; burntCells = 0; spoiledToday = 0;
+  council = {lastDay: -1, goal: null, votes: [], decision: 'Первый совет соберётся сегодня вечером у костра.', args: []};
   nextRaid = RAIDS[cfg.raids].every ? tick + RAIDS[cfg.raids].every * (0.6 + rand() * 0.6) : Infinity;
   wind.dir = cfg.windDir; wind.str = cfg.windStr / 100; setWind();
   for (let k = 0; k < cfg.colonists; k++) spawnColonist(camp.x + 0.5 + (rand() * 5 - 2.5), camp.y + 0.5 + (rand() * 5 - 2.5));
@@ -178,8 +183,8 @@ function stepFields() {
     const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
     const T = temp[i];
     const relax = terr[i] === WATER ? 0.05 : 0.012;
-    let Tn = T + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * T) + relax * (amb - T) + fire[i] * HEAT;
-    temp2[i] = Tn > TCAP ? TCAP : Tn;
+    let Tn = T + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * T) + (relax + rain * 0.03) * (amb - T) + fire[i] * FIRE.heat;
+    temp2[i] = Tn > FIRE.cap ? FIRE.cap : Tn;
     const Sm = smoke[i];
     const Sn = Sm + 0.12 * (smoke[l] + smoke[r] + smoke[u] + smoke[d] - 4 * Sm) - 0.012 * Sm + fire[i] * 0.25;
     smoke2[i] = Sn > 4 ? 4 : Sn;
@@ -191,16 +196,30 @@ function stepFields() {
   campLit = stock.wood > 0.05 && (nightness() > 0.3 || anyCold);
   if (campLit) { stock.wood = Math.max(0, stock.wood - 0.004); for (const c of camp.cells) if (temp[c] < 30) temp[c] += 3.2; }
 
-  // fire: burns fuel, heats neighbours, ignites overheated cells
+  // weather: rain showers come and go; rain cools the ground and drowns fires
+  if (rainLeft > 0) { rainLeft--; rain = Math.min(1, rain + 0.02); if (rainLeft === 0) log('Дождь закончился.'); }
+  else { rain = Math.max(0, rain - 0.01); // a big fire pulls up smoke clouds (pyrocumulus): rain gets much more likely while it burns
+    const fireClouds = 1 + fireCount / 20;
+    if (Math.random() < clim.rain * fireClouds / DAY) { rainLeft = Math.round(HOUR * (1.5 + Math.random() * 3)); log(fireCount > 40 ? 'Над пожаром собрались тучи, пошёл дождь.' : fireCount > 0 ? 'Пошёл дождь, огонь слабеет.' : 'Пошёл дождь.'); } }
+  // fire: burns fuel, heats neighbours, ignites overheated dry cells, dies out on wet ground
   fireCount = 0; fireNearCamp = 0;
   for (let i = 0; i < N; i++) {
     const f = fire[i];
     if (f > 0) {
-      fuel[i] -= 0.018 * f;
-      if (fuel[i] <= 0) {
-        fuel[i] = 0; fire[i] = f * 0.85;
-        if (fire[i] < 0.03) { fire[i] = 0; if (terr[i] !== WATER && terr[i] !== ROCK) terr[i] = BURNT; wood[i] = 0; food[i] = 0; bush[i] = 0; dirty.wood = dirty.food = true; if (bld[i] >= 0) burnBuilding(bld[i]); }
-      } else fire[i] = Math.min(1, f + 0.06);
+      const wet = fert[i];
+      fuel[i] -= FIRE.burn * f;
+      let nf = fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
+      if (Math.random() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;   // a wet patch chokes the flame
+      nf -= rain * 0.045;
+      if (fuel[i] <= 0) fuel[i] = 0;
+      if (nf < 0.03) {
+        fire[i] = 0;
+        if (fuel[i] < 0.25) {
+          // burnt out completely
+          if (terr[i] !== WATER && terr[i] !== ROCK) terr[i] = BURNT; wood[i] = 0; food[i] = 0; bush[i] = 0; burntCells++;
+          dirty.wood = dirty.food = true; if (bld[i] >= 0) burnBuilding(bld[i]);
+        } else { wood[i] = Math.min(wood[i], Math.max(0, fuel[i] - 1.2)); dirty.wood = true; }   // scorched but standing
+      } else fire[i] = nf;
       if (fire[i] > 0) {
         fireCount++;
         const x = i % W, y = (i / W) | 0;
@@ -208,8 +227,9 @@ function stepFields() {
         if (isCampArea(i)) { stock.wood = Math.max(0, stock.wood - 0.02); stock.food = Math.max(0, stock.food - 0.01); }
       }
     } else if (fuel[i] > 0.12) {
-      const forest = fuel[i] > 1;
-      if (temp[i] > (forest ? IGN_F : IGN_G) && Math.random() < (forest ? P_F : P_G)) { fire[i] = 0.2; dirty.fire = true; }
+      const forest = fuel[i] > 1, wet = fert[i];
+      if (temp[i] > (forest ? IGN_F : IGN_G) + FIRE.wetIgn * wet &&
+          Math.random() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) { fire[i] = 0.2; dirty.fire = true; }
     }
   }
   // planted garden bushes regrow fast; the well cools the camp area
@@ -219,7 +239,8 @@ function stepFields() {
     const j = y * W + x; if (temp[j] > 40) temp[j] -= (temp[j] - 40) * 0.08;
   }
   // stored food spoils unless there is a granary (and slower with a smokehouse)
-  stock.food = Math.max(0, stock.food - stock.food * 0.00015 * (has('granary') ? 1 / 6 : 1) * (has('smokehouse') ? 0.5 : 1));
+  const spoil = stock.food * 0.00015 * (has('granary') ? 1 / 6 : 1) * (has('smokehouse') ? 0.5 : 1);
+  stock.food = Math.max(0, stock.food - spoil); spoiledToday += spoil;
   // slow regrowth: sample random cells
   const samples = Math.round(160 * N / 12288 * clim.regrow);
   for (let k = 0; k < samples; k++) {
@@ -318,7 +339,7 @@ function findLot() {
   }
   return best;
 }
-function orderBuilding(key) {
+function orderBuilding(key, byCouncil = false) {
   const d = BUILDINGS[key]; if (!buildStatus(key).ok) return false;
   const lot = findLot(); if (lot < 0) { log('Вокруг лагеря не осталось места под постройку.'); return false; }
   for (const [r, v] of Object.entries(d.cost)) stock[r] -= v;
@@ -361,10 +382,110 @@ function burnBuilding(id) {
 function yieldOf(kind) { return kind === 'food' ? (has('smokehouse') ? 1.4 : 1) : kind === 'wood' ? (has('sawmill') ? 1.5 : 1) : 1; }
 function popCap() { return 8 + 4 * count('hut'); }
 
+// ───────────────────────────── evening council at the campfire
+// Between 19:00 and 21:30 colonists gather at the fire. When most have come (or time runs out),
+// each one argues for the building that would have helped them most today; the majority decides.
+const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
+function today() { return Math.floor(tick / DAY); }
+function councilDue() { const h = hourOf(tick); return h >= COUNCIL_FROM && h < COUNCIL_TO && council.lastDay !== today() && colonistPop() > 0; }
+// extra pull toward work that brings in what the current goal still lacks
+function goalNeed(res) { const g = council.goal; if (!g) return 0; const need = BUILDINGS[g].cost[res] || 0; return stock[res] < need ? 0.3 : 0; }
+function candidates() { return Object.keys(BUILDINGS).filter(k => { const d = BUILDINGS[k]; return count(k, true) < d.max && (!d.needs || has(d.needs)); }); }
+// what this colonist wants and why: [score, reason] for one building
+function motive(a, key, ctx) {
+  const m = a.mem, p = a.prefs, opts = [];
+  switch (key) {
+    case 'hut': opts.push([m.cold * 1.2, 'мёрзнет по ночам'], [m.tired, 'не высыпается'], [ctx.crowded ? 0.8 : 0, 'в лагере тесно'], [count('hut') === 0 ? 0.3 : 0, 'хочет крышу над головой']); break;
+    case 'granary': opts.push([ctx.spoiled * 0.08, 'жалко испорченную еду']); break;
+    case 'garden': opts.push([m.hunger * 1.2, 'голодает'], [m.walkFood, 'далеко ходить за ягодами'], [(p.gather - 1) * 0.6, 'любит возиться с ягодами']); break;
+    case 'quarry': opts.push([0.35 + (ctx.wantStone ? 0.35 : 0), 'без камня дальше не построиться'], [(p.mine - 1) * 1.5, 'любит работать с камнем']); break;
+    case 'sawmill': opts.push([m.walkWood, 'далеко ходить за лесом'], [(p.chop - 1) * 1.4 + a.skill.chop * 0.4, 'любит рубить лес']); break;
+    case 'smokehouse': opts.push([m.hunger * 0.8, 'хочет запасов еды'], [(p.gather - 1) * 1.1, 'собирает ягоды и хочет их сохранить'], [ctx.spoiled * 0.04, 'еда портится']); break;
+    case 'well': opts.push([m.fire * 1.5, 'видел(а) пожар'], [ctx.burnt > 0 ? 0.4 : 0, 'боится огня']); break;
+    case 'palisade': opts.push([m.raid * 1.5, 'дрался(ась) с налётчиками']); break;
+  }
+  let best = [0, '']; for (const o of opts) if (o[0] > best[0]) best = o;
+  const sum = opts.reduce((t, o) => t + Math.max(0, o[0]), 0) + (p.build - 1) * 0.2 + rand() * 0.25;
+  return [sum, best[0] > 0.05 ? best[1] : PLAIN_WISH[key]];
+}
+const PLAIN_WISH = {hut: 'хочет своё жильё', granary: 'хочет надёжно хранить запасы', garden: 'хочет еду поближе к дому', quarry: 'говорит, что нужен камень', sawmill: 'хочет больше дров', smokehouse: 'хочет запасов на чёрный день', well: 'хочет воду рядом с лагерем', palisade: 'хочет защиты от чужаков'};
+function stepCouncil() {
+  if (!councilDue()) {
+    // window closed while nobody came (all busy fleeing or fighting): skip the day
+    if (council.lastDay !== today() && hourOf(tick) >= COUNCIL_TO && colonistPop() > 0) council.lastDay = today();
+    return;
+  }
+  const col = agents.filter(a => a.tribe === 0), present = col.filter(a => a.task === 'council' && a.atCouncil);
+  if (present.length < Math.ceil(col.length * 0.7) && hourOf(tick) < COUNCIL_TO - 0.3) return;
+  if (present.length === 0) return;
+  holdCouncil(present, col.length);
+}
+function holdCouncil(present, total) {
+  council.lastDay = today();
+  const site = buildings.find(b => !b.done);
+  let decision, args = [];
+  if (site) {
+    decision = `Решили сначала достроить: ${BUILDINGS[site.key].name.toLowerCase()} (${Math.floor(site.progress / BUILDINGS[site.key].work * 100)}%).`;
+    council.votes = [];
+  } else {
+    const cands = candidates();
+    if (!cands.length) { decision = 'Всё задуманное построено. Совет просто посидел у огня.'; council.votes = []; council.goal = null; }
+    else {
+      const ctx = {crowded: colonistPop() >= popCap() - 1, spoiled: spoiledToday, burnt: burntCells,
+        wantStone: !has('quarry') && cands.some(k => BUILDINGS[k].needs === 'quarry' || (BUILDINGS[k].cost.stone || 0) > 0)};
+      const tally = {}, weight = {};
+      for (const a of present) {
+        let best = null, bs = -1, why = '';
+        for (const k of cands) { const [sc, r] = motive(a, k, ctx); if (sc > bs) { bs = sc; best = k; why = r; } }
+        tally[best] = (tally[best] || 0) + 1; weight[best] = (weight[best] || 0) + bs;
+        args.push({name: a.name, key: best, why});
+      }
+      const ranked = Object.keys(tally).sort((x, y) => tally[y] - tally[x] || weight[y] - weight[x]);
+      const win = ranked[0], d = BUILDINGS[win];
+      council.votes = ranked.map(k => [k, tally[k]]);
+      if (canAfford(d.cost)) {
+        council.goal = null;
+        orderBuilding(win, true);
+        decision = `Решили строить: ${d.name.toLowerCase()} (${tally[win]} из ${present.length}). Место под стройку уже размечено.`;
+      } else {
+        council.goal = win;
+        const lack = Object.entries(d.cost).filter(([r, v]) => stock[r] < v).map(([r, v]) => `${RES_RU[r]} ${Math.ceil(v - stock[r])}`).join(', ');
+        decision = `Решили копить на: ${d.name.toLowerCase()} (${tally[win]} из ${present.length}). Не хватает: ${lack}.`;
+      }
+    }
+  }
+  council.decision = decision; council.args = args.slice(0, 6); council.day = today() + 1; council.present = present.length; council.total = total;
+  const quotes = args.slice(0, 3).map(x => `${x.name}: ${BUILDINGS[x.key].name.toLowerCase()}, ${x.why}`).join('; ');
+  log(`Совет у костра (${present.length} из ${total}). ${quotes ? quotes + '. ' : ''}${decision}`);
+  for (const a of agents) if (a.tribe === 0) {
+    for (const k in a.mem) a.mem[k] *= 0.4;
+    if (a.task === 'council') { a.task = null; a.think = 0; a.atCouncil = false; }
+  }
+  spoiledToday = 0;
+  renderBuildPanel(true);
+}
+
+// ───────────────────────────── personality: liked work, skills, courage
+const WORKS = ['gather', 'chop', 'mine', 'build'];
+const WORK_RU = {gather: 'собирать ягоды', chop: 'рубить лес', mine: 'добывать камень', build: 'строить'};
+const WORK_SHORT = {gather: 'сбор', chop: 'рубка', mine: 'камень', build: 'стройка'};
+function makePersonality() {
+  // one favourite and one disliked kind of work; the rest are neutral
+  const order = WORKS.slice().sort(() => rand() - 0.5);
+  const prefs = {}; for (const w of WORKS) prefs[w] = 0.85 + rand() * 0.3;
+  prefs[order[0]] = 1.45 + rand() * 0.2; prefs[order[1]] = 0.45 + rand() * 0.2;
+  const skill = {}; for (const w of WORKS) skill[w] = prefs[w] > 1.3 ? 0.3 : rand() * 0.15;
+  return {prefs, skill, bravery: 0.55 + rand() * 0.9, likes: order[0], dislikes: order[1]};
+}
+// skilled hands work faster; practice slowly builds skill
+function workSpeed(a, kind) { a.skill[kind] = Math.min(1, a.skill[kind] + 0.0006); return 1 + 0.7 * a.skill[kind]; }
+
 // ───────────────────────────── layer 3: agents
 function spawnColonist(x, y) {
   const a = {id: nextId++, tribe: 0, name: NAMES[nameIdx++ % NAMES.length], x, y, hp: 1, food: 0.6 + rand() * 0.4, rest: 0.6 + rand() * 0.4, warm: 0.9,
-    task: null, tgt: null, work: 0, carry: null, n: 0, eatDirect: false, cd: 0, think: (rand() * 15) | 0, bias: {gather: rand() * 0.15, chop: rand() * 0.15, build: rand() * 0.15, mine: rand() * 0.15}};
+    task: null, tgt: null, work: 0, carry: null, n: 0, eatDirect: false, cd: 0, think: (rand() * 15) | 0,
+    ...makePersonality(),
+    mem: {cold: 0, hunger: 0, tired: 0, fire: 0, raid: 0, walkFood: 0, walkWood: 0}};
   agents.push(a); return a;
 }
 function spawnRaider(x, y) { const a = {id: nextId++, tribe: 1, name: 'Волк', x, y, hp: 0.75, task: 'camp', tgt: null, cd: 0, stolen: false, think: 0}; agents.push(a); return a; }
@@ -413,17 +534,18 @@ function decide(a) {
     ['eat', (1 - a.food) ** 2 * 2.2 * campOk],
     ['sleep', ((1 - a.rest) ** 2 * 1.8 + (night > 0.6 && a.rest < 0.75 ? 0.35 : 0)) * campOk],
     ['warm', (1 - a.warm) ** 2 * 2.0 * campOk],
-    ['gather', (stock.food < pop * 8 ? 0.25 : 0.04) + (stock.food < pop * 4 ? 0.45 : 0) + a.bias.gather - night * 0.2],
-    ['chop', (stock.wood < 40 ? 0.2 : 0.03) + (stock.wood < 25 ? 0.35 : 0) + a.bias.chop - night * 0.2],
+    ['gather', ((stock.food < pop * 8 ? 0.25 : 0.04) + (stock.food < pop * 4 ? 0.45 : 0) + goalNeed('food') - night * 0.2) * a.prefs.gather],
+    ['chop', ((stock.wood < 40 ? 0.2 : 0.03) + (stock.wood < 25 ? 0.35 : 0) + goalNeed('wood') - night * 0.2) * a.prefs.chop],
     ['idle', 0.15],
   ];
-  if (buildings.some(b => !b.done)) opts.push(['build', 0.62 + a.bias.build - night * 0.3]);
-  if (has('quarry')) opts.push(['mine', (stock.stone < 40 ? 0.18 : 0.03) + (stock.stone < 20 ? 0.3 : 0) + a.bias.mine - night * 0.2]);
-  if (fireNearCamp > 0 && a.hp > 0.6) opts.push(['douse', 0.8]);
-  if (enemy && a.hp > 0.3) opts.push(['fight', 1.1]);
+  if (buildings.some(b => !b.done)) opts.push(['build', (0.6 - night * 0.3) * a.prefs.build]);
+  if (has('quarry')) opts.push(['mine', ((stock.stone < 40 ? 0.18 : 0.03) + (stock.stone < 20 ? 0.3 : 0) + goalNeed('stone') - night * 0.2) * a.prefs.mine]);
+  if (councilDue()) opts.push(['council', 1.3]);
+  if (fireNearCamp > 0 && a.hp > 0.6 && a.bravery > 0.7) opts.push(['douse', 0.8 * a.bravery]);
+  if (enemy && a.hp > 0.3) opts.push(['fight', 1.1 * a.bravery]);
   let best = null, bs = -1;
   for (const [k, s] of opts) { const sc = s + (k === a.task ? 0.12 : 0); if (sc > bs) { bs = sc; best = k; } }
-  if (best !== a.task) { a.task = best; a.work = 0; a.eatDirect = false; }
+  if (best !== a.task) { a.task = best; a.work = 0; a.eatDirect = false; a.atCouncil = false; }
   if (best === 'fight') a.tgt = enemy;
 }
 
@@ -433,6 +555,7 @@ function attack(a, t) {
   const home = a.tribe === 0 && dCamp[cellOf(a)] < 8 ? 1.5 : 1;
   const wall = t.tribe === 0 && has('palisade') && dCamp[cellOf(t)] < 8 ? 0.6 : 1;
   a.cd = 12; t.hp -= (0.1 + Math.random() * 0.12) * home * wall; a.flash = 4;
+  if (t.tribe === 0) t.mem.raid += 0.25; else if (a.mem) a.mem.raid += 0.1;
   if (t.hp <= 0) log(t.tribe === 0 ? `<b>${t.name}</b> погиб(ла) в бою.` : `Налётчик убит, его сразил(а) <b>${a.name}</b>.`);
 }
 
@@ -449,6 +572,14 @@ function stepColonist(a) {
   if (a.food > 0.4 && a.warm > 0.4 && T < 45) a.hp = Math.min(1, a.hp + 0.0003);
   if (a.hp <= 0) { log(`<b>${a.name}</b> не пережил(а) ${a.food <= 0 ? 'голода' : a.warm < 0.15 ? 'холода' : T > 60 ? 'пожара' : 'ран'}.`); return; }
   a.sleeping = false;
+  // the day's hardships are remembered and argued about at the evening council
+  const m = a.mem;
+  if (a.warm < 0.4) m.cold += 0.004;
+  if (a.food < 0.3) m.hunger += 0.004;
+  if (a.rest < 0.25) m.tired += 0.004;
+  if (a.task === 'flee' || a.task === 'douse') m.fire += 0.006;
+  if (a.task === 'gather' && !a.carry && dFood[i] > 25 && dFood[i] < 1e8) m.walkFood += 0.003;
+  if (a.task === 'chop' && !a.carry && dWood[i] > 25 && dWood[i] < 1e8) m.walkWood += 0.003;
 
   // reflex: fire overrides everything
   if (a.task !== 'douse' && (T > 55 || nearFire(a, 1.5))) a.task = 'flee';
@@ -458,6 +589,7 @@ function stepColonist(a) {
 
   switch (a.task) {
     case 'flee': {
+      a.atCouncil = false;
       // escape along the "safe" flow field: it routes around burning and hot cells
       const r = follow(a, dSafe, 1.35);
       if (r !== 'moving') fleeLocal(a, i);
@@ -476,6 +608,15 @@ function stepColonist(a) {
       if (r === 'arrived') {
         if (stock.food >= 1) { stock.food -= 1; a.food = 1; a.task = null; a.think = 0; }
         else { a.task = 'gather'; a.eatDirect = true; }
+      }
+      break;
+    }
+    case 'council': {
+      if (!councilDue()) { a.task = null; a.think = 0; break; }
+      if (follow(a, dCamp) === 'arrived') {
+        a.atCouncil = true;
+        if (Math.random() < 0.03) { const ang = Math.random() * Math.PI * 2; a.tx = camp.x + 0.5 + Math.cos(ang) * 1.6; a.ty = camp.y + 0.5 + Math.sin(ang) * 1.6; }
+        if (a.tx != null) moveToward(a, a.tx, a.ty, 0.5);
       }
       break;
     }
@@ -506,7 +647,7 @@ function stepColonist(a) {
       const r = follow(a, dist);
       if (r === 'arrived') {
         if (field[i] > (isFood ? 0.3 : 0.25) && fire[i] === 0) {
-          if (++a.work >= (isFood ? 12 : has('sawmill') ? 16 : 26)) {
+          if ((a.work += workSpeed(a, isFood ? 'gather' : 'chop')) >= (isFood ? 12 : has('sawmill') ? 16 : 26)) {
             a.work = 0; field[i] -= isFood ? 0.34 : 0.35; a.carry = kind; a.n++;
             if (!isFood && wood[i] < 0.1) { terr[i] = GRASS; fuel[i] = 0.4; wood[i] = 0; }
             dirty[kind] = true;
@@ -518,7 +659,7 @@ function stepColonist(a) {
     case 'build': {
       const site = bld[i] >= 0 ? bById(bld[i]) : null;
       if (site && !site.done && fire[i] === 0) {
-        site.progress++; a.work++;
+        site.progress += workSpeed(a, 'build');
         if (site.progress >= BUILDINGS[site.key].work) finishBuilding(site);
       } else {
         const r = follow(a, dSite);
@@ -533,7 +674,7 @@ function stepColonist(a) {
         break;
       }
       const r = follow(a, dRock);
-      if (r === 'arrived') { if (++a.work >= 30) { a.work = 0; a.carry = 'stone'; a.n++; } }
+      if (r === 'arrived') { if ((a.work += workSpeed(a, 'mine')) >= 30) { a.work = 0; a.carry = 'stone'; a.n++; } }
       else if (r === 'none') { a.task = 'idle'; a.think = 30; }
       break;
     }
@@ -590,6 +731,7 @@ function separate() {
 
 function stepAgents() {
   for (const a of agents) { if (a.tribe === 0) stepColonist(a); else stepRaider(a); if (a.flash) a.flash--; }
+  stepCouncil();
   agents = agents.filter(a => a.hp > 0 && !a.gone);
   if (selected && !agents.includes(selected)) selected = null;
   separate();
@@ -787,28 +929,38 @@ function bar(v, c) { return `<div class="bar"><i style="width:${(clamp(v, 0, 1) 
 function renderPeople(force) {
   const col = agents.filter(a => a.tribe === 0);
   $('people').innerHTML = col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
-    <span class="nm">${esc(a.name)}</span><span class="task">${TASK_RU[a.task || 'idle']}${a.carry && a.n ? ` · несёт ${a.n}` : ''}</span>
+    <span class="nm">${esc(a.name)}</span><span class="task">${TASK_RU[a.task || 'idle']}${a.carry && a.n ? ` · несёт ${a.n}` : ''}</span><span class="likes">любит: ${WORK_SHORT[a.likes]} · не любит: ${WORK_SHORT[a.dislikes]}${a.bravery < 0.8 ? ' · робкий' : a.bravery > 1.2 ? ' · смелый' : ''}</span>
     <div class="bars" title="сытость · бодрость · тепло · здоровье">${bar(a.food, 'var(--food)')}${bar(a.rest, '#7d9be0')}${bar(a.warm, 'var(--ember)')}${bar(a.hp, 'var(--good)')}</div></div>`).join('') || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>';
 }
 let buildSig = '';
 function costHtml(cost) {
   return Object.entries(cost).map(([r, v]) => `<span class="cost${stock[r] >= v ? '' : ' short'}">${v} ${RES_RU[r]}</span>`).join('');
 }
-// rebuilt only when something visible changes, so buttons are not replaced under the cursor
+// rebuilt only when something visible changes
 function renderBuildPanel(force) {
   const rows = Object.keys(BUILDINGS).map(k => {
-    const st = buildStatus(k), site = buildings.find(b => b.key === k && !b.done);
-    return [k, st.ok, st.why, count(k), site ? Math.floor(site.progress / BUILDINGS[k].work * 20) : -1];
+    const site = buildings.find(b => b.key === k && !b.done);
+    return [k, count(k), site ? Math.floor(site.progress / BUILDINGS[k].work * 20) : -1, council.goal === k];
   });
-  const sig = JSON.stringify(rows) + Object.values(BUILDINGS).map(d => Object.entries(d.cost).map(([r, v]) => stock[r] >= v)).join();
+  const h = hourOf(tick), due = councilDue();
+  const when = due ? 'идёт сбор у костра' : council.lastDay === today() ? 'завтра в 19:00' : h < COUNCIL_FROM ? 'сегодня в 19:00' : 'завтра в 19:00';
+  const sig = JSON.stringify(rows) + council.decision + when + (council.goal ? Object.entries(BUILDINGS[council.goal].cost).map(([r, v]) => Math.min(v, Math.floor(stock[r]))).join() : '');
   if (!force && sig === buildSig) return; buildSig = sig;
-  $('build').innerHTML = rows.map(([k, ok, why, n, prog]) => {
-    const d = BUILDINGS[k];
-    const state = prog >= 0 ? `<span class="bstate">строится ${prog * 5}%</span>` : n ? `<span class="bstate done">построено${d.max > 1 ? ' ×' + n : ''}</span>` : '';
-    return `<div class="bcard"><div class="bhead"><i class="bmark" style="background:${d.color}">${d.mark}</i><b>${d.name}</b>${state}</div>
-      <p>${d.effect}</p>
-      <div class="bfoot"><span class="costs">${costHtml(d.cost)}</span>
-      <button type="button" data-b="${k}" ${ok ? '' : 'disabled'} title="${why}">${ok ? 'Заложить' : why}</button></div></div>`;
+  const maxV = Math.max(1, ...council.votes.map(v => v[1]));
+  const votes = council.votes.map(([k, n]) => `<div class="vote"><span>${BUILDINGS[k].name}</span><i style="width:${n / maxV * 100}%;background:${BUILDINGS[k].color}"></i><b>${n}</b></div>`).join('');
+  const args = (council.args || []).map(x => `<li><b>${esc(x.name)}</b> за ${BUILDINGS[x.key].name.toLowerCase()}: ${x.why}</li>`).join('');
+  let goal = '';
+  if (council.goal) {
+    const d = BUILDINGS[council.goal];
+    goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${stock[r] >= v ? '' : ' short'}">${RES_RU[r]} ${Math.min(v, Math.floor(stock[r]))}/${v}</span>`).join(' ')}</div>`;
+  }
+  $('council').innerHTML = `<div class="when">Следующий совет: ${when}</div><p class="decision">${council.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}`;
+  $('build').innerHTML = rows.map(([k, n, prog, isGoal]) => {
+    const d = BUILDINGS[k], st = buildStatus(k);
+    const state = prog >= 0 ? `<span class="bstate">строится ${prog * 5}%</span>` : n ? `<span class="bstate done">построено${d.max > 1 ? ' ×' + n : ''}</span>` : isGoal ? '<span class="bstate">цель совета</span>' : '';
+    const note = n >= d.max || prog >= 0 ? '' : d.needs && !has(d.needs) ? `<span class="bneed">после: ${BUILDINGS[d.needs].name.toLowerCase()}</span>` : '';
+    return `<div class="bcard${n ? ' built' : ''}"><div class="bhead"><i class="bmark" style="background:${d.color}">${d.mark}</i><b>${d.name}</b>${state}</div>
+      <p>${d.effect}</p><div class="bfoot"><span class="costs">${costHtml(d.cost)}</span>${note}</div></div>`;
   }).join('');
 }
 let lastTicks = 0, lastTpsT = performance.now();
@@ -838,7 +990,7 @@ cv.addEventListener('pointerdown', e => { const [x, y] = eventCell(e); if (x >= 
 const TN = ['вода', 'трава', 'лес', 'скала', 'гарь'];
 function renderReadout() {
   const el = $('readout');
-  if (selected) { const a = selected; el.textContent = `${a.name}: ${TASK_RU[a.task || 'idle']} · сытость ${(a.food * 100) | 0}% · бодрость ${(a.rest * 100) | 0}% · тепло ${(a.warm * 100) | 0}% · здоровье ${(a.hp * 100) | 0}% · под ногами ${temp[cellOf(a)].toFixed(1)} °C`; return; }
+  if (selected) { const a = selected; el.textContent = `${a.name}: ${TASK_RU[a.task || 'idle']} · любит ${WORK_RU[a.likes]}, не любит ${WORK_RU[a.dislikes]} · навыки: ${WORKS.map(w => WORK_SHORT[w] + ' ' + Math.round(a.skill[w] * 100)).join(', ')} · сытость ${(a.food * 100) | 0}% · бодрость ${(a.rest * 100) | 0}% · тепло ${(a.warm * 100) | 0}% · здоровье ${(a.hp * 100) | 0}% · под ногами ${temp[cellOf(a)].toFixed(1)} °C`; return; }
   if (hoverCell < 0) return;
   const i = hoverCell;
   el.textContent = `(${i % W}, ${(i / W) | 0}) ${TN[terr[i]]} · ${temp[i].toFixed(1)} °C · топливо ${fuel[i].toFixed(2)} · огонь ${fire[i].toFixed(2)} · дым ${smoke[i].toFixed(2)} · ягоды ${food[i].toFixed(2)} · древесина ${wood[i].toFixed(2)} · путь до лагеря ${dCamp[i] >= 1e8 ? 'нет' : dCamp[i].toFixed(0)}`;
@@ -854,7 +1006,6 @@ $('people').addEventListener('click', e => { const p = e.target.closest('.person
 $('windDir').addEventListener('input', e => { wind.dir = +e.target.value; setWind(); });
 $('windStr').addEventListener('input', e => { wind.str = +e.target.value / 100; setWind(); });
 $('raid').addEventListener('click', raid);
-$('build').addEventListener('click', e => { const b = e.target.closest('button[data-b]'); if (b && !b.disabled) orderBuilding(b.dataset.b); });
 document.addEventListener('keydown', e => {
   if (e.code === 'Space' && running && e.target === document.body) { e.preventDefault(); const nv = speed ? 0 : 1; speed = nv; $('speeds').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.speed === nv)); }
 });
@@ -964,6 +1115,6 @@ function frame(now) {
 }
 buildMenu();
 showMenu();
-window.__forest = {orderBuilding, stepSim, generate, ignite: (x, y) => { const t = tool; tool = 'ignite'; applyTool(x, y); tool = t; }, state: () => ({stock, buildings, agents, tick})};
+window.__forest = {orderBuilding, stepSim, generate, ignite: (x, y) => { const t = tool; tool = 'ignite'; applyTool(x, y); tool = t; }, state: () => ({stock, buildings, agents, tick, burntCells, fireCount, rain, N}), FIRE, forestNear: () => { let bi = -1, bd = 1e9; for (let i = 0; i < N; i++) { if (terr[i] !== FOREST) continue; const d = Math.abs((i % W) - camp.x - 14) + Math.abs(((i / W) | 0) - camp.y); if (d < bd) { bd = d; bi = i; } } return [bi % W, (bi / W) | 0]; }, forestCount: () => terr.reduce((s, t) => s + (t === FOREST), 0)};
 requestAnimationFrame(frame);
 })();

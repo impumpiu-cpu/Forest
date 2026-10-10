@@ -106,4 +106,21 @@ button.quiet{background:transparent;color:var(--muted)}
 .cost.short{color:#f0a0a2;background:#3a2224}
 .bfoot button{font-size:12px;padding:3px 9px}
 .bfoot button:disabled{opacity:.55;cursor:not-allowed;background:transparent}
+
+/* ───── council ───── */
+.person .likes{grid-column:1;font-size:11.5px;color:var(--muted);opacity:.8}
+.bars{grid-row:1/4}
+.council{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.council .when{font-size:12px;color:var(--ember)}
+.council .decision{margin:0}
+.goal{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12.5px;color:var(--muted)}
+.votes{display:flex;flex-direction:column;gap:3px}
+.vote{display:grid;grid-template-columns:110px minmax(0,1fr) 20px;gap:6px;align-items:center;font-size:12px}
+.vote span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.vote i{display:block;height:6px;border-radius:3px}
+.vote b{font-family:var(--font-mono);font-weight:400;text-align:right}
+.args{margin:0;padding-left:16px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.args b{color:var(--fg);font-weight:400}
+.bcard.built{opacity:.75}
+.bneed{font-size:11.5px;color:var(--muted)}
 [hidden]{display:none!important}
