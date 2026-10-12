@@ -5,7 +5,7 @@ import {JOBS} from '../data/jobs.js';
 import {NEEDS} from '../data/needs.js';
 import {ambientTemp} from '../core/time.js';
 import {cellOf} from '../world/grid.js';
-import {follow, moveToward, escapeHeat, nearFire} from './movement.js';
+import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
 import {attack, shoot} from './combat.js';
 import {RUNNERS} from './jobRunners.js';
 import {eatMeal, plunder} from '../settlement/stock.js';
@@ -74,12 +74,12 @@ TASKS.registerAll([
     if (g?.rangedReady && d > 1.4) {
       const range = g.ranged.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
       task.shooting = true;
-      if (d > range * 0.9) { if (moveToward(w, a, t.x, t.y, 1.0) === null) follow(w, a, 'camp'); }
+      if (d > range * 0.9) { if (approach(w, a, t.x, t.y, 1.0) === null) done(a); }
       else shoot(w, a, t, 'hunt');
       return;
     }
     task.shooting = false;
-    if (d > 0.9) { if (moveToward(w, a, t.x, t.y, 1.1) === null) follow(w, a, 'camp'); }
+    if (d > 0.9) { if (approach(w, a, t.x, t.y, 1.1) === null) done(a); }   // unreachable: pick something else
     else attack(w, a, t);
   }},
 

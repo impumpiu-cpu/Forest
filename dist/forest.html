@@ -200,6 +200,10 @@ button.quiet{background:transparent;color:var(--muted)}
 .go-table td{border-bottom:1px solid #262a1e;padding:5px 8px;vertical-align:top}
 .go-table tr.gone td:first-child{color:#f0b0b2}
 .build{order:3;font-family:var(--font-mono);font-size:11px;color:var(--muted);opacity:.7}
+/* labels keep to one line; long values wrap on the right instead */
+.kv{grid-template-columns:max-content minmax(0,1fr)}
+.kv dt{white-space:nowrap}
+.kv dd{overflow-wrap:anywhere}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -2403,6 +2407,112 @@ button.quiet{background:transparent;color:var(--muted)}
     }
   ]);
 
+  // src/nav/astar.js
+  var SQRT2 = Math.SQRT2;
+  function buffers(w) {
+    if (w.astar) return w.astar;
+    const n = w.n;
+    return w.astar = {
+      g: new Float32Array(n),
+      seen: new Int32Array(n),
+      parent: new Int32Array(n),
+      heapI: new Int32Array(n * 8),
+      heapF: new Float32Array(n * 8),
+      stamp: 0
+    };
+  }
+  function clearLine(w, x0, y0, x1, y1) {
+    const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 4);
+    for (let s = 1; s <= steps; s++) {
+      const x = x0 + (x1 - x0) * s / steps, y = y0 + (y1 - y0) * s / steps;
+      if (x < 0 || y < 0 || x >= w.w || y >= w.h || !WALKABLE[w.grid.terr[(y | 0) * w.w + (x | 0)]]) return false;
+    }
+    return true;
+  }
+  function findPath(w, sx, sy, gx, gy, budget = 6e3) {
+    const W = w.w, H = w.h, terr = w.grid.terr, b = buffers(w);
+    const start2 = (sy | 0) * W + (sx | 0);
+    let goal = (gy | 0) * W + (gx | 0);
+    if (!WALKABLE[terr[goal]]) {
+      let best = -1, bd = Infinity;
+      const x = gx | 0, y = gy | 0;
+      for (let k = 0; k < 8; k++) {
+        const nx = x + DX[k], ny = y + DY[k];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const j = ny * W + nx;
+        if (WALKABLE[terr[j]] && k < bd) {
+          bd = k;
+          best = j;
+        }
+      }
+      if (best < 0) return null;
+      goal = best;
+    }
+    if (start2 === goal) return [];
+    const stamp = ++b.stamp, { g: g2, seen, parent, heapI, heapF } = b;
+    const gxC = goal % W, gyC = goal / W | 0;
+    const h = (i) => {
+      const dx = Math.abs(i % W - gxC), dy = Math.abs((i / W | 0) - gyC);
+      return dx + dy + (SQRT2 - 2) * Math.min(dx, dy);
+    };
+    let hn = 0;
+    const push = (i, f) => {
+      let k = hn++;
+      while (k > 0) {
+        const p = k - 1 >> 1;
+        if (heapF[p] <= f) break;
+        heapI[k] = heapI[p];
+        heapF[k] = heapF[p];
+        k = p;
+      }
+      heapI[k] = i;
+      heapF[k] = f;
+    };
+    seen[start2] = stamp;
+    g2[start2] = 0;
+    parent[start2] = -1;
+    push(start2, h(start2));
+    let expanded = 0;
+    while (hn > 0) {
+      const i = heapI[0];
+      hn--;
+      const li = heapI[hn], lf = heapF[hn];
+      let k = 0;
+      for (; ; ) {
+        let c = 2 * k + 1;
+        if (c >= hn) break;
+        if (c + 1 < hn && heapF[c + 1] < heapF[c]) c++;
+        if (heapF[c] >= lf) break;
+        heapI[k] = heapI[c];
+        heapF[k] = heapF[c];
+        k = c;
+      }
+      heapI[k] = li;
+      heapF[k] = lf;
+      if (i === goal) {
+        const path = [];
+        for (let c = goal; c !== start2; c = parent[c]) path.push(c);
+        return path.reverse();
+      }
+      if (++expanded > budget || hn >= heapI.length - 8) return null;
+      const x = i % W, y = i / W | 0, gi = g2[i];
+      for (let q = 0; q < 8; q++) {
+        const nx = x + DX[q], ny = y + DY[q];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const j = ny * W + nx;
+        if (!WALKABLE[terr[j]]) continue;
+        if (q >= 4 && (!WALKABLE[terr[y * W + nx]] || !WALKABLE[terr[ny * W + x]])) continue;
+        const ng = gi + BY_CODE[terr[j]].pathCost * (q >= 4 ? SQRT2 : 1);
+        if (seen[j] === stamp && ng >= g2[j]) continue;
+        seen[j] = stamp;
+        g2[j] = ng;
+        parent[j] = i;
+        push(j, ng + h(j));
+      }
+    }
+    return null;
+  }
+
   // src/agents/movement.js
   function speedOf(w, a) {
     return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
@@ -2416,10 +2526,21 @@ button.quiet{background:transparent;color:var(--muted)}
       return true;
     }
     const nx = a.x + dx / len * sp, ny = a.y + dy / len * sp;
-    if (!walkable(w, (Math.max(0, ny) | 0) * w.w + (Math.max(0, nx) | 0))) return null;
-    a.x = nx;
-    a.y = ny;
-    return false;
+    const ok = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && walkable(w, (y | 0) * w.w + (x | 0));
+    if (ok(nx, ny)) {
+      a.x = nx;
+      a.y = ny;
+      return false;
+    }
+    if (Math.abs(dx) > 0.01 && ok(a.x + Math.sign(dx) * sp, a.y)) {
+      a.x += Math.sign(dx) * sp;
+      return false;
+    }
+    if (Math.abs(dy) > 0.01 && ok(a.x, a.y + Math.sign(dy) * sp)) {
+      a.y += Math.sign(dy) * sp;
+      return false;
+    }
+    return null;
   }
   function follow(w, a, mapId, mul = 1) {
     const dist2 = w.nav.get(mapId), i = cellOf(w, a);
@@ -2494,18 +2615,41 @@ button.quiet{background:transparent;color:var(--muted)}
     moveToward(w, a, a.x + best[0], a.y + best[1], mul);
   }
   function approach(w, a, tx, ty, mul = 1) {
-    if (moveToward(w, a, tx, ty, mul) !== null) return;
-    let best = null, bd = Infinity;
-    for (let k = 0; k < 16; k++) {
-      const ang = k / 16 * Math.PI * 2, nx = a.x + Math.cos(ang), ny = a.y + Math.sin(ang);
-      if (!inBounds(w, nx | 0, ny | 0) || !walkable(w, (ny | 0) * w.w + (nx | 0))) continue;
-      const d = Math.hypot(tx - nx, ty - ny);
-      if (d < bd) {
-        bd = d;
-        best = [nx, ny];
-      }
+    if (!inBounds(w, tx | 0, ty | 0)) return null;
+    const g2 = a.approachGuard;
+    if (!g2 || Math.hypot(g2.x - a.x, g2.y - a.y) > 0.6 || w.tick - g2.t > 120) a.approachGuard = { x: a.x, y: a.y, t: w.tick };
+    else if (w.tick - g2.t > 40) {
+      a.approachGuard = null;
+      a.path = null;
+      return null;
     }
-    if (best) moveToward(w, a, best[0], best[1], mul);
+    if (clearLine(w, a.x, a.y, tx, ty)) {
+      a.path = null;
+      const r2 = moveToward(w, a, tx, ty, mul);
+      if (r2 !== null) return r2;
+    }
+    let p = a.path;
+    const goal = (ty | 0) * w.w + (tx | 0);
+    if (!p || Math.hypot(p.goal % w.w - (tx | 0), (p.goal / w.w | 0) - (ty | 0)) > 3 || w.tick - p.at > 40 || p.k >= p.cells.length) {
+      const cells = findPath(w, a.x, a.y, tx, ty);
+      if (!cells) {
+        a.path = null;
+        return null;
+      }
+      p = a.path = { cells, k: 0, goal, at: w.tick };
+    }
+    while (p.k + 1 < p.cells.length && p.k < 6) {
+      const c2 = p.cells[p.k + 1];
+      if (!clearLine(w, a.x, a.y, c2 % w.w + 0.5, (c2 / w.w | 0) + 0.5)) break;
+      p.k++;
+    }
+    const c = p.cells[p.k];
+    if (c == null) return true;
+    const cx = c % w.w + 0.5, cy = (c / w.w | 0) + 0.5;
+    const r = moveToward(w, a, cx, cy, mul);
+    if (r === null) moveToward(w, a, (a.x | 0) + 0.5, (a.y | 0) + 0.5, mul);
+    else if (r === true || Math.hypot(cx - a.x, cy - a.y) < 0.3) p.k++;
+    return false;
   }
   function ascend(w, a, mapId, mul = 1) {
     const dist2 = w.nav.get(mapId), i = cellOf(w, a), x = i % w.w, y = i / w.w | 0;
@@ -3141,9 +3285,11 @@ button.quiet{background:transparent;color:var(--muted)}
           const r = follow(w, a, job.nav);
           if (r !== "moving") {
             w.nav.dirty(job.nav);
-            moveToward(w, a, prey.x, prey.y);
+            approach(w, a, prey.x, prey.y);
           }
-        } else if (moveToward(w, a, prey.x, prey.y, 0.55) === null) follow(w, a, job.nav, 0.55);
+        } else if (approach(w, a, prey.x, prey.y, 0.55) === null) {
+          task.prey = null;
+        }
         return;
       }
       a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 3e-4);
@@ -3361,13 +3507,13 @@ button.quiet{background:transparent;color:var(--muted)}
         const range = g2.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
         task.shooting = true;
         if (d > range * 0.9) {
-          if (moveToward(w, a, t.x, t.y, 1) === null) follow(w, a, "camp");
+          if (approach(w, a, t.x, t.y, 1) === null) done2(a);
         } else shoot(w, a, t, "hunt");
         return;
       }
       task.shooting = false;
       if (d > 0.9) {
-        if (moveToward(w, a, t.x, t.y, 1.1) === null) follow(w, a, "camp");
+        if (approach(w, a, t.x, t.y, 1.1) === null) done2(a);
       } else attack(w, a, t);
     } },
     { id: "douse", label: () => "\u0442\u0443\u0448\u0438\u0442 \u043F\u043E\u0436\u0430\u0440", step(w, a) {
@@ -3643,7 +3789,7 @@ button.quiet{background:transparent;color:var(--muted)}
           }
         }
       }
-      if (t.spot && moveToward(w, a, t.spot[0], t.spot[1], 0.35) !== false) t.spot = null;
+      if (t.spot && approach(w, a, t.spot[0], t.spot[1], 0.35) !== false) t.spot = null;
       if (w.grid.food[i] > 0.05) w.grid.food[i] = Math.max(0, w.grid.food[i] - sp.grazes.eatsBerries);
     }
   };
@@ -3735,7 +3881,11 @@ button.quiet{background:transparent;color:var(--muted)}
           a.task = { id: "roam" };
           return;
         }
-        approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina));
+        if (approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina)) === null) {
+          (a.ignore || (a.ignore = /* @__PURE__ */ new Map())).set(prey.id, w.tick + 600);
+          a.task = { id: "roam" };
+          return;
+        }
         if (dist(a, prey) < 0.7) {
           kill(w, prey, "\u0437\u0443\u0431\u043E\u0432", a);
           w.stats.wolfKills++;
@@ -3768,8 +3918,11 @@ button.quiet{background:transparent;color:var(--muted)}
           a.calmUntil = w.tick + P.calm * 0.5;
           return;
         }
-        if (dist(a, v) > 0.9) approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6));
-        else {
+        if (dist(a, v) > 0.9 && approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) {
+          a.task = { id: "roam" };
+          a.calmUntil = w.tick + P.calm * 0.5;
+          return;
+        } else {
           attack(w, a, v);
           if (v.dead) {
             const eaters = pack.filter((m) => dist(m, a) < 10);
@@ -3838,7 +3991,7 @@ button.quiet{background:transparent;color:var(--muted)}
           break;
         }
       }
-      if (r.spot) approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.85 : 0.7);
+      if (r.spot && approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.85 : 0.7) === null) r.spot = null;
     }
   };
 
@@ -4876,7 +5029,7 @@ button.quiet{background:transparent;color:var(--muted)}
       ["\u041F\u0440\u043E\u0434\u0435\u0440\u0436\u0430\u043B\u043E\u0441\u044C", daysText(days)],
       ["\u0416\u0438\u0442\u0435\u043B\u0435\u0439 \u0432 \u043B\u0443\u0447\u0448\u0438\u0435 \u0434\u043D\u0438", c.peakPop],
       ["\u0412\u0441\u0435\u0433\u043E \u043F\u0440\u043E\u0448\u043B\u043E \u0447\u0435\u0440\u0435\u0437 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435", people.length],
-      ["\u041F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E", finished],
+      ["\u0417\u0434\u0430\u043D\u0438\u0439 \u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E", finished],
       ["\u0421\u0434\u0435\u043B\u0430\u043D\u043E \u0432\u0435\u0449\u0435\u0439", sumVals(c.crafted)],
       ["\u041D\u0430\u043B\u0451\u0442\u043E\u0432 \u043F\u0435\u0440\u0435\u0436\u0438\u0442\u043E", Math.max(0, w.stats.raids - (w.over?.reason === "raided" ? 1 : 0))],
       ["\u0421\u0440\u0430\u0436\u0435\u043D\u043E \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432", c.raidersKilled],
@@ -4978,7 +5131,7 @@ button.quiet{background:transparent;color:var(--muted)}
 
   // src/version.js
   var VERSION = "0.12 \xB7 12.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 ad4261c" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 555f9a4" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/main.js
   var renderer = new Renderer($("map"));

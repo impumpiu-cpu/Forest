@@ -3,7 +3,7 @@
 import {JOBS} from '../data/jobs.js';
 import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
-import {follow, moveToward} from './movement.js';
+import {follow, moveToward, approach} from './movement.js';
 import {deposit} from '../settlement/stock.js';
 import {addLabour} from '../settlement/buildings.js';
 import {buildingById} from '../settlement/query.js';
@@ -101,8 +101,8 @@ export const RUNNERS = {
       // far away: walk the prey flow field around lakes and rocks; close: creep straight at it
       if (d > 9) {
         const r = follow(w, a, job.nav);
-        if (r !== 'moving') { w.nav.dirty(job.nav); moveToward(w, a, prey.x, prey.y); }   // the field is stale: the prey has moved on
-      } else if (moveToward(w, a, prey.x, prey.y, 0.55) === null) follow(w, a, job.nav, 0.55);
+        if (r !== 'moving') { w.nav.dirty(job.nav); approach(w, a, prey.x, prey.y); }   // the field is stale: the prey has moved on
+      } else if (approach(w, a, prey.x, prey.y, 0.55) === null) { task.prey = null; }   // across the water: look for another
       return;
     }
     a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 0.0003);

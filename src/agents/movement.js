@@ -3,6 +3,7 @@ import {SPECIES} from '../data/species.js';
 import {BY_CODE} from '../data/terrain.js';
 import {cellOf, walkable, inBounds, DX, DY} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
+import {clearLine, findPath} from '../nav/astar.js';
 
 export function speedOf(w, a) {
   return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
@@ -14,8 +15,12 @@ export function moveToward(w, a, tx, ty, mul = 1) {
   if (Math.abs(dx) > 0.01) a.faceX = Math.sign(dx);
   if (len <= sp) { a.x = tx; a.y = ty; return true; }
   const nx = a.x + dx / len * sp, ny = a.y + dy / len * sp;
-  if (!walkable(w, (Math.max(0, ny) | 0) * w.w + (Math.max(0, nx) | 0))) return null;   // blocked
-  a.x = nx; a.y = ny; return false;
+  const ok = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && walkable(w, (y | 0) * w.w + (x | 0));
+  if (ok(nx, ny)) { a.x = nx; a.y = ny; return false; }
+  // clipping a corner of water or rock: slide along whichever axis is free
+  if (Math.abs(dx) > 0.01 && ok(a.x + Math.sign(dx) * sp, a.y)) { a.x += Math.sign(dx) * sp; return false; }
+  if (Math.abs(dy) > 0.01 && ok(a.x, a.y + Math.sign(dy) * sp)) { a.y += Math.sign(dy) * sp; return false; }
+  return null;   // blocked
 }
 
 // step toward the neighbour with the smallest distance; returns 'arrived' | 'moving' | 'stuck' | 'none'
@@ -81,16 +86,40 @@ export function bolt(w, a, threats, mul) {
   moveToward(w, a, a.x + best[0], a.y + best[1], mul);
 }
 
-// head for a moving target, sidestepping water and rocks: pick the open direction that gets closest
+// head for a point, going around water and rocks. Walks straight while the line is clear,
+// otherwise follows an A* path, re-planned when the target drifts or every couple of seconds.
+// Returns true when there, false while on the way, null when the target cannot be reached.
 export function approach(w, a, tx, ty, mul = 1) {
-  if (moveToward(w, a, tx, ty, mul) !== null) return;
-  let best = null, bd = Infinity;
-  for (let k = 0; k < 16; k++) {
-    const ang = k / 16 * Math.PI * 2, nx = a.x + Math.cos(ang), ny = a.y + Math.sin(ang);
-    if (!inBounds(w, nx | 0, ny | 0) || !walkable(w, (ny | 0) * w.w + (nx | 0))) continue;
-    const d = Math.hypot(tx - nx, ty - ny); if (d < bd) { bd = d; best = [nx, ny]; }
+  if (!inBounds(w, tx | 0, ty | 0)) return null;
+  // safety net: trying to go somewhere and not moving at all for a while means "unreachable"
+  const g = a.approachGuard;
+  if (!g || Math.hypot(g.x - a.x, g.y - a.y) > 0.6 || w.tick - g.t > 120) a.approachGuard = {x: a.x, y: a.y, t: w.tick};
+  else if (w.tick - g.t > 40) { a.approachGuard = null; a.path = null; return null; }
+  if (clearLine(w, a.x, a.y, tx, ty)) {
+    a.path = null;
+    const r = moveToward(w, a, tx, ty, mul);
+    if (r !== null) return r;   // walking straight (true once there)
   }
-  if (best) moveToward(w, a, best[0], best[1], mul);
+  let p = a.path;
+  const goal = (ty | 0) * w.w + (tx | 0);
+  if (!p || Math.hypot((p.goal % w.w) - (tx | 0), ((p.goal / w.w) | 0) - (ty | 0)) > 3 || w.tick - p.at > 40 || p.k >= p.cells.length) {
+    const cells = findPath(w, a.x, a.y, tx, ty);
+    if (!cells) { a.path = null; return null; }
+    p = a.path = {cells, k: 0, goal, at: w.tick};
+  }
+  // skip ahead to the furthest waypoint still in plain sight, then step toward it
+  while (p.k + 1 < p.cells.length && p.k < 6) {
+    const c = p.cells[p.k + 1];
+    if (!clearLine(w, a.x, a.y, (c % w.w) + 0.5, ((c / w.w) | 0) + 0.5)) break;
+    p.k++;
+  }
+  const c = p.cells[p.k];
+  if (c == null) return true;
+  const cx = (c % w.w) + 0.5, cy = ((c / w.w) | 0) + 0.5;
+  const r = moveToward(w, a, cx, cy, mul);
+  if (r === null) moveToward(w, a, (a.x | 0) + 0.5, (a.y | 0) + 0.5, mul);   // step back to the middle of our cell and try again
+  else if (r === true || Math.hypot(cx - a.x, cy - a.y) < 0.3) p.k++;
+  return false;
 }
 
 // walk uphill on a flow field: away from whatever seeds it (wolves leaving the settlement zone)

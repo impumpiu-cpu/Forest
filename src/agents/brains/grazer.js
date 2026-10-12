@@ -4,7 +4,7 @@ import {SPECIES} from '../../data/species.js';
 import {TERRAIN} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds} from '../../world/grid.js';
-import {moveToward, escapeHeat, nearFire, bolt, follow, sprintMul, recover} from '../movement.js';
+import {moveToward, escapeHeat, nearFire, bolt, follow, sprintMul, recover, approach} from '../movement.js';
 import {kill} from '../agent.js';
 
 function threatsNear(w, a, radius, from) {
@@ -57,7 +57,7 @@ export const grazerBrain = {
         if (v > bestV) { bestV = v; t.spot = [x, y]; }
       }
     }
-    if (t.spot && moveToward(w, a, t.spot[0], t.spot[1], 0.35) !== false) t.spot = null;
+    if (t.spot && approach(w, a, t.spot[0], t.spot[1], 0.35) !== false) t.spot = null;   // there, or unreachable: pick another
     if (w.grid.food[i] > 0.05) w.grid.food[i] = Math.max(0, w.grid.food[i] - sp.grazes.eatsBerries);
   },
 };

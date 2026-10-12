@@ -42,7 +42,7 @@ export function summarize(w) {
     ['Продержалось', daysText(days)],
     ['Жителей в лучшие дни', c.peakPop],
     ['Всего прошло через поселение', people.length],
-    ['Построено', finished],
+    ['Зданий построено', finished],
     ['Сделано вещей', sumVals(c.crafted)],
     ['Налётов пережито', Math.max(0, w.stats.raids - (w.over?.reason === 'raided' ? 1 : 0))],
     ['Сражено налётчиков', c.raidersKilled],

@@ -87,7 +87,7 @@ export const predatorBrain = {
       // the wolf itself is not getting anywhere (water or rocks in between): give this one up for half a day
       if (!t.anchor || dist(a, t.anchor) > 3) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
       if (w.tick - t.since > 90) { (a.ignore || (a.ignore = new Map())).set(prey.id, w.tick + 600); a.task = {id: 'roam'}; return; }
-      approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina));
+      if (approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina)) === null) { (a.ignore || (a.ignore = new Map())).set(prey.id, w.tick + 600); a.task = {id: 'roam'}; return; }
       if (dist(a, prey) < 0.7) {
         kill(w, prey, 'зубов', a); w.stats.wolfKills++;
         // the pack shares the kill: everyone close enough gets a part of the meal
@@ -109,7 +109,7 @@ export const predatorBrain = {
       // cannot get at the victim (water in between): give up for now
       if (!t.anchor || dist(a, t.anchor) > 3 || dist(a, v) < 1.5) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
       if (w.tick - t.since > 120) { a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; return; }
-      if (dist(a, v) > 0.9) approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6));
+      if (dist(a, v) > 0.9 && approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) { a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; return; }
       else {
         attack(w, a, v);
         if (v.dead) { const eaters = pack.filter(m => dist(m, a) < 10); for (const m of eaters) m.task = {id: 'feed', left: P.feedTicks * 2, gain: P.bigMeal / eaters.length / (P.feedTicks * 2)}; }
@@ -165,6 +165,6 @@ export const predatorBrain = {
         r.spot = [x, y]; r.bestD = Infinity; r.since = w.tick; break;
       }
     }
-    if (r.spot) approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.85 : 0.7);
+    if (r.spot && approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.85 : 0.7) === null) r.spot = null;   // across the water: choose again
   },
 };
