@@ -7,7 +7,8 @@ import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
 import {stepCouncil} from './settlement/council.js';
-import {stepMigration} from './settlement/migration.js';
+import {stepOutside, tell} from './outside/index.js';
+import {colonyReport} from './outside/report.js';
 import {sampleChronicle} from './settlement/chronicle.js';
 import {checkEnd} from './settlement/ending.js';
 import {createAgent} from './agents/agent.js';
@@ -32,6 +33,7 @@ export function newGame(cfg) {
   w.armoryVersion = 1;
   w.founding = false;
   for (const a of w.agents) { outfit(w, a); think(w, a, 'founded'); }
+  tell(w, 'report', colonyReport(w));   // the world hears of the new camp
   log(w, `${n} ${plural(n, 'поселенец', 'поселенца', 'поселенцев')} ${n === 1 ? 'разбил' : 'разбили'} лагерь «${esc(cfg.name)}».`, 'people');
   return w;
 }
@@ -52,7 +54,7 @@ export function step(w) {
   separate(w);
   if (w.fx.length) { for (const f of w.fx) f.t--; w.fx = w.fx.filter(f => f.t > 0); }   // shot traces fade
   stepCouncil(w);
-  stepMigration(w);
+  stepOutside(w);
   sampleChronicle(w);
   checkEnd(w);
   const t3 = performance.now();

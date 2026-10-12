@@ -5,6 +5,8 @@ import {BY_CODE, WALKABLE} from '../data/terrain.js';
 import {DX, DY} from '../world/grid.js';
 
 export const FAR = 1e9;
+// rebuild pacing, in ticks (multiplied by `every` on big maps); a navmap may override minGap/period
+const MIN_GAP = 24, PERIOD = 600, REFRESH_BURNING = 24;
 
 export class Navigation {
   constructor(world) {
@@ -14,6 +16,7 @@ export class Navigation {
     for (const d of NAVMAPS.all()) this.dist[d.id] = new Float64Array(n).fill(FAR);
     this.dirtySet = new Set(NAVMAPS.ids());
     this.order = NAVMAPS.ids();
+    this.last = Object.fromEntries(this.order.map(id => [id, -Infinity]));   // tick of the last rebuild
     this.cost = new Float32Array(n);
     this.closed = new Uint8Array(n);
     this.heapI = new Int32Array(n * 9);
@@ -61,17 +64,31 @@ export class Navigation {
       }
     }
     this.dirtySet.delete(id);
+    this.last[id] = w.tick;
   }
 
   buildAll() { for (const id of this.order) this.build(id); }
 
+  // Which map to rebuild this tick. Fields are not rebuilt on a blind round-robin any more:
+  //  · a map marked dirty is rebuilt, but not more often than every `minGap` ticks (berries get
+  //    dirty almost every tick while bushes regrow, and the field barely changes);
+  //  · a clean map is refreshed every `period` ticks — or every REFRESH_BURNING while something
+  //    burns, because fire and smoke change the cost of every path;
+  //  · urgent maps (escape from fire) refresh every other slot while they are active.
+  // At most one regular map per slot, the most overdue one, so a tick stays cheap.
   step() {
     const w = this.w;
     if (w.tick % this.every !== 0) return;
-    const slot = (w.tick / this.every) | 0, id = this.order[slot % this.order.length], def = NAVMAPS.get(id);
-    if (!def.active || def.active(w) || this.dirtySet.has(id)) this.build(id);
-    for (const d of this.order) if (this.dirtySet.has(d)) { this.build(d); break; }
-    // urgent maps (escape from fire) refresh every other slot while they are active
-    for (const d of NAVMAPS.filter(m => m.urgent)) if (d.id !== id && slot % 2 === 0 && d.active(w)) this.build(d.id);
+    const t = w.tick, burning = w.stats.fireCount > 0, k = this.every;
+    let best = null, bestOver = 1;
+    for (const d of NAVMAPS.all()) {
+      const dirty = this.dirtySet.has(d.id);
+      if (d.urgent) { if ((dirty || d.active(w)) && t - this.last[d.id] >= 2 * k) this.build(d.id); continue; }
+      if (!dirty && d.active && !d.active(w)) continue;
+      const due = (dirty ? d.minGap ?? MIN_GAP : burning ? REFRESH_BURNING : d.period ?? PERIOD) * k;
+      const over = (t - this.last[d.id]) / due;
+      if (over >= bestOver) { best = d.id; bestOver = over; }
+    }
+    if (best) this.build(best);
   }
 }

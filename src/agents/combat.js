@@ -25,7 +25,7 @@ const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack |
 // Inside the settlement zone colonists fight harder and a palisade shields them.
 export function damage(w, by, t, raw, {melee = true} = {}) {
   const g = ensureGear(t);
-  if (melee && g.block && Math.random() < g.block) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
+  if (melee && g.block && w.rng() < g.block) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
   const home = by.faction === 'colony' && agentInZone(w, by) ? 1.25 : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
   let dmg = raw * home * wall * (1 - (g.armor || 0));
@@ -42,7 +42,7 @@ export function attack(w, a, t) {
   if (a.cd > 0) return;
   const g = ensureGear(a);
   a.cd = g.melee.cd; a.flash = 4;
-  damage(w, a, t, (0.1 + Math.random() * 0.12) * g.melee.dmg);
+  damage(w, a, t, (0.1 + w.rng() * 0.12) * g.melee.dmg);
   if (g.melee.item) wear(w, a, g.melee.item);
 }
 
@@ -55,11 +55,11 @@ export function shoot(w, a, t, skillJob = 'hunt') {
   if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
   wear(w, a, r.item);
   const skill = a.skill?.[skillJob] ?? 0.2, moving = t.task?.id === 'bolt' || t.task?.id === 'chase' ? 0.12 : 0;
-  const hit = Math.random() < 0.4 + 0.4 * skill - (d / range) * 0.2 - moving;
-  w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (Math.random() - 0.5) * 2, y2: hit ? t.y : t.y + (Math.random() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
+  const hit = w.rng() < 0.4 + 0.4 * skill - (d / range) * 0.2 - moving;
+  w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rng() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rng() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
-  const res = damage(w, a, t, (0.12 + Math.random() * 0.1) * r.dmg * boost, {melee: false});
+  const res = damage(w, a, t, (0.12 + w.rng() * 0.1) * r.dmg * boost, {melee: false});
   return t.dead ? 'kill' : res === 'blocked' ? 'miss' : 'hit';
 }
 

@@ -1,6 +1,4 @@
 // Start-menu presets: world sizes, climates, starting stock, raid frequency.
-import {DAY} from '../core/time.js';
-
 export const SIZES = {
   small:  {w: 96,  h: 72,  label: 'Малый',    note: '96 × 72, быстрый'},
   medium: {w: 128, h: 96,  label: 'Средний',  note: '128 × 96'},
@@ -26,10 +24,11 @@ export const STOCKS = {
     kit: ['bow', 'quiver', 'sling', 'spear', 'shield', 'axe', 'club']},
 };
 
+// how far the raiders' camp is (days of travel); the stub sends a band every dist / 2 days
 export const RAIDS = {
-  off:   {label: 'Нет',     every: 0},
-  rare:  {label: 'Редкие',  every: 3 * DAY},
-  often: {label: 'Частые',  every: 1.4 * DAY},
+  off:   {label: 'Нет',     dist: null},
+  rare:  {label: 'Редкие',  dist: 6},
+  often: {label: 'Частые',  dist: 3},
 };
 
 export const WILDLIFE = {

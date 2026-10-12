@@ -1,54 +1,46 @@
-// Arrivals and departures. Nobody is born here: populations change only by migration.
-// A migration checks every `interval` ticks, or when its own `nextAt(w, rng, arrived)` says,
-// how big a group should come, then spawns it at a map edge reachable from the camp.
-// `arrived` is the size of the group that just came (0 if the check found nobody).
+// What an arriving group looks like and whether the colony's land can take it.
+// WHEN groups come and HOW MANY want to come is not decided here: that is the outside world's
+// business (src/outside/). This file is the local half of every arrival:
+//   accept(w, n, rng) — how many of the n offered actually arrive (room, food, what the land feeds);
+//   blocked(w)        — for the panel: why a due arrival is held up;
+//   retry             — a due arrival that could not happen is tried again this often;
+//   species/faction/init/kit/groupInit/message — the group itself.
 import {Registry} from '../core/registry.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
-import {RAIDS, WILDLIFE, PREDATORS} from './presets.js';
+import {WILDLIFE} from './presets.js';
 import {T} from './terrain.js';
-import {DAY, HOUR} from '../core/time.js';
-import {raidThreat, raidSize, settlerWaitDays} from '../settlement/threat.js';
+import {HOUR} from '../core/time.js';
+import {raidThreat} from '../settlement/threat.js';
 
 export const MIGRATIONS = new Registry('migration');
 
 MIGRATIONS.registerAll([
-  // one newcomer at a time; after an arrival the wait grows with the colony.
-  // When the wait is over but nobody can come yet (no room, no food to spare) the arrival stays
-  // due and is retried every couple of hours; `blocked` tells the panel why.
+  // newcomers need a free place to sleep and food to spare
   {id: 'settlers', species: 'human', faction: 'colony', topic: 'people', retry: 2 * HOUR,
-    nextAt: (w, rng, arrived) => w.tick + settlerWaitDays(colonists(w).length) * DAY,
     blocked: w => (colonists(w).length >= popCap(w) ? 'нет места, нужен шалаш' : foodTotal(w) <= colonists(w).length * 5 ? 'мало еды в запасе' : null),
-    size: w => (MIGRATIONS.get('settlers').blocked(w) ? 0 : 1),
+    accept: (w, n) => (MIGRATIONS.get('settlers').blocked(w) ? 0 : n),
     message: (w, group) => `К лагерю пришла новая душа: <b>${group[0].name}</b>.`},
 
-  // hares drift in while the meadows can feed more of them; grazers also wander off on their own
-  {id: 'hares', species: 'hare', faction: 'wild', interval: 240, minDist: 20, topic: 'wildlife',
-    size: (w, rng) => {
-      const k = WILDLIFE[w.cfg.wildlife].hares; if (!k) return 0;
+  // hares stay only while the meadows can feed more of them
+  {id: 'hares', species: 'hare', faction: 'wild', minDist: 20, topic: 'wildlife',
+    accept: (w, n) => {
+      const k = WILDLIFE[w.cfg.wildlife].hares;
       if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
-      const cap = Math.round(w.cache.grass / 500 * k), n = ofSpecies(w, 'hare').length;
-      return n < cap ? Math.min(cap - n, 1 + Math.floor(rng() * 3)) : 0;
+      const cap = Math.round(w.cache.grass / 500 * k);
+      return Math.max(0, Math.min(n, cap - ofSpecies(w, 'hare').length));
     },
     message: (w, group, side) => (group.length > 1 ? `С ${side} прибежали зайцы: ${group.length}.` : null)},
 
-  // a wolf pack comes only while there are hares to eat and no other pack around
-  {id: 'wolves', species: 'wolf', faction: 'predators', interval: 1500, minDist: 30, topic: 'danger', level: 'notice',
-    size: (w, rng) => {
-      const k = PREDATORS[w.cfg.predators].wolves;
-      if (!k || ofSpecies(w, 'wolf').length || ofSpecies(w, 'hare').length < 5 || rng() > k) return 0;
-      return 2 + Math.floor(rng() * (k >= 1 ? 3 : 2));
-    },
+  // a wolf pack settles in only while there are hares to eat and no other pack around
+  {id: 'wolves', species: 'wolf', faction: 'predators', minDist: 30, topic: 'danger', level: 'notice',
+    accept: (w, n) => (ofSpecies(w, 'wolf').length || ofSpecies(w, 'hare').length < 5 ? 0 : n),
     // members share a pack id; the first one leads
     groupInit: group => { const pack = group[0].id; for (const a of group) { a.pack = pack; a.name = 'Волк'; } },
     message: (w, group, side) => `С ${side} пришла стая волков: ${group.length}. Одному в лес лучше не ходить.`},
 
+  // size, gear, toughness and aim grow with the threat the raiders see
   {id: 'raiders', species: 'human', faction: 'raiders', minDist: 40, topic: 'danger',
-    // scheduled by the start-menu setting (each raid brings the next one a little closer),
-    // or triggered by the «Набег» button. Size, gear, toughness and aim grow with the threat.
-    nextAt: (w, rng) => (RAIDS[w.cfg.raids].every
-      ? w.tick + RAIDS[w.cfg.raids].every * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) : Infinity),
-    size: w => raidSize(w),
     groupInit: (group, w) => {
       const t = raidThreat(w); w.stats.raids++;
       const big = w.chronicle.biggestRaid;

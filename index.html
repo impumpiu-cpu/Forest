@@ -56,6 +56,14 @@
         <button type="button" id="backToGame" hidden>Вернуться к игре</button>
         <button type="button" id="resetCfg" class="quiet">Сбросить настройки</button>
       </div>
+      <div class="field saves">
+        <span class="lbl">Сохранённые игры</span>
+        <div id="saveList" class="savelist"><small>Пока нет сохранений.</small></div>
+        <div class="row">
+          <label class="filebtn">Открыть файл сохранения…<input type="file" id="loadFile" accept=".gz,.json,application/gzip,application/json"></label>
+          <small class="status" id="loadStatus" role="status"></small>
+        </div>
+      </div>
     </div>
     <div class="menu-preview">
       <div class="preview-box"><canvas id="preview" width="256" height="192" aria-label="Предпросмотр карты"></canvas></div>
@@ -90,8 +98,9 @@
           <div class="seg" id="speeds">
             <button data-speed="0" aria-pressed="false" title="Пробел">Пауза</button>
             <button data-speed="1" aria-pressed="true">1×</button>
-            <button data-speed="3" aria-pressed="false">3×</button>
-            <button data-speed="10" aria-pressed="false">10×</button>
+            <button data-speed="2" aria-pressed="false">2×</button>
+            <button data-speed="4" aria-pressed="false">4×</button>
+            <button data-speed="8" aria-pressed="false">8×</button>
           </div>
         </div>
         <div class="group"><span>Ветер</span>
@@ -101,7 +110,10 @@
         </div>
         <div class="group">
           <button id="raid" class="danger">Набег</button>
+          <button id="saveGame" title="Сохранить в этом браузере. Игра также сохраняется сама каждое утро.">Сохранить</button>
+          <button id="saveFile" title="Скачать сохранение файлом">В файл</button>
           <button id="openMenu">Меню мира</button>
+          <span class="status" id="saveStatus" role="status"></span>
         </div>
       </div>
       <div class="canvas-box"><canvas id="map" width="768" height="576"></canvas></div>
@@ -157,6 +169,7 @@
           <dt>Агенты</dt><dd id="pA">—</dd>
           <dt>Отрисовка кадра</dt><dd id="pR">—</dd>
           <dt>Тиков в секунду</dt><dd id="pT">—</dd>
+          <dt title="Сколько игрового времени проходит за секунду по сравнению с 1×. Если меньше выбранного, компьютер не успевает.">Скорость: факт / выбрана</dt><dd id="pS">—</dd>
         </dl>
       </div>
       <div class="card">

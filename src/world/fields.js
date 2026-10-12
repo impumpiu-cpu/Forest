@@ -56,7 +56,7 @@ function burn(w) {
       const wet = g.fert[i];
       g.fuel[i] -= FIRE.burn * f;
       let nf = g.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
-      if (Math.random() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;   // a wet patch chokes the flame
+      if (w.rng() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;   // a wet patch chokes the flame
       nf -= rain * 0.045;
       if (g.fuel[i] <= 0) g.fuel[i] = 0;
       if (nf < 0.03) {
@@ -76,7 +76,7 @@ function burn(w) {
     } else if (g.fuel[i] > 0.12) {
       const forest = g.fuel[i] > 1, wet = g.fert[i];
       if (g.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet &&
-          Math.random() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) { g.fire[i] = 0.2; w.nav.dirty('fire'); }
+          w.rng() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) { g.fire[i] = 0.2; w.nav.dirty('fire'); }
     }
   }
 }
@@ -93,14 +93,14 @@ function growth(w) {
   }
   const samples = Math.round(160 * w.n / 12288 * w.climate.regrow);
   for (let k = 0; k < samples; k++) {
-    const i = (Math.random() * w.n) | 0; if (g.fire[i] > 0 || g.bld[i] >= 0) continue;
+    const i = (w.rng() * w.n) | 0; if (g.fire[i] > 0 || g.bld[i] >= 0) continue;
     const t = g.terr[i], f = g.fert[i];
-    if (t === T.BURNT) { if (Math.random() < 0.02) { g.terr[i] = T.GRASS; g.fuel[i] = 0.1; } }
+    if (t === T.BURNT) { if (w.rng() < 0.02) { g.terr[i] = T.GRASS; g.fuel[i] = 0.1; } }
     else if (t === T.GRASS) {
       if (g.fuel[i] < 0.4) g.fuel[i] = Math.min(0.4, g.fuel[i] + 0.02);
       if (g.bush[i]) { g.food[i] = Math.min(1, g.food[i] + 0.05 * f); if (g.food[i] > 0.35) w.nav.dirty('berries'); }
-      else if (!isCampArea(w, i) && Math.random() < 0.0025 * f) { g.bush[i] = 1; g.food[i] = 0.1; g.fuel[i] += 0.2; }
-      if (Math.random() < 0.0015 * f && f > 0.55 && !isCampArea(w, i)) { g.terr[i] = T.FOREST; g.wood[i] = 0.3; g.fuel[i] = 1.5; g.bush[i] = 0; }
+      else if (!isCampArea(w, i) && w.rng() < 0.0025 * f) { g.bush[i] = 1; g.food[i] = 0.1; g.fuel[i] += 0.2; }
+      if (w.rng() < 0.0015 * f && f > 0.55 && !isCampArea(w, i)) { g.terr[i] = T.FOREST; g.wood[i] = 0.3; g.fuel[i] = 1.5; g.bush[i] = 0; }
     } else if (t === T.FOREST && g.wood[i] < 1) { g.wood[i] = Math.min(1, g.wood[i] + 0.03); g.fuel[i] = 1.2 + g.wood[i]; }
   }
 }

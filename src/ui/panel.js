@@ -7,6 +7,7 @@ import {SPECIES} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, hourOf, dayOf, ambientTemp} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
+import {TICK_MS} from '../core/time.js';
 import {colonists, count, has, ofSpecies, popCap} from '../settlement/query.js';
 import {councilDue, COUNCIL_FROM} from '../settlement/council.js';
 import {taskLabel} from '../agents/tasks.js';
@@ -25,6 +26,7 @@ import {raidThreat, raidSize} from '../settlement/threat.js';
 import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
 import {MIGRATIONS} from '../data/migrations.js';
+import {neighbours} from '../outside/index.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -82,7 +84,8 @@ export class Panel {
       `<dt>Костёр</dt><dd>${w.campLit ? 'горит' : w.stock.wood > 0.05 ? 'не нужен' : 'нет древесины'}</dd>` +
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
       `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
-      `<dt>Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` · ${this.waitText(w, w.migration.raiders)}` : ''}</dd>` +
+      `<dt title="Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` · ${this.waitText(w, w.outside.next.raiders)}` : ''}</dd>` +
+      `<dt>Соседи</dt><dd class="nb">${neighbours(w).filter(n => n.dist).map(n => `<span title="${esc(n.note)}">${esc(n.label)} · ${n.dist} дн. пути</span>`).join('<br>') || '—'}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +
       `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>`);
@@ -94,7 +97,9 @@ export class Panel {
     $('pF').textContent = w.perf.fields.toFixed(2); $('pN').textContent = w.perf.nav.toFixed(2);
     $('pA').textContent = w.perf.agents.toFixed(2); $('pR').textContent = view.renderMs.toFixed(2);
     const now = performance.now();
-    $('pT').textContent = view.speed ? ((w.tick - this.lastTick) / ((now - this.lastT) / 1000)).toFixed(0) : '0';
+    const tps = view.speed && this.lastT ? (w.tick - this.lastTick) / ((now - this.lastT) / 1000) : 0;
+    $('pT').textContent = tps.toFixed(0);
+    $('pS').textContent = view.speed ? `×${(tps * TICK_MS / 1000).toFixed(1)} / ×${view.speed}` : 'пауза';
     this.lastTick = w.tick; this.lastT = now;
     this.renderLog(w);
   }
@@ -102,8 +107,8 @@ export class Panel {
   // the arrival is either still on its way (time left) or due and waiting for a reason
   settlerText(w) {
     const def = MIGRATIONS.get('settlers'), why = def.blocked(w);
-    if (w.migrationDue.settlers != null) return why ? `ждёт: ${why}` : 'скоро';
-    return this.waitText(w, w.migration.settlers) + (why ? ` · ${why}` : '');
+    if (w.outside.due.settlers != null) return why ? `ждёт: ${why}` : 'скоро';
+    return this.waitText(w, w.outside.next.settlers) + (why ? ` · ${why}` : '');
   }
 
   waitText(w, at) {

@@ -137,7 +137,7 @@ export const predatorBrain = {
       if (v) { startMaul(w, a, v, b); return; }
     }
     // starving with no prey in sight: the pack may move on to other hunting grounds
-    if (leader === a && b > 0.85 && !nearest(w, a, P.prey, P.sight) && Math.random() < P.wanderOff) {
+    if (leader === a && b > 0.85 && !nearest(w, a, P.prey, P.sight) && w.rng() < P.wanderOff) {
       for (const m of pack) m.task = {id: 'leave'};
       log(w, 'Голодная стая ушла искать другие угодья.', 'wildlife');
       return;
@@ -159,7 +159,7 @@ export const predatorBrain = {
     if (r.spot && d < r.bestD - 0.5) { r.bestD = d; r.since = w.tick; }
     if (!r.spot || d < 1.5 || w.tick - (r.since || 0) > 120) {
       for (let k = 0; k < 20; k++) {
-        const x = 2 + Math.random() * (w.w - 4), y = 2 + Math.random() * (w.h - 4);
+        const x = 2 + w.rng() * (w.w - 4), y = 2 + w.rng() * (w.h - 4);
         const j = (y | 0) * w.w + (x | 0);
         if (!walkable(w, j) || w.nav.get('zone')[j] < P.zoneShyNight + 6) continue;
         r.spot = [x, y]; r.bestD = Infinity; r.since = w.tick; break;

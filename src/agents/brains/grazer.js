@@ -33,7 +33,7 @@ export const grazerBrain = {
       return;
     }
     recover(a);
-    if (a.task?.id === 'leave' || Math.random() < sp.leaveChance) {
+    if (a.task?.id === 'leave' || w.rng() < sp.leaveChance) {
       a.task = {id: 'leave'};
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;
       return;
@@ -42,18 +42,18 @@ export const grazerBrain = {
 
     // graze: hop to a nearby patch of preferred terrain, nibble berries on the way
     const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});
-    if (!t.spot || Math.random() < 0.01) {
+    if (!t.spot || w.rng() < 0.01) {
       const ok = new Set(sp.grazes.terrain.map(id => TERRAIN.get(id).code));
       // mostly nibble nearby, now and then wander off to another meadow; of a few candidate
       // patches take the lushest one that is not hard against the map edge
-      const reach = Math.random() < 0.15 ? 30 : 7;
+      const reach = w.rng() < 0.15 ? 30 : 7;
       let bestV = -Infinity;
       for (let k = 0; k < 12; k++) {
-        const x = a.x + (Math.random() * 2 - 1) * reach, y = a.y + (Math.random() * 2 - 1) * reach;
+        const x = a.x + (w.rng() * 2 - 1) * reach, y = a.y + (w.rng() * 2 - 1) * reach;
         if (!inBounds(w, x | 0, y | 0)) continue;
         const j = (y | 0) * w.w + (x | 0);
         if (!walkable(w, j) || !ok.has(w.grid.terr[j])) continue;
-        const v = w.grid.fert[j] + Math.min(8, x, y, w.w - x, w.h - y) * 0.12 + Math.random() * 0.3;
+        const v = w.grid.fert[j] + Math.min(8, x, y, w.w - x, w.h - y) * 0.12 + w.rng() * 0.3;
         if (v > bestV) { bestV = v; t.spot = [x, y]; }
       }
     }

@@ -5,7 +5,7 @@ import {HOUR, ambientTemp} from '../core/time.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {SIZES, CLIMATES, STOCKS} from '../data/presets.js';
 import {RESOURCES} from '../data/resources.js';
-import {MIGRATIONS} from '../data/migrations.js';
+import {initOutside} from '../outside/index.js';
 import {emptyMods} from '../settlement/mods.js';
 import {isCampArea} from './grid.js';
 import {setWind} from './weather.js';
@@ -78,7 +78,7 @@ export function createWorld(cfg) {
     wind: {dir: cfg.windDir, str: cfg.windStr / 100, x: 0, y: 0},
     weather: {rain: 0, rainLeft: 0},
     stats: {fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0, crafted: 0, broken: 0, raids: 0},
-    campLit: false, mods: emptyMods(), cache: {}, migration: {}, migrationDue: {}, chronicle: newChronicle(), over: null,
+    campLit: false, mods: emptyMods(), cache: {}, outside: null, chronicle: newChronicle(), over: null,
     council: {lastDay: -1, goal: null, votes: [], args: [], decision: 'Первый совет соберётся сегодня вечером у костра.'},
     logLines: [], logVersion: 0, nav: null,
   };
@@ -97,7 +97,7 @@ export function createWorld(cfg) {
   for (const r of RESOURCES.all()) world.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
   findLakes(world);
   recomputeZone(world);
-  for (const m of MIGRATIONS.all()) world.migration[m.id] = m.nextAt ? m.nextAt(world, t.rng) : world.tick + (m.interval || 0);
+  initOutside(world);
   setWind(world);
   return world;
 }

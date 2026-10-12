@@ -1,4 +1,5 @@
-// Runs MIGRATIONS: decides when groups arrive and spawns them at a reachable map edge.
+// Spawns an arriving group at a reachable map edge. Who comes and when is decided by the
+// border with the outside world (src/outside/); this file only puts them on the map.
 import {MIGRATIONS} from '../data/migrations.js';
 import {log} from '../core/log.js';
 import {createAgent} from '../agents/agent.js';
@@ -14,7 +15,7 @@ const SIDE = ['запада', 'востока', 'севера', 'юга'];
 function edgeCell(w, minDist) {
   const dCamp = w.nav.get('camp');
   for (let k = 0; k < 300; k++) {
-    const s = (Math.random() * 4) | 0, t = Math.random();
+    const s = (w.rng() * 4) | 0, t = w.rng();
     const x = s === 0 ? 0 : s === 1 ? w.w - 1 : (t * w.w) | 0, y = s === 2 ? 0 : s === 3 ? w.h - 1 : (t * w.h) | 0;
     const i = y * w.w + x;
     if (walkable(w, i) && dCamp[i] < FAR && dCamp[i] > minDist) return [i, SIDE[s]];
@@ -22,15 +23,14 @@ function edgeCell(w, minDist) {
   return [-1, ''];
 }
 
-export function spawnGroup(w, id, size) {
+export function spawnGroup(w, id, n) {
   const def = MIGRATIONS.get(id);
-  const n = size ?? def.size(w, w.rng);
   if (!n) return [];
   const [e, side] = edgeCell(w, def.minDist ?? 30);
   if (e < 0) { if (id === 'raiders') log(w, 'Налётчики не нашли дороги к лагерю.', 'danger', 'notice'); return []; }
   const ex = e % w.w, ey = (e / w.w) | 0, group = [];
   for (let k = 0; k < n; k++) {
-    let x = clamp(ex + 0.5 + Math.random() * 3 - 1.5, 0.2, w.w - 0.2), y = clamp(ey + 0.5 + Math.random() * 3 - 1.5, 0.2, w.h - 0.2);
+    let x = clamp(ex + 0.5 + w.rng() * 3 - 1.5, 0.2, w.w - 0.2), y = clamp(ey + 0.5 + w.rng() * 3 - 1.5, 0.2, w.h - 0.2);
     if (!walkable(w, (y | 0) * w.w + (x | 0))) { x = ex + 0.5; y = ey + 0.5; }
     const a = createAgent(w, def.species, def.faction, x, y);
     if (def.init) def.init(a, w);
@@ -42,15 +42,4 @@ export function spawnGroup(w, id, size) {
   const msg = def.message?.(w, group, side);
   if (msg) log(w, msg, def.topic || 'people', def.level);
   return group;
-}
-
-export function stepMigration(w) {
-  for (const def of MIGRATIONS.all()) {
-    if (w.tick < w.migration[def.id]) continue;
-    const group = spawnGroup(w, def.id);
-    // a due arrival that could not happen is retried soon without resetting its schedule
-    if (!group.length && def.retry) { w.migration[def.id] = w.tick + def.retry; w.migrationDue[def.id] ??= w.tick; continue; }
-    w.migration[def.id] = def.nextAt ? def.nextAt(w, w.rng, group.length) : w.tick + def.interval;
-    w.migrationDue[def.id] = null;
-  }
 }

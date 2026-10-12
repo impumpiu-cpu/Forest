@@ -6,8 +6,9 @@ import {Panel} from './ui/panel.js';
 import {TOOLS} from './ui/tools.js';
 import {showEnd, hideEnd} from './ui/endScreen.js';
 import {$, segmented, press} from './ui/dom.js';
-import {setWind} from './world/weather.js';
-import {spawnGroup} from './settlement/migration.js';
+import {COMMANDS} from './commands.js';
+import {saveToBrowser, listSaves, loadFromBrowser, deleteSave, downloadSave, loadFromFile} from './ui/saves.js';
+import {dayOf} from './core/time.js';
 import {SIZES, CLIMATES, RAIDS, WILDLIFE, PREDATORS} from './data/presets.js';
 import {TICK_MS} from './core/time.js';
 import {esc} from './core/util.js';
@@ -40,6 +41,16 @@ function start(cfg) {
   world = newGame(cfg);
   renderer.setup(world);
   view.selected = null;
+  autoDay = dayOf(world.tick);
+  showGame();
+}
+
+// a loaded world replaces the running one
+function resume(w) {
+  world = w;
+  renderer.setup(world);
+  view.selected = null;
+  autoDay = dayOf(world.tick);
   showGame();
 }
 
@@ -48,6 +59,7 @@ function showMenu() {
   hideEnd();
   $('menu').hidden = false; $('game').hidden = true; $('explain').hidden = true;
   $('backToGame').hidden = !world;
+  refreshSaves();
   $('colonyName').textContent = 'Тёплый Брод';
   $('worldInfo').textContent = 'Выберите размер мира, сид и условия жизни. На превью — карта, которая получится.';
   menu.sync();
@@ -79,9 +91,36 @@ $('people').addEventListener('click', e => {
   const p = e.target.closest('.person'); if (!p) return;
   const a = world.agents.find(x => x.id === +p.dataset.id); view.selected = view.selected === a ? null : a;
 });
-$('windDir').addEventListener('input', e => { world.wind.dir = +e.target.value; setWind(world); $('windArrow').style.transform = `rotate(${world.wind.dir}deg)`; });
-$('windStr').addEventListener('input', e => { world.wind.str = +e.target.value / 100; setWind(world); });
-$('raid').addEventListener('click', () => spawnGroup(world, 'raiders'));
+$('windDir').addEventListener('input', e => { COMMANDS.setWind(world, +e.target.value, null); $('windArrow').style.transform = `rotate(${world.wind.dir}deg)`; });
+$('windStr').addEventListener('input', e => { COMMANDS.setWind(world, null, +e.target.value / 100); });
+$('raid').addEventListener('click', () => COMMANDS.raid(world));
+
+// ── saves
+let autoDay = 0, statusTimer = 0;
+function status(id, text) { $(id).textContent = text; clearTimeout(statusTimer); statusTimer = setTimeout(() => { $(id).textContent = ''; }, 4000); }
+async function save(auto) {
+  try { const m = await saveToBrowser(world, auto); if (!auto) status('saveStatus', `Сохранено: день ${m.day}, ${m.when.split(', ')[1] || ''}`); }
+  catch (e) { status('saveStatus', 'Не удалось сохранить: ' + e.message); }
+}
+$('saveGame').addEventListener('click', () => save(false));
+$('saveFile').addEventListener('click', () => downloadSave(world).catch(e => status('saveStatus', 'Не удалось: ' + e.message)));
+async function refreshSaves() {
+  const box = $('saveList');
+  let saves;
+  try { saves = await listSaves(); } catch (e) { box.innerHTML = '<small>Сохранения в этом браузере недоступны. Можно открыть файл.</small>'; return; }
+  if (!saves.length) { box.innerHTML = '<small>Пока нет сохранений.</small>'; return; }
+  box.innerHTML = saves.map(s => `<div class="sv" data-id="${esc(s.id)}"><span class="t"><b>${esc(s.name)}</b> · день ${s.day} · жителей ${s.pop}${s.auto ? ' · автосохранение' : ''}<br><small>${new Date(s.savedAt).toLocaleString('ru-RU')} · версия ${esc(s.version || '?')}</small></span>` +
+    `<button type="button" data-act="load">Загрузить</button><button type="button" data-act="del" class="quiet" aria-label="Удалить сохранение">Удалить</button></div>`).join('');
+}
+$('saveList').addEventListener('click', async e => {
+  const b = e.target.closest('button'), row = e.target.closest('.sv'); if (!b || !row) return;
+  if (b.dataset.act === 'del') { await deleteSave(row.dataset.id); refreshSaves(); return; }
+  try { resume(await loadFromBrowser(row.dataset.id)); } catch (err) { status('loadStatus', err.message); }
+});
+$('loadFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { resume(await loadFromFile(f)); } catch (err) { status('loadStatus', 'Не удалось открыть: ' + err.message); }
+});
 $('openMenu').addEventListener('click', showMenu);
 $('personCard').addEventListener('click', e => { if (e.target.closest('[data-close]')) { view.selected = null; panel.renderCard(world, null); } });
 document.addEventListener('keydown', e => {
@@ -108,6 +147,8 @@ function frame(now) {
       requestAnimationFrame(frame);
       return;
     }
+    // autosave once a game day, at the first frame of the new day
+    if (dayOf(world.tick) !== autoDay) { autoDay = dayOf(world.tick); save(true); }
     renderer.draw(world, view);
     view.renderMs = renderer.ms;
     panel.readout(world, view.hover);

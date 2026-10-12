@@ -5,7 +5,11 @@ export class Registry {
   constructor(kind) {
     this.kind = kind;
     this.items = new Map();
+    Registry.list.push(this);
   }
+
+  // every registry ever created: saves refer to definitions as "kind:id" instead of copying them
+  static list = [];
 
   register(def) {
     if (!def || !def.id) throw new Error(`${this.kind}: definition without id`);

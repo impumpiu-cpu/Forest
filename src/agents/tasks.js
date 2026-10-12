@@ -18,8 +18,8 @@ const done = a => { a.task = null; a.think = 0; };
 
 // wander a little inside the camp so people don't stand in one spot
 function mill(w, a, task, radius = 1.2) {
-  if (!task.spot || Math.random() < 0.02) {
-    const ang = Math.random() * Math.PI * 2, r = Math.random() * radius;
+  if (!task.spot || w.rng() < 0.02) {
+    const ang = w.rng() * Math.PI * 2, r = w.rng() * radius;
     task.spot = [w.camp.x + 0.5 + Math.cos(ang) * r, w.camp.y + 0.5 + Math.sin(ang) * r];
   }
   moveToward(w, a, task.spot[0], task.spot[1], 0.5);
@@ -57,7 +57,7 @@ TASKS.registerAll([
     if (!councilDue(w)) { done(a); return; }
     if (follow(w, a, 'camp') !== 'arrived') return;
     task.seated = true;
-    if (!task.spot) { const ang = Math.random() * Math.PI * 2; task.spot = [w.camp.x + 0.5 + Math.cos(ang) * 1.6, w.camp.y + 0.5 + Math.sin(ang) * 1.6]; }
+    if (!task.spot) { const ang = w.rng() * Math.PI * 2; task.spot = [w.camp.x + 0.5 + Math.cos(ang) * 1.6, w.camp.y + 0.5 + Math.sin(ang) * 1.6]; }
     moveToward(w, a, task.spot[0], task.spot[1], 0.5);
   }},
 

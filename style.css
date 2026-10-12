@@ -195,3 +195,12 @@ button.quiet{background:transparent;color:var(--muted)}
 .kv dt{white-space:nowrap}
 .kv dd{overflow-wrap:anywhere}
 [hidden]{display:none!important}
+.kv dd.nb{font-family:inherit;font-size:12px;line-height:1.35}
+.status{font-size:12px;color:var(--muted)}
+.savelist{display:flex;flex-direction:column;gap:4px;margin:4px 0 8px}
+.savelist .sv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border:1px solid var(--line);border-radius:6px}
+.savelist .sv .t{flex:1;min-width:160px}
+.savelist .sv small{color:var(--muted)}
+.filebtn{display:inline-block;font-size:13px;border:1px dashed var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+.filebtn input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.filebtn:focus-within{outline:2px solid var(--ember);outline-offset:2px}

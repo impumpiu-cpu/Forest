@@ -12,7 +12,7 @@ import {think} from './mind.js';
 import {enrol, noteDeath} from '../settlement/chronicle.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
-const newMemory = () => new Proxy({}, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
+export const newMemory = (init = {}) => new Proxy(init, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
 
 const between = (rng, [a, b]) => a + rng() * (b - a);
 

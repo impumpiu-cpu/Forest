@@ -1,12 +1,16 @@
 // Deterministic random numbers: the same seed and settings give the same world.
 
+// The whole simulation draws from one stream (w.rng), so a seed plus the same player actions
+// always give the same story. `rng.state` reads or restores the position in the stream (saves).
 export function mulberry(a) {
-  return function () {
+  const rng = function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
     let t = Math.imul(a ^ a >>> 15, 1 | a);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
+  Object.defineProperty(rng, 'state', {get: () => a | 0, set: v => { a = v | 0; }});
+  return rng;
 }
 
 // any text works as a seed: digits are used as is, words are hashed (FNV-1a)
