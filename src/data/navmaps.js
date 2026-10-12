@@ -23,9 +23,9 @@ NAVMAPS.registerAll([
   {id: 'sites', active: w => openSites(w).length > 0,
     prepare: w => new Set(openSites(w).flatMap(b => b.cells)),
     seed: (w, i, cells) => cells.has(i)},
-  // game animals: hunters walk this field until they are close enough to stalk directly
-  {id: 'prey', active: w => w.agents.some(a => a.task?.job === 'hunt'),
-    prepare: w => new Set(w.agents.filter(a => SPECIES.get(a.species).yields).map(a => cellOf(w, a))),
+  // game animals: hunters and predators walk this field until they are close enough to go straight
+  {id: 'prey', active: w => w.agents.some(a => a.task?.job === 'hunt' || a.brain === 'predator'),
+    prepare: w => new Set(w.agents.filter(a => SPECIES.get(a.species).game).map(a => cellOf(w, a))),
     seed: (w, i, cells) => cells.has(i)},
   // the settlement zone: where people run when something hunts them
   {id: 'zone', seed: (w, i) => inZone(w, i)},

@@ -9,6 +9,7 @@ import {stepCouncil} from './settlement/council.js';
 import {stepMigration} from './settlement/migration.js';
 import {createAgent} from './agents/agent.js';
 import {newItem, outfit} from './agents/equipment.js';
+import {think} from './agents/mind.js';
 import {STOCKS} from './data/presets.js';
 import {log} from './core/log.js';
 import {plural, esc} from './core/util.js';
@@ -25,7 +26,7 @@ export function newGame(cfg) {
   for (let k = 0; k < Math.round(n * st.clothes); k++) w.armory.push(newItem('clothes'));
   for (const t of st.kit) w.armory.push(newItem(t));
   w.armoryVersion = 1;
-  for (const a of w.agents) outfit(w, a);
+  for (const a of w.agents) { outfit(w, a); think(w, a, 'founded'); }
   log(w, `${n} ${plural(n, 'поселенец', 'поселенца', 'поселенцев')} ${n === 1 ? 'разбил' : 'разбили'} лагерь «${esc(cfg.name)}».`, 'people');
   return w;
 }

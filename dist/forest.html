@@ -152,6 +152,31 @@ button.quiet{background:transparent;color:var(--muted)}
 .gearbox .slabel{font-size:12px;color:var(--muted);margin-top:4px}
 .gearbox p{margin:0}
 .muted{color:var(--muted)}
+/* ───── person card ───── */
+.person-card{gap:8px}
+.pc-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.pc-head h3{font-family:var(--font-display);font-size:20px;margin:0;letter-spacing:.03em}
+.pc-close{margin-left:auto;font-size:16px;line-height:1;padding:2px 9px}
+.pc-mood{font-size:12.5px;padding:2px 9px;border-radius:999px;background:#272b1f}
+.pc-mood.mup{color:var(--good)} .pc-mood.mdown{color:#f0a0a2} .pc-mood.mmid{color:var(--muted)}
+.pc-now{margin:0;max-width:90ch}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.pc-grid section{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pc-grid h4{margin:4px 0 0;font-family:var(--font-display);font-weight:500;font-size:13px;letter-spacing:.06em;color:var(--muted)}
+.pc-small{margin:0;font-size:12.5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:11.5px;padding:1px 7px;border-radius:999px;background:#2a2e21}
+.chip.like{background:#2f4a2a;color:#cfe6b8} .chip.dislike{background:#4a2a2c;color:#f0c0c2}
+.pc-bar{display:grid;grid-template-columns:72px minmax(0,1fr) 26px;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.pc-bar b{font-family:var(--font-mono);font-weight:400;text-align:right;color:var(--fg)}
+.pc-moodbar{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,#8a3b3e,#4a4a3c 50%,#5d8a3a)}
+.pc-moodbar i{position:absolute;top:-3px;width:4px;height:12px;margin-left:-2px;border-radius:2px;background:var(--fg)}
+.pc-list{margin:0;padding-left:18px;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
+.pc-diary{list-style:none;margin:0;padding:0;font-size:12.5px;display:flex;flex-direction:column;gap:3px;max-height:260px;overflow-y:auto}
+.pc-diary li{border-left:3px solid var(--line);padding-left:7px}
+.pc-diary li span{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-right:6px}
+.pc-diary li.up{border-left-color:var(--good)} .pc-diary li.down{border-left-color:var(--raider)}
+.pc-diary li.dday{border:0;padding:4px 0 0;color:var(--muted);font-size:11.5px;letter-spacing:.05em}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -226,6 +251,7 @@ button.quiet{background:transparent;color:var(--muted)}
             <button data-layer="res" aria-pressed="false">Ресурсы</button>
             <button data-layer="nav" aria-pressed="false">Навигация</button>
           </div>
+          <div class="logfilter" id="resFilter" hidden aria-label="Какие ресурсы показывать"></div>
         </div>
         <div class="group"><span>Скорость</span>
           <div class="seg" id="speeds">
@@ -246,7 +272,8 @@ button.quiet{background:transparent;color:var(--muted)}
         </div>
       </div>
       <div class="canvas-box"><canvas id="map" width="768" height="576"></canvas></div>
-      <div class="readout" id="readout">Наведите на карту, чтобы увидеть значения полей в клетке.</div>
+      <div class="readout" id="readout">Наведите на карту, чтобы увидеть значения полей в клетке. Щёлкните по поселенцу, чтобы узнать его поближе.</div>
+      <section class="card person-card" id="personCard" hidden aria-live="polite"></section>
       <div class="legend">
         <span><i style="background:var(--colony)"></i>колонисты</span>
         <span><i style="background:var(--raider)"></i>налётчики</span>
@@ -348,6 +375,7 @@ button.quiet{background:transparent;color:var(--muted)}
     if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
     return many;
   }
+  var g = (a, m, f) => a?.gender === "f" ? f : m;
   function esc(s) {
     return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   }
@@ -540,10 +568,39 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/data/resources.js
   var RESOURCES = new Registry("resource");
   RESOURCES.registerAll([
-    { id: "berries", label: "\u044F\u0433\u043E\u0434\u044B", short: "\u044F\u0433\u043E\u0434\u044B", tags: ["food"], nutrition: 1, spoil: 1, loot: 4, color: "#c45c95" },
+    {
+      id: "berries",
+      label: "\u044F\u0433\u043E\u0434\u044B",
+      short: "\u044F\u0433\u043E\u0434\u044B",
+      tags: ["food"],
+      nutrition: 1,
+      spoil: 1,
+      loot: 4,
+      color: "#c45c95",
+      map: (w, i) => w.grid.food[i],
+      mapColor: [214, 84, 160]
+    },
     { id: "meat", label: "\u043C\u044F\u0441\u043E", short: "\u043C\u044F\u0441\u043E", tags: ["food"], nutrition: 1.3, spoil: 2.5, loot: 3, color: "#d0786a" },
-    { id: "wood", label: "\u0434\u0440\u043E\u0432\u0430", short: "\u0434\u0440\u043E\u0432\u0430", tags: ["fuel", "material"], loot: 4, color: "#a5794a" },
-    { id: "stone", label: "\u043A\u0430\u043C\u0435\u043D\u044C", short: "\u043A\u0430\u043C\u0435\u043D\u044C", tags: ["material"], loot: 2, color: "#b9b4a6" },
+    {
+      id: "wood",
+      label: "\u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430",
+      short: "\u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430",
+      tags: ["fuel", "material"],
+      loot: 4,
+      color: "#a5794a",
+      map: (w, i) => w.grid.terr[i] === T.FOREST ? w.grid.wood[i] : 0,
+      mapColor: [120, 210, 90]
+    },
+    {
+      id: "stone",
+      label: "\u043A\u0430\u043C\u0435\u043D\u044C",
+      short: "\u043A\u0430\u043C\u0435\u043D\u044C",
+      tags: ["material"],
+      loot: 2,
+      color: "#b9b4a6",
+      map: (w, i) => w.grid.terr[i] === T.ROCK ? 1 : 0,
+      mapColor: [215, 210, 196]
+    },
     { id: "bone", label: "\u043A\u043E\u0441\u0442\u0438", short: "\u043A\u043E\u0441\u0442\u0438", tags: ["material"], loot: 1, color: "#e8e2cf" },
     { id: "hide", label: "\u0448\u043A\u0443\u0440\u044B", short: "\u0448\u043A\u0443\u0440\u044B", tags: ["material"], loot: 1, color: "#9b7650" },
     { id: "leather", label: "\u043A\u043E\u0436\u0430", short: "\u043A\u043E\u0436\u0430", tags: ["material"], loot: 1, color: "#7a4d26" },
@@ -615,28 +672,28 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/data/species.js
   var SPECIES = new Registry("species");
   var HUMAN_NAMES = [
-    "\u041C\u0438\u043B\u0430\u0432\u0430",
-    "\u0416\u0434\u0430\u043D",
-    "\u0413\u043E\u0440\u0438\u0441\u043B\u0430\u0432",
-    "\u0412\u0435\u0441\u0435\u043B\u0438\u043D\u0430",
-    "\u0422\u0438\u0445\u043E\u043D",
-    "\u041B\u044E\u0431\u0430\u0432\u0430",
-    "\u041C\u0438\u0440\u043E\u043D",
-    "\u0417\u043B\u0430\u0442\u0430",
-    "\u042F\u0440\u043E\u0441\u043B\u0430\u0432",
-    "\u0414\u0430\u0440\u0438\u043D\u0430",
-    "\u0420\u0430\u0442\u0438\u0431\u043E\u0440",
-    "\u0421\u043D\u0435\u0436\u0430\u043D\u0430",
-    "\u0411\u043E\u044F\u043D",
-    "\u0417\u0430\u0431\u0430\u0432\u0430",
-    "\u0421\u0432\u0435\u0442\u043E\u0437\u0430\u0440",
-    "\u0410\u0433\u043D\u0438\u044F",
-    "\u0412\u0435\u043B\u0438\u043C\u0438\u0440",
-    "\u041E\u043B\u0435\u0441\u044F",
-    "\u0414\u043E\u0431\u0440\u044B\u043D\u044F",
-    "\u0412\u0430\u0441\u0438\u043B\u0438\u0441\u0430",
-    "\u0420\u0430\u0434\u0438\u043C",
-    "\u0412\u0435\u0434\u0430\u043D\u0430"
+    ["\u041C\u0438\u043B\u0430\u0432\u0430", "f"],
+    ["\u0416\u0434\u0430\u043D", "m"],
+    ["\u0413\u043E\u0440\u0438\u0441\u043B\u0430\u0432", "m"],
+    ["\u0412\u0435\u0441\u0435\u043B\u0438\u043D\u0430", "f"],
+    ["\u0422\u0438\u0445\u043E\u043D", "m"],
+    ["\u041B\u044E\u0431\u0430\u0432\u0430", "f"],
+    ["\u041C\u0438\u0440\u043E\u043D", "m"],
+    ["\u0417\u043B\u0430\u0442\u0430", "f"],
+    ["\u042F\u0440\u043E\u0441\u043B\u0430\u0432", "m"],
+    ["\u0414\u0430\u0440\u0438\u043D\u0430", "f"],
+    ["\u0420\u0430\u0442\u0438\u0431\u043E\u0440", "m"],
+    ["\u0421\u043D\u0435\u0436\u0430\u043D\u0430", "f"],
+    ["\u0411\u043E\u044F\u043D", "m"],
+    ["\u0417\u0430\u0431\u0430\u0432\u0430", "f"],
+    ["\u0421\u0432\u0435\u0442\u043E\u0437\u0430\u0440", "m"],
+    ["\u0410\u0433\u043D\u0438\u044F", "f"],
+    ["\u0412\u0435\u043B\u0438\u043C\u0438\u0440", "m"],
+    ["\u041E\u043B\u0435\u0441\u044F", "f"],
+    ["\u0414\u043E\u0431\u0440\u044B\u043D\u044F", "m"],
+    ["\u0412\u0430\u0441\u0438\u043B\u0438\u0441\u0430", "f"],
+    ["\u0420\u0430\u0434\u0438\u043C", "m"],
+    ["\u0412\u0435\u0434\u0430\u043D\u0430", "f"]
   ];
   SPECIES.registerAll([
     {
@@ -654,13 +711,16 @@ button.quiet{background:transparent;color:var(--muted)}
     },
     // Hares graze, rest at night, bolt from people and fire. They never breed here:
     // their numbers change only through migration (see migrations.js).
+    // game: shows up on the prey flow field that hunters and predators follow
     {
       id: "hare",
       label: "\u0437\u0430\u044F\u0446",
+      labelAcc: "\u0437\u0430\u0439\u0446\u0430",
       hp: 0.12,
       speed: 0.17,
       needs: [],
       brain: "grazer",
+      game: true,
       heatHarm: 60,
       look: { shape: "hare", size: 0.42, color: "#cdbb9a" },
       yields: { meat: 2, hide: 1, bone: 1 },
@@ -674,33 +734,51 @@ button.quiet{background:transparent;color:var(--muted)}
     {
       id: "wolf",
       label: "\u0432\u043E\u043B\u043A",
+      labelAcc: "\u0432\u043E\u043B\u043A\u0430",
       hp: 0.8,
       speed: 0.14,
       needs: ["food"],
       brain: "predator",
-      mods: { hunger: 0.55 },
+      mods: { hunger: 0.9 },
       heatHarm: 60,
       look: { shape: "wolf", size: 0.58, color: "#8d8f96" },
       attack: { power: 0.85, cooldown: 14 },
       yields: { meat: 1, hide: 2, bone: 2 },
       killMessage: (name) => `\u0412\u043E\u043B\u043A\u0438 \u0437\u0430\u0433\u0440\u044B\u0437\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
+      // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
       predator: {
         prey: ["hare"],
         // what it hunts for food
         victims: ["human"],
-        // what it attacks only when the target is alone
+        // whom it attacks: a lone colonist, or a pair when desperate
         sprint: 1.9,
         stamina: 3e-3,
         sight: 22,
         // how far it notices prey
+        obvious: 8,
+        // prey this close is chased even by a wolf that is not hungry yet…
+        sated: 0.92,
+        // …unless it has just eaten
+        hungry: 0.7,
+        starving: 0.1,
+        boldPeople: 0.45,
+        // boldness (+ night) needed to go for a person
         loneRadius: 6,
         // nobody else of the victim's kind this close → the victim is alone
         zoneShy: 2,
         zoneShyNight: 5,
-        // keeps this many cells outside the settlement zone (more at night)
+        // keeps this many cells outside the settlement zone (less when starving)
         groupFear: 3,
-        // this many people together make it back off
-        feedTicks: 90
+        // this many people together make it back off (more when starving)
+        feedTicks: 90,
+        meal: 1.6,
+        // a kill is shared: the pack splits `meal` units of fullness
+        calm: 900,
+        // after a try at people the pack waits this long (less when starving)
+        bigMeal: 3,
+        // a person feeds the whole pack this much
+        wanderOff: 12e-4
+        // per tick, a starving pack with no prey in sight leaves for other grounds
       }
     }
   ]);
@@ -732,6 +810,133 @@ button.quiet{background:transparent;color:var(--muted)}
     w.logVersion++;
   }
 
+  // src/data/thoughts.js
+  var THOUGHTS = new Registry("thought");
+  THOUGHTS.registerAll([
+    // arrival
+    { id: "founded", mood: 0.2, lasts: DAY, text: (a) => `${g(a, "\u041F\u0440\u0438\u0448\u0451\u043B", "\u041F\u0440\u0438\u0448\u043B\u0430")} \u0441 \u043E\u0441\u0442\u0430\u043B\u044C\u043D\u044B\u043C\u0438 \u043A \u0431\u0440\u043E\u0434\u0443 \u0438 \u0440\u0430\u0437\u0431\u0438\u043B${g(a, "", "\u0430")} \u043B\u0430\u0433\u0435\u0440\u044C.` },
+    { id: "arrived", mood: 0.15, lasts: DAY, text: (a) => `${g(a, "\u041F\u0440\u0438\u0448\u0451\u043B", "\u041F\u0440\u0438\u0448\u043B\u0430")} \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435, \u043D\u0430\u0434\u0435\u0435\u0442\u0441\u044F \u043F\u0440\u0438\u0436\u0438\u0442\u044C\u0441\u044F.` },
+    // body
+    { id: "ateHungry", mood: 0.1, lasts: 4 * HOUR, once: 4 * HOUR, text: (a, c) => `\u041D\u0430\u043A\u043E\u043D\u0435\u0446 ${g(a, "\u043F\u043E\u0435\u043B", "\u043F\u043E\u0435\u043B\u0430")}: ${c.food}.` },
+    { id: "ateMeat", mood: 0.15, lasts: 6 * HOUR, once: 6 * HOUR, text: (a) => `${g(a, "\u041F\u043E\u0435\u043B", "\u041F\u043E\u0435\u043B\u0430")} \u0436\u0430\u0440\u0435\u043D\u043E\u0433\u043E \u043C\u044F\u0441\u0430. \u0421\u044B\u0442\u043D\u043E.` },
+    { id: "starving", mood: -0.35, lasts: 8 * HOUR, once: 8 * HOUR, text: () => "\u0413\u043E\u043B\u043E\u0434\u0430\u0435\u0442. \u0417\u0430\u043F\u0430\u0441\u044B \u043F\u0443\u0441\u0442\u044B." },
+    { id: "freezing", mood: -0.25, lasts: 8 * HOUR, once: 8 * HOUR, text: (a) => `${g(a, "\u0417\u0430\u043C\u0451\u0440\u0437", "\u0417\u0430\u043C\u0451\u0440\u0437\u043B\u0430")} \u0434\u043E \u043A\u043E\u0441\u0442\u0435\u0439.` },
+    { id: "exhausted", mood: -0.2, lasts: 6 * HOUR, once: 8 * HOUR, text: () => "\u0412\u0430\u043B\u0438\u0442\u0441\u044F \u0441 \u043D\u043E\u0433 \u043E\u0442 \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438." },
+    { id: "sleptHut", mood: 0.15, lasts: 10 * HOUR, once: 10 * HOUR, text: (a) => `\u0425\u043E\u0440\u043E\u0448\u043E ${g(a, "\u0432\u044B\u0441\u043F\u0430\u043B\u0441\u044F", "\u0432\u044B\u0441\u043F\u0430\u043B\u0430\u0441\u044C")} \u0432 \u0448\u0430\u043B\u0430\u0448\u0435, \u0432 \u0442\u0435\u043F\u043B\u0435.` },
+    { id: "sleptOutside", mood: -0.05, lasts: 8 * HOUR, once: 10 * HOUR, text: () => "\u0421\u043F\u0430\u043B \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 \u043F\u043E\u0434 \u043E\u0442\u043A\u0440\u044B\u0442\u044B\u043C \u043D\u0435\u0431\u043E\u043C." },
+    { id: "wounded", mood: -0.3, lasts: DAY, once: 6 * HOUR, text: (a) => `\u0422\u044F\u0436\u0435\u043B\u043E ${g(a, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")}.` },
+    // work
+    { id: "likedWork", mood: 0.12, lasts: 6 * HOUR, once: 8 * HOUR, text: (a, c) => `\u0421 \u0443\u0434\u043E\u0432\u043E\u043B\u044C\u0441\u0442\u0432\u0438\u0435\u043C ${g(a, "\u0432\u0437\u044F\u043B\u0441\u044F", "\u0432\u0437\u044F\u043B\u0430\u0441\u044C")} \u0437\u0430 \u043B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E: ${c.job}.` },
+    { id: "dislikedWork", mood: -0.1, lasts: 6 * HOUR, once: 8 * HOUR, text: (a, c) => `\u041D\u0435\u0445\u043E\u0442\u044F ${g(a, "\u043F\u043E\u0448\u0451\u043B", "\u043F\u043E\u0448\u043B\u0430")} ${c.job}: \u043D\u0435 \u043F\u043E \u0434\u0443\u0448\u0435.` },
+    { id: "madeItem", mood: 0.2, lasts: DAY, text: (a, c) => `${g(a, "\u0421\u0434\u0435\u043B\u0430\u043B", "\u0421\u0434\u0435\u043B\u0430\u043B\u0430")} \u0441\u0432\u043E\u0438\u043C\u0438 \u0440\u0443\u043A\u0430\u043C\u0438: ${c.item}.` },
+    { id: "finishedBuilding", mood: 0.2, lasts: DAY, text: (a, c) => `${g(a, "\u041F\u043E\u043B\u043E\u0436\u0438\u043B", "\u041F\u043E\u043B\u043E\u0436\u0438\u043B\u0430")} \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0431\u0440\u0435\u0432\u043D\u043E: ${c.building} \u0433\u043E\u0442\u043E\u0432${c.f ? "\u0430" : ""}.` },
+    { id: "newBuilding", mood: 0.1, lasts: DAY, text: (a, c) => `\u0420\u0430\u0434\u0443\u0435\u0442\u0441\u044F: \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438 \u043F\u043E\u044F\u0432\u0438\u043B${c.f ? "\u0430\u0441\u044C" : "\u0441\u044F"} ${c.building}.` },
+    { id: "huntKill", mood: 0.2, lasts: 12 * HOUR, once: 2 * HOUR, text: (a, c) => `\u0423\u0434\u0430\u0447\u043D\u0430\u044F \u043E\u0445\u043E\u0442\u0430: ${g(a, "\u043F\u043E\u0434\u0441\u0442\u0440\u0435\u043B\u0438\u043B", "\u043F\u043E\u0434\u0441\u0442\u0440\u0435\u043B\u0438\u043B\u0430")} ${c.prey}.` },
+    { id: "newGear", mood: 0.15, lasts: DAY, once: 4 * HOUR, text: (a, c) => `${g(a, "\u0412\u0437\u044F\u043B", "\u0412\u0437\u044F\u043B\u0430")} \u0441\u043E \u0441\u043A\u043B\u0430\u0434\u0430: ${c.items}.` },
+    { id: "gearBroke", mood: -0.15, lasts: 12 * HOUR, text: (a, c) => `\u0421\u043B\u043E\u043C\u0430\u043B${g(a, "\u0441\u044F", "\u0430\u0441\u044C")} ${c.item}\u2026 \u043E\u0431\u0438\u0434\u043D\u043E.` },
+    // danger
+    { id: "fledFire", mood: -0.25, lasts: DAY, once: 6 * HOUR, text: (a) => `${g(a, "\u0411\u0435\u0436\u0430\u043B", "\u0411\u0435\u0436\u0430\u043B\u0430")} \u043E\u0442 \u043F\u043E\u0436\u0430\u0440\u0430. \u0421\u0442\u0440\u0430\u0448\u043D\u043E.` },
+    { id: "wolfAttack", mood: -0.4, lasts: 2 * DAY, once: 4 * HOUR, text: (a) => `\u041D\u0430 ${g(a, "\u043D\u0435\u0433\u043E", "\u043D\u0435\u0451")} \u043D\u0430\u043F\u0430\u043B\u0438 \u0432\u043E\u043B\u043A\u0438.` },
+    { id: "escapedWolves", mood: 0.15, lasts: DAY, once: 4 * HOUR, text: (a) => `${g(a, "\u041E\u0442\u0431\u0438\u043B\u0441\u044F", "\u041E\u0442\u0431\u0438\u043B\u0430\u0441\u044C")} \u043E\u0442 \u0432\u043E\u043B\u043A\u043E\u0432. \u0416\u0438\u0432${g(a, "", "\u0430")}!` },
+    { id: "killedWolf", mood: 0.25, lasts: DAY, text: (a) => `${g(a, "\u0423\u0431\u0438\u043B", "\u0423\u0431\u0438\u043B\u0430")} \u0432\u043E\u043B\u043A\u0430. \u0428\u043A\u0443\u0440\u0430 \u043F\u043E\u0439\u0434\u0451\u0442 \u0432 \u0434\u0435\u043B\u043E.` },
+    { id: "raidAlarm", mood: -0.15, lasts: 12 * HOUR, once: 12 * HOUR, text: (a) => `\u0422\u0440\u0435\u0432\u043E\u0433\u0430! ${g(a, "\u0411\u0440\u043E\u0441\u0438\u043B", "\u0411\u0440\u043E\u0441\u0438\u043B\u0430")} \u0440\u0430\u0431\u043E\u0442\u0443 \u0438 ${g(a, "\u043F\u043E\u0431\u0435\u0436\u0430\u043B", "\u043F\u043E\u0431\u0435\u0436\u0430\u043B\u0430")} \u043A \u043A\u043E\u0441\u0442\u0440\u0443.` },
+    { id: "killedRaider", mood: 0.15, lasts: DAY, text: (a) => `${g(a, "\u0421\u0440\u0430\u0437\u0438\u043B", "\u0421\u0440\u0430\u0437\u0438\u043B\u0430")} \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430.` },
+    { id: "grief", mood: -0.35, lasts: 2 * DAY, text: (a, c) => `\u0421\u043A\u043E\u0440\u0431\u0438\u0442: ${c.name} ${c.f ? "\u043F\u043E\u0433\u0438\u0431\u043B\u0430" : "\u043F\u043E\u0433\u0438\u0431"}.` },
+    // council
+    { id: "councilWon", mood: 0.12, lasts: DAY, text: (a, c) => `\u041D\u0430 \u0441\u043E\u0432\u0435\u0442\u0435 ${g(a, "\u0433\u043E\u0432\u043E\u0440\u0438\u043B", "\u0433\u043E\u0432\u043E\u0440\u0438\u043B\u0430")} \u0437\u0430 ${c.choice} (${c.why}). \u0421\u043E\u0432\u0435\u0442 \u0441\u043E\u0433\u043B\u0430\u0441\u0438\u043B\u0441\u044F.` },
+    { id: "councilLost", mood: -0.05, lasts: DAY, text: (a, c) => `\u041D\u0430 \u0441\u043E\u0432\u0435\u0442\u0435 ${g(a, "\u0433\u043E\u0432\u043E\u0440\u0438\u043B", "\u0433\u043E\u0432\u043E\u0440\u0438\u043B\u0430")} \u0437\u0430 ${c.choice} (${c.why}), \u043D\u043E \u0440\u0435\u0448\u0438\u043B\u0438 \u0438\u043D\u0430\u0447\u0435: ${c.decision}.` },
+    { id: "councilSaving", mood: 0, lasts: DAY, text: (a, c) => `\u041D\u0430 \u0441\u043E\u0432\u0435\u0442\u0435 ${g(a, "\u0433\u043E\u0432\u043E\u0440\u0438\u043B", "\u0433\u043E\u0432\u043E\u0440\u0438\u043B\u0430")} \u0437\u0430 ${c.choice} (${c.why}). \u0411\u0443\u0434\u0435\u043C \u043A\u043E\u043F\u0438\u0442\u044C.` }
+  ]);
+  var MOOD_LABELS = [
+    [0.45, ["\u0441\u0447\u0430\u0441\u0442\u043B\u0438\u0432", "\u0441\u0447\u0430\u0441\u0442\u043B\u0438\u0432\u0430"]],
+    [0.15, ["\u0432 \u0445\u043E\u0440\u043E\u0448\u0435\u043C \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0438", "\u0432 \u0445\u043E\u0440\u043E\u0448\u0435\u043C \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0438"]],
+    [-0.15, ["\u0441\u043F\u043E\u043A\u043E\u0435\u043D", "\u0441\u043F\u043E\u043A\u043E\u0439\u043D\u0430"]],
+    [-0.45, ["\u043D\u0435 \u0432 \u0434\u0443\u0445\u0435", "\u043D\u0435 \u0432 \u0434\u0443\u0445\u0435"]],
+    [-Infinity, ["\u043F\u043E\u0434\u0430\u0432\u043B\u0435\u043D", "\u043F\u043E\u0434\u0430\u0432\u043B\u0435\u043D\u0430"]]
+  ];
+
+  // src/data/needs.js
+  var NEEDS = new Registry("need");
+  NEEDS.registerAll([
+    {
+      id: "food",
+      label: "\u0441\u044B\u0442\u043E\u0441\u0442\u044C",
+      color: "var(--food)",
+      task: "eat",
+      memory: "hunger",
+      start: [0.6, 1],
+      decay: (w, a) => 6e-4 * a.mods.hunger,
+      harm: 8e-4,
+      cause: "\u0433\u043E\u043B\u043E\u0434\u0430",
+      urge: (w, a, v) => (1 - v) ** 2 * 2.2
+    },
+    {
+      id: "rest",
+      label: "\u0431\u043E\u0434\u0440\u043E\u0441\u0442\u044C",
+      color: "#7d9be0",
+      task: "sleep",
+      memory: "tired",
+      start: [0.6, 1],
+      decay: (w, a) => a.sleeping ? 0 : 45e-5,
+      harm: 0,
+      cause: "\u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438",
+      urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w.tick) > 0.6 && v < 0.75 ? 0.35 : 0)
+    },
+    // warmth follows the temperature field under the agent's feet
+    {
+      id: "warmth",
+      label: "\u0442\u0435\u043F\u043B\u043E",
+      color: "var(--ember)",
+      task: "warm",
+      memory: "cold",
+      start: [0.9, 0.9],
+      // clothing keeps part of the cold out
+      decay: (w, a, T2) => T2 < 14 ? (14 - T2) * 12e-5 * a.mods.cold * (1 - (a.gear?.warmth || 0)) : T2 > 18 ? -3e-3 : 0,
+      harm: 7e-4,
+      harmBelow: 0.15,
+      cause: "\u0445\u043E\u043B\u043E\u0434\u0430",
+      urge: (w, a, v) => (1 - v) ** 2 * 2
+    }
+  ]);
+
+  // src/agents/mind.js
+  var DIARY_MAX = 60;
+  function think(w, a, id, ctx = {}) {
+    if (!a?.diary || a.dead) return;
+    const d = THOUGHTS.get(id);
+    if (d.once && a.diary.some((e) => e.id === id && w.tick - e.t < d.once)) return;
+    a.diary.unshift({ t: w.tick, id, text: d.text(a, ctx), mood: d.mood, until: w.tick + d.lasts });
+    if (a.diary.length > DIARY_MAX) a.diary.pop();
+  }
+  function moodOf(w, a) {
+    if (!a.diary) return 0;
+    let m = 0;
+    for (const e of a.diary) {
+      if (e.until <= w.tick) continue;
+      m += e.mood * (e.until - w.tick) / Math.max(1, e.until - e.t);
+    }
+    for (const [id, v] of Object.entries(a.needs)) if (v < 0.3) m -= (0.3 - v) * 0.8;
+    return clamp(m, -1, 1);
+  }
+  function moodLabel(a, m) {
+    for (const [min, [male, female]] of MOOD_LABELS) if (m >= min) return a.gender === "f" ? female : male;
+    return "";
+  }
+  function wishes(w, a, councilWish2) {
+    const out = [];
+    const say = { food: "\u043F\u043E\u0435\u0441\u0442\u044C", rest: "\u0432\u044B\u0441\u043F\u0430\u0442\u044C\u0441\u044F", warmth: "\u0441\u043E\u0433\u0440\u0435\u0442\u044C\u0441\u044F" };
+    for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(say[id] || NEEDS.get(id).label);
+    const hands = handItems(a).map(def);
+    if (a.equip) {
+      if (!hands.some((d) => d.melee || d.ranged)) out.push("\u043E\u0440\u0443\u0436\u0438\u0435 \u0432 \u0440\u0443\u043A\u0438");
+      if (!a.equip.body) out.push("\u043E\u0434\u0435\u0436\u0434\u0443 \u043F\u043E\u0442\u0435\u043F\u043B\u0435\u0435");
+      if (a.likes === "hunt" && !hands.some((d) => d.ranged)) out.push("\u043B\u0443\u043A \u0438\u043B\u0438 \u043F\u0440\u0430\u0449\u0443 \u0434\u043B\u044F \u043E\u0445\u043E\u0442\u044B");
+      if (a.gear?.ranged?.ammo && !a.gear.rangedReady) out.push("\u0441\u0442\u0440\u0435\u043B \u0432 \u043A\u043E\u043B\u0447\u0430\u043D");
+    }
+    if (councilWish2) out.push(`\u0447\u0442\u043E\u0431\u044B \u043F\u043E\u0441\u0442\u0440\u043E\u0438\u043B\u0438 ${councilWish2.name.toLowerCase()}: ${councilWish2.why}`);
+    return out;
+  }
+
   // src/agents/equipment.js
   var def = (inst) => ITEMS.get(inst.type);
   var newItem = (type, extra = {}) => ({ type, dur: ITEMS.get(type).dur, ...extra });
@@ -749,7 +954,7 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   function recalcGear(a) {
     const sp = SPECIES.get(a.species), base = sp.attack || { power: 1, cooldown: 12 };
-    const g = {
+    const g2 = {
       melee: { dmg: base.power, cd: base.cooldown, item: null },
       ranged: null,
       rangedReady: false,
@@ -763,36 +968,36 @@ button.quiet{background:transparent;color:var(--muted)}
       carry: 0
     };
     if (!a.equip) {
-      a.gear = g;
-      return g;
+      a.gear = g2;
+      return g2;
     }
     for (const it of handItems(a)) {
       const d = def(it);
-      if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = { dmg: d.melee.dmg, cd: d.melee.cd, item: it };
-      if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = { ...d.ranged, item: it };
-      if ((d.block || 0) > g.block) {
-        g.block = d.block;
-        g.blockItem = it;
+      if (d.melee && d.melee.dmg > (g2.melee.item ? def(g2.melee.item).melee.dmg : 0)) g2.melee = { dmg: d.melee.dmg, cd: d.melee.cd, item: it };
+      if (d.ranged && (!g2.ranged || d.ranged.dmg > g2.ranged.dmg)) g2.ranged = { ...d.ranged, item: it };
+      if ((d.block || 0) > g2.block) {
+        g2.block = d.block;
+        g2.blockItem = it;
       }
-      if (d.speed) g.speed *= d.speed;
+      if (d.speed) g2.speed *= d.speed;
     }
-    if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;
+    if (g2.ranged) g2.rangedReady = rangedAmmo(a, def(g2.ranged.item)) > 0;
     const body = a.equip.body;
     if (body) {
       const d = def(body);
-      g.armor = d.armor || 0;
-      g.warmth = d.warmth || 0;
-      if (d.speed) g.speed *= d.speed;
+      g2.armor = d.armor || 0;
+      g2.warmth = d.warmth || 0;
+      if (d.speed) g2.speed *= d.speed;
     }
     for (const it of [...handItems(a), a.equip.back].filter(Boolean)) {
-      for (const [job, m] of Object.entries(def(it).tool || {})) if (m > (g.tool[job] || 1)) {
-        g.tool[job] = m;
-        g.toolItem[job] = it;
+      for (const [job, m] of Object.entries(def(it).tool || {})) if (m > (g2.tool[job] || 1)) {
+        g2.tool[job] = m;
+        g2.toolItem[job] = it;
       }
     }
-    if (a.equip.back) g.carry = def(a.equip.back).carry || 0;
-    a.gear = g;
-    return g;
+    if (a.equip.back) g2.carry = def(a.equip.back).carry || 0;
+    a.gear = g2;
+    return g2;
   }
   function removeEverywhere(a, inst) {
     for (const s of SLOTS) if (a.equip[s.id] === inst) a.equip[s.id] = null;
@@ -806,6 +1011,7 @@ button.quiet{background:transparent;color:var(--muted)}
     if (a.faction === "colony") {
       w.stats.broken++;
       a.mem.broken += 0.4;
+      think(w, a, "gearBroke", { item: def(inst).short });
       log(w, `\u0423 <b>${esc(a.name)}</b> \u0441\u043B\u043E\u043C\u0430\u043B\u0441\u044F \u043F\u0440\u0435\u0434\u043C\u0435\u0442: ${def(inst).short}.`, "craft");
     }
   }
@@ -941,6 +1147,8 @@ button.quiet{background:transparent;color:var(--muted)}
     const best = bestLoadout(w, a, pool);
     if (best && best.score > currentScore(w, a) + 0.12) {
       const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
+      const gained = [...keep].filter((it) => !own.includes(it)).map((it) => def(it).short);
+      if (gained.length) think(w, a, "newGear", { items: gained.join(", ") });
       for (const it of own) if (!keep.has(it)) w.armory.push(it);
       for (const it of keep) {
         const k = w.armory.indexOf(it);
@@ -992,15 +1200,18 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/data/migrations.js
   var MIGRATIONS = new Registry("migration");
   MIGRATIONS.registerAll([
-    // one newcomer at a time; after an arrival the wait grows with the colony,
-    // and if nobody could come (no food to spare, no room) they check again a couple of hours later
+    // one newcomer at a time; after an arrival the wait grows with the colony.
+    // When the wait is over but nobody can come yet (no room, no food to spare) the arrival stays
+    // due and is retried every couple of hours; `blocked` tells the panel why.
     {
       id: "settlers",
       species: "human",
       faction: "colony",
       topic: "people",
-      nextAt: (w, rng, arrived) => arrived === 0 ? w.tick + 2 * HOUR : w.tick + settlerWaitDays(colonists(w).length) * DAY,
-      size: (w) => foodTotal(w) > colonists(w).length * 5 && colonists(w).length < popCap(w) ? 1 : 0,
+      retry: 2 * HOUR,
+      nextAt: (w, rng, arrived) => w.tick + settlerWaitDays(colonists(w).length) * DAY,
+      blocked: (w) => colonists(w).length >= popCap(w) ? "\u043D\u0435\u0442 \u043C\u0435\u0441\u0442\u0430, \u043D\u0443\u0436\u0435\u043D \u0448\u0430\u043B\u0430\u0448" : foodTotal(w) <= colonists(w).length * 5 ? "\u043C\u0430\u043B\u043E \u0435\u0434\u044B \u0432 \u0437\u0430\u043F\u0430\u0441\u0435" : null,
+      size: (w) => MIGRATIONS.get("settlers").blocked(w) ? 0 : 1,
       message: (w, group) => `\u041A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0430 \u043D\u043E\u0432\u0430\u044F \u0434\u0443\u0448\u0430: <b>${group[0].name}</b>.`
     },
     // hares drift in while the meadows can feed more of them; grazers also wander off on their own
@@ -1182,9 +1393,9 @@ button.quiet{background:transparent;color:var(--muted)}
       color: "#8a6a3c",
       mark: "\u041B",
       needs: "quarry",
-      effect: "\u0420\u0443\u0431\u043A\u0430 \u0438\u0434\u0451\u0442 \u043D\u0430 60% \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043A\u0430\u0436\u0434\u043E\u0435 \u0431\u0440\u0435\u0432\u043D\u043E \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u0434\u0440\u043E\u0432.",
+      effect: "\u0420\u0443\u0431\u043A\u0430 \u0438\u0434\u0451\u0442 \u043D\u0430 60% \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043A\u0430\u0436\u0434\u043E\u0435 \u0431\u0440\u0435\u0432\u043D\u043E \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B.",
       effects: { jobSpeed: { chop: 1.6 }, yield: { wood: 1.5 } },
-      wish: "\u0445\u043E\u0447\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0435 \u0434\u0440\u043E\u0432",
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0435 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B",
       motive: (a) => [[a.mem.walkWood, "\u0434\u0430\u043B\u0435\u043A\u043E \u0445\u043E\u0434\u0438\u0442\u044C \u0437\u0430 \u043B\u0435\u0441\u043E\u043C"], [(a.prefs.chop - 1) * 1.4 + a.skill.chop * 0.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u0443\u0431\u0438\u0442\u044C \u043B\u0435\u0441"]]
     },
     {
@@ -1217,7 +1428,7 @@ button.quiet{background:transparent;color:var(--muted)}
       effect: "\u0422\u0443\u0448\u0435\u043D\u0438\u0435 \u0432\u0434\u0432\u043E\u0435 \u044D\u0444\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0435\u0435, \u043A\u043B\u0435\u0442\u043A\u0438 \u0443 \u043B\u0430\u0433\u0435\u0440\u044F \u043E\u0441\u0442\u044B\u0432\u0430\u044E\u0442 \u0431\u044B\u0441\u0442\u0440\u0435\u0435.",
       effects: { mul: { douse: 2 }, add: { coolCamp: 1 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0432\u043E\u0434\u0443 \u0440\u044F\u0434\u043E\u043C \u0441 \u043B\u0430\u0433\u0435\u0440\u0435\u043C",
-      motive: (a, c) => [[a.mem.fire * 1.5, "\u0432\u0438\u0434\u0435\u043B(\u0430) \u043F\u043E\u0436\u0430\u0440"], [c.burnt > 0 ? 0.4 : 0, "\u0431\u043E\u0438\u0442\u0441\u044F \u043E\u0433\u043D\u044F"]]
+      motive: (a, c) => [[a.mem.fire * 1.5, a.gender === "f" ? "\u0432\u0438\u0434\u0435\u043B\u0430 \u043F\u043E\u0436\u0430\u0440" : "\u0432\u0438\u0434\u0435\u043B \u043F\u043E\u0436\u0430\u0440"], [c.burnt > 0 ? 0.4 : 0, "\u0431\u043E\u0438\u0442\u0441\u044F \u043E\u0433\u043D\u044F"]]
     },
     {
       id: "palisade",
@@ -1233,7 +1444,7 @@ button.quiet{background:transparent;color:var(--muted)}
       effect: "\u0412 \u043B\u0430\u0433\u0435\u0440\u0435 \u0437\u0430\u0449\u0438\u0442\u043D\u0438\u043A\u0438 \u043F\u043E\u043B\u0443\u0447\u0430\u044E\u0442 \u043D\u0430 40% \u043C\u0435\u043D\u044C\u0448\u0435 \u0443\u0440\u043E\u043D\u0430, \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u0443\u043D\u043E\u0441\u044F\u0442 \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u043D\u044C\u0448\u0435.",
       effects: { mul: { defense: 0.6, loot: 0.5 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u0449\u0438\u0442\u044B \u043E\u0442 \u0447\u0443\u0436\u0430\u043A\u043E\u0432",
-      motive: (a) => [[a.mem.raid * 1.5, "\u0434\u0440\u0430\u043B\u0441\u044F(\u0430\u0441\u044C) \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438"], [a.mem.wolf * 1.4, "\u0431\u043E\u0438\u0442\u0441\u044F \u0432\u043E\u043B\u043A\u043E\u0432"]]
+      motive: (a) => [[a.mem.raid * 1.5, a.gender === "f" ? "\u0434\u0440\u0430\u043B\u0430\u0441\u044C \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438" : "\u0434\u0440\u0430\u043B\u0441\u044F \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438"], [a.mem.wolf * 1.4, "\u0431\u043E\u0438\u0442\u0441\u044F \u0432\u043E\u043B\u043A\u043E\u0432"]]
     },
     {
       id: "crafthut",
@@ -1252,7 +1463,7 @@ button.quiet{background:transparent;color:var(--muted)}
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0434\u0435\u043B\u0430\u0442\u044C \u0441\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435",
       motive: (a, c) => [
         [0.35 + c.unarmed * 0.6, "\u043D\u0435\u0447\u0435\u043C \u043E\u0442\u0431\u0438\u0432\u0430\u0442\u044C\u0441\u044F"],
-        [a.mem.wolf + a.mem.raid, "\u0432\u0438\u0434\u0435\u043B(\u0430) \u043E\u043F\u0430\u0441\u043D\u043E\u0441\u0442\u044C \u0431\u0435\u0437 \u043E\u0440\u0443\u0436\u0438\u044F"],
+        [a.mem.wolf + a.mem.raid, a.gender === "f" ? "\u0432\u0438\u0434\u0435\u043B\u0430 \u043E\u043F\u0430\u0441\u043D\u043E\u0441\u0442\u044C \u0431\u0435\u0437 \u043E\u0440\u0443\u0436\u0438\u044F" : "\u0432\u0438\u0434\u0435\u043B \u043E\u043F\u0430\u0441\u043D\u043E\u0441\u0442\u044C \u0431\u0435\u0437 \u043E\u0440\u0443\u0436\u0438\u044F"],
         [(a.prefs.craft - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u043C\u0430\u0441\u0442\u0435\u0440\u0438\u0442\u044C"],
         [a.mem.cold * 0.5, "\u043D\u0443\u0436\u043D\u0430 \u0442\u0451\u043F\u043B\u0430\u044F \u043E\u0434\u0435\u0436\u0434\u0430"]
       ]
@@ -1410,15 +1621,15 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/world/generate.js
   function noiseLayer(rnd, w, h, cell) {
     const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
-    const g = new Float32Array(gw * gh);
-    for (let i = 0; i < g.length; i++) g[i] = rnd();
+    const g2 = new Float32Array(gw * gh);
+    for (let i = 0; i < g2.length; i++) g2[i] = rnd();
     const out = new Float32Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const fx = x / cell, fy = y / cell, ix = fx | 0, iy = fy | 0;
       let tx = fx - ix, ty = fy - iy;
       tx = tx * tx * (3 - 2 * tx);
       ty = ty * ty * (3 - 2 * ty);
-      const a = g[iy * gw + ix], b = g[iy * gw + ix + 1], c = g[(iy + 1) * gw + ix], d = g[(iy + 1) * gw + ix + 1];
+      const a = g2[iy * gw + ix], b = g2[iy * gw + ix + 1], c = g2[(iy + 1) * gw + ix], d = g2[(iy + 1) * gw + ix + 1];
       out[y * w + x] = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
     }
     return out;
@@ -1514,27 +1725,28 @@ button.quiet{background:transparent;color:var(--muted)}
       mods: emptyMods(),
       cache: {},
       migration: {},
+      migrationDue: {},
       council: { lastDay: -1, goal: null, votes: [], args: [], decision: "\u041F\u0435\u0440\u0432\u044B\u0439 \u0441\u043E\u0432\u0435\u0442 \u0441\u043E\u0431\u0435\u0440\u0451\u0442\u0441\u044F \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u0432\u0435\u0447\u0435\u0440\u043E\u043C \u0443 \u043A\u043E\u0441\u0442\u0440\u0430." },
       logLines: [],
       logVersion: 0,
       nav: null
     };
-    const g = world2.grid;
+    const g2 = world2.grid;
     for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) world2.camp.cells.push((t.cy + yy) * t.w + t.cx + xx);
     world2.camp.set = new Set(world2.camp.cells);
     const amb = ambientTemp(world2);
     for (let i = 0; i < n; i++) {
-      const tt = g.terr[i];
-      g.fuel[i] = BY_CODE[tt].fuel;
+      const tt = g2.terr[i];
+      g2.fuel[i] = BY_CODE[tt].fuel;
       if (tt === T.FOREST) {
-        g.wood[i] = 0.6 + 0.4 * t.rng();
-        g.fuel[i] += g.wood[i];
-      } else if (tt === T.GRASS && t.rng() < 0.07 * g.fert[i] && !isCampArea(world2, i)) {
-        g.bush[i] = 1;
-        g.food[i] = 0.5 + 0.5 * t.rng();
-        g.fuel[i] += 0.2;
+        g2.wood[i] = 0.6 + 0.4 * t.rng();
+        g2.fuel[i] += g2.wood[i];
+      } else if (tt === T.GRASS && t.rng() < 0.07 * g2.fert[i] && !isCampArea(world2, i)) {
+        g2.bush[i] = 1;
+        g2.food[i] = 0.5 + 0.5 * t.rng();
+        g2.fuel[i] += 0.2;
       }
-      g.temp[i] = amb;
+      g2.temp[i] = amb;
     }
     for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
     recomputeZone(world2);
@@ -1556,7 +1768,7 @@ button.quiet{background:transparent;color:var(--muted)}
     return count(w, key2, true) < d.max && (!d.needs || has(w, d.needs));
   }
   function findLot(w) {
-    const g = w.grid;
+    const g2 = w.grid;
     let best = -1, bd = 1e9;
     for (let y = w.camp.y - 14; y <= w.camp.y + 13; y++) for (let x = w.camp.x - 14; x <= w.camp.x + 13; x++) {
       if (x < 1 || y < 1 || x >= w.w - 2 || y >= w.h - 2) continue;
@@ -1565,7 +1777,7 @@ button.quiet{background:transparent;color:var(--muted)}
       let ok = true;
       for (let yy = -1; yy <= 2 && ok; yy++) for (let xx = -1; xx <= 2; xx++) {
         const j = (y + yy) * w.w + x + xx, inner = xx >= 0 && xx <= 1 && yy >= 0 && yy <= 1;
-        if (g.bld[j] >= 0 || inner && (!walkable(w, j) || g.fire[j] > 0 || isCampArea(w, j))) {
+        if (g2.bld[j] >= 0 || inner && (!walkable(w, j) || g2.fire[j] > 0 || isCampArea(w, j))) {
           ok = false;
           break;
         }
@@ -1587,16 +1799,16 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
     const b = { id: w.bldSeq++, key: key2, x: lot % w.w, y: lot / w.w | 0, progress: 0, done: false, cells: [] };
-    const g = w.grid;
+    const g2 = w.grid;
     for (let yy = 0; yy < 2; yy++) for (let xx = 0; xx < 2; xx++) {
       const j = (b.y + yy) * w.w + b.x + xx;
       b.cells.push(j);
-      g.bld[j] = b.id;
-      g.terr[j] = T.GRASS;
-      g.bush[j] = 0;
-      g.food[j] = 0;
-      g.wood[j] = 0;
-      g.fuel[j] = d.wooden ? 0.9 : 0;
+      g2.bld[j] = b.id;
+      g2.terr[j] = T.GRASS;
+      g2.bush[j] = 0;
+      g2.food[j] = 0;
+      g2.wood[j] = 0;
+      g2.fuel[j] = d.wooden ? 0.9 : 0;
     }
     w.buildings.push(b);
     recomputeZone(w);
@@ -1606,28 +1818,28 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   var FINISH_HOOKS = {
     plantGarden(w, b) {
-      const g = w.grid, cand = [];
+      const g2 = w.grid, cand = [];
       for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
         const x = b.x + xx, y = b.y + yy;
         if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
         const j = y * w.w + x;
-        if ((g.terr[j] === T.GRASS || g.terr[j] === T.BURNT) && g.bld[j] < 0 && !isCampArea(w, j) && !g.bush[j]) cand.push([j, xx * xx + yy * yy]);
+        if ((g2.terr[j] === T.GRASS || g2.terr[j] === T.BURNT) && g2.bld[j] < 0 && !isCampArea(w, j) && !g2.bush[j]) cand.push([j, xx * xx + yy * yy]);
       }
       cand.sort((p, q) => p[1] - q[1]);
       b.plots = [];
       for (const [j] of cand.slice(0, 12)) {
-        g.terr[j] = T.GRASS;
-        g.bush[j] = 1;
-        g.food[j] = 0.5;
-        g.fuel[j] = 0.6;
-        g.fert[j] = 1;
+        g2.terr[j] = T.GRASS;
+        g2.bush[j] = 1;
+        g2.food[j] = 0.5;
+        g2.fuel[j] = 0.6;
+        g2.fert[j] = 1;
         w.gardenCells.push(j);
         b.plots.push(j);
       }
       w.nav.dirty("berries");
     }
   };
-  function addLabour(w, b, amount) {
+  function addLabour(w, b, amount, by) {
     if (b.done) return;
     b.progress += amount;
     const d = BUILDINGS.get(b.key);
@@ -1639,6 +1851,8 @@ button.quiet{background:transparent;color:var(--muted)}
     w.nav.dirty("rockface");
     for (const id of w.nav.order) if (id.startsWith("station:")) w.nav.dirty(id);
     log(w, `\u041F\u043E\u0441\u0442\u0440\u043E\u0435\u043D${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`, "build");
+    const ctx = { building: d.name.toLowerCase(), f: d.gender === "f" };
+    for (const a of w.agents) if (a.faction === "colony" && !a.dead) think(w, a, a === by ? "finishedBuilding" : "newBuilding", ctx);
   }
   function burnBuilding(w, id) {
     const b = buildingById(w, id);
@@ -1664,9 +1878,9 @@ button.quiet{background:transparent;color:var(--muted)}
   function eatMeal(w) {
     let best = null;
     for (const r of foods()) if (w.stock[r.id] >= 1 && (!best || w.stock[r.id] > w.stock[best.id])) best = r;
-    if (!best) return 0;
+    if (!best) return { fed: 0, res: null };
     w.stock[best.id] -= 1;
-    return best.nutrition;
+    return { fed: best.nutrition, res: best };
   }
   function spoil(w) {
     for (const r of foods()) {
@@ -1703,12 +1917,12 @@ button.quiet{background:transparent;color:var(--muted)}
     }
   }
   function heatAndSmoke(w) {
-    const g = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain = w.weather.rain;
-    advect(w, g.smoke, g.smoke2, w.wind.x, w.wind.y);
-    [g.smoke, g.smoke2] = [g.smoke2, g.smoke];
-    advect(w, g.temp, g.temp2, w.wind.x * 0.35, w.wind.y * 0.35);
-    [g.temp, g.temp2] = [g.temp2, g.temp];
-    const { temp, temp2, smoke, smoke2, fire, terr } = g;
+    const g2 = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain = w.weather.rain;
+    advect(w, g2.smoke, g2.smoke2, w.wind.x, w.wind.y);
+    [g2.smoke, g2.smoke2] = [g2.smoke2, g2.smoke];
+    advect(w, g2.temp, g2.temp2, w.wind.x * 0.35, w.wind.y * 0.35);
+    [g2.temp, g2.temp2] = [g2.temp2, g2.temp];
+    const { temp, temp2, smoke, smoke2, fire, terr } = g2;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
       const Tc = temp[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
@@ -1717,8 +1931,8 @@ button.quiet{background:transparent;color:var(--muted)}
       const Sm = smoke[i], Sn = Sm + 0.12 * (smoke[l] + smoke[r] + smoke[u] + smoke[d] - 4 * Sm) - 0.012 * Sm + fire[i] * 0.25;
       smoke2[i] = Sn > 4 ? 4 : Sn;
     }
-    [g.temp, g.temp2] = [g.temp2, g.temp];
-    [g.smoke, g.smoke2] = [g.smoke2, g.smoke];
+    [g2.temp, g2.temp2] = [g2.temp2, g2.temp];
+    [g2.smoke, g2.smoke2] = [g2.smoke2, g2.smoke];
   }
   function campfire(w) {
     const cold = colonists(w).some((a) => a.needs.warmth < 0.6);
@@ -1728,90 +1942,90 @@ button.quiet{background:transparent;color:var(--muted)}
     for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
   }
   function burn(w) {
-    const g = w.grid, rain = w.weather.rain, st = w.stats;
+    const g2 = w.grid, rain = w.weather.rain, st = w.stats;
     const ignF = FIRE.ignForest + w.climate.ign, ignG = FIRE.ignGrass + w.climate.ign;
     st.fireCount = 0;
     st.fireNearCamp = 0;
     for (let i = 0; i < w.n; i++) {
-      const f = g.fire[i];
+      const f = g2.fire[i];
       if (f > 0) {
-        const wet = g.fert[i];
-        g.fuel[i] -= FIRE.burn * f;
-        let nf = g.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
+        const wet = g2.fert[i];
+        g2.fuel[i] -= FIRE.burn * f;
+        let nf = g2.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
         if (Math.random() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;
         nf -= rain * 0.045;
-        if (g.fuel[i] <= 0) g.fuel[i] = 0;
+        if (g2.fuel[i] <= 0) g2.fuel[i] = 0;
         if (nf < 0.03) {
-          g.fire[i] = 0;
-          if (g.fuel[i] < 0.25) {
-            if (g.terr[i] !== T.WATER && g.terr[i] !== T.ROCK) g.terr[i] = T.BURNT;
-            g.wood[i] = 0;
-            g.food[i] = 0;
-            g.bush[i] = 0;
+          g2.fire[i] = 0;
+          if (g2.fuel[i] < 0.25) {
+            if (g2.terr[i] !== T.WATER && g2.terr[i] !== T.ROCK) g2.terr[i] = T.BURNT;
+            g2.wood[i] = 0;
+            g2.food[i] = 0;
+            g2.bush[i] = 0;
             st.burntCells++;
             w.nav.dirty("trees");
             w.nav.dirty("berries");
-            if (g.bld[i] >= 0) burnBuilding(w, g.bld[i]);
+            if (g2.bld[i] >= 0) burnBuilding(w, g2.bld[i]);
           } else {
-            g.wood[i] = Math.min(g.wood[i], Math.max(0, g.fuel[i] - 1.2));
+            g2.wood[i] = Math.min(g2.wood[i], Math.max(0, g2.fuel[i] - 1.2));
             w.nav.dirty("trees");
           }
-        } else g.fire[i] = nf;
-        if (g.fire[i] > 0) {
+        } else g2.fire[i] = nf;
+        if (g2.fire[i] > 0) {
           st.fireCount++;
           if (distToCamp2(w, i) < 400) st.fireNearCamp++;
           if (isCampArea(w, i)) burnStock(w, 15e-4);
         }
-      } else if (g.fuel[i] > 0.12) {
-        const forest = g.fuel[i] > 1, wet = g.fert[i];
-        if (g.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && Math.random() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) {
-          g.fire[i] = 0.2;
+      } else if (g2.fuel[i] > 0.12) {
+        const forest = g2.fuel[i] > 1, wet = g2.fert[i];
+        if (g2.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && Math.random() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) {
+          g2.fire[i] = 0.2;
           w.nav.dirty("fire");
         }
       }
     }
   }
   function growth(w) {
-    const g = w.grid;
-    for (const c of w.gardenCells) if (g.bush[c] && g.fire[c] === 0 && g.food[c] < 1) {
-      g.food[c] = Math.min(1, g.food[c] + 35e-4);
-      if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty("berries");
+    const g2 = w.grid;
+    for (const c of w.gardenCells) if (g2.bush[c] && g2.fire[c] === 0 && g2.food[c] < 1) {
+      g2.food[c] = Math.min(1, g2.food[c] + 35e-4);
+      if (g2.food[c] > 0.35 && g2.food[c] < 0.354) w.nav.dirty("berries");
     }
     if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
       const x = w.camp.x + xx, y = w.camp.y + yy;
       if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
       const j = y * w.w + x;
-      if (g.temp[j] > 40) g.temp[j] -= (g.temp[j] - 40) * 0.08;
+      if (g2.temp[j] > 40) g2.temp[j] -= (g2.temp[j] - 40) * 0.08;
     }
     const samples = Math.round(160 * w.n / 12288 * w.climate.regrow);
     for (let k = 0; k < samples; k++) {
       const i = Math.random() * w.n | 0;
-      if (g.fire[i] > 0 || g.bld[i] >= 0) continue;
-      const t = g.terr[i], f = g.fert[i];
+      if (g2.fire[i] > 0 || g2.bld[i] >= 0) continue;
+      const t = g2.terr[i], f = g2.fert[i];
       if (t === T.BURNT) {
         if (Math.random() < 0.02) {
-          g.terr[i] = T.GRASS;
-          g.fuel[i] = 0.1;
+          g2.terr[i] = T.GRASS;
+          g2.fuel[i] = 0.1;
         }
       } else if (t === T.GRASS) {
-        if (g.fuel[i] < 0.4) g.fuel[i] = Math.min(0.4, g.fuel[i] + 0.02);
-        if (g.bush[i]) {
-          g.food[i] = Math.min(1, g.food[i] + 0.05 * f);
-          if (g.food[i] > 0.35) w.nav.dirty("berries");
+        if (g2.fuel[i] < 0.4) g2.fuel[i] = Math.min(0.4, g2.fuel[i] + 0.02);
+        if (g2.bush[i]) {
+          g2.food[i] = Math.min(1, g2.food[i] + 0.05 * f);
+          if (g2.food[i] > 0.35) w.nav.dirty("berries");
         } else if (!isCampArea(w, i) && Math.random() < 25e-4 * f) {
-          g.bush[i] = 1;
-          g.food[i] = 0.1;
-          g.fuel[i] += 0.2;
+          g2.bush[i] = 1;
+          g2.food[i] = 0.1;
+          g2.fuel[i] += 0.2;
         }
         if (Math.random() < 15e-4 * f && f > 0.55 && !isCampArea(w, i)) {
-          g.terr[i] = T.FOREST;
-          g.wood[i] = 0.3;
-          g.fuel[i] = 1.5;
-          g.bush[i] = 0;
+          g2.terr[i] = T.FOREST;
+          g2.wood[i] = 0.3;
+          g2.fuel[i] = 1.5;
+          g2.bush[i] = 0;
         }
-      } else if (t === T.FOREST && g.wood[i] < 1) {
-        g.wood[i] = Math.min(1, g.wood[i] + 0.03);
-        g.fuel[i] = 1.2 + g.wood[i];
+      } else if (t === T.FOREST && g2.wood[i] < 1) {
+        g2.wood[i] = Math.min(1, g2.wood[i] + 0.03);
+        g2.fuel[i] = 1.2 + g2.wood[i];
       }
     }
   }
@@ -1844,11 +2058,11 @@ button.quiet{background:transparent;color:var(--muted)}
       prepare: (w) => new Set(openSites(w).flatMap((b) => b.cells)),
       seed: (w, i, cells) => cells.has(i)
     },
-    // game animals: hunters walk this field until they are close enough to stalk directly
+    // game animals: hunters and predators walk this field until they are close enough to go straight
     {
       id: "prey",
-      active: (w) => w.agents.some((a) => a.task?.job === "hunt"),
-      prepare: (w) => new Set(w.agents.filter((a) => SPECIES.get(a.species).yields).map((a) => cellOf(w, a))),
+      active: (w) => w.agents.some((a) => a.task?.job === "hunt" || a.brain === "predator"),
+      prepare: (w) => new Set(w.agents.filter((a) => SPECIES.get(a.species).game).map((a) => cellOf(w, a))),
       seed: (w, i, cells) => cells.has(i)
     },
     // the settlement zone: where people run when something hunts them
@@ -1902,15 +2116,15 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     // fire, heat and smoke make cells expensive; `hazard` scales that for the escape map
     computeCost(hazard) {
-      const g = this.w.grid, cost = this.cost;
+      const g2 = this.w.grid, cost = this.cost;
       for (let i = 0; i < this.w.n; i++) {
-        const t = g.terr[i];
+        const t = g2.terr[i];
         if (!WALKABLE[t]) {
           cost[i] = -1;
           continue;
         }
-        let c = BY_CODE[t].pathCost + (g.fire[i] * 60 + g.smoke[i] * 1.5) * hazard;
-        if (g.temp[i] > 45) c += (g.temp[i] - 45) * 0.3 * hazard;
+        let c = BY_CODE[t].pathCost + (g2.fire[i] * 60 + g2.smoke[i] * 1.5) * hazard;
+        if (g2.temp[i] > 45) c += (g2.temp[i] - 45) * 0.3 * hazard;
         cost[i] = c;
       }
     }
@@ -1992,50 +2206,6 @@ button.quiet{background:transparent;color:var(--muted)}
     }
   };
 
-  // src/data/needs.js
-  var NEEDS = new Registry("need");
-  NEEDS.registerAll([
-    {
-      id: "food",
-      label: "\u0441\u044B\u0442\u043E\u0441\u0442\u044C",
-      color: "var(--food)",
-      task: "eat",
-      memory: "hunger",
-      start: [0.6, 1],
-      decay: (w, a) => 6e-4 * a.mods.hunger,
-      harm: 8e-4,
-      cause: "\u0433\u043E\u043B\u043E\u0434\u0430",
-      urge: (w, a, v) => (1 - v) ** 2 * 2.2
-    },
-    {
-      id: "rest",
-      label: "\u0431\u043E\u0434\u0440\u043E\u0441\u0442\u044C",
-      color: "#7d9be0",
-      task: "sleep",
-      memory: "tired",
-      start: [0.6, 1],
-      decay: (w, a) => a.sleeping ? 0 : 45e-5,
-      harm: 0,
-      cause: "\u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438",
-      urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w.tick) > 0.6 && v < 0.75 ? 0.35 : 0)
-    },
-    // warmth follows the temperature field under the agent's feet
-    {
-      id: "warmth",
-      label: "\u0442\u0435\u043F\u043B\u043E",
-      color: "var(--ember)",
-      task: "warm",
-      memory: "cold",
-      start: [0.9, 0.9],
-      // clothing keeps part of the cold out
-      decay: (w, a, T2) => T2 < 14 ? (14 - T2) * 12e-5 * a.mods.cold * (1 - (a.gear?.warmth || 0)) : T2 > 18 ? -3e-3 : 0,
-      harm: 7e-4,
-      harmBelow: 0.15,
-      cause: "\u0445\u043E\u043B\u043E\u0434\u0430",
-      urge: (w, a, v) => (1 - v) ** 2 * 2
-    }
-  ]);
-
   // src/data/jobs.js
   var JOBS = new Registry("job");
   var want = (stock, pop, low, enough) => stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04;
@@ -2074,12 +2244,12 @@ button.quiet{background:transparent;color:var(--muted)}
       desire: (w, ctx) => w.stock.wood < 25 ? 0.55 : w.stock.wood < 40 ? 0.2 : 0.03,
       valid: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.25 && w.grid.fire[i] === 0,
       take: (w, i) => {
-        const g = w.grid;
-        g.wood[i] -= 0.35;
-        if (g.wood[i] < 0.1) {
-          g.terr[i] = T.GRASS;
-          g.fuel[i] = 0.4;
-          g.wood[i] = 0;
+        const g2 = w.grid;
+        g2.wood[i] -= 0.35;
+        if (g2.wood[i] < 0.1) {
+          g2.terr[i] = T.GRASS;
+          g2.fuel[i] = 0.4;
+          g2.wood[i] = 0;
         }
         w.nav.dirty("trees");
       }
@@ -2215,19 +2385,27 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     moveToward(w, a, bj % w.w + 0.5, (bj / w.w | 0) + 0.5, mul);
   }
+  var roomAt = (w, x, y) => Math.min(6, x, y, w.w - x, w.h - y);
   function bolt(w, a, threats, mul) {
+    if (a.boltDir && a.boltDir.left-- > 0) {
+      const [dx, dy] = a.boltDir.v;
+      if (moveToward(w, a, a.x + dx, a.y + dy, mul) !== null) return;
+    }
     let best = null, bs = -Infinity;
     for (let k = 0; k < 16; k++) {
-      const ang = k / 16 * Math.PI * 2, tx = a.x + Math.cos(ang) * 1.5, ty = a.y + Math.sin(ang) * 1.5;
+      const ang = k / 16 * Math.PI * 2, dx = Math.cos(ang) * 1.5, dy = Math.sin(ang) * 1.5, tx = a.x + dx, ty = a.y + dy;
       if (!inBounds(w, tx | 0, ty | 0) || !walkable(w, (ty | 0) * w.w + (tx | 0))) continue;
       let s = 0;
       for (const t of threats) s += Math.min(8, Math.hypot(tx - t.x, ty - t.y));
+      s += roomAt(w, tx, ty) * 0.9 * Math.max(1, threats.length);
       if (s > bs) {
         bs = s;
-        best = [tx, ty];
+        best = [dx, dy];
       }
     }
-    if (best) moveToward(w, a, best[0], best[1], mul);
+    if (!best) return;
+    a.boltDir = { v: best, left: 6 };
+    moveToward(w, a, a.x + best[0], a.y + best[1], mul);
   }
   function approach(w, a, tx, ty, mul = 1) {
     if (moveToward(w, a, tx, ty, mul) !== null) return;
@@ -2255,7 +2433,9 @@ button.quiet{background:transparent;color:var(--muted)}
         bj = j;
       }
     }
-    if (bj >= 0) moveToward(w, a, bj % w.w + 0.5, (bj / w.w | 0) + 0.5, mul);
+    if (bj < 0) return false;
+    moveToward(w, a, bj % w.w + 0.5, (bj / w.w | 0) + 0.5, mul);
+    return true;
   }
   function sprintMul(a, sprint, drain) {
     a.stamina = Math.max(0, a.stamina - drain);
@@ -2347,7 +2527,7 @@ button.quiet{background:transparent;color:var(--muted)}
     const used = new Set(w.agents.filter((o) => o.faction === "colony" && !o.dead).map((o) => o.name));
     for (let k = 0; k < names.length; k++) {
       const n = names[w.nameIdx++ % names.length];
-      if (!used.has(n)) return n;
+      if (!used.has(n[0])) return n;
     }
     return names[w.nameIdx++ % names.length];
   }
@@ -2358,7 +2538,8 @@ button.quiet{background:transparent;color:var(--muted)}
       species: speciesId,
       faction: factionId,
       brain: sp.brain || fa.brain,
-      name: sp.names && factionId === "colony" ? freshName(w, sp.names) : sp.label,
+      name: sp.label,
+      gender: "m",
       x,
       y,
       hp: sp.hp,
@@ -2371,13 +2552,17 @@ button.quiet{background:transparent;color:var(--muted)}
       carry: null,
       sleeping: false
     };
+    if (sp.names && factionId === "colony") [a.name, a.gender] = freshName(w, sp.names);
     for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
     a.stamina = 1;
     for (const id of sp.needs) {
       const n = NEEDS.get(id);
       a.needs[id] = between(w.rng, n.start);
     }
-    if (sp.sentient && factionId === "colony") personality(w, a);
+    if (sp.sentient && factionId === "colony") {
+      personality(w, a);
+      a.diary = [];
+    }
     if (sp.inventory) a.equip = emptySlots();
     recalcGear(a);
     w.agents.push(a);
@@ -2389,17 +2574,24 @@ button.quiet{background:transparent;color:var(--muted)}
     a.hp = 0;
     const sp = SPECIES.get(a.species);
     const killer = by ? SPECIES.get(by.species) : null;
-    if (a.faction === "colony") log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> \u043F\u043E\u0433\u0438\u0431(\u043B\u0430) \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> \u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B(\u0430) ${cause}.`, "death");
+    if (a.faction === "colony") log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, "\u043F\u043E\u0433\u0438\u0431", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430")} \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> ${g(a, "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B", "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B\u0430")} ${cause}.`, "death");
     else if (sp.id === "wolf" && by?.faction === "colony") {
       for (const [r, n] of Object.entries(sp.yields || {})) w.stock[r] = (w.stock[r] || 0) + n;
-      log(w, `<b>${esc(by.name)}</b> \u0443\u0431\u0438\u043B(\u0430) \u0432\u043E\u043B\u043A\u0430. \u0428\u043A\u0443\u0440\u0430 \u0438 \u043A\u043E\u0441\u0442\u0438 \u2014 \u0432 \u043B\u0430\u0433\u0435\u0440\u044C.`, "danger", "notice");
+      log(w, `<b>${esc(by.name)}</b> ${g(by, "\u0443\u0431\u0438\u043B", "\u0443\u0431\u0438\u043B\u0430")} \u0432\u043E\u043B\u043A\u0430. \u0428\u043A\u0443\u0440\u0430 \u0438 \u043A\u043E\u0441\u0442\u0438 \u2014 \u0432 \u043B\u0430\u0433\u0435\u0440\u044C.`, "danger", "notice");
     } else if (a.faction === "raiders" && by) {
       const got = [];
       stripAll(a, got);
       const loot = got.filter((it) => it.dur > 0);
       w.armory.push(...loot);
       w.armoryVersion = (w.armoryVersion || 0) + 1;
-      log(w, `\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A \u0443\u0431\u0438\u0442, \u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B(\u0430) <b>${esc(by.name)}</b>.${loot.length ? " \u0422\u0440\u043E\u0444\u0435\u0438: " + loot.map((it) => def(it).short).join(", ") + "." : ""}`, "danger", "notice");
+      log(w, `\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A \u0443\u0431\u0438\u0442, ${g(by, "\u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B", "\u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B\u0430")} <b>${esc(by.name)}</b>.${loot.length ? " \u0422\u0440\u043E\u0444\u0435\u0438: " + loot.map((it) => def(it).short).join(", ") + "." : ""}`, "danger", "notice");
+    }
+    if (a.faction === "colony") {
+      for (const o of w.agents) if (o !== a && o.faction === "colony" && !o.dead) think(w, o, "grief", { name: a.name, f: a.gender === "f" });
+    }
+    if (by?.faction === "colony") {
+      if (sp.id === "wolf") think(w, by, "killedWolf");
+      else if (a.faction === "raiders") think(w, by, "killedRaider");
     }
     if (a.faction === "colony" && a.equip) {
       stripAll(a, w.armory);
@@ -2424,17 +2616,18 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   var ensureGear = (a) => a.gear || { melee: { dmg: (SPECIES.get(a.species).attack || { power: 1 }).power, cd: (SPECIES.get(a.species).attack || { cooldown: 12 }).cooldown }, armor: 0, block: 0 };
   function damage(w, by, t, raw, { melee = true } = {}) {
-    const g = ensureGear(t);
-    if (melee && g.block && Math.random() < g.block) {
-      wear(w, t, g.blockItem);
+    const g2 = ensureGear(t);
+    if (melee && g2.block && Math.random() < g2.block) {
+      wear(w, t, g2.blockItem);
       t.flash = 3;
       return "blocked";
     }
     const home = by.faction === "colony" && agentInZone(w, by) ? 1.25 : 1;
     const wall = t.faction === "colony" && agentInZone(w, t) ? w.mods.mul.defense : 1;
-    let dmg = raw * home * wall * (1 - (g.armor || 0));
-    if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
+    let dmg = raw * home * wall * (1 - (g2.armor || 0));
+    if (g2.armor && t.equip?.body) wear(w, t, t.equip.body);
     t.hp -= dmg;
+    if (t.diary && t.hp < 0.45 && t.hp > 0) think(w, t, "wounded");
     const memKey = by.species === "wolf" || t.species === "wolf" ? "wolf" : "raid";
     if (t.faction === "colony" && t.mem) t.mem[memKey] += 0.25;
     else if (by.faction === "colony" && by.mem) by.mem[memKey] += 0.1;
@@ -2443,21 +2636,21 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   function attack(w, a, t) {
     if (a.cd > 0) return;
-    const g = ensureGear(a);
-    a.cd = g.melee.cd;
+    const g2 = ensureGear(a);
+    a.cd = g2.melee.cd;
     a.flash = 4;
-    damage(w, a, t, (0.1 + Math.random() * 0.12) * g.melee.dmg);
-    if (g.melee.item) wear(w, a, g.melee.item);
+    damage(w, a, t, (0.1 + Math.random() * 0.12) * g2.melee.dmg);
+    if (g2.melee.item) wear(w, a, g2.melee.item);
   }
   function shoot(w, a, t, skillJob = "hunt") {
-    const g = a.gear;
-    if (!g?.ranged || !g.rangedReady || a.cd > 0) return null;
-    const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
+    const g2 = a.gear;
+    if (!g2?.ranged || !g2.rangedReady || a.cd > 0) return null;
+    const r = g2.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
     if (d > range) return null;
     a.cd = r.cd;
     if (r.ammo) {
       a.equip.back.ammo--;
-      if (a.equip.back.ammo <= 0) g.rangedReady = false;
+      if (a.equip.back.ammo <= 0) g2.rangedReady = false;
     }
     wear(w, a, r.item);
     const skill = a.skill?.[skillJob] ?? 0.2, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? 0.12 : 0;
@@ -2602,9 +2795,9 @@ button.quiet{background:transparent;color:var(--muted)}
 
   // src/settlement/crafting.js
   function reserved(w, res) {
-    const g = w.council.goal;
-    if (!g) return 0;
-    return BUILDINGS.get(g).cost[res] || 0;
+    const g2 = w.council.goal;
+    if (!g2) return 0;
+    return BUILDINGS.get(g2).cost[res] || 0;
   }
   function canStart(w, r) {
     if (r.needs && !r.needs.every((b) => has(w, b))) return false;
@@ -2666,7 +2859,7 @@ button.quiet{background:transparent;color:var(--muted)}
   function markWorking(w, b, a) {
     (b.workers || (b.workers = /* @__PURE__ */ new Map())).set(a.id, w.tick);
   }
-  function workAt(w, b, amount) {
+  function workAt(w, b, amount, a) {
     if (!b.order) {
       const r2 = pickRecipe(w, b.key);
       if (!r2) return false;
@@ -2682,6 +2875,7 @@ button.quiet{background:transparent;color:var(--muted)}
       w.armory.push(newItem(r.makes.item));
       w.armoryVersion = (w.armoryVersion || 0) + 1;
       log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${ITEMS.get(r.makes.item).label.toLowerCase()}.`, "craft");
+      if (a) think(w, a, "madeItem", { item: ITEMS.get(r.makes.item).label.toLowerCase() });
     } else {
       w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
     }
@@ -2697,7 +2891,7 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/agents/jobRunners.js
   function workRate(w, a, jobId) {
     a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 6e-4);
-    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1);
+    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
   }
   var toolWear = (w, a, jobId, amount = 1) => {
     const it = a.gear?.toolItem[jobId];
@@ -2759,7 +2953,7 @@ button.quiet{background:transparent;color:var(--muted)}
     build(w, a, task) {
       const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
       if (site && !site.done && w.grid.fire[i] === 0) {
-        addLabour(w, site, workRate(w, a, "build"));
+        addLabour(w, site, workRate(w, a, "build"), a);
         toolWear(w, a, "build", 0.05);
         return;
       }
@@ -2782,7 +2976,7 @@ button.quiet{background:transparent;color:var(--muted)}
       if (r === "arrived") {
         const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
         if (b) markWorking(w, b, a);
-        if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id))) {
+        if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id), a)) {
           done(a);
           a.think = 20;
         }
@@ -2849,6 +3043,7 @@ button.quiet{background:transparent;color:var(--muted)}
       if (res === "kill") {
         w.stats.hunted++;
         a.stalking = false;
+        think(w, a, "huntKill", { prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label });
         for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
         const near = w.agents.some((o) => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
         task.oneMore = a.carry.n < 8 && near;
@@ -2869,17 +3064,46 @@ button.quiet{background:transparent;color:var(--muted)}
     return h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
   }
   function goalNeed(w, res) {
-    const g = w.council.goal;
-    if (!g) return 0;
-    const need = BUILDINGS.get(g).cost[res] || 0;
+    const g2 = w.council.goal;
+    if (!g2) return 0;
+    const need = BUILDINGS.get(g2).cost[res] || 0;
     return (w.stock[res] || 0) < need ? 0.3 : 0;
   }
-  function motive(w, a, def2, ctx) {
+  function motive(w, a, def2, ctx, noise = true) {
     const args = def2.motive ? def2.motive(a, ctx) : [];
     let best = [0, ""];
     for (const o of args) if (o[0] > best[0]) best = o;
-    const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + w.rng() * 0.25;
+    const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rng() * 0.25 : 0);
     return [score, best[0] > 0.05 ? best[1] : def2.wish];
+  }
+  function councilCtx(w, cands) {
+    return {
+      crowded: colonists(w).length >= popCap(w) - 1,
+      spoiled: w.stats.spoiledToday,
+      burnt: w.stats.burntCells,
+      preyCount: ofSpecies(w, "hare").length,
+      wolves: ofSpecies(w, "wolf").length,
+      count: (k) => count(w, k),
+      unarmed: colonists(w).filter((a) => !handItems(a).some((it) => def(it).melee || def(it).ranged)).length / Math.max(1, colonists(w).length),
+      hides: w.stock.hide || 0,
+      broken: w.stats.broken,
+      items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
+      wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
+    };
+  }
+  function councilWish(w, a) {
+    const cands = BUILDINGS.ids().filter((k) => eligible(w, k));
+    if (!cands.length || !a.prefs) return null;
+    const ctx = councilCtx(w, cands);
+    let best = null, bs = 0.3;
+    for (const k of cands) {
+      const [sc, why] = motive(w, a, BUILDINGS.get(k), ctx, false);
+      if (sc > bs) {
+        bs = sc;
+        best = { name: BUILDINGS.get(k).name, why };
+      }
+    }
+    return best;
   }
   function stepCouncil(w) {
     const day = dayOf(w.tick), h = hourOf(w.tick);
@@ -2908,19 +3132,7 @@ button.quiet{background:transparent;color:var(--muted)}
         c.votes = [];
         c.goal = null;
       } else {
-        const ctx = {
-          crowded: colonists(w).length >= popCap(w) - 1,
-          spoiled: w.stats.spoiledToday,
-          burnt: w.stats.burntCells,
-          preyCount: ofSpecies(w, "hare").length,
-          wolves: ofSpecies(w, "wolf").length,
-          count: (k) => count(w, k),
-          unarmed: colonists(w).filter((a) => !handItems(a).some((it) => def(it).melee || def(it).ranged)).length / Math.max(1, colonists(w).length),
-          hides: w.stock.hide || 0,
-          broken: w.stats.broken,
-          items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
-          wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
-        };
+        const ctx = councilCtx(w, cands);
         const tally = {}, weight = {};
         for (const a of present) {
           let best = null, bs = -1, why = "";
@@ -2953,6 +3165,12 @@ button.quiet{background:transparent;color:var(--muted)}
     c.args = args.slice(0, 6);
     c.present = present.length;
     c.total = total;
+    const winner = c.votes[0]?.[0];
+    for (const x of args) {
+      const a = present.find((p) => p.name === x.name), choice = BUILDINGS.get(x.key).name.toLowerCase();
+      const id = x.key !== winner ? "councilLost" : c.goal ? "councilSaving" : "councilWon";
+      think(w, a, id, { choice, why: x.why, decision: winner ? BUILDINGS.get(winner).name.toLowerCase() : "" });
+    }
     const quotes = args.slice(0, 3).map((x) => `${x.name}: ${BUILDINGS.get(x.key).name.toLowerCase()}, ${x.why}`).join("; ");
     log(w, `\u0421\u043E\u0432\u0435\u0442 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 (${present.length} \u0438\u0437 ${total}). ${quotes ? quotes + ". " : ""}${decision}`, "council");
     for (const a of colonists(w)) {
@@ -2978,8 +3196,10 @@ button.quiet{background:transparent;color:var(--muted)}
   TASKS.registerAll([
     { id: "eat", label: () => "\u0435\u0441\u0442", step(w, a) {
       if (follow(w, a, "camp") !== "arrived") return;
-      const fed = eatMeal(w);
+      const { fed, res } = eatMeal(w);
       if (fed) {
+        if (res.id === "meat") think(w, a, "ateMeat");
+        else if (a.needs.food < 0.35) think(w, a, "ateHungry", { food: res.label });
         a.needs.food = Math.min(1, a.needs.food + fed);
         done2(a);
       } else a.task = { id: "job", job: "gather", eatNow: true };
@@ -2991,7 +3211,10 @@ button.quiet{background:transparent;color:var(--muted)}
       a.needs.rest = Math.min(1, a.needs.rest + 4e-3 * (1 + 0.6 * beds));
       if (beds > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 2e-3 * beds);
       mill(w, a, task, 1.2);
-      if (a.needs.rest >= 1) done2(a);
+      if (a.needs.rest >= 1) {
+        think(w, a, beds > 0 ? "sleptHut" : "sleptOutside");
+        done2(a);
+      }
     } },
     { id: "warm", label: () => "\u0433\u0440\u0435\u0435\u0442\u0441\u044F \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
       if (follow(w, a, "camp") !== "arrived") return;
@@ -3022,9 +3245,9 @@ button.quiet{background:transparent;color:var(--muted)}
         done2(a);
         return;
       }
-      const d = Math.hypot(t.x - a.x, t.y - a.y), g = a.gear;
-      if (g?.rangedReady && d > 1.4) {
-        const range = g.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
+      const d = Math.hypot(t.x - a.x, t.y - a.y), g2 = a.gear;
+      if (g2?.rangedReady && d > 1.4) {
+        const range = g2.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
         task.shooting = true;
         if (d > range * 0.9) {
           if (moveToward(w, a, t.x, t.y, 1) === null) follow(w, a, "camp");
@@ -3048,14 +3271,14 @@ button.quiet{background:transparent;color:var(--muted)}
         }
         return;
       }
-      const g = w.grid, cx = a.x | 0, cy = a.y | 0, power = 0.05 * w.mods.mul.douse;
+      const g2 = w.grid, cx = a.x | 0, cy = a.y | 0, power = 0.05 * w.mods.mul.douse;
       for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
         if (x < 0 || y < 0 || x >= w.w || y >= w.h || (x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 > 2.9) continue;
         const j = y * w.w + x;
-        if (g.fire[j] > 0) {
-          g.fire[j] = Math.max(0, g.fire[j] - power);
-          g.temp[j] -= 6;
-          if (g.fire[j] === 0) g.temp[j] = Math.min(g.temp[j], 60);
+        if (g2.fire[j] > 0) {
+          g2.fire[j] = Math.max(0, g2.fire[j] - power);
+          g2.temp[j] -= 6;
+          if (g2.fire[j] === 0) g2.temp[j] = Math.min(g2.temp[j], 60);
         }
       }
     } },
@@ -3083,6 +3306,7 @@ button.quiet{background:transparent;color:var(--muted)}
         done2(a);
         return;
       }
+      think(w, a, "raidAlarm");
       if (follow(w, a, "camp", 1.2) === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
     } },
     // run for the settlement zone when something is hunting you
@@ -3108,6 +3332,7 @@ button.quiet{background:transparent;color:var(--muted)}
   var taskLabel = (a) => a.task ? TASKS.get(a.task.id).label(a.task) : "\u0434\u0443\u043C\u0430\u0435\u0442";
 
   // src/agents/body.js
+  var NEED_THOUGHT = { food: "starving", warmth: "freezing", rest: "exhausted" };
   var REMEMBER_BELOW = { food: 0.3, rest: 0.25, warmth: 0.4 };
   function stepBody(w, a) {
     const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
@@ -3120,6 +3345,7 @@ button.quiet{background:transparent;color:var(--muted)}
         starving = n.cause;
       }
       if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 4e-3;
+      if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
     }
     if (T2 > sp.heatHarm) a.hp -= Math.min(5e-3, (T2 - sp.heatHarm) * 4e-5);
     const comfy = sp.needs.every((id) => a.needs[id] > 0.4);
@@ -3131,9 +3357,9 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/agents/brains/colonist.js
   var key = (t) => t ? t.id === "job" ? "job:" + t.job : t.id : "";
   function decide(w, a) {
-    const night = nightness(w.tick), camp = w.camp.cells, g = w.grid;
+    const night = nightness(w.tick), camp = w.camp.cells, g2 = w.grid;
     let campHot = 0;
-    for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
+    for (const c of camp) campHot = Math.max(campHot, g2.temp[c] + g2.fire[c] * 400);
     const campOk = campHot < 40 ? 1 : 0.1;
     const ctx = {
       pop: colonists(w).length,
@@ -3179,8 +3405,13 @@ button.quiet{background:transparent;color:var(--muted)}
         best = t;
       }
     }
-    if (key(best) !== cur) a.task = best;
-    else if (best.id === "fight") a.task.target = best.target;
+    if (key(best) !== cur) {
+      a.task = best;
+      if (best.id === "job" && !best.eatNow) {
+        if (best.job === a.likes) think(w, a, "likedWork", { job: JOBS.get(best.job).label });
+        else if (best.job === a.dislikes) think(w, a, "dislikedWork", { job: JOBS.get(best.job).label });
+      }
+    } else if (best.id === "fight") a.task.target = best.target;
   }
   var colonistBrain = {
     id: "colonist",
@@ -3189,7 +3420,10 @@ button.quiet{background:transparent;color:var(--muted)}
       if (a.dead) return;
       a.sleeping = false;
       const tid = a.task?.id;
-      if (tid !== "douse" && (T2 > 55 || nearFire(w, a, 1.5))) a.task = { id: "flee" };
+      if (tid !== "douse" && (T2 > 55 || nearFire(w, a, 1.5))) {
+        a.task = { id: "flee" };
+        think(w, a, "fledFire");
+      }
       if (tid === "douse" && (T2 > 58 || a.hp < 0.6)) a.task = { id: "flee" };
       if (a.task?.id === "flee" || a.task?.id === "douse") a.mem.fire += 6e-3;
       const tid2 = a.task?.id;
@@ -3285,13 +3519,16 @@ button.quiet{background:transparent;color:var(--muted)}
       if (!t.spot || Math.random() < 0.01) {
         const ok = new Set(sp.grazes.terrain.map((id) => TERRAIN.get(id).code));
         const reach = Math.random() < 0.15 ? 30 : 7;
+        let bestV = -Infinity;
         for (let k = 0; k < 12; k++) {
           const x = a.x + (Math.random() * 2 - 1) * reach, y = a.y + (Math.random() * 2 - 1) * reach;
           if (!inBounds(w, x | 0, y | 0)) continue;
           const j = (y | 0) * w.w + (x | 0);
-          if (walkable(w, j) && ok.has(w.grid.terr[j])) {
+          if (!walkable(w, j) || !ok.has(w.grid.terr[j])) continue;
+          const v = w.grid.fert[j] + Math.min(8, x, y, w.w - x, w.h - y) * 0.12 + Math.random() * 0.3;
+          if (v > bestV) {
+            bestV = v;
             t.spot = [x, y];
-            break;
           }
         }
       }
@@ -3314,12 +3551,17 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     return best;
   }
-  function isAlone(w, v, P) {
-    if (agentInZone(w, v)) return false;
-    return !w.agents.some((o) => o !== v && !o.dead && o.species === v.species && dist(o, v) < P.loneRadius);
-  }
-  function packOf(w, a) {
-    return w.agents.filter((o) => !o.dead && o.pack === a.pack);
+  var company = (w, v, r) => w.agents.filter((o) => o !== v && !o.dead && o.species === v.species && dist(o, v) < r).length;
+  var packOf = (w, a) => w.agents.filter((o) => !o.dead && o.pack === a.pack);
+  var boldness = (a, P) => clamp((P.hungry - a.needs.food) / (P.hungry - P.starving), 0, 1);
+  function startMaul(w, a, v, b) {
+    const P = SPECIES.get(a.species).predator;
+    for (const m of packOf(w, a)) m.calmUntil = w.tick + P.calm * (1 - 0.5 * b);
+    for (const m of packOf(w, a)) if ((m === a || dist(m, a) < 12) && m.task?.id !== "feed") m.task = { id: "maul", target: v };
+    w.stats.wolfAttacks++;
+    think(w, v, "wolfAttack");
+    const n = company(w, v, P.loneRadius);
+    log(w, b > 0.8 && n ? `\u0418\u0437\u0433\u043E\u043B\u043E\u0434\u0430\u0432\u0448\u0438\u0435\u0441\u044F \u0432\u043E\u043B\u043A\u0438 \u0431\u0440\u043E\u0441\u0430\u044E\u0442\u0441\u044F \u043D\u0430 \u043B\u044E\u0434\u0435\u0439! <b>${esc(v.name)}</b> \u0438 \u0441\u043F\u0443\u0442\u043D\u0438\u043A(\u0438) \u0432\u0434\u0430\u043B\u0438 \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F.` : `\u0412\u043E\u043B\u043A\u0438 \u043D\u0430\u043F\u0430\u0434\u0430\u044E\u0442! <b>${esc(v.name)}</b> \u0434\u0430\u043B\u0435\u043A\u043E \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F \u0438 \u0431\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438.`, "danger");
   }
   var predatorBrain = {
     id: "predator",
@@ -3333,30 +3575,32 @@ button.quiet{background:transparent;color:var(--muted)}
         escapeHeat(w, a, 1.4);
         return;
       }
-      const hunger = a.needs.food, night = nightness(w.tick);
-      const dZone = w.nav.get("zone")[i], shy = night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy;
+      const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
+      const dZone = w.nav.get("zone")[i];
+      const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
       const people = w.agents.filter((o) => !o.dead && P.victims.includes(o.species) && dist(o, a) < 6);
+      const pack = packOf(w, a), leader = pack[0];
       if (a.task?.id === "leave" || a.hp < sp.hp * 0.35) {
         if (a.task?.id !== "leave") {
           a.task = { id: "leave" };
-          if (packOf(w, a)[0] === a) log(w, "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u0432\u043E\u043B\u043A\u0438 \u0443\u0445\u043E\u0434\u044F\u0442 \u0438\u0437 \u043B\u0435\u0441\u0430.", "wildlife");
+          if (leader === a) log(w, "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u0432\u043E\u043B\u043A\u0438 \u0443\u0445\u043E\u0434\u044F\u0442 \u0438\u0437 \u043B\u0435\u0441\u0430.", "wildlife");
         }
         if (follow(w, a, "edge", 1.2) === "arrived") a.gone = true;
         return;
       }
-      if (people.length >= P.groupFear) {
+      if (people.length >= P.groupFear + Math.floor(b * 2)) {
         a.task = { id: "bolt" };
         bolt(w, a, people, sprintMul(a, P.sprint, P.stamina));
         return;
       }
       if (dZone < shy && a.task?.id !== "maul") {
         a.task = { id: "roam" };
-        ascend(w, a, "zone", 1);
+        if (!ascend(w, a, "zone", 1)) bolt(w, a, [{ x: w.camp.x + 0.5, y: w.camp.y + 0.5 }], 1);
         return;
       }
       const t = a.task;
       if (t?.id === "feed") {
-        a.needs.food = Math.min(1, a.needs.food + 0.012);
+        a.needs.food = Math.min(1, a.needs.food + t.gain);
         recover(a);
         if (--t.left <= 0) a.task = null;
         return;
@@ -3371,33 +3615,55 @@ button.quiet{background:transparent;color:var(--muted)}
           a.task = { id: "roam" };
           return;
         }
+        if (!t.anchor || dist(a, t.anchor) > 3) {
+          t.anchor = { x: a.x, y: a.y };
+          t.since = w.tick;
+        }
+        if (w.tick - t.since > 90) {
+          (a.ignore || (a.ignore = /* @__PURE__ */ new Map())).set(prey.id, w.tick + 600);
+          a.task = { id: "roam" };
+          return;
+        }
         approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina));
         if (dist(a, prey) < 0.7) {
           kill(w, prey, "\u0437\u0443\u0431\u043E\u0432", a);
           w.stats.wolfKills++;
-          for (const m of packOf(w, a)) if (dist(m, a) < 8) m.task = { id: "feed", left: P.feedTicks };
-          a.task = { id: "feed", left: P.feedTicks };
+          const eaters = pack.filter((m) => m === a || dist(m, a) < 8);
+          for (const m of eaters) m.task = { id: "feed", left: P.feedTicks, gain: P.meal / eaters.length / P.feedTicks };
         }
         return;
       }
       if (t?.id === "maul") {
         const v = t.target;
-        const helpers = v && w.agents.filter((o) => o !== v && !o.dead && o.species === v.species && dist(o, v) < 5).length;
         if (a.stamina <= 0.05) {
           a.task = { id: "rest" };
           return;
         }
-        if (!v || v.dead || !w.agents.includes(v) || helpers >= 2 || agentInZone(w, v)) {
-          for (const m of packOf(w, a)) {
-            m.calmUntil = w.tick + 500;
+        if (!v || v.dead || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
+          if (v && !v.dead && t.target === v) think(w, v, "escapedWolves");
+          if (v && !v.dead) for (const m of pack) {
+            m.calmUntil = w.tick + P.calm * (1 - 0.7 * b);
             if (m.task?.id === "maul") m.task = { id: "roam" };
           }
+          else if (t) a.task = { id: "roam" };
+          return;
+        }
+        if (!t.anchor || dist(a, t.anchor) > 3 || dist(a, v) < 1.5) {
+          t.anchor = { x: a.x, y: a.y };
+          t.since = w.tick;
+        }
+        if (w.tick - t.since > 120) {
+          a.task = { id: "roam" };
+          a.calmUntil = w.tick + P.calm * 0.5;
           return;
         }
         if (dist(a, v) > 0.9) approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6));
         else {
           attack(w, a, v);
-          if (v.dead) a.needs.food = 1;
+          if (v.dead) {
+            const eaters = pack.filter((m) => dist(m, a) < 10);
+            for (const m of eaters) m.task = { id: "feed", left: P.feedTicks * 2, gain: P.bigMeal / eaters.length / (P.feedTicks * 2) };
+          }
         }
         return;
       }
@@ -3408,56 +3674,60 @@ button.quiet{background:transparent;color:var(--muted)}
         if (a.stamina < 0.7) return;
         a.task = null;
       }
-      if (hunger < 0.65) {
-        const prey = nearest(w, a, P.prey, P.sight, (o) => !agentInZone(w, o));
+      if (leader !== a && leader?.task?.id === "chase" && food < P.sated && !(a.ignore?.get(leader.task.target?.id) > w.tick)) {
+        a.task = { id: "chase", target: leader.task.target };
+        return;
+      }
+      if (leader !== a && leader?.task?.id === "maul") {
+        a.task = { id: "maul", target: leader.task.target };
+        return;
+      }
+      const reach = food < P.hungry ? P.sight : food < P.sated ? P.obvious : 0;
+      if (reach) {
+        const prey = nearest(w, a, P.prey, reach, (o) => !agentInZone(w, o) && !(a.ignore?.get(o.id) > w.tick));
         if (prey) {
           a.task = { id: "chase", target: prey };
           return;
         }
-        const bold = w.tick > (a.calmUntil || 0) && (hunger < 0.3 || night > 0.6 && packOf(w, a).length >= 2);
-        if (bold) {
-          const v = nearest(w, a, P.victims, P.sight * 0.8, (o) => o.faction === "colony" && isAlone(w, o, P));
-          if (v) {
-            a.task = { id: "maul", target: v };
-            w.stats.wolfAttacks++;
-            log(w, `\u0412\u043E\u043B\u043A\u0438 \u043D\u0430\u043F\u0430\u0434\u0430\u044E\u0442! <b>${v.name}</b> \u0434\u0430\u043B\u0435\u043A\u043E \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F \u0438 \u0431\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438.`, "danger");
-            for (const m of packOf(w, a)) if (m !== a && dist(m, a) < 10 && m.task?.id !== "feed") {
-              m.task = { id: "maul", target: v };
-              m.calmUntil = w.tick + 500;
-            }
-            a.calmUntil = w.tick + 500;
-            return;
-          }
-        }
-        if (hunger < 0.12 && !w.agents.some((o) => P.prey.includes(o.species))) {
-          a.task = { id: "leave" };
+      }
+      if (w.tick > (a.calmUntil || 0) && b + night * 0.25 >= P.boldPeople) {
+        const v = nearest(w, a, P.victims, P.sight * (0.6 + 0.4 * b), (o) => o.faction === "colony" && !agentInZone(w, o) && company(w, o, P.loneRadius) <= (b > 0.8 ? Math.max(0, pack.length - 2) : 0));
+        if (v) {
+          startMaul(w, a, v, b);
           return;
         }
       }
-      const pack = packOf(w, a), leader = pack[0];
-      if (!t || t.id !== "roam") a.task = { id: "roam" };
-      if (leader !== a && leader) {
-        if (dist(a, leader) > 2.5) approach(w, a, leader.x + (a.id % 3 - 1), leader.y + ((a.id >> 1) % 3 - 1), 0.9);
+      if (leader === a && b > 0.85 && !nearest(w, a, P.prey, P.sight) && Math.random() < P.wanderOff) {
+        for (const m of pack) m.task = { id: "leave" };
+        log(w, "\u0413\u043E\u043B\u043E\u0434\u043D\u0430\u044F \u0441\u0442\u0430\u044F \u0443\u0448\u043B\u0430 \u0438\u0441\u043A\u0430\u0442\u044C \u0434\u0440\u0443\u0433\u0438\u0435 \u0443\u0433\u043E\u0434\u044C\u044F.", "wildlife");
         return;
       }
-      const r = a.task;
-      if (hunger < 0.65) {
-        const scent = nearest(w, a, P.prey, Infinity);
-        if (scent) {
-          approach(w, a, scent.x, scent.y, 0.8);
-          return;
-        }
+      if (!t || t.id !== "roam") a.task = { id: "roam" };
+      if (leader !== a && leader) {
+        if (dist(a, leader) > 2.5) approach(w, a, leader.x + (a.id % 3 - 1), leader.y + ((a.id >> 1) % 3 - 1), 0.95);
+        return;
       }
-      if (!r.spot || dist(a, { x: r.spot[0], y: r.spot[1] }) < 1.5 || Math.random() < 2e-3) {
+      if (food < P.hungry && w.agents.some((o) => P.prey.includes(o.species))) {
+        if (follow(w, a, "prey", 0.85) === "moving") return;
+      }
+      const r = a.task;
+      const d = r.spot ? dist(a, { x: r.spot[0], y: r.spot[1] }) : 0;
+      if (r.spot && d < r.bestD - 0.5) {
+        r.bestD = d;
+        r.since = w.tick;
+      }
+      if (!r.spot || d < 1.5 || w.tick - (r.since || 0) > 120) {
         for (let k = 0; k < 20; k++) {
           const x = 2 + Math.random() * (w.w - 4), y = 2 + Math.random() * (w.h - 4);
           const j = (y | 0) * w.w + (x | 0);
           if (!walkable(w, j) || w.nav.get("zone")[j] < P.zoneShyNight + 6) continue;
           r.spot = [x, y];
+          r.bestD = Infinity;
+          r.since = w.tick;
           break;
         }
       }
-      if (r.spot) approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.8 : 0.55);
+      if (r.spot) approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.85 : 0.7);
     }
   };
 
@@ -3499,15 +3769,23 @@ button.quiet{background:transparent;color:var(--muted)}
       group.push(a);
     }
     if (def2.groupInit) def2.groupInit(group, w);
+    for (const a of group) think(w, a, "arrived");
     const msg = def2.message?.(w, group, side);
     if (msg) log(w, msg, def2.topic || "people", def2.level);
     return group;
   }
   function stepMigration(w) {
+    var _a, _b;
     for (const def2 of MIGRATIONS.all()) {
       if (w.tick < w.migration[def2.id]) continue;
       const group = spawnGroup(w, def2.id);
+      if (!group.length && def2.retry) {
+        w.migration[def2.id] = w.tick + def2.retry;
+        (_a = w.migrationDue)[_b = def2.id] ?? (_a[_b] = w.tick);
+        continue;
+      }
       w.migration[def2.id] = def2.nextAt ? def2.nextAt(w, w.rng, group.length) : w.tick + def2.interval;
+      w.migrationDue[def2.id] = null;
     }
   }
 
@@ -3523,7 +3801,10 @@ button.quiet{background:transparent;color:var(--muted)}
     for (let k = 0; k < Math.round(n * st.clothes); k++) w.armory.push(newItem("clothes"));
     for (const t of st.kit) w.armory.push(newItem(t));
     w.armoryVersion = 1;
-    for (const a of w.agents) outfit(w, a);
+    for (const a of w.agents) {
+      outfit(w, a);
+      think(w, a, "founded");
+    }
     log(w, `${n} ${plural(n, "\u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446", "\u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430", "\u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0435\u0432")} ${n === 1 ? "\u0440\u0430\u0437\u0431\u0438\u043B" : "\u0440\u0430\u0437\u0431\u0438\u043B\u0438"} \u043B\u0430\u0433\u0435\u0440\u044C \xAB${esc(cfg.name)}\xBB.`, "people");
     return w;
   }
@@ -3682,8 +3963,8 @@ button.quiet{background:transparent;color:var(--muted)}
   };
   function shade(hex, k) {
     const n = parseInt(hex.slice(1), 16);
-    const r = (n >> 16 & 255) * k, g = (n >> 8 & 255) * k, b = (n & 255) * k;
-    return `rgb(${r | 0},${g | 0},${b | 0})`;
+    const r = (n >> 16 & 255) * k, g2 = (n >> 8 & 255) * k, b = (n & 255) * k;
+    return `rgb(${r | 0},${g2 | 0},${b | 0})`;
   }
 
   // src/render/renderer.js
@@ -3719,11 +4000,11 @@ button.quiet{background:transparent;color:var(--muted)}
       this.smoke = layer(w);
     }
     paintTerrain(w) {
-      const d = this.terrain.img.data, g = w.grid;
+      const d = this.terrain.img.data, g2 = w.grid;
       for (let i = 0; i < w.n; i++) {
-        let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
-        if (g.bush[i] && g.food[i] > 0.2) {
-          const k = g.food[i] * 0.55;
+        let [r, gg, b] = BY_CODE[g2.terr[i]].color(g2.hgt[i], g2.fert[i], g2.wood[i]);
+        if (g2.bush[i] && g2.food[i] > 0.2) {
+          const k = g2.food[i] * 0.55;
           r = r * (1 - k) + 196 * k;
           gg = gg * (1 - k) + 92 * k;
           b = b * (1 - k) + 149 * k;
@@ -3737,14 +4018,14 @@ button.quiet{background:transparent;color:var(--muted)}
       this.terrain.ctx.putImageData(this.terrain.img, 0, 0);
     }
     paintGlowSmoke(w) {
-      const gd = this.glow.img.data, sd = this.smoke.img.data, g = w.grid;
+      const gd = this.glow.img.data, sd = this.smoke.img.data, g2 = w.grid;
       for (let i = 0; i < w.n; i++) {
-        const f = g.fire[i], o = i * 4, hot = clamp((g.temp[i] - 60) / 400, 0, 1);
+        const f = g2.fire[i], o = i * 4, hot = clamp((g2.temp[i] - 60) / 400, 0, 1);
         gd[o] = 255;
         gd[o + 1] = 120 + f * 90;
         gd[o + 2] = 40 + f * 40;
         gd[o + 3] = Math.min(255, f * 255 + hot * 120);
-        const sm = Math.min(1, g.smoke[i] * 0.6);
+        const sm = Math.min(1, g2.smoke[i] * 0.6);
         sd[o] = 150;
         sd[o + 1] = 150;
         sd[o + 2] = 144;
@@ -3753,30 +4034,32 @@ button.quiet{background:transparent;color:var(--muted)}
       this.glow.ctx.putImageData(this.glow.img, 0, 0);
       this.smoke.ctx.putImageData(this.smoke.img, 0, 0);
     }
-    paintField(w, mode) {
-      const d = this.field.img.data, g = w.grid, dCamp = w.nav.get("camp");
+    paintField(w, mode, view2) {
+      const d = this.field.img.data, g2 = w.grid, dCamp = w.nav.get("camp");
+      const shown = RESOURCES.filter((r) => r.map && !view2.resHidden.has(r.id));
       for (let i = 0; i < w.n; i++) {
         const o = i * 4;
         let r = 0, gg = 0, b = 0, a = 0;
         if (mode === "temp") {
-          [r, gg, b] = tempColor(g.temp[i]);
+          [r, gg, b] = tempColor(g2.temp[i]);
           a = 205;
         } else if (mode === "res") {
-          if (g.food[i] > 0.05) {
-            r = 214;
-            gg = 84;
-            b = 160;
-            a = 60 + g.food[i] * 190;
-          } else if (g.terr[i] === T.FOREST) {
-            r = 120;
-            gg = 210;
-            b = 90;
-            a = g.wood[i] * 170;
+          let best = 0.05, col = null;
+          for (const res of shown) {
+            const v = res.map(w, i);
+            if (v > best) {
+              best = v;
+              col = res.mapColor;
+            }
+          }
+          if (col) {
+            [r, gg, b] = col;
+            a = 70 + best * 180;
           } else {
             r = 20;
             gg = 20;
             b = 16;
-            a = 150;
+            a = 165;
           }
         } else if (mode === "nav") {
           const v = dCamp[i];
@@ -3808,7 +4091,7 @@ button.quiet{background:transparent;color:var(--muted)}
       ctx.drawImage(this.terrain.c, 0, 0, Wpx, Hpx);
       ctx.imageSmoothingEnabled = true;
       if (view2.layer !== "world") {
-        this.paintField(w, view2.layer);
+        this.paintField(w, view2.layer, view2);
         ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx);
       }
       ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
@@ -4150,10 +4433,10 @@ button.quiet{background:transparent;color:var(--muted)}
       for (let i = 0; i < n; i++) {
         const code = t.terr[i];
         cnt[code] = (cnt[code] || 0) + 1;
-        const [r, g, b] = BY_CODE[code].color(t.hgt[i], t.fert[i], 0.8);
+        const [r, g2, b] = BY_CODE[code].color(t.hgt[i], t.fert[i], 0.8);
         const o = i * 4;
         d[o] = r;
-        d[o + 1] = g;
+        d[o + 1] = g2;
         d[o + 2] = b;
         d[o + 3] = 255;
       }
@@ -4231,7 +4514,7 @@ button.quiet{background:transparent;color:var(--muted)}
       $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       $("fires").textContent = w.stats.fireCount;
       const col = colonists(w), raiders = w.agents.filter((a) => a.faction === "raiders").length, hares = ofSpecies(w, "hare").length;
-      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u043E\u0432"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.waitText(w, w.migration.settlers)}</dd><dt>\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` \xB7 ${this.waitText(w, w.migration.raiders)}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd><dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd>`);
+      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt>\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` \xB7 ${this.waitText(w, w.migration.raiders)}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd><dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd>`);
       this.renderCouncil(w);
       this.renderGear(w);
       this.renderBuildings(w);
@@ -4246,6 +4529,12 @@ button.quiet{background:transparent;color:var(--muted)}
       this.lastTick = w.tick;
       this.lastT = now;
       this.renderLog(w);
+    }
+    // the arrival is either still on its way (time left) or due and waiting for a reason
+    settlerText(w) {
+      const def2 = MIGRATIONS.get("settlers"), why = def2.blocked(w);
+      if (w.migrationDue.settlers != null) return why ? `\u0436\u0434\u0451\u0442: ${why}` : "\u0441\u043A\u043E\u0440\u043E";
+      return this.waitText(w, w.migration.settlers) + (why ? ` \xB7 ${why}` : "");
     }
     waitText(w, at) {
       if (!Number.isFinite(at)) return "\u043D\u0435\u0442";
@@ -4302,26 +4591,85 @@ button.quiet{background:transparent;color:var(--muted)}
       <span class="nm">${esc(a.name)}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` \xB7 \u043D\u0435\u0441\u0451\u0442 ${a.carry.n}` : ""}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
       <div class="bars" title="${needs.map((n) => n.label).join(" \xB7 ")} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435">${needs.map((n) => bar(a.needs[n.id], n.color)).join("")}${bar(a.hp, "var(--good)")}</div></div>`).join("") || '<div class="task">\u041A\u043E\u043B\u043E\u043D\u0438\u044F \u043F\u043E\u0433\u0438\u0431\u043B\u0430. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \xAB\u041C\u0435\u043D\u044E \u043C\u0438\u0440\u0430\xBB, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0447\u0430\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E.</div>');
     }
-    readout(w, selected, hoverCell) {
-      const el = $("readout");
-      if (selected && !selected.dead) {
-        const a = selected, sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)].toFixed(1);
-        if (!a.prefs) {
-          el.textContent = `${a.name !== sp.label ? a.name + ", " : ""}${sp.label}: ${taskLabel(a)}${a.equip ? " \xB7 " + gearText(a) : ""} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(a.hp / sp.hp * 100)}% \xB7 \u043F\u043E\u0434 \u043D\u043E\u0433\u0430\u043C\u0438 ${T2} \xB0C`;
-          return;
-        }
-        const needs = sp.needs.map((id) => `${NEEDS.get(id).label} ${Math.round(a.needs[id] * 100)}%`).join(" \xB7 ");
-        const skills = JOBS.filter((j) => j.preferable).map((j) => `${j.short} ${Math.round((a.skill[j.id] || 0) * 100)}`).join(", ");
-        const slots = SLOTS.map((s) => {
-          const it = a.equip?.[s.id];
-          return `${s.label}: ${it ? def(it).short + (Number.isFinite(it.dur) ? ` (${Math.max(0, Math.round(it.dur / def(it).dur * 100))}%)` : "") + (it.ammo != null ? `, \u0441\u0442\u0440\u0435\u043B ${it.ammo}` : "") : "\u2014"}`;
-        }).join("; ");
-        el.textContent = `${a.name}: ${taskLabel(a)} \xB7 ${traitsText(a)} \xB7 ${slots} \xB7 \u043D\u0430\u0432\u044B\u043A\u0438: ${skills} \xB7 ${needs} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(a.hp * 100)}% \xB7 \u043F\u043E\u0434 \u043D\u043E\u0433\u0430\u043C\u0438 ${T2} \xB0C`;
+    // one line under the map: the cell under the cursor
+    readout(w, hoverCell) {
+      if (hoverCell < 0) return;
+      const g2 = w.grid, i = hoverCell, d = w.nav.get("camp")[i];
+      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g2.terr[i]].label} \xB7 ${g2.temp[i].toFixed(1)} \xB0C \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g2.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g2.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g2.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g2.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g2.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
+    }
+    // the card of the selected creature: for colonists a whole person, for the rest a short note
+    renderCard(w, a) {
+      const box = $("personCard");
+      if (!a || a.dead || !w.agents.includes(a)) {
+        box.hidden = true;
+        this.sig.personCard = null;
         return;
       }
-      if (hoverCell < 0) return;
-      const g = w.grid, i = hoverCell, d = w.nav.get("camp")[i];
-      el.textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g.terr[i]].label} \xB7 ${g.temp[i].toFixed(1)} \xB0C \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
+      box.hidden = false;
+      this.set("personCard", a.prefs ? this.personHtml(w, a) : this.creatureHtml(w, a));
+    }
+    where(w, a) {
+      const i = cellOf(w, a), dc = w.nav.get("camp")[i];
+      if (dc < 3) return "\u0443 \u043A\u043E\u0441\u0442\u0440\u0430";
+      if (w.zone[i]) return "\u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438";
+      const d = Math.round(Math.hypot(a.x - w.camp.x, a.y - w.camp.y));
+      return `\u0432 ${d} ${plural(d, "\u043A\u043B\u0435\u0442\u043A\u0435", "\u043A\u043B\u0435\u0442\u043A\u0430\u0445", "\u043A\u043B\u0435\u0442\u043A\u0430\u0445")} \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F`;
+    }
+    creatureHtml(w, a) {
+      const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)].toFixed(1);
+      const rows = [`<dt>\u0421\u0435\u0439\u0447\u0430\u0441</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>\u0417\u0434\u043E\u0440\u043E\u0432\u044C\u0435</dt><dd>${Math.round(a.hp / sp.hp * 100)}%</dd>`];
+      if (sp.predator) {
+        const b = boldness(a, sp.predator);
+        rows.push(
+          `<dt>\u0413\u043E\u043B\u043E\u0434</dt><dd>${a.needs.food > 0.7 ? "\u0441\u044B\u0442" : a.needs.food > 0.35 ? "\u0433\u043E\u043B\u043E\u0434\u0435\u043D" : "\u0438\u0437\u0433\u043E\u043B\u043E\u0434\u0430\u043B\u0441\u044F"} (${Math.round(a.needs.food * 100)}%)</dd>`,
+          `<dt>\u0414\u0435\u0440\u0437\u043E\u0441\u0442\u044C</dt><dd>${b < 0.2 ? "\u043E\u0441\u0442\u043E\u0440\u043E\u0436\u0435\u043D" : b < 0.6 ? "\u0441\u043C\u0435\u043B\u0435\u0435\u0442" : "\u0431\u0435\u0437\u0440\u0430\u0441\u0441\u0443\u0434\u0435\u043D"}</dd>`
+        );
+      }
+      if (a.equip) rows.push(`<dt>\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435</dt><dd>${gearText(a)}</dd>`);
+      rows.push(`<dt>\u041F\u043E\u0434 \u043D\u043E\u0433\u0430\u043C\u0438</dt><dd>${T2} \xB0C</dd>`);
+      const title = a.name !== sp.label ? `${esc(a.name)}, ${sp.label}` : sp.label[0].toUpperCase() + sp.label.slice(1);
+      return `<div class="pc-head"><h3>${title}</h3><button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button></div><dl class="kv">${rows.join("")}</dl>`;
+    }
+    personHtml(w, a) {
+      const sp = SPECIES.get(a.species), mood = moodOf(w, a);
+      const traits = a.traits.map((id) => `<span class="chip">${TRAITS.get(id).label}</span>`).join("");
+      const fresh = a.diary.filter((e) => e.until > w.tick && e.mood !== 0).sort((x, y) => Math.abs(y.mood) - Math.abs(x.mood)).slice(0, 2);
+      const moodPct = Math.round((mood + 1) * 50);
+      const needs = sp.needs.map((id) => {
+        const n = NEEDS.get(id);
+        return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`;
+      }).join("") + `<div class="pc-bar"><span>\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435</span>${bar(a.hp, "var(--good)")}<b>${Math.round(a.hp * 100)}</b></div>`;
+      const want2 = wishes(w, a, councilWish(w, a));
+      const slots = SLOTS.map((s) => {
+        const it = a.equip?.[s.id];
+        const txt = it ? def(it).short + (Number.isFinite(it.dur) ? ` \xB7 ${Math.max(0, Math.round(it.dur / def(it).dur * 100))}%` : "") + (it.ammo != null ? ` \xB7 \u0441\u0442\u0440\u0435\u043B ${it.ammo}` : "") : "\u2014";
+        return `<dt>${s.label}</dt><dd>${txt}</dd>`;
+      }).join("");
+      const skills = JOBS.filter((j) => j.preferable).map((j) => [j, a.skill[j.id] || 0]).sort((x, y) => y[1] - x[1]).map(([j, v]) => `<span class="chip${j.id === a.likes ? " like" : j.id === a.dislikes ? " dislike" : ""}">${j.short} ${Math.round(v * 100)}</span>`).join("");
+      const today = dayOf(w.tick);
+      let lastDay = null;
+      const diary = a.diary.slice(0, 14).map((e) => {
+        const d = dayOf(e.t), head = d !== lastDay ? `<li class="dday">${d === today ? "\u0421\u0435\u0433\u043E\u0434\u043D\u044F" : d === today - 1 ? "\u0412\u0447\u0435\u0440\u0430" : "\u0414\u0435\u043D\u044C " + (d + 1)}</li>` : "";
+        lastDay = d;
+        const hh = clockStr(e.t).split(", ")[1];
+        return `${head}<li class="${e.mood > 0 ? "up" : e.mood < 0 ? "down" : ""}"><span>${hh}</span>${esc(e.text)}</li>`;
+      }).join("");
+      return `<div class="pc-head"><h3>${esc(a.name)}</h3><span class="pc-mood m${mood > 0.15 ? "up" : mood < -0.15 ? "down" : "mid"}">${moodLabel(a, mood)}</span>
+        <button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button></div>
+      <p class="pc-now">\u0421\u0435\u0439\u0447\u0430\u0441 ${taskLabel(a)}, ${this.where(w, a)}.${fresh.length ? " \u041D\u0430 \u0434\u0443\u0448\u0435: " + fresh.map((e) => esc(e.text.replace(/[.!…]+$/, "")).replace(/^./, (ch) => ch.toLowerCase())).join("; ") + "." : ""}</p>
+      <div class="pc-grid">
+        <section><h4>\u0425\u0430\u0440\u0430\u043A\u0442\u0435\u0440</h4>
+          <p class="pc-small">\u041B\u044E\u0431\u0438\u0442 ${JOBS.get(a.likes).label}, \u043D\u0435 \u043B\u044E\u0431\u0438\u0442 ${JOBS.get(a.dislikes).label}.</p>
+          <div class="chips">${traits || '<span class="muted pc-small">\u043D\u0438\u0447\u0435\u043C \u043E\u0441\u043E\u0431\u044B\u043C \u043D\u0435 \u0432\u044B\u0434\u0435\u043B\u044F\u0435\u0442\u0441\u044F</span>'}</div>
+          <h4>\u041D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
+          <h4>\u0421\u0430\u043C\u043E\u0447\u0443\u0432\u0441\u0442\u0432\u0438\u0435</h4>${needs}
+        </section>
+        <section><h4>\u0425\u043E\u0447\u0435\u0442</h4>${want2.length ? `<ul class="pc-list">${want2.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : '<p class="muted pc-small">\u0412\u0441\u0435\u043C \u0434\u043E\u0432\u043E\u043B\u0435\u043D.</p>'}
+          <h4>\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435</h4><dl class="kv">${slots}</dl>
+          <h4>\u041D\u0430\u0432\u044B\u043A\u0438</h4><div class="chips">${skills}</div>
+        </section>
+        <section><h4>\u0414\u043D\u0435\u0432\u043D\u0438\u043A</h4><ul class="pc-diary">${diary || '<li class="muted">\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E.</li>'}</ul></section>
+      </div>`;
     }
   };
 
@@ -4356,13 +4704,13 @@ button.quiet{background:transparent;color:var(--muted)}
     },
     rain: {
       apply(w, cx, cy) {
-        const g = w.grid, amb = ambientTemp(w);
+        const g2 = w.grid, amb = ambientTemp(w);
         for (let y = cy - 7; y <= cy + 7; y++) for (let x = cx - 7; x <= cx + 7; x++) {
           if (!inBounds(w, x, y) || (x - cx) ** 2 + (y - cy) ** 2 > 49) continue;
           const i = y * w.w + x;
-          g.fire[i] = 0;
-          g.temp[i] = Math.min(g.temp[i], amb - 2);
-          g.smoke[i] *= 0.3;
+          g2.fire[i] = 0;
+          g2.temp[i] = Math.min(g2.temp[i], amb - 2);
+          g2.smoke[i] *= 0.3;
         }
         w.nav.dirty("fire");
         log(w, "\u041F\u0440\u043E\u0448\u0451\u043B \u043A\u043E\u0440\u043E\u0442\u043A\u0438\u0439 \u043B\u0438\u0432\u0435\u043D\u044C.", "weather");
@@ -4373,7 +4721,31 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/main.js
   var renderer = new Renderer($("map"));
   var panel = new Panel();
-  var view = { layer: "world", selected: null, speed: 1, tool: "inspect", hover: -1, renderMs: 0 };
+  var view = { layer: "world", selected: null, speed: 1, tool: "inspect", hover: -1, renderMs: 0, resHidden: loadResHidden() };
+  function loadResHidden() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem("forest.resHidden") || "[]"));
+    } catch (e) {
+      return /* @__PURE__ */ new Set();
+    }
+  }
+  function buildResFilter() {
+    const box = $("resFilter");
+    box.innerHTML = RESOURCES.filter((r) => r.map).map((r) => `<button type="button" data-res="${r.id}" aria-pressed="${!view.resHidden.has(r.id)}"><i style="background:rgb(${r.mapColor.join(",")})"></i>${r.label}</button>`).join("");
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      const id = b.dataset.res;
+      if (view.resHidden.has(id)) view.resHidden.delete(id);
+      else view.resHidden.add(id);
+      b.setAttribute("aria-pressed", String(!view.resHidden.has(id)));
+      try {
+        localStorage.setItem("forest.resHidden", JSON.stringify([...view.resHidden]));
+      } catch (err) {
+      }
+    });
+  }
+  buildResFilter();
   var world = null;
   var running = false;
   var menu = new Menu({ onStart: start, onResume: showGame });
@@ -4431,6 +4803,7 @@ button.quiet{background:transparent;color:var(--muted)}
   });
   segmented($("layers"), "layer", (v) => {
     view.layer = v;
+    $("resFilter").hidden = v !== "res";
   });
   segmented($("speeds"), "speed", (v) => {
     view.speed = +v;
@@ -4452,6 +4825,12 @@ button.quiet{background:transparent;color:var(--muted)}
   });
   $("raid").addEventListener("click", () => spawnGroup(world, "raiders"));
   $("openMenu").addEventListener("click", showMenu);
+  $("personCard").addEventListener("click", (e) => {
+    if (e.target.closest("[data-close]")) {
+      view.selected = null;
+      panel.renderCard(world, null);
+    }
+  });
   document.addEventListener("keydown", (e) => {
     if (e.code !== "Space" || !running || e.target !== document.body) return;
     e.preventDefault();
@@ -4477,10 +4856,11 @@ button.quiet{background:transparent;color:var(--muted)}
       if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
       renderer.draw(world, view);
       view.renderMs = renderer.ms;
-      panel.readout(world, view.selected, view.hover);
+      panel.readout(world, view.hover);
       if (now - panelT > 300) {
         panelT = now;
         panel.render(world, view);
+        panel.renderCard(world, view.selected);
       }
     }
     requestAnimationFrame(frame);

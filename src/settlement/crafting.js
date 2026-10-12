@@ -8,6 +8,7 @@ import {BUILDINGS} from '../data/buildings.js';
 import {log} from '../core/log.js';
 import {colonists, has} from './query.js';
 import {allItems, newItem} from '../agents/equipment.js';
+import {think} from '../agents/mind.js';
 
 // how much of a resource the council's goal still needs to keep in the stock
 function reserved(w, res) {
@@ -70,7 +71,7 @@ export function stationHasWork(w, station, a) {
 export function markWorking(w, b, a) { (b.workers || (b.workers = new Map())).set(a.id, w.tick); }
 
 // add labour at a station building; starts an order if none is running
-export function workAt(w, b, amount) {
+export function workAt(w, b, amount, a) {
   if (!b.order) {
     const r = pickRecipe(w, b.key);
     if (!r) return false;
@@ -86,6 +87,7 @@ export function workAt(w, b, amount) {
     w.armory.push(newItem(r.makes.item));
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     log(w, `Сделано: ${ITEMS.get(r.makes.item).label.toLowerCase()}.`, 'craft');
+    if (a) think(w, a, 'madeItem', {item: ITEMS.get(r.makes.item).label.toLowerCase()});
   } else {
     w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
   }

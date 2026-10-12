@@ -57,16 +57,28 @@ export function escapeHeat(w, a, mul = 1.35) {
   moveToward(w, a, (bj % w.w) + 0.5, ((bj / w.w) | 0) + 0.5, mul);
 }
 
-// run directly away from a set of threats, choosing the open direction that gains most distance
+// open space around a point: distance to the map border, capped
+const roomAt = (w, x, y) => Math.min(6, x, y, w.w - x, w.h - y);
+
+// run away from a set of threats. The direction is scored by the distance gained from the threats
+// plus open space (so a cornered animal slides along the edge instead of pressing into it),
+// and kept for a few ticks so the animal does not jitter between two choices.
 export function bolt(w, a, threats, mul) {
+  if (a.boltDir && a.boltDir.left-- > 0) {
+    const [dx, dy] = a.boltDir.v;
+    if (moveToward(w, a, a.x + dx, a.y + dy, mul) !== null) return;
+  }
   let best = null, bs = -Infinity;
   for (let k = 0; k < 16; k++) {
-    const ang = k / 16 * Math.PI * 2, tx = a.x + Math.cos(ang) * 1.5, ty = a.y + Math.sin(ang) * 1.5;
+    const ang = k / 16 * Math.PI * 2, dx = Math.cos(ang) * 1.5, dy = Math.sin(ang) * 1.5, tx = a.x + dx, ty = a.y + dy;
     if (!inBounds(w, tx | 0, ty | 0) || !walkable(w, (ty | 0) * w.w + (tx | 0))) continue;
     let s = 0; for (const t of threats) s += Math.min(8, Math.hypot(tx - t.x, ty - t.y));
-    if (s > bs) { bs = s; best = [tx, ty]; }
+    s += roomAt(w, tx, ty) * 0.9 * Math.max(1, threats.length);
+    if (s > bs) { bs = s; best = [dx, dy]; }
   }
-  if (best) moveToward(w, a, best[0], best[1], mul);
+  if (!best) return;
+  a.boltDir = {v: best, left: 6};
+  moveToward(w, a, a.x + best[0], a.y + best[1], mul);
 }
 
 // head for a moving target, sidestepping water and rocks: pick the open direction that gets closest
@@ -89,7 +101,9 @@ export function ascend(w, a, mapId, mul = 1) {
     const nx = x + DX[k], ny = y + DY[k]; if (!inBounds(w, nx, ny)) continue;
     const j = ny * w.w + nx; if (walkable(w, j) && dist[j] > best && dist[j] < FAR) { best = dist[j]; bj = j; }
   }
-  if (bj >= 0) moveToward(w, a, (bj % w.w) + 0.5, ((bj / w.w) | 0) + 0.5, mul);
+  if (bj < 0) return false;   // already at a local top: the caller should try something else
+  moveToward(w, a, (bj % w.w) + 0.5, ((bj / w.w) | 0) + 0.5, mul);
+  return true;
 }
 
 // sprinting drains stamina; a tired animal slows down and gets it back while walking

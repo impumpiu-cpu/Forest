@@ -7,6 +7,7 @@ import {walkable, isCampArea} from '../world/grid.js';
 import {count, has, buildingById} from './query.js';
 import {recomputeMods} from './mods.js';
 import {recomputeZone} from './zone.js';
+import {think} from '../agents/mind.js';
 
 const ending = d => (d.gender === 'f' ? 'а' : '');
 
@@ -73,7 +74,7 @@ const FINISH_HOOKS = {
   },
 };
 
-export function addLabour(w, b, amount) {
+export function addLabour(w, b, amount, by) {
   if (b.done) return;
   b.progress += amount;
   const d = BUILDINGS.get(b.key);
@@ -84,6 +85,8 @@ export function addLabour(w, b, amount) {
   w.nav.dirty('sites'); w.nav.dirty('rockface');
   for (const id of w.nav.order) if (id.startsWith('station:')) w.nav.dirty(id);
   log(w, `Построен${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`, 'build');
+  const ctx = {building: d.name.toLowerCase(), f: d.gender === 'f'};
+  for (const a of w.agents) if (a.faction === 'colony' && !a.dead) think(w, a, a === by ? 'finishedBuilding' : 'newBuilding', ctx);
 }
 
 export function burnBuilding(w, id) {

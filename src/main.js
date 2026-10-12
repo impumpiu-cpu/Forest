@@ -10,10 +10,26 @@ import {spawnGroup} from './settlement/migration.js';
 import {SIZES, CLIMATES, RAIDS, WILDLIFE, PREDATORS} from './data/presets.js';
 import {TICK_MS} from './core/time.js';
 import {esc} from './core/util.js';
+import {RESOURCES} from './data/resources.js';
 
 const renderer = new Renderer($('map'));
 const panel = new Panel();
-const view = {layer: 'world', selected: null, speed: 1, tool: 'inspect', hover: -1, renderMs: 0};
+const view = {layer: 'world', selected: null, speed: 1, tool: 'inspect', hover: -1, renderMs: 0, resHidden: loadResHidden()};
+
+// resource layer filter: one chip per resource that can be seen on the map, remembered in this browser
+function loadResHidden() { try { return new Set(JSON.parse(localStorage.getItem('forest.resHidden') || '[]')); } catch (e) { return new Set(); } }
+function buildResFilter() {
+  const box = $('resFilter');
+  box.innerHTML = RESOURCES.filter(r => r.map).map(r => `<button type="button" data-res="${r.id}" aria-pressed="${!view.resHidden.has(r.id)}"><i style="background:rgb(${r.mapColor.join(',')})"></i>${r.label}</button>`).join('');
+  box.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const id = b.dataset.res;
+    if (view.resHidden.has(id)) view.resHidden.delete(id); else view.resHidden.add(id);
+    b.setAttribute('aria-pressed', String(!view.resHidden.has(id)));
+    try { localStorage.setItem('forest.resHidden', JSON.stringify([...view.resHidden])); } catch (err) { /* storage unavailable */ }
+  });
+}
+buildResFilter();
 let world = null, running = false;
 
 const menu = new Menu({onStart: start, onResume: showGame});
@@ -54,7 +70,7 @@ $('map').addEventListener('pointermove', e => { if (!world) return; const [x, y]
 $('map').addEventListener('pointerleave', () => { view.hover = -1; });
 $('map').addEventListener('pointerdown', e => { if (!world) return; const [x, y] = eventCell(e); if (x >= 0 && y >= 0 && x < world.w && y < world.h) TOOLS[view.tool].apply(world, x, y, view); });
 segmented($('tools'), 'tool', v => { view.tool = v; if (v !== 'inspect') view.selected = null; });
-segmented($('layers'), 'layer', v => { view.layer = v; });
+segmented($('layers'), 'layer', v => { view.layer = v; $('resFilter').hidden = v !== 'res'; });
 segmented($('speeds'), 'speed', v => { view.speed = +v; });
 $('people').addEventListener('click', e => {
   const p = e.target.closest('.person'); if (!p) return;
@@ -64,6 +80,7 @@ $('windDir').addEventListener('input', e => { world.wind.dir = +e.target.value; 
 $('windStr').addEventListener('input', e => { world.wind.str = +e.target.value / 100; setWind(world); });
 $('raid').addEventListener('click', () => spawnGroup(world, 'raiders'));
 $('openMenu').addEventListener('click', showMenu);
+$('personCard').addEventListener('click', e => { if (e.target.closest('[data-close]')) { view.selected = null; panel.renderCard(world, null); } });
 document.addEventListener('keydown', e => {
   if (e.code !== 'Space' || !running || e.target !== document.body) return;
   e.preventDefault(); view.speed = view.speed ? 0 : 1; press($('speeds'), view.speed, 'speed');
@@ -81,8 +98,8 @@ function frame(now) {
     if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
     renderer.draw(world, view);
     view.renderMs = renderer.ms;
-    panel.readout(world, view.selected, view.hover);
-    if (now - panelT > 300) { panelT = now; panel.render(world, view); }
+    panel.readout(world, view.hover);
+    if (now - panelT > 300) { panelT = now; panel.render(world, view); panel.renderCard(world, view.selected); }
   }
   requestAnimationFrame(frame);
 }

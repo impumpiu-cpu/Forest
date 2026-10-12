@@ -48,9 +48,9 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[0.35 + (c.wantStone ? 0.35 : 0), 'без камня дальше не построиться'], [(a.prefs.mine - 1) * 1.5, 'любит работать с камнем']]},
 
   {id: 'sawmill', name: 'Лесопилка', gender: 'f', cost: {wood: 30, stone: 10}, work: 240, max: 1, wooden: true, color: '#8a6a3c', mark: 'Л', needs: 'quarry',
-    effect: 'Рубка идёт на 60% быстрее, каждое бревно даёт в полтора раза больше дров.',
+    effect: 'Рубка идёт на 60% быстрее, каждое бревно даёт в полтора раза больше древесины.',
     effects: {jobSpeed: {chop: 1.6}, yield: {wood: 1.5}},
-    wish: 'хочет больше дров',
+    wish: 'хочет больше древесины',
     motive: (a) => [[a.mem.walkWood, 'далеко ходить за лесом'], [(a.prefs.chop - 1) * 1.4 + a.skill.chop * 0.4, 'любит рубить лес']]},
 
   {id: 'smokehouse', name: 'Коптильня', gender: 'f', cost: {wood: 15, stone: 15}, work: 220, max: 1, wooden: false, color: '#a85a3a', mark: 'Кп', needs: 'quarry',
@@ -63,19 +63,19 @@ BUILDINGS.registerAll([
     effect: 'Тушение вдвое эффективнее, клетки у лагеря остывают быстрее.',
     effects: {mul: {douse: 2}, add: {coolCamp: 1}},
     wish: 'хочет воду рядом с лагерем',
-    motive: (a, c) => [[a.mem.fire * 1.5, 'видел(а) пожар'], [c.burnt > 0 ? 0.4 : 0, 'боится огня']]},
+    motive: (a, c) => [[a.mem.fire * 1.5, a.gender === 'f' ? 'видела пожар' : 'видел пожар'], [c.burnt > 0 ? 0.4 : 0, 'боится огня']]},
 
   {id: 'palisade', name: 'Частокол', gender: 'm', cost: {wood: 45, stone: 10}, work: 300, max: 1, wooden: true, color: '#6f5a3c', mark: 'Ч', needs: 'quarry',
     effect: 'В лагере защитники получают на 40% меньше урона, налётчики уносят вдвое меньше.',
     effects: {mul: {defense: 0.6, loot: 0.5}},
     wish: 'хочет защиты от чужаков',
-    motive: (a) => [[a.mem.raid * 1.5, 'дрался(ась) с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
+    motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
   {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
     effect: 'Здесь делают одежду, оружие, инструменты, колчаны и стрелы из дерева, кости и кожи.',
     effects: {},
     wish: 'хочет делать снаряжение',
-    motive: (a, c) => [[0.35 + c.unarmed * 0.6, 'нечем отбиваться'], [a.mem.wolf + a.mem.raid, 'видел(а) опасность без оружия'],
+    motive: (a, c) => [[0.35 + c.unarmed * 0.6, 'нечем отбиваться'], [a.mem.wolf + a.mem.raid, a.gender === 'f' ? 'видела опасность без оружия' : 'видел опасность без оружия'],
       [(a.prefs.craft - 1) * 1.4, 'любит мастерить'], [a.mem.cold * 0.5, 'нужна тёплая одежда']]},
 
   {id: 'tannery', name: 'Дубильня', gender: 'f', cost: {wood: 18, stone: 6}, work: 180, max: 1, wooden: false, color: '#7a5a3a', mark: 'Д', station: true, benches: 1, needs: 'crafthut',

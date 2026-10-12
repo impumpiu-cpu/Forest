@@ -6,6 +6,7 @@ import {walkable} from '../world/grid.js';
 import {clamp} from '../core/util.js';
 import {FAR} from '../nav/navigation.js';
 import {dress} from '../agents/equipment.js';
+import {think} from '../agents/mind.js';
 
 const SIDE = ['запада', 'востока', 'севера', 'юга'];
 
@@ -37,6 +38,7 @@ export function spawnGroup(w, id, size) {
     group.push(a);
   }
   if (def.groupInit) def.groupInit(group, w);
+  for (const a of group) think(w, a, 'arrived');
   const msg = def.message?.(w, group, side);
   if (msg) log(w, msg, def.topic || 'people', def.level);
   return group;
@@ -46,6 +48,9 @@ export function stepMigration(w) {
   for (const def of MIGRATIONS.all()) {
     if (w.tick < w.migration[def.id]) continue;
     const group = spawnGroup(w, def.id);
+    // a due arrival that could not happen is retried soon without resetting its schedule
+    if (!group.length && def.retry) { w.migration[def.id] = w.tick + def.retry; w.migrationDue[def.id] ??= w.tick; continue; }
     w.migration[def.id] = def.nextAt ? def.nextAt(w, w.rng, group.length) : w.tick + def.interval;
+    w.migrationDue[def.id] = null;
   }
 }

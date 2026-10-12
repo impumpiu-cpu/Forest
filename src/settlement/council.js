@@ -8,6 +8,7 @@ import {log} from '../core/log.js';
 import {colonists, count, has, popCap, openSites, ofSpecies} from './query.js';
 import {canAfford, eligible, laySite, missing} from './buildings.js';
 import {handItems, allItems, def} from '../agents/equipment.js';
+import {think} from '../agents/mind.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
 
@@ -24,12 +25,33 @@ export function goalNeed(w, res) {
 }
 
 // strongest argument this colonist has for a building: [score, reason]
-function motive(w, a, def, ctx) {
+function motive(w, a, def, ctx, noise = true) {
   const args = def.motive ? def.motive(a, ctx) : [];
   let best = [0, ''];
   for (const o of args) if (o[0] > best[0]) best = o;
-  const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + w.rng() * 0.25;
+  const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rng() * 0.25 : 0);
   return [score, best[0] > 0.05 ? best[1] : def.wish];
+}
+
+function councilCtx(w, cands) {
+  return {
+    crowded: colonists(w).length >= popCap(w) - 1, spoiled: w.stats.spoiledToday, burnt: w.stats.burntCells,
+    preyCount: ofSpecies(w, 'hare').length, wolves: ofSpecies(w, 'wolf').length, count: k => count(w, k),
+    unarmed: colonists(w).filter(a => !handItems(a).some(it => def(it).melee || def(it).ranged)).length / Math.max(1, colonists(w).length),
+    hides: w.stock.hide || 0, broken: w.stats.broken,
+    items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
+    wantStone: !has(w, 'quarry') && cands.some(k => BUILDINGS.get(k).needs === 'quarry' || (BUILDINGS.get(k).cost.stone || 0) > 0),
+  };
+}
+
+// the building this colonist would argue for right now (for the colonist card)
+export function councilWish(w, a) {
+  const cands = BUILDINGS.ids().filter(k => eligible(w, k));
+  if (!cands.length || !a.prefs) return null;
+  const ctx = councilCtx(w, cands);
+  let best = null, bs = 0.3;
+  for (const k of cands) { const [sc, why] = motive(w, a, BUILDINGS.get(k), ctx, false); if (sc > bs) { bs = sc; best = {name: BUILDINGS.get(k).name, why}; } }
+  return best;
 }
 
 export function stepCouncil(w) {
@@ -57,14 +79,7 @@ function hold(w, present, total) {
     const cands = BUILDINGS.ids().filter(k => eligible(w, k));
     if (!cands.length) { decision = 'Всё задуманное построено. Совет просто посидел у огня.'; c.votes = []; c.goal = null; }
     else {
-      const ctx = {
-        crowded: colonists(w).length >= popCap(w) - 1, spoiled: w.stats.spoiledToday, burnt: w.stats.burntCells,
-        preyCount: ofSpecies(w, 'hare').length, wolves: ofSpecies(w, 'wolf').length, count: k => count(w, k),
-        unarmed: colonists(w).filter(a => !handItems(a).some(it => def(it).melee || def(it).ranged)).length / Math.max(1, colonists(w).length),
-        hides: w.stock.hide || 0, broken: w.stats.broken,
-        items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
-        wantStone: !has(w, 'quarry') && cands.some(k => BUILDINGS.get(k).needs === 'quarry' || (BUILDINGS.get(k).cost.stone || 0) > 0),
-      };
+      const ctx = councilCtx(w, cands);
       const tally = {}, weight = {};
       for (const a of present) {
         let best = null, bs = -1, why = '';
@@ -86,6 +101,13 @@ function hold(w, present, total) {
     }
   }
   c.decision = decision; c.args = args.slice(0, 6); c.present = present.length; c.total = total;
+  // everyone who spoke remembers how it went
+  const winner = c.votes[0]?.[0];
+  for (const x of args) {
+    const a = present.find(p => p.name === x.name), choice = BUILDINGS.get(x.key).name.toLowerCase();
+    const id = x.key !== winner ? 'councilLost' : c.goal ? 'councilSaving' : 'councilWon';
+    think(w, a, id, {choice, why: x.why, decision: winner ? BUILDINGS.get(winner).name.toLowerCase() : ''});
+  }
   const quotes = args.slice(0, 3).map(x => `${x.name}: ${BUILDINGS.get(x.key).name.toLowerCase()}, ${x.why}`).join('; ');
   log(w, `Совет у костра (${present.length} из ${total}). ${quotes ? quotes + '. ' : ''}${decision}`, 'council');
   for (const a of colonists(w)) {

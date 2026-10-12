@@ -13,6 +13,7 @@ import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies} from '../../set
 import {councilDue, goalNeed} from '../../settlement/council.js';
 import {stationHasWork} from '../../settlement/crafting.js';
 import {outfit} from '../equipment.js';
+import {think} from '../mind.js';
 import {agentInZone} from '../../settlement/zone.js';
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
@@ -59,7 +60,13 @@ function decide(w, a) {
   let best = null, bs = -Infinity;
   const cur = key(a.task);
   for (const [t, s] of opts) { const sc = s + (key(t) === cur ? 0.12 : 0); if (sc > bs) { bs = sc; best = t; } }
-  if (key(best) !== cur) a.task = best;
+  if (key(best) !== cur) {
+    a.task = best;
+    if (best.id === 'job' && !best.eatNow) {
+      if (best.job === a.likes) think(w, a, 'likedWork', {job: JOBS.get(best.job).label});
+      else if (best.job === a.dislikes) think(w, a, 'dislikedWork', {job: JOBS.get(best.job).label});
+    }
+  }
   else if (best.id === 'fight') a.task.target = best.target;
 }
 
@@ -71,7 +78,7 @@ export const colonistBrain = {
     a.sleeping = false;
     const tid = a.task?.id;
     // reflex: heat overrides everything (firefighters hold out a little longer)
-    if (tid !== 'douse' && (T > 55 || nearFire(w, a, 1.5))) a.task = {id: 'flee'};
+    if (tid !== 'douse' && (T > 55 || nearFire(w, a, 1.5))) { a.task = {id: 'flee'}; think(w, a, 'fledFire'); }
     if (tid === 'douse' && (T > 58 || a.hp < 0.6)) a.task = {id: 'flee'};
     if (a.task?.id === 'flee' || a.task?.id === 'douse') a.mem.fire += 0.006;
     // being attacked can't wait for the next think

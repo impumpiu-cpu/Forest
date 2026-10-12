@@ -7,6 +7,7 @@ import {ITEMS, SLOTS, isWeapon} from '../data/items.js';
 import {SPECIES} from '../data/species.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
+import {think} from './mind.js';
 
 export const def = inst => ITEMS.get(inst.type);
 export const newItem = (type, extra = {}) => ({type, dur: ITEMS.get(type).dur, ...extra});
@@ -63,6 +64,7 @@ export function wear(w, a, inst, amount = 1) {
   recalcGear(a);
   if (a.faction === 'colony') {
     w.stats.broken++; a.mem.broken += 0.4;
+    think(w, a, 'gearBroke', {item: def(inst).short});
     log(w, `У <b>${esc(a.name)}</b> сломался предмет: ${def(inst).short}.`, 'craft');
   }
 }
@@ -184,6 +186,8 @@ export function outfit(w, a) {
   const best = bestLoadout(w, a, pool);
   if (best && best.score > currentScore(w, a) + 0.12) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
+    const gained = [...keep].filter(it => !own.includes(it)).map(it => def(it).short);
+    if (gained.length) think(w, a, 'newGear', {items: gained.join(', ')});
     for (const it of own) if (!keep.has(it)) w.armory.push(it);
     for (const it of keep) { const k = w.armory.indexOf(it); if (k >= 0) w.armory.splice(k, 1); }
     a.equip = emptySlots();

@@ -55,15 +55,17 @@ export class Renderer {
     this.glow.ctx.putImageData(this.glow.img, 0, 0); this.smoke.ctx.putImageData(this.smoke.img, 0, 0);
   }
 
-  paintField(w, mode) {
+  paintField(w, mode, view) {
     const d = this.field.img.data, g = w.grid, dCamp = w.nav.get('camp');
+    const shown = RESOURCES.filter(r => r.map && !view.resHidden.has(r.id));
     for (let i = 0; i < w.n; i++) {
       const o = i * 4; let r = 0, gg = 0, b = 0, a = 0;
       if (mode === 'temp') { [r, gg, b] = tempColor(g.temp[i]); a = 205; }
       else if (mode === 'res') {
-        if (g.food[i] > 0.05) { r = 214; gg = 84; b = 160; a = 60 + g.food[i] * 190; }
-        else if (g.terr[i] === T.FOREST) { r = 120; gg = 210; b = 90; a = g.wood[i] * 170; }
-        else { r = 20; gg = 20; b = 16; a = 150; }
+        // the strongest of the resources switched on in the filter; everything else is dimmed
+        let best = 0.05, col = null;
+        for (const res of shown) { const v = res.map(w, i); if (v > best) { best = v; col = res.mapColor; } }
+        if (col) { [r, gg, b] = col; a = 70 + best * 180; } else { r = 20; gg = 20; b = 16; a = 165; }
       } else if (mode === 'nav') {
         const v = dCamp[i];
         if (v >= FAR) { r = 20; gg = 16; b = 16; a = 170; }
@@ -79,7 +81,7 @@ export class Renderer {
     this.paintTerrain(w); this.paintGlowSmoke(w);
     ctx.imageSmoothingEnabled = false; ctx.drawImage(this.terrain.c, 0, 0, Wpx, Hpx);
     ctx.imageSmoothingEnabled = true;
-    if (view.layer !== 'world') { this.paintField(w, view.layer); ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx); }
+    if (view.layer !== 'world') { this.paintField(w, view.layer, view); ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx); }
     ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
 
     const night = nightness(w.tick);

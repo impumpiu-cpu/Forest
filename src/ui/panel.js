@@ -6,7 +6,7 @@ import {TRAITS} from '../data/traits.js';
 import {SPECIES} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, hourOf, dayOf, ambientTemp} from '../core/time.js';
-import {esc, clamp} from '../core/util.js';
+import {esc, clamp, plural} from '../core/util.js';
 import {colonists, count, has, ofSpecies, popCap} from '../settlement/query.js';
 import {councilDue, COUNCIL_FROM} from '../settlement/council.js';
 import {taskLabel} from '../agents/tasks.js';
@@ -17,9 +17,13 @@ import {LEVELS, LOG_TOPICS} from '../data/logTopics.js';
 import {ITEMS, SLOTS} from '../data/items.js';
 import {gearText, allItems, def as itemDef} from '../agents/equipment.js';
 import {orderText} from '../settlement/crafting.js';
+import {moodOf, moodLabel, wishes} from '../agents/mind.js';
+import {councilWish} from '../settlement/council.js';
+import {boldness} from '../agents/brains/predator.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
 import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
+import {MIGRATIONS} from '../data/migrations.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -74,9 +78,9 @@ export class Panel {
     $('fires').textContent = w.stats.fireCount;
     const col = colonists(w), raiders = w.agents.filter(a => a.faction === 'raiders').length, hares = ofSpecies(w, 'hare').length;
     this.set('stock', RESOURCES.all().map(r => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join('') +
-      `<dt>Костёр</dt><dd>${w.campLit ? 'горит' : w.stock.wood > 0.05 ? 'не нужен' : 'нет дров'}</dd>` +
+      `<dt>Костёр</dt><dd>${w.campLit ? 'горит' : w.stock.wood > 0.05 ? 'не нужен' : 'нет древесины'}</dd>` +
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
-      `<dt>Новый поселенец</dt><dd>${this.waitText(w, w.migration.settlers)}</dd>` +
+      `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
       `<dt>Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` · ${this.waitText(w, w.migration.raiders)}` : ''}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>`);
@@ -91,6 +95,13 @@ export class Panel {
     $('pT').textContent = view.speed ? ((w.tick - this.lastTick) / ((now - this.lastT) / 1000)).toFixed(0) : '0';
     this.lastTick = w.tick; this.lastT = now;
     this.renderLog(w);
+  }
+
+  // the arrival is either still on its way (time left) or due and waiting for a reason
+  settlerText(w) {
+    const def = MIGRATIONS.get('settlers'), why = def.blocked(w);
+    if (w.migrationDue.settlers != null) return why ? `ждёт: ${why}` : 'скоро';
+    return this.waitText(w, w.migration.settlers) + (why ? ` · ${why}` : '');
   }
 
   waitText(w, at) {
@@ -152,19 +163,81 @@ export class Panel {
       || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>');
   }
 
-  readout(w, selected, hoverCell) {
-    const el = $('readout');
-    if (selected && !selected.dead) {
-      const a = selected, sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
-      if (!a.prefs) { el.textContent = `${a.name !== sp.label ? a.name + ', ' : ''}${sp.label}: ${taskLabel(a)}${a.equip ? ' · ' + gearText(a) : ''} · здоровье ${Math.round(a.hp / sp.hp * 100)}% · под ногами ${T} °C`; return; }
-      const needs = sp.needs.map(id => `${NEEDS.get(id).label} ${Math.round(a.needs[id] * 100)}%`).join(' · ');
-      const skills = JOBS.filter(j => j.preferable).map(j => `${j.short} ${Math.round((a.skill[j.id] || 0) * 100)}`).join(', ');
-      const slots = SLOTS.map(s => { const it = a.equip?.[s.id]; return `${s.label}: ${it ? itemDef(it).short + (Number.isFinite(it.dur) ? ` (${Math.max(0, Math.round(it.dur / itemDef(it).dur * 100))}%)` : '') + (it.ammo != null ? `, стрел ${it.ammo}` : '') : '—'}`; }).join('; ');
-      el.textContent = `${a.name}: ${taskLabel(a)} · ${traitsText(a)} · ${slots} · навыки: ${skills} · ${needs} · здоровье ${Math.round(a.hp * 100)}% · под ногами ${T} °C`;
-      return;
-    }
+  // one line under the map: the cell under the cursor
+  readout(w, hoverCell) {
     if (hoverCell < 0) return;
     const g = w.grid, i = hoverCell, d = w.nav.get('camp')[i];
-    el.textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label} · ${g.temp[i].toFixed(1)} °C · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
+    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label} · ${g.temp[i].toFixed(1)} °C · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
+  }
+
+  // the card of the selected creature: for colonists a whole person, for the rest a short note
+  renderCard(w, a) {
+    const box = $('personCard');
+    if (!a || a.dead || !w.agents.includes(a)) { box.hidden = true; this.sig.personCard = null; return; }
+    box.hidden = false;
+    this.set('personCard', a.prefs ? this.personHtml(w, a) : this.creatureHtml(w, a));
+  }
+
+  where(w, a) {
+    const i = cellOf(w, a), dc = w.nav.get('camp')[i];
+    if (dc < 3) return 'у костра';
+    if (w.zone[i]) return 'в поселении';
+    const d = Math.round(Math.hypot(a.x - w.camp.x, a.y - w.camp.y));
+    return `в ${d} ${plural(d, 'клетке', 'клетках', 'клетках')} от лагеря`;
+  }
+
+  creatureHtml(w, a) {
+    const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
+    const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(a.hp / sp.hp * 100)}%</dd>`];
+    if (sp.predator) {
+      const b = boldness(a, sp.predator);
+      rows.push(`<dt>Голод</dt><dd>${a.needs.food > 0.7 ? 'сыт' : a.needs.food > 0.35 ? 'голоден' : 'изголодался'} (${Math.round(a.needs.food * 100)}%)</dd>`,
+        `<dt>Дерзость</dt><dd>${b < 0.2 ? 'осторожен' : b < 0.6 ? 'смелеет' : 'безрассуден'}</dd>`);
+    }
+    if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
+    rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
+    const title = a.name !== sp.label ? `${esc(a.name)}, ${sp.label}` : sp.label[0].toUpperCase() + sp.label.slice(1);
+    return `<div class="pc-head"><h3>${title}</h3><button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div><dl class="kv">${rows.join('')}</dl>`;
+  }
+
+  personHtml(w, a) {
+    const sp = SPECIES.get(a.species), mood = moodOf(w, a);
+    const traits = a.traits.map(id => `<span class="chip">${TRAITS.get(id).label}</span>`).join('');
+    const fresh = a.diary.filter(e => e.until > w.tick && e.mood !== 0).sort((x, y) => Math.abs(y.mood) - Math.abs(x.mood)).slice(0, 2);
+    const moodPct = Math.round((mood + 1) * 50);
+    const needs = sp.needs.map(id => { const n = NEEDS.get(id); return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`; }).join('') +
+      `<div class="pc-bar"><span>здоровье</span>${bar(a.hp, 'var(--good)')}<b>${Math.round(a.hp * 100)}</b></div>`;
+    const want = wishes(w, a, councilWish(w, a));
+    const slots = SLOTS.map(s => {
+      const it = a.equip?.[s.id];
+      const txt = it ? itemDef(it).short + (Number.isFinite(it.dur) ? ` · ${Math.max(0, Math.round(it.dur / itemDef(it).dur * 100))}%` : '') + (it.ammo != null ? ` · стрел ${it.ammo}` : '') : '—';
+      return `<dt>${s.label}</dt><dd>${txt}</dd>`;
+    }).join('');
+    const skills = JOBS.filter(j => j.preferable).map(j => [j, a.skill[j.id] || 0]).sort((x, y) => y[1] - x[1])
+      .map(([j, v]) => `<span class="chip${j.id === a.likes ? ' like' : j.id === a.dislikes ? ' dislike' : ''}">${j.short} ${Math.round(v * 100)}</span>`).join('');
+    const today = dayOf(w.tick);
+    let lastDay = null;
+    const diary = a.diary.slice(0, 14).map(e => {
+      const d = dayOf(e.t), head = d !== lastDay ? `<li class="dday">${d === today ? 'Сегодня' : d === today - 1 ? 'Вчера' : 'День ' + (d + 1)}</li>` : '';
+      lastDay = d;
+      const hh = clockStr(e.t).split(', ')[1];
+      return `${head}<li class="${e.mood > 0 ? 'up' : e.mood < 0 ? 'down' : ''}"><span>${hh}</span>${esc(e.text)}</li>`;
+    }).join('');
+    return `<div class="pc-head"><h3>${esc(a.name)}</h3><span class="pc-mood m${mood > 0.15 ? 'up' : mood < -0.15 ? 'down' : 'mid'}">${moodLabel(a, mood)}</span>
+        <button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div>
+      <p class="pc-now">Сейчас ${taskLabel(a)}, ${this.where(w, a)}.${fresh.length ? ' На душе: ' + fresh.map(e => esc(e.text.replace(/[.!…]+$/, '')).replace(/^./, ch => ch.toLowerCase())).join('; ') + '.' : ''}</p>
+      <div class="pc-grid">
+        <section><h4>Характер</h4>
+          <p class="pc-small">Любит ${JOBS.get(a.likes).label}, не любит ${JOBS.get(a.dislikes).label}.</p>
+          <div class="chips">${traits || '<span class="muted pc-small">ничем особым не выделяется</span>'}</div>
+          <h4>Настроение</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
+          <h4>Самочувствие</h4>${needs}
+        </section>
+        <section><h4>Хочет</h4>${want.length ? `<ul class="pc-list">${want.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted pc-small">Всем доволен.</p>'}
+          <h4>Снаряжение</h4><dl class="kv">${slots}</dl>
+          <h4>Навыки</h4><div class="chips">${skills}</div>
+        </section>
+        <section><h4>Дневник</h4><ul class="pc-diary">${diary || '<li class="muted">Пока ничего.</li>'}</ul></section>
+      </div>`;
   }
 }

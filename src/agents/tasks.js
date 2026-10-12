@@ -11,6 +11,7 @@ import {RUNNERS} from './jobRunners.js';
 import {eatMeal, plunder} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
 import {log} from '../core/log.js';
+import {think} from './mind.js';
 
 export const TASKS = new Registry('task');
 const done = a => { a.task = null; a.think = 0; };
@@ -27,8 +28,11 @@ function mill(w, a, task, radius = 1.2) {
 TASKS.registerAll([
   {id: 'eat', label: () => 'ест', step(w, a) {
     if (follow(w, a, 'camp') !== 'arrived') return;
-    const fed = eatMeal(w);
-    if (fed) { a.needs.food = Math.min(1, a.needs.food + fed); done(a); }
+    const {fed, res} = eatMeal(w);
+    if (fed) {
+      if (res.id === 'meat') think(w, a, 'ateMeat'); else if (a.needs.food < 0.35) think(w, a, 'ateHungry', {food: res.label});
+      a.needs.food = Math.min(1, a.needs.food + fed); done(a);
+    }
     else a.task = {id: 'job', job: 'gather', eatNow: true};   // empty stock: eat straight from the bushes
   }},
 
@@ -40,7 +44,7 @@ TASKS.registerAll([
     a.needs.rest = Math.min(1, a.needs.rest + 0.004 * (1 + 0.6 * beds));
     if (beds > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 0.002 * beds);
     mill(w, a, task, 1.2);
-    if (a.needs.rest >= 1) done(a);
+    if (a.needs.rest >= 1) { think(w, a, beds > 0 ? 'sleptHut' : 'sleptOutside'); done(a); }
   }},
 
   {id: 'warm', label: () => 'греется у костра', step(w, a, task) {
@@ -108,6 +112,7 @@ TASKS.registerAll([
   // gather by the fire when raiders come; done as soon as the alarm is over
   {id: 'muster', label: () => 'собирается по тревоге', step(w, a, task) {
     if (!w.agents.some(o => o.faction === 'raiders' && !o.dead)) { done(a); return; }
+    think(w, a, 'raidAlarm');
     if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
   }},
 

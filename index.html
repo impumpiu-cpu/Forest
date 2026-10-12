@@ -80,6 +80,7 @@
             <button data-layer="res" aria-pressed="false">Ресурсы</button>
             <button data-layer="nav" aria-pressed="false">Навигация</button>
           </div>
+          <div class="logfilter" id="resFilter" hidden aria-label="Какие ресурсы показывать"></div>
         </div>
         <div class="group"><span>Скорость</span>
           <div class="seg" id="speeds">
@@ -100,7 +101,8 @@
         </div>
       </div>
       <div class="canvas-box"><canvas id="map" width="768" height="576"></canvas></div>
-      <div class="readout" id="readout">Наведите на карту, чтобы увидеть значения полей в клетке.</div>
+      <div class="readout" id="readout">Наведите на карту, чтобы увидеть значения полей в клетке. Щёлкните по поселенцу, чтобы узнать его поближе.</div>
+      <section class="card person-card" id="personCard" hidden aria-live="polite"></section>
       <div class="legend">
         <span><i style="background:var(--colony)"></i>колонисты</span>
         <span><i style="background:var(--raider)"></i>налётчики</span>

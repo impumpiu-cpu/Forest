@@ -5,9 +5,10 @@ import {FACTIONS} from '../data/factions.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS, BASE_MODS, LIKE_RANGE, DISLIKE_RANGE, NEUTRAL_RANGE} from '../data/traits.js';
-import {shuffle, weighted, esc} from '../core/util.js';
+import {shuffle, weighted, esc, g} from '../core/util.js';
 import {log} from '../core/log.js';
 import {emptySlots, recalcGear, stripAll, def} from './equipment.js';
+import {think} from './mind.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 const newMemory = () => new Proxy({}, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
@@ -38,7 +39,7 @@ function personality(w, a) {
 // the next name from the list that no living colonist carries
 function freshName(w, names) {
   const used = new Set(w.agents.filter(o => o.faction === 'colony' && !o.dead).map(o => o.name));
-  for (let k = 0; k < names.length; k++) { const n = names[w.nameIdx++ % names.length]; if (!used.has(n)) return n; }
+  for (let k = 0; k < names.length; k++) { const n = names[w.nameIdx++ % names.length]; if (!used.has(n[0])) return n; }
   return names[w.nameIdx++ % names.length];
 }
 
@@ -46,14 +47,15 @@ export function createAgent(w, speciesId, factionId, x, y) {
   const sp = SPECIES.get(speciesId), fa = FACTIONS.get(factionId);
   const a = {
     id: w.nextId++, species: speciesId, faction: factionId, brain: sp.brain || fa.brain,
-    name: sp.names && factionId === 'colony' ? freshName(w, sp.names) : sp.label,
+    name: sp.label, gender: 'm',
     x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(),
     task: null, think: (w.rng() * 15) | 0, cd: 0, carry: null, sleeping: false,
   };
+  if (sp.names && factionId === 'colony') [a.name, a.gender] = freshName(w, sp.names);
   for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
   a.stamina = 1;
   for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rng, n.start); }
-  if (sp.sentient && factionId === 'colony') personality(w, a);
+  if (sp.sentient && factionId === 'colony') { personality(w, a); a.diary = []; }
   if (sp.inventory) a.equip = emptySlots();
   recalcGear(a);
   w.agents.push(a);
@@ -66,18 +68,20 @@ export function kill(w, a, cause, by) {
   a.dead = true; a.hp = 0;
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
-  if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> погиб(ла) в бою.` : `<b>${esc(a.name)}</b> не пережил(а) ${cause}.`, 'death');
+  if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
   else if (sp.id === 'wolf' && by?.faction === 'colony') {
     // a wolf killed in a fight: its hide and bones are brought home
     for (const [r, n] of Object.entries(sp.yields || {})) w.stock[r] = (w.stock[r] || 0) + n;
-    log(w, `<b>${esc(by.name)}</b> убил(а) волка. Шкура и кости — в лагерь.`, 'danger', 'notice');
+    log(w, `<b>${esc(by.name)}</b> ${g(by, 'убил', 'убила')} волка. Шкура и кости — в лагерь.`, 'danger', 'notice');
   } else if (a.faction === 'raiders' && by) {
     const got = [];
     stripAll(a, got);
     const loot = got.filter(it => it.dur > 0);
     w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1;
-    log(w, `Налётчик убит, его сразил(а) <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
+    log(w, `Налётчик убит, ${g(by, 'его сразил', 'его сразила')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }
+  if (a.faction === 'colony') for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) think(w, o, 'grief', {name: a.name, f: a.gender === 'f'});
+  if (by?.faction === 'colony') { if (sp.id === 'wolf') think(w, by, 'killedWolf'); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
   // a fallen colonist's gear goes back to the store
   if (a.faction === 'colony' && a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }
   else if (sp.yields && by) { /* game killed by a hunter: the hunter logs nothing, the meat speaks for itself */ }

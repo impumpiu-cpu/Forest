@@ -3,6 +3,9 @@ import {NEEDS} from '../data/needs.js';
 import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
 import {kill} from './agent.js';
+import {think} from './mind.js';
+
+const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 
 // remembered hardships use the need's `memory` key once the level drops below `remember`
 const REMEMBER_BELOW = {food: 0.3, rest: 0.25, warmth: 0.4};
@@ -15,6 +18,7 @@ export function stepBody(w, a) {
     a.needs[id] = Math.min(1, Math.max(0, a.needs[id] - n.decay(w, a, T)));
     if (a.needs[id] <= (n.harmBelow ?? 0) && n.harm) { a.hp -= n.harm; starving = n.cause; }
     if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 0.004;
+    if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
   }
   if (T > sp.heatHarm) a.hp -= Math.min(0.005, (T - sp.heatHarm) * 0.00004);
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);

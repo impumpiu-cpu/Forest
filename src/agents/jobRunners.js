@@ -11,11 +11,13 @@ import {jobSpeedOf} from '../settlement/mods.js';
 import {workAt, stationHasWork, markWorking} from '../settlement/crafting.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
+import {think, moodOf} from './mind.js';
 
 // skilled hands work faster, the right tool helps; practice slowly builds skill
 export function workRate(w, a, jobId) {
   a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 0.0006);
-  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1);
+  // a good mood helps a little, a bad one slows down (±10%)
+  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
 }
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount); };
 
@@ -57,7 +59,7 @@ export const RUNNERS = {
 
   build(w, a, task) {
     const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
-    if (site && !site.done && w.grid.fire[i] === 0) { addLabour(w, site, workRate(w, a, 'build')); toolWear(w, a, 'build', 0.05); return; }
+    if (site && !site.done && w.grid.fire[i] === 0) { addLabour(w, site, workRate(w, a, 'build'), a); toolWear(w, a, 'build', 0.05); return; }
     const r = follow(w, a, 'sites');
     if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); done(a); a.think = 10; }
   },
@@ -70,7 +72,7 @@ export const RUNNERS = {
     if (r === 'arrived') {
       const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
       if (b) markWorking(w, b, a);
-      if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id))) { done(a); a.think = 20; }
+      if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id), a)) { done(a); a.think = 20; }
     } else if (r === 'none') { w.nav.dirty(map); done(a); a.think = 20; }
   },
 
@@ -105,6 +107,7 @@ export const RUNNERS = {
     const res = shoot(w, a, prey, job.id);
     if (res === 'kill') {
       w.stats.hunted++; a.stalking = false;
+      think(w, a, 'huntKill', {prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label});
       for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
       const near = w.agents.some(o => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
       task.oneMore = a.carry.n < 8 && near; task.prey = null; task.age = 0;

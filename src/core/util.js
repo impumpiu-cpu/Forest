@@ -9,6 +9,9 @@ export function plural(n, one, few, many) {
   return many;
 }
 
+// gendered word: g(a, 'пошёл', 'пошла')
+export const g = (a, m, f) => (a?.gender === 'f' ? f : m);
+
 export function esc(s) {
   return String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 }

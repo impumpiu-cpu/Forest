@@ -6,13 +6,13 @@ const foods = () => RESOURCES.filter(r => r.tags.includes('food'));
 
 export function deposit(w, res, amount) { w.stock[res] = (w.stock[res] || 0) + amount * yieldOf(w, res); }
 
-// eat one meal from the most plentiful food; returns how much it fed (0 if nothing to eat)
+// eat one meal from the most plentiful food; returns {fed, res} (fed 0 if there is nothing to eat)
 export function eatMeal(w) {
   let best = null;
   for (const r of foods()) if (w.stock[r.id] >= 1 && (!best || w.stock[r.id] > w.stock[best.id])) best = r;
-  if (!best) return 0;
+  if (!best) return {fed: 0, res: null};
   w.stock[best.id] -= 1;
-  return best.nutrition;
+  return {fed: best.nutrition, res: best};
 }
 
 export function spoil(w) {

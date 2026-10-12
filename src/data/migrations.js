@@ -13,11 +13,13 @@ import {raidThreat, raidSize, settlerWaitDays} from '../settlement/threat.js';
 export const MIGRATIONS = new Registry('migration');
 
 MIGRATIONS.registerAll([
-  // one newcomer at a time; after an arrival the wait grows with the colony,
-  // and if nobody could come (no food to spare, no room) they check again a couple of hours later
-  {id: 'settlers', species: 'human', faction: 'colony', topic: 'people',
-    nextAt: (w, rng, arrived) => (arrived === 0 ? w.tick + 2 * HOUR : w.tick + settlerWaitDays(colonists(w).length) * DAY),
-    size: w => (foodTotal(w) > colonists(w).length * 5 && colonists(w).length < popCap(w) ? 1 : 0),
+  // one newcomer at a time; after an arrival the wait grows with the colony.
+  // When the wait is over but nobody can come yet (no room, no food to spare) the arrival stays
+  // due and is retried every couple of hours; `blocked` tells the panel why.
+  {id: 'settlers', species: 'human', faction: 'colony', topic: 'people', retry: 2 * HOUR,
+    nextAt: (w, rng, arrived) => w.tick + settlerWaitDays(colonists(w).length) * DAY,
+    blocked: w => (colonists(w).length >= popCap(w) ? 'нет места, нужен шалаш' : foodTotal(w) <= colonists(w).length * 5 ? 'мало еды в запасе' : null),
+    size: w => (MIGRATIONS.get('settlers').blocked(w) ? 0 : 1),
     message: (w, group) => `К лагерю пришла новая душа: <b>${group[0].name}</b>.`},
 
   // hares drift in while the meadows can feed more of them; grazers also wander off on their own

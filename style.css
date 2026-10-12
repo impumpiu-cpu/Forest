@@ -142,4 +142,29 @@ button.quiet{background:transparent;color:var(--muted)}
 .gearbox .slabel{font-size:12px;color:var(--muted);margin-top:4px}
 .gearbox p{margin:0}
 .muted{color:var(--muted)}
+/* ───── person card ───── */
+.person-card{gap:8px}
+.pc-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.pc-head h3{font-family:var(--font-display);font-size:20px;margin:0;letter-spacing:.03em}
+.pc-close{margin-left:auto;font-size:16px;line-height:1;padding:2px 9px}
+.pc-mood{font-size:12.5px;padding:2px 9px;border-radius:999px;background:#272b1f}
+.pc-mood.mup{color:var(--good)} .pc-mood.mdown{color:#f0a0a2} .pc-mood.mmid{color:var(--muted)}
+.pc-now{margin:0;max-width:90ch}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.pc-grid section{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pc-grid h4{margin:4px 0 0;font-family:var(--font-display);font-weight:500;font-size:13px;letter-spacing:.06em;color:var(--muted)}
+.pc-small{margin:0;font-size:12.5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:11.5px;padding:1px 7px;border-radius:999px;background:#2a2e21}
+.chip.like{background:#2f4a2a;color:#cfe6b8} .chip.dislike{background:#4a2a2c;color:#f0c0c2}
+.pc-bar{display:grid;grid-template-columns:72px minmax(0,1fr) 26px;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.pc-bar b{font-family:var(--font-mono);font-weight:400;text-align:right;color:var(--fg)}
+.pc-moodbar{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,#8a3b3e,#4a4a3c 50%,#5d8a3a)}
+.pc-moodbar i{position:absolute;top:-3px;width:4px;height:12px;margin-left:-2px;border-radius:2px;background:var(--fg)}
+.pc-list{margin:0;padding-left:18px;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
+.pc-diary{list-style:none;margin:0;padding:0;font-size:12.5px;display:flex;flex-direction:column;gap:3px;max-height:260px;overflow-y:auto}
+.pc-diary li{border-left:3px solid var(--line);padding-left:7px}
+.pc-diary li span{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-right:6px}
+.pc-diary li.up{border-left-color:var(--good)} .pc-diary li.down{border-left-color:var(--raider)}
+.pc-diary li.dday{border:0;padding:4px 0 0;color:var(--muted);font-size:11.5px;letter-spacing:.05em}
 [hidden]{display:none!important}
