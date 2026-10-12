@@ -189,4 +189,5 @@ button.quiet{background:transparent;color:var(--muted)}
 .go-table th{text-align:left;font-weight:400;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line);padding:4px 8px}
 .go-table td{border-bottom:1px solid #262a1e;padding:5px 8px;vertical-align:top}
 .go-table tr.gone td:first-child{color:#f0b0b2}
+.build{order:3;font-family:var(--font-mono);font-size:11px;color:var(--muted);opacity:.7}
 [hidden]{display:none!important}

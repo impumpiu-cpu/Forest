@@ -199,6 +199,7 @@ button.quiet{background:transparent;color:var(--muted)}
 .go-table th{text-align:left;font-weight:400;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line);padding:4px 8px}
 .go-table td{border-bottom:1px solid #262a1e;padding:5px 8px;vertical-align:top}
 .go-table tr.gone td:first-child{color:#f0b0b2}
+.build{order:3;font-family:var(--font-mono);font-size:11px;color:var(--muted);opacity:.7}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -206,6 +207,7 @@ button.quiet{background:transparent;color:var(--muted)}
 <div class="wrap">
   <header>
     <h1 id="colonyName">Тёплый Брод</h1>
+    <span class="build" id="buildTag"></span>
     <p id="worldInfo">Прототип локальной карты: поля температуры, огня и дыма считаются на сетке, поверх живут колонисты с потребностями и ходят по полям течения.</p>
   </header>
 
@@ -4974,6 +4976,10 @@ button.quiet{background:transparent;color:var(--muted)}
     $("gameOver").hidden = true;
   }
 
+  // src/version.js
+  var VERSION = "0.12 \xB7 12.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 6368c88" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+
   // src/main.js
   var renderer = new Renderer($("map"));
   var panel = new Panel();
@@ -5135,6 +5141,7 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     requestAnimationFrame(frame);
   }
+  $("buildTag").textContent = `\u0432\u0435\u0440\u0441\u0438\u044F ${VERSION} \xB7 ${BUILD}`;
   showMenu();
   requestAnimationFrame(frame);
   window.forest = { get world() {

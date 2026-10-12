@@ -196,7 +196,7 @@ export class Panel {
     }
     if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
     rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
-    const title = a.name !== sp.label ? `${esc(a.name)}, ${sp.label}` : sp.label[0].toUpperCase() + sp.label.slice(1);
+    const title = a.name.toLowerCase() !== sp.label ? `${esc(a.name)}, ${sp.label}` : sp.label[0].toUpperCase() + sp.label.slice(1);
     return `<div class="pc-head"><h3>${title}</h3><button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div><dl class="kv">${rows.join('')}</dl>`;
   }
 

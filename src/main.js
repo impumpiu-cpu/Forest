@@ -12,6 +12,7 @@ import {SIZES, CLIMATES, RAIDS, WILDLIFE, PREDATORS} from './data/presets.js';
 import {TICK_MS} from './core/time.js';
 import {esc} from './core/util.js';
 import {RESOURCES} from './data/resources.js';
+import {VERSION, BUILD} from './version.js';
 
 const renderer = new Renderer($('map'));
 const panel = new Panel();
@@ -115,6 +116,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+$('buildTag').textContent = `версия ${VERSION} · ${BUILD}`;
 showMenu();
 requestAnimationFrame(frame);
 

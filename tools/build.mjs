@@ -2,8 +2,13 @@
 // Usage: npm install && npm run build
 import {build} from 'esbuild';
 import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
+import {execSync} from 'node:child_process';
 
-const res = await build({entryPoints: ['src/main.js'], bundle: true, format: 'iife', write: false, minify: false, target: 'es2020'});
+let commit = 'без git';
+try { commit = execSync('git rev-parse --short HEAD').toString().trim(); } catch (e) { /* not a git checkout */ }
+
+const res = await build({entryPoints: ['src/main.js'], bundle: true, format: 'iife', write: false, minify: false, target: 'es2020',
+  define: {__BUILD__: JSON.stringify('сборка ' + commit)}});
 const js = res.outputFiles[0].text;
 const css = readFileSync('style.css', 'utf8');
 const html = readFileSync('index.html', 'utf8')
