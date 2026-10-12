@@ -5654,7 +5654,7 @@ button.quiet{background:transparent;color:var(--muted)}
 
   // src/version.js
   var VERSION = "0.15 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 208cafe" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 2faeb3c" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -5756,15 +5756,28 @@ button.quiet{background:transparent;color:var(--muted)}
     const text = rec.gz ? await unpack(rec.data) : rec.data;
     return loadWorld(JSON.parse(text));
   }
+  var baseName = (w) => `${w.cfg.name.replace(/[^\p{L}\p{N}]+/gu, "-")}-\u0434\u0435\u043D\u044C${dayOf(w.tick) + 1}.forest`;
   async function downloadSave(w) {
-    const { gz, data } = await pack(JSON.stringify(saveWorld(w)));
+    const text = JSON.stringify(saveWorld(w));
+    const host = typeof window !== "undefined" && window.claude?.use ? await window.claude.use("downloads").catch(() => null) : null;
+    if (host) {
+      try {
+        await host.save({ filename: baseName(w) + ".json", data: text });
+        return "saved";
+      } catch (e) {
+        if (e?.code === "declined") return "declined";
+        throw new Error(e?.message || "\u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E");
+      }
+    }
+    const { gz, data } = await pack(text);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([data], { type: gz ? "application/gzip" : "application/json" }));
-    a.download = `${w.cfg.name.replace(/[^\p{L}\p{N}]+/gu, "-")}-\u0434\u0435\u043D\u044C${dayOf(w.tick) + 1}.forest${gz ? ".gz" : ".json"}`;
+    a.download = baseName(w) + (gz ? ".gz" : ".json");
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5e3);
+    return "saved";
   }
   async function loadFromFile(file) {
     const text = await unpack(new Uint8Array(await file.arrayBuffer()));

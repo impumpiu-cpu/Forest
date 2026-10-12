@@ -59,13 +59,24 @@ export async function loadFromBrowser(id) {
   return loadWorld(JSON.parse(text));
 }
 
+// On claude.ai the page cannot download by itself: the viewer's `downloads` capability offers the
+// file (only plain .json is allowed there). Elsewhere a gzip file is downloaded directly.
+const baseName = w => `${w.cfg.name.replace(/[^\p{L}\p{N}]+/gu, '-')}-день${dayOf(w.tick) + 1}.forest`;
+
 export async function downloadSave(w) {
-  const {gz, data} = await pack(JSON.stringify(saveWorld(w)));
+  const text = JSON.stringify(saveWorld(w));
+  const host = typeof window !== 'undefined' && window.claude?.use ? await window.claude.use('downloads').catch(() => null) : null;
+  if (host) {
+    try { await host.save({filename: baseName(w) + '.json', data: text}); return 'saved'; }
+    catch (e) { if (e?.code === 'declined') return 'declined'; throw new Error(e?.message || 'сохранение файла недоступно'); }
+  }
+  const {gz, data} = await pack(text);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], {type: gz ? 'application/gzip' : 'application/json'}));
-  a.download = `${w.cfg.name.replace(/[^\p{L}\p{N}]+/gu, '-')}-день${dayOf(w.tick) + 1}.forest${gz ? '.gz' : '.json'}`;
+  a.download = baseName(w) + (gz ? '.gz' : '.json');
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  return 'saved';
 }
 
 export async function loadFromFile(file) {
