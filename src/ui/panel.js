@@ -17,6 +17,7 @@ import {LEVELS, LOG_TOPICS} from '../data/logTopics.js';
 import {ITEMS, SLOTS} from '../data/items.js';
 import {gearText, allItems, def as itemDef} from '../agents/equipment.js';
 import {orderText} from '../settlement/crafting.js';
+import {fishTotals} from '../world/lakes.js';
 import {moodOf, moodLabel, wishes} from '../agents/mind.js';
 import {councilWish} from '../settlement/council.js';
 import {boldness} from '../agents/brains/predator.js';
@@ -83,6 +84,7 @@ export class Panel {
       `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
       `<dt>Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` · ${this.waitText(w, w.migration.raiders)}` : ''}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
+      (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +
       `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>`);
     this.renderCouncil(w);
     this.renderGear(w);
@@ -167,6 +169,8 @@ export class Panel {
   readout(w, hoverCell) {
     if (hoverCell < 0) return;
     const g = w.grid, i = hoverCell, d = w.nav.get('camp')[i];
+    const lake = g.lake[i] >= 0 ? w.lakes[g.lake[i]] : null;
+    if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${g.temp[i].toFixed(1)} °C`; return; }
     $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label} · ${g.temp[i].toFixed(1)} °C · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
   }
 

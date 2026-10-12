@@ -39,6 +39,7 @@ function councilCtx(w, cands) {
     preyCount: ofSpecies(w, 'hare').length, wolves: ofSpecies(w, 'wolf').length, count: k => count(w, k),
     unarmed: colonists(w).filter(a => !handItems(a).some(it => def(it).melee || def(it).ranged)).length / Math.max(1, colonists(w).length),
     hides: w.stock.hide || 0, broken: w.stats.broken,
+    fishLakes: w.lakes.filter(l => l.cap && l.fish > l.cap * 0.3).length,
     items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
     wantStone: !has(w, 'quarry') && cands.some(k => BUILDINGS.get(k).needs === 'quarry' || (BUILDINGS.get(k).cost.stone || 0) > 0),
   };

@@ -40,6 +40,8 @@ ITEMS.registerAll([
   // stones lie everywhere: no ammo, but the sling is far weaker and shorter; a quarry gives better stones
   {id: 'sling',  label: 'Праща',   short: 'праща', slot: 'hand', hands: 2, melee: {dmg: 0.5, cd: 14},
     ranged: {dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: 'slingStones'}, dur: 60, glyph: 'sling'},
+  // a rod with a wooden gorge hook and a line of twisted bast; works from the back as well
+  {id: 'rod',    label: 'Удочка с деревянным крючком', short: 'удочка', slot: 'hand', hands: 2, tool: {fish: 1.6}, dur: 80, glyph: 'rod'},
   // body
   {id: 'clothes',     label: 'Одежда из лубяной ткани', short: 'ткань', slot: 'body', armor: 0.08, warmth: 0.35, dur: 50, color: '#c9b38a'},
   {id: 'jerkin',      label: 'Кожаная куртка', short: 'кожа', slot: 'body', armor: 0.2, warmth: 0.55, dur: 70, color: '#8a5a2b'},

@@ -51,6 +51,10 @@ RECIPES.registerAll([
   {id: 'basket', at: 'crafthut', cost: {wood: 2}, work: 450, makes: {item: 'basket'},
     want: c => (short(c.owned('basket'), Math.max(1, c.likes('gather'))) ? 1.2 : 0)},
 
+  // the fisherman's hut makes rods: one for everyone who likes fishing, at least two
+  {id: 'rod', at: 'fishhut', cost: {wood: 3}, work: 500, makes: {item: 'rod'},
+    want: c => (short(c.owned('rod'), Math.max(2, c.likes('fish'))) ? 2.4 : 0)},
+
   // processing: raw hides become leather at the tannery
   {id: 'tan', at: 'tannery', cost: {hide: 1}, work: 150, makes: {resource: 'leather', n: 1},
     want: c => (c.stock('leather') < 8 ? 2 : 0)},

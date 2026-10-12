@@ -6,10 +6,12 @@
 //   'harvest' — walk to a cell on `nav`, work `time` ticks, take one unit, carry `carry` units home
 //   'hunt'    — stalk the nearest prey of `prey` species and shoot it from `range`
 //   'build'   — walk to a construction site and add labour
-//   'craft'   — walk to the job's `station` building and work its current order (settlement/crafting.js)
+//   'craft'   — walk to one of the job's `stations` with work to do and add labour to its order (settlement/crafting.js)
+// requires: a building id, or a list of ids of which any one will do
 // canDo(w, agent): optional personal condition (hunting needs a usable ranged weapon)
 import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
+import {lakeBeside, fishable} from '../world/lakes.js';
 
 export const JOBS = new Registry('job');
 
@@ -39,17 +41,25 @@ JOBS.registerAll([
     valid: (w, i) => w.grid.fire[i] === 0,
     take: () => {}},
 
+  // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back)
+  {id: 'fish', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
+    runner: 'harvest', nav: 'shore', resource: 'fish', carry: 3, time: 70, requires: 'fishhut', memory: 'walkFish',
+    canDo: (w, a) => !!a.gear?.tool.fish,
+    desire: (w, ctx) => (w.lakes.some(fishable) ? want(ctx.food, ctx.pop, 4, 8) * 0.9 + 0.06 : -1),
+    valid: (w, i) => !!lakeBeside(w, i),
+    take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
+
   {id: 'hunt', label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
     runner: 'hunt', nav: 'prey', prey: ['hare'],
     canDo: (w, a) => !!a.gear?.rangedReady,
     desire: (w, ctx) => (ctx.preyCount > 0 ? want(ctx.food, ctx.pop, 4, 8) * 0.8 + 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0) : -1)},
 
   {id: 'craft', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
-    runner: 'craft', station: 'crafthut', requires: 'crafthut',
-    desire: (w, ctx) => (ctx.orders.crafthut ? 0.55 : -1)},
+    runner: 'craft', stations: ['crafthut', 'fishhut'], requires: ['crafthut', 'fishhut'],
+    desire: (w, ctx) => (ctx.orders.crafthut || ctx.orders.fishhut ? 0.55 : -1)},
 
   {id: 'tan', label: 'выделывать кожи', short: 'кожи', verb: 'выделывает кожи', preferable: true,
-    runner: 'craft', station: 'tannery', requires: 'tannery',
+    runner: 'craft', stations: ['tannery'], requires: 'tannery',
     desire: (w, ctx) => (ctx.orders.tannery ? 0.5 : -1)},
 
   {id: 'build', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,

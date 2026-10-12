@@ -68,6 +68,16 @@ export function stationHasWork(w, station, a) {
   return c.map[station];
 }
 
+// how badly the colony needs what this station would make next (its running order counts a bit more,
+// so half-done work gets finished)
+export function stationPriority(w, station) {
+  const b = w.buildings.find(x => x.key === station && x.done); if (!b) return 0;
+  const ctx = craftContext(w);
+  if (b.order) return RECIPES.get(b.order.recipe).want(ctx) + 0.5;
+  const r = pickRecipe(w, station, ctx);
+  return r ? r.want(ctx) : 0;
+}
+
 export function markWorking(w, b, a) { (b.workers || (b.workers = new Map())).set(a.id, w.tick); }
 
 // add labour at a station building; starts an order if none is running

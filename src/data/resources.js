@@ -9,6 +9,10 @@ export const RESOURCES = new Registry('resource');
 RESOURCES.registerAll([
   {id: 'berries', label: 'ягоды',   short: 'ягоды',   tags: ['food'], nutrition: 1.0, spoil: 1.0, loot: 4, color: '#c45c95',
     map: (w, i) => w.grid.food[i], mapColor: [214, 84, 160]},
+  // fish lives in lakes (world/lakes.js); the layer shows how full each lake is
+  {id: 'fish', label: 'рыба', short: 'рыба', tags: ['food'], nutrition: 1.1, spoil: 2, loot: 3, color: '#6fa8c8',
+    map: (w, i) => { const id = w.grid.lake?.[i]; const l = id >= 0 ? w.lakes[id] : null; return l?.cap ? 0.25 + 0.75 * l.fish / l.cap : 0; },
+    mapColor: [96, 176, 236]},
   {id: 'meat',    label: 'мясо',    short: 'мясо',    tags: ['food'], nutrition: 1.3, spoil: 2.5, loot: 3, color: '#d0786a'},
   {id: 'wood',    label: 'древесина', short: 'древесина', tags: ['fuel', 'material'], loot: 4, color: '#a5794a',
     map: (w, i) => (w.grid.terr[i] === T.FOREST ? w.grid.wood[i] : 0), mapColor: [120, 210, 90]},

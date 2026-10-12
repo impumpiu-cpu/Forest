@@ -11,6 +11,7 @@ import {isCampArea} from './grid.js';
 import {setWind} from './weather.js';
 import {recomputeZone} from '../settlement/zone.js';
 import {newChronicle} from '../settlement/chronicle.js';
+import {findLakes} from './lakes.js';
 
 function noiseLayer(rnd, w, h, cell) {
   const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
@@ -94,6 +95,7 @@ export function createWorld(cfg) {
     g.temp[i] = amb;
   }
   for (const r of RESOURCES.all()) world.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
+  findLakes(world);
   recomputeZone(world);
   for (const m of MIGRATIONS.all()) world.migration[m.id] = m.nextAt ? m.nextAt(world, t.rng) : world.tick + (m.interval || 0);
   setWind(world);

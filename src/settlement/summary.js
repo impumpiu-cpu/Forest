@@ -62,6 +62,7 @@ export function summarize(w) {
     award('Лучший охотник', r => r.stats.hunted, (r, v) => `${v} ${plural(v, 'заяц', 'зайца', 'зайцев')}`),
     award('Лесоруб', r => r.stats.gathered.wood || 0, (r, v) => `${v} ед. древесины`),
     award('Собиратель', r => r.stats.gathered.berries || 0, (r, v) => `${v} ед. ягод`),
+    award('Рыбак', r => r.stats.gathered.fish || 0, (r, v) => `${v} ед. рыбы`),
     award('Каменотёс', r => r.stats.gathered.stone || 0, (r, v) => `${v} ед. камня`),
     award('Мастер', r => r.stats.crafted, (r, v) => `${v} ${plural(v, 'вещь', 'вещи', 'вещей')}`),
     award('Строитель', r => r.stats.labour, (r, v) => `${Math.round(v / 120)} ч на стройке`, 240),

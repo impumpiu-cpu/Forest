@@ -611,6 +611,23 @@ button.quiet{background:transparent;color:var(--muted)}
       map: (w, i) => w.grid.food[i],
       mapColor: [214, 84, 160]
     },
+    // fish lives in lakes (world/lakes.js); the layer shows how full each lake is
+    {
+      id: "fish",
+      label: "\u0440\u044B\u0431\u0430",
+      short: "\u0440\u044B\u0431\u0430",
+      tags: ["food"],
+      nutrition: 1.1,
+      spoil: 2,
+      loot: 3,
+      color: "#6fa8c8",
+      map: (w, i) => {
+        const id = w.grid.lake?.[i];
+        const l = id >= 0 ? w.lakes[id] : null;
+        return l?.cap ? 0.25 + 0.75 * l.fish / l.cap : 0;
+      },
+      mapColor: [96, 176, 236]
+    },
     { id: "meat", label: "\u043C\u044F\u0441\u043E", short: "\u043C\u044F\u0441\u043E", tags: ["food"], nutrition: 1.3, spoil: 2.5, loot: 3, color: "#d0786a" },
     {
       id: "wood",
@@ -648,7 +665,7 @@ button.quiet{background:transparent;color:var(--muted)}
   var FOOD = () => RESOURCES.filter((r) => r.tags.includes("food"));
   var foodTotal = (w) => FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
   var popCap = (w) => 8 + w.mods.add.popCap;
-  var jobUnlocked = (w, job) => !job.requires || has(w, job.requires);
+  var jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some((b) => has(w, b));
 
   // src/data/items.js
   var SLOTS = [
@@ -690,6 +707,8 @@ button.quiet{background:transparent;color:var(--muted)}
       dur: 60,
       glyph: "sling"
     },
+    // a rod with a wooden gorge hook and a line of twisted bast; works from the back as well
+    { id: "rod", label: "\u0423\u0434\u043E\u0447\u043A\u0430 \u0441 \u0434\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u043C \u043A\u0440\u044E\u0447\u043A\u043E\u043C", short: "\u0443\u0434\u043E\u0447\u043A\u0430", slot: "hand", hands: 2, tool: { fish: 1.6 }, dur: 80, glyph: "rod" },
     // body
     { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", armor: 0.08, warmth: 0.35, dur: 50, color: "#c9b38a" },
     { id: "jerkin", label: "\u041A\u043E\u0436\u0430\u043D\u0430\u044F \u043A\u0443\u0440\u0442\u043A\u0430", short: "\u043A\u043E\u0436\u0430", slot: "body", armor: 0.2, warmth: 0.55, dur: 70, color: "#8a5a2b" },
@@ -1442,8 +1461,8 @@ button.quiet{background:transparent;color:var(--muted)}
       color: "#a85a3a",
       mark: "\u041A\u043F",
       needs: "quarry",
-      effect: "\u042F\u0433\u043E\u0434\u044B \u0438 \u043C\u044F\u0441\u043E \u043F\u0435\u0440\u0435\u0440\u0430\u0431\u0430\u0442\u044B\u0432\u0430\u044E\u0442\u0441\u044F: +40% \u0435\u0434\u044B, \u043F\u043E\u0440\u0447\u0430 \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435.",
-      effects: { yield: { berries: 1.4, meat: 1.4 }, mul: { spoil: 0.5 } },
+      effect: "\u042F\u0433\u043E\u0434\u044B, \u043C\u044F\u0441\u043E \u0438 \u0440\u044B\u0431\u0430 \u043F\u0435\u0440\u0435\u0440\u0430\u0431\u0430\u0442\u044B\u0432\u0430\u044E\u0442\u0441\u044F: +40% \u0435\u0434\u044B, \u043F\u043E\u0440\u0447\u0430 \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435.",
+      effects: { yield: { berries: 1.4, meat: 1.4, fish: 1.4 }, mul: { spoil: 0.5 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u043F\u0430\u0441\u043E\u0432 \u043D\u0430 \u0447\u0451\u0440\u043D\u044B\u0439 \u0434\u0435\u043D\u044C",
       motive: (a, c) => [[a.mem.hunger * 0.8, "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u043F\u0430\u0441\u043E\u0432 \u0435\u0434\u044B"], [(a.prefs.gather - 1) * 0.6 + (a.prefs.hunt - 1) * 0.6, "\u0434\u043E\u0431\u044B\u0432\u0430\u0435\u0442 \u0435\u0434\u0443 \u0438 \u0445\u043E\u0447\u0435\u0442 \u0435\u0451 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"], [c.spoiled * 0.04, "\u0435\u0434\u0430 \u043F\u043E\u0440\u0442\u0438\u0442\u0441\u044F"]]
     },
@@ -1478,6 +1497,26 @@ button.quiet{background:transparent;color:var(--muted)}
       effects: { mul: { defense: 0.6, loot: 0.5 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u0449\u0438\u0442\u044B \u043E\u0442 \u0447\u0443\u0436\u0430\u043A\u043E\u0432",
       motive: (a) => [[a.mem.raid * 1.5, a.gender === "f" ? "\u0434\u0440\u0430\u043B\u0430\u0441\u044C \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438" : "\u0434\u0440\u0430\u043B\u0441\u044F \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438"], [a.mem.wolf * 1.4, "\u0431\u043E\u0438\u0442\u0441\u044F \u0432\u043E\u043B\u043A\u043E\u0432"]]
+    },
+    // built by the water when it can be: the nearest lot within reach that touches a lake with fish
+    {
+      id: "fishhut",
+      name: "\u0425\u0438\u0436\u0438\u043D\u0430 \u0440\u044B\u0431\u0430\u043A\u0430",
+      gender: "f",
+      cost: { wood: 16 },
+      work: 160,
+      max: 1,
+      wooden: true,
+      color: "#5d8fa8",
+      mark: "\u0420\u044B",
+      station: true,
+      benches: 1,
+      near: "fish",
+      effect: "\u0417\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442 \u0443\u0434\u043E\u0447\u043A\u0438. \u0420\u044B\u0431\u0430\u043A\u0438 \u043B\u043E\u0432\u044F\u0442 \u043D\u0430 \u0442\u0440\u0435\u0442\u044C \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u0443\u043B\u043E\u0432 \u043D\u0430 30% \u0431\u043E\u043B\u044C\u0448\u0435.",
+      effects: { jobSpeed: { fish: 1.35 }, yield: { fish: 1.3 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u043B\u043E\u0432\u0438\u0442\u044C \u0440\u044B\u0431\u0443",
+      motive: (a, c) => [[c.fishLakes ? 0.25 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"]],
+      available: (w) => w.lakes.some((l) => l.cap > 0)
     },
     {
       id: "crafthut",
@@ -1705,6 +1744,79 @@ button.quiet{background:transparent;color:var(--muted)}
   };
   var daysLived = (w, r) => ((r.died ?? w.tick) - r.arrived) / DAY;
 
+  // src/world/lakes.js
+  var FISHING = {
+    minCells: 40,
+    // smaller ponds have no fish worth catching
+    perCell: 0.3,
+    // fish a lake can hold per cell of water…
+    maxStock: 90,
+    // …up to this many
+    growth: 0.25,
+    // logistic growth per day: fastest when the lake is half full, none when full
+    trickle: 8e-3,
+    // share of capacity that swims in per day even into an emptied lake
+    reopenAt: 0.5
+    // a fished-out lake is left alone until it is this full again
+  };
+  var fishable = (l) => l.cap > 0 && !l.resting && l.fish >= 1;
+  function findLakes(w) {
+    const { terr } = w.grid, W = w.w, H = w.h;
+    const lakeId = new Int16Array(w.n).fill(-1), lakes = [];
+    const stack = [];
+    for (let s = 0; s < w.n; s++) {
+      if (terr[s] !== T.WATER || lakeId[s] >= 0) continue;
+      const id = lakes.length, cells = [];
+      lakeId[s] = id;
+      stack.push(s);
+      while (stack.length) {
+        const i = stack.pop();
+        cells.push(i);
+        const x = i % W, y = i / W | 0;
+        for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const j = ny * W + nx;
+          if (terr[j] === T.WATER && lakeId[j] < 0) {
+            lakeId[j] = id;
+            stack.push(j);
+          }
+        }
+      }
+      const cap = cells.length >= FISHING.minCells ? Math.min(FISHING.maxStock, Math.round(cells.length * FISHING.perCell)) : 0;
+      lakes.push({ id, size: cells.length, cap, fish: cap });
+    }
+    w.grid.lake = lakeId;
+    w.lakes = lakes;
+  }
+  function lakeBeside(w, i, minFish) {
+    const x = i % w.w, y = i / w.w | 0;
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+      if (nx < 0 || ny < 0 || nx >= w.w || ny >= w.h) continue;
+      const id = w.grid.lake[ny * w.w + nx];
+      const l = id >= 0 ? w.lakes[id] : null;
+      if (l && l.cap && (minFish === 0 || (minFish == null ? fishable(l) : l.fish >= minFish))) return l;
+    }
+    return null;
+  }
+  function stepLakes(w) {
+    for (const l of w.lakes) {
+      if (!l.cap || l.fish >= l.cap) continue;
+      if (l.fish < 1 && !l.resting) {
+        l.resting = true;
+        w.nav?.dirty("shore");
+        log(w, `\u041E\u0437\u0435\u0440\u043E \u0432 ${l.size} \u043A\u043B\u0435\u0442\u043E\u043A \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E \u0434\u043E \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0439 \u0440\u044B\u0431\u044B. \u0420\u044B\u0431\u0430 \u0432\u0435\u0440\u043D\u0451\u0442\u0441\u044F \u043D\u0435 \u0441\u043A\u043E\u0440\u043E.`, "wildlife");
+      }
+      const perDay = FISHING.growth * l.fish * (1 - l.fish / l.cap) + FISHING.trickle * l.cap;
+      l.fish = Math.min(l.cap, l.fish + perDay / DAY);
+      if (l.resting && l.fish >= l.cap * FISHING.reopenAt) {
+        l.resting = false;
+        w.nav?.dirty("shore");
+        log(w, `\u0412 \u043E\u0437\u0435\u0440\u043E \u0432 ${l.size} \u043A\u043B\u0435\u0442\u043E\u043A \u0432\u0435\u0440\u043D\u0443\u043B\u0430\u0441\u044C \u0440\u044B\u0431\u0430.`, "wildlife");
+      }
+    }
+  }
+  var fishTotals = (w) => w.lakes.reduce((s, l) => [s[0] + l.fish, s[1] + l.cap], [0, 0]);
+
   // src/world/generate.js
   function noiseLayer(rnd, w, h, cell) {
     const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
@@ -1838,6 +1950,7 @@ button.quiet{background:transparent;color:var(--muted)}
       g2.temp[i] = amb;
     }
     for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
+    findLakes(world2);
     recomputeZone(world2);
     for (const m of MIGRATIONS.all()) world2.migration[m.id] = m.nextAt ? m.nextAt(world2, t.rng) : world2.tick + (m.interval || 0);
     setWind(world2);
@@ -1854,12 +1967,17 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   function eligible(w, key2) {
     const d = BUILDINGS.get(key2);
-    return count(w, key2, true) < d.max && (!d.needs || has(w, d.needs));
+    return count(w, key2, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w));
   }
-  function findLot(w) {
+  function findLot(w, near) {
+    if (near === "fish") {
+      const lot = findLot(w, "fish-shore");
+      if (lot >= 0) return lot;
+    }
+    const shore = near === "fish-shore", R = shore ? 24 : 14;
     const g2 = w.grid;
     let best = -1, bd = 1e9;
-    for (let y = w.camp.y - 14; y <= w.camp.y + 13; y++) for (let x = w.camp.x - 14; x <= w.camp.x + 13; x++) {
+    for (let y = w.camp.y - R; y <= w.camp.y + R - 1; y++) for (let x = w.camp.x - R; x <= w.camp.x + R - 1; x++) {
       if (x < 1 || y < 1 || x >= w.w - 2 || y >= w.h - 2) continue;
       const d = (x + 1 - w.camp.x) ** 2 + (y + 1 - w.camp.y) ** 2;
       if (d < 25 || d >= bd) continue;
@@ -1871,6 +1989,7 @@ button.quiet{background:transparent;color:var(--muted)}
           break;
         }
       }
+      if (ok && shore) ok = [0, 1, w.w, w.w + 1].some((o) => lakeBeside(w, y * w.w + x + o, 0));
       if (ok) {
         bd = d;
         best = y * w.w + x;
@@ -1881,7 +2000,7 @@ button.quiet{background:transparent;color:var(--muted)}
   function laySite(w, key2) {
     const d = BUILDINGS.get(key2);
     if (!eligible(w, key2) || !canAfford(w, d.cost)) return null;
-    const lot = findLot(w);
+    const lot = findLot(w, d.near);
     if (lot < 0) {
       log(w, "\u0412\u043E\u043A\u0440\u0443\u0433 \u043B\u0430\u0433\u0435\u0440\u044F \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043C\u0435\u0441\u0442\u0430 \u043F\u043E\u0434 \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0443.", "build");
       return null;
@@ -2148,6 +2267,12 @@ button.quiet{background:transparent;color:var(--muted)}
       prepare: (w) => new Set(openSites(w).flatMap((b) => b.cells)),
       seed: (w, i, cells) => cells.has(i)
     },
+    // shore of lakes that still have fish
+    {
+      id: "shore",
+      active: (w) => has(w, "fishhut"),
+      seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)
+    },
     // game animals: hunters and predators walk this field until they are close enough to go straight
     {
       id: "prey",
@@ -2361,6 +2486,31 @@ button.quiet{background:transparent;color:var(--muted)}
       take: () => {
       }
     },
+    // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back)
+    {
+      id: "fish",
+      label: "\u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C",
+      short: "\u0440\u044B\u0431\u0430\u043B\u043A\u0430",
+      verb: "\u0440\u044B\u0431\u0430\u0447\u0438\u0442",
+      preferable: true,
+      runner: "harvest",
+      nav: "shore",
+      resource: "fish",
+      carry: 3,
+      time: 70,
+      requires: "fishhut",
+      memory: "walkFish",
+      canDo: (w, a) => !!a.gear?.tool.fish,
+      desire: (w, ctx) => w.lakes.some(fishable) ? want(ctx.food, ctx.pop, 4, 8) * 0.9 + 0.06 : -1,
+      valid: (w, i) => !!lakeBeside(w, i),
+      take: (w, i) => {
+        const l = lakeBeside(w, i);
+        if (l) {
+          l.fish -= 1;
+          if (!fishable(l)) w.nav.dirty("shore");
+        }
+      }
+    },
     {
       id: "hunt",
       label: "\u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F",
@@ -2380,9 +2530,9 @@ button.quiet{background:transparent;color:var(--muted)}
       verb: "\u043C\u0430\u0441\u0442\u0435\u0440\u0438\u0442",
       preferable: true,
       runner: "craft",
-      station: "crafthut",
-      requires: "crafthut",
-      desire: (w, ctx) => ctx.orders.crafthut ? 0.55 : -1
+      stations: ["crafthut", "fishhut"],
+      requires: ["crafthut", "fishhut"],
+      desire: (w, ctx) => ctx.orders.crafthut || ctx.orders.fishhut ? 0.55 : -1
     },
     {
       id: "tan",
@@ -2391,7 +2541,7 @@ button.quiet{background:transparent;color:var(--muted)}
       verb: "\u0432\u044B\u0434\u0435\u043B\u044B\u0432\u0430\u0435\u0442 \u043A\u043E\u0436\u0438",
       preferable: true,
       runner: "craft",
-      station: "tannery",
+      stations: ["tannery"],
       requires: "tannery",
       desire: (w, ctx) => ctx.orders.tannery ? 0.5 : -1
     },
@@ -3026,6 +3176,15 @@ button.quiet{background:transparent;color:var(--muted)}
       makes: { item: "basket" },
       want: (c) => short(c.owned("basket"), Math.max(1, c.likes("gather"))) ? 1.2 : 0
     },
+    // the fisherman's hut makes rods: one for everyone who likes fishing, at least two
+    {
+      id: "rod",
+      at: "fishhut",
+      cost: { wood: 3 },
+      work: 500,
+      makes: { item: "rod" },
+      want: (c) => short(c.owned("rod"), Math.max(2, c.likes("fish"))) ? 2.4 : 0
+    },
     // processing: raw hides become leather at the tannery
     {
       id: "tan",
@@ -3099,6 +3258,14 @@ button.quiet{background:transparent;color:var(--muted)}
     if (!b || busyOthers(w, b, a) >= (BUILDINGS.get(station).benches || 1)) return false;
     if (!(station in c.map)) c.map[station] = !!b.order || !!pickRecipe(w, station, c.ctx || (c.ctx = craftContext(w)));
     return c.map[station];
+  }
+  function stationPriority(w, station) {
+    const b = w.buildings.find((x) => x.key === station && x.done);
+    if (!b) return 0;
+    const ctx = craftContext(w);
+    if (b.order) return RECIPES.get(b.order.recipe).want(ctx) + 0.5;
+    const r = pickRecipe(w, station, ctx);
+    return r ? r.want(ctx) : 0;
   }
   function markWorking(w, b, a) {
     (b.workers || (b.workers = /* @__PURE__ */ new Map())).set(a.id, w.tick);
@@ -3218,12 +3385,17 @@ button.quiet{background:transparent;color:var(--muted)}
     },
     // work the current order at a station building (crafthut, tannery…)
     craft(w, a, task) {
-      const job = JOBS.get(task.job), map = "station:" + job.station;
-      if (!stationHasWork(w, job.station, a)) {
+      const job = JOBS.get(task.job);
+      if (!task.station || !stationHasWork(w, task.station, a)) {
+        const open = job.stations.filter((s) => stationHasWork(w, s, a));
+        task.station = open.sort((x, y) => stationPriority(w, y) - stationPriority(w, x))[0];
+      }
+      if (!task.station) {
         done(a);
         a.think = 20;
         return;
       }
+      const map = "station:" + task.station;
       const r = follow(w, a, map);
       if (r === "arrived") {
         const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
@@ -3342,6 +3514,7 @@ button.quiet{background:transparent;color:var(--muted)}
       unarmed: colonists(w).filter((a) => !handItems(a).some((it) => def(it).melee || def(it).ranged)).length / Math.max(1, colonists(w).length),
       hides: w.stock.hide || 0,
       broken: w.stats.broken,
+      fishLakes: w.lakes.filter((l) => l.cap && l.fish > l.cap * 0.3).length,
       items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
       wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
     };
@@ -4091,6 +4264,7 @@ button.quiet{background:transparent;color:var(--muted)}
     const t0 = performance.now();
     stepFields(w);
     stepWeather(w);
+    stepLakes(w);
     const t1 = performance.now();
     w.nav.step();
     const t2 = performance.now();
@@ -4152,6 +4326,15 @@ button.quiet{background:transparent;color:var(--muted)}
       ctx.arc(x - r * 0.4, y, r * 1.1, -1.1, 1.1);
       ctx.stroke();
       line(ctx, x + r * 0.1, y - r, x + r * 0.1, y + r, "#e8e2cf", 0.7);
+    },
+    rod(ctx, x, y, r) {
+      line(ctx, x, y + r, x + r * 0.9, y - r * 1.6, "#a5794a", 1.1);
+      ctx.strokeStyle = "rgba(232,226,207,0.7)";
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(x + r * 0.9, y - r * 1.6);
+      ctx.lineTo(x + r * 1.3, y + r * 0.6);
+      ctx.stroke();
     },
     sling(ctx, x, y, r) {
       ctx.strokeStyle = "#9b7650";
@@ -4794,7 +4977,7 @@ button.quiet{background:transparent;color:var(--muted)}
       $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       $("fires").textContent = w.stats.fireCount;
       const col = colonists(w), raiders = w.agents.filter((a) => a.faction === "raiders").length, hares = ofSpecies(w, "hare").length;
-      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt>\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` \xB7 ${this.waitText(w, w.migration.raiders)}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd><dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd>`);
+      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt>\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].every ? ` \xB7 ${this.waitText(w, w.migration.raiders)}` : ""}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>` + (fishTotals(w)[1] ? `<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>${Math.floor(fishTotals(w)[0])} \u0438\u0437 ${fishTotals(w)[1]}</dd>` : "<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>\u043D\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0438\u0445 \u043E\u0437\u0451\u0440</dd>") + `<dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd>`);
       this.renderCouncil(w);
       this.renderGear(w);
       this.renderBuildings(w);
@@ -4875,6 +5058,11 @@ button.quiet{background:transparent;color:var(--muted)}
     readout(w, hoverCell) {
       if (hoverCell < 0) return;
       const g2 = w.grid, i = hoverCell, d = w.nav.get("camp")[i];
+      const lake = g2.lake[i] >= 0 ? w.lakes[g2.lake[i]] : null;
+      if (lake) {
+        $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) \u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A \xB7 ${lake.cap ? `\u0440\u044B\u0431\u044B ${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E, \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"} \xB7 ${g2.temp[i].toFixed(1)} \xB0C`;
+        return;
+      }
       $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g2.terr[i]].label} \xB7 ${g2.temp[i].toFixed(1)} \xB0C \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g2.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g2.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g2.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g2.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g2.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
     }
     // the card of the selected creature: for colonists a whole person, for the rest a short note
@@ -5053,6 +5241,7 @@ button.quiet{background:transparent;color:var(--muted)}
       award("\u041B\u0443\u0447\u0448\u0438\u0439 \u043E\u0445\u043E\u0442\u043D\u0438\u043A", (r) => r.stats.hunted, (r, v) => `${v} ${plural(v, "\u0437\u0430\u044F\u0446", "\u0437\u0430\u0439\u0446\u0430", "\u0437\u0430\u0439\u0446\u0435\u0432")}`),
       award("\u041B\u0435\u0441\u043E\u0440\u0443\u0431", (r) => r.stats.gathered.wood || 0, (r, v) => `${v} \u0435\u0434. \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B`),
       award("\u0421\u043E\u0431\u0438\u0440\u0430\u0442\u0435\u043B\u044C", (r) => r.stats.gathered.berries || 0, (r, v) => `${v} \u0435\u0434. \u044F\u0433\u043E\u0434`),
+      award("\u0420\u044B\u0431\u0430\u043A", (r) => r.stats.gathered.fish || 0, (r, v) => `${v} \u0435\u0434. \u0440\u044B\u0431\u044B`),
       award("\u041A\u0430\u043C\u0435\u043D\u043E\u0442\u0451\u0441", (r) => r.stats.gathered.stone || 0, (r, v) => `${v} \u0435\u0434. \u043A\u0430\u043C\u043D\u044F`),
       award("\u041C\u0430\u0441\u0442\u0435\u0440", (r) => r.stats.crafted, (r, v) => `${v} ${plural(v, "\u0432\u0435\u0449\u044C", "\u0432\u0435\u0449\u0438", "\u0432\u0435\u0449\u0435\u0439")}`),
       award("\u0421\u0442\u0440\u043E\u0438\u0442\u0435\u043B\u044C", (r) => r.stats.labour, (r, v) => `${Math.round(v / 120)} \u0447 \u043D\u0430 \u0441\u0442\u0440\u043E\u0439\u043A\u0435`, 240),
@@ -5130,8 +5319,8 @@ button.quiet{background:transparent;color:var(--muted)}
   }
 
   // src/version.js
-  var VERSION = "0.13 \xB7 12.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 549e394" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.14 \xB7 12.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 985411d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/main.js
   var renderer = new Renderer($("map"));

@@ -54,8 +54,8 @@ BUILDINGS.registerAll([
     motive: (a) => [[a.mem.walkWood, 'далеко ходить за лесом'], [(a.prefs.chop - 1) * 1.4 + a.skill.chop * 0.4, 'любит рубить лес']]},
 
   {id: 'smokehouse', name: 'Коптильня', gender: 'f', cost: {wood: 15, stone: 15}, work: 220, max: 1, wooden: false, color: '#a85a3a', mark: 'Кп', needs: 'quarry',
-    effect: 'Ягоды и мясо перерабатываются: +40% еды, порча вдвое медленнее.',
-    effects: {yield: {berries: 1.4, meat: 1.4}, mul: {spoil: 0.5}},
+    effect: 'Ягоды, мясо и рыба перерабатываются: +40% еды, порча вдвое медленнее.',
+    effects: {yield: {berries: 1.4, meat: 1.4, fish: 1.4}, mul: {spoil: 0.5}},
     wish: 'хочет запасов на чёрный день',
     motive: (a, c) => [[a.mem.hunger * 0.8, 'хочет запасов еды'], [(a.prefs.gather - 1) * 0.6 + (a.prefs.hunt - 1) * 0.6, 'добывает еду и хочет её сохранить'], [c.spoiled * 0.04, 'еда портится']]},
 
@@ -70,6 +70,15 @@ BUILDINGS.registerAll([
     effects: {mul: {defense: 0.6, loot: 0.5}},
     wish: 'хочет защиты от чужаков',
     motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
+
+  // built by the water when it can be: the nearest lot within reach that touches a lake with fish
+  {id: 'fishhut', name: 'Хижина рыбака', gender: 'f', cost: {wood: 16}, work: 160, max: 1, wooden: true, color: '#5d8fa8', mark: 'Ры', station: true, benches: 1,
+    near: 'fish',
+    effect: 'Здесь делают удочки. Рыбаки ловят на треть быстрее, улов на 30% больше.',
+    effects: {jobSpeed: {fish: 1.35}, yield: {fish: 1.3}},
+    wish: 'хочет ловить рыбу',
+    motive: (a, c) => [[c.fishLakes ? 0.25 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4, 'любит рыбачить'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом']],
+    available: w => w.lakes.some(l => l.cap > 0)},
 
   {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
     effect: 'Здесь делают одежду, оружие, инструменты, колчаны и стрелы из дерева, кости и кожи.',

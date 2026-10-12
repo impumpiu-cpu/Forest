@@ -7,6 +7,7 @@ import {walkable, isCampArea} from '../world/grid.js';
 import {count, has, buildingById} from './query.js';
 import {recomputeMods} from './mods.js';
 import {recomputeZone} from './zone.js';
+import {lakeBeside} from '../world/lakes.js';
 import {think} from '../agents/mind.js';
 
 const ending = d => (d.gender === 'f' ? 'а' : '');
@@ -20,13 +21,16 @@ export function missing(w, cost) {
 // can the colony consider this building at all (ignoring cost)?
 export function eligible(w, key) {
   const d = BUILDINGS.get(key);
-  return count(w, key, true) < d.max && (!d.needs || has(w, d.needs));
+  return count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w));
 }
 
-// a 2×2 lot on dry land, in a ring around the camp, away from other buildings
-function findLot(w) {
+// a 2×2 lot on dry land, in a ring around the camp, away from other buildings.
+// near: 'fish' looks further out (up to 24 cells) for a lot on the shore of a lake with fish.
+function findLot(w, near) {
+  if (near === 'fish') { const lot = findLot(w, 'fish-shore'); if (lot >= 0) return lot; }
+  const shore = near === 'fish-shore', R = shore ? 24 : 14;
   const g = w.grid; let best = -1, bd = 1e9;
-  for (let y = w.camp.y - 14; y <= w.camp.y + 13; y++) for (let x = w.camp.x - 14; x <= w.camp.x + 13; x++) {
+  for (let y = w.camp.y - R; y <= w.camp.y + R - 1; y++) for (let x = w.camp.x - R; x <= w.camp.x + R - 1; x++) {
     if (x < 1 || y < 1 || x >= w.w - 2 || y >= w.h - 2) continue;
     const d = (x + 1 - w.camp.x) ** 2 + (y + 1 - w.camp.y) ** 2; if (d < 25 || d >= bd) continue;
     let ok = true;
@@ -34,6 +38,7 @@ function findLot(w) {
       const j = (y + yy) * w.w + x + xx, inner = xx >= 0 && xx <= 1 && yy >= 0 && yy <= 1;
       if (g.bld[j] >= 0 || (inner && (!walkable(w, j) || g.fire[j] > 0 || isCampArea(w, j)))) { ok = false; break; }
     }
+    if (ok && shore) ok = [0, 1, w.w, w.w + 1].some(o => lakeBeside(w, y * w.w + x + o, 0));
     if (ok) { bd = d; best = y * w.w + x; }
   }
   return best;
@@ -42,7 +47,7 @@ function findLot(w) {
 export function laySite(w, key) {
   const d = BUILDINGS.get(key);
   if (!eligible(w, key) || !canAfford(w, d.cost)) return null;
-  const lot = findLot(w);
+  const lot = findLot(w, d.near);
   if (lot < 0) { log(w, 'Вокруг лагеря не осталось места под постройку.', 'build'); return null; }
   for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
   const b = {id: w.bldSeq++, key, x: lot % w.w, y: (lot / w.w) | 0, progress: 0, done: false, cells: []};

@@ -2,6 +2,7 @@
 import {createWorld} from './world/generate.js';
 import {stepFields} from './world/fields.js';
 import {stepWeather} from './world/weather.js';
+import {stepLakes} from './world/lakes.js';
 import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
@@ -42,6 +43,7 @@ export function step(w) {
   const t0 = performance.now();
   stepFields(w);
   stepWeather(w);
+  stepLakes(w);
   const t1 = performance.now();
   w.nav.step();
   const t2 = performance.now();

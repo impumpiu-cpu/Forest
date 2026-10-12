@@ -13,4 +13,4 @@ const FOOD = () => RESOURCES.filter(r => r.tags.includes('food'));
 export const foodTotal = w => FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
 
 export const popCap = w => 8 + w.mods.add.popCap;
-export const jobUnlocked = (w, job) => !job.requires || has(w, job.requires);
+export const jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some(b => has(w, b));

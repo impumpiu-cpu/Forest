@@ -10,6 +10,7 @@ import {SPECIES} from './species.js';
 import {cellOf} from '../world/grid.js';
 import {BUILDINGS} from './buildings.js';
 import {inZone} from '../settlement/zone.js';
+import {lakeBeside} from '../world/lakes.js';
 
 export const NAVMAPS = new Registry('navmap');
 
@@ -23,6 +24,9 @@ NAVMAPS.registerAll([
   {id: 'sites', active: w => openSites(w).length > 0,
     prepare: w => new Set(openSites(w).flatMap(b => b.cells)),
     seed: (w, i, cells) => cells.has(i)},
+  // shore of lakes that still have fish
+  {id: 'shore', active: w => has(w, 'fishhut'),
+    seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)},
   // game animals: hunters and predators walk this field until they are close enough to go straight
   {id: 'prey', active: w => w.agents.some(a => a.task?.job === 'hunt' || a.brain === 'predator'),
     prepare: w => new Set(w.agents.filter(a => SPECIES.get(a.species).game).map(a => cellOf(w, a))),
