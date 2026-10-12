@@ -177,6 +177,28 @@ button.quiet{background:transparent;color:var(--muted)}
 .pc-diary li span{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-right:6px}
 .pc-diary li.up{border-left-color:var(--good)} .pc-diary li.down{border-left-color:var(--raider)}
 .pc-diary li.dday{border:0;padding:4px 0 0;color:var(--muted);font-size:11.5px;letter-spacing:.05em}
+/* ───── game over ───── */
+.gameover{display:flex;flex-direction:column;gap:14px}
+.go-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding-block:6px}
+.go-head .go-kicker{max-width:none;flex-basis:100%;margin:0;font-family:var(--font-display);letter-spacing:.12em;color:var(--raider);font-size:13px}
+.go-head h2{margin:0;font-family:var(--font-display);font-size:32px;text-wrap:balance}
+.go-head .primary{margin-left:auto}
+.go-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:700px){.go-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.go-stat{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.go-stat b{font-family:var(--font-display);font-size:24px;font-variant-numeric:tabular-nums}
+.go-stat span{color:var(--muted);font-size:12.5px}
+.go-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.go-awards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.go-awards li{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0 10px}
+.go-awards li .muted{grid-column:2;font-size:12.5px}
+.go-award{grid-row:1/3;color:var(--ember);font-family:var(--font-display);letter-spacing:.04em}
+.go-facts{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;max-width:70ch}
+.go-table{overflow-x:auto}
+.go-table table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+.go-table th{text-align:left;font-weight:400;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line);padding:4px 8px}
+.go-table td{border-bottom:1px solid #262a1e;padding:5px 8px;vertical-align:top}
+.go-table tr.gone td:first-child{color:#f0b0b2}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -233,6 +255,9 @@ button.quiet{background:transparent;color:var(--muted)}
       <small>Белый круг — место лагеря. Карта перерисовывается при каждом изменении настроек.</small>
     </div>
   </section>
+
+  <!-- ───────── the end ───────── -->
+  <section id="gameOver" class="gameover" hidden aria-labelledby="goTitle"></section>
 
   <div class="main" id="game" hidden>
     <section class="stage">
@@ -1268,6 +1293,8 @@ button.quiet{background:transparent;color:var(--muted)}
       groupInit: (group, w) => {
         const t = raidThreat(w);
         w.stats.raids++;
+        const big = w.chronicle.biggestRaid;
+        if (!big || group.length > big.size) w.chronicle.biggestRaid = { size: group.length, tick: w.tick };
         for (const a of group) {
           a.hp = 0.75 + Math.min(0.35, t * 0.012);
           a.skill = { hunt: Math.min(0.7, 0.1 + t * 0.025) };
@@ -1618,6 +1645,60 @@ button.quiet{background:transparent;color:var(--muted)}
   var inZone = (w, i) => w.zone[i] === 1;
   var agentInZone = (w, a) => w.zone[Math.max(0, Math.min(w.h - 1, a.y | 0)) * w.w + Math.max(0, Math.min(w.w - 1, a.x | 0))] === 1;
 
+  // src/settlement/chronicle.js
+  function newChronicle() {
+    return {
+      people: [],
+      peakPop: 0,
+      built: [],
+      crafted: {},
+      gathered: {},
+      raidersKilled: 0,
+      wolvesKilled: 0,
+      biggestRaid: null,
+      councilWins: {},
+      deaths: {},
+      councils: 0
+    };
+  }
+  function enrol(w, a, founder) {
+    a.stats = { gathered: {}, hunted: 0, crafted: 0, labour: 0, raiders: 0, wolves: 0, wounds: 0, moodSum: 0, moodN: 0 };
+    w.chronicle.people.push({
+      id: a.id,
+      name: a.name,
+      gender: a.gender,
+      likes: a.likes,
+      traits: a.traits,
+      arrived: w.tick,
+      founder: !!founder,
+      died: null,
+      cause: null,
+      stats: a.stats
+    });
+  }
+  var recordOf = (w, a) => w.chronicle.people.find((p) => p.id === a.id);
+  function noteDeath(w, a, cause, by) {
+    const r = recordOf(w, a);
+    if (!r) return;
+    r.died = w.tick;
+    r.cause = by?.species === "wolf" ? "\u0437\u0430\u0433\u0440\u044B\u0437\u043B\u0438 \u0432\u043E\u043B\u043A\u0438" : by ? "\u043F\u043E\u0433\u0438\u0431 \u0432 \u0431\u043E\u044E \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438" : `\u0443\u043C\u0435\u0440 \u043E\u0442 ${cause}`;
+    if (a.gender === "f") r.cause = r.cause.replace("\u043F\u043E\u0433\u0438\u0431 \u0432 \u0431\u043E\u044E", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430 \u0432 \u0431\u043E\u044E").replace("\u0443\u043C\u0435\u0440 \u043E\u0442", "\u0443\u043C\u0435\u0440\u043B\u0430 \u043E\u0442");
+    const key2 = by?.species === "wolf" ? "\u0432\u043E\u043B\u043A\u0438" : by ? "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438" : cause;
+    w.chronicle.deaths[key2] = (w.chronicle.deaths[key2] || 0) + 1;
+  }
+  function sampleChronicle(w) {
+    const c = w.chronicle, col = colonists(w);
+    if (col.length > c.peakPop) c.peakPop = col.length;
+    if (w.tick % 60 === 0) for (const a of col) {
+      a.stats.moodSum += moodOf(w, a);
+      a.stats.moodN++;
+    }
+  }
+  var add = (obj, key2, n = 1) => {
+    obj[key2] = (obj[key2] || 0) + n;
+  };
+  var daysLived = (w, r) => ((r.died ?? w.tick) - r.arrived) / DAY;
+
   // src/world/generate.js
   function noiseLayer(rnd, w, h, cell) {
     const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
@@ -1726,6 +1807,8 @@ button.quiet{background:transparent;color:var(--muted)}
       cache: {},
       migration: {},
       migrationDue: {},
+      chronicle: newChronicle(),
+      over: null,
       council: { lastDay: -1, goal: null, votes: [], args: [], decision: "\u041F\u0435\u0440\u0432\u044B\u0439 \u0441\u043E\u0432\u0435\u0442 \u0441\u043E\u0431\u0435\u0440\u0451\u0442\u0441\u044F \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u0432\u0435\u0447\u0435\u0440\u043E\u043C \u0443 \u043A\u043E\u0441\u0442\u0440\u0430." },
       logLines: [],
       logVersion: 0,
@@ -1851,6 +1934,7 @@ button.quiet{background:transparent;color:var(--muted)}
     w.nav.dirty("rockface");
     for (const id of w.nav.order) if (id.startsWith("station:")) w.nav.dirty(id);
     log(w, `\u041F\u043E\u0441\u0442\u0440\u043E\u0435\u043D${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`, "build");
+    w.chronicle.built.push({ key: b.key, tick: w.tick, by: by?.name });
     const ctx = { building: d.name.toLowerCase(), f: d.gender === "f" };
     for (const a of w.agents) if (a.faction === "colony" && !a.dead) think(w, a, a === by ? "finishedBuilding" : "newBuilding", ctx);
   }
@@ -2562,6 +2646,7 @@ button.quiet{background:transparent;color:var(--muted)}
     if (sp.sentient && factionId === "colony") {
       personality(w, a);
       a.diary = [];
+      enrol(w, a, w.founding);
     }
     if (sp.inventory) a.equip = emptySlots();
     recalcGear(a);
@@ -2574,6 +2659,16 @@ button.quiet{background:transparent;color:var(--muted)}
     a.hp = 0;
     const sp = SPECIES.get(a.species);
     const killer = by ? SPECIES.get(by.species) : null;
+    if (a.faction === "colony") noteDeath(w, a, cause, by);
+    if (by?.stats) {
+      if (sp.id === "wolf") {
+        by.stats.wolves++;
+        w.chronicle.wolvesKilled++;
+      } else if (a.faction === "raiders") {
+        by.stats.raiders++;
+        w.chronicle.raidersKilled++;
+      }
+    }
     if (a.faction === "colony") log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, "\u043F\u043E\u0433\u0438\u0431", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430")} \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> ${g(a, "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B", "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B\u0430")} ${cause}.`, "death");
     else if (sp.id === "wolf" && by?.faction === "colony") {
       for (const [r, n] of Object.entries(sp.yields || {})) w.stock[r] = (w.stock[r] || 0) + n;
@@ -2627,7 +2722,10 @@ button.quiet{background:transparent;color:var(--muted)}
     let dmg = raw * home * wall * (1 - (g2.armor || 0));
     if (g2.armor && t.equip?.body) wear(w, t, t.equip.body);
     t.hp -= dmg;
-    if (t.diary && t.hp < 0.45 && t.hp > 0) think(w, t, "wounded");
+    if (t.diary && t.hp < 0.45 && t.hp > 0) {
+      if (!t.diary.some((e) => e.id === "wounded" && w.tick - e.t < 360)) t.stats.wounds++;
+      think(w, t, "wounded");
+    }
     const memKey = by.species === "wolf" || t.species === "wolf" ? "wolf" : "raid";
     if (t.faction === "colony" && t.mem) t.mem[memKey] += 0.25;
     else if (by.faction === "colony" && by.mem) by.mem[memKey] += 0.1;
@@ -2875,7 +2973,11 @@ button.quiet{background:transparent;color:var(--muted)}
       w.armory.push(newItem(r.makes.item));
       w.armoryVersion = (w.armoryVersion || 0) + 1;
       log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${ITEMS.get(r.makes.item).label.toLowerCase()}.`, "craft");
-      if (a) think(w, a, "madeItem", { item: ITEMS.get(r.makes.item).label.toLowerCase() });
+      if (a) {
+        think(w, a, "madeItem", { item: ITEMS.get(r.makes.item).label.toLowerCase() });
+        a.stats.crafted++;
+      }
+      w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
     } else {
       w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
     }
@@ -2937,6 +3039,8 @@ button.quiet{background:transparent;color:var(--muted)}
         task.work = 0;
         job.take(w, i);
         load(a, job.resource, 1);
+        add(a.stats.gathered, job.resource);
+        add(w.chronicle.gathered, job.resource);
         toolWear(w, a, job.id);
       } else if (r === "none") {
         if (a.carry?.n) a.carry.n = cap;
@@ -2953,7 +3057,9 @@ button.quiet{background:transparent;color:var(--muted)}
     build(w, a, task) {
       const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
       if (site && !site.done && w.grid.fire[i] === 0) {
-        addLabour(w, site, workRate(w, a, "build"), a);
+        const amt = workRate(w, a, "build");
+        a.stats.labour += amt;
+        addLabour(w, site, amt, a);
         toolWear(w, a, "build", 0.05);
         return;
       }
@@ -3043,6 +3149,7 @@ button.quiet{background:transparent;color:var(--muted)}
       if (res === "kill") {
         w.stats.hunted++;
         a.stalking = false;
+        a.stats.hunted++;
         think(w, a, "huntKill", { prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label });
         for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
         const near = w.agents.some((o) => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
@@ -3166,6 +3273,8 @@ button.quiet{background:transparent;color:var(--muted)}
     c.present = present.length;
     c.total = total;
     const winner = c.votes[0]?.[0];
+    w.chronicle.councils++;
+    if (winner) w.chronicle.councilWins[winner] = (w.chronicle.councilWins[winner] || 0) + 1;
     for (const x of args) {
       const a = present.find((p) => p.name === x.name), choice = BUILDINGS.get(x.key).name.toLowerCase();
       const id = x.key !== winner ? "councilLost" : c.goal ? "councilSaving" : "councilWon";
@@ -3789,6 +3898,17 @@ button.quiet{background:transparent;color:var(--muted)}
     }
   }
 
+  // src/settlement/ending.js
+  function checkEnd(w) {
+    if (w.over || w.tick < 50) return;
+    const pop = colonists(w).length;
+    const raiders = w.agents.some((a) => a.faction === "raiders" && !a.dead);
+    const plundered = w.tick - w.stats.lastSteal < 12 * HOUR;
+    if (pop === 0) w.over = { tick: w.tick, reason: raiders || plundered ? "raided" : "empty" };
+    else if (pop <= 1 && (raiders || plundered)) w.over = { tick: w.tick, reason: "raided" };
+    if (w.over) log(w, w.over.reason === "raided" ? "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u0440\u0430\u0437\u043E\u0440\u0438\u043B\u0438 \u043B\u0430\u0433\u0435\u0440\u044C. \u041F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 \u043F\u0430\u043B\u043E." : "\u0412 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438 \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0438 \u0434\u0443\u0448\u0438.", "death");
+  }
+
   // src/sim.js
   function newGame(cfg) {
     const w = createWorld(cfg);
@@ -3796,11 +3916,13 @@ button.quiet{background:transparent;color:var(--muted)}
     w.nav.buildAll();
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     const n = cfg.colonists;
+    w.founding = true;
     for (let k = 0; k < n; k++) createAgent(w, "human", "colony", w.camp.x + 0.5 + (w.rng() * 5 - 2.5), w.camp.y + 0.5 + (w.rng() * 5 - 2.5));
     const st = STOCKS[cfg.stock];
     for (let k = 0; k < Math.round(n * st.clothes); k++) w.armory.push(newItem("clothes"));
     for (const t of st.kit) w.armory.push(newItem(t));
     w.armoryVersion = 1;
+    w.founding = false;
     for (const a of w.agents) {
       outfit(w, a);
       think(w, a, "founded");
@@ -3810,6 +3932,7 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   var ema = (old, v) => old * 0.95 + v * 0.05;
   function step(w) {
+    if (w.over) return;
     const t0 = performance.now();
     stepFields(w);
     stepWeather(w);
@@ -3828,6 +3951,8 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     stepCouncil(w);
     stepMigration(w);
+    sampleChronicle(w);
+    checkEnd(w);
     const t3 = performance.now();
     w.perf.fields = ema(w.perf.fields, t1 - t0);
     w.perf.nav = ema(w.perf.nav, t2 - t1);
@@ -4718,6 +4843,137 @@ button.quiet{background:transparent;color:var(--muted)}
     }
   };
 
+  // src/settlement/summary.js
+  var sumVals = (o) => Object.values(o).reduce((s, v) => s + v, 0);
+  var dayNo = (t) => Math.floor(t / DAY) + 1;
+  var fmt = (n) => (Math.round(n * 10) / 10).toLocaleString("ru-RU");
+  var daysText = (v) => {
+    const r = Math.round(v * 10) / 10;
+    return `${fmt(r)} ${Number.isInteger(r) ? plural(r, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439") : "\u0434\u043D\u044F"}`;
+  };
+  function worth(w, r) {
+    const s = r.stats;
+    return daysLived(w, r) * 2 + sumVals(s.gathered) * 0.15 + s.hunted * 2 + s.crafted * 3 + s.labour / 120 + s.raiders * 4 + s.wolves * 5;
+  }
+  function deeds(w, r) {
+    const s = r.stats, out = [];
+    if (s.raiders + s.wolves) out.push(`${s.raiders + s.wolves} ${plural(s.raiders + s.wolves, "\u043F\u043E\u0431\u0435\u0434\u0430", "\u043F\u043E\u0431\u0435\u0434\u044B", "\u043F\u043E\u0431\u0435\u0434")} \u0432 \u0431\u043E\u044E`);
+    if (s.crafted) out.push(`${s.crafted} ${plural(s.crafted, "\u0432\u0435\u0449\u044C", "\u0432\u0435\u0449\u0438", "\u0432\u0435\u0449\u0435\u0439")} \u0441\u0432\u043E\u0438\u043C\u0438 \u0440\u0443\u043A\u0430\u043C\u0438`);
+    if (s.hunted) out.push(`${s.hunted} ${plural(s.hunted, "\u0437\u0430\u044F\u0446", "\u0437\u0430\u0439\u0446\u0430", "\u0437\u0430\u0439\u0446\u0435\u0432")}`);
+    const top = Object.entries(s.gathered).sort((a, b) => b[1] - a[1])[0];
+    if (top) out.push(`${top[1]} \u0435\u0434.: ${RESOURCES.get(top[0]).label}`);
+    if (s.labour > 120) out.push(`${Math.round(s.labour / 120)} \u0447 \u043D\u0430 \u0441\u0442\u0440\u043E\u0439\u043A\u0435`);
+    return out.slice(0, 3);
+  }
+  function summarize(w) {
+    const c = w.chronicle, people = c.people, now = w.tick;
+    const days = now / DAY;
+    const alive = colonists(w);
+    const finished = c.built.length;
+    const totals = [
+      ["\u041F\u0440\u043E\u0434\u0435\u0440\u0436\u0430\u043B\u043E\u0441\u044C", daysText(days)],
+      ["\u0416\u0438\u0442\u0435\u043B\u0435\u0439 \u0432 \u043B\u0443\u0447\u0448\u0438\u0435 \u0434\u043D\u0438", c.peakPop],
+      ["\u0412\u0441\u0435\u0433\u043E \u043F\u0440\u043E\u0448\u043B\u043E \u0447\u0435\u0440\u0435\u0437 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435", people.length],
+      ["\u041F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E", finished],
+      ["\u0421\u0434\u0435\u043B\u0430\u043D\u043E \u0432\u0435\u0449\u0435\u0439", sumVals(c.crafted)],
+      ["\u041D\u0430\u043B\u0451\u0442\u043E\u0432 \u043F\u0435\u0440\u0435\u0436\u0438\u0442\u043E", Math.max(0, w.stats.raids - (w.over?.reason === "raided" ? 1 : 0))],
+      ["\u0421\u0440\u0430\u0436\u0435\u043D\u043E \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432", c.raidersKilled],
+      ["\u0423\u0431\u0438\u0442\u043E \u0432\u043E\u043B\u043A\u043E\u0432", c.wolvesKilled]
+    ];
+    const award = (title, metric, text, min = 0.5) => {
+      let best2 = null, bv = min;
+      for (const r of people) {
+        const v = metric(r);
+        if (v > bv) {
+          bv = v;
+          best2 = r;
+        }
+      }
+      return best2 ? { title, name: best2.name, text: text(best2, bv), dead: best2.died != null } : null;
+    };
+    const moodAvg = (r) => r.stats.moodN > 20 ? r.stats.moodSum / r.stats.moodN : null;
+    const best = award("\u041E\u043F\u043E\u0440\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044F", (r) => worth(w, r), (r) => deeds(w, r).join(", ") || g(r, "\u0431\u044B\u043B \u0440\u044F\u0434\u043E\u043C, \u043A\u043E\u0433\u0434\u0430 \u044D\u0442\u043E \u0431\u044B\u043B\u043E \u043D\u0443\u0436\u043D\u043E", "\u0431\u044B\u043B\u0430 \u0440\u044F\u0434\u043E\u043C, \u043A\u043E\u0433\u0434\u0430 \u044D\u0442\u043E \u0431\u044B\u043B\u043E \u043D\u0443\u0436\u043D\u043E"), 1);
+    const awards = [
+      best,
+      award("\u041B\u0443\u0447\u0448\u0438\u0439 \u043E\u0445\u043E\u0442\u043D\u0438\u043A", (r) => r.stats.hunted, (r, v) => `${v} ${plural(v, "\u0437\u0430\u044F\u0446", "\u0437\u0430\u0439\u0446\u0430", "\u0437\u0430\u0439\u0446\u0435\u0432")}`),
+      award("\u041B\u0435\u0441\u043E\u0440\u0443\u0431", (r) => r.stats.gathered.wood || 0, (r, v) => `${v} \u0435\u0434. \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B`),
+      award("\u0421\u043E\u0431\u0438\u0440\u0430\u0442\u0435\u043B\u044C", (r) => r.stats.gathered.berries || 0, (r, v) => `${v} \u0435\u0434. \u044F\u0433\u043E\u0434`),
+      award("\u041A\u0430\u043C\u0435\u043D\u043E\u0442\u0451\u0441", (r) => r.stats.gathered.stone || 0, (r, v) => `${v} \u0435\u0434. \u043A\u0430\u043C\u043D\u044F`),
+      award("\u041C\u0430\u0441\u0442\u0435\u0440", (r) => r.stats.crafted, (r, v) => `${v} ${plural(v, "\u0432\u0435\u0449\u044C", "\u0432\u0435\u0449\u0438", "\u0432\u0435\u0449\u0435\u0439")}`),
+      award("\u0421\u0442\u0440\u043E\u0438\u0442\u0435\u043B\u044C", (r) => r.stats.labour, (r, v) => `${Math.round(v / 120)} \u0447 \u043D\u0430 \u0441\u0442\u0440\u043E\u0439\u043A\u0435`, 240),
+      award("\u0417\u0430\u0449\u0438\u0442\u043D\u0438\u043A", (r) => r.stats.raiders + r.stats.wolves, (r) => [r.stats.raiders && `${r.stats.raiders} \u043D\u0430\u043B\u0451\u0442\u0447.`, r.stats.wolves && `${r.stats.wolves} \u0432\u043E\u043B\u043A.`].filter(Boolean).join(", ")),
+      award("\u0414\u043E\u043B\u0433\u043E\u0436\u0438\u0442\u0435\u043B\u044C", (r) => daysLived(w, r), (r, v) => `${daysText(v)} \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438`),
+      award("\u0416\u0438\u0432\u0443\u0447\u0438\u0439", (r) => r.stats.wounds, (r, v) => `${v} \u0442\u044F\u0436\u0451\u043B. ${plural(v, "\u0440\u0430\u043D\u0430", "\u0440\u0430\u043D\u044B", "\u0440\u0430\u043D")}`),
+      award("\u0414\u0443\u0448\u0430 \u043A\u043E\u043C\u043F\u0430\u043D\u0438\u0438", (r) => (moodAvg(r) ?? -9) + 1, (r) => `\u0447\u0430\u0449\u0435 \u0432\u0441\u0435\u0445 ${g(r, "\u0431\u044B\u043B", "\u0431\u044B\u043B\u0430")} \u0432 \u0445\u043E\u0440\u043E\u0448\u0435\u043C \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0438`, 0.9),
+      award("\u0412\u0435\u0447\u043D\u043E \u043D\u0435\u0434\u043E\u0432\u043E\u043B\u044C\u043D\u044B\u0439", (r) => (moodAvg(r) == null ? -9 : -moodAvg(r)) + 1, (r) => `\u0447\u0430\u0449\u0435 \u0432\u0441\u0435\u0445 ${g(r, "\u0431\u044B\u043B", "\u0431\u044B\u043B\u0430")} \u043D\u0435 \u0432 \u0434\u0443\u0445\u0435`, 1.05)
+    ].filter(Boolean);
+    const facts = [];
+    const dead = people.filter((r) => r.died != null).sort((a, b) => a.died - b.died);
+    if (dead.length) facts.push(`\u041F\u0435\u0440\u0432\u043E\u0439 \u043F\u043E\u0442\u0435\u0440\u0435\u0439 ${g(dead[0], "\u0441\u0442\u0430\u043B", "\u0441\u0442\u0430\u043B\u0430")} ${dead[0].name} \u043D\u0430 ${dayNo(dead[0].died)}-\u0439 \u0434\u0435\u043D\u044C: ${dead[0].cause}.`);
+    const byCause = Object.entries(c.deaths).sort((a, b) => b[1] - a[1]);
+    if (byCause.length) facts.push(`\u041F\u043E\u0433\u0438\u0431\u043B\u0438: ${byCause.map(([k, v]) => `${k === "\u0432\u043E\u043B\u043A\u0438" ? "\u043E\u0442 \u0432\u043E\u043B\u043A\u043E\u0432" : k === "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438" ? "\u043E\u0442 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432" : "\u043E\u0442 " + k} \u2014 ${v}`).join(", ")}.`);
+    if (c.biggestRaid) facts.push(`\u0421\u0430\u043C\u044B\u0439 \u0431\u043E\u043B\u044C\u0448\u043E\u0439 \u043D\u0430\u043B\u0451\u0442: ${c.biggestRaid.size} ${plural(c.biggestRaid.size, "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A", "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430", "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432")} \u043D\u0430 ${dayNo(c.biggestRaid.tick)}-\u0439 \u0434\u0435\u043D\u044C.`);
+    if (c.built.length) {
+      const first = c.built[0], last2 = c.built[c.built.length - 1], nm = (k) => BUILDINGS.get(k).name.toLowerCase();
+      facts.push(c.built.length > 1 ? `\u041F\u0435\u0440\u0432\u043E\u0439 \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u043E\u0439 ${BUILDINGS.get(first.key).gender === "f" ? "\u0441\u0442\u0430\u043B\u0430" : "\u0441\u0442\u0430\u043B"} ${nm(first.key)} (\u0434\u0435\u043D\u044C ${dayNo(first.tick)}), \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0439 \u2014 ${nm(last2.key)} (\u0434\u0435\u043D\u044C ${dayNo(last2.tick)}).` : `\u0423\u0441\u043F\u0435\u043B\u0438 \u043F\u043E\u0441\u0442\u0440\u043E\u0438\u0442\u044C \u0442\u043E\u043B\u044C\u043A\u043E ${nm(first.key)}.`);
+    }
+    const wins = Object.entries(c.councilWins).sort((a, b) => b[1] - a[1])[0];
+    if (c.councils) facts.push(`\u0421\u043E\u0432\u0435\u0442 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 \u0441\u043E\u0431\u0438\u0440\u0430\u043B\u0441\u044F ${c.councils} ${plural(c.councils, "\u0440\u0430\u0437", "\u0440\u0430\u0437\u0430", "\u0440\u0430\u0437")}${wins ? `, \u0447\u0430\u0449\u0435 \u0432\u0441\u0435\u0433\u043E \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u0430\u043B\u0438 \u0437\u0430 ${BUILDINGS.get(wins[0]).name.toLowerCase()}` : ""}.`);
+    const fav = Object.entries(c.crafted).sort((a, b) => b[1] - a[1])[0];
+    if (fav) facts.push(`\u0427\u0430\u0449\u0435 \u0432\u0441\u0435\u0433\u043E \u043C\u0430\u0441\u0442\u0435\u0440\u0438\u043B\u0438: ${ITEMS.get(fav[0]).short} (\xD7${fav[1]}).`);
+    if (w.stats.hunted) facts.push(`\u041E\u0445\u043E\u0442\u043D\u0438\u043A\u0438 \u0434\u043E\u0431\u044B\u043B\u0438 ${w.stats.hunted} ${plural(w.stats.hunted, "\u0437\u0430\u0439\u0446\u0430", "\u0437\u0430\u0439\u0446\u0435\u0432", "\u0437\u0430\u0439\u0446\u0435\u0432")}${w.stats.wolfKills ? `, \u0432\u043E\u043B\u043A\u0438 \u2014 ${w.stats.wolfKills}` : ""}.`);
+    else if (w.stats.wolfKills) facts.push(`\u0412\u043E\u043B\u043A\u0438 \u0441\u044A\u0435\u043B\u0438 ${w.stats.wolfKills} ${plural(w.stats.wolfKills, "\u0437\u0430\u0439\u0446\u0430", "\u0437\u0430\u0439\u0446\u0435\u0432", "\u0437\u0430\u0439\u0446\u0435\u0432")}, \u043E\u0445\u043E\u0442\u043D\u0438\u043A\u0430\u043C \u043D\u0435 \u0434\u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0438 \u043E\u0434\u043D\u043E\u0433\u043E.`);
+    const gathered = RESOURCES.filter((r) => c.gathered[r.id]).map((r) => `${r.label} \u2014 ${c.gathered[r.id]}`);
+    if (gathered.length) facts.push(`\u0421\u043E\u0431\u0440\u0430\u043D\u043E: ${gathered.join(", ")}.`);
+    if (w.stats.broken) facts.push(`\u0421\u043B\u043E\u043C\u0430\u043B\u043E\u0441\u044C \u0432\u0435\u0449\u0435\u0439: ${w.stats.broken}.`);
+    if (w.stats.burntCells) facts.push(`\u041E\u0433\u043E\u043D\u044C \u0432\u044B\u0436\u0435\u0433 ${w.stats.burntCells} ${plural(w.stats.burntCells, "\u043A\u043B\u0435\u0442\u043A\u0443", "\u043A\u043B\u0435\u0442\u043A\u0438", "\u043A\u043B\u0435\u0442\u043E\u043A")} \u043B\u0435\u0441\u0430 \u0438 \u043B\u0443\u0433\u0430.`);
+    const likes = {};
+    for (const r of people) if (r.likes) likes[r.likes] = (likes[r.likes] || 0) + 1;
+    const topLike = Object.entries(likes).sort((a, b) => b[1] - a[1])[0];
+    if (topLike) facts.push(`\u041B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438: ${JOBS.get(topLike[0]).label} (${topLike[1]} \u0438\u0437 ${people.length}).`);
+    if (alive.length === 1) facts.push(`\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u043C ${g(alive[0], "\u0434\u0435\u0440\u0436\u0430\u043B\u0441\u044F", "\u0434\u0435\u0440\u0436\u0430\u043B\u0430\u0441\u044C")} ${alive[0].name}.`);
+    const roll = people.map((r) => ({
+      name: r.name,
+      founder: r.founder,
+      arrivedDay: dayNo(r.arrived),
+      lived: daysLived(w, r),
+      fate: r.died != null ? r.cause : r.gender === "f" ? "\u0432\u044B\u0436\u0438\u043B\u0430" : "\u0432\u044B\u0436\u0438\u043B",
+      dead: r.died != null,
+      deeds: deeds(w, r)
+    }));
+    return { name: w.cfg.name, reason: w.over?.reason, days, totals, awards, facts, roll };
+  }
+
+  // src/ui/endScreen.js
+  function showEnd(w, onMenu) {
+    const s = summarize(w);
+    const totals = s.totals.map(([k, v]) => `<div class="go-stat"><b>${esc(String(v))}</b><span>${esc(k)}</span></div>`).join("");
+    const awards = s.awards.map((a) => `<li><span class="go-award">${esc(a.title)}</span><b>${esc(a.name)}${a.dead ? " \u2020" : ""}</b><span class="muted">${esc(a.text)}</span></li>`).join("");
+    const facts = s.facts.map((f) => `<li>${esc(f)}</li>`).join("");
+    const roll = s.roll.map((r) => `<tr class="${r.dead ? "gone" : "alive"}"><td>${esc(r.name)}${r.founder ? ' <span class="muted">\u043E\u0441\u043D\u043E\u0432\u0430\u0442\u0435\u043B\u044C</span>' : ""}</td>
+    <td>${r.arrivedDay}</td><td>${(Math.round(r.lived * 10) / 10).toLocaleString("ru-RU")}</td><td>${esc(r.fate)}</td><td class="muted">${esc(r.deeds.join(", ") || "\u2014")}</td></tr>`).join("");
+    $("gameOver").innerHTML = `
+    <header class="go-head">
+      <p class="go-kicker">${s.reason === "raided" ? "\u041B\u0430\u0433\u0435\u0440\u044C \u0440\u0430\u0437\u043E\u0440\u0451\u043D" : "\u041F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 \u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E"}</p>
+      <h2 id="goTitle">\xAB${esc(s.name)}\xBB ${s.reason === "raided" ? "\u043F\u0430\u043B\u043E" : "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E"}</h2>
+      <button type="button" id="goMenu" class="primary">\u0412 \u0433\u043B\u0430\u0432\u043D\u043E\u0435 \u043C\u0435\u043D\u044E</button>
+    </header>
+    <div class="go-stats">${totals}</div>
+    <div class="go-cols">
+      <section class="card"><h2>\u041E\u0442\u043B\u0438\u0447\u0438\u043B\u0438\u0441\u044C</h2><ul class="go-awards">${awards || '<li class="muted">\u041D\u0438\u043A\u0442\u043E \u043D\u0435 \u0443\u0441\u043F\u0435\u043B \u043E\u0442\u043B\u0438\u0447\u0438\u0442\u044C\u0441\u044F.</li>'}</ul></section>
+      <section class="card"><h2>\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C</h2><ul class="go-facts">${facts}</ul></section>
+    </div>
+    <section class="card"><h2>\u0412\u0441\u0435, \u043A\u0442\u043E \u0437\u0434\u0435\u0441\u044C \u0436\u0438\u043B</h2>
+      <div class="go-table"><table><thead><tr><th>\u0418\u043C\u044F</th><th>\u041F\u0440\u0438\u0448\u0451\u043B, \u0434\u0435\u043D\u044C</th><th>\u041F\u0440\u043E\u0436\u0438\u043B, \u0434\u043D\u0435\u0439</th><th>\u0421\u0443\u0434\u044C\u0431\u0430</th><th>\u0427\u0435\u043C \u0437\u0430\u043F\u043E\u043C\u043D\u0438\u043B\u0441\u044F</th></tr></thead><tbody>${roll}</tbody></table></div>
+    </section>`;
+    $("gameOver").hidden = false;
+    $("goMenu").addEventListener("click", onMenu);
+    $("gameOver").scrollIntoView?.({ block: "start" });
+  }
+  function hideEnd() {
+    $("gameOver").hidden = true;
+  }
+
   // src/main.js
   var renderer = new Renderer($("map"));
   var panel = new Panel();
@@ -4757,6 +5013,7 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   function showMenu() {
     running = false;
+    hideEnd();
     $("menu").hidden = false;
     $("game").hidden = true;
     $("explain").hidden = true;
@@ -4854,6 +5111,19 @@ button.quiet{background:transparent;color:var(--muted)}
       }
       if (acc > 500) acc = 0;
       if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
+      if (world.over) {
+        running = false;
+        renderer.draw(world, view);
+        panel.render(world, view);
+        $("game").hidden = true;
+        $("explain").hidden = true;
+        showEnd(world, () => {
+          world = null;
+          showMenu();
+        });
+        requestAnimationFrame(frame);
+        return;
+      }
       renderer.draw(world, view);
       view.renderMs = renderer.ms;
       panel.readout(world, view.hover);

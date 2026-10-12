@@ -167,4 +167,26 @@ button.quiet{background:transparent;color:var(--muted)}
 .pc-diary li span{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-right:6px}
 .pc-diary li.up{border-left-color:var(--good)} .pc-diary li.down{border-left-color:var(--raider)}
 .pc-diary li.dday{border:0;padding:4px 0 0;color:var(--muted);font-size:11.5px;letter-spacing:.05em}
+/* ───── game over ───── */
+.gameover{display:flex;flex-direction:column;gap:14px}
+.go-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding-block:6px}
+.go-head .go-kicker{max-width:none;flex-basis:100%;margin:0;font-family:var(--font-display);letter-spacing:.12em;color:var(--raider);font-size:13px}
+.go-head h2{margin:0;font-family:var(--font-display);font-size:32px;text-wrap:balance}
+.go-head .primary{margin-left:auto}
+.go-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:700px){.go-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.go-stat{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.go-stat b{font-family:var(--font-display);font-size:24px;font-variant-numeric:tabular-nums}
+.go-stat span{color:var(--muted);font-size:12.5px}
+.go-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.go-awards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.go-awards li{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0 10px}
+.go-awards li .muted{grid-column:2;font-size:12.5px}
+.go-award{grid-row:1/3;color:var(--ember);font-family:var(--font-display);letter-spacing:.04em}
+.go-facts{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;max-width:70ch}
+.go-table{overflow-x:auto}
+.go-table table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+.go-table th{text-align:left;font-weight:400;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line);padding:4px 8px}
+.go-table td{border-bottom:1px solid #262a1e;padding:5px 8px;vertical-align:top}
+.go-table tr.gone td:first-child{color:#f0b0b2}
 [hidden]{display:none!important}

@@ -51,6 +51,8 @@ MIGRATIONS.registerAll([
     size: w => raidSize(w),
     groupInit: (group, w) => {
       const t = raidThreat(w); w.stats.raids++;
+      const big = w.chronicle.biggestRaid;
+      if (!big || group.length > big.size) w.chronicle.biggestRaid = {size: group.length, tick: w.tick};
       for (const a of group) { a.hp = 0.75 + Math.min(0.35, t * 0.012); a.skill = {hunt: Math.min(0.7, 0.1 + t * 0.025)}; }
     },
     init: a => { a.name = 'Налётчик'; },

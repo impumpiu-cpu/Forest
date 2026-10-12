@@ -87,7 +87,8 @@ export function workAt(w, b, amount, a) {
     w.armory.push(newItem(r.makes.item));
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     log(w, `Сделано: ${ITEMS.get(r.makes.item).label.toLowerCase()}.`, 'craft');
-    if (a) think(w, a, 'madeItem', {item: ITEMS.get(r.makes.item).label.toLowerCase()});
+    if (a) { think(w, a, 'madeItem', {item: ITEMS.get(r.makes.item).label.toLowerCase()}); a.stats.crafted++; }
+    w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
   } else {
     w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
   }

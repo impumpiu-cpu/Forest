@@ -85,6 +85,7 @@ export function addLabour(w, b, amount, by) {
   w.nav.dirty('sites'); w.nav.dirty('rockface');
   for (const id of w.nav.order) if (id.startsWith('station:')) w.nav.dirty(id);
   log(w, `Построен${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`, 'build');
+  w.chronicle.built.push({key: b.key, tick: w.tick, by: by?.name});
   const ctx = {building: d.name.toLowerCase(), f: d.gender === 'f'};
   for (const a of w.agents) if (a.faction === 'colony' && !a.dead) think(w, a, a === by ? 'finishedBuilding' : 'newBuilding', ctx);
 }

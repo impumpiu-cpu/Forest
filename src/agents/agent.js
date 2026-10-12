@@ -9,6 +9,7 @@ import {shuffle, weighted, esc, g} from '../core/util.js';
 import {log} from '../core/log.js';
 import {emptySlots, recalcGear, stripAll, def} from './equipment.js';
 import {think} from './mind.js';
+import {enrol, noteDeath} from '../settlement/chronicle.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 const newMemory = () => new Proxy({}, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
@@ -55,7 +56,7 @@ export function createAgent(w, speciesId, factionId, x, y) {
   for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
   a.stamina = 1;
   for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rng, n.start); }
-  if (sp.sentient && factionId === 'colony') { personality(w, a); a.diary = []; }
+  if (sp.sentient && factionId === 'colony') { personality(w, a); a.diary = []; enrol(w, a, w.founding); }
   if (sp.inventory) a.equip = emptySlots();
   recalcGear(a);
   w.agents.push(a);
@@ -68,6 +69,8 @@ export function kill(w, a, cause, by) {
   a.dead = true; a.hp = 0;
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
+  if (a.faction === 'colony') noteDeath(w, a, cause, by);
+  if (by?.stats) { if (sp.id === 'wolf') { by.stats.wolves++; w.chronicle.wolvesKilled++; } else if (a.faction === 'raiders') { by.stats.raiders++; w.chronicle.raidersKilled++; } }
   if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
   else if (sp.id === 'wolf' && by?.faction === 'colony') {
     // a wolf killed in a fight: its hide and bones are brought home

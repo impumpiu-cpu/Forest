@@ -4,6 +4,7 @@ import {Renderer} from './render/renderer.js';
 import {Menu} from './ui/menu.js';
 import {Panel} from './ui/panel.js';
 import {TOOLS} from './ui/tools.js';
+import {showEnd, hideEnd} from './ui/endScreen.js';
 import {$, segmented, press} from './ui/dom.js';
 import {setWind} from './world/weather.js';
 import {spawnGroup} from './settlement/migration.js';
@@ -43,6 +44,7 @@ function start(cfg) {
 
 function showMenu() {
   running = false;
+  hideEnd();
   $('menu').hidden = false; $('game').hidden = true; $('explain').hidden = true;
   $('backToGame').hidden = !world;
   $('colonyName').textContent = 'Тёплый Брод';
@@ -96,6 +98,15 @@ function frame(now) {
     while (acc >= TICK_MS && n < 40 && performance.now() < budget) { step(world); acc -= TICK_MS; n++; }
     if (acc > 500) acc = 0;
     if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
+    // the settlement has fallen: stop, draw the last frame and show the chronicle
+    if (world.over) {
+      running = false;
+      renderer.draw(world, view); panel.render(world, view);
+      $('game').hidden = true; $('explain').hidden = true;
+      showEnd(world, () => { world = null; showMenu(); });
+      requestAnimationFrame(frame);
+      return;
+    }
     renderer.draw(world, view);
     view.renderMs = renderer.ms;
     panel.readout(world, view.hover);

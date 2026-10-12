@@ -31,7 +31,7 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   let dmg = raw * home * wall * (1 - (g.armor || 0));
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
   t.hp -= dmg;
-  if (t.diary && t.hp < 0.45 && t.hp > 0) think(w, t, 'wounded');
+  if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
   if (t.hp <= 0) kill(w, t, 'ран', by);

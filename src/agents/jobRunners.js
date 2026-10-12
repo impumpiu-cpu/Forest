@@ -12,6 +12,7 @@ import {workAt, stationHasWork, markWorking} from '../settlement/crafting.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
 import {think, moodOf} from './mind.js';
+import {add} from '../settlement/chronicle.js';
 
 // skilled hands work faster, the right tool helps; practice slowly builds skill
 export function workRate(w, a, jobId) {
@@ -50,6 +51,7 @@ export const RUNNERS = {
       if (task.work < job.time) return;
       task.work = 0; job.take(w, i);
       load(a, job.resource, 1);
+      add(a.stats.gathered, job.resource); add(w.chronicle.gathered, job.resource);
       toolWear(w, a, job.id);
     } else if (r === 'none') {
       if (a.carry?.n) a.carry.n = cap; else { a.task = {id: 'idle'}; a.think = 20; }
@@ -59,7 +61,7 @@ export const RUNNERS = {
 
   build(w, a, task) {
     const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
-    if (site && !site.done && w.grid.fire[i] === 0) { addLabour(w, site, workRate(w, a, 'build'), a); toolWear(w, a, 'build', 0.05); return; }
+    if (site && !site.done && w.grid.fire[i] === 0) { const amt = workRate(w, a, 'build'); a.stats.labour += amt; addLabour(w, site, amt, a); toolWear(w, a, 'build', 0.05); return; }
     const r = follow(w, a, 'sites');
     if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); done(a); a.think = 10; }
   },
@@ -106,7 +108,7 @@ export const RUNNERS = {
     a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 0.0003);
     const res = shoot(w, a, prey, job.id);
     if (res === 'kill') {
-      w.stats.hunted++; a.stalking = false;
+      w.stats.hunted++; a.stalking = false; a.stats.hunted++;
       think(w, a, 'huntKill', {prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label});
       for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
       const near = w.agents.some(o => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);

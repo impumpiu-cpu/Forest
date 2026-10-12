@@ -103,6 +103,8 @@ function hold(w, present, total) {
   c.decision = decision; c.args = args.slice(0, 6); c.present = present.length; c.total = total;
   // everyone who spoke remembers how it went
   const winner = c.votes[0]?.[0];
+  w.chronicle.councils++;
+  if (winner) w.chronicle.councilWins[winner] = (w.chronicle.councilWins[winner] || 0) + 1;
   for (const x of args) {
     const a = present.find(p => p.name === x.name), choice = BUILDINGS.get(x.key).name.toLowerCase();
     const id = x.key !== winner ? 'councilLost' : c.goal ? 'councilSaving' : 'councilWon';
