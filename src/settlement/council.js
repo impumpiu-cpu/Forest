@@ -96,15 +96,29 @@ function hold(w, present, total) {
         args.push({name: a.name, key: best, why});
       }
       const ranked = Object.keys(tally).sort((x, y) => tally[y] - tally[x] || weight[y] - weight[x]);
-      const win = ranked[0], d = BUILDINGS.get(win);
       c.votes = ranked.map(k => [k, tally[k]]);
+      // a decision needs more than half of those present: if nobody has that, the two strongest
+      // proposals go to a second round, where everyone picks the one of the two they prefer
+      let win = ranked[0], votes = tally[win], round2 = '';
+      if (votes * 2 <= present.length && ranked.length > 1) {
+        const [p1, p2] = ranked, t2 = {[p1]: 0, [p2]: 0};
+        for (const a of present) {
+          const s1 = motive(w, a, BUILDINGS.get(p1), ctx, false)[0], s2 = motive(w, a, BUILDINGS.get(p2), ctx, false)[0];
+          t2[s1 >= s2 ? p1 : p2]++;
+        }
+        win = t2[p1] >= t2[p2] ? p1 : p2; votes = t2[win];
+        round2 = ` Во втором туре: ${BUILDINGS.get(p1).name.toLowerCase()} ${t2[p1]}, ${BUILDINGS.get(p2).name.toLowerCase()} ${t2[p2]}.`;
+      }
+      const d = BUILDINGS.get(win);
       if (canAfford(w, d.cost) && laySite(w, win)) {
         c.goal = null;
-        decision = `Решили строить: ${d.name.toLowerCase()} (${tally[win]} из ${present.length}). Место под стройку уже размечено.`;
+        w.chronicle.councilWins[win] = (w.chronicle.councilWins[win] || 0) + 1;
+        decision = `Решили строить: ${d.name.toLowerCase()} (${votes} из ${present.length}).${round2} Место под стройку уже размечено.`;
       } else {
         c.goal = win;
+        w.chronicle.saving ??= {}; w.chronicle.saving[win] = (w.chronicle.saving[win] || 0) + 1;
         const lack = missing(w, d.cost).map(([r, v]) => `${RESOURCES.get(r).label} ${v}`).join(', ');
-        decision = `Решили копить на: ${d.name.toLowerCase()} (${tally[win]} из ${present.length}). Не хватает: ${lack}.`;
+        decision = `Решили копить на: ${d.name.toLowerCase()} (${votes} из ${present.length}).${round2} Не хватает: ${lack}.`;
       }
     }
   }
@@ -112,7 +126,6 @@ function hold(w, present, total) {
   // everyone who spoke remembers how it went
   const winner = c.votes[0]?.[0];
   w.chronicle.councils++;
-  if (winner) w.chronicle.councilWins[winner] = (w.chronicle.councilWins[winner] || 0) + 1;
   for (const x of args) {
     const a = present.find(p => p.name === x.name), choice = BUILDINGS.get(x.key).name.toLowerCase();
     const id = x.key !== winner ? 'councilLost' : c.goal ? 'councilSaving' : 'councilWon';

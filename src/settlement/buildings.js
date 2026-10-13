@@ -31,22 +31,37 @@ export function eligible(w, key) {
   return count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w));
 }
 
-// a 2×2 lot on dry land, in a ring around the camp, away from other buildings.
-// near: 'fish' looks further out (up to 24 cells) for a lot on the shore of a lake with fish.
-function findLot(w, near) {
-  if (near === 'fish') { const lot = findLot(w, 'fish-shore'); if (lot >= 0) return lot; }
-  const shore = near === 'fish-shore', R = shore ? 24 : 14;
-  const g = w.grid; let best = -1, bd = 1e9;
+export const lotSize = d => d.lot || [2, 2];
+
+// average fertility of a lot (fields and gardens grow by it)
+export function lotFertility(w, x, y, lw, lh) {
+  let s = 0;
+  for (let yy = 0; yy < lh; yy++) for (let xx = 0; xx < lw; xx++) s += w.grid.fert[(y + yy) * w.w + x + xx];
+  return s / (lw * lh);
+}
+
+// A lot of the building's size (`lot`, default 2×2) on dry land around the camp, with a free ring
+// around it. Ordinary buildings take the nearest one; `soil: true` (fields, gardens) weigh the
+// ground: a lot a few cells further out on much better soil wins. `near: 'fish'` looks further out
+// (up to 24 cells) for a lot on the shore of a lake with fish.
+function findLot(w, d, near = d.near) {
+  if (near === 'fish') { const lot = findLot(w, d, 'fish-shore'); if (lot >= 0) return lot; }
+  const shore = near === 'fish-shore', [lw, lh] = lotSize(d), R = shore ? 24 : d.soil ? 20 : 14;
+  const g = w.grid; let best = -1, bs = Infinity;
   for (let y = w.camp.y - R; y <= w.camp.y + R - 1; y++) for (let x = w.camp.x - R; x <= w.camp.x + R - 1; x++) {
-    if (x < 1 || y < 1 || x >= w.w - 2 || y >= w.h - 2) continue;
-    const d = (x + 1 - w.camp.x) ** 2 + (y + 1 - w.camp.y) ** 2; if (d < 25 || d >= bd) continue;
+    if (x < 1 || y < 1 || x + lw >= w.w || y + lh >= w.h) continue;
+    const d2 = (x + lw / 2 - w.camp.x) ** 2 + (y + lh / 2 - w.camp.y) ** 2; if (d2 < 25) continue;
+    if (!d.soil && d2 >= bs) continue;
     let ok = true;
-    for (let yy = -1; yy <= 2 && ok; yy++) for (let xx = -1; xx <= 2; xx++) {
-      const j = (y + yy) * w.w + x + xx, inner = xx >= 0 && xx <= 1 && yy >= 0 && yy <= 1;
+    for (let yy = -1; yy <= lh && ok; yy++) for (let xx = -1; xx <= lw; xx++) {
+      const j = (y + yy) * w.w + x + xx, inner = xx >= 0 && xx < lw && yy >= 0 && yy < lh;
       if (g.bld[j] >= 0 || (inner && (!walkable(w, j) || g.fire[j] > 0 || isCampArea(w, j)))) { ok = false; break; }
     }
-    if (ok && shore) ok = [0, 1, w.w, w.w + 1].some(o => lakeBeside(w, y * w.w + x + o, 0));
-    if (ok) { bd = d; best = y * w.w + x; }
+    if (!ok) continue;
+    if (shore && ![0, 1, w.w, w.w + 1].some(o => lakeBeside(w, y * w.w + x + o, 0))) continue;
+    // soil: every 0.1 of fertility is worth walking 3 cells further
+    const score = d.soil ? Math.sqrt(d2) - 30 * lotFertility(w, x, y, lw, lh) : d2;
+    if (score < bs) { bs = score; best = y * w.w + x; }
   }
   return best;
 }
@@ -54,12 +69,13 @@ function findLot(w, near) {
 export function laySite(w, key) {
   const d = BUILDINGS.get(key);
   if (!eligible(w, key) || !canAfford(w, d.cost)) return null;
-  const lot = findLot(w, d.near);
+  const lot = findLot(w, d);
   if (lot < 0) { log(w, 'Вокруг лагеря не осталось места под постройку.', 'build'); return null; }
   for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
-  const b = {id: w.bldSeq++, key, x: lot % w.w, y: (lot / w.w) | 0, progress: 0, done: false, cells: []};
+  const [lw, lh] = lotSize(d);
+  const b = {id: w.bldSeq++, key, x: lot % w.w, y: (lot / w.w) | 0, w: lw, h: lh, progress: 0, done: false, cells: []};
   const g = w.grid;
-  for (let yy = 0; yy < 2; yy++) for (let xx = 0; xx < 2; xx++) {
+  for (let yy = 0; yy < lh; yy++) for (let xx = 0; xx < lw; xx++) {
     const j = (b.y + yy) * w.w + b.x + xx; b.cells.push(j);
     g.bld[j] = b.id; g.terr[j] = T.GRASS; g.bush[j] = 0; g.food[j] = 0; g.wood[j] = 0; g.fuel[j] = d.wooden ? 0.9 : 0;
   }
@@ -73,7 +89,13 @@ export function laySite(w, key) {
 // custom effects that need more than modifiers; referenced by name from data/buildings.js
 const FINISH_HOOKS = {
   plowField,
+  // a garden of the new kind (a lot of its own): every cell of it is a berry bush
   plantGarden(w, b) {
+    if (b.w > 2) {
+      const g = w.grid; b.plots = [];
+      for (const j of b.cells) { g.bush[j] = 1; g.food[j] = 0.5; g.fuel[j] = 0.6; w.gardenCells.push(j); b.plots.push(j); }
+      w.nav.dirty('berries'); return;
+    }
     const g = w.grid, cand = [];
     for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
       const x = b.x + xx, y = b.y + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;

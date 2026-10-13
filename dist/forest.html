@@ -389,6 +389,7 @@ body.ingame h1{font-size:22px}
           <button data-layer="world" aria-pressed="true">Мир</button>
           <button data-layer="temp" aria-pressed="false">Температура</button>
           <button data-layer="res" aria-pressed="false">Ресурсы</button>
+          <button data-layer="soil" aria-pressed="false" title="Плодородие почвы: чем зеленее, тем лучше родят поля и огороды">Почва</button>
           <button data-layer="nav" aria-pressed="false">Навигация</button>
         </div>
       </div>
@@ -1627,7 +1628,9 @@ body.ingame h1{font-size:22px}
       wooden: true,
       color: "#8a7040",
       mark: "\u041F",
-      effect: "\u0420\u0430\u0441\u043F\u0430\u0445\u0438\u0432\u0430\u044E\u0442 16 \u0433\u0440\u044F\u0434\u043E\u043A. \u0412\u0435\u0441\u043D\u043E\u0439 \u0438 \u043B\u0435\u0442\u043E\u043C \u0441\u0435\u044E\u0442 \u044F\u0447\u043C\u0435\u043D\u044C, \u0440\u0435\u043F\u0443 \u0438\u043B\u0438 \u043B\u0451\u043D (\u0441\u0435\u043C\u0435\u043D\u0430 \u2014 \u0443 \u0442\u043E\u0440\u0433\u043E\u0432\u0446\u0435\u0432, \u0441 \u0443\u0440\u043E\u0436\u0430\u044F \u0447\u0430\u0441\u0442\u044C \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044F), \u043E\u0441\u0435\u043D\u044C\u044E \u0436\u043D\u0443\u0442. \u041D\u0435\u0441\u0436\u0430\u0442\u043E\u0435 \u043A \u0437\u0438\u043C\u0435 \u043F\u043E\u0431\u044C\u0451\u0442 \u043C\u043E\u0440\u043E\u0437.",
+      lot: [4, 4],
+      soil: true,
+      effect: "\u0420\u0430\u0441\u043F\u0430\u0445\u0438\u0432\u0430\u044E\u0442 16 \u0433\u0440\u044F\u0434\u043E\u043A \u043D\u0430 \u0441\u0430\u043C\u043E\u0439 \u043F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u043D\u043E\u0439 \u0437\u0435\u043C\u043B\u0435 \u043F\u043E\u0431\u043B\u0438\u0437\u043E\u0441\u0442\u0438: \u043D\u0430 \u0445\u043E\u0440\u043E\u0448\u0435\u0439 \u043F\u043E\u0447\u0432\u0435 \u0445\u043B\u0435\u0431 \u0440\u0430\u0441\u0442\u0451\u0442 \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u0438 \u0440\u043E\u0434\u0438\u0442 \u0431\u043E\u043B\u044C\u0448\u0435. \u0412\u0435\u0441\u043D\u043E\u0439 \u0438 \u043B\u0435\u0442\u043E\u043C \u0441\u0435\u044E\u0442 \u044F\u0447\u043C\u0435\u043D\u044C, \u0440\u0435\u043F\u0443 \u0438\u043B\u0438 \u043B\u0451\u043D (\u0441\u0435\u043C\u0435\u043D\u0430 \u2014 \u0443 \u0442\u043E\u0440\u0433\u043E\u0432\u0446\u0435\u0432, \u0441 \u0443\u0440\u043E\u0436\u0430\u044F \u0447\u0430\u0441\u0442\u044C \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044F), \u043E\u0441\u0435\u043D\u044C\u044E \u0436\u043D\u0443\u0442. \u041D\u0435\u0441\u0436\u0430\u0442\u043E\u0435 \u043A \u0437\u0438\u043C\u0435 \u043F\u043E\u0431\u044C\u0451\u0442 \u043C\u043E\u0440\u043E\u0437.",
       effects: {},
       onFinish: "plowField",
       available: (w) => ["seedBarley", "seedTurnip", "seedFlax"].some((s) => (w.stock[s] || 0) >= 2),
@@ -1644,7 +1647,9 @@ body.ingame h1{font-size:22px}
       wooden: false,
       color: "#c45c95",
       mark: "\u041E",
-      effect: "\u0420\u044F\u0434\u043E\u043C \u0432\u044B\u0441\u0430\u0436\u0438\u0432\u0430\u044E\u0442\u0441\u044F 12 \u043A\u0443\u0441\u0442\u043E\u0432, \u043E\u043D\u0438 \u043F\u043B\u043E\u0434\u043E\u043D\u043E\u0441\u044F\u0442 \u0432\u0442\u0440\u043E\u0435 \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u0434\u0438\u043A\u0438\u0445.",
+      lot: [4, 3],
+      soil: true,
+      effect: "\u041D\u0430 \u043B\u0443\u0447\u0448\u0435\u0439 \u0437\u0435\u043C\u043B\u0435 \u043F\u043E\u0431\u043B\u0438\u0437\u043E\u0441\u0442\u0438 \u0432\u044B\u0441\u0430\u0436\u0438\u0432\u0430\u044E\u0442 12 \u043A\u0443\u0441\u0442\u043E\u0432: \u043E\u043D\u0438 \u043F\u043B\u043E\u0434\u043E\u043D\u043E\u0441\u044F\u0442 \u0432\u0442\u0440\u043E\u0435 \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u0434\u0438\u043A\u0438\u0445, \u0430 \u043D\u0430 \u0436\u0438\u0440\u043D\u043E\u0439 \u043F\u043E\u0447\u0432\u0435 \u0435\u0449\u0451 \u0431\u044B\u0441\u0442\u0440\u0435\u0435.",
       effects: {},
       onFinish: "plantGarden",
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0435\u0434\u0443 \u043F\u043E\u0431\u043B\u0438\u0436\u0435 \u043A \u0434\u043E\u043C\u0443",
@@ -2865,9 +2870,21 @@ body.ingame h1{font-size:22px}
   // src/settlement/farming.js
   var EVERY = 10;
   var PLOTS = 16;
+  var soilRate = (w, i) => 0.5 + w.grid.fert[i];
+  var soilYield = (w, i) => 0.4 + 1.2 * w.grid.fert[i];
   var fields = (w) => w.buildings.filter((b) => b.done && b.plots && b.key === "field");
   function plowField(w, b) {
     const g2 = w.grid, cand = [];
+    if (b.w > 2) {
+      b.plots = b.cells.map((j) => ({ i: j, crop: null, g: 0 }));
+      for (const j of b.cells) {
+        g2.bush[j] = 0;
+        g2.food[j] = 0;
+        g2.fuel[j] = 0.2;
+      }
+      w.nav.dirty("fieldwork");
+      return;
+    }
     for (let yy = -3; yy <= 4; yy++) for (let xx = -3; xx <= 4; xx++) {
       const x = b.x + xx, y = b.y + yy;
       if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
@@ -2930,7 +2947,7 @@ body.ingame h1{font-size:22px}
         p.g = 0;
         continue;
       }
-      p.g = Math.min(1, p.g + EVERY * S.grow / (CROPS.get(p.crop).days * DAY));
+      p.g = Math.min(1, p.g + EVERY * S.grow * soilRate(w, p.i) / (CROPS.get(p.crop).days * DAY));
       if (p.g >= 1) ripened = true;
     }
     if (ripened) w.nav.dirty("fieldwork");
@@ -2939,7 +2956,11 @@ body.ingame h1{font-size:22px}
     const p = plotAt(w, i);
     if (!p) return null;
     if (ripe(p)) {
-      const c = CROPS.get(p.crop), got = { ...c.yields };
+      const c = CROPS.get(p.crop), k = soilYield(w, p.i), got = {};
+      for (const [r, n] of Object.entries(c.yields)) {
+        const v = n * k, whole = Math.floor(v) + (w.rng() < v % 1 ? 1 : 0);
+        if (whole) got[r] = whole;
+      }
       const back = Math.floor(c.seedBack) + (w.rng() < c.seedBack % 1 ? 1 : 0);
       if (back) got[c.seed] = (got[c.seed] || 0) + back;
       p.crop = null;
@@ -2973,29 +2994,38 @@ body.ingame h1{font-size:22px}
     const d = BUILDINGS.get(key2);
     return count(w, key2, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w));
   }
-  function findLot(w, near) {
+  var lotSize = (d) => d.lot || [2, 2];
+  function lotFertility(w, x, y, lw, lh) {
+    let s = 0;
+    for (let yy = 0; yy < lh; yy++) for (let xx = 0; xx < lw; xx++) s += w.grid.fert[(y + yy) * w.w + x + xx];
+    return s / (lw * lh);
+  }
+  function findLot(w, d, near = d.near) {
     if (near === "fish") {
-      const lot = findLot(w, "fish-shore");
+      const lot = findLot(w, d, "fish-shore");
       if (lot >= 0) return lot;
     }
-    const shore = near === "fish-shore", R = shore ? 24 : 14;
+    const shore = near === "fish-shore", [lw, lh] = lotSize(d), R = shore ? 24 : d.soil ? 20 : 14;
     const g2 = w.grid;
-    let best = -1, bd = 1e9;
+    let best = -1, bs = Infinity;
     for (let y = w.camp.y - R; y <= w.camp.y + R - 1; y++) for (let x = w.camp.x - R; x <= w.camp.x + R - 1; x++) {
-      if (x < 1 || y < 1 || x >= w.w - 2 || y >= w.h - 2) continue;
-      const d = (x + 1 - w.camp.x) ** 2 + (y + 1 - w.camp.y) ** 2;
-      if (d < 25 || d >= bd) continue;
+      if (x < 1 || y < 1 || x + lw >= w.w || y + lh >= w.h) continue;
+      const d2 = (x + lw / 2 - w.camp.x) ** 2 + (y + lh / 2 - w.camp.y) ** 2;
+      if (d2 < 25) continue;
+      if (!d.soil && d2 >= bs) continue;
       let ok = true;
-      for (let yy = -1; yy <= 2 && ok; yy++) for (let xx = -1; xx <= 2; xx++) {
-        const j = (y + yy) * w.w + x + xx, inner = xx >= 0 && xx <= 1 && yy >= 0 && yy <= 1;
+      for (let yy = -1; yy <= lh && ok; yy++) for (let xx = -1; xx <= lw; xx++) {
+        const j = (y + yy) * w.w + x + xx, inner = xx >= 0 && xx < lw && yy >= 0 && yy < lh;
         if (g2.bld[j] >= 0 || inner && (!walkable(w, j) || g2.fire[j] > 0 || isCampArea(w, j))) {
           ok = false;
           break;
         }
       }
-      if (ok && shore) ok = [0, 1, w.w, w.w + 1].some((o) => lakeBeside(w, y * w.w + x + o, 0));
-      if (ok) {
-        bd = d;
+      if (!ok) continue;
+      if (shore && ![0, 1, w.w, w.w + 1].some((o) => lakeBeside(w, y * w.w + x + o, 0))) continue;
+      const score = d.soil ? Math.sqrt(d2) - 30 * lotFertility(w, x, y, lw, lh) : d2;
+      if (score < bs) {
+        bs = score;
         best = y * w.w + x;
       }
     }
@@ -3004,15 +3034,16 @@ body.ingame h1{font-size:22px}
   function laySite(w, key2) {
     const d = BUILDINGS.get(key2);
     if (!eligible(w, key2) || !canAfford(w, d.cost)) return null;
-    const lot = findLot(w, d.near);
+    const lot = findLot(w, d);
     if (lot < 0) {
       log(w, "\u0412\u043E\u043A\u0440\u0443\u0433 \u043B\u0430\u0433\u0435\u0440\u044F \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043C\u0435\u0441\u0442\u0430 \u043F\u043E\u0434 \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0443.", "build");
       return null;
     }
     for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
-    const b = { id: w.bldSeq++, key: key2, x: lot % w.w, y: lot / w.w | 0, progress: 0, done: false, cells: [] };
+    const [lw, lh] = lotSize(d);
+    const b = { id: w.bldSeq++, key: key2, x: lot % w.w, y: lot / w.w | 0, w: lw, h: lh, progress: 0, done: false, cells: [] };
     const g2 = w.grid;
-    for (let yy = 0; yy < 2; yy++) for (let xx = 0; xx < 2; xx++) {
+    for (let yy = 0; yy < lh; yy++) for (let xx = 0; xx < lw; xx++) {
       const j = (b.y + yy) * w.w + b.x + xx;
       b.cells.push(j);
       g2.bld[j] = b.id;
@@ -3030,7 +3061,21 @@ body.ingame h1{font-size:22px}
   }
   var FINISH_HOOKS = {
     plowField,
+    // a garden of the new kind (a lot of its own): every cell of it is a berry bush
     plantGarden(w, b) {
+      if (b.w > 2) {
+        const g3 = w.grid;
+        b.plots = [];
+        for (const j of b.cells) {
+          g3.bush[j] = 1;
+          g3.food[j] = 0.5;
+          g3.fuel[j] = 0.6;
+          w.gardenCells.push(j);
+          b.plots.push(j);
+        }
+        w.nav.dirty("berries");
+        return;
+      }
       const g2 = w.grid, cand = [];
       for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
         const x = b.x + xx, y = b.y + yy;
@@ -3155,6 +3200,7 @@ body.ingame h1{font-size:22px}
     hold(w, present, col.length);
   }
   function hold(w, present, total) {
+    var _a;
     const c = w.council;
     c.lastDay = dayOf(w.tick);
     const site = openSites(w)[0];
@@ -3188,15 +3234,29 @@ body.ingame h1{font-size:22px}
           args.push({ name: a.name, key: best, why });
         }
         const ranked = Object.keys(tally).sort((x, y) => tally[y] - tally[x] || weight[y] - weight[x]);
-        const win = ranked[0], d = BUILDINGS.get(win);
         c.votes = ranked.map((k) => [k, tally[k]]);
+        let win = ranked[0], votes = tally[win], round2 = "";
+        if (votes * 2 <= present.length && ranked.length > 1) {
+          const [p1, p2] = ranked, t2 = { [p1]: 0, [p2]: 0 };
+          for (const a of present) {
+            const s1 = motive(w, a, BUILDINGS.get(p1), ctx, false)[0], s2 = motive(w, a, BUILDINGS.get(p2), ctx, false)[0];
+            t2[s1 >= s2 ? p1 : p2]++;
+          }
+          win = t2[p1] >= t2[p2] ? p1 : p2;
+          votes = t2[win];
+          round2 = ` \u0412\u043E \u0432\u0442\u043E\u0440\u043E\u043C \u0442\u0443\u0440\u0435: ${BUILDINGS.get(p1).name.toLowerCase()} ${t2[p1]}, ${BUILDINGS.get(p2).name.toLowerCase()} ${t2[p2]}.`;
+        }
+        const d = BUILDINGS.get(win);
         if (canAfford(w, d.cost) && laySite(w, win)) {
           c.goal = null;
-          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u0441\u0442\u0440\u043E\u0438\u0442\u044C: ${d.name.toLowerCase()} (${tally[win]} \u0438\u0437 ${present.length}). \u041C\u0435\u0441\u0442\u043E \u043F\u043E\u0434 \u0441\u0442\u0440\u043E\u0439\u043A\u0443 \u0443\u0436\u0435 \u0440\u0430\u0437\u043C\u0435\u0447\u0435\u043D\u043E.`;
+          w.chronicle.councilWins[win] = (w.chronicle.councilWins[win] || 0) + 1;
+          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u0441\u0442\u0440\u043E\u0438\u0442\u044C: ${d.name.toLowerCase()} (${votes} \u0438\u0437 ${present.length}).${round2} \u041C\u0435\u0441\u0442\u043E \u043F\u043E\u0434 \u0441\u0442\u0440\u043E\u0439\u043A\u0443 \u0443\u0436\u0435 \u0440\u0430\u0437\u043C\u0435\u0447\u0435\u043D\u043E.`;
         } else {
           c.goal = win;
+          (_a = w.chronicle).saving ?? (_a.saving = {});
+          w.chronicle.saving[win] = (w.chronicle.saving[win] || 0) + 1;
           const lack = missing(w, d.cost).map(([r, v]) => `${RESOURCES.get(r).label} ${v}`).join(", ");
-          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u043A\u043E\u043F\u0438\u0442\u044C \u043D\u0430: ${d.name.toLowerCase()} (${tally[win]} \u0438\u0437 ${present.length}). \u041D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442: ${lack}.`;
+          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u043A\u043E\u043F\u0438\u0442\u044C \u043D\u0430: ${d.name.toLowerCase()} (${votes} \u0438\u0437 ${present.length}).${round2} \u041D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442: ${lack}.`;
         }
       }
     }
@@ -3206,7 +3266,6 @@ body.ingame h1{font-size:22px}
     c.total = total;
     const winner = c.votes[0]?.[0];
     w.chronicle.councils++;
-    if (winner) w.chronicle.councilWins[winner] = (w.chronicle.councilWins[winner] || 0) + 1;
     for (const x of args) {
       const a = present.find((p) => p.name === x.name), choice = BUILDINGS.get(x.key).name.toLowerCase();
       const id = x.key !== winner ? "councilLost" : c.goal ? "councilSaving" : "councilWon";
@@ -3839,9 +3898,133 @@ body.ingame h1{font-size:22px}
     return FACTIONS.get(a.faction).hostile.includes(b.faction);
   }
 
+  // src/data/navmaps.js
+  var NAVMAPS = new Registry("navmap");
+  var inUse = (w) => perTick(w, "navInUse", () => {
+    const s = /* @__PURE__ */ new Set();
+    for (const a of w.agents) {
+      const t = a.task;
+      if (!t) continue;
+      if (t.id === "job") {
+        const j = JOBS_REF.get(t.job);
+        if (j?.nav) s.add(j.nav);
+        if (t.station) s.add("station:" + t.station);
+      } else if (t.id === "treat") s.add("healer");
+      else if (t.id === "warm") s.add("warm");
+    }
+    return s;
+  });
+  var JOBS_REF = null;
+  var useJobs = (reg) => {
+    JOBS_REF = reg;
+  };
+  NAVMAPS.registerAll([
+    { id: "camp", seed: (w, i) => w.camp.set.has(i) },
+    // where to get warm: the camp fire and every finished lived-in building (heated while the fire burns)
+    {
+      id: "warm",
+      prepare: (w) => new Set(w.buildings.filter((b) => b.done && BUILDINGS.get(b.key).heat).flatMap((b) => b.cells)),
+      seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)
+    },
+    { id: "edge", seed: (w, i) => {
+      const x = i % w.w, y = i / w.w | 0;
+      return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1;
+    } },
+    // bushes ripen almost every tick somewhere: the map follows them only while someone picks, and at most every 40 ticks
+    { id: "berries", minGap: 40, active: (w) => inUse(w).has("berries"), seed: (w, i) => w.grid.food[i] > 0.35 && w.grid.fire[i] === 0 },
+    { id: "trees", minGap: 40, active: (w) => inUse(w).has("trees"), seed: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.3 && w.grid.fire[i] === 0 },
+    {
+      id: "rockface",
+      active: (w) => has(w, "quarry") && inUse(w).has("rockface"),
+      seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && nextToRock(w, i)
+    },
+    {
+      id: "sites",
+      minGap: 4,
+      active: (w) => openSites(w).length > 0,
+      prepare: (w) => new Set(openSites(w).flatMap((b) => b.cells)),
+      seed: (w, i, cells) => cells.has(i)
+    },
+    // the rock face where the ore the colony is short of can be dug
+    {
+      id: "ore",
+      period: 240,
+      active: (w) => has(w, "mineshaft") && inUse(w).has("ore"),
+      prepare: (w) => wantedOre(w),
+      seed: (w, i, codes) => codes.size > 0 && w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && oreBeside(w, i, codes) >= 0
+    },
+    // shore of lakes that still have fish
+    {
+      id: "shore",
+      active: (w) => inUse(w).has("shore"),
+      seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)
+    },
+    // game animals: hunters and predators walk this field until they are close enough to go straight
+    // only while a hunter is out or a hungry predator follows the scent (fed wolves roam without it)
+    {
+      id: "prey",
+      period: 20,
+      minGap: 10,
+      active: (w) => w.agents.some((a) => a.task?.job === "hunt" || a.brain === "predator" && a.needs.food < (SPECIES.get(a.species).predator?.hungry ?? 1)),
+      prepare: (w) => new Set(w.agents.filter((a) => SPECIES.get(a.species).game).map((a) => cellOf(w, a))),
+      seed: (w, i, cells) => cells.has(i)
+    },
+    // field plots that need sowing or reaping
+    {
+      id: "fieldwork",
+      period: 120,
+      active: (w) => fields(w).length > 0 && inUse(w).has("fieldwork"),
+      prepare: (w) => new Set(fields(w).flatMap((b) => b.plots.filter((p) => needsWork(w, p)).map((p) => p.i))),
+      seed: (w, i, cells) => cells.has(i)
+    },
+    // the settlement zone: where people run when something hunts them
+    { id: "zone", seed: (w, i) => inZone(w, i) },
+    // only fires that threaten the camp are worth fighting
+    {
+      id: "fire",
+      period: 12,
+      minGap: 4,
+      active: (w) => w.stats.fireCount > 0,
+      seed: (w, i) => w.grid.fire[i] > 0.05 && (i % w.w - w.camp.x) ** 2 + ((i / w.w | 0) - w.camp.y) ** 2 < 400
+    },
+    // escape map: seeds are cells barely warmer than the air; fire is made almost impassable
+    {
+      id: "safe",
+      active: (w) => w.stats.fireCount > 0,
+      hazard: 25,
+      urgent: true,
+      prepare: (w) => ambientTemp(w) + 14,
+      seed: (w, i, lim) => w.grid.temp[i] < lim && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6
+    }
+  ]);
+  for (const p of PLANTS.all()) {
+    const key2 = plantLayer(p.id);
+    NAVMAPS.register({
+      id: key2,
+      period: 300,
+      active: (w) => (!p.seasons || p.seasons.includes(season(w).id)) && inUse(w).has(key2),
+      seed: (w, i) => w.grid[key2]?.[i] >= p.ripe && w.grid.fire[i] === 0
+    });
+  }
+  NAVMAPS.register({
+    id: "healer",
+    active: (w) => has(w, "healerhut") && inUse(w).has("healer"),
+    prepare: (w) => new Set(w.buildings.filter((x) => x.key === "healerhut" && x.done).flatMap((x) => x.cells)),
+    seed: (w, i, cells) => cells.has(i)
+  });
+  for (const b of BUILDINGS.filter((d) => d.station)) {
+    NAVMAPS.register({
+      id: "station:" + b.id,
+      active: (w) => has(w, b.id) && inUse(w).has("station:" + b.id),
+      prepare: (w) => new Set(w.buildings.filter((x) => x.key === b.id && x.done).flatMap((x) => x.cells)),
+      seed: (w, i, cells) => cells.has(i)
+    });
+  }
+
   // src/data/jobs.js
   var HERBS_KEEP = 10;
   var JOBS = new Registry("job");
+  useJobs(JOBS);
   var want = (stock, pop, low, enough) => stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04;
   var foodWant = (w, ctx, job, k = 1, extra = 0) => {
     const f = FOODS.get(job.food), fans = ctx.favourites[job.food] || 0;
@@ -4368,109 +4551,6 @@ body.ingame h1{font-size:22px}
     }
   }
 
-  // src/data/navmaps.js
-  var NAVMAPS = new Registry("navmap");
-  NAVMAPS.registerAll([
-    { id: "camp", seed: (w, i) => w.camp.set.has(i) },
-    // where to get warm: the camp fire and every finished lived-in building (heated while the fire burns)
-    {
-      id: "warm",
-      prepare: (w) => new Set(w.buildings.filter((b) => b.done && BUILDINGS.get(b.key).heat).flatMap((b) => b.cells)),
-      seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)
-    },
-    { id: "edge", seed: (w, i) => {
-      const x = i % w.w, y = i / w.w | 0;
-      return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1;
-    } },
-    { id: "berries", seed: (w, i) => w.grid.food[i] > 0.35 && w.grid.fire[i] === 0 },
-    { id: "trees", seed: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.3 && w.grid.fire[i] === 0 },
-    {
-      id: "rockface",
-      active: (w) => has(w, "quarry"),
-      seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && nextToRock(w, i)
-    },
-    {
-      id: "sites",
-      minGap: 4,
-      active: (w) => openSites(w).length > 0,
-      prepare: (w) => new Set(openSites(w).flatMap((b) => b.cells)),
-      seed: (w, i, cells) => cells.has(i)
-    },
-    // the rock face where the ore the colony is short of can be dug
-    {
-      id: "ore",
-      period: 240,
-      active: (w) => has(w, "mineshaft"),
-      prepare: (w) => wantedOre(w),
-      seed: (w, i, codes) => codes.size > 0 && w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && oreBeside(w, i, codes) >= 0
-    },
-    // shore of lakes that still have fish
-    {
-      id: "shore",
-      active: (w) => w.lakes.some((l) => l.cap > 0),
-      seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)
-    },
-    // game animals: hunters and predators walk this field until they are close enough to go straight
-    {
-      id: "prey",
-      period: 12,
-      minGap: 6,
-      active: (w) => w.agents.some((a) => a.task?.job === "hunt" || a.brain === "predator"),
-      prepare: (w) => new Set(w.agents.filter((a) => SPECIES.get(a.species).game).map((a) => cellOf(w, a))),
-      seed: (w, i, cells) => cells.has(i)
-    },
-    // field plots that need sowing or reaping
-    {
-      id: "fieldwork",
-      period: 120,
-      active: (w) => fields(w).length > 0,
-      prepare: (w) => new Set(fields(w).flatMap((b) => b.plots.filter((p) => needsWork(w, p)).map((p) => p.i))),
-      seed: (w, i, cells) => cells.has(i)
-    },
-    // the settlement zone: where people run when something hunts them
-    { id: "zone", seed: (w, i) => inZone(w, i) },
-    // only fires that threaten the camp are worth fighting
-    {
-      id: "fire",
-      period: 12,
-      minGap: 4,
-      active: (w) => w.stats.fireCount > 0,
-      seed: (w, i) => w.grid.fire[i] > 0.05 && (i % w.w - w.camp.x) ** 2 + ((i / w.w | 0) - w.camp.y) ** 2 < 400
-    },
-    // escape map: seeds are cells barely warmer than the air; fire is made almost impassable
-    {
-      id: "safe",
-      active: (w) => w.stats.fireCount > 0,
-      hazard: 25,
-      urgent: true,
-      prepare: (w) => ambientTemp(w) + 14,
-      seed: (w, i, lim) => w.grid.temp[i] < lim && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6
-    }
-  ]);
-  for (const p of PLANTS.all()) {
-    const key2 = plantLayer(p.id);
-    NAVMAPS.register({
-      id: key2,
-      period: 300,
-      active: (w) => !p.seasons || p.seasons.includes(season(w).id),
-      seed: (w, i) => w.grid[key2]?.[i] >= p.ripe && w.grid.fire[i] === 0
-    });
-  }
-  NAVMAPS.register({
-    id: "healer",
-    active: (w) => has(w, "healerhut"),
-    prepare: (w) => new Set(w.buildings.filter((x) => x.key === "healerhut" && x.done).flatMap((x) => x.cells)),
-    seed: (w, i, cells) => cells.has(i)
-  });
-  for (const b of BUILDINGS.filter((d) => d.station)) {
-    NAVMAPS.register({
-      id: "station:" + b.id,
-      active: (w) => has(w, b.id),
-      prepare: (w) => new Set(w.buildings.filter((x) => x.key === b.id && x.done).flatMap((x) => x.cells)),
-      seed: (w, i, cells) => cells.has(i)
-    });
-  }
-
   // src/nav/navigation.js
   var FAR = 1e9;
   var MIN_GAP = 24;
@@ -4595,7 +4675,7 @@ body.ingame h1{font-size:22px}
           if ((dirty || d.active(w)) && t - this.last[d.id] >= 2 * k) this.build(d.id);
           continue;
         }
-        if (!dirty && d.active && !d.active(w)) continue;
+        if (d.active && !d.active(w)) continue;
         const due = (dirty ? d.minGap ?? MIN_GAP : burning ? REFRESH_BURNING : d.period ?? PERIOD) * k;
         const over = (t - this.last[d.id]) / due;
         if (over >= bestOver) {
@@ -5097,12 +5177,15 @@ body.ingame h1{font-size:22px}
     advect(w, g2.temp, g2.temp2, w.wind.x * 0.35, w.wind.y * 0.35);
     [g2.temp, g2.temp2] = [g2.temp2, g2.temp];
     const { temp, temp2, smoke, smoke2, fire, terr } = g2;
-    let smax = 0;
+    let smax = 0, tmax = -Infinity, anyFire = false;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
       const Tc = temp[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
       const Tn = Tc + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * Tc) + (relax + rain * 0.03) * (amb - Tc) + fire[i] * FIRE.heat;
-      temp2[i] = Tn > FIRE.cap ? FIRE.cap : Tn;
+      const tv = Tn > FIRE.cap ? FIRE.cap : Tn;
+      temp2[i] = tv;
+      if (tv > tmax) tmax = tv;
+      if (fire[i] > 0) anyFire = true;
       if (!smokeOn) continue;
       const Sm = smoke[i], Sn = Sm + 0.12 * (smoke[l] + smoke[r] + smoke[u] + smoke[d] - 4 * Sm) - 0.012 * Sm + fire[i] * 0.25;
       const sv = Sn > 4 ? 4 : Sn;
@@ -5114,6 +5197,8 @@ body.ingame h1{font-size:22px}
       [g2.smoke, g2.smoke2] = [g2.smoke2, g2.smoke];
       st.smokeMax = smax;
     }
+    st.tempMax = tmax;
+    st.anyFire = anyFire;
   }
   function campfire(w) {
     const cold = colonists(w).some((a) => a.needs.warmth < 0.6);
@@ -5139,6 +5224,7 @@ body.ingame h1{font-size:22px}
     const sig = season(w).ignite, ignF = FIRE.ignForest + w.climate.ign + sig, ignG = FIRE.ignGrass + w.climate.ign + sig;
     st.fireCount = 0;
     st.fireNearCamp = 0;
+    if (!st.anyFire && st.tempMax != null && st.tempMax < Math.min(ignF, ignG)) return;
     for (let i = 0; i < w.n; i++) {
       const f = g2.fire[i];
       if (f > 0) {
@@ -5156,6 +5242,7 @@ body.ingame h1{font-size:22px}
             g2.food[i] = 0;
             g2.bush[i] = 0;
             st.burntCells++;
+            g2.fert[i] = Math.min(1, g2.fert[i] + 0.08);
             w.nav.dirty("trees");
             w.nav.dirty("berries");
             if (g2.bld[i] >= 0) burnBuilding(w, g2.bld[i]);
@@ -5181,8 +5268,7 @@ body.ingame h1{font-size:22px}
   function growth(w) {
     const g2 = w.grid, S = season(w);
     for (const c of w.gardenCells) if (S.garden > 0 && g2.bush[c] && g2.fire[c] === 0 && g2.food[c] < 1) {
-      g2.food[c] = Math.min(1, g2.food[c] + 35e-4 * S.garden);
-      if (g2.food[c] > 0.35 && g2.food[c] < 0.354) w.nav.dirty("berries");
+      g2.food[c] = Math.min(1, g2.food[c] + 35e-4 * S.garden * (0.4 + 1.2 * g2.fert[c]));
     }
     if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
       const x = w.camp.x + xx, y = w.camp.y + yy;
@@ -6117,6 +6203,7 @@ body.ingame h1{font-size:22px}
         }
         toolWear(w, a, job.id);
       } else if (r === "none") {
+        if (w.nav.dirtySet.has(job.nav)) return;
         if (a.carry?.n) a.carry.n = cap;
         else {
           a.task = { id: "idle" };
@@ -6166,6 +6253,7 @@ body.ingame h1{font-size:22px}
           a.think = 20;
         }
       } else if (r === "none") {
+        if (w.nav.dirtySet.has(map)) return;
         w.nav.dirty(map);
         done(a);
         a.think = 20;
@@ -6199,6 +6287,7 @@ body.ingame h1{font-size:22px}
           task.more = a.carry.n < job.carry;
         }
       } else if (r === "none") {
+        if (w.nav.dirtySet.has(job.nav)) return;
         if (a.carry?.n) {
           task.more = false;
           return;
@@ -6458,7 +6547,7 @@ body.ingame h1{font-size:22px}
       if (!task.lying) {
         const r = follow(w, a, "healer");
         if (r === "arrived") task.lying = true;
-        else if (r === "none") {
+        else if (r === "none" && !w.nav.dirtySet.has("healer")) {
           w.nav.dirty("healer");
           done2(a);
           a.think = 30;
@@ -7521,6 +7610,14 @@ body.ingame h1{font-size:22px}
 
   // src/render/renderer.js
   var PLANTS_TINT = PLANTS.all().map((p) => ({ key: plantLayer(p.id), tint: p.tint }));
+  var FSTOPS = [[0, 186, 150, 120], [0.3, 176, 130, 80], [0.5, 196, 176, 70], [0.7, 120, 168, 60], [0.85, 50, 130, 50], [1, 20, 90, 40]];
+  function soilColor(f) {
+    for (let k = 1; k < FSTOPS.length; k++) if (f <= FSTOPS[k][0]) {
+      const a = FSTOPS[k - 1], b = FSTOPS[k], t = (f - a[0]) / (b[0] - a[0]);
+      return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+    }
+    return FSTOPS[FSTOPS.length - 1].slice(1);
+  }
   var TSTOPS = [[-5, 52, 84, 196], [8, 64, 150, 186], [16, 104, 186, 102], [24, 222, 206, 84], [45, 240, 132, 46], [120, 220, 44, 40], [500, 255, 236, 214]];
   function tempColor(t) {
     if (t <= TSTOPS[0][0]) return TSTOPS[0].slice(1);
@@ -7687,6 +7784,17 @@ body.ingame h1{font-size:22px}
             gg = 20;
             b = 16;
             a = 165;
+          }
+        } else if (mode === "soil") {
+          if (!WALKABLE[g2.terr[i]]) {
+            r = 14;
+            gg = 16;
+            b = 14;
+            a = 200;
+          } else {
+            const f = g2.fert[i];
+            [r, gg, b] = soilColor(f);
+            a = 215;
           }
         } else if (mode === "nav") {
           const v = dCamp[i];
@@ -7904,7 +8012,10 @@ body.ingame h1{font-size:22px}
         ctx.stroke();
       }
     }
-    // finished buildings are solid blocks with a letter, sites are dashed with a progress bar
+    // Buildings: a lived-in or working building is a solid block with its letter; a plot of land
+    // (`soil: true` — fields, gardens) is drawn as land: ploughed earth with the crop greening and
+    // ripening, or berry bushes (painted on the terrain), inside a fence of thin rails. Sites are dashed
+    // with a progress bar. Old 2×2 fields from earlier saves draw their scattered plots the same way.
     drawBuildings(w) {
       const ctx = this.ctx, S = this.S;
       for (const b of w.buildings) {
@@ -7917,7 +8028,17 @@ body.ingame h1{font-size:22px}
             col = c0.map((v, j) => v + (c1[j] - v) * k);
           }
           ctx.fillStyle = `rgb(${col.map((v) => v | 0).join(",")})`;
-          ctx.fillRect(px + 1, py + 1, S - 2, S - 2);
+          ctx.fillRect(px, py, S, S);
+          if (S >= 6) {
+            ctx.strokeStyle = "rgba(30,22,12,0.35)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let k = 1; k < 3; k++) {
+              ctx.moveTo(px + 1, py + S * k / 3);
+              ctx.lineTo(px + S - 1, py + S * k / 3);
+            }
+            ctx.stroke();
+          }
           if (p.crop && p.g >= 1) {
             ctx.strokeStyle = "#f0e0a0";
             ctx.lineWidth = 1;
@@ -7926,19 +8047,43 @@ body.ingame h1{font-size:22px}
         }
       }
       for (const b of w.buildings) {
-        const d = BUILDINGS.get(b.key), x = b.x * S, y = b.y * S, s = 2 * S;
+        const d = BUILDINGS.get(b.key), x = b.x * S, y = b.y * S, bw = (b.w || 2) * S, bh = (b.h || 2) * S;
+        if (d.soil && (b.w || 2) > 2) {
+          ctx.save();
+          if (!b.done) ctx.setLineDash([3, 3]);
+          ctx.strokeStyle = b.done ? "#6b4f2c" : d.color;
+          ctx.lineWidth = Math.max(1.5, S * 0.12);
+          ctx.strokeRect(x + 0.5, y + 0.5, bw - 1, bh - 1);
+          ctx.restore();
+          if (b.done && S >= 7) {
+            ctx.fillStyle = "rgba(20,22,15,0.75)";
+            ctx.fillRect(x + 2, y + 2, S * 1.2, S * 0.9);
+            ctx.fillStyle = "#efe6cf";
+            ctx.font = `bold ${clamp(S * 0.7, 8, 18)}px "PT Sans", sans-serif`;
+            ctx.textBaseline = "middle";
+            ctx.fillText(d.mark, x + 3, y + 2 + S * 0.45);
+            ctx.textBaseline = "alphabetic";
+          }
+          if (!b.done) {
+            ctx.fillStyle = "rgba(20,22,15,0.7)";
+            ctx.fillRect(x, y + bh + 1, bw, 3);
+            ctx.fillStyle = d.color;
+            ctx.fillRect(x, y + bh + 1, bw * Math.min(1, b.progress / d.work), 3);
+          }
+          continue;
+        }
         if (b.done) {
           ctx.fillStyle = d.color;
-          ctx.fillRect(x + 1, y + 1, s - 2, s - 2);
+          ctx.fillRect(x + 1, y + 1, bw - 2, bh - 2);
           ctx.strokeStyle = "#0e100b";
           ctx.lineWidth = 1.5;
-          ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
+          ctx.strokeRect(x + 1, y + 1, bw - 2, bh - 2);
           if (S >= 5) {
             ctx.fillStyle = "#14160f";
             ctx.font = `bold ${clamp(S * 0.95, 8, 26)}px "PT Sans", sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(d.mark, x + s / 2, y + s / 2 + 1);
+            ctx.fillText(d.mark, x + bw / 2, y + bh / 2 + 1);
             ctx.textAlign = "start";
             ctx.textBaseline = "alphabetic";
           }
@@ -7947,32 +8092,33 @@ body.ingame h1{font-size:22px}
           ctx.setLineDash([3, 3]);
           ctx.strokeStyle = d.color;
           ctx.lineWidth = 1.5;
-          ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
+          ctx.strokeRect(x + 1, y + 1, bw - 2, bh - 2);
           ctx.restore();
           ctx.fillStyle = "rgba(20,22,15,0.7)";
-          ctx.fillRect(x, y + s + 1, s, 3);
+          ctx.fillRect(x, y + bh + 1, bw, 3);
           ctx.fillStyle = d.color;
-          ctx.fillRect(x, y + s + 1, s * Math.min(1, b.progress / d.work), 3);
+          ctx.fillRect(x, y + bh + 1, bw * Math.min(1, b.progress / d.work), 3);
         }
       }
     }
     // outline of the selected building or cell
     drawPick(w, view2) {
       const ctx = this.ctx, S = this.S;
-      let x, y, s;
+      let x, y, sw, sh;
       const b = view2.selBld != null ? w.buildings.find((q) => q.id === view2.selBld) : null;
       if (b) {
         x = b.x * S;
         y = b.y * S;
-        s = 2 * S;
+        sw = (b.w || 2) * S;
+        sh = (b.h || 2) * S;
       } else if (view2.selCell != null && view2.selCell >= 0) {
         x = view2.selCell % w.w * S;
         y = (view2.selCell / w.w | 0) * S;
-        s = S;
+        sw = sh = S;
       } else return;
       ctx.strokeStyle = "#fff";
       ctx.lineWidth = 2;
-      ctx.strokeRect(x - 2, y - 2, s + 4, s + 4);
+      ctx.strokeRect(x - 2, y - 2, sw + 4, sh + 4);
     }
     drawAgents(w, selected) {
       const ctx = this.ctx, S = this.S;
@@ -8157,6 +8303,7 @@ body.ingame h1{font-size:22px}
   };
 
   // src/ui/panel.js
+  var soilWord = (f) => f < 0.3 ? "\u0442\u043E\u0449\u0430\u044F" : f < 0.5 ? "\u0441\u0440\u0435\u0434\u043D\u044F\u044F" : f < 0.7 ? "\u0434\u043E\u0431\u0440\u0430\u044F" : "\u0436\u0438\u0440\u043D\u0430\u044F";
   var DIRS = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
   var bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
   var costHtml = (w, cost) => Object.entries(cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? "" : " short"}">${v} ${RESOURCES.get(r).label}</span>`).join("");
@@ -8417,7 +8564,7 @@ body.ingame h1{font-size:22px}
         $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) \u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A \xB7 ${lake.cap ? `\u0440\u044B\u0431\u044B ${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E, \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"} \xB7 ${g2.temp[i].toFixed(1)} \xB0C`;
         return;
       }
-      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g2.terr[i]].label}${ore} \xB7 ${g2.temp[i].toFixed(1)} \xB0C \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g2.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g2.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g2.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g2.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g2.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
+      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g2.terr[i]].label}${ore} \xB7 ${g2.temp[i].toFixed(1)} \xB0C \xB7 \u043F\u043E\u0447\u0432\u0430 ${Math.round(g2.fert[i] * 100)}% \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g2.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g2.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g2.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g2.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g2.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
     }
     // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
     renderSelection(w, view2) {
@@ -8434,6 +8581,10 @@ body.ingame h1{font-size:22px}
       const state = b.done ? "\u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E" : `\u0441\u0442\u0440\u043E\u0438\u0442\u0441\u044F ${Math.floor(b.progress / d.work * 100)}%`;
       const rows = [`<dt>\u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435</dt><dd>${state}</dd>`, `<dt>\u0426\u0435\u043D\u0430</dt><dd class="nb">${Object.entries(d.cost).map(([r, v]) => `${v} ${RESOURCES.get(r).label}`).join(", ")}</dd>`];
       let extra = "";
+      if (d.soil) {
+        const f = lotFertility(w, b.x, b.y, b.w || 2, b.h || 2);
+        rows.push(`<dt>\u041F\u043E\u0447\u0432\u0430</dt><dd>${Math.round(f * 100)}% \xB7 ${soilWord(f)} (\u0443\u0440\u043E\u0436\u0430\u0439 \xD7${(0.4 + 1.2 * f).toFixed(2)})</dd>`);
+      }
       if (b.plots && b.key === "field") {
         const by = {};
         let empty = 0, ripe2 = 0;
@@ -8476,6 +8627,7 @@ body.ingame h1{font-size:22px}
       if (lake) rows.push(`<dt>\u0420\u044B\u0431\u0430</dt><dd>${lake.cap ? `${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"}</dd>`);
       if (g2.wood[i] > 0) rows.push(`<dt>\u0414\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430</dt><dd>${g2.wood[i].toFixed(2)}</dd>`);
       if (g2.bush[i]) rows.push(`<dt>\u042F\u0433\u043E\u0434\u044B</dt><dd>${g2.food[i].toFixed(2)}</dd>`);
+      if (WALKABLE[g2.terr[i]]) rows.push(`<dt>\u041F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u0438\u0435</dt><dd>${Math.round(g2.fert[i] * 100)}% \xB7 ${soilWord(g2.fert[i])}</dd>`);
       rows.push(`<dt>\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430</dt><dd>${g2.temp[i].toFixed(1)} \xB0C</dd>`, `<dt>\u041F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F</dt><dd>${d >= 1e8 ? "\u043D\u0435\u0442" : Math.round(d)}</dd>`);
       if (g2.fire[i] > 0) rows.push(`<dt>\u041E\u0433\u043E\u043D\u044C</dt><dd>${g2.fire[i].toFixed(2)}</dd>`);
       return `<div class="pc-head"><h3>\u041A\u043B\u0435\u0442\u043A\u0430 ${x}, ${y}</h3>${close}</div><dl class="kv">${rows.join("")}</dl>`;
@@ -8691,8 +8843,9 @@ body.ingame h1{font-size:22px}
       const first = c.built[0], last2 = c.built[c.built.length - 1], nm = (k) => BUILDINGS.get(k).name.toLowerCase();
       facts.push(c.built.length > 1 ? `\u041F\u0435\u0440\u0432\u043E\u0439 \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u043E\u0439 ${BUILDINGS.get(first.key).gender === "f" ? "\u0441\u0442\u0430\u043B\u0430" : "\u0441\u0442\u0430\u043B"} ${nm(first.key)} (\u0434\u0435\u043D\u044C ${dayNo(first.tick)}), \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0439 \u2014 ${nm(last2.key)} (\u0434\u0435\u043D\u044C ${dayNo(last2.tick)}).` : `\u0423\u0441\u043F\u0435\u043B\u0438 \u043F\u043E\u0441\u0442\u0440\u043E\u0438\u0442\u044C \u0442\u043E\u043B\u044C\u043A\u043E ${nm(first.key)}.`);
     }
-    const wins = Object.entries(c.councilWins).sort((a, b) => b[1] - a[1])[0];
-    if (c.councils) facts.push(`\u0421\u043E\u0432\u0435\u0442 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 \u0441\u043E\u0431\u0438\u0440\u0430\u043B\u0441\u044F ${c.councils} ${plural(c.councils, "\u0440\u0430\u0437", "\u0440\u0430\u0437\u0430", "\u0440\u0430\u0437")}${wins ? `, \u0447\u0430\u0449\u0435 \u0432\u0441\u0435\u0433\u043E \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u0430\u043B\u0438 \u0437\u0430 ${BUILDINGS.get(wins[0]).name.toLowerCase()}` : ""}.`);
+    const laid = Object.values(c.councilWins).reduce((s, v) => s + v, 0);
+    const saved = Object.entries(c.saving || {}).sort((a, b) => b[1] - a[1])[0];
+    if (c.councils) facts.push(`\u0421\u043E\u0432\u0435\u0442 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 \u0441\u043E\u0431\u0438\u0440\u0430\u043B\u0441\u044F ${c.councils} ${plural(c.councils, "\u0440\u0430\u0437", "\u0440\u0430\u0437\u0430", "\u0440\u0430\u0437")} \u0438 \u0437\u0430\u043B\u043E\u0436\u0438\u043B ${laid} ${plural(laid, "\u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0443", "\u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0438", "\u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043A")}${saved && saved[1] > 1 ? `; \u0434\u043E\u043B\u044C\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u043A\u043E\u043F\u0438\u043B\u0438 \u043D\u0430 ${BUILDINGS.get(saved[0]).name.toLowerCase()} (${saved[1]} ${plural(saved[1], "\u0441\u043E\u0432\u0435\u0442", "\u0441\u043E\u0432\u0435\u0442\u0430", "\u0441\u043E\u0432\u0435\u0442\u043E\u0432")})` : ""}.`);
     const fav = Object.entries(c.crafted).sort((a, b) => b[1] - a[1])[0];
     if (fav) facts.push(`\u0427\u0430\u0449\u0435 \u0432\u0441\u0435\u0433\u043E \u043C\u0430\u0441\u0442\u0435\u0440\u0438\u043B\u0438: ${ITEMS.get(fav[0]).short} (\xD7${fav[1]}).`);
     if (w.stats.hunted) facts.push(`\u041E\u0445\u043E\u0442\u043D\u0438\u043A\u0438 \u0434\u043E\u0431\u044B\u043B\u0438 ${w.stats.hunted} ${plural(w.stats.hunted, "\u0437\u0430\u0439\u0446\u0430", "\u0437\u0430\u0439\u0446\u0435\u0432", "\u0437\u0430\u0439\u0446\u0435\u0432")}${w.stats.wolfKills ? `, \u0432\u043E\u043B\u043A\u0438 \u2014 ${w.stats.wolfKills}` : ""}.`);
@@ -8877,8 +9030,8 @@ body.ingame h1{font-size:22px}
   }
 
   // src/version.js
-  var VERSION = "0.26 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 94f130a" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.27 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 84a81f0" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;

@@ -4,6 +4,10 @@ import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {TRADE} from '../data/trade.js';
 import {CROPS} from '../data/crops.js';
+import {WALKABLE} from '../data/terrain.js';
+import {lotFertility} from '../settlement/buildings.js';
+
+const soilWord = f => (f < 0.3 ? 'тощая' : f < 0.5 ? 'средняя' : f < 0.7 ? 'добрая' : 'жирная');
 import {goodsUnits, goodsLabel, askPrice} from '../settlement/trade.js';
 import {RECIPES} from '../data/recipes.js';
 import {SIZES, CLIMATES, WILDLIFE, PREDATORS} from '../data/presets.js';
@@ -286,7 +290,7 @@ export class Panel {
     const lake = g.lake[i] >= 0 ? w.lakes[g.lake[i]] : null;
     const ore = oreOf(w, i) ? ` · ${oreOf(w, i).label} ${Math.ceil(g.oreLeft[i])}` : '';
     if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${g.temp[i].toFixed(1)} °C`; return; }
-    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${ore} · ${g.temp[i].toFixed(1)} °C · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
+    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${ore} · ${g.temp[i].toFixed(1)} °C · почва ${Math.round(g.fert[i] * 100)}% · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
   }
 
   // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
@@ -305,6 +309,10 @@ export class Panel {
     const state = b.done ? 'построено' : `строится ${Math.floor(b.progress / d.work * 100)}%`;
     const rows = [`<dt>Состояние</dt><dd>${state}</dd>`, `<dt>Цена</dt><dd class="nb">${Object.entries(d.cost).map(([r, v]) => `${v} ${RESOURCES.get(r).label}`).join(', ')}</dd>`];
     let extra = '';
+    if (d.soil) {
+      const f = lotFertility(w, b.x, b.y, b.w || 2, b.h || 2);
+      rows.push(`<dt>Почва</dt><dd>${Math.round(f * 100)}% · ${soilWord(f)} (урожай ×${(0.4 + 1.2 * f).toFixed(2)})</dd>`);
+    }
     if (b.plots && b.key === 'field') {
       const by = {}; let empty = 0, ripe = 0;
       for (const p of b.plots) { if (!p.crop) empty++; else { by[p.crop] = (by[p.crop] || 0) + 1; if (p.g >= 1) ripe++; } }
@@ -340,6 +348,7 @@ export class Panel {
     if (lake) rows.push(`<dt>Рыба</dt><dd>${lake.cap ? `${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', отдыхает' : ''}` : 'слишком мало для рыбы'}</dd>`);
     if (g.wood[i] > 0) rows.push(`<dt>Древесина</dt><dd>${g.wood[i].toFixed(2)}</dd>`);
     if (g.bush[i]) rows.push(`<dt>Ягоды</dt><dd>${g.food[i].toFixed(2)}</dd>`);
+    if (WALKABLE[g.terr[i]]) rows.push(`<dt>Плодородие</dt><dd>${Math.round(g.fert[i] * 100)}% · ${soilWord(g.fert[i])}</dd>`);
     rows.push(`<dt>Температура</dt><dd>${g.temp[i].toFixed(1)} °C</dd>`, `<dt>Путь до лагеря</dt><dd>${d >= 1e8 ? 'нет' : Math.round(d)}</dd>`);
     if (g.fire[i] > 0) rows.push(`<dt>Огонь</dt><dd>${g.fire[i].toFixed(2)}</dd>`);
     return `<div class="pc-head"><h3>Клетка ${x}, ${y}</h3>${close}</div><dl class="kv">${rows.join('')}</dl>`;

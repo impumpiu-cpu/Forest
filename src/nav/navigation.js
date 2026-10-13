@@ -84,7 +84,8 @@ export class Navigation {
     for (const d of NAVMAPS.all()) {
       const dirty = this.dirtySet.has(d.id);
       if (d.urgent) { if ((dirty || d.active(w)) && t - this.last[d.id] >= 2 * k) this.build(d.id); continue; }
-      if (!dirty && d.active && !d.active(w)) continue;
+      // a map nobody can use now waits, dirty or not; it is rebuilt as soon as it is needed again
+      if (d.active && !d.active(w)) continue;
       const due = (dirty ? d.minGap ?? MIN_GAP : burning ? REFRESH_BURNING : d.period ?? PERIOD) * k;
       const over = (t - this.last[d.id]) / due;
       if (over >= bestOver) { best = d.id; bestOver = over; }

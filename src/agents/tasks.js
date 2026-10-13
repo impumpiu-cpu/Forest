@@ -145,7 +145,7 @@ TASKS.registerAll([
     if (!task.lying) {
       const r = follow(w, a, 'healer');
       if (r === 'arrived') task.lying = true;
-      else if (r === 'none') { w.nav.dirty('healer'); done(a); a.think = 30; }
+      else if (r === 'none' && !w.nav.dirtySet.has('healer')) { w.nav.dirty('healer'); done(a); a.think = 30; }
       return;
     }
     a.sleeping = true;   // lies still: drawn dimmed, does not tire

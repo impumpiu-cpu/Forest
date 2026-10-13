@@ -1,6 +1,6 @@
 // Canvas renderer. Every field is painted into its own offscreen canvas at 1 px per cell and
 // scaled up: terrain crisp, fields smooth. Fire is added with 'lighter' for a glow; night darkens.
-import {BY_CODE, T} from '../data/terrain.js';
+import {BY_CODE, T, WALKABLE} from '../data/terrain.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -16,6 +16,16 @@ import {CROPS} from '../data/crops.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 
 const PLANTS_TINT = PLANTS.all().map(p => ({key: plantLayer(p.id), tint: p.tint}));
+
+// fertility 0…1: pale clay → loam → dark humus with a green cast
+const FSTOPS = [[0, 186, 150, 120], [0.3, 176, 130, 80], [0.5, 196, 176, 70], [0.7, 120, 168, 60], [0.85, 50, 130, 50], [1, 20, 90, 40]];
+function soilColor(f) {
+  for (let k = 1; k < FSTOPS.length; k++) if (f <= FSTOPS[k][0]) {
+    const a = FSTOPS[k - 1], b = FSTOPS[k], t = (f - a[0]) / (b[0] - a[0]);
+    return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+  }
+  return FSTOPS[FSTOPS.length - 1].slice(1);
+}
 
 const TSTOPS = [[-5, 52, 84, 196], [8, 64, 150, 186], [16, 104, 186, 102], [24, 222, 206, 84], [45, 240, 132, 46], [120, 220, 44, 40], [500, 255, 236, 214]];
 function tempColor(t) {
@@ -117,6 +127,10 @@ export class Renderer {
         let best = 0.05, col = null;
         for (const res of shown) { const v = res.map(w, i); if (v > best) { best = v; col = res.mapColor; } }
         if (col) { [r, gg, b] = col; a = 70 + best * 180; } else { r = 20; gg = 20; b = 16; a = 165; }
+      } else if (mode === 'soil') {
+        // fertility: grey-brown poor ground → dark rich green; water and rock blacked out
+        if (!WALKABLE[g.terr[i]]) { r = 14; gg = 16; b = 14; a = 200; }
+        else { const f = g.fert[i]; [r, gg, b] = soilColor(f); a = 215; }
       } else if (mode === 'nav') {
         const v = dCamp[i];
         if (v >= FAR) { r = 20; gg = 16; b = 16; a = 170; }
@@ -252,34 +266,59 @@ export class Renderer {
     }
   }
 
-  // finished buildings are solid blocks with a letter, sites are dashed with a progress bar
+  // Buildings: a lived-in or working building is a solid block with its letter; a plot of land
+  // (`soil: true` — fields, gardens) is drawn as land: ploughed earth with the crop greening and
+  // ripening, or berry bushes (painted on the terrain), inside a fence of thin rails. Sites are dashed
+  // with a progress bar. Old 2×2 fields from earlier saves draw their scattered plots the same way.
   drawBuildings(w) {
     const ctx = this.ctx, S = this.S;
-    // field plots: ploughed earth, then the crop greening and ripening
     for (const b of w.buildings) {
       if (!b.plots || b.key !== 'field') continue;
       for (const p of b.plots) {
         const px = (p.i % w.w) * S, py = ((p.i / w.w) | 0) * S;
         let col = [92, 70, 48];
         if (p.crop) { const [c0, c1] = CROPS.get(p.crop).color, k = p.g; col = c0.map((v, j) => v + (c1[j] - v) * k); }
-        ctx.fillStyle = `rgb(${col.map(v => v | 0).join(',')})`; ctx.fillRect(px + 1, py + 1, S - 2, S - 2);
+        ctx.fillStyle = `rgb(${col.map(v => v | 0).join(',')})`; ctx.fillRect(px, py, S, S);
+        if (S >= 6) {   // furrows
+          ctx.strokeStyle = 'rgba(30,22,12,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
+          for (let k = 1; k < 3; k++) { ctx.moveTo(px + 1, py + S * k / 3); ctx.lineTo(px + S - 1, py + S * k / 3); }
+          ctx.stroke();
+        }
         if (p.crop && p.g >= 1) { ctx.strokeStyle = '#f0e0a0'; ctx.lineWidth = 1; ctx.strokeRect(px + 1.5, py + 1.5, S - 3, S - 3); }
       }
     }
     for (const b of w.buildings) {
-      const d = BUILDINGS.get(b.key), x = b.x * S, y = b.y * S, s = 2 * S;
+      const d = BUILDINGS.get(b.key), x = b.x * S, y = b.y * S, bw = (b.w || 2) * S, bh = (b.h || 2) * S;
+      if (d.soil && (b.w || 2) > 2) {
+        // a fence of rails around the plot of land, the mark in its corner
+        ctx.save();
+        if (!b.done) ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = b.done ? '#6b4f2c' : d.color; ctx.lineWidth = Math.max(1.5, S * 0.12);
+        ctx.strokeRect(x + 0.5, y + 0.5, bw - 1, bh - 1);
+        ctx.restore();
+        if (b.done && S >= 7) {
+          ctx.fillStyle = 'rgba(20,22,15,0.75)'; ctx.fillRect(x + 2, y + 2, S * 1.2, S * 0.9);
+          ctx.fillStyle = '#efe6cf'; ctx.font = `bold ${clamp(S * 0.7, 8, 18)}px "PT Sans", sans-serif`;
+          ctx.textBaseline = 'middle'; ctx.fillText(d.mark, x + 3, y + 2 + S * 0.45); ctx.textBaseline = 'alphabetic';
+        }
+        if (!b.done) {
+          ctx.fillStyle = 'rgba(20,22,15,0.7)'; ctx.fillRect(x, y + bh + 1, bw, 3);
+          ctx.fillStyle = d.color; ctx.fillRect(x, y + bh + 1, bw * Math.min(1, b.progress / d.work), 3);
+        }
+        continue;
+      }
       if (b.done) {
-        ctx.fillStyle = d.color; ctx.fillRect(x + 1, y + 1, s - 2, s - 2);
-        ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
+        ctx.fillStyle = d.color; ctx.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+        ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, bw - 2, bh - 2);
         if (S >= 5) {
           ctx.fillStyle = '#14160f'; ctx.font = `bold ${clamp(S * 0.95, 8, 26)}px "PT Sans", sans-serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.mark, x + s / 2, y + s / 2 + 1);
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.mark, x + bw / 2, y + bh / 2 + 1);
           ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
         }
       } else {
-        ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = d.color; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, s - 2, s - 2); ctx.restore();
-        ctx.fillStyle = 'rgba(20,22,15,0.7)'; ctx.fillRect(x, y + s + 1, s, 3);
-        ctx.fillStyle = d.color; ctx.fillRect(x, y + s + 1, s * Math.min(1, b.progress / d.work), 3);
+        ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = d.color; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, bw - 2, bh - 2); ctx.restore();
+        ctx.fillStyle = 'rgba(20,22,15,0.7)'; ctx.fillRect(x, y + bh + 1, bw, 3);
+        ctx.fillStyle = d.color; ctx.fillRect(x, y + bh + 1, bw * Math.min(1, b.progress / d.work), 3);
       }
     }
   }
@@ -287,12 +326,12 @@ export class Renderer {
   // outline of the selected building or cell
   drawPick(w, view) {
     const ctx = this.ctx, S = this.S;
-    let x, y, s;
+    let x, y, sw, sh;
     const b = view.selBld != null ? w.buildings.find(q => q.id === view.selBld) : null;
-    if (b) { x = b.x * S; y = b.y * S; s = 2 * S; }
-    else if (view.selCell != null && view.selCell >= 0) { x = (view.selCell % w.w) * S; y = ((view.selCell / w.w) | 0) * S; s = S; }
+    if (b) { x = b.x * S; y = b.y * S; sw = (b.w || 2) * S; sh = (b.h || 2) * S; }
+    else if (view.selCell != null && view.selCell >= 0) { x = (view.selCell % w.w) * S; y = ((view.selCell / w.w) | 0) * S; sw = sh = S; }
     else return;
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x - 2, y - 2, s + 4, s + 4);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x - 2, y - 2, sw + 4, sh + 4);
   }
 
   drawAgents(w, selected) {

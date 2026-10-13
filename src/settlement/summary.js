@@ -85,8 +85,10 @@ export function summarize(w) {
     facts.push(c.built.length > 1 ? `Первой постройкой ${BUILDINGS.get(first.key).gender === 'f' ? 'стала' : 'стал'} ${nm(first.key)} (день ${dayNo(first.tick)}), последней — ${nm(last.key)} (день ${dayNo(last.tick)}).`
       : `Успели построить только ${nm(first.key)}.`);
   }
-  const wins = Object.entries(c.councilWins).sort((a, b) => b[1] - a[1])[0];
-  if (c.councils) facts.push(`Совет у костра собирался ${c.councils} ${plural(c.councils, 'раз', 'раза', 'раз')}${wins ? `, чаще всего голосовали за ${BUILDINGS.get(wins[0]).name.toLowerCase()}` : ''}.`);
+  // councilWins: sites the council laid; saving: councils spent saving up for a building
+  const laid = Object.values(c.councilWins).reduce((s, v) => s + v, 0);
+  const saved = Object.entries(c.saving || {}).sort((a, b) => b[1] - a[1])[0];
+  if (c.councils) facts.push(`Совет у костра собирался ${c.councils} ${plural(c.councils, 'раз', 'раза', 'раз')} и заложил ${laid} ${plural(laid, 'постройку', 'постройки', 'построек')}${saved && saved[1] > 1 ? `; дольше всего копили на ${BUILDINGS.get(saved[0]).name.toLowerCase()} (${saved[1]} ${plural(saved[1], 'совет', 'совета', 'советов')})` : ''}.`);
   const fav = Object.entries(c.crafted).sort((a, b) => b[1] - a[1])[0];
   if (fav) facts.push(`Чаще всего мастерили: ${ITEMS.get(fav[0]).short} (×${fav[1]}).`);
   if (w.stats.hunted) facts.push(`Охотники добыли ${w.stats.hunted} ${plural(w.stats.hunted, 'зайца', 'зайцев', 'зайцев')}${w.stats.wolfKills ? `, волки — ${w.stats.wolfKills}` : ''}.`);

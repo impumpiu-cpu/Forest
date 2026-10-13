@@ -41,12 +41,13 @@ function heatAndSmoke(w) {
   else if (st.smokeMax > 0) { g.smoke.fill(0); g.smoke2.fill(0); st.smokeMax = 0; }
   advect(w, g.temp, g.temp2, w.wind.x * 0.35, w.wind.y * 0.35); [g.temp, g.temp2] = [g.temp2, g.temp];
   const {temp, temp2, smoke, smoke2, fire, terr} = g;
-  let smax = 0;
+  let smax = 0, tmax = -Infinity, anyFire = false;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
     const Tc = temp[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
     const Tn = Tc + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * Tc) + (relax + rain * 0.03) * (amb - Tc) + fire[i] * FIRE.heat;
-    temp2[i] = Tn > FIRE.cap ? FIRE.cap : Tn;
+    const tv = Tn > FIRE.cap ? FIRE.cap : Tn;
+    temp2[i] = tv; if (tv > tmax) tmax = tv; if (fire[i] > 0) anyFire = true;
     if (!smokeOn) continue;
     const Sm = smoke[i], Sn = Sm + 0.12 * (smoke[l] + smoke[r] + smoke[u] + smoke[d] - 4 * Sm) - 0.012 * Sm + fire[i] * 0.25;
     const sv = Sn > 4 ? 4 : Sn;
@@ -54,6 +55,7 @@ function heatAndSmoke(w) {
   }
   [g.temp, g.temp2] = [g.temp2, g.temp];
   if (smokeOn) { [g.smoke, g.smoke2] = [g.smoke2, g.smoke]; st.smokeMax = smax; }
+  st.tempMax = tmax; st.anyFire = anyFire;
 }
 
 // the campfire is a heat source fed from the stock: wood, then charcoal, then coal
@@ -80,6 +82,9 @@ function burn(w) {
   const g = w.grid, rain = w.weather.rain, st = w.stats;
   const sig = season(w).ignite, ignF = FIRE.ignForest + w.climate.ign + sig, ignG = FIRE.ignGrass + w.climate.ign + sig;
   st.fireCount = 0; st.fireNearCamp = 0;
+  // nothing burns and nowhere is hot enough to catch: the whole pass would change nothing
+  // (fire set this tick by lightning or a click is caught by the next heat pass)
+  if (!st.anyFire && st.tempMax != null && st.tempMax < Math.min(ignF, ignG)) return;
   for (let i = 0; i < w.n; i++) {
     const f = g.fire[i];
     if (f > 0) {
@@ -94,6 +99,7 @@ function burn(w) {
         if (g.fuel[i] < 0.25) {   // burnt out completely
           if (g.terr[i] !== T.WATER && g.terr[i] !== T.ROCK) g.terr[i] = T.BURNT;
           g.wood[i] = 0; g.food[i] = 0; g.bush[i] = 0; st.burntCells++;
+          g.fert[i] = Math.min(1, g.fert[i] + 0.08);   // ash feeds the ground
           w.nav.dirty('trees'); w.nav.dirty('berries');
           if (g.bld[i] >= 0) burnBuilding(w, g.bld[i]);
         } else { g.wood[i] = Math.min(g.wood[i], Math.max(0, g.fuel[i] - 1.2)); w.nav.dirty('trees'); }   // scorched but standing
@@ -115,7 +121,7 @@ function burn(w) {
 function growth(w) {
   const g = w.grid, S = season(w);
   for (const c of w.gardenCells) if (S.garden > 0 && g.bush[c] && g.fire[c] === 0 && g.food[c] < 1) {
-    g.food[c] = Math.min(1, g.food[c] + 0.0035 * S.garden); if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty('berries');
+    g.food[c] = Math.min(1, g.food[c] + 0.0035 * S.garden * (0.4 + 1.2 * g.fert[c]));   // good soil, more berries if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty('berries');
   }
   if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
     const x = w.camp.x + xx, y = w.camp.y + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;

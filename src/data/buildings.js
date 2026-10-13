@@ -7,6 +7,8 @@
 //   warms its cells by `add` per tick up to `to` °C and burns `fuel` from the stock per tick;
 //   people go to the nearest warm place to get warm. `bedWarmth` (in add) is how much a night there
 //   warms its sleepers: a hut is drafty and needs a big fire, a log house holds heat on little wood.
+// `lot: [w, h]` — the building's size in cells (default 2×2); `soil: true` — it is placed on the most
+//   fertile ground near the camp rather than the nearest free spot (fields, gardens), and drawn as land.
 // `zone` is the radius of the settlement zone around the building (default ZONE.building);
 // zones of the camp and all buildings merge into one protected area (settlement/zone.js).
 // `station: true` makes the building a workplace for crafting recipes (data/recipes.js);
@@ -47,14 +49,16 @@ BUILDINGS.registerAll([
 
   // a field: a fenced shed and sixteen ploughed plots around it; sown with seed bought from traders
   {id: 'field', name: 'Поле', gender: 'n', cost: {wood: 8, rope: 2}, work: 200, max: 3, wooden: true, color: '#8a7040', mark: 'П',
-    effect: 'Распахивают 16 грядок. Весной и летом сеют ячмень, репу или лён (семена — у торговцев, с урожая часть возвращается), осенью жнут. Несжатое к зиме побьёт мороз.',
+    lot: [4, 4], soil: true,
+    effect: 'Распахивают 16 грядок на самой плодородной земле поблизости: на хорошей почве хлеб растёт быстрее и родит больше. Весной и летом сеют ячмень, репу или лён (семена — у торговцев, с урожая часть возвращается), осенью жнут. Несжатое к зиме побьёт мороз.',
     effects: {}, onFinish: 'plowField',
     available: w => ['seedBarley', 'seedTurnip', 'seedFlax'].some(s => (w.stock[s] || 0) >= 2),
     wish: 'хочет своё поле',
     motive: (a, c) => [[0.5, 'семена есть, а сеять негде'], [a.mem.hunger * 0.9, 'голодает'], [c.season === 'winter' ? -0.4 : 0, 'зимой не пашут'], [(a.prefs.farm - 1) * 1.5, 'любит землю']]},
 
   {id: 'garden', name: 'Ягодный огород', gender: 'm', cost: {wood: 12, berries: 10}, work: 140, max: 2, wooden: false, color: '#c45c95', mark: 'О',
-    effect: 'Рядом высаживаются 12 кустов, они плодоносят втрое быстрее диких.',
+    lot: [4, 3], soil: true,
+    effect: 'На лучшей земле поблизости высаживают 12 кустов: они плодоносят втрое быстрее диких, а на жирной почве ещё быстрее.',
     effects: {}, onFinish: 'plantGarden',
     wish: 'хочет еду поближе к дому',
     motive: (a) => [[a.mem.hunger * 1.2, 'голодает'], [a.mem.walkFood, 'далеко ходить за ягодами'], [(a.prefs.gather - 1) * 0.6, 'любит возиться с ягодами']]},

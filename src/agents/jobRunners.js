@@ -62,6 +62,7 @@ export const RUNNERS = {
       if (a.hp <= 0) { kill(w, a, 'укусов пчёл'); return; }
       toolWear(w, a, job.id);
     } else if (r === 'none') {
+      if (w.nav.dirtySet.has(job.nav)) return;   // the map is being rebuilt for this job: wait a tick
       if (a.carry?.n) a.carry.n = cap; else { a.task = {id: 'idle'}; a.think = 20; }
     }
     if (job.memory && r === 'moving' && !a.carry) { const d = w.nav.get(job.nav)[i]; if (d > 25) a.mem[job.memory] += 0.003; }
@@ -89,7 +90,7 @@ export const RUNNERS = {
       const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
       if (b) markWorking(w, b, a);
       if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id), a)) { done(a); a.think = 20; }
-    } else if (r === 'none') { w.nav.dirty(map); done(a); a.think = 20; }
+    } else if (r === 'none') { if (w.nav.dirtySet.has(map)) return; w.nav.dirty(map); done(a); a.think = 20; }
   },
 
   // field work: walk to a plot that needs it, sow it (a seed from the stock) or reap it and carry the crop home
@@ -106,6 +107,7 @@ export const RUNNERS = {
       const got = workPlot(w, i);
       if (got) { for (const [res, n] of Object.entries(got)) { load(a, res, n); add(a.stats.gathered, res, n); add(w.chronicle.gathered, res, n); } task.more = a.carry.n < job.carry; }
     } else if (r === 'none') {
+      if (w.nav.dirtySet.has(job.nav)) return;
       if (a.carry?.n) { task.more = false; return; }
       done(a); a.think = 20;
     }

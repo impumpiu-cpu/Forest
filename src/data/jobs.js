@@ -13,6 +13,7 @@
 // A new workshop job is one entry: {runner: 'craft', stations: [...], desire: atStations(value)}.
 // canDo(w, agent): optional personal condition (hunting needs a usable ranged weapon)
 import {Registry} from '../core/registry.js';
+import {useJobs} from './navmaps.js';
 import {T} from './terrain.js';
 import {FOODS} from './foods.js';
 import {PLANTS, plantLayer} from './plants.js';
@@ -25,6 +26,7 @@ import {oreBeside, oreOf} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
 
 export const JOBS = new Registry('job');
+useJobs(JOBS);   // navmaps.js needs to know which flow field each job walks
 
 // how much the colony wants more of a resource: fills up when the stock is low
 const want = (stock, pop, low, enough) => (stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04);
