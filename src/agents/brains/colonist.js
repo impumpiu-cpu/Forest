@@ -16,6 +16,8 @@ import {outfit} from '../equipment.js';
 import {think} from '../mind.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {tradeOpen} from '../../settlement/trade.js';
+import {hurt, waiting, HEAL} from '../../settlement/healing.js';
+import {has} from '../../settlement/query.js';
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
@@ -24,7 +26,7 @@ function decide(w, a) {
   let campHot = 0; for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
   const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,
-    preyCount: huntable(w, JOBS.get('hunt')).length, favourites: favourites(w),
+    preyCount: huntable(w, JOBS.get('hunt')).length, favourites: favourites(w), patients: waiting(w),
     orders: new Proxy({}, {get: (o, station) => stationHasWork(w, station, a)})};
   const opts = [];
   for (const id of SPECIES.get(a.species).needs) {
@@ -44,6 +46,8 @@ function decide(w, a) {
   }
   opts.push([{id: 'idle'}, 0.15]);
   if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);
+  // badly hurt, with a healer's hut: go and lie there (more urgent the worse the wounds)
+  if ((hurt(a) || (a.task?.id === 'treat' && a.hp < SPECIES.get(a.species).hp * HEAL.until)) && has(w, 'healerhut')) opts.push([{id: 'treat'}, (1 - a.hp / SPECIES.get(a.species).hp) * 2 + 0.25]);
   if (tradeOpen(w)) opts.push([{id: 'trade'}, 1.1]);   // right after the council, the second gathering of the evening
   const brave = a.mods.bravery;
   if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave]);

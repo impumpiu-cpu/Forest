@@ -3,6 +3,7 @@ import {createWorld} from './world/generate.js';
 import {stepFields} from './world/fields.js';
 import {stepWeather} from './world/weather.js';
 import {stepLakes} from './world/lakes.js';
+import {stepPlants} from './world/plants.js';
 import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
@@ -47,6 +48,7 @@ export function step(w) {
   stepFields(w);
   stepWeather(w);
   stepLakes(w);
+  stepPlants(w);
   const t1 = performance.now();
   w.nav.step();
   const t2 = performance.now();

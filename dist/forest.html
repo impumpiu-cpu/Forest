@@ -900,6 +900,27 @@ body.ingame h1{font-size:22px}
     ORE_BY_CODE[o.code] = o;
   }
 
+  // src/data/plants.js
+  var PLANTS = new Registry("plant");
+  PLANTS.registerAll([
+    // healing herbs: yarrow, plantain, St John's wort — a few patches in damp meadows and glades
+    {
+      id: "herbs",
+      resource: "herbs",
+      label: "\u043B\u0435\u0447\u0435\u0431\u043D\u044B\u0435 \u0442\u0440\u0430\u0432\u044B",
+      terrain: ["grass", "forest"],
+      fertMin: 0.5,
+      chance: 6e-3,
+      start: [0.4, 1],
+      regrow: 6e-4,
+      ripe: 0.45,
+      take: 0.5,
+      tint: [236, 214, 92],
+      mapColor: [255, 236, 96]
+    }
+  ]);
+  var plantLayer = (id) => "plant:" + id;
+
   // src/world/grid.js
   var inBounds = (w, x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
   var walkable = (w, i) => WALKABLE[w.grid.terr[i]] === 1;
@@ -1010,7 +1031,7 @@ body.ingame h1{font-size:22px}
 
   // src/data/resources.js
   var RESOURCES = new Registry("resource");
-  var RESOURCE_GROUPS = ["\u0414\u0435\u043D\u044C\u0433\u0438", "\u0415\u0434\u0430", "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", "\u0420\u0443\u0434\u0430", "\u041C\u0435\u0442\u0430\u043B\u043B", "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", "\u0411\u043E\u0435\u043F\u0440\u0438\u043F\u0430\u0441\u044B"];
+  var RESOURCE_GROUPS = ["\u0414\u0435\u043D\u044C\u0433\u0438", "\u0415\u0434\u0430", "\u041B\u0435\u043A\u0430\u0440\u0441\u0442\u0432\u0430", "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", "\u0420\u0443\u0434\u0430", "\u041C\u0435\u0442\u0430\u043B\u043B", "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", "\u0411\u043E\u0435\u043F\u0440\u0438\u043F\u0430\u0441\u044B"];
   RESOURCES.registerAll([
     ...FOODS.all().map((f) => ({
       id: f.id,
@@ -1057,6 +1078,8 @@ body.ingame h1{font-size:22px}
     { id: "bone", label: "\u043A\u043E\u0441\u0442\u0438", short: "\u043A\u043E\u0441\u0442\u0438", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 0.2, keep: 12, color: "#e8e2cf" },
     { id: "hide", label: "\u0448\u043A\u0443\u0440\u044B", short: "\u0448\u043A\u0443\u0440\u044B", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 0.5, keep: 6, color: "#9b7650" },
     { id: "leather", label: "\u043A\u043E\u0436\u0430", short: "\u043A\u043E\u0436\u0430", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 1, keep: 8, color: "#7a4d26" },
+    // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
+    { id: "herbs", label: "\u043B\u0435\u0447\u0435\u0431\u043D\u044B\u0435 \u0442\u0440\u0430\u0432\u044B", short: "\u0442\u0440\u0430\u0432\u044B", tags: ["medicine"], group: "\u041B\u0435\u043A\u0430\u0440\u0441\u0442\u0432\u0430", loot: 1, value: 1, keep: 10, target: 10, color: "#e8d25c" },
     // fuel: charcoal is burnt from logs, coal is dug; both keep a furnace hot, the campfire takes them after wood
     { id: "charcoal", label: "\u0434\u0440\u0435\u0432\u0435\u0441\u043D\u044B\u0439 \u0443\u0433\u043E\u043B\u044C", short: "\u0443\u0433\u043E\u043B\u044C", tags: ["fuel", "smelt"], group: "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", burn: 2, heat: 2, loot: 2, value: 0.3, color: "#3d3a36", target: 10 },
     {
@@ -1110,6 +1133,11 @@ body.ingame h1{font-size:22px}
     r.mapColor ?? (r.mapColor = o.mapColor);
   }
   var resourceGroups = () => [.../* @__PURE__ */ new Set([...RESOURCE_GROUPS, ...RESOURCES.all().map((r) => r.group || "\u041F\u0440\u043E\u0447\u0435\u0435")])];
+  for (const p of PLANTS.all()) {
+    const r = RESOURCES.get(p.resource), key2 = plantLayer(p.id);
+    r.map ?? (r.map = (w, i) => w.grid[key2]?.[i] || 0);
+    r.mapColor ?? (r.mapColor = p.mapColor);
+  }
 
   // src/settlement/query.js
   var count = (w, key2, any = false) => w.buildings.reduce((n, b) => n + (b.key === key2 && (any || b.done) ? 1 : 0), 0);
@@ -1599,6 +1627,29 @@ body.ingame h1{font-size:22px}
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0434\u0435\u043B\u0430\u0442\u044C \u043A\u0440\u0430\u0441\u0438\u0432\u044B\u0435 \u0432\u0435\u0449\u0438",
       motive: (a, c) => [[c.stock("gems") * 0.08, "\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B \u043B\u0435\u0436\u0430\u0442 \u0431\u0435\u0437 \u0434\u0435\u043B\u0430"], [(a.prefs.jewel - 1) * 1.5, "\u043B\u044E\u0431\u0438\u0442 \u0442\u043E\u043D\u043A\u0443\u044E \u0440\u0430\u0431\u043E\u0442\u0443"]]
     },
+    // the healer's hut: the wounded lie here and a healer tends them, many times faster than wounds
+    // close by themselves; herbs make the treatment work fully (settlement/healing.js)
+    {
+      id: "healerhut",
+      name: "\u0425\u0438\u0436\u0438\u043D\u0430 \u043B\u0435\u043A\u0430\u0440\u044F",
+      gender: "f",
+      cost: { wood: 20 },
+      work: 180,
+      max: 1,
+      wooden: true,
+      color: "#8fcf86",
+      mark: "\u041B\u043A",
+      effect: "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u043B\u0435\u0436\u0430\u0442 \u0437\u0434\u0435\u0441\u044C, \u0430 \u043B\u0435\u043A\u0430\u0440\u044C \u0438\u0445 \u0432\u044B\u0445\u0430\u0436\u0438\u0432\u0430\u0435\u0442: \u0440\u0430\u043D\u044B \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0432 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0440\u0430\u0437 \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u0441 \u0442\u0440\u0430\u0432\u0430\u043C\u0438 \u2014 \u0435\u0449\u0451 \u0431\u044B\u0441\u0442\u0440\u0435\u0435. \u041B\u0435\u043A\u0430\u0440\u044C \u0436\u0435 \u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u043B\u0435\u0447\u0435\u0431\u043D\u044B\u0435 \u0442\u0440\u0430\u0432\u044B.",
+      effects: {},
+      beds: 3,
+      wish: "\u0445\u043E\u0447\u0435\u0442, \u0447\u0442\u043E\u0431\u044B \u0440\u0430\u043D\u0435\u043D\u044B\u0445 \u0431\u044B\u043B\u043E \u0433\u0434\u0435 \u043B\u0435\u0447\u0438\u0442\u044C",
+      motive: (a, c) => [
+        [c.wounded * 1.6, "\u0440\u0430\u043D\u0435\u043D\u044B\u0435 \u0434\u043E\u043B\u0433\u043E \u043D\u0435 \u0432\u0441\u0442\u0430\u044E\u0442"],
+        [a.hp < 0.7 ? (1 - a.hp) * 1.4 : 0, a.gender === "f" ? "\u0441\u0430\u043C\u0430 \u0438\u0437\u0440\u0430\u043D\u0435\u043D\u0430" : "\u0441\u0430\u043C \u0438\u0437\u0440\u0430\u043D\u0435\u043D"],
+        [(a.mem.wolf + a.mem.raid) * 0.4, "\u043F\u043E\u0441\u043B\u0435 \u0441\u0442\u044B\u0447\u0435\u043A \u043D\u0435\u043A\u043E\u043C\u0443 \u043B\u0435\u0447\u0438\u0442\u044C"],
+        [(a.prefs.heal - 1) * 1.5, "\u0445\u043E\u0447\u0435\u0442 \u043B\u0435\u0447\u0438\u0442\u044C \u043B\u044E\u0434\u0435\u0439"]
+      ]
+    },
     {
       id: "armory",
       name: "\u041E\u0440\u0443\u0436\u0435\u0439\u043D\u044B\u0439 \u043D\u0430\u0432\u0435\u0441",
@@ -1786,6 +1837,9 @@ body.ingame h1{font-size:22px}
     { id: "raidAlarm", mood: -0.15, lasts: 12 * HOUR, once: 12 * HOUR, text: (a) => `\u0422\u0440\u0435\u0432\u043E\u0433\u0430! ${g(a, "\u0411\u0440\u043E\u0441\u0438\u043B", "\u0411\u0440\u043E\u0441\u0438\u043B\u0430")} \u0440\u0430\u0431\u043E\u0442\u0443 \u0438 ${g(a, "\u043F\u043E\u0431\u0435\u0436\u0430\u043B", "\u043F\u043E\u0431\u0435\u0436\u0430\u043B\u0430")} \u043A \u043A\u043E\u0441\u0442\u0440\u0443.` },
     { id: "killedRaider", mood: 0.15, lasts: DAY, text: (a) => `${g(a, "\u0421\u0440\u0430\u0437\u0438\u043B", "\u0421\u0440\u0430\u0437\u0438\u043B\u0430")} \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430.` },
     { id: "grief", mood: -0.35, lasts: 2 * DAY, text: (a, c) => `\u0421\u043A\u043E\u0440\u0431\u0438\u0442: ${c.name} ${c.f ? "\u043F\u043E\u0433\u0438\u0431\u043B\u0430" : "\u043F\u043E\u0433\u0438\u0431"}.` },
+    // healing
+    { id: "treated", mood: 0.2, lasts: DAY, text: (a, c) => `\u0412\u0441\u0442\u0430\u043B${g(a, "", "\u0430")} \u043D\u0430 \u043D\u043E\u0433\u0438: \u0432\u044B\u0445\u043E\u0434\u0438\u043B${c.name ? " \u043B\u0435\u043A\u0430\u0440\u044C " + c.name : "\u0438 \u0432 \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F"}.` },
+    { id: "healedSomeone", mood: 0.18, lasts: DAY, once: 4 * HOUR, text: (a, c) => `${g(a, "\u0412\u044B\u0445\u043E\u0434\u0438\u043B", "\u0412\u044B\u0445\u043E\u0434\u0438\u043B\u0430")} \u0440\u0430\u043D\u0435\u043D\u043E\u0433\u043E: ${c.name}.` },
     // trade
     { id: "tradeDay", mood: 0.12, lasts: DAY, once: DAY, text: (a, c) => `${g(a, "\u0411\u044B\u043B", "\u0411\u044B\u043B\u0430")} \u043D\u0430 \u0442\u043E\u0440\u0433\u0435 \u0443 \u043A\u0443\u043F\u0446\u0430 ${c.trader}.${c.got ? " \u041A\u0443\u043F\u0438\u043B\u0438: " + c.got + "." : " \u041A\u0443\u043F\u0438\u0442\u044C \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0440\u0435\u0448\u0438\u043B\u0438\u0441\u044C."}` },
     // council
@@ -2476,6 +2530,7 @@ body.ingame h1{font-size:22px}
       fishLakes: w.lakes.filter((l) => l.cap && l.fish > l.cap * 0.3).length,
       items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
       stock: (r) => w.stock[r] || 0,
+      wounded: colonists(w).filter((a) => a.hp < 0.7).length / Math.max(1, colonists(w).length),
       oreSeen: oreSeen(w),
       wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
     };
@@ -3034,6 +3089,7 @@ body.ingame h1{font-size:22px}
   }
 
   // src/data/jobs.js
+  var HERBS_KEEP = 10;
   var JOBS = new Registry("job");
   var want = (stock, pop, low, enough) => stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04;
   var foodWant = (w, ctx, job, k = 1, extra = 0) => {
@@ -3234,6 +3290,29 @@ body.ingame h1{font-size:22px}
       runner: "craft",
       stations: ["tannery"],
       desire: atStations(0.5)
+    },
+    // the healer: tends the wounded lying in the healer's hut; with nobody to tend, picks healing herbs
+    // while the stock is low (settlement/healing.js). Its skill is the healer's skill.
+    {
+      id: "heal",
+      label: "\u043B\u0435\u0447\u0438\u0442\u044C \u0440\u0430\u043D\u0435\u043D\u044B\u0445",
+      short: "\u043B\u0435\u043A\u0430\u0440\u044C",
+      verb: "\u043B\u0435\u0447\u0438\u0442",
+      preferable: true,
+      runner: "heal",
+      requires: "healerhut",
+      // one healer at a time: whoever took it first keeps it
+      canDo: (w, a) => !w.agents.some((o) => o !== a && o.faction === "colony" && o.task?.job === "heal"),
+      nav: plantLayer("herbs"),
+      resource: "herbs",
+      carry: 2,
+      time: 30,
+      desire: (w, ctx) => ctx.patients ? 0.9 + 0.1 * ctx.patients : (w.stock.herbs || 0) < HERBS_KEEP ? 0.28 : -1,
+      valid: (w, i) => w.grid[plantLayer("herbs")][i] >= PLANTS.get("herbs").ripe && w.grid.fire[i] === 0,
+      take: (w, i) => {
+        w.grid[plantLayer("herbs")][i] -= PLANTS.get("herbs").take;
+        w.nav.dirty(plantLayer("herbs"));
+      }
     },
     {
       id: "build",
@@ -3505,6 +3584,16 @@ body.ingame h1{font-size:22px}
       seed: (w, i, lim) => w.grid.temp[i] < lim && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6
     }
   ]);
+  for (const p of PLANTS.all()) {
+    const key2 = plantLayer(p.id);
+    NAVMAPS.register({ id: key2, period: 300, seed: (w, i) => w.grid[key2]?.[i] >= p.ripe && w.grid.fire[i] === 0 });
+  }
+  NAVMAPS.register({
+    id: "healer",
+    active: (w) => has(w, "healerhut"),
+    prepare: (w) => new Set(w.buildings.filter((x) => x.key === "healerhut" && x.done).flatMap((x) => x.cells)),
+    seed: (w, i, cells) => cells.has(i)
+  });
   for (const b of BUILDINGS.filter((d) => d.station)) {
     NAVMAPS.register({
       id: "station:" + b.id,
@@ -3860,6 +3949,48 @@ body.ingame h1{font-size:22px}
     }
   }
 
+  // src/world/plants.js
+  var EVERY = 10;
+  function layPlants(w) {
+    w.plantBeds ?? (w.plantBeds = {});
+    for (const p of PLANTS.all()) {
+      const key2 = plantLayer(p.id);
+      if (w.grid[key2]) continue;
+      const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key2)), g2 = w.grid;
+      const layer2 = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map((t) => TERRAIN.get(t).code));
+      for (let i = 0; i < w.n; i++) {
+        if (!ok.has(g2.terr[i]) || g2.fert[i] < p.fertMin || isCampArea(w, i)) continue;
+        if (rnd() < p.chance) {
+          beds.push(i);
+          layer2[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]);
+        }
+      }
+      g2[key2] = layer2;
+      w.plantBeds[p.id] = beds;
+    }
+  }
+  function stepPlants(w) {
+    if (w.tick % EVERY) return;
+    const g2 = w.grid;
+    for (const p of PLANTS.all()) {
+      const layer2 = g2[plantLayer(p.id)], beds = w.plantBeds[p.id];
+      if (!layer2) continue;
+      let ripened = false;
+      for (const i of beds) {
+        if (g2.fire[i] > 0 || g2.terr[i] === T.BURNT || g2.bld[i] >= 0) {
+          layer2[i] = 0;
+          continue;
+        }
+        if (layer2[i] >= 1) continue;
+        const was = layer2[i];
+        layer2[i] = Math.min(1, was + p.regrow * EVERY);
+        if (was < p.ripe && layer2[i] >= p.ripe) ripened = true;
+      }
+      if (ripened) w.nav.dirty(plantLayer(p.id));
+    }
+  }
+  var ensurePlants = layPlants;
+
   // src/world/generate.js
   function noiseLayer(rnd, w, h, cell) {
     const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
@@ -3996,6 +4127,7 @@ body.ingame h1{font-size:22px}
     for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
     findLakes(world2);
     layOre(world2);
+    layPlants(world2);
     recomputeZone(world2);
     initOutside(world2);
     setWind(world2);
@@ -4926,7 +5058,55 @@ body.ingame h1{font-size:22px}
     return `${what}: ${Math.floor(b.order.progress / r.work * 100)}%`;
   }
 
+  // src/settlement/healing.js
+  var HEAL = {
+    seekBelow: 0.75,
+    // a colonist this hurt (share of health) goes to the healer's hut…
+    until: 0.97,
+    // …and stays until healed this far
+    rate: 22e-4,
+    // health per tick a patient gets from a healer working at speed 1
+    noHerbs: 0.4,
+    // without herbs the healer manages this share of it
+    perHerb: 0.35
+    // health healed per herb used
+  };
+  var maxHp = (a) => SPECIES.get(a.species).hp;
+  var hurt = (a) => a.hp < maxHp(a) * HEAL.seekBelow;
+  var patients = (w) => perTick(w, "patients", () => {
+    if (!has(w, "healerhut")) return [];
+    const beds = BUILDINGS.get("healerhut").beds || 2;
+    return colonists(w).filter((a) => a.task?.id === "treat" && a.task.lying).slice(0, beds);
+  });
+  var waiting = (w) => colonists(w).filter((a) => a.task?.id === "treat").length;
+  function tend(w, healer, rate) {
+    const ps = patients(w);
+    if (!ps.length) return 0;
+    let given = 0;
+    for (const p of ps) {
+      const herbs = (w.stock.herbs || 0) >= 1 || (w.herbCredit || 0) > 0;
+      const amount = Math.min(maxHp(p) - p.hp, HEAL.rate * rate * (herbs ? 1 : HEAL.noHerbs) / Math.max(1, ps.length * 0.6));
+      if (amount <= 0) continue;
+      p.hp += amount;
+      given += amount;
+      p.task.healer = healer.id;
+      if (herbs) {
+        w.herbCredit = (w.herbCredit || 0) - amount;
+        if (w.herbCredit <= 0 && (w.stock.herbs || 0) >= 1) {
+          w.stock.herbs -= 1;
+          w.herbCredit += HEAL.perHerb;
+        }
+      }
+    }
+    return given;
+  }
+  var healerHutCell = (w, a) => w.grid.bld[cellOf(w, a)] >= 0 && w.buildings.some((b) => b.key === "healerhut" && b.done && b.id === w.grid.bld[cellOf(w, a)]);
+
   // src/agents/jobRunners.js
+  var mill = (w, a) => {
+    a.x += (w.rng() - 0.5) * 0.2;
+    a.y += (w.rng() - 0.5) * 0.2;
+  };
   function workRate(w, a, jobId) {
     a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 6e-4);
     return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
@@ -5033,6 +5213,27 @@ body.ingame h1{font-size:22px}
         a.think = 20;
       }
     },
+    // the healer: tend whoever lies in the healer's hut; with nobody to tend, pick herbs (as harvest)
+    heal(w, a, task) {
+      if (waiting(w)) {
+        if (a.carry?.n) {
+          for (const [res, n] of Object.entries(a.carry.res)) deposit(w, res, n);
+          a.carry = null;
+        }
+        const r = follow(w, a, "healer");
+        if (r === "arrived" || healerHutCell(w, a)) {
+          const given = tend(w, a, workRate(w, a, "heal"));
+          if (given) a.stats.healed = (a.stats.healed || 0) + given;
+          else if (!patients(w).length && w.rng() < 0.02) mill(w, a);
+        } else if (r === "none") {
+          w.nav.dirty("healer");
+          done(a);
+          a.think = 20;
+        }
+        return;
+      }
+      RUNNERS.harvest(w, a, task);
+    },
     // stalk the nearest prey, creep up within range of the bow or sling, shoot; a miss or a wound
     // sends the animal running
     hunt(w, a, task) {
@@ -5112,7 +5313,7 @@ body.ingame h1{font-size:22px}
     a.task = null;
     a.think = 0;
   };
-  function mill(w, a, task, radius = 1.2) {
+  function mill2(w, a, task, radius = 1.2) {
     if (!task.spot || w.rng() < 0.02) {
       const ang = w.rng() * Math.PI * 2, r = w.rng() * radius;
       task.spot = [w.camp.x + 0.5 + Math.cos(ang) * r, w.camp.y + 0.5 + Math.sin(ang) * r];
@@ -5139,7 +5340,7 @@ body.ingame h1{font-size:22px}
       a.sleeping = true;
       a.needs.rest = Math.min(1, a.needs.rest + 4e-3 * (1 + 0.6 * beds));
       if (beds > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 2e-3 * beds);
-      mill(w, a, task, 1.2);
+      mill2(w, a, task, 1.2);
       if (a.needs.rest >= 1) {
         think(w, a, beds > 0 ? "sleptHut" : "sleptOutside");
         done2(a);
@@ -5147,7 +5348,7 @@ body.ingame h1{font-size:22px}
     } },
     { id: "warm", label: () => "\u0433\u0440\u0435\u0435\u0442\u0441\u044F \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
       if (follow(w, a, "camp") !== "arrived") return;
-      mill(w, a, task, 1.2);
+      mill2(w, a, task, 1.2);
       if (a.needs.warmth > 0.92) done2(a);
     } },
     { id: "council", label: () => "\u043D\u0430 \u0441\u043E\u0432\u0435\u0442\u0435 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
@@ -5215,7 +5416,7 @@ body.ingame h1{font-size:22px}
       RUNNERS[JOBS.get(task.job).runner](w, a, task);
     } },
     { id: "idle", label: () => "\u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442", step(w, a, task) {
-      if (follow(w, a, "camp") === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 4) mill(w, a, task, 2.5);
+      if (follow(w, a, "camp") === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 4) mill2(w, a, task, 2.5);
     } },
     // raiders
     { id: "assault", label: () => "\u0438\u0434\u0451\u0442 \u043A \u0441\u043A\u043B\u0430\u0434\u0443", step(w, a) {
@@ -5236,11 +5437,39 @@ body.ingame h1{font-size:22px}
         return;
       }
       think(w, a, "raidAlarm");
-      if (follow(w, a, "camp", 1.2) === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+      if (follow(w, a, "camp", 1.2) === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 3) mill2(w, a, task, 2.2);
     } },
     // run for the settlement zone when something is hunting you
     { id: "runHome", label: () => "\u0431\u0435\u0436\u0438\u0442 \u043A \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044E", step(w, a) {
       if (follow(w, a, "zone", 1.3) === "arrived") done2(a);
+    } },
+    // a wounded colonist lies in the healer's hut until mostly healed (settlement/healing.js)
+    { id: "treat", label: (t) => t.lying ? t.healer != null ? "\u043B\u0435\u0447\u0438\u0442\u0441\u044F \u0443 \u043B\u0435\u043A\u0430\u0440\u044F" : "\u043B\u0435\u0436\u0438\u0442 \u0432 \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F" : "\u0438\u0434\u0451\u0442 \u043A \u043B\u0435\u043A\u0430\u0440\u044E", step(w, a, task) {
+      if (!has(w, "healerhut")) {
+        done2(a);
+        return;
+      }
+      const max = SPECIES.get(a.species).hp;
+      if (a.hp >= max * HEAL.until) {
+        const healer = task.healer != null ? w.agents.find((o) => o.id === task.healer && !o.dead) : null;
+        if (healer) {
+          think(w, a, "treated", { name: healer.name });
+          think(w, healer, "healedSomeone", { name: a.name });
+        }
+        done2(a);
+        return;
+      }
+      if (!task.lying) {
+        const r = follow(w, a, "healer");
+        if (r === "arrived") task.lying = true;
+        else if (r === "none") {
+          w.nav.dirty("healer");
+          done2(a);
+          a.think = 30;
+        }
+        return;
+      }
+      a.sleeping = true;
     } },
     // the evening trade with a caravan: gather round the trader's goods, a few steps from the fire
     { id: "trade", label: () => "\u0442\u043E\u0440\u0433\u0443\u0435\u0442\u0441\u044F \u0441 \u043A\u0443\u043F\u0446\u043E\u043C", step(w, a, task) {
@@ -5336,6 +5565,7 @@ body.ingame h1{font-size:22px}
       openSites: openSites(w).length,
       preyCount: huntable(w, JOBS.get("hunt")).length,
       favourites: favourites(w),
+      patients: waiting(w),
       orders: new Proxy({}, { get: (o, station) => stationHasWork(w, station, a) })
     };
     const opts = [];
@@ -5355,6 +5585,7 @@ body.ingame h1{font-size:22px}
     }
     opts.push([{ id: "idle" }, 0.15]);
     if (councilDue(w)) opts.push([{ id: "council" }, 1.3]);
+    if ((hurt(a) || a.task?.id === "treat" && a.hp < SPECIES.get(a.species).hp * HEAL.until) && has(w, "healerhut")) opts.push([{ id: "treat" }, (1 - a.hp / SPECIES.get(a.species).hp) * 2 + 0.25]);
     if (tradeOpen(w)) opts.push([{ id: "trade" }, 1.1]);
     const brave = a.mods.bravery;
     if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{ id: "douse" }, 0.8 * brave]);
@@ -5947,6 +6178,7 @@ body.ingame h1{font-size:22px}
     stepFields(w);
     stepWeather(w);
     stepLakes(w);
+    stepPlants(w);
     const t1 = performance.now();
     w.nav.step();
     const t2 = performance.now();
@@ -6161,6 +6393,7 @@ body.ingame h1{font-size:22px}
   }
 
   // src/render/renderer.js
+  var PLANTS_TINT = PLANTS.all().map((p) => ({ key: plantLayer(p.id), tint: p.tint }));
   var TSTOPS = [[-5, 52, 84, 196], [8, 64, 150, 186], [16, 104, 186, 102], [24, 222, 206, 84], [45, 240, 132, 46], [120, 220, 44, 40], [500, 255, 236, 214]];
   function tempColor(t) {
     if (t <= TSTOPS[0][0]) return TSTOPS[0].slice(1);
@@ -6253,6 +6486,15 @@ body.ingame h1{font-size:22px}
           r = r * (1 - k) + c[0] * k;
           gg = gg * (1 - k) + c[1] * k;
           b = b * (1 - k) + c[2] * k;
+        }
+        for (const p of PLANTS_TINT) {
+          const v = g2[p.key]?.[i];
+          if (v > 0.2) {
+            const k = v * 0.6;
+            r = r * (1 - k) + p.tint[0] * k;
+            gg = gg * (1 - k) + p.tint[1] * k;
+            b = b * (1 - k) + p.tint[2] * k;
+          }
         }
         if (g2.bush[i] && g2.food[i] > 0.2) {
           const k = g2.food[i] * 0.55;
@@ -7450,8 +7692,8 @@ body.ingame h1{font-size:22px}
   }
 
   // src/version.js
-  var VERSION = "0.22 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 1a3bd27" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.23 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 2379d9a" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -7478,6 +7720,7 @@ body.ingame h1{font-size:22px}
     if (!save2 || save2.format !== SAVE_FORMAT) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
     ensureOre(w);
+    ensurePlants(w);
     w.trade ?? (w.trade = newTradeState());
     w.caravan ?? (w.caravan = null);
     recomputeMods(w);

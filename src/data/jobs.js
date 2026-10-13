@@ -15,6 +15,9 @@
 import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
 import {FOODS} from './foods.js';
+import {PLANTS, plantLayer} from './plants.js';
+
+const HERBS_KEEP = 10;   // the healer picks herbs while the stock is below this
 import {lakeBeside, fishable} from '../world/lakes.js';
 import {oreBeside, oreOf} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
@@ -116,6 +119,16 @@ JOBS.registerAll([
 
   {id: 'tan', label: 'выделывать кожи', short: 'кожи', verb: 'выделывает кожи', preferable: true,
     runner: 'craft', stations: ['tannery'], desire: atStations(0.5)},
+
+  // the healer: tends the wounded lying in the healer's hut; with nobody to tend, picks healing herbs
+  // while the stock is low (settlement/healing.js). Its skill is the healer's skill.
+  {id: 'heal', label: 'лечить раненых', short: 'лекарь', verb: 'лечит', preferable: true,
+    runner: 'heal', requires: 'healerhut',
+    // one healer at a time: whoever took it first keeps it
+    canDo: (w, a) => !w.agents.some(o => o !== a && o.faction === 'colony' && o.task?.job === 'heal'), nav: plantLayer('herbs'), resource: 'herbs', carry: 2, time: 30,
+    desire: (w, ctx) => (ctx.patients ? 0.9 + 0.1 * ctx.patients : (w.stock.herbs || 0) < HERBS_KEEP ? 0.28 : -1),
+    valid: (w, i) => w.grid[plantLayer('herbs')][i] >= PLANTS.get('herbs').ripe && w.grid.fire[i] === 0,
+    take: (w, i) => { w.grid[plantLayer('herbs')][i] -= PLANTS.get('herbs').take; w.nav.dirty(plantLayer('herbs')); }},
 
   {id: 'build', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,
     runner: 'build', nav: 'sites',

@@ -13,6 +13,9 @@ import {wear} from './equipment.js';
 import {shoot} from './combat.js';
 import {think, moodOf} from './mind.js';
 import {add} from '../settlement/chronicle.js';
+import {tend, patients, waiting, healerHutCell} from '../settlement/healing.js';
+
+const mill = (w, a) => { a.x += (w.rng() - 0.5) * 0.2; a.y += (w.rng() - 0.5) * 0.2; };
 
 // skilled hands work faster, the right tool helps; practice slowly builds skill
 export function workRate(w, a, jobId) {
@@ -84,6 +87,21 @@ export const RUNNERS = {
       if (b) markWorking(w, b, a);
       if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id), a)) { done(a); a.think = 20; }
     } else if (r === 'none') { w.nav.dirty(map); done(a); a.think = 20; }
+  },
+
+  // the healer: tend whoever lies in the healer's hut; with nobody to tend, pick herbs (as harvest)
+  heal(w, a, task) {
+    if (waiting(w)) {
+      if (a.carry?.n) { for (const [res, n] of Object.entries(a.carry.res)) deposit(w, res, n); a.carry = null; }
+      const r = follow(w, a, 'healer');
+      if (r === 'arrived' || healerHutCell(w, a)) {
+        const given = tend(w, a, workRate(w, a, 'heal'));
+        if (given) a.stats.healed = (a.stats.healed || 0) + given;
+        else if (!patients(w).length && w.rng() < 0.02) mill(w, a);   // the patients are still on their way
+      } else if (r === 'none') { w.nav.dirty('healer'); done(a); a.think = 20; }
+      return;
+    }
+    RUNNERS.harvest(w, a, task);
   },
 
   // stalk the nearest prey, creep up within range of the bow or sling, shoot; a miss or a wound

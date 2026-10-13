@@ -14,6 +14,9 @@ import {councilDue} from '../settlement/council.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
 import {tradeOpen, attendTrade} from '../settlement/trade.js';
+import {HEAL} from '../settlement/healing.js';
+import {has} from '../settlement/query.js';
+import {SPECIES} from '../data/species.js';
 
 export const TASKS = new Registry('task');
 const done = a => { a.task = null; a.think = 0; };
@@ -125,6 +128,24 @@ TASKS.registerAll([
   // run for the settlement zone when something is hunting you
   {id: 'runHome', label: () => 'бежит к поселению', step(w, a) {
     if (follow(w, a, 'zone', 1.3) === 'arrived') done(a);
+  }},
+
+  // a wounded colonist lies in the healer's hut until mostly healed (settlement/healing.js)
+  {id: 'treat', label: t => (t.lying ? (t.healer != null ? 'лечится у лекаря' : 'лежит в хижине лекаря') : 'идёт к лекарю'), step(w, a, task) {
+    if (!has(w, 'healerhut')) { done(a); return; }
+    const max = SPECIES.get(a.species).hp;
+    if (a.hp >= max * HEAL.until) {
+      const healer = task.healer != null ? w.agents.find(o => o.id === task.healer && !o.dead) : null;
+      if (healer) { think(w, a, 'treated', {name: healer.name}); think(w, healer, 'healedSomeone', {name: a.name}); }
+      done(a); return;
+    }
+    if (!task.lying) {
+      const r = follow(w, a, 'healer');
+      if (r === 'arrived') task.lying = true;
+      else if (r === 'none') { w.nav.dirty('healer'); done(a); a.think = 30; }
+      return;
+    }
+    a.sleeping = true;   // lies still: drawn dimmed, does not tire
   }},
 
   // the evening trade with a caravan: gather round the trader's goods, a few steps from the fire

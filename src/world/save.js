@@ -11,6 +11,7 @@ import {Navigation} from '../nav/navigation.js';
 import {newMemory} from '../agents/agent.js';
 import {VERSION} from '../version.js';
 import {ensureOre} from './ores.js';
+import {ensurePlants} from './plants.js';
 import {newTradeState} from '../settlement/trade.js';
 import {ensureFlows} from '../outside/index.js';
 import {recomputeMods} from '../settlement/mods.js';
@@ -44,6 +45,7 @@ export function loadWorld(save) {
   if (!save || save.format !== SAVE_FORMAT) throw new Error('Это не сохранение «Тёплого Брода» или оно из несовместимой версии.');
   const {world: w, nav} = decode(save.tree, {externals: externals()});
   ensureOre(w);
+  ensurePlants(w);
   w.trade ??= newTradeState(); w.caravan ??= null;
   recomputeMods(w);   // building effects as this version defines them
   for (const r of RESOURCES.all()) w.stock[r.id] ??= 0;

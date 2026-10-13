@@ -15,6 +15,7 @@ import {inZone} from '../settlement/zone.js';
 import {lakeBeside} from '../world/lakes.js';
 import {oreBeside} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
+import {PLANTS, plantLayer} from './plants.js';
 
 export const NAVMAPS = new Registry('navmap');
 
@@ -49,6 +50,17 @@ NAVMAPS.registerAll([
     prepare: w => ambientTemp(w) + 14,
     seed: (w, i, lim) => w.grid.temp[i] < lim && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6},
 ]);
+
+// one map per wild plant (data/plants.js): its ripe beds
+for (const p of PLANTS.all()) {
+  const key = plantLayer(p.id);
+  NAVMAPS.register({id: key, period: 300, seed: (w, i) => w.grid[key]?.[i] >= p.ripe && w.grid.fire[i] === 0});
+}
+
+// the healer's hut: where the wounded lie and the healer works
+NAVMAPS.register({id: 'healer', active: w => has(w, 'healerhut'),
+  prepare: w => new Set(w.buildings.filter(x => x.key === 'healerhut' && x.done).flatMap(x => x.cells)),
+  seed: (w, i, cells) => cells.has(i)});
 
 // one map per crafting station: its finished building cells
 for (const b of BUILDINGS.filter(d => d.station)) {

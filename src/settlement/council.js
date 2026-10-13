@@ -43,6 +43,7 @@ function councilCtx(w, cands) {
     fishLakes: w.lakes.filter(l => l.cap && l.fish > l.cap * 0.3).length,
     items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
     stock: r => w.stock[r] || 0,
+    wounded: colonists(w).filter(a => a.hp < 0.7).length / Math.max(1, colonists(w).length),
     oreSeen: oreSeen(w),
     wantStone: !has(w, 'quarry') && cands.some(k => BUILDINGS.get(k).needs === 'quarry' || (BUILDINGS.get(k).cost.stone || 0) > 0),
   };

@@ -45,6 +45,10 @@ THOUGHTS.registerAll([
   {id: 'killedRaider', mood: 0.15, lasts: DAY, text: a => `${g(a, 'Сразил', 'Сразила')} налётчика.`},
   {id: 'grief', mood: -0.35, lasts: 2 * DAY, text: (a, c) => `Скорбит: ${c.name} ${c.f ? 'погибла' : 'погиб'}.`},
 
+  // healing
+  {id: 'treated', mood: 0.2, lasts: DAY, text: (a, c) => `Встал${g(a, '', 'а')} на ноги: выходил${c.name ? ' лекарь ' + c.name : 'и в хижине лекаря'}.`},
+  {id: 'healedSomeone', mood: 0.18, lasts: DAY, once: 4 * HOUR, text: (a, c) => `${g(a, 'Выходил', 'Выходила')} раненого: ${c.name}.`},
+
   // trade
   {id: 'tradeDay', mood: 0.12, lasts: DAY, once: DAY, text: (a, c) => `${g(a, 'Был', 'Была')} на торге у купца ${c.trader}.${c.got ? ' Купили: ' + c.got + '.' : ' Купить ничего не решились.'}`},
 

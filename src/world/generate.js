@@ -13,6 +13,7 @@ import {recomputeZone} from '../settlement/zone.js';
 import {newChronicle} from '../settlement/chronicle.js';
 import {findLakes} from './lakes.js';
 import {layOre} from './ores.js';
+import {layPlants} from './plants.js';
 import {newTradeState} from '../settlement/trade.js';
 
 function noiseLayer(rnd, w, h, cell) {
@@ -99,6 +100,7 @@ export function createWorld(cfg) {
   for (const r of RESOURCES.all()) world.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
   findLakes(world);
   layOre(world);
+  layPlants(world);
   recomputeZone(world);
   initOutside(world);
   setWind(world);

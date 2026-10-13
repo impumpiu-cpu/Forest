@@ -130,6 +130,15 @@ BUILDINGS.registerAll([
     wish: 'хочет делать красивые вещи',
     motive: (a, c) => [[c.stock('gems') * 0.08, 'самоцветы лежат без дела'], [(a.prefs.jewel - 1) * 1.5, 'любит тонкую работу']]},
 
+  // the healer's hut: the wounded lie here and a healer tends them, many times faster than wounds
+  // close by themselves; herbs make the treatment work fully (settlement/healing.js)
+  {id: 'healerhut', name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
+    effect: 'Раненые лежат здесь, а лекарь их выхаживает: раны затягиваются в несколько раз быстрее, с травами — ещё быстрее. Лекарь же собирает лечебные травы.',
+    effects: {}, beds: 3,
+    wish: 'хочет, чтобы раненых было где лечить',
+    motive: (a, c) => [[c.wounded * 1.6, 'раненые долго не встают'], [a.hp < 0.7 ? (1 - a.hp) * 1.4 : 0, a.gender === 'f' ? 'сама изранена' : 'сам изранен'],
+      [(a.mem.wolf + a.mem.raid) * 0.4, 'после стычек некому лечить'], [(a.prefs.heal - 1) * 1.5, 'хочет лечить людей']]},
+
   {id: 'armory', name: 'Оружейный навес', gender: 'm', cost: {wood: 20, bone: 4}, work: 160, max: 1, wooden: true, color: '#a07850', mark: 'Он', needs: 'crafthut',
     effect: 'Снаряжение чинят и хранят под навесом: оно изнашивается вдвое медленнее.',
     effects: {mul: {wear: 0.5}},

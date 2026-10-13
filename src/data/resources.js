@@ -15,11 +15,12 @@ import {T} from './terrain.js';
 import {FOODS} from './foods.js';
 import {LUXURY} from './luxury.js';
 import {ORES} from './ores.js';
+import {PLANTS, plantLayer} from './plants.js';
 import {oreAt} from '../world/ores.js';
 
 export const RESOURCES = new Registry('resource');
 
-export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Боеприпасы'];
+export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Боеприпасы'];
 
 RESOURCES.registerAll([
   ...FOODS.all().map(f => ({id: f.id, label: f.label, short: f.label, tags: ['food'], group: 'Еда',
@@ -32,6 +33,9 @@ RESOURCES.registerAll([
   {id: 'bone',    label: 'кости',   short: 'кости',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.2, keep: 12, color: '#e8e2cf'},
   {id: 'hide',    label: 'шкуры',   short: 'шкуры',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.5, keep: 6, color: '#9b7650'},
   {id: 'leather', label: 'кожа',    short: 'кожа',    tags: ['material'], group: 'Материалы', loot: 1, value: 1, keep: 8, color: '#7a4d26'},
+
+  // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
+  {id: 'herbs', label: 'лечебные травы', short: 'травы', tags: ['medicine'], group: 'Лекарства', loot: 1, value: 1, keep: 10, target: 10, color: '#e8d25c'},
 
   // fuel: charcoal is burnt from logs, coal is dug; both keep a furnace hot, the campfire takes them after wood
   {id: 'charcoal', label: 'древесный уголь', short: 'уголь', tags: ['fuel', 'smelt'], group: 'Топливо', burn: 2, heat: 2, loot: 2, value: 0.3, color: '#3d3a36', target: 10},
@@ -66,5 +70,12 @@ for (const o of ORES.all()) {
 
 // sections of the stock panel in their order; a group not listed here is shown after them
 export const resourceGroups = () => [...new Set([...RESOURCE_GROUPS, ...RESOURCES.all().map(r => r.group || 'Прочее')])];
+
+// resources picked from wild plant beds: where to see them on the resource layer
+for (const p of PLANTS.all()) {
+  const r = RESOURCES.get(p.resource), key = plantLayer(p.id);
+  r.map ??= (w, i) => w.grid[key]?.[i] || 0;
+  r.mapColor ??= p.mapColor;
+}
 
 export const byTag = tag => RESOURCES.filter(r => r.tags.includes(tag));
