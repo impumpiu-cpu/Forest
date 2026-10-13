@@ -28,15 +28,49 @@ function layer(w) {
   const ctx = c.getContext('2d'); return {c, ctx, img: ctx.createImageData(w.w, w.h)};
 }
 
+// the closest the camera comes: one cell this many CSS pixels wide
+export const MAX_CELL_PX = 40;
+
 export class Renderer {
-  constructor(canvas) { this.cv = canvas; this.ctx = canvas.getContext('2d'); this.ms = 0; }
+  constructor(canvas) { this.cv = canvas; this.ctx = canvas.getContext('2d'); this.ms = 0; this.S = 1; this.ox = 0; this.oy = 0; }
 
   setup(w) {
-    this.S = Math.max(4, Math.floor(1024 / w.w));
-    this.cv.width = w.w * this.S; this.cv.height = w.h * this.S;
-    this.terrain = layer(w); this.field = layer(w); this.glow = layer(w); this.smoke = layer(w);
-    this.tTerrain = -Infinity; this.tField = -Infinity; this.fieldKey = null;
+    this.w = w;
+    this.terrain = layer(w); this.field = layer(w); this.glow = layer(w); this.smoke = layer(w); this.zoneTint = layer(w);
+    this.tTerrain = -Infinity; this.tField = -Infinity; this.fieldKey = null; this.zoneVer = null;
   }
+
+  // ── camera. view.cam = {zoom, cx, cy}: zoom 1 shows the whole map, (cx, cy) is the centre in cells.
+  // Everything below draws in CSS pixels with one cell = this.S, shifted by (this.ox, this.oy).
+  size() { return [this.cv.clientWidth || 1, this.cv.clientHeight || 1]; }
+  fitScale(w) { const [cw, ch] = this.size(); return Math.min(cw / w.w, ch / w.h); }
+  maxZoom(w) { return Math.max(1, MAX_CELL_PX / this.fitScale(w)); }
+
+  // keep the zoom within limits and the map on screen; a map smaller than the view stays centred
+  clampCam(w, cam) {
+    const [cw, ch] = this.size();
+    cam.zoom = clamp(cam.zoom, 1, this.maxZoom(w));
+    const S = this.fitScale(w) * cam.zoom;
+    const hx = cw / 2 / S, hy = ch / 2 / S;
+    cam.cx = w.w <= 2 * hx ? w.w / 2 : clamp(cam.cx, hx, w.w - hx);
+    cam.cy = w.h <= 2 * hy ? w.h / 2 : clamp(cam.cy, hy, w.h - hy);
+    this.S = S; this.ox = cw / 2 - cam.cx * S; this.oy = ch / 2 - cam.cy * S;
+  }
+
+  // a point on the canvas (CSS pixels from its top-left corner) → map coordinates in cells
+  toCell(px, py) { return [(px - this.ox) / this.S, (py - this.oy) / this.S]; }
+
+  // zoom by `factor`, keeping the map point under (px, py) where it is
+  zoomAt(w, cam, factor, px, py) {
+    this.clampCam(w, cam);
+    const [mx, my] = this.toCell(px, py), [cw, ch] = this.size();
+    cam.zoom = clamp(cam.zoom * factor, 1, this.maxZoom(w));
+    const S = this.fitScale(w) * cam.zoom;
+    cam.cx = mx - (px - cw / 2) / S; cam.cy = my - (py - ch / 2) / S;
+    this.clampCam(w, cam);
+  }
+
+  pan(w, cam, dx, dy) { this.clampCam(w, cam); cam.cx -= dx / this.S; cam.cy -= dy / this.S; this.clampCam(w, cam); }
 
   paintTerrain(w) {
     const d = this.terrain.img.data, g = w.grid;
@@ -82,7 +116,16 @@ export class Renderer {
   }
 
   draw(w, view) {
-    const t0 = performance.now(), ctx = this.ctx, S = this.S, Wpx = w.w * S, Hpx = w.h * S;
+    const t0 = performance.now(), ctx = this.ctx;
+    // the canvas follows its box; its backing store is in device pixels for a crisp picture
+    const dpr = window.devicePixelRatio || 1, [cw, ch] = this.size();
+    const bw = Math.round(cw * dpr), bh = Math.round(ch * dpr);
+    if (this.cv.width !== bw || this.cv.height !== bh) { this.cv.width = bw; this.cv.height = bh; }
+    this.clampCam(w, view.cam);
+    const S = this.S, Wpx = w.w * S, Hpx = w.h * S;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#0d0f0a'; ctx.fillRect(0, 0, cw, ch);
+    ctx.setTransform(dpr, 0, 0, dpr, this.ox * dpr, this.oy * dpr);
     // terrain and the overlay layers change slowly: repaint them a few times a second, not every frame
     // (fire glow and smoke stay per frame)
     if (t0 - this.tTerrain > 200) { this.paintTerrain(w); this.tTerrain = t0; }
@@ -125,26 +168,28 @@ export class Renderer {
   }
 
   // the settlement zone: a soft tint inside and a dashed rim along its merged edge
+  // (the tint is a 1-pixel-per-cell layer, the rim a path in cell units: both fit any zoom)
   drawZone(w) {
     if (this.zoneVer !== w.zoneVersion) {
       this.zoneVer = w.zoneVersion;
-      const c = this.zoneCanvas || (this.zoneCanvas = document.createElement('canvas'));
-      c.width = this.cv.width; c.height = this.cv.height;
-      const z = c.getContext('2d'), S = this.S, W = w.w, H = w.h;
-      z.fillStyle = 'rgba(231,227,207,0.05)';
-      for (let i = 0; i < w.n; i++) if (w.zone[i]) z.fillRect((i % W) * S, ((i / W) | 0) * S, S, S);
-      z.strokeStyle = 'rgba(231,227,207,0.5)'; z.lineWidth = 1.2; z.setLineDash([3, 3]); z.beginPath();
+      const d = this.zoneTint.img.data, W = w.w, H = w.h;
+      for (let i = 0; i < w.n; i++) { const o = i * 4; d[o] = 231; d[o + 1] = 227; d[o + 2] = 207; d[o + 3] = w.zone[i] ? 13 : 0; }
+      this.zoneTint.ctx.putImageData(this.zoneTint.img, 0, 0);
+      const p = new Path2D();
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         if (!w.zone[y * W + x]) continue;
-        const px = x * S, py = y * S;
-        if (x === 0 || !w.zone[y * W + x - 1]) { z.moveTo(px, py); z.lineTo(px, py + S); }
-        if (x === W - 1 || !w.zone[y * W + x + 1]) { z.moveTo(px + S, py); z.lineTo(px + S, py + S); }
-        if (y === 0 || !w.zone[(y - 1) * W + x]) { z.moveTo(px, py); z.lineTo(px + S, py); }
-        if (y === H - 1 || !w.zone[(y + 1) * W + x]) { z.moveTo(px, py + S); z.lineTo(px + S, py + S); }
+        if (x === 0 || !w.zone[y * W + x - 1]) { p.moveTo(x, y); p.lineTo(x, y + 1); }
+        if (x === W - 1 || !w.zone[y * W + x + 1]) { p.moveTo(x + 1, y); p.lineTo(x + 1, y + 1); }
+        if (y === 0 || !w.zone[(y - 1) * W + x]) { p.moveTo(x, y); p.lineTo(x + 1, y); }
+        if (y === H - 1 || !w.zone[(y + 1) * W + x]) { p.moveTo(x, y + 1); p.lineTo(x + 1, y + 1); }
       }
-      z.stroke();
+      this.zoneRim = p;
     }
-    this.ctx.drawImage(this.zoneCanvas, 0, 0);
+    const ctx = this.ctx, S = this.S;
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(this.zoneTint.c, 0, 0, w.w * S, w.h * S); ctx.imageSmoothingEnabled = true;
+    ctx.save(); ctx.scale(S, S);
+    ctx.strokeStyle = 'rgba(231,227,207,0.5)'; ctx.lineWidth = 1.2 / S; ctx.setLineDash([3 / S, 3 / S]);
+    ctx.stroke(this.zoneRim); ctx.restore();
   }
 
   // arrows and sling stones in flight, fading
@@ -197,7 +242,7 @@ export class Renderer {
         ctx.fillStyle = d.color; ctx.fillRect(x + 1, y + 1, s - 2, s - 2);
         ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
         if (S >= 5) {
-          ctx.fillStyle = '#14160f'; ctx.font = `bold ${Math.max(8, S * 0.95)}px "PT Sans", sans-serif`;
+          ctx.fillStyle = '#14160f'; ctx.font = `bold ${clamp(S * 0.95, 8, 26)}px "PT Sans", sans-serif`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.mark, x + s / 2, y + s / 2 + 1);
           ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
         }
@@ -224,7 +269,8 @@ export class Renderer {
     const ctx = this.ctx, S = this.S;
     for (const a of w.agents) {
       const sp = SPECIES.get(a.species), look = sp.look, px = a.x * S, py = a.y * S;
-      const r = Math.max(S * look.size, look.shape === 'person' ? 3.4 : 2.8);
+      // grows with the zoom, but slower than the cells, so a close-up still shows the ground around it
+      const r = Math.max(Math.min(S * look.size, 4 + S * 0.26), look.shape === 'person' ? 3.4 : 2.8);
       const color = look.color || FACTIONS.get(a.faction).color;
       if (a === selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 4, 0, Math.PI * 2); ctx.stroke(); }
       LOOKS[look.shape](ctx, a, px, py, r, color, S);

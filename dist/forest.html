@@ -276,6 +276,15 @@ body.ingame h1{font-size:22px}
 .pc-grid.bgrid{grid-template-columns:minmax(0,320px) minmax(0,1fr)}
 @media (max-width:700px){.pc-grid.bgrid{grid-template-columns:minmax(0,1fr)}}
 .main{grid-template-rows:auto minmax(0,1fr) clamp(150px,28vh,260px)}
+/* ───── map camera: the canvas fills its box, the camera zooms and pans inside it ───── */
+.stage .canvas-box{position:relative;height:100%;display:block;container-type:normal;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0d0f0a}
+.stage canvas#map{width:100%;height:100%;aspect-ratio:auto;border:0;border-radius:0;cursor:crosshair}
+.stage canvas#map.dragging{cursor:grabbing}
+.mapctl{position:absolute;right:8px;top:8px;display:flex;gap:4px}
+.mapctl button{background:rgba(29,32,23,.88);min-width:30px;padding:4px 9px;font-weight:700}
+@media (max-width:900px){.stage .canvas-box{height:62vh}}
+.jobs{grid-template-columns:minmax(0,1fr) 52px 44px}
+.jobs .jneed{grid-column:2/4;font-size:11px;line-height:1.25;text-align:right}
 </style>
 </head>
 <body>
@@ -392,7 +401,14 @@ body.ingame h1{font-size:22px}
     </div>
 
     <section class="stage">
-      <div class="canvas-box"><canvas id="map" width="768" height="576"></canvas></div>
+      <div class="canvas-box">
+        <canvas id="map" width="768" height="576" aria-label="Карта: колесо мыши приближает, перетаскивание двигает"></canvas>
+        <div class="mapctl" role="group" aria-label="Масштаб карты">
+          <button type="button" id="zoomIn" title="Приблизить (+)" aria-label="Приблизить">+</button>
+          <button type="button" id="zoomOut" title="Отдалить (−)" aria-label="Отдалить">−</button>
+          <button type="button" id="zoomFit" title="Показать всю карту (0)">Вписать</button>
+        </div>
+      </div>
     </section>
 
     <!-- under the map: the cell under the cursor and whatever was clicked -->
@@ -5350,23 +5366,71 @@ body.ingame h1{font-size:22px}
     const ctx = c.getContext("2d");
     return { c, ctx, img: ctx.createImageData(w.w, w.h) };
   }
+  var MAX_CELL_PX = 40;
   var Renderer = class {
     constructor(canvas) {
       this.cv = canvas;
       this.ctx = canvas.getContext("2d");
       this.ms = 0;
+      this.S = 1;
+      this.ox = 0;
+      this.oy = 0;
     }
     setup(w) {
-      this.S = Math.max(4, Math.floor(1024 / w.w));
-      this.cv.width = w.w * this.S;
-      this.cv.height = w.h * this.S;
+      this.w = w;
       this.terrain = layer(w);
       this.field = layer(w);
       this.glow = layer(w);
       this.smoke = layer(w);
+      this.zoneTint = layer(w);
       this.tTerrain = -Infinity;
       this.tField = -Infinity;
       this.fieldKey = null;
+      this.zoneVer = null;
+    }
+    // ── camera. view.cam = {zoom, cx, cy}: zoom 1 shows the whole map, (cx, cy) is the centre in cells.
+    // Everything below draws in CSS pixels with one cell = this.S, shifted by (this.ox, this.oy).
+    size() {
+      return [this.cv.clientWidth || 1, this.cv.clientHeight || 1];
+    }
+    fitScale(w) {
+      const [cw, ch] = this.size();
+      return Math.min(cw / w.w, ch / w.h);
+    }
+    maxZoom(w) {
+      return Math.max(1, MAX_CELL_PX / this.fitScale(w));
+    }
+    // keep the zoom within limits and the map on screen; a map smaller than the view stays centred
+    clampCam(w, cam) {
+      const [cw, ch] = this.size();
+      cam.zoom = clamp(cam.zoom, 1, this.maxZoom(w));
+      const S = this.fitScale(w) * cam.zoom;
+      const hx = cw / 2 / S, hy = ch / 2 / S;
+      cam.cx = w.w <= 2 * hx ? w.w / 2 : clamp(cam.cx, hx, w.w - hx);
+      cam.cy = w.h <= 2 * hy ? w.h / 2 : clamp(cam.cy, hy, w.h - hy);
+      this.S = S;
+      this.ox = cw / 2 - cam.cx * S;
+      this.oy = ch / 2 - cam.cy * S;
+    }
+    // a point on the canvas (CSS pixels from its top-left corner) → map coordinates in cells
+    toCell(px, py) {
+      return [(px - this.ox) / this.S, (py - this.oy) / this.S];
+    }
+    // zoom by `factor`, keeping the map point under (px, py) where it is
+    zoomAt(w, cam, factor, px, py) {
+      this.clampCam(w, cam);
+      const [mx, my] = this.toCell(px, py), [cw, ch] = this.size();
+      cam.zoom = clamp(cam.zoom * factor, 1, this.maxZoom(w));
+      const S = this.fitScale(w) * cam.zoom;
+      cam.cx = mx - (px - cw / 2) / S;
+      cam.cy = my - (py - ch / 2) / S;
+      this.clampCam(w, cam);
+    }
+    pan(w, cam, dx, dy) {
+      this.clampCam(w, cam);
+      cam.cx -= dx / this.S;
+      cam.cy -= dy / this.S;
+      this.clampCam(w, cam);
     }
     paintTerrain(w) {
       const d = this.terrain.img.data, g2 = w.grid;
@@ -5460,7 +5524,19 @@ body.ingame h1{font-size:22px}
       this.field.ctx.putImageData(this.field.img, 0, 0);
     }
     draw(w, view2) {
-      const t0 = performance.now(), ctx = this.ctx, S = this.S, Wpx = w.w * S, Hpx = w.h * S;
+      const t0 = performance.now(), ctx = this.ctx;
+      const dpr = window.devicePixelRatio || 1, [cw, ch] = this.size();
+      const bw = Math.round(cw * dpr), bh = Math.round(ch * dpr);
+      if (this.cv.width !== bw || this.cv.height !== bh) {
+        this.cv.width = bw;
+        this.cv.height = bh;
+      }
+      this.clampCam(w, view2.cam);
+      const S = this.S, Wpx = w.w * S, Hpx = w.h * S;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = "#0d0f0a";
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.setTransform(dpr, 0, 0, dpr, this.ox * dpr, this.oy * dpr);
       if (t0 - this.tTerrain > 200) {
         this.paintTerrain(w);
         this.tTerrain = t0;
@@ -5522,42 +5598,52 @@ body.ingame h1{font-size:22px}
       this.ms = this.ms * 0.9 + (performance.now() - t0) * 0.1;
     }
     // the settlement zone: a soft tint inside and a dashed rim along its merged edge
+    // (the tint is a 1-pixel-per-cell layer, the rim a path in cell units: both fit any zoom)
     drawZone(w) {
       if (this.zoneVer !== w.zoneVersion) {
         this.zoneVer = w.zoneVersion;
-        const c = this.zoneCanvas || (this.zoneCanvas = document.createElement("canvas"));
-        c.width = this.cv.width;
-        c.height = this.cv.height;
-        const z = c.getContext("2d"), S = this.S, W = w.w, H = w.h;
-        z.fillStyle = "rgba(231,227,207,0.05)";
-        for (let i = 0; i < w.n; i++) if (w.zone[i]) z.fillRect(i % W * S, (i / W | 0) * S, S, S);
-        z.strokeStyle = "rgba(231,227,207,0.5)";
-        z.lineWidth = 1.2;
-        z.setLineDash([3, 3]);
-        z.beginPath();
+        const d = this.zoneTint.img.data, W = w.w, H = w.h;
+        for (let i = 0; i < w.n; i++) {
+          const o = i * 4;
+          d[o] = 231;
+          d[o + 1] = 227;
+          d[o + 2] = 207;
+          d[o + 3] = w.zone[i] ? 13 : 0;
+        }
+        this.zoneTint.ctx.putImageData(this.zoneTint.img, 0, 0);
+        const p = new Path2D();
         for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
           if (!w.zone[y * W + x]) continue;
-          const px = x * S, py = y * S;
           if (x === 0 || !w.zone[y * W + x - 1]) {
-            z.moveTo(px, py);
-            z.lineTo(px, py + S);
+            p.moveTo(x, y);
+            p.lineTo(x, y + 1);
           }
           if (x === W - 1 || !w.zone[y * W + x + 1]) {
-            z.moveTo(px + S, py);
-            z.lineTo(px + S, py + S);
+            p.moveTo(x + 1, y);
+            p.lineTo(x + 1, y + 1);
           }
           if (y === 0 || !w.zone[(y - 1) * W + x]) {
-            z.moveTo(px, py);
-            z.lineTo(px + S, py);
+            p.moveTo(x, y);
+            p.lineTo(x + 1, y);
           }
           if (y === H - 1 || !w.zone[(y + 1) * W + x]) {
-            z.moveTo(px, py + S);
-            z.lineTo(px + S, py + S);
+            p.moveTo(x, y + 1);
+            p.lineTo(x + 1, y + 1);
           }
         }
-        z.stroke();
+        this.zoneRim = p;
       }
-      this.ctx.drawImage(this.zoneCanvas, 0, 0);
+      const ctx = this.ctx, S = this.S;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(this.zoneTint.c, 0, 0, w.w * S, w.h * S);
+      ctx.imageSmoothingEnabled = true;
+      ctx.save();
+      ctx.scale(S, S);
+      ctx.strokeStyle = "rgba(231,227,207,0.5)";
+      ctx.lineWidth = 1.2 / S;
+      ctx.setLineDash([3 / S, 3 / S]);
+      ctx.stroke(this.zoneRim);
+      ctx.restore();
     }
     // arrows and sling stones in flight, fading
     drawShots(w) {
@@ -5633,7 +5719,7 @@ body.ingame h1{font-size:22px}
           ctx.strokeRect(x + 1, y + 1, s - 2, s - 2);
           if (S >= 5) {
             ctx.fillStyle = "#14160f";
-            ctx.font = `bold ${Math.max(8, S * 0.95)}px "PT Sans", sans-serif`;
+            ctx.font = `bold ${clamp(S * 0.95, 8, 26)}px "PT Sans", sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(d.mark, x + s / 2, y + s / 2 + 1);
@@ -5676,7 +5762,7 @@ body.ingame h1{font-size:22px}
       const ctx = this.ctx, S = this.S;
       for (const a of w.agents) {
         const sp = SPECIES.get(a.species), look = sp.look, px = a.x * S, py = a.y * S;
-        const r = Math.max(S * look.size, look.shape === "person" ? 3.4 : 2.8);
+        const r = Math.max(Math.min(S * look.size, 4 + S * 0.26), look.shape === "person" ? 3.4 : 2.8);
         const color = look.color || FACTIONS.get(a.faction).color;
         if (a === selected) {
           ctx.strokeStyle = "#fff";
@@ -5976,7 +6062,7 @@ body.ingame h1{font-size:22px}
       const rows = JOBS.all().map((j) => {
         if (!jobUnlocked(w, j)) {
           const need = [].concat(j.requires).map((b) => BUILDINGS.get(b).name.toLowerCase()).join(" \u0438\u043B\u0438 ");
-          return `<span class="lock">${esc(j.label)}</span><span class="lock jn" style="grid-column:2/4">\u043D\u0443\u0436\u043D\u0430 \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0430: ${need}</span>`;
+          return `<span class="lock">${esc(j.label)}</span><span class="lock jn jneed" title="\u041E\u0442\u043A\u0440\u043E\u0435\u0442\u0441\u044F, \u043A\u043E\u0433\u0434\u0430 \u043F\u043E\u0441\u0442\u0440\u043E\u044F\u0442: ${need}">\u043D\u0443\u0436\u043D\u0430: ${need}</span>`;
         }
         return `<span>${esc(j.label)}</span><span class="jn" title="\u0437\u0430\u043D\u044F\u0442\u044B \u0441\u0435\u0439\u0447\u0430\u0441">${doing[j.id] || "\xB7"}</span><span class="jn" title="\u043B\u044E\u0431\u044F\u0442 \u044D\u0442\u0443 \u0440\u0430\u0431\u043E\u0442\u0443">${likes[j.id] ? "\u2665" + likes[j.id] : ""}</span>`;
       }).join("");
@@ -6505,8 +6591,8 @@ body.ingame h1{font-size:22px}
   }
 
   // src/version.js
-  var VERSION = "0.17 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 94520d2" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.18 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 6689cd0" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -6644,7 +6730,7 @@ body.ingame h1{font-size:22px}
   // src/main.js
   var renderer = new Renderer($("map"));
   var panel = new Panel();
-  var view = { layer: "world", selected: null, selBld: null, selCell: null, speed: 1, tool: "inspect", hover: -1, renderMs: 0, resHidden: loadResHidden(), tab: loadTab() };
+  var view = { cam: { zoom: 1, cx: 0, cy: 0 }, layer: "world", selected: null, selBld: null, selCell: null, speed: 1, tool: "inspect", hover: -1, renderMs: 0, resHidden: loadResHidden(), tab: loadTab() };
   var clearSelection = () => {
     view.selected = null;
     view.selBld = null;
@@ -6704,6 +6790,7 @@ body.ingame h1{font-size:22px}
     world = newGame(cfg);
     renderer.setup(world);
     clearSelection();
+    fitCam();
     autoDay = dayOf(world.tick);
     showGame();
   }
@@ -6711,6 +6798,7 @@ body.ingame h1{font-size:22px}
     world = w;
     renderer.setup(world);
     clearSelection();
+    fitCam();
     autoDay = dayOf(world.tick);
     showGame();
   }
@@ -6735,7 +6823,6 @@ body.ingame h1{font-size:22px}
     $("explain").hidden = true;
     document.body.classList.add("ingame");
     $("worldInfo").hidden = true;
-    $("map").style.setProperty("--ar", String(world.w / world.h));
     $("colonyName").textContent = c.name;
     showTab(view.tab);
     $("windDir").value = world.wind.dir;
@@ -6747,25 +6834,80 @@ body.ingame h1{font-size:22px}
     panel.render(world, view);
     panel.renderSelection(world, view);
   }
+  var mapEl = $("map");
+  var local = (e) => {
+    const r = mapEl.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  };
   function eventCell(e) {
-    const r = $("map").getBoundingClientRect();
-    return [Math.floor((e.clientX - r.left) / r.width * world.w), Math.floor((e.clientY - r.top) / r.height * world.h)];
+    const [px, py] = local(e), [x, y] = renderer.toCell(px, py);
+    return [Math.floor(x), Math.floor(y)];
   }
-  $("map").addEventListener("pointermove", (e) => {
+  var onMap = (x, y) => x >= 0 && y >= 0 && x < world.w && y < world.h;
+  var fitCam = () => {
+    if (world) view.cam = { zoom: 1, cx: world.w / 2, cy: world.h / 2 };
+  };
+  var DRAG_PX = 5;
+  var grab = null;
+  mapEl.addEventListener("pointerdown", (e) => {
     if (!world) return;
-    const [x, y] = eventCell(e);
-    view.hover = x >= 0 && y >= 0 && x < world.w && y < world.h ? y * world.w + x : -1;
+    grab = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, drag: e.button !== 0 };
+    mapEl.setPointerCapture(e.pointerId);
+    if (e.button !== 0) e.preventDefault();
   });
-  $("map").addEventListener("pointerleave", () => {
-    view.hover = -1;
-  });
-  $("map").addEventListener("pointerdown", (e) => {
+  mapEl.addEventListener("pointermove", (e) => {
     if (!world) return;
+    if (grab && grab.id === e.pointerId) {
+      if (!grab.drag && Math.hypot(e.clientX - grab.x, e.clientY - grab.y) > DRAG_PX) grab.drag = true;
+      if (grab.drag) {
+        renderer.pan(world, view.cam, e.clientX - grab.lx, e.clientY - grab.ly);
+        mapEl.classList.add("dragging");
+      }
+      grab.lx = e.clientX;
+      grab.ly = e.clientY;
+    }
     const [x, y] = eventCell(e);
-    if (x >= 0 && y >= 0 && x < world.w && y < world.h) {
+    view.hover = onMap(x, y) ? y * world.w + x : -1;
+  });
+  mapEl.addEventListener("pointerup", (e) => {
+    if (!world || !grab || grab.id !== e.pointerId) return;
+    const click = !grab.drag;
+    grab = null;
+    mapEl.classList.remove("dragging");
+    if (!click) return;
+    const [x, y] = eventCell(e);
+    if (onMap(x, y)) {
       TOOLS[view.tool].apply(world, x, y, view);
       panel.renderSelection(world, view);
     }
+  });
+  mapEl.addEventListener("pointercancel", () => {
+    grab = null;
+    mapEl.classList.remove("dragging");
+  });
+  mapEl.addEventListener("pointerleave", () => {
+    view.hover = -1;
+  });
+  mapEl.addEventListener("contextmenu", (e) => e.preventDefault());
+  mapEl.addEventListener("wheel", (e) => {
+    if (!world) return;
+    e.preventDefault();
+    const [px, py] = local(e);
+    renderer.zoomAt(world, view.cam, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 18e-4)), px, py);
+  }, { passive: false });
+  var zoomCentre = (f) => {
+    if (!world) return;
+    const [cw, ch] = renderer.size();
+    renderer.zoomAt(world, view.cam, f, cw / 2, ch / 2);
+  };
+  $("zoomIn").addEventListener("click", () => zoomCentre(1.6));
+  $("zoomOut").addEventListener("click", () => zoomCentre(1 / 1.6));
+  $("zoomFit").addEventListener("click", fitCam);
+  document.addEventListener("keydown", (e) => {
+    if (!running || e.target !== document.body || e.ctrlKey || e.metaKey) return;
+    if (e.key === "+" || e.key === "=") zoomCentre(1.6);
+    else if (e.key === "-" || e.key === "_") zoomCentre(1 / 1.6);
+    else if (e.key === "0" || e.key === "Home") fitCam();
   });
   segmented($("tools"), "tool", (v) => {
     view.tool = v;

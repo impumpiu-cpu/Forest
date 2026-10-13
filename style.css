@@ -266,3 +266,12 @@ body.ingame h1{font-size:22px}
 .pc-grid.bgrid{grid-template-columns:minmax(0,320px) minmax(0,1fr)}
 @media (max-width:700px){.pc-grid.bgrid{grid-template-columns:minmax(0,1fr)}}
 .main{grid-template-rows:auto minmax(0,1fr) clamp(150px,28vh,260px)}
+/* ───── map camera: the canvas fills its box, the camera zooms and pans inside it ───── */
+.stage .canvas-box{position:relative;height:100%;display:block;container-type:normal;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0d0f0a}
+.stage canvas#map{width:100%;height:100%;aspect-ratio:auto;border:0;border-radius:0;cursor:crosshair}
+.stage canvas#map.dragging{cursor:grabbing}
+.mapctl{position:absolute;right:8px;top:8px;display:flex;gap:4px}
+.mapctl button{background:rgba(29,32,23,.88);min-width:30px;padding:4px 9px;font-weight:700}
+@media (max-width:900px){.stage .canvas-box{height:62vh}}
+.jobs{grid-template-columns:minmax(0,1fr) 52px 44px}
+.jobs .jneed{grid-column:2/4;font-size:11px;line-height:1.25;text-align:right}

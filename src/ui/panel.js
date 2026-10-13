@@ -137,7 +137,7 @@ export class Panel {
     const rows = JOBS.all().map(j => {
       if (!jobUnlocked(w, j)) {
         const need = [].concat(j.requires).map(b => BUILDINGS.get(b).name.toLowerCase()).join(' или ');
-        return `<span class="lock">${esc(j.label)}</span><span class="lock jn" style="grid-column:2/4">нужна постройка: ${need}</span>`;
+        return `<span class="lock">${esc(j.label)}</span><span class="lock jn jneed" title="Откроется, когда построят: ${need}">нужна: ${need}</span>`;
       }
       return `<span>${esc(j.label)}</span><span class="jn" title="заняты сейчас">${doing[j.id] || '·'}</span><span class="jn" title="любят эту работу">${likes[j.id] ? '♥' + likes[j.id] : ''}</span>`;
     }).join('');

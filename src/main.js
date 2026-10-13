@@ -16,7 +16,7 @@ import {VERSION, BUILD} from './version.js';
 
 const renderer = new Renderer($('map'));
 const panel = new Panel();
-const view = {layer: 'world', selected: null, selBld: null, selCell: null, speed: 1, tool: 'inspect', hover: -1, renderMs: 0, resHidden: loadResHidden(), tab: loadTab()};
+const view = {cam: {zoom: 1, cx: 0, cy: 0}, layer: 'world', selected: null, selBld: null, selCell: null, speed: 1, tool: 'inspect', hover: -1, renderMs: 0, resHidden: loadResHidden(), tab: loadTab()};
 const clearSelection = () => { view.selected = null; view.selBld = null; view.selCell = null; };
 
 // the open tab on the right of the map, remembered in this browser
@@ -51,7 +51,7 @@ const menu = new Menu({onStart: start, onResume: showGame});
 function start(cfg) {
   world = newGame(cfg);
   renderer.setup(world);
-  clearSelection();
+  clearSelection(); fitCam();
   autoDay = dayOf(world.tick);
   showGame();
 }
@@ -60,7 +60,7 @@ function start(cfg) {
 function resume(w) {
   world = w;
   renderer.setup(world);
-  clearSelection();
+  clearSelection(); fitCam();
   autoDay = dayOf(world.tick);
   showGame();
 }
@@ -82,7 +82,6 @@ function showGame() {
   // the explanation cards belong to the start menu; in the game the screen is for the map and the panels
   $('menu').hidden = true; $('game').hidden = false; $('explain').hidden = true;
   document.body.classList.add('ingame'); $('worldInfo').hidden = true;
-  $('map').style.setProperty('--ar', String(world.w / world.h));
   $('colonyName').textContent = c.name;
   showTab(view.tab);
   $('windDir').value = world.wind.dir; $('windStr').value = Math.round(world.wind.str * 100);
@@ -91,17 +90,59 @@ function showGame() {
   panel.render(world, view); panel.renderSelection(world, view);
 }
 
-// ── input
-function eventCell(e) {
-  const r = $('map').getBoundingClientRect();
-  return [Math.floor((e.clientX - r.left) / r.width * world.w), Math.floor((e.clientY - r.top) / r.height * world.h)];
-}
-$('map').addEventListener('pointermove', e => { if (!world) return; const [x, y] = eventCell(e); view.hover = x >= 0 && y >= 0 && x < world.w && y < world.h ? y * world.w + x : -1; });
-$('map').addEventListener('pointerleave', () => { view.hover = -1; });
-$('map').addEventListener('pointerdown', e => {
+// ── input: the map camera (wheel zooms at the cursor, dragging pans) and clicks with the current tool
+const mapEl = $('map');
+const local = e => { const r = mapEl.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+function eventCell(e) { const [px, py] = local(e), [x, y] = renderer.toCell(px, py); return [Math.floor(x), Math.floor(y)]; }
+const onMap = (x, y) => x >= 0 && y >= 0 && x < world.w && y < world.h;
+const fitCam = () => { if (world) view.cam = {zoom: 1, cx: world.w / 2, cy: world.h / 2}; };
+
+// a press that moves less than this many pixels is a click; further, it drags the map
+const DRAG_PX = 5;
+let grab = null;
+mapEl.addEventListener('pointerdown', e => {
   if (!world) return;
+  grab = {id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, drag: e.button !== 0};
+  mapEl.setPointerCapture(e.pointerId);
+  if (e.button !== 0) e.preventDefault();
+});
+mapEl.addEventListener('pointermove', e => {
+  if (!world) return;
+  if (grab && grab.id === e.pointerId) {
+    if (!grab.drag && Math.hypot(e.clientX - grab.x, e.clientY - grab.y) > DRAG_PX) grab.drag = true;
+    if (grab.drag) { renderer.pan(world, view.cam, e.clientX - grab.lx, e.clientY - grab.ly); mapEl.classList.add('dragging'); }
+    grab.lx = e.clientX; grab.ly = e.clientY;
+  }
   const [x, y] = eventCell(e);
-  if (x >= 0 && y >= 0 && x < world.w && y < world.h) { TOOLS[view.tool].apply(world, x, y, view); panel.renderSelection(world, view); }
+  view.hover = onMap(x, y) ? y * world.w + x : -1;
+});
+mapEl.addEventListener('pointerup', e => {
+  if (!world || !grab || grab.id !== e.pointerId) return;
+  const click = !grab.drag;
+  grab = null; mapEl.classList.remove('dragging');
+  if (!click) return;
+  const [x, y] = eventCell(e);
+  if (onMap(x, y)) { TOOLS[view.tool].apply(world, x, y, view); panel.renderSelection(world, view); }
+});
+mapEl.addEventListener('pointercancel', () => { grab = null; mapEl.classList.remove('dragging'); });
+mapEl.addEventListener('pointerleave', () => { view.hover = -1; });
+mapEl.addEventListener('contextmenu', e => e.preventDefault());
+mapEl.addEventListener('wheel', e => {
+  if (!world) return;
+  e.preventDefault();
+  const [px, py] = local(e);
+  renderer.zoomAt(world, view.cam, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)), px, py);
+}, {passive: false});
+// buttons zoom at the middle of the view
+const zoomCentre = f => { if (!world) return; const [cw, ch] = renderer.size(); renderer.zoomAt(world, view.cam, f, cw / 2, ch / 2); };
+$('zoomIn').addEventListener('click', () => zoomCentre(1.6));
+$('zoomOut').addEventListener('click', () => zoomCentre(1 / 1.6));
+$('zoomFit').addEventListener('click', fitCam);
+document.addEventListener('keydown', e => {
+  if (!running || e.target !== document.body || e.ctrlKey || e.metaKey) return;
+  if (e.key === '+' || e.key === '=') zoomCentre(1.6);
+  else if (e.key === '-' || e.key === '_') zoomCentre(1 / 1.6);
+  else if (e.key === '0' || e.key === 'Home') fitCam();
 });
 segmented($('tools'), 'tool', v => { view.tool = v; if (v !== 'inspect') clearSelection(); });
 segmented($('layers'), 'layer', v => { view.layer = v; $('resFilter').hidden = v !== 'res'; });
