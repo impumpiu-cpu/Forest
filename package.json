@@ -8,6 +8,7 @@
     "test": "node tools/check-layers.mjs && node tools/determinism.mjs 2 && node tools/smoke.mjs 2",
     "smoke": "node tools/smoke.mjs",
     "balance": "node tools/balance.mjs",
+    "balance:standard": "node tools/balance.mjs --seeds 10 --days 30 --vary raids=off,rare,often --set predators=many",
     "determinism": "node tools/determinism.mjs",
     "serve": "python3 -m http.server 8000"
   },
