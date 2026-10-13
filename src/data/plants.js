@@ -14,8 +14,13 @@
 //   seasons:   only gathered in these seasons (hay is mown in summer and autumn)
 //   tint:      colour mixed into the ground on the world layer; mapColor: on the resource layer
 //   job:       the gathering job: {id, label, short, verb, time, carry, keep, hurt?} — it is wanted
-//              while the stock is below `keep`; `hurt` takes that much health per picking (bee stings)
+//              while the stock is below `keep` (a number, or keep(w) when it depends on the colony);
+//              `hurt` takes that much health per picking (bee stings)
 import {Registry} from '../core/registry.js';
+import {SPECIES} from './species.js';
+
+// hay the tame animals eat in a winter of 30 days (settlement/herd.js keeps the herd to it)
+const winterHay = w => w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.eats : 0), 0) * 30 * 0.7;
 
 export const PLANTS = new Registry('plant');
 
@@ -48,7 +53,8 @@ PLANTS.registerAll([
   // meadow grass: mown for hay in summer and autumn — bedding in huts, fodder later
   {id: 'meadow', resource: 'hay', label: 'луговая трава', terrain: ['grass'], fertMin: 0.45, chance: 0.05, seasons: ['summer', 'autumn'],
     start: [0.2, 0.6], regrow: 0.0005, ripe: 0.6, take: 0.6, tint: [150, 180, 80], mapColor: [170, 220, 90],
-    job: {id: 'mow', label: 'косить сено', short: 'сено', verb: 'косит сено', time: 20, carry: 3, keep: 30}},
+    // enough for bedding, and for the pen's winter (settlement/herd.js, winterHay)
+    job: {id: 'mow', label: 'косить сено', short: 'сено', verb: 'косит сено', time: 20, carry: 3, keep: w => 30 + winterHay(w)}},
 ]);
 
 export const plantLayer = id => 'plant:' + id;

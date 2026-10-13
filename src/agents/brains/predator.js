@@ -23,7 +23,7 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function nearest(w, a, species, r, filter = () => true) {
   let best = null, bd = r;
   for (const o of w.agents) {
-    if (o.dead || !species.includes(o.species) || !filter(o)) continue;
+    if (o.dead || o.tame || !species.includes(o.species) || !filter(o)) continue;   // the pen's animals are not prey
     const d = dist(a, o); if (d < bd) { bd = d; best = o; }
   }
   return best;
@@ -167,7 +167,7 @@ export const predatorBrain = {
       return;
     }
     // hungry: follow the scent along the prey flow field, which leads around lakes and rocks
-    if (food < P.hungry && w.agents.some(o => P.prey.includes(o.species))) {
+    if (food < P.hungry && w.agents.some(o => P.prey.includes(o.species) && !o.tame)) {
       if (follow(w, a, 'prey', 0.85) === 'moving') return;
     }
     const r = a.task;

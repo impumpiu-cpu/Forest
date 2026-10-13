@@ -1,6 +1,7 @@
 // Checks the content in src/data: every id a definition refers to must exist, so a typo in a new
 // resource, recipe, job, building, item, food or ore is caught by `npm test`, not in the middle of a game.
 // Errors stop the test; warnings (something that will never appear in a game) are only printed.
+import {FURNITURE} from '../src/data/furniture.js';
 import {RESOURCES} from '../src/data/resources.js';
 import {FOODS} from '../src/data/foods.js';
 import {ORES} from '../src/data/ores.js';
@@ -99,7 +100,29 @@ const sources = new Set(['gold',   // gold comes from trade
   ...TRADE.WARES.flatMap(x => x.resource || []),   // bought from traders
   ...PLANTS.all().flatMap(p => [p.resource, ...Object.keys(p.also || {})]), ...CROPS.all().flatMap(c => Object.keys(c.yields)),
 ...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource),
-  ...SPECIES.all().flatMap(s => Object.keys(s.yields || {}))]);
+  ...SPECIES.all().flatMap(s => Object.keys(s.yields || {})),
+  ...RESOURCES.filter(r => r.tags.includes('key')).map(r => r.id),   // town-made tools: always with traders
+  ...SPECIES.all().flatMap(s => (s.tame ? [s.tame.milk && 'milk', s.tame.wool && 'wool'].filter(Boolean) : []))]);   // from the pen
+
+// herding, keys, furniture
+for (const s of SPECIES.all()) if (s.tame) {
+  costs(`вид ${s.id} (приманка)`, s.tame.bait);
+  if (!(s.tame.space > 0) || !s.tame.names?.length) err(`вид ${s.id}: tame без space или names`);
+  for (const j of Object.keys(s.tame.effects?.jobSpeed || {})) if (!JOBS.has(j)) err(`вид ${s.id}: tame.effects для неизвестной работы «${j}»`);
+}
+for (const d of BUILDINGS.all()) if (d.key) {
+  if (!RESOURCES.has(d.key) || !RESOURCES.get(d.key).tags.includes('key')) err(`постройка ${d.id}: key «${d.key}» — не инструмент (tag 'key')`);
+  if (!(d.cost[d.key] >= 1)) err(`постройка ${d.id}: key «${d.key}» должен входить в cost`);
+}
+for (const r of RESOURCES.filter(x => x.tags.includes('key'))) {
+  if (!r.opens) warn(`инструмент ${r.id}: нет описания opens`);
+  if (r.with && !SPECIES.has(r.with)) err(`инструмент ${r.id}: with — нет вида «${r.with}»`);
+}
+for (const f of FURNITURE.all()) {
+  if (f.recipe && !BUILDINGS.get(f.recipe.at)?.station) err(`мебель ${f.id}: мастерская «${f.recipe.at}» — не станция`);
+  if (!f.recipe && !f.tradeOnly) warn(`мебель ${f.id}: нет рецепта и не продаётся`);
+  if (f.tradeOnly && !TRADE.WARES.some(x => (x.resource || []).includes(f.id))) warn(`мебель ${f.id}: tradeOnly, но торговцы её не возят`);
+}
 for (const r of RESOURCES.all()) if (!sources.has(r.id)) warn(`ресурс ${r.id}: ниоткуда не добывается`);
 
 for (const w of warnings) console.log('warn ' + w);

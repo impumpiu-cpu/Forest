@@ -32,6 +32,7 @@ export const inUse = w => perTick(w, 'navInUse', () => {
     if (t.id === 'job') { const j = JOBS_REF.get(t.job); if (j?.nav) s.add(j.nav); if (t.station) s.add('station:' + t.station); }
     else if (t.id === 'treat') s.add('healer');
     else if (t.id === 'warm') s.add('warm');
+    else if (t.id === 'pray') s.add('station:shrine');
   }
   return s;
 });
@@ -64,7 +65,7 @@ NAVMAPS.registerAll([
   // game animals: hunters and predators walk this field until they are close enough to go straight
   // only while a hunter is out or a hungry predator follows the scent (fed wolves roam without it)
   {id: 'prey', period: 20, minGap: 10, active: w => w.agents.some(a => a.task?.job === 'hunt' || (a.brain === 'predator' && a.needs.food < (SPECIES.get(a.species).predator?.hungry ?? 1))),
-    prepare: w => new Set(w.agents.filter(a => SPECIES.get(a.species).game).map(a => cellOf(w, a))),
+    prepare: w => new Set(w.agents.filter(a => SPECIES.get(a.species).game && !a.tame).map(a => cellOf(w, a))),
     seed: (w, i, cells) => cells.has(i)},
   // field plots that need sowing or reaping
   {id: 'fieldwork', period: 120, active: w => fields(w).length > 0 && inUse(w).has('fieldwork'),
@@ -93,8 +94,8 @@ NAVMAPS.register({id: 'healer', active: w => has(w, 'healerhut') && inUse(w).has
   prepare: w => new Set(w.buildings.filter(x => x.key === 'healerhut' && x.done).flatMap(x => x.cells)),
   seed: (w, i, cells) => cells.has(i)});
 
-// one map per crafting station: its finished building cells
-for (const b of BUILDINGS.filter(d => d.station)) {
+// one map per crafting station (and per building people walk to for other reasons, `walkTo`): its finished building cells
+for (const b of BUILDINGS.filter(d => d.station || d.walkTo)) {
   NAVMAPS.register({id: 'station:' + b.id, active: w => has(w, b.id) && inUse(w).has('station:' + b.id),
     prepare: w => new Set(w.buildings.filter(x => x.key === b.id && x.done).flatMap(x => x.cells)),
     seed: (w, i, cells) => cells.has(i)});

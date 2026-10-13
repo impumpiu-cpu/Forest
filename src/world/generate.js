@@ -76,7 +76,7 @@ export function createWorld(cfg) {
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, food: f32(), wood: f32(), fuel: f32(), fire: f32(),
       temp: f32(), temp2: f32(), smoke: f32(), smoke2: f32(), bush: new Uint8Array(n), bld: new Int16Array(n).fill(-1)},
     camp: {x: t.cx, y: t.cy, cells: [], set: null},
-    stock: {}, agents: [], buildings: [], gardenCells: [], armory: [], fx: [],
+    stock: {}, agents: [], buildings: [], gardenCells: [], armory: [], fx: [], corpses: [], graves: [], graveyard: null,
     nextId: 1, nameIdx: 0, bldSeq: 0,
     wind: {dir: cfg.windDir, str: cfg.windStr / 100, x: 0, y: 0},
     weather: {rain: 0, rainLeft: 0},

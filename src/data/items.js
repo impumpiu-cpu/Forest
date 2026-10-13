@@ -59,6 +59,8 @@ ITEMS.registerAll([
   {id: 'clothes',     label: 'Одежда из лубяной ткани', short: 'ткань', slot: 'body', armor: 0.08, warmth: 0.35, dur: 50, value: 1, color: '#c9b38a'},
   // fur: hare and wolf hides sewn hair-in — the winter coat
   {id: 'furcoat',     label: 'Тулуп из шкур', short: 'тулуп', slot: 'body', armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4, color: '#b89a72'},
+  // homespun wool from the pen's goats: a long coat, warm and not too heavy
+  {id: 'woolens',     label: 'Шерстяная свита', short: 'свита', slot: 'body', armor: 0.1, warmth: 0.7, dur: 110, value: 5, color: '#cfc4a8'},
   // rough linen from the loom: better than bast, warmer in the cold
   {id: 'linen',       label: 'Холщовая рубаха и порты', short: 'холст', slot: 'body', armor: 0.1, warmth: 0.45, dur: 90, value: 3, color: '#ddd2b6'},
   {id: 'jerkin',      label: 'Кожаная куртка', short: 'кожа', slot: 'body', armor: 0.2, warmth: 0.55, dur: 70, value: 3, color: '#8a5a2b'},

@@ -15,6 +15,7 @@ import {perTick} from '../core/util.js';
 import {fishable} from '../world/lakes.js';
 import {season} from '../data/seasons.js';
 import {FOODS} from '../data/foods.js';
+import {freeSlots} from './life.js';
 
 const PRESERVED = () => FOODS.filter(f => f.of);
 
@@ -58,6 +59,8 @@ function makeCraftContext(w) {
     fans: food => col.filter(a => a.food?.likes === food).length,
     get fuel() { return smeltFuelTotal(w); },
     melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
+    freeSlots: freeSlots(w),
+    spare: res => { const r = RESOURCES.get(res); return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20); },
   };
 }
 
@@ -133,7 +136,7 @@ export function workAt(w, b, amount, a) {
   } else {
     w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
     const res = RESOURCES.get(r.makes.resource);
-    if (res.tags.includes('luxury')) {
+    if (res.tags.includes('luxury') || res.tags.includes('furniture')) {
       log(w, `Сделано: ${res.short}.`, 'craft');
       if (a) { think(w, a, 'madeItem', {item: res.short}); a.stats.crafted++; }
     }

@@ -23,7 +23,7 @@ THOUGHTS.registerAll([
   {id: 'starving', mood: -0.35, lasts: 8 * HOUR, once: 8 * HOUR, text: () => 'Голодает. Запасы пусты.'},
   {id: 'freezing', mood: -0.25, lasts: 8 * HOUR, once: 8 * HOUR, text: a => `${g(a, 'Замёрз', 'Замёрзла')} до костей.`},
   {id: 'exhausted', mood: -0.2, lasts: 6 * HOUR, once: 8 * HOUR, text: () => 'Валится с ног от усталости.'},
-  {id: 'sleptHouse', mood: 0.22, lasts: 10 * HOUR, once: 10 * HOUR, text: a => `Выспал${g(a, 'ся', 'ась')} в тёплой избе. Хорошо!`},
+  {id: 'sleptHouse', mood: 0.22, lasts: 10 * HOUR, once: 10 * HOUR, text: (a, c) => `Выспал${g(a, 'ся', 'ась')} в тёплой избе${c.fine ? ', среди добротных вещей' : ''}. Хорошо!`},
   {id: 'sleptHut', mood: 0.06, lasts: 10 * HOUR, once: 10 * HOUR, text: a => `Переночевал${g(a, '', 'а')} в шалаше: тесно и сквозит, но всё лучше, чем под небом.`},
   {id: 'sleptOutside', mood: -0.05, lasts: 8 * HOUR, once: 10 * HOUR, text: () => 'Спал у костра под открытым небом.'},
   {id: 'wounded', mood: -0.3, lasts: DAY, once: 6 * HOUR, text: a => `Тяжело ${g(a, 'ранен', 'ранена')}.`},
@@ -53,6 +53,23 @@ THOUGHTS.registerAll([
 
   // trade
   {id: 'tradeDay', mood: 0.12, lasts: DAY, once: DAY, text: (a, c) => `${g(a, 'Был', 'Была')} на торге у купца ${c.trader}.${c.got ? ' Купили: ' + c.got + '.' : ' Купить ничего не решились.'}`},
+
+  // herding
+  {id: 'tamedBeast', mood: 0.25, lasts: DAY, text: (a, c) => `${g(a, 'Приручил', 'Приручила')} ${c.beast}. Назвали: ${c.name}.`},
+  {id: 'kicked', mood: -0.15, lasts: 12 * HOUR, once: 4 * HOUR, text: a => `Дикий мул ${g(a, 'его', 'её')} лягнул. Не дался.`},
+
+  // the dead and the shrine
+  {id: 'funeral', mood: 0.08, lasts: DAY, text: (a, c) => `Похоронили: ${c.name}. Пусть земля будет пухом.`},
+  {id: 'funeralRite', mood: 0.18, lasts: DAY, text: (a, c) => `Проводили ${c.name} у святилища, как положено. На душе стало легче.`},
+  {id: 'unburied', mood: -0.2, lasts: DAY, once: DAY, text: () => 'Мёртвые лежат непогребённые. Нехорошо это.'},
+  {id: 'prayed', mood: 0.2, lasts: DAY, once: 12 * HOUR, text: a => `${g(a, 'Помолился', 'Помолилась')} у святилища. Отпустило.`},
+
+  // brew and gloom
+  {id: 'drank', mood: 0.16, lasts: 10 * HOUR, once: 12 * HOUR, text: a => `${g(a, 'Выпил', 'Выпила')} вечером браги. Полегчало.`},
+  {id: 'feast', mood: 0.3, lasts: DAY, once: 12 * HOUR, text: a => `Пировали всем поселением: брага, песни у костра.`},
+  {id: 'hangover', mood: -0.1, lasts: DAY, once: DAY, text: a => `Наутро голова тяжёлая: перебрал${g(a, '', 'а')} браги.`},
+  {id: 'sulking', mood: -0.05, lasts: 6 * HOUR, once: DAY, text: () => 'Всё валится из рук. Ничего не хочется.'},
+  {id: 'someoneLeft', mood: -0.15, lasts: DAY, text: (a, c) => `${c.name} ${c.f ? 'ушла' : 'ушёл'} из поселения. Неужто так плохо у нас?`},
 
   // council
   {id: 'councilWon', mood: 0.12, lasts: DAY, text: (a, c) => `На совете ${g(a, 'говорил', 'говорила')} за ${c.choice} (${c.why}). Совет согласился.`},

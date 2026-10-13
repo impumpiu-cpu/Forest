@@ -17,10 +17,11 @@ import {LUXURY} from './luxury.js';
 import {ORES} from './ores.js';
 import {PLANTS, plantLayer} from './plants.js';
 import {oreAt} from '../world/ores.js';
+import {FURNITURE} from './furniture.js';
 
 export const RESOURCES = new Registry('resource');
 
-export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Заготовки', 'Семена', 'Ремесло', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Боеприпасы'];
+export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Заготовки', 'Семена', 'Ремесло', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Мебель', 'Быт', 'Инструменты', 'Боеприпасы'];
 
 RESOURCES.registerAll([
   ...FOODS.all().map(f => ({id: f.id, label: f.label, short: f.short || f.label, tags: ['food'], group: f.group || 'Еда',
@@ -42,7 +43,9 @@ RESOURCES.registerAll([
   {id: 'clay',   label: 'глина', short: 'глина', tags: ['material'], group: 'Ремесло', loot: 1, value: 0.1, keep: 16, target: 14, color: '#b06a48'},
   {id: 'pots',   label: 'горшки', short: 'горшки', tags: ['material', 'storage'], group: 'Ремесло', loot: 1, value: 0.8, keep: 30, color: '#a8653e'},
   {id: 'planks', label: 'тёс', short: 'тёс', tags: ['material'], group: 'Ремесло', loot: 2, value: 0.5, keep: 30, color: '#c99a5c'},
-  {id: 'hay',    label: 'сено', short: 'сено', tags: ['material'], group: 'Ремесло', loot: 2, value: 0.1, keep: 30, target: 30, color: '#c8c070'},
+  {id: 'hay',    label: 'сено', short: 'сено', tags: ['material'], group: 'Ремесло', loot: 2, value: 0.1, sell: false, target: 30, color: '#c8c070'},
+  // wool sheared from the pen's goats (settlement/herd.js): homespun coats, cloth, rugs
+  {id: 'wool',   label: 'шерсть', short: 'шерсть', tags: ['material'], group: 'Ремесло', loot: 1, value: 0.8, keep: 12, color: '#e4dcc8'},
   // furs and wax: what the woods give that a town will pay for
   {id: 'furs',   label: 'меха', short: 'меха', tags: ['luxury'], group: 'Роскошь', loot: 1, value: 3, keep: 0, color: '#c4743a'},
   {id: 'wax',    label: 'воск', short: 'воск', tags: ['material'], group: 'Роскошь', loot: 1, value: 1.5, keep: 0, color: '#e8d48a'},
@@ -74,6 +77,25 @@ RESOURCES.registerAll([
 
   // luxury goods from the jeweller: kept for trade, they make the colony look rich
   ...LUXURY.all().map(l => ({id: l.id, label: l.label, short: l.short, tags: ['luxury'], group: 'Роскошь', value: l.value, keep: 0, loot: 1, color: l.color})),
+
+  // ── everyday life: home brew for the evenings (settlement/life.js) and furniture for the solid buildings
+  {id: 'braga', label: 'брага', short: 'брага', tags: ['drink'], group: 'Быт', loot: 2, value: 0.6, keepPerHead: 2, color: '#c89a48'},
+  ...FURNITURE.all().map(f => ({id: f.id, label: f.label, short: f.label, tags: ['furniture'], group: 'Мебель', loot: 1, value: f.value, sell: false, color: f.color, comfort: f.comfort})),
+
+  // ── keys: town-made tools the outpost cannot make and cannot do without for some crafts. They come
+  // only with traders; a building that names one as its `key` (data/buildings.js) takes it into its cost,
+  // the others work from the stock (`effects` while it is there, `with` a tame animal of that kind).
+  {id: 'pitsaw',     label: 'продольная пила', short: 'пила', tags: ['key'], group: 'Инструменты', loot: 1, value: 4, sell: false, color: '#b9c2c8',
+    opens: 'козлы для распила: тёс на избы'},
+  {id: 'bellows',    label: 'кузнечные меха', short: 'меха', tags: ['key'], group: 'Инструменты', loot: 1, value: 8, sell: false, color: '#8a6a48',
+    opens: 'сыродутный горн: своё железо'},
+  {id: 'anvil',      label: 'наковальня с молотами', short: 'наковальня', tags: ['key'], group: 'Инструменты', loot: 1, value: 16, sell: false, color: '#6e747a',
+    opens: 'походная кузня: мечи, копья, ламеллярные доспехи'},
+  {id: 'gemtools',   label: 'резцы и лучковое сверло', short: 'резцы', tags: ['key'], group: 'Инструменты', loot: 1, value: 10, sell: false, color: '#58b3a8',
+    opens: 'верстак резчика: украшения из самоцветов'},
+  {id: 'ploughshare', label: 'железный лемех', short: 'лемех', tags: ['key'], group: 'Инструменты', loot: 1, value: 6, sell: false, color: '#9aa0a6',
+    opens: 'соха с лемехом: с ручным мулом поля родят на треть больше',
+    with: 'mule', effects: {yield: {barley: 1.3, turnip: 1.3}}},
 
   {id: 'arrows',  label: 'стрелы',  short: 'стрелы',  tags: ['ammo'], group: 'Боеприпасы', loot: 3, value: 0.1, keep: 30, color: '#c7b07a'},
 

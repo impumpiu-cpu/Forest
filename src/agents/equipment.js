@@ -27,15 +27,25 @@ export function itemDef(type, q = 0) {
       dur: base.dur * (1 + Q.dur)};
     if (base.melee) d.melee = {...base.melee, dmg: base.melee.dmg * (1 + Q.hit)};
     if (base.ranged) d.ranged = {...base.ranged, dmg: base.ranged.dmg * (1 + Q.hit)};
-    if (base.block) d.block = Math.min(0.75, base.block + Q.guard);
-    if (base.armor) d.armor = Math.min(0.8, base.armor + Q.guard);
-    if (base.warmth) d.warmth = Math.min(0.9, base.warmth + Q.warmth);
+    if (base.block) d.block = Math.min(0.75 + Q.cap, base.block + Q.guard);
+    if (base.armor) d.armor = Math.min(0.8 + Q.cap, base.armor + Q.guard);
+    if (base.warmth) d.warmth = Math.min(0.9 + Q.cap, base.warmth + Q.warmth);
+    d.rank = Q.rank; d.keep = !!Q.keep;
     if (base.tool) d.tool = Object.fromEntries(Object.entries(base.tool).map(([j, m]) => [j, 1 + (m - 1) * (1 + Q.tool) + Q.tool * 0.5]));
     finer.set(key, d);
   }
   return d;
 }
-export const def = inst => itemDef(inst.type, inst.q);
+// a named piece (an epic find) wears its own name over the plain one
+const named = new Map();
+export function def(inst) {
+  const d = itemDef(inst.type, inst.q);
+  if (!inst.name) return d;
+  const key = inst.type + ':' + inst.q + ':' + inst.name;
+  let n = named.get(key);
+  if (!n) { n = {...d, label: `${inst.name} (${d.label})`, short: inst.name}; named.set(key, n); }
+  return n;
+}
 export const newItem = (type, extra = {}) => ({type, ...extra, dur: itemDef(type, extra.q).dur});
 
 // price of one piece in imperial gold: the plain piece plus the step up in quality

@@ -11,6 +11,8 @@ import {emptySlots, recalcGear, stripAll, def} from './equipment.js';
 import {think} from './mind.js';
 import {drawFoodPrefs} from '../data/foods.js';
 import {enrol, noteDeath} from '../settlement/chronicle.js';
+import {lostBeast} from '../settlement/herd.js';
+import {addCorpse} from '../settlement/life.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 export const newMemory = (init = {}) => new Proxy(init, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
@@ -72,7 +74,8 @@ export function kill(w, a, cause, by) {
   a.dead = true; a.hp = 0;
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
-  if (a.faction === 'colony') noteDeath(w, a, cause, by);
+  if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }
+  if (a.tame) { lostBeast(w, a, by?.species === 'wolf' ? 'задрали волки' : by ? 'убили' : cause); return; }
   if (by?.stats) { if (sp.id === 'wolf') { by.stats.wolves++; w.chronicle.wolvesKilled++; } else if (a.faction === 'raiders') { by.stats.raiders++; w.chronicle.raidersKilled++; } }
   if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
   else if (sp.yields && by?.faction === 'colony' && by.task?.id !== 'job' && a.faction !== 'traders') {
@@ -86,7 +89,7 @@ export function kill(w, a, cause, by) {
     w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1;
     log(w, `Налётчик убит, ${g(by, 'его сразил', 'его сразила')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }
-  if (a.faction === 'colony') for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) think(w, o, 'grief', {name: a.name, f: a.gender === 'f'});
+  if (a.faction === 'colony') for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) { think(w, o, 'grief', {name: a.name, f: a.gender === 'f'}); o.mem.grief += 0.5; }
   if (by?.faction === 'colony') { if (sp.id === 'wolf') think(w, by, 'killedWolf'); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
   // a fallen colonist's gear goes back to the store
   if (a.faction === 'colony' && a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }

@@ -82,6 +82,22 @@ export const LOOKS = {
     ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(px, py, r * 1.2, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#c8b0a8'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(px - r * 1.1, py); ctx.lineTo(px - r * 2.4, py + r * 0.5); ctx.stroke();
   },
+  // goat: a pale stocky body, a small head with swept-back horns and a beard; a tame one wears a
+  // red cord at the neck, a kid is smaller
+  goat(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    if (a.tame && a.age < 20) r *= 0.7;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.1, r * 0.72, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(r * 1.05, -r * 0.5, r * 0.38, r * 0.3, 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#6a5a44'; ctx.lineWidth = Math.max(1, r * 0.16);
+    ctx.beginPath(); ctx.moveTo(r * 0.95, -r * 0.75); ctx.quadraticCurveTo(r * 0.7, -r * 1.35, r * 0.35, -r * 1.05); ctx.stroke();
+    ctx.strokeStyle = '#efe8d8'; ctx.lineWidth = Math.max(1, r * 0.12);
+    ctx.beginPath(); ctx.moveTo(r * 1.25, -r * 0.3); ctx.lineTo(r * 1.2, r * 0.05); ctx.stroke();
+    if (a.tame) { ctx.fillStyle = '#c8402e'; ctx.beginPath(); ctx.arc(r * 0.72, -r * 0.25, Math.max(1, r * 0.18), 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  },
   // a big brown disc with a short mane; a pack mule carries two crates, one on each side,
   // filled to how much of its load is left
   mule(ctx, a, px, py, r, color) {
@@ -98,6 +114,8 @@ export const LOOKS = {
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = '#3a2614'; ctx.lineWidth = Math.max(1.5, r * 0.25);
     ctx.beginPath(); ctx.arc(px, py, r * 0.55, -2.4, -0.7); ctx.stroke();
+    // a tame mule wears a halter
+    if (a.tame) { ctx.strokeStyle = '#c8402e'; ctx.lineWidth = Math.max(1, r * 0.15); ctx.beginPath(); ctx.arc(px, py, r * 0.8, 0.3, 1.3); ctx.stroke(); }
   },
   // long grey body, pointed ears, tail; facing the way it last moved
   wolf(ctx, a, px, py, r, color) {

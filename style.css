@@ -290,3 +290,10 @@ body.ingame h1{font-size:22px}
 .clockbox .season[data-s="summer"]{color:#e8c25a}
 .clockbox .season[data-s="autumn"]{color:#e0904a}
 .clockbox .season[data-s="winter"]{color:#bcd6f2}
+/* quality of a piece: +1/+2 gold, +3 rare blue, +4 epic violet */
+dd.q1,dd.q2{color:#e3c14a}
+dd.q3{color:#6fb4ff}
+dd.q4{color:#c58cff;font-weight:600}
+/* people tab: the herd and the colony's spirits */
+.psec{font-size:12px;margin:12px 0 4px;color:var(--muted, #a9a28f);font-weight:600;letter-spacing:.02em}
+.person.beast .nm{color:#d6cdb6}

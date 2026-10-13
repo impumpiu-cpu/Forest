@@ -43,6 +43,9 @@ import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {neighbours} from '../outside/index.js';
+import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
+import {statusOf} from '../settlement/life.js';
+import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -268,7 +271,8 @@ export class Panel {
       const n = count(w, d.id), site = w.buildings.find(b => b.key === d.id && !b.done);
       const state = site ? `<span class="bstate">строится ${Math.floor(site.progress / d.work * 20) * 5}%</span>`
         : n ? `<span class="bstate done">построено${d.max > 1 ? ' ×' + n : ''}</span>` : w.council.goal === d.id ? '<span class="bstate">цель совета</span>' : '';
-      const note = n >= d.max || site ? '' : d.needs && !has(w, d.needs) ? `<span class="bneed">после: ${BUILDINGS.get(d.needs).name.toLowerCase()}</span>` : '';
+      const note = n >= d.max || site ? '' : d.needs && !has(w, d.needs) ? `<span class="bneed">после: ${BUILDINGS.get(d.needs).name.toLowerCase()}</span>`
+        : d.key && !(w.stock[d.key] >= 1) ? `<span class="bneed" title="Инструмент делают только в городах">нужно у торговца: ${RESOURCES.get(d.key).label}</span>` : '';
       return `<div class="bcard${n ? ' built' : ''}"><div class="bhead"><i class="bmark" style="background:${d.color}">${d.mark}</i><b>${d.name}</b>${state}</div>
         <p>${d.effect}</p><div class="bfoot"><span class="costs">${costHtml(w, d.cost)}</span>${note}</div></div>`;
     }).join(''));
@@ -277,10 +281,26 @@ export class Panel {
   renderPeople(w, selected) {
     const col = colonists(w);
     const needs = SPECIES.get('human').needs.map(id => NEEDS.get(id));
-    this.set('people', col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
+    this.set('people', (col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
       <span class="nm">${esc(a.name)}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
       <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(a.hp, 'var(--good)')}</div></div>`).join('')
-      || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>');
+      || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
+  }
+
+  herdHtml(w) {
+    const list = herd(w);
+    if (!list.length && !has(w, 'pen')) return '';
+    const rows = list.map(a => `<div class="person beast" data-id="${a.id}"><span class="nm">${esc(a.name)}</span><span class="task">${SPECIES.get(a.species).label} · ${taskLabel(a)}</span><span class="likes">${beastText(w, a)}</span></div>`).join('');
+    return `<h3 class="psec">Скот · ${list.length}${has(w, 'pen') ? ` · мест ${penRoom(w)} из ${penSpace(w)}` : ''} · сена ${Math.floor(w.stock.hay || 0)}</h3>${rows || '<p class="muted pc-small">Загон пуст: скотник ждёт диких коз и мулов.</p>'}`;
+  }
+
+  // the colony's spirits: average mood, who is in low spirits, the dead and the graves
+  lifeHtml(w, col) {
+    if (!col.length) return '';
+    const m = col.reduce((s, a) => s + moodOf(w, a), 0) / col.length;
+    const low = col.filter(a => moodOf(w, a) < -0.3).map(a => esc(a.name));
+    const graves = (w.graves || []).length, bodies = (w.corpses || []).length;
+    return `<h3 class="psec">Дух поселения</h3><p class="pc-small">Настроение в среднем ${m >= 0 ? '+' : ''}${Math.round(m * 100)}${low.length ? `; не в духе: ${low.join(', ')}` : '; все держатся'}. Браги ${Math.floor(w.stock.braga || 0)}. Могил ${graves}${bodies ? `, непогребённых ${bodies}` : ''}${w.chronicle.left ? `, ушли из поселения ${w.chronicle.left}` : ''}.</p>`;
   }
 
   // one line under the map: the cell under the cursor
@@ -322,6 +342,20 @@ export class Panel {
         `<dt>Урожай</dt><dd>${ripe ? `созрело ${ripe}` : growing ? `зреет, ${Math.round(avg * 100)}%` : '—'}</dd>`,
         `<dt>Семена</dt><dd>${CROPS.all().map(c => `${c.label} ${Math.floor(w.stock[c.seed] || 0)}`).join(', ')}</dd>`);
     }
+    if (d.key) rows.push(`<dt>Инструмент</dt><dd>${RESOURCES.get(d.key).label} (куплен у торговца)</dd>`);
+    if (d.furnish && b.done) {
+      const by = {}; for (const id of b.furniture || []) by[id] = (by[id] || 0) + 1;
+      const items = Object.entries(by).map(([id, n]) => FURNITURE.get(id).label + (n > 1 ? ' ×' + n : ''));
+      const st = statusOf(b);
+      const what = b.key === 'house' ? 'сон здесь лучше для настроения' : b.key === 'shrine' ? 'молитва утешает сильнее' : d.station || b.key === 'healerhut' ? `работа здесь быстрее на ${Math.round(st * 100)}%` : 'поселение выглядит богаче';
+      rows.push(`<dt>Убранство</dt><dd>${items.length ? items.join(', ') : 'голые стены'} (${(b.furniture || []).length}/${FURNISH_MAX})${st ? ` · ${what}` : ''}</dd>`);
+    }
+    if (d.pen && b.done) {
+      const beasts = herd(w).filter(a => a.pen === b.id);
+      rows.push(`<dt>Места</dt><dd>занято ${penSpace(w) - penRoom(w)} из ${penSpace(w)} во всех загонах</dd>`,
+        `<dt>Скот</dt><dd class="nb">${beasts.map(a => `${esc(a.name)} (${SPECIES.get(a.species).label}): ${beastText(w, a)}`).join('<br>') || 'пусто'}</dd>`,
+        `<dt>Сено</dt><dd>${Math.floor(w.stock.hay || 0)} на складе</dd>`);
+    }
     if (d.station && b.done) {
       const workers = colonists(w).filter(x => x.task?.id === 'job' && x.task.station === d.id && w.grid.bld[cellOf(w, x)] === b.id).map(x => esc(x.name));
       rows.push(`<dt>Заказ</dt><dd>${orderText(b)}</dd>`, `<dt>Работают</dt><dd>${workers.join(', ') || 'никого'}</dd>`);
@@ -351,6 +385,8 @@ export class Panel {
     if (WALKABLE[g.terr[i]]) rows.push(`<dt>Плодородие</dt><dd>${Math.round(g.fert[i] * 100)}% · ${soilWord(g.fert[i])}</dd>`);
     rows.push(`<dt>Температура</dt><dd>${g.temp[i].toFixed(1)} °C</dd>`, `<dt>Путь до лагеря</dt><dd>${d >= 1e8 ? 'нет' : Math.round(d)}</dd>`);
     if (g.fire[i] > 0) rows.push(`<dt>Огонь</dt><dd>${g.fire[i].toFixed(2)}</dd>`);
+    for (const gr of w.graves || []) if (gr.x === x && gr.y === y) rows.push(`<dt>Могила</dt><dd>${esc(gr.name)} · умер${gr.f ? 'ла' : ''} в день ${dayOf(gr.died) + 1}${gr.rite ? ', похоронен' + (gr.f ? 'а' : '') + ' с обрядом' : ''}</dd>`);
+    for (const c of w.corpses || []) if ((c.x | 0) === x && (c.y | 0) === y) rows.push(`<dt>Тело</dt><dd>${esc(c.name)}, ещё не похоронен${c.f ? 'а' : ''}</dd>`);
     return `<div class="pc-head"><h3>Клетка ${x}, ${y}</h3>${close}</div><dl class="kv">${rows.join('')}</dl>`;
   }
 
@@ -369,6 +405,8 @@ export class Panel {
       const c = w.caravan;
       rows.push(`<dt>Караван</dt><dd>${goodsUnits(c.goods)} мест груза, ${Math.floor(c.purse)} зол. в кошельке</dd>`);
     }
+    if (a.tame) rows.push(`<dt>Хозяйство</dt><dd>${beastText(w, a)}</dd>`);
+    else if (isTameable(a)) rows.push(`<dt>Можно приручить</dt><dd>скотнику с приманкой: ${Object.entries(sp.tame.bait).map(([r, v]) => `${RESOURCES.get(r).label} ${v}`).join(', ')}${has(w, 'pen') ? '' : '; сначала нужен загон'}</dd>`);
     if (a.owner != null) rows.push(`<dt>Поклажа</dt><dd>${a.load || 0} из 20 (два ящика по 10)</dd>`);
     if (sp.mule && a.owner == null) rows.push(`<dt>Нрав</dt><dd>${a.task?.mule ? 'в ярости' : 'спокоен'}; охотиться опасно</dd>`);
     if (sp.predator) {
@@ -378,7 +416,7 @@ export class Panel {
     }
     if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
     rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
-    const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : sp.label;
+    const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : sp.label;
     const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${who}` : who[0].toUpperCase() + who.slice(1);
     return `<div class="pc-head"><h3>${title}</h3><button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div><dl class="kv">${rows.join('')}</dl>`;
   }
@@ -394,7 +432,7 @@ export class Panel {
     const slots = SLOTS.map(s => {
       const it = a.equip?.[s.id];
       const txt = it ? itemDef(it).short + (Number.isFinite(it.dur) ? ` · ${Math.max(0, Math.round(it.dur / itemDef(it).dur * 100))}%` : '') + (it.ammo != null ? ` · стрел ${it.ammo}` : '') : '—';
-      return `<dt>${s.label}</dt><dd>${txt}</dd>`;
+      return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${itemDef(it).rank}"` : ''}>${esc(txt)}</dd>`;
     }).join('');
     const skills = JOBS.filter(j => j.preferable).map(j => [j, a.skill[j.id] || 0]).sort((x, y) => y[1] - x[1])
       .map(([j, v]) => `<span class="chip${j.id === a.likes ? ' like' : j.id === a.dislikes ? ' dislike' : ''}">${j.short} ${Math.round(v * 100)}</span>`).join('');

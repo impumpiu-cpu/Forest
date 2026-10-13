@@ -7,6 +7,7 @@ import {predatorBrain} from './predator.js';
 import {muleBrain} from './mule.js';
 import {caravanBrain} from './caravan.js';
 import {verminBrain} from './vermin.js';
+import {livestockBrain, leaverBrain} from './livestock.js';
 
 export const BRAINS = new Registry('brain');
-BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain, predatorBrain, muleBrain, caravanBrain, verminBrain]);
+BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain, predatorBrain, muleBrain, caravanBrain, verminBrain, livestockBrain, leaverBrain]);

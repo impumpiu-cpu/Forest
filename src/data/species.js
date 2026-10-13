@@ -36,7 +36,7 @@ SPECIES.registerAll([
     killMessage: name => `Волки загрызли поселенца: <b>${name}</b>.`,
     // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
     predator: {
-      prey: ['hare', 'deer', 'fox'], // what it hunts for food
+      prey: ['hare', 'deer', 'fox'], // what it hunts for food (goats keep to the rocks and are not worth the chase)
       victims: ['human'],        // whom it attacks: a lone colonist, or a pair when desperate
       sprint: 1.9, stamina: 0.003,
       sight: 22,                 // how far it notices prey
@@ -105,5 +105,31 @@ SPECIES.registerAll([
       giveUp: 22,                // …unless they get this far away
       fleeBelow: 0.3,            // badly hurt: it limps off instead
       leaveChance: 0.0002,       // per tick, a wild mule wanders off the map
-    }},
+    },
+    // tamed it hauls logs and stone and pulls the plough (see `tame` on the goat for the fields)
+    tame: {chance: 0.22, space: 2, bait: {hay: 2}, eats: 1.2, kicks: true, stack: 2, max: 2,
+      effects: {jobSpeed: {chop: 1.15, mine: 1.15, dig: 1.15, farm: 1.25}},
+      names: ['Буян', 'Гнедко', 'Упрямец', 'Тяжеступ', 'Ворчун'],
+      effect: 'возит брёвна и камень (рубка, камень и руда +15%), тянет соху (поле +25%)'}},
+
+  // Goat: a wild goat of the rocky meadows. Skittish like a deer, but a patient herder with an
+  // armful of hay can tame it; in a pen it gives milk and wool and has kids in spring and summer.
+  {id: 'goat', label: 'коза', labelAcc: 'козу', hp: 0.3, speed: 0.14, needs: [], brain: 'grazer', game: true, legend: 'коза',
+    heatHarm: 60, look: {shape: 'goat', size: 0.46, color: '#d6cdb6'},
+    yields: {meat: 3, hide: 1, bone: 1},
+    flee: {radius: 4.5, sprint: 1.5, from: ['human', 'wolf'], stamina: 0.006},
+    grazes: {terrain: ['grass'], eatsBerries: 0.002},
+    leaveChance: 0.0001,
+    // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it
+    //   chance: of one try with bait to tame it (× the herder's skill; every failed try makes the next easier)
+    //   space:  places it takes in a pen;  bait: what one try costs from the stock
+    //   eats:   hay a day when there is no grass in the pen (less in the grazing seasons)
+    //   milk:   portions a day while fed (little in winter);  wool: fleece sheared once it has grown back
+    //   breed:  chance a day for a kid while there are two of them, room in the pen and it is not winter
+    //   kicks:  a failed try ends with a kick;  max: no more of them are tamed (the colony has no use for more)
+//   effects: work it does for the colony (settlement/mods.js),
+    //   counted for up to `stack` animals;  names: what the herders call them
+    tame: {chance: 0.45, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
+      names: ['Белянка', 'Пеструшка', 'Зорька', 'Рогатка', 'Маруська', 'Бодуша', 'Сивка', 'Дереза', 'Звёздочка', 'Чернушка'],
+      effect: 'даёт молоко и шерсть, в тёплое время приносит козлят'}},
 ]);

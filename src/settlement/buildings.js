@@ -28,7 +28,8 @@ export function missing(w, cost) {
 // can the colony consider this building at all (ignoring cost)?
 export function eligible(w, key) {
   const d = BUILDINGS.get(key);
-  return count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w));
+  return count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w))
+    && (!d.key || (w.stock[d.key] || 0) >= 1);   // a town-made tool it cannot be built without
 }
 
 export const lotSize = d => d.lot || [2, 2];
@@ -72,6 +73,7 @@ export function laySite(w, key) {
   const lot = findLot(w, d);
   if (lot < 0) { log(w, 'Вокруг лагеря не осталось места под постройку.', 'build'); return null; }
   for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
+  if (d.key) recomputeMods(w);   // a tool left the stock
   const [lw, lh] = lotSize(d);
   const b = {id: w.bldSeq++, key, x: lot % w.w, y: (lot / w.w) | 0, w: lw, h: lh, progress: 0, done: false, cells: []};
   const g = w.grid;

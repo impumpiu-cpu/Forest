@@ -20,7 +20,7 @@ export const recordOf = (w, a) => w.chronicle.people.find(p => p.id === a.id);
 
 export function noteDeath(w, a, cause, by) {
   const r = recordOf(w, a); if (!r) return;
-  r.died = w.tick;
+  r.died = w.tick; r.doing = a.task?.id === 'job' ? a.task.job : a.task?.id;
   r.cause = by?.species === 'wolf' ? 'загрызли волки' : by?.species === 'mule' ? 'затоптал мул' : by ? 'погиб в бою с налётчиками' : `умер от ${cause}`;
   if (a.gender === 'f') r.cause = r.cause.replace('погиб в бою', 'погибла в бою').replace('умер от', 'умерла от');
   const key = by?.species === 'wolf' ? 'волки' : by?.species === 'mule' ? 'мул' : by ? 'налётчики' : cause;
@@ -35,4 +35,4 @@ export function sampleChronicle(w) {
 }
 
 export const add = (obj, key, n = 1) => { obj[key] = (obj[key] || 0) + n; };
-export const daysLived = (w, r) => ((r.died ?? w.tick) - r.arrived) / DAY;
+export const daysLived = (w, r) => ((r.died ?? r.left ?? w.tick) - r.arrived) / DAY;

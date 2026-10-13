@@ -17,6 +17,7 @@ import {tradeOpen, attendTrade} from '../settlement/trade.js';
 import {HEAL} from '../settlement/healing.js';
 import {has, colonists} from '../settlement/query.js';
 import {SPECIES} from '../data/species.js';
+import {homeComfort, prayed} from '../settlement/life.js';
 
 export const TASKS = new Registry('task');
 const done = a => { a.task = null; a.think = 0; };
@@ -56,7 +57,11 @@ TASKS.registerAll([
     a.needs.rest = Math.min(1, a.needs.rest + 0.004 * (1 + 0.6 * beds));
     if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 0.0028 * warm * (w.campLit ? 1 : 0.5));
     mill(w, a, task, 1.2);
-    if (a.needs.rest >= 1) { think(w, a, warm > 0.6 ? 'sleptHouse' : beds > 0 ? 'sleptHut' : 'sleptOutside'); done(a); }
+    if (a.needs.rest >= 1) {
+      if (warm > 0.6) { const c = homeComfort(w); think(w, a, 'sleptHouse', {mood: 0.22 + c * 1.2, fine: c > 0.1}); }
+      else think(w, a, beds > 0 ? 'sleptHut' : 'sleptOutside');
+      done(a);
+    }
   }},
 
   {id: 'warm', label: () => 'греется', step(w, a, task) {
@@ -110,6 +115,24 @@ TASKS.registerAll([
 
   {id: 'idle', label: () => 'отдыхает', step(w, a, task) {
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 2.5);
+  }},
+
+  // a gloomy spell: drifts about the camp instead of working (settlement/life.js)
+  {id: 'sulk', label: () => 'хандрит', step(w, a, task) {
+    if (w.tick >= task.until) { done(a); return; }
+    if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 5) mill(w, a, task, 4);
+  }},
+
+  // a prayer at the shrine, once a day for someone in low spirits
+  {id: 'pray', label: t => (t.at ? 'молится у святилища' : 'идёт к святилищу'), map: 'station:shrine', step(w, a, task) {
+    if (!has(w, 'shrine')) { done(a); return; }
+    if (!task.at) {
+      const r = follow(w, a, 'station:shrine');
+      if (r === 'arrived') task.at = w.tick;
+      else if (r === 'none' && !w.nav.dirtySet.has('station:shrine')) { w.nav.dirty('station:shrine'); done(a); a.think = 30; }
+      return;
+    }
+    if (w.tick - task.at > 60) { prayed(w, a); done(a); }
   }},
 
   // raiders
@@ -172,6 +195,9 @@ TASKS.registerAll([
   {id: 'night', label: () => 'ночует у костра', step() {}},
   {id: 'escort', label: () => 'охраняет караван', step() {}},
   {id: 'pack', label: () => 'везёт поклажу', step() {}},
+  // the pen: tame animals' states (agents/brains/livestock.js)
+  {id: 'penned', label: () => 'в загоне', step() {}},
+  {id: 'toPen', label: () => 'идёт в загон', step() {}},
 
   // animal states: the animal's brain moves it itself, these entries only name the state
   {id: 'graze', label: () => 'пасётся', step() {}},

@@ -18,6 +18,7 @@ import {agentInZone} from '../../settlement/zone.js';
 import {tradeOpen} from '../../settlement/trade.js';
 import {hurt, waiting, HEAL} from '../../settlement/healing.js';
 import {has} from '../../settlement/query.js';
+import {wantsPrayer} from '../../settlement/life.js';
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
@@ -45,6 +46,10 @@ function decide(w, a) {
     opts.push([{id: 'job', job: job.id}, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty]);
   }
   opts.push([{id: 'idle'}, 0.15]);
+  // low spirits: a gloomy spell keeps its hold for a while; a walk to the shrine may help
+  if (a.task?.id === 'sulk' && w.tick < a.task.until) opts.push([a.task, 0.95]);
+  const pray = wantsPrayer(w, a);
+  if (pray > 0.1 && night < 0.5) opts.push([{id: 'pray'}, 0.3 + pray * 1.2]);
   if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);
   // badly hurt, with a healer's hut: go and lie there (more urgent the worse the wounds)
   if ((hurt(a) || (a.task?.id === 'treat' && a.hp < SPECIES.get(a.species).hp * HEAL.until)) && has(w, 'healerhut')) opts.push([{id: 'treat'}, (1 - a.hp / SPECIES.get(a.species).hp) * 2 + 0.25]);
@@ -67,7 +72,9 @@ function decide(w, a) {
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);
-  for (const [t, s] of opts) { const sc = s + (key(t) === cur ? 0.12 : 0); if (sc > bs) { bs = sc; best = t; } }
+  // the current task is kept unless something is clearly better; a long walk (`sticky` jobs) more so
+  const keep = 0.12 + (a.task?.id === 'job' ? JOBS.get(a.task.job).sticky || 0 : 0);
+  for (const [t, s] of opts) { const sc = s + (key(t) === cur ? keep : 0); if (sc > bs) { bs = sc; best = t; } }
   if (key(best) !== cur) {
     a.task = best;
     if (best.id === 'job' && !best.eatNow) {

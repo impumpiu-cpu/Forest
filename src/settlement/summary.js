@@ -63,6 +63,7 @@ export function summarize(w) {
     award('Лесоруб', r => r.stats.gathered.wood || 0, (r, v) => `${v} ед. древесины`),
     award('Собиратель', r => r.stats.gathered.berries || 0, (r, v) => `${v} ед. ягод`),
     award('Рыбак', r => r.stats.gathered.fish || 0, (r, v) => `${v} ед. рыбы`),
+    award('Скотник', r => (r.stats.gathered.milk || 0) + (r.stats.gathered.wool || 0), (r, v) => `${v} ед. молока и шерсти`),
     award('Каменотёс', r => r.stats.gathered.stone || 0, (r, v) => `${v} ед. камня`),
     award('Мастер', r => r.stats.crafted, (r, v) => `${v} ${plural(v, 'вещь', 'вещи', 'вещей')}`),
     award('Строитель', r => r.stats.labour, (r, v) => `${Math.round(v / 120)} ч на стройке`, 240),
@@ -96,6 +97,10 @@ export function summarize(w) {
   const gathered = RESOURCES.filter(r => c.gathered[r.id]).map(r => `${r.label} — ${c.gathered[r.id]}`);
   if (gathered.length) facts.push(`Собрано: ${gathered.join(', ')}.`);
   if (w.stats.broken) facts.push(`Сломалось вещей: ${w.stats.broken}.`);
+  if (c.tamed) facts.push(`Приручили ${c.tamed} ${plural(c.tamed, 'зверя', 'зверей', 'зверей')}; в загоне сейчас ${w.agents.filter(a => a.tame).length}.`);
+  if ((w.graves || []).length) facts.push(`На погосте ${w.graves.length} ${plural(w.graves.length, 'могила', 'могилы', 'могил')}${w.graves.some(gr => gr.rite) ? ', у святилища хоронили с обрядом' : ''}.`);
+  if (c.feasts || c.cups) facts.push(`Браги выпили ${c.cups || 0} ${plural(c.cups || 0, 'чарку', 'чарки', 'чарок')}${c.feasts ? `, пировали ${c.feasts} ${plural(c.feasts, 'раз', 'раза', 'раз')}` : ''}.`);
+  if (c.left) facts.push(`Не выдержали и ушли из поселения: ${c.left}.`);
   if (w.stats.burntCells) facts.push(`Огонь выжег ${w.stats.burntCells} ${plural(w.stats.burntCells, 'клетку', 'клетки', 'клеток')} леса и луга.`);
   const likes = {};
   for (const r of people) if (r.likes) likes[r.likes] = (likes[r.likes] || 0) + 1;
@@ -105,7 +110,7 @@ export function summarize(w) {
 
   const roll = people.map(r => ({
     name: r.name, founder: r.founder, arrivedDay: dayNo(r.arrived), lived: daysLived(w, r),
-    fate: r.died != null ? r.cause : (r.gender === 'f' ? 'выжила' : 'выжил'), dead: r.died != null, deeds: deeds(w, r),
+    fate: r.died != null || r.left != null ? r.cause : (r.gender === 'f' ? 'выжила' : 'выжил'), dead: r.died != null, deeds: deeds(w, r),
   }));
 
   return {name: w.cfg.name, reason: w.over?.reason, days, totals, awards, facts, roll};

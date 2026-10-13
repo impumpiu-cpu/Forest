@@ -8,13 +8,16 @@
 //
 // ctx (see settlement/crafting.js): pop, owned(id), likes(job), fans(food), fishing (a lake has fish),
 //   season (id), drying (racks work this season), stockpile (×: how keen on stores — autumn most),
-//   stores (dried and salted food in stock), timid, stock, bows, has(building), fuel
+//   stores (dried and salted food in stock), timid, stock, bows, has(building), fuel,
+//   food (all food in stock), freeSlots (furniture places free in buildings, less what lies in stock),
+//   spare(res) (stock beyond 0.6 × what the colony keeps of it: resource `keep`, else `target`, else 20)
 //
 // Work is labour-ticks; a day is 1200 ticks and a craftsman adds about 1.2–1.7 per tick, so roughly:
 // a weapon or tool takes half a day, armour a full day, tanning a hide or a batch of arrows
 // an hour or two.
 import {Registry} from '../core/registry.js';
 import {LUXURY} from './luxury.js';
+import {FURNITURE} from './furniture.js';
 
 export const RECIPES = new Registry('recipe');
 
@@ -120,6 +123,27 @@ RECIPES.registerAll([
     want: c => (c.stock('pots') < Math.min(30, c.food / 5) ? 1.6 : 0)},
   {id: 'planks', at: 'sawmill', cost: {wood: 3}, work: 260, makes: {resource: 'planks', n: 2},
     want: c => (c.stock('planks') < 24 ? 1.6 : 0)},
+
+  // ── from the pen: cheese pressed at the hearth keeps all winter (better with salt), wool spun and
+  // woven into coats and cloth
+  {id: 'cheeseSalt', at: 'hearth', cost: {milk: 3, salt: 0.5}, work: 160, makes: {resource: 'cheese', n: 1.5},
+    want: c => (c.stock('milk') >= 3 ? 2.3 : 0)},
+  {id: 'cheese', at: 'hearth', cost: {milk: 3}, work: 160, makes: {resource: 'cheese', n: 1},
+    want: c => (c.stock('milk') >= 4 ? 2.25 : 0)},
+  {id: 'woolens', at: 'crafthut', cost: {wool: 4}, work: 1100, makes: {item: 'woolens'},
+    want: c => (short(c.owned('woolens') + c.owned('furcoat'), c.pop) ? 2.4 : 0)},
+  {id: 'clothWool', at: 'loom', cost: {wool: 2}, work: 260, makes: {resource: 'cloth', n: 1},
+    want: c => (c.stock('cloth') < 8 && c.stock('wool') > 6 ? 1.4 : 0)},
+
+  // ── home brew, set in pots by the hearth: only from what is left over after the stores are full
+  ...[['bragaHoney', {honey: 1, berries: 2}, 3], ['bragaBarley', {barley: 3}, 3], ['bragaBerries', {berries: 4}, 2]].map(([id, cost, n]) => ({
+    id, at: 'hearth', cost, work: 200, makes: {resource: 'braga', n},
+    want: c => (c.stock('braga') < c.pop * 2 && c.food > c.pop * 6 && Object.entries(cost).every(([r, v]) => c.stock(r) > v + c.pop * 0.5) ? 0.9 : 0)})),
+
+  // ── furniture (data/furniture.js): made while there is a free place for it in a solid building, and
+  // only from what the colony has to spare (beyond what it keeps of each material); the finer piece first
+  ...FURNITURE.filter(f => f.recipe).map(f => ({id: 'furn_' + f.id, ...f.recipe, makes: {resource: f.id, n: 1},
+    want: c => (c.freeSlots > 0 && Object.entries(f.recipe.cost).every(([r, v]) => c.spare(r) >= v) ? 0.7 + f.comfort * 4 : 0)})),
 
   // processing: raw hides become leather at the tannery
   {id: 'tan', at: 'tannery', cost: {hide: 1}, work: 150, makes: {resource: 'leather', n: 1},

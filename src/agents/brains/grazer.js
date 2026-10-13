@@ -11,6 +11,7 @@ function threatsNear(w, a, radius, from) {
   const out = [];
   for (const o of w.agents) {
     if (o === a || o.dead || !from.includes(o.species)) continue;
+    if (o.task?.tame === a.id) continue;   // the herder coming with bait moves slowly: it lets them come
     const r = radius * (o.stalking ? 0.55 : 1);   // a creeping hunter is noticed much later
     if ((o.x - a.x) ** 2 + (o.y - a.y) ** 2 < r * r) out.push(o);
   }
@@ -33,6 +34,8 @@ export const grazerBrain = {
       return;
     }
     recover(a);
+    // a herder holding out hay: it stops and sniffs at it
+    if (w.agents.some(o => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
     if (a.task?.id === 'leave' || w.rng() < sp.leaveChance) {
       a.task = {id: 'leave'};
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;

@@ -12,6 +12,7 @@
 // desire(w, ctx, job): how much the colony wants it now; < 0 means "not now"
 // A new workshop job is one entry: {runner: 'craft', stations: [...], desire: atStations(value)}.
 // canDo(w, agent): optional personal condition (hunting needs a usable ranged weapon)
+// sticky: extra hold of the job on someone already doing it (a long walk after a wild goat)
 import {Registry} from '../core/registry.js';
 import {useJobs} from './navmaps.js';
 import {T} from './terrain.js';
@@ -24,6 +25,8 @@ const HERBS_KEEP = 10;   // the healer picks herbs while the stock is below this
 import {lakeBeside, fishable} from '../world/lakes.js';
 import {oreBeside, oreOf} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
+import {chores, tameTargets, herd} from '../settlement/herd.js';
+import {reachableCorpses} from '../settlement/life.js';
 
 export const JOBS = new Registry('job');
 useJobs(JOBS);   // navmaps.js needs to know which flow field each job walks
@@ -45,12 +48,13 @@ const foodWant = (w, ctx, job, k = 1, extra = 0) => {
 };
 
 // what hunters go after: their usual prey; big dangerous game (`lastResort`, a mule) only when
-// there is nothing else on the map and the colony is going hungry
+// there is nothing else on the map and the colony is going hungry (wild goats are for taming, not
+// the pot, unless the colony is starving)
 // (a boar, `risky`) only when there is no gentler game on the map
 export function huntable(w, job) {
-  const usual = w.agents.filter(o => !o.dead && job.prey.includes(o.species));
+  const usual = w.agents.filter(o => !o.dead && !o.tame && job.prey.includes(o.species));
   if (usual.length) return usual;
-  const risky = w.agents.filter(o => !o.dead && (job.risky || []).includes(o.species));
+  const risky = w.agents.filter(o => !o.dead && !o.tame && (job.risky || []).includes(o.species));
   if (risky.length || !job.lastResort) return risky;
   const pop = w.agents.filter(o => o.faction === 'colony').length;
   const hungry = RESOURCES_FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0) < pop * 2;
@@ -109,7 +113,7 @@ JOBS.registerAll([
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
 
   {id: 'hunt', label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
-    runner: 'hunt', nav: 'prey', prey: ['hare', 'deer', 'fox'], risky: ['boar'], lastResort: ['mule'], food: 'meat',
+    runner: 'hunt', nav: 'prey', prey: ['hare', 'deer', 'fox'], risky: ['boar'], lastResort: ['mule', 'goat'], food: 'meat',
     canDo: (w, a) => !!a.gear?.rangedReady,
     // hides and bones for the crafts, furs for the traders: hunting is wanted beyond food too
     desire: (w, ctx, job) => (ctx.preyCount > 0 ? foodWant(w, ctx, job, 0.75, 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0)) : -1)},
@@ -159,6 +163,18 @@ JOBS.registerAll([
     valid: (w, i) => w.grid[plantLayer('herbs')][i] >= PLANTS.get('herbs').ripe && w.grid.fire[i] === 0,
     take: (w, i) => { w.grid[plantLayer('herbs')][i] -= PLANTS.get('herbs').take; w.nav.dirty(plantLayer('herbs')); }},
 
+  // the herder: milks the goats and shears them; with nothing to take, goes after a wild goat or mule
+  // with bait from the stock and tries to tame it (settlement/herd.js). Its skill is the herder's skill.
+  {id: 'herd', label: 'ходить за скотом', short: 'скотник', verb: 'ходит за скотом', preferable: true,
+    runner: 'herd', requires: 'pen', carry: 4, time: 30, tameTime: 70, sticky: 0.3,
+    desire: w => (chores(w).length ? 0.5 : tameTargets(w).length ? (herd(w).length ? 0.45 : 0.62) : -1)},
+
+  // the dead are carried to the graves (settlement/life.js); not while raiders are about or wolves near the body
+  {id: 'bury', label: 'хоронить умерших', short: 'похороны', verb: 'хоронит умершего',
+    runner: 'bury', time: 120,
+    canDo: (w, a) => a.hp > 0.5,
+    desire: w => (reachableCorpses(w).length && !w.agents.some(o => o.faction === 'raiders' && !o.dead) ? 0.7 : -1)},
+
   {id: 'build', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,
     runner: 'build', nav: 'sites',
     desire: (w, ctx) => (ctx.openSites ? 0.6 : -1)},
@@ -169,9 +185,11 @@ JOBS.registerAll([
 for (const p of PLANTS.filter(x => x.job)) {
   const J = p.job, key = plantLayer(p.id);
   const inSeason = w => !p.seasons || p.seasons.includes(season(w).id);
+  const keep = w => (typeof J.keep === 'function' ? J.keep(w) : J.keep);
   JOBS.register({id: J.id, label: J.label, short: J.short, verb: J.verb, preferable: true,
     runner: 'harvest', nav: key, resource: p.resource, carry: J.carry, time: J.time,
-    desire: (w, ctx) => (!inSeason(w) ? -1 : (w.stock[p.resource] || 0) < J.keep ? 0.3 + 0.2 * (1 - (w.stock[p.resource] || 0) / J.keep) : -1),
+    // (hay for the herd's winter, keep(w), is wanted more keenly: the season to mow is short)
+    desire: (w, ctx) => { const k = keep(w); return !inSeason(w) ? -1 : (w.stock[p.resource] || 0) < k ? 0.3 + (typeof J.keep === 'function' ? 0.4 : 0.2) * (1 - (w.stock[p.resource] || 0) / k) : -1; },
     valid: (w, i) => inSeason(w) && w.grid[key][i] >= p.ripe && w.grid.fire[i] === 0,
     take: (w, i, a) => {
       w.grid[key][i] -= p.take; if (w.grid[key][i] < p.ripe) w.nav.dirty(key);

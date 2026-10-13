@@ -28,6 +28,10 @@
 //   minGain:   an item must improve someone's gear at least this much…
 //   maxShare:  …and cost at most this share of the gold in hand (the rest is saved)
 //   wants:     what the outpost cannot make but always needs, bought up to this much in stock
+//   keys:      town-made tools (data/resources.js, tag 'key'): a caravan carries up to keys[1] of those the
+//              colony still lacks — the first one it could use always, the others with keyChance; the
+//              colony buys one as soon as it could use it, selling down to half its reserves if it must
+//   furnish:   finer furniture is bought only with at least this much gold left over after it
 export const TRADE = {
   firstDay: 10, everyDays: 10, chance: 0.7,
   setOut: [4, 6], leaveHour: 7, tradeUntil: 23, maxStay: 2,   // days, in case it never gets to trade
@@ -35,6 +39,7 @@ export const TRADE = {
   purse: [25, 70], ask: 1.2, bid: 0.7,
   foodShort: 4, foodUpTo: 6, foodKeep: 5, minGain: 0.15, maxShare: 0.85,
   wants: {salt: 12, seedBarley: 8, seedTurnip: 8, seedFlax: 6},   // bought whenever the trader has it, up to this much in stock
+  keys: [1, 2], keyChance: 0.8, furnish: 25,
 
   WARES: [
     {w: 40, food: true, n: [3, 8]},
@@ -45,6 +50,7 @@ export const TRADE = {
     {w: 12, items: 'any', q: 1},
     {w: 4, items: 'any', q: 2},
     {w: 6, items: ['chainmail', 'scalemail'], q: 0},
+    {w: 4, resource: ['mirror', 'tapestry', 'lamp'], n: [1, 1]},
   ],
 
   // the guards' kit: imperial iron armour, a finer sword and shield

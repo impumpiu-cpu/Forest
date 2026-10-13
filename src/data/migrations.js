@@ -72,6 +72,12 @@ MIGRATIONS.registerAll([
     init: a => { a.name = 'Мул'; },
     message: (w, group, side) => `С ${side} на луга вышел дикий мул. Охотиться на него опасно: он лягается и бросается на стрелков.`},
 
+  // wild goats come down to the meadows in small flocks; never more than five wild ones about
+  {id: 'goats', species: 'goat', faction: 'wild', minDist: 25, topic: 'wildlife',
+    accept: (w, n) => Math.max(0, Math.min(n, 5 - w.agents.filter(o => o.species === 'goat' && o.faction === 'wild').length)),
+    init: a => { a.name = 'Дикая коза'; },
+    message: (w, group, side) => `С ${side} на луга вышли дикие козы: ${group.length}. Терпеливый скотник с охапкой сена мог бы их приручить.`},
+
   // a trader's caravan: the trader, guards in imperial iron, and pack mules with crates.
   // One caravan at a time; the colony has to be alive to be worth the trip.
   {id: 'caravan', faction: 'traders', minDist: 25, topic: 'trade', level: 'notice',

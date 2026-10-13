@@ -17,6 +17,9 @@ import {add} from '../settlement/chronicle.js';
 import {seasonJob} from '../data/seasons.js';
 import {plotAt, needsWork, workPlot} from '../settlement/farming.js';
 import {tend, patients, waiting, healerHutCell} from '../settlement/healing.js';
+import {chores, tameTargets, tryTame, claimed} from '../settlement/herd.js';
+import {freeCorpse, graveSpot, bury, workBonus} from '../settlement/life.js';
+import {damage} from './combat.js';
 
 const mill = (w, a) => { a.x += (w.rng() - 0.5) * 0.2; a.y += (w.rng() - 0.5) * 0.2; };
 
@@ -89,7 +92,8 @@ export const RUNNERS = {
     if (r === 'arrived') {
       const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
       if (b) markWorking(w, b, a);
-      if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id), a)) { done(a); a.think = 20; }
+      // a furnished workshop is a better place to work (settlement/life.js)
+      if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id) * workBonus(b), a)) { done(a); a.think = 20; }
     } else if (r === 'none') { if (w.nav.dirtySet.has(map)) return; w.nav.dirty(map); done(a); a.think = 20; }
   },
 
@@ -119,13 +123,79 @@ export const RUNNERS = {
       if (a.carry?.n) { for (const [res, n] of Object.entries(a.carry.res)) deposit(w, res, n); a.carry = null; }
       const r = follow(w, a, 'healer');
       if (r === 'arrived' || healerHutCell(w, a)) {
-        const given = tend(w, a, workRate(w, a, 'heal'));
+        const given = tend(w, a, workRate(w, a, 'heal') * workBonus(w.buildings.find(x => x.done && x.key === 'healerhut')));
         if (given) a.stats.healed = (a.stats.healed || 0) + given;
         else if (!patients(w).length && w.rng() < 0.02) mill(w, a);   // the patients are still on their way
       } else if (r === 'none') { w.nav.dirty('healer'); done(a); a.think = 20; }
       return;
     }
     RUNNERS.harvest(w, a, task);
+  },
+
+  // the herder: milk and shear what is ready in the pen; otherwise take bait to a wild goat or mule,
+  // creep up slowly (it lets a calm herder come) and try to tame it (settlement/herd.js)
+  herd(w, a, task) {
+    const job = JOBS.get(task.job);
+    if (a.carry && (a.carry.n >= job.carry || !task.more)) { haulHome(w, a); return; }
+    let b = task.beast != null ? w.agents.find(o => o.id === task.beast && !o.dead) : null;
+    const ok = o => o && (o.tame ? chores(w).includes(o) : !claimed(w, o, a) && tameTargets(w).includes(o));
+    if (!ok(b)) {
+      b = null; task.calm = false; task.tame = null;
+      let bd = Infinity;
+      for (const o of chores(w)) { const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
+      if (!b && !a.carry) for (const o of tameTargets(w)) { if (claimed(w, o, a)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
+      if (!b) { if (a.carry?.n) { task.more = false; return; } done(a); a.think = 30; return; }
+      task.beast = b.id; task.work = 0; task.since = w.tick;
+    }
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    if (!b.tame) { task.tame = b.id; task.calm = d < 8; b.tamer = a.id; b.tamerAt = w.tick; }
+    if (d > 1.3) {
+      if (approach(w, a, b.x, b.y, task.calm ? 0.75 : 1) === null || w.tick - task.since > 1500) { task.beast = null; done(a); a.think = 40; }
+      return;
+    }
+    task.work = (task.work || 0) + workRate(w, a, job.id);
+    if (b.tame) {
+      if (task.work < job.time) return;
+      task.work = 0;
+      const T = SPECIES.get(b.species).tame, got = {};
+      if ((b.milk || 0) >= 1) { const n = Math.floor(b.milk); got.milk = n; b.milk -= n; }
+      if (T.wool && b.wool >= 1 && chores(w).includes(b)) { got.wool = T.wool; b.wool = 0; }
+      for (const [r, n] of Object.entries(got)) { load(a, r, n); add(a.stats.gathered, r, n); add(w.chronicle.gathered, r, n); }
+      task.beast = null; task.more = (a.carry?.n || 0) < job.carry && chores(w).length > 0;
+      return;
+    }
+    if (task.work < job.tameTime) return;
+    task.work = 0;
+    const r = tryTame(w, a, b);
+    if (r === 'failed') {
+      const T = SPECIES.get(b.species).tame;
+      // a mule kicks out once and the herder backs off; a goat shies, and the herder tries again
+      if (T.kicks) { b.flash = 4; damage(w, b, a, 0.12 * SPECIES.get(b.species).attack.power); think(w, a, 'kicked'); task.beast = null; b.tamer = null; a.think = 10; done(a); }
+      task.work = -20;   // a goat shies off a step; the herder waits a moment and holds out the hay again
+      return;
+    }
+    task.beast = null; task.calm = false; task.tame = null; b.tamer = null;
+    if (r !== 'tamed') done(a);
+  },
+
+  // carry a body to the graves and bury it (settlement/life.js)
+  bury(w, a, task) {
+    const job = JOBS.get(task.job);
+    let c = task.corpse != null ? (w.corpses || []).find(x => x.id === task.corpse) : null;
+    if (!c) { c = freeCorpse(w, a); if (!c) { done(a); a.think = 30; return; } task.corpse = c.id; task.carrying = false; }
+    c.by = a.id; c.at = w.tick;
+    if (!task.carrying) {
+      const r = approach(w, a, c.x, c.y);
+      if (r === null) { c.by = null; done(a); a.think = 60; return; }
+      if (Math.hypot(c.x - a.x, c.y - a.y) < 0.9) { task.carrying = true; task.spot = graveSpot(w); }
+      return;
+    }
+    c.x = a.x; c.y = a.y;   // the body goes where it is carried
+    const [sx, sy] = task.spot;
+    if (Math.hypot(sx - a.x, sy - a.y) > 0.6) { if (approach(w, a, sx, sy, 0.8) === null) { task.spot = graveSpot(w); } return; }
+    task.work = (task.work || 0) + workRate(w, a, job.id);
+    if (task.work < job.time) return;
+    bury(w, c, a, task.spot); done(a);
   },
 
   // stalk the nearest prey, creep up within range of the bow or sling, shoot; a miss or a wound

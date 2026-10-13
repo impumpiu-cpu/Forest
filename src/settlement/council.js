@@ -11,6 +11,8 @@ import {handItems, allItems, def} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {oreSeen} from '../world/ores.js';
 import {season} from '../data/seasons.js';
+import {moodOf} from '../agents/mind.js';
+import {penRoom, herd} from './herd.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
 
@@ -48,6 +50,10 @@ function councilCtx(w, cands) {
     rats: w.agents.filter(o => o.species === 'rat').length,
     wounded: colonists(w).filter(a => a.hp < 0.7).length / Math.max(1, colonists(w).length),
     oreSeen: oreSeen(w),
+    wildHerd: w.agents.filter(o => o.faction === 'wild' && (o.species === 'goat' || o.species === 'mule') && o.owner == null).length,
+    herdFull: herd(w).length > 0 && penRoom(w) < 1,
+    gloomy: colonists(w).filter(a => moodOf(w, a) < -0.2).length / Math.max(1, colonists(w).length),
+    graves: (w.graves || []).length + (w.corpses || []).length,
     wantStone: !has(w, 'quarry') && cands.some(k => BUILDINGS.get(k).needs === 'quarry' || (BUILDINGS.get(k).cost.stone || 0) > 0),
   };
 }

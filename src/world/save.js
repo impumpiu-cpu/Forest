@@ -17,6 +17,7 @@ import {ensureFlows} from '../outside/index.js';
 import {recomputeMods} from '../settlement/mods.js';
 import {RESOURCES} from '../data/resources.js';
 import {drawFoodPrefs} from '../data/foods.js';
+import {JOBS} from '../data/jobs.js';
 
 export const SAVE_FORMAT = 1;
 
@@ -47,6 +48,7 @@ export function loadWorld(save) {
   ensureOre(w);
   ensurePlants(w);
   w.trade ??= newTradeState(); w.caravan ??= null;
+  w.corpses ??= []; w.graves ??= []; w.graveyard ??= null;
   recomputeMods(w);   // building effects as this version defines them
   for (const r of RESOURCES.all()) w.stock[r.id] ??= 0;
   w.rng = mulberry(0); w.rng.state = save.rng;
@@ -59,6 +61,8 @@ export function loadWorld(save) {
   for (const a of w.agents) if (a.mem) a.mem = newMemory(a.mem);
   // colonists from before food preferences: give them some, the same every time this save is loaded
   for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
+  // jobs added since the save (herding, burials): neutral about them, no skill yet
+  for (const a of w.agents) if (a.prefs) for (const id of JOBS.ids()) { a.prefs[id] ??= 1; a.skill[id] ??= 0; }
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};
   ensureFlows(w);   // arrivals added since the save get their first date (draws from the restored random stream)
   return w;

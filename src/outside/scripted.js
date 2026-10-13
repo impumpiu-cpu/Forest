@@ -63,6 +63,10 @@ export const scripted = {
       first: w => w.tick + 2 * DAY,
       offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.35 ? 1 : 0),
       next: (w, rng) => w.tick + (1.5 + rng()) * DAY},
+    // wild goats, a few at a time
+    goats: {from: 'wilds', first: w => w.tick + 3 * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.45 * season(w).hares ? 1 + Math.floor(rng() * 3) : 0),
+      next: (w, rng) => w.tick + (2 + rng() * 2) * DAY},
     // a caravan may come on day firstDay, then every everyDays: each time it sets out with `chance`,
     // in the morning, so that it reaches the camp before the evening council (data/trade.js)
     caravan: {from: 'empire',

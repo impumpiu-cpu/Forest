@@ -289,8 +289,13 @@ export class Renderer {
     }
     for (const b of w.buildings) {
       const d = BUILDINGS.get(b.key), x = b.x * S, y = b.y * S, bw = (b.w || 2) * S, bh = (b.h || 2) * S;
-      if (d.soil && (b.w || 2) > 2) {
-        // a fence of rails around the plot of land, the mark in its corner
+      if ((d.soil || d.pen) && (b.w || 2) > 2) {
+        // a fence of rails around the plot of land, the mark in its corner; a pen is trampled ground
+        // with posts along the rails
+        if (d.pen && b.done) {
+          ctx.fillStyle = 'rgba(120,96,60,0.45)'; ctx.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+          if (S >= 6) { ctx.fillStyle = '#4a3720'; for (let k = 0; k <= b.w; k++) for (const yy of [y, y + bh]) ctx.fillRect(x + k * S - 1.5, yy - 1.5, 3, 3); for (let k = 1; k < b.h; k++) for (const xx of [x, x + bw]) ctx.fillRect(xx - 1.5, y + k * S - 1.5, 3, 3); }
+        }
         ctx.save();
         if (!b.done) ctx.setLineDash([3, 3]);
         ctx.strokeStyle = b.done ? '#6b4f2c' : d.color; ctx.lineWidth = Math.max(1.5, S * 0.12);
@@ -320,6 +325,22 @@ export class Renderer {
         ctx.fillStyle = 'rgba(20,22,15,0.7)'; ctx.fillRect(x, y + bh + 1, bw, 3);
         ctx.fillStyle = d.color; ctx.fillRect(x, y + bh + 1, bw * Math.min(1, b.progress / d.work), 3);
       }
+      // furniture: a gold pip for each piece in the top corner (settlement/life.js)
+      if (b.furniture?.length && S >= 6) {
+        ctx.fillStyle = '#e3c14a'; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 0.8;
+        b.furniture.forEach((_, k) => { ctx.beginPath(); ctx.arc(x + bw - 3 - k * 4.5, y + 4, 1.9, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); });
+      }
+    }
+    // graves: a low mound with a wooden cross; bodies not yet buried lie as grey shapes
+    for (const gr of w.graves || []) {
+      const gx = gr.x * S, gy = gr.y * S;
+      ctx.fillStyle = 'rgba(90,70,48,0.85)'; ctx.beginPath(); ctx.ellipse(gx + S / 2, gy + S * 0.65, S * 0.35, S * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = gr.rite ? '#2a1d10' : '#5a4630'; ctx.lineWidth = Math.max(1.2, S * 0.12); ctx.beginPath();
+      ctx.moveTo(gx + S / 2, gy + S * 0.15); ctx.lineTo(gx + S / 2, gy + S * 0.6); ctx.moveTo(gx + S * 0.32, gy + S * 0.3); ctx.lineTo(gx + S * 0.68, gy + S * 0.3); ctx.stroke();
+    }
+    for (const c of w.corpses || []) {
+      ctx.fillStyle = 'rgba(150,150,150,0.85)'; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(c.x * S, c.y * S, Math.max(3, S * 0.45), Math.max(1.6, S * 0.18), 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
   }
 
