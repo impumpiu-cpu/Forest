@@ -6,7 +6,7 @@
 //   needs: buildings that must exist    want(ctx): how badly the colony needs it now (0 = not at all)
 //   fuel:  units of furnace fuel (charcoal or coal, whichever there is more of) taken with the materials
 //
-// ctx (see settlement/crafting.js): pop, owned(id), likes(job), fans(food), timid, stock, bows, has(building), fuel
+// ctx (see settlement/crafting.js): pop, owned(id), likes(job), fans(food), fishing (a lake has fish), timid, stock, bows, has(building), fuel
 //
 // Work is labour-ticks; a day is 1200 ticks and a craftsman adds about 1.2–1.7 per tick, so roughly:
 // a weapon or tool takes half a day, armour a full day, tanning a hide or a batch of arrows
@@ -38,7 +38,7 @@ RECIPES.registerAll([
     want: c => (short(c.owned('staff'), c.timid) ? 1.0 : 0)},
   {id: 'sling', at: 'crafthut', cost: {hide: 1}, work: 600, makes: {item: 'sling'},
     want: c => (short(c.owned('sling') + c.owned('bow'), Math.max(2, Math.ceil(c.pop / 3))) ? 2.0 : 0)},
-  {id: 'bow', at: 'crafthut', cost: {wood: 3, leather: 1}, work: 800, makes: {item: 'bow'}, needs: ['lodge'],
+  {id: 'bow', at: 'crafthut', cost: {wood: 3, leather: 1}, work: 800, makes: {item: 'bow'},
     want: c => (short(c.owned('bow'), Math.max(1, c.likes('hunt'))) ? 2.4 : 0)},
   {id: 'arrows', at: 'crafthut', cost: {wood: 1, bone: 1}, work: 150, makes: {resource: 'arrows', n: 5},
     want: c => (c.bows && c.stock('arrows') < c.bows * 10 ? 2.7 : 0)},
@@ -53,9 +53,10 @@ RECIPES.registerAll([
   {id: 'basket', at: 'crafthut', cost: {wood: 2}, work: 450, makes: {item: 'basket'},
     want: c => (short(c.owned('basket'), Math.max(1, c.likes('gather'))) ? 1.2 : 0)},
 
-  // the fisherman's hut makes rods: one for everyone who likes fishing or loves eating fish, at least two
-  {id: 'rod', at: 'fishhut', cost: {wood: 3}, work: 500, makes: {item: 'rod'},
-    want: c => (short(c.owned('rod'), Math.max(2, c.likes('fish') + c.fans('fish'))) ? 2.4 : 0)},
+  // rods, like bows and slings, come from the craftsman's hut: one for everyone who likes fishing or
+  // loves eating fish, at least two — as long as there is a lake with fish
+  {id: 'rod', at: 'crafthut', cost: {wood: 3}, work: 500, makes: {item: 'rod'},
+    want: c => (c.fishing && short(c.owned('rod'), Math.max(2, c.likes('fish') + c.fans('fish'))) ? 2.4 : 0)},
 
   // ── charcoal: logs smoulder under turf into charcoal; more when the furnace and the forge burn it
   {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'charcoal', n: 3},

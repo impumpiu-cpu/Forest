@@ -12,6 +12,7 @@ import {think} from '../agents/mind.js';
 import {RESOURCES} from '../data/resources.js';
 import {smeltFuelTotal, takeSmeltFuel} from './stock.js';
 import {perTick} from '../core/util.js';
+import {fishable} from '../world/lakes.js';
 
 // how much of a resource the council's goal still needs to keep in the stock
 function reserved(w, res) {
@@ -45,6 +46,7 @@ function makeCraftContext(w) {
     stock: res => w.stock[res] || 0,
     bows: owned('bow'),
     has: b => has(w, b),
+    fishing: w.lakes.some(fishable),
     fans: food => col.filter(a => a.food?.likes === food).length,
     get fuel() { return smeltFuelTotal(w); },
     melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),

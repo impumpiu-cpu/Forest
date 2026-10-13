@@ -20,7 +20,8 @@ export function workRate(w, a, jobId) {
   // a good mood helps a little, a bad one slows down (±10%)
   return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
 }
-const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount); };
+// a building may spare the tools of one job (effects.toolWear in data/buildings.js)
+const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };
 
 const done = (a) => { a.task = null; a.think = 0; };
 

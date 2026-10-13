@@ -1598,7 +1598,8 @@ body.ingame h1{font-size:22px}
         return res;
       }
     },
-    // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back)
+    // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back),
+    // made at the craftsman's hut. The fisherman's hut only makes it better, as the lodge does for hunting
     {
       id: "fish",
       label: "\u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C",
@@ -1611,7 +1612,6 @@ body.ingame h1{font-size:22px}
       food: "fish",
       carry: 3,
       time: 50,
-      requires: "fishhut",
       memory: "walkFish",
       canDo: (w, a) => !!a.gear?.tool.fish,
       desire: (w, ctx, job) => w.lakes.some(fishable) ? foodWant(w, ctx, job, 0.95, 0.08) : -1,
@@ -1644,7 +1644,7 @@ body.ingame h1{font-size:22px}
       verb: "\u043C\u0430\u0441\u0442\u0435\u0440\u0438\u0442",
       preferable: true,
       runner: "craft",
-      stations: ["crafthut", "fishhut"],
+      stations: ["crafthut"],
       desire: atStations(0.55)
     },
     {
@@ -2452,13 +2452,11 @@ body.ingame h1{font-size:22px}
       wooden: true,
       color: "#5d8fa8",
       mark: "\u0420\u044B",
-      station: true,
-      benches: 1,
       near: "fish",
-      effect: "\u0417\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442 \u0443\u0434\u043E\u0447\u043A\u0438. \u0420\u044B\u0431\u0430\u043A\u0438 \u043B\u043E\u0432\u044F\u0442 \u043D\u0430 \u0442\u0440\u0435\u0442\u044C \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u0443\u043B\u043E\u0432 \u043D\u0430 30% \u0431\u043E\u043B\u044C\u0448\u0435.",
-      effects: { jobSpeed: { fish: 1.35 }, yield: { fish: 1.3 } },
-      wish: "\u0445\u043E\u0447\u0435\u0442 \u043B\u043E\u0432\u0438\u0442\u044C \u0440\u044B\u0431\u0443",
-      motive: (a, c) => [[c.fishLakes ? 0.25 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"], [c.fishLakes && a.food?.likes === "fish" ? 0.35 : 0, "\u0441\u043A\u0443\u0447\u0430\u0435\u0442 \u043F\u043E \u0440\u044B\u0431\u0435"]],
+      effect: "\u0421\u0435\u0442\u0438 \u0438 \u0432\u0435\u0448\u0430\u043B\u0430 \u0434\u043B\u044F \u0440\u044B\u0431\u044B: \u0440\u044B\u0431\u0430\u043A\u0438 \u043B\u043E\u0432\u044F\u0442 \u043D\u0430 \u0442\u0440\u0435\u0442\u044C \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043A\u0430\u0436\u0434\u0430\u044F \u0440\u044B\u0431\u0430 \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u0435\u0434\u044B, \u0443\u0434\u043E\u0447\u043A\u0438 \u0438\u0437\u043D\u0430\u0448\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435.",
+      effects: { jobSpeed: { fish: 1.35 }, yield: { fish: 1.5 }, toolWear: { fish: 0.5 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u043B\u043E\u0432\u0438\u0442\u044C \u0440\u044B\u0431\u0443 \u0443\u0434\u0430\u0447\u043D\u0435\u0435",
+      motive: (a, c) => [[c.fishLakes ? 0.15 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4 + a.skill.fish * 0.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [a.mem.walkFish * 0.8, "\u0434\u0430\u043B\u0435\u043A\u043E \u043D\u043E\u0441\u0438\u0442\u044C \u0440\u044B\u0431\u0443"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"], [c.fishLakes && a.food?.likes === "fish" ? 0.35 : 0, "\u0441\u043A\u0443\u0447\u0430\u0435\u0442 \u043F\u043E \u0440\u044B\u0431\u0435"]],
       available: (w) => w.lakes.some((l) => l.cap > 0)
     },
     {
@@ -2473,7 +2471,7 @@ body.ingame h1{font-size:22px}
       mark: "\u0420",
       station: true,
       benches: 1,
-      effect: "\u0417\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442 \u043E\u0434\u0435\u0436\u0434\u0443, \u043E\u0440\u0443\u0436\u0438\u0435, \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442\u044B, \u043A\u043E\u043B\u0447\u0430\u043D\u044B \u0438 \u0441\u0442\u0440\u0435\u043B\u044B \u0438\u0437 \u0434\u0435\u0440\u0435\u0432\u0430, \u043A\u043E\u0441\u0442\u0438 \u0438 \u043A\u043E\u0436\u0438.",
+      effect: "\u0417\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442 \u043E\u0434\u0435\u0436\u0434\u0443, \u043E\u0440\u0443\u0436\u0438\u0435, \u043B\u0443\u043A\u0438, \u043F\u0440\u0430\u0449\u0438, \u0443\u0434\u043E\u0447\u043A\u0438, \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442\u044B, \u043A\u043E\u043B\u0447\u0430\u043D\u044B \u0438 \u0441\u0442\u0440\u0435\u043B\u044B \u0438\u0437 \u0434\u0435\u0440\u0435\u0432\u0430, \u043A\u043E\u0441\u0442\u0438 \u0438 \u043A\u043E\u0436\u0438.",
       effects: {},
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0434\u0435\u043B\u0430\u0442\u044C \u0441\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435",
       motive: (a, c) => [
@@ -2693,7 +2691,7 @@ body.ingame h1{font-size:22px}
     // shore of lakes that still have fish
     {
       id: "shore",
-      active: (w) => has(w, "fishhut"),
+      active: (w) => w.lakes.some((l) => l.cap > 0),
       seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)
     },
     // game animals: hunters and predators walk this field until they are close enough to go straight
@@ -3030,6 +3028,7 @@ body.ingame h1{font-size:22px}
       mul: { spoil: 1, defense: 1, loot: 1, douse: 1, wear: 1 },
       yield: {},
       jobSpeed: {},
+      toolWear: {},
       best: {}
     };
   }
@@ -3042,6 +3041,7 @@ body.ingame h1{font-size:22px}
       for (const [k, v] of Object.entries(e.mul || {})) m.mul[k] = (m.mul[k] ?? 1) * v;
       for (const [k, v] of Object.entries(e.yield || {})) m.yield[k] = (m.yield[k] ?? 1) * v;
       for (const [k, v] of Object.entries(e.jobSpeed || {})) m.jobSpeed[k] = (m.jobSpeed[k] ?? 1) * v;
+      for (const [k, v] of Object.entries(e.toolWear || {})) m.toolWear[k] = (m.toolWear[k] ?? 1) * v;
       for (const [k, v] of Object.entries(e.best || {})) m.best[k] = Math.max(m.best[k] ?? 1, v);
     }
     w.mods = m;
@@ -4007,7 +4007,6 @@ body.ingame h1{font-size:22px}
       cost: { wood: 3, leather: 1 },
       work: 800,
       makes: { item: "bow" },
-      needs: ["lodge"],
       want: (c) => short(c.owned("bow"), Math.max(1, c.likes("hunt"))) ? 2.4 : 0
     },
     {
@@ -4051,14 +4050,15 @@ body.ingame h1{font-size:22px}
       makes: { item: "basket" },
       want: (c) => short(c.owned("basket"), Math.max(1, c.likes("gather"))) ? 1.2 : 0
     },
-    // the fisherman's hut makes rods: one for everyone who likes fishing or loves eating fish, at least two
+    // rods, like bows and slings, come from the craftsman's hut: one for everyone who likes fishing or
+    // loves eating fish, at least two — as long as there is a lake with fish
     {
       id: "rod",
-      at: "fishhut",
+      at: "crafthut",
       cost: { wood: 3 },
       work: 500,
       makes: { item: "rod" },
-      want: (c) => short(c.owned("rod"), Math.max(2, c.likes("fish") + c.fans("fish"))) ? 2.4 : 0
+      want: (c) => c.fishing && short(c.owned("rod"), Math.max(2, c.likes("fish") + c.fans("fish"))) ? 2.4 : 0
     },
     // ── charcoal: logs smoulder under turf into charcoal; more when the furnace and the forge burn it
     {
@@ -4167,6 +4167,7 @@ body.ingame h1{font-size:22px}
       stock: (res) => w.stock[res] || 0,
       bows: owned("bow"),
       has: (b) => has(w, b),
+      fishing: w.lakes.some(fishable),
       fans: (food) => col.filter((a) => a.food?.likes === food).length,
       get fuel() {
         return smeltFuelTotal(w);
@@ -4274,7 +4275,7 @@ body.ingame h1{font-size:22px}
   }
   var toolWear = (w, a, jobId, amount = 1) => {
     const it = a.gear?.toolItem[jobId];
-    if (it) wear(w, a, it, amount);
+    if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1));
   };
   var done = (a) => {
     a.task = null;
@@ -6608,8 +6609,8 @@ body.ingame h1{font-size:22px}
   }
 
   // src/version.js
-  var VERSION = "0.19 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 e9015a1" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.20 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 8338355" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -6636,6 +6637,7 @@ body.ingame h1{font-size:22px}
     if (!save2 || save2.format !== SAVE_FORMAT) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
     ensureOre(w);
+    recomputeMods(w);
     for (const r of RESOURCES.all()) (_a = w.stock)[_b = r.id] ?? (_a[_b] = 0);
     w.rng = mulberry(0);
     w.rng.state = save2.rng;

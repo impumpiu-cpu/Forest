@@ -33,7 +33,7 @@ NAVMAPS.registerAll([
     prepare: w => wantedOre(w),
     seed: (w, i, codes) => codes.size > 0 && w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && oreBeside(w, i, codes) >= 0},
   // shore of lakes that still have fish
-  {id: 'shore', active: w => has(w, 'fishhut'),
+  {id: 'shore', active: w => w.lakes.some(l => l.cap > 0),
     seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)},
   // game animals: hunters and predators walk this field until they are close enough to go straight
   {id: 'prey', period: 12, minGap: 6, active: w => w.agents.some(a => a.task?.job === 'hunt' || a.brain === 'predator'),

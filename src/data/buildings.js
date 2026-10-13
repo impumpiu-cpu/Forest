@@ -1,7 +1,7 @@
 // Buildings. Cost is paid when the council lays the site; colonists then add `work` labour.
 // `effects` are merged into world.mods when a building is finished (see settlement/mods.js):
 //   numbers under add.*  are summed, numbers under mul.* are multiplied,
-//   yield.<resource> and jobSpeed.<job> multiply production,
+//   yield.<resource> and jobSpeed.<job> multiply production, toolWear.<job> how fast that job's tools wear,
 //   best.* keeps the largest value (one quarry is enough, a second adds nothing).
 // `zone` is the radius of the settlement zone around the building (default ZONE.building);
 // zones of the camp and all buildings merge into one protected area (settlement/zone.js).
@@ -73,16 +73,16 @@ BUILDINGS.registerAll([
     motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
   // built by the water when it can be: the nearest lot within reach that touches a lake with fish
-  {id: 'fishhut', name: 'Хижина рыбака', gender: 'f', cost: {wood: 16}, work: 160, max: 1, wooden: true, color: '#5d8fa8', mark: 'Ры', station: true, benches: 1,
+  {id: 'fishhut', name: 'Хижина рыбака', gender: 'f', cost: {wood: 16}, work: 160, max: 1, wooden: true, color: '#5d8fa8', mark: 'Ры',
     near: 'fish',
-    effect: 'Здесь делают удочки. Рыбаки ловят на треть быстрее, улов на 30% больше.',
-    effects: {jobSpeed: {fish: 1.35}, yield: {fish: 1.3}},
-    wish: 'хочет ловить рыбу',
-    motive: (a, c) => [[c.fishLakes ? 0.25 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4, 'любит рыбачить'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом'], [c.fishLakes && a.food?.likes === 'fish' ? 0.35 : 0, 'скучает по рыбе']],
+    effect: 'Сети и вешала для рыбы: рыбаки ловят на треть быстрее, каждая рыба даёт в полтора раза больше еды, удочки изнашиваются вдвое медленнее.',
+    effects: {jobSpeed: {fish: 1.35}, yield: {fish: 1.5}, toolWear: {fish: 0.5}},
+    wish: 'хочет ловить рыбу удачнее',
+    motive: (a, c) => [[c.fishLakes ? 0.15 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4 + a.skill.fish * 0.4, 'любит рыбачить'], [a.mem.walkFish * 0.8, 'далеко носить рыбу'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом'], [c.fishLakes && a.food?.likes === 'fish' ? 0.35 : 0, 'скучает по рыбе']],
     available: w => w.lakes.some(l => l.cap > 0)},
 
   {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
-    effect: 'Здесь делают одежду, оружие, инструменты, колчаны и стрелы из дерева, кости и кожи.',
+    effect: 'Здесь делают одежду, оружие, луки, пращи, удочки, инструменты, колчаны и стрелы из дерева, кости и кожи.',
     effects: {},
     wish: 'хочет делать снаряжение',
     motive: (a, c) => [[0.35 + c.unarmed * 0.6, 'нечем отбиваться'], [a.mem.wolf + a.mem.raid, a.gender === 'f' ? 'видела опасность без оружия' : 'видел опасность без оружия'],

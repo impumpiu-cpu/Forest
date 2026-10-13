@@ -77,9 +77,10 @@ JOBS.registerAll([
       return res;
     }},
 
-  // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back)
+  // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back),
+  // made at the craftsman's hut. The fisherman's hut only makes it better, as the lodge does for hunting
   {id: 'fish', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
-    runner: 'harvest', nav: 'shore', resource: 'fish', food: 'fish', carry: 3, time: 50, requires: 'fishhut', memory: 'walkFish',
+    runner: 'harvest', nav: 'shore', resource: 'fish', food: 'fish', carry: 3, time: 50, memory: 'walkFish',
     canDo: (w, a) => !!a.gear?.tool.fish,
     desire: (w, ctx, job) => (w.lakes.some(fishable) ? foodWant(w, ctx, job, 0.95, 0.08) : -1),
     valid: (w, i) => !!lakeBeside(w, i),
@@ -91,7 +92,7 @@ JOBS.registerAll([
     desire: (w, ctx, job) => (ctx.preyCount > 0 ? foodWant(w, ctx, job, 0.75, 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0)) : -1)},
 
   {id: 'craft', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
-    runner: 'craft', stations: ['crafthut', 'fishhut'], desire: atStations(0.55)},
+    runner: 'craft', stations: ['crafthut'], desire: atStations(0.55)},
 
   {id: 'charcoal', label: 'жечь уголь', short: 'уголь', verb: 'жжёт уголь', preferable: true,
     runner: 'craft', stations: ['charpit'], desire: atStations(0.45)},
