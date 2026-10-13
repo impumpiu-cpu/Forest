@@ -24,11 +24,12 @@ export const STOCKS = {
     kit: ['bow', 'quiver', 'sling', 'spear', 'shield', 'axe', 'club']},
 };
 
-// how far the raiders' camp is (days of travel); the stub sends a band every dist / 2 days
+// how far the raiders' camp is (days of travel); the stub checks every dist / 2 days whether a band
+// sets out, and it does with `chance` — a test mechanic until the world map decides raids
 export const RAIDS = {
   off:   {label: 'Нет',     dist: null},
-  rare:  {label: 'Редкие',  dist: 6},
-  often: {label: 'Частые',  dist: 3},
+  rare:  {label: 'Редкие',  dist: 6, chance: 0.6},
+  often: {label: 'Частые',  dist: 3, chance: 0.6},
 };
 
 export const WILDLIFE = {

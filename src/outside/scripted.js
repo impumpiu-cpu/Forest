@@ -6,6 +6,8 @@
 // A provider is {id, label, flows: {<migration id>: {from, first(w, rng), offer(w, rng), next(w, rng, arrived)}},
 //                distance(w, neighbourId), receive(w, msg)}
 //   first  — tick of the first check;   offer — how many set out now (0: nobody this time);
+//   size   — optional: how many would come if forced now (the «Набег» button), ignoring chance;
+//   missed — optional: a journal line when a check comes to nothing;
 //   next   — tick of the next check, told how many actually arrived;
 //   receive — messages the colony sends out (its daily report, later tribute and envoys).
 import {DAY} from '../core/time.js';
@@ -51,10 +53,13 @@ export const scripted = {
       first: (w, rng) => caravanDay(w, TRADE.firstDay - 1, rng),
       offer: (w, rng) => (rng() < TRADE.chance ? 1 : 0),
       next: (w, rng) => caravanDay(w, dayOf(w.tick) + TRADE.everyDays, rng)},
-    // a band sets out every dist/2 days (a little sooner after each raid), sized by the rumours
+    // every dist/2 days (a little sooner after each raid) a band may set out — with the preset's
+    // chance — sized by the rumours; a check that comes to nothing gives the colony time to recover
     raiders: {from: 'greywolves',
       first: (w, rng) => scripted.flows.raiders.next(w, rng),
-      offer: w => raidSize(w),
+      offer: (w, rng) => (rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? raidSize(w) : 0),
+      size: w => raidSize(w),
+      missed: () => ['Разведчики «Серых волков» побродили у края леса и ушли. Набега в этот раз не будет.', 'danger', 'info'],
       next: (w, rng) => (raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) : Infinity)},
   },
 

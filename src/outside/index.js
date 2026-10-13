@@ -11,6 +11,7 @@ import {spawnGroup} from '../settlement/migration.js';
 import {colonyReport} from './report.js';
 import {DAY} from '../core/time.js';
 import {scripted} from './scripted.js';
+import {log} from '../core/log.js';
 
 export const PROVIDERS = new Registry('outside');
 PROVIDERS.register(scripted);
@@ -47,7 +48,7 @@ export function arrive(w, flowId, offered) {
 // the «Набег» button and similar: a group arrives now, outside any schedule
 export function arriveNow(w, flowId) {
   const f = provider(w).flows[flowId];
-  return arrive(w, flowId, f.offer(w, w.rng) || 1);
+  return arrive(w, flowId, (f.size ? f.size(w, w.rng) : f.offer(w, w.rng)) || 1);
 }
 
 export function stepOutside(w) {
@@ -57,6 +58,7 @@ export function stepOutside(w) {
     if (w.tick < o.next[id]) continue;
     const offered = f.offer(w, w.rng);
     const group = offered ? arrive(w, id, offered) : [];
+    if (!offered && f.missed) { const m = f.missed(w); if (m) log(w, ...m); }
     // a due arrival that the colony could not take in is retried soon without resetting its schedule
     const retry = MIGRATIONS.get(id).retry;
     if (offered && !group.length && retry) { o.next[id] = w.tick + retry; o.due[id] ??= w.tick; continue; }

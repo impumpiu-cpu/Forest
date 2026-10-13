@@ -193,7 +193,7 @@ export class Panel {
     this.set('worldKv',
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
       `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
-      `<dt title="Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` · ${this.waitText(w, w.outside.next.raiders)}` : ''}</dd>` +
+      `<dt title="Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` · ${this.waitText(w, w.outside.next.raiders)}, если выйдут (${Math.round((RAIDS[w.cfg.raids].chance ?? 1) * 100)}%)` : ''}</dd>` +
       `<dt>Соседи</dt><dd class="nb">${neighbours(w).filter(n => n.dist).map(n => `<span title="${esc(n.note)}">${esc(n.label)} · ${n.dist} дн. пути</span>`).join('<br>') || '—'}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +
