@@ -57,6 +57,8 @@ ITEMS.registerAll([
   {id: 'chainmail',   label: 'Кольчуга', short: 'кольчуга', slot: 'body', iron: true, tradeOnly: true, armor: 0.55, warmth: 0.3, speed: 0.95, dur: 220, value: 40, color: '#b4bcc2'},
   {id: 'scalemail',   label: 'Чешуйчатый доспех', short: 'чешуя', slot: 'body', iron: true, tradeOnly: true, armor: 0.48, warmth: 0.35, speed: 0.94, dur: 190, value: 25, color: '#9aa0a0'},
   {id: 'clothes',     label: 'Одежда из лубяной ткани', short: 'ткань', slot: 'body', armor: 0.08, warmth: 0.35, dur: 50, value: 1, color: '#c9b38a'},
+  // fur: hare and wolf hides sewn hair-in — the winter coat
+  {id: 'furcoat',     label: 'Тулуп из шкур', short: 'тулуп', slot: 'body', armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4, color: '#b89a72'},
   {id: 'jerkin',      label: 'Кожаная куртка', short: 'кожа', slot: 'body', armor: 0.2, warmth: 0.55, dur: 70, value: 3, color: '#8a5a2b'},
   {id: 'hardleather', label: 'Кожа с костяными пластинами', short: 'укреплённая кожа', slot: 'body', armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, value: 9, color: '#e0d6c0'},
   // back

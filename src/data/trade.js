@@ -27,16 +27,19 @@
 //   foodKeep:  never sells food below this × colonists in all
 //   minGain:   an item must improve someone's gear at least this much…
 //   maxShare:  …and cost at most this share of the gold in hand (the rest is saved)
+//   wants:     what the outpost cannot make but always needs, bought up to this much in stock
 export const TRADE = {
   firstDay: 10, everyDays: 10, chance: 0.7,
   setOut: [4, 6], leaveHour: 7, tradeUntil: 23, maxStay: 2,   // days, in case it never gets to trade
   guards: 2, mules: [1, 3], crates: 2, crate: 10, load: [0.5, 1],
   purse: [25, 70], ask: 1.2, bid: 0.7,
   foodShort: 4, foodUpTo: 6, foodKeep: 5, minGain: 0.15, maxShare: 0.85,
+  wants: {salt: 12},   // bought whenever the trader has it, up to this much in stock
 
   WARES: [
     {w: 40, food: true, n: [3, 8]},
     {w: 14, resource: ['leather', 'hide', 'iron', 'charcoal', 'arrows', 'bone'], n: [2, 6]},
+    {w: 12, resource: ['salt'], n: [4, 10]},
     {w: 24, items: 'plain', q: 0},
     {w: 12, items: 'any', q: 1},
     {w: 4, items: 'any', q: 2},

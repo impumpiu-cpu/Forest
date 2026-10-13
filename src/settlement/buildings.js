@@ -10,7 +10,7 @@ import {recomputeZone} from './zone.js';
 import {lakeBeside} from '../world/lakes.js';
 import {think} from '../agents/mind.js';
 
-const ending = d => (d.gender === 'f' ? 'а' : '');
+const ending = d => (d.gender === 'f' ? 'а' : d.gender === 'pl' ? 'ы' : '');
 
 export function canAfford(w, cost) { return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v); }
 
@@ -87,7 +87,7 @@ export function addLabour(w, b, amount, by) {
   b.done = true;
   recomputeMods(w);
   if (d.onFinish) (typeof d.onFinish === 'function' ? d.onFinish : FINISH_HOOKS[d.onFinish])(w, b);
-  w.nav.dirty('sites'); w.nav.dirty('rockface');
+  w.nav.dirty('sites'); w.nav.dirty('rockface'); w.nav.dirty('warm'); w.nav.dirty('healer');
   for (const id of w.nav.order) if (id.startsWith('station:')) w.nav.dirty(id);
   log(w, `Построен${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`, 'build');
   w.chronicle.built.push({key: b.key, tick: w.tick, by: by?.name});
@@ -102,7 +102,7 @@ export function burnBuilding(w, id) {
   if (b.plots) { const own = new Set(b.plots); w.gardenCells = w.gardenCells.filter(j => !own.has(j)); }
   recomputeMods(w);
   recomputeZone(w);
-  w.nav.dirty('sites');
+  w.nav.dirty('sites'); w.nav.dirty('warm'); w.nav.dirty('healer');
   const d = BUILDINGS.get(b.key);
   log(w, `${b.done ? 'Сгорел' + ending(d) : 'Сгорела стройка:'} <b>${d.name.toLowerCase()}</b>.`, 'build', 'alert');
 }

@@ -2,6 +2,7 @@
 import {DAY, HOUR, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {T} from '../data/terrain.js';
+import {season, seasonDay} from '../data/seasons.js';
 
 export function setWind(w) {
   const a = w.wind.dir * Math.PI / 180;
@@ -10,17 +11,25 @@ export function setWind(w) {
 }
 
 export function stepWeather(w) {
+  // a new season: say what it brings
+  if (w.tick % DAY === 0 && seasonDay(w.tick) === 1) {
+    const S = season(w);
+    log(w, `Наступает ${S.label.toLowerCase()}. ${S.note}`, 'weather', 'notice');
+    // the first frost: wild bushes lose most of their berries at once (planted gardens are tended)
+    if (S.frost != null) { const g = w.grid, garden = new Set(w.gardenCells); for (let i = 0; i < w.n; i++) if (g.bush[i]) g.food[i] *= garden.has(i) ? Math.max(S.frost, 0.4) : S.frost; w.nav.dirty('berries'); }
+  }
   const wx = w.weather, fires = w.stats.fireCount;
   if (wx.rainLeft > 0) {
     wx.rainLeft--; wx.rain = Math.min(1, wx.rain + 0.02);
-    if (wx.rainLeft === 0) log(w, 'Дождь закончился.', 'weather');
+    if (wx.rainLeft === 0) log(w, season(w).snow ? 'Снегопад кончился.' : 'Дождь закончился.', 'weather');
   } else {
     wx.rain = Math.max(0, wx.rain - 0.01);
     // a big fire pulls up smoke clouds (pyrocumulus): rain gets much more likely while it burns
     const fireClouds = 1 + fires / 20;
-    if (w.rng() < w.climate.rain * fireClouds / DAY) {
+    if (w.rng() < w.climate.rain * season(w).rain * fireClouds / DAY) {
       wx.rainLeft = Math.round(HOUR * (1.5 + w.rng() * 3));
-      log(w, fires > 40 ? 'Над пожаром собрались тучи, пошёл дождь.' : fires > 0 ? 'Пошёл дождь, огонь слабеет.' : 'Пошёл дождь.', 'weather');
+      if (season(w).snow) log(w, fires > 0 ? 'Пошёл снег, огонь слабеет.' : 'Пошёл снег.', 'weather');
+      else log(w, fires > 40 ? 'Над пожаром собрались тучи, пошёл дождь.' : fires > 0 ? 'Пошёл дождь, огонь слабеет.' : 'Пошёл дождь.', 'weather');
     }
   }
   if (w.cfg.lightning) lightning(w);

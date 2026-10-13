@@ -3,6 +3,7 @@
 //   numbers under add.*  are summed, numbers under mul.* are multiplied,
 //   yield.<resource> and jobSpeed.<job> multiply production, toolWear.<job> how fast that job's tools wear,
 //   best.* keeps the largest value (one quarry is enough, a second adds nothing).
+// `heated: true` — warmed from the camp's fuel while the fire burns; people go there to get warm.
 // `zone` is the radius of the settlement zone around the building (default ZONE.building);
 // zones of the camp and all buildings merge into one protected area (settlement/zone.js).
 // `station: true` makes the building a workplace for crafting recipes (data/recipes.js);
@@ -16,7 +17,7 @@ export const BUILDINGS = new Registry('building');
 export const ZONE = {camp: 8, building: 5};
 
 BUILDINGS.registerAll([
-  {id: 'hut', name: 'Шалаш', gender: 'm', cost: {wood: 18}, work: 160, max: 4, wooden: true, color: '#b88a52', mark: 'Ш',
+  {id: 'hut', name: 'Шалаш', gender: 'm', cost: {wood: 18}, work: 160, max: 4, wooden: true, heated: true, color: '#b88a52', mark: 'Ш',
     effect: 'Сон на 60% быстрее, ночью спящие не мёрзнут. Лагерь примет на 4 жителей больше.',
     effects: {add: {beds: 4, popCap: 4}},
     wish: 'хочет своё жильё',
@@ -129,6 +130,21 @@ BUILDINGS.registerAll([
     effects: {},
     wish: 'хочет делать красивые вещи',
     motive: (a, c) => [[c.stock('gems') * 0.08, 'самоцветы лежат без дела'], [(a.prefs.jewel - 1) * 1.5, 'любит тонкую работу']]},
+
+  // ── food for the lean months
+  {id: 'dryrack', name: 'Вешала и бочки', gender: 'pl', cost: {wood: 14}, work: 140, max: 1, wooden: true, color: '#b08850', mark: 'Вш', station: true, benches: 2,
+    effect: 'Заготовки на зиму: ягоды, рыбу и мясо вялят на ветру (кроме зимы), а с покупной солью солят в бочках. Вяленое и солёное почти не портится.',
+    effects: {},
+    wish: 'хочет запасти еды на зиму',
+    motive: (a, c) => [[c.season === 'autumn' ? 0.9 : c.season === 'summer' ? 0.5 : 0.2, c.season === 'autumn' ? 'зима на носу, надо запасаться' : 'хочет запасов на зиму'],
+      [c.spoiled * 0.05, 'еда портится'], [a.mem.hunger * 0.6, 'помнит голод'], [(a.prefs.preserve - 1) * 1.4, 'любит заготовки']]},
+
+  {id: 'hearth', name: 'Очаг', gender: 'm', cost: {stone: 8, wood: 6}, work: 140, max: 1, wooden: false, color: '#c4703a', mark: 'Оч', station: true, benches: 1, needs: 'quarry',
+    effect: 'Здесь варят похлёбку из двух припасов: она сытнее, чем они порознь, и горячая еда поднимает настроение. Похлёбка не хранится.',
+    effects: {},
+    wish: 'хочет горячей еды',
+    motive: (a, c) => [[a.mem.hunger * 0.7, 'голодает'], [a.mem.cold * 0.5, 'хочет горячего в холода'], [c.season === 'winter' ? 0.4 : 0, 'зимой без горячего тяжко'],
+      [(a.prefs.cook - 1) * 1.4, 'любит стряпать']]},
 
   // the healer's hut: the wounded lie here and a healer tends them, many times faster than wounds
   // close by themselves; herbs make the treatment work fully (settlement/healing.js)

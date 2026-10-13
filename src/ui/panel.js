@@ -14,6 +14,7 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
+import {season, seasonDay, yearOf, daysLeftInSeason} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, hourOf, dayOf, ambientTemp} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
@@ -99,7 +100,11 @@ export class Panel {
 
   render(w, view) {
     $('clock').textContent = clockStr(w.tick);
-    $('amb').textContent = ambientTemp(w).toFixed(1) + ' °C' + (w.weather.rain > 0.1 ? ', дождь' : '') + (w.stats.fireCount ? ` · горит клеток: ${w.stats.fireCount}` : '');
+    const S = season(w), left = Math.ceil(daysLeftInSeason(w.tick));
+    $('season').textContent = `${S.label}, ${seasonDay(w.tick)}-й день · год ${yearOf(w.tick)}`;
+    $('season').title = `${S.note} До смены сезона: ${left} ${plural(left, 'день', 'дня', 'дней')}.`;
+    $('season').dataset.s = S.id;
+    $('amb').textContent = ambientTemp(w).toFixed(1) + ' °C' + (w.weather.rain > 0.1 ? (season(w).snow ? ', снег' : ', дождь') : '') + (w.stats.fireCount ? ` · горит клеток: ${w.stats.fireCount}` : '');
     $('windTxt').textContent = w.wind.str < 0.03 ? 'штиль' : `ветер ${DIRS[Math.round(((w.wind.dir + 180) % 360) / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} м/с`;
     const col = colonists(w);
     $('popCount').textContent = col.length;
@@ -161,7 +166,7 @@ export class Panel {
       if (!rs.length) return '';
       const rows = rs.map(r => { const v = w.stock[r.id] || 0; return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label)}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`; }).join('');
       const tagged = t => rs.some(r => r.tags.includes(t));
-      const extra = tagged('food') ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>` : rs.every(r => r.tags.includes('fuel')) ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
+      const extra = gname === 'Еда' ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>` : rs.every(r => r.tags.includes('fuel')) ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
       return `<div class="sgroup"><h3>${gname}</h3>${rows}${extra}</div>`;
     }).join('');
     this.set('stock', groups);

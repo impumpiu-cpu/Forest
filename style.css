@@ -285,3 +285,8 @@ body.ingame h1{font-size:22px}
 .wrow.fine span{color:#e3c14a}
 .deals{margin:0;padding-left:16px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;color:var(--muted)}
 .deals b{color:var(--fg);font-weight:400}
+.clockbox .season{font-size:12.5px;padding:1px 8px;border-radius:999px;background:#272b1f;white-space:nowrap}
+.clockbox .season[data-s="spring"]{color:#a6d98a}
+.clockbox .season[data-s="summer"]{color:#e8c25a}
+.clockbox .season[data-s="autumn"]{color:#e0904a}
+.clockbox .season[data-s="winter"]{color:#bcd6f2}

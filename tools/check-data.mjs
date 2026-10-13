@@ -91,6 +91,7 @@ for (const m of MIGRATIONS.all()) if (m.species && !SPECIES.has(m.species)) err(
 
 // every resource should come from somewhere
 const sources = new Set(['gold',   // gold comes from trade
+  ...TRADE.WARES.flatMap(x => x.resource || []),   // bought from traders
 ...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource),
   ...SPECIES.all().flatMap(s => Object.keys(s.yields || {}))]);
 for (const r of RESOURCES.all()) if (!sources.has(r.id)) warn(`ресурс ${r.id}: ниоткуда не добывается`);

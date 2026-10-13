@@ -7,6 +7,8 @@ import {isCampArea, distToCamp2} from './grid.js';
 import {burnBuilding} from '../settlement/buildings.js';
 import {burnStock, spoil, campFuel, burnCampFuel} from '../settlement/stock.js';
 import {colonists} from '../settlement/query.js';
+import {season} from '../data/seasons.js';
+import {BUILDINGS} from '../data/buildings.js';
 
 // Fire model knobs. Wet ground (high fertility) is harder to ignite and puts fires out by itself.
 export const FIRE = {cap: 320, heat: 46, pF: 0.011, pG: 0.005, burn: 0.03, wetIgn: 80, outBase: 0.002, outWet: 0.012, ignForest: 80, ignGrass: 120};
@@ -61,11 +63,16 @@ function campfire(w) {
   if (!w.campLit) return;
   burnCampFuel(w, 0.004);
   for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
+  // heated buildings (huts) are warmed with embers carried from the fire: no extra fuel, a gentler heat
+  for (const b of w.buildings) {
+    if (!b.done || !BUILDINGS.get(b.key).heated) continue;
+    for (const c of b.cells) if (w.grid.temp[c] < 26) w.grid.temp[c] += 4.5;
+  }
 }
 
 function burn(w) {
   const g = w.grid, rain = w.weather.rain, st = w.stats;
-  const ignF = FIRE.ignForest + w.climate.ign, ignG = FIRE.ignGrass + w.climate.ign;
+  const sig = season(w).ignite, ignF = FIRE.ignForest + w.climate.ign + sig, ignG = FIRE.ignGrass + w.climate.ign + sig;
   st.fireCount = 0; st.fireNearCamp = 0;
   for (let i = 0; i < w.n; i++) {
     const f = g.fire[i];
@@ -100,9 +107,9 @@ function burn(w) {
 
 // planted garden bushes regrow fast; the well cools the camp area; wild plants regrow slowly
 function growth(w) {
-  const g = w.grid;
-  for (const c of w.gardenCells) if (g.bush[c] && g.fire[c] === 0 && g.food[c] < 1) {
-    g.food[c] = Math.min(1, g.food[c] + 0.0035); if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty('berries');
+  const g = w.grid, S = season(w);
+  for (const c of w.gardenCells) if (S.garden > 0 && g.bush[c] && g.fire[c] === 0 && g.food[c] < 1) {
+    g.food[c] = Math.min(1, g.food[c] + 0.0035 * S.garden); if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty('berries');
   }
   if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
     const x = w.camp.x + xx, y = w.camp.y + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
@@ -115,9 +122,13 @@ function growth(w) {
     if (t === T.BURNT) { if (w.rng() < 0.02) { g.terr[i] = T.GRASS; g.fuel[i] = 0.1; } }
     else if (t === T.GRASS) {
       if (g.fuel[i] < 0.4) g.fuel[i] = Math.min(0.4, g.fuel[i] + 0.02);
-      if (g.bush[i]) { g.food[i] = Math.min(1, g.food[i] + 0.05 * f); if (g.food[i] > 0.35) w.nav.dirty('berries'); }
-      else if (!isCampArea(w, i) && w.rng() < 0.0025 * f) { g.bush[i] = 1; g.food[i] = 0.1; g.fuel[i] += 0.2; }
-      if (w.rng() < 0.0015 * f && f > 0.55 && !isCampArea(w, i)) { g.terr[i] = T.FOREST; g.wood[i] = 0.3; g.fuel[i] = 1.5; g.bush[i] = 0; }
+      if (g.bush[i]) {
+        // in season the bush ripens; in winter what is left drops or freezes
+        if (S.grow > 0) { g.food[i] = Math.min(1, g.food[i] + 0.05 * f * S.grow); if (g.food[i] > 0.35) w.nav.dirty('berries'); }
+        else if (S.wither && g.food[i] > 0) { g.food[i] = Math.max(0, g.food[i] - S.wither * 4); if (g.food[i] < 0.35) w.nav.dirty('berries'); }
+      }
+      else if (S.grow > 0 && !isCampArea(w, i) && w.rng() < 0.0025 * f) { g.bush[i] = 1; g.food[i] = 0.1; g.fuel[i] += 0.2; }
+      if (S.grow > 0 && w.rng() < 0.0015 * f && f > 0.55 && !isCampArea(w, i)) { g.terr[i] = T.FOREST; g.wood[i] = 0.3; g.fuel[i] = 1.5; g.bush[i] = 0; }
     } else if (t === T.FOREST && g.wood[i] < 1) { g.wood[i] = Math.min(1, g.wood[i] + 0.03); g.fuel[i] = 1.2 + g.wood[i]; }
   }
 }

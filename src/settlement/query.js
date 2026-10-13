@@ -15,7 +15,7 @@ const FOOD = () => RESOURCES.filter(r => r.tags.includes('food'));
 export const foodTotal = w => FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
 
 // how many colonists have each food as their favourite: {foodId: n}
-export const favourites = w => perTick(w, 'favourites', () => {
+export const favourites = w => perTick(w, 'favourites', () => {   // by fresh food id
   const out = {};
   for (const a of colonists(w)) if (a.food?.likes) out[a.food.likes] = (out[a.food.likes] || 0) + 1;
   return out;

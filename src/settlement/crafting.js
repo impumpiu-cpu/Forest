@@ -13,6 +13,10 @@ import {RESOURCES} from '../data/resources.js';
 import {smeltFuelTotal, takeSmeltFuel} from './stock.js';
 import {perTick} from '../core/util.js';
 import {fishable} from '../world/lakes.js';
+import {season} from '../data/seasons.js';
+import {FOODS} from '../data/foods.js';
+
+const PRESERVED = () => FOODS.filter(f => f.of);
 
 // how much of a resource the council's goal still needs to keep in the stock
 function reserved(w, res) {
@@ -47,6 +51,9 @@ function makeCraftContext(w) {
     bows: owned('bow'),
     has: b => has(w, b),
     fishing: w.lakes.some(fishable),
+    season: season(w).id, drying: season(w).drying,
+    stockpile: {spring: 0.7, summer: 1, autumn: 1.6, winter: 1}[season(w).id] ?? 1,
+    stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
     fans: food => col.filter(a => a.food?.likes === food).length,
     get fuel() { return smeltFuelTotal(w); },
     melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),

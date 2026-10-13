@@ -10,6 +10,11 @@
 //   value:     price of one portion in imperial gold (what a trader pays or asks, data/trade.js)
 //   keepPerHead: portions per colonist the colony holds back when it sells to a trader
 //   map(w, i): optional, where it can be gathered on the resource layer, in `mapColor`
+//   of:        a preserved food: which fresh food it was made from (a taste for fish is a taste for dried fish)
+//   dish:      a cooked dish (from the hearth): eaten first while it is hot, never anyone's "favourite"
+//   group:     section on the stock panel (default 'Еда')
+// At a meal people take a dish first, then what spoils fastest, and keep dried and salted food
+// for later; their favourite food (or anything made from it) wins over all of that.
 //
 // Each colonist gets a favourite and a disliked food (agents/agent.js). At a meal they take the
 // favourite when the stock has it, never the disliked one unless nothing else is left; either
@@ -26,11 +31,25 @@ FOODS.registerAll([
     map: (w, i) => { const id = w.grid.lake?.[i]; const l = id >= 0 ? w.lakes[id] : null; return l?.cap ? 0.25 + 0.75 * l.fish / l.cap : 0; },
     mapColor: [96, 176, 236]},
   {id: 'meat', label: 'мясо', kind: 'мясная', nutrition: 1.6, spoil: 2.5, loot: 3, taste: 0.3, value: 0.4, keepPerHead: 1, color: '#d0786a', eat: 'ateMeat'},
+
+  // cooked at the hearth from two portions: more filling than both, a hot meal lifts the mood, but it does not keep
+  {id: 'stew', label: 'похлёбка', kind: 'горячая', dish: true, nutrition: 3.0, spoil: 3, loot: 1, taste: 0.6, value: 0.8, keepPerHead: 0, color: '#d9a35a', eat: 'ateHot'},
+
+  // preserved on the racks: dried in the sun and wind (not in winter), or salted with bought salt (any time)
+  {id: 'driedBerries', label: 'сушёные ягоды', short: 'сушёные ягоды', of: 'berries', group: 'Заготовки', nutrition: 1.3, spoil: 0.12, loot: 4, taste: -0.1, value: 0.4, keepPerHead: 4, color: '#8e3f6b'},
+  {id: 'driedFish', label: 'вяленая рыба', short: 'вяленая рыба', of: 'fish', group: 'Заготовки', nutrition: 1.2, spoil: 0.15, loot: 3, taste: -0.1, value: 0.5, keepPerHead: 3, color: '#a99a76'},
+  {id: 'jerky', label: 'вяленое мясо', short: 'вяленое мясо', of: 'meat', group: 'Заготовки', nutrition: 1.4, spoil: 0.12, loot: 3, taste: 0, value: 0.6, keepPerHead: 3, color: '#8a4a3a'},
+  {id: 'saltFish', label: 'солёная рыба', short: 'солёная рыба', of: 'fish', group: 'Заготовки', nutrition: 1.3, spoil: 0.04, loot: 3, taste: 0, value: 0.6, keepPerHead: 3, color: '#9fb6c2'},
+  {id: 'saltMeat', label: 'солонина', short: 'солонина', of: 'meat', group: 'Заготовки', nutrition: 1.5, spoil: 0.04, loot: 3, taste: 0.05, value: 0.7, keepPerHead: 3, color: '#b0645a'},
 ]);
+
+// foods someone can call their favourite: the fresh ones (dried fish counts as fish)
+export const BASE_FOODS = () => FOODS.filter(f => !f.of && !f.dish);
+export const tasteOf = f => f.of || f.id;
 
 // food preferences of one person: {likes, dislikes} (ids from FOODS), drawn with `rnd` (0..1)
 export function drawFoodPrefs(rnd) {
-  const all = FOODS.all();
+  const all = BASE_FOODS();
   if (all.length < 2) return {likes: all[0]?.id ?? null, dislikes: null};
   // tastier food is more often a favourite and less often disliked
   const pick = (skip, sign) => {

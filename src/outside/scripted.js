@@ -15,6 +15,7 @@ import {RAIDS, WILDLIFE, PREDATORS} from '../data/presets.js';
 import {NEIGHBOURS} from '../data/neighbours.js';
 import {raidSize, settlerWaitDays} from '../settlement/threat.js';
 import {TRADE} from '../data/trade.js';
+import {season} from '../data/seasons.js';
 import {HOUR, dayOf} from '../core/time.js';
 
 const raidDist = w => RAIDS[w.cfg.raids].dist;
@@ -35,7 +36,7 @@ export const scripted = {
     // hares drift in from the wild woods every few hours, a few at a time
     hares: {from: 'wilds',
       first: w => w.tick + 240,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares ? 1 + Math.floor(rng() * 3) : 0),
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < season(w).hares ? 1 + Math.floor(rng() * 3) : 0),
       next: w => w.tick + 240},
     // now and then a wolf pack roams by
     wolves: {from: 'wilds',

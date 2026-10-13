@@ -36,7 +36,8 @@ TASKS.registerAll([
     const {fed, res, mood} = eatMeal(w, a);
     if (fed) {
       const f = FOODS.get(res.id);
-      if (mood === 'liked') think(w, a, 'ateLiked', {food: f.label});
+      if (f.eat === 'ateHot') think(w, a, 'ateHot', {food: f.label});
+      else if (mood === 'liked') think(w, a, 'ateLiked', {food: f.label});
       else if (mood === 'disliked') think(w, a, 'ateDisliked', {food: f.label});
       else if (f.eat) think(w, a, f.eat);
       else if (a.needs.food < 0.35) think(w, a, 'ateHungry', {food: f.label});
@@ -56,9 +57,9 @@ TASKS.registerAll([
     if (a.needs.rest >= 1) { think(w, a, beds > 0 ? 'sleptHut' : 'sleptOutside'); done(a); }
   }},
 
-  {id: 'warm', label: () => 'греется у костра', step(w, a, task) {
-    if (follow(w, a, 'camp') !== 'arrived') return;
-    mill(w, a, task, 1.2);
+  {id: 'warm', label: () => 'греется', step(w, a, task) {
+    if (follow(w, a, 'warm') !== 'arrived') return;
+    if (w.camp.set.has(cellOf(w, a))) mill(w, a, task, 1.2);
     if (a.needs.warmth > 0.92) done(a);
   }},
 

@@ -117,6 +117,12 @@ JOBS.registerAll([
   {id: 'jewel', label: 'делать украшения', short: 'ювелир', verb: 'делает украшения', preferable: true,
     runner: 'craft', stations: ['jeweler'], desire: atStations(0.35)},
 
+  {id: 'preserve', label: 'делать заготовки', short: 'заготовки', verb: 'вялит и солит припасы', preferable: true,
+    runner: 'craft', stations: ['dryrack'], desire: atStations(0.5)},
+
+  {id: 'cook', label: 'стряпать', short: 'повар', verb: 'варит похлёбку', preferable: true,
+    runner: 'craft', stations: ['hearth'], desire: atStations(0.55)},
+
   {id: 'tan', label: 'выделывать кожи', short: 'кожи', verb: 'выделывает кожи', preferable: true,
     runner: 'craft', stations: ['tannery'], desire: atStations(0.5)},
 

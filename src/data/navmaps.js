@@ -21,6 +21,9 @@ export const NAVMAPS = new Registry('navmap');
 
 NAVMAPS.registerAll([
   {id: 'camp', seed: (w, i) => w.camp.set.has(i)},
+  // where to get warm: the camp fire and every finished hut (huts are heated while the fire burns)
+  {id: 'warm', prepare: w => new Set(w.buildings.filter(b => b.done && BUILDINGS.get(b.key).heated).flatMap(b => b.cells)),
+    seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)},
   {id: 'edge', seed: (w, i) => { const x = i % w.w, y = (i / w.w) | 0; return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1; }},
   {id: 'berries', seed: (w, i) => w.grid.food[i] > 0.35 && w.grid.fire[i] === 0},
   {id: 'trees', seed: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.3 && w.grid.fire[i] === 0},

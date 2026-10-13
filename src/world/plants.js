@@ -5,6 +5,7 @@ import {mulberry, seedNumber} from '../core/rng.js';
 import {TERRAIN, T} from '../data/terrain.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 import {isCampArea} from './grid.js';
+import {season} from '../data/seasons.js';
 
 const EVERY = 10;   // regrow beds this often (ticks)
 
@@ -25,7 +26,8 @@ export function layPlants(w) {
 
 export function stepPlants(w) {
   if (w.tick % EVERY) return;
-  const g = w.grid;
+  const g = w.grid, grow = season(w).grow;
+  if (!grow) return;   // nothing grows in winter
   for (const p of PLANTS.all()) {
     const layer = g[plantLayer(p.id)], beds = w.plantBeds[p.id]; if (!layer) continue;
     let ripened = false;
@@ -33,7 +35,7 @@ export function stepPlants(w) {
       if (g.fire[i] > 0 || g.terr[i] === T.BURNT || g.bld[i] >= 0) { layer[i] = 0; continue; }
       if (layer[i] >= 1) continue;
       const was = layer[i];
-      layer[i] = Math.min(1, was + p.regrow * EVERY);
+      layer[i] = Math.min(1, was + p.regrow * EVERY * grow);
       if (was < p.ripe && layer[i] >= p.ripe) ripened = true;
     }
     if (ripened) w.nav.dirty(plantLayer(p.id));

@@ -20,10 +20,10 @@ import {oreAt} from '../world/ores.js';
 
 export const RESOURCES = new Registry('resource');
 
-export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Боеприпасы'];
+export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Заготовки', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Боеприпасы'];
 
 RESOURCES.registerAll([
-  ...FOODS.all().map(f => ({id: f.id, label: f.label, short: f.label, tags: ['food'], group: 'Еда',
+  ...FOODS.all().map(f => ({id: f.id, label: f.label, short: f.short || f.label, tags: ['food'], group: f.group || 'Еда',
     nutrition: f.nutrition, spoil: f.spoil, loot: f.loot, color: f.color, map: f.map, mapColor: f.mapColor, value: f.value, keepPerHead: f.keepPerHead})),
 
   {id: 'wood',    label: 'древесина', short: 'древесина', tags: ['fuel', 'material'], group: 'Материалы', burn: 1, loot: 4, value: 0.1, keep: 40, color: '#a5794a',
@@ -33,6 +33,9 @@ RESOURCES.registerAll([
   {id: 'bone',    label: 'кости',   short: 'кости',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.2, keep: 12, color: '#e8e2cf'},
   {id: 'hide',    label: 'шкуры',   short: 'шкуры',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.5, keep: 6, color: '#9b7650'},
   {id: 'leather', label: 'кожа',    short: 'кожа',    tags: ['material'], group: 'Материалы', loot: 1, value: 1, keep: 8, color: '#7a4d26'},
+
+  // salt: the outpost has no salt springs, it comes with traders; meat and fish salted with it keep all winter
+  {id: 'salt', label: 'соль', short: 'соль', tags: ['spice'], group: 'Заготовки', loot: 2, value: 0.6, keep: 40, color: '#e8e6e0'},
 
   // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
   {id: 'herbs', label: 'лечебные травы', short: 'травы', tags: ['medicine'], group: 'Лекарства', loot: 1, value: 1, keep: 10, target: 10, color: '#e8d25c'},

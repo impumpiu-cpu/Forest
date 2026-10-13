@@ -9,6 +9,7 @@ import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {think} from './mind.js';
 import {qualityOf} from '../data/quality.js';
+import {season} from '../data/seasons.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
 // made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
@@ -157,7 +158,8 @@ function value(a, d, w) {
   if (d.speed && d.slot === 'hand') v += (d.speed - 1) * 2;
   return v;
 }
-function bodyValue(a, d) { return (d.armor || 0) * (0.6 + 0.4 * a.mods.bravery) * 2 + (d.warmth || 0) * 0.8 * a.mods.cold - (1 - (d.speed || 1)) * 2; }
+// warm clothes count for more in the cold seasons (data/seasons.js `dress`)
+function bodyValue(a, d, w) { return (d.armor || 0) * (0.6 + 0.4 * a.mods.bravery) * 2 + (d.warmth || 0) * 0.8 * a.mods.cold * (w ? season(w).dress ?? 1 : 1) - (1 - (d.speed || 1)) * 2; }
 function backValue(a, d, w, handsDefs) {
   if (d.holds) return handsDefs.some(h => h.ranged?.ammo === d.holds.ammo) ? 3 : 0;
   if (d.carry) return 0.25 + d.carry * 0.15 * Math.max(a.prefs.gather ?? 1, a.prefs.chop ?? 1);
@@ -194,7 +196,7 @@ function bestLoadout(w, a, pool) {
   for (const h of opts) {
     const hd = h.hands.map(def), rest = items.filter(it => !h.hands.includes(it));
     let body = null, bv = 0, back = null, kv = 0;
-    for (const it of rest) { const d = def(it); if (d.slot === 'body') { const v = bodyValue(a, d); if (v > bv) { bv = v; body = it; } } }
+    for (const it of rest) { const d = def(it); if (d.slot === 'body') { const v = bodyValue(a, d, w); if (v > bv) { bv = v; body = it; } } }
     for (const it of rest) { if (def(it).slot === 'body') continue; const v = backValue(a, def(it), w, hd); if (v > kv) { kv = v; back = it; } }
     const score = handsValue(w, a, h.hands) + bv + kv;
     if (!best || score > best.score) best = {hands: h.hands, two: h.two, body, back, score};
@@ -205,7 +207,7 @@ function bestLoadout(w, a, pool) {
 function currentScore(w, a) {
   const hs = handItems(a), e = a.equip;
   let s = handsValue(w, a, e.right ? [e.right, e.left].filter(Boolean) : hs);
-  if (e.body) s += bodyValue(a, def(e.body));
+  if (e.body) s += bodyValue(a, def(e.body), w);
   if (e.back) s += backValue(a, def(e.back), w, hs.map(def));
   return s;
 }

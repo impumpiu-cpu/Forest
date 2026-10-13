@@ -11,6 +11,7 @@ import {DX, DY} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {LOOKS} from './looks.js';
 import {ORE_BY_CODE} from '../data/ores.js';
+import {season} from '../data/seasons.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 
 const PLANTS_TINT = PLANTS.all().map(p => ({key: plantLayer(p.id), tint: p.tint}));
@@ -77,12 +78,18 @@ export class Renderer {
 
   paintTerrain(w) {
     const d = this.terrain.img.data, g = w.grid;
+    // the season tints grass and forest: autumn gold, winter snow (water freezes white at the edges only)
+    const [tr, tg, tb, tk] = season(w).tint, wet = season(w).snow;
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
       const ore = g.ore?.[i];
       if (ore) { const c = ORE_BY_CODE[ore].tint, k = 0.55; r = r * (1 - k) + c[0] * k; gg = gg * (1 - k) + c[1] * k; b = b * (1 - k) + c[2] * k; }
       for (const p of PLANTS_TINT) { const v = g[p.key]?.[i]; if (v > 0.2) { const k = v * 0.6; r = r * (1 - k) + p.tint[0] * k; gg = gg * (1 - k) + p.tint[1] * k; b = b * (1 - k) + p.tint[2] * k; } }
       if (g.bush[i] && g.food[i] > 0.2) { const k = g.food[i] * 0.55; r = r * (1 - k) + 196 * k; gg = gg * (1 - k) + 92 * k; b = b * (1 - k) + 149 * k; }
+      if (tk && (g.terr[i] === T.GRASS || g.terr[i] === T.FOREST || g.terr[i] === T.BURNT || (wet && g.terr[i] === T.ROCK))) {
+        const k = g.terr[i] === T.FOREST ? tk * 0.7 : tk;
+        r = r * (1 - k) + tr * k; gg = gg * (1 - k) + tg * k; b = b * (1 - k) + tb * k;
+      }
       const o = i * 4; d[o] = r; d[o + 1] = gg; d[o + 2] = b; d[o + 3] = 255;
     }
     this.terrain.ctx.putImageData(this.terrain.img, 0, 0);
@@ -212,6 +219,13 @@ export class Renderer {
 
   drawRain(w, Wpx, Hpx) {
     const ctx = this.ctx, r = w.weather.rain;
+    if (season(w).snow) {   // snow: slow white flakes
+      ctx.fillStyle = `rgba(235,240,250,${r * 0.12})`; ctx.fillRect(0, 0, Wpx, Hpx);
+      ctx.fillStyle = `rgba(250,252,255,${0.4 + r * 0.5})`;
+      const n = Math.round(r * 320), off = (w.tick * 2) % 600;
+      for (let k = 0; k < n; k++) { const x = (k * 97.3 + Math.sin(k + w.tick * 0.05) * 6) % Wpx, y = (k * 53.1 + off) % Hpx; ctx.fillRect(x, y, 2, 2); }
+      return;
+    }
     ctx.fillStyle = `rgba(40,60,90,${r * 0.18})`; ctx.fillRect(0, 0, Wpx, Hpx);
     ctx.strokeStyle = `rgba(190,210,235,${r * 0.35})`; ctx.lineWidth = 1; ctx.beginPath();
     const n = Math.round(r * 260), off = (w.tick * 7) % 40;

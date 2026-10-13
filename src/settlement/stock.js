@@ -1,6 +1,8 @@
 // The camp stockpile: deposits with processing bonuses, eating, spoilage, theft.
 import {RESOURCES} from '../data/resources.js';
 import {yieldOf} from './mods.js';
+import {FOODS, tasteOf} from '../data/foods.js';
+import {season} from '../data/seasons.js';
 
 const foods = () => RESOURCES.filter(r => r.tags.includes('food'));
 
@@ -8,13 +10,16 @@ export function deposit(w, res, amount) { w.stock[res] = (w.stock[res] || 0) + a
 
 // the meal a colonist picks: the favourite food if the stock has it, otherwise the most plentiful
 // food they don't mind, and the disliked one only when nothing else is left
+// (and anything made from them: dried fish is fish); otherwise a hot dish, then whatever spoils
+// fastest, keeping dried and salted food for lean days
 export function chooseMeal(w, a) {
   const likes = a?.food?.likes, dislikes = a?.food?.dislikes;
-  if (likes && w.stock[likes] >= 1) return RESOURCES.get(likes);
   let best = null, bv = -Infinity;
   for (const r of foods()) {
-    if (!(w.stock[r.id] >= 1)) continue;
-    const v = w.stock[r.id] - (r.id === dislikes ? 1e6 : 0);
+    const have = w.stock[r.id] || 0;
+    if (have < 1) continue;
+    const f = FOODS.get(r.id), t = tasteOf(f);
+    const v = (t === likes ? 10 - (f.of ? 1 : 0) : 0) - (t === dislikes ? 1e6 : 0) + (f.dish ? 6 : 0) + f.spoil * 2 + Math.min(1, have / 20);
     if (v > bv) { bv = v; best = r; }
   }
   return best;
@@ -25,7 +30,8 @@ export function eatMeal(w, a) {
   const best = chooseMeal(w, a);
   if (!best) return {fed: 0, res: null, mood: null};
   w.stock[best.id] -= 1;
-  const mood = a?.food?.likes === best.id ? 'liked' : a?.food?.dislikes === best.id ? 'disliked' : null;
+  const t = tasteOf(FOODS.get(best.id));
+  const mood = a?.food?.likes === t ? 'liked' : a?.food?.dislikes === t ? 'disliked' : null;
   return {fed: best.nutrition, res: best, mood};
 }
 
@@ -60,8 +66,9 @@ export function takeSmeltFuel(w, n) {
 }
 
 export function spoil(w) {
+  const S = season(w);
   for (const r of foods()) {
-    const lost = w.stock[r.id] * 0.00015 * r.spoil * w.mods.mul.spoil;
+    const lost = w.stock[r.id] * 0.00015 * r.spoil * w.mods.mul.spoil * S.spoil;
     w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
     w.stats.spoiledToday += lost;
   }

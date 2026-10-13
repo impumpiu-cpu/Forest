@@ -58,7 +58,7 @@ export function makeGoods(rng, units) {
       if (!sold.has(line.q || 0)) continue;
       addGoods(goods, {kind: 'item', type: pick(rng, itemPool(line.items)), q: line.q || 0}); left--;
     } else {
-      const id = line.food ? pick(rng, FOODS.ids()) : pick(rng, line.resource);
+      const id = line.food ? pick(rng, FOODS.filter(f => !f.dish).map(f => f.id)) : pick(rng, line.resource);
       const n = Math.min(left, between(rng, line.n));
       addGoods(goods, {kind: 'res', id, n}); left -= n;
     }
@@ -191,6 +191,17 @@ export function holdTrade(w) {
     }
     c.goods = c.goods.filter(g => g.kind !== 'res' || g.n > 0);
   }
+
+  // 2b. stock up on what the outpost cannot make itself and keeps needing (salt), up to TRADE.wants
+  for (const [id, upTo] of Object.entries(TRADE.wants)) {
+    const g = c.goods.find(x => x.kind === 'res' && x.id === id); if (!g) continue;
+    const p = askPrice(g), n = Math.min(g.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor((w.stock.gold || 0) * TRADE.maxShare / p));
+    if (n <= 0) continue;
+    g.n -= n; w.stock[id] = (w.stock[id] || 0) + n;
+    w.stock.gold = round1(w.stock.gold - p * n); c.purse = round1(c.purse + p * n);
+    deal.spent += p * n; note(deal.bought, RESOURCES.get(id).label, n, p * n);
+  }
+  c.goods = c.goods.filter(g => g.kind !== 'res' || g.n > 0);
 
   // 3. buy gear that is a real step up for someone, best gain for the money first; save the rest
   const needs = gearNeeds(w);

@@ -13,6 +13,7 @@ import {wear} from './equipment.js';
 import {shoot} from './combat.js';
 import {think, moodOf} from './mind.js';
 import {add} from '../settlement/chronicle.js';
+import {seasonJob} from '../data/seasons.js';
 import {tend, patients, waiting, healerHutCell} from '../settlement/healing.js';
 
 const mill = (w, a) => { a.x += (w.rng() - 0.5) * 0.2; a.y += (w.rng() - 0.5) * 0.2; };
@@ -21,7 +22,7 @@ const mill = (w, a) => { a.x += (w.rng() - 0.5) * 0.2; a.y += (w.rng() - 0.5) * 
 export function workRate(w, a, jobId) {
   a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 0.0006);
   // a good mood helps a little, a bad one slows down (±10%)
-  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
+  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
 }
 // a building may spare the tools of one job (effects.toolWear in data/buildings.js)
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };

@@ -295,6 +295,11 @@ body.ingame h1{font-size:22px}
 .wrow.fine span{color:#e3c14a}
 .deals{margin:0;padding-left:16px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;color:var(--muted)}
 .deals b{color:var(--fg);font-weight:400}
+.clockbox .season{font-size:12.5px;padding:1px 8px;border-radius:999px;background:#272b1f;white-space:nowrap}
+.clockbox .season[data-s="spring"]{color:#a6d98a}
+.clockbox .season[data-s="summer"]{color:#e8c25a}
+.clockbox .season[data-s="autumn"]{color:#e0904a}
+.clockbox .season[data-s="winter"]{color:#bcd6f2}
 </style>
 </head>
 <body>
@@ -368,6 +373,7 @@ body.ingame h1{font-size:22px}
     <div class="toolbar">
       <div class="group clockbox" title="Время и погода">
         <b class="clock" id="clock">День 1, 07:00</b>
+        <span class="season" id="season" title="Сезон длится 30 дней">Весна</span>
         <span class="wx" id="amb">—</span>
         <span class="wx" id="windTxt">—</span>
       </div>
@@ -564,24 +570,6 @@ body.ingame h1{font-size:22px}
     return key2 in s ? s[key2] : s[key2] = make();
   }
 
-  // src/core/time.js
-  var DAY = 1200;
-  var HOUR = DAY / 24;
-  var TICK_MS = 50;
-  var hourOf = (t) => t % DAY / HOUR;
-  var dayOf = (t) => Math.floor(t / DAY);
-  function clockStr(t) {
-    const d = dayOf(t) + 1, h = hourOf(t), hh = Math.floor(h), mm = Math.floor((h - hh) * 6) * 10;
-    return `\u0414\u0435\u043D\u044C ${d}, ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-  }
-  function nightness(t) {
-    const sun = Math.sin(2 * Math.PI * (hourOf(t) - 6) / 24);
-    return clamp((0.2 - sun) * 2.2, 0, 1);
-  }
-  function ambientTemp(world2, t = world2.tick) {
-    return 11 + world2.climate.tOff + 9 * Math.sin(2 * Math.PI * (hourOf(t) - 9) / 24);
-  }
-
   // src/core/registry.js
   var _Registry = class _Registry {
     constructor(kind) {
@@ -620,6 +608,137 @@ body.ingame h1{font-size:22px}
   // every registry ever created: saves refer to definitions as "kind:id" instead of copying them
   __publicField(_Registry, "list", []);
   var Registry = _Registry;
+
+  // src/data/seasons.js
+  var SEASON_DAYS = 30;
+  var BLEND_DAYS = 4;
+  var SEASONS = new Registry("season");
+  SEASONS.registerAll([
+    {
+      id: "spring",
+      label: "\u0412\u0435\u0441\u043D\u0430",
+      next: "\u043B\u0435\u0442\u043E",
+      temp: -2,
+      dress: 1,
+      grow: 1,
+      wither: 0,
+      garden: 1,
+      jobs: {},
+      hares: 1.2,
+      hunger: 1,
+      spoil: 0.9,
+      rain: 1.4,
+      snow: false,
+      ignite: 15,
+      drying: true,
+      tint: [120, 170, 90, 0.08],
+      note: "\u0422\u0430\u0435\u0442 \u0441\u043D\u0435\u0433, \u043B\u0443\u0433\u0430 \u043E\u0436\u0438\u0432\u0430\u044E\u0442, \u0437\u0432\u0435\u0440\u0438 \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u044E\u0442\u0441\u044F."
+    },
+    {
+      id: "summer",
+      label: "\u041B\u0435\u0442\u043E",
+      next: "\u043E\u0441\u0435\u043D\u044C",
+      temp: 5,
+      dress: 0.5,
+      grow: 1.4,
+      wither: 0,
+      garden: 1.3,
+      jobs: {},
+      hares: 1,
+      hunger: 1,
+      spoil: 1.4,
+      rain: 0.8,
+      snow: false,
+      ignite: -8,
+      drying: true,
+      tint: [0, 0, 0, 0],
+      note: "\u0416\u0430\u0440\u043A\u043E: \u044F\u0433\u043E\u0434\u044B \u0437\u0440\u0435\u044E\u0442 \u0431\u044B\u0441\u0442\u0440\u043E, \u043D\u043E \u0438 \u0435\u0434\u0430 \u043F\u043E\u0440\u0442\u0438\u0442\u0441\u044F \u0431\u044B\u0441\u0442\u0440\u0435\u0435. \u041B\u0435\u0441 \u043B\u0435\u0433\u043A\u043E \u0437\u0430\u0433\u043E\u0440\u0430\u0435\u0442\u0441\u044F."
+    },
+    {
+      id: "autumn",
+      label: "\u041E\u0441\u0435\u043D\u044C",
+      next: "\u0437\u0438\u043C\u0430",
+      temp: -3,
+      dress: 1.5,
+      grow: 0.5,
+      wither: 0,
+      garden: 0.6,
+      jobs: {},
+      hares: 0.8,
+      hunger: 1.1,
+      spoil: 0.8,
+      rain: 1.3,
+      snow: false,
+      ignite: 5,
+      drying: true,
+      tint: [208, 178, 70, 0.3],
+      note: "\u041F\u043E\u0440\u0430 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043E\u043A: \u0441\u0443\u0448\u0438\u0442\u044C, \u0441\u043E\u043B\u0438\u0442\u044C, \u0437\u0430\u043F\u0430\u0441\u0430\u0442\u044C \u0434\u0440\u043E\u0432\u0430. \u0417\u0438\u043C\u0430 \u0431\u043B\u0438\u0437\u043A\u043E."
+    },
+    {
+      id: "winter",
+      label: "\u0417\u0438\u043C\u0430",
+      next: "\u0432\u0435\u0441\u043D\u0430",
+      temp: -13,
+      dress: 3,
+      grow: 0,
+      wither: 0.04,
+      garden: 0,
+      jobs: { fish: 0.5, gather: 0.6, chop: 0.85 },
+      hares: 0.35,
+      hunger: 1.35,
+      spoil: 0.25,
+      rain: 0.9,
+      snow: true,
+      ignite: 40,
+      drying: false,
+      frost: 0.15,
+      tint: [236, 240, 246, 0.62],
+      note: "\u0421\u043D\u0435\u0433 \u0438 \u043C\u043E\u0440\u043E\u0437: \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0440\u0430\u0441\u0442\u0451\u0442, \u0440\u044B\u0431\u0430 \u043B\u043E\u0432\u0438\u0442\u0441\u044F \u0432\u0434\u0432\u043E\u0435 \u0445\u0443\u0436\u0435, \u0432\u043E\u043B\u043A\u0438 \u0433\u043E\u043B\u043E\u0434\u043D\u044B. \u0416\u0438\u0432\u0443\u0442 \u0437\u0430\u043F\u0430\u0441\u0430\u043C\u0438 \u0438 \u043A\u043E\u0441\u0442\u0440\u043E\u043C."
+    }
+  ]);
+  var LIST = SEASONS.all();
+  var DAY_TICKS = 1200;
+  var YEAR = () => LIST.length * SEASON_DAYS;
+  var seasonIndex = (tick) => Math.floor(tick / DAY_TICKS / SEASON_DAYS) % LIST.length;
+  var seasonAt = (tick) => LIST[seasonIndex(tick)];
+  var season = (w) => seasonAt(w.tick);
+  var seasonDay = (tick) => Math.floor(tick / DAY_TICKS) % SEASON_DAYS + 1;
+  var yearOf = (tick) => Math.floor(tick / DAY_TICKS / YEAR()) + 1;
+  var daysLeftInSeason = (tick) => SEASON_DAYS - tick / DAY_TICKS % SEASON_DAYS;
+  function seasonTemp(tick) {
+    const d = tick / DAY_TICKS, i = seasonIndex(tick), into = d % SEASON_DAYS, cur = LIST[i].temp;
+    const half = BLEND_DAYS / 2;
+    if (into < half) {
+      const prev = LIST[(i + LIST.length - 1) % LIST.length].temp;
+      const k = 0.5 + into / BLEND_DAYS;
+      return prev + (cur - prev) * k;
+    }
+    if (into > SEASON_DAYS - half) {
+      const nxt = LIST[(i + 1) % LIST.length].temp;
+      const k = (into - (SEASON_DAYS - half)) / BLEND_DAYS;
+      return cur + (nxt - cur) * k;
+    }
+    return cur;
+  }
+  var seasonJob = (w, job) => season(w).jobs[job] ?? 1;
+
+  // src/core/time.js
+  var DAY = 1200;
+  var HOUR = DAY / 24;
+  var TICK_MS = 50;
+  var hourOf = (t) => t % DAY / HOUR;
+  var dayOf = (t) => Math.floor(t / DAY);
+  function clockStr(t) {
+    const d = dayOf(t) + 1, h = hourOf(t), hh = Math.floor(h), mm = Math.floor((h - hh) * 6) * 10;
+    return `\u0414\u0435\u043D\u044C ${d}, ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  }
+  function nightness(t) {
+    const sun = Math.sin(2 * Math.PI * (hourOf(t) - 6) / 24);
+    return clamp((0.2 - sun) * 2.2, 0, 1);
+  }
+  function ambientTemp(world2, t = world2.tick) {
+    return 11 + world2.climate.tOff + seasonTemp(t) + 9 * Math.sin(2 * Math.PI * (hourOf(t) - 9) / 24);
+  }
 
   // src/data/terrain.js
   var TERRAIN = new Registry("terrain");
@@ -783,10 +902,20 @@ body.ingame h1{font-size:22px}
       },
       mapColor: [96, 176, 236]
     },
-    { id: "meat", label: "\u043C\u044F\u0441\u043E", kind: "\u043C\u044F\u0441\u043D\u0430\u044F", nutrition: 1.6, spoil: 2.5, loot: 3, taste: 0.3, value: 0.4, keepPerHead: 1, color: "#d0786a", eat: "ateMeat" }
+    { id: "meat", label: "\u043C\u044F\u0441\u043E", kind: "\u043C\u044F\u0441\u043D\u0430\u044F", nutrition: 1.6, spoil: 2.5, loot: 3, taste: 0.3, value: 0.4, keepPerHead: 1, color: "#d0786a", eat: "ateMeat" },
+    // cooked at the hearth from two portions: more filling than both, a hot meal lifts the mood, but it does not keep
+    { id: "stew", label: "\u043F\u043E\u0445\u043B\u0451\u0431\u043A\u0430", kind: "\u0433\u043E\u0440\u044F\u0447\u0430\u044F", dish: true, nutrition: 3, spoil: 3, loot: 1, taste: 0.6, value: 0.8, keepPerHead: 0, color: "#d9a35a", eat: "ateHot" },
+    // preserved on the racks: dried in the sun and wind (not in winter), or salted with bought salt (any time)
+    { id: "driedBerries", label: "\u0441\u0443\u0448\u0451\u043D\u044B\u0435 \u044F\u0433\u043E\u0434\u044B", short: "\u0441\u0443\u0448\u0451\u043D\u044B\u0435 \u044F\u0433\u043E\u0434\u044B", of: "berries", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 1.3, spoil: 0.12, loot: 4, taste: -0.1, value: 0.4, keepPerHead: 4, color: "#8e3f6b" },
+    { id: "driedFish", label: "\u0432\u044F\u043B\u0435\u043D\u0430\u044F \u0440\u044B\u0431\u0430", short: "\u0432\u044F\u043B\u0435\u043D\u0430\u044F \u0440\u044B\u0431\u0430", of: "fish", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 1.2, spoil: 0.15, loot: 3, taste: -0.1, value: 0.5, keepPerHead: 3, color: "#a99a76" },
+    { id: "jerky", label: "\u0432\u044F\u043B\u0435\u043D\u043E\u0435 \u043C\u044F\u0441\u043E", short: "\u0432\u044F\u043B\u0435\u043D\u043E\u0435 \u043C\u044F\u0441\u043E", of: "meat", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 1.4, spoil: 0.12, loot: 3, taste: 0, value: 0.6, keepPerHead: 3, color: "#8a4a3a" },
+    { id: "saltFish", label: "\u0441\u043E\u043B\u0451\u043D\u0430\u044F \u0440\u044B\u0431\u0430", short: "\u0441\u043E\u043B\u0451\u043D\u0430\u044F \u0440\u044B\u0431\u0430", of: "fish", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 1.3, spoil: 0.04, loot: 3, taste: 0, value: 0.6, keepPerHead: 3, color: "#9fb6c2" },
+    { id: "saltMeat", label: "\u0441\u043E\u043B\u043E\u043D\u0438\u043D\u0430", short: "\u0441\u043E\u043B\u043E\u043D\u0438\u043D\u0430", of: "meat", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 1.5, spoil: 0.04, loot: 3, taste: 0.05, value: 0.7, keepPerHead: 3, color: "#b0645a" }
   ]);
+  var BASE_FOODS = () => FOODS.filter((f) => !f.of && !f.dish);
+  var tasteOf = (f) => f.of || f.id;
   function drawFoodPrefs(rnd) {
-    const all = FOODS.all();
+    const all = BASE_FOODS();
     if (all.length < 2) return { likes: all[0]?.id ?? null, dislikes: null };
     const pick2 = (skip, sign) => {
       const opts = all.filter((f) => f.id !== skip), ws = opts.map((f) => Math.max(0.15, 1 + sign * (f.taste || 0)));
@@ -1031,14 +1160,14 @@ body.ingame h1{font-size:22px}
 
   // src/data/resources.js
   var RESOURCES = new Registry("resource");
-  var RESOURCE_GROUPS = ["\u0414\u0435\u043D\u044C\u0433\u0438", "\u0415\u0434\u0430", "\u041B\u0435\u043A\u0430\u0440\u0441\u0442\u0432\u0430", "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", "\u0420\u0443\u0434\u0430", "\u041C\u0435\u0442\u0430\u043B\u043B", "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", "\u0411\u043E\u0435\u043F\u0440\u0438\u043F\u0430\u0441\u044B"];
+  var RESOURCE_GROUPS = ["\u0414\u0435\u043D\u044C\u0433\u0438", "\u0415\u0434\u0430", "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", "\u041B\u0435\u043A\u0430\u0440\u0441\u0442\u0432\u0430", "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", "\u0420\u0443\u0434\u0430", "\u041C\u0435\u0442\u0430\u043B\u043B", "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", "\u0411\u043E\u0435\u043F\u0440\u0438\u043F\u0430\u0441\u044B"];
   RESOURCES.registerAll([
     ...FOODS.all().map((f) => ({
       id: f.id,
       label: f.label,
-      short: f.label,
+      short: f.short || f.label,
       tags: ["food"],
-      group: "\u0415\u0434\u0430",
+      group: f.group || "\u0415\u0434\u0430",
       nutrition: f.nutrition,
       spoil: f.spoil,
       loot: f.loot,
@@ -1078,6 +1207,8 @@ body.ingame h1{font-size:22px}
     { id: "bone", label: "\u043A\u043E\u0441\u0442\u0438", short: "\u043A\u043E\u0441\u0442\u0438", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 0.2, keep: 12, color: "#e8e2cf" },
     { id: "hide", label: "\u0448\u043A\u0443\u0440\u044B", short: "\u0448\u043A\u0443\u0440\u044B", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 0.5, keep: 6, color: "#9b7650" },
     { id: "leather", label: "\u043A\u043E\u0436\u0430", short: "\u043A\u043E\u0436\u0430", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 1, keep: 8, color: "#7a4d26" },
+    // salt: the outpost has no salt springs, it comes with traders; meat and fish salted with it keep all winter
+    { id: "salt", label: "\u0441\u043E\u043B\u044C", short: "\u0441\u043E\u043B\u044C", tags: ["spice"], group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", loot: 2, value: 0.6, keep: 40, color: "#e8e6e0" },
     // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
     { id: "herbs", label: "\u043B\u0435\u0447\u0435\u0431\u043D\u044B\u0435 \u0442\u0440\u0430\u0432\u044B", short: "\u0442\u0440\u0430\u0432\u044B", tags: ["medicine"], group: "\u041B\u0435\u043A\u0430\u0440\u0441\u0442\u0432\u0430", loot: 1, value: 1, keep: 10, target: 10, color: "#e8d25c" },
     // fuel: charcoal is burnt from logs, coal is dug; both keep a furnace hot, the campfire takes them after wood
@@ -1189,9 +1320,12 @@ body.ingame h1{font-size:22px}
     foodKeep: 5,
     minGain: 0.15,
     maxShare: 0.85,
+    wants: { salt: 12 },
+    // bought whenever the trader has it, up to this much in stock
     WARES: [
       { w: 40, food: true, n: [3, 8] },
       { w: 14, resource: ["leather", "hide", "iron", "charcoal", "arrows", "bone"], n: [2, 6] },
+      { w: 12, resource: ["salt"], n: [4, 10] },
       { w: 24, items: "plain", q: 0 },
       { w: 12, items: "any", q: 1 },
       { w: 4, items: "any", q: 2 },
@@ -1259,6 +1393,8 @@ body.ingame h1{font-size:22px}
     { id: "chainmail", label: "\u041A\u043E\u043B\u044C\u0447\u0443\u0433\u0430", short: "\u043A\u043E\u043B\u044C\u0447\u0443\u0433\u0430", slot: "body", iron: true, tradeOnly: true, armor: 0.55, warmth: 0.3, speed: 0.95, dur: 220, value: 40, color: "#b4bcc2" },
     { id: "scalemail", label: "\u0427\u0435\u0448\u0443\u0439\u0447\u0430\u0442\u044B\u0439 \u0434\u043E\u0441\u043F\u0435\u0445", short: "\u0447\u0435\u0448\u0443\u044F", slot: "body", iron: true, tradeOnly: true, armor: 0.48, warmth: 0.35, speed: 0.94, dur: 190, value: 25, color: "#9aa0a0" },
     { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", armor: 0.08, warmth: 0.35, dur: 50, value: 1, color: "#c9b38a" },
+    // fur: hare and wolf hides sewn hair-in — the winter coat
+    { id: "furcoat", label: "\u0422\u0443\u043B\u0443\u043F \u0438\u0437 \u0448\u043A\u0443\u0440", short: "\u0442\u0443\u043B\u0443\u043F", slot: "body", armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4, color: "#b89a72" },
     { id: "jerkin", label: "\u041A\u043E\u0436\u0430\u043D\u0430\u044F \u043A\u0443\u0440\u0442\u043A\u0430", short: "\u043A\u043E\u0436\u0430", slot: "body", armor: 0.2, warmth: 0.55, dur: 70, value: 3, color: "#8a5a2b" },
     { id: "hardleather", label: "\u041A\u043E\u0436\u0430 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C\u0438 \u043F\u043B\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438", short: "\u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u0436\u0430", slot: "body", armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, value: 9, color: "#e0d6c0" },
     // back
@@ -1318,6 +1454,7 @@ body.ingame h1{font-size:22px}
       work: 160,
       max: 4,
       wooden: true,
+      heated: true,
       color: "#b88a52",
       mark: "\u0428",
       effect: "\u0421\u043E\u043D \u043D\u0430 60% \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043D\u043E\u0447\u044C\u044E \u0441\u043F\u044F\u0449\u0438\u0435 \u043D\u0435 \u043C\u0451\u0440\u0437\u043D\u0443\u0442. \u041B\u0430\u0433\u0435\u0440\u044C \u043F\u0440\u0438\u043C\u0435\u0442 \u043D\u0430 4 \u0436\u0438\u0442\u0435\u043B\u0435\u0439 \u0431\u043E\u043B\u044C\u0448\u0435.",
@@ -1627,6 +1764,52 @@ body.ingame h1{font-size:22px}
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0434\u0435\u043B\u0430\u0442\u044C \u043A\u0440\u0430\u0441\u0438\u0432\u044B\u0435 \u0432\u0435\u0449\u0438",
       motive: (a, c) => [[c.stock("gems") * 0.08, "\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B \u043B\u0435\u0436\u0430\u0442 \u0431\u0435\u0437 \u0434\u0435\u043B\u0430"], [(a.prefs.jewel - 1) * 1.5, "\u043B\u044E\u0431\u0438\u0442 \u0442\u043E\u043D\u043A\u0443\u044E \u0440\u0430\u0431\u043E\u0442\u0443"]]
     },
+    // ── food for the lean months
+    {
+      id: "dryrack",
+      name: "\u0412\u0435\u0448\u0430\u043B\u0430 \u0438 \u0431\u043E\u0447\u043A\u0438",
+      gender: "pl",
+      cost: { wood: 14 },
+      work: 140,
+      max: 1,
+      wooden: true,
+      color: "#b08850",
+      mark: "\u0412\u0448",
+      station: true,
+      benches: 2,
+      effect: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438 \u043D\u0430 \u0437\u0438\u043C\u0443: \u044F\u0433\u043E\u0434\u044B, \u0440\u044B\u0431\u0443 \u0438 \u043C\u044F\u0441\u043E \u0432\u044F\u043B\u044F\u0442 \u043D\u0430 \u0432\u0435\u0442\u0440\u0443 (\u043A\u0440\u043E\u043C\u0435 \u0437\u0438\u043C\u044B), \u0430 \u0441 \u043F\u043E\u043A\u0443\u043F\u043D\u043E\u0439 \u0441\u043E\u043B\u044C\u044E \u0441\u043E\u043B\u044F\u0442 \u0432 \u0431\u043E\u0447\u043A\u0430\u0445. \u0412\u044F\u043B\u0435\u043D\u043E\u0435 \u0438 \u0441\u043E\u043B\u0451\u043D\u043E\u0435 \u043F\u043E\u0447\u0442\u0438 \u043D\u0435 \u043F\u043E\u0440\u0442\u0438\u0442\u0441\u044F.",
+      effects: {},
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u043F\u0430\u0441\u0442\u0438 \u0435\u0434\u044B \u043D\u0430 \u0437\u0438\u043C\u0443",
+      motive: (a, c) => [
+        [c.season === "autumn" ? 0.9 : c.season === "summer" ? 0.5 : 0.2, c.season === "autumn" ? "\u0437\u0438\u043C\u0430 \u043D\u0430 \u043D\u043E\u0441\u0443, \u043D\u0430\u0434\u043E \u0437\u0430\u043F\u0430\u0441\u0430\u0442\u044C\u0441\u044F" : "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u043F\u0430\u0441\u043E\u0432 \u043D\u0430 \u0437\u0438\u043C\u0443"],
+        [c.spoiled * 0.05, "\u0435\u0434\u0430 \u043F\u043E\u0440\u0442\u0438\u0442\u0441\u044F"],
+        [a.mem.hunger * 0.6, "\u043F\u043E\u043C\u043D\u0438\u0442 \u0433\u043E\u043B\u043E\u0434"],
+        [(a.prefs.preserve - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438"]
+      ]
+    },
+    {
+      id: "hearth",
+      name: "\u041E\u0447\u0430\u0433",
+      gender: "m",
+      cost: { stone: 8, wood: 6 },
+      work: 140,
+      max: 1,
+      wooden: false,
+      color: "#c4703a",
+      mark: "\u041E\u0447",
+      station: true,
+      benches: 1,
+      needs: "quarry",
+      effect: "\u0417\u0434\u0435\u0441\u044C \u0432\u0430\u0440\u044F\u0442 \u043F\u043E\u0445\u043B\u0451\u0431\u043A\u0443 \u0438\u0437 \u0434\u0432\u0443\u0445 \u043F\u0440\u0438\u043F\u0430\u0441\u043E\u0432: \u043E\u043D\u0430 \u0441\u044B\u0442\u043D\u0435\u0435, \u0447\u0435\u043C \u043E\u043D\u0438 \u043F\u043E\u0440\u043E\u0437\u043D\u044C, \u0438 \u0433\u043E\u0440\u044F\u0447\u0430\u044F \u0435\u0434\u0430 \u043F\u043E\u0434\u043D\u0438\u043C\u0430\u0435\u0442 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435. \u041F\u043E\u0445\u043B\u0451\u0431\u043A\u0430 \u043D\u0435 \u0445\u0440\u0430\u043D\u0438\u0442\u0441\u044F.",
+      effects: {},
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0433\u043E\u0440\u044F\u0447\u0435\u0439 \u0435\u0434\u044B",
+      motive: (a, c) => [
+        [a.mem.hunger * 0.7, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442"],
+        [a.mem.cold * 0.5, "\u0445\u043E\u0447\u0435\u0442 \u0433\u043E\u0440\u044F\u0447\u0435\u0433\u043E \u0432 \u0445\u043E\u043B\u043E\u0434\u0430"],
+        [c.season === "winter" ? 0.4 : 0, "\u0437\u0438\u043C\u043E\u0439 \u0431\u0435\u0437 \u0433\u043E\u0440\u044F\u0447\u0435\u0433\u043E \u0442\u044F\u0436\u043A\u043E"],
+        [(a.prefs.cook - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0441\u0442\u0440\u044F\u043F\u0430\u0442\u044C"]
+      ]
+    },
     // the healer's hut: the wounded lie here and a healer tends them, many times faster than wounds
     // close by themselves; herbs make the treatment work fully (settlement/healing.js)
     {
@@ -1813,6 +1996,7 @@ body.ingame h1{font-size:22px}
     { id: "ateHungry", mood: 0.1, lasts: 4 * HOUR, once: 4 * HOUR, text: (a, c) => `\u041D\u0430\u043A\u043E\u043D\u0435\u0446 ${g(a, "\u043F\u043E\u0435\u043B", "\u043F\u043E\u0435\u043B\u0430")}: ${c.food}.` },
     { id: "ateLiked", mood: 0.18, lasts: 6 * HOUR, once: 6 * HOUR, text: (a, c) => `${g(a, "\u041F\u043E\u0435\u043B", "\u041F\u043E\u0435\u043B\u0430")} \u043B\u044E\u0431\u0438\u043C\u043E\u0439 \u0435\u0434\u044B: ${c.food}. \u0425\u043E\u0440\u043E\u0448\u043E!` },
     { id: "ateDisliked", mood: -0.12, lasts: 5 * HOUR, once: 5 * HOUR, text: (a, c) => `\u041F\u0440\u0438\u0448\u043B\u043E\u0441\u044C \u0435\u0441\u0442\u044C ${c.food}, \u0430 ${g(a, "\u043E\u043D", "\u043E\u043D\u0430")} \u044D\u0442\u043E \u0442\u0435\u0440\u043F\u0435\u0442\u044C \u043D\u0435 \u043C\u043E\u0436\u0435\u0442.` },
+    { id: "ateHot", mood: 0.2, lasts: 8 * HOUR, once: 6 * HOUR, text: (a, c) => `${g(a, "\u041F\u043E\u0435\u043B", "\u041F\u043E\u0435\u043B\u0430")} \u0433\u043E\u0440\u044F\u0447\u0435\u0433\u043E: ${c.food}. \u0421\u0440\u0430\u0437\u0443 \u0442\u0435\u043F\u043B\u0435\u0435.` },
     { id: "ateMeat", mood: 0.15, lasts: 6 * HOUR, once: 6 * HOUR, text: (a) => `${g(a, "\u041F\u043E\u0435\u043B", "\u041F\u043E\u0435\u043B\u0430")} \u0436\u0430\u0440\u0435\u043D\u043E\u0433\u043E \u043C\u044F\u0441\u0430. \u0421\u044B\u0442\u043D\u043E.` },
     { id: "starving", mood: -0.35, lasts: 8 * HOUR, once: 8 * HOUR, text: () => "\u0413\u043E\u043B\u043E\u0434\u0430\u0435\u0442. \u0417\u0430\u043F\u0430\u0441\u044B \u043F\u0443\u0441\u0442\u044B." },
     { id: "freezing", mood: -0.25, lasts: 8 * HOUR, once: 8 * HOUR, text: (a) => `${g(a, "\u0417\u0430\u043C\u0451\u0440\u0437", "\u0417\u0430\u043C\u0451\u0440\u0437\u043B\u0430")} \u0434\u043E \u043A\u043E\u0441\u0442\u0435\u0439.` },
@@ -1865,7 +2049,8 @@ body.ingame h1{font-size:22px}
       task: "eat",
       memory: "hunger",
       start: [0.6, 1],
-      decay: (w, a) => 6e-4 * a.mods.hunger,
+      // predators go hungrier in lean seasons (data/seasons.js)
+      decay: (w, a) => 6e-4 * a.mods.hunger * (a.faction === "predators" ? season(w).hunger : 1),
       harm: 8e-4,
       cause: "\u0433\u043E\u043B\u043E\u0434\u0430",
       urge: (w, a, v) => (1 - v) ** 2 * 2.2
@@ -2219,8 +2404,8 @@ body.ingame h1{font-size:22px}
     if (d.speed && d.slot === "hand") v += (d.speed - 1) * 2;
     return v;
   }
-  function bodyValue(a, d) {
-    return (d.armor || 0) * (0.6 + 0.4 * a.mods.bravery) * 2 + (d.warmth || 0) * 0.8 * a.mods.cold - (1 - (d.speed || 1)) * 2;
+  function bodyValue(a, d, w) {
+    return (d.armor || 0) * (0.6 + 0.4 * a.mods.bravery) * 2 + (d.warmth || 0) * 0.8 * a.mods.cold * (w ? season(w).dress ?? 1 : 1) - (1 - (d.speed || 1)) * 2;
   }
   function backValue(a, d, w, handsDefs) {
     if (d.holds) return handsDefs.some((h) => h.ranged?.ammo === d.holds.ammo) ? 3 : 0;
@@ -2262,7 +2447,7 @@ body.ingame h1{font-size:22px}
       for (const it of rest) {
         const d = def(it);
         if (d.slot === "body") {
-          const v = bodyValue(a, d);
+          const v = bodyValue(a, d, w);
           if (v > bv) {
             bv = v;
             body = it;
@@ -2285,7 +2470,7 @@ body.ingame h1{font-size:22px}
   function currentScore(w, a) {
     const hs = handItems(a), e = a.equip;
     let s = handsValue(w, a, e.right ? [e.right, e.left].filter(Boolean) : hs);
-    if (e.body) s += bodyValue(a, def(e.body));
+    if (e.body) s += bodyValue(a, def(e.body), w);
     if (e.back) s += backValue(a, def(e.back), w, hs.map(def));
     return s;
   }
@@ -2375,7 +2560,7 @@ body.ingame h1{font-size:22px}
   }
 
   // src/settlement/buildings.js
-  var ending = (d) => d.gender === "f" ? "\u0430" : "";
+  var ending = (d) => d.gender === "f" ? "\u0430" : d.gender === "pl" ? "\u044B" : "";
   function canAfford(w, cost) {
     return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v);
   }
@@ -2474,6 +2659,8 @@ body.ingame h1{font-size:22px}
     if (d.onFinish) (typeof d.onFinish === "function" ? d.onFinish : FINISH_HOOKS[d.onFinish])(w, b);
     w.nav.dirty("sites");
     w.nav.dirty("rockface");
+    w.nav.dirty("warm");
+    w.nav.dirty("healer");
     for (const id of w.nav.order) if (id.startsWith("station:")) w.nav.dirty(id);
     log(w, `\u041F\u043E\u0441\u0442\u0440\u043E\u0435\u043D${ending(d)} <b>${d.name.toLowerCase()}</b>. ${d.effect}`, "build");
     w.chronicle.built.push({ key: b.key, tick: w.tick, by: by?.name });
@@ -2492,6 +2679,8 @@ body.ingame h1{font-size:22px}
     recomputeMods(w);
     recomputeZone(w);
     w.nav.dirty("sites");
+    w.nav.dirty("warm");
+    w.nav.dirty("healer");
     const d = BUILDINGS.get(b.key);
     log(w, `${b.done ? "\u0421\u0433\u043E\u0440\u0435\u043B" + ending(d) : "\u0421\u0433\u043E\u0440\u0435\u043B\u0430 \u0441\u0442\u0440\u043E\u0439\u043A\u0430:"} <b>${d.name.toLowerCase()}</b>.`, "build", "alert");
   }
@@ -2530,6 +2719,7 @@ body.ingame h1{font-size:22px}
       fishLakes: w.lakes.filter((l) => l.cap && l.fish > l.cap * 0.3).length,
       items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
       stock: (r) => w.stock[r] || 0,
+      season: season(w).id,
       wounded: colonists(w).filter((a) => a.hp < 0.7).length / Math.max(1, colonists(w).length),
       oreSeen: oreSeen(w),
       wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
@@ -2669,7 +2859,7 @@ body.ingame h1{font-size:22px}
         addGoods(goods, { kind: "item", type: pick(rng, itemPool(line2.items)), q: line2.q || 0 });
         left--;
       } else {
-        const id = line2.food ? pick(rng, FOODS.ids()) : pick(rng, line2.resource);
+        const id = line2.food ? pick(rng, FOODS.filter((f) => !f.dish).map((f) => f.id)) : pick(rng, line2.resource);
         const n = Math.min(left, between(rng, line2.n));
         addGoods(goods, { kind: "res", id, n });
         left -= n;
@@ -2819,6 +3009,19 @@ body.ingame h1{font-size:22px}
       }
       c.goods = c.goods.filter((g2) => g2.kind !== "res" || g2.n > 0);
     }
+    for (const [id, upTo] of Object.entries(TRADE.wants)) {
+      const g2 = c.goods.find((x) => x.kind === "res" && x.id === id);
+      if (!g2) continue;
+      const p = askPrice(g2), n = Math.min(g2.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor((w.stock.gold || 0) * TRADE.maxShare / p));
+      if (n <= 0) continue;
+      g2.n -= n;
+      w.stock[id] = (w.stock[id] || 0) + n;
+      w.stock.gold = round1(w.stock.gold - p * n);
+      c.purse = round1(c.purse + p * n);
+      deal.spent += p * n;
+      note(deal.bought, RESOURCES.get(id).label, n, p * n);
+    }
+    c.goods = c.goods.filter((g2) => g2.kind !== "res" || g2.n > 0);
     const needs = gearNeeds(w);
     for (; ; ) {
       let best = null, bv = 0;
@@ -3282,6 +3485,26 @@ body.ingame h1{font-size:22px}
       desire: atStations(0.35)
     },
     {
+      id: "preserve",
+      label: "\u0434\u0435\u043B\u0430\u0442\u044C \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438",
+      short: "\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438",
+      verb: "\u0432\u044F\u043B\u0438\u0442 \u0438 \u0441\u043E\u043B\u0438\u0442 \u043F\u0440\u0438\u043F\u0430\u0441\u044B",
+      preferable: true,
+      runner: "craft",
+      stations: ["dryrack"],
+      desire: atStations(0.5)
+    },
+    {
+      id: "cook",
+      label: "\u0441\u0442\u0440\u044F\u043F\u0430\u0442\u044C",
+      short: "\u043F\u043E\u0432\u0430\u0440",
+      verb: "\u0432\u0430\u0440\u0438\u0442 \u043F\u043E\u0445\u043B\u0451\u0431\u043A\u0443",
+      preferable: true,
+      runner: "craft",
+      stations: ["hearth"],
+      desire: atStations(0.55)
+    },
+    {
       id: "tan",
       label: "\u0432\u044B\u0434\u0435\u043B\u044B\u0432\u0430\u0442\u044C \u043A\u043E\u0436\u0438",
       short: "\u043A\u043E\u0436\u0438",
@@ -3523,6 +3746,12 @@ body.ingame h1{font-size:22px}
   var NAVMAPS = new Registry("navmap");
   NAVMAPS.registerAll([
     { id: "camp", seed: (w, i) => w.camp.set.has(i) },
+    // where to get warm: the camp fire and every finished hut (huts are heated while the fire burns)
+    {
+      id: "warm",
+      prepare: (w) => new Set(w.buildings.filter((b) => b.done && BUILDINGS.get(b.key).heated).flatMap((b) => b.cells)),
+      seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)
+    },
     { id: "edge", seed: (w, i) => {
       const x = i % w.w, y = i / w.w | 0;
       return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1;
@@ -3816,7 +4045,7 @@ body.ingame h1{font-size:22px}
       hares: {
         from: "wilds",
         first: (w) => w.tick + 240,
-        offer: (w, rng) => WILDLIFE[w.cfg.wildlife].hares ? 1 + Math.floor(rng() * 3) : 0,
+        offer: (w, rng) => WILDLIFE[w.cfg.wildlife].hares && rng() < season(w).hares ? 1 + Math.floor(rng() * 3) : 0,
         next: (w) => w.tick + 240
       },
       // now and then a wolf pack roams by
@@ -3927,17 +4156,27 @@ body.ingame h1{font-size:22px}
     w.wind.y = Math.sin(a) * w.wind.str * 0.5;
   }
   function stepWeather(w) {
+    if (w.tick % DAY === 0 && seasonDay(w.tick) === 1) {
+      const S = season(w);
+      log(w, `\u041D\u0430\u0441\u0442\u0443\u043F\u0430\u0435\u0442 ${S.label.toLowerCase()}. ${S.note}`, "weather", "notice");
+      if (S.frost != null) {
+        const g2 = w.grid, garden = new Set(w.gardenCells);
+        for (let i = 0; i < w.n; i++) if (g2.bush[i]) g2.food[i] *= garden.has(i) ? Math.max(S.frost, 0.4) : S.frost;
+        w.nav.dirty("berries");
+      }
+    }
     const wx = w.weather, fires = w.stats.fireCount;
     if (wx.rainLeft > 0) {
       wx.rainLeft--;
       wx.rain = Math.min(1, wx.rain + 0.02);
-      if (wx.rainLeft === 0) log(w, "\u0414\u043E\u0436\u0434\u044C \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F.", "weather");
+      if (wx.rainLeft === 0) log(w, season(w).snow ? "\u0421\u043D\u0435\u0433\u043E\u043F\u0430\u0434 \u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F." : "\u0414\u043E\u0436\u0434\u044C \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F.", "weather");
     } else {
       wx.rain = Math.max(0, wx.rain - 0.01);
       const fireClouds = 1 + fires / 20;
-      if (w.rng() < w.climate.rain * fireClouds / DAY) {
+      if (w.rng() < w.climate.rain * season(w).rain * fireClouds / DAY) {
         wx.rainLeft = Math.round(HOUR * (1.5 + w.rng() * 3));
-        log(w, fires > 40 ? "\u041D\u0430\u0434 \u043F\u043E\u0436\u0430\u0440\u043E\u043C \u0441\u043E\u0431\u0440\u0430\u043B\u0438\u0441\u044C \u0442\u0443\u0447\u0438, \u043F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C." : fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C.", "weather");
+        if (season(w).snow) log(w, fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433.", "weather");
+        else log(w, fires > 40 ? "\u041D\u0430\u0434 \u043F\u043E\u0436\u0430\u0440\u043E\u043C \u0441\u043E\u0431\u0440\u0430\u043B\u0438\u0441\u044C \u0442\u0443\u0447\u0438, \u043F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C." : fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C.", "weather");
       }
     }
     if (w.cfg.lightning) lightning(w);
@@ -3978,7 +4217,8 @@ body.ingame h1{font-size:22px}
   }
   function stepPlants(w) {
     if (w.tick % EVERY) return;
-    const g2 = w.grid;
+    const g2 = w.grid, grow = season(w).grow;
+    if (!grow) return;
     for (const p of PLANTS.all()) {
       const layer2 = g2[plantLayer(p.id)], beds = w.plantBeds[p.id];
       if (!layer2) continue;
@@ -3990,7 +4230,7 @@ body.ingame h1{font-size:22px}
         }
         if (layer2[i] >= 1) continue;
         const was = layer2[i];
-        layer2[i] = Math.min(1, was + p.regrow * EVERY);
+        layer2[i] = Math.min(1, was + p.regrow * EVERY * grow);
         if (was < p.ripe && layer2[i] >= p.ripe) ripened = true;
       }
       if (ripened) w.nav.dirty(plantLayer(p.id));
@@ -4148,11 +4388,12 @@ body.ingame h1{font-size:22px}
   }
   function chooseMeal(w, a) {
     const likes = a?.food?.likes, dislikes = a?.food?.dislikes;
-    if (likes && w.stock[likes] >= 1) return RESOURCES.get(likes);
     let best = null, bv = -Infinity;
     for (const r of foods()) {
-      if (!(w.stock[r.id] >= 1)) continue;
-      const v = w.stock[r.id] - (r.id === dislikes ? 1e6 : 0);
+      const have = w.stock[r.id] || 0;
+      if (have < 1) continue;
+      const f = FOODS.get(r.id), t = tasteOf(f);
+      const v = (t === likes ? 10 - (f.of ? 1 : 0) : 0) - (t === dislikes ? 1e6 : 0) + (f.dish ? 6 : 0) + f.spoil * 2 + Math.min(1, have / 20);
       if (v > bv) {
         bv = v;
         best = r;
@@ -4164,7 +4405,8 @@ body.ingame h1{font-size:22px}
     const best = chooseMeal(w, a);
     if (!best) return { fed: 0, res: null, mood: null };
     w.stock[best.id] -= 1;
-    const mood = a?.food?.likes === best.id ? "liked" : a?.food?.dislikes === best.id ? "disliked" : null;
+    const t = tasteOf(FOODS.get(best.id));
+    const mood = a?.food?.likes === t ? "liked" : a?.food?.dislikes === t ? "disliked" : null;
     return { fed: best.nutrition, res: best, mood };
   }
   var cf;
@@ -4193,8 +4435,9 @@ body.ingame h1{font-size:22px}
     return true;
   }
   function spoil(w) {
+    const S = season(w);
     for (const r of foods()) {
-      const lost = w.stock[r.id] * 15e-5 * r.spoil * w.mods.mul.spoil;
+      const lost = w.stock[r.id] * 15e-5 * r.spoil * w.mods.mul.spoil * S.spoil;
       w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
       w.stats.spoiledToday += lost;
     }
@@ -4278,10 +4521,14 @@ body.ingame h1{font-size:22px}
     if (!w.campLit) return;
     burnCampFuel(w, 4e-3);
     for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
+    for (const b of w.buildings) {
+      if (!b.done || !BUILDINGS.get(b.key).heated) continue;
+      for (const c of b.cells) if (w.grid.temp[c] < 26) w.grid.temp[c] += 4.5;
+    }
   }
   function burn(w) {
     const g2 = w.grid, rain = w.weather.rain, st = w.stats;
-    const ignF = FIRE.ignForest + w.climate.ign, ignG = FIRE.ignGrass + w.climate.ign;
+    const sig = season(w).ignite, ignF = FIRE.ignForest + w.climate.ign + sig, ignG = FIRE.ignGrass + w.climate.ign + sig;
     st.fireCount = 0;
     st.fireNearCamp = 0;
     for (let i = 0; i < w.n; i++) {
@@ -4324,9 +4571,9 @@ body.ingame h1{font-size:22px}
     }
   }
   function growth(w) {
-    const g2 = w.grid;
-    for (const c of w.gardenCells) if (g2.bush[c] && g2.fire[c] === 0 && g2.food[c] < 1) {
-      g2.food[c] = Math.min(1, g2.food[c] + 35e-4);
+    const g2 = w.grid, S = season(w);
+    for (const c of w.gardenCells) if (S.garden > 0 && g2.bush[c] && g2.fire[c] === 0 && g2.food[c] < 1) {
+      g2.food[c] = Math.min(1, g2.food[c] + 35e-4 * S.garden);
       if (g2.food[c] > 0.35 && g2.food[c] < 0.354) w.nav.dirty("berries");
     }
     if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
@@ -4348,14 +4595,19 @@ body.ingame h1{font-size:22px}
       } else if (t === T.GRASS) {
         if (g2.fuel[i] < 0.4) g2.fuel[i] = Math.min(0.4, g2.fuel[i] + 0.02);
         if (g2.bush[i]) {
-          g2.food[i] = Math.min(1, g2.food[i] + 0.05 * f);
-          if (g2.food[i] > 0.35) w.nav.dirty("berries");
-        } else if (!isCampArea(w, i) && w.rng() < 25e-4 * f) {
+          if (S.grow > 0) {
+            g2.food[i] = Math.min(1, g2.food[i] + 0.05 * f * S.grow);
+            if (g2.food[i] > 0.35) w.nav.dirty("berries");
+          } else if (S.wither && g2.food[i] > 0) {
+            g2.food[i] = Math.max(0, g2.food[i] - S.wither * 4);
+            if (g2.food[i] < 0.35) w.nav.dirty("berries");
+          }
+        } else if (S.grow > 0 && !isCampArea(w, i) && w.rng() < 25e-4 * f) {
           g2.bush[i] = 1;
           g2.food[i] = 0.1;
           g2.fuel[i] += 0.2;
         }
-        if (w.rng() < 15e-4 * f && f > 0.55 && !isCampArea(w, i)) {
+        if (S.grow > 0 && w.rng() < 15e-4 * f && f > 0.55 && !isCampArea(w, i)) {
           g2.terr[i] = T.FOREST;
           g2.wood[i] = 0.3;
           g2.fuel[i] = 1.5;
@@ -4729,6 +4981,7 @@ body.ingame h1{font-size:22px}
   // src/data/recipes.js
   var RECIPES = new Registry("recipe");
   var short = (n, target) => Math.max(0, target - n);
+  var STORES_PER_HEAD = 10;
   RECIPES.registerAll([
     // clothing and armour: everyone should wear something, better pieces replace worse ones
     {
@@ -4738,6 +4991,15 @@ body.ingame h1{font-size:22px}
       work: 1300,
       makes: { item: "clothes" },
       want: (c) => short(c.owned("clothes") + c.owned("jerkin") + c.owned("hardleather"), c.pop) ? 3 : 0
+    },
+    // a fur coat for everyone before the cold sets in (wanted from late summer)
+    {
+      id: "furcoat",
+      at: "crafthut",
+      cost: { hide: 3, leather: 1 },
+      work: 1200,
+      makes: { item: "furcoat" },
+      want: (c) => c.season !== "spring" && short(c.owned("furcoat"), c.pop) ? c.season === "summer" ? 1.6 : 2.9 : 0
     },
     {
       id: "jerkin",
@@ -4922,6 +5184,31 @@ body.ingame h1{font-size:22px}
       makes: { resource: l.id, n: 1 },
       want: (c) => Math.max(0, l.want - c.stock(l.id) * l.fade)
     })),
+    // ── food for the lean months (data/foods.js). Fresh food beyond what the colony eats in a few
+    // days is dried (not in winter) or salted; autumn makes everyone keener on it.
+    ...[
+      ["driedBerries", { berries: 3 }, 2, 200, "drying"],
+      ["driedFish", { fish: 2 }, 2, 220, "drying"],
+      ["jerky", { meat: 2 }, 2, 220, "drying"],
+      ["saltFish", { fish: 2, salt: 1 }, 2, 150, null],
+      ["saltMeat", { meat: 2, salt: 1 }, 2, 150, null]
+    ].map(([id, cost, n, work, needsWeather]) => {
+      const raw = Object.keys(cost)[0];
+      return {
+        id,
+        at: "dryrack",
+        cost,
+        work,
+        makes: { resource: id, n },
+        want: (c) => needsWeather && !c.drying || c.stores >= c.pop * STORES_PER_HEAD || c.stock(raw) < c.pop * 1.5 + cost[raw] ? 0 : (needsWeather ? 1.3 : 1.6) * c.stockpile
+      };
+    }),
+    // ── the hearth: a hot stew from two portions; fresh food first, the stores only when there is none
+    { id: "stewMeat", at: "hearth", cost: { meat: 1, berries: 1 }, work: 120, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop ? 2.2 : 0 },
+    { id: "stewFish", at: "hearth", cost: { fish: 1, berries: 1 }, work: 120, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop ? 2.1 : 0 },
+    { id: "stewMeatFish", at: "hearth", cost: { meat: 1, fish: 1 }, work: 120, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop ? 2 : 0 },
+    { id: "stewStores", at: "hearth", cost: { jerky: 1, driedBerries: 1 }, work: 140, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop * 0.5 ? 1.2 : 0 },
+    { id: "stewSalted", at: "hearth", cost: { saltMeat: 1, driedBerries: 1 }, work: 140, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop * 0.5 ? 1.1 : 0 },
     // processing: raw hides become leather at the tannery
     {
       id: "tan",
@@ -4934,6 +5221,7 @@ body.ingame h1{font-size:22px}
   ]);
 
   // src/settlement/crafting.js
+  var PRESERVED = () => FOODS.filter((f) => f.of);
   function reserved(w, res) {
     const g2 = w.council.goal;
     if (!g2) return 0;
@@ -4965,6 +5253,10 @@ body.ingame h1{font-size:22px}
       bows: owned("bow"),
       has: (b) => has(w, b),
       fishing: w.lakes.some(fishable),
+      season: season(w).id,
+      drying: season(w).drying,
+      stockpile: { spring: 0.7, summer: 1, autumn: 1.6, winter: 1 }[season(w).id] ?? 1,
+      stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
       fans: (food) => col.filter((a) => a.food?.likes === food).length,
       get fuel() {
         return smeltFuelTotal(w);
@@ -5116,7 +5408,7 @@ body.ingame h1{font-size:22px}
   };
   function workRate(w, a, jobId) {
     a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 6e-4);
-    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
+    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
   }
   var toolWear = (w, a, jobId, amount = 1) => {
     const it = a.gear?.toolItem[jobId];
@@ -5333,7 +5625,8 @@ body.ingame h1{font-size:22px}
       const { fed, res, mood } = eatMeal(w, a);
       if (fed) {
         const f = FOODS.get(res.id);
-        if (mood === "liked") think(w, a, "ateLiked", { food: f.label });
+        if (f.eat === "ateHot") think(w, a, "ateHot", { food: f.label });
+        else if (mood === "liked") think(w, a, "ateLiked", { food: f.label });
         else if (mood === "disliked") think(w, a, "ateDisliked", { food: f.label });
         else if (f.eat) think(w, a, f.eat);
         else if (a.needs.food < 0.35) think(w, a, "ateHungry", { food: f.label });
@@ -5353,9 +5646,9 @@ body.ingame h1{font-size:22px}
         done2(a);
       }
     } },
-    { id: "warm", label: () => "\u0433\u0440\u0435\u0435\u0442\u0441\u044F \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
-      if (follow(w, a, "camp") !== "arrived") return;
-      mill2(w, a, task, 1.2);
+    { id: "warm", label: () => "\u0433\u0440\u0435\u0435\u0442\u0441\u044F", step(w, a, task) {
+      if (follow(w, a, "warm") !== "arrived") return;
+      if (w.camp.set.has(cellOf(w, a))) mill2(w, a, task, 1.2);
       if (a.needs.warmth > 0.92) done2(a);
     } },
     { id: "council", label: () => "\u043D\u0430 \u0441\u043E\u0432\u0435\u0442\u0435 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
@@ -6485,6 +6778,7 @@ body.ingame h1{font-size:22px}
     }
     paintTerrain(w) {
       const d = this.terrain.img.data, g2 = w.grid;
+      const [tr, tg, tb, tk] = season(w).tint, wet = season(w).snow;
       for (let i = 0; i < w.n; i++) {
         let [r, gg, b] = BY_CODE[g2.terr[i]].color(g2.hgt[i], g2.fert[i], g2.wood[i]);
         const ore = g2.ore?.[i];
@@ -6508,6 +6802,12 @@ body.ingame h1{font-size:22px}
           r = r * (1 - k) + 196 * k;
           gg = gg * (1 - k) + 92 * k;
           b = b * (1 - k) + 149 * k;
+        }
+        if (tk && (g2.terr[i] === T.GRASS || g2.terr[i] === T.FOREST || g2.terr[i] === T.BURNT || wet && g2.terr[i] === T.ROCK)) {
+          const k = g2.terr[i] === T.FOREST ? tk * 0.7 : tk;
+          r = r * (1 - k) + tr * k;
+          gg = gg * (1 - k) + tg * k;
+          b = b * (1 - k) + tb * k;
         }
         const o = i * 4;
         d[o] = r;
@@ -6726,6 +7026,17 @@ body.ingame h1{font-size:22px}
     }
     drawRain(w, Wpx, Hpx) {
       const ctx = this.ctx, r = w.weather.rain;
+      if (season(w).snow) {
+        ctx.fillStyle = `rgba(235,240,250,${r * 0.12})`;
+        ctx.fillRect(0, 0, Wpx, Hpx);
+        ctx.fillStyle = `rgba(250,252,255,${0.4 + r * 0.5})`;
+        const n2 = Math.round(r * 320), off2 = w.tick * 2 % 600;
+        for (let k = 0; k < n2; k++) {
+          const x = (k * 97.3 + Math.sin(k + w.tick * 0.05) * 6) % Wpx, y = (k * 53.1 + off2) % Hpx;
+          ctx.fillRect(x, y, 2, 2);
+        }
+        return;
+      }
       ctx.fillStyle = `rgba(40,60,90,${r * 0.18})`;
       ctx.fillRect(0, 0, Wpx, Hpx);
       ctx.strokeStyle = `rgba(190,210,235,${r * 0.35})`;
@@ -7066,7 +7377,11 @@ body.ingame h1{font-size:22px}
     }
     render(w, view2) {
       $("clock").textContent = clockStr(w.tick);
-      $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? ", \u0434\u043E\u0436\u0434\u044C" : "") + (w.stats.fireCount ? ` \xB7 \u0433\u043E\u0440\u0438\u0442 \u043A\u043B\u0435\u0442\u043E\u043A: ${w.stats.fireCount}` : "");
+      const S = season(w), left = Math.ceil(daysLeftInSeason(w.tick));
+      $("season").textContent = `${S.label}, ${seasonDay(w.tick)}-\u0439 \u0434\u0435\u043D\u044C \xB7 \u0433\u043E\u0434 ${yearOf(w.tick)}`;
+      $("season").title = `${S.note} \u0414\u043E \u0441\u043C\u0435\u043D\u044B \u0441\u0435\u0437\u043E\u043D\u0430: ${left} ${plural(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}.`;
+      $("season").dataset.s = S.id;
+      $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? season(w).snow ? ", \u0441\u043D\u0435\u0433" : ", \u0434\u043E\u0436\u0434\u044C" : "") + (w.stats.fireCount ? ` \xB7 \u0433\u043E\u0440\u0438\u0442 \u043A\u043B\u0435\u0442\u043E\u043A: ${w.stats.fireCount}` : "");
       $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `\u0432\u0435\u0442\u0435\u0440 ${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       const col = colonists(w);
       $("popCount").textContent = col.length;
@@ -7141,7 +7456,7 @@ body.ingame h1{font-size:22px}
           return `<div class="srow2${v < 0.05 ? " zero" : ""}" title="${esc(r.label)}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`;
         }).join("");
         const tagged = (t) => rs.some((r) => r.tags.includes(t));
-        const extra = tagged("food") ? `<div class="srow2"><span>\u0432\u0441\u0435\u0433\u043E</span><b>${Math.floor(foodTotal(w))}</b></div>` : rs.every((r) => r.tags.includes("fuel")) ? `<div class="srow2"><span>\u043A\u043E\u0441\u0442\u0451\u0440</span><b>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : campFuel(w) ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0447\u0435\u043C \u0442\u043E\u043F\u0438\u0442\u044C"}</b></div>` : "";
+        const extra = gname === "\u0415\u0434\u0430" ? `<div class="srow2"><span>\u0432\u0441\u0435\u0433\u043E</span><b>${Math.floor(foodTotal(w))}</b></div>` : rs.every((r) => r.tags.includes("fuel")) ? `<div class="srow2"><span>\u043A\u043E\u0441\u0442\u0451\u0440</span><b>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : campFuel(w) ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0447\u0435\u043C \u0442\u043E\u043F\u0438\u0442\u044C"}</b></div>` : "";
         return `<div class="sgroup"><h3>${gname}</h3>${rows}${extra}</div>`;
       }).join("");
       this.set("stock", groups);
@@ -7699,8 +8014,8 @@ body.ingame h1{font-size:22px}
   }
 
   // src/version.js
-  var VERSION = "0.24 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 c20ab26" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.25 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 5b4121d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
