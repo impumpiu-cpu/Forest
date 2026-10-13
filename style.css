@@ -275,3 +275,13 @@ body.ingame h1{font-size:22px}
 @media (max-width:900px){.stage .canvas-box{height:62vh}}
 .jobs{grid-template-columns:minmax(0,1fr) 52px 44px}
 .jobs .jneed{grid-column:2/4;font-size:11px;line-height:1.25;text-align:right}
+/* ───── trade ───── */
+.tradebox{display:flex;flex-direction:column;gap:8px}
+.wares{display:flex;flex-direction:column;gap:2px;font-size:12.5px}
+.wrow{display:flex;justify-content:space-between;gap:8px}
+.wrow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrow b{font-family:var(--font-mono);font-weight:400;white-space:nowrap}
+.wrow b.dear{color:#f0a0a2}
+.wrow.fine span{color:#e3c14a}
+.deals{margin:0;padding-left:16px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;color:var(--muted)}
+.deals b{color:var(--fg);font-weight:400}

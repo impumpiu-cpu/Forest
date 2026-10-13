@@ -2,6 +2,8 @@
 // (stock and jobs, colonists, buildings, council, journal, world). Only the open tab is redrawn.
 import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
+import {TRADE} from '../data/trade.js';
+import {goodsUnits, goodsLabel, askPrice} from '../settlement/trade.js';
 import {RECIPES} from '../data/recipes.js';
 import {SIZES, CLIMATES, WILDLIFE, PREDATORS} from '../data/presets.js';
 import {exposedOre, oreOf} from '../world/ores.js';
@@ -11,6 +13,7 @@ import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {SPECIES} from '../data/species.js';
+import {FACTIONS} from '../data/factions.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, hourOf, dayOf, ambientTemp} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
@@ -57,6 +60,7 @@ export class Panel {
     const dot = (c, t) => `<span><i style="background:${c}"></i>${t}</span>`;
     const ores = ORES.all().map(o => dot(`rgb(${o.tint.join(',')})`, o.label)).join('');
     $('legend').innerHTML = dot('var(--colony)', 'колонисты') + dot('var(--raider)', 'налётчики') +
+      FACTIONS.filter(f => f.legend).map(f => dot(f.color, f.legend)).join('') +
       SPECIES.filter(s => s.look.color && !s.sentient).map(s => dot(s.look.color, s.legend || s.label)).join('') +
       dot('var(--food)', 'ягоды') + ores + dot('var(--ember)', 'огонь и костёр') +
       '<span>пунктир — граница зоны поселения</span>' +
@@ -99,6 +103,7 @@ export class Panel {
     $('windTxt').textContent = w.wind.str < 0.03 ? 'штиль' : `ветер ${DIRS[Math.round(((w.wind.dir + 180) % 360) / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} м/с`;
     const col = colonists(w);
     $('popCount').textContent = col.length;
+    $('goldCount').textContent = w.caravan && w.caravan.phase !== 'leaving' ? '●' : Math.floor(w.stock.gold || 0) ? Math.floor(w.stock.gold) : '';
     const now = performance.now();
     const tps = view.speed && this.lastT ? (w.tick - this.lastTick) / ((now - this.lastT) / 1000) : 0;
     this.lastTick = w.tick; this.lastT = now;
@@ -107,10 +112,46 @@ export class Panel {
       case 'people': this.renderPeople(w, view.selected); break;
       case 'build': this.renderBuildings(w); break;
       case 'council': this.renderCouncil(w); break;
+      case 'trade': this.renderTrade(w); break;
       case 'log': this.renderLog(w); break;
       case 'world': this.renderWorld(w, view, tps); break;
       default: this.renderStock(w); this.renderJobs(w); this.renderGear(w);
     }
+  }
+
+  // the treasury, the caravan in camp with its goods and prices, the last deals
+  renderTrade(w) {
+    const gold = w.stock.gold || 0, c = w.caravan;
+    const phase = {coming: 'идёт к лагерю', camp: 'стоит лагерем, торг после совета', trading: 'идёт торг', night: 'ночует у костра', leaving: 'уходит'};
+    let head = `<dl class="kv"><dt>Казна</dt><dd>${gold.toFixed(1)} имперских золотых</dd>` +
+      `<dt>Следующий караван</dt><dd>${c ? 'уже здесь' : this.caravanWhen(w)}</dd>` +
+      `<dt>Караванов было</dt><dd>${w.trade.visits} · выручено ${Math.floor(w.trade.earned)} · потрачено ${Math.floor(w.trade.spent)}</dd></dl>`;
+    let goods = '';
+    if (c) {
+      const units = goodsUnits(c.goods), cap = c.capacity;
+      // identical pieces are shown as one line with a count
+      const lines = [];
+      for (const g of c.goods) {
+        const same = g.kind === 'item' && lines.find(x => x.g.kind === 'item' && x.g.type === g.type && (x.g.q || 0) === (g.q || 0));
+        if (same) same.n++; else lines.push({g, n: g.kind === 'res' ? g.n : 1});
+      }
+      const rows = lines.sort((x, y) => (x.g.kind === y.g.kind ? askPrice(y.g) - askPrice(x.g) : x.g.kind === 'item' ? -1 : 1)).map(({g, n}) => {
+        const p = askPrice(g), can = gold >= p;
+        return `<div class="wrow${g.kind === 'item' && g.q ? ' fine' : ''}"><span>${esc(goodsLabel(g))}${n > 1 || g.kind === 'res' ? ' ×' + n : ''}</span><b class="${can ? '' : 'dear'}">${p} зол.${n > 1 ? ' / шт.' : ''}</b></div>`;
+      }).join('');
+      goods = `<h2>Купец ${esc(c.name)}</h2><p class="small muted">Сейчас: ${phase[c.phase]}. Груз ${units} из ${cap} мест, в кошельке у купца ${Math.floor(c.purse)} зол. Купец просит ×${TRADE.ask} от цены и платит ×${TRADE.bid}.</p><div class="wares">${rows || '<p class="muted small">Всё распродано.</p>'}</div>`;
+    }
+    const deals = w.trade.deals.map(d => {
+      const list = xs => xs.map(([l, n, g]) => `${esc(l)}${n > 1 ? ' ×' + n : ''}`).join(', ');
+      return `<li><b>День ${d.day}, ${esc(d.trader)}</b>: ${d.sold.length ? 'продали ' + list(d.sold) + ` (+${d.earned})` : 'продать было нечего'}; ${d.bought.length ? 'купили ' + list(d.bought) + ` (−${d.spent})` : 'ничего не купили'}. В казне ${Math.floor(d.gold)}.</li>`;
+    }).join('');
+    this.set('tradeBox', `${head}${goods}<h2>Последние сделки</h2>${deals ? `<ul class="deals">${deals}</ul>` : '<p class="muted small">Торговли ещё не было. Караваны ходят по Имперскому тракту с 10-го дня, раз в 10 дней, и приходят не всегда.</p>'}`);
+  }
+
+  caravanWhen(w) {
+    const at = w.outside.next.caravan;
+    if (!Number.isFinite(at)) return 'не ожидается';
+    return `${this.waitText(w, at)}, если придёт (${Math.round(TRADE.chance * 100)}%)`;
   }
 
   // the stock, grouped: food, materials, fuel, ore, metal, luxury, ammunition
@@ -200,12 +241,13 @@ export class Panel {
       const b = w.buildings.find(x => x.key === d.id && x.done);
       return `<div class="srow"><b>${d.name}</b><span>${b ? orderText(b) : 'не построена'}</span></div>`;
     }).join('');
+    // counted by kind: type and quality, named with the "+1"
     const counts = {};
-    for (const it of w.armory) counts[it.type] = (counts[it.type] || 0) + 1;
-    const store = Object.entries(counts).map(([t, n]) => `<span class="cost">${ITEMS.get(t).short}${n > 1 ? ' ×' + n : ''}</span>`).join('') || '<span class="muted">пусто, всё на руках</span>';
+    for (const it of w.armory) { const s = itemDef(it).short; counts[s] = (counts[s] || 0) + 1; }
+    const store = Object.entries(counts).map(([s, n]) => `<span class="cost">${esc(s)}${n > 1 ? ' ×' + n : ''}</span>`).join('') || '<span class="muted">пусто, всё на руках</span>';
     const worn = {};
-    for (const a of colonists(w)) for (const it of allItems(a)) worn[it.type] = (worn[it.type] || 0) + 1;
-    const wornTxt = Object.entries(worn).map(([t, n]) => `${ITEMS.get(t).short} ${n}`).join(', ') || 'ничего';
+    for (const a of colonists(w)) for (const it of allItems(a)) { const s = itemDef(it).short; worn[s] = (worn[s] || 0) + 1; }
+    const wornTxt = Object.entries(worn).map(([s, n]) => `${esc(s)} ${n}`).join(', ') || 'ничего';
     this.set('gearbox', `${rows}<div class="slabel">На складе снаряжения</div><div class="costs">${store}</div>
       <div class="slabel">На поселенцах</div><p class="muted">${wornTxt}</p>
       <div class="slabel">Сделано ${w.stats.crafted}, сломалось ${w.stats.broken}</div>`);
@@ -299,6 +341,12 @@ export class Panel {
   creatureHtml(w, a) {
     const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
     const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(a.hp / sp.hp * 100)}%</dd>`];
+    if (a.role === 'trader' && w.caravan?.traderId === a.id) {
+      const c = w.caravan;
+      rows.push(`<dt>Караван</dt><dd>${goodsUnits(c.goods)} мест груза, ${Math.floor(c.purse)} зол. в кошельке</dd>`);
+    }
+    if (a.owner != null) rows.push(`<dt>Поклажа</dt><dd>${a.load || 0} из 20 (два ящика по 10)</dd>`);
+    if (sp.mule && a.owner == null) rows.push(`<dt>Нрав</dt><dd>${a.task?.mule ? 'в ярости' : 'спокоен'}; охотиться опасно</dd>`);
     if (sp.predator) {
       const b = boldness(a, sp.predator);
       rows.push(`<dt>Голод</dt><dd>${a.needs.food > 0.7 ? 'сыт' : a.needs.food > 0.35 ? 'голоден' : 'изголодался'} (${Math.round(a.needs.food * 100)}%)</dd>`,
@@ -306,7 +354,8 @@ export class Panel {
     }
     if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
     rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
-    const title = a.name.toLowerCase() !== sp.label ? `${esc(a.name)}, ${sp.label}` : sp.label[0].toUpperCase() + sp.label.slice(1);
+    const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : sp.label;
+    const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${who}` : who[0].toUpperCase() + who.slice(1);
     return `<div class="pc-head"><h3>${title}</h3><button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div><dl class="kv">${rows.join('')}</dl>`;
   }
 

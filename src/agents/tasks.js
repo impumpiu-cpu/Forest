@@ -13,6 +13,7 @@ import {eatMeal, plunder} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
+import {tradeOpen, attendTrade} from '../settlement/trade.js';
 
 export const TASKS = new Registry('task');
 const done = a => { a.task = null; a.think = 0; };
@@ -126,13 +127,35 @@ TASKS.registerAll([
     if (follow(w, a, 'zone', 1.3) === 'arrived') done(a);
   }},
 
+  // the evening trade with a caravan: gather round the trader's goods, a few steps from the fire
+  {id: 'trade', label: () => 'торгуется с купцом', step(w, a, task) {
+    if (!tradeOpen(w)) { done(a); return; }
+    const spot = w.caravan.spot;
+    if (!spot) { follow(w, a, 'camp'); return; }
+    if (!task.at) {
+      if (Math.hypot(spot[0] - a.x, spot[1] - a.y) < 2.4) { task.at = true; if (!task.met) { task.met = true; attendTrade(w, a); } }
+      else if (approach(w, a, spot[0], spot[1]) === null) follow(w, a, 'camp');
+      return;
+    }
+    if (!task.spot || w.rng() < 0.02) { const ang = w.rng() * Math.PI * 2, r = 1.2 + w.rng() * 1.2; task.spot = [spot[0] + Math.cos(ang) * r, spot[1] + Math.sin(ang) * r]; }
+    moveToward(w, a, task.spot[0], task.spot[1], 0.5);
+  }},
+
+  // caravan states: the caravan brain moves them itself
+  {id: 'travel', label: () => 'идёт с караваном', step() {}},
+  {id: 'camped', label: () => 'стоит лагерем у костра', step() {}},
+  {id: 'stall', label: () => 'торгует', step() {}},
+  {id: 'night', label: () => 'ночует у костра', step() {}},
+  {id: 'escort', label: () => 'охраняет караван', step() {}},
+  {id: 'pack', label: () => 'везёт поклажу', step() {}},
+
   // animal states: the animal's brain moves it itself, these entries only name the state
   {id: 'graze', label: () => 'пасётся', step() {}},
   {id: 'rest', label: () => 'дремлет', step() {}},
   {id: 'bolt', label: () => 'убегает', step() {}},
   {id: 'roam', label: () => 'рыщет', step() {}},
   {id: 'chase', label: () => 'гонит добычу', step() {}},
-  {id: 'maul', label: () => 'нападает', step() {}},
+  {id: 'maul', label: t => (t.mule ? (t.charging ? 'несётся на обидчика' : 'лягается') : 'нападает'), step() {}},
   {id: 'feed', label: () => 'ест добычу', step() {}},
 ]);
 

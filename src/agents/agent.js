@@ -75,10 +75,10 @@ export function kill(w, a, cause, by) {
   if (a.faction === 'colony') noteDeath(w, a, cause, by);
   if (by?.stats) { if (sp.id === 'wolf') { by.stats.wolves++; w.chronicle.wolvesKilled++; } else if (a.faction === 'raiders') { by.stats.raiders++; w.chronicle.raidersKilled++; } }
   if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
-  else if (sp.id === 'wolf' && by?.faction === 'colony') {
-    // a wolf killed in a fight: its hide and bones are brought home
-    for (const [r, n] of Object.entries(sp.yields || {})) w.stock[r] = (w.stock[r] || 0) + n;
-    log(w, `<b>${esc(by.name)}</b> ${g(by, 'убил', 'убила')} волка. Шкура и кости — в лагерь.`, 'danger', 'notice');
+  else if (sp.yields && by?.faction === 'colony' && by.task?.id !== 'job' && a.faction !== 'traders') {
+    // an animal killed in a fight (not on a hunt, where the hunter carries the game home): the carcass is brought in
+    for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
+    log(w, `<b>${esc(by.name)}</b> ${g(by, 'убил', 'убила')} ${sp.labelAcc || sp.label}. ${sp.id === 'wolf' ? 'Шкура и кости' : 'Мясо, шкура и кости'} — в лагерь.`, 'danger', 'notice');
   } else if (a.faction === 'raiders' && by) {
     const got = [];
     stripAll(a, got);

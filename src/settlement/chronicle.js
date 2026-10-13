@@ -21,9 +21,9 @@ export const recordOf = (w, a) => w.chronicle.people.find(p => p.id === a.id);
 export function noteDeath(w, a, cause, by) {
   const r = recordOf(w, a); if (!r) return;
   r.died = w.tick;
-  r.cause = by?.species === 'wolf' ? 'загрызли волки' : by ? 'погиб в бою с налётчиками' : `умер от ${cause}`;
+  r.cause = by?.species === 'wolf' ? 'загрызли волки' : by?.species === 'mule' ? 'затоптал мул' : by ? 'погиб в бою с налётчиками' : `умер от ${cause}`;
   if (a.gender === 'f') r.cause = r.cause.replace('погиб в бою', 'погибла в бою').replace('умер от', 'умерла от');
-  const key = by?.species === 'wolf' ? 'волки' : by ? 'налётчики' : cause;
+  const key = by?.species === 'wolf' ? 'волки' : by?.species === 'mule' ? 'мул' : by ? 'налётчики' : cause;
   w.chronicle.deaths[key] = (w.chronicle.deaths[key] || 0) + 1;
 }
 

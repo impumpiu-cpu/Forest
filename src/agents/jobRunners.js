@@ -1,6 +1,6 @@
 // Generic routines that carry out JOBS. A job picks one with its `runner` field,
 // so a new job usually needs only a data entry.
-import {JOBS} from '../data/jobs.js';
+import {JOBS, huntable} from '../data/jobs.js';
 import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
 import {follow, moveToward, approach} from './movement.js';
@@ -98,7 +98,7 @@ export const RUNNERS = {
     // the flow field leads to whichever animal is nearest by path, so keep retargeting to the nearest one
     if (!prey || prey.dead || !w.agents.includes(prey) || (task.age % 40 === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > 9)) {
       prey = null; let bd = 80 * 80;
-      for (const o of w.agents) if (job.prey.includes(o.species) && !o.dead) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
+      for (const o of huntable(w, job)) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
       task.prey = prey;
       if (!prey) { done(a); a.think = 30; a.stalking = false; return; }
     }

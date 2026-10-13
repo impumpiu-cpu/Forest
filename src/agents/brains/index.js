@@ -4,6 +4,8 @@ import {colonistBrain} from './colonist.js';
 import {raiderBrain} from './raider.js';
 import {grazerBrain} from './grazer.js';
 import {predatorBrain} from './predator.js';
+import {muleBrain} from './mule.js';
+import {caravanBrain} from './caravan.js';
 
 export const BRAINS = new Registry('brain');
-BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain, predatorBrain]);
+BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain, predatorBrain, muleBrain, caravanBrain]);

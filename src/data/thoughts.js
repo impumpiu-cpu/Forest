@@ -45,6 +45,9 @@ THOUGHTS.registerAll([
   {id: 'killedRaider', mood: 0.15, lasts: DAY, text: a => `${g(a, 'Сразил', 'Сразила')} налётчика.`},
   {id: 'grief', mood: -0.35, lasts: 2 * DAY, text: (a, c) => `Скорбит: ${c.name} ${c.f ? 'погибла' : 'погиб'}.`},
 
+  // trade
+  {id: 'tradeDay', mood: 0.12, lasts: DAY, once: DAY, text: (a, c) => `${g(a, 'Был', 'Была')} на торге у купца ${c.trader}.${c.got ? ' Купили: ' + c.got + '.' : ' Купить ничего не решились.'}`},
+
   // council
   {id: 'councilWon', mood: 0.12, lasts: DAY, text: (a, c) => `На совете ${g(a, 'говорил', 'говорила')} за ${c.choice} (${c.why}). Совет согласился.`},
   {id: 'councilLost', mood: -0.05, lasts: DAY, text: (a, c) => `На совете ${g(a, 'говорил', 'говорила')} за ${c.choice} (${c.why}), но решили иначе: ${c.decision}.`},

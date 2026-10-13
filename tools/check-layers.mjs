@@ -28,3 +28,10 @@ for (const f of files) {
 }
 if (bad.length) { console.log('Ядро зависит от оболочки:\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log(`ok   ядро (${files.filter(f => !SHELL.includes(relative(src, f).split(/[\\/]/)[0])).length} файлов) не зависит от экрана`);
+
+// every source file must at least parse (the shell is not loaded by the other tests)
+import {execFileSync} from 'node:child_process';
+const broken = [];
+for (const f of files) { try { execFileSync(process.execPath, ['--check', f], {stdio: 'pipe'}); } catch (e) { broken.push(`${relative(src, f)}: ${String(e.stderr).split('\n').find(l => /Error/.test(l)) || 'не разбирается'}`); } }
+if (broken.length) { console.log('Файлы с синтаксической ошибкой:\n  ' + broken.join('\n  ')); process.exit(1); }
+console.log(`ok   все ${files.length} файлов разбираются`);

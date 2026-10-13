@@ -12,8 +12,12 @@ import {DAY} from '../core/time.js';
 import {RAIDS, WILDLIFE, PREDATORS} from '../data/presets.js';
 import {NEIGHBOURS} from '../data/neighbours.js';
 import {raidSize, settlerWaitDays} from '../settlement/threat.js';
+import {TRADE} from '../data/trade.js';
+import {HOUR, dayOf} from '../core/time.js';
 
 const raidDist = w => RAIDS[w.cfg.raids].dist;
+
+const caravanDay = (w, day, rng) => Math.max(w.tick + 1, day * DAY + (TRADE.setOut[0] + rng() * (TRADE.setOut[1] - TRADE.setOut[0])) * HOUR);
 
 export const scripted = {
   id: 'scripted', label: 'Сценарий',
@@ -36,6 +40,17 @@ export const scripted = {
       first: w => w.tick + 1500,
       offer: (w, rng) => { const k = PREDATORS[w.cfg.predators].wolves; return k && rng() <= k ? 2 + Math.floor(rng() * (k >= 1 ? 3 : 2)) : 0; },
       next: w => w.tick + 1500},
+    // now and then a wild mule wanders in from the woods
+    mules: {from: 'wilds',
+      first: w => w.tick + 2 * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.35 ? 1 : 0),
+      next: (w, rng) => w.tick + (1.5 + rng()) * DAY},
+    // a caravan may come on day firstDay, then every everyDays: each time it sets out with `chance`,
+    // in the morning, so that it reaches the camp before the evening council (data/trade.js)
+    caravan: {from: 'empire',
+      first: (w, rng) => caravanDay(w, TRADE.firstDay - 1, rng),
+      offer: (w, rng) => (rng() < TRADE.chance ? 1 : 0),
+      next: (w, rng) => caravanDay(w, dayOf(w.tick) + TRADE.everyDays, rng)},
     // a band sets out every dist/2 days (a little sooner after each raid), sized by the rumours
     raiders: {from: 'greywolves',
       first: (w, rng) => scripted.flows.raiders.next(w, rng),

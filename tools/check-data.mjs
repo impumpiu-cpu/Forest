@@ -15,6 +15,8 @@ import {THOUGHTS} from '../src/data/thoughts.js';
 import {STOCKS} from '../src/data/presets.js';
 import {RUNNERS} from '../src/agents/jobRunners.js';
 import {GLYPHS, LOOKS} from '../src/render/looks.js';
+import {TRADE} from '../src/data/trade.js';
+import {MIGRATIONS} from '../src/data/migrations.js';
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
@@ -70,14 +72,26 @@ for (const d of ITEMS.all()) {
   if (d.slot === 'body' && !d.color) warn(`предмет ${d.id}: броня без color, обводка не покажет её`);
   if (d.ranged?.ammo) res(`предмет ${d.id}`, d.ranged.ammo);
   for (const job of Object.keys(d.tool || {})) if (!JOBS.has(job)) err(`предмет ${d.id}: tool для неизвестной работы «${job}»`);
-  if (!RECIPES.all().some(r => r.makes?.item === d.id) && !Object.values(STOCKS).some(s => s.kit?.includes(d.id))) warn(`предмет ${d.id}: его нельзя сделать и нет в стартовых наборах`);
+  if (!d.tradeOnly && !RECIPES.all().some(r => r.makes?.item === d.id) && !Object.values(STOCKS).some(s => s.kit?.includes(d.id))) warn(`предмет ${d.id}: его нельзя сделать и нет в стартовых наборах`);
+  if (d.tradeOnly && RECIPES.all().some(r => r.makes?.item === d.id)) err(`предмет ${d.id}: tradeOnly, но есть рецепт`);
+  if (!(d.value > 0)) warn(`предмет ${d.id}: нет цены value, торговец отдаст его даром`);
 }
 
 for (const s of SPECIES.all()) { costs(`вид ${s.id}`, s.yields); if (!LOOKS[s.look?.shape]) err(`вид ${s.id}: нет рисовальщика «${s.look?.shape}»`); }
 for (const [k, s] of Object.entries(STOCKS)) { costs(`запасы ${k}`, s.stock); (s.kit || []).forEach(i => item(`запасы ${k}`, i)); }
 
+// trade: wares and the guards' kit must exist; every resource the colony might sell has a price
+for (const x of TRADE.WARES) {
+  (x.resource || []).forEach(r => res('товары торговца', r));
+  if (Array.isArray(x.items)) x.items.forEach(i => item('товары торговца', i));
+}
+TRADE.guardKit.forEach(k => item('снаряжение охраны', k.type));
+for (const r of RESOURCES.all()) if (r.sell !== false && !(r.value > 0)) warn(`ресурс ${r.id}: нет цены value, торговцу его не продать`);
+for (const m of MIGRATIONS.all()) if (m.species && !SPECIES.has(m.species)) err(`миграция ${m.id}: нет вида «${m.species}»`);
+
 // every resource should come from somewhere
-const sources = new Set([...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource),
+const sources = new Set(['gold',   // gold comes from trade
+...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource),
   ...SPECIES.all().flatMap(s => Object.keys(s.yields || {}))]);
 for (const r of RESOURCES.all()) if (!sources.has(r.id)) warn(`ресурс ${r.id}: ниоткуда не добывается`);
 

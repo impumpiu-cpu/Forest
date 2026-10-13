@@ -21,8 +21,12 @@ export const provider = w => PROVIDERS.get(w.outside.provider);
 
 export function initOutside(w, providerId = 'scripted') {
   w.outside = {provider: providerId, next: {}, due: {}, seen: colonyReport(w), outbox: []};
-  const P = provider(w);
-  for (const [id, f] of Object.entries(P.flows)) w.outside.next[id] = f.first(w, w.rng);
+  ensureFlows(w);
+}
+
+// flows that this game has not scheduled yet (a save from before they existed) get their first date
+export function ensureFlows(w) {
+  for (const [id, f] of Object.entries(provider(w).flows)) if (!(id in w.outside.next)) w.outside.next[id] = f.first(w, w.rng);
 }
 
 // the colony sends something out of the map

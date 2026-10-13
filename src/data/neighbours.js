@@ -11,6 +11,8 @@ NEIGHBOURS.registerAll([
     note: 'материнское племя: отсюда уходят искать новую жизнь'},
   {id: 'greywolves', label: '«Серые волки»', kind: 'enemy', dist: null, flows: ['raiders'],   // distance comes from the raids preset
     note: 'стойбище разбойников; чем ближе оно, тем чаще набеги'},
-  {id: 'wilds', label: 'Дикие леса', kind: 'wild', dist: 0, flows: ['hares', 'wolves'],
+  {id: 'empire', label: 'Имперский тракт', kind: 'trade', dist: 5, flows: ['caravan'],
+    note: 'торговая дорога: время от времени по ней приходят караваны с имперским золотом и товаром'},
+  {id: 'wilds', label: 'Дикие леса', kind: 'wild', dist: 0, flows: ['hares', 'wolves', 'mules'],
     note: 'леса за краем карты: оттуда приходят звери'},
 ]);

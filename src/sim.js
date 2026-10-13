@@ -7,6 +7,7 @@ import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
 import {stepCouncil} from './settlement/council.js';
+import {stepTrade} from './settlement/trade.js';
 import {stepOutside, tell} from './outside/index.js';
 import {colonyReport} from './outside/report.js';
 import {sampleChronicle} from './settlement/chronicle.js';
@@ -54,6 +55,7 @@ export function step(w) {
   separate(w);
   if (w.fx.length) { for (const f of w.fx) f.t--; w.fx = w.fx.filter(f => f.t > 0); }   // shot traces fade
   stepCouncil(w);
+  stepTrade(w);
   stepOutside(w);
   sampleChronicle(w);
   checkEnd(w);

@@ -19,6 +19,7 @@ LOG_TOPICS.registerAll([
   {id: 'build',    label: 'стройка',            level: 'notice'},
   {id: 'people',   label: 'поселенцы',          level: 'notice'},
   {id: 'council',  label: 'совет',              level: 'notice'},
+  {id: 'trade',    label: 'торговля',           level: 'notice'},
   {id: 'craft',    label: 'ремесло',            level: 'info'},
   {id: 'wildlife', label: 'звери',              level: 'info'},
   {id: 'weather',  label: 'погода и огонь',     level: 'info'},

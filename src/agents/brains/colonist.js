@@ -1,7 +1,7 @@
 // Colonist brain: utility AI. Every option gets a score; the best one becomes the task.
 // Needs come from NEEDS, work from JOBS (weighted by personal preference), plus emergencies.
 import {NEEDS} from '../../data/needs.js';
-import {JOBS} from '../../data/jobs.js';
+import {JOBS, huntable} from '../../data/jobs.js';
 import {SPECIES} from '../../data/species.js';
 import {nightness, ambientTemp} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
@@ -15,6 +15,7 @@ import {stationHasWork} from '../../settlement/crafting.js';
 import {outfit} from '../equipment.js';
 import {think} from '../mind.js';
 import {agentInZone} from '../../settlement/zone.js';
+import {tradeOpen} from '../../settlement/trade.js';
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
@@ -23,7 +24,7 @@ function decide(w, a) {
   let campHot = 0; for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
   const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,
-    preyCount: ofSpecies(w, 'hare').length, favourites: favourites(w),
+    preyCount: huntable(w, JOBS.get('hunt')).length, favourites: favourites(w),
     orders: new Proxy({}, {get: (o, station) => stationHasWork(w, station, a)})};
   const opts = [];
   for (const id of SPECIES.get(a.species).needs) {
@@ -43,12 +44,13 @@ function decide(w, a) {
   }
   opts.push([{id: 'idle'}, 0.15]);
   if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);
+  if (tradeOpen(w)) opts.push([{id: 'trade'}, 1.1]);   // right after the council, the second gathering of the evening
   const brave = a.mods.bravery;
   if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave]);
   // something is hunting me: brave and healthy people fight back, the rest run for the camp
   const hunter = w.agents.find(o => !o.dead && o.task?.id === 'maul' && o.task.target === a);
   if (hunter) {
-    a.mem.wolf += 0.05;
+    if (hunter.species === 'wolf') a.mem.wolf += 0.05;
     opts.push(brave * a.hp > 0.85 ? [{id: 'fight', target: hunter}, 1.5] : [{id: 'runHome'}, 1.5]);
   }
   const enemy = nearestHostile(w, a, 16);

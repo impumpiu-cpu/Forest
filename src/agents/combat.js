@@ -25,6 +25,8 @@ const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack |
 // Inside the settlement zone colonists fight harder and a palisade shields them.
 export function damage(w, by, t, raw, {melee = true} = {}) {
   const g = ensureGear(t);
+  // the victim remembers who hurt it and from how far (a mule charges whoever shot it)
+  t.hurtBy = {id: by.id, tick: w.tick, far: !melee};
   if (melee && g.block && w.rng() < g.block) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
   const home = by.faction === 'colony' && agentInZone(w, by) ? 1.25 : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
@@ -32,7 +34,7 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
   t.hp -= dmg;
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
-  const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : 'raid';
+  const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
   if (t.hp <= 0) kill(w, t, 'ран', by);
   return dmg;

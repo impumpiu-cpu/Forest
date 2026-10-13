@@ -8,9 +8,40 @@ import {SPECIES} from '../data/species.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {think} from './mind.js';
+import {qualityOf} from '../data/quality.js';
 
-export const def = inst => ITEMS.get(inst.type);
-export const newItem = (type, extra = {}) => ({type, dur: ITEMS.get(type).dur, ...extra});
+// The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
+// made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
+// longer life, a "+1" in its name. Everything else simply reads def(item) and needs no special case.
+const finer = new Map();
+export function itemDef(type, q = 0) {
+  const base = ITEMS.get(type);
+  if (!q || base.quality === false) return base;
+  const key = type + ':' + q;
+  let d = finer.get(key);
+  if (!d) {
+    const Q = qualityOf(q);
+    d = {...base, q, base,
+      label: `${base.label} ${Q.label}`, short: `${base.short} ${Q.label}`,
+      dur: base.dur * (1 + Q.dur)};
+    if (base.melee) d.melee = {...base.melee, dmg: base.melee.dmg * (1 + Q.hit)};
+    if (base.ranged) d.ranged = {...base.ranged, dmg: base.ranged.dmg * (1 + Q.hit)};
+    if (base.block) d.block = Math.min(0.75, base.block + Q.guard);
+    if (base.armor) d.armor = Math.min(0.8, base.armor + Q.guard);
+    if (base.warmth) d.warmth = Math.min(0.9, base.warmth + Q.warmth);
+    if (base.tool) d.tool = Object.fromEntries(Object.entries(base.tool).map(([j, m]) => [j, 1 + (m - 1) * (1 + Q.tool) + Q.tool * 0.5]));
+    finer.set(key, d);
+  }
+  return d;
+}
+export const def = inst => itemDef(inst.type, inst.q);
+export const newItem = (type, extra = {}) => ({type, ...extra, dur: itemDef(type, extra.q).dur});
+
+// price of one piece in imperial gold: the plain piece plus the step up in quality
+export function itemPrice(type, q = 0) {
+  const base = ITEMS.get(type), Q = qualityOf(q);
+  return (base.value || 0) + (base.slot === 'body' || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0);
+}
 export const emptySlots = () => Object.fromEntries(SLOTS.map(s => [s.id, null]));
 
 export function handItems(a) {
@@ -86,11 +117,13 @@ export function putOn(a, inst, slot, spill) {
   return d;
 }
 
-// give an agent a list of item types (raider kits, starting gear); returns what did not fit
+// give an agent a list of items (raider kits, starting gear, a guard's kit); each is a type id or
+// {type, q} for a finer piece; returns what did not fit
 export function dress(a, types, ammo = 0) {
   const spill = [];
   for (const t of types) {
-    const inst = newItem(t), d = def(inst);
+    const spec = typeof t === 'string' ? {type: t} : t;
+    const inst = newItem(spec.type, spec.q ? {q: spec.q} : {}), d = def(inst);
     if (d.holds) inst.ammo = ammo;
     if (d.slot === 'body') putOn(a, inst, 'body', spill);
     else if (d.slot === 'back') putOn(a, inst, 'back', spill);
@@ -147,8 +180,8 @@ function handsValue(w, a, hands) {
 
 // best loadout from the agent's own gear plus the store; returns {hands, two, body, back, score}
 function bestLoadout(w, a, pool) {
-  const byType = new Map();   // keep one instance per type (the most durable) to keep the search small
-  for (const it of pool) { const k = byType.get(it.type); if (!k || it.dur > k.dur) byType.set(it.type, it); }
+  const byType = new Map();   // keep one instance per kind (type and quality, the most durable) to keep the search small
+  for (const it of pool) { const key = it.type + ':' + (it.q || 0), k = byType.get(key); if (!k || it.dur > k.dur) byType.set(key, it); }
   const items = [...byType.values()];
   const hand = items.filter(it => def(it).slot === 'hand');
   const opts = [{hands: []}];

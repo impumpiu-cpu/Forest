@@ -11,6 +11,7 @@ import {cellOf, walkable} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, ascend} from '../movement.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {attack} from '../combat.js';
+import {SPECIES as SP} from '../../data/species.js';
 import {stepBody} from '../body.js';
 import {kill} from '../agent.js';
 import {log} from '../../core/log.js';
@@ -31,6 +32,10 @@ function nearest(w, a, species, r, filter = () => true) {
 // how many others of the victim's kind stand close to it
 const company = (w, v, r) => w.agents.filter(o => o !== v && !o.dead && o.species === v.species && dist(o, v) < r).length;
 const packOf = (w, a) => w.agents.filter(o => !o.dead && o.pack === a.pack);
+// big game (a mule) is prey only once it is badly hurt
+const weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < SP.get(o.species).hp * P.weakBelow;
+const preyKinds = P => [...P.prey, ...(P.weakPrey || [])];
+
 export const boldness = (a, P) => clamp((P.hungry - a.needs.food) / (P.hungry - P.starving), 0, 1);
 
 function startMaul(w, a, v, b) {
@@ -88,6 +93,18 @@ export const predatorBrain = {
       if (!t.anchor || dist(a, t.anchor) > 3) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
       if (w.tick - t.since > 90) { (a.ignore || (a.ignore = new Map())).set(prey.id, w.tick + 600); a.task = {id: 'roam'}; return; }
       if (approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina)) === null) { (a.ignore || (a.ignore = new Map())).set(prey.id, w.tick + 600); a.task = {id: 'roam'}; return; }
+      // big game is not caught with one bite: the pack bites it down while it kicks back
+      if (SP.get(prey.species).big) {
+        if (dist(a, prey) < 1.0) {
+          attack(w, a, prey);
+          if (prey.dead) {
+            w.stats.wolfKills++;
+            const eaters = pack.filter(m => dist(m, a) < 10);
+            for (const m of eaters) m.task = {id: 'feed', left: P.feedTicks * 2, gain: P.bigMeal / eaters.length / (P.feedTicks * 2)};
+          }
+        }
+        return;
+      }
       if (dist(a, prey) < 0.7) {
         kill(w, prey, 'зубов', a); w.stats.wolfKills++;
         // the pack shares the kill: everyone close enough gets a part of the meal
@@ -127,7 +144,7 @@ export const predatorBrain = {
     // prey that runs right under its nose is too good to pass up; a hungry wolf looks further
     const reach = food < P.hungry ? P.sight : food < P.sated ? P.obvious : 0;
     if (reach) {
-      const prey = nearest(w, a, P.prey, reach, o => !agentInZone(w, o) && !(a.ignore?.get(o.id) > w.tick));
+      const prey = nearest(w, a, preyKinds(P), reach, o => weakEnough(o, P) && !agentInZone(w, o) && !(a.ignore?.get(o.id) > w.tick));
       if (prey) { a.task = {id: 'chase', target: prey}; return; }
     }
     // people: only when boldness (plus the cover of night) is high enough

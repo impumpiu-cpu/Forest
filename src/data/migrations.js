@@ -4,7 +4,8 @@
 //   accept(w, n, rng) — how many of the n offered actually arrive (room, food, what the land feeds);
 //   blocked(w)        — for the panel: why a due arrival is held up;
 //   retry             — a due arrival that could not happen is tried again this often;
-//   species/faction/init/kit/groupInit/message — the group itself.
+//   species/faction/init/kit/groupInit/message — the group itself;
+//   members(w, rng) — a mixed group instead: [{species, faction?, init(a, w)?, kit?}, …]
 import {Registry} from '../core/registry.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
@@ -12,6 +13,8 @@ import {WILDLIFE} from './presets.js';
 import {T} from './terrain.js';
 import {HOUR} from '../core/time.js';
 import {raidThreat} from '../settlement/threat.js';
+import {TRADE} from './trade.js';
+import {startCaravan} from '../settlement/trade.js';
 
 export const MIGRATIONS = new Registry('migration');
 
@@ -38,6 +41,31 @@ MIGRATIONS.registerAll([
     // members share a pack id; the first one leads
     groupInit: group => { const pack = group[0].id; for (const a of group) { a.pack = pack; a.name = 'Волк'; } },
     message: (w, group, side) => `С ${side} пришла стая волков: ${group.length}. Одному в лес лучше не ходить.`},
+
+  // a wild mule wanders onto the meadows now and then; never more than two at a time
+  {id: 'mules', species: 'mule', faction: 'wild', minDist: 25, topic: 'wildlife',
+    accept: (w, n) => Math.max(0, Math.min(n, 2 - w.agents.filter(o => o.species === 'mule' && o.faction === 'wild').length)),
+    init: a => { a.name = 'Мул'; },
+    message: (w, group, side) => `С ${side} на луга вышел дикий мул. Охотиться на него опасно: он лягается и бросается на стрелков.`},
+
+  // a trader's caravan: the trader, guards in imperial iron, and pack mules with crates.
+  // One caravan at a time; the colony has to be alive to be worth the trip.
+  {id: 'caravan', faction: 'traders', minDist: 25, topic: 'trade', level: 'notice',
+    accept: (w, n) => (w.caravan || !colonists(w).length ? 0 : n),
+    members: (w, rng) => {
+      const pickName = list => list[Math.floor(rng() * list.length)];
+      const out = [{species: 'human', init: a => { a.role = 'trader'; [a.name, a.gender] = pickName(TRADE.traderNames); }}];
+      for (let k = 0; k < TRADE.guards; k++) out.push({species: 'human', kit: TRADE.guardKit,
+        init: a => { a.role = 'guard'; a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.hp = a.maxHp = TRADE.guardHp; a.mods.bravery = 1.5; a.skill = {hunt: 0.5}; }});
+      const mules = TRADE.mules[0] + Math.floor(rng() * (TRADE.mules[1] - TRADE.mules[0] + 1));
+      for (let k = 0; k < mules; k++) out.push({species: 'mule', init: a => { a.name = 'Вьючный мул'; }});
+      return out;
+    },
+    groupInit: (group, w) => startCaravan(w, group),
+    message: (w, group, side) => {
+      const mules = group.filter(a => a.species === 'mule').length;
+      return `С ${side} по тракту идёт торговый караван: купец, охрана и ${mules} ${plural(mules, 'вьючный мул', 'вьючных мула', 'вьючных мулов')}.`;
+    }},
 
   // size, gear, toughness and aim grow with the threat the raiders see
   {id: 'raiders', species: 'human', faction: 'raiders', minDist: 40, topic: 'danger',

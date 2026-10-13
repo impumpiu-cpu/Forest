@@ -51,5 +51,27 @@ SPECIES.registerAll([
       calm: 900,                 // after a try at people the pack waits this long (less when starving)
       bigMeal: 3,                // a person feeds the whole pack this much
       wanderOff: 0.0012,         // per tick, a starving pack with no prey in sight leaves for other grounds
+      weakPrey: ['mule'],        // big game it dares to hunt only when the animal is badly hurt…
+      weakBelow: 0.35,           // …below this share of its health; it is bitten down, not caught at once
+    }},
+
+  // The mule: a big, stubborn grazer, a small bull really. It does not run from people; it kicks
+  // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves
+  // dare only a badly wounded one. Wild mules wander in now and then; traders bring pack mules.
+  // big: hunters and wolves fight it rather than finish it with one bite or arrow.
+  {id: 'mule', label: 'мул', labelAcc: 'мула', hp: 3.2, speed: 0.11, needs: [], brain: 'mule', big: true, legend: 'мул',
+    heatHarm: 62, look: {shape: 'mule', size: 0.85, color: '#7a5232'},
+    attack: {power: 1.9, cooldown: 16},
+    yields: {meat: 9, hide: 3, bone: 4},
+    killMessage: name => `Мул затоптал поселенца: <b>${name}</b>.`,
+    mule: {
+      kickRange: 1.1,            // close enough to kick
+      charge: 2.0,               // sprint when charging someone who hit it from afar
+      chargeHit: 1.5,            // the first blow after a run hits this much harder
+      chargeFrom: 2.2,           // a hit from further than this makes it charge
+      grudge: 360,               // how long it keeps after whoever hurt it
+      giveUp: 22,                // …unless they get this far away
+      fleeBelow: 0.3,            // badly hurt: it limps off instead
+      leaveChance: 0.0002,       // per tick, a wild mule wanders off the map
     }},
 ]);

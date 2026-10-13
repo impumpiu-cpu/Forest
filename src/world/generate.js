@@ -13,6 +13,7 @@ import {recomputeZone} from '../settlement/zone.js';
 import {newChronicle} from '../settlement/chronicle.js';
 import {findLakes} from './lakes.js';
 import {layOre} from './ores.js';
+import {newTradeState} from '../settlement/trade.js';
 
 function noiseLayer(rnd, w, h, cell) {
   const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
@@ -79,7 +80,7 @@ export function createWorld(cfg) {
     wind: {dir: cfg.windDir, str: cfg.windStr / 100, x: 0, y: 0},
     weather: {rain: 0, rainLeft: 0},
     stats: {fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0, crafted: 0, broken: 0, raids: 0},
-    campLit: false, mods: emptyMods(), cache: {}, outside: null, chronicle: newChronicle(), over: null,
+    campLit: false, mods: emptyMods(), cache: {}, outside: null, caravan: null, trade: newTradeState(), chronicle: newChronicle(), over: null,
     council: {lastDay: -1, goal: null, votes: [], args: [], decision: 'Первый совет соберётся сегодня вечером у костра.'},
     logLines: [], logVersion: 0, nav: null,
   };

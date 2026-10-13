@@ -24,7 +24,7 @@ export const LOOKS = {
   // a disc in the faction colour; its rim shows the body armour, glyphs show what is in the hands
   person(ctx, a, px, py, r, color) {
     ctx.fillStyle = a.sleeping ? shade(color, 0.65) : color;
-    const body = a.equip?.body ? ITEMS.get(a.equip.body.type) : null;
+    const body = a.equip?.body ? ITEMS.get(a.equip.body.type) : null;   // the plain piece's colour
     ctx.strokeStyle = body ? body.color : '#0e100b'; ctx.lineWidth = body ? Math.max(1.8, r * 0.38) : 1.5;
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     if (!a.equip) return;
@@ -44,6 +44,23 @@ export const LOOKS = {
     ctx.ellipse(px - r * 0.35, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, -0.2, 0, Math.PI * 2);
     ctx.ellipse(px + r * 0.15, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, 0.2, 0, Math.PI * 2);
     ctx.fill();
+  },
+  // a big brown disc with a short mane; a pack mule carries two crates, one on each side,
+  // filled to how much of its load is left
+  mule(ctx, a, px, py, r, color) {
+    if (a.owner != null) {
+      const cap = 20, k = Math.min(1, (a.load || 0) / cap), s = r * 0.85;
+      for (const side of [-1, 1]) {
+        const x = px + side * (r + s * 0.55) - s / 2, y = py - s / 2;
+        ctx.fillStyle = '#3b2a17'; ctx.fillRect(x, y, s, s);
+        ctx.fillStyle = '#c7a066'; ctx.fillRect(x, y + s * (1 - k), s, s * k);
+        ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1; ctx.strokeRect(x, y, s, s);
+      }
+    }
+    ctx.fillStyle = a.task?.mule ? '#9a5a3a' : color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#3a2614'; ctx.lineWidth = Math.max(1.5, r * 0.25);
+    ctx.beginPath(); ctx.arc(px, py, r * 0.55, -2.4, -0.7); ctx.stroke();
   },
   // long grey body, pointed ears, tail; facing the way it last moved
   wolf(ctx, a, px, py, r, color) {

@@ -11,6 +11,8 @@ import {Navigation} from '../nav/navigation.js';
 import {newMemory} from '../agents/agent.js';
 import {VERSION} from '../version.js';
 import {ensureOre} from './ores.js';
+import {newTradeState} from '../settlement/trade.js';
+import {ensureFlows} from '../outside/index.js';
 import {recomputeMods} from '../settlement/mods.js';
 import {RESOURCES} from '../data/resources.js';
 import {drawFoodPrefs} from '../data/foods.js';
@@ -42,6 +44,7 @@ export function loadWorld(save) {
   if (!save || save.format !== SAVE_FORMAT) throw new Error('Это не сохранение «Тёплого Брода» или оно из несовместимой версии.');
   const {world: w, nav} = decode(save.tree, {externals: externals()});
   ensureOre(w);
+  w.trade ??= newTradeState(); w.caravan ??= null;
   recomputeMods(w);   // building effects as this version defines them
   for (const r of RESOURCES.all()) w.stock[r.id] ??= 0;
   w.rng = mulberry(0); w.rng.state = save.rng;
@@ -55,6 +58,7 @@ export function loadWorld(save) {
   // colonists from before food preferences: give them some, the same every time this save is loaded
   for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};
+  ensureFlows(w);   // arrivals added since the save get their first date (draws from the restored random stream)
   return w;
 }
 

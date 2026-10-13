@@ -37,6 +37,17 @@ const foodWant = (w, ctx, job, k = 1, extra = 0) => {
   return want(ctx.food, ctx.pop, 4, 8) * (0.7 + 0.3 * f.nutrition) * k + craving + extra;
 };
 
+// what hunters go after: their usual prey; big dangerous game (`lastResort`, a mule) only when
+// there is nothing else on the map and the colony is going hungry
+export function huntable(w, job) {
+  const usual = w.agents.filter(o => !o.dead && job.prey.includes(o.species));
+  if (usual.length || !job.lastResort) return usual;
+  const pop = w.agents.filter(o => o.faction === 'colony').length;
+  const hungry = RESOURCES_FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0) < pop * 2;
+  return hungry ? w.agents.filter(o => !o.dead && o.faction === 'wild' && job.lastResort.includes(o.species)) : [];
+}
+const RESOURCES_FOOD = () => FOODS.all();
+
 // craft jobs: wanted with `value` while one of their stations has an order to work on
 const atStations = value => (w, ctx, job) => (job.stations.some(s => ctx.orders[s]) ? value : -1);
 
@@ -87,7 +98,7 @@ JOBS.registerAll([
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
 
   {id: 'hunt', label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
-    runner: 'hunt', nav: 'prey', prey: ['hare'], food: 'meat',
+    runner: 'hunt', nav: 'prey', prey: ['hare'], lastResort: ['mule'], food: 'meat',
     canDo: (w, a) => !!a.gear?.rangedReady,
     desire: (w, ctx, job) => (ctx.preyCount > 0 ? foodWant(w, ctx, job, 0.75, 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0)) : -1)},
 
