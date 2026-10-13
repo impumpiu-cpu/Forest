@@ -3,7 +3,7 @@ import {BUILDINGS} from '../data/buildings.js';
 
 export function emptyMods() {
   return {
-    add: {beds: 0, popCap: 0, coolCamp: 0, huntRange: 0},
+    add: {beds: 0, popCap: 0, coolCamp: 0, huntRange: 0, bedWarmth: 0},
     mul: {spoil: 1, defense: 1, loot: 1, douse: 1, wear: 1},
     yield: {}, jobSpeed: {}, toolWear: {}, best: {},
   };

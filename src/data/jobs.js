@@ -16,6 +16,8 @@ import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
 import {FOODS} from './foods.js';
 import {PLANTS, plantLayer} from './plants.js';
+import {season} from './seasons.js';
+import {fields, needsWork} from '../settlement/farming.js';
 
 const HERBS_KEEP = 10;   // the healer picks herbs while the stock is below this
 import {lakeBeside, fishable} from '../world/lakes.js';
@@ -42,9 +44,12 @@ const foodWant = (w, ctx, job, k = 1, extra = 0) => {
 
 // what hunters go after: their usual prey; big dangerous game (`lastResort`, a mule) only when
 // there is nothing else on the map and the colony is going hungry
+// (a boar, `risky`) only when there is no gentler game on the map
 export function huntable(w, job) {
   const usual = w.agents.filter(o => !o.dead && job.prey.includes(o.species));
-  if (usual.length || !job.lastResort) return usual;
+  if (usual.length) return usual;
+  const risky = w.agents.filter(o => !o.dead && (job.risky || []).includes(o.species));
+  if (risky.length || !job.lastResort) return risky;
   const pop = w.agents.filter(o => o.faction === 'colony').length;
   const hungry = RESOURCES_FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0) < pop * 2;
   return hungry ? w.agents.filter(o => !o.dead && o.faction === 'wild' && job.lastResort.includes(o.species)) : [];
@@ -63,7 +68,8 @@ JOBS.registerAll([
 
   {id: 'chop', label: 'рубить лес', short: 'рубка', verb: 'рубит лес', preferable: true,
     runner: 'harvest', nav: 'trees', resource: 'wood', carry: 2, time: 26, memory: 'walkWood',
-    desire: (w, ctx) => (w.stock.wood < 25 ? 0.55 : w.stock.wood < 40 ? 0.2 : 0.03),
+    // wood is fuel too: with the fire about to die everyone thinks of logs first
+    desire: (w, ctx) => (w.stock.wood < 8 ? 0.95 : w.stock.wood < 25 ? 0.55 : w.stock.wood < 40 ? 0.2 : 0.03),
     valid: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.25 && w.grid.fire[i] === 0,
     take: (w, i) => {
       const g = w.grid; g.wood[i] -= 0.35;
@@ -101,8 +107,9 @@ JOBS.registerAll([
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
 
   {id: 'hunt', label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
-    runner: 'hunt', nav: 'prey', prey: ['hare'], lastResort: ['mule'], food: 'meat',
+    runner: 'hunt', nav: 'prey', prey: ['hare', 'deer', 'fox'], risky: ['boar'], lastResort: ['mule'], food: 'meat',
     canDo: (w, a) => !!a.gear?.rangedReady,
+    // hides and bones for the crafts, furs for the traders: hunting is wanted beyond food too
     desire: (w, ctx, job) => (ctx.preyCount > 0 ? foodWant(w, ctx, job, 0.75, 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0)) : -1)},
 
   {id: 'craft', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
@@ -116,6 +123,20 @@ JOBS.registerAll([
 
   {id: 'jewel', label: 'делать украшения', short: 'ювелир', verb: 'делает украшения', preferable: true,
     runner: 'craft', stations: ['jeweler'], desire: atStations(0.35)},
+
+  // field work: sow empty plots in spring and summer, reap ripe ones (settlement/farming.js)
+  {id: 'farm', label: 'работать в поле', short: 'поле', verb: 'работает в поле', preferable: true,
+    runner: 'farm', nav: 'fieldwork', requires: 'field', carry: 4, time: 16,
+    desire: (w) => (fields(w).some(b => b.plots.some(p => needsWork(w, p))) ? 0.55 : -1)},
+
+  {id: 'saw', label: 'пилить тёс', short: 'тёс', verb: 'пилит тёс', preferable: true,
+    runner: 'craft', stations: ['sawmill'], desire: atStations(0.45)},
+
+  {id: 'weave', label: 'ткать', short: 'ткач', verb: 'ткёт холст', preferable: true,
+    runner: 'craft', stations: ['loom'], desire: atStations(0.4)},
+
+  {id: 'pottery', label: 'лепить горшки', short: 'гончар', verb: 'лепит горшки', preferable: true,
+    runner: 'craft', stations: ['potter'], desire: atStations(0.4)},
 
   {id: 'preserve', label: 'делать заготовки', short: 'заготовки', verb: 'вялит и солит припасы', preferable: true,
     runner: 'craft', stations: ['dryrack'], desire: atStations(0.5)},
@@ -140,6 +161,24 @@ JOBS.registerAll([
     runner: 'build', nav: 'sites',
     desire: (w, ctx) => (ctx.openSites ? 0.6 : -1)},
 ]);
+
+// gathering jobs for wild beds (data/plants.js `job`): wanted while the stock is below `keep`
+// and the season allows; a picking may bring something extra (`also`) or hurt (`hurt`, bee stings)
+for (const p of PLANTS.filter(x => x.job)) {
+  const J = p.job, key = plantLayer(p.id);
+  const inSeason = w => !p.seasons || p.seasons.includes(season(w).id);
+  JOBS.register({id: J.id, label: J.label, short: J.short, verb: J.verb, preferable: true,
+    runner: 'harvest', nav: key, resource: p.resource, carry: J.carry, time: J.time,
+    desire: (w, ctx) => (!inSeason(w) ? -1 : (w.stock[p.resource] || 0) < J.keep ? 0.3 + 0.2 * (1 - (w.stock[p.resource] || 0) / J.keep) : -1),
+    valid: (w, i) => inSeason(w) && w.grid[key][i] >= p.ripe && w.grid.fire[i] === 0,
+    take: (w, i, a) => {
+      w.grid[key][i] -= p.take; if (w.grid[key][i] < p.ripe) w.nav.dirty(key);
+      if (J.hurt && a) { a.hp -= J.hurt * (0.5 + w.rng()); if (a.mem) a.mem.stung = (a.mem.stung || 0) + 0.2; }
+      const got = [p.resource];
+      for (const [r, ch] of Object.entries(p.also || {})) if (w.rng() < ch) got.push(r);
+      return got;
+    }});
+}
 
 // a craft job opens as soon as one of its stations is built
 for (const j of JOBS.all()) if (j.runner === 'craft' && !j.requires) j.requires = j.stations;

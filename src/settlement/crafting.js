@@ -6,7 +6,7 @@ import {RECIPES} from '../data/recipes.js';
 import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {log} from '../core/log.js';
-import {colonists, has} from './query.js';
+import {colonists, has, foodTotal} from './query.js';
 import {allItems, newItem} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {RESOURCES} from '../data/resources.js';
@@ -51,6 +51,7 @@ function makeCraftContext(w) {
     bows: owned('bow'),
     has: b => has(w, b),
     fishing: w.lakes.some(fishable),
+    food: foodTotal(w),
     season: season(w).id, drying: season(w).drying,
     stockpile: {spring: 0.7, summer: 1, autumn: 1.6, winter: 1}[season(w).id] ?? 1,
     stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),

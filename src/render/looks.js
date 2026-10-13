@@ -45,6 +45,43 @@ export const LOOKS = {
     ctx.ellipse(px + r * 0.15, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, 0.2, 0, Math.PI * 2);
     ctx.fill();
   },
+  // deer: a long tan body with a pale rump and branching antlers
+  deer(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.25, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#efe4cc'; ctx.beginPath(); ctx.arc(-r * 1.05, -r * 0.1, r * 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(r * 1.2, -r * 0.55, r * 0.4, r * 0.32, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#e8dcc0'; ctx.lineWidth = Math.max(1, r * 0.14); ctx.beginPath();
+    ctx.moveTo(r * 1.1, -r * 0.8); ctx.lineTo(r * 0.9, -r * 1.6); ctx.moveTo(r * 0.95, -r * 1.25); ctx.lineTo(r * 0.6, -r * 1.45);
+    ctx.moveTo(r * 1.3, -r * 0.8); ctx.lineTo(r * 1.5, -r * 1.6); ctx.stroke();
+    ctx.restore();
+  },
+  // fox: a small orange body with a white-tipped brush
+  fox(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(-r * 1.3, r * 0.1, r * 0.75, r * 0.35, 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f4ecdc'; ctx.beginPath(); ctx.arc(-r * 1.9, r * 0.25, r * 0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(r * 0.8, -r * 0.4); ctx.lineTo(r * 1.6, -r * 0.1); ctx.lineTo(r * 0.8, r * 0.25); ctx.fill();
+    ctx.restore();
+  },
+  // boar: a dark, heavy wedge with pale tusks; reddish when it charges
+  boar(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = a.task?.mule ? '#6a3a2a' : color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(-r * 1.2, -r * 0.6); ctx.quadraticCurveTo(0, -r * 1.1, r * 1.3, -r * 0.2); ctx.lineTo(r * 1.3, r * 0.35); ctx.quadraticCurveTo(0, r * 0.9, -r * 1.2, r * 0.6); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#efe4cc'; ctx.lineWidth = Math.max(1, r * 0.15); ctx.beginPath(); ctx.moveTo(r * 1.1, r * 0.2); ctx.lineTo(r * 1.45, -r * 0.2); ctx.stroke();
+    ctx.restore();
+  },
+  rat(ctx, a, px, py, r, color) {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(px, py, r * 1.2, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#c8b0a8'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(px - r * 1.1, py); ctx.lineTo(px - r * 2.4, py + r * 0.5); ctx.stroke();
+  },
   // a big brown disc with a short mane; a pack mule carries two crates, one on each side,
   // filled to how much of its load is left
   mule(ctx, a, px, py, r, color) {

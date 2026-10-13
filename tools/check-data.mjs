@@ -16,6 +16,8 @@ import {STOCKS} from '../src/data/presets.js';
 import {RUNNERS} from '../src/agents/jobRunners.js';
 import {GLYPHS, LOOKS} from '../src/render/looks.js';
 import {TRADE} from '../src/data/trade.js';
+import {PLANTS} from '../src/data/plants.js';
+import {CROPS} from '../src/data/crops.js';
 import {MIGRATIONS} from '../src/data/migrations.js';
 
 const errors = [], warnings = [];
@@ -80,6 +82,9 @@ for (const d of ITEMS.all()) {
 for (const s of SPECIES.all()) { costs(`вид ${s.id}`, s.yields); if (!LOOKS[s.look?.shape]) err(`вид ${s.id}: нет рисовальщика «${s.look?.shape}»`); }
 for (const [k, s] of Object.entries(STOCKS)) { costs(`запасы ${k}`, s.stock); (s.kit || []).forEach(i => item(`запасы ${k}`, i)); }
 
+for (const c of CROPS.all()) { res(`культура ${c.id}`, c.seed); costs(`культура ${c.id}`, c.yields); }
+for (const p of PLANTS.all()) { res(`растение ${p.id}`, p.resource); costs(`растение ${p.id}`, p.also); }
+
 // trade: wares and the guards' kit must exist; every resource the colony might sell has a price
 for (const x of TRADE.WARES) {
   (x.resource || []).forEach(r => res('товары торговца', r));
@@ -92,6 +97,7 @@ for (const m of MIGRATIONS.all()) if (m.species && !SPECIES.has(m.species)) err(
 // every resource should come from somewhere
 const sources = new Set(['gold',   // gold comes from trade
   ...TRADE.WARES.flatMap(x => x.resource || []),   // bought from traders
+  ...PLANTS.all().flatMap(p => [p.resource, ...Object.keys(p.also || {})]), ...CROPS.all().flatMap(c => Object.keys(c.yields)),
 ...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource),
   ...SPECIES.all().flatMap(s => Object.keys(s.yields || {}))]);
 for (const r of RESOURCES.all()) if (!sources.has(r.id)) warn(`ресурс ${r.id}: ниоткуда не добывается`);

@@ -15,8 +15,15 @@ import {HOUR} from '../core/time.js';
 import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
+import {exposedShare} from '../settlement/stock.js';
 
 export const MIGRATIONS = new Registry('migration');
+
+// meadow cells on the map (counted again a few times a day): what grazers can live on
+function grassland(w) {
+  if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
+  return w.cache.grass;
+}
 
 MIGRATIONS.registerAll([
   // newcomers need a free place to sleep and food to spare
@@ -29,8 +36,7 @@ MIGRATIONS.registerAll([
   {id: 'hares', species: 'hare', faction: 'wild', minDist: 20, topic: 'wildlife',
     accept: (w, n) => {
       const k = WILDLIFE[w.cfg.wildlife].hares;
-      if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
-      const cap = Math.round(w.cache.grass / 500 * k);
+      const cap = Math.round(grassland(w) / 500 * k);
       return Math.max(0, Math.min(n, cap - ofSpecies(w, 'hare').length));
     },
     message: (w, group, side) => (group.length > 1 ? `С ${side} прибежали зайцы: ${group.length}.` : null)},
@@ -41,6 +47,24 @@ MIGRATIONS.registerAll([
     // members share a pack id; the first one leads
     groupInit: group => { const pack = group[0].id; for (const a of group) { a.pack = pack; a.name = 'Волк'; } },
     message: (w, group, side) => `С ${side} пришла стая волков: ${group.length}. Одному в лес лучше не ходить.`},
+
+  // game: the meadows and woods feed only so many
+  {id: 'deer', species: 'deer', faction: 'wild', minDist: 25, topic: 'wildlife',
+    accept: (w, n) => Math.max(0, Math.min(n, Math.round(grassland(w) / 900) - ofSpecies(w, 'deer').length)),
+    init: a => { a.name = 'Олень'; },
+    message: (w, group, side) => `С ${side} к лугам вышли олени: ${group.length}.`},
+  {id: 'foxes', species: 'fox', faction: 'wild', minDist: 25, topic: 'wildlife',
+    accept: (w, n) => Math.max(0, Math.min(n, 3 - ofSpecies(w, 'fox').length)),
+    init: a => { a.name = 'Лиса'; }},
+  {id: 'boars', species: 'boar', faction: 'wild', minDist: 30, topic: 'wildlife',
+    accept: (w, n) => Math.max(0, Math.min(n, 4 - ofSpecies(w, 'boar').length)),
+    init: a => { a.name = 'Кабан'; },
+    message: (w, group, side) => `С ${side} в лес пришли кабаны: ${group.length}. Подранок бросается на охотника.`},
+  // rats come while there is a lot of food lying in the open; never more than six
+  {id: 'rats', species: 'rat', faction: 'wild', minDist: 20, topic: 'wildlife',
+    accept: (w, n) => (foodTotal(w) * exposedShare(w) < 30 ? 0 : Math.max(0, Math.min(n, 6 - ofSpecies(w, 'rat').length))),
+    init: a => { a.name = 'Крыса'; },
+    message: (w, group) => (ofSpecies(w, 'rat').length >= 3 ? 'На складе завелись крысы. Горшки и амбар спрячут от них еду.' : null)},
 
   // a wild mule wanders onto the meadows now and then; never more than two at a time
   {id: 'mules', species: 'mule', faction: 'wild', minDist: 25, topic: 'wildlife',

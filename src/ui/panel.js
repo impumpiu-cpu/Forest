@@ -3,6 +3,7 @@
 import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {TRADE} from '../data/trade.js';
+import {CROPS} from '../data/crops.js';
 import {goodsUnits, goodsLabel, askPrice} from '../settlement/trade.js';
 import {RECIPES} from '../data/recipes.js';
 import {SIZES, CLIMATES, WILDLIFE, PREDATORS} from '../data/presets.js';
@@ -304,6 +305,15 @@ export class Panel {
     const state = b.done ? 'построено' : `строится ${Math.floor(b.progress / d.work * 100)}%`;
     const rows = [`<dt>Состояние</dt><dd>${state}</dd>`, `<dt>Цена</dt><dd class="nb">${Object.entries(d.cost).map(([r, v]) => `${v} ${RESOURCES.get(r).label}`).join(', ')}</dd>`];
     let extra = '';
+    if (b.plots && b.key === 'field') {
+      const by = {}; let empty = 0, ripe = 0;
+      for (const p of b.plots) { if (!p.crop) empty++; else { by[p.crop] = (by[p.crop] || 0) + 1; if (p.g >= 1) ripe++; } }
+      const growing = Object.entries(by).map(([c, n]) => `${CROPS.get(c).label} ${n}`).join(', ');
+      const avg = b.plots.filter(p => p.crop).reduce((s, p) => s + p.g, 0) / Math.max(1, b.plots.length - empty);
+      rows.push(`<dt>Грядки</dt><dd>${b.plots.length}: ${growing || 'ничего не посеяно'}${empty ? `, пустых ${empty}` : ''}</dd>`,
+        `<dt>Урожай</dt><dd>${ripe ? `созрело ${ripe}` : growing ? `зреет, ${Math.round(avg * 100)}%` : '—'}</dd>`,
+        `<dt>Семена</dt><dd>${CROPS.all().map(c => `${c.label} ${Math.floor(w.stock[c.seed] || 0)}`).join(', ')}</dd>`);
+    }
     if (d.station && b.done) {
       const workers = colonists(w).filter(x => x.task?.id === 'job' && x.task.station === d.id && w.grid.bld[cellOf(w, x)] === b.id).map(x => esc(x.name));
       rows.push(`<dt>Заказ</dt><dd>${orderText(b)}</dd>`, `<dt>Работают</dt><dd>${workers.join(', ') || 'никого'}</dd>`);

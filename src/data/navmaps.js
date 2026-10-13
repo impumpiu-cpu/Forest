@@ -16,13 +16,15 @@ import {lakeBeside} from '../world/lakes.js';
 import {oreBeside} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
 import {PLANTS, plantLayer} from './plants.js';
+import {season} from './seasons.js';
+import {fields, needsWork} from '../settlement/farming.js';
 
 export const NAVMAPS = new Registry('navmap');
 
 NAVMAPS.registerAll([
   {id: 'camp', seed: (w, i) => w.camp.set.has(i)},
-  // where to get warm: the camp fire and every finished hut (huts are heated while the fire burns)
-  {id: 'warm', prepare: w => new Set(w.buildings.filter(b => b.done && BUILDINGS.get(b.key).heated).flatMap(b => b.cells)),
+  // where to get warm: the camp fire and every finished lived-in building (heated while the fire burns)
+  {id: 'warm', prepare: w => new Set(w.buildings.filter(b => b.done && BUILDINGS.get(b.key).heat).flatMap(b => b.cells)),
     seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)},
   {id: 'edge', seed: (w, i) => { const x = i % w.w, y = (i / w.w) | 0; return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1; }},
   {id: 'berries', seed: (w, i) => w.grid.food[i] > 0.35 && w.grid.fire[i] === 0},
@@ -43,6 +45,10 @@ NAVMAPS.registerAll([
   {id: 'prey', period: 12, minGap: 6, active: w => w.agents.some(a => a.task?.job === 'hunt' || a.brain === 'predator'),
     prepare: w => new Set(w.agents.filter(a => SPECIES.get(a.species).game).map(a => cellOf(w, a))),
     seed: (w, i, cells) => cells.has(i)},
+  // field plots that need sowing or reaping
+  {id: 'fieldwork', period: 120, active: w => fields(w).length > 0,
+    prepare: w => new Set(fields(w).flatMap(b => b.plots.filter(p => needsWork(w, p)).map(p => p.i))),
+    seed: (w, i, cells) => cells.has(i)},
   // the settlement zone: where people run when something hunts them
   {id: 'zone', seed: (w, i) => inZone(w, i)},
   // only fires that threaten the camp are worth fighting
@@ -57,7 +63,8 @@ NAVMAPS.registerAll([
 // one map per wild plant (data/plants.js): its ripe beds
 for (const p of PLANTS.all()) {
   const key = plantLayer(p.id);
-  NAVMAPS.register({id: key, period: 300, seed: (w, i) => w.grid[key]?.[i] >= p.ripe && w.grid.fire[i] === 0});
+  NAVMAPS.register({id: key, period: 300, active: w => !p.seasons || p.seasons.includes(season(w).id),
+    seed: (w, i) => w.grid[key]?.[i] >= p.ripe && w.grid.fire[i] === 0});
 }
 
 // the healer's hut: where the wounded lie and the healer works

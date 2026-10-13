@@ -4,7 +4,7 @@
 import {mulberry, seedNumber} from '../core/rng.js';
 import {TERRAIN, T} from '../data/terrain.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
-import {isCampArea} from './grid.js';
+import {isCampArea, DX, DY} from './grid.js';
 import {season} from '../data/seasons.js';
 
 const EVERY = 10;   // regrow beds this often (ticks)
@@ -13,11 +13,12 @@ export function layPlants(w) {
   w.plantBeds ??= {};
   for (const p of PLANTS.all()) {
     const key = plantLayer(p.id);
-    if (w.grid[key]) continue;
+    if (w.grid[key] && w.plantBeds[p.id]) continue;
     const rnd = mulberry(seedNumber(String(w.cfg.seed) + ':' + key)), g = w.grid;
     const layer = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map(t => TERRAIN.get(t).code));
+    const byWater = i => { const x = i % w.w, y = (i / w.w) | 0; for (let k = 0; k < 4; k++) { const nx = x + DX[k], ny = y + DY[k]; if (nx >= 0 && ny >= 0 && nx < w.w && ny < w.h && g.terr[ny * w.w + nx] === T.WATER) return true; } return false; };
     for (let i = 0; i < w.n; i++) {
-      if (!ok.has(g.terr[i]) || g.fert[i] < p.fertMin || isCampArea(w, i)) continue;
+      if (!ok.has(g.terr[i]) || g.fert[i] < (p.fertMin || 0) || isCampArea(w, i) || (p.nearWater && !byWater(i))) continue;
       if (rnd() < p.chance) { beds.push(i); layer[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]); }
     }
     g[key] = layer; w.plantBeds[p.id] = beds;
@@ -26,10 +27,10 @@ export function layPlants(w) {
 
 export function stepPlants(w) {
   if (w.tick % EVERY) return;
-  const g = w.grid, grow = season(w).grow;
-  if (!grow) return;   // nothing grows in winter
+  const g = w.grid, sgrow = season(w).grow;
   for (const p of PLANTS.all()) {
-    const layer = g[plantLayer(p.id)], beds = w.plantBeds[p.id]; if (!layer) continue;
+    const grow = p.hardy ? 1 : sgrow;   // nothing grows in winter, but a clay pit still fills
+    const layer = g[plantLayer(p.id)], beds = w.plantBeds[p.id]; if (!layer || !grow) continue;
     let ripened = false;
     for (const i of beds) {
       if (g.fire[i] > 0 || g.terr[i] === T.BURNT || g.bld[i] >= 0) { layer[i] = 0; continue; }

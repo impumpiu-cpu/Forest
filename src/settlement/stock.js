@@ -65,10 +65,30 @@ export function takeSmeltFuel(w, n) {
   return true;
 }
 
+// share of the food in stock that lies in the open: pots hold POT_HOLDS portions each, a granary
+// keeps half of the rest out of reach (rats nibble only the open food; it also spoils faster)
+const POT_HOLDS = 6;
+export function potShare(w) {
+  let food = 0; for (const r of foods()) food += w.stock[r.id] || 0;
+  return food <= 0 ? 1 : Math.min(1, (w.stock.pots || 0) * POT_HOLDS / food);
+}
+export const exposedShare = w => (1 - potShare(w)) * (w.buildings.some(b => b.key === 'granary' && b.done) ? 0.5 : 1);
+
+// rats: eat `amount` of food from whatever lies in the open, the most plentiful first
+export function nibble(w, amount) {
+  const open = exposedShare(w); if (open <= 0) return;
+  let best = null;
+  for (const r of foods()) if ((w.stock[r.id] || 0) >= 1 && (!best || w.stock[r.id] > w.stock[best.id])) best = r;
+  if (!best) return;
+  const lost = Math.min(w.stock[best.id], amount * open);
+  w.stock[best.id] -= lost; w.stats.ratsAte = (w.stats.ratsAte || 0) + lost;
+}
+
 export function spoil(w) {
-  const S = season(w);
+  // food in pots spoils at 40% of the rate
+  const S = season(w), sealed = 1 - 0.6 * potShare(w);
   for (const r of foods()) {
-    const lost = w.stock[r.id] * 0.00015 * r.spoil * w.mods.mul.spoil * S.spoil;
+    const lost = w.stock[r.id] * 0.00015 * r.spoil * w.mods.mul.spoil * S.spoil * sealed;
     w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
     w.stats.spoiledToday += lost;
   }

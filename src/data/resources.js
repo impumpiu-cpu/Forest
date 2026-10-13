@@ -20,7 +20,7 @@ import {oreAt} from '../world/ores.js';
 
 export const RESOURCES = new Registry('resource');
 
-export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Заготовки', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Боеприпасы'];
+export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Заготовки', 'Семена', 'Ремесло', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Боеприпасы'];
 
 RESOURCES.registerAll([
   ...FOODS.all().map(f => ({id: f.id, label: f.label, short: f.short || f.label, tags: ['food'], group: f.group || 'Еда',
@@ -33,6 +33,24 @@ RESOURCES.registerAll([
   {id: 'bone',    label: 'кости',   short: 'кости',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.2, keep: 12, color: '#e8e2cf'},
   {id: 'hide',    label: 'шкуры',   short: 'шкуры',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.5, keep: 6, color: '#9b7650'},
   {id: 'leather', label: 'кожа',    short: 'кожа',    tags: ['material'], group: 'Материалы', loot: 1, value: 1, keep: 8, color: '#7a4d26'},
+
+  // ── the outpost's own crafts: from the meadow and the lake shore to rope, cloth, pots and boards
+  {id: 'fiber',  label: 'волокно', short: 'волокно', tags: ['material'], group: 'Ремесло', loot: 1, value: 0.15, keep: 16, target: 16, color: '#9bc29a'},
+  {id: 'rope',   label: 'верёвка', short: 'верёвка', tags: ['material'], group: 'Ремесло', loot: 1, value: 0.6, keep: 6, color: '#c9b07a'},
+  {id: 'cloth',  label: 'грубый холст', short: 'холст', tags: ['material'], group: 'Ремесло', loot: 1, value: 1.2, keep: 6, color: '#d8ccb0'},
+  {id: 'reeds',  label: 'камыш', short: 'камыш', tags: ['material'], group: 'Ремесло', loot: 1, value: 0.1, keep: 20, target: 16, color: '#c2b46a'},
+  {id: 'clay',   label: 'глина', short: 'глина', tags: ['material'], group: 'Ремесло', loot: 1, value: 0.1, keep: 16, target: 14, color: '#b06a48'},
+  {id: 'pots',   label: 'горшки', short: 'горшки', tags: ['material', 'storage'], group: 'Ремесло', loot: 1, value: 0.8, keep: 30, color: '#a8653e'},
+  {id: 'planks', label: 'тёс', short: 'тёс', tags: ['material'], group: 'Ремесло', loot: 2, value: 0.5, keep: 30, color: '#c99a5c'},
+  {id: 'hay',    label: 'сено', short: 'сено', tags: ['material'], group: 'Ремесло', loot: 2, value: 0.1, keep: 30, target: 30, color: '#c8c070'},
+  // furs and wax: what the woods give that a town will pay for
+  {id: 'furs',   label: 'меха', short: 'меха', tags: ['luxury'], group: 'Роскошь', loot: 1, value: 3, keep: 0, color: '#c4743a'},
+  {id: 'wax',    label: 'воск', short: 'воск', tags: ['material'], group: 'Роскошь', loot: 1, value: 1.5, keep: 0, color: '#e8d48a'},
+
+  // seeds: only traders bring them; a harvest gives some back (data/crops.js)
+  {id: 'seedBarley', label: 'семена ячменя', short: 'ячмень (сем.)', tags: ['seed'], group: 'Семена', loot: 1, value: 0.5, keep: 30, color: '#d8c27a'},
+  {id: 'seedTurnip', label: 'семена репы', short: 'репа (сем.)', tags: ['seed'], group: 'Семена', loot: 1, value: 0.5, keep: 30, color: '#d9b6c8'},
+  {id: 'seedFlax',   label: 'семена льна', short: 'лён (сем.)', tags: ['seed'], group: 'Семена', loot: 1, value: 0.5, keep: 30, color: '#8fa8d8'},
 
   // salt: the outpost has no salt springs, it comes with traders; meat and fish salted with it keep all winter
   {id: 'salt', label: 'соль', short: 'соль', tags: ['spice'], group: 'Заготовки', loot: 2, value: 0.6, keep: 40, color: '#e8e6e0'},

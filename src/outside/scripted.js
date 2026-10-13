@@ -43,6 +43,21 @@ export const scripted = {
       first: w => w.tick + 1500,
       offer: (w, rng) => { const k = PREDATORS[w.cfg.predators].wolves; return k && rng() <= k ? 2 + Math.floor(rng() * (k >= 1 ? 3 : 2)) : 0; },
       next: w => w.tick + 1500},
+    // game from the woods: deer in small herds, a fox now and then, a boar or a sounder of them;
+    // fewer in lean seasons. How many stay is up to the land (data/migrations.js)
+    deer: {from: 'wilds', first: w => w.tick + DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.5 * season(w).hares ? 2 + Math.floor(rng() * 3) : 0),
+      next: (w, rng) => w.tick + (1 + rng()) * DAY},
+    foxes: {from: 'wilds', first: w => w.tick + 2 * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.4 * season(w).hares ? 1 : 0),
+      next: (w, rng) => w.tick + (1.5 + rng()) * DAY},
+    boars: {from: 'wilds', first: w => w.tick + 4 * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.35 ? 1 + Math.floor(rng() * 3) : 0),
+      next: (w, rng) => w.tick + (2.5 + rng() * 2) * DAY},
+    // rats smell a full stock
+    rats: {from: 'wilds', first: w => w.tick + 3 * DAY,
+      offer: (w, rng) => (rng() < 0.5 ? 1 + Math.floor(rng() * 2) : 0),
+      next: (w, rng) => w.tick + (0.5 + rng()) * DAY},
     // now and then a wild mule wanders in from the woods
     mules: {from: 'wilds',
       first: w => w.tick + 2 * DAY,

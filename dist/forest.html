@@ -903,7 +903,13 @@ body.ingame h1{font-size:22px}
       mapColor: [96, 176, 236]
     },
     { id: "meat", label: "\u043C\u044F\u0441\u043E", kind: "\u043C\u044F\u0441\u043D\u0430\u044F", nutrition: 1.6, spoil: 2.5, loot: 3, taste: 0.3, value: 0.4, keepPerHead: 1, color: "#d0786a", eat: "ateMeat" },
+    // wild honey keeps forever and everyone likes it, but it is too rare to be anyone's staple
+    { id: "honey", label: "\u043C\u0451\u0434", kind: "\u0441\u043B\u0430\u0434\u043A\u0430\u044F", noFav: true, nutrition: 1.2, spoil: 0.01, loot: 2, taste: 0.7, value: 1, keepPerHead: 1, color: "#e8b030" },
+    // from the fields (data/crops.js): grain keeps well raw and makes porridge; turnips keep through the winter
+    { id: "barley", label: "\u044F\u0447\u043C\u0435\u043D\u044C", kind: "\u0437\u0435\u0440\u043D\u043E", noFav: true, nutrition: 0.8, spoil: 0.05, loot: 4, taste: -0.1, value: 0.25, keepPerHead: 4, color: "#d8c27a" },
+    { id: "turnip", label: "\u0440\u0435\u043F\u0430", kind: "\u0440\u0430\u0441\u0442\u0438\u0442\u0435\u043B\u044C\u043D\u0430\u044F", noFav: true, nutrition: 1, spoil: 0.3, loot: 4, taste: 0, value: 0.2, keepPerHead: 3, color: "#d9b6c8" },
     // cooked at the hearth from two portions: more filling than both, a hot meal lifts the mood, but it does not keep
+    { id: "kasha", label: "\u043A\u0430\u0448\u0430", kind: "\u0433\u043E\u0440\u044F\u0447\u0430\u044F", dish: true, nutrition: 2.4, spoil: 2, loot: 1, taste: 0.4, value: 0.6, keepPerHead: 0, color: "#e0c890", eat: "ateHot" },
     { id: "stew", label: "\u043F\u043E\u0445\u043B\u0451\u0431\u043A\u0430", kind: "\u0433\u043E\u0440\u044F\u0447\u0430\u044F", dish: true, nutrition: 3, spoil: 3, loot: 1, taste: 0.6, value: 0.8, keepPerHead: 0, color: "#d9a35a", eat: "ateHot" },
     // preserved on the racks: dried in the sun and wind (not in winter), or salted with bought salt (any time)
     { id: "driedBerries", label: "\u0441\u0443\u0448\u0451\u043D\u044B\u0435 \u044F\u0433\u043E\u0434\u044B", short: "\u0441\u0443\u0448\u0451\u043D\u044B\u0435 \u044F\u0433\u043E\u0434\u044B", of: "berries", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 1.3, spoil: 0.12, loot: 4, taste: -0.1, value: 0.4, keepPerHead: 4, color: "#8e3f6b" },
@@ -912,7 +918,7 @@ body.ingame h1{font-size:22px}
     { id: "saltFish", label: "\u0441\u043E\u043B\u0451\u043D\u0430\u044F \u0440\u044B\u0431\u0430", short: "\u0441\u043E\u043B\u0451\u043D\u0430\u044F \u0440\u044B\u0431\u0430", of: "fish", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 1.3, spoil: 0.04, loot: 3, taste: 0, value: 0.6, keepPerHead: 3, color: "#9fb6c2" },
     { id: "saltMeat", label: "\u0441\u043E\u043B\u043E\u043D\u0438\u043D\u0430", short: "\u0441\u043E\u043B\u043E\u043D\u0438\u043D\u0430", of: "meat", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 1.5, spoil: 0.04, loot: 3, taste: 0.05, value: 0.7, keepPerHead: 3, color: "#b0645a" }
   ]);
-  var BASE_FOODS = () => FOODS.filter((f) => !f.of && !f.dish);
+  var BASE_FOODS = () => FOODS.filter((f) => !f.of && !f.dish && !f.noFav);
   var tasteOf = (f) => f.of || f.id;
   function drawFoodPrefs(rnd) {
     const all = BASE_FOODS();
@@ -1032,7 +1038,8 @@ body.ingame h1{font-size:22px}
   // src/data/plants.js
   var PLANTS = new Registry("plant");
   PLANTS.registerAll([
-    // healing herbs: yarrow, plantain, St John's wort — a few patches in damp meadows and glades
+    // healing herbs: yarrow, plantain, St John's wort — a few patches in damp meadows and glades.
+    // Picked by the healer (data/jobs.js 'heal'), so no job of its own.
     {
       id: "herbs",
       resource: "herbs",
@@ -1046,6 +1053,89 @@ body.ingame h1{font-size:22px}
       take: 0.5,
       tint: [236, 214, 92],
       mapColor: [255, 236, 96]
+    },
+    // nettle and wild flax: the bast fibre the outpost spins into rope and weaves into rough cloth
+    {
+      id: "nettle",
+      resource: "fiber",
+      label: "\u043A\u0440\u0430\u043F\u0438\u0432\u0430",
+      terrain: ["grass", "forest"],
+      fertMin: 0.55,
+      chance: 0.03,
+      start: [0.3, 1],
+      regrow: 8e-4,
+      ripe: 0.5,
+      take: 0.5,
+      tint: [70, 130, 70],
+      mapColor: [120, 200, 150],
+      job: { id: "fiber", label: "\u0440\u0432\u0430\u0442\u044C \u043A\u0440\u0430\u043F\u0438\u0432\u0443", short: "\u043A\u0440\u0430\u043F\u0438\u0432\u0430", verb: "\u0440\u0432\u0451\u0442 \u043A\u0440\u0430\u043F\u0438\u0432\u0443 \u043D\u0430 \u0432\u043E\u043B\u043E\u043A\u043D\u043E", time: 22, carry: 3, keep: 16 }
+    },
+    // reeds by the water: thatch for roofs, baskets
+    {
+      id: "reeds",
+      resource: "reeds",
+      label: "\u043A\u0430\u043C\u044B\u0448",
+      terrain: ["grass"],
+      nearWater: true,
+      chance: 0.35,
+      start: [0.5, 1],
+      regrow: 9e-4,
+      ripe: 0.5,
+      take: 0.5,
+      tint: [176, 168, 96],
+      mapColor: [210, 196, 110],
+      job: { id: "reeds", label: "\u0440\u0435\u0437\u0430\u0442\u044C \u043A\u0430\u043C\u044B\u0448", short: "\u043A\u0430\u043C\u044B\u0448", verb: "\u0440\u0435\u0436\u0435\u0442 \u043A\u0430\u043C\u044B\u0448", time: 18, carry: 3, keep: 16 }
+    },
+    // clay in the banks of lakes: a pit fills slowly with fresh clay washed in
+    {
+      id: "clay",
+      resource: "clay",
+      label: "\u0433\u043B\u0438\u043D\u0430",
+      terrain: ["grass"],
+      nearWater: true,
+      chance: 0.12,
+      hardy: true,
+      start: [0.8, 1],
+      regrow: 1e-4,
+      ripe: 0.5,
+      take: 0.25,
+      tint: [168, 110, 80],
+      mapColor: [200, 120, 80],
+      job: { id: "clay", label: "\u043A\u043E\u043F\u0430\u0442\u044C \u0433\u043B\u0438\u043D\u0443", short: "\u0433\u043B\u0438\u043D\u0430", verb: "\u043A\u043E\u043F\u0430\u0435\u0442 \u0433\u043B\u0438\u043D\u0443", time: 30, carry: 2, keep: 14 }
+    },
+    // wild bees in hollow trees: honey and wax; the bees sting
+    {
+      id: "hive",
+      resource: "honey",
+      also: { wax: 0.5 },
+      label: "\u0434\u0438\u043A\u0438\u0435 \u043F\u0447\u0451\u043B\u044B",
+      terrain: ["forest"],
+      fertMin: 0.4,
+      chance: 3e-3,
+      start: [0.5, 1],
+      regrow: 35e-5,
+      ripe: 0.5,
+      take: 0.5,
+      tint: [230, 170, 40],
+      mapColor: [250, 180, 30],
+      job: { id: "honey", label: "\u0431\u043E\u0440\u0442\u043D\u0438\u0447\u0430\u0442\u044C", short: "\u043C\u0451\u0434", verb: "\u0431\u0435\u0440\u0451\u0442 \u043C\u0451\u0434 \u0443 \u0434\u0438\u043A\u0438\u0445 \u043F\u0447\u0451\u043B", time: 40, carry: 2, keep: 12, hurt: 0.04 }
+    },
+    // meadow grass: mown for hay in summer and autumn — bedding in huts, fodder later
+    {
+      id: "meadow",
+      resource: "hay",
+      label: "\u043B\u0443\u0433\u043E\u0432\u0430\u044F \u0442\u0440\u0430\u0432\u0430",
+      terrain: ["grass"],
+      fertMin: 0.45,
+      chance: 0.05,
+      seasons: ["summer", "autumn"],
+      start: [0.2, 0.6],
+      regrow: 5e-4,
+      ripe: 0.6,
+      take: 0.6,
+      tint: [150, 180, 80],
+      mapColor: [170, 220, 90],
+      job: { id: "mow", label: "\u043A\u043E\u0441\u0438\u0442\u044C \u0441\u0435\u043D\u043E", short: "\u0441\u0435\u043D\u043E", verb: "\u043A\u043E\u0441\u0438\u0442 \u0441\u0435\u043D\u043E", time: 20, carry: 3, keep: 30 }
     }
   ]);
   var plantLayer = (id) => "plant:" + id;
@@ -1160,7 +1250,7 @@ body.ingame h1{font-size:22px}
 
   // src/data/resources.js
   var RESOURCES = new Registry("resource");
-  var RESOURCE_GROUPS = ["\u0414\u0435\u043D\u044C\u0433\u0438", "\u0415\u0434\u0430", "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", "\u041B\u0435\u043A\u0430\u0440\u0441\u0442\u0432\u0430", "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", "\u0420\u0443\u0434\u0430", "\u041C\u0435\u0442\u0430\u043B\u043B", "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", "\u0411\u043E\u0435\u043F\u0440\u0438\u043F\u0430\u0441\u044B"];
+  var RESOURCE_GROUPS = ["\u0414\u0435\u043D\u044C\u0433\u0438", "\u0415\u0434\u0430", "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", "\u0421\u0435\u043C\u0435\u043D\u0430", "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", "\u041B\u0435\u043A\u0430\u0440\u0441\u0442\u0432\u0430", "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", "\u0420\u0443\u0434\u0430", "\u041C\u0435\u0442\u0430\u043B\u043B", "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", "\u0411\u043E\u0435\u043F\u0440\u0438\u043F\u0430\u0441\u044B"];
   RESOURCES.registerAll([
     ...FOODS.all().map((f) => ({
       id: f.id,
@@ -1207,6 +1297,22 @@ body.ingame h1{font-size:22px}
     { id: "bone", label: "\u043A\u043E\u0441\u0442\u0438", short: "\u043A\u043E\u0441\u0442\u0438", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 0.2, keep: 12, color: "#e8e2cf" },
     { id: "hide", label: "\u0448\u043A\u0443\u0440\u044B", short: "\u0448\u043A\u0443\u0440\u044B", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 0.5, keep: 6, color: "#9b7650" },
     { id: "leather", label: "\u043A\u043E\u0436\u0430", short: "\u043A\u043E\u0436\u0430", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, value: 1, keep: 8, color: "#7a4d26" },
+    // ── the outpost's own crafts: from the meadow and the lake shore to rope, cloth, pots and boards
+    { id: "fiber", label: "\u0432\u043E\u043B\u043E\u043A\u043D\u043E", short: "\u0432\u043E\u043B\u043E\u043A\u043D\u043E", tags: ["material"], group: "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", loot: 1, value: 0.15, keep: 16, target: 16, color: "#9bc29a" },
+    { id: "rope", label: "\u0432\u0435\u0440\u0451\u0432\u043A\u0430", short: "\u0432\u0435\u0440\u0451\u0432\u043A\u0430", tags: ["material"], group: "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", loot: 1, value: 0.6, keep: 6, color: "#c9b07a" },
+    { id: "cloth", label: "\u0433\u0440\u0443\u0431\u044B\u0439 \u0445\u043E\u043B\u0441\u0442", short: "\u0445\u043E\u043B\u0441\u0442", tags: ["material"], group: "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", loot: 1, value: 1.2, keep: 6, color: "#d8ccb0" },
+    { id: "reeds", label: "\u043A\u0430\u043C\u044B\u0448", short: "\u043A\u0430\u043C\u044B\u0448", tags: ["material"], group: "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", loot: 1, value: 0.1, keep: 20, target: 16, color: "#c2b46a" },
+    { id: "clay", label: "\u0433\u043B\u0438\u043D\u0430", short: "\u0433\u043B\u0438\u043D\u0430", tags: ["material"], group: "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", loot: 1, value: 0.1, keep: 16, target: 14, color: "#b06a48" },
+    { id: "pots", label: "\u0433\u043E\u0440\u0448\u043A\u0438", short: "\u0433\u043E\u0440\u0448\u043A\u0438", tags: ["material", "storage"], group: "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", loot: 1, value: 0.8, keep: 30, color: "#a8653e" },
+    { id: "planks", label: "\u0442\u0451\u0441", short: "\u0442\u0451\u0441", tags: ["material"], group: "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", loot: 2, value: 0.5, keep: 30, color: "#c99a5c" },
+    { id: "hay", label: "\u0441\u0435\u043D\u043E", short: "\u0441\u0435\u043D\u043E", tags: ["material"], group: "\u0420\u0435\u043C\u0435\u0441\u043B\u043E", loot: 2, value: 0.1, keep: 30, target: 30, color: "#c8c070" },
+    // furs and wax: what the woods give that a town will pay for
+    { id: "furs", label: "\u043C\u0435\u0445\u0430", short: "\u043C\u0435\u0445\u0430", tags: ["luxury"], group: "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", loot: 1, value: 3, keep: 0, color: "#c4743a" },
+    { id: "wax", label: "\u0432\u043E\u0441\u043A", short: "\u0432\u043E\u0441\u043A", tags: ["material"], group: "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", loot: 1, value: 1.5, keep: 0, color: "#e8d48a" },
+    // seeds: only traders bring them; a harvest gives some back (data/crops.js)
+    { id: "seedBarley", label: "\u0441\u0435\u043C\u0435\u043D\u0430 \u044F\u0447\u043C\u0435\u043D\u044F", short: "\u044F\u0447\u043C\u0435\u043D\u044C (\u0441\u0435\u043C.)", tags: ["seed"], group: "\u0421\u0435\u043C\u0435\u043D\u0430", loot: 1, value: 0.5, keep: 30, color: "#d8c27a" },
+    { id: "seedTurnip", label: "\u0441\u0435\u043C\u0435\u043D\u0430 \u0440\u0435\u043F\u044B", short: "\u0440\u0435\u043F\u0430 (\u0441\u0435\u043C.)", tags: ["seed"], group: "\u0421\u0435\u043C\u0435\u043D\u0430", loot: 1, value: 0.5, keep: 30, color: "#d9b6c8" },
+    { id: "seedFlax", label: "\u0441\u0435\u043C\u0435\u043D\u0430 \u043B\u044C\u043D\u0430", short: "\u043B\u0451\u043D (\u0441\u0435\u043C.)", tags: ["seed"], group: "\u0421\u0435\u043C\u0435\u043D\u0430", loot: 1, value: 0.5, keep: 30, color: "#8fa8d8" },
     // salt: the outpost has no salt springs, it comes with traders; meat and fish salted with it keep all winter
     { id: "salt", label: "\u0441\u043E\u043B\u044C", short: "\u0441\u043E\u043B\u044C", tags: ["spice"], group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", loot: 2, value: 0.6, keep: 40, color: "#e8e6e0" },
     // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
@@ -1320,12 +1426,13 @@ body.ingame h1{font-size:22px}
     foodKeep: 5,
     minGain: 0.15,
     maxShare: 0.85,
-    wants: { salt: 12 },
+    wants: { salt: 12, seedBarley: 8, seedTurnip: 8, seedFlax: 6 },
     // bought whenever the trader has it, up to this much in stock
     WARES: [
       { w: 40, food: true, n: [3, 8] },
       { w: 14, resource: ["leather", "hide", "iron", "charcoal", "arrows", "bone"], n: [2, 6] },
       { w: 12, resource: ["salt"], n: [4, 10] },
+      { w: 12, resource: ["seedBarley", "seedTurnip", "seedFlax"], n: [4, 10] },
       { w: 24, items: "plain", q: 0 },
       { w: 12, items: "any", q: 1 },
       { w: 4, items: "any", q: 2 },
@@ -1395,6 +1502,8 @@ body.ingame h1{font-size:22px}
     { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", armor: 0.08, warmth: 0.35, dur: 50, value: 1, color: "#c9b38a" },
     // fur: hare and wolf hides sewn hair-in — the winter coat
     { id: "furcoat", label: "\u0422\u0443\u043B\u0443\u043F \u0438\u0437 \u0448\u043A\u0443\u0440", short: "\u0442\u0443\u043B\u0443\u043F", slot: "body", armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4, color: "#b89a72" },
+    // rough linen from the loom: better than bast, warmer in the cold
+    { id: "linen", label: "\u0425\u043E\u043B\u0449\u043E\u0432\u0430\u044F \u0440\u0443\u0431\u0430\u0445\u0430 \u0438 \u043F\u043E\u0440\u0442\u044B", short: "\u0445\u043E\u043B\u0441\u0442", slot: "body", armor: 0.1, warmth: 0.45, dur: 90, value: 3, color: "#ddd2b6" },
     { id: "jerkin", label: "\u041A\u043E\u0436\u0430\u043D\u0430\u044F \u043A\u0443\u0440\u0442\u043A\u0430", short: "\u043A\u043E\u0436\u0430", slot: "body", armor: 0.2, warmth: 0.55, dur: 70, value: 3, color: "#8a5a2b" },
     { id: "hardleather", label: "\u041A\u043E\u0436\u0430 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C\u0438 \u043F\u043B\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438", short: "\u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u0436\u0430", slot: "body", armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, value: 9, color: "#e0d6c0" },
     // back
@@ -1446,6 +1555,8 @@ body.ingame h1{font-size:22px}
   var BUILDINGS = new Registry("building");
   var ZONE = { camp: 8, building: 5 };
   BUILDINGS.registerAll([
+    // the shelter of the first season: poles and bark from what lies around. Drafty: in a hard
+    // winter its fire eats wood and its sleepers still get cold.
     {
       id: "hut",
       name: "\u0428\u0430\u043B\u0430\u0448",
@@ -1454,17 +1565,40 @@ body.ingame h1{font-size:22px}
       work: 160,
       max: 4,
       wooden: true,
-      heated: true,
       color: "#b88a52",
       mark: "\u0428",
-      effect: "\u0421\u043E\u043D \u043D\u0430 60% \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043D\u043E\u0447\u044C\u044E \u0441\u043F\u044F\u0449\u0438\u0435 \u043D\u0435 \u043C\u0451\u0440\u0437\u043D\u0443\u0442. \u041B\u0430\u0433\u0435\u0440\u044C \u043F\u0440\u0438\u043C\u0435\u0442 \u043D\u0430 4 \u0436\u0438\u0442\u0435\u043B\u0435\u0439 \u0431\u043E\u043B\u044C\u0448\u0435.",
-      effects: { add: { beds: 4, popCap: 4 } },
+      heat: { to: 20, add: 3, fuel: 16e-4 },
+      effect: "\u0421\u043E\u043D \u043D\u0430 60% \u0431\u044B\u0441\u0442\u0440\u0435\u0435. \u041B\u0430\u0433\u0435\u0440\u044C \u043F\u0440\u0438\u043C\u0435\u0442 \u043D\u0430 4 \u0436\u0438\u0442\u0435\u043B\u0435\u0439 \u0431\u043E\u043B\u044C\u0448\u0435. \u041F\u0440\u043E\u0434\u0443\u0432\u0430\u0435\u0442\u0441\u044F: \u0437\u0438\u043C\u043E\u0439 \u0433\u0440\u0435\u0435\u0442 \u043F\u043B\u043E\u0445\u043E \u0438 \u0441\u044A\u0435\u0434\u0430\u0435\u0442 \u043C\u043D\u043E\u0433\u043E \u0434\u0440\u043E\u0432.",
+      effects: { add: { beds: 4, popCap: 4, bedWarmth: 2 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0441\u0432\u043E\u0451 \u0436\u0438\u043B\u044C\u0451",
       motive: (a, c) => [
         [a.mem.cold * 1.2, "\u043C\u0451\u0440\u0437\u043D\u0435\u0442 \u043F\u043E \u043D\u043E\u0447\u0430\u043C"],
         [a.mem.tired, "\u043D\u0435 \u0432\u044B\u0441\u044B\u043F\u0430\u0435\u0442\u0441\u044F"],
         [c.crowded ? 0.8 : 0, "\u0432 \u043B\u0430\u0433\u0435\u0440\u0435 \u0442\u0435\u0441\u043D\u043E"],
         [c.count("hut") === 0 ? 0.3 : 0, "\u0445\u043E\u0447\u0435\u0442 \u043A\u0440\u044B\u0448\u0443 \u043D\u0430\u0434 \u0433\u043E\u043B\u043E\u0432\u043E\u0439"]
+      ]
+    },
+    // the log house: hewn boards, a reed-thatched roof, clay-daubed walls. Warm on little wood.
+    {
+      id: "house",
+      name: "\u0418\u0437\u0431\u0430",
+      gender: "f",
+      cost: { planks: 16, reeds: 8, clay: 6, rope: 2 },
+      work: 320,
+      max: 6,
+      wooden: true,
+      color: "#a0703a",
+      mark: "\u0418",
+      needs: "sawmill",
+      heat: { to: 26, add: 4.5, fuel: 4e-4 },
+      effect: "\u0422\u0451\u043F\u043B\u044B\u0439 \u0434\u043E\u043C \u0438\u0437 \u0442\u0451\u0441\u0430 \u043F\u043E\u0434 \u043A\u0430\u043C\u044B\u0448\u043E\u0432\u043E\u0439 \u043A\u0440\u043E\u0432\u043B\u0435\u0439, \u0441\u0442\u0435\u043D\u044B \u043E\u0431\u043C\u0430\u0437\u0430\u043D\u044B \u0433\u043B\u0438\u043D\u043E\u0439: 4 \u043C\u0435\u0441\u0442\u0430, \u0437\u0438\u043C\u043E\u0439 \u0442\u0435\u043F\u043B\u043E \u043D\u0430 \u043C\u0430\u043B\u044B\u0445 \u0434\u0440\u043E\u0432\u0430\u0445. \u041B\u0430\u0433\u0435\u0440\u044C \u043F\u0440\u0438\u043C\u0435\u0442 \u043D\u0430 4 \u0436\u0438\u0442\u0435\u043B\u0435\u0439 \u0431\u043E\u043B\u044C\u0448\u0435.",
+      effects: { add: { beds: 4, popCap: 4, bedWarmth: 4 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0442\u0451\u043F\u043B\u044B\u0439 \u0434\u043E\u043C",
+      motive: (a, c) => [
+        [a.mem.cold * 1.6, "\u043C\u0451\u0440\u0437\u043D\u0435\u0442 \u0432 \u0448\u0430\u043B\u0430\u0448\u0435"],
+        [c.season === "autumn" ? 0.8 : c.season === "winter" ? 0.6 : 0.15, "\u0437\u0438\u043C\u043E\u0432\u0430\u0442\u044C \u0432 \u0448\u0430\u043B\u0430\u0448\u0435 \u043D\u0435\u043B\u044C\u0437\u044F"],
+        [c.crowded ? 0.7 : 0, "\u0432 \u043B\u0430\u0433\u0435\u0440\u0435 \u0442\u0435\u0441\u043D\u043E"],
+        [c.count("hut") ? 0.2 : 0, "\u0445\u043E\u0447\u0435\u0442 \u0436\u0438\u0442\u044C \u043F\u043E-\u043B\u044E\u0434\u0441\u043A\u0438"]
       ]
     },
     {
@@ -1481,6 +1615,24 @@ body.ingame h1{font-size:22px}
       effects: { mul: { spoil: 1 / 6 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u043D\u0430\u0434\u0451\u0436\u043D\u043E \u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0437\u0430\u043F\u0430\u0441\u044B",
       motive: (a, c) => [[c.spoiled * 0.08, "\u0436\u0430\u043B\u043A\u043E \u0438\u0441\u043F\u043E\u0440\u0447\u0435\u043D\u043D\u0443\u044E \u0435\u0434\u0443"]]
+    },
+    // a field: a fenced shed and sixteen ploughed plots around it; sown with seed bought from traders
+    {
+      id: "field",
+      name: "\u041F\u043E\u043B\u0435",
+      gender: "n",
+      cost: { wood: 8, rope: 2 },
+      work: 200,
+      max: 3,
+      wooden: true,
+      color: "#8a7040",
+      mark: "\u041F",
+      effect: "\u0420\u0430\u0441\u043F\u0430\u0445\u0438\u0432\u0430\u044E\u0442 16 \u0433\u0440\u044F\u0434\u043E\u043A. \u0412\u0435\u0441\u043D\u043E\u0439 \u0438 \u043B\u0435\u0442\u043E\u043C \u0441\u0435\u044E\u0442 \u044F\u0447\u043C\u0435\u043D\u044C, \u0440\u0435\u043F\u0443 \u0438\u043B\u0438 \u043B\u0451\u043D (\u0441\u0435\u043C\u0435\u043D\u0430 \u2014 \u0443 \u0442\u043E\u0440\u0433\u043E\u0432\u0446\u0435\u0432, \u0441 \u0443\u0440\u043E\u0436\u0430\u044F \u0447\u0430\u0441\u0442\u044C \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044F), \u043E\u0441\u0435\u043D\u044C\u044E \u0436\u043D\u0443\u0442. \u041D\u0435\u0441\u0436\u0430\u0442\u043E\u0435 \u043A \u0437\u0438\u043C\u0435 \u043F\u043E\u0431\u044C\u0451\u0442 \u043C\u043E\u0440\u043E\u0437.",
+      effects: {},
+      onFinish: "plowField",
+      available: (w) => ["seedBarley", "seedTurnip", "seedFlax"].some((s) => (w.stock[s] || 0) >= 2),
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0441\u0432\u043E\u0451 \u043F\u043E\u043B\u0435",
+      motive: (a, c) => [[0.5, "\u0441\u0435\u043C\u0435\u043D\u0430 \u0435\u0441\u0442\u044C, \u0430 \u0441\u0435\u044F\u0442\u044C \u043D\u0435\u0433\u0434\u0435"], [a.mem.hunger * 0.9, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442"], [c.season === "winter" ? -0.4 : 0, "\u0437\u0438\u043C\u043E\u0439 \u043D\u0435 \u043F\u0430\u0448\u0443\u0442"], [(a.prefs.farm - 1) * 1.5, "\u043B\u044E\u0431\u0438\u0442 \u0437\u0435\u043C\u043B\u044E"]]
     },
     {
       id: "garden",
@@ -1535,21 +1687,62 @@ body.ingame h1{font-size:22px}
       wish: "\u0433\u043E\u0432\u043E\u0440\u0438\u0442, \u0447\u0442\u043E \u043D\u0443\u0436\u0435\u043D \u043A\u0430\u043C\u0435\u043D\u044C",
       motive: (a, c) => [[0.35 + (c.wantStone ? 0.35 : 0), "\u0431\u0435\u0437 \u043A\u0430\u043C\u043D\u044F \u0434\u0430\u043B\u044C\u0448\u0435 \u043D\u0435 \u043F\u043E\u0441\u0442\u0440\u043E\u0438\u0442\u044C\u0441\u044F"], [(a.prefs.mine - 1) * 1.5, "\u043B\u044E\u0431\u0438\u0442 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0441 \u043A\u0430\u043C\u043D\u0435\u043C"]]
     },
+    // no sawmill out here: two men and a pit saw on trestles; boards (тёс) for log houses
     {
       id: "sawmill",
-      name: "\u041B\u0435\u0441\u043E\u043F\u0438\u043B\u043A\u0430",
-      gender: "f",
-      cost: { wood: 30, stone: 10 },
-      work: 240,
+      name: "\u041A\u043E\u0437\u043B\u044B \u0434\u043B\u044F \u0440\u0430\u0441\u043F\u0438\u043B\u0430",
+      gender: "pl",
+      cost: { wood: 20, rope: 2 },
+      work: 180,
       max: 1,
       wooden: true,
       color: "#8a6a3c",
-      mark: "\u041B",
-      needs: "quarry",
-      effect: "\u0420\u0443\u0431\u043A\u0430 \u0438\u0434\u0451\u0442 \u043D\u0430 60% \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043A\u0430\u0436\u0434\u043E\u0435 \u0431\u0440\u0435\u0432\u043D\u043E \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B.",
-      effects: { jobSpeed: { chop: 1.6 }, yield: { wood: 1.5 } },
-      wish: "\u0445\u043E\u0447\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0435 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B",
-      motive: (a) => [[a.mem.walkWood, "\u0434\u0430\u043B\u0435\u043A\u043E \u0445\u043E\u0434\u0438\u0442\u044C \u0437\u0430 \u043B\u0435\u0441\u043E\u043C"], [(a.prefs.chop - 1) * 1.4 + a.skill.chop * 0.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u0443\u0431\u0438\u0442\u044C \u043B\u0435\u0441"]]
+      mark: "\u0422\u0441",
+      station: true,
+      benches: 2,
+      effect: "\u0411\u0440\u0451\u0432\u043D\u0430 \u0440\u0430\u0441\u043F\u0443\u0441\u043A\u0430\u044E\u0442 \u043F\u0438\u043B\u043E\u0439 \u043D\u0430 \u0442\u0451\u0441: \u0438\u0437 \u043D\u0435\u0433\u043E \u0440\u0443\u0431\u044F\u0442 \u0438\u0437\u0431\u044B. \u0420\u044F\u0434\u043E\u043C \u0443\u0434\u043E\u0431\u043D\u0435\u0435 \u043A\u043E\u043B\u043E\u0442\u044C \u0434\u0440\u043E\u0432\u0430: \u0440\u0443\u0431\u043A\u0430 \u043D\u0430 \u0442\u0440\u0435\u0442\u044C \u0431\u044B\u0441\u0442\u0440\u0435\u0435.",
+      effects: { jobSpeed: { chop: 1.3 } },
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0442\u0451\u0441 \u043D\u0430 \u0438\u0437\u0431\u044B",
+      motive: (a, c) => [
+        [a.mem.cold * 0.8 + (c.season === "summer" || c.season === "autumn" ? 0.4 : 0.1), "\u0431\u0435\u0437 \u0442\u0451\u0441\u0430 \u0438\u0437\u0431\u0443 \u043D\u0435 \u0441\u0440\u0443\u0431\u0438\u0442\u044C"],
+        [a.mem.walkWood * 0.6, "\u0434\u0430\u043B\u0435\u043A\u043E \u0445\u043E\u0434\u0438\u0442\u044C \u0437\u0430 \u043B\u0435\u0441\u043E\u043C"],
+        [(a.prefs.saw - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0441 \u0434\u0435\u0440\u0435\u0432\u043E\u043C"]
+      ]
+    },
+    // ── the outpost's crafts
+    {
+      id: "loom",
+      name: "\u0422\u043A\u0430\u0446\u043A\u0438\u0439 \u0441\u0442\u0430\u043D\u043E\u043A",
+      gender: "m",
+      cost: { wood: 12, rope: 2 },
+      work: 160,
+      max: 1,
+      wooden: true,
+      color: "#c8b48a",
+      mark: "\u0422\u043A",
+      station: true,
+      benches: 1,
+      effect: "\u0418\u0437 \u0432\u043E\u043B\u043E\u043A\u043D\u0430 \u0442\u043A\u0443\u0442 \u0433\u0440\u0443\u0431\u044B\u0439 \u0445\u043E\u043B\u0441\u0442: \u043D\u0430 \u0440\u0443\u0431\u0430\u0445\u0438, \u043D\u0430 \u043F\u0440\u043E\u0434\u0430\u0436\u0443. \u0422\u043E\u043D\u043A\u043E\u0435 \u0441\u0443\u043A\u043D\u043E \u0438 \u043F\u043E\u043B\u043E\u0442\u043D\u043E \u2014 \u0442\u043E\u043B\u044C\u043A\u043E \u0443 \u0442\u043E\u0440\u0433\u043E\u0432\u0446\u0435\u0432.",
+      effects: {},
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0442\u043A\u0430\u0442\u044C",
+      motive: (a, c) => [[a.mem.cold * 0.5, "\u043D\u0443\u0436\u043D\u0430 \u043E\u0434\u0435\u0436\u0434\u0430"], [c.stock("fiber") * 0.03, "\u0432\u043E\u043B\u043E\u043A\u043D\u043E \u043B\u0435\u0436\u0438\u0442 \u0431\u0435\u0437 \u0434\u0435\u043B\u0430"], [(a.prefs.weave - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0442\u043A\u0430\u0442\u044C"]]
+    },
+    {
+      id: "potter",
+      name: "\u0413\u043E\u043D\u0447\u0430\u0440\u043D\u0430\u044F \u044F\u043C\u0430",
+      gender: "f",
+      cost: { wood: 8, clay: 6 },
+      work: 140,
+      max: 1,
+      wooden: false,
+      color: "#a8653e",
+      mark: "\u0413\u043D",
+      station: true,
+      benches: 1,
+      effect: "\u0418\u0437 \u0433\u043B\u0438\u043D\u044B \u043B\u0435\u043F\u044F\u0442 \u0438 \u043E\u0431\u0436\u0438\u0433\u0430\u044E\u0442 \u0433\u043E\u0440\u0448\u043A\u0438: \u0432 \u0433\u043E\u0440\u0448\u043A\u0430\u0445 \u0435\u0434\u0430 \u043F\u043E\u0440\u0442\u0438\u0442\u0441\u044F \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435 \u0438 \u043A\u0440\u044B\u0441\u044B \u0434\u043E \u043D\u0435\u0451 \u043D\u0435 \u0434\u043E\u0431\u0438\u0440\u0430\u044E\u0442\u0441\u044F.",
+      effects: {},
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0435\u0434\u0443 \u0432 \u0433\u043E\u0440\u0448\u043A\u0430\u0445",
+      motive: (a, c) => [[c.spoiled * 0.06, "\u0435\u0434\u0430 \u043F\u043E\u0440\u0442\u0438\u0442\u0441\u044F"], [c.rats * 0.25, "\u043A\u0440\u044B\u0441\u044B \u0442\u0430\u0441\u043A\u0430\u044E\u0442 \u043F\u0440\u0438\u043F\u0430\u0441\u044B"], [c.stock("clay") * 0.03, "\u0433\u043B\u0438\u043D\u0430 \u0435\u0441\u0442\u044C, \u0433\u043E\u0440\u0448\u043A\u043E\u0432 \u043D\u0435\u0442"], [(a.prefs.pottery - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u043B\u0435\u043F\u0438\u0442\u044C"]]
     },
     {
       id: "smokehouse",
@@ -1870,7 +2063,7 @@ body.ingame h1{font-size:22px}
   // src/settlement/mods.js
   function emptyMods() {
     return {
-      add: { beds: 0, popCap: 0, coolCamp: 0, huntRange: 0 },
+      add: { beds: 0, popCap: 0, coolCamp: 0, huntRange: 0, bedWarmth: 0 },
       mul: { spoil: 1, defense: 1, loot: 1, douse: 1, wear: 1 },
       yield: {},
       jobSpeed: {},
@@ -2001,7 +2194,8 @@ body.ingame h1{font-size:22px}
     { id: "starving", mood: -0.35, lasts: 8 * HOUR, once: 8 * HOUR, text: () => "\u0413\u043E\u043B\u043E\u0434\u0430\u0435\u0442. \u0417\u0430\u043F\u0430\u0441\u044B \u043F\u0443\u0441\u0442\u044B." },
     { id: "freezing", mood: -0.25, lasts: 8 * HOUR, once: 8 * HOUR, text: (a) => `${g(a, "\u0417\u0430\u043C\u0451\u0440\u0437", "\u0417\u0430\u043C\u0451\u0440\u0437\u043B\u0430")} \u0434\u043E \u043A\u043E\u0441\u0442\u0435\u0439.` },
     { id: "exhausted", mood: -0.2, lasts: 6 * HOUR, once: 8 * HOUR, text: () => "\u0412\u0430\u043B\u0438\u0442\u0441\u044F \u0441 \u043D\u043E\u0433 \u043E\u0442 \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438." },
-    { id: "sleptHut", mood: 0.15, lasts: 10 * HOUR, once: 10 * HOUR, text: (a) => `\u0425\u043E\u0440\u043E\u0448\u043E ${g(a, "\u0432\u044B\u0441\u043F\u0430\u043B\u0441\u044F", "\u0432\u044B\u0441\u043F\u0430\u043B\u0430\u0441\u044C")} \u0432 \u0448\u0430\u043B\u0430\u0448\u0435, \u0432 \u0442\u0435\u043F\u043B\u0435.` },
+    { id: "sleptHouse", mood: 0.22, lasts: 10 * HOUR, once: 10 * HOUR, text: (a) => `\u0412\u044B\u0441\u043F\u0430\u043B${g(a, "\u0441\u044F", "\u0430\u0441\u044C")} \u0432 \u0442\u0451\u043F\u043B\u043E\u0439 \u0438\u0437\u0431\u0435. \u0425\u043E\u0440\u043E\u0448\u043E!` },
+    { id: "sleptHut", mood: 0.06, lasts: 10 * HOUR, once: 10 * HOUR, text: (a) => `\u041F\u0435\u0440\u0435\u043D\u043E\u0447\u0435\u0432\u0430\u043B${g(a, "", "\u0430")} \u0432 \u0448\u0430\u043B\u0430\u0448\u0435: \u0442\u0435\u0441\u043D\u043E \u0438 \u0441\u043A\u0432\u043E\u0437\u0438\u0442, \u043D\u043E \u0432\u0441\u0451 \u043B\u0443\u0447\u0448\u0435, \u0447\u0435\u043C \u043F\u043E\u0434 \u043D\u0435\u0431\u043E\u043C.` },
     { id: "sleptOutside", mood: -0.05, lasts: 8 * HOUR, once: 10 * HOUR, text: () => "\u0421\u043F\u0430\u043B \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 \u043F\u043E\u0434 \u043E\u0442\u043A\u0440\u044B\u0442\u044B\u043C \u043D\u0435\u0431\u043E\u043C." },
     { id: "wounded", mood: -0.3, lasts: DAY, once: 6 * HOUR, text: (a) => `\u0422\u044F\u0436\u0435\u043B\u043E ${g(a, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")}.` },
     // work
@@ -2162,7 +2356,7 @@ body.ingame h1{font-size:22px}
       killMessage: (name) => `\u0412\u043E\u043B\u043A\u0438 \u0437\u0430\u0433\u0440\u044B\u0437\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
       predator: {
-        prey: ["hare"],
+        prey: ["hare", "deer", "fox"],
         // what it hunts for food
         victims: ["human"],
         // whom it attacks: a lone colonist, or a pair when desperate
@@ -2199,6 +2393,74 @@ body.ingame h1{font-size:22px}
         weakBelow: 0.35
         // …below this share of its health; it is bitten down, not caught at once
       }
+    },
+    // Deer: the main game of the woods — skittish, fast, a lot of meat and a good hide.
+    {
+      id: "deer",
+      label: "\u043E\u043B\u0435\u043D\u044C",
+      labelAcc: "\u043E\u043B\u0435\u043D\u044F",
+      hp: 0.45,
+      speed: 0.15,
+      needs: [],
+      brain: "grazer",
+      game: true,
+      heatHarm: 60,
+      look: { shape: "deer", size: 0.62, color: "#a8794a" },
+      yields: { meat: 5, hide: 2, bone: 2 },
+      flee: { radius: 7, sprint: 1.6, from: ["human", "wolf"], stamina: 6e-3 },
+      grazes: { terrain: ["grass", "forest"], eatsBerries: 2e-3 },
+      leaveChance: 3e-4
+    },
+    // Fox: small and quick, hunted for its fur, which traders pay well for.
+    {
+      id: "fox",
+      label: "\u043B\u0438\u0441\u0430",
+      labelAcc: "\u043B\u0438\u0441\u0443",
+      hp: 0.15,
+      speed: 0.18,
+      needs: [],
+      brain: "grazer",
+      game: true,
+      heatHarm: 60,
+      look: { shape: "fox", size: 0.42, color: "#d0703a" },
+      yields: { meat: 1, furs: 1 },
+      flee: { radius: 6, sprint: 1.5, from: ["human", "wolf"], stamina: 6e-3 },
+      grazes: { terrain: ["grass", "forest"], eatsBerries: 0 },
+      leaveChance: 4e-4
+    },
+    // Boar: fat and dangerous. Like the mule it does not run: it kicks back with its tusks and charges
+    // whoever shot it. Hunters go for it only when there is no gentler game about.
+    {
+      id: "boar",
+      label: "\u043A\u0430\u0431\u0430\u043D",
+      labelAcc: "\u043A\u0430\u0431\u0430\u043D\u0430",
+      hp: 1.3,
+      speed: 0.12,
+      needs: [],
+      brain: "mule",
+      big: true,
+      game: true,
+      heatHarm: 60,
+      look: { shape: "boar", size: 0.62, color: "#4a3a30" },
+      attack: { power: 1.45, cooldown: 14 },
+      yields: { meat: 6, hide: 2, bone: 1 },
+      killMessage: (name) => `\u041A\u0430\u0431\u0430\u043D \u0437\u0430\u0434\u0440\u0430\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
+      mule: { kickRange: 1, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3, leaveChance: 3e-4 }
+    },
+    // Rats: they come for the stock when there is a lot of food and nothing to keep them out of it.
+    // They nibble what lies in the open (pots and a granary protect it) and run from people;
+    // whoever catches one near the stores kills it (agents/brains/vermin.js).
+    {
+      id: "rat",
+      label: "\u043A\u0440\u044B\u0441\u0430",
+      labelAcc: "\u043A\u0440\u044B\u0441\u0443",
+      hp: 0.05,
+      speed: 0.15,
+      needs: [],
+      brain: "vermin",
+      heatHarm: 55,
+      look: { shape: "rat", size: 0.25, color: "#7c7468" },
+      vermin: { eats: 16e-4, flee: 1.6, caught: 0.04 }
     },
     // The mule: a big, stubborn grazer, a small bull really. It does not run from people; it kicks
     // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves
@@ -2559,13 +2821,153 @@ body.ingame h1{font-size:22px}
     return out;
   }
 
+  // src/data/crops.js
+  var CROPS = new Registry("crop");
+  CROPS.registerAll([
+    // barley: grain that keeps all winter, porridge at the hearth, straw for bedding
+    {
+      id: "barley",
+      label: "\u044F\u0447\u043C\u0435\u043D\u044C",
+      seed: "seedBarley",
+      yields: { barley: 3, hay: 1 },
+      seedBack: 1.3,
+      days: 24,
+      sow: ["spring", "summer"],
+      need: (c) => 1 + (c.food < c.pop * 6 ? 0.6 : 0),
+      color: [[96, 120, 60], [214, 190, 110]]
+    },
+    // turnips: quick, filling, they keep in a cellar
+    {
+      id: "turnip",
+      label: "\u0440\u0435\u043F\u0430",
+      seed: "seedTurnip",
+      yields: { turnip: 4 },
+      seedBack: 1.2,
+      days: 18,
+      sow: ["spring", "summer"],
+      need: (c) => 1.1 + (c.food < c.pop * 4 ? 0.8 : 0),
+      color: [[80, 130, 70], [190, 150, 170]]
+    },
+    // flax: the fibre for rope and cloth, far more than nettles give
+    {
+      id: "flax",
+      label: "\u043B\u0451\u043D",
+      seed: "seedFlax",
+      yields: { fiber: 5 },
+      seedBack: 1.3,
+      days: 22,
+      sow: ["spring", "summer"],
+      need: (c) => c.stock("fiber") < 20 ? 1.2 : 0.4,
+      color: [[80, 120, 90], [140, 160, 210]]
+    }
+  ]);
+
+  // src/settlement/farming.js
+  var EVERY = 10;
+  var PLOTS = 16;
+  var fields = (w) => w.buildings.filter((b) => b.done && b.plots && b.key === "field");
+  function plowField(w, b) {
+    const g2 = w.grid, cand = [];
+    for (let yy = -3; yy <= 4; yy++) for (let xx = -3; xx <= 4; xx++) {
+      const x = b.x + xx, y = b.y + yy;
+      if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
+      const j = y * w.w + x;
+      if ((g2.terr[j] === T.GRASS || g2.terr[j] === T.BURNT || g2.terr[j] === T.FOREST) && g2.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
+    }
+    cand.sort((p, q) => p[1] - q[1]);
+    b.plots = [];
+    for (const [j] of cand.slice(0, PLOTS)) {
+      g2.terr[j] = T.GRASS;
+      g2.bush[j] = 0;
+      g2.food[j] = 0;
+      g2.wood[j] = 0;
+      g2.fuel[j] = 0.2;
+      g2.bld[j] = b.id;
+      b.plots.push({ i: j, crop: null, g: 0 });
+    }
+    w.nav.dirty("fieldwork");
+  }
+  var sowable = (w) => perTick(w, "sowable", () => {
+    const s = season(w).id, pop = colonists(w).length;
+    const ctx = { pop, food: foodTotal(w), stock: (id) => w.stock[id] || 0 };
+    let best = null, bv = 0;
+    for (const c of CROPS.all()) {
+      if (!c.sow.includes(s) || (w.stock[c.seed] || 0) < 1) continue;
+      const v = c.need(ctx);
+      if (v > bv) {
+        bv = v;
+        best = c;
+      }
+    }
+    return best;
+  });
+  var ripe = (p) => p.crop && p.g >= 1;
+  var needsWork = (w, p) => ripe(p) || !p.crop && !!sowable(w);
+  function plotAt(w, i) {
+    for (const b of fields(w)) {
+      const p = b.plots.find((x) => x.i === i);
+      if (p) return p;
+    }
+    return null;
+  }
+  function stepFarms(w) {
+    if (w.tick % EVERY) return;
+    const S = season(w);
+    if (S.frost != null && w.tick % DAY < EVERY && w.tick / DAY % 30 < 1) {
+      let lost = 0;
+      for (const b of fields(w)) for (const p of b.plots) if (p.crop && p.g < 1) {
+        p.crop = null;
+        p.g = 0;
+        lost++;
+      }
+      if (lost) log(w, `\u041C\u043E\u0440\u043E\u0437 \u043F\u043E\u0431\u0438\u043B \u043D\u0435\u0441\u0436\u0430\u0442\u044B\u0435 \u043F\u043E\u0441\u0435\u0432\u044B: ${lost} \u0433\u0440\u044F\u0434\u043E\u043A \u043F\u0440\u043E\u043F\u0430\u043B\u043E.`, "weather", "notice");
+    }
+    let ripened = false;
+    for (const b of fields(w)) for (const p of b.plots) {
+      if (!p.crop || p.g >= 1) continue;
+      if (w.grid.fire[p.i] > 0) {
+        p.crop = null;
+        p.g = 0;
+        continue;
+      }
+      p.g = Math.min(1, p.g + EVERY * S.grow / (CROPS.get(p.crop).days * DAY));
+      if (p.g >= 1) ripened = true;
+    }
+    if (ripened) w.nav.dirty("fieldwork");
+  }
+  function workPlot(w, i) {
+    const p = plotAt(w, i);
+    if (!p) return null;
+    if (ripe(p)) {
+      const c = CROPS.get(p.crop), got = { ...c.yields };
+      const back = Math.floor(c.seedBack) + (w.rng() < c.seedBack % 1 ? 1 : 0);
+      if (back) got[c.seed] = (got[c.seed] || 0) + back;
+      p.crop = null;
+      p.g = 0;
+      w.nav.dirty("fieldwork");
+      w.stats.reaped = (w.stats.reaped || 0) + 1;
+      return got;
+    }
+    if (!p.crop) {
+      const c = sowable(w);
+      if (!c) return null;
+      w.stock[c.seed] -= 1;
+      p.crop = c.id;
+      p.g = 0;
+      w.nav.dirty("fieldwork");
+    }
+    return null;
+  }
+
   // src/settlement/buildings.js
-  var ending = (d) => d.gender === "f" ? "\u0430" : d.gender === "pl" ? "\u044B" : "";
+  var ending = (d) => d.gender === "f" ? "\u0430" : d.gender === "pl" ? "\u044B" : d.gender === "n" ? "\u043E" : "";
+  var fuelReserve = (w) => ambientTemp(w, w.tick - w.tick % DAY + 3 * HOUR) < 6 ? 10 : 4;
   function canAfford(w, cost) {
-    return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v);
+    return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v + (r === "wood" ? fuelReserve(w) : 0));
   }
   function missing(w, cost) {
-    return Object.entries(cost).filter(([r, v]) => (w.stock[r] || 0) < v).map(([r, v]) => [r, Math.ceil(v - (w.stock[r] || 0))]);
+    const need = (r, v) => v + (r === "wood" ? fuelReserve(w) : 0);
+    return Object.entries(cost).filter(([r, v]) => (w.stock[r] || 0) < need(r, v)).map(([r, v]) => [r, Math.ceil(need(r, v) - (w.stock[r] || 0))]);
   }
   function eligible(w, key2) {
     const d = BUILDINGS.get(key2);
@@ -2627,6 +3029,7 @@ body.ingame h1{font-size:22px}
     return b;
   }
   var FINISH_HOOKS = {
+    plowField,
     plantGarden(w, b) {
       const g2 = w.grid, cand = [];
       for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
@@ -2671,6 +3074,7 @@ body.ingame h1{font-size:22px}
     const b = buildingById(w, id);
     if (!b) return;
     for (const j of b.cells) w.grid.bld[j] = -1;
+    for (const p of b.plots || []) if (p.i != null) w.grid.bld[p.i] = -1;
     w.buildings = w.buildings.filter((x) => x !== b);
     if (b.plots) {
       const own = new Set(b.plots);
@@ -2720,6 +3124,7 @@ body.ingame h1{font-size:22px}
       items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
       stock: (r) => w.stock[r] || 0,
       season: season(w).id,
+      rats: w.agents.filter((o) => o.species === "rat").length,
       wounded: colonists(w).filter((a) => a.hp < 0.7).length / Math.max(1, colonists(w).length),
       oreSeen: oreSeen(w),
       wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
@@ -3103,8 +3508,103 @@ body.ingame h1{font-size:22px}
     think(w, a, "tradeDay", { trader: w.caravan.name, got });
   }
 
+  // src/settlement/stock.js
+  var foods = () => RESOURCES.filter((r) => r.tags.includes("food"));
+  function deposit(w, res, amount) {
+    w.stock[res] = (w.stock[res] || 0) + amount * yieldOf(w, res);
+  }
+  function chooseMeal(w, a) {
+    const likes = a?.food?.likes, dislikes = a?.food?.dislikes;
+    let best = null, bv = -Infinity;
+    for (const r of foods()) {
+      const have = w.stock[r.id] || 0;
+      if (have < 1) continue;
+      const f = FOODS.get(r.id), t = tasteOf(f);
+      const v = (t === likes ? 10 - (f.of ? 1 : 0) : 0) - (t === dislikes ? 1e6 : 0) + (f.dish ? 6 : 0) + f.spoil * 2 + Math.min(1, have / 20);
+      if (v > bv) {
+        bv = v;
+        best = r;
+      }
+    }
+    return best;
+  }
+  function eatMeal(w, a) {
+    const best = chooseMeal(w, a);
+    if (!best) return { fed: 0, res: null, mood: null };
+    w.stock[best.id] -= 1;
+    const t = tasteOf(FOODS.get(best.id));
+    const mood = a?.food?.likes === t ? "liked" : a?.food?.dislikes === t ? "disliked" : null;
+    return { fed: best.nutrition, res: best, mood };
+  }
+  var cf;
+  var sf;
+  var campFuels = () => cf || (cf = RESOURCES.filter((r) => r.tags.includes("fuel")).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
+  var smeltFuels = () => sf || (sf = RESOURCES.filter((r) => r.tags.includes("smelt")));
+  function campFuel(w) {
+    return campFuels().find((r) => (w.stock[r.id] || 0) > 0.05) || null;
+  }
+  function burnCampFuel(w, amount) {
+    const r = campFuel(w);
+    if (!r) return false;
+    w.stock[r.id] = Math.max(0, w.stock[r.id] - amount / (r.heat || 1));
+    return true;
+  }
+  var smeltFuelTotal = (w) => smeltFuels().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
+  function takeSmeltFuel(w, n) {
+    if (smeltFuelTotal(w) < n) return false;
+    let left = n;
+    for (const r of [...smeltFuels()].sort((x, y) => (w.stock[y.id] || 0) - (w.stock[x.id] || 0))) {
+      const t = Math.min(left, w.stock[r.id] || 0);
+      w.stock[r.id] -= t;
+      left -= t;
+      if (left <= 1e-9) break;
+    }
+    return true;
+  }
+  var POT_HOLDS = 6;
+  function potShare(w) {
+    let food = 0;
+    for (const r of foods()) food += w.stock[r.id] || 0;
+    return food <= 0 ? 1 : Math.min(1, (w.stock.pots || 0) * POT_HOLDS / food);
+  }
+  var exposedShare = (w) => (1 - potShare(w)) * (w.buildings.some((b) => b.key === "granary" && b.done) ? 0.5 : 1);
+  function nibble(w, amount) {
+    const open = exposedShare(w);
+    if (open <= 0) return;
+    let best = null;
+    for (const r of foods()) if ((w.stock[r.id] || 0) >= 1 && (!best || w.stock[r.id] > w.stock[best.id])) best = r;
+    if (!best) return;
+    const lost = Math.min(w.stock[best.id], amount * open);
+    w.stock[best.id] -= lost;
+    w.stats.ratsAte = (w.stats.ratsAte || 0) + lost;
+  }
+  function spoil(w) {
+    const S = season(w), sealed = 1 - 0.6 * potShare(w);
+    for (const r of foods()) {
+      const lost = w.stock[r.id] * 15e-5 * r.spoil * w.mods.mul.spoil * S.spoil * sealed;
+      w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
+      w.stats.spoiledToday += lost;
+    }
+  }
+  function burnStock(w, frac) {
+    for (const r of RESOURCES.all()) w.stock[r.id] = Math.max(0, w.stock[r.id] * (1 - frac));
+  }
+  function plunder(w) {
+    let total = 0;
+    for (const r of RESOURCES.all()) {
+      const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot);
+      w.stock[r.id] -= take;
+      total += take;
+    }
+    return total;
+  }
+
   // src/data/migrations.js
   var MIGRATIONS = new Registry("migration");
+  function grassland(w) {
+    if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
+    return w.cache.grass;
+  }
   MIGRATIONS.registerAll([
     // newcomers need a free place to sleep and food to spare
     {
@@ -3126,8 +3626,7 @@ body.ingame h1{font-size:22px}
       topic: "wildlife",
       accept: (w, n) => {
         const k = WILDLIFE[w.cfg.wildlife].hares;
-        if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
-        const cap = Math.round(w.cache.grass / 500 * k);
+        const cap = Math.round(grassland(w) / 500 * k);
         return Math.max(0, Math.min(n, cap - ofSpecies(w, "hare").length));
       },
       message: (w, group, side) => group.length > 1 ? `\u0421 ${side} \u043F\u0440\u0438\u0431\u0435\u0436\u0430\u043B\u0438 \u0437\u0430\u0439\u0446\u044B: ${group.length}.` : null
@@ -3150,6 +3649,55 @@ body.ingame h1{font-size:22px}
         }
       },
       message: (w, group, side) => `\u0421 ${side} \u043F\u0440\u0438\u0448\u043B\u0430 \u0441\u0442\u0430\u044F \u0432\u043E\u043B\u043A\u043E\u0432: ${group.length}. \u041E\u0434\u043D\u043E\u043C\u0443 \u0432 \u043B\u0435\u0441 \u043B\u0443\u0447\u0448\u0435 \u043D\u0435 \u0445\u043E\u0434\u0438\u0442\u044C.`
+    },
+    // game: the meadows and woods feed only so many
+    {
+      id: "deer",
+      species: "deer",
+      faction: "wild",
+      minDist: 25,
+      topic: "wildlife",
+      accept: (w, n) => Math.max(0, Math.min(n, Math.round(grassland(w) / 900) - ofSpecies(w, "deer").length)),
+      init: (a) => {
+        a.name = "\u041E\u043B\u0435\u043D\u044C";
+      },
+      message: (w, group, side) => `\u0421 ${side} \u043A \u043B\u0443\u0433\u0430\u043C \u0432\u044B\u0448\u043B\u0438 \u043E\u043B\u0435\u043D\u0438: ${group.length}.`
+    },
+    {
+      id: "foxes",
+      species: "fox",
+      faction: "wild",
+      minDist: 25,
+      topic: "wildlife",
+      accept: (w, n) => Math.max(0, Math.min(n, 3 - ofSpecies(w, "fox").length)),
+      init: (a) => {
+        a.name = "\u041B\u0438\u0441\u0430";
+      }
+    },
+    {
+      id: "boars",
+      species: "boar",
+      faction: "wild",
+      minDist: 30,
+      topic: "wildlife",
+      accept: (w, n) => Math.max(0, Math.min(n, 4 - ofSpecies(w, "boar").length)),
+      init: (a) => {
+        a.name = "\u041A\u0430\u0431\u0430\u043D";
+      },
+      message: (w, group, side) => `\u0421 ${side} \u0432 \u043B\u0435\u0441 \u043F\u0440\u0438\u0448\u043B\u0438 \u043A\u0430\u0431\u0430\u043D\u044B: ${group.length}. \u041F\u043E\u0434\u0440\u0430\u043D\u043E\u043A \u0431\u0440\u043E\u0441\u0430\u0435\u0442\u0441\u044F \u043D\u0430 \u043E\u0445\u043E\u0442\u043D\u0438\u043A\u0430.`
+    },
+    // rats come while there is a lot of food lying in the open; never more than six
+    {
+      id: "rats",
+      species: "rat",
+      faction: "wild",
+      minDist: 20,
+      topic: "wildlife",
+      accept: (w, n) => foodTotal(w) * exposedShare(w) < 30 ? 0 : Math.max(0, Math.min(n, 6 - ofSpecies(w, "rat").length)),
+      init: (a) => {
+        a.name = "\u041A\u0440\u044B\u0441\u0430";
+      },
+      message: (w, group) => ofSpecies(w, "rat").length >= 3 ? "\u041D\u0430 \u0441\u043A\u043B\u0430\u0434\u0435 \u0437\u0430\u0432\u0435\u043B\u0438\u0441\u044C \u043A\u0440\u044B\u0441\u044B. \u0413\u043E\u0440\u0448\u043A\u0438 \u0438 \u0430\u043C\u0431\u0430\u0440 \u0441\u043F\u0440\u044F\u0447\u0443\u0442 \u043E\u0442 \u043D\u0438\u0445 \u0435\u0434\u0443." : null
     },
     // a wild mule wanders onto the meadows now and then; never more than two at a time
     {
@@ -3271,7 +3819,7 @@ body.ingame h1{font-size:22px}
       label: "\u0414\u0438\u043A\u0438\u0435 \u043B\u0435\u0441\u0430",
       kind: "wild",
       dist: 0,
-      flows: ["hares", "wolves", "mules"],
+      flows: ["hares", "deer", "foxes", "boars", "wolves", "mules", "rats"],
       note: "\u043B\u0435\u0441\u0430 \u0437\u0430 \u043A\u0440\u0430\u0435\u043C \u043A\u0430\u0440\u0442\u044B: \u043E\u0442\u0442\u0443\u0434\u0430 \u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u0437\u0432\u0435\u0440\u0438"
     }
   ]);
@@ -3302,7 +3850,9 @@ body.ingame h1{font-size:22px}
   };
   function huntable(w, job) {
     const usual = w.agents.filter((o) => !o.dead && job.prey.includes(o.species));
-    if (usual.length || !job.lastResort) return usual;
+    if (usual.length) return usual;
+    const risky = w.agents.filter((o) => !o.dead && (job.risky || []).includes(o.species));
+    if (risky.length || !job.lastResort) return risky;
     const pop = w.agents.filter((o) => o.faction === "colony").length;
     const hungry = RESOURCES_FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0) < pop * 2;
     return hungry ? w.agents.filter((o) => !o.dead && o.faction === "wild" && job.lastResort.includes(o.species)) : [];
@@ -3342,7 +3892,8 @@ body.ingame h1{font-size:22px}
       carry: 2,
       time: 26,
       memory: "walkWood",
-      desire: (w, ctx) => w.stock.wood < 25 ? 0.55 : w.stock.wood < 40 ? 0.2 : 0.03,
+      // wood is fuel too: with the fire about to die everyone thinks of logs first
+      desire: (w, ctx) => w.stock.wood < 8 ? 0.95 : w.stock.wood < 25 ? 0.55 : w.stock.wood < 40 ? 0.2 : 0.03,
       valid: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.25 && w.grid.fire[i] === 0,
       take: (w, i) => {
         const g2 = w.grid;
@@ -3438,10 +3989,12 @@ body.ingame h1{font-size:22px}
       preferable: true,
       runner: "hunt",
       nav: "prey",
-      prey: ["hare"],
+      prey: ["hare", "deer", "fox"],
+      risky: ["boar"],
       lastResort: ["mule"],
       food: "meat",
       canDo: (w, a) => !!a.gear?.rangedReady,
+      // hides and bones for the crafts, furs for the traders: hunting is wanted beyond food too
       desire: (w, ctx, job) => ctx.preyCount > 0 ? foodWant(w, ctx, job, 0.75, 0.08 + (w.stock.hide < 4 || w.stock.bone < 4 ? 0.3 : 0)) : -1
     },
     {
@@ -3483,6 +4036,50 @@ body.ingame h1{font-size:22px}
       runner: "craft",
       stations: ["jeweler"],
       desire: atStations(0.35)
+    },
+    // field work: sow empty plots in spring and summer, reap ripe ones (settlement/farming.js)
+    {
+      id: "farm",
+      label: "\u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0432 \u043F\u043E\u043B\u0435",
+      short: "\u043F\u043E\u043B\u0435",
+      verb: "\u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \u0432 \u043F\u043E\u043B\u0435",
+      preferable: true,
+      runner: "farm",
+      nav: "fieldwork",
+      requires: "field",
+      carry: 4,
+      time: 16,
+      desire: (w) => fields(w).some((b) => b.plots.some((p) => needsWork(w, p))) ? 0.55 : -1
+    },
+    {
+      id: "saw",
+      label: "\u043F\u0438\u043B\u0438\u0442\u044C \u0442\u0451\u0441",
+      short: "\u0442\u0451\u0441",
+      verb: "\u043F\u0438\u043B\u0438\u0442 \u0442\u0451\u0441",
+      preferable: true,
+      runner: "craft",
+      stations: ["sawmill"],
+      desire: atStations(0.45)
+    },
+    {
+      id: "weave",
+      label: "\u0442\u043A\u0430\u0442\u044C",
+      short: "\u0442\u043A\u0430\u0447",
+      verb: "\u0442\u043A\u0451\u0442 \u0445\u043E\u043B\u0441\u0442",
+      preferable: true,
+      runner: "craft",
+      stations: ["loom"],
+      desire: atStations(0.4)
+    },
+    {
+      id: "pottery",
+      label: "\u043B\u0435\u043F\u0438\u0442\u044C \u0433\u043E\u0440\u0448\u043A\u0438",
+      short: "\u0433\u043E\u043D\u0447\u0430\u0440",
+      verb: "\u043B\u0435\u043F\u0438\u0442 \u0433\u043E\u0440\u0448\u043A\u0438",
+      preferable: true,
+      runner: "craft",
+      stations: ["potter"],
+      desire: atStations(0.4)
     },
     {
       id: "preserve",
@@ -3548,6 +4145,35 @@ body.ingame h1{font-size:22px}
       desire: (w, ctx) => ctx.openSites ? 0.6 : -1
     }
   ]);
+  for (const p of PLANTS.filter((x) => x.job)) {
+    const J = p.job, key2 = plantLayer(p.id);
+    const inSeason = (w) => !p.seasons || p.seasons.includes(season(w).id);
+    JOBS.register({
+      id: J.id,
+      label: J.label,
+      short: J.short,
+      verb: J.verb,
+      preferable: true,
+      runner: "harvest",
+      nav: key2,
+      resource: p.resource,
+      carry: J.carry,
+      time: J.time,
+      desire: (w, ctx) => !inSeason(w) ? -1 : (w.stock[p.resource] || 0) < J.keep ? 0.3 + 0.2 * (1 - (w.stock[p.resource] || 0) / J.keep) : -1,
+      valid: (w, i) => inSeason(w) && w.grid[key2][i] >= p.ripe && w.grid.fire[i] === 0,
+      take: (w, i, a) => {
+        w.grid[key2][i] -= p.take;
+        if (w.grid[key2][i] < p.ripe) w.nav.dirty(key2);
+        if (J.hurt && a) {
+          a.hp -= J.hurt * (0.5 + w.rng());
+          if (a.mem) a.mem.stung = (a.mem.stung || 0) + 0.2;
+        }
+        const got = [p.resource];
+        for (const [r, ch] of Object.entries(p.also || {})) if (w.rng() < ch) got.push(r);
+        return got;
+      }
+    });
+  }
   for (const j of JOBS.all()) if (j.runner === "craft" && !j.requires) j.requires = j.stations;
 
   // src/data/traits.js
@@ -3746,10 +4372,10 @@ body.ingame h1{font-size:22px}
   var NAVMAPS = new Registry("navmap");
   NAVMAPS.registerAll([
     { id: "camp", seed: (w, i) => w.camp.set.has(i) },
-    // where to get warm: the camp fire and every finished hut (huts are heated while the fire burns)
+    // where to get warm: the camp fire and every finished lived-in building (heated while the fire burns)
     {
       id: "warm",
-      prepare: (w) => new Set(w.buildings.filter((b) => b.done && BUILDINGS.get(b.key).heated).flatMap((b) => b.cells)),
+      prepare: (w) => new Set(w.buildings.filter((b) => b.done && BUILDINGS.get(b.key).heat).flatMap((b) => b.cells)),
       seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)
     },
     { id: "edge", seed: (w, i) => {
@@ -3793,6 +4419,14 @@ body.ingame h1{font-size:22px}
       prepare: (w) => new Set(w.agents.filter((a) => SPECIES.get(a.species).game).map((a) => cellOf(w, a))),
       seed: (w, i, cells) => cells.has(i)
     },
+    // field plots that need sowing or reaping
+    {
+      id: "fieldwork",
+      period: 120,
+      active: (w) => fields(w).length > 0,
+      prepare: (w) => new Set(fields(w).flatMap((b) => b.plots.filter((p) => needsWork(w, p)).map((p) => p.i))),
+      seed: (w, i, cells) => cells.has(i)
+    },
     // the settlement zone: where people run when something hunts them
     { id: "zone", seed: (w, i) => inZone(w, i) },
     // only fires that threaten the camp are worth fighting
@@ -3815,7 +4449,12 @@ body.ingame h1{font-size:22px}
   ]);
   for (const p of PLANTS.all()) {
     const key2 = plantLayer(p.id);
-    NAVMAPS.register({ id: key2, period: 300, seed: (w, i) => w.grid[key2]?.[i] >= p.ripe && w.grid.fire[i] === 0 });
+    NAVMAPS.register({
+      id: key2,
+      period: 300,
+      active: (w) => !p.seasons || p.seasons.includes(season(w).id),
+      seed: (w, i) => w.grid[key2]?.[i] >= p.ripe && w.grid.fire[i] === 0
+    });
   }
   NAVMAPS.register({
     id: "healer",
@@ -4058,6 +4697,33 @@ body.ingame h1{font-size:22px}
         },
         next: (w) => w.tick + 1500
       },
+      // game from the woods: deer in small herds, a fox now and then, a boar or a sounder of them;
+      // fewer in lean seasons. How many stay is up to the land (data/migrations.js)
+      deer: {
+        from: "wilds",
+        first: (w) => w.tick + DAY,
+        offer: (w, rng) => WILDLIFE[w.cfg.wildlife].hares && rng() < 0.5 * season(w).hares ? 2 + Math.floor(rng() * 3) : 0,
+        next: (w, rng) => w.tick + (1 + rng()) * DAY
+      },
+      foxes: {
+        from: "wilds",
+        first: (w) => w.tick + 2 * DAY,
+        offer: (w, rng) => WILDLIFE[w.cfg.wildlife].hares && rng() < 0.4 * season(w).hares ? 1 : 0,
+        next: (w, rng) => w.tick + (1.5 + rng()) * DAY
+      },
+      boars: {
+        from: "wilds",
+        first: (w) => w.tick + 4 * DAY,
+        offer: (w, rng) => WILDLIFE[w.cfg.wildlife].hares && rng() < 0.35 ? 1 + Math.floor(rng() * 3) : 0,
+        next: (w, rng) => w.tick + (2.5 + rng() * 2) * DAY
+      },
+      // rats smell a full stock
+      rats: {
+        from: "wilds",
+        first: (w) => w.tick + 3 * DAY,
+        offer: (w, rng) => rng() < 0.5 ? 1 + Math.floor(rng() * 2) : 0,
+        next: (w, rng) => w.tick + (0.5 + rng()) * DAY
+      },
       // now and then a wild mule wanders in from the woods
       mules: {
         from: "wilds",
@@ -4196,16 +4862,24 @@ body.ingame h1{font-size:22px}
   }
 
   // src/world/plants.js
-  var EVERY = 10;
+  var EVERY2 = 10;
   function layPlants(w) {
     w.plantBeds ?? (w.plantBeds = {});
     for (const p of PLANTS.all()) {
       const key2 = plantLayer(p.id);
-      if (w.grid[key2]) continue;
+      if (w.grid[key2] && w.plantBeds[p.id]) continue;
       const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key2)), g2 = w.grid;
       const layer2 = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map((t) => TERRAIN.get(t).code));
+      const byWater = (i) => {
+        const x = i % w.w, y = i / w.w | 0;
+        for (let k = 0; k < 4; k++) {
+          const nx = x + DX[k], ny = y + DY[k];
+          if (nx >= 0 && ny >= 0 && nx < w.w && ny < w.h && g2.terr[ny * w.w + nx] === T.WATER) return true;
+        }
+        return false;
+      };
       for (let i = 0; i < w.n; i++) {
-        if (!ok.has(g2.terr[i]) || g2.fert[i] < p.fertMin || isCampArea(w, i)) continue;
+        if (!ok.has(g2.terr[i]) || g2.fert[i] < (p.fertMin || 0) || isCampArea(w, i) || p.nearWater && !byWater(i)) continue;
         if (rnd() < p.chance) {
           beds.push(i);
           layer2[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]);
@@ -4216,12 +4890,12 @@ body.ingame h1{font-size:22px}
     }
   }
   function stepPlants(w) {
-    if (w.tick % EVERY) return;
-    const g2 = w.grid, grow = season(w).grow;
-    if (!grow) return;
+    if (w.tick % EVERY2) return;
+    const g2 = w.grid, sgrow = season(w).grow;
     for (const p of PLANTS.all()) {
+      const grow = p.hardy ? 1 : sgrow;
       const layer2 = g2[plantLayer(p.id)], beds = w.plantBeds[p.id];
-      if (!layer2) continue;
+      if (!layer2 || !grow) continue;
       let ripened = false;
       for (const i of beds) {
         if (g2.fire[i] > 0 || g2.terr[i] === T.BURNT || g2.bld[i] >= 0) {
@@ -4230,7 +4904,7 @@ body.ingame h1{font-size:22px}
         }
         if (layer2[i] >= 1) continue;
         const was = layer2[i];
-        layer2[i] = Math.min(1, was + p.regrow * EVERY * grow);
+        layer2[i] = Math.min(1, was + p.regrow * EVERY2 * grow);
         if (was < p.ripe && layer2[i] >= p.ripe) ripened = true;
       }
       if (ripened) w.nav.dirty(plantLayer(p.id));
@@ -4381,80 +5055,6 @@ body.ingame h1{font-size:22px}
     return world2;
   }
 
-  // src/settlement/stock.js
-  var foods = () => RESOURCES.filter((r) => r.tags.includes("food"));
-  function deposit(w, res, amount) {
-    w.stock[res] = (w.stock[res] || 0) + amount * yieldOf(w, res);
-  }
-  function chooseMeal(w, a) {
-    const likes = a?.food?.likes, dislikes = a?.food?.dislikes;
-    let best = null, bv = -Infinity;
-    for (const r of foods()) {
-      const have = w.stock[r.id] || 0;
-      if (have < 1) continue;
-      const f = FOODS.get(r.id), t = tasteOf(f);
-      const v = (t === likes ? 10 - (f.of ? 1 : 0) : 0) - (t === dislikes ? 1e6 : 0) + (f.dish ? 6 : 0) + f.spoil * 2 + Math.min(1, have / 20);
-      if (v > bv) {
-        bv = v;
-        best = r;
-      }
-    }
-    return best;
-  }
-  function eatMeal(w, a) {
-    const best = chooseMeal(w, a);
-    if (!best) return { fed: 0, res: null, mood: null };
-    w.stock[best.id] -= 1;
-    const t = tasteOf(FOODS.get(best.id));
-    const mood = a?.food?.likes === t ? "liked" : a?.food?.dislikes === t ? "disliked" : null;
-    return { fed: best.nutrition, res: best, mood };
-  }
-  var cf;
-  var sf;
-  var campFuels = () => cf || (cf = RESOURCES.filter((r) => r.tags.includes("fuel")).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
-  var smeltFuels = () => sf || (sf = RESOURCES.filter((r) => r.tags.includes("smelt")));
-  function campFuel(w) {
-    return campFuels().find((r) => (w.stock[r.id] || 0) > 0.05) || null;
-  }
-  function burnCampFuel(w, amount) {
-    const r = campFuel(w);
-    if (!r) return false;
-    w.stock[r.id] = Math.max(0, w.stock[r.id] - amount / (r.heat || 1));
-    return true;
-  }
-  var smeltFuelTotal = (w) => smeltFuels().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
-  function takeSmeltFuel(w, n) {
-    if (smeltFuelTotal(w) < n) return false;
-    let left = n;
-    for (const r of [...smeltFuels()].sort((x, y) => (w.stock[y.id] || 0) - (w.stock[x.id] || 0))) {
-      const t = Math.min(left, w.stock[r.id] || 0);
-      w.stock[r.id] -= t;
-      left -= t;
-      if (left <= 1e-9) break;
-    }
-    return true;
-  }
-  function spoil(w) {
-    const S = season(w);
-    for (const r of foods()) {
-      const lost = w.stock[r.id] * 15e-5 * r.spoil * w.mods.mul.spoil * S.spoil;
-      w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
-      w.stats.spoiledToday += lost;
-    }
-  }
-  function burnStock(w, frac) {
-    for (const r of RESOURCES.all()) w.stock[r.id] = Math.max(0, w.stock[r.id] * (1 - frac));
-  }
-  function plunder(w) {
-    let total = 0;
-    for (const r of RESOURCES.all()) {
-      const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot);
-      w.stock[r.id] -= take;
-      total += take;
-    }
-    return total;
-  }
-
   // src/world/fields.js
   var FIRE = { cap: 320, heat: 46, pF: 0.011, pG: 5e-3, burn: 0.03, wetIgn: 80, outBase: 2e-3, outWet: 0.012, ignForest: 80, ignGrass: 120 };
   function advect(w, src, dst, ux, uy) {
@@ -4521,9 +5121,17 @@ body.ingame h1{font-size:22px}
     if (!w.campLit) return;
     burnCampFuel(w, 4e-3);
     for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
+    const hay = (w.stock.hay || 0) >= 1;
     for (const b of w.buildings) {
-      if (!b.done || !BUILDINGS.get(b.key).heated) continue;
-      for (const c of b.cells) if (w.grid.temp[c] < 26) w.grid.temp[c] += 4.5;
+      const H = b.done && BUILDINGS.get(b.key).heat;
+      if (!H) continue;
+      if (!burnCampFuel(w, H.fuel)) continue;
+      let to = H.to;
+      if (hay && b.key === "hut") {
+        to += 5;
+        w.stock.hay -= 3e-4;
+      }
+      for (const c of b.cells) if (w.grid.temp[c] < to) w.grid.temp[c] += H.add;
     }
   }
   function burn(w) {
@@ -4984,6 +5592,7 @@ body.ingame h1{font-size:22px}
   var STORES_PER_HEAD = 10;
   RECIPES.registerAll([
     // clothing and armour: everyone should wear something, better pieces replace worse ones
+    // bast clothes: linden bark stripped from the logs — rough, but anyone can make them from day one
     {
       id: "clothes",
       at: "crafthut",
@@ -5062,7 +5671,7 @@ body.ingame h1{font-size:22px}
     {
       id: "bow",
       at: "crafthut",
-      cost: { wood: 3, leather: 1 },
+      cost: { wood: 3, leather: 1, rope: 1 },
       work: 800,
       makes: { item: "bow" },
       needs: ["lodge"],
@@ -5104,7 +5713,7 @@ body.ingame h1{font-size:22px}
     {
       id: "basket",
       at: "crafthut",
-      cost: { wood: 2 },
+      cost: { reeds: 4 },
       work: 450,
       makes: { item: "basket" },
       want: (c) => short(c.owned("basket"), Math.max(1, c.likes("gather"))) ? 1.2 : 0
@@ -5207,8 +5816,52 @@ body.ingame h1{font-size:22px}
     { id: "stewMeat", at: "hearth", cost: { meat: 1, berries: 1 }, work: 120, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop ? 2.2 : 0 },
     { id: "stewFish", at: "hearth", cost: { fish: 1, berries: 1 }, work: 120, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop ? 2.1 : 0 },
     { id: "stewMeatFish", at: "hearth", cost: { meat: 1, fish: 1 }, work: 120, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop ? 2 : 0 },
+    { id: "kasha", at: "hearth", cost: { barley: 2 }, work: 100, makes: { resource: "kasha", n: 1 }, want: (c) => c.stock("kasha") < c.pop * 0.6 ? 1.9 : 0 },
+    { id: "stewTurnip", at: "hearth", cost: { turnip: 1, meat: 1 }, work: 120, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop ? 2.15 : 0 },
+    { id: "stewTurnipFish", at: "hearth", cost: { turnip: 1, fish: 1 }, work: 120, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop ? 2.05 : 0 },
     { id: "stewStores", at: "hearth", cost: { jerky: 1, driedBerries: 1 }, work: 140, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop * 0.5 ? 1.2 : 0 },
     { id: "stewSalted", at: "hearth", cost: { saltMeat: 1, driedBerries: 1 }, work: 140, makes: { resource: "stew", n: 1 }, want: (c) => c.stock("stew") < c.pop * 0.5 ? 1.1 : 0 },
+    // ── the outpost's crafts: rope, rough cloth, pots, boards
+    {
+      id: "rope",
+      at: "crafthut",
+      cost: { fiber: 3 },
+      work: 160,
+      makes: { resource: "rope", n: 1 },
+      want: (c) => c.stock("rope") < 6 ? 1.7 : 0
+    },
+    {
+      id: "cloth",
+      at: "loom",
+      cost: { fiber: 3 },
+      work: 300,
+      makes: { resource: "cloth", n: 1 },
+      want: (c) => c.stock("cloth") < 8 ? 1.5 : 0
+    },
+    {
+      id: "linen",
+      at: "crafthut",
+      cost: { cloth: 2 },
+      work: 900,
+      makes: { item: "linen" },
+      want: (c) => short(c.owned("linen") + c.owned("furcoat") + c.owned("jerkin") + c.owned("hardleather"), c.pop) ? 2.2 : 0
+    },
+    {
+      id: "pots",
+      at: "potter",
+      cost: { clay: 2, wood: 1 },
+      work: 300,
+      makes: { resource: "pots", n: 3 },
+      want: (c) => c.stock("pots") < Math.min(30, c.food / 5) ? 1.6 : 0
+    },
+    {
+      id: "planks",
+      at: "sawmill",
+      cost: { wood: 3 },
+      work: 260,
+      makes: { resource: "planks", n: 2 },
+      want: (c) => c.stock("planks") < 24 ? 1.6 : 0
+    },
     // processing: raw hides become leather at the tannery
     {
       id: "tan",
@@ -5253,6 +5906,7 @@ body.ingame h1{font-size:22px}
       bows: owned("bow"),
       has: (b) => has(w, b),
       fishing: w.lakes.some(fishable),
+      food: foodTotal(w),
       season: season(w).id,
       drying: season(w).drying,
       stockpile: { spring: 0.7, summer: 1, autumn: 1.6, winter: 1 }[season(w).id] ?? 1,
@@ -5452,10 +6106,15 @@ body.ingame h1{font-size:22px}
         task.work = (task.work || 0) + workRate(w, a, job.id);
         if (task.work < job.time) return;
         task.work = 0;
-        const got = job.take(w, i) || job.resource;
-        load(a, got, 1);
-        add(a.stats.gathered, got);
-        add(w.chronicle.gathered, got);
+        for (const got of [].concat(job.take(w, i, a) || job.resource)) {
+          load(a, got, 1);
+          add(a.stats.gathered, got);
+          add(w.chronicle.gathered, got);
+        }
+        if (a.hp <= 0) {
+          kill(w, a, "\u0443\u043A\u0443\u0441\u043E\u0432 \u043F\u0447\u0451\u043B");
+          return;
+        }
         toolWear(w, a, job.id);
       } else if (r === "none") {
         if (a.carry?.n) a.carry.n = cap;
@@ -5508,6 +6167,42 @@ body.ingame h1{font-size:22px}
         }
       } else if (r === "none") {
         w.nav.dirty(map);
+        done(a);
+        a.think = 20;
+      }
+    },
+    // field work: walk to a plot that needs it, sow it (a seed from the stock) or reap it and carry the crop home
+    farm(w, a, task) {
+      const job = JOBS.get(task.job);
+      if (a.carry && (a.carry.n >= job.carry || !task.more)) {
+        haulHome(w, a);
+        return;
+      }
+      const r = follow(w, a, job.nav), i = cellOf(w, a);
+      if (r === "arrived") {
+        const p = plotAt(w, i);
+        if (!p || !needsWork(w, p)) {
+          w.nav.dirty(job.nav);
+          task.work = 0;
+          return;
+        }
+        task.work = (task.work || 0) + workRate(w, a, job.id);
+        if (task.work < job.time) return;
+        task.work = 0;
+        const got = workPlot(w, i);
+        if (got) {
+          for (const [res, n] of Object.entries(got)) {
+            load(a, res, n);
+            add(a.stats.gathered, res, n);
+            add(w.chronicle.gathered, res, n);
+          }
+          task.more = a.carry.n < job.carry;
+        }
+      } else if (r === "none") {
+        if (a.carry?.n) {
+          task.more = false;
+          return;
+        }
         done(a);
         a.think = 20;
       }
@@ -5636,13 +6331,14 @@ body.ingame h1{font-size:22px}
     } },
     { id: "sleep", label: () => "\u0441\u043F\u0438\u0442", step(w, a, task) {
       if (follow(w, a, "camp") !== "arrived") return;
-      const beds = Math.min(1, w.mods.add.beds / Math.max(1, w.agents.filter((o) => o.faction === "colony").length));
+      const pop = Math.max(1, colonists(w).length);
+      const beds = Math.min(1, w.mods.add.beds / pop), warm = Math.min(1, (w.mods.add.bedWarmth || 0) / pop);
       a.sleeping = true;
       a.needs.rest = Math.min(1, a.needs.rest + 4e-3 * (1 + 0.6 * beds));
-      if (beds > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 2e-3 * beds);
+      if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 28e-4 * warm * (w.campLit ? 1 : 0.5));
       mill2(w, a, task, 1.2);
       if (a.needs.rest >= 1) {
-        think(w, a, beds > 0 ? "sleptHut" : "sleptOutside");
+        think(w, a, warm > 0.6 ? "sleptHouse" : beds > 0 ? "sleptHut" : "sleptOutside");
         done2(a);
       }
     } },
@@ -5813,6 +6509,8 @@ body.ingame h1{font-size:22px}
     } },
     // animal states: the animal's brain moves it itself, these entries only name the state
     { id: "graze", label: () => "\u043F\u0430\u0441\u0451\u0442\u0441\u044F", step() {
+    } },
+    { id: "nibble", label: () => "\u0433\u0440\u044B\u0437\u0451\u0442 \u043F\u0440\u0438\u043F\u0430\u0441\u044B", step() {
     } },
     { id: "rest", label: () => "\u0434\u0440\u0435\u043C\u043B\u0435\u0442", step() {
     } },
@@ -6434,9 +7132,38 @@ body.ingame h1{font-size:22px}
     }
   };
 
+  // src/agents/brains/vermin.js
+  var verminBrain = {
+    id: "vermin",
+    step(w, a) {
+      const sp = SPECIES.get(a.species), V = sp.vermin, T2 = w.grid.temp[cellOf(w, a)];
+      if (T2 > sp.heatHarm || nearFire(w, a, 1)) {
+        escapeHeat(w, a, 1.2);
+        return;
+      }
+      let near = null;
+      for (const o of w.agents) if (o.faction === "colony" && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < V.flee) {
+        near = o;
+        break;
+      }
+      if (near) {
+        if (Math.hypot(near.x - a.x, near.y - a.y) < 0.8 && w.rng() < V.caught) {
+          kill(w, a, "\u043F\u0430\u043B\u043A\u0438", near);
+          if (w.rng() < 0.3) log(w, `<b>${esc(near.name)}</b> ${g(near, "\u043F\u0440\u0438\u0431\u0438\u043B", "\u043F\u0440\u0438\u0431\u0438\u043B\u0430")} \u043A\u0440\u044B\u0441\u0443 \u0443 \u043F\u0440\u0438\u043F\u0430\u0441\u043E\u0432.`, "wildlife");
+          return;
+        }
+        a.task = { id: "bolt" };
+        bolt(w, a, [near], 1.3);
+        return;
+      }
+      a.task = { id: "nibble" };
+      if (follow(w, a, "camp") === "arrived") nibble(w, V.eats);
+    }
+  };
+
   // src/agents/brains/index.js
   var BRAINS = new Registry("brain");
-  BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain, predatorBrain, muleBrain, caravanBrain]);
+  BRAINS.registerAll([colonistBrain, raiderBrain, grazerBrain, predatorBrain, muleBrain, caravanBrain, verminBrain]);
 
   // src/settlement/ending.js
   function checkEnd(w) {
@@ -6479,6 +7206,7 @@ body.ingame h1{font-size:22px}
     stepWeather(w);
     stepLakes(w);
     stepPlants(w);
+    stepFarms(w);
     const t1 = performance.now();
     w.nav.step();
     const t2 = performance.now();
@@ -6625,6 +7353,105 @@ body.ingame h1{font-size:22px}
       ctx.ellipse(px - r * 0.35, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, -0.2, 0, Math.PI * 2);
       ctx.ellipse(px + r * 0.15, py - r * (0.9 + 0.5 * up), r * 0.22, r * 0.6 * up + 0.5, 0.2, 0, Math.PI * 2);
       ctx.fill();
+    },
+    // deer: a long tan body with a pale rump and branching antlers
+    deer(ctx, a, px, py, r, color) {
+      const dir = a.faceX ?? 1;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(dir < 0 ? -1 : 1, 1);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = "#0e100b";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 1.25, r * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#efe4cc";
+      ctx.beginPath();
+      ctx.arc(-r * 1.05, -r * 0.1, r * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.ellipse(r * 1.2, -r * 0.55, r * 0.4, r * 0.32, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#e8dcc0";
+      ctx.lineWidth = Math.max(1, r * 0.14);
+      ctx.beginPath();
+      ctx.moveTo(r * 1.1, -r * 0.8);
+      ctx.lineTo(r * 0.9, -r * 1.6);
+      ctx.moveTo(r * 0.95, -r * 1.25);
+      ctx.lineTo(r * 0.6, -r * 1.45);
+      ctx.moveTo(r * 1.3, -r * 0.8);
+      ctx.lineTo(r * 1.5, -r * 1.6);
+      ctx.stroke();
+      ctx.restore();
+    },
+    // fox: a small orange body with a white-tipped brush
+    fox(ctx, a, px, py, r, color) {
+      const dir = a.faceX ?? 1;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(dir < 0 ? -1 : 1, 1);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = "#0e100b";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(-r * 1.3, r * 0.1, r * 0.75, r * 0.35, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#f4ecdc";
+      ctx.beginPath();
+      ctx.arc(-r * 1.9, r * 0.25, r * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.8, -r * 0.4);
+      ctx.lineTo(r * 1.6, -r * 0.1);
+      ctx.lineTo(r * 0.8, r * 0.25);
+      ctx.fill();
+      ctx.restore();
+    },
+    // boar: a dark, heavy wedge with pale tusks; reddish when it charges
+    boar(ctx, a, px, py, r, color) {
+      const dir = a.faceX ?? 1;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(dir < 0 ? -1 : 1, 1);
+      ctx.fillStyle = a.task?.mule ? "#6a3a2a" : color;
+      ctx.strokeStyle = "#0e100b";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-r * 1.2, -r * 0.6);
+      ctx.quadraticCurveTo(0, -r * 1.1, r * 1.3, -r * 0.2);
+      ctx.lineTo(r * 1.3, r * 0.35);
+      ctx.quadraticCurveTo(0, r * 0.9, -r * 1.2, r * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#efe4cc";
+      ctx.lineWidth = Math.max(1, r * 0.15);
+      ctx.beginPath();
+      ctx.moveTo(r * 1.1, r * 0.2);
+      ctx.lineTo(r * 1.45, -r * 0.2);
+      ctx.stroke();
+      ctx.restore();
+    },
+    rat(ctx, a, px, py, r, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.ellipse(px, py, r * 1.2, r * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#c8b0a8";
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(px - r * 1.1, py);
+      ctx.lineTo(px - r * 2.4, py + r * 0.5);
+      ctx.stroke();
     },
     // a big brown disc with a short mane; a pack mule carries two crates, one on each side,
     // filled to how much of its load is left
@@ -7080,6 +7907,24 @@ body.ingame h1{font-size:22px}
     // finished buildings are solid blocks with a letter, sites are dashed with a progress bar
     drawBuildings(w) {
       const ctx = this.ctx, S = this.S;
+      for (const b of w.buildings) {
+        if (!b.plots || b.key !== "field") continue;
+        for (const p of b.plots) {
+          const px = p.i % w.w * S, py = (p.i / w.w | 0) * S;
+          let col = [92, 70, 48];
+          if (p.crop) {
+            const [c0, c1] = CROPS.get(p.crop).color, k = p.g;
+            col = c0.map((v, j) => v + (c1[j] - v) * k);
+          }
+          ctx.fillStyle = `rgb(${col.map((v) => v | 0).join(",")})`;
+          ctx.fillRect(px + 1, py + 1, S - 2, S - 2);
+          if (p.crop && p.g >= 1) {
+            ctx.strokeStyle = "#f0e0a0";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px + 1.5, py + 1.5, S - 3, S - 3);
+          }
+        }
+      }
       for (const b of w.buildings) {
         const d = BUILDINGS.get(b.key), x = b.x * S, y = b.y * S, s = 2 * S;
         if (b.done) {
@@ -7589,6 +8434,24 @@ body.ingame h1{font-size:22px}
       const state = b.done ? "\u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E" : `\u0441\u0442\u0440\u043E\u0438\u0442\u0441\u044F ${Math.floor(b.progress / d.work * 100)}%`;
       const rows = [`<dt>\u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435</dt><dd>${state}</dd>`, `<dt>\u0426\u0435\u043D\u0430</dt><dd class="nb">${Object.entries(d.cost).map(([r, v]) => `${v} ${RESOURCES.get(r).label}`).join(", ")}</dd>`];
       let extra = "";
+      if (b.plots && b.key === "field") {
+        const by = {};
+        let empty = 0, ripe2 = 0;
+        for (const p of b.plots) {
+          if (!p.crop) empty++;
+          else {
+            by[p.crop] = (by[p.crop] || 0) + 1;
+            if (p.g >= 1) ripe2++;
+          }
+        }
+        const growing = Object.entries(by).map(([c, n]) => `${CROPS.get(c).label} ${n}`).join(", ");
+        const avg = b.plots.filter((p) => p.crop).reduce((s, p) => s + p.g, 0) / Math.max(1, b.plots.length - empty);
+        rows.push(
+          `<dt>\u0413\u0440\u044F\u0434\u043A\u0438</dt><dd>${b.plots.length}: ${growing || "\u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043F\u043E\u0441\u0435\u044F\u043D\u043E"}${empty ? `, \u043F\u0443\u0441\u0442\u044B\u0445 ${empty}` : ""}</dd>`,
+          `<dt>\u0423\u0440\u043E\u0436\u0430\u0439</dt><dd>${ripe2 ? `\u0441\u043E\u0437\u0440\u0435\u043B\u043E ${ripe2}` : growing ? `\u0437\u0440\u0435\u0435\u0442, ${Math.round(avg * 100)}%` : "\u2014"}</dd>`,
+          `<dt>\u0421\u0435\u043C\u0435\u043D\u0430</dt><dd>${CROPS.all().map((c) => `${c.label} ${Math.floor(w.stock[c.seed] || 0)}`).join(", ")}</dd>`
+        );
+      }
       if (d.station && b.done) {
         const workers = colonists(w).filter((x) => x.task?.id === "job" && x.task.station === d.id && w.grid.bld[cellOf(w, x)] === b.id).map((x) => esc(x.name));
         rows.push(`<dt>\u0417\u0430\u043A\u0430\u0437</dt><dd>${orderText(b)}</dd>`, `<dt>\u0420\u0430\u0431\u043E\u0442\u0430\u044E\u0442</dt><dd>${workers.join(", ") || "\u043D\u0438\u043A\u043E\u0433\u043E"}</dd>`);
@@ -8014,8 +8877,8 @@ body.ingame h1{font-size:22px}
   }
 
   // src/version.js
-  var VERSION = "0.25 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 5b4121d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.26 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 94f130a" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;

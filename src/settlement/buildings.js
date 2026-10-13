@@ -9,13 +9,20 @@ import {recomputeMods} from './mods.js';
 import {recomputeZone} from './zone.js';
 import {lakeBeside} from '../world/lakes.js';
 import {think} from '../agents/mind.js';
+import {ambientTemp, DAY, HOUR} from '../core/time.js';
+import {plowField} from './farming.js';
 
-const ending = d => (d.gender === 'f' ? 'а' : d.gender === 'pl' ? 'ы' : '');
+const ending = d => (d.gender === 'f' ? 'а' : d.gender === 'pl' ? 'ы' : d.gender === 'n' ? 'о' : '');
 
-export function canAfford(w, cost) { return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v); }
+// can the colony pay for it and still keep the fire going? Wood for a few cold nights is never spent on building
+export const fuelReserve = w => (ambientTemp(w, w.tick - (w.tick % DAY) + 3 * HOUR) < 6 ? 10 : 4);
+export function canAfford(w, cost) {
+  return Object.entries(cost).every(([r, v]) => (w.stock[r] || 0) >= v + (r === 'wood' ? fuelReserve(w) : 0));
+}
 
 export function missing(w, cost) {
-  return Object.entries(cost).filter(([r, v]) => (w.stock[r] || 0) < v).map(([r, v]) => [r, Math.ceil(v - (w.stock[r] || 0))]);
+  const need = (r, v) => v + (r === 'wood' ? fuelReserve(w) : 0);
+  return Object.entries(cost).filter(([r, v]) => (w.stock[r] || 0) < need(r, v)).map(([r, v]) => [r, Math.ceil(need(r, v) - (w.stock[r] || 0))]);
 }
 
 // can the colony consider this building at all (ignoring cost)?
@@ -65,6 +72,7 @@ export function laySite(w, key) {
 
 // custom effects that need more than modifiers; referenced by name from data/buildings.js
 const FINISH_HOOKS = {
+  plowField,
   plantGarden(w, b) {
     const g = w.grid, cand = [];
     for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
@@ -98,6 +106,7 @@ export function addLabour(w, b, amount, by) {
 export function burnBuilding(w, id) {
   const b = buildingById(w, id); if (!b) return;
   for (const j of b.cells) w.grid.bld[j] = -1;
+  for (const p of b.plots || []) if (p.i != null) w.grid.bld[p.i] = -1;   // a field's plots
   w.buildings = w.buildings.filter(x => x !== b);
   if (b.plots) { const own = new Set(b.plots); w.gardenCells = w.gardenCells.filter(j => !own.has(j)); }
   recomputeMods(w);

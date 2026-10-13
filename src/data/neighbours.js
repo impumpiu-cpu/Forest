@@ -13,6 +13,6 @@ NEIGHBOURS.registerAll([
     note: 'стойбище разбойников; чем ближе оно, тем чаще набеги'},
   {id: 'empire', label: 'Имперский тракт', kind: 'trade', dist: 5, flows: ['caravan'],
     note: 'торговая дорога: время от времени по ней приходят караваны с имперским золотом и товаром'},
-  {id: 'wilds', label: 'Дикие леса', kind: 'wild', dist: 0, flows: ['hares', 'wolves', 'mules'],
+  {id: 'wilds', label: 'Дикие леса', kind: 'wild', dist: 0, flows: ['hares', 'deer', 'foxes', 'boars', 'wolves', 'mules', 'rats'],
     note: 'леса за краем карты: оттуда приходят звери'},
 ]);

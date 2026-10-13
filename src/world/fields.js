@@ -63,10 +63,16 @@ function campfire(w) {
   if (!w.campLit) return;
   burnCampFuel(w, 0.004);
   for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
-  // heated buildings (huts) are warmed with embers carried from the fire: no extra fuel, a gentler heat
+  // lived-in buildings keep a hearth of their own on the same stock (data/buildings.js `heat`):
+  // a drafty hut burns a lot and stays cool, a log house holds heat on little wood. Hay bedding
+  // (a little each day) makes a hut a few degrees warmer.
+  const hay = (w.stock.hay || 0) >= 1;
   for (const b of w.buildings) {
-    if (!b.done || !BUILDINGS.get(b.key).heated) continue;
-    for (const c of b.cells) if (w.grid.temp[c] < 26) w.grid.temp[c] += 4.5;
+    const H = b.done && BUILDINGS.get(b.key).heat; if (!H) continue;
+    if (!burnCampFuel(w, H.fuel)) continue;
+    let to = H.to;
+    if (hay && b.key === 'hut') { to += 5; w.stock.hay -= 0.0003; }
+    for (const c of b.cells) if (w.grid.temp[c] < to) w.grid.temp[c] += H.add;
   }
 }
 

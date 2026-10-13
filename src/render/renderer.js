@@ -12,6 +12,7 @@ import {FAR} from '../nav/navigation.js';
 import {LOOKS} from './looks.js';
 import {ORE_BY_CODE} from '../data/ores.js';
 import {season} from '../data/seasons.js';
+import {CROPS} from '../data/crops.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 
 const PLANTS_TINT = PLANTS.all().map(p => ({key: plantLayer(p.id), tint: p.tint}));
@@ -254,6 +255,17 @@ export class Renderer {
   // finished buildings are solid blocks with a letter, sites are dashed with a progress bar
   drawBuildings(w) {
     const ctx = this.ctx, S = this.S;
+    // field plots: ploughed earth, then the crop greening and ripening
+    for (const b of w.buildings) {
+      if (!b.plots || b.key !== 'field') continue;
+      for (const p of b.plots) {
+        const px = (p.i % w.w) * S, py = ((p.i / w.w) | 0) * S;
+        let col = [92, 70, 48];
+        if (p.crop) { const [c0, c1] = CROPS.get(p.crop).color, k = p.g; col = c0.map((v, j) => v + (c1[j] - v) * k); }
+        ctx.fillStyle = `rgb(${col.map(v => v | 0).join(',')})`; ctx.fillRect(px + 1, py + 1, S - 2, S - 2);
+        if (p.crop && p.g >= 1) { ctx.strokeStyle = '#f0e0a0'; ctx.lineWidth = 1; ctx.strokeRect(px + 1.5, py + 1.5, S - 3, S - 3); }
+      }
+    }
     for (const b of w.buildings) {
       const d = BUILDINGS.get(b.key), x = b.x * S, y = b.y * S, s = 2 * S;
       if (b.done) {

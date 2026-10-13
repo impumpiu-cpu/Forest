@@ -15,7 +15,7 @@ import {log} from '../core/log.js';
 import {think} from './mind.js';
 import {tradeOpen, attendTrade} from '../settlement/trade.js';
 import {HEAL} from '../settlement/healing.js';
-import {has} from '../settlement/query.js';
+import {has, colonists} from '../settlement/query.js';
 import {SPECIES} from '../data/species.js';
 
 export const TASKS = new Registry('task');
@@ -48,13 +48,15 @@ TASKS.registerAll([
 
   {id: 'sleep', label: () => 'спит', step(w, a, task) {
     if (follow(w, a, 'camp') !== 'arrived') return;
-    // huts make sleep faster and warm, while there are enough beds for everyone
-    const beds = Math.min(1, w.mods.add.beds / Math.max(1, w.agents.filter(o => o.faction === 'colony').length));
+    // beds make sleep faster; how warm a night is depends on what the beds are in: a drafty hut
+    // (bedWarmth 1.2 per 4 beds) or a log house (4 per 4 beds), and on whether the fire burns
+    const pop = Math.max(1, colonists(w).length);
+    const beds = Math.min(1, w.mods.add.beds / pop), warm = Math.min(1, (w.mods.add.bedWarmth || 0) / pop);
     a.sleeping = true;
     a.needs.rest = Math.min(1, a.needs.rest + 0.004 * (1 + 0.6 * beds));
-    if (beds > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 0.002 * beds);
+    if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 0.0028 * warm * (w.campLit ? 1 : 0.5));
     mill(w, a, task, 1.2);
-    if (a.needs.rest >= 1) { think(w, a, beds > 0 ? 'sleptHut' : 'sleptOutside'); done(a); }
+    if (a.needs.rest >= 1) { think(w, a, warm > 0.6 ? 'sleptHouse' : beds > 0 ? 'sleptHut' : 'sleptOutside'); done(a); }
   }},
 
   {id: 'warm', label: () => 'греется', step(w, a, task) {
@@ -173,6 +175,7 @@ TASKS.registerAll([
 
   // animal states: the animal's brain moves it itself, these entries only name the state
   {id: 'graze', label: () => 'пасётся', step() {}},
+  {id: 'nibble', label: () => 'грызёт припасы', step() {}},
   {id: 'rest', label: () => 'дремлет', step() {}},
   {id: 'bolt', label: () => 'убегает', step() {}},
   {id: 'roam', label: () => 'рыщет', step() {}},

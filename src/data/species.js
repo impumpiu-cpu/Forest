@@ -36,7 +36,7 @@ SPECIES.registerAll([
     killMessage: name => `Волки загрызли поселенца: <b>${name}</b>.`,
     // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
     predator: {
-      prey: ['hare'],            // what it hunts for food
+      prey: ['hare', 'deer', 'fox'], // what it hunts for food
       victims: ['human'],        // whom it attacks: a lone colonist, or a pair when desperate
       sprint: 1.9, stamina: 0.003,
       sight: 22,                 // how far it notices prey
@@ -54,6 +54,38 @@ SPECIES.registerAll([
       weakPrey: ['mule'],        // big game it dares to hunt only when the animal is badly hurt…
       weakBelow: 0.35,           // …below this share of its health; it is bitten down, not caught at once
     }},
+
+  // Deer: the main game of the woods — skittish, fast, a lot of meat and a good hide.
+  {id: 'deer', label: 'олень', labelAcc: 'оленя', hp: 0.45, speed: 0.15, needs: [], brain: 'grazer', game: true,
+    heatHarm: 60, look: {shape: 'deer', size: 0.62, color: '#a8794a'},
+    yields: {meat: 5, hide: 2, bone: 2},
+    flee: {radius: 7, sprint: 1.6, from: ['human', 'wolf'], stamina: 0.006},
+    grazes: {terrain: ['grass', 'forest'], eatsBerries: 0.002},
+    leaveChance: 0.0003},
+
+  // Fox: small and quick, hunted for its fur, which traders pay well for.
+  {id: 'fox', label: 'лиса', labelAcc: 'лису', hp: 0.15, speed: 0.18, needs: [], brain: 'grazer', game: true,
+    heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
+    yields: {meat: 1, furs: 1},
+    flee: {radius: 6, sprint: 1.5, from: ['human', 'wolf'], stamina: 0.006},
+    grazes: {terrain: ['grass', 'forest'], eatsBerries: 0},
+    leaveChance: 0.0004},
+
+  // Boar: fat and dangerous. Like the mule it does not run: it kicks back with its tusks and charges
+  // whoever shot it. Hunters go for it only when there is no gentler game about.
+  {id: 'boar', label: 'кабан', labelAcc: 'кабана', hp: 1.3, speed: 0.12, needs: [], brain: 'mule', big: true, game: true,
+    heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
+    attack: {power: 1.45, cooldown: 14},
+    yields: {meat: 6, hide: 2, bone: 1},
+    killMessage: name => `Кабан задрал поселенца: <b>${name}</b>.`,
+    mule: {kickRange: 1.0, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3, leaveChance: 0.0003}},
+
+  // Rats: they come for the stock when there is a lot of food and nothing to keep them out of it.
+  // They nibble what lies in the open (pots and a granary protect it) and run from people;
+  // whoever catches one near the stores kills it (agents/brains/vermin.js).
+  {id: 'rat', label: 'крыса', labelAcc: 'крысу', hp: 0.05, speed: 0.15, needs: [], brain: 'vermin',
+    heatHarm: 55, look: {shape: 'rat', size: 0.25, color: '#7c7468'},
+    vermin: {eats: 0.0016, flee: 1.6, caught: 0.04}},
 
   // The mule: a big, stubborn grazer, a small bull really. It does not run from people; it kicks
   // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves

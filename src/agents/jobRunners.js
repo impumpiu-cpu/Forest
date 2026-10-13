@@ -11,9 +11,11 @@ import {jobSpeedOf} from '../settlement/mods.js';
 import {workAt, stationHasWork, markWorking, stationPriority} from '../settlement/crafting.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
+import {kill} from './agent.js';
 import {think, moodOf} from './mind.js';
 import {add} from '../settlement/chronicle.js';
 import {seasonJob} from '../data/seasons.js';
+import {plotAt, needsWork, workPlot} from '../settlement/farming.js';
 import {tend, patients, waiting, healerHutCell} from '../settlement/healing.js';
 
 const mill = (w, a) => { a.x += (w.rng() - 0.5) * 0.2; a.y += (w.rng() - 0.5) * 0.2; };
@@ -55,9 +57,9 @@ export const RUNNERS = {
       task.work = (task.work || 0) + workRate(w, a, job.id);
       if (task.work < job.time) return;
       task.work = 0;
-      const got = job.take(w, i) || job.resource;
-      load(a, got, 1);
-      add(a.stats.gathered, got); add(w.chronicle.gathered, got);
+      // take() may name what was got (one id or several: honey and a bit of wax)
+      for (const got of [].concat(job.take(w, i, a) || job.resource)) { load(a, got, 1); add(a.stats.gathered, got); add(w.chronicle.gathered, got); }
+      if (a.hp <= 0) { kill(w, a, 'укусов пчёл'); return; }
       toolWear(w, a, job.id);
     } else if (r === 'none') {
       if (a.carry?.n) a.carry.n = cap; else { a.task = {id: 'idle'}; a.think = 20; }
@@ -88,6 +90,25 @@ export const RUNNERS = {
       if (b) markWorking(w, b, a);
       if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id), a)) { done(a); a.think = 20; }
     } else if (r === 'none') { w.nav.dirty(map); done(a); a.think = 20; }
+  },
+
+  // field work: walk to a plot that needs it, sow it (a seed from the stock) or reap it and carry the crop home
+  farm(w, a, task) {
+    const job = JOBS.get(task.job);
+    if (a.carry && (a.carry.n >= job.carry || !task.more)) { haulHome(w, a); return; }
+    const r = follow(w, a, job.nav), i = cellOf(w, a);
+    if (r === 'arrived') {
+      const p = plotAt(w, i);
+      if (!p || !needsWork(w, p)) { w.nav.dirty(job.nav); task.work = 0; return; }
+      task.work = (task.work || 0) + workRate(w, a, job.id);
+      if (task.work < job.time) return;
+      task.work = 0;
+      const got = workPlot(w, i);
+      if (got) { for (const [res, n] of Object.entries(got)) { load(a, res, n); add(a.stats.gathered, res, n); add(w.chronicle.gathered, res, n); } task.more = a.carry.n < job.carry; }
+    } else if (r === 'none') {
+      if (a.carry?.n) { task.more = false; return; }
+      done(a); a.think = 20;
+    }
   },
 
   // the healer: tend whoever lies in the healer's hut; with nobody to tend, pick herbs (as harvest)

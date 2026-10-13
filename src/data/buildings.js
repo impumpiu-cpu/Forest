@@ -3,7 +3,10 @@
 //   numbers under add.*  are summed, numbers under mul.* are multiplied,
 //   yield.<resource> and jobSpeed.<job> multiply production, toolWear.<job> how fast that job's tools wear,
 //   best.* keeps the largest value (one quarry is enough, a second adds nothing).
-// `heated: true` — warmed from the camp's fuel while the fire burns; people go there to get warm.
+// `heat: {to, add, fuel}` — a lived-in building with its own hearth: while the camp fire burns it
+//   warms its cells by `add` per tick up to `to` °C and burns `fuel` from the stock per tick;
+//   people go to the nearest warm place to get warm. `bedWarmth` (in add) is how much a night there
+//   warms its sleepers: a hut is drafty and needs a big fire, a log house holds heat on little wood.
 // `zone` is the radius of the settlement zone around the building (default ZONE.building);
 // zones of the camp and all buildings merge into one protected area (settlement/zone.js).
 // `station: true` makes the building a workplace for crafting recipes (data/recipes.js);
@@ -17,18 +20,38 @@ export const BUILDINGS = new Registry('building');
 export const ZONE = {camp: 8, building: 5};
 
 BUILDINGS.registerAll([
-  {id: 'hut', name: 'Шалаш', gender: 'm', cost: {wood: 18}, work: 160, max: 4, wooden: true, heated: true, color: '#b88a52', mark: 'Ш',
-    effect: 'Сон на 60% быстрее, ночью спящие не мёрзнут. Лагерь примет на 4 жителей больше.',
-    effects: {add: {beds: 4, popCap: 4}},
+  // the shelter of the first season: poles and bark from what lies around. Drafty: in a hard
+  // winter its fire eats wood and its sleepers still get cold.
+  {id: 'hut', name: 'Шалаш', gender: 'm', cost: {wood: 18}, work: 160, max: 4, wooden: true, color: '#b88a52', mark: 'Ш',
+    heat: {to: 20, add: 3, fuel: 0.0016},
+    effect: 'Сон на 60% быстрее. Лагерь примет на 4 жителей больше. Продувается: зимой греет плохо и съедает много дров.',
+    effects: {add: {beds: 4, popCap: 4, bedWarmth: 2}},
     wish: 'хочет своё жильё',
     motive: (a, c) => [[a.mem.cold * 1.2, 'мёрзнет по ночам'], [a.mem.tired, 'не высыпается'],
       [c.crowded ? 0.8 : 0, 'в лагере тесно'], [c.count('hut') === 0 ? 0.3 : 0, 'хочет крышу над головой']]},
+
+  // the log house: hewn boards, a reed-thatched roof, clay-daubed walls. Warm on little wood.
+  {id: 'house', name: 'Изба', gender: 'f', cost: {planks: 16, reeds: 8, clay: 6, rope: 2}, work: 320, max: 6, wooden: true, color: '#a0703a', mark: 'И', needs: 'sawmill',
+    heat: {to: 26, add: 4.5, fuel: 0.0004},
+    effect: 'Тёплый дом из тёса под камышовой кровлей, стены обмазаны глиной: 4 места, зимой тепло на малых дровах. Лагерь примет на 4 жителей больше.',
+    effects: {add: {beds: 4, popCap: 4, bedWarmth: 4}},
+    wish: 'хочет тёплый дом',
+    motive: (a, c) => [[a.mem.cold * 1.6, 'мёрзнет в шалаше'], [c.season === 'autumn' ? 0.8 : c.season === 'winter' ? 0.6 : 0.15, 'зимовать в шалаше нельзя'],
+      [c.crowded ? 0.7 : 0, 'в лагере тесно'], [c.count('hut') ? 0.2 : 0, 'хочет жить по-людски']]},
 
   {id: 'granary', name: 'Амбар', gender: 'm', cost: {wood: 25}, work: 200, max: 1, wooden: true, color: '#c9a24a', mark: 'А',
     effect: 'Еда на складе портится в 6 раз медленнее.',
     effects: {mul: {spoil: 1 / 6}},
     wish: 'хочет надёжно хранить запасы',
     motive: (a, c) => [[c.spoiled * 0.08, 'жалко испорченную еду']]},
+
+  // a field: a fenced shed and sixteen ploughed plots around it; sown with seed bought from traders
+  {id: 'field', name: 'Поле', gender: 'n', cost: {wood: 8, rope: 2}, work: 200, max: 3, wooden: true, color: '#8a7040', mark: 'П',
+    effect: 'Распахивают 16 грядок. Весной и летом сеют ячмень, репу или лён (семена — у торговцев, с урожая часть возвращается), осенью жнут. Несжатое к зиме побьёт мороз.',
+    effects: {}, onFinish: 'plowField',
+    available: w => ['seedBarley', 'seedTurnip', 'seedFlax'].some(s => (w.stock[s] || 0) >= 2),
+    wish: 'хочет своё поле',
+    motive: (a, c) => [[0.5, 'семена есть, а сеять негде'], [a.mem.hunger * 0.9, 'голодает'], [c.season === 'winter' ? -0.4 : 0, 'зимой не пашут'], [(a.prefs.farm - 1) * 1.5, 'любит землю']]},
 
   {id: 'garden', name: 'Ягодный огород', gender: 'm', cost: {wood: 12, berries: 10}, work: 140, max: 2, wooden: false, color: '#c45c95', mark: 'О',
     effect: 'Рядом высаживаются 12 кустов, они плодоносят втрое быстрее диких.',
@@ -49,11 +72,26 @@ BUILDINGS.registerAll([
     wish: 'говорит, что нужен камень',
     motive: (a, c) => [[0.35 + (c.wantStone ? 0.35 : 0), 'без камня дальше не построиться'], [(a.prefs.mine - 1) * 1.5, 'любит работать с камнем']]},
 
-  {id: 'sawmill', name: 'Лесопилка', gender: 'f', cost: {wood: 30, stone: 10}, work: 240, max: 1, wooden: true, color: '#8a6a3c', mark: 'Л', needs: 'quarry',
-    effect: 'Рубка идёт на 60% быстрее, каждое бревно даёт в полтора раза больше древесины.',
-    effects: {jobSpeed: {chop: 1.6}, yield: {wood: 1.5}},
-    wish: 'хочет больше древесины',
-    motive: (a) => [[a.mem.walkWood, 'далеко ходить за лесом'], [(a.prefs.chop - 1) * 1.4 + a.skill.chop * 0.4, 'любит рубить лес']]},
+  // no sawmill out here: two men and a pit saw on trestles; boards (тёс) for log houses
+  {id: 'sawmill', name: 'Козлы для распила', gender: 'pl', cost: {wood: 20, rope: 2}, work: 180, max: 1, wooden: true, color: '#8a6a3c', mark: 'Тс', station: true, benches: 2,
+    effect: 'Брёвна распускают пилой на тёс: из него рубят избы. Рядом удобнее колоть дрова: рубка на треть быстрее.',
+    effects: {jobSpeed: {chop: 1.3}},
+    wish: 'хочет тёс на избы',
+    motive: (a, c) => [[a.mem.cold * 0.8 + (c.season === 'summer' || c.season === 'autumn' ? 0.4 : 0.1), 'без тёса избу не срубить'], [a.mem.walkWood * 0.6, 'далеко ходить за лесом'],
+      [(a.prefs.saw - 1) * 1.4, 'любит работать с деревом']]},
+
+  // ── the outpost's crafts
+  {id: 'loom', name: 'Ткацкий станок', gender: 'm', cost: {wood: 12, rope: 2}, work: 160, max: 1, wooden: true, color: '#c8b48a', mark: 'Тк', station: true, benches: 1,
+    effect: 'Из волокна ткут грубый холст: на рубахи, на продажу. Тонкое сукно и полотно — только у торговцев.',
+    effects: {},
+    wish: 'хочет ткать',
+    motive: (a, c) => [[a.mem.cold * 0.5, 'нужна одежда'], [c.stock('fiber') * 0.03, 'волокно лежит без дела'], [(a.prefs.weave - 1) * 1.4, 'любит ткать']]},
+
+  {id: 'potter', name: 'Гончарная яма', gender: 'f', cost: {wood: 8, clay: 6}, work: 140, max: 1, wooden: false, color: '#a8653e', mark: 'Гн', station: true, benches: 1,
+    effect: 'Из глины лепят и обжигают горшки: в горшках еда портится медленнее и крысы до неё не добираются.',
+    effects: {},
+    wish: 'хочет хранить еду в горшках',
+    motive: (a, c) => [[c.spoiled * 0.06, 'еда портится'], [c.rats * 0.25, 'крысы таскают припасы'], [c.stock('clay') * 0.03, 'глина есть, горшков нет'], [(a.prefs.pottery - 1) * 1.4, 'любит лепить']]},
 
   {id: 'smokehouse', name: 'Коптильня', gender: 'f', cost: {wood: 15, stone: 15}, work: 220, max: 1, wooden: false, color: '#a85a3a', mark: 'Кп', needs: 'quarry',
     effect: 'Ягоды, мясо и рыба перерабатываются: +40% еды, порча вдвое медленнее.',

@@ -23,7 +23,8 @@ THOUGHTS.registerAll([
   {id: 'starving', mood: -0.35, lasts: 8 * HOUR, once: 8 * HOUR, text: () => 'Голодает. Запасы пусты.'},
   {id: 'freezing', mood: -0.25, lasts: 8 * HOUR, once: 8 * HOUR, text: a => `${g(a, 'Замёрз', 'Замёрзла')} до костей.`},
   {id: 'exhausted', mood: -0.2, lasts: 6 * HOUR, once: 8 * HOUR, text: () => 'Валится с ног от усталости.'},
-  {id: 'sleptHut', mood: 0.15, lasts: 10 * HOUR, once: 10 * HOUR, text: a => `Хорошо ${g(a, 'выспался', 'выспалась')} в шалаше, в тепле.`},
+  {id: 'sleptHouse', mood: 0.22, lasts: 10 * HOUR, once: 10 * HOUR, text: a => `Выспал${g(a, 'ся', 'ась')} в тёплой избе. Хорошо!`},
+  {id: 'sleptHut', mood: 0.06, lasts: 10 * HOUR, once: 10 * HOUR, text: a => `Переночевал${g(a, '', 'а')} в шалаше: тесно и сквозит, но всё лучше, чем под небом.`},
   {id: 'sleptOutside', mood: -0.05, lasts: 8 * HOUR, once: 10 * HOUR, text: () => 'Спал у костра под открытым небом.'},
   {id: 'wounded', mood: -0.3, lasts: DAY, once: 6 * HOUR, text: a => `Тяжело ${g(a, 'ранен', 'ранена')}.`},
 

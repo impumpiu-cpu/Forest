@@ -25,6 +25,7 @@ const STORES_PER_HEAD = 10;
 
 RECIPES.registerAll([
   // clothing and armour: everyone should wear something, better pieces replace worse ones
+  // bast clothes: linden bark stripped from the logs — rough, but anyone can make them from day one
   {id: 'clothes', at: 'crafthut', cost: {wood: 3}, work: 1300, makes: {item: 'clothes'},
     want: c => (short(c.owned('clothes') + c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 3 : 0)},
   // a fur coat for everyone before the cold sets in (wanted from late summer)
@@ -47,7 +48,7 @@ RECIPES.registerAll([
   {id: 'sling', at: 'crafthut', cost: {hide: 1}, work: 600, makes: {item: 'sling'},
     want: c => (short(c.owned('sling') + c.owned('bow'), Math.max(2, Math.ceil(c.pop / 3))) ? 2.0 : 0)},
   // the bow is the better hunting weapon and needs the hunters' lodge; the sling needs nothing
-  {id: 'bow', at: 'crafthut', cost: {wood: 3, leather: 1}, work: 800, makes: {item: 'bow'}, needs: ['lodge'],
+  {id: 'bow', at: 'crafthut', cost: {wood: 3, leather: 1, rope: 1}, work: 800, makes: {item: 'bow'}, needs: ['lodge'],
     want: c => (short(c.owned('bow'), Math.max(1, c.likes('hunt'))) ? 2.4 : 0)},
   {id: 'arrows', at: 'crafthut', cost: {wood: 1, bone: 1}, work: 150, makes: {resource: 'arrows', n: 5},
     want: c => (c.bows && c.stock('arrows') < c.bows * 10 ? 2.7 : 0)},
@@ -59,7 +60,7 @@ RECIPES.registerAll([
     want: c => (short(c.owned('maul'), Math.min(3, 1 + c.likes('build') + c.likes('mine'))) ? 1.4 : 0)},
   {id: 'quiver', at: 'crafthut', cost: {wood: 1, hide: 1}, work: 450, makes: {item: 'quiver'},
     want: c => (short(c.owned('quiver'), c.owned('bow')) ? 3 : 0)},
-  {id: 'basket', at: 'crafthut', cost: {wood: 2}, work: 450, makes: {item: 'basket'},
+  {id: 'basket', at: 'crafthut', cost: {reeds: 4}, work: 450, makes: {item: 'basket'},
     want: c => (short(c.owned('basket'), Math.max(1, c.likes('gather'))) ? 1.2 : 0)},
 
   // rods, like bows and slings, come from the craftsman's hut: one for everyone who likes fishing or
@@ -102,8 +103,23 @@ RECIPES.registerAll([
   {id: 'stewMeat', at: 'hearth', cost: {meat: 1, berries: 1}, work: 120, makes: {resource: 'stew', n: 1}, want: c => (c.stock('stew') < c.pop ? 2.2 : 0)},
   {id: 'stewFish', at: 'hearth', cost: {fish: 1, berries: 1}, work: 120, makes: {resource: 'stew', n: 1}, want: c => (c.stock('stew') < c.pop ? 2.1 : 0)},
   {id: 'stewMeatFish', at: 'hearth', cost: {meat: 1, fish: 1}, work: 120, makes: {resource: 'stew', n: 1}, want: c => (c.stock('stew') < c.pop ? 2.0 : 0)},
+  {id: 'kasha', at: 'hearth', cost: {barley: 2}, work: 100, makes: {resource: 'kasha', n: 1}, want: c => (c.stock('kasha') < c.pop * 0.6 ? 1.9 : 0)},
+  {id: 'stewTurnip', at: 'hearth', cost: {turnip: 1, meat: 1}, work: 120, makes: {resource: 'stew', n: 1}, want: c => (c.stock('stew') < c.pop ? 2.15 : 0)},
+  {id: 'stewTurnipFish', at: 'hearth', cost: {turnip: 1, fish: 1}, work: 120, makes: {resource: 'stew', n: 1}, want: c => (c.stock('stew') < c.pop ? 2.05 : 0)},
   {id: 'stewStores', at: 'hearth', cost: {jerky: 1, driedBerries: 1}, work: 140, makes: {resource: 'stew', n: 1}, want: c => (c.stock('stew') < c.pop * 0.5 ? 1.2 : 0)},
   {id: 'stewSalted', at: 'hearth', cost: {saltMeat: 1, driedBerries: 1}, work: 140, makes: {resource: 'stew', n: 1}, want: c => (c.stock('stew') < c.pop * 0.5 ? 1.1 : 0)},
+
+  // ── the outpost's crafts: rope, rough cloth, pots, boards
+  {id: 'rope', at: 'crafthut', cost: {fiber: 3}, work: 160, makes: {resource: 'rope', n: 1},
+    want: c => (c.stock('rope') < 6 ? 1.7 : 0)},
+  {id: 'cloth', at: 'loom', cost: {fiber: 3}, work: 300, makes: {resource: 'cloth', n: 1},
+    want: c => (c.stock('cloth') < 8 ? 1.5 : 0)},
+  {id: 'linen', at: 'crafthut', cost: {cloth: 2}, work: 900, makes: {item: 'linen'},
+    want: c => (short(c.owned('linen') + c.owned('furcoat') + c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 2.2 : 0)},
+  {id: 'pots', at: 'potter', cost: {clay: 2, wood: 1}, work: 300, makes: {resource: 'pots', n: 3},
+    want: c => (c.stock('pots') < Math.min(30, c.food / 5) ? 1.6 : 0)},
+  {id: 'planks', at: 'sawmill', cost: {wood: 3}, work: 260, makes: {resource: 'planks', n: 2},
+    want: c => (c.stock('planks') < 24 ? 1.6 : 0)},
 
   // processing: raw hides become leather at the tannery
   {id: 'tan', at: 'tannery', cost: {hide: 1}, work: 150, makes: {resource: 'leather', n: 1},
