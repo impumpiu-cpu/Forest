@@ -1,10 +1,11 @@
 // Panels around the map: the clock line above it, the selection pane under it and the tabs on its right
 // (stock and jobs, colonists, buildings, council, journal, world). Only the open tab is redrawn.
-import {RESOURCES, RESOURCE_GROUPS} from '../data/resources.js';
+import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {RECIPES} from '../data/recipes.js';
 import {SIZES, CLIMATES, WILDLIFE, PREDATORS} from '../data/presets.js';
-import {ORE_LABEL, exposedOre} from '../world/ores.js';
+import {exposedOre, oreOf} from '../world/ores.js';
+import {ORES} from '../data/ores.js';
 import {campFuel, smeltFuelTotal} from '../settlement/stock.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
@@ -48,6 +49,18 @@ export class Panel {
     this.sig = {}; this.lastTick = 0; this.lastT = performance.now();
     this.hidden = this.loadFilter();
     this.buildFilters();
+    this.buildLegend();
+  }
+
+  // the map legend: creatures and fixed marks, plus every ore from data/ores.js
+  buildLegend() {
+    const dot = (c, t) => `<span><i style="background:${c}"></i>${t}</span>`;
+    const ores = ORES.all().map(o => dot(`rgb(${o.tint.join(',')})`, o.label)).join('');
+    $('legend').innerHTML = dot('var(--colony)', 'колонисты') + dot('var(--raider)', 'налётчики') +
+      SPECIES.filter(s => s.look.color && !s.sentient).map(s => dot(s.look.color, s.legend || s.label)).join('') +
+      dot('var(--food)', 'ягоды') + ores + dot('var(--ember)', 'огонь и костёр') +
+      '<span>пунктир — граница зоны поселения</span>' +
+      `<span>обводка — броня: ${ITEMS.filter(d => d.slot === 'body' && d.color).map(d => d.short).join(', ')} (своим цветом)</span>`;
   }
 
   // ── journal filters: levels and topics can be switched off; remembered in this browser
@@ -102,11 +115,12 @@ export class Panel {
 
   // the stock, grouped: food, materials, fuel, ore, metal, luxury, ammunition
   renderStock(w) {
-    const groups = RESOURCE_GROUPS.map(gname => {
-      const rs = RESOURCES.filter(r => r.group === gname);
+    const groups = resourceGroups().map(gname => {
+      const rs = RESOURCES.filter(r => (r.group || 'Прочее') === gname);
       if (!rs.length) return '';
       const rows = rs.map(r => { const v = w.stock[r.id] || 0; return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label)}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`; }).join('');
-      const extra = gname === 'Еда' ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>` : gname === 'Топливо' ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
+      const tagged = t => rs.some(r => r.tags.includes(t));
+      const extra = tagged('food') ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>` : rs.every(r => r.tags.includes('fuel')) ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
       return `<div class="sgroup"><h3>${gname}</h3>${rows}${extra}</div>`;
     }).join('');
     this.set('stock', groups);
@@ -143,7 +157,7 @@ export class Panel {
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +
       `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>` +
-      `<dt title="Сколько руды можно выкопать с открытого склона скал">Руда на склонах</dt><dd>железо ${Math.round(ore[1])} · уголь ${Math.round(ore[2])} · самоцветы ${Math.round(ore[3])}</dd>`);
+      `<dt title="Сколько руды можно выкопать с открытого склона скал">Руда на склонах</dt><dd class="nb">${ORES.all().map(o => `${o.label} ${Math.round(ore[o.id])}`).join(' · ')}</dd>`);
     $('pFlabel').textContent = `Поля (${w.n.toLocaleString('ru-RU')} клеток)`;
     $('pF').textContent = w.perf.fields.toFixed(2); $('pN').textContent = w.perf.nav.toFixed(2);
     $('pA').textContent = w.perf.agents.toFixed(2); $('pR').textContent = view.renderMs.toFixed(2);
@@ -222,7 +236,7 @@ export class Panel {
     if (hoverCell < 0) return;
     const g = w.grid, i = hoverCell, d = w.nav.get('camp')[i];
     const lake = g.lake[i] >= 0 ? w.lakes[g.lake[i]] : null;
-    const ore = g.ore?.[i] ? ` · ${ORE_LABEL[g.ore[i]]} ${Math.ceil(g.oreLeft[i])}` : '';
+    const ore = oreOf(w, i) ? ` · ${oreOf(w, i).label} ${Math.ceil(g.oreLeft[i])}` : '';
     if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${g.temp[i].toFixed(1)} °C`; return; }
     $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${ore} · ${g.temp[i].toFixed(1)} °C · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
   }
@@ -265,7 +279,7 @@ export class Panel {
     const close = '<button type="button" class="pc-close" data-close aria-label="Закрыть">×</button>';
     const lake = g.lake?.[i] >= 0 ? w.lakes[g.lake[i]] : null;
     const rows = [`<dt>Местность</dt><dd>${lake ? `озеро, ${lake.size} клеток` : BY_CODE[g.terr[i]].label}</dd>`];
-    if (g.ore?.[i]) rows.push(`<dt>Руда</dt><dd>${ORE_LABEL[g.ore[i]]}, ещё ${Math.ceil(g.oreLeft[i])}</dd>`);
+    if (oreOf(w, i)) rows.push(`<dt>Руда</dt><dd>${oreOf(w, i).label}, ещё ${Math.ceil(g.oreLeft[i])}</dd>`);
     if (lake) rows.push(`<dt>Рыба</dt><dd>${lake.cap ? `${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', отдыхает' : ''}` : 'слишком мало для рыбы'}</dd>`);
     if (g.wood[i] > 0) rows.push(`<dt>Древесина</dt><dd>${g.wood[i].toFixed(2)}</dd>`);
     if (g.bush[i]) rows.push(`<dt>Ягоды</dt><dd>${g.food[i].toFixed(2)}</dd>`);

@@ -3,7 +3,7 @@ import {ITEMS} from '../data/items.js';
 // How creatures are drawn. A species names its look in data/species.js (look.shape);
 // a new shape is one more painter here.
 // small marks for what is held in the hands, drawn beside the body
-const GLYPHS = {
+export const GLYPHS = {
   club(ctx, x, y, r) { line(ctx, x, y + r * 0.6, x + r * 0.5, y - r * 0.8, '#8a6a3c', Math.max(1.5, r * 0.35)); },
   spear(ctx, x, y, r) { line(ctx, x, y + r, x + r * 0.2, y - r * 1.4, '#a5794a', 1.2); dot(ctx, x + r * 0.22, y - r * 1.45, Math.max(1, r * 0.22), '#ece6d2'); },
   axe(ctx, x, y, r) { line(ctx, x, y + r * 0.8, x + r * 0.2, y - r * 0.8, '#8a6a3c', 1.2); dot(ctx, x + r * 0.45, y - r * 0.7, Math.max(1.2, r * 0.3), '#ece6d2'); },

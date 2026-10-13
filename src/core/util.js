@@ -31,3 +31,12 @@ export function weighted(rng, items) {
   for (const [v, w] of items) { r -= Math.max(0, w); if (r <= 0) return v; }
   return items.length ? items[items.length - 1][0] : undefined;
 }
+
+// A value computed at most once per tick: perTick(w, 'orders', () => …). Kept in w.scratch, which
+// is never saved (see world/save.js), so it may hold anything, functions included. Only for answers
+// that depend on this tick's state alone; slower caches that must survive a save go in w.cache.
+export function perTick(w, key, make) {
+  const s = w.scratch || (w.scratch = {tick: w.tick});
+  if (s.tick !== w.tick) { for (const k of Object.keys(s)) delete s[k]; s.tick = w.tick; }
+  return key in s ? s[key] : (s[key] = make());
+}

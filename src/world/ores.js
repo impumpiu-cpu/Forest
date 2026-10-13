@@ -1,13 +1,13 @@
-// Ore in the rocks. Every rock cell may hold one kind of ore (grid.ore, a code from ORE) and an
-// amount (grid.oreLeft, units). Miners dig it from a walkable cell beside the rock face; a vein
-// runs dry and becomes plain stone. Veins are laid out once, from their own random stream, so
-// adding ore did not change the rest of a world made from the same seed.
+// Ore in the rocks. Every rock cell may hold one kind of ore (grid.ore, a `code` from data/ores.js)
+// and an amount (grid.oreLeft, units). Miners dig it from a walkable cell beside the rock face;
+// a worked-out vein leaves a passage. Veins are laid out once, from their own random stream, so
+// ore does not change the rest of a world made from the same seed.
 import {mulberry, seedNumber} from '../core/rng.js';
 import {T, WALKABLE} from '../data/terrain.js';
+import {ORES, ORE_BY_CODE} from '../data/ores.js';
 import {DX, DY} from './grid.js';
 
-export const ORE = {iron: 1, coal: 2, gems: 3};
-export const ORE_LABEL = {1: 'железная руда', 2: 'каменный уголь', 3: 'самоцветы'};
+export const oreOf = (w, i) => (w.grid.ore?.[i] ? ORE_BY_CODE[w.grid.ore[i]] : null);
 
 // how strongly cell i shows ore `code` on the resource layer (0 = none)
 export function oreAt(w, i, code) {
@@ -16,7 +16,7 @@ export function oreAt(w, i, code) {
   return 0.75 + 0.25 * Math.min(1, g.oreLeft[i] / 10);
 }
 
-// a rock cell next to walkable cell i that still holds one of `codes` (a Set), or -1
+// a rock cell next to walkable cell i that still holds ore with a code in `codes` (a Set; null = any), or -1
 export function oreBeside(w, i, codes) {
   const g = w.grid; if (!g.ore) return -1;
   const x = i % w.w, y = (i / w.w) | 0;
@@ -39,16 +39,25 @@ function exposed(w, i) {
   return false;
 }
 
-// how much ore of each kind miners can reach right now: {code: units}
-export function exposedOre(w) {
-  const g = w.grid, out = {1: 0, 2: 0, 3: 0};
+function countExposed(w) {
+  const g = w.grid, out = Object.fromEntries(ORES.all().map(o => [o.id, 0]));
   if (!g.ore) return out;
-  for (let i = 0; i < w.n; i++) if (g.ore[i] && g.oreLeft[i] > 0 && exposed(w, i)) out[g.ore[i]] += g.oreLeft[i];
+  for (let i = 0; i < w.n; i++) if (g.ore[i] && g.oreLeft[i] > 0 && exposed(w, i)) out[ORE_BY_CODE[g.ore[i]].id] += g.oreLeft[i];
   return out;
 }
 
-// lay out veins: iron and coal in broad seams, gems in rare pockets; makes sure each kind shows
-// on the rock face at least once when the map has rock at all
+// how much ore of each kind miners can reach: {oreId: units}. A full map scan, so the answer is
+// kept for a game hour (panels and the council ask often, the rock face changes slowly)
+export function exposedOre(w) {
+  const c = w.cache.exposedOre;
+  if (c && w.tick - c.tick < 50 && w.tick >= c.tick) return c.v;
+  const v = countExposed(w);
+  w.cache.exposedOre = {tick: w.tick, v};
+  return v;
+}
+export const oreSeen = w => Object.values(exposedOre(w)).some(v => v > 0);
+
+// lay out veins (see data/ores.js); makes sure each kind shows on the rock face when the map has rock
 export function layOre(w) {
   const n = w.n, g = w.grid, rnd = mulberry(seedNumber(String(w.cfg.seed) + ':ore'));
   g.ore = new Uint8Array(n); g.oreLeft = new Float32Array(n);
@@ -60,30 +69,33 @@ export function layOre(w) {
       return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
     };
   };
-  const ironN = seam(7), coalN = seam(8);
-  const rocks = [];
+  const kinds = ORES.all().map(o => ({o, noise: o.vein.seam ? seam(o.vein.seam) : null}));
+  const amount = ([lo, hi], r) => lo + Math.floor(r * (hi - lo + 1));
+  const face = [];
   for (let i = 0; i < n; i++) {
     if (g.terr[i] !== T.ROCK) continue;
-    rocks.push(i);
+    if (exposed(w, i)) face.push(i);
     const r = rnd();
-    if (ironN(i) > 0.66) { g.ore[i] = ORE.iron; g.oreLeft[i] = 6 + Math.floor(r * 7); }
-    else if (coalN(i) > 0.68) { g.ore[i] = ORE.coal; g.oreLeft[i] = 6 + Math.floor(r * 7); }
-    else if (r < 0.035) { g.ore[i] = ORE.gems; g.oreLeft[i] = 2 + Math.floor(rnd() * 3); }
+    for (const {o, noise} of kinds) {
+      const v = o.vein;
+      if (noise ? noise(i) > v.above : r < v.pocket) {
+        g.ore[i] = o.code; g.oreLeft[i] = amount(v.amount, noise ? r : rnd());
+        break;
+      }
+    }
   }
-  // every kind of ore should be reachable somewhere: plant a small vein on the rock face if not
-  const face = rocks.filter(i => exposed(w, i));
+  // every kind should be reachable somewhere: plant a small vein on the rock face if not
   if (!face.length) return;
-  const have = exposedOre(w);
-  for (const code of [ORE.iron, ORE.coal, ORE.gems]) {
-    if (have[code] >= (code === ORE.gems ? 4 : 12)) continue;
-    const start = face[Math.floor(rnd() * face.length)], size = code === ORE.gems ? 2 : 5;
-    const sx = start % w.w, sy = (start / w.w) | 0;
+  const have = countExposed(w);
+  for (const o of ORES.all()) {
+    if (have[o.id] >= (o.reach || 0)) continue;
+    const start = face[Math.floor(rnd() * face.length)], sx = start % w.w, sy = (start / w.w) | 0;
     let placed = 0;
-    for (let rad = 0; rad <= 3 && placed < size; rad++) for (let yy = -rad; yy <= rad && placed < size; yy++) for (let xx = -rad; xx <= rad && placed < size; xx++) {
+    for (let rad = 0; rad <= 3 && placed < o.plant; rad++) for (let yy = -rad; yy <= rad && placed < o.plant; yy++) for (let xx = -rad; xx <= rad && placed < o.plant; xx++) {
       const x = sx + xx, y = sy + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
       const j = y * w.w + x;
-      if (g.terr[j] !== T.ROCK || g.ore[j] === code) continue;
-      g.ore[j] = code; g.oreLeft[j] = code === ORE.gems ? 3 : 8; placed++;
+      if (g.terr[j] !== T.ROCK || g.ore[j] === o.code) continue;
+      g.ore[j] = o.code; g.oreLeft[j] = o.plantAmount; placed++;
     }
   }
 }

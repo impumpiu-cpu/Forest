@@ -10,6 +10,7 @@ import {clamp} from '../core/util.js';
 import {DX, DY} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {LOOKS} from './looks.js';
+import {ORE_BY_CODE} from '../data/ores.js';
 
 const TSTOPS = [[-5, 52, 84, 196], [8, 64, 150, 186], [16, 104, 186, 102], [24, 222, 206, 84], [45, 240, 132, 46], [120, 220, 44, 40], [500, 255, 236, 214]];
 function tempColor(t) {
@@ -21,8 +22,6 @@ function tempColor(t) {
   return TSTOPS[TSTOPS.length - 1].slice(1);
 }
 
-// ore veins show through the rock on the world layer
-const ORE_TINT = {1: [176, 92, 56], 2: [44, 44, 52], 3: [110, 214, 198]};
 
 function layer(w) {
   const c = document.createElement('canvas'); c.width = w.w; c.height = w.h;
@@ -36,6 +35,7 @@ export class Renderer {
     this.S = Math.max(4, Math.floor(1024 / w.w));
     this.cv.width = w.w * this.S; this.cv.height = w.h * this.S;
     this.terrain = layer(w); this.field = layer(w); this.glow = layer(w); this.smoke = layer(w);
+    this.tTerrain = -Infinity; this.tField = -Infinity; this.fieldKey = null;
   }
 
   paintTerrain(w) {
@@ -43,7 +43,7 @@ export class Renderer {
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
       const ore = g.ore?.[i];
-      if (ore) { const c = ORE_TINT[ore], k = 0.55; r = r * (1 - k) + c[0] * k; gg = gg * (1 - k) + c[1] * k; b = b * (1 - k) + c[2] * k; }
+      if (ore) { const c = ORE_BY_CODE[ore].tint, k = 0.55; r = r * (1 - k) + c[0] * k; gg = gg * (1 - k) + c[1] * k; b = b * (1 - k) + c[2] * k; }
       if (g.bush[i] && g.food[i] > 0.2) { const k = g.food[i] * 0.55; r = r * (1 - k) + 196 * k; gg = gg * (1 - k) + 92 * k; b = b * (1 - k) + 149 * k; }
       const o = i * 4; d[o] = r; d[o + 1] = gg; d[o + 2] = b; d[o + 3] = 255;
     }
@@ -83,10 +83,16 @@ export class Renderer {
 
   draw(w, view) {
     const t0 = performance.now(), ctx = this.ctx, S = this.S, Wpx = w.w * S, Hpx = w.h * S;
-    this.paintTerrain(w); this.paintGlowSmoke(w);
+    // terrain and the overlay layers change slowly: repaint them a few times a second, not every frame
+    // (fire glow and smoke stay per frame)
+    if (t0 - this.tTerrain > 200) { this.paintTerrain(w); this.tTerrain = t0; }
+    this.paintGlowSmoke(w);
     ctx.imageSmoothingEnabled = false; ctx.drawImage(this.terrain.c, 0, 0, Wpx, Hpx);
     ctx.imageSmoothingEnabled = true;
-    if (view.layer !== 'world') { this.paintField(w, view.layer, view); ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx); }
+    if (view.layer !== 'world') {
+      const key = view.layer + ':' + [...view.resHidden].join(',');
+      if (t0 - this.tField > 150 || this.fieldKey !== key) { this.paintField(w, view.layer, view); this.tField = t0; this.fieldKey = key; }
+      ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx); }
     ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
 
     const night = nightness(w.tick);

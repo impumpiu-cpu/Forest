@@ -9,7 +9,7 @@ import {colonists, count, has, popCap, openSites, ofSpecies} from './query.js';
 import {canAfford, eligible, laySite, missing} from './buildings.js';
 import {handItems, allItems, def} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
-import {exposedOre} from '../world/ores.js';
+import {oreSeen} from '../world/ores.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
 
@@ -32,13 +32,6 @@ function motive(w, a, def, ctx, noise = true) {
   for (const o of args) if (o[0] > best[0]) best = o;
   const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rng() * 0.25 : 0);
   return [score, best[0] > 0.05 ? best[1] : def.wish];
-}
-
-// is there ore on the rock face miners could reach? (checked at most once a game hour)
-function oreSeen(w) {
-  const c = w.cache.oreSeen || (w.cache.oreSeen = {tick: -1e9, v: false});
-  if (w.tick - c.tick >= 50) { c.tick = w.tick; const o = exposedOre(w); c.v = o[1] + o[2] + o[3] > 0; }
-  return c.v;
 }
 
 function councilCtx(w, cands) {

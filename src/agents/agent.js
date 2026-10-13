@@ -62,6 +62,7 @@ export function createAgent(w, speciesId, factionId, x, y) {
   if (sp.inventory) a.equip = emptySlots();
   recalcGear(a);
   w.agents.push(a);
+  if (w.scratch) delete w.scratch.colonists;   // the per-tick list of colonists is out of date now
   return a;
 }
 

@@ -9,6 +9,7 @@
 // `benches` is how many people can work there at once.
 // `motive(agent, ctx)` gives the council arguments: [[score, 'why'], ...].
 import {Registry} from '../core/registry.js';
+import {oreSeen} from '../world/ores.js';
 
 export const BUILDINGS = new Registry('building');
 
@@ -100,7 +101,7 @@ BUILDINGS.registerAll([
     wish: 'говорит, что в скалах есть руда',
     motive: (a, c) => [[c.oreSeen ? 0.3 : 0, 'в скалах видна руда'], [(a.prefs.dig - 1) * 1.5, 'любит копать руду'],
       [c.unarmed > 0.3 && c.oreSeen ? 0.2 : 0, 'из железа вышло бы оружие получше']],
-    available: w => w.grid.ore?.some(x => x > 0)},
+    available: w => oreSeen(w)},
 
   {id: 'charpit', name: 'Углежогная яма', gender: 'f', cost: {wood: 14, stone: 6}, work: 160, max: 1, wooden: false, color: '#4a4440', mark: 'У', station: true, benches: 1, needs: 'quarry',
     effect: 'Брёвна томят без огня в древесный уголь. Уголь — топливо для плавильни и кузницы, а костёр на нём горит вдвое дольше.',

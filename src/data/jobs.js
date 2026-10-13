@@ -8,18 +8,23 @@
 //   'hunt'    — stalk the nearest prey of `prey` species and shoot it from `range`
 //   'build'   — walk to a construction site and add labour
 //   'craft'   — walk to one of the job's `stations` with work to do and add labour to its order (settlement/crafting.js)
-// requires: a building id, or a list of ids of which any one will do
+// requires: a building id, or a list of ids of which any one will do (a craft job needs one of its stations)
+// desire(w, ctx, job): how much the colony wants it now; < 0 means "not now"
+// A new workshop job is one entry: {runner: 'craft', stations: [...], desire: atStations(value)}.
 // canDo(w, agent): optional personal condition (hunting needs a usable ranged weapon)
 import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
 import {lakeBeside, fishable} from '../world/lakes.js';
-import {oreBeside} from '../world/ores.js';
-import {wantedOre, oreResource} from '../settlement/query.js';
+import {oreBeside, oreOf} from '../world/ores.js';
+import {wantedOre} from '../settlement/query.js';
 
 export const JOBS = new Registry('job');
 
 // how much the colony wants more of a resource: fills up when the stock is low
 const want = (stock, pop, low, enough) => (stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04);
+
+// craft jobs: wanted with `value` while one of their stations has an order to work on
+const atStations = value => (w, ctx, job) => (job.stations.some(s => ctx.orders[s]) ? value : -1);
 
 JOBS.registerAll([
   {id: 'gather', label: 'собирать ягоды', short: 'сбор', verb: 'собирает ягоды', preferable: true,
@@ -51,7 +56,7 @@ JOBS.registerAll([
     valid: (w, i) => w.grid.fire[i] === 0 && oreBeside(w, i, wantedOre(w)) >= 0,
     take: (w, i) => {
       const g = w.grid, j = oreBeside(w, i, wantedOre(w)); if (j < 0) return null;
-      const res = oreResource(g.ore[j]).id;
+      const res = oreOf(w, j).resource;
       g.oreLeft[j] -= 1;
       // a worked-out vein leaves a passage in the rock: the face behind it opens up for digging
       if (g.oreLeft[j] <= 0) { g.ore[j] = 0; g.oreLeft[j] = 0; g.terr[j] = T.GRASS; g.fuel[j] = 0; w.nav.dirty('ore'); w.nav.dirty('rockface'); }
@@ -72,26 +77,24 @@ JOBS.registerAll([
     desire: (w, ctx) => (ctx.preyCount > 0 ? want(ctx.food, ctx.pop, 4, 8) * 0.8 + 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0) : -1)},
 
   {id: 'craft', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
-    runner: 'craft', stations: ['crafthut', 'fishhut'], requires: ['crafthut', 'fishhut'],
-    desire: (w, ctx) => (ctx.orders.crafthut || ctx.orders.fishhut ? 0.55 : -1)},
+    runner: 'craft', stations: ['crafthut', 'fishhut'], desire: atStations(0.55)},
 
   {id: 'charcoal', label: 'жечь уголь', short: 'уголь', verb: 'жжёт уголь', preferable: true,
-    runner: 'craft', stations: ['charpit'], requires: 'charpit',
-    desire: (w, ctx) => (ctx.orders.charpit ? 0.45 : -1)},
+    runner: 'craft', stations: ['charpit'], desire: atStations(0.45)},
 
   {id: 'smith', label: 'плавить и ковать железо', short: 'кузня', verb: 'работает у горна', preferable: true,
-    runner: 'craft', stations: ['forge', 'smelter'], requires: ['smelter', 'forge'],
-    desire: (w, ctx) => (ctx.orders.forge || ctx.orders.smelter ? 0.55 : -1)},
+    runner: 'craft', stations: ['forge', 'smelter'], desire: atStations(0.55)},
 
   {id: 'jewel', label: 'делать украшения', short: 'ювелир', verb: 'делает украшения', preferable: true,
-    runner: 'craft', stations: ['jeweler'], requires: 'jeweler',
-    desire: (w, ctx) => (ctx.orders.jeweler ? 0.35 : -1)},
+    runner: 'craft', stations: ['jeweler'], desire: atStations(0.35)},
 
   {id: 'tan', label: 'выделывать кожи', short: 'кожи', verb: 'выделывает кожи', preferable: true,
-    runner: 'craft', stations: ['tannery'], requires: 'tannery',
-    desire: (w, ctx) => (ctx.orders.tannery ? 0.5 : -1)},
+    runner: 'craft', stations: ['tannery'], desire: atStations(0.5)},
 
   {id: 'build', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,
     runner: 'build', nav: 'sites',
     desire: (w, ctx) => (ctx.openSites ? 0.6 : -1)},
 ]);
+
+// a craft job opens as soon as one of its stations is built
+for (const j of JOBS.all()) if (j.runner === 'craft' && !j.requires) j.requires = j.stations;

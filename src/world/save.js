@@ -17,7 +17,7 @@ import {drawFoodPrefs} from '../data/foods.js';
 export const SAVE_FORMAT = 1;
 
 // world keys that are rebuilt rather than saved
-const LIVE = new Set(['nav', 'rng', 'astar', 'perf']);
+const LIVE = new Set(['nav', 'rng', 'astar', 'perf', 'scratch']);
 
 // definitions and presets are referenced by name, never copied into the save
 function externals() {

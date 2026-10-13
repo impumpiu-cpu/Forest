@@ -11,30 +11,47 @@ import {colonists} from '../settlement/query.js';
 // Fire model knobs. Wet ground (high fertility) is harder to ignite and puts fires out by itself.
 export const FIRE = {cap: 320, heat: 46, pF: 0.011, pG: 0.005, burn: 0.03, wetIgn: 80, outBase: 0.002, outWet: 0.012, ignForest: 80, ignGrass: 120};
 
+// the wind is the same over the whole map, so where each column and row samples from is worked out
+// once per call (per column and per row), not per cell; the arithmetic per cell is unchanged
 function advect(w, src, dst, ux, uy) {
   const W = w.w, H = w.h;
   if (ux === 0 && uy === 0) { dst.set(src); return; }
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const sx = clamp(x - ux, 0, W - 1.001), sy = clamp(y - uy, 0, H - 1.001);
-    const x0 = sx | 0, y0 = sy | 0, tx = sx - x0, ty = sy - y0, i0 = y0 * W + x0;
-    dst[y * W + x] = (src[i0] * (1 - tx) + src[i0 + 1] * tx) * (1 - ty) + (src[i0 + W] * (1 - tx) + src[i0 + W + 1] * tx) * ty;
+  const X0 = new Int32Array(W), TX = new Float64Array(W), Y0 = new Int32Array(H), TY = new Float64Array(H);
+  for (let x = 0; x < W; x++) { const sx = clamp(x - ux, 0, W - 1.001); X0[x] = sx | 0; TX[x] = sx - X0[x]; }
+  for (let y = 0; y < H; y++) { const sy = clamp(y - uy, 0, H - 1.001); Y0[y] = sy | 0; TY[y] = sy - Y0[y]; }
+  for (let y = 0; y < H; y++) {
+    const ty = TY[y], row = Y0[y] * W, out = y * W;
+    for (let x = 0; x < W; x++) {
+      const tx = TX[x], i0 = row + X0[x];
+      dst[out + x] = (src[i0] * (1 - tx) + src[i0 + 1] * tx) * (1 - ty) + (src[i0 + W] * (1 - tx) + src[i0 + W + 1] * tx) * ty;
+    }
   }
 }
 
+// smoke is skipped entirely while there is none: no fire burning and the last puff has thinned
+// to nothing (w.stats.smokeMax is the densest smoke cell after the last step)
+const SMOKE_GONE = 0.002;
+
 function heatAndSmoke(w) {
-  const g = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain = w.weather.rain;
-  advect(w, g.smoke, g.smoke2, w.wind.x, w.wind.y); [g.smoke, g.smoke2] = [g.smoke2, g.smoke];
+  const g = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain = w.weather.rain, st = w.stats;
+  const smokeOn = st.fireCount > 0 || (st.smokeMax ?? 1) >= SMOKE_GONE;
+  if (smokeOn) { advect(w, g.smoke, g.smoke2, w.wind.x, w.wind.y); [g.smoke, g.smoke2] = [g.smoke2, g.smoke]; }
+  else if (st.smokeMax > 0) { g.smoke.fill(0); g.smoke2.fill(0); st.smokeMax = 0; }
   advect(w, g.temp, g.temp2, w.wind.x * 0.35, w.wind.y * 0.35); [g.temp, g.temp2] = [g.temp2, g.temp];
   const {temp, temp2, smoke, smoke2, fire, terr} = g;
+  let smax = 0;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
     const Tc = temp[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
     const Tn = Tc + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * Tc) + (relax + rain * 0.03) * (amb - Tc) + fire[i] * FIRE.heat;
     temp2[i] = Tn > FIRE.cap ? FIRE.cap : Tn;
+    if (!smokeOn) continue;
     const Sm = smoke[i], Sn = Sm + 0.12 * (smoke[l] + smoke[r] + smoke[u] + smoke[d] - 4 * Sm) - 0.012 * Sm + fire[i] * 0.25;
-    smoke2[i] = Sn > 4 ? 4 : Sn;
+    const sv = Sn > 4 ? 4 : Sn;
+    smoke2[i] = sv; if (sv > smax) smax = sv;
   }
-  [g.temp, g.temp2] = [g.temp2, g.temp]; [g.smoke, g.smoke2] = [g.smoke2, g.smoke];
+  [g.temp, g.temp2] = [g.temp2, g.temp];
+  if (smokeOn) { [g.smoke, g.smoke2] = [g.smoke2, g.smoke]; st.smokeMax = smax; }
 }
 
 // the campfire is a heat source fed from the stock: wood, then charcoal, then coal

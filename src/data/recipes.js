@@ -12,6 +12,7 @@
 // a weapon or tool takes half a day, armour a full day, tanning a hide or a batch of arrows
 // an hour or two.
 import {Registry} from '../core/registry.js';
+import {LUXURY} from './luxury.js';
 
 export const RECIPES = new Registry('recipe');
 
@@ -74,15 +75,9 @@ RECIPES.registerAll([
   {id: 'lamellar', at: 'forge', cost: {iron: 4, leather: 2}, fuel: 2, work: 1600, makes: {item: 'lamellar'},
     want: c => (short(c.owned('lamellar'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
 
-  // ── the jeweller: a gem set into bone, wood, stone or iron; the scarcer kind of piece goes first
-  {id: 'jewelBone', at: 'jeweler', cost: {gems: 1, bone: 2}, work: 500, makes: {resource: 'jewelBone', n: 1},
-    want: c => Math.max(0, 1.4 - c.stock('jewelBone') * 0.12)},
-  {id: 'jewelWood', at: 'jeweler', cost: {gems: 1, wood: 3}, work: 450, makes: {resource: 'jewelWood', n: 1},
-    want: c => Math.max(0, 1.3 - c.stock('jewelWood') * 0.12)},
-  {id: 'jewelStone', at: 'jeweler', cost: {gems: 1, stone: 3}, work: 550, makes: {resource: 'jewelStone', n: 1},
-    want: c => Math.max(0, 1.35 - c.stock('jewelStone') * 0.12)},
-  {id: 'jewelIron', at: 'jeweler', cost: {gems: 1, iron: 1}, work: 600, makes: {resource: 'jewelIron', n: 1},
-    want: c => Math.max(0, 1.5 - c.stock('jewelIron') * 0.15)},
+  // ── the jeweller: a gem set into bone, wood, stone or iron (data/luxury.js); the scarcer piece goes first
+  ...LUXURY.all().map(l => ({id: l.id, at: 'jeweler', cost: {gems: l.gems, ...l.setting}, work: l.work, makes: {resource: l.id, n: 1},
+    want: c => Math.max(0, l.want - c.stock(l.id) * l.fade)})),
 
   // processing: raw hides become leather at the tannery
   {id: 'tan', at: 'tannery', cost: {hide: 1}, work: 150, makes: {resource: 'leather', n: 1},

@@ -11,6 +11,7 @@ import {allItems, newItem} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {RESOURCES} from '../data/resources.js';
 import {smeltFuelTotal, takeSmeltFuel} from './stock.js';
+import {perTick} from '../core/util.js';
 
 // how much of a resource the council's goal still needs to keep in the stock
 function reserved(w, res) {
@@ -28,7 +29,10 @@ function canStart(w, r) {
   });
 }
 
-export function craftContext(w) {
+// what the recipes' want(ctx) can ask about the colony; made once per tick
+export const craftContext = w => perTick(w, 'craftCtx', () => makeCraftContext(w));
+
+function makeCraftContext(w) {
   const col = colonists(w), counts = {};
   const count = it => { counts[it.type] = (counts[it.type] || 0) + 1; };
   for (const a of col) for (const it of allItems(a)) count(it);
@@ -41,14 +45,23 @@ export function craftContext(w) {
     stock: res => w.stock[res] || 0,
     bows: owned('bow'),
     has: b => has(w, b),
-    fuel: smeltFuelTotal(w),
-    melee: () => ITEMS.filter(d => d.slot === 'hand' && d.melee && !d.ranged).reduce((s, d) => s + owned(d.id), 0),
+    get fuel() { return smeltFuelTotal(w); },
+    melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
   };
 }
 
+// recipes grouped by station, built on first use
+let byStation = null;
+export function recipesAt(station) {
+  if (!byStation) { byStation = {}; for (const r of RECIPES.all()) (byStation[r.at] ||= []).push(r); }
+  return byStation[station] || [];
+}
+let melee = null;
+const MELEE = () => melee || (melee = ITEMS.filter(d => d.slot === 'hand' && d.melee && !d.ranged));
+
 export function pickRecipe(w, station, ctx = craftContext(w)) {
   let best = null, bv = 0;
-  for (const r of RECIPES.filter(x => x.at === station)) {
+  for (const r of recipesAt(station)) {
     const v = r.want(ctx);
     if (v > bv && canStart(w, r)) { bv = v; best = r; }
   }
@@ -65,12 +78,11 @@ function busyOthers(w, b, a) {
 
 // does a station of this kind have something to do, and a free bench for `a`? (orders cached per tick)
 export function stationHasWork(w, station, a) {
-  const c = w.cache.orders || (w.cache.orders = {});
-  if (c.tick !== w.tick) { c.tick = w.tick; c.map = {}; c.ctx = null; }
+  const map = perTick(w, 'orders', () => ({}));
   const b = w.buildings.find(x => x.key === station && x.done);
   if (!b || busyOthers(w, b, a) >= (BUILDINGS.get(station).benches || 1)) return false;
-  if (!(station in c.map)) c.map[station] = !!b.order || !!pickRecipe(w, station, c.ctx || (c.ctx = craftContext(w)));
-  return c.map[station];
+  if (!(station in map)) map[station] = !!b.order || !!pickRecipe(w, station);
+  return map[station];
 }
 
 // how badly the colony needs what this station would make next (its running order counts a bit more,
@@ -90,6 +102,7 @@ export function workAt(w, b, amount, a) {
   if (!b.order) {
     const r = pickRecipe(w, b.key);
     if (!r) return false;
+    if (w.scratch) delete w.scratch.orders;   // materials are taken: other stations may not afford theirs now
     for (const [res, v] of Object.entries(r.cost)) w.stock[res] -= v;
     if (r.fuel) takeSmeltFuel(w, r.fuel);
     b.order = {recipe: r.id, progress: 0};
@@ -99,6 +112,7 @@ export function workAt(w, b, amount, a) {
   if (b.order.progress < r.work) return true;
   b.order = null;
   w.stats.crafted++;
+  if (w.scratch) delete w.scratch.craftCtx;   // item counts changed
   if (r.makes.item) {
     w.armory.push(newItem(r.makes.item));
     w.armoryVersion = (w.armoryVersion || 0) + 1;

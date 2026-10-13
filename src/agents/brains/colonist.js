@@ -32,7 +32,7 @@ function decide(w, a) {
   }
   for (const job of JOBS.all()) {
     if (!jobUnlocked(w, job) || (job.canDo && !job.canDo(w, a))) continue;
-    const base = job.desire(w, ctx);
+    const base = job.desire(w, ctx, job);
     if (base < 0) continue;
     const res = job.resource;
     const goal = res ? goalNeed(w, res) : 0;
