@@ -753,7 +753,7 @@ body.ingame h1{font-size:22px}
       id: "fish",
       label: "\u0440\u044B\u0431\u0430",
       kind: "\u0440\u044B\u0431\u043D\u0430\u044F",
-      nutrition: 1.1,
+      nutrition: 1.4,
       spoil: 2,
       loot: 3,
       taste: 0.1,
@@ -765,7 +765,7 @@ body.ingame h1{font-size:22px}
       },
       mapColor: [96, 176, 236]
     },
-    { id: "meat", label: "\u043C\u044F\u0441\u043E", kind: "\u043C\u044F\u0441\u043D\u0430\u044F", nutrition: 1.3, spoil: 2.5, loot: 3, taste: 0.3, color: "#d0786a", eat: "ateMeat" }
+    { id: "meat", label: "\u043C\u044F\u0441\u043E", kind: "\u043C\u044F\u0441\u043D\u0430\u044F", nutrition: 1.6, spoil: 2.5, loot: 3, taste: 0.3, color: "#d0786a", eat: "ateMeat" }
   ]);
   function drawFoodPrefs(rnd) {
     const all = FOODS.all();
@@ -1092,6 +1092,11 @@ body.ingame h1{font-size:22px}
   var ofSpecies = (w, id) => w.agents.filter((a) => a.species === id);
   var FOOD = () => RESOURCES.filter((r) => r.tags.includes("food"));
   var foodTotal = (w) => FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
+  var favourites = (w) => perTick(w, "favourites", () => {
+    const out = {};
+    for (const a of colonists(w)) if (a.food?.likes) out[a.food.likes] = (out[a.food.likes] || 0) + 1;
+    return out;
+  });
   var popCap = (w) => 8 + w.mods.add.popCap;
   var jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some((b) => has(w, b));
   var ORE_RES = () => RESOURCES.filter((r) => r.ore);
@@ -1492,6 +1497,11 @@ body.ingame h1{font-size:22px}
   // src/data/jobs.js
   var JOBS = new Registry("job");
   var want = (stock, pop, low, enough) => stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04;
+  var foodWant = (w, ctx, job, k = 1, extra = 0) => {
+    const f = FOODS.get(job.food), fans = ctx.favourites[job.food] || 0;
+    const craving = fans && (w.stock[job.food] || 0) < fans * 2 ? 0.08 + 0.3 * fans / Math.max(1, ctx.pop) : 0;
+    return want(ctx.food, ctx.pop, 4, 8) * (0.7 + 0.3 * f.nutrition) * k + craving + extra;
+  };
   var atStations = (value2) => (w, ctx, job) => job.stations.some((s) => ctx.orders[s]) ? value2 : -1;
   JOBS.registerAll([
     {
@@ -1503,10 +1513,11 @@ body.ingame h1{font-size:22px}
       runner: "harvest",
       nav: "berries",
       resource: "berries",
+      food: "berries",
       carry: 3,
       time: 12,
       memory: "walkFood",
-      desire: (w, ctx) => want(ctx.food, ctx.pop, 4, 8),
+      desire: (w, ctx, job) => foodWant(w, ctx, job),
       valid: (w, i) => w.grid.food[i] > 0.3 && w.grid.fire[i] === 0,
       take: (w, i) => {
         w.grid.food[i] -= 0.34;
@@ -1597,12 +1608,13 @@ body.ingame h1{font-size:22px}
       runner: "harvest",
       nav: "shore",
       resource: "fish",
+      food: "fish",
       carry: 3,
-      time: 70,
+      time: 50,
       requires: "fishhut",
       memory: "walkFish",
       canDo: (w, a) => !!a.gear?.tool.fish,
-      desire: (w, ctx) => w.lakes.some(fishable) ? want(ctx.food, ctx.pop, 4, 8) * 0.9 + 0.06 : -1,
+      desire: (w, ctx, job) => w.lakes.some(fishable) ? foodWant(w, ctx, job, 0.95, 0.08) : -1,
       valid: (w, i) => !!lakeBeside(w, i),
       take: (w, i) => {
         const l = lakeBeside(w, i);
@@ -1621,8 +1633,9 @@ body.ingame h1{font-size:22px}
       runner: "hunt",
       nav: "prey",
       prey: ["hare"],
+      food: "meat",
       canDo: (w, a) => !!a.gear?.rangedReady,
-      desire: (w, ctx) => ctx.preyCount > 0 ? want(ctx.food, ctx.pop, 4, 8) * 0.8 + 0.08 + (w.stock.hide < 4 || w.stock.bone < 4 ? 0.3 : 0) : -1
+      desire: (w, ctx, job) => ctx.preyCount > 0 ? foodWant(w, ctx, job, 0.75, 0.08 + (w.stock.hide < 4 || w.stock.bone < 4 ? 0.3 : 0)) : -1
     },
     {
       id: "craft",
@@ -2344,7 +2357,8 @@ body.ingame h1{font-size:22px}
         [(a.prefs.hunt - 1) * 1.3, "\u043B\u044E\u0431\u0438\u0442 \u043E\u0445\u043E\u0442\u0443"],
         [a.mem.chase * 1.2, "\u0437\u0430\u0439\u0446\u044B \u0443\u0445\u043E\u0434\u044F\u0442 \u043E\u0442 \u0441\u0442\u0440\u0435\u043B"],
         [c.preyCount > 6 ? 0.3 : 0, "\u0432\u043E\u043A\u0440\u0443\u0433 \u043C\u043D\u043E\u0433\u043E \u0437\u0430\u0439\u0446\u0435\u0432"],
-        [c.wolves ? 0.25 : 0, "\u0432\u043E\u043B\u043A\u0438 \u043F\u0435\u0440\u0435\u0445\u0432\u0430\u0442\u044B\u0432\u0430\u044E\u0442 \u0437\u0430\u0439\u0446\u0435\u0432"]
+        [c.wolves ? 0.25 : 0, "\u0432\u043E\u043B\u043A\u0438 \u043F\u0435\u0440\u0435\u0445\u0432\u0430\u0442\u044B\u0432\u0430\u044E\u0442 \u0437\u0430\u0439\u0446\u0435\u0432"],
+        [a.food?.likes === "meat" ? 0.25 : 0, "\u0445\u043E\u0447\u0435\u0442 \u043C\u044F\u0441\u0430 \u043F\u043E\u0447\u0430\u0449\u0435"]
       ]
     },
     {
@@ -2444,7 +2458,7 @@ body.ingame h1{font-size:22px}
       effect: "\u0417\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442 \u0443\u0434\u043E\u0447\u043A\u0438. \u0420\u044B\u0431\u0430\u043A\u0438 \u043B\u043E\u0432\u044F\u0442 \u043D\u0430 \u0442\u0440\u0435\u0442\u044C \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u0443\u043B\u043E\u0432 \u043D\u0430 30% \u0431\u043E\u043B\u044C\u0448\u0435.",
       effects: { jobSpeed: { fish: 1.35 }, yield: { fish: 1.3 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u043B\u043E\u0432\u0438\u0442\u044C \u0440\u044B\u0431\u0443",
-      motive: (a, c) => [[c.fishLakes ? 0.25 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"]],
+      motive: (a, c) => [[c.fishLakes ? 0.25 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"], [c.fishLakes && a.food?.likes === "fish" ? 0.35 : 0, "\u0441\u043A\u0443\u0447\u0430\u0435\u0442 \u043F\u043E \u0440\u044B\u0431\u0435"]],
       available: (w) => w.lakes.some((l) => l.cap > 0)
     },
     {
@@ -4037,14 +4051,14 @@ body.ingame h1{font-size:22px}
       makes: { item: "basket" },
       want: (c) => short(c.owned("basket"), Math.max(1, c.likes("gather"))) ? 1.2 : 0
     },
-    // the fisherman's hut makes rods: one for everyone who likes fishing, at least two
+    // the fisherman's hut makes rods: one for everyone who likes fishing or loves eating fish, at least two
     {
       id: "rod",
       at: "fishhut",
       cost: { wood: 3 },
       work: 500,
       makes: { item: "rod" },
-      want: (c) => short(c.owned("rod"), Math.max(2, c.likes("fish"))) ? 2.4 : 0
+      want: (c) => short(c.owned("rod"), Math.max(2, c.likes("fish") + c.fans("fish"))) ? 2.4 : 0
     },
     // ── charcoal: logs smoulder under turf into charcoal; more when the furnace and the forge burn it
     {
@@ -4153,6 +4167,7 @@ body.ingame h1{font-size:22px}
       stock: (res) => w.stock[res] || 0,
       bows: owned("bow"),
       has: (b) => has(w, b),
+      fans: (food) => col.filter((a) => a.food?.likes === food).length,
       get fuel() {
         return smeltFuelTotal(w);
       },
@@ -4750,6 +4765,7 @@ body.ingame h1{font-size:22px}
       food: foodTotal(w),
       openSites: openSites(w).length,
       preyCount: ofSpecies(w, "hare").length,
+      favourites: favourites(w),
       orders: new Proxy({}, { get: (o, station) => stationHasWork(w, station, a) })
     };
     const opts = [];
@@ -4764,7 +4780,8 @@ body.ingame h1{font-size:22px}
       const res = job.resource;
       const goal = res ? goalNeed(w, res) : 0;
       const dayWork = job.runner === "build" ? night * 0.3 : night * 0.2;
-      opts.push([{ id: "job", job: job.id }, (base + goal - dayWork) * (a.prefs[job.id] ?? 1)]);
+      const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
+      opts.push([{ id: "job", job: job.id }, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty]);
     }
     opts.push([{ id: "idle" }, 0.15]);
     if (councilDue(w)) opts.push([{ id: "council" }, 1.3]);
@@ -6591,8 +6608,8 @@ body.ingame h1{font-size:22px}
   }
 
   // src/version.js
-  var VERSION = "0.18 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 6689cd0" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.19 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 e9015a1" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;

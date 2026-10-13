@@ -6,7 +6,7 @@
 //   needs: buildings that must exist    want(ctx): how badly the colony needs it now (0 = not at all)
 //   fuel:  units of furnace fuel (charcoal or coal, whichever there is more of) taken with the materials
 //
-// ctx (see settlement/crafting.js): pop, owned(id), likes(job), timid, stock, bows, has(building), fuel
+// ctx (see settlement/crafting.js): pop, owned(id), likes(job), fans(food), timid, stock, bows, has(building), fuel
 //
 // Work is labour-ticks; a day is 1200 ticks and a craftsman adds about 1.2–1.7 per tick, so roughly:
 // a weapon or tool takes half a day, armour a full day, tanning a hide or a batch of arrows
@@ -53,9 +53,9 @@ RECIPES.registerAll([
   {id: 'basket', at: 'crafthut', cost: {wood: 2}, work: 450, makes: {item: 'basket'},
     want: c => (short(c.owned('basket'), Math.max(1, c.likes('gather'))) ? 1.2 : 0)},
 
-  // the fisherman's hut makes rods: one for everyone who likes fishing, at least two
+  // the fisherman's hut makes rods: one for everyone who likes fishing or loves eating fish, at least two
   {id: 'rod', at: 'fishhut', cost: {wood: 3}, work: 500, makes: {item: 'rod'},
-    want: c => (short(c.owned('rod'), Math.max(2, c.likes('fish'))) ? 2.4 : 0)},
+    want: c => (short(c.owned('rod'), Math.max(2, c.likes('fish') + c.fans('fish'))) ? 2.4 : 0)},
 
   // ── charcoal: logs smoulder under turf into charcoal; more when the furnace and the forge burn it
   {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'charcoal', n: 3},

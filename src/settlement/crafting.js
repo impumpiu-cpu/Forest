@@ -45,6 +45,7 @@ function makeCraftContext(w) {
     stock: res => w.stock[res] || 0,
     bows: owned('bow'),
     has: b => has(w, b),
+    fans: food => col.filter(a => a.food?.likes === food).length,
     get fuel() { return smeltFuelTotal(w); },
     melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
   };

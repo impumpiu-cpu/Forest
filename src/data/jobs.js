@@ -14,6 +14,7 @@
 // canDo(w, agent): optional personal condition (hunting needs a usable ranged weapon)
 import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
+import {FOODS} from './foods.js';
 import {lakeBeside, fishable} from '../world/lakes.js';
 import {oreBeside, oreOf} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
@@ -23,13 +24,26 @@ export const JOBS = new Registry('job');
 // how much the colony wants more of a resource: fills up when the stock is low
 const want = (stock, pop, low, enough) => (stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04);
 
+// Food jobs name the food they bring (`food`, an id from data/foods.js). How much the colony wants
+// such a job grows with
+//   - how short of food it is (want above),
+//   - how filling that food is (nutrition: meat and fish beat berries),
+//   - cravings: people whose favourite food has run out push for the job that brings it.
+// Each colonist also takes the job bringing their own favourite food more readily (agents/brains/colonist.js).
+// k scales the shortage pull for slow or risky work, extra is added on top.
+const foodWant = (w, ctx, job, k = 1, extra = 0) => {
+  const f = FOODS.get(job.food), fans = ctx.favourites[job.food] || 0;
+  const craving = fans && (w.stock[job.food] || 0) < fans * 2 ? 0.08 + 0.3 * fans / Math.max(1, ctx.pop) : 0;
+  return want(ctx.food, ctx.pop, 4, 8) * (0.7 + 0.3 * f.nutrition) * k + craving + extra;
+};
+
 // craft jobs: wanted with `value` while one of their stations has an order to work on
 const atStations = value => (w, ctx, job) => (job.stations.some(s => ctx.orders[s]) ? value : -1);
 
 JOBS.registerAll([
   {id: 'gather', label: 'собирать ягоды', short: 'сбор', verb: 'собирает ягоды', preferable: true,
-    runner: 'harvest', nav: 'berries', resource: 'berries', carry: 3, time: 12, memory: 'walkFood',
-    desire: (w, ctx) => want(ctx.food, ctx.pop, 4, 8),
+    runner: 'harvest', nav: 'berries', resource: 'berries', food: 'berries', carry: 3, time: 12, memory: 'walkFood',
+    desire: (w, ctx, job) => foodWant(w, ctx, job),
     valid: (w, i) => w.grid.food[i] > 0.3 && w.grid.fire[i] === 0,
     take: (w, i) => { w.grid.food[i] -= 0.34; w.nav.dirty('berries'); }},
 
@@ -65,16 +79,16 @@ JOBS.registerAll([
 
   // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back)
   {id: 'fish', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
-    runner: 'harvest', nav: 'shore', resource: 'fish', carry: 3, time: 70, requires: 'fishhut', memory: 'walkFish',
+    runner: 'harvest', nav: 'shore', resource: 'fish', food: 'fish', carry: 3, time: 50, requires: 'fishhut', memory: 'walkFish',
     canDo: (w, a) => !!a.gear?.tool.fish,
-    desire: (w, ctx) => (w.lakes.some(fishable) ? want(ctx.food, ctx.pop, 4, 8) * 0.9 + 0.06 : -1),
+    desire: (w, ctx, job) => (w.lakes.some(fishable) ? foodWant(w, ctx, job, 0.95, 0.08) : -1),
     valid: (w, i) => !!lakeBeside(w, i),
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
 
   {id: 'hunt', label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
-    runner: 'hunt', nav: 'prey', prey: ['hare'],
+    runner: 'hunt', nav: 'prey', prey: ['hare'], food: 'meat',
     canDo: (w, a) => !!a.gear?.rangedReady,
-    desire: (w, ctx) => (ctx.preyCount > 0 ? want(ctx.food, ctx.pop, 4, 8) * 0.8 + 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0) : -1)},
+    desire: (w, ctx, job) => (ctx.preyCount > 0 ? foodWant(w, ctx, job, 0.75, 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0)) : -1)},
 
   {id: 'craft', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
     runner: 'craft', stations: ['crafthut', 'fishhut'], desire: atStations(0.55)},

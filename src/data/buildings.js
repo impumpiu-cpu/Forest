@@ -40,7 +40,7 @@ BUILDINGS.registerAll([
     effects: {add: {huntRange: 2}, yield: {meat: 1.5}},
     wish: 'хочет охотиться удачнее',
     motive: (a, c) => [[(a.prefs.hunt - 1) * 1.3, 'любит охоту'], [a.mem.chase * 1.2, 'зайцы уходят от стрел'], [c.preyCount > 6 ? 0.3 : 0, 'вокруг много зайцев'],
-      [c.wolves ? 0.25 : 0, 'волки перехватывают зайцев']]},
+      [c.wolves ? 0.25 : 0, 'волки перехватывают зайцев'], [a.food?.likes === 'meat' ? 0.25 : 0, 'хочет мяса почаще']]},
 
   {id: 'quarry', name: 'Каменоломня', gender: 'f', cost: {wood: 20}, work: 180, max: 1, wooden: true, color: '#9b9688', mark: 'К',
     effect: 'Открывает добычу камня у скал. Отборные камни для пращи: праща бьёт в 1,6 раза сильнее.',
@@ -78,7 +78,7 @@ BUILDINGS.registerAll([
     effect: 'Здесь делают удочки. Рыбаки ловят на треть быстрее, улов на 30% больше.',
     effects: {jobSpeed: {fish: 1.35}, yield: {fish: 1.3}},
     wish: 'хочет ловить рыбу',
-    motive: (a, c) => [[c.fishLakes ? 0.25 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4, 'любит рыбачить'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом']],
+    motive: (a, c) => [[c.fishLakes ? 0.25 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4, 'любит рыбачить'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом'], [c.fishLakes && a.food?.likes === 'fish' ? 0.35 : 0, 'скучает по рыбе']],
     available: w => w.lakes.some(l => l.cap > 0)},
 
   {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,

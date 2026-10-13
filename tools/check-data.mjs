@@ -47,6 +47,7 @@ for (const j of JOBS.all()) {
   if (!RUNNERS[j.runner]) err(`${where}: нет исполнителя «${j.runner}»`);
   if (j.nav && !NAVMAPS.has(j.nav)) err(`${where}: нет поля течения «${j.nav}»`);
   if (j.resource) res(where, j.resource);
+  if (j.food && !FOODS.has(j.food)) err(`${where}: нет еды «${j.food}»`);
   [].concat(j.requires || []).forEach(b => bld(where, b));
   for (const s of j.stations || []) { bld(where, s); if (BUILDINGS.has(s) && !BUILDINGS.get(s).station) err(`${where}: «${s}» не мастерская`); }
   if (j.runner === 'harvest' && (typeof j.valid !== 'function' || typeof j.take !== 'function')) err(`${where}: harvest без valid/take`);

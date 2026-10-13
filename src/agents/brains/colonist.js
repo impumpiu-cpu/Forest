@@ -9,7 +9,7 @@ import {nearFire} from '../movement.js';
 import {nearestHostile} from '../combat.js';
 import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
-import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies} from '../../settlement/query.js';
+import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies, favourites} from '../../settlement/query.js';
 import {councilDue, goalNeed} from '../../settlement/council.js';
 import {stationHasWork} from '../../settlement/crafting.js';
 import {outfit} from '../equipment.js';
@@ -23,7 +23,7 @@ function decide(w, a) {
   let campHot = 0; for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
   const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,
-    preyCount: ofSpecies(w, 'hare').length,
+    preyCount: ofSpecies(w, 'hare').length, favourites: favourites(w),
     orders: new Proxy({}, {get: (o, station) => stationHasWork(w, station, a)})};
   const opts = [];
   for (const id of SPECIES.get(a.species).needs) {
@@ -37,7 +37,9 @@ function decide(w, a) {
     const res = job.resource;
     const goal = res ? goalNeed(w, res) : 0;
     const dayWork = job.runner === 'build' ? night * 0.3 : night * 0.2;
-    opts.push([{id: 'job', job: job.id}, (base + goal - dayWork) * (a.prefs[job.id] ?? 1)]);
+    // a job that brings your favourite food is a little more tempting
+    const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
+    opts.push([{id: 'job', job: job.id}, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty]);
   }
   opts.push([{id: 'idle'}, 0.15]);
   if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);
