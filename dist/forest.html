@@ -4001,12 +4001,14 @@ body.ingame h1{font-size:22px}
       makes: { item: "sling" },
       want: (c) => short(c.owned("sling") + c.owned("bow"), Math.max(2, Math.ceil(c.pop / 3))) ? 2 : 0
     },
+    // the bow is the better hunting weapon and needs the hunters' lodge; the sling needs nothing
     {
       id: "bow",
       at: "crafthut",
       cost: { wood: 3, leather: 1 },
       work: 800,
       makes: { item: "bow" },
+      needs: ["lodge"],
       want: (c) => short(c.owned("bow"), Math.max(1, c.likes("hunt"))) ? 2.4 : 0
     },
     {
@@ -6609,8 +6611,8 @@ body.ingame h1{font-size:22px}
   }
 
   // src/version.js
-  var VERSION = "0.20 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 8338355" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.21 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 402f834" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;

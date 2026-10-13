@@ -38,7 +38,8 @@ RECIPES.registerAll([
     want: c => (short(c.owned('staff'), c.timid) ? 1.0 : 0)},
   {id: 'sling', at: 'crafthut', cost: {hide: 1}, work: 600, makes: {item: 'sling'},
     want: c => (short(c.owned('sling') + c.owned('bow'), Math.max(2, Math.ceil(c.pop / 3))) ? 2.0 : 0)},
-  {id: 'bow', at: 'crafthut', cost: {wood: 3, leather: 1}, work: 800, makes: {item: 'bow'},
+  // the bow is the better hunting weapon and needs the hunters' lodge; the sling needs nothing
+  {id: 'bow', at: 'crafthut', cost: {wood: 3, leather: 1}, work: 800, makes: {item: 'bow'}, needs: ['lodge'],
     want: c => (short(c.owned('bow'), Math.max(1, c.likes('hunt'))) ? 2.4 : 0)},
   {id: 'arrows', at: 'crafthut', cost: {wood: 1, bone: 1}, work: 150, makes: {resource: 'arrows', n: 5},
     want: c => (c.bows && c.stock('arrows') < c.bows * 10 ? 2.7 : 0)},
