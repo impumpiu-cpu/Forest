@@ -49,9 +49,10 @@ export const RUNNERS = {
       if (!job.valid(w, i)) { w.nav.dirty(job.nav); task.work = 0; return; }
       task.work = (task.work || 0) + workRate(w, a, job.id);
       if (task.work < job.time) return;
-      task.work = 0; job.take(w, i);
-      load(a, job.resource, 1);
-      add(a.stats.gathered, job.resource); add(w.chronicle.gathered, job.resource);
+      task.work = 0;
+      const got = job.take(w, i) || job.resource;
+      load(a, got, 1);
+      add(a.stats.gathered, got); add(w.chronicle.gathered, got);
       toolWear(w, a, job.id);
     } else if (r === 'none') {
       if (a.carry?.n) a.carry.n = cap; else { a.task = {id: 'idle'}; a.think = 20; }

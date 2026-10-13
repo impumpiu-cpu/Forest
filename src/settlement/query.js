@@ -14,3 +14,14 @@ export const foodTotal = w => FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 
 
 export const popCap = w => 8 + w.mods.add.popCap;
 export const jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some(b => has(w, b));
+
+// ore kinds (codes) the colony wants dug now: those whose stock is below the resource's `target`
+export function wantedOre(w) {
+  const c = w.cache.wantedOre || (w.cache.wantedOre = {tick: -1, set: null});
+  if (c.tick !== w.tick) {
+    c.tick = w.tick;
+    c.set = new Set(RESOURCES.filter(r => r.ore && (w.stock[r.id] || 0) < r.target).map(r => r.ore));
+  }
+  return c.set;
+}
+export const oreResource = code => RESOURCES.filter(r => r.ore === code)[0];

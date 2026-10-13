@@ -12,6 +12,7 @@ import {setWind} from './weather.js';
 import {recomputeZone} from '../settlement/zone.js';
 import {newChronicle} from '../settlement/chronicle.js';
 import {findLakes} from './lakes.js';
+import {layOre} from './ores.js';
 
 function noiseLayer(rnd, w, h, cell) {
   const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
@@ -96,6 +97,7 @@ export function createWorld(cfg) {
   }
   for (const r of RESOURCES.all()) world.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
   findLakes(world);
+  layOre(world);
   recomputeZone(world);
   initOutside(world);
   setWind(world);

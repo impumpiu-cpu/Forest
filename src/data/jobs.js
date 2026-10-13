@@ -4,6 +4,7 @@
 //
 // runner: which generic routine performs it (see agents/jobRunners.js)
 //   'harvest' — walk to a cell on `nav`, work `time` ticks, take one unit, carry `carry` units home
+//               (`take` may return the resource id when one job brings several kinds, like ore)
 //   'hunt'    — stalk the nearest prey of `prey` species and shoot it from `range`
 //   'build'   — walk to a construction site and add labour
 //   'craft'   — walk to one of the job's `stations` with work to do and add labour to its order (settlement/crafting.js)
@@ -12,6 +13,8 @@
 import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
 import {lakeBeside, fishable} from '../world/lakes.js';
+import {oreBeside} from '../world/ores.js';
+import {wantedOre, oreResource} from '../settlement/query.js';
 
 export const JOBS = new Registry('job');
 
@@ -41,6 +44,20 @@ JOBS.registerAll([
     valid: (w, i) => w.grid.fire[i] === 0,
     take: () => {}},
 
+  // the mine: dig whichever ore the colony is short of (iron ore, coal, gems) from the rock face
+  {id: 'dig', label: 'добывать руду', short: 'руда', verb: 'добывает руду', preferable: true,
+    runner: 'harvest', nav: 'ore', resource: 'ironore', carry: 2, time: 40, requires: 'mineshaft', memory: 'walkOre',
+    desire: (w) => (wantedOre(w).size ? 0.42 : -1),
+    valid: (w, i) => w.grid.fire[i] === 0 && oreBeside(w, i, wantedOre(w)) >= 0,
+    take: (w, i) => {
+      const g = w.grid, j = oreBeside(w, i, wantedOre(w)); if (j < 0) return null;
+      const res = oreResource(g.ore[j]).id;
+      g.oreLeft[j] -= 1;
+      // a worked-out vein leaves a passage in the rock: the face behind it opens up for digging
+      if (g.oreLeft[j] <= 0) { g.ore[j] = 0; g.oreLeft[j] = 0; g.terr[j] = T.GRASS; g.fuel[j] = 0; w.nav.dirty('ore'); w.nav.dirty('rockface'); }
+      return res;
+    }},
+
   // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back)
   {id: 'fish', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
     runner: 'harvest', nav: 'shore', resource: 'fish', carry: 3, time: 70, requires: 'fishhut', memory: 'walkFish',
@@ -57,6 +74,18 @@ JOBS.registerAll([
   {id: 'craft', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
     runner: 'craft', stations: ['crafthut', 'fishhut'], requires: ['crafthut', 'fishhut'],
     desire: (w, ctx) => (ctx.orders.crafthut || ctx.orders.fishhut ? 0.55 : -1)},
+
+  {id: 'charcoal', label: 'жечь уголь', short: 'уголь', verb: 'жжёт уголь', preferable: true,
+    runner: 'craft', stations: ['charpit'], requires: 'charpit',
+    desire: (w, ctx) => (ctx.orders.charpit ? 0.45 : -1)},
+
+  {id: 'smith', label: 'плавить и ковать железо', short: 'кузня', verb: 'работает у горна', preferable: true,
+    runner: 'craft', stations: ['forge', 'smelter'], requires: ['smelter', 'forge'],
+    desire: (w, ctx) => (ctx.orders.forge || ctx.orders.smelter ? 0.55 : -1)},
+
+  {id: 'jewel', label: 'делать украшения', short: 'ювелир', verb: 'делает украшения', preferable: true,
+    runner: 'craft', stations: ['jeweler'], requires: 'jeweler',
+    desire: (w, ctx) => (ctx.orders.jeweler ? 0.35 : -1)},
 
   {id: 'tan', label: 'выделывать кожи', short: 'кожи', verb: 'выделывает кожи', preferable: true,
     runner: 'craft', stations: ['tannery'], requires: 'tannery',

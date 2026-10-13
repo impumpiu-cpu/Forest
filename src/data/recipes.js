@@ -4,8 +4,9 @@
 //   at:    station building id         cost: resources taken when the order starts
 //   work:  labour needed                makes: {item: id} or {resource: id, n}
 //   needs: buildings that must exist    want(ctx): how badly the colony needs it now (0 = not at all)
+//   fuel:  units of furnace fuel (charcoal or coal, whichever there is more of) taken with the materials
 //
-// ctx (see settlement/crafting.js): pop, owned(id), likes(job), timid, stock, bows
+// ctx (see settlement/crafting.js): pop, owned(id), likes(job), timid, stock, bows, has(building), fuel
 //
 // Work is labour-ticks; a day is 1200 ticks and a craftsman adds about 1.2–1.7 per tick, so roughly:
 // a weapon or tool takes half a day, armour a full day, tanning a hide or a batch of arrows
@@ -54,6 +55,34 @@ RECIPES.registerAll([
   // the fisherman's hut makes rods: one for everyone who likes fishing, at least two
   {id: 'rod', at: 'fishhut', cost: {wood: 3}, work: 500, makes: {item: 'rod'},
     want: c => (short(c.owned('rod'), Math.max(2, c.likes('fish'))) ? 2.4 : 0)},
+
+  // ── charcoal: logs smoulder under turf into charcoal; more when the furnace and the forge burn it
+  {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'charcoal', n: 3},
+    want: c => (c.has('smelter') ? (c.fuel < 16 ? 1.8 : 0) : (c.stock('charcoal') < 6 ? 0.8 : 0))},
+
+  // ── the furnace: two ore and one fuel make a bar of iron
+  {id: 'smelt', at: 'smelter', cost: {ironore: 2}, fuel: 1, work: 320, makes: {resource: 'iron', n: 1},
+    want: c => (c.stock('iron') < 10 ? 2.2 : 0)},
+
+  // ── the forge: iron blades and lamellar armour; each piece takes one fuel
+  {id: 'sword', at: 'forge', cost: {iron: 3, leather: 1}, fuel: 1, work: 900, makes: {item: 'sword'},
+    want: c => (short(c.owned('sword'), Math.ceil(c.pop / 2)) ? 2.5 : 0)},
+  {id: 'ironspear', at: 'forge', cost: {iron: 2, wood: 2}, fuel: 1, work: 700, makes: {item: 'ironspear'},
+    want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
+  {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
+    want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
+  {id: 'lamellar', at: 'forge', cost: {iron: 4, leather: 2}, fuel: 2, work: 1600, makes: {item: 'lamellar'},
+    want: c => (short(c.owned('lamellar'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
+
+  // ── the jeweller: a gem set into bone, wood, stone or iron; the scarcer kind of piece goes first
+  {id: 'jewelBone', at: 'jeweler', cost: {gems: 1, bone: 2}, work: 500, makes: {resource: 'jewelBone', n: 1},
+    want: c => Math.max(0, 1.4 - c.stock('jewelBone') * 0.12)},
+  {id: 'jewelWood', at: 'jeweler', cost: {gems: 1, wood: 3}, work: 450, makes: {resource: 'jewelWood', n: 1},
+    want: c => Math.max(0, 1.3 - c.stock('jewelWood') * 0.12)},
+  {id: 'jewelStone', at: 'jeweler', cost: {gems: 1, stone: 3}, work: 550, makes: {resource: 'jewelStone', n: 1},
+    want: c => Math.max(0, 1.35 - c.stock('jewelStone') * 0.12)},
+  {id: 'jewelIron', at: 'jeweler', cost: {gems: 1, iron: 1}, work: 600, makes: {resource: 'jewelIron', n: 1},
+    want: c => Math.max(0, 1.5 - c.stock('jewelIron') * 0.15)},
 
   // processing: raw hides become leather at the tannery
   {id: 'tan', at: 'tannery', cost: {hide: 1}, work: 150, makes: {resource: 'leather', n: 1},

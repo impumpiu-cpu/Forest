@@ -9,6 +9,7 @@ import {shuffle, weighted, esc, g} from '../core/util.js';
 import {log} from '../core/log.js';
 import {emptySlots, recalcGear, stripAll, def} from './equipment.js';
 import {think} from './mind.js';
+import {drawFoodPrefs} from '../data/foods.js';
 import {enrol, noteDeath} from '../settlement/chronicle.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
@@ -35,6 +36,7 @@ function personality(w, a) {
     a.mods[k] = k === 'bravery' ? a.mods[k] + v : a.mods[k] * v;
   }
   a.mods.bravery *= 0.85 + rng() * 0.3;
+  a.food = drawFoodPrefs(rng);
 }
 
 // the next name from the list that no living colonist carries

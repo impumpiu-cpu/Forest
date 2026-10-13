@@ -3,6 +3,7 @@
 import {Registry} from '../core/registry.js';
 import {JOBS} from '../data/jobs.js';
 import {NEEDS} from '../data/needs.js';
+import {FOODS} from '../data/foods.js';
 import {ambientTemp} from '../core/time.js';
 import {cellOf} from '../world/grid.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
@@ -28,9 +29,13 @@ function mill(w, a, task, radius = 1.2) {
 TASKS.registerAll([
   {id: 'eat', label: () => 'ест', step(w, a) {
     if (follow(w, a, 'camp') !== 'arrived') return;
-    const {fed, res} = eatMeal(w);
+    const {fed, res, mood} = eatMeal(w, a);
     if (fed) {
-      if (res.id === 'meat') think(w, a, 'ateMeat'); else if (a.needs.food < 0.35) think(w, a, 'ateHungry', {food: res.label});
+      const f = FOODS.get(res.id);
+      if (mood === 'liked') think(w, a, 'ateLiked', {food: f.label});
+      else if (mood === 'disliked') think(w, a, 'ateDisliked', {food: f.label});
+      else if (f.eat) think(w, a, f.eat);
+      else if (a.needs.food < 0.35) think(w, a, 'ateHungry', {food: f.label});
       a.needs.food = Math.min(1, a.needs.food + fed); done(a);
     }
     else a.task = {id: 'job', job: 'gather', eatNow: true};   // empty stock: eat straight from the bushes

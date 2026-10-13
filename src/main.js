@@ -9,7 +9,6 @@ import {$, segmented, press} from './ui/dom.js';
 import {COMMANDS} from './commands.js';
 import {saveToBrowser, listSaves, loadFromBrowser, deleteSave, downloadSave, loadFromFile} from './ui/saves.js';
 import {dayOf} from './core/time.js';
-import {SIZES, CLIMATES, RAIDS, WILDLIFE, PREDATORS} from './data/presets.js';
 import {TICK_MS} from './core/time.js';
 import {esc} from './core/util.js';
 import {RESOURCES} from './data/resources.js';
@@ -17,7 +16,19 @@ import {VERSION, BUILD} from './version.js';
 
 const renderer = new Renderer($('map'));
 const panel = new Panel();
-const view = {layer: 'world', selected: null, speed: 1, tool: 'inspect', hover: -1, renderMs: 0, resHidden: loadResHidden()};
+const view = {layer: 'world', selected: null, selBld: null, selCell: null, speed: 1, tool: 'inspect', hover: -1, renderMs: 0, resHidden: loadResHidden(), tab: loadTab()};
+const clearSelection = () => { view.selected = null; view.selBld = null; view.selCell = null; };
+
+// the open tab on the right of the map, remembered in this browser
+function loadTab() { try { return localStorage.getItem('forest.tab') || 'stock'; } catch (e) { return 'stock'; } }
+function showTab(id) {
+  view.tab = id;
+  document.querySelectorAll('#tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === id)));
+  document.querySelectorAll('.tabpanel').forEach(p => { p.hidden = p.dataset.panel !== id; });
+  try { localStorage.setItem('forest.tab', id); } catch (e) { /* storage unavailable */ }
+  if (world) panel.render(world, view);
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
 
 // resource layer filter: one chip per resource that can be seen on the map, remembered in this browser
 function loadResHidden() { try { return new Set(JSON.parse(localStorage.getItem('forest.resHidden') || '[]')); } catch (e) { return new Set(); } }
@@ -40,7 +51,7 @@ const menu = new Menu({onStart: start, onResume: showGame});
 function start(cfg) {
   world = newGame(cfg);
   renderer.setup(world);
-  view.selected = null;
+  clearSelection();
   autoDay = dayOf(world.tick);
   showGame();
 }
@@ -49,7 +60,7 @@ function start(cfg) {
 function resume(w) {
   world = w;
   renderer.setup(world);
-  view.selected = null;
+  clearSelection();
   autoDay = dayOf(world.tick);
   showGame();
 }
@@ -57,7 +68,8 @@ function resume(w) {
 function showMenu() {
   running = false;
   hideEnd();
-  $('menu').hidden = false; $('game').hidden = true; $('explain').hidden = true;
+  $('menu').hidden = false; $('game').hidden = true; $('explain').hidden = false;
+  document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
   $('backToGame').hidden = !world;
   refreshSaves();
   $('colonyName').textContent = 'Тёплый Брод';
@@ -66,14 +78,17 @@ function showMenu() {
 }
 
 function showGame() {
-  const c = world.cfg, sz = SIZES[c.size];
-  $('menu').hidden = true; $('game').hidden = false; $('explain').hidden = false;
+  const c = world.cfg;
+  // the explanation cards belong to the start menu; in the game the screen is for the map and the panels
+  $('menu').hidden = true; $('game').hidden = false; $('explain').hidden = true;
+  document.body.classList.add('ingame'); $('worldInfo').hidden = true;
+  $('map').style.setProperty('--ar', String(world.w / world.h));
   $('colonyName').textContent = c.name;
-  $('worldInfo').innerHTML = esc(`Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${CLIMATES[c.climate].label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`);
+  showTab(view.tab);
   $('windDir').value = world.wind.dir; $('windStr').value = Math.round(world.wind.str * 100);
   $('windArrow').style.transform = `rotate(${world.wind.dir}deg)`;
   running = true; last = performance.now(); acc = 0;
-  panel.render(world, view);
+  panel.render(world, view); panel.renderSelection(world, view);
 }
 
 // ── input
@@ -83,13 +98,19 @@ function eventCell(e) {
 }
 $('map').addEventListener('pointermove', e => { if (!world) return; const [x, y] = eventCell(e); view.hover = x >= 0 && y >= 0 && x < world.w && y < world.h ? y * world.w + x : -1; });
 $('map').addEventListener('pointerleave', () => { view.hover = -1; });
-$('map').addEventListener('pointerdown', e => { if (!world) return; const [x, y] = eventCell(e); if (x >= 0 && y >= 0 && x < world.w && y < world.h) TOOLS[view.tool].apply(world, x, y, view); });
-segmented($('tools'), 'tool', v => { view.tool = v; if (v !== 'inspect') view.selected = null; });
+$('map').addEventListener('pointerdown', e => {
+  if (!world) return;
+  const [x, y] = eventCell(e);
+  if (x >= 0 && y >= 0 && x < world.w && y < world.h) { TOOLS[view.tool].apply(world, x, y, view); panel.renderSelection(world, view); }
+});
+segmented($('tools'), 'tool', v => { view.tool = v; if (v !== 'inspect') clearSelection(); });
 segmented($('layers'), 'layer', v => { view.layer = v; $('resFilter').hidden = v !== 'res'; });
 segmented($('speeds'), 'speed', v => { view.speed = +v; });
 $('people').addEventListener('click', e => {
   const p = e.target.closest('.person'); if (!p) return;
-  const a = world.agents.find(x => x.id === +p.dataset.id); view.selected = view.selected === a ? null : a;
+  const a = world.agents.find(x => x.id === +p.dataset.id), again = view.selected === a;
+  clearSelection(); view.selected = again ? null : a;
+  panel.renderSelection(world, view);
 });
 $('windDir').addEventListener('input', e => { COMMANDS.setWind(world, +e.target.value, null); $('windArrow').style.transform = `rotate(${world.wind.dir}deg)`; });
 $('windStr').addEventListener('input', e => { COMMANDS.setWind(world, null, +e.target.value / 100); });
@@ -122,7 +143,7 @@ $('loadFile').addEventListener('change', async e => {
   try { resume(await loadFromFile(f)); } catch (err) { status('loadStatus', 'Не удалось открыть: ' + err.message); }
 });
 $('openMenu').addEventListener('click', showMenu);
-$('personCard').addEventListener('click', e => { if (e.target.closest('[data-close]')) { view.selected = null; panel.renderCard(world, null); } });
+$('selCard').addEventListener('click', e => { if (e.target.closest('[data-close]')) { clearSelection(); panel.renderSelection(world, view); } });
 document.addEventListener('keydown', e => {
   if (e.code !== 'Space' || !running || e.target !== document.body) return;
   e.preventDefault(); view.speed = view.speed ? 0 : 1; press($('speeds'), view.speed, 'speed');
@@ -138,11 +159,13 @@ function frame(now) {
     while (acc >= TICK_MS && n < 40 && performance.now() < budget) { step(world); acc -= TICK_MS; n++; }
     if (acc > 500) acc = 0;
     if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
+    if (view.selBld != null && !world.buildings.some(b => b.id === view.selBld)) view.selBld = null;
     // the settlement has fallen: stop, draw the last frame and show the chronicle
     if (world.over) {
       running = false;
       renderer.draw(world, view); panel.render(world, view);
       $('game').hidden = true; $('explain').hidden = true;
+      document.body.classList.remove('ingame');
       showEnd(world, () => { world = null; showMenu(); });
       requestAnimationFrame(frame);
       return;
@@ -152,7 +175,7 @@ function frame(now) {
     renderer.draw(world, view);
     view.renderMs = renderer.ms;
     panel.readout(world, view.hover);
-    if (now - panelT > 300) { panelT = now; panel.render(world, view); panel.renderCard(world, view.selected); }
+    if (now - panelT > 300) { panelT = now; panel.render(world, view); panel.renderSelection(world, view); }
   }
   requestAnimationFrame(frame);
 }

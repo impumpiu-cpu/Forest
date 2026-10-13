@@ -16,6 +16,8 @@ THOUGHTS.registerAll([
 
   // body
   {id: 'ateHungry', mood: 0.1, lasts: 4 * HOUR, once: 4 * HOUR, text: (a, c) => `Наконец ${g(a, 'поел', 'поела')}: ${c.food}.`},
+  {id: 'ateLiked', mood: 0.18, lasts: 6 * HOUR, once: 6 * HOUR, text: (a, c) => `${g(a, 'Поел', 'Поела')} любимой еды: ${c.food}. Хорошо!`},
+  {id: 'ateDisliked', mood: -0.12, lasts: 5 * HOUR, once: 5 * HOUR, text: (a, c) => `Пришлось есть ${c.food}, а ${g(a, 'он', 'она')} это терпеть не может.`},
   {id: 'ateMeat', mood: 0.15, lasts: 6 * HOUR, once: 6 * HOUR, text: a => `${g(a, 'Поел', 'Поела')} жареного мяса. Сытно.`},
   {id: 'starving', mood: -0.35, lasts: 8 * HOUR, once: 8 * HOUR, text: () => 'Голодает. Запасы пусты.'},
   {id: 'freezing', mood: -0.25, lasts: 8 * HOUR, once: 8 * HOUR, text: a => `${g(a, 'Замёрз', 'Замёрзла')} до костей.`},

@@ -214,6 +214,68 @@ button.quiet{background:transparent;color:var(--muted)}
 .filebtn{display:inline-block;font-size:13px;border:1px dashed var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
 .filebtn input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .filebtn:focus-within{outline:2px solid var(--ember);outline-offset:2px}
+
+/* ───── game screen: everything fits the window, nothing scrolls but the panels ─────
+   toolbar on top; the map on the left with the selection pane under it; tabs on the right */
+body.ingame{height:100vh;height:100dvh;overflow:hidden;padding-block:10px}
+body.ingame .wrap{max-width:none;height:100%;gap:8px}
+body.ingame header p{display:none}
+body.ingame h1{font-size:22px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 390px;grid-template-rows:auto minmax(0,1fr) clamp(150px,26vh,240px);
+  grid-template-areas:"bar bar" "map side" "sel side";gap:8px;flex:1;min-height:0;align-items:stretch}
+.main > .toolbar{grid-area:bar;gap:6px 12px}
+.main > .stage{grid-area:map;min-height:0;min-width:0}
+.main > .selpane{grid-area:sel;min-height:0;min-width:0;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.main > .side{grid-area:side;min-height:0;min-width:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.stage .canvas-box{height:100%;container-type:size;display:grid;place-items:center;border:0;background:transparent;border-radius:0;overflow:visible}
+.stage canvas#map{width:min(100cqw,calc(100cqh * var(--ar,1.3333)));height:auto;aspect-ratio:var(--ar,4/3);border:1px solid var(--line);border-radius:6px;background:#0d0f0a}
+.clockbox{gap:10px;padding-right:4px}
+.clockbox .clock{font-size:18px;font-weight:500;white-space:nowrap}
+.clockbox .wx{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.windarrow{display:inline-block;color:var(--fg);font-size:16px}
+.resfilter{flex-basis:100%}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;padding:6px 6px 0;border-bottom:1px solid var(--line);background:#191b14}
+.tabs button{border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;background:transparent;color:var(--muted);padding:5px 9px;font-size:12.5px}
+.tabs button:hover{color:var(--fg);background:#22261b}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--fg);border-color:var(--line);margin-bottom:-1px;font-weight:700}
+.tabs .cnt{font-family:var(--font-mono);font-size:11px;color:var(--ember)}
+.tabpanel{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.tabpanel h2{font-family:var(--font-display);font-size:14px;letter-spacing:.06em;margin:4px 0 0;color:var(--muted);font-weight:500}
+.tabpanel .people,.tabpanel .log,.tabpanel .buildlist{max-height:none;overflow:visible}
+.small{font-size:12.5px;margin:0}
+.stockgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px}
+.sgroup{display:flex;flex-direction:column;gap:1px;min-width:0}
+.sgroup h3{margin:0 0 1px;font-size:11.5px;font-weight:400;color:var(--ember);letter-spacing:.05em;text-transform:uppercase}
+.srow2{display:flex;justify-content:space-between;gap:6px;font-size:12.5px}
+.srow2 span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.srow2 b{font-family:var(--font-mono);font-weight:400;font-variant-numeric:tabular-nums}
+.srow2.zero{opacity:.45}
+.srow2 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
+.jobs{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:2px 10px;font-size:12.5px;align-items:baseline}
+.jobs .jh{color:var(--muted);font-size:11.5px}
+.jobs .jn{font-family:var(--font-mono);text-align:right}
+.jobs .lock{color:var(--muted);opacity:.6}
+.jobs .lock .jn{font-family:inherit;font-size:11.5px}
+.selcard{display:flex;flex-direction:column;gap:8px;min-width:0}
+.selcard .pc-diary{max-height:none}
+.selhint{color:var(--muted);font-size:12.5px;margin:0}
+.recipes{display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+.recipes .rc{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.recipes .rc b{font-weight:400;min-width:150px}
+.recipes .rc.cur b{color:var(--ember)}
+@media (max-width:900px){
+  body.ingame{height:auto;overflow:visible}
+  .main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;grid-template-areas:"bar" "map" "sel" "side"}
+  .stage .canvas-box{height:auto;container-type:normal}
+  .stage canvas#map{width:100%}
+  .main > .side{max-height:80vh}
+  .main > .selpane{max-height:none}
+}
+.selcard h4{margin:2px 0 0;font-family:var(--font-display);font-weight:500;font-size:13px;letter-spacing:.06em;color:var(--muted)}
+.selcard .pc-head h3{font-size:18px}
+.pc-grid.bgrid{grid-template-columns:minmax(0,320px) minmax(0,1fr)}
+@media (max-width:700px){.pc-grid.bgrid{grid-template-columns:minmax(0,1fr)}}
+.main{grid-template-rows:auto minmax(0,1fr) clamp(150px,28vh,260px)}
 </style>
 </head>
 <body>
@@ -283,92 +345,112 @@ button.quiet{background:transparent;color:var(--muted)}
   <section id="gameOver" class="gameover" hidden aria-labelledby="goTitle"></section>
 
   <div class="main" id="game" hidden>
+    <!-- above the map: time, click tools, layers and filters, speed, wind, game actions -->
+    <div class="toolbar">
+      <div class="group clockbox" title="Время и погода">
+        <b class="clock" id="clock">День 1, 07:00</b>
+        <span class="wx" id="amb">—</span>
+        <span class="wx" id="windTxt">—</span>
+      </div>
+      <div class="group"><span>Клик</span>
+        <div class="seg" id="tools">
+          <button data-tool="inspect" aria-pressed="true">Осмотр</button>
+          <button data-tool="ignite" aria-pressed="false">Поджечь</button>
+          <button data-tool="rain" aria-pressed="false">Ливень</button>
+        </div>
+      </div>
+      <div class="group"><span>Слой</span>
+        <div class="seg" id="layers">
+          <button data-layer="world" aria-pressed="true">Мир</button>
+          <button data-layer="temp" aria-pressed="false">Температура</button>
+          <button data-layer="res" aria-pressed="false">Ресурсы</button>
+          <button data-layer="nav" aria-pressed="false">Навигация</button>
+        </div>
+      </div>
+      <div class="group"><span>Скорость</span>
+        <div class="seg" id="speeds">
+          <button data-speed="0" aria-pressed="false" title="Пробел">Пауза</button>
+          <button data-speed="1" aria-pressed="true">1×</button>
+          <button data-speed="2" aria-pressed="false">2×</button>
+          <button data-speed="4" aria-pressed="false">4×</button>
+          <button data-speed="8" aria-pressed="false">8×</button>
+        </div>
+      </div>
+      <div class="group"><span>Ветер</span>
+        <span id="windArrow" aria-hidden="true" class="windarrow">→</span>
+        <input type="range" id="windDir" min="0" max="359" value="20" aria-label="Направление ветра">
+        <input type="range" id="windStr" min="0" max="100" value="35" aria-label="Сила ветра">
+      </div>
+      <div class="group">
+        <button id="raid" class="danger">Набег</button>
+        <button id="saveGame" title="Сохранить в этом браузере. Игра также сохраняется сама каждое утро.">Сохранить</button>
+        <button id="saveFile" title="Скачать сохранение файлом">В файл</button>
+        <button id="openMenu">Меню мира</button>
+        <span class="status" id="saveStatus" role="status"></span>
+      </div>
+      <div class="logfilter resfilter" id="resFilter" hidden aria-label="Какие ресурсы показывать"></div>
+    </div>
+
     <section class="stage">
-      <div class="toolbar">
-        <div class="group"><span>Клик</span>
-          <div class="seg" id="tools">
-            <button data-tool="inspect" aria-pressed="true">Осмотр</button>
-            <button data-tool="ignite" aria-pressed="false">Поджечь</button>
-            <button data-tool="rain" aria-pressed="false">Ливень</button>
-          </div>
-        </div>
-        <div class="group"><span>Слой</span>
-          <div class="seg" id="layers">
-            <button data-layer="world" aria-pressed="true">Мир</button>
-            <button data-layer="temp" aria-pressed="false">Температура</button>
-            <button data-layer="res" aria-pressed="false">Ресурсы</button>
-            <button data-layer="nav" aria-pressed="false">Навигация</button>
-          </div>
-          <div class="logfilter" id="resFilter" hidden aria-label="Какие ресурсы показывать"></div>
-        </div>
-        <div class="group"><span>Скорость</span>
-          <div class="seg" id="speeds">
-            <button data-speed="0" aria-pressed="false" title="Пробел">Пауза</button>
-            <button data-speed="1" aria-pressed="true">1×</button>
-            <button data-speed="2" aria-pressed="false">2×</button>
-            <button data-speed="4" aria-pressed="false">4×</button>
-            <button data-speed="8" aria-pressed="false">8×</button>
-          </div>
-        </div>
-        <div class="group"><span>Ветер</span>
-          <span id="windArrow" aria-hidden="true" style="display:inline-block;color:var(--fg);font-size:16px">→</span>
-          <input type="range" id="windDir" min="0" max="359" value="20" aria-label="Направление ветра">
-          <input type="range" id="windStr" min="0" max="100" value="35" aria-label="Сила ветра">
-        </div>
-        <div class="group">
-          <button id="raid" class="danger">Набег</button>
-          <button id="saveGame" title="Сохранить в этом браузере. Игра также сохраняется сама каждое утро.">Сохранить</button>
-          <button id="saveFile" title="Скачать сохранение файлом">В файл</button>
-          <button id="openMenu">Меню мира</button>
-          <span class="status" id="saveStatus" role="status"></span>
-        </div>
-      </div>
       <div class="canvas-box"><canvas id="map" width="768" height="576"></canvas></div>
-      <div class="readout" id="readout">Наведите на карту, чтобы увидеть значения полей в клетке. Щёлкните по поселенцу, чтобы узнать его поближе.</div>
-      <section class="card person-card" id="personCard" hidden aria-live="polite"></section>
-      <div class="legend">
-        <span><i style="background:var(--colony)"></i>колонисты</span>
-        <span><i style="background:var(--raider)"></i>налётчики</span>
-        <span><i style="background:#cdbb9a"></i>зайцы</span>
-        <span><i style="background:#8d8f96"></i>волки</span>
-        <span><i style="background:var(--food)"></i>ягоды</span>
-        <span><i style="background:var(--ember)"></i>огонь и костёр</span>
-        <span>пунктир — граница зоны поселения</span>
-        <span>обводка — броня: светлая ткань, коричневая кожа, белая укреплённая</span>
-      </div>
     </section>
 
-    <aside>
-      <div class="card">
-        <h2>Время и погода</h2>
-        <div class="clock" id="clock">День 1, 07:00</div>
-        <dl class="kv">
-          <dt>Воздух</dt><dd id="amb">—</dd>
-          <dt>Ветер</dt><dd id="windTxt">—</dd>
-          <dt>Горит клеток</dt><dd id="fires">0</dd>
-        </dl>
+    <!-- under the map: the cell under the cursor and whatever was clicked -->
+    <section class="selpane" aria-live="polite">
+      <div class="readout" id="readout">Наведите на карту, чтобы увидеть клетку. Щёлкните по поселенцу, постройке или клетке, чтобы рассмотреть поближе.</div>
+      <div class="selcard" id="selCard"></div>
+    </section>
+
+    <!-- right of the map: switchable tabs -->
+    <aside class="side">
+      <div class="tabs" id="tabs" role="tablist">
+        <button role="tab" data-tab="stock" aria-selected="true">Склад и работы</button>
+        <button role="tab" data-tab="people" aria-selected="false">Поселенцы <span class="cnt" id="popCount"></span></button>
+        <button role="tab" data-tab="build" aria-selected="false">Постройки</button>
+        <button role="tab" data-tab="council" aria-selected="false">Совет</button>
+        <button role="tab" data-tab="log" aria-selected="false">Журнал</button>
+        <button role="tab" data-tab="world" aria-selected="false">Мир</button>
       </div>
-      <div class="card">
+      <div class="tabpanel" data-panel="stock">
         <h2>Склад лагеря</h2>
-        <dl class="kv" id="stock"></dl>
-      </div>
-      <div class="card">
-        <h2>Совет у костра</h2>
-        <div class="council" id="council"></div>
-      </div>
-      <div class="card">
-        <h2>Ремесло и снаряжение</h2>
+        <div class="stockgrid" id="stock"></div>
+        <h2>Работы</h2>
+        <div class="jobs" id="jobs"></div>
+        <h2>Мастерские и снаряжение</h2>
         <div class="gearbox" id="gearbox"></div>
       </div>
-      <div class="card">
-        <h2>Постройки</h2>
-        <div class="buildlist" id="build"></div>
-      </div>
-      <div class="card">
-        <h2>Колонисты</h2>
+      <div class="tabpanel" data-panel="people" hidden>
         <div class="people" id="people"></div>
       </div>
-      <div class="card">
+      <div class="tabpanel" data-panel="build" hidden>
+        <div class="buildlist" id="build"></div>
+      </div>
+      <div class="tabpanel" data-panel="council" hidden>
+        <div class="council" id="council"></div>
+      </div>
+      <div class="tabpanel" data-panel="log" hidden>
+        <div class="logfilter" id="logLevels" aria-label="Уровни событий"></div>
+        <div class="logfilter" id="logTopics" aria-label="Рубрики событий"></div>
+        <div class="log" id="log"></div>
+      </div>
+      <div class="tabpanel" data-panel="world" hidden>
+        <p class="muted small" id="worldLine"></p>
+        <h2>Поселение и окрестности</h2>
+        <dl class="kv" id="worldKv"></dl>
+        <h2>Обозначения на карте</h2>
+        <div class="legend">
+          <span><i style="background:var(--colony)"></i>колонисты</span>
+          <span><i style="background:var(--raider)"></i>налётчики</span>
+          <span><i style="background:#cdbb9a"></i>зайцы</span>
+          <span><i style="background:#8d8f96"></i>волки</span>
+          <span><i style="background:var(--food)"></i>ягоды</span>
+          <span><i style="background:#c4663f"></i>железная руда</span>
+          <span><i style="background:#46464f"></i>каменный уголь</span>
+          <span><i style="background:#78e6d6"></i>самоцветы</span>
+          <span><i style="background:var(--ember)"></i>огонь и костёр</span>
+          <span>пунктир — граница зоны поселения</span>
+          <span>обводка — броня: светлая ткань, коричневая кожа, белая укреплённая, серая ламеллярная</span>
+        </div>
         <h2>Расчёт за тик, мс</h2>
         <dl class="kv">
           <dt id="pFlabel">Поля</dt><dd id="pF">—</dd>
@@ -378,12 +460,6 @@ button.quiet{background:transparent;color:var(--muted)}
           <dt>Тиков в секунду</dt><dd id="pT">—</dd>
           <dt title="Сколько игрового времени проходит за секунду по сравнению с 1×. Если меньше выбранного, компьютер не успевает.">Скорость: факт / выбрана</dt><dd id="pS">—</dd>
         </dl>
-      </div>
-      <div class="card">
-        <h2>Журнал</h2>
-        <div class="logfilter" id="logLevels" aria-label="Уровни событий"></div>
-        <div class="logfilter" id="logTopics" aria-label="Рубрики событий"></div>
-        <div class="log" id="log"></div>
       </div>
     </aside>
   </div>
@@ -645,17 +721,17 @@ button.quiet{background:transparent;color:var(--muted)}
     windStr: 35
   };
 
-  // src/data/resources.js
-  var RESOURCES = new Registry("resource");
-  RESOURCES.registerAll([
+  // src/data/foods.js
+  var FOODS = new Registry("food");
+  FOODS.registerAll([
     {
       id: "berries",
       label: "\u044F\u0433\u043E\u0434\u044B",
-      short: "\u044F\u0433\u043E\u0434\u044B",
-      tags: ["food"],
+      kind: "\u0440\u0430\u0441\u0442\u0438\u0442\u0435\u043B\u044C\u043D\u0430\u044F",
       nutrition: 1,
       spoil: 1,
       loot: 4,
+      taste: 0,
       color: "#c45c95",
       map: (w, i) => w.grid.food[i],
       mapColor: [214, 84, 160]
@@ -664,11 +740,11 @@ button.quiet{background:transparent;color:var(--muted)}
     {
       id: "fish",
       label: "\u0440\u044B\u0431\u0430",
-      short: "\u0440\u044B\u0431\u0430",
-      tags: ["food"],
+      kind: "\u0440\u044B\u0431\u043D\u0430\u044F",
       nutrition: 1.1,
       spoil: 2,
       loot: 3,
+      taste: 0.1,
       color: "#6fa8c8",
       map: (w, i) => {
         const id = w.grid.lake?.[i];
@@ -677,12 +753,152 @@ button.quiet{background:transparent;color:var(--muted)}
       },
       mapColor: [96, 176, 236]
     },
-    { id: "meat", label: "\u043C\u044F\u0441\u043E", short: "\u043C\u044F\u0441\u043E", tags: ["food"], nutrition: 1.3, spoil: 2.5, loot: 3, color: "#d0786a" },
+    { id: "meat", label: "\u043C\u044F\u0441\u043E", kind: "\u043C\u044F\u0441\u043D\u0430\u044F", nutrition: 1.3, spoil: 2.5, loot: 3, taste: 0.3, color: "#d0786a", eat: "ateMeat" }
+  ]);
+  function drawFoodPrefs(rnd) {
+    const all = FOODS.all();
+    if (all.length < 2) return { likes: all[0]?.id ?? null, dislikes: null };
+    const pick = (skip, sign) => {
+      const opts = all.filter((f) => f.id !== skip), ws = opts.map((f) => Math.max(0.15, 1 + sign * (f.taste || 0)));
+      let r = rnd() * ws.reduce((s, x) => s + x, 0);
+      for (let k = 0; k < opts.length; k++) {
+        r -= ws[k];
+        if (r <= 0) return opts[k].id;
+      }
+      return opts[opts.length - 1].id;
+    };
+    const likes = pick(null, 1);
+    return { likes, dislikes: pick(likes, -1) };
+  }
+
+  // src/world/grid.js
+  var inBounds = (w, x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
+  var walkable = (w, i) => WALKABLE[w.grid.terr[i]] === 1;
+  var cellOf = (w, a) => clamp(a.y | 0, 0, w.h - 1) * w.w + clamp(a.x | 0, 0, w.w - 1);
+  var isCampArea = (w, i) => Math.abs(i % w.w - w.camp.x) <= 3 && Math.abs((i / w.w | 0) - w.camp.y) <= 3;
+  var distToCamp2 = (w, i) => (i % w.w - w.camp.x) ** 2 + ((i / w.w | 0) - w.camp.y) ** 2;
+  var DX = [1, -1, 0, 0, 1, 1, -1, -1];
+  var DY = [0, 0, 1, -1, 1, -1, 1, -1];
+  function nextToRock(w, i) {
+    if (!walkable(w, i)) return false;
+    const x = i % w.w, y = i / w.w | 0;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DX[k], ny = y + DY[k];
+      if (inBounds(w, nx, ny) && w.grid.terr[ny * w.w + nx] === T.ROCK) return true;
+    }
+    return false;
+  }
+
+  // src/world/ores.js
+  var ORE = { iron: 1, coal: 2, gems: 3 };
+  var ORE_LABEL = { 1: "\u0436\u0435\u043B\u0435\u0437\u043D\u0430\u044F \u0440\u0443\u0434\u0430", 2: "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0439 \u0443\u0433\u043E\u043B\u044C", 3: "\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B" };
+  function oreAt(w, i, code) {
+    const g2 = w.grid;
+    if (!g2.ore || g2.ore[i] !== code) return 0;
+    return 0.75 + 0.25 * Math.min(1, g2.oreLeft[i] / 10);
+  }
+  function oreBeside(w, i, codes) {
+    const g2 = w.grid;
+    if (!g2.ore) return -1;
+    const x = i % w.w, y = i / w.w | 0;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DX[k], ny = y + DY[k];
+      if (nx < 0 || ny < 0 || nx >= w.w || ny >= w.h) continue;
+      const j = ny * w.w + nx;
+      if (g2.ore[j] && g2.oreLeft[j] > 0 && (!codes || codes.has(g2.ore[j]))) return j;
+    }
+    return -1;
+  }
+  function exposed(w, i) {
+    const x = i % w.w, y = i / w.w | 0;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DX[k], ny = y + DY[k];
+      if (nx >= 0 && ny >= 0 && nx < w.w && ny < w.h && WALKABLE[w.grid.terr[ny * w.w + nx]]) return true;
+    }
+    return false;
+  }
+  function exposedOre(w) {
+    const g2 = w.grid, out = { 1: 0, 2: 0, 3: 0 };
+    if (!g2.ore) return out;
+    for (let i = 0; i < w.n; i++) if (g2.ore[i] && g2.oreLeft[i] > 0 && exposed(w, i)) out[g2.ore[i]] += g2.oreLeft[i];
+    return out;
+  }
+  function layOre(w) {
+    const n = w.n, g2 = w.grid, rnd = mulberry(seedNumber(String(w.cfg.seed) + ":ore"));
+    g2.ore = new Uint8Array(n);
+    g2.oreLeft = new Float32Array(n);
+    const seam = (cell) => {
+      const gw = Math.ceil(w.w / cell) + 2, gh = Math.ceil(w.h / cell) + 2, pts = new Float32Array(gw * gh).map(() => rnd());
+      return (i) => {
+        const fx = i % w.w / cell, fy = (i / w.w | 0) / cell, ix = fx | 0, iy = fy | 0, tx2 = fx - ix, ty = fy - iy;
+        const a = pts[iy * gw + ix], b = pts[iy * gw + ix + 1], c = pts[(iy + 1) * gw + ix], d = pts[(iy + 1) * gw + ix + 1];
+        return (a * (1 - tx2) + b * tx2) * (1 - ty) + (c * (1 - tx2) + d * tx2) * ty;
+      };
+    };
+    const ironN = seam(7), coalN = seam(8);
+    const rocks = [];
+    for (let i = 0; i < n; i++) {
+      if (g2.terr[i] !== T.ROCK) continue;
+      rocks.push(i);
+      const r = rnd();
+      if (ironN(i) > 0.66) {
+        g2.ore[i] = ORE.iron;
+        g2.oreLeft[i] = 6 + Math.floor(r * 7);
+      } else if (coalN(i) > 0.68) {
+        g2.ore[i] = ORE.coal;
+        g2.oreLeft[i] = 6 + Math.floor(r * 7);
+      } else if (r < 0.035) {
+        g2.ore[i] = ORE.gems;
+        g2.oreLeft[i] = 2 + Math.floor(rnd() * 3);
+      }
+    }
+    const face = rocks.filter((i) => exposed(w, i));
+    if (!face.length) return;
+    const have = exposedOre(w);
+    for (const code of [ORE.iron, ORE.coal, ORE.gems]) {
+      if (have[code] >= (code === ORE.gems ? 4 : 12)) continue;
+      const start2 = face[Math.floor(rnd() * face.length)], size = code === ORE.gems ? 2 : 5;
+      const sx = start2 % w.w, sy = start2 / w.w | 0;
+      let placed = 0;
+      for (let rad = 0; rad <= 3 && placed < size; rad++) for (let yy = -rad; yy <= rad && placed < size; yy++) for (let xx = -rad; xx <= rad && placed < size; xx++) {
+        const x = sx + xx, y = sy + yy;
+        if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
+        const j = y * w.w + x;
+        if (g2.terr[j] !== T.ROCK || g2.ore[j] === code) continue;
+        g2.ore[j] = code;
+        g2.oreLeft[j] = code === ORE.gems ? 3 : 8;
+        placed++;
+      }
+    }
+  }
+  function ensureOre(w) {
+    if (!w.grid.ore) layOre(w);
+  }
+
+  // src/data/resources.js
+  var RESOURCES = new Registry("resource");
+  var RESOURCE_GROUPS = ["\u0415\u0434\u0430", "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", "\u0420\u0443\u0434\u0430", "\u041C\u0435\u0442\u0430\u043B\u043B", "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", "\u0411\u043E\u0435\u043F\u0440\u0438\u043F\u0430\u0441\u044B"];
+  RESOURCES.registerAll([
+    ...FOODS.all().map((f) => ({
+      id: f.id,
+      label: f.label,
+      short: f.label,
+      tags: ["food"],
+      group: "\u0415\u0434\u0430",
+      nutrition: f.nutrition,
+      spoil: f.spoil,
+      loot: f.loot,
+      color: f.color,
+      map: f.map,
+      mapColor: f.mapColor
+    })),
     {
       id: "wood",
       label: "\u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430",
       short: "\u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430",
       tags: ["fuel", "material"],
+      group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B",
+      burn: 1,
       loot: 4,
       color: "#a5794a",
       map: (w, i) => w.grid.terr[i] === T.FOREST ? w.grid.wood[i] : 0,
@@ -693,15 +909,68 @@ button.quiet{background:transparent;color:var(--muted)}
       label: "\u043A\u0430\u043C\u0435\u043D\u044C",
       short: "\u043A\u0430\u043C\u0435\u043D\u044C",
       tags: ["material"],
+      group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B",
       loot: 2,
       color: "#b9b4a6",
-      map: (w, i) => w.grid.terr[i] === T.ROCK ? 1 : 0,
+      map: (w, i) => w.grid.terr[i] === T.ROCK && !w.grid.ore?.[i] ? 0.6 : 0,
       mapColor: [215, 210, 196]
     },
-    { id: "bone", label: "\u043A\u043E\u0441\u0442\u0438", short: "\u043A\u043E\u0441\u0442\u0438", tags: ["material"], loot: 1, color: "#e8e2cf" },
-    { id: "hide", label: "\u0448\u043A\u0443\u0440\u044B", short: "\u0448\u043A\u0443\u0440\u044B", tags: ["material"], loot: 1, color: "#9b7650" },
-    { id: "leather", label: "\u043A\u043E\u0436\u0430", short: "\u043A\u043E\u0436\u0430", tags: ["material"], loot: 1, color: "#7a4d26" },
-    { id: "arrows", label: "\u0441\u0442\u0440\u0435\u043B\u044B", short: "\u0441\u0442\u0440\u0435\u043B\u044B", tags: ["ammo"], loot: 3, color: "#c7b07a" }
+    { id: "bone", label: "\u043A\u043E\u0441\u0442\u0438", short: "\u043A\u043E\u0441\u0442\u0438", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, color: "#e8e2cf" },
+    { id: "hide", label: "\u0448\u043A\u0443\u0440\u044B", short: "\u0448\u043A\u0443\u0440\u044B", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, color: "#9b7650" },
+    { id: "leather", label: "\u043A\u043E\u0436\u0430", short: "\u043A\u043E\u0436\u0430", tags: ["material"], group: "\u041C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B", loot: 1, color: "#7a4d26" },
+    // fuel: charcoal is burnt from logs, coal is dug; both keep a furnace hot, the campfire takes them after wood
+    { id: "charcoal", label: "\u0434\u0440\u0435\u0432\u0435\u0441\u043D\u044B\u0439 \u0443\u0433\u043E\u043B\u044C", short: "\u0443\u0433\u043E\u043B\u044C", tags: ["fuel", "smelt"], group: "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", burn: 2, heat: 2, loot: 2, color: "#3d3a36", target: 10 },
+    {
+      id: "coal",
+      label: "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0439 \u0443\u0433\u043E\u043B\u044C",
+      short: "\u043A\u0430\u043C. \u0443\u0433\u043E\u043B\u044C",
+      tags: ["fuel", "smelt", "ore"],
+      group: "\u0422\u043E\u043F\u043B\u0438\u0432\u043E",
+      burn: 3,
+      heat: 2.5,
+      loot: 2,
+      color: "#2a2a2e",
+      ore: ORE.coal,
+      target: 12,
+      map: (w, i) => oreAt(w, i, ORE.coal),
+      mapColor: [70, 70, 84]
+    },
+    // ore from the mine
+    {
+      id: "ironore",
+      label: "\u0436\u0435\u043B\u0435\u0437\u043D\u0430\u044F \u0440\u0443\u0434\u0430",
+      short: "\u0440\u0443\u0434\u0430",
+      tags: ["ore"],
+      group: "\u0420\u0443\u0434\u0430",
+      loot: 1,
+      color: "#9a5a3c",
+      ore: ORE.iron,
+      target: 14,
+      map: (w, i) => oreAt(w, i, ORE.iron),
+      mapColor: [196, 102, 64]
+    },
+    {
+      id: "gems",
+      label: "\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B",
+      short: "\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B",
+      tags: ["ore"],
+      group: "\u0420\u0443\u0434\u0430",
+      loot: 1,
+      value: 4,
+      color: "#7fd3c8",
+      ore: ORE.gems,
+      target: 6,
+      map: (w, i) => oreAt(w, i, ORE.gems),
+      mapColor: [120, 230, 214]
+    },
+    // metal: bars from the furnace
+    { id: "iron", label: "\u0436\u0435\u043B\u0435\u0437\u043E", short: "\u0436\u0435\u043B\u0435\u0437\u043E", tags: ["material", "metal"], group: "\u041C\u0435\u0442\u0430\u043B\u043B", loot: 1, color: "#a9b0b6" },
+    // luxury goods from the jeweller: kept for trade, they make the colony look rich
+    { id: "jewelBone", label: "\u043A\u043E\u0441\u0442\u044F\u043D\u044B\u0435 \u0431\u0443\u0441\u044B \u0441 \u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u0430\u043C\u0438", short: "\u0431\u0443\u0441\u044B", tags: ["luxury"], group: "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", value: 8, loot: 1, color: "#efe2c4" },
+    { id: "jewelWood", label: "\u0440\u0435\u0437\u043D\u044B\u0435 \u0448\u043A\u0430\u0442\u0443\u043B\u043A\u0438 \u0441 \u0438\u043D\u043A\u0440\u0443\u0441\u0442\u0430\u0446\u0438\u0435\u0439", short: "\u0448\u043A\u0430\u0442\u0443\u043B\u043A\u0438", tags: ["luxury"], group: "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", value: 7, loot: 1, color: "#c08a4a" },
+    { id: "jewelStone", label: "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0435 \u0438\u0434\u043E\u043B\u044B \u0441 \u0433\u043B\u0430\u0437\u0430\u043C\u0438-\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u0430\u043C\u0438", short: "\u0438\u0434\u043E\u043B\u044B", tags: ["luxury"], group: "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", value: 9, loot: 1, color: "#c9c3b3" },
+    { id: "jewelIron", label: "\u0436\u0435\u043B\u0435\u0437\u043D\u044B\u0435 \u0433\u0440\u0438\u0432\u043D\u044B \u0441 \u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u0430\u043C\u0438", short: "\u0433\u0440\u0438\u0432\u043D\u044B", tags: ["luxury"], group: "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", value: 14, loot: 1, color: "#d6dde2" },
+    { id: "arrows", label: "\u0441\u0442\u0440\u0435\u043B\u044B", short: "\u0441\u0442\u0440\u0435\u043B\u044B", tags: ["ammo"], group: "\u0411\u043E\u0435\u043F\u0440\u0438\u043F\u0430\u0441\u044B", loot: 3, color: "#c7b07a" }
   ]);
 
   // src/settlement/query.js
@@ -715,6 +984,15 @@ button.quiet{background:transparent;color:var(--muted)}
   var foodTotal = (w) => FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
   var popCap = (w) => 8 + w.mods.add.popCap;
   var jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some((b) => has(w, b));
+  function wantedOre(w) {
+    const c = w.cache.wantedOre || (w.cache.wantedOre = { tick: -1, set: null });
+    if (c.tick !== w.tick) {
+      c.tick = w.tick;
+      c.set = new Set(RESOURCES.filter((r) => r.ore && (w.stock[r.id] || 0) < r.target).map((r) => r.ore));
+    }
+    return c.set;
+  }
+  var oreResource = (code) => RESOURCES.filter((r) => r.ore === code)[0];
 
   // src/settlement/threat.js
   function raidThreat(w) {
@@ -1173,6 +1451,38 @@ button.quiet{background:transparent;color:var(--muted)}
       take: () => {
       }
     },
+    // the mine: dig whichever ore the colony is short of (iron ore, coal, gems) from the rock face
+    {
+      id: "dig",
+      label: "\u0434\u043E\u0431\u044B\u0432\u0430\u0442\u044C \u0440\u0443\u0434\u0443",
+      short: "\u0440\u0443\u0434\u0430",
+      verb: "\u0434\u043E\u0431\u044B\u0432\u0430\u0435\u0442 \u0440\u0443\u0434\u0443",
+      preferable: true,
+      runner: "harvest",
+      nav: "ore",
+      resource: "ironore",
+      carry: 2,
+      time: 40,
+      requires: "mineshaft",
+      memory: "walkOre",
+      desire: (w) => wantedOre(w).size ? 0.42 : -1,
+      valid: (w, i) => w.grid.fire[i] === 0 && oreBeside(w, i, wantedOre(w)) >= 0,
+      take: (w, i) => {
+        const g2 = w.grid, j = oreBeside(w, i, wantedOre(w));
+        if (j < 0) return null;
+        const res = oreResource(g2.ore[j]).id;
+        g2.oreLeft[j] -= 1;
+        if (g2.oreLeft[j] <= 0) {
+          g2.ore[j] = 0;
+          g2.oreLeft[j] = 0;
+          g2.terr[j] = T.GRASS;
+          g2.fuel[j] = 0;
+          w.nav.dirty("ore");
+          w.nav.dirty("rockface");
+        }
+        return res;
+      }
+    },
     // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back)
     {
       id: "fish",
@@ -1220,6 +1530,39 @@ button.quiet{background:transparent;color:var(--muted)}
       stations: ["crafthut", "fishhut"],
       requires: ["crafthut", "fishhut"],
       desire: (w, ctx) => ctx.orders.crafthut || ctx.orders.fishhut ? 0.55 : -1
+    },
+    {
+      id: "charcoal",
+      label: "\u0436\u0435\u0447\u044C \u0443\u0433\u043E\u043B\u044C",
+      short: "\u0443\u0433\u043E\u043B\u044C",
+      verb: "\u0436\u0436\u0451\u0442 \u0443\u0433\u043E\u043B\u044C",
+      preferable: true,
+      runner: "craft",
+      stations: ["charpit"],
+      requires: "charpit",
+      desire: (w, ctx) => ctx.orders.charpit ? 0.45 : -1
+    },
+    {
+      id: "smith",
+      label: "\u043F\u043B\u0430\u0432\u0438\u0442\u044C \u0438 \u043A\u043E\u0432\u0430\u0442\u044C \u0436\u0435\u043B\u0435\u0437\u043E",
+      short: "\u043A\u0443\u0437\u043D\u044F",
+      verb: "\u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \u0443 \u0433\u043E\u0440\u043D\u0430",
+      preferable: true,
+      runner: "craft",
+      stations: ["forge", "smelter"],
+      requires: ["smelter", "forge"],
+      desire: (w, ctx) => ctx.orders.forge || ctx.orders.smelter ? 0.55 : -1
+    },
+    {
+      id: "jewel",
+      label: "\u0434\u0435\u043B\u0430\u0442\u044C \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u044F",
+      short: "\u044E\u0432\u0435\u043B\u0438\u0440",
+      verb: "\u0434\u0435\u043B\u0430\u0435\u0442 \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u044F",
+      preferable: true,
+      runner: "craft",
+      stations: ["jeweler"],
+      requires: "jeweler",
+      desire: (w, ctx) => ctx.orders.jeweler ? 0.35 : -1
     },
     {
       id: "tan",
@@ -1304,7 +1647,13 @@ button.quiet{background:transparent;color:var(--muted)}
     },
     // a rod with a wooden gorge hook and a line of twisted bast; works from the back as well
     { id: "rod", label: "\u0423\u0434\u043E\u0447\u043A\u0430 \u0441 \u0434\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u043C \u043A\u0440\u044E\u0447\u043A\u043E\u043C", short: "\u0443\u0434\u043E\u0447\u043A\u0430", slot: "hand", hands: 2, tool: { fish: 1.6 }, dur: 80, glyph: "rod" },
+    // iron, from the forge
+    { id: "ironspear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u0436\u0435\u043B\u0435\u0437\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u0436\u0435\u043B. \u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, iron: true, melee: { dmg: 1.95, cd: 12 }, dur: 120, glyph: "ironspear" },
+    { id: "ironaxe", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u0442\u043E\u043F\u043E\u0440", short: "\u0436\u0435\u043B. \u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, iron: true, melee: { dmg: 1.7, cd: 12 }, tool: { chop: 2.2, build: 1.15 }, dur: 160, glyph: "ironaxe" },
+    { id: "sword", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u043C\u0435\u0447", short: "\u043C\u0435\u0447", slot: "hand", hands: 1, iron: true, melee: { dmg: 2.15, cd: 11 }, block: 0.1, dur: 150, glyph: "sword" },
     // body
+    // lamellar: small iron plates laced onto a leather coat; heavy, but stops most blows
+    { id: "lamellar", label: "\u041B\u0430\u043C\u0435\u043B\u043B\u044F\u0440\u043D\u044B\u0439 \u0434\u043E\u0441\u043F\u0435\u0445", short: "\u043B\u0430\u043C\u0435\u043B\u044F\u0440", slot: "body", iron: true, armor: 0.5, warmth: 0.4, speed: 0.93, dur: 170, color: "#8f989f" },
     { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", armor: 0.08, warmth: 0.35, dur: 50, color: "#c9b38a" },
     { id: "jerkin", label: "\u041A\u043E\u0436\u0430\u043D\u0430\u044F \u043A\u0443\u0440\u0442\u043A\u0430", short: "\u043A\u043E\u0436\u0430", slot: "body", armor: 0.2, warmth: 0.55, dur: 70, color: "#8a5a2b" },
     { id: "hardleather", label: "\u041A\u043E\u0436\u0430 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C\u0438 \u043F\u043B\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438", short: "\u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u0436\u0430", slot: "body", armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, color: "#e0d6c0" },
@@ -1322,6 +1671,8 @@ button.quiet{background:transparent;color:var(--muted)}
     { id: "arrived", mood: 0.15, lasts: DAY, text: (a) => `${g(a, "\u041F\u0440\u0438\u0448\u0451\u043B", "\u041F\u0440\u0438\u0448\u043B\u0430")} \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435, \u043D\u0430\u0434\u0435\u0435\u0442\u0441\u044F \u043F\u0440\u0438\u0436\u0438\u0442\u044C\u0441\u044F.` },
     // body
     { id: "ateHungry", mood: 0.1, lasts: 4 * HOUR, once: 4 * HOUR, text: (a, c) => `\u041D\u0430\u043A\u043E\u043D\u0435\u0446 ${g(a, "\u043F\u043E\u0435\u043B", "\u043F\u043E\u0435\u043B\u0430")}: ${c.food}.` },
+    { id: "ateLiked", mood: 0.18, lasts: 6 * HOUR, once: 6 * HOUR, text: (a, c) => `${g(a, "\u041F\u043E\u0435\u043B", "\u041F\u043E\u0435\u043B\u0430")} \u043B\u044E\u0431\u0438\u043C\u043E\u0439 \u0435\u0434\u044B: ${c.food}. \u0425\u043E\u0440\u043E\u0448\u043E!` },
+    { id: "ateDisliked", mood: -0.12, lasts: 5 * HOUR, once: 5 * HOUR, text: (a, c) => `\u041F\u0440\u0438\u0448\u043B\u043E\u0441\u044C \u0435\u0441\u0442\u044C ${c.food}, \u0430 ${g(a, "\u043E\u043D", "\u043E\u043D\u0430")} \u044D\u0442\u043E \u0442\u0435\u0440\u043F\u0435\u0442\u044C \u043D\u0435 \u043C\u043E\u0436\u0435\u0442.` },
     { id: "ateMeat", mood: 0.15, lasts: 6 * HOUR, once: 6 * HOUR, text: (a) => `${g(a, "\u041F\u043E\u0435\u043B", "\u041F\u043E\u0435\u043B\u0430")} \u0436\u0430\u0440\u0435\u043D\u043E\u0433\u043E \u043C\u044F\u0441\u0430. \u0421\u044B\u0442\u043D\u043E.` },
     { id: "starving", mood: -0.35, lasts: 8 * HOUR, once: 8 * HOUR, text: () => "\u0413\u043E\u043B\u043E\u0434\u0430\u0435\u0442. \u0417\u0430\u043F\u0430\u0441\u044B \u043F\u0443\u0441\u0442\u044B." },
     { id: "freezing", mood: -0.25, lasts: 8 * HOUR, once: 8 * HOUR, text: (a) => `${g(a, "\u0417\u0430\u043C\u0451\u0440\u0437", "\u0417\u0430\u043C\u0451\u0440\u0437\u043B\u0430")} \u0434\u043E \u043A\u043E\u0441\u0442\u0435\u0439.` },
@@ -1730,6 +2081,7 @@ button.quiet{background:transparent;color:var(--muted)}
       a.mods[k] = k === "bravery" ? a.mods[k] + v : a.mods[k] * v;
     }
     a.mods.bravery *= 0.85 + rng() * 0.3;
+    a.food = drawFoodPrefs(rng);
   }
   function freshName(w, names) {
     const used = new Set(w.agents.filter((o) => o.faction === "colony" && !o.dead).map((o) => o.name));
@@ -1817,24 +2169,6 @@ button.quiet{background:transparent;color:var(--muted)}
       w.armoryVersion = (w.armoryVersion || 0) + 1;
     } else if (sp.yields && by) {
     }
-  }
-
-  // src/world/grid.js
-  var inBounds = (w, x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
-  var walkable = (w, i) => WALKABLE[w.grid.terr[i]] === 1;
-  var cellOf = (w, a) => clamp(a.y | 0, 0, w.h - 1) * w.w + clamp(a.x | 0, 0, w.w - 1);
-  var isCampArea = (w, i) => Math.abs(i % w.w - w.camp.x) <= 3 && Math.abs((i / w.w | 0) - w.camp.y) <= 3;
-  var distToCamp2 = (w, i) => (i % w.w - w.camp.x) ** 2 + ((i / w.w | 0) - w.camp.y) ** 2;
-  var DX = [1, -1, 0, 0, 1, 1, -1, -1];
-  var DY = [0, 0, 1, -1, 1, -1, 1, -1];
-  function nextToRock(w, i) {
-    if (!walkable(w, i)) return false;
-    const x = i % w.w, y = i / w.w | 0;
-    for (let k = 0; k < 4; k++) {
-      const nx = x + DX[k], ny = y + DY[k];
-      if (inBounds(w, nx, ny) && w.grid.terr[ny * w.w + nx] === T.ROCK) return true;
-    }
-    return false;
   }
 
   // src/data/buildings.js
@@ -2052,6 +2386,113 @@ button.quiet{background:transparent;color:var(--muted)}
       wish: "\u0445\u043E\u0447\u0435\u0442 \u0432\u044B\u0434\u0435\u043B\u044B\u0432\u0430\u0442\u044C \u043A\u043E\u0436\u0438",
       motive: (a, c) => [[c.hides * 0.08, "\u0448\u043A\u0443\u0440\u044B \u043F\u0440\u043E\u043F\u0430\u0434\u0430\u044E\u0442 \u0437\u0440\u044F"], [(a.prefs.tan - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0432\u044B\u0434\u0435\u043B\u044B\u0432\u0430\u0442\u044C \u043A\u043E\u0436\u0438"], [a.mem.cold * 0.6, "\u043C\u0451\u0440\u0437\u043D\u0435\u0442 \u0431\u0435\u0437 \u043A\u043E\u0436\u0430\u043D\u043E\u0439 \u043E\u0434\u0435\u0436\u0434\u044B"]]
     },
+    // ── the iron chain: ore from the mine, charcoal from logs, bars from the furnace, blades from the forge
+    {
+      id: "mineshaft",
+      name: "\u0420\u0443\u0434\u043D\u0438\u043A",
+      gender: "m",
+      cost: { wood: 25, stone: 10 },
+      work: 220,
+      max: 1,
+      wooden: true,
+      color: "#7d6a58",
+      mark: "\u0420\u0434",
+      needs: "quarry",
+      effect: "\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u0435\u0442 \u0434\u043E\u0431\u044B\u0447\u0443 \u0440\u0443\u0434\u044B \u0432 \u0441\u043A\u0430\u043B\u0430\u0445: \u0436\u0435\u043B\u0435\u0437\u043D\u043E\u0439 \u0440\u0443\u0434\u044B, \u043A\u0430\u043C\u0435\u043D\u043D\u043E\u0433\u043E \u0443\u0433\u043B\u044F \u0438 \u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u043E\u0432. \u041A\u043E\u043F\u0430\u044E\u0442 \u0442\u0443 \u0440\u0443\u0434\u0443, \u043A\u043E\u0442\u043E\u0440\u043E\u0439 \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0435 \u043C\u0435\u043D\u044C\u0448\u0435 \u043D\u0443\u0436\u043D\u043E\u0433\u043E.",
+      effects: {},
+      wish: "\u0433\u043E\u0432\u043E\u0440\u0438\u0442, \u0447\u0442\u043E \u0432 \u0441\u043A\u0430\u043B\u0430\u0445 \u0435\u0441\u0442\u044C \u0440\u0443\u0434\u0430",
+      motive: (a, c) => [
+        [c.oreSeen ? 0.3 : 0, "\u0432 \u0441\u043A\u0430\u043B\u0430\u0445 \u0432\u0438\u0434\u043D\u0430 \u0440\u0443\u0434\u0430"],
+        [(a.prefs.dig - 1) * 1.5, "\u043B\u044E\u0431\u0438\u0442 \u043A\u043E\u043F\u0430\u0442\u044C \u0440\u0443\u0434\u0443"],
+        [c.unarmed > 0.3 && c.oreSeen ? 0.2 : 0, "\u0438\u0437 \u0436\u0435\u043B\u0435\u0437\u0430 \u0432\u044B\u0448\u043B\u043E \u0431\u044B \u043E\u0440\u0443\u0436\u0438\u0435 \u043F\u043E\u043B\u0443\u0447\u0448\u0435"]
+      ],
+      available: (w) => w.grid.ore?.some((x) => x > 0)
+    },
+    {
+      id: "charpit",
+      name: "\u0423\u0433\u043B\u0435\u0436\u043E\u0433\u043D\u0430\u044F \u044F\u043C\u0430",
+      gender: "f",
+      cost: { wood: 14, stone: 6 },
+      work: 160,
+      max: 1,
+      wooden: false,
+      color: "#4a4440",
+      mark: "\u0423",
+      station: true,
+      benches: 1,
+      needs: "quarry",
+      effect: "\u0411\u0440\u0451\u0432\u043D\u0430 \u0442\u043E\u043C\u044F\u0442 \u0431\u0435\u0437 \u043E\u0433\u043D\u044F \u0432 \u0434\u0440\u0435\u0432\u0435\u0441\u043D\u044B\u0439 \u0443\u0433\u043E\u043B\u044C. \u0423\u0433\u043E\u043B\u044C \u2014 \u0442\u043E\u043F\u043B\u0438\u0432\u043E \u0434\u043B\u044F \u043F\u043B\u0430\u0432\u0438\u043B\u044C\u043D\u0438 \u0438 \u043A\u0443\u0437\u043D\u0438\u0446\u044B, \u0430 \u043A\u043E\u0441\u0442\u0451\u0440 \u043D\u0430 \u043D\u0451\u043C \u0433\u043E\u0440\u0438\u0442 \u0432\u0434\u0432\u043E\u0435 \u0434\u043E\u043B\u044C\u0448\u0435.",
+      effects: {},
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0437\u0430\u043F\u0430\u0441\u0430\u0442\u044C \u0442\u043E\u043F\u043B\u0438\u0432\u043E",
+      motive: (a, c) => [
+        [c.count("smelter") ? 0.55 : 0, "\u043F\u043B\u0430\u0432\u0438\u043B\u044C\u043D\u0435 \u043D\u0443\u0436\u0435\u043D \u0443\u0433\u043E\u043B\u044C"],
+        [c.count("mineshaft") && !c.count("smelter") ? 0.2 : 0, "\u0431\u0435\u0437 \u0443\u0433\u043B\u044F \u0440\u0443\u0434\u0443 \u043D\u0435 \u0440\u0430\u0441\u043F\u043B\u0430\u0432\u0438\u0442\u044C"],
+        [(a.prefs.charcoal - 1) * 1.4, "\u043B\u044E\u0431\u0438\u0442 \u0436\u0435\u0447\u044C \u0443\u0433\u043E\u043B\u044C"],
+        [a.mem.cold * 0.3, "\u0445\u043E\u0447\u0435\u0442, \u0447\u0442\u043E\u0431\u044B \u043A\u043E\u0441\u0442\u0451\u0440 \u0433\u043E\u0440\u0435\u043B \u0434\u043E\u043B\u044C\u0448\u0435"]
+      ]
+    },
+    {
+      id: "smelter",
+      name: "\u041F\u043B\u0430\u0432\u0438\u043B\u044C\u043D\u044F",
+      gender: "f",
+      cost: { stone: 22, wood: 10 },
+      work: 240,
+      max: 1,
+      wooden: false,
+      color: "#b0603a",
+      mark: "\u041F\u043B",
+      station: true,
+      benches: 1,
+      needs: "mineshaft",
+      effect: "\u0416\u0435\u043B\u0435\u0437\u043D\u0443\u044E \u0440\u0443\u0434\u0443 \u043F\u043B\u0430\u0432\u044F\u0442 \u043D\u0430 \u0443\u0433\u043B\u0435 \u0432 \u0441\u043B\u0438\u0442\u043A\u0438: 2 \u0440\u0443\u0434\u044B \u0438 1 \u0443\u0433\u043E\u043B\u044C \u0434\u0430\u044E\u0442 \u0441\u043B\u0438\u0442\u043E\u043A \u0436\u0435\u043B\u0435\u0437\u0430.",
+      effects: {},
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0441\u0432\u043E\u0451 \u0436\u0435\u043B\u0435\u0437\u043E",
+      motive: (a, c) => [
+        [c.stock("ironore") * 0.07, "\u0440\u0443\u0434\u0430 \u043B\u0435\u0436\u0438\u0442 \u0431\u0435\u0437 \u0434\u0435\u043B\u0430"],
+        [(a.prefs.smith - 1) * 1.4, "\u0445\u043E\u0447\u0435\u0442 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0443 \u0433\u043E\u0440\u043D\u0430"],
+        [c.unarmed * 0.4, "\u043D\u0443\u0436\u043D\u043E \u043E\u0440\u0443\u0436\u0438\u0435 \u043F\u043E\u043B\u0443\u0447\u0448\u0435"]
+      ]
+    },
+    {
+      id: "forge",
+      name: "\u041A\u0443\u0437\u043D\u0438\u0446\u0430",
+      gender: "f",
+      cost: { stone: 18, wood: 16, iron: 2 },
+      work: 260,
+      max: 1,
+      wooden: false,
+      color: "#8e8f96",
+      mark: "\u041A\u0437",
+      station: true,
+      benches: 1,
+      needs: "smelter",
+      effect: "\u0418\u0437 \u0436\u0435\u043B\u0435\u0437\u0430 \u043A\u0443\u044E\u0442 \u043C\u0435\u0447\u0438, \u043A\u043E\u043F\u044C\u044F \u0441 \u0436\u0435\u043B\u0435\u0437\u043D\u044B\u043C\u0438 \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u0430\u043C\u0438, \u0436\u0435\u043B\u0435\u0437\u043D\u044B\u0435 \u0442\u043E\u043F\u043E\u0440\u044B \u0438 \u043B\u0430\u043C\u0435\u043B\u043B\u044F\u0440\u043D\u044B\u0435 \u0434\u043E\u0441\u043F\u0435\u0445\u0438.",
+      effects: {},
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0436\u0435\u043B\u0435\u0437\u043D\u043E\u0435 \u043E\u0440\u0443\u0436\u0438\u0435",
+      motive: (a, c) => [
+        [c.stock("iron") * 0.12, "\u0436\u0435\u043B\u0435\u0437\u043E \u043B\u0435\u0436\u0438\u0442 \u0431\u0435\u0437 \u0434\u0435\u043B\u0430"],
+        [c.unarmed * 0.6 + (a.mem.wolf + a.mem.raid) * 0.6, "\u0434\u0435\u0440\u0435\u0432\u043E\u043C \u0438 \u043A\u043E\u0441\u0442\u044C\u044E \u043D\u0435 \u043E\u0442\u0431\u0438\u0442\u044C\u0441\u044F"],
+        [(a.prefs.smith - 1) * 1.4, "\u0445\u043E\u0447\u0435\u0442 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0443 \u0433\u043E\u0440\u043D\u0430"]
+      ]
+    },
+    {
+      id: "jeweler",
+      name: "\u042E\u0432\u0435\u043B\u0438\u0440\u043D\u0430\u044F \u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u0430\u044F",
+      gender: "f",
+      cost: { wood: 14, stone: 12 },
+      work: 200,
+      max: 1,
+      wooden: true,
+      color: "#58b3a8",
+      mark: "\u042E",
+      station: true,
+      benches: 1,
+      needs: "mineshaft",
+      effect: "\u0421\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B \u043E\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u0442 \u0432 \u043A\u043E\u0441\u0442\u044C, \u0434\u0435\u0440\u0435\u0432\u043E, \u043A\u0430\u043C\u0435\u043D\u044C \u0438 \u0436\u0435\u043B\u0435\u0437\u043E. \u0423\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u044F \u043A\u043E\u043F\u044F\u0442\u0441\u044F \u0434\u043B\u044F \u0442\u043E\u0440\u0433\u043E\u0432\u043B\u0438.",
+      effects: {},
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0434\u0435\u043B\u0430\u0442\u044C \u043A\u0440\u0430\u0441\u0438\u0432\u044B\u0435 \u0432\u0435\u0449\u0438",
+      motive: (a, c) => [[c.stock("gems") * 0.08, "\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B \u043B\u0435\u0436\u0430\u0442 \u0431\u0435\u0437 \u0434\u0435\u043B\u0430"], [(a.prefs.jewel - 1) * 1.5, "\u043B\u044E\u0431\u0438\u0442 \u0442\u043E\u043D\u043A\u0443\u044E \u0440\u0430\u0431\u043E\u0442\u0443"]]
+    },
     {
       id: "armory",
       name: "\u041E\u0440\u0443\u0436\u0435\u0439\u043D\u044B\u0439 \u043D\u0430\u0432\u0435\u0441",
@@ -2125,6 +2566,14 @@ button.quiet{background:transparent;color:var(--muted)}
       active: (w) => openSites(w).length > 0,
       prepare: (w) => new Set(openSites(w).flatMap((b) => b.cells)),
       seed: (w, i, cells) => cells.has(i)
+    },
+    // the rock face where the ore the colony is short of can be dug
+    {
+      id: "ore",
+      period: 240,
+      active: (w) => has(w, "mineshaft"),
+      prepare: (w) => wantedOre(w),
+      seed: (w, i, codes) => codes.size > 0 && w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && oreBeside(w, i, codes) >= 0
     },
     // shore of lakes that still have fish
     {
@@ -2654,6 +3103,7 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
     findLakes(world2);
+    layOre(world2);
     recomputeZone(world2);
     initOutside(world2);
     setWind(world2);
@@ -2787,12 +3237,51 @@ button.quiet{background:transparent;color:var(--muted)}
   function deposit(w, res, amount) {
     w.stock[res] = (w.stock[res] || 0) + amount * yieldOf(w, res);
   }
-  function eatMeal(w) {
-    let best = null;
-    for (const r of foods()) if (w.stock[r.id] >= 1 && (!best || w.stock[r.id] > w.stock[best.id])) best = r;
-    if (!best) return { fed: 0, res: null };
+  function chooseMeal(w, a) {
+    const likes = a?.food?.likes, dislikes = a?.food?.dislikes;
+    if (likes && w.stock[likes] >= 1) return RESOURCES.get(likes);
+    let best = null, bv = -Infinity;
+    for (const r of foods()) {
+      if (!(w.stock[r.id] >= 1)) continue;
+      const v = w.stock[r.id] - (r.id === dislikes ? 1e6 : 0);
+      if (v > bv) {
+        bv = v;
+        best = r;
+      }
+    }
+    return best;
+  }
+  function eatMeal(w, a) {
+    const best = chooseMeal(w, a);
+    if (!best) return { fed: 0, res: null, mood: null };
     w.stock[best.id] -= 1;
-    return { fed: best.nutrition, res: best };
+    const mood = a?.food?.likes === best.id ? "liked" : a?.food?.dislikes === best.id ? "disliked" : null;
+    return { fed: best.nutrition, res: best, mood };
+  }
+  var cf;
+  var sf;
+  var campFuels = () => cf || (cf = RESOURCES.filter((r) => r.tags.includes("fuel")).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
+  var smeltFuels = () => sf || (sf = RESOURCES.filter((r) => r.tags.includes("smelt")));
+  function campFuel(w) {
+    return campFuels().find((r) => (w.stock[r.id] || 0) > 0.05) || null;
+  }
+  function burnCampFuel(w, amount) {
+    const r = campFuel(w);
+    if (!r) return false;
+    w.stock[r.id] = Math.max(0, w.stock[r.id] - amount / (r.heat || 1));
+    return true;
+  }
+  var smeltFuelTotal = (w) => smeltFuels().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
+  function takeSmeltFuel(w, n) {
+    if (smeltFuelTotal(w) < n) return false;
+    let left = n;
+    for (const r of [...smeltFuels()].sort((x, y) => (w.stock[y.id] || 0) - (w.stock[x.id] || 0))) {
+      const t = Math.min(left, w.stock[r.id] || 0);
+      w.stock[r.id] -= t;
+      left -= t;
+      if (left <= 1e-9) break;
+    }
+    return true;
   }
   function spoil(w) {
     for (const r of foods()) {
@@ -2848,9 +3337,9 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   function campfire(w) {
     const cold = colonists(w).some((a) => a.needs.warmth < 0.6);
-    w.campLit = w.stock.wood > 0.05 && (nightness(w.tick) > 0.3 || cold);
+    w.campLit = !!campFuel(w) && (nightness(w.tick) > 0.3 || cold);
     if (!w.campLit) return;
-    w.stock.wood = Math.max(0, w.stock.wood - 4e-3);
+    burnCampFuel(w, 4e-3);
     for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
   }
   function burn(w) {
@@ -3428,6 +3917,95 @@ button.quiet{background:transparent;color:var(--muted)}
       makes: { item: "rod" },
       want: (c) => short(c.owned("rod"), Math.max(2, c.likes("fish"))) ? 2.4 : 0
     },
+    // ── charcoal: logs smoulder under turf into charcoal; more when the furnace and the forge burn it
+    {
+      id: "charcoal",
+      at: "charpit",
+      cost: { wood: 4 },
+      work: 260,
+      makes: { resource: "charcoal", n: 3 },
+      want: (c) => c.has("smelter") ? c.fuel < 16 ? 1.8 : 0 : c.stock("charcoal") < 6 ? 0.8 : 0
+    },
+    // ── the furnace: two ore and one fuel make a bar of iron
+    {
+      id: "smelt",
+      at: "smelter",
+      cost: { ironore: 2 },
+      fuel: 1,
+      work: 320,
+      makes: { resource: "iron", n: 1 },
+      want: (c) => c.stock("iron") < 10 ? 2.2 : 0
+    },
+    // ── the forge: iron blades and lamellar armour; each piece takes one fuel
+    {
+      id: "sword",
+      at: "forge",
+      cost: { iron: 3, leather: 1 },
+      fuel: 1,
+      work: 900,
+      makes: { item: "sword" },
+      want: (c) => short(c.owned("sword"), Math.ceil(c.pop / 2)) ? 2.5 : 0
+    },
+    {
+      id: "ironspear",
+      at: "forge",
+      cost: { iron: 2, wood: 2 },
+      fuel: 1,
+      work: 700,
+      makes: { item: "ironspear" },
+      want: (c) => short(c.owned("sword") + c.owned("ironspear"), c.pop) ? 2.3 : 0
+    },
+    {
+      id: "ironaxe",
+      at: "forge",
+      cost: { iron: 2, wood: 1 },
+      fuel: 1,
+      work: 700,
+      makes: { item: "ironaxe" },
+      want: (c) => short(c.owned("ironaxe"), Math.min(Math.ceil(c.pop / 2), 1 + c.likes("chop"))) ? 2 : 0
+    },
+    {
+      id: "lamellar",
+      at: "forge",
+      cost: { iron: 4, leather: 2 },
+      fuel: 2,
+      work: 1600,
+      makes: { item: "lamellar" },
+      want: (c) => short(c.owned("lamellar"), Math.ceil(c.pop / 2)) ? 2.1 : 0
+    },
+    // ── the jeweller: a gem set into bone, wood, stone or iron; the scarcer kind of piece goes first
+    {
+      id: "jewelBone",
+      at: "jeweler",
+      cost: { gems: 1, bone: 2 },
+      work: 500,
+      makes: { resource: "jewelBone", n: 1 },
+      want: (c) => Math.max(0, 1.4 - c.stock("jewelBone") * 0.12)
+    },
+    {
+      id: "jewelWood",
+      at: "jeweler",
+      cost: { gems: 1, wood: 3 },
+      work: 450,
+      makes: { resource: "jewelWood", n: 1 },
+      want: (c) => Math.max(0, 1.3 - c.stock("jewelWood") * 0.12)
+    },
+    {
+      id: "jewelStone",
+      at: "jeweler",
+      cost: { gems: 1, stone: 3 },
+      work: 550,
+      makes: { resource: "jewelStone", n: 1 },
+      want: (c) => Math.max(0, 1.35 - c.stock("jewelStone") * 0.12)
+    },
+    {
+      id: "jewelIron",
+      at: "jeweler",
+      cost: { gems: 1, iron: 1 },
+      work: 600,
+      makes: { resource: "jewelIron", n: 1 },
+      want: (c) => Math.max(0, 1.5 - c.stock("jewelIron") * 0.15)
+    },
     // processing: raw hides become leather at the tannery
     {
       id: "tan",
@@ -3447,6 +4025,7 @@ button.quiet{background:transparent;color:var(--muted)}
   }
   function canStart(w, r) {
     if (r.needs && !r.needs.every((b) => has(w, b))) return false;
+    if (r.fuel && smeltFuelTotal(w) < r.fuel) return false;
     return Object.entries(r.cost).every(([res, v]) => {
       const have = w.stock[res] || 0;
       return have >= v && (have - v >= reserved(w, res) || have < reserved(w, res) * 0.5);
@@ -3467,6 +4046,8 @@ button.quiet{background:transparent;color:var(--muted)}
       timid: col.filter((a) => a.mods.bravery < 0.8).length,
       stock: (res) => w.stock[res] || 0,
       bows: owned("bow"),
+      has: (b) => has(w, b),
+      fuel: smeltFuelTotal(w),
       melee: () => ITEMS.filter((d) => d.slot === "hand" && d.melee && !d.ranged).reduce((s, d) => s + owned(d.id), 0)
     };
   }
@@ -3518,6 +4099,7 @@ button.quiet{background:transparent;color:var(--muted)}
       const r2 = pickRecipe(w, b.key);
       if (!r2) return false;
       for (const [res, v] of Object.entries(r2.cost)) w.stock[res] -= v;
+      if (r2.fuel) takeSmeltFuel(w, r2.fuel);
       b.order = { recipe: r2.id, progress: 0 };
     }
     const r = RECIPES.get(b.order.recipe);
@@ -3536,13 +4118,21 @@ button.quiet{background:transparent;color:var(--muted)}
       w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
     } else {
       w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
+      const res = RESOURCES.get(r.makes.resource);
+      if (res.tags.includes("luxury")) {
+        log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${res.short}.`, "craft");
+        if (a) {
+          think(w, a, "madeItem", { item: res.short });
+          a.stats.crafted++;
+        }
+      }
     }
     return true;
   }
   function orderText(b) {
     if (!b.order) return "\u0436\u0434\u0451\u0442 \u0437\u0430\u043A\u0430\u0437\u0430";
     const r = RECIPES.get(b.order.recipe);
-    const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${r.id === "tan" ? "\u043A\u043E\u0436\u0430" : r.makes.resource} \xD7${r.makes.n}`;
+    const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${RESOURCES.get(r.makes.resource).short} \xD7${r.makes.n}`;
     return `${what}: ${Math.floor(b.order.progress / r.work * 100)}%`;
   }
 
@@ -3593,10 +4183,10 @@ button.quiet{background:transparent;color:var(--muted)}
         task.work = (task.work || 0) + workRate(w, a, job.id);
         if (task.work < job.time) return;
         task.work = 0;
-        job.take(w, i);
-        load(a, job.resource, 1);
-        add(a.stats.gathered, job.resource);
-        add(w.chronicle.gathered, job.resource);
+        const got = job.take(w, i) || job.resource;
+        load(a, got, 1);
+        add(a.stats.gathered, got);
+        add(w.chronicle.gathered, got);
         toolWear(w, a, job.id);
       } else if (r === "none") {
         if (a.carry?.n) a.carry.n = cap;
@@ -3746,6 +4336,15 @@ button.quiet{background:transparent;color:var(--muted)}
     const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rng() * 0.25 : 0);
     return [score, best[0] > 0.05 ? best[1] : def2.wish];
   }
+  function oreSeen(w) {
+    const c = w.cache.oreSeen || (w.cache.oreSeen = { tick: -1e9, v: false });
+    if (w.tick - c.tick >= 50) {
+      c.tick = w.tick;
+      const o = exposedOre(w);
+      c.v = o[1] + o[2] + o[3] > 0;
+    }
+    return c.v;
+  }
   function councilCtx(w, cands) {
     return {
       crowded: colonists(w).length >= popCap(w) - 1,
@@ -3759,6 +4358,8 @@ button.quiet{background:transparent;color:var(--muted)}
       broken: w.stats.broken,
       fishLakes: w.lakes.filter((l) => l.cap && l.fish > l.cap * 0.3).length,
       items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
+      stock: (r) => w.stock[r] || 0,
+      oreSeen: oreSeen(w),
       wantStone: !has(w, "quarry") && cands.some((k) => BUILDINGS.get(k).needs === "quarry" || (BUILDINGS.get(k).cost.stone || 0) > 0)
     };
   }
@@ -3869,10 +4470,13 @@ button.quiet{background:transparent;color:var(--muted)}
   TASKS.registerAll([
     { id: "eat", label: () => "\u0435\u0441\u0442", step(w, a) {
       if (follow(w, a, "camp") !== "arrived") return;
-      const { fed, res } = eatMeal(w);
+      const { fed, res, mood } = eatMeal(w, a);
       if (fed) {
-        if (res.id === "meat") think(w, a, "ateMeat");
-        else if (a.needs.food < 0.35) think(w, a, "ateHungry", { food: res.label });
+        const f = FOODS.get(res.id);
+        if (mood === "liked") think(w, a, "ateLiked", { food: f.label });
+        else if (mood === "disliked") think(w, a, "ateDisliked", { food: f.label });
+        else if (f.eat) think(w, a, f.eat);
+        else if (a.needs.food < 0.35) think(w, a, "ateHungry", { food: f.label });
         a.needs.food = Math.min(1, a.needs.food + fed);
         done2(a);
       } else a.task = { id: "job", job: "gather", eatNow: true };
@@ -4492,6 +5096,24 @@ button.quiet{background:transparent;color:var(--muted)}
       line(ctx, x, y + r * 0.8, x + r * 0.2, y - r * 0.8, "#8a6a3c", 1.2);
       dot(ctx, x + r * 0.45, y - r * 0.7, Math.max(1.2, r * 0.3), "#ece6d2");
     },
+    ironspear(ctx, x, y, r) {
+      line(ctx, x, y + r, x + r * 0.2, y - r * 1.4, "#a5794a", 1.2);
+      line(ctx, x + r * 0.18, y - r * 1.25, x + r * 0.26, y - r * 1.85, "#cfd6dc", Math.max(1.2, r * 0.3));
+    },
+    ironaxe(ctx, x, y, r) {
+      line(ctx, x, y + r * 0.8, x + r * 0.2, y - r * 0.8, "#8a6a3c", 1.2);
+      ctx.fillStyle = "#cfd6dc";
+      ctx.beginPath();
+      ctx.moveTo(x + r * 0.2, y - r * 0.95);
+      ctx.lineTo(x + r * 0.85, y - r * 1.1);
+      ctx.lineTo(x + r * 0.85, y - r * 0.3);
+      ctx.lineTo(x + r * 0.2, y - r * 0.5);
+      ctx.fill();
+    },
+    sword(ctx, x, y, r) {
+      line(ctx, x, y + r * 0.9, x + r * 0.25, y - r * 1.6, "#d8dee3", Math.max(1.3, r * 0.3));
+      line(ctx, x - r * 0.3, y + r * 0.35, x + r * 0.45, y + r * 0.25, "#6b4f2c", 1.3);
+    },
     shield(ctx, x, y, r) {
       ctx.fillStyle = "#7a5530";
       ctx.strokeStyle = "#2b1d0e";
@@ -4630,6 +5252,7 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     return TSTOPS[TSTOPS.length - 1].slice(1);
   }
+  var ORE_TINT = { 1: [176, 92, 56], 2: [44, 44, 52], 3: [110, 214, 198] };
   function layer(w) {
     const c = document.createElement("canvas");
     c.width = w.w;
@@ -4656,6 +5279,13 @@ button.quiet{background:transparent;color:var(--muted)}
       const d = this.terrain.img.data, g2 = w.grid;
       for (let i = 0; i < w.n; i++) {
         let [r, gg, b] = BY_CODE[g2.terr[i]].color(g2.hgt[i], g2.fert[i], g2.wood[i]);
+        const ore = g2.ore?.[i];
+        if (ore) {
+          const c = ORE_TINT[ore], k = 0.55;
+          r = r * (1 - k) + c[0] * k;
+          gg = gg * (1 - k) + c[1] * k;
+          b = b * (1 - k) + c[2] * k;
+        }
         if (g2.bush[i] && g2.food[i] > 0.2) {
           const k = g2.food[i] * 0.55;
           r = r * (1 - k) + 196 * k;
@@ -4785,6 +5415,7 @@ button.quiet{background:transparent;color:var(--muted)}
       if (view2.layer === "nav") this.drawArrows(w);
       this.drawZone(w);
       this.drawBuildings(w);
+      this.drawPick(w, view2);
       this.drawAgents(w, view2.selected);
       this.drawShots(w);
       this.ms = this.ms * 0.9 + (performance.now() - t0) * 0.1;
@@ -4921,6 +5552,24 @@ button.quiet{background:transparent;color:var(--muted)}
           ctx.fillRect(x, y + s + 1, s * Math.min(1, b.progress / d.work), 3);
         }
       }
+    }
+    // outline of the selected building or cell
+    drawPick(w, view2) {
+      const ctx = this.ctx, S = this.S;
+      let x, y, s;
+      const b = view2.selBld != null ? w.buildings.find((q) => q.id === view2.selBld) : null;
+      if (b) {
+        x = b.x * S;
+        y = b.y * S;
+        s = 2 * S;
+      } else if (view2.selCell != null && view2.selCell >= 0) {
+        x = view2.selCell % w.w * S;
+        y = (view2.selCell / w.w | 0) * S;
+        s = S;
+      } else return;
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 2, y - 2, s + 4, s + 4);
     }
     drawAgents(w, selected) {
       const ctx = this.ctx, S = this.S;
@@ -5163,27 +5812,83 @@ button.quiet{background:transparent;color:var(--muted)}
     }
     render(w, view2) {
       $("clock").textContent = clockStr(w.tick);
-      $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? ", \u0434\u043E\u0436\u0434\u044C" : "");
-      $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
-      $("fires").textContent = w.stats.fireCount;
+      $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? ", \u0434\u043E\u0436\u0434\u044C" : "") + (w.stats.fireCount ? ` \xB7 \u0433\u043E\u0440\u0438\u0442 \u043A\u043B\u0435\u0442\u043E\u043A: ${w.stats.fireCount}` : "");
+      $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `\u0432\u0435\u0442\u0435\u0440 ${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
+      const col = colonists(w);
+      $("popCount").textContent = col.length;
+      const now = performance.now();
+      const tps = view2.speed && this.lastT ? (w.tick - this.lastTick) / ((now - this.lastT) / 1e3) : 0;
+      this.lastTick = w.tick;
+      this.lastT = now;
+      switch (view2.tab) {
+        case "people":
+          this.renderPeople(w, view2.selected);
+          break;
+        case "build":
+          this.renderBuildings(w);
+          break;
+        case "council":
+          this.renderCouncil(w);
+          break;
+        case "log":
+          this.renderLog(w);
+          break;
+        case "world":
+          this.renderWorld(w, view2, tps);
+          break;
+        default:
+          this.renderStock(w);
+          this.renderJobs(w);
+          this.renderGear(w);
+      }
+    }
+    // the stock, grouped: food, materials, fuel, ore, metal, luxury, ammunition
+    renderStock(w) {
+      const groups = RESOURCE_GROUPS.map((gname) => {
+        const rs = RESOURCES.filter((r) => r.group === gname);
+        if (!rs.length) return "";
+        const rows = rs.map((r) => {
+          const v = w.stock[r.id] || 0;
+          return `<div class="srow2${v < 0.05 ? " zero" : ""}" title="${esc(r.label)}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`;
+        }).join("");
+        const extra = gname === "\u0415\u0434\u0430" ? `<div class="srow2"><span>\u0432\u0441\u0435\u0433\u043E</span><b>${Math.floor(foodTotal(w))}</b></div>` : gname === "\u0422\u043E\u043F\u043B\u0438\u0432\u043E" ? `<div class="srow2"><span>\u043A\u043E\u0441\u0442\u0451\u0440</span><b>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : campFuel(w) ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0447\u0435\u043C \u0442\u043E\u043F\u0438\u0442\u044C"}</b></div>` : "";
+        return `<div class="sgroup"><h3>${gname}</h3>${rows}${extra}</div>`;
+      }).join("");
+      this.set("stock", groups);
+    }
+    // every job: how many are at it right now, how many like it; locked ones say what they wait for
+    renderJobs(w) {
+      const col = colonists(w), doing = {}, likes = {};
+      for (const a of col) {
+        const t = a.task?.id === "job" ? a.task.job : null;
+        if (t) doing[t] = (doing[t] || 0) + 1;
+        likes[a.likes] = (likes[a.likes] || 0) + 1;
+      }
+      const rows = JOBS.all().map((j) => {
+        if (!jobUnlocked(w, j)) {
+          const need = [].concat(j.requires).map((b) => BUILDINGS.get(b).name.toLowerCase()).join(" \u0438\u043B\u0438 ");
+          return `<span class="lock">${esc(j.label)}</span><span class="lock jn" style="grid-column:2/4">\u043D\u0443\u0436\u043D\u0430 \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0430: ${need}</span>`;
+        }
+        return `<span>${esc(j.label)}</span><span class="jn" title="\u0437\u0430\u043D\u044F\u0442\u044B \u0441\u0435\u0439\u0447\u0430\u0441">${doing[j.id] || "\xB7"}</span><span class="jn" title="\u043B\u044E\u0431\u044F\u0442 \u044D\u0442\u0443 \u0440\u0430\u0431\u043E\u0442\u0443">${likes[j.id] ? "\u2665" + likes[j.id] : ""}</span>`;
+      }).join("");
+      this.set("jobs", `<span class="jh">\u0440\u0430\u0431\u043E\u0442\u0430</span><span class="jh jn">\u0441\u0435\u0439\u0447\u0430\u0441</span><span class="jh jn">\u043B\u044E\u0431\u044F\u0442</span>${rows}`);
+    }
+    renderWorld(w, view2, tps) {
+      const c = w.cfg, sz = SIZES[c.size];
+      $("worldLine").textContent = `\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${CLIMATES[c.climate].label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}, \u0432\u043E\u043B\u043A\u0438: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`;
       const col = colonists(w), raiders = w.agents.filter((a) => a.faction === "raiders").length, hares = ofSpecies(w, "hare").length;
-      this.set("stock", RESOURCES.all().map((r) => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join("") + `<dt>\u041A\u043E\u0441\u0442\u0451\u0440</dt><dd>${w.campLit ? "\u0433\u043E\u0440\u0438\u0442" : w.stock.wood > 0.05 ? "\u043D\u0435 \u043D\u0443\u0436\u0435\u043D" : "\u043D\u0435\u0442 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u044B"}</dd><dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt title="\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u0432\u0438\u0434\u044F\u0442 \u043B\u0430\u0433\u0435\u0440\u044C: \u043E\u043D\u0438 \u0437\u043D\u0430\u044E\u0442 \u043E \u043D\u0451\u043C \u043F\u043E \u0441\u043B\u0443\u0445\u0430\u043C, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u0440\u0430\u0437 \u0432 \u0434\u0435\u043D\u044C">\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` \xB7 ${this.waitText(w, w.outside.next.raiders)}` : ""}</dd><dt>\u0421\u043E\u0441\u0435\u0434\u0438</dt><dd class="nb">${neighbours(w).filter((n) => n.dist).map((n) => `<span title="${esc(n.note)}">${esc(n.label)} \xB7 ${n.dist} \u0434\u043D. \u043F\u0443\u0442\u0438</span>`).join("<br>") || "\u2014"}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>` + (fishTotals(w)[1] ? `<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>${Math.floor(fishTotals(w)[0])} \u0438\u0437 ${fishTotals(w)[1]}</dd>` : "<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>\u043D\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0438\u0445 \u043E\u0437\u0451\u0440</dd>") + `<dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd>`);
-      this.renderCouncil(w);
-      this.renderGear(w);
-      this.renderBuildings(w);
-      this.renderPeople(w, view2.selected);
+      const ore = exposedOre(w);
+      this.set(
+        "worldKv",
+        `<dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt title="\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u0432\u0438\u0434\u044F\u0442 \u043B\u0430\u0433\u0435\u0440\u044C: \u043E\u043D\u0438 \u0437\u043D\u0430\u044E\u0442 \u043E \u043D\u0451\u043C \u043F\u043E \u0441\u043B\u0443\u0445\u0430\u043C, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u0440\u0430\u0437 \u0432 \u0434\u0435\u043D\u044C">\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` \xB7 ${this.waitText(w, w.outside.next.raiders)}` : ""}</dd><dt>\u0421\u043E\u0441\u0435\u0434\u0438</dt><dd class="nb">${neighbours(w).filter((n) => n.dist).map((n) => `<span title="${esc(n.note)}">${esc(n.label)} \xB7 ${n.dist} \u0434\u043D. \u043F\u0443\u0442\u0438</span>`).join("<br>") || "\u2014"}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>` + (fishTotals(w)[1] ? `<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>${Math.floor(fishTotals(w)[0])} \u0438\u0437 ${fishTotals(w)[1]}</dd>` : "<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>\u043D\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0438\u0445 \u043E\u0437\u0451\u0440</dd>") + `<dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd><dt title="\u0421\u043A\u043E\u043B\u044C\u043A\u043E \u0440\u0443\u0434\u044B \u043C\u043E\u0436\u043D\u043E \u0432\u044B\u043A\u043E\u043F\u0430\u0442\u044C \u0441 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043A\u043B\u043E\u043D\u0430 \u0441\u043A\u0430\u043B">\u0420\u0443\u0434\u0430 \u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u0430\u0445</dt><dd>\u0436\u0435\u043B\u0435\u0437\u043E ${Math.round(ore[1])} \xB7 \u0443\u0433\u043E\u043B\u044C ${Math.round(ore[2])} \xB7 \u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B ${Math.round(ore[3])}</dd>`
+      );
       $("pFlabel").textContent = `\u041F\u043E\u043B\u044F (${w.n.toLocaleString("ru-RU")} \u043A\u043B\u0435\u0442\u043E\u043A)`;
       $("pF").textContent = w.perf.fields.toFixed(2);
       $("pN").textContent = w.perf.nav.toFixed(2);
       $("pA").textContent = w.perf.agents.toFixed(2);
       $("pR").textContent = view2.renderMs.toFixed(2);
-      const now = performance.now();
-      const tps = view2.speed && this.lastT ? (w.tick - this.lastTick) / ((now - this.lastT) / 1e3) : 0;
       $("pT").textContent = tps.toFixed(0);
       $("pS").textContent = view2.speed ? `\xD7${(tps * TICK_MS / 1e3).toFixed(1)} / \xD7${view2.speed}` : "\u043F\u0430\u0443\u0437\u0430";
-      this.lastTick = w.tick;
-      this.lastT = now;
-      this.renderLog(w);
     }
     // the arrival is either still on its way (time left) or due and waiting for a reason
     settlerText(w) {
@@ -5251,22 +5956,55 @@ button.quiet{background:transparent;color:var(--muted)}
       if (hoverCell < 0) return;
       const g2 = w.grid, i = hoverCell, d = w.nav.get("camp")[i];
       const lake = g2.lake[i] >= 0 ? w.lakes[g2.lake[i]] : null;
+      const ore = g2.ore?.[i] ? ` \xB7 ${ORE_LABEL[g2.ore[i]]} ${Math.ceil(g2.oreLeft[i])}` : "";
       if (lake) {
         $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) \u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A \xB7 ${lake.cap ? `\u0440\u044B\u0431\u044B ${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E, \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"} \xB7 ${g2.temp[i].toFixed(1)} \xB0C`;
         return;
       }
-      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g2.terr[i]].label} \xB7 ${g2.temp[i].toFixed(1)} \xB0C \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g2.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g2.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g2.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g2.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g2.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
+      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g2.terr[i]].label}${ore} \xB7 ${g2.temp[i].toFixed(1)} \xB0C \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g2.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g2.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g2.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g2.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g2.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
     }
-    // the card of the selected creature: for colonists a whole person, for the rest a short note
-    renderCard(w, a) {
-      const box = $("personCard");
-      if (!a || a.dead || !w.agents.includes(a)) {
-        box.hidden = true;
-        this.sig.personCard = null;
-        return;
+    // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
+    renderSelection(w, view2) {
+      const a = view2.selected;
+      let html;
+      if (a && !a.dead && w.agents.includes(a)) html = a.prefs ? this.personHtml(w, a) : this.creatureHtml(w, a);
+      else if (view2.selBld != null && buildingById(w, view2.selBld)) html = this.buildingHtml(w, buildingById(w, view2.selBld));
+      else if (view2.selCell != null && view2.selCell >= 0) html = this.cellHtml(w, view2.selCell);
+      else html = '<p class="selhint">\u041D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0432\u044B\u0431\u0440\u0430\u043D\u043E. \u0412 \u0440\u0435\u0436\u0438\u043C\u0435 \xAB\u041E\u0441\u043C\u043E\u0442\u0440\xBB \u0449\u0451\u043B\u043A\u043D\u0438\u0442\u0435 \u043F\u043E \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0443, \u0437\u0432\u0435\u0440\u044E, \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0435 \u0438\u043B\u0438 \u043B\u044E\u0431\u043E\u0439 \u043A\u043B\u0435\u0442\u043A\u0435 \u043A\u0430\u0440\u0442\u044B.</p>';
+      this.set("selCard", html);
+    }
+    buildingHtml(w, b) {
+      const d = BUILDINGS.get(b.key), close = '<button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button>';
+      const state = b.done ? "\u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E" : `\u0441\u0442\u0440\u043E\u0438\u0442\u0441\u044F ${Math.floor(b.progress / d.work * 100)}%`;
+      const rows = [`<dt>\u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435</dt><dd>${state}</dd>`, `<dt>\u0426\u0435\u043D\u0430</dt><dd class="nb">${Object.entries(d.cost).map(([r, v]) => `${v} ${RESOURCES.get(r).label}`).join(", ")}</dd>`];
+      let extra = "";
+      if (d.station && b.done) {
+        const workers = colonists(w).filter((x) => x.task?.id === "job" && x.task.station === d.id && w.grid.bld[cellOf(w, x)] === b.id).map((x) => esc(x.name));
+        rows.push(`<dt>\u0417\u0430\u043A\u0430\u0437</dt><dd>${orderText(b)}</dd>`, `<dt>\u0420\u0430\u0431\u043E\u0442\u0430\u044E\u0442</dt><dd>${workers.join(", ") || "\u043D\u0438\u043A\u043E\u0433\u043E"}</dd>`);
+        const ctx = craftContext(w), cur = b.order?.recipe;
+        const recs = RECIPES.filter((r) => r.at === d.id).map((r) => {
+          const what = r.makes.item ? ITEMS.get(r.makes.item).label : `${RESOURCES.get(r.makes.resource).label} \xD7${r.makes.n}`;
+          const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? "" : " short"}">${v} ${RESOURCES.get(res).short}</span>`).join("") + (r.fuel ? `<span class="cost${smeltFuelTotal(w) >= r.fuel ? "" : " short"}">${r.fuel} \u0442\u043E\u043F\u043B\u0438\u0432\u0430</span>` : "");
+          const want2 = r.want(ctx);
+          return `<div class="rc${r.id === cur ? " cur" : ""}"><b>${esc(what)}</b><span class="costs">${cost}</span><span class="muted">${r.id === cur ? "\u0432 \u0440\u0430\u0431\u043E\u0442\u0435" : want2 > 0 ? "\u043D\u0443\u0436\u043D\u043E" : "\u0445\u0432\u0430\u0442\u0430\u0435\u0442"}</span></div>`;
+        }).join("");
+        extra = `<section><h4>\u0427\u0442\u043E \u0437\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442</h4><div class="recipes">${recs}</div></section>`;
       }
-      box.hidden = false;
-      this.set("personCard", a.prefs ? this.personHtml(w, a) : this.creatureHtml(w, a));
+      return `<div class="pc-head"><h3>${d.name}</h3>${close}</div><p class="pc-now">${d.effect}</p>
+      <div class="pc-grid bgrid"><section><dl class="kv">${rows.join("")}</dl></section>${extra}</div>`;
+    }
+    cellHtml(w, i) {
+      const g2 = w.grid, x = i % w.w, y = i / w.w | 0, d = w.nav.get("camp")[i];
+      const close = '<button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button>';
+      const lake = g2.lake?.[i] >= 0 ? w.lakes[g2.lake[i]] : null;
+      const rows = [`<dt>\u041C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C</dt><dd>${lake ? `\u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A` : BY_CODE[g2.terr[i]].label}</dd>`];
+      if (g2.ore?.[i]) rows.push(`<dt>\u0420\u0443\u0434\u0430</dt><dd>${ORE_LABEL[g2.ore[i]]}, \u0435\u0449\u0451 ${Math.ceil(g2.oreLeft[i])}</dd>`);
+      if (lake) rows.push(`<dt>\u0420\u044B\u0431\u0430</dt><dd>${lake.cap ? `${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"}</dd>`);
+      if (g2.wood[i] > 0) rows.push(`<dt>\u0414\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430</dt><dd>${g2.wood[i].toFixed(2)}</dd>`);
+      if (g2.bush[i]) rows.push(`<dt>\u042F\u0433\u043E\u0434\u044B</dt><dd>${g2.food[i].toFixed(2)}</dd>`);
+      rows.push(`<dt>\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430</dt><dd>${g2.temp[i].toFixed(1)} \xB0C</dd>`, `<dt>\u041F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F</dt><dd>${d >= 1e8 ? "\u043D\u0435\u0442" : Math.round(d)}</dd>`);
+      if (g2.fire[i] > 0) rows.push(`<dt>\u041E\u0433\u043E\u043D\u044C</dt><dd>${g2.fire[i].toFixed(2)}</dd>`);
+      return `<div class="pc-head"><h3>\u041A\u043B\u0435\u0442\u043A\u0430 ${x}, ${y}</h3>${close}</div><dl class="kv">${rows.join("")}</dl>`;
     }
     where(w, a) {
       const i = cellOf(w, a), dc = w.nav.get("camp")[i];
@@ -5320,6 +6058,7 @@ button.quiet{background:transparent;color:var(--muted)}
       <div class="pc-grid">
         <section><h4>\u0425\u0430\u0440\u0430\u043A\u0442\u0435\u0440</h4>
           <p class="pc-small">\u041B\u044E\u0431\u0438\u0442 ${JOBS.get(a.likes).label}, \u043D\u0435 \u043B\u044E\u0431\u0438\u0442 ${JOBS.get(a.dislikes).label}.</p>
+          ${a.food ? `<p class="pc-small">\u041B\u044E\u0431\u0438\u043C\u0430\u044F \u0435\u0434\u0430: ${FOODS.get(a.food.likes).label}${a.food.dislikes ? `, \u043D\u0435 \u043B\u044E\u0431\u0438\u0442: ${FOODS.get(a.food.dislikes).label}` : ""}.</p>` : ""}
           <div class="chips">${traits || '<span class="muted pc-small">\u043D\u0438\u0447\u0435\u043C \u043E\u0441\u043E\u0431\u044B\u043C \u043D\u0435 \u0432\u044B\u0434\u0435\u043B\u044F\u0435\u0442\u0441\u044F</span>'}</div>
           <h4>\u041D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
           <h4>\u0421\u0430\u043C\u043E\u0447\u0443\u0432\u0441\u0442\u0432\u0438\u0435</h4>${needs}
@@ -5376,6 +6115,7 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/ui/tools.js
   var TOOLS = {
     inspect: {
+      // a creature near the click first, then a building under it, otherwise the cell itself
       apply(w, cx, cy, view2) {
         let best = null, bd = 4;
         for (const a of w.agents) {
@@ -5385,7 +6125,10 @@ button.quiet{background:transparent;color:var(--muted)}
             best = a;
           }
         }
+        const i = cy * w.w + cx, b = w.grid.bld[i];
         view2.selected = best;
+        view2.selBld = !best && b >= 0 ? b : null;
+        view2.selCell = !best && b < 0 ? i : null;
       }
     },
     ignite: { apply: (w, cx, cy) => COMMANDS.ignite(w, cx, cy) },
@@ -5653,8 +6396,8 @@ button.quiet{background:transparent;color:var(--muted)}
   }
 
   // src/version.js
-  var VERSION = "0.15 \xB7 13.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 920579e" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.16 \xB7 13.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 00ef973" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -5677,15 +6420,20 @@ button.quiet{background:transparent;color:var(--muted)}
     return { format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, tree };
   }
   function loadWorld(save2) {
+    var _a, _b;
     if (!save2 || save2.format !== SAVE_FORMAT) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
+    ensureOre(w);
+    for (const r of RESOURCES.all()) (_a = w.stock)[_b = r.id] ?? (_a[_b] = 0);
     w.rng = mulberry(0);
     w.rng.state = save2.rng;
     w.nav = new Navigation(w);
     for (const [id, d] of Object.entries(nav.dist)) if (w.nav.dist[id]) w.nav.dist[id].set(d);
     w.nav.dirtySet = new Set(nav.dirty);
+    for (const id of w.nav.order) if (!(id in nav.dist)) w.nav.dirtySet.add(id);
     Object.assign(w.nav.last, nav.last);
     for (const a of w.agents) if (a.mem) a.mem = newMemory(a.mem);
+    for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     return w;
   }
@@ -5787,7 +6535,35 @@ button.quiet{background:transparent;color:var(--muted)}
   // src/main.js
   var renderer = new Renderer($("map"));
   var panel = new Panel();
-  var view = { layer: "world", selected: null, speed: 1, tool: "inspect", hover: -1, renderMs: 0, resHidden: loadResHidden() };
+  var view = { layer: "world", selected: null, selBld: null, selCell: null, speed: 1, tool: "inspect", hover: -1, renderMs: 0, resHidden: loadResHidden(), tab: loadTab() };
+  var clearSelection = () => {
+    view.selected = null;
+    view.selBld = null;
+    view.selCell = null;
+  };
+  function loadTab() {
+    try {
+      return localStorage.getItem("forest.tab") || "stock";
+    } catch (e) {
+      return "stock";
+    }
+  }
+  function showTab(id) {
+    view.tab = id;
+    document.querySelectorAll("#tabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === id)));
+    document.querySelectorAll(".tabpanel").forEach((p) => {
+      p.hidden = p.dataset.panel !== id;
+    });
+    try {
+      localStorage.setItem("forest.tab", id);
+    } catch (e) {
+    }
+    if (world) panel.render(world, view);
+  }
+  $("tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tab]");
+    if (b) showTab(b.dataset.tab);
+  });
   function loadResHidden() {
     try {
       return new Set(JSON.parse(localStorage.getItem("forest.resHidden") || "[]"));
@@ -5818,14 +6594,14 @@ button.quiet{background:transparent;color:var(--muted)}
   function start(cfg) {
     world = newGame(cfg);
     renderer.setup(world);
-    view.selected = null;
+    clearSelection();
     autoDay = dayOf(world.tick);
     showGame();
   }
   function resume(w) {
     world = w;
     renderer.setup(world);
-    view.selected = null;
+    clearSelection();
     autoDay = dayOf(world.tick);
     showGame();
   }
@@ -5834,7 +6610,9 @@ button.quiet{background:transparent;color:var(--muted)}
     hideEnd();
     $("menu").hidden = false;
     $("game").hidden = true;
-    $("explain").hidden = true;
+    $("explain").hidden = false;
+    document.body.classList.remove("ingame");
+    $("worldInfo").hidden = false;
     $("backToGame").hidden = !world;
     refreshSaves();
     $("colonyName").textContent = "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434";
@@ -5842,12 +6620,15 @@ button.quiet{background:transparent;color:var(--muted)}
     menu.sync();
   }
   function showGame() {
-    const c = world.cfg, sz = SIZES[c.size];
+    const c = world.cfg;
     $("menu").hidden = true;
     $("game").hidden = false;
-    $("explain").hidden = false;
+    $("explain").hidden = true;
+    document.body.classList.add("ingame");
+    $("worldInfo").hidden = true;
+    $("map").style.setProperty("--ar", String(world.w / world.h));
     $("colonyName").textContent = c.name;
-    $("worldInfo").innerHTML = esc(`\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${CLIMATES[c.climate].label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}, \u0432\u043E\u043B\u043A\u0438: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`);
+    showTab(view.tab);
     $("windDir").value = world.wind.dir;
     $("windStr").value = Math.round(world.wind.str * 100);
     $("windArrow").style.transform = `rotate(${world.wind.dir}deg)`;
@@ -5855,6 +6636,7 @@ button.quiet{background:transparent;color:var(--muted)}
     last = performance.now();
     acc = 0;
     panel.render(world, view);
+    panel.renderSelection(world, view);
   }
   function eventCell(e) {
     const r = $("map").getBoundingClientRect();
@@ -5871,11 +6653,14 @@ button.quiet{background:transparent;color:var(--muted)}
   $("map").addEventListener("pointerdown", (e) => {
     if (!world) return;
     const [x, y] = eventCell(e);
-    if (x >= 0 && y >= 0 && x < world.w && y < world.h) TOOLS[view.tool].apply(world, x, y, view);
+    if (x >= 0 && y >= 0 && x < world.w && y < world.h) {
+      TOOLS[view.tool].apply(world, x, y, view);
+      panel.renderSelection(world, view);
+    }
   });
   segmented($("tools"), "tool", (v) => {
     view.tool = v;
-    if (v !== "inspect") view.selected = null;
+    if (v !== "inspect") clearSelection();
   });
   segmented($("layers"), "layer", (v) => {
     view.layer = v;
@@ -5887,8 +6672,10 @@ button.quiet{background:transparent;color:var(--muted)}
   $("people").addEventListener("click", (e) => {
     const p = e.target.closest(".person");
     if (!p) return;
-    const a = world.agents.find((x) => x.id === +p.dataset.id);
-    view.selected = view.selected === a ? null : a;
+    const a = world.agents.find((x) => x.id === +p.dataset.id), again = view.selected === a;
+    clearSelection();
+    view.selected = again ? null : a;
+    panel.renderSelection(world, view);
   });
   $("windDir").addEventListener("input", (e) => {
     COMMANDS.setWind(world, +e.target.value, null);
@@ -5957,10 +6744,10 @@ button.quiet{background:transparent;color:var(--muted)}
     }
   });
   $("openMenu").addEventListener("click", showMenu);
-  $("personCard").addEventListener("click", (e) => {
+  $("selCard").addEventListener("click", (e) => {
     if (e.target.closest("[data-close]")) {
-      view.selected = null;
-      panel.renderCard(world, null);
+      clearSelection();
+      panel.renderSelection(world, view);
     }
   });
   document.addEventListener("keydown", (e) => {
@@ -5986,12 +6773,14 @@ button.quiet{background:transparent;color:var(--muted)}
       }
       if (acc > 500) acc = 0;
       if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
+      if (view.selBld != null && !world.buildings.some((b) => b.id === view.selBld)) view.selBld = null;
       if (world.over) {
         running = false;
         renderer.draw(world, view);
         panel.render(world, view);
         $("game").hidden = true;
         $("explain").hidden = true;
+        document.body.classList.remove("ingame");
         showEnd(world, () => {
           world = null;
           showMenu();
@@ -6009,7 +6798,7 @@ button.quiet{background:transparent;color:var(--muted)}
       if (now - panelT > 300) {
         panelT = now;
         panel.render(world, view);
-        panel.renderCard(world, view.selected);
+        panel.renderSelection(world, view);
       }
     }
     requestAnimationFrame(frame);

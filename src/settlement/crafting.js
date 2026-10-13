@@ -9,6 +9,8 @@ import {log} from '../core/log.js';
 import {colonists, has} from './query.js';
 import {allItems, newItem} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
+import {RESOURCES} from '../data/resources.js';
+import {smeltFuelTotal, takeSmeltFuel} from './stock.js';
 
 // how much of a resource the council's goal still needs to keep in the stock
 function reserved(w, res) {
@@ -18,6 +20,7 @@ function reserved(w, res) {
 
 function canStart(w, r) {
   if (r.needs && !r.needs.every(b => has(w, b))) return false;
+  if (r.fuel && smeltFuelTotal(w) < r.fuel) return false;
   // enough in stock, and what is left still covers the council's savings goal
   return Object.entries(r.cost).every(([res, v]) => {
     const have = w.stock[res] || 0;
@@ -37,6 +40,8 @@ export function craftContext(w) {
     timid: col.filter(a => a.mods.bravery < 0.8).length,
     stock: res => w.stock[res] || 0,
     bows: owned('bow'),
+    has: b => has(w, b),
+    fuel: smeltFuelTotal(w),
     melee: () => ITEMS.filter(d => d.slot === 'hand' && d.melee && !d.ranged).reduce((s, d) => s + owned(d.id), 0),
   };
 }
@@ -86,6 +91,7 @@ export function workAt(w, b, amount, a) {
     const r = pickRecipe(w, b.key);
     if (!r) return false;
     for (const [res, v] of Object.entries(r.cost)) w.stock[res] -= v;
+    if (r.fuel) takeSmeltFuel(w, r.fuel);
     b.order = {recipe: r.id, progress: 0};
   }
   const r = RECIPES.get(b.order.recipe);
@@ -101,6 +107,11 @@ export function workAt(w, b, amount, a) {
     w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
   } else {
     w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
+    const res = RESOURCES.get(r.makes.resource);
+    if (res.tags.includes('luxury')) {
+      log(w, `Сделано: ${res.short}.`, 'craft');
+      if (a) { think(w, a, 'madeItem', {item: res.short}); a.stats.crafted++; }
+    }
   }
   return true;
 }
@@ -108,6 +119,6 @@ export function workAt(w, b, amount, a) {
 export function orderText(b) {
   if (!b.order) return 'ждёт заказа';
   const r = RECIPES.get(b.order.recipe);
-  const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${r.id === 'tan' ? 'кожа' : r.makes.resource} ×${r.makes.n}`;
+  const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${RESOURCES.get(r.makes.resource).short} ×${r.makes.n}`;
   return `${what}: ${Math.floor(b.order.progress / r.work * 100)}%`;
 }

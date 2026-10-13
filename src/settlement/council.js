@@ -9,6 +9,7 @@ import {colonists, count, has, popCap, openSites, ofSpecies} from './query.js';
 import {canAfford, eligible, laySite, missing} from './buildings.js';
 import {handItems, allItems, def} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
+import {exposedOre} from '../world/ores.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
 
@@ -33,6 +34,13 @@ function motive(w, a, def, ctx, noise = true) {
   return [score, best[0] > 0.05 ? best[1] : def.wish];
 }
 
+// is there ore on the rock face miners could reach? (checked at most once a game hour)
+function oreSeen(w) {
+  const c = w.cache.oreSeen || (w.cache.oreSeen = {tick: -1e9, v: false});
+  if (w.tick - c.tick >= 50) { c.tick = w.tick; const o = exposedOre(w); c.v = o[1] + o[2] + o[3] > 0; }
+  return c.v;
+}
+
 function councilCtx(w, cands) {
   return {
     crowded: colonists(w).length >= popCap(w) - 1, spoiled: w.stats.spoiledToday, burnt: w.stats.burntCells,
@@ -41,6 +49,8 @@ function councilCtx(w, cands) {
     hides: w.stock.hide || 0, broken: w.stats.broken,
     fishLakes: w.lakes.filter(l => l.cap && l.fish > l.cap * 0.3).length,
     items: w.armory.length + colonists(w).reduce((s, a) => s + allItems(a).length, 0),
+    stock: r => w.stock[r] || 0,
+    oreSeen: oreSeen(w),
     wantStone: !has(w, 'quarry') && cands.some(k => BUILDINGS.get(k).needs === 'quarry' || (BUILDINGS.get(k).cost.stone || 0) > 0),
   };
 }

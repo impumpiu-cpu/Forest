@@ -13,6 +13,8 @@ import {cellOf} from '../world/grid.js';
 import {BUILDINGS} from './buildings.js';
 import {inZone} from '../settlement/zone.js';
 import {lakeBeside} from '../world/lakes.js';
+import {oreBeside} from '../world/ores.js';
+import {wantedOre} from '../settlement/query.js';
 
 export const NAVMAPS = new Registry('navmap');
 
@@ -26,6 +28,10 @@ NAVMAPS.registerAll([
   {id: 'sites', minGap: 4, active: w => openSites(w).length > 0,
     prepare: w => new Set(openSites(w).flatMap(b => b.cells)),
     seed: (w, i, cells) => cells.has(i)},
+  // the rock face where the ore the colony is short of can be dug
+  {id: 'ore', period: 240, active: w => has(w, 'mineshaft'),
+    prepare: w => wantedOre(w),
+    seed: (w, i, codes) => codes.size > 0 && w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && oreBeside(w, i, codes) >= 0},
   // shore of lakes that still have fish
   {id: 'shore', active: w => has(w, 'fishhut'),
     seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)},

@@ -5,7 +5,7 @@ import {ambientTemp, nightness} from '../core/time.js';
 import {T} from '../data/terrain.js';
 import {isCampArea, distToCamp2} from './grid.js';
 import {burnBuilding} from '../settlement/buildings.js';
-import {burnStock, spoil} from '../settlement/stock.js';
+import {burnStock, spoil, campFuel, burnCampFuel} from '../settlement/stock.js';
 import {colonists} from '../settlement/query.js';
 
 // Fire model knobs. Wet ground (high fertility) is harder to ignite and puts fires out by itself.
@@ -37,12 +37,12 @@ function heatAndSmoke(w) {
   [g.temp, g.temp2] = [g.temp2, g.temp]; [g.smoke, g.smoke2] = [g.smoke2, g.smoke];
 }
 
-// the campfire is a heat source fed by the wood stock
+// the campfire is a heat source fed from the stock: wood, then charcoal, then coal
 function campfire(w) {
   const cold = colonists(w).some(a => a.needs.warmth < 0.6);
-  w.campLit = w.stock.wood > 0.05 && (nightness(w.tick) > 0.3 || cold);
+  w.campLit = !!campFuel(w) && (nightness(w.tick) > 0.3 || cold);
   if (!w.campLit) return;
-  w.stock.wood = Math.max(0, w.stock.wood - 0.004);
+  burnCampFuel(w, 0.004);
   for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
 }
 

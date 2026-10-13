@@ -93,6 +93,42 @@ BUILDINGS.registerAll([
     wish: 'хочет выделывать кожи',
     motive: (a, c) => [[c.hides * 0.08, 'шкуры пропадают зря'], [(a.prefs.tan - 1) * 1.4, 'любит выделывать кожи'], [a.mem.cold * 0.6, 'мёрзнет без кожаной одежды']]},
 
+  // ── the iron chain: ore from the mine, charcoal from logs, bars from the furnace, blades from the forge
+  {id: 'mineshaft', name: 'Рудник', gender: 'm', cost: {wood: 25, stone: 10}, work: 220, max: 1, wooden: true, color: '#7d6a58', mark: 'Рд', needs: 'quarry',
+    effect: 'Открывает добычу руды в скалах: железной руды, каменного угля и самоцветов. Копают ту руду, которой на складе меньше нужного.',
+    effects: {},
+    wish: 'говорит, что в скалах есть руда',
+    motive: (a, c) => [[c.oreSeen ? 0.3 : 0, 'в скалах видна руда'], [(a.prefs.dig - 1) * 1.5, 'любит копать руду'],
+      [c.unarmed > 0.3 && c.oreSeen ? 0.2 : 0, 'из железа вышло бы оружие получше']],
+    available: w => w.grid.ore?.some(x => x > 0)},
+
+  {id: 'charpit', name: 'Углежогная яма', gender: 'f', cost: {wood: 14, stone: 6}, work: 160, max: 1, wooden: false, color: '#4a4440', mark: 'У', station: true, benches: 1, needs: 'quarry',
+    effect: 'Брёвна томят без огня в древесный уголь. Уголь — топливо для плавильни и кузницы, а костёр на нём горит вдвое дольше.',
+    effects: {},
+    wish: 'хочет запасать топливо',
+    motive: (a, c) => [[c.count('smelter') ? 0.55 : 0, 'плавильне нужен уголь'], [c.count('mineshaft') && !c.count('smelter') ? 0.2 : 0, 'без угля руду не расплавить'],
+      [(a.prefs.charcoal - 1) * 1.4, 'любит жечь уголь'], [a.mem.cold * 0.3, 'хочет, чтобы костёр горел дольше']]},
+
+  {id: 'smelter', name: 'Плавильня', gender: 'f', cost: {stone: 22, wood: 10}, work: 240, max: 1, wooden: false, color: '#b0603a', mark: 'Пл', station: true, benches: 1, needs: 'mineshaft',
+    effect: 'Железную руду плавят на угле в слитки: 2 руды и 1 уголь дают слиток железа.',
+    effects: {},
+    wish: 'хочет своё железо',
+    motive: (a, c) => [[c.stock('ironore') * 0.07, 'руда лежит без дела'], [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна'],
+      [c.unarmed * 0.4, 'нужно оружие получше']]},
+
+  {id: 'forge', name: 'Кузница', gender: 'f', cost: {stone: 18, wood: 16, iron: 2}, work: 260, max: 1, wooden: false, color: '#8e8f96', mark: 'Кз', station: true, benches: 1, needs: 'smelter',
+    effect: 'Из железа куют мечи, копья с железными наконечниками, железные топоры и ламеллярные доспехи.',
+    effects: {},
+    wish: 'хочет железное оружие',
+    motive: (a, c) => [[c.stock('iron') * 0.12, 'железо лежит без дела'], [c.unarmed * 0.6 + (a.mem.wolf + a.mem.raid) * 0.6, 'деревом и костью не отбиться'],
+      [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна']]},
+
+  {id: 'jeweler', name: 'Ювелирная мастерская', gender: 'f', cost: {wood: 14, stone: 12}, work: 200, max: 1, wooden: true, color: '#58b3a8', mark: 'Ю', station: true, benches: 1, needs: 'mineshaft',
+    effect: 'Самоцветы оправляют в кость, дерево, камень и железо. Украшения копятся для торговли.',
+    effects: {},
+    wish: 'хочет делать красивые вещи',
+    motive: (a, c) => [[c.stock('gems') * 0.08, 'самоцветы лежат без дела'], [(a.prefs.jewel - 1) * 1.5, 'любит тонкую работу']]},
+
   {id: 'armory', name: 'Оружейный навес', gender: 'm', cost: {wood: 20, bone: 4}, work: 160, max: 1, wooden: true, color: '#a07850', mark: 'Он', needs: 'crafthut',
     effect: 'Снаряжение чинят и хранят под навесом: оно изнашивается вдвое медленнее.',
     effects: {mul: {wear: 0.5}},

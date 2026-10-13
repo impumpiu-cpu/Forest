@@ -1,5 +1,11 @@
-// Side panels: weather, stock, council, buildings, colonists, performance, journal.
-import {RESOURCES} from '../data/resources.js';
+// Panels around the map: the clock line above it, the selection pane under it and the tabs on its right
+// (stock and jobs, colonists, buildings, council, journal, world). Only the open tab is redrawn.
+import {RESOURCES, RESOURCE_GROUPS} from '../data/resources.js';
+import {FOODS} from '../data/foods.js';
+import {RECIPES} from '../data/recipes.js';
+import {SIZES, CLIMATES, WILDLIFE, PREDATORS} from '../data/presets.js';
+import {ORE_LABEL, exposedOre} from '../world/ores.js';
+import {campFuel, smeltFuelTotal} from '../settlement/stock.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
@@ -8,7 +14,7 @@ import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, hourOf, dayOf, ambientTemp} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
 import {TICK_MS} from '../core/time.js';
-import {colonists, count, has, ofSpecies, popCap} from '../settlement/query.js';
+import {colonists, count, has, ofSpecies, popCap, foodTotal, jobUnlocked, buildingById} from '../settlement/query.js';
 import {councilDue, COUNCIL_FROM} from '../settlement/council.js';
 import {taskLabel} from '../agents/tasks.js';
 import {cellOf} from '../world/grid.js';
@@ -17,7 +23,7 @@ import {$} from './dom.js';
 import {LEVELS, LOG_TOPICS} from '../data/logTopics.js';
 import {ITEMS, SLOTS} from '../data/items.js';
 import {gearText, allItems, def as itemDef} from '../agents/equipment.js';
-import {orderText} from '../settlement/crafting.js';
+import {orderText, craftContext} from '../settlement/crafting.js';
 import {fishTotals} from '../world/lakes.js';
 import {moodOf, moodLabel, wishes} from '../agents/mind.js';
 import {councilWish} from '../settlement/council.js';
@@ -76,32 +82,73 @@ export class Panel {
 
   render(w, view) {
     $('clock').textContent = clockStr(w.tick);
-    $('amb').textContent = ambientTemp(w).toFixed(1) + ' °C' + (w.weather.rain > 0.1 ? ', дождь' : '');
-    $('windTxt').textContent = w.wind.str < 0.03 ? 'штиль' : `${DIRS[Math.round(((w.wind.dir + 180) % 360) / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} м/с`;
-    $('fires').textContent = w.stats.fireCount;
+    $('amb').textContent = ambientTemp(w).toFixed(1) + ' °C' + (w.weather.rain > 0.1 ? ', дождь' : '') + (w.stats.fireCount ? ` · горит клеток: ${w.stats.fireCount}` : '');
+    $('windTxt').textContent = w.wind.str < 0.03 ? 'штиль' : `ветер ${DIRS[Math.round(((w.wind.dir + 180) % 360) / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} м/с`;
+    const col = colonists(w);
+    $('popCount').textContent = col.length;
+    const now = performance.now();
+    const tps = view.speed && this.lastT ? (w.tick - this.lastTick) / ((now - this.lastT) / 1000) : 0;
+    this.lastTick = w.tick; this.lastT = now;
+    // only the open tab is drawn
+    switch (view.tab) {
+      case 'people': this.renderPeople(w, view.selected); break;
+      case 'build': this.renderBuildings(w); break;
+      case 'council': this.renderCouncil(w); break;
+      case 'log': this.renderLog(w); break;
+      case 'world': this.renderWorld(w, view, tps); break;
+      default: this.renderStock(w); this.renderJobs(w); this.renderGear(w);
+    }
+  }
+
+  // the stock, grouped: food, materials, fuel, ore, metal, luxury, ammunition
+  renderStock(w) {
+    const groups = RESOURCE_GROUPS.map(gname => {
+      const rs = RESOURCES.filter(r => r.group === gname);
+      if (!rs.length) return '';
+      const rows = rs.map(r => { const v = w.stock[r.id] || 0; return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label)}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`; }).join('');
+      const extra = gname === 'Еда' ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>` : gname === 'Топливо' ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
+      return `<div class="sgroup"><h3>${gname}</h3>${rows}${extra}</div>`;
+    }).join('');
+    this.set('stock', groups);
+  }
+
+  // every job: how many are at it right now, how many like it; locked ones say what they wait for
+  renderJobs(w) {
+    const col = colonists(w), doing = {}, likes = {};
+    for (const a of col) {
+      const t = a.task?.id === 'job' ? a.task.job : null;
+      if (t) doing[t] = (doing[t] || 0) + 1;
+      likes[a.likes] = (likes[a.likes] || 0) + 1;
+    }
+    const rows = JOBS.all().map(j => {
+      if (!jobUnlocked(w, j)) {
+        const need = [].concat(j.requires).map(b => BUILDINGS.get(b).name.toLowerCase()).join(' или ');
+        return `<span class="lock">${esc(j.label)}</span><span class="lock jn" style="grid-column:2/4">нужна постройка: ${need}</span>`;
+      }
+      return `<span>${esc(j.label)}</span><span class="jn" title="заняты сейчас">${doing[j.id] || '·'}</span><span class="jn" title="любят эту работу">${likes[j.id] ? '♥' + likes[j.id] : ''}</span>`;
+    }).join('');
+    this.set('jobs', `<span class="jh">работа</span><span class="jh jn">сейчас</span><span class="jh jn">любят</span>${rows}`);
+  }
+
+  renderWorld(w, view, tps) {
+    const c = w.cfg, sz = SIZES[c.size];
+    $('worldLine').textContent = `Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${CLIMATES[c.climate].label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`;
     const col = colonists(w), raiders = w.agents.filter(a => a.faction === 'raiders').length, hares = ofSpecies(w, 'hare').length;
-    this.set('stock', RESOURCES.all().map(r => `<dt><i class="dot" style="background:${r.color}"></i>${r.label}</dt><dd>${(w.stock[r.id] || 0).toFixed(1)}</dd>`).join('') +
-      `<dt>Костёр</dt><dd>${w.campLit ? 'горит' : w.stock.wood > 0.05 ? 'не нужен' : 'нет древесины'}</dd>` +
+    const ore = exposedOre(w);
+    this.set('worldKv',
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
       `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
       `<dt title="Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` · ${this.waitText(w, w.outside.next.raiders)}` : ''}</dd>` +
       `<dt>Соседи</dt><dd class="nb">${neighbours(w).filter(n => n.dist).map(n => `<span title="${esc(n.note)}">${esc(n.label)} · ${n.dist} дн. пути</span>`).join('<br>') || '—'}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +
-      `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>`);
-    this.renderCouncil(w);
-    this.renderGear(w);
-    this.renderBuildings(w);
-    this.renderPeople(w, view.selected);
+      `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>` +
+      `<dt title="Сколько руды можно выкопать с открытого склона скал">Руда на склонах</dt><dd>железо ${Math.round(ore[1])} · уголь ${Math.round(ore[2])} · самоцветы ${Math.round(ore[3])}</dd>`);
     $('pFlabel').textContent = `Поля (${w.n.toLocaleString('ru-RU')} клеток)`;
     $('pF').textContent = w.perf.fields.toFixed(2); $('pN').textContent = w.perf.nav.toFixed(2);
     $('pA').textContent = w.perf.agents.toFixed(2); $('pR').textContent = view.renderMs.toFixed(2);
-    const now = performance.now();
-    const tps = view.speed && this.lastT ? (w.tick - this.lastTick) / ((now - this.lastT) / 1000) : 0;
     $('pT').textContent = tps.toFixed(0);
     $('pS').textContent = view.speed ? `×${(tps * TICK_MS / 1000).toFixed(1)} / ×${view.speed}` : 'пауза';
-    this.lastTick = w.tick; this.lastT = now;
-    this.renderLog(w);
   }
 
   // the arrival is either still on its way (time left) or due and waiting for a reason
@@ -175,16 +222,56 @@ export class Panel {
     if (hoverCell < 0) return;
     const g = w.grid, i = hoverCell, d = w.nav.get('camp')[i];
     const lake = g.lake[i] >= 0 ? w.lakes[g.lake[i]] : null;
+    const ore = g.ore?.[i] ? ` · ${ORE_LABEL[g.ore[i]]} ${Math.ceil(g.oreLeft[i])}` : '';
     if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${g.temp[i].toFixed(1)} °C`; return; }
-    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label} · ${g.temp[i].toFixed(1)} °C · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
+    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${ore} · ${g.temp[i].toFixed(1)} °C · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
   }
 
-  // the card of the selected creature: for colonists a whole person, for the rest a short note
-  renderCard(w, a) {
-    const box = $('personCard');
-    if (!a || a.dead || !w.agents.includes(a)) { box.hidden = true; this.sig.personCard = null; return; }
-    box.hidden = false;
-    this.set('personCard', a.prefs ? this.personHtml(w, a) : this.creatureHtml(w, a));
+  // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
+  renderSelection(w, view) {
+    const a = view.selected;
+    let html;
+    if (a && !a.dead && w.agents.includes(a)) html = a.prefs ? this.personHtml(w, a) : this.creatureHtml(w, a);
+    else if (view.selBld != null && buildingById(w, view.selBld)) html = this.buildingHtml(w, buildingById(w, view.selBld));
+    else if (view.selCell != null && view.selCell >= 0) html = this.cellHtml(w, view.selCell);
+    else html = '<p class="selhint">Ничего не выбрано. В режиме «Осмотр» щёлкните по поселенцу, зверю, постройке или любой клетке карты.</p>';
+    this.set('selCard', html);
+  }
+
+  buildingHtml(w, b) {
+    const d = BUILDINGS.get(b.key), close = '<button type="button" class="pc-close" data-close aria-label="Закрыть">×</button>';
+    const state = b.done ? 'построено' : `строится ${Math.floor(b.progress / d.work * 100)}%`;
+    const rows = [`<dt>Состояние</dt><dd>${state}</dd>`, `<dt>Цена</dt><dd class="nb">${Object.entries(d.cost).map(([r, v]) => `${v} ${RESOURCES.get(r).label}`).join(', ')}</dd>`];
+    let extra = '';
+    if (d.station && b.done) {
+      const workers = colonists(w).filter(x => x.task?.id === 'job' && x.task.station === d.id && w.grid.bld[cellOf(w, x)] === b.id).map(x => esc(x.name));
+      rows.push(`<dt>Заказ</dt><dd>${orderText(b)}</dd>`, `<dt>Работают</dt><dd>${workers.join(', ') || 'никого'}</dd>`);
+      const ctx = craftContext(w), cur = b.order?.recipe;
+      const recs = RECIPES.filter(r => r.at === d.id).map(r => {
+        const what = r.makes.item ? ITEMS.get(r.makes.item).label : `${RESOURCES.get(r.makes.resource).label} ×${r.makes.n}`;
+        const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? '' : ' short'}">${v} ${RESOURCES.get(res).short}</span>`).join('') +
+          (r.fuel ? `<span class="cost${smeltFuelTotal(w) >= r.fuel ? '' : ' short'}">${r.fuel} топлива</span>` : '');
+        const want = r.want(ctx);
+        return `<div class="rc${r.id === cur ? ' cur' : ''}"><b>${esc(what)}</b><span class="costs">${cost}</span><span class="muted">${r.id === cur ? 'в работе' : want > 0 ? 'нужно' : 'хватает'}</span></div>`;
+      }).join('');
+      extra = `<section><h4>Что здесь делают</h4><div class="recipes">${recs}</div></section>`;
+    }
+    return `<div class="pc-head"><h3>${d.name}</h3>${close}</div><p class="pc-now">${d.effect}</p>
+      <div class="pc-grid bgrid"><section><dl class="kv">${rows.join('')}</dl></section>${extra}</div>`;
+  }
+
+  cellHtml(w, i) {
+    const g = w.grid, x = i % w.w, y = (i / w.w) | 0, d = w.nav.get('camp')[i];
+    const close = '<button type="button" class="pc-close" data-close aria-label="Закрыть">×</button>';
+    const lake = g.lake?.[i] >= 0 ? w.lakes[g.lake[i]] : null;
+    const rows = [`<dt>Местность</dt><dd>${lake ? `озеро, ${lake.size} клеток` : BY_CODE[g.terr[i]].label}</dd>`];
+    if (g.ore?.[i]) rows.push(`<dt>Руда</dt><dd>${ORE_LABEL[g.ore[i]]}, ещё ${Math.ceil(g.oreLeft[i])}</dd>`);
+    if (lake) rows.push(`<dt>Рыба</dt><dd>${lake.cap ? `${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', отдыхает' : ''}` : 'слишком мало для рыбы'}</dd>`);
+    if (g.wood[i] > 0) rows.push(`<dt>Древесина</dt><dd>${g.wood[i].toFixed(2)}</dd>`);
+    if (g.bush[i]) rows.push(`<dt>Ягоды</dt><dd>${g.food[i].toFixed(2)}</dd>`);
+    rows.push(`<dt>Температура</dt><dd>${g.temp[i].toFixed(1)} °C</dd>`, `<dt>Путь до лагеря</dt><dd>${d >= 1e8 ? 'нет' : Math.round(d)}</dd>`);
+    if (g.fire[i] > 0) rows.push(`<dt>Огонь</dt><dd>${g.fire[i].toFixed(2)}</dd>`);
+    return `<div class="pc-head"><h3>Клетка ${x}, ${y}</h3>${close}</div><dl class="kv">${rows.join('')}</dl>`;
   }
 
   where(w, a) {
@@ -238,6 +325,7 @@ export class Panel {
       <div class="pc-grid">
         <section><h4>Характер</h4>
           <p class="pc-small">Любит ${JOBS.get(a.likes).label}, не любит ${JOBS.get(a.dislikes).label}.</p>
+          ${a.food ? `<p class="pc-small">Любимая еда: ${FOODS.get(a.food.likes).label}${a.food.dislikes ? `, не любит: ${FOODS.get(a.food.dislikes).label}` : ''}.</p>` : ''}
           <div class="chips">${traits || '<span class="muted pc-small">ничем особым не выделяется</span>'}</div>
           <h4>Настроение</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
           <h4>Самочувствие</h4>${needs}

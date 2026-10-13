@@ -2,7 +2,8 @@
 //   left / right hand — one-handed items take one hand, two-handed items take both;
 //   body — armour or clothing; back — any single item (a quiver and a basket work there,
 //   anything else is simply carried as a spare and swapped in when needed).
-// Harsh neolithic: everything is made of wood, bone, hide and leather.
+// Harsh neolithic at first: wood, bone, hide and leather. With a mine, a furnace and a forge come
+// iron blades (`iron: true`), better and longer-lived; the only iron armour is lamellar.
 //
 // Fields:
 //   slot: 'hand' | 'body' | 'back' (where it is worn; any item may also ride on the back)
@@ -42,7 +43,13 @@ ITEMS.registerAll([
     ranged: {dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: 'slingStones'}, dur: 60, glyph: 'sling'},
   // a rod with a wooden gorge hook and a line of twisted bast; works from the back as well
   {id: 'rod',    label: 'Удочка с деревянным крючком', short: 'удочка', slot: 'hand', hands: 2, tool: {fish: 1.6}, dur: 80, glyph: 'rod'},
+  // iron, from the forge
+  {id: 'ironspear', label: 'Копьё с железным наконечником', short: 'жел. копьё', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.95, cd: 12}, dur: 120, glyph: 'ironspear'},
+  {id: 'ironaxe',   label: 'Железный топор', short: 'жел. топор', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.7, cd: 12}, tool: {chop: 2.2, build: 1.15}, dur: 160, glyph: 'ironaxe'},
+  {id: 'sword',     label: 'Железный меч', short: 'меч', slot: 'hand', hands: 1, iron: true, melee: {dmg: 2.15, cd: 11}, block: 0.1, dur: 150, glyph: 'sword'},
   // body
+  // lamellar: small iron plates laced onto a leather coat; heavy, but stops most blows
+  {id: 'lamellar',    label: 'Ламеллярный доспех', short: 'ламеляр', slot: 'body', iron: true, armor: 0.5, warmth: 0.4, speed: 0.93, dur: 170, color: '#8f989f'},
   {id: 'clothes',     label: 'Одежда из лубяной ткани', short: 'ткань', slot: 'body', armor: 0.08, warmth: 0.35, dur: 50, color: '#c9b38a'},
   {id: 'jerkin',      label: 'Кожаная куртка', short: 'кожа', slot: 'body', armor: 0.2, warmth: 0.55, dur: 70, color: '#8a5a2b'},
   {id: 'hardleather', label: 'Кожа с костяными пластинами', short: 'укреплённая кожа', slot: 'body', armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, color: '#e0d6c0'},

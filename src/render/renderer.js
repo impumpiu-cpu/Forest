@@ -21,6 +21,9 @@ function tempColor(t) {
   return TSTOPS[TSTOPS.length - 1].slice(1);
 }
 
+// ore veins show through the rock on the world layer
+const ORE_TINT = {1: [176, 92, 56], 2: [44, 44, 52], 3: [110, 214, 198]};
+
 function layer(w) {
   const c = document.createElement('canvas'); c.width = w.w; c.height = w.h;
   const ctx = c.getContext('2d'); return {c, ctx, img: ctx.createImageData(w.w, w.h)};
@@ -39,6 +42,8 @@ export class Renderer {
     const d = this.terrain.img.data, g = w.grid;
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
+      const ore = g.ore?.[i];
+      if (ore) { const c = ORE_TINT[ore], k = 0.55; r = r * (1 - k) + c[0] * k; gg = gg * (1 - k) + c[1] * k; b = b * (1 - k) + c[2] * k; }
       if (g.bush[i] && g.food[i] > 0.2) { const k = g.food[i] * 0.55; r = r * (1 - k) + 196 * k; gg = gg * (1 - k) + 92 * k; b = b * (1 - k) + 149 * k; }
       const o = i * 4; d[o] = r; d[o + 1] = gg; d[o + 2] = b; d[o + 3] = 255;
     }
@@ -107,6 +112,7 @@ export class Renderer {
     if (view.layer === 'nav') this.drawArrows(w);
     this.drawZone(w);
     this.drawBuildings(w);
+    this.drawPick(w, view);
     this.drawAgents(w, view.selected);
     this.drawShots(w);
     this.ms = this.ms * 0.9 + (performance.now() - t0) * 0.1;
@@ -195,6 +201,17 @@ export class Renderer {
         ctx.fillStyle = d.color; ctx.fillRect(x, y + s + 1, s * Math.min(1, b.progress / d.work), 3);
       }
     }
+  }
+
+  // outline of the selected building or cell
+  drawPick(w, view) {
+    const ctx = this.ctx, S = this.S;
+    let x, y, s;
+    const b = view.selBld != null ? w.buildings.find(q => q.id === view.selBld) : null;
+    if (b) { x = b.x * S; y = b.y * S; s = 2 * S; }
+    else if (view.selCell != null && view.selCell >= 0) { x = (view.selCell % w.w) * S; y = ((view.selCell / w.w) | 0) * S; s = S; }
+    else return;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x - 2, y - 2, s + 4, s + 4);
   }
 
   drawAgents(w, selected) {

@@ -76,92 +76,112 @@
   <section id="gameOver" class="gameover" hidden aria-labelledby="goTitle"></section>
 
   <div class="main" id="game" hidden>
+    <!-- above the map: time, click tools, layers and filters, speed, wind, game actions -->
+    <div class="toolbar">
+      <div class="group clockbox" title="Время и погода">
+        <b class="clock" id="clock">День 1, 07:00</b>
+        <span class="wx" id="amb">—</span>
+        <span class="wx" id="windTxt">—</span>
+      </div>
+      <div class="group"><span>Клик</span>
+        <div class="seg" id="tools">
+          <button data-tool="inspect" aria-pressed="true">Осмотр</button>
+          <button data-tool="ignite" aria-pressed="false">Поджечь</button>
+          <button data-tool="rain" aria-pressed="false">Ливень</button>
+        </div>
+      </div>
+      <div class="group"><span>Слой</span>
+        <div class="seg" id="layers">
+          <button data-layer="world" aria-pressed="true">Мир</button>
+          <button data-layer="temp" aria-pressed="false">Температура</button>
+          <button data-layer="res" aria-pressed="false">Ресурсы</button>
+          <button data-layer="nav" aria-pressed="false">Навигация</button>
+        </div>
+      </div>
+      <div class="group"><span>Скорость</span>
+        <div class="seg" id="speeds">
+          <button data-speed="0" aria-pressed="false" title="Пробел">Пауза</button>
+          <button data-speed="1" aria-pressed="true">1×</button>
+          <button data-speed="2" aria-pressed="false">2×</button>
+          <button data-speed="4" aria-pressed="false">4×</button>
+          <button data-speed="8" aria-pressed="false">8×</button>
+        </div>
+      </div>
+      <div class="group"><span>Ветер</span>
+        <span id="windArrow" aria-hidden="true" class="windarrow">→</span>
+        <input type="range" id="windDir" min="0" max="359" value="20" aria-label="Направление ветра">
+        <input type="range" id="windStr" min="0" max="100" value="35" aria-label="Сила ветра">
+      </div>
+      <div class="group">
+        <button id="raid" class="danger">Набег</button>
+        <button id="saveGame" title="Сохранить в этом браузере. Игра также сохраняется сама каждое утро.">Сохранить</button>
+        <button id="saveFile" title="Скачать сохранение файлом">В файл</button>
+        <button id="openMenu">Меню мира</button>
+        <span class="status" id="saveStatus" role="status"></span>
+      </div>
+      <div class="logfilter resfilter" id="resFilter" hidden aria-label="Какие ресурсы показывать"></div>
+    </div>
+
     <section class="stage">
-      <div class="toolbar">
-        <div class="group"><span>Клик</span>
-          <div class="seg" id="tools">
-            <button data-tool="inspect" aria-pressed="true">Осмотр</button>
-            <button data-tool="ignite" aria-pressed="false">Поджечь</button>
-            <button data-tool="rain" aria-pressed="false">Ливень</button>
-          </div>
-        </div>
-        <div class="group"><span>Слой</span>
-          <div class="seg" id="layers">
-            <button data-layer="world" aria-pressed="true">Мир</button>
-            <button data-layer="temp" aria-pressed="false">Температура</button>
-            <button data-layer="res" aria-pressed="false">Ресурсы</button>
-            <button data-layer="nav" aria-pressed="false">Навигация</button>
-          </div>
-          <div class="logfilter" id="resFilter" hidden aria-label="Какие ресурсы показывать"></div>
-        </div>
-        <div class="group"><span>Скорость</span>
-          <div class="seg" id="speeds">
-            <button data-speed="0" aria-pressed="false" title="Пробел">Пауза</button>
-            <button data-speed="1" aria-pressed="true">1×</button>
-            <button data-speed="2" aria-pressed="false">2×</button>
-            <button data-speed="4" aria-pressed="false">4×</button>
-            <button data-speed="8" aria-pressed="false">8×</button>
-          </div>
-        </div>
-        <div class="group"><span>Ветер</span>
-          <span id="windArrow" aria-hidden="true" style="display:inline-block;color:var(--fg);font-size:16px">→</span>
-          <input type="range" id="windDir" min="0" max="359" value="20" aria-label="Направление ветра">
-          <input type="range" id="windStr" min="0" max="100" value="35" aria-label="Сила ветра">
-        </div>
-        <div class="group">
-          <button id="raid" class="danger">Набег</button>
-          <button id="saveGame" title="Сохранить в этом браузере. Игра также сохраняется сама каждое утро.">Сохранить</button>
-          <button id="saveFile" title="Скачать сохранение файлом">В файл</button>
-          <button id="openMenu">Меню мира</button>
-          <span class="status" id="saveStatus" role="status"></span>
-        </div>
-      </div>
       <div class="canvas-box"><canvas id="map" width="768" height="576"></canvas></div>
-      <div class="readout" id="readout">Наведите на карту, чтобы увидеть значения полей в клетке. Щёлкните по поселенцу, чтобы узнать его поближе.</div>
-      <section class="card person-card" id="personCard" hidden aria-live="polite"></section>
-      <div class="legend">
-        <span><i style="background:var(--colony)"></i>колонисты</span>
-        <span><i style="background:var(--raider)"></i>налётчики</span>
-        <span><i style="background:#cdbb9a"></i>зайцы</span>
-        <span><i style="background:#8d8f96"></i>волки</span>
-        <span><i style="background:var(--food)"></i>ягоды</span>
-        <span><i style="background:var(--ember)"></i>огонь и костёр</span>
-        <span>пунктир — граница зоны поселения</span>
-        <span>обводка — броня: светлая ткань, коричневая кожа, белая укреплённая</span>
-      </div>
     </section>
 
-    <aside>
-      <div class="card">
-        <h2>Время и погода</h2>
-        <div class="clock" id="clock">День 1, 07:00</div>
-        <dl class="kv">
-          <dt>Воздух</dt><dd id="amb">—</dd>
-          <dt>Ветер</dt><dd id="windTxt">—</dd>
-          <dt>Горит клеток</dt><dd id="fires">0</dd>
-        </dl>
+    <!-- under the map: the cell under the cursor and whatever was clicked -->
+    <section class="selpane" aria-live="polite">
+      <div class="readout" id="readout">Наведите на карту, чтобы увидеть клетку. Щёлкните по поселенцу, постройке или клетке, чтобы рассмотреть поближе.</div>
+      <div class="selcard" id="selCard"></div>
+    </section>
+
+    <!-- right of the map: switchable tabs -->
+    <aside class="side">
+      <div class="tabs" id="tabs" role="tablist">
+        <button role="tab" data-tab="stock" aria-selected="true">Склад и работы</button>
+        <button role="tab" data-tab="people" aria-selected="false">Поселенцы <span class="cnt" id="popCount"></span></button>
+        <button role="tab" data-tab="build" aria-selected="false">Постройки</button>
+        <button role="tab" data-tab="council" aria-selected="false">Совет</button>
+        <button role="tab" data-tab="log" aria-selected="false">Журнал</button>
+        <button role="tab" data-tab="world" aria-selected="false">Мир</button>
       </div>
-      <div class="card">
+      <div class="tabpanel" data-panel="stock">
         <h2>Склад лагеря</h2>
-        <dl class="kv" id="stock"></dl>
-      </div>
-      <div class="card">
-        <h2>Совет у костра</h2>
-        <div class="council" id="council"></div>
-      </div>
-      <div class="card">
-        <h2>Ремесло и снаряжение</h2>
+        <div class="stockgrid" id="stock"></div>
+        <h2>Работы</h2>
+        <div class="jobs" id="jobs"></div>
+        <h2>Мастерские и снаряжение</h2>
         <div class="gearbox" id="gearbox"></div>
       </div>
-      <div class="card">
-        <h2>Постройки</h2>
-        <div class="buildlist" id="build"></div>
-      </div>
-      <div class="card">
-        <h2>Колонисты</h2>
+      <div class="tabpanel" data-panel="people" hidden>
         <div class="people" id="people"></div>
       </div>
-      <div class="card">
+      <div class="tabpanel" data-panel="build" hidden>
+        <div class="buildlist" id="build"></div>
+      </div>
+      <div class="tabpanel" data-panel="council" hidden>
+        <div class="council" id="council"></div>
+      </div>
+      <div class="tabpanel" data-panel="log" hidden>
+        <div class="logfilter" id="logLevels" aria-label="Уровни событий"></div>
+        <div class="logfilter" id="logTopics" aria-label="Рубрики событий"></div>
+        <div class="log" id="log"></div>
+      </div>
+      <div class="tabpanel" data-panel="world" hidden>
+        <p class="muted small" id="worldLine"></p>
+        <h2>Поселение и окрестности</h2>
+        <dl class="kv" id="worldKv"></dl>
+        <h2>Обозначения на карте</h2>
+        <div class="legend">
+          <span><i style="background:var(--colony)"></i>колонисты</span>
+          <span><i style="background:var(--raider)"></i>налётчики</span>
+          <span><i style="background:#cdbb9a"></i>зайцы</span>
+          <span><i style="background:#8d8f96"></i>волки</span>
+          <span><i style="background:var(--food)"></i>ягоды</span>
+          <span><i style="background:#c4663f"></i>железная руда</span>
+          <span><i style="background:#46464f"></i>каменный уголь</span>
+          <span><i style="background:#78e6d6"></i>самоцветы</span>
+          <span><i style="background:var(--ember)"></i>огонь и костёр</span>
+          <span>пунктир — граница зоны поселения</span>
+          <span>обводка — броня: светлая ткань, коричневая кожа, белая укреплённая, серая ламеллярная</span>
+        </div>
         <h2>Расчёт за тик, мс</h2>
         <dl class="kv">
           <dt id="pFlabel">Поля</dt><dd id="pF">—</dd>
@@ -171,12 +191,6 @@
           <dt>Тиков в секунду</dt><dd id="pT">—</dd>
           <dt title="Сколько игрового времени проходит за секунду по сравнению с 1×. Если меньше выбранного, компьютер не успевает.">Скорость: факт / выбрана</dt><dd id="pS">—</dd>
         </dl>
-      </div>
-      <div class="card">
-        <h2>Журнал</h2>
-        <div class="logfilter" id="logLevels" aria-label="Уровни событий"></div>
-        <div class="logfilter" id="logTopics" aria-label="Рубрики событий"></div>
-        <div class="log" id="log"></div>
       </div>
     </aside>
   </div>
