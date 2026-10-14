@@ -2401,6 +2401,10 @@ dd.q4{color:#c58cff;font-weight:600}
     keys: [1, 2],
     keyChance: 0.8,
     furnish: 25,
+    // silver blades: the colony buys them up to this share of its people once something that fears silver
+    // has come; before that one at most, and only when it costs no more than `silverSpare` of the gold in hand
+    silverShare: 0.5,
+    silverSpare: 0.3,
     mithrilPurse: 35,
     // a trader who has heard of mithril carries this much more gold per unit in stock (up to 3)
     WARES: [
@@ -2412,6 +2416,8 @@ dd.q4{color:#c58cff;font-weight:600}
       { w: 12, items: "any", q: 1 },
       { w: 4, items: "any", q: 2 },
       { w: 6, items: ["chainmail", "scalemail"], q: 0 },
+      // silver against what fears it: silvered imperial blades and silver daggers
+      { w: 5, items: ["sword", "ironspear", "silverknife", "silverknife"], q: 0, silver: true },
       { w: 4, resource: ["mirror", "tapestry", "lamp"], n: [1, 1] }
     ],
     // the guards' kit: imperial iron armour, a finer sword and shield
@@ -2472,6 +2478,9 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "ironspear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u0436\u0435\u043B\u0435\u0437\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u0436\u0435\u043B. \u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, iron: true, melee: { dmg: 1.95, cd: 12 }, dur: 120, value: 4, glyph: "ironspear" },
     { id: "ironaxe", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u0442\u043E\u043F\u043E\u0440", short: "\u0436\u0435\u043B. \u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, iron: true, melee: { dmg: 1.7, cd: 12 }, tool: { chop: 2.2, build: 1.15 }, dur: 160, value: 4, glyph: "ironaxe" },
     { id: "sword", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u043C\u0435\u0447", short: "\u043C\u0435\u0447", slot: "hand", hands: 1, iron: true, melee: { dmg: 2.15, cd: 11 }, block: 0.1, dur: 150, value: 6, glyph: "sword" },
+    // silver: soft, but what fears silver (vampires) it burns. A dagger cast whole at the furnace on a wood fire,
+    // no iron needed; iron blades can also be silvered at the forge (a `silver: true` piece, data/recipes.js)
+    { id: "silverknife", label: "\u0421\u0435\u0440\u0435\u0431\u0440\u044F\u043D\u044B\u0439 \u043A\u0438\u043D\u0436\u0430\u043B", short: "\u0441\u0435\u0440. \u043A\u0438\u043D\u0436\u0430\u043B", slot: "hand", hands: 1, silver: true, melee: { dmg: 1.3, cd: 9 }, dur: 70, value: 7, glyph: "dagger" },
     // body
     // lamellar: small iron plates laced onto a leather coat; heavy, but stops most blows
     { id: "lamellar", label: "\u041B\u0430\u043C\u0435\u043B\u043B\u044F\u0440\u043D\u044B\u0439 \u0434\u043E\u0441\u043F\u0435\u0445", short: "\u043B\u0430\u043C\u0435\u043B\u044F\u0440", slot: "body", iron: true, armor: 0.5, warmth: 0.4, speed: 0.93, dur: 170, value: 30, color: "#8f989f" },
@@ -3455,10 +3464,13 @@ dd.q4{color:#c58cff;font-weight:600}
     return n;
   }
   var newItem = (type, extra = {}) => ({ type, ...extra, dur: def({ type, ...extra }).dur });
-  function itemPrice(type, q = 0) {
+  var SILVERING = 5;
+  function itemPrice(type, q = 0, silver = false) {
     const base = ITEMS.get(type), Q = qualityOf(q);
-    return (base.value || 0) + (base.slot === "body" || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0);
+    return (base.value || 0) + (base.slot === "body" || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0) + (silver && !base.silver ? SILVERING : 0);
   }
+  var silverFoesHere = (w) => w.agents.some((o) => !o.dead && o.faction !== "colony" && SPECIES.get(o.species).weakTo?.includes("silver"));
+  var silverWorth = (w) => !w ? 0 : silverFoesHere(w) ? 1.6 : w.chronicle?.silverFoes ? 0.35 : 0;
   var emptySlots = () => Object.fromEntries(SLOTS.map((s) => [s.id, null]));
   function handItems(a) {
     const e = a.equip;
@@ -3580,6 +3592,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const brave = 0.5 + 0.5 * a.mods.bravery;
     let v = 0;
     if (d.melee) v += (d.melee.dmg - 1) * 0.6 * brave + 0.15;
+    if (d.silver && d.melee) v += silverWorth(w) * brave;
     if (d.ranged) {
       const boost = d.ranged.boost ? w.mods.best[d.ranged.boost] || 1 : 1;
       v += d.ranged.dmg * boost * 0.55 * (a.prefs.hunt ?? 1) + 0.1;
@@ -3612,7 +3625,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function bestLoadout(w, a, pool) {
     const byType = /* @__PURE__ */ new Map();
     for (const it of pool) {
-      const key2 = it.type + ":" + (it.q || 0), k = byType.get(key2);
+      const key2 = it.type + ":" + (it.q || 0) + (it.silver ? ":s" : ""), k = byType.get(key2);
       if (!k || it.dur > k.dur) byType.set(key2, it);
     }
     const items = [...byType.values()];
@@ -5495,8 +5508,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var between2 = (rng, [a, b]) => a + Math.floor(rng() * (b - a + 1));
   var round1 = (v) => Math.round(v * 10) / 10;
   var goodsUnits = (goods) => goods.reduce((s, g2) => s + (g2.kind === "res" ? g2.n : 1), 0);
-  var unitPrice = (g2) => g2.kind === "res" ? RESOURCES.get(g2.id).value || 0 : itemPrice(g2.type, g2.q);
-  var goodsLabel = (g2) => g2.kind === "res" ? RESOURCES.get(g2.id).label : itemDef(g2.type, g2.q).label.toLowerCase();
+  var unitPrice = (g2) => g2.kind === "res" ? RESOURCES.get(g2.id).value || 0 : itemPrice(g2.type, g2.q, g2.silver);
+  var goodsLabel = (g2) => g2.kind === "res" ? RESOURCES.get(g2.id).label : def(g2).label.toLowerCase();
   var askPrice = (g2) => round1(unitPrice(g2) * TRADE.ask);
   var bidPrice = (g2) => round1(unitPrice(g2) * TRADE.bid);
   function itemPool(spec) {
@@ -5529,7 +5542,8 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (line2.items) {
         if (!sold.has(line2.q || 0)) continue;
-        addGoods(goods, { kind: "item", type: pick2(rng, itemPool(line2.items)), q: line2.q || 0 });
+        const type = pick2(rng, itemPool(line2.items));
+        addGoods(goods, { kind: "item", type, q: line2.q || 0, ...line2.silver && !ITEMS.get(type).silver ? { silver: true } : {} });
         left--;
       } else {
         const id = line2.food ? pick2(rng, FOODS.filter((f) => !f.dish).map((f) => f.id)) : pick2(rng, line2.resource);
@@ -5662,7 +5676,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     const worn = gearNeeds(w, false), kinds = /* @__PURE__ */ new Map();
     for (const it of w.armory) {
-      if (itemDef(it.type, it.q).keep) continue;
+      if (itemDef(it.type, it.q).keep || def(it).silver) continue;
       const [role, score] = roleOf(itemDef(it.type, it.q));
       if (role && worn[role] && score > worn[role][0]) continue;
       const k = it.type + ":" + (it.q || 0);
@@ -5721,6 +5735,21 @@ dd.q4{color:#c58cff;font-weight:600}
       note(deal.bought, RESOURCES.get(id).label, n, p * n);
     }
     c.goods = c.goods.filter((g2) => g2.kind !== "res" || g2.n > 0);
+    {
+      const owned = () => [...colonists(w).flatMap((a) => allItems(a)), ...w.armory].filter((it) => def(it).silver).length;
+      const foes = w.chronicle.silverFoes || 0, want2 = foes ? Math.ceil(pop * TRADE.silverShare) : 1;
+      const offer = c.goods.filter((g2) => g2.kind === "item" && def(g2).silver).sort((x, y) => askPrice(x) - askPrice(y));
+      for (const g2 of offer) {
+        if (owned() >= want2) break;
+        const p = askPrice(g2);
+        if (p > cash() * (foes ? TRADE.maxShare : TRADE.silverSpare) || !spend(p)) continue;
+        c.goods.splice(c.goods.indexOf(g2), 1);
+        w.armory.push(newItem(g2.type, { ...g2.q ? { q: g2.q } : {}, ...g2.silver ? { silver: true } : {} }));
+        w.armoryVersion = (w.armoryVersion || 0) + 1;
+        deal.spent += p;
+        note(deal.bought, goodsLabel(g2), 1, p);
+      }
+    }
     const needs = gearNeeds(w);
     for (; ; ) {
       let best = null, bv = 0;
@@ -5738,7 +5767,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (!best || !spend(best.p)) break;
       c.goods.splice(c.goods.indexOf(best.g), 1);
-      w.armory.push(newItem(best.g.type, best.g.q ? { q: best.g.q } : {}));
+      w.armory.push(newItem(best.g.type, { ...best.g.q ? { q: best.g.q } : {}, ...best.g.silver ? { silver: true } : {} }));
       w.armoryVersion = (w.armoryVersion || 0) + 1;
       needs[best.role][0] = best.score;
       needs[best.role].sort((x, y) => x - y);
@@ -6625,6 +6654,7 @@ dd.q4{color:#c58cff;font-weight:600}
       group.push(a);
     }
     if (def2.groupInit) def2.groupInit(group, w);
+    if (group.some((a) => SPECIES.get(a.species).weakTo?.includes("silver"))) w.chronicle.silverFoes = (w.chronicle.silverFoes || 0) + 1;
     for (const a of group) think(w, a, "arrived");
     const msg = def2.message?.(w, group, side);
     if (msg) log(w, msg, def2.topic || "people", def2.level);
@@ -7605,6 +7635,7 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/data/recipes.js
   var RECIPES = new Registry("recipe");
   var short = (n, target) => Math.max(0, target - n);
+  var silverWant = (c, calm, alarm) => c.silverFoes ? c.stock("silverBar") >= 1 && short(c.silvered(), Math.ceil(c.pop / 2)) ? alarm : 0 : c.stock("silverBar") >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? calm : 0;
   var STORES_PER_HEAD = 10;
   RECIPES.registerAll([
     // clothing and armour: everyone should wear something, better pieces replace worse ones
@@ -7816,6 +7847,17 @@ dd.q4{color:#c58cff;font-weight:600}
       want: () => 1.2
     },
     // bronze cast in clay moulds at the furnace: no anvil needed
+    // a silver dagger cast whole: no iron and no forge needed, the first answer to a vampire
+    {
+      id: "silverknife",
+      at: "smelter",
+      cost: { silverBar: 2, leather: 1 },
+      fuel: 0.5,
+      heat: 1,
+      work: 500,
+      makes: { item: "silverknife" },
+      want: (c) => c.silverFoes ? c.stock("silverBar") >= 2 && short(c.silvered(), Math.ceil(c.pop / 2)) ? c.has("forge") ? 1.4 : 2.4 : 0 : c.stock("silverBar") >= 4 && c.silvered() < 1 ? 0.6 : 0
+    },
     {
       id: "bronzespear",
       at: "smelter",
@@ -7865,6 +7907,8 @@ dd.q4{color:#c58cff;font-weight:600}
       want: (c) => short(c.owned("ironaxe"), Math.min(Math.ceil(c.pop / 2), 1 + c.likes("chop"))) ? 2 : 0
     },
     // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare
+    // Before anyone has seen a vampire: a few, while there is silver to spare. Once one has come
+    // (ctx.silverFoes): a silver blade for every second colonist, and the last bar goes into it.
     {
       id: "swordSilver",
       at: "forge",
@@ -7872,7 +7916,7 @@ dd.q4{color:#c58cff;font-weight:600}
       fuel: 1,
       work: 1100,
       makes: { item: "sword", silver: true },
-      want: (c) => c.stock("silverBar") >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? 1.3 : 0
+      want: (c) => silverWant(c, 1.3, 2.6)
     },
     {
       id: "spearSilver",
@@ -7881,7 +7925,7 @@ dd.q4{color:#c58cff;font-weight:600}
       fuel: 1,
       work: 900,
       makes: { item: "ironspear", silver: true },
-      want: (c) => c.stock("silverBar") >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? 1.2 : 0
+      want: (c) => silverWant(c, 1.2, 2.4)
     },
     {
       id: "lamellar",
@@ -8101,8 +8145,8 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const it of w.armory) count2(it);
     const owned = (id) => counts[id] || 0;
     let silvered = 0;
-    for (const a of col) for (const it of allItems(a)) if (it.silver) silvered++;
-    for (const it of w.armory) if (it.silver) silvered++;
+    for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
+    for (const it of w.armory) if (def(it).silver) silvered++;
     return {
       pop: col.length,
       owned,
@@ -8124,6 +8168,7 @@ dd.q4{color:#c58cff;font-weight:600}
       melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
       freeSlots: freeSlots(w),
       silvered: () => silvered,
+      silverFoes: w.chronicle.silverFoes || 0,
       placers: (w.plantBeds?.placer?.length || 0) > 0,
       spare: (res) => {
         const r = RESOURCES.get(res);
@@ -9789,6 +9834,10 @@ dd.q4{color:#c58cff;font-weight:600}
     sword(ctx, x, y, r) {
       line(ctx, x, y + r * 0.9, x + r * 0.25, y - r * 1.6, "#d8dee3", Math.max(1.3, r * 0.3));
       line(ctx, x - r * 0.3, y + r * 0.35, x + r * 0.45, y + r * 0.25, "#6b4f2c", 1.3);
+    },
+    dagger(ctx, x, y, r) {
+      line(ctx, x, y + r * 0.7, x + r * 0.15, y - r * 0.9, "#e8ecf2", Math.max(1.1, r * 0.25));
+      line(ctx, x - r * 0.25, y + r * 0.35, x + r * 0.35, y + r * 0.3, "#6b4f2c", 1.1);
     },
     shield(ctx, x, y, r) {
       ctx.fillStyle = "#7a5530";
@@ -11642,8 +11691,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.30 \xB7 14.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 cdcb360" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.31 \xB7 14.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 da43dba" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;

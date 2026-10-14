@@ -1,6 +1,7 @@
 // Spawns an arriving group at a reachable map edge. Who comes and when is decided by the
 // border with the outside world (src/outside/); this file only puts them on the map.
 import {MIGRATIONS} from '../data/migrations.js';
+import {SPECIES} from '../data/species.js';
 import {log} from '../core/log.js';
 import {createAgent} from '../agents/agent.js';
 import {walkable} from '../world/grid.js';
@@ -42,6 +43,8 @@ export function spawnGroup(w, id, n, opts = {}) {
     group.push(a);
   }
   if (def.groupInit) def.groupInit(group, w);
+  // once the colony has seen what fears silver, it wants silver blades (recipes, trade, gear)
+  if (group.some(a => SPECIES.get(a.species).weakTo?.includes('silver'))) w.chronicle.silverFoes = (w.chronicle.silverFoes || 0) + 1;
   for (const a of group) think(w, a, 'arrived');
   const msg = def.message?.(w, group, side);
   if (msg) log(w, msg, def.topic || 'people', def.level);

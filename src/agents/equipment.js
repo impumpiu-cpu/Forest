@@ -55,10 +55,17 @@ export function def(inst) {
 export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, ...extra}).dur});
 
 // price of one piece in imperial gold: the plain piece plus the step up in quality
-export function itemPrice(type, q = 0) {
+// a silvered iron blade costs this much more than a plain one
+export const SILVERING = 5;
+export function itemPrice(type, q = 0, silver = false) {
   const base = ITEMS.get(type), Q = qualityOf(q);
-  return (base.value || 0) + (base.slot === 'body' || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0);
+  return (base.value || 0) + (base.slot === 'body' || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0) + (silver && !base.silver ? SILVERING : 0);
 }
+
+// How much silver in the hand is worth: a lot while something that fears it is on the map, a little once
+// the colony has met such a creature (w.chronicle.silverFoes, settlement/migration.js), nothing before
+export const silverFoesHere = w => w.agents.some(o => !o.dead && o.faction !== 'colony' && SPECIES.get(o.species).weakTo?.includes('silver'));
+const silverWorth = w => (!w ? 0 : silverFoesHere(w) ? 1.6 : w.chronicle?.silverFoes ? 0.35 : 0);
 export const emptySlots = () => Object.fromEntries(SLOTS.map(s => [s.id, null]));
 
 export function handItems(a) {
@@ -164,6 +171,7 @@ function value(a, d, w) {
   const brave = 0.5 + 0.5 * a.mods.bravery;
   let v = 0;
   if (d.melee) v += (d.melee.dmg - 1) * 0.6 * brave + 0.15;
+  if (d.silver && d.melee) v += silverWorth(w) * brave;
   if (d.ranged) {
     const boost = d.ranged.boost ? (w.mods.best[d.ranged.boost] || 1) : 1;
     v += d.ranged.dmg * boost * 0.55 * (a.prefs.hunt ?? 1) + 0.1;
@@ -199,7 +207,7 @@ function handsValue(w, a, hands) {
 // best loadout from the agent's own gear plus the store; returns {hands, two, body, back, score}
 function bestLoadout(w, a, pool) {
   const byType = new Map();   // keep one instance per kind (type and quality, the most durable) to keep the search small
-  for (const it of pool) { const key = it.type + ':' + (it.q || 0), k = byType.get(key); if (!k || it.dur > k.dur) byType.set(key, it); }
+  for (const it of pool) { const key = it.type + ':' + (it.q || 0) + (it.silver ? ':s' : ''), k = byType.get(key); if (!k || it.dur > k.dur) byType.set(key, it); }
   const items = [...byType.values()];
   const hand = items.filter(it => def(it).slot === 'hand');
   const opts = [{hands: []}];

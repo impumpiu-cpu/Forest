@@ -46,9 +46,10 @@ function makeCraftContext(w) {
   for (const a of col) for (const it of allItems(a)) count(it);
   for (const it of w.armory) count(it);
   const owned = id => counts[id] || 0;
+  // silver blades: silvered iron and cast silver (agents/equipment.js def() carries the flag)
   let silvered = 0;
-  for (const a of col) for (const it of allItems(a)) if (it.silver) silvered++;
-  for (const it of w.armory) if (it.silver) silvered++;
+  for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
+  for (const it of w.armory) if (def(it).silver) silvered++;
   return {
     pop: col.length, owned,
     likes: job => col.filter(a => a.likes === job).length,
@@ -66,6 +67,7 @@ function makeCraftContext(w) {
     melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
     freeSlots: freeSlots(w),
     silvered: () => silvered,
+    silverFoes: w.chronicle.silverFoes || 0,
     placers: (w.plantBeds?.placer?.length || 0) > 0,
     spare: res => { const r = RESOURCES.get(res); return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20); },
   };

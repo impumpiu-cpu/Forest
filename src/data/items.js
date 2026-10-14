@@ -53,6 +53,9 @@ ITEMS.registerAll([
   {id: 'ironspear', label: 'Копьё с железным наконечником', short: 'жел. копьё', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.95, cd: 12}, dur: 120, value: 4, glyph: 'ironspear'},
   {id: 'ironaxe',   label: 'Железный топор', short: 'жел. топор', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.7, cd: 12}, tool: {chop: 2.2, build: 1.15}, dur: 160, value: 4, glyph: 'ironaxe'},
   {id: 'sword',     label: 'Железный меч', short: 'меч', slot: 'hand', hands: 1, iron: true, melee: {dmg: 2.15, cd: 11}, block: 0.1, dur: 150, value: 6, glyph: 'sword'},
+  // silver: soft, but what fears silver (vampires) it burns. A dagger cast whole at the furnace on a wood fire,
+  // no iron needed; iron blades can also be silvered at the forge (a `silver: true` piece, data/recipes.js)
+  {id: 'silverknife', label: 'Серебряный кинжал', short: 'сер. кинжал', slot: 'hand', hands: 1, silver: true, melee: {dmg: 1.3, cd: 9}, dur: 70, value: 7, glyph: 'dagger'},
   // body
   // lamellar: small iron plates laced onto a leather coat; heavy, but stops most blows
   {id: 'lamellar',    label: 'Ламеллярный доспех', short: 'ламеляр', slot: 'body', iron: true, armor: 0.5, warmth: 0.4, speed: 0.93, dur: 170, value: 30, color: '#8f989f'},
