@@ -4,11 +4,14 @@
 //   at:    station building id         cost: resources taken when the order starts
 //   work:  labour needed                makes: {item: id} or {resource: id, n}
 //   needs: buildings that must exist    want(ctx): how badly the colony needs it now (0 = not at all)
-//   fuel:  units of furnace fuel (charcoal or coal, whichever there is more of) taken with the materials
+//   fuel:  units of furnace heat taken with the materials;  heat: how hot a fire it needs — 1: wood will
+//          do (copper, bronze, gold, silver), 2 (default): coal (iron). Fuel is picked in settlement/stock.js
+//   tool:  a town-made tool that must be in the stock (cupels for silver)
 //
 // ctx (see settlement/crafting.js): pop, owned(id), likes(job), fans(food), fishing (a lake has fish),
 //   season (id), drying (racks work this season), stockpile (×: how keen on stores — autumn most),
 //   stores (dried and salted food in stock), timid, stock, bows, has(building), fuel,
+//   silvered() (silvered blades owned), placers (the river has gold sand),
 //   food (all food in stock), freeSlots (furniture places free in buildings, less what lies in stock),
 //   spare(res) (stock beyond 0.6 × what the colony keeps of it: resource `keep`, else `target`, else 20)
 //
@@ -71,13 +74,28 @@ RECIPES.registerAll([
   {id: 'rod', at: 'crafthut', cost: {wood: 3}, work: 500, makes: {item: 'rod'},
     want: c => (c.fishing && short(c.owned('rod'), Math.max(2, c.likes('fish') + c.fans('fish'))) ? 2.4 : 0)},
 
-  // ── charcoal: logs smoulder under turf into charcoal; more when the furnace and the forge burn it
-  {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'charcoal', n: 3},
-    want: c => (c.has('smelter') ? (c.fuel < 16 ? 1.8 : 0) : (c.stock('charcoal') < 6 ? 0.8 : 0))},
+  // ── coal: logs smoulder under turf into coal; more when the furnace and the forge burn it
+  {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'coal', n: 3},
+    want: c => (c.has('smelter') ? (c.fuel < 16 ? 1.8 : 0) : (c.stock('coal') < 6 ? 0.8 : 0))},
 
-  // ── the furnace: two ore and one fuel make a bar of iron
-  {id: 'smelt', at: 'smelter', cost: {ironore: 2}, fuel: 1, work: 320, makes: {resource: 'iron', n: 1},
+  // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too
+  {id: 'smelt', at: 'smelter', cost: {ironore: 2}, fuel: 1, heat: 2, work: 320, makes: {resource: 'iron', n: 1},
     want: c => (c.stock('iron') < 10 ? 2.2 : 0)},
+  {id: 'smeltBronze', at: 'smelter', cost: {bronzeOre: 2}, fuel: 1, heat: 1, work: 280, makes: {resource: 'bronze', n: 1},
+    want: c => (c.stock('bronze') < 8 ? 2.0 : 0)},
+  {id: 'goldDustBar', at: 'smelter', cost: {goldDust: 12}, fuel: 0.5, heat: 1, work: 200, makes: {resource: 'goldBar', n: 1},
+    want: () => 1.3},
+  {id: 'goldNuggetBar', at: 'smelter', cost: {goldNugget: 1}, fuel: 0.5, heat: 1, work: 120, makes: {resource: 'goldBar', n: 1},
+    want: () => 1.2},
+  {id: 'silverOreBar', at: 'smelter', cost: {silverOre: 3}, fuel: 1, heat: 1, tool: 'cupels', work: 320, makes: {resource: 'silverBar', n: 1},
+    want: () => 1.4},
+  {id: 'silverNativeBar', at: 'smelter', cost: {silverNative: 1}, fuel: 0.5, heat: 1, work: 120, makes: {resource: 'silverBar', n: 1},
+    want: () => 1.2},
+  // bronze cast in clay moulds at the furnace: no anvil needed
+  {id: 'bronzespear', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzespear'},
+    want: c => (short(c.owned('sword') + c.owned('ironspear') + c.owned('bronzespear'), c.pop) ? 2.0 : 0)},
+  {id: 'bronzeaxe', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzeaxe'},
+    want: c => (short(c.owned('ironaxe') + c.owned('bronzeaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 1.9 : 0)},
 
   // ── the forge: iron blades and lamellar armour; each piece takes one fuel
   {id: 'sword', at: 'forge', cost: {iron: 3, leather: 1}, fuel: 1, work: 900, makes: {item: 'sword'},
@@ -86,6 +104,11 @@ RECIPES.registerAll([
     want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
+  // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare
+  {id: 'swordSilver', at: 'forge', cost: {iron: 3, leather: 1, silverBar: 1}, fuel: 1, work: 1100, makes: {item: 'sword', silver: true},
+    want: c => (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? 1.3 : 0)},
+  {id: 'spearSilver', at: 'forge', cost: {iron: 2, wood: 2, silverBar: 1}, fuel: 1, work: 900, makes: {item: 'ironspear', silver: true},
+    want: c => (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? 1.2 : 0)},
   {id: 'lamellar', at: 'forge', cost: {iron: 4, leather: 2}, fuel: 2, work: 1600, makes: {item: 'lamellar'},
     want: c => (short(c.owned('lamellar'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
 
@@ -144,6 +167,20 @@ RECIPES.registerAll([
   // only from what the colony has to spare (beyond what it keeps of each material); the finer piece first
   ...FURNITURE.filter(f => f.recipe).map(f => ({id: 'furn_' + f.id, ...f.recipe, makes: {resource: f.id, n: 1},
     want: c => (c.freeSlots > 0 && Object.entries(f.recipe.cost).every(([r, v]) => c.spare(r) >= v) ? 0.7 + f.comfort * 4 : 0)})),
+
+  // the dead ends of the woods put to use: fox fur lines a coat, wax becomes candles for the shrine
+  {id: 'furlined', at: 'crafthut', cost: {hide: 2, furs: 2, leather: 1}, work: 1300, makes: {item: 'furlined'},
+    want: c => (c.season !== 'spring' && c.stock('furs') >= 2 && short(c.owned('furlined'), Math.ceil(c.pop / 3)) ? 2.0 : 0)},
+  {id: 'candles', at: 'crafthut', cost: {wax: 1}, work: 120, makes: {resource: 'candles', n: 4},
+    want: c => (c.has('shrine') && c.stock('candles') < 8 ? 0.8 : 0)},
+  // gold panning needs a pan, as long as the river has gold sand
+  {id: 'pan', at: 'crafthut', cost: {wood: 2}, work: 300, makes: {item: 'pan'},
+    want: c => (c.placers && short(c.owned('pan'), Math.max(2, Math.ceil(c.pop / 5), c.likes('pan'))) ? 1.6 : 0)},
+  // the quern: barley ground to flour, flour baked to bread at the hearth
+  {id: 'flour', at: 'quern', cost: {barley: 2}, work: 140, makes: {resource: 'flour', n: 2},
+    want: c => (c.stock('barley') > c.pop + 2 && c.stock('flour') < c.pop ? 1.5 : 0)},
+  {id: 'bread', at: 'hearth', cost: {flour: 2}, work: 140, makes: {resource: 'bread', n: 3},
+    want: c => (c.stock('bread') < c.pop * 2 ? 2.0 : 0)},
 
   // processing: raw hides become leather at the tannery
   {id: 'tan', at: 'tannery', cost: {hide: 1}, work: 150, makes: {resource: 'leather', n: 1},

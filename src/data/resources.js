@@ -7,6 +7,8 @@
 // `map(w, i)` (0..1) shows where it can be gathered on the resource layer, in `mapColor`.
 // `group` is its section on the stock panel (RESOURCE_GROUPS gives the order, new groups go last);
 // `target` is how much the colony likes to keep (miners dig ore that is below it).
+// `furnace: {tier, per}` — fuel for a furnace or a forge (settlement/stock.js, furnacePick).
+// `money` — precious metal counted as payment at this share of its value (settlement/trade.js).
 // Trade (data/trade.js, settlement/trade.js): `value` is the price of one unit in imperial gold;
 // `keep` (or `keepPerHead` × colonists) is what the colony holds back when it sells to a trader
 // (default: `target`, else 20); `sell: false` never goes to a trader.
@@ -28,6 +30,7 @@ RESOURCES.registerAll([
     nutrition: f.nutrition, spoil: f.spoil, loot: f.loot, color: f.color, map: f.map, mapColor: f.mapColor, value: f.value, keepPerHead: f.keepPerHead})),
 
   {id: 'wood',    label: 'древесина', short: 'древесина', tags: ['fuel', 'material'], group: 'Материалы', burn: 1, loot: 4, value: 0.1, keep: 40, color: '#a5794a',
+    furnace: {tier: 1, per: 3},
     map: (w, i) => (w.grid.terr[i] === T.FOREST ? w.grid.wood[i] : 0), mapColor: [120, 210, 90]},
   {id: 'stone',   label: 'камень',  short: 'камень',  tags: ['material'], group: 'Материалы', loot: 2, value: 0.1, keep: 35, color: '#b9b4a6',
     map: (w, i) => (w.grid.terr[i] === T.ROCK && !w.grid.ore?.[i] ? 0.6 : 0), mapColor: [215, 210, 196]},
@@ -61,10 +64,11 @@ RESOURCES.registerAll([
   // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
   {id: 'herbs', label: 'лечебные травы', short: 'травы', tags: ['medicine'], group: 'Лекарства', loot: 1, value: 1, keep: 10, target: 10, color: '#e8d25c'},
 
-  // fuel: charcoal is burnt from logs, coal is dug; both keep a furnace hot, the campfire takes them after wood
-  {id: 'charcoal', label: 'древесный уголь', short: 'уголь', tags: ['fuel', 'smelt'], group: 'Топливо', burn: 2, heat: 2, loot: 2, value: 0.3, color: '#3d3a36', target: 10},
-  {id: 'coal',     label: 'каменный уголь', short: 'кам. уголь', tags: ['fuel', 'smelt', 'ore'], group: 'Топливо', burn: 3, heat: 2.5, loot: 2, value: 0.3, color: '#2a2a2e',
-    target: 12},
+  // fuel: coal — burnt from logs in the pit or dug from a seam, it is all the same coal. In a furnace
+  // (`furnace`) fuel gives heat up to its `tier`: wood (tier 1) melts copper, bronze, gold and silver,
+  // iron wants coal (tier 2); one unit of furnace heat takes `per` units of it (settlement/stock.js)
+  {id: 'coal', label: 'уголь', short: 'уголь', tags: ['fuel', 'smelt'], group: 'Топливо', burn: 2, heat: 2, loot: 2, value: 0.3, color: '#2f2d2c',
+    target: 12, furnace: {tier: 2, per: 1}},
 
   // ore from the mine
   {id: 'ironore', label: 'железная руда', short: 'руда', tags: ['ore'], group: 'Руда', loot: 1, value: 0.5, color: '#9a5a3c',
@@ -72,12 +76,32 @@ RESOURCES.registerAll([
   {id: 'gems',    label: 'самоцветы', short: 'самоцветы', tags: ['ore'], group: 'Руда', loot: 1, value: 4, color: '#7fd3c8',
     target: 6},
 
+  {id: 'bronzeOre',  label: 'медно-оловянная руда', short: 'медн. руда', tags: ['ore'], group: 'Руда', loot: 1, value: 0.4, color: '#c08850', target: 10},
+  {id: 'silverOre',  label: 'серебристая руда', short: 'сер. руда', tags: ['ore'], group: 'Руда', loot: 1, value: 1, color: '#c8ccd6', target: 9},
+  // mithril: the outpost cannot work it (it needs a magma forge), only dig it and sell it
+  {id: 'mithrilOre', label: 'мифриловая руда', short: 'мифрил', tags: ['ore', 'luxury'], group: 'Руда', loot: 1, value: 40, keep: 0, color: '#9fe0ff', target: 99},
+
   // metal: bars from the furnace
   {id: 'iron',    label: 'железо',  short: 'железо',  tags: ['material', 'metal'], group: 'Металл', loot: 1, value: 2, keep: 8, color: '#a9b0b6'},
+  {id: 'bronze',  label: 'бронза',  short: 'бронза',  tags: ['material', 'metal'], group: 'Металл', loot: 1, value: 1.5, keep: 8, color: '#c89048'},
+
+  // ── precious metals. Gold is washed from river sand (data/plants.js 'placer') and now and then dug
+  // from a rare quartz vein; silver comes from its ore. Both melt on a wood fire. They are money too:
+  // `money` is the share of its price a trader counts it for in a payment (settlement/trade.js) —
+  // a bar is easy to weigh and check, dust has to be washed and tested
+  {id: 'goldDust',     label: 'золотой песок', short: 'зол. песок', tags: ['precious'], group: 'Деньги', loot: 3, value: 0.7, money: 0.7, sell: false, color: '#e8c860'},
+  {id: 'goldNugget',   label: 'золотые самородки', short: 'самородки', tags: ['precious'], group: 'Деньги', loot: 2, value: 9, money: 0.8, sell: false, color: '#f0c840', target: 999},
+  {id: 'goldBar',      label: 'слитки золота', short: 'зол. слитки', tags: ['precious', 'metal'], group: 'Деньги', loot: 2, value: 10, money: 0.9, sell: false, color: '#f2c230'},
+  {id: 'silverNative', label: 'самородное серебро', short: 'сам. серебро', tags: ['precious'], group: 'Деньги', loot: 2, value: 3, money: 0.75, sell: false, color: '#d8dce4'},
+  {id: 'silverBar',    label: 'слитки серебра', short: 'сер. слитки', tags: ['precious', 'metal'], group: 'Деньги', loot: 2, value: 4, money: 0.85, sell: false, keep: 3, color: '#e4e8ee'},
 
   // luxury goods from the jeweller: kept for trade, they make the colony look rich
   ...LUXURY.all().map(l => ({id: l.id, label: l.label, short: l.short, tags: ['luxury'], group: 'Роскошь', value: l.value, keep: 0, loot: 1, color: l.color})),
 
+  // wax candles: lit at the shrine they make a prayer comfort more (settlement/life.js)
+  {id: 'candles', label: 'восковые свечи', short: 'свечи', tags: ['material'], group: 'Быт', loot: 2, value: 0.5, keep: 6, color: '#f0e2a0'},
+  // flour from the quern, bread from the hearth
+  {id: 'flour', label: 'мука', short: 'мука', tags: ['material'], group: 'Заготовки', loot: 2, value: 0.3, keep: 0, color: '#eee6d0'},
   // ── everyday life: home brew for the evenings (settlement/life.js) and furniture for the solid buildings
   {id: 'braga', label: 'брага', short: 'брага', tags: ['drink'], group: 'Быт', loot: 2, value: 0.6, keepPerHead: 2, color: '#c89a48'},
   ...FURNITURE.all().map(f => ({id: f.id, label: f.label, short: f.label, tags: ['furniture'], group: 'Мебель', loot: 1, value: f.value, sell: false, color: f.color, comfort: f.comfort})),
@@ -88,13 +112,15 @@ RESOURCES.registerAll([
   {id: 'pitsaw',     label: 'продольная пила', short: 'пила', tags: ['key'], group: 'Инструменты', loot: 1, value: 4, sell: false, color: '#b9c2c8',
     opens: 'козлы для распила: тёс на избы'},
   {id: 'bellows',    label: 'кузнечные меха', short: 'меха', tags: ['key'], group: 'Инструменты', loot: 1, value: 8, sell: false, color: '#8a6a48',
-    opens: 'сыродутный горн: своё железо'},
+    opens: 'горн и кузня: топлива на четверть меньше, работа быстрее, кованая вещь порой выходит добротной', useWith: 'smelter'},
   {id: 'anvil',      label: 'наковальня с молотами', short: 'наковальня', tags: ['key'], group: 'Инструменты', loot: 1, value: 16, sell: false, color: '#6e747a',
     opens: 'походная кузня: мечи, копья, ламеллярные доспехи'},
   {id: 'gemtools',   label: 'резцы и лучковое сверло', short: 'резцы', tags: ['key'], group: 'Инструменты', loot: 1, value: 10, sell: false, color: '#58b3a8',
     opens: 'верстак резчика: украшения из самоцветов'},
+  {id: 'cupels',     label: 'купели и тигли', short: 'купели', tags: ['key'], group: 'Инструменты', loot: 1, value: 8, sell: false, color: '#b8b0a0',
+    opens: 'сыродутный горн: серебро из серебристой руды', useWith: 'smelter'},
   {id: 'ploughshare', label: 'железный лемех', short: 'лемех', tags: ['key'], group: 'Инструменты', loot: 1, value: 6, sell: false, color: '#9aa0a6',
-    opens: 'соха с лемехом: с ручным мулом поля родят на треть больше',
+    opens: 'соха с лемехом: с ручным мулом поля родят на треть больше', useWith: 'field',
     with: 'mule', effects: {yield: {barley: 1.3, turnip: 1.3}}},
 
   {id: 'arrows',  label: 'стрелы',  short: 'стрелы',  tags: ['ammo'], group: 'Боеприпасы', loot: 3, value: 0.1, keep: 30, color: '#c7b07a'},

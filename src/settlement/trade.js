@@ -23,17 +23,20 @@ import {think} from '../agents/mind.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {recomputeMods} from './mods.js';
 import {freeSlots} from './life.js';
+import {treasury, pay} from './precious.js';
 
 // ── keys: town-made tools (tag 'key'). One is wanted while the colony has none and could use it:
 // a building that needs it could be built (it is the only thing missing), or the tool works by itself
-// from the stock (the ploughshare, once there is a field)
+// from the stock once its building stands (`useWith`: the ploughshare with a field, bellows and cupels
+// with the furnace)
 const KEYS = () => RESOURCES.filter(r => r.tags.includes('key'));
 export function keyWanted(w, id) {
   if ((w.stock[id] || 0) >= 1) return false;
   const users = BUILDINGS.filter(d => d.key === id);
   if (users.length) return users.some(d => !w.buildings.some(b => b.key === d.id) &&
     (!d.needs || w.buildings.some(b => b.done && b.key === d.needs)) && (!d.available || d.available(w)));
-  return w.buildings.some(b => b.done && b.key === 'field');
+  const r = RESOURCES.get(id);
+  return !!r.useWith && w.buildings.some(b => b.done && b.key === r.useWith);
 }
 
 export const newTradeState = () => ({visits: 0, deals: [], earned: 0, spent: 0});
@@ -100,6 +103,9 @@ export function startCaravan(w, group) {
   w.caravan = {id, phase: 'coming', traderId: trader.id, name: trader.name, gender: trader.gender, set: w.tick,
     capacity: mules.length * cap, goods: makeGoods(rng, units),
     purse: between(rng, TRADE.purse), arrived: null, traded: false, tradedAt: null, tradeEnd: null, spot: null, deal: null};
+  // the rumour of mithril brings a trader with a fatter purse
+  const mith = Math.min(3, Math.floor(w.stock.mithrilOre || 0));
+  if (mith) { w.caravan.purse += TRADE.mithrilPurse * mith; w.caravan.buyer = true; }
   // town-made tools the colony still lacks; any other one now and then
   const lack = KEYS().filter(r => keyWanted(w, r.id) || (w.stock[r.id] || 0) < 1).sort((x, y) => keyWanted(w, y.id) - keyWanted(w, x.id));
   // (the first one the colony could use right away always comes)
@@ -163,12 +169,15 @@ export function holdTrade(w) {
   const deal = {day: dayOf(w.tick) + 1, trader: c.name, sold: [], bought: [], earned: 0, spent: 0};
   const note = (list, label, n, gold) => { const x = list.find(e => e[0] === label); if (x) { x[1] += n; x[2] += gold; } else list.push([label, n, gold]); };
   const free = () => c.capacity - goodsUnits(c.goods);
+  // the colony pays in coins, and in gold and silver at their rate when the coins run out (settlement/precious.js)
+  const cash = () => treasury(w);
+  const spend = p => { const coins = pay(w, p, (id, n) => addGoods(c.goods, {kind: 'res', id, n})); c.purse = round1(c.purse + (coins || 0)); return coins !== false; };
 
   // 1. sell: the jeweller's work, spare gear, and what the colony has beyond what it keeps;
   //    the dearest first, as long as the trader has gold and room
   // a town-made tool the colony needs is worth parting with more: sell down to half of what it keeps
   const keyCost = c.goods.filter(g => g.kind === 'res' && RESOURCES.get(g.id).tags.includes('key') && keyWanted(w, g.id)).reduce((t, g) => t + askPrice(g), 0);
-  const keepK = keyCost > (w.stock.gold || 0) ? 0.5 : 1;
+  const keepK = keyCost > cash() ? 0.5 : 1;
   const offers = [];
   for (const r of RESOURCES.all()) {
     if (r.sell === false || !(r.value > 0)) continue;
@@ -206,10 +215,9 @@ export function holdTrade(w) {
       .sort((x, y) => askPrice(x) / RESOURCES.get(x.id).nutrition - askPrice(y) / RESOURCES.get(y.id).nutrition);
     for (const g of foods) {
       const p = askPrice(g), want = Math.ceil((pop * TRADE.foodUpTo - foodTotal(w)) / RESOURCES.get(g.id).nutrition);
-      const n = Math.min(g.n, want, Math.floor((w.stock.gold || 0) / p));
-      if (n <= 0) continue;
+      const n = Math.min(g.n, want, Math.floor(cash() / p));
+      if (n <= 0 || !spend(p * n)) continue;
       g.n -= n; w.stock[g.id] = (w.stock[g.id] || 0) + n;
-      w.stock.gold = round1(w.stock.gold - p * n); c.purse = round1(c.purse + p * n);
       deal.spent += p * n; note(deal.bought, RESOURCES.get(g.id).label, n, p * n);
     }
     c.goods = c.goods.filter(g => g.kind !== 'res' || g.n > 0);
@@ -218,9 +226,8 @@ export function holdTrade(w) {
   // 2a. a town-made tool the colony could use right away: before anything else but food
   for (const g of c.goods) {
     if (g.kind !== 'res' || !RESOURCES.get(g.id).tags.includes('key') || !keyWanted(w, g.id)) continue;
-    const p = askPrice(g); if (p > (w.stock.gold || 0)) continue;
+    const p = askPrice(g); if (p > cash() || !spend(p)) continue;
     g.n -= 1; w.stock[g.id] = (w.stock[g.id] || 0) + 1;
-    w.stock.gold = round1(w.stock.gold - p); c.purse = round1(c.purse + p);
     deal.spent += p; note(deal.bought, RESOURCES.get(g.id).label, 1, p);
     log(w, `Купили у торговца: <b>${RESOURCES.get(g.id).label}</b>. Теперь можно: ${RESOURCES.get(g.id).opens}.`, 'trade', 'notice');
   }
@@ -230,10 +237,9 @@ export function holdTrade(w) {
   // 2b. stock up on what the outpost cannot make itself and keeps needing (salt), up to TRADE.wants
   for (const [id, upTo] of Object.entries(TRADE.wants)) {
     const g = c.goods.find(x => x.kind === 'res' && x.id === id); if (!g) continue;
-    const p = askPrice(g), n = Math.min(g.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor((w.stock.gold || 0) * TRADE.maxShare / p));
-    if (n <= 0) continue;
+    const p = askPrice(g), n = Math.min(g.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor(cash() * TRADE.maxShare / p));
+    if (n <= 0 || !spend(p * n)) continue;
     g.n -= n; w.stock[id] = (w.stock[id] || 0) + n;
-    w.stock.gold = round1(w.stock.gold - p * n); c.purse = round1(c.purse + p * n);
     deal.spent += p * n; note(deal.bought, RESOURCES.get(id).label, n, p * n);
   }
   c.goods = c.goods.filter(g => g.kind !== 'res' || g.n > 0);
@@ -247,30 +253,28 @@ export function holdTrade(w) {
       const [role, score] = roleOf(itemDef(g.type, g.q));
       if (!role || !needs[role]) continue;
       const gain = score - needs[role][0], p = askPrice(g);
-      if (gain < TRADE.minGain || p > (w.stock.gold || 0) * TRADE.maxShare) continue;
+      if (gain < TRADE.minGain || p > cash() * TRADE.maxShare) continue;
       const v = gain / Math.max(0.5, p);
       if (v > bv) { bv = v; best = {g, role, score, p}; }
     }
-    if (!best) break;
+    if (!best || !spend(best.p)) break;
     c.goods.splice(c.goods.indexOf(best.g), 1);
     w.armory.push(newItem(best.g.type, best.g.q ? {q: best.g.q} : {}));
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     needs[best.role][0] = best.score; needs[best.role].sort((x, y) => x - y);
-    w.stock.gold = round1(w.stock.gold - best.p); c.purse = round1(c.purse + best.p);
     deal.spent += best.p; note(deal.bought, goodsLabel(best.g), 1, best.p);
   }
 
   // 4. finer furniture from the towns, only for a colony with gold to spare and a place to put it
   for (const g of c.goods) {
     if (g.kind !== 'res' || !RESOURCES.get(g.id).tags.includes('furniture') || freeSlots(w) <= 0) continue;
-    const p = askPrice(g); if ((w.stock.gold || 0) - p < TRADE.furnish) continue;
+    const p = askPrice(g); if (cash() - p < TRADE.furnish || !spend(p)) continue;
     g.n -= 1; w.stock[g.id] = (w.stock[g.id] || 0) + 1;
-    w.stock.gold = round1(w.stock.gold - p); c.purse = round1(c.purse + p);
     deal.spent += p; note(deal.bought, RESOURCES.get(g.id).label, 1, p);
   }
   c.goods = c.goods.filter(g => g.kind !== 'res' || g.n > 0);
 
-  deal.earned = round1(deal.earned); deal.spent = round1(deal.spent); deal.gold = round1(w.stock.gold || 0);
+  deal.earned = round1(deal.earned); deal.spent = round1(deal.spent); deal.gold = round1(cash());
   c.deal = deal; c.traded = true; c.tradedAt = w.tick;
   w.trade.deals.unshift(deal); if (w.trade.deals.length > 6) w.trade.deals.pop();
   w.trade.earned = round1(w.trade.earned + deal.earned); w.trade.spent = round1(w.trade.spent + deal.spent);
@@ -279,7 +283,7 @@ export function holdTrade(w) {
   const list = xs => xs.map(([l, n, g]) => `${l}${n > 1 ? ' ×' + n : ''}`).join(', ');
   const sold = deal.sold.length ? `Продали: ${list(deal.sold)} — за ${deal.earned} зол.` : 'Продать было нечего.';
   const bought = deal.bought.length ? ` Купили: ${list(deal.bought)} — за ${deal.spent} зол.` : ' Ничего не купили, золото отложили.';
-  log(w, `Торг с купцом <b>${esc(c.name)}</b> после совета. ${sold}${bought} В казне ${Math.floor(deal.gold)} зол.`, 'trade');
+  log(w, `Торг с купцом <b>${esc(c.name)}</b> после совета. ${sold}${bought} В казне ${Math.floor(deal.gold)} зол.${(w.stock.gold || 0) < deal.gold - 0.5 ? ` (монетами ${Math.floor(w.stock.gold || 0)}, остальное — золото и серебро)` : ''}`, 'trade');
 }
 
 // ── the visit, step by step (called every tick from sim.js)
@@ -298,7 +302,7 @@ export function stepTrade(w) {
   if (c.phase === 'coming' && c.arrived != null) {
     c.phase = 'camp';
     const n = on.filter(a => a.species === 'mule').length;
-    log(w, `К лагерю пришёл купец <b>${esc(c.name)}</b> с охраной и ${n} ${plural(n, 'вьючным мулом', 'вьючными мулами', 'вьючными мулами')}. Торг — после совета.`, 'trade', 'notice');
+    log(w, `К лагерю пришёл купец <b>${esc(c.name)}</b> с охраной и ${n} ${plural(n, 'вьючным мулом', 'вьючными мулами', 'вьючными мулами')}.${c.buyer ? ' Он прослышал о мифриле и привёз полный кошель.' : ''} Торг — после совета.`, 'trade', 'notice');
   }
   // trade right after today's council (or after the council hour, if nobody sat)
   if (c.phase === 'camp' && !c.traded && h < TRADE.tradeUntil && colonists(w).length &&

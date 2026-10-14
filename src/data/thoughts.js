@@ -58,6 +58,10 @@ THOUGHTS.registerAll([
   {id: 'tamedBeast', mood: 0.25, lasts: DAY, text: (a, c) => `${g(a, 'Приручил', 'Приручила')} ${c.beast}. Назвали: ${c.name}.`},
   {id: 'kicked', mood: -0.15, lasts: 12 * HOUR, once: 4 * HOUR, text: a => `Дикий мул ${g(a, 'его', 'её')} лягнул. Не дался.`},
 
+  // precious finds
+  {id: 'goldStrike', mood: 0.3, lasts: 2 * DAY, text: () => 'В скалах нашли золотую жилу! Разбогатеем.'},
+  {id: 'mithrilFound', mood: 0.2, lasts: DAY, text: () => 'Рудокопы достали мифрил. Говорят, купцы за него дадут целое состояние.'},
+
   // the dead and the shrine
   {id: 'funeral', mood: 0.08, lasts: DAY, text: (a, c) => `Похоронили: ${c.name}. Пусть земля будет пухом.`},
   {id: 'funeralRite', mood: 0.18, lasts: DAY, text: (a, c) => `Проводили ${c.name} у святилища, как положено. На душе стало легче.`},

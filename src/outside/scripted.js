@@ -10,6 +10,7 @@
 //   missed — optional: a journal line when a check comes to nothing;
 //   next   — tick of the next check, told how many actually arrived;
 //   receive — messages the colony sends out (its daily report, later tribute and envoys).
+import {region} from '../world/region.js';
 import {DAY} from '../core/time.js';
 import {RAIDS, WILDLIFE, PREDATORS} from '../data/presets.js';
 import {NEIGHBOURS} from '../data/neighbours.js';
@@ -71,7 +72,7 @@ export const scripted = {
     // in the morning, so that it reaches the camp before the evening council (data/trade.js)
     caravan: {from: 'empire',
       first: (w, rng) => caravanDay(w, TRADE.firstDay - 1, rng),
-      offer: (w, rng) => (rng() < TRADE.chance ? 1 : 0),
+      offer: (w, rng) => (rng() < Math.min(0.95, TRADE.chance * region(w).road) ? 1 : 0),   // a road close by brings more caravans
       next: (w, rng) => caravanDay(w, dayOf(w.tick) + TRADE.everyDays, rng)},
     // every dist/2 days (a little sooner after each raid) a band may set out — with the preset's
     // chance — sized by the rumours; a check that comes to nothing gives the colony time to recover

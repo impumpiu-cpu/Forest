@@ -42,6 +42,9 @@ FOODS.registerAll([
   {id: 'milk', label: 'молоко', kind: 'молочная', noFav: true, nutrition: 0.7, spoil: 4, loot: 2, taste: 0.3, value: 0.2, keepPerHead: 0, color: '#f2efe4'},
   {id: 'cheese', label: 'сыр', short: 'сыр', of: 'milk', group: 'Заготовки', nutrition: 2.2, spoil: 0.05, loot: 3, taste: 0.4, value: 1.2, keepPerHead: 2, color: '#e6c860'},
 
+  // bread from quern flour: keeps a while, more filling than the grain it was ground from
+  {id: 'bread', label: 'хлеб', kind: 'хлебная', noFav: true, nutrition: 1.1, spoil: 0.3, loot: 3, taste: 0.4, value: 0.4, keepPerHead: 2, color: '#c99a58'},
+
   // cooked at the hearth from two portions: more filling than both, a hot meal lifts the mood, but it does not keep
   {id: 'kasha', label: 'каша', kind: 'горячая', dish: true, nutrition: 2.4, spoil: 2, loot: 1, taste: 0.4, value: 0.6, keepPerHead: 0, color: '#e0c890', eat: 'ateHot'},
   {id: 'stew', label: 'похлёбка', kind: 'горячая', dish: true, nutrition: 3.0, spoil: 3, loot: 1, taste: 0.6, value: 0.8, keepPerHead: 0, color: '#d9a35a', eat: 'ateHot'},

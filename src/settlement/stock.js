@@ -38,32 +38,41 @@ export function eatMeal(w, a) {
 // ── fuel
 let cf, sf;
 const campFuels = () => cf || (cf = RESOURCES.filter(r => r.tags.includes('fuel')).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
-const smeltFuels = () => sf || (sf = RESOURCES.filter(r => r.tags.includes('smelt')));
 
-// what the campfire would burn now: wood first, then charcoal, then coal
+// what the campfire would burn now: wood first, then coal
 export function campFuel(w) { return campFuels().find(r => (w.stock[r.id] || 0) > 0.05) || null; }
 
-// feed the campfire for one tick; charcoal and coal burn longer than wood
+// feed the campfire for one tick; coal burns longer than wood
 export function burnCampFuel(w, amount) {
   const r = campFuel(w); if (!r) return false;
   w.stock[r.id] = Math.max(0, w.stock[r.id] - amount / (r.heat || 1));
   return true;
 }
 
-// fuel for a furnace or a forge: charcoal and coal together
-export const smeltFuelTotal = w => smeltFuels().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
+// ── furnace fuel. A recipe asks for `fuel` units of heat at a `heat` level (data/recipes.js); each fuel
+// resource with a `furnace` block (data/resources.js) gives heat up to its `tier` and needs `per`
+// units of itself for one unit of heat: wood (tier 1, 3 logs a unit) melts copper, gold and silver;
+// iron needs coal (tier 2). Magma (tier 3) will burn nothing, later. Kузнечные меха in the stock
+// save a quarter of the fuel (FURNACE.bellows).
+export const FURNACE = {bellows: 0.75, bellowsWork: 1.25, bellowsFine: 0.05, coalSpare: 6};
+const furnaceFuels = () => sf || (sf = RESOURCES.filter(r => r.furnace).sort((x, y) => x.furnace.tier - y.furnace.tier));
+const fuelNeed = (w, units) => units * ((w.stock.bellows || 0) >= 1 ? FURNACE.bellows : 1);
 
-// take n units of furnace fuel, the most plentiful kind first; false if there is not enough
-export function takeSmeltFuel(w, n) {
-  if (smeltFuelTotal(w) < n) return false;
-  let left = n;
-  for (const r of [...smeltFuels()].sort((x, y) => (w.stock[y.id] || 0) - (w.stock[x.id] || 0))) {
-    const t = Math.min(left, w.stock[r.id] || 0);
-    w.stock[r.id] -= t; left -= t;
-    if (left <= 1e-9) break;
-  }
-  return true;
+// how this recipe would be fired now: [resource, amount] or null if there is not enough of a hot
+// enough fuel. Low-heat work takes coal while there is plenty of it (it goes further than wood), wood
+// otherwise, keeping the camp's firewood reserve; iron takes coal only.
+export function furnacePick(w, heat, units, woodReserve = 0) {
+  const need = fuelNeed(w, units);
+  const ok = furnaceFuels().filter(r => r.furnace.tier >= heat);
+  const coal = ok.find(r => r.furnace.tier >= 2), wood = ok.find(r => r.furnace.tier < 2);
+  const have = r => (w.stock[r.id] || 0) - (r === wood ? woodReserve : 0);
+  if (coal && have(coal) >= need * coal.furnace.per + (wood ? FURNACE.coalSpare : 0)) return [coal, need * coal.furnace.per];
+  if (wood && have(wood) >= need * wood.furnace.per) return [wood, need * wood.furnace.per];
+  if (coal && have(coal) >= need * coal.furnace.per) return [coal, need * coal.furnace.per];
+  return null;
 }
+// heat units in stock at a heat level (for the panels and the charcoal pit's orders)
+export const furnaceHeat = (w, heat = 2) => furnaceFuels().filter(r => r.furnace.tier >= heat).reduce((s, r) => s + (w.stock[r.id] || 0) / r.furnace.per, 0);
 
 // share of the food in stock that lies in the open: pots hold POT_HOLDS portions each, a granary
 // keeps half of the rest out of reach (rats nibble only the open food; it also spoils faster)
@@ -96,11 +105,13 @@ export function spoil(w) {
 
 export function burnStock(w, frac) { for (const r of RESOURCES.all()) w.stock[r.id] = Math.max(0, w.stock[r.id] * (1 - frac)); }
 
-// raiders take up to `loot` units of each resource, less behind a palisade; returns the total taken
+// raiders take up to `loot` units of each resource, less behind a palisade; gold and silver locked in
+// a forged chest (furniture, settlement/life.js) are harder to get at; returns the total taken
 export function plunder(w) {
   let total = 0;
+  const chest = w.buildings.some(b => b.done && b.furniture?.includes('chest')) ? 0.4 : 1;
   for (const r of RESOURCES.all()) {
-    const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot);
+    const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot * (r.money ? chest : 1));
     w.stock[r.id] -= take; total += take;
   }
   return total;

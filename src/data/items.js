@@ -47,6 +47,9 @@ ITEMS.registerAll([
   // a rod with a wooden gorge hook and a line of twisted bast; works from the back as well
   {id: 'rod',    label: 'Удочка с деревянным крючком', short: 'удочка', slot: 'hand', hands: 2, tool: {fish: 1.6}, dur: 80, value: 1, glyph: 'rod'},
   // iron, from the forge
+  // cast in bronze at the furnace on a wood fire: better than bone, short of iron
+  {id: 'bronzespear', label: 'Копьё с бронзовым наконечником', short: 'бронз. копьё', slot: 'hand', hands: 1, melee: {dmg: 1.75, cd: 13}, dur: 95, value: 3, glyph: 'ironspear'},
+  {id: 'bronzeaxe',   label: 'Бронзовый топор', short: 'бронз. топор', slot: 'hand', hands: 1, melee: {dmg: 1.5, cd: 13}, tool: {chop: 1.9, build: 1.08}, dur: 120, value: 3, glyph: 'ironaxe'},
   {id: 'ironspear', label: 'Копьё с железным наконечником', short: 'жел. копьё', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.95, cd: 12}, dur: 120, value: 4, glyph: 'ironspear'},
   {id: 'ironaxe',   label: 'Железный топор', short: 'жел. топор', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.7, cd: 12}, tool: {chop: 2.2, build: 1.15}, dur: 160, value: 4, glyph: 'ironaxe'},
   {id: 'sword',     label: 'Железный меч', short: 'меч', slot: 'hand', hands: 1, iron: true, melee: {dmg: 2.15, cd: 11}, block: 0.1, dur: 150, value: 6, glyph: 'sword'},
@@ -58,6 +61,8 @@ ITEMS.registerAll([
   {id: 'scalemail',   label: 'Чешуйчатый доспех', short: 'чешуя', slot: 'body', iron: true, tradeOnly: true, armor: 0.48, warmth: 0.35, speed: 0.94, dur: 190, value: 25, color: '#9aa0a0'},
   {id: 'clothes',     label: 'Одежда из лубяной ткани', short: 'ткань', slot: 'body', armor: 0.08, warmth: 0.35, dur: 50, value: 1, color: '#c9b38a'},
   // fur: hare and wolf hides sewn hair-in — the winter coat
+  // the furs the woods give, kept at home: a coat lined with fox fur, the warmest thing the outpost makes
+  {id: 'furlined',    label: 'Тулуп на лисьем меху', short: 'тулуп на меху', slot: 'body', armor: 0.16, warmth: 0.95, speed: 0.97, dur: 100, value: 9, color: '#d0844a'},
   {id: 'furcoat',     label: 'Тулуп из шкур', short: 'тулуп', slot: 'body', armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4, color: '#b89a72'},
   // homespun wool from the pen's goats: a long coat, warm and not too heavy
   {id: 'woolens',     label: 'Шерстяная свита', short: 'свита', slot: 'body', armor: 0.1, warmth: 0.7, dur: 110, value: 5, color: '#cfc4a8'},
@@ -67,6 +72,8 @@ ITEMS.registerAll([
   {id: 'hardleather', label: 'Кожа с костяными пластинами', short: 'укреплённая кожа', slot: 'body', armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, value: 9, color: '#e0d6c0'},
   // back
   {id: 'quiver', label: 'Колчан', short: 'колчан', slot: 'back', holds: {ammo: 'arrows', max: 15}, dur: Infinity, value: 1, quality: false},
+  // a wooden pan for washing gold out of the river sand (data/plants.js 'placer')
+  {id: 'pan',    label: 'Промывочный лоток', short: 'лоток', slot: 'back', tool: {pan: 1.2}, dur: 150, value: 1, quality: false},
   {id: 'basket', label: 'Заплечный короб', short: 'короб', slot: 'back', carry: 2, dur: Infinity, value: 1, quality: false},
 ]);
 

@@ -13,7 +13,11 @@ import {RECIPES} from '../data/recipes.js';
 import {SIZES, CLIMATES, WILDLIFE, PREDATORS} from '../data/presets.js';
 import {exposedOre, oreOf} from '../world/ores.js';
 import {ORES} from '../data/ores.js';
-import {campFuel, smeltFuelTotal} from '../settlement/stock.js';
+import {campFuel, furnacePick} from '../settlement/stock.js';
+import {fuelReserve} from '../settlement/buildings.js';
+import {treasury} from '../settlement/precious.js';
+import {region} from '../world/region.js';
+import {LEVEL_WORDS} from '../data/regions.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
@@ -116,7 +120,7 @@ export class Panel {
     $('windTxt').textContent = w.wind.str < 0.03 ? 'штиль' : `ветер ${DIRS[Math.round(((w.wind.dir + 180) % 360) / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} м/с`;
     const col = colonists(w);
     $('popCount').textContent = col.length;
-    $('goldCount').textContent = w.caravan && w.caravan.phase !== 'leaving' ? '●' : Math.floor(w.stock.gold || 0) ? Math.floor(w.stock.gold) : '';
+    $('goldCount').textContent = w.caravan && w.caravan.phase !== 'leaving' ? '●' : Math.floor(treasury(w)) || '';
     const now = performance.now();
     const tps = view.speed && this.lastT ? (w.tick - this.lastTick) / ((now - this.lastT) / 1000) : 0;
     this.lastTick = w.tick; this.lastT = now;
@@ -136,7 +140,10 @@ export class Panel {
   renderTrade(w) {
     const gold = w.stock.gold || 0, c = w.caravan;
     const phase = {coming: 'идёт к лагерю', camp: 'стоит лагерем, торг после совета', trading: 'идёт торг', night: 'ночует у костра', leaving: 'уходит'};
-    let head = `<dl class="kv"><dt>Казна</dt><dd>${gold.toFixed(1)} имперских золотых</dd>` +
+    // gold and silver count as money at their rate (settlement/precious.js)
+    const metal = RESOURCES.filter(r => r.money && (w.stock[r.id] || 0) >= 0.05)
+      .map(r => `${r.short} ${(w.stock[r.id]).toFixed(r.value < 1 ? 1 : 0)} (≈${(w.stock[r.id] * r.value * r.money).toFixed(1)})`);
+    let head = `<dl class="kv"><dt>Казна</dt><dd>${treasury(w).toFixed(1)} зол.: монетами ${gold.toFixed(1)}${metal.length ? '; ' + metal.join(', ') : ''}</dd>` +
       `<dt>Следующий караван</dt><dd>${c ? 'уже здесь' : this.caravanWhen(w)}</dd>` +
       `<dt>Караванов было</dt><dd>${w.trade.visits} · выручено ${Math.floor(w.trade.earned)} · потрачено ${Math.floor(w.trade.spent)}</dd></dl>`;
     let goods = '';
@@ -164,7 +171,7 @@ export class Panel {
   caravanWhen(w) {
     const at = w.outside.next.caravan;
     if (!Number.isFinite(at)) return 'не ожидается';
-    return `${this.waitText(w, at)}, если придёт (${Math.round(TRADE.chance * 100)}%)`;
+    return `${this.waitText(w, at)}, если придёт (${Math.round(Math.min(0.95, TRADE.chance * region(w).road) * 100)}%)`;
   }
 
   // the stock, grouped: food, materials, fuel, ore, metal, luxury, ammunition
@@ -205,18 +212,29 @@ export class Panel {
     const ore = exposedOre(w);
     this.set('worldKv',
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
+      `<dt>Местность</dt><dd class="nb">${this.regionText(w)}</dd>` +
       `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
       `<dt title="Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` · ${this.waitText(w, w.outside.next.raiders)}, если выйдут (${Math.round((RAIDS[w.cfg.raids].chance ?? 1) * 100)}%)` : ''}</dd>` +
       `<dt>Соседи</dt><dd class="nb">${neighbours(w).filter(n => n.dist).map(n => `<span title="${esc(n.note)}">${esc(n.label)} · ${n.dist} дн. пути</span>`).join('<br>') || '—'}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +
       `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>` +
-      `<dt title="Сколько руды можно выкопать с открытого склона скал">Руда на склонах</dt><dd class="nb">${ORES.all().map(o => `${o.label} ${Math.round(ore[o.id])}`).join(' · ')}</dd>`);
+      `<dt title="Сколько руды можно выкопать с открытого склона скал">Руда на склонах</dt><dd class="nb">${ORES.filter(o => ore[o.id] > 0).map(o => `${o.label} ${Math.round(ore[o.id])}`).join(' · ') || 'не видно'}</dd>`);
     $('pFlabel').textContent = `Поля (${w.n.toLocaleString('ru-RU')} клеток)`;
     $('pF').textContent = w.perf.fields.toFixed(2); $('pN').textContent = w.perf.nav.toFixed(2);
     $('pA').textContent = w.perf.agents.toFixed(2); $('pR').textContent = view.renderMs.toFixed(2);
     $('pT').textContent = tps.toFixed(0);
     $('pS').textContent = view.speed ? `×${(tps * TICK_MS / 1000).toFixed(1)} / ×${view.speed}` : 'пауза';
+  }
+
+  // what the land holds (data/regions.js): ores, gold sand, beasts, wild beds
+  regionText(w) {
+    const R = region(w), word = v => LEVEL_WORDS[v] ?? v;
+    const ores = ORES.filter(o => !o.event).map(o => `${o.label} — ${word(R.ores[o.id] ?? 0)}`);
+    ores.push(`золото в отмелях — ${word(R.placer)}`);
+    if (R.goldVein) ores.push('бывает золотая жила');
+    const beasts = Object.entries(R.fauna).filter(([, v]) => v > 0).map(([id, v]) => SPECIES.get(id).label + (v > 1 ? ' (много)' : v < 1 ? ' (мало)' : ''));
+    return `<b>${esc(R.label)}</b>: ${esc(R.note || '')}<br>${ores.join(', ')}<br>звери: ${beasts.join(', ')}${R.magma ? '<br>под скалами магма' : ''}`;
   }
 
   // the arrival is either still on its way (time left) or due and waiting for a reason
@@ -363,7 +381,8 @@ export class Panel {
       const recs = RECIPES.filter(r => r.at === d.id).map(r => {
         const what = r.makes.item ? ITEMS.get(r.makes.item).label : `${RESOURCES.get(r.makes.resource).label} ×${r.makes.n}`;
         const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? '' : ' short'}">${v} ${RESOURCES.get(res).short}</span>`).join('') +
-          (r.fuel ? `<span class="cost${smeltFuelTotal(w) >= r.fuel ? '' : ' short'}">${r.fuel} топлива</span>` : '');
+          (r.fuel ? (() => { const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); return `<span class="cost${f ? '' : ' short'}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : (r.heat ?? 2) >= 2 ? `${r.fuel} угля` : `${r.fuel} угля или ${r.fuel * 3} дров`}</span>`; })() : '') +
+          (r.tool ? `<span class="cost${(w.stock[r.tool] || 0) >= 1 ? '' : ' short'}">${RESOURCES.get(r.tool).short}</span>` : '');
         const want = r.want(ctx);
         return `<div class="rc${r.id === cur ? ' cur' : ''}"><b>${esc(what)}</b><span class="costs">${cost}</span><span class="muted">${r.id === cur ? 'в работе' : want > 0 ? 'нужно' : 'хватает'}</span></div>`;
       }).join('');

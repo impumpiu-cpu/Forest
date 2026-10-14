@@ -55,7 +55,7 @@ export const tameTargets = w => perTick(w, 'tameTargets', () => {
   if (S === 'winter') return [];
   const kinds = {};
   for (const a of herd(w)) kinds[a.species] = (kinds[a.species] || 0) + 1;
-  return w.agents.filter(o => isTameable(o) && tameOf(o).space <= room && hasBait(w, tameOf(o))
+  return w.agents.filter(o => isTameable(o) && tameOf(o).space <= room && hasBait(w, tameOf(o)) && !(w.tick - (o.unreachable ?? -1e9) < 600)
     && (kinds[o.species] || 0) < (tameOf(o).max ?? Infinity)
     && (S !== 'autumn' || (w.stock.hay || 0) >= winterHay(w) + tameOf(o).eats * SEASON_DAYS * (1 - HERD.graze.winter))
     && Math.hypot(o.x - w.camp.x, o.y - w.camp.y) < HERD.reach);

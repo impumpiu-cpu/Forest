@@ -1,6 +1,8 @@
 // Read-only questions about the world state, shared by systems and content definitions.
 import {RESOURCES} from '../data/resources.js';
 import {perTick} from '../core/util.js';
+import {exposedOre} from '../world/ores.js';
+import {ORE_BY_CODE} from '../data/ores.js';
 
 export const count = (w, key, any = false) => w.buildings.reduce((n, b) => n + (b.key === key && (any || b.done) ? 1 : 0), 0);
 export const has = (w, key) => w.buildings.some(b => b.key === key && b.done);
@@ -26,4 +28,8 @@ export const jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).
 
 // ore kinds (codes) the colony wants dug now: those whose stock is below the resource's `target`
 const ORE_RES = () => RESOURCES.filter(r => r.ore);
-export const wantedOre = w => perTick(w, 'wantedOre', () => new Set(ORE_RES().filter(r => (w.stock[r.id] || 0) < r.target).map(r => r.ore)));
+// (only ores the rock face actually shows: a region without gold or mithril sends nobody digging for it)
+export const wantedOre = w => perTick(w, 'wantedOre', () => {
+  const seen = exposedOre(w);
+  return new Set(ORE_RES().filter(r => (w.stock[r.id] || 0) < r.target && seen[ORE_BY_CODE[r.ore].id] > 0).map(r => r.ore));
+});

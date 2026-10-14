@@ -28,7 +28,7 @@ export function missing(w, cost) {
 // can the colony consider this building at all (ignoring cost)?
 export function eligible(w, key) {
   const d = BUILDINGS.get(key);
-  return count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w))
+  return !d.captureOnly && count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w))
     && (!d.key || (w.stock[d.key] || 0) >= 1);   // a town-made tool it cannot be built without
 }
 

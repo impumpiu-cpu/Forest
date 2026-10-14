@@ -150,7 +150,13 @@ export const RUNNERS = {
     const d = Math.hypot(b.x - a.x, b.y - a.y);
     if (!b.tame) { task.tame = b.id; task.calm = d < 8; b.tamer = a.id; b.tamerAt = w.tick; }
     if (d > 1.3) {
-      if (approach(w, a, b.x, b.y, task.calm ? 0.75 : 1) === null || w.tick - task.since > 1500) { task.beast = null; done(a); a.think = 40; }
+      // far off: walk to where the beast was a while ago (a path is planned once, not after every step it takes)
+      if (!task.spot || d < 12 || w.tick - task.spotAt > 150) { task.spot = d < 12 ? null : [b.x, b.y]; task.spotAt = w.tick; }
+      const [tx, ty] = task.spot || [b.x, b.y];
+      if (approach(w, a, tx, ty, task.calm ? 0.75 : 1) === null || w.tick - task.since > 1500) {
+        if (!b.tame) b.unreachable = w.tick;   // across water or rock: leave it for a while
+        task.beast = null; done(a); a.think = 40;
+      }
       return;
     }
     task.work = (task.work || 0) + workRate(w, a, job.id);

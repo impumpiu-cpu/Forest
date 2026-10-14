@@ -7,10 +7,11 @@ import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {log} from '../core/log.js';
 import {colonists, has, foodTotal} from './query.js';
-import {allItems, newItem} from '../agents/equipment.js';
+import {allItems, newItem, def} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {RESOURCES} from '../data/resources.js';
-import {smeltFuelTotal, takeSmeltFuel} from './stock.js';
+import {furnacePick, furnaceHeat, FURNACE} from './stock.js';
+import {fuelReserve} from './buildings.js';
 import {perTick} from '../core/util.js';
 import {fishable} from '../world/lakes.js';
 import {season} from '../data/seasons.js';
@@ -27,7 +28,8 @@ function reserved(w, res) {
 
 function canStart(w, r) {
   if (r.needs && !r.needs.every(b => has(w, b))) return false;
-  if (r.fuel && smeltFuelTotal(w) < r.fuel) return false;
+  if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w))) return false;
+  if (r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;   // a town-made tool from the stock (cupels)
   // enough in stock, and what is left still covers the council's savings goal
   return Object.entries(r.cost).every(([res, v]) => {
     const have = w.stock[res] || 0;
@@ -44,6 +46,9 @@ function makeCraftContext(w) {
   for (const a of col) for (const it of allItems(a)) count(it);
   for (const it of w.armory) count(it);
   const owned = id => counts[id] || 0;
+  let silvered = 0;
+  for (const a of col) for (const it of allItems(a)) if (it.silver) silvered++;
+  for (const it of w.armory) if (it.silver) silvered++;
   return {
     pop: col.length, owned,
     likes: job => col.filter(a => a.likes === job).length,
@@ -57,9 +62,11 @@ function makeCraftContext(w) {
     stockpile: {spring: 0.7, summer: 1, autumn: 1.6, winter: 1}[season(w).id] ?? 1,
     stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
     fans: food => col.filter(a => a.food?.likes === food).length,
-    get fuel() { return smeltFuelTotal(w); },
+    get fuel() { return furnaceHeat(w, 2); },
     melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
     freeSlots: freeSlots(w),
+    silvered: () => silvered,
+    placers: (w.plantBeds?.placer?.length || 0) > 0,
     spare: res => { const r = RESOURCES.get(res); return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20); },
   };
 }
@@ -118,20 +125,26 @@ export function workAt(w, b, amount, a) {
     if (!r) return false;
     if (w.scratch) delete w.scratch.orders;   // materials are taken: other stations may not afford theirs now
     for (const [res, v] of Object.entries(r.cost)) w.stock[res] -= v;
-    if (r.fuel) takeSmeltFuel(w, r.fuel);
+    if (r.fuel) { const [f, n] = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); w.stock[f.id] -= n; }
     b.order = {recipe: r.id, progress: 0};
   }
   const r = RECIPES.get(b.order.recipe);
-  b.order.progress += amount;
+  const bellows = r.fuel && (w.stock.bellows || 0) >= 1;   // blown fire: the work goes faster
+  b.order.progress += amount * (bellows ? FURNACE.bellowsWork : 1);
   if (b.order.progress < r.work) return true;
   b.order = null;
   w.stats.crafted++;
   if (w.scratch) delete w.scratch.craftCtx;   // item counts changed
   if (r.makes.item) {
-    w.armory.push(newItem(r.makes.item));
+    // a silvered blade carries the silver on the instance; with bellows a forged piece now and then comes out finer
+    const extra = {};
+    if (r.makes.silver) extra.silver = true;
+    if (bellows && w.rng() < FURNACE.bellowsFine) extra.q = 1;
+    const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
+    w.armory.push(it);
     w.armoryVersion = (w.armoryVersion || 0) + 1;
-    log(w, `Сделано: ${ITEMS.get(r.makes.item).label.toLowerCase()}.`, 'craft');
-    if (a) { think(w, a, 'madeItem', {item: ITEMS.get(r.makes.item).label.toLowerCase()}); a.stats.crafted++; }
+    log(w, `Сделано: ${name}.${extra.q ? ' Меха раздули жар как надо: вещь вышла добротной.' : ''}`, 'craft');
+    if (a) { think(w, a, 'madeItem', {item: name}); a.stats.crafted++; }
     w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
   } else {
     w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;

@@ -919,6 +919,8 @@ dd.q4{color:#c58cff;font-weight:600}
     // from the pen (settlement/herd.js): milk sours in a day or two, cheese pressed from it keeps all winter
     { id: "milk", label: "\u043C\u043E\u043B\u043E\u043A\u043E", kind: "\u043C\u043E\u043B\u043E\u0447\u043D\u0430\u044F", noFav: true, nutrition: 0.7, spoil: 4, loot: 2, taste: 0.3, value: 0.2, keepPerHead: 0, color: "#f2efe4" },
     { id: "cheese", label: "\u0441\u044B\u0440", short: "\u0441\u044B\u0440", of: "milk", group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", nutrition: 2.2, spoil: 0.05, loot: 3, taste: 0.4, value: 1.2, keepPerHead: 2, color: "#e6c860" },
+    // bread from quern flour: keeps a while, more filling than the grain it was ground from
+    { id: "bread", label: "\u0445\u043B\u0435\u0431", kind: "\u0445\u043B\u0435\u0431\u043D\u0430\u044F", noFav: true, nutrition: 1.1, spoil: 0.3, loot: 3, taste: 0.4, value: 0.4, keepPerHead: 2, color: "#c99a58" },
     // cooked at the hearth from two portions: more filling than both, a hot meal lifts the mood, but it does not keep
     { id: "kasha", label: "\u043A\u0430\u0448\u0430", kind: "\u0433\u043E\u0440\u044F\u0447\u0430\u044F", dish: true, nutrition: 2.4, spoil: 2, loot: 1, taste: 0.4, value: 0.6, keepPerHead: 0, color: "#e0c890", eat: "ateHot" },
     { id: "stew", label: "\u043F\u043E\u0445\u043B\u0451\u0431\u043A\u0430", kind: "\u0433\u043E\u0440\u044F\u0447\u0430\u044F", dish: true, nutrition: 3, spoil: 3, loot: 1, taste: 0.6, value: 0.8, keepPerHead: 0, color: "#d9a35a", eat: "ateHot" },
@@ -1019,7 +1021,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "coal",
       code: 2,
       resource: "coal",
-      label: "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0439 \u0443\u0433\u043E\u043B\u044C",
+      label: "\u0437\u0430\u043B\u0435\u0436\u0438 \u0443\u0433\u043B\u044F",
       tint: [44, 44, 52],
       mapColor: [70, 70, 84],
       vein: { seam: 8, above: 0.68, amount: [6, 12] },
@@ -1038,6 +1040,57 @@ dd.q4{color:#c58cff;font-weight:600}
       reach: 4,
       plant: 2,
       plantAmount: 3
+    },
+    // copper with tin in one ore: smelted straight into bronze on wood
+    {
+      id: "bronze",
+      code: 4,
+      resource: "bronzeOre",
+      label: "\u043C\u0435\u0434\u043D\u043E-\u043E\u043B\u043E\u0432\u044F\u043D\u043D\u0430\u044F \u0440\u0443\u0434\u0430",
+      tint: [176, 128, 72],
+      mapColor: [214, 150, 80],
+      vein: { seam: 9, above: 0.72, amount: [5, 10] },
+      reach: 10,
+      plant: 4,
+      plantAmount: 7
+    },
+    // silver-bearing ore in thin seams; now and then a lump of native silver
+    {
+      id: "silver",
+      code: 5,
+      resource: "silverOre",
+      label: "\u0441\u0435\u0440\u0435\u0431\u0440\u0438\u0441\u0442\u0430\u044F \u0440\u0443\u0434\u0430",
+      tint: [196, 200, 210],
+      mapColor: [220, 224, 236],
+      vein: { pocket: 0.012, amount: [3, 6] },
+      reach: 6,
+      plant: 2,
+      plantAmount: 4,
+      also: { silverNative: 0.12 }
+    },
+    // mithril: single pockets, only in the rare regions that have it; the outpost cannot work it
+    {
+      id: "mithril",
+      code: 6,
+      resource: "mithrilOre",
+      label: "\u043C\u0438\u0444\u0440\u0438\u043B\u043E\u0432\u0430\u044F \u0440\u0443\u0434\u0430",
+      tint: [150, 210, 240],
+      mapColor: [170, 230, 255],
+      vein: { pocket: 15e-4, amount: [1, 3] },
+      reach: 1,
+      plant: 1,
+      plantAmount: 2
+    },
+    // a quartz vein with native gold: opened only by an event (data/jobs.js 'dig', settlement/precious.js)
+    {
+      id: "goldvein",
+      code: 7,
+      resource: "goldNugget",
+      label: "\u0437\u043E\u043B\u043E\u0442\u043E\u043D\u043E\u0441\u043D\u044B\u0439 \u043A\u0432\u0430\u0440\u0446",
+      tint: [236, 200, 70],
+      mapColor: [255, 214, 60],
+      vein: { pocket: 0, amount: [4, 6] },
+      event: true
     }
   ]);
   var ORE_BY_CODE = [];
@@ -1427,6 +1480,60 @@ dd.q4{color:#c58cff;font-weight:600}
       mapColor: [170, 220, 90],
       // enough for bedding, and for the pen's winter (settlement/herd.js, winterHay)
       job: { id: "mow", label: "\u043A\u043E\u0441\u0438\u0442\u044C \u0441\u0435\u043D\u043E", short: "\u0441\u0435\u043D\u043E", verb: "\u043A\u043E\u0441\u0438\u0442 \u0441\u0435\u043D\u043E", time: 20, carry: 3, keep: (w) => 30 + winterHay(w) }
+    },
+    // gold-bearing sand in the shallows: washed with a pan, a little at a time; the river brings more
+    // sand very slowly. Not under ice. Now and then a nugget turns up in the pan.
+    {
+      id: "placer",
+      resource: "goldDust",
+      also: { goldNugget: 0.02 },
+      label: "\u0437\u043E\u043B\u043E\u0442\u043E\u043D\u043E\u0441\u043D\u044B\u0439 \u043F\u0435\u0441\u043E\u043A",
+      terrain: ["grass"],
+      nearWater: true,
+      chance: 0.06,
+      seasons: ["spring", "summer", "autumn"],
+      start: [0.6, 1],
+      regrow: 6e-5,
+      ripe: 0.3,
+      take: 0.12,
+      tint: [222, 196, 96],
+      mapColor: [255, 214, 60],
+      job: { id: "pan", label: "\u043C\u044B\u0442\u044C \u0437\u043E\u043B\u043E\u0442\u043E", short: "\u0437\u043E\u043B\u043E\u0442\u043E", verb: "\u043C\u043E\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u0438", time: 40, carry: 4, keep: 200, tool: "pan" }
+    },
+    // salt licks: white crusts where salty springs come up; the outpost's own salt, a little at a time
+    {
+      id: "saltlick",
+      resource: "salt",
+      label: "\u0441\u043E\u043B\u043E\u043D\u0435\u0446",
+      terrain: ["grass"],
+      fertMin: 0,
+      chance: 4e-3,
+      hardy: true,
+      start: [0.6, 1],
+      regrow: 12e-5,
+      ripe: 0.4,
+      take: 0.3,
+      tint: [236, 236, 228],
+      mapColor: [250, 250, 245],
+      job: { id: "salt", label: "\u0432\u044B\u043F\u0430\u0440\u0438\u0432\u0430\u0442\u044C \u0441\u043E\u043B\u044C", short: "\u0441\u043E\u043B\u044C", verb: "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u0441\u043E\u043B\u044C \u043D\u0430 \u0441\u043E\u043B\u043E\u043D\u0446\u0435", time: 40, carry: 2, keep: 12 }
+    },
+    // wild flax: in autumn its seed heads are ripe; the outpost's own flax seed without a trader
+    {
+      id: "wildflax",
+      resource: "seedFlax",
+      also: { fiber: 0.5 },
+      label: "\u0434\u0438\u043A\u0438\u0439 \u043B\u0451\u043D",
+      terrain: ["grass"],
+      fertMin: 0.5,
+      chance: 8e-3,
+      seasons: ["autumn"],
+      start: [0.2, 0.5],
+      regrow: 4e-4,
+      ripe: 0.6,
+      take: 0.5,
+      tint: [120, 150, 200],
+      mapColor: [140, 170, 230],
+      job: { id: "flaxseed", label: "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C \u0441\u0435\u043C\u0435\u043D\u0430 \u043B\u044C\u043D\u0430", short: "\u043B\u0451\u043D", verb: "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u0441\u0435\u043C\u0435\u043D\u0430 \u0434\u0438\u043A\u043E\u0433\u043E \u043B\u044C\u043D\u0430", time: 25, carry: 3, keep: 10 }
     }
   ]);
   var plantLayer = (id) => "plant:" + id;
@@ -1447,6 +1554,133 @@ dd.q4{color:#c58cff;font-weight:600}
       if (inBounds(w, nx, ny) && w.grid.terr[ny * w.w + nx] === T.ROCK) return true;
     }
     return false;
+  }
+
+  // src/data/regions.js
+  var LEVELS = [0, 0.5, 1, 1.6];
+  var LEVEL_WORDS = { 0: "\u043D\u0435\u0442", 0.5: "\u0431\u0435\u0434\u043D\u043E", 1: "\u0435\u0441\u0442\u044C", 1.6: "\u0431\u043E\u0433\u0430\u0442\u043E" };
+  var REGION_SHIFT = 0.25;
+  var REGIONS = new Registry("region");
+  REGIONS.registerAll([
+    {
+      id: "hills",
+      label: "\u041B\u0435\u0441\u0438\u0441\u0442\u044B\u0435 \u0445\u043E\u043B\u043C\u044B",
+      weight: 3,
+      note: "\u0440\u043E\u0432\u043D\u0430\u044F \u0437\u0435\u043C\u043B\u044F \u0431\u0435\u0437 \u043E\u0441\u043E\u0431\u044B\u0445 \u0431\u043E\u0433\u0430\u0442\u0441\u0442\u0432: \u043B\u0435\u0441, \u0434\u0438\u0447\u044C, \u043D\u0435\u043C\u043D\u043E\u0433\u043E \u0440\u0443\u0434\u044B",
+      ores: { iron: 1, coal: 1, gems: 0.5, bronze: 0.5, silver: 0, mithril: 0 },
+      placer: 0,
+      goldVein: false,
+      magma: false,
+      road: 1,
+      fauna: { deer: 1, boar: 1, fox: 1, goat: 0.5, mule: 1, wolf: 1 },
+      flora: { hive: 1, herbs: 1, saltlick: 0, wildflax: 0.5 }
+    },
+    {
+      id: "valley",
+      label: "\u0420\u0435\u0447\u043D\u0430\u044F \u0434\u043E\u043B\u0438\u043D\u0430",
+      weight: 2,
+      note: "\u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u044F\u0445, \u0436\u0438\u0440\u043D\u0430\u044F \u0437\u0435\u043C\u043B\u044F, \u0442\u0440\u0430\u043A\u0442 \u0431\u043B\u0438\u0437\u043A\u043E; \u0443\u0433\u043B\u044F \u043D\u0435\u0442",
+      ores: { iron: 0.5, coal: 0, gems: 0, bronze: 0.5, silver: 0, mithril: 0 },
+      placer: 1.6,
+      goldVein: false,
+      magma: false,
+      road: 1.3,
+      fauna: { deer: 1, boar: 0.5, fox: 1, goat: 0, mule: 0.5, wolf: 0.5 },
+      flora: { hive: 1, herbs: 1, saltlick: 0, wildflax: 1 }
+    },
+    {
+      id: "foothills",
+      label: "\u041A\u0430\u043C\u0435\u043D\u0438\u0441\u0442\u043E\u0435 \u043F\u0440\u0435\u0434\u0433\u043E\u0440\u044C\u0435",
+      weight: 2,
+      note: "\u0436\u0435\u043B\u0435\u0437\u043E, \u0441\u0435\u0440\u0435\u0431\u0440\u043E \u0438 \u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B, \u043A\u043E\u0437\u044B \u0438 \u043C\u0443\u043B\u044B; \u0431\u0435\u0434\u043D\u0430\u044F \u043F\u043E\u0447\u0432\u0430",
+      ores: { iron: 1.6, coal: 0.5, gems: 1, bronze: 1, silver: 1, mithril: 0 },
+      placer: 0.5,
+      goldVein: true,
+      magma: false,
+      road: 0.8,
+      fauna: { deer: 0.5, boar: 0, fox: 0.5, goat: 1.6, mule: 1.6, wolf: 1 },
+      flora: { hive: 0.5, herbs: 0.5, saltlick: 1, wildflax: 0 }
+    },
+    {
+      id: "taiga",
+      label: "\u0421\u0435\u0432\u0435\u0440\u043D\u0430\u044F \u0442\u0430\u0439\u0433\u0430",
+      weight: 2,
+      note: "\u0443\u0433\u043E\u043B\u044C \u0438 \u043C\u0435\u0445\u0430, \u043C\u043D\u043E\u0433\u043E \u0434\u0438\u0447\u0438 \u0438 \u0432\u043E\u043B\u043A\u043E\u0432",
+      ores: { iron: 0.5, coal: 1.6, gems: 0, bronze: 0, silver: 0.5, mithril: 0 },
+      placer: 0,
+      goldVein: false,
+      magma: false,
+      road: 0.7,
+      fauna: { deer: 1.6, boar: 0.5, fox: 1.6, goat: 0, mule: 0, wolf: 1.6 },
+      flora: { hive: 0.5, herbs: 1, saltlick: 0, wildflax: 0.5 }
+    },
+    {
+      id: "oldmines",
+      label: "\u0421\u0442\u0430\u0440\u044B\u0435 \u043A\u043E\u043F\u0438 \u0443 \u043F\u043E\u0442\u0443\u0445\u0448\u0435\u0433\u043E \u0432\u0443\u043B\u043A\u0430\u043D\u0430",
+      weight: 1,
+      note: "\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B, \u0441\u0435\u0440\u0435\u0431\u0440\u043E, \u043C\u043E\u0436\u0435\u0442 \u043D\u0430\u0439\u0442\u0438\u0441\u044C \u043C\u0438\u0444\u0440\u0438\u043B; \u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043C\u0430\u0433\u043C\u0430; \u0442\u0440\u0430\u043A\u0442 \u0434\u0430\u043B\u0435\u043A\u043E",
+      ores: { iron: 1, coal: 0.5, gems: 1.6, bronze: 0.5, silver: 1, mithril: 1 },
+      placer: 0,
+      goldVein: true,
+      magma: true,
+      road: 0.5,
+      fauna: { deer: 0.5, boar: 0, fox: 0.5, goat: 1, mule: 1, wolf: 1 },
+      flora: { hive: 0, herbs: 0.5, saltlick: 0.5, wildflax: 0 }
+    }
+  ]);
+  var LEGACY_REGION = {
+    id: "legacy",
+    label: "\u041E\u043A\u0440\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u0438 \u0431\u0440\u043E\u0434\u0430",
+    note: "\u0437\u0435\u043C\u043B\u0438, \u043E\u0441\u0432\u043E\u0435\u043D\u043D\u044B\u0435 \u0434\u043E \u0440\u0430\u0437\u0432\u0435\u0434\u043A\u0438 \u0440\u0435\u0433\u0438\u043E\u043D\u043E\u0432",
+    ores: { iron: 1, coal: 1, gems: 1, bronze: 0, silver: 0, mithril: 0 },
+    placer: 0,
+    goldVein: false,
+    magma: false,
+    road: 1,
+    fauna: { deer: 1, boar: 1, fox: 1, goat: 1, mule: 1, wolf: 1 },
+    flora: { hive: 1, herbs: 1, saltlick: 0, wildflax: 0 }
+  };
+
+  // src/world/region.js
+  var RARE = /* @__PURE__ */ new Set(["mithril"]);
+  var shift = (rnd, v, key2) => {
+    if (rnd() >= REGION_SHIFT || v === 0 && RARE.has(key2)) return v;
+    const k = LEVELS.indexOf(v), up = rnd() < 0.5;
+    return LEVELS[Math.max(0, Math.min(LEVELS.length - 1, k + (up ? 1 : -1)))] ?? v;
+  };
+  function rollRegion(seed) {
+    const rnd = mulberry(seedNumber(String(seed) + ":region"));
+    const all = REGIONS.all(), total = all.reduce((s, r) => s + r.weight, 0);
+    let x = rnd() * total, t = all[0];
+    for (const r of all) {
+      x -= r.weight;
+      if (x <= 0) {
+        t = r;
+        break;
+      }
+    }
+    const levels = (obj) => Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, shift(rnd, v, k)]));
+    const reg = {
+      id: t.id,
+      label: t.label,
+      note: t.note,
+      ores: levels(t.ores),
+      placer: shift(rnd, t.placer),
+      goldVein: t.goldVein,
+      magma: t.magma,
+      road: t.road,
+      fauna: levels(t.fauna),
+      flora: levels(t.flora)
+    };
+    if (!reg.fauna.deer && !reg.fauna.goat) reg.fauna.deer = 0.5;
+    return reg;
+  }
+  var region = (w) => w.region || LEGACY_REGION;
+  var oreLevel = (w, oreId) => region(w).ores[oreId] ?? 0;
+  var faunaLevel = (w, sp) => region(w).fauna[sp] ?? 1;
+  var floraLevel = (w, id) => id === "placer" ? region(w).placer : region(w).flora[id] ?? 1;
+  function ensureRegion(w) {
+    w.region ?? (w.region = { ...LEGACY_REGION });
   }
 
   // src/world/ores.js
@@ -1502,16 +1736,16 @@ dd.q4{color:#c58cff;font-weight:600}
         return (a * (1 - tx2) + b * tx2) * (1 - ty) + (c * (1 - tx2) + d * tx2) * ty;
       };
     };
-    const kinds = ORES.all().map((o) => ({ o, noise: o.vein.seam ? seam(o.vein.seam) : null }));
+    const kinds = ORES.filter((o) => !o.event && oreLevel(w, o.id) > 0).map((o) => ({ o, lvl: oreLevel(w, o.id), noise: o.vein.seam ? seam(o.vein.seam) : null }));
     const amount = ([lo, hi], r) => lo + Math.floor(r * (hi - lo + 1));
     const face = [];
     for (let i = 0; i < n; i++) {
       if (g2.terr[i] !== T.ROCK) continue;
       if (exposed(w, i)) face.push(i);
       const r = rnd();
-      for (const { o, noise } of kinds) {
+      for (const { o, lvl, noise } of kinds) {
         const v = o.vein;
-        if (noise ? noise(i) > v.above : r < v.pocket) {
+        if (noise ? noise(i) > v.above + (1 - lvl) * 0.07 : r < v.pocket * lvl) {
           g2.ore[i] = o.code;
           g2.oreLeft[i] = amount(v.amount, noise ? r : rnd());
           break;
@@ -1520,8 +1754,8 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     if (!face.length) return;
     const have = countExposed(w);
-    for (const o of ORES.all()) {
-      if (have[o.id] >= (o.reach || 0)) continue;
+    for (const { o, lvl } of kinds) {
+      if (have[o.id] >= (o.reach || 0) * Math.min(1, lvl)) continue;
       const start2 = face[Math.floor(rnd() * face.length)], sx = start2 % w.w, sy = start2 / w.w | 0;
       let placed = 0;
       for (let rad = 0; rad <= 3 && placed < o.plant; rad++) for (let yy = -rad; yy <= rad && placed < o.plant; yy++) for (let xx = -rad; xx <= rad && placed < o.plant; xx++) {
@@ -1530,7 +1764,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const j = y * w.w + x;
         if (g2.terr[j] !== T.ROCK || g2.ore[j] === o.code) continue;
         g2.ore[j] = o.code;
-        g2.oreLeft[j] = o.plantAmount;
+        g2.oreLeft[j] = Math.max(1, Math.round(o.plantAmount * Math.min(1, lvl)));
         placed++;
       }
     }
@@ -1547,6 +1781,7 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "table", label: "\u0441\u0442\u043E\u043B \u0438\u0437 \u0442\u0451\u0441\u0430", comfort: 0.06, value: 2, color: "#c99a5c", recipe: { at: "crafthut", cost: { planks: 4 }, work: 600 } },
     { id: "rug", label: "\u0448\u0435\u0440\u0441\u0442\u044F\u043D\u043E\u0439 \u043A\u043E\u0432\u0451\u0440", comfort: 0.08, value: 4, color: "#b05a4a", recipe: { at: "loom", cost: { wool: 4 }, work: 700 } },
     { id: "chest", label: "\u043A\u043E\u0432\u0430\u043D\u044B\u0439 \u0441\u0443\u043D\u0434\u0443\u043A", comfort: 0.08, value: 5, color: "#8a6a48", recipe: { at: "forge", cost: { planks: 3, iron: 1 }, fuel: 1, work: 600 } },
+    { id: "bell", label: "\u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0439 \u043A\u043E\u043B\u043E\u043A\u043E\u043B", comfort: 0.12, value: 6, color: "#c89048", recipe: { at: "smelter", cost: { bronze: 3 }, fuel: 1, heat: 1, work: 600 } },
     { id: "casket", label: "\u0440\u0435\u0437\u043D\u043E\u0439 \u043B\u0430\u0440\u0435\u0446", comfort: 0.1, value: 7, color: "#58b3a8", recipe: { at: "jeweler", cost: { wood: 2, bone: 2, gems: 1 }, work: 700 } },
     // from the empire's towns
     { id: "mirror", label: "\u0431\u0440\u043E\u043D\u0437\u043E\u0432\u043E\u0435 \u0437\u0435\u0440\u043A\u0430\u043B\u043E", comfort: 0.14, value: 12, color: "#d9b25a", tradeOnly: true },
@@ -1584,6 +1819,7 @@ dd.q4{color:#c58cff;font-weight:600}
       value: 0.1,
       keep: 40,
       color: "#a5794a",
+      furnace: { tier: 1, per: 3 },
       map: (w, i) => w.grid.terr[i] === T.FOREST ? w.grid.wood[i] : 0,
       mapColor: [120, 210, 90]
     },
@@ -1625,20 +1861,22 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "salt", label: "\u0441\u043E\u043B\u044C", short: "\u0441\u043E\u043B\u044C", tags: ["spice"], group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", loot: 2, value: 0.6, keep: 40, color: "#e8e6e0" },
     // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
     { id: "herbs", label: "\u043B\u0435\u0447\u0435\u0431\u043D\u044B\u0435 \u0442\u0440\u0430\u0432\u044B", short: "\u0442\u0440\u0430\u0432\u044B", tags: ["medicine"], group: "\u041B\u0435\u043A\u0430\u0440\u0441\u0442\u0432\u0430", loot: 1, value: 1, keep: 10, target: 10, color: "#e8d25c" },
-    // fuel: charcoal is burnt from logs, coal is dug; both keep a furnace hot, the campfire takes them after wood
-    { id: "charcoal", label: "\u0434\u0440\u0435\u0432\u0435\u0441\u043D\u044B\u0439 \u0443\u0433\u043E\u043B\u044C", short: "\u0443\u0433\u043E\u043B\u044C", tags: ["fuel", "smelt"], group: "\u0422\u043E\u043F\u043B\u0438\u0432\u043E", burn: 2, heat: 2, loot: 2, value: 0.3, color: "#3d3a36", target: 10 },
+    // fuel: coal — burnt from logs in the pit or dug from a seam, it is all the same coal. In a furnace
+    // (`furnace`) fuel gives heat up to its `tier`: wood (tier 1) melts copper, bronze, gold and silver,
+    // iron wants coal (tier 2); one unit of furnace heat takes `per` units of it (settlement/stock.js)
     {
       id: "coal",
-      label: "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0439 \u0443\u0433\u043E\u043B\u044C",
-      short: "\u043A\u0430\u043C. \u0443\u0433\u043E\u043B\u044C",
-      tags: ["fuel", "smelt", "ore"],
+      label: "\u0443\u0433\u043E\u043B\u044C",
+      short: "\u0443\u0433\u043E\u043B\u044C",
+      tags: ["fuel", "smelt"],
       group: "\u0422\u043E\u043F\u043B\u0438\u0432\u043E",
-      burn: 3,
-      heat: 2.5,
+      burn: 2,
+      heat: 2,
       loot: 2,
       value: 0.3,
-      color: "#2a2a2e",
-      target: 12
+      color: "#2f2d2c",
+      target: 12,
+      furnace: { tier: 2, per: 1 }
     },
     // ore from the mine
     {
@@ -1663,10 +1901,28 @@ dd.q4{color:#c58cff;font-weight:600}
       color: "#7fd3c8",
       target: 6
     },
+    { id: "bronzeOre", label: "\u043C\u0435\u0434\u043D\u043E-\u043E\u043B\u043E\u0432\u044F\u043D\u043D\u0430\u044F \u0440\u0443\u0434\u0430", short: "\u043C\u0435\u0434\u043D. \u0440\u0443\u0434\u0430", tags: ["ore"], group: "\u0420\u0443\u0434\u0430", loot: 1, value: 0.4, color: "#c08850", target: 10 },
+    { id: "silverOre", label: "\u0441\u0435\u0440\u0435\u0431\u0440\u0438\u0441\u0442\u0430\u044F \u0440\u0443\u0434\u0430", short: "\u0441\u0435\u0440. \u0440\u0443\u0434\u0430", tags: ["ore"], group: "\u0420\u0443\u0434\u0430", loot: 1, value: 1, color: "#c8ccd6", target: 9 },
+    // mithril: the outpost cannot work it (it needs a magma forge), only dig it and sell it
+    { id: "mithrilOre", label: "\u043C\u0438\u0444\u0440\u0438\u043B\u043E\u0432\u0430\u044F \u0440\u0443\u0434\u0430", short: "\u043C\u0438\u0444\u0440\u0438\u043B", tags: ["ore", "luxury"], group: "\u0420\u0443\u0434\u0430", loot: 1, value: 40, keep: 0, color: "#9fe0ff", target: 99 },
     // metal: bars from the furnace
     { id: "iron", label: "\u0436\u0435\u043B\u0435\u0437\u043E", short: "\u0436\u0435\u043B\u0435\u0437\u043E", tags: ["material", "metal"], group: "\u041C\u0435\u0442\u0430\u043B\u043B", loot: 1, value: 2, keep: 8, color: "#a9b0b6" },
+    { id: "bronze", label: "\u0431\u0440\u043E\u043D\u0437\u0430", short: "\u0431\u0440\u043E\u043D\u0437\u0430", tags: ["material", "metal"], group: "\u041C\u0435\u0442\u0430\u043B\u043B", loot: 1, value: 1.5, keep: 8, color: "#c89048" },
+    // ── precious metals. Gold is washed from river sand (data/plants.js 'placer') and now and then dug
+    // from a rare quartz vein; silver comes from its ore. Both melt on a wood fire. They are money too:
+    // `money` is the share of its price a trader counts it for in a payment (settlement/trade.js) —
+    // a bar is easy to weigh and check, dust has to be washed and tested
+    { id: "goldDust", label: "\u0437\u043E\u043B\u043E\u0442\u043E\u0439 \u043F\u0435\u0441\u043E\u043A", short: "\u0437\u043E\u043B. \u043F\u0435\u0441\u043E\u043A", tags: ["precious"], group: "\u0414\u0435\u043D\u044C\u0433\u0438", loot: 3, value: 0.7, money: 0.7, sell: false, color: "#e8c860" },
+    { id: "goldNugget", label: "\u0437\u043E\u043B\u043E\u0442\u044B\u0435 \u0441\u0430\u043C\u043E\u0440\u043E\u0434\u043A\u0438", short: "\u0441\u0430\u043C\u043E\u0440\u043E\u0434\u043A\u0438", tags: ["precious"], group: "\u0414\u0435\u043D\u044C\u0433\u0438", loot: 2, value: 9, money: 0.8, sell: false, color: "#f0c840", target: 999 },
+    { id: "goldBar", label: "\u0441\u043B\u0438\u0442\u043A\u0438 \u0437\u043E\u043B\u043E\u0442\u0430", short: "\u0437\u043E\u043B. \u0441\u043B\u0438\u0442\u043A\u0438", tags: ["precious", "metal"], group: "\u0414\u0435\u043D\u044C\u0433\u0438", loot: 2, value: 10, money: 0.9, sell: false, color: "#f2c230" },
+    { id: "silverNative", label: "\u0441\u0430\u043C\u043E\u0440\u043E\u0434\u043D\u043E\u0435 \u0441\u0435\u0440\u0435\u0431\u0440\u043E", short: "\u0441\u0430\u043C. \u0441\u0435\u0440\u0435\u0431\u0440\u043E", tags: ["precious"], group: "\u0414\u0435\u043D\u044C\u0433\u0438", loot: 2, value: 3, money: 0.75, sell: false, color: "#d8dce4" },
+    { id: "silverBar", label: "\u0441\u043B\u0438\u0442\u043A\u0438 \u0441\u0435\u0440\u0435\u0431\u0440\u0430", short: "\u0441\u0435\u0440. \u0441\u043B\u0438\u0442\u043A\u0438", tags: ["precious", "metal"], group: "\u0414\u0435\u043D\u044C\u0433\u0438", loot: 2, value: 4, money: 0.85, sell: false, keep: 3, color: "#e4e8ee" },
     // luxury goods from the jeweller: kept for trade, they make the colony look rich
     ...LUXURY.all().map((l) => ({ id: l.id, label: l.label, short: l.short, tags: ["luxury"], group: "\u0420\u043E\u0441\u043A\u043E\u0448\u044C", value: l.value, keep: 0, loot: 1, color: l.color })),
+    // wax candles: lit at the shrine they make a prayer comfort more (settlement/life.js)
+    { id: "candles", label: "\u0432\u043E\u0441\u043A\u043E\u0432\u044B\u0435 \u0441\u0432\u0435\u0447\u0438", short: "\u0441\u0432\u0435\u0447\u0438", tags: ["material"], group: "\u0411\u044B\u0442", loot: 2, value: 0.5, keep: 6, color: "#f0e2a0" },
+    // flour from the quern, bread from the hearth
+    { id: "flour", label: "\u043C\u0443\u043A\u0430", short: "\u043C\u0443\u043A\u0430", tags: ["material"], group: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", loot: 2, value: 0.3, keep: 0, color: "#eee6d0" },
     // ── everyday life: home brew for the evenings (settlement/life.js) and furniture for the solid buildings
     { id: "braga", label: "\u0431\u0440\u0430\u0433\u0430", short: "\u0431\u0440\u0430\u0433\u0430", tags: ["drink"], group: "\u0411\u044B\u0442", loot: 2, value: 0.6, keepPerHead: 2, color: "#c89a48" },
     ...FURNITURE.all().map((f) => ({ id: f.id, label: f.label, short: f.label, tags: ["furniture"], group: "\u041C\u0435\u0431\u0435\u043B\u044C", loot: 1, value: f.value, sell: false, color: f.color, comfort: f.comfort })),
@@ -1695,7 +1951,8 @@ dd.q4{color:#c58cff;font-weight:600}
       value: 8,
       sell: false,
       color: "#8a6a48",
-      opens: "\u0441\u044B\u0440\u043E\u0434\u0443\u0442\u043D\u044B\u0439 \u0433\u043E\u0440\u043D: \u0441\u0432\u043E\u0451 \u0436\u0435\u043B\u0435\u0437\u043E"
+      opens: "\u0433\u043E\u0440\u043D \u0438 \u043A\u0443\u0437\u043D\u044F: \u0442\u043E\u043F\u043B\u0438\u0432\u0430 \u043D\u0430 \u0447\u0435\u0442\u0432\u0435\u0440\u0442\u044C \u043C\u0435\u043D\u044C\u0448\u0435, \u0440\u0430\u0431\u043E\u0442\u0430 \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043A\u043E\u0432\u0430\u043D\u0430\u044F \u0432\u0435\u0449\u044C \u043F\u043E\u0440\u043E\u0439 \u0432\u044B\u0445\u043E\u0434\u0438\u0442 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439",
+      useWith: "smelter"
     },
     {
       id: "anvil",
@@ -1722,6 +1979,19 @@ dd.q4{color:#c58cff;font-weight:600}
       opens: "\u0432\u0435\u0440\u0441\u0442\u0430\u043A \u0440\u0435\u0437\u0447\u0438\u043A\u0430: \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u044F \u0438\u0437 \u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u043E\u0432"
     },
     {
+      id: "cupels",
+      label: "\u043A\u0443\u043F\u0435\u043B\u0438 \u0438 \u0442\u0438\u0433\u043B\u0438",
+      short: "\u043A\u0443\u043F\u0435\u043B\u0438",
+      tags: ["key"],
+      group: "\u0418\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442\u044B",
+      loot: 1,
+      value: 8,
+      sell: false,
+      color: "#b8b0a0",
+      opens: "\u0441\u044B\u0440\u043E\u0434\u0443\u0442\u043D\u044B\u0439 \u0433\u043E\u0440\u043D: \u0441\u0435\u0440\u0435\u0431\u0440\u043E \u0438\u0437 \u0441\u0435\u0440\u0435\u0431\u0440\u0438\u0441\u0442\u043E\u0439 \u0440\u0443\u0434\u044B",
+      useWith: "smelter"
+    },
+    {
       id: "ploughshare",
       label: "\u0436\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u043B\u0435\u043C\u0435\u0445",
       short: "\u043B\u0435\u043C\u0435\u0445",
@@ -1732,6 +2002,7 @@ dd.q4{color:#c58cff;font-weight:600}
       sell: false,
       color: "#9aa0a6",
       opens: "\u0441\u043E\u0445\u0430 \u0441 \u043B\u0435\u043C\u0435\u0445\u043E\u043C: \u0441 \u0440\u0443\u0447\u043D\u044B\u043C \u043C\u0443\u043B\u043E\u043C \u043F\u043E\u043B\u044F \u0440\u043E\u0434\u044F\u0442 \u043D\u0430 \u0442\u0440\u0435\u0442\u044C \u0431\u043E\u043B\u044C\u0448\u0435",
+      useWith: "field",
       with: "mule",
       effects: { yield: { barley: 1.3, turnip: 1.3 } }
     },
@@ -1769,12 +2040,15 @@ dd.q4{color:#c58cff;font-weight:600}
   var popCap = (w) => 8 + w.mods.add.popCap;
   var jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some((b) => has(w, b));
   var ORE_RES = () => RESOURCES.filter((r) => r.ore);
-  var wantedOre = (w) => perTick(w, "wantedOre", () => new Set(ORE_RES().filter((r) => (w.stock[r.id] || 0) < r.target).map((r) => r.ore)));
+  var wantedOre = (w) => perTick(w, "wantedOre", () => {
+    const seen = exposedOre(w);
+    return new Set(ORE_RES().filter((r) => (w.stock[r.id] || 0) < r.target && seen[ORE_BY_CODE[r.ore].id] > 0).map((r) => r.ore));
+  });
 
   // src/settlement/threat.js
   function raidThreat(w) {
     const r = w.outside?.seen || { pop: 0, armed: 0, armour: 0 };
-    return w.tick / DAY * 0.4 + w.stats.raids * 1 + r.pop * 0.25 + r.armed * 0.2 + r.armour * 2;
+    return w.tick / DAY * 0.4 + w.stats.raids * 1 + r.pop * 0.25 + r.armed * 0.2 + r.armour * 2 + (w.fame || 0);
   }
   var raidSize = (w) => Math.min(16, 2 + Math.floor(raidThreat(w) / 3));
   var settlerWaitDays = (pop) => Math.max(1, pop - 7);
@@ -1807,9 +2081,11 @@ dd.q4{color:#c58cff;font-weight:600}
     keys: [1, 2],
     keyChance: 0.8,
     furnish: 25,
+    mithrilPurse: 35,
+    // a trader who has heard of mithril carries this much more gold per unit in stock (up to 3)
     WARES: [
       { w: 40, food: true, n: [3, 8] },
-      { w: 14, resource: ["leather", "hide", "iron", "charcoal", "arrows", "bone"], n: [2, 6] },
+      { w: 14, resource: ["leather", "hide", "iron", "coal", "arrows", "bone", "bronze"], n: [2, 6] },
       { w: 12, resource: ["salt"], n: [4, 10] },
       { w: 12, resource: ["seedBarley", "seedTurnip", "seedFlax"], n: [4, 10] },
       { w: 24, items: "plain", q: 0 },
@@ -1870,6 +2146,9 @@ dd.q4{color:#c58cff;font-weight:600}
     // a rod with a wooden gorge hook and a line of twisted bast; works from the back as well
     { id: "rod", label: "\u0423\u0434\u043E\u0447\u043A\u0430 \u0441 \u0434\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u043C \u043A\u0440\u044E\u0447\u043A\u043E\u043C", short: "\u0443\u0434\u043E\u0447\u043A\u0430", slot: "hand", hands: 2, tool: { fish: 1.6 }, dur: 80, value: 1, glyph: "rod" },
     // iron, from the forge
+    // cast in bronze at the furnace on a wood fire: better than bone, short of iron
+    { id: "bronzespear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u0431\u0440\u043E\u043D\u0437. \u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, melee: { dmg: 1.75, cd: 13 }, dur: 95, value: 3, glyph: "ironspear" },
+    { id: "bronzeaxe", label: "\u0411\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0439 \u0442\u043E\u043F\u043E\u0440", short: "\u0431\u0440\u043E\u043D\u0437. \u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, melee: { dmg: 1.5, cd: 13 }, tool: { chop: 1.9, build: 1.08 }, dur: 120, value: 3, glyph: "ironaxe" },
     { id: "ironspear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u0436\u0435\u043B\u0435\u0437\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u0436\u0435\u043B. \u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, iron: true, melee: { dmg: 1.95, cd: 12 }, dur: 120, value: 4, glyph: "ironspear" },
     { id: "ironaxe", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u0442\u043E\u043F\u043E\u0440", short: "\u0436\u0435\u043B. \u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, iron: true, melee: { dmg: 1.7, cd: 12 }, tool: { chop: 2.2, build: 1.15 }, dur: 160, value: 4, glyph: "ironaxe" },
     { id: "sword", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u043C\u0435\u0447", short: "\u043C\u0435\u0447", slot: "hand", hands: 1, iron: true, melee: { dmg: 2.15, cd: 11 }, block: 0.1, dur: 150, value: 6, glyph: "sword" },
@@ -1881,6 +2160,8 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "scalemail", label: "\u0427\u0435\u0448\u0443\u0439\u0447\u0430\u0442\u044B\u0439 \u0434\u043E\u0441\u043F\u0435\u0445", short: "\u0447\u0435\u0448\u0443\u044F", slot: "body", iron: true, tradeOnly: true, armor: 0.48, warmth: 0.35, speed: 0.94, dur: 190, value: 25, color: "#9aa0a0" },
     { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", armor: 0.08, warmth: 0.35, dur: 50, value: 1, color: "#c9b38a" },
     // fur: hare and wolf hides sewn hair-in — the winter coat
+    // the furs the woods give, kept at home: a coat lined with fox fur, the warmest thing the outpost makes
+    { id: "furlined", label: "\u0422\u0443\u043B\u0443\u043F \u043D\u0430 \u043B\u0438\u0441\u044C\u0435\u043C \u043C\u0435\u0445\u0443", short: "\u0442\u0443\u043B\u0443\u043F \u043D\u0430 \u043C\u0435\u0445\u0443", slot: "body", armor: 0.16, warmth: 0.95, speed: 0.97, dur: 100, value: 9, color: "#d0844a" },
     { id: "furcoat", label: "\u0422\u0443\u043B\u0443\u043F \u0438\u0437 \u0448\u043A\u0443\u0440", short: "\u0442\u0443\u043B\u0443\u043F", slot: "body", armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4, color: "#b89a72" },
     // homespun wool from the pen's goats: a long coat, warm and not too heavy
     { id: "woolens", label: "\u0428\u0435\u0440\u0441\u0442\u044F\u043D\u0430\u044F \u0441\u0432\u0438\u0442\u0430", short: "\u0441\u0432\u0438\u0442\u0430", slot: "body", armor: 0.1, warmth: 0.7, dur: 110, value: 5, color: "#cfc4a8" },
@@ -1890,6 +2171,8 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "hardleather", label: "\u041A\u043E\u0436\u0430 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C\u0438 \u043F\u043B\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438", short: "\u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u0436\u0430", slot: "body", armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, value: 9, color: "#e0d6c0" },
     // back
     { id: "quiver", label: "\u041A\u043E\u043B\u0447\u0430\u043D", short: "\u043A\u043E\u043B\u0447\u0430\u043D", slot: "back", holds: { ammo: "arrows", max: 15 }, dur: Infinity, value: 1, quality: false },
+    // a wooden pan for washing gold out of the river sand (data/plants.js 'placer')
+    { id: "pan", label: "\u041F\u0440\u043E\u043C\u044B\u0432\u043E\u0447\u043D\u044B\u0439 \u043B\u043E\u0442\u043E\u043A", short: "\u043B\u043E\u0442\u043E\u043A", slot: "back", tool: { pan: 1.2 }, dur: 150, value: 1, quality: false },
     { id: "basket", label: "\u0417\u0430\u043F\u043B\u0435\u0447\u043D\u044B\u0439 \u043A\u043E\u0440\u043E\u0431", short: "\u043A\u043E\u0440\u043E\u0431", slot: "back", carry: 2, dur: Infinity, value: 1, quality: false }
   ]);
   var isWeapon = (def2) => !!(def2.melee || def2.ranged);
@@ -1907,7 +2190,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var MAX_Q = Math.max(...QUALITY.all().map((x) => x.q));
 
   // src/data/logTopics.js
-  var LEVELS = [
+  var LEVELS2 = [
     { id: "alert", label: "\u0442\u0440\u0435\u0432\u043E\u0433\u0430", color: "var(--raider)" },
     { id: "notice", label: "\u0432\u0430\u0436\u043D\u043E\u0435", color: "#e2b84a" },
     { id: "info", label: "\u043F\u0440\u043E\u0447\u0435\u0435", color: "var(--good)" }
@@ -2292,12 +2575,13 @@ dd.q4{color:#c58cff;font-weight:600}
         [a.mem.cold * 0.3, "\u0445\u043E\u0447\u0435\u0442, \u0447\u0442\u043E\u0431\u044B \u043A\u043E\u0441\u0442\u0451\u0440 \u0433\u043E\u0440\u0435\u043B \u0434\u043E\u043B\u044C\u0448\u0435"]
       ]
     },
+    // the furnace takes whatever there is to melt: iron on coal, bronze, gold and silver on wood too;
+    // bellows (a town-made tool in the stock) save fuel and time but are not needed
     {
       id: "smelter",
       name: "\u0421\u044B\u0440\u043E\u0434\u0443\u0442\u043D\u044B\u0439 \u0433\u043E\u0440\u043D",
       gender: "m",
-      cost: { stone: 22, wood: 10, clay: 6, bellows: 1 },
-      key: "bellows",
+      cost: { stone: 22, wood: 10, clay: 6 },
       work: 240,
       max: 1,
       wooden: false,
@@ -2305,12 +2589,13 @@ dd.q4{color:#c58cff;font-weight:600}
       mark: "\u041F\u043B",
       station: true,
       benches: 1,
-      needs: "mineshaft",
-      effect: "\u0413\u043B\u0438\u043D\u044F\u043D\u0430\u044F \u043F\u0435\u0447\u044C, \u0436\u0430\u0440 \u0432 \u043A\u043E\u0442\u043E\u0440\u043E\u0439 \u0440\u0430\u0437\u0434\u0443\u0432\u0430\u044E\u0442 \u043F\u043E\u043A\u0443\u043F\u043D\u044B\u0435 \u043C\u0435\u0445\u0430: \u0440\u0443\u0434\u0443 \u043F\u043B\u0430\u0432\u044F\u0442 \u043D\u0430 \u0443\u0433\u043B\u0435 \u0432 \u043A\u0440\u0438\u0446\u0443 \u0438 \u043F\u0440\u043E\u043A\u043E\u0432\u044B\u0432\u0430\u044E\u0442 \u0432 \u043F\u0440\u0443\u0442\u043A\u0438. 2 \u0440\u0443\u0434\u044B \u0438 1 \u0443\u0433\u043E\u043B\u044C \u0434\u0430\u044E\u0442 \u0436\u0435\u043B\u0435\u0437\u043E. \u0413\u043E\u0440\u043E\u0434\u0441\u043A\u043E\u0439 \u0434\u043E\u043C\u043D\u044B \u0437\u0434\u0435\u0441\u044C \u043D\u0435 \u043F\u043E\u0441\u0442\u0440\u043E\u0438\u0442\u044C.",
+      needs: "quarry",
+      effect: "\u0413\u043B\u0438\u043D\u044F\u043D\u0430\u044F \u043F\u0435\u0447\u044C. \u041D\u0430 \u0434\u0440\u043E\u0432\u0430\u0445 \u043F\u043B\u0430\u0432\u044F\u0442 \u043C\u0435\u0434\u043D\u043E-\u043E\u043B\u043E\u0432\u044F\u043D\u043D\u0443\u044E \u0440\u0443\u0434\u0443 \u0432 \u0431\u0440\u043E\u043D\u0437\u0443, \u0437\u043E\u043B\u043E\u0442\u043E\u0439 \u043F\u0435\u0441\u043E\u043A \u0438 \u0441\u0435\u0440\u0435\u0431\u0440\u043E \u0432 \u0441\u043B\u0438\u0442\u043A\u0438, \u043B\u044C\u044E\u0442 \u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0435 \u0442\u043E\u043F\u043E\u0440\u044B, \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u0438 \u0438 \u043A\u043E\u043B\u043E\u043A\u043E\u043B\u0430; \u0436\u0435\u043B\u0435\u0437\u043E \u043F\u043B\u0430\u0432\u044F\u0442 \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u0430 \u0443\u0433\u043B\u0435. \u041F\u043E\u043A\u0443\u043F\u043D\u044B\u0435 \u043A\u0443\u0437\u043D\u0435\u0447\u043D\u044B\u0435 \u043C\u0435\u0445\u0430 \u044D\u043A\u043E\u043D\u043E\u043C\u044F\u0442 \u0447\u0435\u0442\u0432\u0435\u0440\u0442\u044C \u0442\u043E\u043F\u043B\u0438\u0432\u0430 \u0438 \u0443\u0441\u043A\u043E\u0440\u044F\u044E\u0442 \u0440\u0430\u0431\u043E\u0442\u0443. \u0413\u043E\u0440\u043E\u0434\u0441\u043A\u043E\u0439 \u0434\u043E\u043C\u043D\u044B \u0437\u0434\u0435\u0441\u044C \u043D\u0435 \u043F\u043E\u0441\u0442\u0440\u043E\u0438\u0442\u044C.",
       effects: {},
-      wish: "\u0445\u043E\u0447\u0435\u0442 \u0441\u0432\u043E\u0451 \u0436\u0435\u043B\u0435\u0437\u043E",
+      available: (w) => oreSeen(w) || (w.plantBeds?.placer?.length || 0) > 0,
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0441\u0432\u043E\u0435\u0433\u043E \u043C\u0435\u0442\u0430\u043B\u043B\u0430",
       motive: (a, c) => [
-        [c.stock("ironore") * 0.07, "\u0440\u0443\u0434\u0430 \u043B\u0435\u0436\u0438\u0442 \u0431\u0435\u0437 \u0434\u0435\u043B\u0430"],
+        [(c.stock("ironore") + c.stock("bronzeOre") + c.stock("silverOre")) * 0.07 + c.stock("goldDust") * 0.03, "\u0440\u0443\u0434\u0430 \u043B\u0435\u0436\u0438\u0442 \u0431\u0435\u0437 \u0434\u0435\u043B\u0430"],
         [(a.prefs.smith - 1) * 1.4, "\u0445\u043E\u0447\u0435\u0442 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0443 \u0433\u043E\u0440\u043D\u0430"],
         [c.unarmed * 0.4, "\u043D\u0443\u0436\u043D\u043E \u043E\u0440\u0443\u0436\u0438\u0435 \u043F\u043E\u043B\u0443\u0447\u0448\u0435"]
       ]
@@ -2494,6 +2779,44 @@ dd.q4{color:#c58cff;font-weight:600}
         [c.graves ? 0.25 : 0, "\u043C\u043E\u0433\u0438\u043B\u044B \u0441\u0442\u043E\u044F\u0442 \u0431\u0435\u0437 \u043F\u0440\u0438\u0441\u043C\u043E\u0442\u0440\u0430"],
         [(a.prefs.build - 1) * 0.3 + 0.1, "\u0445\u043E\u0447\u0435\u0442 \u0441\u0432\u044F\u0442\u043E\u0435 \u043C\u0435\u0441\u0442\u043E"]
       ]
+    },
+    // the quern: two stones turned by hand; barley becomes flour, flour becomes bread at the hearth
+    {
+      id: "quern",
+      name: "\u0420\u0443\u0447\u043D\u044B\u0435 \u0436\u0435\u0440\u043D\u043E\u0432\u0430",
+      gender: "pl",
+      cost: { stone: 10, wood: 4 },
+      work: 120,
+      max: 1,
+      wooden: false,
+      color: "#b8a888",
+      mark: "\u0416\u0440",
+      station: true,
+      benches: 1,
+      needs: "quarry",
+      effect: "\u042F\u0447\u043C\u0435\u043D\u044C \u043C\u0435\u043B\u044E\u0442 \u0432 \u043C\u0443\u043A\u0443, \u0438\u0437 \u043C\u0443\u043A\u0438 \u043D\u0430 \u043E\u0447\u0430\u0433\u0435 \u043F\u0435\u043A\u0443\u0442 \u0445\u043B\u0435\u0431: \u043E\u043D \u0441\u044B\u0442\u043D\u0435\u0435 \u0437\u0435\u0440\u043D\u0430 \u0438 \u0445\u0440\u0430\u043D\u0438\u0442\u0441\u044F \u0434\u043E\u043B\u044C\u0448\u0435 \u043A\u0430\u0448\u0438.",
+      effects: {},
+      available: (w) => (w.stock.barley || 0) >= 4,
+      wish: "\u0445\u043E\u0447\u0435\u0442 \u0445\u043B\u0435\u0431\u0430",
+      motive: (a, c) => [[c.stock("barley") * 0.04, "\u044F\u0447\u043C\u0435\u043D\u044C \u043B\u0435\u0436\u0438\u0442, \u0430 \u0445\u043B\u0435\u0431\u0430 \u043D\u0435\u0442"], [(a.prefs.cook - 1) * 0.8, "\u043B\u044E\u0431\u0438\u0442 \u0441\u0442\u0440\u044F\u043F\u0430\u0442\u044C"]]
+    },
+    // the magma forge: only in a region with magma, and the outpost can never build one itself — it may be
+    // captured later, on the global map. Here so that the rest of the game can name it.
+    {
+      id: "magmaforge",
+      name: "\u041C\u0430\u0433\u043C\u043E\u0432\u0430\u044F \u043A\u0443\u0437\u043D\u044F",
+      gender: "f",
+      cost: { stone: 999 },
+      work: 9999,
+      max: 1,
+      wooden: false,
+      color: "#d0502a",
+      mark: "\u041C\u0433",
+      captureOnly: true,
+      effect: "\u041A\u0443\u0437\u043D\u044F \u043D\u0430 \u0436\u0438\u0432\u043E\u043C \u0436\u0430\u0440\u0443 \u043C\u0430\u0433\u043C\u044B: \u0442\u043E\u043B\u044C\u043A\u043E \u0432 \u043D\u0435\u0439 \u043A\u0443\u044E\u0442 \u043C\u0438\u0444\u0440\u0438\u043B. \u0424\u043E\u0440\u043F\u043E\u0441\u0442\u0443 \u0435\u0451 \u043D\u0435 \u043F\u043E\u0441\u0442\u0440\u043E\u0438\u0442\u044C \u2014 \u0435\u0451 \u043C\u043E\u0436\u043D\u043E \u043B\u0438\u0448\u044C \u0437\u0430\u0445\u0432\u0430\u0442\u0438\u0442\u044C.",
+      effects: {},
+      wish: "",
+      motive: () => []
     },
     {
       id: "watchtower",
@@ -2682,6 +3005,9 @@ dd.q4{color:#c58cff;font-weight:600}
     // herding
     { id: "tamedBeast", mood: 0.25, lasts: DAY, text: (a, c) => `${g(a, "\u041F\u0440\u0438\u0440\u0443\u0447\u0438\u043B", "\u041F\u0440\u0438\u0440\u0443\u0447\u0438\u043B\u0430")} ${c.beast}. \u041D\u0430\u0437\u0432\u0430\u043B\u0438: ${c.name}.` },
     { id: "kicked", mood: -0.15, lasts: 12 * HOUR, once: 4 * HOUR, text: (a) => `\u0414\u0438\u043A\u0438\u0439 \u043C\u0443\u043B ${g(a, "\u0435\u0433\u043E", "\u0435\u0451")} \u043B\u044F\u0433\u043D\u0443\u043B. \u041D\u0435 \u0434\u0430\u043B\u0441\u044F.` },
+    // precious finds
+    { id: "goldStrike", mood: 0.3, lasts: 2 * DAY, text: () => "\u0412 \u0441\u043A\u0430\u043B\u0430\u0445 \u043D\u0430\u0448\u043B\u0438 \u0437\u043E\u043B\u043E\u0442\u0443\u044E \u0436\u0438\u043B\u0443! \u0420\u0430\u0437\u0431\u043E\u0433\u0430\u0442\u0435\u0435\u043C." },
+    { id: "mithrilFound", mood: 0.2, lasts: DAY, text: () => "\u0420\u0443\u0434\u043E\u043A\u043E\u043F\u044B \u0434\u043E\u0441\u0442\u0430\u043B\u0438 \u043C\u0438\u0444\u0440\u0438\u043B. \u0413\u043E\u0432\u043E\u0440\u044F\u0442, \u043A\u0443\u043F\u0446\u044B \u0437\u0430 \u043D\u0435\u0433\u043E \u0434\u0430\u0434\u0443\u0442 \u0446\u0435\u043B\u043E\u0435 \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435." },
     // the dead and the shrine
     { id: "funeral", mood: 0.08, lasts: DAY, text: (a, c) => `\u041F\u043E\u0445\u043E\u0440\u043E\u043D\u0438\u043B\u0438: ${c.name}. \u041F\u0443\u0441\u0442\u044C \u0437\u0435\u043C\u043B\u044F \u0431\u0443\u0434\u0435\u0442 \u043F\u0443\u0445\u043E\u043C.` },
     { id: "funeralRite", mood: 0.18, lasts: DAY, text: (a, c) => `\u041F\u0440\u043E\u0432\u043E\u0434\u0438\u043B\u0438 ${c.name} \u0443 \u0441\u0432\u044F\u0442\u0438\u043B\u0438\u0449\u0430, \u043A\u0430\u043A \u043F\u043E\u043B\u043E\u0436\u0435\u043D\u043E. \u041D\u0430 \u0434\u0443\u0448\u0435 \u0441\u0442\u0430\u043B\u043E \u043B\u0435\u0433\u0447\u0435.` },
@@ -2783,16 +3109,26 @@ dd.q4{color:#c58cff;font-weight:600}
   var named = /* @__PURE__ */ new Map();
   function def(inst) {
     const d = itemDef(inst.type, inst.q);
-    if (!inst.name) return d;
-    const key2 = inst.type + ":" + inst.q + ":" + inst.name;
+    if (!inst.name && !inst.silver) return d;
+    const key2 = inst.type + ":" + inst.q + ":" + (inst.name || "") + ":" + (inst.silver ? "s" : "");
     let n = named.get(key2);
     if (!n) {
-      n = { ...d, label: `${inst.name} (${d.label})`, short: inst.name };
+      n = { ...d };
+      if (inst.silver) {
+        n.silver = true;
+        n.label = `${d.label} (\u043F\u043E\u0441\u0435\u0440\u0435\u0431\u0440\u0451\u043D\u043D\u044B\u0439)`;
+        n.short = `${d.short} \u0441\u0435\u0440.`;
+        n.dur = d.dur * 0.8;
+      }
+      if (inst.name) {
+        n.label = `${inst.name} (${n.label})`;
+        n.short = inst.name;
+      }
       named.set(key2, n);
     }
     return n;
   }
-  var newItem = (type, extra = {}) => ({ type, ...extra, dur: itemDef(type, extra.q).dur });
+  var newItem = (type, extra = {}) => ({ type, ...extra, dur: def({ type, ...extra }).dur });
   function itemPrice(type, q = 0) {
     const base = ITEMS.get(type), Q = qualityOf(q);
     return (base.value || 0) + (base.slot === "body" || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0);
@@ -3249,7 +3585,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function eligible(w, key2) {
     const d = BUILDINGS.get(key2);
-    return count(w, key2, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w)) && (!d.key || (w.stock[d.key] || 0) >= 1);
+    return !d.captureOnly && count(w, key2, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w)) && (!d.key || (w.stock[d.key] || 0) >= 1);
   }
   var lotSize = (d) => d.lot || [2, 2];
   function lotFertility(w, x, y, lw, lh) {
@@ -3535,6 +3871,70 @@ dd.q4{color:#c58cff;font-weight:600}
     });
   }
 
+  // src/settlement/precious.js
+  var PRECIOUS = {
+    veinChance: 0.02,
+    // per worked-out vein, in a region that allows a gold vein
+    veinCells: [2, 4],
+    // rock cells that turn into gold quartz
+    fameVein: 6,
+    // added to the raid threat by the rumour of gold…
+    fameMithril: 4
+    // …and of mithril
+  };
+  function maybeGoldVein(w, at, by) {
+    if (!region(w).goldVein || w.goldVein || w.rng() >= PRECIOUS.veinChance) return;
+    const o = ORES.get("goldvein"), g0 = w.grid, x0 = at % w.w, y0 = at / w.w | 0;
+    const want2 = PRECIOUS.veinCells[0] + Math.floor(w.rng() * (PRECIOUS.veinCells[1] - PRECIOUS.veinCells[0] + 1));
+    let placed = 0;
+    for (let rad = 1; rad <= 3 && placed < want2; rad++) for (let yy = -rad; yy <= rad && placed < want2; yy++) for (let xx = -rad; xx <= rad && placed < want2; xx++) {
+      if (Math.max(Math.abs(xx), Math.abs(yy)) !== rad) continue;
+      const x = x0 + xx, y = y0 + yy;
+      if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
+      const j = y * w.w + x;
+      if (g0.terr[j] !== T.ROCK || g0.ore[j]) continue;
+      g0.ore[j] = o.code;
+      g0.oreLeft[j] = o.vein.amount[0] + Math.floor(w.rng() * (o.vein.amount[1] - o.vein.amount[0] + 1));
+      placed++;
+    }
+    if (!placed) return;
+    w.goldVein = { tick: w.tick, cells: placed };
+    w.fame = (w.fame || 0) + PRECIOUS.fameVein;
+    w.nav.dirty("ore");
+    log(w, `\u0417\u043E\u043B\u043E\u0442\u043E! ${by ? `<b>${esc(by.name)}</b> ${g(by, "\u0432\u0441\u043A\u0440\u044B\u043B", "\u0432\u0441\u043A\u0440\u044B\u043B\u0430")}` : "\u0412 \u0432\u044B\u0440\u0430\u0431\u043E\u0442\u043A\u0435 \u043E\u0442\u043A\u0440\u044B\u043B\u0430\u0441\u044C"} \u043A\u0432\u0430\u0440\u0446\u0435\u0432\u0443\u044E \u0436\u0438\u043B\u0443 \u0441 \u0441\u0430\u043C\u043E\u0440\u043E\u0434\u043D\u044B\u043C \u0437\u043E\u043B\u043E\u0442\u043E\u043C. \u0421\u043B\u0443\u0445 \u043E \u043D\u0435\u0439 \u0440\u0430\u0437\u043E\u0439\u0434\u0451\u0442\u0441\u044F \u0431\u044B\u0441\u0442\u0440\u043E.`, "build", "alert");
+    for (const a of colonists(w)) think(w, a, "goldStrike");
+  }
+  function foundMithril(w, by) {
+    if (w.mithrilFound) return;
+    w.mithrilFound = w.tick;
+    w.fame = (w.fame || 0) + PRECIOUS.fameMithril;
+    log(w, `<b>${esc(by?.name || "\u0420\u0443\u0434\u043E\u043A\u043E\u043F\u044B")}</b> ${by ? g(by, "\u0434\u043E\u0431\u044B\u043B", "\u0434\u043E\u0431\u044B\u043B\u0430") : "\u0434\u043E\u0431\u044B\u043B\u0438"} \u043C\u0438\u0444\u0440\u0438\u043B\u043E\u0432\u0443\u044E \u0440\u0443\u0434\u0443. \u041F\u0435\u0440\u0435\u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0435\u0451 \u0437\u0434\u0435\u0441\u044C \u043D\u0435\u0447\u0435\u043C, \u043D\u043E \u043A\u0443\u043F\u0446\u044B \u0434\u0430\u0434\u0443\u0442 \u0437\u0430 \u043D\u0435\u0451 \u0445\u043E\u0440\u043E\u0448\u0443\u044E \u0446\u0435\u043D\u0443.`, "build", "notice");
+    for (const a of colonists(w)) think(w, a, "mithrilFound");
+  }
+  var MONEY = () => RESOURCES.filter((r) => r.money);
+  var coinValue = (w, r) => (w.stock[r.id] || 0) * r.value * r.money;
+  var treasury = (w) => (w.stock.gold || 0) + MONEY().reduce((s, r) => s + coinValue(w, r), 0);
+  function pay(w, price, toGoods) {
+    if (treasury(w) + 1e-9 < price) return false;
+    let left = price;
+    const before = w.stock.gold || 0;
+    const coins = Math.min(left, before);
+    w.stock.gold = (w.stock.gold || 0) - coins;
+    left -= coins;
+    for (const r of [...MONEY()].sort((x, y) => x.money - y.money)) {
+      if (left <= 1e-9) break;
+      const unit = r.value * r.money, have = w.stock[r.id] || 0;
+      if (have <= 0) continue;
+      const n = Math.min(have, Math.ceil(left / unit - 1e-9));
+      w.stock[r.id] -= n;
+      left -= n * unit;
+      if (toGoods) toGoods(r.id, n);
+    }
+    if (left < 0) w.stock.gold = (w.stock.gold || 0) - left;
+    w.stock.gold = Math.round(w.stock.gold * 10) / 10;
+    return before - w.stock.gold;
+  }
+
   // src/settlement/life.js
   var LIFE = {
     unburiedAfter: 0.6 * DAY,
@@ -3703,8 +4103,10 @@ dd.q4{color:#c58cff;font-weight:600}
   function prayed(w, a) {
     a.prayed = w.tick;
     const b = w.buildings.find((x) => x.done && x.key === "shrine");
-    const k = 1 + 2 * statusOf(b);
-    think(w, a, "prayed", { mood: Math.min(0.45, 0.2 * k) });
+    const candle = (w.stock.candles || 0) >= 1;
+    if (candle) w.stock.candles -= 1;
+    const k = (1 + 2 * statusOf(b)) * (candle ? 1.5 : 1);
+    think(w, a, "prayed", { mood: Math.min(0.5, 0.2 * k) });
   }
 
   // src/data/jobs.js
@@ -3808,10 +4210,11 @@ dd.q4{color:#c58cff;font-weight:600}
       memory: "walkOre",
       desire: (w) => wantedOre(w).size ? 0.42 : -1,
       valid: (w, i) => w.grid.fire[i] === 0 && oreBeside(w, i, wantedOre(w)) >= 0,
-      take: (w, i) => {
+      take: (w, i, a) => {
         const g2 = w.grid, j = oreBeside(w, i, wantedOre(w));
         if (j < 0) return null;
-        const res = oreOf(w, j).resource;
+        const o = oreOf(w, j), got = [o.resource];
+        for (const [r, ch] of Object.entries(o.also || {})) if (w.rng() < ch) got.push(r);
         g2.oreLeft[j] -= 1;
         if (g2.oreLeft[j] <= 0) {
           g2.ore[j] = 0;
@@ -3820,8 +4223,10 @@ dd.q4{color:#c58cff;font-weight:600}
           g2.fuel[j] = 0;
           w.nav.dirty("ore");
           w.nav.dirty("rockface");
+          maybeGoldVein(w, j, a);
         }
-        return res;
+        if (o.id === "mithril") foundMithril(w, a);
+        return got;
       }
     },
     // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back),
@@ -3919,6 +4324,16 @@ dd.q4{color:#c58cff;font-weight:600}
       carry: 4,
       time: 16,
       desire: (w) => fields(w).some((b) => b.plots.some((p) => needsWork(w, p))) ? 0.55 : -1
+    },
+    {
+      id: "mill",
+      label: "\u043C\u043E\u043B\u043E\u0442\u044C \u0437\u0435\u0440\u043D\u043E",
+      short: "\u043C\u0435\u043B\u044C\u043D\u0438\u043A",
+      verb: "\u043C\u0435\u043B\u0435\u0442 \u0437\u0435\u0440\u043D\u043E",
+      preferable: true,
+      runner: "craft",
+      stations: ["quern"],
+      desire: atStations(0.4)
     },
     {
       id: "saw",
@@ -4056,10 +4471,13 @@ dd.q4{color:#c58cff;font-weight:600}
       resource: p.resource,
       carry: J.carry,
       time: J.time,
+      // only with the right tool (a gold pan); never on a map without such beds
+      canDo: J.tool ? (w, a) => !!a.gear?.tool[J.id] : void 0,
       // (hay for the herd's winter, keep(w), is wanted more keenly: the season to mow is short)
       desire: (w, ctx) => {
-        const k = keep(w);
-        return !inSeason(w) ? -1 : (w.stock[p.resource] || 0) < k ? 0.3 + (typeof J.keep === "function" ? 0.4 : 0.2) * (1 - (w.stock[p.resource] || 0) / k) : -1;
+        if (!inSeason(w) || !w.plantBeds?.[p.id]?.length) return -1;
+        const k = keep(w), have = w.stock[p.resource] || 0;
+        return have < k ? (0.3 + (typeof J.keep === "function" ? 0.4 : 0.2) * (1 - have / k)) * (J.weight ?? 1) : -1;
       },
       valid: (w, i) => inSeason(w) && w.grid[key2][i] >= p.ripe && w.grid.fire[i] === 0,
       take: (w, i, a) => {
@@ -4320,7 +4738,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (S === "winter") return [];
     const kinds = {};
     for (const a of herd(w)) kinds[a.species] = (kinds[a.species] || 0) + 1;
-    return w.agents.filter((o) => isTameable(o) && tameOf(o).space <= room && hasBait(w, tameOf(o)) && (kinds[o.species] || 0) < (tameOf(o).max ?? Infinity) && (S !== "autumn" || (w.stock.hay || 0) >= winterHay2(w) + tameOf(o).eats * SEASON_DAYS * (1 - HERD.graze.winter)) && Math.hypot(o.x - w.camp.x, o.y - w.camp.y) < HERD.reach);
+    return w.agents.filter((o) => isTameable(o) && tameOf(o).space <= room && hasBait(w, tameOf(o)) && !(w.tick - (o.unreachable ?? -1e9) < 600) && (kinds[o.species] || 0) < (tameOf(o).max ?? Infinity) && (S !== "autumn" || (w.stock.hay || 0) >= winterHay2(w) + tameOf(o).eats * SEASON_DAYS * (1 - HERD.graze.winter)) && Math.hypot(o.x - w.camp.x, o.y - w.camp.y) < HERD.reach);
   });
   var hasBait = (w, T2) => Object.entries(T2.bait).every(([r, v]) => (w.stock[r] || 0) >= v);
   var chores = (w) => perTick(w, "chores", () => herd(w).filter((a) => (a.milk || 0) >= 1 || woolReady(w, a)));
@@ -4619,7 +5037,8 @@ dd.q4{color:#c58cff;font-weight:600}
     if ((w.stock[id] || 0) >= 1) return false;
     const users = BUILDINGS.filter((d) => d.key === id);
     if (users.length) return users.some((d) => !w.buildings.some((b) => b.key === d.id) && (!d.needs || w.buildings.some((b) => b.done && b.key === d.needs)) && (!d.available || d.available(w)));
-    return w.buildings.some((b) => b.done && b.key === "field");
+    const r = RESOURCES.get(id);
+    return !!r.useWith && w.buildings.some((b) => b.done && b.key === r.useWith);
   }
   var newTradeState = () => ({ visits: 0, deals: [], earned: 0, spent: 0 });
   var pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
@@ -4702,6 +5121,11 @@ dd.q4{color:#c58cff;font-weight:600}
       spot: null,
       deal: null
     };
+    const mith = Math.min(3, Math.floor(w.stock.mithrilOre || 0));
+    if (mith) {
+      w.caravan.purse += TRADE.mithrilPurse * mith;
+      w.caravan.buyer = true;
+    }
     const lack = KEYS().filter((r) => keyWanted(w, r.id) || (w.stock[r.id] || 0) < 1).sort((x, y) => keyWanted(w, y.id) - keyWanted(w, x.id));
     lack.slice(0, TRADE.keys[1]).forEach((r, k) => {
       if (k === 0 && keyWanted(w, r.id) || rng() < TRADE.keyChance) addGoods(w.caravan.goods, { kind: "res", id: r.id, n: 1 });
@@ -4772,8 +5196,14 @@ dd.q4{color:#c58cff;font-weight:600}
       } else list2.push([label, n, gold]);
     };
     const free = () => c.capacity - goodsUnits(c.goods);
+    const cash = () => treasury(w);
+    const spend = (p) => {
+      const coins = pay(w, p, (id, n) => addGoods(c.goods, { kind: "res", id, n }));
+      c.purse = round1(c.purse + (coins || 0));
+      return coins !== false;
+    };
     const keyCost = c.goods.filter((g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("key") && keyWanted(w, g2.id)).reduce((t, g2) => t + askPrice(g2), 0);
-    const keepK = keyCost > (w.stock.gold || 0) ? 0.5 : 1;
+    const keepK = keyCost > cash() ? 0.5 : 1;
     const offers = [];
     for (const r of RESOURCES.all()) {
       if (r.sell === false || !(r.value > 0)) continue;
@@ -4809,12 +5239,10 @@ dd.q4{color:#c58cff;font-weight:600}
       const foods2 = c.goods.filter((g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("food")).sort((x, y) => askPrice(x) / RESOURCES.get(x.id).nutrition - askPrice(y) / RESOURCES.get(y.id).nutrition);
       for (const g2 of foods2) {
         const p = askPrice(g2), want2 = Math.ceil((pop * TRADE.foodUpTo - foodTotal(w)) / RESOURCES.get(g2.id).nutrition);
-        const n = Math.min(g2.n, want2, Math.floor((w.stock.gold || 0) / p));
-        if (n <= 0) continue;
+        const n = Math.min(g2.n, want2, Math.floor(cash() / p));
+        if (n <= 0 || !spend(p * n)) continue;
         g2.n -= n;
         w.stock[g2.id] = (w.stock[g2.id] || 0) + n;
-        w.stock.gold = round1(w.stock.gold - p * n);
-        c.purse = round1(c.purse + p * n);
         deal.spent += p * n;
         note(deal.bought, RESOURCES.get(g2.id).label, n, p * n);
       }
@@ -4823,11 +5251,9 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const g2 of c.goods) {
       if (g2.kind !== "res" || !RESOURCES.get(g2.id).tags.includes("key") || !keyWanted(w, g2.id)) continue;
       const p = askPrice(g2);
-      if (p > (w.stock.gold || 0)) continue;
+      if (p > cash() || !spend(p)) continue;
       g2.n -= 1;
       w.stock[g2.id] = (w.stock[g2.id] || 0) + 1;
-      w.stock.gold = round1(w.stock.gold - p);
-      c.purse = round1(c.purse + p);
       deal.spent += p;
       note(deal.bought, RESOURCES.get(g2.id).label, 1, p);
       log(w, `\u041A\u0443\u043F\u0438\u043B\u0438 \u0443 \u0442\u043E\u0440\u0433\u043E\u0432\u0446\u0430: <b>${RESOURCES.get(g2.id).label}</b>. \u0422\u0435\u043F\u0435\u0440\u044C \u043C\u043E\u0436\u043D\u043E: ${RESOURCES.get(g2.id).opens}.`, "trade", "notice");
@@ -4837,12 +5263,10 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const [id, upTo] of Object.entries(TRADE.wants)) {
       const g2 = c.goods.find((x) => x.kind === "res" && x.id === id);
       if (!g2) continue;
-      const p = askPrice(g2), n = Math.min(g2.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor((w.stock.gold || 0) * TRADE.maxShare / p));
-      if (n <= 0) continue;
+      const p = askPrice(g2), n = Math.min(g2.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor(cash() * TRADE.maxShare / p));
+      if (n <= 0 || !spend(p * n)) continue;
       g2.n -= n;
       w.stock[id] = (w.stock[id] || 0) + n;
-      w.stock.gold = round1(w.stock.gold - p * n);
-      c.purse = round1(c.purse + p * n);
       deal.spent += p * n;
       note(deal.bought, RESOURCES.get(id).label, n, p * n);
     }
@@ -4855,39 +5279,35 @@ dd.q4{color:#c58cff;font-weight:600}
         const [role, score] = roleOf(itemDef(g2.type, g2.q));
         if (!role || !needs[role]) continue;
         const gain = score - needs[role][0], p = askPrice(g2);
-        if (gain < TRADE.minGain || p > (w.stock.gold || 0) * TRADE.maxShare) continue;
+        if (gain < TRADE.minGain || p > cash() * TRADE.maxShare) continue;
         const v = gain / Math.max(0.5, p);
         if (v > bv) {
           bv = v;
           best = { g: g2, role, score, p };
         }
       }
-      if (!best) break;
+      if (!best || !spend(best.p)) break;
       c.goods.splice(c.goods.indexOf(best.g), 1);
       w.armory.push(newItem(best.g.type, best.g.q ? { q: best.g.q } : {}));
       w.armoryVersion = (w.armoryVersion || 0) + 1;
       needs[best.role][0] = best.score;
       needs[best.role].sort((x, y) => x - y);
-      w.stock.gold = round1(w.stock.gold - best.p);
-      c.purse = round1(c.purse + best.p);
       deal.spent += best.p;
       note(deal.bought, goodsLabel(best.g), 1, best.p);
     }
     for (const g2 of c.goods) {
       if (g2.kind !== "res" || !RESOURCES.get(g2.id).tags.includes("furniture") || freeSlots(w) <= 0) continue;
       const p = askPrice(g2);
-      if ((w.stock.gold || 0) - p < TRADE.furnish) continue;
+      if (cash() - p < TRADE.furnish || !spend(p)) continue;
       g2.n -= 1;
       w.stock[g2.id] = (w.stock[g2.id] || 0) + 1;
-      w.stock.gold = round1(w.stock.gold - p);
-      c.purse = round1(c.purse + p);
       deal.spent += p;
       note(deal.bought, RESOURCES.get(g2.id).label, 1, p);
     }
     c.goods = c.goods.filter((g2) => g2.kind !== "res" || g2.n > 0);
     deal.earned = round1(deal.earned);
     deal.spent = round1(deal.spent);
-    deal.gold = round1(w.stock.gold || 0);
+    deal.gold = round1(cash());
     c.deal = deal;
     c.traded = true;
     c.tradedAt = w.tick;
@@ -4899,7 +5319,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const list = (xs) => xs.map(([l, n, g2]) => `${l}${n > 1 ? " \xD7" + n : ""}`).join(", ");
     const sold = deal.sold.length ? `\u041F\u0440\u043E\u0434\u0430\u043B\u0438: ${list(deal.sold)} \u2014 \u0437\u0430 ${deal.earned} \u0437\u043E\u043B.` : "\u041F\u0440\u043E\u0434\u0430\u0442\u044C \u0431\u044B\u043B\u043E \u043D\u0435\u0447\u0435\u0433\u043E.";
     const bought = deal.bought.length ? ` \u041A\u0443\u043F\u0438\u043B\u0438: ${list(deal.bought)} \u2014 \u0437\u0430 ${deal.spent} \u0437\u043E\u043B.` : " \u041D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043A\u0443\u043F\u0438\u043B\u0438, \u0437\u043E\u043B\u043E\u0442\u043E \u043E\u0442\u043B\u043E\u0436\u0438\u043B\u0438.";
-    log(w, `\u0422\u043E\u0440\u0433 \u0441 \u043A\u0443\u043F\u0446\u043E\u043C <b>${esc(c.name)}</b> \u043F\u043E\u0441\u043B\u0435 \u0441\u043E\u0432\u0435\u0442\u0430. ${sold}${bought} \u0412 \u043A\u0430\u0437\u043D\u0435 ${Math.floor(deal.gold)} \u0437\u043E\u043B.`, "trade");
+    log(w, `\u0422\u043E\u0440\u0433 \u0441 \u043A\u0443\u043F\u0446\u043E\u043C <b>${esc(c.name)}</b> \u043F\u043E\u0441\u043B\u0435 \u0441\u043E\u0432\u0435\u0442\u0430. ${sold}${bought} \u0412 \u043A\u0430\u0437\u043D\u0435 ${Math.floor(deal.gold)} \u0437\u043E\u043B.${(w.stock.gold || 0) < deal.gold - 0.5 ? ` (\u043C\u043E\u043D\u0435\u0442\u0430\u043C\u0438 ${Math.floor(w.stock.gold || 0)}, \u043E\u0441\u0442\u0430\u043B\u044C\u043D\u043E\u0435 \u2014 \u0437\u043E\u043B\u043E\u0442\u043E \u0438 \u0441\u0435\u0440\u0435\u0431\u0440\u043E)` : ""}`, "trade");
   }
   function stepTrade(w) {
     const c = w.caravan;
@@ -4918,7 +5338,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (c.phase === "coming" && c.arrived != null) {
       c.phase = "camp";
       const n = on.filter((a) => a.species === "mule").length;
-      log(w, `\u041A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u0451\u043B \u043A\u0443\u043F\u0435\u0446 <b>${esc(c.name)}</b> \u0441 \u043E\u0445\u0440\u0430\u043D\u043E\u0439 \u0438 ${n} ${plural(n, "\u0432\u044C\u044E\u0447\u043D\u044B\u043C \u043C\u0443\u043B\u043E\u043C", "\u0432\u044C\u044E\u0447\u043D\u044B\u043C\u0438 \u043C\u0443\u043B\u0430\u043C\u0438", "\u0432\u044C\u044E\u0447\u043D\u044B\u043C\u0438 \u043C\u0443\u043B\u0430\u043C\u0438")}. \u0422\u043E\u0440\u0433 \u2014 \u043F\u043E\u0441\u043B\u0435 \u0441\u043E\u0432\u0435\u0442\u0430.`, "trade", "notice");
+      log(w, `\u041A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u0451\u043B \u043A\u0443\u043F\u0435\u0446 <b>${esc(c.name)}</b> \u0441 \u043E\u0445\u0440\u0430\u043D\u043E\u0439 \u0438 ${n} ${plural(n, "\u0432\u044C\u044E\u0447\u043D\u044B\u043C \u043C\u0443\u043B\u043E\u043C", "\u0432\u044C\u044E\u0447\u043D\u044B\u043C\u0438 \u043C\u0443\u043B\u0430\u043C\u0438", "\u0432\u044C\u044E\u0447\u043D\u044B\u043C\u0438 \u043C\u0443\u043B\u0430\u043C\u0438")}.${c.buyer ? " \u041E\u043D \u043F\u0440\u043E\u0441\u043B\u044B\u0448\u0430\u043B \u043E \u043C\u0438\u0444\u0440\u0438\u043B\u0435 \u0438 \u043F\u0440\u0438\u0432\u0451\u0437 \u043F\u043E\u043B\u043D\u044B\u0439 \u043A\u043E\u0448\u0435\u043B\u044C." : ""} \u0422\u043E\u0440\u0433 \u2014 \u043F\u043E\u0441\u043B\u0435 \u0441\u043E\u0432\u0435\u0442\u0430.`, "trade", "notice");
     }
     if (c.phase === "camp" && !c.traded && h < TRADE.tradeUntil && colonists(w).length && (w.council.lastDay === today && h >= 19 || h >= COUNCIL_TO)) {
       holdTrade(w);
@@ -4971,7 +5391,6 @@ dd.q4{color:#c58cff;font-weight:600}
   var cf;
   var sf;
   var campFuels = () => cf || (cf = RESOURCES.filter((r) => r.tags.includes("fuel")).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
-  var smeltFuels = () => sf || (sf = RESOURCES.filter((r) => r.tags.includes("smelt")));
   function campFuel(w) {
     return campFuels().find((r) => (w.stock[r.id] || 0) > 0.05) || null;
   }
@@ -4981,18 +5400,20 @@ dd.q4{color:#c58cff;font-weight:600}
     w.stock[r.id] = Math.max(0, w.stock[r.id] - amount / (r.heat || 1));
     return true;
   }
-  var smeltFuelTotal = (w) => smeltFuels().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
-  function takeSmeltFuel(w, n) {
-    if (smeltFuelTotal(w) < n) return false;
-    let left = n;
-    for (const r of [...smeltFuels()].sort((x, y) => (w.stock[y.id] || 0) - (w.stock[x.id] || 0))) {
-      const t = Math.min(left, w.stock[r.id] || 0);
-      w.stock[r.id] -= t;
-      left -= t;
-      if (left <= 1e-9) break;
-    }
-    return true;
+  var FURNACE = { bellows: 0.75, bellowsWork: 1.25, bellowsFine: 0.05, coalSpare: 6 };
+  var furnaceFuels = () => sf || (sf = RESOURCES.filter((r) => r.furnace).sort((x, y) => x.furnace.tier - y.furnace.tier));
+  var fuelNeed = (w, units) => units * ((w.stock.bellows || 0) >= 1 ? FURNACE.bellows : 1);
+  function furnacePick(w, heat, units, woodReserve = 0) {
+    const need = fuelNeed(w, units);
+    const ok = furnaceFuels().filter((r) => r.furnace.tier >= heat);
+    const coal = ok.find((r) => r.furnace.tier >= 2), wood = ok.find((r) => r.furnace.tier < 2);
+    const have = (r) => (w.stock[r.id] || 0) - (r === wood ? woodReserve : 0);
+    if (coal && have(coal) >= need * coal.furnace.per + (wood ? FURNACE.coalSpare : 0)) return [coal, need * coal.furnace.per];
+    if (wood && have(wood) >= need * wood.furnace.per) return [wood, need * wood.furnace.per];
+    if (coal && have(coal) >= need * coal.furnace.per) return [coal, need * coal.furnace.per];
+    return null;
   }
+  var furnaceHeat = (w, heat = 2) => furnaceFuels().filter((r) => r.furnace.tier >= heat).reduce((s, r) => s + (w.stock[r.id] || 0) / r.furnace.per, 0);
   var POT_HOLDS = 6;
   function potShare(w) {
     let food = 0;
@@ -5023,8 +5444,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function plunder(w) {
     let total = 0;
+    const chest = w.buildings.some((b) => b.done && b.furniture?.includes("chest")) ? 0.4 : 1;
     for (const r of RESOURCES.all()) {
-      const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot);
+      const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot * (r.money ? chest : 1));
       w.stock[r.id] -= take;
       total += take;
     }
@@ -5541,7 +5963,8 @@ dd.q4{color:#c58cff;font-weight:600}
       caravan: {
         from: "empire",
         first: (w, rng) => caravanDay(w, TRADE.firstDay - 1, rng),
-        offer: (w, rng) => rng() < TRADE.chance ? 1 : 0,
+        offer: (w, rng) => rng() < Math.min(0.95, TRADE.chance * region(w).road) ? 1 : 0,
+        // a road close by brings more caravans
         next: (w, rng) => caravanDay(w, dayOf(w.tick) + TRADE.everyDays, rng)
       },
       // every dist/2 days (a little sooner after each raid) a band may set out — with the preset's
@@ -5581,7 +6004,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function arrive(w, flowId, offered) {
     const def2 = MIGRATIONS.get(flowId);
-    const n = def2.accept ? def2.accept(w, offered, w.rng) : offered;
+    const lvl = def2.species ? faunaLevel(w, def2.species) : 1;
+    if (lvl <= 0) return [];
+    const n = def2.accept ? def2.accept(w, offered + (lvl > 1 ? 1 : 0), w.rng) : offered;
     return n > 0 ? spawnGroup(w, flowId, n) : [];
   }
   function arriveNow(w, flowId) {
@@ -5673,7 +6098,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const p of PLANTS.all()) {
       const key2 = plantLayer(p.id);
       if (w.grid[key2] && w.plantBeds[p.id]) continue;
-      const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key2)), g2 = w.grid;
+      const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key2)), g2 = w.grid, lvl = floraLevel(w, p.id);
       const layer2 = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map((t) => TERRAIN.get(t).code));
       const byWater = (i) => {
         const x = i % w.w, y = i / w.w | 0;
@@ -5685,7 +6110,7 @@ dd.q4{color:#c58cff;font-weight:600}
       };
       for (let i = 0; i < w.n; i++) {
         if (!ok.has(g2.terr[i]) || g2.fert[i] < (p.fertMin || 0) || isCampArea(w, i) || p.nearWater && !byWater(i)) continue;
-        if (rnd() < p.chance) {
+        if (rnd() < p.chance * lvl) {
           beds.push(i);
           layer2[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]);
         }
@@ -5855,6 +6280,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
     findLakes(world2);
+    world2.region = rollRegion(cfg.seed);
     layOre(world2);
     layPlants(world2);
     recomputeZone(world2);
@@ -6372,12 +6798,14 @@ dd.q4{color:#c58cff;font-weight:600}
     if (t.hp <= 0) kill(w, t, "\u0440\u0430\u043D", by);
     return dmg;
   }
+  var SILVER = { bane: 2.5, plain: 0.5 };
+  var silverFactor = (t, item) => SPECIES.get(t.species).weakTo?.includes("silver") ? item && def(item).silver ? SILVER.bane : SILVER.plain : 1;
   function attack(w, a, t) {
     if (a.cd > 0) return;
     const g2 = ensureGear(a);
     a.cd = g2.melee.cd;
     a.flash = 4;
-    damage(w, a, t, (0.1 + w.rng() * 0.12) * g2.melee.dmg);
+    damage(w, a, t, (0.1 + w.rng() * 0.12) * g2.melee.dmg * silverFactor(t, g2.melee.item));
     if (g2.melee.item) wear(w, a, g2.melee.item);
   }
   function shoot(w, a, t, skillJob = "hunt") {
@@ -6396,7 +6824,7 @@ dd.q4{color:#c58cff;font-weight:600}
     w.fx.push({ x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rng() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rng() - 0.5) * 2, t: 8, kind: r.ammo ? "arrow" : "stone" });
     if (!hit) return "miss";
     const boost = r.boost && a.faction === "colony" ? w.mods.best[r.boost] || 1 : 1;
-    const res = damage(w, a, t, (0.12 + w.rng() * 0.1) * r.dmg * boost, { melee: false });
+    const res = damage(w, a, t, (0.12 + w.rng() * 0.1) * r.dmg * boost * silverFactor(t, null), { melee: false });
     return t.dead ? "kill" : res === "blocked" ? "miss" : "hit";
   }
 
@@ -6542,24 +6970,97 @@ dd.q4{color:#c58cff;font-weight:600}
       makes: { item: "rod" },
       want: (c) => c.fishing && short(c.owned("rod"), Math.max(2, c.likes("fish") + c.fans("fish"))) ? 2.4 : 0
     },
-    // ── charcoal: logs smoulder under turf into charcoal; more when the furnace and the forge burn it
+    // ── coal: logs smoulder under turf into coal; more when the furnace and the forge burn it
     {
       id: "charcoal",
       at: "charpit",
       cost: { wood: 4 },
       work: 260,
-      makes: { resource: "charcoal", n: 3 },
-      want: (c) => c.has("smelter") ? c.fuel < 16 ? 1.8 : 0 : c.stock("charcoal") < 6 ? 0.8 : 0
+      makes: { resource: "coal", n: 3 },
+      want: (c) => c.has("smelter") ? c.fuel < 16 ? 1.8 : 0 : c.stock("coal") < 6 ? 0.8 : 0
     },
-    // ── the furnace: two ore and one fuel make a bar of iron
+    // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too
     {
       id: "smelt",
       at: "smelter",
       cost: { ironore: 2 },
       fuel: 1,
+      heat: 2,
       work: 320,
       makes: { resource: "iron", n: 1 },
       want: (c) => c.stock("iron") < 10 ? 2.2 : 0
+    },
+    {
+      id: "smeltBronze",
+      at: "smelter",
+      cost: { bronzeOre: 2 },
+      fuel: 1,
+      heat: 1,
+      work: 280,
+      makes: { resource: "bronze", n: 1 },
+      want: (c) => c.stock("bronze") < 8 ? 2 : 0
+    },
+    {
+      id: "goldDustBar",
+      at: "smelter",
+      cost: { goldDust: 12 },
+      fuel: 0.5,
+      heat: 1,
+      work: 200,
+      makes: { resource: "goldBar", n: 1 },
+      want: () => 1.3
+    },
+    {
+      id: "goldNuggetBar",
+      at: "smelter",
+      cost: { goldNugget: 1 },
+      fuel: 0.5,
+      heat: 1,
+      work: 120,
+      makes: { resource: "goldBar", n: 1 },
+      want: () => 1.2
+    },
+    {
+      id: "silverOreBar",
+      at: "smelter",
+      cost: { silverOre: 3 },
+      fuel: 1,
+      heat: 1,
+      tool: "cupels",
+      work: 320,
+      makes: { resource: "silverBar", n: 1 },
+      want: () => 1.4
+    },
+    {
+      id: "silverNativeBar",
+      at: "smelter",
+      cost: { silverNative: 1 },
+      fuel: 0.5,
+      heat: 1,
+      work: 120,
+      makes: { resource: "silverBar", n: 1 },
+      want: () => 1.2
+    },
+    // bronze cast in clay moulds at the furnace: no anvil needed
+    {
+      id: "bronzespear",
+      at: "smelter",
+      cost: { bronze: 2, wood: 1 },
+      fuel: 0.5,
+      heat: 1,
+      work: 600,
+      makes: { item: "bronzespear" },
+      want: (c) => short(c.owned("sword") + c.owned("ironspear") + c.owned("bronzespear"), c.pop) ? 2 : 0
+    },
+    {
+      id: "bronzeaxe",
+      at: "smelter",
+      cost: { bronze: 2, wood: 1 },
+      fuel: 0.5,
+      heat: 1,
+      work: 600,
+      makes: { item: "bronzeaxe" },
+      want: (c) => short(c.owned("ironaxe") + c.owned("bronzeaxe"), Math.min(Math.ceil(c.pop / 2), 1 + c.likes("chop"))) ? 1.9 : 0
     },
     // ── the forge: iron blades and lamellar armour; each piece takes one fuel
     {
@@ -6588,6 +7089,25 @@ dd.q4{color:#c58cff;font-weight:600}
       work: 700,
       makes: { item: "ironaxe" },
       want: (c) => short(c.owned("ironaxe"), Math.min(Math.ceil(c.pop / 2), 1 + c.likes("chop"))) ? 2 : 0
+    },
+    // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare
+    {
+      id: "swordSilver",
+      at: "forge",
+      cost: { iron: 3, leather: 1, silverBar: 1 },
+      fuel: 1,
+      work: 1100,
+      makes: { item: "sword", silver: true },
+      want: (c) => c.stock("silverBar") >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? 1.3 : 0
+    },
+    {
+      id: "spearSilver",
+      at: "forge",
+      cost: { iron: 2, wood: 2, silverBar: 1 },
+      fuel: 1,
+      work: 900,
+      makes: { item: "ironspear", silver: true },
+      want: (c) => c.stock("silverBar") >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? 1.2 : 0
     },
     {
       id: "lamellar",
@@ -6727,6 +7247,49 @@ dd.q4{color:#c58cff;font-weight:600}
       makes: { resource: f.id, n: 1 },
       want: (c) => c.freeSlots > 0 && Object.entries(f.recipe.cost).every(([r, v]) => c.spare(r) >= v) ? 0.7 + f.comfort * 4 : 0
     })),
+    // the dead ends of the woods put to use: fox fur lines a coat, wax becomes candles for the shrine
+    {
+      id: "furlined",
+      at: "crafthut",
+      cost: { hide: 2, furs: 2, leather: 1 },
+      work: 1300,
+      makes: { item: "furlined" },
+      want: (c) => c.season !== "spring" && c.stock("furs") >= 2 && short(c.owned("furlined"), Math.ceil(c.pop / 3)) ? 2 : 0
+    },
+    {
+      id: "candles",
+      at: "crafthut",
+      cost: { wax: 1 },
+      work: 120,
+      makes: { resource: "candles", n: 4 },
+      want: (c) => c.has("shrine") && c.stock("candles") < 8 ? 0.8 : 0
+    },
+    // gold panning needs a pan, as long as the river has gold sand
+    {
+      id: "pan",
+      at: "crafthut",
+      cost: { wood: 2 },
+      work: 300,
+      makes: { item: "pan" },
+      want: (c) => c.placers && short(c.owned("pan"), Math.max(2, Math.ceil(c.pop / 5), c.likes("pan"))) ? 1.6 : 0
+    },
+    // the quern: barley ground to flour, flour baked to bread at the hearth
+    {
+      id: "flour",
+      at: "quern",
+      cost: { barley: 2 },
+      work: 140,
+      makes: { resource: "flour", n: 2 },
+      want: (c) => c.stock("barley") > c.pop + 2 && c.stock("flour") < c.pop ? 1.5 : 0
+    },
+    {
+      id: "bread",
+      at: "hearth",
+      cost: { flour: 2 },
+      work: 140,
+      makes: { resource: "bread", n: 3 },
+      want: (c) => c.stock("bread") < c.pop * 2 ? 2 : 0
+    },
     // processing: raw hides become leather at the tannery
     {
       id: "tan",
@@ -6747,7 +7310,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function canStart(w, r) {
     if (r.needs && !r.needs.every((b) => has(w, b))) return false;
-    if (r.fuel && smeltFuelTotal(w) < r.fuel) return false;
+    if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w))) return false;
+    if (r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;
     return Object.entries(r.cost).every(([res, v]) => {
       const have = w.stock[res] || 0;
       return have >= v && (have - v >= reserved(w, res) || have < reserved(w, res) * 0.5);
@@ -6762,6 +7326,9 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const a of col) for (const it of allItems(a)) count2(it);
     for (const it of w.armory) count2(it);
     const owned = (id) => counts[id] || 0;
+    let silvered = 0;
+    for (const a of col) for (const it of allItems(a)) if (it.silver) silvered++;
+    for (const it of w.armory) if (it.silver) silvered++;
     return {
       pop: col.length,
       owned,
@@ -6778,10 +7345,12 @@ dd.q4{color:#c58cff;font-weight:600}
       stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
       fans: (food) => col.filter((a) => a.food?.likes === food).length,
       get fuel() {
-        return smeltFuelTotal(w);
+        return furnaceHeat(w, 2);
       },
       melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
       freeSlots: freeSlots(w),
+      silvered: () => silvered,
+      placers: (w.plantBeds?.placer?.length || 0) > 0,
       spare: (res) => {
         const r = RESOURCES.get(res);
         return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20);
@@ -6843,21 +7412,29 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!r2) return false;
       if (w.scratch) delete w.scratch.orders;
       for (const [res, v] of Object.entries(r2.cost)) w.stock[res] -= v;
-      if (r2.fuel) takeSmeltFuel(w, r2.fuel);
+      if (r2.fuel) {
+        const [f, n] = furnacePick(w, r2.heat ?? 2, r2.fuel, fuelReserve(w));
+        w.stock[f.id] -= n;
+      }
       b.order = { recipe: r2.id, progress: 0 };
     }
     const r = RECIPES.get(b.order.recipe);
-    b.order.progress += amount;
+    const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
+    b.order.progress += amount * (bellows ? FURNACE.bellowsWork : 1);
     if (b.order.progress < r.work) return true;
     b.order = null;
     w.stats.crafted++;
     if (w.scratch) delete w.scratch.craftCtx;
     if (r.makes.item) {
-      w.armory.push(newItem(r.makes.item));
+      const extra = {};
+      if (r.makes.silver) extra.silver = true;
+      if (bellows && w.rng() < FURNACE.bellowsFine) extra.q = 1;
+      const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
+      w.armory.push(it);
       w.armoryVersion = (w.armoryVersion || 0) + 1;
-      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${ITEMS.get(r.makes.item).label.toLowerCase()}.`, "craft");
+      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${extra.q ? " \u041C\u0435\u0445\u0430 \u0440\u0430\u0437\u0434\u0443\u043B\u0438 \u0436\u0430\u0440 \u043A\u0430\u043A \u043D\u0430\u0434\u043E: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439." : ""}`, "craft");
       if (a) {
-        think(w, a, "madeItem", { item: ITEMS.get(r.makes.item).label.toLowerCase() });
+        think(w, a, "madeItem", { item: name });
         a.stats.crafted++;
       }
       w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
@@ -7152,7 +7729,13 @@ dd.q4{color:#c58cff;font-weight:600}
         b.tamerAt = w.tick;
       }
       if (d > 1.3) {
-        if (approach(w, a, b.x, b.y, task.calm ? 0.75 : 1) === null || w.tick - task.since > 1500) {
+        if (!task.spot || d < 12 || w.tick - task.spotAt > 150) {
+          task.spot = d < 12 ? null : [b.x, b.y];
+          task.spotAt = w.tick;
+        }
+        const [tx2, ty] = task.spot || [b.x, b.y];
+        if (approach(w, a, tx2, ty, task.calm ? 0.75 : 1) === null || w.tick - task.since > 1500) {
+          if (!b.tame) b.unreachable = w.tick;
           task.beast = null;
           done(a);
           a.think = 40;
@@ -9495,7 +10078,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     buildFilters() {
       const chip = (key2, label, dot2) => `<button type="button" data-key="${key2}" aria-pressed="${!this.hidden.has(key2)}">${dot2 ? `<i style="background:${dot2}"></i>` : ""}${label}</button>`;
-      $("logLevels").innerHTML = LEVELS.map((l) => chip("lv:" + l.id, l.label, l.color)).join("");
+      $("logLevels").innerHTML = LEVELS2.map((l) => chip("lv:" + l.id, l.label, l.color)).join("");
       $("logTopics").innerHTML = LOG_TOPICS.all().map((t) => chip("t:" + t.id, t.label)).join("");
       for (const box of [$("logLevels"), $("logTopics")]) box.addEventListener("click", (e) => {
         const b = e.target.closest("button");
@@ -9530,7 +10113,7 @@ dd.q4{color:#c58cff;font-weight:600}
       $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `\u0432\u0435\u0442\u0435\u0440 ${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       const col = colonists(w);
       $("popCount").textContent = col.length;
-      $("goldCount").textContent = w.caravan && w.caravan.phase !== "leaving" ? "\u25CF" : Math.floor(w.stock.gold || 0) ? Math.floor(w.stock.gold) : "";
+      $("goldCount").textContent = w.caravan && w.caravan.phase !== "leaving" ? "\u25CF" : Math.floor(treasury(w)) || "";
       const now = performance.now();
       const tps = view2.speed && this.lastT ? (w.tick - this.lastTick) / ((now - this.lastT) / 1e3) : 0;
       this.lastTick = w.tick;
@@ -9564,7 +10147,8 @@ dd.q4{color:#c58cff;font-weight:600}
     renderTrade(w) {
       const gold = w.stock.gold || 0, c = w.caravan;
       const phase = { coming: "\u0438\u0434\u0451\u0442 \u043A \u043B\u0430\u0433\u0435\u0440\u044E", camp: "\u0441\u0442\u043E\u0438\u0442 \u043B\u0430\u0433\u0435\u0440\u0435\u043C, \u0442\u043E\u0440\u0433 \u043F\u043E\u0441\u043B\u0435 \u0441\u043E\u0432\u0435\u0442\u0430", trading: "\u0438\u0434\u0451\u0442 \u0442\u043E\u0440\u0433", night: "\u043D\u043E\u0447\u0443\u0435\u0442 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", leaving: "\u0443\u0445\u043E\u0434\u0438\u0442" };
-      let head = `<dl class="kv"><dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${gold.toFixed(1)} \u0438\u043C\u043F\u0435\u0440\u0441\u043A\u0438\u0445 \u0437\u043E\u043B\u043E\u0442\u044B\u0445</dd><dt>\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043A\u0430\u0440\u0430\u0432\u0430\u043D</dt><dd>${c ? "\u0443\u0436\u0435 \u0437\u0434\u0435\u0441\u044C" : this.caravanWhen(w)}</dd><dt>\u041A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u0432 \u0431\u044B\u043B\u043E</dt><dd>${w.trade.visits} \xB7 \u0432\u044B\u0440\u0443\u0447\u0435\u043D\u043E ${Math.floor(w.trade.earned)} \xB7 \u043F\u043E\u0442\u0440\u0430\u0447\u0435\u043D\u043E ${Math.floor(w.trade.spent)}</dd></dl>`;
+      const metal = RESOURCES.filter((r) => r.money && (w.stock[r.id] || 0) >= 0.05).map((r) => `${r.short} ${w.stock[r.id].toFixed(r.value < 1 ? 1 : 0)} (\u2248${(w.stock[r.id] * r.value * r.money).toFixed(1)})`);
+      let head = `<dl class="kv"><dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${treasury(w).toFixed(1)} \u0437\u043E\u043B.: \u043C\u043E\u043D\u0435\u0442\u0430\u043C\u0438 ${gold.toFixed(1)}${metal.length ? "; " + metal.join(", ") : ""}</dd><dt>\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043A\u0430\u0440\u0430\u0432\u0430\u043D</dt><dd>${c ? "\u0443\u0436\u0435 \u0437\u0434\u0435\u0441\u044C" : this.caravanWhen(w)}</dd><dt>\u041A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u0432 \u0431\u044B\u043B\u043E</dt><dd>${w.trade.visits} \xB7 \u0432\u044B\u0440\u0443\u0447\u0435\u043D\u043E ${Math.floor(w.trade.earned)} \xB7 \u043F\u043E\u0442\u0440\u0430\u0447\u0435\u043D\u043E ${Math.floor(w.trade.spent)}</dd></dl>`;
       let goods = "";
       if (c) {
         const units = goodsUnits(c.goods), cap = c.capacity;
@@ -9589,7 +10173,7 @@ dd.q4{color:#c58cff;font-weight:600}
     caravanWhen(w) {
       const at = w.outside.next.caravan;
       if (!Number.isFinite(at)) return "\u043D\u0435 \u043E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F";
-      return `${this.waitText(w, at)}, \u0435\u0441\u043B\u0438 \u043F\u0440\u0438\u0434\u0451\u0442 (${Math.round(TRADE.chance * 100)}%)`;
+      return `${this.waitText(w, at)}, \u0435\u0441\u043B\u0438 \u043F\u0440\u0438\u0434\u0451\u0442 (${Math.round(Math.min(0.95, TRADE.chance * region(w).road) * 100)}%)`;
     }
     // the stock, grouped: food, materials, fuel, ore, metal, luxury, ammunition
     renderStock(w) {
@@ -9630,7 +10214,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const ore = exposedOre(w);
       this.set(
         "worldKv",
-        `<dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt title="\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u0432\u0438\u0434\u044F\u0442 \u043B\u0430\u0433\u0435\u0440\u044C: \u043E\u043D\u0438 \u0437\u043D\u0430\u044E\u0442 \u043E \u043D\u0451\u043C \u043F\u043E \u0441\u043B\u0443\u0445\u0430\u043C, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u0440\u0430\u0437 \u0432 \u0434\u0435\u043D\u044C">\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` \xB7 ${this.waitText(w, w.outside.next.raiders)}, \u0435\u0441\u043B\u0438 \u0432\u044B\u0439\u0434\u0443\u0442 (${Math.round((RAIDS[w.cfg.raids].chance ?? 1) * 100)}%)` : ""}</dd><dt>\u0421\u043E\u0441\u0435\u0434\u0438</dt><dd class="nb">${neighbours(w).filter((n) => n.dist).map((n) => `<span title="${esc(n.note)}">${esc(n.label)} \xB7 ${n.dist} \u0434\u043D. \u043F\u0443\u0442\u0438</span>`).join("<br>") || "\u2014"}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>` + (fishTotals(w)[1] ? `<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>${Math.floor(fishTotals(w)[0])} \u0438\u0437 ${fishTotals(w)[1]}</dd>` : "<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>\u043D\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0438\u0445 \u043E\u0437\u0451\u0440</dd>") + `<dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd><dt title="\u0421\u043A\u043E\u043B\u044C\u043A\u043E \u0440\u0443\u0434\u044B \u043C\u043E\u0436\u043D\u043E \u0432\u044B\u043A\u043E\u043F\u0430\u0442\u044C \u0441 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043A\u043B\u043E\u043D\u0430 \u0441\u043A\u0430\u043B">\u0420\u0443\u0434\u0430 \u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u0430\u0445</dt><dd class="nb">${ORES.all().map((o) => `${o.label} ${Math.round(ore[o.id])}`).join(" \xB7 ")}</dd>`
+        `<dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C</dt><dd class="nb">${this.regionText(w)}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt title="\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u0432\u0438\u0434\u044F\u0442 \u043B\u0430\u0433\u0435\u0440\u044C: \u043E\u043D\u0438 \u0437\u043D\u0430\u044E\u0442 \u043E \u043D\u0451\u043C \u043F\u043E \u0441\u043B\u0443\u0445\u0430\u043C, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u0440\u0430\u0437 \u0432 \u0434\u0435\u043D\u044C">\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` \xB7 ${this.waitText(w, w.outside.next.raiders)}, \u0435\u0441\u043B\u0438 \u0432\u044B\u0439\u0434\u0443\u0442 (${Math.round((RAIDS[w.cfg.raids].chance ?? 1) * 100)}%)` : ""}</dd><dt>\u0421\u043E\u0441\u0435\u0434\u0438</dt><dd class="nb">${neighbours(w).filter((n) => n.dist).map((n) => `<span title="${esc(n.note)}">${esc(n.label)} \xB7 ${n.dist} \u0434\u043D. \u043F\u0443\u0442\u0438</span>`).join("<br>") || "\u2014"}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>` + (fishTotals(w)[1] ? `<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>${Math.floor(fishTotals(w)[0])} \u0438\u0437 ${fishTotals(w)[1]}</dd>` : "<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>\u043D\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0438\u0445 \u043E\u0437\u0451\u0440</dd>") + `<dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd><dt title="\u0421\u043A\u043E\u043B\u044C\u043A\u043E \u0440\u0443\u0434\u044B \u043C\u043E\u0436\u043D\u043E \u0432\u044B\u043A\u043E\u043F\u0430\u0442\u044C \u0441 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043A\u043B\u043E\u043D\u0430 \u0441\u043A\u0430\u043B">\u0420\u0443\u0434\u0430 \u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u0430\u0445</dt><dd class="nb">${ORES.filter((o) => ore[o.id] > 0).map((o) => `${o.label} ${Math.round(ore[o.id])}`).join(" \xB7 ") || "\u043D\u0435 \u0432\u0438\u0434\u043D\u043E"}</dd>`
       );
       $("pFlabel").textContent = `\u041F\u043E\u043B\u044F (${w.n.toLocaleString("ru-RU")} \u043A\u043B\u0435\u0442\u043E\u043A)`;
       $("pF").textContent = w.perf.fields.toFixed(2);
@@ -9639,6 +10223,15 @@ dd.q4{color:#c58cff;font-weight:600}
       $("pR").textContent = view2.renderMs.toFixed(2);
       $("pT").textContent = tps.toFixed(0);
       $("pS").textContent = view2.speed ? `\xD7${(tps * TICK_MS / 1e3).toFixed(1)} / \xD7${view2.speed}` : "\u043F\u0430\u0443\u0437\u0430";
+    }
+    // what the land holds (data/regions.js): ores, gold sand, beasts, wild beds
+    regionText(w) {
+      const R = region(w), word = (v) => LEVEL_WORDS[v] ?? v;
+      const ores = ORES.filter((o) => !o.event).map((o) => `${o.label} \u2014 ${word(R.ores[o.id] ?? 0)}`);
+      ores.push(`\u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u044F\u0445 \u2014 ${word(R.placer)}`);
+      if (R.goldVein) ores.push("\u0431\u044B\u0432\u0430\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u0430\u044F \u0436\u0438\u043B\u0430");
+      const beasts = Object.entries(R.fauna).filter(([, v]) => v > 0).map(([id, v]) => SPECIES.get(id).label + (v > 1 ? " (\u043C\u043D\u043E\u0433\u043E)" : v < 1 ? " (\u043C\u0430\u043B\u043E)" : ""));
+      return `<b>${esc(R.label)}</b>: ${esc(R.note || "")}<br>${ores.join(", ")}<br>\u0437\u0432\u0435\u0440\u0438: ${beasts.join(", ")}${R.magma ? "<br>\u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043C\u0430\u0433\u043C\u0430" : ""}`;
     }
     // the arrival is either still on its way (time left) or due and waiting for a reason
     settlerText(w) {
@@ -9793,7 +10386,10 @@ dd.q4{color:#c58cff;font-weight:600}
         const ctx = craftContext(w), cur = b.order?.recipe;
         const recs = RECIPES.filter((r) => r.at === d.id).map((r) => {
           const what = r.makes.item ? ITEMS.get(r.makes.item).label : `${RESOURCES.get(r.makes.resource).label} \xD7${r.makes.n}`;
-          const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? "" : " short"}">${v} ${RESOURCES.get(res).short}</span>`).join("") + (r.fuel ? `<span class="cost${smeltFuelTotal(w) >= r.fuel ? "" : " short"}">${r.fuel} \u0442\u043E\u043F\u043B\u0438\u0432\u0430</span>` : "");
+          const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? "" : " short"}">${v} ${RESOURCES.get(res).short}</span>`).join("") + (r.fuel ? (() => {
+            const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w));
+            return `<span class="cost${f ? "" : " short"}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : (r.heat ?? 2) >= 2 ? `${r.fuel} \u0443\u0433\u043B\u044F` : `${r.fuel} \u0443\u0433\u043B\u044F \u0438\u043B\u0438 ${r.fuel * 3} \u0434\u0440\u043E\u0432`}</span>`;
+          })() : "") + (r.tool ? `<span class="cost${(w.stock[r.tool] || 0) >= 1 ? "" : " short"}">${RESOURCES.get(r.tool).short}</span>` : "");
           const want2 = r.want(ctx);
           return `<div class="rc${r.id === cur ? " cur" : ""}"><b>${esc(what)}</b><span class="costs">${cost}</span><span class="muted">${r.id === cur ? "\u0432 \u0440\u0430\u0431\u043E\u0442\u0435" : want2 > 0 ? "\u043D\u0443\u0436\u043D\u043E" : "\u0445\u0432\u0430\u0442\u0430\u0435\u0442"}</span></div>`;
         }).join("");
@@ -10223,8 +10819,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.28 \xB7 14.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 f80ef4a" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.29 \xB7 14.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 91e5fd1" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -10250,6 +10846,7 @@ dd.q4{color:#c58cff;font-weight:600}
     var _a, _b, _c, _d;
     if (!save2 || save2.format !== SAVE_FORMAT) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
+    ensureRegion(w);
     ensureOre(w);
     ensurePlants(w);
     w.trade ?? (w.trade = newTradeState());
@@ -10258,6 +10855,10 @@ dd.q4{color:#c58cff;font-weight:600}
     w.graves ?? (w.graves = []);
     w.graveyard ?? (w.graveyard = null);
     recomputeMods(w);
+    if (w.stock.charcoal != null) {
+      w.stock.coal = (w.stock.coal || 0) + w.stock.charcoal;
+      delete w.stock.charcoal;
+    }
     for (const r of RESOURCES.all()) (_a = w.stock)[_b = r.id] ?? (_a[_b] = 0);
     w.rng = mulberry(0);
     w.rng.state = save2.rng;

@@ -6,6 +6,7 @@ import {mulberry, seedNumber} from '../core/rng.js';
 import {T, WALKABLE} from '../data/terrain.js';
 import {ORES, ORE_BY_CODE} from '../data/ores.js';
 import {DX, DY} from './grid.js';
+import {oreLevel} from './region.js';
 
 export const oreOf = (w, i) => (w.grid.ore?.[i] ? ORE_BY_CODE[w.grid.ore[i]] : null);
 
@@ -69,16 +70,18 @@ export function layOre(w) {
       return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
     };
   };
-  const kinds = ORES.all().map(o => ({o, noise: o.vein.seam ? seam(o.vein.seam) : null}));
+  // the region decides which ores there are and how much: a richer level lowers a seam's threshold
+  // and makes pockets more frequent (data/regions.js)
+  const kinds = ORES.filter(o => !o.event && oreLevel(w, o.id) > 0).map(o => ({o, lvl: oreLevel(w, o.id), noise: o.vein.seam ? seam(o.vein.seam) : null}));
   const amount = ([lo, hi], r) => lo + Math.floor(r * (hi - lo + 1));
   const face = [];
   for (let i = 0; i < n; i++) {
     if (g.terr[i] !== T.ROCK) continue;
     if (exposed(w, i)) face.push(i);
     const r = rnd();
-    for (const {o, noise} of kinds) {
+    for (const {o, lvl, noise} of kinds) {
       const v = o.vein;
-      if (noise ? noise(i) > v.above : r < v.pocket) {
+      if (noise ? noise(i) > v.above + (1 - lvl) * 0.07 : r < v.pocket * lvl) {
         g.ore[i] = o.code; g.oreLeft[i] = amount(v.amount, noise ? r : rnd());
         break;
       }
@@ -87,15 +90,15 @@ export function layOre(w) {
   // every kind should be reachable somewhere: plant a small vein on the rock face if not
   if (!face.length) return;
   const have = countExposed(w);
-  for (const o of ORES.all()) {
-    if (have[o.id] >= (o.reach || 0)) continue;
+  for (const {o, lvl} of kinds) {
+    if (have[o.id] >= (o.reach || 0) * Math.min(1, lvl)) continue;
     const start = face[Math.floor(rnd() * face.length)], sx = start % w.w, sy = (start / w.w) | 0;
     let placed = 0;
     for (let rad = 0; rad <= 3 && placed < o.plant; rad++) for (let yy = -rad; yy <= rad && placed < o.plant; yy++) for (let xx = -rad; xx <= rad && placed < o.plant; xx++) {
       const x = sx + xx, y = sy + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
       const j = y * w.w + x;
       if (g.terr[j] !== T.ROCK || g.ore[j] === o.code) continue;
-      g.ore[j] = o.code; g.oreLeft[j] = o.plantAmount; placed++;
+      g.ore[j] = o.code; g.oreLeft[j] = Math.max(1, Math.round(o.plantAmount * Math.min(1, lvl))); placed++;
     }
   }
 }

@@ -6,6 +6,7 @@ import {TERRAIN, T} from '../data/terrain.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 import {isCampArea, DX, DY} from './grid.js';
 import {season} from '../data/seasons.js';
+import {floraLevel} from './region.js';
 
 const EVERY = 10;   // regrow beds this often (ticks)
 
@@ -14,12 +15,12 @@ export function layPlants(w) {
   for (const p of PLANTS.all()) {
     const key = plantLayer(p.id);
     if (w.grid[key] && w.plantBeds[p.id]) continue;
-    const rnd = mulberry(seedNumber(String(w.cfg.seed) + ':' + key)), g = w.grid;
+    const rnd = mulberry(seedNumber(String(w.cfg.seed) + ':' + key)), g = w.grid, lvl = floraLevel(w, p.id);   // the region's share of these beds
     const layer = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map(t => TERRAIN.get(t).code));
     const byWater = i => { const x = i % w.w, y = (i / w.w) | 0; for (let k = 0; k < 4; k++) { const nx = x + DX[k], ny = y + DY[k]; if (nx >= 0 && ny >= 0 && nx < w.w && ny < w.h && g.terr[ny * w.w + nx] === T.WATER) return true; } return false; };
     for (let i = 0; i < w.n; i++) {
       if (!ok.has(g.terr[i]) || g.fert[i] < (p.fertMin || 0) || isCampArea(w, i) || (p.nearWater && !byWater(i))) continue;
-      if (rnd() < p.chance) { beds.push(i); layer[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]); }
+      if (rnd() < p.chance * lvl) { beds.push(i); layer[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]); }
     }
     g[key] = layer; w.plantBeds[p.id] = beds;
   }

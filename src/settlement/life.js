@@ -183,6 +183,9 @@ export const wantsPrayer = (w, a) => has(w, 'shrine') && w.tick - (a.prayed ?? -
 export function prayed(w, a) {
   a.prayed = w.tick;
   const b = w.buildings.find(x => x.done && x.key === 'shrine');
-  const k = 1 + 2 * statusOf(b);
-  think(w, a, 'prayed', {mood: Math.min(0.45, 0.2 * k)});
+  // a candle lit before the idol makes the prayer comfort more
+  const candle = (w.stock.candles || 0) >= 1;
+  if (candle) w.stock.candles -= 1;
+  const k = (1 + 2 * statusOf(b)) * (candle ? 1.5 : 1);
+  think(w, a, 'prayed', {mood: Math.min(0.5, 0.2 * k)});
 }

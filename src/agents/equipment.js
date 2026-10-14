@@ -36,17 +36,23 @@ export function itemDef(type, q = 0) {
   }
   return d;
 }
-// a named piece (an epic find) wears its own name over the plain one
+// a named piece (an epic find) wears its own name over the plain one; a silvered blade
+// (`silver: true`, settlement/crafting.js) is called so and bites what fears silver (combat.js)
 const named = new Map();
 export function def(inst) {
   const d = itemDef(inst.type, inst.q);
-  if (!inst.name) return d;
-  const key = inst.type + ':' + inst.q + ':' + inst.name;
+  if (!inst.name && !inst.silver) return d;
+  const key = inst.type + ':' + inst.q + ':' + (inst.name || '') + ':' + (inst.silver ? 's' : '');
   let n = named.get(key);
-  if (!n) { n = {...d, label: `${inst.name} (${d.label})`, short: inst.name}; named.set(key, n); }
+  if (!n) {
+    n = {...d};
+    if (inst.silver) { n.silver = true; n.label = `${d.label} (посеребрённый)`; n.short = `${d.short} сер.`; n.dur = d.dur * 0.8; }
+    if (inst.name) { n.label = `${inst.name} (${n.label})`; n.short = inst.name; }
+    named.set(key, n);
+  }
   return n;
 }
-export const newItem = (type, extra = {}) => ({type, ...extra, dur: itemDef(type, extra.q).dur});
+export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, ...extra}).dur});
 
 // price of one piece in imperial gold: the plain piece plus the step up in quality
 export function itemPrice(type, q = 0) {

@@ -3,7 +3,7 @@
 import {isHostile} from '../data/factions.js';
 import {SPECIES} from '../data/species.js';
 import {kill} from './agent.js';
-import {wear} from './equipment.js';
+import {wear, def} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
 
@@ -40,11 +40,15 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   return dmg;
 }
 
+// creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely
+export const SILVER = {bane: 2.5, plain: 0.5};
+const silverFactor = (t, item) => (SPECIES.get(t.species).weakTo?.includes('silver') ? (item && def(item).silver ? SILVER.bane : SILVER.plain) : 1);
+
 export function attack(w, a, t) {
   if (a.cd > 0) return;
   const g = ensureGear(a);
   a.cd = g.melee.cd; a.flash = 4;
-  damage(w, a, t, (0.1 + w.rng() * 0.12) * g.melee.dmg);
+  damage(w, a, t, (0.1 + w.rng() * 0.12) * g.melee.dmg * silverFactor(t, g.melee.item));
   if (g.melee.item) wear(w, a, g.melee.item);
 }
 
@@ -61,7 +65,7 @@ export function shoot(w, a, t, skillJob = 'hunt') {
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rng() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rng() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
-  const res = damage(w, a, t, (0.12 + w.rng() * 0.1) * r.dmg * boost, {melee: false});
+  const res = damage(w, a, t, (0.12 + w.rng() * 0.1) * r.dmg * boost * silverFactor(t, null), {melee: false});
   return t.dead ? 'kill' : res === 'blocked' ? 'miss' : 'hit';
 }
 

@@ -26,6 +26,7 @@ import {lakeBeside, fishable} from '../world/lakes.js';
 import {oreBeside, oreOf} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
 import {chores, tameTargets, herd} from '../settlement/herd.js';
+import {maybeGoldVein, foundMithril} from '../settlement/precious.js';
 import {reachableCorpses} from '../settlement/life.js';
 
 export const JOBS = new Registry('job');
@@ -94,13 +95,16 @@ JOBS.registerAll([
     runner: 'harvest', nav: 'ore', resource: 'ironore', carry: 2, time: 40, requires: 'mineshaft', memory: 'walkOre',
     desire: (w) => (wantedOre(w).size ? 0.42 : -1),
     valid: (w, i) => w.grid.fire[i] === 0 && oreBeside(w, i, wantedOre(w)) >= 0,
-    take: (w, i) => {
+    take: (w, i, a) => {
       const g = w.grid, j = oreBeside(w, i, wantedOre(w)); if (j < 0) return null;
-      const res = oreOf(w, j).resource;
+      const o = oreOf(w, j), got = [o.resource];
+      for (const [r, ch] of Object.entries(o.also || {})) if (w.rng() < ch) got.push(r);   // native silver
       g.oreLeft[j] -= 1;
-      // a worked-out vein leaves a passage in the rock: the face behind it opens up for digging
-      if (g.oreLeft[j] <= 0) { g.ore[j] = 0; g.oreLeft[j] = 0; g.terr[j] = T.GRASS; g.fuel[j] = 0; w.nav.dirty('ore'); w.nav.dirty('rockface'); }
-      return res;
+      // a worked-out vein leaves a passage in the rock: the face behind it opens up for digging,
+      // and once in a long while a quartz vein with gold shows in it (settlement/precious.js)
+      if (g.oreLeft[j] <= 0) { g.ore[j] = 0; g.oreLeft[j] = 0; g.terr[j] = T.GRASS; g.fuel[j] = 0; w.nav.dirty('ore'); w.nav.dirty('rockface'); maybeGoldVein(w, j, a); }
+      if (o.id === 'mithril') foundMithril(w, a);
+      return got;
     }},
 
   // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back),
@@ -134,6 +138,9 @@ JOBS.registerAll([
   {id: 'farm', label: 'работать в поле', short: 'поле', verb: 'работает в поле', preferable: true,
     runner: 'farm', nav: 'fieldwork', requires: 'field', carry: 4, time: 16,
     desire: (w) => (fields(w).some(b => b.plots.some(p => needsWork(w, p))) ? 0.55 : -1)},
+
+  {id: 'mill', label: 'молоть зерно', short: 'мельник', verb: 'мелет зерно', preferable: true,
+    runner: 'craft', stations: ['quern'], desire: atStations(0.4)},
 
   {id: 'saw', label: 'пилить тёс', short: 'тёс', verb: 'пилит тёс', preferable: true,
     runner: 'craft', stations: ['sawmill'], desire: atStations(0.45)},
@@ -188,8 +195,14 @@ for (const p of PLANTS.filter(x => x.job)) {
   const keep = w => (typeof J.keep === 'function' ? J.keep(w) : J.keep);
   JOBS.register({id: J.id, label: J.label, short: J.short, verb: J.verb, preferable: true,
     runner: 'harvest', nav: key, resource: p.resource, carry: J.carry, time: J.time,
+    // only with the right tool (a gold pan); never on a map without such beds
+    canDo: J.tool ? (w, a) => !!a.gear?.tool[J.id] : undefined,
     // (hay for the herd's winter, keep(w), is wanted more keenly: the season to mow is short)
-    desire: (w, ctx) => { const k = keep(w); return !inSeason(w) ? -1 : (w.stock[p.resource] || 0) < k ? 0.3 + (typeof J.keep === 'function' ? 0.4 : 0.2) * (1 - (w.stock[p.resource] || 0) / k) : -1; },
+    desire: (w, ctx) => {
+      if (!inSeason(w) || !(w.plantBeds?.[p.id]?.length)) return -1;
+      const k = keep(w), have = w.stock[p.resource] || 0;
+      return have < k ? (0.3 + (typeof J.keep === 'function' ? 0.4 : 0.2) * (1 - have / k)) * (J.weight ?? 1) : -1;
+    },
     valid: (w, i) => inSeason(w) && w.grid[key][i] >= p.ripe && w.grid.fire[i] === 0,
     take: (w, i, a) => {
       w.grid[key][i] -= p.take; if (w.grid[key][i] < p.ripe) w.nav.dirty(key);

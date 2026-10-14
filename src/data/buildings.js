@@ -20,6 +20,7 @@
 //   (data/furniture.js); what they add up to is its standing (settlement/life.js). Huts, fields, pits
 //   and fences take none.
 // `pen: n` — a fenced pen for n places of tame animals (settlement/herd.js).
+// `captureOnly: true` — never built by the council (it can only be captured, later).
 // `walkTo: true` — people walk to it for something other than crafting (a flow field 'station:<id>').
 import {Registry} from '../core/registry.js';
 import {oreSeen} from '../world/ores.js';
@@ -165,12 +166,15 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[c.count('smelter') ? 0.55 : 0, 'плавильне нужен уголь'], [c.count('mineshaft') && !c.count('smelter') ? 0.2 : 0, 'без угля руду не расплавить'],
       [(a.prefs.charcoal - 1) * 1.4, 'любит жечь уголь'], [a.mem.cold * 0.3, 'хочет, чтобы костёр горел дольше']]},
 
-  {id: 'smelter', name: 'Сыродутный горн', gender: 'm', cost: {stone: 22, wood: 10, clay: 6, bellows: 1}, key: 'bellows', work: 240, max: 1, wooden: false, color: '#b0603a', mark: 'Пл', station: true, benches: 1, needs: 'mineshaft',
-    effect: 'Глиняная печь, жар в которой раздувают покупные меха: руду плавят на угле в крицу и проковывают в прутки. 2 руды и 1 уголь дают железо. Городской домны здесь не построить.',
+  // the furnace takes whatever there is to melt: iron on coal, bronze, gold and silver on wood too;
+  // bellows (a town-made tool in the stock) save fuel and time but are not needed
+  {id: 'smelter', name: 'Сыродутный горн', gender: 'm', cost: {stone: 22, wood: 10, clay: 6}, work: 240, max: 1, wooden: false, color: '#b0603a', mark: 'Пл', station: true, benches: 1, needs: 'quarry',
+    effect: 'Глиняная печь. На дровах плавят медно-оловянную руду в бронзу, золотой песок и серебро в слитки, льют бронзовые топоры, наконечники и колокола; железо плавят только на угле. Покупные кузнечные меха экономят четверть топлива и ускоряют работу. Городской домны здесь не построить.',
     effects: {},
-    wish: 'хочет своё железо',
-    motive: (a, c) => [[c.stock('ironore') * 0.07, 'руда лежит без дела'], [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна'],
-      [c.unarmed * 0.4, 'нужно оружие получше']]},
+    available: w => oreSeen(w) || (w.plantBeds?.placer?.length || 0) > 0,
+    wish: 'хочет своего металла',
+    motive: (a, c) => [[(c.stock('ironore') + c.stock('bronzeOre') + c.stock('silverOre')) * 0.07 + c.stock('goldDust') * 0.03, 'руда лежит без дела'],
+      [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна'], [c.unarmed * 0.4, 'нужно оружие получше']]},
 
   {id: 'forge', name: 'Походная кузня', gender: 'f', cost: {stone: 18, wood: 16, iron: 2, anvil: 1}, key: 'anvil', furnish: true, work: 260, max: 1, wooden: false, color: '#8e8f96', mark: 'Кз', station: true, benches: 1, needs: 'smelter',
     effect: 'Навес, горн и покупная наковальня: куют мечи, копья с железными наконечниками, железные топоры, ламеллярные доспехи и оковку для сундуков. Кольчуги и тонкие клинки — только у торговцев.',
@@ -235,6 +239,20 @@ BUILDINGS.registerAll([
     wish: 'хочет место, где можно помолиться',
     motive: (a, c) => [[a.mem.grief * 1.2, 'некому проводить умерших по-людски'], [c.gloomy * 1.2, 'многие пали духом'], [c.graves ? 0.25 : 0, 'могилы стоят без присмотра'],
       [(a.prefs.build - 1) * 0.3 + 0.1, 'хочет святое место']]},
+
+  // the quern: two stones turned by hand; barley becomes flour, flour becomes bread at the hearth
+  {id: 'quern', name: 'Ручные жернова', gender: 'pl', cost: {stone: 10, wood: 4}, work: 120, max: 1, wooden: false, color: '#b8a888', mark: 'Жр', station: true, benches: 1, needs: 'quarry',
+    effect: 'Ячмень мелют в муку, из муки на очаге пекут хлеб: он сытнее зерна и хранится дольше каши.',
+    effects: {},
+    available: w => (w.stock.barley || 0) >= 4,
+    wish: 'хочет хлеба',
+    motive: (a, c) => [[c.stock('barley') * 0.04, 'ячмень лежит, а хлеба нет'], [(a.prefs.cook - 1) * 0.8, 'любит стряпать']]},
+
+  // the magma forge: only in a region with magma, and the outpost can never build one itself — it may be
+  // captured later, on the global map. Here so that the rest of the game can name it.
+  {id: 'magmaforge', name: 'Магмовая кузня', gender: 'f', cost: {stone: 999}, work: 9999, max: 1, wooden: false, color: '#d0502a', mark: 'Мг', captureOnly: true,
+    effect: 'Кузня на живом жару магмы: только в ней куют мифрил. Форпосту её не построить — её можно лишь захватить.',
+    effects: {}, wish: '', motive: () => []},
 
   {id: 'watchtower', name: 'Сторожевая вышка', gender: 'f', cost: {wood: 30, bone: 4}, work: 220, max: 2, wooden: true, color: '#9c8b6e', mark: 'Вш', zone: 11,
     effect: 'Расширяет зону поселения на 11 клеток вокруг себя: здесь защитники сильнее, а волки не охотятся.',

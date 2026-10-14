@@ -2,6 +2,7 @@
 // resource, recipe, job, building, item, food or ore is caught by `npm test`, not in the middle of a game.
 // Errors stop the test; warnings (something that will never appear in a game) are only printed.
 import {FURNITURE} from '../src/data/furniture.js';
+import {REGIONS, LEVELS} from '../src/data/regions.js';
 import {RESOURCES} from '../src/data/resources.js';
 import {FOODS} from '../src/data/foods.js';
 import {ORES} from '../src/data/ores.js';
@@ -99,10 +100,24 @@ for (const m of MIGRATIONS.all()) if (m.species && !SPECIES.has(m.species)) err(
 const sources = new Set(['gold',   // gold comes from trade
   ...TRADE.WARES.flatMap(x => x.resource || []),   // bought from traders
   ...PLANTS.all().flatMap(p => [p.resource, ...Object.keys(p.also || {})]), ...CROPS.all().flatMap(c => Object.keys(c.yields)),
-...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource),
+...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource), ...ORES.all().flatMap(o => Object.keys(o.also || {})),
   ...SPECIES.all().flatMap(s => Object.keys(s.yields || {})),
   ...RESOURCES.filter(r => r.tags.includes('key')).map(r => r.id),   // town-made tools: always with traders
   ...SPECIES.all().flatMap(s => (s.tame ? [s.tame.milk && 'milk', s.tame.wool && 'wool'].filter(Boolean) : []))]);   // from the pen
+
+// furnaces, tools, regions
+for (const r of RECIPES.all()) {
+  if (r.fuel && ![1, 2, 3, undefined].includes(r.heat)) err(`рецепт ${r.id}: heat должен быть 1, 2 или 3`);
+  if (r.tool && !RESOURCES.get(r.tool)?.tags.includes('key')) err(`рецепт ${r.id}: tool «${r.tool}» — не инструмент`);
+}
+if (!RESOURCES.filter(r => r.furnace).some(r => r.furnace.tier >= 2)) err('нет топлива для железа (furnace.tier ≥ 2)');
+for (const R of REGIONS.all()) {
+  for (const id of Object.keys(R.ores)) if (!ORES.has(id)) err(`регион ${R.id}: нет руды «${id}»`);
+  for (const id of Object.keys(R.fauna)) if (!SPECIES.has(id)) err(`регион ${R.id}: нет вида «${id}»`);
+  for (const id of Object.keys(R.flora)) if (!PLANTS.has(id)) err(`регион ${R.id}: нет грядки «${id}»`);
+  for (const v of [...Object.values(R.ores), ...Object.values(R.fauna), ...Object.values(R.flora), R.placer]) if (!LEVELS.includes(v)) err(`регион ${R.id}: уровень ${v} не из LEVELS`);
+}
+for (const r of RESOURCES.filter(x => x.useWith)) if (!BUILDINGS.has(r.useWith)) err(`инструмент ${r.id}: useWith — нет постройки «${r.useWith}»`);
 
 // herding, keys, furniture
 for (const s of SPECIES.all()) if (s.tame) {

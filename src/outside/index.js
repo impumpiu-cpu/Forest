@@ -4,6 +4,7 @@
 // The provider behind the border is swappable: today the scripted stub, later the world map.
 // Every arrival has two halves: the provider decides who sets out and when (supply), the local
 // MIGRATIONS entry decides how many the colony's land takes in (accept) and what they look like.
+import {faunaLevel} from '../world/region.js';
 import {Registry} from '../core/registry.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {NEIGHBOURS} from '../data/neighbours.js';
@@ -41,7 +42,10 @@ export function tell(w, kind, data) {
 // a group offered by the provider reaches the map edge: the land decides how many stay
 export function arrive(w, flowId, offered) {
   const def = MIGRATIONS.get(flowId);
-  const n = def.accept ? def.accept(w, offered, w.rng) : offered;
+  // the region decides which beasts live here at all (data/regions.js); a rich one sends one more
+  const lvl = def.species ? faunaLevel(w, def.species) : 1;
+  if (lvl <= 0) return [];
+  const n = def.accept ? def.accept(w, offered + (lvl > 1 ? 1 : 0), w.rng) : offered;
   return n > 0 ? spawnGroup(w, flowId, n) : [];
 }
 

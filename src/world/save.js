@@ -12,6 +12,7 @@ import {newMemory} from '../agents/agent.js';
 import {VERSION} from '../version.js';
 import {ensureOre} from './ores.js';
 import {ensurePlants} from './plants.js';
+import {ensureRegion} from './region.js';
 import {newTradeState} from '../settlement/trade.js';
 import {ensureFlows} from '../outside/index.js';
 import {recomputeMods} from '../settlement/mods.js';
@@ -45,11 +46,14 @@ export function saveWorld(w) {
 export function loadWorld(save) {
   if (!save || save.format !== SAVE_FORMAT) throw new Error('Это не сохранение «Тёплого Брода» или оно из несовместимой версии.');
   const {world: w, nav} = decode(save.tree, {externals: externals()});
+  ensureRegion(w);
   ensureOre(w);
   ensurePlants(w);
   w.trade ??= newTradeState(); w.caravan ??= null;
   w.corpses ??= []; w.graves ??= []; w.graveyard ??= null;
   recomputeMods(w);   // building effects as this version defines them
+  // charcoal and mined coal are one coal now
+  if (w.stock.charcoal != null) { w.stock.coal = (w.stock.coal || 0) + w.stock.charcoal; delete w.stock.charcoal; }
   for (const r of RESOURCES.all()) w.stock[r.id] ??= 0;
   w.rng = mulberry(0); w.rng.state = save.rng;
   w.nav = new Navigation(w);

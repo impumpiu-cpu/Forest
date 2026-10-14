@@ -13,9 +13,11 @@
 //   ripe:      worth walking to from this much;  take: how much one picking removes
 //   seasons:   only gathered in these seasons (hay is mown in summer and autumn)
 //   tint:      colour mixed into the ground on the world layer; mapColor: on the resource layer
-//   job:       the gathering job: {id, label, short, verb, time, carry, keep, hurt?} — it is wanted
+//   The region (data/regions.js, flora) scales `chance`; a bed the region has not got is not laid at all.
+//   job:       the gathering job: {id, label, short, verb, time, carry, keep, hurt?, tool?, weight?} — it is wanted
 //              while the stock is below `keep` (a number, or keep(w) when it depends on the colony);
-//              `hurt` takes that much health per picking (bee stings)
+//              `hurt` takes that much health per picking (bee stings); `tool`: only someone with that tool
+//              (data/items.js `tool`) can do it; `weight` scales how keen the colony is on it (default 1)
 import {Registry} from '../core/registry.js';
 import {SPECIES} from './species.js';
 
@@ -55,6 +57,22 @@ PLANTS.registerAll([
     start: [0.2, 0.6], regrow: 0.0005, ripe: 0.6, take: 0.6, tint: [150, 180, 80], mapColor: [170, 220, 90],
     // enough for bedding, and for the pen's winter (settlement/herd.js, winterHay)
     job: {id: 'mow', label: 'косить сено', short: 'сено', verb: 'косит сено', time: 20, carry: 3, keep: w => 30 + winterHay(w)}},
+
+  // gold-bearing sand in the shallows: washed with a pan, a little at a time; the river brings more
+  // sand very slowly. Not under ice. Now and then a nugget turns up in the pan.
+  {id: 'placer', resource: 'goldDust', also: {goldNugget: 0.02}, label: 'золотоносный песок', terrain: ['grass'], nearWater: true, chance: 0.06,
+    seasons: ['spring', 'summer', 'autumn'], start: [0.6, 1], regrow: 0.00006, ripe: 0.3, take: 0.12, tint: [222, 196, 96], mapColor: [255, 214, 60],
+    job: {id: 'pan', label: 'мыть золото', short: 'золото', verb: 'моет золото в отмели', time: 40, carry: 4, keep: 200, tool: 'pan'}},
+
+  // salt licks: white crusts where salty springs come up; the outpost's own salt, a little at a time
+  {id: 'saltlick', resource: 'salt', label: 'солонец', terrain: ['grass'], fertMin: 0, chance: 0.004, hardy: true,
+    start: [0.6, 1], regrow: 0.00012, ripe: 0.4, take: 0.3, tint: [236, 236, 228], mapColor: [250, 250, 245],
+    job: {id: 'salt', label: 'выпаривать соль', short: 'соль', verb: 'собирает соль на солонце', time: 40, carry: 2, keep: 12}},
+
+  // wild flax: in autumn its seed heads are ripe; the outpost's own flax seed without a trader
+  {id: 'wildflax', resource: 'seedFlax', also: {fiber: 0.5}, label: 'дикий лён', terrain: ['grass'], fertMin: 0.5, chance: 0.008, seasons: ['autumn'],
+    start: [0.2, 0.5], regrow: 0.0004, ripe: 0.6, take: 0.5, tint: [120, 150, 200], mapColor: [140, 170, 230],
+    job: {id: 'flaxseed', label: 'собирать семена льна', short: 'лён', verb: 'собирает семена дикого льна', time: 25, carry: 3, keep: 10}},
 ]);
 
 export const plantLayer = id => 'plant:' + id;

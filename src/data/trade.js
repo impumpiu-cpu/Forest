@@ -40,10 +40,11 @@ export const TRADE = {
   foodShort: 4, foodUpTo: 6, foodKeep: 5, minGain: 0.15, maxShare: 0.85,
   wants: {salt: 12, seedBarley: 8, seedTurnip: 8, seedFlax: 6},   // bought whenever the trader has it, up to this much in stock
   keys: [1, 2], keyChance: 0.8, furnish: 25,
+  mithrilPurse: 35,   // a trader who has heard of mithril carries this much more gold per unit in stock (up to 3)
 
   WARES: [
     {w: 40, food: true, n: [3, 8]},
-    {w: 14, resource: ['leather', 'hide', 'iron', 'charcoal', 'arrows', 'bone'], n: [2, 6]},
+    {w: 14, resource: ['leather', 'hide', 'iron', 'coal', 'arrows', 'bone', 'bronze'], n: [2, 6]},
     {w: 12, resource: ['salt'], n: [4, 10]},
     {w: 12, resource: ['seedBarley', 'seedTurnip', 'seedFlax'], n: [4, 10]},
     {w: 24, items: 'plain', q: 0},
