@@ -17,7 +17,13 @@ import {NEIGHBOURS} from '../data/neighbours.js';
 import {raidSize, settlerWaitDays} from '../settlement/threat.js';
 import {TRADE} from '../data/trade.js';
 import {season} from '../data/seasons.js';
-import {HOUR, dayOf} from '../core/time.js';
+import {HOUR, dayOf, nightness} from '../core/time.js';
+import {RAID_BANDS} from '../data/raids.js';
+import {raidThreat} from '../settlement/threat.js';
+import {weighted} from '../core/util.js';
+
+// which band sets out: each weighs itself by the threat it sees and the hour
+export const pickBand = (w, rng) => weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w.tick))]));
 
 const raidDist = w => RAIDS[w.cfg.raids].dist;
 
@@ -26,7 +32,7 @@ const caravanDay = (w, day, rng) => Math.max(w.tick + 1, day * DAY + (TRADE.setO
 export const scripted = {
   id: 'scripted', label: 'Сценарий',
 
-  distance: (w, id) => (id === 'greywolves' ? raidDist(w) : NEIGHBOURS.get(id).dist),
+  distance: (w, id) => (id === 'hostile' ? raidDist(w) : NEIGHBOURS.get(id).dist),
 
   flows: {
     // one newcomer at a time from the kin; the wait grows with the colony (it hears how big it is)
@@ -75,12 +81,13 @@ export const scripted = {
       offer: (w, rng) => (rng() < Math.min(0.95, TRADE.chance * region(w).road) ? 1 : 0),   // a road close by brings more caravans
       next: (w, rng) => caravanDay(w, dayOf(w.tick) + TRADE.everyDays, rng)},
     // every dist/2 days (a little sooner after each raid) a band may set out — with the preset's
-    // chance — sized by the rumours; a check that comes to nothing gives the colony time to recover
-    raiders: {from: 'greywolves',
+    // chance — sized by the rumours; a check that comes to nothing gives the colony time to recover.
+    // Which band comes is drawn from data/raids.js: bandits, orcs, goblins, gnolls, the dead…
+    raiders: {from: 'hostile',
       first: (w, rng) => scripted.flows.raiders.next(w, rng),
-      offer: (w, rng) => (rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? raidSize(w) : 0),
-      size: w => raidSize(w),
-      missed: () => ['Разведчики «Серых волков» побродили у края леса и ушли. Набега в этот раз не будет.', 'danger', 'info'],
+      offer: (w, rng) => (rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? {n: raidSize(w), band: pickBand(w, rng)} : 0),
+      size: w => ({n: raidSize(w), band: pickBand(w, w.rng)}),
+      missed: () => ['Чужие разведчики побродили у края леса и ушли. Набега в этот раз не будет.', 'danger', 'info'],
       next: (w, rng) => (raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) : Infinity)},
   },
 

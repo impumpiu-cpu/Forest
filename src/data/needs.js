@@ -13,7 +13,7 @@ NEEDS.registerAll([
     harm: 0.0008, cause: 'голода',
     urge: (w, a, v) => (1 - v) ** 2 * 2.2},
   {id: 'rest', label: 'бодрость', color: '#7d9be0', task: 'sleep', memory: 'tired', start: [0.6, 1],
-    decay: (w, a) => (a.sleeping ? 0 : 0.00045),
+    decay: (w, a) => (a.sleeping ? 0 : 0.00045 * (a.mods.sleep ?? 1)),
     harm: 0, cause: 'усталости',
     urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w.tick) > 0.6 && v < 0.75 ? 0.35 : 0)},
   // warmth follows the temperature field under the agent's feet

@@ -17,7 +17,7 @@ export const HEAL = {
   perHerb: 0.35,    // health healed per herb used
 };
 
-const maxHp = a => SPECIES.get(a.species).hp;
+const maxHp = a => a.maxHp || SPECIES.get(a.species).hp;
 export const hurt = a => a.hp < maxHp(a) * HEAL.seekBelow;
 
 // who lies in the hut now (at most as many as it has beds)

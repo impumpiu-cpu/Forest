@@ -3,6 +3,7 @@
 // gets its distance fields back as they were (stale ones stay stale, so the game goes on exactly
 // as it would have), agents' memories get their "unknown reads as 0" wrapper again.
 // A loaded game continues tick for tick like the one that was saved (tools/determinism.mjs checks it).
+import {BASE_MODS} from '../data/traits.js';
 import {encode, decode} from '../core/serialize.js';
 import {Registry} from '../core/registry.js';
 import * as PRESETS from '../data/presets.js';
@@ -63,6 +64,8 @@ export function loadWorld(save) {
   for (const id of w.nav.order) if (!(id in nav.dist)) w.nav.dirtySet.add(id);
   Object.assign(w.nav.last, nav.last);
   for (const a of w.agents) if (a.mem) a.mem = newMemory(a.mem);
+  // multipliers added since the save (SPECIAL, races) start neutral
+  for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) a.mods[k] ??= v;
   // colonists from before food preferences: give them some, the same every time this save is loaded
   for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
   // jobs added since the save (herding, burials): neutral about them, no skill yet

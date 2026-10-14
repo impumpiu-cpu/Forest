@@ -2,7 +2,7 @@
 import {NEEDS} from '../data/needs.js';
 import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
-import {kill} from './agent.js';
+import {kill, maxHp} from './agent.js';
 import {think} from './mind.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
@@ -22,7 +22,9 @@ export function stepBody(w, a) {
   }
   if (T > sp.heatHarm) a.hp -= Math.min(0.005, (T - sp.heatHarm) * 0.00004);
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
-  if (comfy && T < 45) a.hp = Math.min(sp.hp, a.hp + 0.0003 * sp.hp);
+  // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
+  const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;
+  if (comfy && T < 45) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a) * regen);
   if (a.hp <= 0) kill(w, a, starving || (T > 60 ? 'пожара' : 'ран'));
   return T;
 }

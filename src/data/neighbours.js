@@ -8,9 +8,9 @@ export const NEIGHBOURS = new Registry('neighbour');
 
 NEIGHBOURS.registerAll([
   {id: 'kin', label: 'Род Ольхи', kind: 'kin', dist: 4, flows: ['settlers'],
-    note: 'материнское племя: отсюда уходят искать новую жизнь'},
-  {id: 'greywolves', label: '«Серые волки»', kind: 'enemy', dist: null, flows: ['raiders'],   // distance comes from the raids preset
-    note: 'стойбище разбойников; чем ближе оно, тем чаще набеги'},
+    note: 'материнское племя: отсюда уходят искать новую жизнь; через его земли изредка забредают полурослики, гномы, эльфы и великаны'},
+  {id: 'hostile', label: 'Враждебные земли', kind: 'enemy', dist: null, flows: ['raiders'],   // distance comes from the raids preset
+    note: 'стойбище «Серых волков», орочьи и гоблинские становища, норы гноллов, курганы с мертвецами; чем ближе, тем чаще набеги'},
   {id: 'empire', label: 'Имперский тракт', kind: 'trade', dist: 5, flows: ['caravan'],
     note: 'торговая дорога: время от времени по ней приходят караваны с имперским золотом и товаром'},
   {id: 'wilds', label: 'Дикие леса', kind: 'wild', dist: 0, flows: ['hares', 'deer', 'foxes', 'boars', 'wolves', 'mules', 'rats'],

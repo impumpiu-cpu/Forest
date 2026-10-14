@@ -40,13 +40,16 @@ export function tell(w, kind, data) {
 }
 
 // a group offered by the provider reaches the map edge: the land decides how many stay
+//   offered: how many, or {n, …details} (a raid names its band: {n, band})
 export function arrive(w, flowId, offered) {
   const def = MIGRATIONS.get(flowId);
+  const {n: count, ...opts} = typeof offered === 'object' ? offered : {n: offered};
+  offered = count;
   // the region decides which beasts live here at all (data/regions.js); a rich one sends one more
   const lvl = def.species ? faunaLevel(w, def.species) : 1;
   if (lvl <= 0) return [];
   const n = def.accept ? def.accept(w, offered + (lvl > 1 ? 1 : 0), w.rng) : offered;
-  return n > 0 ? spawnGroup(w, flowId, n) : [];
+  return n > 0 ? spawnGroup(w, flowId, n, opts) : [];
 }
 
 // the «Набег» button and similar: a group arrives now, outside any schedule

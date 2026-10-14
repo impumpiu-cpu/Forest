@@ -1,27 +1,21 @@
 // Creatures. A species sets body stats, which needs it has, how it looks and, for animals,
-// its own brain and what hunting it yields. Add a fantasy race or a new animal here.
+// its own brain and what hunting it yields. Animals live here; thinking races in data/races.js,
+// the rot's undead and other raid monsters in data/monsters.js. All of them end up in SPECIES.
+//   mind: 'beast' | 'semi' | 'sentient' — only the sentient can be hired or bargained with
 import {Registry} from '../core/registry.js';
+import {RACES} from './races.js';
+import {MONSTERS} from './monsters.js';
 
 export const SPECIES = new Registry('species');
 
-// [name, gender]; gender picks the verb endings in the journal and the diary
-export const HUMAN_NAMES = [['Милава', 'f'], ['Ждан', 'm'], ['Горислав', 'm'], ['Веселина', 'f'], ['Тихон', 'm'], ['Любава', 'f'],
-  ['Мирон', 'm'], ['Злата', 'f'], ['Ярослав', 'm'], ['Дарина', 'f'], ['Ратибор', 'm'], ['Снежана', 'f'], ['Боян', 'm'],
-  ['Забава', 'f'], ['Светозар', 'm'], ['Агния', 'f'], ['Велимир', 'm'], ['Олеся', 'f'], ['Добрыня', 'm'], ['Василиса', 'f'],
-  ['Радим', 'm'], ['Ведана', 'f']];
-
 SPECIES.registerAll([
-  {id: 'human', label: 'человек', hp: 1, speed: 0.13, needs: ['food', 'rest', 'warmth'],
-    heatHarm: 70, look: {shape: 'person', size: 0.62}, names: HUMAN_NAMES, sentient: true, inventory: true,
-    attack: {power: 1, cooldown: 12}},
-
   // Hares graze, rest at night, bolt from people and fire. They never breed here:
   // their numbers change only through migration (see migrations.js).
   // game: shows up on the prey flow field that hunters and predators follow
   {id: 'hare', label: 'заяц', labelAcc: 'зайца', hp: 0.12, speed: 0.17, needs: [], brain: 'grazer', game: true,
     heatHarm: 60, look: {shape: 'hare', size: 0.42, color: '#cdbb9a'},
     yields: {meat: 2, hide: 1, bone: 1},
-    flee: {radius: 4.5, sprint: 1.45, from: ['human', 'wolf'], stamina: 0.007},
+    flee: {radius: 4.5, sprint: 1.45, from: ['people', 'wolf'], stamina: 0.007},
     grazes: {terrain: ['grass'], eatsBerries: 0.004},
     leaveChance: 0.0004},
 
@@ -37,7 +31,7 @@ SPECIES.registerAll([
     // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
     predator: {
       prey: ['hare', 'deer', 'fox'], // what it hunts for food (goats keep to the rocks and are not worth the chase)
-      victims: ['human'],        // whom it attacks: a lone colonist, or a pair when desperate
+      victims: ['people'],       // whom it attacks ('people': any thinking race): a lone colonist, or a pair when desperate
       sprint: 1.9, stamina: 0.003,
       sight: 22,                 // how far it notices prey
       obvious: 8,                // prey this close is chased even by a wolf that is not hungry yet…
@@ -59,7 +53,7 @@ SPECIES.registerAll([
   {id: 'deer', label: 'олень', labelAcc: 'оленя', hp: 0.45, speed: 0.15, needs: [], brain: 'grazer', game: true,
     heatHarm: 60, look: {shape: 'deer', size: 0.62, color: '#a8794a'},
     yields: {meat: 5, hide: 2, bone: 2},
-    flee: {radius: 7, sprint: 1.6, from: ['human', 'wolf'], stamina: 0.006},
+    flee: {radius: 7, sprint: 1.6, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0.002},
     leaveChance: 0.0003},
 
@@ -67,7 +61,7 @@ SPECIES.registerAll([
   {id: 'fox', label: 'лиса', labelAcc: 'лису', hp: 0.15, speed: 0.18, needs: [], brain: 'grazer', game: true,
     heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
     yields: {meat: 1, furs: 1},
-    flee: {radius: 6, sprint: 1.5, from: ['human', 'wolf'], stamina: 0.006},
+    flee: {radius: 6, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0},
     leaveChance: 0.0004},
 
@@ -117,7 +111,7 @@ SPECIES.registerAll([
   {id: 'goat', label: 'коза', labelAcc: 'козу', hp: 0.3, speed: 0.14, needs: [], brain: 'grazer', game: true, legend: 'коза',
     heatHarm: 60, look: {shape: 'goat', size: 0.46, color: '#d6cdb6'},
     yields: {meat: 3, hide: 1, bone: 1},
-    flee: {radius: 4.5, sprint: 1.5, from: ['human', 'wolf'], stamina: 0.006},
+    flee: {radius: 4.5, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass'], eatsBerries: 0.002},
     leaveChance: 0.0001,
     // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it
@@ -132,4 +126,12 @@ SPECIES.registerAll([
     tame: {chance: 0.45, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
       names: ['Белянка', 'Пеструшка', 'Зорька', 'Рогатка', 'Маруська', 'Бодуша', 'Сивка', 'Дереза', 'Звёздочка', 'Чернушка'],
       effect: 'даёт молоко и шерсть, в тёплое время приносит козлят'}},
-]);
+].map(sp => ({mind: 'beast', ...sp})));
+
+SPECIES.registerAll(RACES);
+SPECIES.registerAll(MONSTERS);
+
+export const HUMAN_NAMES = SPECIES.get('human').names;
+
+// does a species belong to a list of kinds? 'people' stands for every thinking race (data/races.js)
+export const matchesKind = (id, list) => list.includes(id) || (list.includes('people') && !!SPECIES.get(id).rel);

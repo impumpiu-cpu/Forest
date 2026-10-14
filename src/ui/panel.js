@@ -42,6 +42,12 @@ import {fishTotals} from '../world/lakes.js';
 import {moodOf, moodLabel, wishes} from '../agents/mind.js';
 import {councilWish} from '../settlement/council.js';
 import {boldness} from '../agents/brains/predator.js';
+import {STATS} from '../data/special.js';
+import {VALUES, axisWord} from '../data/values.js';
+import {opinionWord} from '../data/relations.js';
+import {feelings} from '../settlement/relations.js';
+import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
+import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
 import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
@@ -54,6 +60,15 @@ import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
 const costHtml = (w, cost) => Object.entries(cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? '' : ' short'}">${v} ${RESOURCES.get(r).label}</span>`).join('');
+
+// SPECIAL as seven small cells; the tooltip gives the race's limits
+function specialHtml(a) {
+  if (!a.special) return '';
+  const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
+  return `<div class="spc">${STATS.all().map(s => `<span title="${s.label}: ${s.note}. У этой расы ${lim[s.id][0]}–${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join('')}</div>`;
+}
+
+const raceOf = a => raceLabel(SPECIES.get(a.species), a);
 
 export function traitsText(a) {
   const t = a.traits.map(id => TRAITS.get(id).label);
@@ -300,8 +315,8 @@ export class Panel {
     const col = colonists(w);
     const needs = SPECIES.get('human').needs.map(id => NEEDS.get(id));
     this.set('people', (col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
-      <span class="nm">${esc(a.name)}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
-      <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(a.hp, 'var(--good)')}</div></div>`).join('')
+      <span class="nm">${esc(a.name)}${a.species !== 'human' ? ` <i class="race">${raceOf(a)}</i>` : ''}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
+      <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(a.hp / (a.maxHp || 1), 'var(--good)')}</div></div>`).join('')
       || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
   }
 
@@ -419,7 +434,11 @@ export class Panel {
 
   creatureHtml(w, a) {
     const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
-    const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(a.hp / sp.hp * 100)}%</dd>`];
+    const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(a.hp / (a.maxHp || sp.hp) * 100)}%</dd>`];
+    if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+    if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);
+    const inn = innateOf(sp, a);
+    if (inn.length) rows.push(`<dt>Особое</dt><dd>${inn.map(t => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(' ')}</dd>`);
     if (a.role === 'trader' && w.caravan?.traderId === a.id) {
       const c = w.caravan;
       rows.push(`<dt>Караван</dt><dd>${goodsUnits(c.goods)} мест груза, ${Math.floor(c.purse)} зол. в кошельке</dd>`);
@@ -435,7 +454,7 @@ export class Panel {
     }
     if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
     rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
-    const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : sp.label;
+    const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : raceOf(a);
     const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${who}` : who[0].toUpperCase() + who.slice(1);
     return `<div class="pc-head"><h3>${title}</h3><button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div><dl class="kv">${rows.join('')}</dl>`;
   }
@@ -446,7 +465,12 @@ export class Panel {
     const fresh = a.diary.filter(e => e.until > w.tick && e.mood !== 0).sort((x, y) => Math.abs(y.mood) - Math.abs(x.mood)).slice(0, 2);
     const moodPct = Math.round((mood + 1) * 50);
     const needs = sp.needs.map(id => { const n = NEEDS.get(id); return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`; }).join('') +
-      `<div class="pc-bar"><span>здоровье</span>${bar(a.hp, 'var(--good)')}<b>${Math.round(a.hp * 100)}</b></div>`;
+      `<div class="pc-bar"><span>здоровье</span>${bar(a.hp / (a.maxHp || sp.hp), 'var(--good)')}<b>${Math.round(a.hp / (a.maxHp || sp.hp) * 100)}</b></div>`;
+    const inn = innateOf(sp, a).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
+    const vals = (a.values || []).map(id => `<span class="chip">${VALUES.get(id).label}</span>`).join('');
+    const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];
+    const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? 'down' : 'up'}">${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ''}</li>`).join('')}</ul>` : '<p class="muted pc-small">Ни с кем особо не сошёлся и не повздорил.</p>';
+    const body = sp.body ? `${raceOf(a)[0].toUpperCase() + raceOf(a).slice(1)}: взрослеют к ${sp.body.adult}, живут до ${sp.body.life} лет; ${sp.body.diet}.` : '';
     const want = wishes(w, a, councilWish(w, a));
     const slots = SLOTS.map(s => {
       const it = a.equip?.[s.id];
@@ -473,6 +497,15 @@ export class Panel {
           <div class="chips">${traits || '<span class="muted pc-small">ничем особым не выделяется</span>'}</div>
           <h4>Настроение</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
           <h4>Самочувствие</h4>${needs}
+        </section>
+        <section><h4>Природа</h4>
+          <p class="pc-small">${body}</p>
+          ${specialHtml(a)}
+          ${inn ? `<div class="chips">${inn}</div>` : ''}
+          <h4>Мировоззрение</h4>
+          ${a.align ? `<p class="pc-small">${axisWord('order', a.align.order)} · ${axisWord('mercy', a.align.mercy)}</p>` : ''}
+          ${vals ? `<div class="chips">${vals}</div>` : ''}
+          <h4>Соседи</h4>${feelHtml}
         </section>
         <section><h4>Хочет</h4>${want.length ? `<ul class="pc-list">${want.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted pc-small">Всем доволен.</p>'}
           <h4>Снаряжение</h4><dl class="kv">${slots}</dl>

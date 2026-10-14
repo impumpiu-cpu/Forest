@@ -5,7 +5,7 @@
 //               (at night sooner), when desperate even for a pair, and backs off less readily.
 // Fire, wounds, a crowd of people and the settlement zone still drive it away.
 // All numbers come from the species' `predator` block in data/species.js.
-import {SPECIES} from '../../data/species.js';
+import {SPECIES, matchesKind} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, ascend} from '../movement.js';
@@ -23,14 +23,14 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function nearest(w, a, species, r, filter = () => true) {
   let best = null, bd = r;
   for (const o of w.agents) {
-    if (o.dead || o.tame || !species.includes(o.species) || !filter(o)) continue;   // the pen's animals are not prey
+    if (o.dead || o.tame || !matchesKind(o.species, species) || !filter(o)) continue;   // the pen's animals are not prey
     const d = dist(a, o); if (d < bd) { bd = d; best = o; }
   }
   return best;
 }
 
 // how many others of the victim's kind stand close to it
-const company = (w, v, r) => w.agents.filter(o => o !== v && !o.dead && o.species === v.species && dist(o, v) < r).length;
+const company = (w, v, r) => w.agents.filter(o => o !== v && !o.dead && (o.species === v.species || (!!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel)) && dist(o, v) < r).length;
 const packOf = (w, a) => w.agents.filter(o => !o.dead && o.pack === a.pack);
 // big game (a mule) is prey only once it is badly hurt
 const weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < SP.get(o.species).hp * P.weakBelow;
@@ -61,7 +61,7 @@ export const predatorBrain = {
     const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
     const dZone = w.nav.get('zone')[i];
     const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
-    const people = w.agents.filter(o => !o.dead && P.victims.includes(o.species) && dist(o, a) < 6);
+    const people = w.agents.filter(o => !o.dead && matchesKind(o.species, P.victims) && dist(o, a) < 6);
     const pack = packOf(w, a), leader = pack[0];
 
     // wounded: leave for good

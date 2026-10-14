@@ -2,7 +2,7 @@
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
 import {isHostile} from '../data/factions.js';
 import {SPECIES} from '../data/species.js';
-import {kill} from './agent.js';
+import {kill, maxHp} from './agent.js';
 import {wear, def} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
@@ -27,12 +27,19 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   const g = ensureGear(t);
   // the victim remembers who hurt it and from how far (a mule charges whoever shot it)
   t.hurtBy = {id: by.id, tick: w.tick, far: !melee};
+  // luck: now and then a blow or a shot simply misses (SPECIAL L)
+  if (t.mods?.dodge > 0 && w.rng() < t.mods.dodge) { t.flash = 2; return 'dodged'; }
+  const tsp = SPECIES.get(t.species);
+  if (!melee && tsp.resist?.ranged) raw *= tsp.resist.ranged;   // arrows pass through a skeleton
   if (melee && g.block && w.rng() < g.block) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
   const home = by.faction === 'colony' && agentInZone(w, by) ? 1.25 : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
   let dmg = raw * home * wall * (1 - (g.armor || 0));
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
   t.hp -= dmg;
+  // creatures that drink blood heal by what they draw
+  const bsp = SPECIES.get(by.species);
+  if (bsp.drinks && melee && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
@@ -47,8 +54,8 @@ const silverFactor = (t, item) => (SPECIES.get(t.species).weakTo?.includes('silv
 export function attack(w, a, t) {
   if (a.cd > 0) return;
   const g = ensureGear(a);
-  a.cd = g.melee.cd; a.flash = 4;
-  damage(w, a, t, (0.1 + w.rng() * 0.12) * g.melee.dmg * silverFactor(t, g.melee.item));
+  a.cd = Math.max(4, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
+  damage(w, a, t, (0.1 + w.rng() * 0.12) * g.melee.dmg * (a.mods?.str ?? 1) * silverFactor(t, g.melee.item));
   if (g.melee.item) wear(w, a, g.melee.item);
 }
 
@@ -61,11 +68,11 @@ export function shoot(w, a, t, skillJob = 'hunt') {
   if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
   wear(w, a, r.item);
   const skill = a.skill?.[skillJob] ?? 0.2, moving = t.task?.id === 'bolt' || t.task?.id === 'chase' ? 0.12 : 0;
-  const hit = w.rng() < 0.4 + 0.4 * skill - (d / range) * 0.2 - moving;
+  const hit = w.rng() < 0.4 + 0.4 * skill + (a.mods?.aim || 0) - (d / range) * 0.2 - moving;
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rng() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rng() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const res = damage(w, a, t, (0.12 + w.rng() * 0.1) * r.dmg * boost * silverFactor(t, null), {melee: false});
-  return t.dead ? 'kill' : res === 'blocked' ? 'miss' : 'hit';
+  return t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
 }
 

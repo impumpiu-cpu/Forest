@@ -1,6 +1,6 @@
 // Grazer brain (hares and other skittish animals): nibble around the meadows, sit still at night,
 // bolt from people and fire, and now and then wander off the map for good.
-import {SPECIES} from '../../data/species.js';
+import {SPECIES, matchesKind} from '../../data/species.js';
 import {TERRAIN} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds} from '../../world/grid.js';
@@ -10,7 +10,7 @@ import {kill} from '../agent.js';
 function threatsNear(w, a, radius, from) {
   const out = [];
   for (const o of w.agents) {
-    if (o === a || o.dead || !from.includes(o.species)) continue;
+    if (o === a || o.dead || !matchesKind(o.species, from)) continue;
     if (o.task?.tame === a.id) continue;   // the herder coming with bait moves slowly: it lets them come
     const r = radius * (o.stalking ? 0.55 : 1);   // a creeping hunter is noticed much later
     if ((o.x - a.x) ** 2 + (o.y - a.y) ** 2 < r * r) out.push(o);

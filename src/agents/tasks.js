@@ -143,6 +143,11 @@ TASKS.registerAll([
     w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
   }},
   {id: 'leave', label: () => 'уходит', step(w, a) { if (follow(w, a, 'edge') === 'arrived') a.gone = true; }},
+  // the mindless dead: shamble to the camp and wander there until something living comes close
+  {id: 'haunt', label: () => 'бредёт к лагерю', step(w, a, task) {
+    if (!w.agents.some(o => o.faction === 'colony' && !o.dead)) { a.task = {id: 'leave'}; return; }
+    if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 3);
+  }},
 
   // gather by the fire when raiders come; done as soon as the alarm is over
   {id: 'muster', label: () => 'собирается по тревоге', step(w, a, task) {
@@ -159,7 +164,7 @@ TASKS.registerAll([
   // a wounded colonist lies in the healer's hut until mostly healed (settlement/healing.js)
   {id: 'treat', label: t => (t.lying ? (t.healer != null ? 'лечится у лекаря' : 'лежит в хижине лекаря') : 'идёт к лекарю'), step(w, a, task) {
     if (!has(w, 'healerhut')) { done(a); return; }
-    const max = SPECIES.get(a.species).hp;
+    const max = a.maxHp || SPECIES.get(a.species).hp;
     if (a.hp >= max * HEAL.until) {
       const healer = task.healer != null ? w.agents.find(o => o.id === task.healer && !o.dead) : null;
       if (healer) { think(w, a, 'treated', {name: healer.name}); think(w, healer, 'healedSomeone', {name: a.name}); }

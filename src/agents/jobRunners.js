@@ -1,5 +1,6 @@
 // Generic routines that carry out JOBS. A job picks one with its `runner` field,
 // so a new job usually needs only a data entry.
+import {brewFactor} from '../settlement/life.js';
 import {JOBS, huntable} from '../data/jobs.js';
 import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
@@ -25,9 +26,9 @@ const mill = (w, a) => { a.x += (w.rng() - 0.5) * 0.2; a.y += (w.rng() - 0.5) * 
 
 // skilled hands work faster, the right tool helps; practice slowly builds skill
 export function workRate(w, a, jobId) {
-  a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 0.0006);
+  a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 0.0006 * (a.mods.learn ?? 1));
   // a good mood helps a little, a bad one slows down (±10%)
-  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
+  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
 }
 // a building may spare the tools of one job (effects.toolWear in data/buildings.js)
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };
@@ -231,7 +232,7 @@ export const RUNNERS = {
       } else if (approach(w, a, prey.x, prey.y, 0.55) === null) { task.prey = null; }   // across the water: look for another
       return;
     }
-    a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 0.0003);
+    a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 0.0003 * (a.mods.learn ?? 1));
     const res = shoot(w, a, prey, job.id);
     if (res === 'kill') {
       w.stats.hunted++; a.stalking = false; a.stats.hunted++;

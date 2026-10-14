@@ -10,7 +10,8 @@
     "balance": "node tools/balance.mjs",
     "balance:standard": "node tools/balance.mjs --seeds 10 --days 30 --vary raids=off,rare,often --set predators=many",
     "determinism": "node tools/determinism.mjs",
-    "serve": "python3 -m http.server 8000"
+    "serve": "python3 -m http.server 8000",
+    "races": "node tools/races-check.mjs"
   },
   "devDependencies": {
     "esbuild": "0.24.0"

@@ -13,6 +13,7 @@ import {drawFoodPrefs} from '../data/foods.js';
 import {enrol, noteDeath} from '../settlement/chronicle.js';
 import {lostBeast} from '../settlement/herd.js';
 import {addCorpse} from '../settlement/life.js';
+import {rollCreature} from './special.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 export const newMemory = (init = {}) => new Proxy(init, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
@@ -58,6 +59,7 @@ export function createAgent(w, speciesId, factionId, x, y) {
   };
   if (sp.names && factionId === 'colony') [a.name, a.gender] = freshName(w, sp.names);
   for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
+  rollCreature(w, a, sp);
   a.stamina = 1;
   for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rng, n.start); }
   if (sp.sentient && factionId === 'colony') { personality(w, a); a.diary = []; enrol(w, a, w.founding); }
@@ -67,6 +69,10 @@ export function createAgent(w, speciesId, factionId, x, y) {
   if (w.scratch) delete w.scratch.colonists;   // the per-tick list of colonists is out of date now
   return a;
 }
+
+// full health: the creature's own (from Endurance) or its species'
+export const maxHp = a => a.maxHp || SPECIES.get(a.species).hp;
+export const hpShare = a => a.hp / maxHp(a);
 
 // mark dead; the sim removes dead agents at the end of the tick
 export function kill(w, a, cause, by) {
@@ -87,8 +93,12 @@ export function kill(w, a, cause, by) {
     stripAll(a, got);
     const loot = got.filter(it => it.dur > 0);
     w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1;
-    log(w, `Налётчик убит, ${g(by, 'его сразил', 'его сразила')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
+    const who = a.band === 'bandits' ? 'Налётчик' : a.name !== sp.label.replace(/^./, c => c.toUpperCase()) ? `${a.name}, ${sp.label},` : a.name;
+    const verb = sp.undead ? g(a, 'упокоен', 'упокоена') : g(a, 'убит', 'убита');
+    log(w, `${who} ${verb}, ${g(by, 'его сразил', 'его сразила').replace('его', a.gender === 'f' ? 'её' : 'его')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }
+  // the necromancer falls: his dead lose their way
+  if (a.role === 'necromancer' && w.agents.some(o => o.master === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');
   if (a.faction === 'colony') for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) { think(w, o, 'grief', {name: a.name, f: a.gender === 'f'}); o.mem.grief += 0.5; }
   if (by?.faction === 'colony') { if (sp.id === 'wolf') think(w, by, 'killedWolf'); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
   // a fallen colonist's gear goes back to the store

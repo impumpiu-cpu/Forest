@@ -23,14 +23,14 @@ function edgeCell(w, minDist) {
   return [-1, ''];
 }
 
-export function spawnGroup(w, id, n) {
+export function spawnGroup(w, id, n, opts = {}) {
   const def = MIGRATIONS.get(id);
   if (!n) return [];
   const [e, side] = edgeCell(w, def.minDist ?? 30);
   if (e < 0) { if (id === 'raiders') log(w, 'Налётчики не нашли дороги к лагерю.', 'danger', 'notice'); return []; }
   const ex = e % w.w, ey = (e / w.w) | 0, group = [];
   // a mixed group (a caravan) lists its members; otherwise n of the one species
-  const plan = def.members ? def.members(w, w.rng) : Array.from({length: n}, () => ({}));
+  const plan = def.members ? def.members(w, w.rng, n, opts) : Array.from({length: n}, () => ({}));
   for (const m of plan) {
     let x = clamp(ex + 0.5 + w.rng() * 3 - 1.5, 0.2, w.w - 0.2), y = clamp(ey + 0.5 + w.rng() * 3 - 1.5, 0.2, w.h - 0.2);
     if (!walkable(w, (y | 0) * w.w + (x | 0))) { x = ex + 0.5; y = ey + 0.5; }
@@ -38,7 +38,7 @@ export function spawnGroup(w, id, n) {
     if (def.init) def.init(a, w);
     if (m.init) m.init(a, w);
     if (def.kit && a.equip) dress(a, def.kit(w.rng, w), def.ammo || 0);
-    if (m.kit && a.equip) dress(a, m.kit, def.ammo || 0);
+    if (m.kit?.length && a.equip) dress(a, m.kit, def.ammo || 0);
     group.push(a);
   }
   if (def.groupInit) def.groupInit(group, w);

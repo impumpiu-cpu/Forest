@@ -44,7 +44,13 @@ THOUGHTS.registerAll([
   {id: 'escapedWolves', mood: 0.15, lasts: DAY, once: 4 * HOUR, text: a => `${g(a, 'Отбился', 'Отбилась')} от волков. Жив${g(a, '', 'а')}!`},
   {id: 'killedWolf', mood: 0.25, lasts: DAY, text: a => `${g(a, 'Убил', 'Убила')} волка. Шкура пойдёт в дело.`},
   {id: 'raidAlarm', mood: -0.15, lasts: 12 * HOUR, once: 12 * HOUR, text: a => `Тревога! ${g(a, 'Бросил', 'Бросила')} работу и ${g(a, 'побежал', 'побежала')} к костру.`},
-  {id: 'killedRaider', mood: 0.15, lasts: DAY, text: a => `${g(a, 'Сразил', 'Сразила')} налётчика.`},
+  {id: 'killedRaider', mood: 0.15, lasts: DAY, text: a => `${g(a, 'Сразил', 'Сразила')} врага.`},
+  // neighbours (settlement/relations.js)
+  {id: 'quarrel', mood: -0.2, lasts: 12 * HOUR, text: (a, c) => `${g(a, 'Поругался', 'Поругалась')} с ${c.name}. До сих пор зло берёт.`},
+  {id: 'dislikesNeighbour', mood: -0.1, lasts: DAY, once: DAY, text: (a, c) => `Терпеть не может ${c.name}, а жить приходится бок о бок.`},
+  {id: 'goodCompany', mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `Рад${g(a, '', 'а')}, что рядом ${c.name}: с таким соседом легче.`},
+  {id: 'sober', mood: -0.12, lasts: 12 * HOUR, once: DAY, text: a => `Без браги ${g(a, 'сам', 'сама')} не ${g(a, 'свой', 'своя')}: руки не слушаются.`},
+  {id: 'beerFed', mood: 0.2, lasts: 12 * HOUR, once: 12 * HOUR, text: a => `Кружка браги — и сыт${g(a, '', 'а')}, и весел${g(a, '', 'а')}. Как дома под горой.`},
   {id: 'grief', mood: -0.35, lasts: 2 * DAY, text: (a, c) => `Скорбит: ${c.name} ${c.f ? 'погибла' : 'погиб'}.`},
 
   // healing

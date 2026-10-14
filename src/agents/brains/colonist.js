@@ -9,6 +9,7 @@ import {nearFire} from '../movement.js';
 import {nearestHostile} from '../combat.js';
 import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
+import {maxHp, hpShare} from '../agent.js';
 import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies, favourites} from '../../settlement/query.js';
 import {councilDue, goalNeed} from '../../settlement/council.js';
 import {stationHasWork} from '../../settlement/crafting.js';
@@ -52,23 +53,23 @@ function decide(w, a) {
   if (pray > 0.1 && night < 0.5) opts.push([{id: 'pray'}, 0.3 + pray * 1.2]);
   if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);
   // badly hurt, with a healer's hut: go and lie there (more urgent the worse the wounds)
-  if ((hurt(a) || (a.task?.id === 'treat' && a.hp < SPECIES.get(a.species).hp * HEAL.until)) && has(w, 'healerhut')) opts.push([{id: 'treat'}, (1 - a.hp / SPECIES.get(a.species).hp) * 2 + 0.25]);
+  if ((hurt(a) || (a.task?.id === 'treat' && a.hp < maxHp(a) * HEAL.until)) && has(w, 'healerhut')) opts.push([{id: 'treat'}, (1 - a.hp / maxHp(a)) * 2 + 0.25]);
   if (tradeOpen(w)) opts.push([{id: 'trade'}, 1.1]);   // right after the council, the second gathering of the evening
   const brave = a.mods.bravery;
-  if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave]);
+  if (w.stats.fireNearCamp > 0 && hpShare(a) > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave]);
   // something is hunting me: brave and healthy people fight back, the rest run for the camp
   const hunter = w.agents.find(o => !o.dead && o.task?.id === 'maul' && o.task.target === a);
   if (hunter) {
     if (hunter.species === 'wolf') a.mem.wolf += 0.05;
-    opts.push(brave * a.hp > 0.85 ? [{id: 'fight', target: hunter}, 1.5] : [{id: 'runHome'}, 1.5]);
+    opts.push(brave * hpShare(a) > 0.85 ? [{id: 'fight', target: hunter}, 1.5] : [{id: 'runHome'}, 1.5]);
   }
-  const enemy = nearestHostile(w, a, 16);
+  const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
   // alarm: while raiders are on the map everyone gathers inside the settlement zone and meets them
   // together; the wounded fall back
   const raid = w.agents.some(o => o.faction === 'raiders' && !o.dead);
   if (raid && !enemy) opts.push([{id: 'muster'}, 1.25]);
-  if (enemy && a.hp > 0.3) opts.push([{id: 'fight', target: enemy}, (raid ? 1.35 : 1.1) * brave]);
-  if (enemy && a.hp <= 0.3 && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6]);
+  if (enemy && hpShare(a) > 0.3) opts.push([{id: 'fight', target: enemy}, (raid ? 1.35 : 1.1) * brave]);
+  if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6]);
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);
@@ -94,7 +95,7 @@ export const colonistBrain = {
     const tid = a.task?.id;
     // reflex: heat overrides everything (firefighters hold out a little longer)
     if (tid !== 'douse' && (T > 55 || nearFire(w, a, 1.5))) { a.task = {id: 'flee'}; think(w, a, 'fledFire'); }
-    if (tid === 'douse' && (T > 58 || a.hp < 0.6)) a.task = {id: 'flee'};
+    if (tid === 'douse' && (T > 58 || hpShare(a) < 0.6)) a.task = {id: 'flee'};
     if (a.task?.id === 'flee' || a.task?.id === 'douse') a.mem.fire += 0.006;
     // being attacked can't wait for the next think
     const tid2 = a.task?.id;

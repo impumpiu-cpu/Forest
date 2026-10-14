@@ -166,6 +166,12 @@ button.quiet{background:transparent;color:var(--muted)}
 .pc-small{margin:0;font-size:12.5px}
 .chips{display:flex;flex-wrap:wrap;gap:4px}
 .chip{font-size:11.5px;padding:1px 7px;border-radius:999px;background:#2a2e21}
+.spc{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.spc span{display:flex;flex-direction:column;align-items:center;padding:3px 0 2px;border-radius:6px;background:#23271c;font-size:9.5px;letter-spacing:.04em;color:var(--muted);cursor:help}
+.spc b{font-size:14px;color:var(--text,#e8e2cf);font-weight:600;line-height:1.1}
+.chip.race{background:#2c3040;color:#cdd4f0}
+.person .race{font-style:normal;font-size:11px;color:var(--muted);font-weight:400}
+.pc-list li.down{color:#f0c0c2} .pc-list li.up{color:#cfe6b8}
 .chip.like{background:#2f4a2a;color:#cfe6b8} .chip.dislike{background:#4a2a2c;color:#f0c0c2}
 .pc-bar{display:grid;grid-template-columns:72px minmax(0,1fr) 26px;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
 .pc-bar b{font-family:var(--font-mono);font-weight:400;text-align:right;color:var(--fg)}
@@ -560,6 +566,9 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return a;
   }
+  function pick(rng, arr) {
+    return arr[Math.floor(rng() * arr.length)];
+  }
   function weighted(rng, items) {
     const total = items.reduce((s, it) => s + Math.max(0, it[1]), 0);
     let r = rng() * total;
@@ -936,7 +945,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function drawFoodPrefs(rnd) {
     const all = BASE_FOODS();
     if (all.length < 2) return { likes: all[0]?.id ?? null, dislikes: null };
-    const pick2 = (skip, sign) => {
+    const pick3 = (skip, sign) => {
       const opts = all.filter((f) => f.id !== skip), ws = opts.map((f) => Math.max(0.15, 1 + sign * (f.taste || 0)));
       let r = rnd() * ws.reduce((s, x) => s + x, 0);
       for (let k = 0; k < opts.length; k++) {
@@ -945,8 +954,8 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       return opts[opts.length - 1].id;
     };
-    const likes = pick2(null, 1);
-    return { likes, dislikes: pick2(likes, -1) };
+    const likes = pick3(null, 1);
+    return { likes, dislikes: pick3(likes, -1) };
   }
 
   // src/data/luxury.js
@@ -1099,46 +1108,353 @@ dd.q4{color:#c58cff;font-weight:600}
     ORE_BY_CODE[o.code] = o;
   }
 
-  // src/data/species.js
-  var SPECIES = new Registry("species");
-  var HUMAN_NAMES = [
-    ["\u041C\u0438\u043B\u0430\u0432\u0430", "f"],
-    ["\u0416\u0434\u0430\u043D", "m"],
-    ["\u0413\u043E\u0440\u0438\u0441\u043B\u0430\u0432", "m"],
-    ["\u0412\u0435\u0441\u0435\u043B\u0438\u043D\u0430", "f"],
-    ["\u0422\u0438\u0445\u043E\u043D", "m"],
-    ["\u041B\u044E\u0431\u0430\u0432\u0430", "f"],
-    ["\u041C\u0438\u0440\u043E\u043D", "m"],
-    ["\u0417\u043B\u0430\u0442\u0430", "f"],
-    ["\u042F\u0440\u043E\u0441\u043B\u0430\u0432", "m"],
-    ["\u0414\u0430\u0440\u0438\u043D\u0430", "f"],
-    ["\u0420\u0430\u0442\u0438\u0431\u043E\u0440", "m"],
-    ["\u0421\u043D\u0435\u0436\u0430\u043D\u0430", "f"],
-    ["\u0411\u043E\u044F\u043D", "m"],
-    ["\u0417\u0430\u0431\u0430\u0432\u0430", "f"],
-    ["\u0421\u0432\u0435\u0442\u043E\u0437\u0430\u0440", "m"],
-    ["\u0410\u0433\u043D\u0438\u044F", "f"],
-    ["\u0412\u0435\u043B\u0438\u043C\u0438\u0440", "m"],
-    ["\u041E\u043B\u0435\u0441\u044F", "f"],
-    ["\u0414\u043E\u0431\u0440\u044B\u043D\u044F", "m"],
-    ["\u0412\u0430\u0441\u0438\u043B\u0438\u0441\u0430", "f"],
-    ["\u0420\u0430\u0434\u0438\u043C", "m"],
-    ["\u0412\u0435\u0434\u0430\u043D\u0430", "f"]
-  ];
-  SPECIES.registerAll([
+  // src/data/races.js
+  var N = (m, f) => [...m.map((n) => [n, "m"]), ...f.map((n) => [n, "f"])];
+  var person = (size, skin) => ({ shape: "person", size, skin });
+  var NEEDS = ["food", "rest", "warmth"];
+  var RACES = [
     {
       id: "human",
       label: "\u0447\u0435\u043B\u043E\u0432\u0435\u043A",
+      plural: "\u043B\u044E\u0434\u0438",
+      rel: "human",
+      settle: 6,
       hp: 1,
       speed: 0.13,
-      needs: ["food", "rest", "warmth"],
       heatHarm: 70,
-      look: { shape: "person", size: 0.62 },
-      names: HUMAN_NAMES,
-      sentient: true,
-      inventory: true,
-      attack: { power: 1, cooldown: 12 }
+      attack: { power: 1, cooldown: 12 },
+      look: person(0.62, "#e2b48c"),
+      special: { S: [1, 10], P: [1, 10], E: [1, 10], C: [1, 10], I: [1, 10], A: [1, 10], L: [1, 10] },
+      body: { adult: 16, life: 70, fertility: 0.5, diet: "\u0432\u0441\u0435\u044F\u0434\u043D\u044B\u0439" },
+      innate: [{ label: "\u043F\u0440\u0438\u0441\u043F\u043E\u0441\u043E\u0431\u043B\u044F\u0435\u043C\u043E\u0441\u0442\u044C", note: "\u0443\u0447\u0438\u0442\u0441\u044F \u043B\u044E\u0431\u043E\u043C\u0443 \u0434\u0435\u043B\u0443 \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u0434\u0440\u0443\u0433\u0438\u0445", mods: { learn: 1.15 } }],
+      align: { order: 0, mercy: 0, spread: 1.6 },
+      values: { work: 1, family: 1, faith: 1, gold: 1, freedom: 1, strength: 0.6, knowledge: 0.6, ancestors: 0.6, nature: 0.5 },
+      names: N(
+        ["\u0416\u0434\u0430\u043D", "\u0413\u043E\u0440\u0438\u0441\u043B\u0430\u0432", "\u0422\u0438\u0445\u043E\u043D", "\u041C\u0438\u0440\u043E\u043D", "\u042F\u0440\u043E\u0441\u043B\u0430\u0432", "\u0420\u0430\u0442\u0438\u0431\u043E\u0440", "\u0411\u043E\u044F\u043D", "\u0421\u0432\u0435\u0442\u043E\u0437\u0430\u0440", "\u0412\u0435\u043B\u0438\u043C\u0438\u0440", "\u0414\u043E\u0431\u0440\u044B\u043D\u044F", "\u0420\u0430\u0434\u0438\u043C"],
+        ["\u041C\u0438\u043B\u0430\u0432\u0430", "\u0412\u0435\u0441\u0435\u043B\u0438\u043D\u0430", "\u041B\u044E\u0431\u0430\u0432\u0430", "\u0417\u043B\u0430\u0442\u0430", "\u0414\u0430\u0440\u0438\u043D\u0430", "\u0421\u043D\u0435\u0436\u0430\u043D\u0430", "\u0417\u0430\u0431\u0430\u0432\u0430", "\u0410\u0433\u043D\u0438\u044F", "\u041E\u043B\u0435\u0441\u044F", "\u0412\u0430\u0441\u0438\u043B\u0438\u0441\u0430", "\u0412\u0435\u0434\u0430\u043D\u0430"]
+      )
     },
+    {
+      id: "halfling",
+      label: "\u043F\u043E\u043B\u0443\u0440\u043E\u0441\u043B\u0438\u043A",
+      plural: "\u043F\u043E\u043B\u0443\u0440\u043E\u0441\u043B\u0438\u043A\u0438",
+      rel: "halfling",
+      settle: 1.6,
+      hp: 0.8,
+      speed: 0.12,
+      heatHarm: 70,
+      attack: { power: 0.8, cooldown: 11 },
+      look: person(0.48, "#eac29c"),
+      special: { S: [1, 6], P: [3, 11], E: [2, 9], C: [3, 10], I: [1, 10], A: [4, 12], L: [4, 13] },
+      body: { adult: 20, life: 100, fertility: 0.5, diet: "\u0432\u0441\u0435\u044F\u0434\u043D\u044B\u0439, \u0435\u0441\u0442 \u0447\u0430\u0441\u0442\u043E" },
+      mods: { hunger: 1.2, cold: 1.1 },
+      innate: [{ label: "\u043D\u0435\u043F\u0440\u0438\u043C\u0435\u0442\u043D\u044B\u0439", note: "\u043C\u0430\u043B \u0440\u043E\u0441\u0442\u043E\u043C, \u0445\u043E\u0434\u0438\u0442 \u0442\u0438\u0445\u043E, \u043C\u0430\u043B\u043E \u043D\u0435\u0441\u0451\u0442" }],
+      align: { order: 1, mercy: 2, spread: 1.2 },
+      values: { family: 2, work: 1.4, faith: 0.6, gold: 0.6, nature: 0.8 },
+      names: N(["\u0422\u043E\u0431\u043E", "\u0425\u044D\u043C\u043B\u0438", "\u041C\u0443\u043D\u0433\u043E", "\u0411\u043E\u0434\u0440\u0438\u043A", "\u041E\u043B\u0434\u043E", "\u0424\u0438\u0440\u043C\u0438\u043D"], ["\u041C\u0435\u043B\u043B\u0430", "\u0420\u043E\u0437\u0430\u043B\u0438\u043D\u0430", "\u041B\u044E\u0442\u0438\u043A\u0430", "\u0422\u0438\u043B\u043B\u0438", "\u041C\u0430\u0440\u0433\u0430", "\u041F\u0435\u043E\u043D\u0430"])
+    },
+    {
+      id: "giant",
+      label: "\u0432\u0435\u043B\u0438\u043A\u0430\u043D",
+      plural: "\u0432\u0435\u043B\u0438\u043A\u0430\u043D\u044B",
+      rel: "giant",
+      settle: 0.6,
+      hp: 1.5,
+      speed: 0.13,
+      heatHarm: 70,
+      attack: { power: 1.3, cooldown: 14 },
+      look: person(0.8, "#c9a27e"),
+      special: { S: [8, 15], P: [1, 8], E: [7, 14], C: [1, 8], I: [1, 7], A: [1, 6], L: [1, 8] },
+      body: { adult: 25, life: 150, fertility: 0.25, diet: "\u0432\u0441\u0435\u044F\u0434\u043D\u044B\u0439, \u0435\u0441\u0442 \u0437\u0430 \u0442\u0440\u043E\u0438\u0445" },
+      mods: { hunger: 2.2, cold: 0.7 },
+      innate: [{ label: "\u0438\u0441\u043F\u043E\u043B\u0438\u043D", note: "2,5 \u043C\u0435\u0442\u0440\u0430 \u0440\u043E\u0441\u0442\u0430: \u0435\u0441\u0442 \u0437\u0430 \u0442\u0440\u043E\u0438\u0445, \u043C\u0451\u0440\u0437\u043D\u0435\u0442 \u043C\u0435\u043D\u044C\u0448\u0435" }],
+      align: { order: -1, mercy: 1, spread: 1.2 },
+      values: { strength: 2, freedom: 1.6, family: 1, nature: 0.8 },
+      names: N(["\u0413\u0440\u0443\u043C\u0431\u0430\u0440", "\u041E\u0440\u043C\u0443\u043D\u0434", "\u0422\u044F\u0436\u0435\u0431\u043E\u0440", "\u0412\u0430\u043B\u0443\u0439", "\u0421\u043A\u0430\u043B\u044C\u0434"], ["\u0425\u0435\u043B\u044C\u0433\u0430", "\u0418\u043D\u0433\u0440\u0438\u0434", "\u0413\u0443\u0434\u0440\u0443\u043D", "\u0410\u0441\u0441\u0432\u0435\u0439\u0433"])
+    },
+    {
+      id: "elf",
+      label: "\u043B\u0435\u0441\u043D\u043E\u0439 \u044D\u043B\u044C\u0444",
+      plural: "\u043B\u0435\u0441\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B",
+      rel: "elf",
+      settle: 1,
+      hp: 0.9,
+      speed: 0.14,
+      heatHarm: 70,
+      attack: { power: 0.9, cooldown: 11 },
+      look: person(0.6, "#f1dcc0"),
+      special: { S: [1, 7], P: [5, 13], E: [1, 7], C: [3, 11], I: [3, 11], A: [5, 13], L: [1, 10] },
+      body: { adult: 50, life: 600, fertility: 0.08, diet: "\u043F\u043E\u0447\u0442\u0438 \u0442\u0440\u0430\u0432\u043E\u044F\u0434\u043D\u044B\u0439" },
+      mods: { hunger: 0.8, cold: 1.3, sleep: 0.5 },
+      innate: [{ label: "\u0442\u0440\u0430\u043D\u0441", note: "\u0447\u0435\u0442\u044B\u0440\u0435 \u0447\u0430\u0441\u0430 \u043F\u043E\u043B\u0443\u0434\u0440\u0451\u043C\u044B \u0437\u0430\u043C\u0435\u043D\u044F\u044E\u0442 \u0441\u043E\u043D" }, { label: "\u043B\u0435\u0441\u043D\u043E\u0439 \u0433\u043B\u0430\u0437", note: "\u0432 \u043B\u0435\u0441\u0443 \u0432\u0438\u0434\u0438\u0442 \u0442\u043E, \u0447\u0442\u043E \u0434\u0440\u0443\u0433\u0438\u043C \u043D\u0435 \u0432\u0438\u0434\u043D\u043E" }],
+      align: { order: 1, mercy: 0, spread: 1 },
+      values: { nature: 2.2, ancestors: 1.4, knowledge: 1, freedom: 0.8 },
+      names: N(["\u0410\u044D\u043B\u0434\u0438\u0440", "\u0418\u043B\u0435\u0442\u0430\u043D", "\u041A\u0435\u043B\u043E\u0440\u0438\u044D\u043D", "\u0422\u0430\u043D\u0434\u0440\u0438\u043B", "\u0421\u0438\u043B\u044C\u0432\u0430\u0440"], ["\u042D\u043B\u043E\u044D\u043D\u0430", "\u041D\u0438\u044D\u043B\u044C", "\u041B\u0430\u0438\u0440\u0438\u044D\u043B\u044C", "\u0410\u044D\u0440\u0438\u043D", "\u0418\u0440\u0438\u043C\u044D"])
+    },
+    {
+      id: "darkelf",
+      label: "\u0442\u0451\u043C\u043D\u044B\u0439 \u044D\u043B\u044C\u0444",
+      plural: "\u0442\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B",
+      rel: "darkelf",
+      settle: 0,
+      hp: 0.9,
+      speed: 0.14,
+      heatHarm: 70,
+      attack: { power: 0.9, cooldown: 11 },
+      look: person(0.6, "#5b5470"),
+      special: { S: [1, 7], P: [6, 13], E: [2, 8], C: [2, 10], I: [4, 12], A: [5, 13], L: [1, 10] },
+      body: { adult: 50, life: 500, fertility: 0.1, diet: "\u0432\u0441\u0435\u044F\u0434\u043D\u044B\u0439" },
+      mods: { hunger: 0.9, cold: 1.2, sleep: 0.5 },
+      innate: [{ label: "\u0442\u0451\u043C\u043D\u043E\u0435 \u0437\u0440\u0435\u043D\u0438\u0435", note: "\u0432\u0438\u0434\u0438\u0442 \u0432\u043E \u043C\u0440\u0430\u043A\u0435" }, { label: "\u0441\u0432\u0435\u0442\u043E\u0431\u043E\u044F\u0437\u043D\u044C", note: "\u043D\u0430 \u0434\u043D\u0435\u0432\u043D\u043E\u043C \u0441\u043E\u043B\u043D\u0446\u0435 \u0449\u0443\u0440\u0438\u0442\u0441\u044F \u0438 \u0441\u043B\u0430\u0431\u0435\u0435\u0442" }, { label: "\u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0430 \u043A \u044F\u0434\u0430\u043C", note: "\u044F\u0434\u044B \u0438 \u0437\u0435\u043B\u044C\u044F \u0431\u0435\u0440\u0443\u0442 \u0435\u0433\u043E \u0441\u043B\u0430\u0431\u0435\u0435" }],
+      align: { order: 2, mercy: -2, spread: 1 },
+      values: { knowledge: 2, strength: 1.6, gold: 1, ancestors: 0.8 },
+      names: N(["\u0412\u0435\u043B\u044C\u0442\u0440\u0438\u0441", "\u0417\u0430\u0440\u0435\u0439\u043D", "\u0414\u0440\u043E\u043C\u0438\u0440", "\u041A\u0441\u0430\u043B\u0435\u0442"], ["\u0418\u043B\u0432\u0430\u0440\u0430", "\u0428\u0435\u0439\u0437\u0440\u0430", "\u041A\u0432\u0438\u043B\u043B\u0430", "\u0412\u0438\u0440\u043D\u0430"])
+    },
+    // Dwarves: long-lived, slow to breed, at home under the mountain. Their gut takes fermented
+    // grain best of all: a sober dwarf works slower, a dwarf with a cup of braga works better.
+    {
+      id: "dwarf",
+      label: "\u0433\u043D\u043E\u043C",
+      plural: "\u0433\u043D\u043E\u043C\u044B",
+      rel: "dwarf",
+      settle: 1.3,
+      hp: 1.15,
+      speed: 0.115,
+      heatHarm: 82,
+      attack: { power: 1.1, cooldown: 12 },
+      look: person(0.55, "#d59a78"),
+      special: { S: [4, 12], P: [3, 10], E: [6, 14], C: [1, 8], I: [3, 11], A: [1, 8], L: [1, 10] },
+      body: { adult: 40, life: 300, fertility: 0.2, diet: "\u0432\u0441\u0435\u044F\u0434\u043D\u044B\u0439, \u0431\u0440\u0430\u0433\u0430 \u2014 \u0442\u043E\u0436\u0435 \u0435\u0434\u0430" },
+      mods: { cold: 0.7 },
+      // brew: a cup of braga feeds (`food`), work goes at `drunk` for a day and a half after it, at `sober` otherwise
+      brew: { food: 0.3, drunk: 1.1, sober: 0.85, lasts: 1.5 },
+      innate: [
+        { label: "\u0445\u043C\u0435\u043B\u044C\u043D\u0430\u044F \u043A\u0440\u043E\u0432\u044C", note: "\u0431\u0440\u0430\u0433\u0430 \u043A\u043E\u0440\u043C\u0438\u0442 \u0438 \u0431\u043E\u0434\u0440\u0438\u0442; \u0431\u0435\u0437 \u043D\u0435\u0451 \u043F\u043E \u0443\u0442\u0440\u0430\u043C \u0445\u043C\u0443\u0440\u0438\u0442\u0441\u044F" },
+        { label: "\u0442\u0451\u043C\u043D\u043E\u0435 \u0437\u0440\u0435\u043D\u0438\u0435", note: "\u0432\u0438\u0434\u0438\u0442 \u0432\u043E \u043C\u0440\u0430\u043A\u0435" },
+        { label: "\u0436\u0430\u0440\u043E\u0441\u0442\u043E\u0439\u043A\u0438\u0439", note: "\u043D\u0435 \u0431\u043E\u0438\u0442\u0441\u044F \u0436\u0430\u0440\u0430 \u0433\u043E\u0440\u043D\u0430" }
+      ],
+      peoples: [
+        { id: "mountain", label: "\u0433\u043E\u0440\u043D\u044B\u0439 \u0433\u043D\u043E\u043C", weight: 3 },
+        {
+          id: "deep",
+          label: "\u0433\u043B\u0443\u0431\u0438\u043D\u043D\u044B\u0439 \u0433\u043D\u043E\u043C",
+          weight: 1,
+          shift: { P: 2, E: 1, C: -1, A: 0, S: -1 },
+          mods: { cold: 0.85 },
+          innate: [{ label: "\u0434\u0438\u0442\u044F \u0433\u043B\u0443\u0431\u0438\u043D", note: "\u0431\u043B\u0435\u0434\u0435\u043D, \u0432\u0438\u0434\u0438\u0442 \u0432\u043E \u043C\u0440\u0430\u043A\u0435 \u0435\u0449\u0451 \u043B\u0443\u0447\u0448\u0435" }]
+        }
+      ],
+      align: { order: 3, mercy: 0, spread: 0.8 },
+      values: { ancestors: 2, work: 2, gold: 1.4, family: 0.8 },
+      names: N(["\u0422\u043E\u0440\u0433\u0440\u0438\u043C", "\u0411\u0430\u043B\u0434\u0443\u0440", "\u0425\u0440\u043E\u043B\u044C\u0444", "\u0411\u0440\u043E\u043A\u043A", "\u0423\u043B\u044C\u0444\u0433\u0430\u0440", "\u041A\u0435\u0442\u0438\u043B\u044C"], ["\u0414\u0430\u0433\u043D\u0430", "\u0425\u0438\u043B\u044C\u0434\u0430", "\u0418\u043D\u0433\u0432\u0430\u0440\u0430", "\u0422\u043E\u0440\u0434\u0438\u0441", "\u0411\u0440\u0443\u043D\u0430"])
+    },
+    // The greenskins: orcs, goblins, ogres, trolls — kin, they may share a camp.
+    {
+      id: "orc",
+      label: "\u043E\u0440\u043A",
+      plural: "\u043E\u0440\u043A\u0438",
+      rel: "greenskin",
+      settle: 0,
+      hp: 1.15,
+      speed: 0.13,
+      heatHarm: 70,
+      attack: { power: 1.2, cooldown: 12 },
+      look: person(0.66, "#6f9a4a"),
+      special: { S: [5, 13], P: [2, 9], E: [5, 13], C: [1, 9], I: [1, 8], A: [3, 10], L: [1, 9] },
+      body: { adult: 12, life: 50, fertility: 0.75, diet: "\u0445\u0438\u0449\u043D\u0438\u043A-\u0432\u0441\u0435\u044F\u0434\u043D\u044B\u0439" },
+      mods: { hunger: 1.4, cold: 0.85, regen: 1.6, bravery: 1.2 },
+      innate: [{ label: "\u0436\u0438\u0432\u0443\u0447\u0438\u0439", note: "\u0440\u0430\u043D\u044B \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0431\u044B\u0441\u0442\u0440\u043E" }, { label: "\u044F\u0440\u043E\u0441\u0442\u044C", note: "\u0440\u0430\u043D\u0435\u043D\u044B\u043C \u0434\u0435\u0440\u0451\u0442\u0441\u044F \u0437\u043B\u0435\u0435" }],
+      align: { order: 1, mercy: -1, spread: 1.2 },
+      values: { strength: 2.2, ancestors: 1.2, faith: 0.8, family: 0.6 },
+      names: N(["\u0423\u0433\u0440\u0443\u043A", "\u041C\u0430\u0437\u0433\u0430\u0448", "\u0417\u0443\u0433\u0440\u043E\u0433", "\u0411\u0440\u0430\u0433\u043E\u0442", "\u041A\u043E\u0440\u0445"], ["\u0423\u0440\u0433\u0445\u0430", "\u041C\u043E\u043A\u0440\u0430", "\u0417\u0430\u0440\u0433\u0430", "\u0413\u0445\u0430\u0448\u0430"])
+    },
+    {
+      id: "goblin",
+      label: "\u0433\u043E\u0431\u043B\u0438\u043D",
+      plural: "\u0433\u043E\u0431\u043B\u0438\u043D\u044B",
+      rel: "greenskin",
+      settle: 0,
+      hp: 0.65,
+      speed: 0.135,
+      heatHarm: 70,
+      attack: { power: 0.7, cooldown: 10 },
+      look: person(0.45, "#8fb04c"),
+      special: { S: [1, 5], P: [4, 11], E: [1, 7], C: [1, 8], I: [2, 11], A: [5, 12], L: [3, 11] },
+      body: { adult: 6, life: 30, fertility: 0.95, diet: "\u0435\u0441\u0442 \u0447\u0442\u043E \u0443\u0433\u043E\u0434\u043D\u043E" },
+      mods: { hunger: 0.7, cold: 1.1, bravery: 0.7 },
+      innate: [{ label: "\u0442\u0451\u043C\u043D\u043E\u0435 \u0437\u0440\u0435\u043D\u0438\u0435", note: "\u0432\u0438\u0434\u0438\u0442 \u0432\u043E \u043C\u0440\u0430\u043A\u0435" }, { label: "\u0442\u0440\u0443\u0441 \u0432 \u043E\u0434\u0438\u043D\u043E\u0447\u043A\u0443", note: "\u0441\u043C\u0435\u043B \u0442\u043E\u043B\u044C\u043A\u043E \u0432 \u0442\u043E\u043B\u043F\u0435 \u0441\u0432\u043E\u0438\u0445" }],
+      align: { order: -2, mercy: -1, spread: 1.2 },
+      values: { gold: 2.2, knowledge: 1.2, freedom: 1 },
+      names: N(["\u0421\u043D\u0438\u043A\u043B\u044C", "\u0420\u0438\u0437\u0437", "\u0413\u043D\u044B\u0440\u043A", "\u041A\u0440\u0438\u0432\u043E\u0443\u0445"], ["\u0417\u0438\u0437\u0438", "\u0428\u043C\u044B\u0433\u0430", "\u041F\u0438\u043A\u0448\u0430"])
+    },
+    {
+      id: "ogre",
+      label: "\u043E\u0433\u0440",
+      plural: "\u043E\u0433\u0440\u044B",
+      rel: "greenskin",
+      settle: 0,
+      hp: 1.8,
+      speed: 0.115,
+      heatHarm: 70,
+      attack: { power: 1.6, cooldown: 16 },
+      look: person(0.86, "#9b8a6a"),
+      special: { S: [10, 15], P: [1, 6], E: [8, 14], C: [1, 6], I: [1, 5], A: [1, 5], L: [1, 8] },
+      body: { adult: 15, life: 60, fertility: 0.3, diet: "\u0435\u0441\u0442 \u0447\u0442\u043E \u0443\u0433\u043E\u0434\u043D\u043E, \u0437\u0430 \u0447\u0435\u0442\u0432\u0435\u0440\u044B\u0445" },
+      mods: { hunger: 3, cold: 0.7, bravery: 1.3 },
+      innate: [{ label: "\u0443\u0442\u0440\u043E\u0431\u0430", note: "\u0433\u043E\u043B\u043E\u0434 \u0432\u0430\u043B\u0438\u0442 \u0435\u0433\u043E \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u0434\u0440\u0443\u0433\u0438\u0445" }],
+      align: { order: -2, mercy: -2, spread: 0.8 },
+      values: { strength: 2.5, gold: 0.6 },
+      names: N(["\u041C\u043E\u0440\u0434\u043E\u0431", "\u0411\u0440\u044E\u0445\u0430\u043D", "\u0413\u0440\u044B\u0437", "\u0422\u044F\u0436\u0430\u043A"], ["\u0425\u043B\u043E\u0431\u0430"])
+    },
+    // Trolls regrow wounds unless fire or acid stops it.
+    {
+      id: "troll",
+      label: "\u0442\u0440\u043E\u043B\u043B\u044C",
+      plural: "\u0442\u0440\u043E\u043B\u043B\u0438",
+      rel: "greenskin",
+      settle: 0,
+      hp: 1.5,
+      speed: 0.135,
+      heatHarm: 62,
+      attack: { power: 1.5, cooldown: 13 },
+      look: person(0.76, "#4f8f86"),
+      special: { S: [7, 13], P: [3, 10], E: [6, 13], C: [1, 7], I: [1, 7], A: [4, 11], L: [1, 8] },
+      body: { adult: 14, life: 80, fertility: 0.5, diet: "\u0445\u0438\u0449\u043D\u0438\u043A" },
+      mods: { hunger: 1.8, regen: 6, bravery: 1.3 },
+      innate: [{ label: "\u0440\u0435\u0433\u0435\u043D\u0435\u0440\u0430\u0446\u0438\u044F", note: "\u0440\u0430\u043D\u0430 \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u0442\u0441\u044F \u043D\u0430 \u0433\u043B\u0430\u0437\u0430\u0445, \u043F\u043E\u043A\u0430 \u0440\u044F\u0434\u043E\u043C \u043D\u0435\u0442 \u043E\u0433\u043D\u044F" }],
+      peoples: [
+        { id: "forest", label: "\u043B\u0435\u0441\u043D\u043E\u0439 \u0442\u0440\u043E\u043B\u043B\u044C", weight: 2 },
+        { id: "swamp", label: "\u0431\u043E\u043B\u043E\u0442\u043D\u044B\u0439 \u0442\u0440\u043E\u043B\u043B\u044C", weight: 1, shift: { E: 1, A: -1 } },
+        { id: "ice", label: "\u043B\u0435\u0434\u044F\u043D\u043E\u0439 \u0442\u0440\u043E\u043B\u043B\u044C", weight: 1, shift: { S: 1, I: -1 }, mods: { cold: 0.3 } }
+      ],
+      align: { order: -1, mercy: -1, spread: 1 },
+      values: { nature: 1.6, faith: 1.6, strength: 1 },
+      names: N(["\u0420\u0430\u043A\u0430\u0448", "\u0412\u0443\u0434\u0436\u0438\u043D", "\u0417\u0435\u043A\u043A\u0438", "\u0422\u0443\u043C\u0431\u043E"], ["\u0428\u0430\u043D\u043A\u0430", "\u041C\u0432\u0438\u0440\u0430"])
+    },
+    // Gnolls: hyena-folk, scavengers. Carrion does them no harm; the rot does not take them.
+    {
+      id: "gnoll",
+      label: "\u0433\u043D\u043E\u043B\u043B",
+      plural: "\u0433\u043D\u043E\u043B\u043B\u044B",
+      rel: "gnoll",
+      settle: 0,
+      hp: 1.05,
+      speed: 0.14,
+      heatHarm: 70,
+      attack: { power: 1.2, cooldown: 12 },
+      look: person(0.64, "#a98d5a"),
+      special: { S: [4, 11], P: [5, 12], E: [5, 12], C: [1, 6], I: [1, 7], A: [4, 11], L: [1, 8] },
+      body: { adult: 8, life: 40, fertility: 0.75, diet: "\u043F\u0430\u0434\u0430\u043B\u044C\u0449\u0438\u043A" },
+      mods: { hunger: 1.2, cold: 0.9 },
+      innate: [{ label: "\u043D\u044E\u0445", note: "\u0447\u0443\u0435\u0442 \u0434\u043E\u0431\u044B\u0447\u0443 \u0438 \u043D\u0435\u0436\u0438\u0442\u044C \u0438\u0437\u0434\u0430\u043B\u0435\u043A\u0430" }, { label: "\u043F\u0430\u0434\u0430\u043B\u044C\u0449\u0438\u043A", note: "\u043C\u0435\u0440\u0442\u0432\u0435\u0447\u0438\u043D\u0430 \u0438 \u0433\u043D\u0438\u043B\u044C \u0435\u043C\u0443 \u043D\u0435 \u0432\u0440\u0435\u0434\u044F\u0442" }],
+      align: { order: -1, mercy: -3, spread: 0.8 },
+      values: { strength: 2, faith: 1.4 },
+      names: N(["\u0425\u0440\u0430\u043A\u043A", "\u0413\u043D\u0430\u0440\u0440", "\u042B\u0445\u044B\u0440", "\u0421\u043A\u043E\u0440\u0440"], ["\u0425\u0438\u0437\u0430", "\u0420\u0440\u0430\u043A\u0430"])
+    }
+  ].map((r) => ({ needs: NEEDS, sentient: true, inventory: true, mind: "sentient", ...r }));
+
+  // src/data/monsters.js
+  var special = (S, P, E, C, I, A, L) => ({ S, P, E, C, I, A, L });
+  var human = RACES.find((r) => r.id === "human");
+  var MONSTERS = [
+    {
+      id: "zombie",
+      label: "\u043C\u0435\u0440\u0442\u0432\u044F\u043A",
+      labelAcc: "\u043C\u0435\u0440\u0442\u0432\u044F\u043A\u0430",
+      plural: "\u043C\u0435\u0440\u0442\u0432\u044F\u043A\u0438",
+      mind: "beast",
+      undead: true,
+      mindless: true,
+      hp: 0.9,
+      speed: 0.075,
+      needs: [],
+      heatHarm: 45,
+      look: { shape: "person", size: 0.6, color: "#7f9a78", skin: "#55684f" },
+      attack: { power: 0.9, cooldown: 18 },
+      rots: 12e-6,
+      special: special([5, 8], [1, 3], [7, 10], [0, 0], [0, 1], [1, 3], [0, 0]),
+      killMessage: (name) => `\u041C\u0435\u0440\u0442\u0432\u0435\u0446\u044B \u0440\u0430\u0441\u0442\u0435\u0440\u0437\u0430\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`
+    },
+    {
+      id: "skeleton",
+      label: "\u043A\u043E\u0441\u0442\u044F\u043A",
+      labelAcc: "\u043A\u043E\u0441\u0442\u044F\u043A\u0430",
+      plural: "\u043A\u043E\u0441\u0442\u044F\u043A\u0438",
+      mind: "beast",
+      undead: true,
+      mindless: true,
+      hp: 0.7,
+      speed: 0.11,
+      needs: [],
+      heatHarm: 55,
+      inventory: true,
+      look: { shape: "person", size: 0.58, color: "#d8d2bd", skin: "#8f8a78" },
+      attack: { power: 1, cooldown: 14 },
+      resist: { ranged: 0.45 },
+      special: special([4, 7], [2, 4], [5, 8], [0, 0], [0, 1], [3, 6], [0, 0]),
+      killMessage: (name) => `\u041A\u043E\u0441\u0442\u044F\u043A\u0438 \u0437\u0430\u0440\u0443\u0431\u0438\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`
+    },
+    {
+      id: "upyr",
+      label: "\u0443\u043F\u044B\u0440\u044C",
+      labelAcc: "\u0443\u043F\u044B\u0440\u044F",
+      plural: "\u0443\u043F\u044B\u0440\u0438",
+      mind: "semi",
+      undead: true,
+      hp: 0.95,
+      speed: 0.155,
+      needs: [],
+      heatHarm: 50,
+      look: { shape: "person", size: 0.6, color: "#9a6f78", skin: "#c9b8b8" },
+      attack: { power: 1.15, cooldown: 12 },
+      drinks: 0.5,
+      sun: 4e-4,
+      special: special([5, 10], [5, 9], [6, 10], [0, 2], [1, 3], [5, 10], [1, 4]),
+      killMessage: (name) => `\u0423\u043F\u044B\u0440\u0438 \u0432\u044B\u043F\u0438\u043B\u0438 \u043A\u0440\u043E\u0432\u044C \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`
+    },
+    {
+      id: "vampire",
+      label: "\u0432\u0430\u043C\u043F\u0438\u0440",
+      labelAcc: "\u0432\u0430\u043C\u043F\u0438\u0440\u0430",
+      plural: "\u0432\u0430\u043C\u043F\u0438\u0440\u044B",
+      mind: "sentient",
+      undead: true,
+      sentient: true,
+      hp: 1.4,
+      speed: 0.15,
+      needs: [],
+      heatHarm: 55,
+      inventory: true,
+      look: { shape: "person", size: 0.64, color: "#5a1f2a", skin: "#e8e2e8" },
+      attack: { power: 1.6, cooldown: 11 },
+      drinks: 0.6,
+      sun: 6e-4,
+      weakTo: ["silver"],
+      special: special([9, 12], [8, 12], [9, 12], [8, 13], [8, 13], [8, 12], [3, 8]),
+      names: [["\u0413\u0440\u0430\u0444 \u0412\u0435\u043B\u044C\u043C\u043E\u0440", "m"], ["\u0413\u043E\u0441\u043F\u043E\u0436\u0430 \u0418\u043B\u044C\u0432\u0438\u0440\u0430", "f"], ["\u0411\u0430\u0440\u043E\u043D \u041A\u0430\u0441\u0442\u0440\u0435\u043B\u044C", "m"], ["\u041C\u043E\u0440\u0435\u043D\u0430", "f"]],
+      killMessage: (name) => `\u0412\u0430\u043C\u043F\u0438\u0440 \u043E\u0441\u0443\u0448\u0438\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`
+    },
+    // a necromancer is a human: he walks behind his dead and steers them; kill him and they stagger off
+    {
+      ...human,
+      id: "necromancer",
+      label: "\u043D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442",
+      labelAcc: "\u043D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442\u0430",
+      plural: "\u043D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442\u044B",
+      settle: 0,
+      mind: "sentient",
+      look: { shape: "person", size: 0.62, color: "#3d3550", skin: "#c8b8a0" },
+      hp: 0.9,
+      special: { ...human.special, I: [7, 10], C: [2, 8] },
+      innate: [{ label: "\u0433\u043D\u0438\u043B\u044C\u0449\u0438\u043A", note: "\u0440\u0430\u0441\u0442\u0438\u0442 \u0433\u043D\u0438\u043B\u044C \u0438 \u0432\u043E\u0434\u0438\u0442 \u043C\u0435\u0440\u0442\u0432\u0435\u0446\u043E\u0432 \u0437\u0430\u043F\u0430\u0445\u0430\u043C\u0438 \u0438 \u043E\u0442\u0432\u0430\u0440\u0430\u043C\u0438" }],
+      align: { order: 1, mercy: -3, spread: 0.5 },
+      values: { knowledge: 3, gold: 1 }
+    }
+  ].map((m) => ({ needs: [], ...m }));
+
+  // src/data/species.js
+  var SPECIES = new Registry("species");
+  SPECIES.registerAll([
     // Hares graze, rest at night, bolt from people and fire. They never breed here:
     // their numbers change only through migration (see migrations.js).
     // game: shows up on the prey flow field that hunters and predators follow
@@ -1154,7 +1470,7 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 60,
       look: { shape: "hare", size: 0.42, color: "#cdbb9a" },
       yields: { meat: 2, hide: 1, bone: 1 },
-      flee: { radius: 4.5, sprint: 1.45, from: ["human", "wolf"], stamina: 7e-3 },
+      flee: { radius: 4.5, sprint: 1.45, from: ["people", "wolf"], stamina: 7e-3 },
       grazes: { terrain: ["grass"], eatsBerries: 4e-3 },
       leaveChance: 4e-4
     },
@@ -1179,8 +1495,8 @@ dd.q4{color:#c58cff;font-weight:600}
       predator: {
         prey: ["hare", "deer", "fox"],
         // what it hunts for food (goats keep to the rocks and are not worth the chase)
-        victims: ["human"],
-        // whom it attacks: a lone colonist, or a pair when desperate
+        victims: ["people"],
+        // whom it attacks ('people': any thinking race): a lone colonist, or a pair when desperate
         sprint: 1.9,
         stamina: 3e-3,
         sight: 22,
@@ -1228,7 +1544,7 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 60,
       look: { shape: "deer", size: 0.62, color: "#a8794a" },
       yields: { meat: 5, hide: 2, bone: 2 },
-      flee: { radius: 7, sprint: 1.6, from: ["human", "wolf"], stamina: 6e-3 },
+      flee: { radius: 7, sprint: 1.6, from: ["people", "wolf"], stamina: 6e-3 },
       grazes: { terrain: ["grass", "forest"], eatsBerries: 2e-3 },
       leaveChance: 3e-4
     },
@@ -1245,7 +1561,7 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 60,
       look: { shape: "fox", size: 0.42, color: "#d0703a" },
       yields: { meat: 1, furs: 1 },
-      flee: { radius: 6, sprint: 1.5, from: ["human", "wolf"], stamina: 6e-3 },
+      flee: { radius: 6, sprint: 1.5, from: ["people", "wolf"], stamina: 6e-3 },
       grazes: { terrain: ["grass", "forest"], eatsBerries: 0 },
       leaveChance: 4e-4
     },
@@ -1349,7 +1665,7 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 60,
       look: { shape: "goat", size: 0.46, color: "#d6cdb6" },
       yields: { meat: 3, hide: 1, bone: 1 },
-      flee: { radius: 4.5, sprint: 1.5, from: ["human", "wolf"], stamina: 6e-3 },
+      flee: { radius: 4.5, sprint: 1.5, from: ["people", "wolf"], stamina: 6e-3 },
       grazes: { terrain: ["grass"], eatsBerries: 2e-3 },
       leaveChance: 1e-4,
       // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it
@@ -1375,7 +1691,11 @@ dd.q4{color:#c58cff;font-weight:600}
         effect: "\u0434\u0430\u0451\u0442 \u043C\u043E\u043B\u043E\u043A\u043E \u0438 \u0448\u0435\u0440\u0441\u0442\u044C, \u0432 \u0442\u0451\u043F\u043B\u043E\u0435 \u0432\u0440\u0435\u043C\u044F \u043F\u0440\u0438\u043D\u043E\u0441\u0438\u0442 \u043A\u043E\u0437\u043B\u044F\u0442"
       }
     }
-  ]);
+  ].map((sp) => ({ mind: "beast", ...sp })));
+  SPECIES.registerAll(RACES);
+  SPECIES.registerAll(MONSTERS);
+  var HUMAN_NAMES = SPECIES.get("human").names;
+  var matchesKind = (id, list) => list.includes(id) || list.includes("people") && !!SPECIES.get(id).rel;
 
   // src/data/plants.js
   var winterHay = (w) => w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.eats : 0), 0) * 30 * 0.7;
@@ -2995,7 +3315,13 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "escapedWolves", mood: 0.15, lasts: DAY, once: 4 * HOUR, text: (a) => `${g(a, "\u041E\u0442\u0431\u0438\u043B\u0441\u044F", "\u041E\u0442\u0431\u0438\u043B\u0430\u0441\u044C")} \u043E\u0442 \u0432\u043E\u043B\u043A\u043E\u0432. \u0416\u0438\u0432${g(a, "", "\u0430")}!` },
     { id: "killedWolf", mood: 0.25, lasts: DAY, text: (a) => `${g(a, "\u0423\u0431\u0438\u043B", "\u0423\u0431\u0438\u043B\u0430")} \u0432\u043E\u043B\u043A\u0430. \u0428\u043A\u0443\u0440\u0430 \u043F\u043E\u0439\u0434\u0451\u0442 \u0432 \u0434\u0435\u043B\u043E.` },
     { id: "raidAlarm", mood: -0.15, lasts: 12 * HOUR, once: 12 * HOUR, text: (a) => `\u0422\u0440\u0435\u0432\u043E\u0433\u0430! ${g(a, "\u0411\u0440\u043E\u0441\u0438\u043B", "\u0411\u0440\u043E\u0441\u0438\u043B\u0430")} \u0440\u0430\u0431\u043E\u0442\u0443 \u0438 ${g(a, "\u043F\u043E\u0431\u0435\u0436\u0430\u043B", "\u043F\u043E\u0431\u0435\u0436\u0430\u043B\u0430")} \u043A \u043A\u043E\u0441\u0442\u0440\u0443.` },
-    { id: "killedRaider", mood: 0.15, lasts: DAY, text: (a) => `${g(a, "\u0421\u0440\u0430\u0437\u0438\u043B", "\u0421\u0440\u0430\u0437\u0438\u043B\u0430")} \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430.` },
+    { id: "killedRaider", mood: 0.15, lasts: DAY, text: (a) => `${g(a, "\u0421\u0440\u0430\u0437\u0438\u043B", "\u0421\u0440\u0430\u0437\u0438\u043B\u0430")} \u0432\u0440\u0430\u0433\u0430.` },
+    // neighbours (settlement/relations.js)
+    { id: "quarrel", mood: -0.2, lasts: 12 * HOUR, text: (a, c) => `${g(a, "\u041F\u043E\u0440\u0443\u0433\u0430\u043B\u0441\u044F", "\u041F\u043E\u0440\u0443\u0433\u0430\u043B\u0430\u0441\u044C")} \u0441 ${c.name}. \u0414\u043E \u0441\u0438\u0445 \u043F\u043E\u0440 \u0437\u043B\u043E \u0431\u0435\u0440\u0451\u0442.` },
+    { id: "dislikesNeighbour", mood: -0.1, lasts: DAY, once: DAY, text: (a, c) => `\u0422\u0435\u0440\u043F\u0435\u0442\u044C \u043D\u0435 \u043C\u043E\u0436\u0435\u0442 ${c.name}, \u0430 \u0436\u0438\u0442\u044C \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442\u0441\u044F \u0431\u043E\u043A \u043E \u0431\u043E\u043A.` },
+    { id: "goodCompany", mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `\u0420\u0430\u0434${g(a, "", "\u0430")}, \u0447\u0442\u043E \u0440\u044F\u0434\u043E\u043C ${c.name}: \u0441 \u0442\u0430\u043A\u0438\u043C \u0441\u043E\u0441\u0435\u0434\u043E\u043C \u043B\u0435\u0433\u0447\u0435.` },
+    { id: "sober", mood: -0.12, lasts: 12 * HOUR, once: DAY, text: (a) => `\u0411\u0435\u0437 \u0431\u0440\u0430\u0433\u0438 ${g(a, "\u0441\u0430\u043C", "\u0441\u0430\u043C\u0430")} \u043D\u0435 ${g(a, "\u0441\u0432\u043E\u0439", "\u0441\u0432\u043E\u044F")}: \u0440\u0443\u043A\u0438 \u043D\u0435 \u0441\u043B\u0443\u0448\u0430\u044E\u0442\u0441\u044F.` },
+    { id: "beerFed", mood: 0.2, lasts: 12 * HOUR, once: 12 * HOUR, text: (a) => `\u041A\u0440\u0443\u0436\u043A\u0430 \u0431\u0440\u0430\u0433\u0438 \u2014 \u0438 \u0441\u044B\u0442${g(a, "", "\u0430")}, \u0438 \u0432\u0435\u0441\u0435\u043B${g(a, "", "\u0430")}. \u041A\u0430\u043A \u0434\u043E\u043C\u0430 \u043F\u043E\u0434 \u0433\u043E\u0440\u043E\u0439.` },
     { id: "grief", mood: -0.35, lasts: 2 * DAY, text: (a, c) => `\u0421\u043A\u043E\u0440\u0431\u0438\u0442: ${c.name} ${c.f ? "\u043F\u043E\u0433\u0438\u0431\u043B\u0430" : "\u043F\u043E\u0433\u0438\u0431"}.` },
     // healing
     { id: "treated", mood: 0.2, lasts: DAY, text: (a, c) => `\u0412\u0441\u0442\u0430\u043B${g(a, "", "\u0430")} \u043D\u0430 \u043D\u043E\u0433\u0438: \u0432\u044B\u0445\u043E\u0434\u0438\u043B${c.name ? " \u043B\u0435\u043A\u0430\u0440\u044C " + c.name : "\u0438 \u0432 \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F"}.` },
@@ -3033,8 +3359,8 @@ dd.q4{color:#c58cff;font-weight:600}
   ];
 
   // src/data/needs.js
-  var NEEDS = new Registry("need");
-  NEEDS.registerAll([
+  var NEEDS2 = new Registry("need");
+  NEEDS2.registerAll([
     {
       id: "food",
       label: "\u0441\u044B\u0442\u043E\u0441\u0442\u044C",
@@ -3055,7 +3381,7 @@ dd.q4{color:#c58cff;font-weight:600}
       task: "sleep",
       memory: "tired",
       start: [0.6, 1],
-      decay: (w, a) => a.sleeping ? 0 : 45e-5,
+      decay: (w, a) => a.sleeping ? 0 : 45e-5 * (a.mods.sleep ?? 1),
       harm: 0,
       cause: "\u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438",
       urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w.tick) > 0.6 && v < 0.75 ? 0.35 : 0)
@@ -3407,7 +3733,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function wishes(w, a, councilWish2) {
     const out = [];
     const say = { food: "\u043F\u043E\u0435\u0441\u0442\u044C", rest: "\u0432\u044B\u0441\u043F\u0430\u0442\u044C\u0441\u044F", warmth: "\u0441\u043E\u0433\u0440\u0435\u0442\u044C\u0441\u044F" };
-    for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(say[id] || NEEDS.get(id).label);
+    for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(say[id] || NEEDS2.get(id).label);
     const hands = handItems(a).map(def);
     if (a.equip) {
       if (!hands.some((d) => d.melee || d.ranged)) out.push("\u043E\u0440\u0443\u0436\u0438\u0435 \u0432 \u0440\u0443\u043A\u0438");
@@ -3593,12 +3919,12 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let yy = 0; yy < lh; yy++) for (let xx = 0; xx < lw; xx++) s += w.grid.fert[(y + yy) * w.w + x + xx];
     return s / (lw * lh);
   }
-  function findLot(w, d, near = d.near) {
-    if (near === "fish") {
+  function findLot(w, d, near2 = d.near) {
+    if (near2 === "fish") {
       const lot = findLot(w, d, "fish-shore");
       if (lot >= 0) return lot;
     }
-    const shore = near === "fish-shore", [lw, lh] = lotSize(d), R = shore ? 24 : d.soil ? 20 : 14;
+    const shore = near2 === "fish-shore", [lw, lh] = lotSize(d), R = shore ? 24 : d.soil ? 20 : 14;
     const g2 = w.grid;
     let best = -1, bs = Infinity;
     for (let y = w.camp.y - R; y <= w.camp.y + R - 1; y++) for (let x = w.camp.x - R; x <= w.camp.x + R - 1; x++) {
@@ -3936,6 +4262,12 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/settlement/life.js
+  var brewOf = (a) => SPECIES.get(a.species).brew;
+  function brewFactor(w, a) {
+    const b = brewOf(a);
+    if (!b) return 1;
+    return a.drankAt != null && w.tick - a.drankAt < b.lasts * DAY ? b.drunk : b.sober;
+  }
   var LIFE = {
     unburiedAfter: 0.6 * DAY,
     // a body lying this long weighs on everyone
@@ -4044,13 +4376,17 @@ dd.q4{color:#c58cff;font-weight:600}
     if (have < 1) return;
     const feast = have >= col.length && w.tick - (w.lastFeast ?? -1e9) >= LIFE.feastEvery;
     if (feast) w.lastFeast = w.tick;
-    const order = feast ? col : col.filter((a) => moodOf(w, a) < -0.1).sort((x, y) => moodOf(w, x) - moodOf(w, y));
-    const n = feast ? col.length : Math.min(have, Math.ceil(col.length / 3), order.length);
+    const brewers = col.filter(brewOf);
+    const order = feast ? col : [...brewers, ...col.filter((a) => !brewOf(a) && moodOf(w, a) < -0.1).sort((x, y) => moodOf(w, x) - moodOf(w, y))];
+    const n = feast ? col.length : Math.min(have, Math.ceil(col.length / 3) + brewers.length, order.length);
     if (!n) return;
     for (const a of order.slice(0, n)) {
       if (a.task?.id === "treat" || a.dead) continue;
       w.stock.braga -= 1;
-      think(w, a, feast ? "feast" : "drank");
+      a.drankAt = w.tick;
+      const b = brewOf(a);
+      if (b) a.needs.food = Math.min(1, (a.needs.food ?? 1) + b.food);
+      think(w, a, feast ? "feast" : b ? "beerFed" : "drank");
       if (w.rng() < LIFE.hangover) think(w, a, "hangover");
     }
     w.chronicle.cups = (w.chronicle.cups || 0) + n;
@@ -4061,6 +4397,7 @@ dd.q4{color:#c58cff;font-weight:600}
     furnish(w);
     if (corpses(w).some((c) => w.tick - c.tick > LIFE.unburiedAfter)) for (const a of colonists(w)) think(w, a, "unburied");
     for (const a of colonists(w)) {
+      if (brewOf(a) && brewFactor(w, a) < 1) think(w, a, "sober");
       const m = moodOf(w, a);
       a.gloom = m < LIFE.gloomBelow ? (a.gloom || 0) + 1 : 0;
       if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rng() < LIFE.leaveChance) {
@@ -4508,7 +4845,7 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "diligent", label: "\u0443\u0441\u0435\u0440\u0434\u043D\u044B\u0439", group: "work", weight: 1, mods: { work: 1.2 } },
     { id: "lazy", label: "\u043B\u0435\u043D\u0438\u0432\u044B\u0439", group: "work", weight: 1, mods: { work: 0.8 } }
   ]);
-  var BASE_MODS = { bravery: 1, cold: 1, hunger: 1, speed: 1, work: 1 };
+  var BASE_MODS = { bravery: 1, cold: 1, hunger: 1, speed: 1, work: 1, sleep: 1, regen: 1, learn: 1, str: 1, swing: 1, sight: 1, aim: 0, dodge: 0 };
   var LIKE_RANGE = [1.45, 1.65];
   var DISLIKE_RANGE = [0.45, 0.65];
   var NEUTRAL_RANGE = [0.85, 1.15];
@@ -4567,6 +4904,113 @@ dd.q4{color:#c58cff;font-weight:600}
     obj[key2] = (obj[key2] || 0) + n;
   };
   var daysLived = (w, r) => ((r.died ?? r.left ?? w.tick) - r.arrived) / DAY;
+
+  // src/data/special.js
+  var STATS = new Registry("stat");
+  var NORM = 5;
+  STATS.registerAll([
+    { id: "S", label: "\u0421\u0438\u043B\u0430", short: "\u0421\u0418\u041B", note: "\u0443\u0440\u043E\u043D \u0432 \u0431\u043B\u0438\u0436\u043D\u0435\u043C \u0431\u043E\u044E" },
+    { id: "P", label: "\u0412\u043E\u0441\u043F\u0440\u0438\u044F\u0442\u0438\u0435", short: "\u0412\u041E\u0421", note: "\u043C\u0435\u0442\u043A\u043E\u0441\u0442\u044C, \u0437\u0430\u043C\u0435\u0447\u0430\u0435\u0442 \u0432\u0440\u0430\u0433\u0430 \u0440\u0430\u043D\u044C\u0448\u0435" },
+    { id: "E", label: "\u0412\u044B\u043D\u043E\u0441\u043B\u0438\u0432\u043E\u0441\u0442\u044C", short: "\u0412\u042B\u041D", note: "\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435, \u0441\u0442\u043E\u0439\u043A\u043E\u0441\u0442\u044C \u043A \u0445\u043E\u043B\u043E\u0434\u0443" },
+    { id: "C", label: "\u0425\u0430\u0440\u0438\u0437\u043C\u0430", short: "\u0425\u0410\u0420", note: "\u043A\u0430\u043A \u043A \u043D\u0435\u043C\u0443 \u043E\u0442\u043D\u043E\u0441\u044F\u0442\u0441\u044F \u0441\u043E\u0441\u0435\u0434\u0438" },
+    { id: "I", label: "\u0418\u043D\u0442\u0435\u043B\u043B\u0435\u043A\u0442", short: "\u0418\u041D\u0422", note: "\u043A\u0430\u043A \u0431\u044B\u0441\u0442\u0440\u043E \u0443\u0447\u0438\u0442\u0441\u044F \u0440\u0435\u043C\u0435\u0441\u043B\u0443" },
+    { id: "A", label: "\u041B\u043E\u0432\u043A\u043E\u0441\u0442\u044C", short: "\u041B\u041E\u0412", note: "\u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0448\u0430\u0433\u0430 \u0438 \u0443\u0434\u0430\u0440\u0430" },
+    { id: "L", label: "\u0423\u0434\u0430\u0447\u0430", short: "\u0423\u0414\u0427", note: "\u0443\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043E\u0442 \u0443\u0434\u0430\u0440\u0430, \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u043D\u0430\u0443\u0434\u0430\u0447\u0443" }
+  ]);
+  var EFFECTS = {
+    // melee damage grows a little slower than strength: an ogre (14) hits ~2.3× a human (5)
+    str: (s) => Math.max(0.2, s.S / NORM) ** 0.8,
+    // health: E 5 → ×1, E 10 → ×1.4, E 14 → ×1.72
+    hp: (s) => Math.max(0.3, 0.6 + 0.08 * s.E),
+    // how hard the cold bites
+    cold: (s) => Math.max(0.4, 1.25 - 0.05 * s.E),
+    // added to the chance to hit with a shot
+    aim: (s) => 0.03 * (s.P - NORM) + 0.01 * (s.L - NORM),
+    // how far an enemy is noticed (× the usual radius)
+    sight: (s) => Math.max(0.5, 0.8 + 0.04 * s.P),
+    speed: (s) => Math.max(0.5, 1 + 0.025 * (s.A - NORM)),
+    // attack cooldown multiplier: nimble creatures strike more often
+    swing: (s) => Math.max(0.5, 1 - 0.03 * (s.A - NORM)),
+    // skill gained from work
+    learn: (s) => Math.max(0.2, 0.5 + 0.1 * s.I),
+    // chance that a blow or a shot simply misses this creature
+    dodge: (s) => Math.min(0.15, Math.max(0, 0.015 * (s.L - 4))),
+    // how much others like this creature (added to their opinion of it, data/relations.js)
+    charm: (s) => 0.15 * (s.C - NORM)
+  };
+
+  // src/data/values.js
+  var AXES = {
+    order: { label: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A", neg: "\u0432\u043E\u043B\u044C\u043D\u0438\u0446\u0430", pos: "\u043F\u043E\u0440\u044F\u0434\u043E\u043A" },
+    mercy: { label: "\u041C\u0438\u043B\u043E\u0441\u0435\u0440\u0434\u0438\u0435", neg: "\u0436\u0435\u0441\u0442\u043E\u043A\u043E\u0441\u0442\u044C", pos: "\u043C\u0438\u043B\u043E\u0441\u0435\u0440\u0434\u0438\u0435" }
+  };
+  var AXIS_MAX = 3;
+  var VALUES = new Registry("value");
+  VALUES.registerAll([
+    { id: "work", label: "\u0442\u0440\u0443\u0434", clash: ["nature", "freedom"] },
+    { id: "gold", label: "\u0437\u043E\u043B\u043E\u0442\u043E", clash: ["faith", "family"] },
+    { id: "ancestors", label: "\u043F\u0440\u0435\u0434\u043A\u0438", clash: ["freedom", "knowledge"] },
+    { id: "nature", label: "\u043F\u0440\u0438\u0440\u043E\u0434\u0430", clash: ["work", "gold"] },
+    { id: "strength", label: "\u0441\u0438\u043B\u0430", clash: ["family", "knowledge"] },
+    { id: "knowledge", label: "\u0437\u043D\u0430\u043D\u0438\u0435", clash: ["faith", "ancestors"] },
+    { id: "faith", label: "\u0432\u0435\u0440\u0430", clash: ["knowledge", "gold"] },
+    { id: "family", label: "\u0441\u0435\u043C\u044C\u044F", clash: ["strength"] },
+    { id: "freedom", label: "\u0441\u0432\u043E\u0431\u043E\u0434\u0430", clash: ["ancestors", "work"] }
+  ]);
+  function axisWord(axis, v) {
+    const a = AXES[axis], r = Math.round(v);
+    if (!r) return "\u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0430";
+    return `${r > 0 ? a.pos : a.neg} ${r > 0 ? "+" : "\u2212"}${Math.abs(r)}`;
+  }
+
+  // src/agents/special.js
+  var peopleOf = (sp, a) => a.people && sp.peoples ? sp.peoples.find((p) => p.id === a.people) : null;
+  function limits(sp, people) {
+    const out = {};
+    for (const id of STATS.ids()) {
+      const [lo, hi] = sp.special?.[id] ?? [5, 5], s = people?.shift?.[id] || 0;
+      out[id] = [Math.max(0, lo + s), Math.max(0, hi + s)];
+    }
+    return out;
+  }
+  var innateOf = (sp, a) => [...sp.innate || [], ...peopleOf(sp, a)?.innate || []];
+  var raceLabel = (sp, a) => peopleOf(sp, a)?.label || sp.label;
+  var ADD = /* @__PURE__ */ new Set(["aim", "dodge", "bravery"]);
+  function mod(a, k, v) {
+    a.mods[k] = ADD.has(k) ? (a.mods[k] ?? 0) + v : (a.mods[k] ?? 1) * v;
+  }
+  function rollCreature(w, a, sp) {
+    if (!sp.special) return;
+    const rng = w.rng;
+    if (sp.peoples) a.people = weighted(rng, sp.peoples.map((p) => [p, p.weight ?? 1])).id;
+    const people = peopleOf(sp, a), lim = limits(sp, people);
+    a.special = {};
+    for (const [id, [lo, hi]] of Object.entries(lim)) a.special[id] = Math.round(lo + (hi - lo) * (rng() + rng()) / 2);
+    applySpecial(a, sp);
+    for (const [k, v] of Object.entries(people?.mods || {})) mod(a, k, v);
+    for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(a, k, v);
+    if (sp.align) {
+      const s = sp.align.spread ?? 1, n = () => (rng() + rng() + rng() - 1.5) * s;
+      a.align = { order: clamp(Math.round((sp.align.order + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX), mercy: clamp(Math.round((sp.align.mercy + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX) };
+    }
+    if (sp.values) {
+      const pool = Object.entries(sp.values).filter(([, v]) => v > 0), want2 = rng() < 0.45 ? 3 : 2;
+      a.values = [];
+      while (a.values.length < want2 && pool.length) {
+        const pick3 = weighted(rng, pool.map((e) => [e, e[1]]));
+        a.values.push(pick3[0]);
+        pool.splice(pool.indexOf(pick3), 1);
+      }
+    }
+  }
+  function applySpecial(a, sp) {
+    const s = a.special;
+    a.maxHp = sp.hp * EFFECTS.hp(s);
+    a.hp = a.maxHp;
+    for (const k of ["str", "speed", "swing", "learn", "sight", "cold"]) mod(a, k, EFFECTS[k](s));
+    mod(a, "aim", EFFECTS.aim(s));
+    mod(a, "dodge", EFFECTS.dodge(s));
+  }
 
   // src/agents/agent.js
   var newMemory = (init = {}) => new Proxy(init, { get: (t, k) => typeof k === "string" ? t[k] ?? 0 : t[k] });
@@ -4630,9 +5074,10 @@ dd.q4{color:#c58cff;font-weight:600}
     };
     if (sp.names && factionId === "colony") [a.name, a.gender] = freshName(w, sp.names);
     for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
+    rollCreature(w, a, sp);
     a.stamina = 1;
     for (const id of sp.needs) {
-      const n = NEEDS.get(id);
+      const n = NEEDS2.get(id);
       a.needs[id] = between(w.rng, n.start);
     }
     if (sp.sentient && factionId === "colony") {
@@ -4646,6 +5091,8 @@ dd.q4{color:#c58cff;font-weight:600}
     if (w.scratch) delete w.scratch.colonists;
     return a;
   }
+  var maxHp = (a) => a.maxHp || SPECIES.get(a.species).hp;
+  var hpShare = (a) => a.hp / maxHp(a);
   function kill(w, a, cause, by) {
     if (a.dead) return;
     a.dead = true;
@@ -4679,8 +5126,11 @@ dd.q4{color:#c58cff;font-weight:600}
       const loot = got.filter((it) => it.dur > 0);
       w.armory.push(...loot);
       w.armoryVersion = (w.armoryVersion || 0) + 1;
-      log(w, `\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A \u0443\u0431\u0438\u0442, ${g(by, "\u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B", "\u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B\u0430")} <b>${esc(by.name)}</b>.${loot.length ? " \u0422\u0440\u043E\u0444\u0435\u0438: " + loot.map((it) => def(it).short).join(", ") + "." : ""}`, "danger", "notice");
+      const who = a.band === "bandits" ? "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A" : a.name !== sp.label.replace(/^./, (c) => c.toUpperCase()) ? `${a.name}, ${sp.label},` : a.name;
+      const verb = sp.undead ? g(a, "\u0443\u043F\u043E\u043A\u043E\u0435\u043D", "\u0443\u043F\u043E\u043A\u043E\u0435\u043D\u0430") : g(a, "\u0443\u0431\u0438\u0442", "\u0443\u0431\u0438\u0442\u0430");
+      log(w, `${who} ${verb}, ${g(by, "\u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B", "\u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B\u0430").replace("\u0435\u0433\u043E", a.gender === "f" ? "\u0435\u0451" : "\u0435\u0433\u043E")} <b>${esc(by.name)}</b>.${loot.length ? " \u0422\u0440\u043E\u0444\u0435\u0438: " + loot.map((it) => def(it).short).join(", ") + "." : ""}`, "danger", "notice");
     }
+    if (a.role === "necromancer" && w.agents.some((o) => o.master === a.id && !o.dead)) log(w, "\u041D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442 \u043F\u0430\u043B. \u041C\u0435\u0440\u0442\u0432\u0435\u0446\u044B \u0442\u0435\u0440\u044F\u044E\u0442 \u043D\u0430\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435 \u0438 \u0440\u0430\u0437\u0431\u0440\u0435\u0434\u0430\u044E\u0442\u0441\u044F.", "danger", "notice");
     if (a.faction === "colony") {
       for (const o of w.agents) if (o !== a && o.faction === "colony" && !o.dead) {
         think(w, o, "grief", { name: a.name, f: a.gender === "f" });
@@ -4847,8 +5297,8 @@ dd.q4{color:#c58cff;font-weight:600}
       const plan = daysLeftInSeason(w.tick) > SEASON_DAYS - 1;
       const culled = [];
       for (let k = 0; k < 30; k++) {
-        const daily = herd(w).reduce((s, a) => s + tameOf(a).eats * (a.age < (tameOf(a).grownDays || 0) ? 0.5 : 1) * (1 - grass), 0);
-        if ((w.stock.hay || 0) >= daily * daysLeftInSeason(w.tick) * (plan ? 1 : 0.8)) break;
+        const daily2 = herd(w).reduce((s, a) => s + tameOf(a).eats * (a.age < (tameOf(a).grownDays || 0) ? 0.5 : 1) * (1 - grass), 0);
+        if ((w.stock.hay || 0) >= daily2 * daysLeftInSeason(w.tick) * (plan ? 1 : 0.8)) break;
         const goats = herd(w).filter((a) => a.species === "goat");
         const cull = [...herd(w)].filter((a) => a.species !== "goat" || goats.length > HERD.keepGoats).sort((x, y) => (x.species === "goat" ? 0 : 1) - (y.species === "goat" ? 0 : 1) || (x.age || 0) - (y.age || 0))[0];
         if (!cull) break;
@@ -5041,7 +5491,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return !!r.useWith && w.buildings.some((b) => b.done && b.key === r.useWith);
   }
   var newTradeState = () => ({ visits: 0, deals: [], earned: 0, spent: 0 });
-  var pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
+  var pick2 = (rng, arr) => arr[Math.floor(rng() * arr.length)];
   var between2 = (rng, [a, b]) => a + Math.floor(rng() * (b - a + 1));
   var round1 = (v) => Math.round(v * 10) / 10;
   var goodsUnits = (goods) => goods.reduce((s, g2) => s + (g2.kind === "res" ? g2.n : 1), 0);
@@ -5079,10 +5529,10 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (line2.items) {
         if (!sold.has(line2.q || 0)) continue;
-        addGoods(goods, { kind: "item", type: pick(rng, itemPool(line2.items)), q: line2.q || 0 });
+        addGoods(goods, { kind: "item", type: pick2(rng, itemPool(line2.items)), q: line2.q || 0 });
         left--;
       } else {
-        const id = line2.food ? pick(rng, FOODS.filter((f) => !f.dish).map((f) => f.id)) : pick(rng, line2.resource);
+        const id = line2.food ? pick2(rng, FOODS.filter((f) => !f.dish).map((f) => f.id)) : pick2(rng, line2.resource);
         const n = Math.min(left, between2(rng, line2.n));
         addGoods(goods, { kind: "res", id, n });
         left -= n;
@@ -5453,6 +5903,316 @@ dd.q4{color:#c58cff;font-weight:600}
     return total;
   }
 
+  // src/data/raids.js
+  var RAID_BANDS = new Registry("raid band");
+  var COST = {
+    human: 1,
+    orc: 2,
+    goblin: 0.6,
+    ogre: 4.5,
+    troll: 5,
+    gnoll: 1.7,
+    darkelf: 2,
+    zombie: 0.9,
+    skeleton: 1,
+    upyr: 1.8,
+    vampire: 7,
+    necromancer: 1.5
+  };
+  function fill(rng, budget, mix, extra = []) {
+    const out = [...extra];
+    let left = budget - extra.reduce((s, m) => s + COST[m.species], 0);
+    const total = mix.reduce((s, m) => s + m[1], 0);
+    for (let guard = 0; guard < 40; guard++) {
+      const fits = mix.filter(([sp2]) => COST[sp2] <= left + 0.25);
+      if (!fits.length) break;
+      let r = rng() * fits.reduce((s, m) => s + m[1], 0), sp = fits[0][0];
+      for (const [s, wt] of fits) {
+        r -= wt;
+        if (r <= 0) {
+          sp = s;
+          break;
+        }
+      }
+      out.push({ species: sp });
+      left -= COST[sp];
+    }
+    if (!out.length) out.push({ species: mix[0][0] });
+    return out.slice(0, 18);
+  }
+  function banditKit(rng, t) {
+    const early = [["club"], ["club"], ["spear"], ["sling"], ["staff"]];
+    const late = [["spear", "shield"], ["club", "shield"], ["maul"], ["bow", "quiver"], ["spear"], ["sling"]];
+    const set = pick(rng, rng() < Math.min(0.9, t * 0.04) ? late : early);
+    const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
+    return [...set, ...r < plates ? ["hardleather"] : r < plates + leather ? ["jerkin"] : r < plates + leather + 0.4 ? ["clothes"] : []];
+  }
+  var KITS = {
+    orc: (rng, t) => [...pick(rng, [["maul"], ["axe", "shield"], ["club", "shield"], ["spear"], t > 10 ? ["bronzeaxe", "shield"] : ["axe"]]), ...rng() < 0.5 ? ["jerkin"] : []],
+    goblin: (rng) => pick(rng, [["sling"], ["sling"], ["bow", "quiver"], ["club"], ["spear"]]),
+    ogre: (rng) => pick(rng, [["maul"], ["club"]]),
+    gnoll: (rng, t) => [...pick(rng, [["spear"], ["spear", "shield"], ["bow", "quiver"], ["axe"]]), ...rng() < 0.3 ? ["jerkin"] : []],
+    darkelf: (rng, t) => [...pick(rng, [["bow", "quiver"], ["bow", "quiver"], ["sword"], ["spear", "shield"]]), rng() < 0.6 ? "hardleather" : "jerkin"],
+    skeleton: (rng) => pick(rng, [["club"], ["spear"], ["axe"], ["club", "shield"]]),
+    vampire: () => ["sword", "clothes"],
+    necromancer: () => ["staff", "clothes"]
+  };
+  var kitFor = (species, rng, t) => SPECIES.get(species).inventory && KITS[species] ? KITS[species](rng, t) : [];
+  var named2 = (sp) => (a) => {
+    a.name = SPECIES.get(sp).label.replace(/^./, (c) => c.toUpperCase());
+  };
+  RAID_BANDS.registerAll([
+    {
+      id: "bandits",
+      label: "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0438 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB",
+      kind: "sentient",
+      weight: () => 3,
+      members: (w, rng, budget) => fill(rng, budget, [["human", 1]]).map((m) => ({ ...m, init: (a) => {
+        a.name = "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A";
+      }, kit: "bandit" })),
+      message: (n) => `\u041D\u0430\u0431\u0435\u0433! ${n} ${plural(n, "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A", "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0430", "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u043E\u0432")} \u0438\u0437 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB`
+    },
+    {
+      id: "orcs",
+      label: "\u043E\u0440\u043E\u0447\u044C\u044F \u0432\u0430\u0442\u0430\u0433\u0430",
+      kind: "sentient",
+      weight: (w, t) => t >= 4 ? 2 : 0.5,
+      members: (w, rng, budget) => fill(rng, budget, [["orc", 3], ["goblin", 2], ["ogre", budget >= 10 ? 0.6 : 0]]),
+      message: () => "\u041D\u0430\u0431\u0435\u0433! \u041E\u0440\u043E\u0447\u044C\u044F \u0432\u0430\u0442\u0430\u0433\u0430 \u0441 \u0433\u043E\u0431\u043B\u0438\u043D\u0430\u043C\u0438"
+    },
+    {
+      id: "goblins",
+      label: "\u0433\u043E\u0431\u043B\u0438\u043D\u0441\u043A\u0430\u044F \u0448\u0430\u0439\u043A\u0430",
+      kind: "sentient",
+      weight: () => 1.5,
+      members: (w, rng, budget) => fill(rng, budget, [["goblin", 1]]),
+      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0413\u043E\u0431\u043B\u0438\u043D\u0441\u043A\u0430\u044F \u0448\u0430\u0439\u043A\u0430: \u043C\u0435\u043B\u043A\u0438\u0435, \u044E\u0440\u043A\u0438\u0435, \u0442\u0430\u0449\u0430\u0442 \u0432\u0441\u0451, \u0447\u0442\u043E \u043F\u043B\u043E\u0445\u043E \u043B\u0435\u0436\u0438\u0442"
+    },
+    {
+      id: "gnolls",
+      label: "\u0441\u0442\u0430\u044F \u0433\u043D\u043E\u043B\u043B\u043E\u0432",
+      kind: "sentient",
+      weight: (w, t) => t >= 3 ? 1.5 : 0.4,
+      members: (w, rng, budget) => fill(rng, budget, [["gnoll", 1]]),
+      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0413\u043D\u043E\u043B\u043B\u044B-\u043F\u0430\u0434\u0430\u043B\u044C\u0449\u0438\u043A\u0438 \u0438\u0434\u0443\u0442 \u043D\u0430 \u0437\u0430\u043F\u0430\u0445 \u043B\u0430\u0433\u0435\u0440\u044F"
+    },
+    {
+      id: "darkelves",
+      label: "\u043E\u0442\u0440\u044F\u0434 \u0442\u0451\u043C\u043D\u044B\u0445 \u044D\u043B\u044C\u0444\u043E\u0432",
+      kind: "sentient",
+      weight: (w, t, night) => t >= 8 ? 0.6 + night : 0,
+      members: (w, rng, budget) => fill(rng, budget, [["darkelf", 1]]),
+      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0422\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B \u0432\u044B\u0448\u043B\u0438 \u0438\u0437-\u043F\u043E\u0434 \u0437\u0435\u043C\u043B\u0438 \u0437\u0430 \u0440\u0430\u0431\u0430\u043C\u0438 \u0438 \u0434\u043E\u0431\u044B\u0447\u0435\u0439"
+    },
+    {
+      id: "ogres",
+      label: "\u043E\u0433\u0440\u044B-\u043B\u044E\u0434\u043E\u0435\u0434\u044B",
+      kind: "monster",
+      weight: (w, t) => t >= 6 ? 0.8 : 0,
+      members: (w, rng, budget) => fill(rng, Math.min(budget, 9.5), [["ogre", 1]]).map((m) => ({ ...m, init: named2("ogre") })),
+      message: () => "\u0421 \u0433\u043E\u0440 \u0441\u043F\u0443\u0441\u0442\u0438\u043B\u0438\u0441\u044C \u043E\u0433\u0440\u044B-\u043B\u044E\u0434\u043E\u0435\u0434\u044B"
+    },
+    {
+      id: "troll",
+      label: "\u0442\u0440\u043E\u043B\u043B\u044C",
+      kind: "monster",
+      weight: (w, t) => t >= 5 ? 1 : 0,
+      members: (w, rng, budget) => fill(rng, Math.min(budget, 10.5), [["troll", 1]]).map((m) => ({ ...m, init: named2("troll") })),
+      message: (n) => n === 1 ? "\u0418\u0437 \u0447\u0430\u0449\u0438 \u0432\u044B\u0448\u0435\u043B \u0442\u0440\u043E\u043B\u043B\u044C. \u0420\u0430\u043D\u044B \u043D\u0430 \u043D\u0451\u043C \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u044E\u0442\u0441\u044F, \u043F\u043E\u043A\u0430 \u0440\u044F\u0434\u043E\u043C \u043D\u0435\u0442 \u043E\u0433\u043D\u044F" : "\u0418\u0437 \u0447\u0430\u0449\u0438 \u0432\u044B\u0448\u043B\u0438 \u0442\u0440\u043E\u043B\u043B\u0438. \u0420\u0430\u043D\u044B \u043D\u0430 \u043D\u0438\u0445 \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u044E\u0442\u0441\u044F, \u043F\u043E\u043A\u0430 \u0440\u044F\u0434\u043E\u043C \u043D\u0435\u0442 \u043E\u0433\u043D\u044F"
+    },
+    // the rot's host: by night three times as likely; past a threat of 10 a necromancer walks behind it
+    {
+      id: "undead",
+      label: "\u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B",
+      kind: "monster",
+      weight: (w, t, night) => t >= 3 ? 0.8 + 2 * night : 0,
+      members: (w, rng, budget, t) => {
+        const lead = t >= 10 ? [{ species: "necromancer", init: (a) => {
+          a.role = "necromancer";
+          a.name = "\u041D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442";
+        } }] : [];
+        return fill(rng, budget * 1.2, [["zombie", 3], ["skeleton", t >= 6 ? 2 : 0]], lead);
+      },
+      groupInit: (group) => {
+        const nec = group.find((a) => a.role === "necromancer");
+        if (nec) {
+          for (const a of group) if (a !== nec) a.master = nec.id;
+        }
+      },
+      message: (n, group) => `\u0418\u0437 \u043A\u0443\u0440\u0433\u0430\u043D\u043E\u0432 \u043F\u043E\u0434\u043D\u044F\u043B\u0438\u0441\u044C \u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B: ${n}${group.some((a) => a.role === "necromancer") ? ". \u0417\u0430 \u043D\u0438\u043C\u0438 \u0438\u0434\u0451\u0442 \u043D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442 \u2014 \u0431\u0435\u0437 \u043D\u0435\u0433\u043E \u043E\u043D\u0438 \u0440\u0430\u0437\u0431\u0440\u0435\u0434\u0443\u0442\u0441\u044F" : ""}`
+    },
+    // upyrs come only by night and run from the sun
+    {
+      id: "upyrs",
+      label: "\u0443\u043F\u044B\u0440\u0438",
+      kind: "monster",
+      weight: (w, t, night) => t >= 6 && night > 0.5 ? 1.2 : 0,
+      members: (w, rng, budget) => fill(rng, Math.min(budget, 6), [["upyr", 1]]),
+      message: () => "\u041D\u043E\u0447\u044C\u044E \u043A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0438 \u0443\u043F\u044B\u0440\u0438. \u0418\u043C \u043D\u0443\u0436\u043D\u0430 \u043A\u0440\u043E\u0432\u044C, \u0441\u043E\u043B\u043D\u0446\u0435 \u0433\u043E\u043D\u0438\u0442 \u0438\u0445 \u043F\u0440\u043E\u0447\u044C"
+    },
+    {
+      id: "vampire",
+      label: "\u0432\u0430\u043C\u043F\u0438\u0440 \u0441\u043E \u0441\u0432\u0438\u0442\u043E\u0439",
+      kind: "sentient",
+      weight: (w, t, night) => t >= 20 && night > 0.5 ? 0.5 : 0,
+      members: (w, rng, budget) => fill(rng, budget, [["upyr", 1]], [{ species: "vampire", init: (a, w2) => {
+        [a.name, a.gender] = pick(w2.rng, SPECIES.get("vampire").names);
+      } }]),
+      message: (n, group) => `${group.find((a) => a.species === "vampire")?.name || "\u0412\u0430\u043C\u043F\u0438\u0440"} \u043F\u0440\u0438\u0448\u0451\u043B \u0441\u043E \u0441\u0432\u0438\u0442\u043E\u0439 \u0443\u043F\u044B\u0440\u0435\u0439. \u041F\u0440\u043E\u0441\u0442\u043E\u0435 \u0436\u0435\u043B\u0435\u0437\u043E \u0435\u0433\u043E \u043F\u043E\u0447\u0442\u0438 \u043D\u0435 \u0431\u0435\u0440\u0451\u0442, \u043D\u0443\u0436\u043D\u043E \u0441\u0435\u0440\u0435\u0431\u0440\u043E`
+    }
+  ]);
+
+  // src/data/relations.js
+  var KINS = new Registry("kin");
+  KINS.registerAll([
+    { id: "human", label: "\u043B\u044E\u0434\u0438" },
+    { id: "halfling", label: "\u043F\u043E\u043B\u0443\u0440\u043E\u0441\u043B\u0438\u043A\u0438" },
+    { id: "giant", label: "\u0432\u0435\u043B\u0438\u043A\u0430\u043D\u044B" },
+    { id: "elf", label: "\u043B\u0435\u0441\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B" },
+    { id: "darkelf", label: "\u0442\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B" },
+    { id: "dwarf", label: "\u0433\u043D\u043E\u043C\u044B" },
+    { id: "greenskin", label: "\u0437\u0435\u043B\u0435\u043D\u043E\u043A\u043E\u0436\u0438\u0435" },
+    { id: "gnoll", label: "\u0433\u043D\u043E\u043B\u043B\u044B" }
+  ]);
+  var COLS = ["human", "halfling", "giant", "elf", "darkelf", "dwarf", "greenskin", "gnoll"];
+  var ROWS = {
+    human: [1, 1, 0, 0, -2, 1, -1, -3],
+    halfling: [1, 2, 0, 1, -2, 0, -2, -3],
+    giant: [0, 1, 2, 0, -1, -1, 0, -2],
+    elf: [0, 1, 0, 2, -3, -2, -2, -3],
+    darkelf: [-1, -2, -1, -3, 1, -1, 0, -1],
+    dwarf: [1, 0, -1, -2, -2, 2, -3, -2],
+    greenskin: [-1, -1, 1, -2, 0, -3, 1, 0],
+    gnoll: [-2, -2, -1, -2, 0, -2, 1, 0]
+  };
+  var RELATIONS = Object.fromEntries(Object.entries(ROWS).map(([r, row]) => [r, Object.fromEntries(COLS.map((c, k) => [c, row[k]]))]));
+  var kinship = (fromSpecies, toSpecies) => {
+    const a = SPECIES.get(fromSpecies).rel, b = SPECIES.get(toSpecies).rel;
+    return a && b ? RELATIONS[a][b] : 0;
+  };
+  var OPINION = {
+    shared: 0.5,
+    // per value both hold dear
+    clash: 0.75,
+    // per pair of values that clash
+    mercyGap: 3,
+    // this far apart on mercy → −1
+    orderGap: 4,
+    // this far apart on order → −0.5
+    grudgeCap: 4
+    // personal history counts at most this much either way
+  };
+  function opinion(a, b) {
+    let v = kinship(a.species, b.species);
+    const va = a.values || [], vb = b.values || [];
+    for (const x of va) {
+      if (vb.includes(x)) v += OPINION.shared;
+      for (const y of vb) if (VALUES.get(x).clash.includes(y)) v -= OPINION.clash;
+    }
+    if (a.align && b.align) {
+      if (Math.abs(a.align.mercy - b.align.mercy) >= OPINION.mercyGap) v -= 1;
+      if (Math.abs(a.align.order - b.align.order) >= OPINION.orderGap) v -= 0.5;
+    }
+    if (b.special) v += EFFECTS.charm(b.special);
+    const g2 = a.grudge?.[b.id] || 0;
+    return v + Math.max(-OPINION.grudgeCap, Math.min(OPINION.grudgeCap, g2));
+  }
+  function opinionWord(v) {
+    if (v >= 3) return "\u0434\u0440\u0443\u0436\u0438\u0442";
+    if (v >= 1.5) return "\u043B\u0430\u0434\u0438\u0442";
+    if (v > -1.5) return "\u0442\u0435\u0440\u043F\u0438\u0442";
+    if (v > -3.5) return "\u043D\u0435\u0434\u043E\u043B\u044E\u0431\u043B\u0438\u0432\u0430\u0435\u0442";
+    return "\u043D\u0435\u043D\u0430\u0432\u0438\u0434\u0438\u0442";
+  }
+
+  // src/settlement/relations.js
+  var REL = {
+    dislike: -2,
+    // opinion at or below this weighs on the mood
+    friend: 2.5,
+    // at or above this cheers up
+    quarrelEvery: 2 * HOUR,
+    quarrelNear: 4,
+    // cells apart
+    quarrelBase: 0.05,
+    // chance per check and per point of mutual dislike past −2
+    quarrelMax: 0.35,
+    grudge: 0.6,
+    // a quarrel adds this much to the grudge on both sides
+    fade: 0.96,
+    // grudges shrink this much each day
+    settlerFloor: -1
+    // a race the colony dislikes worse than this does not come
+  };
+  function settlerSpecies(w, rng) {
+    const col = colonists(w);
+    const opts = SPECIES.filter((sp) => sp.settle > 0).map((sp) => {
+      if (!col.length || sp.id === "human") return [sp.id, sp.settle];
+      const into = col.reduce((s, a) => s + kinship(sp.id, a.species), 0) / col.length;
+      const from = col.reduce((s, a) => s + kinship(a.species, sp.id), 0) / col.length;
+      if (Math.min(into, from) < REL.settlerFloor) return [sp.id, 0];
+      return [sp.id, sp.settle * Math.exp(0.5 * (into + from) / 2)];
+    });
+    return weighted(rng, opts) || "human";
+  }
+  var near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < REL.quarrelNear;
+  var busy = (a) => a.sleeping || ["fight", "muster", "treat", "runHome", "flee"].includes(a.task?.id);
+  function reason(a, b) {
+    const kin = kinship(a.species, b.species);
+    if (kin <= -2) return `${SPECIES.get(a.species).plural} \u0438 ${SPECIES.get(b.species).plural} \u2014 \u0434\u0430\u0432\u043D\u0438\u0435 \u0432\u0440\u0430\u0433\u0438`;
+    for (const x of a.values || []) for (const y of b.values || []) if (VALUES.get(x).clash.includes(y)) return `\u043E\u0434\u043D\u043E\u043C\u0443 \u0434\u043E\u0440\u043E\u0436\u0435 \u0432\u0441\u0435\u0433\u043E ${VALUES.get(x).label}, \u0434\u0440\u0443\u0433\u043E\u043C\u0443 ${VALUES.get(y).label}`;
+    if (a.align && b.align && Math.abs(a.align.mercy - b.align.mercy) >= OPINION.mercyGap) return "\u043D\u0435 \u0441\u043E\u0448\u043B\u0438\u0441\u044C \u0432 \u0442\u043E\u043C, \u043A\u0430\u043A \u043E\u0431\u0445\u043E\u0434\u0438\u0442\u044C\u0441\u044F \u0441 \u043F\u043B\u0435\u043D\u043D\u044B\u043C\u0438 \u0438 \u0441\u043B\u0430\u0431\u044B\u043C\u0438";
+    return "\u0441\u0442\u0430\u0440\u044B\u0435 \u043E\u0431\u0438\u0434\u044B";
+  }
+  function quarrels(w) {
+    const col = colonists(w).filter((a) => !busy(a));
+    for (let i = 0; i < col.length; i++) for (let j = i + 1; j < col.length; j++) {
+      const a = col[i], b = col[j];
+      if (!near(a, b)) continue;
+      const mutual = opinion(a, b) + opinion(b, a);
+      const p = clamp((REL.dislike * 2 - mutual) * REL.quarrelBase, 0, REL.quarrelMax);
+      if (p <= 0 || w.rng() >= p) continue;
+      for (const [x, y] of [[a, b], [b, a]]) {
+        (x.grudge || (x.grudge = {}))[y.id] = (x.grudge[y.id] || 0) - REL.grudge;
+        think(w, x, "quarrel", { name: y.name });
+      }
+      w.chronicle.quarrels = (w.chronicle.quarrels || 0) + 1;
+      log(w, `\u0421\u043A\u043B\u043E\u043A\u0430: <b>${esc(a.name)}</b> \u0438 <b>${esc(b.name)}</b> \u0441\u0446\u0435\u043F\u0438\u043B\u0438\u0441\u044C \u2014 ${reason(a, b)}.`, "people");
+      return;
+    }
+  }
+  function daily(w) {
+    const col = colonists(w);
+    for (const a of col) {
+      if (a.grudge) for (const id of Object.keys(a.grudge)) {
+        a.grudge[id] *= REL.fade;
+        if (Math.abs(a.grudge[id]) < 0.05 || !col.some((o) => o.id === +id)) delete a.grudge[id];
+      }
+      let worst = null, wv = Infinity, best = null, bv = -Infinity;
+      for (const b of col) {
+        if (b === a) continue;
+        const v = opinion(a, b);
+        if (v < wv) {
+          wv = v;
+          worst = b;
+        }
+        if (v > bv) {
+          bv = v;
+          best = b;
+        }
+      }
+      if (worst && wv <= REL.dislike) think(w, a, "dislikesNeighbour", { name: worst.name, mood: clamp(wv * 0.04, -0.25, -0.06) });
+      if (best && bv >= REL.friend) think(w, a, "goodCompany", { name: best.name });
+    }
+  }
+  function stepRelations(w) {
+    if (w.tick % DAY === Math.floor(DAY * 0.55)) daily(w);
+    if (w.tick % REL.quarrelEvery === 37) quarrels(w);
+  }
+  function feelings(w, a) {
+    return colonists(w).filter((b) => b !== a).map((b) => [b, opinion(a, b)]).sort((x, y) => x[1] - y[1]);
+  }
+
   // src/data/migrations.js
   var MIGRATIONS = new Registry("migration");
   function grassland(w) {
@@ -5461,15 +6221,17 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   MIGRATIONS.registerAll([
     // newcomers need a free place to sleep and food to spare
+    // newcomers need a free place to sleep and food to spare. Most come from the kin; now and then
+    // someone of a friendly race (settlement/relations.js) — the more the colony's folk like them, the likelier
     {
       id: "settlers",
-      species: "human",
       faction: "colony",
       topic: "people",
       retry: 2 * HOUR,
       blocked: (w) => colonists(w).length >= popCap(w) ? "\u043D\u0435\u0442 \u043C\u0435\u0441\u0442\u0430, \u043D\u0443\u0436\u0435\u043D \u0448\u0430\u043B\u0430\u0448" : foodTotal(w) <= colonists(w).length * 5 ? "\u043C\u0430\u043B\u043E \u0435\u0434\u044B \u0432 \u0437\u0430\u043F\u0430\u0441\u0435" : null,
       accept: (w, n) => MIGRATIONS.get("settlers").blocked(w) ? 0 : n,
-      message: (w, group) => `\u041A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0430 \u043D\u043E\u0432\u0430\u044F \u0434\u0443\u0448\u0430: <b>${group[0].name}</b>.`
+      members: (w, rng, n) => Array.from({ length: n }, () => ({ species: settlerSpecies(w, rng) })),
+      message: (w, group) => group[0].species === "human" ? `\u041A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0430 \u043D\u043E\u0432\u0430\u044F \u0434\u0443\u0448\u0430: <b>${group[0].name}</b>.` : `\u041A \u043B\u0430\u0433\u0435\u0440\u044E ${group[0].gender === "f" ? "\u043F\u0440\u0438\u0448\u043B\u0430" : "\u043F\u0440\u0438\u0448\u0451\u043B"} <b>${group[0].name}</b> (${raceLabel(SPECIES.get(group[0].species), group[0])}). \u041F\u0440\u043E\u0441\u0438\u0442\u0441\u044F \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435.`
     },
     // hares stay only while the meadows can feed more of them
     {
@@ -5618,38 +6380,38 @@ dd.q4{color:#c58cff;font-weight:600}
         return `\u0421 ${side} \u043F\u043E \u0442\u0440\u0430\u043A\u0442\u0443 \u0438\u0434\u0451\u0442 \u0442\u043E\u0440\u0433\u043E\u0432\u044B\u0439 \u043A\u0430\u0440\u0430\u0432\u0430\u043D: \u043A\u0443\u043F\u0435\u0446, \u043E\u0445\u0440\u0430\u043D\u0430 \u0438 ${mules} ${plural(mules, "\u0432\u044C\u044E\u0447\u043D\u044B\u0439 \u043C\u0443\u043B", "\u0432\u044C\u044E\u0447\u043D\u044B\u0445 \u043C\u0443\u043B\u0430", "\u0432\u044C\u044E\u0447\u043D\u044B\u0445 \u043C\u0443\u043B\u043E\u0432")}.`;
       }
     },
-    // size, gear, toughness and aim grow with the threat the raiders see
+    // A band from the hostile lands (data/raids.js): the provider says which one sets out and how big it
+    // is in "human raiders"; toughness and aim grow with the threat they see.
     {
       id: "raiders",
-      species: "human",
       faction: "raiders",
       minDist: 40,
       topic: "danger",
+      members: (w, rng, n, opts) => {
+        const band = RAID_BANDS.get(opts.band || "bandits"), t = raidThreat(w);
+        return band.members(w, rng, n, t).map((m) => ({
+          ...m,
+          kit: m.kit === "bandit" ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
+          init: (a, w2) => {
+            a.band = band.id;
+            if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, (c) => c.toUpperCase());
+            else m.init(a, w2);
+          }
+        }));
+      },
       groupInit: (group, w) => {
         const t = raidThreat(w);
         w.stats.raids++;
         const big = w.chronicle.biggestRaid;
         if (!big || group.length > big.size) w.chronicle.biggestRaid = { size: group.length, tick: w.tick };
         for (const a of group) {
-          a.hp = 0.75 + Math.min(0.35, t * 0.012);
+          a.hp = (a.maxHp || 1) * Math.min(1.1, 0.75 + t * 0.012);
           a.skill = { hunt: Math.min(0.7, 0.1 + t * 0.025) };
         }
-      },
-      init: (a) => {
-        a.name = "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A";
-      },
-      // early bands carry clubs and slings in rags, later ones spears, shields, bows and leather
-      kit: (rng, w) => {
-        const t = raidThreat(w);
-        const early = [["club"], ["club"], ["spear"], ["sling"], ["staff"]];
-        const late = [["spear", "shield"], ["club", "shield"], ["maul"], ["bow", "quiver"], ["spear"], ["sling"]];
-        const pool = rng() < Math.min(0.9, t * 0.04) ? late : early;
-        const set = pool[Math.floor(rng() * pool.length)];
-        const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
-        return [...set, ...r < plates ? ["hardleather"] : r < plates + leather ? ["jerkin"] : r < plates + leather + 0.4 ? ["clothes"] : []];
+        RAID_BANDS.get(group[0].band).groupInit?.(group, w);
       },
       ammo: 8,
-      message: (w, group, side) => `\u041D\u0430\u0431\u0435\u0433! ${group.length} ${plural(group.length, "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A", "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430", "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432")} \u0438\u0437 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB ${group.length === 1 ? "\u0438\u0434\u0451\u0442" : "\u0438\u0434\u0443\u0442"} \u0441 ${side}.`
+      message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)} \u2014 \u0441 ${side}.`
     }
   ]);
 
@@ -5662,16 +6424,16 @@ dd.q4{color:#c58cff;font-weight:600}
       kind: "kin",
       dist: 4,
       flows: ["settlers"],
-      note: "\u043C\u0430\u0442\u0435\u0440\u0438\u043D\u0441\u043A\u043E\u0435 \u043F\u043B\u0435\u043C\u044F: \u043E\u0442\u0441\u044E\u0434\u0430 \u0443\u0445\u043E\u0434\u044F\u0442 \u0438\u0441\u043A\u0430\u0442\u044C \u043D\u043E\u0432\u0443\u044E \u0436\u0438\u0437\u043D\u044C"
+      note: "\u043C\u0430\u0442\u0435\u0440\u0438\u043D\u0441\u043A\u043E\u0435 \u043F\u043B\u0435\u043C\u044F: \u043E\u0442\u0441\u044E\u0434\u0430 \u0443\u0445\u043E\u0434\u044F\u0442 \u0438\u0441\u043A\u0430\u0442\u044C \u043D\u043E\u0432\u0443\u044E \u0436\u0438\u0437\u043D\u044C; \u0447\u0435\u0440\u0435\u0437 \u0435\u0433\u043E \u0437\u0435\u043C\u043B\u0438 \u0438\u0437\u0440\u0435\u0434\u043A\u0430 \u0437\u0430\u0431\u0440\u0435\u0434\u0430\u044E\u0442 \u043F\u043E\u043B\u0443\u0440\u043E\u0441\u043B\u0438\u043A\u0438, \u0433\u043D\u043E\u043C\u044B, \u044D\u043B\u044C\u0444\u044B \u0438 \u0432\u0435\u043B\u0438\u043A\u0430\u043D\u044B"
     },
     {
-      id: "greywolves",
-      label: "\xAB\u0421\u0435\u0440\u044B\u0435 \u0432\u043E\u043B\u043A\u0438\xBB",
+      id: "hostile",
+      label: "\u0412\u0440\u0430\u0436\u0434\u0435\u0431\u043D\u044B\u0435 \u0437\u0435\u043C\u043B\u0438",
       kind: "enemy",
       dist: null,
       flows: ["raiders"],
       // distance comes from the raids preset
-      note: "\u0441\u0442\u043E\u0439\u0431\u0438\u0449\u0435 \u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u043E\u0432; \u0447\u0435\u043C \u0431\u043B\u0438\u0436\u0435 \u043E\u043D\u043E, \u0442\u0435\u043C \u0447\u0430\u0449\u0435 \u043D\u0430\u0431\u0435\u0433\u0438"
+      note: "\u0441\u0442\u043E\u0439\u0431\u0438\u0449\u0435 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB, \u043E\u0440\u043E\u0447\u044C\u0438 \u0438 \u0433\u043E\u0431\u043B\u0438\u043D\u0441\u043A\u0438\u0435 \u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0449\u0430, \u043D\u043E\u0440\u044B \u0433\u043D\u043E\u043B\u043B\u043E\u0432, \u043A\u0443\u0440\u0433\u0430\u043D\u044B \u0441 \u043C\u0435\u0440\u0442\u0432\u0435\u0446\u0430\u043C\u0438; \u0447\u0435\u043C \u0431\u043B\u0438\u0436\u0435, \u0442\u0435\u043C \u0447\u0430\u0449\u0435 \u043D\u0430\u0431\u0435\u0433\u0438"
     },
     {
       id: "empire",
@@ -5839,7 +6601,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return [-1, ""];
   }
-  function spawnGroup(w, id, n) {
+  function spawnGroup(w, id, n, opts = {}) {
     const def2 = MIGRATIONS.get(id);
     if (!n) return [];
     const [e, side] = edgeCell(w, def2.minDist ?? 30);
@@ -5848,7 +6610,7 @@ dd.q4{color:#c58cff;font-weight:600}
       return [];
     }
     const ex = e % w.w, ey = e / w.w | 0, group = [];
-    const plan = def2.members ? def2.members(w, w.rng) : Array.from({ length: n }, () => ({}));
+    const plan = def2.members ? def2.members(w, w.rng, n, opts) : Array.from({ length: n }, () => ({}));
     for (const m of plan) {
       let x = clamp(ex + 0.5 + w.rng() * 3 - 1.5, 0.2, w.w - 0.2), y = clamp(ey + 0.5 + w.rng() * 3 - 1.5, 0.2, w.h - 0.2);
       if (!walkable(w, (y | 0) * w.w + (x | 0))) {
@@ -5859,7 +6621,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (def2.init) def2.init(a, w);
       if (m.init) m.init(a, w);
       if (def2.kit && a.equip) dress(a, def2.kit(w.rng, w), def2.ammo || 0);
-      if (m.kit && a.equip) dress(a, m.kit, def2.ammo || 0);
+      if (m.kit?.length && a.equip) dress(a, m.kit, def2.ammo || 0);
       group.push(a);
     }
     if (def2.groupInit) def2.groupInit(group, w);
@@ -5886,12 +6648,13 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/outside/scripted.js
+  var pickBand = (w, rng) => weighted(rng, RAID_BANDS.all().map((b) => [b.id, b.weight(w, raidThreat(w), nightness(w.tick))]));
   var raidDist = (w) => RAIDS[w.cfg.raids].dist;
   var caravanDay = (w, day, rng) => Math.max(w.tick + 1, day * DAY + (TRADE.setOut[0] + rng() * (TRADE.setOut[1] - TRADE.setOut[0])) * HOUR);
   var scripted = {
     id: "scripted",
     label: "\u0421\u0446\u0435\u043D\u0430\u0440\u0438\u0439",
-    distance: (w, id) => id === "greywolves" ? raidDist(w) : NEIGHBOURS.get(id).dist,
+    distance: (w, id) => id === "hostile" ? raidDist(w) : NEIGHBOURS.get(id).dist,
     flows: {
       // one newcomer at a time from the kin; the wait grows with the colony (it hears how big it is)
       settlers: {
@@ -5968,13 +6731,14 @@ dd.q4{color:#c58cff;font-weight:600}
         next: (w, rng) => caravanDay(w, dayOf(w.tick) + TRADE.everyDays, rng)
       },
       // every dist/2 days (a little sooner after each raid) a band may set out — with the preset's
-      // chance — sized by the rumours; a check that comes to nothing gives the colony time to recover
+      // chance — sized by the rumours; a check that comes to nothing gives the colony time to recover.
+      // Which band comes is drawn from data/raids.js: bandits, orcs, goblins, gnolls, the dead…
       raiders: {
-        from: "greywolves",
+        from: "hostile",
         first: (w, rng) => scripted.flows.raiders.next(w, rng),
-        offer: (w, rng) => rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? raidSize(w) : 0,
-        size: (w) => raidSize(w),
-        missed: () => ["\u0420\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB \u043F\u043E\u0431\u0440\u043E\u0434\u0438\u043B\u0438 \u0443 \u043A\u0440\u0430\u044F \u043B\u0435\u0441\u0430 \u0438 \u0443\u0448\u043B\u0438. \u041D\u0430\u0431\u0435\u0433\u0430 \u0432 \u044D\u0442\u043E\u0442 \u0440\u0430\u0437 \u043D\u0435 \u0431\u0443\u0434\u0435\u0442.", "danger", "info"],
+        offer: (w, rng) => rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? { n: raidSize(w), band: pickBand(w, rng) } : 0,
+        size: (w) => ({ n: raidSize(w), band: pickBand(w, w.rng) }),
+        missed: () => ["\u0427\u0443\u0436\u0438\u0435 \u0440\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438 \u043F\u043E\u0431\u0440\u043E\u0434\u0438\u043B\u0438 \u0443 \u043A\u0440\u0430\u044F \u043B\u0435\u0441\u0430 \u0438 \u0443\u0448\u043B\u0438. \u041D\u0430\u0431\u0435\u0433\u0430 \u0432 \u044D\u0442\u043E\u0442 \u0440\u0430\u0437 \u043D\u0435 \u0431\u0443\u0434\u0435\u0442.", "danger", "info"],
         next: (w, rng) => raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) : Infinity
       }
     },
@@ -6004,10 +6768,12 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function arrive(w, flowId, offered) {
     const def2 = MIGRATIONS.get(flowId);
+    const { n: count2, ...opts } = typeof offered === "object" ? offered : { n: offered };
+    offered = count2;
     const lvl = def2.species ? faunaLevel(w, def2.species) : 1;
     if (lvl <= 0) return [];
     const n = def2.accept ? def2.accept(w, offered + (lvl > 1 ? 1 : 0), w.rng) : offered;
-    return n > 0 ? spawnGroup(w, flowId, n) : [];
+    return n > 0 ? spawnGroup(w, flowId, n, opts) : [];
   }
   function arriveNow(w, flowId) {
     const f = provider(w).flows[flowId];
@@ -6778,6 +7544,12 @@ dd.q4{color:#c58cff;font-weight:600}
   function damage(w, by, t, raw, { melee: melee2 = true } = {}) {
     const g2 = ensureGear(t);
     t.hurtBy = { id: by.id, tick: w.tick, far: !melee2 };
+    if (t.mods?.dodge > 0 && w.rng() < t.mods.dodge) {
+      t.flash = 2;
+      return "dodged";
+    }
+    const tsp = SPECIES.get(t.species);
+    if (!melee2 && tsp.resist?.ranged) raw *= tsp.resist.ranged;
     if (melee2 && g2.block && w.rng() < g2.block) {
       wear(w, t, g2.blockItem);
       t.flash = 3;
@@ -6788,6 +7560,8 @@ dd.q4{color:#c58cff;font-weight:600}
     let dmg = raw * home * wall * (1 - (g2.armor || 0));
     if (g2.armor && t.equip?.body) wear(w, t, t.equip.body);
     t.hp -= dmg;
+    const bsp = SPECIES.get(by.species);
+    if (bsp.drinks && melee2 && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
     if (t.diary && t.hp < 0.45 && t.hp > 0) {
       if (!t.diary.some((e) => e.id === "wounded" && w.tick - e.t < 360)) t.stats.wounds++;
       think(w, t, "wounded");
@@ -6803,9 +7577,9 @@ dd.q4{color:#c58cff;font-weight:600}
   function attack(w, a, t) {
     if (a.cd > 0) return;
     const g2 = ensureGear(a);
-    a.cd = g2.melee.cd;
+    a.cd = Math.max(4, Math.round(g2.melee.cd * (a.mods?.swing ?? 1)));
     a.flash = 4;
-    damage(w, a, t, (0.1 + w.rng() * 0.12) * g2.melee.dmg * silverFactor(t, g2.melee.item));
+    damage(w, a, t, (0.1 + w.rng() * 0.12) * g2.melee.dmg * (a.mods?.str ?? 1) * silverFactor(t, g2.melee.item));
     if (g2.melee.item) wear(w, a, g2.melee.item);
   }
   function shoot(w, a, t, skillJob = "hunt") {
@@ -6820,12 +7594,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     wear(w, a, r.item);
     const skill = a.skill?.[skillJob] ?? 0.2, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? 0.12 : 0;
-    const hit = w.rng() < 0.4 + 0.4 * skill - d / range * 0.2 - moving;
+    const hit = w.rng() < 0.4 + 0.4 * skill + (a.mods?.aim || 0) - d / range * 0.2 - moving;
     w.fx.push({ x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rng() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rng() - 0.5) * 2, t: 8, kind: r.ammo ? "arrow" : "stone" });
     if (!hit) return "miss";
     const boost = r.boost && a.faction === "colony" ? w.mods.best[r.boost] || 1 : 1;
     const res = damage(w, a, t, (0.12 + w.rng() * 0.1) * r.dmg * boost * silverFactor(t, null), { melee: false });
-    return t.dead ? "kill" : res === "blocked" ? "miss" : "hit";
+    return t.dead ? "kill" : res === "blocked" || res === "dodged" ? "miss" : "hit";
   }
 
   // src/data/recipes.js
@@ -7471,8 +8245,8 @@ dd.q4{color:#c58cff;font-weight:600}
     perHerb: 0.35
     // health healed per herb used
   };
-  var maxHp = (a) => SPECIES.get(a.species).hp;
-  var hurt = (a) => a.hp < maxHp(a) * HEAL.seekBelow;
+  var maxHp2 = (a) => a.maxHp || SPECIES.get(a.species).hp;
+  var hurt = (a) => a.hp < maxHp2(a) * HEAL.seekBelow;
   var patients = (w) => perTick(w, "patients", () => {
     if (!has(w, "healerhut")) return [];
     const beds = BUILDINGS.get("healerhut").beds || 2;
@@ -7485,7 +8259,7 @@ dd.q4{color:#c58cff;font-weight:600}
     let given = 0;
     for (const p of ps) {
       const herbs = (w.stock.herbs || 0) >= 1 || (w.herbCredit || 0) > 0;
-      const amount = Math.min(maxHp(p) - p.hp, HEAL.rate * rate * (herbs ? 1 : HEAL.noHerbs) / Math.max(1, ps.length * 0.6));
+      const amount = Math.min(maxHp2(p) - p.hp, HEAL.rate * rate * (herbs ? 1 : HEAL.noHerbs) / Math.max(1, ps.length * 0.6));
       if (amount <= 0) continue;
       p.hp += amount;
       given += amount;
@@ -7508,8 +8282,8 @@ dd.q4{color:#c58cff;font-weight:600}
     a.y += (w.rng() - 0.5) * 0.2;
   };
   function workRate(w, a, jobId) {
-    a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 6e-4);
-    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a));
+    a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 6e-4 * (a.mods.learn ?? 1));
+    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
   }
   var toolWear = (w, a, jobId, amount = 1) => {
     const it = a.gear?.toolItem[jobId];
@@ -7886,7 +8660,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         return;
       }
-      a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 3e-4);
+      a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 3e-4 * (a.mods.learn ?? 1));
       const res = shoot(w, a, prey, job.id);
       if (res === "kill") {
         w.stats.hunted++;
@@ -7894,8 +8668,8 @@ dd.q4{color:#c58cff;font-weight:600}
         a.stats.hunted++;
         think(w, a, "huntKill", { prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label });
         for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
-        const near = w.agents.some((o) => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
-        task.oneMore = a.carry.n < 8 && near;
+        const near2 = w.agents.some((o) => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
+        task.oneMore = a.carry.n < 8 && near2;
         task.prey = null;
         task.age = 0;
       } else if (res === "miss" || res === "hit") {
@@ -8062,6 +8836,14 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "leave", label: () => "\u0443\u0445\u043E\u0434\u0438\u0442", step(w, a) {
       if (follow(w, a, "edge") === "arrived") a.gone = true;
     } },
+    // the mindless dead: shamble to the camp and wander there until something living comes close
+    { id: "haunt", label: () => "\u0431\u0440\u0435\u0434\u0451\u0442 \u043A \u043B\u0430\u0433\u0435\u0440\u044E", step(w, a, task) {
+      if (!w.agents.some((o) => o.faction === "colony" && !o.dead)) {
+        a.task = { id: "leave" };
+        return;
+      }
+      if (follow(w, a, "camp") === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 4) mill2(w, a, task, 3);
+    } },
     // gather by the fire when raiders come; done as soon as the alarm is over
     { id: "muster", label: () => "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442\u0441\u044F \u043F\u043E \u0442\u0440\u0435\u0432\u043E\u0433\u0435", step(w, a, task) {
       if (!w.agents.some((o) => o.faction === "raiders" && !o.dead)) {
@@ -8081,7 +8863,7 @@ dd.q4{color:#c58cff;font-weight:600}
         done2(a);
         return;
       }
-      const max = SPECIES.get(a.species).hp;
+      const max = a.maxHp || SPECIES.get(a.species).hp;
       if (a.hp >= max * HEAL.until) {
         const healer = task.healer != null ? w.agents.find((o) => o.id === task.healer && !o.dead) : null;
         if (healer) {
@@ -8175,7 +8957,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
     let starving = null;
     for (const id of sp.needs) {
-      const n = NEEDS.get(id);
+      const n = NEEDS2.get(id);
       a.needs[id] = Math.min(1, Math.max(0, a.needs[id] - n.decay(w, a, T2)));
       if (a.needs[id] <= (n.harmBelow ?? 0) && n.harm) {
         a.hp -= n.harm;
@@ -8186,7 +8968,8 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     if (T2 > sp.heatHarm) a.hp -= Math.min(5e-3, (T2 - sp.heatHarm) * 4e-5);
     const comfy = sp.needs.every((id) => a.needs[id] > 0.4);
-    if (comfy && T2 < 45) a.hp = Math.min(sp.hp, a.hp + 3e-4 * sp.hp);
+    const regen = a.mods.regen > 1 && T2 > 30 ? 1 : a.mods.regen ?? 1;
+    if (comfy && T2 < 45) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * regen);
     if (a.hp <= 0) kill(w, a, starving || (T2 > 60 ? "\u043F\u043E\u0436\u0430\u0440\u0430" : "\u0440\u0430\u043D"));
     return T2;
   }
@@ -8209,7 +8992,7 @@ dd.q4{color:#c58cff;font-weight:600}
     };
     const opts = [];
     for (const id of SPECIES.get(a.species).needs) {
-      const n = NEEDS.get(id);
+      const n = NEEDS2.get(id);
       opts.push([{ id: n.task }, n.urge(w, a, a.needs[id]) * campOk]);
     }
     for (const job of JOBS.all()) {
@@ -8227,20 +9010,20 @@ dd.q4{color:#c58cff;font-weight:600}
     const pray = wantsPrayer(w, a);
     if (pray > 0.1 && night < 0.5) opts.push([{ id: "pray" }, 0.3 + pray * 1.2]);
     if (councilDue(w)) opts.push([{ id: "council" }, 1.3]);
-    if ((hurt(a) || a.task?.id === "treat" && a.hp < SPECIES.get(a.species).hp * HEAL.until) && has(w, "healerhut")) opts.push([{ id: "treat" }, (1 - a.hp / SPECIES.get(a.species).hp) * 2 + 0.25]);
+    if ((hurt(a) || a.task?.id === "treat" && a.hp < maxHp(a) * HEAL.until) && has(w, "healerhut")) opts.push([{ id: "treat" }, (1 - a.hp / maxHp(a)) * 2 + 0.25]);
     if (tradeOpen(w)) opts.push([{ id: "trade" }, 1.1]);
     const brave = a.mods.bravery;
-    if (w.stats.fireNearCamp > 0 && a.hp > 0.6 && brave > 0.7) opts.push([{ id: "douse" }, 0.8 * brave]);
+    if (w.stats.fireNearCamp > 0 && hpShare(a) > 0.6 && brave > 0.7) opts.push([{ id: "douse" }, 0.8 * brave]);
     const hunter = w.agents.find((o) => !o.dead && o.task?.id === "maul" && o.task.target === a);
     if (hunter) {
       if (hunter.species === "wolf") a.mem.wolf += 0.05;
-      opts.push(brave * a.hp > 0.85 ? [{ id: "fight", target: hunter }, 1.5] : [{ id: "runHome" }, 1.5]);
+      opts.push(brave * hpShare(a) > 0.85 ? [{ id: "fight", target: hunter }, 1.5] : [{ id: "runHome" }, 1.5]);
     }
-    const enemy = nearestHostile(w, a, 16);
+    const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
     const raid = w.agents.some((o) => o.faction === "raiders" && !o.dead);
     if (raid && !enemy) opts.push([{ id: "muster" }, 1.25]);
-    if (enemy && a.hp > 0.3) opts.push([{ id: "fight", target: enemy }, (raid ? 1.35 : 1.1) * brave]);
-    if (enemy && a.hp <= 0.3 && !agentInZone(w, a)) opts.push([{ id: "runHome" }, 1.6]);
+    if (enemy && hpShare(a) > 0.3) opts.push([{ id: "fight", target: enemy }, (raid ? 1.35 : 1.1) * brave]);
+    if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{ id: "runHome" }, 1.6]);
     let best = null, bs = -Infinity;
     const cur = key(a.task);
     const keep = 0.12 + (a.task?.id === "job" ? JOBS.get(a.task.job).sticky || 0 : 0);
@@ -8270,14 +9053,14 @@ dd.q4{color:#c58cff;font-weight:600}
         a.task = { id: "flee" };
         think(w, a, "fledFire");
       }
-      if (tid === "douse" && (T2 > 58 || a.hp < 0.6)) a.task = { id: "flee" };
+      if (tid === "douse" && (T2 > 58 || hpShare(a) < 0.6)) a.task = { id: "flee" };
       if (a.task?.id === "flee" || a.task?.id === "douse") a.mem.fire += 6e-3;
       const tid2 = a.task?.id;
       if (tid2 !== "fight" && tid2 !== "runHome" && tid2 !== "flee" && w.agents.some((o) => o.task?.id === "maul" && o.task.target === a)) a.think = 0;
       if (a.task?.id !== "flee" && --a.think <= 0) {
         a.think = 15;
-        const busy = a.task?.id === "job" && a.carry?.n > 0;
-        if (!busy) decide(w, a);
+        const busy2 = a.task?.id === "job" && a.carry?.n > 0;
+        if (!busy2) decide(w, a);
       }
       if (!a.task) decide(w, a);
       if (w.nav.get("camp")[cellOf(w, a)] < 3 && (w.tick - (a.outfitAt || -999) > 300 || a.seenArmory !== w.armoryVersion) && a.task?.id !== "fight") {
@@ -8291,28 +9074,36 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/agents/brains/raider.js
+  var HUNT_RADIUS = 60;
   var raiderBrain = {
     id: "raider",
     step(w, a) {
       const T2 = w.grid.temp[cellOf(w, a)], sp = SPECIES.get(a.species);
-      if (T2 > sp.heatHarm) a.hp -= Math.min(6e-3, (T2 - sp.heatHarm) * 5e-5);
+      if (T2 > sp.heatHarm) a.hp -= Math.min(sp.undead ? 0.012 : 6e-3, (T2 - sp.heatHarm) * (sp.undead ? 1e-4 : 5e-5));
+      if (sp.rots && T2 > 12) a.hp -= sp.rots * (T2 - 12);
+      const day = 1 - nightness(w.tick);
+      if (sp.sun && day > 0.5) a.hp -= sp.sun * day;
       if (a.hp <= 0) {
         a.dead = true;
         return;
       }
-      if (T2 > 50 || nearFire(w, a, 1.5)) {
+      if (a.mods.regen > 1 && T2 < 30 && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * (a.mods.regen - 1));
+      if (!sp.mindless && (T2 > 50 || nearFire(w, a, 1.5))) {
         escapeHeat(w, a);
         return;
       }
-      if (a.hp < 0.3) a.task = { id: "leave" };
+      const lost = a.master != null && !w.agents.some((o) => o.id === a.master && !o.dead);
+      if (lost) a.master = null, a.lost = true;
+      if (a.lost || sp.sun && day > 0.6) a.task = { id: "leave" };
+      else if (!sp.mindless && a.hp < 0.3 * maxHp(a)) a.task = { id: "leave" };
       if (a.task?.id !== "leave") {
-        const e = nearestHostile(w, a, 10);
+        const e = nearestHostile(w, a, sp.mindless ? HUNT_RADIUS : 10);
         if (e) {
           if (a.task?.id !== "fight" || a.task.target !== e) a.task = { id: "fight", target: e };
-        } else if (!a.task || a.task.id === "fight") a.task = { id: a.looted ? "leave" : "assault" };
+        } else if (!a.task || a.task.id === "fight") a.task = { id: a.looted ? "leave" : sp.mindless ? "haunt" : "assault" };
       }
       TASKS.get(a.task.id).step(w, a, a.task);
-      if (!a.task) a.task = { id: a.looted ? "leave" : "assault" };
+      if (!a.task) a.task = { id: a.looted ? "leave" : sp.mindless ? "haunt" : "assault" };
       if (a.cd > 0) a.cd--;
     }
   };
@@ -8321,7 +9112,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function threatsNear(w, a, radius, from) {
     const out = [];
     for (const o of w.agents) {
-      if (o === a || o.dead || !from.includes(o.species)) continue;
+      if (o === a || o.dead || !matchesKind(o.species, from)) continue;
       if (o.task?.tame === a.id) continue;
       const r = radius * (o.stalking ? 0.55 : 1);
       if ((o.x - a.x) ** 2 + (o.y - a.y) ** 2 < r * r) out.push(o);
@@ -8393,7 +9184,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function nearest(w, a, species, r, filter = () => true) {
     let best = null, bd = r;
     for (const o of w.agents) {
-      if (o.dead || o.tame || !species.includes(o.species) || !filter(o)) continue;
+      if (o.dead || o.tame || !matchesKind(o.species, species) || !filter(o)) continue;
       const d = dist(a, o);
       if (d < bd) {
         bd = d;
@@ -8402,7 +9193,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return best;
   }
-  var company = (w, v, r) => w.agents.filter((o) => o !== v && !o.dead && o.species === v.species && dist(o, v) < r).length;
+  var company = (w, v, r) => w.agents.filter((o) => o !== v && !o.dead && (o.species === v.species || !!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel) && dist(o, v) < r).length;
   var packOf = (w, a) => w.agents.filter((o) => !o.dead && o.pack === a.pack);
   var weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < SPECIES.get(o.species).hp * P.weakBelow;
   var preyKinds = (P) => [...P.prey, ...P.weakPrey || []];
@@ -8431,7 +9222,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
       const dZone = w.nav.get("zone")[i];
       const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
-      const people = w.agents.filter((o) => !o.dead && P.victims.includes(o.species) && dist(o, a) < 6);
+      const people = w.agents.filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist(o, a) < 6);
       const pack2 = packOf(w, a), leader = pack2[0];
       if (a.task?.id === "leave" || a.hp < sp.hp * 0.35) {
         if (a.task?.id !== "leave") {
@@ -8795,19 +9586,19 @@ dd.q4{color:#c58cff;font-weight:600}
         escapeHeat(w, a, 1.2);
         return;
       }
-      let near = null;
+      let near2 = null;
       for (const o of w.agents) if (o.faction === "colony" && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < V.flee) {
-        near = o;
+        near2 = o;
         break;
       }
-      if (near) {
-        if (Math.hypot(near.x - a.x, near.y - a.y) < 0.8 && w.rng() < V.caught) {
-          kill(w, a, "\u043F\u0430\u043B\u043A\u0438", near);
-          if (w.rng() < 0.3) log(w, `<b>${esc(near.name)}</b> ${g(near, "\u043F\u0440\u0438\u0431\u0438\u043B", "\u043F\u0440\u0438\u0431\u0438\u043B\u0430")} \u043A\u0440\u044B\u0441\u0443 \u0443 \u043F\u0440\u0438\u043F\u0430\u0441\u043E\u0432.`, "wildlife");
+      if (near2) {
+        if (Math.hypot(near2.x - a.x, near2.y - a.y) < 0.8 && w.rng() < V.caught) {
+          kill(w, a, "\u043F\u0430\u043B\u043A\u0438", near2);
+          if (w.rng() < 0.3) log(w, `<b>${esc(near2.name)}</b> ${g(near2, "\u043F\u0440\u0438\u0431\u0438\u043B", "\u043F\u0440\u0438\u0431\u0438\u043B\u0430")} \u043A\u0440\u044B\u0441\u0443 \u0443 \u043F\u0440\u0438\u043F\u0430\u0441\u043E\u0432.`, "wildlife");
           return;
         }
         a.task = { id: "bolt" };
-        bolt(w, a, [near], 1.3);
+        bolt(w, a, [near2], 1.3);
         return;
       }
       a.task = { id: "nibble" };
@@ -8942,6 +9733,7 @@ dd.q4{color:#c58cff;font-weight:600}
     stepFarms(w);
     stepHerd(w);
     stepLife(w);
+    stepRelations(w);
     const t1 = performance.now();
     w.nav.step();
     const t2 = performance.now();
@@ -9067,6 +9859,13 @@ dd.q4{color:#c58cff;font-weight:600}
       ctx.arc(px, py, r, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      const skin = SPECIES.get(a.species).look.skin;
+      if (skin && r >= 3) {
+        ctx.fillStyle = skin;
+        ctx.beginPath();
+        ctx.arc(px, py, r * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+      }
       if (!a.equip) return;
       const e = a.equip, two = e.left && e.left === e.right;
       if (two) GLYPHS[ITEMS.get(e.left.type).glyph]?.(ctx, px + r * 1.05, py, r);
@@ -9881,11 +10680,11 @@ dd.q4{color:#c58cff;font-weight:600}
           ctx.fillStyle = RESOURCES.get(Object.keys(a.carry.res)[0]).color;
           ctx.fillRect(px + r * 0.4, py - r * 1.1, Math.max(3, S * 0.55), Math.max(3, S * 0.55));
         }
-        if (a.hp < sp.hp * 0.999 && sp.sentient) {
+        if (a.hp < (a.maxHp || sp.hp) * 0.999 && sp.sentient) {
           ctx.fillStyle = "#2a1414";
           ctx.fillRect(px - S, py + r + 2, S * 2, 2);
-          ctx.fillStyle = a.hp > sp.hp * 0.5 ? "#8fbf5a" : "#e0b040";
-          ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(a.hp / sp.hp, 0, 1), 2);
+          ctx.fillStyle = a.hp > (a.maxHp || sp.hp) * 0.5 ? "#8fbf5a" : "#e0b040";
+          ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(a.hp / (a.maxHp || sp.hp), 0, 1), 2);
         }
         if (a.task?.id === "flee") {
           ctx.fillStyle = "#ffe0a0";
@@ -10043,6 +10842,12 @@ dd.q4{color:#c58cff;font-weight:600}
   var DIRS = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
   var bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
   var costHtml = (w, cost) => Object.entries(cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? "" : " short"}">${v} ${RESOURCES.get(r).label}</span>`).join("");
+  function specialHtml(a) {
+    if (!a.special) return "";
+    const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
+    return `<div class="spc">${STATS.all().map((s) => `<span title="${s.label}: ${s.note}. \u0423 \u044D\u0442\u043E\u0439 \u0440\u0430\u0441\u044B ${lim[s.id][0]}\u2013${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join("")}</div>`;
+  }
+  var raceOf = (a) => raceLabel(SPECIES.get(a.species), a);
   function traitsText(a) {
     const t = a.traits.map((id) => TRAITS.get(id).label);
     return `\u043B\u044E\u0431\u0438\u0442: ${JOBS.get(a.likes).short} \xB7 \u043D\u0435 \u043B\u044E\u0431\u0438\u0442: ${JOBS.get(a.dislikes).short}${t.length ? " \xB7 " + t.join(", ") : ""}`;
@@ -10295,10 +11100,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     renderPeople(w, selected) {
       const col = colonists(w);
-      const needs = SPECIES.get("human").needs.map((id) => NEEDS.get(id));
+      const needs = SPECIES.get("human").needs.map((id) => NEEDS2.get(id));
       this.set("people", (col.map((a) => `<div class="person${a === selected ? " sel" : ""}" data-id="${a.id}">
-      <span class="nm">${esc(a.name)}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` \xB7 \u043D\u0435\u0441\u0451\u0442 ${a.carry.n}` : ""}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
-      <div class="bars" title="${needs.map((n) => n.label).join(" \xB7 ")} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435">${needs.map((n) => bar(a.needs[n.id], n.color)).join("")}${bar(a.hp, "var(--good)")}</div></div>`).join("") || '<div class="task">\u041A\u043E\u043B\u043E\u043D\u0438\u044F \u043F\u043E\u0433\u0438\u0431\u043B\u0430. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \xAB\u041C\u0435\u043D\u044E \u043C\u0438\u0440\u0430\xBB, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0447\u0430\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
+      <span class="nm">${esc(a.name)}${a.species !== "human" ? ` <i class="race">${raceOf(a)}</i>` : ""}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` \xB7 \u043D\u0435\u0441\u0451\u0442 ${a.carry.n}` : ""}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
+      <div class="bars" title="${needs.map((n) => n.label).join(" \xB7 ")} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435">${needs.map((n) => bar(a.needs[n.id], n.color)).join("")}${bar(a.hp / (a.maxHp || 1), "var(--good)")}</div></div>`).join("") || '<div class="task">\u041A\u043E\u043B\u043E\u043D\u0438\u044F \u043F\u043E\u0433\u0438\u0431\u043B\u0430. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \xAB\u041C\u0435\u043D\u044E \u043C\u0438\u0440\u0430\xBB, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0447\u0430\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
     }
     herdHtml(w) {
       const list = herd(w);
@@ -10423,7 +11228,11 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     creatureHtml(w, a) {
       const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)].toFixed(1);
-      const rows = [`<dt>\u0421\u0435\u0439\u0447\u0430\u0441</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>\u0417\u0434\u043E\u0440\u043E\u0432\u044C\u0435</dt><dd>${Math.round(a.hp / sp.hp * 100)}%</dd>`];
+      const rows = [`<dt>\u0421\u0435\u0439\u0447\u0430\u0441</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>\u0417\u0434\u043E\u0440\u043E\u0432\u044C\u0435</dt><dd>${Math.round(a.hp / (a.maxHp || sp.hp) * 100)}%</dd>`];
+      if (a.band) rows.push(`<dt>\u041A\u0442\u043E</dt><dd>${RAID_BANDS.get(a.band).label}; ${{ beast: "\u043D\u0435\u0440\u0430\u0437\u0443\u043C\u0435\u043D", semi: "\u043F\u043E\u043B\u0443\u0440\u0430\u0437\u0443\u043C\u0435\u043D", sentient: "\u0440\u0430\u0437\u0443\u043C\u0435\u043D" }[sp.mind]}</dd>`);
+      if (a.special) rows.push(`<dt>\u0422\u0435\u043B\u043E</dt><dd>${specialHtml(a)}</dd>`);
+      const inn = innateOf(sp, a);
+      if (inn.length) rows.push(`<dt>\u041E\u0441\u043E\u0431\u043E\u0435</dt><dd>${inn.map((t) => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(" ")}</dd>`);
       if (a.role === "trader" && w.caravan?.traderId === a.id) {
         const c = w.caravan;
         rows.push(`<dt>\u041A\u0430\u0440\u0430\u0432\u0430\u043D</dt><dd>${goodsUnits(c.goods)} \u043C\u0435\u0441\u0442 \u0433\u0440\u0443\u0437\u0430, ${Math.floor(c.purse)} \u0437\u043E\u043B. \u0432 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u0435</dd>`);
@@ -10441,7 +11250,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (a.equip) rows.push(`<dt>\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435</dt><dd>${gearText(a)}</dd>`);
       rows.push(`<dt>\u041F\u043E\u0434 \u043D\u043E\u0433\u0430\u043C\u0438</dt><dd>${T2} \xB0C</dd>`);
-      const who = a.role === "trader" ? "\u043A\u0443\u043F\u0435\u0446" : a.role === "guard" ? "\u043E\u0445\u0440\u0430\u043D\u043D\u0438\u043A \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430" : a.tame ? `${sp.label}, ${sp.id === "goat" ? "\u0441\u0432\u043E\u044F" : "\u0441\u0432\u043E\u0439"}` : sp.label;
+      const who = a.role === "trader" ? "\u043A\u0443\u043F\u0435\u0446" : a.role === "guard" ? "\u043E\u0445\u0440\u0430\u043D\u043D\u0438\u043A \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430" : a.tame ? `${sp.label}, ${sp.id === "goat" ? "\u0441\u0432\u043E\u044F" : "\u0441\u0432\u043E\u0439"}` : raceOf(a);
       const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${who}` : who[0].toUpperCase() + who.slice(1);
       return `<div class="pc-head"><h3>${title}</h3><button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button></div><dl class="kv">${rows.join("")}</dl>`;
     }
@@ -10451,9 +11260,14 @@ dd.q4{color:#c58cff;font-weight:600}
       const fresh = a.diary.filter((e) => e.until > w.tick && e.mood !== 0).sort((x, y) => Math.abs(y.mood) - Math.abs(x.mood)).slice(0, 2);
       const moodPct = Math.round((mood + 1) * 50);
       const needs = sp.needs.map((id) => {
-        const n = NEEDS.get(id);
+        const n = NEEDS2.get(id);
         return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`;
-      }).join("") + `<div class="pc-bar"><span>\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435</span>${bar(a.hp, "var(--good)")}<b>${Math.round(a.hp * 100)}</b></div>`;
+      }).join("") + `<div class="pc-bar"><span>\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435</span>${bar(a.hp / (a.maxHp || sp.hp), "var(--good)")}<b>${Math.round(a.hp / (a.maxHp || sp.hp) * 100)}</b></div>`;
+      const inn = innateOf(sp, a).map((t) => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join("");
+      const vals = (a.values || []).map((id) => `<span class="chip">${VALUES.get(id).label}</span>`).join("");
+      const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];
+      const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? "down" : "up"}">${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ""}</li>`).join("")}</ul>` : '<p class="muted pc-small">\u041D\u0438 \u0441 \u043A\u0435\u043C \u043E\u0441\u043E\u0431\u043E \u043D\u0435 \u0441\u043E\u0448\u0451\u043B\u0441\u044F \u0438 \u043D\u0435 \u043F\u043E\u0432\u0437\u0434\u043E\u0440\u0438\u043B.</p>';
+      const body = sp.body ? `${raceOf(a)[0].toUpperCase() + raceOf(a).slice(1)}: \u0432\u0437\u0440\u043E\u0441\u043B\u0435\u044E\u0442 \u043A ${sp.body.adult}, \u0436\u0438\u0432\u0443\u0442 \u0434\u043E ${sp.body.life} \u043B\u0435\u0442; ${sp.body.diet}.` : "";
       const want2 = wishes(w, a, councilWish(w, a));
       const slots = SLOTS.map((s) => {
         const it = a.equip?.[s.id];
@@ -10479,6 +11293,15 @@ dd.q4{color:#c58cff;font-weight:600}
           <div class="chips">${traits || '<span class="muted pc-small">\u043D\u0438\u0447\u0435\u043C \u043E\u0441\u043E\u0431\u044B\u043C \u043D\u0435 \u0432\u044B\u0434\u0435\u043B\u044F\u0435\u0442\u0441\u044F</span>'}</div>
           <h4>\u041D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
           <h4>\u0421\u0430\u043C\u043E\u0447\u0443\u0432\u0441\u0442\u0432\u0438\u0435</h4>${needs}
+        </section>
+        <section><h4>\u041F\u0440\u0438\u0440\u043E\u0434\u0430</h4>
+          <p class="pc-small">${body}</p>
+          ${specialHtml(a)}
+          ${inn ? `<div class="chips">${inn}</div>` : ""}
+          <h4>\u041C\u0438\u0440\u043E\u0432\u043E\u0437\u0437\u0440\u0435\u043D\u0438\u0435</h4>
+          ${a.align ? `<p class="pc-small">${axisWord("order", a.align.order)} \xB7 ${axisWord("mercy", a.align.mercy)}</p>` : ""}
+          ${vals ? `<div class="chips">${vals}</div>` : ""}
+          <h4>\u0421\u043E\u0441\u0435\u0434\u0438</h4>${feelHtml}
         </section>
         <section><h4>\u0425\u043E\u0447\u0435\u0442</h4>${want2.length ? `<ul class="pc-list">${want2.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : '<p class="muted pc-small">\u0412\u0441\u0435\u043C \u0434\u043E\u0432\u043E\u043B\u0435\u043D.</p>'}
           <h4>\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435</h4><dl class="kv">${slots}</dl>
@@ -10819,8 +11642,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.29 \xB7 14.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 91e5fd1" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.30 \xB7 14.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 cdcb360" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -10843,7 +11666,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return { format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, tree };
   }
   function loadWorld(save2) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     if (!save2 || save2.format !== SAVE_FORMAT) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
     ensureRegion(w);
@@ -10868,10 +11691,11 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const id of w.nav.order) if (!(id in nav.dist)) w.nav.dirtySet.add(id);
     Object.assign(w.nav.last, nav.last);
     for (const a of w.agents) if (a.mem) a.mem = newMemory(a.mem);
+    for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) (_c = a.mods)[k] ?? (_c[k] = v);
     for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
     for (const a of w.agents) if (a.prefs) for (const id of JOBS.ids()) {
-      (_c = a.prefs)[id] ?? (_c[id] = 1);
-      (_d = a.skill)[id] ?? (_d[id] = 0);
+      (_d = a.prefs)[id] ?? (_d[id] = 1);
+      (_e = a.skill)[id] ?? (_e[id] = 0);
     }
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     ensureFlows(w);

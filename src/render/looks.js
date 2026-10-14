@@ -1,4 +1,5 @@
 import {ITEMS} from '../data/items.js';
+import {SPECIES} from '../data/species.js';
 
 // How creatures are drawn. A species names its look in data/species.js (look.shape);
 // a new shape is one more painter here.
@@ -27,6 +28,9 @@ export const LOOKS = {
     const body = a.equip?.body ? ITEMS.get(a.equip.body.type) : null;   // the plain piece's colour
     ctx.strokeStyle = body ? body.color : '#0e100b'; ctx.lineWidth = body ? Math.max(1.8, r * 0.38) : 1.5;
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // the face: a dot in the race's skin colour, so a dwarf and an elf of one faction differ at a glance
+    const skin = SPECIES.get(a.species).look.skin;
+    if (skin && r >= 3) { ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(px, py, r * 0.42, 0, Math.PI * 2); ctx.fill(); }
     if (!a.equip) return;
     const e = a.equip, two = e.left && e.left === e.right;
     if (two) GLYPHS[ITEMS.get(e.left.type).glyph]?.(ctx, px + r * 1.05, py, r);
