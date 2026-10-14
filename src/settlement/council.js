@@ -6,7 +6,20 @@ import {RESOURCES} from '../data/resources.js';
 import {dayOf, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {colonists, count, has, popCap, openSites, ofSpecies} from './query.js';
-import {canAfford, eligible, laySite, missing} from './buildings.js';
+import {canAfford, eligible as buildable, laySite, missing} from './buildings.js';
+import {JOBS} from '../data/jobs.js';
+import {RECIPES} from '../data/recipes.js';
+import {jobUnlocked} from './query.js';
+
+// can the colony come by this resource at all right now: some work brings it in, or a workshop it has
+// already built makes it. A goal whose price holds something out of reach (rope before the craft hut,
+// iron before the forge) would stall the council for days, so such a building is not a candidate yet.
+function obtainable(w, res) {
+  if (JOBS.all().some(j => j.resource === res && jobUnlocked(w, j))) return true;
+  return RECIPES.all().some(r => r.makes?.resource === res && has(w, r.at) && (r.needs || []).every(b => has(w, b)));
+}
+// a building the council may pick: allowed, and everything its price still lacks can be come by
+export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.get(key).cost).every(([r]) => obtainable(w, r));
 import {handItems, allItems, def} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {oreSeen} from '../world/ores.js';
@@ -21,11 +34,12 @@ export function councilDue(w) {
   return h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
 }
 
-// extra pull toward work that brings in what the current goal still lacks
+// extra pull toward work that brings in what the current goal still lacks. «Lacks» is measured the way
+// the site is laid (settlement/buildings.js missing): for wood that is the price plus the fuel kept for
+// the fire. Measured against the bare price, the woodcutters stopped short of it and the site was never laid.
 export function goalNeed(w, res) {
   const g = w.council.goal; if (!g) return 0;
-  const need = BUILDINGS.get(g).cost[res] || 0;
-  return (w.stock[res] || 0) < need ? 0.3 : 0;
+  return missing(w, BUILDINGS.get(g).cost).some(([r]) => r === res) ? 0.3 : 0;
 }
 
 // strongest argument this colonist has for a building: [score, reason]

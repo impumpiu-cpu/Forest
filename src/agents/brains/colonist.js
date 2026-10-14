@@ -21,6 +21,9 @@ import {hurt, waiting, HEAL} from '../../settlement/healing.js';
 import {has} from '../../settlement/query.js';
 import {wantsPrayer} from '../../settlement/life.js';
 
+// how long a job dropped on its first step stays out of the choice
+const JOB_SKIP = 120;
+
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
 function decide(w, a) {
@@ -37,6 +40,7 @@ function decide(w, a) {
   }
   for (const job of JOBS.all()) {
     if (!jobUnlocked(w, job) || (job.canDo && !job.canDo(w, a))) continue;
+    if (a.skipJob?.id === job.id && w.tick < a.skipJob.until) continue;   // just dropped it: nothing to do there
     const base = job.desire(w, ctx, job);
     if (base < 0) continue;
     const res = job.resource;
@@ -112,7 +116,12 @@ export const colonistBrain = {
     if (w.nav.get('camp')[cellOf(w, a)] < 3 && (w.tick - (a.outfitAt || -999) > 300 || a.seenArmory !== w.armoryVersion) && a.task?.id !== 'fight') {
       a.outfitAt = w.tick; a.seenArmory = w.armoryVersion; outfit(w, a);
     }
+    const was = a.task;
     TASKS.get(a.task.id).step(w, a, a.task);
+    // a job dropped on its first step (no prey, no free body, no site) is not taken again for a while;
+    // without this the colonist picked it again the same tick and stood idle for hours
+    if (!a.task && was.id === 'job' && !was.started) a.skipJob = {id: was.job, until: w.tick + JOB_SKIP};
+    else if (a.task === was && was.id === 'job') was.started = true;
     if (a.cd > 0) a.cd--;
   },
 };

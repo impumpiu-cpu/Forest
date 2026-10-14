@@ -198,5 +198,5 @@ export const BESTIARY = [
     habitat: {swamp: 'usual'},
     special: around({S: 3, P: 9, E: 5, C: 2, I: 5, A: 10, L: 7}),
     look: {shape: 'spirit', size: 0.4, color: '#6e6a4e'},
-    vermin: {eats: 0.004, flee: 3, caught: 0.03, spoils: true}}),
+    vermin: {eats: 0.004, flee: 3, caught: 0.03, spoils: true, veil: 2}}),
 ];

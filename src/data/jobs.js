@@ -27,7 +27,8 @@ import {oreBeside, oreOf} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
 import {chores, tameTargets, herd} from '../settlement/herd.js';
 import {maybeGoldVein, foundMithril} from '../settlement/precious.js';
-import {reachableCorpses} from '../settlement/life.js';
+import {reachableCorpses, freeCorpse} from '../settlement/life.js';
+import {hpShare} from '../agents/agent.js';
 
 export const JOBS = new Registry('job');
 useJobs(JOBS);   // navmaps.js needs to know which flow field each job walks
@@ -179,7 +180,8 @@ JOBS.registerAll([
   // the dead are carried to the graves (settlement/life.js); not while raiders are about or wolves near the body
   {id: 'bury', label: 'хоронить умерших', short: 'похороны', verb: 'хоронит умершего',
     runner: 'bury', time: 120,
-    canDo: (w, a) => a.hp > 0.5,
+    // only one bearer per body: the others would take the job, find nothing free and drop it at once
+    canDo: (w, a) => hpShare(a) > 0.5 && !!freeCorpse(w, a),
     desire: w => (reachableCorpses(w).length && !w.agents.some(o => o.faction === 'raiders' && !o.dead) ? 0.7 : -1)},
 
   {id: 'build', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,

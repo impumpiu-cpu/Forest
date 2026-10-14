@@ -20,10 +20,11 @@ import {freeSlots} from './life.js';
 
 const PRESERVED = () => FOODS.filter(f => f.of);
 
-// how much of a resource the council's goal still needs to keep in the stock
+// how much of a resource the council's goal still needs to keep in the stock (wood: plus the fire's share)
 function reserved(w, res) {
   const g = w.council.goal; if (!g) return 0;
-  return BUILDINGS.get(g).cost[res] || 0;
+  const v = BUILDINGS.get(g).cost[res] || 0;
+  return v && res === 'wood' ? v + fuelReserve(w) : v;
 }
 
 function canStart(w, r) {
