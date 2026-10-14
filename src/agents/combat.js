@@ -14,7 +14,10 @@ export function nearestHostile(w, a, r) {
   let best = null, bd = r * r;
   for (const o of w.agents) {
     if (o === a || o.dead || !(isHostile(a, o) || aggressor(a, o))) continue;
-    const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; best = o; }
+    const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
+    // the nechist is seen only up close (a leshy among the trees), or not at all (a rusalka under water)
+    if (o.veil != null && d > o.veil * o.veil && !aggressor(a, o)) continue;
+    if (d < bd) { bd = d; best = o; }
   }
   return best;
 }
@@ -31,6 +34,7 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   if (t.mods?.dodge > 0 && w.rng() < t.mods.dodge) { t.flash = 2; return 'dodged'; }
   const tsp = SPECIES.get(t.species);
   if (!melee && tsp.resist?.ranged) raw *= tsp.resist.ranged;   // arrows pass through a skeleton
+  if (melee && tsp.resist?.melee) raw *= tsp.resist.melee;      // an axe in a mycelium does little
   if (melee && g.block && w.rng() < g.block) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
   const home = by.faction === 'colony' && agentInZone(w, by) ? 1.25 : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
@@ -40,6 +44,10 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   // creatures that drink blood heal by what they draw
   const bsp = SPECIES.get(by.species);
   if (bsp.drinks && melee && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
+  // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js), a drake's breath burns
+  if (melee && bsp.venom && !tsp.undead) { t.poison = {dmg: bsp.venom.dmg, until: w.tick + bsp.venom.ticks}; }
+  if (melee && bsp.web) t.webbed = {slow: bsp.web.slow, until: w.tick + bsp.web.ticks};
+  if (melee && bsp.breath && w.rng() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
@@ -50,6 +58,17 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
 // creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely
 export const SILVER = {bane: 2.5, plain: 0.5};
 const silverFactor = (t, item) => (SPECIES.get(t.species).weakTo?.includes('silver') ? (item && def(item).silver ? SILVER.bane : SILVER.plain) : 1);
+
+// a drake's breath: the ground under the victim catches fire (only where there is something to burn)
+function scorch(w, t) {
+  const cx = t.x | 0, cy = t.y | 0;
+  for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) {
+    if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
+    const i = y * w.w + x;
+    if (w.grid.fuel[i] > 0.05) { w.grid.fire[i] = Math.max(w.grid.fire[i], 0.5); w.grid.temp[i] = Math.max(w.grid.temp[i], 260); }
+  }
+  w.nav.dirty('fire');
+}
 
 export function attack(w, a, t) {
   if (a.cd > 0) return;

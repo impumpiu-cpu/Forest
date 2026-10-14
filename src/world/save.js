@@ -3,6 +3,8 @@
 // gets its distance fields back as they were (stale ones stay stale, so the game goes on exactly
 // as it would have), agents' memories get their "unknown reads as 0" wrapper again.
 // A loaded game continues tick for tick like the one that was saved (tools/determinism.mjs checks it).
+import {SPECIES} from '../data/species.js';
+import {rollCreature} from '../agents/special.js';
 import {BASE_MODS} from '../data/traits.js';
 import {encode, decode} from '../core/serialize.js';
 import {Registry} from '../core/registry.js';
@@ -64,8 +66,21 @@ export function loadWorld(save) {
   for (const id of w.nav.order) if (!(id in nav.dist)) w.nav.dirtySet.add(id);
   Object.assign(w.nav.last, nav.last);
   for (const a of w.agents) if (a.mem) a.mem = newMemory(a.mem);
+  // deaths from before the bestiary: causes are «от …» now, beasts go by their plural name (settlement/chronicle.js)
+  for (const k of Object.keys(w.chronicle.deaths || {})) {
+    if (k === 'налётчики' || k.startsWith('от ') || SPECIES.all().some(s => s.plural === k || s.label === k)) continue;
+    w.chronicle.deaths['от ' + k] = (w.chronicle.deaths['от ' + k] || 0) + w.chronicle.deaths[k]; delete w.chronicle.deaths[k];
+  }
   // multipliers added since the save (SPECIAL, races) start neutral
   for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) a.mods[k] ??= v;
+  // creatures from before SPECIAL get theirs now, the same every time this save is loaded; health keeps its share
+  for (const a of w.agents) {
+    const sp = SPECIES.get(a.species);
+    if (a.special || !sp.special) continue;
+    const share = a.hp / (sp.hp || 1);
+    rollCreature({rng: mulberry(a.id * 6151 + 3)}, a, sp);
+    a.hp = a.maxHp * Math.max(0, Math.min(1, share));
+  }
   // colonists from before food preferences: give them some, the same every time this save is loaded
   for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
   // jobs added since the save (herding, burials): neutral about them, no skill yet

@@ -5,7 +5,7 @@
 //   a.align   — {order, mercy} near the race's default; a.values — 2–3 values it holds dear
 // The values work through agent.mods (data/special.js EFFECTS), so the rest of the game reads
 // mods as before and never has to know about SPECIAL.
-import {STATS, EFFECTS} from '../data/special.js';
+import {STATS, EFFECTS, middle} from '../data/special.js';
 import {AXIS_MAX} from '../data/values.js';
 import {weighted, clamp} from '../core/util.js';
 
@@ -56,12 +56,13 @@ export function rollCreature(w, a, sp) {
   }
 }
 
-// SPECIAL → mods and health
+// SPECIAL → mods and health. A beast (`relativeStats`) is measured against the typical one of its kind.
 export function applySpecial(a, sp) {
-  const s = a.special;
-  a.maxHp = sp.hp * EFFECTS.hp(s);
+  const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;
+  const rel = (k) => (base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s));
+  a.maxHp = sp.hp * rel('hp');
   a.hp = a.maxHp;
-  for (const k of ['str', 'speed', 'swing', 'learn', 'sight', 'cold']) mod(a, k, EFFECTS[k](s));
-  mod(a, 'aim', EFFECTS.aim(s));
-  mod(a, 'dodge', EFFECTS.dodge(s));
+  for (const k of ['str', 'speed', 'swing', 'learn', 'sight', 'cold']) mod(a, k, rel(k));
+  mod(a, 'aim', EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
+  mod(a, 'dodge', Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
 }

@@ -46,7 +46,7 @@ export function summarize(w) {
     ['Сделано вещей', sumVals(c.crafted)],
     ['Налётов пережито', Math.max(0, w.stats.raids - (w.over?.reason === 'raided' ? 1 : 0))],
     ['Сражено налётчиков', c.raidersKilled],
-    ['Убито волков', c.wolvesKilled],
+    ['Убито зверей и нечисти', c.wolvesKilled],
   ];
 
   // awards: the colonist with the most of something (only if anyone did it at all)
@@ -67,7 +67,7 @@ export function summarize(w) {
     award('Каменотёс', r => r.stats.gathered.stone || 0, (r, v) => `${v} ед. камня`),
     award('Мастер', r => r.stats.crafted, (r, v) => `${v} ${plural(v, 'вещь', 'вещи', 'вещей')}`),
     award('Строитель', r => r.stats.labour, (r, v) => `${Math.round(v / 120)} ч на стройке`, 240),
-    award('Защитник', r => r.stats.raiders + r.stats.wolves, r => [r.stats.raiders && `${r.stats.raiders} налётч.`, r.stats.wolves && `${r.stats.wolves} волк.`].filter(Boolean).join(', ')),
+    award('Защитник', r => r.stats.raiders + r.stats.wolves, r => [r.stats.raiders && `${r.stats.raiders} налётч.`, r.stats.wolves && `${r.stats.wolves} зверей`].filter(Boolean).join(', ')),
     award('Долгожитель', r => daysLived(w, r), (r, v) => `${daysText(v)} в поселении`),
     award('Живучий', r => r.stats.wounds, (r, v) => `${v} тяжёл. ${plural(v, 'рана', 'раны', 'ран')}`),
     award('Душа компании', r => (moodAvg(r) ?? -9) + 1, r => `чаще всех ${g(r, 'был', 'была')} в хорошем настроении`, 0.9),
@@ -79,7 +79,7 @@ export function summarize(w) {
   const dead = people.filter(r => r.died != null).sort((a, b) => a.died - b.died);
   if (dead.length) facts.push(`Первой потерей ${g(dead[0], 'стал', 'стала')} ${dead[0].name} на ${dayNo(dead[0].died)}-й день: ${dead[0].cause}.`);
   const byCause = Object.entries(c.deaths).sort((a, b) => b[1] - a[1]);
-  if (byCause.length) facts.push(`Погибли: ${byCause.map(([k, v]) => `${k === 'волки' ? 'от волков' : k === 'налётчики' ? 'от налётчиков' : 'от ' + k} — ${v}`).join(', ')}.`);
+  if (byCause.length) facts.push(`Погибли: ${byCause.map(([k, v]) => `${k} — ${v}`).join(', ')}.`);
   if (c.biggestRaid) facts.push(`Самый большой налёт: ${c.biggestRaid.size} ${plural(c.biggestRaid.size, 'налётчик', 'налётчика', 'налётчиков')} на ${dayNo(c.biggestRaid.tick)}-й день.`);
   if (c.built.length) {
     const first = c.built[0], last = c.built[c.built.length - 1], nm = k => BUILDINGS.get(k).name.toLowerCase();
@@ -92,7 +92,7 @@ export function summarize(w) {
   if (c.councils) facts.push(`Совет у костра собирался ${c.councils} ${plural(c.councils, 'раз', 'раза', 'раз')} и заложил ${laid} ${plural(laid, 'постройку', 'постройки', 'построек')}${saved && saved[1] > 1 ? `; дольше всего копили на ${BUILDINGS.get(saved[0]).name.toLowerCase()} (${saved[1]} ${plural(saved[1], 'совет', 'совета', 'советов')})` : ''}.`);
   const fav = Object.entries(c.crafted).sort((a, b) => b[1] - a[1])[0];
   if (fav) facts.push(`Чаще всего мастерили: ${ITEMS.get(fav[0]).short} (×${fav[1]}).`);
-  if (w.stats.hunted) facts.push(`Охотники добыли ${w.stats.hunted} ${plural(w.stats.hunted, 'зайца', 'зайцев', 'зайцев')}${w.stats.wolfKills ? `, волки — ${w.stats.wolfKills}` : ''}.`);
+  if (w.stats.hunted) facts.push(`Охотники добыли ${w.stats.hunted} ${plural(w.stats.hunted, 'зайца', 'зайцев', 'зайцев')}${w.stats.wolfKills ? `, хищники — ${w.stats.wolfKills}` : ''}.`);
   else if (w.stats.wolfKills) facts.push(`Волки съели ${w.stats.wolfKills} ${plural(w.stats.wolfKills, 'зайца', 'зайцев', 'зайцев')}, охотникам не досталось ни одного.`);
   const gathered = RESOURCES.filter(r => c.gathered[r.id]).map(r => `${r.label} — ${c.gathered[r.id]}`);
   if (gathered.length) facts.push(`Собрано: ${gathered.join(', ')}.`);

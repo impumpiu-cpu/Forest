@@ -21,6 +21,8 @@ export function stepBody(w, a) {
     if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
   }
   if (T > sp.heatHarm) a.hp -= Math.min(0.005, (T - sp.heatHarm) * 0.00004);
+  // venom from a bite (agents/combat.js): it wears off by itself
+  if (a.poison) { if (w.tick < a.poison.until) { a.hp -= a.poison.dmg; starving = starving || 'яда'; } else a.poison = null; }
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
   // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
   const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;

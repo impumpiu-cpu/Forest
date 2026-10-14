@@ -23,7 +23,7 @@ import {FURNITURE} from './furniture.js';
 
 export const RESOURCES = new Registry('resource');
 
-export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Заготовки', 'Семена', 'Ремесло', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Мебель', 'Быт', 'Инструменты', 'Боеприпасы'];
+export const RESOURCE_GROUPS = ['Деньги', 'Еда', 'Заготовки', 'Семена', 'Ремесло', 'Лекарства', 'Материалы', 'Топливо', 'Руда', 'Металл', 'Роскошь', 'Мебель', 'Быт', 'Инструменты', 'Боеприпасы', 'Реагенты'];
 
 RESOURCES.registerAll([
   ...FOODS.all().map(f => ({id: f.id, label: f.label, short: f.short || f.label, tags: ['food'], group: f.group || 'Еда',
@@ -37,6 +37,14 @@ RESOURCES.registerAll([
   {id: 'bone',    label: 'кости',   short: 'кости',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.2, keep: 12, color: '#e8e2cf'},
   {id: 'hide',    label: 'шкуры',   short: 'шкуры',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.5, keep: 6, color: '#9b7650'},
   {id: 'leather', label: 'кожа',    short: 'кожа',    tags: ['material'], group: 'Материалы', loot: 1, value: 1, keep: 8, color: '#7a4d26'},
+  // what the bestiary's beasts leave (data/bestiary.js): reagents for the alchemy to come, rarities for the traders
+  {id: 'silk',     label: 'паучий шёлк', short: 'шёлк', tags: ['material'], group: 'Материалы', loot: 1, value: 3, keep: 4, color: '#e9e6f2'},
+  {id: 'feathers', label: 'перья грифона', short: 'перья', tags: ['material'], group: 'Материалы', loot: 1, value: 4, keep: 0, color: '#c9a25a'},
+  {id: 'scales',   label: 'драконья чешуя', short: 'чешуя', tags: ['material'], group: 'Материалы', loot: 1, value: 8, keep: 2, color: '#8a5a3c'},
+  {id: 'venom',    label: 'яд', short: 'яд', tags: ['reagent'], group: 'Реагенты', loot: 1, value: 3, keep: 2, color: '#7bbf4a'},
+  {id: 'bile',     label: 'медвежья желчь', short: 'желчь', tags: ['reagent'], group: 'Реагенты', loot: 1, value: 3, keep: 2, color: '#a8a042'},
+  {id: 'slime',    label: 'жабья слизь', short: 'слизь', tags: ['reagent'], group: 'Реагенты', loot: 1, value: 1.5, keep: 2, color: '#8fae6a'},
+  {id: 'gland',    label: 'огненная железа', short: 'огн. железа', tags: ['reagent'], group: 'Реагенты', loot: 1, value: 6, keep: 1, color: '#e0703a'},
 
   // ── the outpost's own crafts: from the meadow and the lake shore to rope, cloth, pots and boards
   {id: 'fiber',  label: 'волокно', short: 'волокно', tags: ['material'], group: 'Ремесло', loot: 1, value: 0.15, keep: 16, target: 16, color: '#9bc29a'},

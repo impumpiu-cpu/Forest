@@ -5,7 +5,7 @@ import {SPECIES} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, bolt, follow, recover, moveToward} from '../movement.js';
-import {kill} from '../agent.js';
+import {kill, maxHp} from '../agent.js';
 import {damage} from '../combat.js';
 import {pens} from '../../settlement/herd.js';
 import {BUILDINGS} from '../../data/buildings.js';
@@ -41,7 +41,7 @@ export const livestockBrain = {
       } else if (!sp.mule) { a.task = {id: 'bolt'}; bolt(w, a, [wolf], 1.3); return; }
     }
     recover(a);
-    if (a.hp < sp.hp) a.hp = Math.min(sp.hp, a.hp + 0.0003 * sp.hp);
+    if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a));
     const pen = penOf(w, a);
     if (!pen) {
       // no pen yet: stay by the camp

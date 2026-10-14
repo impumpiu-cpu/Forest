@@ -20,8 +20,9 @@ METRICS.registerAll([
   {id: 'arrived', label: 'Пришло переселенцев', group: 'Люди', fmt: 0, get: w => w.chronicle.people.filter(p => !p.founder).length},
   {id: 'deaths', label: 'Смертей всего', group: 'Люди', fmt: 0, get: allDeaths},
   {id: 'deathsRaid', label: 'Убиты налётчиками', group: 'Люди', fmt: 0, get: w => deaths(w, 'налётчики')},
-  {id: 'deathsWolf', label: 'Убиты волками', group: 'Люди', fmt: 0, get: w => deaths(w, 'волки')},
-  {id: 'deathsOther', label: 'Умерли от голода, холода, огня', group: 'Люди', fmt: 0, get: w => allDeaths(w) - deaths(w, 'налётчики') - deaths(w, 'волки')},
+  // the chronicle keys deaths by beasts with the beast's plural name, other causes with «от …» (settlement/chronicle.js)
+  {id: 'deathsWolf', label: 'Убиты зверями и нечистью', group: 'Люди', fmt: 0, get: w => Object.entries(w.chronicle.deaths).filter(([k]) => k !== 'налётчики' && !k.startsWith('от ')).reduce((s, [, v]) => s + v, 0)},
+  {id: 'deathsOther', label: 'Умерли от голода, холода, огня, яда', group: 'Люди', fmt: 0, get: w => Object.entries(w.chronicle.deaths).filter(([k]) => k.startsWith('от ')).reduce((s, [, v]) => s + v, 0)},
   {id: 'mood', label: 'Среднее настроение', group: 'Люди', fmt: 2, get: w => avg(colonists(w), a => moodOf(w, a))},
   {id: 'food', label: 'Еда в запасе', group: 'Запасы', fmt: 0, get: foodTotal},
   ...RESOURCES.all().map(r => ({id: 'res_' + r.id, label: r.label, group: 'Запасы', fmt: 0, get: w => w.stock[r.id] || 0})),

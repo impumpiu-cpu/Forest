@@ -13,7 +13,7 @@ import {agentInZone} from '../../settlement/zone.js';
 import {attack} from '../combat.js';
 import {SPECIES as SP} from '../../data/species.js';
 import {stepBody} from '../body.js';
-import {kill} from '../agent.js';
+import {kill, maxHp} from '../agent.js';
 import {log} from '../../core/log.js';
 import {think} from '../mind.js';
 import {esc, clamp} from '../../core/util.js';
@@ -33,7 +33,7 @@ function nearest(w, a, species, r, filter = () => true) {
 const company = (w, v, r) => w.agents.filter(o => o !== v && !o.dead && (o.species === v.species || (!!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel)) && dist(o, v) < r).length;
 const packOf = (w, a) => w.agents.filter(o => !o.dead && o.pack === a.pack);
 // big game (a mule) is prey only once it is badly hurt
-const weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < SP.get(o.species).hp * P.weakBelow;
+const weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < maxHp(o) * P.weakBelow;
 const preyKinds = P => [...P.prey, ...(P.weakPrey || [])];
 
 export const boldness = (a, P) => clamp((P.hungry - a.needs.food) / (P.hungry - P.starving), 0, 1);
@@ -43,10 +43,11 @@ function startMaul(w, a, v, b) {
   for (const m of packOf(w, a)) m.calmUntil = w.tick + P.calm * (1 - 0.5 * b);   // one try at a time
   for (const m of packOf(w, a)) if ((m === a || dist(m, a) < 12) && m.task?.id !== 'feed') m.task = {id: 'maul', target: v};
   w.stats.wolfAttacks++;
-  think(w, v, 'wolfAttack');
+  const sp = SPECIES.get(a.species), many = packOf(w, a).length > 1, who = many ? sp.plural : sp.label;
+  think(w, v, 'wolfAttack', {who: sp.plural});
   const n = company(w, v, P.loneRadius);
-  log(w, b > 0.8 && n ? `Изголодавшиеся волки бросаются на людей! <b>${esc(v.name)}</b> и спутник(и) вдали от лагеря.`
-    : `Волки нападают! <b>${esc(v.name)}</b> далеко от лагеря и без помощи.`, 'danger');
+  log(w, b > 0.8 && n ? `Изголодавшиеся ${sp.plural} бросаются на людей! <b>${esc(v.name)}</b> и спутник(и) вдали от лагеря.`
+    : `${who[0].toUpperCase() + who.slice(1)} ${many ? 'нападают' : 'нападает'}! <b>${esc(v.name)}</b> далеко от лагеря и без помощи.`, 'danger');
 }
 
 export const predatorBrain = {
@@ -64,9 +65,10 @@ export const predatorBrain = {
     const people = w.agents.filter(o => !o.dead && matchesKind(o.species, P.victims) && dist(o, a) < 6);
     const pack = packOf(w, a), leader = pack[0];
 
-    // wounded: leave for good
-    if (a.task?.id === 'leave' || a.hp < sp.hp * 0.35) {
-      if (a.task?.id !== 'leave') { a.task = {id: 'leave'}; if (leader === a) log(w, 'Раненые волки уходят из леса.', 'wildlife'); }
+    // wounded — or a night hunter at sunrise: leave for good
+    if (sp.nocturnal && night < 0.3 && a.task?.id !== 'leave') a.task = {id: 'leave'};
+    if (a.task?.id === 'leave' || a.hp < maxHp(a) * 0.35) {
+      if (a.task?.id !== 'leave') { a.task = {id: 'leave'}; if (leader === a) log(w, `Раненые ${sp.plural || sp.label} уходят из леса.`, 'wildlife'); }
       if (follow(w, a, 'edge', 1.2) === 'arrived') a.gone = true;
       return;
     }
@@ -118,7 +120,7 @@ export const predatorBrain = {
       if (a.stamina <= 0.05) { a.task = {id: 'rest'}; return; }
       // help arrived or the victim reached the settlement: back off for a while (shorter when starving)
       if (!v || v.dead || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
-        if (v && !v.dead && t.target === v) think(w, v, 'escapedWolves');
+        if (v && !v.dead && t.target === v) think(w, v, 'escapedWolves', {who: sp.plural});
         if (v && !v.dead) for (const m of pack) { m.calmUntil = w.tick + P.calm * (1 - 0.7 * b); if (m.task?.id === 'maul') m.task = {id: 'roam'}; }
         else if (t) a.task = {id: 'roam'};
         return;
@@ -156,7 +158,7 @@ export const predatorBrain = {
     // starving with no prey in sight: the pack may move on to other hunting grounds
     if (leader === a && b > 0.85 && !nearest(w, a, P.prey, P.sight) && w.rng() < P.wanderOff) {
       for (const m of pack) m.task = {id: 'leave'};
-      log(w, 'Голодная стая ушла искать другие угодья.', 'wildlife');
+      log(w, `Голодные ${sp.plural || sp.label} ушли искать другие угодья.`, 'wildlife');
       return;
     }
 

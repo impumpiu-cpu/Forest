@@ -49,6 +49,8 @@ function decide(w, a) {
   opts.push([{id: 'idle'}, 0.15]);
   // low spirits: a gloomy spell keeps its hold for a while; a walk to the shrine may help
   if (a.task?.id === 'sulk' && w.tick < a.task.until) opts.push([a.task, 0.95]);
+  // a spell of the nechist holds until it wears off (or something more urgent: a fight, fire)
+  if (a.task?.spell && w.tick < a.task.until) opts.push([a.task, a.task.spell]);
   const pray = wantsPrayer(w, a);
   if (pray > 0.1 && night < 0.5) opts.push([{id: 'pray'}, 0.3 + pray * 1.2]);
   if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);

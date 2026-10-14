@@ -1,5 +1,6 @@
 // Canvas renderer. Every field is painted into its own offscreen canvas at 1 px per cell and
 // scaled up: terrain crisp, fields smooth. Fire is added with 'lighter' for a glow; night darkens.
+import {hpShare} from '../agents/agent.js';
 import {BY_CODE, T, WALKABLE} from '../data/terrain.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
@@ -366,9 +367,9 @@ export class Renderer {
       LOOKS[look.shape](ctx, a, px, py, r, color, S);
       if (a.flash) { ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 2, 0, Math.PI * 2); ctx.stroke(); }
       if (a.carry?.n > 0) { ctx.fillStyle = RESOURCES.get(Object.keys(a.carry.res)[0]).color; ctx.fillRect(px + r * 0.4, py - r * 1.1, Math.max(3, S * 0.55), Math.max(3, S * 0.55)); }
-      if (a.hp < (a.maxHp || sp.hp) * 0.999 && sp.sentient) {
+      if (hpShare(a) < 0.999 && sp.sentient) {
         ctx.fillStyle = '#2a1414'; ctx.fillRect(px - S, py + r + 2, S * 2, 2);
-        ctx.fillStyle = a.hp > (a.maxHp || sp.hp) * 0.5 ? '#8fbf5a' : '#e0b040'; ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(a.hp / (a.maxHp || sp.hp), 0, 1), 2);
+        ctx.fillStyle = hpShare(a) > 0.5 ? '#8fbf5a' : '#e0b040'; ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(hpShare(a), 0, 1), 2);
       }
       if (a.task?.id === 'flee') { ctx.fillStyle = '#ffe0a0'; ctx.font = `bold ${Math.max(10, S * 1.6)}px "PT Sans", sans-serif`; ctx.fillText('!', px + r, py - r); }
     }

@@ -3,8 +3,8 @@
 //   each tick a patient gets HEAL.rate × the healer's work rate back, HEAL.noHerbs of that without herbs;
 //   every HEAL.perHerb of health healed with herbs uses up one herb from the stock.
 // With nobody to tend the healer picks herbs (the job's harvest fields, data/jobs.js 'heal').
+import {maxHp} from '../agents/agent.js';
 import {BUILDINGS} from '../data/buildings.js';
-import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
 import {has, colonists} from './query.js';
 import {perTick} from '../core/util.js';
@@ -17,7 +17,6 @@ export const HEAL = {
   perHerb: 0.35,    // health healed per herb used
 };
 
-const maxHp = a => a.maxHp || SPECIES.get(a.species).hp;
 export const hurt = a => a.hp < maxHp(a) * HEAL.seekBelow;
 
 // who lies in the hut now (at most as many as it has beds)

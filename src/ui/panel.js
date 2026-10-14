@@ -1,5 +1,6 @@
 // Panels around the map: the clock line above it, the selection pane under it and the tabs on its right
 // (stock and jobs, colonists, buildings, council, journal, world). Only the open tab is redrawn.
+import {hpShare} from '../agents/agent.js';
 import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {TRADE} from '../data/trade.js';
@@ -16,7 +17,8 @@ import {ORES} from '../data/ores.js';
 import {campFuel, furnacePick} from '../settlement/stock.js';
 import {fuelReserve} from '../settlement/buildings.js';
 import {treasury} from '../settlement/precious.js';
-import {region} from '../world/region.js';
+import {region, regionFauna, faunaLevel} from '../world/region.js';
+import {BIOMES, faunaWord} from '../data/biomes.js';
 import {LEVEL_WORDS} from '../data/regions.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
@@ -80,16 +82,18 @@ export class Panel {
     this.sig = {}; this.lastTick = 0; this.lastT = performance.now();
     this.hidden = this.loadFilter();
     this.buildFilters();
-    this.buildLegend();
+    this.buildLegend(null);
   }
 
   // the map legend: creatures and fixed marks, plus every ore from data/ores.js
-  buildLegend() {
+  // rebuilt for each world: the beasts listed are the ones that live in its land
+  buildLegend(w) {
     const dot = (c, t) => `<span><i style="background:${c}"></i>${t}</span>`;
     const ores = ORES.all().map(o => dot(`rgb(${o.tint.join(',')})`, o.label)).join('');
     $('legend').innerHTML = dot('var(--colony)', 'колонисты') + dot('var(--raider)', 'налётчики') +
       FACTIONS.filter(f => f.legend).map(f => dot(f.color, f.legend)).join('') +
-      SPECIES.filter(s => s.look.color && !s.sentient).map(s => dot(s.look.color, s.legend || s.label)).join('') +
+      // only the beasts that live in this land (and those that come everywhere)
+      SPECIES.filter(s => s.look.color && !s.sentient && (!s.habitat || !w || faunaLevel(w, s.id) > 0) && !s.undead).map(s => dot(s.look.color, s.legend || s.label)).join('') +
       dot('var(--food)', 'ягоды') + ores + dot('var(--ember)', 'огонь и костёр') +
       '<span>пунктир — граница зоны поселения</span>' +
       `<span>обводка — броня: ${ITEMS.filter(d => d.slot === 'body' && d.color).map(d => d.short).join(', ')} (своим цветом)</span>`;
@@ -126,6 +130,7 @@ export class Panel {
   set(id, html) { if (this.sig[id] === html) return; this.sig[id] = html; $(id).innerHTML = html; }
 
   render(w, view) {
+    if (this.legendFor !== w) { this.legendFor = w; this.buildLegend(w); }
     $('clock').textContent = clockStr(w.tick);
     const S = season(w), left = Math.ceil(daysLeftInSeason(w.tick));
     $('season').textContent = `${S.label}, ${seasonDay(w.tick)}-й день · год ${yearOf(w.tick)}`;
@@ -248,8 +253,10 @@ export class Panel {
     const ores = ORES.filter(o => !o.event).map(o => `${o.label} — ${word(R.ores[o.id] ?? 0)}`);
     ores.push(`золото в отмелях — ${word(R.placer)}`);
     if (R.goldVein) ores.push('бывает золотая жила');
-    const beasts = Object.entries(R.fauna).filter(([, v]) => v > 0).map(([id, v]) => SPECIES.get(id).label + (v > 1 ? ' (много)' : v < 1 ? ' (мало)' : ''));
-    return `<b>${esc(R.label)}</b>: ${esc(R.note || '')}<br>${ores.join(', ')}<br>звери: ${beasts.join(', ')}${R.magma ? '<br>под скалами магма' : ''}`;
+    // biomes in shares, then everyone who lives here with how common they are (data/biomes.js, world/region.js)
+    const biomes = Object.entries(R.biomes || {}).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
+    const beasts = regionFauna(w).map(([sp, v]) => `${sp.label} (${faunaWord(v)})`);
+    return `<b>${esc(R.label)}</b>: ${esc(R.note || '')}<br>земли: ${biomes.join(', ')}<br>${ores.join(', ')}<br>живут: ${beasts.join(', ')}${R.magma ? '<br>под скалами магма' : ''}`;
   }
 
   // the arrival is either still on its way (time left) or due and waiting for a reason
@@ -315,8 +322,8 @@ export class Panel {
     const col = colonists(w);
     const needs = SPECIES.get('human').needs.map(id => NEEDS.get(id));
     this.set('people', (col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
-      <span class="nm">${esc(a.name)}${a.species !== 'human' ? ` <i class="race">${raceOf(a)}</i>` : ''}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
-      <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(a.hp / (a.maxHp || 1), 'var(--good)')}</div></div>`).join('')
+      <span class="nm">${esc(a.name)} <i class="race">${raceOf(a)}</i></span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
+      <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(hpShare(a), 'var(--good)')}</div></div>`).join('')
       || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
   }
 
@@ -434,7 +441,7 @@ export class Panel {
 
   creatureHtml(w, a) {
     const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
-    const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(a.hp / (a.maxHp || sp.hp) * 100)}%</dd>`];
+    const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
     if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
     if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);
     const inn = innateOf(sp, a);
@@ -465,7 +472,7 @@ export class Panel {
     const fresh = a.diary.filter(e => e.until > w.tick && e.mood !== 0).sort((x, y) => Math.abs(y.mood) - Math.abs(x.mood)).slice(0, 2);
     const moodPct = Math.round((mood + 1) * 50);
     const needs = sp.needs.map(id => { const n = NEEDS.get(id); return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`; }).join('') +
-      `<div class="pc-bar"><span>здоровье</span>${bar(a.hp / (a.maxHp || sp.hp), 'var(--good)')}<b>${Math.round(a.hp / (a.maxHp || sp.hp) * 100)}</b></div>`;
+      `<div class="pc-bar"><span>здоровье</span>${bar(hpShare(a), 'var(--good)')}<b>${Math.round(hpShare(a) * 100)}</b></div>`;
     const inn = innateOf(sp, a).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
     const vals = (a.values || []).map(id => `<span class="chip">${VALUES.get(id).label}</span>`).join('');
     const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];

@@ -6,6 +6,12 @@
 //
 // Contests between two values use the ratio a / (a + b), never the difference, so one formula holds
 // for two goblins wrestling and for a band of hunters against a dragon.
+//
+// Two scales of effect. A thinking race (and a raid monster) takes the effects as they are: an orc's
+// strength makes its blow harder than a human's. A beast's entry (`relativeStats`) already describes its
+// typical animal — its hp, attack and speed are tuned — so SPECIAL only moves one animal against its
+// kin: a strong wolf bites harder than the pack's average. Its numbers still say how it compares with
+// everyone else (a bear's 14 against a human's 5), which the card shows and later contests will use.
 import {Registry} from '../core/registry.js';
 
 export const STATS = new Registry('stat');
@@ -21,6 +27,12 @@ STATS.registerAll([
   {id: 'A', label: 'Ловкость',    short: 'ЛОВ', note: 'скорость шага и удара'},
   {id: 'L', label: 'Удача',       short: 'УДЧ', note: 'увернуться от удара, попасть наудачу'},
 ]);
+
+// limits around a typical value: around({S: 6, P: 10, …}, 1) → {S: [5, 7], P: [9, 11], …}
+export const around = (mid, spread = 1) => Object.fromEntries(Object.entries(mid).map(([k, v]) => [k, [Math.max(0, v - spread), v + spread]]));
+
+// the typical creature of a species: the middle of every limit
+export const middle = special => Object.fromEntries(Object.entries(special).map(([k, [lo, hi]]) => [k, (lo + hi) / 2]));
 
 // a / (a + b): the chance that a wins a contest against b
 export const contest = (a, b) => (a + b > 0 ? a / (a + b) : 0.5);

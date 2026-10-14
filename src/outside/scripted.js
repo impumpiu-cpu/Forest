@@ -21,6 +21,8 @@ import {HOUR, dayOf, nightness} from '../core/time.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat} from '../settlement/threat.js';
 import {weighted} from '../core/util.js';
+import {SPECIES} from '../data/species.js';
+import {faunaLevel} from '../world/region.js';
 
 // which band sets out: each weighs itself by the threat it sees and the hour
 export const pickBand = (w, rng) => weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w.tick))]));
@@ -94,3 +96,22 @@ export const scripted = {
   // the stub only remembers what it last heard
   receive(w, msg) { if (msg.kind === 'report') w.outside.seen = msg.data; },
 };
+
+// ── the bestiary (data/bestiary.js `arrive`): a flow per beast, built from its entry. A check comes every
+// `every` days (night hunters: in the evening); it succeeds with `chance` × how common the beast is here
+// (world/region.js) × the start menu's wildlife or predators setting. The nechist is checked daily:
+// whether it may come back is the land's business (data/migrations.js `resident`).
+const evening = t => { let x = Math.floor(t / DAY) * DAY + 21.5 * HOUR; if (x < t) x += DAY; return x; };
+for (const sp of SPECIES.filter(s => s.arrive)) {
+  const A = sp.arrive, when = (w, t) => (A.night ? evening(t) : t);
+  const setting = w => (sp.resident ? 1 : sp.brain === 'predator' ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0);
+  scripted.flows[sp.id] = {from: sp.resident ? 'local' : 'wilds',
+    first: (w, rng) => when(w, w.tick + (A.first + rng()) * DAY),
+    offer: (w, rng) => {
+      if (sp.resident) return 1;
+      const k = setting(w), lvl = faunaLevel(w, sp.id);
+      if (!k || !lvl || rng() >= A.chance * k * Math.min(1.5, lvl)) return 0;
+      return A.group[0] + Math.floor(rng() * (A.group[1] - A.group[0] + 1));
+    },
+    next: (w, rng) => (sp.resident ? w.tick + DAY : when(w, w.tick + (A.every[0] + rng() * (A.every[1] - A.every[0])) * DAY))};
+}

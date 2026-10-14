@@ -10,7 +10,7 @@ import {cellOf} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, follow, moveToward} from '../movement.js';
 import {nearestHostile} from '../combat.js';
 import {TASKS} from '../tasks.js';
-import {kill} from '../agent.js';
+import {kill, maxHp} from '../agent.js';
 
 // how close to the camp fire the caravan sets up (cells along the camp flow field)
 const CAMP_AT = 6;
@@ -29,7 +29,7 @@ export const caravanBrain = {
     if (a.cd > 0) a.cd--;
     if (T > sp.heatHarm) { a.hp -= Math.min(0.006, (T - sp.heatHarm) * 0.00005); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (T > 50 || nearFire(w, a, 1.5)) { escapeHeat(w, a); return; }
-    if (a.hp < (a.maxHp || sp.hp)) a.hp = Math.min(a.maxHp || sp.hp, a.hp + 0.0002);
+    if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 0.0002);
 
     const c = w.caravan;
     if (!c || c.id !== a.caravan || c.phase === 'leaving') { leave(w, a); return; }

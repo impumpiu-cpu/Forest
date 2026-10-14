@@ -6,7 +6,8 @@ import {FAR} from '../nav/navigation.js';
 import {clearLine, findPath} from '../nav/astar.js';
 
 export function speedOf(w, a) {
-  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
+  const web = a.webbed && w.tick < a.webbed.until ? a.webbed.slow : 1;   // tangled in a spider's web
+  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
 }
 
 // returns true when arrived, false while moving, null when the step is blocked

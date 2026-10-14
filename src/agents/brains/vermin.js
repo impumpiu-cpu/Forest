@@ -7,6 +7,7 @@ import {follow, bolt, nearFire, escapeHeat} from '../movement.js';
 import {kill} from '../agent.js';
 import {nibble} from '../../settlement/stock.js';
 import {log} from '../../core/log.js';
+import {nightness} from '../../core/time.js';
 import {esc, g} from '../../core/util.js';
 
 export const verminBrain = {
@@ -19,12 +20,17 @@ export const verminBrain = {
     if (near) {
       if (Math.hypot(near.x - a.x, near.y - a.y) < 0.8 && w.rng() < V.caught) {
         kill(w, a, 'палки', near);
-        if (w.rng() < 0.3) log(w, `<b>${esc(near.name)}</b> ${g(near, 'прибил', 'прибила')} крысу у припасов.`, 'wildlife');
+        if (!sp.resident && w.rng() < 0.3) log(w, `<b>${esc(near.name)}</b> ${g(near, 'прибил', 'прибила')} ${sp.labelAcc || sp.label} у припасов.`, 'wildlife');
         return;
       }
       a.task = {id: 'bolt'}; bolt(w, a, [near], 1.3); return;
     }
+    // a kikimora does her mischief by night and keeps to the marsh by day
+    if (V.spoils && nightness(w.tick) < 0.4) { a.task = {id: 'hide'}; follow(w, a, 'edge'); return; }
     a.task = {id: 'nibble'};
-    if (follow(w, a, 'camp') === 'arrived') nibble(w, V.eats);
+    if (follow(w, a, 'camp') === 'arrived') {
+      nibble(w, V.eats);
+      if (V.spoils && w.tick - (w.lastSpoil || -1e9) > 300) { w.lastSpoil = w.tick; log(w, `Ночью у припасов шебуршала ${sp.label}: часть еды испорчена.`, 'wildlife', 'notice'); }
+    }
   },
 };

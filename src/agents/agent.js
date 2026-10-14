@@ -14,6 +14,7 @@ import {enrol, noteDeath} from '../settlement/chronicle.js';
 import {lostBeast} from '../settlement/herd.js';
 import {addCorpse} from '../settlement/life.js';
 import {rollCreature} from './special.js';
+import {RESOURCES} from '../data/resources.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 export const newMemory = (init = {}) => new Proxy(init, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
@@ -81,13 +82,19 @@ export function kill(w, a, cause, by) {
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
   if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }
-  if (a.tame) { lostBeast(w, a, by?.species === 'wolf' ? 'задрали волки' : by ? 'убили' : cause); return; }
-  if (by?.stats) { if (sp.id === 'wolf') { by.stats.wolves++; w.chronicle.wolvesKilled++; } else if (a.faction === 'raiders') { by.stats.raiders++; w.chronicle.raidersKilled++; } }
+  if (a.tame) { lostBeast(w, a, killer?.predator ? `задрали ${killer.plural || killer.label}` : by ? 'убили' : cause); return; }
+  // the nechist comes back some time after it was killed (data/migrations.js `resident`)
+  if (sp.resident) (w.residents ||= {})[sp.id] = w.tick;
+  // beasts that hunt people count as the colony's beast kills (the chronicle's «wolves»)
+  if (by?.stats) { if (sp.predator || sp.resident) { by.stats.wolves++; w.chronicle.wolvesKilled++; } else if (a.faction === 'raiders') { by.stats.raiders++; w.chronicle.raidersKilled++; } }
   if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
   else if (sp.yields && by?.faction === 'colony' && by.task?.id !== 'job' && a.faction !== 'traders') {
     // an animal killed in a fight (not on a hunt, where the hunter carries the game home): the carcass is brought in
     for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
-    log(w, `<b>${esc(by.name)}</b> ${g(by, 'убил', 'убила')} ${sp.labelAcc || sp.label}. ${sp.id === 'wolf' ? 'Шкура и кости' : 'Мясо, шкура и кости'} — в лагерь.`, 'danger', 'notice');
+    const got = Object.keys(sp.yields).map(r => RESOURCES.get(r).label).join(', ');
+    log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? 'упокоил' : 'убил', sp.undead ? 'упокоила' : 'убила')} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} — в лагерь.`, 'danger', 'notice');
+  } else if (sp.resident && by?.faction === 'colony') {
+    log(w, `<b>${esc(by.name)}</b> ${g(by, 'упокоил', 'упокоила')} ${sp.labelAcc || sp.label}. Надолго ли?`, 'danger', 'notice');
   } else if (a.faction === 'raiders' && by) {
     const got = [];
     stripAll(a, got);
@@ -100,7 +107,7 @@ export function kill(w, a, cause, by) {
   // the necromancer falls: his dead lose their way
   if (a.role === 'necromancer' && w.agents.some(o => o.master === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');
   if (a.faction === 'colony') for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) { think(w, o, 'grief', {name: a.name, f: a.gender === 'f'}); o.mem.grief += 0.5; }
-  if (by?.faction === 'colony') { if (sp.id === 'wolf') think(w, by, 'killedWolf'); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
+  if (by?.faction === 'colony') { if (sp.predator || sp.resident) think(w, by, 'killedWolf', {beast: sp.labelAcc || sp.label}); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
   // a fallen colonist's gear goes back to the store
   if (a.faction === 'colony' && a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }
   else if (sp.yields && by) { /* game killed by a hunter: the hunter logs nothing, the meat speaks for itself */ }

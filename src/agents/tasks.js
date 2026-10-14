@@ -1,5 +1,6 @@
 // Tasks are what an agent is doing right now: {id, ...state}. Brains choose them, TASKS run them.
 // Shared by every brain, so a new creature can reuse 'fight', 'flee' or 'idle' as they are.
+import {maxHp} from './agent.js';
 import {Registry} from '../core/registry.js';
 import {JOBS} from '../data/jobs.js';
 import {NEEDS} from '../data/needs.js';
@@ -16,7 +17,6 @@ import {think} from './mind.js';
 import {tradeOpen, attendTrade} from '../settlement/trade.js';
 import {HEAL} from '../settlement/healing.js';
 import {has, colonists} from '../settlement/query.js';
-import {SPECIES} from '../data/species.js';
 import {homeComfort, prayed} from '../settlement/life.js';
 
 export const TASKS = new Registry('task');
@@ -164,7 +164,7 @@ TASKS.registerAll([
   // a wounded colonist lies in the healer's hut until mostly healed (settlement/healing.js)
   {id: 'treat', label: t => (t.lying ? (t.healer != null ? 'лечится у лекаря' : 'лежит в хижине лекаря') : 'идёт к лекарю'), step(w, a, task) {
     if (!has(w, 'healerhut')) { done(a); return; }
-    const max = a.maxHp || SPECIES.get(a.species).hp;
+    const max = maxHp(a);
     if (a.hp >= max * HEAL.until) {
       const healer = task.healer != null ? w.agents.find(o => o.id === task.healer && !o.dead) : null;
       if (healer) { think(w, a, 'treated', {name: healer.name}); think(w, healer, 'healedSomeone', {name: a.name}); }
@@ -213,6 +213,25 @@ TASKS.registerAll([
   {id: 'chase', label: () => 'гонит добычу', step() {}},
   {id: 'maul', label: t => (t.mule ? (t.charging ? 'несётся на обидчика' : 'лягается') : 'нападает'), step() {}},
   {id: 'feed', label: () => 'ест добычу', step() {}},
+  {id: 'hide', label: () => 'прячется', step() {}},
+  {id: 'lurk', label: () => 'таится', step() {}},
+  {id: 'sing', label: () => 'поёт у воды', step() {}},
+
+  // spells of the nechist (agents/brains/spirit.js) on a colonist: they last until `until`
+  // the leshy's spores: the colonist wanders in circles, then comes to
+  {id: 'astray', label: () => 'плутает в лесу', step(w, a, task) {
+    if (w.tick >= task.until) { think(w, a, 'foundWay'); done(a); return; }
+    if (!task.spot || moveToward(w, a, task.spot[0], task.spot[1], 0.6) !== false) {
+      const ang = w.rng() * Math.PI * 2;
+      task.spot = [a.x + Math.cos(ang) * 3, a.y + Math.sin(ang) * 3];
+    }
+  }},
+  // the rusalka's song: the colonist walks to the water; someone close by breaks the spell (spirit.js)
+  {id: 'lured', label: () => 'идёт на голос у воды', step(w, a, task) {
+    const s = w.agents.find(o => o.id === task.by && !o.dead);
+    if (!s || w.tick >= task.until) { done(a); return; }
+    if (Math.hypot(s.x - a.x, s.y - a.y) > 0.8) approach(w, a, s.x, s.y, 0.7);
+  }},
 ]);
 
 export const taskLabel = a => (a.task ? TASKS.get(a.task.id).label(a.task) : 'думает');

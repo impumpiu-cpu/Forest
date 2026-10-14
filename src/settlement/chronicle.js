@@ -1,5 +1,6 @@
 // The chronicle: what the settlement and each colonist did, kept for the final summary.
 // Every colonist who ever lived gets a record (alive or not); the colony keeps totals.
+import {SPECIES} from '../data/species.js';
 import {DAY} from '../core/time.js';
 import {colonists} from './query.js';
 import {moodOf} from '../agents/mind.js';
@@ -21,9 +22,11 @@ export const recordOf = (w, a) => w.chronicle.people.find(p => p.id === a.id);
 export function noteDeath(w, a, cause, by) {
   const r = recordOf(w, a); if (!r) return;
   r.died = w.tick; r.doing = a.task?.id === 'job' ? a.task.job : a.task?.id;
-  r.cause = by?.species === 'wolf' ? 'загрызли волки' : by?.species === 'mule' ? 'затоптал мул' : by ? 'погиб в бою с налётчиками' : `умер от ${cause}`;
-  if (a.gender === 'f') r.cause = r.cause.replace('погиб в бою', 'погибла в бою').replace('умер от', 'умерла от');
-  const key = by?.species === 'wolf' ? 'волки' : by?.species === 'mule' ? 'мул' : by ? 'налётчики' : cause;
+  // killed by raiders, by a beast (its name), or died of something (hunger, cold, fire, venom…)
+  const ks = by ? SPECIES.get(by.species) : null, raid = by?.faction === 'raiders';
+  r.cause = !by ? `умер от ${cause}` : raid ? 'погиб в бою с налётчиками' : `погиб: ${ks.label}`;
+  if (a.gender === 'f') r.cause = r.cause.replace('погиб', 'погибла').replace('умер от', 'умерла от');
+  const key = !by ? 'от ' + cause : raid ? 'налётчики' : ks.plural || ks.label;
   w.chronicle.deaths[key] = (w.chronicle.deaths[key] || 0) + 1;
 }
 

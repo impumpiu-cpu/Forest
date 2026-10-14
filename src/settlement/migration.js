@@ -27,7 +27,9 @@ function edgeCell(w, minDist) {
 export function spawnGroup(w, id, n, opts = {}) {
   const def = MIGRATIONS.get(id);
   if (!n) return [];
-  const [e, side] = edgeCell(w, def.minDist ?? 30);
+  // most groups walk in from a map edge; some appear at their own ground (`spawnAt`, the nechist)
+  const home = def.spawnAt ? def.spawnAt(w) : -1;
+  const [e, side] = home >= 0 ? [home, ''] : edgeCell(w, def.minDist ?? 30);
   if (e < 0) { if (id === 'raiders') log(w, 'Налётчики не нашли дороги к лагерю.', 'danger', 'notice'); return []; }
   const ex = e % w.w, ey = (e / w.w) | 0, group = [];
   // a mixed group (a caravan) lists its members; otherwise n of the one species

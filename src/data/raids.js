@@ -13,7 +13,7 @@ export const RAID_BANDS = new Registry('raid band');
 
 // a member's share of the budget, in "human raiders": roughly its health × its blow
 const COST = {human: 1, orc: 2, goblin: 0.6, ogre: 4.5, troll: 5, gnoll: 1.7, darkelf: 2,
-  zombie: 0.9, skeleton: 1, upyr: 1.8, vampire: 7, necromancer: 1.5};
+  zombie: 0.9, skeleton: 1, upyr: 1.8, vampire: 7, necromancer: 1.5, varg: 1.8, hyena: 0.8};
 
 // fill the budget with species drawn from `mix` ([[species, weight], …]); at least one member
 function fill(rng, budget, mix, extra = []) {
@@ -64,8 +64,8 @@ RAID_BANDS.registerAll([
 
   {id: 'orcs', label: 'орочья ватага', kind: 'sentient',
     weight: (w, t) => (t >= 4 ? 2 : 0.5),
-    members: (w, rng, budget) => fill(rng, budget, [['orc', 3], ['goblin', 2], ['ogre', budget >= 10 ? 0.6 : 0]]),
-    message: () => 'Набег! Орочья ватага с гоблинами'},
+    members: (w, rng, budget) => fill(rng, budget, [['orc', 3], ['goblin', 2], ['varg', budget >= 5 ? 1 : 0], ['ogre', budget >= 10 ? 0.6 : 0]]),
+    message: (n, group) => `Набег! Орочья ватага с гоблинами${group.some(a => a.species === 'varg') ? ' и боевыми варгами' : ''}`},
 
   {id: 'goblins', label: 'гоблинская шайка', kind: 'sentient',
     weight: () => 1.5,
@@ -74,7 +74,7 @@ RAID_BANDS.registerAll([
 
   {id: 'gnolls', label: 'стая гноллов', kind: 'sentient',
     weight: (w, t) => (t >= 3 ? 1.5 : 0.4),
-    members: (w, rng, budget) => fill(rng, budget, [['gnoll', 1]]),
+    members: (w, rng, budget) => fill(rng, budget, [['gnoll', 3], ['hyena', 1.5]]),
     message: () => 'Набег! Гноллы-падальщики идут на запах лагеря'},
 
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',

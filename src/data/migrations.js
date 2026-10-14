@@ -11,7 +11,9 @@ import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
 import {T} from './terrain.js';
-import {HOUR} from '../core/time.js';
+import {HOUR, DAY} from '../core/time.js';
+import {season} from './seasons.js';
+import {homeCell} from '../agents/brains/spirit.js';
 import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
@@ -111,7 +113,12 @@ MIGRATIONS.registerAll([
     members: (w, rng, n, opts) => {
       const band = RAID_BANDS.get(opts.band || 'bandits'), t = raidThreat(w);
       return band.members(w, rng, n, t).map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
-        init: (a, w) => { a.band = band.id; if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w); }}));
+        init: (a, w) => {
+          a.band = band.id;
+          if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);
+          // a war beast (a warg with orcs, a hyena with gnolls) follows the band, not its own brain
+          if (SPECIES.get(m.species).brain) { a.brain = 'raider'; a.warBeast = true; }
+        }}));
     },
     groupInit: (group, w) => {
       const t = raidThreat(w); w.stats.raids++;
@@ -126,3 +133,29 @@ MIGRATIONS.registerAll([
     ammo: 8,
     message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)} — с ${side}.`},
 ]);
+
+// ── the bestiary's beasts (data/bestiary.js `arrive`): one arrival each, built from the entry.
+// Beasts that hunt people come as predators, the nechist as nechist, the rest as wild game.
+export const factionOf = sp => (sp.resident ? 'nechist' : sp.brain === 'predator' ? 'predators' : 'wild');
+const onMap = (w, id) => w.agents.filter(o => o.species === id && !o.dead && !o.tame).length;
+const cap1 = s => s[0].toUpperCase() + s.slice(1);
+
+for (const sp of SPECIES.filter(s => s.arrive)) {
+  const A = sp.arrive;
+  MIGRATIONS.register({
+    id: sp.id, species: sp.id, faction: factionOf(sp), minDist: 30, topic: sp.brain === 'predator' || sp.resident ? 'danger' : 'wildlife',
+    level: sp.brain === 'predator' || sp.resident ? 'notice' : undefined,
+    // a resident is one of a kind and returns `respawn` days after it was killed; others stay under `cap`
+    accept: (w, n) => {
+      if (sp.resident) return onMap(w, sp.id) || w.tick - (w.residents?.[sp.id] ?? -1e9) < sp.respawn * DAY ? 0 : 1;
+      if (sp.hibernates && season(w).id === 'winter') return 0;
+      return Math.max(0, Math.min(n, A.cap - onMap(w, sp.id)));
+    },
+    // the nechist appears at its home ground (agents/brains/spirit.js), not at the map edge
+    spawnAt: sp.spirit ? w => homeCell(w, sp.spirit.home, 18) : undefined,
+    init: a => { a.name = cap1(sp.label); },
+    // a pack: members share an id, the first one leads (agents/brains/predator.js)
+    groupInit: sp.brain === 'predator' ? group => { const pack = group[0].id; for (const a of group) a.pack = pack; } : undefined,
+    message: A.message ? (w, group) => `${cap1(A.message.replace('{n}', group.length))}.` : undefined,
+  });
+}

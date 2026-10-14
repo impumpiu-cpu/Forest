@@ -12,7 +12,8 @@ import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover} from '../movement.js';
 import {damage} from '../combat.js';
-import {kill} from '../agent.js';
+import {kill, maxHp} from '../agent.js';
+import {season} from '../../data/seasons.js';
 import {log} from '../../core/log.js';
 import {esc} from '../../core/util.js';
 
@@ -44,7 +45,7 @@ function kick(w, a, t, M, charging) {
 function graze(w, a, sp) {
   const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});
   if (!t.spot || w.rng() < 0.006) {
-    const ok = new Set(['grass'].map(id => TERRAIN.get(id).code));
+    const ok = new Set((sp.mule?.terrain || ['grass']).map(id => TERRAIN.get(id).code));
     const reach = w.rng() < 0.1 ? 24 : 6;
     let bestV = -Infinity;
     for (let k = 0; k < 10; k++) {
@@ -71,19 +72,19 @@ export const muleBrain = {
     if (foe) {
       const d = dist(a, foe);
       // badly hurt: limp away, but still kick whoever is right at its flank
-      if (a.hp < sp.hp * M.fleeBelow && d > M.kickRange) { a.task = {id: 'bolt'}; bolt(w, a, [foe], 0.9); return; }
+      if (a.hp < maxHp(a) * M.fleeBelow && d > M.kickRange) { a.task = {id: 'bolt'}; bolt(w, a, [foe], 0.9); return; }
       const t = a.task?.id === 'maul' && a.task.target === foe ? a.task : (a.task = {id: 'maul', target: foe, mule: true});
       if (d > M.kickRange) {
         if (a.hurtBy?.far && d > M.chargeFrom && !t.charging) {
           t.charging = true;
-          if (foe.faction === 'colony') log(w, `Мул несётся на <b>${esc(foe.name)}</b>: стрелять в него было ошибкой.`, 'danger', 'notice');
+          if (foe.faction === 'colony') log(w, `${sp.label[0].toUpperCase() + sp.label.slice(1)} несётся на <b>${esc(foe.name)}</b>: стрелять в него было ошибкой.`, 'danger', 'notice');
         }
         if (approach(w, a, foe.x, foe.y, t.charging ? sprintMul(a, M.charge, 0.004) : 1.15) === null) a.hurtBy = null;   // cannot get there: forget it
       } else { kick(w, a, foe, M, t.charging); t.charging = false; }
       return;
     }
     recover(a);
-    if (a.hp < sp.hp) a.hp = Math.min(sp.hp, a.hp + 0.00025 * sp.hp);   // wounds close slowly
+    if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 0.00025 * maxHp(a));   // wounds close slowly
 
     // a pack mule walks behind its trader; without one it goes home
     if (a.owner != null) {
@@ -96,7 +97,8 @@ export const muleBrain = {
       return;
     }
 
-    if (a.task?.id === 'leave' || w.rng() < M.leaveChance) {
+    // a bear goes to its den for the winter
+    if (a.task?.id === 'leave' || w.rng() < M.leaveChance || (sp.hibernates && season(w).id === 'winter')) {
       a.task = {id: 'leave'};
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;
       return;
