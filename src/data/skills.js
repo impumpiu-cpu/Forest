@@ -60,7 +60,7 @@ SKILLS.registerAll([
   {id: 'leatherwork',  stat: 'A', label: 'обработка кожи',      short: 'кожи'},
   {id: 'pottery',      stat: 'A', label: 'гончарное дело',      short: 'гончар'},
   {id: 'jewelry',      stat: 'A', label: 'ювелирное дело',      short: 'ювелир'},
-  {id: 'trophyExtraction', stat: 'A', label: 'извлечение трофеев', short: 'трофеи', status: 'reserved'},
+  {id: 'trophyExtraction', stat: 'A', label: 'извлечение трофеев', short: 'трофеи'},
   {id: 'stealth',      stat: 'A', label: 'скрытность',          short: 'скрытность', status: 'reserved'},
 ]);
 for (const s of SKILLS.all()) s.status ??= 'active';

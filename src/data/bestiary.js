@@ -53,7 +53,7 @@ export const BESTIARY = [
     habitat: {forest: 'usual', taiga: 'usual', foothills: 'rare'},
     special: around({S: 14, P: 6, E: 13, C: 2, I: 3, A: 5, L: 4}),
     look: {shape: 'bear', size: 0.9, color: '#5a3d28'}, attack: {power: 2.4, cooldown: 16},
-    yields: {meat: 12, hide: 3, bone: 3, bile: 1},
+    yields: {meat: 12, hide: 3, bone: 3, bile: 1}, trophies: [{res: 'bile', n: 1, chance: 0.25, tier: 2}, {res: 'furs', n: 2, chance: 0.2}],
     killMessage: name => `Медведь задрал поселенца: <b>${name}</b>.`,
     mule: stands({kickRange: 1.2, charge: 1.9, chargeHit: 1.7, grudge: 500, giveUp: 26, fleeBelow: 0.2, leaveChance: 0.00015, terrain: ['grass', 'forest']})}),
 
@@ -63,7 +63,7 @@ export const BESTIARY = [
     habitat: {taiga: 'usual', forest: 'rare'},
     special: around({S: 5, P: 11, E: 5, C: 2, I: 3, A: 12, L: 5}),
     look: {shape: 'fox', size: 0.5, color: '#9a8f7a'}, attack: {power: 1.0, cooldown: 11},
-    yields: {furs: 2, meat: 1},
+    yields: {furs: 2, meat: 1}, trophies: [{res: 'furs', n: 1, chance: 0.3}],
     killMessage: name => `Рысь бросилась с ветки на поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.75, groupFear: 2, meal: 1.4, sight: 18})}),
 
@@ -93,7 +93,7 @@ export const BESTIARY = [
     habitat: {swamp: 'common', water: 'rare'},
     special: around({S: 7, P: 6, E: 9, C: 1, I: 1, A: 4, L: 4}),
     look: {shape: 'toad', size: 0.55, color: '#6b7a3a'}, attack: {power: 1.2, cooldown: 20},
-    yields: {meat: 2, slime: 1},
+    yields: {meat: 2, slime: 1}, trophies: [{res: 'slime', n: 1, chance: 0.3}],
     killMessage: name => `Жаба утянула поселенца в трясину: <b>${name}</b>.`,
     mule: stands({kickRange: 2.4, charge: 1.2, chargeHit: 1.2, chargeFrom: 3, giveUp: 8, terrain: ['grass', 'forest'], leaveChance: 0.0001})}),
 
@@ -104,7 +104,7 @@ export const BESTIARY = [
     habitat: {highlands: 'usual', foothills: 'rare'},
     special: around({S: 16, P: 14, E: 13, C: 4, I: 5, A: 13, L: 5}),
     look: {shape: 'bird', size: 0.86, color: '#b88a44'}, attack: {power: 1.9, cooldown: 13},
-    yields: {meat: 4, feathers: 3, bone: 2},
+    yields: {meat: 4, feathers: 3, bone: 2}, trophies: [{res: 'feathers', n: 2, chance: 0.3}],
     killMessage: name => `Грифон унёс поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'hare'], weakPrey: ['mule'], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4})}),
 
@@ -114,7 +114,7 @@ export const BESTIARY = [
     habitat: {highlands: 'usual', volcano: 'rare'},
     special: around({S: 15, P: 10, E: 14, C: 2, I: 3, A: 10, L: 4}),
     look: {shape: 'bird', size: 0.86, color: '#5d6b4b'}, attack: {power: 1.7, cooldown: 14}, venom: {dmg: 0.0009, ticks: 240},
-    yields: {meat: 5, scales: 2, venom: 1},
+    yields: {meat: 5, scales: 2, venom: 1}, trophies: [{res: 'venom', n: 1, chance: 0.3, tier: 2}, {res: 'scales', n: 1, chance: 0.2}],
     killMessage: name => `Виверна ужалила поселенца насмерть: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar'], weakPrey: ['mule', 'elk'], weakBelow: 0.6, sight: 26, boldPeople: 0.45, groupFear: 4})}),
 
@@ -125,7 +125,7 @@ export const BESTIARY = [
     habitat: {volcano: 'usual', highlands: 'rare'},
     special: around({S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5}, 2),
     look: {shape: 'bird', size: 0.95, color: '#a3432e'}, attack: {power: 2.6, cooldown: 15}, breath: 0.25,
-    yields: {meat: 6, scales: 4, gland: 1},
+    yields: {meat: 6, scales: 4, gland: 1}, trophies: [{res: 'scales', n: 2, chance: 0.25, tier: 2}, {res: 'gland', n: 1, chance: 0.2, tier: 3}],
     killMessage: name => `Дрейк сжёг поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk'], sight: 26, boldPeople: 0.35, groupFear: 5, meal: 3, bigMeal: 5})}),
 
@@ -136,7 +136,7 @@ export const BESTIARY = [
     special: around({S: 8, P: 9, E: 7, C: 0, I: 2, A: 12, L: 4}),
     look: {shape: 'spider', size: 0.62, color: '#3a3530'}, attack: {power: 1.0, cooldown: 12},
     web: {slow: 0.35, ticks: 120}, venom: {dmg: 0.0004, ticks: 160},
-    yields: {silk: 2, venom: 1},
+    yields: {silk: 2, venom: 1}, trophies: [{res: 'venom', n: 1, chance: 0.3, tier: 2}, {res: 'silk', n: 2, chance: 0.3}],
     killMessage: name => `Паук опутал и загрыз поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.5, groupFear: 3, sight: 16})}),
 
@@ -146,7 +146,7 @@ export const BESTIARY = [
     habitat: {underground: 'usual', foothills: 'rare'},
     special: around({S: 18, P: 3, E: 18, C: 0, I: 1, A: 3, L: 3}),
     look: {shape: 'worm', size: 0.9, color: '#7d6f5c'}, attack: {power: 2.8, cooldown: 22},
-    yields: {meat: 8, hide: 4},
+    yields: {meat: 8, hide: 4}, trophies: [{res: 'gems', n: 1, chance: 0.15}],
     killMessage: name => `Каменный червь раздавил поселенца: <b>${name}</b>.`,
     mule: stands({kickRange: 1.4, charge: 1.3, chargeHit: 1.8, fleeBelow: 0.15, leaveChance: 0.0004})}),
 
@@ -166,7 +166,7 @@ export const BESTIARY = [
     habitat: {volcano: 'usual', underground: 'rare'},
     special: around({S: 4, P: 7, E: 8, C: 1, I: 2, A: 8, L: 5}),
     look: {shape: 'lizard', size: 0.45, color: '#d0632a'},
-    yields: {meat: 1, gland: 1},
+    yields: {meat: 1, gland: 1}, trophies: [{res: 'gland', n: 1, chance: 0.2, tier: 2}],
     flee: {radius: 5, sprint: 1.5, from: ['people', 'wolf', 'varg'], stamina: 0.006},
     grazes: {terrain: ['grass', 'burnt'], eatsBerries: 0},
     leaveChance: 0.0003}),

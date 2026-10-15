@@ -19,6 +19,15 @@ import {releaseAll} from '../settlement/reserve.js';
 import {noteFallen} from './squad.js';
 import {noteHuntDeath} from './carcass.js';
 import {RESOURCES} from '../data/resources.js';
+import {decideTrophies} from './trophies.js';
+
+// a line for the log about the rare trophies of a kill
+export function trophyText(t) {
+  if (!t) return '';
+  const got = Object.entries(t.got).map(([r, n]) => `${RESOURCES.get(r).label}${n > 1 ? ' ×' + n : ''}`);
+  const lost = [...new Set(t.spoiled)].map(r => RESOURCES.get(r).label);
+  return (got.length ? ` Редкая добыча: ${got.join(', ')}${t.by ? ` (вырезал${t.byF ? 'а' : ''} ${esc(t.by)})` : ''}.` : '') + (lost.length ? ` Испорчено неумелой рукой: ${lost.join(', ')}.` : '');
+}
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
 export const newMemory = (init = {}) => new Proxy(init, {get: (t, k) => (typeof k === 'string' ? t[k] ?? 0 : t[k])});
@@ -90,6 +99,8 @@ export function kill(w, a, cause, by) {
   noteHuntDeath(w, a);   // a pack hunting it stops (agents/carcass.js)
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
+  // rare trophies, decided now and once (agents/trophies.js): only for what the colony brought down
+  const trophy = sp.trophies && (by?.faction === 'colony' || a.hitters) ? decideTrophies(w, a, by) : null;
   if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }
   if (a.tame) { lostBeast(w, a, killer?.predator ? `задрали ${killer.plural || killer.label}` : by ? 'убили' : cause); return; }
   // the nechist comes back some time after it was killed (data/migrations.js `resident`)
@@ -100,8 +111,9 @@ export function kill(w, a, cause, by) {
   else if (sp.yields && by?.faction === 'colony' && by.task?.id !== 'job' && a.faction !== 'traders') {
     // an animal killed in a fight (not on a hunt, where the hunter carries the game home): the carcass is brought in
     for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
+    for (const [r, n] of Object.entries(trophy?.got || {})) w.stock[r] = (w.stock[r] || 0) + n;
     const got = Object.keys(sp.yields).map(r => RESOURCES.get(r).label).join(', ');
-    log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? 'упокоил' : 'убил', sp.undead ? 'упокоила' : 'убила')} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} — в лагерь.`, 'danger', 'notice');
+    log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? 'упокоил' : 'убил', sp.undead ? 'упокоила' : 'убила')} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} — в лагерь.${trophyText(trophy)}`, 'danger', 'notice');
   } else if (sp.resident && by?.faction === 'colony') {
     log(w, `<b>${esc(by.name)}</b> ${g(by, 'упокоил', 'упокоила')} ${sp.labelAcc || sp.label}. Надолго ли?`, 'danger', 'notice');
   } else if (a.faction === 'raiders' && by) {

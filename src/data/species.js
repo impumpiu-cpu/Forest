@@ -3,6 +3,8 @@
 // the rot's undead and other raid monsters in data/monsters.js. All of them end up in SPECIES.
 //   mind: 'beast' | 'semi' | 'sentient' — only the sentient can be hired or bargained with
 //   special: SPECIAL limits (data/special.js); for beasts `relativeStats`: the entry is the typical animal
+//   trophies: rare extras on top of `yields`, decided once when the colony kills it (agents/trophies.js):
+//            [{res, n, chance, tier?}] — `tier`: a delicate organ only a skilled hand gets out whole (trophyExtraction, A)
 //   habitat: {biome: 'common' | 'usual' | 'rare' | 'scarce'} (data/biomes.js); none — lives everywhere
 import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
@@ -32,7 +34,7 @@ SPECIES.registerAll([
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
     attack: {power: 0.85, cooldown: 14},
-    yields: {meat: 1, hide: 2, bone: 2},
+    yields: {meat: 1, hide: 2, bone: 2}, trophies: [{res: 'furs', n: 1, chance: 0.15}],
     killMessage: name => `Волки загрызли поселенца: <b>${name}</b>.`,
     // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
     predator: {
@@ -68,7 +70,7 @@ SPECIES.registerAll([
   {id: 'fox', label: 'лиса', labelAcc: 'лису', plural: 'лисы', hp: 0.15, speed: 0.18, needs: [], brain: 'grazer', game: true,
     special: around({S: 2, P: 9, E: 3, C: 2, I: 3, A: 9, L: 6}), habitat: {taiga: 'common', forest: 'usual', meadow: 'rare', barrows: 'rare'},
     heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
-    yields: {meat: 1, furs: 1},
+    yields: {meat: 1, furs: 1}, trophies: [{res: 'furs', n: 1, chance: 0.2}],
     flee: {radius: 6, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0},
     leaveChance: 0.0004},
@@ -79,7 +81,7 @@ SPECIES.registerAll([
     special: around({S: 8, P: 4, E: 9, C: 1, I: 1, A: 4, L: 3}), habitat: {forest: 'common', swamp: 'rare', meadow: 'rare', taiga: 'rare'},
     heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
     attack: {power: 1.45, cooldown: 14},
-    yields: {meat: 6, hide: 2, bone: 1},
+    yields: {meat: 6, hide: 2, bone: 1}, trophies: [{res: 'hide', n: 1, chance: 0.2}],
     killMessage: name => `Кабан задрал поселенца: <b>${name}</b>.`,
     mule: {kickRange: 1.0, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3, leaveChance: 0.0003}},
 

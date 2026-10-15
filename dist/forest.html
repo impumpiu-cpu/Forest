@@ -1311,6 +1311,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "bear", size: 0.9, color: "#5a3d28" },
       attack: { power: 2.4, cooldown: 16 },
       yields: { meat: 12, hide: 3, bone: 3, bile: 1 },
+      trophies: [{ res: "bile", n: 1, chance: 0.25, tier: 2 }, { res: "furs", n: 2, chance: 0.2 }],
       killMessage: (name) => `\u041C\u0435\u0434\u0432\u0435\u0434\u044C \u0437\u0430\u0434\u0440\u0430\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       mule: stands({ kickRange: 1.2, charge: 1.9, chargeHit: 1.7, grudge: 500, giveUp: 26, fleeBelow: 0.2, leaveChance: 15e-5, terrain: ["grass", "forest"] })
     }),
@@ -1330,6 +1331,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "fox", size: 0.5, color: "#9a8f7a" },
       attack: { power: 1, cooldown: 11 },
       yields: { furs: 2, meat: 1 },
+      trophies: [{ res: "furs", n: 1, chance: 0.3 }],
       killMessage: (name) => `\u0420\u044B\u0441\u044C \u0431\u0440\u043E\u0441\u0438\u043B\u0430\u0441\u044C \u0441 \u0432\u0435\u0442\u043A\u0438 \u043D\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       predator: hunts({ prey: ["hare", "fox", "goat"], boldPeople: 0.75, groupFear: 2, meal: 1.4, sight: 18 })
     }),
@@ -1388,6 +1390,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "toad", size: 0.55, color: "#6b7a3a" },
       attack: { power: 1.2, cooldown: 20 },
       yields: { meat: 2, slime: 1 },
+      trophies: [{ res: "slime", n: 1, chance: 0.3 }],
       killMessage: (name) => `\u0416\u0430\u0431\u0430 \u0443\u0442\u044F\u043D\u0443\u043B\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430 \u0432 \u0442\u0440\u044F\u0441\u0438\u043D\u0443: <b>${name}</b>.`,
       mule: stands({ kickRange: 2.4, charge: 1.2, chargeHit: 1.2, chargeFrom: 3, giveUp: 8, terrain: ["grass", "forest"], leaveChance: 1e-4 })
     }),
@@ -1408,6 +1411,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "bird", size: 0.86, color: "#b88a44" },
       attack: { power: 1.9, cooldown: 13 },
       yields: { meat: 4, feathers: 3, bone: 2 },
+      trophies: [{ res: "feathers", n: 2, chance: 0.3 }],
       killMessage: (name) => `\u0413\u0440\u0438\u0444\u043E\u043D \u0443\u043D\u0451\u0441 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       predator: hunts({ prey: ["goat", "deer", "hare"], weakPrey: ["mule"], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4 })
     }),
@@ -1428,6 +1432,7 @@ dd.q4{color:#c58cff;font-weight:600}
       attack: { power: 1.7, cooldown: 14 },
       venom: { dmg: 9e-4, ticks: 240 },
       yields: { meat: 5, scales: 2, venom: 1 },
+      trophies: [{ res: "venom", n: 1, chance: 0.3, tier: 2 }, { res: "scales", n: 1, chance: 0.2 }],
       killMessage: (name) => `\u0412\u0438\u0432\u0435\u0440\u043D\u0430 \u0443\u0436\u0430\u043B\u0438\u043B\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430 \u043D\u0430\u0441\u043C\u0435\u0440\u0442\u044C: <b>${name}</b>.`,
       predator: hunts({ prey: ["goat", "deer", "boar"], weakPrey: ["mule", "elk"], weakBelow: 0.6, sight: 26, boldPeople: 0.45, groupFear: 4 })
     }),
@@ -1450,6 +1455,7 @@ dd.q4{color:#c58cff;font-weight:600}
       attack: { power: 2.6, cooldown: 15 },
       breath: 0.25,
       yields: { meat: 6, scales: 4, gland: 1 },
+      trophies: [{ res: "scales", n: 2, chance: 0.25, tier: 2 }, { res: "gland", n: 1, chance: 0.2, tier: 3 }],
       killMessage: (name) => `\u0414\u0440\u0435\u0439\u043A \u0441\u0436\u0451\u0433 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       predator: hunts({ prey: ["goat", "deer", "boar", "mule", "elk"], sight: 26, boldPeople: 0.35, groupFear: 5, meal: 3, bigMeal: 5 })
     }),
@@ -1471,6 +1477,7 @@ dd.q4{color:#c58cff;font-weight:600}
       web: { slow: 0.35, ticks: 120 },
       venom: { dmg: 4e-4, ticks: 160 },
       yields: { silk: 2, venom: 1 },
+      trophies: [{ res: "venom", n: 1, chance: 0.3, tier: 2 }, { res: "silk", n: 2, chance: 0.3 }],
       killMessage: (name) => `\u041F\u0430\u0443\u043A \u043E\u043F\u0443\u0442\u0430\u043B \u0438 \u0437\u0430\u0433\u0440\u044B\u0437 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       predator: hunts({ prey: ["hare", "fox", "goat"], boldPeople: 0.5, groupFear: 3, sight: 16 })
     }),
@@ -1490,6 +1497,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "worm", size: 0.9, color: "#7d6f5c" },
       attack: { power: 2.8, cooldown: 22 },
       yields: { meat: 8, hide: 4 },
+      trophies: [{ res: "gems", n: 1, chance: 0.15 }],
       killMessage: (name) => `\u041A\u0430\u043C\u0435\u043D\u043D\u044B\u0439 \u0447\u0435\u0440\u0432\u044C \u0440\u0430\u0437\u0434\u0430\u0432\u0438\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       mule: stands({ kickRange: 1.4, charge: 1.3, chargeHit: 1.8, fleeBelow: 0.15, leaveChance: 4e-4 })
     }),
@@ -1530,6 +1538,7 @@ dd.q4{color:#c58cff;font-weight:600}
       special: around({ S: 4, P: 7, E: 8, C: 1, I: 2, A: 8, L: 5 }),
       look: { shape: "lizard", size: 0.45, color: "#d0632a" },
       yields: { meat: 1, gland: 1 },
+      trophies: [{ res: "gland", n: 1, chance: 0.2, tier: 2 }],
       flee: { radius: 5, sprint: 1.5, from: ["people", "wolf", "varg"], stamina: 6e-3 },
       grazes: { terrain: ["grass", "burnt"], eatsBerries: 0 },
       leaveChance: 3e-4
@@ -1647,6 +1656,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "wolf", size: 0.58, color: "#8d8f96" },
       attack: { power: 0.85, cooldown: 14 },
       yields: { meat: 1, hide: 2, bone: 2 },
+      trophies: [{ res: "furs", n: 1, chance: 0.15 }],
       killMessage: (name) => `\u0412\u043E\u043B\u043A\u0438 \u0437\u0430\u0433\u0440\u044B\u0437\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
       predator: {
@@ -1724,6 +1734,7 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 60,
       look: { shape: "fox", size: 0.42, color: "#d0703a" },
       yields: { meat: 1, furs: 1 },
+      trophies: [{ res: "furs", n: 1, chance: 0.2 }],
       flee: { radius: 6, sprint: 1.5, from: ["people", "wolf"], stamina: 6e-3 },
       grazes: { terrain: ["grass", "forest"], eatsBerries: 0 },
       leaveChance: 4e-4
@@ -1747,6 +1758,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "boar", size: 0.62, color: "#4a3a30" },
       attack: { power: 1.45, cooldown: 14 },
       yields: { meat: 6, hide: 2, bone: 1 },
+      trophies: [{ res: "hide", n: 1, chance: 0.2 }],
       killMessage: (name) => `\u041A\u0430\u0431\u0430\u043D \u0437\u0430\u0434\u0440\u0430\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       mule: { kickRange: 1, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3, leaveChance: 3e-4 }
     },
@@ -4585,7 +4597,7 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "leatherwork", stat: "A", label: "\u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0430 \u043A\u043E\u0436\u0438", short: "\u043A\u043E\u0436\u0438" },
     { id: "pottery", stat: "A", label: "\u0433\u043E\u043D\u0447\u0430\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u0433\u043E\u043D\u0447\u0430\u0440" },
     { id: "jewelry", stat: "A", label: "\u044E\u0432\u0435\u043B\u0438\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u044E\u0432\u0435\u043B\u0438\u0440" },
-    { id: "trophyExtraction", stat: "A", label: "\u0438\u0437\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0435 \u0442\u0440\u043E\u0444\u0435\u0435\u0432", short: "\u0442\u0440\u043E\u0444\u0435\u0438", status: "reserved" },
+    { id: "trophyExtraction", stat: "A", label: "\u0438\u0437\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0435 \u0442\u0440\u043E\u0444\u0435\u0435\u0432", short: "\u0442\u0440\u043E\u0444\u0435\u0438" },
     { id: "stealth", stat: "A", label: "\u0441\u043A\u0440\u044B\u0442\u043D\u043E\u0441\u0442\u044C", short: "\u0441\u043A\u0440\u044B\u0442\u043D\u043E\u0441\u0442\u044C", status: "reserved" }
   ]);
   for (const s of SKILLS.all()) s.status ?? (s.status = "active");
@@ -7084,7 +7096,51 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var ROLE_LABEL = { lead: "\u0432\u0435\u0434\u0451\u0442 \u043F\u043E\u0433\u043E\u043D\u044E", flankL: "\u0437\u0430\u0445\u043E\u0434\u0438\u0442 \u0441\u0431\u043E\u043A\u0443", flankR: "\u0437\u0430\u0445\u043E\u0434\u0438\u0442 \u0441\u0431\u043E\u043A\u0443", wait: "\u043E\u0442\u0441\u0442\u0430\u043B, \u043F\u0435\u0440\u0435\u0432\u043E\u0434\u0438\u0442 \u0434\u0443\u0445" };
 
+  // src/agents/trophies.js
+  var TROPHY = { lucky: 0.5, soft: 5, practice: 40 };
+  function noteHit(t, by) {
+    if (by?.faction !== "colony" || t.faction === "colony" || !SPECIES.get(t.species).trophies) return;
+    (t.hitters || (t.hitters = {}))[by.id] = by.special?.L ?? NORM;
+  }
+  var luckBoost = (L) => 1 + TROPHY.lucky * L / (L + TROPHY.soft);
+  function decideTrophies(w, t, by) {
+    var _a, _b;
+    if (t.trophy) return t.trophy;
+    const table3 = SPECIES.get(t.species).trophies || [];
+    const hit = { ...t.hitters || {} };
+    if (by?.faction === "colony") hit[_a = by.id] ?? (hit[_a] = by.special?.L ?? NORM);
+    const ids = Object.keys(hit);
+    const out = t.trophy = { got: {}, spoiled: [] };
+    if (!table3.length || !ids.length) return out;
+    const L = ids.reduce((s, id) => s + hit[id], 0) / ids.length;
+    const crew = ids.map((id) => w.agents.find((o) => o.id === +id && !o.dead)).filter(Boolean);
+    for (const e of table3) {
+      if (!(w.rngs.combat() < Math.min(1, e.chance * luckBoost(L)))) continue;
+      if ((e.tier || 1) > 1) {
+        const hand = crew.filter((o) => canDoAction(o, "trophyExtraction", e.tier)).sort((x, y) => (y.skill?.trophyExtraction || 0) - (x.skill?.trophyExtraction || 0))[0];
+        if (!hand) {
+          out.spoiled.push(e.res);
+          continue;
+        }
+        practice(hand, "trophyExtraction", TROPHY.practice);
+        out.by = hand.name;
+        out.byF = hand.gender === "f";
+      }
+      out.got[e.res] = (out.got[e.res] || 0) + e.n;
+    }
+    const tally2 = (_b = w.chronicle).trophies || (_b.trophies = { got: 0, spoiled: 0 });
+    tally2.got += Object.values(out.got).reduce((s, n) => s + n, 0);
+    tally2.spoiled += out.spoiled.length;
+    return out;
+  }
+
   // src/agents/agent.js
+  function trophyText(t) {
+    if (!t) return "";
+    const got = Object.entries(t.got).map(([r, n]) => `${RESOURCES.get(r).label}${n > 1 ? " \xD7" + n : ""}`);
+    const lost = [...new Set(t.spoiled)].map((r) => RESOURCES.get(r).label);
+    return (got.length ? ` \u0420\u0435\u0434\u043A\u0430\u044F \u0434\u043E\u0431\u044B\u0447\u0430: ${got.join(", ")}${t.by ? ` (\u0432\u044B\u0440\u0435\u0437\u0430\u043B${t.byF ? "\u0430" : ""} ${esc(t.by)})` : ""}.` : "") + (lost.length ? ` \u0418\u0441\u043F\u043E\u0440\u0447\u0435\u043D\u043E \u043D\u0435\u0443\u043C\u0435\u043B\u043E\u0439 \u0440\u0443\u043A\u043E\u0439: ${lost.join(", ")}.` : "");
+  }
   var newMemory = (init = {}) => new Proxy(init, { get: (t, k) => typeof k === "string" ? t[k] ?? 0 : t[k] });
   var between = (rng, [a, b]) => a + rng() * (b - a);
   function personality(w, a) {
@@ -7169,6 +7225,7 @@ dd.q4{color:#c58cff;font-weight:600}
     noteHuntDeath(w, a);
     const sp = SPECIES.get(a.species);
     const killer = by ? SPECIES.get(by.species) : null;
+    const trophy = sp.trophies && (by?.faction === "colony" || a.hitters) ? decideTrophies(w, a, by) : null;
     if (a.faction === "colony") {
       noteDeath(w, a, cause, by);
       addCorpse(w, a);
@@ -7190,8 +7247,9 @@ dd.q4{color:#c58cff;font-weight:600}
     if (a.faction === "colony") log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, "\u043F\u043E\u0433\u0438\u0431", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430")} \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> ${g(a, "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B", "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B\u0430")} ${cause}.`, "death");
     else if (sp.yields && by?.faction === "colony" && by.task?.id !== "job" && a.faction !== "traders") {
       for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
+      for (const [r, n] of Object.entries(trophy?.got || {})) w.stock[r] = (w.stock[r] || 0) + n;
       const got = Object.keys(sp.yields).map((r) => RESOURCES.get(r).label).join(", ");
-      log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? "\u0443\u043F\u043E\u043A\u043E\u0438\u043B" : "\u0443\u0431\u0438\u043B", sp.undead ? "\u0443\u043F\u043E\u043A\u043E\u0438\u043B\u0430" : "\u0443\u0431\u0438\u043B\u0430")} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} \u2014 \u0432 \u043B\u0430\u0433\u0435\u0440\u044C.`, "danger", "notice");
+      log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? "\u0443\u043F\u043E\u043A\u043E\u0438\u043B" : "\u0443\u0431\u0438\u043B", sp.undead ? "\u0443\u043F\u043E\u043A\u043E\u0438\u043B\u0430" : "\u0443\u0431\u0438\u043B\u0430")} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} \u2014 \u0432 \u043B\u0430\u0433\u0435\u0440\u044C.${trophyText(trophy)}`, "danger", "notice");
     } else if (sp.resident && by?.faction === "colony") {
       log(w, `<b>${esc(by.name)}</b> ${g(by, "\u0443\u043F\u043E\u043A\u043E\u0438\u043B", "\u0443\u043F\u043E\u043A\u043E\u0438\u043B\u0430")} ${sp.labelAcc || sp.label}. \u041D\u0430\u0434\u043E\u043B\u0433\u043E \u043B\u0438?`, "danger", "notice");
     } else if (a.faction === "raiders" && by) {
@@ -7344,6 +7402,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const home = by.faction === "colony" && agentInZone(w, by) ? 1.25 : 1;
     const wall = t.faction === "colony" && agentInZone(w, t) ? w.mods.mul.defense : 1;
     let dmg = raw * home * wall * (1 - (g2.armor || 0));
+    noteHit(t, by);
     if (g2.armor && t.equip?.body) wear(w, t, t.equip.body);
     t.hp -= dmg;
     const bsp = SPECIES.get(by.species);
@@ -11468,6 +11527,9 @@ dd.q4{color:#c58cff;font-weight:600}
         a.stats.hunted++;
         think(w, a, "huntKill", { prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label });
         for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
+        for (const [r, n] of Object.entries(prey.trophy?.got || {})) load(a, r, n);
+        const rare = trophyText(prey.trophy);
+        if (rare) log(w, `<b>${esc(a.name)}</b> ${g(a, "\u0434\u043E\u0431\u044B\u043B", "\u0434\u043E\u0431\u044B\u043B\u0430")} ${SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label}.${rare}`, "wildlife");
         const near2 = w.agents.some((o) => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
         task.oneMore = a.carry.n < 8 && near2;
         task.prey = null;
@@ -14768,7 +14830,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.38 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 f77f0d4" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 3ad3f50" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 2;

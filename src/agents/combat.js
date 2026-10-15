@@ -11,6 +11,7 @@ import {practice} from './skills.js';
 import {LEARN} from '../data/skills.js';
 import {critChance, lethal} from './wounds.js';
 import {CRIT} from '../data/wounds.js';
+import {noteHit} from './trophies.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
@@ -63,6 +64,7 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   const home = by.faction === 'colony' && agentInZone(w, by) ? 1.25 : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
   let dmg = raw * home * wall * (1 - (g.armor || 0));
+  noteHit(t, by);   // the colonists who fought it share in its rare trophies (agents/trophies.js)
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
   t.hp -= dmg;
   // creatures that drink blood heal by what they draw

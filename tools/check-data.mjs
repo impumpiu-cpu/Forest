@@ -231,6 +231,15 @@ for (const t of ['fell', 'survived', 'trauma', 'woundHealed']) if (!THOUGHTS.has
 // haggling (settlement/trade.js): even at the best terms buying must cost more than selling brings
 if (!(TRADE.ask - TRADE.bid - 2 * TRADE.haggle > 0)) err(`торг: при поправке ±${TRADE.haggle} продажа и обратная покупка дают прибыль`);
 
+// trophies (agents/trophies.js): real resources, chances in (0, 1], tiers 1–4, only on what has yields
+for (const sp of SPECIES.all()) for (const e of sp.trophies || []) {
+  res(`трофей ${sp.id}`, e.res);
+  if (!(e.chance > 0 && e.chance <= 1)) err(`трофей ${sp.id}/${e.res}: шанс ${e.chance} вне (0, 1]`);
+  if (!(e.n > 0)) err(`трофей ${sp.id}/${e.res}: количество ${e.n}`);
+  if (e.tier != null && !(Number.isInteger(e.tier) && e.tier >= 1 && e.tier <= TIERS.length)) err(`трофей ${sp.id}/${e.res}: тир ${e.tier}`);
+  if (!sp.yields) err(`трофей ${sp.id}: у вида нет обычной добычи yields, трофей некуда положить`);
+}
+
 for (const w of warnings) console.log('warn ' + w);
 if (errors.length) { console.log('Ошибки в справочниках:\n  ' + errors.join('\n  ')); process.exit(1); }
 console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд, ${SKILLS.all().length} навыков, ${WOUNDS.all().length} ран — ссылки сходятся`);

@@ -41,6 +41,8 @@ METRICS.registerAll([
   {id: 'traumas', label: 'Неизлечимых травм', group: 'Люди', fmt: 0, get: w => w.chronicle.falls?.traumas || 0},
   {id: 'critShare', label: 'Доля критических ударов, %', group: 'Оборона', fmt: 1, get: w => (w.chronicle.combat?.hits ? 100 * w.chronicle.combat.crits / w.chronicle.combat.hits : 0)},
   {id: 'fine', label: 'Добротных вещей и лучше', group: 'Поселение', fmt: 0, get: w => Object.values(w.chronicle.fine || {}).reduce((t, n) => t + n, 0)},
+  {id: 'trophies', label: 'Редких трофеев добыто', group: 'Природа', fmt: 0, get: w => w.chronicle.trophies?.got || 0},
+  {id: 'trophiesSpoiled', label: 'Трофеев испорчено', group: 'Природа', fmt: 0, get: w => w.chronicle.trophies?.spoiled || 0},
   {id: 'food', label: 'Еда в запасе', group: 'Запасы', fmt: 0, get: foodTotal},
   ...RESOURCES.all().map(r => ({id: 'res_' + r.id, label: r.label, group: 'Запасы', fmt: 0, get: w => w.stock[r.id] || 0})),
   {id: 'gold', label: 'Золотых в казне', group: 'Торговля', fmt: 1, get: w => w.stock.gold || 0},

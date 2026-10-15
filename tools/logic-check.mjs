@@ -4,7 +4,7 @@
 // T27–T31 carcasses and pack hunts; T32–T39 SPECIAL stage 1: skills, practice, the body;
 // T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order;
 // T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
-// T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator). Each scene builds a flat, empty map, places a few agents by hand and
+// T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -38,6 +38,7 @@ import {refreshBody, adoptBody} from '../src/agents/special.js';
 import {craftChance, qualityRoll} from '../src/data/quality.js';
 import {critChance, lethal, stabilize, stepDowned, healWounds} from '../src/agents/wounds.js';
 import {CRIT} from '../src/data/wounds.js';
+import {decideTrophies, luckBoost, TROPHY} from '../src/agents/trophies.js';
 import {damage, attack, nearestHostile} from '../src/agents/combat.js';
 import {giveAid} from '../src/settlement/together.js';
 import {saveWorld, loadWorld} from '../src/world/save.js';
@@ -858,6 +859,62 @@ check('T65', 'торговле учит только настоящая сдел
   caravanFor(w2, []);
   const s2 = n2.skill.barter; holdTrade(w2);
   return n2.skill.barter === s2 || 'пустой торг научил';
+});
+
+// ── SPECIAL stage 6: rare trophies
+const beast = (w, sp, x = 34.5) => put(w, sp, 'wild', x, 30.5);
+const countRolls = w => { let n = 0; const f = w.rngs.combat; w.rngs.combat = Object.assign(() => { n++; return f(); }, {state: 0}); return () => n; };
+
+check('T66', 'удача поднимает вес редкого, но не создаёт того, чего нет в таблице', () => {
+  const w = scene(); seq(w, [0]);
+  const hare = beast(w, 'hare'); hare.hitters = {1: 1000};
+  const t = decideTrophies(w, hare);
+  if (Object.keys(t.got).length) return 'у зайца появился трофей: ' + JSON.stringify(t);
+  return (luckBoost(10) > luckBoost(5) && luckBoost(5) > luckBoost(0) && Math.abs(luckBoost(5) - 1.25) < 1e-12 && luckBoost(1e9) <= 1 + TROPHY.lucky) || 'множитель удачи неверен';
+});
+
+check('T67', 'трофей решается один раз: повтор и загрузка ничего не перебрасывают', () => {
+  const w = scene(), a = human(w), wolf = beast(w, 'wolf');
+  seq(w, [0]); wolf.hitters = {[a.id]: 5};
+  const t1 = decideTrophies(w, wolf);
+  const rolls = countRolls(w);
+  const t2 = decideTrophies(w, wolf);
+  if (t1 !== t2 || rolls() !== 0) return 'второй вызов бросал снова';
+  const w2 = loadWorld(JSON.parse(JSON.stringify(saveWorld(w))));
+  const again = w2.agents.find(o => o.id === wolf.id);
+  const r2 = countRolls(w2);
+  return (JSON.stringify(decideTrophies(w2, again)) === JSON.stringify(t1) && r2() === 0) || 'после загрузки трофей другой';
+});
+
+check('T68', 'удача считается по всем бившим, а не по последнему удару', () => {
+  const chance = 0.15, lo = chance * luckBoost(1), mid = chance * luckBoost(5.5);
+  const u = (lo + mid) / 2;   // only an average Luck of 5.5 gets it, Luck 1 alone does not
+  const run = lastHit => {
+    const w = scene(), lucky = human(w, {L: 10}), unlucky = human(w, {L: 1}), wolf = beast(w, 'wolf');
+    w.rngs.combat = Object.assign(() => u, {state: 0});
+    wolf.hitters = {[lucky.id]: 10, [unlucky.id]: 1};
+    return Object.keys(decideTrophies(w, wolf, lastHit === 'lucky' ? lucky : unlucky).got).length;
+  };
+  return (run('lucky') === 1 && run('unlucky') === 1) || 'исход зависит от того, кто добил';
+});
+
+check('T69', 'нежный орган цел только у умелой руки, иначе испорчен', () => {
+  const run = A => {
+    const w = scene(), a = human(w, {A}), bear = beast(w, 'bear');
+    seq(w, [0]); bear.hitters = {[a.id]: 5};
+    const s0 = a.skill.trophyExtraction, t = decideTrophies(w, bear);
+    return {t, learnt: a.skill.trophyExtraction > s0};
+  };
+  const clumsy = run(3), deft = run(4);
+  return (!clumsy.t.got.bile && clumsy.t.spoiled.includes('bile') && !clumsy.learnt && deft.t.got.bile === 1 && deft.learnt) || JSON.stringify({clumsy: clumsy.t, deft: deft.t});
+});
+
+check('T70', 'зверь, убитый в бою, отдаёт в лагерь и обычную добычу, и трофей', () => {
+  const w = scene(), a = human(w), wolf = beast(w, 'wolf');
+  for (const r of Object.keys(w.stock)) w.stock[r] = 0;
+  seq(w, [0]); a.task = {id: 'fight', target: wolf};
+  wolf.hp = 0.001; damage(w, a, wolf, 1);
+  return (wolf.dead && w.stock.meat === 1 && w.stock.hide === 2 && w.stock.furs === 1) || 'склад: ' + JSON.stringify({dead: wolf.dead, meat: w.stock.meat, hide: w.stock.hide, furs: w.stock.furs});
 });
 
 let bad = 0;

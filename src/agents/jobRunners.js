@@ -17,7 +17,7 @@ import {boldness} from './brains/predator.js';
 import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
-import {kill} from './agent.js';
+import {kill, trophyText} from './agent.js';
 import {practice, skillOf, canDoAction} from './skills.js';
 import {recipeSkill, LEARN} from '../data/skills.js';
 import {think, moodOf} from './mind.js';
@@ -332,6 +332,10 @@ export const RUNNERS = {
       w.stats.hunted++; a.stalking = false; a.stats.hunted++;
       think(w, a, 'huntKill', {prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label});
       for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
+      // rare trophies of the kill, decided at the death (agents/trophies.js): the hunter carries them home
+      for (const [r, n] of Object.entries(prey.trophy?.got || {})) load(a, r, n);
+      const rare = trophyText(prey.trophy);
+      if (rare) log(w, `<b>${esc(a.name)}</b> ${g(a, 'добыл', 'добыла')} ${SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label}.${rare}`, 'wildlife');
       const near = w.agents.some(o => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
       task.oneMore = a.carry.n < 8 && near; task.prey = null; task.age = 0;
     } else if (res === 'miss' || res === 'hit') {
