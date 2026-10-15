@@ -11,7 +11,7 @@ const SQRT2 = Math.SQRT2;
 function buffers(w) {
   if (w.astar) return w.astar;
   const n = w.n;
-  return (w.astar = {g: new Float32Array(n), seen: new Int32Array(n), parent: new Int32Array(n),
+  return (w.astar = {g: new Float32Array(n), seen: new Int32Array(n), closed: new Int32Array(n), parent: new Int32Array(n),
     heapI: new Int32Array(n * 8), heapF: new Float32Array(n * 8), stamp: 0});
 }
 
@@ -56,7 +56,7 @@ export function findPath(w, sx, sy, gx, gy, budget = 6000) {
     if (best < 0) return null; goal = best;
   }
   if (start === goal) return [];
-  const stamp = ++b.stamp, {g, seen, parent, heapI, heapF} = b;
+  const stamp = ++b.stamp, {g, seen, closed, parent, heapI, heapF} = b;
   const gxC = goal % W, gyC = (goal / W) | 0;
   const h = i => { const dx = Math.abs((i % W) - gxC), dy = Math.abs(((i / W) | 0) - gyC); return (dx + dy) + (SQRT2 - 2) * Math.min(dx, dy); };
   let hn = 0;
@@ -68,6 +68,11 @@ export function findPath(w, sx, sy, gx, gy, budget = 6000) {
     hn--; const li = heapI[hn], lf = heapF[hn]; let k = 0;
     for (;;) { let c = 2 * k + 1; if (c >= hn) break; if (c + 1 < hn && heapF[c + 1] < heapF[c]) c++; if (heapF[c] >= lf) break; heapI[k] = heapI[c]; heapF[k] = heapF[c]; k = c; }
     heapI[k] = li; heapF[k] = lf;
+    // a cell is expanded once: stale copies left in the heap by a later, cheaper visit are skipped
+    // (the octile estimate never overstates a step here, so the first pop is the cheapest). Without
+    // this the search re-expanded the same cells over and over and gave up on long but open routes.
+    if (closed[i] === stamp) continue;
+    closed[i] = stamp;
     if (i === goal) {
       const path = []; for (let c = goal; c !== start; c = parent[c]) path.push(c);
       return path.reverse();

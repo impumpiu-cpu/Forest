@@ -3,8 +3,8 @@
 import {SPECIES, matchesKind} from '../../data/species.js';
 import {TERRAIN} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
-import {cellOf, walkable, inBounds} from '../../world/grid.js';
-import {moveToward, escapeHeat, nearFire, bolt, follow, sprintMul, recover, approach, shunsHeat} from '../movement.js';
+import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
+import {moveToward, escapeHeat, nearFire, bolt, follow, sprintMul, recover, approach, shunsHeat, sameLand} from '../movement.js';
 import {kill} from '../agent.js';
 
 function threatsNear(w, a, radius, from) {
@@ -53,9 +53,9 @@ export const grazerBrain = {
       let bestV = -Infinity;
       for (let k = 0; k < 12; k++) {
         const x = a.x + (w.rng() * 2 - 1) * reach, y = a.y + (w.rng() * 2 - 1) * reach;
-        if (!inBounds(w, x | 0, y | 0)) continue;
+        if (!inMap(w, x, y)) continue;
         const j = (y | 0) * w.w + (x | 0);
-        if (!walkable(w, j) || !ok.has(w.grid.terr[j])) continue;
+        if (!walkable(w, j) || !ok.has(w.grid.terr[j]) || !sameLand(w, a, j)) continue;
         const v = w.grid.fert[j] + Math.min(8, x, y, w.w - x, w.h - y) * 0.12 + w.rng() * 0.3;
         if (v > bestV) { bestV = v; t.spot = [x, y]; }
       }

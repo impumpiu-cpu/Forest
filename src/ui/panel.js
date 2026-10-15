@@ -6,7 +6,8 @@ import {FOODS} from '../data/foods.js';
 import {TRADE} from '../data/trade.js';
 import {CROPS} from '../data/crops.js';
 import {WALKABLE} from '../data/terrain.js';
-import {lotFertility} from '../settlement/buildings.js';
+import {lotFertility, missing} from '../settlement/buildings.js';
+import {sourcesOf} from '../settlement/sources.js';
 
 const soilWord = f => (f < 0.3 ? 'тощая' : f < 0.5 ? 'средняя' : f < 0.7 ? 'добрая' : 'жирная');
 import {goodsUnits, goodsLabel, askPrice} from '../settlement/trade.js';
@@ -282,9 +283,28 @@ export class Panel {
     let goal = '';
     if (c.goal) {
       const d = BUILDINGS.get(c.goal);
-      goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? '' : ' short'}">${RESOURCES.get(r).label} ${Math.min(v, Math.floor(w.stock[r] || 0))}/${v}</span>`).join(' ')}</div>`;
+      // wood is counted with the camp fire's reserve, as the site is laid (settlement/buildings.js)
+      const need = (r, v) => v + (r === 'wood' ? fuelReserve(w) : 0);
+      goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= need(r, v) ? '' : ' short'}">${RESOURCES.get(r).label} ${Math.min(need(r, v), Math.floor(w.stock[r] || 0))}/${need(r, v)}${need(r, v) > v ? ` (из них ${need(r, v) - v} на костёр)` : ''}</span>`).join(' ')}</div>` + this.waitingHtml(w, d);
     }
     this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}`);
+  }
+
+  // why the council's goal is not laid yet: each missing resource, where it comes from and who is at it;
+  // how long the colony has been saving and how much of the shortfall is already made up
+  waitingHtml(w, d) {
+    const c = w.council, lack = missing(w, d.cost);
+    if (!lack.length) return '<p class="pc-small">Всё собрано: стройку заложат на ближайшем совете.</p>';
+    const rows = lack.map(([r, n]) => {
+      const src = sourcesOf(w, r), busy = src.reduce((t, s) => t + s.busy, 0);
+      const how = src.length ? src.map(s => `${s.how}${s.busy ? ` — ${s.busy} чел.` : ''}`).join('; ') : 'взять неоткуда';
+      const note = '';
+      return `<li class="${busy ? '' : 'down'}"><b>${RESOURCES.get(r).label} ${n}</b>${note}: ${how}${src.length && !busy ? '. Сейчас этим никто не занят' : ''}</li>`;
+    }).join('');
+    const days = c.goalSince != null ? Math.floor((w.tick - c.goalSince) / DAY) : 0;
+    const left = lack.reduce((t, [, n]) => t + n, 0), done = c.goalLack ? Math.max(0, Math.round((1 - left / c.goalLack) * 100)) : null;
+    const since = days >= 1 ? `Копят ${days} ${plural(days, 'день', 'дня', 'дней')}${done != null ? `, собрано ${done}% недостающего` : ''}.` : '';
+    return `<h4 class="pc-sub">Чего ждём</h4><ul class="pc-list">${rows}</ul>${since ? `<p class="pc-small">${since}</p>` : ''}`;
   }
 
   // stations at work and the gear store
@@ -439,6 +459,20 @@ export class Panel {
     return `в ${d} ${plural(d, 'клетке', 'клетках', 'клетках')} от лагеря`;
   }
 
+  // why the colonist does what it does: the choice at the last think, the runner-up, the way, the last
+  // task dropped before it was done (agents/brains/colonist.js a.why, a.lastStop; agents/movement.js a.route)
+  whyHtml(w, a) {
+    const y = a.why, rows = [];
+    const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
+    if (y) {
+      rows.push(`<dt>Выбор</dt><dd><b>${esc(y.task)}</b> (${y.score})${y.why ? ` — ${esc(y.why)}` : ''}${y.kept ? '; продолжает начатое' : ''}</dd>`);
+      if (y.alt) rows.push(`<dt>Второе</dt><dd class="alt">${esc(y.alt)} (${y.altScore})${y.altWhy ? ` — ${esc(y.altWhy)}` : ''}</dd>`);
+    }
+    if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
+    if (a.lastStop) rows.push(`<dt>Бросил</dt><dd>«${esc(a.lastStop.task)}» ${ago(a.lastStop.t)}: ${esc(a.lastStop.why)}</dd>`);
+    return rows.length ? `<dl class="kv why">${rows.join('')}</dl>` : '';
+  }
+
   creatureHtml(w, a) {
     const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
     const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
@@ -460,6 +494,7 @@ export class Panel {
         `<dt>Дерзость</dt><dd>${b < 0.2 ? 'осторожен' : b < 0.6 ? 'смелеет' : 'безрассуден'}</dd>`);
     }
     if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
+    if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
     rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
     const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : raceOf(a);
     const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${who}` : who[0].toUpperCase() + who.slice(1);
@@ -497,6 +532,7 @@ export class Panel {
     return `<div class="pc-head"><h3>${esc(a.name)}</h3><span class="pc-mood m${mood > 0.15 ? 'up' : mood < -0.15 ? 'down' : 'mid'}">${moodLabel(a, mood)}</span>
         <button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div>
       <p class="pc-now">Сейчас ${taskLabel(a)}, ${this.where(w, a)}.${fresh.length ? ' На душе: ' + fresh.map(e => esc(e.text.replace(/[.!…]+$/, '')).replace(/^./, ch => ch.toLowerCase())).join('; ') + '.' : ''}</p>
+      ${this.whyHtml(w, a)}
       <div class="pc-grid">
         <section><h4>Характер</h4>
           <p class="pc-small">Любит ${JOBS.get(a.likes).label}, не любит ${JOBS.get(a.dislikes).label}.</p>

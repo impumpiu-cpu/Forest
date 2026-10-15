@@ -29,7 +29,8 @@ function reserved(w, res) {
 
 function canStart(w, r) {
   if (r.needs && !r.needs.every(b => has(w, b))) return false;
-  if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w))) return false;
+  // the fire: wood for the fire comes on top of the wood in the price (and the camp fire's reserve)
+  if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0))) return false;
   if (r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;   // a town-made tool from the stock (cupels)
   // enough in stock, and what is left still covers the council's savings goal
   return Object.entries(r.cost).every(([res, v]) => {
@@ -126,9 +127,13 @@ export function workAt(w, b, amount, a) {
   if (!b.order) {
     const r = pickRecipe(w, b.key);
     if (!r) return false;
+    // fuel is chosen before the materials are taken, with the price's own wood set aside, so the two never
+    // compete for the same logs (it used to find no fuel left after the price and crash)
+    const fuel = r.fuel ? furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0)) : null;
+    if (r.fuel && !fuel) return false;
     if (w.scratch) delete w.scratch.orders;   // materials are taken: other stations may not afford theirs now
     for (const [res, v] of Object.entries(r.cost)) w.stock[res] -= v;
-    if (r.fuel) { const [f, n] = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); w.stock[f.id] -= n; }
+    if (fuel) w.stock[fuel[0].id] -= fuel[1];
     b.order = {recipe: r.id, progress: 0};
   }
   const r = RECIPES.get(b.order.recipe);

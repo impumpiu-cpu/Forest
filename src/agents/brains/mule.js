@@ -9,8 +9,8 @@
 import {SPECIES} from '../../data/species.js';
 import {TERRAIN} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
-import {cellOf, walkable, inBounds} from '../../world/grid.js';
-import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, shunsHeat} from '../movement.js';
+import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
+import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, shunsHeat, sameLand} from '../movement.js';
 import {damage} from '../combat.js';
 import {kill, maxHp} from '../agent.js';
 import {season} from '../../data/seasons.js';
@@ -50,9 +50,9 @@ function graze(w, a, sp) {
     let bestV = -Infinity;
     for (let k = 0; k < 10; k++) {
       const x = a.x + (w.rng() * 2 - 1) * reach, y = a.y + (w.rng() * 2 - 1) * reach;
-      if (!inBounds(w, x | 0, y | 0)) continue;
+      if (!inMap(w, x, y)) continue;
       const j = (y | 0) * w.w + (x | 0);
-      if (!walkable(w, j) || !ok.has(w.grid.terr[j]) || w.zone[j]) continue;   // keeps off the settlement
+      if (!walkable(w, j) || !ok.has(w.grid.terr[j]) || w.zone[j] || !sameLand(w, a, j)) continue;   // keeps off the settlement
       const v = w.grid.fert[j] + Math.min(8, x, y, w.w - x, w.h - y) * 0.1 + w.rng() * 0.3;
       if (v > bestV) { bestV = v; t.spot = [x, y]; }
     }

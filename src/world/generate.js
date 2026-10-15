@@ -1,4 +1,5 @@
 // World generation. makeTerrain is pure (the menu preview uses it too); createWorld builds the full state.
+import {newBehaviour} from '../settlement/behaviour.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {clamp} from '../core/util.js';
 import {HOUR, ambientTemp} from '../core/time.js';
@@ -83,6 +84,7 @@ export function createWorld(cfg) {
     weather: {rain: 0, rainLeft: 0},
     stats: {fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0, crafted: 0, broken: 0, raids: 0},
     campLit: false, mods: emptyMods(), cache: {}, outside: null, caravan: null, trade: newTradeState(), chronicle: newChronicle(), over: null,
+    behave: newBehaviour(),
     council: {lastDay: -1, goal: null, votes: [], args: [], decision: 'Первый совет соберётся сегодня вечером у костра.'},
     logLines: [], logVersion: 0, nav: null,
   };

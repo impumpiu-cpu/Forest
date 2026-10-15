@@ -21,6 +21,7 @@ import {homeComfort, prayed} from '../settlement/life.js';
 
 export const TASKS = new Registry('task');
 const done = a => { a.task = null; a.think = 0; };
+const fail = (a, why) => { a.stopWhy = why; done(a); };
 
 // wander a little inside the camp so people don't stand in one spot
 function mill(w, a, task, radius = 1.2) {
@@ -93,7 +94,7 @@ TASKS.registerAll([
     // look about for a little, then give up
     if (!canSee(w, a, t)) {
       task.lost ??= {x: t.x, y: t.y, until: w.tick + 60};
-      if (w.tick > task.lost.until || approach(w, a, task.lost.x, task.lost.y, 0.9) !== false) done(a);
+      if (w.tick > task.lost.until || approach(w, a, task.lost.x, task.lost.y, 0.9) !== false) fail(a, 'враг скрылся из виду');
       return;
     }
     task.lost = null;
@@ -102,11 +103,11 @@ TASKS.registerAll([
       const range = g.ranged.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
       task.shooting = true;
       // close in when too far, or when a rock blocks the shot
-      if (d > range * 0.9 || (shoot(w, a, t, 'hunt') === null && a.cd <= 0)) { if (approach(w, a, t.x, t.y, 1.0) === null) done(a); }
+      if (d > range * 0.9 || (shoot(w, a, t, 'hunt') === null && a.cd <= 0)) { if (approach(w, a, t.x, t.y, 1.0) === null) fail(a, 'к врагу не подойти'); }
       return;
     }
     task.shooting = false;
-    if (d > Math.min(0.9, reachOf(a))) { if (approach(w, a, t.x, t.y, 1.1) === null) done(a); }   // unreachable: pick something else
+    if (d > Math.min(0.9, reachOf(a))) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(a, 'к врагу не подойти'); }   // unreachable: pick something else
     else attack(w, a, t);
   }},
 
@@ -139,7 +140,7 @@ TASKS.registerAll([
     if (!task.at) {
       const r = follow(w, a, 'station:shrine');
       if (r === 'arrived') task.at = w.tick;
-      else if (r === 'none' && !w.nav.dirtySet.has('station:shrine')) { w.nav.dirty('station:shrine'); done(a); a.think = 30; }
+      else if (r === 'none' && !w.nav.dirtySet.has('station:shrine')) { w.nav.dirty('station:shrine'); fail(a, 'к святилищу нет пути'); a.think = 30; }
       return;
     }
     if (w.tick - task.at > 60) { prayed(w, a); done(a); }
@@ -183,7 +184,7 @@ TASKS.registerAll([
     if (!task.lying) {
       const r = follow(w, a, 'healer');
       if (r === 'arrived') task.lying = true;
-      else if (r === 'none' && !w.nav.dirtySet.has('healer')) { w.nav.dirty('healer'); done(a); a.think = 30; }
+      else if (r === 'none' && !w.nav.dirtySet.has('healer')) { w.nav.dirty('healer'); fail(a, 'к лекарю нет пути'); a.think = 30; }
       return;
     }
     a.sleeping = true;   // lies still: drawn dimmed, does not tire

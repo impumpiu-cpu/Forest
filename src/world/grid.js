@@ -3,6 +3,8 @@ import {T, WALKABLE} from '../data/terrain.js';
 import {clamp} from '../core/util.js';
 
 export const inBounds = (w, x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
+// a point (fractional coordinates) on the map; inBounds(w, x | 0, y | 0) would let −0.3 through, since −0.3 | 0 is 0
+export const inMap = (w, x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
 export const walkable = (w, i) => WALKABLE[w.grid.terr[i]] === 1;
 export const cellOf = (w, a) => clamp(a.y | 0, 0, w.h - 1) * w.w + clamp(a.x | 0, 0, w.w - 1);
 export const isCampArea = (w, i) => Math.abs((i % w.w) - w.camp.x) <= 3 && Math.abs(((i / w.w) | 0) - w.camp.y) <= 3;

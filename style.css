@@ -162,6 +162,8 @@ button.quiet{background:transparent;color:var(--muted)}
 .chip.race{background:#2c3040;color:#cdd4f0}
 .person .race{font-style:normal;font-size:11px;color:var(--muted);font-weight:400}
 .pc-list li.down{color:#f0c0c2} .pc-list li.up{color:#cfe6b8}
+.pc-sub{margin:10px 0 4px;font-family:var(--font-display);font-weight:500;font-size:13px;letter-spacing:.06em;color:var(--muted)}
+.why dt{color:var(--muted)} .why .alt{color:var(--muted)}
 .chip.like{background:#2f4a2a;color:#cfe6b8} .chip.dislike{background:#4a2a2c;color:#f0c0c2}
 .pc-bar{display:grid;grid-template-columns:72px minmax(0,1fr) 26px;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
 .pc-bar b{font-family:var(--font-mono);font-weight:400;text-align:right;color:var(--fg)}

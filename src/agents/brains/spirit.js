@@ -7,10 +7,11 @@
 // a rusalka only while she sings. Hurt, a rusalka dives (`dives`) and a leshy fights back one on one but
 // melts into the thicket when `crowd` colonists close in; hidden, nobody sees them. At home their wounds
 // close (`regen`); plain weapons barely hurt a leshy (`resist`) — fire is its death. Killed, they come back after a while (data/migrations.js, `resident`).
+import {FAR} from '../../nav/navigation.js';
 import {SPECIES} from '../../data/species.js';
 import {TERRAIN} from '../../data/terrain.js';
-import {cellOf, walkable, inBounds} from '../../world/grid.js';
-import {approach, escapeHeat} from '../movement.js';
+import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
+import {approach, escapeHeat, sameLand} from '../movement.js';
 import {attack} from '../combat.js';
 import {kill, maxHp} from '../agent.js';
 import {think} from '../mind.js';
@@ -39,7 +40,8 @@ export function isHome(w, i, home) {
 export function homeCell(w, home, minDist) {
   for (let k = 0; k < 600; k++) {
     const i = (w.rng() * w.w * w.h) | 0, x = i % w.w, y = (i / w.w) | 0;
-    if (isHome(w, i, home) && Math.hypot(x - w.camp.x, y - w.camp.y) > minDist) return i;
+    // on land the colony can reach: a rusalka on a lake nobody can walk to would sing in vain
+    if (isHome(w, i, home) && w.nav.get('camp')[i] < FAR && Math.hypot(x - w.camp.x, y - w.camp.y) > minDist) return i;
   }
   return -1;
 }
@@ -54,9 +56,9 @@ function wander(w, a, S) {
     t.spot = null;
     for (let k = 0; k < 30; k++) {
       const x = a.x + (w.rng() * 2 - 1) * 10, y = a.y + (w.rng() * 2 - 1) * 10;
-      if (!inBounds(w, x | 0, y | 0)) continue;
+      if (!inMap(w, x, y)) continue;
       // home ground, and out of the settlement's way (`keepOff` cells from the camp)
-      if (isHome(w, (y | 0) * w.w + (x | 0), S.home) && Math.hypot(x - w.camp.x, y - w.camp.y) > (S.keepOff || 0)) { t.spot = [x, y]; break; }
+      if (isHome(w, (y | 0) * w.w + (x | 0), S.home) && sameLand(w, a, (y | 0) * w.w + (x | 0)) && Math.hypot(x - w.camp.x, y - w.camp.y) > (S.keepOff || 0)) { t.spot = [x, y]; break; }
     }
     // no home ground close by: look across the map, but not more than once in a while
     if (!t.spot && w.tick - (t.searched ?? -1e9) > 120) { t.searched = w.tick; const i = homeCell(w, S.home, S.keepOff || 0); if (i >= 0) t.spot = [i % w.w + 0.5, ((i / w.w) | 0) + 0.5]; }
@@ -135,7 +137,8 @@ export const spiritBrain = {
       return;
     }
     // whoever hurts it: a rusalka dives; a leshy fights back one on one, but slips away from a crowd
-    const h = a.hurtBy, foe = h && w.tick - h.tick < 200 ? w.agents.find(o => o.id === h.id && !o.dead && dist(o, a) < 12) : null;
+    // …but not into the settlement: the nechist keeps to its wood and water
+    const h = a.hurtBy, foe = h && w.tick - h.tick < 200 ? w.agents.find(o => o.id === h.id && !o.dead && dist(o, a) < 12 && !agentInZone(w, o)) : null;
     a.veil = foe ? null : S.aura === 'lure' && active && a.task?.id === 'sing' ? 6 : S.veil;
     if (foe) {
       const crowd = w.agents.filter(o => o.faction === 'colony' && !o.dead && dist(o, a) < 5).length;

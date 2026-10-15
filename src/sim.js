@@ -8,6 +8,7 @@ import {stepFarms} from './settlement/farming.js';
 import {stepHerd} from './settlement/herd.js';
 import {stepLife} from './settlement/life.js';
 import {stepEffects} from './agents/body.js';
+import {sampleBehaviour} from './settlement/behaviour.js';
 import {stepRelations} from './settlement/relations.js';
 import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
@@ -73,6 +74,7 @@ export function step(w) {
   stepTrade(w);
   stepOutside(w);
   sampleChronicle(w);
+  sampleBehaviour(w);
   checkEnd(w);
   const t3 = performance.now();
   w.perf.fields = ema(w.perf.fields, t1 - t0); w.perf.nav = ema(w.perf.nav, t2 - t1); w.perf.agents = ema(w.perf.agents, t3 - t2);

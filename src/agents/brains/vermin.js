@@ -4,9 +4,9 @@
 // to its hole; a colonist who gets right next to one may kill it. Pots and a granary keep food out of
 // their reach (settlement/stock.js exposedFood). A kikimora comes only by night (`spoils`).
 import {SPECIES} from '../../data/species.js';
-import {cellOf, walkable, inBounds} from '../../world/grid.js';
+import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
 import {T} from '../../data/terrain.js';
-import {follow, bolt, nearFire, escapeHeat, approach} from '../movement.js';
+import {follow, bolt, nearFire, escapeHeat, approach, sameLand} from '../movement.js';
 import {kill} from '../agent.js';
 import {nibble} from '../../settlement/stock.js';
 import {log} from '../../core/log.js';
@@ -28,9 +28,9 @@ function denOf(w, a) {
   for (let k = 0; k < 40; k++) {
     const ang = w.rng() * Math.PI * 2, r = VERMIN.den[0] + w.rng() * (VERMIN.den[1] - VERMIN.den[0]);
     const x = w.camp.x + 0.5 + Math.cos(ang) * r, y = w.camp.y + 0.5 + Math.sin(ang) * r;
-    if (!inBounds(w, x | 0, y | 0)) continue;
+    if (!inMap(w, x, y)) continue;
     const i = (y | 0) * w.w + (x | 0);
-    if (!walkable(w, i)) continue;
+    if (!walkable(w, i) || !sameLand(w, a, i)) continue;
     const v = (w.grid.terr[i] === T.FOREST || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rng() * 0.5;
     if (v > bv) { bv = v; best = [x, y]; }
   }

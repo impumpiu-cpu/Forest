@@ -35,6 +35,8 @@ export function workRate(w, a, jobId) {
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };
 
 const done = (a) => { a.task = null; a.think = 0; };
+// give the task up and say why (the colonist's card shows it, agents/brains/colonist.js noteStop)
+const fail = (a, why) => { a.stopWhy = why; done(a); };
 
 // What an agent carries: {res: {resource: units}, n: total}; n is always the sum of res.
 // The load belongs to the agent, not to the task: a colonist who drops a job (to fight, to sleep) keeps
@@ -94,7 +96,7 @@ export const RUNNERS = {
       toolWear(w, a, job.id);
     } else if (r === 'none') {
       if (w.nav.dirtySet.has(job.nav)) return;   // the map is being rebuilt for this job: wait a tick
-      if (a.carry?.n) task.full = true; else { a.task = {id: 'idle'}; a.think = 20; }   // nothing left to gather: bring home what there is
+      if (a.carry?.n) task.full = true; else { a.stopWhy = 'собирать нечего: всё выбрано или не дойти'; a.task = {id: 'idle'}; a.think = 20; }   // nothing left to gather: bring home what there is
     }
     if (job.memory && r === 'moving' && !a.carry) { const d = w.nav.get(job.nav)[i]; if (d > 25) a.mem[job.memory] += 0.003; }
   },
@@ -103,7 +105,7 @@ export const RUNNERS = {
     const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
     if (site && !site.done && w.grid.fire[i] === 0) { const amt = workRate(w, a, 'build'); a.stats.labour += amt; addLabour(w, site, amt, a); toolWear(w, a, 'build', 0.05); return; }
     const r = follow(w, a, 'sites');
-    if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); done(a); a.think = 10; }
+    if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); fail(a, r === 'none' ? 'к стройке нет пути' : 'стройка уже закончена'); a.think = 10; }
   },
 
   // work the current order at a station building (crafthut, tannery…)
@@ -114,7 +116,7 @@ export const RUNNERS = {
       const open = job.stations.filter(s => stationHasWork(w, s, a));
       task.station = open.sort((x, y) => stationPriority(w, y) - stationPriority(w, x))[0];
     }
-    if (!task.station) { done(a); a.think = 20; return; }   // nothing to make anywhere or every bench is taken
+    if (!task.station) { fail(a, 'заказов нет или все верстаки заняты'); a.think = 20; return; }
     const map = 'station:' + task.station;
     const r = follow(w, a, map);
     if (r === 'arrived') {
@@ -122,7 +124,7 @@ export const RUNNERS = {
       if (b) markWorking(w, b, a);
       // a furnished workshop is a better place to work (settlement/life.js)
       if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id) * workBonus(b), a)) { done(a); a.think = 20; }
-    } else if (r === 'none') { if (w.nav.dirtySet.has(map)) return; w.nav.dirty(map); done(a); a.think = 20; }
+    } else if (r === 'none') { if (w.nav.dirtySet.has(map)) return; w.nav.dirty(map); fail(a, 'к мастерской нет пути'); a.think = 20; }
   },
 
   // field work: walk to a plot that needs it, sow it (a seed from the stock) or reap it and carry the crop home
@@ -154,7 +156,7 @@ export const RUNNERS = {
         const given = tend(w, a, workRate(w, a, 'heal') * workBonus(w.buildings.find(x => x.done && x.key === 'healerhut')));
         if (given) a.stats.healed = (a.stats.healed || 0) + given;
         else if (!patients(w).length && w.rng() < 0.02) mill(w, a);   // the patients are still on their way
-      } else if (r === 'none') { w.nav.dirty('healer'); done(a); a.think = 20; }
+      } else if (r === 'none') { w.nav.dirty('healer'); fail(a, 'к хижине лекаря нет пути'); a.think = 20; }
       return;
     }
     RUNNERS.harvest(w, a, task);
@@ -172,7 +174,7 @@ export const RUNNERS = {
       let bd = Infinity;
       for (const o of chores(w)) { const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
       if (!b && !a.carry) for (const o of tameTargets(w)) { if (claimed(w, o, a)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
-      if (!b) { if (a.carry?.n) { task.more = false; return; } done(a); a.think = 30; return; }
+      if (!b) { if (a.carry?.n) { task.more = false; return; } fail(a, 'некого приручать или доить'); a.think = 30; return; }
       task.beast = b.id; task.work = 0; task.since = w.tick;
     }
     const d = Math.hypot(b.x - a.x, b.y - a.y);
@@ -216,11 +218,11 @@ export const RUNNERS = {
   bury(w, a, task) {
     const job = JOBS.get(task.job);
     let c = task.corpse != null ? (w.corpses || []).find(x => x.id === task.corpse) : null;
-    if (!c) { c = freeCorpse(w, a); if (!c) { done(a); a.think = 30; return; } task.corpse = c.id; task.carrying = false; }
+    if (!c) { c = freeCorpse(w, a); if (!c) { fail(a, 'тело уже несут другие'); a.think = 30; return; } task.corpse = c.id; task.carrying = false; }
     c.by = a.id; c.at = w.tick;
     if (!task.carrying) {
       const r = approach(w, a, c.x, c.y);
-      if (r === null) { c.by = null; done(a); a.think = 60; return; }
+      if (r === null) { c.by = null; fail(a, 'к телу не подойти'); a.think = 60; return; }
       if (Math.hypot(c.x - a.x, c.y - a.y) < 0.9) { task.carrying = true; task.spot = graveSpot(w); }
       return;
     }
@@ -238,7 +240,7 @@ export const RUNNERS = {
     const job = JOBS.get(task.job);
     // carrying game: head home, unless there is room for another animal close by
     if (a.carry && !task.oneMore) { a.stalking = false; haulHome(w, a); return; }
-    if (!a.gear?.rangedReady) { a.stalking = false; done(a); return; }   // out of arrows
+    if (!a.gear?.rangedReady) { a.stalking = false; fail(a, 'нечем стрелять: кончились стрелы'); return; }
     task.age = (task.age || 0) + 1;
     let prey = task.prey;
     // the flow field leads to whichever animal is nearest by path, so keep retargeting to the nearest one
@@ -246,9 +248,9 @@ export const RUNNERS = {
       prey = null; let bd = 80 * 80;
       for (const o of huntable(w, job)) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
       task.prey = prey;
-      if (!prey) { done(a); a.think = 30; a.stalking = false; return; }
+      if (!prey) { fail(a, 'дичи не видно'); a.think = 30; a.stalking = false; return; }
     }
-    if (task.age > 900) { a.mem.chase += 0.2; a.stalking = false; done(a); return; }   // gave up
+    if (task.age > 900) { a.mem.chase += 0.2; a.stalking = false; fail(a, 'дичь ушла, устал гоняться'); return; }
     const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = a.gear.ranged.range + w.mods.add.huntRange;
     a.stalking = d < 10;
     if (d > range * 0.85) {

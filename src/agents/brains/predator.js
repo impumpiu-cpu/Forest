@@ -8,7 +8,7 @@
 import {SPECIES, matchesKind} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable} from '../../world/grid.js';
-import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, ascend, shunsHeat} from '../movement.js';
+import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, ascend, shunsHeat, sameLand} from '../movement.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {attack} from '../combat.js';
 import {SPECIES as SP} from '../../data/species.js';
@@ -195,7 +195,7 @@ export const predatorBrain = {
       for (let k = 0; k < 20; k++) {
         const x = 2 + w.rng() * (w.w - 4), y = 2 + w.rng() * (w.h - 4);
         const j = (y | 0) * w.w + (x | 0);
-        if (!walkable(w, j) || w.nav.get('zone')[j] < P.zoneShyNight + 6) continue;
+        if (!walkable(w, j) || w.nav.get('zone')[j] < P.zoneShyNight + 6 || !sameLand(w, a, j)) continue;
         r.spot = [x, y]; r.bestD = Infinity; r.since = w.tick; break;
       }
     }

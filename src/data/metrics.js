@@ -8,11 +8,16 @@ import {moodOf} from '../agents/mind.js';
 import {fishTotals} from '../world/lakes.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
 import {colonyReport} from '../outside/report.js';
+import {DAY} from '../core/time.js';
+import {SPECIES} from './species.js';
 
 export const METRICS = new Registry('metric');
 
 const deaths = (w, key) => w.chronicle.deaths[key] || 0;
 const allDeaths = w => Object.values(w.chronicle.deaths).reduce((s, v) => s + v, 0);
+const RACE_IDS = () => new Set(SPECIES.filter(s => s.rel).map(s => s.id));
+const share = (w, k) => (w.behave?.ticks ? w.behave[k] / w.behave.ticks * 100 : 0);
+const perDay = (w, k) => (w.behave?.ticks ? w.behave[k] / (w.behave.ticks / DAY) : 0);
 const avg = (xs, f) => (xs.length ? xs.reduce((s, x) => s + f(x), 0) / xs.length : 0);
 
 METRICS.registerAll([
@@ -46,6 +51,17 @@ METRICS.registerAll([
   {id: 'wolfAttacks', label: 'Нападений волков', group: 'Природа', fmt: 0, get: w => w.stats.wolfAttacks},
   {id: 'fish', label: 'Рыбы в озёрах', group: 'Природа', fmt: 0, get: w => fishTotals(w)[0]},
   {id: 'burnt', label: 'Выгорело клеток', group: 'Природа', fmt: 0, get: w => w.stats.burntCells},
+  // how creatures behave (settlement/behaviour.js): rates per colonist and day, shares of colonist time
+  {id: 'invalid', label: 'Недопустимых состояний (должно быть 0)', group: 'Поведение', fmt: 0, get: w => w.behave?.invalid || 0},
+  {id: 'idle', label: 'Простой, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'idle')},
+  {id: 'muster', label: 'В тревоге у костра, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'muster')},
+  {id: 'switches', label: 'Смен дела на человека в день', group: 'Поведение', fmt: 1, get: w => perDay(w, 'switches')},
+  {id: 'stops', label: 'Брошено дел на человека в день', group: 'Поведение', fmt: 2, get: w => perDay(w, 'stops')},
+  {id: 'firstDrops', label: 'Брошено на первом шаге, на человека в день', group: 'Поведение', fmt: 2, get: w => perDay(w, 'firstDrops')},
+  {id: 'noPath', label: 'Отказов «пути нет» всего', group: 'Поведение', fmt: 0, get: w => w.behave?.noPath || 0},
+  {id: 'noPathColony', label: 'Отказов «пути нет» у поселенцев', group: 'Поведение', fmt: 0, get: w => Object.entries(w.behave?.noPathBy || {}).filter(([k]) => RACE_IDS().has(k.split(':')[0])).reduce((s, [, v]) => s + v, 0)},
+  {id: 'react', label: 'Реакция на нападение, тиков', group: 'Поведение', fmt: 1, get: w => (w.behave?.react.n ? w.behave.react.sum / w.behave.react.n : 0)},
+  {id: 'reactMissed', label: 'Нападений без ответа', group: 'Поведение', fmt: 0, get: w => w.behave?.react.missed || 0},
 ]);
 
 export const sampleMetrics = w => Object.fromEntries(METRICS.all().map(m => [m.id, m.get(w)]));

@@ -21,9 +21,36 @@ import {tradeOpen} from '../../settlement/trade.js';
 import {hurt, waiting, HEAL} from '../../settlement/healing.js';
 import {has} from '../../settlement/query.js';
 import {wantsPrayer} from '../../settlement/life.js';
+import {RESOURCES} from '../../data/resources.js';
+import {BUILDINGS} from '../../data/buildings.js';
 
 // how long a job dropped on its first step stays out of the choice
 const JOB_SKIP = 120;
+// the weight of answering an attack on oneself: more than any need can reach
+const ATTACKED = 2.6;
+
+const label = t => TASKS.get(t.id).label(t);
+
+// why a job tempts: the colony's need, the council's goal, the colonist's own liking
+function jobWhy(w, a, job, ctx, goal, tasty, night) {
+  const parts = [];
+  if (job.resource) parts.push(`${RESOURCES.get(job.resource).label} в запасе ${Math.floor(w.stock[job.resource] || 0)}`);
+  else if (job.food) parts.push(`еды ${Math.floor(ctx.food)} на ${ctx.pop} чел.`);
+  else if (job.runner === 'build') parts.push(`стройка ждёт`);
+  else if (job.runner === 'craft') parts.push('есть заказ в мастерской');
+  else if (job.runner === 'heal') parts.push(`раненых ${ctx.patients}`);
+  if (goal > 0) parts.push(`копим на ${BUILDINGS.get(w.council.goal).name.toLowerCase()}`);
+  if (job.id === a.likes) parts.push('любимое дело'); else if (job.id === a.dislikes) parts.push('не по душе');
+  if (tasty > 1) parts.push('любимая еда');
+  if (night > 0.6) parts.push('ночь, работа идёт неохотно');
+  return parts.join(', ') || 'нужно поселению';
+}
+
+// the last task dropped before it was done, and why (the card shows it)
+export function noteStop(w, a, task, why) {
+  a.lastStop = {t: w.tick, task: label(task), why};
+  w.behave.stops++;
+}
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
@@ -37,7 +64,7 @@ function decide(w, a) {
   const opts = [];
   for (const id of SPECIES.get(a.species).needs) {
     const n = NEEDS.get(id);
-    opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk]);
+    opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ', но лагерь горит' : ''}`]);
   }
   for (const job of JOBS.all()) {
     if (!jobUnlocked(w, job) || (job.canDo && !job.canDo(w, a))) continue;
@@ -49,41 +76,57 @@ function decide(w, a) {
     const dayWork = job.runner === 'build' ? night * 0.3 : night * 0.2;
     // a job that brings your favourite food is a little more tempting
     const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
-    opts.push([{id: 'job', job: job.id}, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty]);
+    opts.push([{id: 'job', job: job.id}, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty, () => jobWhy(w, a, job, ctx, goal, tasty, night)]);
   }
-  opts.push([{id: 'idle'}, 0.15]);
+  opts.push([{id: 'idle'}, 0.15, () => 'больше нечем заняться']);
   // low spirits: a gloomy spell keeps its hold for a while; a walk to the shrine may help
-  if (a.task?.id === 'sulk' && w.tick < a.task.until) opts.push([a.task, 0.95]);
+  if (a.task?.id === 'sulk' && w.tick < a.task.until) opts.push([a.task, 0.95, () => 'хандра: давно не в духе']);
   // a spell of the nechist holds until it wears off (or something more urgent: a fight, fire)
-  if (a.task?.spell && w.tick < a.task.until) opts.push([a.task, a.task.spell]);
+  if (a.task?.spell && w.tick < a.task.until) opts.push([a.task, a.task.spell, () => 'чары нечисти']);
   const pray = wantsPrayer(w, a);
-  if (pray > 0.1 && night < 0.5) opts.push([{id: 'pray'}, 0.3 + pray * 1.2]);
-  if (councilDue(w)) opts.push([{id: 'council'}, 1.3]);
+  if (pray > 0.1 && night < 0.5) opts.push([{id: 'pray'}, 0.3 + pray * 1.2, () => 'тяжело на душе']);
+  if (councilDue(w)) opts.push([{id: 'council'}, 1.3, () => 'время совета']);
   // badly hurt, with a healer's hut: go and lie there (more urgent the worse the wounds)
-  if ((hurt(a) || (a.task?.id === 'treat' && a.hp < maxHp(a) * HEAL.until)) && has(w, 'healerhut')) opts.push([{id: 'treat'}, (1 - a.hp / maxHp(a)) * 2 + 0.25]);
-  if (tradeOpen(w)) opts.push([{id: 'trade'}, 1.1]);   // right after the council, the second gathering of the evening
+  if ((hurt(a) || (a.task?.id === 'treat' && a.hp < maxHp(a) * HEAL.until)) && has(w, 'healerhut')) opts.push([{id: 'treat'}, (1 - a.hp / maxHp(a)) * 2 + 0.25, () => `ранен: здоровье ${Math.round(hpShare(a) * 100)}%`]);
+  if (tradeOpen(w)) opts.push([{id: 'trade'}, 1.1, () => 'торг с купцом']);   // right after the council, the second gathering of the evening
   const brave = a.mods.bravery;
-  if (w.stats.fireNearCamp > 0 && hpShare(a) > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave]);
+  if (w.stats.fireNearCamp > 0 && hpShare(a) > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave, () => 'пожар у лагеря']);
   // something is hunting me: brave and healthy people fight back, the rest run for the camp
   const hunter = w.agents.find(o => !o.dead && o.task?.id === 'maul' && o.task.target === a);
   if (hunter) {
     if (hunter.species === 'wolf') a.mem.wolf += 0.05;
-    opts.push(brave * hpShare(a) > 0.85 ? [{id: 'fight', target: hunter}, 1.5] : [{id: 'runHome'}, 1.5]);
+    const who = SPECIES.get(hunter.species).label;
+    // above every bodily need (sleep at night peaks near 2.2): nobody sleeps on while being mauled
+    // already inside the settlement there is nowhere to run to: stand and fight unless badly hurt
+    const stand = brave * hpShare(a) > 0.85 || (agentInZone(w, a) && hpShare(a) > 0.3);
+    opts.push(stand ? [{id: 'fight', target: hunter}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
   }
   const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
   // alarm: while raiders are on the map everyone gathers inside the settlement zone and meets them
   // together; the wounded fall back
   const raid = raidAlarm(w);
-  if (raid && !enemy) opts.push([{id: 'muster'}, 1.25]);
-  if (enemy && hpShare(a) > 0.3) opts.push([{id: 'fight', target: enemy}, (raid ? 1.35 : 1.1) * brave]);
-  if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6]);
+  if (raid && !enemy) opts.push([{id: 'muster'}, 1.25, () => 'тревога: враги подходят к лагерю']);
+  if (enemy && hpShare(a) > 0.3) opts.push([{id: 'fight', target: enemy}, (raid ? 1.35 : 1.1) * brave, () => `враг рядом: ${SPECIES.get(enemy.species).label}`]);
+  if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);
   // the current task is kept unless something is clearly better; a long walk (`sticky` jobs) more so
   const keep = 0.12 + (a.task?.id === 'job' ? JOBS.get(a.task.job).sticky || 0 : 0);
-  for (const [t, s] of opts) { const sc = s + (key(t) === cur ? keep : 0); if (sc > bs) { bs = sc; best = t; } }
+  let bestWhy = null, alt = null, as = -Infinity, altWhy = null;
+  for (const [t, s, why] of opts) {
+    const sc = s + (key(t) === cur ? keep : 0);
+    if (sc > bs) { if (best && key(best) !== key(t)) { alt = best; as = bs; altWhy = bestWhy; } bs = sc; best = t; bestWhy = why; }
+    else if (sc > as && key(t) !== key(best)) { alt = t; as = sc; altWhy = why; }
+  }
+  // the choice explained for the colonist's card: what, why, the runner-up, and whether it was kept
+  a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
+    alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || ''};
   if (key(best) !== cur) {
+    // what was dropped for it (a finished job leaves no task behind, so it is not counted here)
+    // (eating, sleeping, warming up simply wind down when the need is met: that is no dropped task)
+    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'sulk'].includes(a.task.id)) noteStop(w, a, a.task, `ради «${a.why.task}»: ${a.why.why}`);
+    if (a.task) w.behave.switches++;
     a.task = best;
     if (best.id === 'job' && !best.eatNow) {
       if (best.job === a.likes) think(w, a, 'likedWork', {job: JOBS.get(best.job).label});
@@ -128,8 +171,11 @@ export const colonistBrain = {
     TASKS.get(a.task.id).step(w, a, a.task);
     // a job dropped on its first step (no prey, no free body, no site) is not taken again for a while;
     // without this the colonist picked it again the same tick and stood idle for hours
-    if (!a.task && was.id === 'job' && !was.started) a.skipJob = {id: was.job, until: w.tick + JOB_SKIP};
+    if (!a.task && was.id === 'job' && !was.started) { a.skipJob = {id: was.job, until: w.tick + JOB_SKIP}; w.behave.firstDrops++; }
     else if (a.task === was && was.id === 'job') was.started = true;
+    // a task that gave up says why (a.stopWhy, set where it fails); one ended by its own success says nothing
+    if ((!a.task || a.task.id === 'idle') && a.stopWhy && a.task !== was) noteStop(w, a, was, a.stopWhy);
+    a.stopWhy = null;
     if (a.cd > 0) a.cd--;
   },
 };

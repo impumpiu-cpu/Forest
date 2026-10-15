@@ -3,6 +3,7 @@
 // gets its distance fields back as they were (stale ones stay stale, so the game goes on exactly
 // as it would have), agents' memories get their "unknown reads as 0" wrapper again.
 // A loaded game continues tick for tick like the one that was saved (tools/determinism.mjs checks it).
+import {newBehaviour} from '../settlement/behaviour.js';
 import {SPECIES} from '../data/species.js';
 import {rollCreature} from '../agents/special.js';
 import {BASE_MODS} from '../data/traits.js';
@@ -54,6 +55,7 @@ export function loadWorld(save) {
   ensurePlants(w);
   w.trade ??= newTradeState(); w.caravan ??= null;
   w.corpses ??= []; w.graves ??= []; w.graveyard ??= null;
+  w.behave ??= newBehaviour();   // behaviour counters (settlement/behaviour.js) start at the load
   recomputeMods(w);   // building effects as this version defines them
   // charcoal and mined coal are one coal now
   if (w.stock.charcoal != null) { w.stock.coal = (w.stock.coal || 0) + w.stock.charcoal; delete w.stock.charcoal; }
