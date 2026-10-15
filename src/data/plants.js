@@ -14,7 +14,7 @@
 //   seasons:   only gathered in these seasons (hay is mown in summer and autumn)
 //   tint:      colour mixed into the ground on the world layer; mapColor: on the resource layer
 //   The region (data/regions.js, flora) scales `chance`; a bed the region has not got is not laid at all.
-//   job:       the gathering job: {id, label, short, verb, time, carry, keep, hurt?, tool?, weight?, skill? (default gathering)} — it is wanted
+//   job:       the gathering job: {id, label, short, verb, time, carry, keep, hurt?, tool?, weight?, skill? (default gathering), tier?} — it is wanted
 //              while the stock is below `keep` (a number, or keep(w) when it depends on the colony);
 //              `hurt` takes that much health per picking (bee stings); `tool`: only someone with that tool
 //              (data/items.js `tool`) can do it; `weight` scales how keen the colony is on it (default 1)
@@ -50,7 +50,7 @@ PLANTS.registerAll([
   // wild bees in hollow trees: honey and wax; the bees sting
   {id: 'hive', resource: 'honey', also: {wax: 0.5}, label: 'дикие пчёлы', terrain: ['forest'], fertMin: 0.4, chance: 0.003,
     start: [0.5, 1], regrow: 0.00035, ripe: 0.5, take: 0.5, tint: [230, 170, 40], mapColor: [250, 180, 30],
-    job: {id: 'honey', label: 'бортничать', short: 'мёд', verb: 'берёт мёд у диких пчёл', time: 40, carry: 2, keep: 12, hurt: 0.04}},
+    job: {id: 'honey', tier: 2, label: 'бортничать', short: 'мёд', verb: 'берёт мёд у диких пчёл', time: 40, carry: 2, keep: 12, hurt: 0.04}},
 
   // meadow grass: mown for hay in summer and autumn — bedding in huts, fodder later
   {id: 'meadow', resource: 'hay', label: 'луговая трава', terrain: ['grass'], fertMin: 0.45, chance: 0.05, seasons: ['summer', 'autumn'],
@@ -62,7 +62,7 @@ PLANTS.registerAll([
   // sand very slowly. Not under ice. Now and then a nugget turns up in the pan.
   {id: 'placer', resource: 'goldDust', also: {goldNugget: 0.02}, label: 'золотоносный песок', terrain: ['grass'], nearWater: true, chance: 0.06,
     seasons: ['spring', 'summer', 'autumn'], start: [0.6, 1], regrow: 0.00006, ripe: 0.3, take: 0.12, tint: [222, 196, 96], mapColor: [255, 214, 60],
-    job: {id: 'pan', label: 'мыть золото', short: 'золото', verb: 'моет золото в отмели', time: 40, carry: 4, keep: 200, tool: 'pan'}},
+    job: {id: 'pan', tier: 2, label: 'мыть золото', short: 'золото', verb: 'моет золото в отмели', time: 40, carry: 4, keep: 200, tool: 'pan'}},
 
   // salt licks: white crusts where salty springs come up; the outpost's own salt, a little at a time
   {id: 'saltlick', resource: 'salt', label: 'солонец', terrain: ['grass'], fertMin: 0, chance: 0.004, hardy: true,

@@ -24,22 +24,30 @@ export const skillTier = (a, skillId) => tierFor(statFor(a, skillId));
 
 export const skillOf = (a, skillId) => a.skill?.[skillId] ?? 0;
 
-// Can this worker take an order of this recipe? The one check the AI, the stations, the worker and the
-// card all read. Pure: no random numbers, no practice. A refusal says why, in data the card can word:
+// Can this creature do this? The one check the AI, the stations, the workers and the card all read.
+// Pure: no random numbers, no practice. Anything with a skill and a tier is an action: a recipe
+// ({skill?, at, tier}), a job ({skill, tier}), a tiered part of a job ({skill, tier} from the data).
+// A refusal says why, in data the card can word:
 //   {ok: false, reasons: [{code: 'tier', stat: 'S', need: 6, have: 4, tier: 3, skill: 'smithing'}]}
-// Only abilities are checked here; materials, fuel and the bench are the station's business.
-export function recipeAccess(a, r) {
-  const need = recipeNeed(r), reasons = [];
-  if (need) { const have = statFor(a, need.skill); if (have < need.need) reasons.push({...need, have}); }
-  return {ok: !reasons.length, reasons, skill: recipeSkill(r), tier: r.tier || 1};
-}
-// what a recipe asks of the worker, whoever it is: null for T1
-export function recipeNeed(r) {
-  const tier = r.tier || 1; if (tier <= 1) return null;
-  const skill = recipeSkill(r);
+// Only abilities are checked here; materials, fuel, benches and targets are the system's own business.
+export function actionNeed(skill, tier = 1) {
+  if (!skill || (tier || 1) <= 1) return null;
   return {code: 'tier', stat: SKILLS.get(skill).stat, need: TIERS[tier - 1].min, tier, skill};
 }
+export function actionAccess(a, skill, tier = 1) {
+  const need = actionNeed(skill, tier), reasons = [];
+  if (need) { const have = statFor(a, skill); if (have < need.need) reasons.push({...need, have}); }
+  return {ok: !reasons.length, reasons, skill, tier: tier || 1};
+}
+export const canDoAction = (a, skill, tier) => actionAccess(a, skill, tier).ok;
+
+// a craft order of this recipe
+export const recipeNeed = r => actionNeed(recipeSkill(r), r.tier);
+export const recipeAccess = (a, r) => actionAccess(a, recipeSkill(r), r.tier);
 export const canMake = (a, r) => recipeAccess(a, r).ok;
+
+// a whole job: the job's own tier on its own skill (digging ore, panning gold, taking wild honey)
+export const jobAccess = (a, job) => actionAccess(a, job.skill, job.tier);
 
 // a key that is the same for any two workers whom the tiers treat alike: one letter's tier per character
 export const accessKey = a => STAT_IDS.map(id => tierFor(a.special?.[id] ?? NORM)).join('');

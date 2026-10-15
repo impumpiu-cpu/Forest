@@ -3,7 +3,8 @@
 // T23–T26 joint actions of colonists;
 // T27–T31 carcasses and pack hunts; T32–T39 SPECIAL stage 1: skills, practice, the body;
 // T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order;
-// T47–T48 quality from the master; T49–T57 critical blows and the deadly wound). Each scene builds a flat, empty map, places a few agents by hand and
+// T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
+// T58–T62 tiers of the other jobs and the AI). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -32,7 +33,7 @@ import {outsideRisk, escortOption, aidOption, TOGETHER} from '../src/settlement/
 import {stepRelations, REL} from '../src/settlement/relations.js';
 import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS} from '../src/agents/carcass.js';
 import {DAY, HOUR, nightness} from '../src/core/time.js';
-import {newItem, outfit, recalcGear} from '../src/agents/equipment.js';
+import {newItem, outfit, recalcGear, allItems} from '../src/agents/equipment.js';
 import {refreshBody, adoptBody} from '../src/agents/special.js';
 import {craftChance, qualityRoll} from '../src/data/quality.js';
 import {critChance, lethal, stabilize, stepDowned, healWounds} from '../src/agents/wounds.js';
@@ -40,12 +41,13 @@ import {CRIT} from '../src/data/wounds.js';
 import {damage, attack, nearestHostile} from '../src/agents/combat.js';
 import {giveAid} from '../src/settlement/together.js';
 import {saveWorld, loadWorld} from '../src/world/save.js';
-import {practice, practiceGain, softCap, skillTier, migrateSkills, recipeAccess, canMake} from '../src/agents/skills.js';
+import {practice, practiceGain, softCap, skillTier, migrateSkills, recipeAccess, canMake, jobAccess, canDoAction} from '../src/agents/skills.js';
 import {workRate} from '../src/agents/jobRunners.js';
 import {shoot} from '../src/agents/combat.js';
 import {recipeSkill, isActive} from '../src/data/skills.js';
 import {RECIPES} from '../src/data/recipes.js';
-import {JOBS} from '../src/data/jobs.js';
+import {JOBS, huntable} from '../src/data/jobs.js';
+import {canTame} from '../src/settlement/herd.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -775,6 +777,45 @@ check('T57', 'ближнему бою учит нанесённый удар, у
   const d1 = hp0 - t.hp;
   a.cd = 5; const m1 = a.skill.melee; attack(w, a, t);
   return (Math.abs(d1 / d0 - (1 + 0.4) / (1 + 0.4 * m0)) < 1e-9 && a.skill.melee === m1) || `урон ${d0} → ${d1}, навык без удара ${m1} → ${a.skill.melee}`;
+});
+
+// ── SPECIAL stage 4: the other jobs and the AI by what one can do
+check('T58', 'работа с тиром закрыта слабому: руда при силе 3, золото при восприятии 3', () => {
+  const w = scene(), weak = human(w, {S: 3, P: 3}), ok = human(w, {S: 4, P: 4});
+  const dig = JOBS.get('dig'), pan = JOBS.get('pan');
+  if (jobAccess(weak, dig).ok || jobAccess(weak, pan).ok) return 'слабому открыты руда или золото';
+  if (!jobAccess(ok, dig).ok || !jobAccess(ok, pan).ok) return 'сильному закрыты руда или золото';
+  return JOBS.filter(j => !j.tier || j.tier <= 1).every(j => jobAccess(weak, j).ok) || 'работа T1 закрыта слабому';
+});
+
+check('T59', 'лечить в хижине зовут только того, кто умеет; травы может собирать любой', () => {
+  const w = scene(), dull = human(w, {I: 3}), wise = human(w, {I: 5}), heal = JOBS.get('heal');
+  w.stock.herbs = 0;
+  const ctx = a => ({patients: 2, can: (sk, t) => canDoAction(a, sk, t), agent: a});
+  const d1 = heal.desire(w, ctx(dull), heal), d2 = heal.desire(w, ctx(wise), heal);
+  return (d2 >= 0.9 && d1 > 0 && d1 < 0.5) || `желание лечить: не умеет ${d1}, умеет ${d2}`;
+});
+
+check('T60', 'мула приручает только спокойный скотник, козу любой', () => {
+  const w = scene(), rough = human(w, {C: 4}), calm = human(w, {C: 6});
+  const mule = put(w, 'mule', 'wild', 40.5, 30.5), goat = put(w, 'goat', 'wild', 41.5, 30.5);
+  return (!canTame(rough, mule) && canTame(calm, mule) && canTame(rough, goat)) || 'тир приручения считается неверно';
+});
+
+check('T61', 'крупного зверя ищет только охотник с тиром', () => {
+  const w = scene(), novice = human(w, {P: 3}), hunter = human(w, {P: 4});
+  put(w, 'boar', 'wild', 45.5, 30.5);
+  const job = JOBS.get('hunt');
+  return (huntable(w, job, novice).length === 0 && huntable(w, job, hunter).length === 1 && huntable(w, job).length === 1) || 'кабан достаётся новичку или не достаётся никому';
+});
+
+check('T62', 'инструмент для закрытой работы не берут', () => {
+  const w = scene(), blind = human(w, {P: 2}), sharp = human(w, {P: 6});
+  for (const a of [blind, sharp]) { a.likes = 'pan'; a.prefs.pan = 1.6; }
+  w.armory.push(newItem('pan')); outfit(w, blind);
+  const took = allItems(blind).some(it => it.type === 'pan');
+  outfit(w, sharp);
+  return (!took && allItems(sharp).some(it => it.type === 'pan')) || `лоток: слабый ${took}, зоркий ${allItems(sharp).some(it => it.type === 'pan')}`;
 });
 
 let bad = 0;

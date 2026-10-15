@@ -18,14 +18,14 @@ import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
 import {kill} from './agent.js';
-import {practice, skillOf} from './skills.js';
+import {practice, skillOf, canDoAction} from './skills.js';
 import {recipeSkill, LEARN} from '../data/skills.js';
 import {think, moodOf} from './mind.js';
 import {add} from '../settlement/chronicle.js';
 import {seasonJob} from '../data/seasons.js';
 import {plotAt, needsWork, workPlot} from '../settlement/farming.js';
 import {tend, patients, waiting, healerHutCell} from '../settlement/healing.js';
-import {chores, tameTargets, tryTame, claimed} from '../settlement/herd.js';
+import {chores, tameTargets, tryTame, claimed, canTame} from '../settlement/herd.js';
 import {freeCorpse, graveSpot, bury, workBonus} from '../settlement/life.js';
 import {damage} from './combat.js';
 import {log} from '../core/log.js';
@@ -178,7 +178,8 @@ export const RUNNERS = {
 
   // the healer: tend whoever lies in the healer's hut; with nobody to tend, pick herbs (as harvest)
   heal(w, a, task) {
-    if (waiting(w)) {
+    // only a healer whose medicine reaches the job's `tendTier` tends; the others pick herbs
+    if (waiting(w) && canDoAction(a, 'medicine', JOBS.get(task.job).tendTier)) {
       if (a.carry?.n) dropLoad(w, a);
       const r = follow(w, a, 'healer');
       if (r === 'arrived' || healerHutCell(w, a)) {
@@ -197,12 +198,12 @@ export const RUNNERS = {
     const job = JOBS.get(task.job);
     if (a.carry && (a.carry.n >= job.carry || !task.more)) { haulHome(w, a); return; }
     let b = task.beast != null ? w.agents.find(o => o.id === task.beast && !o.dead) : null;
-    const ok = o => o && !claimed(w, o, a) && (o.tame ? chores(w).includes(o) : tameTargets(w).includes(o));
+    const ok = o => o && !claimed(w, o, a) && (o.tame ? chores(w).includes(o) : tameTargets(w).includes(o) && canTame(a, o));
     if (!ok(b)) {
       b = null; task.calm = false; task.tame = null;
       let bd = Infinity;
       for (const o of chores(w)) { if (claimed(w, o, a)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
-      if (!b && !a.carry) for (const o of tameTargets(w)) { if (claimed(w, o, a)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
+      if (!b && !a.carry) for (const o of tameTargets(w)) { if (claimed(w, o, a) || !canTame(a, o)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
       if (!b) { if (a.carry?.n) { task.more = false; return; } fail(w, a, 'некого приручать или доить'); a.think = 30; return; }
       task.beast = b.id; task.work = 0; task.since = w.tick;
     }
@@ -309,7 +310,7 @@ export const RUNNERS = {
     // the flow field leads to whichever animal is nearest by path, so keep retargeting to the nearest one
     if (!prey || prey.dead || !w.agents.includes(prey) || (task.age % 40 === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > 9)) {
       prey = null; let bd = 80 * 80;
-      for (const o of huntable(w, job)) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
+      for (const o of huntable(w, job, a)) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
       task.prey = prey;
       if (!prey) { fail(w, a, 'дичи не видно'); a.think = 30; a.stalking = false; return; }
     }

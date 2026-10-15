@@ -25,6 +25,7 @@ import {wantsPrayer} from '../../settlement/life.js';
 import {RESOURCES} from '../../data/resources.js';
 import {escortOption, aidOption, mates} from '../../settlement/together.js';
 import {stepDowned, healWounds} from '../wounds.js';
+import {canDoAction, jobAccess} from '../skills.js';
 import {BUILDINGS} from '../../data/buildings.js';
 
 // the weight of answering an attack on oneself: more than any need can reach
@@ -55,7 +56,8 @@ function decide(w, a) {
   let campHot = 0; for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
   const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,
-    preyCount: huntable(w, JOBS.get('hunt')).length, favourites: favourites(w), patients: waiting(w),
+    preyCount: huntable(w, JOBS.get('hunt'), a).length, favourites: favourites(w), patients: waiting(w),
+    agent: a, can: (skill, tier) => canDoAction(a, skill, tier),
     orders: new Proxy({}, {get: (o, station) => stationHasWork(w, station, a)})};
   const opts = [];
   for (const id of SPECIES.get(a.species).needs) {
@@ -64,7 +66,8 @@ function decide(w, a) {
   }
   const mate = mates(w, a);   // friends (and foes) at work (settlement/together.js)
   for (const job of JOBS.all()) {
-    if (!jobUnlocked(w, job) || (job.canDo && !job.canDo(w, a))) continue;
+    // can I? (the job's tier, agents/skills.js) — then do I want to?
+    if (!jobUnlocked(w, job) || !jobAccess(a, job).ok || (job.canDo && !job.canDo(w, a))) continue;
     const base = job.desire(w, ctx, job);
     if (base < 0) continue;
     const res = job.resource;

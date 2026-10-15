@@ -49,7 +49,7 @@ import {boldness} from '../agents/brains/predator.js';
 import {STATS} from '../data/special.js';
 import {WOUNDS} from '../data/wounds.js';
 import {activeSkills, TIERS} from '../data/skills.js';
-import {skillTier, softCap, canMake, recipeNeed, reasonText} from '../agents/skills.js';
+import {skillTier, softCap, canMake, recipeNeed, reasonText, recipeAccess, jobAccess, actionAccess} from '../agents/skills.js';
 import {VALUES, axisWord} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
@@ -104,6 +104,24 @@ function woundsHtml(w, a) {
     out.push(`<span class="chip${W.trauma ? ' dislike' : ''}" title="${W.label}: ${W.note}${left}">${W.label}</span>`);
   }
   return out.length ? `<div class="chips">${out.join('')}</div>` : '';
+}
+
+// what this colonist may not do yet and why: tiered recipes, jobs and parts of jobs (agents/skills.js),
+// nearest first (smallest gap to the letter)
+function lockedHtml(a) {
+  if (!a.special || !a.prefs) return '';
+  const all = [
+    ...RECIPES.all().map(r => [(r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short) + (r.makes.silver ? ' посеребр.' : ''), recipeAccess(a, r)]),
+    ...JOBS.all().filter(j => j.tier > 1).map(j => [j.label, jobAccess(a, j)]),
+    ...JOBS.all().filter(j => j.tendTier).map(j => ['лечить в хижине', actionAccess(a, j.skill, j.tendTier)]),
+    ...JOBS.all().filter(j => j.riskyTier).map(j => ['охотиться на крупного зверя', actionAccess(a, j.skill, j.riskyTier)]),
+    ...SPECIES.filter(sp => sp.tame?.tier > 1).map(sp => ['приручать: ' + sp.label, actionAccess(a, 'husbandry', sp.tame.tier)]),
+  ].filter(([, r]) => !r.ok).map(([what, r]) => [what, r.reasons[0]]);
+  if (!all.length) return '<p class="muted pc-small">Доступно всё, что есть в поселении.</p>';
+  all.sort((x, y) => (x[1].need - x[1].have) - (y[1].need - y[1].have));
+  const seen = new Set(), rows = [];
+  for (const [what, why] of all) { if (seen.has(what)) continue; seen.add(what); rows.push(`<li title="T${why.tier}">${esc(what)}: ${reasonText(why)}</li>`); if (rows.length >= 6) break; }
+  return `<ul class="pc-list">${rows.join('')}</ul>${all.length > rows.length ? `<p class="muted pc-small">и ещё ${all.length - rows.length}</p>` : ''}`;
 }
 
 const raceOf = a => raceLabel(SPECIES.get(a.species), a);
@@ -595,6 +613,7 @@ export class Panel {
         <section><h4>Хочет</h4>${want.length ? `<ul class="pc-list">${want.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted pc-small">Всем доволен.</p>'}
           <h4>Снаряжение</h4><dl class="kv">${slots}</dl>
           <h4>Навыки</h4>${skillsHtml(a)}
+          <h4>Пока не по силам</h4>${lockedHtml(a)}
         </section>
         <section><h4>Дневник</h4><ul class="pc-diary">${diary || '<li class="muted">Пока ничего.</li>'}</ul></section>
       </div>`;

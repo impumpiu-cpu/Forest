@@ -112,7 +112,7 @@ SPECIES.registerAll([
       leaveChance: 0.0002,       // per tick, a wild mule wanders off the map
     },
     // tamed it hauls logs and stone and pulls the plough (see `tame` on the goat for the fields)
-    tame: {chance: 0.22, space: 2, bait: {hay: 2}, eats: 1.2, kicks: true, stack: 2, max: 2,
+    tame: {chance: 0.22, tier: 3, space: 2, bait: {hay: 2}, eats: 1.2, kicks: true, stack: 2, max: 2,
       effects: {jobSpeed: {chop: 1.15, mine: 1.15, dig: 1.15, farm: 1.25}},
       names: ['Буян', 'Гнедко', 'Упрямец', 'Тяжеступ', 'Ворчун'],
       effect: 'возит брёвна и камень (рубка, камень и руда +15%), тянет соху (поле +25%)'}},
@@ -126,7 +126,8 @@ SPECIES.registerAll([
     flee: {radius: 4.5, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass'], eatsBerries: 0.002},
     leaveChance: 0.0001,
-    // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it
+    // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it;
+    //   tier: the husbandry tier (C) a herder needs to go after it — a kicking mule wants a calm hand (T3)
     //   chance: of one try with bait to tame it (× the herder's skill; every failed try makes the next easier)
     //   space:  places it takes in a pen;  bait: what one try costs from the stock
     //   eats:   hay a day when there is no grass in the pen (less in the grazing seasons)
@@ -135,7 +136,7 @@ SPECIES.registerAll([
     //   kicks:  a failed try ends with a kick;  max: no more of them are tamed (the colony has no use for more)
 //   effects: work it does for the colony (settlement/mods.js),
     //   counted for up to `stack` animals;  names: what the herders call them
-    tame: {chance: 0.45, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
+    tame: {chance: 0.45, tier: 1, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
       names: ['Белянка', 'Пеструшка', 'Зорька', 'Рогатка', 'Маруська', 'Бодуша', 'Сивка', 'Дереза', 'Звёздочка', 'Чернушка'],
       effect: 'даёт молоко и шерсть, в тёплое время приносит козлят'}},
 ].map(sp => ({mind: 'beast', relativeStats: true, ...sp})));
