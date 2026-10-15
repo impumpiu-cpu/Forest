@@ -3,12 +3,16 @@
 //   — once a day everyone notes whom they cannot stand and whose company they enjoy (thoughts);
 //   — every couple of hours two colonists who dislike each other and happen to be close may quarrel:
 //     both lose some mood, and the grudge between them grows (agent.grudge[id]);
-//   — grudges fade slowly, so a peaceful week mends a lot.
+//   — grudges fade slowly, so a peaceful week mends a lot; good memories fade slower still;
+//   — with danger near (a raid, a fire, a beast close by) a quarrel is put off;
+//   — joint actions (settlement/together.js) add to the personal history: escorts, a wound dressed,
+//     working side by side, a raid fought together.
 // Settlers: who comes next is drawn here too — races the colony's folk get on with are likelier.
 import {SPECIES} from '../data/species.js';
 import {opinion, kinship, OPINION} from '../data/relations.js';
 import {VALUES} from '../data/values.js';
-import {colonists} from './query.js';
+import {colonists, raidAlarm} from './query.js';
+import {workTogether, afterRaid, threatTo} from './together.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {esc, clamp, weighted} from '../core/util.js';
@@ -23,6 +27,7 @@ export const REL = {
   quarrelMax: 0.35,
   grudge: 0.6,          // a quarrel adds this much to the grudge on both sides
   fade: 0.96,           // grudges shrink this much each day
+  fadeGood: 0.985,      // good memories, this much
   settlerFloor: -1,     // a race the colony dislikes worse than this does not come
 };
 
@@ -60,6 +65,8 @@ function quarrels(w) {
     const mutual = opinion(a, b) + opinion(b, a);
     const p = clamp((REL.dislike * 2 - mutual) * REL.quarrelBase, 0, REL.quarrelMax);
     if (p <= 0 || w.rng() >= p) continue;
+    // not now: raiders on the way, the camp on fire, a beast close by
+    if (raidAlarm(w) || w.stats.fireNearCamp > 0 || threatTo(w, a, 12) || threatTo(w, b, 12)) { if (w.behave) w.behave.social.calm++; continue; }
     for (const [x, y] of [[a, b], [b, a]]) { (x.grudge ||= {})[y.id] = (x.grudge[y.id] || 0) - REL.grudge; think(w, x, 'quarrel', {name: y.name}); }
     w.chronicle.quarrels = (w.chronicle.quarrels || 0) + 1;
     log(w, `Склока: <b>${esc(a.name)}</b> и <b>${esc(b.name)}</b> сцепились — ${reason(a, b)}.`, 'people');
@@ -70,7 +77,7 @@ function quarrels(w) {
 function daily(w) {
   const col = colonists(w);
   for (const a of col) {
-    if (a.grudge) for (const id of Object.keys(a.grudge)) { a.grudge[id] *= REL.fade; if (Math.abs(a.grudge[id]) < 0.05 || !col.some(o => o.id === +id)) delete a.grudge[id]; }
+    if (a.grudge) for (const id of Object.keys(a.grudge)) { a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade; if (Math.abs(a.grudge[id]) < 0.05 || !col.some(o => o.id === +id)) delete a.grudge[id]; }
     let worst = null, wv = Infinity, best = null, bv = -Infinity;
     for (const b of col) {
       if (b === a) continue;
@@ -86,7 +93,15 @@ function daily(w) {
 export function stepRelations(w) {
   if (w.tick % DAY === Math.floor(DAY * 0.55)) daily(w);
   if (w.tick % REL.quarrelEvery === 37) quarrels(w);
+  if (w.tick % HOUR === 11) workTogether(w);
+  // a raid over: those who fought it side by side come out of it closer
+  const alarm = raidAlarm(w);
+  if (alarm && w.raidSince == null) w.raidSince = w.tick;
+  else if (!alarm && w.raidSince != null) { afterRaid(w, w.raidSince); w.raidSince = null; }
 }
+
+// for the card: the personal part of what a thinks of b (what happened between them)
+export const history = (a, b) => a.grudge?.[b.id] || 0;
 
 // for the card: everyone this colonist feels strongly about, worst first
 export function feelings(w, a) {

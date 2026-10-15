@@ -15,6 +15,7 @@ import {lostBeast} from '../settlement/herd.js';
 import {addCorpse} from '../settlement/life.js';
 import {rollCreature} from './special.js';
 import {releaseAll} from '../settlement/reserve.js';
+import {noteFallen} from './squad.js';
 import {RESOURCES} from '../data/resources.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
@@ -81,6 +82,7 @@ export function kill(w, a, cause, by) {
   if (a.dead) return;
   a.dead = true; a.hp = 0;
   releaseAll(w, a);   // a bench, a bed, a body or a beast it held is free again
+  noteFallen(w, a);   // a raider's band counts its losses (agents/squad.js)
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
   if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }
@@ -102,7 +104,7 @@ export function kill(w, a, cause, by) {
     stripAll(a, got);
     const loot = got.filter(it => it.dur > 0);
     w.armory.push(...loot); w.armoryVersion = (w.armoryVersion || 0) + 1;
-    const who = a.band === 'bandits' ? 'Налётчик' : a.name !== sp.label.replace(/^./, c => c.toUpperCase()) ? `${a.name}, ${sp.label},` : a.name;
+    const who = a.band === 'bandits' ? a.name || 'Налётчик' : a.name !== sp.label.replace(/^./, c => c.toUpperCase()) ? `${a.name}, ${sp.label},` : a.name;
     const verb = sp.undead ? g(a, 'упокоен', 'упокоена') : g(a, 'убит', 'убита');
     log(w, `${who} ${verb}, ${g(by, 'его сразил', 'его сразила').replace('его', a.gender === 'f' ? 'её' : 'его')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }

@@ -1,5 +1,6 @@
 // Logic check: the rules every creature must keep, in small staged scenes (T01–T11 of the outside
-// review of the races branch; T12–T17 reservations and the task lifecycle). Each scene builds a flat, empty map, places a few agents by hand and
+// review of the races branch; T12–T17 reservations and the task lifecycle; T18–T22 raider squads;
+// T23–T26 joint actions of colonists). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -22,6 +23,10 @@ import {syncTask, skipped} from '../src/agents/lifecycle.js';
 import {stationHasWork} from '../src/settlement/crafting.js';
 import {freeBed, bedsOf} from '../src/settlement/healing.js';
 import {freeCorpse} from '../src/settlement/life.js';
+import {createSquad, stepSquads, planFor, ROLES} from '../src/agents/squad.js';
+import {kill} from '../src/agents/agent.js';
+import {outsideRisk, escortOption, aidOption, TOGETHER} from '../src/settlement/together.js';
+import {stepRelations, REL} from '../src/settlement/relations.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -226,6 +231,124 @@ check('T17', 'заблокированное дело не берут снова
   p.task = {id: 'job', job: 'craft'}; syncTask(w, p); TASKS.get('job').step(w, p, p.task);   // no workshop: blocked
   if (p.task) return 'не сдался без мастерской';
   return skipped(w, p, {id: 'job', job: 'craft'}) || 'нет паузы после отказа';
+});
+
+// ── raider squads (agents/squad.js) and doing things together (settlement/together.js)
+const band = (w, n, x, y) => {
+  const g = [];
+  for (let k = 0; k < n; k++) { const a = put(w, 'human', 'raiders', x + k, y); a.band = 'bandits'; a.name = 'Налётчик'; a.brain = 'raider'; g.push(a); }
+  return [g, createSquad(w, g)];
+};
+const ticks = (w, n, f) => { for (let k = 0; k < n; k++) { f(); w.tick++; } };
+
+check('T18', 'у отряда один план: цель, вожак, роли', () => {
+  const w = scene();
+  const [g, sq] = band(w, 5, 10.5, 10.5);
+  if (sq.goal !== 'loot') return `цель ${sq.goal}, ждали грабёж (нет построек, нет кровников)`;
+  if (!g.some(a => a.id === sq.leader && a.name === 'Атаман')) return 'нет вожака';
+  if (g.some(a => !ROLES[a.sqRole])) return 'не у всех есть роль: ' + g.map(a => a.sqRole).join(',');
+  if (!g.some(a => a.sqRole === 'looter')) return 'нет грабителей';
+  return g.some(a => a.sqRole === 'rear') || 'некому прикрыть отход';
+});
+
+check('T19', 'отряд отступает, когда потери велики и вожак пал', () => {
+  const w = scene();
+  const [g, sq] = band(w, 5, 30.5, 30.5);
+  for (const k of [0, 1, 2]) put(w, 'human', 'colony', 33.5 + k, 32.5);
+  for (const a of g.filter(a => a.id === sq.leader).concat(g.filter(a => a.id !== sq.leader).slice(0, 2))) kill(w, a, 'ран');
+  w.agents = w.agents.filter(a => !a.dead);
+  ticks(w, 12, () => stepSquads(w));
+  if (sq.state !== 'retreat') return `состояние ${sq.state}, дух ${sq.morale}`;
+  const rest = g.filter(a => !a.dead), plans = rest.map(a => planFor(w, a, sq, 10)?.id);
+  return plans.includes('leave') || 'никто не уходит: ' + plans.join(',');
+});
+
+check('T20', 'налётчик держит своего противника и не мечется', () => {
+  const w = scene();
+  const [g, sq] = band(w, 3, 10.5, 40.5);
+  const r = g.find(a => a.sqRole === 'front' || a.sqRole === 'leader' || a.sqRole === 'rear');
+  r.x = 30.5; r.y = 30.5;
+  const A = put(w, 'human', 'colony', 33.5, 30.5), B = put(w, 'human', 'colony', 30.5, 33.2);
+  r.task = {id: 'fight', target: A, since: w.tick};
+  const t1 = planFor(w, r, sq, 10);
+  if (t1?.target !== A) return 'бросил противника ради почти такого же близкого';
+  B.y = 31.3;   // much closer now
+  const t2 = planFor(w, r, sq, 10);
+  return t2?.target === B || 'не переключился на того, кто вплотную';
+});
+
+check('T21', 'грабитель идёт к складу, пока другие держат защитников', () => {
+  const w = scene();
+  const [g, sq] = band(w, 5, 30.5, 30.5);
+  const l = g.find(a => a.sqRole === 'looter');
+  put(w, 'human', 'colony', l.x + 6, l.y);
+  return planFor(w, l, sq, 10)?.id === 'assault' || `задача ${planFor(w, l, sq, 10)?.id}`;
+});
+
+check('T22', 'кто пришёл за одним, идёт за ним мимо других', () => {
+  const w = scene();
+  const [g, sq] = band(w, 3, 30.5, 30.5);
+  const r = g.find(a => a.sqRole !== 'looter');
+  const near = put(w, 'human', 'colony', r.x + 5, r.y), target = put(w, 'human', 'colony', r.x + 18, r.y);
+  sq.goal = 'kill'; sq.target = target.id;
+  const t = planFor(w, r, sq, 10);
+  if (t?.target !== target) return `цель ${t?.target?.id}, ждали ${target.id} (рядом ${near.id})`;
+  kill(w, target, 'ран'); w.agents = w.agents.filter(a => !a.dead);
+  ticks(w, 12, () => stepSquads(w));
+  return sq.state === 'withdraw' || `после расправы: ${sq.state}`;
+});
+
+check('T23', 'когда в лесу звери, одиночку сопровождают', () => {
+  const w = scene();
+  for (let k = 0; k < 8; k++) { const o = put(w, 'wolf', 'predators', 85.5, 10.5 + k); o.pack = 1; }
+  const A = put(w, 'human', 'colony', w.camp.x + 25.5, w.camp.y + 0.5), B = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  A.task = {id: 'job', job: 'chop'};
+  if (outsideRisk(w) < TOGETHER.riskFrom) return `риск ${outsideRisk(w).toFixed(2)} ниже порога`;
+  const o = escortOption(w, B);
+  if (!o || o[0].who !== A.id) return 'сопровождать некого';
+  B.task = o[0];
+  const d0 = Math.hypot(A.x - B.x, A.y - B.y);
+  for (let k = 0; k < 150 && B.task; k++) TASKS.get('company').step(w, B, B.task);
+  return Math.hypot(A.x - B.x, A.y - B.y) < d0 - 3 || 'не идёт к тому, кого сопровождает';
+});
+
+check('T24', 'раненого в лесу перевязывают, и он это помнит', () => {
+  const w = scene();
+  const W = put(w, 'human', 'colony', w.camp.x + 25.5, w.camp.y + 0.5), H = put(w, 'human', 'colony', w.camp.x + 24.5, w.camp.y + 0.5);
+  W.hp = maxHp(W) * 0.25;
+  const o = aidOption(w, H);
+  if (!o || o[0].who !== W.id) return 'помочь некому';
+  const hp = W.hp, before = W.grudge?.[H.id] || 0;
+  H.task = o[0]; TASKS.get('aid').step(w, H, H.task);
+  if (!(W.hp > hp)) return 'раны не перевязаны';
+  if (!((W.grudge?.[H.id] || 0) > before)) return 'раненый не запомнил помощь';
+  return H.task?.id === 'company' && H.task.home || 'не повёл к своим';
+});
+
+check('T25', 'выздоравливающий уступает койку тому, кому хуже', () => {
+  const w = scene(); building(w, 'healerhut', 903); w.nav.build('healer');
+  const beds = bedsOf(), lying = [];
+  for (let k = 0; k < beds; k++) {
+    const p = put(w, 'human', 'colony', 40.5, 30.5 + k * 0.3); p.hp = maxHp(p) * 0.85;
+    p.task = {id: 'treat'}; syncTask(w, p); TASKS.get('treat').step(w, p, p.task); lying.push(p);
+  }
+  if (lying.some(p => !p.task?.bed)) return 'койки не заняты';
+  const a = put(w, 'human', 'colony', 39.5, 30.5); a.hp = maxHp(a) * 0.2;
+  a.task = {id: 'treat'}; syncTask(w, a); TASKS.get('treat').step(w, a, a.task);
+  if (!a.task?.bed) return 'тяжелораненому койки не нашлось';
+  return lying.filter(p => p.task?.bed).length === beds - 1 || 'никто не уступил';
+});
+
+check('T26', 'при опасности ссору откладывают', () => {
+  const w = scene(); w.rng = Object.assign(() => 0, {state: 0});
+  const a = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5), b = put(w, 'human', 'colony', w.camp.x + 1.5, w.camp.y + 0.5);
+  a.grudge = {[b.id]: -4}; b.grudge = {[a.id]: -4};
+  put(w, 'wolf', 'predators', w.camp.x + 6.5, w.camp.y + 0.5).pack = 1;
+  w.tick = Math.ceil(w.tick / REL.quarrelEvery) * REL.quarrelEvery + 37;
+  const q = w.chronicle.quarrels || 0;
+  stepRelations(w);
+  if ((w.chronicle.quarrels || 0) !== q) return 'поссорились при волке у костра';
+  return w.behave.social.calm > 0 || 'отложенная ссора не учтена';
 });
 
 let bad = 0;

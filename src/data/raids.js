@@ -5,9 +5,19 @@
 // a bit. members(w, rng, budget, t) lists who comes: [{species, kit?, init?(a, w)}].
 //   kind: 'sentient' — a thinking enemy (later: talks, ransoms, can be bargained with);
 //         'monster'  — beasts and the rot's undead.
+//   goals(w, group) — what they come for, [[goal, weight], …] (agents/squad.js GOALS): loot, kill, burn,
+//         scout. A band that lost many to the colony comes for blood more often; scouts only come small
+//         and only before the band has raided. The mindless dead always go for anything alive.
+//   nerve — added to the squad's retreat threshold (agents/squad.js SQUAD.nerve): trolls and the
+//         bloodthirsty hold on longer (< 0), goblins break sooner (> 0).
 import {Registry} from '../core/registry.js';
 import {pick, plural} from '../core/util.js';
 import {SPECIES} from './species.js';
+
+// a band that has lost many to the colony comes for the one who killed them; scouts come first, few
+const feud = w => Math.min(2, (w.chronicle.raidersKilled || 0) / 6);
+const scouting = (w, group) => (group.length <= 3 && w.stats.raids <= 3 ? 1.2 : 0);
+const torches = w => (w.buildings.some(b => b.done && b.cells.length && b.key !== 'campfire') ? 1 : 0);
 
 export const RAID_BANDS = new Registry('raid band');
 
@@ -58,36 +68,43 @@ const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.t
 
 RAID_BANDS.registerAll([
   {id: 'bandits', label: 'разбойники «Серых волков»', kind: 'sentient',
+    goals: (w, g) => [['loot', 3], ['kill', feud(w)], ['burn', 0.6 * torches(w)], ['scout', scouting(w, g)]],
     weight: () => 3,
     members: (w, rng, budget) => fill(rng, budget, [['human', 1]]).map(m => ({...m, init: a => { a.name = 'Налётчик'; }, kit: 'bandit'})),
     message: n => `Набег! ${n} ${plural(n, 'разбойник', 'разбойника', 'разбойников')} из «Серых волков»`},
 
   {id: 'orcs', label: 'орочья ватага', kind: 'sentient',
+    goals: (w, g) => [['loot', 2], ['burn', 1.5 * torches(w)], ['kill', 0.5 + feud(w)], ['scout', scouting(w, g)]], nerve: -0.05,
     weight: (w, t) => (t >= 4 ? 2 : 0.5),
     members: (w, rng, budget) => fill(rng, budget, [['orc', 3], ['goblin', 2], ['varg', budget >= 5 ? 1 : 0], ['ogre', budget >= 10 ? 0.6 : 0]]),
     message: (n, group) => `Набег! Орочья ватага с гоблинами${group.some(a => a.species === 'varg') ? ' и боевыми варгами' : ''}`},
 
   {id: 'goblins', label: 'гоблинская шайка', kind: 'sentient',
+    goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1,
     weight: () => 1.5,
     members: (w, rng, budget) => fill(rng, budget, [['goblin', 1]]),
     message: () => 'Набег! Гоблинская шайка: мелкие, юркие, тащат всё, что плохо лежит'},
 
   {id: 'gnolls', label: 'стая гноллов', kind: 'sentient',
+    goals: (w, g) => [['loot', 3], ['kill', 0.6 + feud(w)]],
     weight: (w, t) => (t >= 3 ? 1.5 : 0.4),
     members: (w, rng, budget) => fill(rng, budget, [['gnoll', 3], ['hyena', 1.5]]),
     message: () => 'Набег! Гноллы-падальщики идут на запах лагеря'},
 
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',
+    goals: (w, g) => [['kill', 2], ['loot', 1], ['scout', scouting(w, g)]],
     weight: (w, t, night) => (t >= 8 ? 0.6 + night : 0),
     members: (w, rng, budget) => fill(rng, budget, [['darkelf', 1]]),
     message: () => 'Набег! Тёмные эльфы вышли из-под земли за рабами и добычей'},
 
   {id: 'ogres', label: 'огры-людоеды', kind: 'monster',
+    goals: () => [['kill', 3], ['loot', 1]], nerve: -0.1,
     weight: (w, t) => (t >= 6 ? 0.8 : 0),
     members: (w, rng, budget) => fill(rng, Math.min(budget, 9.5), [['ogre', 1]]).map(m => ({...m, init: named('ogre')})),
     message: () => 'С гор спустились огры-людоеды'},
 
   {id: 'troll', label: 'тролль', kind: 'monster',
+    goals: () => [['kill', 2], ['loot', 1]], nerve: -0.15,
     weight: (w, t) => (t >= 5 ? 1 : 0),
     members: (w, rng, budget) => fill(rng, Math.min(budget, 10.5), [['troll', 1]]).map(m => ({...m, init: named('troll')})),
     message: n => (n === 1 ? 'Из чащи вышел тролль. Раны на нём затягиваются, пока рядом нет огня' : 'Из чащи вышли тролли. Раны на них затягиваются, пока рядом нет огня')},
@@ -104,11 +121,13 @@ RAID_BANDS.registerAll([
 
   // upyrs come only by night and run from the sun
   {id: 'upyrs', label: 'упыри', kind: 'monster',
+    goals: () => [['kill', 3]], nerve: -0.1,
     weight: (w, t, night) => (t >= 6 && night > 0.5 ? 1.2 : 0),
     members: (w, rng, budget) => fill(rng, Math.min(budget, 6), [['upyr', 1]]),
     message: () => 'Ночью к лагерю пришли упыри. Им нужна кровь, солнце гонит их прочь'},
 
   {id: 'vampire', label: 'вампир со свитой', kind: 'sentient',
+    goals: () => [['kill', 3], ['loot', 0.5]], nerve: -0.2,
     weight: (w, t, night) => (t >= 20 && night > 0.5 ? 0.5 : 0),
     members: (w, rng, budget) => fill(rng, budget, [['upyr', 1]], [{species: 'vampire', init: (a, w) => { [a.name, a.gender] = pick(w.rng, SPECIES.get('vampire').names); }}]),
     message: (n, group) => `${group.find(a => a.species === 'vampire')?.name || 'Вампир'} пришёл со свитой упырей. Простое железо его почти не берёт, нужно серебро`},

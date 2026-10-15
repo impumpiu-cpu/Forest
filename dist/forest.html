@@ -2842,13 +2842,16 @@ dd.q4{color:#c58cff;font-weight:600}
     ticks: 0,
     idle: 0,
     muster: 0,
+    company: 0,
     switches: 0,
     stops: 0,
     outcomes: {},
     noPath: 0,
     react: { sum: 0, n: 0, missed: 0 },
     invalid: 0,
-    invalidWhat: {}
+    invalidWhat: {},
+    squads: { started: 0, goal: 0, retreat: 0, wiped: 0 },
+    social: { escort: 0, aid: 0, yield: 0, calm: 0, bond: 0 }
   });
   var REACT = /* @__PURE__ */ new Set(["fight", "runHome", "flee"]);
   var THINK = 15;
@@ -2872,6 +2875,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const t = a.task?.id;
       if (!t || t === "idle") b.idle++;
       if (t === "muster") b.muster++;
+      if (t === "company" || t === "aid") b.company = (b.company || 0) + 1;
       if (a.carry && a.carry.n !== Object.values(a.carry.res).reduce((s, v) => s + v, 0)) bad(w, "\u0433\u0440\u0443\u0437 \u043D\u0435 \u0441\u0445\u043E\u0434\u0438\u0442\u0441\u044F");
       const attacked = w.agents.some((o) => o.task?.id === "maul" && o.task.target === a && !o.dead);
       if (attacked && a.attackedAt == null) a.attackedAt = w.tick;
@@ -4014,10 +4018,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     build(id) {
       const def2 = NAVMAPS.get(id), w = this.w, W = w.w, H = w.h;
-      const dist5 = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
+      const dist7 = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
       this.computeCost(def2.hazard ?? 1);
       const ctx = def2.prepare ? def2.prepare(w) : null;
-      dist5.fill(FAR);
+      dist7.fill(FAR);
       closed.fill(0);
       let hn = 0;
       const push = (i, d) => {
@@ -4033,7 +4037,7 @@ dd.q4{color:#c58cff;font-weight:600}
         hD[k] = d;
       };
       for (let i = 0; i < w.n; i++) if (cost[i] >= 0 && def2.seed(w, i, ctx)) {
-        dist5[i] = 0;
+        dist7[i] = 0;
         push(i, 0);
       }
       while (hn > 0) {
@@ -4052,7 +4056,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         hI[k] = li;
         hD[k] = ld;
-        if (closed[i] || d > dist5[i]) continue;
+        if (closed[i] || d > dist7[i]) continue;
         closed[i] = 1;
         const x = i % W, y = i / W | 0;
         for (let q = 0; q < 8; q++) {
@@ -4066,8 +4070,8 @@ dd.q4{color:#c58cff;font-weight:600}
             c *= 1.414;
           }
           const nd = d + c;
-          if (nd < dist5[j]) {
-            dist5[j] = nd;
+          if (nd < dist7[j]) {
+            dist7[j] = nd;
             push(j, nd);
           }
         }
@@ -4293,21 +4297,21 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var fieldName = (id) => FIELD_NAMES[id] || (id.startsWith("station:") ? "\u043A \u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0439" : id.startsWith("plant") ? "\u043A \u0437\u0430\u0440\u043E\u0441\u043B\u044F\u043C" : "\u043F\u043E \u0442\u0440\u043E\u043F\u0435");
   function follow(w, a, mapId, mul = 1) {
-    const dist5 = w.nav.get(mapId), i = cellOf(w, a);
-    if (dist5[i] === 0) return "arrived";
-    a.route = { how: dist5[i] >= FAR ? `${fieldName(mapId)}: \u043F\u0443\u0442\u0438 \u043D\u0435\u0442` : `${fieldName(mapId)}, \u0435\u0449\u0451 ~${Math.round(dist5[i])} \u043A\u043B.`, t: w.tick };
+    const dist7 = w.nav.get(mapId), i = cellOf(w, a);
+    if (dist7[i] === 0) return "arrived";
+    a.route = { how: dist7[i] >= FAR ? `${fieldName(mapId)}: \u043F\u0443\u0442\u0438 \u043D\u0435\u0442` : `${fieldName(mapId)}, \u0435\u0449\u0451 ~${Math.round(dist7[i])} \u043A\u043B.`, t: w.tick };
     const x = i % w.w, y = i / w.w | 0;
-    let best = dist5[i], bj = -1;
+    let best = dist7[i], bj = -1;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (!inBounds(w, nx, ny)) continue;
       const j = ny * w.w + nx;
-      if (dist5[j] < best && canStep(w, i, j)) {
-        best = dist5[j];
+      if (dist7[j] < best && canStep(w, i, j)) {
+        best = dist7[j];
         bj = j;
       }
     }
-    if (bj < 0) return dist5[i] >= FAR ? "none" : "stuck";
+    if (bj < 0) return dist7[i] >= FAR ? "none" : "stuck";
     const tx2 = bj % w.w + 0.5, ty = (bj / w.w | 0) + 0.5;
     const r = moveToward(w, a, tx2, ty, mul);
     if (r === null) moveToward(w, a, x + 0.5, y + 0.5, mul);
@@ -4408,14 +4412,14 @@ dd.q4{color:#c58cff;font-weight:600}
     return false;
   }
   function ascend(w, a, mapId, mul = 1) {
-    const dist5 = w.nav.get(mapId), i = cellOf(w, a), x = i % w.w, y = i / w.w | 0;
-    let best = dist5[i], bj = -1;
+    const dist7 = w.nav.get(mapId), i = cellOf(w, a), x = i % w.w, y = i / w.w | 0;
+    let best = dist7[i], bj = -1;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (!inBounds(w, nx, ny)) continue;
       const j = ny * w.w + nx;
-      if (walkable(w, j) && dist5[j] > best && dist5[j] < FAR) {
-        best = dist5[j];
+      if (walkable(w, j) && dist7[j] > best && dist7[j] < FAR) {
+        best = dist7[j];
         bj = j;
       }
     }
@@ -4628,6 +4632,14 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "quarrel", mood: -0.2, lasts: 12 * HOUR, text: (a, c) => `${g(a, "\u041F\u043E\u0440\u0443\u0433\u0430\u043B\u0441\u044F", "\u041F\u043E\u0440\u0443\u0433\u0430\u043B\u0430\u0441\u044C")} \u0441 ${c.name}. \u0414\u043E \u0441\u0438\u0445 \u043F\u043E\u0440 \u0437\u043B\u043E \u0431\u0435\u0440\u0451\u0442.` },
     { id: "dislikesNeighbour", mood: -0.1, lasts: DAY, once: DAY, text: (a, c) => `\u0422\u0435\u0440\u043F\u0435\u0442\u044C \u043D\u0435 \u043C\u043E\u0436\u0435\u0442 ${c.name}, \u0430 \u0436\u0438\u0442\u044C \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442\u0441\u044F \u0431\u043E\u043A \u043E \u0431\u043E\u043A.` },
     { id: "goodCompany", mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `\u0420\u0430\u0434${g(a, "", "\u0430")}, \u0447\u0442\u043E \u0440\u044F\u0434\u043E\u043C ${c.name}: \u0441 \u0442\u0430\u043A\u0438\u043C \u0441\u043E\u0441\u0435\u0434\u043E\u043C \u043B\u0435\u0433\u0447\u0435.` },
+    // doing things together (settlement/together.js)
+    { id: "escorted", mood: 0.06, lasts: 6 * HOUR, once: 6 * HOUR, text: (a, c) => `\u0412 \u043B\u0435\u0441\u0443 \u043D\u0435\u0441\u043F\u043E\u043A\u043E\u0439\u043D\u043E, \u043D\u043E ${c.name} ${g(c, "\u043F\u043E\u0448\u0451\u043B", "\u043F\u043E\u0448\u043B\u0430")} \u0440\u044F\u0434\u043E\u043C. \u0412\u0434\u0432\u043E\u0451\u043C \u043D\u0435 \u0442\u0430\u043A \u0441\u0442\u0440\u0430\u0448\u043D\u043E.` },
+    { id: "stoodUp", mood: 0.12, lasts: DAY, once: 6 * HOUR, text: (a, c) => `\u041A\u043E\u0433\u0434\u0430 \u043D\u0430 \u043C\u0435\u043D\u044F \u043A\u0438\u043D\u0443\u043B\u0438\u0441\u044C, ${c.name} ${g(c, "\u0432\u0441\u0442\u0430\u043B", "\u0432\u0441\u0442\u0430\u043B\u0430")} \u0440\u044F\u0434\u043E\u043C. \u042D\u0442\u043E\u0433\u043E \u043D\u0435 \u0437\u0430\u0431\u044B\u0442\u044C.` },
+    { id: "aided", mood: 0.15, lasts: DAY, once: 12 * HOUR, text: (a, c) => `${g(a, "\u041B\u0435\u0436\u0430\u043B", "\u041B\u0435\u0436\u0430\u043B\u0430")} \u0440\u0430\u043D\u0435\u043D\u044B\u0439 \u0432 \u043B\u0435\u0441\u0443, \u0430 ${c.name} ${g(c, "\u043F\u0440\u0438\u0448\u0451\u043B \u0438 \u043F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B", "\u043F\u0440\u0438\u0448\u043B\u0430 \u0438 \u043F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B\u0430")}. \u0415\u0441\u0442\u044C \u043D\u0430 \u043A\u043E\u0433\u043E \u043F\u043E\u043B\u043E\u0436\u0438\u0442\u044C\u0441\u044F.` },
+    { id: "gaveAid", mood: 0.08, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${g(a, "\u041F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B", "\u041F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B\u0430")} ${c.name} \u043F\u0440\u044F\u043C\u043E \u0432 \u043B\u0435\u0441\u0443 \u0438 ${g(a, "\u0434\u043E\u0432\u0451\u043B", "\u0434\u043E\u0432\u0435\u043B\u0430")} \u0434\u043E \u0441\u0432\u043E\u0438\u0445.` },
+    { id: "gotBed", mood: 0.08, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${c.name} ${g(c, "\u0443\u0441\u0442\u0443\u043F\u0438\u043B", "\u0443\u0441\u0442\u0443\u043F\u0438\u043B\u0430")} \u043C\u043D\u0435 \u043A\u043E\u0439\u043A\u0443 \u0443 \u043B\u0435\u043A\u0430\u0440\u044F. \u0414\u043E\u0431\u0440\u0430\u044F \u0434\u0443\u0448\u0430.` },
+    { id: "yieldedBed", mood: 0.04, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${g(a, "\u0423\u0441\u0442\u0443\u043F\u0438\u043B", "\u0423\u0441\u0442\u0443\u043F\u0438\u043B\u0430")} \u043A\u043E\u0439\u043A\u0443 ${c.name}: \u0442\u043E\u043C\u0443 \u0445\u0443\u0436\u0435. \u0414\u043E\u043B\u0435\u0436\u0443 \u0438 \u0442\u0430\u043A.` },
+    { id: "sharedTrouble", mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `\u041F\u043B\u0435\u0447\u043E\u043C \u043A \u043F\u043B\u0435\u0447\u0443 \u0441 ${c.name} \u043E\u0442\u0431\u0438\u0432\u0430\u043B\u0438\u0441\u044C \u043E\u0442 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432. \u0427\u0442\u043E \u0442\u0430\u043C \u0431\u044B\u043B\u043E \u043C\u0435\u0436\u0434\u0443 \u043D\u0430\u043C\u0438 \u2014 \u0443\u0436\u0435 \u043D\u0435 \u0432\u0430\u0436\u043D\u043E.` },
     { id: "sober", mood: -0.12, lasts: 12 * HOUR, once: DAY, text: (a) => `\u0411\u0435\u0437 \u0431\u0440\u0430\u0433\u0438 ${g(a, "\u0441\u0430\u043C", "\u0441\u0430\u043C\u0430")} \u043D\u0435 ${g(a, "\u0441\u0432\u043E\u0439", "\u0441\u0432\u043E\u044F")}: \u0440\u0443\u043A\u0438 \u043D\u0435 \u0441\u043B\u0443\u0448\u0430\u044E\u0442\u0441\u044F.` },
     { id: "beerFed", mood: 0.2, lasts: 12 * HOUR, once: 12 * HOUR, text: (a) => `\u041A\u0440\u0443\u0436\u043A\u0430 \u0431\u0440\u0430\u0433\u0438 \u2014 \u0438 \u0441\u044B\u0442${g(a, "", "\u0430")}, \u0438 \u0432\u0435\u0441\u0435\u043B${g(a, "", "\u0430")}. \u041A\u0430\u043A \u0434\u043E\u043C\u0430 \u043F\u043E\u0434 \u0433\u043E\u0440\u043E\u0439.` },
     // the nechist (agents/brains/spirit.js)
@@ -6078,6 +6090,472 @@ dd.q4{color:#c58cff;font-weight:600}
     mod(a, "dodge", Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
   }
 
+  // src/data/raids.js
+  var feud = (w) => Math.min(2, (w.chronicle.raidersKilled || 0) / 6);
+  var scouting = (w, group) => group.length <= 3 && w.stats.raids <= 3 ? 1.2 : 0;
+  var torches = (w) => w.buildings.some((b) => b.done && b.cells.length && b.key !== "campfire") ? 1 : 0;
+  var RAID_BANDS = new Registry("raid band");
+  var COST = {
+    human: 1,
+    orc: 2,
+    goblin: 0.6,
+    ogre: 4.5,
+    troll: 5,
+    gnoll: 1.7,
+    darkelf: 2,
+    zombie: 0.9,
+    skeleton: 1,
+    upyr: 1.8,
+    vampire: 7,
+    necromancer: 1.5,
+    varg: 1.8,
+    hyena: 0.8
+  };
+  function fill(rng, budget, mix, extra = []) {
+    const out = [...extra];
+    let left = budget - extra.reduce((s, m) => s + COST[m.species], 0);
+    const total = mix.reduce((s, m) => s + m[1], 0);
+    for (let guard = 0; guard < 40; guard++) {
+      const fits = mix.filter(([sp2]) => COST[sp2] <= left + 0.25);
+      if (!fits.length) break;
+      let r = rng() * fits.reduce((s, m) => s + m[1], 0), sp = fits[0][0];
+      for (const [s, wt] of fits) {
+        r -= wt;
+        if (r <= 0) {
+          sp = s;
+          break;
+        }
+      }
+      out.push({ species: sp });
+      left -= COST[sp];
+    }
+    if (!out.length) out.push({ species: mix[0][0] });
+    return out.slice(0, 18);
+  }
+  function banditKit(rng, t) {
+    const early = [["club"], ["club"], ["spear"], ["sling"], ["staff"]];
+    const late = [["spear", "shield"], ["club", "shield"], ["maul"], ["bow", "quiver"], ["spear"], ["sling"]];
+    const set = pick(rng, rng() < Math.min(0.9, t * 0.04) ? late : early);
+    const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
+    return [...set, ...r < plates ? ["hardleather"] : r < plates + leather ? ["jerkin"] : r < plates + leather + 0.4 ? ["clothes"] : []];
+  }
+  var KITS = {
+    orc: (rng, t) => [...pick(rng, [["maul"], ["axe", "shield"], ["club", "shield"], ["spear"], t > 10 ? ["bronzeaxe", "shield"] : ["axe"]]), ...rng() < 0.5 ? ["jerkin"] : []],
+    goblin: (rng) => pick(rng, [["sling"], ["sling"], ["bow", "quiver"], ["club"], ["spear"]]),
+    ogre: (rng) => pick(rng, [["maul"], ["club"]]),
+    gnoll: (rng, t) => [...pick(rng, [["spear"], ["spear", "shield"], ["bow", "quiver"], ["axe"]]), ...rng() < 0.3 ? ["jerkin"] : []],
+    darkelf: (rng, t) => [...pick(rng, [["bow", "quiver"], ["bow", "quiver"], ["sword"], ["spear", "shield"]]), rng() < 0.6 ? "hardleather" : "jerkin"],
+    skeleton: (rng) => pick(rng, [["club"], ["spear"], ["axe"], ["club", "shield"]]),
+    vampire: () => ["sword", "clothes"],
+    necromancer: () => ["staff", "clothes"]
+  };
+  var kitFor = (species, rng, t) => SPECIES.get(species).inventory && KITS[species] ? KITS[species](rng, t) : [];
+  var named2 = (sp) => (a) => {
+    a.name = SPECIES.get(sp).label.replace(/^./, (c) => c.toUpperCase());
+  };
+  RAID_BANDS.registerAll([
+    {
+      id: "bandits",
+      label: "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0438 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB",
+      kind: "sentient",
+      goals: (w, g2) => [["loot", 3], ["kill", feud(w)], ["burn", 0.6 * torches(w)], ["scout", scouting(w, g2)]],
+      weight: () => 3,
+      members: (w, rng, budget) => fill(rng, budget, [["human", 1]]).map((m) => ({ ...m, init: (a) => {
+        a.name = "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A";
+      }, kit: "bandit" })),
+      message: (n) => `\u041D\u0430\u0431\u0435\u0433! ${n} ${plural(n, "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A", "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0430", "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u043E\u0432")} \u0438\u0437 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB`
+    },
+    {
+      id: "orcs",
+      label: "\u043E\u0440\u043E\u0447\u044C\u044F \u0432\u0430\u0442\u0430\u0433\u0430",
+      kind: "sentient",
+      goals: (w, g2) => [["loot", 2], ["burn", 1.5 * torches(w)], ["kill", 0.5 + feud(w)], ["scout", scouting(w, g2)]],
+      nerve: -0.05,
+      weight: (w, t) => t >= 4 ? 2 : 0.5,
+      members: (w, rng, budget) => fill(rng, budget, [["orc", 3], ["goblin", 2], ["varg", budget >= 5 ? 1 : 0], ["ogre", budget >= 10 ? 0.6 : 0]]),
+      message: (n, group) => `\u041D\u0430\u0431\u0435\u0433! \u041E\u0440\u043E\u0447\u044C\u044F \u0432\u0430\u0442\u0430\u0433\u0430 \u0441 \u0433\u043E\u0431\u043B\u0438\u043D\u0430\u043C\u0438${group.some((a) => a.species === "varg") ? " \u0438 \u0431\u043E\u0435\u0432\u044B\u043C\u0438 \u0432\u0430\u0440\u0433\u0430\u043C\u0438" : ""}`
+    },
+    {
+      id: "goblins",
+      label: "\u0433\u043E\u0431\u043B\u0438\u043D\u0441\u043A\u0430\u044F \u0448\u0430\u0439\u043A\u0430",
+      kind: "sentient",
+      goals: (w, g2) => [["loot", 4], ["burn", 0.8 * torches(w)], ["scout", scouting(w, g2)]],
+      nerve: 0.1,
+      weight: () => 1.5,
+      members: (w, rng, budget) => fill(rng, budget, [["goblin", 1]]),
+      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0413\u043E\u0431\u043B\u0438\u043D\u0441\u043A\u0430\u044F \u0448\u0430\u0439\u043A\u0430: \u043C\u0435\u043B\u043A\u0438\u0435, \u044E\u0440\u043A\u0438\u0435, \u0442\u0430\u0449\u0430\u0442 \u0432\u0441\u0451, \u0447\u0442\u043E \u043F\u043B\u043E\u0445\u043E \u043B\u0435\u0436\u0438\u0442"
+    },
+    {
+      id: "gnolls",
+      label: "\u0441\u0442\u0430\u044F \u0433\u043D\u043E\u043B\u043B\u043E\u0432",
+      kind: "sentient",
+      goals: (w, g2) => [["loot", 3], ["kill", 0.6 + feud(w)]],
+      weight: (w, t) => t >= 3 ? 1.5 : 0.4,
+      members: (w, rng, budget) => fill(rng, budget, [["gnoll", 3], ["hyena", 1.5]]),
+      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0413\u043D\u043E\u043B\u043B\u044B-\u043F\u0430\u0434\u0430\u043B\u044C\u0449\u0438\u043A\u0438 \u0438\u0434\u0443\u0442 \u043D\u0430 \u0437\u0430\u043F\u0430\u0445 \u043B\u0430\u0433\u0435\u0440\u044F"
+    },
+    {
+      id: "darkelves",
+      label: "\u043E\u0442\u0440\u044F\u0434 \u0442\u0451\u043C\u043D\u044B\u0445 \u044D\u043B\u044C\u0444\u043E\u0432",
+      kind: "sentient",
+      goals: (w, g2) => [["kill", 2], ["loot", 1], ["scout", scouting(w, g2)]],
+      weight: (w, t, night) => t >= 8 ? 0.6 + night : 0,
+      members: (w, rng, budget) => fill(rng, budget, [["darkelf", 1]]),
+      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0422\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B \u0432\u044B\u0448\u043B\u0438 \u0438\u0437-\u043F\u043E\u0434 \u0437\u0435\u043C\u043B\u0438 \u0437\u0430 \u0440\u0430\u0431\u0430\u043C\u0438 \u0438 \u0434\u043E\u0431\u044B\u0447\u0435\u0439"
+    },
+    {
+      id: "ogres",
+      label: "\u043E\u0433\u0440\u044B-\u043B\u044E\u0434\u043E\u0435\u0434\u044B",
+      kind: "monster",
+      goals: () => [["kill", 3], ["loot", 1]],
+      nerve: -0.1,
+      weight: (w, t) => t >= 6 ? 0.8 : 0,
+      members: (w, rng, budget) => fill(rng, Math.min(budget, 9.5), [["ogre", 1]]).map((m) => ({ ...m, init: named2("ogre") })),
+      message: () => "\u0421 \u0433\u043E\u0440 \u0441\u043F\u0443\u0441\u0442\u0438\u043B\u0438\u0441\u044C \u043E\u0433\u0440\u044B-\u043B\u044E\u0434\u043E\u0435\u0434\u044B"
+    },
+    {
+      id: "troll",
+      label: "\u0442\u0440\u043E\u043B\u043B\u044C",
+      kind: "monster",
+      goals: () => [["kill", 2], ["loot", 1]],
+      nerve: -0.15,
+      weight: (w, t) => t >= 5 ? 1 : 0,
+      members: (w, rng, budget) => fill(rng, Math.min(budget, 10.5), [["troll", 1]]).map((m) => ({ ...m, init: named2("troll") })),
+      message: (n) => n === 1 ? "\u0418\u0437 \u0447\u0430\u0449\u0438 \u0432\u044B\u0448\u0435\u043B \u0442\u0440\u043E\u043B\u043B\u044C. \u0420\u0430\u043D\u044B \u043D\u0430 \u043D\u0451\u043C \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u044E\u0442\u0441\u044F, \u043F\u043E\u043A\u0430 \u0440\u044F\u0434\u043E\u043C \u043D\u0435\u0442 \u043E\u0433\u043D\u044F" : "\u0418\u0437 \u0447\u0430\u0449\u0438 \u0432\u044B\u0448\u043B\u0438 \u0442\u0440\u043E\u043B\u043B\u0438. \u0420\u0430\u043D\u044B \u043D\u0430 \u043D\u0438\u0445 \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u044E\u0442\u0441\u044F, \u043F\u043E\u043A\u0430 \u0440\u044F\u0434\u043E\u043C \u043D\u0435\u0442 \u043E\u0433\u043D\u044F"
+    },
+    // the rot's host: by night three times as likely; past a threat of 10 a necromancer walks behind it
+    {
+      id: "undead",
+      label: "\u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B",
+      kind: "monster",
+      weight: (w, t, night) => t >= 3 ? 0.8 + 2 * night : 0,
+      members: (w, rng, budget, t) => {
+        const lead = t >= 10 ? [{ species: "necromancer", init: (a) => {
+          a.role = "necromancer";
+          a.name = "\u041D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442";
+        } }] : [];
+        return fill(rng, budget * 1.2, [["zombie", 3], ["skeleton", t >= 6 ? 2 : 0]], lead);
+      },
+      groupInit: (group) => {
+        const nec = group.find((a) => a.role === "necromancer");
+        if (nec) {
+          for (const a of group) if (a !== nec) a.master = nec.id;
+        }
+      },
+      message: (n, group) => `\u0418\u0437 \u043A\u0443\u0440\u0433\u0430\u043D\u043E\u0432 \u043F\u043E\u0434\u043D\u044F\u043B\u0438\u0441\u044C \u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B: ${n}${group.some((a) => a.role === "necromancer") ? ". \u0417\u0430 \u043D\u0438\u043C\u0438 \u0438\u0434\u0451\u0442 \u043D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442 \u2014 \u0431\u0435\u0437 \u043D\u0435\u0433\u043E \u043E\u043D\u0438 \u0440\u0430\u0437\u0431\u0440\u0435\u0434\u0443\u0442\u0441\u044F" : ""}`
+    },
+    // upyrs come only by night and run from the sun
+    {
+      id: "upyrs",
+      label: "\u0443\u043F\u044B\u0440\u0438",
+      kind: "monster",
+      goals: () => [["kill", 3]],
+      nerve: -0.1,
+      weight: (w, t, night) => t >= 6 && night > 0.5 ? 1.2 : 0,
+      members: (w, rng, budget) => fill(rng, Math.min(budget, 6), [["upyr", 1]]),
+      message: () => "\u041D\u043E\u0447\u044C\u044E \u043A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0438 \u0443\u043F\u044B\u0440\u0438. \u0418\u043C \u043D\u0443\u0436\u043D\u0430 \u043A\u0440\u043E\u0432\u044C, \u0441\u043E\u043B\u043D\u0446\u0435 \u0433\u043E\u043D\u0438\u0442 \u0438\u0445 \u043F\u0440\u043E\u0447\u044C"
+    },
+    {
+      id: "vampire",
+      label: "\u0432\u0430\u043C\u043F\u0438\u0440 \u0441\u043E \u0441\u0432\u0438\u0442\u043E\u0439",
+      kind: "sentient",
+      goals: () => [["kill", 3], ["loot", 0.5]],
+      nerve: -0.2,
+      weight: (w, t, night) => t >= 20 && night > 0.5 ? 0.5 : 0,
+      members: (w, rng, budget) => fill(rng, budget, [["upyr", 1]], [{ species: "vampire", init: (a, w2) => {
+        [a.name, a.gender] = pick(w2.rng, SPECIES.get("vampire").names);
+      } }]),
+      message: (n, group) => `${group.find((a) => a.species === "vampire")?.name || "\u0412\u0430\u043C\u043F\u0438\u0440"} \u043F\u0440\u0438\u0448\u0451\u043B \u0441\u043E \u0441\u0432\u0438\u0442\u043E\u0439 \u0443\u043F\u044B\u0440\u0435\u0439. \u041F\u0440\u043E\u0441\u0442\u043E\u0435 \u0436\u0435\u043B\u0435\u0437\u043E \u0435\u0433\u043E \u043F\u043E\u0447\u0442\u0438 \u043D\u0435 \u0431\u0435\u0440\u0451\u0442, \u043D\u0443\u0436\u043D\u043E \u0441\u0435\u0440\u0435\u0431\u0440\u043E`
+    }
+  ]);
+
+  // src/agents/squad.js
+  var SQUAD = {
+    think: 10,
+    // morale and the goal are checked this often
+    view: 14,
+    // colony fighters this close to a member count against the band
+    nerve: { living: 0.4, beasts: 0.3, mindless: -Infinity },
+    leaderLoss: 0.25,
+    // morale lost with the leader
+    lossWeight: 0.8,
+    // morale lost per share of the band fallen
+    odds: 0.2,
+    // morale per unit of the strength ratio, either way (capped)
+    hold: 40,
+    // a raider keeps its foe at least this long…
+    closer: 0.55,
+    // …unless another is at most this share of the distance away
+    scoutNear: 18,
+    // scouts stop this far from the camp (by the camp flow field)…
+    scoutWatch: 150,
+    // …and watch this long
+    burnNear: 1.6,
+    // a torch is put to a wall from this close
+    burnFor: 60,
+    // after the fire is lit, the band lingers this long and goes
+    rearHold: 150,
+    // the rear guard holds pursuers off this long
+    looters: 0.4,
+    // share of a looting band sent to the stores
+    grabNear: 10
+    // a looter this close to the stores (camp flow field) still grabs on a retreat
+  };
+  var GOALS = {
+    loot: { label: "\u0433\u0440\u0430\u0431\u0451\u0436", aim: "\u043F\u0440\u0438\u0448\u043B\u0438 \u0437\u0430 \u0434\u043E\u0431\u044B\u0447\u0435\u0439", done: "\u0434\u043E\u0431\u044B\u0447\u0430 \u0432\u0437\u044F\u0442\u0430, \u0443\u0445\u043E\u0434\u044F\u0442" },
+    kill: { label: "\u0440\u0430\u0441\u043F\u0440\u0430\u0432\u0430", aim: (t) => `\u043F\u0440\u0438\u0448\u043B\u0438 \u043F\u043E \u043E\u0434\u043D\u0443 \u0434\u0443\u0448\u0443: ${t}`, done: "\u0440\u0430\u0441\u043F\u0440\u0430\u0432\u0430 \u0441\u0432\u0435\u0440\u0448\u0438\u043B\u0430\u0441\u044C, \u0443\u0445\u043E\u0434\u044F\u0442" },
+    burn: { label: "\u043F\u043E\u0434\u0436\u043E\u0433", aim: "\u043D\u0435\u0441\u0443\u0442 \u0444\u0430\u043A\u0435\u043B\u044B: \u0445\u043E\u0442\u044F\u0442 \u043F\u043E\u0434\u0436\u0435\u0447\u044C \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0438", done: "\u043E\u0433\u043E\u043D\u044C \u043F\u0443\u0449\u0435\u043D, \u0443\u0445\u043E\u0434\u044F\u0442" },
+    scout: { label: "\u0440\u0430\u0437\u0432\u0435\u0434\u043A\u0430", aim: "\u0432\u044B\u0441\u043C\u0430\u0442\u0440\u0438\u0432\u0430\u044E\u0442 \u043B\u0430\u0433\u0435\u0440\u044C: \u044D\u0442\u043E \u0440\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438", done: "\u043B\u0430\u0433\u0435\u0440\u044C \u043E\u0441\u043C\u043E\u0442\u0440\u0435\u043D, \u0443\u0445\u043E\u0434\u044F\u0442" },
+    slaughter: { label: "\u0438\u0441\u0442\u0440\u0435\u0431\u043B\u0435\u043D\u0438\u0435", aim: "\u0438\u0434\u0443\u0442 \u043D\u0430 \u0432\u0441\u0451 \u0436\u0438\u0432\u043E\u0435", done: "\u0443\u0445\u043E\u0434\u044F\u0442" }
+  };
+  var ROLES = {
+    front: "\u043F\u0435\u0440\u0435\u0434\u043D\u0438\u0439 \u0431\u043E\u0435\u0446",
+    shooter: "\u0441\u0442\u0440\u0435\u043B\u043E\u043A",
+    looter: "\u0433\u0440\u0430\u0431\u0438\u0442\u0435\u043B\u044C",
+    torch: "\u043F\u043E\u0434\u0436\u0438\u0433\u0430\u0442\u0435\u043B\u044C",
+    rear: "\u043F\u0440\u0438\u043A\u0440\u044B\u0432\u0430\u0435\u0442 \u043E\u0442\u0445\u043E\u0434",
+    beast: "\u0431\u043E\u0435\u0432\u043E\u0439 \u0437\u0432\u0435\u0440\u044C",
+    scout: "\u0440\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A",
+    leader: "\u0432\u043E\u0436\u0430\u043A"
+  };
+  var table2 = (w) => w.squads || (w.squads = {});
+  var Label = (sq) => {
+    const l = RAID_BANDS.get(sq.band).label;
+    return l[0].toUpperCase() + l.slice(1);
+  };
+  var squadOf = (w, a) => a.squad != null ? w.squads?.[a.squad] || null : null;
+  var byId = (w, id) => w.agents.find((o) => o.id === id && !o.dead && !o.gone);
+  var membersOf = (w, sq) => sq.members.map((id) => byId(w, id)).filter(Boolean);
+  var dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  function strength(a) {
+    const g2 = a.gear, sp = SPECIES.get(a.species);
+    const blow = Math.max(g2?.melee?.dmg ?? sp.attack?.power ?? 1, g2?.rangedReady ? g2.ranged.dmg * 0.8 : 0);
+    return Math.max(0, a.hp) * blow;
+  }
+  var wooden = (w) => w.buildings.filter((b) => b.done && b.cells.length && BUILDINGS.get(b.key).wooden);
+  function pickVictim(w) {
+    const col = colonists(w);
+    if (!col.length) return null;
+    const feud2 = col.filter((a) => (a.stats?.raiders || 0) > 0).sort((x, y) => y.stats.raiders - x.stats.raiders)[0];
+    return feud2 ? { who: feud2, why: "\u043A\u0440\u043E\u0432\u043D\u0438\u043A: \u0443\u0431\u0438\u0432\u0430\u043B \u0438\u0445" } : { who: col.sort((x, y) => strength(x) - strength(y))[0], why: "\u0441\u0430\u043C\u0430\u044F \u043B\u0451\u0433\u043A\u0430\u044F \u0434\u043E\u0431\u044B\u0447\u0430" };
+  }
+  function createSquad(w, group) {
+    const band = RAID_BANDS.get(group[0].band), sqs = table2(w);
+    const id = w.nextSquad = (w.nextSquad || 0) + 1;
+    const dead = group.filter((a) => SPECIES.get(a.species).mindless).length;
+    const kind = dead * 2 > group.length ? "mindless" : "living";
+    let goal = kind === "mindless" ? "slaughter" : weighted(w.rng, (band.goals ? band.goals(w, group) : [["loot", 1]]).filter(([, v]) => v > 0)) || "loot";
+    let target = null, why = null;
+    const tipped = goal !== "scout" && w.scouted?.[band.id] != null;
+    if (tipped) delete w.scouted[band.id];
+    if (goal === "kill") {
+      const v = pickVictim(w);
+      if (v) {
+        target = v.who.id;
+        why = v.why;
+      } else goal = "loot";
+    }
+    if (goal === "burn") {
+      const bs = wooden(w);
+      if (bs.length) target = bs[Math.floor(w.rng() * bs.length)].id;
+      else goal = "loot";
+    }
+    const people = group.filter((a) => !a.warBeast);
+    const leader = group.find((a) => a.role === "necromancer" || a.species === "vampire") || people.sort((x, y) => strength(y) - strength(x))[0] || group[0];
+    if (leader.name === "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A") leader.name = "\u0410\u0442\u0430\u043C\u0430\u043D";
+    else if (kind === "living" && group.length > 1 && !leader.role && !leader.warBeast && leader.name === SPECIES.get(leader.species).label.replace(/^./, (c) => c.toUpperCase())) leader.name += "-\u0432\u043E\u0436\u0430\u043A";
+    const sq = sqs[id] = {
+      id,
+      band: band.id,
+      kind,
+      goal,
+      target,
+      why,
+      members: group.map((a) => a.id),
+      leader: leader.id,
+      size: group.length,
+      fallen: 0,
+      home: 0,
+      morale: 1,
+      state: "march",
+      reason: null,
+      started: w.tick,
+      lit: null,
+      watched: null,
+      rearUntil: null,
+      power0: group.reduce((s, a) => s + strength(a), 0)
+    };
+    const rest = [];
+    for (const a of group) {
+      a.squad = id;
+      if (a.warBeast) a.sqRole = "beast";
+      else if (goal === "scout") a.sqRole = "scout";
+      else if (kind === "mindless") a.sqRole = "front";
+      else if (a.gear?.rangedReady) a.sqRole = "shooter";
+      else rest.push(a);
+    }
+    rest.sort((x, y) => strength(x) - strength(y));
+    const special2 = goal === "loot" ? Math.max(1, Math.round(rest.length * SQUAD.looters)) : goal === "burn" ? Math.min(2, rest.length) : 0;
+    rest.forEach((a, k) => {
+      a.sqRole = k < special2 ? goal === "loot" ? "looter" : "torch" : "front";
+    });
+    const fronts = group.filter((a) => a.sqRole === "front" && a.id !== leader.id);
+    if (kind === "living" && fronts.length >= 2) fronts.sort((x, y) => strength(y) - strength(x))[0].sqRole = "rear";
+    if (!leader.warBeast && leader.sqRole !== "scout") leader.sqRole = leader.sqRole === "shooter" ? "shooter" : "leader";
+    const b = w.behave;
+    if (b) b.squads.started++;
+    sq.announce = tipped ? "tipped" : true;
+    return sq;
+  }
+  function announce(w, sq) {
+    const tipped = sq.announce === "tipped";
+    sq.announce = null;
+    const victim = sq.target != null && sq.goal === "kill" ? w.agents.find((o) => o.id === sq.target) : null;
+    const g2 = GOALS[sq.goal], aim = typeof g2.aim === "function" ? g2.aim(`<b>${esc(victim?.name || "?")}</b> (${sq.why})`) : g2.aim;
+    const b = sq.goal === "burn" ? w.buildings.find((x) => x.id === sq.target) : null;
+    const what = b ? ` (${BUILDINGS.get(b.key).name.toLowerCase()})` : "";
+    const leader = w.agents.find((o) => o.id === sq.leader);
+    log(w, `${Label(sq)}: ${aim}${what}.${sq.kind === "living" && sq.size > 1 && leader ? ` \u0412\u0435\u0434\u0451\u0442 ${esc(leader.name)}.` : ""}${tipped ? " \u0414\u043E\u0440\u043E\u0433\u0443 \u0438\u043C \u043F\u043E\u043A\u0430\u0437\u0430\u043B\u0438 \u0440\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438." : ""}`, "danger");
+  }
+  function noteFallen(w, a) {
+    for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;
+    const sq = squadOf(w, a);
+    if (!sq) return;
+    sq.fallen++;
+    if (a.id === sq.leader && sq.kind === "living" && membersOf(w, sq).some((o) => o !== a)) log(w, `\u041F\u0430\u043B \u0432\u043E\u0436\u0430\u043A: ${esc(a.name)}.`, "danger", "notice");
+  }
+  function noteHome(w, a) {
+    const sq = squadOf(w, a);
+    if (sq) sq.home++;
+  }
+  function setState(w, sq, state, reason2) {
+    if (sq.state !== "march") return;
+    sq.state = state;
+    sq.reason = reason2;
+    if (state === "retreat") sq.rearUntil = w.tick + SQUAD.rearHold;
+    log(w, state === "retreat" ? `${Label(sq)}: \u043E\u0442\u0441\u0442\u0443\u043F\u043B\u0435\u043D\u0438\u0435, ${reason2}.` : `${Label(sq)}: ${reason2}.`, "danger", state === "retreat" ? "notice" : void 0);
+  }
+  function defenders(w, ms) {
+    let s = 0;
+    for (const o of colonists(w)) if (!o.sleeping && ms.some((m) => dist(m, o) < SQUAD.view)) s += strength(o);
+    return s;
+  }
+  function moraleOf(w, sq, ms = membersOf(w, sq)) {
+    if (sq.kind === "mindless") return 1;
+    const leaderDown = !ms.some((m) => m.id === sq.leader);
+    const own = ms.reduce((s, a) => s + strength(a), 0), foes = defenders(w, ms);
+    const odds = foes > 0 ? clamp((own / foes - 1) * SQUAD.odds, -SQUAD.odds * 1.5, SQUAD.odds) : 0;
+    return 1 - SQUAD.lossWeight * sq.fallen / sq.size - (leaderDown ? SQUAD.leaderLoss : 0) + odds;
+  }
+  function finish(w, sq) {
+    delete w.squads[sq.id];
+    const b = w.behave;
+    const wiped = sq.home === 0;
+    if (b) {
+      if (wiped) b.squads.wiped++;
+      else if (sq.state === "withdraw") b.squads.goal++;
+      else b.squads.retreat++;
+    }
+    if (wiped) log(w, sq.size > 1 ? `${Label(sq)}: \u0440\u0430\u0437\u0433\u0440\u043E\u043C, \u043D\u0438 \u043E\u0434\u0438\u043D \u043D\u0435 \u0443\u0448\u0451\u043B (${sq.fallen} \u0438\u0437 ${sq.size}).` : `${Label(sq)}: \u0443\u0439\u0442\u0438 \u043D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C.`, "danger", "notice");
+    else if (sq.goal === "scout" && sq.state === "withdraw") {
+      (w.scouted || (w.scouted = {}))[sq.band] = w.tick;
+      log(w, `\u0420\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438 \u0443\u0448\u043B\u0438 \u0438 \u0443\u043D\u0435\u0441\u043B\u0438 \u0432\u0435\u0441\u0442\u044C \u043E \u043B\u0430\u0433\u0435\u0440\u0435. \u0416\u0434\u0438 \u0438\u0445 \u0441\u043A\u043E\u0440\u043E \u0438 \u0447\u0438\u0441\u043B\u043E\u043C \u043F\u043E\u0431\u043E\u043B\u044C\u0448\u0435.`, "danger", "notice");
+    }
+  }
+  function stepSquads(w) {
+    const sqs = w.squads;
+    if (!sqs) return;
+    for (const sq of Object.values(sqs)) {
+      if ((w.tick + sq.id) % SQUAD.think && !sq.announce) continue;
+      if (sq.announce) announce(w, sq);
+      const ms = membersOf(w, sq);
+      if (!ms.length) {
+        finish(w, sq);
+        continue;
+      }
+      if (sq.state !== "march") continue;
+      sq.morale = +moraleOf(w, sq, ms).toFixed(3);
+      const nerve = SQUAD.nerve[sq.kind] + (RAID_BANDS.get(sq.band).nerve || 0);
+      if (sq.morale < nerve) {
+        const leaderDown = !ms.some((m) => m.id === sq.leader);
+        const why = sq.fallen / sq.size >= 0.4 ? `\u043F\u043E\u0442\u0435\u0440\u0438 (${sq.fallen} \u0438\u0437 ${sq.size} \u043F\u0430\u043B\u0438)` : leaderDown ? "\u043F\u0430\u043B \u0432\u043E\u0436\u0430\u043A" : "\u0437\u0430\u0449\u0438\u0442\u043D\u0438\u043A\u043E\u0432 \u0431\u043E\u043B\u044C\u0448\u0435";
+        setState(w, sq, "retreat", why);
+        continue;
+      }
+      const g2 = sq.goal;
+      if (g2 === "loot") {
+        const looters = ms.filter((m) => m.sqRole === "looter");
+        if (ms.some((m) => m.looted) && looters.every((m) => m.looted)) setState(w, sq, "withdraw", GOALS.loot.done);
+        else if (!looters.length && ms.some((m) => m.looted)) setState(w, sq, "withdraw", GOALS.loot.done);
+      } else if (g2 === "kill") {
+        if (sq.targetDown) setState(w, sq, "withdraw", GOALS.kill.done);
+        else if (!w.agents.some((o) => o.id === sq.target)) {
+          sq.goal = "loot";
+          for (const m of ms) if (m.sqRole === "front" && !m.looted && w.rng() < SQUAD.looters) m.sqRole = "looter";
+        }
+      } else if (g2 === "burn") {
+        if (sq.lit != null && w.tick - sq.lit > SQUAD.burnFor) setState(w, sq, "withdraw", GOALS.burn.done);
+        else if (sq.lit == null && !w.buildings.some((b) => b.id === sq.target && b.done)) {
+          sq.goal = "loot";
+          for (const m of ms) if (m.sqRole === "torch") m.sqRole = "looter";
+        }
+      } else if (g2 === "scout") {
+        if (sq.watched != null && w.tick - sq.watched > SQUAD.scoutWatch) setState(w, sq, "withdraw", GOALS.scout.done);
+      }
+    }
+  }
+  function holdFoe(w, a, fresh) {
+    const t = a.task?.id === "fight" ? a.task.target : null;
+    if (!t || t.dead || !w.agents.includes(t) || !canSee(w, a, t)) return fresh;
+    if (!fresh || fresh === t) return t;
+    const held = w.tick - (a.task.since ?? w.tick);
+    return held > SQUAD.hold || dist(a, fresh) < dist(a, t) * SQUAD.closer ? fresh : t;
+  }
+  var fight = (w, a, e) => a.task?.id === "fight" && a.task.target === e ? a.task : { id: "fight", target: e, since: w.tick };
+  function planFor(w, a, sq, radius) {
+    if (a.sqRole === "looter" && !a.looted && sq.state === "retreat" && w.nav.get("camp")[cellOf(w, a)] <= SQUAD.grabNear) return a.task?.id === "assault" ? a.task : { id: "assault" };
+    if (sq.state !== "march") {
+      if (a.sqRole === "rear" && sq.state === "retreat" && w.tick < sq.rearUntil && hpShare(a) > 0.4) {
+        const e2 = holdFoe(w, a, nearestHostile(w, a, 8));
+        if (e2) return fight(w, a, e2);
+      }
+      return { id: "leave" };
+    }
+    const attacker = w.agents.find((o) => !o.dead && o.faction === "colony" && o.task?.id === "fight" && o.task.target === a);
+    const close2 = nearestHostile(w, a, 2.5);
+    const role = a.sqRole;
+    if (role === "looter") {
+      if (a.looted) return { id: "leave" };
+      if (attacker && dist(a, attacker) < 2.5) return fight(w, a, holdFoe(w, a, attacker));
+      return a.task?.id === "assault" ? a.task : { id: "assault" };
+    }
+    if (role === "torch" && sq.lit == null) {
+      if (close2) return fight(w, a, holdFoe(w, a, close2));
+      return a.task?.id === "torch" ? a.task : { id: "torch", b: sq.target };
+    }
+    if (role === "scout") {
+      const e2 = attacker || close2;
+      if (e2) return fight(w, a, holdFoe(w, a, e2));
+      return a.task?.id === "scout" ? a.task : { id: "scout" };
+    }
+    if (sq.goal === "kill") {
+      const v = w.agents.find((o) => o.id === sq.target && !o.dead);
+      if (v && canSee(w, a, v) && dist(a, v) < 30 && !close2) return fight(w, a, v);
+    }
+    const e = holdFoe(w, a, nearestHostile(w, a, radius));
+    if (e) return fight(w, a, e);
+    if (sq.goal === "kill" || sq.goal === "burn") return a.task?.id === "haunt" ? a.task : { id: "haunt" };
+    return null;
+  }
+  function squadText(w, a) {
+    const sq = squadOf(w, a);
+    if (!sq) return null;
+    const goal = GOALS[sq.goal].label + (sq.goal === "kill" ? `: ${w.agents.find((o) => o.id === sq.target)?.name || "\u2014"}` : "");
+    const state = sq.state === "march" ? `\u0431\u043E\u0435\u0432\u043E\u0439 \u0434\u0443\u0445 ${Math.round(clamp(sq.morale, 0, 1.5) * 100)}%` : sq.state === "retreat" ? `\u043E\u0442\u0441\u0442\u0443\u043F\u0430\u044E\u0442 (${sq.reason})` : `\u0443\u0445\u043E\u0434\u044F\u0442 (${sq.reason})`;
+    const left = membersOf(w, sq).length;
+    return `${ROLES[a.sqRole] || "\u2014"}${a.id === sq.leader && a.sqRole !== "leader" ? ", \u0432\u043E\u0436\u0430\u043A" : ""}; \u0446\u0435\u043B\u044C \u2014 ${goal}; ${state}; \u0432 \u0441\u0442\u0440\u043E\u044E ${left} \u0438\u0437 ${sq.size}`;
+  }
+
   // src/agents/agent.js
   var newMemory = (init = {}) => new Proxy(init, { get: (t, k) => typeof k === "string" ? t[k] ?? 0 : t[k] });
   var between = (rng, [a, b]) => a + rng() * (b - a);
@@ -6164,6 +6642,7 @@ dd.q4{color:#c58cff;font-weight:600}
     a.dead = true;
     a.hp = 0;
     releaseAll(w, a);
+    noteFallen(w, a);
     const sp = SPECIES.get(a.species);
     const killer = by ? SPECIES.get(by.species) : null;
     if (a.faction === "colony") {
@@ -6197,7 +6676,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const loot = got.filter((it) => it.dur > 0);
       w.armory.push(...loot);
       w.armoryVersion = (w.armoryVersion || 0) + 1;
-      const who = a.band === "bandits" ? "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A" : a.name !== sp.label.replace(/^./, (c) => c.toUpperCase()) ? `${a.name}, ${sp.label},` : a.name;
+      const who = a.band === "bandits" ? a.name || "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A" : a.name !== sp.label.replace(/^./, (c) => c.toUpperCase()) ? `${a.name}, ${sp.label},` : a.name;
       const verb = sp.undead ? g(a, "\u0443\u043F\u043E\u043A\u043E\u0435\u043D", "\u0443\u043F\u043E\u043A\u043E\u0435\u043D\u0430") : g(a, "\u0443\u0431\u0438\u0442", "\u0443\u0431\u0438\u0442\u0430");
       log(w, `${who} ${verb}, ${g(by, "\u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B", "\u0435\u0433\u043E \u0441\u0440\u0430\u0437\u0438\u043B\u0430").replace("\u0435\u0433\u043E", a.gender === "f" ? "\u0435\u0451" : "\u0435\u0433\u043E")} <b>${esc(by.name)}</b>.${loot.length ? " \u0422\u0440\u043E\u0444\u0435\u0438: " + loot.map((it) => def(it).short).join(", ") + "." : ""}`, "danger", "notice");
     }
@@ -6322,7 +6801,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/agents/brains/spirit.js
-  var dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  var dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   var N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   var code = (id) => TERRAIN.get(id).code;
   function isHome(w, i, home) {
@@ -6341,12 +6820,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return -1;
   }
-  var lonely = (w, v, r) => !w.agents.some((o) => o !== v && !o.dead && o.faction === "colony" && dist(o, v) < r);
+  var lonely = (w, v, r) => !w.agents.some((o) => o !== v && !o.dead && o.faction === "colony" && dist2(o, v) < r);
   var spellbound = (a) => ["fight", "flee", "treat", "astray", "lured", "runHome", "muster"].includes(a.task?.id) || a.sleeping;
   function wander(w, a, S) {
     const t = a.task?.id === "lurk" || a.task?.id === "sing" ? a.task : a.task = { id: "lurk" };
     if (S.night && nightness(w.tick) <= 0.5) t.id = "lurk";
-    if (!t.spot || dist(a, { x: t.spot[0], y: t.spot[1] }) < 0.8 || w.rng() < 4e-3) {
+    if (!t.spot || dist2(a, { x: t.spot[0], y: t.spot[1] }) < 0.8 || w.rng() < 4e-3) {
       t.spot = null;
       for (let k = 0; k < 30; k++) {
         const x = a.x + (w.rng() * 2 - 1) * 10, y = a.y + (w.rng() * 2 - 1) * 10;
@@ -6366,7 +6845,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function leadAstray(w, a, sp, S) {
     if ((w.tick + a.id) % S.every) return;
-    const lost = w.agents.filter((o) => o.faction === "colony" && !o.dead && dist(o, a) < S.radius && !agentInZone(w, o) && !spellbound(o));
+    const lost = w.agents.filter((o) => o.faction === "colony" && !o.dead && dist2(o, a) < S.radius && !agentInZone(w, o) && !spellbound(o));
     for (const v of lost) {
       v.task = { id: "astray", until: w.tick + HOUR * (1 + w.rng()), spell: 1.2 };
       think(w, v, "leshyLost");
@@ -6386,7 +6865,7 @@ dd.q4{color:#c58cff;font-weight:600}
         a.task = { id: "lurk" };
         return true;
       }
-      if (dist(a, v) < 1.2) {
+      if (dist2(a, v) < 1.2) {
         a.task = { id: "maul", target: v };
         attack(w, a, v);
       } else a.task = { id: "sing" };
@@ -6397,7 +6876,7 @@ dd.q4{color:#c58cff;font-weight:600}
     let best = null, bd = S.radius;
     for (const o of w.agents) {
       if (o.faction !== "colony" || o.dead || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
-      const d = dist(o, a);
+      const d = dist2(o, a);
       if (d < bd) {
         bd = d;
         best = o;
@@ -6445,10 +6924,10 @@ dd.q4{color:#c58cff;font-weight:600}
         if (t.spot && approach(w, a, t.spot[0], t.spot[1], 1.2) === null) t.spot = null;
         return;
       }
-      const h = a.hurtBy, foe = h && w.tick - h.tick < 200 ? w.agents.find((o) => o.id === h.id && !o.dead && dist(o, a) < 12 && !agentInZone(w, o)) : null;
+      const h = a.hurtBy, foe = h && w.tick - h.tick < 200 ? w.agents.find((o) => o.id === h.id && !o.dead && dist2(o, a) < 12 && !agentInZone(w, o)) : null;
       a.veil = foe ? null : S.aura === "lure" && active && a.task?.id === "sing" ? 6 : S.veil;
       if (foe) {
-        const crowd = w.agents.filter((o) => o.faction === "colony" && !o.dead && dist(o, a) < 5).length;
+        const crowd = w.agents.filter((o) => o.faction === "colony" && !o.dead && dist2(o, a) < 5).length;
         if (S.dives || crowd >= (S.crowd || 3)) {
           a.hiddenUntil = w.tick + (S.dives ? 2 : 1) * HOUR;
           a.hurtBy = null;
@@ -6457,7 +6936,7 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
         a.task = { id: "maul", target: foe };
-        if (dist(a, foe) > 0.9) approach(w, a, foe.x, foe.y, 1.1);
+        if (dist2(a, foe) > 0.9) approach(w, a, foe.x, foe.y, 1.1);
         else attack(w, a, foe);
         return;
       }
@@ -6472,7 +6951,9 @@ dd.q4{color:#c58cff;font-weight:600}
     const r = w.outside?.seen || { pop: 0, armed: 0, armour: 0 };
     return w.tick / DAY * 0.4 + w.stats.raids * 1 + r.pop * 0.25 + r.armed * 0.2 + r.armour * 2 + (w.fame || 0);
   }
-  var raidSize = (w) => Math.min(16, 2 + Math.floor(raidThreat(w) / 3));
+  var SCOUTED_FOR = 6 * DAY;
+  var scoutedBand = (w) => Object.entries(w.scouted || {}).find(([, t]) => w.tick - t < SCOUTED_FOR)?.[0] || null;
+  var raidSize = (w) => Math.min(16, Math.round((2 + Math.floor(raidThreat(w) / 3)) * (scoutedBand(w) ? 1.3 : 1)));
   var settlerWaitDays = (pop) => Math.max(1, pop - 7);
 
   // src/data/trade.js
@@ -7828,167 +8309,6 @@ dd.q4{color:#c58cff;font-weight:600}
     return total;
   }
 
-  // src/data/raids.js
-  var RAID_BANDS = new Registry("raid band");
-  var COST = {
-    human: 1,
-    orc: 2,
-    goblin: 0.6,
-    ogre: 4.5,
-    troll: 5,
-    gnoll: 1.7,
-    darkelf: 2,
-    zombie: 0.9,
-    skeleton: 1,
-    upyr: 1.8,
-    vampire: 7,
-    necromancer: 1.5,
-    varg: 1.8,
-    hyena: 0.8
-  };
-  function fill(rng, budget, mix, extra = []) {
-    const out = [...extra];
-    let left = budget - extra.reduce((s, m) => s + COST[m.species], 0);
-    const total = mix.reduce((s, m) => s + m[1], 0);
-    for (let guard = 0; guard < 40; guard++) {
-      const fits = mix.filter(([sp2]) => COST[sp2] <= left + 0.25);
-      if (!fits.length) break;
-      let r = rng() * fits.reduce((s, m) => s + m[1], 0), sp = fits[0][0];
-      for (const [s, wt] of fits) {
-        r -= wt;
-        if (r <= 0) {
-          sp = s;
-          break;
-        }
-      }
-      out.push({ species: sp });
-      left -= COST[sp];
-    }
-    if (!out.length) out.push({ species: mix[0][0] });
-    return out.slice(0, 18);
-  }
-  function banditKit(rng, t) {
-    const early = [["club"], ["club"], ["spear"], ["sling"], ["staff"]];
-    const late = [["spear", "shield"], ["club", "shield"], ["maul"], ["bow", "quiver"], ["spear"], ["sling"]];
-    const set = pick(rng, rng() < Math.min(0.9, t * 0.04) ? late : early);
-    const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
-    return [...set, ...r < plates ? ["hardleather"] : r < plates + leather ? ["jerkin"] : r < plates + leather + 0.4 ? ["clothes"] : []];
-  }
-  var KITS = {
-    orc: (rng, t) => [...pick(rng, [["maul"], ["axe", "shield"], ["club", "shield"], ["spear"], t > 10 ? ["bronzeaxe", "shield"] : ["axe"]]), ...rng() < 0.5 ? ["jerkin"] : []],
-    goblin: (rng) => pick(rng, [["sling"], ["sling"], ["bow", "quiver"], ["club"], ["spear"]]),
-    ogre: (rng) => pick(rng, [["maul"], ["club"]]),
-    gnoll: (rng, t) => [...pick(rng, [["spear"], ["spear", "shield"], ["bow", "quiver"], ["axe"]]), ...rng() < 0.3 ? ["jerkin"] : []],
-    darkelf: (rng, t) => [...pick(rng, [["bow", "quiver"], ["bow", "quiver"], ["sword"], ["spear", "shield"]]), rng() < 0.6 ? "hardleather" : "jerkin"],
-    skeleton: (rng) => pick(rng, [["club"], ["spear"], ["axe"], ["club", "shield"]]),
-    vampire: () => ["sword", "clothes"],
-    necromancer: () => ["staff", "clothes"]
-  };
-  var kitFor = (species, rng, t) => SPECIES.get(species).inventory && KITS[species] ? KITS[species](rng, t) : [];
-  var named2 = (sp) => (a) => {
-    a.name = SPECIES.get(sp).label.replace(/^./, (c) => c.toUpperCase());
-  };
-  RAID_BANDS.registerAll([
-    {
-      id: "bandits",
-      label: "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0438 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB",
-      kind: "sentient",
-      weight: () => 3,
-      members: (w, rng, budget) => fill(rng, budget, [["human", 1]]).map((m) => ({ ...m, init: (a) => {
-        a.name = "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A";
-      }, kit: "bandit" })),
-      message: (n) => `\u041D\u0430\u0431\u0435\u0433! ${n} ${plural(n, "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A", "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0430", "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u043E\u0432")} \u0438\u0437 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB`
-    },
-    {
-      id: "orcs",
-      label: "\u043E\u0440\u043E\u0447\u044C\u044F \u0432\u0430\u0442\u0430\u0433\u0430",
-      kind: "sentient",
-      weight: (w, t) => t >= 4 ? 2 : 0.5,
-      members: (w, rng, budget) => fill(rng, budget, [["orc", 3], ["goblin", 2], ["varg", budget >= 5 ? 1 : 0], ["ogre", budget >= 10 ? 0.6 : 0]]),
-      message: (n, group) => `\u041D\u0430\u0431\u0435\u0433! \u041E\u0440\u043E\u0447\u044C\u044F \u0432\u0430\u0442\u0430\u0433\u0430 \u0441 \u0433\u043E\u0431\u043B\u0438\u043D\u0430\u043C\u0438${group.some((a) => a.species === "varg") ? " \u0438 \u0431\u043E\u0435\u0432\u044B\u043C\u0438 \u0432\u0430\u0440\u0433\u0430\u043C\u0438" : ""}`
-    },
-    {
-      id: "goblins",
-      label: "\u0433\u043E\u0431\u043B\u0438\u043D\u0441\u043A\u0430\u044F \u0448\u0430\u0439\u043A\u0430",
-      kind: "sentient",
-      weight: () => 1.5,
-      members: (w, rng, budget) => fill(rng, budget, [["goblin", 1]]),
-      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0413\u043E\u0431\u043B\u0438\u043D\u0441\u043A\u0430\u044F \u0448\u0430\u0439\u043A\u0430: \u043C\u0435\u043B\u043A\u0438\u0435, \u044E\u0440\u043A\u0438\u0435, \u0442\u0430\u0449\u0430\u0442 \u0432\u0441\u0451, \u0447\u0442\u043E \u043F\u043B\u043E\u0445\u043E \u043B\u0435\u0436\u0438\u0442"
-    },
-    {
-      id: "gnolls",
-      label: "\u0441\u0442\u0430\u044F \u0433\u043D\u043E\u043B\u043B\u043E\u0432",
-      kind: "sentient",
-      weight: (w, t) => t >= 3 ? 1.5 : 0.4,
-      members: (w, rng, budget) => fill(rng, budget, [["gnoll", 3], ["hyena", 1.5]]),
-      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0413\u043D\u043E\u043B\u043B\u044B-\u043F\u0430\u0434\u0430\u043B\u044C\u0449\u0438\u043A\u0438 \u0438\u0434\u0443\u0442 \u043D\u0430 \u0437\u0430\u043F\u0430\u0445 \u043B\u0430\u0433\u0435\u0440\u044F"
-    },
-    {
-      id: "darkelves",
-      label: "\u043E\u0442\u0440\u044F\u0434 \u0442\u0451\u043C\u043D\u044B\u0445 \u044D\u043B\u044C\u0444\u043E\u0432",
-      kind: "sentient",
-      weight: (w, t, night) => t >= 8 ? 0.6 + night : 0,
-      members: (w, rng, budget) => fill(rng, budget, [["darkelf", 1]]),
-      message: () => "\u041D\u0430\u0431\u0435\u0433! \u0422\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B \u0432\u044B\u0448\u043B\u0438 \u0438\u0437-\u043F\u043E\u0434 \u0437\u0435\u043C\u043B\u0438 \u0437\u0430 \u0440\u0430\u0431\u0430\u043C\u0438 \u0438 \u0434\u043E\u0431\u044B\u0447\u0435\u0439"
-    },
-    {
-      id: "ogres",
-      label: "\u043E\u0433\u0440\u044B-\u043B\u044E\u0434\u043E\u0435\u0434\u044B",
-      kind: "monster",
-      weight: (w, t) => t >= 6 ? 0.8 : 0,
-      members: (w, rng, budget) => fill(rng, Math.min(budget, 9.5), [["ogre", 1]]).map((m) => ({ ...m, init: named2("ogre") })),
-      message: () => "\u0421 \u0433\u043E\u0440 \u0441\u043F\u0443\u0441\u0442\u0438\u043B\u0438\u0441\u044C \u043E\u0433\u0440\u044B-\u043B\u044E\u0434\u043E\u0435\u0434\u044B"
-    },
-    {
-      id: "troll",
-      label: "\u0442\u0440\u043E\u043B\u043B\u044C",
-      kind: "monster",
-      weight: (w, t) => t >= 5 ? 1 : 0,
-      members: (w, rng, budget) => fill(rng, Math.min(budget, 10.5), [["troll", 1]]).map((m) => ({ ...m, init: named2("troll") })),
-      message: (n) => n === 1 ? "\u0418\u0437 \u0447\u0430\u0449\u0438 \u0432\u044B\u0448\u0435\u043B \u0442\u0440\u043E\u043B\u043B\u044C. \u0420\u0430\u043D\u044B \u043D\u0430 \u043D\u0451\u043C \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u044E\u0442\u0441\u044F, \u043F\u043E\u043A\u0430 \u0440\u044F\u0434\u043E\u043C \u043D\u0435\u0442 \u043E\u0433\u043D\u044F" : "\u0418\u0437 \u0447\u0430\u0449\u0438 \u0432\u044B\u0448\u043B\u0438 \u0442\u0440\u043E\u043B\u043B\u0438. \u0420\u0430\u043D\u044B \u043D\u0430 \u043D\u0438\u0445 \u0437\u0430\u0442\u044F\u0433\u0438\u0432\u0430\u044E\u0442\u0441\u044F, \u043F\u043E\u043A\u0430 \u0440\u044F\u0434\u043E\u043C \u043D\u0435\u0442 \u043E\u0433\u043D\u044F"
-    },
-    // the rot's host: by night three times as likely; past a threat of 10 a necromancer walks behind it
-    {
-      id: "undead",
-      label: "\u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B",
-      kind: "monster",
-      weight: (w, t, night) => t >= 3 ? 0.8 + 2 * night : 0,
-      members: (w, rng, budget, t) => {
-        const lead = t >= 10 ? [{ species: "necromancer", init: (a) => {
-          a.role = "necromancer";
-          a.name = "\u041D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442";
-        } }] : [];
-        return fill(rng, budget * 1.2, [["zombie", 3], ["skeleton", t >= 6 ? 2 : 0]], lead);
-      },
-      groupInit: (group) => {
-        const nec = group.find((a) => a.role === "necromancer");
-        if (nec) {
-          for (const a of group) if (a !== nec) a.master = nec.id;
-        }
-      },
-      message: (n, group) => `\u0418\u0437 \u043A\u0443\u0440\u0433\u0430\u043D\u043E\u0432 \u043F\u043E\u0434\u043D\u044F\u043B\u0438\u0441\u044C \u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B: ${n}${group.some((a) => a.role === "necromancer") ? ". \u0417\u0430 \u043D\u0438\u043C\u0438 \u0438\u0434\u0451\u0442 \u043D\u0435\u043A\u0440\u043E\u043C\u0430\u043D\u0442 \u2014 \u0431\u0435\u0437 \u043D\u0435\u0433\u043E \u043E\u043D\u0438 \u0440\u0430\u0437\u0431\u0440\u0435\u0434\u0443\u0442\u0441\u044F" : ""}`
-    },
-    // upyrs come only by night and run from the sun
-    {
-      id: "upyrs",
-      label: "\u0443\u043F\u044B\u0440\u0438",
-      kind: "monster",
-      weight: (w, t, night) => t >= 6 && night > 0.5 ? 1.2 : 0,
-      members: (w, rng, budget) => fill(rng, Math.min(budget, 6), [["upyr", 1]]),
-      message: () => "\u041D\u043E\u0447\u044C\u044E \u043A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0438 \u0443\u043F\u044B\u0440\u0438. \u0418\u043C \u043D\u0443\u0436\u043D\u0430 \u043A\u0440\u043E\u0432\u044C, \u0441\u043E\u043B\u043D\u0446\u0435 \u0433\u043E\u043D\u0438\u0442 \u0438\u0445 \u043F\u0440\u043E\u0447\u044C"
-    },
-    {
-      id: "vampire",
-      label: "\u0432\u0430\u043C\u043F\u0438\u0440 \u0441\u043E \u0441\u0432\u0438\u0442\u043E\u0439",
-      kind: "sentient",
-      weight: (w, t, night) => t >= 20 && night > 0.5 ? 0.5 : 0,
-      members: (w, rng, budget) => fill(rng, budget, [["upyr", 1]], [{ species: "vampire", init: (a, w2) => {
-        [a.name, a.gender] = pick(w2.rng, SPECIES.get("vampire").names);
-      } }]),
-      message: (n, group) => `${group.find((a) => a.species === "vampire")?.name || "\u0412\u0430\u043C\u043F\u0438\u0440"} \u043F\u0440\u0438\u0448\u0451\u043B \u0441\u043E \u0441\u0432\u0438\u0442\u043E\u0439 \u0443\u043F\u044B\u0440\u0435\u0439. \u041F\u0440\u043E\u0441\u0442\u043E\u0435 \u0436\u0435\u043B\u0435\u0437\u043E \u0435\u0433\u043E \u043F\u043E\u0447\u0442\u0438 \u043D\u0435 \u0431\u0435\u0440\u0451\u0442, \u043D\u0443\u0436\u043D\u043E \u0441\u0435\u0440\u0435\u0431\u0440\u043E`
-    }
-  ]);
-
   // src/data/relations.js
   var KINS = new Registry("kin");
   KINS.registerAll([
@@ -8027,7 +8347,7 @@ dd.q4{color:#c58cff;font-weight:600}
     orderGap: 4,
     // this far apart on order → −0.5
     grudgeCap: 4
-    // personal history counts at most this much either way
+    // personal history (good or bad) counts at most this much either way
   };
   function opinion(a, b) {
     let v = kinship(a.species, b.species);
@@ -8052,6 +8372,243 @@ dd.q4{color:#c58cff;font-weight:600}
     return "\u043D\u0435\u043D\u0430\u0432\u0438\u0434\u0438\u0442";
   }
 
+  // src/settlement/together.js
+  var TOGETHER = {
+    riskFrom: 0.3,
+    // a gatherer is worth escorting from this risk up…
+    riskTill: 0.15,
+    // …and the escort goes back to its own work below this
+    escortShare: 0.2,
+    // at most this share of the colony escorts at a time
+    keep: 2.2,
+    // the escort stays this close
+    guard: 8,
+    // and takes on anything hostile this close to its charge
+    aidBelow: 0.4,
+    // health share under which a colonist out in the woods needs help
+    aidEvery: 12 * HOUR,
+    // once dressed, not again for this long
+    aidHeal: 0.2,
+    // of max health, more with the healer's skill
+    far: 40,
+    // nobody goes further than this to escort or help
+    mate: 0.05,
+    // a friend (or a foe) on the same job, ± per person…
+    mateCap: 0.1,
+    // …at most
+    yieldGap: 0.3,
+    // a patient gives the bed up to someone this much worse off…
+    yieldFrom: 0.5,
+    // …when itself is at least this healthy
+    bondEscort: 0.05,
+    // per hour side by side
+    bondDefend: 0.5,
+    // standing up for someone in a fight
+    bondAid: 1,
+    // a wound dressed in the woods
+    bondWork: 0.04,
+    // per hour on the same job close by
+    bondTrouble: 0.3,
+    // having fought the same raid
+    mendTrouble: 0.8
+    // …more for two who could not stand each other
+  };
+  var dist3 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  var byId2 = (w, id) => w.agents.find((o) => o.id === id && !o.dead);
+  var social = (w) => w.behave?.social;
+  function bond(w, a, b, v) {
+    if (!a || !b || a === b) return;
+    const gr = a.grudge || (a.grudge = {});
+    gr[b.id] = clamp((gr[b.id] || 0) + v, -OPINION.grudgeCap, OPINION.grudgeCap);
+  }
+  var outsideRisk = (w) => perTick(w, "outsideRisk", () => {
+    const col = colonists(w);
+    if (!col.length) return 0;
+    const avg = col.reduce((s, a) => s + strength(a), 0) / col.length || 1;
+    let t = 0;
+    for (const o of w.agents) if (!o.dead && !o.tame && (o.faction === "predators" || o.faction === "nechist")) t += strength(o) / avg;
+    return clamp(0.1 * t * (0.7 + 0.5 * nightness(w.tick)), 0, 1);
+  });
+  var OUT = /* @__PURE__ */ new Set(["harvest", "hunt"]);
+  var outWork = (a) => a.task?.id === "job" && OUT.has(JOBS.get(a.task.job).runner);
+  var escortOf = (w, a) => colonists(w).find((o) => o.task?.id === "company" && o.task.who === a.id);
+  var walkers = (w) => perTick(w, "walkers", () => outsideRisk(w) < TOGETHER.riskFrom ? [] : colonists(w).filter((a) => outWork(a) && !a.task.hauling && !escortOf(w, a)));
+  function escortOption(w, a) {
+    const risk = outsideRisk(w);
+    if (a.task?.id === "company") {
+      const b = escortGoing(w, a, a.task);
+      if (b) return [a.task, 0.2 + 0.6 * risk + (a.task.home ? 0.6 : 0), () => a.task.home ? `\u0432\u0435\u0434\u0451\u0442 ${b.name} \u043A \u0441\u0432\u043E\u0438\u043C` : `\u0432 \u043B\u0435\u0441\u0443 \u043E\u043F\u0430\u0441\u043D\u043E, ${b.name} \u043D\u0435 ${g(b, "\u043E\u0434\u0438\u043D", "\u043E\u0434\u043D\u0430")}`];
+    }
+    const ws = walkers(w);
+    if (!ws.length || hpShare(a) < 0.6 || a.mods.bravery < 0.6) return null;
+    const col = colonists(w);
+    if (col.filter((o) => o.task?.id === "company").length >= Math.max(1, Math.floor(col.length * TOGETHER.escortShare)) && a.task?.id !== "company") return null;
+    let best = null, bs = -Infinity, bop = 0;
+    for (const b of ws) {
+      if (b === a || dist3(a, b) > TOGETHER.far) continue;
+      const op = opinion(a, b);
+      if (op < -1.5) continue;
+      const s = 0.2 + 0.6 * risk + 0.05 * clamp(op, -2, 4) + 0.15 * (a.mods.bravery - 1) + (a.gear?.rangedReady || a.gear?.melee?.item ? 0.08 : 0);
+      if (s > bs) {
+        bs = s;
+        best = b;
+        bop = op;
+      }
+    }
+    return best ? [{ id: "company", who: best.id }, bs, () => `\u0432 \u043B\u0435\u0441\u0443 \u043E\u043F\u0430\u0441\u043D\u043E, ${best.name} ${g(best, "\u043E\u0434\u0438\u043D", "\u043E\u0434\u043D\u0430")}${bop >= REL.friend ? " \u2014 \u0430 \u044D\u0442\u043E \u0434\u0440\u0443\u0433" : ""}`] : null;
+  }
+  function threatTo(w, b, r) {
+    let best = null, bd = r;
+    for (const o of w.agents) {
+      if (o.dead || o.tame || !["predators", "nechist", "raiders"].includes(o.faction)) continue;
+      const d = dist3(o, b);
+      if (d < bd) {
+        bd = d;
+        best = o;
+      }
+    }
+    return best;
+  }
+  function guardStep(w, a, b, task) {
+    const foe = threatTo(w, b, TOGETHER.guard);
+    if (foe) {
+      task.fought ?? (task.fought = foe.id);
+      const d = dist3(a, foe);
+      if (d > Math.min(0.9, reachOf(a))) approach(w, a, foe.x, foe.y, 1.15);
+      else attack(w, a, foe);
+      a.lastFight = w.tick;
+      return "fight";
+    }
+    if (task.fought != null) {
+      bond(w, b, a, TOGETHER.bondDefend);
+      think(w, b, "stoodUp", { name: a.name, gender: a.gender });
+      task.fought = null;
+    }
+    if (dist3(a, b) > TOGETHER.keep) {
+      approach(w, a, b.x, b.y);
+      return "far";
+    }
+    if (w.tick % HOUR === 0) {
+      bond(w, a, b, TOGETHER.bondEscort);
+      bond(w, b, a, TOGETHER.bondEscort);
+    }
+    return "near";
+  }
+  function escortGoing(w, a, task) {
+    const b = byId2(w, task.who);
+    if (!b) return null;
+    if (task.home) return agentInZone(w, b) ? null : b;
+    return outWork(b) && outsideRisk(w) >= TOGETHER.riskTill ? b : null;
+  }
+  function enterEscort(w, a, task) {
+    const b = byId2(w, task.who);
+    if (!b) return;
+    const s = social(w);
+    if (s && !task.home) s.escort++;
+    if (!task.home) think(w, b, "escorted", { name: a.name, gender: a.gender });
+  }
+  var helper = (w, id) => colonists(w).find((o) => o.task?.id === "aid" && o.task.who === id);
+  var needsAid = (w, b) => hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === "treat" && b.task.lying) && !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery);
+  function aidOption(w, a) {
+    if (hpShare(a) < 0.5) return null;
+    if (a.task?.id === "aid") {
+      const b = byId2(w, a.task.who);
+      if (b && needsAid(w, b)) return [a.task, 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2, () => `${b.name} ${g(b, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443`];
+    }
+    let best = null, bs = -Infinity;
+    for (const b of colonists(w)) {
+      if (b === a || !needsAid(w, b) || dist3(a, b) > TOGETHER.far) continue;
+      const h = helper(w, b.id);
+      if (h && h !== a) continue;
+      const op = opinion(a, b);
+      if (op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
+      const s = 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2 + 0.05 * clamp(op, -2, 4);
+      if (s > bs) {
+        bs = s;
+        best = b;
+      }
+    }
+    return best ? [{ id: "aid", who: best.id }, bs, () => `${best.name} ${g(best, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(best) * 100)}%`] : null;
+  }
+  function giveAid(w, a, b) {
+    const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.heal || 0)));
+    b.hp += amt;
+    b.aidedAt = w.tick;
+    bond(w, b, a, TOGETHER.bondAid);
+    bond(w, a, b, TOGETHER.bondAid * 0.3);
+    think(w, b, "aided", { name: a.name, gender: a.gender });
+    think(w, a, "gaveAid", { name: b.name });
+    const s = social(w);
+    if (s) s.aid++;
+    log(w, `<b>${esc(a.name)}</b> ${g(a, "\u043F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B", "\u043F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B\u0430")} \u0440\u0430\u043D\u044B <b>${esc(b.name)}</b> \u043F\u0440\u044F\u043C\u043E \u0432 \u043B\u0435\u0441\u0443 \u0438 ${g(a, "\u043F\u043E\u0432\u0451\u043B", "\u043F\u043E\u0432\u0435\u043B\u0430")} \u043A \u0441\u0432\u043E\u0438\u043C.`, "people");
+  }
+  function mates(w, a) {
+    var _a;
+    const by = {};
+    for (const o of colonists(w)) if (o !== a && o.task?.id === "job") (by[_a = o.task.job] || (by[_a] = [])).push(o);
+    return (job) => {
+      let v = 0, friend = null, foe = null;
+      for (const o of by[job] || []) {
+        const op = opinion(a, o);
+        if (op >= REL.friend) {
+          v += TOGETHER.mate;
+          friend ?? (friend = o);
+        } else if (op <= REL.dislike) {
+          v -= TOGETHER.mate;
+          foe ?? (foe = o);
+        }
+      }
+      return { v: clamp(v, -TOGETHER.mateCap, TOGETHER.mateCap), friend, foe };
+    };
+  }
+  function askForBed(w, a, end) {
+    const mine = hpShare(a);
+    let best = null;
+    for (const p of colonists(w)) {
+      if (p === a || p.task?.id !== "treat" || !p.task.bed) continue;
+      const h = hpShare(p);
+      if (h < TOGETHER.yieldFrom || h - mine < TOGETHER.yieldGap) continue;
+      if (opinion(p, a) <= REL.dislike && (p.align?.mercy ?? 0) < 2) continue;
+      if (!best || h > hpShare(best)) best = p;
+    }
+    if (!best) return null;
+    const bed = best.task.bed;
+    end(w, best, "done");
+    bond(w, a, best, TOGETHER.bondAid * 0.6);
+    think(w, a, "gotBed", { name: best.name, gender: best.gender });
+    think(w, best, "yieldedBed", { name: a.name });
+    const s = social(w);
+    if (s) s.yield++;
+    log(w, `<b>${esc(best.name)}</b> ${g(best, "\u0443\u0441\u0442\u0443\u043F\u0438\u043B", "\u0443\u0441\u0442\u0443\u043F\u0438\u043B\u0430")} \u043A\u043E\u0439\u043A\u0443 \u0443 \u043B\u0435\u043A\u0430\u0440\u044F <b>${esc(a.name)}</b>: \u0442\u043E\u043C\u0443 \u0445\u0443\u0436\u0435.`, "people");
+    return bed;
+  }
+  function afterRaid(w, since) {
+    const fought = colonists(w).filter((a) => (a.lastFight ?? -Infinity) >= since);
+    for (let i = 0; i < fought.length; i++) for (let j = i + 1; j < fought.length; j++) {
+      const a = fought[i], b = fought[j], foes = opinion(a, b) <= REL.dislike || opinion(b, a) <= REL.dislike;
+      const v = foes ? TOGETHER.mendTrouble : TOGETHER.bondTrouble;
+      bond(w, a, b, v);
+      bond(w, b, a, v);
+      if (foes) {
+        const s = social(w);
+        if (s) s.bond++;
+        think(w, a, "sharedTrouble", { name: b.name });
+        think(w, b, "sharedTrouble", { name: a.name });
+        log(w, `\u041E\u0431\u0449\u0430\u044F \u0431\u0435\u0434\u0430 \u0441\u0431\u043B\u0438\u0437\u0438\u043B\u0430 <b>${esc(a.name)}</b> \u0438 <b>${esc(b.name)}</b>: \u043F\u043B\u0435\u0447\u043E\u043C \u043A \u043F\u043B\u0435\u0447\u0443 \u043F\u0440\u043E\u0442\u0438\u0432 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 \u0441\u0442\u0430\u0440\u044B\u0435 \u043E\u0431\u0438\u0434\u044B \u0437\u0430\u0431\u044B\u0432\u0430\u044E\u0442\u0441\u044F.`, "people");
+      }
+    }
+  }
+  function workTogether(w) {
+    const col = colonists(w);
+    for (let i = 0; i < col.length; i++) for (let j = i + 1; j < col.length; j++) {
+      const a = col[i], b = col[j];
+      if (a.task?.id !== "job" || b.task?.id !== "job" || a.task.job !== b.task.job || dist3(a, b) > 8) continue;
+      if (opinion(a, b) <= REL.dislike || opinion(b, a) <= REL.dislike) continue;
+      bond(w, a, b, TOGETHER.bondWork);
+      bond(w, b, a, TOGETHER.bondWork);
+    }
+  }
+
   // src/settlement/relations.js
   var REL = {
     dislike: -2,
@@ -8068,6 +8625,8 @@ dd.q4{color:#c58cff;font-weight:600}
     // a quarrel adds this much to the grudge on both sides
     fade: 0.96,
     // grudges shrink this much each day
+    fadeGood: 0.985,
+    // good memories, this much
     settlerFloor: -1
     // a race the colony dislikes worse than this does not come
   };
@@ -8099,6 +8658,10 @@ dd.q4{color:#c58cff;font-weight:600}
       const mutual = opinion(a, b) + opinion(b, a);
       const p = clamp((REL.dislike * 2 - mutual) * REL.quarrelBase, 0, REL.quarrelMax);
       if (p <= 0 || w.rng() >= p) continue;
+      if (raidAlarm(w) || w.stats.fireNearCamp > 0 || threatTo(w, a, 12) || threatTo(w, b, 12)) {
+        if (w.behave) w.behave.social.calm++;
+        continue;
+      }
       for (const [x, y] of [[a, b], [b, a]]) {
         (x.grudge || (x.grudge = {}))[y.id] = (x.grudge[y.id] || 0) - REL.grudge;
         think(w, x, "quarrel", { name: y.name });
@@ -8112,7 +8675,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const col = colonists(w);
     for (const a of col) {
       if (a.grudge) for (const id of Object.keys(a.grudge)) {
-        a.grudge[id] *= REL.fade;
+        a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade;
         if (Math.abs(a.grudge[id]) < 0.05 || !col.some((o) => o.id === +id)) delete a.grudge[id];
       }
       let worst = null, wv = Infinity, best = null, bv = -Infinity;
@@ -8135,7 +8698,15 @@ dd.q4{color:#c58cff;font-weight:600}
   function stepRelations(w) {
     if (w.tick % DAY === Math.floor(DAY * 0.55)) daily(w);
     if (w.tick % REL.quarrelEvery === 37) quarrels(w);
+    if (w.tick % HOUR === 11) workTogether(w);
+    const alarm = raidAlarm(w);
+    if (alarm && w.raidSince == null) w.raidSince = w.tick;
+    else if (!alarm && w.raidSince != null) {
+      afterRaid(w, w.raidSince);
+      w.raidSince = null;
+    }
   }
+  var history = (a, b) => a.grudge?.[b.id] || 0;
   function feelings(w, a) {
     return colonists(w).filter((b) => b !== a).map((b) => [b, opinion(a, b)]).sort((x, y) => x[1] - y[1]);
   }
@@ -8340,6 +8911,7 @@ dd.q4{color:#c58cff;font-weight:600}
           a.skill = { hunt: Math.min(0.7, 0.1 + t * 0.025) };
         }
         RAID_BANDS.get(group[0].band).groupInit?.(group, w);
+        createSquad(w, group);
       },
       ammo: 8,
       message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)} \u2014 \u0441 ${side}.`
@@ -8485,7 +9057,10 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/outside/scripted.js
-  var pickBand = (w, rng) => weighted(rng, RAID_BANDS.all().map((b) => [b.id, b.weight(w, raidThreat(w), nightness(w.tick))]));
+  var pickBand = (w, rng) => {
+    const sc = scoutedBand(w);
+    return weighted(rng, RAID_BANDS.all().map((b) => [b.id, b.weight(w, raidThreat(w), nightness(w.tick)) * (b.id === sc ? 4 : 1)]));
+  };
   var raidDist = (w) => RAIDS[w.cfg.raids].dist;
   var caravanDay = (w, day, rng) => Math.max(w.tick + 1, day * DAY + (TRADE.setOut[0] + rng() * (TRADE.setOut[1] - TRADE.setOut[0])) * HOUR);
   var scripted = {
@@ -8576,7 +9151,7 @@ dd.q4{color:#c58cff;font-weight:600}
         offer: (w, rng) => rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? { n: raidSize(w), band: pickBand(w, rng) } : 0,
         size: (w) => ({ n: raidSize(w), band: pickBand(w, w.rng) }),
         missed: () => ["\u0427\u0443\u0436\u0438\u0435 \u0440\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438 \u043F\u043E\u0431\u0440\u043E\u0434\u0438\u043B\u0438 \u0443 \u043A\u0440\u0430\u044F \u043B\u0435\u0441\u0430 \u0438 \u0443\u0448\u043B\u0438. \u041D\u0430\u0431\u0435\u0433\u0430 \u0432 \u044D\u0442\u043E\u0442 \u0440\u0430\u0437 \u043D\u0435 \u0431\u0443\u0434\u0435\u0442.", "danger", "info"],
-        next: (w, rng) => raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) : Infinity
+        next: (w, rng) => raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) * (scoutedBand(w) ? 0.6 : 1) : Infinity
       }
     },
     // the stub only remembers what it last heard
@@ -9893,6 +10468,14 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       task.lost = null;
+      if (a.faction === "colony") {
+        a.lastFight = w.tick;
+        const v = t.task?.target;
+        if (v && v !== a && v.faction === "colony" && task.stoodFor !== v.id && (t.task.id === "maul" || t.task.id === "fight")) {
+          task.stoodFor = v.id;
+          bond(w, v, a, TOGETHER.bondDefend * 0.6);
+        }
+      }
       const d = Math.hypot(t.x - a.x, t.y - a.y), g2 = a.gear;
       if (g2?.rangedReady && d > 1.4) {
         const range = g2.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
@@ -9906,6 +10489,30 @@ dd.q4{color:#c58cff;font-weight:600}
       if (d > Math.min(0.9, reachOf(a))) {
         if (approach(w, a, t.x, t.y, 1.1) === null) fail2(w, a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
       } else attack(w, a, t);
+    } },
+    // going along with someone in the woods (settlement/together.js): keep close, take on what comes
+    { id: "company", label: (t) => t.home ? "\u0432\u0435\u0434\u0451\u0442 \u0440\u0430\u043D\u0435\u043D\u043E\u0433\u043E \u043A \u0441\u0432\u043E\u0438\u043C" : "\u0441\u043E\u043F\u0440\u043E\u0432\u043E\u0436\u0434\u0430\u0435\u0442 \u0432 \u043B\u0435\u0441\u0443", enter: enterEscort, step(w, a, task) {
+      const b = escortGoing(w, a, task);
+      if (!b) {
+        done2(w, a);
+        return;
+      }
+      guardStep(w, a, b, task);
+    } },
+    // a wounded colonist out in the woods: go, dress the wounds, see them home
+    { id: "aid", label: () => "\u0441\u043F\u0435\u0448\u0438\u0442 \u043D\u0430 \u043F\u043E\u043C\u043E\u0449\u044C \u0440\u0430\u043D\u0435\u043D\u043E\u043C\u0443", step(w, a, task) {
+      const b = w.agents.find((o) => o.id === task.who && !o.dead);
+      if (!b || agentInZone(w, b)) {
+        done2(w, a);
+        return;
+      }
+      if (guardStep(w, a, b, task) === "fight") return;
+      if (Math.hypot(b.x - a.x, b.y - a.y) > 1.4) {
+        if (approach(w, a, b.x, b.y, 1.2) === null) fail2(w, a, "\u043A \u0440\u0430\u043D\u0435\u043D\u043E\u043C\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
+        return;
+      }
+      giveAid(w, a, b);
+      a.task = { id: "company", who: b.id, home: true };
     } },
     { id: "douse", label: () => "\u0442\u0443\u0448\u0438\u0442 \u043F\u043E\u0436\u0430\u0440", step(w, a) {
       if (w.stats.fireNearCamp === 0) {
@@ -9975,7 +10582,60 @@ dd.q4{color:#c58cff;font-weight:600}
       a.task = { id: "leave" };
     } },
     { id: "leave", label: () => "\u0443\u0445\u043E\u0434\u0438\u0442", step(w, a) {
-      if (follow(w, a, "edge") === "arrived") a.gone = true;
+      if (follow(w, a, "edge") === "arrived") {
+        a.gone = true;
+        noteHome(w, a);
+      }
+    } },
+    // a torch-bearer of a band that came to burn (agents/squad.js): to the camp, then to the building, and
+    // a fire under its wall
+    { id: "torch", label: () => "\u043D\u0435\u0441\u0451\u0442 \u0444\u0430\u043A\u0435\u043B", step(w, a, task) {
+      const b = w.buildings.find((x) => x.id === task.b && x.done), sq = squadOf(w, a);
+      if (!b || !sq || sq.lit != null) {
+        done2(w, a);
+        return;
+      }
+      if (w.nav.get("camp")[cellOf(w, a)] > 14) {
+        follow(w, a, "camp");
+        return;
+      }
+      let best = null, bd = Infinity;
+      for (const c of b.cells) {
+        const d = Math.hypot(c % w.w + 0.5 - a.x, (c / w.w | 0) + 0.5 - a.y);
+        if (d < bd) {
+          bd = d;
+          best = c;
+        }
+      }
+      if (best == null) {
+        done2(w, a);
+        return;
+      }
+      if (bd > SQUAD.burnNear) {
+        if (approach(w, a, best % w.w + 0.5, (best / w.w | 0) + 0.5) === null) fail2(w, a, "\u043A \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0435 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
+        return;
+      }
+      w.grid.fire[best] = Math.max(w.grid.fire[best], 0.6);
+      w.grid.temp[best] = Math.max(w.grid.temp[best], 300);
+      w.grid.fuel[best] = Math.max(w.grid.fuel[best], 0.9);
+      w.nav.dirty("fire");
+      sq.lit = w.tick;
+      log(w, `${a.name} ${a.gender === "f" ? "\u043F\u043E\u0434\u043E\u0436\u0433\u043B\u0430" : "\u043F\u043E\u0434\u0436\u0451\u0433"} ${BUILDINGS.get(b.key).name.toLowerCase()}! \u0422\u0443\u0448\u0438\u0442\u0435!`, "danger", "notice");
+      a.task = { id: "leave" };
+    } },
+    // scouts: come within sight of the camp, look it over, and take the news home
+    { id: "scout", label: () => "\u0432\u044B\u0441\u043C\u0430\u0442\u0440\u0438\u0432\u0430\u0435\u0442 \u043B\u0430\u0433\u0435\u0440\u044C", step(w, a, task) {
+      const sq = squadOf(w, a);
+      if (!sq) {
+        done2(w, a);
+        return;
+      }
+      if (w.nav.get("camp")[cellOf(w, a)] > SQUAD.scoutNear) {
+        follow(w, a, "camp", 0.8);
+        return;
+      }
+      sq.watched ?? (sq.watched = w.tick);
+      mill2(w, a, task, 1.5);
     } },
     // the mindless dead: shamble to the camp and wander there until something living comes close
     { id: "haunt", label: () => "\u0431\u0440\u0435\u0434\u0451\u0442 \u043A \u043B\u0430\u0433\u0435\u0440\u044E", step(w, a, task) {
@@ -10014,7 +10674,7 @@ dd.q4{color:#c58cff;font-weight:600}
         done2(w, a);
         return;
       }
-      const bed = freeBed(w, a);
+      const bed = freeBed(w, a) || !task.bed && askForBed(w, a, endTask);
       if (!bed || !reserve(w, bed, a)) {
         fail2(w, a, "\u0432 \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F \u043D\u0435\u0442 \u043C\u0435\u0441\u0442\u0430");
         a.think = 30;
@@ -10163,6 +10823,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const n = NEEDS2.get(id);
       opts.push([{ id: n.task }, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ", \u043D\u043E \u043B\u0430\u0433\u0435\u0440\u044C \u0433\u043E\u0440\u0438\u0442" : ""}`]);
     }
+    const mate = mates(w, a);
     for (const job of JOBS.all()) {
       if (!jobUnlocked(w, job) || job.canDo && !job.canDo(w, a)) continue;
       const base = job.desire(w, ctx, job);
@@ -10171,9 +10832,14 @@ dd.q4{color:#c58cff;font-weight:600}
       const goal = res ? goalNeed(w, res) : 0;
       const dayWork = job.runner === "build" ? night * 0.3 : night * 0.2;
       const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
-      opts.push([{ id: "job", job: job.id }, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty, () => jobWhy(w, a, job, ctx, goal, tasty, night)]);
+      const m = mate(job.id);
+      opts.push([{ id: "job", job: job.id }, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty + m.v, () => jobWhy(w, a, job, ctx, goal, tasty, night) + (m.friend ? `, \u0442\u0430\u043C ${m.friend.name}` : m.foe ? `, \u043D\u043E \u0442\u0430\u043C ${m.foe.name}` : "")]);
     }
     opts.push([{ id: "idle" }, 0.15, () => "\u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435\u0447\u0435\u043C \u0437\u0430\u043D\u044F\u0442\u044C\u0441\u044F"]);
+    const esc2 = escortOption(w, a);
+    if (esc2) opts.push(esc2);
+    const aid = aidOption(w, a);
+    if (aid) opts.push(aid);
     if (a.task?.id === "sulk" && w.tick < a.task.until) opts.push([a.task, 0.95, () => "\u0445\u0430\u043D\u0434\u0440\u0430: \u0434\u0430\u0432\u043D\u043E \u043D\u0435 \u0432 \u0434\u0443\u0445\u0435"]);
     if (a.task?.spell && w.tick < a.task.until) opts.push([a.task, a.task.spell, () => "\u0447\u0430\u0440\u044B \u043D\u0435\u0447\u0438\u0441\u0442\u0438"]);
     const pray = wantsPrayer(w, a);
@@ -10310,10 +10976,15 @@ dd.q4{color:#c58cff;font-weight:600}
       if (a.lost || sp.sun && day > 0.6) a.task = { id: "leave" };
       else if (!sp.mindless && a.hp < 0.3 * maxHp(a)) a.task = { id: "leave" };
       if (a.task?.id !== "leave") {
-        const e = nearestHostile(w, a, sp.mindless ? HUNT_RADIUS : mindless ? 16 : 10);
-        if (e) {
-          if (a.task?.id !== "fight" || a.task.target !== e) a.task = { id: "fight", target: e };
-        } else if (!a.task || a.task.id === "fight") a.task = { id: a.looted ? "leave" : mindless ? "haunt" : "assault" };
+        const radius = sp.mindless ? HUNT_RADIUS : mindless ? 16 : 10;
+        const sq = squadOf(w, a), plan = sq ? planFor(w, a, sq, radius) : null;
+        if (plan) a.task = plan;
+        else {
+          const e = nearestHostile(w, a, radius);
+          if (e) {
+            if (a.task?.id !== "fight" || a.task.target !== e) a.task = { id: "fight", target: e, since: w.tick };
+          } else if (!a.task || a.task.id === "fight") a.task = { id: a.looted ? "leave" : mindless ? "haunt" : "assault" };
+        }
       }
       TASKS.get(a.task.id).step(w, a, a.task);
       if (!a.task) a.task = { id: a.looted ? "leave" : mindless ? "haunt" : "assault" };
@@ -10394,12 +11065,12 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/agents/brains/predator.js
   var SCENT = 70;
-  var dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  var dist4 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   function nearest(w, a, species, r, filter = () => true) {
     let best = null, bd = r;
     for (const o of w.agents) {
       if (o.dead || o.tame || !matchesKind(o.species, species) || !filter(o)) continue;
-      const d = dist2(a, o);
+      const d = dist4(a, o);
       if (d < bd) {
         bd = d;
         best = o;
@@ -10407,7 +11078,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return best;
   }
-  var company = (w, v, r) => w.agents.filter((o) => o !== v && !o.dead && (o.species === v.species || !!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel) && dist2(o, v) < r).length;
+  var company = (w, v, r) => w.agents.filter((o) => o !== v && !o.dead && (o.species === v.species || !!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel) && dist4(o, v) < r).length;
   var packOf = (w, a) => w.agents.filter((o) => !o.dead && o.pack === a.pack);
   var weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < maxHp(o) * P.weakBelow;
   var preyKinds = (P) => [...P.prey, ...P.weakPrey || []];
@@ -10415,7 +11086,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function startMaul(w, a, v, b) {
     const P = SPECIES.get(a.species).predator;
     for (const m of packOf(w, a)) m.calmUntil = w.tick + P.calm * (1 - 0.5 * b);
-    for (const m of packOf(w, a)) if ((m === a || dist2(m, a) < 12) && m.task?.id !== "feed") m.task = { id: "maul", target: v };
+    for (const m of packOf(w, a)) if ((m === a || dist4(m, a) < 12) && m.task?.id !== "feed") m.task = { id: "maul", target: v };
     w.stats.wolfAttacks++;
     const sp = SPECIES.get(a.species), many = packOf(w, a).length > 1, who = many ? sp.plural : sp.label;
     think(w, v, "wolfAttack", { who: sp.plural });
@@ -10437,7 +11108,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
       const dZone = w.nav.get("zone")[i];
       const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
-      const people = w.agents.filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist2(o, a) < 6);
+      const people = w.agents.filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist4(o, a) < 6);
       const pack2 = packOf(w, a), leader = pack2[0];
       if (sp.nocturnal && night < 0.3 && a.task?.id !== "leave") a.task = { id: "leave" };
       if (a.task?.id === "leave" || a.hp < maxHp(a) * 0.35) {
@@ -10471,11 +11142,11 @@ dd.q4{color:#c58cff;font-weight:600}
           a.task = { id: "rest" };
           return;
         }
-        if (!prey || prey.dead || !w.agents.includes(prey) || dist2(a, prey) > P.sight * 1.3 || agentInZone(w, prey)) {
+        if (!prey || prey.dead || !w.agents.includes(prey) || dist4(a, prey) > P.sight * 1.3 || agentInZone(w, prey)) {
           a.task = { id: "roam" };
           return;
         }
-        if (!t.anchor || dist2(a, t.anchor) > 3) {
+        if (!t.anchor || dist4(a, t.anchor) > 3) {
           t.anchor = { x: a.x, y: a.y };
           t.since = w.tick;
         }
@@ -10490,20 +11161,20 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
         if (SPECIES.get(prey.species).big) {
-          if (dist2(a, prey) < 1) {
+          if (dist4(a, prey) < 1) {
             attack(w, a, prey);
             if (prey.dead) {
               w.stats.wolfKills++;
-              const eaters = pack2.filter((m) => dist2(m, a) < 10);
+              const eaters = pack2.filter((m) => dist4(m, a) < 10);
               for (const m of eaters) m.task = { id: "feed", left: P.feedTicks * 2, gain: P.bigMeal / eaters.length / (P.feedTicks * 2) };
             }
           }
           return;
         }
-        if (dist2(a, prey) < 0.7) {
+        if (dist4(a, prey) < 0.7) {
           kill(w, prey, "\u0437\u0443\u0431\u043E\u0432", a);
           w.stats.wolfKills++;
-          const eaters = pack2.filter((m) => m === a || dist2(m, a) < 8);
+          const eaters = pack2.filter((m) => m === a || dist4(m, a) < 8);
           for (const m of eaters) m.task = { id: "feed", left: P.feedTicks, gain: P.meal / eaters.length / P.feedTicks };
         }
         return;
@@ -10523,7 +11194,7 @@ dd.q4{color:#c58cff;font-weight:600}
           else if (t) a.task = { id: "roam" };
           return;
         }
-        if (!t.anchor || dist2(a, t.anchor) > 3 || dist2(a, v) < 1.5) {
+        if (!t.anchor || dist4(a, t.anchor) > 3 || dist4(a, v) < 1.5) {
           t.anchor = { x: a.x, y: a.y };
           t.since = w.tick;
         }
@@ -10532,7 +11203,7 @@ dd.q4{color:#c58cff;font-weight:600}
           a.calmUntil = w.tick + P.calm * 0.5;
           return;
         }
-        if (dist2(a, v) > 0.9) {
+        if (dist4(a, v) > 0.9) {
           if (approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) {
             a.task = { id: "roam" };
             a.calmUntil = w.tick + P.calm * 0.5;
@@ -10542,7 +11213,7 @@ dd.q4{color:#c58cff;font-weight:600}
         {
           attack(w, a, v);
           if (v.dead) {
-            const eaters = pack2.filter((m) => dist2(m, a) < 10);
+            const eaters = pack2.filter((m) => dist4(m, a) < 10);
             for (const m of eaters) m.task = { id: "feed", left: P.feedTicks * 2, gain: P.bigMeal / eaters.length / (P.feedTicks * 2) };
           }
         }
@@ -10585,7 +11256,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (!t || t.id !== "roam") a.task = { id: "roam" };
       if (leader !== a && leader) {
-        if (dist2(a, leader) > 2.5) approach(w, a, leader.x + (a.id % 3 - 1), leader.y + ((a.id >> 1) % 3 - 1), 0.95);
+        if (dist4(a, leader) > 2.5) approach(w, a, leader.x + (a.id % 3 - 1), leader.y + ((a.id >> 1) % 3 - 1), 0.95);
         return;
       }
       const r = a.task;
@@ -10602,7 +11273,7 @@ dd.q4{color:#c58cff;font-weight:600}
           r.scent = null;
         }
       }
-      const d = r.spot ? dist2(a, { x: r.spot[0], y: r.spot[1] }) : 0;
+      const d = r.spot ? dist4(a, { x: r.spot[0], y: r.spot[1] }) : 0;
       if (r.spot && d < r.bestD - 0.5) {
         r.bestD = d;
         r.since = w.tick;
@@ -10623,13 +11294,13 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/agents/brains/mule.js
-  var dist3 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  var byId = (w, id) => w.agents.find((o) => o.id === id && !o.dead);
+  var dist5 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  var byId3 = (w, id) => w.agents.find((o) => o.id === id && !o.dead);
   function foeOf(w, a, M) {
     let foe = null, bd = 3;
     for (const o2 of w.agents) {
       if (o2 === a || o2.dead || o2.task?.target !== a || !(o2.task.id === "maul" || o2.task.id === "chase" || o2.task.id === "fight")) continue;
-      const d = dist3(a, o2);
+      const d = dist5(a, o2);
       if (d < bd) {
         bd = d;
         foe = o2;
@@ -10638,8 +11309,8 @@ dd.q4{color:#c58cff;font-weight:600}
     if (foe) return foe;
     const h = a.hurtBy;
     if (!h || w.tick - h.tick > M.grudge) return null;
-    const o = byId(w, h.id);
-    return o && dist3(a, o) < M.giveUp ? o : null;
+    const o = byId3(w, h.id);
+    return o && dist5(a, o) < M.giveUp ? o : null;
   }
   function kick(w, a, t, M, charging) {
     if (a.cd > 0) return;
@@ -10687,7 +11358,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       const foe = foeOf(w, a, M);
       if (foe) {
-        const d = dist3(a, foe);
+        const d = dist5(a, foe);
         if (a.hp < maxHp(a) * M.fleeBelow && d > M.kickRange) {
           a.task = { id: "bolt" };
           bolt(w, a, [foe], 0.9);
@@ -10709,7 +11380,7 @@ dd.q4{color:#c58cff;font-weight:600}
       recover(a);
       if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 25e-5 * maxHp(a));
       if (a.owner != null) {
-        const o = byId(w, a.owner);
+        const o = byId3(w, a.owner);
         if (!o) {
           a.task = { id: "leave" };
           if (follow(w, a, "edge") === "arrived") a.gone = true;
@@ -10718,7 +11389,7 @@ dd.q4{color:#c58cff;font-weight:600}
         a.task = { id: "pack" };
         const k = a.slot ?? 0, ang = 2.4 + k * 0.9;
         const tx2 = o.x + Math.cos(ang) * 1.6, ty = o.y + Math.sin(ang) * 1.6;
-        if (Math.hypot(tx2 - a.x, ty - a.y) > 0.6 && approach(w, a, tx2, ty, dist3(a, o) > 4 ? 1.3 : 1) === null) approach(w, a, o.x, o.y, 1.2);
+        if (Math.hypot(tx2 - a.x, ty - a.y) > 0.6 && approach(w, a, tx2, ty, dist5(a, o) > 4 ? 1.3 : 1) === null) approach(w, a, o.x, o.y, 1.2);
         return;
       }
       if (a.task?.id === "leave" || w.rng() < M.leaveChance || sp.hibernates && season(w).id === "winter") {
@@ -10741,7 +11412,7 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/agents/brains/caravan.js
   var CAMP_AT = 6;
   var LATE_WAIT = 50;
-  var byId2 = (w, id) => w.agents.find((o) => o.id === id && !o.dead);
+  var byId4 = (w, id) => w.agents.find((o) => o.id === id && !o.dead);
   function leave2(w, a) {
     a.task = { id: "leave" };
     if (follow(w, a, "edge") === "arrived") a.gone = true;
@@ -10768,7 +11439,7 @@ dd.q4{color:#c58cff;font-weight:600}
         leave2(w, a);
         return;
       }
-      const trader = byId2(w, c.traderId);
+      const trader = byId4(w, c.traderId);
       if (a.role === "guard") {
         const e = nearestHostile(w, a, 9) || w.agents.find((o) => !o.dead && o.task?.target?.caravan === c.id && (o.task.id === "maul" || o.task.id === "chase") && Math.hypot(o.x - a.x, o.y - a.y) < 12);
         if (e) {
@@ -10810,7 +11481,7 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/agents/brains/vermin.js
-  var dist4 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  var dist6 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   var VERMIN = {
     den: [7, 13],
     // the hiding place is this many cells from the camp fire…
@@ -10849,12 +11520,12 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       let near2 = null;
-      for (const o of w.agents) if (o.faction === "colony" && !o.dead && !o.sleeping && dist4(o, a) < V.flee) {
+      for (const o of w.agents) if (o.faction === "colony" && !o.dead && !o.sleeping && dist6(o, a) < V.flee) {
         near2 = o;
         break;
       }
       if (near2) {
-        if (dist4(near2, a) < 0.8 && w.rng() < V.caught) {
+        if (dist6(near2, a) < 0.8 && w.rng() < V.caught) {
           kill(w, a, "\u043F\u0430\u043B\u043A\u0438", near2);
           if (!sp.resident && w.rng() < 0.3) log(w, `<b>${esc(near2.name)}</b> ${g(near2, "\u043F\u0440\u0438\u0431\u0438\u043B", "\u043F\u0440\u0438\u0431\u0438\u043B\u0430")} ${sp.labelAcc || sp.label} \u0443 \u043F\u0440\u0438\u043F\u0430\u0441\u043E\u0432.`, "wildlife");
           return;
@@ -10871,13 +11542,13 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (a.task?.id !== "nibble") {
         const camp = { x: w.camp.x + 0.5, y: w.camp.y + 0.5 };
-        const watched = w.agents.some((o) => o.faction === "colony" && !o.dead && !o.sleeping && dist4(o, camp) < VERMIN.watch);
+        const watched = w.agents.some((o) => o.faction === "colony" && !o.dead && !o.sleeping && dist6(o, camp) < VERMIN.watch);
         const bold = w.tick - (a.waited ?? w.tick) > VERMIN.patience;
         if (V.spoils && nightness(w.tick) < 0.4 || watched && !bold || a.task?.id === "hide" && w.tick - (a.waited ?? 0) < 60) {
           a.waited ?? (a.waited = w.tick);
           const [dx, dy] = denOf(w, a);
           if (a.task?.id !== "hide") a.task = { id: "hide" };
-          if (dist4(a, { x: dx, y: dy }) > 0.6 && approach(w, a, dx, dy, 0.9) === null) a.den = null;
+          if (dist6(a, { x: dx, y: dy }) > 0.6 && approach(w, a, dx, dy, 0.9) === null) a.den = null;
           return;
         }
         a.task = { id: "nibble" };
@@ -11030,6 +11701,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (a.flash) a.flash--;
     }
     w.agents = w.agents.filter((a) => !a.dead && !a.gone);
+    stepSquads(w);
     separate(w);
     if (w.fx.length) {
       for (const f of w.fx) f.t--;
@@ -12721,6 +13393,8 @@ dd.q4{color:#c58cff;font-weight:600}
       const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)].toFixed(1);
       const rows = [`<dt>\u0421\u0435\u0439\u0447\u0430\u0441</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>\u0417\u0434\u043E\u0440\u043E\u0432\u044C\u0435</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
       if (a.band) rows.push(`<dt>\u041A\u0442\u043E</dt><dd>${RAID_BANDS.get(a.band).label}; ${{ beast: "\u043D\u0435\u0440\u0430\u0437\u0443\u043C\u0435\u043D", semi: "\u043F\u043E\u043B\u0443\u0440\u0430\u0437\u0443\u043C\u0435\u043D", sentient: "\u0440\u0430\u0437\u0443\u043C\u0435\u043D" }[sp.mind]}</dd>`);
+      const sq = squadText(w, a);
+      if (sq) rows.push(`<dt>\u041E\u0442\u0440\u044F\u0434</dt><dd>${esc(sq)}</dd>`);
       if (a.special) rows.push(`<dt>\u0422\u0435\u043B\u043E</dt><dd>${specialHtml(a)}</dd>`);
       const inn = innateOf(sp, a);
       if (inn.length) rows.push(`<dt>\u041E\u0441\u043E\u0431\u043E\u0435</dt><dd>${inn.map((t) => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(" ")}</dd>`);
@@ -12758,7 +13432,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const inn = innateOf(sp, a).map((t) => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join("");
       const vals = (a.values || []).map((id) => `<span class="chip">${VALUES.get(id).label}</span>`).join("");
       const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];
-      const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? "down" : "up"}">${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ""}</li>`).join("")}</ul>` : '<p class="muted pc-small">\u041D\u0438 \u0441 \u043A\u0435\u043C \u043E\u0441\u043E\u0431\u043E \u043D\u0435 \u0441\u043E\u0448\u0451\u043B\u0441\u044F \u0438 \u043D\u0435 \u043F\u043E\u0432\u0437\u0434\u043E\u0440\u0438\u043B.</p>';
+      const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? "down" : "up"}"${Math.abs(history(a, b)) >= 0.3 ? ` title="\u043B\u0438\u0447\u043D\u044B\u0439 \u043E\u043F\u044B\u0442: ${history(a, b) > 0 ? "+" : ""}${history(a, b).toFixed(1)}"` : ""}>${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ""}${history(a, b) >= 0.8 ? " \xB7 \u043C\u043D\u043E\u0433\u043E\u0435 \u0432\u043C\u0435\u0441\u0442\u0435" : history(a, b) <= -0.8 ? " \xB7 \u0441\u0442\u0430\u0440\u044B\u0435 \u043E\u0431\u0438\u0434\u044B" : ""}</li>`).join("")}</ul>` : '<p class="muted pc-small">\u041D\u0438 \u0441 \u043A\u0435\u043C \u043E\u0441\u043E\u0431\u043E \u043D\u0435 \u0441\u043E\u0448\u0451\u043B\u0441\u044F \u0438 \u043D\u0435 \u043F\u043E\u0432\u0437\u0434\u043E\u0440\u0438\u043B.</p>';
       const body = sp.body ? `${raceOf(a)[0].toUpperCase() + raceOf(a).slice(1)}: \u0432\u0437\u0440\u043E\u0441\u043B\u0435\u044E\u0442 \u043A ${sp.body.adult}, \u0436\u0438\u0432\u0443\u0442 \u0434\u043E ${sp.body.life} \u043B\u0435\u0442; ${sp.body.diet}.` : "";
       const want2 = wishes(w, a, councilWish(w, a));
       const slots = SLOTS.map((s) => {
@@ -13135,8 +13809,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.36 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 1fd3751" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.37 \xB7 15.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 119f295" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -13144,9 +13818,9 @@ dd.q4{color:#c58cff;font-weight:600}
   function externals() {
     const m = /* @__PURE__ */ new Map();
     for (const r of Registry.list) for (const d of r.all()) m.set(d, `${r.kind}:${d.id}`);
-    for (const [name, table2] of Object.entries(presets_exports)) {
-      if (!table2 || typeof table2 !== "object" || Array.isArray(table2)) continue;
-      for (const [k, v] of Object.entries(table2)) if (v && typeof v === "object") m.set(v, `preset:${name}:${k}`);
+    for (const [name, table3] of Object.entries(presets_exports)) {
+      if (!table3 || typeof table3 !== "object" || Array.isArray(table3)) continue;
+      for (const [k, v] of Object.entries(table3)) if (v && typeof v === "object") m.set(v, `preset:${name}:${k}`);
     }
     return m;
   }
@@ -13159,7 +13833,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return { format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, tree };
   }
   function loadWorld(save2) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
     if (!save2 || save2.format !== SAVE_FORMAT) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
     ensureRegion(w);
@@ -13172,6 +13846,9 @@ dd.q4{color:#c58cff;font-weight:600}
     w.graveyard ?? (w.graveyard = null);
     w.behave ?? (w.behave = newBehaviour());
     (_a = w.behave).outcomes ?? (_a.outcomes = {});
+    (_b = w.behave).company ?? (_b.company = 0);
+    (_c = w.behave).squads ?? (_c.squads = { started: 0, goal: 0, retreat: 0, wiped: 0 });
+    (_d = w.behave).social ?? (_d.social = { escort: 0, aid: 0, yield: 0, calm: 0, bond: 0 });
     for (const b of w.buildings) delete b.workers;
     for (const c of w.corpses) {
       delete c.by;
@@ -13187,7 +13864,7 @@ dd.q4{color:#c58cff;font-weight:600}
       w.stock.coal = (w.stock.coal || 0) + w.stock.charcoal;
       delete w.stock.charcoal;
     }
-    for (const r of RESOURCES.all()) (_b = w.stock)[_c = r.id] ?? (_b[_c] = 0);
+    for (const r of RESOURCES.all()) (_e = w.stock)[_f = r.id] ?? (_e[_f] = 0);
     w.rng = mulberry(0);
     w.rng.state = save2.rng;
     w.nav = new Navigation(w);
@@ -13201,7 +13878,7 @@ dd.q4{color:#c58cff;font-weight:600}
       w.chronicle.deaths["\u043E\u0442 " + k] = (w.chronicle.deaths["\u043E\u0442 " + k] || 0) + w.chronicle.deaths[k];
       delete w.chronicle.deaths[k];
     }
-    for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) (_d = a.mods)[k] ?? (_d[k] = v);
+    for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) (_g = a.mods)[k] ?? (_g[k] = v);
     for (const a of w.agents) {
       const sp = SPECIES.get(a.species);
       if (a.special || !sp.special) continue;
@@ -13211,8 +13888,8 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
     for (const a of w.agents) if (a.prefs) for (const id of JOBS.ids()) {
-      (_e = a.prefs)[id] ?? (_e[id] = 1);
-      (_f = a.skill)[id] ?? (_f[id] = 0);
+      (_h = a.prefs)[id] ?? (_h[id] = 1);
+      (_i = a.skill)[id] ?? (_i[id] = 0);
     }
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     ensureFlows(w);

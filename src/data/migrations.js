@@ -19,6 +19,7 @@ import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
 import {RAID_BANDS, banditKit, kitFor} from './raids.js';
+import {createSquad} from '../agents/squad.js';
 import {SPECIES} from './species.js';
 import {raceLabel} from '../agents/special.js';
 import {settlerSpecies} from '../settlement/relations.js';
@@ -129,6 +130,7 @@ MIGRATIONS.registerAll([
         a.skill = {hunt: Math.min(0.7, 0.1 + t * 0.025)};
       }
       RAID_BANDS.get(group[0].band).groupInit?.(group, w);
+      createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)
     },
     ammo: 8,
     message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)} — с ${side}.`},

@@ -56,7 +56,10 @@ export function loadWorld(save) {
   w.trade ??= newTradeState(); w.caravan ??= null;
   w.corpses ??= []; w.graves ??= []; w.graveyard ??= null;
   w.behave ??= newBehaviour();
-  w.behave.outcomes ??= {};
+  w.behave.outcomes ??= {}; w.behave.company ??= 0;
+  w.behave.squads ??= {started: 0, goal: 0, retreat: 0, wiped: 0};
+  w.behave.social ??= {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0};
+  // raiders from before squads (no w.squads, no a.squad) go on the old way: nearest foe, the stores, home
   // claims from before reservations (settlement/reserve.js) are simply dropped: the leases start empty
   for (const b of w.buildings) delete b.workers;
   for (const c of w.corpses) { delete c.by; delete c.at; }

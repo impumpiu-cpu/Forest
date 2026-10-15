@@ -3,9 +3,11 @@
 // Rows and columns are race lines (`rel` in data/races.js): the greenskins — orcs, goblins, ogres,
 // trolls — share one line. Undead and other monsters are not here: nobody makes peace with them.
 //
-// One creature's opinion of another (opinion() below) adds to the old memory:
-//   shared values (+), clashing values (−), a gulf in mercy or order (−), the other's charisma,
-//   and what has happened between the two of them (agent.grudge, settlement/relations.js).
+// One creature's opinion of another (opinion() below) has two parts. The starting attitude, which does
+// not change: the old memory of the peoples, shared values (+), clashing values (−), a gulf in mercy or
+// order (−), the other's charisma. And the personal history, which does: what has happened between the
+// two of them (agent.grudge[id], ± grudgeCap) — quarrels (settlement/relations.js), and escorts, a
+// wound dressed, work and fights shared (settlement/together.js).
 import {Registry} from '../core/registry.js';
 import {VALUES} from './values.js';
 import {SPECIES} from './species.js';
@@ -44,7 +46,7 @@ export const OPINION = {
   clash: 0.75,       // per pair of values that clash
   mercyGap: 3,       // this far apart on mercy → −1
   orderGap: 4,       // this far apart on order → −0.5
-  grudgeCap: 4,      // personal history counts at most this much either way
+  grudgeCap: 4,      // personal history (good or bad) counts at most this much either way
 };
 
 // what `a` thinks of `b`, about −6 … +6; ≤ −2 is dislike, ≤ −3.5 hatred, ≥ 2 friendship

@@ -23,6 +23,7 @@ import {hurt, waiting, HEAL, freeBed} from '../../settlement/healing.js';
 import {has} from '../../settlement/query.js';
 import {wantsPrayer} from '../../settlement/life.js';
 import {RESOURCES} from '../../data/resources.js';
+import {escortOption, aidOption, mates} from '../../settlement/together.js';
 import {BUILDINGS} from '../../data/buildings.js';
 
 // the weight of answering an attack on oneself: more than any need can reach
@@ -60,6 +61,7 @@ function decide(w, a) {
     const n = NEEDS.get(id);
     opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ', но лагерь горит' : ''}`]);
   }
+  const mate = mates(w, a);   // friends (and foes) at work (settlement/together.js)
   for (const job of JOBS.all()) {
     if (!jobUnlocked(w, job) || (job.canDo && !job.canDo(w, a))) continue;
     const base = job.desire(w, ctx, job);
@@ -69,9 +71,13 @@ function decide(w, a) {
     const dayWork = job.runner === 'build' ? night * 0.3 : night * 0.2;
     // a job that brings your favourite food is a little more tempting
     const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
-    opts.push([{id: 'job', job: job.id}, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty, () => jobWhy(w, a, job, ctx, goal, tasty, night)]);
+    const m = mate(job.id);
+    opts.push([{id: 'job', job: job.id}, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty + m.v, () => jobWhy(w, a, job, ctx, goal, tasty, night) + (m.friend ? `, там ${m.friend.name}` : m.foe ? `, но там ${m.foe.name}` : '')]);
   }
   opts.push([{id: 'idle'}, 0.15, () => 'больше нечем заняться']);
+  // together (settlement/together.js): go along with a lone gatherer when beasts roam, help the wounded
+  const esc = escortOption(w, a); if (esc) opts.push(esc);
+  const aid = aidOption(w, a); if (aid) opts.push(aid);
   // low spirits: a gloomy spell keeps its hold for a while; a walk to the shrine may help
   if (a.task?.id === 'sulk' && w.tick < a.task.until) opts.push([a.task, 0.95, () => 'хандра: давно не в духе']);
   // a spell of the nechist holds until it wears off (or something more urgent: a fight, fire)

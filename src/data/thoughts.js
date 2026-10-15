@@ -49,6 +49,14 @@ THOUGHTS.registerAll([
   {id: 'quarrel', mood: -0.2, lasts: 12 * HOUR, text: (a, c) => `${g(a, 'Поругался', 'Поругалась')} с ${c.name}. До сих пор зло берёт.`},
   {id: 'dislikesNeighbour', mood: -0.1, lasts: DAY, once: DAY, text: (a, c) => `Терпеть не может ${c.name}, а жить приходится бок о бок.`},
   {id: 'goodCompany', mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `Рад${g(a, '', 'а')}, что рядом ${c.name}: с таким соседом легче.`},
+  // doing things together (settlement/together.js)
+  {id: 'escorted', mood: 0.06, lasts: 6 * HOUR, once: 6 * HOUR, text: (a, c) => `В лесу неспокойно, но ${c.name} ${g(c, 'пошёл', 'пошла')} рядом. Вдвоём не так страшно.`},
+  {id: 'stoodUp', mood: 0.12, lasts: DAY, once: 6 * HOUR, text: (a, c) => `Когда на меня кинулись, ${c.name} ${g(c, 'встал', 'встала')} рядом. Этого не забыть.`},
+  {id: 'aided', mood: 0.15, lasts: DAY, once: 12 * HOUR, text: (a, c) => `${g(a, 'Лежал', 'Лежала')} раненый в лесу, а ${c.name} ${g(c, 'пришёл и перевязал', 'пришла и перевязала')}. Есть на кого положиться.`},
+  {id: 'gaveAid', mood: 0.08, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${g(a, 'Перевязал', 'Перевязала')} ${c.name} прямо в лесу и ${g(a, 'довёл', 'довела')} до своих.`},
+  {id: 'gotBed', mood: 0.08, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${c.name} ${g(c, 'уступил', 'уступила')} мне койку у лекаря. Добрая душа.`},
+  {id: 'yieldedBed', mood: 0.04, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${g(a, 'Уступил', 'Уступила')} койку ${c.name}: тому хуже. Долежу и так.`},
+  {id: 'sharedTrouble', mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `Плечом к плечу с ${c.name} отбивались от налётчиков. Что там было между нами — уже не важно.`},
   {id: 'sober', mood: -0.12, lasts: 12 * HOUR, once: DAY, text: a => `Без браги ${g(a, 'сам', 'сама')} не ${g(a, 'свой', 'своя')}: руки не слушаются.`},
   {id: 'beerFed', mood: 0.2, lasts: 12 * HOUR, once: 12 * HOUR, text: a => `Кружка браги — и сыт${g(a, '', 'а')}, и весел${g(a, '', 'а')}. Как дома под горой.`},
   // the nechist (agents/brains/spirit.js)

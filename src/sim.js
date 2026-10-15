@@ -14,6 +14,7 @@ import {stepRelations} from './settlement/relations.js';
 import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
+import {stepSquads} from './agents/squad.js';
 import {stepCouncil} from './settlement/council.js';
 import {stepTrade} from './settlement/trade.js';
 import {stepOutside, tell} from './outside/index.js';
@@ -69,6 +70,7 @@ export function step(w) {
     if (a.flash) a.flash--;
   }
   w.agents = w.agents.filter(a => !a.dead && !a.gone);
+  stepSquads(w);
   separate(w);
   if (w.fx.length) { for (const f of w.fx) f.t--; w.fx = w.fx.filter(f => f.t > 0); }   // shot traces fade
   stepCouncil(w);

@@ -19,13 +19,13 @@ import {TRADE} from '../data/trade.js';
 import {season} from '../data/seasons.js';
 import {HOUR, dayOf, nightness} from '../core/time.js';
 import {RAID_BANDS} from '../data/raids.js';
-import {raidThreat} from '../settlement/threat.js';
+import {raidThreat, scoutedBand} from '../settlement/threat.js';
 import {weighted} from '../core/util.js';
 import {SPECIES} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 
 // which band sets out: each weighs itself by the threat it sees and the hour
-export const pickBand = (w, rng) => weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w.tick))]));
+export const pickBand = (w, rng) => { const sc = scoutedBand(w); return weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w.tick)) * (b.id === sc ? 4 : 1)])); };
 
 const raidDist = w => RAIDS[w.cfg.raids].dist;
 
@@ -90,7 +90,7 @@ export const scripted = {
       offer: (w, rng) => (rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? {n: raidSize(w), band: pickBand(w, rng)} : 0),
       size: w => ({n: raidSize(w), band: pickBand(w, w.rng)}),
       missed: () => ['Чужие разведчики побродили у края леса и ушли. Набега в этот раз не будет.', 'danger', 'info'],
-      next: (w, rng) => (raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) : Infinity)},
+      next: (w, rng) => (raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) * (scoutedBand(w) ? 0.6 : 1) : Infinity)},
   },
 
   // the stub only remembers what it last heard

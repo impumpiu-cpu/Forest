@@ -49,7 +49,8 @@ import {boldness} from '../agents/brains/predator.js';
 import {STATS} from '../data/special.js';
 import {VALUES, axisWord} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
-import {feelings} from '../settlement/relations.js';
+import {feelings, history} from '../settlement/relations.js';
+import {squadText} from '../agents/squad.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
@@ -478,6 +479,8 @@ export class Panel {
     const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
     const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
     if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+    const sq = squadText(w, a);
+    if (sq) rows.push(`<dt>Отряд</dt><dd>${esc(sq)}</dd>`);
     if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);
     const inn = innateOf(sp, a);
     if (inn.length) rows.push(`<dt>Особое</dt><dd>${inn.map(t => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(' ')}</dd>`);
@@ -512,7 +515,7 @@ export class Panel {
     const inn = innateOf(sp, a).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
     const vals = (a.values || []).map(id => `<span class="chip">${VALUES.get(id).label}</span>`).join('');
     const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];
-    const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? 'down' : 'up'}">${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ''}</li>`).join('')}</ul>` : '<p class="muted pc-small">Ни с кем особо не сошёлся и не повздорил.</p>';
+    const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? 'down' : 'up'}"${Math.abs(history(a, b)) >= 0.3 ? ` title="личный опыт: ${history(a, b) > 0 ? '+' : ''}${history(a, b).toFixed(1)}"` : ''}>${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ''}${history(a, b) >= 0.8 ? ' · многое вместе' : history(a, b) <= -0.8 ? ' · старые обиды' : ''}</li>`).join('')}</ul>` : '<p class="muted pc-small">Ни с кем особо не сошёлся и не повздорил.</p>';
     const body = sp.body ? `${raceOf(a)[0].toUpperCase() + raceOf(a).slice(1)}: взрослеют к ${sp.body.adult}, живут до ${sp.body.life} лет; ${sp.body.diet}.` : '';
     const want = wishes(w, a, councilWish(w, a));
     const slots = SLOTS.map(s => {

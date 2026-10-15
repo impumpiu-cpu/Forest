@@ -70,6 +70,18 @@ METRICS.registerAll([
   {id: 'noPathColony', label: 'Отказов «пути нет» у поселенцев', group: 'Поведение', fmt: 0, get: w => Object.entries(w.behave?.noPathBy || {}).filter(([k]) => RACE_IDS().has(k.split(':')[0])).reduce((s, [, v]) => s + v, 0)},
   {id: 'react', label: 'Реакция на нападение, тиков', group: 'Поведение', fmt: 1, get: w => (w.behave?.react.n ? w.behave.react.sum / w.behave.react.n : 0)},
   {id: 'reactMissed', label: 'Нападений без ответа', group: 'Поведение', fmt: 0, get: w => w.behave?.react.missed || 0},
+  // raider bands (agents/squad.js): how their visits ended
+  {id: 'squads', label: 'Отрядов налётчиков пришло', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.started || 0},
+  {id: 'squadsGoal', label: 'Отрядов ушло, добившись цели', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.goal || 0},
+  {id: 'squadsRetreat', label: 'Отрядов отступило (сломлен дух)', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.retreat || 0},
+  {id: 'squadsWiped', label: 'Отрядов разбито наголову', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.wiped || 0},
+  // doing things together (settlement/together.js)
+  {id: 'company', label: 'Сопровождают в лесу, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'company')},
+  {id: 'escorts', label: 'Сопровождений на человека в день', group: 'Поведение', fmt: 2, get: w => (w.behave?.ticks ? (w.behave.social?.escort || 0) / (w.behave.ticks / DAY) : 0)},
+  {id: 'aids', label: 'Раненых перевязано в лесу', group: 'Поведение', fmt: 0, get: w => w.behave?.social?.aid || 0},
+  {id: 'yields', label: 'Коек уступлено', group: 'Поведение', fmt: 0, get: w => w.behave?.social?.yield || 0},
+  {id: 'calmed', label: 'Ссор отложено из-за опасности', group: 'Поведение', fmt: 0, get: w => w.behave?.social?.calm || 0},
+  {id: 'mended', label: 'Обид забыто после общей беды', group: 'Поведение', fmt: 0, get: w => w.behave?.social?.bond || 0},
 ]);
 
 export const sampleMetrics = w => Object.fromEntries(METRICS.all().map(m => [m.id, m.get(w)]));

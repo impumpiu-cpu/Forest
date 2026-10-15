@@ -1,4 +1,5 @@
-// Raider brain: march on the camp, fight whoever stands in the way, grab loot, leave.
+// Raider brain: march on the camp, fight whoever stands in the way, grab loot, leave. A band that came
+// with a plan (agents/squad.js) follows it: its goal, each member's role, retreat when morale breaks.
 // Monsters bend it a little (data/monsters.js):
 //   mindless — the dead (and war beasts: wargs, hyenas) do not loot: they go for the nearest living soul;
 //   rots / sun — the rot loses its hold in warmth and daylight; upyrs and vampires leave at dawn;
@@ -10,6 +11,7 @@ import {TASKS} from '../tasks.js';
 import {SPECIES} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {maxHp, kill} from '../agent.js';
+import {squadOf, planFor} from '../squad.js';
 
 // the mindless dead go for whoever is this close; anyone further off they find by shambling to the camp
 // (the camp flow field always leads there; a long A* chase across the map would stall instead)
@@ -36,9 +38,16 @@ export const raiderBrain = {
     if (a.lost || (sp.sun && day > 0.6)) a.task = {id: 'leave'};
     else if (!sp.mindless && a.hp < 0.3 * maxHp(a)) a.task = {id: 'leave'};
     if (a.task?.id !== 'leave') {
-      const e = nearestHostile(w, a, sp.mindless ? HUNT_RADIUS : mindless ? 16 : 10);
-      if (e) { if (a.task?.id !== 'fight' || a.task.target !== e) a.task = {id: 'fight', target: e}; }
-      else if (!a.task || a.task.id === 'fight') a.task = {id: a.looted ? 'leave' : mindless ? 'haunt' : 'assault'};
+      const radius = sp.mindless ? HUNT_RADIUS : mindless ? 16 : 10;
+      // a band with a plan (agents/squad.js): the plan says what to do; without one (or when it has
+      // nothing to say) the old way: the nearest foe, else the stores or the camp
+      const sq = squadOf(w, a), plan = sq ? planFor(w, a, sq, radius) : null;
+      if (plan) a.task = plan;
+      else {
+        const e = nearestHostile(w, a, radius);
+        if (e) { if (a.task?.id !== 'fight' || a.task.target !== e) a.task = {id: 'fight', target: e, since: w.tick}; }
+        else if (!a.task || a.task.id === 'fight') a.task = {id: a.looted ? 'leave' : mindless ? 'haunt' : 'assault'};
+      }
     }
     TASKS.get(a.task.id).step(w, a, a.task);
     if (!a.task) a.task = {id: a.looted ? 'leave' : mindless ? 'haunt' : 'assault'};

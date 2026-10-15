@@ -4,6 +4,7 @@ import {endTask} from './lifecycle.js';
 import {maxHp} from './agent.js';
 import {Registry} from '../core/registry.js';
 import {JOBS} from '../data/jobs.js';
+import {BUILDINGS} from '../data/buildings.js';
 import {NEEDS} from '../data/needs.js';
 import {FOODS} from '../data/foods.js';
 import {ambientTemp} from '../core/time.js';
@@ -20,6 +21,9 @@ import {HEAL, freeBed} from '../settlement/healing.js';
 import {reserve} from '../settlement/reserve.js';
 import {has, colonists, raidAlarm} from '../settlement/query.js';
 import {homeComfort, prayed} from '../settlement/life.js';
+import {squadOf, noteHome, SQUAD} from './squad.js';
+import {enterEscort, escortGoing, guardStep, giveAid, askForBed, bond, TOGETHER} from '../settlement/together.js';
+import {agentInZone} from '../settlement/zone.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -101,6 +105,12 @@ TASKS.registerAll([
       return;
     }
     task.lost = null;
+    if (a.faction === 'colony') {
+      a.lastFight = w.tick;
+      // standing up for someone the foe is on: they remember it (settlement/together.js)
+      const v = t.task?.target;
+      if (v && v !== a && v.faction === 'colony' && task.stoodFor !== v.id && (t.task.id === 'maul' || t.task.id === 'fight')) { task.stoodFor = v.id; bond(w, v, a, TOGETHER.bondDefend * 0.6); }
+    }
     const d = Math.hypot(t.x - a.x, t.y - a.y), g = a.gear;
     if (g?.rangedReady && d > 1.4) {
       const range = g.ranged.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
@@ -112,6 +122,22 @@ TASKS.registerAll([
     task.shooting = false;
     if (d > Math.min(0.9, reachOf(a))) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
     else attack(w, a, t);
+  }},
+
+  // going along with someone in the woods (settlement/together.js): keep close, take on what comes
+  {id: 'company', label: t => (t.home ? 'ведёт раненого к своим' : 'сопровождает в лесу'), enter: enterEscort, step(w, a, task) {
+    const b = escortGoing(w, a, task);
+    if (!b) { done(w, a); return; }
+    guardStep(w, a, b, task);
+  }},
+  // a wounded colonist out in the woods: go, dress the wounds, see them home
+  {id: 'aid', label: () => 'спешит на помощь раненому', step(w, a, task) {
+    const b = w.agents.find(o => o.id === task.who && !o.dead);
+    if (!b || agentInZone(w, b)) { done(w, a); return; }
+    if (guardStep(w, a, b, task) === 'fight') return;
+    if (Math.hypot(b.x - a.x, b.y - a.y) > 1.4) { if (approach(w, a, b.x, b.y, 1.2) === null) fail(w, a, 'к раненому не подойти', 'impossible'); return; }
+    giveAid(w, a, b);
+    a.task = {id: 'company', who: b.id, home: true};
   }},
 
   {id: 'douse', label: () => 'тушит пожар', step(w, a) {
@@ -156,7 +182,31 @@ TASKS.registerAll([
     if (took > 0.5 && w.tick - w.stats.lastSteal > 40) log(w, 'Налётчики грабят склад.', 'danger');
     w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
   }},
-  {id: 'leave', label: () => 'уходит', step(w, a) { if (follow(w, a, 'edge') === 'arrived') a.gone = true; }},
+  {id: 'leave', label: () => 'уходит', step(w, a) { if (follow(w, a, 'edge') === 'arrived') { a.gone = true; noteHome(w, a); } }},
+  // a torch-bearer of a band that came to burn (agents/squad.js): to the camp, then to the building, and
+  // a fire under its wall
+  {id: 'torch', label: () => 'несёт факел', step(w, a, task) {
+    const b = w.buildings.find(x => x.id === task.b && x.done), sq = squadOf(w, a);
+    if (!b || !sq || sq.lit != null) { done(w, a); return; }
+    if (w.nav.get('camp')[cellOf(w, a)] > 14) { follow(w, a, 'camp'); return; }
+    let best = null, bd = Infinity;
+    for (const c of b.cells) { const d = Math.hypot((c % w.w) + 0.5 - a.x, ((c / w.w) | 0) + 0.5 - a.y); if (d < bd) { bd = d; best = c; } }
+    if (best == null) { done(w, a); return; }
+    if (bd > SQUAD.burnNear) { if (approach(w, a, (best % w.w) + 0.5, ((best / w.w) | 0) + 0.5) === null) fail(w, a, 'к постройке не подойти', 'impossible'); return; }
+    w.grid.fire[best] = Math.max(w.grid.fire[best], 0.6); w.grid.temp[best] = Math.max(w.grid.temp[best], 300); w.grid.fuel[best] = Math.max(w.grid.fuel[best], 0.9);
+    w.nav.dirty('fire');
+    sq.lit = w.tick;
+    log(w, `${a.name} ${a.gender === 'f' ? 'подожгла' : 'поджёг'} ${BUILDINGS.get(b.key).name.toLowerCase()}! Тушите!`, 'danger', 'notice');
+    a.task = {id: 'leave'};
+  }},
+  // scouts: come within sight of the camp, look it over, and take the news home
+  {id: 'scout', label: () => 'высматривает лагерь', step(w, a, task) {
+    const sq = squadOf(w, a);
+    if (!sq) { done(w, a); return; }
+    if (w.nav.get('camp')[cellOf(w, a)] > SQUAD.scoutNear) { follow(w, a, 'camp', 0.8); return; }
+    sq.watched ??= w.tick;
+    mill(w, a, task, 1.5);
+  }},
   // the mindless dead: shamble to the camp and wander there until something living comes close
   {id: 'haunt', label: () => 'бредёт к лагерю', step(w, a, task) {
     if (!w.agents.some(o => o.faction === 'colony' && !o.dead)) { a.task = {id: 'leave'}; return; }
@@ -185,7 +235,8 @@ TASKS.registerAll([
       done(w, a); return;
     }
     // a bed of one's own, held on the way and while lying there
-    const bed = freeBed(w, a);
+    // a bed of one's own; when all are taken, someone on the mend may give theirs up (settlement/together.js)
+    const bed = freeBed(w, a) || (!task.bed && askForBed(w, a, endTask));
     if (!bed || !reserve(w, bed, a)) { fail(w, a, 'в хижине лекаря нет места'); a.think = 30; return; }
     task.bed = bed;
     if (!task.lying) {
