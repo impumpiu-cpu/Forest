@@ -4,7 +4,8 @@
 // T27–T31 carcasses and pack hunts; T32–T39 SPECIAL stage 1: skills, practice, the body;
 // T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order;
 // T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
-// T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies). Each scene builds a flat, empty map, places a few agents by hand and
+// T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies;
+// T71–T73 fixes from the review). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -26,13 +27,15 @@ import {SPECIES} from '../src/data/species.js';
 import {syncTask, skipped} from '../src/agents/lifecycle.js';
 import {stationHasWork, pickRecipe, workAt, stepCrafting} from '../src/settlement/crafting.js';
 import {freeBed, bedsOf} from '../src/settlement/healing.js';
-import {freeCorpse} from '../src/settlement/life.js';
+import {freeCorpse, stepLife, LIFE} from '../src/settlement/life.js';
+import {moodOf} from '../src/agents/mind.js';
 import {createSquad, stepSquads, planFor, ROLES} from '../src/agents/squad.js';
 import {kill} from '../src/agents/agent.js';
 import {outsideRisk, escortOption, aidOption, TOGETHER} from '../src/settlement/together.js';
 import {stepRelations, REL} from '../src/settlement/relations.js';
 import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS} from '../src/agents/carcass.js';
 import {DAY, HOUR, nightness} from '../src/core/time.js';
+import {think} from '../src/agents/mind.js';
 import {newItem, outfit, recalcGear, allItems} from '../src/agents/equipment.js';
 import {refreshBody, adoptBody} from '../src/agents/special.js';
 import {craftChance, qualityRoll} from '../src/data/quality.js';
@@ -915,6 +918,35 @@ check('T70', 'зверь, убитый в бою, отдаёт в лагерь �
   seq(w, [0]); a.task = {id: 'fight', target: wolf};
   wolf.hp = 0.001; damage(w, a, wolf, 1);
   return (wolf.dead && w.stock.meat === 1 && w.stock.hide === 2 && w.stock.furs === 1) || 'склад: ' + JSON.stringify({dead: wolf.dead, meat: w.stock.meat, hide: w.stock.hide, furs: w.stock.furs});
+});
+
+// ── review fixes
+check('T71', 'смерть от потери крови пишется в журнал один раз', () => {
+  const w = scene(), a = human(w), r = raider(w);
+  seq(w, [0]); a.hp = 0.01; damage(w, r, a, 0.5);
+  const before = w.logLines.filter(l => l.topic === 'death').length;
+  w.tick = a.downed.until; stepDowned(w, a);
+  const lines = w.logLines.filter(l => l.topic === 'death').length - before;
+  return (a.dead && lines === 1) || `записей о смерти: ${lines}`;
+});
+
+check('T72', 'трофей решается, только если зверя добила колония', () => {
+  const w = scene(), a = human(w), bear = beast(w, 'bear'), wolf = beast(w, 'wolf', 36.5);
+  seq(w, [0]); bear.hitters = {[a.id]: 5};
+  bear.hp = 0.001; damage(w, wolf, bear, 1);
+  return (bear.dead && !bear.trophy && !(w.chronicle.trophies?.got)) || 'трофей решён без победы колонии: ' + JSON.stringify(bear.trophy);
+});
+
+check('T73', 'лежащий без сознания не уходит из поселения и не хандрит', () => {
+  const w = scene(), a = human(w), r = raider(w);
+  seq(w, [0]); a.hp = 0.01; damage(w, r, a, 0.5);
+  while (w.tick % DAY !== 5 * HOUR) w.tick++;
+  a.downed.until = w.tick + DAY;
+  a.gloom = 99; fixedRng(w, 0);
+  for (const id of ['starving', 'freezing', 'exhausted', 'quarrel', 'trauma', 'grief']) think(w, a, id, {name: 'кто-то', what: 'рана', f: false});
+  if (!(moodOf(w, a) < LIFE.leaveBelow)) return 'сцена: настроение недостаточно мрачное ' + moodOf(w, a);
+  stepLife(w);
+  return (a.faction === 'colony' && a.downed && a.task?.id === 'downed') || `ушёл или встал: ${a.faction}, ${a.task?.id}`;
 });
 
 let bad = 0;

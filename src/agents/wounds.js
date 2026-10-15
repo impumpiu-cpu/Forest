@@ -63,13 +63,14 @@ export function stepDowned(w, a) {
   const by = a.downed.by != null ? w.agents.find(o => o.id === a.downed.by) : null;
   tally(w).bled++;
   log(w, `<b>${esc(a.name)}</b> ${g(a, 'истёк', 'истекла')} кровью: помощь не успела.`, 'death');
-  kill(w, a, a.downed.cause, by || undefined);
+  kill(w, a, a.downed.cause, by || undefined, {quiet: true});
 }
 
 // someone dressed the wound in time
 export function stabilize(w, helper, a) {
   const d = a.downed; if (!d) return;
   a.downed = null;
+  if (a.task?.id === 'downed') a.task.closed = 'done';   // the fall is over, not broken off
   a.wounds = [...(a.wounds || []), {id: 'grave', until: w.tick + GRAVE_TICKS('grave')}];
   if (d.trauma) a.wounds.push({id: d.trauma});
   refreshBody(a);

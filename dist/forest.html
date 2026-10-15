@@ -5719,7 +5719,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const n = feast ? col.length : Math.min(have, Math.ceil(col.length / 3) + brewers.length, order.length);
     if (!n) return;
     for (const a of order.slice(0, n)) {
-      if (a.task?.id === "treat" || a.dead) continue;
+      if (a.task?.id === "treat" || a.dead || a.downed) continue;
       w.stock.braga -= 1;
       a.drankAt = w.tick;
       const b = brewOf(a);
@@ -5738,6 +5738,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (brewOf(a) && brewFactor(w, a) < 1) think(w, a, "sober");
       const m = moodOf(w, a);
       a.gloom = m < LIFE.gloomBelow ? (a.gloom || 0) + 1 : 0;
+      if (a.downed) continue;
       if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rngs.colony() < LIFE.leaveChance) {
         leave(w, a);
         continue;
@@ -7216,7 +7217,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var maxHp = (a) => a.maxHp || SPECIES.get(a.species).hp;
   var hpShare = (a) => a.hp / maxHp(a);
-  function kill(w, a, cause, by) {
+  function kill(w, a, cause, by, { quiet = false } = {}) {
     if (a.dead) return;
     a.dead = true;
     a.hp = 0;
@@ -7225,7 +7226,7 @@ dd.q4{color:#c58cff;font-weight:600}
     noteHuntDeath(w, a);
     const sp = SPECIES.get(a.species);
     const killer = by ? SPECIES.get(by.species) : null;
-    const trophy = sp.trophies && (by?.faction === "colony" || a.hitters) ? decideTrophies(w, a, by) : null;
+    const trophy = sp.trophies && by?.faction === "colony" ? decideTrophies(w, a, by) : null;
     if (a.faction === "colony") {
       noteDeath(w, a, cause, by);
       addCorpse(w, a);
@@ -7244,7 +7245,7 @@ dd.q4{color:#c58cff;font-weight:600}
         w.chronicle.raidersKilled++;
       }
     }
-    if (a.faction === "colony") log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, "\u043F\u043E\u0433\u0438\u0431", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430")} \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> ${g(a, "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B", "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B\u0430")} ${cause}.`, "death");
+    if (a.faction === "colony" && !quiet) log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, "\u043F\u043E\u0433\u0438\u0431", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430")} \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> ${g(a, "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B", "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B\u0430")} ${cause}.`, "death");
     else if (sp.yields && by?.faction === "colony" && by.task?.id !== "job" && a.faction !== "traders") {
       for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
       for (const [r, n] of Object.entries(trophy?.got || {})) w.stock[r] = (w.stock[r] || 0) + n;
@@ -7325,12 +7326,13 @@ dd.q4{color:#c58cff;font-weight:600}
     const by = a.downed.by != null ? w.agents.find((o) => o.id === a.downed.by) : null;
     tally(w).bled++;
     log(w, `<b>${esc(a.name)}</b> ${g(a, "\u0438\u0441\u0442\u0451\u043A", "\u0438\u0441\u0442\u0435\u043A\u043B\u0430")} \u043A\u0440\u043E\u0432\u044C\u044E: \u043F\u043E\u043C\u043E\u0449\u044C \u043D\u0435 \u0443\u0441\u043F\u0435\u043B\u0430.`, "death");
-    kill(w, a, a.downed.cause, by || void 0);
+    kill(w, a, a.downed.cause, by || void 0, { quiet: true });
   }
   function stabilize(w, helper2, a) {
     const d = a.downed;
     if (!d) return;
     a.downed = null;
+    if (a.task?.id === "downed") a.task.closed = "done";
     a.wounds = [...a.wounds || [], { id: "grave", until: w.tick + GRAVE_TICKS("grave") }];
     if (d.trauma) a.wounds.push({ id: d.trauma });
     refreshBody(a);
@@ -7544,7 +7546,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if ((w.tick + a.id) % 30 || w.tick < (a.lureAt ?? -1e9) + 12 * HOUR) return false;
     let best = null, bd = S.radius;
     for (const o of w.agents) {
-      if (o.faction !== "colony" || o.dead || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
+      if (o.faction !== "colony" || o.dead || o.downed || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
       const d = dist3(o, a);
       if (d < bd) {
         bd = d;
@@ -9403,7 +9405,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return weighted(rng, opts) || "human";
   }
   var near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < REL.quarrelNear;
-  var busy = (a) => a.sleeping || ["fight", "muster", "treat", "runHome", "flee"].includes(a.task?.id);
+  var busy = (a) => a.sleeping || a.downed || ["fight", "muster", "treat", "runHome", "flee", "downed"].includes(a.task?.id);
   function reason(a, b) {
     const kin = kinship(a.species, b.species);
     if (kin <= -2) return `${SPECIES.get(a.species).plural} \u0438 ${SPECIES.get(b.species).plural} \u2014 \u0434\u0430\u0432\u043D\u0438\u0435 \u0432\u0440\u0430\u0433\u0438`;
@@ -14386,6 +14388,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // why the colonist does what it does: the choice at the last think, the runner-up, the way, the last
     // task dropped before it was done (agents/brains/colonist.js a.why, a.lastStop; agents/movement.js a.route)
     whyHtml(w, a) {
+      if (a.downed) return "";
       const y = a.why, rows = [];
       const ago = (t) => {
         const m = w.tick - t;
@@ -14830,7 +14833,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.38 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 5c1fd91" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 8963ada" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 2;

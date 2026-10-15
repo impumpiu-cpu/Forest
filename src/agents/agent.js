@@ -90,8 +90,9 @@ export function createAgent(w, speciesId, factionId, x, y) {
 export const maxHp = a => a.maxHp || SPECIES.get(a.species).hp;
 export const hpShare = a => a.hp / maxHp(a);
 
-// mark dead; the sim removes dead agents at the end of the tick
-export function kill(w, a, cause, by) {
+// mark dead; the sim removes dead agents at the end of the tick. `quiet`: the caller has written the
+// death to the log in its own words (agents/wounds.js: bled out)
+export function kill(w, a, cause, by, {quiet = false} = {}) {
   if (a.dead) return;
   a.dead = true; a.hp = 0;
   releaseAll(w, a);   // a bench, a bed, a body or a beast it held is free again
@@ -100,14 +101,14 @@ export function kill(w, a, cause, by) {
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
   // rare trophies, decided now and once (agents/trophies.js): only for what the colony brought down
-  const trophy = sp.trophies && (by?.faction === 'colony' || a.hitters) ? decideTrophies(w, a, by) : null;
+  const trophy = sp.trophies && by?.faction === 'colony' ? decideTrophies(w, a, by) : null;
   if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }
   if (a.tame) { lostBeast(w, a, killer?.predator ? `задрали ${killer.plural || killer.label}` : by ? 'убили' : cause); return; }
   // the nechist comes back some time after it was killed (data/migrations.js `resident`)
   if (sp.resident) (w.residents ||= {})[sp.id] = w.tick;
   // beasts that hunt people count as the colony's beast kills (the chronicle's «wolves»)
   if (by?.stats) { if (sp.predator || sp.resident) { by.stats.wolves++; w.chronicle.wolvesKilled++; } else if (a.faction === 'raiders') { by.stats.raiders++; w.chronicle.raidersKilled++; } }
-  if (a.faction === 'colony') log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
+  if (a.faction === 'colony' && !quiet) log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, 'погиб', 'погибла')} в бою.` : `<b>${esc(a.name)}</b> ${g(a, 'не пережил', 'не пережила')} ${cause}.`, 'death');
   else if (sp.yields && by?.faction === 'colony' && by.task?.id !== 'job' && a.faction !== 'traders') {
     // an animal killed in a fight (not on a hunt, where the hunter carries the game home): the carcass is brought in
     for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;

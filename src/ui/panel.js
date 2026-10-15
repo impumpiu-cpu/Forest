@@ -520,6 +520,7 @@ export class Panel {
   // why the colonist does what it does: the choice at the last think, the runner-up, the way, the last
   // task dropped before it was done (agents/brains/colonist.js a.why, a.lastStop; agents/movement.js a.route)
   whyHtml(w, a) {
+    if (a.downed) return '';   // senseless: no choice to explain (agents/wounds.js)
     const y = a.why, rows = [];
     const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
     if (y) {

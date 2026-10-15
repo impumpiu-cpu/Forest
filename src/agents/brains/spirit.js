@@ -96,7 +96,7 @@ function lure(w, a, sp, S) {
   if ((w.tick + a.id) % 30 || w.tick < (a.lureAt ?? -1e9) + 12 * HOUR) return false;
   let best = null, bd = S.radius;
   for (const o of w.agents) {
-    if (o.faction !== 'colony' || o.dead || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
+    if (o.faction !== 'colony' || o.dead || o.downed || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
     const d = dist(o, a); if (d < bd) { bd = d; best = o; }
   }
   if (best) {
