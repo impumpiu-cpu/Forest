@@ -129,7 +129,7 @@ RAID_BANDS.registerAll([
   {id: 'vampire', label: 'вампир со свитой', kind: 'sentient',
     goals: () => [['kill', 3], ['loot', 0.5]], nerve: -0.2,
     weight: (w, t, night) => (t >= 20 && night > 0.5 ? 0.5 : 0),
-    members: (w, rng, budget) => fill(rng, budget, [['upyr', 1]], [{species: 'vampire', init: (a, w) => { [a.name, a.gender] = pick(w.rng, SPECIES.get('vampire').names); }}]),
+    members: (w, rng, budget) => fill(rng, budget, [['upyr', 1]], [{species: 'vampire', init: (a, w) => { [a.name, a.gender] = pick(w.rngs.outside, SPECIES.get('vampire').names); }}]),
     message: (n, group) => `${group.find(a => a.species === 'vampire')?.name || 'Вампир'} пришёл со свитой упырей. Простое железо его почти не берёт, нужно серебро`},
 ]);
 

@@ -89,8 +89,8 @@ export function workPlot(w, i) {
   if (ripe(p)) {
     // the harvest grows with the soil too: poor ground gives less
     const c = CROPS.get(p.crop), k = soilYield(w, p.i), got = {};
-    for (const [r, n] of Object.entries(c.yields)) { const v = n * k, whole = Math.floor(v) + (w.rng() < v % 1 ? 1 : 0); if (whole) got[r] = whole; }
-    const back = Math.floor(c.seedBack) + (w.rng() < c.seedBack % 1 ? 1 : 0);
+    for (const [r, n] of Object.entries(c.yields)) { const v = n * k, whole = Math.floor(v) + (w.rngs.colony() < v % 1 ? 1 : 0); if (whole) got[r] = whole; }
+    const back = Math.floor(c.seedBack) + (w.rngs.colony() < c.seedBack % 1 ? 1 : 0);
     if (back) got[c.seed] = (got[c.seed] || 0) + back;
     p.crop = null; p.g = 0; w.nav.dirty('fieldwork');
     w.stats.reaped = (w.stats.reaped || 0) + 1;

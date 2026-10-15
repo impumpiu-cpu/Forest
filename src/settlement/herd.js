@@ -75,14 +75,14 @@ export function tryTame(w, a, beast) {
   for (const [r, v] of Object.entries(T.bait)) w.stock[r] -= v;
   const chance = T.chance * (0.6 + (a.skill.herd || 0)) * (1 + 0.35 * (beast.tries || 0));
   w.stats.tameTries = (w.stats.tameTries || 0) + 1;
-  if (w.rng() < chance) { makeTame(w, beast, a); return 'tamed'; }
+  if (w.rngs.wild() < chance) { makeTame(w, beast, a); return 'tamed'; }
   beast.tries = (beast.tries || 0) + 1;
   return 'failed';
 }
 
 function freshName(w, T) {
   const used = new Set(herd(w).map(o => o.name));
-  return T.names.find(n => !used.has(n)) || T.names[Math.floor(w.rng() * T.names.length)];
+  return T.names.find(n => !used.has(n)) || T.names[Math.floor(w.rngs.wild() * T.names.length)];
 }
 
 export function makeTame(w, beast, by, born = false) {
@@ -118,7 +118,7 @@ function slaughter(w, a, why = 'Голод') {
 }
 
 function bear(w, mother) {
-  const kid = createAgent(w, mother.species, 'herd', mother.x + (w.rng() - 0.5), mother.y + (w.rng() - 0.5));
+  const kid = createAgent(w, mother.species, 'herd', mother.x + (w.rngs.wild() - 0.5), mother.y + (w.rngs.wild() - 0.5));
   makeTame(w, kid, null, true);
   kid.pen = mother.pen;
   log(w, `В загоне прибыло: ${esc(mother.name)} принесла козлёнка — <b>${esc(kid.name)}</b>.`, 'people');
@@ -153,7 +153,7 @@ export function stepHerd(w) {
   if (S.id !== 'winter') for (const sp of new Set(list.map(a => a.species))) {
     const T = SPECIES.get(sp).tame; if (!T.breed) continue;
     const grown = herd(w).filter(a => a.species === sp && a.age >= T.grownDays && a.fed > 0.6);
-    for (let k = 0; k + 1 < grown.length; k += 2) if (penRoom(w) >= T.space && w.rng() < T.breed) bear(w, grown[k]);
+    for (let k = 0; k + 1 < grown.length; k += 2) if (penRoom(w) >= T.space && w.rngs.wild() < T.breed) bear(w, grown[k]);
   }
   // winter: what the hay cannot feed till spring goes for meat, the youngest goats first, mules last;
   // a couple of goats are kept for breeding whatever happens. Planned on the first day of winter, then

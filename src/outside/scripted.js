@@ -88,7 +88,7 @@ export const scripted = {
     raiders: {from: 'hostile',
       first: (w, rng) => scripted.flows.raiders.next(w, rng),
       offer: (w, rng) => (rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? {n: raidSize(w), band: pickBand(w, rng)} : 0),
-      size: w => ({n: raidSize(w), band: pickBand(w, w.rng)}),
+      size: w => ({n: raidSize(w), band: pickBand(w, w.rngs.outside)}),
       missed: () => ['Чужие разведчики побродили у края леса и ушли. Набега в этот раз не будет.', 'danger', 'info'],
       next: (w, rng) => (raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) * (scoutedBand(w) ? 0.6 : 1) : Infinity)},
   },

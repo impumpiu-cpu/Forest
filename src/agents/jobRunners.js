@@ -12,6 +12,8 @@ import {addLabour} from '../settlement/buildings.js';
 import {buildingById} from '../settlement/query.js';
 import {jobSpeedOf} from '../settlement/mods.js';
 import {workAt, stationHasWork, stationPriority, freeBench} from '../settlement/crafting.js';
+import {carcassById, smellCarcass, butcher, share, CARCASS} from './carcass.js';
+import {boldness} from './brains/predator.js';
 import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
@@ -24,8 +26,10 @@ import {tend, patients, waiting, healerHutCell} from '../settlement/healing.js';
 import {chores, tameTargets, tryTame, claimed} from '../settlement/herd.js';
 import {freeCorpse, graveSpot, bury, workBonus} from '../settlement/life.js';
 import {damage} from './combat.js';
+import {log} from '../core/log.js';
+import {esc, g} from '../core/util.js';
 
-const mill = (w, a) => { a.x += (w.rng() - 0.5) * 0.2; a.y += (w.rng() - 0.5) * 0.2; };
+const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.colony() - 0.5) * 0.2; };
 
 // skilled hands work faster, the right tool helps; practice slowly builds skill
 export function workRate(w, a, jobId) {
@@ -171,7 +175,7 @@ export const RUNNERS = {
       if (r === 'arrived' || healerHutCell(w, a)) {
         const given = tend(w, a, workRate(w, a, 'heal') * workBonus(w.buildings.find(x => x.done && x.key === 'healerhut')));
         if (given) a.stats.healed = (a.stats.healed || 0) + given;
-        else if (!patients(w).length && w.rng() < 0.02) mill(w, a);   // the patients are still on their way
+        else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);   // the patients are still on their way
       } else if (r === 'none') { w.nav.dirty('healer'); fail(w, a, 'к хижине лекаря нет пути', 'impossible'); a.think = 20; }
       return;
     }
@@ -259,6 +263,35 @@ export const RUNNERS = {
     const job = JOBS.get(task.job);
     // carrying game: head home, unless there is room for another animal close by
     if (a.carry && !task.oneMore) { a.stalking = false; haulHome(w, a); return; }
+    // a carcass close by (agents/carcass.js) is meat for the taking, no arrows needed: beasts at it give way
+    // or turn on the hunter
+    if (!a.carry && job.id === 'hunt') {
+      // worth the walk only with meat still on it (bones and hide come along)
+      const c = task.c != null ? carcassById(w, task.c) : smellCarcass(w, a, 20);
+      if (c && (c.yields.meat || 0) * share(c) >= 0.75) {
+        task.c = c.id;
+        const d = Math.hypot(c.x - a.x, c.y - a.y);
+        if (d < CARCASS.scare) {
+          for (const o of w.agents) {
+            if (o.dead || o.task?.id !== 'feed' || o.task.c !== c.id || Math.hypot(o.x - a.x, o.y - a.y) > CARCASS.scare) continue;
+            const P = SPECIES.get(o.species).predator;
+            if (P && boldness(o, P) > 0.6) o.task = {id: 'maul', target: a};   // a starving beast will not give up its meal
+            else { o.task = {id: 'bolt'}; o.calmUntil = w.tick + 300; }
+            task.scared = true;
+          }
+        }
+        if (d > CARCASS.takeAt) { if (approach(w, a, c.x, c.y) === null) task.c = null; return; }
+        const feeders = w.agents.some(o => !o.dead && o.task?.id === 'maul' && o.task.target === a);
+        if (feeders) return;   // the fight comes first (the brain answers it)
+        const got = butcher(w, c);
+        for (const [r, n] of Object.entries(got)) load(a, r, n);
+        task.c = null;
+        if (task.scared) log(w, `<b>${esc(a.name)}</b> ${g(a, 'отбил', 'отбила')} у зверей тушу (${SPECIES.get(c.species).label}) и несёт в лагерь.`, 'wildlife');
+        task.scared = false;
+        return;
+      }
+      task.c = null;
+    }
     if (!a.gear?.rangedReady) { a.stalking = false; fail(w, a, 'нечем стрелять: кончились стрелы'); return; }
     task.age = (task.age || 0) + 1;
     let prey = task.prey;

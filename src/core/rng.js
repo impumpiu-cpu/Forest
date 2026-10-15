@@ -1,7 +1,12 @@
 // Deterministic random numbers: the same seed and settings give the same world.
 
-// The whole simulation draws from one stream (w.rng), so a seed plus the same player actions
-// always give the same story. `rng.state` reads or restores the position in the stream (saves).
+// A seed plus the same player actions always give the same story. `rng.state` reads or restores the
+// position in a stream (saves).
+//
+// The map is drawn from one stream (w.rng, world/generate.js). The running game draws from separate
+// streams, one per subsystem (w.rngs, STREAMS below), so a change in one part shifts only its own
+// randomness: tune combat, and the weather, the wildlife and the arrivals of the same seed stay what
+// they were. Comparing a seed before and after an edit then shows the edit, not a different story.
 export function mulberry(a) {
   const rng = function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -20,4 +25,27 @@ export function seedNumber(text) {
   let h = 2166136261;
   for (const ch of t) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); }
   return h >>> 0;
+}
+
+// the game's random streams by subsystem; each is seeded from the game's seed and its name
+export const STREAMS = {
+  weather: 'погода: дожди, снег, молнии',
+  fire:    'огонь: как он перекидывается и гаснет',
+  wild:    'звери: пастьба, охота, стаи, туши, скот',
+  nechist: 'нечисть',
+  combat:  'удары и выстрелы',
+  colony:  'поселенцы: работа, быт, совет, мастерские, поля',
+  social:  'отношения и склоки',
+  outside: 'внешний мир: прибытия, банды, отряды, торговля',
+  birth:   'рождение существ: характер, SPECIAL, вещи',
+};
+export function newStreams(seed) {
+  return Object.fromEntries(Object.keys(STREAMS).map(k => [k, mulberry(seedNumber(`${seed}/${k}`))]));
+}
+// saves keep only the positions
+export const streamStates = rngs => Object.fromEntries(Object.entries(rngs).map(([k, r]) => [k, r.state]));
+export function restoreStreams(states, seed) {
+  const rngs = newStreams(seed);
+  for (const [k, v] of Object.entries(states || {})) if (rngs[k]) rngs[k].state = v;
+  return rngs;
 }

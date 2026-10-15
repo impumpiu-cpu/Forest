@@ -28,7 +28,7 @@ export function initOutside(w, providerId = 'scripted') {
 
 // flows that this game has not scheduled yet (a save from before they existed) get their first date
 export function ensureFlows(w) {
-  for (const [id, f] of Object.entries(provider(w).flows)) if (!(id in w.outside.next)) w.outside.next[id] = f.first(w, w.rng);
+  for (const [id, f] of Object.entries(provider(w).flows)) if (!(id in w.outside.next)) w.outside.next[id] = f.first(w, w.rngs.outside);
 }
 
 // the colony sends something out of the map
@@ -48,14 +48,14 @@ export function arrive(w, flowId, offered) {
   // the region decides which beasts live here at all (data/regions.js); a rich one sends one more
   const lvl = def.species ? faunaLevel(w, def.species) : 1;
   if (lvl <= 0) return [];
-  const n = def.accept ? def.accept(w, offered + (lvl > 1 ? 1 : 0), w.rng) : offered;
+  const n = def.accept ? def.accept(w, offered + (lvl > 1 ? 1 : 0), w.rngs.outside) : offered;
   return n > 0 ? spawnGroup(w, flowId, n, opts) : [];
 }
 
 // the «Набег» button and similar: a group arrives now, outside any schedule
 export function arriveNow(w, flowId) {
   const f = provider(w).flows[flowId];
-  return arrive(w, flowId, (f.size ? f.size(w, w.rng) : f.offer(w, w.rng)) || 1);
+  return arrive(w, flowId, (f.size ? f.size(w, w.rngs.outside) : f.offer(w, w.rngs.outside)) || 1);
 }
 
 export function stepOutside(w) {
@@ -63,14 +63,14 @@ export function stepOutside(w) {
   const o = w.outside, P = provider(w);
   for (const [id, f] of Object.entries(P.flows)) {
     if (w.tick < o.next[id]) continue;
-    const offered = f.offer(w, w.rng);
+    const offered = f.offer(w, w.rngs.outside);
     const group = offered ? arrive(w, id, offered) : [];
     if (!offered && f.missed) { const m = f.missed(w); if (m) log(w, ...m); }
     // a due arrival that the colony could not take in is retried soon without resetting its schedule
     const retry = MIGRATIONS.get(id).retry;
     if (offered && !group.length && retry) { o.next[id] = w.tick + retry; o.due[id] ??= w.tick; continue; }
     if (group.length && id === 'settlers') tell(w, 'report', colonyReport(w));   // word of a newcomer travels fast
-    o.next[id] = f.next(w, w.rng, group.length);
+    o.next[id] = f.next(w, w.rngs.outside, group.length);
     o.due[id] = null;
   }
 }

@@ -64,7 +64,7 @@ function quarrels(w) {
     if (!near(a, b)) continue;
     const mutual = opinion(a, b) + opinion(b, a);
     const p = clamp((REL.dislike * 2 - mutual) * REL.quarrelBase, 0, REL.quarrelMax);
-    if (p <= 0 || w.rng() >= p) continue;
+    if (p <= 0 || w.rngs.social() >= p) continue;
     // not now: raiders on the way, the camp on fire, a beast close by
     if (raidAlarm(w) || w.stats.fireNearCamp > 0 || threatTo(w, a, 12) || threatTo(w, b, 12)) { if (w.behave) w.behave.social.calm++; continue; }
     for (const [x, y] of [[a, b], [b, a]]) { (x.grudge ||= {})[y.id] = (x.grudge[y.id] || 0) - REL.grudge; think(w, x, 'quarrel', {name: y.name}); }

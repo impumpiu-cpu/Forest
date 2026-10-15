@@ -4,6 +4,9 @@
 //   starving  — boldness grows: comes closer to the settlement, goes for a lone colonist
 //               (at night sooner), when desperate even for a pair, and backs off less readily.
 // Fire, wounds, a crowd of people and the settlement zone still drive it away.
+// A chase is one pack hunt shared by the pack (agents/carcass.js: roles, last sighting, one outcome);
+// the prey is chosen by what it is worth (food per head, the chance to catch it, the way, the risk),
+// and a kill lies on the map as a carcass the pack eats, leaves and comes back to.
 // All numbers come from the species' `predator` block in data/species.js.
 import {SPECIES, matchesKind} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
@@ -17,6 +20,7 @@ import {kill, maxHp} from '../agent.js';
 import {log} from '../../core/log.js';
 import {think} from '../mind.js';
 import {esc, clamp} from '../../core/util.js';
+import {dropCarcass, carcassById, smellCarcass, eat, startHunt, endHunt, huntOf, huntAim, CARCASS} from '../carcass.js';
 
 // how far a hungry predator smells its prey (cells)
 const SCENT = 70;
@@ -40,10 +44,41 @@ const preyKinds = P => [...P.prey, ...(P.weakPrey || [])];
 
 export const boldness = (a, P) => clamp((P.hungry - a.needs.food) / (P.hungry - P.starving), 0, 1);
 
+// what a chase is worth: food per head × the chance to catch it, less for the way there and the risk
+// (big game kicks back). The hungrier, the less it takes to set off.
+export function preyValue(w, a, P, o, packSize) {
+  const ps = SPECIES.get(o.species), big = !!ps.big;
+  const perHead = (big ? P.bigMeal : P.meal) / Math.max(1, packSize);
+  const mine = SPECIES.get(a.species).speed * P.sprint * (0.5 + 0.5 * a.stamina);
+  const theirs = ps.speed * (ps.flee?.sprint || 1);
+  const caught = big ? 1 : clamp(mine / (theirs || 0.1) * 0.8, 0.15, 1);
+  const way = 1 - 0.5 * clamp(dist(a, o) / P.sight, 0, 1);
+  const risk = big ? 0.3 * (o.hp / maxHp(o)) : 0;
+  return perHead * caught * way - risk;
+}
+function bestPrey(w, a, P, reach, packSize) {
+  let best = null, bv = 0.05;
+  for (const o of w.agents) {
+    if (o.dead || o.tame || !matchesKind(o.species, preyKinds(P)) || dist(a, o) > reach) continue;
+    if (!weakEnough(o, P) || agentInZone(w, o) || a.ignore?.get(o.id) > w.tick) continue;
+    const v = preyValue(w, a, P, o, packSize);
+    if (v > bv) { bv = v; best = o; }
+  }
+  return best;
+}
+// the pack sits down to the kill: everyone close enough eats from the carcass
+function toTheKill(w, a, prey, food, pack) {
+  const c = dropCarcass(w, prey, food, a);
+  for (const m of pack) if (m === a || dist(m, a) < 10) m.task = {id: 'feed', c: c.id};
+  return c;
+}
+
 function startMaul(w, a, v, b) {
   const P = SPECIES.get(a.species).predator;
   for (const m of packOf(w, a)) m.calmUntil = w.tick + P.calm * (1 - 0.5 * b);   // one try at a time
-  for (const m of packOf(w, a)) if ((m === a || dist(m, a) < 12) && m.task?.id !== 'feed') m.task = {id: 'maul', target: v};
+  const join = packOf(w, a).filter(m => (m === a || dist(m, a) < 12) && m.task?.id !== 'feed');
+  const h = startHunt(w, join, v, 'person');
+  for (const m of join) m.task = {id: 'maul', target: v, hunt: h.id};
   w.stats.wolfAttacks++;
   const sp = SPECIES.get(a.species), many = packOf(w, a).length > 1, who = many ? sp.plural : sp.label;
   think(w, v, 'wolfAttack', {who: sp.plural});
@@ -85,35 +120,38 @@ export const predatorBrain = {
 
     const t = a.task;
     if (t?.id === 'feed') {
-      a.needs.food = Math.min(1, a.needs.food + t.gain); recover(a);
-      if (--t.left <= 0) a.task = null;
+      recover(a);
+      if (t.left != null) { a.needs.food = Math.min(1, a.needs.food + t.gain); if (--t.left <= 0) a.task = null; return; }   // a meal from before carcasses
+      const c = carcassById(w, t.c);
+      if (!c || c.food < 0.05 || a.needs.food >= 0.98) { a.task = null; return; }
+      if (dist(a, c) > CARCASS.eatAt) { if (approach(w, a, c.x, c.y, 0.8) === null) a.task = null; return; }
+      if (!eat(w, a, c, P.meal / P.feedTicks)) a.task = null;
       return;
     }
     if (t?.id === 'chase') {
-      const prey = t.target;
+      const prey = t.target, h = huntOf(w, a);
+      if (!h || !prey || prey.dead || !w.agents.includes(prey)) { a.task = {id: 'roam'}; return; }
       if (a.stamina <= 0.05) { a.task = {id: 'rest'}; return; }   // out of breath: lie down before the next try
-      if (!prey || prey.dead || !w.agents.includes(prey) || dist(a, prey) > P.sight * 1.3 || agentInZone(w, prey)) { a.task = {id: 'roam'}; return; }
-      // the wolf itself is not getting anywhere (water or rocks in between): give this one up for half a day
-      if (!t.anchor || dist(a, t.anchor) > 3) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
-      if (w.tick - t.since > 90) { (a.ignore || (a.ignore = new Map())).set(prey.id, w.tick + 600); a.task = {id: 'roam'}; return; }
-      if (approach(w, a, prey.x, prey.y, sprintMul(a, P.sprint, P.stamina)) === null) { (a.ignore || (a.ignore = new Map())).set(prey.id, w.tick + 600); a.task = {id: 'roam'}; return; }
+      const [tx, ty, sprint] = huntAim(w, a, h, prey);
+      // the lead itself is not getting anywhere (water or rocks in between): the pack gives this one up for half a day
+      if (h.roles[a.id] === 'lead') {
+        if (!t.anchor || dist(a, t.anchor) > 3) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
+        if (w.tick - t.since > 90 || approach(w, a, tx, ty, sprintMul(a, P.sprint, P.stamina)) === null) {
+          for (const m of pack) (m.ignore || (m.ignore = new Map())).set(prey.id, w.tick + 600);
+          endHunt(w, h, 'unreachable'); return;
+        }
+      } else if (approach(w, a, tx, ty, sprint ? sprintMul(a, P.sprint, P.stamina) : 0.75) === null) { a.task = {id: 'rest'}; return; }
       // big game is not caught with one bite: the pack bites it down while it kicks back
       if (SP.get(prey.species).big) {
         if (dist(a, prey) < 1.0) {
           attack(w, a, prey);
-          if (prey.dead) {
-            w.stats.wolfKills++;
-            const eaters = pack.filter(m => dist(m, a) < 10);
-            for (const m of eaters) m.task = {id: 'feed', left: P.feedTicks * 2, gain: P.bigMeal / eaters.length / (P.feedTicks * 2)};
-          }
+          if (prey.dead) { w.stats.wolfKills++; endHunt(w, h, 'kill'); toTheKill(w, a, prey, P.bigMeal, pack); }
         }
         return;
       }
       if (dist(a, prey) < 0.7) {
         kill(w, prey, 'зубов', a); w.stats.wolfKills++;
-        // the pack shares the kill: everyone close enough gets a part of the meal
-        const eaters = pack.filter(m => m === a || dist(m, a) < 8);
-        for (const m of eaters) m.task = {id: 'feed', left: P.feedTicks, gain: P.meal / eaters.length / P.feedTicks};
+        endHunt(w, h, 'kill'); toTheKill(w, a, prey, P.meal, pack);
       }
       return;
     }
@@ -122,6 +160,8 @@ export const predatorBrain = {
       if (a.stamina <= 0.05) { a.task = {id: 'rest'}; return; }
       // help arrived or the victim reached the settlement: back off for a while (shorter when starving)
       if (!v || v.dead || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
+        const h = huntOf(w, a);
+        if (h) endHunt(w, h, !v || v.dead ? 'taken' : agentInZone(w, v) ? 'zone' : 'help');
         if (v && !v.dead && t.target === v) think(w, v, 'escapedWolves', {who: sp.plural});
         if (v && !v.dead) for (const m of pack) { m.calmUntil = w.tick + P.calm * (1 - 0.7 * b); if (m.task?.id === 'maul') m.task = {id: 'roam'}; }
         else if (t) a.task = {id: 'roam'};
@@ -129,15 +169,15 @@ export const predatorBrain = {
       }
       // cannot get at the victim (water in between): give up for now
       if (!t.anchor || dist(a, t.anchor) > 3 || dist(a, v) < 1.5) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
-      if (w.tick - t.since > 120) { a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; return; }
+      if (w.tick - t.since > 120) { endHunt(w, huntOf(w, a), 'unreachable'); a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; return; }
       // too far to bite: close in and nothing more this tick
       if (dist(a, v) > 0.9) {
-        if (approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) { a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; }
+        if (approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) { endHunt(w, huntOf(w, a), 'unreachable'); a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; }
         return;
       }
       {
         attack(w, a, v);
-        if (v.dead) { const eaters = pack.filter(m => dist(m, a) < 10); for (const m of eaters) m.task = {id: 'feed', left: P.feedTicks * 2, gain: P.bigMeal / eaters.length / (P.feedTicks * 2)}; }
+        if (v.dead) { endHunt(w, huntOf(w, a), 'kill'); const c = toTheKill(w, a, v, P.bigMeal, pack); c.yields = {}; }
       }
       return;
     }
@@ -146,14 +186,27 @@ export const predatorBrain = {
     if (t?.id === 'rest') { recover(a); recover(a); if (a.stamina < 0.7) return; a.task = null; }
 
     // the pack hunts together: join the leader's chase
-    if (leader !== a && leader?.task?.id === 'chase' && food < P.sated && !(a.ignore?.get(leader.task.target?.id) > w.tick)) { a.task = {id: 'chase', target: leader.task.target}; return; }
-    if (leader !== a && leader?.task?.id === 'maul') { a.task = {id: 'maul', target: leader.task.target}; return; }
+    // the pack hunts together: join the hunt under way (agents/carcass.js), a fresh one in the lead's role list
+    const lh = leader !== a ? huntOf(w, leader) : null;
+    if (lh && leader.task?.id === 'chase' && food < P.sated && !(a.ignore?.get(lh.prey) > w.tick)) {
+      if (!lh.members.includes(a.id)) lh.members.push(a.id);
+      a.hunt = lh.id; a.task = {id: 'chase', target: leader.task.target}; return;
+    }
+    if (lh && leader.task?.id === 'maul') { if (!lh.members.includes(a.id)) lh.members.push(a.id); a.hunt = lh.id; a.task = {id: 'maul', target: leader.task.target}; return; }
+    // a carcass it knows of: back to it while hungry (a scavenger takes anyone's)
+    if (food < P.sated - 0.1 && !(w.tick < (a.calmUntil || 0) && a.task?.id === 'bolt')) { const c = smellCarcass(w, a); if (c) { a.task = {id: 'feed', c: c.id}; return; } }
 
     // prey that runs right under its nose is too good to pass up; a hungry wolf looks further
     const reach = food < P.hungry ? P.sight : food < P.sated ? P.obvious : 0;
     if (reach) {
-      const prey = nearest(w, a, preyKinds(P), reach, o => weakEnough(o, P) && !agentInZone(w, o) && !(a.ignore?.get(o.id) > w.tick));
-      if (prey) { a.task = {id: 'chase', target: prey}; return; }
+      // those free to run: not already on a hunt, not eating, not out of breath
+      const near = pack.filter(m => !huntOf(w, m) && m.stamina >= 0.6 && (m === a || (dist(m, a) < 15 && m.task?.id !== 'feed' && m.needs.food < P.sated)));
+      const prey = bestPrey(w, a, P, reach, near.length);
+      if (prey && near.includes(a)) {
+        const h = startHunt(w, near, prey, 'game');
+        for (const m of near) { m.hunt = h.id; m.task = {id: 'chase', target: prey}; }
+        return;
+      }
     }
     // people: only when boldness (plus the cover of night) is high enough
     if (w.tick > (a.calmUntil || 0) && b + night * 0.25 >= P.boldPeople) {
@@ -162,7 +215,7 @@ export const predatorBrain = {
       if (v) { startMaul(w, a, v, b); return; }
     }
     // starving with no prey in sight: the pack may move on to other hunting grounds
-    if (leader === a && b > 0.85 && !nearest(w, a, P.prey, P.sight) && w.rng() < P.wanderOff) {
+    if (leader === a && b > 0.85 && !nearest(w, a, P.prey, P.sight) && w.rngs.wild() < P.wanderOff) {
       for (const m of pack) m.task = {id: 'leave'};
       log(w, `Голодные ${sp.plural || sp.label} ушли искать другие угодья.`, 'wildlife');
       return;
@@ -193,7 +246,7 @@ export const predatorBrain = {
     if (r.spot && d < r.bestD - 0.5) { r.bestD = d; r.since = w.tick; }
     if (!r.spot || d < 1.5 || w.tick - (r.since || 0) > 120) {
       for (let k = 0; k < 20; k++) {
-        const x = 2 + w.rng() * (w.w - 4), y = 2 + w.rng() * (w.h - 4);
+        const x = 2 + w.rngs.wild() * (w.w - 4), y = 2 + w.rngs.wild() * (w.h - 4);
         const j = (y | 0) * w.w + (x | 0);
         if (!walkable(w, j) || w.nav.get('zone')[j] < P.zoneShyNight + 6 || !sameLand(w, a, j)) continue;
         r.spot = [x, y]; r.bestD = Infinity; r.since = w.tick; break;

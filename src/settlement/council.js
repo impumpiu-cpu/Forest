@@ -59,7 +59,7 @@ function motive(w, a, def, ctx, noise = true) {
   const args = def.motive ? def.motive(a, ctx) : [];
   let best = [0, ''];
   for (const o of args) if (o[0] > best[0]) best = o;
-  const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rng() * 0.25 : 0);
+  const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rngs.colony() * 0.25 : 0);
   return [score, best[0] > 0.05 ? best[1] : def.wish];
 }
 

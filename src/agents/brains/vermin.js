@@ -2,13 +2,15 @@
 // and waits there while anyone is awake by the stores; when the camp is quiet (mostly at night, while
 // people sleep) it sneaks in and nibbles the food lying in the open. Someone coming close sends it back
 // to its hole; a colonist who gets right next to one may kill it. Pots and a granary keep food out of
-// their reach (settlement/stock.js exposedFood). A kikimora comes only by night (`spoils`).
+// their reach (settlement/stock.js exposedFood). A kikimora comes only by night (`spoils`), and goes
+// for a carcass in the woods first.
 import {SPECIES} from '../../data/species.js';
 import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
 import {T} from '../../data/terrain.js';
 import {follow, bolt, nearFire, escapeHeat, approach, sameLand} from '../movement.js';
 import {kill} from '../agent.js';
 import {nibble} from '../../settlement/stock.js';
+import {smellCarcass} from '../carcass.js';
 import {log} from '../../core/log.js';
 import {nightness} from '../../core/time.js';
 import {esc, g} from '../../core/util.js';
@@ -26,12 +28,12 @@ function denOf(w, a) {
   if (a.den) return a.den;
   let best = null, bv = -Infinity;
   for (let k = 0; k < 40; k++) {
-    const ang = w.rng() * Math.PI * 2, r = VERMIN.den[0] + w.rng() * (VERMIN.den[1] - VERMIN.den[0]);
+    const ang = w.rngs.wild() * Math.PI * 2, r = VERMIN.den[0] + w.rngs.wild() * (VERMIN.den[1] - VERMIN.den[0]);
     const x = w.camp.x + 0.5 + Math.cos(ang) * r, y = w.camp.y + 0.5 + Math.sin(ang) * r;
     if (!inMap(w, x, y)) continue;
     const i = (y | 0) * w.w + (x | 0);
     if (!walkable(w, i) || !sameLand(w, a, i)) continue;
-    const v = (w.grid.terr[i] === T.FOREST || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rng() * 0.5;
+    const v = (w.grid.terr[i] === T.FOREST || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rngs.wild() * 0.5;
     if (v > bv) { bv = v; best = [x, y]; }
   }
   return (a.den = best || [w.camp.x + 0.5 + VERMIN.den[0], w.camp.y + 0.5]);
@@ -47,9 +49,9 @@ export const verminBrain = {
     let near = null;
     for (const o of w.agents) if (o.faction === 'colony' && !o.dead && !o.sleeping && dist(o, a) < V.flee) { near = o; break; }
     if (near) {
-      if (dist(near, a) < 0.8 && w.rng() < V.caught) {
+      if (dist(near, a) < 0.8 && w.rngs.wild() < V.caught) {
         kill(w, a, 'палки', near);
-        if (!sp.resident && w.rng() < 0.3) log(w, `<b>${esc(near.name)}</b> ${g(near, 'прибил', 'прибила')} ${sp.labelAcc || sp.label} у припасов.`, 'wildlife');
+        if (!sp.resident && w.rngs.wild() < 0.3) log(w, `<b>${esc(near.name)}</b> ${g(near, 'прибил', 'прибила')} ${sp.labelAcc || sp.label} у припасов.`, 'wildlife');
         return;
       }
       a.task = {id: 'bolt'}; a.waited = w.tick; bolt(w, a, [near], 1.3); return;
@@ -71,6 +73,16 @@ export const verminBrain = {
         return;
       }
       a.task = {id: 'nibble'};
+    }
+    // a kikimora would rather spoil a carcass in the woods than risk the camp: she hastens its rot
+    // (agents/carcass.js: an old carcass in the dark may raise an upyr)
+    if (V.spoils) {
+      const c = smellCarcass(w, a, 25);
+      if (c) {
+        if (dist(a, c) > 0.9) { if (approach(w, a, c.x, c.y, 0.9) === null) a.task = {id: 'hide'}; }
+        else { c.food = Math.max(0, c.food - 0.003); c.t -= 4; }
+        return;
+      }
     }
     if (follow(w, a, 'camp') === 'arrived') {
       a.task.at ??= w.tick;

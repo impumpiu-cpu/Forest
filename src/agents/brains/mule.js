@@ -39,21 +39,21 @@ function kick(w, a, t, M, charging) {
   if (a.cd > 0) return;
   const atk = SPECIES.get(a.species).attack;
   a.cd = atk.cooldown; a.flash = 4;
-  damage(w, a, t, (0.1 + w.rng() * 0.12) * atk.power * (charging ? M.chargeHit : 1));
+  damage(w, a, t, (0.1 + w.rngs.wild() * 0.12) * atk.power * (charging ? M.chargeHit : 1));
 }
 
 function graze(w, a, sp) {
   const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});
-  if (!t.spot || w.rng() < 0.006) {
+  if (!t.spot || w.rngs.wild() < 0.006) {
     const ok = new Set((sp.mule?.terrain || ['grass']).map(id => TERRAIN.get(id).code));
-    const reach = w.rng() < 0.1 ? 24 : 6;
+    const reach = w.rngs.wild() < 0.1 ? 24 : 6;
     let bestV = -Infinity;
     for (let k = 0; k < 10; k++) {
-      const x = a.x + (w.rng() * 2 - 1) * reach, y = a.y + (w.rng() * 2 - 1) * reach;
+      const x = a.x + (w.rngs.wild() * 2 - 1) * reach, y = a.y + (w.rngs.wild() * 2 - 1) * reach;
       if (!inMap(w, x, y)) continue;
       const j = (y | 0) * w.w + (x | 0);
       if (!walkable(w, j) || !ok.has(w.grid.terr[j]) || w.zone[j] || !sameLand(w, a, j)) continue;   // keeps off the settlement
-      const v = w.grid.fert[j] + Math.min(8, x, y, w.w - x, w.h - y) * 0.1 + w.rng() * 0.3;
+      const v = w.grid.fert[j] + Math.min(8, x, y, w.w - x, w.h - y) * 0.1 + w.rngs.wild() * 0.3;
       if (v > bestV) { bestV = v; t.spot = [x, y]; }
     }
   }
@@ -98,7 +98,7 @@ export const muleBrain = {
     }
 
     // a bear goes to its den for the winter
-    if (a.task?.id === 'leave' || w.rng() < M.leaveChance || (sp.hibernates && season(w).id === 'winter')) {
+    if (a.task?.id === 'leave' || w.rngs.wild() < M.leaveChance || (sp.hibernates && season(w).id === 'winter')) {
       a.task = {id: 'leave'};
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;
       return;

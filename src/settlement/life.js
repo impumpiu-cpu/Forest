@@ -155,7 +155,7 @@ function evening(w) {
     const b = brewOf(a);
     if (b) a.needs.food = Math.min(1, (a.needs.food ?? 1) + b.food);
     think(w, a, feast ? 'feast' : b ? 'beerFed' : 'drank');
-    if (w.rng() < LIFE.hangover) think(w, a, 'hangover');
+    if (w.rngs.colony() < LIFE.hangover) think(w, a, 'hangover');
   }
   w.chronicle.cups = (w.chronicle.cups || 0) + n; if (feast) w.chronicle.feasts = (w.chronicle.feasts || 0) + 1;
   if (feast) log(w, `Вечером пировали: браги хватило на всех (${n}).`, 'people');
@@ -168,8 +168,8 @@ function dawn(w) {
     if (brewOf(a) && brewFactor(w, a) < 1) think(w, a, 'sober');
     const m = moodOf(w, a);
     a.gloom = m < LIFE.gloomBelow ? (a.gloom || 0) + 1 : 0;
-    if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rng() < LIFE.leaveChance) { leave(w, a); continue; }
-    if (a.gloom >= LIFE.sulkFrom && w.rng() < LIFE.sulkChance) {
+    if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rngs.colony() < LIFE.leaveChance) { leave(w, a); continue; }
+    if (a.gloom >= LIFE.sulkFrom && w.rngs.colony() < LIFE.sulkChance) {
       a.task = {id: 'sulk', until: w.tick + 3 * HOUR}; think(w, a, 'sulking'); w.chronicle.sulks = (w.chronicle.sulks || 0) + 1;
       log(w, `<b>${esc(a.name)}</b> ${g(a, 'хандрит', 'хандрит')}: бросает работу и бродит по лагерю.`, 'people');
     }

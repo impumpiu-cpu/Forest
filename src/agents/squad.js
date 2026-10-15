@@ -82,12 +82,12 @@ export function createSquad(w, group) {
   // the dead (even with their necromancer behind) have no plan but the living and no morale to break
   const dead = group.filter(a => SPECIES.get(a.species).mindless).length;
   const kind = dead * 2 > group.length ? 'mindless' : 'living';
-  let goal = kind === 'mindless' ? 'slaughter' : weighted(w.rng, (band.goals ? band.goals(w, group) : [['loot', 1]]).filter(([, v]) => v > 0)) || 'loot';
+  let goal = kind === 'mindless' ? 'slaughter' : weighted(w.rngs.outside, (band.goals ? band.goals(w, group) : [['loot', 1]]).filter(([, v]) => v > 0)) || 'loot';
   let target = null, why = null;
   const tipped = goal !== 'scout' && w.scouted?.[band.id] != null;
   if (tipped) delete w.scouted[band.id];
   if (goal === 'kill') { const v = pickVictim(w); if (v) { target = v.who.id; why = v.why; } else goal = 'loot'; }
-  if (goal === 'burn') { const bs = wooden(w); if (bs.length) target = bs[Math.floor(w.rng() * bs.length)].id; else goal = 'loot'; }
+  if (goal === 'burn') { const bs = wooden(w); if (bs.length) target = bs[Math.floor(w.rngs.outside() * bs.length)].id; else goal = 'loot'; }
   // the leader: the necromancer or the vampire if there is one, otherwise the strongest who is no beast
   const people = group.filter(a => !a.warBeast);
   const leader = group.find(a => a.role === 'necromancer' || a.species === 'vampire') || people.sort((x, y) => strength(y) - strength(x))[0] || group[0];
@@ -198,7 +198,7 @@ export function stepSquads(w) {
       else if (!looters.length && ms.some(m => m.looted)) setState(w, sq, 'withdraw', GOALS.loot.done);
     } else if (g === 'kill') {
       if (sq.targetDown) setState(w, sq, 'withdraw', GOALS.kill.done);
-      else if (!w.agents.some(o => o.id === sq.target)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'front' && !m.looted && w.rng() < SQUAD.looters) m.sqRole = 'looter'; }
+      else if (!w.agents.some(o => o.id === sq.target)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'front' && !m.looted && w.rngs.outside() < SQUAD.looters) m.sqRole = 'looter'; }
     } else if (g === 'burn') {
       if (sq.lit != null && w.tick - sq.lit > SQUAD.burnFor) setState(w, sq, 'withdraw', GOALS.burn.done);
       else if (sq.lit == null && !w.buildings.some(b => b.id === sq.target && b.done)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'torch') m.sqRole = 'looter'; }

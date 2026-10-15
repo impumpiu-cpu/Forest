@@ -75,6 +75,11 @@ METRICS.registerAll([
   {id: 'squadsGoal', label: 'Отрядов ушло, добившись цели', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.goal || 0},
   {id: 'squadsRetreat', label: 'Отрядов отступило (сломлен дух)', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.retreat || 0},
   {id: 'squadsWiped', label: 'Отрядов разбито наголову', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.wiped || 0},
+  // pack hunts and carcasses (agents/carcass.js)
+  {id: 'packHunts', label: 'Охот стаей за день', group: 'Поведение', fmt: 2, get: w => (w.behave?.ticks ? (w.behave.hunts?.started || 0) / (w.behave.ticks / DAY / Math.max(1, colonists(w).length)) : 0)},
+  {id: 'packHuntKill', label: 'Охот стаей удачных, %', group: 'Поведение', fmt: 0, get: w => { const h = w.behave?.hunts || {}, n = Object.entries(h).filter(([k]) => !['started', 'upyr'].includes(k)).reduce((s, [, v]) => s + v, 0); return n ? (h.kill || 0) / n * 100 : 0; }},
+  {id: 'carcasses', label: 'Туш на земле', group: 'Поведение', fmt: 0, get: w => (w.carcasses || []).length},
+  {id: 'carcassUpyrs', label: 'Упырей поднялось из туш', group: 'Поведение', fmt: 0, get: w => w.behave?.hunts?.upyr || 0},
   // doing things together (settlement/together.js)
   {id: 'company', label: 'Сопровождают в лесу, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'company')},
   {id: 'escorts', label: 'Сопровождений на человека в день', group: 'Поведение', fmt: 2, get: w => (w.behave?.ticks ? (w.behave.social?.escort || 0) / (w.behave.ticks / DAY) : 0)},

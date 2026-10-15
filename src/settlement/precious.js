@@ -28,9 +28,9 @@ export const PRECIOUS = {
 };
 
 export function maybeGoldVein(w, at, by) {
-  if (!region(w).goldVein || w.goldVein || w.rng() >= PRECIOUS.veinChance) return;
+  if (!region(w).goldVein || w.goldVein || w.rngs.colony() >= PRECIOUS.veinChance) return;
   const o = ORES.get('goldvein'), g0 = w.grid, x0 = at % w.w, y0 = (at / w.w) | 0;
-  const want = PRECIOUS.veinCells[0] + Math.floor(w.rng() * (PRECIOUS.veinCells[1] - PRECIOUS.veinCells[0] + 1));
+  const want = PRECIOUS.veinCells[0] + Math.floor(w.rngs.colony() * (PRECIOUS.veinCells[1] - PRECIOUS.veinCells[0] + 1));
   let placed = 0;
   for (let rad = 1; rad <= 3 && placed < want; rad++) for (let yy = -rad; yy <= rad && placed < want; yy++) for (let xx = -rad; xx <= rad && placed < want; xx++) {
     if (Math.max(Math.abs(xx), Math.abs(yy)) !== rad) continue;   // the ring at this distance
@@ -38,7 +38,7 @@ export function maybeGoldVein(w, at, by) {
     if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
     const j = y * w.w + x;
     if (g0.terr[j] !== T.ROCK || g0.ore[j]) continue;
-    g0.ore[j] = o.code; g0.oreLeft[j] = o.vein.amount[0] + Math.floor(w.rng() * (o.vein.amount[1] - o.vein.amount[0] + 1)); placed++;
+    g0.ore[j] = o.code; g0.oreLeft[j] = o.vein.amount[0] + Math.floor(w.rngs.colony() * (o.vein.amount[1] - o.vein.amount[0] + 1)); placed++;
   }
   if (!placed) return;
   w.goldVein = {tick: w.tick, cells: placed};

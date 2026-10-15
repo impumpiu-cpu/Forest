@@ -91,7 +91,7 @@ export const traderOf = (w, c = w.caravan) => (c ? w.agents.find(o => o.id === c
 
 // called by the migration when the group reaches the map edge (data/migrations.js 'caravan')
 export function startCaravan(w, group) {
-  const rng = w.rng, id = w.tick;
+  const rng = w.rngs.outside, id = w.tick;
   const trader = group.find(a => a.role === 'trader'), mules = group.filter(a => a.species === 'mule');
   const cap = TRADE.crates * TRADE.crate;
   let units = 0;

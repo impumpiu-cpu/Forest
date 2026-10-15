@@ -1,5 +1,6 @@
 // Canvas renderer. Every field is painted into its own offscreen canvas at 1 px per cell and
 // scaled up: terrain crisp, fields smooth. Fire is added with 'lighter' for a glow; night darkens.
+import {CARCASS} from '../agents/carcass.js';
 import {hpShare} from '../agents/agent.js';
 import {BY_CODE, T, WALKABLE} from '../data/terrain.js';
 import {SPECIES} from '../data/species.js';
@@ -338,6 +339,12 @@ export class Renderer {
       ctx.fillStyle = 'rgba(90,70,48,0.85)'; ctx.beginPath(); ctx.ellipse(gx + S / 2, gy + S * 0.65, S * 0.35, S * 0.22, 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = gr.rite ? '#2a1d10' : '#5a4630'; ctx.lineWidth = Math.max(1.2, S * 0.12); ctx.beginPath();
       ctx.moveTo(gx + S / 2, gy + S * 0.15); ctx.lineTo(gx + S / 2, gy + S * 0.6); ctx.moveTo(gx + S * 0.32, gy + S * 0.3); ctx.lineTo(gx + S * 0.68, gy + S * 0.3); ctx.stroke();
+    }
+    // carcasses (agents/carcass.js): a dark red shape, fading as it is eaten; greenish once it rots
+    for (const c of w.carcasses || []) {
+      const rot = w.tick - c.t > CARCASS.rotFrom ? 1 : 0, k = 0.4 + 0.6 * Math.min(1, c.food / (c.food0 || 1));
+      ctx.fillStyle = rot ? 'rgba(96,110,60,0.85)' : `rgba(120,32,28,${0.45 + 0.4 * k})`; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.ellipse(c.x * S, c.y * S, Math.max(2.4, S * 0.38 * k), Math.max(1.4, S * 0.2), -0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
     for (const c of w.corpses || []) {
       ctx.fillStyle = 'rgba(150,150,150,0.85)'; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;

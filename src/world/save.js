@@ -10,7 +10,7 @@ import {BASE_MODS} from '../data/traits.js';
 import {encode, decode} from '../core/serialize.js';
 import {Registry} from '../core/registry.js';
 import * as PRESETS from '../data/presets.js';
-import {mulberry} from '../core/rng.js';
+import {mulberry, newStreams, streamStates, restoreStreams} from '../core/rng.js';
 import {Navigation} from '../nav/navigation.js';
 import {newMemory} from '../agents/agent.js';
 import {VERSION} from '../version.js';
@@ -24,10 +24,13 @@ import {RESOURCES} from '../data/resources.js';
 import {drawFoodPrefs} from '../data/foods.js';
 import {JOBS} from '../data/jobs.js';
 
-export const SAVE_FORMAT = 1;
+// 2: random streams by subsystem (core/rng.js). A format-1 save (one stream) still loads: its streams
+// are seeded from the game's seed and the saved position of the old stream, the same every time.
+export const SAVE_FORMAT = 2;
+const FORMATS = [1, 2];
 
 // world keys that are rebuilt rather than saved
-const LIVE = new Set(['nav', 'rng', 'astar', 'perf', 'scratch']);
+const LIVE = new Set(['nav', 'rng', 'rngs', 'astar', 'perf', 'scratch']);
 
 // definitions and presets are referenced by name, never copied into the save
 function externals() {
@@ -44,11 +47,11 @@ export function saveWorld(w) {
   const nav = w.nav;
   const tree = encode({world: w, nav: {dist: nav.dist, dirty: [...nav.dirtySet], last: nav.last}},
     {externals: externals(), skip: (path, k) => path === 'world.world' && LIVE.has(k)});
-  return {format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, tree};
+  return {format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, rngs: streamStates(w.rngs), tree};
 }
 
 export function loadWorld(save) {
-  if (!save || save.format !== SAVE_FORMAT) throw new Error('Это не сохранение «Тёплого Брода» или оно из несовместимой версии.');
+  if (!save || !FORMATS.includes(save.format)) throw new Error('Это не сохранение «Тёплого Брода» или оно из несовместимой версии.');
   const {world: w, nav} = decode(save.tree, {externals: externals()});
   ensureRegion(w);
   ensureOre(w);
@@ -58,6 +61,9 @@ export function loadWorld(save) {
   w.behave ??= newBehaviour();
   w.behave.outcomes ??= {}; w.behave.company ??= 0;
   w.behave.squads ??= {started: 0, goal: 0, retreat: 0, wiped: 0};
+  w.behave.hunts ??= {started: 0};
+  // feeding from before carcasses goes on by the old timer (agents/brains/predator.js); chases without a pack hunt end
+  for (const a of w.agents) if (a.task?.id === 'chase' && a.hunt == null) a.task = {id: 'roam'};
   w.behave.social ??= {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0};
   // raiders from before squads (no w.squads, no a.squad) go on the old way: nearest foe, the stores, home
   // claims from before reservations (settlement/reserve.js) are simply dropped: the leases start empty
@@ -69,6 +75,7 @@ export function loadWorld(save) {
   if (w.stock.charcoal != null) { w.stock.coal = (w.stock.coal || 0) + w.stock.charcoal; delete w.stock.charcoal; }
   for (const r of RESOURCES.all()) w.stock[r.id] ??= 0;
   w.rng = mulberry(0); w.rng.state = save.rng;
+  w.rngs = save.rngs ? restoreStreams(save.rngs, w.cfg.seed) : newStreams(`${w.cfg.seed}:${save.rng}`);
   w.nav = new Navigation(w);
   for (const [id, d] of Object.entries(nav.dist)) if (w.nav.dist[id]) w.nav.dist[id].set(d);
   w.nav.dirtySet = new Set(nav.dirty);
@@ -102,7 +109,7 @@ export function loadWorld(save) {
 
 // a fingerprint of the full state: two worlds with the same hash are the same world
 export function worldHash(w) {
-  const s = JSON.stringify(saveWorld(w).tree);
+  const sv = saveWorld(w), s = JSON.stringify(sv.tree) + JSON.stringify(sv.rngs);
   let h1 = 0x811c9dc5, h2 = 0x01000193;
   for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 ^ c, 2246822519); }
   return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');

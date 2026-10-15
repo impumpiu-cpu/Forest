@@ -33,7 +33,7 @@ function mod(a, k, v) { a.mods[k] = ADD.has(k) ? (a.mods[k] ?? 0) + v : (a.mods[
 
 export function rollCreature(w, a, sp) {
   if (!sp.special) return;
-  const rng = w.rng;
+  const rng = w.rngs.birth;
   if (sp.peoples) a.people = weighted(rng, sp.peoples.map(p => [p, p.weight ?? 1])).id;
   const people = peopleOf(sp, a), lim = limits(sp, people);
   // the middle of the range is the most common; the ends are rare

@@ -15,6 +15,7 @@ import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
 import {stepSquads} from './agents/squad.js';
+import {stepHunts, stepCarcasses} from './agents/carcass.js';
 import {stepCouncil} from './settlement/council.js';
 import {stepTrade} from './settlement/trade.js';
 import {stepOutside, tell} from './outside/index.js';
@@ -35,7 +36,7 @@ export function newGame(cfg) {
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};
   const n = cfg.colonists;
   w.founding = true;
-  for (let k = 0; k < n; k++) createAgent(w, 'human', 'colony', w.camp.x + 0.5 + (w.rng() * 5 - 2.5), w.camp.y + 0.5 + (w.rng() * 5 - 2.5));
+  for (let k = 0; k < n; k++) createAgent(w, 'human', 'colony', w.camp.x + 0.5 + (w.rngs.birth() * 5 - 2.5), w.camp.y + 0.5 + (w.rngs.birth() * 5 - 2.5));
   // starting gear: clothes for some or all, the kit goes to the store and is handed out at once
   const st = STOCKS[cfg.stock];
   for (let k = 0; k < Math.round(n * st.clothes); k++) w.armory.push(newItem('clothes'));
@@ -71,6 +72,8 @@ export function step(w) {
   }
   w.agents = w.agents.filter(a => !a.dead && !a.gone);
   stepSquads(w);
+  stepHunts(w);
+  stepCarcasses(w);
   separate(w);
   if (w.fx.length) { for (const f of w.fx) f.t--; w.fx = w.fx.filter(f => f.t > 0); }   // shot traces fade
   stepCouncil(w);

@@ -13,6 +13,8 @@
 //                that ended before any reaction
 //   squads     — raider bands (agents/squad.js): started, and how they ended: goal (reached it and
 //                went), retreat (morale broke), wiped (none left alive)
+//   hunts      — pack hunts of predators (agents/carcass.js): started, and how they ended by outcome
+//                (kill, escaped, zone, unreachable, tired, help, gave, taken); upyr — risen from carcasses
 //   social     — joint actions of colonists (settlement/together.js): escort, aid, yield (a bed given
 //                up for someone worse off), calm (a quarrel put off because of danger), bond (shared
 //                trouble that mended a grudge)
@@ -23,7 +25,7 @@ import {walkable} from '../world/grid.js';
 
 export const newBehaviour = () => ({ticks: 0, idle: 0, muster: 0, company: 0, switches: 0, stops: 0, outcomes: {}, noPath: 0,
   react: {sum: 0, n: 0, missed: 0}, invalid: 0, invalidWhat: {},
-  squads: {started: 0, goal: 0, retreat: 0, wiped: 0}, social: {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0}});
+  squads: {started: 0, goal: 0, retreat: 0, wiped: 0}, hunts: {started: 0}, social: {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0}});
 
 const REACT = new Set(['fight', 'runHome', 'flee']);
 const THINK = 15;   // a colonist thinks again at least this often (agents/brains/colonist.js)

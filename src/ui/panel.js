@@ -51,6 +51,7 @@ import {VALUES, axisWord} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
 import {squadText} from '../agents/squad.js';
+import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
@@ -479,6 +480,9 @@ export class Panel {
     const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
     const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
     if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+    const h = huntOf(w, a);
+    if (h) { const prey = w.agents.find(o => o.id === h.prey); rows.push(`<dt>Охота</dt><dd>стаей на ${prey ? (SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label) : '—'}${prey?.name && prey.faction === 'colony' ? ` (${esc(prey.name)})` : ''}: ${ROLE_LABEL[h.roles[a.id]] || 'в погоне'}; ${h.members.length} в стае; ${w.tick - h.seen.t < 5 ? 'добыча на виду' : `из виду ${w.tick - h.seen.t} ${plural(w.tick - h.seen.t, 'тик', 'тика', 'тиков')}`}</dd>`); }
+    if (a.task?.id === 'feed' && a.task.c != null) { const c = carcassById(w, a.task.c); if (c) rows.push(`<dt>Туша</dt><dd>${SPECIES.get(c.species).label}: осталось ${Math.round(c.food / c.food0 * 100)}%</dd>`); }
     const sq = squadText(w, a);
     if (sq) rows.push(`<dt>Отряд</dt><dd>${esc(sq)}</dd>`);
     if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);

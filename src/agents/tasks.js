@@ -32,8 +32,8 @@ const fail = (w, a, why, outcome = 'blocked') => endTask(w, a, outcome, why);
 
 // wander a little inside the camp so people don't stand in one spot
 function mill(w, a, task, radius = 1.2) {
-  if (!task.spot || w.rng() < 0.02) {
-    const ang = w.rng() * Math.PI * 2, r = w.rng() * radius;
+  if (!task.spot || w.rngs.colony() < 0.02) {
+    const ang = w.rngs.colony() * Math.PI * 2, r = w.rngs.colony() * radius;
     task.spot = [w.camp.x + 0.5 + Math.cos(ang) * r, w.camp.y + 0.5 + Math.sin(ang) * r];
   }
   moveToward(w, a, task.spot[0], task.spot[1], 0.5);
@@ -84,7 +84,7 @@ TASKS.registerAll([
     if (!councilDue(w)) { done(w, a); return; }
     if (follow(w, a, 'camp') !== 'arrived') return;
     task.seated = true;
-    if (!task.spot) { const ang = w.rng() * Math.PI * 2; task.spot = [w.camp.x + 0.5 + Math.cos(ang) * 1.6, w.camp.y + 0.5 + Math.sin(ang) * 1.6]; }
+    if (!task.spot) { const ang = w.rngs.colony() * Math.PI * 2; task.spot = [w.camp.x + 0.5 + Math.cos(ang) * 1.6, w.camp.y + 0.5 + Math.sin(ang) * 1.6]; }
     moveToward(w, a, task.spot[0], task.spot[1], 0.5);
   }},
 
@@ -258,7 +258,7 @@ TASKS.registerAll([
       else if (approach(w, a, spot[0], spot[1]) === null) follow(w, a, 'camp');
       return;
     }
-    if (!task.spot || w.rng() < 0.02) { const ang = w.rng() * Math.PI * 2, r = 1.2 + w.rng() * 1.2; task.spot = [spot[0] + Math.cos(ang) * r, spot[1] + Math.sin(ang) * r]; }
+    if (!task.spot || w.rngs.colony() < 0.02) { const ang = w.rngs.colony() * Math.PI * 2, r = 1.2 + w.rngs.colony() * 1.2; task.spot = [spot[0] + Math.cos(ang) * r, spot[1] + Math.sin(ang) * r]; }
     moveToward(w, a, task.spot[0], task.spot[1], 0.5);
   }},
 
@@ -291,7 +291,7 @@ TASKS.registerAll([
   {id: 'astray', label: () => 'плутает в лесу', step(w, a, task) {
     if (w.tick >= task.until) { think(w, a, 'foundWay'); done(w, a); return; }
     if (!task.spot || moveToward(w, a, task.spot[0], task.spot[1], 0.6) !== false) {
-      const ang = w.rng() * Math.PI * 2;
+      const ang = w.rngs.colony() * Math.PI * 2;
       task.spot = [a.x + Math.cos(ang) * 3, a.y + Math.sin(ang) * 3];
     }
   }},

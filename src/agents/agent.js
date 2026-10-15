@@ -16,6 +16,7 @@ import {addCorpse} from '../settlement/life.js';
 import {rollCreature} from './special.js';
 import {releaseAll} from '../settlement/reserve.js';
 import {noteFallen} from './squad.js';
+import {noteHuntDeath} from './carcass.js';
 import {RESOURCES} from '../data/resources.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
@@ -25,7 +26,7 @@ const between = (rng, [a, b]) => a + rng() * (b - a);
 
 // liked and disliked work are drawn from preferable jobs; up to two traits from different groups
 function personality(w, a) {
-  const rng = w.rng, pool = shuffle(rng, JOBS.filter(j => j.preferable).map(j => j.id));
+  const rng = w.rngs.birth, pool = shuffle(rng, JOBS.filter(j => j.preferable).map(j => j.id));
   a.prefs = {}; a.skill = {};
   for (const id of JOBS.ids()) { a.prefs[id] = between(rng, NEUTRAL_RANGE); a.skill[id] = rng() * 0.15; }
   a.likes = pool[0]; a.dislikes = pool[1];
@@ -58,13 +59,13 @@ export function createAgent(w, speciesId, factionId, x, y) {
     id: w.nextId++, species: speciesId, faction: factionId, brain: sp.brain || fa.brain,
     name: sp.label, gender: 'm',
     x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(),
-    task: null, think: (w.rng() * 15) | 0, cd: 0, carry: null, sleeping: false,
+    task: null, think: (w.rngs.birth() * 15) | 0, cd: 0, carry: null, sleeping: false,
   };
   if (sp.names && factionId === 'colony') [a.name, a.gender] = freshName(w, sp.names);
   for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
   rollCreature(w, a, sp);
   a.stamina = 1;
-  for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rng, n.start); }
+  for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rngs.birth, n.start); }
   if (sp.sentient && factionId === 'colony') { personality(w, a); a.diary = []; enrol(w, a, w.founding); }
   if (sp.inventory) a.equip = emptySlots();
   recalcGear(a);
@@ -83,6 +84,7 @@ export function kill(w, a, cause, by) {
   a.dead = true; a.hp = 0;
   releaseAll(w, a);   // a bench, a bed, a body or a beast it held is free again
   noteFallen(w, a);   // a raider's band counts its losses (agents/squad.js)
+  noteHuntDeath(w, a);   // a pack hunting it stops (agents/carcass.js)
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
   if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }

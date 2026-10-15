@@ -38,7 +38,7 @@ export const livestockBrain = {
     const wolf = w.agents.find(o => !o.dead && (o.brain === 'predator' || o.faction === 'raiders') && Math.hypot(o.x - a.x, o.y - a.y) < 3);
     if (wolf) {
       if (sp.mule && Math.hypot(wolf.x - a.x, wolf.y - a.y) < sp.mule.kickRange && a.cd <= 0) {
-        a.cd = sp.attack.cooldown; a.flash = 4; damage(w, a, wolf, (0.1 + w.rng() * 0.12) * sp.attack.power);
+        a.cd = sp.attack.cooldown; a.flash = 4; damage(w, a, wolf, (0.1 + w.rngs.wild() * 0.12) * sp.attack.power);
       } else if (!sp.mule) { a.task = {id: 'bolt'}; bolt(w, a, [wolf], 1.3); return; }
     }
     recover(a);
@@ -48,7 +48,7 @@ export const livestockBrain = {
       // no pen yet: stay by the camp
       a.task = {id: 'graze'};
       if (w.nav.get('camp')[i] > 5) follow(w, a, 'camp', 0.8);
-      else if (w.rng() < 0.02) { const ang = w.rng() * 6.283; moveToward(w, a, w.camp.x + Math.cos(ang) * 4, w.camp.y + Math.sin(ang) * 4, 0.4); }
+      else if (w.rngs.wild() < 0.02) { const ang = w.rngs.wild() * 6.283; moveToward(w, a, w.camp.x + Math.cos(ang) * 4, w.camp.y + Math.sin(ang) * 4, 0.4); }
       return;
     }
     if (!inside(pen, a)) {
@@ -58,7 +58,7 @@ export const livestockBrain = {
     }
     if (nightness(w.tick) > 0.7) { a.task = {id: 'rest'}; return; }
     const t = a.task?.id === 'penned' ? a.task : (a.task = {id: 'penned'});
-    if (!t.spot || w.rng() < 0.008) t.spot = [pen.x + 0.3 + w.rng() * (pen.w - 0.6), pen.y + 0.3 + w.rng() * (pen.h - 0.6)];
+    if (!t.spot || w.rngs.wild() < 0.008) t.spot = [pen.x + 0.3 + w.rngs.wild() * (pen.w - 0.6), pen.y + 0.3 + w.rngs.wild() * (pen.h - 0.6)];
     if (Math.hypot(t.spot[0] - a.x, t.spot[1] - a.y) > 0.2) moveToward(w, a, t.spot[0], t.spot[1], 0.3);
   },
 };

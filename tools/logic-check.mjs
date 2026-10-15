@@ -1,6 +1,7 @@
 // Logic check: the rules every creature must keep, in small staged scenes (T01–T11 of the outside
 // review of the races branch; T12–T17 reservations and the task lifecycle; T18–T22 raider squads;
-// T23–T26 joint actions of colonists). Each scene builds a flat, empty map, places a few agents by hand and
+// T23–T26 joint actions of colonists;
+// T27–T31 carcasses and pack hunts). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -27,6 +28,9 @@ import {createSquad, stepSquads, planFor, ROLES} from '../src/agents/squad.js';
 import {kill} from '../src/agents/agent.js';
 import {outsideRisk, escortOption, aidOption, TOGETHER} from '../src/settlement/together.js';
 import {stepRelations, REL} from '../src/settlement/relations.js';
+import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS} from '../src/agents/carcass.js';
+import {DAY, nightness} from '../src/core/time.js';
+import {newItem, outfit} from '../src/agents/equipment.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -40,7 +44,8 @@ function scene(seed = 'logic') {
 }
 const put = (w, sp, fac, x, y) => { const a = createAgent(w, sp, fac, x, y); a.mods.dodge = 0; return a; };
 const brain = (w, a) => BRAINS.get(a.brain).step(w, a);
-const fixedRng = w => { w.rng = Object.assign(() => 0.5, {state: w.rng.state}); };
+// every random stream answers the same (core/rng.js)
+const fixedRng = (w, v = 0.5) => { w.rng = Object.assign(() => v, {state: 0}); for (const k of Object.keys(w.rngs)) w.rngs[k] = Object.assign(() => v, {state: 0}); };
 
 const results = [];
 function check(id, what, fn) {
@@ -340,7 +345,7 @@ check('T25', 'выздоравливающий уступает койку то�
 });
 
 check('T26', 'при опасности ссору откладывают', () => {
-  const w = scene(); w.rng = Object.assign(() => 0, {state: 0});
+  const w = scene(); fixedRng(w, 0);
   const a = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5), b = put(w, 'human', 'colony', w.camp.x + 1.5, w.camp.y + 0.5);
   a.grudge = {[b.id]: -4}; b.grudge = {[a.id]: -4};
   put(w, 'wolf', 'predators', w.camp.x + 6.5, w.camp.y + 0.5).pack = 1;
@@ -349,6 +354,68 @@ check('T26', 'при опасности ссору откладывают', () =
   stepRelations(w);
   if ((w.chronicle.quarrels || 0) !== q) return 'поссорились при волке у костра';
   return w.behave.social.calm > 0 || 'отложенная ссора не учтена';
+});
+
+// ── carcasses and pack hunts (agents/carcass.js)
+const wolves = (w, n, x, y) => Array.from({length: n}, (_, k) => { const o = put(w, 'wolf', 'predators', x + k * 0.8, y); o.pack = 7; o.stamina = 1; o.needs.food = 0.4; return o; });
+
+check('T27', 'добыча хищника остаётся на земле тушей, стая ест из неё', () => {
+  const w = scene(); fixedRng(w);
+  const [a, b] = wolves(w, 2, 20.5, 20.5), hare = put(w, 'hare', 'wild', 21.0, 20.5);
+  a.task = {id: 'chase', target: hare}; b.task = {id: 'chase', target: hare};
+  startHunt(w, [a, b], hare, 'game'); a.hunt = b.hunt = w.nextHunt;
+  for (let k = 0; k < 5 && !hare.dead; k++) brain(w, a);
+  if (!hare.dead) return 'заяц не пойман';
+  const c = w.carcasses?.[0];
+  if (!c || !(c.food > 0)) return 'туши нет';
+  if (a.task?.id !== 'feed' || a.task.c !== c.id) return `задача ${a.task?.id}`;
+  const f0 = c.food; for (let k = 0; k < 10; k++) brain(w, a);
+  return (c.food < f0 && w.behave.hunts.kill === 1) || `еда в туше ${f0} → ${c.food}, итог охоты ${JSON.stringify(w.behave.hunts)}`;
+});
+
+check('T28', 'прерванное кормление: голодный зверь возвращается к туше', () => {
+  const w = scene(); fixedRng(w);
+  const [a] = wolves(w, 1, 30.5, 30.5);
+  const c = dropCarcass(w, {species: 'deer', x: 36.5, y: 30.5}, 1.6, a);
+  a.task = {id: 'roam'}; a.needs.food = 0.3;
+  brain(w, a);
+  return (a.task?.id === 'feed' && a.task.c === c.id) || `задача ${a.task?.id}`;
+});
+
+check('T29', 'охотник отбивает тушу у сытых зверей и несёт мясо', () => {
+  const w = scene(); fixedRng(w);
+  const [a, b] = wolves(w, 2, 40.5, 30.5);
+  const c = dropCarcass(w, {species: 'deer', x: 40.5, y: 31.0}, 1.6, a);
+  for (const o of [a, b]) { o.task = {id: 'feed', c: c.id}; o.needs.food = 0.8; }
+  const h = put(w, 'human', 'colony', 37.5, 31.0);
+  w.armory.push(newItem('bow'), newItem('quiver')); outfit(w, h);
+  h.task = {id: 'job', job: 'hunt'};
+  for (let k = 0; k < 80 && !h.carry && h.task; k++) TASKS.get('job').step(w, h, h.task);
+  if (!h.carry && !h.task) return 'охотник бросил: ' + JSON.stringify(h.lastStop);
+  if (a.task?.id === 'feed' || b.task?.id === 'feed') return 'звери продолжают есть';
+  return (h.carry?.res.meat > 0 && !w.carcasses.includes(c)) || `груз ${JSON.stringify(h.carry)}`;
+});
+
+check('T30', 'стая охотится вместе: ведущий, загонщики сбоку, один итог', () => {
+  const w = scene(); fixedRng(w);
+  const ws = wolves(w, 3, 20.5, 20.5), deer = put(w, 'deer', 'wild', 30.5, 20.5);
+  const h = startHunt(w, ws, deer, 'game');
+  const roles = ws.map(m => h.roles[m.id]);
+  if (roles.filter(r => r === 'lead').length !== 1 || !roles.some(r => r?.startsWith('flank'))) return 'роли: ' + roles.join(',');
+  const f = ws.find(m => h.roles[m.id].startsWith('flank')), [tx, ty] = huntAim(w, f, h, deer);
+  if (Math.hypot(tx - deer.x, ty - deer.y) < 2) return 'загонщик бежит прямо на добычу';
+  kill(w, deer, 'ран'); w.agents = w.agents.filter(o => !o.dead);
+  stepHunts(w);
+  return (!w.hunts[h.id] && ws.every(m => m.hunt == null) && w.behave.hunts.taken === 1) || 'охота не закрылась одним итогом: ' + JSON.stringify({open: !!w.hunts[h.id], m: ws.map(m => m.hunt), b: w.behave.hunts});
+});
+
+check('T31', 'неубранная туша в темноте поднимает упыря', () => {
+  const w = scene(); fixedRng(w, 0);
+  const c = dropCarcass(w, {species: 'deer', x: 50.5, y: 30.5}, 1.6, null);
+  c.t = w.tick - CARCASS.rotFrom - 10;
+  while (!(nightness(w.tick) > 0.7 && w.tick % 60 === 0)) w.tick++;   // deep night, on a carcass check
+  stepCarcasses(w);
+  return w.agents.some(o => o.species === 'upyr') || 'упырь не поднялся';
 });
 
 let bad = 0;

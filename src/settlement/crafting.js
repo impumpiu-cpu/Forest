@@ -145,7 +145,7 @@ export function workAt(w, b, amount, a) {
     // a silvered blade carries the silver on the instance; with bellows a forged piece now and then comes out finer
     const extra = {};
     if (r.makes.silver) extra.silver = true;
-    if (bellows && w.rng() < FURNACE.bellowsFine) extra.q = 1;
+    if (bellows && w.rngs.colony() < FURNACE.bellowsFine) extra.q = 1;
     const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
     w.armory.push(it);
     w.armoryVersion = (w.armoryVersion || 0) + 1;

@@ -99,7 +99,7 @@ JOBS.registerAll([
     take: (w, i, a) => {
       const g = w.grid, j = oreBeside(w, i, wantedOre(w)); if (j < 0) return null;
       const o = oreOf(w, j), got = [o.resource];
-      for (const [r, ch] of Object.entries(o.also || {})) if (w.rng() < ch) got.push(r);   // native silver
+      for (const [r, ch] of Object.entries(o.also || {})) if (w.rngs.colony() < ch) got.push(r);   // native silver
       g.oreLeft[j] -= 1;
       // a worked-out vein leaves a passage in the rock: the face behind it opens up for digging,
       // and once in a long while a quartz vein with gold shows in it (settlement/precious.js)
@@ -209,9 +209,9 @@ for (const p of PLANTS.filter(x => x.job)) {
     valid: (w, i) => inSeason(w) && w.grid[key][i] >= p.ripe && w.grid.fire[i] === 0,
     take: (w, i, a) => {
       w.grid[key][i] -= p.take; if (w.grid[key][i] < p.ripe) w.nav.dirty(key);
-      if (J.hurt && a) { a.hp -= J.hurt * (0.5 + w.rng()); if (a.mem) a.mem.stung = (a.mem.stung || 0) + 0.2; }
+      if (J.hurt && a) { a.hp -= J.hurt * (0.5 + w.rngs.colony()); if (a.mem) a.mem.stung = (a.mem.stung || 0) + 0.2; }
       const got = [p.resource];
-      for (const [r, ch] of Object.entries(p.also || {})) if (w.rng() < ch) got.push(r);
+      for (const [r, ch] of Object.entries(p.also || {})) if (w.rngs.colony() < ch) got.push(r);
       return got;
     }});
 }

@@ -39,7 +39,7 @@ export function isHome(w, i, home) {
 // a home cell at least minDist from the camp (for a spirit that comes back); -1 if the land has none
 export function homeCell(w, home, minDist) {
   for (let k = 0; k < 600; k++) {
-    const i = (w.rng() * w.w * w.h) | 0, x = i % w.w, y = (i / w.w) | 0;
+    const i = (w.rngs.nechist() * w.w * w.h) | 0, x = i % w.w, y = (i / w.w) | 0;
     // on land the colony can reach: a rusalka on a lake nobody can walk to would sing in vain
     if (isHome(w, i, home) && w.nav.get('camp')[i] < FAR && Math.hypot(x - w.camp.x, y - w.camp.y) > minDist) return i;
   }
@@ -52,10 +52,10 @@ const spellbound = a => ['fight', 'flee', 'treat', 'astray', 'lured', 'runHome',
 function wander(w, a, S) {
   const t = a.task?.id === 'lurk' || a.task?.id === 'sing' ? a.task : (a.task = {id: 'lurk'});
   if (S.night && nightness(w.tick) <= 0.5) t.id = 'lurk';
-  if (!t.spot || dist(a, {x: t.spot[0], y: t.spot[1]}) < 0.8 || w.rng() < 0.004) {
+  if (!t.spot || dist(a, {x: t.spot[0], y: t.spot[1]}) < 0.8 || w.rngs.nechist() < 0.004) {
     t.spot = null;
     for (let k = 0; k < 30; k++) {
-      const x = a.x + (w.rng() * 2 - 1) * 10, y = a.y + (w.rng() * 2 - 1) * 10;
+      const x = a.x + (w.rngs.nechist() * 2 - 1) * 10, y = a.y + (w.rngs.nechist() * 2 - 1) * 10;
       if (!inMap(w, x, y)) continue;
       // home ground, and out of the settlement's way (`keepOff` cells from the camp)
       if (isHome(w, (y | 0) * w.w + (x | 0), S.home) && sameLand(w, a, (y | 0) * w.w + (x | 0)) && Math.hypot(x - w.camp.x, y - w.camp.y) > (S.keepOff || 0)) { t.spot = [x, y]; break; }
@@ -70,7 +70,7 @@ function wander(w, a, S) {
 function leadAstray(w, a, sp, S) {
   if ((w.tick + a.id) % S.every) return;
   const lost = w.agents.filter(o => o.faction === 'colony' && !o.dead && dist(o, a) < S.radius && !agentInZone(w, o) && !spellbound(o));
-  for (const v of lost) { v.task = {id: 'astray', until: w.tick + HOUR * (1 + w.rng()), spell: 1.2}; think(w, v, 'leshyLost'); }
+  for (const v of lost) { v.task = {id: 'astray', until: w.tick + HOUR * (1 + w.rngs.nechist()), spell: 1.2}; think(w, v, 'leshyLost'); }
   if (lost.length && w.tick - (w.lastAstray || -1e9) > DAY / 2) {
     w.lastAstray = w.tick;
     log(w, `В лесу плутает ${lost.map(o => `<b>${esc(o.name)}</b>`).join(', ')}: тропы водят по кругу. ${sp.label[0].toUpperCase() + sp.label.slice(1)} шалит.`, 'wildlife', 'notice');
@@ -103,7 +103,7 @@ function lure(w, a, sp, S) {
     a.lureAt = w.tick;
     // a sharp eye and a clear head see through the song: Perception + Intelligence against her Charisma ×2
     const vs = best.special, ss = a.special;
-    if (vs && ss && w.rng() < contest(vs.P + vs.I, ss.C * 2)) {
+    if (vs && ss && w.rngs.nechist() < contest(vs.P + vs.I, ss.C * 2)) {
       think(w, best, 'resistedSong');
       best.task = {id: 'runHome'};   // what the journal says is what happens: back to the settlement
       log(w, `Ночью у воды пели, но <b>${esc(best.name)}</b> ${g(best, 'не поддался', 'не поддалась')} и ${g(best, 'ушёл', 'ушла')} к своим.`, 'wildlife', 'notice');

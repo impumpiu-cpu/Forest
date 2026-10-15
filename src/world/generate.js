@@ -1,6 +1,6 @@
 // World generation. makeTerrain is pure (the menu preview uses it too); createWorld builds the full state.
 import {newBehaviour} from '../settlement/behaviour.js';
-import {mulberry, seedNumber} from '../core/rng.js';
+import {mulberry, seedNumber, newStreams} from '../core/rng.js';
 import {clamp} from '../core/util.js';
 import {HOUR, ambientTemp} from '../core/time.js';
 import {T, BY_CODE} from '../data/terrain.js';
@@ -74,7 +74,7 @@ export function createWorld(cfg) {
   const f32 = () => new Float32Array(n);
   const world = {
     cfg: {...cfg}, climate: CLIMATES[cfg.climate],
-    w: t.w, h: t.h, n, rng: t.rng, tick: Math.round(7 * HOUR),
+    w: t.w, h: t.h, n, rng: t.rng, rngs: newStreams(cfg.seed), tick: Math.round(7 * HOUR),
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, food: f32(), wood: f32(), fuel: f32(), fire: f32(),
       temp: f32(), temp2: f32(), smoke: f32(), smoke2: f32(), bush: new Uint8Array(n), bld: new Int16Array(n).fill(-1)},
     camp: {x: t.cx, y: t.cy, cells: [], set: null},
