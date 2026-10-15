@@ -1,11 +1,11 @@
 // Logic check: the rules every creature must keep, in small staged scenes (T01–T11 of the outside
-// review of the races branch). Each scene builds a flat, empty map, places a few agents by hand and
+// review of the races branch; T12–T17 reservations and the task lifecycle). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
 import {newGame} from '../src/sim.js';
 import {DEFAULT_CFG} from '../src/data/presets.js';
-import {createAgent} from '../src/agents/agent.js';
+import {createAgent, maxHp} from '../src/agents/agent.js';
 import {BRAINS} from '../src/agents/brains/index.js';
 import {TASKS} from '../src/agents/tasks.js';
 import {T} from '../src/data/terrain.js';
@@ -18,6 +18,10 @@ import {eligible} from '../src/settlement/council.js';
 import {arrive} from '../src/outside/index.js';
 import {RESOURCES} from '../src/data/resources.js';
 import {SPECIES} from '../src/data/species.js';
+import {syncTask, skipped} from '../src/agents/lifecycle.js';
+import {stationHasWork} from '../src/settlement/crafting.js';
+import {freeBed, bedsOf} from '../src/settlement/healing.js';
+import {freeCorpse} from '../src/settlement/life.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -162,6 +166,66 @@ check('T11', 'совет видит кости от охоты', () => {
   w.stock.wood = 100; w.stock.bone = 0;
   put(w, 'hare', 'wild', 40.5, 40.5);
   return eligible(w, 'armory') || 'оружейный навес недоступен без костей';
+});
+
+// ── reservations and the task lifecycle (settlement/reserve.js, agents/lifecycle.js)
+const building = (w, key, id) => { const b = {id, key, done: true, x: 40, y: 30, cells: [30 * w.w + 40], progress: 1}; w.buildings.push(b); return b; };
+
+check('T12', 'верстак держит один работник, второй не идёт к занятому', () => {
+  const w = scene(), b = building(w, 'crafthut', 900);
+  b.order = {recipe: 'rope', progress: 0};
+  const p = put(w, 'human', 'colony', 30.5, 30.5), q = put(w, 'human', 'colony', 31.5, 30.5);
+  p.task = {id: 'job', job: 'craft'}; syncTask(w, p); w.nav.build('station:crafthut'); TASKS.get('job').step(w, p, p.task);
+  if (!p.task?.bench) return 'первый не занял верстак: ' + JSON.stringify(p.lastStop || p.task);
+  return !stationHasWork(w, 'crafthut', q) || 'второму кажется, что верстак свободен';
+});
+
+check('T13', 'у лекаря коек столько, сколько есть; лишний раненый не идёт', () => {
+  const w = scene(); building(w, 'healerhut', 901);
+  const beds = bedsOf();
+  const hurt = Array.from({length: beds + 1}, (_, k) => { const a = put(w, 'human', 'colony', 30.5 + k, 30.5); a.hp = maxHp(a) * 0.3; return a; });
+  for (const a of hurt.slice(0, beds)) { a.task = {id: 'treat'}; syncTask(w, a); w.nav.build('healer'); TASKS.get('treat').step(w, a, a.task); }
+  if (hurt.slice(0, beds).some(a => !a.task?.bed)) return 'не всем хватило коек: ' + JSON.stringify(hurt.map(a => a.lastStop || a.task?.bed));
+  return !freeBed(w, hurt[beds]) || 'лишнему досталась свободная койка';
+});
+
+check('T14', 'тело несёт один, второй его не ищет', () => {
+  const w = scene();
+  const dead = put(w, 'human', 'colony', 40.5, 40.5); w.corpses = [{id: dead.id, name: 'X', x: 40.5, y: 40.5, tick: w.tick}]; w.agents = w.agents.filter(o => o !== dead);
+  const p = put(w, 'human', 'colony', 30.5, 30.5), q = put(w, 'human', 'colony', 31.5, 30.5);
+  p.task = {id: 'job', job: 'bury'}; syncTask(w, p); TASKS.get('job').step(w, p, p.task);
+  return !freeCorpse(w, q) || 'второй видит то же тело свободным';
+});
+
+check('T15', 'прерванная задача отдаёт свои резервы', () => {
+  const w = scene(), b = building(w, 'crafthut', 902);
+  b.order = {recipe: 'rope', progress: 0};
+  const p = put(w, 'human', 'colony', 30.5, 30.5), q = put(w, 'human', 'colony', 31.5, 30.5);
+  p.task = {id: 'job', job: 'craft'}; syncTask(w, p); w.nav.build('station:crafthut'); TASKS.get('job').step(w, p, p.task);
+  if (!p.task?.bench) return 'не занял верстак: ' + JSON.stringify(p.lastStop);
+  p.task = {id: 'flee'}; syncTask(w, p);   // a reflex took over
+  if (p.lastTask?.id !== 'flee') return 'новая задача не принята';
+  return stationHasWork(w, 'crafthut', q) || 'верстак так и остался занят';
+});
+
+check('T16', 'прерванный сбор продолжается с того же места', () => {
+  const w = scene(), i = 30 * w.w + 30;
+  w.grid.terr[i] = T.FOREST; w.grid.wood[i] = 1; w.nav.build('trees');
+  const p = put(w, 'human', 'colony', 30.5, 30.5);
+  p.task = {id: 'job', job: 'chop'}; syncTask(w, p);
+  for (let k = 0; k < 8; k++) TASKS.get('job').step(w, p, p.task);
+  const got = p.task.work;
+  p.task = {id: 'warm'}; syncTask(w, p);
+  p.task = {id: 'job', job: 'chop'}; syncTask(w, p); TASKS.get('job').step(w, p, p.task);
+  return p.task.work > got || `работа ${got.toFixed(1)} → ${p.task.work.toFixed(1)}: начал заново`;
+});
+
+check('T17', 'заблокированное дело не берут снова сразу же', () => {
+  const w = scene();
+  const p = put(w, 'human', 'colony', 30.5, 30.5);
+  p.task = {id: 'job', job: 'craft'}; syncTask(w, p); TASKS.get('job').step(w, p, p.task);   // no workshop: blocked
+  if (p.task) return 'не сдался без мастерской';
+  return skipped(w, p, {id: 'job', job: 'craft'}) || 'нет паузы после отказа';
 });
 
 let bad = 0;

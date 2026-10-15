@@ -8,6 +8,7 @@ import {CROPS} from '../data/crops.js';
 import {WALKABLE} from '../data/terrain.js';
 import {lotFertility, missing} from '../settlement/buildings.js';
 import {sourcesOf} from '../settlement/sources.js';
+import {OUTCOMES} from '../agents/lifecycle.js';
 
 const soilWord = f => (f < 0.3 ? 'тощая' : f < 0.5 ? 'средняя' : f < 0.7 ? 'добрая' : 'жирная');
 import {goodsUnits, goodsLabel, askPrice} from '../settlement/trade.js';
@@ -469,7 +470,7 @@ export class Panel {
       if (y.alt) rows.push(`<dt>Второе</dt><dd class="alt">${esc(y.alt)} (${y.altScore})${y.altWhy ? ` — ${esc(y.altWhy)}` : ''}</dd>`);
     }
     if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
-    if (a.lastStop) rows.push(`<dt>Бросил</dt><dd>«${esc(a.lastStop.task)}» ${ago(a.lastStop.t)}: ${esc(a.lastStop.why)}</dd>`);
+    if (a.lastStop) rows.push(`<dt>${a.lastStop.outcome === 'interrupted' ? 'Прервал' : 'Бросил'}</dt><dd>«${esc(a.lastStop.task)}» ${ago(a.lastStop.t)}${a.lastStop.outcome && a.lastStop.outcome !== 'interrupted' ? ` (${OUTCOMES[a.lastStop.outcome].label})` : ''}: ${esc(a.lastStop.why)}</dd>`);
     return rows.length ? `<dl class="kv why">${rows.join('')}</dl>` : '';
   }
 

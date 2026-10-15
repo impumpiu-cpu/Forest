@@ -8,6 +8,7 @@ import {BUILDINGS} from '../data/buildings.js';
 import {cellOf} from '../world/grid.js';
 import {has, colonists} from './query.js';
 import {perTick} from '../core/util.js';
+import {freeSlot} from './reserve.js';
 
 export const HEAL = {
   seekBelow: 0.75,  // a colonist this hurt (share of health) goes to the healer's hut…
@@ -19,12 +20,14 @@ export const HEAL = {
 
 export const hurt = a => a.hp < maxHp(a) * HEAL.seekBelow;
 
-// who lies in the hut now (at most as many as it has beds)
-export const patients = w => perTick(w, 'patients', () => {
-  if (!has(w, 'healerhut')) return [];
-  const beds = BUILDINGS.get('healerhut').beds || 2;
-  return colonists(w).filter(a => a.task?.id === 'treat' && a.task.lying).slice(0, beds);
-});
+// The hut's beds are reservations 'bed:<hut id>:<k>' (settlement/reserve.js): a wounded colonist takes
+// one before setting out, so nobody walks there to find every bed taken.
+export const hutOf = w => w.buildings.find(b => b.key === 'healerhut' && b.done);
+export const bedsOf = () => BUILDINGS.get('healerhut').beds || 2;
+export const freeBed = (w, a) => { const b = hutOf(w); return b ? freeSlot(w, 'bed:' + b.id, bedsOf(), a) : null; };
+
+// who lies in the hut now: those lying in a bed of their own
+export const patients = w => perTick(w, 'patients', () => colonists(w).filter(a => a.task?.id === 'treat' && a.task.lying && a.task.bed));
 
 // colonists who need the healer: lying in the hut or on their way there
 export const waiting = w => colonists(w).filter(a => a.task?.id === 'treat').length;

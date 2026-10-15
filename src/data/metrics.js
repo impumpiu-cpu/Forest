@@ -18,6 +18,7 @@ const allDeaths = w => Object.values(w.chronicle.deaths).reduce((s, v) => s + v,
 const RACE_IDS = () => new Set(SPECIES.filter(s => s.rel).map(s => s.id));
 const share = (w, k) => (w.behave?.ticks ? w.behave[k] / w.behave.ticks * 100 : 0);
 const perDay = (w, k) => (w.behave?.ticks ? w.behave[k] / (w.behave.ticks / DAY) : 0);
+const outcomePerDay = (w, k) => (w.behave?.ticks ? (w.behave.outcomes?.[k] || 0) / (w.behave.ticks / DAY) : 0);
 const avg = (xs, f) => (xs.length ? xs.reduce((s, x) => s + f(x), 0) / xs.length : 0);
 
 METRICS.registerAll([
@@ -57,7 +58,14 @@ METRICS.registerAll([
   {id: 'muster', label: 'В тревоге у костра, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'muster')},
   {id: 'switches', label: 'Смен дела на человека в день', group: 'Поведение', fmt: 1, get: w => perDay(w, 'switches')},
   {id: 'stops', label: 'Брошено дел на человека в день', group: 'Поведение', fmt: 2, get: w => perDay(w, 'stops')},
-  {id: 'firstDrops', label: 'Брошено на первом шаге, на человека в день', group: 'Поведение', fmt: 2, get: w => perDay(w, 'firstDrops')},
+  // how jobs end (agents/lifecycle.js): the share carried through, and the others per colonist and day
+  // jobs are cycles (chop, carry home, chop again) that mostly end by a need or the council taking over:
+  // «interrupted» is normal; what matters is the share that ended in a refusal (blocked or impossible)
+  {id: 'jobsFailed', label: 'Поручений сорвано (заблокировано или невозможно), %', group: 'Поведение', fmt: 1, get: w => { const o = w.behave?.outcomes || {}, n = Object.values(o).reduce((s, v) => s + v, 0); return n ? ((o.blocked || 0) + (o.impossible || 0)) / n * 100 : 0; }},
+  {id: 'jobsDone', label: 'Поручений доведено до конца, на человека в день', group: 'Поведение', fmt: 2, get: w => outcomePerDay(w, 'done')},
+  {id: 'jobsBlocked', label: 'Поручений заблокировано, на человека в день', group: 'Поведение', fmt: 2, get: w => outcomePerDay(w, 'blocked')},
+  {id: 'jobsImpossible', label: 'Поручений невозможно, на человека в день', group: 'Поведение', fmt: 2, get: w => outcomePerDay(w, 'impossible')},
+  {id: 'jobsInterrupted', label: 'Поручений прервано, на человека в день', group: 'Поведение', fmt: 2, get: w => outcomePerDay(w, 'interrupted')},
   {id: 'noPath', label: 'Отказов «пути нет» всего', group: 'Поведение', fmt: 0, get: w => w.behave?.noPath || 0},
   {id: 'noPathColony', label: 'Отказов «пути нет» у поселенцев', group: 'Поведение', fmt: 0, get: w => Object.entries(w.behave?.noPathBy || {}).filter(([k]) => RACE_IDS().has(k.split(':')[0])).reduce((s, [, v]) => s + v, 0)},
   {id: 'react', label: 'Реакция на нападение, тиков', group: 'Поведение', fmt: 1, get: w => (w.behave?.react.n ? w.behave.react.sum / w.behave.react.n : 0)},

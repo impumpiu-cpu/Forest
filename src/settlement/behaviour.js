@@ -5,8 +5,8 @@
 //   idle       — colonist-ticks with nothing to do (no task, or «idle»)
 //   muster     — colonist-ticks spent gathering at the fire by the alarm
 //   switches   — times a colonist changed what it was doing (agents/brains/colonist.js decide)
-//   stops      — tasks dropped before done, with a reason in the card (noteStop)
-//   firstDrops — jobs dropped on their very first step (nothing there to do)
+//   stops      — tasks closed before done, with a reason on the card (agents/lifecycle.js)
+//   outcomes   — how jobs ended: {done, blocked, impossible, interrupted} (agents/lifecycle.js)
 //   noPath     — A* refusals: no way to a point (agents/movement.js approach)
 //   react      — {sum, n}: ticks from being attacked to fighting back or running; missed — attacks
 //                that ended before any reaction
@@ -15,7 +15,7 @@
 import {colonists} from './query.js';
 import {walkable} from '../world/grid.js';
 
-export const newBehaviour = () => ({ticks: 0, idle: 0, muster: 0, switches: 0, stops: 0, firstDrops: 0, noPath: 0,
+export const newBehaviour = () => ({ticks: 0, idle: 0, muster: 0, switches: 0, stops: 0, outcomes: {}, noPath: 0,
   react: {sum: 0, n: 0, missed: 0}, invalid: 0, invalidWhat: {}});
 
 const REACT = new Set(['fight', 'runHome', 'flee']);

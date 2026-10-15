@@ -2,6 +2,7 @@
 // An order is picked from RECIPES by what the colony lacks most (recipe.want), skipping recipes
 // it cannot afford or whose materials the council is saving up for. Materials are taken when the
 // order starts; finished items go to the colony's gear store (world.armory).
+import {freeSlot} from './reserve.js';
 import {RECIPES} from '../data/recipes.js';
 import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -93,19 +94,17 @@ export function pickRecipe(w, station, ctx = craftContext(w)) {
   return best;
 }
 
-// who is at the bench: worker id → last tick worked
-function busyOthers(w, b, a) {
-  if (!b.workers) return 0;
-  let n = 0;
-  for (const [id, t] of b.workers) { if (w.tick - t > 3) b.workers.delete(id); else if (!a || id !== a.id) n++; }
-  return n;
-}
+// a workshop's benches are reservations 'bench:<id>:<k>' (settlement/reserve.js): a worker takes one when
+// choosing the station, keeps it while walking there and working, and the task's end gives it back
+export const benchesOf = b => BUILDINGS.get(b.key).benches || 1;
+export const benchPrefix = b => 'bench:' + b.id;
+export const freeBench = (w, b, a) => freeSlot(w, benchPrefix(b), benchesOf(b), a);
 
 // does a station of this kind have something to do, and a free bench for `a`? (orders cached per tick)
 export function stationHasWork(w, station, a) {
   const map = perTick(w, 'orders', () => ({}));
   const b = w.buildings.find(x => x.key === station && x.done);
-  if (!b || busyOthers(w, b, a) >= (BUILDINGS.get(station).benches || 1)) return false;
+  if (!b || !freeBench(w, b, a)) return false;   // every bench taken by someone else
   if (!(station in map)) map[station] = !!b.order || !!pickRecipe(w, station);
   return map[station];
 }
@@ -120,7 +119,6 @@ export function stationPriority(w, station) {
   return r ? r.want(ctx) : 0;
 }
 
-export function markWorking(w, b, a) { (b.workers || (b.workers = new Map())).set(a.id, w.tick); }
 
 // add labour at a station building; starts an order if none is running
 export function workAt(w, b, amount, a) {

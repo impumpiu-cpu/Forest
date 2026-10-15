@@ -10,6 +10,7 @@
 //   - with two goats, room in the pen and warm weather a kid may be born; kids grow up in `grownDays`;
 //   - when the colony is starving, a goat is slaughtered for meat (the youngest male first, so to say).
 // Tame mules work for the colony: their `effects` join the colony's modifiers (settlement/mods.js).
+import {isFree} from './reserve.js';
 import {SPECIES} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {DAY, HOUR} from '../core/time.js';
@@ -45,7 +46,8 @@ export const isTameable = o => !o.dead && !o.tame && o.faction === 'wild' && o.o
 // wild animals the herder could go for now: room for them in the pen, bait in the stock, not too far
 // (the herder's runner leaves a beast another herder is already after to them: `tamerAt` is renewed
 // while they go for it — see claimed())
-export const claimed = (w, o, a) => o.tamer != null && o.tamer !== a.id && w.tick - (o.tamerAt ?? -1e9) < 40;
+// another herder is already after this animal (taming, milking or shearing it): reservation 'beast:<id>'
+export const claimed = (w, o, a) => !isFree(w, 'beast:' + o.id, a);
 export const tameTargets = w => perTick(w, 'tameTargets', () => {
   const room = penRoom(w);
   if (room <= 0) return [];

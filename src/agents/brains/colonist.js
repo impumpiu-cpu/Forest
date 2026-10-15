@@ -15,17 +15,16 @@ import {councilDue, goalNeed} from '../../settlement/council.js';
 import {stationHasWork} from '../../settlement/crafting.js';
 import {outfit} from '../equipment.js';
 import {dropLoad} from '../jobRunners.js';
+import {syncTask, skipped} from '../lifecycle.js';
 import {think} from '../mind.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {tradeOpen} from '../../settlement/trade.js';
-import {hurt, waiting, HEAL} from '../../settlement/healing.js';
+import {hurt, waiting, HEAL, freeBed} from '../../settlement/healing.js';
 import {has} from '../../settlement/query.js';
 import {wantsPrayer} from '../../settlement/life.js';
 import {RESOURCES} from '../../data/resources.js';
 import {BUILDINGS} from '../../data/buildings.js';
 
-// how long a job dropped on its first step stays out of the choice
-const JOB_SKIP = 120;
 // the weight of answering an attack on oneself: more than any need can reach
 const ATTACKED = 2.6;
 
@@ -46,11 +45,6 @@ function jobWhy(w, a, job, ctx, goal, tasty, night) {
   return parts.join(', ') || 'нужно поселению';
 }
 
-// the last task dropped before it was done, and why (the card shows it)
-export function noteStop(w, a, task, why) {
-  a.lastStop = {t: w.tick, task: label(task), why};
-  w.behave.stops++;
-}
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
@@ -68,7 +62,6 @@ function decide(w, a) {
   }
   for (const job of JOBS.all()) {
     if (!jobUnlocked(w, job) || (job.canDo && !job.canDo(w, a))) continue;
-    if (a.skipJob?.id === job.id && w.tick < a.skipJob.until) continue;   // just dropped it: nothing to do there
     const base = job.desire(w, ctx, job);
     if (base < 0) continue;
     const res = job.resource;
@@ -87,7 +80,7 @@ function decide(w, a) {
   if (pray > 0.1 && night < 0.5) opts.push([{id: 'pray'}, 0.3 + pray * 1.2, () => 'тяжело на душе']);
   if (councilDue(w)) opts.push([{id: 'council'}, 1.3, () => 'время совета']);
   // badly hurt, with a healer's hut: go and lie there (more urgent the worse the wounds)
-  if ((hurt(a) || (a.task?.id === 'treat' && a.hp < maxHp(a) * HEAL.until)) && has(w, 'healerhut')) opts.push([{id: 'treat'}, (1 - a.hp / maxHp(a)) * 2 + 0.25, () => `ранен: здоровье ${Math.round(hpShare(a) * 100)}%`]);
+  if ((hurt(a) || (a.task?.id === 'treat' && a.hp < maxHp(a) * HEAL.until)) && has(w, 'healerhut') && freeBed(w, a)) opts.push([{id: 'treat'}, (1 - a.hp / maxHp(a)) * 2 + 0.25, () => `ранен: здоровье ${Math.round(hpShare(a) * 100)}%`]);
   if (tradeOpen(w)) opts.push([{id: 'trade'}, 1.1, () => 'торг с купцом']);   // right after the council, the second gathering of the evening
   const brave = a.mods.bravery;
   if (w.stats.fireNearCamp > 0 && hpShare(a) > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave, () => 'пожар у лагеря']);
@@ -114,7 +107,9 @@ function decide(w, a) {
   // the current task is kept unless something is clearly better; a long walk (`sticky` jobs) more so
   const keep = 0.12 + (a.task?.id === 'job' ? JOBS.get(a.task.job).sticky || 0 : 0);
   let bestWhy = null, alt = null, as = -Infinity, altWhy = null;
+  // a task that just ended blocked or impossible stays out of the choice for a while (agents/lifecycle.js)
   for (const [t, s, why] of opts) {
+    if (key(t) !== cur && skipped(w, a, t)) continue;
     const sc = s + (key(t) === cur ? keep : 0);
     if (sc > bs) { if (best && key(best) !== key(t)) { alt = best; as = bs; altWhy = bestWhy; } bs = sc; best = t; bestWhy = why; }
     else if (sc > as && key(t) !== key(best)) { alt = t; as = sc; altWhy = why; }
@@ -123,9 +118,10 @@ function decide(w, a) {
   a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
     alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || ''};
   if (key(best) !== cur) {
-    // what was dropped for it (a finished job leaves no task behind, so it is not counted here)
-    // (eating, sleeping, warming up simply wind down when the need is met: that is no dropped task)
-    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'sulk'].includes(a.task.id)) noteStop(w, a, a.task, `ради «${a.why.task}»: ${a.why.why}`);
+    // the task it drops is closed as interrupted by syncTask(), with this reason; eating, sleeping and
+    // warming up wind down when the need is met, which is no dropped task
+    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'sulk'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
+    else if (a.task) a.task.closed = 'done';
     if (a.task) w.behave.switches++;
     a.task = best;
     if (best.id === 'job' && !best.eatNow) {
@@ -167,15 +163,11 @@ export const colonistBrain = {
     // a load left over from a broken-off job goes to the stores as soon as the bearer is at the camp
     if (a.carry && !(a.task?.id === 'job' && a.task.job === a.carryJob) && w.nav.get('camp')[cellOf(w, a)] < 2) dropLoad(w, a);
     if (a.task?.id === 'job') a.carryJob = a.task.job;
-    const was = a.task;
+    // the lifecycle (agents/lifecycle.js): close a task replaced since the last step, enter the new one;
+    // after the step again, for a task that handed over to another (eat → gather on the spot)
+    syncTask(w, a);
     TASKS.get(a.task.id).step(w, a, a.task);
-    // a job dropped on its first step (no prey, no free body, no site) is not taken again for a while;
-    // without this the colonist picked it again the same tick and stood idle for hours
-    if (!a.task && was.id === 'job' && !was.started) { a.skipJob = {id: was.job, until: w.tick + JOB_SKIP}; w.behave.firstDrops++; }
-    else if (a.task === was && was.id === 'job') was.started = true;
-    // a task that gave up says why (a.stopWhy, set where it fails); one ended by its own success says nothing
-    if ((!a.task || a.task.id === 'idle') && a.stopWhy && a.task !== was) noteStop(w, a, was, a.stopWhy);
-    a.stopWhy = null;
+    syncTask(w, a);
     if (a.cd > 0) a.cd--;
   },
 };

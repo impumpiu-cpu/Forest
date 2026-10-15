@@ -55,7 +55,12 @@ export function loadWorld(save) {
   ensurePlants(w);
   w.trade ??= newTradeState(); w.caravan ??= null;
   w.corpses ??= []; w.graves ??= []; w.graveyard ??= null;
-  w.behave ??= newBehaviour();   // behaviour counters (settlement/behaviour.js) start at the load
+  w.behave ??= newBehaviour();
+  w.behave.outcomes ??= {};
+  // claims from before reservations (settlement/reserve.js) are simply dropped: the leases start empty
+  for (const b of w.buildings) delete b.workers;
+  for (const c of w.corpses) { delete c.by; delete c.at; }
+  for (const a of w.agents) { delete a.tamer; delete a.tamerAt; delete a.skipJob; }   // behaviour counters (settlement/behaviour.js) start at the load
   recomputeMods(w);   // building effects as this version defines them
   // charcoal and mined coal are one coal now
   if (w.stock.charcoal != null) { w.stock.coal = (w.stock.coal || 0) + w.stock.charcoal; delete w.stock.charcoal; }

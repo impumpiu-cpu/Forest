@@ -14,6 +14,7 @@ import {enrol, noteDeath} from '../settlement/chronicle.js';
 import {lostBeast} from '../settlement/herd.js';
 import {addCorpse} from '../settlement/life.js';
 import {rollCreature} from './special.js';
+import {releaseAll} from '../settlement/reserve.js';
 import {RESOURCES} from '../data/resources.js';
 
 // memory of the day's hardships: any key reads as 0 until something is remembered
@@ -79,6 +80,7 @@ export const hpShare = a => a.hp / maxHp(a);
 export function kill(w, a, cause, by) {
   if (a.dead) return;
   a.dead = true; a.hp = 0;
+  releaseAll(w, a);   // a bench, a bed, a body or a beast it held is free again
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
   if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }

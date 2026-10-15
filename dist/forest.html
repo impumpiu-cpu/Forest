@@ -2844,7 +2844,7 @@ dd.q4{color:#c58cff;font-weight:600}
     muster: 0,
     switches: 0,
     stops: 0,
-    firstDrops: 0,
+    outcomes: {},
     noPath: 0,
     react: { sum: 0, n: 0, missed: 0 },
     invalid: 0,
@@ -4514,6 +4514,47 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   ]);
 
+  // src/settlement/reserve.js
+  var LEASE = 40;
+  var table = (w) => w.reserve || (w.reserve = {});
+  var live = (w, r) => r && r.until > w.tick;
+  function reserve(w, key2, a, ttl = LEASE) {
+    const R = table(w), r = R[key2];
+    if (live(w, r) && r.by !== a.id) return false;
+    R[key2] = { by: a.id, until: w.tick + ttl };
+    if (!(a.holds || (a.holds = [])).includes(key2)) a.holds.push(key2);
+    return true;
+  }
+  var isFree = (w, key2, a) => {
+    const r = w.reserve?.[key2];
+    return !live(w, r) || !!a && r.by === a.id;
+  };
+  function release(w, key2, a) {
+    const r = w.reserve?.[key2];
+    if (r && (!a || r.by === a.id)) delete w.reserve[key2];
+    if (a?.holds) a.holds = a.holds.filter((k) => k !== key2);
+  }
+  function releaseAll(w, a) {
+    for (const k of a.holds || []) {
+      const r = w.reserve?.[k];
+      if (r?.by === a.id) delete w.reserve[k];
+    }
+    a.holds = [];
+  }
+  function freeSlot(w, prefix, n, a) {
+    let free = null;
+    for (let k = 0; k < n; k++) {
+      const key2 = `${prefix}:${k}`, r = w.reserve?.[key2];
+      if (live(w, r) && a && r.by === a.id) return key2;
+      if (free == null && !live(w, r)) free = key2;
+    }
+    return free;
+  }
+  function sweepReserve(w) {
+    if (w.tick % 200 || !w.reserve) return;
+    for (const [k, r] of Object.entries(w.reserve)) if (!live(w, r)) delete w.reserve[k];
+  }
+
   // src/settlement/mods.js
   function emptyMods() {
     return {
@@ -5099,7 +5140,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var penUsed = (w) => herd(w).reduce((s, a) => s + tameOf(a).space, 0);
   var penRoom2 = (w) => penSpace(w) - penUsed(w);
   var isTameable = (o) => !o.dead && !o.tame && o.faction === "wild" && o.owner == null && !!SPECIES.get(o.species).tame;
-  var claimed = (w, o, a) => o.tamer != null && o.tamer !== a.id && w.tick - (o.tamerAt ?? -1e9) < 40;
+  var claimed = (w, o, a) => !isFree(w, "beast:" + o.id, a);
   var tameTargets = (w) => perTick(w, "tameTargets", () => {
     const room = penRoom2(w);
     if (room <= 0) return [];
@@ -5369,7 +5410,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   }
   function addCorpse(w, a) {
-    (w.corpses || (w.corpses = [])).push({ id: a.id, name: a.name, f: a.gender === "f", x: a.x, y: a.y, tick: w.tick, by: null, at: 0 });
+    (w.corpses || (w.corpses = [])).push({ id: a.id, name: a.name, f: a.gender === "f", x: a.x, y: a.y, tick: w.tick });
   }
   var corpses = (w) => w.corpses || [];
   var wolvesNear = (w, c) => w.agents.some((o) => o.species === "wolf" && !o.dead && Math.hypot(o.x - c.x, o.y - c.y) < 20);
@@ -5377,7 +5418,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function freeCorpse(w, a) {
     let best = null, bd = Infinity;
     for (const c of reachableCorpses(w)) {
-      if (c.by != null && c.by !== a.id && w.tick - c.at < 30) continue;
+      if (!isFree(w, "corpse:" + c.id, a)) continue;
       const d = Math.hypot(c.x - a.x, c.y - a.y);
       if (d < bd) {
         bd = d;
@@ -6122,6 +6163,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (a.dead) return;
     a.dead = true;
     a.hp = 0;
+    releaseAll(w, a);
     const sp = SPECIES.get(a.species);
     const killer = by ? SPECIES.get(by.species) : null;
     if (a.faction === "colony") {
@@ -7501,12 +7543,12 @@ dd.q4{color:#c58cff;font-weight:600}
   function holdTrade(w) {
     const c = w.caravan, pop = colonists(w).length;
     const deal = { day: dayOf(w.tick) + 1, trader: c.name, sold: [], bought: [], earned: 0, spent: 0 };
-    const note = (list2, label2, n, gold) => {
-      const x = list2.find((e) => e[0] === label2);
+    const note = (list2, label3, n, gold) => {
+      const x = list2.find((e) => e[0] === label3);
       if (x) {
         x[1] += n;
         x[2] += gold;
-      } else list2.push([label2, n, gold]);
+      } else list2.push([label3, n, gold]);
     };
     const free = () => c.capacity - goodsUnits(c.goods);
     const cash = () => treasury(w);
@@ -9090,6 +9132,54 @@ dd.q4{color:#c58cff;font-weight:600}
     return T2;
   }
 
+  // src/agents/lifecycle.js
+  var OUTCOMES = {
+    done: { label: "\u0441\u0434\u0435\u043B\u0430\u043D\u043E", skip: 0 },
+    blocked: { label: "\u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u043E", skip: 120 },
+    impossible: { label: "\u043D\u0435\u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E", skip: 600 },
+    interrupted: { label: "\u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E", skip: 0 }
+  };
+  var taskKey = (t) => t.id === "job" ? "job:" + t.job : t.id;
+  var skipped = (w, a, t) => (a.skips?.[taskKey(t)] ?? -1) > w.tick;
+  var label = (t) => TASKS.get(t.id).label(t);
+  var RUNNER_EXIT = {};
+  function close(w, a, t, outcome, why) {
+    if (!t || t.closed) return;
+    t.closed = outcome;
+    releaseAll(w, a);
+    a.stalking = false;
+    a.path = null;
+    a.approachGuard = null;
+    const def2 = TASKS.get(t.id);
+    def2.exit?.(w, a, t, outcome);
+    if (t.id === "job") RUNNER_EXIT[def2.runnerOf?.(t)]?.(w, a, t, outcome);
+    const skip = OUTCOMES[outcome].skip;
+    if (skip) (a.skips || (a.skips = {}))[taskKey(t)] = w.tick + skip;
+    const b = w.behave;
+    if (b && t.id === "job") (b.outcomes || (b.outcomes = {}))[outcome] = (b.outcomes[outcome] || 0) + 1;
+    if (outcome !== "done" && why && (outcome !== "interrupted" || t.id === "job")) {
+      a.lastStop = { t: w.tick, task: label(t), why, outcome };
+      if (b) b.stops++;
+    }
+  }
+  function endTask(w, a, outcome = "done", why = null) {
+    const t = a.task;
+    a.task = null;
+    a.think = 0;
+    close(w, a, t, outcome, why);
+  }
+  function syncTask(w, a) {
+    var _a;
+    const last2 = a.lastTask;
+    if (last2 && last2 !== a.task && !last2.closed) close(w, a, last2, "interrupted", a.switchWhy || (a.task ? `\u043E\u0442\u0432\u043B\u0451\u043A\u0441\u044F: ${label(a.task)}` : null));
+    a.switchWhy = null;
+    if (a.task && a.task !== last2) {
+      (_a = a.task).since ?? (_a.since = w.tick);
+      TASKS.get(a.task.id).enter?.(w, a, a.task);
+    }
+    a.lastTask = a.task;
+  }
+
   // src/settlement/crafting.js
   var PRESERVED = () => FOODS.filter((f) => f.of);
   function reserved(w, res) {
@@ -9170,19 +9260,13 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return best;
   }
-  function busyOthers(w, b, a) {
-    if (!b.workers) return 0;
-    let n = 0;
-    for (const [id, t] of b.workers) {
-      if (w.tick - t > 3) b.workers.delete(id);
-      else if (!a || id !== a.id) n++;
-    }
-    return n;
-  }
+  var benchesOf = (b) => BUILDINGS.get(b.key).benches || 1;
+  var benchPrefix = (b) => "bench:" + b.id;
+  var freeBench = (w, b, a) => freeSlot(w, benchPrefix(b), benchesOf(b), a);
   function stationHasWork(w, station, a) {
     const map = perTick(w, "orders", () => ({}));
     const b = w.buildings.find((x) => x.key === station && x.done);
-    if (!b || busyOthers(w, b, a) >= (BUILDINGS.get(station).benches || 1)) return false;
+    if (!b || !freeBench(w, b, a)) return false;
     if (!(station in map)) map[station] = !!b.order || !!pickRecipe(w, station);
     return map[station];
   }
@@ -9193,9 +9277,6 @@ dd.q4{color:#c58cff;font-weight:600}
     if (b.order) return RECIPES.get(b.order.recipe).want(ctx) + 0.5;
     const r = pickRecipe(w, station, ctx);
     return r ? r.want(ctx) : 0;
-  }
-  function markWorking(w, b, a) {
-    (b.workers || (b.workers = /* @__PURE__ */ new Map())).set(a.id, w.tick);
   }
   function workAt(w, b, amount, a) {
     if (!b.order) {
@@ -9262,11 +9343,13 @@ dd.q4{color:#c58cff;font-weight:600}
     // health healed per herb used
   };
   var hurt = (a) => a.hp < maxHp(a) * HEAL.seekBelow;
-  var patients = (w) => perTick(w, "patients", () => {
-    if (!has(w, "healerhut")) return [];
-    const beds = BUILDINGS.get("healerhut").beds || 2;
-    return colonists(w).filter((a) => a.task?.id === "treat" && a.task.lying).slice(0, beds);
-  });
+  var hutOf = (w) => w.buildings.find((b) => b.key === "healerhut" && b.done);
+  var bedsOf = () => BUILDINGS.get("healerhut").beds || 2;
+  var freeBed = (w, a) => {
+    const b = hutOf(w);
+    return b ? freeSlot(w, "bed:" + b.id, bedsOf(), a) : null;
+  };
+  var patients = (w) => perTick(w, "patients", () => colonists(w).filter((a) => a.task?.id === "treat" && a.task.lying && a.task.bed));
   var waiting = (w) => colonists(w).filter((a) => a.task?.id === "treat").length;
   function tend(w, healer, rate) {
     const ps = patients(w);
@@ -9304,14 +9387,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const it = a.gear?.toolItem[jobId];
     if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1));
   };
-  var done = (a) => {
-    a.task = null;
-    a.think = 0;
-  };
-  var fail = (a, why) => {
-    a.stopWhy = why;
-    done(a);
-  };
+  var done = (w, a) => endTask(w, a, "done");
+  var fail = (w, a, why, outcome = "blocked") => endTask(w, a, outcome, why);
   function load(a, res, n) {
     if (!a.carry) a.carry = { res: {}, n: 0 };
     a.carry.res[res] = (a.carry.res[res] || 0) + n;
@@ -9343,15 +9420,21 @@ dd.q4{color:#c58cff;font-weight:600}
     if (a.task) a.task.hauling = true;
     if (follow(w, a, "camp") !== "arrived") return;
     dropLoad(w, a);
-    done(a);
+    done(w, a);
   }
+  var RESUME_FOR = 1200;
+  var keepProgress = (w, a, t, outcome) => {
+    if (outcome === "interrupted" && t.work > 0) a.resume = { job: t.job, cell: cellOf(w, a), work: t.work, t: w.tick };
+  };
+  RUNNER_EXIT.harvest = keepProgress;
+  RUNNER_EXIT.farm = keepProgress;
   var RUNNERS = {
     harvest(w, a, task) {
       const job = JOBS.get(task.job), cap = job.carry + (a.gear?.carry || 0);
       if (task.eatNow) {
         if (carriedFood(a) >= 1) {
           eatCarried(a);
-          done(a);
+          done(w, a);
           return;
         }
       } else if (a.carry && (a.carry.n >= cap || task.full)) {
@@ -9365,6 +9448,11 @@ dd.q4{color:#c58cff;font-weight:600}
           task.work = 0;
           return;
         }
+        const back = a.resume;
+        if (back && back.job === task.job && back.cell === i && w.tick - back.t < RESUME_FOR) {
+          task.work = Math.max(task.work || 0, back.work);
+        }
+        if (back) a.resume = null;
         task.work = (task.work || 0) + workRate(w, a, job.id);
         if (task.work < job.time) return;
         task.work = 0;
@@ -9382,8 +9470,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (w.nav.dirtySet.has(job.nav)) return;
         if (a.carry?.n) task.full = true;
         else {
-          a.stopWhy = "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C \u043D\u0435\u0447\u0435\u0433\u043E: \u0432\u0441\u0451 \u0432\u044B\u0431\u0440\u0430\u043D\u043E \u0438\u043B\u0438 \u043D\u0435 \u0434\u043E\u0439\u0442\u0438";
-          a.task = { id: "idle" };
+          fail(w, a, "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C \u043D\u0435\u0447\u0435\u0433\u043E: \u0432\u0441\u0451 \u0432\u044B\u0431\u0440\u0430\u043D\u043E \u0438\u043B\u0438 \u043D\u0435 \u0434\u043E\u0439\u0442\u0438");
           a.think = 20;
         }
       }
@@ -9404,7 +9491,8 @@ dd.q4{color:#c58cff;font-weight:600}
       const r = follow(w, a, "sites");
       if (r === "none" || r === "arrived") {
         w.nav.dirty("sites");
-        fail(a, r === "none" ? "\u043A \u0441\u0442\u0440\u043E\u0439\u043A\u0435 \u043D\u0435\u0442 \u043F\u0443\u0442\u0438" : "\u0441\u0442\u0440\u043E\u0439\u043A\u0430 \u0443\u0436\u0435 \u0437\u0430\u043A\u043E\u043D\u0447\u0435\u043D\u0430");
+        if (r === "none") fail(w, a, "\u043A \u0441\u0442\u0440\u043E\u0439\u043A\u0435 \u043D\u0435\u0442 \u043F\u0443\u0442\u0438", "impossible");
+        else done(w, a);
         a.think = 10;
       }
     },
@@ -9416,23 +9504,29 @@ dd.q4{color:#c58cff;font-weight:600}
         task.station = open.sort((x, y) => stationPriority(w, y) - stationPriority(w, x))[0];
       }
       if (!task.station) {
-        fail(a, "\u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u043D\u0435\u0442 \u0438\u043B\u0438 \u0432\u0441\u0435 \u0432\u0435\u0440\u0441\u0442\u0430\u043A\u0438 \u0437\u0430\u043D\u044F\u0442\u044B");
+        fail(w, a, "\u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u043D\u0435\u0442 \u0438\u043B\u0438 \u0432\u0441\u0435 \u0432\u0435\u0440\u0441\u0442\u0430\u043A\u0438 \u0437\u0430\u043D\u044F\u0442\u044B");
         a.think = 20;
         return;
       }
+      const st = w.buildings.find((x) => x.key === task.station && x.done), bench = st && freeBench(w, st, a);
+      if (!bench || !reserve(w, bench, a)) {
+        task.station = null;
+        return;
+      }
+      if (task.bench && task.bench !== bench) release(w, task.bench, a);
+      task.bench = bench;
       const map = "station:" + task.station;
       const r = follow(w, a, map);
       if (r === "arrived") {
         const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
-        if (b) markWorking(w, b, a);
         if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id) * workBonus(b), a)) {
-          done(a);
+          fail(w, a, "\u0437\u0430\u043A\u0430\u0437 \u043D\u0435 \u043D\u0430\u0447\u0430\u0442\u044C: \u043D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u043E\u0432 \u0438\u043B\u0438 \u0442\u043E\u043F\u043B\u0438\u0432\u0430");
           a.think = 20;
         }
       } else if (r === "none") {
         if (w.nav.dirtySet.has(map)) return;
         w.nav.dirty(map);
-        fail(a, "\u043A \u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0439 \u043D\u0435\u0442 \u043F\u0443\u0442\u0438");
+        fail(w, a, "\u043A \u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0439 \u043D\u0435\u0442 \u043F\u0443\u0442\u0438", "impossible");
         a.think = 20;
       }
     },
@@ -9469,7 +9563,7 @@ dd.q4{color:#c58cff;font-weight:600}
           task.more = false;
           return;
         }
-        done(a);
+        fail(w, a, "\u0432 \u043F\u043E\u043B\u0435 \u043F\u043E\u043A\u0430 \u043D\u0435\u0447\u0435\u0433\u043E \u0434\u0435\u043B\u0430\u0442\u044C");
         a.think = 20;
       }
     },
@@ -9484,7 +9578,7 @@ dd.q4{color:#c58cff;font-weight:600}
           else if (!patients(w).length && w.rng() < 0.02) mill(w, a);
         } else if (r === "none") {
           w.nav.dirty("healer");
-          fail(a, "\u043A \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F \u043D\u0435\u0442 \u043F\u0443\u0442\u0438");
+          fail(w, a, "\u043A \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F \u043D\u0435\u0442 \u043F\u0443\u0442\u0438", "impossible");
           a.think = 20;
         }
         return;
@@ -9500,13 +9594,14 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       let b = task.beast != null ? w.agents.find((o) => o.id === task.beast && !o.dead) : null;
-      const ok = (o) => o && (o.tame ? chores(w).includes(o) : !claimed(w, o, a) && tameTargets(w).includes(o));
+      const ok = (o) => o && !claimed(w, o, a) && (o.tame ? chores(w).includes(o) : tameTargets(w).includes(o));
       if (!ok(b)) {
         b = null;
         task.calm = false;
         task.tame = null;
         let bd = Infinity;
         for (const o of chores(w)) {
+          if (claimed(w, o, a)) continue;
           const d2 = Math.hypot(o.x - a.x, o.y - a.y);
           if (d2 < bd) {
             bd = d2;
@@ -9526,7 +9621,7 @@ dd.q4{color:#c58cff;font-weight:600}
             task.more = false;
             return;
           }
-          fail(a, "\u043D\u0435\u043A\u043E\u0433\u043E \u043F\u0440\u0438\u0440\u0443\u0447\u0430\u0442\u044C \u0438\u043B\u0438 \u0434\u043E\u0438\u0442\u044C");
+          fail(w, a, "\u043D\u0435\u043A\u043E\u0433\u043E \u043F\u0440\u0438\u0440\u0443\u0447\u0430\u0442\u044C \u0438\u043B\u0438 \u0434\u043E\u0438\u0442\u044C");
           a.think = 30;
           return;
         }
@@ -9535,11 +9630,10 @@ dd.q4{color:#c58cff;font-weight:600}
         task.since = w.tick;
       }
       const d = Math.hypot(b.x - a.x, b.y - a.y);
+      reserve(w, "beast:" + b.id, a);
       if (!b.tame) {
         task.tame = b.id;
         task.calm = d < 8;
-        b.tamer = a.id;
-        b.tamerAt = w.tick;
       }
       if (d > 1.3) {
         if (!task.spot || d < 12 || w.tick - task.spotAt > 150) {
@@ -9550,7 +9644,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (approach(w, a, tx2, ty, task.calm ? 0.75 : 1) === null || w.tick - task.since > 1500) {
           if (!b.tame) b.unreachable = w.tick;
           task.beast = null;
-          done(a);
+          fail(w, a, "\u043A \u0437\u0432\u0435\u0440\u044E \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
           a.think = 40;
         }
         return;
@@ -9574,6 +9668,7 @@ dd.q4{color:#c58cff;font-weight:600}
           add(a.stats.gathered, r2, n);
           add(w.chronicle.gathered, r2, n);
         }
+        release(w, "beast:" + b.id, a);
         task.beast = null;
         task.more = (a.carry?.n || 0) < job.carry && chores(w).length > 0;
         return;
@@ -9588,9 +9683,9 @@ dd.q4{color:#c58cff;font-weight:600}
           damage(w, b, a, 0.12 * SPECIES.get(b.species).attack.power);
           think(w, a, "kicked");
           task.beast = null;
-          b.tamer = null;
           a.think = 10;
-          done(a);
+          fail(w, a, "\u0437\u0432\u0435\u0440\u044C \u043B\u044F\u0433\u043D\u0443\u043B, \u043F\u0440\u0438\u0448\u043B\u043E\u0441\u044C \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u0442\u044C");
+          return;
         }
         task.work = -20;
         return;
@@ -9598,8 +9693,9 @@ dd.q4{color:#c58cff;font-weight:600}
       task.beast = null;
       task.calm = false;
       task.tame = null;
-      b.tamer = null;
-      if (r !== "tamed") done(a);
+      release(w, "beast:" + b.id, a);
+      if (r === "nobait") fail(w, a, "\u043D\u0435\u0447\u0435\u043C \u043F\u0440\u0438\u043C\u0430\u043D\u0438\u0442\u044C: \u043D\u0435\u0442 \u0441\u0435\u043D\u0430");
+      else if (r !== "tamed") done(w, a);
     },
     // carry a body to the graves and bury it (settlement/life.js)
     bury(w, a, task) {
@@ -9608,20 +9704,19 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!c) {
         c = freeCorpse(w, a);
         if (!c) {
-          fail(a, "\u0442\u0435\u043B\u043E \u0443\u0436\u0435 \u043D\u0435\u0441\u0443\u0442 \u0434\u0440\u0443\u0433\u0438\u0435");
+          fail(w, a, "\u0442\u0435\u043B\u043E \u0443\u0436\u0435 \u043D\u0435\u0441\u0443\u0442 \u0434\u0440\u0443\u0433\u0438\u0435");
           a.think = 30;
           return;
         }
         task.corpse = c.id;
         task.carrying = false;
       }
-      c.by = a.id;
-      c.at = w.tick;
+      reserve(w, "corpse:" + c.id, a);
       if (!task.carrying) {
         const r = approach(w, a, c.x, c.y);
         if (r === null) {
-          c.by = null;
-          fail(a, "\u043A \u0442\u0435\u043B\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438");
+          release(w, "corpse:" + c.id, a);
+          fail(w, a, "\u043A \u0442\u0435\u043B\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
           a.think = 60;
           return;
         }
@@ -9643,7 +9738,7 @@ dd.q4{color:#c58cff;font-weight:600}
       task.work = (task.work || 0) + workRate(w, a, job.id);
       if (task.work < job.time) return;
       bury(w, c, a, task.spot);
-      done(a);
+      done(w, a);
     },
     // stalk the nearest prey, creep up within range of the bow or sling, shoot; a miss or a wound
     // sends the animal running
@@ -9656,7 +9751,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (!a.gear?.rangedReady) {
         a.stalking = false;
-        fail(a, "\u043D\u0435\u0447\u0435\u043C \u0441\u0442\u0440\u0435\u043B\u044F\u0442\u044C: \u043A\u043E\u043D\u0447\u0438\u043B\u0438\u0441\u044C \u0441\u0442\u0440\u0435\u043B\u044B");
+        fail(w, a, "\u043D\u0435\u0447\u0435\u043C \u0441\u0442\u0440\u0435\u043B\u044F\u0442\u044C: \u043A\u043E\u043D\u0447\u0438\u043B\u0438\u0441\u044C \u0441\u0442\u0440\u0435\u043B\u044B");
         return;
       }
       task.age = (task.age || 0) + 1;
@@ -9673,7 +9768,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         task.prey = prey;
         if (!prey) {
-          fail(a, "\u0434\u0438\u0447\u0438 \u043D\u0435 \u0432\u0438\u0434\u043D\u043E");
+          fail(w, a, "\u0434\u0438\u0447\u0438 \u043D\u0435 \u0432\u0438\u0434\u043D\u043E");
           a.think = 30;
           a.stalking = false;
           return;
@@ -9682,7 +9777,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (task.age > 900) {
         a.mem.chase += 0.2;
         a.stalking = false;
-        fail(a, "\u0434\u0438\u0447\u044C \u0443\u0448\u043B\u0430, \u0443\u0441\u0442\u0430\u043B \u0433\u043E\u043D\u044F\u0442\u044C\u0441\u044F");
+        fail(w, a, "\u0434\u0438\u0447\u044C \u0443\u0448\u043B\u0430, \u0443\u0441\u0442\u0430\u043B \u0433\u043E\u043D\u044F\u0442\u044C\u0441\u044F");
         return;
       }
       const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = a.gear.ranged.range + w.mods.add.huntRange;
@@ -9720,14 +9815,8 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/agents/tasks.js
   var TASKS = new Registry("task");
-  var done2 = (a) => {
-    a.task = null;
-    a.think = 0;
-  };
-  var fail2 = (a, why) => {
-    a.stopWhy = why;
-    done2(a);
-  };
+  var done2 = (w, a) => endTask(w, a, "done");
+  var fail2 = (w, a, why, outcome = "blocked") => endTask(w, a, outcome, why);
   function mill2(w, a, task, radius = 1.2) {
     if (!task.spot || w.rng() < 0.02) {
       const ang = w.rng() * Math.PI * 2, r = w.rng() * radius;
@@ -9747,10 +9836,10 @@ dd.q4{color:#c58cff;font-weight:600}
         else if (f.eat) think(w, a, f.eat);
         else if (a.needs.food < 0.35) think(w, a, "ateHungry", { food: f.label });
         a.needs.food = Math.min(1, a.needs.food + fed);
-        done2(a);
+        done2(w, a);
       } else if (carriedFood(a) >= 1) {
         eatCarried(a);
-        done2(a);
+        done2(w, a);
       } else a.task = { id: "job", job: "gather", eatNow: true };
     } },
     { id: "sleep", label: () => "\u0441\u043F\u0438\u0442", step(w, a, task) {
@@ -9766,17 +9855,17 @@ dd.q4{color:#c58cff;font-weight:600}
           const c = homeComfort(w);
           think(w, a, "sleptHouse", { mood: 0.22 + c * 1.2, fine: c > 0.1 });
         } else think(w, a, beds > 0 ? "sleptHut" : "sleptOutside");
-        done2(a);
+        done2(w, a);
       }
     } },
     { id: "warm", label: () => "\u0433\u0440\u0435\u0435\u0442\u0441\u044F", step(w, a, task) {
       if (follow(w, a, "warm") !== "arrived") return;
       if (w.camp.set.has(cellOf(w, a))) mill2(w, a, task, 1.2);
-      if (a.needs.warmth > 0.92) done2(a);
+      if (a.needs.warmth > 0.92) done2(w, a);
     } },
     { id: "council", label: () => "\u043D\u0430 \u0441\u043E\u0432\u0435\u0442\u0435 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
       if (!councilDue(w)) {
-        done2(a);
+        done2(w, a);
         return;
       }
       if (follow(w, a, "camp") !== "arrived") return;
@@ -9789,18 +9878,18 @@ dd.q4{color:#c58cff;font-weight:600}
     } },
     { id: "flee", label: () => "\u0431\u0435\u0436\u0438\u0442 \u043E\u0442 \u043E\u0433\u043D\u044F", step(w, a) {
       escapeHeat(w, a);
-      if (w.grid.temp[cellOf(w, a)] < ambientTemp(w) + 16 && !nearFire(w, a, 3)) done2(a);
+      if (w.grid.temp[cellOf(w, a)] < ambientTemp(w) + 16 && !nearFire(w, a, 3)) done2(w, a);
     } },
     // fight: archers and slingers keep their distance and shoot, everyone else closes in
     { id: "fight", label: (t) => t.shooting ? "\u0441\u0442\u0440\u0435\u043B\u044F\u0435\u0442" : "\u0434\u0435\u0440\u0451\u0442\u0441\u044F", step(w, a, task) {
       const t = task.target;
       if (!t || t.dead || !w.agents.includes(t)) {
-        done2(a);
+        done2(w, a);
         return;
       }
       if (!canSee(w, a, t)) {
         task.lost ?? (task.lost = { x: t.x, y: t.y, until: w.tick + 60 });
-        if (w.tick > task.lost.until || approach(w, a, task.lost.x, task.lost.y, 0.9) !== false) fail2(a, "\u0432\u0440\u0430\u0433 \u0441\u043A\u0440\u044B\u043B\u0441\u044F \u0438\u0437 \u0432\u0438\u0434\u0443");
+        if (w.tick > task.lost.until || approach(w, a, task.lost.x, task.lost.y, 0.9) !== false) fail2(w, a, "\u0432\u0440\u0430\u0433 \u0441\u043A\u0440\u044B\u043B\u0441\u044F \u0438\u0437 \u0432\u0438\u0434\u0443");
         return;
       }
       task.lost = null;
@@ -9809,23 +9898,23 @@ dd.q4{color:#c58cff;font-weight:600}
         const range = g2.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
         task.shooting = true;
         if (d > range * 0.9 || shoot(w, a, t, "hunt") === null && a.cd <= 0) {
-          if (approach(w, a, t.x, t.y, 1) === null) fail2(a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438");
+          if (approach(w, a, t.x, t.y, 1) === null) fail2(w, a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
         }
         return;
       }
       task.shooting = false;
       if (d > Math.min(0.9, reachOf(a))) {
-        if (approach(w, a, t.x, t.y, 1.1) === null) fail2(a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438");
+        if (approach(w, a, t.x, t.y, 1.1) === null) fail2(w, a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
       } else attack(w, a, t);
     } },
     { id: "douse", label: () => "\u0442\u0443\u0448\u0438\u0442 \u043F\u043E\u0436\u0430\u0440", step(w, a) {
       if (w.stats.fireNearCamp === 0) {
-        done2(a);
+        done2(w, a);
         return;
       }
       if (!nearFire(w, a, 1.7)) {
         if (follow(w, a, "fire") !== "moving") {
-          done2(a);
+          done2(w, a);
           a.think = 10;
         }
         return;
@@ -9841,7 +9930,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
     } },
-    { id: "job", label: (t) => JOBS.get(t.job).verb, step(w, a, task) {
+    { id: "job", label: (t) => JOBS.get(t.job).verb, runnerOf: (t) => JOBS.get(t.job).runner, step(w, a, task) {
       RUNNERS[JOBS.get(task.job).runner](w, a, task);
     } },
     { id: "idle", label: () => "\u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442", step(w, a, task) {
@@ -9850,7 +9939,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // a gloomy spell: drifts about the camp instead of working (settlement/life.js)
     { id: "sulk", label: () => "\u0445\u0430\u043D\u0434\u0440\u0438\u0442", step(w, a, task) {
       if (w.tick >= task.until) {
-        done2(a);
+        done2(w, a);
         return;
       }
       if (follow(w, a, "camp") === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 5) mill2(w, a, task, 4);
@@ -9858,7 +9947,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // a prayer at the shrine, once a day for someone in low spirits
     { id: "pray", label: (t) => t.at ? "\u043C\u043E\u043B\u0438\u0442\u0441\u044F \u0443 \u0441\u0432\u044F\u0442\u0438\u043B\u0438\u0449\u0430" : "\u0438\u0434\u0451\u0442 \u043A \u0441\u0432\u044F\u0442\u0438\u043B\u0438\u0449\u0443", map: "station:shrine", step(w, a, task) {
       if (!has(w, "shrine")) {
-        done2(a);
+        fail2(w, a, "\u0441\u0432\u044F\u0442\u0438\u043B\u0438\u0449\u0430 \u043D\u0435\u0442");
         return;
       }
       if (!task.at) {
@@ -9866,14 +9955,14 @@ dd.q4{color:#c58cff;font-weight:600}
         if (r === "arrived") task.at = w.tick;
         else if (r === "none" && !w.nav.dirtySet.has("station:shrine")) {
           w.nav.dirty("station:shrine");
-          fail2(a, "\u043A \u0441\u0432\u044F\u0442\u0438\u043B\u0438\u0449\u0443 \u043D\u0435\u0442 \u043F\u0443\u0442\u0438");
+          fail2(w, a, "\u043A \u0441\u0432\u044F\u0442\u0438\u043B\u0438\u0449\u0443 \u043D\u0435\u0442 \u043F\u0443\u0442\u0438", "impossible");
           a.think = 30;
         }
         return;
       }
       if (w.tick - task.at > 60) {
         prayed(w, a);
-        done2(a);
+        done2(w, a);
       }
     } },
     // raiders
@@ -9899,7 +9988,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // gather by the fire when raiders come; done as soon as the alarm is over
     { id: "muster", label: () => "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442\u0441\u044F \u043F\u043E \u0442\u0440\u0435\u0432\u043E\u0433\u0435", step(w, a, task) {
       if (!raidAlarm(w)) {
-        done2(a);
+        done2(w, a);
         return;
       }
       think(w, a, "raidAlarm");
@@ -9907,12 +9996,12 @@ dd.q4{color:#c58cff;font-weight:600}
     } },
     // run for the settlement zone when something is hunting you
     { id: "runHome", label: () => "\u0431\u0435\u0436\u0438\u0442 \u043A \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044E", step(w, a) {
-      if (follow(w, a, "zone", 1.3) === "arrived") done2(a);
+      if (follow(w, a, "zone", 1.3) === "arrived") done2(w, a);
     } },
     // a wounded colonist lies in the healer's hut until mostly healed (settlement/healing.js)
     { id: "treat", label: (t) => t.lying ? t.healer != null ? "\u043B\u0435\u0447\u0438\u0442\u0441\u044F \u0443 \u043B\u0435\u043A\u0430\u0440\u044F" : "\u043B\u0435\u0436\u0438\u0442 \u0432 \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F" : "\u0438\u0434\u0451\u0442 \u043A \u043B\u0435\u043A\u0430\u0440\u044E", step(w, a, task) {
       if (!has(w, "healerhut")) {
-        done2(a);
+        fail2(w, a, "\u0445\u0438\u0436\u0438\u043D\u044B \u043B\u0435\u043A\u0430\u0440\u044F \u043D\u0435\u0442");
         return;
       }
       const max = maxHp(a);
@@ -9922,15 +10011,22 @@ dd.q4{color:#c58cff;font-weight:600}
           think(w, a, "treated", { name: healer.name });
           think(w, healer, "healedSomeone", { name: a.name });
         }
-        done2(a);
+        done2(w, a);
         return;
       }
+      const bed = freeBed(w, a);
+      if (!bed || !reserve(w, bed, a)) {
+        fail2(w, a, "\u0432 \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F \u043D\u0435\u0442 \u043C\u0435\u0441\u0442\u0430");
+        a.think = 30;
+        return;
+      }
+      task.bed = bed;
       if (!task.lying) {
         const r = follow(w, a, "healer");
         if (r === "arrived") task.lying = true;
         else if (r === "none" && !w.nav.dirtySet.has("healer")) {
           w.nav.dirty("healer");
-          fail2(a, "\u043A \u043B\u0435\u043A\u0430\u0440\u044E \u043D\u0435\u0442 \u043F\u0443\u0442\u0438");
+          fail2(w, a, "\u043A \u043B\u0435\u043A\u0430\u0440\u044E \u043D\u0435\u0442 \u043F\u0443\u0442\u0438", "impossible");
           a.think = 30;
         }
         return;
@@ -9940,7 +10036,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // the evening trade with a caravan: gather round the trader's goods, a few steps from the fire
     { id: "trade", label: () => "\u0442\u043E\u0440\u0433\u0443\u0435\u0442\u0441\u044F \u0441 \u043A\u0443\u043F\u0446\u043E\u043C", step(w, a, task) {
       if (!tradeOpen(w)) {
-        done2(a);
+        done2(w, a);
         return;
       }
       const spot = w.caravan.spot;
@@ -10010,7 +10106,7 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "astray", label: () => "\u043F\u043B\u0443\u0442\u0430\u0435\u0442 \u0432 \u043B\u0435\u0441\u0443", step(w, a, task) {
       if (w.tick >= task.until) {
         think(w, a, "foundWay");
-        done2(a);
+        done2(w, a);
         return;
       }
       if (!task.spot || moveToward(w, a, task.spot[0], task.spot[1], 0.6) !== false) {
@@ -10022,7 +10118,7 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "lured", label: () => "\u0438\u0434\u0451\u0442 \u043D\u0430 \u0433\u043E\u043B\u043E\u0441 \u0443 \u0432\u043E\u0434\u044B", step(w, a, task) {
       const s = w.agents.find((o) => o.id === task.by && !o.dead);
       if (!s || w.tick >= task.until) {
-        done2(a);
+        done2(w, a);
         return;
       }
       if (Math.hypot(s.x - a.x, s.y - a.y) > 0.8) approach(w, a, s.x, s.y, 0.7);
@@ -10031,9 +10127,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var taskLabel = (a) => a.task ? TASKS.get(a.task.id).label(a.task) : "\u0434\u0443\u043C\u0430\u0435\u0442";
 
   // src/agents/brains/colonist.js
-  var JOB_SKIP = 120;
   var ATTACKED = 2.6;
-  var label = (t) => TASKS.get(t.id).label(t);
+  var label2 = (t) => TASKS.get(t.id).label(t);
   function jobWhy(w, a, job, ctx, goal, tasty, night) {
     const parts = [];
     if (job.resource) parts.push(`${RESOURCES.get(job.resource).label} \u0432 \u0437\u0430\u043F\u0430\u0441\u0435 ${Math.floor(w.stock[job.resource] || 0)}`);
@@ -10047,10 +10142,6 @@ dd.q4{color:#c58cff;font-weight:600}
     if (tasty > 1) parts.push("\u043B\u044E\u0431\u0438\u043C\u0430\u044F \u0435\u0434\u0430");
     if (night > 0.6) parts.push("\u043D\u043E\u0447\u044C, \u0440\u0430\u0431\u043E\u0442\u0430 \u0438\u0434\u0451\u0442 \u043D\u0435\u043E\u0445\u043E\u0442\u043D\u043E");
     return parts.join(", ") || "\u043D\u0443\u0436\u043D\u043E \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044E";
-  }
-  function noteStop(w, a, task, why) {
-    a.lastStop = { t: w.tick, task: label(task), why };
-    w.behave.stops++;
   }
   var key = (t) => t ? t.id === "job" ? "job:" + t.job : t.id : "";
   function decide(w, a) {
@@ -10074,7 +10165,6 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const job of JOBS.all()) {
       if (!jobUnlocked(w, job) || job.canDo && !job.canDo(w, a)) continue;
-      if (a.skipJob?.id === job.id && w.tick < a.skipJob.until) continue;
       const base = job.desire(w, ctx, job);
       if (base < 0) continue;
       const res = job.resource;
@@ -10089,7 +10179,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const pray = wantsPrayer(w, a);
     if (pray > 0.1 && night < 0.5) opts.push([{ id: "pray" }, 0.3 + pray * 1.2, () => "\u0442\u044F\u0436\u0435\u043B\u043E \u043D\u0430 \u0434\u0443\u0448\u0435"]);
     if (councilDue(w)) opts.push([{ id: "council" }, 1.3, () => "\u0432\u0440\u0435\u043C\u044F \u0441\u043E\u0432\u0435\u0442\u0430"]);
-    if ((hurt(a) || a.task?.id === "treat" && a.hp < maxHp(a) * HEAL.until) && has(w, "healerhut")) opts.push([{ id: "treat" }, (1 - a.hp / maxHp(a)) * 2 + 0.25, () => `\u0440\u0430\u043D\u0435\u043D: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(a) * 100)}%`]);
+    if ((hurt(a) || a.task?.id === "treat" && a.hp < maxHp(a) * HEAL.until) && has(w, "healerhut") && freeBed(w, a)) opts.push([{ id: "treat" }, (1 - a.hp / maxHp(a)) * 2 + 0.25, () => `\u0440\u0430\u043D\u0435\u043D: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(a) * 100)}%`]);
     if (tradeOpen(w)) opts.push([{ id: "trade" }, 1.1, () => "\u0442\u043E\u0440\u0433 \u0441 \u043A\u0443\u043F\u0446\u043E\u043C"]);
     const brave = a.mods.bravery;
     if (w.stats.fireNearCamp > 0 && hpShare(a) > 0.6 && brave > 0.7) opts.push([{ id: "douse" }, 0.8 * brave, () => "\u043F\u043E\u0436\u0430\u0440 \u0443 \u043B\u0430\u0433\u0435\u0440\u044F"]);
@@ -10110,6 +10200,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const keep = 0.12 + (a.task?.id === "job" ? JOBS.get(a.task.job).sticky || 0 : 0);
     let bestWhy = null, alt = null, as = -Infinity, altWhy = null;
     for (const [t, s, why] of opts) {
+      if (key(t) !== cur && skipped(w, a, t)) continue;
       const sc = s + (key(t) === cur ? keep : 0);
       if (sc > bs) {
         if (best && key(best) !== key(t)) {
@@ -10128,16 +10219,17 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     a.why = {
       t: w.tick,
-      task: label(best),
+      task: label2(best),
       score: +bs.toFixed(2),
       why: bestWhy?.() || "",
       kept: key(best) === cur,
-      alt: alt ? label(alt) : null,
+      alt: alt ? label2(alt) : null,
       altScore: alt ? +as.toFixed(2) : null,
       altWhy: altWhy?.() || ""
     };
     if (key(best) !== cur) {
-      if (a.task && !["idle", "council", "trade", "eat", "sleep", "warm", "muster", "sulk"].includes(a.task.id)) noteStop(w, a, a.task, `\u0440\u0430\u0434\u0438 \xAB${a.why.task}\xBB: ${a.why.why}`);
+      if (a.task && !["idle", "council", "trade", "eat", "sleep", "warm", "muster", "sulk"].includes(a.task.id)) a.switchWhy = `\u0440\u0430\u0434\u0438 \xAB${a.why.task}\xBB: ${a.why.why}`;
+      else if (a.task) a.task.closed = "done";
       if (a.task) w.behave.switches++;
       a.task = best;
       if (best.id === "job" && !best.eatNow) {
@@ -10176,14 +10268,9 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (a.carry && !(a.task?.id === "job" && a.task.job === a.carryJob) && w.nav.get("camp")[cellOf(w, a)] < 2) dropLoad(w, a);
       if (a.task?.id === "job") a.carryJob = a.task.job;
-      const was = a.task;
+      syncTask(w, a);
       TASKS.get(a.task.id).step(w, a, a.task);
-      if (!a.task && was.id === "job" && !was.started) {
-        a.skipJob = { id: was.job, until: w.tick + JOB_SKIP };
-        w.behave.firstDrops++;
-      } else if (a.task === was && was.id === "job") was.started = true;
-      if ((!a.task || a.task.id === "idle") && a.stopWhy && a.task !== was) noteStop(w, a, was, a.stopWhy);
-      a.stopWhy = null;
+      syncTask(w, a);
       if (a.cd > 0) a.cd--;
     }
   };
@@ -10953,6 +11040,7 @@ dd.q4{color:#c58cff;font-weight:600}
     stepOutside(w);
     sampleChronicle(w);
     sampleBehaviour(w);
+    sweepReserve(w);
     checkEnd(w);
     const t3 = performance.now();
     w.perf.fields = ema(w.perf.fields, t1 - t0);
@@ -12247,7 +12335,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     buildFilters() {
-      const chip = (key2, label2, dot2) => `<button type="button" data-key="${key2}" aria-pressed="${!this.hidden.has(key2)}">${dot2 ? `<i style="background:${dot2}"></i>` : ""}${label2}</button>`;
+      const chip = (key2, label3, dot2) => `<button type="button" data-key="${key2}" aria-pressed="${!this.hidden.has(key2)}">${dot2 ? `<i style="background:${dot2}"></i>` : ""}${label3}</button>`;
       $("logLevels").innerHTML = LEVELS2.map((l) => chip("lv:" + l.id, l.label, l.color)).join("");
       $("logTopics").innerHTML = LOG_TOPICS.all().map((t) => chip("t:" + t.id, t.label)).join("");
       for (const box of [$("logLevels"), $("logTopics")]) box.addEventListener("click", (e) => {
@@ -12529,7 +12617,7 @@ dd.q4{color:#c58cff;font-weight:600}
       this.set("selCard", html);
     }
     buildingHtml(w, b) {
-      const d = BUILDINGS.get(b.key), close = '<button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button>';
+      const d = BUILDINGS.get(b.key), close2 = '<button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button>';
       const state = b.done ? "\u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E" : `\u0441\u0442\u0440\u043E\u0438\u0442\u0441\u044F ${Math.floor(b.progress / d.work * 100)}%`;
       const rows = [`<dt>\u0421\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435</dt><dd>${state}</dd>`, `<dt>\u0426\u0435\u043D\u0430</dt><dd class="nb">${Object.entries(d.cost).map(([r, v]) => `${v} ${RESOURCES.get(r).label}`).join(", ")}</dd>`];
       let extra = "";
@@ -12587,12 +12675,12 @@ dd.q4{color:#c58cff;font-weight:600}
         }).join("");
         extra = `<section><h4>\u0427\u0442\u043E \u0437\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442</h4><div class="recipes">${recs}</div></section>`;
       }
-      return `<div class="pc-head"><h3>${d.name}</h3>${close}</div><p class="pc-now">${d.effect}</p>
+      return `<div class="pc-head"><h3>${d.name}</h3>${close2}</div><p class="pc-now">${d.effect}</p>
       <div class="pc-grid bgrid"><section><dl class="kv">${rows.join("")}</dl></section>${extra}</div>`;
     }
     cellHtml(w, i) {
       const g2 = w.grid, x = i % w.w, y = i / w.w | 0, d = w.nav.get("camp")[i];
-      const close = '<button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button>';
+      const close2 = '<button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button>';
       const lake = g2.lake?.[i] >= 0 ? w.lakes[g2.lake[i]] : null;
       const rows = [`<dt>\u041C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C</dt><dd>${lake ? `\u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A` : BY_CODE[g2.terr[i]].label}</dd>`];
       if (oreOf(w, i)) rows.push(`<dt>\u0420\u0443\u0434\u0430</dt><dd>${oreOf(w, i).label}, \u0435\u0449\u0451 ${Math.ceil(g2.oreLeft[i])}</dd>`);
@@ -12604,7 +12692,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (g2.fire[i] > 0) rows.push(`<dt>\u041E\u0433\u043E\u043D\u044C</dt><dd>${g2.fire[i].toFixed(2)}</dd>`);
       for (const gr of w.graves || []) if (gr.x === x && gr.y === y) rows.push(`<dt>\u041C\u043E\u0433\u0438\u043B\u0430</dt><dd>${esc(gr.name)} \xB7 \u0443\u043C\u0435\u0440${gr.f ? "\u043B\u0430" : ""} \u0432 \u0434\u0435\u043D\u044C ${dayOf(gr.died) + 1}${gr.rite ? ", \u043F\u043E\u0445\u043E\u0440\u043E\u043D\u0435\u043D" + (gr.f ? "\u0430" : "") + " \u0441 \u043E\u0431\u0440\u044F\u0434\u043E\u043C" : ""}</dd>`);
       for (const c of w.corpses || []) if ((c.x | 0) === x && (c.y | 0) === y) rows.push(`<dt>\u0422\u0435\u043B\u043E</dt><dd>${esc(c.name)}, \u0435\u0449\u0451 \u043D\u0435 \u043F\u043E\u0445\u043E\u0440\u043E\u043D\u0435\u043D${c.f ? "\u0430" : ""}</dd>`);
-      return `<div class="pc-head"><h3>\u041A\u043B\u0435\u0442\u043A\u0430 ${x}, ${y}</h3>${close}</div><dl class="kv">${rows.join("")}</dl>`;
+      return `<div class="pc-head"><h3>\u041A\u043B\u0435\u0442\u043A\u0430 ${x}, ${y}</h3>${close2}</div><dl class="kv">${rows.join("")}</dl>`;
     }
     where(w, a) {
       const i = cellOf(w, a), dc = w.nav.get("camp")[i];
@@ -12626,7 +12714,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (y.alt) rows.push(`<dt>\u0412\u0442\u043E\u0440\u043E\u0435</dt><dd class="alt">${esc(y.alt)} (${y.altScore})${y.altWhy ? ` \u2014 ${esc(y.altWhy)}` : ""}</dd>`);
       }
       if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>\u041F\u0443\u0442\u044C</dt><dd>${esc(a.route.how)}</dd>`);
-      if (a.lastStop) rows.push(`<dt>\u0411\u0440\u043E\u0441\u0438\u043B</dt><dd>\xAB${esc(a.lastStop.task)}\xBB ${ago(a.lastStop.t)}: ${esc(a.lastStop.why)}</dd>`);
+      if (a.lastStop) rows.push(`<dt>${a.lastStop.outcome === "interrupted" ? "\u041F\u0440\u0435\u0440\u0432\u0430\u043B" : "\u0411\u0440\u043E\u0441\u0438\u043B"}</dt><dd>\xAB${esc(a.lastStop.task)}\xBB ${ago(a.lastStop.t)}${a.lastStop.outcome && a.lastStop.outcome !== "interrupted" ? ` (${OUTCOMES[a.lastStop.outcome].label})` : ""}: ${esc(a.lastStop.why)}</dd>`);
       return rows.length ? `<dl class="kv why">${rows.join("")}</dl>` : "";
     }
     creatureHtml(w, a) {
@@ -13047,8 +13135,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.35 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 af81a9b" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.36 \xB7 15.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 1fd3751" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;
@@ -13056,9 +13144,9 @@ dd.q4{color:#c58cff;font-weight:600}
   function externals() {
     const m = /* @__PURE__ */ new Map();
     for (const r of Registry.list) for (const d of r.all()) m.set(d, `${r.kind}:${d.id}`);
-    for (const [name, table] of Object.entries(presets_exports)) {
-      if (!table || typeof table !== "object" || Array.isArray(table)) continue;
-      for (const [k, v] of Object.entries(table)) if (v && typeof v === "object") m.set(v, `preset:${name}:${k}`);
+    for (const [name, table2] of Object.entries(presets_exports)) {
+      if (!table2 || typeof table2 !== "object" || Array.isArray(table2)) continue;
+      for (const [k, v] of Object.entries(table2)) if (v && typeof v === "object") m.set(v, `preset:${name}:${k}`);
     }
     return m;
   }
@@ -13071,7 +13159,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return { format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, tree };
   }
   function loadWorld(save2) {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f;
     if (!save2 || save2.format !== SAVE_FORMAT) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
     ensureRegion(w);
@@ -13083,12 +13171,23 @@ dd.q4{color:#c58cff;font-weight:600}
     w.graves ?? (w.graves = []);
     w.graveyard ?? (w.graveyard = null);
     w.behave ?? (w.behave = newBehaviour());
+    (_a = w.behave).outcomes ?? (_a.outcomes = {});
+    for (const b of w.buildings) delete b.workers;
+    for (const c of w.corpses) {
+      delete c.by;
+      delete c.at;
+    }
+    for (const a of w.agents) {
+      delete a.tamer;
+      delete a.tamerAt;
+      delete a.skipJob;
+    }
     recomputeMods(w);
     if (w.stock.charcoal != null) {
       w.stock.coal = (w.stock.coal || 0) + w.stock.charcoal;
       delete w.stock.charcoal;
     }
-    for (const r of RESOURCES.all()) (_a = w.stock)[_b = r.id] ?? (_a[_b] = 0);
+    for (const r of RESOURCES.all()) (_b = w.stock)[_c = r.id] ?? (_b[_c] = 0);
     w.rng = mulberry(0);
     w.rng.state = save2.rng;
     w.nav = new Navigation(w);
@@ -13102,7 +13201,7 @@ dd.q4{color:#c58cff;font-weight:600}
       w.chronicle.deaths["\u043E\u0442 " + k] = (w.chronicle.deaths["\u043E\u0442 " + k] || 0) + w.chronicle.deaths[k];
       delete w.chronicle.deaths[k];
     }
-    for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) (_c = a.mods)[k] ?? (_c[k] = v);
+    for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) (_d = a.mods)[k] ?? (_d[k] = v);
     for (const a of w.agents) {
       const sp = SPECIES.get(a.species);
       if (a.special || !sp.special) continue;
@@ -13112,8 +13211,8 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
     for (const a of w.agents) if (a.prefs) for (const id of JOBS.ids()) {
-      (_d = a.prefs)[id] ?? (_d[id] = 1);
-      (_e = a.skill)[id] ?? (_e[id] = 0);
+      (_e = a.prefs)[id] ?? (_e[id] = 1);
+      (_f = a.skill)[id] ?? (_f[id] = 0);
     }
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     ensureFlows(w);

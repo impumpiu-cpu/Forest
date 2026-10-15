@@ -17,6 +17,7 @@
 //
 // Gloom: someone whose mood stays below LIFE.gloomBelow at dawn day after day first sulks for a few
 // hours instead of working, and after LIFE.leaveAfter such days may leave the outpost for good.
+import {isFree} from './reserve.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
 import {DAY, HOUR} from '../core/time.js';
@@ -80,16 +81,16 @@ function furnish(w) {
 
 // ── the dead
 export function addCorpse(w, a) {
-  (w.corpses ||= []).push({id: a.id, name: a.name, f: a.gender === 'f', x: a.x, y: a.y, tick: w.tick, by: null, at: 0});
+  (w.corpses ||= []).push({id: a.id, name: a.name, f: a.gender === 'f', x: a.x, y: a.y, tick: w.tick});
 }
 export const corpses = w => w.corpses || [];
-// a body nobody else is carrying (a claim lapses when its bearer stops); not while wolves prowl near it
+// a body nobody else is carrying (reservation 'corpse:<id>', settlement/reserve.js); not while wolves prowl near it
 const wolvesNear = (w, c) => w.agents.some(o => o.species === 'wolf' && !o.dead && Math.hypot(o.x - c.x, o.y - c.y) < 20);
 export const reachableCorpses = w => corpses(w).filter(c => !wolvesNear(w, c));
 export function freeCorpse(w, a) {
   let best = null, bd = Infinity;
   for (const c of reachableCorpses(w)) {
-    if (c.by != null && c.by !== a.id && w.tick - c.at < 30) continue;
+    if (!isFree(w, 'corpse:' + c.id, a)) continue;
     const d = Math.hypot(c.x - a.x, c.y - a.y); if (d < bd) { bd = d; best = c; }
   }
   return best;
