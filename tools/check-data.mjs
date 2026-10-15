@@ -22,6 +22,7 @@ import {PLANTS} from '../src/data/plants.js';
 import {CROPS} from '../src/data/crops.js';
 import {MIGRATIONS} from '../src/data/migrations.js';
 import {STATS} from '../src/data/special.js';
+import {SKILLS, FROM_JOB, STATION_SKILL, recipeSkill, TIERS} from '../src/data/skills.js';
 import {BIOMES, RARITY, FAUNA_FLOOR} from '../src/data/biomes.js';
 import {faunaFrom} from '../src/world/region.js';
 import {VALUES} from '../src/data/values.js';
@@ -191,6 +192,24 @@ for (const f of FURNITURE.all()) {
 }
 for (const r of RESOURCES.all()) if (!sources.has(r.id)) warn(`ресурс ${r.id}: ниоткуда не добывается`);
 
+// skills (data/skills.js): every job and every recipe leads to an active skill on a real SPECIAL letter;
+// old job ids all have a way into the catalogue; a reserved skill is reached by nothing
+const activeSkill = (where, id) => { if (!SKILLS.has(id)) err(`${where}: нет навыка «${id}»`); else if (SKILLS.get(id).status !== 'active') err(`${where}: навык «${id}» зарезервирован, его ещё нельзя тренировать`); };
+for (const s of SKILLS.all()) {
+  if (!STATS.has(s.stat)) err(`навык ${s.id}: нет характеристики «${s.stat}»`);
+  if (s.stat === 'L') err(`навык ${s.id}: у удачи нет тренируемых навыков`);
+  if (!['active', 'reserved'].includes(s.status)) err(`навык ${s.id}: статус «${s.status}»`);
+}
+for (const j of JOBS.all()) {
+  activeSkill(`работа ${j.id}`, j.skill);
+  if (j.gatherSkill) activeSkill(`работа ${j.id} (сбор)`, j.gatherSkill);
+  if (!FROM_JOB[j.id]) err(`работа ${j.id}: старые сохранения не знают, в какой навык перенести её опыт (FROM_JOB)`);
+}
+for (const [job, list] of Object.entries(FROM_JOB)) list.forEach(id => activeSkill(`перенос ${job}`, id));
+for (const st of Object.keys(STATION_SKILL)) bld(`STATION_SKILL ${st}`, st);
+for (const r of RECIPES.all()) { if (!recipeSkill(r)) err(`рецепт ${r.id}: не указан навык, и у станции ${r.at} его нет`); else activeSkill(`рецепт ${r.id}`, recipeSkill(r)); }
+if (TIERS.some((t, k) => k && t.min <= TIERS[k - 1].min)) err('тиры должны идти по возрастанию порога');
+
 for (const w of warnings) console.log('warn ' + w);
 if (errors.length) { console.log('Ошибки в справочниках:\n  ' + errors.join('\n  ')); process.exit(1); }
-console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд — ссылки сходятся`);
+console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд, ${SKILLS.all().length} навыков — ссылки сходятся`);

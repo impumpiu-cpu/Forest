@@ -7,6 +7,8 @@ import {wear, def} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
 import {lineOfFire} from '../nav/astar.js';
+import {practice} from './skills.js';
+import {LEARN} from '../data/skills.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
@@ -94,8 +96,10 @@ export function attack(w, a, t) {
   return true;
 }
 
-// one shot at a target within range; returns 'kill' | 'hit' | 'miss' | null (cannot shoot)
-export function shoot(w, a, t, skillJob = 'hunt') {
+// one shot at a target within range; returns 'kill' | 'hit' | 'miss' | null (cannot shoot).
+// The same shot for a hunt and for a fight: it reads and trains the shooting skill (`ranged`), and only
+// a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
+export function shoot(w, a, t) {
   const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0) return null;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
   // out of range, unseen, or a rock in the way: no shot
@@ -103,8 +107,9 @@ export function shoot(w, a, t, skillJob = 'hunt') {
   a.cd = r.cd;
   if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
   wear(w, a, r.item);
-  const skill = a.skill?.[skillJob] ?? 0.2, moving = t.task?.id === 'bolt' || t.task?.id === 'chase' ? 0.12 : 0;
+  const skill = a.skill?.ranged ?? 0.2, moving = t.task?.id === 'bolt' || t.task?.id === 'chase' ? 0.12 : 0;
   const hit = w.rngs.combat() < 0.4 + 0.4 * skill + (a.mods?.aim || 0) - (d / range) * 0.2 - moving;
+  practice(a, 'ranged', LEARN.shot);   // a miss teaches too: the arrow did fly
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;

@@ -73,7 +73,7 @@ export function tryTame(w, a, beast) {
   const T = tameOf(beast);
   if (!hasBait(w, T)) return 'nobait';
   for (const [r, v] of Object.entries(T.bait)) w.stock[r] -= v;
-  const chance = T.chance * (0.6 + (a.skill.herd || 0)) * (1 + 0.35 * (beast.tries || 0));
+  const chance = T.chance * (0.6 + (a.skill.husbandry || 0)) * (1 + 0.35 * (beast.tries || 0));
   w.stats.tameTries = (w.stats.tameTries || 0) + 1;
   if (w.rngs.wild() < chance) { makeTame(w, beast, a); return 'tamed'; }
   beast.tries = (beast.tries || 0) + 1;

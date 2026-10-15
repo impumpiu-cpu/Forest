@@ -169,6 +169,8 @@ button.quiet{background:transparent;color:var(--muted)}
 .spc{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .spc span{display:flex;flex-direction:column;align-items:center;padding:3px 0 2px;border-radius:6px;background:#23271c;font-size:9.5px;letter-spacing:.04em;color:var(--muted);cursor:help}
 .spc b{font-size:14px;color:var(--text,#e8e2cf);font-weight:600;line-height:1.1}
+.sk-row{display:flex;gap:6px;align-items:baseline;margin:2px 0}
+.sk-stat{flex:0 0 74px;font-size:10px;letter-spacing:.04em;color:var(--muted);cursor:help;white-space:nowrap}
 .chip.race{background:#2c3040;color:#cdd4f0}
 .person .race{font-style:normal;font-size:11px;color:var(--muted);font-weight:400}
 .pc-list li.down{color:#f0c0c2} .pc-list li.up{color:#cfe6b8}
@@ -1194,12 +1196,12 @@ dd.q4{color:#c58cff;font-weight:600}
   var STATS = new Registry("stat");
   var NORM = 5;
   STATS.registerAll([
-    { id: "S", label: "\u0421\u0438\u043B\u0430", short: "\u0421\u0418\u041B", note: "\u0443\u0440\u043E\u043D \u0432 \u0431\u043B\u0438\u0436\u043D\u0435\u043C \u0431\u043E\u044E" },
-    { id: "P", label: "\u0412\u043E\u0441\u043F\u0440\u0438\u044F\u0442\u0438\u0435", short: "\u0412\u041E\u0421", note: "\u043C\u0435\u0442\u043A\u043E\u0441\u0442\u044C, \u0437\u0430\u043C\u0435\u0447\u0430\u0435\u0442 \u0432\u0440\u0430\u0433\u0430 \u0440\u0430\u043D\u044C\u0448\u0435" },
-    { id: "E", label: "\u0412\u044B\u043D\u043E\u0441\u043B\u0438\u0432\u043E\u0441\u0442\u044C", short: "\u0412\u042B\u041D", note: "\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435, \u0441\u0442\u043E\u0439\u043A\u043E\u0441\u0442\u044C \u043A \u0445\u043E\u043B\u043E\u0434\u0443" },
-    { id: "C", label: "\u0425\u0430\u0440\u0438\u0437\u043C\u0430", short: "\u0425\u0410\u0420", note: "\u043A\u0430\u043A \u043A \u043D\u0435\u043C\u0443 \u043E\u0442\u043D\u043E\u0441\u044F\u0442\u0441\u044F \u0441\u043E\u0441\u0435\u0434\u0438" },
-    { id: "I", label: "\u0418\u043D\u0442\u0435\u043B\u043B\u0435\u043A\u0442", short: "\u0418\u041D\u0422", note: "\u043A\u0430\u043A \u0431\u044B\u0441\u0442\u0440\u043E \u0443\u0447\u0438\u0442\u0441\u044F \u0440\u0435\u043C\u0435\u0441\u043B\u0443" },
-    { id: "A", label: "\u041B\u043E\u0432\u043A\u043E\u0441\u0442\u044C", short: "\u041B\u041E\u0412", note: "\u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0448\u0430\u0433\u0430 \u0438 \u0443\u0434\u0430\u0440\u0430" },
+    { id: "S", label: "\u0421\u0438\u043B\u0430", short: "\u0421\u0418\u041B", note: "\u0443\u0440\u043E\u043D \u0432 \u0431\u043B\u0438\u0436\u043D\u0435\u043C \u0431\u043E\u044E; \u0440\u0443\u0431\u043A\u0430, \u0433\u043E\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E, \u0441\u0442\u0440\u043E\u0439\u043A\u0430, \u043A\u043E\u0432\u043A\u0430" },
+    { id: "P", label: "\u0412\u043E\u0441\u043F\u0440\u0438\u044F\u0442\u0438\u0435", short: "\u0412\u041E\u0421", note: "\u043C\u0435\u0442\u043A\u043E\u0441\u0442\u044C, \u0437\u0430\u043C\u0435\u0447\u0430\u0435\u0442 \u0432\u0440\u0430\u0433\u0430 \u0440\u0430\u043D\u044C\u0448\u0435; \u0441\u0431\u043E\u0440, \u043E\u0445\u043E\u0442\u0430, \u0441\u0442\u0440\u0435\u043B\u044C\u0431\u0430, \u0440\u044B\u0431\u0430\u043B\u043A\u0430" },
+    { id: "E", label: "\u0412\u044B\u043D\u043E\u0441\u043B\u0438\u0432\u043E\u0441\u0442\u044C", short: "\u0412\u042B\u041D", note: "\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435, \u0441\u0442\u043E\u0439\u043A\u043E\u0441\u0442\u044C \u043A \u0445\u043E\u043B\u043E\u0434\u0443; \u043F\u043E\u043B\u0435, \u0442\u044F\u0436\u0451\u043B\u0430\u044F \u043D\u043E\u0448\u0430" },
+    { id: "C", label: "\u0425\u0430\u0440\u0438\u0437\u043C\u0430", short: "\u0425\u0410\u0420", note: "\u043A\u0430\u043A \u043A \u043D\u0435\u043C\u0443 \u043E\u0442\u043D\u043E\u0441\u044F\u0442\u0441\u044F \u0441\u043E\u0441\u0435\u0434\u0438; \u043E\u0431\u0440\u0430\u0449\u0435\u043D\u0438\u0435 \u0441 \u0436\u0438\u0432\u043E\u0442\u043D\u044B\u043C\u0438" },
+    { id: "I", label: "\u0418\u043D\u0442\u0435\u043B\u043B\u0435\u043A\u0442", short: "\u0418\u041D\u0422", note: "\u043C\u0435\u0434\u0438\u0446\u0438\u043D\u0430, \u043F\u043B\u0430\u0432\u043A\u0430, \u043A\u0443\u0445\u043D\u044F; \u043D\u0435\u043C\u043D\u043E\u0433\u043E \u043F\u043E\u043C\u043E\u0433\u0430\u0435\u0442 \u0443\u0447\u0438\u0442\u044C\u0441\u044F \u0432\u0441\u0435\u043C\u0443" },
+    { id: "A", label: "\u041B\u043E\u0432\u043A\u043E\u0441\u0442\u044C", short: "\u041B\u041E\u0412", note: "\u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0448\u0430\u0433\u0430 \u0438 \u0443\u0434\u0430\u0440\u0430; \u0434\u0435\u0440\u0435\u0432\u043E, \u0448\u0438\u0442\u044C\u0451, \u043A\u043E\u0436\u0438, \u0433\u043E\u043D\u0447\u0430\u0440, \u044E\u0432\u0435\u043B\u0438\u0440" },
     { id: "L", label: "\u0423\u0434\u0430\u0447\u0430", short: "\u0423\u0414\u0427", note: "\u0443\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043E\u0442 \u0443\u0434\u0430\u0440\u0430, \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u043D\u0430\u0443\u0434\u0430\u0447\u0443" }
   ]);
   var around = (mid, spread = 1) => Object.fromEntries(Object.entries(mid).map(([k, v]) => [k, [Math.max(0, v - spread), v + spread]]));
@@ -1219,8 +1221,8 @@ dd.q4{color:#c58cff;font-weight:600}
     speed: (s) => Math.max(0.5, 1 + 0.025 * (s.A - NORM)),
     // attack cooldown multiplier: nimble creatures strike more often
     swing: (s) => Math.max(0.5, 1 - 0.03 * (s.A - NORM)),
-    // skill gained from work
-    learn: (s) => Math.max(0.2, 0.5 + 0.1 * s.I),
+    // a small general bonus to learning any skill; each skill learns mainly by its own letter (data/skills.js)
+    learn: (s) => Math.max(0.7, 0.9 + 0.02 * s.I),
     // chance that a blow or a shot simply misses this creature
     dodge: (s) => Math.min(0.15, Math.max(0, 0.015 * (s.L - 4))),
     // how much others like this creature (added to their opinion of it, data/relations.js)
@@ -1935,7 +1937,7 @@ dd.q4{color:#c58cff;font-weight:600}
       take: 0.25,
       tint: [168, 110, 80],
       mapColor: [200, 120, 80],
-      job: { id: "clay", label: "\u043A\u043E\u043F\u0430\u0442\u044C \u0433\u043B\u0438\u043D\u0443", short: "\u0433\u043B\u0438\u043D\u0430", verb: "\u043A\u043E\u043F\u0430\u0435\u0442 \u0433\u043B\u0438\u043D\u0443", time: 30, carry: 2, keep: 14 }
+      job: { id: "clay", skill: "mining", label: "\u043A\u043E\u043F\u0430\u0442\u044C \u0433\u043B\u0438\u043D\u0443", short: "\u0433\u043B\u0438\u043D\u0430", verb: "\u043A\u043E\u043F\u0430\u0435\u0442 \u0433\u043B\u0438\u043D\u0443", time: 30, carry: 2, keep: 14 }
     },
     // wild bees in hollow trees: honey and wax; the bees sting
     {
@@ -1970,7 +1972,7 @@ dd.q4{color:#c58cff;font-weight:600}
       tint: [150, 180, 80],
       mapColor: [170, 220, 90],
       // enough for bedding, and for the pen's winter (settlement/herd.js, winterHay)
-      job: { id: "mow", label: "\u043A\u043E\u0441\u0438\u0442\u044C \u0441\u0435\u043D\u043E", short: "\u0441\u0435\u043D\u043E", verb: "\u043A\u043E\u0441\u0438\u0442 \u0441\u0435\u043D\u043E", time: 20, carry: 3, keep: (w) => 30 + winterHay(w) }
+      job: { id: "mow", skill: "farming", label: "\u043A\u043E\u0441\u0438\u0442\u044C \u0441\u0435\u043D\u043E", short: "\u0441\u0435\u043D\u043E", verb: "\u043A\u043E\u0441\u0438\u0442 \u0441\u0435\u043D\u043E", time: 20, carry: 3, keep: (w) => 30 + winterHay(w) }
     },
     // gold-bearing sand in the shallows: washed with a pan, a little at a time; the river brings more
     // sand very slowly. Not under ice. Now and then a nugget turns up in the pan.
@@ -3246,7 +3248,7 @@ dd.q4{color:#c58cff;font-weight:600}
       effect: "\u0421\u0435\u0442\u0438 \u0438 \u0432\u0435\u0448\u0430\u043B\u0430 \u0434\u043B\u044F \u0440\u044B\u0431\u044B: \u0440\u044B\u0431\u0430\u043A\u0438 \u043B\u043E\u0432\u044F\u0442 \u043D\u0430 \u0442\u0440\u0435\u0442\u044C \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043A\u0430\u0436\u0434\u0430\u044F \u0440\u044B\u0431\u0430 \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u0435\u0434\u044B, \u0443\u0434\u043E\u0447\u043A\u0438 \u0438\u0437\u043D\u0430\u0448\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435.",
       effects: { jobSpeed: { fish: 1.35 }, yield: { fish: 1.5 }, toolWear: { fish: 0.5 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u043B\u043E\u0432\u0438\u0442\u044C \u0440\u044B\u0431\u0443 \u0443\u0434\u0430\u0447\u043D\u0435\u0435",
-      motive: (a, c) => [[c.fishLakes ? 0.15 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4 + a.skill.fish * 0.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [a.mem.walkFish * 0.8, "\u0434\u0430\u043B\u0435\u043A\u043E \u043D\u043E\u0441\u0438\u0442\u044C \u0440\u044B\u0431\u0443"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"], [c.fishLakes && a.food?.likes === "fish" ? 0.35 : 0, "\u0441\u043A\u0443\u0447\u0430\u0435\u0442 \u043F\u043E \u0440\u044B\u0431\u0435"]],
+      motive: (a, c) => [[c.fishLakes ? 0.15 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4 + (a.skill.fishing || 0) * 0.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [a.mem.walkFish * 0.8, "\u0434\u0430\u043B\u0435\u043A\u043E \u043D\u043E\u0441\u0438\u0442\u044C \u0440\u044B\u0431\u0443"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"], [c.fishLakes && a.food?.likes === "fish" ? 0.35 : 0, "\u0441\u043A\u0443\u0447\u0430\u0435\u0442 \u043F\u043E \u0440\u044B\u0431\u0435"]],
       available: (w) => w.lakes.some((l) => l.cap > 0)
     },
     {
@@ -5190,7 +5192,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const T2 = tameOf(beast2);
     if (!hasBait(w, T2)) return "nobait";
     for (const [r, v] of Object.entries(T2.bait)) w.stock[r] -= v;
-    const chance = T2.chance * (0.6 + (a.skill.herd || 0)) * (1 + 0.35 * (beast2.tries || 0));
+    const chance = T2.chance * (0.6 + (a.skill.husbandry || 0)) * (1 + 0.35 * (beast2.tries || 0));
     w.stats.tameTries = (w.stats.tameTries || 0) + 1;
     if (w.rngs.wild() < chance) {
       makeTame(w, beast2, a);
@@ -5597,6 +5599,7 @@ dd.q4{color:#c58cff;font-weight:600}
   JOBS.registerAll([
     {
       id: "gather",
+      skill: "gathering",
       label: "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C \u044F\u0433\u043E\u0434\u044B",
       short: "\u0441\u0431\u043E\u0440",
       verb: "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u044F\u0433\u043E\u0434\u044B",
@@ -5617,6 +5620,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "chop",
+      skill: "woodcutting",
       label: "\u0440\u0443\u0431\u0438\u0442\u044C \u043B\u0435\u0441",
       short: "\u0440\u0443\u0431\u043A\u0430",
       verb: "\u0440\u0443\u0431\u0438\u0442 \u043B\u0435\u0441",
@@ -5643,6 +5647,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "mine",
+      skill: "mining",
       label: "\u0434\u043E\u0431\u044B\u0432\u0430\u0442\u044C \u043A\u0430\u043C\u0435\u043D\u044C",
       short: "\u043A\u0430\u043C\u0435\u043D\u044C",
       verb: "\u0434\u043E\u0431\u044B\u0432\u0430\u0435\u0442 \u043A\u0430\u043C\u0435\u043D\u044C",
@@ -5661,6 +5666,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // the mine: dig whichever ore the colony is short of (iron ore, coal, gems) from the rock face
     {
       id: "dig",
+      skill: "mining",
       label: "\u0434\u043E\u0431\u044B\u0432\u0430\u0442\u044C \u0440\u0443\u0434\u0443",
       short: "\u0440\u0443\u0434\u0430",
       verb: "\u0434\u043E\u0431\u044B\u0432\u0430\u0435\u0442 \u0440\u0443\u0434\u0443",
@@ -5697,6 +5703,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // made at the craftsman's hut. The fisherman's hut only makes it better, as the lodge does for hunting
     {
       id: "fish",
+      skill: "fishing",
       label: "\u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C",
       short: "\u0440\u044B\u0431\u0430\u043B\u043A\u0430",
       verb: "\u0440\u044B\u0431\u0430\u0447\u0438\u0442",
@@ -5721,6 +5728,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "hunt",
+      skill: "hunting",
       label: "\u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F",
       short: "\u043E\u0445\u043E\u0442\u0430",
       verb: "\u043E\u0445\u043E\u0442\u0438\u0442\u0441\u044F",
@@ -5737,6 +5745,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "craft",
+      skill: "carpentry",
       label: "\u043C\u0430\u0441\u0442\u0435\u0440\u0438\u0442\u044C",
       short: "\u0440\u0435\u043C\u0435\u0441\u043B\u043E",
       verb: "\u043C\u0430\u0441\u0442\u0435\u0440\u0438\u0442",
@@ -5747,6 +5756,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "charcoal",
+      skill: "metallurgy",
       label: "\u0436\u0435\u0447\u044C \u0443\u0433\u043E\u043B\u044C",
       short: "\u0443\u0433\u043E\u043B\u044C",
       verb: "\u0436\u0436\u0451\u0442 \u0443\u0433\u043E\u043B\u044C",
@@ -5757,6 +5767,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "smith",
+      skill: "smithing",
       label: "\u043F\u043B\u0430\u0432\u0438\u0442\u044C \u0438 \u043A\u043E\u0432\u0430\u0442\u044C \u0436\u0435\u043B\u0435\u0437\u043E",
       short: "\u043A\u0443\u0437\u043D\u044F",
       verb: "\u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \u0443 \u0433\u043E\u0440\u043D\u0430",
@@ -5767,6 +5778,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "jewel",
+      skill: "jewelry",
       label: "\u0434\u0435\u043B\u0430\u0442\u044C \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u044F",
       short: "\u044E\u0432\u0435\u043B\u0438\u0440",
       verb: "\u0434\u0435\u043B\u0430\u0435\u0442 \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u044F",
@@ -5778,6 +5790,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // field work: sow empty plots in spring and summer, reap ripe ones (settlement/farming.js)
     {
       id: "farm",
+      skill: "farming",
       label: "\u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0432 \u043F\u043E\u043B\u0435",
       short: "\u043F\u043E\u043B\u0435",
       verb: "\u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \u0432 \u043F\u043E\u043B\u0435",
@@ -5791,6 +5804,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "mill",
+      skill: "cooking",
       label: "\u043C\u043E\u043B\u043E\u0442\u044C \u0437\u0435\u0440\u043D\u043E",
       short: "\u043C\u0435\u043B\u044C\u043D\u0438\u043A",
       verb: "\u043C\u0435\u043B\u0435\u0442 \u0437\u0435\u0440\u043D\u043E",
@@ -5801,6 +5815,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "saw",
+      skill: "carpentry",
       label: "\u043F\u0438\u043B\u0438\u0442\u044C \u0442\u0451\u0441",
       short: "\u0442\u0451\u0441",
       verb: "\u043F\u0438\u043B\u0438\u0442 \u0442\u0451\u0441",
@@ -5811,6 +5826,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "weave",
+      skill: "tailoring",
       label: "\u0442\u043A\u0430\u0442\u044C",
       short: "\u0442\u043A\u0430\u0447",
       verb: "\u0442\u043A\u0451\u0442 \u0445\u043E\u043B\u0441\u0442",
@@ -5821,6 +5837,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "pottery",
+      skill: "pottery",
       label: "\u043B\u0435\u043F\u0438\u0442\u044C \u0433\u043E\u0440\u0448\u043A\u0438",
       short: "\u0433\u043E\u043D\u0447\u0430\u0440",
       verb: "\u043B\u0435\u043F\u0438\u0442 \u0433\u043E\u0440\u0448\u043A\u0438",
@@ -5831,6 +5848,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "preserve",
+      skill: "cooking",
       label: "\u0434\u0435\u043B\u0430\u0442\u044C \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438",
       short: "\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438",
       verb: "\u0432\u044F\u043B\u0438\u0442 \u0438 \u0441\u043E\u043B\u0438\u0442 \u043F\u0440\u0438\u043F\u0430\u0441\u044B",
@@ -5841,6 +5859,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "cook",
+      skill: "cooking",
       label: "\u0441\u0442\u0440\u044F\u043F\u0430\u0442\u044C",
       short: "\u043F\u043E\u0432\u0430\u0440",
       verb: "\u0432\u0430\u0440\u0438\u0442 \u043F\u043E\u0445\u043B\u0451\u0431\u043A\u0443",
@@ -5851,6 +5870,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "tan",
+      skill: "leatherwork",
       label: "\u0432\u044B\u0434\u0435\u043B\u044B\u0432\u0430\u0442\u044C \u043A\u043E\u0436\u0438",
       short: "\u043A\u043E\u0436\u0438",
       verb: "\u0432\u044B\u0434\u0435\u043B\u044B\u0432\u0430\u0435\u0442 \u043A\u043E\u0436\u0438",
@@ -5860,9 +5880,11 @@ dd.q4{color:#c58cff;font-weight:600}
       desire: atStations(0.5)
     },
     // the healer: tends the wounded lying in the healer's hut; with nobody to tend, picks healing herbs
-    // while the stock is low (settlement/healing.js). Its skill is the healer's skill.
+    // while the stock is low (settlement/healing.js). Tending trains medicine, picking herbs trains gathering.
     {
       id: "heal",
+      skill: "medicine",
+      gatherSkill: "gathering",
       label: "\u043B\u0435\u0447\u0438\u0442\u044C \u0440\u0430\u043D\u0435\u043D\u044B\u0445",
       short: "\u043B\u0435\u043A\u0430\u0440\u044C",
       verb: "\u043B\u0435\u0447\u0438\u0442",
@@ -5883,9 +5905,10 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     },
     // the herder: milks the goats and shears them; with nothing to take, goes after a wild goat or mule
-    // with bait from the stock and tries to tame it (settlement/herd.js). Its skill is the herder's skill.
+    // with bait from the stock and tries to tame it (settlement/herd.js). Trains and reads husbandry (C).
     {
       id: "herd",
+      skill: "husbandry",
       label: "\u0445\u043E\u0434\u0438\u0442\u044C \u0437\u0430 \u0441\u043A\u043E\u0442\u043E\u043C",
       short: "\u0441\u043A\u043E\u0442\u043D\u0438\u043A",
       verb: "\u0445\u043E\u0434\u0438\u0442 \u0437\u0430 \u0441\u043A\u043E\u0442\u043E\u043C",
@@ -5901,6 +5924,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // the dead are carried to the graves (settlement/life.js); not while raiders are about or wolves near the body
     {
       id: "bury",
+      skill: "athletics",
       label: "\u0445\u043E\u0440\u043E\u043D\u0438\u0442\u044C \u0443\u043C\u0435\u0440\u0448\u0438\u0445",
       short: "\u043F\u043E\u0445\u043E\u0440\u043E\u043D\u044B",
       verb: "\u0445\u043E\u0440\u043E\u043D\u0438\u0442 \u0443\u043C\u0435\u0440\u0448\u0435\u0433\u043E",
@@ -5912,6 +5936,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "build",
+      skill: "construction",
       label: "\u0441\u0442\u0440\u043E\u0438\u0442\u044C",
       short: "\u0441\u0442\u0440\u043E\u0439\u043A\u0430",
       verb: "\u0441\u0442\u0440\u043E\u0438\u0442",
@@ -5931,6 +5956,7 @@ dd.q4{color:#c58cff;font-weight:600}
       short: J.short,
       verb: J.verb,
       preferable: true,
+      skill: J.skill || "gathering",
       runner: "harvest",
       nav: key2,
       resource: p.resource,
@@ -6074,8 +6100,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var innateOf = (sp, a) => [...sp.innate || [], ...peopleOf(sp, a)?.innate || []];
   var raceLabel = (sp, a) => peopleOf(sp, a)?.label || sp.label;
   var ADD = /* @__PURE__ */ new Set(["aim", "dodge", "bravery"]);
-  function mod(a, k, v) {
-    a.mods[k] = ADD.has(k) ? (a.mods[k] ?? 0) + v : (a.mods[k] ?? 1) * v;
+  function mod(m, k, v) {
+    m[k] = ADD.has(k) ? (m[k] ?? 0) + v : (m[k] ?? 1) * v;
   }
   function rollCreature(w, a, sp) {
     if (!sp.special) return;
@@ -6084,9 +6110,6 @@ dd.q4{color:#c58cff;font-weight:600}
     const people = peopleOf(sp, a), lim = limits(sp, people);
     a.special = {};
     for (const [id, [lo, hi]] of Object.entries(lim)) a.special[id] = Math.round(lo + (hi - lo) * (rng() + rng()) / 2);
-    applySpecial(a, sp);
-    for (const [k, v] of Object.entries(people?.mods || {})) mod(a, k, v);
-    for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(a, k, v);
     if (sp.align) {
       const s = sp.align.spread ?? 1, n = () => (rng() + rng() + rng() - 1.5) * s;
       a.align = { order: clamp(Math.round((sp.align.order + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX), mercy: clamp(Math.round((sp.align.mercy + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX) };
@@ -6101,14 +6124,213 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
   }
-  function applySpecial(a, sp) {
+  function specialInto(m, a, sp) {
     const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;
     const rel = (k) => base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s);
-    a.maxHp = sp.hp * rel("hp");
-    a.hp = a.maxHp;
-    for (const k of ["str", "speed", "swing", "learn", "sight", "cold"]) mod(a, k, rel(k));
-    mod(a, "aim", EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
-    mod(a, "dodge", Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
+    for (const k of ["str", "speed", "swing", "learn", "sight", "cold"]) mod(m, k, rel(k));
+    mod(m, "aim", EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
+    mod(m, "dodge", Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
+    return sp.hp * rel("hp");
+  }
+  function refreshBody(a) {
+    const sp = SPECIES.get(a.species), m = { ...BASE_MODS };
+    for (const [k, v] of Object.entries(sp.mods || {})) m[k] *= v;
+    let full = null;
+    if (a.special && sp.special) {
+      full = specialInto(m, a, sp);
+      const people = peopleOf(sp, a);
+      for (const [k, v] of Object.entries(people?.mods || {})) mod(m, k, v);
+      for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(m, k, v);
+    }
+    for (const id of a.traits || []) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) mod(m, k, v);
+    const own = a.own || {};
+    for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;
+    for (const [k, v] of Object.entries(own.add || {})) m[k] = (m[k] ?? 0) + v;
+    Object.assign(m, own.set || {});
+    if (own.hp != null) full = own.hp;
+    const was = a.maxHp || sp.hp, share2 = Number.isFinite(a.hp) ? a.hp / was : 1;
+    a.mods = m;
+    if (full != null) a.maxHp = full;
+    else delete a.maxHp;
+    a.hp = (a.maxHp || sp.hp) * Math.max(0, Math.min(1, share2));
+  }
+  function adoptBody(a) {
+    if (!a.mods || a.bodyVer === 1) return;
+    const saved = a.mods, hp = a.hp, maxHp2 = a.maxHp;
+    delete a.own;
+    refreshBody(a);
+    const mul = {}, add2 = {};
+    for (const [k, v] of Object.entries(saved)) {
+      if (k === "learn" || !Number.isFinite(v)) continue;
+      if (ADD.has(k)) {
+        const d = v - (a.mods[k] ?? 0);
+        if (Math.abs(d) > 1e-9) add2[k] = d;
+      } else {
+        const now = a.mods[k] ?? 1;
+        if (now !== 0 && Math.abs(v / now - 1) > 1e-9) mul[k] = v / now;
+      }
+    }
+    a.own = {};
+    if (Object.keys(mul).length) a.own.mul = mul;
+    if (Object.keys(add2).length) a.own.add = add2;
+    if (maxHp2 && Math.abs(maxHp2 - (a.maxHp || SPECIES.get(a.species).hp)) > 1e-9) a.own.hp = maxHp2;
+    a.hp = hp;
+    if (maxHp2) a.maxHp = maxHp2;
+    refreshBody(a);
+    a.bodyVer = 1;
+  }
+
+  // src/data/skills.js
+  var SKILLS = new Registry("skill");
+  SKILLS.registerAll([
+    // ── S: strength
+    { id: "woodcutting", stat: "S", label: "\u0440\u0443\u0431\u043A\u0430 \u043B\u0435\u0441\u0430", short: "\u0440\u0443\u0431\u043A\u0430" },
+    { id: "mining", stat: "S", label: "\u0433\u043E\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u0433\u043E\u0440\u043D. \u0434\u0435\u043B\u043E" },
+    { id: "construction", stat: "S", label: "\u0441\u0442\u0440\u043E\u0438\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u043E", short: "\u0441\u0442\u0440\u043E\u0439\u043A\u0430" },
+    { id: "smithing", stat: "S", label: "\u043A\u0443\u0437\u043D\u0435\u0447\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u043A\u043E\u0432\u043A\u0430" },
+    { id: "melee", stat: "S", label: "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u0431\u043E\u0439", short: "\u0431\u043E\u0439", status: "reserved" },
+    // ── P: perception
+    { id: "gathering", stat: "P", label: "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u043E", short: "\u0441\u0431\u043E\u0440" },
+    { id: "hunting", stat: "P", label: "\u043E\u0445\u043E\u0442\u0430", short: "\u043E\u0445\u043E\u0442\u0430" },
+    { id: "ranged", stat: "P", label: "\u0441\u0442\u0440\u0435\u043B\u044C\u0431\u0430", short: "\u0441\u0442\u0440\u0435\u043B\u044C\u0431\u0430" },
+    { id: "fishing", stat: "P", label: "\u0440\u044B\u0431\u0430\u043B\u043A\u0430", short: "\u0440\u044B\u0431\u0430\u043B\u043A\u0430" },
+    { id: "scouting", stat: "P", label: "\u0440\u0430\u0437\u0432\u0435\u0434\u043A\u0430", short: "\u0440\u0430\u0437\u0432\u0435\u0434\u043A\u0430", status: "reserved" },
+    { id: "scavenging", stat: "P", label: "\u043F\u043E\u0438\u0441\u043A \u0442\u0440\u043E\u0444\u0435\u0435\u0432", short: "\u043F\u043E\u0438\u0441\u043A", status: "reserved" },
+    // ── E: endurance
+    { id: "farming", stat: "E", label: "\u0437\u0435\u043C\u043B\u0435\u0434\u0435\u043B\u0438\u0435", short: "\u043F\u043E\u043B\u0435" },
+    { id: "athletics", stat: "E", label: "\u0444\u0438\u0437\u0438\u0447\u0435\u0441\u043A\u0430\u044F \u043F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430", short: "\u0442\u044F\u0436\u0435\u0441\u0442\u0438" },
+    { id: "survival", stat: "E", label: "\u043F\u043E\u0445\u043E\u0434\u043D\u043E\u0435 \u0432\u044B\u0436\u0438\u0432\u0430\u043D\u0438\u0435", short: "\u0432\u044B\u0436\u0438\u0432\u0430\u043D\u0438\u0435", status: "reserved" },
+    // ── C: charisma
+    { id: "husbandry", stat: "C", label: "\u043E\u0431\u0440\u0430\u0449\u0435\u043D\u0438\u0435 \u0441 \u0436\u0438\u0432\u043E\u0442\u043D\u044B\u043C\u0438", short: "\u0441\u043A\u043E\u0442" },
+    { id: "barter", stat: "C", label: "\u0442\u043E\u0440\u0433\u043E\u0432\u043B\u044F", short: "\u0442\u043E\u0440\u0433", status: "reserved" },
+    { id: "persuasion", stat: "C", label: "\u0443\u0431\u0435\u0436\u0434\u0435\u043D\u0438\u0435", short: "\u0443\u0431\u0435\u0436\u0434\u0435\u043D\u0438\u0435", status: "reserved" },
+    { id: "leadership", stat: "C", label: "\u0440\u0443\u043A\u043E\u0432\u043E\u0434\u0441\u0442\u0432\u043E", short: "\u0440\u0443\u043A\u043E\u0432\u043E\u0434\u0441\u0442\u0432\u043E", status: "reserved" },
+    // ── I: intelligence
+    { id: "medicine", stat: "I", label: "\u043C\u0435\u0434\u0438\u0446\u0438\u043D\u0430", short: "\u043B\u0435\u0447\u0435\u043D\u0438\u0435" },
+    { id: "metallurgy", stat: "I", label: "\u043C\u0435\u0442\u0430\u043B\u043B\u0443\u0440\u0433\u0438\u044F", short: "\u043F\u043B\u0430\u0432\u043A\u0430" },
+    { id: "cooking", stat: "I", label: "\u0441\u0442\u0440\u044F\u043F\u043D\u044F \u0438 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", short: "\u043A\u0443\u0445\u043D\u044F" },
+    { id: "alchemy", stat: "I", label: "\u0430\u043B\u0445\u0438\u043C\u0438\u044F", short: "\u0430\u043B\u0445\u0438\u043C\u0438\u044F", status: "reserved" },
+    { id: "appraisal", stat: "I", label: "\u043E\u0446\u0435\u043D\u043A\u0430 \u0432\u0435\u0449\u0435\u0439", short: "\u043E\u0446\u0435\u043D\u043A\u0430", status: "reserved" },
+    // ── A: agility
+    { id: "carpentry", stat: "A", label: "\u0440\u0430\u0431\u043E\u0442\u0430 \u043F\u043E \u0434\u0435\u0440\u0435\u0432\u0443", short: "\u0434\u0435\u0440\u0435\u0432\u043E" },
+    { id: "tailoring", stat: "A", label: "\u0442\u043A\u0430\u0447\u0435\u0441\u0442\u0432\u043E \u0438 \u0448\u0438\u0442\u044C\u0451", short: "\u0448\u0438\u0442\u044C\u0451" },
+    { id: "leatherwork", stat: "A", label: "\u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0430 \u043A\u043E\u0436\u0438", short: "\u043A\u043E\u0436\u0438" },
+    { id: "pottery", stat: "A", label: "\u0433\u043E\u043D\u0447\u0430\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u0433\u043E\u043D\u0447\u0430\u0440" },
+    { id: "jewelry", stat: "A", label: "\u044E\u0432\u0435\u043B\u0438\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u044E\u0432\u0435\u043B\u0438\u0440" },
+    { id: "trophyExtraction", stat: "A", label: "\u0438\u0437\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0435 \u0442\u0440\u043E\u0444\u0435\u0435\u0432", short: "\u0442\u0440\u043E\u0444\u0435\u0438", status: "reserved" },
+    { id: "stealth", stat: "A", label: "\u0441\u043A\u0440\u044B\u0442\u043D\u043E\u0441\u0442\u044C", short: "\u0441\u043A\u0440\u044B\u0442\u043D\u043E\u0441\u0442\u044C", status: "reserved" }
+  ]);
+  for (const s of SKILLS.all()) s.status ?? (s.status = "active");
+  var isActive = (id) => SKILLS.has(id) && SKILLS.get(id).status === "active";
+  var activeSkills = () => SKILLS.filter((s) => s.status === "active");
+  var TIERS = [
+    { id: 1, min: 0, label: "\u043F\u0440\u043E\u0441\u0442\u043E\u0435" },
+    { id: 2, min: 4, label: "\u043E\u0431\u044B\u0447\u043D\u043E\u0435" },
+    { id: 3, min: 6, label: "\u0441\u043B\u043E\u0436\u043D\u043E\u0435" },
+    { id: 4, min: 8, label: "\u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0435" }
+  ];
+  var LEARN = {
+    rate: 6e-4,
+    base: 0.6,
+    perPoint: 0.08,
+    minFactor: 0.3,
+    overCap: 0.1,
+    // above 10 × letter practice gives a tenth
+    shot: 10,
+    // one fired shot ≈ the old per-tick gain over a bow's reload
+    kill: 20
+    // game brought down: the stalk paid off
+  };
+  var STATION_SKILL = {
+    crafthut: "carpentry",
+    sawmill: "carpentry",
+    loom: "tailoring",
+    tannery: "leatherwork",
+    potter: "pottery",
+    jeweler: "jewelry",
+    charpit: "metallurgy",
+    smelter: "metallurgy",
+    forge: "smithing",
+    quern: "cooking",
+    hearth: "cooking",
+    dryrack: "cooking"
+  };
+  var recipeSkill = (r) => r.skill || STATION_SKILL[r.at];
+  var FROM_JOB = {
+    gather: ["gathering"],
+    fiber: ["gathering"],
+    reeds: ["gathering"],
+    honey: ["gathering"],
+    flaxseed: ["gathering"],
+    salt: ["gathering"],
+    pan: ["gathering"],
+    chop: ["woodcutting"],
+    mine: ["mining"],
+    dig: ["mining"],
+    clay: ["mining"],
+    fish: ["fishing"],
+    hunt: ["hunting", "ranged"],
+    craft: ["carpentry", "tailoring", "leatherwork"],
+    saw: ["carpentry"],
+    charcoal: ["metallurgy"],
+    smith: ["smithing", "metallurgy"],
+    jewel: ["jewelry"],
+    farm: ["farming"],
+    mow: ["farming"],
+    mill: ["cooking"],
+    preserve: ["cooking"],
+    cook: ["cooking"],
+    weave: ["tailoring"],
+    pottery: ["pottery"],
+    tan: ["leatherwork"],
+    heal: ["medicine"],
+    herd: ["husbandry"],
+    bury: ["athletics"],
+    build: ["construction"]
+  };
+
+  // src/agents/skills.js
+  var clamp01 = (v) => Math.max(0, Math.min(1, v));
+  var statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
+  var letterFactor = (v) => Math.max(LEARN.minFactor, LEARN.base + LEARN.perPoint * v);
+  var softCap = (a, skillId) => clamp01(statFor(a, skillId) / 10);
+  var tierFor = (stat) => TIERS.filter((t) => stat >= t.min).at(-1).id;
+  var skillTier = (a, skillId) => tierFor(statFor(a, skillId));
+  var skillOf = (a, skillId) => a.skill?.[skillId] ?? 0;
+  function practiceGain(a, skillId, units = 1) {
+    const cur = skillOf(a, skillId);
+    if (cur >= 1 || units <= 0) return 0;
+    const slow = cur >= softCap(a, skillId) ? LEARN.overCap : 1;
+    return Math.min(1 - cur, LEARN.rate * units * letterFactor(statFor(a, skillId)) * (a.mods?.learn ?? 1) * slow);
+  }
+  function practice(a, skillId, units = 1) {
+    if (!a.prefs || !a.skill || !isActive(skillId)) return 0;
+    const g2 = practiceGain(a, skillId, units);
+    if (g2 > 0) a.skill[skillId] = skillOf(a, skillId) + g2;
+    return g2;
+  }
+  function startSkills(rng, a, likedSkill) {
+    a.skill = {};
+    a.skillVer = 1;
+    for (const s of activeSkills()) {
+      const v = rng() * 0.15 * letterFactor(statFor(a, s.id));
+      a.skill[s.id] = Math.min(v, softCap(a, s.id));
+    }
+    if (likedSkill) a.skill[likedSkill] = Math.max(a.skill[likedSkill], Math.min(0.3, softCap(a, likedSkill)));
+  }
+  function migrateSkills(a) {
+    var _a;
+    if (!a.skill || a.skillVer === 1) return;
+    const old = a.skill, out = {};
+    for (const [job, v] of Object.entries(old)) for (const id of FROM_JOB[job] || []) out[id] = Math.max(out[id] ?? 0, v || 0);
+    if (!a.prefs) {
+      a.skill = out;
+      a.skillVer = 1;
+      return;
+    }
+    for (const s of activeSkills()) out[_a = s.id] ?? (out[_a] = 0);
+    a.skill = out;
+    a.skillVer = 1;
   }
 
   // src/data/raids.js
@@ -6777,15 +6999,11 @@ dd.q4{color:#c58cff;font-weight:600}
   function personality(w, a) {
     const rng = w.rngs.birth, pool = shuffle(rng, JOBS.filter((j) => j.preferable).map((j) => j.id));
     a.prefs = {};
-    a.skill = {};
-    for (const id of JOBS.ids()) {
-      a.prefs[id] = between(rng, NEUTRAL_RANGE);
-      a.skill[id] = rng() * 0.15;
-    }
+    for (const id of JOBS.ids()) a.prefs[id] = between(rng, NEUTRAL_RANGE);
     a.likes = pool[0];
     a.dislikes = pool[1];
+    startSkills(rng, a, JOBS.get(a.likes).skill);
     a.prefs[a.likes] = between(rng, LIKE_RANGE);
-    a.skill[a.likes] = 0.3;
     a.prefs[a.dislikes] = between(rng, DISLIKE_RANGE);
     a.traits = [];
     const groups = /* @__PURE__ */ new Set(), want2 = rng() < 0.25 ? 0 : rng() < 0.6 ? 1 : 2;
@@ -6796,10 +7014,7 @@ dd.q4{color:#c58cff;font-weight:600}
       a.traits.push(t.id);
       groups.add(t.group);
     }
-    for (const id of a.traits) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) {
-      a.mods[k] = k === "bravery" ? a.mods[k] + v : a.mods[k] * v;
-    }
-    a.mods.bravery *= 0.85 + rng() * 0.3;
+    (a.own || (a.own = {})).mul = { bravery: 0.85 + rng() * 0.3 };
     a.food = drawFoodPrefs(rng);
   }
   function freshName2(w, names) {
@@ -6825,6 +7040,7 @@ dd.q4{color:#c58cff;font-weight:600}
       mods: { ...BASE_MODS },
       needs: {},
       mem: newMemory(),
+      bodyVer: 1,
       task: null,
       think: w.rngs.birth() * 15 | 0,
       cd: 0,
@@ -6832,15 +7048,16 @@ dd.q4{color:#c58cff;font-weight:600}
       sleeping: false
     };
     if (sp.names && factionId === "colony") [a.name, a.gender] = freshName2(w, sp.names);
-    for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
     rollCreature(w, a, sp);
     a.stamina = 1;
     for (const id of sp.needs) {
       const n = NEEDS2.get(id);
       a.needs[id] = between(w.rngs.birth, n.start);
     }
-    if (sp.sentient && factionId === "colony") {
-      personality(w, a);
+    if (sp.sentient && factionId === "colony") personality(w, a);
+    refreshBody(a);
+    a.hp = maxHp(a);
+    if (a.prefs) {
       a.diary = [];
       enrol(w, a, w.founding);
     }
@@ -6996,7 +7213,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (g2.melee.item) wear(w, a, g2.melee.item);
     return true;
   }
-  function shoot(w, a, t, skillJob = "hunt") {
+  function shoot(w, a, t) {
     const g2 = a.gear;
     if (!g2?.ranged || !g2.rangedReady || a.cd > 0) return null;
     const r = g2.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
@@ -7007,8 +7224,9 @@ dd.q4{color:#c58cff;font-weight:600}
       if (a.equip.back.ammo <= 0) g2.rangedReady = false;
     }
     wear(w, a, r.item);
-    const skill = a.skill?.[skillJob] ?? 0.2, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? 0.12 : 0;
+    const skill = a.skill?.ranged ?? 0.2, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? 0.12 : 0;
     const hit = w.rngs.combat() < 0.4 + 0.4 * skill + (a.mods?.aim || 0) - d / range * 0.2 - moving;
+    practice(a, "ranged", LEARN.shot);
     w.fx.push({ x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? "arrow" : "stone" });
     if (!hit) return "miss";
     const boost = r.boost && a.faction === "colony" ? w.mods.best[r.boost] || 1 : 1;
@@ -7393,6 +7611,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // bast clothes: linden bark stripped from the logs — rough, but anyone can make them from day one
     {
       id: "clothes",
+      skill: "tailoring",
       at: "crafthut",
       cost: { wood: 3 },
       work: 1300,
@@ -7402,6 +7621,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // a fur coat for everyone before the cold sets in (wanted from late summer)
     {
       id: "furcoat",
+      skill: "leatherwork",
       at: "crafthut",
       cost: { hide: 3, leather: 1 },
       work: 1200,
@@ -7410,6 +7630,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "jerkin",
+      skill: "leatherwork",
       at: "crafthut",
       cost: { leather: 3 },
       work: 1500,
@@ -7418,6 +7639,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "hardleather",
+      skill: "leatherwork",
       at: "crafthut",
       cost: { leather: 3, bone: 3 },
       work: 1800,
@@ -7459,6 +7681,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "sling",
+      skill: "leatherwork",
       at: "crafthut",
       cost: { hide: 1 },
       work: 600,
@@ -7502,6 +7725,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "quiver",
+      skill: "leatherwork",
       at: "crafthut",
       cost: { wood: 1, hide: 1 },
       work: 450,
@@ -7510,6 +7734,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "basket",
+      skill: "tailoring",
       at: "crafthut",
       cost: { reeds: 4 },
       work: 450,
@@ -7601,6 +7826,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // a silver dagger cast whole: no iron and no forge needed, the first answer to a vampire
     {
       id: "silverknife",
+      skill: "smithing",
       at: "smelter",
       cost: { silverBar: 2, leather: 1 },
       fuel: 0.5,
@@ -7611,6 +7837,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "bronzespear",
+      skill: "smithing",
       at: "smelter",
       cost: { bronze: 2, wood: 1 },
       fuel: 0.5,
@@ -7621,6 +7848,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "bronzeaxe",
+      skill: "smithing",
       at: "smelter",
       cost: { bronze: 2, wood: 1 },
       fuel: 0.5,
@@ -7727,6 +7955,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // ── the outpost's crafts: rope, rough cloth, pots, boards
     {
       id: "rope",
+      skill: "tailoring",
       at: "crafthut",
       cost: { fiber: 3 },
       work: 160,
@@ -7743,6 +7972,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "linen",
+      skill: "tailoring",
       at: "crafthut",
       cost: { cloth: 2 },
       work: 900,
@@ -7785,6 +8015,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "woolens",
+      skill: "tailoring",
       at: "crafthut",
       cost: { wool: 4 },
       work: 1100,
@@ -7819,6 +8050,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // the dead ends of the woods put to use: fox fur lines a coat, wax becomes candles for the shrine
     {
       id: "furlined",
+      skill: "leatherwork",
       at: "crafthut",
       cost: { hide: 2, furs: 2, leather: 1 },
       work: 1300,
@@ -8747,7 +8979,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return best ? [{ id: "aid", who: best.id }, bs, () => `${best.name} ${g(best, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(best) * 100)}%`] : null;
   }
   function giveAid(w, a, b) {
-    const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.heal || 0)));
+    const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
     b.hp += amt;
     b.aidedAt = w.tick;
     bond(w, b, a, TOGETHER.bondAid);
@@ -9077,9 +9309,10 @@ dd.q4{color:#c58cff;font-weight:600}
             a.role = "guard";
             a.slot = k;
             a.name = pickName(TRADE.guardNames)[0];
-            a.hp = a.maxHp = TRADE.guardHp;
-            a.mods.bravery = 1.5;
-            a.skill = { hunt: 0.5 };
+            a.own = { set: { bravery: 1.5 }, hp: TRADE.guardHp };
+            refreshBody(a);
+            a.skill = { ranged: 0.5 };
+            a.skillVer = 1;
           }
         });
         const mules = TRADE.mules[0] + Math.floor(rng() * (TRADE.mules[1] - TRADE.mules[0] + 1));
@@ -9124,7 +9357,8 @@ dd.q4{color:#c58cff;font-weight:600}
         if (!big || group.length > big.size) w.chronicle.biggestRaid = { size: group.length, tick: w.tick };
         for (const a of group) {
           a.hp = (a.maxHp || 1) * Math.min(1.1, 0.75 + t * 0.012);
-          a.skill = { hunt: Math.min(0.7, 0.1 + t * 0.025) };
+          a.skill = { ranged: Math.min(0.7, 0.1 + t * 0.025) };
+          a.skillVer = 1;
         }
         RAID_BANDS.get(group[0].band).groupInit?.(group, w);
         createSquad(w, group);
@@ -10083,8 +10317,9 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     const r = RECIPES.get(b.order.recipe);
     const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
-    b.order.progress += amount * (bellows ? FURNACE.bellowsWork : 1);
-    if (b.order.progress < r.work) return true;
+    const labour = typeof amount === "function" ? amount(r) : amount;
+    b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
+    if (b.order.progress < r.work) return r;
     b.order = null;
     w.stats.crafted++;
     if (w.scratch) delete w.scratch.craftCtx;
@@ -10112,7 +10347,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
     }
-    return true;
+    return r;
   }
   function orderText(b) {
     if (!b.order) return "\u0436\u0434\u0451\u0442 \u0437\u0430\u043A\u0430\u0437\u0430";
@@ -10467,9 +10702,8 @@ dd.q4{color:#c58cff;font-weight:600}
     a.x += (w.rngs.colony() - 0.5) * 0.2;
     a.y += (w.rngs.colony() - 0.5) * 0.2;
   };
-  function workRate(w, a, jobId) {
-    a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 6e-4 * (a.mods.learn ?? 1));
-    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
+  function workRate(w, a, jobId, skillId = JOBS.get(jobId).skill) {
+    return (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
   }
   var toolWear = (w, a, jobId, amount = 1) => {
     const it = a.gear?.toolItem[jobId];
@@ -10541,7 +10775,9 @@ dd.q4{color:#c58cff;font-weight:600}
           task.work = Math.max(task.work || 0, back.work);
         }
         if (back) a.resume = null;
-        task.work = (task.work || 0) + workRate(w, a, job.id);
+        const skill = task.job === "heal" ? job.gatherSkill : job.skill;
+        task.work = (task.work || 0) + workRate(w, a, job.id, skill);
+        practice(a, skill);
         if (task.work < job.time) return;
         task.work = 0;
         for (const got of [].concat(job.take(w, i, a) || job.resource)) {
@@ -10573,6 +10809,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const amt = workRate(w, a, "build");
         a.stats.labour += amt;
         addLabour(w, site, amt, a);
+        practice(a, "construction");
         toolWear(w, a, "build", 0.05);
         return;
       }
@@ -10607,7 +10844,9 @@ dd.q4{color:#c58cff;font-weight:600}
       const r = follow(w, a, map);
       if (r === "arrived") {
         const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
-        if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id) * workBonus(b), a)) {
+        const r2 = b && b.done ? workAt(w, b, (rec) => workRate(w, a, job.id, recipeSkill(rec)) * workBonus(b), a) : null;
+        if (r2) practice(a, recipeSkill(r2));
+        else {
           fail(w, a, "\u0437\u0430\u043A\u0430\u0437 \u043D\u0435 \u043D\u0430\u0447\u0430\u0442\u044C: \u043D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u043E\u0432 \u0438\u043B\u0438 \u0442\u043E\u043F\u043B\u0438\u0432\u0430");
           a.think = 20;
         }
@@ -10634,6 +10873,7 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
         task.work = (task.work || 0) + workRate(w, a, job.id);
+        practice(a, job.skill);
         if (task.work < job.time) return;
         task.work = 0;
         const got = workPlot(w, i);
@@ -10662,8 +10902,10 @@ dd.q4{color:#c58cff;font-weight:600}
         const r = follow(w, a, "healer");
         if (r === "arrived" || healerHutCell(w, a)) {
           const given = tend(w, a, workRate(w, a, "heal") * workBonus(w.buildings.find((x) => x.done && x.key === "healerhut")));
-          if (given) a.stats.healed = (a.stats.healed || 0) + given;
-          else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);
+          if (given) {
+            a.stats.healed = (a.stats.healed || 0) + given;
+            practice(a, "medicine");
+          } else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);
         } else if (r === "none") {
           w.nav.dirty("healer");
           fail(w, a, "\u043A \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F \u043D\u0435\u0442 \u043F\u0443\u0442\u0438", "impossible");
@@ -10738,6 +10980,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       task.work = (task.work || 0) + workRate(w, a, job.id);
+      practice(a, job.skill);
       if (b.tame) {
         if (task.work < job.time) return;
         task.work = 0;
@@ -10824,6 +11067,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       task.work = (task.work || 0) + workRate(w, a, job.id);
+      practice(a, job.skill);
       if (task.work < job.time) return;
       bury(w, c, a, task.spot);
       done(w, a);
@@ -10914,9 +11158,9 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         return;
       }
-      a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 3e-4 * (a.mods.learn ?? 1));
-      const res = shoot(w, a, prey, job.id);
+      const res = shoot(w, a, prey);
       if (res === "kill") {
+        practice(a, job.skill, LEARN.kill);
         w.stats.hunted++;
         a.stalking = false;
         a.stats.hunted++;
@@ -11025,7 +11269,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (g2?.rangedReady && d > 1.4) {
         const range = g2.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
         task.shooting = true;
-        if (d > range * 0.9 || shoot(w, a, t, "hunt") === null && a.cd <= 0) {
+        if (d > range * 0.9 || shoot(w, a, t) === null && a.cd <= 0) {
           if (approach(w, a, t.x, t.y, 1) === null) fail2(w, a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
         }
         return;
@@ -13309,6 +13553,20 @@ dd.q4{color:#c58cff;font-weight:600}
     const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
     return `<div class="spc">${STATS.all().map((s) => `<span title="${s.label}: ${s.note}. \u0423 \u044D\u0442\u043E\u0439 \u0440\u0430\u0441\u044B ${lim[s.id][0]}\u2013${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join("")}</div>`;
   }
+  function skillsHtml(a) {
+    if (!a.skill) return "";
+    const liked = JOBS.get(a.likes)?.skill, disliked = JOBS.get(a.dislikes)?.skill;
+    return STATS.all().map((st) => {
+      const list = activeSkills().filter((s) => s.stat === st.id);
+      if (!list.length) return "";
+      const v = a.special?.[st.id], tier = skillTier(a, list[0].id), cap = Math.round(softCap(a, list[0].id) * 100);
+      const chips = list.map((s) => [s, a.skill[s.id] || 0]).sort((x, y) => y[1] - x[1]).map(([s, x]) => {
+        const n = Math.round(x * 100), top = n >= cap && cap < 100;
+        return `<span class="chip${s.id === liked ? " like" : s.id === disliked ? " dislike" : ""}" title="${s.label}: ${n} \u0438\u0437 100${top ? "; \u0432\u044B\u0448\u0435 \u043F\u043E\u0442\u043E\u043B\u043A\u0430 \u0443\u0447\u0438\u0442\u0441\u044F \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u043E" : ""}">${s.short} ${n}${top ? "\xB7" : ""}</span>`;
+      }).join("");
+      return `<div class="sk-row"><span class="sk-stat" title="${st.label} ${v ?? "\u2014"}: \u043F\u043E\u0442\u043E\u043B\u043E\u043A \u043D\u0430\u0432\u044B\u043A\u043E\u0432 ${cap}, \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E \u0434\u043E \xAB${TIERS[tier - 1].label}\xBB (T${tier})">${st.short}${v != null ? " " + v : ""} \xB7 T${tier}</span><div class="chips">${chips}</div></div>`;
+    }).join("");
+  }
   var raceOf = (a) => raceLabel(SPECIES.get(a.species), a);
   function traitsText(a) {
     const t = a.traits.map((id) => TRAITS.get(id).label);
@@ -13788,7 +14046,6 @@ dd.q4{color:#c58cff;font-weight:600}
         const txt = it ? def(it).short + (Number.isFinite(it.dur) ? ` \xB7 ${Math.max(0, Math.round(it.dur / def(it).dur * 100))}%` : "") + (it.ammo != null ? ` \xB7 \u0441\u0442\u0440\u0435\u043B ${it.ammo}` : "") : "\u2014";
         return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${def(it).rank}"` : ""}>${esc(txt)}</dd>`;
       }).join("");
-      const skills = JOBS.filter((j) => j.preferable).map((j) => [j, a.skill[j.id] || 0]).sort((x, y) => y[1] - x[1]).map(([j, v]) => `<span class="chip${j.id === a.likes ? " like" : j.id === a.dislikes ? " dislike" : ""}">${j.short} ${Math.round(v * 100)}</span>`).join("");
       const today = dayOf(w.tick);
       let lastDay = null;
       const diary = a.diary.slice(0, 14).map((e) => {
@@ -13820,7 +14077,7 @@ dd.q4{color:#c58cff;font-weight:600}
         </section>
         <section><h4>\u0425\u043E\u0447\u0435\u0442</h4>${want2.length ? `<ul class="pc-list">${want2.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : '<p class="muted pc-small">\u0412\u0441\u0435\u043C \u0434\u043E\u0432\u043E\u043B\u0435\u043D.</p>'}
           <h4>\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435</h4><dl class="kv">${slots}</dl>
-          <h4>\u041D\u0430\u0432\u044B\u043A\u0438</h4><div class="chips">${skills}</div>
+          <h4>\u041D\u0430\u0432\u044B\u043A\u0438</h4>${skillsHtml(a)}
         </section>
         <section><h4>\u0414\u043D\u0435\u0432\u043D\u0438\u043A</h4><ul class="pc-diary">${diary || '<li class="muted">\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E.</li>'}</ul></section>
       </div>`;
@@ -14158,7 +14415,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.38 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a38e80d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 7622c76" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 2;
@@ -14182,7 +14439,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return { format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, rngs: streamStates(w.rngs), tree };
   }
   function loadWorld(save2) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     if (!save2 || !FORMATS.includes(save2.format)) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
     ensureRegion(w);
@@ -14234,14 +14491,22 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const a of w.agents) {
       const sp = SPECIES.get(a.species);
       if (a.special || !sp.special) continue;
-      const share2 = a.hp / (sp.hp || 1);
-      rollCreature({ rng: mulberry(a.id * 6151 + 3) }, a, sp);
-      a.hp = a.maxHp * Math.max(0, Math.min(1, share2));
+      rollCreature({ rngs: { birth: mulberry(a.id * 6151 + 3) } }, a, sp);
+      a.bodyVer = 0;
     }
+    for (const a of w.agents) {
+      if (!a.mods || a.bodyVer === 1) continue;
+      if (a.bodyVer === 0) {
+        delete a.own;
+        refreshBody(a);
+        a.bodyVer = 1;
+      } else adoptBody(a);
+    }
+    for (const a of w.agents) migrateSkills(a);
     for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
-    for (const a of w.agents) if (a.prefs) for (const id of JOBS.ids()) {
-      (_i = a.prefs)[id] ?? (_i[id] = 1);
-      (_j = a.skill)[id] ?? (_j[id] = 0);
+    for (const a of w.agents) if (a.prefs) {
+      for (const id of JOBS.ids()) (_i = a.prefs)[id] ?? (_i[id] = 1);
+      for (const s of activeSkills()) (_j = a.skill)[_k = s.id] ?? (_j[_k] = 0);
     }
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     ensureFlows(w);

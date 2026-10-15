@@ -163,7 +163,7 @@ export function aidOption(w, a) {
 
 // arrived: dress the wounds, then see them home
 export function giveAid(w, a, b) {
-  const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.heal || 0)));
+  const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
   b.hp += amt; b.aidedAt = w.tick;
   bond(w, b, a, TOGETHER.bondAid); bond(w, a, b, TOGETHER.bondAid * 0.3);
   think(w, b, 'aided', {name: a.name, gender: a.gender}); think(w, a, 'gaveAid', {name: b.name});

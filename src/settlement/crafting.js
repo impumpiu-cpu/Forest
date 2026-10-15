@@ -120,7 +120,9 @@ export function stationPriority(w, station) {
 }
 
 
-// add labour at a station building; starts an order if none is running
+// Add labour at a station building; starts an order if none is running. `amount` is the labour, or a
+// function of the order's recipe (the worker's speed depends on the skill that recipe uses).
+// Returns the recipe that was worked on, or false when no order could start (nothing was done).
 export function workAt(w, b, amount, a) {
   if (!b.order) {
     const r = pickRecipe(w, b.key);
@@ -136,8 +138,9 @@ export function workAt(w, b, amount, a) {
   }
   const r = RECIPES.get(b.order.recipe);
   const bellows = r.fuel && (w.stock.bellows || 0) >= 1;   // blown fire: the work goes faster
-  b.order.progress += amount * (bellows ? FURNACE.bellowsWork : 1);
-  if (b.order.progress < r.work) return true;
+  const labour = typeof amount === 'function' ? amount(r) : amount;
+  b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
+  if (b.order.progress < r.work) return r;
   b.order = null;
   w.stats.crafted++;
   if (w.scratch) delete w.scratch.craftCtx;   // item counts changed
@@ -160,7 +163,7 @@ export function workAt(w, b, amount, a) {
       if (a) { think(w, a, 'madeItem', {item: res.short}); a.stats.crafted++; }
     }
   }
-  return true;
+  return r;
 }
 
 export function orderText(b) {

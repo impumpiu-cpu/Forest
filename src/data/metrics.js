@@ -2,6 +2,7 @@
 // Add a line here and it appears in the CSV, the console summary and the report's metric picker.
 //   group — for the report's picker; fmt — digits after the point; get(w) → number.
 import {Registry} from '../core/registry.js';
+import {activeSkills} from './skills.js';
 import {RESOURCES} from './resources.js';
 import {colonists, ofSpecies, foodTotal} from '../settlement/query.js';
 import {moodOf} from '../agents/mind.js';
@@ -30,6 +31,9 @@ METRICS.registerAll([
   {id: 'deathsWolf', label: 'Убиты зверями и нечистью', group: 'Люди', fmt: 0, get: w => Object.entries(w.chronicle.deaths).filter(([k]) => k !== 'налётчики' && !k.startsWith('от ')).reduce((s, [, v]) => s + v, 0)},
   {id: 'deathsOther', label: 'Умерли от голода, холода, огня, яда', group: 'Люди', fmt: 0, get: w => Object.entries(w.chronicle.deaths).filter(([k]) => k.startsWith('от ')).reduce((s, [, v]) => s + v, 0)},
   {id: 'mood', label: 'Среднее настроение', group: 'Люди', fmt: 2, get: w => avg(colonists(w), a => moodOf(w, a))},
+  // skills (data/skills.js): how far the best trade of each colonist has come, and how broad they are
+  {id: 'skillTop', label: 'Лучший навык жителя, в среднем', group: 'Люди', fmt: 0, get: w => avg(colonists(w), a => 100 * Math.max(0, ...activeSkills().map(s => a.skill?.[s.id] || 0)))},
+  {id: 'skillMean', label: 'Средний навык жителя', group: 'Люди', fmt: 0, get: w => avg(colonists(w), a => 100 * activeSkills().reduce((t, s) => t + (a.skill?.[s.id] || 0), 0) / activeSkills().length)},
   {id: 'food', label: 'Еда в запасе', group: 'Запасы', fmt: 0, get: foodTotal},
   ...RESOURCES.all().map(r => ({id: 'res_' + r.id, label: r.label, group: 'Запасы', fmt: 0, get: w => w.stock[r.id] || 0})),
   {id: 'gold', label: 'Золотых в казне', group: 'Торговля', fmt: 1, get: w => w.stock.gold || 0},

@@ -116,7 +116,7 @@ TASKS.registerAll([
       const range = g.ranged.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
       task.shooting = true;
       // close in when too far, or when a rock blocks the shot
-      if (d > range * 0.9 || (shoot(w, a, t, 'hunt') === null && a.cd <= 0)) { if (approach(w, a, t.x, t.y, 1.0) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }
+      if (d > range * 0.9 || (shoot(w, a, t) === null && a.cd <= 0)) { if (approach(w, a, t.x, t.y, 1.0) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }
       return;
     }
     task.shooting = false;

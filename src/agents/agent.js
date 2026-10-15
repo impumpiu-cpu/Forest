@@ -13,7 +13,8 @@ import {drawFoodPrefs} from '../data/foods.js';
 import {enrol, noteDeath} from '../settlement/chronicle.js';
 import {lostBeast} from '../settlement/herd.js';
 import {addCorpse} from '../settlement/life.js';
-import {rollCreature} from './special.js';
+import {rollCreature, refreshBody} from './special.js';
+import {startSkills} from './skills.js';
 import {releaseAll} from '../settlement/reserve.js';
 import {noteFallen} from './squad.js';
 import {noteHuntDeath} from './carcass.js';
@@ -24,13 +25,15 @@ export const newMemory = (init = {}) => new Proxy(init, {get: (t, k) => (typeof 
 
 const between = (rng, [a, b]) => a + rng() * (b - a);
 
-// liked and disliked work are drawn from preferable jobs; up to two traits from different groups
+// liked and disliked work are drawn from preferable jobs; up to two traits from different groups.
+// Skills start from SPECIAL (agents/skills.js): a little of everything, more where the letter is strong.
 function personality(w, a) {
   const rng = w.rngs.birth, pool = shuffle(rng, JOBS.filter(j => j.preferable).map(j => j.id));
-  a.prefs = {}; a.skill = {};
-  for (const id of JOBS.ids()) { a.prefs[id] = between(rng, NEUTRAL_RANGE); a.skill[id] = rng() * 0.15; }
+  a.prefs = {};
+  for (const id of JOBS.ids()) a.prefs[id] = between(rng, NEUTRAL_RANGE);
   a.likes = pool[0]; a.dislikes = pool[1];
-  a.prefs[a.likes] = between(rng, LIKE_RANGE); a.skill[a.likes] = 0.3;
+  startSkills(rng, a, JOBS.get(a.likes).skill);
+  a.prefs[a.likes] = between(rng, LIKE_RANGE);
   a.prefs[a.dislikes] = between(rng, DISLIKE_RANGE);
   a.traits = [];
   const groups = new Set(), want = rng() < 0.25 ? 0 : rng() < 0.6 ? 1 : 2;
@@ -39,10 +42,8 @@ function personality(w, a) {
     const t = weighted(rng, opts); if (!t) break;
     a.traits.push(t.id); groups.add(t.group);
   }
-  for (const id of a.traits) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) {
-    a.mods[k] = k === 'bravery' ? a.mods[k] + v : a.mods[k] * v;
-  }
-  a.mods.bravery *= 0.85 + rng() * 0.3;
+  // how brave this one is beyond its traits: kept as its own extra, so a rebuilt body keeps it
+  (a.own ||= {}).mul = {bravery: 0.85 + rng() * 0.3};
   a.food = drawFoodPrefs(rng);
 }
 
@@ -58,15 +59,17 @@ export function createAgent(w, speciesId, factionId, x, y) {
   const a = {
     id: w.nextId++, species: speciesId, faction: factionId, brain: sp.brain || fa.brain,
     name: sp.label, gender: 'm',
-    x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(),
+    x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(), bodyVer: 1,
     task: null, think: (w.rngs.birth() * 15) | 0, cd: 0, carry: null, sleeping: false,
   };
   if (sp.names && factionId === 'colony') [a.name, a.gender] = freshName(w, sp.names);
-  for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
   rollCreature(w, a, sp);
   a.stamina = 1;
   for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rngs.birth, n.start); }
-  if (sp.sentient && factionId === 'colony') { personality(w, a); a.diary = []; enrol(w, a, w.founding); }
+  if (sp.sentient && factionId === 'colony') personality(w, a);
+  // the body from all its sources at once (species, SPECIAL, people, innate, traits, own extras), at full health
+  refreshBody(a); a.hp = maxHp(a);
+  if (a.prefs) { a.diary = []; enrol(w, a, w.founding); }
   if (sp.inventory) a.equip = emptySlots();
   recalcGear(a);
   w.agents.push(a);

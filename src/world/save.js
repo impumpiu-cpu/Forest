@@ -5,7 +5,9 @@
 // A loaded game continues tick for tick like the one that was saved (tools/determinism.mjs checks it).
 import {newBehaviour} from '../settlement/behaviour.js';
 import {SPECIES} from '../data/species.js';
-import {rollCreature} from '../agents/special.js';
+import {rollCreature, refreshBody, adoptBody} from '../agents/special.js';
+import {migrateSkills} from '../agents/skills.js';
+import {activeSkills} from '../data/skills.js';
 import {BASE_MODS} from '../data/traits.js';
 import {encode, decode} from '../core/serialize.js';
 import {Registry} from '../core/registry.js';
@@ -90,18 +92,29 @@ export function loadWorld(save) {
   }
   // multipliers added since the save (SPECIAL, races) start neutral
   for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) a.mods[k] ??= v;
-  // creatures from before SPECIAL get theirs now, the same every time this save is loaded; health keeps its share
+  // creatures from before SPECIAL get theirs now, the same every time this save is loaded
+  // (their body is rebuilt just below, health keeps its share)
   for (const a of w.agents) {
     const sp = SPECIES.get(a.species);
     if (a.special || !sp.special) continue;
-    const share = a.hp / (sp.hp || 1);
-    rollCreature({rng: mulberry(a.id * 6151 + 3)}, a, sp);
-    a.hp = a.maxHp * Math.max(0, Math.min(1, share));
+    rollCreature({rngs: {birth: mulberry(a.id * 6151 + 3)}}, a, sp);
+    a.bodyVer = 0;   // its saved mods know nothing of SPECIAL: rebuild them below
   }
+  // bodies from before refreshBody (agents/special.js): what the sources do not explain is kept as the
+  // creature's own extra; a body that never had SPECIAL is simply rebuilt
+  for (const a of w.agents) {
+    if (!a.mods || a.bodyVer === 1) continue;
+    if (a.bodyVer === 0) { delete a.own; refreshBody(a); a.bodyVer = 1; } else adoptBody(a);
+  }
+  // skills kept under job ids before the skill catalogue (data/skills.js): each skill takes the best of its jobs
+  for (const a of w.agents) migrateSkills(a);
   // colonists from before food preferences: give them some, the same every time this save is loaded
   for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
-  // jobs added since the save (herding, burials): neutral about them, no skill yet
-  for (const a of w.agents) if (a.prefs) for (const id of JOBS.ids()) { a.prefs[id] ??= 1; a.skill[id] ??= 0; }
+  // jobs and skills added since the save (herding, burials): neutral about them, no skill yet
+  for (const a of w.agents) if (a.prefs) {
+    for (const id of JOBS.ids()) a.prefs[id] ??= 1;
+    for (const s of activeSkills()) a.skill[s.id] ??= 0;
+  }
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};
   ensureFlows(w);   // arrivals added since the save get their first date (draws from the restored random stream)
   return w;

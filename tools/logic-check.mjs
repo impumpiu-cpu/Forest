@@ -1,7 +1,7 @@
 // Logic check: the rules every creature must keep, in small staged scenes (T01–T11 of the outside
 // review of the races branch; T12–T17 reservations and the task lifecycle; T18–T22 raider squads;
 // T23–T26 joint actions of colonists;
-// T27–T31 carcasses and pack hunts). Each scene builds a flat, empty map, places a few agents by hand and
+// T27–T31 carcasses and pack hunts; T32–T39 SPECIAL stage 1: skills, practice, the body). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -30,7 +30,14 @@ import {outsideRisk, escortOption, aidOption, TOGETHER} from '../src/settlement/
 import {stepRelations, REL} from '../src/settlement/relations.js';
 import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS} from '../src/agents/carcass.js';
 import {DAY, nightness} from '../src/core/time.js';
-import {newItem, outfit} from '../src/agents/equipment.js';
+import {newItem, outfit, recalcGear} from '../src/agents/equipment.js';
+import {refreshBody, adoptBody} from '../src/agents/special.js';
+import {practice, practiceGain, softCap, skillTier, migrateSkills} from '../src/agents/skills.js';
+import {workRate} from '../src/agents/jobRunners.js';
+import {shoot} from '../src/agents/combat.js';
+import {recipeSkill, isActive} from '../src/data/skills.js';
+import {RECIPES} from '../src/data/recipes.js';
+import {JOBS} from '../src/data/jobs.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -416,6 +423,115 @@ check('T31', 'неубранная туша в темноте поднимает
   while (!(nightness(w.tick) > 0.7 && w.tick % 60 === 0)) w.tick++;   // deep night, on a carcass check
   stepCarcasses(w);
   return w.agents.some(o => o.species === 'upyr') || 'упырь не поднялся';
+});
+
+// ── SPECIAL stage 1: skills apart from jobs, practice from real work, a body rebuilt from its sources
+const human = (w, special = {}) => { const a = put(w, 'human', 'colony', 30.5, 30.5); Object.assign(a.special, special); refreshBody(a); a.hp = maxHp(a); return a; };
+const armed = (w, a) => { w.armory.push(newItem('bow'), newItem('quiver')); outfit(w, a); a.equip.back.ammo = 20; recalcGear(a); };
+const sameMods = (x, y) => Object.keys({...x, ...y}).every(k => x[k] === y[k]);
+
+check('T32', 'пересчёт тела можно повторять: не усиливает и не лечит', () => {
+  const w = scene(), a = human(w, {S: 10, E: 9, L: 8});
+  const str = a.mods.str, full = maxHp(a);
+  a.hp = full * 0.2;
+  const before = {...a.mods};
+  refreshBody(a); refreshBody(a);
+  if (!sameMods(before, a.mods)) return 'mods изменились: ' + JSON.stringify({before, after: a.mods});
+  if (Math.abs(a.hp - full * 0.2) > 1e-9) return `здоровье ${a.hp} вместо ${full * 0.2}`;
+  // SPECIAL grew: the body follows, the wound keeps its share
+  a.special.E = 10; refreshBody(a);
+  return (a.mods.str === str && maxHp(a) > full && Math.abs(a.hp / maxHp(a) - 0.2) < 1e-9) || 'рост E пересчитан неверно';
+});
+
+check('T33', 'оценка скорости работы не учит', () => {
+  const w = scene(), a = human(w);
+  const was = {...a.skill};
+  for (let k = 0; k < 50; k++) workRate(w, a, 'smith', 'smithing');
+  return sameMods(was, a.skill) || 'навык вырос от чтения скорости';
+});
+
+check('T34', 'стрельбе учит только сделанный выстрел, в бою и на охоте одинаково', () => {
+  const w = scene(); fixedRng(w);
+  const a = human(w), hare = put(w, 'hare', 'wild', 34.5, 30.5);
+  armed(w, a);
+  const r0 = a.skill.ranged, h0 = a.skill.hunting;
+  // the old fault: in range, the bow still reloading — the hunt went on teaching
+  a.cd = 999; a.task = {id: 'job', job: 'hunt', prey: hare};
+  for (let k = 0; k < 30; k++) TASKS.get('job').step(w, a, a.task || (a.task = {id: 'job', job: 'hunt', prey: hare}));
+  if (a.skill.ranged !== r0 || a.skill.hunting !== h0) return 'без выстрела навык вырос: ' + JSON.stringify({r0, r: a.skill.ranged, h0, h: a.skill.hunting});
+  a.cd = 0;
+  const res = shoot(w, a, hare);
+  if (res == null) return 'выстрела не было';
+  const g = a.skill.ranged - r0;
+  if (!(g > 0)) return 'выстрел не научил стрельбе';
+  // a shot in a fight is the same shot
+  const b = human(w); armed(w, b);
+  b.skill.ranged = r0; b.cd = 0; b.x = a.x; b.y = a.y;
+  shoot(w, b, hare);
+  return Math.abs((b.skill.ranged - r0) - g) < 1e-12 || `в бою ${b.skill.ranged - r0}, на охоте ${g}`;
+});
+
+check('T35', 'буква SPECIAL задаёт скорость обучения и мягкий потолок', () => {
+  const w = scene(), weak = human(w, {S: 3}), strong = human(w, {S: 10});
+  weak.skill.smithing = 0.1; strong.skill.smithing = 0.1;
+  const gw = practiceGain(weak, 'smithing'), gs = practiceGain(strong, 'smithing');
+  if (!(gs > gw * 1.5)) return `сильный учится не быстрее: ${gs} против ${gw}`;
+  if (softCap(weak, 'smithing') !== 0.3 || softCap(strong, 'smithing') !== 1) return 'потолок не 10 × буква';
+  const below = practiceGain(weak, 'smithing');
+  weak.skill.smithing = 0.35;
+  const above = practiceGain(weak, 'smithing');
+  if (!(above > 0 && above < below * 0.2)) return `выше потолка учится как прежде: ${above} против ${below}`;
+  // the scale is absolute: a dwarf's 12 is past every human ceiling
+  const dwarf = human(w, {S: 12});
+  return (softCap(dwarf, 'smithing') === 1 && skillTier(dwarf, 'smithing') === 4 && skillTier(weak, 'smithing') === 1) || 'тиры по абсолютной шкале неверны';
+});
+
+check('T36', 'мастерская учит навыку рецепта и только за сделанную работу', () => {
+  const w = scene(), b = building(w, 'crafthut', 901);
+  b.order = {recipe: 'rope', progress: 0}; w.grid.bld[b.cells[0]] = b.id;
+  const a = human(w);
+  const t0 = a.skill.tailoring, c0 = a.skill.carpentry;
+  a.task = {id: 'job', job: 'craft'}; syncTask(w, a); w.nav.build('station:crafthut');
+  for (let k = 0; k < 400 && b.order?.progress === 0; k++) TASKS.get('job').step(w, a, a.task || (a.task = {id: 'job', job: 'craft'}));
+  if (!(b.order?.progress > 0 || w.stock.rope > 0)) return 'работа не пошла: ' + JSON.stringify(a.lastStop || a.task);
+  if (!(a.skill.tailoring > t0)) return 'верёвка не научила шитью';
+  if (a.skill.carpentry !== c0) return 'работа над верёвкой научила дереву';
+  // nothing to make (no order, no materials): no work, no practice
+  const w2 = scene(), b2 = building(w2, 'crafthut', 902), p = human(w2); w2.grid.bld[b2.cells[0]] = b2.id;
+  for (const r of Object.keys(w2.stock)) w2.stock[r] = 0;
+  const was = {...p.skill};
+  p.task = {id: 'job', job: 'craft'}; syncTask(w2, p); w2.nav.build('station:crafthut');
+  for (let k = 0; k < 200 && p.task; k++) TASKS.get('job').step(w2, p, p.task);
+  return (!b2.order && sameMods(was, p.skill)) || 'без заказа навык вырос';
+});
+
+check('T37', 'один горн: плавка учит металлургии, литьё ножа — ковке', () => {
+  return (recipeSkill(RECIPES.get('smelt')) === 'metallurgy' && recipeSkill(RECIPES.get('silverknife')) === 'smithing'
+    && recipeSkill(RECIPES.get('sword')) === 'smithing' && JOBS.get('heal').gatherSkill === 'gathering' && JOBS.get('heal').skill === 'medicine') || 'навыки рецептов перепутаны';
+});
+
+check('T38', 'старое сохранение: навыки работ переходят без потерь, тело не меняется', () => {
+  const w = scene(), a = human(w, {S: 8, I: 3});
+  a.traits = ['brave', 'hardy']; a.own = {mul: {bravery: 1.07}}; refreshBody(a);
+  const body = {...a.mods}, hp = a.hp;
+  // what a save of the old version kept: skills under job ids, no own extras, no versions
+  a.skill = {smith: 0.42, hunt: 0.3, heal: 0.2, craft: 0.15, saw: 0.25};
+  delete a.own; delete a.bodyVer; delete a.skillVer;
+  adoptBody(a); migrateSkills(a);
+  const k = Object.keys(body).filter(x => x !== 'learn');
+  if (!k.every(x => Math.abs(a.mods[x] - body[x]) < 1e-9)) return 'тело изменилось: ' + JSON.stringify({body, now: a.mods});
+  if (a.hp !== hp) return 'здоровье изменилось';
+  const s = a.skill;
+  if (s.smithing !== 0.42 || s.metallurgy !== 0.42 || s.ranged !== 0.3 || s.hunting !== 0.3 || s.medicine !== 0.2 || s.carpentry !== 0.25 || s.tailoring !== 0.15) return 'навыки перенесены неверно: ' + JSON.stringify(s);
+  if ('smith' in s || 'hunt' in s) return 'остались старые ключи';
+  return (s.alchemy === undefined && s.gathering === 0) || 'резервный навык попал в персонажа или нет нового';
+});
+
+check('T39', 'резервный навык не растёт и не бывает любимым', () => {
+  const w = scene(), a = human(w);
+  practice(a, 'alchemy', 1000); practice(a, 'melee', 1000);
+  if (a.skill.alchemy || a.skill.melee) return 'резервный навык вырос';
+  return JOBS.filter(j => j.preferable).every(j => isActive(j.skill)) || 'работа ведёт к резервному навыку';
 });
 
 let bad = 0;

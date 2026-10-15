@@ -21,7 +21,7 @@ import {exposedShare} from '../settlement/stock.js';
 import {RAID_BANDS, banditKit, kitFor} from './raids.js';
 import {createSquad} from '../agents/squad.js';
 import {SPECIES} from './species.js';
-import {raceLabel} from '../agents/special.js';
+import {raceLabel, refreshBody} from '../agents/special.js';
 import {settlerSpecies} from '../settlement/relations.js';
 
 export const MIGRATIONS = new Registry('migration');
@@ -97,7 +97,7 @@ MIGRATIONS.registerAll([
       const pickName = list => list[Math.floor(rng() * list.length)];
       const out = [{species: 'human', init: a => { a.role = 'trader'; [a.name, a.gender] = pickName(TRADE.traderNames); }}];
       for (let k = 0; k < TRADE.guards; k++) out.push({species: 'human', kit: TRADE.guardKit,
-        init: a => { a.role = 'guard'; a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.hp = a.maxHp = TRADE.guardHp; a.mods.bravery = 1.5; a.skill = {hunt: 0.5}; }});
+        init: a => { a.role = 'guard'; a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: 1.5}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: 0.5}; a.skillVer = 1; }});
       const mules = TRADE.mules[0] + Math.floor(rng() * (TRADE.mules[1] - TRADE.mules[0] + 1));
       for (let k = 0; k < mules; k++) out.push({species: 'mule', init: a => { a.name = 'Вьючный мул'; }});
       return out;
@@ -127,7 +127,7 @@ MIGRATIONS.registerAll([
       if (!big || group.length > big.size) w.chronicle.biggestRaid = {size: group.length, tick: w.tick};
       for (const a of group) {
         a.hp = (a.maxHp || 1) * Math.min(1.1, 0.75 + t * 0.012);
-        a.skill = {hunt: Math.min(0.7, 0.1 + t * 0.025)};
+        a.skill = {ranged: Math.min(0.7, 0.1 + t * 0.025)}; a.skillVer = 1;
       }
       RAID_BANDS.get(group[0].band).groupInit?.(group, w);
       createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)

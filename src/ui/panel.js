@@ -47,6 +47,8 @@ import {moodOf, moodLabel, wishes} from '../agents/mind.js';
 import {councilWish} from '../settlement/council.js';
 import {boldness} from '../agents/brains/predator.js';
 import {STATS} from '../data/special.js';
+import {activeSkills, TIERS} from '../data/skills.js';
+import {skillTier, softCap} from '../agents/skills.js';
 import {VALUES, axisWord} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
@@ -72,6 +74,23 @@ function specialHtml(a) {
   if (!a.special) return '';
   const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
   return `<div class="spc">${STATS.all().map(s => `<span title="${s.label}: ${s.note}. У этой расы ${lim[s.id][0]}–${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join('')}</div>`;
+}
+
+// Skills grouped by their SPECIAL letter: value, the soft ceiling the letter sets (10 × letter) and the
+// highest tier of actions it opens. The liked job's skill is marked.
+function skillsHtml(a) {
+  if (!a.skill) return '';
+  const liked = JOBS.get(a.likes)?.skill, disliked = JOBS.get(a.dislikes)?.skill;
+  return STATS.all().map(st => {
+    const list = activeSkills().filter(s => s.stat === st.id);
+    if (!list.length) return '';
+    const v = a.special?.[st.id], tier = skillTier(a, list[0].id), cap = Math.round(softCap(a, list[0].id) * 100);
+    const chips = list.map(s => [s, a.skill[s.id] || 0]).sort((x, y) => y[1] - x[1]).map(([s, x]) => {
+      const n = Math.round(x * 100), top = n >= cap && cap < 100;
+      return `<span class="chip${s.id === liked ? ' like' : s.id === disliked ? ' dislike' : ''}" title="${s.label}: ${n} из 100${top ? '; выше потолка учится медленно' : ''}">${s.short} ${n}${top ? '·' : ''}</span>`;
+    }).join('');
+    return `<div class="sk-row"><span class="sk-stat" title="${st.label} ${v ?? '—'}: потолок навыков ${cap}, доступно до «${TIERS[tier - 1].label}» (T${tier})">${st.short}${v != null ? ' ' + v : ''} · T${tier}</span><div class="chips">${chips}</div></div>`;
+  }).join('');
 }
 
 const raceOf = a => raceLabel(SPECIES.get(a.species), a);
@@ -527,8 +546,6 @@ export class Panel {
       const txt = it ? itemDef(it).short + (Number.isFinite(it.dur) ? ` · ${Math.max(0, Math.round(it.dur / itemDef(it).dur * 100))}%` : '') + (it.ammo != null ? ` · стрел ${it.ammo}` : '') : '—';
       return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${itemDef(it).rank}"` : ''}>${esc(txt)}</dd>`;
     }).join('');
-    const skills = JOBS.filter(j => j.preferable).map(j => [j, a.skill[j.id] || 0]).sort((x, y) => y[1] - x[1])
-      .map(([j, v]) => `<span class="chip${j.id === a.likes ? ' like' : j.id === a.dislikes ? ' dislike' : ''}">${j.short} ${Math.round(v * 100)}</span>`).join('');
     const today = dayOf(w.tick);
     let lastDay = null;
     const diary = a.diary.slice(0, 14).map(e => {
@@ -560,7 +577,7 @@ export class Panel {
         </section>
         <section><h4>Хочет</h4>${want.length ? `<ul class="pc-list">${want.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted pc-small">Всем доволен.</p>'}
           <h4>Снаряжение</h4><dl class="kv">${slots}</dl>
-          <h4>Навыки</h4><div class="chips">${skills}</div>
+          <h4>Навыки</h4>${skillsHtml(a)}
         </section>
         <section><h4>Дневник</h4><ul class="pc-diary">${diary || '<li class="muted">Пока ничего.</li>'}</ul></section>
       </div>`;

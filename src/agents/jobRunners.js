@@ -18,6 +18,8 @@ import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
 import {kill} from './agent.js';
+import {practice, skillOf} from './skills.js';
+import {recipeSkill, LEARN} from '../data/skills.js';
 import {think, moodOf} from './mind.js';
 import {add} from '../settlement/chronicle.js';
 import {seasonJob} from '../data/seasons.js';
@@ -31,11 +33,12 @@ import {esc, g} from '../core/util.js';
 
 const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.colony() - 0.5) * 0.2; };
 
-// skilled hands work faster, the right tool helps; practice slowly builds skill
-export function workRate(w, a, jobId) {
-  a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 0.0006 * (a.mods.learn ?? 1));
+// How fast a tick of work goes: skilled hands work faster, the right tool helps. Only a speed: reading
+// it teaches nothing. Practice (agents/skills.js) is added where the work is really done.
+// skillId: the skill this piece of work uses (by default the job's own)
+export function workRate(w, a, jobId, skillId = JOBS.get(jobId).skill) {
   // a good mood helps a little, a bad one slows down (±10%)
-  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
+  return (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
 }
 // a building may spare the tools of one job (effects.toolWear in data/buildings.js)
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };
@@ -103,7 +106,9 @@ export const RUNNERS = {
       const back = a.resume;
       if (back && back.job === task.job && back.cell === i && w.tick - back.t < RESUME_FOR) { task.work = Math.max(task.work || 0, back.work); }
       if (back) a.resume = null;
-      task.work = (task.work || 0) + workRate(w, a, job.id);
+      const skill = task.job === 'heal' ? job.gatherSkill : job.skill;
+      task.work = (task.work || 0) + workRate(w, a, job.id, skill);
+      practice(a, skill);
       if (task.work < job.time) return;
       task.work = 0;
       // take() may name what was got (one id or several: honey and a bit of wax)
@@ -119,7 +124,7 @@ export const RUNNERS = {
 
   build(w, a, task) {
     const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
-    if (site && !site.done && w.grid.fire[i] === 0) { const amt = workRate(w, a, 'build'); a.stats.labour += amt; addLabour(w, site, amt, a); toolWear(w, a, 'build', 0.05); return; }
+    if (site && !site.done && w.grid.fire[i] === 0) { const amt = workRate(w, a, 'build'); a.stats.labour += amt; addLabour(w, site, amt, a); practice(a, 'construction'); toolWear(w, a, 'build', 0.05); return; }
     const r = follow(w, a, 'sites');
     if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); if (r === 'none') fail(w, a, 'к стройке нет пути', 'impossible'); else done(w, a); a.think = 10; }   // arrived and nothing left: finished by others, nothing lost
   },
@@ -143,7 +148,10 @@ export const RUNNERS = {
     if (r === 'arrived') {
       const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
       // a furnished workshop is a better place to work (settlement/life.js)
-      if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id) * workBonus(b), a)) { fail(w, a, 'заказ не начать: не хватает материалов или топлива'); a.think = 20; }
+      // the order's recipe decides which skill the work uses and trains (data/skills.js recipeSkill)
+      const r = b && b.done ? workAt(w, b, rec => workRate(w, a, job.id, recipeSkill(rec)) * workBonus(b), a) : null;
+      if (r) practice(a, recipeSkill(r));
+      else { fail(w, a, 'заказ не начать: не хватает материалов или топлива'); a.think = 20; }
     } else if (r === 'none') { if (w.nav.dirtySet.has(map)) return; w.nav.dirty(map); fail(w, a, 'к мастерской нет пути', 'impossible'); a.think = 20; }
   },
 
@@ -156,6 +164,7 @@ export const RUNNERS = {
       const p = plotAt(w, i);
       if (!p || !needsWork(w, p)) { w.nav.dirty(job.nav); task.work = 0; return; }
       task.work = (task.work || 0) + workRate(w, a, job.id);
+      practice(a, job.skill);
       if (task.work < job.time) return;
       task.work = 0;
       const got = workPlot(w, i);
@@ -174,7 +183,7 @@ export const RUNNERS = {
       const r = follow(w, a, 'healer');
       if (r === 'arrived' || healerHutCell(w, a)) {
         const given = tend(w, a, workRate(w, a, 'heal') * workBonus(w.buildings.find(x => x.done && x.key === 'healerhut')));
-        if (given) a.stats.healed = (a.stats.healed || 0) + given;
+        if (given) { a.stats.healed = (a.stats.healed || 0) + given; practice(a, 'medicine'); }   // only a wound really tended teaches
         else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);   // the patients are still on their way
       } else if (r === 'none') { w.nav.dirty('healer'); fail(w, a, 'к хижине лекаря нет пути', 'impossible'); a.think = 20; }
       return;
@@ -211,6 +220,7 @@ export const RUNNERS = {
       return;
     }
     task.work = (task.work || 0) + workRate(w, a, job.id);
+    practice(a, job.skill);
     if (b.tame) {
       if (task.work < job.time) return;
       task.work = 0;
@@ -253,6 +263,7 @@ export const RUNNERS = {
     const [sx, sy] = task.spot;
     if (Math.hypot(sx - a.x, sy - a.y) > 0.6) { if (approach(w, a, sx, sy, 0.8) === null) { task.spot = graveSpot(w); } return; }
     task.work = (task.work || 0) + workRate(w, a, job.id);
+    practice(a, job.skill);
     if (task.work < job.time) return;
     bury(w, c, a, task.spot); done(w, a);
   },
@@ -313,9 +324,10 @@ export const RUNNERS = {
       } else if (approach(w, a, prey.x, prey.y, 0.55) === null) { task.prey = null; }   // across the water: look for another
       return;
     }
-    a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 0.0003 * (a.mods.learn ?? 1));
-    const res = shoot(w, a, prey, job.id);
+    // the shot itself teaches shooting (agents/combat.js); bringing the game down teaches the hunt
+    const res = shoot(w, a, prey);
     if (res === 'kill') {
+      practice(a, job.skill, LEARN.kill);
       w.stats.hunted++; a.stalking = false; a.stats.hunted++;
       think(w, a, 'huntKill', {prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label});
       for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);

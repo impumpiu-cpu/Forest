@@ -19,12 +19,12 @@ export const STATS = new Registry('stat');
 export const NORM = 5;
 
 STATS.registerAll([
-  {id: 'S', label: 'Сила',        short: 'СИЛ', note: 'урон в ближнем бою'},
-  {id: 'P', label: 'Восприятие',  short: 'ВОС', note: 'меткость, замечает врага раньше'},
-  {id: 'E', label: 'Выносливость', short: 'ВЫН', note: 'здоровье, стойкость к холоду'},
-  {id: 'C', label: 'Харизма',     short: 'ХАР', note: 'как к нему относятся соседи'},
-  {id: 'I', label: 'Интеллект',   short: 'ИНТ', note: 'как быстро учится ремеслу'},
-  {id: 'A', label: 'Ловкость',    short: 'ЛОВ', note: 'скорость шага и удара'},
+  {id: 'S', label: 'Сила',        short: 'СИЛ', note: 'урон в ближнем бою; рубка, горное дело, стройка, ковка'},
+  {id: 'P', label: 'Восприятие',  short: 'ВОС', note: 'меткость, замечает врага раньше; сбор, охота, стрельба, рыбалка'},
+  {id: 'E', label: 'Выносливость', short: 'ВЫН', note: 'здоровье, стойкость к холоду; поле, тяжёлая ноша'},
+  {id: 'C', label: 'Харизма',     short: 'ХАР', note: 'как к нему относятся соседи; обращение с животными'},
+  {id: 'I', label: 'Интеллект',   short: 'ИНТ', note: 'медицина, плавка, кухня; немного помогает учиться всему'},
+  {id: 'A', label: 'Ловкость',    short: 'ЛОВ', note: 'скорость шага и удара; дерево, шитьё, кожи, гончар, ювелир'},
   {id: 'L', label: 'Удача',       short: 'УДЧ', note: 'увернуться от удара, попасть наудачу'},
 ]);
 
@@ -53,8 +53,8 @@ export const EFFECTS = {
   speed: s => Math.max(0.5, 1 + 0.025 * (s.A - NORM)),
   // attack cooldown multiplier: nimble creatures strike more often
   swing: s => Math.max(0.5, 1 - 0.03 * (s.A - NORM)),
-  // skill gained from work
-  learn: s => Math.max(0.2, 0.5 + 0.1 * s.I),
+  // a small general bonus to learning any skill; each skill learns mainly by its own letter (data/skills.js)
+  learn: s => Math.max(0.7, 0.9 + 0.02 * s.I),
   // chance that a blow or a shot simply misses this creature
   dodge: s => Math.min(0.15, Math.max(0, 0.015 * (s.L - 4))),
   // how much others like this creature (added to their opinion of it, data/relations.js)

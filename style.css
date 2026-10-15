@@ -159,6 +159,8 @@ button.quiet{background:transparent;color:var(--muted)}
 .spc{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .spc span{display:flex;flex-direction:column;align-items:center;padding:3px 0 2px;border-radius:6px;background:#23271c;font-size:9.5px;letter-spacing:.04em;color:var(--muted);cursor:help}
 .spc b{font-size:14px;color:var(--text,#e8e2cf);font-weight:600;line-height:1.1}
+.sk-row{display:flex;gap:6px;align-items:baseline;margin:2px 0}
+.sk-stat{flex:0 0 74px;font-size:10px;letter-spacing:.04em;color:var(--muted);cursor:help;white-space:nowrap}
 .chip.race{background:#2c3040;color:#cdd4f0}
 .person .race{font-style:normal;font-size:11px;color:var(--muted);font-weight:400}
 .pc-list li.down{color:#f0c0c2} .pc-list li.up{color:#cfe6b8}
