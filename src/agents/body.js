@@ -35,7 +35,8 @@ export function stepBody(w, a) {
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
   // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
   const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;
-  if (comfy && T < 45) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a) * regen);
+  // the fallen do not mend by themselves: only a dressed wound stops the bleeding (agents/wounds.js)
+  if (comfy && T < 45 && !a.downed) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a) * regen);
   if (a.hp <= 0) kill(w, a, starving || (T > 60 ? 'пожара' : 'ран'));
   return T;
 }

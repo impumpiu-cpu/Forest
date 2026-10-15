@@ -27,6 +27,11 @@ THOUGHTS.registerAll([
   {id: 'sleptHut', mood: 0.06, lasts: 10 * HOUR, once: 10 * HOUR, text: a => `Переночевал${g(a, '', 'а')} в шалаше: тесно и сквозит, но всё лучше, чем под небом.`},
   {id: 'sleptOutside', mood: -0.05, lasts: 8 * HOUR, once: 10 * HOUR, text: () => 'Спал у костра под открытым небом.'},
   {id: 'wounded', mood: -0.3, lasts: DAY, once: 6 * HOUR, text: a => `Тяжело ${g(a, 'ранен', 'ранена')}.`},
+  // the deadly wound (agents/wounds.js)
+  {id: 'fell', mood: -0.5, lasts: DAY, text: a => `Упал${g(a, '', 'а')} без сознания. Последнее, что помнит, — удар.`},
+  {id: 'survived', mood: 0.4, lasts: 2 * DAY, text: (a, c) => `${c.name ? `${c.name} ${c.gender === 'f' ? 'вытащила' : 'вытащил'}` : 'Вытащили'} с того света. Жив${g(a, '', 'а')}!`},
+  {id: 'trauma', mood: -0.4, lasts: 4 * DAY, text: (a, c) => `${c.what[0].toUpperCase() + c.what.slice(1)}: это теперь навсегда.`},
+  {id: 'woundHealed', mood: 0.25, lasts: DAY, text: () => 'Тяжёлая рана наконец затянулась.'},
 
   // work
   {id: 'likedWork', mood: 0.12, lasts: 6 * HOUR, once: 8 * HOUR, text: (a, c) => `С удовольствием ${g(a, 'взялся', 'взялась')} за любимое дело: ${c.job}.`},

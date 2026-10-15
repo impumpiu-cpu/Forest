@@ -5,7 +5,7 @@
 // A loaded game continues tick for tick like the one that was saved (tools/determinism.mjs checks it).
 import {newBehaviour} from '../settlement/behaviour.js';
 import {SPECIES} from '../data/species.js';
-import {rollCreature, refreshBody, adoptBody} from '../agents/special.js';
+import {rollCreature, refreshBody, adoptBody, BODY_VER} from '../agents/special.js';
 import {migrateSkills} from '../agents/skills.js';
 import {activeSkills} from '../data/skills.js';
 import {BASE_MODS} from '../data/traits.js';
@@ -103,8 +103,11 @@ export function loadWorld(save) {
   // bodies from before refreshBody (agents/special.js): what the sources do not explain is kept as the
   // creature's own extra; a body that never had SPECIAL is simply rebuilt
   for (const a of w.agents) {
-    if (!a.mods || a.bodyVer === 1) continue;
-    if (a.bodyVer === 0) { delete a.own; refreshBody(a); a.bodyVer = 1; } else adoptBody(a);
+    if (!a.mods || a.bodyVer === BODY_VER) continue;
+    if (a.bodyVer === 0) { delete a.own; refreshBody(a); a.bodyVer = BODY_VER; }
+    // built from sources already (stage 1 on): only a rule has changed since (aim and dodge left Luck)
+    else if (a.bodyVer >= 1) { refreshBody(a); a.bodyVer = BODY_VER; }
+    else adoptBody(a);
   }
   // skills kept under job ids before the skill catalogue (data/skills.js): each skill takes the best of its jobs
   for (const a of w.agents) migrateSkills(a);

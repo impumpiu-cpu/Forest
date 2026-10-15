@@ -159,10 +159,10 @@ export const predatorBrain = {
       const v = t.target;
       if (a.stamina <= 0.05) { a.task = {id: 'rest'}; return; }
       // help arrived or the victim reached the settlement: back off for a while (shorter when starving)
-      if (!v || v.dead || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
+      if (!v || v.dead || v.downed || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
         const h = huntOf(w, a);
         if (h) endHunt(w, h, !v || v.dead ? 'taken' : agentInZone(w, v) ? 'zone' : 'help');
-        if (v && !v.dead && t.target === v) think(w, v, 'escapedWolves', {who: sp.plural});
+        if (v && !v.dead && !v.downed && t.target === v) think(w, v, 'escapedWolves', {who: sp.plural});
         if (v && !v.dead) for (const m of pack) { m.calmUntil = w.tick + P.calm * (1 - 0.7 * b); if (m.task?.id === 'maul') m.task = {id: 'roam'}; }
         else if (t) a.task = {id: 'roam'};
         return;
@@ -210,7 +210,7 @@ export const predatorBrain = {
     }
     // people: only when boldness (plus the cover of night) is high enough
     if (w.tick > (a.calmUntil || 0) && b + night * 0.25 >= P.boldPeople) {
-      const v = nearest(w, a, P.victims, P.sight * (0.6 + 0.4 * b), o => o.faction === 'colony' && !agentInZone(w, o) &&
+      const v = nearest(w, a, P.victims, P.sight * (0.6 + 0.4 * b), o => o.faction === 'colony' && !o.downed && !agentInZone(w, o) &&
         company(w, o, P.loneRadius) <= (b > 0.8 ? Math.max(0, pack.length - 2) : 0));
       if (v) { startMaul(w, a, v, b); return; }
     }

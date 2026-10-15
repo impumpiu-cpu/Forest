@@ -26,7 +26,7 @@ SKILLS.registerAll([
   {id: 'mining',       stat: 'S', label: 'горное дело',         short: 'горн. дело'},
   {id: 'construction', stat: 'S', label: 'строительство',       short: 'стройка'},
   {id: 'smithing',     stat: 'S', label: 'кузнечное дело',      short: 'ковка'},
-  {id: 'melee',        stat: 'S', label: 'ближний бой',         short: 'бой', status: 'reserved'},
+  {id: 'melee',        stat: 'S', label: 'ближний бой',         short: 'бой'},
 
   // ── P: perception
   {id: 'gathering',    stat: 'P', label: 'собирательство',      short: 'сбор'},
@@ -87,6 +87,7 @@ export const LEARN = {
   base: 0.6, perPoint: 0.08, minFactor: 0.3,
   overCap: 0.1,      // above 10 × letter practice gives a tenth
   shot: 10,          // one fired shot ≈ the old per-tick gain over a bow's reload
+  blow: 6,           // one melee blow struck (a blow comes about twice as often as a shot)
   kill: 20,          // game brought down: the stalk paid off
 };
 

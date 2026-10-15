@@ -13,7 +13,7 @@ import {drawFoodPrefs} from '../data/foods.js';
 import {enrol, noteDeath} from '../settlement/chronicle.js';
 import {lostBeast} from '../settlement/herd.js';
 import {addCorpse} from '../settlement/life.js';
-import {rollCreature, refreshBody} from './special.js';
+import {rollCreature, refreshBody, BODY_VER} from './special.js';
 import {startSkills} from './skills.js';
 import {releaseAll} from '../settlement/reserve.js';
 import {noteFallen} from './squad.js';
@@ -59,7 +59,7 @@ export function createAgent(w, speciesId, factionId, x, y) {
   const a = {
     id: w.nextId++, species: speciesId, faction: factionId, brain: sp.brain || fa.brain,
     name: sp.label, gender: 'm',
-    x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(), bodyVer: 1,
+    x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(), bodyVer: BODY_VER,
     task: null, think: (w.rngs.birth() * 15) | 0, cd: 0, carry: null, sleeping: false,
   };
   if (sp.names && factionId === 'colony') [a.name, a.gender] = freshName(w, sp.names);

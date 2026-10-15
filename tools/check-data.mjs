@@ -22,6 +22,8 @@ import {PLANTS} from '../src/data/plants.js';
 import {CROPS} from '../src/data/crops.js';
 import {MIGRATIONS} from '../src/data/migrations.js';
 import {STATS} from '../src/data/special.js';
+import {WOUNDS} from '../src/data/wounds.js';
+import {BASE_MODS} from '../src/data/traits.js';
 import {SKILLS, FROM_JOB, STATION_SKILL, recipeSkill, TIERS} from '../src/data/skills.js';
 import {BIOMES, RARITY, FAUNA_FLOOR} from '../src/data/biomes.js';
 import {faunaFrom} from '../src/world/region.js';
@@ -216,6 +218,16 @@ for (const r of RECIPES.all()) if (r.tier != null && !(Number.isInteger(r.tier) 
   for (const r of RECIPES.all()) if (!open.has(r.at + ':' + recipeSkill(r))) err(`станция ${r.at}: для навыка ${recipeSkill(r)} нет рецепта T1, новичку не на чем учиться`);
 }
 
+// wounds and traumas (data/wounds.js): every multiplier is one the body knows; the thoughts a fall leaves exist
+for (const W of WOUNDS.all()) {
+  for (const k of Object.keys(W.mods || {})) if (!(k in BASE_MODS)) err(`рана ${W.id}: неизвестный множитель «${k}»`);
+  if (!W.trauma && !(W.days > 0)) err(`рана ${W.id}: излечимой ране нужен срок days`);
+  if (W.trauma && !(W.weight > 0)) err(`травма ${W.id}: нужен вес weight`);
+}
+if (!WOUNDS.has('grave')) err('раны: нет тяжёлой раны grave, которую оставляет спасённая жизнь');
+if (!WOUNDS.filter(x => x.trauma).length) err('раны: нет ни одной травмы для провала второй проверки');
+for (const t of ['fell', 'survived', 'trauma', 'woundHealed']) if (!THOUGHTS.has(t)) err(`нет мысли «${t}» для смертельной раны`);
+
 for (const w of warnings) console.log('warn ' + w);
 if (errors.length) { console.log('Ошибки в справочниках:\n  ' + errors.join('\n  ')); process.exit(1); }
-console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд, ${SKILLS.all().length} навыков — ссылки сходятся`);
+console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд, ${SKILLS.all().length} навыков, ${WOUNDS.all().length} ран — ссылки сходятся`);

@@ -2,7 +2,8 @@
 // review of the races branch; T12–T17 reservations and the task lifecycle; T18–T22 raider squads;
 // T23–T26 joint actions of colonists;
 // T27–T31 carcasses and pack hunts; T32–T39 SPECIAL stage 1: skills, practice, the body;
-// T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order). Each scene builds a flat, empty map, places a few agents by hand and
+// T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order;
+// T47–T48 quality from the master; T49–T57 critical blows and the deadly wound). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -33,6 +34,12 @@ import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS} from
 import {DAY, HOUR, nightness} from '../src/core/time.js';
 import {newItem, outfit, recalcGear} from '../src/agents/equipment.js';
 import {refreshBody, adoptBody} from '../src/agents/special.js';
+import {craftChance, qualityRoll} from '../src/data/quality.js';
+import {critChance, lethal, stabilize, stepDowned, healWounds} from '../src/agents/wounds.js';
+import {CRIT} from '../src/data/wounds.js';
+import {damage, attack, nearestHostile} from '../src/agents/combat.js';
+import {giveAid} from '../src/settlement/together.js';
+import {saveWorld, loadWorld} from '../src/world/save.js';
 import {practice, practiceGain, softCap, skillTier, migrateSkills, recipeAccess, canMake} from '../src/agents/skills.js';
 import {workRate} from '../src/agents/jobRunners.js';
 import {shoot} from '../src/agents/combat.js';
@@ -427,7 +434,7 @@ check('T31', 'неубранная туша в темноте поднимает
 });
 
 // ── SPECIAL stage 1: skills apart from jobs, practice from real work, a body rebuilt from its sources
-const human = (w, special = {}) => { const a = put(w, 'human', 'colony', 30.5, 30.5); Object.assign(a.special, special); refreshBody(a); a.hp = maxHp(a); return a; };
+const human = (w, special = {}) => { const a = put(w, 'human', 'colony', 30.5, 30.5); Object.assign(a.special, special); refreshBody(a); a.hp = maxHp(a); a.own = {...a.own, set: {dodge: 0}}; refreshBody(a); return a; };
 const armed = (w, a) => { w.armory.push(newItem('bow'), newItem('quiver')); outfit(w, a); a.equip.back.ammo = 20; recalcGear(a); };
 const sameMods = (x, y) => Object.keys({...x, ...y}).every(k => x[k] === y[k]);
 
@@ -530,8 +537,8 @@ check('T38', 'старое сохранение: навыки работ пер�
 
 check('T39', 'резервный навык не растёт и не бывает любимым', () => {
   const w = scene(), a = human(w);
-  practice(a, 'alchemy', 1000); practice(a, 'melee', 1000);
-  if (a.skill.alchemy || a.skill.melee) return 'резервный навык вырос';
+  practice(a, 'alchemy', 1000); practice(a, 'stealth', 1000);
+  if (a.skill.alchemy || a.skill.stealth) return 'резервный навык вырос';
   return JOBS.filter(j => j.preferable).every(j => isActive(j.skill)) || 'работа ведёт к резервному навыку';
 });
 
@@ -615,6 +622,159 @@ check('T46', 'кузнец, которому досталась работа, т
     for (let k = 0; k < 400 && !(b.order?.progress > 0); k++) TASKS.get('job').step(w, smith, smith.task || (smith.task = {id: 'job', job: 'smith'}));
     return (b.order?.recipe === 'sword' && smith.skill.smithing > s0) || 'меч не пошёл: ' + JSON.stringify({order: b.order, stop: smith.lastStop});
   } finally { back(); }
+});
+
+// ── SPECIAL stage 2b: quality from the master's skill
+check('T47', 'качество: один бросок, шанс растёт с навыком, +4 реже тысячной процента', () => {
+  for (const sk of [0, 0.5, 1]) {
+    const c = [1, 2, 3, 4].map(q => craftChance(q, sk));
+    if (!c.every((v, k) => !k || v < c[k - 1])) return 'шансы уровней не вложены друг в друга';
+    if (!(c[3] < 0.00001)) return `+4 при навыке ${sk}: ${c[3]}`;
+  }
+  if (!(craftChance(1, 1) > craftChance(1, 0) * 3 && craftChance(1, 1) < 0.25)) return 'навык даёт либо мало, либо явное преимущество';
+  return (qualityRoll(0, 0) === 4 && qualityRoll(craftChance(4, 0), 0) === 3 && qualityRoll(0.5, 1) === 0 && qualityRoll(craftChance(1, 0) + 0.01, 0, 0.05) === 1) || 'бросок раскладывается по уровням неверно';
+});
+
+check('T48', 'качество задаёт мастер с наибольшим вкладом, вещь помнит мастера', () => {
+  const w = scene(), b = forge(w);
+  const pro = human(w, {S: 8}), boy = human(w, {S: 8});
+  pro.skill.smithing = 1; boy.skill.smithing = 0;
+  pro.name = 'Мастер'; boy.name = 'Подмастерье';
+  b.order = {recipe: 'ironaxe', progress: 0};
+  workAt(w, b, 500, pro);
+  // the last stroke is the apprentice's, the master did most of the work; u lands where only skill 1 gives +1
+  const u = (craftChance(1, 0) + craftChance(1, 1)) / 2;
+  w.rngs.colony = Object.assign(() => u, {state: 0});
+  workAt(w, b, 300, boy);
+  const it = w.armory.at(-1);
+  return (it?.type === 'ironaxe' && it.q === 1 && it.maker === 'Мастер') || 'вещь: ' + JSON.stringify(it);
+});
+
+// ── SPECIAL stage 3: critical blows on Luck, the deadly wound
+const seq = (w, xs) => { let k = 0; w.rngs.combat = Object.assign(() => xs[Math.min(k++, xs.length - 1)], {state: 0}); };
+const raider = (w, x = 31.5) => { const r = put(w, 'human', 'raiders', x, 30.5); r.mods.dodge = 0; return r; };
+
+check('T49', 'крит только у попавшего удара и только от удачи нападающего', () => {
+  if (![0, 1, 5, 10, 50, 1000].every(L => { const p = critChance({special: {L}}); return p >= 0 && p <= CRIT.cap; })) return 'шанс крита вне границ';
+  if (!(critChance({special: {L: 10}}) > critChance({special: {L: 1}}))) return 'удача не повышает крит';
+  const w = scene(), a = human(w, {L: 10}), t = raider(w);
+  t.mods.dodge = 0;
+  const hp0 = t.hp;
+  seq(w, [0]);   // the crit check: crit
+  damage(w, a, t, 0.1);
+  const critHit = hp0 - t.hp;
+  t.hp = hp0;
+  seq(w, [0.99]);
+  damage(w, a, t, 0.1);
+  const plain = hp0 - t.hp;
+  if (Math.abs(critHit / plain - CRIT.mul) > 1e-9) return `крит ×${critHit / plain}`;
+  // a dodged blow is no hit: no crit check is spent
+  t.hp = hp0; t.mods.dodge = 1;
+  let calls = 0; w.rngs.combat = Object.assign(() => { calls++; return 0; }, {state: 0});
+  const r = damage(w, a, t, 0.1);
+  return (r === 'dodged' && calls === 1 && t.hp === hp0) || `увернулся, но бросков ${calls}`;
+});
+
+check('T50', 'удачная проверка: колонист падает без сознания, враги его не трогают', () => {
+  const w = scene(), a = human(w, {L: 5, E: 5}), r = raider(w);
+  seq(w, [0]);   // crit, survive: yes, clean: yes
+  a.hp = 0.01;
+  damage(w, r, a, 0.5);
+  if (a.dead || !a.downed) return 'не упал: ' + JSON.stringify({dead: a.dead, downed: a.downed});
+  if (a.downed.trauma) return 'травма при удачной второй проверке';
+  if (!(a.hp > 0) || a.task?.id !== 'downed') return 'лежащий в неверном состоянии';
+  if (nearestHostile(w, r, 10) === a) return 'налётчик видит лежащего целью';
+  r.cd = 0;
+  if (attack(w, r, a)) return 'по лежащему ударили';
+  return damage(w, r, a, 5) === 'downed' && !a.dead || 'урон по лежащему прошёл';
+});
+
+check('T51', 'одна проверка на эпизод: второй смертельный удар убивает', () => {
+  const w = scene(), a = human(w), r = raider(w);
+  seq(w, [0]);
+  a.hp = 0.01; damage(w, r, a, 0.5);
+  if (!a.downed) return 'не упал';
+  a.hp = -0.01; lethal(w, a, 'ран', r);
+  if (!a.dead) return 'лежащий получил вторую проверку';
+  // saved, still healing the grave wound: no luck left either
+  const w2 = scene(), b = human(w2), r2 = raider(w2), h = human(w2);
+  seq(w2, [0]);
+  b.hp = 0.01; damage(w2, r2, b, 0.5); stabilize(w2, h, b);
+  b.hp = 0.01; damage(w2, r2, b, 5);
+  return b.dead || 'пока рана не зажила, удача спасла снова';
+});
+
+check('T52', 'без помощи упавший истекает кровью к сроку, не раньше', () => {
+  const w = scene(), a = human(w, {E: 10}), r = raider(w);
+  seq(w, [0]); a.hp = 0.01; damage(w, r, a, 0.5);
+  const until = a.downed.until;
+  if (until - w.tick !== Math.round(4 * HOUR)) return `срок ${until - w.tick} тиков при E 10`;
+  w.tick = until - 1; stepDowned(w, a);
+  if (a.dead) return 'умер раньше срока';
+  w.tick = until; stepDowned(w, a);
+  return a.dead || 'не умер к сроку';
+});
+
+check('T53', 'перевязка спасает: тяжёлая рана тянет тело и заживает, травма остаётся', () => {
+  const w = scene(), a = human(w), r = raider(w), h = human(w);
+  const speed = a.mods.speed, work = a.mods.work;
+  seq(w, [0, 0, 0.99, 0]);   // crit; survive: yes; clean: no; the trauma drawn: the first one
+  a.hp = 0.01; damage(w, r, a, 0.5);
+  if (!a.downed?.trauma) return 'травма не выпала: ' + JSON.stringify(a.downed);
+  const trauma = a.downed.trauma;
+  giveAid(w, h, a);
+  if (a.downed) return 'перевязка не подняла';
+  if (!(a.hp >= 0.2 * maxHp(a) - 1e-9)) return 'после перевязки слишком мало здоровья';
+  if (!a.wounds.some(x => x.id === 'grave') || !a.wounds.some(x => x.id === trauma)) return 'раны не записаны: ' + JSON.stringify(a.wounds);
+  if (!(a.mods.work < work)) return 'тяжёлая рана не мешает работать';
+  w.tick = a.wounds.find(x => x.id === 'grave').until + 50 - ((a.wounds.find(x => x.id === 'grave').until + a.id) % 50);
+  healWounds(w, a);
+  if (a.wounds.some(x => x.id === 'grave')) return 'рана не зажила в срок';
+  return a.wounds.some(x => x.id === trauma) || 'неизлечимая травма прошла';
+});
+
+check('T54', 'удар далеко за край, налётчик и яд — без проверки удачи', () => {
+  const w = scene(), a = human(w), r = raider(w);
+  seq(w, [0]);
+  a.hp = -2 * maxHp(a); lethal(w, a, 'ран', r);
+  if (!a.dead) return 'оверкилл дал проверку';
+  const w2 = scene(), bad = raider(w2), c = human(w2);
+  seq(w2, [0]); bad.hp = 0.01; damage(w2, c, bad, 0.5);
+  if (!bad.dead || bad.downed) return 'налётчик упал вместо смерти';
+  const w3 = scene(), p = human(w3);
+  seq(w3, [0]); p.hp = -0.01; lethal(w3, p, 'яда');
+  return p.dead || 'яд дал проверку удачи';
+});
+
+check('T55', 'сохранение не перебрасывает удачу: лежащий остаётся лежать', () => {
+  const w = scene(), a = human(w), r = raider(w);
+  seq(w, [0]); a.hp = 0.01; damage(w, r, a, 0.5);
+  const d = JSON.stringify(a.downed);
+  const w2 = loadWorld(JSON.parse(JSON.stringify(saveWorld(w))));
+  const b = w2.agents.find(o => o.id === a.id);
+  if (JSON.stringify(b.downed) !== d) return 'состояние изменилось при загрузке';
+  for (let k = 0; k < 20; k++) BRAINS.get(b.brain).step(w2, b);
+  return (b.downed && b.task?.id === 'downed' && b.hp <= a.hp) || 'после загрузки лежащий встал или вылечился: ' + JSON.stringify({d: b.downed, t: b.task, hp: [a.hp, b.hp]});
+});
+
+check('T56', 'уклонение от ловкости, меткость без удачи', () => {
+  const w = scene();
+  const bare = sp => { const a = createAgent(w, 'human', 'colony', 30.5, 30.5); a.traits = []; Object.assign(a.special, sp); refreshBody(a); return a; };
+  const lucky = bare({L: 10, A: 5, P: 5}), unlucky = bare({L: 1, A: 5, P: 5}), nimble = bare({L: 1, A: 10, P: 5});
+  return (lucky.mods.dodge === unlucky.mods.dodge && nimble.mods.dodge > lucky.mods.dodge && lucky.mods.aim === 0 && lucky.mods.aim === unlucky.mods.aim) || JSON.stringify({l: lucky.mods, u: unlucky.mods, n: nimble.mods});
+});
+
+check('T57', 'ближнему бою учит нанесённый удар, умение добавляет урон', () => {
+  const w = scene(); fixedRng(w, 0.99);
+  const a = human(w), t = raider(w, 31.0);
+  const m0 = a.skill.melee, hp0 = t.hp;
+  a.cd = 0; if (!attack(w, a, t)) return 'удара не было';
+  if (!(a.skill.melee > m0)) return 'удар не научил';
+  const d0 = hp0 - t.hp;
+  t.hp = hp0; a.cd = 0; a.skill.melee = 1; attack(w, a, t);
+  const d1 = hp0 - t.hp;
+  a.cd = 5; const m1 = a.skill.melee; attack(w, a, t);
+  return (Math.abs(d1 / d0 - (1 + 0.4) / (1 + 0.4 * m0)) < 1e-9 && a.skill.melee === m1) || `урон ${d0} → ${d1}, навык без удара ${m1} → ${a.skill.melee}`;
 });
 
 let bad = 0;

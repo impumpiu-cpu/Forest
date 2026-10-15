@@ -21,7 +21,10 @@ import {fishable} from '../world/lakes.js';
 import {season} from '../data/seasons.js';
 import {FOODS} from '../data/foods.js';
 import {freeSlots} from './life.js';
-import {canMake, accessKey, recipeNeed, reasonText} from '../agents/skills.js';
+import {canMake, accessKey, recipeNeed, reasonText, skillOf} from '../agents/skills.js';
+import {recipeSkill} from '../data/skills.js';
+import {qualityRoll} from '../data/quality.js';
+import {esc} from '../core/util.js';
 import {HOUR} from '../core/time.js';
 
 const PRESERVED = () => FOODS.filter(f => f.of);
@@ -158,19 +161,27 @@ export function workAt(w, b, amount, a) {
   const bellows = r.fuel && (w.stock.bellows || 0) >= 1;   // blown fire: the work goes faster
   const labour = typeof amount === 'function' ? amount(r) : amount;
   b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
+  // who put how much work into it: the one with the most is the master whose skill sets the quality
+  if (a) (b.order.by ||= {})[a.id] = (b.order.by?.[a.id] || 0) + labour;
   if (b.order.progress < r.work) return r;
+  const by = b.order.by;
   b.order = null;
   w.stats.crafted++;
   if (w.scratch) delete w.scratch.craftCtx;   // item counts changed
   if (r.makes.item) {
-    // a silvered blade carries the silver on the instance; with bellows a forged piece now and then comes out finer
-    const extra = {};
+    // a silvered blade carries the silver on the instance. Quality (data/quality.js): one random number
+    // against the master's skill in the recipe's skill; bellows add a little chance of +1. A fine piece
+    // keeps its maker's name: the quality says how good it is, the maker where it came from.
+    const extra = {}, master = masterOf(w, by, a), skill = master ? skillOf(master, recipeSkill(r)) : 0;
     if (r.makes.silver) extra.silver = true;
-    if (bellows && w.rngs.colony() < FURNACE.bellowsFine) extra.q = 1;
+    const q = ITEMS.get(r.makes.item).quality === false ? 0 : qualityRoll(w.rngs.colony(), skill, bellows ? FURNACE.bellowsFine : 0);
+    if (q) { extra.q = q; if (master) extra.maker = master.name; }
     const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
     w.armory.push(it);
     w.armoryVersion = (w.armoryVersion || 0) + 1;
-    log(w, `Сделано: ${name}.${extra.q ? ' Меха раздули жар как надо: вещь вышла добротной.' : ''}`, 'craft');
+    if (q) { const f = w.chronicle.fine ||= {}; f[q] = (f[q] || 0) + 1; }
+    const who = master ? `<b>${esc(master.name)}</b>` : 'мастер';
+    log(w, `Сделано: ${name}.${q === 1 ? ` ${who} постарал${master?.gender === 'f' ? 'ась' : 'ся'}: вещь вышла добротной.` : q === 2 ? ` Работа мастера: ${who} сделал${master?.gender === 'f' ? 'а' : ''} вещь, какой в поселении ещё не видели.` : q >= 3 ? ` Чудо ремесла! ${who} сам${master?.gender === 'f' ? 'а' : ''} не верит, что это ${master?.gender === 'f' ? 'её' : 'его'} рук дело (${def(it).rank}).` : ''}`, 'craft', q >= 3 ? 'notice' : undefined);
     if (a) { think(w, a, 'madeItem', {item: name}); a.stats.crafted++; }
     w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
   } else {
@@ -200,6 +211,16 @@ export function stepCrafting(w) {
     const need = recipeNeed(r);
     log(w, `Некому доделать: ${what} (${need ? 'требуется ' + reasonText(need) : 'нужен мастер'}). Заказ снят, материалы вернулись на склад.`, 'craft');
   }
+}
+
+// the master of a finished order: whoever put in the most work and is still around; else the last worker
+function masterOf(w, by, last) {
+  let best = null, bv = -1;
+  for (const [id, v] of Object.entries(by || {})) {
+    const o = w.agents.find(x => x.id === +id && !x.dead);
+    if (o && v > bv) { bv = v; best = o; }
+  }
+  return best || last || null;
 }
 
 export function orderText(b) {

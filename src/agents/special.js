@@ -11,6 +11,7 @@ import {AXIS_MAX} from '../data/values.js';
 import {weighted, clamp} from '../core/util.js';
 import {SPECIES} from '../data/species.js';
 import {TRAITS, BASE_MODS} from '../data/traits.js';
+import {WOUNDS} from '../data/wounds.js';
 
 export const peopleOf = (sp, a) => (a.people && sp.peoples ? sp.peoples.find(p => p.id === a.people) : null);
 
@@ -72,6 +73,7 @@ function specialInto(m, a, sp) {
 // The body, rebuilt from its sources every time, never on top of the last result, so calling it twice
 // changes nothing. Sources, in order:
 //   species mods → SPECIAL → the people's mods → racial innate traits → character traits (a.traits)
+//   → wounds and traumas (a.wounds, data/wounds.js)
 //   → the creature's own extras (a.own: {mul: {k: ×}, add: {k: +}, set: {k: value}, hp: full health})
 // Health keeps its share of the maximum: a wounded colonist stays as wounded after the rebuild.
 // Called when the creature is made, and whenever one of the sources changes.
@@ -86,11 +88,15 @@ export function refreshBody(a) {
     for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(m, k, v);
   }
   for (const id of a.traits || []) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) mod(m, k, v);
+  // wounds that heal and traumas for life (data/wounds.js)
+  let hpMul = 1;
+  for (const wd of a.wounds || []) { const W = WOUNDS.get(wd.id); for (const [k, v] of Object.entries(W.mods || {})) mod(m, k, v); hpMul *= W.hp ?? 1; }
   const own = a.own || {};
   for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;
   for (const [k, v] of Object.entries(own.add || {})) m[k] = (m[k] ?? 0) + v;
   Object.assign(m, own.set || {});
   if (own.hp != null) full = own.hp;
+  if (hpMul !== 1) full = (full ?? sp.hp) * hpMul;
   const was = a.maxHp || sp.hp, share = Number.isFinite(a.hp) ? a.hp / was : 1;
   a.mods = m;
   if (full != null) a.maxHp = full; else delete a.maxHp;
@@ -99,16 +105,21 @@ export function refreshBody(a) {
 
 // A save from before refreshBody: its mods were stacked in place and some sources (the bravery roll,
 // old formulas) are not kept. The difference between what was saved and what the sources give now is
-// kept as the creature's own extra, so the rebuild reproduces the saved body; learning alone follows
-// the new rule (data/skills.js), so its old difference is dropped.
+// kept as the creature's own extra, so the rebuild reproduces the saved body; keys whose rule changed
+// (RULE_KEYS) follow the new rule, so their old difference is dropped.
+// keys whose formula changed since bodies were stacked in place: they follow the new rule, not the save
+// (learn — data/skills.js; aim and dodge no longer read Luck)
+const RULE_KEYS = new Set(['learn', 'aim', 'dodge']);
+export const BODY_VER = 2;
+
 export function adoptBody(a) {
-  if (!a.mods || a.bodyVer === 1) return;
+  if (!a.mods || a.bodyVer >= 1) return;
   const saved = a.mods, hp = a.hp, maxHp = a.maxHp;
   delete a.own;
   refreshBody(a);
   const mul = {}, add = {};
   for (const [k, v] of Object.entries(saved)) {
-    if (k === 'learn' || !Number.isFinite(v)) continue;
+    if (RULE_KEYS.has(k) || !Number.isFinite(v)) continue;
     if (ADD.has(k)) { const d = v - (a.mods[k] ?? 0); if (Math.abs(d) > 1e-9) add[k] = d; }
     else { const now = a.mods[k] ?? 1; if (now !== 0 && Math.abs(v / now - 1) > 1e-9) mul[k] = v / now; }
   }
@@ -118,5 +129,5 @@ export function adoptBody(a) {
   if (maxHp && Math.abs(maxHp - (a.maxHp || SPECIES.get(a.species).hp)) > 1e-9) a.own.hp = maxHp;
   a.hp = hp; if (maxHp) a.maxHp = maxHp;
   refreshBody(a);
-  a.bodyVer = 1;
+  a.bodyVer = BODY_VER;
 }

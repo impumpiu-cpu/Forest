@@ -24,6 +24,7 @@ import {has} from '../../settlement/query.js';
 import {wantsPrayer} from '../../settlement/life.js';
 import {RESOURCES} from '../../data/resources.js';
 import {escortOption, aidOption, mates} from '../../settlement/together.js';
+import {stepDowned, healWounds} from '../wounds.js';
 import {BUILDINGS} from '../../data/buildings.js';
 
 // the weight of answering an attack on oneself: more than any need can reach
@@ -143,6 +144,9 @@ export const colonistBrain = {
   step(w, a) {
     const T = stepBody(w, a);   // reads last tick's `sleeping`
     if (a.dead) return;
+    // fallen senseless after a deadly blow: lies and bleeds until helped or until time runs out
+    if (a.downed) { if (a.task?.id !== 'downed') a.task = {id: 'downed'}; syncTask(w, a); stepDowned(w, a); return; }
+    healWounds(w, a);
     a.sleeping = false;
     const tid = a.task?.id;
     // reflex: heat overrides everything (firefighters hold out a little longer)

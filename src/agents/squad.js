@@ -70,7 +70,7 @@ const wooden = w => w.buildings.filter(b => b.done && b.cells.length && BUILDING
 // the colonist a kill-band came for: the one who has killed most raiders (a blood feud), otherwise the
 // weakest (easy prey)
 function pickVictim(w) {
-  const col = colonists(w); if (!col.length) return null;
+  const col = colonists(w).filter(a => !a.downed); if (!col.length) return null;
   const feud = col.filter(a => (a.stats?.raiders || 0) > 0).sort((x, y) => y.stats.raiders - x.stats.raiders)[0];
   return feud ? {who: feud, why: 'кровник: убивал их'} : {who: col.sort((x, y) => strength(x) - strength(y))[0], why: 'самая лёгкая добыча'};
 }
@@ -211,7 +211,7 @@ export function stepSquads(w) {
 // the foe to fight, holding on to the current one unless another is much closer
 function holdFoe(w, a, fresh) {
   const t = a.task?.id === 'fight' ? a.task.target : null;
-  if (!t || t.dead || !w.agents.includes(t) || !canSee(w, a, t)) return fresh;
+  if (!t || t.dead || t.downed || !w.agents.includes(t) || !canSee(w, a, t)) return fresh;
   if (!fresh || fresh === t) return t;
   const held = w.tick - (a.task.since ?? w.tick);
   return held > SQUAD.hold || dist(a, fresh) < dist(a, t) * SQUAD.closer ? fresh : t;
@@ -250,7 +250,7 @@ export function planFor(w, a, sq, radius) {
     return a.task?.id === 'scout' ? a.task : {id: 'scout'};
   }
   if (sq.goal === 'kill') {
-    const v = w.agents.find(o => o.id === sq.target && !o.dead);
+    const v = w.agents.find(o => o.id === sq.target && !o.dead && !o.downed);
     if (v && canSee(w, a, v) && dist(a, v) < 30 && !close) return fight(w, a, v);
   }
   const e = holdFoe(w, a, nearestHostile(w, a, radius));

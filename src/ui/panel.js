@@ -47,6 +47,7 @@ import {moodOf, moodLabel, wishes} from '../agents/mind.js';
 import {councilWish} from '../settlement/council.js';
 import {boldness} from '../agents/brains/predator.js';
 import {STATS} from '../data/special.js';
+import {WOUNDS} from '../data/wounds.js';
 import {activeSkills, TIERS} from '../data/skills.js';
 import {skillTier, softCap, canMake, recipeNeed, reasonText} from '../agents/skills.js';
 import {VALUES, axisWord} from '../data/values.js';
@@ -91,6 +92,18 @@ function skillsHtml(a) {
     }).join('');
     return `<div class="sk-row"><span class="sk-stat" title="${st.label} ${v ?? '—'}: потолок навыков ${cap}, доступно до «${TIERS[tier - 1].label}» (T${tier})">${st.short}${v != null ? ' ' + v : ''} · T${tier}</span><div class="chips">${chips}</div></div>`;
   }).join('');
+}
+
+// a deadly wound and what it left (agents/wounds.js): bleeding now, a grave wound healing, traumas for life
+function woundsHtml(w, a) {
+  const out = [];
+  if (a.downed) out.push(`<span class="chip dislike" title="Без помощи умрёт">без сознания: ${Math.max(0, Math.ceil((a.downed.until - w.tick) / HOUR * 10) / 10)} ч до смерти</span>`);
+  for (const x of a.wounds || []) {
+    const W = WOUNDS.get(x.id);
+    const left = x.until != null ? `, заживёт через ${Math.max(1, Math.ceil((x.until - w.tick) / DAY))} дн.` : '';
+    out.push(`<span class="chip${W.trauma ? ' dislike' : ''}" title="${W.label}: ${W.note}${left}">${W.label}</span>`);
+  }
+  return out.length ? `<div class="chips">${out.join('')}</div>` : '';
 }
 
 const raceOf = a => raceLabel(SPECIES.get(a.species), a);
@@ -547,7 +560,7 @@ export class Panel {
     const slots = SLOTS.map(s => {
       const it = a.equip?.[s.id];
       const txt = it ? itemDef(it).short + (Number.isFinite(it.dur) ? ` · ${Math.max(0, Math.round(it.dur / itemDef(it).dur * 100))}%` : '') + (it.ammo != null ? ` · стрел ${it.ammo}` : '') : '—';
-      return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${itemDef(it).rank}"` : ''}>${esc(txt)}</dd>`;
+      return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${itemDef(it).rank}${it.maker ? ', работа: ' + esc(it.maker) : ''}"` : ''}>${esc(txt)}</dd>`;
     }).join('');
     const today = dayOf(w.tick);
     let lastDay = null;
@@ -573,6 +586,7 @@ export class Panel {
           <p class="pc-small">${body}</p>
           ${specialHtml(a)}
           ${inn ? `<div class="chips">${inn}</div>` : ''}
+          ${woundsHtml(w, a)}
           <h4>Мировоззрение</h4>
           ${a.align ? `<p class="pc-small">${axisWord('order', a.align.order)} · ${axisWord('mercy', a.align.mercy)}</p>` : ''}
           ${vals ? `<div class="chips">${vals}</div>` : ''}

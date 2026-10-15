@@ -2,13 +2,15 @@
 // Weapons come from the agent's gear (equipment.js); animals use their species' attack.
 import {isHostile} from '../data/factions.js';
 import {SPECIES} from '../data/species.js';
-import {kill, maxHp} from './agent.js';
+import {maxHp} from './agent.js';
 import {wear, def} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
 import {lineOfFire} from '../nav/astar.js';
 import {practice} from './skills.js';
 import {LEARN} from '../data/skills.js';
+import {critChance, lethal} from './wounds.js';
+import {CRIT} from '../data/wounds.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
@@ -25,7 +27,7 @@ export function canSee(w, a, t) {
 export function nearestHostile(w, a, r) {
   let best = null, bd = r * r;
   for (const o of w.agents) {
-    if (o === a || o.dead || !(isHostile(a, o) || aggressor(a, o))) continue;
+    if (o === a || o.dead || o.downed || !(isHostile(a, o) || aggressor(a, o))) continue;   // the fallen are out of the fight
     const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
     if (d >= bd || !canSee(w, a, o)) continue;
     bd = d; best = o;
@@ -39,9 +41,13 @@ export const reachOf = a => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
 
 const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack || {power: 1}).power, cd: (SPECIES.get(a.species).attack || {cooldown: 12}).cooldown}, armor: 0, block: 0};
 
-// apply a hit: shields may stop melee blows, armour absorbs part of the rest.
+// Apply a hit: shields may stop melee blows, armour absorbs part of the rest.
 // Inside the settlement zone colonists fight harder and a palisade shields them.
+// A hit that lands (not dodged, not blocked) may be critical: one check on the attacker's Luck
+// (agents/wounds.js critChance), × CRIT.mul, before armour. A blow that takes the last health goes to
+// lethal(): death, or for a colonist with luck a fall (data/wounds.js). The fallen are not struck again.
 export function damage(w, by, t, raw, {melee = true} = {}) {
+  if (t.downed || t.dead) return 'downed';
   const g = ensureGear(t);
   // the victim remembers who hurt it and from how far (a mule charges whoever shot it)
   t.hurtBy = {id: by.id, tick: w.tick, far: !melee};
@@ -51,6 +57,9 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   if (!melee && tsp.resist?.ranged) raw *= tsp.resist.ranged;   // arrows pass through a skeleton
   if (melee && tsp.resist?.melee) raw *= tsp.resist.melee;      // an axe in a mycelium does little
   if (melee && g.block && w.rngs.combat() < g.block) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
+  const crit = w.rngs.combat() < critChance(by);
+  if (crit) { raw *= CRIT.mul; t.flash = 6; }
+  const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? 1.25 : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
   let dmg = raw * home * wall * (1 - (g.armor || 0));
@@ -66,7 +75,7 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
-  if (t.hp <= 0) kill(w, t, 'ран', by);
+  if (t.hp <= 0) lethal(w, t, 'ран', by);
   return dmg;
 }
 
@@ -86,12 +95,16 @@ function scorch(w, t) {
 }
 
 // one melee blow; nothing happens (false) unless the target is alive, seen and within reach
+// The blow reads and trains the melee skill (data/skills.js): skill only adds (× 1 + MELEE_SKILL × skill),
+// so a creature without it hits as before.
+export const MELEE_SKILL = 0.4;
 export function attack(w, a, t) {
-  if (a.cd > 0 || !t || t.dead || a.dead) return false;
+  if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(4, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
-  damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g.melee.dmg * (a.mods?.str ?? 1) * silverFactor(t, g.melee.item));
+  damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item));
+  practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it
   if (g.melee.item) wear(w, a, g.melee.item);
   return true;
 }
@@ -100,7 +113,7 @@ export function attack(w, a, t) {
 // The same shot for a hunt and for a fight: it reads and trains the shooting skill (`ranged`), and only
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
-  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0) return null;
+  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed) return null;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;

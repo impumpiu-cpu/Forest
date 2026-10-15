@@ -1201,8 +1201,8 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "E", label: "\u0412\u044B\u043D\u043E\u0441\u043B\u0438\u0432\u043E\u0441\u0442\u044C", short: "\u0412\u042B\u041D", note: "\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435, \u0441\u0442\u043E\u0439\u043A\u043E\u0441\u0442\u044C \u043A \u0445\u043E\u043B\u043E\u0434\u0443; \u043F\u043E\u043B\u0435, \u0442\u044F\u0436\u0451\u043B\u0430\u044F \u043D\u043E\u0448\u0430" },
     { id: "C", label: "\u0425\u0430\u0440\u0438\u0437\u043C\u0430", short: "\u0425\u0410\u0420", note: "\u043A\u0430\u043A \u043A \u043D\u0435\u043C\u0443 \u043E\u0442\u043D\u043E\u0441\u044F\u0442\u0441\u044F \u0441\u043E\u0441\u0435\u0434\u0438; \u043E\u0431\u0440\u0430\u0449\u0435\u043D\u0438\u0435 \u0441 \u0436\u0438\u0432\u043E\u0442\u043D\u044B\u043C\u0438" },
     { id: "I", label: "\u0418\u043D\u0442\u0435\u043B\u043B\u0435\u043A\u0442", short: "\u0418\u041D\u0422", note: "\u043C\u0435\u0434\u0438\u0446\u0438\u043D\u0430, \u043F\u043B\u0430\u0432\u043A\u0430, \u043A\u0443\u0445\u043D\u044F; \u043D\u0435\u043C\u043D\u043E\u0433\u043E \u043F\u043E\u043C\u043E\u0433\u0430\u0435\u0442 \u0443\u0447\u0438\u0442\u044C\u0441\u044F \u0432\u0441\u0435\u043C\u0443" },
-    { id: "A", label: "\u041B\u043E\u0432\u043A\u043E\u0441\u0442\u044C", short: "\u041B\u041E\u0412", note: "\u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0448\u0430\u0433\u0430 \u0438 \u0443\u0434\u0430\u0440\u0430; \u0434\u0435\u0440\u0435\u0432\u043E, \u0448\u0438\u0442\u044C\u0451, \u043A\u043E\u0436\u0438, \u0433\u043E\u043D\u0447\u0430\u0440, \u044E\u0432\u0435\u043B\u0438\u0440" },
-    { id: "L", label: "\u0423\u0434\u0430\u0447\u0430", short: "\u0423\u0414\u0427", note: "\u0443\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043E\u0442 \u0443\u0434\u0430\u0440\u0430, \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u043D\u0430\u0443\u0434\u0430\u0447\u0443" }
+    { id: "A", label: "\u041B\u043E\u0432\u043A\u043E\u0441\u0442\u044C", short: "\u041B\u041E\u0412", note: "\u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0448\u0430\u0433\u0430 \u0438 \u0443\u0434\u0430\u0440\u0430, \u0443\u043A\u043B\u043E\u043D\u0435\u043D\u0438\u0435; \u0434\u0435\u0440\u0435\u0432\u043E, \u0448\u0438\u0442\u044C\u0451, \u043A\u043E\u0436\u0438, \u0433\u043E\u043D\u0447\u0430\u0440, \u044E\u0432\u0435\u043B\u0438\u0440" },
+    { id: "L", label: "\u0423\u0434\u0430\u0447\u0430", short: "\u0423\u0414\u0427", note: "\u043A\u0440\u0438\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u0443\u0434\u0430\u0440; \u0448\u0430\u043D\u0441 \u043F\u0435\u0440\u0435\u0436\u0438\u0442\u044C \u0441\u043C\u0435\u0440\u0442\u0435\u043B\u044C\u043D\u0443\u044E \u0440\u0430\u043D\u0443 \u0438 \u0443\u0439\u0442\u0438 \u0431\u0435\u0437 \u0443\u0432\u0435\u0447\u044C\u044F" }
   ]);
   var around = (mid, spread = 1) => Object.fromEntries(Object.entries(mid).map(([k, v]) => [k, [Math.max(0, v - spread), v + spread]]));
   var middle = (special2) => Object.fromEntries(Object.entries(special2).map(([k, [lo, hi]]) => [k, (lo + hi) / 2]));
@@ -1214,8 +1214,8 @@ dd.q4{color:#c58cff;font-weight:600}
     hp: (s) => Math.max(0.3, 0.6 + 0.08 * s.E),
     // how hard the cold bites
     cold: (s) => Math.max(0.4, 1.25 - 0.05 * s.E),
-    // added to the chance to hit with a shot
-    aim: (s) => 0.03 * (s.P - NORM) + 0.01 * (s.L - NORM),
+    // added to the chance to hit with a shot (Perception only: Luck works through critical blows, data/wounds.js)
+    aim: (s) => 0.03 * (s.P - NORM),
     // how far an enemy is noticed (× the usual radius)
     sight: (s) => Math.max(0.5, 0.8 + 0.04 * s.P),
     speed: (s) => Math.max(0.5, 1 + 0.025 * (s.A - NORM)),
@@ -1223,8 +1223,8 @@ dd.q4{color:#c58cff;font-weight:600}
     swing: (s) => Math.max(0.5, 1 - 0.03 * (s.A - NORM)),
     // a small general bonus to learning any skill; each skill learns mainly by its own letter (data/skills.js)
     learn: (s) => Math.max(0.7, 0.9 + 0.02 * s.I),
-    // chance that a blow or a shot simply misses this creature
-    dodge: (s) => Math.min(0.15, Math.max(0, 0.015 * (s.L - 4))),
+    // chance that a blow or a shot simply misses this creature: a nimble one steps aside (Agility)
+    dodge: (s) => Math.min(0.15, Math.max(0, 0.015 * (s.A - 4))),
     // how much others like this creature (added to their opinion of it, data/relations.js)
     charm: (s) => 0.15 * (s.C - NORM)
   };
@@ -4635,6 +4635,11 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "sleptHut", mood: 0.06, lasts: 10 * HOUR, once: 10 * HOUR, text: (a) => `\u041F\u0435\u0440\u0435\u043D\u043E\u0447\u0435\u0432\u0430\u043B${g(a, "", "\u0430")} \u0432 \u0448\u0430\u043B\u0430\u0448\u0435: \u0442\u0435\u0441\u043D\u043E \u0438 \u0441\u043A\u0432\u043E\u0437\u0438\u0442, \u043D\u043E \u0432\u0441\u0451 \u043B\u0443\u0447\u0448\u0435, \u0447\u0435\u043C \u043F\u043E\u0434 \u043D\u0435\u0431\u043E\u043C.` },
     { id: "sleptOutside", mood: -0.05, lasts: 8 * HOUR, once: 10 * HOUR, text: () => "\u0421\u043F\u0430\u043B \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 \u043F\u043E\u0434 \u043E\u0442\u043A\u0440\u044B\u0442\u044B\u043C \u043D\u0435\u0431\u043E\u043C." },
     { id: "wounded", mood: -0.3, lasts: DAY, once: 6 * HOUR, text: (a) => `\u0422\u044F\u0436\u0435\u043B\u043E ${g(a, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")}.` },
+    // the deadly wound (agents/wounds.js)
+    { id: "fell", mood: -0.5, lasts: DAY, text: (a) => `\u0423\u043F\u0430\u043B${g(a, "", "\u0430")} \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F. \u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435, \u0447\u0442\u043E \u043F\u043E\u043C\u043D\u0438\u0442, \u2014 \u0443\u0434\u0430\u0440.` },
+    { id: "survived", mood: 0.4, lasts: 2 * DAY, text: (a, c) => `${c.name ? `${c.name} ${c.gender === "f" ? "\u0432\u044B\u0442\u0430\u0449\u0438\u043B\u0430" : "\u0432\u044B\u0442\u0430\u0449\u0438\u043B"}` : "\u0412\u044B\u0442\u0430\u0449\u0438\u043B\u0438"} \u0441 \u0442\u043E\u0433\u043E \u0441\u0432\u0435\u0442\u0430. \u0416\u0438\u0432${g(a, "", "\u0430")}!` },
+    { id: "trauma", mood: -0.4, lasts: 4 * DAY, text: (a, c) => `${c.what[0].toUpperCase() + c.what.slice(1)}: \u044D\u0442\u043E \u0442\u0435\u043F\u0435\u0440\u044C \u043D\u0430\u0432\u0441\u0435\u0433\u0434\u0430.` },
+    { id: "woundHealed", mood: 0.25, lasts: DAY, text: () => "\u0422\u044F\u0436\u0451\u043B\u0430\u044F \u0440\u0430\u043D\u0430 \u043D\u0430\u043A\u043E\u043D\u0435\u0446 \u0437\u0430\u0442\u044F\u043D\u0443\u043B\u0430\u0441\u044C." },
     // work
     { id: "likedWork", mood: 0.12, lasts: 6 * HOUR, once: 8 * HOUR, text: (a, c) => `\u0421 \u0443\u0434\u043E\u0432\u043E\u043B\u044C\u0441\u0442\u0432\u0438\u0435\u043C ${g(a, "\u0432\u0437\u044F\u043B\u0441\u044F", "\u0432\u0437\u044F\u043B\u0430\u0441\u044C")} \u0437\u0430 \u043B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E: ${c.job}.` },
     { id: "dislikedWork", mood: -0.1, lasts: 6 * HOUR, once: 8 * HOUR, text: (a, c) => `\u041D\u0435\u0445\u043E\u0442\u044F ${g(a, "\u043F\u043E\u0448\u0451\u043B", "\u043F\u043E\u0448\u043B\u0430")} ${c.job}: \u043D\u0435 \u043F\u043E \u0434\u0443\u0448\u0435.` },
@@ -4788,12 +4793,20 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/data/quality.js
   var QUALITY = new Registry("quality");
   QUALITY.registerAll([
-    { id: "q0", q: 0, label: "", rank: "\u043E\u0431\u044B\u0447\u043D\u043E\u0435", hit: 0, guard: 0, tool: 0, dur: 0, warmth: 0, addWeapon: 0, addArmor: 0, sold: true, cap: 0 },
-    { id: "q1", q: 1, label: "+1", rank: "\u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0435", hit: 0.15, guard: 0.05, tool: 0.15, dur: 0.5, warmth: 0.05, addWeapon: 10, addArmor: 25, sold: true, cap: 0 },
-    { id: "q2", q: 2, label: "+2", rank: "\u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0435", hit: 0.3, guard: 0.1, tool: 0.3, dur: 1, warmth: 0.1, addWeapon: 60, addArmor: 150, sold: true, cap: 0 },
-    { id: "q3", q: 3, label: "+3", rank: "\u0440\u0435\u0434\u043A\u043E\u0435", hit: 0.45, guard: 0.15, tool: 0.45, dur: 1.5, warmth: 0.15, addWeapon: 400, addArmor: 900, sold: false, cap: 0.03 },
-    { id: "q4", q: 4, label: "+4", rank: "\u044D\u043F\u0438\u0447\u0435\u0441\u043A\u043E\u0435", hit: 0.7, guard: 0.22, tool: 0.7, dur: 3, warmth: 0.22, addWeapon: 3e3, addArmor: 6e3, sold: false, cap: 0.07, keep: true }
+    { id: "q0", q: 0, label: "", rank: "\u043E\u0431\u044B\u0447\u043D\u043E\u0435", hit: 0, guard: 0, tool: 0, dur: 0, warmth: 0, addWeapon: 0, addArmor: 0, sold: true, cap: 0, craftBase: 1, craftSkill: 0 },
+    { id: "q1", q: 1, label: "+1", rank: "\u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0435", hit: 0.15, guard: 0.05, tool: 0.15, dur: 0.5, warmth: 0.05, addWeapon: 10, addArmor: 25, sold: true, cap: 0, craftBase: 0.03, craftSkill: 0.17 },
+    { id: "q2", q: 2, label: "+2", rank: "\u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0435", hit: 0.3, guard: 0.1, tool: 0.3, dur: 1, warmth: 0.1, addWeapon: 60, addArmor: 150, sold: true, cap: 0, craftBase: 3e-3, craftSkill: 0.03 },
+    { id: "q3", q: 3, label: "+3", rank: "\u0440\u0435\u0434\u043A\u043E\u0435", hit: 0.45, guard: 0.15, tool: 0.45, dur: 1.5, warmth: 0.15, addWeapon: 400, addArmor: 900, sold: false, cap: 0.03, craftBase: 2e-4, craftSkill: 2e-3 },
+    { id: "q4", q: 4, label: "+4", rank: "\u044D\u043F\u0438\u0447\u0435\u0441\u043A\u043E\u0435", hit: 0.7, guard: 0.22, tool: 0.7, dur: 3, warmth: 0.22, addWeapon: 3e3, addArmor: 6e3, sold: false, cap: 0.07, keep: true, craftBase: 2e-6, craftSkill: 6e-6 }
   ]);
+  var craftChance = (q, skill, extra = 0) => {
+    const Q = qualityOf(q);
+    return Math.min(1, Q.craftBase + Q.craftSkill * skill + (q === 1 ? extra : 0));
+  };
+  function qualityRoll(u, skill, extra = 0) {
+    for (let q = MAX_Q; q >= 1; q--) if (u < craftChance(q, skill, extra)) return q;
+    return 0;
+  }
   var qualityOf = (q) => QUALITY.get("q" + (q || 0));
   var MAX_Q = Math.max(...QUALITY.all().map((x) => x.q));
 
@@ -6087,6 +6100,37 @@ dd.q4{color:#c58cff;font-weight:600}
     return `${r > 0 ? a.pos : a.neg} ${r > 0 ? "+" : "\u2212"}${Math.abs(r)}`;
   }
 
+  // src/data/wounds.js
+  var CRIT = { base: 0.02, span: 0.18, soft: 10, cap: 0.3, mul: 1.5 };
+  var DEATHBLOW = {
+    survive: { base: 0.05, span: 0.4, soft: 8, cap: 0.4 },
+    clean: { base: 0.25, span: 0.5, soft: 8, cap: 0.85 },
+    overkill: 1,
+    // more than full health below zero: no check
+    hpLeft: 0.02,
+    // the fallen keep this share of health while they bleed
+    bleedHours: 1.5,
+    bleedPerE: 0.25,
+    // E 5 → 2.75 hours, E 10 → 4 hours to live without help
+    stableHp: 0.2,
+    // a dressed wound leaves at least this share of health
+    causes: ["\u0440\u0430\u043D"]
+    // which deaths luck may turn aside
+  };
+  var CAN_FALL = (sp, a) => !!sp.sentient && !sp.undead && a.faction === "colony";
+  var luckChance = (c, L) => Math.max(0, Math.min(c.cap, c.base + c.span * L / (L + c.soft)));
+  var WOUNDS = new Registry("wound");
+  WOUNDS.registerAll([
+    { id: "grave", label: "\u0442\u044F\u0436\u0451\u043B\u0430\u044F \u0440\u0430\u043D\u0430", note: "\u0437\u0430\u0436\u0438\u0432\u0430\u0435\u0442", days: 4, mods: { speed: 0.85, work: 0.75 } },
+    { id: "limp", label: "\u0445\u0440\u043E\u043C\u043E\u0442\u0430", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 3, mods: { speed: 0.85 } },
+    { id: "maimedHand", label: "\u043F\u043E\u043A\u0430\u043B\u0435\u0447\u0435\u043D\u043D\u0430\u044F \u0440\u0443\u043A\u0430", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 3, mods: { work: 0.85, str: 0.85 } },
+    { id: "chest", label: "\u043F\u0440\u043E\u0431\u0438\u0442\u0430\u044F \u0433\u0440\u0443\u0434\u044C", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, hp: 0.85, mods: { cold: 1.15 } },
+    { id: "eye", label: "\u0432\u044B\u0431\u0438\u0442\u044B\u0439 \u0433\u043B\u0430\u0437", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, mods: { sight: 0.8, aim: -0.08 } },
+    { id: "dread", label: "\u0441\u0442\u0440\u0430\u0445 \u0441\u043C\u0435\u0440\u0442\u0438", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, mods: { bravery: -0.3 } }
+  ]);
+  var GRAVE_TICKS = (id) => WOUNDS.get(id).days * DAY;
+  var bleedTicks = (E) => Math.round((DEATHBLOW.bleedHours + DEATHBLOW.bleedPerE * E) * HOUR);
+
   // src/agents/special.js
   var peopleOf = (sp, a) => a.people && sp.peoples ? sp.peoples.find((p) => p.id === a.people) : null;
   function limits(sp, people) {
@@ -6143,25 +6187,34 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(m, k, v);
     }
     for (const id of a.traits || []) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) mod(m, k, v);
+    let hpMul = 1;
+    for (const wd of a.wounds || []) {
+      const W = WOUNDS.get(wd.id);
+      for (const [k, v] of Object.entries(W.mods || {})) mod(m, k, v);
+      hpMul *= W.hp ?? 1;
+    }
     const own = a.own || {};
     for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;
     for (const [k, v] of Object.entries(own.add || {})) m[k] = (m[k] ?? 0) + v;
     Object.assign(m, own.set || {});
     if (own.hp != null) full = own.hp;
+    if (hpMul !== 1) full = (full ?? sp.hp) * hpMul;
     const was = a.maxHp || sp.hp, share2 = Number.isFinite(a.hp) ? a.hp / was : 1;
     a.mods = m;
     if (full != null) a.maxHp = full;
     else delete a.maxHp;
     a.hp = (a.maxHp || sp.hp) * Math.max(0, Math.min(1, share2));
   }
+  var RULE_KEYS = /* @__PURE__ */ new Set(["learn", "aim", "dodge"]);
+  var BODY_VER = 2;
   function adoptBody(a) {
-    if (!a.mods || a.bodyVer === 1) return;
+    if (!a.mods || a.bodyVer >= 1) return;
     const saved = a.mods, hp = a.hp, maxHp2 = a.maxHp;
     delete a.own;
     refreshBody(a);
     const mul = {}, add2 = {};
     for (const [k, v] of Object.entries(saved)) {
-      if (k === "learn" || !Number.isFinite(v)) continue;
+      if (RULE_KEYS.has(k) || !Number.isFinite(v)) continue;
       if (ADD.has(k)) {
         const d = v - (a.mods[k] ?? 0);
         if (Math.abs(d) > 1e-9) add2[k] = d;
@@ -6177,7 +6230,7 @@ dd.q4{color:#c58cff;font-weight:600}
     a.hp = hp;
     if (maxHp2) a.maxHp = maxHp2;
     refreshBody(a);
-    a.bodyVer = 1;
+    a.bodyVer = BODY_VER;
   }
 
   // src/data/skills.js
@@ -6188,7 +6241,7 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "mining", stat: "S", label: "\u0433\u043E\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u0433\u043E\u0440\u043D. \u0434\u0435\u043B\u043E" },
     { id: "construction", stat: "S", label: "\u0441\u0442\u0440\u043E\u0438\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u043E", short: "\u0441\u0442\u0440\u043E\u0439\u043A\u0430" },
     { id: "smithing", stat: "S", label: "\u043A\u0443\u0437\u043D\u0435\u0447\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u043A\u043E\u0432\u043A\u0430" },
-    { id: "melee", stat: "S", label: "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u0431\u043E\u0439", short: "\u0431\u043E\u0439", status: "reserved" },
+    { id: "melee", stat: "S", label: "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u0431\u043E\u0439", short: "\u0431\u043E\u0439" },
     // ── P: perception
     { id: "gathering", stat: "P", label: "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u043E", short: "\u0441\u0431\u043E\u0440" },
     { id: "hunting", stat: "P", label: "\u043E\u0445\u043E\u0442\u0430", short: "\u043E\u0445\u043E\u0442\u0430" },
@@ -6238,6 +6291,8 @@ dd.q4{color:#c58cff;font-weight:600}
     // above 10 × letter practice gives a tenth
     shot: 10,
     // one fired shot ≈ the old per-tick gain over a bow's reload
+    blow: 6,
+    // one melee blow struck (a blow comes about twice as often as a shot)
     kill: 20
     // game brought down: the stalk paid off
   };
@@ -6595,7 +6650,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var wooden = (w) => w.buildings.filter((b) => b.done && b.cells.length && BUILDINGS.get(b.key).wooden);
   function pickVictim(w) {
-    const col = colonists(w);
+    const col = colonists(w).filter((a) => !a.downed);
     if (!col.length) return null;
     const feud2 = col.filter((a) => (a.stats?.raiders || 0) > 0).sort((x, y) => y.stats.raiders - x.stats.raiders)[0];
     return feud2 ? { who: feud2, why: "\u043A\u0440\u043E\u0432\u043D\u0438\u043A: \u0443\u0431\u0438\u0432\u0430\u043B \u0438\u0445" } : { who: col.sort((x, y) => strength(x) - strength(y))[0], why: "\u0441\u0430\u043C\u0430\u044F \u043B\u0451\u0433\u043A\u0430\u044F \u0434\u043E\u0431\u044B\u0447\u0430" };
@@ -6767,7 +6822,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function holdFoe(w, a, fresh) {
     const t = a.task?.id === "fight" ? a.task.target : null;
-    if (!t || t.dead || !w.agents.includes(t) || !canSee(w, a, t)) return fresh;
+    if (!t || t.dead || t.downed || !w.agents.includes(t) || !canSee(w, a, t)) return fresh;
     if (!fresh || fresh === t) return t;
     const held = w.tick - (a.task.since ?? w.tick);
     return held > SQUAD.hold || dist(a, fresh) < dist(a, t) * SQUAD.closer ? fresh : t;
@@ -6800,7 +6855,7 @@ dd.q4{color:#c58cff;font-weight:600}
       return a.task?.id === "scout" ? a.task : { id: "scout" };
     }
     if (sq.goal === "kill") {
-      const v = w.agents.find((o) => o.id === sq.target && !o.dead);
+      const v = w.agents.find((o) => o.id === sq.target && !o.dead && !o.downed);
       if (v && canSee(w, a, v) && dist(a, v) < 30 && !close2) return fight(w, a, v);
     }
     const e = holdFoe(w, a, nearestHostile(w, a, radius));
@@ -7058,7 +7113,7 @@ dd.q4{color:#c58cff;font-weight:600}
       mods: { ...BASE_MODS },
       needs: {},
       mem: newMemory(),
-      bodyVer: 1,
+      bodyVer: BODY_VER,
       task: null,
       think: w.rngs.birth() * 15 | 0,
       cd: 0,
@@ -7149,6 +7204,79 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   }
 
+  // src/agents/wounds.js
+  var luckOf = (a) => a.special?.L ?? NORM;
+  var tally = (w) => {
+    var _a;
+    return (_a = w.chronicle).falls || (_a.falls = { down: 0, saved: 0, bled: 0, killed: 0, traumas: 0 });
+  };
+  var critChance = (by) => luckChance(CRIT, luckOf(by));
+  var fallSpent = (a) => !!a.downed || (a.wounds || []).some((x) => x.id === "grave");
+  function lethal(w, t, cause, by) {
+    if (t.dead) return false;
+    const sp = SPECIES.get(t.species);
+    if (t.downed) tally(w).killed++;
+    if (fallSpent(t) || !CAN_FALL(sp, t) || !DEATHBLOW.causes.includes(cause) || t.hp < -DEATHBLOW.overkill * maxHp(t)) {
+      kill(w, t, cause, by);
+      return false;
+    }
+    const L = luckOf(t);
+    if (w.rngs.combat() >= luckChance(DEATHBLOW.survive, L)) {
+      kill(w, t, cause, by);
+      return false;
+    }
+    const clean = w.rngs.combat() < luckChance(DEATHBLOW.clean, L);
+    const trauma = clean ? null : weighted(w.rngs.combat, WOUNDS.filter((x) => x.trauma).map((x) => [x.id, x.weight ?? 1]));
+    fall(w, t, cause, by, trauma);
+    return true;
+  }
+  function fall(w, a, cause, by, trauma) {
+    if (a.task) a.switchWhy = "\u0443\u043F\u0430\u043B \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F";
+    releaseAll(w, a);
+    noteHuntDeath(w, a);
+    for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;
+    a.downed = { since: w.tick, until: w.tick + bleedTicks(a.special?.E ?? NORM), cause, by: by?.id ?? null, trauma };
+    a.hp = DEATHBLOW.hpLeft * maxHp(a);
+    a.task = { id: "downed" };
+    a.sleeping = false;
+    a.stalking = false;
+    tally(w).down++;
+    think(w, a, "fell");
+    log(w, `<b>${esc(a.name)}</b> ${g(a, "\u0443\u043F\u0430\u043B", "\u0443\u043F\u0430\u043B\u0430")} \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F${by ? ` \u043E\u0442 \u0443\u0434\u0430\u0440\u0430 (${SPECIES.get(by.species).label})` : ""}. \u0411\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438 \u0438\u0441\u0442\u0435\u0447\u0451\u0442 \u043A\u0440\u043E\u0432\u044C\u044E.`, "danger", "notice");
+  }
+  function stepDowned(w, a) {
+    if (w.tick < a.downed.until) return;
+    const by = a.downed.by != null ? w.agents.find((o) => o.id === a.downed.by) : null;
+    tally(w).bled++;
+    log(w, `<b>${esc(a.name)}</b> ${g(a, "\u0438\u0441\u0442\u0451\u043A", "\u0438\u0441\u0442\u0435\u043A\u043B\u0430")} \u043A\u0440\u043E\u0432\u044C\u044E: \u043F\u043E\u043C\u043E\u0449\u044C \u043D\u0435 \u0443\u0441\u043F\u0435\u043B\u0430.`, "death");
+    kill(w, a, a.downed.cause, by || void 0);
+  }
+  function stabilize(w, helper2, a) {
+    const d = a.downed;
+    if (!d) return;
+    a.downed = null;
+    a.wounds = [...a.wounds || [], { id: "grave", until: w.tick + GRAVE_TICKS("grave") }];
+    if (d.trauma) a.wounds.push({ id: d.trauma });
+    refreshBody(a);
+    a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + (helper2?.skill?.medicine || 0)));
+    a.task = null;
+    a.think = 0;
+    const f = tally(w);
+    f.saved++;
+    if (d.trauma) f.traumas++;
+    think(w, a, "survived", { name: helper2?.name, gender: helper2?.gender });
+    if (d.trauma) think(w, a, "trauma", { what: WOUNDS.get(d.trauma).label });
+    log(w, `<b>${esc(helper2?.name || "\u041A\u0442\u043E-\u0442\u043E")}</b> ${g(helper2 || a, "\u0432\u044B\u0442\u0430\u0449\u0438\u043B", "\u0432\u044B\u0442\u0430\u0449\u0438\u043B\u0430")} <b>${esc(a.name)}</b> \u0441 \u0442\u043E\u0433\u043E \u0441\u0432\u0435\u0442\u0430.${d.trauma ? ` \u041D\u043E ${WOUNDS.get(d.trauma).label} \u043E\u0441\u0442\u0430\u043D\u0435\u0442\u0441\u044F \u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C.` : " \u0420\u0430\u043D\u0430 \u0442\u044F\u0436\u0451\u043B\u0430\u044F, \u043D\u043E \u0437\u0430\u0436\u0438\u0432\u0451\u0442."}`, "people", "notice");
+  }
+  function healWounds(w, a) {
+    if (!a.wounds?.length || (w.tick + a.id) % 50) return;
+    const left = a.wounds.filter((x) => x.until == null || x.until > w.tick);
+    if (left.length === a.wounds.length) return;
+    a.wounds = left;
+    refreshBody(a);
+    think(w, a, "woundHealed");
+  }
+
   // src/agents/combat.js
   var aggressor = (a, o) => o.task?.id === "maul" && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
   function canSee(w, a, t) {
@@ -7159,7 +7287,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function nearestHostile(w, a, r) {
     let best = null, bd = r * r;
     for (const o of w.agents) {
-      if (o === a || o.dead || !(isHostile(a, o) || aggressor(a, o))) continue;
+      if (o === a || o.dead || o.downed || !(isHostile(a, o) || aggressor(a, o))) continue;
       const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
       if (d >= bd || !canSee(w, a, o)) continue;
       bd = d;
@@ -7171,6 +7299,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var reachOf = (a) => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
   var ensureGear = (a) => a.gear || { melee: { dmg: (SPECIES.get(a.species).attack || { power: 1 }).power, cd: (SPECIES.get(a.species).attack || { cooldown: 12 }).cooldown }, armor: 0, block: 0 };
   function damage(w, by, t, raw, { melee: melee2 = true } = {}) {
+    var _a;
+    if (t.downed || t.dead) return "downed";
     const g2 = ensureGear(t);
     t.hurtBy = { id: by.id, tick: w.tick, far: !melee2 };
     if (t.mods?.dodge > 0 && w.rngs.combat() < t.mods.dodge) {
@@ -7185,6 +7315,14 @@ dd.q4{color:#c58cff;font-weight:600}
       t.flash = 3;
       return "blocked";
     }
+    const crit = w.rngs.combat() < critChance(by);
+    if (crit) {
+      raw *= CRIT.mul;
+      t.flash = 6;
+    }
+    const cs = (_a = w.chronicle).combat || (_a.combat = { hits: 0, crits: 0 });
+    cs.hits++;
+    if (crit) cs.crits++;
     const home = by.faction === "colony" && agentInZone(w, by) ? 1.25 : 1;
     const wall = t.faction === "colony" && agentInZone(w, t) ? w.mods.mul.defense : 1;
     let dmg = raw * home * wall * (1 - (g2.armor || 0));
@@ -7204,7 +7342,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const memKey = by.species === "wolf" || t.species === "wolf" ? "wolf" : by.species === "mule" || t.species === "mule" ? "mule" : "raid";
     if (t.faction === "colony" && t.mem) t.mem[memKey] += 0.25;
     else if (by.faction === "colony" && by.mem) by.mem[memKey] += 0.1;
-    if (t.hp <= 0) kill(w, t, "\u0440\u0430\u043D", by);
+    if (t.hp <= 0) lethal(w, t, "\u0440\u0430\u043D", by);
     return dmg;
   }
   var SILVER = { bane: 2.5, plain: 0.5 };
@@ -7221,19 +7359,21 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     w.nav.dirty("fire");
   }
+  var MELEE_SKILL = 0.4;
   function attack(w, a, t) {
-    if (a.cd > 0 || !t || t.dead || a.dead) return false;
+    if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
     if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
     const g2 = ensureGear(a);
     a.cd = Math.max(4, Math.round(g2.melee.cd * (a.mods?.swing ?? 1)));
     a.flash = 4;
-    damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g2.melee.dmg * (a.mods?.str ?? 1) * silverFactor(t, g2.melee.item));
+    damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g2.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g2.melee.item));
+    practice(a, "melee", LEARN.blow);
     if (g2.melee.item) wear(w, a, g2.melee.item);
     return true;
   }
   function shoot(w, a, t) {
     const g2 = a.gear;
-    if (!g2?.ranged || !g2.rangedReady || a.cd > 0) return null;
+    if (!g2?.ranged || !g2.rangedReady || a.cd > 0 || t.downed) return null;
     const r = g2.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
     if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
     a.cd = r.cd;
@@ -8278,7 +8418,7 @@ dd.q4{color:#c58cff;font-weight:600}
         c.goal = null;
       } else {
         const ctx = councilCtx(w, cands);
-        const tally = {}, weight = {};
+        const tally2 = {}, weight = {};
         for (const a of present) {
           let best = null, bs = -1, why = "";
           for (const k of cands) {
@@ -8289,13 +8429,13 @@ dd.q4{color:#c58cff;font-weight:600}
               why = r;
             }
           }
-          tally[best] = (tally[best] || 0) + 1;
+          tally2[best] = (tally2[best] || 0) + 1;
           weight[best] = (weight[best] || 0) + bs;
           args.push({ name: a.name, key: best, why });
         }
-        const ranked = Object.keys(tally).sort((x, y) => tally[y] - tally[x] || weight[y] - weight[x]);
-        c.votes = ranked.map((k) => [k, tally[k]]);
-        let win = ranked[0], votes = tally[win], round2 = "";
+        const ranked = Object.keys(tally2).sort((x, y) => tally2[y] - tally2[x] || weight[y] - weight[x]);
+        c.votes = ranked.map((k) => [k, tally2[k]]);
+        let win = ranked[0], votes = tally2[win], round2 = "";
         if (votes * 2 <= present.length && ranked.length > 1) {
           const [p1, p2] = ranked, t2 = { [p1]: 0, [p2]: 0 };
           for (const a of present) {
@@ -8868,6 +9008,10 @@ dd.q4{color:#c58cff;font-weight:600}
     // once dressed, not again for this long
     aidHeal: 0.2,
     // of max health, more with the healer's skill
+    aidFallen: 1.7,
+    // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
+    aidPractice: 60,
+    // medicine practice for a life saved (units of agents/skills.js practice)
     far: 40,
     // nobody goes further than this to escort or help
     mate: 0.05,
@@ -8986,12 +9130,14 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!task.home) think(w, b, "escorted", { name: a.name, gender: a.gender });
   }
   var helper = (w, id) => colonists(w).find((o) => o.task?.id === "aid" && o.task.who === id);
-  var needsAid = (w, b) => hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === "treat" && b.task.lying) && !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery);
+  var needsAid = (w, b) => !!b.downed || hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === "treat" && b.task.lying) && !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery);
+  var aidScore = (b) => b.downed ? TOGETHER.aidFallen : 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2;
+  var aidWhy = (b) => b.downed ? `${b.name} ${g(b, "\u0443\u043F\u0430\u043B", "\u0443\u043F\u0430\u043B\u0430")} \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F \u0438 \u0438\u0441\u0442\u0435\u043A\u0430\u0435\u0442 \u043A\u0440\u043E\u0432\u044C\u044E` : `${b.name} ${g(b, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(b) * 100)}%`;
   function aidOption(w, a) {
     if (hpShare(a) < 0.5) return null;
     if (a.task?.id === "aid") {
       const b = byId3(w, a.task.who);
-      if (b && needsAid(w, b)) return [a.task, 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2, () => `${b.name} ${g(b, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443`];
+      if (b && needsAid(w, b)) return [a.task, aidScore(b), () => aidWhy(b)];
     }
     let best = null, bs = -Infinity;
     for (const b of colonists(w)) {
@@ -8999,16 +9145,25 @@ dd.q4{color:#c58cff;font-weight:600}
       const h = helper(w, b.id);
       if (h && h !== a) continue;
       const op = opinion(a, b);
-      if (op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
-      const s = 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2 + 0.05 * clamp(op, -2, 4);
+      if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
+      const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
       if (s > bs) {
         bs = s;
         best = b;
       }
     }
-    return best ? [{ id: "aid", who: best.id }, bs, () => `${best.name} ${g(best, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(best) * 100)}%`] : null;
+    return best ? [{ id: "aid", who: best.id, fallen: !!best.downed }, bs, () => aidWhy(best)] : null;
   }
   function giveAid(w, a, b) {
+    if (b.downed) {
+      stabilize(w, a, b);
+      bond(w, b, a, TOGETHER.bondAid * 2);
+      bond(w, a, b, TOGETHER.bondAid * 0.5);
+      const s2 = social(w);
+      if (s2) s2.aid++;
+      practice(a, "medicine", TOGETHER.aidPractice);
+      return;
+    }
     const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
     b.hp += amt;
     b.aidedAt = w.tick;
@@ -10259,6 +10414,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return r ? r.want(ctx) : 0;
   }
   function workAt(w, b, amount, a) {
+    var _a, _b;
     if (b.order && a && !canMake(a, RECIPES.get(b.order.recipe))) return false;
     if (!b.order) {
       const r2 = pickRecipe(w, b.key, void 0, a);
@@ -10275,18 +10431,29 @@ dd.q4{color:#c58cff;font-weight:600}
     const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
     const labour = typeof amount === "function" ? amount(r) : amount;
     b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
+    if (a) ((_a = b.order).by || (_a.by = {}))[a.id] = (b.order.by?.[a.id] || 0) + labour;
     if (b.order.progress < r.work) return r;
+    const by = b.order.by;
     b.order = null;
     w.stats.crafted++;
     if (w.scratch) delete w.scratch.craftCtx;
     if (r.makes.item) {
-      const extra = {};
+      const extra = {}, master = masterOf(w, by, a), skill = master ? skillOf(master, recipeSkill(r)) : 0;
       if (r.makes.silver) extra.silver = true;
-      if (bellows && w.rngs.colony() < FURNACE.bellowsFine) extra.q = 1;
+      const q = ITEMS.get(r.makes.item).quality === false ? 0 : qualityRoll(w.rngs.colony(), skill, bellows ? FURNACE.bellowsFine : 0);
+      if (q) {
+        extra.q = q;
+        if (master) extra.maker = master.name;
+      }
       const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
       w.armory.push(it);
       w.armoryVersion = (w.armoryVersion || 0) + 1;
-      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${extra.q ? " \u041C\u0435\u0445\u0430 \u0440\u0430\u0437\u0434\u0443\u043B\u0438 \u0436\u0430\u0440 \u043A\u0430\u043A \u043D\u0430\u0434\u043E: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439." : ""}`, "craft");
+      if (q) {
+        const f = (_b = w.chronicle).fine || (_b.fine = {});
+        f[q] = (f[q] || 0) + 1;
+      }
+      const who = master ? `<b>${esc(master.name)}</b>` : "\u043C\u0430\u0441\u0442\u0435\u0440";
+      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${q === 1 ? ` ${who} \u043F\u043E\u0441\u0442\u0430\u0440\u0430\u043B${master?.gender === "f" ? "\u0430\u0441\u044C" : "\u0441\u044F"}: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439.` : q === 2 ? ` \u0420\u0430\u0431\u043E\u0442\u0430 \u043C\u0430\u0441\u0442\u0435\u0440\u0430: ${who} \u0441\u0434\u0435\u043B\u0430\u043B${master?.gender === "f" ? "\u0430" : ""} \u0432\u0435\u0449\u044C, \u043A\u0430\u043A\u043E\u0439 \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438 \u0435\u0449\u0451 \u043D\u0435 \u0432\u0438\u0434\u0435\u043B\u0438.` : q >= 3 ? ` \u0427\u0443\u0434\u043E \u0440\u0435\u043C\u0435\u0441\u043B\u0430! ${who} \u0441\u0430\u043C${master?.gender === "f" ? "\u0430" : ""} \u043D\u0435 \u0432\u0435\u0440\u0438\u0442, \u0447\u0442\u043E \u044D\u0442\u043E ${master?.gender === "f" ? "\u0435\u0451" : "\u0435\u0433\u043E"} \u0440\u0443\u043A \u0434\u0435\u043B\u043E (${def(it).rank}).` : ""}`, "craft", q >= 3 ? "notice" : void 0);
       if (a) {
         think(w, a, "madeItem", { item: name });
         a.stats.crafted++;
@@ -10323,6 +10490,17 @@ dd.q4{color:#c58cff;font-weight:600}
       log(w, `\u041D\u0435\u043A\u043E\u043C\u0443 \u0434\u043E\u0434\u0435\u043B\u0430\u0442\u044C: ${what} (${need ? "\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F " + reasonText(need) : "\u043D\u0443\u0436\u0435\u043D \u043C\u0430\u0441\u0442\u0435\u0440"}). \u0417\u0430\u043A\u0430\u0437 \u0441\u043D\u044F\u0442, \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 \u0441\u043A\u043B\u0430\u0434.`, "craft");
     }
   }
+  function masterOf(w, by, last2) {
+    let best = null, bv = -1;
+    for (const [id, v] of Object.entries(by || {})) {
+      const o = w.agents.find((x) => x.id === +id && !x.dead);
+      if (o && v > bv) {
+        bv = v;
+        best = o;
+      }
+    }
+    return best || last2 || null;
+  }
   function orderText(b) {
     if (!b.order) return "\u0436\u0434\u0451\u0442 \u0437\u0430\u043A\u0430\u0437\u0430";
     const r = RECIPES.get(b.order.recipe);
@@ -10358,7 +10536,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (T2 > sp.heatHarm) a.hp -= Math.min(5e-3, (T2 - sp.heatHarm) * 4e-5);
     const comfy = sp.needs.every((id) => a.needs[id] > 0.4);
     const regen = a.mods.regen > 1 && T2 > 30 ? 1 : a.mods.regen ?? 1;
-    if (comfy && T2 < 45) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * regen);
+    if (comfy && T2 < 45 && !a.downed) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * regen);
     if (a.hp <= 0) kill(w, a, starving || (T2 > 60 ? "\u043F\u043E\u0436\u0430\u0440\u0430" : "\u0440\u0430\u043D"));
     return T2;
   }
@@ -10577,10 +10755,10 @@ dd.q4{color:#c58cff;font-weight:600}
           a.task = { id: "rest" };
           return;
         }
-        if (!v || v.dead || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
+        if (!v || v.dead || v.downed || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
           const h = huntOf(w, a);
           if (h) endHunt(w, h, !v || v.dead ? "taken" : agentInZone(w, v) ? "zone" : "help");
-          if (v && !v.dead && t.target === v) think(w, v, "escapedWolves", { who: sp.plural });
+          if (v && !v.dead && !v.downed && t.target === v) think(w, v, "escapedWolves", { who: sp.plural });
           if (v && !v.dead) for (const m of pack2) {
             m.calmUntil = w.tick + P.calm * (1 - 0.7 * b);
             if (m.task?.id === "maul") m.task = { id: "roam" };
@@ -10657,7 +10835,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
       if (w.tick > (a.calmUntil || 0) && b + night * 0.25 >= P.boldPeople) {
-        const v = nearest(w, a, P.victims, P.sight * (0.6 + 0.4 * b), (o) => o.faction === "colony" && !agentInZone(w, o) && company(w, o, P.loneRadius) <= (b > 0.8 ? Math.max(0, pack2.length - 2) : 0));
+        const v = nearest(w, a, P.victims, P.sight * (0.6 + 0.4 * b), (o) => o.faction === "colony" && !o.downed && !agentInZone(w, o) && company(w, o, P.loneRadius) <= (b > 0.8 ? Math.max(0, pack2.length - 2) : 0));
         if (v) {
           startMaul(w, a, v, b);
           return;
@@ -11302,7 +11480,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // fight: archers and slingers keep their distance and shoot, everyone else closes in
     { id: "fight", label: (t) => t.shooting ? "\u0441\u0442\u0440\u0435\u043B\u044F\u0435\u0442" : "\u0434\u0435\u0440\u0451\u0442\u0441\u044F", step(w, a, task) {
       const t = task.target;
-      if (!t || t.dead || !w.agents.includes(t)) {
+      if (!t || t.dead || t.downed || !w.agents.includes(t)) {
         done2(w, a);
         return;
       }
@@ -11343,10 +11521,11 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       guardStep(w, a, b, task);
     } },
-    // a wounded colonist out in the woods: go, dress the wounds, see them home
-    { id: "aid", label: () => "\u0441\u043F\u0435\u0448\u0438\u0442 \u043D\u0430 \u043F\u043E\u043C\u043E\u0449\u044C \u0440\u0430\u043D\u0435\u043D\u043E\u043C\u0443", step(w, a, task) {
+    // a wounded colonist out in the woods: go, dress the wounds, see them home. One who fell senseless
+    // (agents/wounds.js) is helped anywhere, inside the camp too: dressing the wound in time saves a life
+    { id: "aid", label: (t) => t.fallen ? "\u0441\u043F\u0435\u0448\u0438\u0442 \u043A \u0443\u043F\u0430\u0432\u0448\u0435\u043C\u0443" : "\u0441\u043F\u0435\u0448\u0438\u0442 \u043D\u0430 \u043F\u043E\u043C\u043E\u0449\u044C \u0440\u0430\u043D\u0435\u043D\u043E\u043C\u0443", step(w, a, task) {
       const b = w.agents.find((o) => o.id === task.who && !o.dead);
-      if (!b || agentInZone(w, b)) {
+      if (!b || agentInZone(w, b) && !b.downed) {
         done2(w, a);
         return;
       }
@@ -11355,8 +11534,13 @@ dd.q4{color:#c58cff;font-weight:600}
         if (approach(w, a, b.x, b.y, 1.2) === null) fail2(w, a, "\u043A \u0440\u0430\u043D\u0435\u043D\u043E\u043C\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
         return;
       }
+      const fallen = !!b.downed;
       giveAid(w, a, b);
-      a.task = { id: "company", who: b.id, home: true };
+      if (fallen || agentInZone(w, b)) done2(w, a);
+      else a.task = { id: "company", who: b.id, home: true };
+    } },
+    // senseless on the ground after a deadly blow: nothing to do but bleed and wait for help (agents/wounds.js)
+    { id: "downed", label: () => "\u043B\u0435\u0436\u0438\u0442 \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F", step() {
     } },
     { id: "douse", label: () => "\u0442\u0443\u0448\u0438\u0442 \u043F\u043E\u0436\u0430\u0440", step(w, a) {
       if (w.stats.fireNearCamp === 0) {
@@ -11753,6 +11937,13 @@ dd.q4{color:#c58cff;font-weight:600}
     step(w, a) {
       const T2 = stepBody(w, a);
       if (a.dead) return;
+      if (a.downed) {
+        if (a.task?.id !== "downed") a.task = { id: "downed" };
+        syncTask(w, a);
+        stepDowned(w, a);
+        return;
+      }
+      healWounds(w, a);
       a.sleeping = false;
       const tid = a.task?.id;
       if (tid !== "douse" && (T2 > 55 || nearFire(w, a, 1.5))) {
@@ -13623,6 +13814,16 @@ dd.q4{color:#c58cff;font-weight:600}
       return `<div class="sk-row"><span class="sk-stat" title="${st.label} ${v ?? "\u2014"}: \u043F\u043E\u0442\u043E\u043B\u043E\u043A \u043D\u0430\u0432\u044B\u043A\u043E\u0432 ${cap}, \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E \u0434\u043E \xAB${TIERS[tier - 1].label}\xBB (T${tier})">${st.short}${v != null ? " " + v : ""} \xB7 T${tier}</span><div class="chips">${chips}</div></div>`;
     }).join("");
   }
+  function woundsHtml(w, a) {
+    const out = [];
+    if (a.downed) out.push(`<span class="chip dislike" title="\u0411\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438 \u0443\u043C\u0440\u0451\u0442">\u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F: ${Math.max(0, Math.ceil((a.downed.until - w.tick) / HOUR * 10) / 10)} \u0447 \u0434\u043E \u0441\u043C\u0435\u0440\u0442\u0438</span>`);
+    for (const x of a.wounds || []) {
+      const W = WOUNDS.get(x.id);
+      const left = x.until != null ? `, \u0437\u0430\u0436\u0438\u0432\u0451\u0442 \u0447\u0435\u0440\u0435\u0437 ${Math.max(1, Math.ceil((x.until - w.tick) / DAY))} \u0434\u043D.` : "";
+      out.push(`<span class="chip${W.trauma ? " dislike" : ""}" title="${W.label}: ${W.note}${left}">${W.label}</span>`);
+    }
+    return out.length ? `<div class="chips">${out.join("")}</div>` : "";
+  }
   var raceOf = (a) => raceLabel(SPECIES.get(a.species), a);
   function traitsText(a) {
     const t = a.traits.map((id) => TRAITS.get(id).label);
@@ -14102,7 +14303,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const slots = SLOTS.map((s) => {
         const it = a.equip?.[s.id];
         const txt = it ? def(it).short + (Number.isFinite(it.dur) ? ` \xB7 ${Math.max(0, Math.round(it.dur / def(it).dur * 100))}%` : "") + (it.ammo != null ? ` \xB7 \u0441\u0442\u0440\u0435\u043B ${it.ammo}` : "") : "\u2014";
-        return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${def(it).rank}"` : ""}>${esc(txt)}</dd>`;
+        return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${def(it).rank}${it.maker ? ", \u0440\u0430\u0431\u043E\u0442\u0430: " + esc(it.maker) : ""}"` : ""}>${esc(txt)}</dd>`;
       }).join("");
       const today = dayOf(w.tick);
       let lastDay = null;
@@ -14128,6 +14329,7 @@ dd.q4{color:#c58cff;font-weight:600}
           <p class="pc-small">${body}</p>
           ${specialHtml(a)}
           ${inn ? `<div class="chips">${inn}</div>` : ""}
+          ${woundsHtml(w, a)}
           <h4>\u041C\u0438\u0440\u043E\u0432\u043E\u0437\u0437\u0440\u0435\u043D\u0438\u0435</h4>
           ${a.align ? `<p class="pc-small">${axisWord("order", a.align.order)} \xB7 ${axisWord("mercy", a.align.mercy)}</p>` : ""}
           ${vals ? `<div class="chips">${vals}</div>` : ""}
@@ -14473,7 +14675,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.38 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 d67c385" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 799000a" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 2;
@@ -14553,11 +14755,14 @@ dd.q4{color:#c58cff;font-weight:600}
       a.bodyVer = 0;
     }
     for (const a of w.agents) {
-      if (!a.mods || a.bodyVer === 1) continue;
+      if (!a.mods || a.bodyVer === BODY_VER) continue;
       if (a.bodyVer === 0) {
         delete a.own;
         refreshBody(a);
-        a.bodyVer = 1;
+        a.bodyVer = BODY_VER;
+      } else if (a.bodyVer >= 1) {
+        refreshBody(a);
+        a.bodyVer = BODY_VER;
       } else adoptBody(a);
     }
     for (const a of w.agents) migrateSkills(a);

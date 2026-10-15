@@ -24,8 +24,8 @@ STATS.registerAll([
   {id: 'E', label: 'Выносливость', short: 'ВЫН', note: 'здоровье, стойкость к холоду; поле, тяжёлая ноша'},
   {id: 'C', label: 'Харизма',     short: 'ХАР', note: 'как к нему относятся соседи; обращение с животными'},
   {id: 'I', label: 'Интеллект',   short: 'ИНТ', note: 'медицина, плавка, кухня; немного помогает учиться всему'},
-  {id: 'A', label: 'Ловкость',    short: 'ЛОВ', note: 'скорость шага и удара; дерево, шитьё, кожи, гончар, ювелир'},
-  {id: 'L', label: 'Удача',       short: 'УДЧ', note: 'увернуться от удара, попасть наудачу'},
+  {id: 'A', label: 'Ловкость',    short: 'ЛОВ', note: 'скорость шага и удара, уклонение; дерево, шитьё, кожи, гончар, ювелир'},
+  {id: 'L', label: 'Удача',       short: 'УДЧ', note: 'критический удар; шанс пережить смертельную рану и уйти без увечья'},
 ]);
 
 // limits around a typical value: around({S: 6, P: 10, …}, 1) → {S: [5, 7], P: [9, 11], …}
@@ -46,8 +46,8 @@ export const EFFECTS = {
   hp:    s => Math.max(0.3, 0.6 + 0.08 * s.E),
   // how hard the cold bites
   cold:  s => Math.max(0.4, 1.25 - 0.05 * s.E),
-  // added to the chance to hit with a shot
-  aim:   s => 0.03 * (s.P - NORM) + 0.01 * (s.L - NORM),
+  // added to the chance to hit with a shot (Perception only: Luck works through critical blows, data/wounds.js)
+  aim:   s => 0.03 * (s.P - NORM),
   // how far an enemy is noticed (× the usual radius)
   sight: s => Math.max(0.5, 0.8 + 0.04 * s.P),
   speed: s => Math.max(0.5, 1 + 0.025 * (s.A - NORM)),
@@ -55,8 +55,8 @@ export const EFFECTS = {
   swing: s => Math.max(0.5, 1 - 0.03 * (s.A - NORM)),
   // a small general bonus to learning any skill; each skill learns mainly by its own letter (data/skills.js)
   learn: s => Math.max(0.7, 0.9 + 0.02 * s.I),
-  // chance that a blow or a shot simply misses this creature
-  dodge: s => Math.min(0.15, Math.max(0, 0.015 * (s.L - 4))),
+  // chance that a blow or a shot simply misses this creature: a nimble one steps aside (Agility)
+  dodge: s => Math.min(0.15, Math.max(0, 0.015 * (s.A - 4))),
   // how much others like this creature (added to their opinion of it, data/relations.js)
   charm: s => 0.15 * (s.C - NORM),
 };
