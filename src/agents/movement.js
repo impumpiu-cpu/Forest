@@ -1,21 +1,23 @@
 // Moving through the world: straight steps, walking down a flow field, escaping heat.
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearHeat, fearsFire} from '../data/species.js';
 import {BY_CODE} from '../data/terrain.js';
-import {cellOf, walkable, inBounds, DX, DY} from '../world/grid.js';
+import {cellOf, walkable, inBounds, canStep, DX, DY, inMap} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {clearLine, findPath} from '../nav/astar.js';
 
 export function speedOf(w, a) {
-  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
+  const web = a.webbed && w.tick < a.webbed.until ? a.webbed.slow : 1;   // tangled in a spider's web
+  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
 }
 
 // returns true when arrived, false while moving, null when the step is blocked
 export function moveToward(w, a, tx, ty, mul = 1) {
   const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy), sp = speedOf(w, a) * mul;
   if (Math.abs(dx) > 0.01) a.faceX = Math.sign(dx);
-  if (len <= sp) { a.x = tx; a.y = ty; return true; }
-  const nx = a.x + dx / len * sp, ny = a.y + dy / len * sp;
   const ok = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && walkable(w, (y | 0) * w.w + (x | 0));
+  // the last short step lands right on the target — only if the target itself is open ground
+  if (len <= sp && ok(tx, ty)) { a.x = tx; a.y = ty; return true; }
+  const k = Math.min(1, sp / Math.max(len, 1e-9)), nx = a.x + dx * k, ny = a.y + dy * k;
   if (ok(nx, ny)) { a.x = nx; a.y = ny; return false; }
   // clipping a corner of water or rock: slide along whichever axis is free
   if (Math.abs(dx) > 0.01 && ok(a.x + Math.sign(dx) * sp, a.y)) { a.x += Math.sign(dx) * sp; return false; }
@@ -23,23 +25,43 @@ export function moveToward(w, a, tx, ty, mul = 1) {
   return null;   // blocked
 }
 
+// Is cell j on the same land as the creature: both reachable from the camp, or the creature itself cut
+// off (then anything goes). Animals pick spots to wander to with this, so they do not keep choosing a
+// meadow across a lake and asking A* for a way that is not there.
+export function sameLand(w, a, j) {
+  const c = w.nav.get('camp');
+  return c[cellOf(w, a)] >= FAR || c[j] < FAR;
+}
+
+// where a flow field leads, in words (for the colonist's card)
+const FIELD_NAMES = {camp: 'к лагерю', trees: 'к лесу', berries: 'к ягодам', prey: 'по следу дичи', edge: 'к краю карты',
+  zone: 'в поселение', sites: 'к стройке', safe: 'прочь от огня', warm: 'к теплу', healer: 'к лекарю', shore: 'к берегу',
+  fire: 'к пожару', rockface: 'к скалам', ore: 'к руде', fieldwork: 'в поле'};
+const fieldName = id => FIELD_NAMES[id] || (id.startsWith('station:') ? 'к мастерской' : id.startsWith('plant') ? 'к зарослям' : 'по тропе');
+
 // step toward the neighbour with the smallest distance; returns 'arrived' | 'moving' | 'stuck' | 'none'
 export function follow(w, a, mapId, mul = 1) {
   const dist = w.nav.get(mapId), i = cellOf(w, a);
   if (dist[i] === 0) return 'arrived';
+  a.route = {how: dist[i] >= FAR ? `${fieldName(mapId)}: пути нет` : `${fieldName(mapId)}, ещё ~${Math.round(dist[i])} кл.`, t: w.tick};
   const x = i % w.w, y = (i / w.w) | 0; let best = dist[i], bj = -1;
+  // only steps the rules allow (no corner cutting), even if a stale field points across one
   for (let k = 0; k < 8; k++) {
     const nx = x + DX[k], ny = y + DY[k]; if (!inBounds(w, nx, ny)) continue;
-    const j = ny * w.w + nx; if (dist[j] < best) { best = dist[j]; bj = j; }
+    const j = ny * w.w + nx; if (dist[j] < best && canStep(w, i, j)) { best = dist[j]; bj = j; }
   }
   if (bj < 0) return dist[i] >= FAR ? 'none' : 'stuck';
-  const sp = speedOf(w, a) * mul, tx = (bj % w.w) + 0.5, ty = ((bj / w.w) | 0) + 0.5;
-  const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy);
-  if (len <= sp) { a.x = tx; a.y = ty; } else { a.x += dx / len * sp; a.y += dy / len * sp; }
+  // through the middle of the cell first when the step is a diagonal, so the body never clips a corner
+  const tx = (bj % w.w) + 0.5, ty = ((bj / w.w) | 0) + 0.5;
+  const r = moveToward(w, a, tx, ty, mul);
+  if (r === null) moveToward(w, a, x + 0.5, y + 0.5, mul);
   return 'moving';
 }
 
 export const danger = (w, i) => w.grid.temp[i] + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
+
+// does this animal run from the heat here: too hot underfoot, or flames close by (unless it fears no fire)
+export const shunsHeat = (w, a, sp, T, r) => T > fearHeat(sp) || (fearsFire(sp) && nearFire(w, a, r));
 
 export function nearFire(w, a, r) {
   const cx = a.x | 0, cy = a.y | 0, R = Math.ceil(r);
@@ -76,7 +98,7 @@ export function bolt(w, a, threats, mul) {
   let best = null, bs = -Infinity;
   for (let k = 0; k < 16; k++) {
     const ang = k / 16 * Math.PI * 2, dx = Math.cos(ang) * 1.5, dy = Math.sin(ang) * 1.5, tx = a.x + dx, ty = a.y + dy;
-    if (!inBounds(w, tx | 0, ty | 0) || !walkable(w, (ty | 0) * w.w + (tx | 0))) continue;
+    if (!inMap(w, tx, ty) || !walkable(w, (ty | 0) * w.w + (tx | 0))) continue;
     let s = 0; for (const t of threats) s += Math.min(8, Math.hypot(tx - t.x, ty - t.y));
     s += roomAt(w, tx, ty) * 0.9 * Math.max(1, threats.length);
     if (s > bs) { bs = s; best = [dx, dy]; }
@@ -90,11 +112,16 @@ export function bolt(w, a, threats, mul) {
 // otherwise follows an A* path, re-planned when the target drifts or every couple of seconds.
 // Returns true when there, false while on the way, null when the target cannot be reached.
 export function approach(w, a, tx, ty, mul = 1) {
-  if (!inBounds(w, tx | 0, ty | 0)) return null;
-  // safety net: trying to go somewhere and not moving at all for a while means "unreachable"
+  if (!inMap(w, tx, ty)) return null;
+  // safety net: trying to reach one target tick after tick without moving means "unreachable".
+  // The watch belongs to one run of attempts at one target: a pause (sleep, work) or a new target
+  // starts it afresh, so an old mark cannot refuse a fresh, open way.
   const g = a.approachGuard;
-  if (!g || Math.hypot(g.x - a.x, g.y - a.y) > 0.6 || w.tick - g.t > 120) a.approachGuard = {x: a.x, y: a.y, t: w.tick};
+  if (!g || Math.hypot(g.x - a.x, g.y - a.y) > 0.6 || !(w.tick - g.last <= 3) || !(Math.hypot(g.tx - tx, g.ty - ty) <= 2)) a.approachGuard = {x: a.x, y: a.y, t: w.tick, last: w.tick, tx, ty};
   else if (w.tick - g.t > 40) { a.approachGuard = null; a.path = null; return null; }
+  else g.last = w.tick;
+  const where = `к точке (${tx | 0}, ${ty | 0})`;
+  a.route = {how: where + ' прямо', t: w.tick};
   if (clearLine(w, a.x, a.y, tx, ty)) {
     a.path = null;
     const r = moveToward(w, a, tx, ty, mul);
@@ -103,10 +130,13 @@ export function approach(w, a, tx, ty, mul = 1) {
   let p = a.path;
   const goal = (ty | 0) * w.w + (tx | 0);
   if (!p || Math.hypot((p.goal % w.w) - (tx | 0), ((p.goal / w.w) | 0) - (ty | 0)) > 3 || w.tick - p.at > 40 || p.k >= p.cells.length) {
-    const cells = findPath(w, a.x, a.y, tx, ty);
-    if (!cells) { a.path = null; return null; }
+    // the search budget grows with the distance: through woods (dearer than the estimate) a far target
+    // needs more expansions, and a budget run out must not read as "no way there"
+    const far = Math.hypot(tx - a.x, ty - a.y), cells = findPath(w, a.x, a.y, tx, ty, Math.max(6000, Math.ceil(far * far * 6)));
+    if (!cells) { a.path = null; a.route.how = where + ': пути нет'; if (w.behave) { w.behave.noPath++; const k = `${a.species}:${a.task?.id === 'job' ? a.task.job : a.task?.id}`; (w.behave.noPathBy ||= {})[k] = (w.behave.noPathBy[k] || 0) + 1; } return null; }
     p = a.path = {cells, k: 0, goal, at: w.tick};
   }
+  a.route.how = `${where} в обход, ${p.cells.length - p.k} шагов`;
   // skip ahead to the furthest waypoint still in plain sight, then step toward it
   while (p.k + 1 < p.cells.length && p.k < 6) {
     const c = p.cells[p.k + 1];
@@ -149,7 +179,8 @@ export function separate(w) {
     const A = ags[p], B = ags[q], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy;
     if (d2 >= 0.16 || d2 < 1e-6) continue;
     const d = Math.sqrt(d2), push = (0.4 - d) * 0.25, ux = dx / d * push, uy = dy / d * push;
-    const ok = (x, y) => inBounds(w, x | 0, y | 0) && walkable(w, (y | 0) * w.w + (x | 0));
+    // x >= 0 first: (−0.03 | 0) is 0, and a creature was pushed just off the map's top edge
+    const ok = (x, y) => inMap(w, x, y) && walkable(w, (y | 0) * w.w + (x | 0));
     if (ok(A.x - ux, A.y - uy)) { A.x -= ux; A.y -= uy; }
     if (ok(B.x + ux, B.y + uy)) { B.x += ux; B.y += uy; }
   }

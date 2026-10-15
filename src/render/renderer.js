@@ -1,5 +1,7 @@
 // Canvas renderer. Every field is painted into its own offscreen canvas at 1 px per cell and
 // scaled up: terrain crisp, fields smooth. Fire is added with 'lighter' for a glow; night darkens.
+import {CARCASS} from '../agents/carcass.js';
+import {hpShare} from '../agents/agent.js';
 import {BY_CODE, T, WALKABLE} from '../data/terrain.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
@@ -338,6 +340,12 @@ export class Renderer {
       ctx.strokeStyle = gr.rite ? '#2a1d10' : '#5a4630'; ctx.lineWidth = Math.max(1.2, S * 0.12); ctx.beginPath();
       ctx.moveTo(gx + S / 2, gy + S * 0.15); ctx.lineTo(gx + S / 2, gy + S * 0.6); ctx.moveTo(gx + S * 0.32, gy + S * 0.3); ctx.lineTo(gx + S * 0.68, gy + S * 0.3); ctx.stroke();
     }
+    // carcasses (agents/carcass.js): a dark red shape, fading as it is eaten; greenish once it rots
+    for (const c of w.carcasses || []) {
+      const rot = w.tick - c.t > CARCASS.rotFrom ? 1 : 0, k = 0.4 + 0.6 * Math.min(1, c.food / (c.food0 || 1));
+      ctx.fillStyle = rot ? 'rgba(96,110,60,0.85)' : `rgba(120,32,28,${0.45 + 0.4 * k})`; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.ellipse(c.x * S, c.y * S, Math.max(2.4, S * 0.38 * k), Math.max(1.4, S * 0.2), -0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
     for (const c of w.corpses || []) {
       ctx.fillStyle = 'rgba(150,150,150,0.85)'; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.ellipse(c.x * S, c.y * S, Math.max(3, S * 0.45), Math.max(1.6, S * 0.18), 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -366,9 +374,9 @@ export class Renderer {
       LOOKS[look.shape](ctx, a, px, py, r, color, S);
       if (a.flash) { ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 2, 0, Math.PI * 2); ctx.stroke(); }
       if (a.carry?.n > 0) { ctx.fillStyle = RESOURCES.get(Object.keys(a.carry.res)[0]).color; ctx.fillRect(px + r * 0.4, py - r * 1.1, Math.max(3, S * 0.55), Math.max(3, S * 0.55)); }
-      if (a.hp < sp.hp * 0.999 && sp.sentient) {
+      if (hpShare(a) < 0.999 && sp.sentient) {
         ctx.fillStyle = '#2a1414'; ctx.fillRect(px - S, py + r + 2, S * 2, 2);
-        ctx.fillStyle = a.hp > sp.hp * 0.5 ? '#8fbf5a' : '#e0b040'; ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(a.hp / sp.hp, 0, 1), 2);
+        ctx.fillStyle = hpShare(a) > 0.5 ? '#8fbf5a' : '#e0b040'; ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(hpShare(a), 0, 1), 2);
       }
       if (a.task?.id === 'flee') { ctx.fillStyle = '#ffe0a0'; ctx.font = `bold ${Math.max(10, S * 1.6)}px "PT Sans", sans-serif`; ctx.fillText('!', px + r, py - r); }
     }

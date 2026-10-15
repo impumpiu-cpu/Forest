@@ -2,6 +2,7 @@
 // An order is picked from RECIPES by what the colony lacks most (recipe.want), skipping recipes
 // it cannot afford or whose materials the council is saving up for. Materials are taken when the
 // order starts; finished items go to the colony's gear store (world.armory).
+import {freeSlot} from './reserve.js';
 import {RECIPES} from '../data/recipes.js';
 import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -20,15 +21,17 @@ import {freeSlots} from './life.js';
 
 const PRESERVED = () => FOODS.filter(f => f.of);
 
-// how much of a resource the council's goal still needs to keep in the stock
+// how much of a resource the council's goal still needs to keep in the stock (wood: plus the fire's share)
 function reserved(w, res) {
   const g = w.council.goal; if (!g) return 0;
-  return BUILDINGS.get(g).cost[res] || 0;
+  const v = BUILDINGS.get(g).cost[res] || 0;
+  return v && res === 'wood' ? v + fuelReserve(w) : v;
 }
 
 function canStart(w, r) {
   if (r.needs && !r.needs.every(b => has(w, b))) return false;
-  if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w))) return false;
+  // the fire: wood for the fire comes on top of the wood in the price (and the camp fire's reserve)
+  if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0))) return false;
   if (r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;   // a town-made tool from the stock (cupels)
   // enough in stock, and what is left still covers the council's savings goal
   return Object.entries(r.cost).every(([res, v]) => {
@@ -46,9 +49,10 @@ function makeCraftContext(w) {
   for (const a of col) for (const it of allItems(a)) count(it);
   for (const it of w.armory) count(it);
   const owned = id => counts[id] || 0;
+  // silver blades: silvered iron and cast silver (agents/equipment.js def() carries the flag)
   let silvered = 0;
-  for (const a of col) for (const it of allItems(a)) if (it.silver) silvered++;
-  for (const it of w.armory) if (it.silver) silvered++;
+  for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
+  for (const it of w.armory) if (def(it).silver) silvered++;
   return {
     pop: col.length, owned,
     likes: job => col.filter(a => a.likes === job).length,
@@ -66,6 +70,7 @@ function makeCraftContext(w) {
     melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
     freeSlots: freeSlots(w),
     silvered: () => silvered,
+    silverFoes: w.chronicle.silverFoes || 0,
     placers: (w.plantBeds?.placer?.length || 0) > 0,
     spare: res => { const r = RESOURCES.get(res); return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20); },
   };
@@ -89,19 +94,17 @@ export function pickRecipe(w, station, ctx = craftContext(w)) {
   return best;
 }
 
-// who is at the bench: worker id → last tick worked
-function busyOthers(w, b, a) {
-  if (!b.workers) return 0;
-  let n = 0;
-  for (const [id, t] of b.workers) { if (w.tick - t > 3) b.workers.delete(id); else if (!a || id !== a.id) n++; }
-  return n;
-}
+// a workshop's benches are reservations 'bench:<id>:<k>' (settlement/reserve.js): a worker takes one when
+// choosing the station, keeps it while walking there and working, and the task's end gives it back
+export const benchesOf = b => BUILDINGS.get(b.key).benches || 1;
+export const benchPrefix = b => 'bench:' + b.id;
+export const freeBench = (w, b, a) => freeSlot(w, benchPrefix(b), benchesOf(b), a);
 
 // does a station of this kind have something to do, and a free bench for `a`? (orders cached per tick)
 export function stationHasWork(w, station, a) {
   const map = perTick(w, 'orders', () => ({}));
   const b = w.buildings.find(x => x.key === station && x.done);
-  if (!b || busyOthers(w, b, a) >= (BUILDINGS.get(station).benches || 1)) return false;
+  if (!b || !freeBench(w, b, a)) return false;   // every bench taken by someone else
   if (!(station in map)) map[station] = !!b.order || !!pickRecipe(w, station);
   return map[station];
 }
@@ -116,16 +119,19 @@ export function stationPriority(w, station) {
   return r ? r.want(ctx) : 0;
 }
 
-export function markWorking(w, b, a) { (b.workers || (b.workers = new Map())).set(a.id, w.tick); }
 
 // add labour at a station building; starts an order if none is running
 export function workAt(w, b, amount, a) {
   if (!b.order) {
     const r = pickRecipe(w, b.key);
     if (!r) return false;
+    // fuel is chosen before the materials are taken, with the price's own wood set aside, so the two never
+    // compete for the same logs (it used to find no fuel left after the price and crash)
+    const fuel = r.fuel ? furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0)) : null;
+    if (r.fuel && !fuel) return false;
     if (w.scratch) delete w.scratch.orders;   // materials are taken: other stations may not afford theirs now
     for (const [res, v] of Object.entries(r.cost)) w.stock[res] -= v;
-    if (r.fuel) { const [f, n] = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); w.stock[f.id] -= n; }
+    if (fuel) w.stock[fuel[0].id] -= fuel[1];
     b.order = {recipe: r.id, progress: 0};
   }
   const r = RECIPES.get(b.order.recipe);
@@ -139,7 +145,7 @@ export function workAt(w, b, amount, a) {
     // a silvered blade carries the silver on the instance; with bellows a forged piece now and then comes out finer
     const extra = {};
     if (r.makes.silver) extra.silver = true;
-    if (bellows && w.rng() < FURNACE.bellowsFine) extra.q = 1;
+    if (bellows && w.rngs.colony() < FURNACE.bellowsFine) extra.q = 1;
     const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
     w.armory.push(it);
     w.armoryVersion = (w.armoryVersion || 0) + 1;

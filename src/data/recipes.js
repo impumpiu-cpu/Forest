@@ -11,7 +11,7 @@
 // ctx (see settlement/crafting.js): pop, owned(id), likes(job), fans(food), fishing (a lake has fish),
 //   season (id), drying (racks work this season), stockpile (×: how keen on stores — autumn most),
 //   stores (dried and salted food in stock), timid, stock, bows, has(building), fuel,
-//   silvered() (silvered blades owned), placers (the river has gold sand),
+//   silvered() (silver blades owned), silverFoes (times something that fears silver came), placers (the river has gold sand),
 //   food (all food in stock), freeSlots (furniture places free in buildings, less what lies in stock),
 //   spare(res) (stock beyond 0.6 × what the colony keeps of it: resource `keep`, else `target`, else 20)
 //
@@ -25,6 +25,10 @@ import {FURNITURE} from './furniture.js';
 export const RECIPES = new Registry('recipe');
 
 const short = (n, target) => Math.max(0, target - n);
+// silvered forge blades: a few while silver is spare; once something that fears silver has come, many
+const silverWant = (c, calm, alarm) => (c.silverFoes
+  ? (c.stock('silverBar') >= 1 && short(c.silvered(), Math.ceil(c.pop / 2)) ? alarm : 0)
+  : (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? calm : 0));
 
 // stores for the winter: dried and salted food the colony aims to have per colonist (about a month of lean days)
 const STORES_PER_HEAD = 10;
@@ -92,6 +96,10 @@ RECIPES.registerAll([
   {id: 'silverNativeBar', at: 'smelter', cost: {silverNative: 1}, fuel: 0.5, heat: 1, work: 120, makes: {resource: 'silverBar', n: 1},
     want: () => 1.2},
   // bronze cast in clay moulds at the furnace: no anvil needed
+  // a silver dagger cast whole: no iron and no forge needed, the first answer to a vampire
+  {id: 'silverknife', at: 'smelter', cost: {silverBar: 2, leather: 1}, fuel: 0.5, heat: 1, work: 500, makes: {item: 'silverknife'},
+    want: c => (c.silverFoes ? (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 2)) ? (c.has('forge') ? 1.4 : 2.4) : 0)
+      : c.stock('silverBar') >= 4 && c.silvered() < 1 ? 0.6 : 0)},
   {id: 'bronzespear', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzespear'},
     want: c => (short(c.owned('sword') + c.owned('ironspear') + c.owned('bronzespear'), c.pop) ? 2.0 : 0)},
   {id: 'bronzeaxe', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzeaxe'},
@@ -105,10 +113,12 @@ RECIPES.registerAll([
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
   // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare
+  // Before anyone has seen a vampire: a few, while there is silver to spare. Once one has come
+  // (ctx.silverFoes): a silver blade for every second colonist, and the last bar goes into it.
   {id: 'swordSilver', at: 'forge', cost: {iron: 3, leather: 1, silverBar: 1}, fuel: 1, work: 1100, makes: {item: 'sword', silver: true},
-    want: c => (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? 1.3 : 0)},
+    want: c => silverWant(c, 1.3, 2.6)},
   {id: 'spearSilver', at: 'forge', cost: {iron: 2, wood: 2, silverBar: 1}, fuel: 1, work: 900, makes: {item: 'ironspear', silver: true},
-    want: c => (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 4)) ? 1.2 : 0)},
+    want: c => silverWant(c, 1.2, 2.4)},
   {id: 'lamellar', at: 'forge', cost: {iron: 4, leather: 2}, fuel: 2, work: 1600, makes: {item: 'lamellar'},
     want: c => (short(c.owned('lamellar'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
 

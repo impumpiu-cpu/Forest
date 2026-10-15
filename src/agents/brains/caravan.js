@@ -10,10 +10,12 @@ import {cellOf} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, follow, moveToward} from '../movement.js';
 import {nearestHostile} from '../combat.js';
 import {TASKS} from '../tasks.js';
-import {kill} from '../agent.js';
+import {kill, maxHp} from '../agent.js';
 
 // how close to the camp fire the caravan sets up (cells along the camp flow field)
 const CAMP_AT = 6;
+// how long the trader waits for a straggler before going on without it
+const LATE_WAIT = 50;
 
 const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead);
 
@@ -29,7 +31,7 @@ export const caravanBrain = {
     if (a.cd > 0) a.cd--;
     if (T > sp.heatHarm) { a.hp -= Math.min(0.006, (T - sp.heatHarm) * 0.00005); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (T > 50 || nearFire(w, a, 1.5)) { escapeHeat(w, a); return; }
-    if (a.hp < (a.maxHp || sp.hp)) a.hp = Math.min(a.maxHp || sp.hp, a.hp + 0.0002);
+    if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 0.0002);
 
     const c = w.caravan;
     if (!c || c.id !== a.caravan || c.phase === 'leaving') { leave(w, a); return; }
@@ -56,10 +58,13 @@ export const caravanBrain = {
     if (c.phase === 'coming') {
       a.task = {id: 'travel'};
       const d = w.nav.get('camp')[cellOf(w, a)];
-      // wait for the slow mules now and then, so the caravan arrives together
-      const late = w.agents.some(o => o.caravan === c.id && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) > 6);
       if (d <= CAMP_AT) { c.arrived = w.tick; c.spot = [a.x, a.y]; return; }
-      if (!late && follow(w, a, 'camp', 0.9) === 'none') { c.arrived = w.tick; c.spot = [a.x, a.y]; }
+      // wait for the slow mules now and then, so the caravan arrives together — but not for one that
+      // has been behind for an hour (stuck behind water): then the trader goes on without waiting
+      const late = w.agents.some(o => o.caravan === c.id && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) > 6);
+      if (late) { c.lateSince ??= w.tick; if (w.tick - c.lateSince < LATE_WAIT) return; } else c.lateSince = null;
+      // no way to the camp at all is no arrival: settlement/trade.js sends the caravan away
+      if (follow(w, a, 'camp', 0.9) === 'none') c.noPath = (c.noPath || 0) + 1; else c.noPath = 0;
       return;
     }
     a.task = {id: c.phase === 'trading' ? 'stall' : c.phase === 'night' ? 'night' : 'camped'};

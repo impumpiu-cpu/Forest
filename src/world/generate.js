@@ -1,5 +1,6 @@
 // World generation. makeTerrain is pure (the menu preview uses it too); createWorld builds the full state.
-import {mulberry, seedNumber} from '../core/rng.js';
+import {newBehaviour} from '../settlement/behaviour.js';
+import {mulberry, seedNumber, newStreams} from '../core/rng.js';
 import {clamp} from '../core/util.js';
 import {HOUR, ambientTemp} from '../core/time.js';
 import {T, BY_CODE} from '../data/terrain.js';
@@ -73,7 +74,7 @@ export function createWorld(cfg) {
   const f32 = () => new Float32Array(n);
   const world = {
     cfg: {...cfg}, climate: CLIMATES[cfg.climate],
-    w: t.w, h: t.h, n, rng: t.rng, tick: Math.round(7 * HOUR),
+    w: t.w, h: t.h, n, rng: t.rng, rngs: newStreams(cfg.seed), tick: Math.round(7 * HOUR),
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, food: f32(), wood: f32(), fuel: f32(), fire: f32(),
       temp: f32(), temp2: f32(), smoke: f32(), smoke2: f32(), bush: new Uint8Array(n), bld: new Int16Array(n).fill(-1)},
     camp: {x: t.cx, y: t.cy, cells: [], set: null},
@@ -83,6 +84,7 @@ export function createWorld(cfg) {
     weather: {rain: 0, rainLeft: 0},
     stats: {fireCount: 0, fireNearCamp: 0, burntCells: 0, spoiledToday: 0, lastSteal: -999, hunted: 0, wolfKills: 0, wolfAttacks: 0, crafted: 0, broken: 0, raids: 0},
     campLit: false, mods: emptyMods(), cache: {}, outside: null, caravan: null, trade: newTradeState(), chronicle: newChronicle(), over: null,
+    behave: newBehaviour(),
     council: {lastDay: -1, goal: null, votes: [], args: [], decision: 'Первый совет соберётся сегодня вечером у костра.'},
     logLines: [], logVersion: 0, nav: null,
   };

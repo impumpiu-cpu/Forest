@@ -17,6 +17,7 @@
 //
 // Gloom: someone whose mood stays below LIFE.gloomBelow at dawn day after day first sulks for a few
 // hours instead of working, and after LIFE.leaveAfter such days may leave the outpost for good.
+import {isFree} from './reserve.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
 import {DAY, HOUR} from '../core/time.js';
@@ -26,6 +27,14 @@ import {colonists, has} from './query.js';
 import {think, moodOf} from '../agents/mind.js';
 import {walkable, isCampArea} from '../world/grid.js';
 import {stripAll} from '../agents/equipment.js';
+import {SPECIES} from '../data/species.js';
+
+// races that live on brew (dwarves: `brew` in data/races.js) work slower without it
+const brewOf = a => SPECIES.get(a.species).brew;
+export function brewFactor(w, a) {
+  const b = brewOf(a); if (!b) return 1;
+  return a.drankAt != null && w.tick - a.drankAt < b.lasts * DAY ? b.drunk : b.sober;
+}
 
 export const LIFE = {
   unburiedAfter: 0.6 * DAY,   // a body lying this long weighs on everyone
@@ -72,16 +81,16 @@ function furnish(w) {
 
 // ── the dead
 export function addCorpse(w, a) {
-  (w.corpses ||= []).push({id: a.id, name: a.name, f: a.gender === 'f', x: a.x, y: a.y, tick: w.tick, by: null, at: 0});
+  (w.corpses ||= []).push({id: a.id, name: a.name, f: a.gender === 'f', x: a.x, y: a.y, tick: w.tick});
 }
 export const corpses = w => w.corpses || [];
-// a body nobody else is carrying (a claim lapses when its bearer stops); not while wolves prowl near it
+// a body nobody else is carrying (reservation 'corpse:<id>', settlement/reserve.js); not while wolves prowl near it
 const wolvesNear = (w, c) => w.agents.some(o => o.species === 'wolf' && !o.dead && Math.hypot(o.x - c.x, o.y - c.y) < 20);
 export const reachableCorpses = w => corpses(w).filter(c => !wolvesNear(w, c));
 export function freeCorpse(w, a) {
   let best = null, bd = Infinity;
   for (const c of reachableCorpses(w)) {
-    if (c.by != null && c.by !== a.id && w.tick - c.at < 30) continue;
+    if (!isFree(w, 'corpse:' + c.id, a)) continue;
     const d = Math.hypot(c.x - a.x, c.y - a.y); if (d < bd) { bd = d; best = c; }
   }
   return best;
@@ -134,14 +143,19 @@ function evening(w) {
   const feast = have >= col.length && w.tick - (w.lastFeast ?? -1e9) >= LIFE.feastEvery;
   if (feast) w.lastFeast = w.tick;
   // a cup only for those who need cheering up (at most a third of the colony), so the brew can build up for a feast
-  const order = feast ? col : col.filter(a => moodOf(w, a) < -0.1).sort((x, y) => moodOf(w, x) - moodOf(w, y));
-  const n = feast ? col.length : Math.min(have, Math.ceil(col.length / 3), order.length);
+  // those who live on brew get theirs first
+  const brewers = col.filter(brewOf);
+  const order = feast ? col : [...brewers, ...col.filter(a => !brewOf(a) && moodOf(w, a) < -0.1).sort((x, y) => moodOf(w, x) - moodOf(w, y))];
+  const n = feast ? col.length : Math.min(have, Math.ceil(col.length / 3) + brewers.length, order.length);
   if (!n) return;
   for (const a of order.slice(0, n)) {
     if (a.task?.id === 'treat' || a.dead) continue;
     w.stock.braga -= 1;
-    think(w, a, feast ? 'feast' : 'drank');
-    if (w.rng() < LIFE.hangover) think(w, a, 'hangover');
+    a.drankAt = w.tick;
+    const b = brewOf(a);
+    if (b) a.needs.food = Math.min(1, (a.needs.food ?? 1) + b.food);
+    think(w, a, feast ? 'feast' : b ? 'beerFed' : 'drank');
+    if (w.rngs.colony() < LIFE.hangover) think(w, a, 'hangover');
   }
   w.chronicle.cups = (w.chronicle.cups || 0) + n; if (feast) w.chronicle.feasts = (w.chronicle.feasts || 0) + 1;
   if (feast) log(w, `Вечером пировали: браги хватило на всех (${n}).`, 'people');
@@ -151,10 +165,11 @@ function dawn(w) {
   furnish(w);
   if (corpses(w).some(c => w.tick - c.tick > LIFE.unburiedAfter)) for (const a of colonists(w)) think(w, a, 'unburied');
   for (const a of colonists(w)) {
+    if (brewOf(a) && brewFactor(w, a) < 1) think(w, a, 'sober');
     const m = moodOf(w, a);
     a.gloom = m < LIFE.gloomBelow ? (a.gloom || 0) + 1 : 0;
-    if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rng() < LIFE.leaveChance) { leave(w, a); continue; }
-    if (a.gloom >= LIFE.sulkFrom && w.rng() < LIFE.sulkChance) {
+    if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rngs.colony() < LIFE.leaveChance) { leave(w, a); continue; }
+    if (a.gloom >= LIFE.sulkFrom && w.rngs.colony() < LIFE.sulkChance) {
       a.task = {id: 'sulk', until: w.tick + 3 * HOUR}; think(w, a, 'sulking'); w.chronicle.sulks = (w.chronicle.sulks || 0) + 1;
       log(w, `<b>${esc(a.name)}</b> ${g(a, 'хандрит', 'хандрит')}: бросает работу и бродит по лагерю.`, 'people');
     }

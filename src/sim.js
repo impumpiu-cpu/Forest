@@ -7,9 +7,15 @@ import {stepPlants} from './world/plants.js';
 import {stepFarms} from './settlement/farming.js';
 import {stepHerd} from './settlement/herd.js';
 import {stepLife} from './settlement/life.js';
+import {stepEffects} from './agents/body.js';
+import {sampleBehaviour} from './settlement/behaviour.js';
+import {sweepReserve} from './settlement/reserve.js';
+import {stepRelations} from './settlement/relations.js';
 import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
+import {stepSquads} from './agents/squad.js';
+import {stepHunts, stepCarcasses} from './agents/carcass.js';
 import {stepCouncil} from './settlement/council.js';
 import {stepTrade} from './settlement/trade.js';
 import {stepOutside, tell} from './outside/index.js';
@@ -30,7 +36,7 @@ export function newGame(cfg) {
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};
   const n = cfg.colonists;
   w.founding = true;
-  for (let k = 0; k < n; k++) createAgent(w, 'human', 'colony', w.camp.x + 0.5 + (w.rng() * 5 - 2.5), w.camp.y + 0.5 + (w.rng() * 5 - 2.5));
+  for (let k = 0; k < n; k++) createAgent(w, 'human', 'colony', w.camp.x + 0.5 + (w.rngs.birth() * 5 - 2.5), w.camp.y + 0.5 + (w.rngs.birth() * 5 - 2.5));
   // starting gear: clothes for some or all, the kit goes to the store and is handed out at once
   const st = STOCKS[cfg.stock];
   for (let k = 0; k < Math.round(n * st.clothes); k++) w.armory.push(newItem('clothes'));
@@ -55,17 +61,27 @@ export function step(w) {
   stepFarms(w);
   stepHerd(w);
   stepLife(w);
+  stepRelations(w);
   const t1 = performance.now();
   w.nav.step();
   const t2 = performance.now();
-  for (const a of w.agents) { if (!a.dead) BRAINS.get(a.brain).step(w, a); if (a.flash) a.flash--; }
+  for (const a of w.agents) {
+    if (!a.dead) stepEffects(w, a);
+    if (!a.dead) BRAINS.get(a.brain).step(w, a);
+    if (a.flash) a.flash--;
+  }
   w.agents = w.agents.filter(a => !a.dead && !a.gone);
+  stepSquads(w);
+  stepHunts(w);
+  stepCarcasses(w);
   separate(w);
   if (w.fx.length) { for (const f of w.fx) f.t--; w.fx = w.fx.filter(f => f.t > 0); }   // shot traces fade
   stepCouncil(w);
   stepTrade(w);
   stepOutside(w);
   sampleChronicle(w);
+  sampleBehaviour(w);
+  sweepReserve(w);
   checkEnd(w);
   const t3 = performance.now();
   w.perf.fields = ema(w.perf.fields, t1 - t0); w.perf.nav = ema(w.perf.nav, t2 - t1); w.perf.agents = ema(w.perf.agents, t3 - t2);

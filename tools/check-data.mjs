@@ -21,6 +21,12 @@ import {TRADE} from '../src/data/trade.js';
 import {PLANTS} from '../src/data/plants.js';
 import {CROPS} from '../src/data/crops.js';
 import {MIGRATIONS} from '../src/data/migrations.js';
+import {STATS} from '../src/data/special.js';
+import {BIOMES, RARITY, FAUNA_FLOOR} from '../src/data/biomes.js';
+import {faunaFrom} from '../src/world/region.js';
+import {VALUES} from '../src/data/values.js';
+import {RELATIONS, KINS} from '../src/data/relations.js';
+import {RAID_BANDS, bandCost, kitFor} from '../src/data/raids.js';
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
@@ -96,6 +102,31 @@ TRADE.guardKit.forEach(k => item('снаряжение охраны', k.type));
 for (const r of RESOURCES.all()) if (r.sell !== false && !(r.value > 0)) warn(`ресурс ${r.id}: нет цены value, торговцу его не продать`);
 for (const m of MIGRATIONS.all()) if (m.species && !SPECIES.has(m.species)) err(`миграция ${m.id}: нет вида «${m.species}»`);
 
+// races and monsters: SPECIAL limits, peoples, values, relations, names
+for (const sp of SPECIES.all()) {
+  const where = `вид ${sp.id}`;
+  if (!['beast', 'semi', 'sentient'].includes(sp.mind)) err(`${where}: mind должен быть beast, semi или sentient`);
+  if (sp.special) for (const st of STATS.ids()) {
+    const r = sp.special[st];
+    if (!Array.isArray(r) || r.length !== 2 || r[0] > r[1] || r[0] < 0) err(`${where}: предел ${st} должен быть [мин, макс]`);
+  }
+  for (const p of sp.peoples || []) for (const st of Object.keys(p.shift || {})) if (!STATS.has(st)) err(`${where}, народ ${p.id}: нет характеристики «${st}»`);
+  for (const v of Object.keys(sp.values || {})) if (!VALUES.has(v)) err(`${where}: нет ценности «${v}»`);
+  if (sp.rel && !RELATIONS[sp.rel]) err(`${where}: нет строки «${sp.rel}» в data/relations.js`);
+  if (sp.settle > 0 && !sp.names?.length) err(`${where}: приходит переселенцем, но без имён`);
+  if (sp.look?.shape && !LOOKS[sp.look.shape]) err(`${where}: нет рисовальщика «${sp.look.shape}»`);
+}
+for (const k of KINS.ids()) if (!RELATIONS[k] || Object.keys(RELATIONS[k]).length !== KINS.ids().length) err(`отношения: строка «${k}» неполная`);
+for (const v of VALUES.all()) for (const c of v.clash) if (!VALUES.has(c)) err(`ценность ${v.id}: нет ценности «${c}» в clash`);
+{
+  const rng = (() => { let x = 7; return () => ((x = (x * 16807) % 2147483647) / 2147483647); })();
+  for (const b of RAID_BANDS.all()) for (const t of [2, 12, 25]) for (const m of b.members({}, rng, 6, t)) {
+    if (!SPECIES.has(m.species)) { err(`банда ${b.id}: нет вида «${m.species}»`); continue; }
+    if (bandCost(m.species) == null) err(`банда ${b.id}: у «${m.species}» нет цены в COST`);
+    for (const it of kitFor(m.species, rng, t)) item(`банда ${b.id}`, typeof it === 'string' ? it : it.type);
+  }
+}
+
 // every resource should come from somewhere
 const sources = new Set(['gold',   // gold comes from trade
   ...TRADE.WARES.flatMap(x => x.resource || []),   // bought from traders
@@ -113,9 +144,29 @@ for (const r of RECIPES.all()) {
 if (!RESOURCES.filter(r => r.furnace).some(r => r.furnace.tier >= 2)) err('нет топлива для железа (furnace.tier ≥ 2)');
 for (const R of REGIONS.all()) {
   for (const id of Object.keys(R.ores)) if (!ORES.has(id)) err(`регион ${R.id}: нет руды «${id}»`);
-  for (const id of Object.keys(R.fauna)) if (!SPECIES.has(id)) err(`регион ${R.id}: нет вида «${id}»`);
+  for (const id of Object.keys(R.biomes || {})) if (!BIOMES.has(id)) err(`регион ${R.id}: нет биома «${id}»`);
+  const share = Object.values(R.biomes || {}).reduce((t, v) => t + v, 0);
+  if (Math.abs(share - 1) > 0.02) err(`регион ${R.id}: доли биомов в сумме ${share.toFixed(2)}, а не 1`);
   for (const id of Object.keys(R.flora)) if (!PLANTS.has(id)) err(`регион ${R.id}: нет грядки «${id}»`);
-  for (const v of [...Object.values(R.ores), ...Object.values(R.fauna), ...Object.values(R.flora), R.placer]) if (!LEVELS.includes(v)) err(`регион ${R.id}: уровень ${v} не из LEVELS`);
+  for (const v of [...Object.values(R.ores), ...Object.values(R.flora), R.placer]) if (!LEVELS.includes(v)) err(`регион ${R.id}: уровень ${v} не из LEVELS`);
+}
+// beasts: where they live, whom they hunt, how they come
+for (const sp of SPECIES.all()) {
+  const where = `вид ${sp.id}`;
+  for (const [b, r] of Object.entries(sp.habitat || {})) {
+    if (!BIOMES.has(b)) err(`${where}: нет биома «${b}»`);
+    if (!RARITY[r]) err(`${where}: редкость «${r}» не из RARITY`);
+  }
+  if (sp.habitat && !REGIONS.all().some(R => faunaFrom(R.biomes, sp.id) >= FAUNA_FLOOR)) warn(`${where}: не живёт ни в одном регионе`);
+  if (sp.arrive && !sp.habitat) err(`${where}: arrive без habitat`);
+  if (sp.arrive && !sp.resident && !(sp.arrive.group && sp.arrive.every && sp.arrive.cap)) err(`${where}: arrive без group, every или cap`);
+  if (sp.resident && !(sp.respawn > 0)) err(`${where}: нечисть без respawn`);
+  for (const k of [...(sp.predator?.prey || []), ...(sp.predator?.weakPrey || []), ...(sp.flee?.from || [])]) if (k !== 'people' && !SPECIES.has(k)) err(`${where}: нет вида «${k}»`);
+  for (const k of sp.tameWith || []) if (!SPECIES.get(k)?.rel) warn(`${where}: tameWith — «${k}» не раса`);
+  for (const r of Object.keys(sp.yields || {})) res(where, r);
+  if (sp.brain === 'mule' && !sp.mule) err(`${where}: мозг mule без блока mule`);
+  if (sp.brain === 'predator' && !sp.predator) err(`${where}: мозг predator без блока predator`);
+  if (sp.brain === 'spirit' && !sp.spirit) err(`${where}: мозг spirit без блока spirit`);
 }
 for (const r of RESOURCES.filter(x => x.useWith)) if (!BUILDINGS.has(r.useWith)) err(`инструмент ${r.id}: useWith — нет постройки «${r.useWith}»`);
 
@@ -142,4 +193,4 @@ for (const r of RESOURCES.all()) if (!sources.has(r.id)) warn(`ресурс ${r.
 
 for (const w of warnings) console.log('warn ' + w);
 if (errors.length) { console.log('Ошибки в справочниках:\n  ' + errors.join('\n  ')); process.exit(1); }
-console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов — ссылки сходятся`);
+console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд — ссылки сходятся`);

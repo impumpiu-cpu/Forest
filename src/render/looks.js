@@ -1,4 +1,5 @@
 import {ITEMS} from '../data/items.js';
+import {SPECIES} from '../data/species.js';
 
 // How creatures are drawn. A species names its look in data/species.js (look.shape);
 // a new shape is one more painter here.
@@ -10,6 +11,7 @@ export const GLYPHS = {
   ironspear(ctx, x, y, r) { line(ctx, x, y + r, x + r * 0.2, y - r * 1.4, '#a5794a', 1.2); line(ctx, x + r * 0.18, y - r * 1.25, x + r * 0.26, y - r * 1.85, '#cfd6dc', Math.max(1.2, r * 0.3)); },
   ironaxe(ctx, x, y, r) { line(ctx, x, y + r * 0.8, x + r * 0.2, y - r * 0.8, '#8a6a3c', 1.2); ctx.fillStyle = '#cfd6dc'; ctx.beginPath(); ctx.moveTo(x + r * 0.2, y - r * 0.95); ctx.lineTo(x + r * 0.85, y - r * 1.1); ctx.lineTo(x + r * 0.85, y - r * 0.3); ctx.lineTo(x + r * 0.2, y - r * 0.5); ctx.fill(); },
   sword(ctx, x, y, r) { line(ctx, x, y + r * 0.9, x + r * 0.25, y - r * 1.6, '#d8dee3', Math.max(1.3, r * 0.3)); line(ctx, x - r * 0.3, y + r * 0.35, x + r * 0.45, y + r * 0.25, '#6b4f2c', 1.3); },
+  dagger(ctx, x, y, r) { line(ctx, x, y + r * 0.7, x + r * 0.15, y - r * 0.9, '#e8ecf2', Math.max(1.1, r * 0.25)); line(ctx, x - r * 0.25, y + r * 0.35, x + r * 0.35, y + r * 0.3, '#6b4f2c', 1.1); },
   shield(ctx, x, y, r) { ctx.fillStyle = '#7a5530'; ctx.strokeStyle = '#2b1d0e'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, Math.max(1.8, r * 0.55), 0, Math.PI * 2); ctx.fill(); ctx.stroke(); },
   staff(ctx, x, y, r) { line(ctx, x, y + r * 1.2, x + r * 0.15, y - r * 1.3, '#a5794a', 1.3); },
   maul(ctx, x, y, r) { line(ctx, x, y + r, x + r * 0.2, y - r * 0.8, '#8a6a3c', 1.3); ctx.fillStyle = '#6b4f2c'; ctx.fillRect(x - r * 0.25, y - r * 1.1, r * 0.9, r * 0.5); },
@@ -27,6 +29,9 @@ export const LOOKS = {
     const body = a.equip?.body ? ITEMS.get(a.equip.body.type) : null;   // the plain piece's colour
     ctx.strokeStyle = body ? body.color : '#0e100b'; ctx.lineWidth = body ? Math.max(1.8, r * 0.38) : 1.5;
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // the face: a dot in the race's skin colour, so a dwarf and an elf of one faction differ at a glance
+    const skin = SPECIES.get(a.species).look.skin;
+    if (skin && r >= 3) { ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(px, py, r * 0.42, 0, Math.PI * 2); ctx.fill(); }
     if (!a.equip) return;
     const e = a.equip, two = e.left && e.left === e.right;
     if (two) GLYPHS[ITEMS.get(e.left.type).glyph]?.(ctx, px + r * 1.05, py, r);
@@ -126,6 +131,79 @@ export const LOOKS = {
     ctx.beginPath(); ctx.ellipse(r * 1.3, -r * 0.35, r * 0.55, r * 0.45, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(r * 1.15, -r * 0.7); ctx.lineTo(r * 1.3, -r * 1.25); ctx.lineTo(r * 1.5, -r * 0.75); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-r * 1.3, -r * 0.1); ctx.quadraticCurveTo(-r * 2.1, -r * 0.2, -r * 2.2, r * 0.4); ctx.lineWidth = Math.max(1.5, r * 0.35); ctx.strokeStyle = color; ctx.stroke();
+    ctx.restore();
+  },
+  // bear: a heavy rounded body, small round ears; reddish when it charges
+  bear(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = a.task?.mule ? '#7a3a2a' : color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * 0.85, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(r * 1.15, -r * 0.35, r * 0.55, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(r * 0.95, -r * 0.85, r * 0.2, 0, Math.PI * 2); ctx.arc(r * 1.4, -r * 0.82, r * 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  },
+  // toad: a squat blob with two bulging eyes
+  toad(ctx, a, px, py, r, color) {
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(px, py, r * 1.1, r * 0.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e8e2a0';
+    ctx.beginPath(); ctx.arc(px - r * 0.45, py - r * 0.6, r * 0.25, 0, Math.PI * 2); ctx.arc(px + r * 0.45, py - r * 0.6, r * 0.25, 0, Math.PI * 2); ctx.fill();
+  },
+  // a winged beast (griffin, wyvern, drake): a body between two spread wings
+  bird(ctx, a, px, py, r, color) {
+    const flap = Math.sin((a.id * 7 + (a.x + a.y) * 3)) * 0.25;
+    ctx.fillStyle = shade(color, 0.8); ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + s * r * 1.9, py - r * (0.9 + flap)); ctx.lineTo(px + s * r * 1.5, py + r * 0.25); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    ctx.fillStyle = a.task?.id === 'maul' ? '#c0603a' : color;
+    ctx.beginPath(); ctx.ellipse(px, py, r * 0.6, r * 0.95, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  },
+  // giant spider: a dark body with eight legs
+  spider(ctx, a, px, py, r, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, r * 0.18);
+    for (let k = 0; k < 4; k++) for (const s of [-1, 1]) {
+      const y = py - r * 0.5 + k * r * 0.35;
+      ctx.beginPath(); ctx.moveTo(px, y); ctx.quadraticCurveTo(px + s * r * 1.1, y - r * 0.6, px + s * r * 1.6, y + r * 0.3); ctx.stroke();
+    }
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(px, py + r * 0.2, r * 0.7, r * 0.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#c0403a'; ctx.beginPath(); ctx.arc(px, py - r * 0.55, r * 0.15, 0, Math.PI * 2); ctx.fill();
+  },
+  // stone worm: a long segmented body
+  worm(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    for (let k = 3; k >= 0; k--) {
+      ctx.beginPath(); ctx.arc(px - dir * k * r * 0.6, py + Math.sin(k + a.x) * r * 0.15, r * (0.75 - k * 0.08), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+  },
+  // bat: a tiny body with jagged wings
+  bat(ctx, a, px, py, r, color) {
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(px - r * 2, py - r * 0.4); ctx.lineTo(px - r, py + r * 0.3); ctx.lineTo(px, py - r * 0.2);
+    ctx.lineTo(px + r, py + r * 0.3); ctx.lineTo(px + r * 2, py - r * 0.4); ctx.lineTo(px, py + r * 0.8); ctx.closePath(); ctx.fill(); ctx.stroke();
+  },
+  // salamander: a slim lizard with a curled tail
+  lizard(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.1, r * 0.45, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r, 0); ctx.quadraticCurveTo(-r * 2, r * 0.2, -r * 1.7, -r * 0.6); ctx.lineWidth = Math.max(1, r * 0.25); ctx.strokeStyle = color; ctx.stroke();
+    ctx.fillStyle = '#f2c060'; ctx.beginPath(); ctx.arc(r * 0.2, -r * 0.1, r * 0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  },
+  // the nechist: a hazy, half-seen figure; fainter while it keeps itself hidden (a.veil)
+  spirit(ctx, a, px, py, r, color) {
+    ctx.save();
+    ctx.globalAlpha = a.veil === 0 ? 0.25 : a.veil ? 0.6 : 0.95;
+    ctx.fillStyle = color; ctx.strokeStyle = shade(color, 0.6); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(px - r * 0.8, py + r);
+    ctx.quadraticCurveTo(px - r * 0.9, py - r * 0.6, px, py - r * 1.2); ctx.quadraticCurveTo(px + r * 0.9, py - r * 0.6, px + r * 0.8, py + r);
+    ctx.quadraticCurveTo(px, py + r * 0.6, px - r * 0.8, py + r); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e9f2c8'; ctx.beginPath(); ctx.arc(px - r * 0.25, py - r * 0.45, r * 0.12, 0, Math.PI * 2); ctx.arc(px + r * 0.25, py - r * 0.45, r * 0.12, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   },
 };

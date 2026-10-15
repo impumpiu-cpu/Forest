@@ -17,8 +17,11 @@ TRAITS.registerAll([
   {id: 'lazy',    label: 'ленивый',    group: 'work',     weight: 1, mods: {work: 0.8}},
 ]);
 
-// neutral multipliers every agent starts from; traits and species adjust them
-export const BASE_MODS = {bravery: 1, cold: 1, hunger: 1, speed: 1, work: 1};
+// neutral multipliers every agent starts from; traits, species and SPECIAL (agents/special.js) adjust them
+//   sleep — how fast tiredness grows;  regen — how fast wounds close;  learn — skill from work;
+//   str — melee damage;  swing — attack cooldown;  sight — how far enemies are noticed;
+//   aim, dodge — added chances (to hit with a shot, to be missed)
+export const BASE_MODS = {bravery: 1, cold: 1, hunger: 1, speed: 1, work: 1, sleep: 1, regen: 1, learn: 1, str: 1, swing: 1, sight: 1, aim: 0, dodge: 0};
 
 // how strongly liked / disliked work pulls
 export const LIKE_RANGE = [1.45, 1.65];

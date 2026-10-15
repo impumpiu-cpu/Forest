@@ -6,7 +6,13 @@ import {RESOURCES} from '../data/resources.js';
 import {dayOf, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {colonists, count, has, popCap, openSites, ofSpecies} from './query.js';
-import {canAfford, eligible, laySite, missing} from './buildings.js';
+import {canAfford, eligible as buildable, laySite, missing} from './buildings.js';
+import {obtainable, sourcesOf} from './sources.js';
+import {RECIPES} from '../data/recipes.js';
+import {perTick} from '../core/util.js';
+const RECIPES_ALL = () => RECIPES.all();
+import {hpShare} from '../agents/agent.js';
+
 import {handItems, allItems, def} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {oreSeen} from '../world/ores.js';
@@ -16,24 +22,44 @@ import {penRoom, herd} from './herd.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
 
+// a building the council may pick: allowed, and everything its price still lacks can be come by
+export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.get(key).cost).every(([r]) => obtainable(w, r));
+
+
 export function councilDue(w) {
   const h = hourOf(w.tick);
   return h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
 }
 
-// extra pull toward work that brings in what the current goal still lacks
+// extra pull toward work that brings in what the current goal still lacks. «Lacks» is measured the way
+// the site is laid (settlement/buildings.js missing): for wood that is the price plus the fuel kept for
+// the fire. Measured against the bare price, the woodcutters stopped short of it and the site was never laid.
+// The pull reaches one link down the chain: if the goal lacks rope and rope is made from fiber at a
+// workshop the colony has, the fiber gatherers are pulled too (otherwise nobody brought the fiber, the
+// workshop had nothing to make and the colony sat idle with the goal stuck).
 export function goalNeed(w, res) {
-  const g = w.council.goal; if (!g) return 0;
-  const need = BUILDINGS.get(g).cost[res] || 0;
-  return (w.stock[res] || 0) < need ? 0.3 : 0;
+  if (!w.council.goal) return 0;
+  return goalWants(w).has(res) ? 0.3 : 0;
 }
+const goalWants = w => perTick(w, 'goalWants', () => {
+  const want = new Set(), lack = missing(w, BUILDINGS.get(w.council.goal).cost);
+  for (const [r, n] of lack) {
+    want.add(r);
+    for (const rec of RECIPES_ALL()) {
+      if (rec.makes?.resource !== r || !has(w, rec.at)) continue;
+      const runs = Math.ceil(n / (rec.makes.n || 1));
+      for (const [c, v] of Object.entries(rec.cost)) if ((w.stock[c] || 0) < v * runs) want.add(c);
+    }
+  }
+  return want;
+});
 
 // strongest argument this colonist has for a building: [score, reason]
 function motive(w, a, def, ctx, noise = true) {
   const args = def.motive ? def.motive(a, ctx) : [];
   let best = [0, ''];
   for (const o of args) if (o[0] > best[0]) best = o;
-  const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rng() * 0.25 : 0);
+  const score = args.reduce((t, o) => t + Math.max(0, o[0]), 0) + ((a.prefs.build ?? 1) - 1) * 0.2 + (noise ? w.rngs.colony() * 0.25 : 0);
   return [score, best[0] > 0.05 ? best[1] : def.wish];
 }
 
@@ -48,7 +74,9 @@ function councilCtx(w, cands) {
     stock: r => w.stock[r] || 0,
     season: season(w).id,
     rats: w.agents.filter(o => o.species === 'rat').length,
-    wounded: colonists(w).filter(a => a.hp < 0.7).length / Math.max(1, colonists(w).length),
+    hurt: a => hpShare(a),   // a colonist's health as a share of their own full health
+    // wounded by each one's own measure: a giant's 1.0 is not a human's 1.0
+    wounded: colonists(w).filter(a => hpShare(a) < 0.7).length / Math.max(1, colonists(w).length),
     oreSeen: oreSeen(w),
     wildHerd: w.agents.filter(o => o.faction === 'wild' && (o.species === 'goat' || o.species === 'mule') && o.owner == null).length,
     herdFull: herd(w).length > 0 && penRoom(w) < 1,
@@ -121,9 +149,12 @@ function hold(w, present, total) {
         w.chronicle.councilWins[win] = (w.chronicle.councilWins[win] || 0) + 1;
         decision = `Решили строить: ${d.name.toLowerCase()} (${votes} из ${present.length}).${round2} Место под стройку уже размечено.`;
       } else {
+        // the same goal again keeps its start: the panel says how long the colony has been saving
+        if (c.goal !== win) { c.goalSince = w.tick; c.goalLack = missing(w, d.cost).reduce((t, [, v]) => t + v, 0); }
         c.goal = win;
         w.chronicle.saving ??= {}; w.chronicle.saving[win] = (w.chronicle.saving[win] || 0) + 1;
-        const lack = missing(w, d.cost).map(([r, v]) => `${RESOURCES.get(r).label} ${v}`).join(', ');
+        // what is lacking and where it is to come from (settlement/sources.js)
+        const lack = missing(w, d.cost).map(([r, v]) => `${RESOURCES.get(r).label} ${v} (${sourcesOf(w, r).map(s => s.how).join(' или ') || 'нет источника'})`).join(', ');
         decision = `Решили копить на: ${d.name.toLowerCase()} (${votes} из ${present.length}).${round2} Не хватает: ${lack}.`;
       }
     }

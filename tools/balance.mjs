@@ -127,7 +127,7 @@ async function main() {
     summary.variants.push({label: v.label, cfg: v.cfg, runs: n, byDay,
       survival: fin.filter(r => r.survived).length / n,
       falls: fin.filter(r => !r.survived).map(r => ({seed: r.seed, day: r.endDay, reason: r.endReason})),
-      final: Object.fromEntries(['pop', 'peakPop', 'deaths', 'deathsRaid', 'deathsWolf', 'deathsOther', 'buildings', 'raids', 'raidersKilled', 'food', 'mood', 'crafted', 'msPerTick'].map(k => [k, med(k)])),
+      final: Object.fromEntries(['pop', 'peakPop', 'deaths', 'deathsRaid', 'deathsWolf', 'deathsOther', 'buildings', 'raids', 'raidersKilled', 'food', 'mood', 'crafted', 'msPerTick', 'idle', 'invalid', 'muster', 'switches', 'stops', 'react'].map(k => [k, med(k)])),
       deathsMean: Object.fromEntries(['deathsRaid', 'deathsWolf', 'deathsOther'].map(k => [k, fin.reduce((s, r) => s + r[k], 0) / n])),
       perf: {msPerTick: quantile(fin.map(r => r.msPerTick), 0.5), p90: quantile(fin.map(r => r.msPerTick), 0.9),
         fields: med('msFields'), nav: med('msNav'), agents: med('msAgents')}});
@@ -138,10 +138,10 @@ async function main() {
 
   // ── console
   const pad = (s, n) => String(s).padEnd(n), num = (x, f = 1) => (x == null ? '—' : (+x).toFixed(f));
-  console.log('\n' + pad('вариант', 28) + pad('выжили', 8) + pad('жители', 8) + pad('смерти', 8) + pad('набеги', 8) + pad('здания', 8) + pad('еда', 7) + 'мс/тик');
+  console.log('\n' + pad('вариант', 28) + pad('выжили', 8) + pad('жители', 8) + pad('смерти', 8) + pad('набеги', 8) + pad('здания', 8) + pad('еда', 7) + pad('простой', 9) + pad('недоп.', 8) + 'мс/тик');
   for (const v of summary.variants) {
     const f = v.final;
-    console.log(pad(v.label, 28) + pad(Math.round(v.survival * 100) + '%', 8) + pad(num(f.pop, 0), 8) + pad(num(f.deaths, 0), 8) + pad(num(f.raids, 0), 8) + pad(num(f.buildings, 0), 8) + pad(num(f.food, 0), 7) + num(v.perf.msPerTick, 2));
+    console.log(pad(v.label, 28) + pad(Math.round(v.survival * 100) + '%', 8) + pad(num(f.pop, 0), 8) + pad(num(f.deaths, 0), 8) + pad(num(f.raids, 0), 8) + pad(num(f.buildings, 0), 8) + pad(num(f.food, 0), 7) + pad(num(f.idle, 1) + '%', 9) + pad(num(f.invalid, 0), 8) + num(v.perf.msPerTick, 2));
     if (v.falls.length) console.log('   пали: ' + v.falls.map(x => `сид ${x.seed} на ${x.day} дн.`).join(', '));
   }
   console.log(`\nмедианы на конец прогона · ${((Date.now() - t0) / 1000).toFixed(0)} с · отчёт: ${join(out, 'report.html')}`);

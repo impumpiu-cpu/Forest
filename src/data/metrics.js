@@ -8,11 +8,17 @@ import {moodOf} from '../agents/mind.js';
 import {fishTotals} from '../world/lakes.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
 import {colonyReport} from '../outside/report.js';
+import {DAY} from '../core/time.js';
+import {SPECIES} from './species.js';
 
 export const METRICS = new Registry('metric');
 
 const deaths = (w, key) => w.chronicle.deaths[key] || 0;
 const allDeaths = w => Object.values(w.chronicle.deaths).reduce((s, v) => s + v, 0);
+const RACE_IDS = () => new Set(SPECIES.filter(s => s.rel).map(s => s.id));
+const share = (w, k) => (w.behave?.ticks ? w.behave[k] / w.behave.ticks * 100 : 0);
+const perDay = (w, k) => (w.behave?.ticks ? w.behave[k] / (w.behave.ticks / DAY) : 0);
+const outcomePerDay = (w, k) => (w.behave?.ticks ? (w.behave.outcomes?.[k] || 0) / (w.behave.ticks / DAY) : 0);
 const avg = (xs, f) => (xs.length ? xs.reduce((s, x) => s + f(x), 0) / xs.length : 0);
 
 METRICS.registerAll([
@@ -20,8 +26,9 @@ METRICS.registerAll([
   {id: 'arrived', label: 'Пришло переселенцев', group: 'Люди', fmt: 0, get: w => w.chronicle.people.filter(p => !p.founder).length},
   {id: 'deaths', label: 'Смертей всего', group: 'Люди', fmt: 0, get: allDeaths},
   {id: 'deathsRaid', label: 'Убиты налётчиками', group: 'Люди', fmt: 0, get: w => deaths(w, 'налётчики')},
-  {id: 'deathsWolf', label: 'Убиты волками', group: 'Люди', fmt: 0, get: w => deaths(w, 'волки')},
-  {id: 'deathsOther', label: 'Умерли от голода, холода, огня', group: 'Люди', fmt: 0, get: w => allDeaths(w) - deaths(w, 'налётчики') - deaths(w, 'волки')},
+  // the chronicle keys deaths by beasts with the beast's plural name, other causes with «от …» (settlement/chronicle.js)
+  {id: 'deathsWolf', label: 'Убиты зверями и нечистью', group: 'Люди', fmt: 0, get: w => Object.entries(w.chronicle.deaths).filter(([k]) => k !== 'налётчики' && !k.startsWith('от ')).reduce((s, [, v]) => s + v, 0)},
+  {id: 'deathsOther', label: 'Умерли от голода, холода, огня, яда', group: 'Люди', fmt: 0, get: w => Object.entries(w.chronicle.deaths).filter(([k]) => k.startsWith('от ')).reduce((s, [, v]) => s + v, 0)},
   {id: 'mood', label: 'Среднее настроение', group: 'Люди', fmt: 2, get: w => avg(colonists(w), a => moodOf(w, a))},
   {id: 'food', label: 'Еда в запасе', group: 'Запасы', fmt: 0, get: foodTotal},
   ...RESOURCES.all().map(r => ({id: 'res_' + r.id, label: r.label, group: 'Запасы', fmt: 0, get: w => w.stock[r.id] || 0})),
@@ -45,6 +52,41 @@ METRICS.registerAll([
   {id: 'wolfAttacks', label: 'Нападений волков', group: 'Природа', fmt: 0, get: w => w.stats.wolfAttacks},
   {id: 'fish', label: 'Рыбы в озёрах', group: 'Природа', fmt: 0, get: w => fishTotals(w)[0]},
   {id: 'burnt', label: 'Выгорело клеток', group: 'Природа', fmt: 0, get: w => w.stats.burntCells},
+  // how creatures behave (settlement/behaviour.js): rates per colonist and day, shares of colonist time
+  {id: 'invalid', label: 'Недопустимых состояний (должно быть 0)', group: 'Поведение', fmt: 0, get: w => w.behave?.invalid || 0},
+  {id: 'idle', label: 'Простой, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'idle')},
+  {id: 'muster', label: 'В тревоге у костра, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'muster')},
+  {id: 'switches', label: 'Смен дела на человека в день', group: 'Поведение', fmt: 1, get: w => perDay(w, 'switches')},
+  {id: 'stops', label: 'Брошено дел на человека в день', group: 'Поведение', fmt: 2, get: w => perDay(w, 'stops')},
+  // how jobs end (agents/lifecycle.js): the share carried through, and the others per colonist and day
+  // jobs are cycles (chop, carry home, chop again) that mostly end by a need or the council taking over:
+  // «interrupted» is normal; what matters is the share that ended in a refusal (blocked or impossible)
+  {id: 'jobsFailed', label: 'Поручений сорвано (заблокировано или невозможно), %', group: 'Поведение', fmt: 1, get: w => { const o = w.behave?.outcomes || {}, n = Object.values(o).reduce((s, v) => s + v, 0); return n ? ((o.blocked || 0) + (o.impossible || 0)) / n * 100 : 0; }},
+  {id: 'jobsDone', label: 'Поручений доведено до конца, на человека в день', group: 'Поведение', fmt: 2, get: w => outcomePerDay(w, 'done')},
+  {id: 'jobsBlocked', label: 'Поручений заблокировано, на человека в день', group: 'Поведение', fmt: 2, get: w => outcomePerDay(w, 'blocked')},
+  {id: 'jobsImpossible', label: 'Поручений невозможно, на человека в день', group: 'Поведение', fmt: 2, get: w => outcomePerDay(w, 'impossible')},
+  {id: 'jobsInterrupted', label: 'Поручений прервано, на человека в день', group: 'Поведение', fmt: 2, get: w => outcomePerDay(w, 'interrupted')},
+  {id: 'noPath', label: 'Отказов «пути нет» всего', group: 'Поведение', fmt: 0, get: w => w.behave?.noPath || 0},
+  {id: 'noPathColony', label: 'Отказов «пути нет» у поселенцев', group: 'Поведение', fmt: 0, get: w => Object.entries(w.behave?.noPathBy || {}).filter(([k]) => RACE_IDS().has(k.split(':')[0])).reduce((s, [, v]) => s + v, 0)},
+  {id: 'react', label: 'Реакция на нападение, тиков', group: 'Поведение', fmt: 1, get: w => (w.behave?.react.n ? w.behave.react.sum / w.behave.react.n : 0)},
+  {id: 'reactMissed', label: 'Нападений без ответа', group: 'Поведение', fmt: 0, get: w => w.behave?.react.missed || 0},
+  // raider bands (agents/squad.js): how their visits ended
+  {id: 'squads', label: 'Отрядов налётчиков пришло', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.started || 0},
+  {id: 'squadsGoal', label: 'Отрядов ушло, добившись цели', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.goal || 0},
+  {id: 'squadsRetreat', label: 'Отрядов отступило (сломлен дух)', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.retreat || 0},
+  {id: 'squadsWiped', label: 'Отрядов разбито наголову', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.wiped || 0},
+  // pack hunts and carcasses (agents/carcass.js)
+  {id: 'packHunts', label: 'Охот стаей за день', group: 'Поведение', fmt: 2, get: w => (w.behave?.ticks ? (w.behave.hunts?.started || 0) / (w.behave.ticks / DAY / Math.max(1, colonists(w).length)) : 0)},
+  {id: 'packHuntKill', label: 'Охот стаей удачных, %', group: 'Поведение', fmt: 0, get: w => { const h = w.behave?.hunts || {}, n = Object.entries(h).filter(([k]) => !['started', 'upyr'].includes(k)).reduce((s, [, v]) => s + v, 0); return n ? (h.kill || 0) / n * 100 : 0; }},
+  {id: 'carcasses', label: 'Туш на земле', group: 'Поведение', fmt: 0, get: w => (w.carcasses || []).length},
+  {id: 'carcassUpyrs', label: 'Упырей поднялось из туш', group: 'Поведение', fmt: 0, get: w => w.behave?.hunts?.upyr || 0},
+  // doing things together (settlement/together.js)
+  {id: 'company', label: 'Сопровождают в лесу, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'company')},
+  {id: 'escorts', label: 'Сопровождений на человека в день', group: 'Поведение', fmt: 2, get: w => (w.behave?.ticks ? (w.behave.social?.escort || 0) / (w.behave.ticks / DAY) : 0)},
+  {id: 'aids', label: 'Раненых перевязано в лесу', group: 'Поведение', fmt: 0, get: w => w.behave?.social?.aid || 0},
+  {id: 'yields', label: 'Коек уступлено', group: 'Поведение', fmt: 0, get: w => w.behave?.social?.yield || 0},
+  {id: 'calmed', label: 'Ссор отложено из-за опасности', group: 'Поведение', fmt: 0, get: w => w.behave?.social?.calm || 0},
+  {id: 'mended', label: 'Обид забыто после общей беды', group: 'Поведение', fmt: 0, get: w => w.behave?.social?.bond || 0},
 ]);
 
 export const sampleMetrics = w => Object.fromEntries(METRICS.all().map(m => [m.id, m.get(w)]));

@@ -1,6 +1,8 @@
 // Read-only questions about the world state, shared by systems and content definitions.
 import {RESOURCES} from '../data/resources.js';
 import {perTick} from '../core/util.js';
+import {HOUR} from '../core/time.js';
+import {SPECIES} from '../data/species.js';
 import {exposedOre} from '../world/ores.js';
 import {ORE_BY_CODE} from '../data/ores.js';
 
@@ -33,3 +35,19 @@ export const wantedOre = w => perTick(w, 'wantedOre', () => {
   const seen = exposedOre(w);
   return new Set(ORE_RES().filter(r => (w.stock[r.id] || 0) < r.target && seen[ORE_BY_CODE[r.ore].id] > 0).map(r => r.ore));
 });
+
+// The raid alarm: raiders on the map, and one of them close enough in time — it would reach the camp
+// (by the camp flow field, at its own pace) within ALARM_HOURS. A fast band raises it almost as soon
+// as it comes out of the woods, as before, so the colony has time to gather; the dead, who shamble for
+// a day or more across a big map, raise it only on their last stretch, and nobody starves at the fire
+// waiting for them. Asked many times a tick, so counted once.
+export const ALARM_HOURS = 12;
+export const raidAlarm = w => perTick(w, 'raidAlarm', () => {
+  const camp = w.nav.get('camp'), reach = ALARM_HOURS * HOUR * 0.8;   // 0.8: woods and detours slow the march
+  return w.agents.some(o => {
+    if (o.faction !== 'raiders' || o.dead) return false;
+    const pace = SPECIES.get(o.species).speed * (o.mods?.speed ?? 1);
+    return camp[clampCell(w, o)] <= pace * reach;
+  });
+});
+const clampCell = (w, o) => Math.min(w.h - 1, Math.max(0, o.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, o.x | 0));

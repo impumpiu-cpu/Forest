@@ -1,11 +1,14 @@
 // Panels around the map: the clock line above it, the selection pane under it and the tabs on its right
 // (stock and jobs, colonists, buildings, council, journal, world). Only the open tab is redrawn.
+import {hpShare} from '../agents/agent.js';
 import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {TRADE} from '../data/trade.js';
 import {CROPS} from '../data/crops.js';
 import {WALKABLE} from '../data/terrain.js';
-import {lotFertility} from '../settlement/buildings.js';
+import {lotFertility, missing} from '../settlement/buildings.js';
+import {sourcesOf} from '../settlement/sources.js';
+import {OUTCOMES} from '../agents/lifecycle.js';
 
 const soilWord = f => (f < 0.3 ? 'тощая' : f < 0.5 ? 'средняя' : f < 0.7 ? 'добрая' : 'жирная');
 import {goodsUnits, goodsLabel, askPrice} from '../settlement/trade.js';
@@ -16,7 +19,8 @@ import {ORES} from '../data/ores.js';
 import {campFuel, furnacePick} from '../settlement/stock.js';
 import {fuelReserve} from '../settlement/buildings.js';
 import {treasury} from '../settlement/precious.js';
-import {region} from '../world/region.js';
+import {region, regionFauna, faunaLevel} from '../world/region.js';
+import {BIOMES, faunaWord} from '../data/biomes.js';
 import {LEVEL_WORDS} from '../data/regions.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
@@ -42,6 +46,14 @@ import {fishTotals} from '../world/lakes.js';
 import {moodOf, moodLabel, wishes} from '../agents/mind.js';
 import {councilWish} from '../settlement/council.js';
 import {boldness} from '../agents/brains/predator.js';
+import {STATS} from '../data/special.js';
+import {VALUES, axisWord} from '../data/values.js';
+import {opinionWord} from '../data/relations.js';
+import {feelings, history} from '../settlement/relations.js';
+import {squadText} from '../agents/squad.js';
+import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
+import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
+import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
 import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
@@ -55,6 +67,15 @@ const DIRS = ['восточный', 'юго-восточный', 'южный', '
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
 const costHtml = (w, cost) => Object.entries(cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? '' : ' short'}">${v} ${RESOURCES.get(r).label}</span>`).join('');
 
+// SPECIAL as seven small cells; the tooltip gives the race's limits
+function specialHtml(a) {
+  if (!a.special) return '';
+  const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
+  return `<div class="spc">${STATS.all().map(s => `<span title="${s.label}: ${s.note}. У этой расы ${lim[s.id][0]}–${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join('')}</div>`;
+}
+
+const raceOf = a => raceLabel(SPECIES.get(a.species), a);
+
 export function traitsText(a) {
   const t = a.traits.map(id => TRAITS.get(id).label);
   return `любит: ${JOBS.get(a.likes).short} · не любит: ${JOBS.get(a.dislikes).short}${t.length ? ' · ' + t.join(', ') : ''}`;
@@ -65,16 +86,18 @@ export class Panel {
     this.sig = {}; this.lastTick = 0; this.lastT = performance.now();
     this.hidden = this.loadFilter();
     this.buildFilters();
-    this.buildLegend();
+    this.buildLegend(null);
   }
 
   // the map legend: creatures and fixed marks, plus every ore from data/ores.js
-  buildLegend() {
+  // rebuilt for each world: the beasts listed are the ones that live in its land
+  buildLegend(w) {
     const dot = (c, t) => `<span><i style="background:${c}"></i>${t}</span>`;
     const ores = ORES.all().map(o => dot(`rgb(${o.tint.join(',')})`, o.label)).join('');
     $('legend').innerHTML = dot('var(--colony)', 'колонисты') + dot('var(--raider)', 'налётчики') +
       FACTIONS.filter(f => f.legend).map(f => dot(f.color, f.legend)).join('') +
-      SPECIES.filter(s => s.look.color && !s.sentient).map(s => dot(s.look.color, s.legend || s.label)).join('') +
+      // only the beasts that live in this land (and those that come everywhere)
+      SPECIES.filter(s => s.look.color && !s.sentient && (!s.habitat || !w || faunaLevel(w, s.id) > 0) && !s.undead).map(s => dot(s.look.color, s.legend || s.label)).join('') +
       dot('var(--food)', 'ягоды') + ores + dot('var(--ember)', 'огонь и костёр') +
       '<span>пунктир — граница зоны поселения</span>' +
       `<span>обводка — броня: ${ITEMS.filter(d => d.slot === 'body' && d.color).map(d => d.short).join(', ')} (своим цветом)</span>`;
@@ -111,6 +134,7 @@ export class Panel {
   set(id, html) { if (this.sig[id] === html) return; this.sig[id] = html; $(id).innerHTML = html; }
 
   render(w, view) {
+    if (this.legendFor !== w) { this.legendFor = w; this.buildLegend(w); }
     $('clock').textContent = clockStr(w.tick);
     const S = season(w), left = Math.ceil(daysLeftInSeason(w.tick));
     $('season').textContent = `${S.label}, ${seasonDay(w.tick)}-й день · год ${yearOf(w.tick)}`;
@@ -233,8 +257,10 @@ export class Panel {
     const ores = ORES.filter(o => !o.event).map(o => `${o.label} — ${word(R.ores[o.id] ?? 0)}`);
     ores.push(`золото в отмелях — ${word(R.placer)}`);
     if (R.goldVein) ores.push('бывает золотая жила');
-    const beasts = Object.entries(R.fauna).filter(([, v]) => v > 0).map(([id, v]) => SPECIES.get(id).label + (v > 1 ? ' (много)' : v < 1 ? ' (мало)' : ''));
-    return `<b>${esc(R.label)}</b>: ${esc(R.note || '')}<br>${ores.join(', ')}<br>звери: ${beasts.join(', ')}${R.magma ? '<br>под скалами магма' : ''}`;
+    // biomes in shares, then everyone who lives here with how common they are (data/biomes.js, world/region.js)
+    const biomes = Object.entries(R.biomes || {}).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
+    const beasts = regionFauna(w).map(([sp, v]) => `${sp.label} (${faunaWord(v)})`);
+    return `<b>${esc(R.label)}</b>: ${esc(R.note || '')}<br>земли: ${biomes.join(', ')}<br>${ores.join(', ')}<br>живут: ${beasts.join(', ')}${R.magma ? '<br>под скалами магма' : ''}`;
   }
 
   // the arrival is either still on its way (time left) or due and waiting for a reason
@@ -260,9 +286,28 @@ export class Panel {
     let goal = '';
     if (c.goal) {
       const d = BUILDINGS.get(c.goal);
-      goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? '' : ' short'}">${RESOURCES.get(r).label} ${Math.min(v, Math.floor(w.stock[r] || 0))}/${v}</span>`).join(' ')}</div>`;
+      // wood is counted with the camp fire's reserve, as the site is laid (settlement/buildings.js)
+      const need = (r, v) => v + (r === 'wood' ? fuelReserve(w) : 0);
+      goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= need(r, v) ? '' : ' short'}">${RESOURCES.get(r).label} ${Math.min(need(r, v), Math.floor(w.stock[r] || 0))}/${need(r, v)}${need(r, v) > v ? ` (из них ${need(r, v) - v} на костёр)` : ''}</span>`).join(' ')}</div>` + this.waitingHtml(w, d);
     }
     this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}`);
+  }
+
+  // why the council's goal is not laid yet: each missing resource, where it comes from and who is at it;
+  // how long the colony has been saving and how much of the shortfall is already made up
+  waitingHtml(w, d) {
+    const c = w.council, lack = missing(w, d.cost);
+    if (!lack.length) return '<p class="pc-small">Всё собрано: стройку заложат на ближайшем совете.</p>';
+    const rows = lack.map(([r, n]) => {
+      const src = sourcesOf(w, r), busy = src.reduce((t, s) => t + s.busy, 0);
+      const how = src.length ? src.map(s => `${s.how}${s.busy ? ` — ${s.busy} чел.` : ''}`).join('; ') : 'взять неоткуда';
+      const note = '';
+      return `<li class="${busy ? '' : 'down'}"><b>${RESOURCES.get(r).label} ${n}</b>${note}: ${how}${src.length && !busy ? '. Сейчас этим никто не занят' : ''}</li>`;
+    }).join('');
+    const days = c.goalSince != null ? Math.floor((w.tick - c.goalSince) / DAY) : 0;
+    const left = lack.reduce((t, [, n]) => t + n, 0), done = c.goalLack ? Math.max(0, Math.round((1 - left / c.goalLack) * 100)) : null;
+    const since = days >= 1 ? `Копят ${days} ${plural(days, 'день', 'дня', 'дней')}${done != null ? `, собрано ${done}% недостающего` : ''}.` : '';
+    return `<h4 class="pc-sub">Чего ждём</h4><ul class="pc-list">${rows}</ul>${since ? `<p class="pc-small">${since}</p>` : ''}`;
   }
 
   // stations at work and the gear store
@@ -300,8 +345,8 @@ export class Panel {
     const col = colonists(w);
     const needs = SPECIES.get('human').needs.map(id => NEEDS.get(id));
     this.set('people', (col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
-      <span class="nm">${esc(a.name)}</span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
-      <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(a.hp, 'var(--good)')}</div></div>`).join('')
+      <span class="nm">${esc(a.name)} <i class="race">${raceOf(a)}</i></span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
+      <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(hpShare(a), 'var(--good)')}</div></div>`).join('')
       || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
   }
 
@@ -417,9 +462,32 @@ export class Panel {
     return `в ${d} ${plural(d, 'клетке', 'клетках', 'клетках')} от лагеря`;
   }
 
+  // why the colonist does what it does: the choice at the last think, the runner-up, the way, the last
+  // task dropped before it was done (agents/brains/colonist.js a.why, a.lastStop; agents/movement.js a.route)
+  whyHtml(w, a) {
+    const y = a.why, rows = [];
+    const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
+    if (y) {
+      rows.push(`<dt>Выбор</dt><dd><b>${esc(y.task)}</b> (${y.score})${y.why ? ` — ${esc(y.why)}` : ''}${y.kept ? '; продолжает начатое' : ''}</dd>`);
+      if (y.alt) rows.push(`<dt>Второе</dt><dd class="alt">${esc(y.alt)} (${y.altScore})${y.altWhy ? ` — ${esc(y.altWhy)}` : ''}</dd>`);
+    }
+    if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
+    if (a.lastStop) rows.push(`<dt>${a.lastStop.outcome === 'interrupted' ? 'Прервал' : 'Бросил'}</dt><dd>«${esc(a.lastStop.task)}» ${ago(a.lastStop.t)}${a.lastStop.outcome && a.lastStop.outcome !== 'interrupted' ? ` (${OUTCOMES[a.lastStop.outcome].label})` : ''}: ${esc(a.lastStop.why)}</dd>`);
+    return rows.length ? `<dl class="kv why">${rows.join('')}</dl>` : '';
+  }
+
   creatureHtml(w, a) {
     const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
-    const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(a.hp / sp.hp * 100)}%</dd>`];
+    const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
+    if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+    const h = huntOf(w, a);
+    if (h) { const prey = w.agents.find(o => o.id === h.prey); rows.push(`<dt>Охота</dt><dd>стаей на ${prey ? (SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label) : '—'}${prey?.name && prey.faction === 'colony' ? ` (${esc(prey.name)})` : ''}: ${ROLE_LABEL[h.roles[a.id]] || 'в погоне'}; ${h.members.length} в стае; ${w.tick - h.seen.t < 5 ? 'добыча на виду' : `из виду ${w.tick - h.seen.t} ${plural(w.tick - h.seen.t, 'тик', 'тика', 'тиков')}`}</dd>`); }
+    if (a.task?.id === 'feed' && a.task.c != null) { const c = carcassById(w, a.task.c); if (c) rows.push(`<dt>Туша</dt><dd>${SPECIES.get(c.species).label}: осталось ${Math.round(c.food / c.food0 * 100)}%</dd>`); }
+    const sq = squadText(w, a);
+    if (sq) rows.push(`<dt>Отряд</dt><dd>${esc(sq)}</dd>`);
+    if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);
+    const inn = innateOf(sp, a);
+    if (inn.length) rows.push(`<dt>Особое</dt><dd>${inn.map(t => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(' ')}</dd>`);
     if (a.role === 'trader' && w.caravan?.traderId === a.id) {
       const c = w.caravan;
       rows.push(`<dt>Караван</dt><dd>${goodsUnits(c.goods)} мест груза, ${Math.floor(c.purse)} зол. в кошельке</dd>`);
@@ -434,8 +502,9 @@ export class Panel {
         `<dt>Дерзость</dt><dd>${b < 0.2 ? 'осторожен' : b < 0.6 ? 'смелеет' : 'безрассуден'}</dd>`);
     }
     if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
+    if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
     rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
-    const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : sp.label;
+    const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : raceOf(a);
     const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${who}` : who[0].toUpperCase() + who.slice(1);
     return `<div class="pc-head"><h3>${title}</h3><button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div><dl class="kv">${rows.join('')}</dl>`;
   }
@@ -446,7 +515,12 @@ export class Panel {
     const fresh = a.diary.filter(e => e.until > w.tick && e.mood !== 0).sort((x, y) => Math.abs(y.mood) - Math.abs(x.mood)).slice(0, 2);
     const moodPct = Math.round((mood + 1) * 50);
     const needs = sp.needs.map(id => { const n = NEEDS.get(id); return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`; }).join('') +
-      `<div class="pc-bar"><span>здоровье</span>${bar(a.hp, 'var(--good)')}<b>${Math.round(a.hp * 100)}</b></div>`;
+      `<div class="pc-bar"><span>здоровье</span>${bar(hpShare(a), 'var(--good)')}<b>${Math.round(hpShare(a) * 100)}</b></div>`;
+    const inn = innateOf(sp, a).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
+    const vals = (a.values || []).map(id => `<span class="chip">${VALUES.get(id).label}</span>`).join('');
+    const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];
+    const feelHtml = strong.length ? `<ul class="pc-list">${strong.map(([b, v]) => `<li class="${v < 0 ? 'down' : 'up'}"${Math.abs(history(a, b)) >= 0.3 ? ` title="личный опыт: ${history(a, b) > 0 ? '+' : ''}${history(a, b).toFixed(1)}"` : ''}>${opinionWord(v)} ${esc(b.name)}${b.species !== a.species ? ` (${raceOf(b)})` : ''}${history(a, b) >= 0.8 ? ' · многое вместе' : history(a, b) <= -0.8 ? ' · старые обиды' : ''}</li>`).join('')}</ul>` : '<p class="muted pc-small">Ни с кем особо не сошёлся и не повздорил.</p>';
+    const body = sp.body ? `${raceOf(a)[0].toUpperCase() + raceOf(a).slice(1)}: взрослеют к ${sp.body.adult}, живут до ${sp.body.life} лет; ${sp.body.diet}.` : '';
     const want = wishes(w, a, councilWish(w, a));
     const slots = SLOTS.map(s => {
       const it = a.equip?.[s.id];
@@ -466,6 +540,7 @@ export class Panel {
     return `<div class="pc-head"><h3>${esc(a.name)}</h3><span class="pc-mood m${mood > 0.15 ? 'up' : mood < -0.15 ? 'down' : 'mid'}">${moodLabel(a, mood)}</span>
         <button type="button" class="pc-close" data-close aria-label="Закрыть">×</button></div>
       <p class="pc-now">Сейчас ${taskLabel(a)}, ${this.where(w, a)}.${fresh.length ? ' На душе: ' + fresh.map(e => esc(e.text.replace(/[.!…]+$/, '')).replace(/^./, ch => ch.toLowerCase())).join('; ') + '.' : ''}</p>
+      ${this.whyHtml(w, a)}
       <div class="pc-grid">
         <section><h4>Характер</h4>
           <p class="pc-small">Любит ${JOBS.get(a.likes).label}, не любит ${JOBS.get(a.dislikes).label}.</p>
@@ -473,6 +548,15 @@ export class Panel {
           <div class="chips">${traits || '<span class="muted pc-small">ничем особым не выделяется</span>'}</div>
           <h4>Настроение</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
           <h4>Самочувствие</h4>${needs}
+        </section>
+        <section><h4>Природа</h4>
+          <p class="pc-small">${body}</p>
+          ${specialHtml(a)}
+          ${inn ? `<div class="chips">${inn}</div>` : ''}
+          <h4>Мировоззрение</h4>
+          ${a.align ? `<p class="pc-small">${axisWord('order', a.align.order)} · ${axisWord('mercy', a.align.mercy)}</p>` : ''}
+          ${vals ? `<div class="chips">${vals}</div>` : ''}
+          <h4>Соседи</h4>${feelHtml}
         </section>
         <section><h4>Хочет</h4>${want.length ? `<ul class="pc-list">${want.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted pc-small">Всем доволен.</p>'}
           <h4>Снаряжение</h4><dl class="kv">${slots}</dl>

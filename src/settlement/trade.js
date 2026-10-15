@@ -18,7 +18,7 @@ import {log} from '../core/log.js';
 import {esc, plural} from '../core/util.js';
 import {colonists, foodTotal} from './query.js';
 import {COUNCIL_TO} from './council.js';
-import {allItems, itemDef, itemPrice, newItem} from '../agents/equipment.js';
+import {allItems, itemDef, itemPrice, newItem, def as itemOf} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {recomputeMods} from './mods.js';
@@ -47,8 +47,8 @@ const round1 = v => Math.round(v * 10) / 10;
 
 // ── goods: {kind: 'res', id, n} or {kind: 'item', type, q}
 export const goodsUnits = goods => goods.reduce((s, g) => s + (g.kind === 'res' ? g.n : 1), 0);
-export const unitPrice = g => (g.kind === 'res' ? RESOURCES.get(g.id).value || 0 : itemPrice(g.type, g.q));
-export const goodsLabel = g => (g.kind === 'res' ? RESOURCES.get(g.id).label : itemDef(g.type, g.q).label.toLowerCase());
+export const unitPrice = g => (g.kind === 'res' ? RESOURCES.get(g.id).value || 0 : itemPrice(g.type, g.q, g.silver));
+export const goodsLabel = g => (g.kind === 'res' ? RESOURCES.get(g.id).label : itemOf(g).label.toLowerCase());
 export const askPrice = g => round1(unitPrice(g) * TRADE.ask);
 export const bidPrice = g => round1(unitPrice(g) * TRADE.bid);
 
@@ -74,7 +74,8 @@ export function makeGoods(rng, units) {
     for (const x of TRADE.WARES) { r -= x.w; if (r <= 0) { line = x; break; } }
     if (line.items) {
       if (!sold.has(line.q || 0)) continue;
-      addGoods(goods, {kind: 'item', type: pick(rng, itemPool(line.items)), q: line.q || 0}); left--;
+      const type = pick(rng, itemPool(line.items));
+      addGoods(goods, {kind: 'item', type, q: line.q || 0, ...(line.silver && !ITEMS.get(type).silver ? {silver: true} : {})}); left--;
     } else {
       const id = line.food ? pick(rng, FOODS.filter(f => !f.dish).map(f => f.id)) : pick(rng, line.resource);
       const n = Math.min(left, between(rng, line.n));
@@ -90,7 +91,7 @@ export const traderOf = (w, c = w.caravan) => (c ? w.agents.find(o => o.id === c
 
 // called by the migration when the group reaches the map edge (data/migrations.js 'caravan')
 export function startCaravan(w, group) {
-  const rng = w.rng, id = w.tick;
+  const rng = w.rngs.outside, id = w.tick;
   const trader = group.find(a => a.role === 'trader'), mules = group.filter(a => a.species === 'mule');
   const cap = TRADE.crates * TRADE.crate;
   let units = 0;
@@ -188,7 +189,7 @@ export function holdTrade(w) {
   // kind of thing has as good or better on them); one of each kind stays as a spare for breakages
   const worn = gearNeeds(w, false), kinds = new Map();
   for (const it of w.armory) {
-    if (itemDef(it.type, it.q).keep) continue;   // epic finds are never sold
+    if (itemDef(it.type, it.q).keep || itemOf(it).silver) continue;   // epic finds and silver blades are never sold
     const [role, score] = roleOf(itemDef(it.type, it.q));
     if (role && worn[role] && score > worn[role][0]) continue;
     const k = it.type + ':' + (it.q || 0); (kinds.get(k) || kinds.set(k, []).get(k)).push(it);
@@ -244,6 +245,23 @@ export function holdTrade(w) {
   }
   c.goods = c.goods.filter(g => g.kind !== 'res' || g.n > 0);
 
+  // 2c. silver blades: once something that fears silver has come, enough for half the colony, cheapest first;
+  //     before that, one spare if it is cheap for the colony
+  {
+    const owned = () => [...colonists(w).flatMap(a => allItems(a)), ...w.armory].filter(it => itemOf(it).silver).length;
+    const foes = w.chronicle.silverFoes || 0, want = foes ? Math.ceil(pop * TRADE.silverShare) : 1;
+    const offer = c.goods.filter(g => g.kind === 'item' && itemOf(g).silver).sort((x, y) => askPrice(x) - askPrice(y));
+    for (const g of offer) {
+      if (owned() >= want) break;
+      const p = askPrice(g);
+      if (p > cash() * (foes ? TRADE.maxShare : TRADE.silverSpare) || !spend(p)) continue;
+      c.goods.splice(c.goods.indexOf(g), 1);
+      w.armory.push(newItem(g.type, {...(g.q ? {q: g.q} : {}), ...(g.silver ? {silver: true} : {})}));
+      w.armoryVersion = (w.armoryVersion || 0) + 1;
+      deal.spent += p; note(deal.bought, goodsLabel(g), 1, p);
+    }
+  }
+
   // 3. buy gear that is a real step up for someone, best gain for the money first; save the rest
   const needs = gearNeeds(w);
   for (;;) {
@@ -259,7 +277,7 @@ export function holdTrade(w) {
     }
     if (!best || !spend(best.p)) break;
     c.goods.splice(c.goods.indexOf(best.g), 1);
-    w.armory.push(newItem(best.g.type, best.g.q ? {q: best.g.q} : {}));
+    w.armory.push(newItem(best.g.type, {...(best.g.q ? {q: best.g.q} : {}), ...(best.g.silver ? {silver: true} : {})}));
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     needs[best.role][0] = best.score; needs[best.role].sort((x, y) => x - y);
     deal.spent += best.p; note(deal.bought, goodsLabel(best.g), 1, best.p);
@@ -297,6 +315,12 @@ export function stepTrade(w) {
   if (c.phase !== 'leaving' && !traderOf(w, c)) {
     c.phase = 'leaving';
     log(w, 'Купец погиб. Охрана уводит караван прочь, торга не будет.', 'trade', 'alert');
+    return;
+  }
+  // still on the road: no way to the camp, or too long on the way — the caravan turns back
+  if (c.phase === 'coming' && c.arrived == null && ((c.noPath || 0) > 60 || w.tick - c.set > TRADE.maxComing * HOUR)) {
+    c.phase = 'leaving';
+    log(w, `Купец <b>${esc(c.name)}</b> не нашёл дороги к лагерю и повернул назад.`, 'trade', 'notice');
     return;
   }
   if (c.phase === 'coming' && c.arrived != null) {

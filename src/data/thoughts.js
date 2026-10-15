@@ -40,11 +40,30 @@ THOUGHTS.registerAll([
 
   // danger
   {id: 'fledFire', mood: -0.25, lasts: DAY, once: 6 * HOUR, text: a => `${g(a, 'Бежал', 'Бежала')} от пожара. Страшно.`},
-  {id: 'wolfAttack', mood: -0.4, lasts: 2 * DAY, once: 4 * HOUR, text: a => `На ${g(a, 'него', 'неё')} напали волки.`},
-  {id: 'escapedWolves', mood: 0.15, lasts: DAY, once: 4 * HOUR, text: a => `${g(a, 'Отбился', 'Отбилась')} от волков. Жив${g(a, '', 'а')}!`},
-  {id: 'killedWolf', mood: 0.25, lasts: DAY, text: a => `${g(a, 'Убил', 'Убила')} волка. Шкура пойдёт в дело.`},
+  {id: 'wolfAttack', mood: -0.4, lasts: 2 * DAY, once: 4 * HOUR, text: (a, c) => `На ${g(a, 'него', 'неё')} напали ${c.who || 'волки'}.`},
+  {id: 'escapedWolves', mood: 0.15, lasts: DAY, once: 4 * HOUR, text: (a, c) => `${g(a, 'Отбился', 'Отбилась')}: ${c.who || 'волки'} отступили. Жив${g(a, '', 'а')}!`},
+  {id: 'killedWolf', mood: 0.25, lasts: DAY, text: (a, c) => `${g(a, 'Убил', 'Убила')} ${c.beast || 'волка'}. Шкура пойдёт в дело.`},
   {id: 'raidAlarm', mood: -0.15, lasts: 12 * HOUR, once: 12 * HOUR, text: a => `Тревога! ${g(a, 'Бросил', 'Бросила')} работу и ${g(a, 'побежал', 'побежала')} к костру.`},
-  {id: 'killedRaider', mood: 0.15, lasts: DAY, text: a => `${g(a, 'Сразил', 'Сразила')} налётчика.`},
+  {id: 'killedRaider', mood: 0.15, lasts: DAY, text: a => `${g(a, 'Сразил', 'Сразила')} врага.`},
+  // neighbours (settlement/relations.js)
+  {id: 'quarrel', mood: -0.2, lasts: 12 * HOUR, text: (a, c) => `${g(a, 'Поругался', 'Поругалась')} с ${c.name}. До сих пор зло берёт.`},
+  {id: 'dislikesNeighbour', mood: -0.1, lasts: DAY, once: DAY, text: (a, c) => `Терпеть не может ${c.name}, а жить приходится бок о бок.`},
+  {id: 'goodCompany', mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `Рад${g(a, '', 'а')}, что рядом ${c.name}: с таким соседом легче.`},
+  // doing things together (settlement/together.js)
+  {id: 'escorted', mood: 0.06, lasts: 6 * HOUR, once: 6 * HOUR, text: (a, c) => `В лесу неспокойно, но ${c.name} ${g(c, 'пошёл', 'пошла')} рядом. Вдвоём не так страшно.`},
+  {id: 'stoodUp', mood: 0.12, lasts: DAY, once: 6 * HOUR, text: (a, c) => `Когда на меня кинулись, ${c.name} ${g(c, 'встал', 'встала')} рядом. Этого не забыть.`},
+  {id: 'aided', mood: 0.15, lasts: DAY, once: 12 * HOUR, text: (a, c) => `${g(a, 'Лежал', 'Лежала')} раненый в лесу, а ${c.name} ${g(c, 'пришёл и перевязал', 'пришла и перевязала')}. Есть на кого положиться.`},
+  {id: 'gaveAid', mood: 0.08, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${g(a, 'Перевязал', 'Перевязала')} ${c.name} прямо в лесу и ${g(a, 'довёл', 'довела')} до своих.`},
+  {id: 'gotBed', mood: 0.08, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${c.name} ${g(c, 'уступил', 'уступила')} мне койку у лекаря. Добрая душа.`},
+  {id: 'yieldedBed', mood: 0.04, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${g(a, 'Уступил', 'Уступила')} койку ${c.name}: тому хуже. Долежу и так.`},
+  {id: 'sharedTrouble', mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `Плечом к плечу с ${c.name} отбивались от налётчиков. Что там было между нами — уже не важно.`},
+  {id: 'sober', mood: -0.12, lasts: 12 * HOUR, once: DAY, text: a => `Без браги ${g(a, 'сам', 'сама')} не ${g(a, 'свой', 'своя')}: руки не слушаются.`},
+  {id: 'beerFed', mood: 0.2, lasts: 12 * HOUR, once: 12 * HOUR, text: a => `Кружка браги — и сыт${g(a, '', 'а')}, и весел${g(a, '', 'а')}. Как дома под горой.`},
+  // the nechist (agents/brains/spirit.js)
+  {id: 'leshyLost', mood: -0.15, lasts: 12 * HOUR, once: 6 * HOUR, text: a => `${g(a, 'Заплутал', 'Заплутала')} в трёх соснах: тропа водила по кругу. Леший шалит.`},
+  {id: 'foundWay', mood: 0.05, lasts: 4 * HOUR, once: 6 * HOUR, text: a => `${g(a, 'Выбрался', 'Выбралась')} к знакомой тропе.`},
+  {id: 'lured', mood: -0.3, lasts: DAY, once: 12 * HOUR, text: a => `Ночью у воды кто-то звал по имени. Ноги сами ${g(a, 'пошли', 'пошли')}…`},
+  {id: 'resistedSong', mood: -0.05, lasts: 12 * HOUR, once: 12 * HOUR, text: a => `Ночью у воды кто-то звал. ${g(a, 'Не поддался', 'Не поддалась')}, но до утра не спалось.`},
   {id: 'grief', mood: -0.35, lasts: 2 * DAY, text: (a, c) => `Скорбит: ${c.name} ${c.f ? 'погибла' : 'погиб'}.`},
 
   // healing
