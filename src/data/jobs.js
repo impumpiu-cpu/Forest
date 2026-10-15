@@ -24,14 +24,14 @@ import {fields, needsWork} from '../settlement/farming.js';
 const HERBS_KEEP = 10;   // the healer picks herbs while the stock is below this
 import {lakeBeside, fishable} from '../world/lakes.js';
 import {oreBeside, oreOf} from '../world/ores.js';
-import {wantedOre} from '../settlement/query.js';
+import {wantedOre, raidAlarm} from '../settlement/query.js';
 import {chores, tameTargets, herd} from '../settlement/herd.js';
 import {maybeGoldVein, foundMithril} from '../settlement/precious.js';
 import {reachableCorpses, freeCorpse} from '../settlement/life.js';
 import {hpShare} from '../agents/agent.js';
 
 export const JOBS = new Registry('job');
-useJobs(JOBS);   // navmaps.js needs to know which flow field each job walks
+useJobs(JOBS, (w, job) => huntable(w, job));   // navmaps.js needs each job's flow field, and what hunters are after
 
 // how much the colony wants more of a resource: fills up when the stock is low
 const want = (stock, pop, low, enough) => (stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04);
@@ -182,7 +182,7 @@ JOBS.registerAll([
     runner: 'bury', time: 120,
     // only one bearer per body: the others would take the job, find nothing free and drop it at once
     canDo: (w, a) => hpShare(a) > 0.5 && !!freeCorpse(w, a),
-    desire: w => (reachableCorpses(w).length && !w.agents.some(o => o.faction === 'raiders' && !o.dead) ? 0.7 : -1)},
+    desire: w => (reachableCorpses(w).length && !raidAlarm(w) ? 0.7 : -1)},
 
   {id: 'build', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,
     runner: 'build', nav: 'sites',
@@ -197,6 +197,7 @@ for (const p of PLANTS.filter(x => x.job)) {
   const keep = w => (typeof J.keep === 'function' ? J.keep(w) : J.keep);
   JOBS.register({id: J.id, label: J.label, short: J.short, verb: J.verb, preferable: true,
     runner: 'harvest', nav: key, resource: p.resource, carry: J.carry, time: J.time,
+    also: Object.keys(p.also || {}), bed: p.id,   // what else a picking brings, and the wild bed it needs (settlement/sources.js)
     // only with the right tool (a gold pan); never on a map without such beds
     canDo: J.tool ? (w, a) => !!a.gear?.tool[J.id] : undefined,
     // (hay for the herd's winter, keep(w), is wanted more keenly: the season to mow is short)

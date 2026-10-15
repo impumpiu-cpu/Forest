@@ -1,7 +1,9 @@
 // Point-to-point paths around water and rocks (A* on the grid, 8 directions, no corner cutting).
 // Flow fields cover shared targets (camp, berries, prey…); this covers one agent chasing one
 // moving target or walking to a spot of its own. Buffers are allocated once per world and reused.
-import {BY_CODE, WALKABLE} from '../data/terrain.js';
+import {BY_CODE, WALKABLE, T} from '../data/terrain.js';
+
+const ROCK = T.ROCK;
 import {DX, DY} from '../world/grid.js';
 
 const SQRT2 = Math.SQRT2;
@@ -13,15 +15,35 @@ function buffers(w) {
     heapI: new Int32Array(n * 8), heapF: new Float32Array(n * 8), stamp: 0});
 }
 
-// line of sight between two points over walkable cells only (the straight walk is safe)
-export function clearLine(w, x0, y0, x1, y1) {
-  const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 4);
-  for (let s = 1; s <= steps; s++) {
-    const x = x0 + (x1 - x0) * s / steps, y = y0 + (y1 - y0) * s / steps;
-    if (x < 0 || y < 0 || x >= w.w || y >= w.h || !WALKABLE[w.grid.terr[(y | 0) * w.w + (x | 0)]]) return false;
+// Every cell a straight segment crosses, in order (a grid walk, not point samples: a line through the
+// exact corner of two cells reports both side cells, so it cannot slip between two touching rocks).
+// visit(i) returning false stops the walk; the result is whether the walk got to the end.
+export function walkLine(w, x0, y0, x1, y1, visit) {
+  let cx = Math.floor(x0), cy = Math.floor(y0);
+  const ex = Math.floor(x1), ey = Math.floor(y1), dx = x1 - x0, dy = y1 - y0;
+  const inside = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
+  if (!inside(cx, cy) || !visit(cy * w.w + cx)) return false;
+  const sx = Math.sign(dx), sy = Math.sign(dy);
+  const tdx = dx ? Math.abs(1 / dx) : Infinity, tdy = dy ? Math.abs(1 / dy) : Infinity;
+  let tx = dx ? ((sx > 0 ? cx + 1 - x0 : x0 - cx) * tdx) : Infinity;
+  let ty = dy ? ((sy > 0 ? cy + 1 - y0 : y0 - cy) * tdy) : Infinity;
+  for (let guard = 0; (cx !== ex || cy !== ey) && guard < 4 * (w.w + w.h); guard++) {
+    if (Math.abs(tx - ty) < 1e-9) {
+      // through a corner: both side cells count, then the diagonal one
+      if (!inside(cx + sx, cy) || !visit(cy * w.w + cx + sx)) return false;
+      if (!inside(cx, cy + sy) || !visit((cy + sy) * w.w + cx)) return false;
+      cx += sx; cy += sy; tx += tdx; ty += tdy;
+    } else if (tx < ty) { cx += sx; tx += tdx; } else { cy += sy; ty += tdy; }
+    if (!inside(cx, cy) || !visit(cy * w.w + cx)) return false;
   }
   return true;
 }
+
+// line of sight between two points over walkable cells only (the straight walk is safe)
+export const clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i => WALKABLE[w.grid.terr[i]] === 1);
+
+// a shot's line: only rock stops an arrow or a stone (water, grass and wood do not)
+export const lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i => w.grid.terr[i] !== ROCK);
 
 // cells from start to goal (excluding start), or null when the goal cannot be reached within `budget` expansions
 export function findPath(w, sx, sy, gx, gy, budget = 6000) {

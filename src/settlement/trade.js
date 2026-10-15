@@ -317,6 +317,12 @@ export function stepTrade(w) {
     log(w, 'Купец погиб. Охрана уводит караван прочь, торга не будет.', 'trade', 'alert');
     return;
   }
+  // still on the road: no way to the camp, or too long on the way — the caravan turns back
+  if (c.phase === 'coming' && c.arrived == null && ((c.noPath || 0) > 60 || w.tick - c.set > TRADE.maxComing * HOUR)) {
+    c.phase = 'leaving';
+    log(w, `Купец <b>${esc(c.name)}</b> не нашёл дороги к лагерю и повернул назад.`, 'trade', 'notice');
+    return;
+  }
   if (c.phase === 'coming' && c.arrived != null) {
     c.phase = 'camp';
     const n = on.filter(a => a.species === 'mule').length;

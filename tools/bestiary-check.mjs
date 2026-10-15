@@ -26,6 +26,7 @@ let failed = false;
 for (const sp of SPECIES.filter(s => s.arrive)) {
   const w = loadWorld(JSON.parse(save));
   w.region.extra = {...w.region.extra, [sp.id]: 1};   // let it live here whatever the land
+  w.agents = w.agents.filter(o => o.species !== sp.id);   // those that came on their own would fill its cap
   const pop0 = colonists(w).length;
   const group = arrive(w, sp.id, sp.arrive.group ? sp.arrive.group[1] : 1);
   if (!group.length) { console.log(`FAIL ${sp.id}: не пришёл`); failed = true; continue; }

@@ -6,21 +6,34 @@ import {kill, maxHp} from './agent.js';
 import {wear, def} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
+import {lineOfFire} from '../nav/astar.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
+
+// Can `a` see `t` right now? The nechist is seen only up close (`veil` cells: a leshy among the trees)
+// or not at all while it hides (`hiddenUntil`: a rusalka under the water) — unless it is attacking.
+// Finding a foe, keeping after one and striking one all go by this.
+export function canSee(w, a, t) {
+  if (t.hiddenUntil > w.tick) return false;
+  if (t.veil == null || aggressor(a, t)) return true;
+  return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
+}
 
 export function nearestHostile(w, a, r) {
   let best = null, bd = r * r;
   for (const o of w.agents) {
     if (o === a || o.dead || !(isHostile(a, o) || aggressor(a, o))) continue;
     const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
-    // the nechist is seen only up close (a leshy among the trees), or not at all (a rusalka under water)
-    if (o.veil != null && d > o.veil * o.veil && !aggressor(a, o)) continue;
-    if (d < bd) { bd = d; best = o; }
+    if (d >= bd || !canSee(w, a, o)) continue;
+    bd = d; best = o;
   }
   return best;
 }
+
+// how far a blow reaches: the species' own `attack.reach` (a toad's tongue), otherwise arm's length
+export const MELEE_REACH = 1.25;
+export const reachOf = a => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
 
 const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack || {power: 1}).power, cd: (SPECIES.get(a.species).attack || {cooldown: 12}).cooldown}, armor: 0, block: 0};
 
@@ -70,19 +83,23 @@ function scorch(w, t) {
   w.nav.dirty('fire');
 }
 
+// one melee blow; nothing happens (false) unless the target is alive, seen and within reach
 export function attack(w, a, t) {
-  if (a.cd > 0) return;
+  if (a.cd > 0 || !t || t.dead || a.dead) return false;
+  if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(4, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
   damage(w, a, t, (0.1 + w.rng() * 0.12) * g.melee.dmg * (a.mods?.str ?? 1) * silverFactor(t, g.melee.item));
   if (g.melee.item) wear(w, a, g.melee.item);
+  return true;
 }
 
 // one shot at a target within range; returns 'kill' | 'hit' | 'miss' | null (cannot shoot)
 export function shoot(w, a, t, skillJob = 'hunt') {
   const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0) return null;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
-  if (d > range) return null;
+  // out of range, unseen, or a rock in the way: no shot
+  if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
   a.cd = r.cd;
   if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
   wear(w, a, r.item);

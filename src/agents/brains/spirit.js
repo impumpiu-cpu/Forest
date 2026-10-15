@@ -103,7 +103,8 @@ function lure(w, a, sp, S) {
     const vs = best.special, ss = a.special;
     if (vs && ss && w.rng() < contest(vs.P + vs.I, ss.C * 2)) {
       think(w, best, 'resistedSong');
-      log(w, `Ночью у воды пели, но <b>${esc(best.name)}</b> ${g(best, 'не поддался', 'не поддалась')} и ${g(best, 'ушёл', 'ушла')} к костру.`, 'wildlife', 'notice');
+      best.task = {id: 'runHome'};   // what the journal says is what happens: back to the settlement
+      log(w, `Ночью у воды пели, но <b>${esc(best.name)}</b> ${g(best, 'не поддался', 'не поддалась')} и ${g(best, 'ушёл', 'ушла')} к своим.`, 'wildlife', 'notice');
       return false;
     }
     best.task = {id: 'lured', by: a.id, until: w.tick + 2 * HOUR, spell: 1.5};

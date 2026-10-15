@@ -1,5 +1,6 @@
 // Generic routines that carry out JOBS. A job picks one with its `runner` field,
 // so a new job usually needs only a data entry.
+import {FOODS} from '../data/foods.js';
 import {brewFactor} from '../settlement/life.js';
 import {JOBS, huntable} from '../data/jobs.js';
 import {SPECIES} from '../data/species.js';
@@ -35,26 +36,52 @@ const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobI
 
 const done = (a) => { a.task = null; a.think = 0; };
 
-// what an agent carries: {res: {resource: units}, n: total}
+// What an agent carries: {res: {resource: units}, n: total}; n is always the sum of res.
+// The load belongs to the agent, not to the task: a colonist who drops a job (to fight, to sleep) keeps
+// what is in the hands and leaves it at the stores next time at the camp (agents/brains/colonist.js).
 export function load(a, res, n) {
   if (!a.carry) a.carry = {res: {}, n: 0};
   a.carry.res[res] = (a.carry.res[res] || 0) + n; a.carry.n += n;
 }
+// take n units of one resource out of the load
+export function unload(a, res, n) {
+  if (!a.carry?.res[res]) return 0;
+  const k = Math.min(n, a.carry.res[res]);
+  a.carry.res[res] -= k; a.carry.n -= k;
+  if (a.carry.res[res] <= 0) delete a.carry.res[res];
+  if (a.carry.n <= 0) a.carry = null;
+  return k;
+}
+// food units in the load (berries from the bushes, game from a hunt)
+export const carriedFood = a => Object.entries(a.carry?.res || {}).reduce((s, [r, n]) => s + (FOODS.has(r) ? n : 0), 0);
+// eat what food is in the hands, the most filling first; whatever is not food stays in the load
+export function eatCarried(a) {
+  let fed = 0;
+  for (const r of Object.keys(a.carry?.res || {}).filter(r => FOODS.has(r)).sort((x, y) => FOODS.get(y).nutrition - FOODS.get(x).nutrition)) {
+    while (a.needs.food + fed < 0.95 && unload(a, r, 1)) fed += 0.4 * FOODS.get(r).nutrition;
+  }
+  a.needs.food = Math.min(1, a.needs.food + fed);
+  return fed;
+}
+// leave the whole load at the stores (the caller is at the camp)
+export function dropLoad(w, a) {
+  for (const [res, n] of Object.entries(a.carry?.res || {})) deposit(w, res, n);
+  a.carry = null;
+}
 
 // carry what you hold back to the camp stock
 function haulHome(w, a) {
+  if (a.task) a.task.hauling = true;   // the delivery itself: only something urgent breaks it off
   if (follow(w, a, 'camp') !== 'arrived') return;
-  for (const [res, n] of Object.entries(a.carry.res)) deposit(w, res, n);
-  a.carry = null; done(a);
+  dropLoad(w, a); done(a);
 }
 
 export const RUNNERS = {
   harvest(w, a, task) {
     const job = JOBS.get(task.job), cap = job.carry + (a.gear?.carry || 0);
-    if (a.carry && (a.carry.n >= cap || (task.eatNow && a.carry.n >= 1))) {
-      if (task.eatNow) { a.needs.food = Math.min(1, a.needs.food + 0.4 * a.carry.n); a.carry = null; done(a); return; }
-      haulHome(w, a); return;
-    }
+    // gathering to eat on the spot (the stores are empty): eat the first food picked, nothing else
+    if (task.eatNow) { if (carriedFood(a) >= 1) { eatCarried(a); done(a); return; } }
+    else if (a.carry && (a.carry.n >= cap || task.full)) { haulHome(w, a); return; }
     const r = follow(w, a, job.nav), i = cellOf(w, a);
     if (r === 'arrived') {
       if (!job.valid(w, i)) { w.nav.dirty(job.nav); task.work = 0; return; }
@@ -67,7 +94,7 @@ export const RUNNERS = {
       toolWear(w, a, job.id);
     } else if (r === 'none') {
       if (w.nav.dirtySet.has(job.nav)) return;   // the map is being rebuilt for this job: wait a tick
-      if (a.carry?.n) a.carry.n = cap; else { a.task = {id: 'idle'}; a.think = 20; }
+      if (a.carry?.n) task.full = true; else { a.task = {id: 'idle'}; a.think = 20; }   // nothing left to gather: bring home what there is
     }
     if (job.memory && r === 'moving' && !a.carry) { const d = w.nav.get(job.nav)[i]; if (d > 25) a.mem[job.memory] += 0.003; }
   },
@@ -121,7 +148,7 @@ export const RUNNERS = {
   // the healer: tend whoever lies in the healer's hut; with nobody to tend, pick herbs (as harvest)
   heal(w, a, task) {
     if (waiting(w)) {
-      if (a.carry?.n) { for (const [res, n] of Object.entries(a.carry.res)) deposit(w, res, n); a.carry = null; }
+      if (a.carry?.n) dropLoad(w, a);
       const r = follow(w, a, 'healer');
       if (r === 'arrived' || healerHutCell(w, a)) {
         const given = tend(w, a, workRate(w, a, 'heal') * workBonus(w.buildings.find(x => x.done && x.key === 'healerhut')));

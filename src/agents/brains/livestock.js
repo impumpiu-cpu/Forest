@@ -4,7 +4,7 @@
 import {SPECIES} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
-import {approach, escapeHeat, nearFire, bolt, follow, recover, moveToward} from '../movement.js';
+import {approach, escapeHeat, nearFire, bolt, follow, recover, moveToward, shunsHeat} from '../movement.js';
 import {kill, maxHp} from '../agent.js';
 import {damage} from '../combat.js';
 import {pens} from '../../settlement/herd.js';
@@ -31,10 +31,11 @@ export const livestockBrain = {
   step(w, a) {
     const sp = SPECIES.get(a.species), i = cellOf(w, a), T = w.grid.temp[i];
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
-    if (T > 45 || nearFire(w, a, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
+    if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
     if (a.cd > 0) a.cd--;
-    // a wolf right here: a mule turns and kicks, a goat runs
-    const wolf = w.agents.find(o => o.species === 'wolf' && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 3);
+    // a beast of prey or a raider right here (any of the bestiary's hunters, not only wolves):
+    // a mule turns and kicks, a goat runs
+    const wolf = w.agents.find(o => !o.dead && (o.brain === 'predator' || o.faction === 'raiders') && Math.hypot(o.x - a.x, o.y - a.y) < 3);
     if (wolf) {
       if (sp.mule && Math.hypot(wolf.x - a.x, wolf.y - a.y) < sp.mule.kickRange && a.cd <= 0) {
         a.cd = sp.attack.cooldown; a.flash = 4; damage(w, a, wolf, (0.1 + w.rng() * 0.12) * sp.attack.power);

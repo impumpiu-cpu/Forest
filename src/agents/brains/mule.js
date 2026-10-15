@@ -10,7 +10,7 @@ import {SPECIES} from '../../data/species.js';
 import {TERRAIN} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds} from '../../world/grid.js';
-import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover} from '../movement.js';
+import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, shunsHeat} from '../movement.js';
 import {damage} from '../combat.js';
 import {kill, maxHp} from '../agent.js';
 import {season} from '../../data/seasons.js';
@@ -66,7 +66,7 @@ export const muleBrain = {
     const sp = SPECIES.get(a.species), M = sp.mule, i = cellOf(w, a), T = w.grid.temp[i];
     if (a.cd > 0) a.cd--;
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
-    if (T > 45 || nearFire(w, a, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
+    if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
 
     const foe = foeOf(w, a, M);
     if (foe) {

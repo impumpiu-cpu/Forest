@@ -8,7 +8,7 @@
 import {SPECIES, matchesKind} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable} from '../../world/grid.js';
-import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, ascend} from '../movement.js';
+import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, ascend, shunsHeat} from '../movement.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {attack} from '../combat.js';
 import {SPECIES as SP} from '../../data/species.js';
@@ -18,6 +18,8 @@ import {log} from '../../core/log.js';
 import {think} from '../mind.js';
 import {esc, clamp} from '../../core/util.js';
 
+// how far a hungry predator smells its prey (cells)
+const SCENT = 70;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 function nearest(w, a, species, r, filter = () => true) {
@@ -57,7 +59,7 @@ export const predatorBrain = {
     stepBody(w, a);
     if (a.dead) return;
     if (a.cd > 0) a.cd--;
-    if (T > 45 || nearFire(w, a, 2.5)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.4); return; }
+    if (shunsHeat(w, a, sp, T, 2.5)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.4); return; }
 
     const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
     const dZone = w.nav.get('zone')[i];
@@ -128,8 +130,12 @@ export const predatorBrain = {
       // cannot get at the victim (water in between): give up for now
       if (!t.anchor || dist(a, t.anchor) > 3 || dist(a, v) < 1.5) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
       if (w.tick - t.since > 120) { a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; return; }
-      if (dist(a, v) > 0.9 && approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) { a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; return; }
-      else {
+      // too far to bite: close in and nothing more this tick
+      if (dist(a, v) > 0.9) {
+        if (approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) { a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; }
+        return;
+      }
+      {
         attack(w, a, v);
         if (v.dead) { const eaters = pack.filter(m => dist(m, a) < 10); for (const m of eaters) m.task = {id: 'feed', left: P.feedTicks * 2, gain: P.bigMeal / eaters.length / (P.feedTicks * 2)}; }
       }
@@ -168,11 +174,20 @@ export const predatorBrain = {
       if (dist(a, leader) > 2.5) approach(w, a, leader.x + (a.id % 3 - 1), leader.y + ((a.id >> 1) % 3 - 1), 0.95);
       return;
     }
-    // hungry: follow the scent along the prey flow field, which leads around lakes and rocks
-    if (food < P.hungry && w.agents.some(o => P.prey.includes(o.species) && !o.tame)) {
-      if (follow(w, a, 'prey', 0.85) === 'moving') return;
-    }
+    // hungry: follow the scent of the nearest animal it actually hunts (A* around lakes and rocks);
+    // the trail is picked again now and then, and one that leads nowhere is dropped for a while
     const r = a.task;
+    if (food < P.hungry) {
+      let s = r.scent != null ? w.agents.find(o => o.id === r.scent && !o.dead && !o.tame) : null;
+      if (!s || w.tick - (r.scentAt || 0) > 120) {
+        s = nearest(w, a, P.prey, SCENT, o => !agentInZone(w, o) && !(a.ignore?.get(o.id) > w.tick));
+        r.scent = s?.id ?? null; r.scentAt = w.tick;
+      }
+      if (s) {
+        if (approach(w, a, s.x, s.y, 0.85) !== null) return;
+        (a.ignore || (a.ignore = new Map())).set(s.id, w.tick + 600); r.scent = null;
+      }
+    }
     // pick a new spot when there or when stuck (no progress for a while, e.g. a lake in the way)
     const d = r.spot ? dist(a, {x: r.spot[0], y: r.spot[1]}) : 0;
     if (r.spot && d < r.bestD - 0.5) { r.bestD = d; r.since = w.tick; }

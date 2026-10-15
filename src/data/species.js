@@ -145,5 +145,11 @@ SPECIES.registerAll(MONSTERS);
 SPECIES.registerAll(BESTIARY);
 
 
+// Heat: `heatHarm` is where it starts to hurt; `fearHeat` is where the animal runs (45 °C by default,
+// a bit before it hurts). A creature that fears no fire (`fearHeat` above 100: a salamander, a drake)
+// does not run from flames either.
+export const fearHeat = sp => sp.fearHeat ?? Math.min(45, sp.heatHarm - 10);
+export const fearsFire = sp => fearHeat(sp) <= 100;
+
 // does a species belong to a list of kinds? 'people' stands for every thinking race (data/races.js)
 export const matchesKind = (id, list) => list.includes(id) || (list.includes('people') && !!SPECIES.get(id).rel);

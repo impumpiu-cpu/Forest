@@ -16,7 +16,7 @@ import {DAY, HOUR} from '../core/time.js';
 import {season, SEASON_DAYS, daysLeftInSeason} from '../data/seasons.js';
 import {log} from '../core/log.js';
 import {esc, perTick} from '../core/util.js';
-import {colonists, foodTotal} from './query.js';
+import {colonists, foodTotal, buildingById} from './query.js';
 import {createAgent} from '../agents/agent.js';
 import {recomputeMods} from './mods.js';
 import {think} from '../agents/mind.js';
@@ -132,7 +132,7 @@ export function stepHerd(w) {
     a.age = (a.age || 0) + 1;
     // grass in the pen covers part of the day's food (half of it for an animal not in a pen), hay the rest;
     // short of food it grows thin, and a few days with less than `starveBelow` of it make it break out
-    const eats = T.eats * (a.age < (T.grownDays || 0) ? 0.5 : 1), graze = a.pen != null ? grass : grass * 0.5;
+    const eats = T.eats * (a.age < (T.grownDays || 0) ? 0.5 : 1), graze = a.pen != null && buildingById(w, a.pen)?.done ? grass : grass * 0.5;   // a standing pen, not a burnt one
     const got = Math.min(eats * (1 - graze), w.stock.hay || 0);
     w.stock.hay = (w.stock.hay || 0) - got;
     const share = graze + got / eats;

@@ -121,6 +121,7 @@ export const BESTIARY = [
   // Drake: a young dragon with no mind yet; its breath sets the grass on fire
   beast({id: 'drake', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', hp: 4.5, speed: 0.14, needs: ['food'], brain: 'predator', heatHarm: 400,
     arrive: {group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: 'с вулкана прилетел дрейк. Где он дышит, загорается трава'},
+    fearHeat: 350,
     habitat: {volcano: 'usual', highlands: 'rare'},
     special: around({S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5}, 2),
     look: {shape: 'bird', size: 0.95, color: '#a3432e'}, attack: {power: 2.6, cooldown: 15}, breath: 0.25,
@@ -161,6 +162,7 @@ export const BESTIARY = [
   // Salamander: lives in the heat; fire does not hurt it. Shy, worth its gland
   beast({id: 'salamander', label: 'саламандра', labelAcc: 'саламандру', plural: 'саламандры', hp: 0.5, speed: 0.12, brain: 'grazer', game: true, heatHarm: 500,
     arrive: {group: [1, 2], every: [2, 4], chance: 0.5, cap: 3, first: 2},
+    fearHeat: 450,
     habitat: {volcano: 'usual', underground: 'rare'},
     special: around({S: 4, P: 7, E: 8, C: 1, I: 2, A: 8, L: 5}),
     look: {shape: 'lizard', size: 0.45, color: '#d0632a'},

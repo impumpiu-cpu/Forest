@@ -7,6 +7,7 @@ import {stepPlants} from './world/plants.js';
 import {stepFarms} from './settlement/farming.js';
 import {stepHerd} from './settlement/herd.js';
 import {stepLife} from './settlement/life.js';
+import {stepEffects} from './agents/body.js';
 import {stepRelations} from './settlement/relations.js';
 import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
@@ -60,7 +61,11 @@ export function step(w) {
   const t1 = performance.now();
   w.nav.step();
   const t2 = performance.now();
-  for (const a of w.agents) { if (!a.dead) BRAINS.get(a.brain).step(w, a); if (a.flash) a.flash--; }
+  for (const a of w.agents) {
+    if (!a.dead) stepEffects(w, a);
+    if (!a.dead) BRAINS.get(a.brain).step(w, a);
+    if (a.flash) a.flash--;
+  }
   w.agents = w.agents.filter(a => !a.dead && !a.gone);
   separate(w);
   if (w.fx.length) { for (const f of w.fx) f.t--; w.fx = w.fx.filter(f => f.t > 0); }   // shot traces fade

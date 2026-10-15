@@ -8,15 +8,15 @@ import {FOODS} from '../data/foods.js';
 import {ambientTemp} from '../core/time.js';
 import {cellOf} from '../world/grid.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
-import {attack, shoot} from './combat.js';
-import {RUNNERS} from './jobRunners.js';
+import {attack, shoot, canSee, reachOf} from './combat.js';
+import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
 import {eatMeal, plunder} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
 import {tradeOpen, attendTrade} from '../settlement/trade.js';
 import {HEAL} from '../settlement/healing.js';
-import {has, colonists} from '../settlement/query.js';
+import {has, colonists, raidAlarm} from '../settlement/query.js';
 import {homeComfort, prayed} from '../settlement/life.js';
 
 export const TASKS = new Registry('task');
@@ -44,7 +44,9 @@ TASKS.registerAll([
       else if (a.needs.food < 0.35) think(w, a, 'ateHungry', {food: f.label});
       a.needs.food = Math.min(1, a.needs.food + fed); done(a);
     }
-    else a.task = {id: 'job', job: 'gather', eatNow: true};   // empty stock: eat straight from the bushes
+    // empty stock: eat what food is in the hands, otherwise straight from the bushes
+    else if (carriedFood(a) >= 1) { eatCarried(a); done(a); }
+    else a.task = {id: 'job', job: 'gather', eatNow: true};
   }},
 
   {id: 'sleep', label: () => 'спит', step(w, a, task) {
@@ -87,16 +89,24 @@ TASKS.registerAll([
   {id: 'fight', label: t => (t.shooting ? 'стреляет' : 'дерётся'), step(w, a, task) {
     const t = task.target;
     if (!t || t.dead || !w.agents.includes(t)) { done(a); return; }
+    // the foe slipped out of sight (dived, melted into the thicket): go to where it was seen last,
+    // look about for a little, then give up
+    if (!canSee(w, a, t)) {
+      task.lost ??= {x: t.x, y: t.y, until: w.tick + 60};
+      if (w.tick > task.lost.until || approach(w, a, task.lost.x, task.lost.y, 0.9) !== false) done(a);
+      return;
+    }
+    task.lost = null;
     const d = Math.hypot(t.x - a.x, t.y - a.y), g = a.gear;
     if (g?.rangedReady && d > 1.4) {
       const range = g.ranged.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
       task.shooting = true;
-      if (d > range * 0.9) { if (approach(w, a, t.x, t.y, 1.0) === null) done(a); }
-      else shoot(w, a, t, 'hunt');
+      // close in when too far, or when a rock blocks the shot
+      if (d > range * 0.9 || (shoot(w, a, t, 'hunt') === null && a.cd <= 0)) { if (approach(w, a, t.x, t.y, 1.0) === null) done(a); }
       return;
     }
     task.shooting = false;
-    if (d > 0.9) { if (approach(w, a, t.x, t.y, 1.1) === null) done(a); }   // unreachable: pick something else
+    if (d > Math.min(0.9, reachOf(a))) { if (approach(w, a, t.x, t.y, 1.1) === null) done(a); }   // unreachable: pick something else
     else attack(w, a, t);
   }},
 
@@ -151,7 +161,7 @@ TASKS.registerAll([
 
   // gather by the fire when raiders come; done as soon as the alarm is over
   {id: 'muster', label: () => 'собирается по тревоге', step(w, a, task) {
-    if (!w.agents.some(o => o.faction === 'raiders' && !o.dead)) { done(a); return; }
+    if (!raidAlarm(w)) { done(a); return; }
     think(w, a, 'raidAlarm');
     if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
   }},

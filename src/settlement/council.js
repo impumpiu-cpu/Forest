@@ -7,19 +7,9 @@ import {dayOf, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {colonists, count, has, popCap, openSites, ofSpecies} from './query.js';
 import {canAfford, eligible as buildable, laySite, missing} from './buildings.js';
-import {JOBS} from '../data/jobs.js';
-import {RECIPES} from '../data/recipes.js';
-import {jobUnlocked} from './query.js';
+import {obtainable} from './sources.js';
+import {hpShare} from '../agents/agent.js';
 
-// can the colony come by this resource at all right now: some work brings it in, or a workshop it has
-// already built makes it. A goal whose price holds something out of reach (rope before the craft hut,
-// iron before the forge) would stall the council for days, so such a building is not a candidate yet.
-function obtainable(w, res) {
-  if (JOBS.all().some(j => j.resource === res && jobUnlocked(w, j))) return true;
-  return RECIPES.all().some(r => r.makes?.resource === res && has(w, r.at) && (r.needs || []).every(b => has(w, b)));
-}
-// a building the council may pick: allowed, and everything its price still lacks can be come by
-export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.get(key).cost).every(([r]) => obtainable(w, r));
 import {handItems, allItems, def} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 import {oreSeen} from '../world/ores.js';
@@ -28,6 +18,10 @@ import {moodOf} from '../agents/mind.js';
 import {penRoom, herd} from './herd.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
+
+// a building the council may pick: allowed, and everything its price still lacks can be come by
+export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.get(key).cost).every(([r]) => obtainable(w, r));
+
 
 export function councilDue(w) {
   const h = hourOf(w.tick);
@@ -62,7 +56,9 @@ function councilCtx(w, cands) {
     stock: r => w.stock[r] || 0,
     season: season(w).id,
     rats: w.agents.filter(o => o.species === 'rat').length,
-    wounded: colonists(w).filter(a => a.hp < 0.7).length / Math.max(1, colonists(w).length),
+    hurt: a => hpShare(a),   // a colonist's health as a share of their own full health
+    // wounded by each one's own measure: a giant's 1.0 is not a human's 1.0
+    wounded: colonists(w).filter(a => hpShare(a) < 0.7).length / Math.max(1, colonists(w).length),
     oreSeen: oreSeen(w),
     wildHerd: w.agents.filter(o => o.faction === 'wild' && (o.species === 'goat' || o.species === 'mule') && o.owner == null).length,
     herdFull: herd(w).length > 0 && penRoom(w) < 1,

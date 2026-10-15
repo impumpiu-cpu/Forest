@@ -1699,6 +1699,7 @@ dd.q4{color:#c58cff;font-weight:600}
       brain: "predator",
       heatHarm: 400,
       arrive: { group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: "\u0441 \u0432\u0443\u043B\u043A\u0430\u043D\u0430 \u043F\u0440\u0438\u043B\u0435\u0442\u0435\u043B \u0434\u0440\u0435\u0439\u043A. \u0413\u0434\u0435 \u043E\u043D \u0434\u044B\u0448\u0438\u0442, \u0437\u0430\u0433\u043E\u0440\u0430\u0435\u0442\u0441\u044F \u0442\u0440\u0430\u0432\u0430" },
+      fearHeat: 350,
       habitat: { volcano: "usual", highlands: "rare" },
       special: around({ S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5 }, 2),
       look: { shape: "bird", size: 0.95, color: "#a3432e" },
@@ -1780,6 +1781,7 @@ dd.q4{color:#c58cff;font-weight:600}
       game: true,
       heatHarm: 500,
       arrive: { group: [1, 2], every: [2, 4], chance: 0.5, cap: 3, first: 2 },
+      fearHeat: 450,
       habitat: { volcano: "usual", underground: "rare" },
       special: around({ S: 4, P: 7, E: 8, C: 1, I: 2, A: 8, L: 5 }),
       look: { shape: "lizard", size: 0.45, color: "#d0632a" },
@@ -2124,6 +2126,8 @@ dd.q4{color:#c58cff;font-weight:600}
   SPECIES.registerAll(RACES);
   SPECIES.registerAll(MONSTERS);
   SPECIES.registerAll(BESTIARY);
+  var fearHeat = (sp) => sp.fearHeat ?? Math.min(45, sp.heatHarm - 10);
+  var fearsFire = (sp) => fearHeat(sp) <= 100;
   var matchesKind = (id, list) => list.includes(id) || list.includes("people") && !!SPECIES.get(id).rel;
 
   // src/data/plants.js
@@ -2293,6 +2297,12 @@ dd.q4{color:#c58cff;font-weight:600}
   var cellOf = (w, a) => clamp(a.y | 0, 0, w.h - 1) * w.w + clamp(a.x | 0, 0, w.w - 1);
   var isCampArea = (w, i) => Math.abs(i % w.w - w.camp.x) <= 3 && Math.abs((i / w.w | 0) - w.camp.y) <= 3;
   var distToCamp2 = (w, i) => (i % w.w - w.camp.x) ** 2 + ((i / w.w | 0) - w.camp.y) ** 2;
+  function canStep(w, i, j) {
+    if (!WALKABLE[w.grid.terr[j]]) return false;
+    const xi = i % w.w, yi = i / w.w | 0, xj = j % w.w, yj = j / w.w | 0;
+    if (xi === xj || yi === yj) return true;
+    return WALKABLE[w.grid.terr[yi * w.w + xj]] === 1 && WALKABLE[w.grid.terr[yj * w.w + xi]] === 1;
+  }
   var DX = [1, -1, 0, 0, 1, 1, -1, -1];
   var DY = [0, 0, 1, -1, 1, -1, 1, -1];
   function nextToRock(w, i) {
@@ -2880,6 +2890,16 @@ dd.q4{color:#c58cff;font-weight:600}
     const seen = exposedOre(w);
     return new Set(ORE_RES().filter((r) => (w.stock[r.id] || 0) < r.target && seen[ORE_BY_CODE[r.ore].id] > 0).map((r) => r.ore));
   });
+  var ALARM_HOURS = 12;
+  var raidAlarm = (w) => perTick(w, "raidAlarm", () => {
+    const camp = w.nav.get("camp"), reach = ALARM_HOURS * HOUR * 0.8;
+    return w.agents.some((o) => {
+      if (o.faction !== "raiders" || o.dead) return false;
+      const pace = SPECIES.get(o.species).speed * (o.mods?.speed ?? 1);
+      return camp[clampCell(w, o)] <= pace * reach;
+    });
+  });
+  var clampCell = (w, o) => Math.min(w.h - 1, Math.max(0, o.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, o.x | 0));
 
   // src/data/buildings.js
   var penRoom = (w) => w.buildings.reduce((s, b) => s + (b.done && b.key === "pen" ? 6 : 0), 0) - w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.space : 0), 0);
@@ -3374,7 +3394,7 @@ dd.q4{color:#c58cff;font-weight:600}
       wish: "\u0445\u043E\u0447\u0435\u0442, \u0447\u0442\u043E\u0431\u044B \u0440\u0430\u043D\u0435\u043D\u044B\u0445 \u0431\u044B\u043B\u043E \u0433\u0434\u0435 \u043B\u0435\u0447\u0438\u0442\u044C",
       motive: (a, c) => [
         [c.wounded * 1.6, "\u0440\u0430\u043D\u0435\u043D\u044B\u0435 \u0434\u043E\u043B\u0433\u043E \u043D\u0435 \u0432\u0441\u0442\u0430\u044E\u0442"],
-        [a.hp < 0.7 ? (1 - a.hp) * 1.4 : 0, a.gender === "f" ? "\u0441\u0430\u043C\u0430 \u0438\u0437\u0440\u0430\u043D\u0435\u043D\u0430" : "\u0441\u0430\u043C \u0438\u0437\u0440\u0430\u043D\u0435\u043D"],
+        [c.hurt(a) < 0.7 ? (1 - c.hurt(a)) * 1.4 : 0, a.gender === "f" ? "\u0441\u0430\u043C\u0430 \u0438\u0437\u0440\u0430\u043D\u0435\u043D\u0430" : "\u0441\u0430\u043C \u0438\u0437\u0440\u0430\u043D\u0435\u043D"],
         [(a.mem.wolf + a.mem.raid) * 0.4, "\u043F\u043E\u0441\u043B\u0435 \u0441\u0442\u044B\u0447\u0435\u043A \u043D\u0435\u043A\u043E\u043C\u0443 \u043B\u0435\u0447\u0438\u0442\u044C"],
         [(a.prefs.heal - 1) * 1.5, "\u0445\u043E\u0447\u0435\u0442 \u043B\u0435\u0447\u0438\u0442\u044C \u043B\u044E\u0434\u0435\u0439"]
       ]
@@ -3791,8 +3811,10 @@ dd.q4{color:#c58cff;font-weight:600}
     return s;
   });
   var JOBS_REF = null;
-  var useJobs = (reg) => {
+  var HUNTABLE = null;
+  var useJobs = (reg, huntable2) => {
     JOBS_REF = reg;
+    HUNTABLE = huntable2;
   };
   NAVMAPS.registerAll([
     { id: "camp", seed: (w, i) => w.camp.set.has(i) },
@@ -3835,14 +3857,15 @@ dd.q4{color:#c58cff;font-weight:600}
       active: (w) => inUse(w).has("shore"),
       seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)
     },
-    // game animals: hunters and predators walk this field until they are close enough to go straight
-    // only while a hunter is out or a hungry predator follows the scent (fed wolves roam without it)
+    // the game hunters are after right now (data/jobs.js huntable: their usual prey, else the risky
+    // kind, else in hunger the last resort; never a wild goat kept for taming). Only while a hunter is out.
+    // Predators do not use it: each walks to a prey of its own kind (agents/brains/predator.js).
     {
       id: "prey",
       period: 20,
       minGap: 10,
-      active: (w) => w.agents.some((a) => a.task?.job === "hunt" || a.brain === "predator" && a.needs.food < (SPECIES.get(a.species).predator?.hungry ?? 1)),
-      prepare: (w) => new Set(w.agents.filter((a) => SPECIES.get(a.species).game && !a.tame).map((a) => cellOf(w, a))),
+      active: (w) => w.agents.some((a) => a.task?.job === "hunt"),
+      prepare: (w) => new Set(HUNTABLE(w, JOBS_REF.get("hunt")).map((a) => cellOf(w, a))),
       seed: (w, i, cells) => cells.has(i)
     },
     // field plots that need sowing or reaping
@@ -4034,6 +4057,7 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/nav/astar.js
+  var ROCK = T.ROCK;
   var SQRT2 = Math.SQRT2;
   function buffers(w) {
     if (w.astar) return w.astar;
@@ -4047,14 +4071,36 @@ dd.q4{color:#c58cff;font-weight:600}
       stamp: 0
     };
   }
-  function clearLine(w, x0, y0, x1, y1) {
-    const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 4);
-    for (let s = 1; s <= steps; s++) {
-      const x = x0 + (x1 - x0) * s / steps, y = y0 + (y1 - y0) * s / steps;
-      if (x < 0 || y < 0 || x >= w.w || y >= w.h || !WALKABLE[w.grid.terr[(y | 0) * w.w + (x | 0)]]) return false;
+  function walkLine(w, x0, y0, x1, y1, visit) {
+    let cx = Math.floor(x0), cy = Math.floor(y0);
+    const ex = Math.floor(x1), ey = Math.floor(y1), dx = x1 - x0, dy = y1 - y0;
+    const inside2 = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
+    if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
+    const sx = Math.sign(dx), sy = Math.sign(dy);
+    const tdx = dx ? Math.abs(1 / dx) : Infinity, tdy = dy ? Math.abs(1 / dy) : Infinity;
+    let tx2 = dx ? (sx > 0 ? cx + 1 - x0 : x0 - cx) * tdx : Infinity;
+    let ty = dy ? (sy > 0 ? cy + 1 - y0 : y0 - cy) * tdy : Infinity;
+    for (let guard = 0; (cx !== ex || cy !== ey) && guard < 4 * (w.w + w.h); guard++) {
+      if (Math.abs(tx2 - ty) < 1e-9) {
+        if (!inside2(cx + sx, cy) || !visit(cy * w.w + cx + sx)) return false;
+        if (!inside2(cx, cy + sy) || !visit((cy + sy) * w.w + cx)) return false;
+        cx += sx;
+        cy += sy;
+        tx2 += tdx;
+        ty += tdy;
+      } else if (tx2 < ty) {
+        cx += sx;
+        tx2 += tdx;
+      } else {
+        cy += sy;
+        ty += tdy;
+      }
+      if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
     }
     return true;
   }
+  var clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => WALKABLE[w.grid.terr[i]] === 1);
+  var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK);
   function findPath(w, sx, sy, gx, gy, budget = 6e3) {
     const W = w.w, H = w.h, terr = w.grid.terr, b = buffers(w);
     const start2 = (sy | 0) * W + (sx | 0);
@@ -4147,13 +4193,13 @@ dd.q4{color:#c58cff;font-weight:600}
   function moveToward(w, a, tx2, ty, mul = 1) {
     const dx = tx2 - a.x, dy = ty - a.y, len = Math.hypot(dx, dy), sp = speedOf(w, a) * mul;
     if (Math.abs(dx) > 0.01) a.faceX = Math.sign(dx);
-    if (len <= sp) {
+    const ok = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && walkable(w, (y | 0) * w.w + (x | 0));
+    if (len <= sp && ok(tx2, ty)) {
       a.x = tx2;
       a.y = ty;
       return true;
     }
-    const nx = a.x + dx / len * sp, ny = a.y + dy / len * sp;
-    const ok = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && walkable(w, (y | 0) * w.w + (x | 0));
+    const k = Math.min(1, sp / Math.max(len, 1e-9)), nx = a.x + dx * k, ny = a.y + dy * k;
     if (ok(nx, ny)) {
       a.x = nx;
       a.y = ny;
@@ -4178,24 +4224,19 @@ dd.q4{color:#c58cff;font-weight:600}
       const nx = x + DX[k], ny = y + DY[k];
       if (!inBounds(w, nx, ny)) continue;
       const j = ny * w.w + nx;
-      if (dist5[j] < best) {
+      if (dist5[j] < best && canStep(w, i, j)) {
         best = dist5[j];
         bj = j;
       }
     }
     if (bj < 0) return dist5[i] >= FAR ? "none" : "stuck";
-    const sp = speedOf(w, a) * mul, tx2 = bj % w.w + 0.5, ty = (bj / w.w | 0) + 0.5;
-    const dx = tx2 - a.x, dy = ty - a.y, len = Math.hypot(dx, dy);
-    if (len <= sp) {
-      a.x = tx2;
-      a.y = ty;
-    } else {
-      a.x += dx / len * sp;
-      a.y += dy / len * sp;
-    }
+    const tx2 = bj % w.w + 0.5, ty = (bj / w.w | 0) + 0.5;
+    const r = moveToward(w, a, tx2, ty, mul);
+    if (r === null) moveToward(w, a, x + 0.5, y + 0.5, mul);
     return "moving";
   }
   var danger = (w, i) => w.grid.temp[i] + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
+  var shunsHeat = (w, a, sp, T2, r) => T2 > fearHeat(sp) || fearsFire(sp) && nearFire(w, a, r);
   function nearFire(w, a, r) {
     const cx = a.x | 0, cy = a.y | 0, R = Math.ceil(r);
     for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
@@ -4244,12 +4285,12 @@ dd.q4{color:#c58cff;font-weight:600}
   function approach(w, a, tx2, ty, mul = 1) {
     if (!inBounds(w, tx2 | 0, ty | 0)) return null;
     const g2 = a.approachGuard;
-    if (!g2 || Math.hypot(g2.x - a.x, g2.y - a.y) > 0.6 || w.tick - g2.t > 120) a.approachGuard = { x: a.x, y: a.y, t: w.tick };
+    if (!g2 || Math.hypot(g2.x - a.x, g2.y - a.y) > 0.6 || !(w.tick - g2.last <= 3) || !(Math.hypot(g2.tx - tx2, g2.ty - ty) <= 2)) a.approachGuard = { x: a.x, y: a.y, t: w.tick, last: w.tick, tx: tx2, ty };
     else if (w.tick - g2.t > 40) {
       a.approachGuard = null;
       a.path = null;
       return null;
-    }
+    } else g2.last = w.tick;
     if (clearLine(w, a.x, a.y, tx2, ty)) {
       a.path = null;
       const r2 = moveToward(w, a, tx2, ty, mul);
@@ -4258,7 +4299,7 @@ dd.q4{color:#c58cff;font-weight:600}
     let p = a.path;
     const goal = (ty | 0) * w.w + (tx2 | 0);
     if (!p || Math.hypot(p.goal % w.w - (tx2 | 0), (p.goal / w.w | 0) - (ty | 0)) > 3 || w.tick - p.at > 40 || p.k >= p.cells.length) {
-      const cells = findPath(w, a.x, a.y, tx2, ty);
+      const far = Math.hypot(tx2 - a.x, ty - a.y), cells = findPath(w, a.x, a.y, tx2, ty, Math.max(6e3, Math.ceil(far * far * 6)));
       if (!cells) {
         a.path = null;
         return null;
@@ -5056,7 +5097,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const a of list) {
       const T2 = tameOf(a);
       a.age = (a.age || 0) + 1;
-      const eats = T2.eats * (a.age < (T2.grownDays || 0) ? 0.5 : 1), graze2 = a.pen != null ? grass : grass * 0.5;
+      const eats = T2.eats * (a.age < (T2.grownDays || 0) ? 0.5 : 1), graze2 = a.pen != null && buildingById(w, a.pen)?.done ? grass : grass * 0.5;
       const got = Math.min(eats * (1 - graze2), w.stock.hay || 0);
       w.stock.hay = (w.stock.hay || 0) - got;
       const share = graze2 + got / eats;
@@ -5373,7 +5414,7 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/data/jobs.js
   var HERBS_KEEP = 10;
   var JOBS = new Registry("job");
-  useJobs(JOBS);
+  useJobs(JOBS, (w, job) => huntable(w, job));
   var want = (stock, pop, low, enough) => stock < pop * low ? 0.7 : stock < pop * enough ? 0.25 : 0.04;
   var foodWant = (w, ctx, job, k = 1, extra = 0) => {
     const f = FOODS.get(job.food), fans = ctx.favourites[job.food] || 0;
@@ -5705,7 +5746,7 @@ dd.q4{color:#c58cff;font-weight:600}
       time: 120,
       // only one bearer per body: the others would take the job, find nothing free and drop it at once
       canDo: (w, a) => hpShare(a) > 0.5 && !!freeCorpse(w, a),
-      desire: (w) => reachableCorpses(w).length && !w.agents.some((o) => o.faction === "raiders" && !o.dead) ? 0.7 : -1
+      desire: (w) => reachableCorpses(w).length && !raidAlarm(w) ? 0.7 : -1
     },
     {
       id: "build",
@@ -5733,6 +5774,9 @@ dd.q4{color:#c58cff;font-weight:600}
       resource: p.resource,
       carry: J.carry,
       time: J.time,
+      also: Object.keys(p.also || {}),
+      bed: p.id,
+      // what else a picking brings, and the wild bed it needs (settlement/sources.js)
       // only with the right tool (a gold pan); never on a map without such beds
       canDo: J.tool ? (w, a) => !!a.gear?.tool[J.id] : void 0,
       // (hay for the herd's winter, keep(w), is wanted more keenly: the season to mow is short)
@@ -6047,19 +6091,24 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/agents/combat.js
   var aggressor = (a, o) => o.task?.id === "maul" && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
+  function canSee(w, a, t) {
+    if (t.hiddenUntil > w.tick) return false;
+    if (t.veil == null || aggressor(a, t)) return true;
+    return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
+  }
   function nearestHostile(w, a, r) {
     let best = null, bd = r * r;
     for (const o of w.agents) {
       if (o === a || o.dead || !(isHostile(a, o) || aggressor(a, o))) continue;
       const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
-      if (o.veil != null && d > o.veil * o.veil && !aggressor(a, o)) continue;
-      if (d < bd) {
-        bd = d;
-        best = o;
-      }
+      if (d >= bd || !canSee(w, a, o)) continue;
+      bd = d;
+      best = o;
     }
     return best;
   }
+  var MELEE_REACH = 1.25;
+  var reachOf = (a) => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
   var ensureGear = (a) => a.gear || { melee: { dmg: (SPECIES.get(a.species).attack || { power: 1 }).power, cd: (SPECIES.get(a.species).attack || { cooldown: 12 }).cooldown }, armor: 0, block: 0 };
   function damage(w, by, t, raw, { melee: melee2 = true } = {}) {
     const g2 = ensureGear(t);
@@ -6113,18 +6162,20 @@ dd.q4{color:#c58cff;font-weight:600}
     w.nav.dirty("fire");
   }
   function attack(w, a, t) {
-    if (a.cd > 0) return;
+    if (a.cd > 0 || !t || t.dead || a.dead) return false;
+    if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
     const g2 = ensureGear(a);
     a.cd = Math.max(4, Math.round(g2.melee.cd * (a.mods?.swing ?? 1)));
     a.flash = 4;
     damage(w, a, t, (0.1 + w.rng() * 0.12) * g2.melee.dmg * (a.mods?.str ?? 1) * silverFactor(t, g2.melee.item));
     if (g2.melee.item) wear(w, a, g2.melee.item);
+    return true;
   }
   function shoot(w, a, t, skillJob = "hunt") {
     const g2 = a.gear;
     if (!g2?.ranged || !g2.rangedReady || a.cd > 0) return null;
     const r = g2.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
-    if (d > range) return null;
+    if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
     a.cd = r.cd;
     if (r.ammo) {
       a.equip.back.ammo--;
@@ -6227,7 +6278,8 @@ dd.q4{color:#c58cff;font-weight:600}
       const vs = best.special, ss = a.special;
       if (vs && ss && w.rng() < contest(vs.P + vs.I, ss.C * 2)) {
         think(w, best, "resistedSong");
-        log(w, `\u041D\u043E\u0447\u044C\u044E \u0443 \u0432\u043E\u0434\u044B \u043F\u0435\u043B\u0438, \u043D\u043E <b>${esc(best.name)}</b> ${g(best, "\u043D\u0435 \u043F\u043E\u0434\u0434\u0430\u043B\u0441\u044F", "\u043D\u0435 \u043F\u043E\u0434\u0434\u0430\u043B\u0430\u0441\u044C")} \u0438 ${g(best, "\u0443\u0448\u0451\u043B", "\u0443\u0448\u043B\u0430")} \u043A \u043A\u043E\u0441\u0442\u0440\u0443.`, "wildlife", "notice");
+        best.task = { id: "runHome" };
+        log(w, `\u041D\u043E\u0447\u044C\u044E \u0443 \u0432\u043E\u0434\u044B \u043F\u0435\u043B\u0438, \u043D\u043E <b>${esc(best.name)}</b> ${g(best, "\u043D\u0435 \u043F\u043E\u0434\u0434\u0430\u043B\u0441\u044F", "\u043D\u0435 \u043F\u043E\u0434\u0434\u0430\u043B\u0430\u0441\u044C")} \u0438 ${g(best, "\u0443\u0448\u0451\u043B", "\u0443\u0448\u043B\u0430")} \u043A \u0441\u0432\u043E\u0438\u043C.`, "wildlife", "notice");
         return false;
       }
       best.task = { id: "lured", by: a.id, until: w.tick + 2 * HOUR, spell: 1.5 };
@@ -6303,6 +6355,8 @@ dd.q4{color:#c58cff;font-weight:600}
     tradeUntil: 23,
     maxStay: 2,
     // days, in case it never gets to trade
+    maxComing: 36,
+    // hours on the road from the map edge (usually 10–14): a caravan that has not reached the camp by then turns back
     guards: 2,
     mules: [1, 3],
     crates: 2,
@@ -6989,14 +7043,32 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   ]);
 
-  // src/settlement/council.js
-  function obtainable(w, res) {
-    if (JOBS.all().some((j) => j.resource === res && jobUnlocked(w, j))) return true;
-    return RECIPES.all().some((r) => r.makes?.resource === res && has(w, r.at) && (r.needs || []).every((b) => has(w, b)));
+  // src/settlement/sources.js
+  var DEPTH = 3;
+  var livesHere = (w, id) => faunaLevel(w, id) > 0 || w.agents.some((o) => o.species === id && !o.dead && !o.tame);
+  function fromJob(w, job, res, depth, seen) {
+    if (!jobUnlocked(w, job)) return false;
+    if (job.resource === res || job.also?.includes(res)) return !job.bed || (w.plantBeds?.[job.bed]?.length || 0) > 0;
+    if (job.runner === "hunt") return [...job.prey, ...job.risky || []].some((id) => SPECIES.get(id).yields?.[res] && livesHere(w, id));
+    if (job.runner === "farm") return CROPS.all().some((c) => c.yields?.[res] && ((w.stock[c.seed] || 0) >= 1 || obtainable(w, c.seed, depth - 1, seen)));
+    if (job.runner === "herd") return SPECIES.filter((s) => s.tame?.[res]).some((s) => livesHere(w, s.id));
+    return false;
   }
-  var eligible2 = (w, key2) => eligible(w, key2) && missing(w, BUILDINGS.get(key2).cost).every(([r]) => obtainable(w, r));
+  function fromRecipe(w, r, depth, seen) {
+    if (!has(w, r.at) || !(r.needs || []).every((b) => has(w, b)) || r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;
+    return Object.entries(r.cost).every(([c, v]) => (w.stock[c] || 0) >= v || obtainable(w, c, depth - 1, seen));
+  }
+  function obtainable(w, res, depth = DEPTH, seen = /* @__PURE__ */ new Set()) {
+    if (depth < 0 || seen.has(res)) return false;
+    seen = new Set(seen).add(res);
+    if (JOBS.all().some((j) => fromJob(w, j, res, depth, seen))) return true;
+    return RECIPES.all().some((r) => r.makes?.resource === res && fromRecipe(w, r, depth, seen));
+  }
+
+  // src/settlement/council.js
   var COUNCIL_FROM = 19;
   var COUNCIL_TO = 21.5;
+  var eligible2 = (w, key2) => eligible(w, key2) && missing(w, BUILDINGS.get(key2).cost).every(([r]) => obtainable(w, r));
   function councilDue(w) {
     const h = hourOf(w.tick);
     return h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
@@ -7029,7 +7101,10 @@ dd.q4{color:#c58cff;font-weight:600}
       stock: (r) => w.stock[r] || 0,
       season: season(w).id,
       rats: w.agents.filter((o) => o.species === "rat").length,
-      wounded: colonists(w).filter((a) => a.hp < 0.7).length / Math.max(1, colonists(w).length),
+      hurt: (a) => hpShare(a),
+      // a colonist's health as a share of their own full health
+      // wounded by each one's own measure: a giant's 1.0 is not a human's 1.0
+      wounded: colonists(w).filter((a) => hpShare(a) < 0.7).length / Math.max(1, colonists(w).length),
       oreSeen: oreSeen(w),
       wildHerd: w.agents.filter((o) => o.faction === "wild" && (o.species === "goat" || o.species === "mule") && o.owner == null).length,
       herdFull: herd(w).length > 0 && penRoom2(w) < 1,
@@ -7461,6 +7536,11 @@ dd.q4{color:#c58cff;font-weight:600}
     if (c.phase !== "leaving" && !traderOf(w, c)) {
       c.phase = "leaving";
       log(w, "\u041A\u0443\u043F\u0435\u0446 \u043F\u043E\u0433\u0438\u0431. \u041E\u0445\u0440\u0430\u043D\u0430 \u0443\u0432\u043E\u0434\u0438\u0442 \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u043F\u0440\u043E\u0447\u044C, \u0442\u043E\u0440\u0433\u0430 \u043D\u0435 \u0431\u0443\u0434\u0435\u0442.", "trade", "alert");
+      return;
+    }
+    if (c.phase === "coming" && c.arrived == null && ((c.noPath || 0) > 60 || w.tick - c.set > TRADE.maxComing * HOUR)) {
+      c.phase = "leaving";
+      log(w, `\u041A\u0443\u043F\u0435\u0446 <b>${esc(c.name)}</b> \u043D\u0435 \u043D\u0430\u0448\u0451\u043B \u0434\u043E\u0440\u043E\u0433\u0438 \u043A \u043B\u0430\u0433\u0435\u0440\u044E \u0438 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u043B \u043D\u0430\u0437\u0430\u0434.`, "trade", "notice");
       return;
     }
     if (c.phase === "coming" && c.arrived != null) {
@@ -8851,6 +8931,39 @@ dd.q4{color:#c58cff;font-weight:600}
     spoil(w);
   }
 
+  // src/agents/body.js
+  var NEED_THOUGHT = { food: "starving", warmth: "freezing", rest: "exhausted" };
+  var REMEMBER_BELOW = { food: 0.3, rest: 0.25, warmth: 0.4 };
+  function stepEffects(w, a) {
+    if (a.poison) {
+      if (w.tick < a.poison.until) {
+        a.hp -= a.poison.dmg;
+        if (a.hp <= 0) kill(w, a, "\u044F\u0434\u0430");
+      } else a.poison = null;
+    }
+    if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
+  }
+  function stepBody(w, a) {
+    const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
+    let starving = null;
+    for (const id of sp.needs) {
+      const n = NEEDS2.get(id);
+      a.needs[id] = Math.min(1, Math.max(0, a.needs[id] - n.decay(w, a, T2)));
+      if (a.needs[id] <= (n.harmBelow ?? 0) && n.harm) {
+        a.hp -= n.harm;
+        starving = n.cause;
+      }
+      if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 4e-3;
+      if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
+    }
+    if (T2 > sp.heatHarm) a.hp -= Math.min(5e-3, (T2 - sp.heatHarm) * 4e-5);
+    const comfy = sp.needs.every((id) => a.needs[id] > 0.4);
+    const regen = a.mods.regen > 1 && T2 > 30 ? 1 : a.mods.regen ?? 1;
+    if (comfy && T2 < 45) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * regen);
+    if (a.hp <= 0) kill(w, a, starving || (T2 > 60 ? "\u043F\u043E\u0436\u0430\u0440\u0430" : "\u0440\u0430\u043D"));
+    return T2;
+  }
+
   // src/settlement/crafting.js
   var PRESERVED = () => FOODS.filter((f) => f.of);
   function reserved(w, res) {
@@ -9075,22 +9188,44 @@ dd.q4{color:#c58cff;font-weight:600}
     a.carry.res[res] = (a.carry.res[res] || 0) + n;
     a.carry.n += n;
   }
-  function haulHome(w, a) {
-    if (follow(w, a, "camp") !== "arrived") return;
-    for (const [res, n] of Object.entries(a.carry.res)) deposit(w, res, n);
+  function unload(a, res, n) {
+    if (!a.carry?.res[res]) return 0;
+    const k = Math.min(n, a.carry.res[res]);
+    a.carry.res[res] -= k;
+    a.carry.n -= k;
+    if (a.carry.res[res] <= 0) delete a.carry.res[res];
+    if (a.carry.n <= 0) a.carry = null;
+    return k;
+  }
+  var carriedFood = (a) => Object.entries(a.carry?.res || {}).reduce((s, [r, n]) => s + (FOODS.has(r) ? n : 0), 0);
+  function eatCarried(a) {
+    let fed = 0;
+    for (const r of Object.keys(a.carry?.res || {}).filter((r2) => FOODS.has(r2)).sort((x, y) => FOODS.get(y).nutrition - FOODS.get(x).nutrition)) {
+      while (a.needs.food + fed < 0.95 && unload(a, r, 1)) fed += 0.4 * FOODS.get(r).nutrition;
+    }
+    a.needs.food = Math.min(1, a.needs.food + fed);
+    return fed;
+  }
+  function dropLoad(w, a) {
+    for (const [res, n] of Object.entries(a.carry?.res || {})) deposit(w, res, n);
     a.carry = null;
+  }
+  function haulHome(w, a) {
+    if (a.task) a.task.hauling = true;
+    if (follow(w, a, "camp") !== "arrived") return;
+    dropLoad(w, a);
     done(a);
   }
   var RUNNERS = {
     harvest(w, a, task) {
       const job = JOBS.get(task.job), cap = job.carry + (a.gear?.carry || 0);
-      if (a.carry && (a.carry.n >= cap || task.eatNow && a.carry.n >= 1)) {
-        if (task.eatNow) {
-          a.needs.food = Math.min(1, a.needs.food + 0.4 * a.carry.n);
-          a.carry = null;
+      if (task.eatNow) {
+        if (carriedFood(a) >= 1) {
+          eatCarried(a);
           done(a);
           return;
         }
+      } else if (a.carry && (a.carry.n >= cap || task.full)) {
         haulHome(w, a);
         return;
       }
@@ -9116,7 +9251,7 @@ dd.q4{color:#c58cff;font-weight:600}
         toolWear(w, a, job.id);
       } else if (r === "none") {
         if (w.nav.dirtySet.has(job.nav)) return;
-        if (a.carry?.n) a.carry.n = cap;
+        if (a.carry?.n) task.full = true;
         else {
           a.task = { id: "idle" };
           a.think = 20;
@@ -9211,10 +9346,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // the healer: tend whoever lies in the healer's hut; with nobody to tend, pick herbs (as harvest)
     heal(w, a, task) {
       if (waiting(w)) {
-        if (a.carry?.n) {
-          for (const [res, n] of Object.entries(a.carry.res)) deposit(w, res, n);
-          a.carry = null;
-        }
+        if (a.carry?.n) dropLoad(w, a);
         const r = follow(w, a, "healer");
         if (r === "arrived" || healerHutCell(w, a)) {
           const given = tend(w, a, workRate(w, a, "heal") * workBonus(w.buildings.find((x) => x.done && x.key === "healerhut")));
@@ -9482,6 +9614,9 @@ dd.q4{color:#c58cff;font-weight:600}
         else if (a.needs.food < 0.35) think(w, a, "ateHungry", { food: f.label });
         a.needs.food = Math.min(1, a.needs.food + fed);
         done2(a);
+      } else if (carriedFood(a) >= 1) {
+        eatCarried(a);
+        done2(a);
       } else a.task = { id: "job", job: "gather", eatNow: true };
     } },
     { id: "sleep", label: () => "\u0441\u043F\u0438\u0442", step(w, a, task) {
@@ -9529,17 +9664,23 @@ dd.q4{color:#c58cff;font-weight:600}
         done2(a);
         return;
       }
+      if (!canSee(w, a, t)) {
+        task.lost ?? (task.lost = { x: t.x, y: t.y, until: w.tick + 60 });
+        if (w.tick > task.lost.until || approach(w, a, task.lost.x, task.lost.y, 0.9) !== false) done2(a);
+        return;
+      }
+      task.lost = null;
       const d = Math.hypot(t.x - a.x, t.y - a.y), g2 = a.gear;
       if (g2?.rangedReady && d > 1.4) {
         const range = g2.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
         task.shooting = true;
-        if (d > range * 0.9) {
+        if (d > range * 0.9 || shoot(w, a, t, "hunt") === null && a.cd <= 0) {
           if (approach(w, a, t.x, t.y, 1) === null) done2(a);
-        } else shoot(w, a, t, "hunt");
+        }
         return;
       }
       task.shooting = false;
-      if (d > 0.9) {
+      if (d > Math.min(0.9, reachOf(a))) {
         if (approach(w, a, t.x, t.y, 1.1) === null) done2(a);
       } else attack(w, a, t);
     } },
@@ -9623,7 +9764,7 @@ dd.q4{color:#c58cff;font-weight:600}
     } },
     // gather by the fire when raiders come; done as soon as the alarm is over
     { id: "muster", label: () => "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442\u0441\u044F \u043F\u043E \u0442\u0440\u0435\u0432\u043E\u0433\u0435", step(w, a, task) {
-      if (!w.agents.some((o) => o.faction === "raiders" && !o.dead)) {
+      if (!raidAlarm(w)) {
         done2(a);
         return;
       }
@@ -9755,36 +9896,6 @@ dd.q4{color:#c58cff;font-weight:600}
   ]);
   var taskLabel = (a) => a.task ? TASKS.get(a.task.id).label(a.task) : "\u0434\u0443\u043C\u0430\u0435\u0442";
 
-  // src/agents/body.js
-  var NEED_THOUGHT = { food: "starving", warmth: "freezing", rest: "exhausted" };
-  var REMEMBER_BELOW = { food: 0.3, rest: 0.25, warmth: 0.4 };
-  function stepBody(w, a) {
-    const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
-    let starving = null;
-    for (const id of sp.needs) {
-      const n = NEEDS2.get(id);
-      a.needs[id] = Math.min(1, Math.max(0, a.needs[id] - n.decay(w, a, T2)));
-      if (a.needs[id] <= (n.harmBelow ?? 0) && n.harm) {
-        a.hp -= n.harm;
-        starving = n.cause;
-      }
-      if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 4e-3;
-      if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
-    }
-    if (T2 > sp.heatHarm) a.hp -= Math.min(5e-3, (T2 - sp.heatHarm) * 4e-5);
-    if (a.poison) {
-      if (w.tick < a.poison.until) {
-        a.hp -= a.poison.dmg;
-        starving = starving || "\u044F\u0434\u0430";
-      } else a.poison = null;
-    }
-    const comfy = sp.needs.every((id) => a.needs[id] > 0.4);
-    const regen = a.mods.regen > 1 && T2 > 30 ? 1 : a.mods.regen ?? 1;
-    if (comfy && T2 < 45) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * regen);
-    if (a.hp <= 0) kill(w, a, starving || (T2 > 60 ? "\u043F\u043E\u0436\u0430\u0440\u0430" : "\u0440\u0430\u043D"));
-    return T2;
-  }
-
   // src/agents/brains/colonist.js
   var JOB_SKIP = 120;
   var key = (t) => t ? t.id === "job" ? "job:" + t.job : t.id : "";
@@ -9834,7 +9945,7 @@ dd.q4{color:#c58cff;font-weight:600}
       opts.push(brave * hpShare(a) > 0.85 ? [{ id: "fight", target: hunter }, 1.5] : [{ id: "runHome" }, 1.5]);
     }
     const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
-    const raid = w.agents.some((o) => o.faction === "raiders" && !o.dead);
+    const raid = raidAlarm(w);
     if (raid && !enemy) opts.push([{ id: "muster" }, 1.25]);
     if (enemy && hpShare(a) > 0.3) opts.push([{ id: "fight", target: enemy }, (raid ? 1.35 : 1.1) * brave]);
     if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{ id: "runHome" }, 1.6]);
@@ -9870,10 +9981,12 @@ dd.q4{color:#c58cff;font-weight:600}
       if (tid === "douse" && (T2 > 58 || hpShare(a) < 0.6)) a.task = { id: "flee" };
       if (a.task?.id === "flee" || a.task?.id === "douse") a.mem.fire += 6e-3;
       const tid2 = a.task?.id;
-      if (tid2 !== "fight" && tid2 !== "runHome" && tid2 !== "flee" && w.agents.some((o) => o.task?.id === "maul" && o.task.target === a)) a.think = 0;
+      const attacked = w.agents.some((o) => o.task?.id === "maul" && o.task.target === a);
+      if (tid2 !== "fight" && tid2 !== "runHome" && tid2 !== "flee" && attacked) a.think = 0;
       if (a.task?.id !== "flee" && --a.think <= 0) {
         a.think = 15;
-        const busy2 = a.task?.id === "job" && a.carry?.n > 0;
+        const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some((v) => v < 0.12) || !!nearestHostile(w, a, 8);
+        const busy2 = !urgent && a.task?.id === "job" && a.task.hauling;
         if (!busy2) decide(w, a);
       }
       if (!a.task) decide(w, a);
@@ -9882,6 +9995,8 @@ dd.q4{color:#c58cff;font-weight:600}
         a.seenArmory = w.armoryVersion;
         outfit(w, a);
       }
+      if (a.carry && !(a.task?.id === "job" && a.task.job === a.carryJob) && w.nav.get("camp")[cellOf(w, a)] < 2) dropLoad(w, a);
+      if (a.task?.id === "job") a.carryJob = a.task.job;
       const was = a.task;
       TASKS.get(a.task.id).step(w, a, a.task);
       if (!a.task && was.id === "job" && !was.started) a.skipJob = { id: was.job, until: w.tick + JOB_SKIP };
@@ -9891,17 +10006,27 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/agents/brains/raider.js
-  var HUNT_RADIUS = 60;
+  var HUNT_RADIUS = 16;
   var raiderBrain = {
     id: "raider",
     step(w, a) {
       const T2 = w.grid.temp[cellOf(w, a)], sp = SPECIES.get(a.species), mindless = sp.mindless || a.warBeast;
-      if (T2 > sp.heatHarm) a.hp -= Math.min(sp.undead ? 0.012 : 6e-3, (T2 - sp.heatHarm) * (sp.undead ? 1e-4 : 5e-5));
-      if (sp.rots && T2 > 12) a.hp -= sp.rots * (T2 - 12);
+      let cause = null;
+      if (T2 > sp.heatHarm) {
+        a.hp -= Math.min(sp.undead ? 0.012 : 6e-3, (T2 - sp.heatHarm) * (sp.undead ? 1e-4 : 5e-5));
+        cause = "\u043E\u0433\u043D\u044F";
+      }
+      if (sp.rots && T2 > 12) {
+        a.hp -= sp.rots * (T2 - 12);
+        cause ?? (cause = "\u0442\u0435\u043F\u043B\u0430");
+      }
       const day = 1 - nightness(w.tick);
-      if (sp.sun && day > 0.5) a.hp -= sp.sun * day;
+      if (sp.sun && day > 0.5) {
+        a.hp -= sp.sun * day;
+        cause ?? (cause = "\u0441\u043E\u043B\u043D\u0446\u0430");
+      }
       if (a.hp <= 0) {
-        a.dead = true;
+        kill(w, a, cause || "\u0440\u0430\u043D");
         return;
       }
       if (a.mods.regen > 1 && T2 < 30 && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * (a.mods.regen - 1));
@@ -9948,7 +10073,7 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
       }
-      if (T2 > 45 || nearFire(w, a, 2)) {
+      if (shunsHeat(w, a, sp, T2, 2)) {
         a.task = { id: "bolt" };
         escapeHeat(w, a, sp.flee.sprint);
         return;
@@ -9998,6 +10123,7 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/agents/brains/predator.js
+  var SCENT = 70;
   var dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   function nearest(w, a, species, r, filter = () => true) {
     let best = null, bd = r;
@@ -10033,7 +10159,7 @@ dd.q4{color:#c58cff;font-weight:600}
       stepBody(w, a);
       if (a.dead) return;
       if (a.cd > 0) a.cd--;
-      if (T2 > 45 || nearFire(w, a, 2.5)) {
+      if (shunsHeat(w, a, sp, T2, 2.5)) {
         a.task = { id: "bolt" };
         escapeHeat(w, a, 1.4);
         return;
@@ -10136,11 +10262,14 @@ dd.q4{color:#c58cff;font-weight:600}
           a.calmUntil = w.tick + P.calm * 0.5;
           return;
         }
-        if (dist2(a, v) > 0.9 && approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) {
-          a.task = { id: "roam" };
-          a.calmUntil = w.tick + P.calm * 0.5;
+        if (dist2(a, v) > 0.9) {
+          if (approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) {
+            a.task = { id: "roam" };
+            a.calmUntil = w.tick + P.calm * 0.5;
+          }
           return;
-        } else {
+        }
+        {
           attack(w, a, v);
           if (v.dead) {
             const eaters = pack2.filter((m) => dist2(m, a) < 10);
@@ -10189,10 +10318,20 @@ dd.q4{color:#c58cff;font-weight:600}
         if (dist2(a, leader) > 2.5) approach(w, a, leader.x + (a.id % 3 - 1), leader.y + ((a.id >> 1) % 3 - 1), 0.95);
         return;
       }
-      if (food < P.hungry && w.agents.some((o) => P.prey.includes(o.species) && !o.tame)) {
-        if (follow(w, a, "prey", 0.85) === "moving") return;
-      }
       const r = a.task;
+      if (food < P.hungry) {
+        let s = r.scent != null ? w.agents.find((o) => o.id === r.scent && !o.dead && !o.tame) : null;
+        if (!s || w.tick - (r.scentAt || 0) > 120) {
+          s = nearest(w, a, P.prey, SCENT, (o) => !agentInZone(w, o) && !(a.ignore?.get(o.id) > w.tick));
+          r.scent = s?.id ?? null;
+          r.scentAt = w.tick;
+        }
+        if (s) {
+          if (approach(w, a, s.x, s.y, 0.85) !== null) return;
+          (a.ignore || (a.ignore = /* @__PURE__ */ new Map())).set(s.id, w.tick + 600);
+          r.scent = null;
+        }
+      }
       const d = r.spot ? dist2(a, { x: r.spot[0], y: r.spot[1] }) : 0;
       if (r.spot && d < r.bestD - 0.5) {
         r.bestD = d;
@@ -10271,7 +10410,7 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
       }
-      if (T2 > 45 || nearFire(w, a, 2)) {
+      if (shunsHeat(w, a, sp, T2, 2)) {
         a.task = { id: "bolt" };
         escapeHeat(w, a, 1.3);
         return;
@@ -10331,6 +10470,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/agents/brains/caravan.js
   var CAMP_AT = 6;
+  var LATE_WAIT = 50;
   var byId2 = (w, id) => w.agents.find((o) => o.id === id && !o.dead);
   function leave2(w, a) {
     a.task = { id: "leave" };
@@ -10380,16 +10520,18 @@ dd.q4{color:#c58cff;font-weight:600}
       if (c.phase === "coming") {
         a.task = { id: "travel" };
         const d = w.nav.get("camp")[cellOf(w, a)];
-        const late = w.agents.some((o) => o.caravan === c.id && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) > 6);
         if (d <= CAMP_AT) {
           c.arrived = w.tick;
           c.spot = [a.x, a.y];
           return;
         }
-        if (!late && follow(w, a, "camp", 0.9) === "none") {
-          c.arrived = w.tick;
-          c.spot = [a.x, a.y];
-        }
+        const late = w.agents.some((o) => o.caravan === c.id && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) > 6);
+        if (late) {
+          c.lateSince ?? (c.lateSince = w.tick);
+          if (w.tick - c.lateSince < LATE_WAIT) return;
+        } else c.lateSince = null;
+        if (follow(w, a, "camp", 0.9) === "none") c.noPath = (c.noPath || 0) + 1;
+        else c.noPath = 0;
         return;
       }
       a.task = { id: c.phase === "trading" ? "stall" : c.phase === "night" ? "night" : "camped" };
@@ -10508,13 +10650,13 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
       }
-      if (T2 > 45 || nearFire(w, a, 2)) {
+      if (shunsHeat(w, a, sp, T2, 2)) {
         a.task = { id: "bolt" };
         escapeHeat(w, a, 1.3);
         return;
       }
       if (a.cd > 0) a.cd--;
-      const wolf = w.agents.find((o) => o.species === "wolf" && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 3);
+      const wolf = w.agents.find((o) => !o.dead && (o.brain === "predator" || o.faction === "raiders") && Math.hypot(o.x - a.x, o.y - a.y) < 3);
       if (wolf) {
         if (sp.mule && Math.hypot(wolf.x - a.x, wolf.y - a.y) < sp.mule.kickRange && a.cd <= 0) {
           a.cd = sp.attack.cooldown;
@@ -10613,6 +10755,7 @@ dd.q4{color:#c58cff;font-weight:600}
     w.nav.step();
     const t2 = performance.now();
     for (const a of w.agents) {
+      if (!a.dead) stepEffects(w, a);
       if (!a.dead) BRAINS.get(a.brain).step(w, a);
       if (a.flash) a.flash--;
     }
@@ -12685,8 +12828,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.33 \xB7 14.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 e3d7d1a" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.34 \xB7 15.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 bbeef4b" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 1;

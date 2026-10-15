@@ -10,10 +10,11 @@ import {nearestHostile} from '../combat.js';
 import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
 import {maxHp, hpShare} from '../agent.js';
-import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies, favourites} from '../../settlement/query.js';
+import {colonists, foodTotal, openSites, jobUnlocked, ofSpecies, favourites, raidAlarm} from '../../settlement/query.js';
 import {councilDue, goalNeed} from '../../settlement/council.js';
 import {stationHasWork} from '../../settlement/crafting.js';
 import {outfit} from '../equipment.js';
+import {dropLoad} from '../jobRunners.js';
 import {think} from '../mind.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {tradeOpen} from '../../settlement/trade.js';
@@ -72,7 +73,7 @@ function decide(w, a) {
   const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
   // alarm: while raiders are on the map everyone gathers inside the settlement zone and meets them
   // together; the wounded fall back
-  const raid = w.agents.some(o => o.faction === 'raiders' && !o.dead);
+  const raid = raidAlarm(w);
   if (raid && !enemy) opts.push([{id: 'muster'}, 1.25]);
   if (enemy && hpShare(a) > 0.3) opts.push([{id: 'fight', target: enemy}, (raid ? 1.35 : 1.1) * brave]);
   if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6]);
@@ -105,10 +106,14 @@ export const colonistBrain = {
     if (a.task?.id === 'flee' || a.task?.id === 'douse') a.mem.fire += 0.006;
     // being attacked can't wait for the next think
     const tid2 = a.task?.id;
-    if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && w.agents.some(o => o.task?.id === 'maul' && o.task.target === a)) a.think = 0;
+    const attacked = w.agents.some(o => o.task?.id === 'maul' && o.task.target === a);
+    if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && attacked) a.think = 0;
     if (a.task?.id !== 'flee' && --a.think <= 0) {
       a.think = 15;
-      const busy = a.task?.id === 'job' && a.carry?.n > 0;   // finish delivering first
+      // a delivery under way is finished first — unless something urgent comes up: an attack, a foe
+      // close by, a body at its limit. The load stays in the hands whatever is chosen.
+      const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some(v => v < 0.12) || !!nearestHostile(w, a, 8);
+      const busy = !urgent && a.task?.id === 'job' && a.task.hauling;
       if (!busy) decide(w, a);
     }
     if (!a.task) decide(w, a);
@@ -116,6 +121,9 @@ export const colonistBrain = {
     if (w.nav.get('camp')[cellOf(w, a)] < 3 && (w.tick - (a.outfitAt || -999) > 300 || a.seenArmory !== w.armoryVersion) && a.task?.id !== 'fight') {
       a.outfitAt = w.tick; a.seenArmory = w.armoryVersion; outfit(w, a);
     }
+    // a load left over from a broken-off job goes to the stores as soon as the bearer is at the camp
+    if (a.carry && !(a.task?.id === 'job' && a.task.job === a.carryJob) && w.nav.get('camp')[cellOf(w, a)] < 2) dropLoad(w, a);
+    if (a.task?.id === 'job') a.carryJob = a.task.job;
     const was = a.task;
     TASKS.get(a.task.id).step(w, a, a.task);
     // a job dropped on its first step (no prey, no free body, no site) is not taken again for a while;

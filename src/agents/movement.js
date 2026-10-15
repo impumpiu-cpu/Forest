@@ -1,7 +1,7 @@
 // Moving through the world: straight steps, walking down a flow field, escaping heat.
-import {SPECIES} from '../data/species.js';
+import {SPECIES, fearHeat, fearsFire} from '../data/species.js';
 import {BY_CODE} from '../data/terrain.js';
-import {cellOf, walkable, inBounds, DX, DY} from '../world/grid.js';
+import {cellOf, walkable, inBounds, canStep, DX, DY} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {clearLine, findPath} from '../nav/astar.js';
 
@@ -14,9 +14,10 @@ export function speedOf(w, a) {
 export function moveToward(w, a, tx, ty, mul = 1) {
   const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy), sp = speedOf(w, a) * mul;
   if (Math.abs(dx) > 0.01) a.faceX = Math.sign(dx);
-  if (len <= sp) { a.x = tx; a.y = ty; return true; }
-  const nx = a.x + dx / len * sp, ny = a.y + dy / len * sp;
   const ok = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h && walkable(w, (y | 0) * w.w + (x | 0));
+  // the last short step lands right on the target — only if the target itself is open ground
+  if (len <= sp && ok(tx, ty)) { a.x = tx; a.y = ty; return true; }
+  const k = Math.min(1, sp / Math.max(len, 1e-9)), nx = a.x + dx * k, ny = a.y + dy * k;
   if (ok(nx, ny)) { a.x = nx; a.y = ny; return false; }
   // clipping a corner of water or rock: slide along whichever axis is free
   if (Math.abs(dx) > 0.01 && ok(a.x + Math.sign(dx) * sp, a.y)) { a.x += Math.sign(dx) * sp; return false; }
@@ -29,18 +30,23 @@ export function follow(w, a, mapId, mul = 1) {
   const dist = w.nav.get(mapId), i = cellOf(w, a);
   if (dist[i] === 0) return 'arrived';
   const x = i % w.w, y = (i / w.w) | 0; let best = dist[i], bj = -1;
+  // only steps the rules allow (no corner cutting), even if a stale field points across one
   for (let k = 0; k < 8; k++) {
     const nx = x + DX[k], ny = y + DY[k]; if (!inBounds(w, nx, ny)) continue;
-    const j = ny * w.w + nx; if (dist[j] < best) { best = dist[j]; bj = j; }
+    const j = ny * w.w + nx; if (dist[j] < best && canStep(w, i, j)) { best = dist[j]; bj = j; }
   }
   if (bj < 0) return dist[i] >= FAR ? 'none' : 'stuck';
-  const sp = speedOf(w, a) * mul, tx = (bj % w.w) + 0.5, ty = ((bj / w.w) | 0) + 0.5;
-  const dx = tx - a.x, dy = ty - a.y, len = Math.hypot(dx, dy);
-  if (len <= sp) { a.x = tx; a.y = ty; } else { a.x += dx / len * sp; a.y += dy / len * sp; }
+  // through the middle of the cell first when the step is a diagonal, so the body never clips a corner
+  const tx = (bj % w.w) + 0.5, ty = ((bj / w.w) | 0) + 0.5;
+  const r = moveToward(w, a, tx, ty, mul);
+  if (r === null) moveToward(w, a, x + 0.5, y + 0.5, mul);
   return 'moving';
 }
 
 export const danger = (w, i) => w.grid.temp[i] + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
+
+// does this animal run from the heat here: too hot underfoot, or flames close by (unless it fears no fire)
+export const shunsHeat = (w, a, sp, T, r) => T > fearHeat(sp) || (fearsFire(sp) && nearFire(w, a, r));
 
 export function nearFire(w, a, r) {
   const cx = a.x | 0, cy = a.y | 0, R = Math.ceil(r);
@@ -92,10 +98,13 @@ export function bolt(w, a, threats, mul) {
 // Returns true when there, false while on the way, null when the target cannot be reached.
 export function approach(w, a, tx, ty, mul = 1) {
   if (!inBounds(w, tx | 0, ty | 0)) return null;
-  // safety net: trying to go somewhere and not moving at all for a while means "unreachable"
+  // safety net: trying to reach one target tick after tick without moving means "unreachable".
+  // The watch belongs to one run of attempts at one target: a pause (sleep, work) or a new target
+  // starts it afresh, so an old mark cannot refuse a fresh, open way.
   const g = a.approachGuard;
-  if (!g || Math.hypot(g.x - a.x, g.y - a.y) > 0.6 || w.tick - g.t > 120) a.approachGuard = {x: a.x, y: a.y, t: w.tick};
+  if (!g || Math.hypot(g.x - a.x, g.y - a.y) > 0.6 || !(w.tick - g.last <= 3) || !(Math.hypot(g.tx - tx, g.ty - ty) <= 2)) a.approachGuard = {x: a.x, y: a.y, t: w.tick, last: w.tick, tx, ty};
   else if (w.tick - g.t > 40) { a.approachGuard = null; a.path = null; return null; }
+  else g.last = w.tick;
   if (clearLine(w, a.x, a.y, tx, ty)) {
     a.path = null;
     const r = moveToward(w, a, tx, ty, mul);
@@ -104,7 +113,9 @@ export function approach(w, a, tx, ty, mul = 1) {
   let p = a.path;
   const goal = (ty | 0) * w.w + (tx | 0);
   if (!p || Math.hypot((p.goal % w.w) - (tx | 0), ((p.goal / w.w) | 0) - (ty | 0)) > 3 || w.tick - p.at > 40 || p.k >= p.cells.length) {
-    const cells = findPath(w, a.x, a.y, tx, ty);
+    // the search budget grows with the distance: through woods (dearer than the estimate) a far target
+    // needs more expansions, and a budget run out must not read as "no way there"
+    const far = Math.hypot(tx - a.x, ty - a.y), cells = findPath(w, a.x, a.y, tx, ty, Math.max(6000, Math.ceil(far * far * 6)));
     if (!cells) { a.path = null; return null; }
     p = a.path = {cells, k: 0, goal, at: w.tick};
   }

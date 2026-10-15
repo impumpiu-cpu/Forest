@@ -10,6 +10,17 @@ const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 // remembered hardships use the need's `memory` key once the level drops below `remember`
 const REMEMBER_BELOW = {food: 0.3, rest: 0.25, warmth: 0.4};
 
+// Lasting effects on any creature, whatever its brain: venom from a bite (agents/combat.js) hurts every
+// tick until it wears off; a spider's web only slows (agents/movement.js) and is dropped once it is over.
+// Called once a tick for every agent from sim.js; the undead never get venom in the first place.
+export function stepEffects(w, a) {
+  if (a.poison) {
+    if (w.tick < a.poison.until) { a.hp -= a.poison.dmg; if (a.hp <= 0) kill(w, a, 'яда'); }
+    else a.poison = null;
+  }
+  if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
+}
+
 export function stepBody(w, a) {
   const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)];
   let starving = null;
@@ -21,8 +32,6 @@ export function stepBody(w, a) {
     if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
   }
   if (T > sp.heatHarm) a.hp -= Math.min(0.005, (T - sp.heatHarm) * 0.00004);
-  // venom from a bite (agents/combat.js): it wears off by itself
-  if (a.poison) { if (w.tick < a.poison.until) { a.hp -= a.poison.dmg; starving = starving || 'яда'; } else a.poison = null; }
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
   // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
   const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;
