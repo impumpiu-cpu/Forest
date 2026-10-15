@@ -48,7 +48,7 @@ import {councilWish} from '../settlement/council.js';
 import {boldness} from '../agents/brains/predator.js';
 import {STATS} from '../data/special.js';
 import {activeSkills, TIERS} from '../data/skills.js';
-import {skillTier, softCap} from '../agents/skills.js';
+import {skillTier, softCap, canMake, recipeNeed, reasonText} from '../agents/skills.js';
 import {VALUES, axisWord} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
@@ -447,8 +447,11 @@ export class Panel {
         const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? '' : ' short'}">${v} ${RESOURCES.get(res).short}</span>`).join('') +
           (r.fuel ? (() => { const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); return `<span class="cost${f ? '' : ' short'}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : (r.heat ?? 2) >= 2 ? `${r.fuel} угля` : `${r.fuel} угля или ${r.fuel * 3} дров`}</span>`; })() : '') +
           (r.tool ? `<span class="cost${(w.stock[r.tool] || 0) >= 1 ? '' : ' short'}">${RESOURCES.get(r.tool).short}</span>` : '');
-        const want = r.want(ctx);
-        return `<div class="rc${r.id === cur ? ' cur' : ''}"><b>${esc(what)}</b><span class="costs">${cost}</span><span class="muted">${r.id === cur ? 'в работе' : want > 0 ? 'нужно' : 'хватает'}</span></div>`;
+        const want = r.want(ctx), need = recipeNeed(r);
+        // the tier: who in the colony may take it (agents/skills.js); nobody — the order waits for a master
+        const able = need ? colonists(w).filter(x => canMake(x, r)).map(x => x.name) : null;
+        const tier = need ? `<span class="cost${able.length ? '' : ' short'}" title="${able.length ? 'Могут: ' + esc(able.join(', ')) : 'В поселении нет такого мастера'}">T${need.tier} · ${reasonText(need)}</span>` : '';
+        return `<div class="rc${r.id === cur ? ' cur' : ''}"><b>${esc(what)}</b><span class="costs">${tier}${cost}</span><span class="muted">${r.id === cur ? 'в работе' : need && !able.length ? 'некому' : want > 0 ? 'нужно' : 'хватает'}</span></div>`;
       }).join('');
       extra = `<section><h4>Что здесь делают</h4><div class="recipes">${recs}</div></section>`;
     }

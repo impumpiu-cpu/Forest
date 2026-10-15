@@ -135,7 +135,7 @@ export const RUNNERS = {
     // keep to the station chosen when the task started, as long as it still has work and a free bench
     if (!task.station || !stationHasWork(w, task.station, a)) {
       const open = job.stations.filter(s => stationHasWork(w, s, a));
-      task.station = open.sort((x, y) => stationPriority(w, y) - stationPriority(w, x))[0];
+      task.station = open.sort((x, y) => stationPriority(w, y, a) - stationPriority(w, x, a))[0];
     }
     if (!task.station) { fail(w, a, 'заказов нет или все верстаки заняты'); a.think = 20; return; }
     // a bench of its own from the start, kept while walking there (nobody else heads for it meanwhile)

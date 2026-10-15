@@ -6,7 +6,7 @@
 //   the healer's hut — wounds close faster;  the shrine — prayer comforts more.
 // Each entry becomes a stock resource (group 'Мебель') and, with `recipe`, a crafting recipe;
 // `tradeOnly` pieces come only with traders (data/trade.js).
-//   recipe: {at: station, cost, work, fuel?, heat?, needs?}
+//   recipe: {at: station, cost, work, fuel?, heat?, needs?, tier?}
 import {Registry} from '../core/registry.js';
 
 export const FURNISH_MAX = 3;
@@ -17,8 +17,8 @@ FURNITURE.registerAll([
   {id: 'bench',    label: 'лавка',             comfort: 0.04, value: 1,  color: '#b08850', recipe: {at: 'crafthut', cost: {wood: 4}, work: 400}},
   {id: 'table',    label: 'стол из тёса',      comfort: 0.06, value: 2,  color: '#c99a5c', recipe: {at: 'crafthut', cost: {planks: 4}, work: 600}},
   {id: 'rug',      label: 'шерстяной ковёр',   comfort: 0.08, value: 4,  color: '#b05a4a', recipe: {at: 'loom', cost: {wool: 4}, work: 700}},
-  {id: 'chest',    label: 'кованый сундук',    comfort: 0.08, value: 5,  color: '#8a6a48', recipe: {at: 'forge', cost: {planks: 3, iron: 1}, fuel: 1, work: 600}},
-  {id: 'bell',     label: 'бронзовый колокол', comfort: 0.12, value: 6,  color: '#c89048', recipe: {at: 'smelter', cost: {bronze: 3}, fuel: 1, heat: 1, work: 600}},
+  {id: 'chest',    label: 'кованый сундук',    comfort: 0.08, value: 5,  color: '#8a6a48', recipe: {at: 'forge', tier: 2, cost: {planks: 3, iron: 1}, fuel: 1, work: 600}},
+  {id: 'bell',     label: 'бронзовый колокол', comfort: 0.12, value: 6,  color: '#c89048', recipe: {at: 'smelter', tier: 2, cost: {bronze: 3}, fuel: 1, heat: 1, work: 600}},
   {id: 'casket',   label: 'резной ларец',      comfort: 0.1,  value: 7,  color: '#58b3a8', recipe: {at: 'jeweler', cost: {wood: 2, bone: 2, gems: 1}, work: 700}},
   // from the empire's towns
   {id: 'mirror',   label: 'бронзовое зеркало', comfort: 0.14, value: 12, color: '#d9b25a', tradeOnly: true},

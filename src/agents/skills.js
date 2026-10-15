@@ -2,8 +2,10 @@
 // The one rule that ties SPECIAL to skills: a skill's letter sets its tiers, its learning speed and its
 // soft ceiling. Practice comes only from work that was really done (a tick of labour that moved an
 // order, a shot that left the bow), never from choosing a job, waiting for a reload or looking at a card.
-import {SKILLS, TIERS, LEARN, FROM_JOB, isActive, activeSkills} from '../data/skills.js';
-import {NORM} from '../data/special.js';
+import {SKILLS, TIERS, LEARN, FROM_JOB, isActive, activeSkills, recipeSkill} from '../data/skills.js';
+import {NORM, STATS} from '../data/special.js';
+
+const STAT_IDS = STATS.ids();
 
 const clamp01 = v => Math.max(0, Math.min(1, v));
 
@@ -21,6 +23,29 @@ export const tierFor = stat => TIERS.filter(t => stat >= t.min).at(-1).id;
 export const skillTier = (a, skillId) => tierFor(statFor(a, skillId));
 
 export const skillOf = (a, skillId) => a.skill?.[skillId] ?? 0;
+
+// Can this worker take an order of this recipe? The one check the AI, the stations, the worker and the
+// card all read. Pure: no random numbers, no practice. A refusal says why, in data the card can word:
+//   {ok: false, reasons: [{code: 'tier', stat: 'S', need: 6, have: 4, tier: 3, skill: 'smithing'}]}
+// Only abilities are checked here; materials, fuel and the bench are the station's business.
+export function recipeAccess(a, r) {
+  const need = recipeNeed(r), reasons = [];
+  if (need) { const have = statFor(a, need.skill); if (have < need.need) reasons.push({...need, have}); }
+  return {ok: !reasons.length, reasons, skill: recipeSkill(r), tier: r.tier || 1};
+}
+// what a recipe asks of the worker, whoever it is: null for T1
+export function recipeNeed(r) {
+  const tier = r.tier || 1; if (tier <= 1) return null;
+  const skill = recipeSkill(r);
+  return {code: 'tier', stat: SKILLS.get(skill).stat, need: TIERS[tier - 1].min, tier, skill};
+}
+export const canMake = (a, r) => recipeAccess(a, r).ok;
+
+// a key that is the same for any two workers whom the tiers treat alike: one letter's tier per character
+export const accessKey = a => STAT_IDS.map(id => tierFor(a.special?.[id] ?? NORM)).join('');
+
+// the reason as a phrase for the card and the log: «сила от 6, у него 4»
+export const reasonText = x => (x.code === 'tier' ? `${STATS.get(x.stat).label.toLowerCase()} от ${x.need}${x.have != null ? `, сейчас ${x.have}` : ''}` : x.code);
 
 // how much `units` of practice would add right now (pure: the card and tests use it too)
 export function practiceGain(a, skillId, units = 1) {

@@ -209,6 +209,12 @@ for (const [job, list] of Object.entries(FROM_JOB)) list.forEach(id => activeSki
 for (const st of Object.keys(STATION_SKILL)) bld(`STATION_SKILL ${st}`, st);
 for (const r of RECIPES.all()) { if (!recipeSkill(r)) err(`рецепт ${r.id}: не указан навык, и у станции ${r.at} его нет`); else activeSkill(`рецепт ${r.id}`, recipeSkill(r)); }
 if (TIERS.some((t, k) => k && t.min <= TIERS[k - 1].min)) err('тиры должны идти по возрастанию порога');
+for (const r of RECIPES.all()) if (r.tier != null && !(Number.isInteger(r.tier) && r.tier >= 1 && r.tier <= TIERS.length)) err(`рецепт ${r.id}: тир ${r.tier} вне 1–${TIERS.length}`);
+// T1 is open to anyone: every skill a station trains must have a T1 recipe there, or a weak worker could never start
+{
+  const open = new Set(RECIPES.filter(r => (r.tier || 1) === 1).map(r => r.at + ':' + recipeSkill(r)));
+  for (const r of RECIPES.all()) if (!open.has(r.at + ':' + recipeSkill(r))) err(`станция ${r.at}: для навыка ${recipeSkill(r)} нет рецепта T1, новичку не на чем учиться`);
+}
 
 for (const w of warnings) console.log('warn ' + w);
 if (errors.length) { console.log('Ошибки в справочниках:\n  ' + errors.join('\n  ')); process.exit(1); }

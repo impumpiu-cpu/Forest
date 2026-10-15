@@ -1,7 +1,8 @@
 // Logic check: the rules every creature must keep, in small staged scenes (T01–T11 of the outside
 // review of the races branch; T12–T17 reservations and the task lifecycle; T18–T22 raider squads;
 // T23–T26 joint actions of colonists;
-// T27–T31 carcasses and pack hunts; T32–T39 SPECIAL stage 1: skills, practice, the body). Each scene builds a flat, empty map, places a few agents by hand and
+// T27–T31 carcasses and pack hunts; T32–T39 SPECIAL stage 1: skills, practice, the body;
+// T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -21,7 +22,7 @@ import {arrive} from '../src/outside/index.js';
 import {RESOURCES} from '../src/data/resources.js';
 import {SPECIES} from '../src/data/species.js';
 import {syncTask, skipped} from '../src/agents/lifecycle.js';
-import {stationHasWork} from '../src/settlement/crafting.js';
+import {stationHasWork, pickRecipe, workAt, stepCrafting} from '../src/settlement/crafting.js';
 import {freeBed, bedsOf} from '../src/settlement/healing.js';
 import {freeCorpse} from '../src/settlement/life.js';
 import {createSquad, stepSquads, planFor, ROLES} from '../src/agents/squad.js';
@@ -29,10 +30,10 @@ import {kill} from '../src/agents/agent.js';
 import {outsideRisk, escortOption, aidOption, TOGETHER} from '../src/settlement/together.js';
 import {stepRelations, REL} from '../src/settlement/relations.js';
 import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS} from '../src/agents/carcass.js';
-import {DAY, nightness} from '../src/core/time.js';
+import {DAY, HOUR, nightness} from '../src/core/time.js';
 import {newItem, outfit, recalcGear} from '../src/agents/equipment.js';
 import {refreshBody, adoptBody} from '../src/agents/special.js';
-import {practice, practiceGain, softCap, skillTier, migrateSkills} from '../src/agents/skills.js';
+import {practice, practiceGain, softCap, skillTier, migrateSkills, recipeAccess, canMake} from '../src/agents/skills.js';
 import {workRate} from '../src/agents/jobRunners.js';
 import {shoot} from '../src/agents/combat.js';
 import {recipeSkill, isActive} from '../src/data/skills.js';
@@ -532,6 +533,88 @@ check('T39', 'резервный навык не растёт и не бывае
   practice(a, 'alchemy', 1000); practice(a, 'melee', 1000);
   if (a.skill.alchemy || a.skill.melee) return 'резервный навык вырос';
   return JOBS.filter(j => j.preferable).every(j => isActive(j.skill)) || 'работа ведёт к резервному навыку';
+});
+
+// ── SPECIAL stage 2: the forge as the first tiered station; the worker matters in choosing an order
+// a forge with what a sword and an axe need, and a colony that wants both
+const forge = (w, id = 950) => {
+  const b = building(w, 'forge', id); w.grid.bld[b.cells[0]] = b.id;
+  Object.assign(w.stock, {iron: 20, leather: 5, wood: 10, coal: 20, planks: 0, silverBar: 0});
+  return b;
+};
+const wantOnly = (ids) => { const keep = {}; for (const r of RECIPES.all()) { keep[r.id] = r.want; r.want = ids.includes(r.id) ? (() => (ids.length - ids.indexOf(r.id))) : (() => 0); } return () => { for (const r of RECIPES.all()) r.want = keep[r.id]; }; };
+
+check('T40', 'слабый не начинает меч, но куёт топор; сильному доступен меч', () => {
+  const back = wantOnly(['sword', 'ironaxe']);
+  try {
+    const w = scene(); forge(w);
+    const weak = human(w, {S: 4}), strong = human(w, {S: 7});
+    const pw = pickRecipe(w, 'forge', undefined, weak), ps = pickRecipe(w, 'forge', undefined, strong);
+    if (pw?.id !== 'ironaxe') return 'слабому выпало ' + pw?.id;
+    if (ps?.id !== 'sword') return 'сильному выпало ' + ps?.id;
+    const r = recipeAccess(weak, RECIPES.get('sword'));
+    return (!r.ok && r.reasons[0].stat === 'S' && r.reasons[0].need === 6 && r.reasons[0].have === 4) || 'причина отказа неверна: ' + JSON.stringify(r);
+  } finally { back(); }
+});
+
+check('T41', 'ответ станции не переходит от сильного к слабому', () => {
+  const back = wantOnly(['sword']);
+  try {
+    const w = scene(); forge(w);
+    const strong = human(w, {S: 8}), weak = human(w, {S: 3});
+    if (!stationHasWork(w, 'forge', strong)) return 'сильный не видит работы';
+    if (stationHasWork(w, 'forge', weak)) return 'слабому досталась работа сильного из кеша';
+    return true;
+  } finally { back(); }
+});
+
+check('T42', 'чужой меч слабый не продолжает, даже стоя у горна', () => {
+  const w = scene(), b = forge(w);
+  b.order = {recipe: 'sword', progress: 100};
+  const weak = human(w, {S: 3});
+  if (stationHasWork(w, 'forge', weak)) return 'станция предлагает слабому чужой меч';
+  const skill = weak.skill.smithing;
+  const r = workAt(w, b, 50, weak);
+  return (!r && b.order.progress === 100 && weak.skill.smithing === skill) || 'слабый поработал над мечом';
+});
+
+check('T43', 'заказ без мастера снимается, материалы и уголь возвращаются', () => {
+  const w = scene(), b = forge(w);
+  human(w, {S: 3});
+  const iron = w.stock.iron, coal = w.stock.coal, leather = w.stock.leather;
+  b.order = {recipe: 'sword', progress: 300, fuel: ['coal', 1]};
+  w.tick = HOUR * 10 + 7; stepCrafting(w);
+  if (b.order) return 'заказ остался';
+  if (w.stock.iron !== iron + 3 || w.stock.leather !== leather + 1 || w.stock.coal !== coal + 1) return 'вернулось не всё: ' + JSON.stringify({iron: w.stock.iron, leather: w.stock.leather, coal: w.stock.coal});
+  // with a smith alive the order waits for him
+  const w2 = scene(), b2 = forge(w2); human(w2, {S: 3}); human(w2, {S: 6});
+  b2.order = {recipe: 'sword', progress: 300};
+  w2.tick = HOUR * 10 + 7; stepCrafting(w2);
+  return !!b2.order || 'заказ сняли при живом кузнеце';
+});
+
+check('T44', 'плавка серебра из руды ждёт интеллекта, простая плавка открыта всем', () => {
+  const w = scene(), dull = human(w, {I: 3}), wise = human(w, {I: 6});
+  return (canMake(dull, RECIPES.get('smelt')) && !canMake(dull, RECIPES.get('silverOreBar')) && canMake(wise, RECIPES.get('silverOreBar'))
+    && recipeAccess(dull, RECIPES.get('silverOreBar')).reasons[0].stat === 'I') || 'тиры горна считаются не по интеллекту';
+});
+
+check('T45', 'гном по абсолютной шкале куёт то, что недоступно человеку', () => {
+  const w = scene();
+  const dwarf = put(w, 'dwarf', 'colony', 31.5, 30.5), man = human(w, {S: 7});
+  dwarf.special.S = 9; refreshBody(dwarf);
+  return (canMake(dwarf, RECIPES.get('swordSilver')) && !canMake(man, RECIPES.get('swordSilver'))) || 'тир T4 считается не по абсолютной силе';
+});
+
+check('T46', 'кузнец, которому досталась работа, тренирует ковку на мече', () => {
+  const back = wantOnly(['sword']);
+  try {
+    const w = scene(), b = forge(w), smith = human(w, {S: 7});
+    const s0 = smith.skill.smithing;
+    smith.task = {id: 'job', job: 'smith'}; syncTask(w, smith); w.nav.build('station:forge');
+    for (let k = 0; k < 400 && !(b.order?.progress > 0); k++) TASKS.get('job').step(w, smith, smith.task || (smith.task = {id: 'job', job: 'smith'}));
+    return (b.order?.recipe === 'sword' && smith.skill.smithing > s0) || 'меч не пошёл: ' + JSON.stringify({order: b.order, stop: smith.lastStop});
+  } finally { back(); }
 });
 
 let bad = 0;

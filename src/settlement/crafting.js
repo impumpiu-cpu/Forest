@@ -2,6 +2,9 @@
 // An order is picked from RECIPES by what the colony lacks most (recipe.want), skipping recipes
 // it cannot afford or whose materials the council is saving up for. Materials are taken when the
 // order starts; finished items go to the colony's gear store (world.armory).
+// The worker matters: a recipe above the first tier is open only to someone whose letter reaches it
+// (agents/skills.js recipeAccess). A worker picks among the recipes open to them, does not take up an
+// order they could not finish, and an order nobody alive can finish is called off (stepCrafting).
 import {freeSlot} from './reserve.js';
 import {RECIPES} from '../data/recipes.js';
 import {ITEMS} from '../data/items.js';
@@ -18,6 +21,8 @@ import {fishable} from '../world/lakes.js';
 import {season} from '../data/seasons.js';
 import {FOODS} from '../data/foods.js';
 import {freeSlots} from './life.js';
+import {canMake, accessKey, recipeNeed, reasonText} from '../agents/skills.js';
+import {HOUR} from '../core/time.js';
 
 const PRESERVED = () => FOODS.filter(f => f.of);
 
@@ -85,11 +90,18 @@ export function recipesAt(station) {
 let melee = null;
 const MELEE = () => melee || (melee = ITEMS.filter(d => d.slot === 'hand' && d.melee && !d.ranged));
 
-export function pickRecipe(w, station, ctx = craftContext(w)) {
+// someone alive in the colony can take this recipe. A T1 recipe anyone can; otherwise the living are looked
+// through directly, not through the per-tick list (reading that list early in a tick would fix it for the
+// rest of the tick and change what other systems see)
+export const anyoneCan = (w, r) => !recipeNeed(r) || w.agents.some(a => a.faction === 'colony' && !a.dead && canMake(a, r));
+
+// The order a worker would start here: what the colony wants most among what they can make and the stock
+// affords. Without a worker: what anyone in the colony could start.
+export function pickRecipe(w, station, ctx = craftContext(w), a = null) {
   let best = null, bv = 0;
   for (const r of recipesAt(station)) {
     const v = r.want(ctx);
-    if (v > bv && canStart(w, r)) { bv = v; best = r; }
+    if (v > bv && (a ? canMake(a, r) : anyoneCan(w, r)) && canStart(w, r)) { bv = v; best = r; }
   }
   return best;
 }
@@ -100,22 +112,25 @@ export const benchesOf = b => BUILDINGS.get(b.key).benches || 1;
 export const benchPrefix = b => 'bench:' + b.id;
 export const freeBench = (w, b, a) => freeSlot(w, benchPrefix(b), benchesOf(b), a);
 
-// does a station of this kind have something to do, and a free bench for `a`? (orders cached per tick)
+// Does a station of this kind have something for `a` to do, and a free bench? A running order counts only
+// if `a` may work it; otherwise a recipe `a` could start. Cached per tick by station and by what the tiers
+// let a worker do (accessKey), so a strong smith's answer is never handed to a weak one.
 export function stationHasWork(w, station, a) {
   const map = perTick(w, 'orders', () => ({}));
   const b = w.buildings.find(x => x.key === station && x.done);
   if (!b || !freeBench(w, b, a)) return false;   // every bench taken by someone else
-  if (!(station in map)) map[station] = !!b.order || !!pickRecipe(w, station);
-  return map[station];
+  const key = station + ':' + accessKey(a);
+  if (!(key in map)) map[key] = b.order ? canMake(a, RECIPES.get(b.order.recipe)) : !!pickRecipe(w, station, undefined, a);
+  return map[key];
 }
 
 // how badly the colony needs what this station would make next (its running order counts a bit more,
 // so half-done work gets finished)
-export function stationPriority(w, station) {
+export function stationPriority(w, station, a = null) {
   const b = w.buildings.find(x => x.key === station && x.done); if (!b) return 0;
   const ctx = craftContext(w);
-  if (b.order) return RECIPES.get(b.order.recipe).want(ctx) + 0.5;
-  const r = pickRecipe(w, station, ctx);
+  if (b.order) { const r = RECIPES.get(b.order.recipe); return a && !canMake(a, r) ? 0 : r.want(ctx) + 0.5; }
+  const r = pickRecipe(w, station, ctx, a);
   return r ? r.want(ctx) : 0;
 }
 
@@ -124,8 +139,10 @@ export function stationPriority(w, station) {
 // function of the order's recipe (the worker's speed depends on the skill that recipe uses).
 // Returns the recipe that was worked on, or false when no order could start (nothing was done).
 export function workAt(w, b, amount, a) {
+  // someone else's order this worker may not finish (a sword under a weak arm): nothing is done
+  if (b.order && a && !canMake(a, RECIPES.get(b.order.recipe))) return false;
   if (!b.order) {
-    const r = pickRecipe(w, b.key);
+    const r = pickRecipe(w, b.key, undefined, a);
     if (!r) return false;
     // fuel is chosen before the materials are taken, with the price's own wood set aside, so the two never
     // compete for the same logs (it used to find no fuel left after the price and crash)
@@ -135,6 +152,7 @@ export function workAt(w, b, amount, a) {
     for (const [res, v] of Object.entries(r.cost)) w.stock[res] -= v;
     if (fuel) w.stock[fuel[0].id] -= fuel[1];
     b.order = {recipe: r.id, progress: 0};
+    if (fuel) b.order.fuel = [fuel[0].id, fuel[1]];   // given back if the order is ever called off
   }
   const r = RECIPES.get(b.order.recipe);
   const bellows = r.fuel && (w.stock.bellows || 0) >= 1;   // blown fire: the work goes faster
@@ -164,6 +182,24 @@ export function workAt(w, b, amount, a) {
     }
   }
   return r;
+}
+
+// Once an hour: an order that nobody alive in the colony may finish (its smith died or left) is called off,
+// and its materials and fuel go back to the stock, so the station is free for what others can make.
+export function stepCrafting(w) {
+  if (w.tick % HOUR !== 7) return;
+  for (const b of w.buildings) {
+    if (!b.done || !b.order) continue;
+    const r = RECIPES.get(b.order.recipe);
+    if (anyoneCan(w, r) || !w.agents.some(a => a.faction === 'colony' && !a.dead)) continue;
+    for (const [res, v] of Object.entries(r.cost)) w.stock[res] = (w.stock[res] || 0) + v;
+    if (b.order.fuel) w.stock[b.order.fuel[0]] = (w.stock[b.order.fuel[0]] || 0) + b.order.fuel[1];
+    b.order = null;
+    if (w.scratch) { delete w.scratch.orders; delete w.scratch.craftCtx; }
+    const what = r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short;
+    const need = recipeNeed(r);
+    log(w, `Некому доделать: ${what} (${need ? 'требуется ' + reasonText(need) : 'нужен мастер'}). Заказ снят, материалы вернулись на склад.`, 'craft');
+  }
 }
 
 export function orderText(b) {

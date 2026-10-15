@@ -2445,8 +2445,8 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "bench", label: "\u043B\u0430\u0432\u043A\u0430", comfort: 0.04, value: 1, color: "#b08850", recipe: { at: "crafthut", cost: { wood: 4 }, work: 400 } },
     { id: "table", label: "\u0441\u0442\u043E\u043B \u0438\u0437 \u0442\u0451\u0441\u0430", comfort: 0.06, value: 2, color: "#c99a5c", recipe: { at: "crafthut", cost: { planks: 4 }, work: 600 } },
     { id: "rug", label: "\u0448\u0435\u0440\u0441\u0442\u044F\u043D\u043E\u0439 \u043A\u043E\u0432\u0451\u0440", comfort: 0.08, value: 4, color: "#b05a4a", recipe: { at: "loom", cost: { wool: 4 }, work: 700 } },
-    { id: "chest", label: "\u043A\u043E\u0432\u0430\u043D\u044B\u0439 \u0441\u0443\u043D\u0434\u0443\u043A", comfort: 0.08, value: 5, color: "#8a6a48", recipe: { at: "forge", cost: { planks: 3, iron: 1 }, fuel: 1, work: 600 } },
-    { id: "bell", label: "\u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0439 \u043A\u043E\u043B\u043E\u043A\u043E\u043B", comfort: 0.12, value: 6, color: "#c89048", recipe: { at: "smelter", cost: { bronze: 3 }, fuel: 1, heat: 1, work: 600 } },
+    { id: "chest", label: "\u043A\u043E\u0432\u0430\u043D\u044B\u0439 \u0441\u0443\u043D\u0434\u0443\u043A", comfort: 0.08, value: 5, color: "#8a6a48", recipe: { at: "forge", tier: 2, cost: { planks: 3, iron: 1 }, fuel: 1, work: 600 } },
+    { id: "bell", label: "\u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0439 \u043A\u043E\u043B\u043E\u043A\u043E\u043B", comfort: 0.12, value: 6, color: "#c89048", recipe: { at: "smelter", tier: 2, cost: { bronze: 3 }, fuel: 1, heat: 1, work: 600 } },
     { id: "casket", label: "\u0440\u0435\u0437\u043D\u043E\u0439 \u043B\u0430\u0440\u0435\u0446", comfort: 0.1, value: 7, color: "#58b3a8", recipe: { at: "jeweler", cost: { wood: 2, bone: 2, gems: 1 }, work: 700 } },
     // from the empire's towns
     { id: "mirror", label: "\u0431\u0440\u043E\u043D\u0437\u043E\u0432\u043E\u0435 \u0437\u0435\u0440\u043A\u0430\u043B\u043E", comfort: 0.14, value: 12, color: "#d9b25a", tradeOnly: true },
@@ -6290,6 +6290,7 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/agents/skills.js
+  var STAT_IDS = STATS.ids();
   var clamp01 = (v) => Math.max(0, Math.min(1, v));
   var statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
   var letterFactor = (v) => Math.max(LEARN.minFactor, LEARN.base + LEARN.perPoint * v);
@@ -6297,6 +6298,23 @@ dd.q4{color:#c58cff;font-weight:600}
   var tierFor = (stat) => TIERS.filter((t) => stat >= t.min).at(-1).id;
   var skillTier = (a, skillId) => tierFor(statFor(a, skillId));
   var skillOf = (a, skillId) => a.skill?.[skillId] ?? 0;
+  function recipeAccess(a, r) {
+    const need = recipeNeed(r), reasons = [];
+    if (need) {
+      const have = statFor(a, need.skill);
+      if (have < need.need) reasons.push({ ...need, have });
+    }
+    return { ok: !reasons.length, reasons, skill: recipeSkill(r), tier: r.tier || 1 };
+  }
+  function recipeNeed(r) {
+    const tier = r.tier || 1;
+    if (tier <= 1) return null;
+    const skill = recipeSkill(r);
+    return { code: "tier", stat: SKILLS.get(skill).stat, need: TIERS[tier - 1].min, tier, skill };
+  }
+  var canMake = (a, r) => recipeAccess(a, r).ok;
+  var accessKey = (a) => STAT_IDS.map((id) => tierFor(a.special?.[id] ?? NORM)).join("");
+  var reasonText = (x) => x.code === "tier" ? `${STATS.get(x.stat).label.toLowerCase()} \u043E\u0442 ${x.need}${x.have != null ? `, \u0441\u0435\u0439\u0447\u0430\u0441 ${x.have}` : ""}` : x.code;
   function practiceGain(a, skillId, units = 1) {
     const cur = skillOf(a, skillId);
     if (cur >= 1 || units <= 0) return 0;
@@ -7760,7 +7778,8 @@ dd.q4{color:#c58cff;font-weight:600}
       makes: { resource: "coal", n: 3 },
       want: (c) => c.has("smelter") ? c.fuel < 16 ? 1.8 : 0 : c.stock("coal") < 6 ? 0.8 : 0
     },
-    // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too
+    // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too. Melting is metallurgy (I):
+    // plain ore and native metal anyone can melt, gold dust takes care (T2), cupelling silver from ore skill (T3)
     {
       id: "smelt",
       at: "smelter",
@@ -7783,6 +7802,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "goldDustBar",
+      tier: 2,
       at: "smelter",
       cost: { goldDust: 12 },
       fuel: 0.5,
@@ -7803,6 +7823,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "silverOreBar",
+      tier: 3,
       at: "smelter",
       cost: { silverOre: 3 },
       fuel: 1,
@@ -7826,6 +7847,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // a silver dagger cast whole: no iron and no forge needed, the first answer to a vampire
     {
       id: "silverknife",
+      tier: 2,
       skill: "smithing",
       at: "smelter",
       cost: { silverBar: 2, leather: 1 },
@@ -7837,6 +7859,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "bronzespear",
+      tier: 2,
       skill: "smithing",
       at: "smelter",
       cost: { bronze: 2, wood: 1 },
@@ -7857,9 +7880,12 @@ dd.q4{color:#c58cff;font-weight:600}
       makes: { item: "bronzeaxe" },
       want: (c) => short(c.owned("ironaxe") + c.owned("bronzeaxe"), Math.min(Math.ceil(c.pop / 2), 1 + c.likes("chop"))) ? 1.9 : 0
     },
-    // ── the forge: iron blades and lamellar armour; each piece takes one fuel
+    // ── the forge: iron blades and lamellar armour; each piece takes one fuel. Forging is smithing (S): an axe
+    // head anyone can beat out (T1, the apprentice's work), a spear point wants a stronger arm (T2), a sword and
+    // lamellar a real smith (T3), a silvered sword a master (T4)
     {
       id: "sword",
+      tier: 3,
       at: "forge",
       cost: { iron: 3, leather: 1 },
       fuel: 1,
@@ -7869,6 +7895,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "ironspear",
+      tier: 2,
       at: "forge",
       cost: { iron: 2, wood: 2 },
       fuel: 1,
@@ -7890,6 +7917,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // (ctx.silverFoes): a silver blade for every second colonist, and the last bar goes into it.
     {
       id: "swordSilver",
+      tier: 4,
       at: "forge",
       cost: { iron: 3, leather: 1, silverBar: 1 },
       fuel: 1,
@@ -7899,6 +7927,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "spearSilver",
+      tier: 3,
       at: "forge",
       cost: { iron: 2, wood: 2, silverBar: 1 },
       fuel: 1,
@@ -7908,6 +7937,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "lamellar",
+      tier: 3,
       at: "forge",
       cost: { iron: 4, leather: 2 },
       fuel: 2,
@@ -10125,6 +10155,181 @@ dd.q4{color:#c58cff;font-weight:600}
     spoil(w);
   }
 
+  // src/settlement/crafting.js
+  var PRESERVED = () => FOODS.filter((f) => f.of);
+  function reserved(w, res) {
+    const g2 = w.council.goal;
+    if (!g2) return 0;
+    const v = BUILDINGS.get(g2).cost[res] || 0;
+    return v && res === "wood" ? v + fuelReserve(w) : v;
+  }
+  function canStart(w, r) {
+    if (r.needs && !r.needs.every((b) => has(w, b))) return false;
+    if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0))) return false;
+    if (r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;
+    return Object.entries(r.cost).every(([res, v]) => {
+      const have = w.stock[res] || 0;
+      return have >= v && (have - v >= reserved(w, res) || have < reserved(w, res) * 0.5);
+    });
+  }
+  var craftContext = (w) => perTick(w, "craftCtx", () => makeCraftContext(w));
+  function makeCraftContext(w) {
+    const col = colonists(w), counts = {};
+    const count2 = (it) => {
+      counts[it.type] = (counts[it.type] || 0) + 1;
+    };
+    for (const a of col) for (const it of allItems(a)) count2(it);
+    for (const it of w.armory) count2(it);
+    const owned = (id) => counts[id] || 0;
+    let silvered = 0;
+    for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
+    for (const it of w.armory) if (def(it).silver) silvered++;
+    return {
+      pop: col.length,
+      owned,
+      likes: (job) => col.filter((a) => a.likes === job).length,
+      timid: col.filter((a) => a.mods.bravery < 0.8).length,
+      stock: (res) => w.stock[res] || 0,
+      bows: owned("bow"),
+      has: (b) => has(w, b),
+      fishing: w.lakes.some(fishable),
+      food: foodTotal(w),
+      season: season(w).id,
+      drying: season(w).drying,
+      stockpile: { spring: 0.7, summer: 1, autumn: 1.6, winter: 1 }[season(w).id] ?? 1,
+      stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
+      fans: (food) => col.filter((a) => a.food?.likes === food).length,
+      get fuel() {
+        return furnaceHeat(w, 2);
+      },
+      melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
+      freeSlots: freeSlots(w),
+      silvered: () => silvered,
+      silverFoes: w.chronicle.silverFoes || 0,
+      placers: (w.plantBeds?.placer?.length || 0) > 0,
+      spare: (res) => {
+        const r = RESOURCES.get(res);
+        return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20);
+      }
+    };
+  }
+  var byStation = null;
+  function recipesAt(station) {
+    var _a;
+    if (!byStation) {
+      byStation = {};
+      for (const r of RECIPES.all()) (byStation[_a = r.at] || (byStation[_a] = [])).push(r);
+    }
+    return byStation[station] || [];
+  }
+  var melee = null;
+  var MELEE = () => melee || (melee = ITEMS.filter((d) => d.slot === "hand" && d.melee && !d.ranged));
+  var anyoneCan = (w, r) => !recipeNeed(r) || w.agents.some((a) => a.faction === "colony" && !a.dead && canMake(a, r));
+  function pickRecipe(w, station, ctx = craftContext(w), a = null) {
+    let best = null, bv = 0;
+    for (const r of recipesAt(station)) {
+      const v = r.want(ctx);
+      if (v > bv && (a ? canMake(a, r) : anyoneCan(w, r)) && canStart(w, r)) {
+        bv = v;
+        best = r;
+      }
+    }
+    return best;
+  }
+  var benchesOf = (b) => BUILDINGS.get(b.key).benches || 1;
+  var benchPrefix = (b) => "bench:" + b.id;
+  var freeBench = (w, b, a) => freeSlot(w, benchPrefix(b), benchesOf(b), a);
+  function stationHasWork(w, station, a) {
+    const map = perTick(w, "orders", () => ({}));
+    const b = w.buildings.find((x) => x.key === station && x.done);
+    if (!b || !freeBench(w, b, a)) return false;
+    const key2 = station + ":" + accessKey(a);
+    if (!(key2 in map)) map[key2] = b.order ? canMake(a, RECIPES.get(b.order.recipe)) : !!pickRecipe(w, station, void 0, a);
+    return map[key2];
+  }
+  function stationPriority(w, station, a = null) {
+    const b = w.buildings.find((x) => x.key === station && x.done);
+    if (!b) return 0;
+    const ctx = craftContext(w);
+    if (b.order) {
+      const r2 = RECIPES.get(b.order.recipe);
+      return a && !canMake(a, r2) ? 0 : r2.want(ctx) + 0.5;
+    }
+    const r = pickRecipe(w, station, ctx, a);
+    return r ? r.want(ctx) : 0;
+  }
+  function workAt(w, b, amount, a) {
+    if (b.order && a && !canMake(a, RECIPES.get(b.order.recipe))) return false;
+    if (!b.order) {
+      const r2 = pickRecipe(w, b.key, void 0, a);
+      if (!r2) return false;
+      const fuel = r2.fuel ? furnacePick(w, r2.heat ?? 2, r2.fuel, fuelReserve(w) + (r2.cost.wood || 0)) : null;
+      if (r2.fuel && !fuel) return false;
+      if (w.scratch) delete w.scratch.orders;
+      for (const [res, v] of Object.entries(r2.cost)) w.stock[res] -= v;
+      if (fuel) w.stock[fuel[0].id] -= fuel[1];
+      b.order = { recipe: r2.id, progress: 0 };
+      if (fuel) b.order.fuel = [fuel[0].id, fuel[1]];
+    }
+    const r = RECIPES.get(b.order.recipe);
+    const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
+    const labour = typeof amount === "function" ? amount(r) : amount;
+    b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
+    if (b.order.progress < r.work) return r;
+    b.order = null;
+    w.stats.crafted++;
+    if (w.scratch) delete w.scratch.craftCtx;
+    if (r.makes.item) {
+      const extra = {};
+      if (r.makes.silver) extra.silver = true;
+      if (bellows && w.rngs.colony() < FURNACE.bellowsFine) extra.q = 1;
+      const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
+      w.armory.push(it);
+      w.armoryVersion = (w.armoryVersion || 0) + 1;
+      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${extra.q ? " \u041C\u0435\u0445\u0430 \u0440\u0430\u0437\u0434\u0443\u043B\u0438 \u0436\u0430\u0440 \u043A\u0430\u043A \u043D\u0430\u0434\u043E: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439." : ""}`, "craft");
+      if (a) {
+        think(w, a, "madeItem", { item: name });
+        a.stats.crafted++;
+      }
+      w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
+    } else {
+      w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
+      const res = RESOURCES.get(r.makes.resource);
+      if (res.tags.includes("luxury") || res.tags.includes("furniture")) {
+        log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${res.short}.`, "craft");
+        if (a) {
+          think(w, a, "madeItem", { item: res.short });
+          a.stats.crafted++;
+        }
+      }
+    }
+    return r;
+  }
+  function stepCrafting(w) {
+    if (w.tick % HOUR !== 7) return;
+    for (const b of w.buildings) {
+      if (!b.done || !b.order) continue;
+      const r = RECIPES.get(b.order.recipe);
+      if (anyoneCan(w, r) || !w.agents.some((a) => a.faction === "colony" && !a.dead)) continue;
+      for (const [res, v] of Object.entries(r.cost)) w.stock[res] = (w.stock[res] || 0) + v;
+      if (b.order.fuel) w.stock[b.order.fuel[0]] = (w.stock[b.order.fuel[0]] || 0) + b.order.fuel[1];
+      b.order = null;
+      if (w.scratch) {
+        delete w.scratch.orders;
+        delete w.scratch.craftCtx;
+      }
+      const what = r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short;
+      const need = recipeNeed(r);
+      log(w, `\u041D\u0435\u043A\u043E\u043C\u0443 \u0434\u043E\u0434\u0435\u043B\u0430\u0442\u044C: ${what} (${need ? "\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F " + reasonText(need) : "\u043D\u0443\u0436\u0435\u043D \u043C\u0430\u0441\u0442\u0435\u0440"}). \u0417\u0430\u043A\u0430\u0437 \u0441\u043D\u044F\u0442, \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 \u0441\u043A\u043B\u0430\u0434.`, "craft");
+    }
+  }
+  function orderText(b) {
+    if (!b.order) return "\u0436\u0434\u0451\u0442 \u0437\u0430\u043A\u0430\u0437\u0430";
+    const r = RECIPES.get(b.order.recipe);
+    const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${RESOURCES.get(r.makes.resource).short} \xD7${r.makes.n}`;
+    return `${what}: ${Math.floor(b.order.progress / r.work * 100)}%`;
+  }
+
   // src/agents/body.js
   var NEED_THOUGHT = { food: "starving", warmth: "freezing", rest: "exhausted" };
   var REMEMBER_BELOW = { food: 0.3, rest: 0.25, warmth: 0.4 };
@@ -10204,156 +10409,6 @@ dd.q4{color:#c58cff;font-weight:600}
       TASKS.get(a.task.id).enter?.(w, a, a.task);
     }
     a.lastTask = a.task;
-  }
-
-  // src/settlement/crafting.js
-  var PRESERVED = () => FOODS.filter((f) => f.of);
-  function reserved(w, res) {
-    const g2 = w.council.goal;
-    if (!g2) return 0;
-    const v = BUILDINGS.get(g2).cost[res] || 0;
-    return v && res === "wood" ? v + fuelReserve(w) : v;
-  }
-  function canStart(w, r) {
-    if (r.needs && !r.needs.every((b) => has(w, b))) return false;
-    if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0))) return false;
-    if (r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;
-    return Object.entries(r.cost).every(([res, v]) => {
-      const have = w.stock[res] || 0;
-      return have >= v && (have - v >= reserved(w, res) || have < reserved(w, res) * 0.5);
-    });
-  }
-  var craftContext = (w) => perTick(w, "craftCtx", () => makeCraftContext(w));
-  function makeCraftContext(w) {
-    const col = colonists(w), counts = {};
-    const count2 = (it) => {
-      counts[it.type] = (counts[it.type] || 0) + 1;
-    };
-    for (const a of col) for (const it of allItems(a)) count2(it);
-    for (const it of w.armory) count2(it);
-    const owned = (id) => counts[id] || 0;
-    let silvered = 0;
-    for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
-    for (const it of w.armory) if (def(it).silver) silvered++;
-    return {
-      pop: col.length,
-      owned,
-      likes: (job) => col.filter((a) => a.likes === job).length,
-      timid: col.filter((a) => a.mods.bravery < 0.8).length,
-      stock: (res) => w.stock[res] || 0,
-      bows: owned("bow"),
-      has: (b) => has(w, b),
-      fishing: w.lakes.some(fishable),
-      food: foodTotal(w),
-      season: season(w).id,
-      drying: season(w).drying,
-      stockpile: { spring: 0.7, summer: 1, autumn: 1.6, winter: 1 }[season(w).id] ?? 1,
-      stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
-      fans: (food) => col.filter((a) => a.food?.likes === food).length,
-      get fuel() {
-        return furnaceHeat(w, 2);
-      },
-      melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
-      freeSlots: freeSlots(w),
-      silvered: () => silvered,
-      silverFoes: w.chronicle.silverFoes || 0,
-      placers: (w.plantBeds?.placer?.length || 0) > 0,
-      spare: (res) => {
-        const r = RESOURCES.get(res);
-        return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20);
-      }
-    };
-  }
-  var byStation = null;
-  function recipesAt(station) {
-    var _a;
-    if (!byStation) {
-      byStation = {};
-      for (const r of RECIPES.all()) (byStation[_a = r.at] || (byStation[_a] = [])).push(r);
-    }
-    return byStation[station] || [];
-  }
-  var melee = null;
-  var MELEE = () => melee || (melee = ITEMS.filter((d) => d.slot === "hand" && d.melee && !d.ranged));
-  function pickRecipe(w, station, ctx = craftContext(w)) {
-    let best = null, bv = 0;
-    for (const r of recipesAt(station)) {
-      const v = r.want(ctx);
-      if (v > bv && canStart(w, r)) {
-        bv = v;
-        best = r;
-      }
-    }
-    return best;
-  }
-  var benchesOf = (b) => BUILDINGS.get(b.key).benches || 1;
-  var benchPrefix = (b) => "bench:" + b.id;
-  var freeBench = (w, b, a) => freeSlot(w, benchPrefix(b), benchesOf(b), a);
-  function stationHasWork(w, station, a) {
-    const map = perTick(w, "orders", () => ({}));
-    const b = w.buildings.find((x) => x.key === station && x.done);
-    if (!b || !freeBench(w, b, a)) return false;
-    if (!(station in map)) map[station] = !!b.order || !!pickRecipe(w, station);
-    return map[station];
-  }
-  function stationPriority(w, station) {
-    const b = w.buildings.find((x) => x.key === station && x.done);
-    if (!b) return 0;
-    const ctx = craftContext(w);
-    if (b.order) return RECIPES.get(b.order.recipe).want(ctx) + 0.5;
-    const r = pickRecipe(w, station, ctx);
-    return r ? r.want(ctx) : 0;
-  }
-  function workAt(w, b, amount, a) {
-    if (!b.order) {
-      const r2 = pickRecipe(w, b.key);
-      if (!r2) return false;
-      const fuel = r2.fuel ? furnacePick(w, r2.heat ?? 2, r2.fuel, fuelReserve(w) + (r2.cost.wood || 0)) : null;
-      if (r2.fuel && !fuel) return false;
-      if (w.scratch) delete w.scratch.orders;
-      for (const [res, v] of Object.entries(r2.cost)) w.stock[res] -= v;
-      if (fuel) w.stock[fuel[0].id] -= fuel[1];
-      b.order = { recipe: r2.id, progress: 0 };
-    }
-    const r = RECIPES.get(b.order.recipe);
-    const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
-    const labour = typeof amount === "function" ? amount(r) : amount;
-    b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
-    if (b.order.progress < r.work) return r;
-    b.order = null;
-    w.stats.crafted++;
-    if (w.scratch) delete w.scratch.craftCtx;
-    if (r.makes.item) {
-      const extra = {};
-      if (r.makes.silver) extra.silver = true;
-      if (bellows && w.rngs.colony() < FURNACE.bellowsFine) extra.q = 1;
-      const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
-      w.armory.push(it);
-      w.armoryVersion = (w.armoryVersion || 0) + 1;
-      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${extra.q ? " \u041C\u0435\u0445\u0430 \u0440\u0430\u0437\u0434\u0443\u043B\u0438 \u0436\u0430\u0440 \u043A\u0430\u043A \u043D\u0430\u0434\u043E: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439." : ""}`, "craft");
-      if (a) {
-        think(w, a, "madeItem", { item: name });
-        a.stats.crafted++;
-      }
-      w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
-    } else {
-      w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
-      const res = RESOURCES.get(r.makes.resource);
-      if (res.tags.includes("luxury") || res.tags.includes("furniture")) {
-        log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${res.short}.`, "craft");
-        if (a) {
-          think(w, a, "madeItem", { item: res.short });
-          a.stats.crafted++;
-        }
-      }
-    }
-    return r;
-  }
-  function orderText(b) {
-    if (!b.order) return "\u0436\u0434\u0451\u0442 \u0437\u0430\u043A\u0430\u0437\u0430";
-    const r = RECIPES.get(b.order.recipe);
-    const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${RESOURCES.get(r.makes.resource).short} \xD7${r.makes.n}`;
-    return `${what}: ${Math.floor(b.order.progress / r.work * 100)}%`;
   }
 
   // src/agents/brains/predator.js
@@ -10826,7 +10881,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const job = JOBS.get(task.job);
       if (!task.station || !stationHasWork(w, task.station, a)) {
         const open = job.stations.filter((s) => stationHasWork(w, s, a));
-        task.station = open.sort((x, y) => stationPriority(w, y) - stationPriority(w, x))[0];
+        task.station = open.sort((x, y) => stationPriority(w, y, a) - stationPriority(w, x, a))[0];
       }
       if (!task.station) {
         fail(w, a, "\u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u043D\u0435\u0442 \u0438\u043B\u0438 \u0432\u0441\u0435 \u0432\u0435\u0440\u0441\u0442\u0430\u043A\u0438 \u0437\u0430\u043D\u044F\u0442\u044B");
@@ -12262,6 +12317,7 @@ dd.q4{color:#c58cff;font-weight:600}
     stepFarms(w);
     stepHerd(w);
     stepLife(w);
+    stepCrafting(w);
     stepRelations(w);
     const t1 = performance.now();
     w.nav.step();
@@ -13939,8 +13995,10 @@ dd.q4{color:#c58cff;font-weight:600}
             const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w));
             return `<span class="cost${f ? "" : " short"}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : (r.heat ?? 2) >= 2 ? `${r.fuel} \u0443\u0433\u043B\u044F` : `${r.fuel} \u0443\u0433\u043B\u044F \u0438\u043B\u0438 ${r.fuel * 3} \u0434\u0440\u043E\u0432`}</span>`;
           })() : "") + (r.tool ? `<span class="cost${(w.stock[r.tool] || 0) >= 1 ? "" : " short"}">${RESOURCES.get(r.tool).short}</span>` : "");
-          const want2 = r.want(ctx);
-          return `<div class="rc${r.id === cur ? " cur" : ""}"><b>${esc(what)}</b><span class="costs">${cost}</span><span class="muted">${r.id === cur ? "\u0432 \u0440\u0430\u0431\u043E\u0442\u0435" : want2 > 0 ? "\u043D\u0443\u0436\u043D\u043E" : "\u0445\u0432\u0430\u0442\u0430\u0435\u0442"}</span></div>`;
+          const want2 = r.want(ctx), need = recipeNeed(r);
+          const able = need ? colonists(w).filter((x) => canMake(x, r)).map((x) => x.name) : null;
+          const tier = need ? `<span class="cost${able.length ? "" : " short"}" title="${able.length ? "\u041C\u043E\u0433\u0443\u0442: " + esc(able.join(", ")) : "\u0412 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438 \u043D\u0435\u0442 \u0442\u0430\u043A\u043E\u0433\u043E \u043C\u0430\u0441\u0442\u0435\u0440\u0430"}">T${need.tier} \xB7 ${reasonText(need)}</span>` : "";
+          return `<div class="rc${r.id === cur ? " cur" : ""}"><b>${esc(what)}</b><span class="costs">${tier}${cost}</span><span class="muted">${r.id === cur ? "\u0432 \u0440\u0430\u0431\u043E\u0442\u0435" : need && !able.length ? "\u043D\u0435\u043A\u043E\u043C\u0443" : want2 > 0 ? "\u043D\u0443\u0436\u043D\u043E" : "\u0445\u0432\u0430\u0442\u0430\u0435\u0442"}</span></div>`;
         }).join("");
         extra = `<section><h4>\u0427\u0442\u043E \u0437\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442</h4><div class="recipes">${recs}</div></section>`;
       }
@@ -14415,7 +14473,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.38 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 7622c76" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 d67c385" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 2;

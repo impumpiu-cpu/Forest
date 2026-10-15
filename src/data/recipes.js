@@ -8,6 +8,9 @@
 //          do (copper, bronze, gold, silver), 2 (default): coal (iron). Fuel is picked in settlement/stock.js
 //   tool:  a town-made tool that must be in the stock (cupels for silver)
 //   skill: the skill the order trains and reads (data/skills.js); by default the station's (STATION_SKILL)
+//   tier:  1–4 (data/skills.js TIERS), 1 by default. Above 1 only a worker whose letter for the recipe's
+//          skill reaches the tier may take the order (agents/skills.js recipeAccess): a sword needs S 6,
+//          cupellation of silver needs I 6. T1 recipes stay open to anyone, so everyone can learn
 //
 // ctx (see settlement/crafting.js): pop, owned(id), likes(job), fans(food), fishing (a lake has fish),
 //   season (id), drying (racks work this season), stockpile (×: how keen on stores — autumn most),
@@ -83,44 +86,47 @@ RECIPES.registerAll([
   {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'coal', n: 3},
     want: c => (c.has('smelter') ? (c.fuel < 16 ? 1.8 : 0) : (c.stock('coal') < 6 ? 0.8 : 0))},
 
-  // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too
+  // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too. Melting is metallurgy (I):
+  // plain ore and native metal anyone can melt, gold dust takes care (T2), cupelling silver from ore skill (T3)
   {id: 'smelt', at: 'smelter', cost: {ironore: 2}, fuel: 1, heat: 2, work: 320, makes: {resource: 'iron', n: 1},
     want: c => (c.stock('iron') < 10 ? 2.2 : 0)},
   {id: 'smeltBronze', at: 'smelter', cost: {bronzeOre: 2}, fuel: 1, heat: 1, work: 280, makes: {resource: 'bronze', n: 1},
     want: c => (c.stock('bronze') < 8 ? 2.0 : 0)},
-  {id: 'goldDustBar', at: 'smelter', cost: {goldDust: 12}, fuel: 0.5, heat: 1, work: 200, makes: {resource: 'goldBar', n: 1},
+  {id: 'goldDustBar', tier: 2, at: 'smelter', cost: {goldDust: 12}, fuel: 0.5, heat: 1, work: 200, makes: {resource: 'goldBar', n: 1},
     want: () => 1.3},
   {id: 'goldNuggetBar', at: 'smelter', cost: {goldNugget: 1}, fuel: 0.5, heat: 1, work: 120, makes: {resource: 'goldBar', n: 1},
     want: () => 1.2},
-  {id: 'silverOreBar', at: 'smelter', cost: {silverOre: 3}, fuel: 1, heat: 1, tool: 'cupels', work: 320, makes: {resource: 'silverBar', n: 1},
+  {id: 'silverOreBar', tier: 3, at: 'smelter', cost: {silverOre: 3}, fuel: 1, heat: 1, tool: 'cupels', work: 320, makes: {resource: 'silverBar', n: 1},
     want: () => 1.4},
   {id: 'silverNativeBar', at: 'smelter', cost: {silverNative: 1}, fuel: 0.5, heat: 1, work: 120, makes: {resource: 'silverBar', n: 1},
     want: () => 1.2},
   // bronze cast in clay moulds at the furnace: no anvil needed
   // a silver dagger cast whole: no iron and no forge needed, the first answer to a vampire
-  {id: 'silverknife', skill: 'smithing', at: 'smelter', cost: {silverBar: 2, leather: 1}, fuel: 0.5, heat: 1, work: 500, makes: {item: 'silverknife'},
+  {id: 'silverknife', tier: 2, skill: 'smithing', at: 'smelter', cost: {silverBar: 2, leather: 1}, fuel: 0.5, heat: 1, work: 500, makes: {item: 'silverknife'},
     want: c => (c.silverFoes ? (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 2)) ? (c.has('forge') ? 1.4 : 2.4) : 0)
       : c.stock('silverBar') >= 4 && c.silvered() < 1 ? 0.6 : 0)},
-  {id: 'bronzespear', skill: 'smithing', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzespear'},
+  {id: 'bronzespear', tier: 2, skill: 'smithing', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzespear'},
     want: c => (short(c.owned('sword') + c.owned('ironspear') + c.owned('bronzespear'), c.pop) ? 2.0 : 0)},
   {id: 'bronzeaxe', skill: 'smithing', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzeaxe'},
     want: c => (short(c.owned('ironaxe') + c.owned('bronzeaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 1.9 : 0)},
 
-  // ── the forge: iron blades and lamellar armour; each piece takes one fuel
-  {id: 'sword', at: 'forge', cost: {iron: 3, leather: 1}, fuel: 1, work: 900, makes: {item: 'sword'},
+  // ── the forge: iron blades and lamellar armour; each piece takes one fuel. Forging is smithing (S): an axe
+  // head anyone can beat out (T1, the apprentice's work), a spear point wants a stronger arm (T2), a sword and
+  // lamellar a real smith (T3), a silvered sword a master (T4)
+  {id: 'sword', tier: 3, at: 'forge', cost: {iron: 3, leather: 1}, fuel: 1, work: 900, makes: {item: 'sword'},
     want: c => (short(c.owned('sword'), Math.ceil(c.pop / 2)) ? 2.5 : 0)},
-  {id: 'ironspear', at: 'forge', cost: {iron: 2, wood: 2}, fuel: 1, work: 700, makes: {item: 'ironspear'},
+  {id: 'ironspear', tier: 2, at: 'forge', cost: {iron: 2, wood: 2}, fuel: 1, work: 700, makes: {item: 'ironspear'},
     want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
   // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare
   // Before anyone has seen a vampire: a few, while there is silver to spare. Once one has come
   // (ctx.silverFoes): a silver blade for every second colonist, and the last bar goes into it.
-  {id: 'swordSilver', at: 'forge', cost: {iron: 3, leather: 1, silverBar: 1}, fuel: 1, work: 1100, makes: {item: 'sword', silver: true},
+  {id: 'swordSilver', tier: 4, at: 'forge', cost: {iron: 3, leather: 1, silverBar: 1}, fuel: 1, work: 1100, makes: {item: 'sword', silver: true},
     want: c => silverWant(c, 1.3, 2.6)},
-  {id: 'spearSilver', at: 'forge', cost: {iron: 2, wood: 2, silverBar: 1}, fuel: 1, work: 900, makes: {item: 'ironspear', silver: true},
+  {id: 'spearSilver', tier: 3, at: 'forge', cost: {iron: 2, wood: 2, silverBar: 1}, fuel: 1, work: 900, makes: {item: 'ironspear', silver: true},
     want: c => silverWant(c, 1.2, 2.4)},
-  {id: 'lamellar', at: 'forge', cost: {iron: 4, leather: 2}, fuel: 2, work: 1600, makes: {item: 'lamellar'},
+  {id: 'lamellar', tier: 3, at: 'forge', cost: {iron: 4, leather: 2}, fuel: 2, work: 1600, makes: {item: 'lamellar'},
     want: c => (short(c.owned('lamellar'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
 
   // ── the jeweller: a gem set into bone, wood, stone or iron (data/luxury.js); the scarcer piece goes first
