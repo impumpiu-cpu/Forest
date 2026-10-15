@@ -229,15 +229,17 @@ export class Panel {
         const same = g.kind === 'item' && lines.find(x => x.g.kind === 'item' && x.g.type === g.type && (x.g.q || 0) === (g.q || 0));
         if (same) same.n++; else lines.push({g, n: g.kind === 'res' ? g.n : 1});
       }
-      const rows = lines.sort((x, y) => (x.g.kind === y.g.kind ? askPrice(y.g) - askPrice(x.g) : x.g.kind === 'item' ? -1 : 1)).map(({g, n}) => {
-        const p = askPrice(g), can = gold >= p;
+      // prices at the terms the negotiator got (settlement/trade.js termsOf); plain until the trade starts
+      const tb = c.terms?.b || 0;
+      const rows = lines.sort((x, y) => (x.g.kind === y.g.kind ? askPrice(y.g, tb) - askPrice(x.g, tb) : x.g.kind === 'item' ? -1 : 1)).map(({g, n}) => {
+        const p = askPrice(g, tb), can = gold >= p;
         return `<div class="wrow${g.kind === 'item' && g.q ? ' fine' : ''}"><span>${esc(goodsLabel(g))}${n > 1 || g.kind === 'res' ? ' ×' + n : ''}</span><b class="${can ? '' : 'dear'}">${p} зол.${n > 1 ? ' / шт.' : ''}</b></div>`;
       }).join('');
-      goods = `<h2>Купец ${esc(c.name)}</h2><p class="small muted">Сейчас: ${phase[c.phase]}. Груз ${units} из ${cap} мест, в кошельке у купца ${Math.floor(c.purse)} зол. Купец просит ×${TRADE.ask} от цены и платит ×${TRADE.bid}.</p><div class="wares">${rows || '<p class="muted small">Всё распродано.</p>'}</div>`;
+      goods = `<h2>Купец ${esc(c.name)}</h2><p class="small muted">Сейчас: ${phase[c.phase]}. Груз ${units} из ${cap} мест, в кошельке у купца ${Math.floor(c.purse)} зол. Купец просит ×${+(TRADE.ask - tb).toFixed(2)} от цены и платит ×${+(TRADE.bid + tb).toFixed(2)}${c.terms?.name ? ` (торговал${c.terms.f ? 'ась' : 'ся'} ${esc(c.terms.name)})` : ''}.</p><div class="wares">${rows || '<p class="muted small">Всё распродано.</p>'}</div>`;
     }
     const deals = w.trade.deals.map(d => {
       const list = xs => xs.map(([l, n, g]) => `${esc(l)}${n > 1 ? ' ×' + n : ''}`).join(', ');
-      return `<li><b>День ${d.day}, ${esc(d.trader)}</b>: ${d.sold.length ? 'продали ' + list(d.sold) + ` (+${d.earned})` : 'продать было нечего'}; ${d.bought.length ? 'купили ' + list(d.bought) + ` (−${d.spent})` : 'ничего не купили'}. В казне ${Math.floor(d.gold)}.</li>`;
+      return `<li><b>День ${d.day}, ${esc(d.trader)}</b>${d.by ? ` (переговорщик ${esc(d.by)}, ${d.b > 0 ? '+' : ''}${Math.round((d.b || 0) * 100)}%)` : ''}: ${d.sold.length ? 'продали ' + list(d.sold) + ` (+${d.earned})` : 'продать было нечего'}; ${d.bought.length ? 'купили ' + list(d.bought) + ` (−${d.spent})` : 'ничего не купили'}. В казне ${Math.floor(d.gold)}.</li>`;
     }).join('');
     this.set('tradeBox', `${head}${goods}<h2>Последние сделки</h2>${deals ? `<ul class="deals">${deals}</ul>` : '<p class="muted small">Торговли ещё не было. Караваны ходят по Имперскому тракту с 10-го дня, раз в 10 дней, и приходят не всегда.</p>'}`);
   }

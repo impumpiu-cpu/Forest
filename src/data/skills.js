@@ -43,7 +43,7 @@ SKILLS.registerAll([
 
   // ── C: charisma
   {id: 'husbandry',    stat: 'C', label: 'обращение с животными', short: 'скот'},
-  {id: 'barter',       stat: 'C', label: 'торговля',            short: 'торг', status: 'reserved'},
+  {id: 'barter',       stat: 'C', label: 'торговля',            short: 'торг'},
   {id: 'persuasion',   stat: 'C', label: 'убеждение',           short: 'убеждение', status: 'reserved'},
   {id: 'leadership',   stat: 'C', label: 'руководство',         short: 'руководство', status: 'reserved'},
 

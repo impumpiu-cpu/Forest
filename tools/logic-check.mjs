@@ -4,7 +4,7 @@
 // T27–T31 carcasses and pack hunts; T32–T39 SPECIAL stage 1: skills, practice, the body;
 // T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order;
 // T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
-// T58–T62 tiers of the other jobs and the AI). Each scene builds a flat, empty map, places a few agents by hand and
+// T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -46,6 +46,9 @@ import {workRate} from '../src/agents/jobRunners.js';
 import {shoot} from '../src/agents/combat.js';
 import {recipeSkill, isActive} from '../src/data/skills.js';
 import {RECIPES} from '../src/data/recipes.js';
+import {ITEMS} from '../src/data/items.js';
+import {TRADE} from '../src/data/trade.js';
+import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../src/settlement/trade.js';
 import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
 
@@ -816,6 +819,45 @@ check('T62', 'инструмент для закрытой работы не б�
   const took = allItems(blind).some(it => it.type === 'pan');
   outfit(w, sharp);
   return (!took && allItems(sharp).some(it => it.type === 'pan')) || `лоток: слабый ${took}, зоркий ${allItems(sharp).some(it => it.type === 'pan')}`;
+});
+
+// ── SPECIAL stage 5: trade through the colony's negotiator
+const caravanFor = (w, goods = []) => (w.caravan = {id: 1, name: 'Луций', gender: 'm', goods, purse: 200, capacity: 100, traderId: null, phase: 'trading'});
+
+check('T63', 'переговорщик — лучший по харизме и торговле, условия фиксируются на визит', () => {
+  const w = scene(), shy = human(w, {C: 3}), smooth = human(w, {C: 9}), fallen = human(w, {C: 10});
+  smooth.skill.barter = 0.5; fallen.downed = {until: 1e9};
+  if (negotiator(w) !== smooth) return 'выбран ' + negotiator(w)?.name;
+  const c = caravanFor(w), t1 = termsOf(w, c);
+  smooth.special.C = 1; smooth.skill.barter = 0;
+  const t2 = termsOf(w, c);
+  return (t1 === t2 && t1.by === smooth.id && t1.b > 0) || 'условия пересчитались или неверны: ' + JSON.stringify([t1, t2]);
+});
+
+check('T64', 'поправка в пределах ±10%, перепродажа никогда не выгодна', () => {
+  const w = scene();
+  const terms = C => { const x = scene(), a = human(x, {C}); a.skill.barter = C > 5 ? 1 : 0; return termsOf(x, caravanFor(x)).b; };
+  const lo = terms(1), hi = terms(1000);
+  if (!(lo < 0 && hi > 0 && lo >= -TRADE.haggle && hi <= TRADE.haggle)) return `поправка ${lo} … ${hi}`;
+  const goods = [...RESOURCES.filter(r => r.value > 0).map(r => ({kind: 'res', id: r.id, n: 1})), ...ITEMS.filter(d => !d.tradeOnly).map(d => ({kind: 'item', type: d.id, q: 0}))];
+  const bad = goods.filter(g => askPrice(g, TRADE.haggle) < bidPrice(g, TRADE.haggle) || (unitPrice(g) >= 1 && askPrice(g, TRADE.haggle) <= bidPrice(g, TRADE.haggle)));
+  return !bad.length || 'выгодно перепродать: ' + bad.map(g => g.id || g.type).join(', ');
+});
+
+check('T65', 'торговле учит только настоящая сделка и только переговорщика', () => {
+  const w = scene(), neg = human(w, {C: 9}), other = human(w, {C: 2});
+  w.stock.gold = 50; for (const r of Object.keys(w.stock)) if (r !== 'gold') w.stock[r] = 0;
+  caravanFor(w, [{kind: 'res', id: 'salt', n: 6}]);
+  const b0 = neg.skill.barter, o0 = other.skill.barter;
+  holdTrade(w);
+  if (!(neg.skill.barter > b0) || other.skill.barter !== o0) return `навык: переговорщик ${b0} → ${neg.skill.barter}, другой ${o0} → ${other.skill.barter}`;
+  if (!w.caravan.deal.bought.length) return 'сделки не было';
+  // nothing to trade: nothing learnt
+  const w2 = scene(), n2 = human(w2, {C: 9});
+  for (const r of Object.keys(w2.stock)) w2.stock[r] = 0;
+  caravanFor(w2, []);
+  const s2 = n2.skill.barter; holdTrade(w2);
+  return n2.skill.barter === s2 || 'пустой торг научил';
 });
 
 let bad = 0;

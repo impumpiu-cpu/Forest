@@ -228,6 +228,9 @@ if (!WOUNDS.has('grave')) err('раны: нет тяжёлой раны grave, �
 if (!WOUNDS.filter(x => x.trauma).length) err('раны: нет ни одной травмы для провала второй проверки');
 for (const t of ['fell', 'survived', 'trauma', 'woundHealed']) if (!THOUGHTS.has(t)) err(`нет мысли «${t}» для смертельной раны`);
 
+// haggling (settlement/trade.js): even at the best terms buying must cost more than selling brings
+if (!(TRADE.ask - TRADE.bid - 2 * TRADE.haggle > 0)) err(`торг: при поправке ±${TRADE.haggle} продажа и обратная покупка дают прибыль`);
+
 for (const w of warnings) console.log('warn ' + w);
 if (errors.length) { console.log('Ошибки в справочниках:\n  ' + errors.join('\n  ')); process.exit(1); }
 console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд, ${SKILLS.all().length} навыков, ${WOUNDS.all().length} ран — ссылки сходятся`);
