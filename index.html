@@ -47,8 +47,10 @@
       <div class="field"><span class="lbl">Суша</span><div class="seg" data-akey="land"></div></div>
       <div class="field"><span class="lbl">Плиты</span><div class="seg" data-akey="plates"></div></div>
       <div class="field"><span class="lbl">Широты</span><div class="seg wrapseg" data-akey="hemisphere"></div><small id="atlasHemiNote"></small></div>
+      <div class="field"><span class="lbl">Дикая эра</span><div class="seg" data-akey="wild"></div><small id="atlasWildNote"></small></div>
       <div class="row actions">
         <button type="button" id="atlasGo" class="primary">Сотворить</button>
+        <button type="button" id="atlasPause" hidden>Пауза</button>
         <button type="button" id="atlasBack" class="quiet">← Назад</button>
       </div>
       <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="atlasStages"></ol></div>
@@ -57,6 +59,7 @@
     <div class="atlas-map">
       <div class="seg wrapseg" data-akey="layer"></div>
       <div class="seg wrapseg" data-akey="ore" id="atlasOre" hidden></div>
+      <div class="seg wrapseg" data-akey="fauna" id="atlasFauna" hidden></div>
       <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
       <div class="legend atlas-legend" id="atlasLegend"></div>
       <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку.</div>

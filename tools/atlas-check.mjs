@@ -9,6 +9,9 @@ import {levelOf} from '../src/atlas/geology.js';
 import {latitude} from '../src/atlas/latitude.js';
 import {biomeAt, soilAt, cellBiomes, dryness} from '../src/atlas/biomes.js';
 import {BIOMES, KOPPEN} from '../src/data/biomes.js';
+import {LAIRS} from '../src/data/lairs.js';
+import {historyLength} from '../src/atlas/history.js';
+import {scaleOf} from '../src/atlas/tectonics.js';
 
 const seeds = +(process.argv[2] || 3), size = process.argv[3] || 'small';
 let ok = true;
@@ -19,6 +22,28 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
+const hist = {lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}};
+
+// the wild era ran to its end; beasts stay where their biomes can hold them; lairs keep apart
+function historyCheck(a, tag) {
+  check(`${tag}: дикая эра прошла до конца`, a.hist && a.hist.step === historyLength(a));
+  let nan = 0, outside = 0, total = 0;
+  for (const s of a.fauna.list) for (let j = 0; j < s.N.length; j++) {
+    const v = s.N[j]; if (!Number.isFinite(v) || v < 0) nan++;
+    total += v; if (s.K[j] <= 0) outside += v;
+  }
+  check(`${tag}: численность зверей — конечные неотрицательные числа`, nan === 0, nan ? `${nan} плохих` : '');
+  const home = outside <= 0.02 * total;
+  check(`${tag}: звери живут в своих биомах`, home, home ? '' : `вне своих краёв ${(outside / (total || 1) * 100).toFixed(1)}%`);
+  const alive = a.lairs.filter(l => l.alive);
+  let close = 0;
+  for (const p of alive) for (const q of alive) if (p.id < q.id && p.kind === q.kind && Math.hypot(p.x - q.x, p.y - q.y) < 2 * LAIRS.get(p.kind).radius * scaleOf(a) - 1) close++;
+  check(`${tag}: логова одного рода не теснят друг друга`, close === 0, close ? `${close} пар` : '');
+  hist.lairs += a.lairs.length; hist.alive += alive.length; hist.worlds++;
+  hist.lines += a.chronicle.filter(c => c.season != null).length;
+  for (const l of a.lairs) hist.kinds[l.kind] = (hist.kinds[l.kind] || 0) + 1;
+}
+
 
 // every land cell has a biome and a soil, and the biome agrees with its climate as Köppen has it
 function biomeCheck(a, tag) {
@@ -159,6 +184,7 @@ for (let s = 1; s <= seeds; s++) for (let land = 0; land < ATLAS_LAND.length; la
   check(`${tag}: магма только у живых вулканов`, magmaCold === 0, magmaCold ? `${magmaCold} клеток` : '');
   rainBelts(a); rainShadow(a);
   biomeCheck(a, tag);
+  historyCheck(a, tag);
   const dr = drainage(a);
   check(`${tag}: вся вода стекает в море или в солёное озеро`, dr.bad === 0, dr.bad ? `${dr.bad} клеток без стока` : '');
   check(`${tag}: вниз по течению воды не меньше`, dr.shrink === 0, dr.shrink ? `${dr.shrink} мест` : '');
@@ -197,6 +223,9 @@ const L = id => mean(bioLat[id] || [0, 0]), Tr = id => mean(bioTrees[id] || [0, 
 check('  зоны по широте: тундра севернее тайги, тайга севернее широколиственных, джунгли у экватора', L('tundra') > L('taiga') && L('taiga') > L('forest') && L('jungle') < 20, `${Math.round(L('tundra'))}° / ${Math.round(L('taiga'))}° / ${Math.round(L('forest'))}° / ${Math.round(L('jungle'))}°`);
 check('  леса лесистые, степи и пустыни нет', Tr('forest') > 0.5 && Tr('taiga') > 0.5 && Tr('steppe') < 0.1 && Tr('desert') < 0.05, `лес ${Math.round(Tr('forest') * 100)}%, тайга ${Math.round(Tr('taiga') * 100)}%, степь ${Math.round(Tr('steppe') * 100)}%`);
 check('  чернозём и поймы плодороднее подзола и латерита', F('chernozem') > F('podzol') && F('alluvial') > F('laterite'), `чернозём ${Math.round(F('chernozem') * 100)}%, пойма ${Math.round(F('alluvial') * 100)}%, подзол ${Math.round(F('podzol') * 100)}%, латерит ${Math.round(F('laterite') * 100)}%`);
+console.log('Дикая эра:');
+check('  логова чудовищ есть', hist.lairs > 0, `${hist.lairs} за эру на ${hist.worlds} миров, к концу живы ${hist.alive}; ` + LAIRS.all().map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', '));
+check('  летопись эры пишется', hist.lines >= 10 * hist.worlds, `${(hist.lines / hist.worlds).toFixed(0)} записей на мир`);
 console.log('Вода:');
 check('  озёра есть', lakesAll > 0, `${lakesAll} на ${worlds} миров, солёных ${saltAll}`);
 if (lakeRain.salt[1] && lakeRain.fresh[1]) check('  солёные озёра в сухом климате', mean(lakeRain.salt) < mean(lakeRain.fresh), `у солёных ${Math.round(mean(lakeRain.salt))} мм, у пресных ${Math.round(mean(lakeRain.fresh))} мм`);

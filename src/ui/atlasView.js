@@ -14,24 +14,34 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {PLATE_COUNTS, HEMISPHERES, BOUNDARIES, BOUNDARY_BY_CODE, ROCKS, ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
 import {LEVEL_WORDS} from '../data/regions.js';
 import {RAIN_WORDS} from '../data/climate.js';
-import {newAtlas, runNextStage, atlasDone} from '../atlas/generate.js';
+import {newAtlas, runNextStage, atlasDone, landDone} from '../atlas/generate.js';
+import {historyLength, seasonLabel} from '../atlas/history.js';
+import {faunaAt} from '../atlas/fauna.js';
+import {lairAt} from '../atlas/lairs.js';
+import {LAIRS} from '../data/lairs.js';
+import {WILD_YEARS, ERAS} from '../data/history.js';
+import {SPECIES} from '../data/species.js';
 import {seedNumber} from '../core/rng.js';
 import {esc} from '../core/util.js';
 import {$} from './dom.js';
 
 const STORE = 'forest.atlas';
-const ERA = {geology: 'Геология'};
+const ERA = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
 const OPTS = {
   size: Object.entries(ATLAS_SIZES).map(([k, v]) => [k, v.label]),
   land: ATLAS_LAND.map((l, i) => [i, l.label]),
   plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
   hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
-  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы']],
+  wild: WILD_YEARS.map((e, i) => [i, e.label]),
+  fauna: SPECIES.filter(sp => sp.habitat).map(sp => [sp.id, sp.plural]),
+  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
-const VIEW_KEYS = new Set(['layer', 'ore']);
+const VIEW_KEYS = new Set(['layer', 'ore', 'fauna']);
 
 const mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
+const hexRgb = h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16));
+const faunaCellOf = (a, i) => (((i / a.w) | 0) / a.fauna.c | 0) * a.fauna.W + ((i % a.w) / a.fauna.c | 0);
 function ramp(stops, t) {
   t = Math.max(0, Math.min(1, t));
   for (let k = 1; k < stops.length; k++) if (t <= stops[k][0]) {
@@ -53,7 +63,7 @@ const windWord = (x, y) => COMPASS[(Math.round(Math.atan2(-y, -x) / (Math.PI / 4
 
 export class AtlasView {
   constructor({onBack}) {
-    this.cfg = this.load(); this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.timer = 0;
+    this.cfg = this.load(); this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.fauna = 'wolf'; this.timer = 0; this.paused = false;
     this.onBack = onBack;
     this.build();
   }
@@ -78,6 +88,7 @@ export class AtlasView {
     $('atlasSeed').addEventListener('input', e => { this.cfg.seed = e.target.value.trim() || '1'; this.save(); });
     $('atlasRandom').addEventListener('click', () => { this.cfg.seed = String(100000 + Math.floor(Math.random() * 899999)); this.save(); this.sync(); });
     $('atlasGo').addEventListener('click', () => this.generate());
+    $('atlasPause').addEventListener('click', () => { this.paused = !this.paused; this.syncPause(); if (!this.paused) this.run(); });
     $('atlasBack').addEventListener('click', () => { clearTimeout(this.timer); this.onBack(); });
     const cv = $('atlasMap');
     cv.addEventListener('pointermove', e => this.hover(e));
@@ -88,13 +99,15 @@ export class AtlasView {
 
   sync() {
     $('atlasSeed').value = this.cfg.seed;
-    const val = {...this.cfg, layer: this.layer, ore: this.ore};
+    const val = {...this.cfg, layer: this.layer, ore: this.ore, fauna: this.fauna};
     document.querySelectorAll('#atlas .seg[data-akey]').forEach(box => {
       box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(val[box.dataset.akey]))));
     });
     $('atlasSizeNote').textContent = ATLAS_SIZES[this.cfg.size].note;
     $('atlasHemiNote').textContent = HEMISPHERES[this.cfg.hemisphere].note;
     $('atlasOre').hidden = this.layer !== 'ores';
+    $('atlasFauna').hidden = this.layer !== 'fauna';
+    $('atlasWildNote').textContent = `${WILD_YEARS[this.cfg.wild].years} лет до прихода народов`;
     this.legend();
   }
 
@@ -106,6 +119,7 @@ export class AtlasView {
     else if (this.layer === 'ores') { const o = ORE_GENESIS.get(this.ore); html = sw([70, 72, 66], 'нет') + sw(mix([70, 72, 66], o.color, 0.45), 'бедно') + sw(mix([70, 72, 66], o.color, 0.75), 'есть') + sw(o.color, 'богато'); }
     else if (this.layer === 'biomes') html = Object.entries(BIOME_KINDS).filter(([k]) => k !== 'feature').map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter(b => b.kind === k).map(b => sw(b.color, b.label)).join('')).join('') + '<b>леса</b> темнее, гари светлее';
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
+    else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова:</b> ' + LAIRS.all().map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее');
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
@@ -118,13 +132,29 @@ export class AtlasView {
     const a = this.atlas = newAtlas(this.cfg);
     const cv = $('atlasMap'); cv.width = a.w; cv.height = a.h;
     cv.getContext('2d').clearRect(0, 0, a.w, a.h);
+    this.paused = false; this.syncPause();
     this.renderSide();
+    this.run();
+  }
+
+  // the land a stage a frame, then history a year (four seasons) a frame; pausing stops between frames
+  run() {
+    const a = this.atlas;
+    clearTimeout(this.timer);
     const next = () => {
-      if (a !== this.atlas) return;
-      runNextStage(a); this.draw(); this.renderSide();
-      if (!atlasDone(a)) this.timer = setTimeout(next, 30);
+      if (a !== this.atlas || this.paused) return;
+      const steps = landDone(a) ? 4 : 1;
+      for (let k = 0; k < steps && !atlasDone(a); k++) runNextStage(a);
+      this.draw(); this.renderSide();
+      if (!atlasDone(a)) this.timer = setTimeout(next, 30); else this.syncPause();
     };
     this.timer = setTimeout(next, 30);
+  }
+
+  syncPause() {
+    const b = $('atlasPause'), a = this.atlas, busy = a && landDone(a) && !atlasDone(a);
+    b.hidden = !busy && !this.paused;
+    b.textContent = this.paused ? 'Дальше' : 'Пауза';
   }
 
   // the colour of one cell on the chosen layer; a field that is not made yet shows as the dark sea
@@ -154,6 +184,13 @@ export class AtlasView {
       case 'soils': {
         const s = soilAt(a, i); if (!s) return base;
         return mix([60, 60, 56], s.color, 0.6 + 0.4 * f.fert[i]);
+      }
+      case 'fauna': {
+        if (!a.fauna || f.ocean[i]) return mix(base, [8, 12, 20], 0.4);
+        const v = faunaAt(a, i, this.fauna), sp = SPECIES.get(this.fauna), K = a.fauna.list[a.fauna.idx[this.fauna]].K[faunaCellOf(a, i)];
+        if (K <= 0) return mix(base, [40, 40, 36], 0.75);
+        const col = sp.look?.color ? hexRgb(sp.look.color) : [220, 120, 60];
+        return mix(mix(base, [40, 40, 36], 0.6), col, Math.min(1, v) * 0.9);
       }
       case 'rain': return f.rain ? (f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25)) : base;
       case 'wind': {
@@ -190,6 +227,7 @@ export class AtlasView {
     }
     px.putImageData(img, 0, 0);
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
+    if (a.lairs && ['relief', 'biomes', 'fauna'].includes(this.layer)) this.drawLairs(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
   }
 
@@ -208,6 +246,24 @@ export class AtlasView {
       for (const i of paths[c]) { const d = f.down[i]; px.moveTo(i % a.w + 0.5, ((i / a.w) | 0) + 0.5); px.lineTo(d % a.w + 0.5, ((d / a.w) | 0) + 0.5); }
       px.stroke();
     });
+  }
+
+  // lairs: a diamond in the owner's colour and a faint ring of its territory; the dead ones as a cross
+  drawLairs(a, px) {
+    const k = Math.min(a.w, a.h) / 192, sz = Math.max(1.6, 2.2 * k);
+    for (const l of a.lairs) {
+      const L = LAIRS.get(l.kind), x = l.x + 0.5, y = l.y + 0.5;
+      if (!l.alive) {
+        px.strokeStyle = 'rgba(30,20,20,0.6)'; px.lineWidth = Math.max(0.5, 0.5 * k);
+        px.beginPath(); px.moveTo(x - sz * 0.6, y - sz * 0.6); px.lineTo(x + sz * 0.6, y + sz * 0.6); px.moveTo(x + sz * 0.6, y - sz * 0.6); px.lineTo(x - sz * 0.6, y + sz * 0.6); px.stroke();
+        continue;
+      }
+      px.strokeStyle = `rgba(${L.color.join(',')},0.45)`; px.lineWidth = Math.max(0.4, 0.4 * k);
+      px.beginPath(); px.arc(x, y, L.radius * k, 0, Math.PI * 2); px.stroke();
+      px.fillStyle = `rgb(${L.color.join(',')})`; px.strokeStyle = 'rgba(10,10,10,0.85)'; px.lineWidth = Math.max(0.5, 0.45 * k);
+      const r = sz * (0.7 + 0.5 * l.strength);
+      px.beginPath(); px.moveTo(x, y - r); px.lineTo(x + r, y); px.lineTo(x, y + r); px.lineTo(x - r, y); px.closePath(); px.fill(); px.stroke();
+    }
   }
 
   // wind arrows every few cells, drawn on the map canvas in cell units
@@ -234,12 +290,19 @@ export class AtlasView {
       const st = k < a.stage ? 'done' : k === a.stage ? 'now' : '';
       const ms = a.ms[s.id] != null ? `${a.ms[s.id]} мс` : k === a.stage ? '…' : '';
       return `<li class="${st}" title="${esc(s.note)}"><span>${esc(s.label)}</span><small>${ms}</small></li>`;
-    }).join('');
-    $('atlasChron').innerHTML = a.chronicle.length
-      ? a.chronicle.map(c => `<div><small>${ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join('')
+    }).join('') + (() => {
+      const total = historyLength(a), done = a.hist ? a.hist.step : 0, st = !landDone(a) ? '' : done >= total ? 'done' : 'now';
+      const yr = a.hist ? `год ${Math.min(a.hist.year, total / 4)} из ${total / 4}` : `${total / 4} лет`;
+      return `<li class="${st}" title="${esc(ERAS.get('wild').note)}"><span>${ERAS.get('wild').label}</span><small>${yr}</small></li>`;
+    })();
+    const box = $('atlasChron'), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
+    box.innerHTML = a.chronicle.length
+      ? a.chronicle.map(c => `<div><small>${c.season != null ? `год ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join('')
       : '<small class="muted">Летопись начнётся с первым этапом.</small>';
+    if (atEnd) box.scrollTop = box.scrollHeight;
     $('atlasStats').innerHTML = `<dt>Клеток</dt><dd>${a.n.toLocaleString('ru-RU')}</dd><dt>Числовой сид</dt><dd>${seedNumber(a.cfg.seed)}</dd>` +
-      `<dt>Этап</dt><dd>${Math.min(a.stage, all.length)} из ${all.length}</dd>`;
+      `<dt>Этап</dt><dd>${Math.min(a.stage, all.length)} из ${all.length}</dd>` +
+      (a.lairs ? `<dt>Логова чудовищ</dt><dd>${a.lairs.filter(l => l.alive).length}</dd>` : '');
   }
 
   hover(e) {
@@ -264,6 +327,13 @@ export class AtlasView {
       const sl = soilAt(a, i); if (sl) parts.push(`почва ${sl.label}, плодородие ${Math.round(f.fert[i] * 100)}%`);
       const sh = Object.entries(cellBiomes(a, i)).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
       if (sh.length > 1) parts.push(`округа: ${sh.join(', ')}`);
+    }
+    const lair = lairAt(a, i);
+    if (lair) { const L = LAIRS.get(lair.kind); parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}`); }
+    if (a.fauna && !f.ocean[i]) {
+      const word = v => (v >= 0.8 ? 'много' : v >= 0.45 ? 'есть' : 'мало');
+      const beasts = a.fauna.list.filter(s => s.role !== 'spirit').map(s => [s, faunaAt(a, i, s.id)]).filter(([, v]) => v > 0.15).sort((p, q) => q[1] - p[1]).slice(0, 4);
+      if (beasts.length) parts.push('звери: ' + beasts.map(([s, v]) => `${s.sp.plural} ${word(v)}`).join(', '));
     }
     const geo = cellGeology(a, i);
     if (geo.rock) parts.push(geo.rock.label);

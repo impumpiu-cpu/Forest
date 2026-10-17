@@ -14,7 +14,7 @@
 //                 rocks (caves); the world map fills them from history and geology, not from climate
 //
 //   koppen: the Köppen classes the biome stands for (for reference)
-//   color:  on the world map;  trees: how much of the ground forest can cover there (0..1), used by
+//   where:  «in» the biome, for the chronicle;  color: on the world map;  trees: how much of the ground forest can cover there (0..1), used by
 //   the growth of forests (atlas/vegetation.js)
 //
 // The local map does not draw biomes yet: they decide who lives in a region and, through the world
@@ -27,42 +27,42 @@ export const BIOMES = new Registry('biome');
 
 BIOMES.registerAll([
   // ── zonal, from the poles to the equator
-  {id: 'ice', kind: 'zonal', label: 'льды', koppen: 'EF', color: [236, 242, 246], trees: 0,
+  {id: 'ice', kind: 'zonal', label: 'льды', where: 'во льдах', koppen: 'EF', color: [236, 242, 246], trees: 0,
     note: 'ледниковые щиты и снежные поля: ни один месяц не теплее нуля'},
-  {id: 'tundra', kind: 'zonal', label: 'тундра', koppen: 'ET', color: [150, 160, 140], trees: 0.04,
+  {id: 'tundra', kind: 'zonal', label: 'тундра', where: 'в тундре', koppen: 'ET', color: [150, 160, 140], trees: 0.04,
     note: 'мхи, лишайники, карликовые берёзы и вечная мерзлота: лето короче и холоднее, чем нужно лесу'},
-  {id: 'taiga', kind: 'zonal', label: 'тайга', koppen: 'Dfc, Dsc', color: [56, 92, 70], trees: 0.82,
+  {id: 'taiga', kind: 'zonal', label: 'тайга', where: 'в тайге', koppen: 'Dfc, Dsc', color: [56, 92, 70], trees: 0.82,
     note: 'ельники, пихтачи и сосняки на подзолах; зима долгая и морозная, лето короткое'},
-  {id: 'forest', kind: 'zonal', label: 'широколиственный лес', koppen: 'Cfb, Cfa, Dfb', color: [74, 128, 70], trees: 0.88,
+  {id: 'forest', kind: 'zonal', label: 'широколиственный лес', where: 'в широколиственных лесах', koppen: 'Cfb, Cfa, Dfb', color: [74, 128, 70], trees: 0.88,
     note: 'дубравы, буковые и смешанные леса умеренного пояса, светлые поляны'},
-  {id: 'meadow', kind: 'zonal', label: 'лесостепь и луга', koppen: 'Dfb, Cfb (суше)', color: [134, 160, 86], trees: 0.35,
+  {id: 'meadow', kind: 'zonal', label: 'лесостепь и луга', where: 'в лесостепи', koppen: 'Dfb, Cfb (суше)', color: [134, 160, 86], trees: 0.35,
     note: 'луга с перелесками на границе леса и степи; по речным поймам — заливные луга'},
-  {id: 'steppe', kind: 'zonal', label: 'степь', koppen: 'BSk', color: [190, 182, 110], trees: 0.05,
+  {id: 'steppe', kind: 'zonal', label: 'степь', where: 'в степи', koppen: 'BSk', color: [190, 182, 110], trees: 0.05,
     note: 'ковыль и полынь на чернозёмах и каштановых почвах; дождей меньше, чем испаряется'},
-  {id: 'shrubland', kind: 'zonal', label: 'жестколистные кустарники', koppen: 'Csa, Csb', color: [150, 140, 80], trees: 0.3,
+  {id: 'shrubland', kind: 'zonal', label: 'жестколистные кустарники', where: 'в зарослях жестколистных кустарников', koppen: 'Csa, Csb', color: [150, 140, 80], trees: 0.3,
     note: 'маквис и гарига тёплых сухих берегов: дуб каменный, можжевельник, лавр'},
-  {id: 'desert', kind: 'zonal', label: 'пустыня', koppen: 'BWh, BWk', color: [222, 196, 140], trees: 0,
+  {id: 'desert', kind: 'zonal', label: 'пустыня', where: 'в пустыне', koppen: 'BWh, BWk', color: [222, 196, 140], trees: 0,
     note: 'пески, щебень и солончаки: воды выпадает меньше половины того, что могло бы испариться'},
-  {id: 'savanna', kind: 'zonal', label: 'саванна', koppen: 'Aw, BSh', color: [182, 168, 80], trees: 0.18,
+  {id: 'savanna', kind: 'zonal', label: 'саванна', where: 'в саванне', koppen: 'Aw, BSh', color: [182, 168, 80], trees: 0.18,
     note: 'высокие травы и редкие деревья жарких краёв с сухим сезоном'},
-  {id: 'jungle', kind: 'zonal', label: 'влажный тропический лес', koppen: 'Af, Am', color: [30, 106, 60], trees: 0.96,
+  {id: 'jungle', kind: 'zonal', label: 'влажный тропический лес', where: 'в тропических лесах', koppen: 'Af, Am', color: [30, 106, 60], trees: 0.96,
     note: 'многоярусный лес вечного лета и ливней; почва под ним бедная'},
   // ── mountain belts
-  {id: 'foothills', kind: 'altitude', label: 'предгорья', color: [140, 128, 100], trees: 0.45,
+  {id: 'foothills', kind: 'altitude', label: 'предгорья', where: 'в предгорьях', color: [140, 128, 100], trees: 0.45,
     note: 'крутые каменистые склоны ниже границы леса: осыпи, скалы, горные луга'},
-  {id: 'highlands', kind: 'altitude', label: 'высокогорье', color: [150, 138, 126], trees: 0.03,
+  {id: 'highlands', kind: 'altitude', label: 'высокогорье', where: 'в высокогорье', color: [150, 138, 126], trees: 0.03,
     note: 'альпийский пояс выше границы леса: скалы, луга, ледники, гнёзда на уступах'},
   // ── set by the ground
-  {id: 'swamp', kind: 'intrazonal', label: 'болото', color: [86, 112, 90], trees: 0.4,
+  {id: 'swamp', kind: 'intrazonal', label: 'болото', where: 'на болотах', color: [86, 112, 90], trees: 0.4,
     note: 'переувлажнённые низины: торфяники и топи на севере, плавни и мангры на юге'},
-  {id: 'water', kind: 'intrazonal', label: 'водоёмы', color: [58, 104, 150], trees: 0,
+  {id: 'water', kind: 'intrazonal', label: 'водоёмы', where: 'у воды', color: [58, 104, 150], trees: 0,
     note: 'озёра и большие реки с омутами'},
-  {id: 'volcano', kind: 'intrazonal', label: 'вулкан', color: [96, 70, 64], trees: 0.1,
+  {id: 'volcano', kind: 'intrazonal', label: 'вулкан', where: 'на склонах вулкана', color: [96, 70, 64], trees: 0.1,
     note: 'тёплые камни, пепел, горячие ключи'},
   // ── not nature
-  {id: 'barrows', kind: 'feature', label: 'курганы', color: [150, 120, 120], trees: 0,
+  {id: 'barrows', kind: 'feature', label: 'курганы', where: 'среди курганов', color: [150, 120, 120], trees: 0,
     note: 'пустоши с древними могилами; на карте мира появятся из истории'},
-  {id: 'underground', kind: 'feature', label: 'подземье', color: [70, 64, 80], trees: 0,
+  {id: 'underground', kind: 'feature', label: 'подземье', where: 'в подземье', color: [70, 64, 80], trees: 0,
     note: 'пещеры под скалами: карст в известняке, лавовые трубки в базальте, старые выработки'},
 ]);
 

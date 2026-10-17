@@ -384,8 +384,10 @@ dd.q4{color:#c58cff;font-weight:600}
       <div class="field"><span class="lbl">Суша</span><div class="seg" data-akey="land"></div></div>
       <div class="field"><span class="lbl">Плиты</span><div class="seg" data-akey="plates"></div></div>
       <div class="field"><span class="lbl">Широты</span><div class="seg wrapseg" data-akey="hemisphere"></div><small id="atlasHemiNote"></small></div>
+      <div class="field"><span class="lbl">Дикая эра</span><div class="seg" data-akey="wild"></div><small id="atlasWildNote"></small></div>
       <div class="row actions">
         <button type="button" id="atlasGo" class="primary">Сотворить</button>
+        <button type="button" id="atlasPause" hidden>Пауза</button>
         <button type="button" id="atlasBack" class="quiet">← Назад</button>
       </div>
       <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="atlasStages"></ol></div>
@@ -394,6 +396,7 @@ dd.q4{color:#c58cff;font-weight:600}
     <div class="atlas-map">
       <div class="seg wrapseg" data-akey="layer"></div>
       <div class="seg wrapseg" data-akey="ore" id="atlasOre" hidden></div>
+      <div class="seg wrapseg" data-akey="fauna" id="atlasFauna" hidden></div>
       <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
       <div class="legend atlas-legend" id="atlasLegend"></div>
       <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку.</div>
@@ -2359,6 +2362,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "ice",
       kind: "zonal",
       label: "\u043B\u044C\u0434\u044B",
+      where: "\u0432\u043E \u043B\u044C\u0434\u0430\u0445",
       koppen: "EF",
       color: [236, 242, 246],
       trees: 0,
@@ -2368,6 +2372,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "tundra",
       kind: "zonal",
       label: "\u0442\u0443\u043D\u0434\u0440\u0430",
+      where: "\u0432 \u0442\u0443\u043D\u0434\u0440\u0435",
       koppen: "ET",
       color: [150, 160, 140],
       trees: 0.04,
@@ -2377,6 +2382,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "taiga",
       kind: "zonal",
       label: "\u0442\u0430\u0439\u0433\u0430",
+      where: "\u0432 \u0442\u0430\u0439\u0433\u0435",
       koppen: "Dfc, Dsc",
       color: [56, 92, 70],
       trees: 0.82,
@@ -2386,6 +2392,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "forest",
       kind: "zonal",
       label: "\u0448\u0438\u0440\u043E\u043A\u043E\u043B\u0438\u0441\u0442\u0432\u0435\u043D\u043D\u044B\u0439 \u043B\u0435\u0441",
+      where: "\u0432 \u0448\u0438\u0440\u043E\u043A\u043E\u043B\u0438\u0441\u0442\u0432\u0435\u043D\u043D\u044B\u0445 \u043B\u0435\u0441\u0430\u0445",
       koppen: "Cfb, Cfa, Dfb",
       color: [74, 128, 70],
       trees: 0.88,
@@ -2395,6 +2402,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "meadow",
       kind: "zonal",
       label: "\u043B\u0435\u0441\u043E\u0441\u0442\u0435\u043F\u044C \u0438 \u043B\u0443\u0433\u0430",
+      where: "\u0432 \u043B\u0435\u0441\u043E\u0441\u0442\u0435\u043F\u0438",
       koppen: "Dfb, Cfb (\u0441\u0443\u0448\u0435)",
       color: [134, 160, 86],
       trees: 0.35,
@@ -2404,6 +2412,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "steppe",
       kind: "zonal",
       label: "\u0441\u0442\u0435\u043F\u044C",
+      where: "\u0432 \u0441\u0442\u0435\u043F\u0438",
       koppen: "BSk",
       color: [190, 182, 110],
       trees: 0.05,
@@ -2413,6 +2422,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "shrubland",
       kind: "zonal",
       label: "\u0436\u0435\u0441\u0442\u043A\u043E\u043B\u0438\u0441\u0442\u043D\u044B\u0435 \u043A\u0443\u0441\u0442\u0430\u0440\u043D\u0438\u043A\u0438",
+      where: "\u0432 \u0437\u0430\u0440\u043E\u0441\u043B\u044F\u0445 \u0436\u0435\u0441\u0442\u043A\u043E\u043B\u0438\u0441\u0442\u043D\u044B\u0445 \u043A\u0443\u0441\u0442\u0430\u0440\u043D\u0438\u043A\u043E\u0432",
       koppen: "Csa, Csb",
       color: [150, 140, 80],
       trees: 0.3,
@@ -2422,6 +2432,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "desert",
       kind: "zonal",
       label: "\u043F\u0443\u0441\u0442\u044B\u043D\u044F",
+      where: "\u0432 \u043F\u0443\u0441\u0442\u044B\u043D\u0435",
       koppen: "BWh, BWk",
       color: [222, 196, 140],
       trees: 0,
@@ -2431,6 +2442,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "savanna",
       kind: "zonal",
       label: "\u0441\u0430\u0432\u0430\u043D\u043D\u0430",
+      where: "\u0432 \u0441\u0430\u0432\u0430\u043D\u043D\u0435",
       koppen: "Aw, BSh",
       color: [182, 168, 80],
       trees: 0.18,
@@ -2440,6 +2452,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "jungle",
       kind: "zonal",
       label: "\u0432\u043B\u0430\u0436\u043D\u044B\u0439 \u0442\u0440\u043E\u043F\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u043B\u0435\u0441",
+      where: "\u0432 \u0442\u0440\u043E\u043F\u0438\u0447\u0435\u0441\u043A\u0438\u0445 \u043B\u0435\u0441\u0430\u0445",
       koppen: "Af, Am",
       color: [30, 106, 60],
       trees: 0.96,
@@ -2450,6 +2463,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "foothills",
       kind: "altitude",
       label: "\u043F\u0440\u0435\u0434\u0433\u043E\u0440\u044C\u044F",
+      where: "\u0432 \u043F\u0440\u0435\u0434\u0433\u043E\u0440\u044C\u044F\u0445",
       color: [140, 128, 100],
       trees: 0.45,
       note: "\u043A\u0440\u0443\u0442\u044B\u0435 \u043A\u0430\u043C\u0435\u043D\u0438\u0441\u0442\u044B\u0435 \u0441\u043A\u043B\u043E\u043D\u044B \u043D\u0438\u0436\u0435 \u0433\u0440\u0430\u043D\u0438\u0446\u044B \u043B\u0435\u0441\u0430: \u043E\u0441\u044B\u043F\u0438, \u0441\u043A\u0430\u043B\u044B, \u0433\u043E\u0440\u043D\u044B\u0435 \u043B\u0443\u0433\u0430"
@@ -2458,6 +2472,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "highlands",
       kind: "altitude",
       label: "\u0432\u044B\u0441\u043E\u043A\u043E\u0433\u043E\u0440\u044C\u0435",
+      where: "\u0432 \u0432\u044B\u0441\u043E\u043A\u043E\u0433\u043E\u0440\u044C\u0435",
       color: [150, 138, 126],
       trees: 0.03,
       note: "\u0430\u043B\u044C\u043F\u0438\u0439\u0441\u043A\u0438\u0439 \u043F\u043E\u044F\u0441 \u0432\u044B\u0448\u0435 \u0433\u0440\u0430\u043D\u0438\u0446\u044B \u043B\u0435\u0441\u0430: \u0441\u043A\u0430\u043B\u044B, \u043B\u0443\u0433\u0430, \u043B\u0435\u0434\u043D\u0438\u043A\u0438, \u0433\u043D\u0451\u0437\u0434\u0430 \u043D\u0430 \u0443\u0441\u0442\u0443\u043F\u0430\u0445"
@@ -2467,6 +2482,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "swamp",
       kind: "intrazonal",
       label: "\u0431\u043E\u043B\u043E\u0442\u043E",
+      where: "\u043D\u0430 \u0431\u043E\u043B\u043E\u0442\u0430\u0445",
       color: [86, 112, 90],
       trees: 0.4,
       note: "\u043F\u0435\u0440\u0435\u0443\u0432\u043B\u0430\u0436\u043D\u0451\u043D\u043D\u044B\u0435 \u043D\u0438\u0437\u0438\u043D\u044B: \u0442\u043E\u0440\u0444\u044F\u043D\u0438\u043A\u0438 \u0438 \u0442\u043E\u043F\u0438 \u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u0435, \u043F\u043B\u0430\u0432\u043D\u0438 \u0438 \u043C\u0430\u043D\u0433\u0440\u044B \u043D\u0430 \u044E\u0433\u0435"
@@ -2475,6 +2491,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "water",
       kind: "intrazonal",
       label: "\u0432\u043E\u0434\u043E\u0451\u043C\u044B",
+      where: "\u0443 \u0432\u043E\u0434\u044B",
       color: [58, 104, 150],
       trees: 0,
       note: "\u043E\u0437\u0451\u0440\u0430 \u0438 \u0431\u043E\u043B\u044C\u0448\u0438\u0435 \u0440\u0435\u043A\u0438 \u0441 \u043E\u043C\u0443\u0442\u0430\u043C\u0438"
@@ -2483,6 +2500,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "volcano",
       kind: "intrazonal",
       label: "\u0432\u0443\u043B\u043A\u0430\u043D",
+      where: "\u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u0430\u0445 \u0432\u0443\u043B\u043A\u0430\u043D\u0430",
       color: [96, 70, 64],
       trees: 0.1,
       note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u043A\u0430\u043C\u043D\u0438, \u043F\u0435\u043F\u0435\u043B, \u0433\u043E\u0440\u044F\u0447\u0438\u0435 \u043A\u043B\u044E\u0447\u0438"
@@ -2492,6 +2510,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "barrows",
       kind: "feature",
       label: "\u043A\u0443\u0440\u0433\u0430\u043D\u044B",
+      where: "\u0441\u0440\u0435\u0434\u0438 \u043A\u0443\u0440\u0433\u0430\u043D\u043E\u0432",
       color: [150, 120, 120],
       trees: 0,
       note: "\u043F\u0443\u0441\u0442\u043E\u0448\u0438 \u0441 \u0434\u0440\u0435\u0432\u043D\u0438\u043C\u0438 \u043C\u043E\u0433\u0438\u043B\u0430\u043C\u0438; \u043D\u0430 \u043A\u0430\u0440\u0442\u0435 \u043C\u0438\u0440\u0430 \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u0438\u0437 \u0438\u0441\u0442\u043E\u0440\u0438\u0438"
@@ -2500,6 +2519,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "underground",
       kind: "feature",
       label: "\u043F\u043E\u0434\u0437\u0435\u043C\u044C\u0435",
+      where: "\u0432 \u043F\u043E\u0434\u0437\u0435\u043C\u044C\u0435",
       color: [70, 64, 80],
       trees: 0,
       note: "\u043F\u0435\u0449\u0435\u0440\u044B \u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438: \u043A\u0430\u0440\u0441\u0442 \u0432 \u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044F\u043A\u0435, \u043B\u0430\u0432\u043E\u0432\u044B\u0435 \u0442\u0440\u0443\u0431\u043A\u0438 \u0432 \u0431\u0430\u0437\u0430\u043B\u044C\u0442\u0435, \u0441\u0442\u0430\u0440\u044B\u0435 \u0432\u044B\u0440\u0430\u0431\u043E\u0442\u043A\u0438"
@@ -4291,10 +4311,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     build(id) {
       const def2 = NAVMAPS.get(id), w = this.w, W = w.w, H = w.h;
-      const dist8 = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
+      const dist9 = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
       this.computeCost(def2.hazard ?? 1);
       const ctx = def2.prepare ? def2.prepare(w) : null;
-      dist8.fill(FAR);
+      dist9.fill(FAR);
       closed.fill(0);
       let hn = 0;
       const push = (i, d) => {
@@ -4310,7 +4330,7 @@ dd.q4{color:#c58cff;font-weight:600}
         hD[k] = d;
       };
       for (let i = 0; i < w.n; i++) if (cost[i] >= 0 && def2.seed(w, i, ctx)) {
-        dist8[i] = 0;
+        dist9[i] = 0;
         push(i, 0);
       }
       while (hn > 0) {
@@ -4329,7 +4349,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         hI[k] = li;
         hD[k] = ld;
-        if (closed[i] || d > dist8[i]) continue;
+        if (closed[i] || d > dist9[i]) continue;
         closed[i] = 1;
         const x = i % W, y = i / W | 0;
         for (let q = 0; q < 8; q++) {
@@ -4343,8 +4363,8 @@ dd.q4{color:#c58cff;font-weight:600}
             c *= 1.414;
           }
           const nd = d + c;
-          if (nd < dist8[j]) {
-            dist8[j] = nd;
+          if (nd < dist9[j]) {
+            dist9[j] = nd;
             push(j, nd);
           }
         }
@@ -4570,21 +4590,21 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var fieldName = (id) => FIELD_NAMES[id] || (id.startsWith("station:") ? "\u043A \u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0439" : id.startsWith("plant") ? "\u043A \u0437\u0430\u0440\u043E\u0441\u043B\u044F\u043C" : "\u043F\u043E \u0442\u0440\u043E\u043F\u0435");
   function follow(w, a, mapId, mul = 1) {
-    const dist8 = w.nav.get(mapId), i = cellOf(w, a);
-    if (dist8[i] === 0) return "arrived";
-    a.route = { how: dist8[i] >= FAR ? `${fieldName(mapId)}: \u043F\u0443\u0442\u0438 \u043D\u0435\u0442` : `${fieldName(mapId)}, \u0435\u0449\u0451 ~${Math.round(dist8[i])} \u043A\u043B.`, t: w.tick };
+    const dist9 = w.nav.get(mapId), i = cellOf(w, a);
+    if (dist9[i] === 0) return "arrived";
+    a.route = { how: dist9[i] >= FAR ? `${fieldName(mapId)}: \u043F\u0443\u0442\u0438 \u043D\u0435\u0442` : `${fieldName(mapId)}, \u0435\u0449\u0451 ~${Math.round(dist9[i])} \u043A\u043B.`, t: w.tick };
     const x = i % w.w, y = i / w.w | 0;
-    let best = dist8[i], bj = -1;
+    let best = dist9[i], bj = -1;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (!inBounds(w, nx, ny)) continue;
       const j = ny * w.w + nx;
-      if (dist8[j] < best && canStep(w, i, j)) {
-        best = dist8[j];
+      if (dist9[j] < best && canStep(w, i, j)) {
+        best = dist9[j];
         bj = j;
       }
     }
-    if (bj < 0) return dist8[i] >= FAR ? "none" : "stuck";
+    if (bj < 0) return dist9[i] >= FAR ? "none" : "stuck";
     const tx2 = bj % w.w + 0.5, ty = (bj / w.w | 0) + 0.5;
     const r = moveToward(w, a, tx2, ty, mul);
     if (r === null) moveToward(w, a, x + 0.5, y + 0.5, mul);
@@ -4593,8 +4613,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var danger = (w, i) => w.grid.temp[i] + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
   var shunsHeat = (w, a, sp, T2, r) => T2 > fearHeat(sp) || fearsFire(sp) && nearFire(w, a, r);
   function nearFire(w, a, r) {
-    const cx = a.x | 0, cy = a.y | 0, R = Math.ceil(r);
-    for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
+    const cx = a.x | 0, cy = a.y | 0, R2 = Math.ceil(r);
+    for (let y = cy - R2; y <= cy + R2; y++) for (let x = cx - R2; x <= cx + R2; x++) {
       if (!inBounds(w, x, y)) continue;
       if (w.grid.fire[y * w.w + x] > 0.05 && (x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 <= r * r) return true;
     }
@@ -4685,14 +4705,14 @@ dd.q4{color:#c58cff;font-weight:600}
     return false;
   }
   function ascend(w, a, mapId, mul = 1) {
-    const dist8 = w.nav.get(mapId), i = cellOf(w, a), x = i % w.w, y = i / w.w | 0;
-    let best = dist8[i], bj = -1;
+    const dist9 = w.nav.get(mapId), i = cellOf(w, a), x = i % w.w, y = i / w.w | 0;
+    let best = dist9[i], bj = -1;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (!inBounds(w, nx, ny)) continue;
       const j = ny * w.w + nx;
-      if (walkable(w, j) && dist8[j] > best && dist8[j] < FAR) {
-        best = dist8[j];
+      if (walkable(w, j) && dist9[j] > best && dist9[j] < FAR) {
+        best = dist9[j];
         bj = j;
       }
     }
@@ -4971,9 +4991,9 @@ dd.q4{color:#c58cff;font-weight:600}
   var table = (w) => w.reserve || (w.reserve = {});
   var live = (w, r) => r && r.until > w.tick;
   function reserve(w, key2, a, ttl = LEASE) {
-    const R = table(w), r = R[key2];
+    const R2 = table(w), r = R2[key2];
     if (live(w, r) && r.by !== a.id) return false;
-    R[key2] = { by: a.id, until: w.tick + ttl };
+    R2[key2] = { by: a.id, until: w.tick + ttl };
     if (!(a.holds || (a.holds = [])).includes(key2)) a.holds.push(key2);
     return true;
   }
@@ -5569,8 +5589,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function wishes(w, a, councilWish2) {
     const out = [];
-    const say = { food: "\u043F\u043E\u0435\u0441\u0442\u044C", rest: "\u0432\u044B\u0441\u043F\u0430\u0442\u044C\u0441\u044F", warmth: "\u0441\u043E\u0433\u0440\u0435\u0442\u044C\u0441\u044F" };
-    for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(say[id] || NEEDS2.get(id).label);
+    const say2 = { food: "\u043F\u043E\u0435\u0441\u0442\u044C", rest: "\u0432\u044B\u0441\u043F\u0430\u0442\u044C\u0441\u044F", warmth: "\u0441\u043E\u0433\u0440\u0435\u0442\u044C\u0441\u044F" };
+    for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(say2[id] || NEEDS2.get(id).label);
     const hands = handItems(a).map(def);
     if (a.equip) {
       if (!hands.some((d) => d.melee || d.ranged)) out.push("\u043E\u0440\u0443\u0436\u0438\u0435 \u0432 \u0440\u0443\u043A\u0438");
@@ -6605,11 +6625,11 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function specialInto(m, a, sp) {
     const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;
-    const rel = (k) => base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s);
-    for (const k of ["str", "speed", "swing", "learn", "sight", "cold"]) mod(m, k, rel(k));
+    const rel2 = (k) => base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s);
+    for (const k of ["str", "speed", "swing", "learn", "sight", "cold"]) mod(m, k, rel2(k));
     mod(m, "aim", EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
     mod(m, "dodge", Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
-    return sp.hp * rel("hp");
+    return sp.hp * rel2("hp");
   }
   function refreshBody(a) {
     const sp = SPECIES.get(a.species), m = { ...BASE_MODS };
@@ -7952,10 +7972,10 @@ dd.q4{color:#c58cff;font-weight:600}
       const lot = findLot(w, d, "fish-shore");
       if (lot >= 0) return lot;
     }
-    const shore = near2 === "fish-shore", [lw, lh] = lotSize(d), R = shore ? 24 : d.soil ? 20 : 14;
+    const shore = near2 === "fish-shore", [lw, lh] = lotSize(d), R2 = shore ? 24 : d.soil ? 20 : 14;
     const g3 = w.grid;
     let best = -1, bs = Infinity;
-    for (let y = w.camp.y - R; y <= w.camp.y + R - 1; y++) for (let x = w.camp.x - R; x <= w.camp.x + R - 1; x++) {
+    for (let y = w.camp.y - R2; y <= w.camp.y + R2 - 1; y++) for (let x = w.camp.x - R2; x <= w.camp.x + R2 - 1; x++) {
       if (x < 1 || y < 1 || x + lw >= w.w || y + lh >= w.h) continue;
       const d2 = (x + lw / 2 - w.camp.x) ** 2 + (y + lh / 2 - w.camp.y) ** 2;
       if (d2 < 25) continue;
@@ -8611,14 +8631,14 @@ dd.q4{color:#c58cff;font-weight:600}
   var livesHere = (w, id) => faunaLevel(w, id) > 0 || w.agents.some((o) => o.species === id && !o.dead && !o.tame);
   function fromJob(w, job, res, depth, seen) {
     if (!jobUnlocked(w, job)) return null;
-    const say = job.label;
-    if (job.resource === res || job.also?.includes(res)) return !job.bed || (w.plantBeds?.[job.bed]?.length || 0) > 0 ? say : null;
+    const say2 = job.label;
+    if (job.resource === res || job.also?.includes(res)) return !job.bed || (w.plantBeds?.[job.bed]?.length || 0) > 0 ? say2 : null;
     if (job.runner === "hunt") {
       const game = [...job.prey, ...job.risky || []].filter((id) => SPECIES.get(id).yields?.[res] && livesHere(w, id));
-      return game.length ? `${say} (${game.map((id) => SPECIES.get(id).plural || SPECIES.get(id).label).join(", ")})` : null;
+      return game.length ? `${say2} (${game.map((id) => SPECIES.get(id).plural || SPECIES.get(id).label).join(", ")})` : null;
     }
-    if (job.runner === "farm") return CROPS.all().some((c) => c.yields?.[res] && ((w.stock[c.seed] || 0) >= 1 || obtainable(w, c.seed, depth - 1, seen))) ? say : null;
-    if (job.runner === "herd") return SPECIES.filter((s) => s.tame?.[res]).some((s) => livesHere(w, s.id)) ? say : null;
+    if (job.runner === "farm") return CROPS.all().some((c) => c.yields?.[res] && ((w.stock[c.seed] || 0) >= 1 || obtainable(w, c.seed, depth - 1, seen))) ? say2 : null;
+    if (job.runner === "herd") return SPECIES.filter((s) => s.tame?.[res]).some((s) => livesHere(w, s.id)) ? say2 : null;
     return null;
   }
   function fromRecipe(w, r, depth, seen) {
@@ -11931,12 +11951,12 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         return;
       }
-      const g3 = w.grid, cx = a.x | 0, cy = a.y | 0, power = 0.05 * w.mods.mul.douse;
+      const g3 = w.grid, cx = a.x | 0, cy = a.y | 0, power2 = 0.05 * w.mods.mul.douse;
       for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
         if (x < 0 || y < 0 || x >= w.w || y >= w.h || (x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 > 2.9) continue;
         const j = y * w.w + x;
         if (g3.fire[j] > 0) {
-          g3.fire[j] = Math.max(0, g3.fire[j] - power);
+          g3.fire[j] = Math.max(0, g3.fire[j] - power2);
           g3.temp[j] -= 6;
           if (g3.fire[j] === 0) g3.temp[j] = Math.min(g3.temp[j], 60);
         }
@@ -14191,7 +14211,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var SEASON_DAYS2 = 30;
   var SEASONS_PER_YEAR = 4;
   var YEAR_DAYS = SEASON_DAYS2 * SEASONS_PER_YEAR;
-  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1, plates: 1, hemisphere: "north" };
+  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1, plates: 1, hemisphere: "north", wild: 1 };
 
   // src/data/geology.js
   var PLATE_COUNTS = [
@@ -14527,8 +14547,8 @@ dd.q4{color:#c58cff;font-weight:600}
       pairConv.set(B2 * 64 + A, { conv, I });
     }
     const crust = a.f.crust, tally2 = {};
-    const bnd = new Uint8Array(n), bI = new Float32Array(n), dist8 = new Float64Array(n).fill(Infinity), src = new Int32Array(n).fill(-1);
-    const heap = new Heap(n >> 2), R = 48 * k;
+    const bnd = new Uint8Array(n), bI = new Float32Array(n), dist9 = new Float64Array(n).fill(Infinity), src = new Int32Array(n).fill(-1);
+    const heap = new Heap(n >> 2), R2 = 48 * k;
     for (let i = 0; i < n; i++) {
       const x = i % w, y = i / w | 0, A = plate[i];
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -14542,7 +14562,7 @@ dd.q4{color:#c58cff;font-weight:600}
         bnd[i] = BOUNDARIES.get(kind).code;
         bI[i] = pc.I;
         tally2[kind] = (tally2[kind] || 0) + 1;
-        dist8[i] = 0;
+        dist9[i] = 0;
         src[i] = i;
         heap.push(0, i);
         break;
@@ -14550,14 +14570,14 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     while (heap.size) {
       const c = heap.pop(), d = heap.top;
-      if (d > dist8[c]) continue;
+      if (d > dist9[c]) continue;
       const x = c % w, y = c / w | 0;
       for (const [dx, dy, len] of DIRS8) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
         const j = ny * w + nx, nd = d + len;
-        if (plate[j] !== plate[c] || nd >= dist8[j] || nd > R) continue;
-        dist8[j] = nd;
+        if (plate[j] !== plate[c] || nd >= dist9[j] || nd > R2) continue;
+        dist9[j] = nd;
         src[j] = src[c];
         heap.push(nd, j);
       }
@@ -14566,7 +14586,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const up = f32(), coll = f32(), arc = f32(), basv = f32(), volc = f32(), oldv = f32(), craton = f32();
     const KIND = BOUNDARIES.all().map((b) => b.id), kindOf = (c) => KIND[bnd[c] - 1];
     for (let i = 0; i < n; i++) {
-      const d = dist8[i];
+      const d = dist9[i];
       if (isCont(crust[i])) craton[i] = smooth((crust[i] - 0.55) / 0.3) * (d === Infinity ? 1 : smooth((d - 10 * k) / (16 * k)));
       if (src[i] < 0) continue;
       const I = bI[src[i]] * (0.7 + 0.6 * rough[i]);
@@ -14622,7 +14642,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     blur(a, up, Math.max(1, Math.round(2 * k)));
-    Object.assign(a.f, { bnd, bdist: Float32Array.from(dist8), uplift: up, coll, arc, basv, volc, oldv, craton });
+    Object.assign(a.f, { bnd, bdist: Float32Array.from(dist9), uplift: up, coll, arc, basv, volc, oldv, craton });
     for (const kd of Object.keys(tally2)) tally2[kd] = Math.max(1, Math.round(tally2[kd] / (12 * k)));
     return tally2;
   }
@@ -14658,10 +14678,10 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/atlas/geology.js
   var clamp012 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   function settingOf(a, i, flat) {
-    const f = a.f, e = f.elev[i], rel = (e - a.sea) / (1 - a.sea), y = i / a.w | 0;
-    const low = f.land[i] ? clamp012(1 - rel / 0.25) * (0.4 + 0.6 * flat) : 0;
+    const f = a.f, e = f.elev[i], rel2 = (e - a.sea) / (1 - a.sea), y = i / a.w | 0;
+    const low = f.land[i] ? clamp012(1 - rel2 / 0.25) * (0.4 + 0.6 * flat) : 0;
     const warm = 0.4 * warmth(a, y) + 0.6 * (f.paleo ? f.paleo[i] : 0.5);
-    return { coll: f.coll[i], arc: f.arc[i], basv: f.basv[i], volc: f.volc[i], oldv: f.oldv[i], craton: f.craton[i], low, hill: clamp012(rel / 0.25), warm, rel };
+    return { coll: f.coll[i], arc: f.arc[i], basv: f.basv[i], volc: f.volc[i], oldv: f.oldv[i], craton: f.craton[i], low, hill: clamp012(rel2 / 0.25), warm, rel: rel2 };
   }
   function flatness(a) {
     const { w, h, n } = a, e = a.f.elev, out = new Float32Array(n), k = scaleOf(a);
@@ -14776,27 +14796,27 @@ dd.q4{color:#c58cff;font-weight:600}
     return { east: z.east, eq: z.eq, rise: z.rise };
   }
   function continentality(a) {
-    const { w, h, n } = a, land = a.f.land, k = scaleOf(a), dist8 = new Float64Array(n).fill(Infinity), heap = new Heap(n >> 2);
+    const { w, h, n } = a, land = a.f.land, k = scaleOf(a), dist9 = new Float64Array(n).fill(Infinity), heap = new Heap(n >> 2);
     for (let i = 0; i < n; i++) if (!land[i]) {
-      dist8[i] = 0;
+      dist9[i] = 0;
       heap.push(0, i);
     }
     while (heap.size) {
       const c = heap.pop(), d = heap.top;
-      if (d > dist8[c]) continue;
+      if (d > dist9[c]) continue;
       const x = c % w, y = c / w | 0;
       for (const [dx, dy, len] of DIRS8) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
         const j = ny * w + nx, nd = d + len;
-        if (nd < dist8[j]) {
-          dist8[j] = nd;
+        if (nd < dist9[j]) {
+          dist9[j] = nd;
           heap.push(nd, j);
         }
       }
     }
     const out = new Float32Array(n);
-    for (let i = 0; i < n; i++) out[i] = smooth2(dist8[i] / (40 * k));
+    for (let i = 0; i < n; i++) out[i] = smooth2(dist9[i] / (40 * k));
     return out;
   }
   var heightKm = (a, e) => e > a.sea ? (a.cfg.peakKm ?? 5) * ((e - a.sea) / (1 - a.sea)) ** 1.6 : 0;
@@ -14860,7 +14880,7 @@ dd.q4{color:#c58cff;font-weight:600}
     let q = new Float32Array(N2), q2 = new Float32Array(N2);
     for (let j = 0; j < N2; j++) q[j] = L[j] > 0.5 ? 0 : sat[j] * 0.8;
     const soil = new Float32Array(N2);
-    const acc2 = new Float32Array(N2), steps = Math.round(1.6 * (W + H)), from = steps >> 1;
+    const acc3 = new Float32Array(N2), steps = Math.round(1.6 * (W + H)), from = steps >> 1;
     for (let s = 0; s < steps; s++) {
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const j = y * W + x;
@@ -14882,14 +14902,14 @@ dd.q4{color:#c58cff;font-weight:600}
         if (q[j] - r > sat[j]) r += (q[j] - r - sat[j]) * M.condense;
         q[j] -= r;
         soil[j] = soil[j] * 0.9 + r * 0.1;
-        if (s >= from) acc2[j] += r;
+        if (s >= from) acc3[j] += r;
       }
     }
     const out = new Float32Array(a.n), scale = M.mm / (steps - from);
     for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
       const sx = Math.max(0, Math.min(W - 1.001, (x - 0.5) / 2)), sy = Math.max(0, Math.min(H - 1.001, (y - 0.5) / 2));
       const x0 = sx | 0, y0 = sy | 0, tx2 = sx - x0, ty = sy - y0, i0 = y0 * W + x0;
-      const mm = ((acc2[i0] * (1 - tx2) + acc2[i0 + 1] * tx2) * (1 - ty) + (acc2[i0 + W] * (1 - tx2) + acc2[i0 + W + 1] * tx2) * ty) * scale;
+      const mm = ((acc3[i0] * (1 - tx2) + acc3[i0 + 1] * tx2) * (1 - ty) + (acc3[i0 + W] * (1 - tx2) + acc3[i0 + W + 1] * tx2) * ty) * scale;
       out[y * a.w + x] = mm < M.soft ? mm : M.soft + (mm - M.soft) * 0.4;
     }
     f.rain = out;
@@ -14982,14 +15002,14 @@ dd.q4{color:#c58cff;font-weight:600}
     return { filled, down, order, cnt };
   }
   function gather(a, fl, own, sink) {
-    const acc2 = Float32Array.from(own), { down, order, cnt } = fl, ocean = a.f.ocean;
+    const acc3 = Float32Array.from(own), { down, order, cnt } = fl, ocean = a.f.ocean;
     for (let k = cnt - 1; k >= 0; k--) {
       const c = order[k], d = down[c];
       if (d < 0 || ocean[d]) continue;
       if (sink && sink[c] && !sink[d]) continue;
-      acc2[d] += acc2[c];
+      acc3[d] += acc3[c];
     }
-    return acc2;
+    return acc3;
   }
   var rainUnits = (a) => {
     const o = new Float32Array(a.n);
@@ -15004,11 +15024,11 @@ dd.q4{color:#c58cff;font-weight:600}
     let cut = 0;
     const before = Float32Array.from(z), tmp = new Float32Array(n);
     for (let ep = 0; ep < E.epochs; ep++) {
-      const fl = flood(a, z), acc2 = gather(a, fl, rainUnits(a));
+      const fl = flood(a, z), acc3 = gather(a, fl, rainUnits(a));
       for (let q = 0; q < fl.cnt; q++) {
         const i = fl.order[q], r = fl.down[i], zr = ocean[r] ? a.sea : z[r];
         if (z[i] <= zr) continue;
-        const F = E.k * Math.pow(acc2[i] / (k * k), E.m) / (isDiag(a, i, r) ? Math.SQRT2 : 1) / 6;
+        const F = E.k * Math.pow(acc3[i] / (k * k), E.m) / (isDiag(a, i, r) ? Math.SQRT2 : 1) / 6;
         z[i] = (z[i] + F * zr) / (1 + F);
       }
       for (let p = 0; p < E.creepPasses; p++) {
@@ -15162,17 +15182,17 @@ dd.q4{color:#c58cff;font-weight:600}
     const f = a.f, n = a.n, k2 = scaleOf(a) ** 2, out = new Uint8Array(n), cnt = {};
     for (let i = 0; i < n; i++) {
       if (f.ocean[i]) continue;
-      const rel = (f.elev[i] - a.sea) / (1 - a.sea);
+      const rel2 = (f.elev[i] - a.sea) / (1 - a.sea);
       const id = classify2({
         T: f.temp[i],
         range: f.trange[i],
         P: f.rain[i],
-        rel,
+        rel: rel2,
         water: f.lake[i] >= 0 || f.flow[i] >= RIVERS.great * k2,
         volc: f.volc[i] > 0.65,
         steep: f.flat[i] < 0.45,
         // waterlogged: a flat valley floor or lowland where more falls than the zone can dry
-        wet: f.flat[i] > 0.85 && rel < 0.1 && (f.alluvium[i] > 0.6 || f.rain[i] > 2.2 * Math.max(1, dryness(f.temp[i])))
+        wet: f.flat[i] > 0.85 && rel2 < 0.1 && (f.alluvium[i] > 0.6 || f.rain[i] > 2.2 * Math.max(1, dryness(f.temp[i])))
       });
       out[i] = B(id);
       cnt[id] = (cnt[id] || 0) + 1;
@@ -15260,10 +15280,10 @@ dd.q4{color:#c58cff;font-weight:600}
     return wood / (land || 1);
   }
   function cellBiomes(a, i, r = 2) {
-    const f = a.f, w = a.w, x0 = i % w, y0 = i / w | 0, acc2 = {};
+    const f = a.f, w = a.w, x0 = i % w, y0 = i / w | 0, acc3 = {};
     let tot = 0;
     const add2 = (id, v) => {
-      acc2[id] = (acc2[id] || 0) + v;
+      acc3[id] = (acc3[id] || 0) + v;
       tot += v;
     };
     for (let y = Math.max(0, y0 - r); y <= Math.min(a.h - 1, y0 + r); y++) for (let x = Math.max(0, x0 - r); x <= Math.min(w - 1, x0 + r); x++) {
@@ -15277,7 +15297,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (cave) add2("underground", wt * cave);
     }
     const out = {};
-    for (const [id, v] of Object.entries(acc2)) {
+    for (const [id, v] of Object.entries(acc3)) {
       const s = Math.round(v / tot * 100) / 100;
       if (s >= 0.02) out[id] = s;
     }
@@ -15453,15 +15473,570 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   ]);
 
+  // src/data/history.js
+  var ERAS = new Registry("era");
+  ERAS.registerAll([
+    { id: "wild", label: "\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430", note: "\u043C\u0438\u0440 \u0431\u0435\u0437 \u0440\u0430\u0437\u0443\u043C\u043D\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432: \u0437\u0432\u0435\u0440\u0438 \u0440\u0430\u0441\u0441\u0435\u043B\u044F\u044E\u0442\u0441\u044F \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u0431\u0438\u043E\u043C\u0430\u043C, \u0445\u0438\u0449\u043D\u0438\u043A\u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u0437\u0430 \u0434\u043E\u0431\u044B\u0447\u0435\u0439, \u0447\u0443\u0434\u043E\u0432\u0438\u0449\u0430 \u0432\u044C\u044E\u0442 \u043B\u043E\u0433\u043E\u0432\u0430 \u0438 \u0434\u0435\u043B\u044F\u0442 \u0432\u043B\u0430\u0434\u0435\u043D\u0438\u044F" }
+  ]);
+  var WILD_YEARS = [
+    { years: 25, label: "\u041A\u043E\u0440\u043E\u0442\u043A\u0430\u044F" },
+    { years: 40, label: "\u041E\u0431\u044B\u0447\u043D\u0430\u044F" },
+    { years: 70, label: "\u0414\u043E\u043B\u0433\u0430\u044F" }
+  ];
+  var FAUNA = {
+    weather: 0.5,
+    harshAt: -0.7,
+    harsh: 0.35,
+    plague: 0.012,
+    crowd: 0.85,
+    plagueKill: 0.6,
+    plagueRadius: 5,
+    cell: 4,
+    diffuse: 0.1,
+    growth: 0.45,
+    season: { spring: 1.4, summer: 1, autumn: 0.35, winter: -0.3 },
+    predation: 0.35,
+    half: 0.3,
+    trophic: 0.12,
+    starve: 0.25,
+    floor: 0.01,
+    boom: 1.25,
+    bust: 0.6,
+    cooldown: 12
+  };
+
+  // src/data/lairs.js
+  var LAIRS = new Registry("lair");
+  LAIRS.registerAll([
+    {
+      id: "griffin",
+      species: "griffin",
+      from: "\u0438\u0437 \u0433\u043D\u0435\u0437\u0434\u0430",
+      label: "\u0433\u043D\u0435\u0437\u0434\u043E \u0433\u0440\u0438\u0444\u043E\u043D\u043E\u0432",
+      g: "n",
+      color: [214, 170, 90],
+      radius: 9,
+      ground: "heights",
+      density: 25,
+      max: 8,
+      breed: 0.12,
+      rivals: ["wyvern", "drake"],
+      nouns: [["\u0433\u043D\u0435\u0437\u0434\u043E", "n"], ["\u0443\u0442\u0451\u0441", "m"], ["\u0441\u043A\u0430\u043B\u0430", "f"], ["\u043A\u0440\u0443\u0447\u0438", "pl"]]
+    },
+    {
+      id: "wyvern",
+      species: "wyvern",
+      from: "\u0438\u0437 \u043B\u043E\u0433\u043E\u0432\u0430",
+      label: "\u043B\u043E\u0433\u043E\u0432\u043E \u0432\u0438\u0432\u0435\u0440\u043D\u044B",
+      g: "n",
+      color: [120, 150, 90],
+      radius: 10,
+      ground: "heights",
+      density: 18,
+      max: 6,
+      breed: 0.08,
+      rivals: ["griffin", "drake"],
+      nouns: [["\u043B\u043E\u0433\u043E\u0432\u043E", "n"], ["\u0443\u0449\u0435\u043B\u044C\u0435", "n"], ["\u0433\u043E\u0440\u0430", "f"], ["\u043F\u0438\u043A", "m"]]
+    },
+    {
+      id: "drake",
+      species: "drake",
+      from: "\u0438\u0437 \u043B\u043E\u0433\u043E\u0432\u0430",
+      label: "\u043B\u043E\u0433\u043E\u0432\u043E \u0434\u0440\u0435\u0439\u043A\u0430",
+      g: "n",
+      color: [220, 80, 50],
+      radius: 12,
+      ground: "volcano",
+      density: 80,
+      max: 4,
+      breed: 0.05,
+      rivals: ["griffin", "wyvern"],
+      nouns: [["\u0436\u0435\u0440\u043B\u043E", "n"], ["\u043A\u0440\u0430\u0442\u0435\u0440", "m"], ["\u043F\u0435\u043F\u0435\u043B\u0438\u0449\u0435", "n"], ["\u0433\u043E\u0440\u0430", "f"]]
+    },
+    {
+      id: "spider",
+      species: "spider",
+      from: "\u0438\u0437 \u0433\u043D\u0435\u0437\u0434\u0430",
+      label: "\u043F\u0430\u0443\u0447\u044C\u0435 \u0433\u043D\u0435\u0437\u0434\u043E",
+      g: "n",
+      color: [150, 110, 170],
+      radius: 6,
+      ground: "deep",
+      density: 14,
+      max: 10,
+      breed: 0.07,
+      rivals: [],
+      nouns: [["\u0447\u0430\u0449\u0430", "f"], ["\u043F\u0430\u0443\u0442\u0438\u043D\u043D\u0438\u043A", "m"], ["\u0434\u0435\u0431\u0440\u0438", "pl"], ["\u043B\u043E\u0433", "m"]]
+    },
+    {
+      id: "stoneworm",
+      species: "stoneworm",
+      from: "\u0438\u0437 \u043D\u043E\u0440\u044B",
+      label: "\u043D\u043E\u0440\u0430 \u043A\u0430\u043C\u0435\u043D\u043D\u043E\u0433\u043E \u0447\u0435\u0440\u0432\u044F",
+      labelAcc: "\u043D\u043E\u0440\u0443 \u043A\u0430\u043C\u0435\u043D\u043D\u043E\u0433\u043E \u0447\u0435\u0440\u0432\u044F",
+      g: "f",
+      color: [160, 140, 110],
+      radius: 8,
+      ground: "caves",
+      density: 10,
+      max: 6,
+      breed: 0.06,
+      rivals: [],
+      nouns: [["\u043D\u043E\u0440\u0430", "f"], ["\u043F\u0440\u043E\u0432\u0430\u043B", "m"], ["\u0445\u043E\u0434", "m"], ["\u043F\u0443\u0441\u0442\u043E\u0448\u044C", "f"]]
+    },
+    {
+      id: "bat",
+      species: "bat",
+      from: "\u0438\u0437 \u043F\u0435\u0449\u0435\u0440\u044B",
+      label: "\u043F\u0435\u0449\u0435\u0440\u0430 \u043A\u0440\u043E\u0432\u043E\u043F\u0438\u0439\u0446",
+      labelAcc: "\u043F\u0435\u0449\u0435\u0440\u0443 \u043A\u0440\u043E\u0432\u043E\u043F\u0438\u0439\u0446",
+      g: "f",
+      color: [120, 70, 90],
+      radius: 6,
+      ground: "caves",
+      density: 12,
+      max: 8,
+      breed: 0.08,
+      rivals: [],
+      nouns: [["\u043F\u0435\u0449\u0435\u0440\u0430", "f"], ["\u0433\u0440\u043E\u0442", "m"], ["\u043F\u043E\u0434\u0437\u0435\u043C\u0435\u043B\u044C\u0435", "n"], ["\u0440\u0430\u0441\u0441\u0435\u043B\u0438\u043D\u0430", "f"]]
+    },
+    {
+      id: "varg",
+      species: "varg",
+      from: "\u0438\u0437 \u043B\u043E\u0433\u043E\u0432\u0430",
+      label: "\u043B\u043E\u0433\u043E\u0432\u043E \u0432\u0430\u0440\u0433\u043E\u0432",
+      g: "n",
+      color: [130, 130, 140],
+      radius: 10,
+      ground: "open",
+      density: 8,
+      max: 8,
+      breed: 0.08,
+      rivals: [],
+      nouns: [["\u043B\u043E\u0433\u043E\u0432\u043E", "n"], ["\u043F\u0430\u0434\u044C", "f"], ["\u0443\u0440\u043E\u0447\u0438\u0449\u0435", "n"], ["\u0431\u0443\u0440\u0435\u043B\u043E\u043C\u044B", "pl"]]
+    }
+  ]);
+  var NAME_ADJ = [
+    ["\u0427\u0451\u0440\u043D\u044B\u0439", "\u0427\u0451\u0440\u043D\u0430\u044F", "\u0427\u0451\u0440\u043D\u043E\u0435", "\u0427\u0451\u0440\u043D\u044B\u0435"],
+    ["\u041A\u0440\u043E\u0432\u0430\u0432\u044B\u0439", "\u041A\u0440\u043E\u0432\u0430\u0432\u0430\u044F", "\u041A\u0440\u043E\u0432\u0430\u0432\u043E\u0435", "\u041A\u0440\u043E\u0432\u0430\u0432\u044B\u0435"],
+    ["\u0413\u0438\u0431\u043B\u044B\u0439", "\u0413\u0438\u0431\u043B\u0430\u044F", "\u0413\u0438\u0431\u043B\u043E\u0435", "\u0413\u0438\u0431\u043B\u044B\u0435"],
+    ["\u0421\u0442\u0430\u0440\u044B\u0439", "\u0421\u0442\u0430\u0440\u0430\u044F", "\u0421\u0442\u0430\u0440\u043E\u0435", "\u0421\u0442\u0430\u0440\u044B\u0435"],
+    ["\u0421\u0435\u0434\u043E\u0439", "\u0421\u0435\u0434\u0430\u044F", "\u0421\u0435\u0434\u043E\u0435", "\u0421\u0435\u0434\u044B\u0435"],
+    ["\u0412\u043E\u044E\u0449\u0438\u0439", "\u0412\u043E\u044E\u0449\u0430\u044F", "\u0412\u043E\u044E\u0449\u0435\u0435", "\u0412\u043E\u044E\u0449\u0438\u0435"],
+    ["\u041A\u043E\u0441\u0442\u044F\u043D\u043E\u0439", "\u041A\u043E\u0441\u0442\u044F\u043D\u0430\u044F", "\u041A\u043E\u0441\u0442\u044F\u043D\u043E\u0435", "\u041A\u043E\u0441\u0442\u044F\u043D\u044B\u0435"],
+    ["\u041C\u0451\u0440\u0442\u0432\u044B\u0439", "\u041C\u0451\u0440\u0442\u0432\u0430\u044F", "\u041C\u0451\u0440\u0442\u0432\u043E\u0435", "\u041C\u0451\u0440\u0442\u0432\u044B\u0435"],
+    ["\u0414\u044B\u043C\u043D\u044B\u0439", "\u0414\u044B\u043C\u043D\u0430\u044F", "\u0414\u044B\u043C\u043D\u043E\u0435", "\u0414\u044B\u043C\u043D\u044B\u0435"],
+    ["\u041A\u0430\u043C\u0435\u043D\u043D\u044B\u0439", "\u041A\u0430\u043C\u0435\u043D\u043D\u0430\u044F", "\u041A\u0430\u043C\u0435\u043D\u043D\u043E\u0435", "\u041A\u0430\u043C\u0435\u043D\u043D\u044B\u0435"],
+    ["\u0413\u043D\u0438\u043B\u043E\u0439", "\u0413\u043D\u0438\u043B\u0430\u044F", "\u0413\u043D\u0438\u043B\u043E\u0435", "\u0413\u043D\u0438\u043B\u044B\u0435"],
+    ["\u041D\u0435\u043C\u043E\u0439", "\u041D\u0435\u043C\u0430\u044F", "\u041D\u0435\u043C\u043E\u0435", "\u041D\u0435\u043C\u044B\u0435"],
+    ["\u0412\u043E\u043B\u0447\u0438\u0439", "\u0412\u043E\u043B\u0447\u044C\u044F", "\u0412\u043E\u043B\u0447\u044C\u0435", "\u0412\u043E\u043B\u0447\u044C\u0438"],
+    ["\u0420\u0436\u0430\u0432\u044B\u0439", "\u0420\u0436\u0430\u0432\u0430\u044F", "\u0420\u0436\u0430\u0432\u043E\u0435", "\u0420\u0436\u0430\u0432\u044B\u0435"],
+    ["\u0422\u0451\u043C\u043D\u044B\u0439", "\u0422\u0451\u043C\u043D\u0430\u044F", "\u0422\u0451\u043C\u043D\u043E\u0435", "\u0422\u0451\u043C\u043D\u044B\u0435"],
+    ["\u041F\u0440\u043E\u043A\u043B\u044F\u0442\u044B\u0439", "\u041F\u0440\u043E\u043A\u043B\u044F\u0442\u0430\u044F", "\u041F\u0440\u043E\u043A\u043B\u044F\u0442\u043E\u0435", "\u041F\u0440\u043E\u043A\u043B\u044F\u0442\u044B\u0435"],
+    ["\u0412\u044B\u0441\u043E\u043A\u0438\u0439", "\u0412\u044B\u0441\u043E\u043A\u0430\u044F", "\u0412\u044B\u0441\u043E\u043A\u043E\u0435", "\u0412\u044B\u0441\u043E\u043A\u0438\u0435"],
+    ["\u0417\u043C\u0435\u0438\u043D\u044B\u0439", "\u0417\u043C\u0435\u0438\u043D\u0430\u044F", "\u0417\u043C\u0435\u0438\u043D\u043E\u0435", "\u0417\u043C\u0435\u0438\u043D\u044B\u0435"]
+  ];
+  var GENDER_INDEX = { m: 0, f: 1, n: 2, pl: 3 };
+  var ANCIENT_YEARS = 30;
+
+  // src/atlas/fauna.js
+  function initFauna(a, rnd) {
+    const c = Math.max(2, Math.round(FAUNA.cell * scaleOf(a))), W = Math.ceil(a.w / c), H = Math.ceil(a.h / c), N2 = W * H;
+    const species = SPECIES.filter((s) => s.habitat);
+    const shares = Array.from({ length: N2 }, () => ({}));
+    for (let i = 0; i < a.n; i++) {
+      if (a.f.ocean[i]) continue;
+      const j = ((i / a.w | 0) / c | 0) * W + (i % a.w / c | 0), b = biomeAt(a, i), sh = shares[j];
+      sh[b.id] = (sh[b.id] || 0) + 1;
+      const rock = ROCK_BY_CODE[a.f.rock[i]]?.id;
+      if (rock === "limestone") sh.underground = (sh.underground || 0) + 0.15;
+      else if (rock === "basalt") sh.underground = (sh.underground || 0) + 0.08;
+    }
+    const list = species.map((sp) => {
+      const K = new Float32Array(N2);
+      for (let j = 0; j < N2; j++) {
+        let v = 0;
+        for (const [b, r] of Object.entries(sp.habitat)) v += (shares[j][b] || 0) * RARITY[r].mul;
+        K[j] = v / (c * c);
+      }
+      const role = sp.resident ? "spirit" : sp.predator ? "predator" : "prey";
+      const Nf = new Float32Array(N2);
+      for (let j = 0; j < N2; j++) Nf[j] = role === "spirit" ? K[j] : K[j] * (0.3 + 0.6 * rnd());
+      return { id: sp.id, sp, role, K, N: Nf, speed: Math.min(2, (sp.speed || 0.15) / 0.15), usual: 0, flagged: -99 };
+    });
+    const idx = Object.fromEntries(list.map((s, k) => [s.id, k]));
+    for (const s of list) if (s.role === "predator") s.prey = [...s.sp.predator.prey || [], ...s.sp.predator.weakPrey || []].filter((id) => id in idx).map((id) => idx[id]);
+    for (const s of list) {
+      let t = 0;
+      for (const v of s.K) t += v;
+      s.usual = t;
+    }
+    a.fauna = { c, W, H, list, idx };
+  }
+  function diffuse(F, arr, K, rate, tmp) {
+    const { W, H } = F;
+    tmp.set(arr);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const j = y * W + x;
+      if (K[j] <= 0 && tmp[j] <= 0) continue;
+      let s = 0, c = 0;
+      if (x > 0) {
+        s += tmp[j - 1];
+        c++;
+      }
+      if (x < W - 1) {
+        s += tmp[j + 1];
+        c++;
+      }
+      if (y > 0) {
+        s += tmp[j - W];
+        c++;
+      }
+      if (y < H - 1) {
+        s += tmp[j + W];
+        c++;
+      }
+      arr[j] = tmp[j] + rate * (s / c - tmp[j]);
+    }
+  }
+  function rollWeather(a, rnd) {
+    const F = a.fauna, kw = 6, kh = 5, knots = Array.from({ length: kw * kh }, () => rnd() * 2 - 1), out = new Float32Array(F.W * F.H);
+    for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
+      const fx = x / (F.W - 1 || 1) * (kw - 1), fy = y / (F.H - 1 || 1) * (kh - 1), x0 = Math.min(kw - 2, fx | 0), y0 = Math.min(kh - 2, fy | 0), tx2 = fx - x0, ty = fy - y0;
+      const k = (i, j) => knots[j * kw + i];
+      out[y * F.W + x] = (k(x0, y0) * (1 - tx2) + k(x0 + 1, y0) * tx2) * (1 - ty) + (k(x0, y0 + 1) * (1 - tx2) + k(x0 + 1, y0 + 1) * tx2) * ty;
+    }
+    F.weather = out;
+    return out;
+  }
+  function plague(a, rnd) {
+    const F = a.fauna, P = FAUNA;
+    for (const s of F.list) {
+      if (s.role === "spirit" || rnd() > P.plague) continue;
+      let best = -1, bv = P.crowd;
+      for (let j = 0; j < s.N.length; j++) if (s.K[j] > 0.2 && s.N[j] / s.K[j] > bv) {
+        bv = s.N[j] / s.K[j];
+        best = j;
+      }
+      if (best < 0) continue;
+      const bx = best % F.W, by = best / F.W | 0, r = P.plagueRadius;
+      for (let y = Math.max(0, by - r); y <= Math.min(F.H - 1, by + r); y++) for (let x = Math.max(0, bx - r); x <= Math.min(F.W - 1, bx + r); x++)
+        if ((x - bx) ** 2 + (y - by) ** 2 <= r * r) s.N[y * F.W + x] *= 1 - P.plagueKill;
+      return { s, j: best };
+    }
+    return null;
+  }
+  function stepFauna(a, seasonId) {
+    const F = a.fauna, P = FAUNA, n = F.W * F.H, g0 = P.season[seasonId] ?? 1, tmp = new Float32Array(n);
+    const wx = F.weather || new Float32Array(n);
+    const gAt = (j) => g0 > 0 ? g0 * (1 + P.weather * wx[j]) : g0 * (1 - P.weather * wx[j]);
+    const eaten = F.list.map(() => new Float32Array(n));
+    for (const s of F.list) {
+      if (s.role !== "predator" || !s.prey.length) continue;
+      for (let j = 0; j < n; j++) {
+        const pr = s.N[j];
+        if (pr <= 0) continue;
+        let avail = 0;
+        for (const q of s.prey) avail += F.list[q].N[j];
+        if (avail <= 0) {
+          s.N[j] -= pr * P.starve;
+          continue;
+        }
+        const sat = avail / (avail + P.half), take = Math.min(avail * 0.5, P.predation * P.trophic * pr * sat);
+        for (const q of s.prey) eaten[q][j] += take * F.list[q].N[j] / avail;
+        const Kp = Math.max(s.K[j], 1e-4);
+        const g3 = gAt(j);
+        s.N[j] += pr * (P.growth * Math.max(0, g3) * sat * (1 - pr / Kp) - P.starve * (1 - sat) - (g3 < 0 ? -g3 * 0.3 : 0));
+      }
+    }
+    for (const [k, s] of F.list.entries()) {
+      if (s.role === "spirit") continue;
+      if (s.role === "prey") for (let j = 0; j < n; j++) {
+        const N0 = s.N[j], K = s.K[j];
+        const g3 = gAt(j);
+        s.N[j] = K > 0 ? N0 + P.growth * g3 * N0 * (g3 > 0 ? 1 - N0 / K : 1) - eaten[k][j] : N0 * 0.5;
+      }
+      diffuse(F, s.N, s.K, P.diffuse * s.speed, tmp);
+      for (let j = 0; j < n; j++) if (s.N[j] < P.floor * Math.max(s.K[j], 0.05)) s.N[j] = 0;
+    }
+    return F.list.map((s) => {
+      let t = 0;
+      for (const v of s.N) t += v;
+      return t;
+    });
+  }
+  function faunaAt(a, i, id) {
+    const F = a.fauna;
+    if (!F) return 0;
+    const s = F.list[F.idx[id]], j = ((i / a.w | 0) / F.c | 0) * F.W + (i % a.w / F.c | 0);
+    return s.K[j] > 0 ? s.N[j] / s.K[j] : 0;
+  }
+  var faunaCell = (a, i) => ((i / a.w | 0) / a.fauna.c | 0) * a.fauna.W + (i % a.w / a.fauna.c | 0);
+
+  // src/atlas/lairs.js
+  var rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
+  function groundFits(a, L, i) {
+    if (a.f.ocean[i] || a.f.lake[i] >= 0) return false;
+    const b = biomeAt(a, i).id, rock = ROCK_BY_CODE[a.f.rock[i]]?.id;
+    switch (L.ground) {
+      case "heights":
+        return rel(a, i) > 0.35 && a.f.flat[i] < 0.6 && b !== "ice";
+      case "volcano":
+        return a.f.volc[i] > 0.4 || b === "volcano";
+      case "caves":
+        return rock === "limestone" || rock === "basalt";
+      case "deep":
+        return ["forest", "jungle", "swamp", "taiga"].includes(b) && a.f.trees[i] > 0.5;
+      case "open":
+        return ["tundra", "taiga", "steppe", "meadow"].includes(b);
+    }
+    return false;
+  }
+  var goodness = (a, L, i) => a.fauna.list[a.fauna.idx[L.species]].K[faunaCell(a, i)];
+  var DIRS = ["\u043D\u0430 \u0432\u043E\u0441\u0442\u043E\u043A\u0435", "\u043D\u0430 \u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u043A\u0435", "\u043D\u0430 \u044E\u0433\u0435", "\u043D\u0430 \u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u0435", "\u043D\u0430 \u0437\u0430\u043F\u0430\u0434\u0435", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u0435", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u0435", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u043A\u0435"];
+  function wherePhrase(a, i) {
+    const x = i % a.w, y = i / a.w | 0, dx = x / a.w - 0.5, dy = y / a.h - 0.5;
+    const dir = Math.hypot(dx, dy) < 0.12 ? "\u0432 \u0441\u0435\u0440\u0434\u0446\u0435 \u043C\u0438\u0440\u0430" : DIRS[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
+    const cnt = {};
+    for (let yy = Math.max(0, y - 3); yy <= Math.min(a.h - 1, y + 3); yy++) for (let xx = Math.max(0, x - 3); xx <= Math.min(a.w - 1, x + 3); xx++) {
+      const b = biomeAt(a, yy * a.w + xx);
+      if (b && b.id !== "water") cnt[b.id] = (cnt[b.id] || 0) + 1;
+    }
+    const top = Object.entries(cnt).sort((p, q) => q[1] - p[1])[0];
+    return `${top ? BIOMES.get(top[0]).where : ""} ${dir}`.trim();
+  }
+  function lairName(L, rnd, used) {
+    for (let t = 0; t < 30; t++) {
+      const [noun, gen] = L.nouns[rnd() * L.nouns.length | 0], adj = NAME_ADJ[rnd() * NAME_ADJ.length | 0][GENDER_INDEX[gen]];
+      const name = `${adj} ${noun}`;
+      if (!used.has(name)) {
+        used.add(name);
+        return name;
+      }
+    }
+    return `${L.label} ${used.size + 1}`;
+  }
+  function newLair(a, L, i, rnd, strength2, born = a.hist.year) {
+    const H = a.hist, name = lairName(L, rnd, H.names);
+    const lair = { id: H.nextLair++, kind: L.id, i, x: i % a.w, y: i / a.w | 0, name, born, strength: strength2, ancient: born <= H.year - ANCIENT_YEARS, alive: true };
+    a.lairs.push(lair);
+    return lair;
+  }
+  var R = (a, L) => L.radius * scaleOf(a);
+  var dist8 = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+  function findSpot(a, L, rnd, near2, tries = 400) {
+    let best = -1, bv = 0;
+    for (let t = 0; t < tries; t++) {
+      let i;
+      if (near2) {
+        const ang = rnd() * Math.PI * 2, d = R(a, L) * (2 + 2 * rnd());
+        const x = Math.round(near2.x + Math.cos(ang) * d), y = Math.round(near2.y + Math.sin(ang) * d);
+        if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
+        i = y * a.w + x;
+      } else i = rnd() * a.n | 0;
+      if (!groundFits(a, L, i)) continue;
+      const v = goodness(a, L, i) * (0.6 + 0.4 * rnd());
+      if (v <= 0.02 || v <= bv) continue;
+      const p = { x: i % a.w, y: i / a.w | 0 };
+      if (a.lairs.some((o) => o.alive && o.kind === L.id && dist8(o, p) < 2 * R(a, L))) continue;
+      best = i;
+      bv = v;
+    }
+    return best;
+  }
+  function placeLairs(a, rnd) {
+    a.lairs = [];
+    const tally2 = {};
+    for (const L of LAIRS.all()) {
+      let fit = 0;
+      for (let i = 0; i < a.n; i += 3) if (groundFits(a, L, i) && goodness(a, L, i) > 0.02) fit += 3;
+      const want2 = Math.min(L.max, Math.round(fit / 1e4 * L.density * (0.7 + 0.6 * rnd())));
+      for (let q = 0; q < want2; q++) {
+        const i = findSpot(a, L, rnd);
+        if (i < 0) break;
+        newLair(a, L, i, rnd, 0.4 + 0.5 * rnd(), 1 - Math.floor(rnd() * 2 * ANCIENT_YEARS));
+        tally2[L.id] = (tally2[L.id] || 0) + 1;
+      }
+    }
+    return tally2;
+  }
+  var power = (sp) => {
+    const s = SPECIES.get(sp).special;
+    return (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2;
+  };
+  function stepLairs(a, rnd, seasonId) {
+    const H = a.hist, F = a.fauna, lines = [];
+    for (const lair of a.lairs) {
+      if (!lair.alive) continue;
+      const L = LAIRS.get(lair.kind), r = R(a, L), s = F.list[F.idx[L.species]];
+      let food = 0, cap = 0;
+      const cells = [], c = F.c, rr = Math.ceil(r / c);
+      const cx = lair.x / c | 0, cy = lair.y / c | 0;
+      for (let y = Math.max(0, cy - rr); y <= Math.min(F.H - 1, cy + rr); y++) for (let x = Math.max(0, cx - rr); x <= Math.min(F.W - 1, cx + rr); x++) {
+        if ((x - cx) ** 2 + (y - cy) ** 2 > rr * rr) continue;
+        const j = y * F.W + x;
+        cells.push(j);
+        for (const q of s.prey || []) {
+          food += F.list[q].N[j];
+          cap += F.list[q].K[j];
+        }
+      }
+      const fed = cap > 0 ? Math.min(1.2, food / cap) : 0.5;
+      const winter = seasonId === "winter" ? 0.03 : 0;
+      lair.strength = Math.max(0, Math.min(1, lair.strength + 0.08 * (fed - 0.45) - winter + 0.02 * (rnd() - 0.5)));
+      for (const j of cells) if (s.K[j] > 0) s.N[j] = Math.max(s.N[j], s.K[j] * lair.strength);
+      if (lair.strength < 0.08) {
+        lair.alive = false;
+        lair.died = H.year;
+        lines.push(`${G[L.g].emptied} ${L.label} \xAB${lair.name}\xBB ${wherePhrase(a, lair.i)}: \u0434\u043E\u0431\u044B\u0447\u0438 \u043D\u0435 \u0441\u0442\u0430\u043B\u043E, \u0438 ${SPECIES.get(L.species).plural} \u0443\u0448\u043B\u0438.`);
+        continue;
+      }
+      const age = H.year - lair.born;
+      if (!lair.ancient && age >= ANCIENT_YEARS) {
+        lair.ancient = true;
+        lines.push(`${cap12(L.label)} \xAB${lair.name}\xBB ${G[L.g].stands} \u0443\u0436\u0435 ${age} \u043B\u0435\u0442: \u043E ${G[L.g].about} \u0441\u043B\u0430\u0433\u0430\u044E\u0442 \u0441\u0442\u0440\u0430\u0448\u043D\u044B\u0435 \u0441\u043A\u0430\u0437\u043A\u0438.`);
+      }
+      if (seasonId === "spring" && lair.strength > 0.85 && age >= 3 && rnd() < L.breed && a.lairs.filter((o) => o.alive && o.kind === L.id).length < L.max * 1.5) {
+        const i = findSpot(a, L, rnd, lair, 60);
+        if (i >= 0) {
+          lair.strength *= 0.75;
+          const young = newLair(a, L, i, rnd, 0.35);
+          lines.push(`\u041C\u043E\u043B\u043E\u0434\u044B\u0435 ${SPECIES.get(L.species).plural} ${L.from} \xAB${lair.name}\xBB \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${G[L.g].fresh} ${acc(L)} \u2014 \xAB${young.name}\xBB ${wherePhrase(a, i)}.`);
+        }
+      }
+    }
+    for (const p of a.lairs) {
+      if (!p.alive) continue;
+      const Lp = LAIRS.get(p.kind);
+      for (const q of a.lairs) {
+        if (!q.alive || q.id <= p.id || !Lp.rivals.includes(q.kind)) continue;
+        const Lq = LAIRS.get(q.kind);
+        if (dist8(p, q) > R(a, Lp) + R(a, Lq) || rnd() > 0.08) continue;
+        const sp = p.strength * power(Lp.species) * (0.7 + 0.6 * rnd()), sq = q.strength * power(Lq.species) * (0.7 + 0.6 * rnd());
+        const [win, lose, Lw, Ll] = sp >= sq ? [p, q, Lp, Lq] : [q, p, Lq, Lp];
+        lose.strength *= 0.4;
+        win.strength *= 0.9;
+        const who = SPECIES.get(Lw.species), whom = SPECIES.get(Ll.species);
+        if (lose.strength < 0.12) {
+          lose.alive = false;
+          lose.died = H.year;
+          lines.push(`${cap12(who.plural)} ${Lw.from} \xAB${win.name}\xBB \u0440\u0430\u0437\u043E\u0440\u0438\u043B\u0438 ${acc(Ll)} \xAB${lose.name}\xBB ${wherePhrase(a, lose.i)}.`);
+        } else lines.push(`${cap12(who.plural)} ${Lw.from} \xAB${win.name}\xBB \u0441\u0445\u0432\u0430\u0442\u0438\u043B\u0438\u0441\u044C \u0441 ${whomInstr(whom)} ${Ll.from} \xAB${lose.name}\xBB \u0438 \u043E\u0442\u043E\u0433\u043D\u0430\u043B\u0438 \u0438\u0445.`);
+      }
+    }
+    return lines;
+  }
+  var cap12 = (s) => s[0].toUpperCase() + s.slice(1);
+  var G = { n: { emptied: "\u041E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", fresh: "\u043D\u043E\u0432\u043E\u0435", stands: "\u0441\u0442\u043E\u0438\u0442", about: "\u043D\u0451\u043C" }, f: { emptied: "\u041E\u043F\u0443\u0441\u0442\u0435\u043B\u0430", fresh: "\u043D\u043E\u0432\u0443\u044E", stands: "\u0441\u0442\u043E\u0438\u0442", about: "\u043D\u0435\u0439" } };
+  var acc = (L) => L.labelAcc || L.label;
+  var INSTR = { griffin: "\u0433\u0440\u0438\u0444\u043E\u043D\u0430\u043C\u0438", wyvern: "\u0432\u0438\u0432\u0435\u0440\u043D\u0430\u043C\u0438", drake: "\u0434\u0440\u0435\u0439\u043A\u0430\u043C\u0438", spider: "\u043F\u0430\u0443\u043A\u0430\u043C\u0438", stoneworm: "\u0447\u0435\u0440\u0432\u044F\u043C\u0438", bat: "\u043A\u0440\u043E\u0432\u043E\u043F\u0438\u0439\u0446\u0430\u043C\u0438", varg: "\u0432\u0430\u0440\u0433\u0430\u043C\u0438" };
+  var whomInstr = (sp) => INSTR[sp.id] || sp.plural;
+  function lairAt(a, i) {
+    if (!a.lairs) return null;
+    const p = { x: i % a.w, y: i / a.w | 0 };
+    let best = null, bd = Infinity;
+    for (const l of a.lairs) {
+      if (!l.alive) continue;
+      const d = dist8(l, p);
+      if (d <= R(a, LAIRS.get(l.kind)) && d < bd) {
+        best = l;
+        bd = d;
+      }
+    }
+    return best;
+  }
+
+  // src/atlas/history.js
+  var SEASON_LIST = SEASONS.all();
+  var historyLength = (a) => WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR;
+  var historyDone = (a) => !!a.hist && a.hist.step >= a.hist.end;
+  var seasonLabel = (s) => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
+  function coarseToCell(a, j) {
+    const F = a.fauna, x0 = j % F.W * F.c, y0 = (j / F.W | 0) * F.c;
+    let best = Math.min(a.n - 1, (y0 + (F.c >> 1)) * a.w + x0 + (F.c >> 1));
+    for (let y = y0; y < Math.min(a.h, y0 + F.c); y++) for (let x = x0; x < Math.min(a.w, x0 + F.c); x++) if (!a.f.ocean[y * a.w + x]) return y * a.w + x;
+    return best;
+  }
+  function say(a, text) {
+    const H = a.hist;
+    a.chronicle.push({ era: H.era, year: H.year, season: H.season, text });
+  }
+  function startHistory(a) {
+    const rnd = mulberry(seedNumber(`${a.cfg.seed}:atlas:history`));
+    a.hist = { era: "wild", year: 1, season: 0, step: 0, end: historyLength(a), rnd, nextLair: 1, names: /* @__PURE__ */ new Set(), last: {} };
+    initFauna(a, rnd);
+    const t = placeLairs(a, rnd);
+    const parts = LAIRS.filter((L) => t[L.id]).map((L) => `${L.label} \u2014 ${t[L.id]}`), old = a.lairs.filter((l) => l.ancient).length;
+    say(a, `\u041D\u0430\u0447\u0430\u043B\u0430\u0441\u044C ${ERAS.get("wild").label.toLowerCase()}. \u0420\u0430\u0437\u0443\u043C\u043D\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u0435\u0449\u0451 \u043D\u0435\u0442; \u0437\u0432\u0435\u0440\u0438 \u0440\u0430\u0441\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u043A\u0440\u0430\u044F\u043C` + (parts.length ? `, \u0447\u0443\u0434\u043E\u0432\u0438\u0449\u0430 \u0437\u0430\u043D\u044F\u043B\u0438 \u043B\u043E\u0433\u043E\u0432\u0430: ${parts.join(", ")}` + (old ? `; ${old} \u0438\u0437 \u043D\u0438\u0445 \u0441\u0442\u043E\u044F\u0442 \u0441 \u043D\u0435\u0437\u0430\u043F\u0430\u043C\u044F\u0442\u043D\u044B\u0445 \u0432\u0440\u0435\u043C\u0451\u043D.` : ".") : "."));
+  }
+  function stepHistory(a) {
+    const H = a.hist, rnd = H.rnd, season2 = SEASON_LIST[H.season].id, F = a.fauna;
+    if (H.season === 0) {
+      rollWeather(a, rnd);
+      const m = plague(a, rnd);
+      if (m) say(a, `\u041C\u043E\u0440: ${m.s.sp.plural} \u0433\u0438\u0431\u043D\u0443\u0442 ${wherePhrase(a, coarseToCell(a, m.j))}.`);
+    }
+    if (season2 === "winter" && rnd() < 0.5) {
+      let worst = 0, wj = -1;
+      for (let j = 0; j < F.weather.length; j++) if (F.weather[j] < worst && F.list.some((s) => s.K[j] > 0.3)) {
+        worst = F.weather[j];
+        wj = j;
+      }
+      if (worst < FAUNA.harshAt) {
+        const r = 4, bx = wj % F.W, by = wj / F.W | 0, cell = coarseToCell(a, wj);
+        for (const s of F.list) if (s.role !== "spirit") for (let y = Math.max(0, by - r); y <= Math.min(F.H - 1, by + r); y++) for (let x = Math.max(0, bx - r); x <= Math.min(F.W - 1, bx + r); x++) s.N[y * F.W + x] *= 1 - FAUNA.harsh;
+        const cold = a.f.temp[cell] - a.f.trange[cell] / 2 < 0;
+        say(a, cold ? `\u041B\u044E\u0442\u0430\u044F \u0437\u0438\u043C\u0430 ${wherePhrase(a, cell)}: \u0437\u0432\u0435\u0440\u0438 \u0433\u0438\u0431\u043B\u0438 \u043E\u0442 \u043C\u043E\u0440\u043E\u0437\u0430 \u0438 \u0431\u0435\u0441\u043A\u043E\u0440\u043C\u0438\u0446\u044B.` : `\u0417\u0430\u0441\u0443\u0445\u0430 ${wherePhrase(a, cell)}: \u0442\u0440\u0430\u0432\u044B \u0432\u044B\u0433\u043E\u0440\u0435\u043B\u0438, \u0437\u0432\u0435\u0440\u0438 \u0433\u0438\u0431\u043B\u0438 \u043E\u0442 \u0431\u0435\u0441\u043A\u043E\u0440\u043C\u0438\u0446\u044B.`);
+      }
+    }
+    const totals = stepFauna(a, season2);
+    for (const line2 of stepLairs(a, rnd, season2)) say(a, line2);
+    if (H.season === 3) {
+      const news = [];
+      for (const [k, s] of a.fauna.list.entries()) {
+        if (s.role === "spirit" || s.usual <= 0) continue;
+        const t = totals[k], avg = s.avg;
+        s.avg = avg == null ? t : avg * 0.8 + t * 0.2;
+        if (t === 0 && avg > 0) {
+          news.push([9, `\u0412 \u043C\u0438\u0440\u0435 \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0438 \u043E\u0434\u043D\u043E\u0433\u043E \u0437\u0432\u0435\u0440\u044F: ${s.sp.plural} \u0432\u044B\u043C\u0435\u0440\u043B\u0438.`]);
+          continue;
+        }
+        if (avg == null || H.year < 5 || H.year - (H.last[s.id] ?? -99) < FAUNA.cooldown) continue;
+        const r = t / avg;
+        if (r > FAUNA.boom) news.push([r, `\u0413\u043E\u0434 \u0438\u0437\u043E\u0431\u0438\u043B\u0438\u044F: ${s.sp.plural} \u0440\u0430\u0441\u043F\u043B\u043E\u0434\u0438\u043B\u0438\u0441\u044C, \u043A\u0430\u043A \u043D\u0438\u043A\u043E\u0433\u0434\u0430.`, s.id]);
+        else if (r < FAUNA.bust) news.push([1 / r, `\u0422\u044F\u0436\u0451\u043B\u044B\u0435 \u0433\u043E\u0434\u044B: ${s.sp.plural} \u043F\u043E\u0447\u0442\u0438 \u043F\u0435\u0440\u0435\u0432\u0435\u043B\u0438\u0441\u044C.`, s.id]);
+      }
+      for (const [, text, id] of news.sort((x, y) => y[0] - x[0]).slice(0, 2)) {
+        if (id) H.last[id] = H.year;
+        say(a, text);
+      }
+    }
+    H.step++;
+    H.season = (H.season + 1) % SEASON_LIST.length;
+    if (H.season === 0) H.year++;
+    if (H.step >= H.end) {
+      const alive = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive;
+      say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive} ${plural(alive, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
+    }
+  }
+
   // src/atlas/generate.js
   function newAtlas(cfg) {
     const { w, h } = ATLAS_SIZES[cfg.size];
     return { cfg: { ...cfg }, w, h, n: w * h, f: {}, sea: 0, year: 0, stage: 0, chronicle: [], ms: {} };
   }
-  var atlasDone = (a) => a.stage >= ATLAS_STAGES.all().length;
+  var landDone = (a) => a.stage >= ATLAS_STAGES.all().length;
+  var atlasDone = (a) => landDone(a) && historyDone(a);
   function runNextStage(a) {
     const st = ATLAS_STAGES.all()[a.stage];
-    if (!st) return null;
+    if (!st) {
+      if (historyDone(a)) return null;
+      const t02 = Date.now();
+      if (!a.hist) startHistory(a);
+      else stepHistory(a);
+      a.ms.history = (a.ms.history || 0) + Date.now() - t02;
+      return { id: "history" };
+    }
     const rnd = mulberry(seedNumber(`${a.cfg.seed}:atlas:${st.id}`));
     const t0 = Date.now();
     const text = st.run(a, rnd);
@@ -15473,17 +16048,21 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/ui/atlasView.js
   var STORE2 = "forest.atlas";
-  var ERA = { geology: "\u0413\u0435\u043E\u043B\u043E\u0433\u0438\u044F" };
+  var ERA = { geology: "\u0413\u0435\u043E\u043B\u043E\u0433\u0438\u044F", climate: "\u041A\u043B\u0438\u043C\u0430\u0442", water: "\u0412\u043E\u0434\u0430", life: "\u0416\u0438\u0437\u043D\u044C" };
   var OPTS2 = {
     size: Object.entries(ATLAS_SIZES).map(([k, v]) => [k, v.label]),
     land: ATLAS_LAND.map((l, i) => [i, l.label]),
     plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
     hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
-    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"], ["wind", "\u0412\u0435\u0442\u0440\u044B"], ["rain", "\u041E\u0441\u0430\u0434\u043A\u0438"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["soils", "\u041F\u043E\u0447\u0432\u044B"]],
+    wild: WILD_YEARS.map((e, i) => [i, e.label]),
+    fauna: SPECIES.filter((sp) => sp.habitat).map((sp) => [sp.id, sp.plural]),
+    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"], ["wind", "\u0412\u0435\u0442\u0440\u044B"], ["rain", "\u041E\u0441\u0430\u0434\u043A\u0438"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["soils", "\u041F\u043E\u0447\u0432\u044B"], ["fauna", "\u0417\u0432\u0435\u0440\u0438"]],
     ore: ORE_GENESIS.all().map((o) => [o.id, o.label])
   };
-  var VIEW_KEYS = /* @__PURE__ */ new Set(["layer", "ore"]);
+  var VIEW_KEYS = /* @__PURE__ */ new Set(["layer", "ore", "fauna"]);
   var mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
+  var hexRgb = (h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16));
+  var faunaCellOf = (a, i) => ((i / a.w | 0) / a.fauna.c | 0) * a.fauna.W + (i % a.w / a.fauna.c | 0);
   function ramp(stops, t) {
     t = Math.max(0, Math.min(1, t));
     for (let k = 1; k < stops.length; k++) if (t <= stops[k][0]) {
@@ -15508,7 +16087,9 @@ dd.q4{color:#c58cff;font-weight:600}
       this.atlas = null;
       this.layer = "relief";
       this.ore = "iron";
+      this.fauna = "wolf";
       this.timer = 0;
+      this.paused = false;
       this.onBack = onBack;
       this.build();
     }
@@ -15554,6 +16135,11 @@ dd.q4{color:#c58cff;font-weight:600}
         this.sync();
       });
       $("atlasGo").addEventListener("click", () => this.generate());
+      $("atlasPause").addEventListener("click", () => {
+        this.paused = !this.paused;
+        this.syncPause();
+        if (!this.paused) this.run();
+      });
       $("atlasBack").addEventListener("click", () => {
         clearTimeout(this.timer);
         this.onBack();
@@ -15570,13 +16156,15 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     sync() {
       $("atlasSeed").value = this.cfg.seed;
-      const val = { ...this.cfg, layer: this.layer, ore: this.ore };
+      const val = { ...this.cfg, layer: this.layer, ore: this.ore, fauna: this.fauna };
       document.querySelectorAll("#atlas .seg[data-akey]").forEach((box) => {
         box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.val === String(val[box.dataset.akey]))));
       });
       $("atlasSizeNote").textContent = ATLAS_SIZES[this.cfg.size].note;
       $("atlasHemiNote").textContent = HEMISPHERES[this.cfg.hemisphere].note;
       $("atlasOre").hidden = this.layer !== "ores";
+      $("atlasFauna").hidden = this.layer !== "fauna";
+      $("atlasWildNote").textContent = `${WILD_YEARS[this.cfg.wild].years} \u043B\u0435\u0442 \u0434\u043E \u043F\u0440\u0438\u0445\u043E\u0434\u0430 \u043D\u0430\u0440\u043E\u0434\u043E\u0432`;
       this.legend();
     }
     legend() {
@@ -15589,6 +16177,7 @@ dd.q4{color:#c58cff;font-weight:600}
         html = sw([70, 72, 66], "\u043D\u0435\u0442") + sw(mix([70, 72, 66], o.color, 0.45), "\u0431\u0435\u0434\u043D\u043E") + sw(mix([70, 72, 66], o.color, 0.75), "\u0435\u0441\u0442\u044C") + sw(o.color, "\u0431\u043E\u0433\u0430\u0442\u043E");
       } else if (this.layer === "biomes") html = Object.entries(BIOME_KINDS).filter(([k]) => k !== "feature").map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter((b) => b.kind === k).map((b) => sw(b.color, b.label)).join("")).join("") + "<b>\u043B\u0435\u0441\u0430</b> \u0442\u0435\u043C\u043D\u0435\u0435, \u0433\u0430\u0440\u0438 \u0441\u0432\u0435\u0442\u043B\u0435\u0435";
       else if (this.layer === "soils") html = SOILS.filter((s) => s.id !== "none").map((s) => sw(s.color, s.label)).join("") + "<b>\u044F\u0440\u0447\u0435</b> \u2014 \u043F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u043D\u0435\u0435";
+      else if (this.layer === "fauna") html = sw([70, 70, 64], "\u043D\u0435 \u0438\u0445 \u043A\u0440\u0430\u044F") + sw([120, 116, 100], "\u043C\u043E\u0433\u0443\u0442 \u0436\u0438\u0442\u044C, \u043D\u043E \u043D\u0435\u0442") + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], "\u0441\u0442\u043E\u043B\u044C\u043A\u043E, \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u043A\u0440\u0430\u0439 \u043F\u0440\u043E\u043A\u043E\u0440\u043C\u0438\u0442") + "<b>\u043B\u043E\u0433\u043E\u0432\u0430:</b> " + LAIRS.all().map((L) => sw(L.color, L.label)).join("") + sw([60, 40, 40], "\xD7 \u043E\u043F\u0443\u0441\u0442\u0435\u0432\u0448\u0435\u0435");
       else if (this.layer === "rain") html = [[100, "\u043F\u0443\u0441\u0442\u044B\u043D\u044F"], [400, "\u0441\u0443\u0445\u043E"], [800, "\u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E"], [1500, "\u0432\u043B\u0430\u0436\u043D\u043E"], [2500, "\u043E\u0447\u0435\u043D\u044C \u0432\u043B\u0430\u0436\u043D\u043E"]].map(([v, l]) => sw(rainColor(v), `${l} (${v} \u043C\u043C)`)).join("");
       else if (this.layer === "wind") html = sw([240, 240, 230], "\u0441\u0442\u0440\u0435\u043B\u043A\u0438 \u2014 \u043A\u0443\u0434\u0430 \u0434\u0443\u0435\u0442 \u0432\u0435\u0442\u0435\u0440") + sw([90, 110, 150], "\u0442\u0438\u0448\u0435") + sw([200, 210, 240], "\u0441\u0438\u043B\u044C\u043D\u0435\u0435");
       else if (this.layer === "temp") html = sw(HEAT[0][1], "\u221230\xB0") + sw(HEAT[1][1], "\u22124\xB0") + sw(HEAT[2][1], "+9\xB0") + sw(HEAT[3][1], "+35\xB0");
@@ -15602,15 +16191,30 @@ dd.q4{color:#c58cff;font-weight:600}
       cv.width = a.w;
       cv.height = a.h;
       cv.getContext("2d").clearRect(0, 0, a.w, a.h);
+      this.paused = false;
+      this.syncPause();
       this.renderSide();
+      this.run();
+    }
+    // the land a stage a frame, then history a year (four seasons) a frame; pausing stops between frames
+    run() {
+      const a = this.atlas;
+      clearTimeout(this.timer);
       const next = () => {
-        if (a !== this.atlas) return;
-        runNextStage(a);
+        if (a !== this.atlas || this.paused) return;
+        const steps = landDone(a) ? 4 : 1;
+        for (let k = 0; k < steps && !atlasDone(a); k++) runNextStage(a);
         this.draw();
         this.renderSide();
         if (!atlasDone(a)) this.timer = setTimeout(next, 30);
+        else this.syncPause();
       };
       this.timer = setTimeout(next, 30);
+    }
+    syncPause() {
+      const b = $("atlasPause"), a = this.atlas, busy2 = a && landDone(a) && !atlasDone(a);
+      b.hidden = !busy2 && !this.paused;
+      b.textContent = this.paused ? "\u0414\u0430\u043B\u044C\u0448\u0435" : "\u041F\u0430\u0443\u0437\u0430";
     }
     // the colour of one cell on the chosen layer; a field that is not made yet shows as the dark sea
     color(a, i) {
@@ -15644,6 +16248,13 @@ dd.q4{color:#c58cff;font-weight:600}
           const s = soilAt(a, i);
           if (!s) return base;
           return mix([60, 60, 56], s.color, 0.6 + 0.4 * f.fert[i]);
+        }
+        case "fauna": {
+          if (!a.fauna || f.ocean[i]) return mix(base, [8, 12, 20], 0.4);
+          const v = faunaAt(a, i, this.fauna), sp = SPECIES.get(this.fauna), K = a.fauna.list[a.fauna.idx[this.fauna]].K[faunaCellOf(a, i)];
+          if (K <= 0) return mix(base, [40, 40, 36], 0.75);
+          const col = sp.look?.color ? hexRgb(sp.look.color) : [220, 120, 60];
+          return mix(mix(base, [40, 40, 36], 0.6), col, Math.min(1, v) * 0.9);
         }
         case "rain":
           return f.rain ? f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25) : base;
@@ -15683,6 +16294,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       px.putImageData(img, 0, 0);
       if (this.layer === "wind" && a.f.windX) this.arrows(a, px);
+      if (a.lairs && ["relief", "biomes", "fauna"].includes(this.layer)) this.drawLairs(a, px);
       if (a.f.flow && ["relief", "rain", "rocks", "temp", "biomes", "soils"].includes(this.layer)) this.rivers(a, px);
     }
     // rivers: a line from each river cell to the cell it drains into, wider for more water
@@ -15706,6 +16318,41 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         px.stroke();
       });
+    }
+    // lairs: a diamond in the owner's colour and a faint ring of its territory; the dead ones as a cross
+    drawLairs(a, px) {
+      const k = Math.min(a.w, a.h) / 192, sz = Math.max(1.6, 2.2 * k);
+      for (const l of a.lairs) {
+        const L = LAIRS.get(l.kind), x = l.x + 0.5, y = l.y + 0.5;
+        if (!l.alive) {
+          px.strokeStyle = "rgba(30,20,20,0.6)";
+          px.lineWidth = Math.max(0.5, 0.5 * k);
+          px.beginPath();
+          px.moveTo(x - sz * 0.6, y - sz * 0.6);
+          px.lineTo(x + sz * 0.6, y + sz * 0.6);
+          px.moveTo(x + sz * 0.6, y - sz * 0.6);
+          px.lineTo(x - sz * 0.6, y + sz * 0.6);
+          px.stroke();
+          continue;
+        }
+        px.strokeStyle = `rgba(${L.color.join(",")},0.45)`;
+        px.lineWidth = Math.max(0.4, 0.4 * k);
+        px.beginPath();
+        px.arc(x, y, L.radius * k, 0, Math.PI * 2);
+        px.stroke();
+        px.fillStyle = `rgb(${L.color.join(",")})`;
+        px.strokeStyle = "rgba(10,10,10,0.85)";
+        px.lineWidth = Math.max(0.5, 0.45 * k);
+        const r = sz * (0.7 + 0.5 * l.strength);
+        px.beginPath();
+        px.moveTo(x, y - r);
+        px.lineTo(x + r, y);
+        px.lineTo(x, y + r);
+        px.lineTo(x - r, y);
+        px.closePath();
+        px.fill();
+        px.stroke();
+      }
     }
     // wind arrows every few cells, drawn on the map canvas in cell units
     arrows(a, px) {
@@ -15734,9 +16381,15 @@ dd.q4{color:#c58cff;font-weight:600}
         const st = k < a.stage ? "done" : k === a.stage ? "now" : "";
         const ms = a.ms[s.id] != null ? `${a.ms[s.id]} \u043C\u0441` : k === a.stage ? "\u2026" : "";
         return `<li class="${st}" title="${esc(s.note)}"><span>${esc(s.label)}</span><small>${ms}</small></li>`;
-      }).join("");
-      $("atlasChron").innerHTML = a.chronicle.length ? a.chronicle.map((c) => `<div><small>${ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join("") : '<small class="muted">\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F \u0441 \u043F\u0435\u0440\u0432\u044B\u043C \u044D\u0442\u0430\u043F\u043E\u043C.</small>';
-      $("atlasStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${a.n.toLocaleString("ru-RU")}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(a.cfg.seed)}</dd><dt>\u042D\u0442\u0430\u043F</dt><dd>${Math.min(a.stage, all.length)} \u0438\u0437 ${all.length}</dd>`;
+      }).join("") + (() => {
+        const total = historyLength(a), done3 = a.hist ? a.hist.step : 0, st = !landDone(a) ? "" : done3 >= total ? "done" : "now";
+        const yr = a.hist ? `\u0433\u043E\u0434 ${Math.min(a.hist.year, total / 4)} \u0438\u0437 ${total / 4}` : `${total / 4} \u043B\u0435\u0442`;
+        return `<li class="${st}" title="${esc(ERAS.get("wild").note)}"><span>${ERAS.get("wild").label}</span><small>${yr}</small></li>`;
+      })();
+      const box = $("atlasChron"), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
+      box.innerHTML = a.chronicle.length ? a.chronicle.map((c) => `<div><small>${c.season != null ? `\u0433\u043E\u0434 ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join("") : '<small class="muted">\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F \u0441 \u043F\u0435\u0440\u0432\u044B\u043C \u044D\u0442\u0430\u043F\u043E\u043C.</small>';
+      if (atEnd) box.scrollTop = box.scrollHeight;
+      $("atlasStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${a.n.toLocaleString("ru-RU")}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(a.cfg.seed)}</dd><dt>\u042D\u0442\u0430\u043F</dt><dd>${Math.min(a.stage, all.length)} \u0438\u0437 ${all.length}</dd>` + (a.lairs ? `<dt>\u041B\u043E\u0433\u043E\u0432\u0430 \u0447\u0443\u0434\u043E\u0432\u0438\u0449</dt><dd>${a.lairs.filter((l) => l.alive).length}</dd>` : "");
     }
     hover(e) {
       const a = this.atlas;
@@ -15766,6 +16419,16 @@ dd.q4{color:#c58cff;font-weight:600}
         const sh = Object.entries(cellBiomes(a, i)).sort((x2, y2) => y2[1] - x2[1]).slice(0, 4).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
         if (sh.length > 1) parts.push(`\u043E\u043A\u0440\u0443\u0433\u0430: ${sh.join(", ")}`);
       }
+      const lair = lairAt(a, i);
+      if (lair) {
+        const L = LAIRS.get(lair.kind);
+        parts.push(`\u0432\u043B\u0430\u0434\u0435\u043D\u0438\u044F: ${L.label} \xAB${lair.name}\xBB, \u0441\u0438\u043B\u0430 ${Math.round(lair.strength * 100)}%${lair.ancient ? ", \u0434\u0440\u0435\u0432\u043D\u0435\u0435" : ""}`);
+      }
+      if (a.fauna && !f.ocean[i]) {
+        const word = (v) => v >= 0.8 ? "\u043C\u043D\u043E\u0433\u043E" : v >= 0.45 ? "\u0435\u0441\u0442\u044C" : "\u043C\u0430\u043B\u043E";
+        const beasts = a.fauna.list.filter((s) => s.role !== "spirit").map((s) => [s, faunaAt(a, i, s.id)]).filter(([, v]) => v > 0.15).sort((p, q) => q[1] - p[1]).slice(0, 4);
+        if (beasts.length) parts.push("\u0437\u0432\u0435\u0440\u0438: " + beasts.map(([s, v]) => `${s.sp.plural} ${word(v)}`).join(", "));
+      }
       const geo = cellGeology(a, i);
       if (geo.rock) parts.push(geo.rock.label);
       if (geo.rock && f.land[i]) {
@@ -15781,7 +16444,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/ui/panel.js
   var soilWord = (f) => f < 0.3 ? "\u0442\u043E\u0449\u0430\u044F" : f < 0.5 ? "\u0441\u0440\u0435\u0434\u043D\u044F\u044F" : f < 0.7 ? "\u0434\u043E\u0431\u0440\u0430\u044F" : "\u0436\u0438\u0440\u043D\u0430\u044F";
-  var DIRS = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
+  var DIRS2 = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
   var bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
   var costHtml = (w, cost) => Object.entries(cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? "" : " short"}">${v} ${RESOURCES.get(r).label}</span>`).join("");
   function specialHtml(a) {
@@ -15907,7 +16570,7 @@ dd.q4{color:#c58cff;font-weight:600}
       $("season").title = `${S.note} \u0414\u043E \u0441\u043C\u0435\u043D\u044B \u0441\u0435\u0437\u043E\u043D\u0430: ${left} ${plural(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}.`;
       $("season").dataset.s = S.id;
       $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? season(w).snow ? ", \u0441\u043D\u0435\u0433" : ", \u0434\u043E\u0436\u0434\u044C" : "") + (w.stats.fireCount ? ` \xB7 \u0433\u043E\u0440\u0438\u0442 \u043A\u043B\u0435\u0442\u043E\u043A: ${w.stats.fireCount}` : "");
-      $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `\u0432\u0435\u0442\u0435\u0440 ${DIRS[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
+      $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `\u0432\u0435\u0442\u0435\u0440 ${DIRS2[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       const col = colonists(w);
       $("popCount").textContent = col.length;
       $("goldCount").textContent = w.caravan && w.caravan.phase !== "leaving" ? "\u25CF" : Math.floor(treasury(w)) || "";
@@ -16024,13 +16687,13 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     // what the land holds (data/regions.js): ores, gold sand, beasts, wild beds
     regionText(w) {
-      const R = region(w), word = (v) => LEVEL_WORDS[v] ?? v;
-      const ores2 = ORES.filter((o) => !o.event).map((o) => `${o.label} \u2014 ${word(R.ores[o.id] ?? 0)}`);
-      ores2.push(`\u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u044F\u0445 \u2014 ${word(R.placer)}`);
-      if (R.goldVein) ores2.push("\u0431\u044B\u0432\u0430\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u0430\u044F \u0436\u0438\u043B\u0430");
-      const biomes2 = Object.entries(R.biomes || {}).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
+      const R2 = region(w), word = (v) => LEVEL_WORDS[v] ?? v;
+      const ores2 = ORES.filter((o) => !o.event).map((o) => `${o.label} \u2014 ${word(R2.ores[o.id] ?? 0)}`);
+      ores2.push(`\u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u044F\u0445 \u2014 ${word(R2.placer)}`);
+      if (R2.goldVein) ores2.push("\u0431\u044B\u0432\u0430\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u0430\u044F \u0436\u0438\u043B\u0430");
+      const biomes2 = Object.entries(R2.biomes || {}).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
       const beasts = regionFauna(w).map(([sp, v]) => `${sp.label} (${faunaWord(v)})`);
-      return `<b>${esc(R.label)}</b>: ${esc(R.note || "")}<br>\u0437\u0435\u043C\u043B\u0438: ${biomes2.join(", ")}<br>${ores2.join(", ")}<br>\u0436\u0438\u0432\u0443\u0442: ${beasts.join(", ")}${R.magma ? "<br>\u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043C\u0430\u0433\u043C\u0430" : ""}`;
+      return `<b>${esc(R2.label)}</b>: ${esc(R2.note || "")}<br>\u0437\u0435\u043C\u043B\u0438: ${biomes2.join(", ")}<br>${ores2.join(", ")}<br>\u0436\u0438\u0432\u0443\u0442: ${beasts.join(", ")}${R2.magma ? "<br>\u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043C\u0430\u0433\u043C\u0430" : ""}`;
     }
     // the arrival is either still on its way (time left) or due and waiting for a reason
     settlerText(w) {
@@ -16686,8 +17349,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.43.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 92b936e" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.44.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a94c516" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;
@@ -17025,7 +17688,7 @@ dd.q4{color:#c58cff;font-weight:600}
     $("windArrow").style.transform = `rotate(${world.wind.dir}deg)`;
     running = true;
     last = performance.now();
-    acc = 0;
+    acc2 = 0;
     panel.render(world, view);
     panel.renderSelection(world, view);
   }
@@ -17202,7 +17865,7 @@ dd.q4{color:#c58cff;font-weight:600}
     view.speed = view.speed ? 0 : 1;
     press($("speeds"), view.speed, "speed");
   });
-  var acc = 0;
+  var acc2 = 0;
   var last = performance.now();
   var panelT = 0;
   function frame(now) {
@@ -17213,7 +17876,7 @@ dd.q4{color:#c58cff;font-weight:600}
         console.error(err);
         const tick = world?.tick;
         running = false;
-        acc = 0;
+        acc2 = 0;
         world = null;
         showMenu();
         $("loadStatus").textContent = `\u0418\u0433\u0440\u0430 \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0430 \u0438\u0437-\u0437\u0430 \u043E\u0448\u0438\u0431\u043A\u0438${tick != null ? ` \u043D\u0430 \u0442\u0438\u043A\u0435 ${tick}` : ""}: ${err.message}. \u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0446\u0435\u043B\u043E.`;
@@ -17224,15 +17887,15 @@ dd.q4{color:#c58cff;font-weight:600}
   function runFrame(now) {
     const dt = Math.min(250, now - last);
     last = now;
-    acc += dt * view.speed;
+    acc2 += dt * view.speed;
     const budget = now + 22;
     let n = 0;
-    while (acc >= TICK_MS && n < 40 && performance.now() < budget) {
+    while (acc2 >= TICK_MS && n < 40 && performance.now() < budget) {
       step(world);
-      acc -= TICK_MS;
+      acc2 -= TICK_MS;
       n++;
     }
-    if (acc > 500) acc = 0;
+    if (acc2 > 500) acc2 = 0;
     if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
     if (view.selBld != null && !world.buildings.some((b) => b.id === view.selBld)) view.selBld = null;
     if (world.over) {
