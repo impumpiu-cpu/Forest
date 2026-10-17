@@ -1,4 +1,4 @@
-[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · **Как добавить новое** · [Механики](MECHANICS.md) · [Проверки и баланс](TESTING.md) · [Карта мира](WORLD.md) · [SPECIAL](SPECIAL.md)
+[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · **Как добавить новое** · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Карта мира](WORLD.md) · [SPECIAL](SPECIAL.md)
 
 # Как добавить новое
 
