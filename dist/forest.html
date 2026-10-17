@@ -10366,7 +10366,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var SMOKE_GONE = 2e-3;
   function heatAndSmoke(w) {
-    const g3 = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain = w.weather.rain, st = w.stats;
+    const g3 = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain2 = w.weather.rain, st = w.stats;
     const smokeOn = st.fireCount > 0 || (st.smokeMax ?? 1) >= SMOKE_GONE;
     if (smokeOn) {
       advect(w, g3.smoke, g3.smoke2, w.wind.x, w.wind.y);
@@ -10383,7 +10383,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
       const Tc = temp[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
-      const Tn = Tc + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * Tc) + (relax + rain * 0.03) * (amb - Tc) + fire[i] * FIRE.heat;
+      const Tn = Tc + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * Tc) + (relax + rain2 * 0.03) * (amb - Tc) + fire[i] * FIRE.heat;
       const tv = Tn > FIRE.cap ? FIRE.cap : Tn;
       temp2[i] = tv;
       if (tv > tmax) tmax = tv;
@@ -10422,7 +10422,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   }
   function burn(w) {
-    const g3 = w.grid, rain = w.weather.rain, st = w.stats;
+    const g3 = w.grid, rain2 = w.weather.rain, st = w.stats;
     const sig = season(w).ignite, ignF = FIRE.ignForest + w.climate.ign + sig, ignG = FIRE.ignGrass + w.climate.ign + sig;
     st.fireCount = 0;
     st.fireNearCamp = 0;
@@ -10432,9 +10432,9 @@ dd.q4{color:#c58cff;font-weight:600}
       if (f > 0) {
         const wet = g3.fert[i];
         g3.fuel[i] -= FIRE.burn * f;
-        let nf = g3.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
+        let nf = g3.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain2)) : f * 0.85;
         if (w.rngs.fire() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;
-        nf -= rain * 0.045;
+        nf -= rain2 * 0.045;
         if (g3.fuel[i] <= 0) g3.fuel[i] = 0;
         if (nf < 0.03) {
           g3.fire[i] = 0;
@@ -10460,7 +10460,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       } else if (g3.fuel[i] > 0.12) {
         const forest = g3.fuel[i] > 1, wet = g3.fert[i];
-        if (g3.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && w.rngs.fire() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) {
+        if (g3.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && w.rngs.fire() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain2)) {
           g3.fire[i] = 0.2;
           w.nav.dirty("fire");
         }
@@ -14483,10 +14483,12 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/atlas/latitude.js
-  function warmth(a, y) {
+  function latitude(a, y) {
     const t = y / (a.h - 1);
-    return a.cfg.hemisphere === "equator" ? 1 - Math.abs(2 * t - 1) : t;
+    return a.cfg.hemisphere === "equator" ? 90 * (1 - 2 * t) : 90 * (1 - t);
   }
+  var warmth = (a, y) => 1 - Math.abs(latitude(a, y)) / 90;
+  var towardEquator = (a, y) => Math.sign(latitude(a, y));
 
   // src/atlas/geology.js
   var clamp012 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -14580,6 +14582,152 @@ dd.q4{color:#c58cff;font-weight:600}
     return out;
   }
 
+  // src/data/climate.js
+  var WIND_BELTS = [
+    { lat: 0, east: -0.7, eq: 0, rise: 1, label: "\u044D\u043A\u0432\u0430\u0442\u043E\u0440\u0438\u0430\u043B\u044C\u043D\u043E\u0435 \u0437\u0430\u0442\u0438\u0448\u044C\u0435" },
+    { lat: 15, east: -1, eq: 0.5, rise: 0, label: "\u043F\u0430\u0441\u0441\u0430\u0442\u044B" },
+    { lat: 30, east: 0, eq: 0, rise: -1, label: "\u043A\u043E\u043D\u0441\u043A\u0438\u0435 \u0448\u0438\u0440\u043E\u0442\u044B" },
+    { lat: 45, east: 1, eq: -0.4, rise: 0.2, label: "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0435 \u0432\u0435\u0442\u0440\u044B" },
+    { lat: 60, east: 0.2, eq: 0, rise: 0.7, label: "\u043F\u043E\u043B\u044F\u0440\u043D\u044B\u0439 \u0444\u0440\u043E\u043D\u0442" },
+    { lat: 75, east: -0.6, eq: 0.4, rise: -0.2, label: "\u043F\u043E\u043B\u044F\u0440\u043D\u044B\u0435 \u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0435" },
+    { lat: 90, east: 0, eq: 0, rise: -0.6, label: "\u043F\u043E\u043B\u044F\u0440\u043D\u044B\u0439 \u0430\u043D\u0442\u0438\u0446\u0438\u043A\u043B\u043E\u043D" }
+  ];
+  var MOISTURE = { evapSea: 0.12, recycle: 0.65, drizzle: 0.01, rise: 0.015, orography: 4, oroMax: 0.15, condense: 0.25, speed: 0.9, mix: 0.15, mm: 11e3, soft: 2500 };
+  var RAIN_WORDS = [[150, "\u043F\u0443\u0441\u0442\u044B\u043D\u044F"], [350, "\u0441\u0443\u0445\u043E"], [700, "\u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E"], [1300, "\u0432\u043B\u0430\u0436\u043D\u043E"], [Infinity, "\u043E\u0447\u0435\u043D\u044C \u0432\u043B\u0430\u0436\u043D\u043E"]];
+
+  // src/atlas/climate.js
+  var smooth2 = (t) => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+  function belt(lat) {
+    const L = Math.min(90, Math.abs(lat));
+    for (let k = 1; k < WIND_BELTS.length; k++) {
+      const b = WIND_BELTS[k], p = WIND_BELTS[k - 1];
+      if (L <= b.lat) {
+        const t = smooth2((L - p.lat) / (b.lat - p.lat));
+        return { east: p.east + (b.east - p.east) * t, eq: p.eq + (b.eq - p.eq) * t, rise: p.rise + (b.rise - p.rise) * t };
+      }
+    }
+    const z = WIND_BELTS[WIND_BELTS.length - 1];
+    return { east: z.east, eq: z.eq, rise: z.rise };
+  }
+  function continentality(a) {
+    const { w, h, n } = a, land = a.f.land, k = scaleOf(a), dist8 = new Float64Array(n).fill(Infinity), heap = new Heap(n >> 2);
+    for (let i = 0; i < n; i++) if (!land[i]) {
+      dist8[i] = 0;
+      heap.push(0, i);
+    }
+    while (heap.size) {
+      const c = heap.pop(), d = heap.top;
+      if (d > dist8[c]) continue;
+      const x = c % w, y = c / w | 0;
+      for (const [dx, dy, len] of DIRS8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx, nd = d + len;
+        if (nd < dist8[j]) {
+          dist8[j] = nd;
+          heap.push(nd, j);
+        }
+      }
+    }
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i++) out[i] = smooth2(dist8[i] / (40 * k));
+    return out;
+  }
+  function temperature(a) {
+    const { w, h, n } = a, f = a.f, top = a.cfg.peakKm ?? 5;
+    const cont = continentality(a), temp = new Float32Array(n), range = new Float32Array(n);
+    for (let y = 0; y < h; y++) {
+      const lat = Math.abs(latitude(a, y)), base = 28 - 46 * (lat / 90) ** 1.3;
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x, e = f.elev[i], km = f.land[i] ? (e - a.sea) / (1 - a.sea) * top : 0;
+        const inland = cont[i] * (lat < 25 ? 1.5 : -4 * (lat - 25) / 65);
+        temp[i] = base - 6.5 * km + inland;
+        range[i] = 2 + lat / 90 * (12 + 30 * cont[i]);
+      }
+    }
+    f.temp = temp;
+    f.trange = range;
+    f.cont = cont;
+  }
+  function winds(a, rnd) {
+    const { w, h, n } = a, f = a.f;
+    const eddyX = fbm2(rnd, w, h, Math.max(w, h) / 4, 3, 0.5), eddyY = fbm2(rnd, w, h, Math.max(w, h) / 4, 3, 0.5);
+    const wx = new Float32Array(n), wy = new Float32Array(n);
+    for (let y = 0; y < h; y++) {
+      const b = belt(latitude(a, y)), s = towardEquator(a, y) || 1;
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x, hi = f.land[i] ? (f.elev[i] - a.sea) / (1 - a.sea) : 0;
+        const slow = 1 - 0.5 * smooth2(hi / 0.6);
+        wx[i] = (b.east + 0.45 * (eddyX[i] - 0.5)) * slow;
+        wy[i] = (b.eq * s + 0.45 * (eddyY[i] - 0.5)) * slow;
+      }
+    }
+    f.windX = wx;
+    f.windY = wy;
+  }
+  function halve(a, src) {
+    const W = Math.ceil(a.w / 2), H = Math.ceil(a.h / 2), out = new Float32Array(W * H), cnt = new Float32Array(W * H);
+    for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
+      const j = (y >> 1) * W + (x >> 1);
+      out[j] += src[y * a.w + x];
+      cnt[j]++;
+    }
+    for (let j = 0; j < out.length; j++) out[j] /= cnt[j];
+    return out;
+  }
+  var qsat = (T2) => 4 * Math.exp(0.04 * T2);
+  function rain(a) {
+    const f = a.f, M = MOISTURE, W = Math.ceil(a.w / 2), H = Math.ceil(a.h / 2), N2 = W * H;
+    const T2 = halve(a, f.temp), E = halve(a, f.elev), L = halve(a, f.land), U = halve(a, f.windX), V = halve(a, f.windY);
+    const rise = new Float32Array(N2), sat = new Float32Array(N2), climb = new Float32Array(N2);
+    for (let y = 0; y < H; y++) {
+      const b = belt(latitude(a, Math.min(a.h - 1, y * 2)));
+      for (let x = 0; x < W; x++) {
+        const j = y * W + x;
+        rise[j] = b.rise;
+        sat[j] = qsat(T2[j]);
+        const ex = E[y * W + Math.min(W - 1, x + 1)] - E[y * W + Math.max(0, x - 1)], ey = E[Math.min(H - 1, y + 1) * W + x] - E[Math.max(0, y - 1) * W + x];
+        climb[j] = L[j] > 0.5 ? Math.max(0, (U[j] * ex + V[j] * ey) * 0.5) : 0;
+      }
+    }
+    let q = new Float32Array(N2), q2 = new Float32Array(N2);
+    for (let j = 0; j < N2; j++) q[j] = L[j] > 0.5 ? 0 : sat[j] * 0.8;
+    const soil = new Float32Array(N2);
+    const acc2 = new Float32Array(N2), steps = Math.round(1.6 * (W + H)), from = steps >> 1;
+    for (let s = 0; s < steps; s++) {
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const j = y * W + x;
+        let sx = x - U[j] * M.speed, sy = y - V[j] * M.speed;
+        sx = Math.max(0, Math.min(W - 1.001, sx));
+        sy = Math.max(0, Math.min(H - 1.001, sy));
+        const x0 = sx | 0, y0 = sy | 0, tx2 = sx - x0, ty = sy - y0, i0 = y0 * W + x0;
+        q2[j] = (q[i0] * (1 - tx2) + q[i0 + 1] * tx2) * (1 - ty) + (q[i0 + W] * (1 - tx2) + q[i0 + W + 1] * tx2) * ty;
+      }
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const j = y * W + x, l = x > 0 ? j - 1 : j, r = x < W - 1 ? j + 1 : j, u = y > 0 ? j - W : j, d = y < H - 1 ? j + W : j;
+        q[j] = q2[j] + M.mix * (q2[l] + q2[r] + q2[u] + q2[d] - 4 * q2[j]);
+      }
+      for (let j = 0; j < N2; j++) {
+        const sea = L[j] < 0.5, gap = sat[j] - q[j];
+        if (gap > 0) q[j] += sea ? gap * M.evapSea : Math.min(gap, M.recycle * soil[j]);
+        let r = q[j] * (M.drizzle + M.rise * Math.max(0, rise[j]) + Math.min(M.oroMax, M.orography * climb[j]));
+        if (rise[j] < 0) r *= 1 + 0.7 * rise[j];
+        if (q[j] - r > sat[j]) r += (q[j] - r - sat[j]) * M.condense;
+        q[j] -= r;
+        soil[j] = soil[j] * 0.9 + r * 0.1;
+        if (s >= from) acc2[j] += r;
+      }
+    }
+    const out = new Float32Array(a.n), scale = M.mm / (steps - from);
+    for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
+      const sx = Math.max(0, Math.min(W - 1.001, (x - 0.5) / 2)), sy = Math.max(0, Math.min(H - 1.001, (y - 0.5) / 2));
+      const x0 = sx | 0, y0 = sy | 0, tx2 = sx - x0, ty = sy - y0, i0 = y0 * W + x0;
+      const mm = ((acc2[i0] * (1 - tx2) + acc2[i0 + 1] * tx2) * (1 - ty) + (acc2[i0 + W] * (1 - tx2) + acc2[i0 + W + 1] * tx2) * ty) * scale;
+      out[y * a.w + x] = mm < M.soft ? mm : M.soft + (mm - M.soft) * 0.4;
+    }
+    f.rain = out;
+  }
+
   // src/atlas/stages.js
   var ATLAS_STAGES = new Registry("atlasStage");
   var pct = (v, n) => `${Math.round(v / n * 100)}%`;
@@ -14657,19 +14805,40 @@ dd.q4{color:#c58cff;font-weight:600}
     {
       id: "temperature",
       label: "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430",
-      era: "geology",
-      note: "\u043F\u043E \u0448\u0438\u0440\u043E\u0442\u0435 \u0438 \u0432\u044B\u0441\u043E\u0442\u0435: \u0432 \u0433\u043E\u0440\u0430\u0445 \u0445\u043E\u043B\u043E\u0434\u043D\u0435\u0435 \u043D\u0430 6,5\xB0 \u043D\u0430 \u043A\u0438\u043B\u043E\u043C\u0435\u0442\u0440",
+      era: "climate",
+      note: "\u043F\u043E \u0448\u0438\u0440\u043E\u0442\u0435 \u0438 \u0432\u044B\u0441\u043E\u0442\u0435 (\u22126,5\xB0 \u043D\u0430 \u043A\u043C); \u0443 \u043C\u043E\u0440\u044F \u043C\u044F\u0433\u0447\u0435, \u0432 \u0433\u043B\u0443\u0431\u0438\u043D\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u043A\u0430 \u0440\u0430\u0437\u043C\u0430\u0445 \u0433\u043E\u0434\u0430 \u0431\u043E\u043B\u044C\u0448\u0435",
       run(a) {
-        const { w, h } = a, temp = new Float32Array(a.n), top = a.cfg.peakKm ?? 5;
-        for (let y = 0; y < h; y++) {
-          const sea = -18 + 46 * warmth(a, y);
-          for (let x = 0; x < w; x++) {
-            const i = y * w + x, e = a.f.elev[i];
-            temp[i] = sea - 6.5 * (e > a.sea ? (e - a.sea) / (1 - a.sea) * top : 0);
-          }
-        }
-        a.f.temp = temp;
+        temperature(a);
         return a.cfg.hemisphere === "equator" ? "\u041B\u0435\u0433\u043B\u0438 \u043F\u043E\u044F\u0441\u0430 \u0437\u043D\u043E\u044F \u043F\u043E\u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0435 \u0438 \u0445\u043E\u043B\u043E\u0434\u0430 \u043F\u043E \u043A\u0440\u0430\u044F\u043C." : "\u041B\u0435\u0433\u043B\u0438 \u043F\u043E\u044F\u0441\u0430: \u0445\u043E\u043B\u043E\u0434 \u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u0435, \u0437\u043D\u043E\u0439 \u043D\u0430 \u044E\u0433\u0435.";
+      }
+    },
+    {
+      id: "winds",
+      label: "\u0412\u0435\u0442\u0440\u044B",
+      era: "climate",
+      note: "\u043F\u043E\u044F\u0441\u0430 \u043F\u0430\u0441\u0441\u0430\u0442\u043E\u0432, \u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0445 \u0438 \u043F\u043E\u043B\u044F\u0440\u043D\u044B\u0445 \u0432\u0435\u0442\u0440\u043E\u0432, \u0438\u0437\u043E\u0433\u043D\u0443\u0442\u044B\u0435 \u0432\u0438\u0445\u0440\u044F\u043C\u0438 \u0438 \u043E\u0441\u043B\u0430\u0431\u043B\u0435\u043D\u043D\u044B\u0435 \u0433\u043E\u0440\u0430\u043C\u0438",
+      run(a, rnd) {
+        winds(a, rnd);
+        return a.cfg.hemisphere === "equator" ? "\u0417\u0430\u0434\u0443\u043B\u0438 \u0432\u0435\u0442\u0440\u044B: \u043F\u0430\u0441\u0441\u0430\u0442\u044B \u0441\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u043A \u044D\u043A\u0432\u0430\u0442\u043E\u0440\u0443, \u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0435 \u0434\u0443\u044E\u0442 \u0432 \u0443\u043C\u0435\u0440\u0435\u043D\u043D\u044B\u0445 \u0448\u0438\u0440\u043E\u0442\u0430\u0445 \u043E\u0431\u043E\u0438\u0445 \u043F\u043E\u043B\u0443\u0448\u0430\u0440\u0438\u0439." : "\u0417\u0430\u0434\u0443\u043B\u0438 \u0432\u0435\u0442\u0440\u044B: \u043D\u0430 \u044E\u0433\u0435 \u043F\u0430\u0441\u0441\u0430\u0442\u044B, \u0432 \u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0435 \u043C\u0438\u0440\u0430 \u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0435, \u0443 \u043F\u043E\u043B\u044E\u0441\u0430 \u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0435.";
+      }
+    },
+    {
+      id: "rain",
+      label: "\u041E\u0441\u0430\u0434\u043A\u0438",
+      era: "climate",
+      note: "\u0432\u043B\u0430\u0433\u0430 \u0441 \u043C\u043E\u0440\u044F \u0438\u0434\u0451\u0442 \u043F\u043E \u0432\u0435\u0442\u0440\u0443 \u0438 \u0432\u044B\u043F\u0430\u0434\u0430\u0435\u0442 \u0442\u0430\u043C, \u0433\u0434\u0435 \u0432\u043E\u0437\u0434\u0443\u0445 \u043F\u043E\u0434\u043D\u0438\u043C\u0430\u0435\u0442\u0441\u044F: \u0432 \u043F\u043E\u044F\u0441\u0430\u0445 \u043F\u043E\u0434\u044A\u0451\u043C\u0430 \u0438 \u043D\u0430 \u043D\u0430\u0432\u0435\u0442\u0440\u0435\u043D\u043D\u044B\u0445 \u0441\u043A\u043B\u043E\u043D\u0430\u0445; \u0437\u0430 \u0433\u043E\u0440\u0430\u043C\u0438 \u2014 \u0434\u043E\u0436\u0434\u0435\u0432\u0430\u044F \u0442\u0435\u043D\u044C",
+      run(a) {
+        rain(a);
+        let wet = 0, dry = 0, land = 0;
+        for (let i = 0; i < a.n; i++) if (a.f.land[i]) {
+          land++;
+          if (a.f.rain[i] < 250) dry++;
+          else if (a.f.rain[i] > 1300) wet++;
+        }
+        const parts = [];
+        if (dry / land > 0.03) parts.push(`\u043F\u0443\u0441\u0442\u044B\u043D\u0438 \u0438 \u0441\u0443\u0445\u0438\u0435 \u0441\u0442\u0435\u043F\u0438 \u043B\u0435\u0433\u043B\u0438 \u043D\u0430 ${pct(dry, land)} \u0441\u0443\u0448\u0438`);
+        if (wet / land > 0.03) parts.push(`\u043B\u0438\u0432\u043D\u0438 \u043F\u043E\u043B\u0438\u0432\u0430\u044E\u0442 ${pct(wet, land)}`);
+        return "\u041F\u043E\u0448\u043B\u0438 \u0434\u043E\u0436\u0434\u0438" + (parts.length ? ": " + parts.join(", ") : "") + ". \u0417\u0430 \u0445\u0440\u0435\u0431\u0442\u0430\u043C\u0438 \u043B\u0435\u0433\u043B\u0430 \u0434\u043E\u0436\u0434\u0435\u0432\u0430\u044F \u0442\u0435\u043D\u044C.";
       }
     }
   ]);
@@ -14700,7 +14869,7 @@ dd.q4{color:#c58cff;font-weight:600}
     land: ATLAS_LAND.map((l, i) => [i, l.label]),
     plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
     hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
-    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"]],
+    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"], ["wind", "\u0412\u0435\u0442\u0440\u044B"], ["rain", "\u041E\u0441\u0430\u0434\u043A\u0438"]],
     ore: ORE_GENESIS.all().map((o) => [o.id, o.label])
   };
   var VIEW_KEYS = /* @__PURE__ */ new Set(["layer", "ore"]);
@@ -14716,6 +14885,10 @@ dd.q4{color:#c58cff;font-weight:600}
   var DEEP = [[0, [12, 24, 52]], [1, [46, 92, 130]]];
   var LAND = [[0, [96, 128, 70]], [0.35, [130, 140, 78]], [0.65, [128, 104, 74]], [0.85, [110, 100, 96]], [1, [236, 236, 230]]];
   var HEAT = [[0, [70, 110, 200]], [0.4, [190, 220, 230]], [0.6, [236, 214, 120]], [1, [200, 70, 50]]];
+  var WET = [[0, [214, 184, 120]], [250, [196, 186, 110]], [600, [120, 160, 80]], [1200, [50, 130, 90]], [2500, [30, 90, 120]]];
+  var rainColor = (mm) => ramp(WET.map(([v, c]) => [v / 2500, c]), mm / 2500);
+  var COMPASS = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
+  var windWord = (x, y) => COMPASS[(Math.round(Math.atan2(-y, -x) / (Math.PI / 4)) + 8) % 8];
   var AtlasView = class {
     constructor({ onBack }) {
       this.cfg = this.load();
@@ -14801,7 +14974,9 @@ dd.q4{color:#c58cff;font-weight:600}
       else if (this.layer === "ores") {
         const o = ORE_GENESIS.get(this.ore);
         html = sw([70, 72, 66], "\u043D\u0435\u0442") + sw(mix([70, 72, 66], o.color, 0.45), "\u0431\u0435\u0434\u043D\u043E") + sw(mix([70, 72, 66], o.color, 0.75), "\u0435\u0441\u0442\u044C") + sw(o.color, "\u0431\u043E\u0433\u0430\u0442\u043E");
-      } else if (this.layer === "temp") html = sw(HEAT[0][1], "\u221230\xB0") + sw(HEAT[1][1], "\u22124\xB0") + sw(HEAT[2][1], "+9\xB0") + sw(HEAT[3][1], "+35\xB0");
+      } else if (this.layer === "rain") html = [[100, "\u043F\u0443\u0441\u0442\u044B\u043D\u044F"], [400, "\u0441\u0443\u0445\u043E"], [800, "\u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E"], [1500, "\u0432\u043B\u0430\u0436\u043D\u043E"], [2500, "\u043E\u0447\u0435\u043D\u044C \u0432\u043B\u0430\u0436\u043D\u043E"]].map(([v, l]) => sw(rainColor(v), `${l} (${v} \u043C\u043C)`)).join("");
+      else if (this.layer === "wind") html = sw([240, 240, 230], "\u0441\u0442\u0440\u0435\u043B\u043A\u0438 \u2014 \u043A\u0443\u0434\u0430 \u0434\u0443\u0435\u0442 \u0432\u0435\u0442\u0435\u0440") + sw([90, 110, 150], "\u0442\u0438\u0448\u0435") + sw([200, 210, 240], "\u0441\u0438\u043B\u044C\u043D\u0435\u0435");
+      else if (this.layer === "temp") html = sw(HEAT[0][1], "\u221230\xB0") + sw(HEAT[1][1], "\u22124\xB0") + sw(HEAT[2][1], "+9\xB0") + sw(HEAT[3][1], "+35\xB0");
       else html = sw(DEEP[0][1], "\u0433\u043B\u0443\u0431\u043E\u043A\u043E\u0435 \u043C\u043E\u0440\u0435") + sw(DEEP[1][1], "\u043C\u0435\u043B\u043A\u043E\u0432\u043E\u0434\u044C\u0435") + sw(LAND[0][1], "\u043D\u0438\u0437\u0438\u043D\u044B") + sw(LAND[2][1], "\u043D\u0430\u0433\u043E\u0440\u044C\u044F") + sw(LAND[4][1], "\u0432\u0435\u0440\u0448\u0438\u043D\u044B");
       $("atlasLegend").innerHTML = html;
     }
@@ -14844,6 +15019,13 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         case "temp":
           return f.temp ? ramp(HEAT, (f.temp[i] + 30) / 65) : base;
+        case "rain":
+          return f.rain ? f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25) : base;
+        case "wind": {
+          if (!f.windX) return base;
+          const sp = Math.min(1, Math.hypot(f.windX[i], f.windY[i]));
+          return mix(mix(base, [40, 44, 40], 0.55), mix([90, 110, 150], [200, 210, 240], sp), 0.35);
+        }
         default:
           return base;
       }
@@ -14874,6 +15056,28 @@ dd.q4{color:#c58cff;font-weight:600}
         d[o + 3] = 255;
       }
       px.putImageData(img, 0, 0);
+      if (this.layer === "wind" && a.f.windX) this.arrows(a, px);
+    }
+    // wind arrows every few cells, drawn on the map canvas in cell units
+    arrows(a, px) {
+      const step2 = Math.max(6, Math.round(Math.min(a.w, a.h) / 24));
+      px.strokeStyle = "rgba(240,240,230,0.85)";
+      px.lineWidth = Math.max(0.6, step2 / 14);
+      px.beginPath();
+      for (let y = step2 >> 1; y < a.h; y += step2) for (let x = step2 >> 1; x < a.w; x += step2) {
+        const i = y * a.w + x, u = a.f.windX[i], v = a.f.windY[i], sp = Math.hypot(u, v);
+        if (sp < 0.05) continue;
+        const L = step2 * 0.42 * Math.min(1, 0.4 + sp), dx = u / sp * L, dy = v / sp * L;
+        const x0 = x + 0.5 - dx, y0 = y + 0.5 - dy, x1 = x + 0.5 + dx, y1 = y + 0.5 + dy;
+        px.moveTo(x0, y0);
+        px.lineTo(x1, y1);
+        const hx = -dx * 0.45, hy = -dy * 0.45;
+        px.moveTo(x1, y1);
+        px.lineTo(x1 + hx - hy * 0.6, y1 + hy + hx * 0.6);
+        px.moveTo(x1, y1);
+        px.lineTo(x1 + hx + hy * 0.6, y1 + hy - hx * 0.6);
+      }
+      px.stroke();
     }
     renderSide() {
       const a = this.atlas, all = ATLAS_STAGES.all();
@@ -14896,7 +15100,12 @@ dd.q4{color:#c58cff;font-weight:600}
       if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
       if (f.land) parts.push(f.land[i] ? "\u0441\u0443\u0448\u0430" : "\u043C\u043E\u0440\u0435");
       parts.push(`\u0432\u044B\u0441\u043E\u0442\u0430 ${f.elev[i].toFixed(3)}`);
-      if (f.temp) parts.push(`${f.temp[i].toFixed(1)}\xB0`);
+      if (f.temp) parts.push(`${f.temp[i].toFixed(1)}\xB0` + (f.trange && f.land[i] ? ` (\u0440\u0430\u0437\u043C\u0430\u0445 \u0433\u043E\u0434\u0430 ${Math.round(f.trange[i])}\xB0)` : ""));
+      if (f.windX) {
+        const sp = Math.hypot(f.windX[i], f.windY[i]);
+        if (sp > 0.08) parts.push(`\u0432\u0435\u0442\u0435\u0440 ${windWord(f.windX[i], f.windY[i])}`);
+      }
+      if (f.rain && f.land[i]) parts.push(`${Math.round(f.rain[i])} \u043C\u043C \u0432 \u0433\u043E\u0434, ${RAIN_WORDS.find(([v]) => f.rain[i] < v)[1]}`);
       const geo = cellGeology(a, i);
       if (geo.rock) parts.push(geo.rock.label);
       if (geo.rock && f.land[i]) {
@@ -15816,8 +16025,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.40.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 8d3bd4d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.41.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 fd67f6d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

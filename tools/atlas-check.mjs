@@ -6,11 +6,46 @@ import {generateAtlas, atlasHash} from '../src/atlas/generate.js';
 import {ATLAS_LAND} from '../src/data/atlas.js';
 import {ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS, PLATE_COUNTS} from '../src/data/geology.js';
 import {levelOf} from '../src/atlas/geology.js';
+import {latitude} from '../src/atlas/latitude.js';
 
 const seeds = +(process.argv[2] || 3), size = process.argv[3] || 'small';
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const kinds = {}, ores = {}, coalOnSed = [0, 0];
+const bands = {tropic: [0, 0], subtropic: [0, 0], temperate: [0, 0]}, shadow = {lee: [0, 0], windward: [0, 0]};
+const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
+const mean = acc => acc[0] / (acc[1] || 1);
+
+// rain by belt (all cells, sea too): the rising belts are wet, the sinking ones at ~30° dry
+function rainBelts(a) {
+  for (let y = 0; y < a.h; y++) {
+    const L = Math.abs(latitude(a, y)), b = L < 10 ? 'tropic' : L > 22 && L < 35 ? 'subtropic' : L > 40 && L < 60 ? 'temperate' : null;
+    if (b) for (let x = 0; x < a.w; x++) addTo(bands[b], a.f.rain[y * a.w + x]);
+  }
+}
+
+// rain shadow: land cells behind a ridge (looking upwind, the ground rises well above them) against
+// land cells that get the wind straight off the sea
+function rainShadow(a) {
+  const rel = i => (a.f.elev[i] - a.sea) / (1 - a.sea), R = Math.round(10 * Math.min(a.w, a.h) / 192);
+  for (let i = 0; i < a.n; i++) {
+    if (!a.f.land[i]) continue;
+    const u = a.f.windX[i], v = a.f.windY[i], sp = Math.hypot(u, v);
+    if (sp < 0.3) continue;
+    const x0 = i % a.w, y0 = (i / a.w) | 0;
+    let ridge = 0, sea = false;
+    for (let t = 1; t <= R; t++) {
+      const x = Math.round(x0 - u / sp * t), y = Math.round(y0 - v / sp * t);
+      if (x < 0 || y < 0 || x >= a.w || y >= a.h) break;
+      const j = y * a.w + x;
+      if (!a.f.land[j]) { sea = t <= 3; break; }
+      ridge = Math.max(ridge, rel(j) - rel(i));
+    }
+    if (ridge > 0.25) addTo(shadow.lee, a.f.rain[i]);
+    else if (sea && rel(i) < 0.15) addTo(shadow.windward, a.f.rain[i]);
+  }
+}
+
 let landAll = 0, worlds = 0;
 
 // every plate is one piece (plates grow over 8 neighbours, so a diagonal touch joins)
@@ -66,6 +101,7 @@ for (let s = 1; s <= seeds; s++) for (let land = 0; land < ATLAS_LAND.length; la
   check(`${tag}: каждая клетка на плите, плиты целые`, unplated === 0 && platesWhole(a));
   check(`${tag}: у каждой клетки суши есть порода`, noRock === 0, noRock ? `${noRock} без породы` : '');
   check(`${tag}: магма только у живых вулканов`, magmaCold === 0, magmaCold ? `${magmaCold} клеток` : '');
+  rainBelts(a); rainShadow(a);
   const top = rowTemp(a, 0), mid = rowTemp(a, a.h >> 1), bot = rowTemp(a, a.h - 1);
   const bands = hemisphere === 'equator' ? mid > top + 10 && mid > bot + 10 : bot > top + 20;
   check(`${tag}: пояса температуры`, bands, !bands || (s === 1 && land === 1) ? `верх ${top.toFixed(0)}°, середина ${mid.toFixed(0)}°, низ ${bot.toFixed(0)}°` : '');
@@ -81,4 +117,9 @@ for (const o of ORE_GENESIS.all()) console.log(`     ${o.label.padEnd(14)} ${ore
 const iron = 1 - ores.iron[0] / landAll;
 check('железо есть хотя бы бедно на четверти суши', iron >= 0.25, `${(iron * 100).toFixed(0)}%`);
 check('уголь (есть и богато) лежит в осадочных породах', coalOnSed[0] >= 0.7 * coalOnSed[1], `${(coalOnSed[0] / (coalOnSed[1] || 1) * 100).toFixed(0)}%`);
+console.log('Осадки, мм в год:');
+const r = v => Math.round(mean(v));
+check('  экватор влажнее конских широт', mean(bands.tropic) > 1.5 * mean(bands.subtropic), `${r(bands.tropic)} против ${r(bands.subtropic)}`);
+check('  умеренные широты влажнее конских', mean(bands.temperate) > 1.3 * mean(bands.subtropic), `${r(bands.temperate)} против ${r(bands.subtropic)}`);
+check('  дождевая тень', mean(shadow.lee) < 0.6 * mean(shadow.windward), `за хребтом ${r(shadow.lee)}, на наветренном берегу ${r(shadow.windward)}`);
 if (!ok) process.exit(1);

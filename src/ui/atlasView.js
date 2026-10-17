@@ -6,6 +6,7 @@ import {ATLAS_STAGES} from '../atlas/stages.js';
 import {cellGeology} from '../atlas/geology.js';
 import {PLATE_COUNTS, HEMISPHERES, BOUNDARIES, BOUNDARY_BY_CODE, ROCKS, ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
 import {LEVEL_WORDS} from '../data/regions.js';
+import {RAIN_WORDS} from '../data/climate.js';
 import {newAtlas, runNextStage, atlasDone} from '../atlas/generate.js';
 import {seedNumber} from '../core/rng.js';
 import {esc} from '../core/util.js';
@@ -18,7 +19,7 @@ const OPTS = {
   land: ATLAS_LAND.map((l, i) => [i, l.label]),
   plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
   hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
-  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура']],
+  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
 const VIEW_KEYS = new Set(['layer', 'ore']);
@@ -35,6 +36,12 @@ function ramp(stops, t) {
 const DEEP = [[0, [12, 24, 52]], [1, [46, 92, 130]]];
 const LAND = [[0, [96, 128, 70]], [0.35, [130, 140, 78]], [0.65, [128, 104, 74]], [0.85, [110, 100, 96]], [1, [236, 236, 230]]];
 const HEAT = [[0, [70, 110, 200]], [0.4, [190, 220, 230]], [0.6, [236, 214, 120]], [1, [200, 70, 50]]];
+// yearly rain, mm: desert sand → steppe → green → deep wet blue-green
+const WET = [[0, [214, 184, 120]], [250, [196, 186, 110]], [600, [120, 160, 80]], [1200, [50, 130, 90]], [2500, [30, 90, 120]]];
+const rainColor = mm => ramp(WET.map(([v, c]) => [v / 2500, c]), mm / 2500);
+const COMPASS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
+// where the wind blows from, in words (the map's y grows downwards: north is up)
+const windWord = (x, y) => COMPASS[(Math.round(Math.atan2(-y, -x) / (Math.PI / 4)) + 8) % 8];
 
 export class AtlasView {
   constructor({onBack}) {
@@ -89,6 +96,8 @@ export class AtlasView {
     if (this.layer === 'plates') html = sw([200, 190, 150], 'материковая кора') + sw([50, 62, 96], 'океаническая кора') + BOUNDARIES.all().map(b => sw(b.color, b.label)).join('') + sw([255, 60, 30], 'живой вулкан');
     else if (this.layer === 'rocks') html = Object.entries(ROCK_KINDS).map(([k, l]) => `<b>${l}:</b> ` + ROCKS.filter(r => r.kind === k).map(r => sw(r.color, r.label)).join('')).join('');
     else if (this.layer === 'ores') { const o = ORE_GENESIS.get(this.ore); html = sw([70, 72, 66], 'нет') + sw(mix([70, 72, 66], o.color, 0.45), 'бедно') + sw(mix([70, 72, 66], o.color, 0.75), 'есть') + sw(o.color, 'богато'); }
+    else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
+    else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
     else html = sw(DEEP[0][1], 'глубокое море') + sw(DEEP[1][1], 'мелководье') + sw(LAND[0][1], 'низины') + sw(LAND[2][1], 'нагорья') + sw(LAND[4][1], 'вершины');
     $('atlasLegend').innerHTML = html;
@@ -126,6 +135,12 @@ export class AtlasView {
         return v < lv[0] ? grey : v < lv[1] ? mix(grey, o.color, 0.45) : v < lv[2] ? mix(grey, o.color, 0.75) : o.color;
       }
       case 'temp': return f.temp ? ramp(HEAT, (f.temp[i] + 30) / 65) : base;
+      case 'rain': return f.rain ? (f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25)) : base;
+      case 'wind': {
+        if (!f.windX) return base;
+        const sp = Math.min(1, Math.hypot(f.windX[i], f.windY[i]));
+        return mix(mix(base, [40, 44, 40], 0.55), mix([90, 110, 150], [200, 210, 240], sp), 0.35);
+      }
       default: return base;
     }
   }
@@ -154,6 +169,25 @@ export class AtlasView {
       d[o] = c[0] * s; d[o + 1] = c[1] * s; d[o + 2] = c[2] * s; d[o + 3] = 255;
     }
     px.putImageData(img, 0, 0);
+    if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
+  }
+
+  // wind arrows every few cells, drawn on the map canvas in cell units
+  arrows(a, px) {
+    const step = Math.max(6, Math.round(Math.min(a.w, a.h) / 24));
+    px.strokeStyle = 'rgba(240,240,230,0.85)'; px.lineWidth = Math.max(0.6, step / 14);
+    px.beginPath();
+    for (let y = step >> 1; y < a.h; y += step) for (let x = step >> 1; x < a.w; x += step) {
+      const i = y * a.w + x, u = a.f.windX[i], v = a.f.windY[i], sp = Math.hypot(u, v);
+      if (sp < 0.05) continue;
+      const L = step * 0.42 * Math.min(1, 0.4 + sp), dx = u / sp * L, dy = v / sp * L;
+      const x0 = x + 0.5 - dx, y0 = y + 0.5 - dy, x1 = x + 0.5 + dx, y1 = y + 0.5 + dy;
+      px.moveTo(x0, y0); px.lineTo(x1, y1);
+      const hx = -dx * 0.45, hy = -dy * 0.45;
+      px.moveTo(x1, y1); px.lineTo(x1 + hx - hy * 0.6, y1 + hy + hx * 0.6);
+      px.moveTo(x1, y1); px.lineTo(x1 + hx + hy * 0.6, y1 + hy - hx * 0.6);
+    }
+    px.stroke();
   }
 
   renderSide() {
@@ -180,7 +214,9 @@ export class AtlasView {
     if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
     if (f.land) parts.push(f.land[i] ? 'суша' : 'море');
     parts.push(`высота ${f.elev[i].toFixed(3)}`);
-    if (f.temp) parts.push(`${f.temp[i].toFixed(1)}°`);
+    if (f.temp) parts.push(`${f.temp[i].toFixed(1)}°` + (f.trange && f.land[i] ? ` (размах года ${Math.round(f.trange[i])}°)` : ''));
+    if (f.windX) { const sp = Math.hypot(f.windX[i], f.windY[i]); if (sp > 0.08) parts.push(`ветер ${windWord(f.windX[i], f.windY[i])}`); }
+    if (f.rain && f.land[i]) parts.push(`${Math.round(f.rain[i])} мм в год, ${RAIN_WORDS.find(([v]) => f.rain[i] < v)[1]}`);
     const geo = cellGeology(a, i);
     if (geo.rock) parts.push(geo.rock.label);
     if (geo.rock && f.land[i]) {

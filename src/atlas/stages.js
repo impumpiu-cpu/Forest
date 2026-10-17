@@ -2,8 +2,8 @@
 // ones made, writes its own and returns a line for the world's chronicle. Each stage draws from its
 // own random stream (atlas/generate.js), so a stage can be reworked without changing the others.
 //
-// Done: plates → boundaries and hot spots → relief → sea level → rocks → ores → temperature.
-// Next (docs/WORLD.md): winds and rain, erosion with rivers and lakes, soils, biomes, forests, then
+// Done: plates → boundaries and hot spots → relief → sea level → rocks → ores → temperature → winds → rain.
+// Next (docs/WORLD.md): erosion with rivers and lakes, soils, biomes, forests, then
 // the eras of history.
 import {Registry} from '../core/registry.js';
 import {plural} from '../core/util.js';
@@ -11,7 +11,7 @@ import {ATLAS_LAND} from '../data/atlas.js';
 import {BOUNDARIES, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
 import {makePlates, tectonics, relief} from './tectonics.js';
 import {rocks, ores} from './geology.js';
-import {warmth} from './latitude.js';
+import {temperature, winds, rain} from './climate.js';
 
 export const ATLAS_STAGES = new Registry('atlasStage');
 
@@ -52,17 +52,26 @@ ATLAS_STAGES.registerAll([
       const r = ores(a, rnd), top = ORE_GENESIS.all().filter(o => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map(o => o.label);
       return top.length ? `В недрах налились жилы. Больше всего богатых мест: ${top.slice(0, 3).join(', ')}.` : 'В недрах налились жилы, но богатых мест нет.';
     }},
-  {id: 'temperature', label: 'Температура', era: 'geology', note: 'по широте и высоте: в горах холоднее на 6,5° на километр',
+  {id: 'temperature', label: 'Температура', era: 'climate', note: 'по широте и высоте (−6,5° на км); у моря мягче, в глубине материка размах года больше',
     run(a) {
-      const {w, h} = a, temp = new Float32Array(a.n), top = a.cfg.peakKm ?? 5;
-      for (let y = 0; y < h; y++) {
-        const sea = -18 + 46 * warmth(a, y);
-        for (let x = 0; x < w; x++) {
-          const i = y * w + x, e = a.f.elev[i];
-          temp[i] = sea - 6.5 * (e > a.sea ? (e - a.sea) / (1 - a.sea) * top : 0);
-        }
-      }
-      a.f.temp = temp;
+      temperature(a);
       return a.cfg.hemisphere === 'equator' ? 'Легли пояса зноя посередине и холода по краям.' : 'Легли пояса: холод на севере, зной на юге.';
+    }},
+  {id: 'winds', label: 'Ветры', era: 'climate', note: 'пояса пассатов, западных и полярных ветров, изогнутые вихрями и ослабленные горами',
+    run(a, rnd) {
+      winds(a, rnd);
+      return a.cfg.hemisphere === 'equator'
+        ? 'Задули ветры: пассаты сходятся к экватору, западные дуют в умеренных широтах обоих полушарий.'
+        : 'Задули ветры: на юге пассаты, в середине мира западные, у полюса восточные.';
+    }},
+  {id: 'rain', label: 'Осадки', era: 'climate', note: 'влага с моря идёт по ветру и выпадает там, где воздух поднимается: в поясах подъёма и на наветренных склонах; за горами — дождевая тень',
+    run(a) {
+      rain(a);
+      let wet = 0, dry = 0, land = 0;
+      for (let i = 0; i < a.n; i++) if (a.f.land[i]) { land++; if (a.f.rain[i] < 250) dry++; else if (a.f.rain[i] > 1300) wet++; }
+      const parts = [];
+      if (dry / land > 0.03) parts.push(`пустыни и сухие степи легли на ${pct(dry, land)} суши`);
+      if (wet / land > 0.03) parts.push(`ливни поливают ${pct(wet, land)}`);
+      return 'Пошли дожди' + (parts.length ? ': ' + parts.join(', ') : '') + '. За хребтами легла дождевая тень.';
     }},
 ]);
