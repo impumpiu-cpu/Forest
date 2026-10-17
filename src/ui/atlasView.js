@@ -3,6 +3,9 @@
 // as the world is made. (Later this moves to a Web Worker — docs/WORLD.md.)
 import {ATLAS_SIZES, ATLAS_LAND, DEFAULT_ATLAS_CFG} from '../data/atlas.js';
 import {ATLAS_STAGES} from '../atlas/stages.js';
+import {cellGeology} from '../atlas/geology.js';
+import {PLATE_COUNTS, HEMISPHERES, BOUNDARIES, BOUNDARY_BY_CODE, ROCKS, ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
+import {LEVEL_WORDS} from '../data/regions.js';
 import {newAtlas, runNextStage, atlasDone} from '../atlas/generate.js';
 import {seedNumber} from '../core/rng.js';
 import {esc} from '../core/util.js';
@@ -13,8 +16,12 @@ const ERA = {geology: 'Геология'};
 const OPTS = {
   size: Object.entries(ATLAS_SIZES).map(([k, v]) => [k, v.label]),
   land: ATLAS_LAND.map((l, i) => [i, l.label]),
-  layer: [['relief', 'Рельеф'], ['temp', 'Температура']],
+  plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
+  hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
+  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура']],
+  ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
+const VIEW_KEYS = new Set(['layer', 'ore']);
 
 const mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
 function ramp(stops, t) {
@@ -31,7 +38,7 @@ const HEAT = [[0, [70, 110, 200]], [0.4, [190, 220, 230]], [0.6, [236, 214, 120]
 
 export class AtlasView {
   constructor({onBack}) {
-    this.cfg = this.load(); this.atlas = null; this.layer = 'relief'; this.timer = 0;
+    this.cfg = this.load(); this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.timer = 0;
     this.onBack = onBack;
     this.build();
   }
@@ -48,7 +55,7 @@ export class AtlasView {
       box.innerHTML = OPTS[key].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join('');
       box.addEventListener('click', e => {
         const b = e.target.closest('button'); if (!b) return;
-        if (key === 'layer') { this.layer = b.dataset.val; this.sync(); this.draw(); return; }
+        if (VIEW_KEYS.has(key)) { this[key] = b.dataset.val; this.sync(); this.draw(); return; }
         this.cfg[key] = typeof DEFAULT_ATLAS_CFG[key] === 'number' ? +b.dataset.val : b.dataset.val;
         this.save(); this.sync();
       });
@@ -66,11 +73,25 @@ export class AtlasView {
 
   sync() {
     $('atlasSeed').value = this.cfg.seed;
-    const val = {size: this.cfg.size, land: this.cfg.land, layer: this.layer};
+    const val = {...this.cfg, layer: this.layer, ore: this.ore};
     document.querySelectorAll('#atlas .seg[data-akey]').forEach(box => {
       box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(val[box.dataset.akey]))));
     });
     $('atlasSizeNote').textContent = ATLAS_SIZES[this.cfg.size].note;
+    $('atlasHemiNote').textContent = HEMISPHERES[this.cfg.hemisphere].note;
+    $('atlasOre').hidden = this.layer !== 'ores';
+    this.legend();
+  }
+
+  legend() {
+    const sw = (c, l) => `<span><i style="background:rgb(${c.join(',')})"></i>${esc(l)}</span>`;
+    let html = '';
+    if (this.layer === 'plates') html = sw([200, 190, 150], 'материковая кора') + sw([50, 62, 96], 'океаническая кора') + BOUNDARIES.all().map(b => sw(b.color, b.label)).join('') + sw([255, 60, 30], 'живой вулкан');
+    else if (this.layer === 'rocks') html = Object.entries(ROCK_KINDS).map(([k, l]) => `<b>${l}:</b> ` + ROCKS.filter(r => r.kind === k).map(r => sw(r.color, r.label)).join('')).join('');
+    else if (this.layer === 'ores') { const o = ORE_GENESIS.get(this.ore); html = sw([70, 72, 66], 'нет') + sw(mix([70, 72, 66], o.color, 0.45), 'бедно') + sw(mix([70, 72, 66], o.color, 0.75), 'есть') + sw(o.color, 'богато'); }
+    else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
+    else html = sw(DEEP[0][1], 'глубокое море') + sw(DEEP[1][1], 'мелководье') + sw(LAND[0][1], 'низины') + sw(LAND[2][1], 'нагорья') + sw(LAND[4][1], 'вершины');
+    $('atlasLegend').innerHTML = html;
   }
 
   generate() {
@@ -89,17 +110,49 @@ export class AtlasView {
 
   // the colour of one cell on the chosen layer; a field that is not made yet shows as the dark sea
   color(a, i) {
-    const {elev, temp, land} = a.f;
-    if (!elev) return [12, 15, 10];
-    if (this.layer === 'temp' && temp) return ramp(HEAT, (temp[i] + 30) / 65);
-    if (!land) return ramp(LAND, elev[i]);
-    return land[i] ? ramp(LAND, (elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, elev[i] / (a.sea || 1));
+    const f = a.f;
+    if (!f.elev) {
+      if (f.plate && this.layer === 'plates') return this.plateColor(a, i);
+      return [12, 15, 10];
+    }
+    const base = f.land ? (f.land[i] ? ramp(LAND, (f.elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, f.elev[i] / (a.sea || 1))) : ramp(LAND, f.elev[i]);
+    switch (this.layer) {
+      case 'plates': return this.plateColor(a, i);
+      case 'rocks': return f.rock ? (f.land[i] ? ROCK_BY_CODE[f.rock[i]].color : mix(ROCK_BY_CODE[f.rock[i]].color, [14, 26, 50], 0.7)) : base;
+      case 'ores': {
+        const pot = f[`ore_${this.ore}`]; if (!pot) return base;
+        const o = ORE_GENESIS.get(this.ore), lv = o.levels, v = pot[i], grey = [70, 72, 66];
+        if (!f.land[i]) return mix(base, [8, 12, 20], 0.5);
+        return v < lv[0] ? grey : v < lv[1] ? mix(grey, o.color, 0.45) : v < lv[2] ? mix(grey, o.color, 0.75) : o.color;
+      }
+      case 'temp': return f.temp ? ramp(HEAT, (f.temp[i] + 30) / 65) : base;
+      default: return base;
+    }
+  }
+
+  plateColor(a, i) {
+    const f = a.f, p = a.plates[f.plate[i]];
+    if (f.bnd && f.bnd[i]) return BOUNDARY_BY_CODE[f.bnd[i]].color;
+    if (f.volc && f.volc[i] > 0.6) return [255, 60, 30];
+    // each plate its own hue; continental crust lighter, oceanic darker
+    const hue = (p.id * 0.618034) % 1, c = [0, 2.1, 4.2].map(o => 115 + Math.cos(hue * 6.283 + o) * 55);
+    return f.crust && f.crust[i] > 0.5 ? mix(c, [200, 190, 150], 0.45) : mix(c, [24, 32, 60], 0.55);
+  }
+
+  // light from the north-west on the relief, so ranges read at a glance
+  shade(a, i) {
+    const e = a.f.elev; if (!e || !a.f.land || !a.f.land[i] || this.layer === 'plates') return 1;
+    const x = i % a.w, y = (i / a.w) | 0, l = e[y * a.w + Math.max(0, x - 1)], t = e[Math.max(0, y - 1) * a.w + x];
+    return Math.max(0.6, Math.min(1.35, 1 + (l + t - 2 * e[i]) * -14 * Math.min(a.w, a.h) / 192));
   }
 
   draw() {
     const a = this.atlas; if (!a) return;
     const px = $('atlasMap').getContext('2d'), img = px.createImageData(a.w, a.h), d = img.data;
-    for (let i = 0; i < a.n; i++) { const c = this.color(a, i), o = i * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255; }
+    for (let i = 0; i < a.n; i++) {
+      const c = this.color(a, i), s = this.shade(a, i), o = i * 4;
+      d[o] = c[0] * s; d[o + 1] = c[1] * s; d[o + 2] = c[2] * s; d[o + 3] = 255;
+    }
     px.putImageData(img, 0, 0);
   }
 
@@ -123,9 +176,19 @@ export class AtlasView {
     const x = Math.floor((e.clientX - r.left) / r.width * a.w), y = Math.floor((e.clientY - r.top) / r.height * a.h);
     if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
     const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
+    if (f.plate) parts.push(`плита ${f.plate[i] + 1}, кора ${f.crust[i] > 0.5 ? 'материковая' : 'океаническая'}`);
+    if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
     if (f.land) parts.push(f.land[i] ? 'суша' : 'море');
     parts.push(`высота ${f.elev[i].toFixed(3)}`);
     if (f.temp) parts.push(`${f.temp[i].toFixed(1)}°`);
+    const geo = cellGeology(a, i);
+    if (geo.rock) parts.push(geo.rock.label);
+    if (geo.rock && f.land[i]) {
+      const ores = ORE_GENESIS.all().filter(o => o.region !== 'goldVein' && o.region !== 'magma' && geo.ores[o.region] > 0).map(o => `${o.label} ${LEVEL_WORDS[geo.ores[o.region]]}`);
+      if (geo.flags.goldVein) ores.push('золотая жила');
+      if (geo.flags.magma) ores.push('магма');
+      if (ores.length) parts.push(ores.join(', '));
+    }
     $('atlasReadout').textContent = parts.join(' · ');
   }
 }

@@ -340,6 +340,10 @@ dd.q4{color:#c58cff;font-weight:600}
 .stages li.done{border-left-color:var(--good);color:var(--fg)}
 .stages small{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
 @media (max-width:1000px){.atlas{grid-template-columns:minmax(0,1fr)}}
+.atlas-map .seg.wrapseg{flex-wrap:wrap}
+.atlas-legend span{display:inline-flex;align-items:center;gap:5px}
+.atlas-legend i{display:inline-block;width:11px;height:11px;border-radius:2px}
+.atlas-legend b{font-weight:400;color:var(--fg);margin-left:6px}
 </style>
 </head>
 <body>
@@ -378,6 +382,8 @@ dd.q4{color:#c58cff;font-weight:600}
       </div>
       <div class="field"><span class="lbl">Размер</span><div class="seg wrapseg" data-akey="size"></div><small id="atlasSizeNote"></small></div>
       <div class="field"><span class="lbl">Суша</span><div class="seg" data-akey="land"></div></div>
+      <div class="field"><span class="lbl">Плиты</span><div class="seg" data-akey="plates"></div></div>
+      <div class="field"><span class="lbl">Широты</span><div class="seg wrapseg" data-akey="hemisphere"></div><small id="atlasHemiNote"></small></div>
       <div class="row actions">
         <button type="button" id="atlasGo" class="primary">Сотворить</button>
         <button type="button" id="atlasBack" class="quiet">← Назад</button>
@@ -386,8 +392,10 @@ dd.q4{color:#c58cff;font-weight:600}
       <dl class="kv" id="atlasStats"></dl>
     </div>
     <div class="atlas-map">
-      <div class="seg" data-akey="layer"></div>
+      <div class="seg wrapseg" data-akey="layer"></div>
+      <div class="seg wrapseg" data-akey="ore" id="atlasOre" hidden></div>
       <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
+      <div class="legend atlas-legend" id="atlasLegend"></div>
       <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку.</div>
     </div>
     <div class="card atlas-chron">
@@ -2440,19 +2448,19 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/world/ores.js
   var oreOf = (w, i) => w.grid.ore?.[i] ? ORE_BY_CODE[w.grid.ore[i]] : null;
   function oreAt(w, i, code2) {
-    const g2 = w.grid;
-    if (!g2.ore || g2.ore[i] !== code2) return 0;
-    return 0.75 + 0.25 * Math.min(1, g2.oreLeft[i] / 10);
+    const g3 = w.grid;
+    if (!g3.ore || g3.ore[i] !== code2) return 0;
+    return 0.75 + 0.25 * Math.min(1, g3.oreLeft[i] / 10);
   }
   function oreBeside(w, i, codes) {
-    const g2 = w.grid;
-    if (!g2.ore) return -1;
+    const g3 = w.grid;
+    if (!g3.ore) return -1;
     const x = i % w.w, y = i / w.w | 0;
     for (let k = 0; k < 4; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (nx < 0 || ny < 0 || nx >= w.w || ny >= w.h) continue;
       const j = ny * w.w + nx;
-      if (g2.ore[j] && g2.oreLeft[j] > 0 && (!codes || codes.has(g2.ore[j]))) return j;
+      if (g3.ore[j] && g3.oreLeft[j] > 0 && (!codes || codes.has(g3.ore[j]))) return j;
     }
     return -1;
   }
@@ -2465,9 +2473,9 @@ dd.q4{color:#c58cff;font-weight:600}
     return false;
   }
   function countExposed(w) {
-    const g2 = w.grid, out = Object.fromEntries(ORES.all().map((o) => [o.id, 0]));
-    if (!g2.ore) return out;
-    for (let i = 0; i < w.n; i++) if (g2.ore[i] && g2.oreLeft[i] > 0 && exposed(w, i)) out[ORE_BY_CODE[g2.ore[i]].id] += g2.oreLeft[i];
+    const g3 = w.grid, out = Object.fromEntries(ORES.all().map((o) => [o.id, 0]));
+    if (!g3.ore) return out;
+    for (let i = 0; i < w.n; i++) if (g3.ore[i] && g3.oreLeft[i] > 0 && exposed(w, i)) out[ORE_BY_CODE[g3.ore[i]].id] += g3.oreLeft[i];
     return out;
   }
   function exposedOre(w) {
@@ -2479,9 +2487,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var oreSeen = (w) => Object.values(exposedOre(w)).some((v) => v > 0);
   function layOre(w) {
-    const n = w.n, g2 = w.grid, rnd = mulberry(seedNumber(String(w.cfg.seed) + ":ore"));
-    g2.ore = new Uint8Array(n);
-    g2.oreLeft = new Float32Array(n);
+    const n = w.n, g3 = w.grid, rnd = mulberry(seedNumber(String(w.cfg.seed) + ":ore"));
+    g3.ore = new Uint8Array(n);
+    g3.oreLeft = new Float32Array(n);
     const seam = (cell) => {
       const gw = Math.ceil(w.w / cell) + 2, gh = Math.ceil(w.h / cell) + 2, pts = new Float32Array(gw * gh).map(() => rnd());
       return (i) => {
@@ -2494,14 +2502,14 @@ dd.q4{color:#c58cff;font-weight:600}
     const amount = ([lo, hi], r) => lo + Math.floor(r * (hi - lo + 1));
     const face = [];
     for (let i = 0; i < n; i++) {
-      if (g2.terr[i] !== T.ROCK) continue;
+      if (g3.terr[i] !== T.ROCK) continue;
       if (exposed(w, i)) face.push(i);
       const r = rnd();
       for (const { o, lvl, noise } of kinds) {
         const v = o.vein;
         if (noise ? noise(i) > v.above + (1 - lvl) * 0.07 : r < v.pocket * lvl) {
-          g2.ore[i] = o.code;
-          g2.oreLeft[i] = amount(v.amount, noise ? r : rnd());
+          g3.ore[i] = o.code;
+          g3.oreLeft[i] = amount(v.amount, noise ? r : rnd());
           break;
         }
       }
@@ -2516,9 +2524,9 @@ dd.q4{color:#c58cff;font-weight:600}
         const x = sx + xx, y = sy + yy;
         if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
         const j = y * w.w + x;
-        if (g2.terr[j] !== T.ROCK || g2.ore[j] === o.code) continue;
-        g2.ore[j] = o.code;
-        g2.oreLeft[j] = Math.max(1, Math.round(o.plantAmount * Math.min(1, lvl)));
+        if (g3.terr[j] !== T.ROCK || g3.ore[j] === o.code) continue;
+        g3.ore[j] = o.code;
+        g3.oreLeft[j] = Math.max(1, Math.round(o.plantAmount * Math.min(1, lvl)));
         placed++;
       }
     }
@@ -3855,13 +3863,13 @@ dd.q4{color:#c58cff;font-weight:600}
   var soilYield = (w, i) => 0.4 + 1.2 * w.grid.fert[i];
   var fields = (w) => w.buildings.filter((b) => b.done && b.plots && b.key === "field");
   function plowField(w, b) {
-    const g2 = w.grid, cand = [];
+    const g3 = w.grid, cand = [];
     if (b.w > 2) {
       b.plots = b.cells.map((j) => ({ i: j, crop: null, g: 0 }));
       for (const j of b.cells) {
-        g2.bush[j] = 0;
-        g2.food[j] = 0;
-        g2.fuel[j] = 0.2;
+        g3.bush[j] = 0;
+        g3.food[j] = 0;
+        g3.fuel[j] = 0.2;
       }
       w.nav.dirty("fieldwork");
       return;
@@ -3870,17 +3878,17 @@ dd.q4{color:#c58cff;font-weight:600}
       const x = b.x + xx, y = b.y + yy;
       if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
       const j = y * w.w + x;
-      if ((g2.terr[j] === T.GRASS || g2.terr[j] === T.BURNT || g2.terr[j] === T.FOREST) && g2.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
+      if ((g3.terr[j] === T.GRASS || g3.terr[j] === T.BURNT || g3.terr[j] === T.FOREST) && g3.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
     }
     cand.sort((p, q) => p[1] - q[1]);
     b.plots = [];
     for (const [j] of cand.slice(0, PLOTS)) {
-      g2.terr[j] = T.GRASS;
-      g2.bush[j] = 0;
-      g2.food[j] = 0;
-      g2.wood[j] = 0;
-      g2.fuel[j] = 0.2;
-      g2.bld[j] = b.id;
+      g3.terr[j] = T.GRASS;
+      g3.bush[j] = 0;
+      g3.food[j] = 0;
+      g3.wood[j] = 0;
+      g3.fuel[j] = 0.2;
+      g3.bld[j] = b.id;
       b.plots.push({ i: j, crop: null, g: 0 });
     }
     w.nav.dirty("fieldwork");
@@ -4116,15 +4124,15 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     // fire, heat and smoke make cells expensive; `hazard` scales that for the escape map
     computeCost(hazard) {
-      const g2 = this.w.grid, cost = this.cost;
+      const g3 = this.w.grid, cost = this.cost;
       for (let i = 0; i < this.w.n; i++) {
-        const t = g2.terr[i];
+        const t = g3.terr[i];
         if (!WALKABLE[t]) {
           cost[i] = -1;
           continue;
         }
-        let c = BY_CODE[t].pathCost + (g2.fire[i] * 60 + g2.smoke[i] * 1.5) * hazard;
-        if (g2.temp[i] > 45) c += (g2.temp[i] - 45) * 0.3 * hazard;
+        let c = BY_CODE[t].pathCost + (g3.fire[i] * 60 + g3.smoke[i] * 1.5) * hazard;
+        if (g3.temp[i] > 45) c += (g3.temp[i] - 45) * 0.3 * hazard;
         cost[i] = c;
       }
     }
@@ -4290,7 +4298,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goal = best;
     }
     if (start2 === goal) return [];
-    const stamp = ++b.stamp, { g: g2, seen, closed, parent, heapI, heapF } = b;
+    const stamp = ++b.stamp, { g: g3, seen, closed, parent, heapI, heapF } = b;
     const gxC = goal % W, gyC = goal / W | 0;
     const h = (i) => {
       const dx = Math.abs(i % W - gxC), dy = Math.abs((i / W | 0) - gyC);
@@ -4310,7 +4318,7 @@ dd.q4{color:#c58cff;font-weight:600}
       heapF[k] = f;
     };
     seen[start2] = stamp;
-    g2[start2] = 0;
+    g3[start2] = 0;
     parent[start2] = -1;
     push(start2, h(start2));
     let expanded = 0;
@@ -4338,7 +4346,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return path.reverse();
       }
       if (++expanded > budget || hn >= heapI.length - 8) return null;
-      const x = i % W, y = i / W | 0, gi = g2[i];
+      const x = i % W, y = i / W | 0, gi = g3[i];
       for (let q = 0; q < 8; q++) {
         const nx = x + DX[q], ny = y + DY[q];
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
@@ -4346,9 +4354,9 @@ dd.q4{color:#c58cff;font-weight:600}
         if (!WALKABLE[terr[j]]) continue;
         if (q >= 4 && (!WALKABLE[terr[y * W + nx]] || !WALKABLE[terr[ny * W + x]])) continue;
         const ng = gi + BY_CODE[terr[j]].pathCost * (q >= 4 ? SQRT2 : 1);
-        if (seen[j] === stamp && ng >= g2[j]) continue;
+        if (seen[j] === stamp && ng >= g3[j]) continue;
         seen[j] = stamp;
-        g2[j] = ng;
+        g3[j] = ng;
         parent[j] = i;
         push(j, ng + h(j));
       }
@@ -4479,13 +4487,13 @@ dd.q4{color:#c58cff;font-weight:600}
   function approach(w, a, tx2, ty, mul = 1) {
     var _a;
     if (!inMap(w, tx2, ty)) return null;
-    const g2 = a.approachGuard;
-    if (!g2 || Math.hypot(g2.x - a.x, g2.y - a.y) > 0.6 || !(w.tick - g2.last <= 3) || !(Math.hypot(g2.tx - tx2, g2.ty - ty) <= 2)) a.approachGuard = { x: a.x, y: a.y, t: w.tick, last: w.tick, tx: tx2, ty };
-    else if (w.tick - g2.t > 40) {
+    const g3 = a.approachGuard;
+    if (!g3 || Math.hypot(g3.x - a.x, g3.y - a.y) > 0.6 || !(w.tick - g3.last <= 3) || !(Math.hypot(g3.tx - tx2, g3.ty - ty) <= 2)) a.approachGuard = { x: a.x, y: a.y, t: w.tick, last: w.tick, tx: tx2, ty };
+    else if (w.tick - g3.t > 40) {
       a.approachGuard = null;
       a.path = null;
       return null;
-    } else g2.last = w.tick;
+    } else g3.last = w.tick;
     const where = `\u043A \u0442\u043E\u0447\u043A\u0435 (${tx2 | 0}, ${ty | 0})`;
     a.route = { how: where + " \u043F\u0440\u044F\u043C\u043E", t: w.tick };
     if (clearLine(w, a.x, a.y, tx2, ty)) {
@@ -4777,9 +4785,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function practice(a, skillId, units = 1) {
     if (!a.prefs || !a.skill || !isActive(skillId)) return 0;
-    const g2 = practiceGain(a, skillId, units);
-    if (g2 > 0) a.skill[skillId] = skillOf(a, skillId) + g2;
-    return g2;
+    const g3 = practiceGain(a, skillId, units);
+    if (g3 > 0) a.skill[skillId] = skillOf(a, skillId) + g3;
+    return g3;
   }
   function startSkills(rng, a, likedSkill) {
     a.skill = {};
@@ -5147,7 +5155,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function recalcGear(a) {
     const sp = SPECIES.get(a.species), base = sp.attack || { power: 1, cooldown: 12 };
-    const g2 = {
+    const g3 = {
       melee: { dmg: base.power, cd: base.cooldown, item: null },
       ranged: null,
       rangedReady: false,
@@ -5161,36 +5169,36 @@ dd.q4{color:#c58cff;font-weight:600}
       carry: 0
     };
     if (!a.equip) {
-      a.gear = g2;
-      return g2;
+      a.gear = g3;
+      return g3;
     }
     for (const it of handItems(a)) {
       const d = def(it);
-      if (d.melee && d.melee.dmg > (g2.melee.item ? def(g2.melee.item).melee.dmg : 0)) g2.melee = { dmg: d.melee.dmg, cd: d.melee.cd, item: it };
-      if (d.ranged && (!g2.ranged || d.ranged.dmg > g2.ranged.dmg)) g2.ranged = { ...d.ranged, item: it };
-      if ((d.block || 0) > g2.block) {
-        g2.block = d.block;
-        g2.blockItem = it;
+      if (d.melee && d.melee.dmg > (g3.melee.item ? def(g3.melee.item).melee.dmg : 0)) g3.melee = { dmg: d.melee.dmg, cd: d.melee.cd, item: it };
+      if (d.ranged && (!g3.ranged || d.ranged.dmg > g3.ranged.dmg)) g3.ranged = { ...d.ranged, item: it };
+      if ((d.block || 0) > g3.block) {
+        g3.block = d.block;
+        g3.blockItem = it;
       }
-      if (d.speed) g2.speed *= d.speed;
+      if (d.speed) g3.speed *= d.speed;
     }
-    if (g2.ranged) g2.rangedReady = rangedAmmo(a, def(g2.ranged.item)) > 0;
+    if (g3.ranged) g3.rangedReady = rangedAmmo(a, def(g3.ranged.item)) > 0;
     const body = a.equip.body;
     if (body) {
       const d = def(body);
-      g2.armor = d.armor || 0;
-      g2.warmth = d.warmth || 0;
-      if (d.speed) g2.speed *= d.speed;
+      g3.armor = d.armor || 0;
+      g3.warmth = d.warmth || 0;
+      if (d.speed) g3.speed *= d.speed;
     }
     for (const it of [...handItems(a), a.equip.back].filter(Boolean)) {
-      for (const [job, m] of Object.entries(def(it).tool || {})) if (m > (g2.tool[job] || 1)) {
-        g2.tool[job] = m;
-        g2.toolItem[job] = it;
+      for (const [job, m] of Object.entries(def(it).tool || {})) if (m > (g3.tool[job] || 1)) {
+        g3.tool[job] = m;
+        g3.toolItem[job] = it;
       }
     }
-    if (a.equip.back) g2.carry = def(a.equip.back).carry || 0;
-    a.gear = g2;
-    return g2;
+    if (a.equip.back) g3.carry = def(a.equip.back).carry || 0;
+    a.gear = g3;
+    return g3;
   }
   function removeEverywhere(a, inst) {
     for (const s of SLOTS) if (a.equip[s.id] === inst) a.equip[s.id] = null;
@@ -5916,12 +5924,12 @@ dd.q4{color:#c58cff;font-weight:600}
       desire: (w, ctx) => w.stock.wood < 8 ? 0.95 : w.stock.wood < 25 ? 0.55 : w.stock.wood < 40 ? 0.2 : 0.03,
       valid: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.25 && w.grid.fire[i] === 0,
       take: (w, i) => {
-        const g2 = w.grid;
-        g2.wood[i] -= 0.35;
-        if (g2.wood[i] < 0.1) {
-          g2.terr[i] = T.GRASS;
-          g2.fuel[i] = 0.4;
-          g2.wood[i] = 0;
+        const g3 = w.grid;
+        g3.wood[i] -= 0.35;
+        if (g3.wood[i] < 0.1) {
+          g3.terr[i] = T.GRASS;
+          g3.fuel[i] = 0.4;
+          g3.wood[i] = 0;
         }
         w.nav.dirty("trees");
       }
@@ -5963,16 +5971,16 @@ dd.q4{color:#c58cff;font-weight:600}
       desire: (w) => wantedOre(w).size ? 0.42 : -1,
       valid: (w, i) => w.grid.fire[i] === 0 && oreBeside(w, i, wantedOre(w)) >= 0,
       take: (w, i, a) => {
-        const g2 = w.grid, j = oreBeside(w, i, wantedOre(w));
+        const g3 = w.grid, j = oreBeside(w, i, wantedOre(w));
         if (j < 0) return null;
         const o = oreOf(w, j), got = [o.resource];
         for (const [r, ch] of Object.entries(o.also || {})) if (w.rngs.colony() < ch) got.push(r);
-        g2.oreLeft[j] -= 1;
-        if (g2.oreLeft[j] <= 0) {
-          g2.ore[j] = 0;
-          g2.oreLeft[j] = 0;
-          g2.terr[j] = T.GRASS;
-          g2.fuel[j] = 0;
+        g3.oreLeft[j] -= 1;
+        if (g3.oreLeft[j] <= 0) {
+          g3.ore[j] = 0;
+          g3.oreLeft[j] = 0;
+          g3.terr[j] = T.GRASS;
+          g3.fuel[j] = 0;
           w.nav.dirty("ore");
           w.nav.dirty("rockface");
           maybeGoldVein(w, j, a);
@@ -6575,7 +6583,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "bandits",
       label: "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0438 \xAB\u0421\u0435\u0440\u044B\u0445 \u0432\u043E\u043B\u043A\u043E\u0432\xBB",
       kind: "sentient",
-      goals: (w, g2) => [["loot", 3], ["kill", feud(w)], ["burn", 0.6 * torches(w)], ["scout", scouting(w, g2)]],
+      goals: (w, g3) => [["loot", 3], ["kill", feud(w)], ["burn", 0.6 * torches(w)], ["scout", scouting(w, g3)]],
       weight: () => 3,
       members: (w, rng, budget) => fill(rng, budget, [["human", 1]]).map((m) => ({ ...m, init: (a) => {
         a.name = "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A";
@@ -6586,7 +6594,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "orcs",
       label: "\u043E\u0440\u043E\u0447\u044C\u044F \u0432\u0430\u0442\u0430\u0433\u0430",
       kind: "sentient",
-      goals: (w, g2) => [["loot", 2], ["burn", 1.5 * torches(w)], ["kill", 0.5 + feud(w)], ["scout", scouting(w, g2)]],
+      goals: (w, g3) => [["loot", 2], ["burn", 1.5 * torches(w)], ["kill", 0.5 + feud(w)], ["scout", scouting(w, g3)]],
       nerve: -0.05,
       weight: (w, t) => t >= 4 ? 2 : 0.5,
       members: (w, rng, budget) => fill(rng, budget, [["orc", 3], ["goblin", 2], ["varg", budget >= 5 ? 1 : 0], ["ogre", budget >= 10 ? 0.6 : 0]]),
@@ -6596,7 +6604,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "goblins",
       label: "\u0433\u043E\u0431\u043B\u0438\u043D\u0441\u043A\u0430\u044F \u0448\u0430\u0439\u043A\u0430",
       kind: "sentient",
-      goals: (w, g2) => [["loot", 4], ["burn", 0.8 * torches(w)], ["scout", scouting(w, g2)]],
+      goals: (w, g3) => [["loot", 4], ["burn", 0.8 * torches(w)], ["scout", scouting(w, g3)]],
       nerve: 0.1,
       weight: () => 1.5,
       members: (w, rng, budget) => fill(rng, budget, [["goblin", 1]]),
@@ -6606,7 +6614,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "gnolls",
       label: "\u0441\u0442\u0430\u044F \u0433\u043D\u043E\u043B\u043B\u043E\u0432",
       kind: "sentient",
-      goals: (w, g2) => [["loot", 3], ["kill", 0.6 + feud(w)]],
+      goals: (w, g3) => [["loot", 3], ["kill", 0.6 + feud(w)]],
       weight: (w, t) => t >= 3 ? 1.5 : 0.4,
       members: (w, rng, budget) => fill(rng, budget, [["gnoll", 3], ["hyena", 1.5]]),
       message: () => "\u041D\u0430\u0431\u0435\u0433! \u0413\u043D\u043E\u043B\u043B\u044B-\u043F\u0430\u0434\u0430\u043B\u044C\u0449\u0438\u043A\u0438 \u0438\u0434\u0443\u0442 \u043D\u0430 \u0437\u0430\u043F\u0430\u0445 \u043B\u0430\u0433\u0435\u0440\u044F"
@@ -6615,7 +6623,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "darkelves",
       label: "\u043E\u0442\u0440\u044F\u0434 \u0442\u0451\u043C\u043D\u044B\u0445 \u044D\u043B\u044C\u0444\u043E\u0432",
       kind: "sentient",
-      goals: (w, g2) => [["kill", 2], ["loot", 1], ["scout", scouting(w, g2)]],
+      goals: (w, g3) => [["kill", 2], ["loot", 1], ["scout", scouting(w, g3)]],
       weight: (w, t, night) => t >= 8 ? 0.6 + night : 0,
       members: (w, rng, budget) => fill(rng, budget, [["darkelf", 1]]),
       message: () => "\u041D\u0430\u0431\u0435\u0433! \u0422\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B \u0432\u044B\u0448\u043B\u0438 \u0438\u0437-\u043F\u043E\u0434 \u0437\u0435\u043C\u043B\u0438 \u0437\u0430 \u0440\u0430\u0431\u0430\u043C\u0438 \u0438 \u0434\u043E\u0431\u044B\u0447\u0435\u0439"
@@ -6745,8 +6753,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var membersOf = (w, sq) => sq.members.map((id) => byId(w, id)).filter(Boolean);
   var dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   function strength(a) {
-    const g2 = a.gear, sp = SPECIES.get(a.species);
-    const blow = Math.max(g2?.melee?.dmg ?? sp.attack?.power ?? 1, g2?.rangedReady ? g2.ranged.dmg * 0.8 : 0);
+    const g3 = a.gear, sp = SPECIES.get(a.species);
+    const blow = Math.max(g3?.melee?.dmg ?? sp.attack?.power ?? 1, g3?.rangedReady ? g3.ranged.dmg * 0.8 : 0);
     return Math.max(0, a.hp) * blow;
   }
   var wooden = (w) => w.buildings.filter((b) => b.done && b.cells.length && BUILDINGS.get(b.key).wooden);
@@ -6828,7 +6836,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const tipped = sq.announce === "tipped";
     sq.announce = null;
     const victim = sq.target != null && sq.goal === "kill" ? w.agents.find((o) => o.id === sq.target) : null;
-    const g2 = GOALS[sq.goal], aim = typeof g2.aim === "function" ? g2.aim(`<b>${esc(victim?.name || "?")}</b> (${sq.why})`) : g2.aim;
+    const g3 = GOALS[sq.goal], aim = typeof g3.aim === "function" ? g3.aim(`<b>${esc(victim?.name || "?")}</b> (${sq.why})`) : g3.aim;
     const b = sq.goal === "burn" ? w.buildings.find((x) => x.id === sq.target) : null;
     const what = b ? ` (${BUILDINGS.get(b.key).name.toLowerCase()})` : "";
     const leader = w.agents.find((o) => o.id === sq.leader);
@@ -6899,24 +6907,24 @@ dd.q4{color:#c58cff;font-weight:600}
         setState(w, sq, "retreat", why);
         continue;
       }
-      const g2 = sq.goal;
-      if (g2 === "loot") {
+      const g3 = sq.goal;
+      if (g3 === "loot") {
         const looters = ms.filter((m) => m.sqRole === "looter");
         if (ms.some((m) => m.looted) && looters.every((m) => m.looted)) setState(w, sq, "withdraw", GOALS.loot.done);
         else if (!looters.length && ms.some((m) => m.looted)) setState(w, sq, "withdraw", GOALS.loot.done);
-      } else if (g2 === "kill") {
+      } else if (g3 === "kill") {
         if (sq.targetDown) setState(w, sq, "withdraw", GOALS.kill.done);
         else if (!w.agents.some((o) => o.id === sq.target)) {
           sq.goal = "loot";
           for (const m of ms) if (m.sqRole === "front" && !m.looted && w.rngs.outside() < SQUAD.looters) m.sqRole = "looter";
         }
-      } else if (g2 === "burn") {
+      } else if (g3 === "burn") {
         if (sq.lit != null && w.tick - sq.lit > SQUAD.burnFor) setState(w, sq, "withdraw", GOALS.burn.done);
         else if (sq.lit == null && !w.buildings.some((b) => b.id === sq.target && b.done)) {
           sq.goal = "loot";
           for (const m of ms) if (m.sqRole === "torch") m.sqRole = "looter";
         }
-      } else if (g2 === "scout") {
+      } else if (g3 === "scout") {
         if (sq.watched != null && w.tick - sq.watched > SQUAD.scoutWatch) setState(w, sq, "withdraw", GOALS.scout.done);
       }
     }
@@ -7450,7 +7458,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function damage(w, by, t, raw, { melee: melee2 = true } = {}) {
     var _a;
     if (t.downed || t.dead) return "downed";
-    const g2 = ensureGear(t);
+    const g3 = ensureGear(t);
     t.hurtBy = { id: by.id, tick: w.tick, far: !melee2 };
     if (t.mods?.dodge > 0 && w.rngs.combat() < t.mods.dodge) {
       t.flash = 2;
@@ -7459,8 +7467,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const tsp = SPECIES.get(t.species);
     if (!melee2 && tsp.resist?.ranged) raw *= tsp.resist.ranged;
     if (melee2 && tsp.resist?.melee) raw *= tsp.resist.melee;
-    if (melee2 && g2.block && w.rngs.combat() < g2.block) {
-      wear(w, t, g2.blockItem);
+    if (melee2 && g3.block && w.rngs.combat() < g3.block) {
+      wear(w, t, g3.blockItem);
       t.flash = 3;
       return "blocked";
     }
@@ -7474,9 +7482,9 @@ dd.q4{color:#c58cff;font-weight:600}
     if (crit) cs.crits++;
     const home = by.faction === "colony" && agentInZone(w, by) ? 1.25 : 1;
     const wall = t.faction === "colony" && agentInZone(w, t) ? w.mods.mul.defense : 1;
-    let dmg = raw * home * wall * (1 - (g2.armor || 0));
+    let dmg = raw * home * wall * (1 - (g3.armor || 0));
     noteHit(t, by);
-    if (g2.armor && t.equip?.body) wear(w, t, t.equip.body);
+    if (g3.armor && t.equip?.body) wear(w, t, t.equip.body);
     t.hp -= dmg;
     const bsp = SPECIES.get(by.species);
     if (bsp.drinks && melee2 && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
@@ -7515,23 +7523,23 @@ dd.q4{color:#c58cff;font-weight:600}
     if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
     if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
     if (behindRock(w, a, t)) return false;
-    const g2 = ensureGear(a);
-    a.cd = Math.max(4, Math.round(g2.melee.cd * (a.mods?.swing ?? 1)));
+    const g3 = ensureGear(a);
+    a.cd = Math.max(4, Math.round(g3.melee.cd * (a.mods?.swing ?? 1)));
     a.flash = 4;
-    damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g2.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g2.melee.item));
+    damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g3.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g3.melee.item));
     practice(a, "melee", LEARN.blow);
-    if (g2.melee.item) wear(w, a, g2.melee.item);
+    if (g3.melee.item) wear(w, a, g3.melee.item);
     return true;
   }
   function shoot(w, a, t) {
-    const g2 = a.gear;
-    if (!g2?.ranged || !g2.rangedReady || a.cd > 0 || t.downed) return null;
-    const r = g2.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
+    const g3 = a.gear;
+    if (!g3?.ranged || !g3.rangedReady || a.cd > 0 || t.downed) return null;
+    const r = g3.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
     if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
     a.cd = r.cd;
     if (r.ammo) {
       a.equip.back.ammo--;
-      if (a.equip.back.ammo <= 0) g2.rangedReady = false;
+      if (a.equip.back.ammo <= 0) g3.rangedReady = false;
     }
     wear(w, a, r.item);
     const skill = a.skill?.ranged ?? 0.2, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? 0.12 : 0;
@@ -7792,7 +7800,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (lot >= 0) return lot;
     }
     const shore = near2 === "fish-shore", [lw, lh] = lotSize(d), R = shore ? 24 : d.soil ? 20 : 14;
-    const g2 = w.grid;
+    const g3 = w.grid;
     let best = -1, bs = Infinity;
     for (let y = w.camp.y - R; y <= w.camp.y + R - 1; y++) for (let x = w.camp.x - R; x <= w.camp.x + R - 1; x++) {
       if (x < 1 || y < 1 || x + lw >= w.w || y + lh >= w.h) continue;
@@ -7802,7 +7810,7 @@ dd.q4{color:#c58cff;font-weight:600}
       let ok = true;
       for (let yy = -1; yy <= lh && ok; yy++) for (let xx = -1; xx <= lw; xx++) {
         const j = (y + yy) * w.w + x + xx, inner = xx >= 0 && xx < lw && yy >= 0 && yy < lh;
-        if (g2.bld[j] >= 0 || inner && (!walkable(w, j) || g2.fire[j] > 0 || isCampArea(w, j))) {
+        if (g3.bld[j] >= 0 || inner && (!walkable(w, j) || g3.fire[j] > 0 || isCampArea(w, j))) {
           ok = false;
           break;
         }
@@ -7829,16 +7837,16 @@ dd.q4{color:#c58cff;font-weight:600}
     if (d.key) recomputeMods(w);
     const [lw, lh] = lotSize(d);
     const b = { id: w.bldSeq++, key: key2, x: lot % w.w, y: lot / w.w | 0, w: lw, h: lh, progress: 0, done: false, cells: [] };
-    const g2 = w.grid;
+    const g3 = w.grid;
     for (let yy = 0; yy < lh; yy++) for (let xx = 0; xx < lw; xx++) {
       const j = (b.y + yy) * w.w + b.x + xx;
       b.cells.push(j);
-      g2.bld[j] = b.id;
-      g2.terr[j] = T.GRASS;
-      g2.bush[j] = 0;
-      g2.food[j] = 0;
-      g2.wood[j] = 0;
-      g2.fuel[j] = d.wooden ? 0.9 : 0;
+      g3.bld[j] = b.id;
+      g3.terr[j] = T.GRASS;
+      g3.bush[j] = 0;
+      g3.food[j] = 0;
+      g3.wood[j] = 0;
+      g3.fuel[j] = d.wooden ? 0.9 : 0;
     }
     w.buildings.push(b);
     recomputeZone(w);
@@ -7851,33 +7859,33 @@ dd.q4{color:#c58cff;font-weight:600}
     // a garden of the new kind (a lot of its own): every cell of it is a berry bush
     plantGarden(w, b) {
       if (b.w > 2) {
-        const g3 = w.grid;
+        const g4 = w.grid;
         b.plots = [];
         for (const j of b.cells) {
-          g3.bush[j] = 1;
-          g3.food[j] = 0.5;
-          g3.fuel[j] = 0.6;
+          g4.bush[j] = 1;
+          g4.food[j] = 0.5;
+          g4.fuel[j] = 0.6;
           w.gardenCells.push(j);
           b.plots.push(j);
         }
         w.nav.dirty("berries");
         return;
       }
-      const g2 = w.grid, cand = [];
+      const g3 = w.grid, cand = [];
       for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
         const x = b.x + xx, y = b.y + yy;
         if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
         const j = y * w.w + x;
-        if ((g2.terr[j] === T.GRASS || g2.terr[j] === T.BURNT) && g2.bld[j] < 0 && !isCampArea(w, j) && !g2.bush[j]) cand.push([j, xx * xx + yy * yy]);
+        if ((g3.terr[j] === T.GRASS || g3.terr[j] === T.BURNT) && g3.bld[j] < 0 && !isCampArea(w, j) && !g3.bush[j]) cand.push([j, xx * xx + yy * yy]);
       }
       cand.sort((p, q) => p[1] - q[1]);
       b.plots = [];
       for (const [j] of cand.slice(0, 12)) {
-        g2.terr[j] = T.GRASS;
-        g2.bush[j] = 1;
-        g2.food[j] = 0.5;
-        g2.fuel[j] = 0.6;
-        g2.fert[j] = 1;
+        g3.terr[j] = T.GRASS;
+        g3.bush[j] = 1;
+        g3.food[j] = 0.5;
+        g3.fuel[j] = 0.6;
+        g3.fert[j] = 1;
         w.gardenCells.push(j);
         b.plots.push(j);
       }
@@ -8670,11 +8678,11 @@ dd.q4{color:#c58cff;font-weight:600}
   var pick2 = (rng, arr) => arr[Math.floor(rng() * arr.length)];
   var between2 = (rng, [a, b]) => a + Math.floor(rng() * (b - a + 1));
   var round1 = (v) => Math.round(v * 10) / 10;
-  var goodsUnits = (goods) => goods.reduce((s, g2) => s + (g2.kind === "res" ? g2.n : 1), 0);
-  var unitPrice = (g2) => g2.kind === "res" ? RESOURCES.get(g2.id).value || 0 : itemPrice(g2.type, g2.q, g2.silver);
-  var goodsLabel = (g2) => g2.kind === "res" ? RESOURCES.get(g2.id).label : def(g2).label.toLowerCase();
-  var askPrice = (g2, b = 0) => round1(unitPrice(g2) * (TRADE.ask - b));
-  var bidPrice = (g2, b = 0) => round1(unitPrice(g2) * (TRADE.bid + b));
+  var goodsUnits = (goods) => goods.reduce((s, g3) => s + (g3.kind === "res" ? g3.n : 1), 0);
+  var unitPrice = (g3) => g3.kind === "res" ? RESOURCES.get(g3.id).value || 0 : itemPrice(g3.type, g3.q, g3.silver);
+  var goodsLabel = (g3) => g3.kind === "res" ? RESOURCES.get(g3.id).label : def(g3).label.toLowerCase();
+  var askPrice = (g3, b = 0) => round1(unitPrice(g3) * (TRADE.ask - b));
+  var bidPrice = (g3, b = 0) => round1(unitPrice(g3) * (TRADE.bid + b));
   var askAt = askPrice;
   var bidAt = bidPrice;
   var haggler = (a) => (a.special?.C ?? 5) * (1 + (a.skill?.barter || 0));
@@ -8704,15 +8712,15 @@ dd.q4{color:#c58cff;font-weight:600}
     if (spec === "plain") return ITEMS.filter((d) => !d.tradeOnly && !d.iron).map((d) => d.id);
     return ITEMS.filter((d) => d.quality !== false).map((d) => d.id);
   }
-  function addGoods(goods, g2) {
-    if (g2.kind === "res") {
-      const same = goods.find((x) => x.kind === "res" && x.id === g2.id);
+  function addGoods(goods, g3) {
+    if (g3.kind === "res") {
+      const same = goods.find((x) => x.kind === "res" && x.id === g3.id);
       if (same) {
-        same.n += g2.n;
+        same.n += g3.n;
         return;
       }
     }
-    goods.push(g2);
+    goods.push(g3);
   }
   function makeGoods(rng, units) {
     const goods = [], total = TRADE.WARES.reduce((s, x) => s + x.w, 0);
@@ -8839,7 +8847,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function holdTrade(w) {
     const c = w.caravan, pop = colonists(w).length;
     const deal = { day: dayOf(w.tick) + 1, trader: c.name, sold: [], bought: [], earned: 0, spent: 0 };
-    const terms = termsOf(w, c), askPrice2 = (g2) => askAt(g2, terms.b), bidPrice2 = (g2) => bidAt(g2, terms.b);
+    const terms = termsOf(w, c), askPrice2 = (g3) => askAt(g3, terms.b), bidPrice2 = (g3) => bidAt(g3, terms.b);
     deal.by = terms.name;
     deal.b = terms.b;
     const note = (list2, label3, n, gold) => {
@@ -8856,7 +8864,7 @@ dd.q4{color:#c58cff;font-weight:600}
       c.purse = round1(c.purse + (coins || 0));
       return coins !== false;
     };
-    const keyCost = c.goods.filter((g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("key") && keyWanted(w, g2.id)).reduce((t, g2) => t + askPrice2(g2), 0);
+    const keyCost = c.goods.filter((g3) => g3.kind === "res" && RESOURCES.get(g3.id).tags.includes("key") && keyWanted(w, g3.id)).reduce((t, g3) => t + askPrice2(g3), 0);
     const keepK = keyCost > cash() ? 0.5 : 1;
     const offers = [];
     for (const r of RESOURCES.all()) {
@@ -8874,7 +8882,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const list2 of kinds.values()) for (const it of list2.slice(1)) offers.push({ g: { kind: "item", type: it.type, q: it.q || 0 }, n: 1, inst: it });
     offers.sort((x, y) => bidPrice2(y.g) - bidPrice2(x.g));
-    const isFood = (g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("food");
+    const isFood = (g3) => g3.kind === "res" && RESOURCES.get(g3.id).tags.includes("food");
     for (const o of offers) {
       const p = bidPrice2(o.g);
       if (p <= 0) continue;
@@ -8890,69 +8898,69 @@ dd.q4{color:#c58cff;font-weight:600}
       note(deal.sold, goodsLabel(o.g), n, p * n);
     }
     if (foodTotal(w) < pop * TRADE.foodShort) {
-      const foods2 = c.goods.filter((g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("food")).sort((x, y) => askPrice2(x) / RESOURCES.get(x.id).nutrition - askPrice2(y) / RESOURCES.get(y.id).nutrition);
-      for (const g2 of foods2) {
-        const p = askPrice2(g2), want2 = Math.ceil((pop * TRADE.foodUpTo - foodTotal(w)) / RESOURCES.get(g2.id).nutrition);
-        const n = Math.min(g2.n, want2, Math.floor(cash() / p));
+      const foods2 = c.goods.filter((g3) => g3.kind === "res" && RESOURCES.get(g3.id).tags.includes("food")).sort((x, y) => askPrice2(x) / RESOURCES.get(x.id).nutrition - askPrice2(y) / RESOURCES.get(y.id).nutrition);
+      for (const g3 of foods2) {
+        const p = askPrice2(g3), want2 = Math.ceil((pop * TRADE.foodUpTo - foodTotal(w)) / RESOURCES.get(g3.id).nutrition);
+        const n = Math.min(g3.n, want2, Math.floor(cash() / p));
         if (n <= 0 || !spend(p * n)) continue;
-        g2.n -= n;
-        w.stock[g2.id] = (w.stock[g2.id] || 0) + n;
+        g3.n -= n;
+        w.stock[g3.id] = (w.stock[g3.id] || 0) + n;
         deal.spent += p * n;
-        note(deal.bought, RESOURCES.get(g2.id).label, n, p * n);
+        note(deal.bought, RESOURCES.get(g3.id).label, n, p * n);
       }
-      c.goods = c.goods.filter((g2) => g2.kind !== "res" || g2.n > 0);
+      c.goods = c.goods.filter((g3) => g3.kind !== "res" || g3.n > 0);
     }
-    for (const g2 of c.goods) {
-      if (g2.kind !== "res" || !RESOURCES.get(g2.id).tags.includes("key") || !keyWanted(w, g2.id)) continue;
-      const p = askPrice2(g2);
+    for (const g3 of c.goods) {
+      if (g3.kind !== "res" || !RESOURCES.get(g3.id).tags.includes("key") || !keyWanted(w, g3.id)) continue;
+      const p = askPrice2(g3);
       if (p > cash() || !spend(p)) continue;
-      g2.n -= 1;
-      w.stock[g2.id] = (w.stock[g2.id] || 0) + 1;
+      g3.n -= 1;
+      w.stock[g3.id] = (w.stock[g3.id] || 0) + 1;
       deal.spent += p;
-      note(deal.bought, RESOURCES.get(g2.id).label, 1, p);
-      log(w, `\u041A\u0443\u043F\u0438\u043B\u0438 \u0443 \u0442\u043E\u0440\u0433\u043E\u0432\u0446\u0430: <b>${RESOURCES.get(g2.id).label}</b>. \u0422\u0435\u043F\u0435\u0440\u044C \u043C\u043E\u0436\u043D\u043E: ${RESOURCES.get(g2.id).opens}.`, "trade", "notice");
+      note(deal.bought, RESOURCES.get(g3.id).label, 1, p);
+      log(w, `\u041A\u0443\u043F\u0438\u043B\u0438 \u0443 \u0442\u043E\u0440\u0433\u043E\u0432\u0446\u0430: <b>${RESOURCES.get(g3.id).label}</b>. \u0422\u0435\u043F\u0435\u0440\u044C \u043C\u043E\u0436\u043D\u043E: ${RESOURCES.get(g3.id).opens}.`, "trade", "notice");
     }
-    c.goods = c.goods.filter((g2) => g2.kind !== "res" || g2.n > 0);
+    c.goods = c.goods.filter((g3) => g3.kind !== "res" || g3.n > 0);
     recomputeMods(w);
     for (const [id, upTo] of Object.entries(TRADE.wants)) {
-      const g2 = c.goods.find((x) => x.kind === "res" && x.id === id);
-      if (!g2) continue;
-      const p = askPrice2(g2), n = Math.min(g2.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor(cash() * TRADE.maxShare / p));
+      const g3 = c.goods.find((x) => x.kind === "res" && x.id === id);
+      if (!g3) continue;
+      const p = askPrice2(g3), n = Math.min(g3.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor(cash() * TRADE.maxShare / p));
       if (n <= 0 || !spend(p * n)) continue;
-      g2.n -= n;
+      g3.n -= n;
       w.stock[id] = (w.stock[id] || 0) + n;
       deal.spent += p * n;
       note(deal.bought, RESOURCES.get(id).label, n, p * n);
     }
-    c.goods = c.goods.filter((g2) => g2.kind !== "res" || g2.n > 0);
+    c.goods = c.goods.filter((g3) => g3.kind !== "res" || g3.n > 0);
     {
       const owned = () => [...colonists(w).flatMap((a) => allItems(a)), ...w.armory].filter((it) => def(it).silver).length;
       const foes = w.chronicle.silverFoes || 0, want2 = foes ? Math.ceil(pop * TRADE.silverShare) : 1;
-      const offer = c.goods.filter((g2) => g2.kind === "item" && def(g2).silver).sort((x, y) => askPrice2(x) - askPrice2(y));
-      for (const g2 of offer) {
+      const offer = c.goods.filter((g3) => g3.kind === "item" && def(g3).silver).sort((x, y) => askPrice2(x) - askPrice2(y));
+      for (const g3 of offer) {
         if (owned() >= want2) break;
-        const p = askPrice2(g2);
+        const p = askPrice2(g3);
         if (p > cash() * (foes ? TRADE.maxShare : TRADE.silverSpare) || !spend(p)) continue;
-        c.goods.splice(c.goods.indexOf(g2), 1);
-        w.armory.push(newItem(g2.type, { ...g2.q ? { q: g2.q } : {}, ...g2.silver ? { silver: true } : {} }));
+        c.goods.splice(c.goods.indexOf(g3), 1);
+        w.armory.push(newItem(g3.type, { ...g3.q ? { q: g3.q } : {}, ...g3.silver ? { silver: true } : {} }));
         w.armoryVersion = (w.armoryVersion || 0) + 1;
         deal.spent += p;
-        note(deal.bought, goodsLabel(g2), 1, p);
+        note(deal.bought, goodsLabel(g3), 1, p);
       }
     }
     const needs = gearNeeds(w);
     for (; ; ) {
       let best = null, bv = 0;
-      for (const g2 of c.goods) {
-        if (g2.kind !== "item") continue;
-        const [role, score] = roleOf(itemDef(g2.type, g2.q));
+      for (const g3 of c.goods) {
+        if (g3.kind !== "item") continue;
+        const [role, score] = roleOf(itemDef(g3.type, g3.q));
         if (!role || !needs[role]) continue;
-        const gain = score - needs[role][0], p = askPrice2(g2);
+        const gain = score - needs[role][0], p = askPrice2(g3);
         if (gain < TRADE.minGain || p > cash() * TRADE.maxShare) continue;
         const v = gain / Math.max(0.5, p);
         if (v > bv) {
           bv = v;
-          best = { g: g2, role, score, p };
+          best = { g: g3, role, score, p };
         }
       }
       if (!best || !spend(best.p)) break;
@@ -8964,16 +8972,16 @@ dd.q4{color:#c58cff;font-weight:600}
       deal.spent += best.p;
       note(deal.bought, goodsLabel(best.g), 1, best.p);
     }
-    for (const g2 of c.goods) {
-      if (g2.kind !== "res" || !RESOURCES.get(g2.id).tags.includes("furniture") || freeSlots(w) <= 0) continue;
-      const p = askPrice2(g2);
+    for (const g3 of c.goods) {
+      if (g3.kind !== "res" || !RESOURCES.get(g3.id).tags.includes("furniture") || freeSlots(w) <= 0) continue;
+      const p = askPrice2(g3);
       if (cash() - p < TRADE.furnish || !spend(p)) continue;
-      g2.n -= 1;
-      w.stock[g2.id] = (w.stock[g2.id] || 0) + 1;
+      g3.n -= 1;
+      w.stock[g3.id] = (w.stock[g3.id] || 0) + 1;
       deal.spent += p;
-      note(deal.bought, RESOURCES.get(g2.id).label, 1, p);
+      note(deal.bought, RESOURCES.get(g3.id).label, 1, p);
     }
-    c.goods = c.goods.filter((g2) => g2.kind !== "res" || g2.n > 0);
+    c.goods = c.goods.filter((g3) => g3.kind !== "res" || g3.n > 0);
     deal.earned = round1(deal.earned);
     deal.spent = round1(deal.spent);
     deal.gold = round1(cash());
@@ -8987,7 +8995,7 @@ dd.q4{color:#c58cff;font-weight:600}
     reload(w, c);
     const lines = deal.sold.length + deal.bought.length, neg = terms.by != null ? w.agents.find((o) => o.id === terms.by && !o.dead) : null;
     if (neg && lines) practice(neg, "barter", Math.min(TRADE.practiceMax, TRADE.practicePerLine * lines));
-    const list = (xs) => xs.map(([l, n, g2]) => `${l}${n > 1 ? " \xD7" + n : ""}`).join(", ");
+    const list = (xs) => xs.map(([l, n, g3]) => `${l}${n > 1 ? " \xD7" + n : ""}`).join(", ");
     const haggled = terms.name ? ` \u0422\u043E\u0440\u0433\u043E\u0432\u0430\u043B${terms.f ? "\u0430\u0441\u044C" : "\u0441\u044F"} \u0437\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 <b>${esc(terms.name)}</b>: ${terms.b > 0 ? `\u0446\u0435\u043D\u044B \u043D\u0430 ${Math.round(terms.b * 100)}% \u0432\u044B\u0433\u043E\u0434\u043D\u0435\u0435` : terms.b < 0 ? `\u043A\u0443\u043F\u0435\u0446 \u043F\u0435\u0440\u0435\u0442\u043E\u0440\u0433\u043E\u0432\u0430\u043B, \u0446\u0435\u043D\u044B \u043D\u0430 ${Math.round(-terms.b * 100)}% \u0445\u0443\u0436\u0435` : "\u0441\u043E\u0448\u043B\u0438\u0441\u044C \u043D\u0430 \u043E\u0431\u044B\u0447\u043D\u044B\u0445 \u0446\u0435\u043D\u0430\u0445"}.` : "";
     const sold = deal.sold.length ? `\u041F\u0440\u043E\u0434\u0430\u043B\u0438: ${list(deal.sold)} \u2014 \u0437\u0430 ${deal.earned} \u0437\u043E\u043B.` : "\u041F\u0440\u043E\u0434\u0430\u0442\u044C \u0431\u044B\u043B\u043E \u043D\u0435\u0447\u0435\u0433\u043E.";
     const bought = deal.bought.length ? ` \u041A\u0443\u043F\u0438\u043B\u0438: ${list(deal.bought)} \u2014 \u0437\u0430 ${deal.spent} \u0437\u043E\u043B.` : " \u041D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043A\u0443\u043F\u0438\u043B\u0438, \u0437\u043E\u043B\u043E\u0442\u043E \u043E\u0442\u043B\u043E\u0436\u0438\u043B\u0438.";
@@ -9182,8 +9190,8 @@ dd.q4{color:#c58cff;font-weight:600}
       if (Math.abs(a.align.order - b.align.order) >= OPINION.orderGap) v -= 0.5;
     }
     if (b.special) v += EFFECTS.charm(b.special);
-    const g2 = a.grudge?.[b.id] || 0;
-    return v + Math.max(-OPINION.grudgeCap, Math.min(OPINION.grudgeCap, g2));
+    const g3 = a.grudge?.[b.id] || 0;
+    return v + Math.max(-OPINION.grudgeCap, Math.min(OPINION.grudgeCap, g3));
   }
   function opinionWord(v) {
     if (v >= 3) return "\u0434\u0440\u0443\u0436\u0438\u0442";
@@ -10094,8 +10102,8 @@ dd.q4{color:#c58cff;font-weight:600}
       const S = season(w);
       log(w, `\u041D\u0430\u0441\u0442\u0443\u043F\u0430\u0435\u0442 ${S.label.toLowerCase()}. ${S.note}`, "weather", "notice");
       if (S.frost != null) {
-        const g2 = w.grid, garden = new Set(w.gardenCells);
-        for (let i = 0; i < w.n; i++) if (g2.bush[i]) g2.food[i] *= garden.has(i) ? Math.max(S.frost, 0.4) : S.frost;
+        const g3 = w.grid, garden = new Set(w.gardenCells);
+        for (let i = 0; i < w.n; i++) if (g3.bush[i]) g3.food[i] *= garden.has(i) ? Math.max(S.frost, 0.4) : S.frost;
         w.nav.dirty("berries");
       }
     }
@@ -10136,37 +10144,37 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const p of PLANTS.all()) {
       const key2 = plantLayer(p.id);
       if (w.grid[key2] && w.plantBeds[p.id]) continue;
-      const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key2)), g2 = w.grid, lvl = floraLevel(w, p.id);
+      const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key2)), g3 = w.grid, lvl = floraLevel(w, p.id);
       const layer3 = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map((t) => TERRAIN.get(t).code));
       const byWater = (i) => {
         const x = i % w.w, y = i / w.w | 0;
         for (let k = 0; k < 4; k++) {
           const nx = x + DX[k], ny = y + DY[k];
-          if (nx >= 0 && ny >= 0 && nx < w.w && ny < w.h && g2.terr[ny * w.w + nx] === T.WATER) return true;
+          if (nx >= 0 && ny >= 0 && nx < w.w && ny < w.h && g3.terr[ny * w.w + nx] === T.WATER) return true;
         }
         return false;
       };
       for (let i = 0; i < w.n; i++) {
-        if (!ok.has(g2.terr[i]) || g2.fert[i] < (p.fertMin || 0) || isCampArea(w, i) || p.nearWater && !byWater(i)) continue;
+        if (!ok.has(g3.terr[i]) || g3.fert[i] < (p.fertMin || 0) || isCampArea(w, i) || p.nearWater && !byWater(i)) continue;
         if (rnd() < p.chance * lvl) {
           beds.push(i);
           layer3[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]);
         }
       }
-      g2[key2] = layer3;
+      g3[key2] = layer3;
       w.plantBeds[p.id] = beds;
     }
   }
   function stepPlants(w) {
     if (w.tick % EVERY2) return;
-    const g2 = w.grid, sgrow = season(w).grow;
+    const g3 = w.grid, sgrow = season(w).grow;
     for (const p of PLANTS.all()) {
       const grow = p.hardy ? 1 : sgrow;
-      const layer3 = g2[plantLayer(p.id)], beds = w.plantBeds[p.id];
+      const layer3 = g3[plantLayer(p.id)], beds = w.plantBeds[p.id];
       if (!layer3 || !grow) continue;
       let ripened = false;
       for (const i of beds) {
-        if (g2.fire[i] > 0 || g2.terr[i] === T.BURNT || g2.bld[i] >= 0) {
+        if (g3.fire[i] > 0 || g3.terr[i] === T.BURNT || g3.bld[i] >= 0) {
           layer3[i] = 0;
           continue;
         }
@@ -10183,15 +10191,15 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/world/generate.js
   function noiseLayer(rnd, w, h, cell) {
     const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
-    const g2 = new Float32Array(gw * gh);
-    for (let i = 0; i < g2.length; i++) g2[i] = rnd();
+    const g3 = new Float32Array(gw * gh);
+    for (let i = 0; i < g3.length; i++) g3[i] = rnd();
     const out = new Float32Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const fx = x / cell, fy = y / cell, ix = fx | 0, iy = fy | 0;
       let tx2 = fx - ix, ty = fy - iy;
       tx2 = tx2 * tx2 * (3 - 2 * tx2);
       ty = ty * ty * (3 - 2 * ty);
-      const a = g2[iy * gw + ix], b = g2[iy * gw + ix + 1], c = g2[(iy + 1) * gw + ix], d = g2[(iy + 1) * gw + ix + 1];
+      const a = g3[iy * gw + ix], b = g3[iy * gw + ix + 1], c = g3[(iy + 1) * gw + ix], d = g3[(iy + 1) * gw + ix + 1];
       out[y * w + x] = (a * (1 - tx2) + b * tx2) * (1 - ty) + (c * (1 - tx2) + d * tx2) * ty;
     }
     return out;
@@ -10301,22 +10309,22 @@ dd.q4{color:#c58cff;font-weight:600}
       logVersion: 0,
       nav: null
     };
-    const g2 = world2.grid;
+    const g3 = world2.grid;
     for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) world2.camp.cells.push((t.cy + yy) * t.w + t.cx + xx);
     world2.camp.set = new Set(world2.camp.cells);
     const amb = ambientTemp(world2);
     for (let i = 0; i < n; i++) {
-      const tt = g2.terr[i];
-      g2.fuel[i] = BY_CODE[tt].fuel;
+      const tt = g3.terr[i];
+      g3.fuel[i] = BY_CODE[tt].fuel;
       if (tt === T.FOREST) {
-        g2.wood[i] = 0.6 + 0.4 * t.rng();
-        g2.fuel[i] += g2.wood[i];
-      } else if (tt === T.GRASS && t.rng() < 0.07 * g2.fert[i] && !isCampArea(world2, i)) {
-        g2.bush[i] = 1;
-        g2.food[i] = 0.5 + 0.5 * t.rng();
-        g2.fuel[i] += 0.2;
+        g3.wood[i] = 0.6 + 0.4 * t.rng();
+        g3.fuel[i] += g3.wood[i];
+      } else if (tt === T.GRASS && t.rng() < 0.07 * g3.fert[i] && !isCampArea(world2, i)) {
+        g3.bush[i] = 1;
+        g3.food[i] = 0.5 + 0.5 * t.rng();
+        g3.fuel[i] += 0.2;
       }
-      g2.temp[i] = amb;
+      g3.temp[i] = amb;
     }
     for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
     findLakes(world2);
@@ -10358,19 +10366,19 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var SMOKE_GONE = 2e-3;
   function heatAndSmoke(w) {
-    const g2 = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain = w.weather.rain, st = w.stats;
+    const g3 = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain = w.weather.rain, st = w.stats;
     const smokeOn = st.fireCount > 0 || (st.smokeMax ?? 1) >= SMOKE_GONE;
     if (smokeOn) {
-      advect(w, g2.smoke, g2.smoke2, w.wind.x, w.wind.y);
-      [g2.smoke, g2.smoke2] = [g2.smoke2, g2.smoke];
+      advect(w, g3.smoke, g3.smoke2, w.wind.x, w.wind.y);
+      [g3.smoke, g3.smoke2] = [g3.smoke2, g3.smoke];
     } else if (st.smokeMax > 0) {
-      g2.smoke.fill(0);
-      g2.smoke2.fill(0);
+      g3.smoke.fill(0);
+      g3.smoke2.fill(0);
       st.smokeMax = 0;
     }
-    advect(w, g2.temp, g2.temp2, w.wind.x * 0.35, w.wind.y * 0.35);
-    [g2.temp, g2.temp2] = [g2.temp2, g2.temp];
-    const { temp, temp2, smoke, smoke2, fire, terr } = g2;
+    advect(w, g3.temp, g3.temp2, w.wind.x * 0.35, w.wind.y * 0.35);
+    [g3.temp, g3.temp2] = [g3.temp2, g3.temp];
+    const { temp, temp2, smoke, smoke2, fire, terr } = g3;
     let smax = 0, tmax = -Infinity, anyFire = false;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
@@ -10386,9 +10394,9 @@ dd.q4{color:#c58cff;font-weight:600}
       smoke2[i] = sv;
       if (sv > smax) smax = sv;
     }
-    [g2.temp, g2.temp2] = [g2.temp2, g2.temp];
+    [g3.temp, g3.temp2] = [g3.temp2, g3.temp];
     if (smokeOn) {
-      [g2.smoke, g2.smoke2] = [g2.smoke2, g2.smoke];
+      [g3.smoke, g3.smoke2] = [g3.smoke2, g3.smoke];
       st.smokeMax = smax;
     }
     st.tempMax = tmax;
@@ -10414,97 +10422,97 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   }
   function burn(w) {
-    const g2 = w.grid, rain = w.weather.rain, st = w.stats;
+    const g3 = w.grid, rain = w.weather.rain, st = w.stats;
     const sig = season(w).ignite, ignF = FIRE.ignForest + w.climate.ign + sig, ignG = FIRE.ignGrass + w.climate.ign + sig;
     st.fireCount = 0;
     st.fireNearCamp = 0;
     if (!st.anyFire && st.tempMax != null && st.tempMax < Math.min(ignF, ignG)) return;
     for (let i = 0; i < w.n; i++) {
-      const f = g2.fire[i];
+      const f = g3.fire[i];
       if (f > 0) {
-        const wet = g2.fert[i];
-        g2.fuel[i] -= FIRE.burn * f;
-        let nf = g2.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
+        const wet = g3.fert[i];
+        g3.fuel[i] -= FIRE.burn * f;
+        let nf = g3.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
         if (w.rngs.fire() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;
         nf -= rain * 0.045;
-        if (g2.fuel[i] <= 0) g2.fuel[i] = 0;
+        if (g3.fuel[i] <= 0) g3.fuel[i] = 0;
         if (nf < 0.03) {
-          g2.fire[i] = 0;
-          if (g2.fuel[i] < 0.25) {
-            if (g2.terr[i] !== T.WATER && g2.terr[i] !== T.ROCK) g2.terr[i] = T.BURNT;
-            g2.wood[i] = 0;
-            g2.food[i] = 0;
-            g2.bush[i] = 0;
+          g3.fire[i] = 0;
+          if (g3.fuel[i] < 0.25) {
+            if (g3.terr[i] !== T.WATER && g3.terr[i] !== T.ROCK) g3.terr[i] = T.BURNT;
+            g3.wood[i] = 0;
+            g3.food[i] = 0;
+            g3.bush[i] = 0;
             st.burntCells++;
-            g2.fert[i] = Math.min(1, g2.fert[i] + 0.08);
+            g3.fert[i] = Math.min(1, g3.fert[i] + 0.08);
             w.nav.dirty("trees");
             w.nav.dirty("berries");
-            if (g2.bld[i] >= 0) burnBuilding(w, g2.bld[i]);
+            if (g3.bld[i] >= 0) burnBuilding(w, g3.bld[i]);
           } else {
-            g2.wood[i] = Math.min(g2.wood[i], Math.max(0, g2.fuel[i] - 1.2));
+            g3.wood[i] = Math.min(g3.wood[i], Math.max(0, g3.fuel[i] - 1.2));
             w.nav.dirty("trees");
           }
-        } else g2.fire[i] = nf;
-        if (g2.fire[i] > 0) {
+        } else g3.fire[i] = nf;
+        if (g3.fire[i] > 0) {
           st.fireCount++;
           if (distToCamp2(w, i) < 400) st.fireNearCamp++;
           if (isCampArea(w, i)) burnStock(w, 15e-4);
         }
-      } else if (g2.fuel[i] > 0.12) {
-        const forest = g2.fuel[i] > 1, wet = g2.fert[i];
-        if (g2.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && w.rngs.fire() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) {
-          g2.fire[i] = 0.2;
+      } else if (g3.fuel[i] > 0.12) {
+        const forest = g3.fuel[i] > 1, wet = g3.fert[i];
+        if (g3.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && w.rngs.fire() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) {
+          g3.fire[i] = 0.2;
           w.nav.dirty("fire");
         }
       }
     }
   }
   function growth(w) {
-    const g2 = w.grid, S = season(w);
-    for (const c of w.gardenCells) if (S.garden > 0 && g2.bush[c] && g2.fire[c] === 0 && g2.food[c] < 1) {
-      g2.food[c] = Math.min(1, g2.food[c] + 35e-4 * S.garden * (0.4 + 1.2 * g2.fert[c]));
-      if (g2.food[c] > 0.35 && g2.food[c] < 0.354) w.nav.dirty("berries");
+    const g3 = w.grid, S = season(w);
+    for (const c of w.gardenCells) if (S.garden > 0 && g3.bush[c] && g3.fire[c] === 0 && g3.food[c] < 1) {
+      g3.food[c] = Math.min(1, g3.food[c] + 35e-4 * S.garden * (0.4 + 1.2 * g3.fert[c]));
+      if (g3.food[c] > 0.35 && g3.food[c] < 0.354) w.nav.dirty("berries");
     }
     if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
       const x = w.camp.x + xx, y = w.camp.y + yy;
       if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
       const j = y * w.w + x;
-      if (g2.temp[j] > 40) g2.temp[j] -= (g2.temp[j] - 40) * 0.08;
+      if (g3.temp[j] > 40) g3.temp[j] -= (g3.temp[j] - 40) * 0.08;
     }
     const samples = Math.round(160 * w.n / 12288 * w.climate.regrow);
     for (let k = 0; k < samples; k++) {
       const i = w.rngs.fire() * w.n | 0;
-      if (g2.fire[i] > 0 || g2.bld[i] >= 0) continue;
-      const t = g2.terr[i], f = g2.fert[i];
+      if (g3.fire[i] > 0 || g3.bld[i] >= 0) continue;
+      const t = g3.terr[i], f = g3.fert[i];
       if (t === T.BURNT) {
         if (w.rngs.fire() < 0.02) {
-          g2.terr[i] = T.GRASS;
-          g2.fuel[i] = 0.1;
+          g3.terr[i] = T.GRASS;
+          g3.fuel[i] = 0.1;
         }
       } else if (t === T.GRASS) {
-        if (g2.fuel[i] < 0.4) g2.fuel[i] = Math.min(0.4, g2.fuel[i] + 0.02);
-        if (g2.bush[i]) {
+        if (g3.fuel[i] < 0.4) g3.fuel[i] = Math.min(0.4, g3.fuel[i] + 0.02);
+        if (g3.bush[i]) {
           if (S.grow > 0) {
-            g2.food[i] = Math.min(1, g2.food[i] + 0.05 * f * S.grow);
-            if (g2.food[i] > 0.35) w.nav.dirty("berries");
-          } else if (S.wither && g2.food[i] > 0) {
-            g2.food[i] = Math.max(0, g2.food[i] - S.wither * 4);
-            if (g2.food[i] < 0.35) w.nav.dirty("berries");
+            g3.food[i] = Math.min(1, g3.food[i] + 0.05 * f * S.grow);
+            if (g3.food[i] > 0.35) w.nav.dirty("berries");
+          } else if (S.wither && g3.food[i] > 0) {
+            g3.food[i] = Math.max(0, g3.food[i] - S.wither * 4);
+            if (g3.food[i] < 0.35) w.nav.dirty("berries");
           }
         } else if (S.grow > 0 && !isCampArea(w, i) && w.rngs.fire() < 25e-4 * f) {
-          g2.bush[i] = 1;
-          g2.food[i] = 0.1;
-          g2.fuel[i] += 0.2;
+          g3.bush[i] = 1;
+          g3.food[i] = 0.1;
+          g3.fuel[i] += 0.2;
         }
         if (S.grow > 0 && w.rngs.fire() < 15e-4 * f && f > 0.55 && !isCampArea(w, i)) {
-          g2.terr[i] = T.FOREST;
-          g2.wood[i] = 0.3;
-          g2.fuel[i] = 1.5;
-          g2.bush[i] = 0;
+          g3.terr[i] = T.FOREST;
+          g3.wood[i] = 0.3;
+          g3.fuel[i] = 1.5;
+          g3.bush[i] = 0;
         }
-      } else if (t === T.FOREST && g2.wood[i] < 1) {
-        g2.wood[i] = Math.min(1, g2.wood[i] + 0.03);
-        g2.fuel[i] = 1.2 + g2.wood[i];
+      } else if (t === T.FOREST && g3.wood[i] < 1) {
+        g3.wood[i] = Math.min(1, g3.wood[i] + 0.03);
+        g3.fuel[i] = 1.2 + g3.wood[i];
       }
     }
   }
@@ -10519,9 +10527,9 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/settlement/crafting.js
   var PRESERVED = () => FOODS.filter((f) => f.of);
   function reserved(w, res) {
-    const g2 = w.council.goal;
-    if (!g2) return 0;
-    const v = BUILDINGS.get(g2).cost[res] || 0;
+    const g3 = w.council.goal;
+    if (!g3) return 0;
+    const v = BUILDINGS.get(g3).cost[res] || 0;
     return v && res === "wood" ? v + fuelReserve(w) : v;
   }
   function canStart(w, r) {
@@ -11714,9 +11722,9 @@ dd.q4{color:#c58cff;font-weight:600}
           bond(w, v, a, TOGETHER.bondDefend * 0.6);
         }
       }
-      const d = Math.hypot(t.x - a.x, t.y - a.y), g2 = a.gear;
-      if (g2?.rangedReady && d > 1.4) {
-        const range = g2.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
+      const d = Math.hypot(t.x - a.x, t.y - a.y), g3 = a.gear;
+      if (g3?.rangedReady && d > 1.4) {
+        const range = g3.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
         task.shooting = true;
         if (d > range * 0.9 || shoot(w, a, t) === null && a.cd <= 0) {
           if (approach(w, a, t.x, t.y, 1) === null) fail2(w, a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
@@ -11770,14 +11778,14 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         return;
       }
-      const g2 = w.grid, cx = a.x | 0, cy = a.y | 0, power = 0.05 * w.mods.mul.douse;
+      const g3 = w.grid, cx = a.x | 0, cy = a.y | 0, power = 0.05 * w.mods.mul.douse;
       for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
         if (x < 0 || y < 0 || x >= w.w || y >= w.h || (x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 > 2.9) continue;
         const j = y * w.w + x;
-        if (g2.fire[j] > 0) {
-          g2.fire[j] = Math.max(0, g2.fire[j] - power);
-          g2.temp[j] -= 6;
-          if (g2.fire[j] === 0) g2.temp[j] = Math.min(g2.temp[j], 60);
+        if (g3.fire[j] > 0) {
+          g3.fire[j] = Math.max(0, g3.fire[j] - power);
+          g3.temp[j] -= 6;
+          if (g3.fire[j] === 0) g3.temp[j] = Math.min(g3.temp[j], 60);
         }
       }
     } },
@@ -12049,9 +12057,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var key = (t) => t ? t.id === "job" ? "job:" + t.job : t.id : "";
   function decide(w, a) {
-    const night = nightness(w.tick), camp = w.camp.cells, g2 = w.grid;
+    const night = nightness(w.tick), camp = w.camp.cells, g3 = w.grid;
     let campHot = 0;
-    for (const c of camp) campHot = Math.max(campHot, g2.temp[c] + g2.fire[c] * 400);
+    for (const c of camp) campHot = Math.max(campHot, g3.temp[c] + g3.fire[c] * 400);
     const campOk = campHot < 40 ? 1 : 0.1;
     const ctx = {
       pop: colonists(w).length,
@@ -13256,8 +13264,8 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   function shade(hex, k) {
     const n = parseInt(hex.slice(1), 16);
-    const r = (n >> 16 & 255) * k, g2 = (n >> 8 & 255) * k, b = (n & 255) * k;
-    return `rgb(${r | 0},${g2 | 0},${b | 0})`;
+    const r = (n >> 16 & 255) * k, g3 = (n >> 8 & 255) * k, b = (n & 255) * k;
+    return `rgb(${r | 0},${g3 | 0},${b | 0})`;
   }
 
   // src/render/renderer.js
@@ -13353,11 +13361,11 @@ dd.q4{color:#c58cff;font-weight:600}
       this.clampCam(w, cam);
     }
     paintTerrain(w) {
-      const d = this.terrain.img.data, g2 = w.grid;
+      const d = this.terrain.img.data, g3 = w.grid;
       const [tr, tg, tb, tk] = season(w).tint, wet = season(w).snow;
       for (let i = 0; i < w.n; i++) {
-        let [r, gg, b] = BY_CODE[g2.terr[i]].color(g2.hgt[i], g2.fert[i], g2.wood[i]);
-        const ore = g2.ore?.[i];
+        let [r, gg, b] = BY_CODE[g3.terr[i]].color(g3.hgt[i], g3.fert[i], g3.wood[i]);
+        const ore = g3.ore?.[i];
         if (ore) {
           const c = ORE_BY_CODE[ore].tint, k = 0.55;
           r = r * (1 - k) + c[0] * k;
@@ -13365,7 +13373,7 @@ dd.q4{color:#c58cff;font-weight:600}
           b = b * (1 - k) + c[2] * k;
         }
         for (const p of PLANTS_TINT) {
-          const v = g2[p.key]?.[i];
+          const v = g3[p.key]?.[i];
           if (v > 0.2) {
             const k = v * 0.6;
             r = r * (1 - k) + p.tint[0] * k;
@@ -13373,14 +13381,14 @@ dd.q4{color:#c58cff;font-weight:600}
             b = b * (1 - k) + p.tint[2] * k;
           }
         }
-        if (g2.bush[i] && g2.food[i] > 0.2) {
-          const k = g2.food[i] * 0.55;
+        if (g3.bush[i] && g3.food[i] > 0.2) {
+          const k = g3.food[i] * 0.55;
           r = r * (1 - k) + 196 * k;
           gg = gg * (1 - k) + 92 * k;
           b = b * (1 - k) + 149 * k;
         }
-        if (tk && (g2.terr[i] === T.GRASS || g2.terr[i] === T.FOREST || g2.terr[i] === T.BURNT || wet && g2.terr[i] === T.ROCK)) {
-          const k = g2.terr[i] === T.FOREST ? tk * 0.7 : tk;
+        if (tk && (g3.terr[i] === T.GRASS || g3.terr[i] === T.FOREST || g3.terr[i] === T.BURNT || wet && g3.terr[i] === T.ROCK)) {
+          const k = g3.terr[i] === T.FOREST ? tk * 0.7 : tk;
           r = r * (1 - k) + tr * k;
           gg = gg * (1 - k) + tg * k;
           b = b * (1 - k) + tb * k;
@@ -13394,14 +13402,14 @@ dd.q4{color:#c58cff;font-weight:600}
       this.terrain.ctx.putImageData(this.terrain.img, 0, 0);
     }
     paintGlowSmoke(w) {
-      const gd = this.glow.img.data, sd = this.smoke.img.data, g2 = w.grid;
+      const gd = this.glow.img.data, sd = this.smoke.img.data, g3 = w.grid;
       for (let i = 0; i < w.n; i++) {
-        const f = g2.fire[i], o = i * 4, hot = clamp((g2.temp[i] - 60) / 400, 0, 1);
+        const f = g3.fire[i], o = i * 4, hot = clamp((g3.temp[i] - 60) / 400, 0, 1);
         gd[o] = 255;
         gd[o + 1] = 120 + f * 90;
         gd[o + 2] = 40 + f * 40;
         gd[o + 3] = Math.min(255, f * 255 + hot * 120);
-        const sm = Math.min(1, g2.smoke[i] * 0.6);
+        const sm = Math.min(1, g3.smoke[i] * 0.6);
         sd[o] = 150;
         sd[o + 1] = 150;
         sd[o + 2] = 144;
@@ -13411,13 +13419,13 @@ dd.q4{color:#c58cff;font-weight:600}
       this.smoke.ctx.putImageData(this.smoke.img, 0, 0);
     }
     paintField(w, mode, view2) {
-      const d = this.field.img.data, g2 = w.grid, dCamp = w.nav.get("camp");
+      const d = this.field.img.data, g3 = w.grid, dCamp = w.nav.get("camp");
       const shown = RESOURCES.filter((r) => r.map && !view2.resHidden.has(r.id));
       for (let i = 0; i < w.n; i++) {
         const o = i * 4;
         let r = 0, gg = 0, b = 0, a = 0;
         if (mode === "temp") {
-          [r, gg, b] = tempColor(g2.temp[i]);
+          [r, gg, b] = tempColor(g3.temp[i]);
           a = 205;
         } else if (mode === "res") {
           let best = 0.05, col = null;
@@ -13438,13 +13446,13 @@ dd.q4{color:#c58cff;font-weight:600}
             a = 165;
           }
         } else if (mode === "soil") {
-          if (!WALKABLE[g2.terr[i]]) {
+          if (!WALKABLE[g3.terr[i]]) {
             r = 14;
             gg = 16;
             b = 14;
             a = 200;
           } else {
-            const f = g2.fert[i];
+            const f = g3.fert[i];
             [r, gg, b] = soilColor(f);
             a = 215;
           }
@@ -13998,10 +14006,10 @@ dd.q4{color:#c58cff;font-weight:600}
       for (let i = 0; i < n; i++) {
         const code2 = t.terr[i];
         cnt[code2] = (cnt[code2] || 0) + 1;
-        const [r, g2, b] = BY_CODE[code2].color(t.hgt[i], t.fert[i], 0.8);
+        const [r, g3, b] = BY_CODE[code2].color(t.hgt[i], t.fert[i], 0.8);
         const o = i * 4;
         d[o] = r;
-        d[o + 1] = g2;
+        d[o + 1] = g3;
         d[o + 2] = b;
         d[o + 3] = 255;
       }
@@ -14011,8 +14019,8 @@ dd.q4{color:#c58cff;font-weight:600}
       px.beginPath();
       px.arc(t.cx + 0.5, t.cy + 0.5, 4.5, 0, Math.PI * 2);
       px.stroke();
-      const pct = (code2) => ((cnt[code2] || 0) / n * 100).toFixed(0) + "%";
-      $("previewStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${n.toLocaleString("ru-RU")}</dd>` + [T.WATER, T.FOREST, T.GRASS, T.ROCK].map((c) => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct(c)}</dd>`).join("") + `<dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(this.cfg.seed)}</dd>`;
+      const pct2 = (code2) => ((cnt[code2] || 0) / n * 100).toFixed(0) + "%";
+      $("previewStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${n.toLocaleString("ru-RU")}</dd>` + [T.WATER, T.FOREST, T.GRASS, T.ROCK].map((c) => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct2(c)}</dd>`).join("") + `<dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(this.cfg.seed)}</dd>`;
     }
   };
 
@@ -14030,19 +14038,180 @@ dd.q4{color:#c58cff;font-weight:600}
   var SEASON_DAYS2 = 30;
   var SEASONS_PER_YEAR = 4;
   var YEAR_DAYS = SEASON_DAYS2 * SEASONS_PER_YEAR;
-  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1 };
+  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1, plates: 1, hemisphere: "north" };
+
+  // src/data/geology.js
+  var PLATE_COUNTS = [
+    { count: 7, label: "\u041C\u0430\u043B\u043E" },
+    { count: 13, label: "\u041E\u0431\u044B\u0447\u043D\u043E" },
+    { count: 22, label: "\u041C\u043D\u043E\u0433\u043E" }
+  ];
+  var HEMISPHERES = {
+    north: { label: "\u041E\u0434\u043D\u043E \u043F\u043E\u043B\u0443\u0448\u0430\u0440\u0438\u0435", note: "\u0441\u0435\u0432\u0435\u0440 \u0445\u043E\u043B\u043E\u0434\u043D\u044B\u0439, \u044E\u0433 \u0436\u0430\u0440\u043A\u0438\u0439" },
+    equator: { label: "\u042D\u043A\u0432\u0430\u0442\u043E\u0440 \u043F\u043E\u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0435", note: "\u0436\u0430\u0440\u043A\u043E \u0432 \u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0435, \u0445\u043E\u043B\u043E\u0434\u043D\u043E \u0443 \u0432\u0435\u0440\u0445\u043D\u0435\u0433\u043E \u0438 \u043D\u0438\u0436\u043D\u0435\u0433\u043E \u043A\u0440\u0430\u044F" }
+  };
+  var BOUNDARIES = new Registry("boundary");
+  BOUNDARIES.registerAll([
+    { id: "collision", code: 1, label: "\u0441\u0442\u043E\u043B\u043A\u043D\u043E\u0432\u0435\u043D\u0438\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432", color: [236, 90, 70], note: "\u0432\u044B\u0441\u043E\u043A\u0438\u0435 \u0441\u043A\u043B\u0430\u0434\u0447\u0430\u0442\u044B\u0435 \u0445\u0440\u0435\u0431\u0442\u044B \u043F\u043E \u043E\u0431\u0435 \u0441\u0442\u043E\u0440\u043E\u043D\u044B \u0448\u0432\u0430", chron: "\u0441\u0442\u043E\u043B\u043A\u043D\u0443\u043B\u0438\u0441\u044C \u043C\u0430\u0442\u0435\u0440\u0438\u043A\u0438 \u0438 \u0432\u0437\u0434\u044B\u0431\u0438\u043B\u0438\u0441\u044C \u0445\u0440\u0435\u0431\u0442\u044B" },
+    { id: "arc", code: 2, label: "\u0432\u0443\u043B\u043A\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0430\u044F \u0434\u0443\u0433\u0430", color: [255, 160, 60], note: "\u043C\u0430\u0442\u0435\u0440\u0438\u043A \u043D\u0430\u043F\u043E\u043B\u0437\u0430\u0435\u0442 \u043D\u0430 \u043E\u043A\u0435\u0430\u043D: \u0431\u0435\u0440\u0435\u0433\u043E\u0432\u043E\u0439 \u0445\u0440\u0435\u0431\u0435\u0442 \u0438 \u0446\u0435\u043F\u044C \u0432\u0443\u043B\u043A\u0430\u043D\u043E\u0432", chron: "\u043C\u0430\u0442\u0435\u0440\u0438\u043A \u043D\u0430\u043F\u043E\u043B\u0437 \u043D\u0430 \u043E\u043A\u0435\u0430\u043D, \u0438 \u0443 \u0431\u0435\u0440\u0435\u0433\u043E\u0432 \u0437\u0430\u0434\u044B\u043C\u0438\u043B\u0438\u0441\u044C \u0432\u0443\u043B\u043A\u0430\u043D\u044B" },
+    { id: "trench", code: 3, label: "\u0433\u043B\u0443\u0431\u043E\u043A\u043E\u0432\u043E\u0434\u043D\u044B\u0439 \u0436\u0435\u043B\u043E\u0431", color: [80, 70, 160], note: "\u043E\u043A\u0435\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0430\u044F \u043F\u043B\u0438\u0442\u0430 \u0443\u0445\u043E\u0434\u0438\u0442 \u043F\u043E\u0434 \u0441\u043E\u0441\u0435\u0434\u043D\u044E\u044E", chron: "\u043E\u043A\u0435\u0430\u043D\u0441\u043A\u043E\u0435 \u0434\u043D\u043E \u0443\u0448\u043B\u043E \u0432 \u0433\u043B\u0443\u0431\u043E\u043A\u0438\u0435 \u0436\u0435\u043B\u043E\u0431\u0430" },
+    { id: "islandArc", code: 4, label: "\u043E\u0441\u0442\u0440\u043E\u0432\u043D\u0430\u044F \u0434\u0443\u0433\u0430", color: [250, 200, 80], note: "\u043E\u043A\u0435\u0430\u043D \u043D\u0430\u043F\u043E\u043B\u0437\u0430\u0435\u0442 \u043D\u0430 \u043E\u043A\u0435\u0430\u043D: \u0434\u0443\u0433\u0430 \u0432\u0443\u043B\u043A\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0438\u0445 \u043E\u0441\u0442\u0440\u043E\u0432\u043E\u0432", chron: "\u0438\u0437 \u043C\u043E\u0440\u044F \u043F\u043E\u0434\u043D\u044F\u043B\u0438\u0441\u044C \u0434\u0443\u0433\u0438 \u043E\u0433\u043D\u0435\u0434\u044B\u0448\u0430\u0449\u0438\u0445 \u043E\u0441\u0442\u0440\u043E\u0432\u043E\u0432" },
+    { id: "rift", code: 5, label: "\u0440\u0438\u0444\u0442", color: [120, 220, 120], note: "\u043C\u0430\u0442\u0435\u0440\u0438\u043A \u0440\u0430\u0441\u043A\u0430\u043B\u044B\u0432\u0430\u0435\u0442\u0441\u044F: \u043F\u0440\u043E\u0432\u0430\u043B\u044C\u043D\u0430\u044F \u0434\u043E\u043B\u0438\u043D\u0430, \u0432\u0443\u043B\u043A\u0430\u043D\u044B \u043F\u043E \u043A\u0440\u0430\u044F\u043C", chron: "\u0437\u0435\u043C\u043B\u044F \u0442\u0440\u0435\u0441\u043D\u0443\u043B\u0430 \u043F\u0440\u043E\u0432\u0430\u043B\u044C\u043D\u044B\u043C\u0438 \u0434\u043E\u043B\u0438\u043D\u0430\u043C\u0438" },
+    { id: "ridge", code: 6, label: "\u0441\u0440\u0435\u0434\u0438\u043D\u043D\u044B\u0439 \u0445\u0440\u0435\u0431\u0435\u0442", color: [90, 200, 220], note: "\u043F\u043B\u0438\u0442\u044B \u0440\u0430\u0441\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u043F\u043E\u0434 \u043E\u043A\u0435\u0430\u043D\u043E\u043C, \u043D\u0430\u0440\u0430\u0449\u0438\u0432\u0430\u044F \u0434\u043D\u043E", chron: "\u043F\u043E\u0441\u0440\u0435\u0434\u0438 \u043E\u043A\u0435\u0430\u043D\u043E\u0432 \u0432\u044B\u0440\u043E\u0441\u043B\u0438 \u043F\u043E\u0434\u0432\u043E\u0434\u043D\u044B\u0435 \u0445\u0440\u0435\u0431\u0442\u044B" },
+    { id: "fault", code: 7, label: "\u0441\u0434\u0432\u0438\u0433", color: [200, 200, 200], note: "\u043F\u043B\u0438\u0442\u044B \u0441\u043A\u043E\u043B\u044C\u0437\u044F\u0442 \u0431\u043E\u043A \u043E \u0431\u043E\u043A: \u0440\u0430\u0437\u043B\u043E\u043C\u044B \u0438 \u0437\u0435\u043C\u043B\u0435\u0442\u0440\u044F\u0441\u0435\u043D\u0438\u044F", chron: "\u0432\u0434\u043E\u043B\u044C \u0441\u0434\u0432\u0438\u0433\u043E\u0432 \u043F\u0440\u043E\u043B\u0435\u0433\u043B\u0438 \u0440\u0430\u0437\u043B\u043E\u043C\u044B" }
+  ]);
+  var BOUNDARY_BY_CODE = [];
+  for (const b of BOUNDARIES.all()) BOUNDARY_BY_CODE[b.code] = b;
+  var ROCK_KINDS = { igneous: "\u043C\u0430\u0433\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435", sedimentary: "\u043E\u0441\u0430\u0434\u043E\u0447\u043D\u044B\u0435", metamorphic: "\u043C\u0435\u0442\u0430\u043C\u043E\u0440\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0435" };
+  var ROCKS = new Registry("rock");
+  ROCKS.registerAll([
+    { id: "basalt", code: 1, kind: "igneous", label: "\u0431\u0430\u0437\u0430\u043B\u044C\u0442", color: [64, 64, 70], note: "\u0438\u0437\u043B\u0438\u0432\u0448\u0430\u044F\u0441\u044F \u043B\u0430\u0432\u0430: \u043E\u043A\u0435\u0430\u043D\u0441\u043A\u043E\u0435 \u0434\u043D\u043E, \u0440\u0438\u0444\u0442\u044B, \u0433\u043E\u0440\u044F\u0447\u0438\u0435 \u0442\u043E\u0447\u043A\u0438" },
+    { id: "andesite", code: 2, kind: "igneous", label: "\u0430\u043D\u0434\u0435\u0437\u0438\u0442", color: [140, 96, 88], note: "\u043B\u0430\u0432\u0430 \u0432\u0443\u043B\u043A\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0438\u0445 \u0434\u0443\u0433" },
+    { id: "granite", code: 3, kind: "igneous", label: "\u0433\u0440\u0430\u043D\u0438\u0442", color: [206, 150, 150], note: "\u0437\u0430\u0441\u0442\u044B\u0432\u0448\u0430\u044F \u0432 \u0433\u043B\u0443\u0431\u0438\u043D\u0435 \u043C\u0430\u0433\u043C\u0430: \u043A\u043E\u0440\u043D\u0438 \u0434\u0443\u0433 \u0438 \u0445\u0440\u0435\u0431\u0442\u043E\u0432" },
+    { id: "gneiss", code: 4, kind: "metamorphic", label: "\u0433\u043D\u0435\u0439\u0441", color: [150, 130, 170], note: "\u0434\u0440\u0435\u0432\u043D\u0435\u0439\u0448\u0438\u0435 \u043F\u043E\u0440\u043E\u0434\u044B \u0449\u0438\u0442\u043E\u0432, \u043F\u0435\u0440\u0435\u043F\u043B\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0435 \u0434\u0430\u0432\u043B\u0435\u043D\u0438\u0435\u043C" },
+    { id: "schist", code: 5, kind: "metamorphic", label: "\u043A\u0440\u0438\u0441\u0442\u0430\u043B\u043B\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u0441\u043B\u0430\u043D\u0435\u0446", color: [110, 150, 140], note: "\u0441\u043C\u044F\u0442\u044B\u0435 \u0438 \u043F\u0440\u043E\u0433\u0440\u0435\u0442\u044B\u0435 \u043F\u043E\u0440\u043E\u0434\u044B \u0437\u043E\u043D \u0441\u0442\u043E\u043B\u043A\u043D\u043E\u0432\u0435\u043D\u0438\u044F" },
+    { id: "sandstone", code: 6, kind: "sedimentary", label: "\u043F\u0435\u0441\u0447\u0430\u043D\u0438\u043A", color: [214, 184, 120], note: "\u0441\u043D\u0435\u0441\u0451\u043D\u043D\u044B\u0439 \u0441 \u0433\u043E\u0440 \u043F\u0435\u0441\u043E\u043A: \u0440\u0430\u0432\u043D\u0438\u043D\u044B \u0438 \u043F\u0440\u0435\u0434\u0433\u043E\u0440\u043D\u044B\u0435 \u043F\u0440\u043E\u0433\u0438\u0431\u044B" },
+    { id: "limestone", code: 7, kind: "sedimentary", label: "\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044F\u043A", color: [226, 222, 196], note: "\u0434\u043D\u043E \u0442\u0451\u043F\u043B\u044B\u0445 \u043C\u0435\u043B\u043A\u0438\u0445 \u043C\u043E\u0440\u0435\u0439; \u0432 \u043D\u0451\u043C \u0431\u044B\u0432\u0430\u044E\u0442 \u043F\u0435\u0449\u0435\u0440\u044B" },
+    { id: "shale", code: 8, kind: "sedimentary", label: "\u0433\u043B\u0438\u043D\u0438\u0441\u0442\u044B\u0439 \u0441\u043B\u0430\u043D\u0435\u0446", color: [120, 110, 90], note: "\u0438\u043B \u043D\u0438\u0437\u0438\u043D \u0438 \u0434\u0440\u0435\u0432\u043D\u0438\u0445 \u0431\u043E\u043B\u043E\u0442; \u0432 \u043D\u0451\u043C \u043B\u0435\u0436\u0438\u0442 \u0443\u0433\u043E\u043B\u044C" }
+  ]);
+  var ROCK_BY_CODE = [];
+  for (const r of ROCKS.all()) ROCK_BY_CODE[r.code] = r;
+  var ORE_GENESIS = new Registry("oreGenesis");
+  ORE_GENESIS.registerAll([
+    {
+      id: "iron",
+      region: "iron",
+      label: "\u0436\u0435\u043B\u0435\u0437\u043E",
+      color: [196, 102, 64],
+      rocks: { sandstone: 0.35, shale: 0.35, gneiss: 0.5, basalt: 0.25, schist: 0.2 },
+      settings: { craton: 0.35 },
+      levels: [0.21, 0.3, 0.42]
+    },
+    {
+      id: "coal",
+      region: "coal",
+      label: "\u0443\u0433\u043E\u043B\u044C",
+      color: [90, 90, 108],
+      rocks: { shale: 0.8, sandstone: 0.2 },
+      settings: { low: 0.25, warm: 0.2 },
+      levels: [0.28, 0.42, 0.79]
+    },
+    {
+      id: "bronze",
+      region: "bronze",
+      label: "\u043C\u0435\u0434\u044C \u0438 \u043E\u043B\u043E\u0432\u043E",
+      color: [214, 150, 80],
+      rocks: { andesite: 0.4, granite: 0.35, sandstone: 0.1, schist: 0.15 },
+      settings: { arc: 0.55, coll: 0.15 },
+      levels: [0.16, 0.23, 0.33]
+    },
+    {
+      id: "silver",
+      region: "silver",
+      label: "\u0441\u0435\u0440\u0435\u0431\u0440\u043E",
+      color: [220, 224, 236],
+      rocks: { andesite: 0.3, granite: 0.25, schist: 0.2 },
+      settings: { arc: 0.4, coll: 0.15 },
+      levels: [0.2, 0.27, 0.33]
+    },
+    {
+      id: "gold",
+      region: "goldVein",
+      label: "\u0440\u0443\u0434\u043D\u043E\u0435 \u0437\u043E\u043B\u043E\u0442\u043E",
+      color: [255, 214, 60],
+      rocks: { schist: 0.4, andesite: 0.25, gneiss: 0.15 },
+      settings: { arc: 0.3, coll: 0.3, craton: 0.15 },
+      levels: [0.29, 0.48, 0.56]
+    },
+    {
+      id: "gems",
+      region: "gems",
+      label: "\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u044B",
+      color: [120, 230, 214],
+      rocks: { gneiss: 0.4, schist: 0.35, granite: 0.15 },
+      settings: { craton: 0.3 },
+      levels: [0.24, 0.33, 0.5]
+    },
+    {
+      id: "mithril",
+      region: "mithril",
+      label: "\u043C\u0438\u0444\u0440\u0438\u043B",
+      color: [170, 230, 255],
+      rocks: { gneiss: 0.15 },
+      settings: { oldv: 0.7, craton: 0.15 },
+      levels: [0.2, 0.27, 0.34]
+    },
+    {
+      id: "magma",
+      region: "magma",
+      label: "\u043C\u0430\u0433\u043C\u0430",
+      color: [255, 80, 40],
+      rocks: {},
+      settings: { volc: 1 },
+      levels: [0.03, 0.13, 0.25]
+    }
+  ]);
+
+  // src/atlas/heap.js
+  var Heap = class {
+    constructor(cap = 1024) {
+      this.k = new Float64Array(cap);
+      this.v = new Int32Array(cap);
+      this.size = 0;
+    }
+    push(key2, val) {
+      if (this.size === this.k.length) {
+        const k = new Float64Array(this.size * 2), v = new Int32Array(this.size * 2);
+        k.set(this.k);
+        v.set(this.v);
+        this.k = k;
+        this.v = v;
+      }
+      let i = this.size++;
+      const K = this.k, V = this.v;
+      while (i > 0) {
+        const p = i - 1 >> 1;
+        if (K[p] <= key2) break;
+        K[i] = K[p];
+        V[i] = V[p];
+        i = p;
+      }
+      K[i] = key2;
+      V[i] = val;
+    }
+    // removes the smallest; its cost is left in this.top
+    pop() {
+      const K = this.k, V = this.v, out = V[0];
+      this.top = K[0];
+      const n = --this.size, key2 = K[n], val = V[n];
+      let i = 0;
+      while (true) {
+        let c = 2 * i + 1;
+        if (c >= n) break;
+        if (c + 1 < n && K[c + 1] < K[c]) c++;
+        if (K[c] >= key2) break;
+        K[i] = K[c];
+        V[i] = V[c];
+        i = c;
+      }
+      K[i] = key2;
+      V[i] = val;
+      return out;
+    }
+  };
+  var DIRS8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [-1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, -1, Math.SQRT2]];
 
   // src/atlas/noise.js
   function layer2(rnd, w, h, cell, out, weight) {
     const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
-    const g2 = new Float32Array(gw * gh);
-    for (let i = 0; i < g2.length; i++) g2[i] = rnd();
+    const g3 = new Float32Array(gw * gh);
+    for (let i = 0; i < g3.length; i++) g3[i] = rnd();
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const fx = x / cell, fy = y / cell, ix = fx | 0, iy = fy | 0;
       let tx2 = fx - ix, ty = fy - iy;
       tx2 = tx2 * tx2 * (3 - 2 * tx2);
       ty = ty * ty * (3 - 2 * ty);
-      const a = g2[iy * gw + ix], b = g2[iy * gw + ix + 1], c = g2[(iy + 1) * gw + ix], d = g2[(iy + 1) * gw + ix + 1];
+      const a = g3[iy * gw + ix], b = g3[iy * gw + ix + 1], c = g3[(iy + 1) * gw + ix], d = g3[(iy + 1) * gw + ix + 1];
       out[y * w + x] += ((a * (1 - tx2) + b * tx2) * (1 - ty) + (c * (1 - tx2) + d * tx2) * ty) * weight;
     }
   }
@@ -14063,25 +14232,387 @@ dd.q4{color:#c58cff;font-weight:600}
     return out;
   }
 
+  // src/atlas/tectonics.js
+  var g2 = (d, c, s) => Math.exp(-(((d - c) / s) ** 2));
+  var smooth = (t) => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+  var scaleOf = (a) => Math.min(a.w, a.h) / 192;
+  function makePlates(a, rnd) {
+    const { w, h, n } = a, count2 = PLATE_COUNTS[a.cfg.plates ?? 1].count;
+    const rough = fbm2(rnd, w, h, Math.max(w, h) / 7, 6, 0.6);
+    const minD = Math.sqrt(n / count2) * 0.6, seeds = [];
+    for (let tries = 0; seeds.length < count2 && tries < count2 * 200; tries++) {
+      const x = rnd() * w | 0, y = rnd() * h | 0;
+      const near2 = seeds.some(([sx, sy]) => (sx - x) ** 2 + (sy - y) ** 2 < (tries < count2 * 100 ? minD * minD : minD * minD / 4));
+      if (!near2) seeds.push([x, y]);
+    }
+    const plates = seeds.map(([x, y], id) => {
+      const ang = rnd() * Math.PI * 2, sp = 0.35 + 0.65 * rnd();
+      return { id, sx: x, sy: y, rate: 0.7 + 0.6 * rnd(), vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, age: rnd(), cont: false, area: 0, cx: 0, cy: 0, base: 0 };
+    });
+    const plate = new Int16Array(n).fill(-1), heap = new Heap(n);
+    for (const p of plates) heap.push(0, (p.sy * w + p.sx) * 64 + p.id);
+    while (heap.size) {
+      const val = heap.pop(), c = Math.floor(val / 64), id = val % 64;
+      if (plate[c] >= 0) continue;
+      plate[c] = id;
+      const x = c % w, y = c / w | 0, rate = plates[id].rate;
+      for (const [dx, dy, len] of DIRS8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (plate[j] < 0) heap.push(heap.top + len * (0.08 + 3 * rough[j] * rough[j]) / rate, j * 64 + id);
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      const p = plates[plate[i]];
+      p.area++;
+      p.cx += i % w;
+      p.cy += i / w | 0;
+    }
+    for (const p of plates) {
+      p.cx /= p.area || 1;
+      p.cy /= p.area || 1;
+    }
+    const target = ATLAS_LAND[a.cfg.land].share * 1.1 * n;
+    const order = plates.map((p) => [p, Math.hypot(p.cx / w - 0.5, p.cy / h - 0.5) + rnd() * 0.5]).sort((x, y) => x[1] - y[1]).map((x) => x[0]);
+    let area = 0;
+    for (const p of order) {
+      if (area >= target && order.indexOf(p) > 0) break;
+      p.cont = true;
+      area += p.area;
+    }
+    if (plates.every((p) => p.cont)) order[order.length - 1].cont = false;
+    a.plates = plates;
+    a.f.plate = plate;
+    a.f.crust = crustField(a, rnd);
+    return plates;
+  }
+  function blur(a, c, r) {
+    const { w, h } = a, t = new Float32Array(c.length);
+    for (let pass = 0; pass < 2; pass++) {
+      for (let y = 0; y < h; y++) {
+        let s = 0;
+        const row = y * w;
+        for (let x = -r; x <= r; x++) s += c[row + Math.min(w - 1, Math.max(0, x))];
+        for (let x = 0; x < w; x++) {
+          t[row + x] = s / (2 * r + 1);
+          s += c[row + Math.min(w - 1, x + r + 1)] - c[row + Math.max(0, x - r)];
+        }
+      }
+      for (let x = 0; x < w; x++) {
+        let s = 0;
+        for (let y = -r; y <= r; y++) s += t[Math.min(h - 1, Math.max(0, y)) * w + x];
+        for (let y = 0; y < h; y++) {
+          c[y * w + x] = s / (2 * r + 1);
+          s += t[Math.min(h - 1, y + r + 1) * w + x] - t[Math.max(0, y - r) * w + x];
+        }
+      }
+    }
+    return c;
+  }
+  function crustField(a, rnd) {
+    const { w, h, n, plates } = a, plate = a.f.plate, k = scaleOf(a);
+    const c = new Float32Array(n);
+    const edge = Math.min(w, h) * 0.16;
+    for (let i = 0; i < n; i++) {
+      const x = i % w, y = i / w | 0, d = Math.min(x, y, w - 1 - x, h - 1 - y);
+      c[i] = plates[plate[i]].cont ? smooth(d / edge) : 0;
+    }
+    blur(a, c, Math.max(2, Math.round(9 * k)));
+    const nz = fbm2(rnd, w, h, Math.max(w, h) / 5, 6, 0.55);
+    for (let i = 0; i < n; i++) c[i] = Math.max(0, Math.min(1, c[i] + 0.9 * (nz[i] - 0.5)));
+    return c;
+  }
+  var isCont = (v) => v > 0.5;
+  function classify(A, B, cA, cB, conv) {
+    const T2 = 0.3;
+    if (conv > T2) {
+      if (cA && cB) return "collision";
+      if (cA) return "arc";
+      if (cB) return "trench";
+      return A.age > B.age ? "trench" : "islandArc";
+    }
+    if (conv < -T2) return cA && cB ? "rift" : cA ? null : "ridge";
+    return "fault";
+  }
+  function tectonics(a, rnd) {
+    const { w, h, n, plates } = a, plate = a.f.plate, k = scaleOf(a);
+    const rough = fbm2(rnd, w, h, Math.max(w, h) / 8, 4, 0.5);
+    const pairs = /* @__PURE__ */ new Map();
+    for (let i = 0; i < n; i++) {
+      const x = i % w, y = i / w | 0, A = plate[i];
+      for (const [dx, dy] of [[1, 0], [0, 1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= w || ny >= h) continue;
+        const B = plate[ny * w + nx];
+        if (B === A) continue;
+        const key2 = Math.min(A, B) * 64 + Math.max(A, B);
+        if (!pairs.has(key2)) {
+          const pa = plates[Math.min(A, B)], pb = plates[Math.max(A, B)];
+          const ux = pb.cx - pa.cx, uy = pb.cy - pa.cy, len = Math.hypot(ux, uy) || 1;
+          pairs.set(key2, { sum: ((pa.vx - pb.vx) * ux + (pa.vy - pb.vy) * uy) / len, cnt: 1 });
+        }
+      }
+    }
+    const pairConv = /* @__PURE__ */ new Map();
+    for (const [key2, e] of pairs) {
+      const A = Math.floor(key2 / 64), B = key2 % 64, conv = e.sum / e.cnt;
+      const I = Math.min(1.2, Math.max(0.35, Math.abs(conv) / 0.9));
+      pairConv.set(A * 64 + B, { conv, I });
+      pairConv.set(B * 64 + A, { conv, I });
+    }
+    const crust = a.f.crust, tally2 = {};
+    const bnd = new Uint8Array(n), bI = new Float32Array(n), dist8 = new Float64Array(n).fill(Infinity), src = new Int32Array(n).fill(-1);
+    const heap = new Heap(n >> 2), R = 48 * k;
+    for (let i = 0; i < n; i++) {
+      const x = i % w, y = i / w | 0, A = plate[i];
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const B = plate[ny * w + nx];
+        if (B === A) continue;
+        const pc = pairConv.get(A * 64 + B), j = ny * w + nx;
+        const kind = classify(plates[A], plates[B], isCont(crust[i]), isCont(crust[j]), pc.conv);
+        if (!kind) break;
+        bnd[i] = BOUNDARIES.get(kind).code;
+        bI[i] = pc.I;
+        tally2[kind] = (tally2[kind] || 0) + 1;
+        dist8[i] = 0;
+        src[i] = i;
+        heap.push(0, i);
+        break;
+      }
+    }
+    while (heap.size) {
+      const c = heap.pop(), d = heap.top;
+      if (d > dist8[c]) continue;
+      const x = c % w, y = c / w | 0;
+      for (const [dx, dy, len] of DIRS8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx, nd = d + len;
+        if (plate[j] !== plate[c] || nd >= dist8[j] || nd > R) continue;
+        dist8[j] = nd;
+        src[j] = src[c];
+        heap.push(nd, j);
+      }
+    }
+    const f32 = () => new Float32Array(n);
+    const up = f32(), coll = f32(), arc = f32(), basv = f32(), volc = f32(), oldv = f32(), craton = f32();
+    const KIND = BOUNDARIES.all().map((b) => b.id), kindOf = (c) => KIND[bnd[c] - 1];
+    for (let i = 0; i < n; i++) {
+      const d = dist8[i];
+      if (isCont(crust[i])) craton[i] = smooth((crust[i] - 0.55) / 0.3) * (d === Infinity ? 1 : smooth((d - 10 * k) / (16 * k)));
+      if (src[i] < 0) continue;
+      const I = bI[src[i]] * (0.7 + 0.6 * rough[i]);
+      switch (kindOf(src[i])) {
+        case "collision":
+          up[i] += 0.42 * I * g2(d, 0, 10 * k);
+          coll[i] = g2(d, 0, 14 * k);
+          break;
+        case "arc":
+          up[i] += 0.2 * I * g2(d, 2 * k, 4 * k) + 0.18 * I * g2(d, 8 * k, 3 * k);
+          arc[i] = g2(d, 8 * k, 7 * k);
+          volc[i] = I * g2(d, 8 * k, 2.5 * k);
+          break;
+        case "trench":
+          up[i] -= 0.16 * I * g2(d, 0, 3 * k);
+          break;
+        case "islandArc":
+          up[i] += 0.3 * I * g2(d, 4 * k, 2.5 * k);
+          arc[i] = g2(d, 4 * k, 5 * k);
+          volc[i] = I * g2(d, 4 * k, 2 * k);
+          break;
+        case "rift":
+          up[i] += -0.14 * I * g2(d, 0, 4 * k) + 0.07 * I * g2(d, 7 * k, 3 * k);
+          basv[i] = g2(d, 0, 3 * k);
+          volc[i] = 0.6 * I * g2(d, k, 2.5 * k);
+          break;
+        case "ridge":
+          up[i] += 0.09 * I * g2(d, 0, 5 * k);
+          basv[i] = g2(d, 0, 5 * k);
+          break;
+        case "fault":
+          up[i] += 0.06 * (rough[i] - 0.5) * g2(d, 0, 3 * k);
+          break;
+      }
+    }
+    const spots = Math.max(1, Math.round(n / 49152 * (1 + rnd() * 2)));
+    a.hotspots = [];
+    for (let s = 0; s < spots; s++) {
+      const x0 = rnd() * w, y0 = rnd() * h, p = plates[plate[(y0 | 0) * w + (x0 | 0)]];
+      const sp = Math.hypot(p.vx, p.vy) || 1, ux = p.vx / sp, uy = p.vy / sp, step2 = 7 * k;
+      a.hotspots.push({ x: x0 | 0, y: y0 | 0 });
+      for (let q = 0; q < 6; q++) {
+        const cx = x0 + ux * q * step2, cy = y0 + uy * q * step2, str = 1 - q * 0.13, r = Math.ceil(7 * k);
+        for (let yy = Math.max(0, cy - r | 0); yy <= Math.min(h - 1, cy + r | 0); yy++)
+          for (let xx = Math.max(0, cx - r | 0); xx <= Math.min(w - 1, cx + r | 0); xx++) {
+            const i = yy * w + xx, d = Math.hypot(xx - cx, yy - cy);
+            up[i] += 0.3 * str * g2(d, 0, 2.5 * k);
+            if (q === 0) {
+              volc[i] = Math.max(volc[i], g2(d, 0, 2.5 * k));
+              basv[i] = Math.max(basv[i], g2(d, 0, 4 * k));
+            } else if (q >= 2) oldv[i] = Math.max(oldv[i], str * g2(d, 0, 3 * k));
+          }
+      }
+    }
+    blur(a, up, Math.max(1, Math.round(2 * k)));
+    Object.assign(a.f, { bnd, bdist: Float32Array.from(dist8), uplift: up, coll, arc, basv, volc, oldv, craton });
+    for (const kd of Object.keys(tally2)) tally2[kd] = Math.max(1, Math.round(tally2[kd] / (12 * k)));
+    return tally2;
+  }
+  function relief(a, rnd) {
+    const { w, h, n } = a, k = scaleOf(a), { uplift } = a.f;
+    const broad = fbm2(rnd, w, h, Math.max(w, h) / 5, 4, 0.5), detail = fbm2(rnd, w, h, 12 * k, 4, 0.55), ridged = fbm2(rnd, w, h, 8 * k, 4, 0.5);
+    const elev = new Float32Array(n), edge = Math.min(w, h) * 0.08;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, u = uplift[i];
+      const c = smooth((a.f.crust[i] - 0.4) / 0.2);
+      let e = 0.2 + 0.35 * c + u + (0.08 + 0.1 * c) * (broad[i] - 0.5) + 0.05 * (detail[i] - 0.5);
+      if (u > 0) e += u * 0.6 * (1 - Math.abs(2 * ridged[i] - 1) - 0.5);
+      const d = Math.min(x, y, w - 1 - x, h - 1 - y);
+      elev[i] = e * smooth(d / edge) + 0.05 * (1 - smooth(d / edge));
+    }
+    let mn = Infinity, mx = -Infinity;
+    for (const v of elev) {
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+    }
+    for (let i = 0; i < n; i++) elev[i] = (elev[i] - mn) / (mx - mn || 1);
+    a.f.elev = elev;
+  }
+
+  // src/atlas/latitude.js
+  function warmth(a, y) {
+    const t = y / (a.h - 1);
+    return a.cfg.hemisphere === "equator" ? 1 - Math.abs(2 * t - 1) : t;
+  }
+
+  // src/atlas/geology.js
+  var clamp012 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  function settingOf(a, i, flat) {
+    const f = a.f, e = f.elev[i], rel = (e - a.sea) / (1 - a.sea), y = i / a.w | 0;
+    const low = f.land[i] ? clamp012(1 - rel / 0.25) * (0.4 + 0.6 * flat) : 0;
+    const warm = 0.4 * warmth(a, y) + 0.6 * (f.paleo ? f.paleo[i] : 0.5);
+    return { coll: f.coll[i], arc: f.arc[i], basv: f.basv[i], volc: f.volc[i], oldv: f.oldv[i], craton: f.craton[i], low, hill: clamp012(rel / 0.25), warm, rel };
+  }
+  function flatness(a) {
+    const { w, h, n } = a, e = a.f.elev, out = new Float32Array(n), k = scaleOf(a);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, gx = e[y * w + Math.min(w - 1, x + 1)] - e[y * w + Math.max(0, x - 1)], gy = e[Math.min(h - 1, y + 1) * w + x] - e[Math.max(0, y - 1) * w + x];
+      out[i] = clamp012(1 - Math.hypot(gx, gy) * 30 * k);
+    }
+    return out;
+  }
+  var SCORE = {
+    basalt: (s) => 1.15 * s.basv,
+    andesite: (s) => 1.5 * s.arc * (0.4 + s.volc),
+    granite: (s) => 0.12 + 0.6 * s.arc + 0.35 * s.coll + 0.25 * s.craton + 0.35 * s.hill * (1 - s.coll),
+    gneiss: (s) => 0.9 * s.craton * s.craton + 0.3 * s.coll * (s.rel > 0.4 ? 1 : 0),
+    schist: (s) => 0.85 * s.coll,
+    sandstone: (s) => 0.3 + 0.35 * s.hill * (1 - s.craton),
+    limestone: (s) => 1.1 * s.low * s.warm + (s.shelf ? 0.7 * s.warm : 0),
+    shale: (s) => 1.1 * s.low * (1 - 0.55 * s.warm)
+  };
+  function rocks(a, rnd) {
+    const { w, h, n } = a, all = ROCKS.all();
+    const jitter = all.map(() => fbm2(rnd, w, h, Math.max(w, h) / 12, 6, 0.6));
+    a.f.paleo = fbm2(rnd, w, h, Math.max(w, h) / 3, 3, 0.5);
+    const flat = flatness(a), rock = new Uint8Array(n), cnt = {};
+    for (let i = 0; i < n; i++) {
+      const s = settingOf(a, i, flat[i]);
+      const depth = a.f.land[i] ? 0 : (a.sea - a.f.elev[i]) / (a.sea || 1);
+      s.shelf = !a.f.land[i] && depth < 0.12;
+      let best = "basalt", bs = -Infinity;
+      if (a.f.land[i] || s.shelf) for (let r = 0; r < all.length; r++) {
+        const v = SCORE[all[r].id](s) + 0.35 * (jitter[r][i] - 0.5);
+        if (v > bs) {
+          bs = v;
+          best = all[r].id;
+        }
+      }
+      rock[i] = ROCKS.get(best).code;
+      if (a.f.land[i]) {
+        const kd = ROCKS.get(best).kind;
+        cnt[kd] = (cnt[kd] || 0) + 1;
+      }
+    }
+    a.f.rock = rock;
+    a.f.flat = flat;
+    return cnt;
+  }
+  var levelOf = (pot, lv) => pot < lv[0] ? LEVELS[0] : pot < lv[1] ? LEVELS[1] : pot < lv[2] ? LEVELS[2] : LEVELS[3];
+  function ores(a, rnd) {
+    const { w, h, n } = a, rich = {}, f = a.f;
+    const low = new Float32Array(n), warm = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const s = settingOf(a, i, f.flat[i]);
+      low[i] = s.low;
+      warm[i] = s.warm;
+    }
+    const fields2 = { coll: f.coll, arc: f.arc, basv: f.basv, volc: f.volc, oldv: f.oldv, craton: f.craton, low, warm };
+    for (const o of ORE_GENESIS.all()) {
+      const prov = fbm2(rnd, w, h, Math.max(w, h) / 9, 4, 0.55), pot = new Float32Array(n);
+      const byRock = [], sets = Object.entries(o.settings).map(([key2, wt]) => [fields2[key2], wt]);
+      for (const r2 of ROCK_BY_CODE) if (r2) byRock[r2.code] = o.rocks[r2.id] || 0;
+      let r = 0;
+      for (let i = 0; i < n; i++) {
+        let v = byRock[f.rock[i]] || 0;
+        for (const [fld, wt] of sets) v += wt * fld[i];
+        pot[i] = clamp012(Math.min(1, v) * (0.2 + prov[i]));
+        if (f.land[i] && pot[i] >= o.levels[2]) r++;
+      }
+      f[`ore_${o.id}`] = pot;
+      rich[o.id] = r;
+    }
+    return rich;
+  }
+  function cellGeology(a, i) {
+    const out = { rock: ROCK_BY_CODE[a.f.rock?.[i]] || null, ores: {}, flags: {} };
+    if (!a.f.rock) return out;
+    for (const o of ORE_GENESIS.all()) {
+      const pot = a.f[`ore_${o.id}`];
+      if (!pot) continue;
+      const lv = levelOf(pot[i], o.levels);
+      if (o.region === "goldVein" || o.region === "magma") out.flags[o.region] = lv >= 1;
+      else out.ores[o.region] = lv;
+    }
+    return out;
+  }
+
   // src/atlas/stages.js
   var ATLAS_STAGES = new Registry("atlasStage");
-  var smooth = (t) => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+  var pct = (v, n) => `${Math.round(v / n * 100)}%`;
   ATLAS_STAGES.registerAll([
+    {
+      id: "plates",
+      label: "\u041F\u043B\u0438\u0442\u044B",
+      era: "geology",
+      note: "\u043A\u043E\u0440\u0430 \u0440\u0430\u0441\u043A\u0430\u043B\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043D\u0430 \u043F\u043B\u0438\u0442\u044B; \u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432\u044B\u0435 \u0431\u043B\u0438\u0436\u0435 \u043A \u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0435 \u043C\u0438\u0440\u0430",
+      run(a, rnd) {
+        const p = makePlates(a, rnd), c = p.filter((x) => x.cont).length;
+        return `\u0422\u0432\u0435\u0440\u0434\u044C \u0440\u0430\u0441\u043A\u043E\u043B\u043E\u043B\u0430\u0441\u044C \u043D\u0430 ${p.length} ${plural(p.length, "\u043F\u043B\u0438\u0442\u0443", "\u043F\u043B\u0438\u0442\u044B", "\u043F\u043B\u0438\u0442")}: ${c} ${plural(c, "\u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432\u0443\u044E", "\u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432\u044B\u0435", "\u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432\u044B\u0445")} \u0438 ${p.length - c} ${plural(p.length - c, "\u043E\u043A\u0435\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0443\u044E", "\u043E\u043A\u0435\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0438\u0435", "\u043E\u043A\u0435\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0438\u0445")}.`;
+      }
+    },
+    {
+      id: "tectonics",
+      label: "\u0413\u0440\u0430\u043D\u0438\u0446\u044B \u043F\u043B\u0438\u0442",
+      era: "geology",
+      note: "\u0441\u0442\u043E\u043B\u043A\u043D\u043E\u0432\u0435\u043D\u0438\u044F, \u0434\u0443\u0433\u0438, \u0436\u0435\u043B\u043E\u0431\u0430, \u0440\u0438\u0444\u0442\u044B, \u0441\u0440\u0435\u0434\u0438\u043D\u043D\u044B\u0435 \u0445\u0440\u0435\u0431\u0442\u044B, \u0441\u0434\u0432\u0438\u0433\u0438 \u0438 \u0433\u043E\u0440\u044F\u0447\u0438\u0435 \u0442\u043E\u0447\u043A\u0438",
+      run(a, rnd) {
+        const t = tectonics(a, rnd), parts = BOUNDARIES.filter((b) => t[b.id]).sort((x, y) => t[y.id] - t[x.id]).slice(0, 4).map((b) => b.chron);
+        const hs = a.hotspots.length;
+        return `\u041F\u043B\u0438\u0442\u044B \u043F\u0440\u0438\u0448\u043B\u0438 \u0432 \u0434\u0432\u0438\u0436\u0435\u043D\u0438\u0435: ${parts.join("; ")}. \u0418\u0437 \u043D\u0435\u0434\u0440 ${plural(hs, "\u043F\u0440\u043E\u0431\u0438\u043B\u0430\u0441\u044C", "\u043F\u0440\u043E\u0431\u0438\u043B\u0438\u0441\u044C", "\u043F\u0440\u043E\u0431\u0438\u043B\u0438\u0441\u044C")} ${hs} ${plural(hs, "\u0433\u043E\u0440\u044F\u0447\u0430\u044F \u0442\u043E\u0447\u043A\u0430", "\u0433\u043E\u0440\u044F\u0447\u0438\u0435 \u0442\u043E\u0447\u043A\u0438", "\u0433\u043E\u0440\u044F\u0447\u0438\u0445 \u0442\u043E\u0447\u0435\u043A")}, \u0437\u0430 ${plural(hs, "\u043D\u0435\u0439", "\u043D\u0438\u043C\u0438", "\u043D\u0438\u043C\u0438")} \u0442\u044F\u043D\u0443\u0442\u0441\u044F \u0446\u0435\u043F\u0438 \u043F\u043E\u0442\u0443\u0445\u0448\u0438\u0445 \u0432\u0443\u043B\u043A\u0430\u043D\u043E\u0432.`;
+      }
+    },
     {
       id: "relief",
       label: "\u0420\u0435\u043B\u044C\u0435\u0444",
       era: "geology",
-      note: "\u0437\u0430\u0433\u043B\u0443\u0448\u043A\u0430 \u0434\u043E \u0442\u0435\u043A\u0442\u043E\u043D\u0438\u043A\u0438 \u043F\u043B\u0438\u0442: \u0448\u0443\u043C, \u043F\u0440\u0438\u0436\u0430\u0442\u044B\u0439 \u043A \u043E\u043A\u0435\u0430\u043D\u0443 \u043F\u043E \u043A\u0440\u0430\u044F\u043C",
+      note: "\u0434\u043D\u043E \u043F\u043B\u0438\u0442\u044B + \u043F\u043E\u0434\u043D\u044F\u0442\u0438\u0435 \u043E\u0442 \u0433\u0440\u0430\u043D\u0438\u0446 + \u043F\u043E\u043B\u043E\u0433\u0438\u0435 \u0432\u043E\u043B\u043D\u044B \u0438 \u043C\u0435\u043B\u043A\u0438\u0435 \u043D\u0435\u0440\u043E\u0432\u043D\u043E\u0441\u0442\u0438",
       run(a, rnd) {
-        const { w, h } = a, base = Math.max(w, h) / 4;
-        const n = fbm2(rnd, w, h, base, 7, 0.5), elev = new Float32Array(a.n);
-        const edge = Math.min(w, h) * 0.14;
-        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-          const i = y * w + x, d = Math.min(x, y, w - 1 - x, h - 1 - y);
-          elev[i] = n[i] * (0.25 + 0.75 * smooth(d / edge));
-        }
-        a.f.elev = elev;
-        return "\u0418\u0437 \u043F\u0443\u0447\u0438\u043D\u044B \u043F\u043E\u0434\u043D\u044F\u043B\u0430\u0441\u044C \u0442\u0432\u0435\u0440\u0434\u044C.";
+        relief(a, rnd);
+        return "\u041F\u043E\u0434\u043D\u044F\u043B\u0438\u0441\u044C \u0445\u0440\u0435\u0431\u0442\u044B, \u043B\u0435\u0433\u043B\u0438 \u0440\u0430\u0432\u043D\u0438\u043D\u044B, \u0440\u0430\u0437\u0432\u0435\u0440\u0437\u043B\u0438\u0441\u044C \u0436\u0435\u043B\u043E\u0431\u0430.";
       }
     },
     {
@@ -14100,26 +14631,45 @@ dd.q4{color:#c58cff;font-weight:600}
           cnt++;
         }
         a.f.land = land;
-        return `\u0412\u043E\u0434\u044B \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438: \u0441\u0443\u0448\u0430 \u0437\u0430\u043D\u044F\u043B\u0430 ${Math.round(cnt / a.n * 100)}% \u043C\u0438\u0440\u0430.`;
+        return `\u0412\u043E\u0434\u044B \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438: \u0441\u0443\u0448\u0430 \u0437\u0430\u043D\u044F\u043B\u0430 ${pct(cnt, a.n)} \u043C\u0438\u0440\u0430.`;
+      }
+    },
+    {
+      id: "rocks",
+      label: "\u041F\u043E\u0440\u043E\u0434\u044B",
+      era: "geology",
+      note: "\u043C\u0430\u0433\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0443 \u0432\u0443\u043B\u043A\u0430\u043D\u043E\u0432 \u0438 \u0432 \u043A\u043E\u0440\u043D\u044F\u0445 \u0433\u043E\u0440, \u043C\u0435\u0442\u0430\u043C\u043E\u0440\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0432 \u0448\u0432\u0430\u0445 \u0438 \u0449\u0438\u0442\u0430\u0445, \u043E\u0441\u0430\u0434\u043E\u0447\u043D\u044B\u0435 \u0432 \u043D\u0438\u0437\u0438\u043D\u0430\u0445 \u0438 \u043C\u0435\u043B\u043A\u0438\u0445 \u043C\u043E\u0440\u044F\u0445",
+      run(a, rnd) {
+        const c = rocks(a, rnd), land = Object.values(c).reduce((s, v) => s + v, 0) || 1;
+        return "\u0417\u0430\u0441\u0442\u044B\u043B\u0438 \u043F\u043E\u0440\u043E\u0434\u044B. \u041D\u0430 \u0441\u0443\u0448\u0435 " + Object.entries(ROCK_KINDS).map(([k, l]) => `${l} \u2014 ${pct(c[k] || 0, land)}`).join(", ") + ".";
+      }
+    },
+    {
+      id: "ores",
+      label: "\u0420\u0443\u0434\u044B",
+      era: "geology",
+      note: "\u0440\u0443\u0434\u044B \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u043F\u043E\u0440\u043E\u0434\u0430\u043C \u0438 \u0442\u0435\u043A\u0442\u043E\u043D\u0438\u043A\u0435 \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u044E\u0442\u0441\u044F \u0432 \u0440\u0443\u0434\u043D\u044B\u0435 \u0440\u0430\u0439\u043E\u043D\u044B",
+      run(a, rnd) {
+        const r = ores(a, rnd), top = ORE_GENESIS.all().filter((o) => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map((o) => o.label);
+        return top.length ? `\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B. \u0411\u043E\u043B\u044C\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442: ${top.slice(0, 3).join(", ")}.` : "\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B, \u043D\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442 \u043D\u0435\u0442.";
       }
     },
     {
       id: "temperature",
       label: "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430",
       era: "geology",
-      note: "\u0441\u0435\u0432\u0435\u0440 \u0445\u043E\u043B\u043E\u0434\u043D\u044B\u0439, \u044E\u0433 \u0436\u0430\u0440\u043A\u0438\u0439; \u0432 \u0433\u043E\u0440\u0430\u0445 \u0445\u043E\u043B\u043E\u0434\u043D\u0435\u0435 \u043D\u0430 6,5\xB0 \u043D\u0430 \u043A\u0438\u043B\u043E\u043C\u0435\u0442\u0440",
+      note: "\u043F\u043E \u0448\u0438\u0440\u043E\u0442\u0435 \u0438 \u0432\u044B\u0441\u043E\u0442\u0435: \u0432 \u0433\u043E\u0440\u0430\u0445 \u0445\u043E\u043B\u043E\u0434\u043D\u0435\u0435 \u043D\u0430 6,5\xB0 \u043D\u0430 \u043A\u0438\u043B\u043E\u043C\u0435\u0442\u0440",
       run(a) {
-        const { w, h } = a, temp = new Float32Array(a.n), top = a.cfg.peakKm ?? 4;
+        const { w, h } = a, temp = new Float32Array(a.n), top = a.cfg.peakKm ?? 5;
         for (let y = 0; y < h; y++) {
-          const lat = y / (h - 1), sea = -18 + 46 * lat;
+          const sea = -18 + 46 * warmth(a, y);
           for (let x = 0; x < w; x++) {
             const i = y * w + x, e = a.f.elev[i];
-            const km = e > a.sea ? (e - a.sea) / (1 - a.sea) * top : 0;
-            temp[i] = sea - 6.5 * km;
+            temp[i] = sea - 6.5 * (e > a.sea ? (e - a.sea) / (1 - a.sea) * top : 0);
           }
         }
         a.f.temp = temp;
-        return "\u041F\u0440\u043E\u043B\u0435\u0433\u043B\u0438 \u043F\u043E\u044F\u0441\u0430 \u0445\u043E\u043B\u043E\u0434\u0430 \u0438 \u0437\u043D\u043E\u044F.";
+        return a.cfg.hemisphere === "equator" ? "\u041B\u0435\u0433\u043B\u0438 \u043F\u043E\u044F\u0441\u0430 \u0437\u043D\u043E\u044F \u043F\u043E\u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0435 \u0438 \u0445\u043E\u043B\u043E\u0434\u0430 \u043F\u043E \u043A\u0440\u0430\u044F\u043C." : "\u041B\u0435\u0433\u043B\u0438 \u043F\u043E\u044F\u0441\u0430: \u0445\u043E\u043B\u043E\u0434 \u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u0435, \u0437\u043D\u043E\u0439 \u043D\u0430 \u044E\u0433\u0435.";
       }
     }
   ]);
@@ -14148,8 +14698,12 @@ dd.q4{color:#c58cff;font-weight:600}
   var OPTS2 = {
     size: Object.entries(ATLAS_SIZES).map(([k, v]) => [k, v.label]),
     land: ATLAS_LAND.map((l, i) => [i, l.label]),
-    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"]]
+    plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
+    hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
+    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"]],
+    ore: ORE_GENESIS.all().map((o) => [o.id, o.label])
   };
+  var VIEW_KEYS = /* @__PURE__ */ new Set(["layer", "ore"]);
   var mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
   function ramp(stops, t) {
     t = Math.max(0, Math.min(1, t));
@@ -14167,6 +14721,7 @@ dd.q4{color:#c58cff;font-weight:600}
       this.cfg = this.load();
       this.atlas = null;
       this.layer = "relief";
+      this.ore = "iron";
       this.timer = 0;
       this.onBack = onBack;
       this.build();
@@ -14192,8 +14747,8 @@ dd.q4{color:#c58cff;font-weight:600}
         box.addEventListener("click", (e) => {
           const b = e.target.closest("button");
           if (!b) return;
-          if (key2 === "layer") {
-            this.layer = b.dataset.val;
+          if (VIEW_KEYS.has(key2)) {
+            this[key2] = b.dataset.val;
             this.sync();
             this.draw();
             return;
@@ -14229,11 +14784,26 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     sync() {
       $("atlasSeed").value = this.cfg.seed;
-      const val = { size: this.cfg.size, land: this.cfg.land, layer: this.layer };
+      const val = { ...this.cfg, layer: this.layer, ore: this.ore };
       document.querySelectorAll("#atlas .seg[data-akey]").forEach((box) => {
         box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.val === String(val[box.dataset.akey]))));
       });
       $("atlasSizeNote").textContent = ATLAS_SIZES[this.cfg.size].note;
+      $("atlasHemiNote").textContent = HEMISPHERES[this.cfg.hemisphere].note;
+      $("atlasOre").hidden = this.layer !== "ores";
+      this.legend();
+    }
+    legend() {
+      const sw = (c, l) => `<span><i style="background:rgb(${c.join(",")})"></i>${esc(l)}</span>`;
+      let html = "";
+      if (this.layer === "plates") html = sw([200, 190, 150], "\u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432\u0430\u044F \u043A\u043E\u0440\u0430") + sw([50, 62, 96], "\u043E\u043A\u0435\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0430\u044F \u043A\u043E\u0440\u0430") + BOUNDARIES.all().map((b) => sw(b.color, b.label)).join("") + sw([255, 60, 30], "\u0436\u0438\u0432\u043E\u0439 \u0432\u0443\u043B\u043A\u0430\u043D");
+      else if (this.layer === "rocks") html = Object.entries(ROCK_KINDS).map(([k, l]) => `<b>${l}:</b> ` + ROCKS.filter((r) => r.kind === k).map((r) => sw(r.color, r.label)).join("")).join("");
+      else if (this.layer === "ores") {
+        const o = ORE_GENESIS.get(this.ore);
+        html = sw([70, 72, 66], "\u043D\u0435\u0442") + sw(mix([70, 72, 66], o.color, 0.45), "\u0431\u0435\u0434\u043D\u043E") + sw(mix([70, 72, 66], o.color, 0.75), "\u0435\u0441\u0442\u044C") + sw(o.color, "\u0431\u043E\u0433\u0430\u0442\u043E");
+      } else if (this.layer === "temp") html = sw(HEAT[0][1], "\u221230\xB0") + sw(HEAT[1][1], "\u22124\xB0") + sw(HEAT[2][1], "+9\xB0") + sw(HEAT[3][1], "+35\xB0");
+      else html = sw(DEEP[0][1], "\u0433\u043B\u0443\u0431\u043E\u043A\u043E\u0435 \u043C\u043E\u0440\u0435") + sw(DEEP[1][1], "\u043C\u0435\u043B\u043A\u043E\u0432\u043E\u0434\u044C\u0435") + sw(LAND[0][1], "\u043D\u0438\u0437\u0438\u043D\u044B") + sw(LAND[2][1], "\u043D\u0430\u0433\u043E\u0440\u044C\u044F") + sw(LAND[4][1], "\u0432\u0435\u0440\u0448\u0438\u043D\u044B");
+      $("atlasLegend").innerHTML = html;
     }
     generate() {
       clearTimeout(this.timer);
@@ -14254,21 +14824,53 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     // the colour of one cell on the chosen layer; a field that is not made yet shows as the dark sea
     color(a, i) {
-      const { elev, temp, land } = a.f;
-      if (!elev) return [12, 15, 10];
-      if (this.layer === "temp" && temp) return ramp(HEAT, (temp[i] + 30) / 65);
-      if (!land) return ramp(LAND, elev[i]);
-      return land[i] ? ramp(LAND, (elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, elev[i] / (a.sea || 1));
+      const f = a.f;
+      if (!f.elev) {
+        if (f.plate && this.layer === "plates") return this.plateColor(a, i);
+        return [12, 15, 10];
+      }
+      const base = f.land ? f.land[i] ? ramp(LAND, (f.elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, f.elev[i] / (a.sea || 1)) : ramp(LAND, f.elev[i]);
+      switch (this.layer) {
+        case "plates":
+          return this.plateColor(a, i);
+        case "rocks":
+          return f.rock ? f.land[i] ? ROCK_BY_CODE[f.rock[i]].color : mix(ROCK_BY_CODE[f.rock[i]].color, [14, 26, 50], 0.7) : base;
+        case "ores": {
+          const pot = f[`ore_${this.ore}`];
+          if (!pot) return base;
+          const o = ORE_GENESIS.get(this.ore), lv = o.levels, v = pot[i], grey = [70, 72, 66];
+          if (!f.land[i]) return mix(base, [8, 12, 20], 0.5);
+          return v < lv[0] ? grey : v < lv[1] ? mix(grey, o.color, 0.45) : v < lv[2] ? mix(grey, o.color, 0.75) : o.color;
+        }
+        case "temp":
+          return f.temp ? ramp(HEAT, (f.temp[i] + 30) / 65) : base;
+        default:
+          return base;
+      }
+    }
+    plateColor(a, i) {
+      const f = a.f, p = a.plates[f.plate[i]];
+      if (f.bnd && f.bnd[i]) return BOUNDARY_BY_CODE[f.bnd[i]].color;
+      if (f.volc && f.volc[i] > 0.6) return [255, 60, 30];
+      const hue = p.id * 0.618034 % 1, c = [0, 2.1, 4.2].map((o) => 115 + Math.cos(hue * 6.283 + o) * 55);
+      return f.crust && f.crust[i] > 0.5 ? mix(c, [200, 190, 150], 0.45) : mix(c, [24, 32, 60], 0.55);
+    }
+    // light from the north-west on the relief, so ranges read at a glance
+    shade(a, i) {
+      const e = a.f.elev;
+      if (!e || !a.f.land || !a.f.land[i] || this.layer === "plates") return 1;
+      const x = i % a.w, y = i / a.w | 0, l = e[y * a.w + Math.max(0, x - 1)], t = e[Math.max(0, y - 1) * a.w + x];
+      return Math.max(0.6, Math.min(1.35, 1 + (l + t - 2 * e[i]) * -14 * Math.min(a.w, a.h) / 192));
     }
     draw() {
       const a = this.atlas;
       if (!a) return;
       const px = $("atlasMap").getContext("2d"), img = px.createImageData(a.w, a.h), d = img.data;
       for (let i = 0; i < a.n; i++) {
-        const c = this.color(a, i), o = i * 4;
-        d[o] = c[0];
-        d[o + 1] = c[1];
-        d[o + 2] = c[2];
+        const c = this.color(a, i), s = this.shade(a, i), o = i * 4;
+        d[o] = c[0] * s;
+        d[o + 1] = c[1] * s;
+        d[o + 2] = c[2] * s;
         d[o + 3] = 255;
       }
       px.putImageData(img, 0, 0);
@@ -14290,9 +14892,19 @@ dd.q4{color:#c58cff;font-weight:600}
       const x = Math.floor((e.clientX - r.left) / r.width * a.w), y = Math.floor((e.clientY - r.top) / r.height * a.h);
       if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
       const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
+      if (f.plate) parts.push(`\u043F\u043B\u0438\u0442\u0430 ${f.plate[i] + 1}, \u043A\u043E\u0440\u0430 ${f.crust[i] > 0.5 ? "\u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432\u0430\u044F" : "\u043E\u043A\u0435\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0430\u044F"}`);
+      if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
       if (f.land) parts.push(f.land[i] ? "\u0441\u0443\u0448\u0430" : "\u043C\u043E\u0440\u0435");
       parts.push(`\u0432\u044B\u0441\u043E\u0442\u0430 ${f.elev[i].toFixed(3)}`);
       if (f.temp) parts.push(`${f.temp[i].toFixed(1)}\xB0`);
+      const geo = cellGeology(a, i);
+      if (geo.rock) parts.push(geo.rock.label);
+      if (geo.rock && f.land[i]) {
+        const ores2 = ORE_GENESIS.all().filter((o) => o.region !== "goldVein" && o.region !== "magma" && geo.ores[o.region] > 0).map((o) => `${o.label} ${LEVEL_WORDS[geo.ores[o.region]]}`);
+        if (geo.flags.goldVein) ores2.push("\u0437\u043E\u043B\u043E\u0442\u0430\u044F \u0436\u0438\u043B\u0430");
+        if (geo.flags.magma) ores2.push("\u043C\u0430\u0433\u043C\u0430");
+        if (ores2.length) parts.push(ores2.join(", "));
+      }
       $("atlasReadout").textContent = parts.join(" \xB7 ");
     }
   };
@@ -14369,9 +14981,9 @@ dd.q4{color:#c58cff;font-weight:600}
     // rebuilt for each world: the beasts listed are the ones that live in its land
     buildLegend(w) {
       const dot2 = (c, t) => `<span><i style="background:${c}"></i>${t}</span>`;
-      const ores = ORES.all().map((o) => dot2(`rgb(${o.tint.join(",")})`, o.label)).join("");
+      const ores2 = ORES.all().map((o) => dot2(`rgb(${o.tint.join(",")})`, o.label)).join("");
       $("legend").innerHTML = dot2("var(--colony)", "\u043A\u043E\u043B\u043E\u043D\u0438\u0441\u0442\u044B") + dot2("var(--raider)", "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438") + FACTIONS.filter((f) => f.legend).map((f) => dot2(f.color, f.legend)).join("") + // only the beasts that live in this land (and those that come everywhere)
-      SPECIES.filter((s) => s.look.color && !s.sentient && (!s.habitat || !w || faunaLevel(w, s.id) > 0) && !s.undead).map((s) => dot2(s.look.color, s.legend || s.label)).join("") + dot2("var(--food)", "\u044F\u0433\u043E\u0434\u044B") + ores + dot2("var(--ember)", "\u043E\u0433\u043E\u043D\u044C \u0438 \u043A\u043E\u0441\u0442\u0451\u0440") + `<span>\u043F\u0443\u043D\u043A\u0442\u0438\u0440 \u2014 \u0433\u0440\u0430\u043D\u0438\u0446\u0430 \u0437\u043E\u043D\u044B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044F</span><span>\u043E\u0431\u0432\u043E\u0434\u043A\u0430 \u2014 \u0431\u0440\u043E\u043D\u044F: ${ITEMS.filter((d) => d.slot === "body" && d.color).map((d) => d.short).join(", ")} (\u0441\u0432\u043E\u0438\u043C \u0446\u0432\u0435\u0442\u043E\u043C)</span>`;
+      SPECIES.filter((s) => s.look.color && !s.sentient && (!s.habitat || !w || faunaLevel(w, s.id) > 0) && !s.undead).map((s) => dot2(s.look.color, s.legend || s.label)).join("") + dot2("var(--food)", "\u044F\u0433\u043E\u0434\u044B") + ores2 + dot2("var(--ember)", "\u043E\u0433\u043E\u043D\u044C \u0438 \u043A\u043E\u0441\u0442\u0451\u0440") + `<span>\u043F\u0443\u043D\u043A\u0442\u0438\u0440 \u2014 \u0433\u0440\u0430\u043D\u0438\u0446\u0430 \u0437\u043E\u043D\u044B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044F</span><span>\u043E\u0431\u0432\u043E\u0434\u043A\u0430 \u2014 \u0431\u0440\u043E\u043D\u044F: ${ITEMS.filter((d) => d.slot === "body" && d.color).map((d) => d.short).join(", ")} (\u0441\u0432\u043E\u0438\u043C \u0446\u0432\u0435\u0442\u043E\u043C)</span>`;
     }
     // ── journal filters: levels and topics can be switched off; remembered in this browser
     loadFilter() {
@@ -14468,20 +15080,20 @@ dd.q4{color:#c58cff;font-weight:600}
       if (c) {
         const units = goodsUnits(c.goods), cap = c.capacity;
         const lines = [];
-        for (const g2 of c.goods) {
-          const same = g2.kind === "item" && lines.find((x) => x.g.kind === "item" && x.g.type === g2.type && (x.g.q || 0) === (g2.q || 0));
+        for (const g3 of c.goods) {
+          const same = g3.kind === "item" && lines.find((x) => x.g.kind === "item" && x.g.type === g3.type && (x.g.q || 0) === (g3.q || 0));
           if (same) same.n++;
-          else lines.push({ g: g2, n: g2.kind === "res" ? g2.n : 1 });
+          else lines.push({ g: g3, n: g3.kind === "res" ? g3.n : 1 });
         }
         const tb = c.terms?.b || 0;
-        const rows = lines.sort((x, y) => x.g.kind === y.g.kind ? askPrice(y.g, tb) - askPrice(x.g, tb) : x.g.kind === "item" ? -1 : 1).map(({ g: g2, n }) => {
-          const p = askPrice(g2, tb), can = gold >= p;
-          return `<div class="wrow${g2.kind === "item" && g2.q ? " fine" : ""}"><span>${esc(goodsLabel(g2))}${n > 1 || g2.kind === "res" ? " \xD7" + n : ""}</span><b class="${can ? "" : "dear"}">${p} \u0437\u043E\u043B.${n > 1 ? " / \u0448\u0442." : ""}</b></div>`;
+        const rows = lines.sort((x, y) => x.g.kind === y.g.kind ? askPrice(y.g, tb) - askPrice(x.g, tb) : x.g.kind === "item" ? -1 : 1).map(({ g: g3, n }) => {
+          const p = askPrice(g3, tb), can = gold >= p;
+          return `<div class="wrow${g3.kind === "item" && g3.q ? " fine" : ""}"><span>${esc(goodsLabel(g3))}${n > 1 || g3.kind === "res" ? " \xD7" + n : ""}</span><b class="${can ? "" : "dear"}">${p} \u0437\u043E\u043B.${n > 1 ? " / \u0448\u0442." : ""}</b></div>`;
         }).join("");
         goods = `<h2>\u041A\u0443\u043F\u0435\u0446 ${esc(c.name)}</h2><p class="small muted">\u0421\u0435\u0439\u0447\u0430\u0441: ${phase[c.phase]}. \u0413\u0440\u0443\u0437 ${units} \u0438\u0437 ${cap} \u043C\u0435\u0441\u0442, \u0432 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u0435 \u0443 \u043A\u0443\u043F\u0446\u0430 ${Math.floor(c.purse)} \u0437\u043E\u043B. \u041A\u0443\u043F\u0435\u0446 \u043F\u0440\u043E\u0441\u0438\u0442 \xD7${+(TRADE.ask - tb).toFixed(2)} \u043E\u0442 \u0446\u0435\u043D\u044B \u0438 \u043F\u043B\u0430\u0442\u0438\u0442 \xD7${+(TRADE.bid + tb).toFixed(2)}${c.terms?.name ? ` (\u0442\u043E\u0440\u0433\u043E\u0432\u0430\u043B${c.terms.f ? "\u0430\u0441\u044C" : "\u0441\u044F"} ${esc(c.terms.name)})` : ""}.</p><div class="wares">${rows || '<p class="muted small">\u0412\u0441\u0451 \u0440\u0430\u0441\u043F\u0440\u043E\u0434\u0430\u043D\u043E.</p>'}</div>`;
       }
       const deals = w.trade.deals.map((d) => {
-        const list = (xs) => xs.map(([l, n, g2]) => `${esc(l)}${n > 1 ? " \xD7" + n : ""}`).join(", ");
+        const list = (xs) => xs.map(([l, n, g3]) => `${esc(l)}${n > 1 ? " \xD7" + n : ""}`).join(", ");
         return `<li><b>\u0414\u0435\u043D\u044C ${d.day}, ${esc(d.trader)}</b>${d.by ? ` (\u043F\u0435\u0440\u0435\u0433\u043E\u0432\u043E\u0440\u0449\u0438\u043A ${esc(d.by)}, ${d.b > 0 ? "+" : ""}${Math.round((d.b || 0) * 100)}%)` : ""}: ${d.sold.length ? "\u043F\u0440\u043E\u0434\u0430\u043B\u0438 " + list(d.sold) + ` (+${d.earned})` : "\u043F\u0440\u043E\u0434\u0430\u0442\u044C \u0431\u044B\u043B\u043E \u043D\u0435\u0447\u0435\u0433\u043E"}; ${d.bought.length ? "\u043A\u0443\u043F\u0438\u043B\u0438 " + list(d.bought) + ` (\u2212${d.spent})` : "\u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043A\u0443\u043F\u0438\u043B\u0438"}. \u0412 \u043A\u0430\u0437\u043D\u0435 ${Math.floor(d.gold)}.</li>`;
       }).join("");
       this.set("tradeBox", `${head}${goods}<h2>\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0441\u0434\u0435\u043B\u043A\u0438</h2>${deals ? `<ul class="deals">${deals}</ul>` : '<p class="muted small">\u0422\u043E\u0440\u0433\u043E\u0432\u043B\u0438 \u0435\u0449\u0451 \u043D\u0435 \u0431\u044B\u043B\u043E. \u041A\u0430\u0440\u0430\u0432\u0430\u043D\u044B \u0445\u043E\u0434\u044F\u0442 \u043F\u043E \u0418\u043C\u043F\u0435\u0440\u0441\u043A\u043E\u043C\u0443 \u0442\u0440\u0430\u043A\u0442\u0443 \u0441 10-\u0433\u043E \u0434\u043D\u044F, \u0440\u0430\u0437 \u0432 10 \u0434\u043D\u0435\u0439, \u0438 \u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u043D\u0435 \u0432\u0441\u0435\u0433\u0434\u0430.</p>'}`);
@@ -14543,12 +15155,12 @@ dd.q4{color:#c58cff;font-weight:600}
     // what the land holds (data/regions.js): ores, gold sand, beasts, wild beds
     regionText(w) {
       const R = region(w), word = (v) => LEVEL_WORDS[v] ?? v;
-      const ores = ORES.filter((o) => !o.event).map((o) => `${o.label} \u2014 ${word(R.ores[o.id] ?? 0)}`);
-      ores.push(`\u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u044F\u0445 \u2014 ${word(R.placer)}`);
-      if (R.goldVein) ores.push("\u0431\u044B\u0432\u0430\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u0430\u044F \u0436\u0438\u043B\u0430");
+      const ores2 = ORES.filter((o) => !o.event).map((o) => `${o.label} \u2014 ${word(R.ores[o.id] ?? 0)}`);
+      ores2.push(`\u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u044F\u0445 \u2014 ${word(R.placer)}`);
+      if (R.goldVein) ores2.push("\u0431\u044B\u0432\u0430\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u0430\u044F \u0436\u0438\u043B\u0430");
       const biomes = Object.entries(R.biomes || {}).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
       const beasts = regionFauna(w).map(([sp, v]) => `${sp.label} (${faunaWord(v)})`);
-      return `<b>${esc(R.label)}</b>: ${esc(R.note || "")}<br>\u0437\u0435\u043C\u043B\u0438: ${biomes.join(", ")}<br>${ores.join(", ")}<br>\u0436\u0438\u0432\u0443\u0442: ${beasts.join(", ")}${R.magma ? "<br>\u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043C\u0430\u0433\u043C\u0430" : ""}`;
+      return `<b>${esc(R.label)}</b>: ${esc(R.note || "")}<br>\u0437\u0435\u043C\u043B\u0438: ${biomes.join(", ")}<br>${ores2.join(", ")}<br>\u0436\u0438\u0432\u0443\u0442: ${beasts.join(", ")}${R.magma ? "<br>\u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043C\u0430\u0433\u043C\u0430" : ""}`;
     }
     // the arrival is either still on its way (time left) or due and waiting for a reason
     settlerText(w) {
@@ -14651,14 +15263,14 @@ dd.q4{color:#c58cff;font-weight:600}
     // one line under the map: the cell under the cursor
     readout(w, hoverCell) {
       if (hoverCell < 0) return;
-      const g2 = w.grid, i = hoverCell, d = w.nav.get("camp")[i];
-      const lake = g2.lake[i] >= 0 ? w.lakes[g2.lake[i]] : null;
-      const ore = oreOf(w, i) ? ` \xB7 ${oreOf(w, i).label} ${Math.ceil(g2.oreLeft[i])}` : "";
+      const g3 = w.grid, i = hoverCell, d = w.nav.get("camp")[i];
+      const lake = g3.lake[i] >= 0 ? w.lakes[g3.lake[i]] : null;
+      const ore = oreOf(w, i) ? ` \xB7 ${oreOf(w, i).label} ${Math.ceil(g3.oreLeft[i])}` : "";
       if (lake) {
-        $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) \u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A \xB7 ${lake.cap ? `\u0440\u044B\u0431\u044B ${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E, \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"} \xB7 ${g2.temp[i].toFixed(1)} \xB0C`;
+        $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) \u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A \xB7 ${lake.cap ? `\u0440\u044B\u0431\u044B ${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E, \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"} \xB7 ${g3.temp[i].toFixed(1)} \xB0C`;
         return;
       }
-      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g2.terr[i]].label}${ore} \xB7 ${g2.temp[i].toFixed(1)} \xB0C \xB7 \u043F\u043E\u0447\u0432\u0430 ${Math.round(g2.fert[i] * 100)}% \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g2.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g2.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g2.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g2.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g2.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
+      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g3.terr[i]].label}${ore} \xB7 ${g3.temp[i].toFixed(1)} \xB0C \xB7 \u043F\u043E\u0447\u0432\u0430 ${Math.round(g3.fert[i] * 100)}% \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g3.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g3.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g3.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g3.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g3.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
     }
     // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
     renderSelection(w, view2) {
@@ -14735,17 +15347,17 @@ dd.q4{color:#c58cff;font-weight:600}
       <div class="pc-grid bgrid"><section><dl class="kv">${rows.join("")}</dl></section>${extra}</div>`;
     }
     cellHtml(w, i) {
-      const g2 = w.grid, x = i % w.w, y = i / w.w | 0, d = w.nav.get("camp")[i];
+      const g3 = w.grid, x = i % w.w, y = i / w.w | 0, d = w.nav.get("camp")[i];
       const close2 = '<button type="button" class="pc-close" data-close aria-label="\u0417\u0430\u043A\u0440\u044B\u0442\u044C">\xD7</button>';
-      const lake = g2.lake?.[i] >= 0 ? w.lakes[g2.lake[i]] : null;
-      const rows = [`<dt>\u041C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C</dt><dd>${lake ? `\u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A` : BY_CODE[g2.terr[i]].label}</dd>`];
-      if (oreOf(w, i)) rows.push(`<dt>\u0420\u0443\u0434\u0430</dt><dd>${oreOf(w, i).label}, \u0435\u0449\u0451 ${Math.ceil(g2.oreLeft[i])}</dd>`);
+      const lake = g3.lake?.[i] >= 0 ? w.lakes[g3.lake[i]] : null;
+      const rows = [`<dt>\u041C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C</dt><dd>${lake ? `\u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A` : BY_CODE[g3.terr[i]].label}</dd>`];
+      if (oreOf(w, i)) rows.push(`<dt>\u0420\u0443\u0434\u0430</dt><dd>${oreOf(w, i).label}, \u0435\u0449\u0451 ${Math.ceil(g3.oreLeft[i])}</dd>`);
       if (lake) rows.push(`<dt>\u0420\u044B\u0431\u0430</dt><dd>${lake.cap ? `${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"}</dd>`);
-      if (g2.wood[i] > 0) rows.push(`<dt>\u0414\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430</dt><dd>${g2.wood[i].toFixed(2)}</dd>`);
-      if (g2.bush[i]) rows.push(`<dt>\u042F\u0433\u043E\u0434\u044B</dt><dd>${g2.food[i].toFixed(2)}</dd>`);
-      if (WALKABLE[g2.terr[i]]) rows.push(`<dt>\u041F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u0438\u0435</dt><dd>${Math.round(g2.fert[i] * 100)}% \xB7 ${soilWord(g2.fert[i])}</dd>`);
-      rows.push(`<dt>\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430</dt><dd>${g2.temp[i].toFixed(1)} \xB0C</dd>`, `<dt>\u041F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F</dt><dd>${d >= 1e8 ? "\u043D\u0435\u0442" : Math.round(d)}</dd>`);
-      if (g2.fire[i] > 0) rows.push(`<dt>\u041E\u0433\u043E\u043D\u044C</dt><dd>${g2.fire[i].toFixed(2)}</dd>`);
+      if (g3.wood[i] > 0) rows.push(`<dt>\u0414\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430</dt><dd>${g3.wood[i].toFixed(2)}</dd>`);
+      if (g3.bush[i]) rows.push(`<dt>\u042F\u0433\u043E\u0434\u044B</dt><dd>${g3.food[i].toFixed(2)}</dd>`);
+      if (WALKABLE[g3.terr[i]]) rows.push(`<dt>\u041F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u0438\u0435</dt><dd>${Math.round(g3.fert[i] * 100)}% \xB7 ${soilWord(g3.fert[i])}</dd>`);
+      rows.push(`<dt>\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430</dt><dd>${g3.temp[i].toFixed(1)} \xB0C</dd>`, `<dt>\u041F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F</dt><dd>${d >= 1e8 ? "\u043D\u0435\u0442" : Math.round(d)}</dd>`);
+      if (g3.fire[i] > 0) rows.push(`<dt>\u041E\u0433\u043E\u043D\u044C</dt><dd>${g3.fire[i].toFixed(2)}</dd>`);
       for (const gr of w.graves || []) if (gr.x === x && gr.y === y) rows.push(`<dt>\u041C\u043E\u0433\u0438\u043B\u0430</dt><dd>${esc(gr.name)} \xB7 \u0443\u043C\u0435\u0440${gr.f ? "\u043B\u0430" : ""} \u0432 \u0434\u0435\u043D\u044C ${dayOf(gr.died) + 1}${gr.rite ? ", \u043F\u043E\u0445\u043E\u0440\u043E\u043D\u0435\u043D" + (gr.f ? "\u0430" : "") + " \u0441 \u043E\u0431\u0440\u044F\u0434\u043E\u043C" : ""}</dd>`);
       for (const c of w.corpses || []) if ((c.x | 0) === x && (c.y | 0) === y) rows.push(`<dt>\u0422\u0435\u043B\u043E</dt><dd>${esc(c.name)}, \u0435\u0449\u0451 \u043D\u0435 \u043F\u043E\u0445\u043E\u0440\u043E\u043D\u0435\u043D${c.f ? "\u0430" : ""}</dd>`);
       return `<div class="pc-head"><h3>\u041A\u043B\u0435\u0442\u043A\u0430 ${x}, ${y}</h3>${close2}</div><dl class="kv">${rows.join("")}</dl>`;
@@ -14897,13 +15509,13 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // a short downpour in a radius of 7 cells
     rain(w, cx, cy) {
-      const g2 = w.grid, amb = ambientTemp(w);
+      const g3 = w.grid, amb = ambientTemp(w);
       for (let y = cy - 7; y <= cy + 7; y++) for (let x = cx - 7; x <= cx + 7; x++) {
         if (!inBounds(w, x, y) || (x - cx) ** 2 + (y - cy) ** 2 > 49) continue;
         const i = y * w.w + x;
-        g2.fire[i] = 0;
-        g2.temp[i] = Math.min(g2.temp[i], amb - 2);
-        g2.smoke[i] *= 0.3;
+        g3.fire[i] = 0;
+        g3.temp[i] = Math.min(g3.temp[i], amb - 2);
+        g3.smoke[i] *= 0.3;
       }
       w.nav.dirty("fire");
       log(w, "\u041F\u0440\u043E\u0448\u0451\u043B \u043A\u043E\u0440\u043E\u0442\u043A\u0438\u0439 \u043B\u0438\u0432\u0435\u043D\u044C.", "weather");
@@ -15204,8 +15816,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.39.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a2b24d0" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.40.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 8d3bd4d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

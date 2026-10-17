@@ -2,30 +2,36 @@
 // ones made, writes its own and returns a line for the world's chronicle. Each stage draws from its
 // own random stream (atlas/generate.js), so a stage can be reworked without changing the others.
 //
-// For now the stages are placeholders that give the polygon a map to look at: noise relief, a sea
-// level and temperature. The plan (docs/WORLD.md) replaces relief with plates, adds rocks, winds and
-// rain, erosion with rivers and lakes, soils, biomes and forests, and then the eras of history.
+// Done: plates → boundaries and hot spots → relief → sea level → rocks → ores → temperature.
+// Next (docs/WORLD.md): winds and rain, erosion with rivers and lakes, soils, biomes, forests, then
+// the eras of history.
 import {Registry} from '../core/registry.js';
-import {fbm} from './noise.js';
+import {plural} from '../core/util.js';
 import {ATLAS_LAND} from '../data/atlas.js';
+import {BOUNDARIES, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
+import {makePlates, tectonics, relief} from './tectonics.js';
+import {rocks, ores} from './geology.js';
+import {warmth} from './latitude.js';
 
 export const ATLAS_STAGES = new Registry('atlasStage');
 
-const smooth = t => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+const pct = (v, n) => `${Math.round(v / n * 100)}%`;
 
 ATLAS_STAGES.registerAll([
-  {id: 'relief', label: 'Рельеф', era: 'geology', note: 'заглушка до тектоники плит: шум, прижатый к океану по краям',
+  {id: 'plates', label: 'Плиты', era: 'geology', note: 'кора раскалывается на плиты; материковые ближе к середине мира',
     run(a, rnd) {
-      const {w, h} = a, base = Math.max(w, h) / 4;
-      const n = fbm(rnd, w, h, base, 7, 0.5), elev = new Float32Array(a.n);
-      const edge = Math.min(w, h) * 0.14;
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        const i = y * w + x, d = Math.min(x, y, w - 1 - x, h - 1 - y);
-        elev[i] = n[i] * (0.25 + 0.75 * smooth(d / edge));
-      }
-      a.f.elev = elev;
-      return 'Из пучины поднялась твердь.';
+      const p = makePlates(a, rnd), c = p.filter(x => x.cont).length;
+      return `Твердь раскололась на ${p.length} ${plural(p.length, 'плиту', 'плиты', 'плит')}: ${c} ${plural(c, 'материковую', 'материковые', 'материковых')} и ${p.length - c} ${plural(p.length - c, 'океаническую', 'океанические', 'океанических')}.`;
     }},
+  {id: 'tectonics', label: 'Границы плит', era: 'geology', note: 'столкновения, дуги, желоба, рифты, срединные хребты, сдвиги и горячие точки',
+    run(a, rnd) {
+      // the longest seams first, at most four of them
+      const t = tectonics(a, rnd), parts = BOUNDARIES.filter(b => t[b.id]).sort((x, y) => t[y.id] - t[x.id]).slice(0, 4).map(b => b.chron);
+      const hs = a.hotspots.length;
+      return `Плиты пришли в движение: ${parts.join('; ')}. Из недр ${plural(hs, 'пробилась', 'пробились', 'пробились')} ${hs} ${plural(hs, 'горячая точка', 'горячие точки', 'горячих точек')}, за ${plural(hs, 'ней', 'ними', 'ними')} тянутся цепи потухших вулканов.`;
+    }},
+  {id: 'relief', label: 'Рельеф', era: 'geology', note: 'дно плиты + поднятие от границ + пологие волны и мелкие неровности',
+    run(a, rnd) { relief(a, rnd); return 'Поднялись хребты, легли равнины, разверзлись желоба.'; }},
   {id: 'sea', label: 'Уровень моря', era: 'geology', note: 'море ровно настолько, чтобы суши осталась выбранная доля',
     run(a) {
       const share = ATLAS_LAND[a.cfg.land].share;
@@ -34,21 +40,29 @@ ATLAS_STAGES.registerAll([
       const land = new Uint8Array(a.n); let cnt = 0;
       for (let i = 0; i < a.n; i++) if (a.f.elev[i] > a.sea) { land[i] = 1; cnt++; }
       a.f.land = land;
-      return `Воды отступили: суша заняла ${Math.round(cnt / a.n * 100)}% мира.`;
+      return `Воды отступили: суша заняла ${pct(cnt, a.n)} мира.`;
     }},
-  {id: 'temperature', label: 'Температура', era: 'geology', note: 'север холодный, юг жаркий; в горах холоднее на 6,5° на километр',
+  {id: 'rocks', label: 'Породы', era: 'geology', note: 'магматические у вулканов и в корнях гор, метаморфические в швах и щитах, осадочные в низинах и мелких морях',
+    run(a, rnd) {
+      const c = rocks(a, rnd), land = Object.values(c).reduce((s, v) => s + v, 0) || 1;
+      return 'Застыли породы. На суше ' + Object.entries(ROCK_KINDS).map(([k, l]) => `${l} — ${pct(c[k] || 0, land)}`).join(', ') + '.';
+    }},
+  {id: 'ores', label: 'Руды', era: 'geology', note: 'руды следуют породам и тектонике и собираются в рудные районы',
+    run(a, rnd) {
+      const r = ores(a, rnd), top = ORE_GENESIS.all().filter(o => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map(o => o.label);
+      return top.length ? `В недрах налились жилы. Больше всего богатых мест: ${top.slice(0, 3).join(', ')}.` : 'В недрах налились жилы, но богатых мест нет.';
+    }},
+  {id: 'temperature', label: 'Температура', era: 'geology', note: 'по широте и высоте: в горах холоднее на 6,5° на километр',
     run(a) {
-      // one hemisphere: from polar cold at the top edge to the tropics at the bottom (provisional)
-      const {w, h} = a, temp = new Float32Array(a.n), top = a.cfg.peakKm ?? 4;
+      const {w, h} = a, temp = new Float32Array(a.n), top = a.cfg.peakKm ?? 5;
       for (let y = 0; y < h; y++) {
-        const lat = y / (h - 1), sea = -18 + 46 * lat;
+        const sea = -18 + 46 * warmth(a, y);
         for (let x = 0; x < w; x++) {
           const i = y * w + x, e = a.f.elev[i];
-          const km = e > a.sea ? (e - a.sea) / (1 - a.sea) * top : 0;
-          temp[i] = sea - 6.5 * km;
+          temp[i] = sea - 6.5 * (e > a.sea ? (e - a.sea) / (1 - a.sea) * top : 0);
         }
       }
       a.f.temp = temp;
-      return 'Пролегли пояса холода и зноя.';
+      return a.cfg.hemisphere === 'equator' ? 'Легли пояса зноя посередине и холода по краям.' : 'Легли пояса: холод на севере, зной на юге.';
     }},
 ]);

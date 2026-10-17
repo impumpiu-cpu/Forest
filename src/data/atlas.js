@@ -20,4 +20,4 @@ export const ATLAS_LAND = [
 // History before the landing will run 50–250 years in steps of one season.
 export const SEASON_DAYS = 30, SEASONS_PER_YEAR = 4, YEAR_DAYS = SEASON_DAYS * SEASONS_PER_YEAR;
 
-export const DEFAULT_ATLAS_CFG = {seed: '1', size: 'medium', land: 1};
+export const DEFAULT_ATLAS_CFG = {seed: '1', size: 'medium', land: 1, plates: 1, hemisphere: 'north'};
