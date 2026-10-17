@@ -159,6 +159,8 @@ export function stepPeoples(a, rnd, say) {
   for (const pe of a.peoples) for (const t of a.towns) if (t.alive && t.people === pe.id) { const j = faunaCell(a, t.i); pe.u[j] = Math.max(pe.u[j], Math.min(1, 0.45 + 0.15 * t.tier + 0.2 * townFx(t).prestige)); }
   // every people sees the others as they were at the start of the year, whatever the order
   const was = a.peoples.map(pe => Float32Array.from(pe.u));
+  // how the races stand to each other this year (the worst of their realms' dealings), once per pair
+  const compete = a.peoples.map(pe => a.peoples.map(o => (o === pe ? 0 : DIPLOMACY.compete[raceState(a, pe.id, o.id)])));
   for (const [pi, pe] of a.peoples.entries()) {
     const {P, K, u, mob} = pe;
     // Fisher–KPP: logistic growth where they live, spreading easiest through their own lands
@@ -172,7 +174,7 @@ export function stepPeoples(a, rnd, say) {
       }
       // other peoples on the same land push this one out, the more the worse they get on
       let push = 0;
-      for (const [oi, o] of a.peoples.entries()) if (o !== pe && was[oi][j] > 0) push += DIPLOMACY.compete[raceState(a, P.id, o.id)] * was[oi][j];
+      for (const [oi, o] of a.peoples.entries()) if (o !== pe && was[oi][j] > 0) push += compete[pi][oi] * was[oi][j];
       u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
     }
   }
