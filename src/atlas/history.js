@@ -1,19 +1,30 @@
 // The history of the world map: the clock (one season a step), the eras (data/history.js) and the
-// chronicle of what happens. For now only the wild era: the beasts as fields (atlas/fauna.js) and
-// the monsters' lairs (atlas/lairs.js). History draws from its own random stream, so the land made
-// before it does not change when history is reworked.
+// chronicle of what happens. The wild era: the beasts as fields (atlas/fauna.js) and the monsters'
+// lairs (atlas/lairs.js). The era of the elder peoples: elves and dwarves come, spread, found and grow
+// towns (atlas/peoples.js) and wear roads between them (atlas/roads.js); the wild goes on around them.
+// History draws from its own random stream, so the land made before it does not change when history
+// is reworked.
 import {mulberry, seedNumber} from '../core/rng.js';
 import {plural} from '../core/util.js';
 import {SEASONS} from '../data/seasons.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {ERAS, WILD_YEARS, FAUNA} from '../data/history.js';
+import {ELDER_YEARS} from '../data/peoples.js';
+import {ROADS} from '../data/roads.js';
+import {arrive, stepPeoples} from './peoples.js';
+import {wearRoads} from './roads.js';
 import {LAIRS} from '../data/lairs.js';
 import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 
 const SEASON_LIST = SEASONS.all();
 
-export const historyLength = a => WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR;
+// the eras with their length in seasons, in order
+export const eraPlan = a => [
+  {id: 'wild', seasons: WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR},
+  {id: 'elder', seasons: ELDER_YEARS[a.cfg.elder ?? 1].years * SEASONS_PER_YEAR},
+];
+export const historyLength = a => eraPlan(a).reduce((s, e) => s + e.seasons, 0);
 export const historyDone = a => !!a.hist && a.hist.step >= a.hist.end;
 export const seasonLabel = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 
@@ -60,6 +71,18 @@ export function stepHistory(a) {
       say(a, cold ? `Лютая зима ${wherePhrase(a, cell)}: звери гибли от мороза и бескормицы.` : `Засуха ${wherePhrase(a, cell)}: травы выгорели, звери гибли от бескормицы.`);
     }
   }
+  // the elder peoples: they come at the start of their era and live a year at a time from then on
+  const wildEnd = eraPlan(a)[0].seasons;
+  if (H.step === wildEnd) {
+    H.era = 'elder';
+    say(a, `Началась ${ERAS.get('elder').label.toLowerCase()}.`);
+    arrive(a, 'elder', rnd, t => say(a, t));
+  }
+  if (H.era === 'elder' && season === 'spring') {
+    stepPeoples(a, rnd, t => say(a, t));
+    if ((H.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
+      for (const [p, q] of wearRoads(a)) say(a, `Между ${p.name} и ${q.name} протоптали дорогу.`);
+  }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   // booms and busts of whole species against their own running average; the two most striking a year
@@ -80,8 +103,16 @@ export function stepHistory(a) {
   H.step++;
   H.season = (H.season + 1) % SEASON_LIST.length;
   if (H.season === 0) H.year++;
-  if (H.step >= H.end) {
+  if (H.step === wildEnd) {
     const alive = a.lairs.filter(l => l.alive).length, gone = a.lairs.length - alive;
     say(a, `Дикая эра подошла к концу: ${alive} ${plural(alive, 'логово', 'логова', 'логов')} чудовищ стоит, ${gone} ${plural(gone, 'опустело', 'опустели', 'опустели')}. Мир ждёт первых народов.`);
+  }
+  if (H.step >= H.end) {
+    const towns = a.towns.filter(t => t.alive), parts = [];
+    for (const pe of a.peoples) {
+      const mine = towns.filter(t => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));
+      parts.push(`${pe.P.label} — ${mine.length} ${plural(mine.length, 'город', 'города', 'городов')}, ${pop} ${plural(pop, 'житель', 'жителя', 'жителей')}`);
+    }
+    say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и орки.`);
   }
 }

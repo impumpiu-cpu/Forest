@@ -7,6 +7,7 @@ import {Registry} from '../core/registry.js';
 export const ERAS = new Registry('era');
 ERAS.registerAll([
   {id: 'wild', label: 'Дикая эра', note: 'мир без разумных народов: звери расселяются по своим биомам, хищники следуют за добычей, чудовища вьют логова и делят владения'},
+  {id: 'elder', label: 'Эпоха древних народов', note: 'приходят эльфы и гномы: их народы расползаются фронтом по своим краям, основывают города, строятся, наезживают дороги и теснят чудовищ'},
 ]);
 
 // How long the wild era lasts (the start setting «Дикая эра»), in years.

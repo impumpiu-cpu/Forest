@@ -385,6 +385,7 @@ dd.q4{color:#c58cff;font-weight:600}
       <div class="field"><span class="lbl">Плиты</span><div class="seg" data-akey="plates"></div></div>
       <div class="field"><span class="lbl">Широты</span><div class="seg wrapseg" data-akey="hemisphere"></div><small id="atlasHemiNote"></small></div>
       <div class="field"><span class="lbl">Дикая эра</span><div class="seg" data-akey="wild"></div><small id="atlasWildNote"></small></div>
+      <div class="field"><span class="lbl">Эпоха древних</span><div class="seg" data-akey="elder"></div><small id="atlasElderNote"></small></div>
       <div class="row actions">
         <button type="button" id="atlasGo" class="primary">Сотворить</button>
         <button type="button" id="atlasPause" hidden>Пауза</button>
@@ -3909,8 +3910,8 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/core/log.js
   var MAX_LINES = 150;
   function log(w, html, topic = "people", level) {
-    const lv = level || (LOG_TOPICS.has(topic) ? LOG_TOPICS.get(topic).level : "info");
-    w.logLines.unshift({ t: w.tick, html, when: clockStr(w.tick), topic, level: lv });
+    const lv2 = level || (LOG_TOPICS.has(topic) ? LOG_TOPICS.get(topic).level : "info");
+    w.logLines.unshift({ t: w.tick, html, when: clockStr(w.tick), topic, level: lv2 });
     if (w.logLines.length > MAX_LINES) w.logLines.pop();
     w.logVersion++;
   }
@@ -7967,12 +7968,12 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let yy = 0; yy < lh; yy++) for (let xx = 0; xx < lw; xx++) s += w.grid.fert[(y + yy) * w.w + x + xx];
     return s / (lw * lh);
   }
-  function findLot(w, d, near2 = d.near) {
-    if (near2 === "fish") {
+  function findLot(w, d, near3 = d.near) {
+    if (near3 === "fish") {
       const lot = findLot(w, d, "fish-shore");
       if (lot >= 0) return lot;
     }
-    const shore = near2 === "fish-shore", [lw, lh] = lotSize(d), R2 = shore ? 24 : d.soil ? 20 : 14;
+    const shore = near3 === "fish-shore", [lw, lh] = lotSize(d), R2 = shore ? 24 : d.soil ? 20 : 14;
     const g3 = w.grid;
     let best = -1, bs = Infinity;
     for (let y = w.camp.y - R2; y <= w.camp.y + R2 - 1; y++) for (let x = w.camp.x - R2; x <= w.camp.x + R2 - 1; x++) {
@@ -11216,11 +11217,11 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       const reach = food < P.hungry ? P.sight : food < P.sated ? P.obvious : 0;
       if (reach) {
-        const near2 = pack2.filter((m) => !huntOf(w, m) && m.stamina >= 0.6 && (m === a || dist5(m, a) < 15 && m.task?.id !== "feed" && m.needs.food < P.sated));
-        const prey = bestPrey(w, a, P, reach, near2.length);
-        if (prey && near2.includes(a)) {
-          const h = startHunt(w, near2, prey, "game");
-          for (const m of near2) {
+        const near3 = pack2.filter((m) => !huntOf(w, m) && m.stamina >= 0.6 && (m === a || dist5(m, a) < 15 && m.task?.id !== "feed" && m.needs.food < P.sated));
+        const prey = bestPrey(w, a, P, reach, near3.length);
+        if (prey && near3.includes(a)) {
+          const h = startHunt(w, near3, prey, "game");
+          for (const m of near3) {
             m.hunt = h.id;
             m.task = { id: "chase", target: prey };
           }
@@ -11796,8 +11797,8 @@ dd.q4{color:#c58cff;font-weight:600}
         for (const [r, n] of Object.entries(prey.trophy?.got || {})) load(a, r, n);
         const rare = trophyText(prey.trophy);
         if (rare) log(w, `<b>${esc(a.name)}</b> ${g(a, "\u0434\u043E\u0431\u044B\u043B", "\u0434\u043E\u0431\u044B\u043B\u0430")} ${SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label}.${rare}`, "wildlife");
-        const near2 = w.agents.some((o) => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
-        task.oneMore = a.carry.n < 8 && near2;
+        const near3 = w.agents.some((o) => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
+        task.oneMore = a.carry.n < 8 && near3;
         task.prey = null;
         task.age = 0;
       } else if (res === "miss" || res === "hit") {
@@ -12723,20 +12724,20 @@ dd.q4{color:#c58cff;font-weight:600}
         escapeHeat(w, a, 1.2);
         return;
       }
-      let near2 = null;
+      let near3 = null;
       for (const o of w.agents) if (o.faction === "colony" && !o.dead && !o.sleeping && dist7(o, a) < V.flee) {
-        near2 = o;
+        near3 = o;
         break;
       }
-      if (near2) {
-        if (dist7(near2, a) < 0.8 && w.rngs.wild() < V.caught) {
-          kill(w, a, "\u043F\u0430\u043B\u043A\u0438", near2);
-          if (!sp.resident && w.rngs.wild() < 0.3) log(w, `<b>${esc(near2.name)}</b> ${g(near2, "\u043F\u0440\u0438\u0431\u0438\u043B", "\u043F\u0440\u0438\u0431\u0438\u043B\u0430")} ${sp.labelAcc || sp.label} \u0443 \u043F\u0440\u0438\u043F\u0430\u0441\u043E\u0432.`, "wildlife");
+      if (near3) {
+        if (dist7(near3, a) < 0.8 && w.rngs.wild() < V.caught) {
+          kill(w, a, "\u043F\u0430\u043B\u043A\u0438", near3);
+          if (!sp.resident && w.rngs.wild() < 0.3) log(w, `<b>${esc(near3.name)}</b> ${g(near3, "\u043F\u0440\u0438\u0431\u0438\u043B", "\u043F\u0440\u0438\u0431\u0438\u043B\u0430")} ${sp.labelAcc || sp.label} \u0443 \u043F\u0440\u0438\u043F\u0430\u0441\u043E\u0432.`, "wildlife");
           return;
         }
         a.task = { id: "bolt" };
         a.waited = w.tick;
-        bolt(w, a, [near2], 1.3);
+        bolt(w, a, [near3], 1.3);
         return;
       }
       const t = a.task?.id === "nibble" ? a.task : null;
@@ -14211,7 +14212,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var SEASON_DAYS2 = 30;
   var SEASONS_PER_YEAR = 4;
   var YEAR_DAYS = SEASON_DAYS2 * SEASONS_PER_YEAR;
-  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1, plates: 1, hemisphere: "north", wild: 1 };
+  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1, plates: 1, hemisphere: "north", wild: 1, elder: 1 };
 
   // src/data/geology.js
   var PLATE_COUNTS = [
@@ -14427,8 +14428,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const minD = Math.sqrt(n / count2) * 0.6, seeds = [];
     for (let tries = 0; seeds.length < count2 && tries < count2 * 200; tries++) {
       const x = rnd() * w | 0, y = rnd() * h | 0;
-      const near2 = seeds.some(([sx, sy]) => (sx - x) ** 2 + (sy - y) ** 2 < (tries < count2 * 100 ? minD * minD : minD * minD / 4));
-      if (!near2) seeds.push([x, y]);
+      const near3 = seeds.some(([sx, sy]) => (sx - x) ** 2 + (sy - y) ** 2 < (tries < count2 * 100 ? minD * minD : minD * minD / 4));
+      if (!near3) seeds.push([x, y]);
     }
     const plates = seeds.map(([x, y], id) => {
       const ang = rnd() * Math.PI * 2, sp = 0.35 + 0.65 * rnd();
@@ -14728,7 +14729,7 @@ dd.q4{color:#c58cff;font-weight:600}
     a.f.flat = flat;
     return cnt;
   }
-  var levelOf = (pot, lv) => pot < lv[0] ? LEVELS[0] : pot < lv[1] ? LEVELS[1] : pot < lv[2] ? LEVELS[2] : LEVELS[3];
+  var levelOf = (pot, lv2) => pot < lv2[0] ? LEVELS[0] : pot < lv2[1] ? LEVELS[1] : pot < lv2[2] ? LEVELS[2] : LEVELS[3];
   function ores(a, rnd) {
     const { w, h, n } = a, rich = {}, f = a.f;
     const low = new Float32Array(n), warm = new Float32Array(n);
@@ -14760,10 +14761,10 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const o of ORE_GENESIS.all()) {
       const pot = a.f[`ore_${o.id}`];
       if (!pot) continue;
-      const lv = levelOf(pot[i], o.levels);
-      if (o.region === "goldVein" || o.region === "magma") out.flags[o.region] = lv >= 1;
-      else if (o.region === "placer") out.placer = lv;
-      else out.ores[o.region] = lv;
+      const lv2 = levelOf(pot[i], o.levels);
+      if (o.region === "goldVein" || o.region === "magma") out.flags[o.region] = lv2 >= 1;
+      else if (o.region === "placer") out.placer = lv2;
+      else out.ores[o.region] = lv2;
     }
     return out;
   }
@@ -14947,8 +14948,8 @@ dd.q4{color:#c58cff;font-weight:600}
     return ocean;
   }
   function seaLevel(a, share2) {
-    const z = a.f.elev, oceanShare = (lv) => {
-      const oc = oceanMask(a, z, lv);
+    const z = a.f.elev, oceanShare = (lv2) => {
+      const oc = oceanMask(a, z, lv2);
       let c = 0;
       for (let i = 0; i < a.n; i++) c += oc[i];
       return c / a.n;
@@ -15428,9 +15429,9 @@ dd.q4{color:#c58cff;font-weight:600}
       note: "\u0440\u0443\u0434\u044B \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u043F\u043E\u0440\u043E\u0434\u0430\u043C \u0438 \u0442\u0435\u043A\u0442\u043E\u043D\u0438\u043A\u0435 \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u044E\u0442\u0441\u044F \u0432 \u0440\u0443\u0434\u043D\u044B\u0435 \u0440\u0430\u0439\u043E\u043D\u044B",
       run(a, rnd) {
         const r = ores(a, rnd);
-        const pl = placer(a), lv = ORE_GENESIS.get("placer").levels;
+        const pl = placer(a), lv2 = ORE_GENESIS.get("placer").levels;
         r.placer = 0;
-        for (let i = 0; i < a.n; i++) if (a.f.land[i] && pl[i] >= lv[2]) r.placer++;
+        for (let i = 0; i < a.n; i++) if (a.f.land[i] && pl[i] >= lv2[2]) r.placer++;
         const top = ORE_GENESIS.all().filter((o) => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map((o) => o.label);
         return top.length ? `\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B. \u0411\u043E\u043B\u044C\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442: ${top.slice(0, 3).join(", ")}.` : "\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B, \u043D\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442 \u043D\u0435\u0442.";
       }
@@ -15476,7 +15477,8 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/data/history.js
   var ERAS = new Registry("era");
   ERAS.registerAll([
-    { id: "wild", label: "\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430", note: "\u043C\u0438\u0440 \u0431\u0435\u0437 \u0440\u0430\u0437\u0443\u043C\u043D\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432: \u0437\u0432\u0435\u0440\u0438 \u0440\u0430\u0441\u0441\u0435\u043B\u044F\u044E\u0442\u0441\u044F \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u0431\u0438\u043E\u043C\u0430\u043C, \u0445\u0438\u0449\u043D\u0438\u043A\u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u0437\u0430 \u0434\u043E\u0431\u044B\u0447\u0435\u0439, \u0447\u0443\u0434\u043E\u0432\u0438\u0449\u0430 \u0432\u044C\u044E\u0442 \u043B\u043E\u0433\u043E\u0432\u0430 \u0438 \u0434\u0435\u043B\u044F\u0442 \u0432\u043B\u0430\u0434\u0435\u043D\u0438\u044F" }
+    { id: "wild", label: "\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430", note: "\u043C\u0438\u0440 \u0431\u0435\u0437 \u0440\u0430\u0437\u0443\u043C\u043D\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432: \u0437\u0432\u0435\u0440\u0438 \u0440\u0430\u0441\u0441\u0435\u043B\u044F\u044E\u0442\u0441\u044F \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u0431\u0438\u043E\u043C\u0430\u043C, \u0445\u0438\u0449\u043D\u0438\u043A\u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u0437\u0430 \u0434\u043E\u0431\u044B\u0447\u0435\u0439, \u0447\u0443\u0434\u043E\u0432\u0438\u0449\u0430 \u0432\u044C\u044E\u0442 \u043B\u043E\u0433\u043E\u0432\u0430 \u0438 \u0434\u0435\u043B\u044F\u0442 \u0432\u043B\u0430\u0434\u0435\u043D\u0438\u044F" },
+    { id: "elder", label: "\u042D\u043F\u043E\u0445\u0430 \u0434\u0440\u0435\u0432\u043D\u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432", note: "\u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u044D\u043B\u044C\u0444\u044B \u0438 \u0433\u043D\u043E\u043C\u044B: \u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u044B \u0440\u0430\u0441\u043F\u043E\u043B\u0437\u0430\u044E\u0442\u0441\u044F \u0444\u0440\u043E\u043D\u0442\u043E\u043C \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u043A\u0440\u0430\u044F\u043C, \u043E\u0441\u043D\u043E\u0432\u044B\u0432\u0430\u044E\u0442 \u0433\u043E\u0440\u043E\u0434\u0430, \u0441\u0442\u0440\u043E\u044F\u0442\u0441\u044F, \u043D\u0430\u0435\u0437\u0436\u0438\u0432\u0430\u044E\u0442 \u0434\u043E\u0440\u043E\u0433\u0438 \u0438 \u0442\u0435\u0441\u043D\u044F\u0442 \u0447\u0443\u0434\u043E\u0432\u0438\u0449" }
   ]);
   var WILD_YEARS = [
     { years: 25, label: "\u041A\u043E\u0440\u043E\u0442\u043A\u0430\u044F" },
@@ -15503,6 +15505,133 @@ dd.q4{color:#c58cff;font-weight:600}
     boom: 1.25,
     bust: 0.6,
     cooldown: 12
+  };
+
+  // src/data/peoples.js
+  var WORLD_PEOPLES = new Registry("worldPeople");
+  WORLD_PEOPLES.registerAll([
+    {
+      id: "elves",
+      race: "elf",
+      label: "\u044D\u043B\u044C\u0444\u044B",
+      labelGen: "\u044D\u043B\u044C\u0444\u043E\u0432",
+      adj: "\u044D\u043B\u044C\u0444\u0438\u0439\u0441\u043A\u0438\u0439",
+      era: "elder",
+      color: [120, 200, 120],
+      arrive: { verb: "\u043F\u0440\u043E\u0431\u0443\u0434\u0438\u043B\u0438\u0441\u044C", groups: 2, where: "\u0432 \u0441\u0430\u043C\u043E\u0439 \u0434\u0440\u0435\u0432\u043D\u0435\u0439 \u0447\u0430\u0449\u0435" },
+      home: { forest: 1, jungle: 0.85, taiga: 0.7, meadow: 0.55, swamp: 0.25, shrubland: 0.3, savanna: 0.15, foothills: 0.2 },
+      moves: { forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6 },
+      movesElse: 0.25,
+      spread: 0.22,
+      growth: 0.18,
+      found: 0.32,
+      spacing: 16,
+      site: { water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4 },
+      build: [
+        { id: "hut", tier: 0 },
+        { id: "lodge", tier: 0 },
+        { id: "garden", tier: 0, need: "fertile" },
+        { id: "well", tier: 1 },
+        { id: "fishhut", tier: 1, need: "water" },
+        { id: "healerhut", tier: 1 },
+        { id: "loom", tier: 1 },
+        { id: "house", tier: 2 },
+        { id: "granary", tier: 2 },
+        { id: "shrine", tier: 2 },
+        { id: "crafthut", tier: 2 },
+        { id: "watchtower", tier: 2 },
+        { id: "jeweler", tier: 3, need: "gems" },
+        { id: "armory", tier: 3 }
+      ],
+      names: {
+        first: ["\u041B\u0430", "\u042D\u043B\u044C", "\u041C\u0438", "\u0422\u0438", "\u0410\u043D", "\u0418\u043B\u044C", "\u0421\u0438", "\u0410\u0440", "\u0424\u0435", "\u041B\u0438\u043D", "\u041D\u0438", "\u041B\u043E"],
+        mid: ["", "\u0440\u0438", "\u043D\u044D", "\u043B\u0430", "\u0432\u043E", "\u043C\u0438", "\u0430\u043D", "\u043B\u0438"],
+        last: ["\u044D\u043B\u044C", "\u0434\u043E\u0440", "\u0440\u0438\u044D\u043B\u044C", "\u0438\u043D", "\u0438\u043E\u043D", "\u0430\u043B\u043E\u043D", "\u044D\u043D\u043D\u0430", "\u0430\u0441\u0441\u044D", "\u043E\u0440\u0438\u044D\u043D", "\u0443\u043B\u0438\u043D"]
+      }
+    },
+    {
+      id: "dwarves",
+      race: "dwarf",
+      label: "\u0433\u043D\u043E\u043C\u044B",
+      labelGen: "\u0433\u043D\u043E\u043C\u043E\u0432",
+      adj: "\u0433\u043D\u043E\u043C\u0438\u0439",
+      era: "elder",
+      color: [220, 150, 70],
+      arrive: { verb: "\u0432\u044B\u0448\u043B\u0438 \u0438\u0437-\u043F\u043E\u0434 \u0433\u043E\u0440", groups: 2, where: "\u0443 \u0441\u0430\u043C\u044B\u0445 \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u0436\u0438\u043B" },
+      home: { foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4 },
+      ores: 0.8,
+      moves: { foothills: 1.4, highlands: 1.3, volcano: 1 },
+      movesElse: 0.3,
+      spread: 0.18,
+      growth: 0.16,
+      found: 0.3,
+      spacing: 14,
+      site: { water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3 },
+      build: [
+        { id: "hut", tier: 0 },
+        { id: "quarry", tier: 0 },
+        { id: "mineshaft", tier: 0, need: "ore" },
+        { id: "well", tier: 1 },
+        { id: "charpit", tier: 1 },
+        { id: "smelter", tier: 1, need: "ore" },
+        { id: "granary", tier: 1 },
+        { id: "forge", tier: 2, need: "ore" },
+        { id: "house", tier: 2 },
+        { id: "hearth", tier: 2 },
+        { id: "armory", tier: 2 },
+        { id: "palisade", tier: 2 },
+        { id: "jeweler", tier: 3, need: "gems" },
+        { id: "shrine", tier: 3 },
+        { id: "magmaforge", tier: 3, need: "magma" }
+      ],
+      names: {
+        first: ["\u041A\u0445\u0430\u0437", "\u0411\u0430\u0440", "\u0414\u0443\u0440", "\u0413\u0440\u0430", "\u0422\u043E\u0440", "\u041A\u0430", "\u0411\u043E", "\u0413\u0438\u043C", "\u0414\u043E\u043B", "\u041C\u043E\u0440", "\u0423\u043D", "\u0417\u0438\u0440"],
+        mid: ["", "\u0430\u043A", "\u0438\u043D", "\u0443\u043C", "\u0430\u0440", "\u0435\u043A", "\u043E\u0434"],
+        last: ["-\u0434\u0443\u043C", "\u0433\u0430\u0440\u0434", "\u0445\u0435\u0439\u043C", "\u0431\u0430\u0440", "\u0437\u0430\u0434", "\u0433\u0440\u0438\u043C", "\u0442\u043E\u0440", "\u043A\u0430\u0440\u0430\u043A", "\u0434\u0438\u043D", "\u0431\u0443\u043D\u0434"]
+      }
+    }
+  ]);
+  var TIERS2 = [
+    { pop: 0, label: { elves: ["\u043F\u0440\u0438\u044E\u0442", "\u043F\u0440\u0438\u044E\u0442", "\u043F\u0440\u0438\u044E\u0442\u0430", "\u043F\u0440\u0438\u044E\u0442\u0435"], dwarves: ["\u0437\u0430\u0441\u0442\u0430\u0432\u0430", "\u0437\u0430\u0441\u0442\u0430\u0432\u0443", "\u0437\u0430\u0441\u0442\u0430\u0432\u044B", "\u0437\u0430\u0441\u0442\u0430\u0432\u0435"] }, gender: { elves: "m", dwarves: "f" } },
+    { pop: 180, label: { elves: ["\u0441\u0435\u043B\u0435\u043D\u0438\u0435", "\u0441\u0435\u043B\u0435\u043D\u0438\u0435", "\u0441\u0435\u043B\u0435\u043D\u0438\u044F", "\u0441\u0435\u043B\u0435\u043D\u0438\u0438"], dwarves: ["\u043F\u043E\u0441\u0451\u043B\u043E\u043A", "\u043F\u043E\u0441\u0451\u043B\u043E\u043A", "\u043F\u043E\u0441\u0451\u043B\u043A\u0430", "\u043F\u043E\u0441\u0451\u043B\u043A\u0435"] }, gender: { elves: "n", dwarves: "m" } },
+    { pop: 700, label: { elves: ["\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434\u0430", "\u0433\u043E\u0440\u043E\u0434\u0435"], dwarves: ["\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u044C", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u044C", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u0438", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u0438"] }, gender: { elves: "m", dwarves: "f" } },
+    { pop: 2200, label: { elves: ["\u0441\u0442\u043E\u043B\u0438\u0446\u0430", "\u0441\u0442\u043E\u043B\u0438\u0446\u0443", "\u0441\u0442\u043E\u043B\u0438\u0446\u044B", "\u0441\u0442\u043E\u043B\u0438\u0446\u0435"], dwarves: ["\u0447\u0435\u0440\u0442\u043E\u0433", "\u0447\u0435\u0440\u0442\u043E\u0433", "\u0447\u0435\u0440\u0442\u043E\u0433\u0430", "\u0447\u0435\u0440\u0442\u043E\u0433\u0435"] }, gender: { elves: "f", dwarves: "m" } }
+  ];
+  var TOWN_WAR = { might: 0.9, chance: 0.08, raidLoss: 0.2, reach: 4 };
+  var ELDER_YEARS = [
+    { years: 25, label: "\u041A\u043E\u0440\u043E\u0442\u043A\u0430\u044F" },
+    { years: 40, label: "\u041E\u0431\u044B\u0447\u043D\u0430\u044F" },
+    { years: 60, label: "\u0414\u043E\u043B\u0433\u0430\u044F" }
+  ];
+
+  // src/data/roads.js
+  var ROADS = {
+    every: 2,
+    links: 3,
+    reach: 70,
+    roadEase: 0.75,
+    slope: 6,
+    river: 3,
+    traffic: 900,
+    decay: 0.8,
+    cost: {
+      meadow: 1,
+      steppe: 1,
+      savanna: 1.1,
+      shrubland: 1.3,
+      forest: 1.6,
+      taiga: 1.8,
+      jungle: 2.6,
+      tundra: 1.6,
+      desert: 2,
+      foothills: 2.4,
+      highlands: 4,
+      swamp: 3.5,
+      volcano: 4,
+      ice: 8,
+      water: 25
+    },
+    levels: [{ wear: 0.25, label: "\u0442\u0440\u043E\u043F\u0430", width: 0.45 }, { wear: 1.2, label: "\u0434\u043E\u0440\u043E\u0433\u0430", width: 0.7 }, { wear: 4, label: "\u0442\u0440\u0430\u043A\u0442", width: 1 }]
   };
 
   // src/data/lairs.js
@@ -15824,13 +15953,13 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var R = (a, L) => L.radius * scaleOf(a);
   var dist8 = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
-  function findSpot(a, L, rnd, near2, tries = 400) {
+  function findSpot(a, L, rnd, near3, tries = 400) {
     let best = -1, bv = 0;
     for (let t = 0; t < tries; t++) {
       let i;
-      if (near2) {
+      if (near3) {
         const ang = rnd() * Math.PI * 2, d = R(a, L) * (2 + 2 * rnd());
-        const x = Math.round(near2.x + Math.cos(ang) * d), y = Math.round(near2.y + Math.sin(ang) * d);
+        const x = Math.round(near3.x + Math.cos(ang) * d), y = Math.round(near3.y + Math.sin(ang) * d);
         if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
         i = y * a.w + x;
       } else i = rnd() * a.n | 0;
@@ -15946,9 +16075,365 @@ dd.q4{color:#c58cff;font-weight:600}
     return best;
   }
 
+  // src/atlas/roads.js
+  var roadLevel = (v) => {
+    let lv2 = -1;
+    ROADS.levels.forEach((L, k) => {
+      if (v >= L.wear) lv2 = k;
+    });
+    return lv2;
+  };
+  function feeling(p, q) {
+    const a = SPECIES.get(WORLD_PEOPLES.get(p).race).rel, b = SPECIES.get(WORLD_PEOPLES.get(q).race).rel;
+    return RELATIONS[a]?.[b] ?? 0;
+  }
+  function stepCost(a, i, people) {
+    const f = a.f;
+    if (f.ocean[i]) return Infinity;
+    const b = biomeAt(a, i).id;
+    let c = ROADS.cost[b] ?? 1.5;
+    if (f.lake[i] >= 0) c = ROADS.cost.water;
+    const P = WORLD_PEOPLES.get(people), mv = P.moves[b];
+    if (mv) c /= mv;
+    c += ROADS.slope * (1 - f.flat[i]) * 0.3;
+    if (f.flow[i] >= RIVERS.river * scaleOf(a) ** 2) c += ROADS.river;
+    return c * (1 - ROADS.roadEase * Math.min(1, f.road[i] / ROADS.levels[1].wear));
+  }
+  function findPath2(a, s, t, people, scratch) {
+    const { w, h } = a, { g: g3, came, touched } = scratch, heap = new Heap(1024), tx2 = t % w, ty = t / w | 0;
+    touched.length = 0;
+    const H = (i) => 0.6 * Math.hypot(i % w - tx2, (i / w | 0) - ty);
+    g3[s] = 0;
+    came[s] = s;
+    touched.push(s);
+    heap.push(H(s), s);
+    let found = false, steps = 0;
+    while (heap.size && steps++ < 6e4) {
+      const c = heap.pop();
+      if (c === t) {
+        found = true;
+        break;
+      }
+      const x = c % w, y = c / w | 0;
+      for (const [dx, dy, len] of DIRS8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx, sc = stepCost(a, j, people);
+        if (sc === Infinity) continue;
+        const ng = g3[c] + sc * len;
+        if (ng < g3[j]) {
+          if (g3[j] === Infinity) touched.push(j);
+          g3[j] = ng;
+          came[j] = c;
+          heap.push(ng + H(j), j);
+        }
+      }
+    }
+    let path = null;
+    if (found) {
+      path = [];
+      for (let i = t; i !== s; i = came[i]) path.push(i);
+      path.push(s);
+    }
+    for (const i of touched) g3[i] = Infinity;
+    return path;
+  }
+  function wearRoads(a) {
+    const f = a.f, k = scaleOf(a), towns = a.towns.filter((t) => t.alive), reach = ROADS.reach * k;
+    for (let i = 0; i < a.n; i++) f.road[i] *= ROADS.decay;
+    const scratch = a.roadScratch || (a.roadScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
+    const done3 = /* @__PURE__ */ new Set(), fresh = [];
+    for (const t of towns) {
+      const near3 = towns.filter((o) => o !== t && feeling(t.people, o.people) >= -1 && feeling(o.people, t.people) >= -1).map((o) => [o, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, d]) => d <= reach).sort((p, q) => p[1] - q[1]).slice(0, ROADS.links);
+      for (const [o] of near3) {
+        const key2 = Math.min(t.id, o.id) * 1e5 + Math.max(t.id, o.id);
+        if (done3.has(key2)) continue;
+        done3.add(key2);
+        const path = findPath2(a, t.i, o.i, t.people, scratch);
+        if (!path) continue;
+        const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic;
+        for (const c of path) f.road[c] += amt;
+        a.roadPairs || (a.roadPairs = /* @__PURE__ */ new Set());
+        if (!a.roadPairs.has(key2)) {
+          a.roadPairs.add(key2);
+          fresh.push([t, o]);
+        }
+      }
+    }
+    return fresh;
+  }
+  function roadAccess(a, i) {
+    const v = a.f.road?.[i] || 0;
+    return Math.min(1, v / ROADS.levels[2].wear);
+  }
+
+  // src/atlas/peoples.js
+  var clamp015 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var lv = (id) => ORE_GENESIS.get(id).levels;
+  var oreWealth = (a, i) => Math.max(...["iron", "bronze", "silver", "gold", "gems"].map((id) => a.f[`ore_${id}`][i] / lv(id)[2]));
+  function initPeoples(a, era) {
+    var _a;
+    const F = a.fauna, N2 = F.W * F.H;
+    a.peoples || (a.peoples = []);
+    a.towns || (a.towns = []);
+    a.contacts || (a.contacts = {});
+    (_a = a.f).road || (_a.road = new Float32Array(a.n));
+    for (const P of WORLD_PEOPLES.filter((p) => p.era === era)) {
+      const K = new Float32Array(N2), mob = new Float32Array(N2), cnt = new Float32Array(N2);
+      for (let i = 0; i < a.n; i++) {
+        if (a.f.ocean[i]) continue;
+        const j = faunaCell(a, i), b = biomeAt(a, i).id;
+        K[j] += (P.home[b] || 0) + (P.ores ? P.ores * Math.min(1, oreWealth(a, i)) * (P.home[b] ? 1 : 0.3) : 0);
+        mob[j] += P.moves[b] ?? P.movesElse;
+        cnt[j]++;
+      }
+      for (let j = 0; j < N2; j++) {
+        K[j] = cnt[j] ? clamp015(K[j] / (F.c * F.c)) : 0;
+        mob[j] = cnt[j] ? mob[j] / cnt[j] : 0;
+      }
+      a.peoples.push({ id: P.id, P, K, mob, u: new Float32Array(N2) });
+    }
+  }
+  function townName(P, rnd, used) {
+    for (let t = 0; t < 40; t++) {
+      const pick3 = (arr) => arr[rnd() * arr.length | 0];
+      let n = pick3(P.names.first) + pick3(P.names.mid) + pick3(P.names.last);
+      n = n.replace(/-+/g, "-");
+      if (!used.has(n)) {
+        used.add(n);
+        return n;
+      }
+    }
+    return `${P.adj} \u0433\u043E\u0440\u043E\u0434 ${used.size}`;
+  }
+  var near2 = (a, i, test) => {
+    const x = i % a.w, y = i / a.w | 0;
+    for (const [dx, dy] of DIRS8) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && test(ny * a.w + nx)) return true;
+    }
+    return false;
+  };
+  var hasWater = (a, i) => a.f.flow[i] >= RIVERS.stream * scaleOf(a) ** 2 || near2(a, i, (j) => a.f.lake[j] >= 0 || a.f.ocean[j]);
+  function siteScore(a, P, i) {
+    const f = a.f, b = biomeAt(a, i);
+    if (!b || f.ocean[i] || f.lake[i] >= 0 || b.id === "water" || b.id === "ice" || f.flow[i] >= RIVERS.great * scaleOf(a) ** 2) return -Infinity;
+    const S = P.site;
+    return (P.home[b.id] || 0) + S.water * (hasWater(a, i) ? 1 : 0) + S.coast * (near2(a, i, (j) => f.ocean[j]) ? 1 : 0) + S.fert * f.fert[i] + S.trees * f.trees[i] + S.ores * Math.min(1.5, oreWealth(a, i)) + S.steep * (1 - f.flat[i]);
+  }
+  var farFromTowns = (a, x, y, d) => !a.towns.some((t) => t.alive && Math.hypot(t.x - x, t.y - y) < d);
+  function bestSite(a, P, j, rnd) {
+    const F = a.fauna, cx = j % F.W * F.c, cy = (j / F.W | 0) * F.c, k = scaleOf(a);
+    let best = -1, bv = -Infinity;
+    for (let y = Math.max(0, cy - F.c); y < Math.min(a.h, cy + 2 * F.c); y++) for (let x = Math.max(0, cx - F.c); x < Math.min(a.w, cx + 2 * F.c); x++) {
+      const i = y * a.w + x, v = siteScore(a, P, i) + 0.05 * rnd();
+      if (v > bv && farFromTowns(a, x, y, P.spacing * k)) {
+        bv = v;
+        best = i;
+      }
+    }
+    return bv > 0.4 ? best : -1;
+  }
+  var tierOf = (pop) => {
+    let t = 0;
+    TIERS2.forEach((T2, k) => {
+      if (pop >= T2.pop) t = k;
+    });
+    return t;
+  };
+  var townLabel = (t, cs = 0) => TIERS2[t.tier].label[t.people][cs];
+  function foundTown(a, pe, i, rnd, pop, say2) {
+    const P = pe.P, H = a.hist;
+    const t = {
+      id: H.nextTown = (H.nextTown || 0) + 1,
+      people: P.id,
+      name: townName(P, rnd, H.names),
+      i,
+      x: i % a.w,
+      y: i / a.w | 0,
+      founded: H.year,
+      pop,
+      tier: tierOf(pop),
+      built: [],
+      alive: true
+    };
+    a.towns.push(t);
+    return t;
+  }
+  function placeHas(a, i, need) {
+    const f = a.f;
+    switch (need) {
+      case "ore":
+        return ["iron", "bronze", "silver"].some((id) => f[`ore_${id}`][i] >= lv(id)[1]);
+      case "gems":
+        return f.ore_gems[i] >= lv("gems")[1];
+      case "magma": {
+        const x = i % a.w, y = i / a.w | 0;
+        for (let yy = Math.max(0, y - 3); yy <= Math.min(a.h - 1, y + 3); yy++) for (let xx = Math.max(0, x - 3); xx <= Math.min(a.w - 1, x + 3); xx++) if (f.ore_magma[yy * a.w + xx] >= lv("magma")[1]) return true;
+        return false;
+      }
+      case "water":
+        return hasWater(a, i);
+      case "fertile":
+        return f.fert[i] >= 0.5;
+      case "forest":
+        return f.trees[i] >= 0.5;
+      default:
+        return true;
+    }
+  }
+  var NOTABLE = /* @__PURE__ */ new Set(["forge", "jeweler", "magmaforge", "shrine", "watchtower", "palisade", "mineshaft", "healerhut"]);
+  var APPEARED = { m: "\u043F\u043E\u044F\u0432\u0438\u043B\u0441\u044F", f: "\u043F\u043E\u044F\u0432\u0438\u043B\u0430\u0441\u044C", n: "\u043F\u043E\u044F\u0432\u0438\u043B\u043E\u0441\u044C", pl: "\u043F\u043E\u044F\u0432\u0438\u043B\u0438\u0441\u044C" };
+  var GREW = { m: "\u0440\u0430\u0437\u0440\u043E\u0441\u0441\u044F \u0432", f: "\u0440\u0430\u0437\u0440\u043E\u0441\u043B\u0430\u0441\u044C \u0432", n: "\u0440\u0430\u0437\u0440\u043E\u0441\u043B\u043E\u0441\u044C \u0432" };
+  var cap13 = (s) => s[0].toUpperCase() + s.slice(1);
+  function arrive2(a, era, rnd, say2) {
+    initPeoples(a, era);
+    const F = a.fauna;
+    for (const pe of a.peoples.filter((p) => p.P.era === era)) {
+      const P = pe.P, picks = [];
+      const order = [...pe.K.keys()].filter((j) => pe.K[j] > 0.3).sort((p, q) => pe.K[q] * (0.8 + 0.2 * (p * 7919 % 13) / 13) - pe.K[p]);
+      for (const j of order) {
+        if (picks.length >= P.arrive.groups) break;
+        if (picks.some((q) => Math.hypot(q % F.W - j % F.W, (q / F.W | 0) - (j / F.W | 0)) < F.W / 4)) continue;
+        const i = bestSite(a, P, j, rnd);
+        if (i < 0) continue;
+        picks.push(j);
+        for (const [dx, dy] of [[0, 0], ...DIRS8]) {
+          const x = j % F.W + dx, y = (j / F.W | 0) + dy;
+          if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = 0.6;
+        }
+        const t = foundTown(a, pe, i, rnd, 90 + 60 * rnd());
+        t.capital = true;
+        say2(`${cap13(P.label)} ${P.arrive.verb} ${P.arrive.where} \u2014 ${wherePhrase(a, i)} \u2014 \u0438 \u0437\u0430\u043B\u043E\u0436\u0438\u043B\u0438 ${townLabel(t, 1)} ${t.name}.`);
+      }
+      if (!picks.length) say2(`${cap13(P.label)} \u043D\u0435 \u043D\u0430\u0448\u043B\u0438 \u0432 \u044D\u0442\u043E\u043C \u043C\u0438\u0440\u0435 \u0437\u0435\u043C\u043B\u0438 \u0441\u0435\u0431\u0435 \u043F\u043E \u0434\u0443\u0448\u0435.`);
+    }
+  }
+  function stepPeoples(a, rnd, say2) {
+    const F = a.fauna, N2 = F.W * F.H, tmp = new Float32Array(N2), k = scaleOf(a);
+    for (const pe of a.peoples) {
+      const { P, K, u, mob } = pe;
+      for (const t of a.towns) if (t.alive && t.people === P.id) {
+        const j = faunaCell(a, t.i);
+        u[j] = Math.max(u[j], Math.min(1, 0.45 + 0.15 * t.tier));
+      }
+      tmp.set(u);
+      for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
+        const j = y * F.W + x;
+        if (K[j] <= 0) {
+          u[j] = 0;
+          continue;
+        }
+        let flux = 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= F.W || ny >= F.H) continue;
+          const q = ny * F.W + nx;
+          flux += (mob[j] + mob[q]) / 2 * (tmp[q] - tmp[j]);
+        }
+        u[j] = clamp015(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4);
+      }
+    }
+    const occ = new Float32Array(N2);
+    for (const pe of a.peoples) for (let j = 0; j < N2; j++) occ[j] += pe.u[j] * pe.K[j];
+    for (const s of F.list) if (s.role !== "spirit") {
+      const hit = s.role === "predator" ? 0.3 : 0.12;
+      for (let j = 0; j < N2; j++) if (occ[j] > 0) s.N[j] *= 1 - hit * Math.min(1, occ[j]);
+    }
+    for (const pe of a.peoples) {
+      const cand = [...pe.u.keys()].filter((j) => pe.u[j] >= pe.P.found && pe.K[j] >= 0.25).sort((p, q) => pe.u[q] * pe.K[q] - pe.u[p] * pe.K[p]);
+      let made = 0;
+      for (const j of cand) {
+        if (made >= 2 || rnd() > 0.35) continue;
+        const i = bestSite(a, pe.P, j, rnd);
+        if (i < 0) continue;
+        const t = foundTown(a, pe, i, rnd, 40 + 40 * rnd());
+        made++;
+        say2(`${cap13(pe.P.label)} \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
+      }
+    }
+    for (const t of a.towns) {
+      if (!t.alive) continue;
+      const pe = a.peoples.find((p) => p.id === t.people), j = faunaCell(a, t.i);
+      let feed = 0, c = 0;
+      for (let y = Math.max(0, (j / F.W | 0) - 1); y <= Math.min(F.H - 1, (j / F.W | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) {
+        feed += pe.K[y * F.W + x];
+        c++;
+      }
+      const target = 2600 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i] + (pe.P.ores ? 0.4 * Math.min(1, oreWealth(a, t.i)) : 0)) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1);
+      t.pop = Math.max(10, t.pop + 0.14 * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
+      const tier = tierOf(t.pop);
+      if (tier > t.tier) {
+        const T2 = TIERS2[tier], was = TIERS2[t.tier];
+        say2(`${cap13(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T2.label[t.people][1]}: ${Math.round(t.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
+        t.tier = tier;
+      }
+      const next = pe.P.build.find((b) => b.tier <= t.tier && !t.built.includes(b.id) && placeHas(a, t.i, b.need));
+      if (next && rnd() < 0.6) {
+        t.built.push(next.id);
+        const B2 = BUILDINGS.get(next.id);
+        if (NOTABLE.has(next.id)) say2(`\u0412 ${townLabel(t, 3)} ${t.name} ${APPEARED[B2.gender] || "\u043F\u043E\u044F\u0432\u0438\u043B\u0430\u0441\u044C"} ${B2.name.toLowerCase()}.`);
+      }
+    }
+    for (const l of a.lairs) {
+      if (!l.alive) continue;
+      const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k, owner = SPECIES.get(L.species), s = owner.special;
+      for (const t of a.towns) {
+        if (!t.alive || Math.hypot(t.x - l.x, t.y - l.y) > reach || rnd() > TOWN_WAR.chance) continue;
+        const town = Math.sqrt(t.pop) * TOWN_WAR.might * (0.6 + 0.8 * rnd()), beast2 = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (0.6 + 0.8 * rnd());
+        const P = WORLD_PEOPLES.get(t.people);
+        if (town > beast2) {
+          l.alive = false;
+          l.died = a.hist.year;
+          l.clearedBy = t.id;
+          say2(`${cap13(P.label)} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0436\u0433\u043B\u0438 ${L.labelAcc || L.label} \xAB${l.name}\xBB: ${owner.plural} \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0442\u0440\u0435\u0432\u043E\u0436\u0430\u0442 \u0438\u0445 \u0437\u0435\u043C\u043B\u0438.`);
+          break;
+        }
+        t.pop *= 1 - TOWN_WAR.raidLoss;
+        say2(`${cap13(owner.plural)} ${L.from} \xAB${l.name}\xBB \u043D\u0430\u043F\u0430\u043B\u0438 \u043D\u0430 ${townLabel(t, 1)} ${t.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u0430 \u043F\u044F\u0442\u0430\u044F \u0447\u0430\u0441\u0442\u044C \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
+        break;
+      }
+    }
+    for (const p of a.peoples) for (const q of a.peoples) {
+      if (p.id >= q.id) continue;
+      const key2 = `${p.id}:${q.id}`;
+      if (a.contacts[key2]) continue;
+      let j0 = -1;
+      for (let j = 0; j < N2; j++) if (p.u[j] > 0.1 && q.u[j] > 0.1) {
+        j0 = j;
+        break;
+      }
+      if (j0 < 0) continue;
+      const fe = Math.min(feeling(p.id, q.id), feeling(q.id, p.id));
+      a.contacts[key2] = { year: a.hist.year, feeling: fe };
+      const how = fe <= -3 ? "\u0441 \u043D\u0435\u043D\u0430\u0432\u0438\u0441\u0442\u044C\u044E" : fe <= -2 ? "\u0441 \u0434\u0430\u0432\u043D\u0435\u0439 \u043D\u0435\u043F\u0440\u0438\u044F\u0437\u043D\u044C\u044E" : fe < 0 ? "\u043D\u0430\u0441\u0442\u043E\u0440\u043E\u0436\u0435\u043D\u043D\u043E" : fe === 0 ? "\u0441 \u043B\u044E\u0431\u043E\u043F\u044B\u0442\u0441\u0442\u0432\u043E\u043C" : "\u043A\u0430\u043A \u0434\u0440\u0443\u0437\u044C\u044F";
+      const cell = Math.min(a.n - 1, (j0 / F.W | 0) * F.c * a.w + j0 % F.W * F.c);
+      say2(`${cap13(p.P.label)} \u0438 ${q.P.label} \u0432\u043F\u0435\u0440\u0432\u044B\u0435 \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043B\u0438\u0441\u044C ${wherePhrase(a, cell)} \u0438 \u0441\u043C\u043E\u0442\u0440\u044F\u0442 \u0434\u0440\u0443\u0433 \u043D\u0430 \u0434\u0440\u0443\u0433\u0430 ${how}.` + (fe <= -2 ? " \u0414\u043E\u0440\u043E\u0433 \u043C\u0435\u0436\u0434\u0443 \u043D\u0438\u043C\u0438 \u043D\u0435 \u0431\u0443\u0434\u0435\u0442." : ""));
+    }
+  }
+  function townAt(a, i) {
+    if (!a.towns) return null;
+    const x = i % a.w, y = i / a.w | 0;
+    return a.towns.find((t) => t.alive && Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1) || null;
+  }
+  function landOf(a, i) {
+    if (!a.peoples || a.f.ocean[i]) return null;
+    const j = faunaCell(a, i);
+    let best = null, bv = 0.1;
+    for (const pe of a.peoples) if (pe.u[j] > bv) {
+      bv = pe.u[j];
+      best = pe;
+    }
+    return best ? { people: best.P, share: bv } : null;
+  }
+
   // src/atlas/history.js
   var SEASON_LIST = SEASONS.all();
-  var historyLength = (a) => WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR;
+  var eraPlan = (a) => [
+    { id: "wild", seasons: WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR },
+    { id: "elder", seasons: ELDER_YEARS[a.cfg.elder ?? 1].years * SEASONS_PER_YEAR }
+  ];
+  var historyLength = (a) => eraPlan(a).reduce((s, e) => s + e.seasons, 0);
   var historyDone = (a) => !!a.hist && a.hist.step >= a.hist.end;
   var seasonLabel = (s) => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
   function coarseToCell(a, j) {
@@ -15989,6 +16474,17 @@ dd.q4{color:#c58cff;font-weight:600}
         say(a, cold ? `\u041B\u044E\u0442\u0430\u044F \u0437\u0438\u043C\u0430 ${wherePhrase(a, cell)}: \u0437\u0432\u0435\u0440\u0438 \u0433\u0438\u0431\u043B\u0438 \u043E\u0442 \u043C\u043E\u0440\u043E\u0437\u0430 \u0438 \u0431\u0435\u0441\u043A\u043E\u0440\u043C\u0438\u0446\u044B.` : `\u0417\u0430\u0441\u0443\u0445\u0430 ${wherePhrase(a, cell)}: \u0442\u0440\u0430\u0432\u044B \u0432\u044B\u0433\u043E\u0440\u0435\u043B\u0438, \u0437\u0432\u0435\u0440\u0438 \u0433\u0438\u0431\u043B\u0438 \u043E\u0442 \u0431\u0435\u0441\u043A\u043E\u0440\u043C\u0438\u0446\u044B.`);
       }
     }
+    const wildEnd = eraPlan(a)[0].seasons;
+    if (H.step === wildEnd) {
+      H.era = "elder";
+      say(a, `\u041D\u0430\u0447\u0430\u043B\u0430\u0441\u044C ${ERAS.get("elder").label.toLowerCase()}.`);
+      arrive2(a, "elder", rnd, (t) => say(a, t));
+    }
+    if (H.era === "elder" && season2 === "spring") {
+      stepPeoples(a, rnd, (t) => say(a, t));
+      if ((H.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
+        for (const [p, q] of wearRoads(a)) say(a, `\u041C\u0435\u0436\u0434\u0443 ${p.name} \u0438 ${q.name} \u043F\u0440\u043E\u0442\u043E\u043F\u0442\u0430\u043B\u0438 \u0434\u043E\u0440\u043E\u0433\u0443.`);
+    }
     const totals = stepFauna(a, season2);
     for (const line2 of stepLairs(a, rnd, season2)) say(a, line2);
     if (H.season === 3) {
@@ -16014,9 +16510,17 @@ dd.q4{color:#c58cff;font-weight:600}
     H.step++;
     H.season = (H.season + 1) % SEASON_LIST.length;
     if (H.season === 0) H.year++;
-    if (H.step >= H.end) {
+    if (H.step === wildEnd) {
       const alive = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive;
       say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive} ${plural(alive, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
+    }
+    if (H.step >= H.end) {
+      const towns = a.towns.filter((t) => t.alive), parts = [];
+      for (const pe of a.peoples) {
+        const mine = towns.filter((t) => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));
+        parts.push(`${pe.P.label} \u2014 ${mine.length} ${plural(mine.length, "\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434\u0430", "\u0433\u043E\u0440\u043E\u0434\u043E\u0432")}, ${pop} ${plural(pop, "\u0436\u0438\u0442\u0435\u043B\u044C", "\u0436\u0438\u0442\u0435\u043B\u044F", "\u0436\u0438\u0442\u0435\u043B\u0435\u0439")}`);
+      }
+      say(a, `\u042D\u043F\u043E\u0445\u0430 \u0434\u0440\u0435\u0432\u043D\u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${parts.join("; ")}. \u0421\u043A\u043E\u0440\u043E \u043F\u0440\u0438\u0434\u0443\u0442 \u043B\u044E\u0434\u0438 \u0438 \u043E\u0440\u043A\u0438.`);
     }
   }
 
@@ -16055,8 +16559,9 @@ dd.q4{color:#c58cff;font-weight:600}
     plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
     hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
     wild: WILD_YEARS.map((e, i) => [i, e.label]),
+    elder: ELDER_YEARS.map((e, i) => [i, e.label]),
     fauna: SPECIES.filter((sp) => sp.habitat).map((sp) => [sp.id, sp.plural]),
-    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"], ["wind", "\u0412\u0435\u0442\u0440\u044B"], ["rain", "\u041E\u0441\u0430\u0434\u043A\u0438"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["soils", "\u041F\u043E\u0447\u0432\u044B"], ["fauna", "\u0417\u0432\u0435\u0440\u0438"]],
+    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"], ["wind", "\u0412\u0435\u0442\u0440\u044B"], ["rain", "\u041E\u0441\u0430\u0434\u043A\u0438"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["soils", "\u041F\u043E\u0447\u0432\u044B"], ["fauna", "\u0417\u0432\u0435\u0440\u0438"], ["peoples", "\u041D\u0430\u0440\u043E\u0434\u044B"]],
     ore: ORE_GENESIS.all().map((o) => [o.id, o.label])
   };
   var VIEW_KEYS = /* @__PURE__ */ new Set(["layer", "ore", "fauna"]);
@@ -16165,6 +16670,7 @@ dd.q4{color:#c58cff;font-weight:600}
       $("atlasOre").hidden = this.layer !== "ores";
       $("atlasFauna").hidden = this.layer !== "fauna";
       $("atlasWildNote").textContent = `${WILD_YEARS[this.cfg.wild].years} \u043B\u0435\u0442 \u0434\u043E \u043F\u0440\u0438\u0445\u043E\u0434\u0430 \u043D\u0430\u0440\u043E\u0434\u043E\u0432`;
+      $("atlasElderNote").textContent = `${ELDER_YEARS[this.cfg.elder].years} \u043B\u0435\u0442 \u044D\u043B\u044C\u0444\u043E\u0432 \u0438 \u0433\u043D\u043E\u043C\u043E\u0432`;
       this.legend();
     }
     legend() {
@@ -16178,6 +16684,7 @@ dd.q4{color:#c58cff;font-weight:600}
       } else if (this.layer === "biomes") html = Object.entries(BIOME_KINDS).filter(([k]) => k !== "feature").map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter((b) => b.kind === k).map((b) => sw(b.color, b.label)).join("")).join("") + "<b>\u043B\u0435\u0441\u0430</b> \u0442\u0435\u043C\u043D\u0435\u0435, \u0433\u0430\u0440\u0438 \u0441\u0432\u0435\u0442\u043B\u0435\u0435";
       else if (this.layer === "soils") html = SOILS.filter((s) => s.id !== "none").map((s) => sw(s.color, s.label)).join("") + "<b>\u044F\u0440\u0447\u0435</b> \u2014 \u043F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u043D\u0435\u0435";
       else if (this.layer === "fauna") html = sw([70, 70, 64], "\u043D\u0435 \u0438\u0445 \u043A\u0440\u0430\u044F") + sw([120, 116, 100], "\u043C\u043E\u0433\u0443\u0442 \u0436\u0438\u0442\u044C, \u043D\u043E \u043D\u0435\u0442") + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], "\u0441\u0442\u043E\u043B\u044C\u043A\u043E, \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u043A\u0440\u0430\u0439 \u043F\u0440\u043E\u043A\u043E\u0440\u043C\u0438\u0442") + "<b>\u043B\u043E\u0433\u043E\u0432\u0430:</b> " + LAIRS.all().map((L) => sw(L.color, L.label)).join("") + sw([60, 40, 40], "\xD7 \u043E\u043F\u0443\u0441\u0442\u0435\u0432\u0448\u0435\u0435");
+      else if (this.layer === "peoples") html = WORLD_PEOPLES.all().map((P) => sw(P.color, `\u0437\u0435\u043C\u043B\u0438: ${P.label}`)).join("") + "<b>\u0433\u043E\u0440\u043E\u0434\u0430</b> \u2014 \u043A\u0432\u0430\u0434\u0440\u0430\u0442\u044B, \u043A\u0440\u0443\u043F\u043D\u0435\u0435 \u0441 \u0440\u043E\u0441\u0442\u043E\u043C; \u043A\u043E\u043B\u044C\u0446\u043E \u2014 \u043F\u0435\u0440\u0432\u044B\u0435 \u0433\u043E\u0440\u043E\u0434\u0430 \u043D\u0430\u0440\u043E\u0434\u0430; " + ROADS.levels.map((L) => L.label).join(", ");
       else if (this.layer === "rain") html = [[100, "\u043F\u0443\u0441\u0442\u044B\u043D\u044F"], [400, "\u0441\u0443\u0445\u043E"], [800, "\u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E"], [1500, "\u0432\u043B\u0430\u0436\u043D\u043E"], [2500, "\u043E\u0447\u0435\u043D\u044C \u0432\u043B\u0430\u0436\u043D\u043E"]].map(([v, l]) => sw(rainColor(v), `${l} (${v} \u043C\u043C)`)).join("");
       else if (this.layer === "wind") html = sw([240, 240, 230], "\u0441\u0442\u0440\u0435\u043B\u043A\u0438 \u2014 \u043A\u0443\u0434\u0430 \u0434\u0443\u0435\u0442 \u0432\u0435\u0442\u0435\u0440") + sw([90, 110, 150], "\u0442\u0438\u0448\u0435") + sw([200, 210, 240], "\u0441\u0438\u043B\u044C\u043D\u0435\u0435");
       else if (this.layer === "temp") html = sw(HEAT[0][1], "\u221230\xB0") + sw(HEAT[1][1], "\u22124\xB0") + sw(HEAT[2][1], "+9\xB0") + sw(HEAT[3][1], "+35\xB0");
@@ -16233,9 +16740,9 @@ dd.q4{color:#c58cff;font-weight:600}
         case "ores": {
           const pot = f[`ore_${this.ore}`];
           if (!pot) return base;
-          const o = ORE_GENESIS.get(this.ore), lv = o.levels, v = pot[i], grey = [70, 72, 66];
+          const o = ORE_GENESIS.get(this.ore), lv2 = o.levels, v = pot[i], grey = [70, 72, 66];
           if (!f.land[i]) return mix(base, [8, 12, 20], 0.5);
-          return v < lv[0] ? grey : v < lv[1] ? mix(grey, o.color, 0.45) : v < lv[2] ? mix(grey, o.color, 0.75) : o.color;
+          return v < lv2[0] ? grey : v < lv2[1] ? mix(grey, o.color, 0.45) : v < lv2[2] ? mix(grey, o.color, 0.75) : o.color;
         }
         case "temp":
           return f.temp ? ramp(HEAT, (f.temp[i] + 30) / 65) : base;
@@ -16255,6 +16762,10 @@ dd.q4{color:#c58cff;font-weight:600}
           if (K <= 0) return mix(base, [40, 40, 36], 0.75);
           const col = sp.look?.color ? hexRgb(sp.look.color) : [220, 120, 60];
           return mix(mix(base, [40, 40, 36], 0.6), col, Math.min(1, v) * 0.9);
+        }
+        case "peoples": {
+          const g3 = mix(base, [40, 40, 36], 0.55), land = a.peoples && landOf(a, i);
+          return land ? mix(g3, land.people.color, 0.25 + 0.6 * land.share) : g3;
         }
         case "rain":
           return f.rain ? f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25) : base;
@@ -16294,7 +16805,9 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       px.putImageData(img, 0, 0);
       if (this.layer === "wind" && a.f.windX) this.arrows(a, px);
-      if (a.lairs && ["relief", "biomes", "fauna"].includes(this.layer)) this.drawLairs(a, px);
+      if (a.f.road && ["relief", "biomes", "peoples", "fauna"].includes(this.layer)) this.drawRoads(a, px);
+      if (a.lairs && ["relief", "biomes", "fauna", "peoples"].includes(this.layer)) this.drawLairs(a, px);
+      if (a.towns && ["relief", "biomes", "peoples", "fauna", "rain", "soils"].includes(this.layer)) this.drawTowns(a, px);
       if (a.f.flow && ["relief", "rain", "rocks", "temp", "biomes", "soils"].includes(this.layer)) this.rivers(a, px);
     }
     // rivers: a line from each river cell to the cell it drains into, wider for more water
@@ -16318,6 +16831,46 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         px.stroke();
       });
+    }
+    // roads: a line between neighbouring road cells, wider the more worn
+    drawRoads(a, px) {
+      const r = a.f.road, w = a.w, k = Math.min(a.w, a.h) / 192, min = ROADS.levels[0].wear;
+      px.lineCap = "round";
+      ROADS.levels.forEach((L, lvl) => {
+        px.strokeStyle = lvl === 2 ? "rgba(236,214,170,0.95)" : lvl === 1 ? "rgba(206,176,128,0.9)" : "rgba(170,140,100,0.75)";
+        px.lineWidth = Math.max(0.35, L.width * k);
+        px.beginPath();
+        for (let i = 0; i < a.n; i++) {
+          if (r[i] < min || roadLevel(r[i]) !== lvl) continue;
+          const x = i % w, y = i / w | 0;
+          for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [-1, 1]]) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= w || ny >= a.h || r[ny * w + nx] < min) continue;
+            px.moveTo(x + 0.5, y + 0.5);
+            px.lineTo(nx + 0.5, ny + 0.5);
+          }
+        }
+        px.stroke();
+      });
+    }
+    // towns: a square in the people's colour, bigger for bigger towns; the first towns of a people ringed
+    drawTowns(a, px) {
+      const k = Math.min(a.w, a.h) / 192;
+      for (const t of a.towns) {
+        if (!t.alive) continue;
+        const c = WORLD_PEOPLES.get(t.people).color, s = (1.2 + 0.7 * t.tier) * k, x = t.x + 0.5, y = t.y + 0.5;
+        px.fillStyle = `rgb(${c.join(",")})`;
+        px.strokeStyle = "rgba(12,12,10,0.9)";
+        px.lineWidth = Math.max(0.4, 0.45 * k);
+        px.fillRect(x - s, y - s, 2 * s, 2 * s);
+        px.strokeRect(x - s, y - s, 2 * s, 2 * s);
+        if (t.capital) {
+          px.strokeStyle = `rgba(${c.join(",")},0.8)`;
+          px.beginPath();
+          px.arc(x, y, s * 1.9, 0, Math.PI * 2);
+          px.stroke();
+        }
+      }
     }
     // lairs: a diamond in the owner's colour and a faint ring of its territory; the dead ones as a cross
     drawLairs(a, px) {
@@ -16382,14 +16935,23 @@ dd.q4{color:#c58cff;font-weight:600}
         const ms = a.ms[s.id] != null ? `${a.ms[s.id]} \u043C\u0441` : k === a.stage ? "\u2026" : "";
         return `<li class="${st}" title="${esc(s.note)}"><span>${esc(s.label)}</span><small>${ms}</small></li>`;
       }).join("") + (() => {
-        const total = historyLength(a), done3 = a.hist ? a.hist.step : 0, st = !landDone(a) ? "" : done3 >= total ? "done" : "now";
-        const yr = a.hist ? `\u0433\u043E\u0434 ${Math.min(a.hist.year, total / 4)} \u0438\u0437 ${total / 4}` : `${total / 4} \u043B\u0435\u0442`;
-        return `<li class="${st}" title="${esc(ERAS.get("wild").note)}"><span>${ERAS.get("wild").label}</span><small>${yr}</small></li>`;
+        let from = 0, html = "";
+        const step2 = a.hist ? a.hist.step : 0;
+        for (const e of eraPlan(a)) {
+          const to = from + e.seasons, st = !landDone(a) || step2 < from || step2 === 0 && !a.hist ? "" : step2 >= to ? "done" : "now";
+          const yr = st === "now" ? `\u0433\u043E\u0434 ${a.hist.year} \u0438\u0437 ${to / 4}` : `\u0433\u043E\u0434\u044B ${from / 4 + 1}\u2013${to / 4}`;
+          html += `<li class="${st}" title="${esc(ERAS.get(e.id).note)}"><span>${ERAS.get(e.id).label}</span><small>${yr}</small></li>`;
+          from = to;
+        }
+        return html;
       })();
       const box = $("atlasChron"), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
       box.innerHTML = a.chronicle.length ? a.chronicle.map((c) => `<div><small>${c.season != null ? `\u0433\u043E\u0434 ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join("") : '<small class="muted">\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F \u0441 \u043F\u0435\u0440\u0432\u044B\u043C \u044D\u0442\u0430\u043F\u043E\u043C.</small>';
       if (atEnd) box.scrollTop = box.scrollHeight;
-      $("atlasStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${a.n.toLocaleString("ru-RU")}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(a.cfg.seed)}</dd><dt>\u042D\u0442\u0430\u043F</dt><dd>${Math.min(a.stage, all.length)} \u0438\u0437 ${all.length}</dd>` + (a.lairs ? `<dt>\u041B\u043E\u0433\u043E\u0432\u0430 \u0447\u0443\u0434\u043E\u0432\u0438\u0449</dt><dd>${a.lairs.filter((l) => l.alive).length}</dd>` : "");
+      $("atlasStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${a.n.toLocaleString("ru-RU")}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(a.cfg.seed)}</dd><dt>\u042D\u0442\u0430\u043F</dt><dd>${Math.min(a.stage, all.length)} \u0438\u0437 ${all.length}</dd>` + (a.lairs ? `<dt>\u041B\u043E\u0433\u043E\u0432\u0430 \u0447\u0443\u0434\u043E\u0432\u0438\u0449</dt><dd>${a.lairs.filter((l) => l.alive).length}</dd>` : "") + (a.towns ? WORLD_PEOPLES.all().map((P) => {
+        const m = a.towns.filter((t) => t.alive && t.people === P.id);
+        return `<dt>\u0413\u043E\u0440\u043E\u0434\u0430: ${P.label}</dt><dd>${m.length}</dd>`;
+      }).join("") : "");
     }
     hover(e) {
       const a = this.atlas;
@@ -16419,6 +16981,14 @@ dd.q4{color:#c58cff;font-weight:600}
         const sh = Object.entries(cellBiomes(a, i)).sort((x2, y2) => y2[1] - x2[1]).slice(0, 4).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
         if (sh.length > 1) parts.push(`\u043E\u043A\u0440\u0443\u0433\u0430: ${sh.join(", ")}`);
       }
+      const town = townAt(a, i);
+      if (town) {
+        const P = WORLD_PEOPLES.get(town.people);
+        parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439, \u043E\u0441\u043D\u043E\u0432\u0430\u043D \u0432 \u0433\u043E\u0434 ${town.founded}; \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0438: ${town.built.map((id) => BUILDINGS.get(id).name.toLowerCase()).join(", ")}`);
+      }
+      const land = landOf(a, i);
+      if (land) parts.push(`\u0437\u0435\u043C\u043B\u0438: ${land.people.label} ${Math.round(land.share * 100)}%`);
+      if (a.f.road && a.f.road[i] >= ROADS.levels[0].wear) parts.push(ROADS.levels[roadLevel(a.f.road[i])].label);
       const lair = lairAt(a, i);
       if (lair) {
         const L = LAIRS.get(lair.kind);
@@ -17349,8 +17919,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.44.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a94c516" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.45.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 2a3f052" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

@@ -11,6 +11,10 @@ import {biomeAt, soilAt, cellBiomes, dryness} from '../src/atlas/biomes.js';
 import {BIOMES, KOPPEN} from '../src/data/biomes.js';
 import {LAIRS} from '../src/data/lairs.js';
 import {historyLength} from '../src/atlas/history.js';
+import {WORLD_PEOPLES} from '../src/data/peoples.js';
+import {BUILDINGS} from '../src/data/buildings.js';
+import {ROADS} from '../src/data/roads.js';
+import {RIVERS} from '../src/data/hydrology.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
 
 const seeds = +(process.argv[2] || 3), size = process.argv[3] || 'small';
@@ -22,7 +26,44 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
-const hist = {lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}};
+const hist = {lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, cleared: 0, roads: 0, linked: [0, 0]};
+
+// every building a people builds is in the catalogue of buildings (data/buildings.js)
+for (const P of WORLD_PEOPLES.all()) for (const b of P.build) check(`народ ${P.label}: постройка ${b.id} есть в справочнике`, BUILDINGS.has(b.id), BUILDINGS.has(b.id) ? '' : 'нет');
+
+// towns stand on dry land, build only what their place allows, are joined by roads to their own
+// people's neighbours; roads keep to the land; a people lives only where its land can hold it
+function townsCheck(a, tag) {
+  const f = a.f, lv = id => ORE_GENESIS.get(id).levels, k2 = (Math.min(a.w, a.h) / 192) ** 2;
+  let wet = 0, misbuilt = '', seaRoad = 0, homeless = 0;
+  for (const t of a.towns) {
+    if (f.ocean[t.i] || f.lake[t.i] >= 0) wet++;
+    const i = t.i, ore = ['iron', 'bronze', 'silver'].some(id => f[`ore_${id}`][i] >= lv(id)[1]);
+    if ((t.built.includes('mineshaft') || t.built.includes('smelter') || t.built.includes('forge')) && !ore) misbuilt ||= `${t.name}: рудник без руды`;
+    if (t.built.includes('jeweler') && f.ore_gems[i] < lv('gems')[1]) misbuilt ||= `${t.name}: резчик без самоцветов`;
+    if (t.built.includes('garden') && f.fert[i] < 0.5) misbuilt ||= `${t.name}: огород на бедной земле`;
+    hist.towns[t.people] = (hist.towns[t.people] || 0) + (t.alive ? 1 : 0);
+    hist.pop[t.people] = (hist.pop[t.people] || 0) + (t.alive ? t.pop : 0);
+  }
+  for (let i = 0; i < a.n; i++) if (f.road[i] >= ROADS.levels[0].wear) { hist.roads++; if (f.ocean[i]) seaRoad++; }
+  for (const pe of a.peoples) for (let j = 0; j < pe.u.length; j++) if (pe.u[j] > 0 && pe.K[j] <= 0) homeless++;
+  // towns at least 6 years old with a town of their own people close by have a worn road at their door
+  const towns = a.towns.filter(t => t.alive && a.hist.year - t.founded >= 6);
+  for (const t of towns) {
+    const mate = towns.some(o => o !== t && o.people === t.people && Math.hypot(o.x - t.x, o.y - t.y) < 0.5 * ROADS.reach * Math.sqrt(k2));
+    if (!mate) continue;
+    hist.linked[1]++;
+    let road = false;
+    for (let y = t.y - 2; y <= t.y + 2 && !road; y++) for (let x = t.x - 2; x <= t.x + 2; x++) if (x >= 0 && y >= 0 && x < a.w && y < a.h && f.road[y * a.w + x] >= ROADS.levels[0].wear) { road = true; break; }
+    if (road) hist.linked[0]++;
+  }
+  hist.cleared += a.lairs.filter(l => l.clearedBy).length;
+  check(`${tag}: города на суше`, wet === 0, wet ? `${wet} в воде` : '');
+  check(`${tag}: города строят только то, что позволяет место`, !misbuilt, misbuilt);
+  check(`${tag}: дороги не идут по морю`, seaRoad === 0, seaRoad ? `${seaRoad} клеток` : '');
+  check(`${tag}: народы живут только там, где их земля их держит`, homeless === 0, homeless ? `${homeless} клеток` : '');
+}
+
 
 // the wild era ran to its end; beasts stay where their biomes can hold them; lairs keep apart
 function historyCheck(a, tag) {
@@ -185,6 +226,7 @@ for (let s = 1; s <= seeds; s++) for (let land = 0; land < ATLAS_LAND.length; la
   rainBelts(a); rainShadow(a);
   biomeCheck(a, tag);
   historyCheck(a, tag);
+  townsCheck(a, tag);
   const dr = drainage(a);
   check(`${tag}: вся вода стекает в море или в солёное озеро`, dr.bad === 0, dr.bad ? `${dr.bad} клеток без стока` : '');
   check(`${tag}: вниз по течению воды не меньше`, dr.shrink === 0, dr.shrink ? `${dr.shrink} мест` : '');
@@ -226,6 +268,10 @@ check('  чернозём и поймы плодороднее подзола и
 console.log('Дикая эра:');
 check('  логова чудовищ есть', hist.lairs > 0, `${hist.lairs} за эру на ${hist.worlds} миров, к концу живы ${hist.alive}; ` + LAIRS.all().map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', '));
 check('  летопись эры пишется', hist.lines >= 10 * hist.worlds, `${(hist.lines / hist.worlds).toFixed(0)} записей на мир`);
+console.log('Эпоха древних:');
+for (const P of WORLD_PEOPLES.all()) check(`  ${P.label} живут в мире`, (hist.towns[P.id] || 0) > 0, `городов ${hist.towns[P.id] || 0} на ${hist.worlds} миров, в среднем ${Math.round((hist.pop[P.id] || 0) / hist.worlds)} жителей на мир`);
+check('  дороги наезжены', hist.roads > 0 && hist.linked[0] >= 0.8 * hist.linked[1], `${hist.linked[0]} из ${hist.linked[1]} городов с соседями своего народа стоят у дороги; клеток дорог ${hist.roads}`);
+check('  народы теснят чудовищ', hist.cleared > 0, `выжжено логов: ${hist.cleared}`);
 console.log('Вода:');
 check('  озёра есть', lakesAll > 0, `${lakesAll} на ${worlds} миров, солёных ${saltAll}`);
 if (lakeRain.salt[1] && lakeRain.fresh[1]) check('  солёные озёра в сухом климате', mean(lakeRain.salt) < mean(lakeRain.fresh), `у солёных ${Math.round(mean(lakeRain.salt))} мм, у пресных ${Math.round(mean(lakeRain.fresh))} мм`);
