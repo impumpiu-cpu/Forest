@@ -53,18 +53,22 @@ function continentality(a) {
   return out;
 }
 
+// height above the sea in km. The relief's 0..1 is stretched so that most land is low and only the
+// peaks are high, as on Earth (mean land ~0.8 km, the highest peak `peakKm`)
+export const heightKm = (a, e) => (e > a.sea ? (a.cfg.peakKm ?? 5) * ((e - a.sea) / (1 - a.sea)) ** 1.6 : 0);
+
 export function temperature(a) {
-  const {w, h, n} = a, f = a.f, top = a.cfg.peakKm ?? 5;
+  const {w, h, n} = a, f = a.f;
   const cont = continentality(a), temp = new Float32Array(n), range = new Float32Array(n);
   for (let y = 0; y < h; y++) {
     const lat = Math.abs(latitude(a, y)), base = 28 - 46 * (lat / 90) ** 1.3;   // sea level, yearly mean
     for (let x = 0; x < w; x++) {
-      const i = y * w + x, e = f.elev[i], km = f.land[i] ? (e - a.sea) / (1 - a.sea) * top : 0;
+      const i = y * w + x, km = f.land[i] ? heightKm(a, f.elev[i]) : 0;
       // inland is a little hotter in the tropics and colder towards the poles than the coast
       const inland = cont[i] * (lat < 25 ? 1.5 : -4 * (lat - 25) / 65);
       temp[i] = base - 6.5 * km + inland;
       // the year's swing: small at the equator and by the sea, large inland at high latitudes
-      range[i] = 2 + (lat / 90) * (12 + 30 * cont[i]);
+      range[i] = 2 + (lat / 90) * (10 + 55 * cont[i]);   // Bergen (60°, by the sea) ~12°, Yakutsk (62°, inland) ~55°
     }
   }
   f.temp = temp; f.trange = range; f.cont = cont;

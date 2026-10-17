@@ -5,6 +5,10 @@ import {ATLAS_SIZES, ATLAS_LAND, DEFAULT_ATLAS_CFG} from '../data/atlas.js';
 import {ATLAS_STAGES} from '../atlas/stages.js';
 import {cellGeology} from '../atlas/geology.js';
 import {riverKind} from '../atlas/hydrology.js';
+import {biomeAt, soilAt, cellBiomes} from '../atlas/biomes.js';
+import {heightKm} from '../atlas/climate.js';
+import {BIOMES, BIOME_KINDS} from '../data/biomes.js';
+import {SOILS} from '../data/soils.js';
 import {RIVERS} from '../data/hydrology.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {PLATE_COUNTS, HEMISPHERES, BOUNDARIES, BOUNDARY_BY_CODE, ROCKS, ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
@@ -22,7 +26,7 @@ const OPTS = {
   land: ATLAS_LAND.map((l, i) => [i, l.label]),
   plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
   hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
-  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки']],
+  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
 const VIEW_KEYS = new Set(['layer', 'ore']);
@@ -100,6 +104,8 @@ export class AtlasView {
     if (this.layer === 'plates') html = sw([200, 190, 150], 'материковая кора') + sw([50, 62, 96], 'океаническая кора') + BOUNDARIES.all().map(b => sw(b.color, b.label)).join('') + sw([255, 60, 30], 'живой вулкан');
     else if (this.layer === 'rocks') html = Object.entries(ROCK_KINDS).map(([k, l]) => `<b>${l}:</b> ` + ROCKS.filter(r => r.kind === k).map(r => sw(r.color, r.label)).join('')).join('');
     else if (this.layer === 'ores') { const o = ORE_GENESIS.get(this.ore); html = sw([70, 72, 66], 'нет') + sw(mix([70, 72, 66], o.color, 0.45), 'бедно') + sw(mix([70, 72, 66], o.color, 0.75), 'есть') + sw(o.color, 'богато'); }
+    else if (this.layer === 'biomes') html = Object.entries(BIOME_KINDS).filter(([k]) => k !== 'feature').map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter(b => b.kind === k).map(b => sw(b.color, b.label)).join('')).join('') + '<b>леса</b> темнее, гари светлее';
+    else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
@@ -140,6 +146,15 @@ export class AtlasView {
         return v < lv[0] ? grey : v < lv[1] ? mix(grey, o.color, 0.45) : v < lv[2] ? mix(grey, o.color, 0.75) : o.color;
       }
       case 'temp': return f.temp ? ramp(HEAT, (f.temp[i] + 30) / 65) : base;
+      case 'biomes': {
+        const b = biomeAt(a, i); if (!b) return base;
+        // the tree cover darkens the zone's colour, burnt ground shows paler
+        return f.trees && b.trees > 0.2 ? mix(mix(b.color, [210, 200, 150], 0.35), mix(b.color, [16, 40, 20], 0.35), f.trees[i] / b.trees) : b.color;
+      }
+      case 'soils': {
+        const s = soilAt(a, i); if (!s) return base;
+        return mix([60, 60, 56], s.color, 0.6 + 0.4 * f.fert[i]);
+      }
       case 'rain': return f.rain ? (f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25)) : base;
       case 'wind': {
         if (!f.windX) return base;
@@ -175,7 +190,7 @@ export class AtlasView {
     }
     px.putImageData(img, 0, 0);
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
-    if (a.f.flow && ['relief', 'rain', 'rocks', 'temp'].includes(this.layer)) this.rivers(a, px);
+    if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
   }
 
   // rivers: a line from each river cell to the cell it drains into, wider for more water
@@ -239,10 +254,17 @@ export class AtlasView {
     const rk = f.flow && f.lake[i] < 0 ? riverKind(a, i) : null;
     if (rk) parts.push({stream: 'ручей', river: 'река', great: 'большая река'}[rk]);
     if (f.alluvium && f.alluvium[i] > 0.3) parts.push('пойма');
-    parts.push(`высота ${f.elev[i].toFixed(3)}`);
+    parts.push(f.ocean && f.ocean[i] ? 'дно' : f.temp ? `${Math.max(1, Math.round(heightKm(a, f.elev[i]) * 1000))} м` : `высота ${f.elev[i].toFixed(3)}`);
     if (f.temp) parts.push(`${f.temp[i].toFixed(1)}°` + (f.trange && f.land[i] ? ` (размах года ${Math.round(f.trange[i])}°)` : ''));
     if (f.windX) { const sp = Math.hypot(f.windX[i], f.windY[i]); if (sp > 0.08) parts.push(`ветер ${windWord(f.windX[i], f.windY[i])}`); }
     if (f.rain && f.land[i]) parts.push(`${Math.round(f.rain[i])} мм в год, ${RAIN_WORDS.find(([v]) => f.rain[i] < v)[1]}`);
+    const bio = biomeAt(a, i);
+    if (bio) {
+      parts.push(bio.label + (f.trees && bio.trees > 0.2 ? ` (лес ${Math.round(f.trees[i] * 100)}%)` : ''));
+      const sl = soilAt(a, i); if (sl) parts.push(`почва ${sl.label}, плодородие ${Math.round(f.fert[i] * 100)}%`);
+      const sh = Object.entries(cellBiomes(a, i)).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
+      if (sh.length > 1) parts.push(`округа: ${sh.join(', ')}`);
+    }
     const geo = cellGeology(a, i);
     if (geo.rock) parts.push(geo.rock.label);
     if (geo.rock && f.land[i]) {

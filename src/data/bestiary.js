@@ -40,7 +40,7 @@ export const BESTIARY = [
   // Wargs: great wolves, half-witted; orcs and goblins ride them into raids (data/raids.js)
   beast({id: 'varg', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', hp: 1.5, speed: 0.15, needs: ['food'], brain: 'predator',
     arrive: {group: [2, 4], every: [3, 5], chance: 0.5, cap: 4, first: 3, message: 'пришла стая варгов: {n}. Это не волки — они крупнее и злее'},
-    habitat: {taiga: 'usual', foothills: 'rare', highlands: 'rare', barrows: 'rare'},
+    habitat: {taiga: 'usual', tundra: 'rare', steppe: 'rare', foothills: 'rare', highlands: 'rare', barrows: 'rare'},
     special: around({S: 10, P: 10, E: 9, C: 2, I: 4, A: 9, L: 4}),
     look: {shape: 'wolf', size: 0.74, color: '#4b4b55'}, attack: {power: 1.35, cooldown: 13},
     yields: {meat: 3, hide: 3, bone: 2}, tameWith: ['orc', 'goblin'],
@@ -50,7 +50,7 @@ export const BESTIARY = [
   // Bear: a loner that only fights when bothered; in winter it sleeps in its den
   beast({id: 'bear', label: 'медведь', labelAcc: 'медведя', plural: 'медведи', hp: 3.6, speed: 0.12, brain: 'mule', big: true, hibernates: true,
     arrive: {group: [1, 1], every: [3, 5], chance: 0.5, cap: 1, first: 4, message: 'в лес пришёл медведь. Не трогай — и он не тронет'},
-    habitat: {forest: 'usual', taiga: 'usual', foothills: 'rare'},
+    habitat: {forest: 'usual', taiga: 'usual', tundra: 'rare', foothills: 'rare'},
     special: around({S: 14, P: 6, E: 13, C: 2, I: 3, A: 5, L: 4}),
     look: {shape: 'bear', size: 0.9, color: '#5a3d28'}, attack: {power: 2.4, cooldown: 16},
     yields: {meat: 12, hide: 3, bone: 3, bile: 1}, trophies: [{res: 'bile', n: 1, chance: 0.25, tier: 2}, {res: 'furs', n: 2, chance: 0.2}],
@@ -70,7 +70,7 @@ export const BESTIARY = [
   // Elk: the mule of the taiga — a lot of meat, and a bull that tramples hunters
   beast({id: 'elk', label: 'лось', labelAcc: 'лося', plural: 'лоси', hp: 3.4, speed: 0.13, brain: 'mule', big: true, game: true,
     arrive: {group: [1, 3], every: [2, 4], chance: 0.5, cap: 4, first: 2, message: 'к лесу вышли лоси: {n}. Бык топчет охотников'},
-    habitat: {taiga: 'usual', swamp: 'usual', forest: 'rare'},
+    habitat: {taiga: 'usual', swamp: 'usual', tundra: 'rare', forest: 'rare'},
     special: around({S: 11, P: 6, E: 12, C: 2, I: 2, A: 6, L: 4}),
     look: {shape: 'deer', size: 0.84, color: '#5e4630'}, attack: {power: 2.0, cooldown: 16},
     yields: {meat: 12, hide: 3, bone: 3},
@@ -80,7 +80,7 @@ export const BESTIARY = [
   // Hyenas: scavengers of the barrow steppe, packs, bold by night; gnolls keep them
   beast({id: 'hyena', label: 'гиена', labelAcc: 'гиену', plural: 'гиены', hp: 0.7, speed: 0.15, needs: ['food'], brain: 'predator',
     arrive: {group: [2, 5], every: [2, 4], chance: 0.5, cap: 5, first: 2, message: 'пришли гиены: {n}. Ночью они смелеют'},
-    habitat: {barrows: 'common', meadow: 'rare'},
+    habitat: {barrows: 'common', savanna: 'common', steppe: 'usual', desert: 'rare', shrubland: 'rare', meadow: 'rare'},
     special: around({S: 6, P: 10, E: 8, C: 1, I: 3, A: 9, L: 5}),
     look: {shape: 'wolf', size: 0.56, color: '#a8925e'}, attack: {power: 0.9, cooldown: 12},
     yields: {meat: 1, hide: 1, bone: 1}, tameWith: ['gnoll'],
@@ -90,7 +90,7 @@ export const BESTIARY = [
   // Giant toad: sits in the marsh and snaps whoever comes within its tongue's reach
   beast({id: 'toad', label: 'гигантская жаба', labelAcc: 'гигантскую жабу', plural: 'гигантские жабы', hp: 1.0, speed: 0.06, brain: 'mule',
     arrive: {group: [1, 2], every: [2, 3], chance: 0.6, cap: 3, first: 2},
-    habitat: {swamp: 'common', water: 'rare'},
+    habitat: {swamp: 'common', jungle: 'usual', water: 'rare'},
     special: around({S: 7, P: 6, E: 9, C: 1, I: 1, A: 4, L: 4}),
     look: {shape: 'toad', size: 0.55, color: '#6b7a3a'}, attack: {power: 1.2, cooldown: 20},
     yields: {meat: 2, slime: 1}, trophies: [{res: 'slime', n: 1, chance: 0.3}],
@@ -101,7 +101,7 @@ export const BESTIARY = [
   // Griffin: nests on the crags, carries off goats and mules, a lone person when hungry
   beast({id: 'griffin', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', hp: 2.4, speed: 0.18, needs: ['food'], brain: 'predator',
     arrive: {group: [1, 1], every: [5, 8], chance: 0.4, cap: 1, first: 5, message: 'над скалами кружит грифон. Коз и мулов — под крышу'},
-    habitat: {highlands: 'usual', foothills: 'rare'},
+    habitat: {highlands: 'usual', foothills: 'rare', steppe: 'rare', desert: 'rare'},
     special: around({S: 16, P: 14, E: 13, C: 4, I: 5, A: 13, L: 5}),
     look: {shape: 'bird', size: 0.86, color: '#b88a44'}, attack: {power: 1.9, cooldown: 13},
     yields: {meat: 4, feathers: 3, bone: 2}, trophies: [{res: 'feathers', n: 2, chance: 0.3}],
@@ -122,7 +122,7 @@ export const BESTIARY = [
   beast({id: 'drake', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', hp: 4.5, speed: 0.14, needs: ['food'], brain: 'predator', heatHarm: 400,
     arrive: {group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: 'с вулкана прилетел дрейк. Где он дышит, загорается трава'},
     fearHeat: 350,
-    habitat: {volcano: 'usual', highlands: 'rare'},
+    habitat: {volcano: 'usual', highlands: 'rare', desert: 'rare'},
     special: around({S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5}, 2),
     look: {shape: 'bird', size: 0.95, color: '#a3432e'}, attack: {power: 2.6, cooldown: 15}, breath: 0.25,
     yields: {meat: 6, scales: 4, gland: 1}, trophies: [{res: 'scales', n: 2, chance: 0.25, tier: 2}, {res: 'gland', n: 1, chance: 0.2, tier: 3}],
@@ -132,7 +132,7 @@ export const BESTIARY = [
   // Giant spider: webs tangle its prey; silk for bowstrings and cloth, venom for the alchemist
   beast({id: 'spider', label: 'гигантский паук', labelAcc: 'гигантского паука', plural: 'гигантские пауки', hp: 1.1, speed: 0.13, needs: ['food'], brain: 'predator',
     arrive: {group: [1, 3], every: [3, 5], chance: 0.5, cap: 3, first: 3, message: 'в лесу видели гигантских пауков: {n}. Паутина держит крепко'},
-    habitat: {underground: 'common', forest: 'rare', swamp: 'rare'},
+    habitat: {underground: 'common', jungle: 'common', forest: 'rare', swamp: 'rare'},
     special: around({S: 8, P: 9, E: 7, C: 0, I: 2, A: 12, L: 4}),
     look: {shape: 'spider', size: 0.62, color: '#3a3530'}, attack: {power: 1.0, cooldown: 12},
     web: {slow: 0.35, ticks: 120}, venom: {dmg: 0.0004, ticks: 160},
@@ -143,7 +143,7 @@ export const BESTIARY = [
   // Stone worm: digs through the rock, slow and nearly unkillable, leaves its shell
   beast({id: 'stoneworm', label: 'каменный червь', labelAcc: 'каменного червя', plural: 'каменные черви', hp: 6, speed: 0.06, brain: 'mule', big: true,
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 5, message: 'из-под скал выполз каменный червь'},
-    habitat: {underground: 'usual', foothills: 'rare'},
+    habitat: {underground: 'usual', desert: 'rare', foothills: 'rare'},
     special: around({S: 18, P: 3, E: 18, C: 0, I: 1, A: 3, L: 3}),
     look: {shape: 'worm', size: 0.9, color: '#7d6f5c'}, attack: {power: 2.8, cooldown: 22},
     yields: {meat: 8, hide: 4}, trophies: [{res: 'gems', n: 1, chance: 0.15}],
@@ -153,7 +153,7 @@ export const BESTIARY = [
   // Blood bats: night flocks from caves and barrows; they drink, a little at a time
   beast({id: 'bat', label: 'летучая мышь-кровопийца', labelAcc: 'летучую мышь', plural: 'летучие мыши', hp: 0.2, speed: 0.17, needs: ['food'], brain: 'predator', nocturnal: true,
     arrive: {group: [3, 6], every: [2, 3], chance: 0.6, cap: 6, first: 2, night: true},
-    habitat: {underground: 'common', barrows: 'common', swamp: 'rare'},
+    habitat: {underground: 'common', barrows: 'common', jungle: 'rare', swamp: 'rare'},
     special: around({S: 2, P: 12, E: 2, C: 0, I: 2, A: 13, L: 6}),
     look: {shape: 'bat', size: 0.34, color: '#3b3440'}, attack: {power: 0.35, cooldown: 9}, drinks: 0.6,
     killMessage: name => `Летучие мыши обескровили поселенца: <b>${name}</b>.`,
@@ -176,7 +176,7 @@ export const BESTIARY = [
   beast({id: 'leshy', label: 'леший', labelAcc: 'лешего', plural: 'лешие', mind: 'semi', undead: true, hp: 3.0, speed: 0.07, brain: 'spirit', heatHarm: 40,
     arrive: {first: 2, message: 'в чаще завёлся леший: лесорубы и охотники будут плутать'},
     resident: true, respawn: 8,
-    habitat: {forest: 'usual', taiga: 'usual'},
+    habitat: {forest: 'usual', taiga: 'usual', jungle: 'rare'},
     special: around({S: 12, P: 12, E: 14, C: 3, I: 6, A: 4, L: 6}),
     look: {shape: 'spirit', size: 0.86, color: '#4f6b3a'}, attack: {power: 1.4, cooldown: 16}, resist: {melee: 0.35, ranged: 0.25},
     yields: {herbs: 4, wood: 6},

@@ -45,7 +45,7 @@ REGIONS.registerAll([
     biomes: {swamp: 0.45, forest: 0.35, water: 0.2}, flora: {hive: 1, herbs: 1.6, saltlick: 0, wildflax: 1}},
   {id: 'barrowland', label: 'Курганная степь', weight: 1, note: 'ровная земля и древние могилы: гиены, гноллы и мертвецы',
     ores: {iron: 0.5, coal: 0.5, gems: 0.5, bronze: 1, silver: 0.5, mithril: 0}, placer: 0, goldVein: false, magma: false, road: 1.1,
-    biomes: {meadow: 0.45, barrows: 0.4, swamp: 0.15}, flora: {hive: 0.5, herbs: 0.5, saltlick: 1, wildflax: 0.5}},
+    biomes: {steppe: 0.45, barrows: 0.4, swamp: 0.15}, flora: {hive: 0.5, herbs: 0.5, saltlick: 1, wildflax: 0.5}},
 ]);
 
 // saves made before regions: the land as it was then — every old ore as usual, no precious metals

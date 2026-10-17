@@ -1363,7 +1363,7 @@ dd.q4{color:#c58cff;font-weight:600}
       needs: ["food"],
       brain: "predator",
       arrive: { group: [2, 4], every: [3, 5], chance: 0.5, cap: 4, first: 3, message: "\u043F\u0440\u0438\u0448\u043B\u0430 \u0441\u0442\u0430\u044F \u0432\u0430\u0440\u0433\u043E\u0432: {n}. \u042D\u0442\u043E \u043D\u0435 \u0432\u043E\u043B\u043A\u0438 \u2014 \u043E\u043D\u0438 \u043A\u0440\u0443\u043F\u043D\u0435\u0435 \u0438 \u0437\u043B\u0435\u0435" },
-      habitat: { taiga: "usual", foothills: "rare", highlands: "rare", barrows: "rare" },
+      habitat: { taiga: "usual", tundra: "rare", steppe: "rare", foothills: "rare", highlands: "rare", barrows: "rare" },
       special: around({ S: 10, P: 10, E: 9, C: 2, I: 4, A: 9, L: 4 }),
       look: { shape: "wolf", size: 0.74, color: "#4b4b55" },
       attack: { power: 1.35, cooldown: 13 },
@@ -1384,7 +1384,7 @@ dd.q4{color:#c58cff;font-weight:600}
       big: true,
       hibernates: true,
       arrive: { group: [1, 1], every: [3, 5], chance: 0.5, cap: 1, first: 4, message: "\u0432 \u043B\u0435\u0441 \u043F\u0440\u0438\u0448\u0451\u043B \u043C\u0435\u0434\u0432\u0435\u0434\u044C. \u041D\u0435 \u0442\u0440\u043E\u0433\u0430\u0439 \u2014 \u0438 \u043E\u043D \u043D\u0435 \u0442\u0440\u043E\u043D\u0435\u0442" },
-      habitat: { forest: "usual", taiga: "usual", foothills: "rare" },
+      habitat: { forest: "usual", taiga: "usual", tundra: "rare", foothills: "rare" },
       special: around({ S: 14, P: 6, E: 13, C: 2, I: 3, A: 5, L: 4 }),
       look: { shape: "bear", size: 0.9, color: "#5a3d28" },
       attack: { power: 2.4, cooldown: 16 },
@@ -1425,7 +1425,7 @@ dd.q4{color:#c58cff;font-weight:600}
       big: true,
       game: true,
       arrive: { group: [1, 3], every: [2, 4], chance: 0.5, cap: 4, first: 2, message: "\u043A \u043B\u0435\u0441\u0443 \u0432\u044B\u0448\u043B\u0438 \u043B\u043E\u0441\u0438: {n}. \u0411\u044B\u043A \u0442\u043E\u043F\u0447\u0435\u0442 \u043E\u0445\u043E\u0442\u043D\u0438\u043A\u043E\u0432" },
-      habitat: { taiga: "usual", swamp: "usual", forest: "rare" },
+      habitat: { taiga: "usual", swamp: "usual", tundra: "rare", forest: "rare" },
       special: around({ S: 11, P: 6, E: 12, C: 2, I: 2, A: 6, L: 4 }),
       look: { shape: "deer", size: 0.84, color: "#5e4630" },
       attack: { power: 2, cooldown: 16 },
@@ -1444,7 +1444,7 @@ dd.q4{color:#c58cff;font-weight:600}
       needs: ["food"],
       brain: "predator",
       arrive: { group: [2, 5], every: [2, 4], chance: 0.5, cap: 5, first: 2, message: "\u043F\u0440\u0438\u0448\u043B\u0438 \u0433\u0438\u0435\u043D\u044B: {n}. \u041D\u043E\u0447\u044C\u044E \u043E\u043D\u0438 \u0441\u043C\u0435\u043B\u0435\u044E\u0442" },
-      habitat: { barrows: "common", meadow: "rare" },
+      habitat: { barrows: "common", savanna: "common", steppe: "usual", desert: "rare", shrubland: "rare", meadow: "rare" },
       special: around({ S: 6, P: 10, E: 8, C: 1, I: 3, A: 9, L: 5 }),
       look: { shape: "wolf", size: 0.56, color: "#a8925e" },
       attack: { power: 0.9, cooldown: 12 },
@@ -1463,7 +1463,7 @@ dd.q4{color:#c58cff;font-weight:600}
       speed: 0.06,
       brain: "mule",
       arrive: { group: [1, 2], every: [2, 3], chance: 0.6, cap: 3, first: 2 },
-      habitat: { swamp: "common", water: "rare" },
+      habitat: { swamp: "common", jungle: "usual", water: "rare" },
       special: around({ S: 7, P: 6, E: 9, C: 1, I: 1, A: 4, L: 4 }),
       look: { shape: "toad", size: 0.55, color: "#6b7a3a" },
       attack: { power: 1.2, cooldown: 20 },
@@ -1484,7 +1484,7 @@ dd.q4{color:#c58cff;font-weight:600}
       needs: ["food"],
       brain: "predator",
       arrive: { group: [1, 1], every: [5, 8], chance: 0.4, cap: 1, first: 5, message: "\u043D\u0430\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043A\u0440\u0443\u0436\u0438\u0442 \u0433\u0440\u0438\u0444\u043E\u043D. \u041A\u043E\u0437 \u0438 \u043C\u0443\u043B\u043E\u0432 \u2014 \u043F\u043E\u0434 \u043A\u0440\u044B\u0448\u0443" },
-      habitat: { highlands: "usual", foothills: "rare" },
+      habitat: { highlands: "usual", foothills: "rare", steppe: "rare", desert: "rare" },
       special: around({ S: 16, P: 14, E: 13, C: 4, I: 5, A: 13, L: 5 }),
       look: { shape: "bird", size: 0.86, color: "#b88a44" },
       attack: { power: 1.9, cooldown: 13 },
@@ -1527,7 +1527,7 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 400,
       arrive: { group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: "\u0441 \u0432\u0443\u043B\u043A\u0430\u043D\u0430 \u043F\u0440\u0438\u043B\u0435\u0442\u0435\u043B \u0434\u0440\u0435\u0439\u043A. \u0413\u0434\u0435 \u043E\u043D \u0434\u044B\u0448\u0438\u0442, \u0437\u0430\u0433\u043E\u0440\u0430\u0435\u0442\u0441\u044F \u0442\u0440\u0430\u0432\u0430" },
       fearHeat: 350,
-      habitat: { volcano: "usual", highlands: "rare" },
+      habitat: { volcano: "usual", highlands: "rare", desert: "rare" },
       special: around({ S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5 }, 2),
       look: { shape: "bird", size: 0.95, color: "#a3432e" },
       attack: { power: 2.6, cooldown: 15 },
@@ -1548,7 +1548,7 @@ dd.q4{color:#c58cff;font-weight:600}
       needs: ["food"],
       brain: "predator",
       arrive: { group: [1, 3], every: [3, 5], chance: 0.5, cap: 3, first: 3, message: "\u0432 \u043B\u0435\u0441\u0443 \u0432\u0438\u0434\u0435\u043B\u0438 \u0433\u0438\u0433\u0430\u043D\u0442\u0441\u043A\u0438\u0445 \u043F\u0430\u0443\u043A\u043E\u0432: {n}. \u041F\u0430\u0443\u0442\u0438\u043D\u0430 \u0434\u0435\u0440\u0436\u0438\u0442 \u043A\u0440\u0435\u043F\u043A\u043E" },
-      habitat: { underground: "common", forest: "rare", swamp: "rare" },
+      habitat: { underground: "common", jungle: "common", forest: "rare", swamp: "rare" },
       special: around({ S: 8, P: 9, E: 7, C: 0, I: 2, A: 12, L: 4 }),
       look: { shape: "spider", size: 0.62, color: "#3a3530" },
       attack: { power: 1, cooldown: 12 },
@@ -1570,7 +1570,7 @@ dd.q4{color:#c58cff;font-weight:600}
       brain: "mule",
       big: true,
       arrive: { group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 5, message: "\u0438\u0437-\u043F\u043E\u0434 \u0441\u043A\u0430\u043B \u0432\u044B\u043F\u043E\u043B\u0437 \u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0439 \u0447\u0435\u0440\u0432\u044C" },
-      habitat: { underground: "usual", foothills: "rare" },
+      habitat: { underground: "usual", desert: "rare", foothills: "rare" },
       special: around({ S: 18, P: 3, E: 18, C: 0, I: 1, A: 3, L: 3 }),
       look: { shape: "worm", size: 0.9, color: "#7d6f5c" },
       attack: { power: 2.8, cooldown: 22 },
@@ -1591,7 +1591,7 @@ dd.q4{color:#c58cff;font-weight:600}
       brain: "predator",
       nocturnal: true,
       arrive: { group: [3, 6], every: [2, 3], chance: 0.6, cap: 6, first: 2, night: true },
-      habitat: { underground: "common", barrows: "common", swamp: "rare" },
+      habitat: { underground: "common", barrows: "common", jungle: "rare", swamp: "rare" },
       special: around({ S: 2, P: 12, E: 2, C: 0, I: 2, A: 13, L: 6 }),
       look: { shape: "bat", size: 0.34, color: "#3b3440" },
       attack: { power: 0.35, cooldown: 9 },
@@ -1637,7 +1637,7 @@ dd.q4{color:#c58cff;font-weight:600}
       arrive: { first: 2, message: "\u0432 \u0447\u0430\u0449\u0435 \u0437\u0430\u0432\u0451\u043B\u0441\u044F \u043B\u0435\u0448\u0438\u0439: \u043B\u0435\u0441\u043E\u0440\u0443\u0431\u044B \u0438 \u043E\u0445\u043E\u0442\u043D\u0438\u043A\u0438 \u0431\u0443\u0434\u0443\u0442 \u043F\u043B\u0443\u0442\u0430\u0442\u044C" },
       resident: true,
       respawn: 8,
-      habitat: { forest: "usual", taiga: "usual" },
+      habitat: { forest: "usual", taiga: "usual", jungle: "rare" },
       special: around({ S: 12, P: 12, E: 14, C: 3, I: 6, A: 4, L: 6 }),
       look: { shape: "spirit", size: 0.86, color: "#4f6b3a" },
       attack: { power: 1.4, cooldown: 16 },
@@ -1707,7 +1707,7 @@ dd.q4{color:#c58cff;font-weight:600}
       brain: "grazer",
       game: true,
       special: around({ S: 1, P: 8, E: 2, C: 1, I: 1, A: 9, L: 5 }),
-      habitat: { meadow: "common", forest: "usual", taiga: "usual", foothills: "rare", barrows: "usual" },
+      habitat: { meadow: "common", steppe: "common", forest: "usual", taiga: "usual", shrubland: "usual", savanna: "rare", tundra: "rare", foothills: "rare", barrows: "usual" },
       heatHarm: 60,
       look: { shape: "hare", size: 0.42, color: "#cdbb9a" },
       yields: { meat: 2, hide: 1, bone: 1 },
@@ -1728,7 +1728,7 @@ dd.q4{color:#c58cff;font-weight:600}
       needs: ["food"],
       brain: "predator",
       special: around({ S: 6, P: 10, E: 7, C: 2, I: 3, A: 8, L: 4 }),
-      habitat: { taiga: "common", forest: "usual", foothills: "usual", highlands: "rare", meadow: "rare" },
+      habitat: { taiga: "common", tundra: "usual", steppe: "usual", forest: "usual", foothills: "usual", highlands: "rare", meadow: "rare" },
       mods: { hunger: 0.9 },
       heatHarm: 60,
       look: { shape: "wolf", size: 0.58, color: "#8d8f96" },
@@ -1788,7 +1788,7 @@ dd.q4{color:#c58cff;font-weight:600}
       brain: "grazer",
       game: true,
       special: around({ S: 4, P: 8, E: 5, C: 2, I: 1, A: 8, L: 4 }),
-      habitat: { taiga: "common", forest: "usual", meadow: "usual" },
+      habitat: { taiga: "common", tundra: "usual", forest: "usual", meadow: "usual", steppe: "rare" },
       heatHarm: 60,
       look: { shape: "deer", size: 0.62, color: "#a8794a" },
       yields: { meat: 5, hide: 2, bone: 2 },
@@ -1808,7 +1808,7 @@ dd.q4{color:#c58cff;font-weight:600}
       brain: "grazer",
       game: true,
       special: around({ S: 2, P: 9, E: 3, C: 2, I: 3, A: 9, L: 6 }),
-      habitat: { taiga: "common", forest: "usual", meadow: "rare", barrows: "rare" },
+      habitat: { taiga: "common", forest: "usual", steppe: "usual", tundra: "usual", meadow: "rare", desert: "rare", barrows: "rare" },
       heatHarm: 60,
       look: { shape: "fox", size: 0.42, color: "#d0703a" },
       yields: { meat: 1, furs: 1 },
@@ -1831,7 +1831,7 @@ dd.q4{color:#c58cff;font-weight:600}
       big: true,
       game: true,
       special: around({ S: 8, P: 4, E: 9, C: 1, I: 1, A: 4, L: 3 }),
-      habitat: { forest: "common", swamp: "rare", meadow: "rare", taiga: "rare" },
+      habitat: { forest: "common", shrubland: "usual", swamp: "rare", meadow: "rare", taiga: "rare", jungle: "rare" },
       heatHarm: 60,
       look: { shape: "boar", size: 0.62, color: "#4a3a30" },
       attack: { power: 1.45, cooldown: 14 },
@@ -1874,7 +1874,7 @@ dd.q4{color:#c58cff;font-weight:600}
       big: true,
       legend: "\u043C\u0443\u043B",
       special: around({ S: 10, P: 4, E: 10, C: 2, I: 2, A: 3, L: 4 }),
-      habitat: { foothills: "common", meadow: "usual", highlands: "rare" },
+      habitat: { foothills: "common", meadow: "usual", shrubland: "rare", highlands: "rare" },
       heatHarm: 62,
       look: { shape: "mule", size: 0.85, color: "#7a5232" },
       attack: { power: 1.9, cooldown: 16 },
@@ -1927,7 +1927,7 @@ dd.q4{color:#c58cff;font-weight:600}
       game: true,
       legend: "\u043A\u043E\u0437\u0430",
       special: around({ S: 3, P: 6, E: 5, C: 2, I: 2, A: 8, L: 5 }),
-      habitat: { foothills: "common", highlands: "common", meadow: "rare" },
+      habitat: { foothills: "common", highlands: "common", shrubland: "usual", meadow: "rare" },
       heatHarm: 60,
       look: { shape: "goat", size: 0.46, color: "#d6cdb6" },
       yields: { meat: 3, hide: 1, bone: 1 },
@@ -2333,7 +2333,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: false,
       magma: false,
       road: 1.1,
-      biomes: { meadow: 0.45, barrows: 0.4, swamp: 0.15 },
+      biomes: { steppe: 0.45, barrows: 0.4, swamp: 0.15 },
       flora: { hive: 0.5, herbs: 0.5, saltlick: 1, wildflax: 0.5 }
     }
   ]);
@@ -2351,19 +2351,172 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/data/biomes.js
+  var BIOME_KINDS = { zonal: "\u043F\u0440\u0438\u0440\u043E\u0434\u043D\u044B\u0435 \u0437\u043E\u043D\u044B", altitude: "\u0432\u044B\u0441\u043E\u0442\u043D\u044B\u0435 \u043F\u043E\u044F\u0441\u0430", intrazonal: "\u0438\u043D\u0442\u0440\u0430\u0437\u043E\u043D\u0430\u043B\u044C\u043D\u044B\u0435", feature: "\u043E\u0441\u043E\u0431\u044B\u0435 \u043C\u0435\u0441\u0442\u0430" };
   var BIOMES = new Registry("biome");
   BIOMES.registerAll([
-    { id: "meadow", label: "\u043B\u0443\u0433\u0430", note: "\u043E\u0442\u043A\u0440\u044B\u0442\u0430\u044F \u0442\u0440\u0430\u0432\u0430, \u043F\u0435\u0440\u0435\u043B\u0435\u0441\u043A\u0438, \u0440\u0435\u0447\u043D\u044B\u0435 \u043F\u043E\u0439\u043C\u044B" },
-    { id: "forest", label: "\u043B\u0438\u0441\u0442\u0432\u0435\u043D\u043D\u044B\u0439 \u043B\u0435\u0441", note: "\u0434\u0443\u0431\u0440\u0430\u0432\u044B \u0438 \u0431\u0435\u0440\u0435\u0437\u043D\u044F\u043A\u0438, \u0441\u0432\u0435\u0442\u043B\u044B\u0435 \u043F\u043E\u043B\u044F\u043D\u044B" },
-    { id: "taiga", label: "\u0442\u0430\u0439\u0433\u0430", note: "\u0435\u043B\u044C\u043D\u0438\u043A\u0438 \u0438 \u0441\u043E\u0441\u043D\u044F\u043A\u0438, \u0434\u043E\u043B\u0433\u0430\u044F \u0437\u0438\u043C\u0430" },
-    { id: "foothills", label: "\u043F\u0440\u0435\u0434\u0433\u043E\u0440\u044C\u044F", note: "\u043A\u0430\u043C\u043D\u0438, \u043E\u0441\u044B\u043F\u0438, \u043A\u0430\u043C\u0435\u043D\u0438\u0441\u0442\u044B\u0435 \u043B\u0443\u0433\u0430" },
-    { id: "highlands", label: "\u0432\u044B\u0441\u043E\u043A\u043E\u0433\u043E\u0440\u044C\u0435", note: "\u0441\u043A\u0430\u043B\u044B \u0438 \u043B\u0435\u0434\u043D\u0438\u043A\u0438, \u0433\u043D\u0451\u0437\u0434\u0430 \u043D\u0430 \u0443\u0441\u0442\u0443\u043F\u0430\u0445" },
-    { id: "swamp", label: "\u0431\u043E\u043B\u043E\u0442\u043E", note: "\u0442\u043E\u043F\u044C, \u043A\u043E\u0447\u043A\u0438, \u0442\u0440\u043E\u0441\u0442\u043D\u0438\u043A, \u0442\u0443\u043C\u0430\u043D" },
-    { id: "barrows", label: "\u043A\u0443\u0440\u0433\u0430\u043D\u044B", note: "\u043F\u0443\u0441\u0442\u043E\u0448\u0438 \u0441 \u0434\u0440\u0435\u0432\u043D\u0438\u043C\u0438 \u043C\u043E\u0433\u0438\u043B\u0430\u043C\u0438" },
-    { id: "underground", label: "\u043F\u043E\u0434\u0437\u0435\u043C\u044C\u0435", note: "\u043F\u0435\u0449\u0435\u0440\u044B \u0438 \u0441\u0442\u0430\u0440\u044B\u0435 \u0432\u044B\u0440\u0430\u0431\u043E\u0442\u043A\u0438 \u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438" },
-    { id: "volcano", label: "\u0432\u0443\u043B\u043A\u0430\u043D", note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u043A\u0430\u043C\u043D\u0438, \u043F\u0435\u043F\u0435\u043B, \u0433\u043E\u0440\u044F\u0447\u0438\u0435 \u043A\u043B\u044E\u0447\u0438" },
-    { id: "water", label: "\u0432\u043E\u0434\u043E\u0451\u043C\u044B", note: "\u043E\u0437\u0451\u0440\u0430 \u0438 \u0440\u0435\u043A\u0438 \u0441 \u043E\u043C\u0443\u0442\u0430\u043C\u0438" }
+    // ── zonal, from the poles to the equator
+    {
+      id: "ice",
+      kind: "zonal",
+      label: "\u043B\u044C\u0434\u044B",
+      koppen: "EF",
+      color: [236, 242, 246],
+      trees: 0,
+      note: "\u043B\u0435\u0434\u043D\u0438\u043A\u043E\u0432\u044B\u0435 \u0449\u0438\u0442\u044B \u0438 \u0441\u043D\u0435\u0436\u043D\u044B\u0435 \u043F\u043E\u043B\u044F: \u043D\u0438 \u043E\u0434\u0438\u043D \u043C\u0435\u0441\u044F\u0446 \u043D\u0435 \u0442\u0435\u043F\u043B\u0435\u0435 \u043D\u0443\u043B\u044F"
+    },
+    {
+      id: "tundra",
+      kind: "zonal",
+      label: "\u0442\u0443\u043D\u0434\u0440\u0430",
+      koppen: "ET",
+      color: [150, 160, 140],
+      trees: 0.04,
+      note: "\u043C\u0445\u0438, \u043B\u0438\u0448\u0430\u0439\u043D\u0438\u043A\u0438, \u043A\u0430\u0440\u043B\u0438\u043A\u043E\u0432\u044B\u0435 \u0431\u0435\u0440\u0451\u0437\u044B \u0438 \u0432\u0435\u0447\u043D\u0430\u044F \u043C\u0435\u0440\u0437\u043B\u043E\u0442\u0430: \u043B\u0435\u0442\u043E \u043A\u043E\u0440\u043E\u0447\u0435 \u0438 \u0445\u043E\u043B\u043E\u0434\u043D\u0435\u0435, \u0447\u0435\u043C \u043D\u0443\u0436\u043D\u043E \u043B\u0435\u0441\u0443"
+    },
+    {
+      id: "taiga",
+      kind: "zonal",
+      label: "\u0442\u0430\u0439\u0433\u0430",
+      koppen: "Dfc, Dsc",
+      color: [56, 92, 70],
+      trees: 0.82,
+      note: "\u0435\u043B\u044C\u043D\u0438\u043A\u0438, \u043F\u0438\u0445\u0442\u0430\u0447\u0438 \u0438 \u0441\u043E\u0441\u043D\u044F\u043A\u0438 \u043D\u0430 \u043F\u043E\u0434\u0437\u043E\u043B\u0430\u0445; \u0437\u0438\u043C\u0430 \u0434\u043E\u043B\u0433\u0430\u044F \u0438 \u043C\u043E\u0440\u043E\u0437\u043D\u0430\u044F, \u043B\u0435\u0442\u043E \u043A\u043E\u0440\u043E\u0442\u043A\u043E\u0435"
+    },
+    {
+      id: "forest",
+      kind: "zonal",
+      label: "\u0448\u0438\u0440\u043E\u043A\u043E\u043B\u0438\u0441\u0442\u0432\u0435\u043D\u043D\u044B\u0439 \u043B\u0435\u0441",
+      koppen: "Cfb, Cfa, Dfb",
+      color: [74, 128, 70],
+      trees: 0.88,
+      note: "\u0434\u0443\u0431\u0440\u0430\u0432\u044B, \u0431\u0443\u043A\u043E\u0432\u044B\u0435 \u0438 \u0441\u043C\u0435\u0448\u0430\u043D\u043D\u044B\u0435 \u043B\u0435\u0441\u0430 \u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E\u0433\u043E \u043F\u043E\u044F\u0441\u0430, \u0441\u0432\u0435\u0442\u043B\u044B\u0435 \u043F\u043E\u043B\u044F\u043D\u044B"
+    },
+    {
+      id: "meadow",
+      kind: "zonal",
+      label: "\u043B\u0435\u0441\u043E\u0441\u0442\u0435\u043F\u044C \u0438 \u043B\u0443\u0433\u0430",
+      koppen: "Dfb, Cfb (\u0441\u0443\u0448\u0435)",
+      color: [134, 160, 86],
+      trees: 0.35,
+      note: "\u043B\u0443\u0433\u0430 \u0441 \u043F\u0435\u0440\u0435\u043B\u0435\u0441\u043A\u0430\u043C\u0438 \u043D\u0430 \u0433\u0440\u0430\u043D\u0438\u0446\u0435 \u043B\u0435\u0441\u0430 \u0438 \u0441\u0442\u0435\u043F\u0438; \u043F\u043E \u0440\u0435\u0447\u043D\u044B\u043C \u043F\u043E\u0439\u043C\u0430\u043C \u2014 \u0437\u0430\u043B\u0438\u0432\u043D\u044B\u0435 \u043B\u0443\u0433\u0430"
+    },
+    {
+      id: "steppe",
+      kind: "zonal",
+      label: "\u0441\u0442\u0435\u043F\u044C",
+      koppen: "BSk",
+      color: [190, 182, 110],
+      trees: 0.05,
+      note: "\u043A\u043E\u0432\u044B\u043B\u044C \u0438 \u043F\u043E\u043B\u044B\u043D\u044C \u043D\u0430 \u0447\u0435\u0440\u043D\u043E\u0437\u0451\u043C\u0430\u0445 \u0438 \u043A\u0430\u0448\u0442\u0430\u043D\u043E\u0432\u044B\u0445 \u043F\u043E\u0447\u0432\u0430\u0445; \u0434\u043E\u0436\u0434\u0435\u0439 \u043C\u0435\u043D\u044C\u0448\u0435, \u0447\u0435\u043C \u0438\u0441\u043F\u0430\u0440\u044F\u0435\u0442\u0441\u044F"
+    },
+    {
+      id: "shrubland",
+      kind: "zonal",
+      label: "\u0436\u0435\u0441\u0442\u043A\u043E\u043B\u0438\u0441\u0442\u043D\u044B\u0435 \u043A\u0443\u0441\u0442\u0430\u0440\u043D\u0438\u043A\u0438",
+      koppen: "Csa, Csb",
+      color: [150, 140, 80],
+      trees: 0.3,
+      note: "\u043C\u0430\u043A\u0432\u0438\u0441 \u0438 \u0433\u0430\u0440\u0438\u0433\u0430 \u0442\u0451\u043F\u043B\u044B\u0445 \u0441\u0443\u0445\u0438\u0445 \u0431\u0435\u0440\u0435\u0433\u043E\u0432: \u0434\u0443\u0431 \u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0439, \u043C\u043E\u0436\u0436\u0435\u0432\u0435\u043B\u044C\u043D\u0438\u043A, \u043B\u0430\u0432\u0440"
+    },
+    {
+      id: "desert",
+      kind: "zonal",
+      label: "\u043F\u0443\u0441\u0442\u044B\u043D\u044F",
+      koppen: "BWh, BWk",
+      color: [222, 196, 140],
+      trees: 0,
+      note: "\u043F\u0435\u0441\u043A\u0438, \u0449\u0435\u0431\u0435\u043D\u044C \u0438 \u0441\u043E\u043B\u043E\u043D\u0447\u0430\u043A\u0438: \u0432\u043E\u0434\u044B \u0432\u044B\u043F\u0430\u0434\u0430\u0435\u0442 \u043C\u0435\u043D\u044C\u0448\u0435 \u043F\u043E\u043B\u043E\u0432\u0438\u043D\u044B \u0442\u043E\u0433\u043E, \u0447\u0442\u043E \u043C\u043E\u0433\u043B\u043E \u0431\u044B \u0438\u0441\u043F\u0430\u0440\u0438\u0442\u044C\u0441\u044F"
+    },
+    {
+      id: "savanna",
+      kind: "zonal",
+      label: "\u0441\u0430\u0432\u0430\u043D\u043D\u0430",
+      koppen: "Aw, BSh",
+      color: [182, 168, 80],
+      trees: 0.18,
+      note: "\u0432\u044B\u0441\u043E\u043A\u0438\u0435 \u0442\u0440\u0430\u0432\u044B \u0438 \u0440\u0435\u0434\u043A\u0438\u0435 \u0434\u0435\u0440\u0435\u0432\u044C\u044F \u0436\u0430\u0440\u043A\u0438\u0445 \u043A\u0440\u0430\u0451\u0432 \u0441 \u0441\u0443\u0445\u0438\u043C \u0441\u0435\u0437\u043E\u043D\u043E\u043C"
+    },
+    {
+      id: "jungle",
+      kind: "zonal",
+      label: "\u0432\u043B\u0430\u0436\u043D\u044B\u0439 \u0442\u0440\u043E\u043F\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u043B\u0435\u0441",
+      koppen: "Af, Am",
+      color: [30, 106, 60],
+      trees: 0.96,
+      note: "\u043C\u043D\u043E\u0433\u043E\u044F\u0440\u0443\u0441\u043D\u044B\u0439 \u043B\u0435\u0441 \u0432\u0435\u0447\u043D\u043E\u0433\u043E \u043B\u0435\u0442\u0430 \u0438 \u043B\u0438\u0432\u043D\u0435\u0439; \u043F\u043E\u0447\u0432\u0430 \u043F\u043E\u0434 \u043D\u0438\u043C \u0431\u0435\u0434\u043D\u0430\u044F"
+    },
+    // ── mountain belts
+    {
+      id: "foothills",
+      kind: "altitude",
+      label: "\u043F\u0440\u0435\u0434\u0433\u043E\u0440\u044C\u044F",
+      color: [140, 128, 100],
+      trees: 0.45,
+      note: "\u043A\u0440\u0443\u0442\u044B\u0435 \u043A\u0430\u043C\u0435\u043D\u0438\u0441\u0442\u044B\u0435 \u0441\u043A\u043B\u043E\u043D\u044B \u043D\u0438\u0436\u0435 \u0433\u0440\u0430\u043D\u0438\u0446\u044B \u043B\u0435\u0441\u0430: \u043E\u0441\u044B\u043F\u0438, \u0441\u043A\u0430\u043B\u044B, \u0433\u043E\u0440\u043D\u044B\u0435 \u043B\u0443\u0433\u0430"
+    },
+    {
+      id: "highlands",
+      kind: "altitude",
+      label: "\u0432\u044B\u0441\u043E\u043A\u043E\u0433\u043E\u0440\u044C\u0435",
+      color: [150, 138, 126],
+      trees: 0.03,
+      note: "\u0430\u043B\u044C\u043F\u0438\u0439\u0441\u043A\u0438\u0439 \u043F\u043E\u044F\u0441 \u0432\u044B\u0448\u0435 \u0433\u0440\u0430\u043D\u0438\u0446\u044B \u043B\u0435\u0441\u0430: \u0441\u043A\u0430\u043B\u044B, \u043B\u0443\u0433\u0430, \u043B\u0435\u0434\u043D\u0438\u043A\u0438, \u0433\u043D\u0451\u0437\u0434\u0430 \u043D\u0430 \u0443\u0441\u0442\u0443\u043F\u0430\u0445"
+    },
+    // ── set by the ground
+    {
+      id: "swamp",
+      kind: "intrazonal",
+      label: "\u0431\u043E\u043B\u043E\u0442\u043E",
+      color: [86, 112, 90],
+      trees: 0.4,
+      note: "\u043F\u0435\u0440\u0435\u0443\u0432\u043B\u0430\u0436\u043D\u0451\u043D\u043D\u044B\u0435 \u043D\u0438\u0437\u0438\u043D\u044B: \u0442\u043E\u0440\u0444\u044F\u043D\u0438\u043A\u0438 \u0438 \u0442\u043E\u043F\u0438 \u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u0435, \u043F\u043B\u0430\u0432\u043D\u0438 \u0438 \u043C\u0430\u043D\u0433\u0440\u044B \u043D\u0430 \u044E\u0433\u0435"
+    },
+    {
+      id: "water",
+      kind: "intrazonal",
+      label: "\u0432\u043E\u0434\u043E\u0451\u043C\u044B",
+      color: [58, 104, 150],
+      trees: 0,
+      note: "\u043E\u0437\u0451\u0440\u0430 \u0438 \u0431\u043E\u043B\u044C\u0448\u0438\u0435 \u0440\u0435\u043A\u0438 \u0441 \u043E\u043C\u0443\u0442\u0430\u043C\u0438"
+    },
+    {
+      id: "volcano",
+      kind: "intrazonal",
+      label: "\u0432\u0443\u043B\u043A\u0430\u043D",
+      color: [96, 70, 64],
+      trees: 0.1,
+      note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u043A\u0430\u043C\u043D\u0438, \u043F\u0435\u043F\u0435\u043B, \u0433\u043E\u0440\u044F\u0447\u0438\u0435 \u043A\u043B\u044E\u0447\u0438"
+    },
+    // ── not nature
+    {
+      id: "barrows",
+      kind: "feature",
+      label: "\u043A\u0443\u0440\u0433\u0430\u043D\u044B",
+      color: [150, 120, 120],
+      trees: 0,
+      note: "\u043F\u0443\u0441\u0442\u043E\u0448\u0438 \u0441 \u0434\u0440\u0435\u0432\u043D\u0438\u043C\u0438 \u043C\u043E\u0433\u0438\u043B\u0430\u043C\u0438; \u043D\u0430 \u043A\u0430\u0440\u0442\u0435 \u043C\u0438\u0440\u0430 \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u0438\u0437 \u0438\u0441\u0442\u043E\u0440\u0438\u0438"
+    },
+    {
+      id: "underground",
+      kind: "feature",
+      label: "\u043F\u043E\u0434\u0437\u0435\u043C\u044C\u0435",
+      color: [70, 64, 80],
+      trees: 0,
+      note: "\u043F\u0435\u0449\u0435\u0440\u044B \u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438: \u043A\u0430\u0440\u0441\u0442 \u0432 \u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044F\u043A\u0435, \u043B\u0430\u0432\u043E\u0432\u044B\u0435 \u0442\u0440\u0443\u0431\u043A\u0438 \u0432 \u0431\u0430\u0437\u0430\u043B\u044C\u0442\u0435, \u0441\u0442\u0430\u0440\u044B\u0435 \u0432\u044B\u0440\u0430\u0431\u043E\u0442\u043A\u0438"
+    }
   ]);
+  var KOPPEN = {
+    dryness: [20, 140],
+    treeline: 10,
+    tropics: 18,
+    continental: -3,
+    taiga: 2,
+    jungle: 1700,
+    forestSteppe: 1.6,
+    mediterranean: 1.7,
+    warmTemperate: 13,
+    mountain: 0.3
+  };
   var RARITY = {
     common: { mul: 1.6, label: "\u0447\u0430\u0441\u0442\u043E" },
     usual: { mul: 1, label: "\u043E\u0431\u044B\u0447\u043D\u043E" },
@@ -2385,18 +2538,18 @@ dd.q4{color:#c58cff;font-weight:600}
     const k = LEVELS.indexOf(v), up = rnd() < 0.5;
     return LEVELS[Math.max(0, Math.min(LEVELS.length - 1, k + (up ? 1 : -1)))] ?? v;
   };
-  function rollBiomes(rnd, biomes) {
+  function rollBiomes(rnd, biomes2) {
     const out = {};
-    for (const [b, v] of Object.entries(biomes)) out[b] = v * (1 + (rnd() * 2 - 1) / 3);
+    for (const [b, v] of Object.entries(biomes2)) out[b] = v * (1 + (rnd() * 2 - 1) / 3);
     const sum = Object.values(out).reduce((t, v) => t + v, 0);
     for (const b of Object.keys(out)) out[b] = Math.round(out[b] / sum * 100) / 100;
     return out;
   }
-  function faunaFrom(biomes, sp) {
+  function faunaFrom(biomes2, sp) {
     const hab = SPECIES.get(sp).habitat;
     if (!hab) return 1;
     let v = 0;
-    for (const [b, r] of Object.entries(hab)) v += (biomes[b] || 0) * RARITY[r].mul;
+    for (const [b, r] of Object.entries(hab)) v += (biomes2[b] || 0) * RARITY[r].mul;
     return v;
   }
   function rollRegion(seed) {
@@ -4557,7 +4710,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function separate(w) {
     const ags = w.agents;
     for (let p = 0; p < ags.length; p++) for (let q = p + 1; q < ags.length; q++) {
-      const A = ags[p], B = ags[q], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy;
+      const A = ags[p], B2 = ags[q], dx = B2.x - A.x, dy = B2.y - A.y, d2 = dx * dx + dy * dy;
       if (d2 >= 0.16 || d2 < 1e-6) continue;
       const d = Math.sqrt(d2), push = (0.4 - d) * 0.25, ux = dx / d * push, uy = dy / d * push;
       const ok = (x, y) => inMap(w, x, y) && walkable(w, (y | 0) * w.w + (x | 0));
@@ -4565,9 +4718,9 @@ dd.q4{color:#c58cff;font-weight:600}
         A.x -= ux;
         A.y -= uy;
       }
-      if (ok(B.x + ux, B.y + uy)) {
-        B.x += ux;
-        B.y += uy;
+      if (ok(B2.x + ux, B2.y + uy)) {
+        B2.x += ux;
+        B2.y += uy;
       }
     }
   }
@@ -14336,13 +14489,13 @@ dd.q4{color:#c58cff;font-weight:600}
     return c;
   }
   var isCont = (v) => v > 0.5;
-  function classify(A, B, cA, cB, conv) {
+  function classify(A, B2, cA, cB, conv) {
     const T2 = 0.3;
     if (conv > T2) {
       if (cA && cB) return "collision";
       if (cA) return "arc";
       if (cB) return "trench";
-      return A.age > B.age ? "trench" : "islandArc";
+      return A.age > B2.age ? "trench" : "islandArc";
     }
     if (conv < -T2) return cA && cB ? "rift" : cA ? null : "ridge";
     return "fault";
@@ -14356,11 +14509,11 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const [dx, dy] of [[1, 0], [0, 1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx >= w || ny >= h) continue;
-        const B = plate[ny * w + nx];
-        if (B === A) continue;
-        const key2 = Math.min(A, B) * 64 + Math.max(A, B);
+        const B2 = plate[ny * w + nx];
+        if (B2 === A) continue;
+        const key2 = Math.min(A, B2) * 64 + Math.max(A, B2);
         if (!pairs.has(key2)) {
-          const pa = plates[Math.min(A, B)], pb = plates[Math.max(A, B)];
+          const pa = plates[Math.min(A, B2)], pb = plates[Math.max(A, B2)];
           const ux = pb.cx - pa.cx, uy = pb.cy - pa.cy, len = Math.hypot(ux, uy) || 1;
           pairs.set(key2, { sum: ((pa.vx - pb.vx) * ux + (pa.vy - pb.vy) * uy) / len, cnt: 1 });
         }
@@ -14368,10 +14521,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     const pairConv = /* @__PURE__ */ new Map();
     for (const [key2, e] of pairs) {
-      const A = Math.floor(key2 / 64), B = key2 % 64, conv = e.sum / e.cnt;
+      const A = Math.floor(key2 / 64), B2 = key2 % 64, conv = e.sum / e.cnt;
       const I = Math.min(1.2, Math.max(0.35, Math.abs(conv) / 0.9));
-      pairConv.set(A * 64 + B, { conv, I });
-      pairConv.set(B * 64 + A, { conv, I });
+      pairConv.set(A * 64 + B2, { conv, I });
+      pairConv.set(B2 * 64 + A, { conv, I });
     }
     const crust = a.f.crust, tally2 = {};
     const bnd = new Uint8Array(n), bI = new Float32Array(n), dist8 = new Float64Array(n).fill(Infinity), src = new Int32Array(n).fill(-1);
@@ -14381,10 +14534,10 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-        const B = plate[ny * w + nx];
-        if (B === A) continue;
-        const pc = pairConv.get(A * 64 + B), j = ny * w + nx;
-        const kind = classify(plates[A], plates[B], isCont(crust[i]), isCont(crust[j]), pc.conv);
+        const B2 = plate[ny * w + nx];
+        if (B2 === A) continue;
+        const pc = pairConv.get(A * 64 + B2), j = ny * w + nx;
+        const kind = classify(plates[A], plates[B2], isCont(crust[i]), isCont(crust[j]), pc.conv);
         if (!kind) break;
         bnd[i] = BOUNDARIES.get(kind).code;
         bI[i] = pc.I;
@@ -14646,16 +14799,17 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let i = 0; i < n; i++) out[i] = smooth2(dist8[i] / (40 * k));
     return out;
   }
+  var heightKm = (a, e) => e > a.sea ? (a.cfg.peakKm ?? 5) * ((e - a.sea) / (1 - a.sea)) ** 1.6 : 0;
   function temperature(a) {
-    const { w, h, n } = a, f = a.f, top = a.cfg.peakKm ?? 5;
+    const { w, h, n } = a, f = a.f;
     const cont = continentality(a), temp = new Float32Array(n), range = new Float32Array(n);
     for (let y = 0; y < h; y++) {
       const lat = Math.abs(latitude(a, y)), base = 28 - 46 * (lat / 90) ** 1.3;
       for (let x = 0; x < w; x++) {
-        const i = y * w + x, e = f.elev[i], km = f.land[i] ? (e - a.sea) / (1 - a.sea) * top : 0;
+        const i = y * w + x, km = f.land[i] ? heightKm(a, f.elev[i]) : 0;
         const inland = cont[i] * (lat < 25 ? 1.5 : -4 * (lat - 25) / 65);
         temp[i] = base - 6.5 * km + inland;
-        range[i] = 2 + lat / 90 * (12 + 30 * cont[i]);
+        range[i] = 2 + lat / 90 * (10 + 55 * cont[i]);
       }
     }
     f.temp = temp;
@@ -14957,6 +15111,179 @@ dd.q4{color:#c58cff;font-weight:600}
     return out;
   }
 
+  // src/data/soils.js
+  var SOILS = new Registry("soil");
+  SOILS.registerAll([
+    { id: "alluvial", label: "\u0430\u043B\u043B\u044E\u0432\u0438\u0430\u043B\u044C\u043D\u0430\u044F", fert: 1, color: [96, 70, 44], note: "\u043D\u0430\u043D\u043E\u0441\u044B \u0440\u0435\u0447\u043D\u044B\u0445 \u043F\u043E\u0439\u043C \u0438 \u0434\u0435\u043B\u044C\u0442: \u0441\u0430\u043C\u044B\u0435 \u043F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u043D\u044B\u0435 \u0437\u0435\u043C\u043B\u0438" },
+    { id: "andosol", label: "\u0432\u0443\u043B\u043A\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0430\u044F", biomes: ["volcano"], fert: 0.85, color: [70, 56, 52], note: "\u043C\u043E\u043B\u043E\u0434\u043E\u0439 \u043F\u0435\u043F\u0435\u043B, \u0431\u043E\u0433\u0430\u0442\u044B\u0439 \u0432\u0441\u0435\u043C, \u0447\u0442\u043E \u043D\u0443\u0436\u043D\u043E \u0440\u0430\u0441\u0442\u0435\u043D\u0438\u044F\u043C" },
+    { id: "peat", label: "\u0442\u043E\u0440\u0444\u044F\u043D\u0430\u044F", biomes: ["swamp"], fert: 0.25, color: [70, 60, 46], note: "\u043D\u0435\u0434\u043E\u0440\u0430\u0437\u043B\u043E\u0436\u0438\u0432\u0448\u0438\u0435\u0441\u044F \u0440\u0430\u0441\u0442\u0435\u043D\u0438\u044F \u043F\u0435\u0440\u0435\u0443\u0432\u043B\u0430\u0436\u043D\u0451\u043D\u043D\u044B\u0445 \u043D\u0438\u0437\u0438\u043D; \u043A\u0438\u0441\u043B\u0430\u044F" },
+    { id: "gley", label: "\u0442\u0443\u043D\u0434\u0440\u043E\u0432\u0430\u044F \u0433\u043B\u0435\u0435\u0432\u0430\u044F", biomes: ["tundra"], fert: 0.12, color: [130, 128, 120], note: "\u0442\u043E\u043D\u043A\u0438\u0439 \u0441\u043B\u043E\u0439 \u043D\u0430\u0434 \u0432\u0435\u0447\u043D\u043E\u0439 \u043C\u0435\u0440\u0437\u043B\u043E\u0442\u043E\u0439, \u0441\u044B\u0440\u043E\u0439 \u0438 \u0445\u043E\u043B\u043E\u0434\u043D\u044B\u0439" },
+    { id: "podzol", label: "\u043F\u043E\u0434\u0437\u043E\u043B\u0438\u0441\u0442\u0430\u044F", biomes: ["taiga"], fert: 0.3, color: [176, 168, 150], note: "\u043A\u0438\u0441\u043B\u0430\u044F \u043F\u0440\u043E\u043C\u044B\u0442\u0430\u044F \u043F\u043E\u0447\u0432\u0430 \u043F\u043E\u0434 \u0445\u0432\u043E\u0439\u043D\u044B\u043C \u043B\u0435\u0441\u043E\u043C" },
+    { id: "forestBrown", label: "\u0431\u0443\u0440\u0430\u044F \u043B\u0435\u0441\u043D\u0430\u044F", biomes: ["forest"], fert: 0.62, color: [120, 92, 60], note: "\u043F\u043E\u0447\u0432\u0430 \u0448\u0438\u0440\u043E\u043A\u043E\u043B\u0438\u0441\u0442\u0432\u0435\u043D\u043D\u044B\u0445 \u043B\u0435\u0441\u043E\u0432, \u0433\u0443\u043C\u0443\u0441\u043E\u0432\u0430\u044F" },
+    { id: "greyForest", label: "\u0441\u0435\u0440\u0430\u044F \u043B\u0435\u0441\u043D\u0430\u044F", biomes: ["meadow"], fert: 0.72, color: [110, 100, 88], note: "\u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u043E\u0442 \u043B\u0435\u0441\u043D\u044B\u0445 \u043F\u043E\u0447\u0432 \u043A \u0447\u0435\u0440\u043D\u043E\u0437\u0451\u043C\u0443" },
+    { id: "chernozem", label: "\u0447\u0435\u0440\u043D\u043E\u0437\u0451\u043C", biomes: ["steppe"], rain: [350, Infinity], fert: 0.98, color: [40, 34, 30], note: "\u0442\u043E\u043B\u0441\u0442\u044B\u0439 \u0433\u0443\u043C\u0443\u0441\u043E\u0432\u044B\u0439 \u0441\u043B\u043E\u0439 \u0441\u0442\u0435\u043F\u0435\u0439: \u043B\u0443\u0447\u0448\u0430\u044F \u043F\u0430\u0448\u043D\u044F" },
+    { id: "chestnut", label: "\u043A\u0430\u0448\u0442\u0430\u043D\u043E\u0432\u0430\u044F", biomes: ["steppe"], fert: 0.6, color: [130, 96, 66], note: "\u043F\u043E\u0447\u0432\u0430 \u0441\u0443\u0445\u0438\u0445 \u0441\u0442\u0435\u043F\u0435\u0439, \u0442\u043E\u043D\u044C\u0448\u0435 \u0438 \u0441\u043E\u043B\u043E\u043D\u0435\u0435 \u0447\u0435\u0440\u043D\u043E\u0437\u0451\u043C\u0430" },
+    { id: "cinnamonic", label: "\u043A\u043E\u0440\u0438\u0447\u043D\u0435\u0432\u0430\u044F", biomes: ["shrubland"], fert: 0.5, color: [150, 100, 70], note: "\u043F\u043E\u0447\u0432\u0430 \u0441\u0443\u0445\u0438\u0445 \u0441\u0443\u0431\u0442\u0440\u043E\u043F\u0438\u043A\u043E\u0432 \u043F\u043E\u0434 \u043A\u0443\u0441\u0442\u0430\u0440\u043D\u0438\u043A\u0430\u043C\u0438" },
+    { id: "redBrown", label: "\u043A\u0440\u0430\u0441\u043D\u043E-\u0431\u0443\u0440\u0430\u044F", biomes: ["savanna"], fert: 0.45, color: [160, 90, 60], note: "\u043F\u043E\u0447\u0432\u0430 \u0441\u0430\u0432\u0430\u043D\u043D \u0441 \u0441\u0443\u0445\u0438\u043C \u0441\u0435\u0437\u043E\u043D\u043E\u043C" },
+    { id: "laterite", label: "\u043B\u0430\u0442\u0435\u0440\u0438\u0442\u043D\u0430\u044F", biomes: ["jungle"], fert: 0.3, color: [176, 84, 52], note: "\u043A\u0440\u0430\u0441\u043D\u0430\u044F \u0432\u044B\u0449\u0435\u043B\u043E\u0447\u0435\u043D\u043D\u0430\u044F \u043F\u043E\u0447\u0432\u0430 \u0442\u0440\u043E\u043F\u0438\u043A\u043E\u0432: \u0432\u0441\u0451 \u0431\u043E\u0433\u0430\u0442\u0441\u0442\u0432\u043E \u0432 \u0441\u0430\u043C\u043E\u043C \u043B\u0435\u0441\u0443" },
+    { id: "desertSoil", label: "\u043F\u0443\u0441\u0442\u044B\u043D\u043D\u0430\u044F", biomes: ["desert"], fert: 0.08, color: [220, 200, 160], note: "\u0441\u0435\u0440\u043E\u0437\u0451\u043C\u044B, \u043F\u0435\u0441\u043A\u0438 \u0438 \u0449\u0435\u0431\u0435\u043D\u044C, \u043C\u0435\u0441\u0442\u0430\u043C\u0438 \u0441\u043E\u043B\u043E\u043D\u0447\u0430\u043A\u0438" },
+    { id: "mountain", label: "\u0433\u043E\u0440\u043D\u0430\u044F", biomes: ["foothills", "highlands"], fert: 0.25, color: [140, 130, 116], note: "\u0442\u043E\u043D\u043A\u0430\u044F \u043A\u0430\u043C\u0435\u043D\u0438\u0441\u0442\u0430\u044F \u043F\u043E\u0447\u0432\u0430 \u0441\u043A\u043B\u043E\u043D\u043E\u0432" },
+    { id: "none", label: "\u043D\u0435\u0442 \u043F\u043E\u0447\u0432\u044B", biomes: ["ice", "water", "barrows", "underground"], fert: 0, color: [200, 200, 200], note: "\u043B\u0451\u0434, \u0432\u043E\u0434\u0430 \u0438\u043B\u0438 \u0433\u043E\u043B\u044B\u0439 \u043A\u0430\u043C\u0435\u043D\u044C" }
+  ]);
+  var ROCK_FERT = { limestone: 0.1, basalt: 0.1, andesite: 0.05, shale: 0.03, sandstone: -0.1, granite: -0.05, gneiss: -0.05, schist: 0 };
+  var ALLUVIAL_FROM = 0.45;
+
+  // src/atlas/biomes.js
+  var BIOME_LIST = BIOMES.all();
+  var SOIL_LIST = SOILS.all();
+  var B = (id) => BIOME_LIST.findIndex((b) => b.id === id) + 1;
+  var biomeAt = (a, i) => a.f.biome && a.f.biome[i] ? BIOME_LIST[a.f.biome[i] - 1] : null;
+  var soilAt = (a, i) => a.f.soil && a.f.soil[i] ? SOIL_LIST[a.f.soil[i] - 1] : null;
+  var clamp014 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var dryness = (T2) => KOPPEN.dryness[0] * T2 + KOPPEN.dryness[1];
+  function classify2(c) {
+    const K = KOPPEN, Tw = c.T + c.range / 2, Tc = c.T - c.range / 2, Pd = Math.max(1, dryness(c.T));
+    if (c.water) return "water";
+    if (c.volc) return "volcano";
+    if (Tw < 0) return "ice";
+    if (Tw < K.treeline) return c.rel > K.mountain ? "highlands" : "tundra";
+    let z;
+    if (c.P < Pd / 2) z = "desert";
+    else if (c.P < Pd) z = c.T >= K.tropics ? "savanna" : "steppe";
+    else if (c.wet) z = "swamp";
+    else if (Tc >= K.tropics) z = c.P >= K.jungle ? "jungle" : "savanna";
+    else if (Tc < K.continental) z = c.T < K.taiga ? "taiga" : c.P < K.forestSteppe * Pd ? "meadow" : "forest";
+    else if (c.T >= K.warmTemperate && c.P < K.mediterranean * Pd) z = "shrubland";
+    else z = c.P < K.forestSteppe * Pd ? "meadow" : "forest";
+    if (c.steep && c.rel > K.mountain && z !== "swamp") z = c.rel > 0.6 ? "highlands" : "foothills";
+    return z;
+  }
+  function biomes(a) {
+    const f = a.f, n = a.n, k2 = scaleOf(a) ** 2, out = new Uint8Array(n), cnt = {};
+    for (let i = 0; i < n; i++) {
+      if (f.ocean[i]) continue;
+      const rel = (f.elev[i] - a.sea) / (1 - a.sea);
+      const id = classify2({
+        T: f.temp[i],
+        range: f.trange[i],
+        P: f.rain[i],
+        rel,
+        water: f.lake[i] >= 0 || f.flow[i] >= RIVERS.great * k2,
+        volc: f.volc[i] > 0.65,
+        steep: f.flat[i] < 0.45,
+        // waterlogged: a flat valley floor or lowland where more falls than the zone can dry
+        wet: f.flat[i] > 0.85 && rel < 0.1 && (f.alluvium[i] > 0.6 || f.rain[i] > 2.2 * Math.max(1, dryness(f.temp[i])))
+      });
+      out[i] = B(id);
+      cnt[id] = (cnt[id] || 0) + 1;
+    }
+    f.biome = out;
+    return cnt;
+  }
+  function soils(a) {
+    const f = a.f, n = a.n, soil = new Uint8Array(n), fert = new Float32Array(n);
+    const byBiome = {};
+    for (const s of SOIL_LIST) for (const b of s.biomes || []) (byBiome[b] ?? (byBiome[b] = [])).push(s);
+    const alluvial = SOIL_LIST.findIndex((s) => s.id === "alluvial");
+    for (let i = 0; i < n; i++) {
+      const b = biomeAt(a, i);
+      if (!b) continue;
+      let s;
+      if (f.alluvium[i] >= ALLUVIAL_FROM && b.id !== "water" && b.id !== "ice") s = SOIL_LIST[alluvial];
+      else s = (byBiome[b.id] || []).find((x) => !x.rain || f.rain[i] >= x.rain[0] && f.rain[i] < x.rain[1]) || SOILS.get("none");
+      soil[i] = SOIL_LIST.indexOf(s) + 1;
+      fert[i] = s.fert > 0 ? clamp014(s.fert + (ROCK_FERT[ROCK_BY_CODE[f.rock[i]]?.id] || 0)) : 0;
+    }
+    f.soil = soil;
+    f.fert = fert;
+  }
+  function vegetation(a, rnd) {
+    const { w, h, n } = a, f = a.f, cap = new Float32Array(n), fire = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const b = biomeAt(a, i);
+      if (!b) continue;
+      cap[i] = b.trees;
+      const Pd = Math.max(1, dryness(f.temp[i]));
+      fire[i] = clamp014(1.4 - f.rain[i] / (1.6 * Pd)) * clamp014((f.temp[i] + f.trange[i] / 2) / 25);
+    }
+    let t = new Float32Array(n), t2 = new Float32Array(n);
+    for (let i = 0; i < n; i++) t[i] = cap[i] * rnd() * 0.5;
+    const burnt = new Uint8Array(n), steps = 70, stack = [];
+    for (let s = 0; s < steps; s++) {
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (!cap[i]) {
+          t2[i] = 0;
+          continue;
+        }
+        let nb = 0, c = 0;
+        for (const [dx, dy] of DIRS8) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          nb += t[ny * w + nx];
+          c++;
+        }
+        const seed = 0.02 + 0.25 * nb / c;
+        t2[i] = t[i] + seed * (cap[i] - t[i]) * (0.6 + 0.4 * rnd());
+      }
+      [t, t2] = [t2, t];
+      const strikes = Math.max(1, Math.round(n / 12e3));
+      for (let q = 0; q < strikes; q++) {
+        const i0 = rnd() * n | 0;
+        if (t[i0] < 0.3 || rnd() > fire[i0]) continue;
+        stack.push(i0);
+        burnt[i0]++;
+        while (stack.length) {
+          const c = stack.pop();
+          t[c] *= 0.1;
+          const x = c % w, y = c / w | 0;
+          for (const [dx, dy] of DIRS8) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const j = ny * w + nx;
+            if (t[j] > 0.3 && rnd() < 0.2 + 0.65 * fire[j]) {
+              t[j] *= 0.1;
+              burnt[j]++;
+              stack.push(j);
+            }
+          }
+        }
+      }
+    }
+    f.trees = t;
+    f.burnt = burnt;
+    let wood = 0, land = 0;
+    for (let i = 0; i < n; i++) if (!f.ocean[i]) {
+      land++;
+      wood += t[i];
+    }
+    return wood / (land || 1);
+  }
+  function cellBiomes(a, i, r = 2) {
+    const f = a.f, w = a.w, x0 = i % w, y0 = i / w | 0, acc2 = {};
+    let tot = 0;
+    const add2 = (id, v) => {
+      acc2[id] = (acc2[id] || 0) + v;
+      tot += v;
+    };
+    for (let y = Math.max(0, y0 - r); y <= Math.min(a.h - 1, y0 + r); y++) for (let x = Math.max(0, x0 - r); x <= Math.min(w - 1, x0 + r); x++) {
+      const j = y * w + x, b = biomeAt(a, j);
+      if (!b) continue;
+      const wt = 1 / (1 + (x - x0) ** 2 + (y - y0) ** 2);
+      const wooded = b.trees > 0.6 ? clamp014(f.trees[j] / b.trees) : 1;
+      add2(b.id, wt * wooded);
+      if (wooded < 1) add2("meadow", wt * (1 - wooded));
+      const rock = ROCK_BY_CODE[f.rock[j]]?.id, cave = rock === "limestone" ? 0.15 : rock === "basalt" ? 0.08 : 0;
+      if (cave) add2("underground", wt * cave);
+    }
+    const out = {};
+    for (const [id, v] of Object.entries(acc2)) {
+      const s = Math.round(v / tot * 100) / 100;
+      if (s >= 0.02) out[id] = s;
+    }
+    return out;
+  }
+
   // src/atlas/stages.js
   var ATLAS_STAGES = new Registry("atlasStage");
   var pct = (v, n) => `${Math.round(v / n * 100)}%`;
@@ -15087,6 +15414,42 @@ dd.q4{color:#c58cff;font-weight:600}
         const top = ORE_GENESIS.all().filter((o) => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map((o) => o.label);
         return top.length ? `\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B. \u0411\u043E\u043B\u044C\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442: ${top.slice(0, 3).join(", ")}.` : "\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B, \u043D\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442 \u043D\u0435\u0442.";
       }
+    },
+    {
+      id: "biomes",
+      label: "\u0411\u0438\u043E\u043C\u044B",
+      era: "life",
+      note: "\u043F\u043E \u041A\u0451\u043F\u043F\u0435\u043D\u0443: \u0442\u0435\u043F\u043B\u043E \u043B\u0435\u0442\u0430 \u0438 \u0437\u0438\u043C\u044B, \u043E\u0441\u0430\u0434\u043A\u0438 \u043F\u0440\u043E\u0442\u0438\u0432 \u0438\u0441\u043F\u0430\u0440\u0435\u043D\u0438\u044F, \u0432\u044B\u0441\u043E\u0442\u0430 \u0438 \u043A\u0440\u0443\u0442\u0438\u0437\u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u043E\u0432, \u0432\u043E\u0434\u0430 \u0432 \u0437\u0435\u043C\u043B\u0435",
+      run(a) {
+        const c = biomes(a), land = Object.values(c).reduce((x, v) => x + v, 0) || 1;
+        const top = BIOMES.filter((b) => c[b.id]).sort((x, y) => c[y.id] - c[x.id]).slice(0, 4).map((b) => `${b.label} \u2014 ${pct(c[b.id], land)}`);
+        return `\u0417\u0435\u043C\u043B\u044F \u043E\u0434\u0435\u043B\u0430\u0441\u044C \u0436\u0438\u0437\u043D\u044C\u044E: ${top.join(", ")}.`;
+      }
+    },
+    {
+      id: "soils",
+      label: "\u041F\u043E\u0447\u0432\u044B",
+      era: "life",
+      note: "\u0437\u043E\u043D\u0430\u043B\u044C\u043D\u044B\u0435 \u043F\u043E\u0447\u0432\u044B \u043F\u043E \u0414\u043E\u043A\u0443\u0447\u0430\u0435\u0432\u0443, \u0430\u043B\u043B\u044E\u0432\u0438\u0439 \u0432 \u043F\u043E\u0439\u043C\u0430\u0445 \u0438 \u0434\u0435\u043B\u044C\u0442\u0430\u0445, \u043F\u043E\u0440\u043E\u0434\u0430 \u0434\u0435\u043B\u0430\u0435\u0442 \u043F\u043E\u0447\u0432\u0443 \u0431\u043E\u0433\u0430\u0447\u0435 \u0438\u043B\u0438 \u0431\u0435\u0434\u043D\u0435\u0435",
+      run(a) {
+        soils(a);
+        let best = 0, land = 0;
+        for (let i = 0; i < a.n; i++) if (!a.f.ocean[i]) {
+          land++;
+          if (a.f.fert[i] >= 0.8) best++;
+        }
+        return `\u041F\u043E\u0434 \u0442\u0440\u0430\u0432\u043E\u0439 \u0438 \u043B\u0435\u0441\u043E\u043C \u043B\u0435\u0433\u043B\u0438 \u043F\u043E\u0447\u0432\u044B; \u0442\u0443\u0447\u043D\u044B\u0445 \u0437\u0435\u043C\u0435\u043B\u044C \u2014 ${pct(best, land)} \u0441\u0443\u0448\u0438.`;
+      }
+    },
+    {
+      id: "vegetation",
+      label: "\u041B\u0435\u0441\u0430",
+      era: "life",
+      note: "\u043A\u043B\u0435\u0442\u043E\u0447\u043D\u044B\u0439 \u0430\u0432\u0442\u043E\u043C\u0430\u0442: \u0434\u0435\u0440\u0435\u0432\u044C\u044F \u0440\u0430\u0441\u0441\u0435\u043B\u044F\u044E\u0442\u0441\u044F \u043E\u0442 \u0441\u043E\u0441\u0435\u0434\u0435\u0439 \u0434\u043E \u043F\u0440\u0435\u0434\u0435\u043B\u0430 \u0441\u0432\u043E\u0435\u0433\u043E \u0431\u0438\u043E\u043C\u0430, \u043C\u043E\u043B\u043D\u0438\u0438 \u0436\u0433\u0443\u0442 \u0441\u0443\u0445\u0438\u0435 \u043B\u0435\u0441\u0430, \u0433\u0430\u0440\u0438 \u0437\u0430\u0440\u0430\u0441\u0442\u0430\u044E\u0442",
+      run(a, rnd) {
+        const wood = vegetation(a, rnd);
+        return `\u041F\u043E\u0434\u043D\u044F\u043B\u0438\u0441\u044C \u043B\u0435\u0441\u0430 \u0438 \u0443\u043A\u0440\u044B\u043B\u0438 ${Math.round(wood * 100)}% \u0441\u0443\u0448\u0438; \u0432 \u0441\u0443\u0445\u0438\u0445 \u043A\u0440\u0430\u044F\u0445 \u0438\u0445 \u043F\u0440\u043E\u0440\u0435\u0434\u0438\u043B\u0438 \u043F\u043E\u0436\u0430\u0440\u044B.`;
+      }
     }
   ]);
 
@@ -15116,7 +15479,7 @@ dd.q4{color:#c58cff;font-weight:600}
     land: ATLAS_LAND.map((l, i) => [i, l.label]),
     plates: PLATE_COUNTS.map((p, i) => [i, p.label]),
     hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
-    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"], ["wind", "\u0412\u0435\u0442\u0440\u044B"], ["rain", "\u041E\u0441\u0430\u0434\u043A\u0438"]],
+    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"], ["wind", "\u0412\u0435\u0442\u0440\u044B"], ["rain", "\u041E\u0441\u0430\u0434\u043A\u0438"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["soils", "\u041F\u043E\u0447\u0432\u044B"]],
     ore: ORE_GENESIS.all().map((o) => [o.id, o.label])
   };
   var VIEW_KEYS = /* @__PURE__ */ new Set(["layer", "ore"]);
@@ -15224,7 +15587,9 @@ dd.q4{color:#c58cff;font-weight:600}
       else if (this.layer === "ores") {
         const o = ORE_GENESIS.get(this.ore);
         html = sw([70, 72, 66], "\u043D\u0435\u0442") + sw(mix([70, 72, 66], o.color, 0.45), "\u0431\u0435\u0434\u043D\u043E") + sw(mix([70, 72, 66], o.color, 0.75), "\u0435\u0441\u0442\u044C") + sw(o.color, "\u0431\u043E\u0433\u0430\u0442\u043E");
-      } else if (this.layer === "rain") html = [[100, "\u043F\u0443\u0441\u0442\u044B\u043D\u044F"], [400, "\u0441\u0443\u0445\u043E"], [800, "\u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E"], [1500, "\u0432\u043B\u0430\u0436\u043D\u043E"], [2500, "\u043E\u0447\u0435\u043D\u044C \u0432\u043B\u0430\u0436\u043D\u043E"]].map(([v, l]) => sw(rainColor(v), `${l} (${v} \u043C\u043C)`)).join("");
+      } else if (this.layer === "biomes") html = Object.entries(BIOME_KINDS).filter(([k]) => k !== "feature").map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter((b) => b.kind === k).map((b) => sw(b.color, b.label)).join("")).join("") + "<b>\u043B\u0435\u0441\u0430</b> \u0442\u0435\u043C\u043D\u0435\u0435, \u0433\u0430\u0440\u0438 \u0441\u0432\u0435\u0442\u043B\u0435\u0435";
+      else if (this.layer === "soils") html = SOILS.filter((s) => s.id !== "none").map((s) => sw(s.color, s.label)).join("") + "<b>\u044F\u0440\u0447\u0435</b> \u2014 \u043F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u043D\u0435\u0435";
+      else if (this.layer === "rain") html = [[100, "\u043F\u0443\u0441\u0442\u044B\u043D\u044F"], [400, "\u0441\u0443\u0445\u043E"], [800, "\u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E"], [1500, "\u0432\u043B\u0430\u0436\u043D\u043E"], [2500, "\u043E\u0447\u0435\u043D\u044C \u0432\u043B\u0430\u0436\u043D\u043E"]].map(([v, l]) => sw(rainColor(v), `${l} (${v} \u043C\u043C)`)).join("");
       else if (this.layer === "wind") html = sw([240, 240, 230], "\u0441\u0442\u0440\u0435\u043B\u043A\u0438 \u2014 \u043A\u0443\u0434\u0430 \u0434\u0443\u0435\u0442 \u0432\u0435\u0442\u0435\u0440") + sw([90, 110, 150], "\u0442\u0438\u0448\u0435") + sw([200, 210, 240], "\u0441\u0438\u043B\u044C\u043D\u0435\u0435");
       else if (this.layer === "temp") html = sw(HEAT[0][1], "\u221230\xB0") + sw(HEAT[1][1], "\u22124\xB0") + sw(HEAT[2][1], "+9\xB0") + sw(HEAT[3][1], "+35\xB0");
       else html = sw(FRESH, "\u043F\u0440\u0435\u0441\u043D\u043E\u0435 \u043E\u0437\u0435\u0440\u043E") + sw(SALT, "\u0441\u043E\u043B\u0451\u043D\u043E\u0435 \u043E\u0437\u0435\u0440\u043E") + `<span><i style="background:${RIVER};height:3px"></i>\u0440\u0435\u043A\u0438</span>` + sw(DEEP[0][1], "\u0433\u043B\u0443\u0431\u043E\u043A\u043E\u0435 \u043C\u043E\u0440\u0435") + sw(DEEP[1][1], "\u043C\u0435\u043B\u043A\u043E\u0432\u043E\u0434\u044C\u0435") + sw(LAND[0][1], "\u043D\u0438\u0437\u0438\u043D\u044B") + sw(LAND[2][1], "\u043D\u0430\u0433\u043E\u0440\u044C\u044F") + sw(LAND[4][1], "\u0432\u0435\u0440\u0448\u0438\u043D\u044B");
@@ -15270,6 +15635,16 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         case "temp":
           return f.temp ? ramp(HEAT, (f.temp[i] + 30) / 65) : base;
+        case "biomes": {
+          const b = biomeAt(a, i);
+          if (!b) return base;
+          return f.trees && b.trees > 0.2 ? mix(mix(b.color, [210, 200, 150], 0.35), mix(b.color, [16, 40, 20], 0.35), f.trees[i] / b.trees) : b.color;
+        }
+        case "soils": {
+          const s = soilAt(a, i);
+          if (!s) return base;
+          return mix([60, 60, 56], s.color, 0.6 + 0.4 * f.fert[i]);
+        }
         case "rain":
           return f.rain ? f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25) : base;
         case "wind": {
@@ -15308,7 +15683,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       px.putImageData(img, 0, 0);
       if (this.layer === "wind" && a.f.windX) this.arrows(a, px);
-      if (a.f.flow && ["relief", "rain", "rocks", "temp"].includes(this.layer)) this.rivers(a, px);
+      if (a.f.flow && ["relief", "rain", "rocks", "temp", "biomes", "soils"].includes(this.layer)) this.rivers(a, px);
     }
     // rivers: a line from each river cell to the cell it drains into, wider for more water
     rivers(a, px) {
@@ -15376,13 +15751,21 @@ dd.q4{color:#c58cff;font-weight:600}
       const rk = f.flow && f.lake[i] < 0 ? riverKind(a, i) : null;
       if (rk) parts.push({ stream: "\u0440\u0443\u0447\u0435\u0439", river: "\u0440\u0435\u043A\u0430", great: "\u0431\u043E\u043B\u044C\u0448\u0430\u044F \u0440\u0435\u043A\u0430" }[rk]);
       if (f.alluvium && f.alluvium[i] > 0.3) parts.push("\u043F\u043E\u0439\u043C\u0430");
-      parts.push(`\u0432\u044B\u0441\u043E\u0442\u0430 ${f.elev[i].toFixed(3)}`);
+      parts.push(f.ocean && f.ocean[i] ? "\u0434\u043D\u043E" : f.temp ? `${Math.max(1, Math.round(heightKm(a, f.elev[i]) * 1e3))} \u043C` : `\u0432\u044B\u0441\u043E\u0442\u0430 ${f.elev[i].toFixed(3)}`);
       if (f.temp) parts.push(`${f.temp[i].toFixed(1)}\xB0` + (f.trange && f.land[i] ? ` (\u0440\u0430\u0437\u043C\u0430\u0445 \u0433\u043E\u0434\u0430 ${Math.round(f.trange[i])}\xB0)` : ""));
       if (f.windX) {
         const sp = Math.hypot(f.windX[i], f.windY[i]);
         if (sp > 0.08) parts.push(`\u0432\u0435\u0442\u0435\u0440 ${windWord(f.windX[i], f.windY[i])}`);
       }
       if (f.rain && f.land[i]) parts.push(`${Math.round(f.rain[i])} \u043C\u043C \u0432 \u0433\u043E\u0434, ${RAIN_WORDS.find(([v]) => f.rain[i] < v)[1]}`);
+      const bio = biomeAt(a, i);
+      if (bio) {
+        parts.push(bio.label + (f.trees && bio.trees > 0.2 ? ` (\u043B\u0435\u0441 ${Math.round(f.trees[i] * 100)}%)` : ""));
+        const sl = soilAt(a, i);
+        if (sl) parts.push(`\u043F\u043E\u0447\u0432\u0430 ${sl.label}, \u043F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u0438\u0435 ${Math.round(f.fert[i] * 100)}%`);
+        const sh = Object.entries(cellBiomes(a, i)).sort((x2, y2) => y2[1] - x2[1]).slice(0, 4).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
+        if (sh.length > 1) parts.push(`\u043E\u043A\u0440\u0443\u0433\u0430: ${sh.join(", ")}`);
+      }
       const geo = cellGeology(a, i);
       if (geo.rock) parts.push(geo.rock.label);
       if (geo.rock && f.land[i]) {
@@ -15645,9 +16028,9 @@ dd.q4{color:#c58cff;font-weight:600}
       const ores2 = ORES.filter((o) => !o.event).map((o) => `${o.label} \u2014 ${word(R.ores[o.id] ?? 0)}`);
       ores2.push(`\u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u044F\u0445 \u2014 ${word(R.placer)}`);
       if (R.goldVein) ores2.push("\u0431\u044B\u0432\u0430\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u0430\u044F \u0436\u0438\u043B\u0430");
-      const biomes = Object.entries(R.biomes || {}).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
+      const biomes2 = Object.entries(R.biomes || {}).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${BIOMES.get(id).label} ${Math.round(v * 100)}%`);
       const beasts = regionFauna(w).map(([sp, v]) => `${sp.label} (${faunaWord(v)})`);
-      return `<b>${esc(R.label)}</b>: ${esc(R.note || "")}<br>\u0437\u0435\u043C\u043B\u0438: ${biomes.join(", ")}<br>${ores2.join(", ")}<br>\u0436\u0438\u0432\u0443\u0442: ${beasts.join(", ")}${R.magma ? "<br>\u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043C\u0430\u0433\u043C\u0430" : ""}`;
+      return `<b>${esc(R.label)}</b>: ${esc(R.note || "")}<br>\u0437\u0435\u043C\u043B\u0438: ${biomes2.join(", ")}<br>${ores2.join(", ")}<br>\u0436\u0438\u0432\u0443\u0442: ${beasts.join(", ")}${R.magma ? "<br>\u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438 \u043C\u0430\u0433\u043C\u0430" : ""}`;
     }
     // the arrival is either still on its way (time left) or due and waiting for a reason
     settlerText(w) {
@@ -16303,8 +16686,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.42.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 4dc6911" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.43.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 92b936e" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

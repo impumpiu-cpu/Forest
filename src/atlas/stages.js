@@ -3,9 +3,8 @@
 // own random stream (atlas/generate.js), so a stage can be reworked without changing the others.
 //
 // Done: plates → boundaries and hot spots → relief → sea level → temperature → winds → rain → erosion →
-// rivers and lakes → rocks → ores (with gold sand from the rivers).
-// Next (docs/WORLD.md): soils, biomes, forests, then
-// the eras of history.
+// rivers and lakes → rocks → ores (with gold sand from the rivers) → biomes → soils → forests.
+// Next (docs/WORLD.md): the eras of history.
 import {Registry} from '../core/registry.js';
 import {plural} from '../core/util.js';
 import {ATLAS_LAND} from '../data/atlas.js';
@@ -15,6 +14,8 @@ import {rocks, ores} from './geology.js';
 import {temperature, winds, rain} from './climate.js';
 import {seaLevel, erode, rivers, placer} from './hydrology.js';
 import {EROSION} from '../data/hydrology.js';
+import {biomes, soils, vegetation} from './biomes.js';
+import {BIOMES} from '../data/biomes.js';
 
 export const ATLAS_STAGES = new Registry('atlasStage');
 
@@ -86,5 +87,23 @@ ATLAS_STAGES.registerAll([
       r.placer = 0; for (let i = 0; i < a.n; i++) if (a.f.land[i] && pl[i] >= lv[2]) r.placer++;
       const top = ORE_GENESIS.all().filter(o => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map(o => o.label);
       return top.length ? `В недрах налились жилы. Больше всего богатых мест: ${top.slice(0, 3).join(', ')}.` : 'В недрах налились жилы, но богатых мест нет.';
+    }},
+  {id: 'biomes', label: 'Биомы', era: 'life', note: 'по Кёппену: тепло лета и зимы, осадки против испарения, высота и крутизна склонов, вода в земле',
+    run(a) {
+      const c = biomes(a), land = Object.values(c).reduce((x, v) => x + v, 0) || 1;
+      const top = BIOMES.filter(b => c[b.id]).sort((x, y) => c[y.id] - c[x.id]).slice(0, 4).map(b => `${b.label} — ${pct(c[b.id], land)}`);
+      return `Земля оделась жизнью: ${top.join(', ')}.`;
+    }},
+  {id: 'soils', label: 'Почвы', era: 'life', note: 'зональные почвы по Докучаеву, аллювий в поймах и дельтах, порода делает почву богаче или беднее',
+    run(a) {
+      soils(a);
+      let best = 0, land = 0;
+      for (let i = 0; i < a.n; i++) if (!a.f.ocean[i]) { land++; if (a.f.fert[i] >= 0.8) best++; }
+      return `Под травой и лесом легли почвы; тучных земель — ${pct(best, land)} суши.`;
+    }},
+  {id: 'vegetation', label: 'Леса', era: 'life', note: 'клеточный автомат: деревья расселяются от соседей до предела своего биома, молнии жгут сухие леса, гари зарастают',
+    run(a, rnd) {
+      const wood = vegetation(a, rnd);
+      return `Поднялись леса и укрыли ${Math.round(wood * 100)}% суши; в сухих краях их проредили пожары.`;
     }},
 ]);

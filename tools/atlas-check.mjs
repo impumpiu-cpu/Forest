@@ -7,6 +7,8 @@ import {ATLAS_LAND} from '../src/data/atlas.js';
 import {ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS, PLATE_COUNTS} from '../src/data/geology.js';
 import {levelOf} from '../src/atlas/geology.js';
 import {latitude} from '../src/atlas/latitude.js';
+import {biomeAt, soilAt, cellBiomes, dryness} from '../src/atlas/biomes.js';
+import {BIOMES, KOPPEN} from '../src/data/biomes.js';
 
 const seeds = +(process.argv[2] || 3), size = process.argv[3] || 'small';
 let ok = true;
@@ -16,6 +18,34 @@ const bands = {tropic: [0, 0], subtropic: [0, 0], temperate: [0, 0]}, shadow = {
 const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
+const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
+
+// every land cell has a biome and a soil, and the biome agrees with its climate as Köppen has it
+function biomeCheck(a, tag) {
+  let none = 0, wrong = 0, sharesBad = 0, example = '';
+  for (let i = 0; i < a.n; i++) {
+    if (a.f.ocean[i]) continue;
+    const b = biomeAt(a, i), s = soilAt(a, i);
+    if (!b || !s) { none++; continue; }
+    const T = a.f.temp[i], Tw = T + a.f.trange[i] / 2, Tc = T - a.f.trange[i] / 2, P = a.f.rain[i], Pd = Math.max(1, dryness(T));
+    const bad = (b.id === 'jungle' && Tc < KOPPEN.tropics) || (b.id === 'taiga' && Tc >= KOPPEN.continental) ||
+      (b.id === 'tundra' && Tw >= KOPPEN.treeline) || (b.id === 'ice' && Tw >= 0) || (b.id === 'desert' && P >= Pd / 2) ||
+      ((b.id === 'forest' || b.id === 'taiga' || b.id === 'jungle') && (Tw < KOPPEN.treeline || P < Pd));
+    if (bad) { wrong++; example ||= `${b.label}: ${T.toFixed(0)}°, лето ${Tw.toFixed(0)}°, зима ${Tc.toFixed(0)}°, ${Math.round(P)} мм`; }
+    addTo(bioLat[b.id] ??= [0, 0], Math.abs(latitude(a, (i / a.w) | 0)));
+    addTo(bioTrees[b.id] ??= [0, 0], a.f.trees[i]);
+    bioCount[b.id] = (bioCount[b.id] || 0) + 1;
+    addTo(soilFert[s.id] ??= [0, 0], a.f.fert[i]);
+    if (i % 97 === 0) {
+      const sh = cellBiomes(a, i), sum = Object.values(sh).reduce((x, v) => x + v, 0);
+      if (Math.abs(sum - 1) > 0.06 || Object.keys(sh).some(id => !BIOMES.has(id))) sharesBad++;
+    }
+  }
+  check(`${tag}: у каждой клетки суши биом и почва`, none === 0, none ? `${none} без` : '');
+  check(`${tag}: биомы согласны с климатом по Кёппену`, wrong === 0, wrong ? `${wrong} клеток, например ${example}` : '');
+  check(`${tag}: доли биомов клетки складываются в целое`, sharesBad === 0, sharesBad ? `${sharesBad} клеток` : '');
+}
+
 
 // every land cell drains to the ocean or into a salt lake, without loops, and the water only grows
 // downstream (except into a salt lake, which keeps it)
@@ -128,6 +158,7 @@ for (let s = 1; s <= seeds; s++) for (let land = 0; land < ATLAS_LAND.length; la
   check(`${tag}: у каждой клетки суши есть порода`, noRock === 0, noRock ? `${noRock} без породы` : '');
   check(`${tag}: магма только у живых вулканов`, magmaCold === 0, magmaCold ? `${magmaCold} клеток` : '');
   rainBelts(a); rainShadow(a);
+  biomeCheck(a, tag);
   const dr = drainage(a);
   check(`${tag}: вся вода стекает в море или в солёное озеро`, dr.bad === 0, dr.bad ? `${dr.bad} клеток без стока` : '');
   check(`${tag}: вниз по течению воды не меньше`, dr.shrink === 0, dr.shrink ? `${dr.shrink} мест` : '');
@@ -159,6 +190,13 @@ const r = v => Math.round(mean(v));
 check('  экватор влажнее конских широт', mean(bands.tropic) > 1.5 * mean(bands.subtropic), `${r(bands.tropic)} против ${r(bands.subtropic)}`);
 check('  умеренные широты влажнее конских', mean(bands.temperate) > 1.3 * mean(bands.subtropic), `${r(bands.temperate)} против ${r(bands.subtropic)}`);
 check('  дождевая тень', mean(shadow.lee) < 0.6 * mean(shadow.windward), `за хребтом ${r(shadow.lee)}, на наветренном берегу ${r(shadow.windward)}`);
+console.log('Биомы (доля суши, средняя широта, лес):');
+let landBio = 0; for (const v of Object.values(bioCount)) landBio += v;
+for (const b of BIOMES.all()) if (bioCount[b.id]) console.log(`     ${b.label.padEnd(26)} ${(bioCount[b.id] / landBio * 100).toFixed(1).padStart(5)}%  ${Math.round(mean(bioLat[b.id])).toString().padStart(3)}°  ${Math.round(mean(bioTrees[b.id]) * 100).toString().padStart(3)}%`);
+const L = id => mean(bioLat[id] || [0, 0]), Tr = id => mean(bioTrees[id] || [0, 0]), F = id => mean(soilFert[id] || [0, 0]);
+check('  зоны по широте: тундра севернее тайги, тайга севернее широколиственных, джунгли у экватора', L('tundra') > L('taiga') && L('taiga') > L('forest') && L('jungle') < 20, `${Math.round(L('tundra'))}° / ${Math.round(L('taiga'))}° / ${Math.round(L('forest'))}° / ${Math.round(L('jungle'))}°`);
+check('  леса лесистые, степи и пустыни нет', Tr('forest') > 0.5 && Tr('taiga') > 0.5 && Tr('steppe') < 0.1 && Tr('desert') < 0.05, `лес ${Math.round(Tr('forest') * 100)}%, тайга ${Math.round(Tr('taiga') * 100)}%, степь ${Math.round(Tr('steppe') * 100)}%`);
+check('  чернозём и поймы плодороднее подзола и латерита', F('chernozem') > F('podzol') && F('alluvial') > F('laterite'), `чернозём ${Math.round(F('chernozem') * 100)}%, пойма ${Math.round(F('alluvial') * 100)}%, подзол ${Math.round(F('podzol') * 100)}%, латерит ${Math.round(F('laterite') * 100)}%`);
 console.log('Вода:');
 check('  озёра есть', lakesAll > 0, `${lakesAll} на ${worlds} миров, солёных ${saltAll}`);
 if (lakeRain.salt[1] && lakeRain.fresh[1]) check('  солёные озёра в сухом климате', mean(lakeRain.salt) < mean(lakeRain.fresh), `у солёных ${Math.round(mean(lakeRain.salt))} мм, у пресных ${Math.round(mean(lakeRain.fresh))} мм`);
