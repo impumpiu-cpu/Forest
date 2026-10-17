@@ -25,7 +25,7 @@ import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
 import {seaAccess} from './sea.js';
 import {meet, raceState, stepDiplomacy, trades, raidGraves} from './diplomacy.js';
-import {foundRealm, joinRealm, realmLabel, realmTowns} from './realms.js';
+import {foundRealm, joinRealm, realmLabel, realmTowns, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
 
@@ -128,20 +128,25 @@ export function arrive(a, era, rnd, say) {
     // where they may come: the best of their land, its best coast, or as far from every town as it lets them
     const coast = j => { const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c; for (let y = y0; y < Math.min(a.h, y0 + F.c); y++) for (let x = x0; x < Math.min(a.w, x0 + F.c); x++) if (a.f.ocean[y * a.w + x]) return true; return false; };
     const far = j => { const x = (j % F.W + 0.5) * F.c, y = (((j / F.W) | 0) + 0.5) * F.c; let d = Infinity; for (const t of a.towns) if (t.alive) d = Math.min(d, Math.hypot(t.x - x, t.y - y)); return Math.min(1, d / (a.w / 3)); };
-    const mode = P.arrive.mode, score = j => pe.K[j] * (mode === 'far' ? 0.3 + far(j) : 1) * (0.8 + 0.2 * ((j * 7919) % 13) / 13);
-    const order = [...pe.K.keys()].filter(j => pe.K[j] > 0.3 && (mode !== 'coast' || coast(j))).sort((p, q) => score(q) - score(p));
-    for (const j of order) {
-      if (picks.length >= P.arrive.groups) break;
-      if (picks.some(q => Math.hypot(q % F.W - j % F.W, ((q / F.W) | 0) - ((j / F.W) | 0)) < F.W / 4)) continue;
-      const i = bestSite(a, pe, j, rnd);
-      if (i < 0) continue;
-      picks.push(j);
-      for (const [dx, dy] of [[0, 0], ...DIRS8]) {
-        const x = j % F.W + dx, y = ((j / F.W) | 0) + dy;
-        if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = 0.6;
+    // each founding band is its own sub-race (data/races.js peoples) and looks for the land that suits it
+    const subs = worldSubs(P.race), mode = P.arrive.mode;
+    for (let g = 0; g < P.arrive.groups; g++) {
+      const sub = subs.length ? subs[g % subs.length] : null, fit = sub ? subHomeField(a, P.race, sub) : pe.K;
+      const score = j => fit[j] * (mode === 'far' ? 0.3 + far(j) : 1) * (0.8 + 0.2 * ((j * 7919) % 13) / 13);
+      const order = [...fit.keys()].filter(j => fit[j] > 0.3 && (mode !== 'coast' || coast(j))).sort((p, q) => score(q) - score(p));
+      for (const j of order) {
+        if (picks.some(q => Math.hypot(q % F.W - j % F.W, ((q / F.W) | 0) - ((j / F.W) | 0)) < F.W / 4)) continue;
+        const i = bestSite(a, pe, j, rnd);
+        if (i < 0) continue;
+        picks.push(j);
+        for (const [dx, dy] of [[0, 0], ...DIRS8]) {
+          const x = j % F.W + dx, y = ((j / F.W) | 0) + dy;
+          if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = 0.6;
+        }
+        const t = foundTown(a, pe, i, rnd, 90 + 60 * rnd()), r = foundRealm(a, t, sub?.id);
+        say(`${cap1(sub?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
+        break;
       }
-      const t = foundTown(a, pe, i, rnd, 90 + 60 * rnd()), r = foundRealm(a, t);
-      say(`${cap1(P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
     }
     if (!picks.length) say(`${cap1(P.label)} не нашли в этом мире земли себе по душе.`);
   }
@@ -198,14 +203,14 @@ export function stepPeoples(a, rnd, say) {
     let feed = 0, c = 0;
     for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
     const fx = townFx(t);
-    const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
+    const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (0.7 + 0.3 * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
     const target = Math.min(feeds, room(fx));
     t.pop = Math.max(10, t.pop + 0.14 * (1 + 0.6 * fx.prestige) * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);
     for (let q = 0; q < (t.tier >= 2 ? 2 : 1); q++) {
       if (rnd() > 0.65) continue;
-      const b = chooseBuilding(a, t, pe.P, townFx(t), {feeds, threat, road: roadAccess(a, t.i)}, rnd);
+      const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i)}, rnd);
       if (!b) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
       t.built.push(b.id);

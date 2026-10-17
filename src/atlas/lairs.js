@@ -25,7 +25,7 @@ import {faunaCell} from './fauna.js';
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
 
 // how well a race's home suits a cell, 0..1 (data/races.js `home`)
-const homeAt = (a, L, i) => SPECIES.get(L.species).home[biomeAt(a, i).id] || 0;
+const homeAt = (a, L, i) => { const R = SPECIES.get(L.species), sub = L.sub ? R.peoples.find(p => p.id === L.sub) : null; return ((sub?.home) || R.home)[biomeAt(a, i).id] || 0; };
 
 // can this kind of lair stand on this cell
 function groundFits(a, L, i) {
@@ -292,7 +292,8 @@ function tribeRaid(a, lair, L, rnd) {
   if (!target) return null;
   const fx = townFx(target), tribe = lair.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * rnd());
   const town = might(target, fx) * (0.6 + 0.8 * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);   // the tower's wards turn the dead
-  const who = L.leads ? L.leads : cap1(race.plural) + (L.riders ? ` ${L.on}` : ''), P = WORLD_PEOPLES.get(target.people);
+  const sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
+  const who = L.leads ? L.leads : cap1(sub?.plural || race.plural) + (L.riders ? ` ${L.on}` : ''), P = WORLD_PEOPLES.get(target.people);
   target.raided = a.hist.year;
   if (tribe > town) {
     const loss = T.loss * raidShare(fx);

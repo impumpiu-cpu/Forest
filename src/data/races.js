@@ -4,7 +4,10 @@
 //              map (atlas/peoples.js) and, later, where their tribes camp; biomes from data/biomes.js
 //   rel      — which line of the relations table (data/relations.js) speaks for it
 //   special  — hard limits per characteristic [min, max] (data/special.js); nothing pushes past them
-//   peoples  — sub-races: `shift` moves the limits, `mods` and `innate` add to the species'
+//   peoples  — sub-races: `shift` moves the limits, `mods` and `innate` add to the species'; on the world
+//              map a realm takes the sub-race that fits the land of its seat best (`home` over the race's,
+//              atlas/realms.js): `plural` / `gen` name it in the chronicle («горные гномы Медной горы»),
+//              `taste` leans its towns' building (data/peoples.js taste); `world: false` — never a realm
 //   body     — physiology for the card and, later, for the world map (growth of a node):
 //              adult/life in years, fertility 0…1, diet
 //   mods     — multipliers on the agent (hunger, cold, sleep, regen… see data/traits.js BASE_MODS)
@@ -60,6 +63,12 @@ export const RACES = [
     body: {adult: 50, life: 600, fertility: 0.08, diet: 'почти травоядный'},
     mods: {hunger: 0.8, cold: 1.3, sleep: 0.5},
     innate: [{label: 'транс', note: 'четыре часа полудрёмы заменяют сон'}, {label: 'лесной глаз', note: 'в лесу видит то, что другим не видно'}],
+    peoples: [
+      {id: 'wood', label: 'лесной эльф', plural: 'лесные эльфы', gen: 'лесных эльфов', weight: 3},
+      {id: 'high', label: 'высокий эльф', plural: 'высокие эльфы', gen: 'высоких эльфов', weight: 1, shift: {I: 1, C: 1, S: -1},
+        home: {meadow: 1, forest: 0.6, shrubland: 0.6, foothills: 0.45, savanna: 0.3, jungle: 0.3, taiga: 0.3},
+        taste: {lore: 1.6, prestige: 1.3, trade: 1, defence: 0.8}, innate: [{label: 'старая кровь', note: 'помнит книги, которых другие не читали'}]},
+    ],
     align: {order: 1, mercy: 0, spread: 1},
     values: {nature: 2.2, ancestors: 1.4, knowledge: 1, freedom: 0.8},
     names: N(['Аэлдир', 'Илетан', 'Келориэн', 'Тандрил', 'Сильвар'], ['Элоэна', 'Ниэль', 'Лаириэль', 'Аэрин', 'Иримэ'])},
@@ -88,8 +97,12 @@ export const RACES = [
     innate: [{label: 'хмельная кровь', note: 'брага кормит и бодрит; без неё по утрам хмурится'},
       {label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'жаростойкий', note: 'не боится жара горна'}],
     peoples: [
-      {id: 'mountain', label: 'горный гном', weight: 3},
-      {id: 'deep', label: 'глубинный гном', weight: 1, shift: {P: 2, E: 1, C: -1, A: 0, S: -1},
+      {id: 'mountain', label: 'горный гном', plural: 'горные гномы', gen: 'горных гномов', weight: 3,
+        home: {foothills: 1, highlands: 0.9, volcano: 0.5, taiga: 0.15, tundra: 0.15}, taste: {prod: 1.5, defence: 1.3, trade: 0.9}},
+      {id: 'hill', label: 'холмовой гном', plural: 'холмовые гномы', gen: 'холмовых гномов', weight: 2, shift: {C: 1, E: -1},
+        home: {foothills: 0.8, meadow: 0.6, forest: 0.45, steppe: 0.4, shrubland: 0.4}, taste: {trade: 1.4, food: 1.2, prod: 1.2, defence: 1},
+        innate: [{label: 'торговая жилка', note: 'знает цену всему, что лежит на прилавке'}]},
+      {id: 'deep', label: 'глубинный гном', plural: 'глубинные гномы', gen: 'глубинных гномов', weight: 1, world: false, shift: {P: 2, E: 1, C: -1, A: 0, S: -1},
         mods: {cold: 0.85}, innate: [{label: 'дитя глубин', note: 'бледен, видит во мраке ещё лучше'}]},
     ],
     align: {order: 3, mercy: 0, spread: 0.8},
@@ -139,9 +152,9 @@ export const RACES = [
     mods: {hunger: 1.8, regen: 6, bravery: 1.3},
     innate: [{label: 'регенерация', note: 'рана затягивается на глазах, пока рядом нет огня'}],
     peoples: [
-      {id: 'forest', label: 'лесной тролль', weight: 2},
-      {id: 'swamp', label: 'болотный тролль', weight: 1, shift: {E: 1, A: -1}},
-      {id: 'ice', label: 'ледяной тролль', weight: 1, shift: {S: 1, I: -1}, mods: {cold: 0.3}},
+      {id: 'forest', label: 'лесной тролль', plural: 'лесные тролли', gen: 'лесных троллей', weight: 2, home: {forest: 0.9, taiga: 0.8, foothills: 0.4}},
+      {id: 'swamp', label: 'болотный тролль', plural: 'болотные тролли', gen: 'болотных троллей', weight: 1, shift: {E: 1, A: -1}, home: {swamp: 1, jungle: 0.5, forest: 0.3}},
+      {id: 'ice', label: 'ледяной тролль', plural: 'ледяные тролли', gen: 'ледяных троллей', weight: 1, shift: {S: 1, I: -1}, mods: {cold: 0.3}, home: {tundra: 0.9, ice: 0.7, highlands: 0.5, taiga: 0.3}},
     ],
     align: {order: -1, mercy: -1, spread: 1},
     values: {nature: 1.6, faith: 1.6, strength: 1},

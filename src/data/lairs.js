@@ -21,6 +21,7 @@
 //   ground 'home':  stands where the race's home suits the biome at least TRIBE_HOME
 //   needsAny:       and in addition on this kind of ground (as `ground` of a beast lair), if given
 //   gen:            the owners in the genitive («набег гоблинов»);  riders / on: their beasts and «on» them
+//   sub:            the race's sub-race (data/races.js peoples) whose home the camp stands on, and whose name it bears
 //   undead lairs:   rotAt, at, spawn (see ROT below); might — the owner's SPECIAL power × this (a necromancer
 //                   leads a horde);  raidVerb — what they did to a town;  leads — who leads the raid;
 //                   at 'town' — the lair sits in a mixed town and `drinks` that share of its people a year
@@ -53,9 +54,16 @@ LAIRS.registerAll([
   {id: 'ogres', tribe: true, gen: 'огров', species: 'ogre', from: 'из логова', label: 'логово огров', g: 'n', color: [160, 110, 90], radius: 8, ground: 'home',
     density: 5, max: 6, breed: 0.05, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['пещера', 'f'], ['котёл', 'm'], ['холм', 'm']]},
-  {id: 'trolls', tribe: true, gen: 'троллей', species: 'troll', from: 'из логова', label: 'логово троллей', g: 'n', color: [90, 130, 110], radius: 8, ground: 'home',
-    density: 6, max: 6, breed: 0.05, rivals: [], riders: null,
-    nouns: [['логово', 'n'], ['мост', 'm'], ['топь', 'f'], ['валуны', 'pl']]},
+  // trolls by sub-race (data/races.js peoples): each kind of troll its own ground
+  {id: 'trolls', tribe: true, sub: 'forest', gen: 'лесных троллей', species: 'troll', from: 'из логова', label: 'логово лесных троллей', g: 'n', color: [90, 130, 110], radius: 8, ground: 'home',
+    density: 5, max: 5, breed: 0.05, rivals: [], riders: null,
+    nouns: [['логово', 'n'], ['мост', 'm'], ['бурелом', 'm'], ['валуны', 'pl']]},
+  {id: 'swamptrolls', tribe: true, sub: 'swamp', gen: 'болотных троллей', species: 'troll', from: 'из логова', label: 'логово болотных троллей', g: 'n', color: [80, 110, 80], radius: 8, ground: 'home',
+    density: 25, max: 4, breed: 0.05, rivals: [], riders: null,
+    nouns: [['логово', 'n'], ['топь', 'f'], ['гать', 'f'], ['омут', 'm']]},
+  {id: 'icetrolls', tribe: true, sub: 'ice', gen: 'ледяных троллей', species: 'troll', from: 'из логова', label: 'логово ледяных троллей', g: 'n', color: [150, 180, 200], radius: 9, ground: 'home',
+    density: 4, max: 4, breed: 0.04, rivals: [], riders: null,
+    nouns: [['логово', 'n'], ['ледник', 'm'], ['наст', 'm'], ['торосы', 'pl']]},
   // ── the dead
   {id: 'wights', undead: true, gen: 'костяков', species: 'skeleton', from: 'из кургана', label: 'курганник', g: 'm', color: [190, 190, 210], radius: 6, ground: 'rot', rotAt: 0.25, at: 'barrows',
     spawn: 0.3, max: 8, breed: 0.04, rivals: [], might: 1.8, raidVerb: 'разорили',

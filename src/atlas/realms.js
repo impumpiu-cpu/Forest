@@ -7,6 +7,7 @@
 //
 // a.realms = [{id, people, name, capital: townId, founded, color}]
 import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS} from '../data/peoples.js';
+import {SPECIES} from '../data/species.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {townFx, townLabel, townGender} from './towns.js';
 import {meet, relation} from './diplomacy.js';
@@ -38,22 +39,46 @@ function epithets(a, i, P) {
   return out;
 }
 
-export function foundRealm(a, t) {
+// the sub-race of a race that fits the land of a cell best (data/races.js peoples), or none
+export function subFor(race, biome) {
+  const subs = (SPECIES.get(race).peoples || []).filter(p => p.world !== false);
+  if (!subs.length) return null;
+  const R = SPECIES.get(race);
+  return subs.map(p => [p, (p.home || R.home)[biome] || 0]).sort((x, y) => y[1] - x[1] || (y[0].weight ?? 1) - (x[0].weight ?? 1))[0][0];
+}
+export const subOf = (a, id) => { const r = realmOf(a, id); return r.sub ? SPECIES.get(WORLD_PEOPLES.get(r.people).race).peoples.find(p => p.id === r.sub) : null; };
+// how well the realm's own folk take to a cell: the sub-race's home there, or the race's
+export const realmHome = (a, id, biome) => { const r = realmOf(a, id), sub = subOf(a, id); return (sub?.home || SPECIES.get(WORLD_PEOPLES.get(r.people).race).home)[biome] || 0; };
+export const realmTaste = (a, id) => { const r = realmOf(a, id), sub = subOf(a, id); return sub?.taste ? {...WORLD_PEOPLES.get(r.people).taste, ...sub.taste} : WORLD_PEOPLES.get(r.people).taste; };
+
+// the sub-races of a race that found realms, and the home of one over a coarse cell (for the arrival)
+export const worldSubs = race => (SPECIES.get(race).peoples || []).filter(p => p.world !== false);
+export function subHomeField(a, race, sub) {
+  const F = a.fauna, N = F.W * F.H, out = new Float32Array(N), cnt = new Float32Array(N), home = sub.home || SPECIES.get(race).home;
+  for (let i = 0; i < a.n; i++) { if (a.f.ocean[i]) continue; const j = (((i / a.w) | 0) / F.c | 0) * F.W + ((i % a.w) / F.c | 0); out[j] += home[biomeAt(a, i).id] || 0; cnt[j]++; }
+  for (let j = 0; j < N; j++) out[j] = cnt[j] ? out[j] / cnt[j] : 0;
+  return out;
+}
+
+// a new realm: at the arrival each band brings its own sub-race (`subId`); a realm born of a schism
+// takes the sub-race that fits the land of its seat
+export function foundRealm(a, t, subId = null) {
   a.realms ||= [];
   const P = WORLD_PEOPLES.get(t.people), used = new Set(a.realms.filter(r => r.people === t.people).map(r => r.name));
+  const sub = subId ? worldSubs(P.race).find(p => p.id === subId) : subFor(P.race, biomeAt(a, t.i)?.id);
   const name = epithets(a, t.i, P).find(n => !used.has(n)) || `${EPITHETS.else[0]} ${used.size}`;
   const nth = a.realms.filter(r => r.people === t.people).length;
   // each realm of a race its own shade of the race's colour
   const shade = [1, 0.72, 1.25, 0.55, 1.45][nth % 5], color = P.color.map(v => Math.max(0, Math.min(255, Math.round(v * shade))));
-  const r = {id: `r${a.realms.length + 1}`, people: t.people, name, capital: t.id, founded: a.hist.year, color};
+  const r = {id: `r${a.realms.length + 1}`, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color};
   a.realms.push(r);
   t.realm = r.id; t.capital = true;
   return r;
 }
 
 export const realmOf = (a, id) => a.realms.find(r => r.id === id);
-export const realmLabel = (a, id) => { const r = realmOf(a, id); return `${WORLD_PEOPLES.get(r.people).label} ${r.name}`; };
-export const realmLabelGen = (a, id) => { const r = realmOf(a, id); return `${WORLD_PEOPLES.get(r.people).labelGen} ${r.name}`; };
+export const realmLabel = (a, id) => { const r = realmOf(a, id), sub = subOf(a, id); return `${sub?.plural || WORLD_PEOPLES.get(r.people).label} ${r.name}`; };
+export const realmLabelGen = (a, id) => { const r = realmOf(a, id), sub = subOf(a, id); return `${sub?.gen || WORLD_PEOPLES.get(r.people).labelGen} ${r.name}`; };
 export const realmPeople = (a, id) => realmOf(a, id).people;
 export const capitalOf = (a, id) => a.towns.find(t => t.id === realmOf(a, id).capital) || null;
 export const realmTowns = (a, id) => a.towns.filter(t => t.alive && t.realm === id);
