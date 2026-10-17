@@ -2,6 +2,7 @@
 import {newGame, step} from './sim.js';
 import {Renderer} from './render/renderer.js';
 import {Menu} from './ui/menu.js';
+import {AtlasView} from './ui/atlasView.js';
 import {Panel} from './ui/panel.js';
 import {TOOLS} from './ui/tools.js';
 import {showEnd, hideEnd} from './ui/endScreen.js';
@@ -47,6 +48,42 @@ buildResFilter();
 let world = null, running = false;
 
 const menu = new Menu({onStart: start, onResume: showGame});
+const atlasView = new AtlasView({onBack: showLaunch});
+let screen = 'launch';
+
+// the screens before the game: the launch choice, the world polygon (Мир) and the local map settings (Карта)
+const SCREENS = ['launch', 'atlas', 'menu', 'game'];
+function only(id) { screen = id; for (const s of SCREENS) $(s).hidden = s !== id; $('explain').hidden = id !== 'menu'; }
+
+// the main menu: the game loop stops (the world stays in memory), the world generation halts between frames
+function showLaunch() {
+  running = false; acc = 0;
+  atlasView.stop();
+  hideEnd(); only('launch');
+  document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
+  $('launchResume').hidden = !world;
+  $('colonyName').textContent = 'Тёплый Брод';
+  $('worldInfo').textContent = 'Два полигона: «Мир» — глобальная карта и её история, «Карта» — поселение на локальной карте. Позже они сошьются: место поселения будет выбираться на карте мира.';
+}
+
+function showAtlas() {
+  running = false;
+  only('atlas');
+  document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
+  $('colonyName').textContent = 'Мир';
+  $('worldInfo').textContent = 'Полигон глобальной карты. Мир создаётся по этапам, летопись пишется справа.';
+  atlasView.show();
+}
+$('launchWorld').addEventListener('click', showAtlas);
+$('launchMap').addEventListener('click', showMenu);
+$('launchResume').addEventListener('click', () => showGame());
+$('menuBack').addEventListener('click', showLaunch);
+// Esc returns to the main menu from any screen, except while typing in a text field
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || screen === 'launch' || e.target.closest('input[type=text], textarea, select')) return;
+  if (screen === 'game' && world?.over) return;
+  e.preventDefault(); showLaunch();
+});
 
 function start(cfg) {
   world = newGame(cfg);
@@ -68,7 +105,7 @@ function resume(w) {
 function showMenu() {
   running = false;
   hideEnd();
-  $('menu').hidden = false; $('game').hidden = true; $('explain').hidden = false;
+  only('menu');
   document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
   $('backToGame').hidden = !world;
   refreshSaves();
@@ -80,7 +117,7 @@ function showMenu() {
 function showGame() {
   const c = world.cfg;
   // the explanation cards belong to the start menu; in the game the screen is for the map and the panels
-  $('menu').hidden = true; $('game').hidden = false; $('explain').hidden = true;
+  only('game');
   document.body.classList.add('ingame'); $('worldInfo').hidden = true;
   $('colonyName').textContent = c.name;
   showTab(view.tab);
@@ -183,7 +220,7 @@ $('loadFile').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try { resume(await loadFromFile(f)); } catch (err) { status('loadStatus', 'Не удалось открыть: ' + err.message); }
 });
-$('openMenu').addEventListener('click', showMenu);
+$('openMenu').addEventListener('click', showLaunch);
 $('selCard').addEventListener('click', e => { if (e.target.closest('[data-close]')) { clearSelection(); panel.renderSelection(world, view); } });
 document.addEventListener('keydown', e => {
   if (e.code !== 'Space' || !running || e.target !== document.body) return;
@@ -233,7 +270,7 @@ function runFrame(now) {
 }
 
 $('buildTag').textContent = `версия ${VERSION} · ${BUILD}`;
-showMenu();
+showLaunch();
 requestAnimationFrame(frame);
 
 // handle for headless tests and the browser console

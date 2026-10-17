@@ -11,7 +11,7 @@ import {ITEMS} from '../src/data/items.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
-import {SPECIES} from '../src/data/species.js';
+import {SPECIES, KINDS} from '../src/data/species.js';
 import {NAVMAPS} from '../src/data/navmaps.js';
 import {THOUGHTS} from '../src/data/thoughts.js';
 import {STOCKS} from '../src/data/presets.js';
@@ -156,6 +156,18 @@ for (const R of REGIONS.all()) {
 // beasts: where they live, whom they hunt, how they come
 for (const sp of SPECIES.all()) {
   const where = `вид ${sp.id}`;
+  if (!KINDS[sp.kind]) err(`${where}: kind «${sp.kind}» не из KINDS`);
+  if (sp.kind === 'race' && !sp.rel) err(`${where}: разумный без rel`);
+  if (sp.kind === 'race' && !sp.home) err(`${where}: разумный без home`);
+  if (sp.kind !== 'race' && sp.home) err(`${where}: home только у разумных`);
+  if (sp.kind === 'spirit' && !sp.resident) err(`${where}: нечисть без resident`);
+  if (sp.resident && sp.kind !== 'spirit') err(`${where}: resident, а не нечисть`);
+  if ((sp.kind === 'beast' || sp.kind === 'monster') && !sp.habitat && sp.brain !== 'vermin') err(`${where}: зверь без habitat`);   // vermin lives everywhere
+  if (sp.kind === 'race' && sp.habitat) err(`${where}: habitat у разумного — на локальной карте он пришёл бы как зверь`);
+  for (const [b, r] of Object.entries(sp.home || {})) {
+    if (!BIOMES.has(b)) err(`${where}: нет биома «${b}» в home`);
+    if (!(r > 0 && r <= 1)) err(`${where}: home «${b}» ${r} вне 0..1`);
+  }
   for (const [b, r] of Object.entries(sp.habitat || {})) {
     if (!BIOMES.has(b)) err(`${where}: нет биома «${b}»`);
     if (!RARITY[r]) err(`${where}: редкость «${r}» не из RARITY`);

@@ -6,6 +6,9 @@
 //   trophies: rare extras on top of `yields`, decided once when the colony kills it (agents/trophies.js):
 //            [{res, n, chance, tier?}] — `tier`: a delicate organ only a skilled hand gets out whole (trophyExtraction, A)
 //   habitat: {biome: 'common' | 'usual' | 'rare' | 'scarce'} (data/biomes.js); none — lives everywhere
+//   kind:    what it is to the world (KINDS below): the world map lets each kind in through its own door
+//            (docs/WORLD.md, «Виды и их место в мире»); data/species.js and data/bestiary.js set it on
+//            the beasts, monsters and spirits, data/races.js on the races, data/monsters.js on the undead
 import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
 import {MONSTERS} from './monsters.js';
@@ -14,12 +17,22 @@ import {around} from './special.js';
 
 export const SPECIES = new Registry('species');
 
+// What a species is to the world. On the world map (src/atlas/) each kind comes in its own way:
+//   beast    — the beasts: fields of density by biome, prey and predators (atlas/fauna.js)
+//   monster  — the monsters of the wild era: the same fields, and lairs that hold them (atlas/lairs.js)
+//   spirit   — the nechist of a place: bound to it, never spreads (atlas/fauna.js, `resident`)
+//   race     — the thinking races: the peoples with towns (atlas/peoples.js, data/peoples.js) or the
+//              tribes with camps instead of towns (to come)
+//   undead   — the rot's dead: from the barrows of old battles, burnt towns and necromancers (to come)
+//   fiend    — demons: magic is rare in this world; they come through the rifts at live volcanoes
+//              and plate seams (atlas/lairs.js `rift`), few and far from the colony
+export const KINDS = {beast: 'звери', monster: 'чудовища', spirit: 'нечисть', race: 'разумные', undead: 'нежить', fiend: 'демоны'};
 SPECIES.registerAll([
   // Hares graze, rest at night, bolt from people and fire. They never breed here:
   // their numbers change only through migration (see migrations.js).
   // game: shows up on the prey flow field that hunters and predators follow
-  {id: 'hare', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', hp: 0.12, speed: 0.17, needs: [], brain: 'grazer', game: true,
-    special: around({S: 1, P: 8, E: 2, C: 1, I: 1, A: 9, L: 5}), habitat: {meadow: 'common', forest: 'usual', taiga: 'usual', foothills: 'rare', barrows: 'usual'},
+  {id: 'hare', kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', hp: 0.12, speed: 0.17, needs: [], brain: 'grazer', game: true,
+    special: around({S: 1, P: 8, E: 2, C: 1, I: 1, A: 9, L: 5}), habitat: {meadow: 'common', steppe: 'common', forest: 'usual', taiga: 'usual', shrubland: 'usual', savanna: 'rare', tundra: 'rare', foothills: 'rare', barrows: 'usual'},
     heatHarm: 60, look: {shape: 'hare', size: 0.42, color: '#cdbb9a'},
     yields: {meat: 2, hide: 1, bone: 1},
     flee: {radius: 4.5, sprint: 1.45, from: ['people', 'wolf'], stamina: 0.007},
@@ -29,8 +42,8 @@ SPECIES.registerAll([
   // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
   // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
   // or when the hares run out. Like everyone else they only arrive and depart by migration.
-  {id: 'wolf', label: 'волк', labelAcc: 'волка', plural: 'волки', hp: 0.8, speed: 0.14, needs: ['food'], brain: 'predator',
-    special: around({S: 6, P: 10, E: 7, C: 2, I: 3, A: 8, L: 4}), habitat: {taiga: 'common', forest: 'usual', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
+  {id: 'wolf', kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', hp: 0.8, speed: 0.14, needs: ['food'], brain: 'predator',
+    special: around({S: 6, P: 10, E: 7, C: 2, I: 3, A: 8, L: 4}), habitat: {taiga: 'common', tundra: 'usual', steppe: 'usual', forest: 'usual', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
     attack: {power: 0.85, cooldown: 14},
@@ -58,8 +71,8 @@ SPECIES.registerAll([
     }},
 
   // Deer: the main game of the woods — skittish, fast, a lot of meat and a good hide.
-  {id: 'deer', label: 'олень', labelAcc: 'оленя', plural: 'олени', hp: 0.45, speed: 0.15, needs: [], brain: 'grazer', game: true,
-    special: around({S: 4, P: 8, E: 5, C: 2, I: 1, A: 8, L: 4}), habitat: {taiga: 'common', forest: 'usual', meadow: 'usual'},
+  {id: 'deer', kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', hp: 0.45, speed: 0.15, needs: [], brain: 'grazer', game: true,
+    special: around({S: 4, P: 8, E: 5, C: 2, I: 1, A: 8, L: 4}), habitat: {taiga: 'common', tundra: 'usual', forest: 'usual', meadow: 'usual', steppe: 'rare'},
     heatHarm: 60, look: {shape: 'deer', size: 0.62, color: '#a8794a'},
     yields: {meat: 5, hide: 2, bone: 2},
     flee: {radius: 7, sprint: 1.6, from: ['people', 'wolf'], stamina: 0.006},
@@ -67,8 +80,8 @@ SPECIES.registerAll([
     leaveChance: 0.0003},
 
   // Fox: small and quick, hunted for its fur, which traders pay well for.
-  {id: 'fox', label: 'лиса', labelAcc: 'лису', plural: 'лисы', hp: 0.15, speed: 0.18, needs: [], brain: 'grazer', game: true,
-    special: around({S: 2, P: 9, E: 3, C: 2, I: 3, A: 9, L: 6}), habitat: {taiga: 'common', forest: 'usual', meadow: 'rare', barrows: 'rare'},
+  {id: 'fox', kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', hp: 0.15, speed: 0.18, needs: [], brain: 'grazer', game: true,
+    special: around({S: 2, P: 9, E: 3, C: 2, I: 3, A: 9, L: 6}), habitat: {taiga: 'common', forest: 'usual', steppe: 'usual', tundra: 'usual', meadow: 'rare', desert: 'rare', barrows: 'rare'},
     heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
     yields: {meat: 1, furs: 1}, trophies: [{res: 'furs', n: 1, chance: 0.2}],
     flee: {radius: 6, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},
@@ -77,8 +90,8 @@ SPECIES.registerAll([
 
   // Boar: fat and dangerous. Like the mule it does not run: it kicks back with its tusks and charges
   // whoever shot it. Hunters go for it only when there is no gentler game about.
-  {id: 'boar', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', hp: 1.3, speed: 0.12, needs: [], brain: 'mule', big: true, game: true,
-    special: around({S: 8, P: 4, E: 9, C: 1, I: 1, A: 4, L: 3}), habitat: {forest: 'common', swamp: 'rare', meadow: 'rare', taiga: 'rare'},
+  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', hp: 1.3, speed: 0.12, needs: [], brain: 'mule', big: true, game: true,
+    special: around({S: 8, P: 4, E: 9, C: 1, I: 1, A: 4, L: 3}), habitat: {forest: 'common', shrubland: 'usual', swamp: 'rare', meadow: 'rare', taiga: 'rare', jungle: 'rare'},
     heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
     attack: {power: 1.45, cooldown: 14},
     yields: {meat: 6, hide: 2, bone: 1}, trophies: [{res: 'hide', n: 1, chance: 0.2}],
@@ -88,7 +101,7 @@ SPECIES.registerAll([
   // Rats: they come for the stock when there is a lot of food and nothing to keep them out of it.
   // They nibble what lies in the open (pots and a granary protect it) and run from people;
   // whoever catches one near the stores kills it (agents/brains/vermin.js).
-  {id: 'rat', label: 'крыса', labelAcc: 'крысу', plural: 'крысы', hp: 0.05, speed: 0.15, needs: [], brain: 'vermin',
+  {id: 'rat', kind: 'beast', label: 'крыса', labelAcc: 'крысу', plural: 'крысы', hp: 0.05, speed: 0.15, needs: [], brain: 'vermin',
     special: around({S: 1, P: 6, E: 1, C: 0, I: 2, A: 7, L: 7}), // no habitat: lives wherever there is food lying about
     heatHarm: 55, look: {shape: 'rat', size: 0.25, color: '#7c7468'},
     vermin: {eats: 0.0016, flee: 1.6, caught: 0.04}},
@@ -97,8 +110,8 @@ SPECIES.registerAll([
   // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves
   // dare only a badly wounded one. Wild mules wander in now and then; traders bring pack mules.
   // big: hunters and wolves fight it rather than finish it with one bite or arrow.
-  {id: 'mule', label: 'мул', labelAcc: 'мула', plural: 'мулы', hp: 3.2, speed: 0.11, needs: [], brain: 'mule', big: true, legend: 'мул',
-    special: around({S: 10, P: 4, E: 10, C: 2, I: 2, A: 3, L: 4}), habitat: {foothills: 'common', meadow: 'usual', highlands: 'rare'},
+  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', hp: 3.2, speed: 0.11, needs: [], brain: 'mule', big: true, legend: 'мул',
+    special: around({S: 10, P: 4, E: 10, C: 2, I: 2, A: 3, L: 4}), habitat: {foothills: 'common', meadow: 'usual', shrubland: 'rare', highlands: 'rare'},
     heatHarm: 62, look: {shape: 'mule', size: 0.85, color: '#7a5232'},
     attack: {power: 1.9, cooldown: 16},
     yields: {meat: 9, hide: 3, bone: 4},
@@ -121,8 +134,8 @@ SPECIES.registerAll([
 
   // Goat: a wild goat of the rocky meadows. Skittish like a deer, but a patient herder with an
   // armful of hay can tame it; in a pen it gives milk and wool and has kids in spring and summer.
-  {id: 'goat', label: 'коза', labelAcc: 'козу', plural: 'козы', hp: 0.3, speed: 0.14, needs: [], brain: 'grazer', game: true, legend: 'коза',
-    special: around({S: 3, P: 6, E: 5, C: 2, I: 2, A: 8, L: 5}), habitat: {foothills: 'common', highlands: 'common', meadow: 'rare'},
+  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', hp: 0.3, speed: 0.14, needs: [], brain: 'grazer', game: true, legend: 'коза',
+    special: around({S: 3, P: 6, E: 5, C: 2, I: 2, A: 8, L: 5}), habitat: {foothills: 'common', highlands: 'common', shrubland: 'usual', meadow: 'rare'},
     heatHarm: 60, look: {shape: 'goat', size: 0.46, color: '#d6cdb6'},
     yields: {meat: 3, hide: 1, bone: 1},
     flee: {radius: 4.5, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},

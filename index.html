@@ -17,10 +17,66 @@
     <p id="worldInfo">Прототип локальной карты: поля температуры, огня и дыма считаются на сетке, поверх живут колонисты с потребностями и ходят по полям течения.</p>
   </header>
 
+  <!-- ───────── launch: two polygons, the world and the local map; later they are stitched together ───────── -->
+  <section id="launch" class="launch" aria-label="Режим запуска">
+    <button type="button" class="launch-card" id="launchWorld">
+      <span class="tag">глобальная карта</span>
+      <b>Мир</b>
+      <span>Сотворить мир: рельеф, моря, климат, а дальше реки, леса и история народов. Летопись пишется сбоку.</span>
+    </button>
+    <button type="button" class="launch-card" id="launchMap">
+      <span class="tag">локальная карта</span>
+      <b>Карта</b>
+      <span>Основать поселение: поля, огонь, колонисты, совет, набеги и торговля.</span>
+    </button>
+    <button type="button" id="launchResume" class="primary" hidden>Вернуться к игре</button>
+  </section>
+
+  <!-- ───────── the world map polygon ───────── -->
+  <section id="atlas" class="atlas" hidden aria-labelledby="atlasTitle">
+    <div class="menu-form atlas-form">
+      <h2 id="atlasTitle" class="menu-title">Новый мир</h2>
+      <div class="field">
+        <label for="atlasSeed">Сид мира</label>
+        <div class="row">
+          <input id="atlasSeed" type="text" maxlength="24" autocomplete="off">
+          <button type="button" id="atlasRandom">Случайный</button>
+        </div>
+      </div>
+      <div class="field"><span class="lbl">Размер</span><div class="seg wrapseg" data-akey="size"></div><small id="atlasSizeNote"></small></div>
+      <div class="field"><span class="lbl">Суша</span><div class="seg" data-akey="land"></div></div>
+      <div class="field"><span class="lbl">Плиты</span><div class="seg" data-akey="plates"></div></div>
+      <div class="field"><span class="lbl">Широты</span><div class="seg wrapseg" data-akey="hemisphere"></div><small id="atlasHemiNote"></small></div>
+      <div class="field"><span class="lbl">Дикая эра</span><div class="seg" data-akey="wild"></div><small id="atlasWildNote"></small></div>
+      <div class="field"><span class="lbl">Эпоха древних</span><div class="seg" data-akey="elder"></div><small id="atlasElderNote"></small></div>
+      <div class="field"><span class="lbl">Эпоха молодых</span><div class="seg" data-akey="young"></div><small id="atlasYoungNote"></small></div>
+      <div class="row actions">
+        <button type="button" id="atlasGo" class="primary">Сотворить</button>
+        <button type="button" id="atlasPause" hidden>Пауза</button>
+        <button type="button" id="atlasBack" class="quiet" title="Esc">← Главное меню</button>
+      </div>
+      <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="atlasStages"></ol></div>
+      <dl class="kv" id="atlasStats"></dl>
+      <dl class="kv" id="atlasRels"></dl>
+    </div>
+    <div class="atlas-map">
+      <div class="seg wrapseg" data-akey="layer"></div>
+      <div class="seg wrapseg" data-akey="ore" id="atlasOre" hidden></div>
+      <div class="seg wrapseg" data-akey="fauna" id="atlasFauna" hidden></div>
+      <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
+      <div class="legend atlas-legend" id="atlasLegend"></div>
+      <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку.</div>
+    </div>
+    <div class="card atlas-chron">
+      <h2>Летопись мира</h2>
+      <div class="log" id="atlasChron"></div>
+    </div>
+  </section>
+
   <!-- ───────── start menu ───────── -->
-  <section id="menu" class="menu" aria-labelledby="menuTitle">
+  <section id="menu" class="menu" hidden aria-labelledby="menuTitle">
     <div class="menu-form">
-      <h2 id="menuTitle" class="menu-title">Новый мир</h2>
+      <h2 id="menuTitle" class="menu-title">Новое поселение</h2>
       <div class="field">
         <label for="cfgName">Название поселения</label>
         <input id="cfgName" type="text" maxlength="32" autocomplete="off">
@@ -55,6 +111,7 @@
         <button type="button" id="startGame" class="primary">Основать поселение</button>
         <button type="button" id="backToGame" hidden>Вернуться к игре</button>
         <button type="button" id="resetCfg" class="quiet">Сбросить настройки</button>
+        <button type="button" id="menuBack" class="quiet" title="Esc">← Главное меню</button>
       </div>
       <div class="field saves">
         <span class="lbl">Сохранённые игры</span>
@@ -118,7 +175,7 @@
         <button id="raid" class="danger">Набег</button>
         <button id="saveGame" title="Сохранить в этом браузере. Игра также сохраняется сама каждое утро.">Сохранить</button>
         <button id="saveFile" title="Скачать сохранение файлом">В файл</button>
-        <button id="openMenu">Меню мира</button>
+        <button id="openMenu" title="Esc. Игра встанет на паузу; из главного меню к ней можно вернуться">← Главное меню</button>
         <span class="status" id="saveStatus" role="status"></span>
       </div>
       <div class="logfilter resfilter" id="resFilter" hidden aria-label="Какие ресурсы показывать"></div>

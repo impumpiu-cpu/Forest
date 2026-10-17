@@ -1,0 +1,155 @@
+// The peoples of the world map: who comes, when, where they feel at home, how they spread, what
+// they build and what they call their towns. The systems are in src/atlas/peoples.js (the peoples as
+// fields), atlas/settlements.js (towns as points) and atlas/roads.js (roads worn by traffic).
+//
+//   race:     the race on the local map (data/races.js), whose people they are
+//   era:      the era they come in (data/history.js ERAS)
+//   arrive:   how they come into the world: `groups` founding bands; `mode` where — the best spot of
+//             their land (default), the best coast (`coast`, from over the sea) or as far from everyone
+//             as their land lets them (`far`, out of the wild edges)
+//   home:     how much a biome suits them, 0..1 — their carrying capacity, as for the beasts; it is
+//             the race's `home` (data/races.js), so the local and the world map agree on where a
+//             race belongs; `ores`: weight of the rock's ore wealth (dwarves live off the mountains)
+//   moves:    how easily they spread through a biome (×), the rest at `movesElse`
+//   spread / growth: diffusion and logistic growth of the people field a year (Fisher–KPP)
+//   found:    a town is founded where the people field is this dense, at least `spacing` cells
+//             (of a 192-cell-high world) from any other town
+//   site:     what makes a good spot for a town, beyond the biome: water, coast, fertility, ores, steep
+//   taste:    how much the people care for each kind of effect when a town chooses what to build
+//             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
+//   names:    syllables of town names: first + middle (may be empty) + last
+//   color:    on the world map
+import {Registry} from '../core/registry.js';
+import {RACES} from './races.js';
+
+const raceHome = id => RACES.find(r => r.id === id).home;
+
+export const WORLD_PEOPLES = new Registry('worldPeople');
+WORLD_PEOPLES.registerAll([
+  {id: 'elves', race: 'elf', label: 'эльфы', labelGen: 'эльфов', adj: 'эльфийский', era: 'elder', color: [120, 200, 120],
+    arrive: {verb: 'пробудились', groups: 2, where: 'в самой древней чаще'},
+    home: raceHome('elf'),
+    moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
+    spread: 0.22, growth: 0.18, found: 0.32, spacing: 16,
+    site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
+    taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
+    names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
+      last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
+  {id: 'dwarves', race: 'dwarf', label: 'гномы', labelGen: 'гномов', adj: 'гномий', era: 'elder', color: [220, 150, 70],
+    arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
+    home: raceHome('dwarf'), ores: 0.4,
+    moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
+    spread: 0.18, growth: 0.16, found: 0.3, spacing: 14,
+    site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
+    taste: {housing: 1, food: 1, prod: 1.4, trade: 1, defence: 1.2, faith: 1, lore: 0.8, prestige: 1.2, health: 0.9},
+    names: {first: ['Кхаз', 'Бар', 'Дур', 'Гра', 'Тор', 'Ка', 'Бо', 'Гим', 'Дол', 'Мор', 'Ун', 'Зир'], mid: ['', 'ак', 'ин', 'ум', 'ар', 'ек', 'од'],
+      last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
+  {id: 'humans', race: 'human', label: 'люди', labelGen: 'людей', adj: 'людской', era: 'young', color: [100, 150, 235],
+    arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast'},
+    home: raceHome('human'),
+    moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
+    spread: 0.26, growth: 0.24, found: 0.28, spacing: 12,
+    site: {water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2},
+    taste: {housing: 1, food: 1.2, prod: 1, trade: 1.3, defence: 1, faith: 1, lore: 0.9, prestige: 1.1, health: 1},
+    names: {first: ['Бел', 'Яр', 'Вел', 'Свят', 'Мир', 'Глад', 'Рад', 'Ост', 'Лю', 'Звени', 'Добр', 'Влад'], mid: ['', 'о', 'е', 'ино'],
+      last: ['град', 'город', 'слав', 'поль', 'ск', 'мир', 'бор', 'ец', 'горск', 'дол']}},
+  {id: 'orcs', race: 'orc', label: 'орки', labelGen: 'орков', adj: 'орочий', era: 'young', color: [210, 80, 60],
+    arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
+    home: raceHome('orc'), ores: 0.3,
+    moves: {steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2}, movesElse: 0.5,
+    spread: 0.3, growth: 0.26, found: 0.3, spacing: 13,
+    site: {water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1},
+    taste: {housing: 1, food: 1, prod: 0.9, trade: 0.6, defence: 1.4, faith: 0.9, lore: 0.3, prestige: 1.3, health: 0.8},
+    names: {first: ['Гор', 'Груш', 'Мор', 'Ург', 'Зог', 'Крах', 'Шаг', 'Буг', 'Гра', 'Ног'], mid: ['', 'ак', 'ук', 'аг', 'ор'],
+      last: ['-баш', 'гат', 'рук', 'мог', 'душ', 'заг', '-тар', 'нак']}},
+]);
+
+// Town sizes: three steps, earned by what the town has built (docs/WORLD.md, «Ступени и столицы»).
+// A town is a step when it has at least `pop` people and any of the buildings in `needsAny`
+// (data/townBuildings.js); it falls a step when its people drop below TIER_FALL of that `pop`.
+// Within a step the size runs free: a town is a town at 400 and at 6000.
+// What each people calls a town of that size, in the cases the chronicle needs:
+// [nominative, accusative, genitive, prepositional, instrumental], and the gender of the word.
+export const TIERS = [
+  {pop: 0, needsAny: null,
+    label: {elves: ['приют', 'приют', 'приюта', 'приюте', 'приютом'], dwarves: ['застава', 'заставу', 'заставы', 'заставе', 'заставой'],
+      humans: ['хутор', 'хутор', 'хутора', 'хуторе', 'хутором'], orcs: ['стойбище', 'стойбище', 'стойбища', 'стойбище', 'стойбищем']},
+    gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'n'}},
+  {pop: 60, needsAny: ['granary', 'eldershall', 'shrine', 'shamanhut', 'sacredgrove', 'stonecircle'],
+    label: {elves: ['селение', 'селение', 'селения', 'селении', 'селением'], dwarves: ['посёлок', 'посёлок', 'посёлка', 'посёлке', 'посёлком'],
+      humans: ['деревня', 'деревню', 'деревни', 'деревне', 'деревней'], orcs: ['становище', 'становище', 'становища', 'становище', 'становищем']},
+    gender: {elves: 'n', dwarves: 'm', humans: 'f', orcs: 'n'}},
+  {pop: 500, needsAny: ['market', 'stonewall', 'hiddenpaths', 'tunnels', 'earthwall', 'temple', 'ancestorhall'],
+    label: {elves: ['город', 'город', 'города', 'городе', 'городом'], dwarves: ['крепость', 'крепость', 'крепости', 'крепости', 'крепостью'],
+      humans: ['город', 'город', 'города', 'городе', 'городом'], orcs: ['твердыня', 'твердыню', 'твердыни', 'твердыне', 'твердыней']},
+    gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'f'}},
+];
+export const TIER_FALL = 0.7;
+// the capital: not a step but a flag — the seat of a people's realm, crowned by its throne hall
+// (data/townBuildings.js `throne`); what each people calls it
+export const CAPITAL = {
+  label: {elves: ['столица', 'столицу', 'столицы', 'столице', 'столицей'], dwarves: ['чертог', 'чертог', 'чертога', 'чертоге', 'чертогом'],
+    humans: ['столица', 'столицу', 'столицы', 'столице', 'столицей'], orcs: ['ставка', 'ставку', 'ставки', 'ставке', 'ставкой']},
+  gender: {elves: 'f', dwarves: 'm', humans: 'f', orcs: 'f'},
+};
+// the step a town has earned: the highest whose people and buildings it has (steps are not skipped)
+export function tierOf(t) {
+  let k = 0;
+  for (let i = 1; i < TIERS.length; i++) {
+    const T = TIERS[i];
+    if (t.pop >= T.pop && T.needsAny.some(id => t.built.includes(id))) k = i; else break;
+  }
+  return k;
+}
+// is the town the crowned seat of its people
+export const crowned = t => !!t.capital && t.built.includes('throne');
+
+// Realms (atlas/realms.js): a people is a race, a realm is a state — a seat and the towns that hold
+// to it. Each founding band is its own realm, so a race starts as two. A realm is named by the land
+// of its seat, so no made-up town name has to be declined: «гномы Медной горы», «эльфы Тёмного леса».
+// The first epithet that fits the seat's cell is taken, in the order: a rich ore, the water, the biome;
+// if that name is already a realm's of the same people, the next in that order.
+export const EPITHETS = {
+  ores: {gold: ['Золотых жил'], silver: ['Серебряных копей'], bronze: ['Медной горы', 'Медных холмов'], iron: ['Железных холмов', 'Ржавых гор'], gems: ['Самоцветных гор'], coal: ['Чёрных копей']},
+  water: {coast: ['Солёного берега', 'Белого берега', 'Дальнего берега'], great: ['Великой реки'], river: ['Тихой реки', 'Быстрой реки', 'Светлой реки'],
+    lake: ['Светлого озера', 'Тихого озера'], salt: ['Солёного озера']},
+  biomes: {forest: ['Тёмного леса', 'Старых дубрав', 'Зелёной сени'], taiga: ['Чёрной тайги', 'Сосновых боров'], jungle: ['Зелёных дебрей'], meadow: ['Широких лугов', 'Вольных трав'],
+    steppe: ['Вольной степи', 'Ковыльного моря'], savanna: ['Жёлтых трав', 'Красной земли'], shrubland: ['Сухих холмов', 'Каменистых пустошей'], desert: ['Красных песков', 'Горячих ветров'],
+    tundra: ['Белых мхов', 'Студёной земли'], foothills: ['Высоких холмов', 'Долгих склонов'], highlands: ['Седых гор', 'Снежных вершин'], swamp: ['Чёрных топей'], volcano: ['Огненной горы'], ice: ['Вечных льдов'], water: ['Семи островов']},
+  else: ['Далёкой земли', 'Края света', 'Новых земель', 'Последнего предела'],
+};
+
+// Schisms (atlas/realms.js stepRealms). A realm's seat holds its towns by privilege: the throne, the
+// palace, the mint. A town that outgrows the seat may break away:
+//   edge       a town of the second step with at least this share of the seat's people (the seat's own
+//              glory is privilege: the throne, the palace, the mint — so people are weighed, not fame)…
+//   far        …standing at least this far from the seat (in fronts, data/diplomacy.js)…
+//   harbor     a harbour town without a harbour at the seat counts this many fronts further away
+//   years      …for this many years running is a contender
+//   chance     a contender breaks away with this chance a year, × how far it stands (in fronts) and
+//              × `shaken` when the realm is at war or the seat was raided lately — families hold on
+//              while the realm is quiet
+//   attitude   the two realms start from this, and drift back to their race's memory of itself
+//   war        chance that the split comes with a war for power at once
+// When a seat is burnt, the most glorious town takes the throne; if a second is at least `rival` of it,
+// the realm breaks in two instead.
+export const SCHISM = {edge: 0.8, far: 0.35, harbor: 0.4, years: 3, chance: 0.08, shaken: 1.6, attitude: -1.5, war: 0.35, rival: 0.6};
+
+// Towns against the wild: a town fights the lairs whose territory reaches it; the town's might is
+// √pop × `might`, the lair's its strength × its owner's SPECIAL power. A beaten lair is cleared;
+// a town that loses is raided and loses `raidLoss` of its people.
+export const TOWN_WAR = {might: 0.9, chance: 0.08, raidLoss: 0.2, reach: 4};
+
+// The young peoples' era (the start setting «Эпоха молодых»), in years.
+export const YOUNG_YEARS = [
+  {years: 25, label: 'Короткая'},
+  {years: 40, label: 'Обычная'},
+  {years: 60, label: 'Долгая'},
+];
+
+// The eras' length (the start setting «Эпоха древних»), in years.
+export const ELDER_YEARS = [
+  {years: 25, label: 'Короткая'},
+  {years: 40, label: 'Обычная'},
+  {years: 60, label: 'Долгая'},
+];

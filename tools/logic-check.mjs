@@ -264,6 +264,7 @@ check('T17', 'заблокированное дело не берут снова
 
 // ── raider squads (agents/squad.js) and doing things together (settlement/together.js)
 const band = (w, n, x, y) => {
+  w.stats.raids = 9;   // not the first raid: no scouting party, so the band has a front and a leader whatever the dice say
   const g = [];
   for (let k = 0; k < n; k++) { const a = put(w, 'human', 'raiders', x + k, y); a.band = 'bandits'; a.name = 'Налётчик'; a.brain = 'raider'; g.push(a); }
   return [g, createSquad(w, g)];
