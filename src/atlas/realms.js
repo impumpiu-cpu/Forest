@@ -6,7 +6,10 @@
 // (data/peoples.js CAPITAL): only it builds the throne hall, the palace and the mint.
 //
 // a.realms = [{id, people, name, capital: townId, founded, color}]
-import {WORLD_PEOPLES, EPITHETS} from '../data/peoples.js';
+import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS} from '../data/peoples.js';
+import {DIPLOMACY} from '../data/diplomacy.js';
+import {townFx, townLabel, townGender} from './towns.js';
+import {meet, relation} from './diplomacy.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';
@@ -61,4 +64,67 @@ export function joinRealm(a, t) {
   for (const o of a.towns) if (o !== t && o.alive && o.people === t.people && o.realm) { const d = Math.hypot(o.x - t.x, o.y - t.y); if (d < bd) { bd = d; best = o; } }
   if (best) t.realm = best.realm; else foundRealm(a, t);
   return t.realm;
+}
+
+// ── schisms
+const cap1 = s => s[0].toUpperCase() + s.slice(1);
+const glory = t => t.pop * (1 + townFx(t).prestige);
+
+// the towns of two seats are divided by which seat is nearer
+function divide(a, oldId, newId, seatOld, seatNew) {
+  let went = 0;
+  for (const t of a.towns) if (t.alive && t.realm === oldId && t !== seatOld && t !== seatNew) {
+    if (Math.hypot(t.x - seatNew.x, t.y - seatNew.y) < Math.hypot(t.x - seatOld.x, t.y - seatOld.y)) { t.realm = newId; went++; }
+  }
+  return went;
+}
+
+// a town breaks away with the towns nearer to it: a new realm, wary of the old one, sometimes at war
+function breakAway(a, r, seat, rnd, say, why) {
+  const old = capitalOf(a, r.id), nr = foundRealm(a, seat), went = old ? divide(a, r.id, nr.id, old, seat) : 0;
+  a.contacts[r.id < nr.id ? `${r.id}:${nr.id}` : `${nr.id}:${r.id}`] = {year: a.hist.year, feeling: SCHISM.attitude};
+  const rel = meet(a, r.id, nr.id, a.hist.year);
+  rel.att = SCHISM.attitude;
+  say(`${why} ${townLabel(seat, 0)} ${seat.name} объявил${TIERS[seat.tier].gender[seat.people] === 'f' ? 'а' : TIERS[seat.tier].gender[seat.people] === 'n' ? 'о' : ''} себя столицей новой державы «${realmLabel(a, nr.id)}»` +
+    (went ? `; с ${went === 1 ? 'ней ушёл 1 город' : `ней ушли ${went} ${went < 5 ? 'города' : 'городов'}`}.` : '.'));
+  if (old && rnd() < SCHISM.war) { rel.war = {since: a.hist.year, battles: 0, razed: 0}; rel.wars++; say(`${cap1(realmLabel(a, r.id))} и ${realmLabel(a, nr.id)} не поделили власть: началась война.`); }
+  return nr;
+}
+
+// a year of the realms: contenders rise where a town outgrows its seat
+export function stepRealms(a, rnd, say) {
+  const H = a.hist, k = scaleOf(a);
+  for (const r of a.realms) {
+    const seat = capitalOf(a, r.id);
+    if (!seat || !seat.alive) continue;
+    const atWar = Object.entries(a.rel || {}).some(([kk, x]) => x.war && kk.split(':').includes(r.id));
+    for (const t of a.towns) {
+      if (!t.alive || t.realm !== r.id || t === seat || t.tier < 2) continue;
+      const far = Math.hypot(t.x - seat.x, t.y - seat.y) / (DIPLOMACY.front * k);
+      if (t.pop >= SCHISM.edge * seat.pop && far >= SCHISM.far) {
+        t.contender = (t.contender || 0) + 1;
+        if (t.contender === SCHISM.years) say(`${cap1(townLabel(t, 0))} ${t.name} не меньше ${townLabel(seat, 2)} ${seat.name} и стоит далеко от ${townGender(seat) === 'f' ? 'неё' : 'него'}: в державе «${realmLabel(a, r.id)}» зреет раскол.`);
+        if (t.contender < SCHISM.years) continue;
+        const shaken = atWar || (seat.raided != null && H.year - seat.raided < 6);
+        if (rnd() < SCHISM.chance * far * (shaken ? SCHISM.shaken : 1)) {
+          t.contender = 0;
+          breakAway(a, r, t, rnd, say, `Раскол:`);
+          break;
+        }
+      } else t.contender = 0;
+    }
+  }
+}
+
+// the seat of a realm is burnt: the most glorious town takes the throne, or the realm breaks in two
+export function seatFallen(a, t, rnd, say) {
+  const r = realmOf(a, t.realm);
+  if (!r || r.capital !== t.id) return;
+  t.capital = false;
+  const left = a.towns.filter(o => o.alive && o.realm === r.id).sort((p, q) => glory(q) - glory(p));
+  if (!left.length) { r.fallen = a.hist.year; say(`Держава «${realmLabel(a, r.id)}» сгинула вместе со своей столицей.`); return; }
+  const [first, second] = left;
+  r.capital = first.id; first.capital = true;
+  say(`Столица державы «${realmLabel(a, r.id)}» перенесена в ${townLabel(first, 1)} ${first.name}.`);
+  if (second && glory(second) >= SCHISM.rival * glory(first)) breakAway(a, r, second, rnd, say, `Власть не удержали:`);
 }

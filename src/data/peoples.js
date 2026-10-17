@@ -119,6 +119,21 @@ export const EPITHETS = {
   else: ['Далёкой земли', 'Края света', 'Новых земель', 'Последнего предела'],
 };
 
+// Schisms (atlas/realms.js stepRealms). A realm's seat holds its towns by privilege: the throne, the
+// palace, the mint. A town that outgrows the seat may break away:
+//   edge       a town of the second step with at least this share of the seat's people (the seat's own
+//              glory is privilege: the throne, the palace, the mint — so people are weighed, not fame)…
+//   far        …standing at least this far from the seat (in fronts, data/diplomacy.js)…
+//   years      …for this many years running is a contender
+//   chance     a contender breaks away with this chance a year, × how far it stands (in fronts) and
+//              × `shaken` when the realm is at war or the seat was raided lately — families hold on
+//              while the realm is quiet
+//   attitude   the two realms start from this, and drift back to their race's memory of itself
+//   war        chance that the split comes with a war for power at once
+// When a seat is burnt, the most glorious town takes the throne; if a second is at least `rival` of it,
+// the realm breaks in two instead.
+export const SCHISM = {edge: 0.8, far: 0.35, years: 3, chance: 0.08, shaken: 1.6, attitude: -1.5, war: 0.35, rival: 0.6};
+
 // Towns against the wild: a town fights the lairs whose territory reaches it; the town's might is
 // √pop × `might`, the lair's its strength × its owner's SPECIAL power. A beaten lair is cleared;
 // a town that loses is raided and loses `raidLoss` of its people.

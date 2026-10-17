@@ -29,7 +29,7 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
-const hist = {realms: 0, kinWars: 0, undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
+const hist = {schisms: 0, moved: 0, realms: 0, kinWars: 0, undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
 
 // the catalogue of town buildings holds together: links to the local map, prerequisites, conditions,
 // peoples and effects are all known, and every people can house and feed a hamlet
@@ -113,7 +113,8 @@ function townsCheck(a, tag) {
   // realms: every town holds to one of its people; a seat is its realm's; one throne hall a realm
   for (const t of a.towns) if (t.alive) { const r = a.realms.find(x => x.id === t.realm); if (!r) relBad ||= `${t.name}: без державы`; else if (r.people !== t.people) relBad ||= `${t.name}: держава чужого народа`; }
   for (const r of a.realms) { const thrones = a.towns.filter(t => t.alive && t.realm === r.id && t.built.includes('throne')); if (thrones.length > 1) relBad ||= `${r.name}: тронных залов ${thrones.length}`; if (thrones.length && !thrones[0].capital) relBad ||= `${r.name}: тронный зал не в столице`; }
-  hist.realms += a.realms.length; hist.kinWars += Object.entries(a.rel || {}).filter(([kk, r]) => r.wars && kk.split(':').map(id => a.realms.find(x => x.id === id).people).every((v, i, arr) => v === arr[0])).length;
+  hist.realms += a.realms.length; hist.schisms += a.chronicle.filter(c => /^Раскол:|^Власть не удержали/.test(c.text)).length; hist.moved += a.chronicle.filter(c => /^Столица державы .* перенесена/.test(c.text)).length;
+  for (const r of a.realms) { const seat = a.towns.find(t => t.id === r.capital); if (seat && seat.alive && !seat.capital) relBad ||= `${r.name}: столица без флага`; if (seat && seat.alive && seat.realm !== r.id) relBad ||= `${r.name}: столица в чужой державе`; } hist.kinWars += Object.entries(a.rel || {}).filter(([kk, r]) => r.wars && kk.split(':').map(id => a.realms.find(x => x.id === id).people).every((v, i, arr) => v === arr[0])).length;
   check(`${tag}: державы, отношения, войны, пепелища и курганы сходятся`, !relBad, relBad);
   hist.wars += wars; hist.ruins += razed; hist.trade += Object.values(a.rel || {}).filter(r => r.routes > 0).length;
   check(`${tag}: города на суше`, wet === 0, wet ? `${wet} в воде` : '');
@@ -335,7 +336,7 @@ check('  народы теснят чудовищ', hist.cleared > 0, `выжж�
 check('  мёртвые встают из курганов и пепелищ', hist.undead > 0 && hist.undeadRaids > 0 && hist.undeadCleared > 0, `${hist.undead} логов на ${hist.worlds} миров: ` + LAIRS.filter(L => L.undead).map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', ') + `; набегов удачных ${hist.undeadRaids}; выжжено ${hist.undeadCleared}`);
 check('  племена грабят города, города разоряют станы', hist.raidsWon > 0 && hist.raidsLost > 0 && hist.tribesCleared > 0, `набегов удачных ${hist.raidsWon}, отбито (вместе с мертвецами) ${hist.raidsLost}; станов разорено ${hist.tribesCleared}`);
 console.log('Эпоха молодых:');
-check('  державы враждуют и торгуют', hist.wars > 0 && hist.trade > 0, `держав ${hist.realms} на ${hist.worlds} миров; войн ${hist.wars}, из них между державами одной расы ${hist.kinWars}; сожжено городов ${hist.ruins}, пар держав с торговлей ${hist.trade}; среднее отношение рас: ` + Object.keys(hist.rel).sort().map(kk => `${kk} ${(hist.rel[kk] / hist.relN[kk]).toFixed(1)}`).join(', '));
+check('  державы враждуют и торгуют', hist.wars > 0 && hist.trade > 0, `держав ${hist.realms} на ${hist.worlds} миров, расколов ${hist.schisms}, столиц перенесено ${hist.moved}; войн ${hist.wars}, из них между державами одной расы ${hist.kinWars}; сожжено городов ${hist.ruins}, пар держав с торговлей ${hist.trade}; среднее отношение рас: ` + Object.keys(hist.rel).sort().map(kk => `${kk} ${(hist.rel[kk] / hist.relN[kk]).toFixed(1)}`).join(', '));
 console.log('Вода:');
 check('  озёра есть', lakesAll > 0, `${lakesAll} на ${worlds} миров, солёных ${saltAll}`);
 if (lakeRain.salt[1] && lakeRain.fresh[1]) check('  солёные озёра в сухом климате', mean(lakeRain.salt) < mean(lakeRain.fresh), `у солёных ${Math.round(mean(lakeRain.salt))} мм, у пресных ${Math.round(mean(lakeRain.fresh))} мм`);
