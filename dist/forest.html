@@ -317,6 +317,29 @@ dd.q4{color:#c58cff;font-weight:600}
 /* people tab: the herd and the colony's spirits */
 .psec{font-size:12px;margin:12px 0 4px;color:var(--muted, #a9a28f);font-weight:600;letter-spacing:.02em}
 .person.beast .nm{color:#d6cdb6}
+
+/* ───── launch: Мир / Карта ───── */
+.launch{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;align-items:stretch;margin-block:8px 20px}
+.launch-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:18px 20px;min-height:150px;border-radius:8px}
+.launch-card b{font-family:var(--font-display);font-size:30px;letter-spacing:.04em;font-weight:700}
+.launch-card > span:last-child{color:var(--muted);font-size:14px;max-width:46ch}
+.launch-card:hover{border-color:var(--ember)}
+#launchResume{grid-column:1/-1;justify-self:start}
+
+/* ───── the world map polygon ───── */
+.atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}
+.atlas-map{display:flex;flex-direction:column;gap:8px;min-width:0}
+.atlas-map .seg{align-self:flex-start}
+#atlasMap{display:block;width:100%;height:auto;aspect-ratio:4/3;image-rendering:pixelated;cursor:crosshair}
+.atlas-chron .log{max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.atlas-chron .log small{color:var(--ember);font-family:var(--font-mono);font-size:11px;margin-right:4px}
+.stages{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px;counter-reset:st}
+.stages li{display:flex;justify-content:space-between;gap:8px;color:var(--muted);padding:2px 6px;border-left:3px solid var(--line);counter-increment:st}
+.stages li span::before{content:counter(st) ". ";font-family:var(--font-mono);font-size:11px}
+.stages li.now{border-left-color:var(--ember);color:var(--fg)}
+.stages li.done{border-left-color:var(--good);color:var(--fg)}
+.stages small{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+@media (max-width:1000px){.atlas{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -327,10 +350,56 @@ dd.q4{color:#c58cff;font-weight:600}
     <p id="worldInfo">Прототип локальной карты: поля температуры, огня и дыма считаются на сетке, поверх живут колонисты с потребностями и ходят по полям течения.</p>
   </header>
 
+  <!-- ───────── launch: two polygons, the world and the local map; later they are stitched together ───────── -->
+  <section id="launch" class="launch" aria-label="Режим запуска">
+    <button type="button" class="launch-card" id="launchWorld">
+      <span class="tag">глобальная карта</span>
+      <b>Мир</b>
+      <span>Сотворить мир: рельеф, моря, климат, а дальше реки, леса и история народов. Летопись пишется сбоку.</span>
+    </button>
+    <button type="button" class="launch-card" id="launchMap">
+      <span class="tag">локальная карта</span>
+      <b>Карта</b>
+      <span>Основать поселение: поля, огонь, колонисты, совет, набеги и торговля.</span>
+    </button>
+    <button type="button" id="launchResume" class="primary" hidden>Вернуться к игре</button>
+  </section>
+
+  <!-- ───────── the world map polygon ───────── -->
+  <section id="atlas" class="atlas" hidden aria-labelledby="atlasTitle">
+    <div class="menu-form atlas-form">
+      <h2 id="atlasTitle" class="menu-title">Новый мир</h2>
+      <div class="field">
+        <label for="atlasSeed">Сид мира</label>
+        <div class="row">
+          <input id="atlasSeed" type="text" maxlength="24" autocomplete="off">
+          <button type="button" id="atlasRandom">Случайный</button>
+        </div>
+      </div>
+      <div class="field"><span class="lbl">Размер</span><div class="seg wrapseg" data-akey="size"></div><small id="atlasSizeNote"></small></div>
+      <div class="field"><span class="lbl">Суша</span><div class="seg" data-akey="land"></div></div>
+      <div class="row actions">
+        <button type="button" id="atlasGo" class="primary">Сотворить</button>
+        <button type="button" id="atlasBack" class="quiet">← Назад</button>
+      </div>
+      <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="atlasStages"></ol></div>
+      <dl class="kv" id="atlasStats"></dl>
+    </div>
+    <div class="atlas-map">
+      <div class="seg" data-akey="layer"></div>
+      <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
+      <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку.</div>
+    </div>
+    <div class="card atlas-chron">
+      <h2>Летопись мира</h2>
+      <div class="log" id="atlasChron"></div>
+    </div>
+  </section>
+
   <!-- ───────── start menu ───────── -->
-  <section id="menu" class="menu" aria-labelledby="menuTitle">
+  <section id="menu" class="menu" hidden aria-labelledby="menuTitle">
     <div class="menu-form">
-      <h2 id="menuTitle" class="menu-title">Новый мир</h2>
+      <h2 id="menuTitle" class="menu-title">Новое поселение</h2>
       <div class="field">
         <label for="cfgName">Название поселения</label>
         <input id="cfgName" type="text" maxlength="32" autocomplete="off">
@@ -365,6 +434,7 @@ dd.q4{color:#c58cff;font-weight:600}
         <button type="button" id="startGame" class="primary">Основать поселение</button>
         <button type="button" id="backToGame" hidden>Вернуться к игре</button>
         <button type="button" id="resetCfg" class="quiet">Сбросить настройки</button>
+        <button type="button" id="menuBack" class="quiet">← Назад</button>
       </div>
       <div class="field saves">
         <span class="lbl">Сохранённые игры</span>
@@ -428,7 +498,7 @@ dd.q4{color:#c58cff;font-weight:600}
         <button id="raid" class="danger">Набег</button>
         <button id="saveGame" title="Сохранить в этом браузере. Игра также сохраняется сама каждое утро.">Сохранить</button>
         <button id="saveFile" title="Скачать сохранение файлом">В файл</button>
-        <button id="openMenu">Меню мира</button>
+        <button id="openMenu">Меню</button>
         <span class="status" id="saveStatus" role="status"></span>
       </div>
       <div class="logfilter resfilter" id="resFilter" hidden aria-label="Какие ресурсы показывать"></div>
@@ -6458,12 +6528,12 @@ dd.q4{color:#c58cff;font-weight:600}
     varg: 1.8,
     hyena: 0.8
   };
-  function fill(rng, budget, mix, extra = []) {
+  function fill(rng, budget, mix2, extra = []) {
     const out = [...extra];
     let left = budget - extra.reduce((s, m) => s + COST[m.species], 0);
-    const total = mix.reduce((s, m) => s + m[1], 0);
+    const total = mix2.reduce((s, m) => s + m[1], 0);
     for (let guard = 0; guard < 40; guard++) {
-      const fits = mix.filter(([sp2]) => COST[sp2] <= left + 0.25);
+      const fits = mix2.filter(([sp2]) => COST[sp2] <= left + 0.25);
       if (!fits.length) break;
       let r = rng() * fits.reduce((s, m) => s + m[1], 0), sp = fits[0][0];
       for (const [s, wt] of fits) {
@@ -6476,7 +6546,7 @@ dd.q4{color:#c58cff;font-weight:600}
       out.push({ species: sp });
       left -= COST[sp];
     }
-    if (!out.length) out.push({ species: mix[0][0] });
+    if (!out.length) out.push({ species: mix2[0][0] });
     return out.slice(0, 18);
   }
   function banditKit(rng, t) {
@@ -10067,7 +10137,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const key2 = plantLayer(p.id);
       if (w.grid[key2] && w.plantBeds[p.id]) continue;
       const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key2)), g2 = w.grid, lvl = floraLevel(w, p.id);
-      const layer2 = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map((t) => TERRAIN.get(t).code));
+      const layer3 = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map((t) => TERRAIN.get(t).code));
       const byWater = (i) => {
         const x = i % w.w, y = i / w.w | 0;
         for (let k = 0; k < 4; k++) {
@@ -10080,10 +10150,10 @@ dd.q4{color:#c58cff;font-weight:600}
         if (!ok.has(g2.terr[i]) || g2.fert[i] < (p.fertMin || 0) || isCampArea(w, i) || p.nearWater && !byWater(i)) continue;
         if (rnd() < p.chance * lvl) {
           beds.push(i);
-          layer2[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]);
+          layer3[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]);
         }
       }
-      g2[key2] = layer2;
+      g2[key2] = layer3;
       w.plantBeds[p.id] = beds;
     }
   }
@@ -10092,18 +10162,18 @@ dd.q4{color:#c58cff;font-weight:600}
     const g2 = w.grid, sgrow = season(w).grow;
     for (const p of PLANTS.all()) {
       const grow = p.hardy ? 1 : sgrow;
-      const layer2 = g2[plantLayer(p.id)], beds = w.plantBeds[p.id];
-      if (!layer2 || !grow) continue;
+      const layer3 = g2[plantLayer(p.id)], beds = w.plantBeds[p.id];
+      if (!layer3 || !grow) continue;
       let ripened = false;
       for (const i of beds) {
         if (g2.fire[i] > 0 || g2.terr[i] === T.BURNT || g2.bld[i] >= 0) {
-          layer2[i] = 0;
+          layer3[i] = 0;
           continue;
         }
-        if (layer2[i] >= 1) continue;
-        const was = layer2[i];
-        layer2[i] = Math.min(1, was + p.regrow * EVERY2 * grow);
-        if (was < p.ripe && layer2[i] >= p.ripe) ripened = true;
+        if (layer3[i] >= 1) continue;
+        const was = layer3[i];
+        layer3[i] = Math.min(1, was + p.regrow * EVERY2 * grow);
+        if (was < p.ripe && layer3[i] >= p.ripe) ripened = true;
       }
       if (ripened) w.nav.dirty(plantLayer(p.id));
     }
@@ -13946,6 +14016,287 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   };
 
+  // src/data/atlas.js
+  var ATLAS_SIZES = {
+    small: { w: 128, h: 96, label: "\u041C\u0430\u043B\u044B\u0439", note: "128 \xD7 96 \u043A\u043B\u0435\u0442\u043E\u043A, \u0431\u044B\u0441\u0442\u0440\u044B\u0439" },
+    medium: { w: 256, h: 192, label: "\u0421\u0440\u0435\u0434\u043D\u0438\u0439", note: "256 \xD7 192 \u043A\u043B\u0435\u0442\u043E\u043A" },
+    large: { w: 384, h: 288, label: "\u0411\u043E\u043B\u044C\u0448\u043E\u0439", note: "384 \xD7 288 \u043A\u043B\u0435\u0442\u043E\u043A, \u0442\u044F\u0436\u0435\u043B\u0435\u0435" }
+  };
+  var ATLAS_LAND = [
+    { share: 0.28, label: "\u0410\u0440\u0445\u0438\u043F\u0435\u043B\u0430\u0433" },
+    { share: 0.4, label: "\u041C\u0430\u0442\u0435\u0440\u0438\u043A" },
+    { share: 0.55, label: "\u0421\u0443\u0448\u0430" }
+  ];
+  var SEASON_DAYS2 = 30;
+  var SEASONS_PER_YEAR = 4;
+  var YEAR_DAYS = SEASON_DAYS2 * SEASONS_PER_YEAR;
+  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1 };
+
+  // src/atlas/noise.js
+  function layer2(rnd, w, h, cell, out, weight) {
+    const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
+    const g2 = new Float32Array(gw * gh);
+    for (let i = 0; i < g2.length; i++) g2[i] = rnd();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const fx = x / cell, fy = y / cell, ix = fx | 0, iy = fy | 0;
+      let tx2 = fx - ix, ty = fy - iy;
+      tx2 = tx2 * tx2 * (3 - 2 * tx2);
+      ty = ty * ty * (3 - 2 * ty);
+      const a = g2[iy * gw + ix], b = g2[iy * gw + ix + 1], c = g2[(iy + 1) * gw + ix], d = g2[(iy + 1) * gw + ix + 1];
+      out[y * w + x] += ((a * (1 - tx2) + b * tx2) * (1 - ty) + (c * (1 - tx2) + d * tx2) * ty) * weight;
+    }
+  }
+  function fbm2(rnd, w, h, base, octaves = 6, gain = 0.5) {
+    const out = new Float32Array(w * h);
+    let cell = base, wt = 1;
+    for (let o = 0; o < octaves && cell >= 1; o++) {
+      layer2(rnd, w, h, cell, out, wt);
+      cell /= 2;
+      wt *= gain;
+    }
+    let mn = Infinity, mx = -Infinity;
+    for (const v of out) {
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+    }
+    for (let i = 0; i < out.length; i++) out[i] = (out[i] - mn) / (mx - mn || 1);
+    return out;
+  }
+
+  // src/atlas/stages.js
+  var ATLAS_STAGES = new Registry("atlasStage");
+  var smooth = (t) => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+  ATLAS_STAGES.registerAll([
+    {
+      id: "relief",
+      label: "\u0420\u0435\u043B\u044C\u0435\u0444",
+      era: "geology",
+      note: "\u0437\u0430\u0433\u043B\u0443\u0448\u043A\u0430 \u0434\u043E \u0442\u0435\u043A\u0442\u043E\u043D\u0438\u043A\u0438 \u043F\u043B\u0438\u0442: \u0448\u0443\u043C, \u043F\u0440\u0438\u0436\u0430\u0442\u044B\u0439 \u043A \u043E\u043A\u0435\u0430\u043D\u0443 \u043F\u043E \u043A\u0440\u0430\u044F\u043C",
+      run(a, rnd) {
+        const { w, h } = a, base = Math.max(w, h) / 4;
+        const n = fbm2(rnd, w, h, base, 7, 0.5), elev = new Float32Array(a.n);
+        const edge = Math.min(w, h) * 0.14;
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const i = y * w + x, d = Math.min(x, y, w - 1 - x, h - 1 - y);
+          elev[i] = n[i] * (0.25 + 0.75 * smooth(d / edge));
+        }
+        a.f.elev = elev;
+        return "\u0418\u0437 \u043F\u0443\u0447\u0438\u043D\u044B \u043F\u043E\u0434\u043D\u044F\u043B\u0430\u0441\u044C \u0442\u0432\u0435\u0440\u0434\u044C.";
+      }
+    },
+    {
+      id: "sea",
+      label: "\u0423\u0440\u043E\u0432\u0435\u043D\u044C \u043C\u043E\u0440\u044F",
+      era: "geology",
+      note: "\u043C\u043E\u0440\u0435 \u0440\u043E\u0432\u043D\u043E \u043D\u0430\u0441\u0442\u043E\u043B\u044C\u043A\u043E, \u0447\u0442\u043E\u0431\u044B \u0441\u0443\u0448\u0438 \u043E\u0441\u0442\u0430\u043B\u0430\u0441\u044C \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u0430\u044F \u0434\u043E\u043B\u044F",
+      run(a) {
+        const share2 = ATLAS_LAND[a.cfg.land].share;
+        const sorted = Float32Array.from(a.f.elev).sort();
+        a.sea = sorted[Math.min(a.n - 1, Math.floor(a.n * (1 - share2)))];
+        const land = new Uint8Array(a.n);
+        let cnt = 0;
+        for (let i = 0; i < a.n; i++) if (a.f.elev[i] > a.sea) {
+          land[i] = 1;
+          cnt++;
+        }
+        a.f.land = land;
+        return `\u0412\u043E\u0434\u044B \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438: \u0441\u0443\u0448\u0430 \u0437\u0430\u043D\u044F\u043B\u0430 ${Math.round(cnt / a.n * 100)}% \u043C\u0438\u0440\u0430.`;
+      }
+    },
+    {
+      id: "temperature",
+      label: "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430",
+      era: "geology",
+      note: "\u0441\u0435\u0432\u0435\u0440 \u0445\u043E\u043B\u043E\u0434\u043D\u044B\u0439, \u044E\u0433 \u0436\u0430\u0440\u043A\u0438\u0439; \u0432 \u0433\u043E\u0440\u0430\u0445 \u0445\u043E\u043B\u043E\u0434\u043D\u0435\u0435 \u043D\u0430 6,5\xB0 \u043D\u0430 \u043A\u0438\u043B\u043E\u043C\u0435\u0442\u0440",
+      run(a) {
+        const { w, h } = a, temp = new Float32Array(a.n), top = a.cfg.peakKm ?? 4;
+        for (let y = 0; y < h; y++) {
+          const lat = y / (h - 1), sea = -18 + 46 * lat;
+          for (let x = 0; x < w; x++) {
+            const i = y * w + x, e = a.f.elev[i];
+            const km = e > a.sea ? (e - a.sea) / (1 - a.sea) * top : 0;
+            temp[i] = sea - 6.5 * km;
+          }
+        }
+        a.f.temp = temp;
+        return "\u041F\u0440\u043E\u043B\u0435\u0433\u043B\u0438 \u043F\u043E\u044F\u0441\u0430 \u0445\u043E\u043B\u043E\u0434\u0430 \u0438 \u0437\u043D\u043E\u044F.";
+      }
+    }
+  ]);
+
+  // src/atlas/generate.js
+  function newAtlas(cfg) {
+    const { w, h } = ATLAS_SIZES[cfg.size];
+    return { cfg: { ...cfg }, w, h, n: w * h, f: {}, sea: 0, year: 0, stage: 0, chronicle: [], ms: {} };
+  }
+  var atlasDone = (a) => a.stage >= ATLAS_STAGES.all().length;
+  function runNextStage(a) {
+    const st = ATLAS_STAGES.all()[a.stage];
+    if (!st) return null;
+    const rnd = mulberry(seedNumber(`${a.cfg.seed}:atlas:${st.id}`));
+    const t0 = Date.now();
+    const text = st.run(a, rnd);
+    a.ms[st.id] = Date.now() - t0;
+    if (text) a.chronicle.push({ era: st.era, year: a.year, stage: st.id, text });
+    a.stage++;
+    return st;
+  }
+
+  // src/ui/atlasView.js
+  var STORE2 = "forest.atlas";
+  var ERA = { geology: "\u0413\u0435\u043E\u043B\u043E\u0433\u0438\u044F" };
+  var OPTS2 = {
+    size: Object.entries(ATLAS_SIZES).map(([k, v]) => [k, v.label]),
+    land: ATLAS_LAND.map((l, i) => [i, l.label]),
+    layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"]]
+  };
+  var mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
+  function ramp(stops, t) {
+    t = Math.max(0, Math.min(1, t));
+    for (let k = 1; k < stops.length; k++) if (t <= stops[k][0]) {
+      const [t0, c0] = stops[k - 1], [t1, c1] = stops[k];
+      return mix(c0, c1, (t - t0) / (t1 - t0 || 1));
+    }
+    return stops[stops.length - 1][1];
+  }
+  var DEEP = [[0, [12, 24, 52]], [1, [46, 92, 130]]];
+  var LAND = [[0, [96, 128, 70]], [0.35, [130, 140, 78]], [0.65, [128, 104, 74]], [0.85, [110, 100, 96]], [1, [236, 236, 230]]];
+  var HEAT = [[0, [70, 110, 200]], [0.4, [190, 220, 230]], [0.6, [236, 214, 120]], [1, [200, 70, 50]]];
+  var AtlasView = class {
+    constructor({ onBack }) {
+      this.cfg = this.load();
+      this.atlas = null;
+      this.layer = "relief";
+      this.timer = 0;
+      this.onBack = onBack;
+      this.build();
+    }
+    load() {
+      try {
+        const raw = localStorage.getItem(STORE2);
+        if (raw) return { ...DEFAULT_ATLAS_CFG, ...JSON.parse(raw) };
+      } catch (e) {
+      }
+      return { ...DEFAULT_ATLAS_CFG };
+    }
+    save() {
+      try {
+        localStorage.setItem(STORE2, JSON.stringify(this.cfg));
+      } catch (e) {
+      }
+    }
+    build() {
+      document.querySelectorAll("#atlas .seg[data-akey]").forEach((box) => {
+        const key2 = box.dataset.akey;
+        box.innerHTML = OPTS2[key2].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join("");
+        box.addEventListener("click", (e) => {
+          const b = e.target.closest("button");
+          if (!b) return;
+          if (key2 === "layer") {
+            this.layer = b.dataset.val;
+            this.sync();
+            this.draw();
+            return;
+          }
+          this.cfg[key2] = typeof DEFAULT_ATLAS_CFG[key2] === "number" ? +b.dataset.val : b.dataset.val;
+          this.save();
+          this.sync();
+        });
+      });
+      $("atlasSeed").addEventListener("input", (e) => {
+        this.cfg.seed = e.target.value.trim() || "1";
+        this.save();
+      });
+      $("atlasRandom").addEventListener("click", () => {
+        this.cfg.seed = String(1e5 + Math.floor(Math.random() * 899999));
+        this.save();
+        this.sync();
+      });
+      $("atlasGo").addEventListener("click", () => this.generate());
+      $("atlasBack").addEventListener("click", () => {
+        clearTimeout(this.timer);
+        this.onBack();
+      });
+      const cv = $("atlasMap");
+      cv.addEventListener("pointermove", (e) => this.hover(e));
+      cv.addEventListener("pointerleave", () => {
+        $("atlasReadout").textContent = "\u041D\u0430\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430 \u043A\u0430\u0440\u0442\u0443, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u043A\u043B\u0435\u0442\u043A\u0443.";
+      });
+    }
+    show() {
+      this.sync();
+      if (!this.atlas) this.generate();
+    }
+    sync() {
+      $("atlasSeed").value = this.cfg.seed;
+      const val = { size: this.cfg.size, land: this.cfg.land, layer: this.layer };
+      document.querySelectorAll("#atlas .seg[data-akey]").forEach((box) => {
+        box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.val === String(val[box.dataset.akey]))));
+      });
+      $("atlasSizeNote").textContent = ATLAS_SIZES[this.cfg.size].note;
+    }
+    generate() {
+      clearTimeout(this.timer);
+      const a = this.atlas = newAtlas(this.cfg);
+      const cv = $("atlasMap");
+      cv.width = a.w;
+      cv.height = a.h;
+      cv.getContext("2d").clearRect(0, 0, a.w, a.h);
+      this.renderSide();
+      const next = () => {
+        if (a !== this.atlas) return;
+        runNextStage(a);
+        this.draw();
+        this.renderSide();
+        if (!atlasDone(a)) this.timer = setTimeout(next, 30);
+      };
+      this.timer = setTimeout(next, 30);
+    }
+    // the colour of one cell on the chosen layer; a field that is not made yet shows as the dark sea
+    color(a, i) {
+      const { elev, temp, land } = a.f;
+      if (!elev) return [12, 15, 10];
+      if (this.layer === "temp" && temp) return ramp(HEAT, (temp[i] + 30) / 65);
+      if (!land) return ramp(LAND, elev[i]);
+      return land[i] ? ramp(LAND, (elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, elev[i] / (a.sea || 1));
+    }
+    draw() {
+      const a = this.atlas;
+      if (!a) return;
+      const px = $("atlasMap").getContext("2d"), img = px.createImageData(a.w, a.h), d = img.data;
+      for (let i = 0; i < a.n; i++) {
+        const c = this.color(a, i), o = i * 4;
+        d[o] = c[0];
+        d[o + 1] = c[1];
+        d[o + 2] = c[2];
+        d[o + 3] = 255;
+      }
+      px.putImageData(img, 0, 0);
+    }
+    renderSide() {
+      const a = this.atlas, all = ATLAS_STAGES.all();
+      $("atlasStages").innerHTML = all.map((s, k) => {
+        const st = k < a.stage ? "done" : k === a.stage ? "now" : "";
+        const ms = a.ms[s.id] != null ? `${a.ms[s.id]} \u043C\u0441` : k === a.stage ? "\u2026" : "";
+        return `<li class="${st}" title="${esc(s.note)}"><span>${esc(s.label)}</span><small>${ms}</small></li>`;
+      }).join("");
+      $("atlasChron").innerHTML = a.chronicle.length ? a.chronicle.map((c) => `<div><small>${ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join("") : '<small class="muted">\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F \u0441 \u043F\u0435\u0440\u0432\u044B\u043C \u044D\u0442\u0430\u043F\u043E\u043C.</small>';
+      $("atlasStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${a.n.toLocaleString("ru-RU")}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(a.cfg.seed)}</dd><dt>\u042D\u0442\u0430\u043F</dt><dd>${Math.min(a.stage, all.length)} \u0438\u0437 ${all.length}</dd>`;
+    }
+    hover(e) {
+      const a = this.atlas;
+      if (!a || !a.f.elev) return;
+      const cv = $("atlasMap"), r = cv.getBoundingClientRect();
+      const x = Math.floor((e.clientX - r.left) / r.width * a.w), y = Math.floor((e.clientY - r.top) / r.height * a.h);
+      if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
+      const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
+      if (f.land) parts.push(f.land[i] ? "\u0441\u0443\u0448\u0430" : "\u043C\u043E\u0440\u0435");
+      parts.push(`\u0432\u044B\u0441\u043E\u0442\u0430 ${f.elev[i].toFixed(3)}`);
+      if (f.temp) parts.push(`${f.temp[i].toFixed(1)}\xB0`);
+      $("atlasReadout").textContent = parts.join(" \xB7 ");
+    }
+  };
+
   // src/ui/panel.js
   var soilWord = (f) => f < 0.3 ? "\u0442\u043E\u0449\u0430\u044F" : f < 0.5 ? "\u0441\u0440\u0435\u0434\u043D\u044F\u044F" : f < 0.7 ? "\u0434\u043E\u0431\u0440\u0430\u044F" : "\u0436\u0438\u0440\u043D\u0430\u044F";
   var DIRS = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
@@ -14853,8 +15204,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.38.1 SPECIAL \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 14e3098" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.39.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a2b24d0" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;
@@ -14972,12 +15323,12 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/ui/saves.js
   var DB = "forest";
-  var STORE2 = "saves";
+  var STORE3 = "saves";
   var KEEP = 8;
   function db() {
     return new Promise((ok, fail3) => {
       const r = indexedDB.open(DB, 1);
-      r.onupgradeneeded = () => r.result.createObjectStore(STORE2, { keyPath: "id" });
+      r.onupgradeneeded = () => r.result.createObjectStore(STORE3, { keyPath: "id" });
       r.onsuccess = () => ok(r.result);
       r.onerror = () => fail3(r.error);
     });
@@ -14985,7 +15336,7 @@ dd.q4{color:#c58cff;font-weight:600}
   async function tx(mode, fn) {
     const d = await db();
     return new Promise((ok, fail3) => {
-      const t = d.transaction(STORE2, mode), s = t.objectStore(STORE2), r = fn(s);
+      const t = d.transaction(STORE3, mode), s = t.objectStore(STORE3), r = fn(s);
       t.oncomplete = () => {
         d.close();
         ok(r?.result);
@@ -15123,6 +15474,35 @@ dd.q4{color:#c58cff;font-weight:600}
   var world = null;
   var running = false;
   var menu = new Menu({ onStart: start, onResume: showGame });
+  var atlasView = new AtlasView({ onBack: showLaunch });
+  var SCREENS = ["launch", "atlas", "menu", "game"];
+  function only(id) {
+    for (const s of SCREENS) $(s).hidden = s !== id;
+    $("explain").hidden = id !== "menu";
+  }
+  function showLaunch() {
+    running = false;
+    hideEnd();
+    only("launch");
+    document.body.classList.remove("ingame");
+    $("worldInfo").hidden = false;
+    $("launchResume").hidden = !world;
+    $("colonyName").textContent = "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434";
+    $("worldInfo").textContent = "\u0414\u0432\u0430 \u043F\u043E\u043B\u0438\u0433\u043E\u043D\u0430: \xAB\u041C\u0438\u0440\xBB \u2014 \u0433\u043B\u043E\u0431\u0430\u043B\u044C\u043D\u0430\u044F \u043A\u0430\u0440\u0442\u0430 \u0438 \u0435\u0451 \u0438\u0441\u0442\u043E\u0440\u0438\u044F, \xAB\u041A\u0430\u0440\u0442\u0430\xBB \u2014 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 \u043D\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u0435. \u041F\u043E\u0437\u0436\u0435 \u043E\u043D\u0438 \u0441\u043E\u0448\u044C\u044E\u0442\u0441\u044F: \u043C\u0435\u0441\u0442\u043E \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044F \u0431\u0443\u0434\u0435\u0442 \u0432\u044B\u0431\u0438\u0440\u0430\u0442\u044C\u0441\u044F \u043D\u0430 \u043A\u0430\u0440\u0442\u0435 \u043C\u0438\u0440\u0430.";
+  }
+  function showAtlas() {
+    running = false;
+    only("atlas");
+    document.body.classList.remove("ingame");
+    $("worldInfo").hidden = false;
+    $("colonyName").textContent = "\u041C\u0438\u0440";
+    $("worldInfo").textContent = "\u041F\u043E\u043B\u0438\u0433\u043E\u043D \u0433\u043B\u043E\u0431\u0430\u043B\u044C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u044B. \u041C\u0438\u0440 \u0441\u043E\u0437\u0434\u0430\u0451\u0442\u0441\u044F \u043F\u043E \u044D\u0442\u0430\u043F\u0430\u043C, \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043F\u0438\u0448\u0435\u0442\u0441\u044F \u0441\u043F\u0440\u0430\u0432\u0430.";
+    atlasView.show();
+  }
+  $("launchWorld").addEventListener("click", showAtlas);
+  $("launchMap").addEventListener("click", showMenu);
+  $("launchResume").addEventListener("click", () => showGame());
+  $("menuBack").addEventListener("click", showLaunch);
   function start(cfg) {
     world = newGame(cfg);
     renderer.setup(world);
@@ -15142,9 +15522,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function showMenu() {
     running = false;
     hideEnd();
-    $("menu").hidden = false;
-    $("game").hidden = true;
-    $("explain").hidden = false;
+    only("menu");
     document.body.classList.remove("ingame");
     $("worldInfo").hidden = false;
     $("backToGame").hidden = !world;
@@ -15155,9 +15533,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function showGame() {
     const c = world.cfg;
-    $("menu").hidden = true;
-    $("game").hidden = false;
-    $("explain").hidden = true;
+    only("game");
     document.body.classList.add("ingame");
     $("worldInfo").hidden = true;
     $("colonyName").textContent = c.name;
@@ -15331,7 +15707,7 @@ dd.q4{color:#c58cff;font-weight:600}
       status("loadStatus", "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u044C: " + err.message);
     }
   });
-  $("openMenu").addEventListener("click", showMenu);
+  $("openMenu").addEventListener("click", showLaunch);
   $("selCard").addEventListener("click", (e) => {
     if (e.target.closest("[data-close]")) {
       clearSelection();
@@ -15404,7 +15780,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   }
   $("buildTag").textContent = `\u0432\u0435\u0440\u0441\u0438\u044F ${VERSION} \xB7 ${BUILD}`;
-  showMenu();
+  showLaunch();
   requestAnimationFrame(frame);
   window.forest = { get world() {
     return world;

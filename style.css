@@ -307,3 +307,26 @@ dd.q4{color:#c58cff;font-weight:600}
 /* people tab: the herd and the colony's spirits */
 .psec{font-size:12px;margin:12px 0 4px;color:var(--muted, #a9a28f);font-weight:600;letter-spacing:.02em}
 .person.beast .nm{color:#d6cdb6}
+
+/* ───── launch: Мир / Карта ───── */
+.launch{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;align-items:stretch;margin-block:8px 20px}
+.launch-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:18px 20px;min-height:150px;border-radius:8px}
+.launch-card b{font-family:var(--font-display);font-size:30px;letter-spacing:.04em;font-weight:700}
+.launch-card > span:last-child{color:var(--muted);font-size:14px;max-width:46ch}
+.launch-card:hover{border-color:var(--ember)}
+#launchResume{grid-column:1/-1;justify-self:start}
+
+/* ───── the world map polygon ───── */
+.atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}
+.atlas-map{display:flex;flex-direction:column;gap:8px;min-width:0}
+.atlas-map .seg{align-self:flex-start}
+#atlasMap{display:block;width:100%;height:auto;aspect-ratio:4/3;image-rendering:pixelated;cursor:crosshair}
+.atlas-chron .log{max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.atlas-chron .log small{color:var(--ember);font-family:var(--font-mono);font-size:11px;margin-right:4px}
+.stages{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px;counter-reset:st}
+.stages li{display:flex;justify-content:space-between;gap:8px;color:var(--muted);padding:2px 6px;border-left:3px solid var(--line);counter-increment:st}
+.stages li span::before{content:counter(st) ". ";font-family:var(--font-mono);font-size:11px}
+.stages li.now{border-left-color:var(--ember);color:var(--fg)}
+.stages li.done{border-left-color:var(--good);color:var(--fg)}
+.stages small{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+@media (max-width:1000px){.atlas{grid-template-columns:minmax(0,1fr)}}
