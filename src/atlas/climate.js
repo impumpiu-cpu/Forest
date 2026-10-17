@@ -65,7 +65,7 @@ export function temperature(a) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x, km = f.land[i] ? heightKm(a, f.elev[i]) : 0;
       // inland is a little hotter in the tropics and colder towards the poles than the coast
-      const inland = cont[i] * (lat < 25 ? 1.5 : -4 * (lat - 25) / 65);
+      const inland = cont[i] * (lat < 25 ? 1.5 * (1 - lat / 25) : -4 * (lat - 25) / 65);
       temp[i] = base - 6.5 * km + inland;
       // the year's swing: small at the equator and by the sea, large inland at high latitudes
       range[i] = 2 + (lat / 90) * (10 + 55 * cont[i]);   // Bergen (60°, by the sea) ~12°, Yakutsk (62°, inland) ~55°

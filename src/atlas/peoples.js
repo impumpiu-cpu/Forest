@@ -115,6 +115,9 @@ function foundTown(a, pe, i, rnd, pop, say) {
 
 const APPEARED = {m: 'появился', f: 'появилась', n: 'появилось', pl: 'появились'};
 const GREW = {m: 'разросся в', f: 'разрослась в', n: 'разрослось в'};
+const SHRANK = {m: 'захирел до', f: 'захирела до', n: 'захирело до'};
+// a town falls a size when it has lost down to this share of the size's threshold (so it does not flicker)
+const TIER_FALL = 0.7;
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 // the peoples arrive: each founding band wakes in the best spot of its land, far from the others
@@ -197,13 +200,18 @@ export function stepPeoples(a, rnd, say) {
     let feed = 0, c = 0;
     for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
     const fx = townFx(t);
-    const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i] + (pe.P.ores ? 0.4 * Math.min(1, oreWealth(a, t.i)) : 0)) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
+    const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
     const target = Math.min(feeds, room(fx));
     t.pop = Math.max(10, t.pop + 0.14 * (1 + 0.6 * fx.prestige) * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
     const tier = tierOf(t.pop);
     if (tier > t.tier) {
       const T = TIERS[tier], was = TIERS[t.tier];
       say(`${cap1(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T.label[t.people][1]}: ${Math.round(t.pop)} жителей.`);
+      t.tier = tier;
+    } else if (tier < t.tier && t.pop < TIERS[t.tier].pop * TIER_FALL) {
+      // wars, raids and plagues can wear a town down a size; it keeps what it has built
+      const T = TIERS[tier], was = TIERS[t.tier];
+      say(`${cap1(was.label[t.people][0])} ${t.name} ${SHRANK[was.gender[t.people]]} ${T.label[t.people][2]}: осталось ${Math.round(t.pop)} жителей.`);
       t.tier = tier;
     }
     // what the town needs most gets built; a big town builds faster
@@ -214,7 +222,7 @@ export function stepPeoples(a, rnd, say) {
       if (!b) break;
       const first = !t.built.includes(b.id);
       t.built.push(b.id);
-      if (first && (b.notable || b.tier >= 2)) say(`В ${townLabel(t, 3)} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
+      if (first && (b.notable || b.tier >= 3)) say(`В ${townLabel(t, 3)} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
     }
   }
   // towns against the lairs that reach them

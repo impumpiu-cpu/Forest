@@ -145,7 +145,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     if (!D.raiders.includes(t.people) || !t.alive || rnd() > D.raidChance || (raids[t.people] || 0) >= D.raidsPerYear) continue;
     if (!townFx(t).defence) continue;   // only a camp with warriors goes raiding
     let target = null, bd = D.raidReach * k;
-    for (const o of towns) if (o.alive && o.people !== t.people && attitude(a, t.people, o.people) < 0) {
+    for (const o of towns) if (o.alive && o.people !== t.people && relation(a, t.people, o.people) && attitude(a, t.people, o.people) < 0) {
       const d = Math.hypot(t.x - o.x, t.y - o.y); if (d < bd) { bd = d; target = o; }
     }
     if (!target) continue;

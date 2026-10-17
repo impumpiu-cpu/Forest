@@ -37,7 +37,7 @@ WORLD_PEOPLES.registerAll([
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
   {id: 'dwarves', race: 'dwarf', label: 'гномы', labelGen: 'гномов', adj: 'гномий', era: 'elder', color: [220, 150, 70],
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
-    home: raceHome('dwarf'), ores: 0.8,
+    home: raceHome('dwarf'), ores: 0.4,
     moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
     spread: 0.18, growth: 0.16, found: 0.3, spacing: 14,
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},

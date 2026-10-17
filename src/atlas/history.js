@@ -9,7 +9,7 @@ import {plural} from '../core/util.js';
 import {SEASONS} from '../data/seasons.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {ERAS, WILD_YEARS, FAUNA} from '../data/history.js';
-import {ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
+import {ELDER_YEARS, YOUNG_YEARS, WORLD_PEOPLES} from '../data/peoples.js';
 import {ROADS} from '../data/roads.js';
 import {arrive, stepPeoples} from './peoples.js';
 import {wearRoads} from './roads.js';
@@ -55,6 +55,13 @@ export function startHistory(a) {
   for (const i of a.ancientBarrows || []) say(a, `Курганы незапамятных времён стоят ${wherePhrase(a, i)}: кто в них лежит, не помнит никто.`);
 }
 
+// the new roads of a round, in one line: the first two pairs by name, the rest counted
+function roadsLine(a, fresh, say) {
+  if (!fresh.length) return;
+  const named = fresh.slice(0, 2).map(([p, q]) => `${p.name} и ${q.name}`), rest = fresh.length - named.length;
+  say(`Протоптали ${fresh.length === 1 ? 'дорогу' : 'дороги'} между ${named.join(', между ')}` + (rest ? ` и ещё ${rest} ${plural(rest, 'парой городов', 'парами городов', 'парами городов')}` : '') + '.');
+}
+
 // one season of history
 export function stepHistory(a) {
   const H = a.hist, rnd = H.rnd, season = SEASON_LIST[H.season].id, F = a.fauna;
@@ -85,10 +92,17 @@ export function stepHistory(a) {
   if (H.era !== 'wild' && season === 'spring') {
     stepPeoples(a, rnd, t => say(a, t));
     if ((H.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
-      for (const [p, q] of wearRoads(a)) say(a, `Между ${p.name} и ${q.name} протоптали дорогу.`);
+      roadsLine(a, wearRoads(a), t => say(a, t));
   }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
+  // the year's beaten raids of the tribes and the dead, in one line
+  if (H.season === 3 && H.repelled) {
+    const parts = Object.entries(H.repelled).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} — ${n}`);
+    const total = Object.values(H.repelled).reduce((x, v) => x + v, 0);
+    say(a, `За год отбито ${total} ${plural(total, 'набег дикарей и мертвецов', 'набега дикарей и мертвецов', 'набегов дикарей и мертвецов')}: ${parts.join(', ')}.`);
+    H.repelled = null;
+  }
   // booms and busts of whole species against their own running average; the two most striking a year
   if (H.season === 3) {
     const news = [];

@@ -29,7 +29,7 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
-const hist = {undead: 0, undeadRaids: 0, undeadBeaten: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
+const hist = {undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
 
 // the catalogue of town buildings holds together: links to the local map, prerequisites, conditions,
 // peoples and effects are all known, and every people can house and feed a hamlet
@@ -92,8 +92,8 @@ function townsCheck(a, tag) {
   hist.tribes += a.lairs.filter(l => LAIRS.get(l.kind).tribe).length;
   hist.undead += a.lairs.filter(l => LAIRS.get(l.kind).undead).length;
   hist.undeadCleared += a.lairs.filter(l => l.clearedBy && LAIRS.get(l.kind).undead).length;
-  for (const c of a.chronicle) { if (/(Костяки|Упыри|Некромант повёл) .*(разорили|обескровили|опустошили)/.test(c.text)) hist.undeadRaids++; else if (/отбили мертвецов/.test(c.text)) hist.undeadBeaten++; }
-  for (const c of a.chronicle) { if (/^(Гоблины|Гноллы|Огры|Тролли|Великаны) .*разграбили/.test(c.text)) hist.raidsWon++; else if (/отбили набег (гоблинов|гноллов|огров|троллей|великанов)/.test(c.text)) hist.raidsLost++; }
+  for (const c of a.chronicle) if (/(Костяки|Упыри|Некромант повёл) .*(разорили|обескровили|опустошили)/.test(c.text)) hist.undeadRaids++;
+  for (const c of a.chronicle) { if (/^(Гоблины|Гноллы|Огры|Тролли|Великаны) .*разграбили/.test(c.text)) hist.raidsWon++; const m = c.text.match(/^За год отбито (\d+) набег/); if (m) hist.raidsLost += +m[1]; }
   // dealings: attitudes in bounds, every war in the chronicle, burnt towns left as ruins, battles as barrows
   let relBad = '';
   const warsTold = a.chronicle.filter(c => /началась война/.test(c.text)).length, wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0);
@@ -326,8 +326,8 @@ for (const P of WORLD_PEOPLES.all()) check(`  ${P.label} живут в мире`
 check('  города строят всё', Object.keys(hist.built).length === Object.keys(CATEGORIES).length, Object.entries(CATEGORIES).map(([k, l]) => `${l} ${hist.built[k] || 0}`).join(', '));
 check('  дороги наезжены', hist.roads > 0 && hist.linked[0] >= 0.8 * hist.linked[1], `${hist.linked[0]} из ${hist.linked[1]} городов с соседями своего народа стоят у дороги; клеток дорог ${hist.roads}`);
 check('  народы теснят чудовищ', hist.cleared > 0, `выжжено логов: ${hist.cleared}`);
-check('  мёртвые встают из курганов и пепелищ', hist.undead > 0 && (hist.undeadRaids + hist.undeadBeaten) > 0 && hist.undeadCleared > 0, `${hist.undead} логов на ${hist.worlds} миров: ` + LAIRS.filter(L => L.undead).map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', ') + `; набегов удачных ${hist.undeadRaids}, отбитых ${hist.undeadBeaten}; выжжено ${hist.undeadCleared}`);
-check('  племена грабят города, города разоряют станы', hist.raidsWon > 0 && hist.raidsLost > 0 && hist.tribesCleared > 0, `набегов удачных ${hist.raidsWon}, отбитых ${hist.raidsLost}; станов разорено ${hist.tribesCleared}`);
+check('  мёртвые встают из курганов и пепелищ', hist.undead > 0 && hist.undeadRaids > 0 && hist.undeadCleared > 0, `${hist.undead} логов на ${hist.worlds} миров: ` + LAIRS.filter(L => L.undead).map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', ') + `; набегов удачных ${hist.undeadRaids}; выжжено ${hist.undeadCleared}`);
+check('  племена грабят города, города разоряют станы', hist.raidsWon > 0 && hist.raidsLost > 0 && hist.tribesCleared > 0, `набегов удачных ${hist.raidsWon}, отбито (вместе с мертвецами) ${hist.raidsLost}; станов разорено ${hist.tribesCleared}`);
 console.log('Эпоха молодых:');
 check('  народы враждуют и торгуют', hist.wars > 0 && hist.trade > 0, `войн ${hist.wars}, сожжено городов ${hist.ruins}, пар народов с торговлей ${hist.trade}; среднее отношение: ` + Object.keys(hist.rel).sort().map(kk => `${kk} ${(hist.rel[kk] / hist.relN[kk]).toFixed(1)}`).join(', '));
 console.log('Вода:');

@@ -88,7 +88,7 @@ export const TRIBE_HOME = 0.45;
 //             this, against the town's might (atlas/towns.js);  loss: the town's share lost when it
 //             falls (× raidShare of its buildings);  loot: strength the camp gains on a win;
 //             beaten: what is left of the camp's strength after a failed raid
-export const TRIBE_RAID = {from: 0.55, chance: 0.15, reach: 30, might: 0.55, loss: 0.12, loot: 0.12, beaten: 0.7};
+export const TRIBE_RAID = {from: 0.6, chance: 0.1, reach: 30, might: 0.55, loss: 0.12, loot: 0.12, beaten: 0.7};
 
 // adjectives for lair names, by gender: m, f, n, pl
 export const NAME_ADJ = [

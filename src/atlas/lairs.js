@@ -263,7 +263,10 @@ function tribeRaid(a, lair, L, rnd) {
     return `${who} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей.`;
   }
   lair.strength *= T.beaten;
-  return `${cap1(P.label)} отбили ${L.undead ? 'мертвецов' : 'набег'} ${L.gen} ${L.from} «${lair.name}» ${L.undead ? 'от' : 'на'} ${townLabel(target, L.undead ? 2 : 1)} ${target.name}.`;
+  // a beaten raid is counted and told once a year (atlas/history.js), not one line each
+  const rep = a.hist.repelled ||= {};
+  rep[target.people] = (rep[target.people] || 0) + 1;
+  return null;
 }
 
 // spring: where the rot is thick enough, the dead rise — a new lair of each undead kind, with a
