@@ -1180,7 +1180,7 @@ dd.q4{color:#c58cff;font-weight:600}
   ].map((r) => ({ needs: NEEDS, sentient: true, inventory: true, mind: "sentient", ...r }));
 
   // src/data/monsters.js
-  var special = (S, P, E, C, I, A, L) => ({ S, P, E, C, I, A, L });
+  var special = (S, P, E2, C, I, A, L) => ({ S, P, E: E2, C, I, A, L });
   var human = RACES.find((r) => r.id === "human");
   var MONSTERS = [
     {
@@ -3910,8 +3910,8 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/core/log.js
   var MAX_LINES = 150;
   function log(w, html, topic = "people", level) {
-    const lv2 = level || (LOG_TOPICS.has(topic) ? LOG_TOPICS.get(topic).level : "info");
-    w.logLines.unshift({ t: w.tick, html, when: clockStr(w.tick), topic, level: lv2 });
+    const lv3 = level || (LOG_TOPICS.has(topic) ? LOG_TOPICS.get(topic).level : "info");
+    w.logLines.unshift({ t: w.tick, html, when: clockStr(w.tick), topic, level: lv3 });
     if (w.logLines.length > MAX_LINES) w.logLines.pop();
     w.logVersion++;
   }
@@ -3933,7 +3933,7 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var fishable = (l) => l.cap > 0 && !l.resting && l.fish >= 1;
   function findLakes(w) {
-    const { terr } = w.grid, W = w.w, H = w.h;
+    const { terr } = w.grid, W = w.w, H2 = w.h;
     const lakeId = new Int16Array(w.n).fill(-1), lakes = [];
     const stack = [];
     for (let s = 0; s < w.n; s++) {
@@ -3946,7 +3946,7 @@ dd.q4{color:#c58cff;font-weight:600}
         cells.push(i);
         const x = i % W, y = i / W | 0;
         for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
-          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
           const j = ny * W + nx;
           if (terr[j] === T.WATER && lakeId[j] < 0) {
             lakeId[j] = id;
@@ -4311,7 +4311,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     build(id) {
-      const def2 = NAVMAPS.get(id), w = this.w, W = w.w, H = w.h;
+      const def2 = NAVMAPS.get(id), w = this.w, W = w.w, H2 = w.h;
       const dist9 = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
       this.computeCost(def2.hazard ?? 1);
       const ctx = def2.prepare ? def2.prepare(w) : null;
@@ -4355,7 +4355,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const x = i % W, y = i / W | 0;
         for (let q = 0; q < 8; q++) {
           const nx = x + DX[q], ny = y + DY[q];
-          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
           const j = ny * W + nx;
           let c = cost[j];
           if (c < 0) continue;
@@ -4453,7 +4453,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => WALKABLE[w.grid.terr[i]] === 1);
   var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK);
   function findPath(w, sx, sy, gx, gy, budget = 6e3) {
-    const W = w.w, H = w.h, terr = w.grid.terr, b = buffers(w);
+    const W = w.w, H2 = w.h, terr = w.grid.terr, b = buffers(w);
     const start2 = (sy | 0) * W + (sx | 0);
     let goal = (gy | 0) * W + (gx | 0);
     if (!WALKABLE[terr[goal]]) {
@@ -4461,7 +4461,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const x = gx | 0, y = gy | 0;
       for (let k = 0; k < 8; k++) {
         const nx = x + DX[k], ny = y + DY[k];
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
         const j = ny * W + nx;
         if (WALKABLE[terr[j]] && k < bd) {
           bd = k;
@@ -4523,7 +4523,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const x = i % W, y = i / W | 0, gi = g3[i];
       for (let q = 0; q < 8; q++) {
         const nx = x + DX[q], ny = y + DY[q];
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
         const j = ny * W + nx;
         if (!WALKABLE[terr[j]]) continue;
         if (q >= 4 && (!WALKABLE[terr[y * W + nx]] || !WALKABLE[terr[ny * W + x]])) continue;
@@ -4731,7 +4731,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function separate(w) {
     const ags = w.agents;
     for (let p = 0; p < ags.length; p++) for (let q = p + 1; q < ags.length; q++) {
-      const A = ags[p], B2 = ags[q], dx = B2.x - A.x, dy = B2.y - A.y, d2 = dx * dx + dy * dy;
+      const A = ags[p], B3 = ags[q], dx = B3.x - A.x, dy = B3.y - A.y, d2 = dx * dx + dy * dy;
       if (d2 >= 0.16 || d2 < 1e-6) continue;
       const d = Math.sqrt(d2), push = (0.4 - d) * 0.25, ux = dx / d * push, uy = dy / d * push;
       const ok = (x, y) => inMap(w, x, y) && walkable(w, (y | 0) * w.w + (x | 0));
@@ -4739,9 +4739,9 @@ dd.q4{color:#c58cff;font-weight:600}
         A.x -= ux;
         A.y -= uy;
       }
-      if (ok(B2.x + ux, B2.y + uy)) {
-        B2.x += ux;
-        B2.y += uy;
+      if (ok(B3.x + ux, B3.y + uy)) {
+        B3.x += ux;
+        B3.y += uy;
       }
     }
   }
@@ -5638,13 +5638,13 @@ dd.q4{color:#c58cff;font-weight:600}
   var claimed = (w, o, a) => !isFree(w, "beast:" + o.id, a);
   var canTame = (a, b) => !a || canDoAction(a, "husbandry", SPECIES.get(b.species).tame?.tier);
   var tameTargets = (w) => perTick(w, "tameTargets", () => {
-    const room = penRoom2(w);
-    if (room <= 0) return [];
+    const room2 = penRoom2(w);
+    if (room2 <= 0) return [];
     const S = season(w).id;
     if (S === "winter") return [];
     const kinds = {};
     for (const a of herd(w)) kinds[a.species] = (kinds[a.species] || 0) + 1;
-    return w.agents.filter((o) => isTameable(o) && tameOf(o).space <= room && hasBait(w, tameOf(o)) && !(w.tick - (o.unreachable ?? -1e9) < 600) && (kinds[o.species] || 0) < (tameOf(o).max ?? Infinity) && (S !== "autumn" || (w.stock.hay || 0) >= winterHay2(w) + tameOf(o).eats * SEASON_DAYS * (1 - HERD.graze.winter)) && Math.hypot(o.x - w.camp.x, o.y - w.camp.y) < HERD.reach);
+    return w.agents.filter((o) => isTameable(o) && tameOf(o).space <= room2 && hasBait(w, tameOf(o)) && !(w.tick - (o.unreachable ?? -1e9) < 600) && (kinds[o.species] || 0) < (tameOf(o).max ?? Infinity) && (S !== "autumn" || (w.stock.hay || 0) >= winterHay2(w) + tameOf(o).eats * SEASON_DAYS * (1 - HERD.graze.winter)) && Math.hypot(o.x - w.camp.x, o.y - w.camp.y) < HERD.reach);
   });
   var hasBait = (w, T2) => Object.entries(T2.bait).every(([r, v]) => (w.stock[r] || 0) >= v);
   var chores = (w) => perTick(w, "chores", () => herd(w).filter((a) => (a.milk || 0) >= 1 || woolReady(w, a)));
@@ -5891,13 +5891,13 @@ dd.q4{color:#c58cff;font-weight:600}
     const pieces = FURNITURE.filter((f) => (w.stock[f.id] || 0) >= 1).sort((x, y) => y.comfort - x.comfort);
     for (const f of pieces) {
       while ((w.stock[f.id] || 0) >= 1) {
-        const room = furnishable(w).filter((b2) => (b2.furniture?.length || 0) < FURNISH_MAX);
-        if (!room.length) return;
+        const room2 = furnishable(w).filter((b2) => (b2.furniture?.length || 0) < FURNISH_MAX);
+        if (!room2.length) return;
         const rank = (b2) => {
           const k = ORDER.indexOf(b2.key);
           return (k < 0 ? ORDER.length : k) * 10 + statusOf(b2) * 20;
         };
-        const b = room.sort((x, y) => rank(x) - rank(y))[0];
+        const b = room2.sort((x, y) => rank(x) - rank(y))[0];
         (b.furniture || (b.furniture = [])).push(f.id);
         w.stock[f.id] -= 1;
         const d = BUILDINGS.get(b.key);
@@ -6585,7 +6585,7 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "dread", label: "\u0441\u0442\u0440\u0430\u0445 \u0441\u043C\u0435\u0440\u0442\u0438", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, mods: { bravery: -0.3 } }
   ]);
   var GRAVE_TICKS = (id) => WOUNDS.get(id).days * DAY;
-  var bleedTicks = (E) => Math.round((DEATHBLOW.bleedHours + DEATHBLOW.bleedPerE * E) * HOUR);
+  var bleedTicks = (E2) => Math.round((DEATHBLOW.bleedHours + DEATHBLOW.bleedPerE * E2) * HOUR);
 
   // src/agents/special.js
   var peopleOf = (sp, a) => a.people && sp.peoples ? sp.peoples.find((p) => p.id === a.people) : null;
@@ -10514,23 +10514,23 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/world/fields.js
   var FIRE = { cap: 320, heat: 46, pF: 0.011, pG: 5e-3, burn: 0.03, wetIgn: 80, outBase: 2e-3, outWet: 0.012, ignForest: 80, ignGrass: 120 };
   function advect(w, src, dst, ux, uy) {
-    const W = w.w, H = w.h;
+    const W = w.w, H2 = w.h;
     if (ux === 0 && uy === 0) {
       dst.set(src);
       return;
     }
-    const X0 = new Int32Array(W), TX = new Float64Array(W), Y0 = new Int32Array(H), TY = new Float64Array(H);
+    const X0 = new Int32Array(W), TX = new Float64Array(W), Y0 = new Int32Array(H2), TY = new Float64Array(H2);
     for (let x = 0; x < W; x++) {
       const sx = clamp(x - ux, 0, W - 1.001);
       X0[x] = sx | 0;
       TX[x] = sx - X0[x];
     }
-    for (let y = 0; y < H; y++) {
-      const sy = clamp(y - uy, 0, H - 1.001);
+    for (let y = 0; y < H2; y++) {
+      const sy = clamp(y - uy, 0, H2 - 1.001);
       Y0[y] = sy | 0;
       TY[y] = sy - Y0[y];
     }
-    for (let y = 0; y < H; y++) {
+    for (let y = 0; y < H2; y++) {
       const ty = TY[y], row = Y0[y] * W, out = y * W;
       for (let x = 0; x < W; x++) {
         const tx2 = TX[x], i0 = row + X0[x];
@@ -10540,7 +10540,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var SMOKE_GONE = 2e-3;
   function heatAndSmoke(w) {
-    const g3 = w.grid, W = w.w, H = w.h, amb = ambientTemp(w), rain2 = w.weather.rain, st = w.stats;
+    const g3 = w.grid, W = w.w, H2 = w.h, amb = ambientTemp(w), rain2 = w.weather.rain, st = w.stats;
     const smokeOn = st.fireCount > 0 || (st.smokeMax ?? 1) >= SMOKE_GONE;
     if (smokeOn) {
       advect(w, g3.smoke, g3.smoke2, w.wind.x, w.wind.y);
@@ -10554,8 +10554,8 @@ dd.q4{color:#c58cff;font-weight:600}
     [g3.temp, g3.temp2] = [g3.temp2, g3.temp];
     const { temp, temp2, smoke, smoke2, fire, terr } = g3;
     let smax = 0, tmax = -Infinity, anyFire = false;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H - 1 ? i + W : i;
+    for (let y = 0; y < H2; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H2 - 1 ? i + W : i;
       const Tc = temp[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
       const Tn = Tc + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * Tc) + (relax + rain2 * 0.03) * (amb - Tc) + fire[i] * FIRE.heat;
       const tv = Tn > FIRE.cap ? FIRE.cap : Tn;
@@ -10584,15 +10584,15 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
     const hay = (w.stock.hay || 0) >= 1;
     for (const b of w.buildings) {
-      const H = b.done && BUILDINGS.get(b.key).heat;
-      if (!H) continue;
-      if (!burnCampFuel(w, H.fuel)) continue;
-      let to = H.to;
+      const H2 = b.done && BUILDINGS.get(b.key).heat;
+      if (!H2) continue;
+      if (!burnCampFuel(w, H2.fuel)) continue;
+      let to = H2.to;
       if (hay && b.key === "hut") {
         to += 5;
         w.stock.hay -= 3e-4;
       }
-      for (const c of b.cells) if (w.grid.temp[c] < to) w.grid.temp[c] += H.add;
+      for (const c of b.cells) if (w.grid.temp[c] < to) w.grid.temp[c] += H2.add;
     }
   }
   function burn(w) {
@@ -13739,7 +13739,7 @@ dd.q4{color:#c58cff;font-weight:600}
     drawZone(w) {
       if (this.zoneVer !== w.zoneVersion) {
         this.zoneVer = w.zoneVersion;
-        const d = this.zoneTint.img.data, W = w.w, H = w.h;
+        const d = this.zoneTint.img.data, W = w.w, H2 = w.h;
         for (let i = 0; i < w.n; i++) {
           const o = i * 4;
           d[o] = 231;
@@ -13749,7 +13749,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         this.zoneTint.ctx.putImageData(this.zoneTint.img, 0, 0);
         const p = new Path2D();
-        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        for (let y = 0; y < H2; y++) for (let x = 0; x < W; x++) {
           if (!w.zone[y * W + x]) continue;
           if (x === 0 || !w.zone[y * W + x - 1]) {
             p.moveTo(x, y);
@@ -13763,7 +13763,7 @@ dd.q4{color:#c58cff;font-weight:600}
             p.moveTo(x, y);
             p.lineTo(x + 1, y);
           }
-          if (y === H - 1 || !w.zone[(y + 1) * W + x]) {
+          if (y === H2 - 1 || !w.zone[(y + 1) * W + x]) {
             p.moveTo(x, y + 1);
             p.lineTo(x + 1, y + 1);
           }
@@ -14510,13 +14510,13 @@ dd.q4{color:#c58cff;font-weight:600}
     return c;
   }
   var isCont = (v) => v > 0.5;
-  function classify(A, B2, cA, cB, conv) {
+  function classify(A, B3, cA, cB, conv) {
     const T2 = 0.3;
     if (conv > T2) {
       if (cA && cB) return "collision";
       if (cA) return "arc";
       if (cB) return "trench";
-      return A.age > B2.age ? "trench" : "islandArc";
+      return A.age > B3.age ? "trench" : "islandArc";
     }
     if (conv < -T2) return cA && cB ? "rift" : cA ? null : "ridge";
     return "fault";
@@ -14530,11 +14530,11 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const [dx, dy] of [[1, 0], [0, 1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx >= w || ny >= h) continue;
-        const B2 = plate[ny * w + nx];
-        if (B2 === A) continue;
-        const key2 = Math.min(A, B2) * 64 + Math.max(A, B2);
+        const B3 = plate[ny * w + nx];
+        if (B3 === A) continue;
+        const key2 = Math.min(A, B3) * 64 + Math.max(A, B3);
         if (!pairs.has(key2)) {
-          const pa = plates[Math.min(A, B2)], pb = plates[Math.max(A, B2)];
+          const pa = plates[Math.min(A, B3)], pb = plates[Math.max(A, B3)];
           const ux = pb.cx - pa.cx, uy = pb.cy - pa.cy, len = Math.hypot(ux, uy) || 1;
           pairs.set(key2, { sum: ((pa.vx - pb.vx) * ux + (pa.vy - pb.vy) * uy) / len, cnt: 1 });
         }
@@ -14542,10 +14542,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     const pairConv = /* @__PURE__ */ new Map();
     for (const [key2, e] of pairs) {
-      const A = Math.floor(key2 / 64), B2 = key2 % 64, conv = e.sum / e.cnt;
+      const A = Math.floor(key2 / 64), B3 = key2 % 64, conv = e.sum / e.cnt;
       const I = Math.min(1.2, Math.max(0.35, Math.abs(conv) / 0.9));
-      pairConv.set(A * 64 + B2, { conv, I });
-      pairConv.set(B2 * 64 + A, { conv, I });
+      pairConv.set(A * 64 + B3, { conv, I });
+      pairConv.set(B3 * 64 + A, { conv, I });
     }
     const crust = a.f.crust, tally2 = {};
     const bnd = new Uint8Array(n), bI = new Float32Array(n), dist9 = new Float64Array(n).fill(Infinity), src = new Int32Array(n).fill(-1);
@@ -14555,10 +14555,10 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-        const B2 = plate[ny * w + nx];
-        if (B2 === A) continue;
-        const pc = pairConv.get(A * 64 + B2), j = ny * w + nx;
-        const kind = classify(plates[A], plates[B2], isCont(crust[i]), isCont(crust[j]), pc.conv);
+        const B3 = plate[ny * w + nx];
+        if (B3 === A) continue;
+        const pc = pairConv.get(A * 64 + B3), j = ny * w + nx;
+        const kind = classify(plates[A], plates[B3], isCont(crust[i]), isCont(crust[j]), pc.conv);
         if (!kind) break;
         bnd[i] = BOUNDARIES.get(kind).code;
         bI[i] = pc.I;
@@ -14729,7 +14729,7 @@ dd.q4{color:#c58cff;font-weight:600}
     a.f.flat = flat;
     return cnt;
   }
-  var levelOf = (pot, lv2) => pot < lv2[0] ? LEVELS[0] : pot < lv2[1] ? LEVELS[1] : pot < lv2[2] ? LEVELS[2] : LEVELS[3];
+  var levelOf = (pot, lv3) => pot < lv3[0] ? LEVELS[0] : pot < lv3[1] ? LEVELS[1] : pot < lv3[2] ? LEVELS[2] : LEVELS[3];
   function ores(a, rnd) {
     const { w, h, n } = a, rich = {}, f = a.f;
     const low = new Float32Array(n), warm = new Float32Array(n);
@@ -14761,10 +14761,10 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const o of ORE_GENESIS.all()) {
       const pot = a.f[`ore_${o.id}`];
       if (!pot) continue;
-      const lv2 = levelOf(pot[i], o.levels);
-      if (o.region === "goldVein" || o.region === "magma") out.flags[o.region] = lv2 >= 1;
-      else if (o.region === "placer") out.placer = lv2;
-      else out.ores[o.region] = lv2;
+      const lv3 = levelOf(pot[i], o.levels);
+      if (o.region === "goldVein" || o.region === "magma") out.flags[o.region] = lv3 >= 1;
+      else if (o.region === "placer") out.placer = lv3;
+      else out.ores[o.region] = lv3;
     }
     return out;
   }
@@ -14854,7 +14854,7 @@ dd.q4{color:#c58cff;font-weight:600}
     f.windY = wy;
   }
   function halve(a, src) {
-    const W = Math.ceil(a.w / 2), H = Math.ceil(a.h / 2), out = new Float32Array(W * H), cnt = new Float32Array(W * H);
+    const W = Math.ceil(a.w / 2), H2 = Math.ceil(a.h / 2), out = new Float32Array(W * H2), cnt = new Float32Array(W * H2);
     for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
       const j = (y >> 1) * W + (x >> 1);
       out[j] += src[y * a.w + x];
@@ -14865,34 +14865,34 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var qsat = (T2) => 4 * Math.exp(0.04 * T2);
   function rain(a) {
-    const f = a.f, M = MOISTURE, W = Math.ceil(a.w / 2), H = Math.ceil(a.h / 2), N2 = W * H;
-    const T2 = halve(a, f.temp), E = halve(a, f.elev), L = halve(a, f.land), U = halve(a, f.windX), V = halve(a, f.windY);
+    const f = a.f, M = MOISTURE, W = Math.ceil(a.w / 2), H2 = Math.ceil(a.h / 2), N2 = W * H2;
+    const T2 = halve(a, f.temp), E2 = halve(a, f.elev), L = halve(a, f.land), U = halve(a, f.windX), V = halve(a, f.windY);
     const rise = new Float32Array(N2), sat = new Float32Array(N2), climb = new Float32Array(N2);
-    for (let y = 0; y < H; y++) {
+    for (let y = 0; y < H2; y++) {
       const b = belt(latitude(a, Math.min(a.h - 1, y * 2)));
       for (let x = 0; x < W; x++) {
         const j = y * W + x;
         rise[j] = b.rise;
         sat[j] = qsat(T2[j]);
-        const ex = E[y * W + Math.min(W - 1, x + 1)] - E[y * W + Math.max(0, x - 1)], ey = E[Math.min(H - 1, y + 1) * W + x] - E[Math.max(0, y - 1) * W + x];
+        const ex = E2[y * W + Math.min(W - 1, x + 1)] - E2[y * W + Math.max(0, x - 1)], ey = E2[Math.min(H2 - 1, y + 1) * W + x] - E2[Math.max(0, y - 1) * W + x];
         climb[j] = L[j] > 0.5 ? Math.max(0, (U[j] * ex + V[j] * ey) * 0.5) : 0;
       }
     }
     let q = new Float32Array(N2), q2 = new Float32Array(N2);
     for (let j = 0; j < N2; j++) q[j] = L[j] > 0.5 ? 0 : sat[j] * 0.8;
     const soil = new Float32Array(N2);
-    const acc3 = new Float32Array(N2), steps = Math.round(1.6 * (W + H)), from = steps >> 1;
+    const acc3 = new Float32Array(N2), steps = Math.round(1.6 * (W + H2)), from = steps >> 1;
     for (let s = 0; s < steps; s++) {
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H2; y++) for (let x = 0; x < W; x++) {
         const j = y * W + x;
         let sx = x - U[j] * M.speed, sy = y - V[j] * M.speed;
         sx = Math.max(0, Math.min(W - 1.001, sx));
-        sy = Math.max(0, Math.min(H - 1.001, sy));
+        sy = Math.max(0, Math.min(H2 - 1.001, sy));
         const x0 = sx | 0, y0 = sy | 0, tx2 = sx - x0, ty = sy - y0, i0 = y0 * W + x0;
         q2[j] = (q[i0] * (1 - tx2) + q[i0 + 1] * tx2) * (1 - ty) + (q[i0 + W] * (1 - tx2) + q[i0 + W + 1] * tx2) * ty;
       }
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        const j = y * W + x, l = x > 0 ? j - 1 : j, r = x < W - 1 ? j + 1 : j, u = y > 0 ? j - W : j, d = y < H - 1 ? j + W : j;
+      for (let y = 0; y < H2; y++) for (let x = 0; x < W; x++) {
+        const j = y * W + x, l = x > 0 ? j - 1 : j, r = x < W - 1 ? j + 1 : j, u = y > 0 ? j - W : j, d = y < H2 - 1 ? j + W : j;
         q[j] = q2[j] + M.mix * (q2[l] + q2[r] + q2[u] + q2[d] - 4 * q2[j]);
       }
       for (let j = 0; j < N2; j++) {
@@ -14908,7 +14908,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     const out = new Float32Array(a.n), scale = M.mm / (steps - from);
     for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
-      const sx = Math.max(0, Math.min(W - 1.001, (x - 0.5) / 2)), sy = Math.max(0, Math.min(H - 1.001, (y - 0.5) / 2));
+      const sx = Math.max(0, Math.min(W - 1.001, (x - 0.5) / 2)), sy = Math.max(0, Math.min(H2 - 1.001, (y - 0.5) / 2));
       const x0 = sx | 0, y0 = sy | 0, tx2 = sx - x0, ty = sy - y0, i0 = y0 * W + x0;
       const mm = ((acc3[i0] * (1 - tx2) + acc3[i0 + 1] * tx2) * (1 - ty) + (acc3[i0 + W] * (1 - tx2) + acc3[i0 + W + 1] * tx2) * ty) * scale;
       out[y * a.w + x] = mm < M.soft ? mm : M.soft + (mm - M.soft) * 0.4;
@@ -14948,8 +14948,8 @@ dd.q4{color:#c58cff;font-weight:600}
     return ocean;
   }
   function seaLevel(a, share2) {
-    const z = a.f.elev, oceanShare = (lv2) => {
-      const oc = oceanMask(a, z, lv2);
+    const z = a.f.elev, oceanShare = (lv3) => {
+      const oc = oceanMask(a, z, lv3);
       let c = 0;
       for (let i = 0; i < a.n; i++) c += oc[i];
       return c / a.n;
@@ -15019,29 +15019,29 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var isDiag = (a, i, j) => i % a.w !== j % a.w && (i / a.w | 0) !== (j / a.w | 0);
   function erode(a) {
-    const E = EROSION, z = a.f.elev, ocean = a.f.ocean, { w, h, n } = a, k = scaleOf(a);
+    const E2 = EROSION, z = a.f.elev, ocean = a.f.ocean, { w, h, n } = a, k = scaleOf(a);
     const startBelow = new Uint8Array(n);
     for (let i = 0; i < n; i++) if (!ocean[i] && z[i] <= a.sea) startBelow[i] = 1;
     let cut = 0;
     const before = Float32Array.from(z), tmp = new Float32Array(n);
-    for (let ep = 0; ep < E.epochs; ep++) {
+    for (let ep = 0; ep < E2.epochs; ep++) {
       const fl = flood(a, z), acc3 = gather(a, fl, rainUnits(a));
       for (let q = 0; q < fl.cnt; q++) {
         const i = fl.order[q], r = fl.down[i], zr = ocean[r] ? a.sea : z[r];
         if (z[i] <= zr) continue;
-        const F = E.k * Math.pow(acc3[i] / (k * k), E.m) / (isDiag(a, i, r) ? Math.SQRT2 : 1) / 6;
+        const F = E2.k * Math.pow(acc3[i] / (k * k), E2.m) / (isDiag(a, i, r) ? Math.SQRT2 : 1) / 6;
         z[i] = (z[i] + F * zr) / (1 + F);
       }
-      for (let p = 0; p < E.creepPasses; p++) {
+      for (let p = 0; p < E2.creepPasses; p++) {
         tmp.set(z);
         for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
           const i = y * w + x;
           if (ocean[i]) continue;
           const avg = (tmp[i - 1] + tmp[i + 1] + tmp[i - w] + tmp[i + w]) / 4;
-          z[i] = tmp[i] + E.creep * (avg - tmp[i]);
+          z[i] = tmp[i] + E2.creep * (avg - tmp[i]);
         }
       }
-      for (let i = 0; i < n; i++) if (!ocean[i] && a.f.uplift[i] > 0) z[i] += E.uplift * a.f.uplift[i] / E.epochs;
+      for (let i = 0; i < n; i++) if (!ocean[i] && a.f.uplift[i] > 0) z[i] += E2.uplift * a.f.uplift[i] / E2.epochs;
       for (let i = 0; i < n; i++) if (!ocean[i] && !startBelow[i] && z[i] <= a.sea) z[i] = a.sea + 1e-4;
     }
     for (let i = 0; i < n; i++) if (!ocean[i]) cut += Math.max(0, before[i] - z[i]);
@@ -15429,9 +15429,9 @@ dd.q4{color:#c58cff;font-weight:600}
       note: "\u0440\u0443\u0434\u044B \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u043F\u043E\u0440\u043E\u0434\u0430\u043C \u0438 \u0442\u0435\u043A\u0442\u043E\u043D\u0438\u043A\u0435 \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u044E\u0442\u0441\u044F \u0432 \u0440\u0443\u0434\u043D\u044B\u0435 \u0440\u0430\u0439\u043E\u043D\u044B",
       run(a, rnd) {
         const r = ores(a, rnd);
-        const pl = placer(a), lv2 = ORE_GENESIS.get("placer").levels;
+        const pl = placer(a), lv3 = ORE_GENESIS.get("placer").levels;
         r.placer = 0;
-        for (let i = 0; i < a.n; i++) if (a.f.land[i] && pl[i] >= lv2[2]) r.placer++;
+        for (let i = 0; i < a.n; i++) if (a.f.land[i] && pl[i] >= lv3[2]) r.placer++;
         const top = ORE_GENESIS.all().filter((o) => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map((o) => o.label);
         return top.length ? `\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B. \u0411\u043E\u043B\u044C\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442: ${top.slice(0, 3).join(", ")}.` : "\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B, \u043D\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442 \u043D\u0435\u0442.";
       }
@@ -15527,22 +15527,7 @@ dd.q4{color:#c58cff;font-weight:600}
       found: 0.32,
       spacing: 16,
       site: { water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4 },
-      build: [
-        { id: "hut", tier: 0 },
-        { id: "lodge", tier: 0 },
-        { id: "garden", tier: 0, need: "fertile" },
-        { id: "well", tier: 1 },
-        { id: "fishhut", tier: 1, need: "water" },
-        { id: "healerhut", tier: 1 },
-        { id: "loom", tier: 1 },
-        { id: "house", tier: 2 },
-        { id: "granary", tier: 2 },
-        { id: "shrine", tier: 2 },
-        { id: "crafthut", tier: 2 },
-        { id: "watchtower", tier: 2 },
-        { id: "jeweler", tier: 3, need: "gems" },
-        { id: "armory", tier: 3 }
-      ],
+      taste: { housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1 },
       names: {
         first: ["\u041B\u0430", "\u042D\u043B\u044C", "\u041C\u0438", "\u0422\u0438", "\u0410\u043D", "\u0418\u043B\u044C", "\u0421\u0438", "\u0410\u0440", "\u0424\u0435", "\u041B\u0438\u043D", "\u041D\u0438", "\u041B\u043E"],
         mid: ["", "\u0440\u0438", "\u043D\u044D", "\u043B\u0430", "\u0432\u043E", "\u043C\u0438", "\u0430\u043D", "\u043B\u0438"],
@@ -15567,23 +15552,7 @@ dd.q4{color:#c58cff;font-weight:600}
       found: 0.3,
       spacing: 14,
       site: { water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3 },
-      build: [
-        { id: "hut", tier: 0 },
-        { id: "quarry", tier: 0 },
-        { id: "mineshaft", tier: 0, need: "ore" },
-        { id: "well", tier: 1 },
-        { id: "charpit", tier: 1 },
-        { id: "smelter", tier: 1, need: "ore" },
-        { id: "granary", tier: 1 },
-        { id: "forge", tier: 2, need: "ore" },
-        { id: "house", tier: 2 },
-        { id: "hearth", tier: 2 },
-        { id: "armory", tier: 2 },
-        { id: "palisade", tier: 2 },
-        { id: "jeweler", tier: 3, need: "gems" },
-        { id: "shrine", tier: 3 },
-        { id: "magmaforge", tier: 3, need: "magma" }
-      ],
+      taste: { housing: 1, food: 1, prod: 1.4, trade: 1, defence: 1.2, faith: 1, lore: 0.8, prestige: 1.2, health: 0.9 },
       names: {
         first: ["\u041A\u0445\u0430\u0437", "\u0411\u0430\u0440", "\u0414\u0443\u0440", "\u0413\u0440\u0430", "\u0422\u043E\u0440", "\u041A\u0430", "\u0411\u043E", "\u0413\u0438\u043C", "\u0414\u043E\u043B", "\u041C\u043E\u0440", "\u0423\u043D", "\u0417\u0438\u0440"],
         mid: ["", "\u0430\u043A", "\u0438\u043D", "\u0443\u043C", "\u0430\u0440", "\u0435\u043A", "\u043E\u0434"],
@@ -15633,6 +15602,239 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     levels: [{ wear: 0.25, label: "\u0442\u0440\u043E\u043F\u0430", width: 0.45 }, { wear: 1.2, label: "\u0434\u043E\u0440\u043E\u0433\u0430", width: 0.7 }, { wear: 4, label: "\u0442\u0440\u0430\u043A\u0442", width: 1 }]
   };
+
+  // src/data/townBuildings.js
+  var EFFECTS2 = { housing: "\u0436\u0438\u043B\u044C\u0451", food: "\u0435\u0434\u0430", prod: "\u0440\u0435\u043C\u0435\u0441\u043B\u043E", trade: "\u0442\u043E\u0440\u0433\u043E\u0432\u043B\u044F", defence: "\u043E\u0431\u043E\u0440\u043E\u043D\u0430", faith: "\u0432\u0435\u0440\u0430", lore: "\u0437\u043D\u0430\u043D\u0438\u0435", prestige: "\u0441\u043B\u0430\u0432\u0430", health: "\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435" };
+  var B2 = (id, name, g3, cat, tier, peoples, fx, more = {}) => ({ id, name, g: g3, cat, tier, peoples, fx, max: 1, ...more });
+  var ALL = null;
+  var E = ["elves"];
+  var D = ["dwarves"];
+  var H = ["humans"];
+  var O = ["orcs"];
+  var TOWN_BUILDINGS = new Registry("townBuilding");
+  TOWN_BUILDINGS.registerAll([
+    // ── housing
+    B2("hut", "\u0448\u0430\u043B\u0430\u0448\u0438", "pl", "housing", 0, ALL, { housing: 1 }, { max: 2, local: "hut" }),
+    B2("yurts", "\u0448\u0430\u0442\u0440\u044B", "pl", "housing", 0, O, { housing: 1.5 }, { max: 6 }),
+    B2("house", "\u0438\u0437\u0431\u044B", "pl", "housing", 1, [...H], { housing: 2 }, { max: 6, needsAny: ["forest", "clay"], local: "house" }),
+    B2("longhouse", "\u0434\u043B\u0438\u043D\u043D\u044B\u0439 \u0434\u043E\u043C", "m", "housing", 1, [...H, ...O], { housing: 2.5, prestige: 0.03 }, { max: 4, needs: ["forest"] }),
+    B2("treehouse", "\u0434\u043E\u043C\u0430 \u043D\u0430 \u0434\u0435\u0440\u0435\u0432\u044C\u044F\u0445", "pl", "housing", 1, E, { housing: 3 }, { max: 6, needs: ["forest"] }),
+    B2("hallhomes", "\u043F\u043E\u0434\u0433\u043E\u0440\u043D\u044B\u0435 \u0436\u0438\u043B\u0438\u0449\u0430", "pl", "housing", 1, D, { housing: 4, defence: 0.05 }, { max: 8, needsAny: ["steep", "caves"] }),
+    B2("stonehouse", "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0435 \u0434\u043E\u043C\u0430", "pl", "housing", 2, [...H, ...D], { housing: 4, defence: 0.03 }, { max: 8, needs: ["stone"], requires: ["quarry"] }),
+    B2("barracks", "\u043A\u0430\u0437\u0430\u0440\u043C\u044B", "pl", "housing", 2, [...H, ...D, ...O], { housing: 1, defence: 0.25 }, { requiresAny: ["armory", "warcamp"] }),
+    // ── food
+    B2("garden", "\u043E\u0433\u043E\u0440\u043E\u0434\u044B", "pl", "food", 0, ALL, { food: 0.15 }, { max: 3, needs: ["fertile"], local: "garden" }),
+    B2("field", "\u043F\u0430\u0448\u043D\u0438", "pl", "food", 0, [...H, ...O], { food: 0.3 }, { max: 4, needs: ["fertile", "flat"], local: "field" }),
+    B2("grove", "\u043F\u043B\u043E\u0434\u043E\u0432\u044B\u0435 \u0440\u043E\u0449\u0438", "pl", "food", 1, E, { food: 0.3 }, { max: 4, needsAny: ["forest", "fertile"] }),
+    B2("mushrooms", "\u0433\u0440\u0438\u0431\u043D\u044B\u0435 \u043F\u0435\u0449\u0435\u0440\u044B", "pl", "food", 1, D, { food: 0.3 }, { max: 4, needsAny: ["caves", "steep"] }),
+    B2("pen", "\u0437\u0430\u0433\u043E\u043D\u044B", "pl", "food", 0, [...H, ...D, ...O], { food: 0.15 }, { max: 2, needs: ["pasture"], local: "pen" }),
+    B2("pasture", "\u0432\u044B\u0433\u043E\u043D\u044B \u0438 \u0441\u0442\u0430\u0434\u0430", "pl", "food", 1, [...H, ...O], { food: 0.25, prod: 0.05 }, { max: 3, needs: ["pasture"] }),
+    B2("lodge", "\u043E\u0445\u043E\u0442\u043D\u0438\u0447\u0438\u0439 \u043D\u0430\u0432\u0435\u0441", "m", "food", 0, ALL, { food: 0.1 }, { needsAny: ["forest", "pasture"], local: "lodge" }),
+    B2("fishhut", "\u0440\u044B\u0431\u0430\u0446\u043A\u0438\u0435 \u0445\u0438\u0436\u0438\u043D\u044B", "pl", "food", 0, ALL, { food: 0.15 }, { max: 2, needs: ["water"], local: "fishhut" }),
+    B2("pier", "\u0440\u044B\u0431\u043D\u0430\u044F \u043F\u0440\u0438\u0441\u0442\u0430\u043D\u044C", "f", "food", 1, [...H, ...E], { food: 0.25, trade: 0.05 }, { needsAny: ["coast", "lake"] }),
+    B2("quern", "\u0440\u0443\u0447\u043D\u044B\u0435 \u0436\u0435\u0440\u043D\u043E\u0432\u0430", "pl", "food", 0, ALL, { food: 0.05 }, { local: "quern" }),
+    B2("watermill", "\u0432\u043E\u0434\u044F\u043D\u0430\u044F \u043C\u0435\u043B\u044C\u043D\u0438\u0446\u0430", "f", "food", 2, [...H, ...D], { food: 0.2, prod: 0.1 }, { needs: ["river"], requiresAny: ["field", "garden", "mushrooms"] }),
+    B2("windmill", "\u0432\u0435\u0442\u0440\u044F\u043D\u0430\u044F \u043C\u0435\u043B\u044C\u043D\u0438\u0446\u0430", "f", "food", 2, H, { food: 0.15 }, { needs: ["flat"], requires: ["field"] }),
+    B2("bakery", "\u043F\u0435\u043A\u0430\u0440\u043D\u044F", "f", "food", 2, [...H, ...D], { food: 0.1, health: 0.05 }, { requiresAny: ["watermill", "windmill"] }),
+    B2("smokehouse", "\u043A\u043E\u043F\u0442\u0438\u043B\u044C\u043D\u044F", "f", "food", 1, ALL, { food: 0.1 }, { requiresAny: ["lodge", "fishhut", "pen"], local: "smokehouse" }),
+    B2("dryrack", "\u0432\u0435\u0448\u0430\u043B\u0430 \u0438 \u0431\u043E\u0447\u043A\u0438", "pl", "food", 0, ALL, { food: 0.05 }, { local: "dryrack" }),
+    B2("granary", "\u0430\u043C\u0431\u0430\u0440", "m", "food", 1, ALL, { food: 0.15 }, { local: "granary" }),
+    B2("cellar", "\u043F\u043E\u0433\u0440\u0435\u0431\u0430 \u0438 \u043B\u0435\u0434\u043D\u0438\u043A\u0438", "pl", "food", 2, [...H, ...D], { food: 0.1, health: 0.05 }),
+    B2("apiary", "\u043F\u0430\u0441\u0435\u043A\u0430", "f", "food", 1, [...H, ...E], { food: 0.05, prod: 0.05 }, { needsAny: ["forest", "fertile"], needs: ["warm"] }),
+    B2("brewery", "\u043F\u0438\u0432\u043E\u0432\u0430\u0440\u043D\u044F", "f", "food", 2, [...H, ...D, ...O], { prod: 0.1, prestige: 0.05 }, { requiresAny: ["field", "garden", "mushrooms"] }),
+    B2("vineyard", "\u0432\u0438\u043D\u043E\u0433\u0440\u0430\u0434\u043D\u0438\u043A\u0438", "pl", "food", 2, [...H, ...E], { trade: 0.15, prestige: 0.05 }, { needs: ["warm", "fertile"] }),
+    // ── raw materials
+    B2("woodcut", "\u043B\u0435\u0441\u043E\u0441\u0435\u043A\u0430", "f", "raw", 0, [...H, ...D, ...O], { prod: 0.1 }, { needs: ["forest"] }),
+    B2("sawmill", "\u043B\u0435\u0441\u043E\u043F\u0438\u043B\u043A\u0430", "f", "raw", 1, [...H, ...D], { prod: 0.15 }, { needs: ["forest"], local: "sawmill" }),
+    B2("quarry", "\u043A\u0430\u043C\u0435\u043D\u043E\u043B\u043E\u043C\u043D\u044F", "f", "raw", 0, [...H, ...D], { prod: 0.1 }, { needs: ["stone"], local: "quarry" }),
+    B2("claypit", "\u0433\u043B\u0438\u043D\u044F\u043D\u044B\u0439 \u043A\u0430\u0440\u044C\u0435\u0440", "m", "raw", 0, [...H, ...D], { prod: 0.05 }, { needs: ["clay"] }),
+    B2("mineshaft", "\u0440\u0443\u0434\u043D\u0438\u043A", "m", "raw", 0, [...H, ...D, ...O], { prod: 0.25, trade: 0.1 }, { needs: ["ore"], local: "mineshaft", notable: true }),
+    B2("deepmine", "\u0433\u043B\u0443\u0431\u043E\u043A\u0438\u0435 \u0448\u0430\u0445\u0442\u044B", "pl", "raw", 2, D, { prod: 0.3, trade: 0.15 }, { needsAny: ["ore", "gems", "precious"], requires: ["mineshaft"] }),
+    B2("charpit", "\u0443\u0433\u043B\u0435\u0436\u043E\u0433\u043D\u0430\u044F \u044F\u043C\u0430", "f", "raw", 1, [...H, ...D, ...O], { prod: 0.05 }, { needs: ["forest"], local: "charpit" }),
+    B2("coalpit", "\u0443\u0433\u043E\u043B\u044C\u043D\u044B\u0435 \u043A\u043E\u043F\u0438", "pl", "raw", 1, [...H, ...D], { prod: 0.15 }, { needs: ["coal"] }),
+    B2("saltworks", "\u0441\u043E\u043B\u0435\u0432\u0430\u0440\u043D\u044F", "f", "raw", 1, [...H, ...D], { trade: 0.2, food: 0.05 }, { needs: ["salt"] }),
+    B2("placer", "\u0437\u043E\u043B\u043E\u0442\u043E\u0439 \u043F\u0440\u0438\u0438\u0441\u043A", "m", "raw", 1, [...H, ...D, ...O], { trade: 0.2 }, { needs: ["placer"], notable: true }),
+    // ── crafts
+    B2("loom", "\u0442\u043A\u0430\u0446\u043A\u0430\u044F", "f", "craft", 1, ALL, { prod: 0.1 }, { local: "loom" }),
+    B2("potter", "\u0433\u043E\u043D\u0447\u0430\u0440\u043D\u044F", "f", "craft", 1, [...H, ...D, ...E], { prod: 0.05 }, { needs: ["clay"], local: "potter" }),
+    B2("tannery", "\u0434\u0443\u0431\u0438\u043B\u044C\u043D\u044F", "f", "craft", 1, [...H, ...D, ...O], { prod: 0.1 }, { requiresAny: ["lodge", "pen", "pasture"], local: "tannery" }),
+    B2("crafthut", "\u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u0430\u044F \u0440\u0435\u043C\u0435\u0441\u043B\u0435\u043D\u043D\u0438\u043A\u0430", "f", "craft", 1, ALL, { prod: 0.1 }, { local: "crafthut" }),
+    B2("smelter", "\u043F\u043B\u0430\u0432\u0438\u043B\u044C\u043D\u044B\u0439 \u0433\u043E\u0440\u043D", "m", "craft", 1, [...H, ...D, ...O], { prod: 0.15 }, { requires: ["mineshaft"], local: "smelter" }),
+    B2("forge", "\u043A\u0443\u0437\u043D\u044F", "f", "craft", 1, [...H, ...D, ...O], { prod: 0.2, defence: 0.1 }, { requires: ["smelter"], local: "forge", notable: true }),
+    B2("foundry", "\u043B\u0438\u0442\u0435\u0439\u043D\u044F", "f", "craft", 3, [...H, ...D], { prod: 0.25, trade: 0.1 }, { requires: ["forge"] }),
+    B2("magmaforge", "\u043C\u0430\u0433\u043C\u043E\u0432\u0430\u044F \u043A\u0443\u0437\u043D\u044F", "f", "craft", 3, D, { prod: 0.35, prestige: 0.2, defence: 0.1 }, { needs: ["magma"], requires: ["forge"], local: "magmaforge" }),
+    B2("jeweler", "\u044E\u0432\u0435\u043B\u0438\u0440\u043D\u0430\u044F \u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u0430\u044F", "f", "craft", 2, [...H, ...D, ...E], { prod: 0.1, trade: 0.2, prestige: 0.1 }, { needs: ["gems"], local: "jeweler" }),
+    B2("armory", "\u043E\u0440\u0443\u0436\u0435\u0439\u043D\u0430\u044F", "f", "craft", 2, ALL, { defence: 0.2 }, { requiresAny: ["crafthut", "forge"], local: "armory" }),
+    B2("bowyer", "\u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u0430\u044F \u043B\u0443\u043A\u043E\u0432", "f", "craft", 1, [...E, ...H], { defence: 0.15 }, { needs: ["forest"], notable: true }),
+    B2("shipyard", "\u0432\u0435\u0440\u0444\u044C", "f", "craft", 2, [...H, ...E], { trade: 0.25, prod: 0.1 }, { needs: ["coast", "forest"] }),
+    B2("glassworks", "\u0441\u0442\u0435\u043A\u043B\u043E\u0434\u0443\u0432\u043D\u044F", "f", "craft", 3, [...H, ...D], { prod: 0.1, trade: 0.1, prestige: 0.05 }, { needsAny: ["coast", "clay"] }),
+    B2("alchemist", "\u043B\u0430\u0431\u043E\u0440\u0430\u0442\u043E\u0440\u0438\u044F \u0430\u043B\u0445\u0438\u043C\u0438\u043A\u0430", "f", "craft", 3, [...H, ...E, ...D], { lore: 0.15, health: 0.1 }),
+    B2("hearth", "\u043E\u0431\u0449\u0438\u043D\u043D\u044B\u0439 \u043E\u0447\u0430\u0433", "m", "life", 0, [...H, ...D], { health: 0.05 }, { local: "hearth" }),
+    // ── trade and ways
+    B2("ferry", "\u043F\u0435\u0440\u0435\u0432\u043E\u0437", "m", "trade", 0, [...H, ...E, ...O], { trade: 0.05 }, { needs: ["river"] }),
+    B2("bridge", "\u043C\u043E\u0441\u0442", "m", "trade", 1, [...H, ...D], { trade: 0.15 }, { needs: ["river"], requires: ["quarry"] }),
+    B2("inn", "\u043F\u043E\u0441\u0442\u043E\u044F\u043B\u044B\u0439 \u0434\u0432\u043E\u0440", "m", "trade", 1, [...H, ...D], { trade: 0.15 }, { needs: ["road"] }),
+    B2("toll", "\u0434\u043E\u0440\u043E\u0436\u043D\u0430\u044F \u0437\u0430\u0441\u0442\u0430\u0432\u0430", "f", "trade", 1, [...H, ...D, ...O], { trade: 0.05, defence: 0.05 }, { needs: ["road"] }),
+    B2("market", "\u0440\u044B\u043D\u043E\u043A", "m", "trade", 2, ALL, { trade: 0.3, prestige: 0.05 }),
+    B2("warehouse", "\u0442\u043E\u0440\u0433\u043E\u0432\u044B\u0435 \u0441\u043A\u043B\u0430\u0434\u044B", "pl", "trade", 2, [...H, ...D], { trade: 0.15 }, { requires: ["market"] }),
+    B2("caravanserai", "\u043A\u0430\u0440\u0430\u0432\u0430\u043D-\u0441\u0430\u0440\u0430\u0439", "m", "trade", 2, [...H, ...O], { trade: 0.25 }, { needs: ["road", "dry"] }),
+    B2("harbor", "\u0433\u0430\u0432\u0430\u043D\u044C", "f", "trade", 2, [...H, ...E, ...O], { trade: 0.35 }, { needs: ["coast"], requiresAny: ["pier", "shipyard"] }),
+    B2("mint", "\u043C\u043E\u043D\u0435\u0442\u043D\u044B\u0439 \u0434\u0432\u043E\u0440", "m", "trade", 3, [...H, ...D], { trade: 0.2, prestige: 0.15 }, { needs: ["precious"], requires: ["market"] }),
+    // ── defence
+    B2("palisade", "\u0447\u0430\u0441\u0442\u043E\u043A\u043E\u043B", "m", "defence", 1, [...H, ...E, ...O], { defence: 0.25 }, { needs: ["forest"], local: "palisade", notable: true }),
+    B2("watchtower", "\u0441\u0442\u043E\u0440\u043E\u0436\u0435\u0432\u0430\u044F \u0432\u044B\u0448\u043A\u0430", "f", "defence", 1, ALL, { defence: 0.15 }, { local: "watchtower", notable: true }),
+    B2("hiddenpaths", "\u0442\u0430\u0439\u043D\u044B\u0435 \u0442\u0440\u043E\u043F\u044B", "pl", "defence", 2, E, { defence: 0.35 }, { needs: ["forest"] }),
+    B2("warcamp", "\u0431\u043E\u0435\u0432\u043E\u0439 \u0441\u0442\u0430\u043D", "m", "defence", 1, O, { defence: 0.3, prestige: 0.1 }),
+    B2("stonewall", "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0435 \u0441\u0442\u0435\u043D\u044B", "pl", "defence", 2, [...H, ...D], { defence: 0.5 }, { needs: ["stone"], requires: ["quarry"] }),
+    B2("tunnels", "\u043F\u043E\u0434\u0437\u0435\u043C\u043D\u044B\u0435 \u0445\u043E\u0434\u044B", "pl", "defence", 2, D, { defence: 0.2, trade: 0.1 }, { needsAny: ["steep", "caves"] }),
+    B2("tower", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u043D\u044B\u0435 \u0431\u0430\u0448\u043D\u0438", "pl", "defence", 2, [...H, ...D], { defence: 0.3 }, { requires: ["stonewall"] }),
+    B2("citadel", "\u0446\u0438\u0442\u0430\u0434\u0435\u043B\u044C", "f", "defence", 3, [...H, ...D], { defence: 0.6, prestige: 0.2 }, { requires: ["tower"] }),
+    // ── faith
+    B2("shrine", "\u0441\u0432\u044F\u0442\u0438\u043B\u0438\u0449\u0435", "n", "faith", 1, ALL, { faith: 0.15 }, { local: "shrine", notable: true }),
+    B2("shamanhut", "\u0445\u0438\u0436\u0438\u043D\u0430 \u0448\u0430\u043C\u0430\u043D\u0430", "f", "faith", 0, O, { faith: 0.15, health: 0.1 }),
+    B2("sacredgrove", "\u0441\u0432\u044F\u0449\u0435\u043D\u043D\u0430\u044F \u0440\u043E\u0449\u0430", "f", "faith", 1, E, { faith: 0.3 }, { needs: ["forest"], notable: true }),
+    B2("stonecircle", "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0439 \u043A\u0440\u0443\u0433", "m", "faith", 1, [...H, ...O], { faith: 0.2 }, { needsAny: ["stone", "steep"] }),
+    B2("ancestorhall", "\u0437\u0430\u043B \u043F\u0440\u0435\u0434\u043A\u043E\u0432", "m", "faith", 2, D, { faith: 0.3, prestige: 0.1 }, { requires: ["shrine"] }),
+    B2("temple", "\u0445\u0440\u0430\u043C", "m", "faith", 2, [...H, ...E, ...D], { faith: 0.3, prestige: 0.1 }, { requires: ["shrine"] }),
+    B2("crypt", "\u0443\u0441\u044B\u043F\u0430\u043B\u044C\u043D\u0438\u0446\u0430", "f", "faith", 2, [...H, ...D], { faith: 0.1 }),
+    B2("cemetery", "\u043A\u043B\u0430\u0434\u0431\u0438\u0449\u0435", "n", "faith", 1, ALL, { faith: 0.05, health: 0.05 }),
+    // ── lore
+    B2("school", "\u0448\u043A\u043E\u043B\u0430", "f", "lore", 2, [...H, ...E, ...D], { lore: 0.15 }),
+    B2("library", "\u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0430", "f", "lore", 3, [...H, ...E, ...D], { lore: 0.3, prestige: 0.1 }, { requires: ["school"] }),
+    B2("magetower", "\u0431\u0430\u0448\u043D\u044F \u043C\u0430\u0433\u0430", "f", "lore", 3, [...H, ...E], { lore: 0.3, defence: 0.15, prestige: 0.15 }),
+    // ── power and fame
+    B2("eldershall", "\u0434\u043E\u043C \u0441\u0442\u0430\u0440\u0435\u0439\u0448\u0438\u043D", "m", "power", 1, ALL, { prestige: 0.1 }),
+    B2("townhall", "\u0440\u0430\u0442\u0443\u0448\u0430", "f", "power", 2, [...H, ...D], { prestige: 0.2, trade: 0.05 }, { requires: ["eldershall"] }),
+    B2("palace", "\u0434\u0432\u043E\u0440\u0435\u0446", "m", "power", 3, [...H, ...E], { prestige: 0.4 }, { requiresAny: ["townhall", "eldershall"] }),
+    B2("throne", "\u0442\u0440\u043E\u043D\u043D\u044B\u0439 \u0437\u0430\u043B", "m", "power", 3, D, { prestige: 0.4 }, { requires: ["ancestorhall"] }),
+    B2("arena", "\u0431\u043E\u0439\u0446\u043E\u0432\u0441\u043A\u0430\u044F \u044F\u043C\u0430", "f", "power", 2, [...O, ...H], { prestige: 0.15, defence: 0.05 }),
+    B2("monument", "\u043F\u0430\u043C\u044F\u0442\u043D\u0438\u043A", "m", "power", 3, ALL, { prestige: 0.15 }),
+    // ── life and health
+    B2("well", "\u043A\u043E\u043B\u043E\u0434\u0435\u0446", "m", "life", 1, ALL, { health: 0.1 }, { local: "well" }),
+    B2("healerhut", "\u0445\u0438\u0436\u0438\u043D\u0430 \u043B\u0435\u043A\u0430\u0440\u044F", "f", "life", 1, ALL, { health: 0.15 }, { local: "healerhut" }),
+    B2("hospice", "\u043B\u0435\u0447\u0435\u0431\u043D\u0438\u0446\u0430", "f", "life", 2, [...H, ...E], { health: 0.25 }, { requires: ["healerhut"] }),
+    B2("bathhouse", "\u0431\u0430\u043D\u044F", "f", "life", 2, [...H, ...D], { health: 0.15 }, { needs: ["water"] }),
+    B2("aqueduct", "\u0430\u043A\u0432\u0435\u0434\u0443\u043A", "m", "life", 3, H, { health: 0.2, housing: 1 }, { needs: ["stone"], requires: ["well"] })
+  ]);
+
+  // src/atlas/towns.js
+  var clamp015 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var lv = (id) => ORE_GENESIS.get(id).levels;
+  var KEYS2 = Object.keys(EFFECTS2);
+  function townFx(t) {
+    const out = Object.fromEntries(KEYS2.map((k) => [k, 0]));
+    for (const id of t.built) {
+      const b = TOWN_BUILDINGS.get(id);
+      for (const k of KEYS2) out[k] += b.fx[k] || 0;
+    }
+    return out;
+  }
+  var room = (fx) => 120 + 100 * fx.housing;
+  var might = (t, fx) => Math.sqrt(t.pop) * (1 + fx.defence + 0.3 * fx.prod);
+  var raidShare = (fx) => Math.max(0.4, 1 - 0.5 * fx.faith - 0.5 * fx.health);
+  var around2 = (a, i, r, test) => {
+    const x0 = i % a.w, y0 = i / a.w | 0;
+    for (let y = Math.max(0, y0 - r); y <= Math.min(a.h - 1, y0 + r); y++) for (let x = Math.max(0, x0 - r); x <= Math.min(a.w - 1, x0 + r); x++) if (test(y * a.w + x)) return true;
+    return false;
+  };
+  var nextTo = (a, i, test) => {
+    const x = i % a.w, y = i / a.w | 0;
+    for (const [dx, dy] of DIRS8) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && test(ny * a.w + nx)) return true;
+    }
+    return false;
+  };
+  function placeHas(a, i, need) {
+    const f = a.f, k2 = scaleOf(a) ** 2, rock = (j) => ROCK_BY_CODE[f.rock[j]]?.id, bio = (j) => biomeAt(a, j)?.id;
+    switch (need) {
+      case "river":
+        return f.flow[i] >= RIVERS.stream * k2 || nextTo(a, i, (j) => f.flow[j] >= RIVERS.river * k2 && f.lake[j] < 0);
+      case "coast":
+        return nextTo(a, i, (j) => f.ocean[j]);
+      case "lake":
+        return around2(a, i, 2, (j) => f.lake[j] >= 0);
+      case "water":
+        return placeHas(a, i, "river") || placeHas(a, i, "coast") || placeHas(a, i, "lake");
+      case "ore":
+        return ["iron", "bronze", "silver"].some((id) => f[`ore_${id}`][i] >= lv(id)[1]);
+      case "gems":
+        return f.ore_gems[i] >= lv("gems")[1];
+      case "coal":
+        return f.ore_coal[i] >= lv("coal")[1];
+      case "magma":
+        return around2(a, i, 3, (j) => f.ore_magma[j] >= lv("magma")[1]);
+      case "precious":
+        return f.ore_gold[i] >= lv("gold")[1] || f.ore_silver[i] >= lv("silver")[1] || f.ore_placer[i] >= lv("placer")[1];
+      case "placer":
+        return around2(a, i, 1, (j) => f.ore_placer[j] >= lv("placer")[1]);
+      case "salt":
+        return around2(a, i, 4, (j) => f.lake[j] >= 0 && a.lakes[f.lake[j]].salt) || placeHas(a, i, "coast") && f.temp[i] >= 14;
+      case "clay":
+        return f.alluvium[i] >= 0.3 || rock(i) === "shale" || rock(i) === "limestone";
+      case "stone":
+        return around2(a, i, 2, (j) => !f.ocean[j] && (f.flat[j] < 0.75 || (f.elev[j] - a.sea) / (1 - a.sea) > 0.2));
+      case "fertile":
+        return f.fert[i] >= 0.5;
+      case "forest":
+        return around2(a, i, 2, (j) => f.trees[j] >= 0.5);
+      case "pasture":
+        return around2(a, i, 2, (j) => ["meadow", "steppe", "savanna"].includes(bio(j)));
+      case "steep":
+        return around2(a, i, 1, (j) => f.flat[j] < 0.5);
+      case "flat":
+        return f.flat[i] > 0.85;
+      case "caves":
+        return around2(a, i, 2, (j) => rock(j) === "limestone" || rock(j) === "basalt");
+      case "road":
+        return around2(a, i, 1, (j) => f.road[j] >= ROADS.levels[1].wear);
+      case "warm":
+        return f.temp[i] >= 12;
+      case "dry":
+        return around2(a, i, 3, (j) => ["steppe", "desert", "savanna"].includes(bio(j)));
+    }
+    throw new Error(`town building: unknown place need \xAB${need}\xBB`);
+  }
+  function canBuild(a, t, b) {
+    if (b.peoples && !b.peoples.includes(t.people)) return false;
+    if (b.tier > t.tier) return false;
+    if (t.built.filter((id) => id === b.id).length >= b.max) return false;
+    if (b.requires && !b.requires.every((id) => t.built.includes(id))) return false;
+    if (b.requiresAny && !b.requiresAny.some((id) => t.built.includes(id))) return false;
+    const pk = t.place || (t.place = {});
+    const has2 = (need) => need === "road" ? placeHas(a, t.i, need) : pk[need] ?? (pk[need] = placeHas(a, t.i, need));
+    if (b.needs && !b.needs.every(has2)) return false;
+    if (b.needsAny && !b.needsAny.some(has2)) return false;
+    return true;
+  }
+  function townNeeds(a, t, fx, ctx) {
+    return {
+      housing: 1.5 * clamp015((t.pop / room(fx) - 0.55) / 0.4),
+      food: 1.3 * clamp015((t.pop / Math.max(1, ctx.feeds) - 0.55) / 0.4),
+      defence: Math.min(1.5, ctx.threat + (t.raided != null && a.hist.year - t.raided < 6 ? 0.8 : 0)) + 0.1,
+      trade: 0.15 + 0.6 * ctx.road + (t.tier >= 2 ? 0.3 : 0),
+      prod: 0.4 + 0.1 * t.tier,
+      faith: 0.25 + 0.15 * t.tier,
+      lore: t.tier >= 2 ? 0.25 + 0.1 * t.tier : 0.03,
+      prestige: 0.15 + 0.15 * t.tier,
+      health: 0.25 + 0.1 * t.tier + (t.raided != null && a.hist.year - t.raided < 6 ? 0.3 : 0)
+    };
+  }
+  function chooseBuilding(a, t, P, fx, ctx, rnd) {
+    const need = townNeeds(a, t, fx, ctx);
+    let best = null, bv = 0.02;
+    for (const b of TOWN_BUILDINGS.all()) {
+      if (!canBuild(a, t, b)) continue;
+      let v = 0;
+      for (const k of KEYS2) v += (b.fx[k] || 0) * need[k] * (P.taste[k] ?? 1);
+      v *= 0.85 + 0.3 * rnd();
+      if (v > bv) {
+        bv = v;
+        best = b;
+      }
+    }
+    return best;
+  }
 
   // src/data/lairs.js
   var LAIRS = new Registry("lair");
@@ -15770,7 +15972,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/atlas/fauna.js
   function initFauna(a, rnd) {
-    const c = Math.max(2, Math.round(FAUNA.cell * scaleOf(a))), W = Math.ceil(a.w / c), H = Math.ceil(a.h / c), N2 = W * H;
+    const c = Math.max(2, Math.round(FAUNA.cell * scaleOf(a))), W = Math.ceil(a.w / c), H2 = Math.ceil(a.h / c), N2 = W * H2;
     const species = SPECIES.filter((s) => s.habitat);
     const shares = Array.from({ length: N2 }, () => ({}));
     for (let i = 0; i < a.n; i++) {
@@ -15800,12 +16002,12 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const v of s.K) t += v;
       s.usual = t;
     }
-    a.fauna = { c, W, H, list, idx };
+    a.fauna = { c, W, H: H2, list, idx };
   }
   function diffuse(F, arr, K, rate, tmp) {
-    const { W, H } = F;
+    const { W, H: H2 } = F;
     tmp.set(arr);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H2; y++) for (let x = 0; x < W; x++) {
       const j = y * W + x;
       if (K[j] <= 0 && tmp[j] <= 0) continue;
       let s = 0, c = 0;
@@ -15821,7 +16023,7 @@ dd.q4{color:#c58cff;font-weight:600}
         s += tmp[j - W];
         c++;
       }
-      if (y < H - 1) {
+      if (y < H2 - 1) {
         s += tmp[j + W];
         c++;
       }
@@ -15946,8 +16148,8 @@ dd.q4{color:#c58cff;font-weight:600}
     return `${L.label} ${used.size + 1}`;
   }
   function newLair(a, L, i, rnd, strength2, born = a.hist.year) {
-    const H = a.hist, name = lairName(L, rnd, H.names);
-    const lair = { id: H.nextLair++, kind: L.id, i, x: i % a.w, y: i / a.w | 0, name, born, strength: strength2, ancient: born <= H.year - ANCIENT_YEARS, alive: true };
+    const H2 = a.hist, name = lairName(L, rnd, H2.names);
+    const lair = { id: H2.nextLair++, kind: L.id, i, x: i % a.w, y: i / a.w | 0, name, born, strength: strength2, ancient: born <= H2.year - ANCIENT_YEARS, alive: true };
     a.lairs.push(lair);
     return lair;
   }
@@ -15994,7 +16196,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2;
   };
   function stepLairs(a, rnd, seasonId) {
-    const H = a.hist, F = a.fauna, lines = [];
+    const H2 = a.hist, F = a.fauna, lines = [];
     for (const lair of a.lairs) {
       if (!lair.alive) continue;
       const L = LAIRS.get(lair.kind), r = R(a, L), s = F.list[F.idx[L.species]];
@@ -16016,11 +16218,11 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const j of cells) if (s.K[j] > 0) s.N[j] = Math.max(s.N[j], s.K[j] * lair.strength);
       if (lair.strength < 0.08) {
         lair.alive = false;
-        lair.died = H.year;
+        lair.died = H2.year;
         lines.push(`${G[L.g].emptied} ${L.label} \xAB${lair.name}\xBB ${wherePhrase(a, lair.i)}: \u0434\u043E\u0431\u044B\u0447\u0438 \u043D\u0435 \u0441\u0442\u0430\u043B\u043E, \u0438 ${SPECIES.get(L.species).plural} \u0443\u0448\u043B\u0438.`);
         continue;
       }
-      const age = H.year - lair.born;
+      const age = H2.year - lair.born;
       if (!lair.ancient && age >= ANCIENT_YEARS) {
         lair.ancient = true;
         lines.push(`${cap12(L.label)} \xAB${lair.name}\xBB ${G[L.g].stands} \u0443\u0436\u0435 ${age} \u043B\u0435\u0442: \u043E ${G[L.g].about} \u0441\u043B\u0430\u0433\u0430\u044E\u0442 \u0441\u0442\u0440\u0430\u0448\u043D\u044B\u0435 \u0441\u043A\u0430\u0437\u043A\u0438.`);
@@ -16048,7 +16250,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const who = SPECIES.get(Lw.species), whom = SPECIES.get(Ll.species);
         if (lose.strength < 0.12) {
           lose.alive = false;
-          lose.died = H.year;
+          lose.died = H2.year;
           lines.push(`${cap12(who.plural)} ${Lw.from} \xAB${win.name}\xBB \u0440\u0430\u0437\u043E\u0440\u0438\u043B\u0438 ${acc(Ll)} \xAB${lose.name}\xBB ${wherePhrase(a, lose.i)}.`);
         } else lines.push(`${cap12(who.plural)} ${Lw.from} \xAB${win.name}\xBB \u0441\u0445\u0432\u0430\u0442\u0438\u043B\u0438\u0441\u044C \u0441 ${whomInstr(whom)} ${Ll.from} \xAB${lose.name}\xBB \u0438 \u043E\u0442\u043E\u0433\u043D\u0430\u043B\u0438 \u0438\u0445.`);
       }
@@ -16077,11 +16279,11 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/atlas/roads.js
   var roadLevel = (v) => {
-    let lv2 = -1;
+    let lv3 = -1;
     ROADS.levels.forEach((L, k) => {
-      if (v >= L.wear) lv2 = k;
+      if (v >= L.wear) lv3 = k;
     });
-    return lv2;
+    return lv3;
   };
   function feeling(p, q) {
     const a = SPECIES.get(WORLD_PEOPLES.get(p).race).rel, b = SPECIES.get(WORLD_PEOPLES.get(q).race).rel;
@@ -16102,11 +16304,11 @@ dd.q4{color:#c58cff;font-weight:600}
   function findPath2(a, s, t, people, scratch) {
     const { w, h } = a, { g: g3, came, touched } = scratch, heap = new Heap(1024), tx2 = t % w, ty = t / w | 0;
     touched.length = 0;
-    const H = (i) => 0.6 * Math.hypot(i % w - tx2, (i / w | 0) - ty);
+    const H2 = (i) => 0.6 * Math.hypot(i % w - tx2, (i / w | 0) - ty);
     g3[s] = 0;
     came[s] = s;
     touched.push(s);
-    heap.push(H(s), s);
+    heap.push(H2(s), s);
     let found = false, steps = 0;
     while (heap.size && steps++ < 6e4) {
       const c = heap.pop();
@@ -16125,7 +16327,7 @@ dd.q4{color:#c58cff;font-weight:600}
           if (g3[j] === Infinity) touched.push(j);
           g3[j] = ng;
           came[j] = c;
-          heap.push(ng + H(j), j);
+          heap.push(ng + H2(j), j);
         }
       }
     }
@@ -16151,7 +16353,7 @@ dd.q4{color:#c58cff;font-weight:600}
         done3.add(key2);
         const path = findPath2(a, t.i, o.i, t.people, scratch);
         if (!path) continue;
-        const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic;
+        const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2);
         for (const c of path) f.road[c] += amt;
         a.roadPairs || (a.roadPairs = /* @__PURE__ */ new Set());
         if (!a.roadPairs.has(key2)) {
@@ -16168,9 +16370,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/atlas/peoples.js
-  var clamp015 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
-  var lv = (id) => ORE_GENESIS.get(id).levels;
-  var oreWealth = (a, i) => Math.max(...["iron", "bronze", "silver", "gold", "gems"].map((id) => a.f[`ore_${id}`][i] / lv(id)[2]));
+  var clamp016 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var lv2 = (id) => ORE_GENESIS.get(id).levels;
+  var oreWealth = (a, i) => Math.max(...["iron", "bronze", "silver", "gold", "gems"].map((id) => a.f[`ore_${id}`][i] / lv2(id)[2]));
   function initPeoples(a, era) {
     var _a;
     const F = a.fauna, N2 = F.W * F.H;
@@ -16188,7 +16390,7 @@ dd.q4{color:#c58cff;font-weight:600}
         cnt[j]++;
       }
       for (let j = 0; j < N2; j++) {
-        K[j] = cnt[j] ? clamp015(K[j] / (F.c * F.c)) : 0;
+        K[j] = cnt[j] ? clamp016(K[j] / (F.c * F.c)) : 0;
         mob[j] = cnt[j] ? mob[j] / cnt[j] : 0;
       }
       a.peoples.push({ id: P.id, P, K, mob, u: new Float32Array(N2) });
@@ -16243,15 +16445,15 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var townLabel = (t, cs = 0) => TIERS2[t.tier].label[t.people][cs];
   function foundTown(a, pe, i, rnd, pop, say2) {
-    const P = pe.P, H = a.hist;
+    const P = pe.P, H2 = a.hist;
     const t = {
-      id: H.nextTown = (H.nextTown || 0) + 1,
+      id: H2.nextTown = (H2.nextTown || 0) + 1,
       people: P.id,
-      name: townName(P, rnd, H.names),
+      name: townName(P, rnd, H2.names),
       i,
       x: i % a.w,
       y: i / a.w | 0,
-      founded: H.year,
+      founded: H2.year,
       pop,
       tier: tierOf(pop),
       built: [],
@@ -16260,29 +16462,6 @@ dd.q4{color:#c58cff;font-weight:600}
     a.towns.push(t);
     return t;
   }
-  function placeHas(a, i, need) {
-    const f = a.f;
-    switch (need) {
-      case "ore":
-        return ["iron", "bronze", "silver"].some((id) => f[`ore_${id}`][i] >= lv(id)[1]);
-      case "gems":
-        return f.ore_gems[i] >= lv("gems")[1];
-      case "magma": {
-        const x = i % a.w, y = i / a.w | 0;
-        for (let yy = Math.max(0, y - 3); yy <= Math.min(a.h - 1, y + 3); yy++) for (let xx = Math.max(0, x - 3); xx <= Math.min(a.w - 1, x + 3); xx++) if (f.ore_magma[yy * a.w + xx] >= lv("magma")[1]) return true;
-        return false;
-      }
-      case "water":
-        return hasWater(a, i);
-      case "fertile":
-        return f.fert[i] >= 0.5;
-      case "forest":
-        return f.trees[i] >= 0.5;
-      default:
-        return true;
-    }
-  }
-  var NOTABLE = /* @__PURE__ */ new Set(["forge", "jeweler", "magmaforge", "shrine", "watchtower", "palisade", "mineshaft", "healerhut"]);
   var APPEARED = { m: "\u043F\u043E\u044F\u0432\u0438\u043B\u0441\u044F", f: "\u043F\u043E\u044F\u0432\u0438\u043B\u0430\u0441\u044C", n: "\u043F\u043E\u044F\u0432\u0438\u043B\u043E\u0441\u044C", pl: "\u043F\u043E\u044F\u0432\u0438\u043B\u0438\u0441\u044C" };
   var GREW = { m: "\u0440\u0430\u0437\u0440\u043E\u0441\u0441\u044F \u0432", f: "\u0440\u0430\u0437\u0440\u043E\u0441\u043B\u0430\u0441\u044C \u0432", n: "\u0440\u0430\u0437\u0440\u043E\u0441\u043B\u043E\u0441\u044C \u0432" };
   var cap13 = (s) => s[0].toUpperCase() + s.slice(1);
@@ -16315,7 +16494,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const { P, K, u, mob } = pe;
       for (const t of a.towns) if (t.alive && t.people === P.id) {
         const j = faunaCell(a, t.i);
-        u[j] = Math.max(u[j], Math.min(1, 0.45 + 0.15 * t.tier));
+        u[j] = Math.max(u[j], Math.min(1, 0.45 + 0.15 * t.tier + 0.2 * townFx(t).prestige));
       }
       tmp.set(u);
       for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
@@ -16331,7 +16510,7 @@ dd.q4{color:#c58cff;font-weight:600}
           const q = ny * F.W + nx;
           flux += (mob[j] + mob[q]) / 2 * (tmp[q] - tmp[j]);
         }
-        u[j] = clamp015(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4);
+        u[j] = clamp016(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4);
       }
     }
     const occ = new Float32Array(N2);
@@ -16360,19 +16539,24 @@ dd.q4{color:#c58cff;font-weight:600}
         feed += pe.K[y * F.W + x];
         c++;
       }
-      const target = 2600 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i] + (pe.P.ores ? 0.4 * Math.min(1, oreWealth(a, t.i)) : 0)) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1);
-      t.pop = Math.max(10, t.pop + 0.14 * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
+      const fx = townFx(t);
+      const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i] + (pe.P.ores ? 0.4 * Math.min(1, oreWealth(a, t.i)) : 0)) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
+      const target = Math.min(feeds, room(fx));
+      t.pop = Math.max(10, t.pop + 0.14 * (1 + 0.6 * fx.prestige) * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
       const tier = tierOf(t.pop);
       if (tier > t.tier) {
         const T2 = TIERS2[tier], was = TIERS2[t.tier];
         say2(`${cap13(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T2.label[t.people][1]}: ${Math.round(t.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
         t.tier = tier;
       }
-      const next = pe.P.build.find((b) => b.tier <= t.tier && !t.built.includes(b.id) && placeHas(a, t.i, b.need));
-      if (next && rnd() < 0.6) {
-        t.built.push(next.id);
-        const B2 = BUILDINGS.get(next.id);
-        if (NOTABLE.has(next.id)) say2(`\u0412 ${townLabel(t, 3)} ${t.name} ${APPEARED[B2.gender] || "\u043F\u043E\u044F\u0432\u0438\u043B\u0430\u0441\u044C"} ${B2.name.toLowerCase()}.`);
+      const threat = threatAt(a, t);
+      for (let q = 0; q < (t.tier >= 2 ? 2 : 1); q++) {
+        if (rnd() > 0.65) continue;
+        const b = chooseBuilding(a, t, pe.P, townFx(t), { feeds, threat, road: roadAccess(a, t.i) }, rnd);
+        if (!b) break;
+        const first = !t.built.includes(b.id);
+        t.built.push(b.id);
+        if (first && (b.notable || b.tier >= 2)) say2(`\u0412 ${townLabel(t, 3)} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
       }
     }
     for (const l of a.lairs) {
@@ -16380,7 +16564,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k, owner = SPECIES.get(L.species), s = owner.special;
       for (const t of a.towns) {
         if (!t.alive || Math.hypot(t.x - l.x, t.y - l.y) > reach || rnd() > TOWN_WAR.chance) continue;
-        const town = Math.sqrt(t.pop) * TOWN_WAR.might * (0.6 + 0.8 * rnd()), beast2 = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (0.6 + 0.8 * rnd());
+        const fx = townFx(t), town = might(t, fx) * TOWN_WAR.might * (0.6 + 0.8 * rnd()), beast2 = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (0.6 + 0.8 * rnd());
         const P = WORLD_PEOPLES.get(t.people);
         if (town > beast2) {
           l.alive = false;
@@ -16389,8 +16573,10 @@ dd.q4{color:#c58cff;font-weight:600}
           say2(`${cap13(P.label)} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0436\u0433\u043B\u0438 ${L.labelAcc || L.label} \xAB${l.name}\xBB: ${owner.plural} \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0442\u0440\u0435\u0432\u043E\u0436\u0430\u0442 \u0438\u0445 \u0437\u0435\u043C\u043B\u0438.`);
           break;
         }
-        t.pop *= 1 - TOWN_WAR.raidLoss;
-        say2(`${cap13(owner.plural)} ${L.from} \xAB${l.name}\xBB \u043D\u0430\u043F\u0430\u043B\u0438 \u043D\u0430 ${townLabel(t, 1)} ${t.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u0430 \u043F\u044F\u0442\u0430\u044F \u0447\u0430\u0441\u0442\u044C \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
+        const loss = TOWN_WAR.raidLoss * raidShare(fx);
+        t.pop *= 1 - loss;
+        t.raided = a.hist.year;
+        say2(`${cap13(owner.plural)} ${L.from} \xAB${l.name}\xBB \u043D\u0430\u043F\u0430\u043B\u0438 \u043D\u0430 ${townLabel(t, 1)} ${t.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
         break;
       }
     }
@@ -16410,6 +16596,12 @@ dd.q4{color:#c58cff;font-weight:600}
       const cell = Math.min(a.n - 1, (j0 / F.W | 0) * F.c * a.w + j0 % F.W * F.c);
       say2(`${cap13(p.P.label)} \u0438 ${q.P.label} \u0432\u043F\u0435\u0440\u0432\u044B\u0435 \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043B\u0438\u0441\u044C ${wherePhrase(a, cell)} \u0438 \u0441\u043C\u043E\u0442\u0440\u044F\u0442 \u0434\u0440\u0443\u0433 \u043D\u0430 \u0434\u0440\u0443\u0433\u0430 ${how}.` + (fe <= -2 ? " \u0414\u043E\u0440\u043E\u0433 \u043C\u0435\u0436\u0434\u0443 \u043D\u0438\u043C\u0438 \u043D\u0435 \u0431\u0443\u0434\u0435\u0442." : ""));
     }
+  }
+  function threatAt(a, t) {
+    const k = scaleOf(a);
+    let v = 0;
+    for (const l of a.lairs) if (l.alive && Math.hypot(t.x - l.x, t.y - l.y) <= (LAIRS.get(l.kind).radius + TOWN_WAR.reach) * k) v += 0.5 * l.strength;
+    return Math.min(1.5, v);
   }
   function townAt(a, i) {
     if (!a.towns) return null;
@@ -16443,8 +16635,8 @@ dd.q4{color:#c58cff;font-weight:600}
     return best;
   }
   function say(a, text) {
-    const H = a.hist;
-    a.chronicle.push({ era: H.era, year: H.year, season: H.season, text });
+    const H2 = a.hist;
+    a.chronicle.push({ era: H2.era, year: H2.year, season: H2.season, text });
   }
   function startHistory(a) {
     const rnd = mulberry(seedNumber(`${a.cfg.seed}:atlas:history`));
@@ -16455,8 +16647,8 @@ dd.q4{color:#c58cff;font-weight:600}
     say(a, `\u041D\u0430\u0447\u0430\u043B\u0430\u0441\u044C ${ERAS.get("wild").label.toLowerCase()}. \u0420\u0430\u0437\u0443\u043C\u043D\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u0435\u0449\u0451 \u043D\u0435\u0442; \u0437\u0432\u0435\u0440\u0438 \u0440\u0430\u0441\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u043A\u0440\u0430\u044F\u043C` + (parts.length ? `, \u0447\u0443\u0434\u043E\u0432\u0438\u0449\u0430 \u0437\u0430\u043D\u044F\u043B\u0438 \u043B\u043E\u0433\u043E\u0432\u0430: ${parts.join(", ")}` + (old ? `; ${old} \u0438\u0437 \u043D\u0438\u0445 \u0441\u0442\u043E\u044F\u0442 \u0441 \u043D\u0435\u0437\u0430\u043F\u0430\u043C\u044F\u0442\u043D\u044B\u0445 \u0432\u0440\u0435\u043C\u0451\u043D.` : ".") : "."));
   }
   function stepHistory(a) {
-    const H = a.hist, rnd = H.rnd, season2 = SEASON_LIST[H.season].id, F = a.fauna;
-    if (H.season === 0) {
+    const H2 = a.hist, rnd = H2.rnd, season2 = SEASON_LIST[H2.season].id, F = a.fauna;
+    if (H2.season === 0) {
       rollWeather(a, rnd);
       const m = plague(a, rnd);
       if (m) say(a, `\u041C\u043E\u0440: ${m.s.sp.plural} \u0433\u0438\u0431\u043D\u0443\u0442 ${wherePhrase(a, coarseToCell(a, m.j))}.`);
@@ -16475,19 +16667,19 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     const wildEnd = eraPlan(a)[0].seasons;
-    if (H.step === wildEnd) {
-      H.era = "elder";
+    if (H2.step === wildEnd) {
+      H2.era = "elder";
       say(a, `\u041D\u0430\u0447\u0430\u043B\u0430\u0441\u044C ${ERAS.get("elder").label.toLowerCase()}.`);
       arrive2(a, "elder", rnd, (t) => say(a, t));
     }
-    if (H.era === "elder" && season2 === "spring") {
+    if (H2.era === "elder" && season2 === "spring") {
       stepPeoples(a, rnd, (t) => say(a, t));
-      if ((H.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
+      if ((H2.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
         for (const [p, q] of wearRoads(a)) say(a, `\u041C\u0435\u0436\u0434\u0443 ${p.name} \u0438 ${q.name} \u043F\u0440\u043E\u0442\u043E\u043F\u0442\u0430\u043B\u0438 \u0434\u043E\u0440\u043E\u0433\u0443.`);
     }
     const totals = stepFauna(a, season2);
     for (const line2 of stepLairs(a, rnd, season2)) say(a, line2);
-    if (H.season === 3) {
+    if (H2.season === 3) {
       const news = [];
       for (const [k, s] of a.fauna.list.entries()) {
         if (s.role === "spirit" || s.usual <= 0) continue;
@@ -16497,24 +16689,24 @@ dd.q4{color:#c58cff;font-weight:600}
           news.push([9, `\u0412 \u043C\u0438\u0440\u0435 \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0438 \u043E\u0434\u043D\u043E\u0433\u043E \u0437\u0432\u0435\u0440\u044F: ${s.sp.plural} \u0432\u044B\u043C\u0435\u0440\u043B\u0438.`]);
           continue;
         }
-        if (avg == null || H.year < 5 || H.year - (H.last[s.id] ?? -99) < FAUNA.cooldown) continue;
+        if (avg == null || H2.year < 5 || H2.year - (H2.last[s.id] ?? -99) < FAUNA.cooldown) continue;
         const r = t / avg;
         if (r > FAUNA.boom) news.push([r, `\u0413\u043E\u0434 \u0438\u0437\u043E\u0431\u0438\u043B\u0438\u044F: ${s.sp.plural} \u0440\u0430\u0441\u043F\u043B\u043E\u0434\u0438\u043B\u0438\u0441\u044C, \u043A\u0430\u043A \u043D\u0438\u043A\u043E\u0433\u0434\u0430.`, s.id]);
         else if (r < FAUNA.bust) news.push([1 / r, `\u0422\u044F\u0436\u0451\u043B\u044B\u0435 \u0433\u043E\u0434\u044B: ${s.sp.plural} \u043F\u043E\u0447\u0442\u0438 \u043F\u0435\u0440\u0435\u0432\u0435\u043B\u0438\u0441\u044C.`, s.id]);
       }
       for (const [, text, id] of news.sort((x, y) => y[0] - x[0]).slice(0, 2)) {
-        if (id) H.last[id] = H.year;
+        if (id) H2.last[id] = H2.year;
         say(a, text);
       }
     }
-    H.step++;
-    H.season = (H.season + 1) % SEASON_LIST.length;
-    if (H.season === 0) H.year++;
-    if (H.step === wildEnd) {
+    H2.step++;
+    H2.season = (H2.season + 1) % SEASON_LIST.length;
+    if (H2.season === 0) H2.year++;
+    if (H2.step === wildEnd) {
       const alive = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive;
       say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive} ${plural(alive, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
     }
-    if (H.step >= H.end) {
+    if (H2.step >= H2.end) {
       const towns = a.towns.filter((t) => t.alive), parts = [];
       for (const pe of a.peoples) {
         const mine = towns.filter((t) => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));
@@ -16740,9 +16932,9 @@ dd.q4{color:#c58cff;font-weight:600}
         case "ores": {
           const pot = f[`ore_${this.ore}`];
           if (!pot) return base;
-          const o = ORE_GENESIS.get(this.ore), lv2 = o.levels, v = pot[i], grey = [70, 72, 66];
+          const o = ORE_GENESIS.get(this.ore), lv3 = o.levels, v = pot[i], grey = [70, 72, 66];
           if (!f.land[i]) return mix(base, [8, 12, 20], 0.5);
-          return v < lv2[0] ? grey : v < lv2[1] ? mix(grey, o.color, 0.45) : v < lv2[2] ? mix(grey, o.color, 0.75) : o.color;
+          return v < lv3[0] ? grey : v < lv3[1] ? mix(grey, o.color, 0.45) : v < lv3[2] ? mix(grey, o.color, 0.75) : o.color;
         }
         case "temp":
           return f.temp ? ramp(HEAT, (f.temp[i] + 30) / 65) : base;
@@ -16984,7 +17176,11 @@ dd.q4{color:#c58cff;font-weight:600}
       const town = townAt(a, i);
       if (town) {
         const P = WORLD_PEOPLES.get(town.people);
-        parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439, \u043E\u0441\u043D\u043E\u0432\u0430\u043D \u0432 \u0433\u043E\u0434 ${town.founded}; \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0438: ${town.built.map((id) => BUILDINGS.get(id).name.toLowerCase()).join(", ")}`);
+        const fx = townFx(town), cnt = {};
+        for (const id of town.built) cnt[id] = (cnt[id] || 0) + 1;
+        const list = Object.entries(cnt).map(([id, n]) => TOWN_BUILDINGS.get(id).name + (n > 1 ? ` \xD7${n}` : "")).join(", ");
+        const gives = Object.entries(EFFECTS2).filter(([k]) => k !== "housing" && fx[k] > 0).map(([k, l]) => `${l} +${Math.round(fx[k] * 100)}%`).join(", ");
+        parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439, \u0434\u043E\u043C\u0430 \u043D\u0430 ${room(fx)}, \u043E\u0441\u043D\u043E\u0432\u0430\u043D \u0432 \u0433\u043E\u0434 ${town.founded}; \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0438: ${list || "\u043D\u0435\u0442"}` + (gives ? `; \u0434\u0430\u0451\u0442: ${gives}` : ""));
       }
       const land = landOf(a, i);
       if (land) parts.push(`\u0437\u0435\u043C\u043B\u0438: ${land.people.label} ${Math.round(land.share * 100)}%`);
@@ -17919,8 +18115,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.45.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 2a3f052" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.46.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 663def0" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

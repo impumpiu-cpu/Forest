@@ -12,8 +12,8 @@
 //   found:    a town is founded where the people field is this dense, at least `spacing` cells
 //             (of a 192-cell-high world) from any other town
 //   site:     what makes a good spot for a town, beyond the biome: water, coast, fertility, ores, steep
-//   build:    what towns build as they grow, in this order; `tier` — from which size, `need` — a condition
-//             of the place (ore, gems, magma, water, fertile, forest, steep), see atlas/settlements.js
+//   taste:    how much the people care for each kind of effect when a town chooses what to build
+//             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
 //   names:    syllables of town names: first + middle (may be empty) + last
 //   color:    on the world map
 import {Registry} from '../core/registry.js';
@@ -26,12 +26,7 @@ WORLD_PEOPLES.registerAll([
     moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
     spread: 0.22, growth: 0.18, found: 0.32, spacing: 16,
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
-    build: [
-      {id: 'hut', tier: 0}, {id: 'lodge', tier: 0}, {id: 'garden', tier: 0, need: 'fertile'}, {id: 'well', tier: 1},
-      {id: 'fishhut', tier: 1, need: 'water'}, {id: 'healerhut', tier: 1}, {id: 'loom', tier: 1}, {id: 'house', tier: 2},
-      {id: 'granary', tier: 2}, {id: 'shrine', tier: 2}, {id: 'crafthut', tier: 2}, {id: 'watchtower', tier: 2},
-      {id: 'jeweler', tier: 3, need: 'gems'}, {id: 'armory', tier: 3},
-    ],
+    taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
   {id: 'dwarves', race: 'dwarf', label: 'гномы', labelGen: 'гномов', adj: 'гномий', era: 'elder', color: [220, 150, 70],
@@ -40,12 +35,7 @@ WORLD_PEOPLES.registerAll([
     moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
     spread: 0.18, growth: 0.16, found: 0.3, spacing: 14,
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
-    build: [
-      {id: 'hut', tier: 0}, {id: 'quarry', tier: 0}, {id: 'mineshaft', tier: 0, need: 'ore'}, {id: 'well', tier: 1},
-      {id: 'charpit', tier: 1}, {id: 'smelter', tier: 1, need: 'ore'}, {id: 'granary', tier: 1}, {id: 'forge', tier: 2, need: 'ore'},
-      {id: 'house', tier: 2}, {id: 'hearth', tier: 2}, {id: 'armory', tier: 2}, {id: 'palisade', tier: 2},
-      {id: 'jeweler', tier: 3, need: 'gems'}, {id: 'shrine', tier: 3}, {id: 'magmaforge', tier: 3, need: 'magma'},
-    ],
+    taste: {housing: 1, food: 1, prod: 1.4, trade: 1, defence: 1.2, faith: 1, lore: 0.8, prestige: 1.2, health: 0.9},
     names: {first: ['Кхаз', 'Бар', 'Дур', 'Гра', 'Тор', 'Ка', 'Бо', 'Гим', 'Дол', 'Мор', 'Ун', 'Зир'], mid: ['', 'ак', 'ин', 'ум', 'ар', 'ек', 'од'],
       last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
 ]);

@@ -11,6 +11,7 @@ import {WORLD_PEOPLES} from '../data/peoples.js';
 import {RELATIONS} from '../data/relations.js';
 import {SPECIES} from '../data/species.js';
 import {biomeAt} from './biomes.js';
+import {townFx} from './towns.js';
 import {scaleOf} from './tectonics.js';
 
 export const roadLevel = v => { let lv = -1; ROADS.levels.forEach((L, k) => { if (v >= L.wear) lv = k; }); return lv; };
@@ -77,7 +78,8 @@ export function wearRoads(a) {
       done.add(key);
       const path = findPath(a, t.i, o.i, t.people, scratch);
       if (!path) continue;
-      const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic;
+      // trading towns send more down the road
+      const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2);
       for (const c of path) f.road[c] += amt;
       a.roadPairs ||= new Set();
       if (!a.roadPairs.has(key)) { a.roadPairs.add(key); fresh.push([t, o]); }

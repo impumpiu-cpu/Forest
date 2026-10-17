@@ -25,7 +25,8 @@ import {lairAt} from '../atlas/lairs.js';
 import {LAIRS} from '../data/lairs.js';
 import {WILD_YEARS, ERAS} from '../data/history.js';
 import {SPECIES} from '../data/species.js';
-import {BUILDINGS} from '../data/buildings.js';
+import {TOWN_BUILDINGS, EFFECTS} from '../data/townBuildings.js';
+import {townFx, room} from '../atlas/towns.js';
 import {seedNumber} from '../core/rng.js';
 import {esc} from '../core/util.js';
 import {$} from './dom.js';
@@ -385,7 +386,11 @@ export class AtlasView {
     const town = townAt(a, i);
     if (town) {
       const P = WORLD_PEOPLES.get(town.people);
-      parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} жителей, основан в год ${town.founded}; постройки: ${town.built.map(id => BUILDINGS.get(id).name.toLowerCase()).join(', ')}`);
+      const fx = townFx(town), cnt = {};
+      for (const id of town.built) cnt[id] = (cnt[id] || 0) + 1;
+      const list = Object.entries(cnt).map(([id, n]) => TOWN_BUILDINGS.get(id).name + (n > 1 ? ` ×${n}` : '')).join(', ');
+      const gives = Object.entries(EFFECTS).filter(([k]) => k !== 'housing' && fx[k] > 0).map(([k, l]) => `${l} +${Math.round(fx[k] * 100)}%`).join(', ');
+      parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} жителей, дома на ${room(fx)}, основан в год ${town.founded}; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : ''));
     }
     const land = landOf(a, i);
     if (land) parts.push(`земли: ${land.people.label} ${Math.round(land.share * 100)}%`);

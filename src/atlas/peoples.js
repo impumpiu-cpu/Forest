@@ -5,13 +5,15 @@
 // Fisher–KPP front — logistic growth plus diffusion, faster through the biomes they move easily in.
 // Towns are points. Where the field is dense enough and no town is near, the people found one at the
 // best spot around (Sugarscape-like: the band looks about and settles where the land is best). A town
-// grows towards what its land feeds, more on a good road; at each size it builds more from its
-// people's list (data/buildings.js ids) where the place allows. Towns fight the lairs that reach them,
+// grows towards what its land feeds, more on a good road, within the room its houses give; it builds
+// what it needs most (data/townBuildings.js, atlas/towns.js), and what it has built decides how it
+// lives — room, food, trade, might, steadiness, fame. Towns fight the lairs that reach them,
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TOWN_WAR} from '../data/peoples.js';
-import {BUILDINGS} from '../data/buildings.js';
+import {TOWN_BUILDINGS} from '../data/townBuildings.js';
+import {townFx, room, might, raidShare, chooseBuilding} from './towns.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {SPECIES} from '../data/species.js';
@@ -99,21 +101,6 @@ function foundTown(a, pe, i, rnd, pop, say) {
   return t;
 }
 
-// what the place offers for a building's `need`
-function placeHas(a, i, need) {
-  const f = a.f;
-  switch (need) {
-    case 'ore': return ['iron', 'bronze', 'silver'].some(id => f[`ore_${id}`][i] >= lv(id)[1]);
-    case 'gems': return f.ore_gems[i] >= lv('gems')[1];
-    case 'magma': { const x = i % a.w, y = (i / a.w) | 0; for (let yy = Math.max(0, y - 3); yy <= Math.min(a.h - 1, y + 3); yy++) for (let xx = Math.max(0, x - 3); xx <= Math.min(a.w - 1, x + 3); xx++) if (f.ore_magma[yy * a.w + xx] >= lv('magma')[1]) return true; return false; }
-    case 'water': return hasWater(a, i);
-    case 'fertile': return f.fert[i] >= 0.5;
-    case 'forest': return f.trees[i] >= 0.5;
-    default: return true;
-  }
-}
-
-const NOTABLE = new Set(['forge', 'jeweler', 'magmaforge', 'shrine', 'watchtower', 'palisade', 'mineshaft', 'healerhut']);
 const APPEARED = {m: 'появился', f: 'появилась', n: 'появилось', pl: 'появились'};
 const GREW = {m: 'разросся в', f: 'разрослась в', n: 'разрослось в'};
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
@@ -149,7 +136,7 @@ export function stepPeoples(a, rnd, say) {
   for (const pe of a.peoples) {
     const {P, K, u, mob} = pe;
     // towns are the hearths the field grows from
-    for (const t of a.towns) if (t.alive && t.people === P.id) { const j = faunaCell(a, t.i); u[j] = Math.max(u[j], Math.min(1, 0.45 + 0.15 * t.tier)); }
+    for (const t of a.towns) if (t.alive && t.people === P.id) { const j = faunaCell(a, t.i); u[j] = Math.max(u[j], Math.min(1, 0.45 + 0.15 * t.tier + 0.2 * townFx(t).prestige)); }
     // Fisher–KPP: logistic growth where they live, spreading easiest through their own lands
     tmp.set(u);
     for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
@@ -188,19 +175,25 @@ export function stepPeoples(a, rnd, say) {
     const pe = a.peoples.find(p => p.id === t.people), j = faunaCell(a, t.i);
     let feed = 0, c = 0;
     for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
-    const target = 2600 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i] + (pe.P.ores ? 0.4 * Math.min(1, oreWealth(a, t.i)) : 0)) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1);
-    t.pop = Math.max(10, t.pop + 0.14 * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
+    const fx = townFx(t);
+    const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i] + (pe.P.ores ? 0.4 * Math.min(1, oreWealth(a, t.i)) : 0)) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
+    const target = Math.min(feeds, room(fx));
+    t.pop = Math.max(10, t.pop + 0.14 * (1 + 0.6 * fx.prestige) * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
     const tier = tierOf(t.pop);
     if (tier > t.tier) {
       const T = TIERS[tier], was = TIERS[t.tier];
       say(`${cap1(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T.label[t.people][1]}: ${Math.round(t.pop)} жителей.`);
       t.tier = tier;
     }
-    const next = pe.P.build.find(b => b.tier <= t.tier && !t.built.includes(b.id) && placeHas(a, t.i, b.need));
-    if (next && rnd() < 0.6) {
-      t.built.push(next.id);
-      const B = BUILDINGS.get(next.id);
-      if (NOTABLE.has(next.id)) say(`В ${townLabel(t, 3)} ${t.name} ${APPEARED[B.gender] || 'появилась'} ${B.name.toLowerCase()}.`);
+    // what the town needs most gets built; a big town builds faster
+    const threat = threatAt(a, t);
+    for (let q = 0; q < (t.tier >= 2 ? 2 : 1); q++) {
+      if (rnd() > 0.65) continue;
+      const b = chooseBuilding(a, t, pe.P, townFx(t), {feeds, threat, road: roadAccess(a, t.i)}, rnd);
+      if (!b) break;
+      const first = !t.built.includes(b.id);
+      t.built.push(b.id);
+      if (first && (b.notable || b.tier >= 2)) say(`В ${townLabel(t, 3)} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
     }
   }
   // towns against the lairs that reach them
@@ -209,15 +202,16 @@ export function stepPeoples(a, rnd, say) {
     const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k, owner = SPECIES.get(L.species), s = owner.special;
     for (const t of a.towns) {
       if (!t.alive || Math.hypot(t.x - l.x, t.y - l.y) > reach || rnd() > TOWN_WAR.chance) continue;
-      const town = Math.sqrt(t.pop) * TOWN_WAR.might * (0.6 + 0.8 * rnd()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (0.6 + 0.8 * rnd());
+      const fx = townFx(t), town = might(t, fx) * TOWN_WAR.might * (0.6 + 0.8 * rnd()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (0.6 + 0.8 * rnd());
       const P = WORLD_PEOPLES.get(t.people);
       if (town > beast) {
         l.alive = false; l.died = a.hist.year; l.clearedBy = t.id;
         say(`${cap1(P.label)} из ${townLabel(t, 2)} ${t.name} выжгли ${L.labelAcc || L.label} «${l.name}»: ${owner.plural} больше не тревожат их земли.`);
         break;
       }
-      t.pop *= 1 - TOWN_WAR.raidLoss;
-      say(`${cap1(owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибла пятая часть жителей.`);
+      const loss = TOWN_WAR.raidLoss * raidShare(fx);
+      t.pop *= 1 - loss; t.raided = a.hist.year;
+      say(`${cap1(owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей.`);
       break;
     }
   }
@@ -234,6 +228,14 @@ export function stepPeoples(a, rnd, say) {
     const cell = Math.min(a.n - 1, (((j0 / F.W) | 0) * F.c) * a.w + (j0 % F.W) * F.c);
     say(`${cap1(p.P.label)} и ${q.P.label} впервые встретились ${wherePhrase(a, cell)} и смотрят друг на друга ${how}.` + (fe <= -2 ? ' Дорог между ними не будет.' : ''));
   }
+}
+
+// how much the living lairs whose territory reaches a town press on it, 0 … ~1.5
+function threatAt(a, t) {
+  const k = scaleOf(a);
+  let v = 0;
+  for (const l of a.lairs) if (l.alive && Math.hypot(t.x - l.x, t.y - l.y) <= (LAIRS.get(l.kind).radius + TOWN_WAR.reach) * k) v += 0.5 * l.strength;
+  return Math.min(1.5, v);
 }
 
 // the town at or right next to a cell, and whose land a cell is

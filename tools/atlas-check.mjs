@@ -13,6 +13,8 @@ import {LAIRS} from '../src/data/lairs.js';
 import {historyLength} from '../src/atlas/history.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {BUILDINGS} from '../src/data/buildings.js';
+import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES, FUTURE_PEOPLES} from '../src/data/townBuildings.js';
+import {placeHas, townFx, room} from '../src/atlas/towns.js';
 import {ROADS} from '../src/data/roads.js';
 import {RIVERS} from '../src/data/hydrology.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
@@ -26,10 +28,26 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
-const hist = {lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, cleared: 0, roads: 0, linked: [0, 0]};
+const hist = {lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, cleared: 0, roads: 0, linked: [0, 0]};
 
-// every building a people builds is in the catalogue of buildings (data/buildings.js)
-for (const P of WORLD_PEOPLES.all()) for (const b of P.build) check(`народ ${P.label}: постройка ${b.id} есть в справочнике`, BUILDINGS.has(b.id), BUILDINGS.has(b.id) ? '' : 'нет');
+// the catalogue of town buildings holds together: links to the local map, prerequisites, conditions,
+// peoples and effects are all known, and every people can house and feed a hamlet
+{
+  const bad = [];
+  for (const b of TOWN_BUILDINGS.all()) {
+    if (b.local && !BUILDINGS.has(b.local)) bad.push(`${b.id}: нет постройки локальной карты ${b.local}`);
+    for (const id of [...(b.requires || []), ...(b.requiresAny || [])]) if (!TOWN_BUILDINGS.has(id)) bad.push(`${b.id}: требует неизвестное ${id}`);
+    for (const nd of [...(b.needs || []), ...(b.needsAny || [])]) if (!(nd in PLACE_NEEDS)) bad.push(`${b.id}: неизвестное условие места ${nd}`);
+    for (const p of b.peoples || []) if (!WORLD_PEOPLES.has(p) && !FUTURE_PEOPLES.includes(p)) bad.push(`${b.id}: неизвестный народ ${p}`);
+    for (const k of Object.keys(b.fx)) if (!(k in EFFECTS)) bad.push(`${b.id}: неизвестный эффект ${k}`);
+    if (!(b.cat in CATEGORIES)) bad.push(`${b.id}: неизвестная категория ${b.cat}`);
+    for (const id of [...(b.requires || []), ...(b.requiresAny || [])]) if (TOWN_BUILDINGS.has(id) && TOWN_BUILDINGS.get(id).tier > b.tier && !(b.requiresAny || []).includes(id)) bad.push(`${b.id}: требует ${id}, который строится позже`);
+  }
+  for (const P of [...WORLD_PEOPLES.ids(), ...FUTURE_PEOPLES]) for (const cat of ['housing', 'food'])
+    if (!TOWN_BUILDINGS.all().some(b => b.tier === 0 && b.cat === cat && (!b.peoples || b.peoples.includes(P)) && !b.needs && !b.requires && !b.requiresAny))
+      bad.push(`${P}: в приюте нечего строить (${CATEGORIES[cat]}) без условий`);
+  check('каталог построек мира сходится', !bad.length, bad.length ? bad.slice(0, 4).join('; ') : `построек: ${TOWN_BUILDINGS.all().length}, из них на локальной карте: ${TOWN_BUILDINGS.filter(b => b.local).length}`);
+}
 
 // towns stand on dry land, build only what their place allows, are joined by roads to their own
 // people's neighbours; roads keep to the land; a people lives only where its land can hold it
@@ -38,10 +56,21 @@ function townsCheck(a, tag) {
   let wet = 0, misbuilt = '', seaRoad = 0, homeless = 0;
   for (const t of a.towns) {
     if (f.ocean[t.i] || f.lake[t.i] >= 0) wet++;
-    const i = t.i, ore = ['iron', 'bronze', 'silver'].some(id => f[`ore_${id}`][i] >= lv(id)[1]);
-    if ((t.built.includes('mineshaft') || t.built.includes('smelter') || t.built.includes('forge')) && !ore) misbuilt ||= `${t.name}: рудник без руды`;
-    if (t.built.includes('jeweler') && f.ore_gems[i] < lv('gems')[1]) misbuilt ||= `${t.name}: резчик без самоцветов`;
-    if (t.built.includes('garden') && f.fert[i] < 0.5) misbuilt ||= `${t.name}: огород на бедной земле`;
+    // everything built fits the town's people, the place and what was built before it, within its max
+    const seen = {};
+    for (const id of t.built) {
+      const b = TOWN_BUILDINGS.get(id);
+      seen[id] = (seen[id] || 0) + 1;
+      if (b.peoples && !b.peoples.includes(t.people)) misbuilt ||= `${t.name}: ${b.name} — не их постройка`;
+      if (seen[id] > b.max) misbuilt ||= `${t.name}: ${b.name} больше ${b.max}`;
+      if (b.needs && !b.needs.every(nd => nd === 'road' || placeHas(a, t.i, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
+      if (b.needsAny && !b.needsAny.some(nd => nd === 'road' || placeHas(a, t.i, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
+      const before = t.built.slice(0, t.built.indexOf(id));
+      if (b.requires && !b.requires.every(r => before.includes(r))) misbuilt ||= `${t.name}: ${b.name} раньше, чем ${b.requires.join(', ')}`;
+      if (b.requiresAny && !b.requiresAny.some(r => before.includes(r))) misbuilt ||= `${t.name}: ${b.name} без ${b.requiresAny.join(' / ')}`;
+    }
+    if (t.alive && t.pop > Math.max(170, 1.1 * room(townFx(t)))) misbuilt ||= `${t.name}: ${Math.round(t.pop)} жителей в домах на ${room(townFx(t))}`;
+    for (const id of t.built) hist.built[TOWN_BUILDINGS.get(id).cat] = (hist.built[TOWN_BUILDINGS.get(id).cat] || 0) + 1;
     hist.towns[t.people] = (hist.towns[t.people] || 0) + (t.alive ? 1 : 0);
     hist.pop[t.people] = (hist.pop[t.people] || 0) + (t.alive ? t.pop : 0);
   }
@@ -59,7 +88,7 @@ function townsCheck(a, tag) {
   }
   hist.cleared += a.lairs.filter(l => l.clearedBy).length;
   check(`${tag}: города на суше`, wet === 0, wet ? `${wet} в воде` : '');
-  check(`${tag}: города строят только то, что позволяет место`, !misbuilt, misbuilt);
+  check(`${tag}: города строят только то, что им можно, где можно и в своём порядке; живут в своих домах`, !misbuilt, misbuilt);
   check(`${tag}: дороги не идут по морю`, seaRoad === 0, seaRoad ? `${seaRoad} клеток` : '');
   check(`${tag}: народы живут только там, где их земля их держит`, homeless === 0, homeless ? `${homeless} клеток` : '');
 }
@@ -270,6 +299,7 @@ check('  логова чудовищ есть', hist.lairs > 0, `${hist.lairs} �
 check('  летопись эры пишется', hist.lines >= 10 * hist.worlds, `${(hist.lines / hist.worlds).toFixed(0)} записей на мир`);
 console.log('Эпоха древних:');
 for (const P of WORLD_PEOPLES.all()) check(`  ${P.label} живут в мире`, (hist.towns[P.id] || 0) > 0, `городов ${hist.towns[P.id] || 0} на ${hist.worlds} миров, в среднем ${Math.round((hist.pop[P.id] || 0) / hist.worlds)} жителей на мир`);
+check('  города строят всё', Object.keys(hist.built).length === Object.keys(CATEGORIES).length, Object.entries(CATEGORIES).map(([k, l]) => `${l} ${hist.built[k] || 0}`).join(', '));
 check('  дороги наезжены', hist.roads > 0 && hist.linked[0] >= 0.8 * hist.linked[1], `${hist.linked[0]} из ${hist.linked[1]} городов с соседями своего народа стоят у дороги; клеток дорог ${hist.roads}`);
 check('  народы теснят чудовищ', hist.cleared > 0, `выжжено логов: ${hist.cleared}`);
 console.log('Вода:');
