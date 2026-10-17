@@ -10,7 +10,7 @@ import {FOODS} from '../data/foods.js';
 import {ambientTemp} from '../core/time.js';
 import {cellOf} from '../world/grid.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
-import {attack, shoot, canSee, reachOf} from './combat.js';
+import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
 import {eatMeal, plunder} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
@@ -96,7 +96,7 @@ TASKS.registerAll([
   // fight: archers and slingers keep their distance and shoot, everyone else closes in
   {id: 'fight', label: t => (t.shooting ? 'стреляет' : 'дерётся'), step(w, a, task) {
     const t = task.target;
-    if (!t || t.dead || !w.agents.includes(t)) { done(w, a); return; }
+    if (!t || t.dead || t.downed || !w.agents.includes(t)) { done(w, a); return; }   // the fallen are left alone
     // the foe slipped out of sight (dived, melted into the thicket): go to where it was seen last,
     // look about for a little, then give up
     if (!canSee(w, a, t)) {
@@ -116,11 +116,11 @@ TASKS.registerAll([
       const range = g.ranged.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
       task.shooting = true;
       // close in when too far, or when a rock blocks the shot
-      if (d > range * 0.9 || (shoot(w, a, t, 'hunt') === null && a.cd <= 0)) { if (approach(w, a, t.x, t.y, 1.0) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }
+      if (d > range * 0.9 || (shoot(w, a, t) === null && a.cd <= 0)) { if (approach(w, a, t.x, t.y, 1.0) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }
       return;
     }
     task.shooting = false;
-    if (d > Math.min(0.9, reachOf(a))) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
+    if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, t)) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
     else attack(w, a, t);
   }},
 
@@ -130,15 +130,20 @@ TASKS.registerAll([
     if (!b) { done(w, a); return; }
     guardStep(w, a, b, task);
   }},
-  // a wounded colonist out in the woods: go, dress the wounds, see them home
-  {id: 'aid', label: () => 'спешит на помощь раненому', step(w, a, task) {
+  // a wounded colonist out in the woods: go, dress the wounds, see them home. One who fell senseless
+  // (agents/wounds.js) is helped anywhere, inside the camp too: dressing the wound in time saves a life
+  {id: 'aid', label: t => (t.fallen ? 'спешит к упавшему' : 'спешит на помощь раненому'), step(w, a, task) {
     const b = w.agents.find(o => o.id === task.who && !o.dead);
-    if (!b || agentInZone(w, b)) { done(w, a); return; }
+    if (!b || (agentInZone(w, b) && !b.downed)) { done(w, a); return; }
     if (guardStep(w, a, b, task) === 'fight') return;
     if (Math.hypot(b.x - a.x, b.y - a.y) > 1.4) { if (approach(w, a, b.x, b.y, 1.2) === null) fail(w, a, 'к раненому не подойти', 'impossible'); return; }
+    const fallen = !!b.downed;
     giveAid(w, a, b);
-    a.task = {id: 'company', who: b.id, home: true};
+    if (fallen || agentInZone(w, b)) done(w, a); else a.task = {id: 'company', who: b.id, home: true};
   }},
+
+  // senseless on the ground after a deadly blow: nothing to do but bleed and wait for help (agents/wounds.js)
+  {id: 'downed', label: () => 'лежит без сознания', step() {}},
 
   {id: 'douse', label: () => 'тушит пожар', step(w, a) {
     if (w.stats.fireNearCamp === 0) { done(w, a); return; }

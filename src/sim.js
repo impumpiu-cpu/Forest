@@ -7,6 +7,7 @@ import {stepPlants} from './world/plants.js';
 import {stepFarms} from './settlement/farming.js';
 import {stepHerd} from './settlement/herd.js';
 import {stepLife} from './settlement/life.js';
+import {stepCrafting} from './settlement/crafting.js';
 import {stepEffects} from './agents/body.js';
 import {sampleBehaviour} from './settlement/behaviour.js';
 import {sweepReserve} from './settlement/reserve.js';
@@ -61,6 +62,7 @@ export function step(w) {
   stepFarms(w);
   stepHerd(w);
   stepLife(w);
+  stepCrafting(w);
   stepRelations(w);
   const t1 = performance.now();
   w.nav.step();

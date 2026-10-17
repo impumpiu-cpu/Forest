@@ -3,6 +3,8 @@
 //
 // An item instance is {type, dur, ammo?}. A two-handed item sits in both hand slots at once
 // (the same object in `left` and `right`).
+import {jobAccess} from './skills.js';
+import {JOBS} from '../data/jobs.js';
 import {ITEMS, SLOTS, isWeapon} from '../data/items.js';
 import {SPECIES} from '../data/species.js';
 import {log} from '../core/log.js';
@@ -165,6 +167,9 @@ export function stripAll(a, target) {
 }
 
 // ── choosing gear ────────────────────────────────────────────────────────────
+// a tool for a job this colonist may not do (agents/skills.js jobAccess) is worth nothing to them:
+// a gold pan goes to someone who can pan
+const toolUse = (a, job) => (JOBS.has(job) && !jobAccess(a, JOBS.get(job)).ok ? 0 : 1);
 // Value of an item for this colonist: fighting value grows with courage, tool value with how much
 // the colonist likes the job it speeds up, a bow is worth more to someone who likes hunting.
 function value(a, d, w) {
@@ -178,7 +183,7 @@ function value(a, d, w) {
     if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= 0.3;
   }
   if (d.block) v += d.block * 1.6 * brave;
-  for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.4 * (a.prefs[job] ?? 1);
+  for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.4 * (a.prefs[job] ?? 1) * toolUse(a, job);
   if (d.speed && d.slot === 'hand') v += (d.speed - 1) * 2;
   return v;
 }
@@ -188,7 +193,7 @@ function backValue(a, d, w, handsDefs) {
   if (d.holds) return handsDefs.some(h => h.ranged?.ammo === d.holds.ammo) ? 3 : 0;
   if (d.carry) return 0.25 + d.carry * 0.15 * Math.max(a.prefs.gather ?? 1, a.prefs.chop ?? 1);
   // a spare carried on the back: tools still help at work, weapons barely
-  let v = 0; for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.3 * (a.prefs[job] ?? 1);
+  let v = 0; for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.3 * (a.prefs[job] ?? 1) * toolUse(a, job);
   return v + (isWeapon(d) ? 0.05 : 0);
 }
 
@@ -199,7 +204,7 @@ function handsValue(w, a, hands) {
   if (hands[1] && hands[1] !== hands[0]) {
     const od = def(hands[1]);
     v += (od.block || 0) * 1.6 * (0.5 + 0.5 * a.mods.bravery) + 0.05 +
-      Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * 1.4 * (a.prefs[j] ?? 1), 0);
+      Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * 1.4 * (a.prefs[j] ?? 1) * toolUse(a, j), 0);
   }
   return v;
 }

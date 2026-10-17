@@ -10,6 +10,7 @@
 //   - with two goats, room in the pen and warm weather a kid may be born; kids grow up in `grownDays`;
 //   - when the colony is starving, a goat is slaughtered for meat (the youngest male first, so to say).
 // Tame mules work for the colony: their `effects` join the colony's modifiers (settlement/mods.js).
+import {canDoAction} from '../agents/skills.js';
 import {isFree} from './reserve.js';
 import {SPECIES} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -48,6 +49,9 @@ export const isTameable = o => !o.dead && !o.tame && o.faction === 'wild' && o.o
 // while they go for it — see claimed())
 // another herder is already after this animal (taming, milking or shearing it): reservation 'beast:<id>'
 export const claimed = (w, o, a) => !isFree(w, 'beast:' + o.id, a);
+// may this herder go after this wild beast? (species tame.tier on husbandry, agents/skills.js)
+export const canTame = (a, b) => !a || canDoAction(a, 'husbandry', SPECIES.get(b.species).tame?.tier);
+
 export const tameTargets = w => perTick(w, 'tameTargets', () => {
   const room = penRoom(w);
   if (room <= 0) return [];
@@ -73,7 +77,7 @@ export function tryTame(w, a, beast) {
   const T = tameOf(beast);
   if (!hasBait(w, T)) return 'nobait';
   for (const [r, v] of Object.entries(T.bait)) w.stock[r] -= v;
-  const chance = T.chance * (0.6 + (a.skill.herd || 0)) * (1 + 0.35 * (beast.tries || 0));
+  const chance = T.chance * (0.6 + (a.skill.husbandry || 0)) * (1 + 0.35 * (beast.tries || 0));
   w.stats.tameTries = (w.stats.tameTries || 0) + 1;
   if (w.rngs.wild() < chance) { makeTame(w, beast, a); return 'tamed'; }
   beast.tries = (beast.tries || 0) + 1;

@@ -149,7 +149,7 @@ function evening(w) {
   const n = feast ? col.length : Math.min(have, Math.ceil(col.length / 3) + brewers.length, order.length);
   if (!n) return;
   for (const a of order.slice(0, n)) {
-    if (a.task?.id === 'treat' || a.dead) continue;
+    if (a.task?.id === 'treat' || a.dead || a.downed) continue;
     w.stock.braga -= 1;
     a.drankAt = w.tick;
     const b = brewOf(a);
@@ -168,6 +168,7 @@ function dawn(w) {
     if (brewOf(a) && brewFactor(w, a) < 1) think(w, a, 'sober');
     const m = moodOf(w, a);
     a.gloom = m < LIFE.gloomBelow ? (a.gloom || 0) + 1 : 0;
+    if (a.downed) continue;   // lying senseless (agents/wounds.js): nobody walks away or sulks like that
     if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rngs.colony() < LIFE.leaveChance) { leave(w, a); continue; }
     if (a.gloom >= LIFE.sulkFrom && w.rngs.colony() < LIFE.sulkChance) {
       a.task = {id: 'sulk', until: w.tick + 3 * HOUR}; think(w, a, 'sulking'); w.chronicle.sulks = (w.chronicle.sulks || 0) + 1;

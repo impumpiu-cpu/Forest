@@ -24,10 +24,12 @@ import {HOUR, nightness} from '../core/time.js';
 import {maxHp, hpShare} from '../agents/agent.js';
 import {strength} from '../agents/squad.js';
 import {approach} from '../agents/movement.js';
-import {attack, reachOf} from '../agents/combat.js';
+import {attack, reachOf, canSee, behindRock} from '../agents/combat.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {REL} from './relations.js';
+import {stabilize} from '../agents/wounds.js';
+import {practice} from '../agents/skills.js';
 
 export const TOGETHER = {
   riskFrom: 0.3,       // a gatherer is worth escorting from this risk up…
@@ -38,6 +40,8 @@ export const TOGETHER = {
   aidBelow: 0.4,       // health share under which a colonist out in the woods needs help
   aidEvery: 12 * HOUR, // once dressed, not again for this long
   aidHeal: 0.2,        // of max health, more with the healer's skill
+  aidFallen: 1.7,      // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
+  aidPractice: 60,     // medicine practice for a life saved (units of agents/skills.js practice)
   far: 40,             // nobody goes further than this to escort or help
   mate: 0.05,          // a friend (or a foe) on the same job, ± per person…
   mateCap: 0.1,        // …at most
@@ -100,11 +104,15 @@ export function escortOption(w, a) {
   return best ? [{id: 'company', who: best.id}, bs, () => `в лесу опасно, ${best.name} ${g(best, 'один', 'одна')}${bop >= REL.friend ? ' — а это друг' : ''}`] : null;
 }
 
-// the foe closest to b within r: a beast that hunts people, the nechist, a raider
-export function threatTo(w, b, r) {
+// the foe closest to b within r: a beast that hunts people, the nechist, a raider.
+// With `viewer`, only a foe that one can see and still fight (combat.js canSee; the fallen are out):
+// a rusalka hidden under the water cannot be struck, so it must not keep a helper from the wounded.
+const FOES = new Set(['predators', 'nechist', 'raiders']);
+export function threatTo(w, b, r, viewer = null) {
   let best = null, bd = r;
   for (const o of w.agents) {
-    if (o.dead || o.tame || !['predators', 'nechist', 'raiders'].includes(o.faction)) continue;
+    if (o.dead || o.tame || !FOES.has(o.faction)) continue;
+    if (viewer && (o.downed || !canSee(w, viewer, o))) continue;
     const d = dist(o, b); if (d < bd) { bd = d; best = o; }
   }
   return best;
@@ -113,11 +121,11 @@ export function threatTo(w, b, r) {
 // one step of guarding `b` (the escort and aid tasks): fight what comes for them, else keep close.
 // Returns 'fight' or 'near' or 'far'.
 export function guardStep(w, a, b, task) {
-  const foe = threatTo(w, b, TOGETHER.guard);
+  const foe = threatTo(w, b, TOGETHER.guard, a);
   if (foe) {
     task.fought ??= foe.id;
     const d = dist(a, foe);
-    if (d > Math.min(0.9, reachOf(a))) approach(w, a, foe.x, foe.y, 1.15); else attack(w, a, foe);
+    if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.15); else attack(w, a, foe);
     a.lastFight = w.tick;
     return 'fight';
   }
@@ -143,27 +151,38 @@ export function enterEscort(w, a, task) {
 
 // ── aid
 const helper = (w, id) => colonists(w).find(o => o.task?.id === 'aid' && o.task.who === id);
-const needsAid = (w, b) => hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === 'treat' && b.task.lying) &&
-  !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery);
+// the fallen (agents/wounds.js) need help wherever they lie, and before anyone else
+const needsAid = (w, b) => !!b.downed || (hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === 'treat' && b.task.lying) &&
+  !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery));
+const aidScore = b => (b.downed ? TOGETHER.aidFallen : 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2);
+const aidWhy = b => (b.downed ? `${b.name} ${g(b, 'упал', 'упала')} без сознания и истекает кровью` : `${b.name} ${g(b, 'ранен', 'ранена')} в лесу: здоровье ${Math.round(hpShare(b) * 100)}%`);
 
 export function aidOption(w, a) {
   if (hpShare(a) < 0.5) return null;
-  if (a.task?.id === 'aid') { const b = byId(w, a.task.who); if (b && needsAid(w, b)) return [a.task, 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2, () => `${b.name} ${g(b, 'ранен', 'ранена')} в лесу`]; }
+  if (a.task?.id === 'aid') { const b = byId(w, a.task.who); if (b && needsAid(w, b)) return [a.task, aidScore(b), () => aidWhy(b)]; }
   let best = null, bs = -Infinity;
   for (const b of colonists(w)) {
     if (b === a || !needsAid(w, b) || dist(a, b) > TOGETHER.far) continue;
     const h = helper(w, b.id); if (h && h !== a) continue;
     const op = opinion(a, b);
-    if (op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;   // the merciful help even those they cannot stand
-    const s = 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2 + 0.05 * clamp(op, -2, 4);
+    // the merciful help even those they cannot stand; a life at stake, anyone helps
+    if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
+    const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
     if (s > bs) { bs = s; best = b; }
   }
-  return best ? [{id: 'aid', who: best.id}, bs, () => `${best.name} ${g(best, 'ранен', 'ранена')} в лесу: здоровье ${Math.round(hpShare(best) * 100)}%`] : null;
+  return best ? [{id: 'aid', who: best.id, fallen: !!best.downed}, bs, () => aidWhy(best)] : null;
 }
 
-// arrived: dress the wounds, then see them home
+// arrived: dress the wounds, then see them home. For the fallen this is what saves the life
 export function giveAid(w, a, b) {
-  const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.heal || 0)));
+  if (b.downed) {
+    stabilize(w, a, b);
+    bond(w, b, a, TOGETHER.bondAid * 2); bond(w, a, b, TOGETHER.bondAid * 0.5);
+    const s = social(w); if (s) s.aid++;
+    practice(a, 'medicine', TOGETHER.aidPractice);
+    return;
+  }
+  const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
   b.hp += amt; b.aidedAt = w.tick;
   bond(w, b, a, TOGETHER.bondAid); bond(w, a, b, TOGETHER.bondAid * 0.3);
   think(w, b, 'aided', {name: a.name, gender: a.gender}); think(w, a, 'gaveAid', {name: b.name});

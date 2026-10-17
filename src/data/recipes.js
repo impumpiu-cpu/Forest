@@ -7,6 +7,10 @@
 //   fuel:  units of furnace heat taken with the materials;  heat: how hot a fire it needs — 1: wood will
 //          do (copper, bronze, gold, silver), 2 (default): coal (iron). Fuel is picked in settlement/stock.js
 //   tool:  a town-made tool that must be in the stock (cupels for silver)
+//   skill: the skill the order trains and reads (data/skills.js); by default the station's (STATION_SKILL)
+//   tier:  1–4 (data/skills.js TIERS), 1 by default. Above 1 only a worker whose letter for the recipe's
+//          skill reaches the tier may take the order (agents/skills.js recipeAccess): a sword needs S 6,
+//          cupellation of silver needs I 6. T1 recipes stay open to anyone, so everyone can learn
 //
 // ctx (see settlement/crafting.js): pop, owned(id), likes(job), fans(food), fishing (a lake has fish),
 //   season (id), drying (racks work this season), stockpile (×: how keen on stores — autumn most),
@@ -36,14 +40,14 @@ const STORES_PER_HEAD = 10;
 RECIPES.registerAll([
   // clothing and armour: everyone should wear something, better pieces replace worse ones
   // bast clothes: linden bark stripped from the logs — rough, but anyone can make them from day one
-  {id: 'clothes', at: 'crafthut', cost: {wood: 3}, work: 1300, makes: {item: 'clothes'},
+  {id: 'clothes', skill: 'tailoring', at: 'crafthut', cost: {wood: 3}, work: 1300, makes: {item: 'clothes'},
     want: c => (short(c.owned('clothes') + c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 3 : 0)},
   // a fur coat for everyone before the cold sets in (wanted from late summer)
-  {id: 'furcoat', at: 'crafthut', cost: {hide: 3, leather: 1}, work: 1200, makes: {item: 'furcoat'},
+  {id: 'furcoat', tier: 2, skill: 'leatherwork', at: 'crafthut', cost: {hide: 3, leather: 1}, work: 1200, makes: {item: 'furcoat'},
     want: c => (c.season !== 'spring' && short(c.owned('furcoat'), c.pop) ? (c.season === 'summer' ? 1.6 : 2.9) : 0)},
-  {id: 'jerkin', at: 'crafthut', cost: {leather: 3}, work: 1500, makes: {item: 'jerkin'},
+  {id: 'jerkin', tier: 2, skill: 'leatherwork', at: 'crafthut', cost: {leather: 3}, work: 1500, makes: {item: 'jerkin'},
     want: c => (short(c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 2.6 : 0)},
-  {id: 'hardleather', at: 'crafthut', cost: {leather: 3, bone: 3}, work: 1800, makes: {item: 'hardleather'},
+  {id: 'hardleather', tier: 3, skill: 'leatherwork', at: 'crafthut', cost: {leather: 3, bone: 3}, work: 1800, makes: {item: 'hardleather'},
     want: c => (short(c.owned('hardleather'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
 
   // weapons
@@ -55,10 +59,10 @@ RECIPES.registerAll([
     want: c => (short(c.owned('shield'), Math.ceil(c.pop / 3)) ? 1.3 : 0)},
   {id: 'staff', at: 'crafthut', cost: {wood: 2}, work: 600, makes: {item: 'staff'},
     want: c => (short(c.owned('staff'), c.timid) ? 1.0 : 0)},
-  {id: 'sling', at: 'crafthut', cost: {hide: 1}, work: 600, makes: {item: 'sling'},
+  {id: 'sling', skill: 'leatherwork', at: 'crafthut', cost: {hide: 1}, work: 600, makes: {item: 'sling'},
     want: c => (short(c.owned('sling') + c.owned('bow'), Math.max(2, Math.ceil(c.pop / 3))) ? 2.0 : 0)},
   // the bow is the better hunting weapon and needs the hunters' lodge; the sling needs nothing
-  {id: 'bow', at: 'crafthut', cost: {wood: 3, leather: 1, rope: 1}, work: 800, makes: {item: 'bow'}, needs: ['lodge'],
+  {id: 'bow', tier: 2, at: 'crafthut', cost: {wood: 3, leather: 1, rope: 1}, work: 800, makes: {item: 'bow'}, needs: ['lodge'],
     want: c => (short(c.owned('bow'), Math.max(1, c.likes('hunt'))) ? 2.4 : 0)},
   {id: 'arrows', at: 'crafthut', cost: {wood: 1, bone: 1}, work: 150, makes: {resource: 'arrows', n: 5},
     want: c => (c.bows && c.stock('arrows') < c.bows * 10 ? 2.7 : 0)},
@@ -68,9 +72,9 @@ RECIPES.registerAll([
     want: c => (short(c.owned('axe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.2 : 0)},
   {id: 'maul', at: 'crafthut', cost: {wood: 4, bone: 1}, work: 750, makes: {item: 'maul'},
     want: c => (short(c.owned('maul'), Math.min(3, 1 + c.likes('build') + c.likes('mine'))) ? 1.4 : 0)},
-  {id: 'quiver', at: 'crafthut', cost: {wood: 1, hide: 1}, work: 450, makes: {item: 'quiver'},
+  {id: 'quiver', skill: 'leatherwork', at: 'crafthut', cost: {wood: 1, hide: 1}, work: 450, makes: {item: 'quiver'},
     want: c => (short(c.owned('quiver'), c.owned('bow')) ? 3 : 0)},
-  {id: 'basket', at: 'crafthut', cost: {reeds: 4}, work: 450, makes: {item: 'basket'},
+  {id: 'basket', skill: 'tailoring', at: 'crafthut', cost: {reeds: 4}, work: 450, makes: {item: 'basket'},
     want: c => (short(c.owned('basket'), Math.max(1, c.likes('gather'))) ? 1.2 : 0)},
 
   // rods, like bows and slings, come from the craftsman's hut: one for everyone who likes fishing or
@@ -82,48 +86,51 @@ RECIPES.registerAll([
   {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'coal', n: 3},
     want: c => (c.has('smelter') ? (c.fuel < 16 ? 1.8 : 0) : (c.stock('coal') < 6 ? 0.8 : 0))},
 
-  // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too
+  // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too. Melting is metallurgy (I):
+  // plain ore and native metal anyone can melt, gold dust takes care (T2), cupelling silver from ore skill (T3)
   {id: 'smelt', at: 'smelter', cost: {ironore: 2}, fuel: 1, heat: 2, work: 320, makes: {resource: 'iron', n: 1},
     want: c => (c.stock('iron') < 10 ? 2.2 : 0)},
   {id: 'smeltBronze', at: 'smelter', cost: {bronzeOre: 2}, fuel: 1, heat: 1, work: 280, makes: {resource: 'bronze', n: 1},
     want: c => (c.stock('bronze') < 8 ? 2.0 : 0)},
-  {id: 'goldDustBar', at: 'smelter', cost: {goldDust: 12}, fuel: 0.5, heat: 1, work: 200, makes: {resource: 'goldBar', n: 1},
+  {id: 'goldDustBar', tier: 2, at: 'smelter', cost: {goldDust: 12}, fuel: 0.5, heat: 1, work: 200, makes: {resource: 'goldBar', n: 1},
     want: () => 1.3},
   {id: 'goldNuggetBar', at: 'smelter', cost: {goldNugget: 1}, fuel: 0.5, heat: 1, work: 120, makes: {resource: 'goldBar', n: 1},
     want: () => 1.2},
-  {id: 'silverOreBar', at: 'smelter', cost: {silverOre: 3}, fuel: 1, heat: 1, tool: 'cupels', work: 320, makes: {resource: 'silverBar', n: 1},
+  {id: 'silverOreBar', tier: 3, at: 'smelter', cost: {silverOre: 3}, fuel: 1, heat: 1, tool: 'cupels', work: 320, makes: {resource: 'silverBar', n: 1},
     want: () => 1.4},
   {id: 'silverNativeBar', at: 'smelter', cost: {silverNative: 1}, fuel: 0.5, heat: 1, work: 120, makes: {resource: 'silverBar', n: 1},
     want: () => 1.2},
   // bronze cast in clay moulds at the furnace: no anvil needed
   // a silver dagger cast whole: no iron and no forge needed, the first answer to a vampire
-  {id: 'silverknife', at: 'smelter', cost: {silverBar: 2, leather: 1}, fuel: 0.5, heat: 1, work: 500, makes: {item: 'silverknife'},
+  {id: 'silverknife', tier: 2, skill: 'smithing', at: 'smelter', cost: {silverBar: 2, leather: 1}, fuel: 0.5, heat: 1, work: 500, makes: {item: 'silverknife'},
     want: c => (c.silverFoes ? (c.stock('silverBar') >= 2 && short(c.silvered(), Math.ceil(c.pop / 2)) ? (c.has('forge') ? 1.4 : 2.4) : 0)
       : c.stock('silverBar') >= 4 && c.silvered() < 1 ? 0.6 : 0)},
-  {id: 'bronzespear', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzespear'},
+  {id: 'bronzespear', tier: 2, skill: 'smithing', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzespear'},
     want: c => (short(c.owned('sword') + c.owned('ironspear') + c.owned('bronzespear'), c.pop) ? 2.0 : 0)},
-  {id: 'bronzeaxe', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzeaxe'},
+  {id: 'bronzeaxe', skill: 'smithing', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzeaxe'},
     want: c => (short(c.owned('ironaxe') + c.owned('bronzeaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 1.9 : 0)},
 
-  // ── the forge: iron blades and lamellar armour; each piece takes one fuel
-  {id: 'sword', at: 'forge', cost: {iron: 3, leather: 1}, fuel: 1, work: 900, makes: {item: 'sword'},
+  // ── the forge: iron blades and lamellar armour; each piece takes one fuel. Forging is smithing (S): an axe
+  // head anyone can beat out (T1, the apprentice's work), a spear point wants a stronger arm (T2), a sword and
+  // lamellar a real smith (T3), a silvered sword a master (T4)
+  {id: 'sword', tier: 3, at: 'forge', cost: {iron: 3, leather: 1}, fuel: 1, work: 900, makes: {item: 'sword'},
     want: c => (short(c.owned('sword'), Math.ceil(c.pop / 2)) ? 2.5 : 0)},
-  {id: 'ironspear', at: 'forge', cost: {iron: 2, wood: 2}, fuel: 1, work: 700, makes: {item: 'ironspear'},
+  {id: 'ironspear', tier: 2, at: 'forge', cost: {iron: 2, wood: 2}, fuel: 1, work: 700, makes: {item: 'ironspear'},
     want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
   // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare
   // Before anyone has seen a vampire: a few, while there is silver to spare. Once one has come
   // (ctx.silverFoes): a silver blade for every second colonist, and the last bar goes into it.
-  {id: 'swordSilver', at: 'forge', cost: {iron: 3, leather: 1, silverBar: 1}, fuel: 1, work: 1100, makes: {item: 'sword', silver: true},
+  {id: 'swordSilver', tier: 4, at: 'forge', cost: {iron: 3, leather: 1, silverBar: 1}, fuel: 1, work: 1100, makes: {item: 'sword', silver: true},
     want: c => silverWant(c, 1.3, 2.6)},
-  {id: 'spearSilver', at: 'forge', cost: {iron: 2, wood: 2, silverBar: 1}, fuel: 1, work: 900, makes: {item: 'ironspear', silver: true},
+  {id: 'spearSilver', tier: 3, at: 'forge', cost: {iron: 2, wood: 2, silverBar: 1}, fuel: 1, work: 900, makes: {item: 'ironspear', silver: true},
     want: c => silverWant(c, 1.2, 2.4)},
-  {id: 'lamellar', at: 'forge', cost: {iron: 4, leather: 2}, fuel: 2, work: 1600, makes: {item: 'lamellar'},
+  {id: 'lamellar', tier: 3, at: 'forge', cost: {iron: 4, leather: 2}, fuel: 2, work: 1600, makes: {item: 'lamellar'},
     want: c => (short(c.owned('lamellar'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
 
   // ── the jeweller: a gem set into bone, wood, stone or iron (data/luxury.js); the scarcer piece goes first
-  ...LUXURY.all().map(l => ({id: l.id, at: 'jeweler', cost: {gems: l.gems, ...l.setting}, work: l.work, makes: {resource: l.id, n: 1},
+  ...LUXURY.all().map(l => ({id: l.id, tier: l.tier, at: 'jeweler', cost: {gems: l.gems, ...l.setting}, work: l.work, makes: {resource: l.id, n: 1},
     want: c => Math.max(0, l.want - c.stock(l.id) * l.fade)})),
 
   // ── food for the lean months (data/foods.js). Fresh food beyond what the colony eats in a few
@@ -146,11 +153,11 @@ RECIPES.registerAll([
   {id: 'stewSalted', at: 'hearth', cost: {saltMeat: 1, driedBerries: 1}, work: 140, makes: {resource: 'stew', n: 1}, want: c => (c.stock('stew') < c.pop * 0.5 ? 1.1 : 0)},
 
   // ── the outpost's crafts: rope, rough cloth, pots, boards
-  {id: 'rope', at: 'crafthut', cost: {fiber: 3}, work: 160, makes: {resource: 'rope', n: 1},
+  {id: 'rope', skill: 'tailoring', at: 'crafthut', cost: {fiber: 3}, work: 160, makes: {resource: 'rope', n: 1},
     want: c => (c.stock('rope') < 6 ? 1.7 : 0)},
   {id: 'cloth', at: 'loom', cost: {fiber: 3}, work: 300, makes: {resource: 'cloth', n: 1},
     want: c => (c.stock('cloth') < 8 ? 1.5 : 0)},
-  {id: 'linen', at: 'crafthut', cost: {cloth: 2}, work: 900, makes: {item: 'linen'},
+  {id: 'linen', tier: 2, skill: 'tailoring', at: 'crafthut', cost: {cloth: 2}, work: 900, makes: {item: 'linen'},
     want: c => (short(c.owned('linen') + c.owned('furcoat') + c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 2.2 : 0)},
   {id: 'pots', at: 'potter', cost: {clay: 2, wood: 1}, work: 300, makes: {resource: 'pots', n: 3},
     want: c => (c.stock('pots') < Math.min(30, c.food / 5) ? 1.6 : 0)},
@@ -159,18 +166,18 @@ RECIPES.registerAll([
 
   // ── from the pen: cheese pressed at the hearth keeps all winter (better with salt), wool spun and
   // woven into coats and cloth
-  {id: 'cheeseSalt', at: 'hearth', cost: {milk: 3, salt: 0.5}, work: 160, makes: {resource: 'cheese', n: 1.5},
+  {id: 'cheeseSalt', tier: 2, at: 'hearth', cost: {milk: 3, salt: 0.5}, work: 160, makes: {resource: 'cheese', n: 1.5},
     want: c => (c.stock('milk') >= 3 ? 2.3 : 0)},
-  {id: 'cheese', at: 'hearth', cost: {milk: 3}, work: 160, makes: {resource: 'cheese', n: 1},
+  {id: 'cheese', tier: 2, at: 'hearth', cost: {milk: 3}, work: 160, makes: {resource: 'cheese', n: 1},
     want: c => (c.stock('milk') >= 4 ? 2.25 : 0)},
-  {id: 'woolens', at: 'crafthut', cost: {wool: 4}, work: 1100, makes: {item: 'woolens'},
+  {id: 'woolens', tier: 2, skill: 'tailoring', at: 'crafthut', cost: {wool: 4}, work: 1100, makes: {item: 'woolens'},
     want: c => (short(c.owned('woolens') + c.owned('furcoat'), c.pop) ? 2.4 : 0)},
   {id: 'clothWool', at: 'loom', cost: {wool: 2}, work: 260, makes: {resource: 'cloth', n: 1},
     want: c => (c.stock('cloth') < 8 && c.stock('wool') > 6 ? 1.4 : 0)},
 
   // ── home brew, set in pots by the hearth: only from what is left over after the stores are full
   ...[['bragaHoney', {honey: 1, berries: 2}, 3], ['bragaBarley', {barley: 3}, 3], ['bragaBerries', {berries: 4}, 2]].map(([id, cost, n]) => ({
-    id, at: 'hearth', cost, work: 200, makes: {resource: 'braga', n},
+    id, tier: 2, at: 'hearth', cost, work: 200, makes: {resource: 'braga', n},
     want: c => (c.stock('braga') < c.pop * 2 && c.food > c.pop * 6 && Object.entries(cost).every(([r, v]) => c.stock(r) > v + c.pop * 0.5) ? 0.9 : 0)})),
 
   // ── furniture (data/furniture.js): made while there is a free place for it in a solid building, and
@@ -179,7 +186,7 @@ RECIPES.registerAll([
     want: c => (c.freeSlots > 0 && Object.entries(f.recipe.cost).every(([r, v]) => c.spare(r) >= v) ? 0.7 + f.comfort * 4 : 0)})),
 
   // the dead ends of the woods put to use: fox fur lines a coat, wax becomes candles for the shrine
-  {id: 'furlined', at: 'crafthut', cost: {hide: 2, furs: 2, leather: 1}, work: 1300, makes: {item: 'furlined'},
+  {id: 'furlined', tier: 3, skill: 'leatherwork', at: 'crafthut', cost: {hide: 2, furs: 2, leather: 1}, work: 1300, makes: {item: 'furlined'},
     want: c => (c.season !== 'spring' && c.stock('furs') >= 2 && short(c.owned('furlined'), Math.ceil(c.pop / 3)) ? 2.0 : 0)},
   {id: 'candles', at: 'crafthut', cost: {wax: 1}, work: 120, makes: {resource: 'candles', n: 4},
     want: c => (c.has('shrine') && c.stock('candles') < 8 ? 0.8 : 0)},

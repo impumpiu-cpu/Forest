@@ -47,6 +47,9 @@ import {moodOf, moodLabel, wishes} from '../agents/mind.js';
 import {councilWish} from '../settlement/council.js';
 import {boldness} from '../agents/brains/predator.js';
 import {STATS} from '../data/special.js';
+import {WOUNDS} from '../data/wounds.js';
+import {activeSkills, TIERS} from '../data/skills.js';
+import {skillTier, softCap, canMake, recipeNeed, reasonText, recipeAccess, jobAccess, actionAccess} from '../agents/skills.js';
 import {VALUES, axisWord} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
@@ -72,6 +75,53 @@ function specialHtml(a) {
   if (!a.special) return '';
   const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
   return `<div class="spc">${STATS.all().map(s => `<span title="${s.label}: ${s.note}. У этой расы ${lim[s.id][0]}–${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join('')}</div>`;
+}
+
+// Skills grouped by their SPECIAL letter: value, the soft ceiling the letter sets (10 × letter) and the
+// highest tier of actions it opens. The liked job's skill is marked.
+function skillsHtml(a) {
+  if (!a.skill) return '';
+  const liked = JOBS.get(a.likes)?.skill, disliked = JOBS.get(a.dislikes)?.skill;
+  return STATS.all().map(st => {
+    const list = activeSkills().filter(s => s.stat === st.id);
+    if (!list.length) return '';
+    const v = a.special?.[st.id], tier = skillTier(a, list[0].id), cap = Math.round(softCap(a, list[0].id) * 100);
+    const chips = list.map(s => [s, a.skill[s.id] || 0]).sort((x, y) => y[1] - x[1]).map(([s, x]) => {
+      const n = Math.round(x * 100), top = n >= cap && cap < 100;
+      return `<span class="chip${s.id === liked ? ' like' : s.id === disliked ? ' dislike' : ''}" title="${s.label}: ${n} из 100${top ? '; выше потолка учится медленно' : ''}">${s.short} ${n}${top ? '·' : ''}</span>`;
+    }).join('');
+    return `<div class="sk-row"><span class="sk-stat" title="${st.label} ${v ?? '—'}: потолок навыков ${cap}, доступно до «${TIERS[tier - 1].label}» (T${tier})">${st.short}${v != null ? ' ' + v : ''} · T${tier}</span><div class="chips">${chips}</div></div>`;
+  }).join('');
+}
+
+// a deadly wound and what it left (agents/wounds.js): bleeding now, a grave wound healing, traumas for life
+function woundsHtml(w, a) {
+  const out = [];
+  if (a.downed) out.push(`<span class="chip dislike" title="Без помощи умрёт">без сознания: ${Math.max(0, Math.ceil((a.downed.until - w.tick) / HOUR * 10) / 10)} ч до смерти</span>`);
+  for (const x of a.wounds || []) {
+    const W = WOUNDS.get(x.id);
+    const left = x.until != null ? `, заживёт через ${Math.max(1, Math.ceil((x.until - w.tick) / DAY))} дн.` : '';
+    out.push(`<span class="chip${W.trauma ? ' dislike' : ''}" title="${W.label}: ${W.note}${left}">${W.label}</span>`);
+  }
+  return out.length ? `<div class="chips">${out.join('')}</div>` : '';
+}
+
+// what this colonist may not do yet and why: tiered recipes, jobs and parts of jobs (agents/skills.js),
+// nearest first (smallest gap to the letter)
+function lockedHtml(a) {
+  if (!a.special || !a.prefs) return '';
+  const all = [
+    ...RECIPES.all().map(r => [(r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short) + (r.makes.silver ? ' посеребр.' : ''), recipeAccess(a, r)]),
+    ...JOBS.all().filter(j => j.tier > 1).map(j => [j.label, jobAccess(a, j)]),
+    ...JOBS.all().filter(j => j.tendTier).map(j => ['лечить в хижине', actionAccess(a, j.skill, j.tendTier)]),
+    ...JOBS.all().filter(j => j.riskyTier).map(j => ['охотиться на крупного зверя', actionAccess(a, j.skill, j.riskyTier)]),
+    ...SPECIES.filter(sp => sp.tame?.tier > 1).map(sp => ['приручать: ' + sp.label, actionAccess(a, 'husbandry', sp.tame.tier)]),
+  ].filter(([, r]) => !r.ok).map(([what, r]) => [what, r.reasons[0]]);
+  if (!all.length) return '<p class="muted pc-small">Доступно всё, что есть в поселении.</p>';
+  all.sort((x, y) => (x[1].need - x[1].have) - (y[1].need - y[1].have));
+  const seen = new Set(), rows = [];
+  for (const [what, why] of all) { if (seen.has(what)) continue; seen.add(what); rows.push(`<li title="T${why.tier}">${esc(what)}: ${reasonText(why)}</li>`); if (rows.length >= 6) break; }
+  return `<ul class="pc-list">${rows.join('')}</ul>${all.length > rows.length ? `<p class="muted pc-small">и ещё ${all.length - rows.length}</p>` : ''}`;
 }
 
 const raceOf = a => raceLabel(SPECIES.get(a.species), a);
@@ -179,15 +229,17 @@ export class Panel {
         const same = g.kind === 'item' && lines.find(x => x.g.kind === 'item' && x.g.type === g.type && (x.g.q || 0) === (g.q || 0));
         if (same) same.n++; else lines.push({g, n: g.kind === 'res' ? g.n : 1});
       }
-      const rows = lines.sort((x, y) => (x.g.kind === y.g.kind ? askPrice(y.g) - askPrice(x.g) : x.g.kind === 'item' ? -1 : 1)).map(({g, n}) => {
-        const p = askPrice(g), can = gold >= p;
+      // prices at the terms the negotiator got (settlement/trade.js termsOf); plain until the trade starts
+      const tb = c.terms?.b || 0;
+      const rows = lines.sort((x, y) => (x.g.kind === y.g.kind ? askPrice(y.g, tb) - askPrice(x.g, tb) : x.g.kind === 'item' ? -1 : 1)).map(({g, n}) => {
+        const p = askPrice(g, tb), can = gold >= p;
         return `<div class="wrow${g.kind === 'item' && g.q ? ' fine' : ''}"><span>${esc(goodsLabel(g))}${n > 1 || g.kind === 'res' ? ' ×' + n : ''}</span><b class="${can ? '' : 'dear'}">${p} зол.${n > 1 ? ' / шт.' : ''}</b></div>`;
       }).join('');
-      goods = `<h2>Купец ${esc(c.name)}</h2><p class="small muted">Сейчас: ${phase[c.phase]}. Груз ${units} из ${cap} мест, в кошельке у купца ${Math.floor(c.purse)} зол. Купец просит ×${TRADE.ask} от цены и платит ×${TRADE.bid}.</p><div class="wares">${rows || '<p class="muted small">Всё распродано.</p>'}</div>`;
+      goods = `<h2>Купец ${esc(c.name)}</h2><p class="small muted">Сейчас: ${phase[c.phase]}. Груз ${units} из ${cap} мест, в кошельке у купца ${Math.floor(c.purse)} зол. Купец просит ×${+(TRADE.ask - tb).toFixed(2)} от цены и платит ×${+(TRADE.bid + tb).toFixed(2)}${c.terms?.name ? ` (торговал${c.terms.f ? 'ась' : 'ся'} ${esc(c.terms.name)})` : ''}.</p><div class="wares">${rows || '<p class="muted small">Всё распродано.</p>'}</div>`;
     }
     const deals = w.trade.deals.map(d => {
       const list = xs => xs.map(([l, n, g]) => `${esc(l)}${n > 1 ? ' ×' + n : ''}`).join(', ');
-      return `<li><b>День ${d.day}, ${esc(d.trader)}</b>: ${d.sold.length ? 'продали ' + list(d.sold) + ` (+${d.earned})` : 'продать было нечего'}; ${d.bought.length ? 'купили ' + list(d.bought) + ` (−${d.spent})` : 'ничего не купили'}. В казне ${Math.floor(d.gold)}.</li>`;
+      return `<li><b>День ${d.day}, ${esc(d.trader)}</b>${d.by ? ` (переговорщик ${esc(d.by)}, ${d.b > 0 ? '+' : ''}${Math.round((d.b || 0) * 100)}%)` : ''}: ${d.sold.length ? 'продали ' + list(d.sold) + ` (+${d.earned})` : 'продать было нечего'}; ${d.bought.length ? 'купили ' + list(d.bought) + ` (−${d.spent})` : 'ничего не купили'}. В казне ${Math.floor(d.gold)}.</li>`;
     }).join('');
     this.set('tradeBox', `${head}${goods}<h2>Последние сделки</h2>${deals ? `<ul class="deals">${deals}</ul>` : '<p class="muted small">Торговли ещё не было. Караваны ходят по Имперскому тракту с 10-го дня, раз в 10 дней, и приходят не всегда.</p>'}`);
   }
@@ -428,8 +480,11 @@ export class Panel {
         const cost = Object.entries(r.cost).map(([res, v]) => `<span class="cost${(w.stock[res] || 0) >= v ? '' : ' short'}">${v} ${RESOURCES.get(res).short}</span>`).join('') +
           (r.fuel ? (() => { const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w)); return `<span class="cost${f ? '' : ' short'}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : (r.heat ?? 2) >= 2 ? `${r.fuel} угля` : `${r.fuel} угля или ${r.fuel * 3} дров`}</span>`; })() : '') +
           (r.tool ? `<span class="cost${(w.stock[r.tool] || 0) >= 1 ? '' : ' short'}">${RESOURCES.get(r.tool).short}</span>` : '');
-        const want = r.want(ctx);
-        return `<div class="rc${r.id === cur ? ' cur' : ''}"><b>${esc(what)}</b><span class="costs">${cost}</span><span class="muted">${r.id === cur ? 'в работе' : want > 0 ? 'нужно' : 'хватает'}</span></div>`;
+        const want = r.want(ctx), need = recipeNeed(r);
+        // the tier: who in the colony may take it (agents/skills.js); nobody — the order waits for a master
+        const able = need ? colonists(w).filter(x => canMake(x, r)).map(x => x.name) : null;
+        const tier = need ? `<span class="cost${able.length ? '' : ' short'}" title="${able.length ? 'Могут: ' + esc(able.join(', ')) : 'В поселении нет такого мастера'}">T${need.tier} · ${reasonText(need)}</span>` : '';
+        return `<div class="rc${r.id === cur ? ' cur' : ''}"><b>${esc(what)}</b><span class="costs">${tier}${cost}</span><span class="muted">${r.id === cur ? 'в работе' : need && !able.length ? 'некому' : want > 0 ? 'нужно' : 'хватает'}</span></div>`;
       }).join('');
       extra = `<section><h4>Что здесь делают</h4><div class="recipes">${recs}</div></section>`;
     }
@@ -465,6 +520,7 @@ export class Panel {
   // why the colonist does what it does: the choice at the last think, the runner-up, the way, the last
   // task dropped before it was done (agents/brains/colonist.js a.why, a.lastStop; agents/movement.js a.route)
   whyHtml(w, a) {
+    if (a.downed) return '';   // senseless: no choice to explain (agents/wounds.js)
     const y = a.why, rows = [];
     const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
     if (y) {
@@ -525,10 +581,8 @@ export class Panel {
     const slots = SLOTS.map(s => {
       const it = a.equip?.[s.id];
       const txt = it ? itemDef(it).short + (Number.isFinite(it.dur) ? ` · ${Math.max(0, Math.round(it.dur / itemDef(it).dur * 100))}%` : '') + (it.ammo != null ? ` · стрел ${it.ammo}` : '') : '—';
-      return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${itemDef(it).rank}"` : ''}>${esc(txt)}</dd>`;
+      return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${itemDef(it).rank}${it.maker ? ', работа: ' + esc(it.maker) : ''}"` : ''}>${esc(txt)}</dd>`;
     }).join('');
-    const skills = JOBS.filter(j => j.preferable).map(j => [j, a.skill[j.id] || 0]).sort((x, y) => y[1] - x[1])
-      .map(([j, v]) => `<span class="chip${j.id === a.likes ? ' like' : j.id === a.dislikes ? ' dislike' : ''}">${j.short} ${Math.round(v * 100)}</span>`).join('');
     const today = dayOf(w.tick);
     let lastDay = null;
     const diary = a.diary.slice(0, 14).map(e => {
@@ -553,6 +607,7 @@ export class Panel {
           <p class="pc-small">${body}</p>
           ${specialHtml(a)}
           ${inn ? `<div class="chips">${inn}</div>` : ''}
+          ${woundsHtml(w, a)}
           <h4>Мировоззрение</h4>
           ${a.align ? `<p class="pc-small">${axisWord('order', a.align.order)} · ${axisWord('mercy', a.align.mercy)}</p>` : ''}
           ${vals ? `<div class="chips">${vals}</div>` : ''}
@@ -560,7 +615,8 @@ export class Panel {
         </section>
         <section><h4>Хочет</h4>${want.length ? `<ul class="pc-list">${want.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="muted pc-small">Всем доволен.</p>'}
           <h4>Снаряжение</h4><dl class="kv">${slots}</dl>
-          <h4>Навыки</h4><div class="chips">${skills}</div>
+          <h4>Навыки</h4>${skillsHtml(a)}
+          <h4>Пока не по силам</h4>${lockedHtml(a)}
         </section>
         <section><h4>Дневник</h4><ul class="pc-diary">${diary || '<li class="muted">Пока ничего.</li>'}</ul></section>
       </div>`;

@@ -22,6 +22,9 @@ import {PLANTS} from '../src/data/plants.js';
 import {CROPS} from '../src/data/crops.js';
 import {MIGRATIONS} from '../src/data/migrations.js';
 import {STATS} from '../src/data/special.js';
+import {WOUNDS} from '../src/data/wounds.js';
+import {BASE_MODS} from '../src/data/traits.js';
+import {SKILLS, FROM_JOB, STATION_SKILL, recipeSkill, TIERS} from '../src/data/skills.js';
 import {BIOMES, RARITY, FAUNA_FLOOR} from '../src/data/biomes.js';
 import {faunaFrom} from '../src/world/region.js';
 import {VALUES} from '../src/data/values.js';
@@ -191,6 +194,52 @@ for (const f of FURNITURE.all()) {
 }
 for (const r of RESOURCES.all()) if (!sources.has(r.id)) warn(`ресурс ${r.id}: ниоткуда не добывается`);
 
+// skills (data/skills.js): every job and every recipe leads to an active skill on a real SPECIAL letter;
+// old job ids all have a way into the catalogue; a reserved skill is reached by nothing
+const activeSkill = (where, id) => { if (!SKILLS.has(id)) err(`${where}: нет навыка «${id}»`); else if (SKILLS.get(id).status !== 'active') err(`${where}: навык «${id}» зарезервирован, его ещё нельзя тренировать`); };
+for (const s of SKILLS.all()) {
+  if (!STATS.has(s.stat)) err(`навык ${s.id}: нет характеристики «${s.stat}»`);
+  if (s.stat === 'L') err(`навык ${s.id}: у удачи нет тренируемых навыков`);
+  if (!['active', 'reserved'].includes(s.status)) err(`навык ${s.id}: статус «${s.status}»`);
+}
+for (const j of JOBS.all()) {
+  activeSkill(`работа ${j.id}`, j.skill);
+  if (j.gatherSkill) activeSkill(`работа ${j.id} (сбор)`, j.gatherSkill);
+  if (!FROM_JOB[j.id]) err(`работа ${j.id}: старые сохранения не знают, в какой навык перенести её опыт (FROM_JOB)`);
+}
+for (const [job, list] of Object.entries(FROM_JOB)) list.forEach(id => activeSkill(`перенос ${job}`, id));
+for (const st of Object.keys(STATION_SKILL)) bld(`STATION_SKILL ${st}`, st);
+for (const r of RECIPES.all()) { if (!recipeSkill(r)) err(`рецепт ${r.id}: не указан навык, и у станции ${r.at} его нет`); else activeSkill(`рецепт ${r.id}`, recipeSkill(r)); }
+if (TIERS.some((t, k) => k && t.min <= TIERS[k - 1].min)) err('тиры должны идти по возрастанию порога');
+for (const r of RECIPES.all()) if (r.tier != null && !(Number.isInteger(r.tier) && r.tier >= 1 && r.tier <= TIERS.length)) err(`рецепт ${r.id}: тир ${r.tier} вне 1–${TIERS.length}`);
+// T1 is open to anyone: every skill a station trains must have a T1 recipe there, or a weak worker could never start
+{
+  const open = new Set(RECIPES.filter(r => (r.tier || 1) === 1).map(r => r.at + ':' + recipeSkill(r)));
+  for (const r of RECIPES.all()) if (!open.has(r.at + ':' + recipeSkill(r))) err(`станция ${r.at}: для навыка ${recipeSkill(r)} нет рецепта T1, новичку не на чем учиться`);
+}
+
+// wounds and traumas (data/wounds.js): every multiplier is one the body knows; the thoughts a fall leaves exist
+for (const W of WOUNDS.all()) {
+  for (const k of Object.keys(W.mods || {})) if (!(k in BASE_MODS)) err(`рана ${W.id}: неизвестный множитель «${k}»`);
+  if (!W.trauma && !(W.days > 0)) err(`рана ${W.id}: излечимой ране нужен срок days`);
+  if (W.trauma && !(W.weight > 0)) err(`травма ${W.id}: нужен вес weight`);
+}
+if (!WOUNDS.has('grave')) err('раны: нет тяжёлой раны grave, которую оставляет спасённая жизнь');
+if (!WOUNDS.filter(x => x.trauma).length) err('раны: нет ни одной травмы для провала второй проверки');
+for (const t of ['fell', 'survived', 'trauma', 'woundHealed']) if (!THOUGHTS.has(t)) err(`нет мысли «${t}» для смертельной раны`);
+
+// haggling (settlement/trade.js): even at the best terms buying must cost more than selling brings
+if (!(TRADE.ask - TRADE.bid - 2 * TRADE.haggle > 0)) err(`торг: при поправке ±${TRADE.haggle} продажа и обратная покупка дают прибыль`);
+
+// trophies (agents/trophies.js): real resources, chances in (0, 1], tiers 1–4, only on what has yields
+for (const sp of SPECIES.all()) for (const e of sp.trophies || []) {
+  res(`трофей ${sp.id}`, e.res);
+  if (!(e.chance > 0 && e.chance <= 1)) err(`трофей ${sp.id}/${e.res}: шанс ${e.chance} вне (0, 1]`);
+  if (!(e.n > 0)) err(`трофей ${sp.id}/${e.res}: количество ${e.n}`);
+  if (e.tier != null && !(Number.isInteger(e.tier) && e.tier >= 1 && e.tier <= TIERS.length)) err(`трофей ${sp.id}/${e.res}: тир ${e.tier}`);
+  if (!sp.yields) err(`трофей ${sp.id}: у вида нет обычной добычи yields, трофей некуда положить`);
+}
+
 for (const w of warnings) console.log('warn ' + w);
 if (errors.length) { console.log('Ошибки в справочниках:\n  ' + errors.join('\n  ')); process.exit(1); }
-console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд — ссылки сходятся`);
+console.log(`ok   справочники: ${RESOURCES.all().length} ресурсов, ${RECIPES.all().length} рецептов, ${JOBS.all().length} работ, ${BUILDINGS.all().length} построек, ${ITEMS.all().length} предметов, ${SPECIES.all().length} видов, ${BIOMES.all().length} биомов, ${RAID_BANDS.all().length} банд, ${SKILLS.all().length} навыков, ${WOUNDS.all().length} ран — ссылки сходятся`);

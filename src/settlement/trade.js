@@ -24,6 +24,8 @@ import {BUILDINGS} from '../data/buildings.js';
 import {recomputeMods} from './mods.js';
 import {freeSlots} from './life.js';
 import {treasury, pay} from './precious.js';
+import {contest} from '../data/special.js';
+import {practice} from '../agents/skills.js';
 
 // ── keys: town-made tools (tag 'key'). One is wanted while the colony has none and could use it:
 // a building that needs it could be built (it is the only thing missing), or the tool works by itself
@@ -49,8 +51,32 @@ const round1 = v => Math.round(v * 10) / 10;
 export const goodsUnits = goods => goods.reduce((s, g) => s + (g.kind === 'res' ? g.n : 1), 0);
 export const unitPrice = g => (g.kind === 'res' ? RESOURCES.get(g.id).value || 0 : itemPrice(g.type, g.q, g.silver));
 export const goodsLabel = g => (g.kind === 'res' ? RESOURCES.get(g.id).label : itemOf(g).label.toLowerCase());
-export const askPrice = g => round1(unitPrice(g) * TRADE.ask);
-export const bidPrice = g => round1(unitPrice(g) * TRADE.bid);
+// prices at the visit's terms: b (−haggle…+haggle) is the colony's gain from haggling, 0 without terms
+export const askPrice = (g, b = 0) => round1(unitPrice(g) * (TRADE.ask - b));
+export const bidPrice = (g, b = 0) => round1(unitPrice(g) * (TRADE.bid + b));
+const askAt = askPrice, bidAt = bidPrice;
+
+// ── the negotiator: whoever of the colony haggles best and can stand at the trade (not senseless, not
+// lying at the healer's). Charisma × (1 + barter) against the trader's; the terms are fixed once for the
+// visit (c.terms), so asking again never rolls again. No negotiator: plain prices, the trade still happens.
+const haggler = a => (a.special?.C ?? 5) * (1 + (a.skill?.barter || 0));
+export function negotiator(w) {
+  let best = null, bv = -1;
+  for (const a of colonists(w)) {
+    if (a.downed || (a.task?.id === 'treat' && a.task.lying)) continue;
+    const v = haggler(a); if (v > bv) { bv = v; best = a; }
+  }
+  return best;
+}
+export function termsOf(w, c = w.caravan) {
+  if (!c) return {b: 0};
+  if (c.terms) return c.terms;
+  const a = negotiator(w), t = traderOf(w, c);
+  const theirs = (t?.special?.C ?? TRADE.traderC) * (1 + TRADE.traderBarter);
+  const b = a ? round2(TRADE.haggle * (2 * contest(haggler(a), theirs) - 1)) : 0;
+  return (c.terms = {b, by: a?.id ?? null, name: a?.name ?? null, f: a?.gender === 'f'});
+}
+const round2 = v => Math.round(v * 100) / 100;
 
 // items a ware line can be: 'plain' — what the outpost could make itself; 'any' — anything finer work improves
 function itemPool(spec) {
@@ -168,6 +194,9 @@ const keepOf = (r, pop) => r.keep ?? (r.keepPerHead != null ? r.keepPerHead * po
 export function holdTrade(w) {
   const c = w.caravan, pop = colonists(w).length;
   const deal = {day: dayOf(w.tick) + 1, trader: c.name, sold: [], bought: [], earned: 0, spent: 0};
+  // the terms the colony's negotiator got, for the whole visit
+  const terms = termsOf(w, c), askPrice = g => askAt(g, terms.b), bidPrice = g => bidAt(g, terms.b);
+  deal.by = terms.name; deal.b = terms.b;
   const note = (list, label, n, gold) => { const x = list.find(e => e[0] === label); if (x) { x[1] += n; x[2] += gold; } else list.push([label, n, gold]); };
   const free = () => c.capacity - goodsUnits(c.goods);
   // the colony pays in coins, and in gold and silver at their rate when the coins run out (settlement/precious.js)
@@ -298,10 +327,14 @@ export function holdTrade(w) {
   w.trade.earned = round1(w.trade.earned + deal.earned); w.trade.spent = round1(w.trade.spent + deal.spent);
   reload(w, c);
 
+  // the negotiator learns from a real deal only, by how much there was to haggle over
+  const lines = deal.sold.length + deal.bought.length, neg = terms.by != null ? w.agents.find(o => o.id === terms.by && !o.dead) : null;
+  if (neg && lines) practice(neg, 'barter', Math.min(TRADE.practiceMax, TRADE.practicePerLine * lines));
   const list = xs => xs.map(([l, n, g]) => `${l}${n > 1 ? ' ×' + n : ''}`).join(', ');
+  const haggled = terms.name ? ` Торговал${terms.f ? 'ась' : 'ся'} за поселение <b>${esc(terms.name)}</b>: ${terms.b > 0 ? `цены на ${Math.round(terms.b * 100)}% выгоднее` : terms.b < 0 ? `купец переторговал, цены на ${Math.round(-terms.b * 100)}% хуже` : 'сошлись на обычных ценах'}.` : '';
   const sold = deal.sold.length ? `Продали: ${list(deal.sold)} — за ${deal.earned} зол.` : 'Продать было нечего.';
   const bought = deal.bought.length ? ` Купили: ${list(deal.bought)} — за ${deal.spent} зол.` : ' Ничего не купили, золото отложили.';
-  log(w, `Торг с купцом <b>${esc(c.name)}</b> после совета. ${sold}${bought} В казне ${Math.floor(deal.gold)} зол.${(w.stock.gold || 0) < deal.gold - 0.5 ? ` (монетами ${Math.floor(w.stock.gold || 0)}, остальное — золото и серебро)` : ''}`, 'trade');
+  log(w, `Торг с купцом <b>${esc(c.name)}</b> после совета.${haggled} ${sold}${bought} В казне ${Math.floor(deal.gold)} зол.${(w.stock.gold || 0) < deal.gold - 0.5 ? ` (монетами ${Math.floor(w.stock.gold || 0)}, остальное — золото и серебро)` : ''}`, 'trade');
 }
 
 // ── the visit, step by step (called every tick from sim.js)

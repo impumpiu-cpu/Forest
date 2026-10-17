@@ -3,6 +3,8 @@
 // the rot's undead and other raid monsters in data/monsters.js. All of them end up in SPECIES.
 //   mind: 'beast' | 'semi' | 'sentient' — only the sentient can be hired or bargained with
 //   special: SPECIAL limits (data/special.js); for beasts `relativeStats`: the entry is the typical animal
+//   trophies: rare extras on top of `yields`, decided once when the colony kills it (agents/trophies.js):
+//            [{res, n, chance, tier?}] — `tier`: a delicate organ only a skilled hand gets out whole (trophyExtraction, A)
 //   habitat: {biome: 'common' | 'usual' | 'rare' | 'scarce'} (data/biomes.js); none — lives everywhere
 import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
@@ -32,7 +34,7 @@ SPECIES.registerAll([
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
     attack: {power: 0.85, cooldown: 14},
-    yields: {meat: 1, hide: 2, bone: 2},
+    yields: {meat: 1, hide: 2, bone: 2}, trophies: [{res: 'furs', n: 1, chance: 0.15}],
     killMessage: name => `Волки загрызли поселенца: <b>${name}</b>.`,
     // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
     predator: {
@@ -68,7 +70,7 @@ SPECIES.registerAll([
   {id: 'fox', label: 'лиса', labelAcc: 'лису', plural: 'лисы', hp: 0.15, speed: 0.18, needs: [], brain: 'grazer', game: true,
     special: around({S: 2, P: 9, E: 3, C: 2, I: 3, A: 9, L: 6}), habitat: {taiga: 'common', forest: 'usual', meadow: 'rare', barrows: 'rare'},
     heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
-    yields: {meat: 1, furs: 1},
+    yields: {meat: 1, furs: 1}, trophies: [{res: 'furs', n: 1, chance: 0.2}],
     flee: {radius: 6, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0},
     leaveChance: 0.0004},
@@ -79,7 +81,7 @@ SPECIES.registerAll([
     special: around({S: 8, P: 4, E: 9, C: 1, I: 1, A: 4, L: 3}), habitat: {forest: 'common', swamp: 'rare', meadow: 'rare', taiga: 'rare'},
     heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
     attack: {power: 1.45, cooldown: 14},
-    yields: {meat: 6, hide: 2, bone: 1},
+    yields: {meat: 6, hide: 2, bone: 1}, trophies: [{res: 'hide', n: 1, chance: 0.2}],
     killMessage: name => `Кабан задрал поселенца: <b>${name}</b>.`,
     mule: {kickRange: 1.0, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3, leaveChance: 0.0003}},
 
@@ -112,7 +114,7 @@ SPECIES.registerAll([
       leaveChance: 0.0002,       // per tick, a wild mule wanders off the map
     },
     // tamed it hauls logs and stone and pulls the plough (see `tame` on the goat for the fields)
-    tame: {chance: 0.22, space: 2, bait: {hay: 2}, eats: 1.2, kicks: true, stack: 2, max: 2,
+    tame: {chance: 0.22, tier: 3, space: 2, bait: {hay: 2}, eats: 1.2, kicks: true, stack: 2, max: 2,
       effects: {jobSpeed: {chop: 1.15, mine: 1.15, dig: 1.15, farm: 1.25}},
       names: ['Буян', 'Гнедко', 'Упрямец', 'Тяжеступ', 'Ворчун'],
       effect: 'возит брёвна и камень (рубка, камень и руда +15%), тянет соху (поле +25%)'}},
@@ -126,7 +128,8 @@ SPECIES.registerAll([
     flee: {radius: 4.5, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass'], eatsBerries: 0.002},
     leaveChance: 0.0001,
-    // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it
+    // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it;
+    //   tier: the husbandry tier (C) a herder needs to go after it — a kicking mule wants a calm hand (T3)
     //   chance: of one try with bait to tame it (× the herder's skill; every failed try makes the next easier)
     //   space:  places it takes in a pen;  bait: what one try costs from the stock
     //   eats:   hay a day when there is no grass in the pen (less in the grazing seasons)
@@ -135,7 +138,7 @@ SPECIES.registerAll([
     //   kicks:  a failed try ends with a kick;  max: no more of them are tamed (the colony has no use for more)
 //   effects: work it does for the colony (settlement/mods.js),
     //   counted for up to `stack` animals;  names: what the herders call them
-    tame: {chance: 0.45, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
+    tame: {chance: 0.45, tier: 1, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
       names: ['Белянка', 'Пеструшка', 'Зорька', 'Рогатка', 'Маруська', 'Бодуша', 'Сивка', 'Дереза', 'Звёздочка', 'Чернушка'],
       effect: 'даёт молоко и шерсть, в тёплое время приносит козлят'}},
 ].map(sp => ({mind: 'beast', relativeStats: true, ...sp})));

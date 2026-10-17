@@ -169,6 +169,8 @@ button.quiet{background:transparent;color:var(--muted)}
 .spc{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .spc span{display:flex;flex-direction:column;align-items:center;padding:3px 0 2px;border-radius:6px;background:#23271c;font-size:9.5px;letter-spacing:.04em;color:var(--muted);cursor:help}
 .spc b{font-size:14px;color:var(--text,#e8e2cf);font-weight:600;line-height:1.1}
+.sk-row{display:flex;gap:6px;align-items:baseline;margin:2px 0}
+.sk-stat{flex:0 0 74px;font-size:10px;letter-spacing:.04em;color:var(--muted);cursor:help;white-space:nowrap}
 .chip.race{background:#2c3040;color:#cdd4f0}
 .person .race{font-style:normal;font-size:11px;color:var(--muted);font-weight:400}
 .pc-list li.down{color:#f0c0c2} .pc-list li.up{color:#cfe6b8}
@@ -701,6 +703,7 @@ dd.q4{color:#c58cff;font-weight:600}
   LUXURY.registerAll([
     {
       id: "jewelBone",
+      tier: 1,
       label: "\u043A\u043E\u0441\u0442\u044F\u043D\u044B\u0435 \u0431\u0443\u0441\u044B \u0441 \u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u0430\u043C\u0438",
       short: "\u0431\u0443\u0441\u044B",
       color: "#efe2c4",
@@ -713,6 +716,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "jewelWood",
+      tier: 2,
       label: "\u0440\u0435\u0437\u043D\u044B\u0435 \u0448\u043A\u0430\u0442\u0443\u043B\u043A\u0438 \u0441 \u0438\u043D\u043A\u0440\u0443\u0441\u0442\u0430\u0446\u0438\u0435\u0439",
       short: "\u0448\u043A\u0430\u0442\u0443\u043B\u043A\u0438",
       color: "#c08a4a",
@@ -725,6 +729,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "jewelStone",
+      tier: 2,
       label: "\u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0435 \u0438\u0434\u043E\u043B\u044B \u0441 \u0433\u043B\u0430\u0437\u0430\u043C\u0438-\u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u0430\u043C\u0438",
       short: "\u0438\u0434\u043E\u043B\u044B",
       color: "#c9c3b3",
@@ -737,6 +742,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "jewelIron",
+      tier: 3,
       label: "\u0436\u0435\u043B\u0435\u0437\u043D\u044B\u0435 \u0433\u0440\u0438\u0432\u043D\u044B \u0441 \u0441\u0430\u043C\u043E\u0446\u0432\u0435\u0442\u0430\u043C\u0438",
       short: "\u0433\u0440\u0438\u0432\u043D\u044B",
       color: "#d6dde2",
@@ -1194,13 +1200,13 @@ dd.q4{color:#c58cff;font-weight:600}
   var STATS = new Registry("stat");
   var NORM = 5;
   STATS.registerAll([
-    { id: "S", label: "\u0421\u0438\u043B\u0430", short: "\u0421\u0418\u041B", note: "\u0443\u0440\u043E\u043D \u0432 \u0431\u043B\u0438\u0436\u043D\u0435\u043C \u0431\u043E\u044E" },
-    { id: "P", label: "\u0412\u043E\u0441\u043F\u0440\u0438\u044F\u0442\u0438\u0435", short: "\u0412\u041E\u0421", note: "\u043C\u0435\u0442\u043A\u043E\u0441\u0442\u044C, \u0437\u0430\u043C\u0435\u0447\u0430\u0435\u0442 \u0432\u0440\u0430\u0433\u0430 \u0440\u0430\u043D\u044C\u0448\u0435" },
-    { id: "E", label: "\u0412\u044B\u043D\u043E\u0441\u043B\u0438\u0432\u043E\u0441\u0442\u044C", short: "\u0412\u042B\u041D", note: "\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435, \u0441\u0442\u043E\u0439\u043A\u043E\u0441\u0442\u044C \u043A \u0445\u043E\u043B\u043E\u0434\u0443" },
-    { id: "C", label: "\u0425\u0430\u0440\u0438\u0437\u043C\u0430", short: "\u0425\u0410\u0420", note: "\u043A\u0430\u043A \u043A \u043D\u0435\u043C\u0443 \u043E\u0442\u043D\u043E\u0441\u044F\u0442\u0441\u044F \u0441\u043E\u0441\u0435\u0434\u0438" },
-    { id: "I", label: "\u0418\u043D\u0442\u0435\u043B\u043B\u0435\u043A\u0442", short: "\u0418\u041D\u0422", note: "\u043A\u0430\u043A \u0431\u044B\u0441\u0442\u0440\u043E \u0443\u0447\u0438\u0442\u0441\u044F \u0440\u0435\u043C\u0435\u0441\u043B\u0443" },
-    { id: "A", label: "\u041B\u043E\u0432\u043A\u043E\u0441\u0442\u044C", short: "\u041B\u041E\u0412", note: "\u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0448\u0430\u0433\u0430 \u0438 \u0443\u0434\u0430\u0440\u0430" },
-    { id: "L", label: "\u0423\u0434\u0430\u0447\u0430", short: "\u0423\u0414\u0427", note: "\u0443\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043E\u0442 \u0443\u0434\u0430\u0440\u0430, \u043F\u043E\u043F\u0430\u0441\u0442\u044C \u043D\u0430\u0443\u0434\u0430\u0447\u0443" }
+    { id: "S", label: "\u0421\u0438\u043B\u0430", short: "\u0421\u0418\u041B", note: "\u0443\u0440\u043E\u043D \u0432 \u0431\u043B\u0438\u0436\u043D\u0435\u043C \u0431\u043E\u044E; \u0440\u0443\u0431\u043A\u0430, \u0433\u043E\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E, \u0441\u0442\u0440\u043E\u0439\u043A\u0430, \u043A\u043E\u0432\u043A\u0430" },
+    { id: "P", label: "\u0412\u043E\u0441\u043F\u0440\u0438\u044F\u0442\u0438\u0435", short: "\u0412\u041E\u0421", note: "\u043C\u0435\u0442\u043A\u043E\u0441\u0442\u044C, \u0437\u0430\u043C\u0435\u0447\u0430\u0435\u0442 \u0432\u0440\u0430\u0433\u0430 \u0440\u0430\u043D\u044C\u0448\u0435; \u0441\u0431\u043E\u0440, \u043E\u0445\u043E\u0442\u0430, \u0441\u0442\u0440\u0435\u043B\u044C\u0431\u0430, \u0440\u044B\u0431\u0430\u043B\u043A\u0430" },
+    { id: "E", label: "\u0412\u044B\u043D\u043E\u0441\u043B\u0438\u0432\u043E\u0441\u0442\u044C", short: "\u0412\u042B\u041D", note: "\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435, \u0441\u0442\u043E\u0439\u043A\u043E\u0441\u0442\u044C \u043A \u0445\u043E\u043B\u043E\u0434\u0443; \u043F\u043E\u043B\u0435, \u0442\u044F\u0436\u0451\u043B\u0430\u044F \u043D\u043E\u0448\u0430" },
+    { id: "C", label: "\u0425\u0430\u0440\u0438\u0437\u043C\u0430", short: "\u0425\u0410\u0420", note: "\u043A\u0430\u043A \u043A \u043D\u0435\u043C\u0443 \u043E\u0442\u043D\u043E\u0441\u044F\u0442\u0441\u044F \u0441\u043E\u0441\u0435\u0434\u0438; \u043E\u0431\u0440\u0430\u0449\u0435\u043D\u0438\u0435 \u0441 \u0436\u0438\u0432\u043E\u0442\u043D\u044B\u043C\u0438" },
+    { id: "I", label: "\u0418\u043D\u0442\u0435\u043B\u043B\u0435\u043A\u0442", short: "\u0418\u041D\u0422", note: "\u043C\u0435\u0434\u0438\u0446\u0438\u043D\u0430, \u043F\u043B\u0430\u0432\u043A\u0430, \u043A\u0443\u0445\u043D\u044F; \u043D\u0435\u043C\u043D\u043E\u0433\u043E \u043F\u043E\u043C\u043E\u0433\u0430\u0435\u0442 \u0443\u0447\u0438\u0442\u044C\u0441\u044F \u0432\u0441\u0435\u043C\u0443" },
+    { id: "A", label: "\u041B\u043E\u0432\u043A\u043E\u0441\u0442\u044C", short: "\u041B\u041E\u0412", note: "\u0441\u043A\u043E\u0440\u043E\u0441\u0442\u044C \u0448\u0430\u0433\u0430 \u0438 \u0443\u0434\u0430\u0440\u0430, \u0443\u043A\u043B\u043E\u043D\u0435\u043D\u0438\u0435; \u0434\u0435\u0440\u0435\u0432\u043E, \u0448\u0438\u0442\u044C\u0451, \u043A\u043E\u0436\u0438, \u0433\u043E\u043D\u0447\u0430\u0440, \u044E\u0432\u0435\u043B\u0438\u0440" },
+    { id: "L", label: "\u0423\u0434\u0430\u0447\u0430", short: "\u0423\u0414\u0427", note: "\u043A\u0440\u0438\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u0443\u0434\u0430\u0440; \u0448\u0430\u043D\u0441 \u043F\u0435\u0440\u0435\u0436\u0438\u0442\u044C \u0441\u043C\u0435\u0440\u0442\u0435\u043B\u044C\u043D\u0443\u044E \u0440\u0430\u043D\u0443 \u0438 \u0443\u0439\u0442\u0438 \u0431\u0435\u0437 \u0443\u0432\u0435\u0447\u044C\u044F" }
   ]);
   var around = (mid, spread = 1) => Object.fromEntries(Object.entries(mid).map(([k, v]) => [k, [Math.max(0, v - spread), v + spread]]));
   var middle = (special2) => Object.fromEntries(Object.entries(special2).map(([k, [lo, hi]]) => [k, (lo + hi) / 2]));
@@ -1212,17 +1218,17 @@ dd.q4{color:#c58cff;font-weight:600}
     hp: (s) => Math.max(0.3, 0.6 + 0.08 * s.E),
     // how hard the cold bites
     cold: (s) => Math.max(0.4, 1.25 - 0.05 * s.E),
-    // added to the chance to hit with a shot
-    aim: (s) => 0.03 * (s.P - NORM) + 0.01 * (s.L - NORM),
+    // added to the chance to hit with a shot (Perception only: Luck works through critical blows, data/wounds.js)
+    aim: (s) => 0.03 * (s.P - NORM),
     // how far an enemy is noticed (× the usual radius)
     sight: (s) => Math.max(0.5, 0.8 + 0.04 * s.P),
     speed: (s) => Math.max(0.5, 1 + 0.025 * (s.A - NORM)),
     // attack cooldown multiplier: nimble creatures strike more often
     swing: (s) => Math.max(0.5, 1 - 0.03 * (s.A - NORM)),
-    // skill gained from work
-    learn: (s) => Math.max(0.2, 0.5 + 0.1 * s.I),
-    // chance that a blow or a shot simply misses this creature
-    dodge: (s) => Math.min(0.15, Math.max(0, 0.015 * (s.L - 4))),
+    // a small general bonus to learning any skill; each skill learns mainly by its own letter (data/skills.js)
+    learn: (s) => Math.max(0.7, 0.9 + 0.02 * s.I),
+    // chance that a blow or a shot simply misses this creature: a nimble one steps aside (Agility)
+    dodge: (s) => Math.min(0.15, Math.max(0, 0.015 * (s.A - 4))),
     // how much others like this creature (added to their opinion of it, data/relations.js)
     charm: (s) => 0.15 * (s.C - NORM)
   };
@@ -1305,6 +1311,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "bear", size: 0.9, color: "#5a3d28" },
       attack: { power: 2.4, cooldown: 16 },
       yields: { meat: 12, hide: 3, bone: 3, bile: 1 },
+      trophies: [{ res: "bile", n: 1, chance: 0.25, tier: 2 }, { res: "furs", n: 2, chance: 0.2 }],
       killMessage: (name) => `\u041C\u0435\u0434\u0432\u0435\u0434\u044C \u0437\u0430\u0434\u0440\u0430\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       mule: stands({ kickRange: 1.2, charge: 1.9, chargeHit: 1.7, grudge: 500, giveUp: 26, fleeBelow: 0.2, leaveChance: 15e-5, terrain: ["grass", "forest"] })
     }),
@@ -1324,6 +1331,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "fox", size: 0.5, color: "#9a8f7a" },
       attack: { power: 1, cooldown: 11 },
       yields: { furs: 2, meat: 1 },
+      trophies: [{ res: "furs", n: 1, chance: 0.3 }],
       killMessage: (name) => `\u0420\u044B\u0441\u044C \u0431\u0440\u043E\u0441\u0438\u043B\u0430\u0441\u044C \u0441 \u0432\u0435\u0442\u043A\u0438 \u043D\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       predator: hunts({ prey: ["hare", "fox", "goat"], boldPeople: 0.75, groupFear: 2, meal: 1.4, sight: 18 })
     }),
@@ -1382,6 +1390,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "toad", size: 0.55, color: "#6b7a3a" },
       attack: { power: 1.2, cooldown: 20 },
       yields: { meat: 2, slime: 1 },
+      trophies: [{ res: "slime", n: 1, chance: 0.3 }],
       killMessage: (name) => `\u0416\u0430\u0431\u0430 \u0443\u0442\u044F\u043D\u0443\u043B\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430 \u0432 \u0442\u0440\u044F\u0441\u0438\u043D\u0443: <b>${name}</b>.`,
       mule: stands({ kickRange: 2.4, charge: 1.2, chargeHit: 1.2, chargeFrom: 3, giveUp: 8, terrain: ["grass", "forest"], leaveChance: 1e-4 })
     }),
@@ -1402,6 +1411,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "bird", size: 0.86, color: "#b88a44" },
       attack: { power: 1.9, cooldown: 13 },
       yields: { meat: 4, feathers: 3, bone: 2 },
+      trophies: [{ res: "feathers", n: 2, chance: 0.3 }],
       killMessage: (name) => `\u0413\u0440\u0438\u0444\u043E\u043D \u0443\u043D\u0451\u0441 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       predator: hunts({ prey: ["goat", "deer", "hare"], weakPrey: ["mule"], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4 })
     }),
@@ -1422,6 +1432,7 @@ dd.q4{color:#c58cff;font-weight:600}
       attack: { power: 1.7, cooldown: 14 },
       venom: { dmg: 9e-4, ticks: 240 },
       yields: { meat: 5, scales: 2, venom: 1 },
+      trophies: [{ res: "venom", n: 1, chance: 0.3, tier: 2 }, { res: "scales", n: 1, chance: 0.2 }],
       killMessage: (name) => `\u0412\u0438\u0432\u0435\u0440\u043D\u0430 \u0443\u0436\u0430\u043B\u0438\u043B\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430 \u043D\u0430\u0441\u043C\u0435\u0440\u0442\u044C: <b>${name}</b>.`,
       predator: hunts({ prey: ["goat", "deer", "boar"], weakPrey: ["mule", "elk"], weakBelow: 0.6, sight: 26, boldPeople: 0.45, groupFear: 4 })
     }),
@@ -1444,6 +1455,7 @@ dd.q4{color:#c58cff;font-weight:600}
       attack: { power: 2.6, cooldown: 15 },
       breath: 0.25,
       yields: { meat: 6, scales: 4, gland: 1 },
+      trophies: [{ res: "scales", n: 2, chance: 0.25, tier: 2 }, { res: "gland", n: 1, chance: 0.2, tier: 3 }],
       killMessage: (name) => `\u0414\u0440\u0435\u0439\u043A \u0441\u0436\u0451\u0433 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       predator: hunts({ prey: ["goat", "deer", "boar", "mule", "elk"], sight: 26, boldPeople: 0.35, groupFear: 5, meal: 3, bigMeal: 5 })
     }),
@@ -1465,6 +1477,7 @@ dd.q4{color:#c58cff;font-weight:600}
       web: { slow: 0.35, ticks: 120 },
       venom: { dmg: 4e-4, ticks: 160 },
       yields: { silk: 2, venom: 1 },
+      trophies: [{ res: "venom", n: 1, chance: 0.3, tier: 2 }, { res: "silk", n: 2, chance: 0.3 }],
       killMessage: (name) => `\u041F\u0430\u0443\u043A \u043E\u043F\u0443\u0442\u0430\u043B \u0438 \u0437\u0430\u0433\u0440\u044B\u0437 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       predator: hunts({ prey: ["hare", "fox", "goat"], boldPeople: 0.5, groupFear: 3, sight: 16 })
     }),
@@ -1484,6 +1497,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "worm", size: 0.9, color: "#7d6f5c" },
       attack: { power: 2.8, cooldown: 22 },
       yields: { meat: 8, hide: 4 },
+      trophies: [{ res: "gems", n: 1, chance: 0.15 }],
       killMessage: (name) => `\u041A\u0430\u043C\u0435\u043D\u043D\u044B\u0439 \u0447\u0435\u0440\u0432\u044C \u0440\u0430\u0437\u0434\u0430\u0432\u0438\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       mule: stands({ kickRange: 1.4, charge: 1.3, chargeHit: 1.8, fleeBelow: 0.15, leaveChance: 4e-4 })
     }),
@@ -1524,6 +1538,7 @@ dd.q4{color:#c58cff;font-weight:600}
       special: around({ S: 4, P: 7, E: 8, C: 1, I: 2, A: 8, L: 5 }),
       look: { shape: "lizard", size: 0.45, color: "#d0632a" },
       yields: { meat: 1, gland: 1 },
+      trophies: [{ res: "gland", n: 1, chance: 0.2, tier: 2 }],
       flee: { radius: 5, sprint: 1.5, from: ["people", "wolf", "varg"], stamina: 6e-3 },
       grazes: { terrain: ["grass", "burnt"], eatsBerries: 0 },
       leaveChance: 3e-4
@@ -1641,6 +1656,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "wolf", size: 0.58, color: "#8d8f96" },
       attack: { power: 0.85, cooldown: 14 },
       yields: { meat: 1, hide: 2, bone: 2 },
+      trophies: [{ res: "furs", n: 1, chance: 0.15 }],
       killMessage: (name) => `\u0412\u043E\u043B\u043A\u0438 \u0437\u0430\u0433\u0440\u044B\u0437\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       // Hunger drives everything: boldness = 0 when fed (food ≥ hungry), 1 when starving (food ≤ starving).
       predator: {
@@ -1718,6 +1734,7 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 60,
       look: { shape: "fox", size: 0.42, color: "#d0703a" },
       yields: { meat: 1, furs: 1 },
+      trophies: [{ res: "furs", n: 1, chance: 0.2 }],
       flee: { radius: 6, sprint: 1.5, from: ["people", "wolf"], stamina: 6e-3 },
       grazes: { terrain: ["grass", "forest"], eatsBerries: 0 },
       leaveChance: 4e-4
@@ -1741,6 +1758,7 @@ dd.q4{color:#c58cff;font-weight:600}
       look: { shape: "boar", size: 0.62, color: "#4a3a30" },
       attack: { power: 1.45, cooldown: 14 },
       yields: { meat: 6, hide: 2, bone: 1 },
+      trophies: [{ res: "hide", n: 1, chance: 0.2 }],
       killMessage: (name) => `\u041A\u0430\u0431\u0430\u043D \u0437\u0430\u0434\u0440\u0430\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`,
       mule: { kickRange: 1, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3, leaveChance: 3e-4 }
     },
@@ -1805,6 +1823,7 @@ dd.q4{color:#c58cff;font-weight:600}
       // tamed it hauls logs and stone and pulls the plough (see `tame` on the goat for the fields)
       tame: {
         chance: 0.22,
+        tier: 3,
         space: 2,
         bait: { hay: 2 },
         eats: 1.2,
@@ -1837,7 +1856,8 @@ dd.q4{color:#c58cff;font-weight:600}
       flee: { radius: 4.5, sprint: 1.5, from: ["people", "wolf"], stamina: 6e-3 },
       grazes: { terrain: ["grass"], eatsBerries: 2e-3 },
       leaveChance: 1e-4,
-      // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it
+      // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it;
+      //   tier: the husbandry tier (C) a herder needs to go after it — a kicking mule wants a calm hand (T3)
       //   chance: of one try with bait to tame it (× the herder's skill; every failed try makes the next easier)
       //   space:  places it takes in a pen;  bait: what one try costs from the stock
       //   eats:   hay a day when there is no grass in the pen (less in the grazing seasons)
@@ -1848,6 +1868,7 @@ dd.q4{color:#c58cff;font-weight:600}
       //   counted for up to `stack` animals;  names: what the herders call them
       tame: {
         chance: 0.45,
+        tier: 1,
         space: 1,
         bait: { hay: 1 },
         eats: 0.6,
@@ -1935,7 +1956,7 @@ dd.q4{color:#c58cff;font-weight:600}
       take: 0.25,
       tint: [168, 110, 80],
       mapColor: [200, 120, 80],
-      job: { id: "clay", label: "\u043A\u043E\u043F\u0430\u0442\u044C \u0433\u043B\u0438\u043D\u0443", short: "\u0433\u043B\u0438\u043D\u0430", verb: "\u043A\u043E\u043F\u0430\u0435\u0442 \u0433\u043B\u0438\u043D\u0443", time: 30, carry: 2, keep: 14 }
+      job: { id: "clay", skill: "mining", label: "\u043A\u043E\u043F\u0430\u0442\u044C \u0433\u043B\u0438\u043D\u0443", short: "\u0433\u043B\u0438\u043D\u0430", verb: "\u043A\u043E\u043F\u0430\u0435\u0442 \u0433\u043B\u0438\u043D\u0443", time: 30, carry: 2, keep: 14 }
     },
     // wild bees in hollow trees: honey and wax; the bees sting
     {
@@ -1952,7 +1973,7 @@ dd.q4{color:#c58cff;font-weight:600}
       take: 0.5,
       tint: [230, 170, 40],
       mapColor: [250, 180, 30],
-      job: { id: "honey", label: "\u0431\u043E\u0440\u0442\u043D\u0438\u0447\u0430\u0442\u044C", short: "\u043C\u0451\u0434", verb: "\u0431\u0435\u0440\u0451\u0442 \u043C\u0451\u0434 \u0443 \u0434\u0438\u043A\u0438\u0445 \u043F\u0447\u0451\u043B", time: 40, carry: 2, keep: 12, hurt: 0.04 }
+      job: { id: "honey", tier: 2, label: "\u0431\u043E\u0440\u0442\u043D\u0438\u0447\u0430\u0442\u044C", short: "\u043C\u0451\u0434", verb: "\u0431\u0435\u0440\u0451\u0442 \u043C\u0451\u0434 \u0443 \u0434\u0438\u043A\u0438\u0445 \u043F\u0447\u0451\u043B", time: 40, carry: 2, keep: 12, hurt: 0.04 }
     },
     // meadow grass: mown for hay in summer and autumn — bedding in huts, fodder later
     {
@@ -1970,7 +1991,7 @@ dd.q4{color:#c58cff;font-weight:600}
       tint: [150, 180, 80],
       mapColor: [170, 220, 90],
       // enough for bedding, and for the pen's winter (settlement/herd.js, winterHay)
-      job: { id: "mow", label: "\u043A\u043E\u0441\u0438\u0442\u044C \u0441\u0435\u043D\u043E", short: "\u0441\u0435\u043D\u043E", verb: "\u043A\u043E\u0441\u0438\u0442 \u0441\u0435\u043D\u043E", time: 20, carry: 3, keep: (w) => 30 + winterHay(w) }
+      job: { id: "mow", skill: "farming", label: "\u043A\u043E\u0441\u0438\u0442\u044C \u0441\u0435\u043D\u043E", short: "\u0441\u0435\u043D\u043E", verb: "\u043A\u043E\u0441\u0438\u0442 \u0441\u0435\u043D\u043E", time: 20, carry: 3, keep: (w) => 30 + winterHay(w) }
     },
     // gold-bearing sand in the shallows: washed with a pan, a little at a time; the river brings more
     // sand very slowly. Not under ice. Now and then a nugget turns up in the pan.
@@ -1989,7 +2010,7 @@ dd.q4{color:#c58cff;font-weight:600}
       take: 0.12,
       tint: [222, 196, 96],
       mapColor: [255, 214, 60],
-      job: { id: "pan", label: "\u043C\u044B\u0442\u044C \u0437\u043E\u043B\u043E\u0442\u043E", short: "\u0437\u043E\u043B\u043E\u0442\u043E", verb: "\u043C\u043E\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u0438", time: 40, carry: 4, keep: 200, tool: "pan" }
+      job: { id: "pan", tier: 2, label: "\u043C\u044B\u0442\u044C \u0437\u043E\u043B\u043E\u0442\u043E", short: "\u0437\u043E\u043B\u043E\u0442\u043E", verb: "\u043C\u043E\u0435\u0442 \u0437\u043E\u043B\u043E\u0442\u043E \u0432 \u043E\u0442\u043C\u0435\u043B\u0438", time: 40, carry: 4, keep: 200, tool: "pan" }
     },
     // salt licks: white crusts where salty springs come up; the outpost's own salt, a little at a time
     {
@@ -2441,11 +2462,11 @@ dd.q4{color:#c58cff;font-weight:600}
   var FURNITURE = new Registry("furniture");
   FURNITURE.registerAll([
     { id: "bench", label: "\u043B\u0430\u0432\u043A\u0430", comfort: 0.04, value: 1, color: "#b08850", recipe: { at: "crafthut", cost: { wood: 4 }, work: 400 } },
-    { id: "table", label: "\u0441\u0442\u043E\u043B \u0438\u0437 \u0442\u0451\u0441\u0430", comfort: 0.06, value: 2, color: "#c99a5c", recipe: { at: "crafthut", cost: { planks: 4 }, work: 600 } },
-    { id: "rug", label: "\u0448\u0435\u0440\u0441\u0442\u044F\u043D\u043E\u0439 \u043A\u043E\u0432\u0451\u0440", comfort: 0.08, value: 4, color: "#b05a4a", recipe: { at: "loom", cost: { wool: 4 }, work: 700 } },
-    { id: "chest", label: "\u043A\u043E\u0432\u0430\u043D\u044B\u0439 \u0441\u0443\u043D\u0434\u0443\u043A", comfort: 0.08, value: 5, color: "#8a6a48", recipe: { at: "forge", cost: { planks: 3, iron: 1 }, fuel: 1, work: 600 } },
-    { id: "bell", label: "\u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0439 \u043A\u043E\u043B\u043E\u043A\u043E\u043B", comfort: 0.12, value: 6, color: "#c89048", recipe: { at: "smelter", cost: { bronze: 3 }, fuel: 1, heat: 1, work: 600 } },
-    { id: "casket", label: "\u0440\u0435\u0437\u043D\u043E\u0439 \u043B\u0430\u0440\u0435\u0446", comfort: 0.1, value: 7, color: "#58b3a8", recipe: { at: "jeweler", cost: { wood: 2, bone: 2, gems: 1 }, work: 700 } },
+    { id: "table", label: "\u0441\u0442\u043E\u043B \u0438\u0437 \u0442\u0451\u0441\u0430", comfort: 0.06, value: 2, color: "#c99a5c", recipe: { at: "crafthut", tier: 2, cost: { planks: 4 }, work: 600 } },
+    { id: "rug", label: "\u0448\u0435\u0440\u0441\u0442\u044F\u043D\u043E\u0439 \u043A\u043E\u0432\u0451\u0440", comfort: 0.08, value: 4, color: "#b05a4a", recipe: { at: "loom", tier: 2, cost: { wool: 4 }, work: 700 } },
+    { id: "chest", label: "\u043A\u043E\u0432\u0430\u043D\u044B\u0439 \u0441\u0443\u043D\u0434\u0443\u043A", comfort: 0.08, value: 5, color: "#8a6a48", recipe: { at: "forge", tier: 2, cost: { planks: 3, iron: 1 }, fuel: 1, work: 600 } },
+    { id: "bell", label: "\u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0439 \u043A\u043E\u043B\u043E\u043A\u043E\u043B", comfort: 0.12, value: 6, color: "#c89048", recipe: { at: "smelter", tier: 2, cost: { bronze: 3 }, fuel: 1, heat: 1, work: 600 } },
+    { id: "casket", label: "\u0440\u0435\u0437\u043D\u043E\u0439 \u043B\u0430\u0440\u0435\u0446", comfort: 0.1, value: 7, color: "#58b3a8", recipe: { at: "jeweler", tier: 2, cost: { wood: 2, bone: 2, gems: 1 }, work: 700 } },
     // from the empire's towns
     { id: "mirror", label: "\u0431\u0440\u043E\u043D\u0437\u043E\u0432\u043E\u0435 \u0437\u0435\u0440\u043A\u0430\u043B\u043E", comfort: 0.14, value: 12, color: "#d9b25a", tradeOnly: true },
     { id: "tapestry", label: "\u0438\u043C\u043F\u0435\u0440\u0441\u043A\u0438\u0439 \u0433\u043E\u0431\u0435\u043B\u0435\u043D", comfort: 0.13, value: 10, color: "#7a4aa0", tradeOnly: true },
@@ -3246,7 +3267,7 @@ dd.q4{color:#c58cff;font-weight:600}
       effect: "\u0421\u0435\u0442\u0438 \u0438 \u0432\u0435\u0448\u0430\u043B\u0430 \u0434\u043B\u044F \u0440\u044B\u0431\u044B: \u0440\u044B\u0431\u0430\u043A\u0438 \u043B\u043E\u0432\u044F\u0442 \u043D\u0430 \u0442\u0440\u0435\u0442\u044C \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u043A\u0430\u0436\u0434\u0430\u044F \u0440\u044B\u0431\u0430 \u0434\u0430\u0451\u0442 \u0432 \u043F\u043E\u043B\u0442\u043E\u0440\u0430 \u0440\u0430\u0437\u0430 \u0431\u043E\u043B\u044C\u0448\u0435 \u0435\u0434\u044B, \u0443\u0434\u043E\u0447\u043A\u0438 \u0438\u0437\u043D\u0430\u0448\u0438\u0432\u0430\u044E\u0442\u0441\u044F \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435.",
       effects: { jobSpeed: { fish: 1.35 }, yield: { fish: 1.5 }, toolWear: { fish: 0.5 } },
       wish: "\u0445\u043E\u0447\u0435\u0442 \u043B\u043E\u0432\u0438\u0442\u044C \u0440\u044B\u0431\u0443 \u0443\u0434\u0430\u0447\u043D\u0435\u0435",
-      motive: (a, c) => [[c.fishLakes ? 0.15 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4 + a.skill.fish * 0.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [a.mem.walkFish * 0.8, "\u0434\u0430\u043B\u0435\u043A\u043E \u043D\u043E\u0441\u0438\u0442\u044C \u0440\u044B\u0431\u0443"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"], [c.fishLakes && a.food?.likes === "fish" ? 0.35 : 0, "\u0441\u043A\u0443\u0447\u0430\u0435\u0442 \u043F\u043E \u0440\u044B\u0431\u0435"]],
+      motive: (a, c) => [[c.fishLakes ? 0.15 : 0, "\u0432 \u043E\u0437\u0435\u0440\u0435 \u043F\u043E\u043B\u043D\u043E \u0440\u044B\u0431\u044B"], [(a.prefs.fish - 1) * 1.4 + (a.skill.fishing || 0) * 0.4, "\u043B\u044E\u0431\u0438\u0442 \u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C"], [a.mem.walkFish * 0.8, "\u0434\u0430\u043B\u0435\u043A\u043E \u043D\u043E\u0441\u0438\u0442\u044C \u0440\u044B\u0431\u0443"], [c.fishLakes ? a.mem.hunger * 0.8 : 0, "\u0433\u043E\u043B\u043E\u0434\u0430\u0435\u0442, \u0430 \u0440\u044B\u0431\u0430 \u0440\u044F\u0434\u043E\u043C"], [c.fishLakes && a.food?.likes === "fish" ? 0.35 : 0, "\u0441\u043A\u0443\u0447\u0430\u0435\u0442 \u043F\u043E \u0440\u044B\u0431\u0435"]],
       available: (w) => w.lakes.some((l) => l.cap > 0)
     },
     {
@@ -4539,6 +4560,181 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   ]);
 
+  // src/data/skills.js
+  var SKILLS = new Registry("skill");
+  SKILLS.registerAll([
+    // ── S: strength
+    { id: "woodcutting", stat: "S", label: "\u0440\u0443\u0431\u043A\u0430 \u043B\u0435\u0441\u0430", short: "\u0440\u0443\u0431\u043A\u0430" },
+    { id: "mining", stat: "S", label: "\u0433\u043E\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u0433\u043E\u0440\u043D. \u0434\u0435\u043B\u043E" },
+    { id: "construction", stat: "S", label: "\u0441\u0442\u0440\u043E\u0438\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u043E", short: "\u0441\u0442\u0440\u043E\u0439\u043A\u0430" },
+    { id: "smithing", stat: "S", label: "\u043A\u0443\u0437\u043D\u0435\u0447\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u043A\u043E\u0432\u043A\u0430" },
+    { id: "melee", stat: "S", label: "\u0431\u043B\u0438\u0436\u043D\u0438\u0439 \u0431\u043E\u0439", short: "\u0431\u043E\u0439" },
+    // ── P: perception
+    { id: "gathering", stat: "P", label: "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u043E", short: "\u0441\u0431\u043E\u0440" },
+    { id: "hunting", stat: "P", label: "\u043E\u0445\u043E\u0442\u0430", short: "\u043E\u0445\u043E\u0442\u0430" },
+    { id: "ranged", stat: "P", label: "\u0441\u0442\u0440\u0435\u043B\u044C\u0431\u0430", short: "\u0441\u0442\u0440\u0435\u043B\u044C\u0431\u0430" },
+    { id: "fishing", stat: "P", label: "\u0440\u044B\u0431\u0430\u043B\u043A\u0430", short: "\u0440\u044B\u0431\u0430\u043B\u043A\u0430" },
+    { id: "scouting", stat: "P", label: "\u0440\u0430\u0437\u0432\u0435\u0434\u043A\u0430", short: "\u0440\u0430\u0437\u0432\u0435\u0434\u043A\u0430", status: "reserved" },
+    { id: "scavenging", stat: "P", label: "\u043F\u043E\u0438\u0441\u043A \u0442\u0440\u043E\u0444\u0435\u0435\u0432", short: "\u043F\u043E\u0438\u0441\u043A", status: "reserved" },
+    // ── E: endurance
+    { id: "farming", stat: "E", label: "\u0437\u0435\u043C\u043B\u0435\u0434\u0435\u043B\u0438\u0435", short: "\u043F\u043E\u043B\u0435" },
+    { id: "athletics", stat: "E", label: "\u0444\u0438\u0437\u0438\u0447\u0435\u0441\u043A\u0430\u044F \u043F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430", short: "\u0442\u044F\u0436\u0435\u0441\u0442\u0438" },
+    { id: "survival", stat: "E", label: "\u043F\u043E\u0445\u043E\u0434\u043D\u043E\u0435 \u0432\u044B\u0436\u0438\u0432\u0430\u043D\u0438\u0435", short: "\u0432\u044B\u0436\u0438\u0432\u0430\u043D\u0438\u0435", status: "reserved" },
+    // ── C: charisma
+    { id: "husbandry", stat: "C", label: "\u043E\u0431\u0440\u0430\u0449\u0435\u043D\u0438\u0435 \u0441 \u0436\u0438\u0432\u043E\u0442\u043D\u044B\u043C\u0438", short: "\u0441\u043A\u043E\u0442" },
+    { id: "barter", stat: "C", label: "\u0442\u043E\u0440\u0433\u043E\u0432\u043B\u044F", short: "\u0442\u043E\u0440\u0433" },
+    { id: "persuasion", stat: "C", label: "\u0443\u0431\u0435\u0436\u0434\u0435\u043D\u0438\u0435", short: "\u0443\u0431\u0435\u0436\u0434\u0435\u043D\u0438\u0435", status: "reserved" },
+    { id: "leadership", stat: "C", label: "\u0440\u0443\u043A\u043E\u0432\u043E\u0434\u0441\u0442\u0432\u043E", short: "\u0440\u0443\u043A\u043E\u0432\u043E\u0434\u0441\u0442\u0432\u043E", status: "reserved" },
+    // ── I: intelligence
+    { id: "medicine", stat: "I", label: "\u043C\u0435\u0434\u0438\u0446\u0438\u043D\u0430", short: "\u043B\u0435\u0447\u0435\u043D\u0438\u0435" },
+    { id: "metallurgy", stat: "I", label: "\u043C\u0435\u0442\u0430\u043B\u043B\u0443\u0440\u0433\u0438\u044F", short: "\u043F\u043B\u0430\u0432\u043A\u0430" },
+    { id: "cooking", stat: "I", label: "\u0441\u0442\u0440\u044F\u043F\u043D\u044F \u0438 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", short: "\u043A\u0443\u0445\u043D\u044F" },
+    { id: "alchemy", stat: "I", label: "\u0430\u043B\u0445\u0438\u043C\u0438\u044F", short: "\u0430\u043B\u0445\u0438\u043C\u0438\u044F", status: "reserved" },
+    { id: "appraisal", stat: "I", label: "\u043E\u0446\u0435\u043D\u043A\u0430 \u0432\u0435\u0449\u0435\u0439", short: "\u043E\u0446\u0435\u043D\u043A\u0430", status: "reserved" },
+    // ── A: agility
+    { id: "carpentry", stat: "A", label: "\u0440\u0430\u0431\u043E\u0442\u0430 \u043F\u043E \u0434\u0435\u0440\u0435\u0432\u0443", short: "\u0434\u0435\u0440\u0435\u0432\u043E" },
+    { id: "tailoring", stat: "A", label: "\u0442\u043A\u0430\u0447\u0435\u0441\u0442\u0432\u043E \u0438 \u0448\u0438\u0442\u044C\u0451", short: "\u0448\u0438\u0442\u044C\u0451" },
+    { id: "leatherwork", stat: "A", label: "\u043E\u0431\u0440\u0430\u0431\u043E\u0442\u043A\u0430 \u043A\u043E\u0436\u0438", short: "\u043A\u043E\u0436\u0438" },
+    { id: "pottery", stat: "A", label: "\u0433\u043E\u043D\u0447\u0430\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u0433\u043E\u043D\u0447\u0430\u0440" },
+    { id: "jewelry", stat: "A", label: "\u044E\u0432\u0435\u043B\u0438\u0440\u043D\u043E\u0435 \u0434\u0435\u043B\u043E", short: "\u044E\u0432\u0435\u043B\u0438\u0440" },
+    { id: "trophyExtraction", stat: "A", label: "\u0438\u0437\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0435 \u0442\u0440\u043E\u0444\u0435\u0435\u0432", short: "\u0442\u0440\u043E\u0444\u0435\u0438" },
+    { id: "stealth", stat: "A", label: "\u0441\u043A\u0440\u044B\u0442\u043D\u043E\u0441\u0442\u044C", short: "\u0441\u043A\u0440\u044B\u0442\u043D\u043E\u0441\u0442\u044C", status: "reserved" }
+  ]);
+  for (const s of SKILLS.all()) s.status ?? (s.status = "active");
+  var isActive = (id) => SKILLS.has(id) && SKILLS.get(id).status === "active";
+  var activeSkills = () => SKILLS.filter((s) => s.status === "active");
+  var TIERS = [
+    { id: 1, min: 0, label: "\u043F\u0440\u043E\u0441\u0442\u043E\u0435" },
+    { id: 2, min: 4, label: "\u043E\u0431\u044B\u0447\u043D\u043E\u0435" },
+    { id: 3, min: 6, label: "\u0441\u043B\u043E\u0436\u043D\u043E\u0435" },
+    { id: 4, min: 8, label: "\u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0435" }
+  ];
+  var LEARN = {
+    rate: 6e-4,
+    base: 0.6,
+    perPoint: 0.08,
+    minFactor: 0.3,
+    overCap: 0.1,
+    // above 10 × letter practice gives a tenth
+    shot: 10,
+    // one fired shot ≈ the old per-tick gain over a bow's reload
+    blow: 6,
+    // one melee blow struck (a blow comes about twice as often as a shot)
+    kill: 20
+    // game brought down: the stalk paid off
+  };
+  var STATION_SKILL = {
+    crafthut: "carpentry",
+    sawmill: "carpentry",
+    loom: "tailoring",
+    tannery: "leatherwork",
+    potter: "pottery",
+    jeweler: "jewelry",
+    charpit: "metallurgy",
+    smelter: "metallurgy",
+    forge: "smithing",
+    quern: "cooking",
+    hearth: "cooking",
+    dryrack: "cooking"
+  };
+  var recipeSkill = (r) => r.skill || STATION_SKILL[r.at];
+  var FROM_JOB = {
+    gather: ["gathering"],
+    fiber: ["gathering"],
+    reeds: ["gathering"],
+    honey: ["gathering"],
+    flaxseed: ["gathering"],
+    salt: ["gathering"],
+    pan: ["gathering"],
+    chop: ["woodcutting"],
+    mine: ["mining"],
+    dig: ["mining"],
+    clay: ["mining"],
+    fish: ["fishing"],
+    hunt: ["hunting", "ranged"],
+    craft: ["carpentry", "tailoring", "leatherwork"],
+    saw: ["carpentry"],
+    charcoal: ["metallurgy"],
+    smith: ["smithing", "metallurgy"],
+    jewel: ["jewelry"],
+    farm: ["farming"],
+    mow: ["farming"],
+    mill: ["cooking"],
+    preserve: ["cooking"],
+    cook: ["cooking"],
+    weave: ["tailoring"],
+    pottery: ["pottery"],
+    tan: ["leatherwork"],
+    heal: ["medicine"],
+    herd: ["husbandry"],
+    bury: ["athletics"],
+    build: ["construction"]
+  };
+
+  // src/agents/skills.js
+  var STAT_IDS = STATS.ids();
+  var clamp01 = (v) => Math.max(0, Math.min(1, v));
+  var statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
+  var letterFactor = (v) => Math.max(LEARN.minFactor, LEARN.base + LEARN.perPoint * v);
+  var softCap = (a, skillId) => clamp01(statFor(a, skillId) / 10);
+  var tierFor = (stat) => TIERS.filter((t) => stat >= t.min).at(-1).id;
+  var skillTier = (a, skillId) => tierFor(statFor(a, skillId));
+  var skillOf = (a, skillId) => a.skill?.[skillId] ?? 0;
+  function actionNeed(skill, tier = 1) {
+    if (!skill || (tier || 1) <= 1) return null;
+    return { code: "tier", stat: SKILLS.get(skill).stat, need: TIERS[tier - 1].min, tier, skill };
+  }
+  function actionAccess(a, skill, tier = 1) {
+    const need = actionNeed(skill, tier), reasons = [];
+    if (need) {
+      const have = statFor(a, skill);
+      if (have < need.need) reasons.push({ ...need, have });
+    }
+    return { ok: !reasons.length, reasons, skill, tier: tier || 1 };
+  }
+  var canDoAction = (a, skill, tier) => actionAccess(a, skill, tier).ok;
+  var recipeNeed = (r) => actionNeed(recipeSkill(r), r.tier);
+  var recipeAccess = (a, r) => actionAccess(a, recipeSkill(r), r.tier);
+  var canMake = (a, r) => recipeAccess(a, r).ok;
+  var jobAccess = (a, job) => actionAccess(a, job.skill, job.tier);
+  var accessKey = (a) => STAT_IDS.map((id) => tierFor(a.special?.[id] ?? NORM)).join("");
+  var reasonText = (x) => x.code === "tier" ? `${STATS.get(x.stat).label.toLowerCase()} \u043E\u0442 ${x.need}${x.have != null ? `, \u0441\u0435\u0439\u0447\u0430\u0441 ${x.have}` : ""}` : x.code;
+  function practiceGain(a, skillId, units = 1) {
+    const cur = skillOf(a, skillId);
+    if (cur >= 1 || units <= 0) return 0;
+    const slow = cur >= softCap(a, skillId) ? LEARN.overCap : 1;
+    return Math.min(1 - cur, LEARN.rate * units * letterFactor(statFor(a, skillId)) * (a.mods?.learn ?? 1) * slow);
+  }
+  function practice(a, skillId, units = 1) {
+    if (!a.prefs || !a.skill || !isActive(skillId)) return 0;
+    const g2 = practiceGain(a, skillId, units);
+    if (g2 > 0) a.skill[skillId] = skillOf(a, skillId) + g2;
+    return g2;
+  }
+  function startSkills(rng, a, likedSkill) {
+    a.skill = {};
+    a.skillVer = 1;
+    for (const s of activeSkills()) {
+      const v = rng() * 0.15 * letterFactor(statFor(a, s.id));
+      a.skill[s.id] = Math.min(v, softCap(a, s.id));
+    }
+    if (likedSkill) a.skill[likedSkill] = Math.max(a.skill[likedSkill], Math.min(0.3, softCap(a, likedSkill)));
+  }
+  function migrateSkills(a) {
+    var _a;
+    if (!a.skill || a.skillVer === 1) return;
+    const old = a.skill, out = {};
+    for (const [job, v] of Object.entries(old)) for (const id of FROM_JOB[job] || []) out[id] = Math.max(out[id] ?? 0, v || 0);
+    if (!a.prefs) {
+      a.skill = out;
+      a.skillVer = 1;
+      return;
+    }
+    for (const s of activeSkills()) out[_a = s.id] ?? (out[_a] = 0);
+    a.skill = out;
+    a.skillVer = 1;
+  }
+
   // src/settlement/reserve.js
   var LEASE = 40;
   var table = (w) => w.reserve || (w.reserve = {});
@@ -4633,6 +4829,11 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "sleptHut", mood: 0.06, lasts: 10 * HOUR, once: 10 * HOUR, text: (a) => `\u041F\u0435\u0440\u0435\u043D\u043E\u0447\u0435\u0432\u0430\u043B${g(a, "", "\u0430")} \u0432 \u0448\u0430\u043B\u0430\u0448\u0435: \u0442\u0435\u0441\u043D\u043E \u0438 \u0441\u043A\u0432\u043E\u0437\u0438\u0442, \u043D\u043E \u0432\u0441\u0451 \u043B\u0443\u0447\u0448\u0435, \u0447\u0435\u043C \u043F\u043E\u0434 \u043D\u0435\u0431\u043E\u043C.` },
     { id: "sleptOutside", mood: -0.05, lasts: 8 * HOUR, once: 10 * HOUR, text: () => "\u0421\u043F\u0430\u043B \u0443 \u043A\u043E\u0441\u0442\u0440\u0430 \u043F\u043E\u0434 \u043E\u0442\u043A\u0440\u044B\u0442\u044B\u043C \u043D\u0435\u0431\u043E\u043C." },
     { id: "wounded", mood: -0.3, lasts: DAY, once: 6 * HOUR, text: (a) => `\u0422\u044F\u0436\u0435\u043B\u043E ${g(a, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")}.` },
+    // the deadly wound (agents/wounds.js)
+    { id: "fell", mood: -0.5, lasts: DAY, text: (a) => `\u0423\u043F\u0430\u043B${g(a, "", "\u0430")} \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F. \u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435, \u0447\u0442\u043E \u043F\u043E\u043C\u043D\u0438\u0442, \u2014 \u0443\u0434\u0430\u0440.` },
+    { id: "survived", mood: 0.4, lasts: 2 * DAY, text: (a, c) => `${c.name ? `${c.name} ${c.gender === "f" ? "\u0432\u044B\u0442\u0430\u0449\u0438\u043B\u0430" : "\u0432\u044B\u0442\u0430\u0449\u0438\u043B"}` : "\u0412\u044B\u0442\u0430\u0449\u0438\u043B\u0438"} \u0441 \u0442\u043E\u0433\u043E \u0441\u0432\u0435\u0442\u0430. \u0416\u0438\u0432${g(a, "", "\u0430")}!` },
+    { id: "trauma", mood: -0.4, lasts: 4 * DAY, text: (a, c) => `${c.what[0].toUpperCase() + c.what.slice(1)}: \u044D\u0442\u043E \u0442\u0435\u043F\u0435\u0440\u044C \u043D\u0430\u0432\u0441\u0435\u0433\u0434\u0430.` },
+    { id: "woundHealed", mood: 0.25, lasts: DAY, text: () => "\u0422\u044F\u0436\u0451\u043B\u0430\u044F \u0440\u0430\u043D\u0430 \u043D\u0430\u043A\u043E\u043D\u0435\u0446 \u0437\u0430\u0442\u044F\u043D\u0443\u043B\u0430\u0441\u044C." },
     // work
     { id: "likedWork", mood: 0.12, lasts: 6 * HOUR, once: 8 * HOUR, text: (a, c) => `\u0421 \u0443\u0434\u043E\u0432\u043E\u043B\u044C\u0441\u0442\u0432\u0438\u0435\u043C ${g(a, "\u0432\u0437\u044F\u043B\u0441\u044F", "\u0432\u0437\u044F\u043B\u0430\u0441\u044C")} \u0437\u0430 \u043B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E: ${c.job}.` },
     { id: "dislikedWork", mood: -0.1, lasts: 6 * HOUR, once: 8 * HOUR, text: (a, c) => `\u041D\u0435\u0445\u043E\u0442\u044F ${g(a, "\u043F\u043E\u0448\u0451\u043B", "\u043F\u043E\u0448\u043B\u0430")} ${c.job}: \u043D\u0435 \u043F\u043E \u0434\u0443\u0448\u0435.` },
@@ -4786,12 +4987,20 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/data/quality.js
   var QUALITY = new Registry("quality");
   QUALITY.registerAll([
-    { id: "q0", q: 0, label: "", rank: "\u043E\u0431\u044B\u0447\u043D\u043E\u0435", hit: 0, guard: 0, tool: 0, dur: 0, warmth: 0, addWeapon: 0, addArmor: 0, sold: true, cap: 0 },
-    { id: "q1", q: 1, label: "+1", rank: "\u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0435", hit: 0.15, guard: 0.05, tool: 0.15, dur: 0.5, warmth: 0.05, addWeapon: 10, addArmor: 25, sold: true, cap: 0 },
-    { id: "q2", q: 2, label: "+2", rank: "\u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0435", hit: 0.3, guard: 0.1, tool: 0.3, dur: 1, warmth: 0.1, addWeapon: 60, addArmor: 150, sold: true, cap: 0 },
-    { id: "q3", q: 3, label: "+3", rank: "\u0440\u0435\u0434\u043A\u043E\u0435", hit: 0.45, guard: 0.15, tool: 0.45, dur: 1.5, warmth: 0.15, addWeapon: 400, addArmor: 900, sold: false, cap: 0.03 },
-    { id: "q4", q: 4, label: "+4", rank: "\u044D\u043F\u0438\u0447\u0435\u0441\u043A\u043E\u0435", hit: 0.7, guard: 0.22, tool: 0.7, dur: 3, warmth: 0.22, addWeapon: 3e3, addArmor: 6e3, sold: false, cap: 0.07, keep: true }
+    { id: "q0", q: 0, label: "", rank: "\u043E\u0431\u044B\u0447\u043D\u043E\u0435", hit: 0, guard: 0, tool: 0, dur: 0, warmth: 0, addWeapon: 0, addArmor: 0, sold: true, cap: 0, craftBase: 1, craftSkill: 0 },
+    { id: "q1", q: 1, label: "+1", rank: "\u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0435", hit: 0.15, guard: 0.05, tool: 0.15, dur: 0.5, warmth: 0.05, addWeapon: 10, addArmor: 25, sold: true, cap: 0, craftBase: 0.03, craftSkill: 0.17 },
+    { id: "q2", q: 2, label: "+2", rank: "\u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0435", hit: 0.3, guard: 0.1, tool: 0.3, dur: 1, warmth: 0.1, addWeapon: 60, addArmor: 150, sold: true, cap: 0, craftBase: 3e-3, craftSkill: 0.03 },
+    { id: "q3", q: 3, label: "+3", rank: "\u0440\u0435\u0434\u043A\u043E\u0435", hit: 0.45, guard: 0.15, tool: 0.45, dur: 1.5, warmth: 0.15, addWeapon: 400, addArmor: 900, sold: false, cap: 0.03, craftBase: 2e-4, craftSkill: 2e-3 },
+    { id: "q4", q: 4, label: "+4", rank: "\u044D\u043F\u0438\u0447\u0435\u0441\u043A\u043E\u0435", hit: 0.7, guard: 0.22, tool: 0.7, dur: 3, warmth: 0.22, addWeapon: 3e3, addArmor: 6e3, sold: false, cap: 0.07, keep: true, craftBase: 2e-6, craftSkill: 6e-6 }
   ]);
+  var craftChance = (q, skill, extra = 0) => {
+    const Q = qualityOf(q);
+    return Math.min(1, Q.craftBase + Q.craftSkill * skill + (q === 1 ? extra : 0));
+  };
+  function qualityRoll(u, skill, extra = 0) {
+    for (let q = MAX_Q; q >= 1; q--) if (u < craftChance(q, skill, extra)) return q;
+    return 0;
+  }
   var qualityOf = (q) => QUALITY.get("q" + (q || 0));
   var MAX_Q = Math.max(...QUALITY.all().map((x) => x.q));
 
@@ -4971,6 +5180,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (a.equip) a.equip = emptySlots();
     recalcGear(a);
   }
+  var toolUse = (a, job) => JOBS.has(job) && !jobAccess(a, JOBS.get(job)).ok ? 0 : 1;
   function value(a, d, w) {
     const brave = 0.5 + 0.5 * a.mods.bravery;
     let v = 0;
@@ -4982,7 +5192,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= 0.3;
     }
     if (d.block) v += d.block * 1.6 * brave;
-    for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.4 * (a.prefs[job] ?? 1);
+    for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.4 * (a.prefs[job] ?? 1) * toolUse(a, job);
     if (d.speed && d.slot === "hand") v += (d.speed - 1) * 2;
     return v;
   }
@@ -4993,7 +5203,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (d.holds) return handsDefs.some((h) => h.ranged?.ammo === d.holds.ammo) ? 3 : 0;
     if (d.carry) return 0.25 + d.carry * 0.15 * Math.max(a.prefs.gather ?? 1, a.prefs.chop ?? 1);
     let v = 0;
-    for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.3 * (a.prefs[job] ?? 1);
+    for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.3 * (a.prefs[job] ?? 1) * toolUse(a, job);
     return v + (isWeapon(d) ? 0.05 : 0);
   }
   function handsValue(w, a, hands) {
@@ -5001,7 +5211,7 @@ dd.q4{color:#c58cff;font-weight:600}
     let v = value(a, def(hands[0]), w);
     if (hands[1] && hands[1] !== hands[0]) {
       const od = def(hands[1]);
-      v += (od.block || 0) * 1.6 * (0.5 + 0.5 * a.mods.bravery) + 0.05 + Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * 1.4 * (a.prefs[j] ?? 1), 0);
+      v += (od.block || 0) * 1.6 * (0.5 + 0.5 * a.mods.bravery) + 0.05 + Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * 1.4 * (a.prefs[j] ?? 1) * toolUse(a, j), 0);
     }
     return v;
   }
@@ -5174,6 +5384,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var penRoom2 = (w) => penSpace(w) - penUsed(w);
   var isTameable = (o) => !o.dead && !o.tame && o.faction === "wild" && o.owner == null && !!SPECIES.get(o.species).tame;
   var claimed = (w, o, a) => !isFree(w, "beast:" + o.id, a);
+  var canTame = (a, b) => !a || canDoAction(a, "husbandry", SPECIES.get(b.species).tame?.tier);
   var tameTargets = (w) => perTick(w, "tameTargets", () => {
     const room = penRoom2(w);
     if (room <= 0) return [];
@@ -5190,7 +5401,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const T2 = tameOf(beast2);
     if (!hasBait(w, T2)) return "nobait";
     for (const [r, v] of Object.entries(T2.bait)) w.stock[r] -= v;
-    const chance = T2.chance * (0.6 + (a.skill.herd || 0)) * (1 + 0.35 * (beast2.tries || 0));
+    const chance = T2.chance * (0.6 + (a.skill.husbandry || 0)) * (1 + 0.35 * (beast2.tries || 0));
     w.stats.tameTries = (w.stats.tameTries || 0) + 1;
     if (w.rngs.wild() < chance) {
       makeTame(w, beast2, a);
@@ -5508,7 +5719,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const n = feast ? col.length : Math.min(have, Math.ceil(col.length / 3) + brewers.length, order.length);
     if (!n) return;
     for (const a of order.slice(0, n)) {
-      if (a.task?.id === "treat" || a.dead) continue;
+      if (a.task?.id === "treat" || a.dead || a.downed) continue;
       w.stock.braga -= 1;
       a.drankAt = w.tick;
       const b = brewOf(a);
@@ -5527,6 +5738,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (brewOf(a) && brewFactor(w, a) < 1) think(w, a, "sober");
       const m = moodOf(w, a);
       a.gloom = m < LIFE.gloomBelow ? (a.gloom || 0) + 1 : 0;
+      if (a.downed) continue;
       if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rngs.colony() < LIFE.leaveChance) {
         leave(w, a);
         continue;
@@ -5583,9 +5795,10 @@ dd.q4{color:#c58cff;font-weight:600}
     const craving = fans && (w.stock[job.food] || 0) < fans * 2 ? 0.08 + 0.3 * fans / Math.max(1, ctx.pop) : 0;
     return want(ctx.food, ctx.pop, 4, 8) * (0.7 + 0.3 * f.nutrition) * k + craving + extra;
   };
-  function huntable(w, job) {
+  function huntable(w, job, a = null) {
     const usual = w.agents.filter((o) => !o.dead && !o.tame && job.prey.includes(o.species));
     if (usual.length) return usual;
+    if (a && !canDoAction(a, job.skill, job.riskyTier)) return [];
     const risky = w.agents.filter((o) => !o.dead && !o.tame && (job.risky || []).includes(o.species));
     if (risky.length || !job.lastResort) return risky;
     const pop = w.agents.filter((o) => o.faction === "colony").length;
@@ -5597,6 +5810,7 @@ dd.q4{color:#c58cff;font-weight:600}
   JOBS.registerAll([
     {
       id: "gather",
+      skill: "gathering",
       label: "\u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C \u044F\u0433\u043E\u0434\u044B",
       short: "\u0441\u0431\u043E\u0440",
       verb: "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u044F\u0433\u043E\u0434\u044B",
@@ -5617,6 +5831,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "chop",
+      skill: "woodcutting",
       label: "\u0440\u0443\u0431\u0438\u0442\u044C \u043B\u0435\u0441",
       short: "\u0440\u0443\u0431\u043A\u0430",
       verb: "\u0440\u0443\u0431\u0438\u0442 \u043B\u0435\u0441",
@@ -5643,6 +5858,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "mine",
+      skill: "mining",
       label: "\u0434\u043E\u0431\u044B\u0432\u0430\u0442\u044C \u043A\u0430\u043C\u0435\u043D\u044C",
       short: "\u043A\u0430\u043C\u0435\u043D\u044C",
       verb: "\u0434\u043E\u0431\u044B\u0432\u0430\u0435\u0442 \u043A\u0430\u043C\u0435\u043D\u044C",
@@ -5661,6 +5877,8 @@ dd.q4{color:#c58cff;font-weight:600}
     // the mine: dig whichever ore the colony is short of (iron ore, coal, gems) from the rock face
     {
       id: "dig",
+      skill: "mining",
+      tier: 2,
       label: "\u0434\u043E\u0431\u044B\u0432\u0430\u0442\u044C \u0440\u0443\u0434\u0443",
       short: "\u0440\u0443\u0434\u0430",
       verb: "\u0434\u043E\u0431\u044B\u0432\u0430\u0435\u0442 \u0440\u0443\u0434\u0443",
@@ -5697,6 +5915,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // made at the craftsman's hut. The fisherman's hut only makes it better, as the lodge does for hunting
     {
       id: "fish",
+      skill: "fishing",
       label: "\u0440\u044B\u0431\u0430\u0447\u0438\u0442\u044C",
       short: "\u0440\u044B\u0431\u0430\u043B\u043A\u0430",
       verb: "\u0440\u044B\u0431\u0430\u0447\u0438\u0442",
@@ -5721,6 +5940,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "hunt",
+      skill: "hunting",
+      riskyTier: 2,
       label: "\u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F",
       short: "\u043E\u0445\u043E\u0442\u0430",
       verb: "\u043E\u0445\u043E\u0442\u0438\u0442\u0441\u044F",
@@ -5737,6 +5958,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "craft",
+      skill: "carpentry",
       label: "\u043C\u0430\u0441\u0442\u0435\u0440\u0438\u0442\u044C",
       short: "\u0440\u0435\u043C\u0435\u0441\u043B\u043E",
       verb: "\u043C\u0430\u0441\u0442\u0435\u0440\u0438\u0442",
@@ -5747,6 +5969,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "charcoal",
+      skill: "metallurgy",
       label: "\u0436\u0435\u0447\u044C \u0443\u0433\u043E\u043B\u044C",
       short: "\u0443\u0433\u043E\u043B\u044C",
       verb: "\u0436\u0436\u0451\u0442 \u0443\u0433\u043E\u043B\u044C",
@@ -5757,6 +5980,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "smith",
+      skill: "smithing",
       label: "\u043F\u043B\u0430\u0432\u0438\u0442\u044C \u0438 \u043A\u043E\u0432\u0430\u0442\u044C \u0436\u0435\u043B\u0435\u0437\u043E",
       short: "\u043A\u0443\u0437\u043D\u044F",
       verb: "\u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \u0443 \u0433\u043E\u0440\u043D\u0430",
@@ -5767,6 +5991,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "jewel",
+      skill: "jewelry",
       label: "\u0434\u0435\u043B\u0430\u0442\u044C \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u044F",
       short: "\u044E\u0432\u0435\u043B\u0438\u0440",
       verb: "\u0434\u0435\u043B\u0430\u0435\u0442 \u0443\u043A\u0440\u0430\u0448\u0435\u043D\u0438\u044F",
@@ -5778,6 +6003,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // field work: sow empty plots in spring and summer, reap ripe ones (settlement/farming.js)
     {
       id: "farm",
+      skill: "farming",
       label: "\u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u0432 \u043F\u043E\u043B\u0435",
       short: "\u043F\u043E\u043B\u0435",
       verb: "\u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442 \u0432 \u043F\u043E\u043B\u0435",
@@ -5791,6 +6017,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "mill",
+      skill: "cooking",
       label: "\u043C\u043E\u043B\u043E\u0442\u044C \u0437\u0435\u0440\u043D\u043E",
       short: "\u043C\u0435\u043B\u044C\u043D\u0438\u043A",
       verb: "\u043C\u0435\u043B\u0435\u0442 \u0437\u0435\u0440\u043D\u043E",
@@ -5801,6 +6028,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "saw",
+      skill: "carpentry",
       label: "\u043F\u0438\u043B\u0438\u0442\u044C \u0442\u0451\u0441",
       short: "\u0442\u0451\u0441",
       verb: "\u043F\u0438\u043B\u0438\u0442 \u0442\u0451\u0441",
@@ -5811,6 +6039,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "weave",
+      skill: "tailoring",
       label: "\u0442\u043A\u0430\u0442\u044C",
       short: "\u0442\u043A\u0430\u0447",
       verb: "\u0442\u043A\u0451\u0442 \u0445\u043E\u043B\u0441\u0442",
@@ -5821,6 +6050,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "pottery",
+      skill: "pottery",
       label: "\u043B\u0435\u043F\u0438\u0442\u044C \u0433\u043E\u0440\u0448\u043A\u0438",
       short: "\u0433\u043E\u043D\u0447\u0430\u0440",
       verb: "\u043B\u0435\u043F\u0438\u0442 \u0433\u043E\u0440\u0448\u043A\u0438",
@@ -5831,6 +6061,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "preserve",
+      skill: "cooking",
       label: "\u0434\u0435\u043B\u0430\u0442\u044C \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438",
       short: "\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438",
       verb: "\u0432\u044F\u043B\u0438\u0442 \u0438 \u0441\u043E\u043B\u0438\u0442 \u043F\u0440\u0438\u043F\u0430\u0441\u044B",
@@ -5841,6 +6072,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "cook",
+      skill: "cooking",
       label: "\u0441\u0442\u0440\u044F\u043F\u0430\u0442\u044C",
       short: "\u043F\u043E\u0432\u0430\u0440",
       verb: "\u0432\u0430\u0440\u0438\u0442 \u043F\u043E\u0445\u043B\u0451\u0431\u043A\u0443",
@@ -5851,6 +6083,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "tan",
+      skill: "leatherwork",
       label: "\u0432\u044B\u0434\u0435\u043B\u044B\u0432\u0430\u0442\u044C \u043A\u043E\u0436\u0438",
       short: "\u043A\u043E\u0436\u0438",
       verb: "\u0432\u044B\u0434\u0435\u043B\u044B\u0432\u0430\u0435\u0442 \u043A\u043E\u0436\u0438",
@@ -5860,9 +6093,12 @@ dd.q4{color:#c58cff;font-weight:600}
       desire: atStations(0.5)
     },
     // the healer: tends the wounded lying in the healer's hut; with nobody to tend, picks healing herbs
-    // while the stock is low (settlement/healing.js). Its skill is the healer's skill.
+    // while the stock is low (settlement/healing.js). Tending trains medicine, picking herbs trains gathering.
     {
       id: "heal",
+      skill: "medicine",
+      gatherSkill: "gathering",
+      tendTier: 2,
       label: "\u043B\u0435\u0447\u0438\u0442\u044C \u0440\u0430\u043D\u0435\u043D\u044B\u0445",
       short: "\u043B\u0435\u043A\u0430\u0440\u044C",
       verb: "\u043B\u0435\u0447\u0438\u0442",
@@ -5875,7 +6111,8 @@ dd.q4{color:#c58cff;font-weight:600}
       resource: "herbs",
       carry: 2,
       time: 30,
-      desire: (w, ctx) => ctx.patients ? 0.9 + 0.1 * ctx.patients : (w.stock.herbs || 0) < HERBS_KEEP ? 0.28 : -1,
+      // the wounded call only a healer able to tend them (`tendTier`, medicine); anyone may pick herbs
+      desire: (w, ctx, job) => ctx.patients && ctx.can(job.skill, job.tendTier) ? 0.9 + 0.1 * ctx.patients : (w.stock.herbs || 0) < HERBS_KEEP ? 0.28 : -1,
       valid: (w, i) => w.grid[plantLayer("herbs")][i] >= PLANTS.get("herbs").ripe && w.grid.fire[i] === 0,
       take: (w, i) => {
         w.grid[plantLayer("herbs")][i] -= PLANTS.get("herbs").take;
@@ -5883,9 +6120,10 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     },
     // the herder: milks the goats and shears them; with nothing to take, goes after a wild goat or mule
-    // with bait from the stock and tries to tame it (settlement/herd.js). Its skill is the herder's skill.
+    // with bait from the stock and tries to tame it (settlement/herd.js). Trains and reads husbandry (C).
     {
       id: "herd",
+      skill: "husbandry",
       label: "\u0445\u043E\u0434\u0438\u0442\u044C \u0437\u0430 \u0441\u043A\u043E\u0442\u043E\u043C",
       short: "\u0441\u043A\u043E\u0442\u043D\u0438\u043A",
       verb: "\u0445\u043E\u0434\u0438\u0442 \u0437\u0430 \u0441\u043A\u043E\u0442\u043E\u043C",
@@ -5896,11 +6134,13 @@ dd.q4{color:#c58cff;font-weight:600}
       time: 30,
       tameTime: 70,
       sticky: 0.3,
-      desire: (w) => chores(w).length ? 0.5 : tameTargets(w).length ? herd(w).length ? 0.45 : 0.62 : -1
+      // wild beasts only this herder may go after (species tame.tier, husbandry)
+      desire: (w, ctx) => chores(w).length ? 0.5 : tameTargets(w).some((b) => canTame(ctx.agent, b)) ? herd(w).length ? 0.45 : 0.62 : -1
     },
     // the dead are carried to the graves (settlement/life.js); not while raiders are about or wolves near the body
     {
       id: "bury",
+      skill: "athletics",
       label: "\u0445\u043E\u0440\u043E\u043D\u0438\u0442\u044C \u0443\u043C\u0435\u0440\u0448\u0438\u0445",
       short: "\u043F\u043E\u0445\u043E\u0440\u043E\u043D\u044B",
       verb: "\u0445\u043E\u0440\u043E\u043D\u0438\u0442 \u0443\u043C\u0435\u0440\u0448\u0435\u0433\u043E",
@@ -5912,6 +6152,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "build",
+      skill: "construction",
       label: "\u0441\u0442\u0440\u043E\u0438\u0442\u044C",
       short: "\u0441\u0442\u0440\u043E\u0439\u043A\u0430",
       verb: "\u0441\u0442\u0440\u043E\u0438\u0442",
@@ -5931,6 +6172,8 @@ dd.q4{color:#c58cff;font-weight:600}
       short: J.short,
       verb: J.verb,
       preferable: true,
+      skill: J.skill || "gathering",
+      tier: J.tier,
       runner: "harvest",
       nav: key2,
       resource: p.resource,
@@ -6061,6 +6304,37 @@ dd.q4{color:#c58cff;font-weight:600}
     return `${r > 0 ? a.pos : a.neg} ${r > 0 ? "+" : "\u2212"}${Math.abs(r)}`;
   }
 
+  // src/data/wounds.js
+  var CRIT = { base: 0.02, span: 0.18, soft: 10, cap: 0.3, mul: 1.5 };
+  var DEATHBLOW = {
+    survive: { base: 0.05, span: 0.4, soft: 8, cap: 0.4 },
+    clean: { base: 0.25, span: 0.5, soft: 8, cap: 0.85 },
+    overkill: 1,
+    // more than full health below zero: no check
+    hpLeft: 0.02,
+    // the fallen keep this share of health while they bleed
+    bleedHours: 1.5,
+    bleedPerE: 0.25,
+    // E 5 → 2.75 hours, E 10 → 4 hours to live without help
+    stableHp: 0.2,
+    // a dressed wound leaves at least this share of health
+    causes: ["\u0440\u0430\u043D"]
+    // which deaths luck may turn aside
+  };
+  var CAN_FALL = (sp, a) => !!sp.sentient && !sp.undead && a.faction === "colony";
+  var luckChance = (c, L) => Math.max(0, Math.min(c.cap, c.base + c.span * L / (L + c.soft)));
+  var WOUNDS = new Registry("wound");
+  WOUNDS.registerAll([
+    { id: "grave", label: "\u0442\u044F\u0436\u0451\u043B\u0430\u044F \u0440\u0430\u043D\u0430", note: "\u0437\u0430\u0436\u0438\u0432\u0430\u0435\u0442", days: 4, mods: { speed: 0.85, work: 0.75 } },
+    { id: "limp", label: "\u0445\u0440\u043E\u043C\u043E\u0442\u0430", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 3, mods: { speed: 0.85 } },
+    { id: "maimedHand", label: "\u043F\u043E\u043A\u0430\u043B\u0435\u0447\u0435\u043D\u043D\u0430\u044F \u0440\u0443\u043A\u0430", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 3, mods: { work: 0.85, str: 0.85 } },
+    { id: "chest", label: "\u043F\u0440\u043E\u0431\u0438\u0442\u0430\u044F \u0433\u0440\u0443\u0434\u044C", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, hp: 0.85, mods: { cold: 1.15 } },
+    { id: "eye", label: "\u0432\u044B\u0431\u0438\u0442\u044B\u0439 \u0433\u043B\u0430\u0437", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, mods: { sight: 0.8, aim: -0.08 } },
+    { id: "dread", label: "\u0441\u0442\u0440\u0430\u0445 \u0441\u043C\u0435\u0440\u0442\u0438", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, mods: { bravery: -0.3 } }
+  ]);
+  var GRAVE_TICKS = (id) => WOUNDS.get(id).days * DAY;
+  var bleedTicks = (E) => Math.round((DEATHBLOW.bleedHours + DEATHBLOW.bleedPerE * E) * HOUR);
+
   // src/agents/special.js
   var peopleOf = (sp, a) => a.people && sp.peoples ? sp.peoples.find((p) => p.id === a.people) : null;
   function limits(sp, people) {
@@ -6074,8 +6348,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var innateOf = (sp, a) => [...sp.innate || [], ...peopleOf(sp, a)?.innate || []];
   var raceLabel = (sp, a) => peopleOf(sp, a)?.label || sp.label;
   var ADD = /* @__PURE__ */ new Set(["aim", "dodge", "bravery"]);
-  function mod(a, k, v) {
-    a.mods[k] = ADD.has(k) ? (a.mods[k] ?? 0) + v : (a.mods[k] ?? 1) * v;
+  function mod(m, k, v) {
+    m[k] = ADD.has(k) ? (m[k] ?? 0) + v : (m[k] ?? 1) * v;
   }
   function rollCreature(w, a, sp) {
     if (!sp.special) return;
@@ -6084,9 +6358,6 @@ dd.q4{color:#c58cff;font-weight:600}
     const people = peopleOf(sp, a), lim = limits(sp, people);
     a.special = {};
     for (const [id, [lo, hi]] of Object.entries(lim)) a.special[id] = Math.round(lo + (hi - lo) * (rng() + rng()) / 2);
-    applySpecial(a, sp);
-    for (const [k, v] of Object.entries(people?.mods || {})) mod(a, k, v);
-    for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(a, k, v);
     if (sp.align) {
       const s = sp.align.spread ?? 1, n = () => (rng() + rng() + rng() - 1.5) * s;
       a.align = { order: clamp(Math.round((sp.align.order + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX), mercy: clamp(Math.round((sp.align.mercy + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX) };
@@ -6101,14 +6372,69 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
   }
-  function applySpecial(a, sp) {
+  function specialInto(m, a, sp) {
     const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;
     const rel = (k) => base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s);
-    a.maxHp = sp.hp * rel("hp");
-    a.hp = a.maxHp;
-    for (const k of ["str", "speed", "swing", "learn", "sight", "cold"]) mod(a, k, rel(k));
-    mod(a, "aim", EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
-    mod(a, "dodge", Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
+    for (const k of ["str", "speed", "swing", "learn", "sight", "cold"]) mod(m, k, rel(k));
+    mod(m, "aim", EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
+    mod(m, "dodge", Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
+    return sp.hp * rel("hp");
+  }
+  function refreshBody(a) {
+    const sp = SPECIES.get(a.species), m = { ...BASE_MODS };
+    for (const [k, v] of Object.entries(sp.mods || {})) m[k] *= v;
+    let full = null;
+    if (a.special && sp.special) {
+      full = specialInto(m, a, sp);
+      const people = peopleOf(sp, a);
+      for (const [k, v] of Object.entries(people?.mods || {})) mod(m, k, v);
+      for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(m, k, v);
+    }
+    for (const id of a.traits || []) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) mod(m, k, v);
+    let hpMul = 1;
+    for (const wd of a.wounds || []) {
+      const W = WOUNDS.get(wd.id);
+      for (const [k, v] of Object.entries(W.mods || {})) mod(m, k, v);
+      hpMul *= W.hp ?? 1;
+    }
+    const own = a.own || {};
+    for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;
+    for (const [k, v] of Object.entries(own.add || {})) m[k] = (m[k] ?? 0) + v;
+    Object.assign(m, own.set || {});
+    if (own.hp != null) full = own.hp;
+    if (hpMul !== 1) full = (full ?? sp.hp) * hpMul;
+    const was = a.maxHp || sp.hp, share2 = Number.isFinite(a.hp) ? a.hp / was : 1;
+    a.mods = m;
+    if (full != null) a.maxHp = full;
+    else delete a.maxHp;
+    a.hp = (a.maxHp || sp.hp) * Math.max(0, Math.min(1, share2));
+  }
+  var RULE_KEYS = /* @__PURE__ */ new Set(["learn", "aim", "dodge"]);
+  var BODY_VER = 2;
+  function adoptBody(a) {
+    if (!a.mods || a.bodyVer >= 1) return;
+    const saved = a.mods, hp = a.hp, maxHp2 = a.maxHp;
+    delete a.own;
+    refreshBody(a);
+    const mul = {}, add2 = {};
+    for (const [k, v] of Object.entries(saved)) {
+      if (RULE_KEYS.has(k) || !Number.isFinite(v)) continue;
+      if (ADD.has(k)) {
+        const d = v - (a.mods[k] ?? 0);
+        if (Math.abs(d) > 1e-9) add2[k] = d;
+      } else {
+        const now = a.mods[k] ?? 1;
+        if (now !== 0 && Math.abs(v / now - 1) > 1e-9) mul[k] = v / now;
+      }
+    }
+    a.own = {};
+    if (Object.keys(mul).length) a.own.mul = mul;
+    if (Object.keys(add2).length) a.own.add = add2;
+    if (maxHp2 && Math.abs(maxHp2 - (a.maxHp || SPECIES.get(a.species).hp)) > 1e-9) a.own.hp = maxHp2;
+    a.hp = hp;
+    if (maxHp2) a.maxHp = maxHp2;
+    refreshBody(a);
+    a.bodyVer = BODY_VER;
   }
 
   // src/data/raids.js
@@ -6355,7 +6681,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var wooden = (w) => w.buildings.filter((b) => b.done && b.cells.length && BUILDINGS.get(b.key).wooden);
   function pickVictim(w) {
-    const col = colonists(w);
+    const col = colonists(w).filter((a) => !a.downed);
     if (!col.length) return null;
     const feud2 = col.filter((a) => (a.stats?.raiders || 0) > 0).sort((x, y) => y.stats.raiders - x.stats.raiders)[0];
     return feud2 ? { who: feud2, why: "\u043A\u0440\u043E\u0432\u043D\u0438\u043A: \u0443\u0431\u0438\u0432\u0430\u043B \u0438\u0445" } : { who: col.sort((x, y) => strength(x) - strength(y))[0], why: "\u0441\u0430\u043C\u0430\u044F \u043B\u0451\u0433\u043A\u0430\u044F \u0434\u043E\u0431\u044B\u0447\u0430" };
@@ -6527,7 +6853,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function holdFoe(w, a, fresh) {
     const t = a.task?.id === "fight" ? a.task.target : null;
-    if (!t || t.dead || !w.agents.includes(t) || !canSee(w, a, t)) return fresh;
+    if (!t || t.dead || t.downed || !w.agents.includes(t) || !canSee(w, a, t)) return fresh;
     if (!fresh || fresh === t) return t;
     const held = w.tick - (a.task.since ?? w.tick);
     return held > SQUAD.hold || dist(a, fresh) < dist(a, t) * SQUAD.closer ? fresh : t;
@@ -6560,7 +6886,7 @@ dd.q4{color:#c58cff;font-weight:600}
       return a.task?.id === "scout" ? a.task : { id: "scout" };
     }
     if (sq.goal === "kill") {
-      const v = w.agents.find((o) => o.id === sq.target && !o.dead);
+      const v = w.agents.find((o) => o.id === sq.target && !o.dead && !o.downed);
       if (v && canSee(w, a, v) && dist(a, v) < 30 && !close2) return fight(w, a, v);
     }
     const e = holdFoe(w, a, nearestHostile(w, a, radius));
@@ -6716,9 +7042,10 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!prey) return;
     const ms = h.members.map((id) => byId2(w, id)).filter(Boolean).sort((x, y) => dist2(x, prey) - dist2(y, prey));
     let side = 1;
+    const prev = h.roles || {};
     h.roles = {};
     ms.forEach((m, k) => {
-      const winded = m.stamina < PACK.winded || h.roles[m.id] === "wait" && m.stamina < PACK.rested;
+      const winded = m.stamina < PACK.winded || prev[m.id] === "wait" && m.stamina < PACK.rested;
       h.roles[m.id] = k === 0 ? "lead" : winded ? "wait" : (side = -side) > 0 ? "flankL" : "flankR";
     });
     h.dealt = w.tick;
@@ -6771,21 +7098,61 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var ROLE_LABEL = { lead: "\u0432\u0435\u0434\u0451\u0442 \u043F\u043E\u0433\u043E\u043D\u044E", flankL: "\u0437\u0430\u0445\u043E\u0434\u0438\u0442 \u0441\u0431\u043E\u043A\u0443", flankR: "\u0437\u0430\u0445\u043E\u0434\u0438\u0442 \u0441\u0431\u043E\u043A\u0443", wait: "\u043E\u0442\u0441\u0442\u0430\u043B, \u043F\u0435\u0440\u0435\u0432\u043E\u0434\u0438\u0442 \u0434\u0443\u0445" };
 
+  // src/agents/trophies.js
+  var TROPHY = { lucky: 0.5, soft: 5, practice: 40 };
+  function noteHit(t, by) {
+    if (by?.faction !== "colony" || t.faction === "colony" || !SPECIES.get(t.species).trophies) return;
+    (t.hitters || (t.hitters = {}))[by.id] = by.special?.L ?? NORM;
+  }
+  var luckBoost = (L) => 1 + TROPHY.lucky * L / (L + TROPHY.soft);
+  function decideTrophies(w, t, by) {
+    var _a, _b;
+    if (t.trophy) return t.trophy;
+    const table3 = SPECIES.get(t.species).trophies || [];
+    const hit = { ...t.hitters || {} };
+    if (by?.faction === "colony") hit[_a = by.id] ?? (hit[_a] = by.special?.L ?? NORM);
+    const ids = Object.keys(hit);
+    const out = t.trophy = { got: {}, spoiled: [] };
+    if (!table3.length || !ids.length) return out;
+    const L = ids.reduce((s, id) => s + hit[id], 0) / ids.length;
+    const crew = ids.map((id) => w.agents.find((o) => o.id === +id && !o.dead)).filter(Boolean);
+    for (const e of table3) {
+      if (!(w.rngs.combat() < Math.min(1, e.chance * luckBoost(L)))) continue;
+      if ((e.tier || 1) > 1) {
+        const hand = crew.filter((o) => canDoAction(o, "trophyExtraction", e.tier)).sort((x, y) => (y.skill?.trophyExtraction || 0) - (x.skill?.trophyExtraction || 0))[0];
+        if (!hand) {
+          out.spoiled.push(e.res);
+          continue;
+        }
+        practice(hand, "trophyExtraction", TROPHY.practice);
+        out.by = hand.name;
+        out.byF = hand.gender === "f";
+      }
+      out.got[e.res] = (out.got[e.res] || 0) + e.n;
+    }
+    const tally2 = (_b = w.chronicle).trophies || (_b.trophies = { got: 0, spoiled: 0 });
+    tally2.got += Object.values(out.got).reduce((s, n) => s + n, 0);
+    tally2.spoiled += out.spoiled.length;
+    return out;
+  }
+
   // src/agents/agent.js
+  function trophyText(t) {
+    if (!t) return "";
+    const got = Object.entries(t.got).map(([r, n]) => `${RESOURCES.get(r).label}${n > 1 ? " \xD7" + n : ""}`);
+    const lost = [...new Set(t.spoiled)].map((r) => RESOURCES.get(r).label);
+    return (got.length ? ` \u0420\u0435\u0434\u043A\u0430\u044F \u0434\u043E\u0431\u044B\u0447\u0430: ${got.join(", ")}${t.by ? ` (\u0432\u044B\u0440\u0435\u0437\u0430\u043B${t.byF ? "\u0430" : ""} ${esc(t.by)})` : ""}.` : "") + (lost.length ? ` \u0418\u0441\u043F\u043E\u0440\u0447\u0435\u043D\u043E \u043D\u0435\u0443\u043C\u0435\u043B\u043E\u0439 \u0440\u0443\u043A\u043E\u0439: ${lost.join(", ")}.` : "");
+  }
   var newMemory = (init = {}) => new Proxy(init, { get: (t, k) => typeof k === "string" ? t[k] ?? 0 : t[k] });
   var between = (rng, [a, b]) => a + rng() * (b - a);
   function personality(w, a) {
     const rng = w.rngs.birth, pool = shuffle(rng, JOBS.filter((j) => j.preferable).map((j) => j.id));
     a.prefs = {};
-    a.skill = {};
-    for (const id of JOBS.ids()) {
-      a.prefs[id] = between(rng, NEUTRAL_RANGE);
-      a.skill[id] = rng() * 0.15;
-    }
+    for (const id of JOBS.ids()) a.prefs[id] = between(rng, NEUTRAL_RANGE);
     a.likes = pool[0];
     a.dislikes = pool[1];
+    startSkills(rng, a, JOBS.get(a.likes).skill);
     a.prefs[a.likes] = between(rng, LIKE_RANGE);
-    a.skill[a.likes] = 0.3;
     a.prefs[a.dislikes] = between(rng, DISLIKE_RANGE);
     a.traits = [];
     const groups = /* @__PURE__ */ new Set(), want2 = rng() < 0.25 ? 0 : rng() < 0.6 ? 1 : 2;
@@ -6796,10 +7163,7 @@ dd.q4{color:#c58cff;font-weight:600}
       a.traits.push(t.id);
       groups.add(t.group);
     }
-    for (const id of a.traits) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) {
-      a.mods[k] = k === "bravery" ? a.mods[k] + v : a.mods[k] * v;
-    }
-    a.mods.bravery *= 0.85 + rng() * 0.3;
+    (a.own || (a.own = {})).mul = { bravery: 0.85 + rng() * 0.3 };
     a.food = drawFoodPrefs(rng);
   }
   function freshName2(w, names) {
@@ -6825,6 +7189,7 @@ dd.q4{color:#c58cff;font-weight:600}
       mods: { ...BASE_MODS },
       needs: {},
       mem: newMemory(),
+      bodyVer: BODY_VER,
       task: null,
       think: w.rngs.birth() * 15 | 0,
       cd: 0,
@@ -6832,15 +7197,16 @@ dd.q4{color:#c58cff;font-weight:600}
       sleeping: false
     };
     if (sp.names && factionId === "colony") [a.name, a.gender] = freshName2(w, sp.names);
-    for (const [k, v] of Object.entries(sp.mods || {})) a.mods[k] *= v;
     rollCreature(w, a, sp);
     a.stamina = 1;
     for (const id of sp.needs) {
       const n = NEEDS2.get(id);
       a.needs[id] = between(w.rngs.birth, n.start);
     }
-    if (sp.sentient && factionId === "colony") {
-      personality(w, a);
+    if (sp.sentient && factionId === "colony") personality(w, a);
+    refreshBody(a);
+    a.hp = maxHp(a);
+    if (a.prefs) {
       a.diary = [];
       enrol(w, a, w.founding);
     }
@@ -6852,7 +7218,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var maxHp = (a) => a.maxHp || SPECIES.get(a.species).hp;
   var hpShare = (a) => a.hp / maxHp(a);
-  function kill(w, a, cause, by) {
+  function kill(w, a, cause, by, { quiet = false } = {}) {
     if (a.dead) return;
     a.dead = true;
     a.hp = 0;
@@ -6861,6 +7227,7 @@ dd.q4{color:#c58cff;font-weight:600}
     noteHuntDeath(w, a);
     const sp = SPECIES.get(a.species);
     const killer = by ? SPECIES.get(by.species) : null;
+    const trophy = sp.trophies && by?.faction === "colony" ? decideTrophies(w, a, by) : null;
     if (a.faction === "colony") {
       noteDeath(w, a, cause, by);
       addCorpse(w, a);
@@ -6879,11 +7246,12 @@ dd.q4{color:#c58cff;font-weight:600}
         w.chronicle.raidersKilled++;
       }
     }
-    if (a.faction === "colony") log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, "\u043F\u043E\u0433\u0438\u0431", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430")} \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> ${g(a, "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B", "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B\u0430")} ${cause}.`, "death");
+    if (a.faction === "colony" && !quiet) log(w, killer?.killMessage ? killer.killMessage(esc(a.name)) : by ? `<b>${esc(a.name)}</b> ${g(a, "\u043F\u043E\u0433\u0438\u0431", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430")} \u0432 \u0431\u043E\u044E.` : `<b>${esc(a.name)}</b> ${g(a, "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B", "\u043D\u0435 \u043F\u0435\u0440\u0435\u0436\u0438\u043B\u0430")} ${cause}.`, "death");
     else if (sp.yields && by?.faction === "colony" && by.task?.id !== "job" && a.faction !== "traders") {
       for (const [r, n] of Object.entries(sp.yields)) w.stock[r] = (w.stock[r] || 0) + n;
+      for (const [r, n] of Object.entries(trophy?.got || {})) w.stock[r] = (w.stock[r] || 0) + n;
       const got = Object.keys(sp.yields).map((r) => RESOURCES.get(r).label).join(", ");
-      log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? "\u0443\u043F\u043E\u043A\u043E\u0438\u043B" : "\u0443\u0431\u0438\u043B", sp.undead ? "\u0443\u043F\u043E\u043A\u043E\u0438\u043B\u0430" : "\u0443\u0431\u0438\u043B\u0430")} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} \u2014 \u0432 \u043B\u0430\u0433\u0435\u0440\u044C.`, "danger", "notice");
+      log(w, `<b>${esc(by.name)}</b> ${g(by, sp.undead ? "\u0443\u043F\u043E\u043A\u043E\u0438\u043B" : "\u0443\u0431\u0438\u043B", sp.undead ? "\u0443\u043F\u043E\u043A\u043E\u0438\u043B\u0430" : "\u0443\u0431\u0438\u043B\u0430")} ${sp.labelAcc || sp.label}. ${got[0].toUpperCase() + got.slice(1)} \u2014 \u0432 \u043B\u0430\u0433\u0435\u0440\u044C.${trophyText(trophy)}`, "danger", "notice");
     } else if (sp.resident && by?.faction === "colony") {
       log(w, `<b>${esc(by.name)}</b> ${g(by, "\u0443\u043F\u043E\u043A\u043E\u0438\u043B", "\u0443\u043F\u043E\u043A\u043E\u0438\u043B\u0430")} ${sp.labelAcc || sp.label}. \u041D\u0430\u0434\u043E\u043B\u0433\u043E \u043B\u0438?`, "danger", "notice");
     } else if (a.faction === "raiders" && by) {
@@ -6914,6 +7282,80 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   }
 
+  // src/agents/wounds.js
+  var luckOf = (a) => a.special?.L ?? NORM;
+  var tally = (w) => {
+    var _a;
+    return (_a = w.chronicle).falls || (_a.falls = { down: 0, saved: 0, bled: 0, killed: 0, traumas: 0 });
+  };
+  var critChance = (by) => luckChance(CRIT, luckOf(by));
+  var fallSpent = (a) => !!a.downed || (a.wounds || []).some((x) => x.id === "grave");
+  function lethal(w, t, cause, by) {
+    if (t.dead) return false;
+    const sp = SPECIES.get(t.species);
+    if (t.downed) tally(w).killed++;
+    if (fallSpent(t) || !CAN_FALL(sp, t) || !DEATHBLOW.causes.includes(cause) || t.hp < -DEATHBLOW.overkill * maxHp(t)) {
+      kill(w, t, cause, by);
+      return false;
+    }
+    const L = luckOf(t);
+    if (w.rngs.combat() >= luckChance(DEATHBLOW.survive, L)) {
+      kill(w, t, cause, by);
+      return false;
+    }
+    const clean = w.rngs.combat() < luckChance(DEATHBLOW.clean, L);
+    const trauma = clean ? null : weighted(w.rngs.combat, WOUNDS.filter((x) => x.trauma).map((x) => [x.id, x.weight ?? 1]));
+    fall(w, t, cause, by, trauma);
+    return true;
+  }
+  function fall(w, a, cause, by, trauma) {
+    if (a.task) a.switchWhy = "\u0443\u043F\u0430\u043B \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F";
+    releaseAll(w, a);
+    noteHuntDeath(w, a);
+    for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;
+    a.downed = { since: w.tick, until: w.tick + bleedTicks(a.special?.E ?? NORM), cause, by: by?.id ?? null, trauma };
+    a.hp = DEATHBLOW.hpLeft * maxHp(a);
+    a.task = { id: "downed" };
+    a.sleeping = false;
+    a.stalking = false;
+    tally(w).down++;
+    think(w, a, "fell");
+    log(w, `<b>${esc(a.name)}</b> ${g(a, "\u0443\u043F\u0430\u043B", "\u0443\u043F\u0430\u043B\u0430")} \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F${by ? ` \u043E\u0442 \u0443\u0434\u0430\u0440\u0430 (${SPECIES.get(by.species).label})` : ""}. \u0411\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438 \u0438\u0441\u0442\u0435\u0447\u0451\u0442 \u043A\u0440\u043E\u0432\u044C\u044E.`, "danger", "notice");
+  }
+  function stepDowned(w, a) {
+    if (w.tick < a.downed.until) return;
+    const by = a.downed.by != null ? w.agents.find((o) => o.id === a.downed.by) : null;
+    tally(w).bled++;
+    log(w, `<b>${esc(a.name)}</b> ${g(a, "\u0438\u0441\u0442\u0451\u043A", "\u0438\u0441\u0442\u0435\u043A\u043B\u0430")} \u043A\u0440\u043E\u0432\u044C\u044E: \u043F\u043E\u043C\u043E\u0449\u044C \u043D\u0435 \u0443\u0441\u043F\u0435\u043B\u0430.`, "death");
+    kill(w, a, a.downed.cause, by || void 0, { quiet: true });
+  }
+  function stabilize(w, helper2, a) {
+    const d = a.downed;
+    if (!d) return;
+    a.downed = null;
+    if (a.task?.id === "downed") a.task.closed = "done";
+    a.wounds = [...a.wounds || [], { id: "grave", until: w.tick + GRAVE_TICKS("grave") }];
+    if (d.trauma) a.wounds.push({ id: d.trauma });
+    refreshBody(a);
+    a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + (helper2?.skill?.medicine || 0)));
+    a.task = null;
+    a.think = 0;
+    const f = tally(w);
+    f.saved++;
+    if (d.trauma) f.traumas++;
+    think(w, a, "survived", { name: helper2?.name, gender: helper2?.gender });
+    if (d.trauma) think(w, a, "trauma", { what: WOUNDS.get(d.trauma).label });
+    log(w, `<b>${esc(helper2?.name || "\u041A\u0442\u043E-\u0442\u043E")}</b> ${g(helper2 || a, "\u0432\u044B\u0442\u0430\u0449\u0438\u043B", "\u0432\u044B\u0442\u0430\u0449\u0438\u043B\u0430")} <b>${esc(a.name)}</b> \u0441 \u0442\u043E\u0433\u043E \u0441\u0432\u0435\u0442\u0430.${d.trauma ? ` \u041D\u043E ${WOUNDS.get(d.trauma).label} \u043E\u0441\u0442\u0430\u043D\u0435\u0442\u0441\u044F \u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C.` : " \u0420\u0430\u043D\u0430 \u0442\u044F\u0436\u0451\u043B\u0430\u044F, \u043D\u043E \u0437\u0430\u0436\u0438\u0432\u0451\u0442."}`, "people", "notice");
+  }
+  function healWounds(w, a) {
+    if (!a.wounds?.length || (w.tick + a.id) % 50) return;
+    const left = a.wounds.filter((x) => x.until == null || x.until > w.tick);
+    if (left.length === a.wounds.length) return;
+    a.wounds = left;
+    refreshBody(a);
+    think(w, a, "woundHealed");
+  }
+
   // src/agents/combat.js
   var aggressor = (a, o) => o.task?.id === "maul" && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
   function canSee(w, a, t) {
@@ -6924,7 +7366,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function nearestHostile(w, a, r) {
     let best = null, bd = r * r;
     for (const o of w.agents) {
-      if (o === a || o.dead || !(isHostile(a, o) || aggressor(a, o))) continue;
+      if (o === a || o.dead || o.downed || !(isHostile(a, o) || aggressor(a, o))) continue;
       const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
       if (d >= bd || !canSee(w, a, o)) continue;
       bd = d;
@@ -6936,6 +7378,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var reachOf = (a) => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
   var ensureGear = (a) => a.gear || { melee: { dmg: (SPECIES.get(a.species).attack || { power: 1 }).power, cd: (SPECIES.get(a.species).attack || { cooldown: 12 }).cooldown }, armor: 0, block: 0 };
   function damage(w, by, t, raw, { melee: melee2 = true } = {}) {
+    var _a;
+    if (t.downed || t.dead) return "downed";
     const g2 = ensureGear(t);
     t.hurtBy = { id: by.id, tick: w.tick, far: !melee2 };
     if (t.mods?.dodge > 0 && w.rngs.combat() < t.mods.dodge) {
@@ -6950,9 +7394,18 @@ dd.q4{color:#c58cff;font-weight:600}
       t.flash = 3;
       return "blocked";
     }
+    const crit = w.rngs.combat() < critChance(by);
+    if (crit) {
+      raw *= CRIT.mul;
+      t.flash = 6;
+    }
+    const cs = (_a = w.chronicle).combat || (_a.combat = { hits: 0, crits: 0 });
+    cs.hits++;
+    if (crit) cs.crits++;
     const home = by.faction === "colony" && agentInZone(w, by) ? 1.25 : 1;
     const wall = t.faction === "colony" && agentInZone(w, t) ? w.mods.mul.defense : 1;
     let dmg = raw * home * wall * (1 - (g2.armor || 0));
+    noteHit(t, by);
     if (g2.armor && t.equip?.body) wear(w, t, t.equip.body);
     t.hp -= dmg;
     const bsp = SPECIES.get(by.species);
@@ -6969,7 +7422,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const memKey = by.species === "wolf" || t.species === "wolf" ? "wolf" : by.species === "mule" || t.species === "mule" ? "mule" : "raid";
     if (t.faction === "colony" && t.mem) t.mem[memKey] += 0.25;
     else if (by.faction === "colony" && by.mem) by.mem[memKey] += 0.1;
-    if (t.hp <= 0) kill(w, t, "\u0440\u0430\u043D", by);
+    if (t.hp <= 0) lethal(w, t, "\u0440\u0430\u043D", by);
     return dmg;
   }
   var SILVER = { bane: 2.5, plain: 0.5 };
@@ -6986,19 +7439,23 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     w.nav.dirty("fire");
   }
+  var behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
+  var MELEE_SKILL = 0.4;
   function attack(w, a, t) {
-    if (a.cd > 0 || !t || t.dead || a.dead) return false;
+    if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
     if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
+    if (behindRock(w, a, t)) return false;
     const g2 = ensureGear(a);
     a.cd = Math.max(4, Math.round(g2.melee.cd * (a.mods?.swing ?? 1)));
     a.flash = 4;
-    damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g2.melee.dmg * (a.mods?.str ?? 1) * silverFactor(t, g2.melee.item));
+    damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g2.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g2.melee.item));
+    practice(a, "melee", LEARN.blow);
     if (g2.melee.item) wear(w, a, g2.melee.item);
     return true;
   }
-  function shoot(w, a, t, skillJob = "hunt") {
+  function shoot(w, a, t) {
     const g2 = a.gear;
-    if (!g2?.ranged || !g2.rangedReady || a.cd > 0) return null;
+    if (!g2?.ranged || !g2.rangedReady || a.cd > 0 || t.downed) return null;
     const r = g2.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
     if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
     a.cd = r.cd;
@@ -7007,8 +7464,9 @@ dd.q4{color:#c58cff;font-weight:600}
       if (a.equip.back.ammo <= 0) g2.rangedReady = false;
     }
     wear(w, a, r.item);
-    const skill = a.skill?.[skillJob] ?? 0.2, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? 0.12 : 0;
+    const skill = a.skill?.ranged ?? 0.2, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? 0.12 : 0;
     const hit = w.rngs.combat() < 0.4 + 0.4 * skill + (a.mods?.aim || 0) - d / range * 0.2 - moving;
+    practice(a, "ranged", LEARN.shot);
     w.fx.push({ x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? "arrow" : "stone" });
     if (!hit) return "miss";
     const boost = r.boost && a.faction === "colony" ? w.mods.best[r.boost] || 1 : 1;
@@ -7091,7 +7549,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if ((w.tick + a.id) % 30 || w.tick < (a.lureAt ?? -1e9) + 12 * HOUR) return false;
     let best = null, bd = S.radius;
     for (const o of w.agents) {
-      if (o.faction !== "colony" || o.dead || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
+      if (o.faction !== "colony" || o.dead || o.downed || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
       const d = dist3(o, a);
       if (d < bd) {
         bd = d;
@@ -7152,7 +7610,7 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
         a.task = { id: "maul", target: foe };
-        if (dist3(a, foe) > 0.9) approach(w, a, foe.x, foe.y, 1.1);
+        if (dist3(a, foe) > 0.9 || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.1);
         else attack(w, a, foe);
         return;
       }
@@ -7192,6 +7650,16 @@ dd.q4{color:#c58cff;font-weight:600}
     purse: [25, 70],
     ask: 1.2,
     bid: 0.7,
+    // the colony's negotiator (settlement/trade.js terms): Charisma × (1 + barter skill) against the trader's;
+    // the contest a / (a + b) moves both prices by up to ±haggle in the colony's favour or against it,
+    // once for the whole visit. With the best terms buying costs 1.1 and selling brings 0.8 of the worth:
+    // there is always a margin, so nothing can be sold and bought back at a profit.
+    haggle: 0.1,
+    traderC: 6,
+    traderBarter: 0.5,
+    practicePerLine: 15,
+    practiceMax: 120,
+    // barter practice for the negotiator: per line of the deal, at most
     foodShort: 4,
     foodUpTo: 6,
     foodKeep: 5,
@@ -7393,6 +7861,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // bast clothes: linden bark stripped from the logs — rough, but anyone can make them from day one
     {
       id: "clothes",
+      skill: "tailoring",
       at: "crafthut",
       cost: { wood: 3 },
       work: 1300,
@@ -7402,6 +7871,8 @@ dd.q4{color:#c58cff;font-weight:600}
     // a fur coat for everyone before the cold sets in (wanted from late summer)
     {
       id: "furcoat",
+      tier: 2,
+      skill: "leatherwork",
       at: "crafthut",
       cost: { hide: 3, leather: 1 },
       work: 1200,
@@ -7410,6 +7881,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "jerkin",
+      tier: 2,
+      skill: "leatherwork",
       at: "crafthut",
       cost: { leather: 3 },
       work: 1500,
@@ -7418,6 +7891,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "hardleather",
+      tier: 3,
+      skill: "leatherwork",
       at: "crafthut",
       cost: { leather: 3, bone: 3 },
       work: 1800,
@@ -7459,6 +7934,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "sling",
+      skill: "leatherwork",
       at: "crafthut",
       cost: { hide: 1 },
       work: 600,
@@ -7468,6 +7944,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // the bow is the better hunting weapon and needs the hunters' lodge; the sling needs nothing
     {
       id: "bow",
+      tier: 2,
       at: "crafthut",
       cost: { wood: 3, leather: 1, rope: 1 },
       work: 800,
@@ -7502,6 +7979,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "quiver",
+      skill: "leatherwork",
       at: "crafthut",
       cost: { wood: 1, hide: 1 },
       work: 450,
@@ -7510,6 +7988,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "basket",
+      skill: "tailoring",
       at: "crafthut",
       cost: { reeds: 4 },
       work: 450,
@@ -7535,7 +8014,8 @@ dd.q4{color:#c58cff;font-weight:600}
       makes: { resource: "coal", n: 3 },
       want: (c) => c.has("smelter") ? c.fuel < 16 ? 1.8 : 0 : c.stock("coal") < 6 ? 0.8 : 0
     },
-    // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too
+    // ── the furnace: iron on coal; bronze, gold and silver melt on a wood fire too. Melting is metallurgy (I):
+    // plain ore and native metal anyone can melt, gold dust takes care (T2), cupelling silver from ore skill (T3)
     {
       id: "smelt",
       at: "smelter",
@@ -7558,6 +8038,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "goldDustBar",
+      tier: 2,
       at: "smelter",
       cost: { goldDust: 12 },
       fuel: 0.5,
@@ -7578,6 +8059,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "silverOreBar",
+      tier: 3,
       at: "smelter",
       cost: { silverOre: 3 },
       fuel: 1,
@@ -7601,6 +8083,8 @@ dd.q4{color:#c58cff;font-weight:600}
     // a silver dagger cast whole: no iron and no forge needed, the first answer to a vampire
     {
       id: "silverknife",
+      tier: 2,
+      skill: "smithing",
       at: "smelter",
       cost: { silverBar: 2, leather: 1 },
       fuel: 0.5,
@@ -7611,6 +8095,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "bronzespear",
+      tier: 2,
+      skill: "smithing",
       at: "smelter",
       cost: { bronze: 2, wood: 1 },
       fuel: 0.5,
@@ -7621,6 +8107,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "bronzeaxe",
+      skill: "smithing",
       at: "smelter",
       cost: { bronze: 2, wood: 1 },
       fuel: 0.5,
@@ -7629,9 +8116,12 @@ dd.q4{color:#c58cff;font-weight:600}
       makes: { item: "bronzeaxe" },
       want: (c) => short(c.owned("ironaxe") + c.owned("bronzeaxe"), Math.min(Math.ceil(c.pop / 2), 1 + c.likes("chop"))) ? 1.9 : 0
     },
-    // ── the forge: iron blades and lamellar armour; each piece takes one fuel
+    // ── the forge: iron blades and lamellar armour; each piece takes one fuel. Forging is smithing (S): an axe
+    // head anyone can beat out (T1, the apprentice's work), a spear point wants a stronger arm (T2), a sword and
+    // lamellar a real smith (T3), a silvered sword a master (T4)
     {
       id: "sword",
+      tier: 3,
       at: "forge",
       cost: { iron: 3, leather: 1 },
       fuel: 1,
@@ -7641,6 +8131,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "ironspear",
+      tier: 2,
       at: "forge",
       cost: { iron: 2, wood: 2 },
       fuel: 1,
@@ -7662,6 +8153,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // (ctx.silverFoes): a silver blade for every second colonist, and the last bar goes into it.
     {
       id: "swordSilver",
+      tier: 4,
       at: "forge",
       cost: { iron: 3, leather: 1, silverBar: 1 },
       fuel: 1,
@@ -7671,6 +8163,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "spearSilver",
+      tier: 3,
       at: "forge",
       cost: { iron: 2, wood: 2, silverBar: 1 },
       fuel: 1,
@@ -7680,6 +8173,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "lamellar",
+      tier: 3,
       at: "forge",
       cost: { iron: 4, leather: 2 },
       fuel: 2,
@@ -7690,6 +8184,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // ── the jeweller: a gem set into bone, wood, stone or iron (data/luxury.js); the scarcer piece goes first
     ...LUXURY.all().map((l) => ({
       id: l.id,
+      tier: l.tier,
       at: "jeweler",
       cost: { gems: l.gems, ...l.setting },
       work: l.work,
@@ -7727,6 +8222,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // ── the outpost's crafts: rope, rough cloth, pots, boards
     {
       id: "rope",
+      skill: "tailoring",
       at: "crafthut",
       cost: { fiber: 3 },
       work: 160,
@@ -7743,6 +8239,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "linen",
+      tier: 2,
+      skill: "tailoring",
       at: "crafthut",
       cost: { cloth: 2 },
       work: 900,
@@ -7769,6 +8267,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // woven into coats and cloth
     {
       id: "cheeseSalt",
+      tier: 2,
       at: "hearth",
       cost: { milk: 3, salt: 0.5 },
       work: 160,
@@ -7777,6 +8276,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "cheese",
+      tier: 2,
       at: "hearth",
       cost: { milk: 3 },
       work: 160,
@@ -7785,6 +8285,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     {
       id: "woolens",
+      tier: 2,
+      skill: "tailoring",
       at: "crafthut",
       cost: { wool: 4 },
       work: 1100,
@@ -7802,6 +8304,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // ── home brew, set in pots by the hearth: only from what is left over after the stores are full
     ...[["bragaHoney", { honey: 1, berries: 2 }, 3], ["bragaBarley", { barley: 3 }, 3], ["bragaBerries", { berries: 4 }, 2]].map(([id, cost, n]) => ({
       id,
+      tier: 2,
       at: "hearth",
       cost,
       work: 200,
@@ -7819,6 +8322,8 @@ dd.q4{color:#c58cff;font-weight:600}
     // the dead ends of the woods put to use: fox fur lines a coat, wax becomes candles for the shrine
     {
       id: "furlined",
+      tier: 3,
+      skill: "leatherwork",
       at: "crafthut",
       cost: { hide: 2, furs: 2, leather: 1 },
       work: 1300,
@@ -8016,7 +8521,7 @@ dd.q4{color:#c58cff;font-weight:600}
         c.goal = null;
       } else {
         const ctx = councilCtx(w, cands);
-        const tally = {}, weight = {};
+        const tally2 = {}, weight = {};
         for (const a of present) {
           let best = null, bs = -1, why = "";
           for (const k of cands) {
@@ -8027,13 +8532,13 @@ dd.q4{color:#c58cff;font-weight:600}
               why = r;
             }
           }
-          tally[best] = (tally[best] || 0) + 1;
+          tally2[best] = (tally2[best] || 0) + 1;
           weight[best] = (weight[best] || 0) + bs;
           args.push({ name: a.name, key: best, why });
         }
-        const ranked = Object.keys(tally).sort((x, y) => tally[y] - tally[x] || weight[y] - weight[x]);
-        c.votes = ranked.map((k) => [k, tally[k]]);
-        let win = ranked[0], votes = tally[win], round2 = "";
+        const ranked = Object.keys(tally2).sort((x, y) => tally2[y] - tally2[x] || weight[y] - weight[x]);
+        c.votes = ranked.map((k) => [k, tally2[k]]);
+        let win = ranked[0], votes = tally2[win], round22 = "";
         if (votes * 2 <= present.length && ranked.length > 1) {
           const [p1, p2] = ranked, t2 = { [p1]: 0, [p2]: 0 };
           for (const a of present) {
@@ -8042,13 +8547,13 @@ dd.q4{color:#c58cff;font-weight:600}
           }
           win = t2[p1] >= t2[p2] ? p1 : p2;
           votes = t2[win];
-          round2 = ` \u0412\u043E \u0432\u0442\u043E\u0440\u043E\u043C \u0442\u0443\u0440\u0435: ${BUILDINGS.get(p1).name.toLowerCase()} ${t2[p1]}, ${BUILDINGS.get(p2).name.toLowerCase()} ${t2[p2]}.`;
+          round22 = ` \u0412\u043E \u0432\u0442\u043E\u0440\u043E\u043C \u0442\u0443\u0440\u0435: ${BUILDINGS.get(p1).name.toLowerCase()} ${t2[p1]}, ${BUILDINGS.get(p2).name.toLowerCase()} ${t2[p2]}.`;
         }
         const d = BUILDINGS.get(win);
         if (canAfford(w, d.cost) && laySite(w, win)) {
           c.goal = null;
           w.chronicle.councilWins[win] = (w.chronicle.councilWins[win] || 0) + 1;
-          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u0441\u0442\u0440\u043E\u0438\u0442\u044C: ${d.name.toLowerCase()} (${votes} \u0438\u0437 ${present.length}).${round2} \u041C\u0435\u0441\u0442\u043E \u043F\u043E\u0434 \u0441\u0442\u0440\u043E\u0439\u043A\u0443 \u0443\u0436\u0435 \u0440\u0430\u0437\u043C\u0435\u0447\u0435\u043D\u043E.`;
+          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u0441\u0442\u0440\u043E\u0438\u0442\u044C: ${d.name.toLowerCase()} (${votes} \u0438\u0437 ${present.length}).${round22} \u041C\u0435\u0441\u0442\u043E \u043F\u043E\u0434 \u0441\u0442\u0440\u043E\u0439\u043A\u0443 \u0443\u0436\u0435 \u0440\u0430\u0437\u043C\u0435\u0447\u0435\u043D\u043E.`;
         } else {
           if (c.goal !== win) {
             c.goalSince = w.tick;
@@ -8058,7 +8563,7 @@ dd.q4{color:#c58cff;font-weight:600}
           (_a = w.chronicle).saving ?? (_a.saving = {});
           w.chronicle.saving[win] = (w.chronicle.saving[win] || 0) + 1;
           const lack = missing(w, d.cost).map(([r, v]) => `${RESOURCES.get(r).label} ${v} (${sourcesOf(w, r).map((s) => s.how).join(" \u0438\u043B\u0438 ") || "\u043D\u0435\u0442 \u0438\u0441\u0442\u043E\u0447\u043D\u0438\u043A\u0430"})`).join(", ");
-          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u043A\u043E\u043F\u0438\u0442\u044C \u043D\u0430: ${d.name.toLowerCase()} (${votes} \u0438\u0437 ${present.length}).${round2} \u041D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442: ${lack}.`;
+          decision = `\u0420\u0435\u0448\u0438\u043B\u0438 \u043A\u043E\u043F\u0438\u0442\u044C \u043D\u0430: ${d.name.toLowerCase()} (${votes} \u0438\u0437 ${present.length}).${round22} \u041D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442: ${lack}.`;
         }
       }
     }
@@ -8098,8 +8603,32 @@ dd.q4{color:#c58cff;font-weight:600}
   var goodsUnits = (goods) => goods.reduce((s, g2) => s + (g2.kind === "res" ? g2.n : 1), 0);
   var unitPrice = (g2) => g2.kind === "res" ? RESOURCES.get(g2.id).value || 0 : itemPrice(g2.type, g2.q, g2.silver);
   var goodsLabel = (g2) => g2.kind === "res" ? RESOURCES.get(g2.id).label : def(g2).label.toLowerCase();
-  var askPrice = (g2) => round1(unitPrice(g2) * TRADE.ask);
-  var bidPrice = (g2) => round1(unitPrice(g2) * TRADE.bid);
+  var askPrice = (g2, b = 0) => round1(unitPrice(g2) * (TRADE.ask - b));
+  var bidPrice = (g2, b = 0) => round1(unitPrice(g2) * (TRADE.bid + b));
+  var askAt = askPrice;
+  var bidAt = bidPrice;
+  var haggler = (a) => (a.special?.C ?? 5) * (1 + (a.skill?.barter || 0));
+  function negotiator(w) {
+    let best = null, bv = -1;
+    for (const a of colonists(w)) {
+      if (a.downed || a.task?.id === "treat" && a.task.lying) continue;
+      const v = haggler(a);
+      if (v > bv) {
+        bv = v;
+        best = a;
+      }
+    }
+    return best;
+  }
+  function termsOf(w, c = w.caravan) {
+    if (!c) return { b: 0 };
+    if (c.terms) return c.terms;
+    const a = negotiator(w), t = traderOf(w, c);
+    const theirs = (t?.special?.C ?? TRADE.traderC) * (1 + TRADE.traderBarter);
+    const b = a ? round2(TRADE.haggle * (2 * contest(haggler(a), theirs) - 1)) : 0;
+    return c.terms = { b, by: a?.id ?? null, name: a?.name ?? null, f: a?.gender === "f" };
+  }
+  var round2 = (v) => Math.round(v * 100) / 100;
   function itemPool(spec) {
     if (Array.isArray(spec)) return spec;
     if (spec === "plain") return ITEMS.filter((d) => !d.tradeOnly && !d.iron).map((d) => d.id);
@@ -8240,6 +8769,9 @@ dd.q4{color:#c58cff;font-weight:600}
   function holdTrade(w) {
     const c = w.caravan, pop = colonists(w).length;
     const deal = { day: dayOf(w.tick) + 1, trader: c.name, sold: [], bought: [], earned: 0, spent: 0 };
+    const terms = termsOf(w, c), askPrice2 = (g2) => askAt(g2, terms.b), bidPrice2 = (g2) => bidAt(g2, terms.b);
+    deal.by = terms.name;
+    deal.b = terms.b;
     const note = (list2, label3, n, gold) => {
       const x = list2.find((e) => e[0] === label3);
       if (x) {
@@ -8254,7 +8786,7 @@ dd.q4{color:#c58cff;font-weight:600}
       c.purse = round1(c.purse + (coins || 0));
       return coins !== false;
     };
-    const keyCost = c.goods.filter((g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("key") && keyWanted(w, g2.id)).reduce((t, g2) => t + askPrice(g2), 0);
+    const keyCost = c.goods.filter((g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("key") && keyWanted(w, g2.id)).reduce((t, g2) => t + askPrice2(g2), 0);
     const keepK = keyCost > cash() ? 0.5 : 1;
     const offers = [];
     for (const r of RESOURCES.all()) {
@@ -8271,10 +8803,10 @@ dd.q4{color:#c58cff;font-weight:600}
       (kinds.get(k) || kinds.set(k, []).get(k)).push(it);
     }
     for (const list2 of kinds.values()) for (const it of list2.slice(1)) offers.push({ g: { kind: "item", type: it.type, q: it.q || 0 }, n: 1, inst: it });
-    offers.sort((x, y) => bidPrice(y.g) - bidPrice(x.g));
+    offers.sort((x, y) => bidPrice2(y.g) - bidPrice2(x.g));
     const isFood = (g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("food");
     for (const o of offers) {
-      const p = bidPrice(o.g);
+      const p = bidPrice2(o.g);
       if (p <= 0) continue;
       const cap = isFood(o.g) ? Math.floor(foodTotal(w) - pop * TRADE.foodKeep) : Infinity;
       const n = Math.min(o.n, cap, Math.floor(c.purse / p), free());
@@ -8288,9 +8820,9 @@ dd.q4{color:#c58cff;font-weight:600}
       note(deal.sold, goodsLabel(o.g), n, p * n);
     }
     if (foodTotal(w) < pop * TRADE.foodShort) {
-      const foods2 = c.goods.filter((g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("food")).sort((x, y) => askPrice(x) / RESOURCES.get(x.id).nutrition - askPrice(y) / RESOURCES.get(y.id).nutrition);
+      const foods2 = c.goods.filter((g2) => g2.kind === "res" && RESOURCES.get(g2.id).tags.includes("food")).sort((x, y) => askPrice2(x) / RESOURCES.get(x.id).nutrition - askPrice2(y) / RESOURCES.get(y.id).nutrition);
       for (const g2 of foods2) {
-        const p = askPrice(g2), want2 = Math.ceil((pop * TRADE.foodUpTo - foodTotal(w)) / RESOURCES.get(g2.id).nutrition);
+        const p = askPrice2(g2), want2 = Math.ceil((pop * TRADE.foodUpTo - foodTotal(w)) / RESOURCES.get(g2.id).nutrition);
         const n = Math.min(g2.n, want2, Math.floor(cash() / p));
         if (n <= 0 || !spend(p * n)) continue;
         g2.n -= n;
@@ -8302,7 +8834,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const g2 of c.goods) {
       if (g2.kind !== "res" || !RESOURCES.get(g2.id).tags.includes("key") || !keyWanted(w, g2.id)) continue;
-      const p = askPrice(g2);
+      const p = askPrice2(g2);
       if (p > cash() || !spend(p)) continue;
       g2.n -= 1;
       w.stock[g2.id] = (w.stock[g2.id] || 0) + 1;
@@ -8315,7 +8847,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const [id, upTo] of Object.entries(TRADE.wants)) {
       const g2 = c.goods.find((x) => x.kind === "res" && x.id === id);
       if (!g2) continue;
-      const p = askPrice(g2), n = Math.min(g2.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor(cash() * TRADE.maxShare / p));
+      const p = askPrice2(g2), n = Math.min(g2.n, Math.floor(upTo - (w.stock[id] || 0)), Math.floor(cash() * TRADE.maxShare / p));
       if (n <= 0 || !spend(p * n)) continue;
       g2.n -= n;
       w.stock[id] = (w.stock[id] || 0) + n;
@@ -8326,10 +8858,10 @@ dd.q4{color:#c58cff;font-weight:600}
     {
       const owned = () => [...colonists(w).flatMap((a) => allItems(a)), ...w.armory].filter((it) => def(it).silver).length;
       const foes = w.chronicle.silverFoes || 0, want2 = foes ? Math.ceil(pop * TRADE.silverShare) : 1;
-      const offer = c.goods.filter((g2) => g2.kind === "item" && def(g2).silver).sort((x, y) => askPrice(x) - askPrice(y));
+      const offer = c.goods.filter((g2) => g2.kind === "item" && def(g2).silver).sort((x, y) => askPrice2(x) - askPrice2(y));
       for (const g2 of offer) {
         if (owned() >= want2) break;
-        const p = askPrice(g2);
+        const p = askPrice2(g2);
         if (p > cash() * (foes ? TRADE.maxShare : TRADE.silverSpare) || !spend(p)) continue;
         c.goods.splice(c.goods.indexOf(g2), 1);
         w.armory.push(newItem(g2.type, { ...g2.q ? { q: g2.q } : {}, ...g2.silver ? { silver: true } : {} }));
@@ -8345,7 +8877,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (g2.kind !== "item") continue;
         const [role, score] = roleOf(itemDef(g2.type, g2.q));
         if (!role || !needs[role]) continue;
-        const gain = score - needs[role][0], p = askPrice(g2);
+        const gain = score - needs[role][0], p = askPrice2(g2);
         if (gain < TRADE.minGain || p > cash() * TRADE.maxShare) continue;
         const v = gain / Math.max(0.5, p);
         if (v > bv) {
@@ -8364,7 +8896,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const g2 of c.goods) {
       if (g2.kind !== "res" || !RESOURCES.get(g2.id).tags.includes("furniture") || freeSlots(w) <= 0) continue;
-      const p = askPrice(g2);
+      const p = askPrice2(g2);
       if (cash() - p < TRADE.furnish || !spend(p)) continue;
       g2.n -= 1;
       w.stock[g2.id] = (w.stock[g2.id] || 0) + 1;
@@ -8383,10 +8915,13 @@ dd.q4{color:#c58cff;font-weight:600}
     w.trade.earned = round1(w.trade.earned + deal.earned);
     w.trade.spent = round1(w.trade.spent + deal.spent);
     reload(w, c);
+    const lines = deal.sold.length + deal.bought.length, neg = terms.by != null ? w.agents.find((o) => o.id === terms.by && !o.dead) : null;
+    if (neg && lines) practice(neg, "barter", Math.min(TRADE.practiceMax, TRADE.practicePerLine * lines));
     const list = (xs) => xs.map(([l, n, g2]) => `${l}${n > 1 ? " \xD7" + n : ""}`).join(", ");
+    const haggled = terms.name ? ` \u0422\u043E\u0440\u0433\u043E\u0432\u0430\u043B${terms.f ? "\u0430\u0441\u044C" : "\u0441\u044F"} \u0437\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 <b>${esc(terms.name)}</b>: ${terms.b > 0 ? `\u0446\u0435\u043D\u044B \u043D\u0430 ${Math.round(terms.b * 100)}% \u0432\u044B\u0433\u043E\u0434\u043D\u0435\u0435` : terms.b < 0 ? `\u043A\u0443\u043F\u0435\u0446 \u043F\u0435\u0440\u0435\u0442\u043E\u0440\u0433\u043E\u0432\u0430\u043B, \u0446\u0435\u043D\u044B \u043D\u0430 ${Math.round(-terms.b * 100)}% \u0445\u0443\u0436\u0435` : "\u0441\u043E\u0448\u043B\u0438\u0441\u044C \u043D\u0430 \u043E\u0431\u044B\u0447\u043D\u044B\u0445 \u0446\u0435\u043D\u0430\u0445"}.` : "";
     const sold = deal.sold.length ? `\u041F\u0440\u043E\u0434\u0430\u043B\u0438: ${list(deal.sold)} \u2014 \u0437\u0430 ${deal.earned} \u0437\u043E\u043B.` : "\u041F\u0440\u043E\u0434\u0430\u0442\u044C \u0431\u044B\u043B\u043E \u043D\u0435\u0447\u0435\u0433\u043E.";
     const bought = deal.bought.length ? ` \u041A\u0443\u043F\u0438\u043B\u0438: ${list(deal.bought)} \u2014 \u0437\u0430 ${deal.spent} \u0437\u043E\u043B.` : " \u041D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043A\u0443\u043F\u0438\u043B\u0438, \u0437\u043E\u043B\u043E\u0442\u043E \u043E\u0442\u043B\u043E\u0436\u0438\u043B\u0438.";
-    log(w, `\u0422\u043E\u0440\u0433 \u0441 \u043A\u0443\u043F\u0446\u043E\u043C <b>${esc(c.name)}</b> \u043F\u043E\u0441\u043B\u0435 \u0441\u043E\u0432\u0435\u0442\u0430. ${sold}${bought} \u0412 \u043A\u0430\u0437\u043D\u0435 ${Math.floor(deal.gold)} \u0437\u043E\u043B.${(w.stock.gold || 0) < deal.gold - 0.5 ? ` (\u043C\u043E\u043D\u0435\u0442\u0430\u043C\u0438 ${Math.floor(w.stock.gold || 0)}, \u043E\u0441\u0442\u0430\u043B\u044C\u043D\u043E\u0435 \u2014 \u0437\u043E\u043B\u043E\u0442\u043E \u0438 \u0441\u0435\u0440\u0435\u0431\u0440\u043E)` : ""}`, "trade");
+    log(w, `\u0422\u043E\u0440\u0433 \u0441 \u043A\u0443\u043F\u0446\u043E\u043C <b>${esc(c.name)}</b> \u043F\u043E\u0441\u043B\u0435 \u0441\u043E\u0432\u0435\u0442\u0430.${haggled} ${sold}${bought} \u0412 \u043A\u0430\u0437\u043D\u0435 ${Math.floor(deal.gold)} \u0437\u043E\u043B.${(w.stock.gold || 0) < deal.gold - 0.5 ? ` (\u043C\u043E\u043D\u0435\u0442\u0430\u043C\u0438 ${Math.floor(w.stock.gold || 0)}, \u043E\u0441\u0442\u0430\u043B\u044C\u043D\u043E\u0435 \u2014 \u0437\u043E\u043B\u043E\u0442\u043E \u0438 \u0441\u0435\u0440\u0435\u0431\u0440\u043E)` : ""}`, "trade");
   }
   function stepTrade(w) {
     const c = w.caravan;
@@ -8606,6 +9141,10 @@ dd.q4{color:#c58cff;font-weight:600}
     // once dressed, not again for this long
     aidHeal: 0.2,
     // of max health, more with the healer's skill
+    aidFallen: 1.7,
+    // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
+    aidPractice: 60,
+    // medicine practice for a life saved (units of agents/skills.js practice)
     far: 40,
     // nobody goes further than this to escort or help
     mate: 0.05,
@@ -8673,10 +9212,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return best ? [{ id: "company", who: best.id }, bs, () => `\u0432 \u043B\u0435\u0441\u0443 \u043E\u043F\u0430\u0441\u043D\u043E, ${best.name} ${g(best, "\u043E\u0434\u0438\u043D", "\u043E\u0434\u043D\u0430")}${bop >= REL.friend ? " \u2014 \u0430 \u044D\u0442\u043E \u0434\u0440\u0443\u0433" : ""}`] : null;
   }
-  function threatTo(w, b, r) {
+  var FOES = /* @__PURE__ */ new Set(["predators", "nechist", "raiders"]);
+  function threatTo(w, b, r, viewer = null) {
     let best = null, bd = r;
     for (const o of w.agents) {
-      if (o.dead || o.tame || !["predators", "nechist", "raiders"].includes(o.faction)) continue;
+      if (o.dead || o.tame || !FOES.has(o.faction)) continue;
+      if (viewer && (o.downed || !canSee(w, viewer, o))) continue;
       const d = dist4(o, b);
       if (d < bd) {
         bd = d;
@@ -8686,11 +9227,11 @@ dd.q4{color:#c58cff;font-weight:600}
     return best;
   }
   function guardStep(w, a, b, task) {
-    const foe = threatTo(w, b, TOGETHER.guard);
+    const foe = threatTo(w, b, TOGETHER.guard, a);
     if (foe) {
       task.fought ?? (task.fought = foe.id);
       const d = dist4(a, foe);
-      if (d > Math.min(0.9, reachOf(a))) approach(w, a, foe.x, foe.y, 1.15);
+      if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.15);
       else attack(w, a, foe);
       a.lastFight = w.tick;
       return "fight";
@@ -8724,12 +9265,14 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!task.home) think(w, b, "escorted", { name: a.name, gender: a.gender });
   }
   var helper = (w, id) => colonists(w).find((o) => o.task?.id === "aid" && o.task.who === id);
-  var needsAid = (w, b) => hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === "treat" && b.task.lying) && !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery);
+  var needsAid = (w, b) => !!b.downed || hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === "treat" && b.task.lying) && !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery);
+  var aidScore = (b) => b.downed ? TOGETHER.aidFallen : 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2;
+  var aidWhy = (b) => b.downed ? `${b.name} ${g(b, "\u0443\u043F\u0430\u043B", "\u0443\u043F\u0430\u043B\u0430")} \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F \u0438 \u0438\u0441\u0442\u0435\u043A\u0430\u0435\u0442 \u043A\u0440\u043E\u0432\u044C\u044E` : `${b.name} ${g(b, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(b) * 100)}%`;
   function aidOption(w, a) {
     if (hpShare(a) < 0.5) return null;
     if (a.task?.id === "aid") {
       const b = byId3(w, a.task.who);
-      if (b && needsAid(w, b)) return [a.task, 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2, () => `${b.name} ${g(b, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443`];
+      if (b && needsAid(w, b)) return [a.task, aidScore(b), () => aidWhy(b)];
     }
     let best = null, bs = -Infinity;
     for (const b of colonists(w)) {
@@ -8737,17 +9280,26 @@ dd.q4{color:#c58cff;font-weight:600}
       const h = helper(w, b.id);
       if (h && h !== a) continue;
       const op = opinion(a, b);
-      if (op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
-      const s = 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2 + 0.05 * clamp(op, -2, 4);
+      if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
+      const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
       if (s > bs) {
         bs = s;
         best = b;
       }
     }
-    return best ? [{ id: "aid", who: best.id }, bs, () => `${best.name} ${g(best, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(best) * 100)}%`] : null;
+    return best ? [{ id: "aid", who: best.id, fallen: !!best.downed }, bs, () => aidWhy(best)] : null;
   }
   function giveAid(w, a, b) {
-    const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.heal || 0)));
+    if (b.downed) {
+      stabilize(w, a, b);
+      bond(w, b, a, TOGETHER.bondAid * 2);
+      bond(w, a, b, TOGETHER.bondAid * 0.5);
+      const s2 = social(w);
+      if (s2) s2.aid++;
+      practice(a, "medicine", TOGETHER.aidPractice);
+      return;
+    }
+    const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
     b.hp += amt;
     b.aidedAt = w.tick;
     bond(w, b, a, TOGETHER.bondAid);
@@ -8858,7 +9410,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return weighted(rng, opts) || "human";
   }
   var near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < REL.quarrelNear;
-  var busy = (a) => a.sleeping || ["fight", "muster", "treat", "runHome", "flee"].includes(a.task?.id);
+  var busy = (a) => a.sleeping || a.downed || ["fight", "muster", "treat", "runHome", "flee", "downed"].includes(a.task?.id);
   function reason(a, b) {
     const kin = kinship(a.species, b.species);
     if (kin <= -2) return `${SPECIES.get(a.species).plural} \u0438 ${SPECIES.get(b.species).plural} \u2014 \u0434\u0430\u0432\u043D\u0438\u0435 \u0432\u0440\u0430\u0433\u0438`;
@@ -9077,9 +9629,10 @@ dd.q4{color:#c58cff;font-weight:600}
             a.role = "guard";
             a.slot = k;
             a.name = pickName(TRADE.guardNames)[0];
-            a.hp = a.maxHp = TRADE.guardHp;
-            a.mods.bravery = 1.5;
-            a.skill = { hunt: 0.5 };
+            a.own = { set: { bravery: 1.5 }, hp: TRADE.guardHp };
+            refreshBody(a);
+            a.skill = { ranged: 0.5 };
+            a.skillVer = 1;
           }
         });
         const mules = TRADE.mules[0] + Math.floor(rng() * (TRADE.mules[1] - TRADE.mules[0] + 1));
@@ -9124,7 +9677,8 @@ dd.q4{color:#c58cff;font-weight:600}
         if (!big || group.length > big.size) w.chronicle.biggestRaid = { size: group.length, tick: w.tick };
         for (const a of group) {
           a.hp = (a.maxHp || 1) * Math.min(1.1, 0.75 + t * 0.012);
-          a.skill = { hunt: Math.min(0.7, 0.1 + t * 0.025) };
+          a.skill = { ranged: Math.min(0.7, 0.1 + t * 0.025) };
+          a.skillVer = 1;
         }
         RAID_BANDS.get(group[0].band).groupInit?.(group, w);
         createSquad(w, group);
@@ -9839,6 +10393,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const g2 = w.grid, S = season(w);
     for (const c of w.gardenCells) if (S.garden > 0 && g2.bush[c] && g2.fire[c] === 0 && g2.food[c] < 1) {
       g2.food[c] = Math.min(1, g2.food[c] + 35e-4 * S.garden * (0.4 + 1.2 * g2.fert[c]));
+      if (g2.food[c] > 0.35 && g2.food[c] < 0.354) w.nav.dirty("berries");
     }
     if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
       const x = w.camp.x + xx, y = w.camp.y + yy;
@@ -9889,87 +10444,6 @@ dd.q4{color:#c58cff;font-weight:600}
     burn(w);
     growth(w);
     spoil(w);
-  }
-
-  // src/agents/body.js
-  var NEED_THOUGHT = { food: "starving", warmth: "freezing", rest: "exhausted" };
-  var REMEMBER_BELOW = { food: 0.3, rest: 0.25, warmth: 0.4 };
-  function stepEffects(w, a) {
-    if (a.poison) {
-      if (w.tick < a.poison.until) {
-        a.hp -= a.poison.dmg;
-        if (a.hp <= 0) kill(w, a, "\u044F\u0434\u0430");
-      } else a.poison = null;
-    }
-    if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
-  }
-  function stepBody(w, a) {
-    const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
-    let starving = null;
-    for (const id of sp.needs) {
-      const n = NEEDS2.get(id);
-      a.needs[id] = Math.min(1, Math.max(0, a.needs[id] - n.decay(w, a, T2)));
-      if (a.needs[id] <= (n.harmBelow ?? 0) && n.harm) {
-        a.hp -= n.harm;
-        starving = n.cause;
-      }
-      if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 4e-3;
-      if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
-    }
-    if (T2 > sp.heatHarm) a.hp -= Math.min(5e-3, (T2 - sp.heatHarm) * 4e-5);
-    const comfy = sp.needs.every((id) => a.needs[id] > 0.4);
-    const regen = a.mods.regen > 1 && T2 > 30 ? 1 : a.mods.regen ?? 1;
-    if (comfy && T2 < 45) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * regen);
-    if (a.hp <= 0) kill(w, a, starving || (T2 > 60 ? "\u043F\u043E\u0436\u0430\u0440\u0430" : "\u0440\u0430\u043D"));
-    return T2;
-  }
-
-  // src/agents/lifecycle.js
-  var OUTCOMES = {
-    done: { label: "\u0441\u0434\u0435\u043B\u0430\u043D\u043E", skip: 0 },
-    blocked: { label: "\u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u043E", skip: 120 },
-    impossible: { label: "\u043D\u0435\u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E", skip: 600 },
-    interrupted: { label: "\u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E", skip: 0 }
-  };
-  var taskKey = (t) => t.id === "job" ? "job:" + t.job : t.id;
-  var skipped = (w, a, t) => (a.skips?.[taskKey(t)] ?? -1) > w.tick;
-  var label = (t) => TASKS.get(t.id).label(t);
-  var RUNNER_EXIT = {};
-  function close(w, a, t, outcome, why) {
-    if (!t || t.closed) return;
-    t.closed = outcome;
-    releaseAll(w, a);
-    a.stalking = false;
-    a.path = null;
-    a.approachGuard = null;
-    const def2 = TASKS.get(t.id);
-    def2.exit?.(w, a, t, outcome);
-    if (t.id === "job") RUNNER_EXIT[def2.runnerOf?.(t)]?.(w, a, t, outcome);
-    const skip = OUTCOMES[outcome].skip;
-    if (skip) (a.skips || (a.skips = {}))[taskKey(t)] = w.tick + skip;
-    const b = w.behave;
-    if (b && t.id === "job") (b.outcomes || (b.outcomes = {}))[outcome] = (b.outcomes[outcome] || 0) + 1;
-    if (outcome !== "done" && why && (outcome !== "interrupted" || t.id === "job")) {
-      a.lastStop = { t: w.tick, task: label(t), why, outcome };
-      if (b) b.stops++;
-    }
-  }
-  function endTask(w, a, outcome = "done", why = null) {
-    const t = a.task;
-    a.task = null;
-    a.think = 0;
-    close(w, a, t, outcome, why);
-  }
-  function syncTask(w, a) {
-    var _a;
-    const last2 = a.lastTask;
-    if (last2 && last2 !== a.task && !last2.closed) close(w, a, last2, "interrupted", a.switchWhy || (a.task ? `\u043E\u0442\u0432\u043B\u0451\u043A\u0441\u044F: ${label(a.task)}` : null));
-    a.switchWhy = null;
-    if (a.task && a.task !== last2) {
-      (_a = a.task).since ?? (_a.since = w.tick);
-      TASKS.get(a.task.id).enter?.(w, a, a.task);
-    }
-    a.lastTask = a.task;
   }
 
   // src/settlement/crafting.js
@@ -10041,11 +10515,12 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var melee = null;
   var MELEE = () => melee || (melee = ITEMS.filter((d) => d.slot === "hand" && d.melee && !d.ranged));
-  function pickRecipe(w, station, ctx = craftContext(w)) {
+  var anyoneCan = (w, r) => !recipeNeed(r) || w.agents.some((a) => a.faction === "colony" && !a.dead && canMake(a, r));
+  function pickRecipe(w, station, ctx = craftContext(w), a = null) {
     let best = null, bv = 0;
     for (const r of recipesAt(station)) {
       const v = r.want(ctx);
-      if (v > bv && canStart(w, r)) {
+      if (v > bv && (a ? canMake(a, r) : anyoneCan(w, r)) && canStart(w, r)) {
         bv = v;
         best = r;
       }
@@ -10059,20 +10534,26 @@ dd.q4{color:#c58cff;font-weight:600}
     const map = perTick(w, "orders", () => ({}));
     const b = w.buildings.find((x) => x.key === station && x.done);
     if (!b || !freeBench(w, b, a)) return false;
-    if (!(station in map)) map[station] = !!b.order || !!pickRecipe(w, station);
-    return map[station];
+    const key2 = station + ":" + accessKey(a);
+    if (!(key2 in map)) map[key2] = b.order ? canMake(a, RECIPES.get(b.order.recipe)) : !!pickRecipe(w, station, void 0, a);
+    return map[key2];
   }
-  function stationPriority(w, station) {
+  function stationPriority(w, station, a = null) {
     const b = w.buildings.find((x) => x.key === station && x.done);
     if (!b) return 0;
     const ctx = craftContext(w);
-    if (b.order) return RECIPES.get(b.order.recipe).want(ctx) + 0.5;
-    const r = pickRecipe(w, station, ctx);
+    if (b.order) {
+      const r2 = RECIPES.get(b.order.recipe);
+      return a && !canMake(a, r2) ? 0 : r2.want(ctx) + 0.5;
+    }
+    const r = pickRecipe(w, station, ctx, a);
     return r ? r.want(ctx) : 0;
   }
   function workAt(w, b, amount, a) {
+    var _a, _b;
+    if (b.order && a && !canMake(a, RECIPES.get(b.order.recipe))) return false;
     if (!b.order) {
-      const r2 = pickRecipe(w, b.key);
+      const r2 = pickRecipe(w, b.key, void 0, a);
       if (!r2) return false;
       const fuel = r2.fuel ? furnacePick(w, r2.heat ?? 2, r2.fuel, fuelReserve(w) + (r2.cost.wood || 0)) : null;
       if (r2.fuel && !fuel) return false;
@@ -10080,22 +10561,35 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const [res, v] of Object.entries(r2.cost)) w.stock[res] -= v;
       if (fuel) w.stock[fuel[0].id] -= fuel[1];
       b.order = { recipe: r2.id, progress: 0 };
+      if (fuel) b.order.fuel = [fuel[0].id, fuel[1]];
     }
     const r = RECIPES.get(b.order.recipe);
     const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
-    b.order.progress += amount * (bellows ? FURNACE.bellowsWork : 1);
-    if (b.order.progress < r.work) return true;
+    const labour = typeof amount === "function" ? amount(r) : amount;
+    b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
+    if (a) ((_a = b.order).by || (_a.by = {}))[a.id] = (b.order.by?.[a.id] || 0) + labour;
+    if (b.order.progress < r.work) return r;
+    const by = b.order.by;
     b.order = null;
     w.stats.crafted++;
     if (w.scratch) delete w.scratch.craftCtx;
     if (r.makes.item) {
-      const extra = {};
+      const extra = {}, master = masterOf(w, by, a), skill = master ? skillOf(master, recipeSkill(r)) : 0;
       if (r.makes.silver) extra.silver = true;
-      if (bellows && w.rngs.colony() < FURNACE.bellowsFine) extra.q = 1;
+      const q = ITEMS.get(r.makes.item).quality === false ? 0 : qualityRoll(w.rngs.colony(), skill, bellows ? FURNACE.bellowsFine : 0);
+      if (q) {
+        extra.q = q;
+        if (master) extra.maker = master.name;
+      }
       const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
       w.armory.push(it);
       w.armoryVersion = (w.armoryVersion || 0) + 1;
-      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${extra.q ? " \u041C\u0435\u0445\u0430 \u0440\u0430\u0437\u0434\u0443\u043B\u0438 \u0436\u0430\u0440 \u043A\u0430\u043A \u043D\u0430\u0434\u043E: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439." : ""}`, "craft");
+      if (q) {
+        const f = (_b = w.chronicle).fine || (_b.fine = {});
+        f[q] = (f[q] || 0) + 1;
+      }
+      const who = master ? `<b>${esc(master.name)}</b>` : "\u043C\u0430\u0441\u0442\u0435\u0440";
+      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${q === 1 ? ` ${who} \u043F\u043E\u0441\u0442\u0430\u0440\u0430\u043B${master?.gender === "f" ? "\u0430\u0441\u044C" : "\u0441\u044F"}: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439.` : q === 2 ? ` \u0420\u0430\u0431\u043E\u0442\u0430 \u043C\u0430\u0441\u0442\u0435\u0440\u0430: ${who} \u0441\u0434\u0435\u043B\u0430\u043B${master?.gender === "f" ? "\u0430" : ""} \u0432\u0435\u0449\u044C, \u043A\u0430\u043A\u043E\u0439 \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438 \u0435\u0449\u0451 \u043D\u0435 \u0432\u0438\u0434\u0435\u043B\u0438.` : q >= 3 ? ` \u0427\u0443\u0434\u043E \u0440\u0435\u043C\u0435\u0441\u043B\u0430! ${who} \u0441\u0430\u043C${master?.gender === "f" ? "\u0430" : ""} \u043D\u0435 \u0432\u0435\u0440\u0438\u0442, \u0447\u0442\u043E \u044D\u0442\u043E ${master?.gender === "f" ? "\u0435\u0451" : "\u0435\u0433\u043E"} \u0440\u0443\u043A \u0434\u0435\u043B\u043E (${def(it).rank}).` : ""}`, "craft", q >= 3 ? "notice" : void 0);
       if (a) {
         think(w, a, "madeItem", { item: name });
         a.stats.crafted++;
@@ -10112,13 +10606,123 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
     }
-    return true;
+    return r;
+  }
+  function stepCrafting(w) {
+    if (w.tick % HOUR !== 7) return;
+    for (const b of w.buildings) {
+      if (!b.done || !b.order) continue;
+      const r = RECIPES.get(b.order.recipe);
+      if (anyoneCan(w, r) || !w.agents.some((a) => a.faction === "colony" && !a.dead)) continue;
+      for (const [res, v] of Object.entries(r.cost)) w.stock[res] = (w.stock[res] || 0) + v;
+      if (b.order.fuel) w.stock[b.order.fuel[0]] = (w.stock[b.order.fuel[0]] || 0) + b.order.fuel[1];
+      b.order = null;
+      if (w.scratch) {
+        delete w.scratch.orders;
+        delete w.scratch.craftCtx;
+      }
+      const what = r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short;
+      const need = recipeNeed(r);
+      log(w, `\u041D\u0435\u043A\u043E\u043C\u0443 \u0434\u043E\u0434\u0435\u043B\u0430\u0442\u044C: ${what} (${need ? "\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F " + reasonText(need) : "\u043D\u0443\u0436\u0435\u043D \u043C\u0430\u0441\u0442\u0435\u0440"}). \u0417\u0430\u043A\u0430\u0437 \u0441\u043D\u044F\u0442, \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 \u0441\u043A\u043B\u0430\u0434.`, "craft");
+    }
+  }
+  function masterOf(w, by, last2) {
+    let best = null, bv = -1;
+    for (const [id, v] of Object.entries(by || {})) {
+      const o = w.agents.find((x) => x.id === +id && !x.dead);
+      if (o && v > bv) {
+        bv = v;
+        best = o;
+      }
+    }
+    return best || last2 || null;
   }
   function orderText(b) {
     if (!b.order) return "\u0436\u0434\u0451\u0442 \u0437\u0430\u043A\u0430\u0437\u0430";
     const r = RECIPES.get(b.order.recipe);
     const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${RESOURCES.get(r.makes.resource).short} \xD7${r.makes.n}`;
     return `${what}: ${Math.floor(b.order.progress / r.work * 100)}%`;
+  }
+
+  // src/agents/body.js
+  var NEED_THOUGHT = { food: "starving", warmth: "freezing", rest: "exhausted" };
+  var REMEMBER_BELOW = { food: 0.3, rest: 0.25, warmth: 0.4 };
+  function stepEffects(w, a) {
+    if (a.poison) {
+      if (w.tick < a.poison.until) {
+        a.hp -= a.poison.dmg;
+        if (a.hp <= 0) kill(w, a, "\u044F\u0434\u0430");
+      } else a.poison = null;
+    }
+    if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
+  }
+  function stepBody(w, a) {
+    const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
+    let starving = null;
+    for (const id of sp.needs) {
+      const n = NEEDS2.get(id);
+      a.needs[id] = Math.min(1, Math.max(0, a.needs[id] - n.decay(w, a, T2)));
+      if (a.needs[id] <= (n.harmBelow ?? 0) && n.harm) {
+        a.hp -= n.harm;
+        starving = n.cause;
+      }
+      if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 4e-3;
+      if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
+    }
+    if (T2 > sp.heatHarm) a.hp -= Math.min(5e-3, (T2 - sp.heatHarm) * 4e-5);
+    const comfy = sp.needs.every((id) => a.needs[id] > 0.4);
+    const regen = a.mods.regen > 1 && T2 > 30 ? 1 : a.mods.regen ?? 1;
+    if (comfy && T2 < 45 && !a.downed) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * regen);
+    if (a.hp <= 0) kill(w, a, starving || (T2 > 60 ? "\u043F\u043E\u0436\u0430\u0440\u0430" : "\u0440\u0430\u043D"));
+    return T2;
+  }
+
+  // src/agents/lifecycle.js
+  var OUTCOMES = {
+    done: { label: "\u0441\u0434\u0435\u043B\u0430\u043D\u043E", skip: 0 },
+    blocked: { label: "\u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u043E", skip: 120 },
+    impossible: { label: "\u043D\u0435\u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E", skip: 600 },
+    interrupted: { label: "\u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E", skip: 0 }
+  };
+  var taskKey = (t) => t.id === "job" ? "job:" + t.job : t.id;
+  var skipped = (w, a, t) => (a.skips?.[taskKey(t)] ?? -1) > w.tick;
+  var label = (t) => TASKS.get(t.id).label(t);
+  var RUNNER_EXIT = {};
+  function close(w, a, t, outcome, why) {
+    if (!t || t.closed) return;
+    t.closed = outcome;
+    releaseAll(w, a);
+    a.stalking = false;
+    a.path = null;
+    a.approachGuard = null;
+    const def2 = TASKS.get(t.id);
+    def2.exit?.(w, a, t, outcome);
+    if (t.id === "job") RUNNER_EXIT[def2.runnerOf?.(t)]?.(w, a, t, outcome);
+    const skip = OUTCOMES[outcome].skip;
+    if (skip) (a.skips || (a.skips = {}))[taskKey(t)] = w.tick + skip;
+    const b = w.behave;
+    if (b && t.id === "job") (b.outcomes || (b.outcomes = {}))[outcome] = (b.outcomes[outcome] || 0) + 1;
+    if (outcome !== "done" && why && (outcome !== "interrupted" || t.id === "job")) {
+      a.lastStop = { t: w.tick, task: label(t), why, outcome };
+      if (b) b.stops++;
+    }
+  }
+  function endTask(w, a, outcome = "done", why = null) {
+    const t = a.task;
+    a.task = null;
+    a.think = 0;
+    close(w, a, t, outcome, why);
+  }
+  function syncTask(w, a) {
+    var _a;
+    const last2 = a.lastTask;
+    if (last2 && last2 !== a.task && !last2.closed) close(w, a, last2, "interrupted", a.switchWhy || (a.task ? `\u043E\u0442\u0432\u043B\u0451\u043A\u0441\u044F: ${label(a.task)}` : null));
+    a.switchWhy = null;
+    if (a.task && a.task !== last2) {
+      (_a = a.task).since ?? (_a.since = w.tick);
+      TASKS.get(a.task.id).enter?.(w, a, a.task);
+    }
+    a.lastTask = a.task;
   }
 
   // src/agents/brains/predator.js
@@ -10180,6 +10784,11 @@ dd.q4{color:#c58cff;font-weight:600}
     think(w, v, "wolfAttack", { who: sp.plural });
     const n = company(w, v, P.loneRadius);
     log(w, b > 0.8 && n ? `\u0418\u0437\u0433\u043E\u043B\u043E\u0434\u0430\u0432\u0448\u0438\u0435\u0441\u044F ${sp.plural} \u0431\u0440\u043E\u0441\u0430\u044E\u0442\u0441\u044F \u043D\u0430 \u043B\u044E\u0434\u0435\u0439! <b>${esc(v.name)}</b> \u0438 \u0441\u043F\u0443\u0442\u043D\u0438\u043A(\u0438) \u0432\u0434\u0430\u043B\u0438 \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F.` : `${who[0].toUpperCase() + who.slice(1)} ${many ? "\u043D\u0430\u043F\u0430\u0434\u0430\u044E\u0442" : "\u043D\u0430\u043F\u0430\u0434\u0430\u0435\u0442"}! <b>${esc(v.name)}</b> \u0434\u0430\u043B\u0435\u043A\u043E \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F \u0438 \u0431\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438.`, "danger");
+  }
+  function ignoreFor(w, a, id, ticks) {
+    const m = a.ignore || (a.ignore = /* @__PURE__ */ new Map());
+    for (const [k, t] of m) if (t <= w.tick) m.delete(k);
+    m.set(id, w.tick + ticks);
   }
   var predatorBrain = {
     id: "predator",
@@ -10254,7 +10863,7 @@ dd.q4{color:#c58cff;font-weight:600}
             t.since = w.tick;
           }
           if (w.tick - t.since > 90 || approach(w, a, tx2, ty, sprintMul(a, P.sprint, P.stamina)) === null) {
-            for (const m of pack2) (m.ignore || (m.ignore = /* @__PURE__ */ new Map())).set(prey.id, w.tick + 600);
+            for (const m of pack2) ignoreFor(w, m, prey.id, 600);
             endHunt(w, h, "unreachable");
             return;
           }
@@ -10262,6 +10871,7 @@ dd.q4{color:#c58cff;font-weight:600}
           a.task = { id: "rest" };
           return;
         }
+        if (h.roles[a.id] === "wait") recover(a);
         if (SPECIES.get(prey.species).big) {
           if (dist5(a, prey) < 1) {
             attack(w, a, prey);
@@ -10273,7 +10883,7 @@ dd.q4{color:#c58cff;font-weight:600}
           }
           return;
         }
-        if (dist5(a, prey) < 0.7) {
+        if (dist5(a, prey) < 0.7 && !behindRock(w, a, prey)) {
           kill(w, prey, "\u0437\u0443\u0431\u043E\u0432", a);
           w.stats.wolfKills++;
           endHunt(w, h, "kill");
@@ -10287,10 +10897,10 @@ dd.q4{color:#c58cff;font-weight:600}
           a.task = { id: "rest" };
           return;
         }
-        if (!v || v.dead || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
+        if (!v || v.dead || v.downed || !w.agents.includes(v) || company(w, v, 5) >= 2 + Math.floor(b * 2) || agentInZone(w, v)) {
           const h = huntOf(w, a);
           if (h) endHunt(w, h, !v || v.dead ? "taken" : agentInZone(w, v) ? "zone" : "help");
-          if (v && !v.dead && t.target === v) think(w, v, "escapedWolves", { who: sp.plural });
+          if (v && !v.dead && !v.downed && t.target === v) think(w, v, "escapedWolves", { who: sp.plural });
           if (v && !v.dead) for (const m of pack2) {
             m.calmUntil = w.tick + P.calm * (1 - 0.7 * b);
             if (m.task?.id === "maul") m.task = { id: "roam" };
@@ -10308,7 +10918,7 @@ dd.q4{color:#c58cff;font-weight:600}
           a.calmUntil = w.tick + P.calm * 0.5;
           return;
         }
-        if (dist5(a, v) > 0.9) {
+        if (dist5(a, v) > 0.9 || behindRock(w, a, v)) {
           if (approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) {
             endHunt(w, huntOf(w, a), "unreachable");
             a.task = { id: "roam" };
@@ -10367,7 +10977,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
       if (w.tick > (a.calmUntil || 0) && b + night * 0.25 >= P.boldPeople) {
-        const v = nearest(w, a, P.victims, P.sight * (0.6 + 0.4 * b), (o) => o.faction === "colony" && !agentInZone(w, o) && company(w, o, P.loneRadius) <= (b > 0.8 ? Math.max(0, pack2.length - 2) : 0));
+        const v = nearest(w, a, P.victims, P.sight * (0.6 + 0.4 * b), (o) => o.faction === "colony" && !o.downed && !agentInZone(w, o) && company(w, o, P.loneRadius) <= (b > 0.8 ? Math.max(0, pack2.length - 2) : 0));
         if (v) {
           startMaul(w, a, v, b);
           return;
@@ -10393,7 +11003,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         if (s) {
           if (approach(w, a, s.x, s.y, 0.85) !== null) return;
-          (a.ignore || (a.ignore = /* @__PURE__ */ new Map())).set(s.id, w.tick + 600);
+          ignoreFor(w, a, s.id, 600);
           r.scent = null;
         }
       }
@@ -10467,9 +11077,8 @@ dd.q4{color:#c58cff;font-weight:600}
     a.x += (w.rngs.colony() - 0.5) * 0.2;
     a.y += (w.rngs.colony() - 0.5) * 0.2;
   };
-  function workRate(w, a, jobId) {
-    a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 6e-4 * (a.mods.learn ?? 1));
-    return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
+  function workRate(w, a, jobId, skillId = JOBS.get(jobId).skill) {
+    return (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
   }
   var toolWear = (w, a, jobId, amount = 1) => {
     const it = a.gear?.toolItem[jobId];
@@ -10541,7 +11150,9 @@ dd.q4{color:#c58cff;font-weight:600}
           task.work = Math.max(task.work || 0, back.work);
         }
         if (back) a.resume = null;
-        task.work = (task.work || 0) + workRate(w, a, job.id);
+        const skill = task.job === "heal" ? job.gatherSkill : job.skill;
+        task.work = (task.work || 0) + workRate(w, a, job.id, skill);
+        practice(a, skill);
         if (task.work < job.time) return;
         task.work = 0;
         for (const got of [].concat(job.take(w, i, a) || job.resource)) {
@@ -10573,6 +11184,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const amt = workRate(w, a, "build");
         a.stats.labour += amt;
         addLabour(w, site, amt, a);
+        practice(a, "construction");
         toolWear(w, a, "build", 0.05);
         return;
       }
@@ -10589,7 +11201,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const job = JOBS.get(task.job);
       if (!task.station || !stationHasWork(w, task.station, a)) {
         const open = job.stations.filter((s) => stationHasWork(w, s, a));
-        task.station = open.sort((x, y) => stationPriority(w, y) - stationPriority(w, x))[0];
+        task.station = open.sort((x, y) => stationPriority(w, y, a) - stationPriority(w, x, a))[0];
       }
       if (!task.station) {
         fail(w, a, "\u0437\u0430\u043A\u0430\u0437\u043E\u0432 \u043D\u0435\u0442 \u0438\u043B\u0438 \u0432\u0441\u0435 \u0432\u0435\u0440\u0441\u0442\u0430\u043A\u0438 \u0437\u0430\u043D\u044F\u0442\u044B");
@@ -10607,7 +11219,9 @@ dd.q4{color:#c58cff;font-weight:600}
       const r = follow(w, a, map);
       if (r === "arrived") {
         const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
-        if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id) * workBonus(b), a)) {
+        const r2 = b && b.done ? workAt(w, b, (rec) => workRate(w, a, job.id, recipeSkill(rec)) * workBonus(b), a) : null;
+        if (r2) practice(a, recipeSkill(r2));
+        else {
           fail(w, a, "\u0437\u0430\u043A\u0430\u0437 \u043D\u0435 \u043D\u0430\u0447\u0430\u0442\u044C: \u043D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u043E\u0432 \u0438\u043B\u0438 \u0442\u043E\u043F\u043B\u0438\u0432\u0430");
           a.think = 20;
         }
@@ -10634,6 +11248,7 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
         task.work = (task.work || 0) + workRate(w, a, job.id);
+        practice(a, job.skill);
         if (task.work < job.time) return;
         task.work = 0;
         const got = workPlot(w, i);
@@ -10657,13 +11272,15 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // the healer: tend whoever lies in the healer's hut; with nobody to tend, pick herbs (as harvest)
     heal(w, a, task) {
-      if (waiting(w)) {
+      if (waiting(w) && canDoAction(a, "medicine", JOBS.get(task.job).tendTier)) {
         if (a.carry?.n) dropLoad(w, a);
         const r = follow(w, a, "healer");
         if (r === "arrived" || healerHutCell(w, a)) {
           const given = tend(w, a, workRate(w, a, "heal") * workBonus(w.buildings.find((x) => x.done && x.key === "healerhut")));
-          if (given) a.stats.healed = (a.stats.healed || 0) + given;
-          else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);
+          if (given) {
+            a.stats.healed = (a.stats.healed || 0) + given;
+            practice(a, "medicine");
+          } else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);
         } else if (r === "none") {
           w.nav.dirty("healer");
           fail(w, a, "\u043A \u0445\u0438\u0436\u0438\u043D\u0435 \u043B\u0435\u043A\u0430\u0440\u044F \u043D\u0435\u0442 \u043F\u0443\u0442\u0438", "impossible");
@@ -10682,7 +11299,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       let b = task.beast != null ? w.agents.find((o) => o.id === task.beast && !o.dead) : null;
-      const ok = (o) => o && !claimed(w, o, a) && (o.tame ? chores(w).includes(o) : tameTargets(w).includes(o));
+      const ok = (o) => o && !claimed(w, o, a) && (o.tame ? chores(w).includes(o) : tameTargets(w).includes(o) && canTame(a, o));
       if (!ok(b)) {
         b = null;
         task.calm = false;
@@ -10697,7 +11314,7 @@ dd.q4{color:#c58cff;font-weight:600}
           }
         }
         if (!b && !a.carry) for (const o of tameTargets(w)) {
-          if (claimed(w, o, a)) continue;
+          if (claimed(w, o, a) || !canTame(a, o)) continue;
           const d2 = Math.hypot(o.x - a.x, o.y - a.y);
           if (d2 < bd) {
             bd = d2;
@@ -10738,6 +11355,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       task.work = (task.work || 0) + workRate(w, a, job.id);
+      practice(a, job.skill);
       if (b.tame) {
         if (task.work < job.time) return;
         task.work = 0;
@@ -10824,6 +11442,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       task.work = (task.work || 0) + workRate(w, a, job.id);
+      practice(a, job.skill);
       if (task.work < job.time) return;
       bury(w, c, a, task.spot);
       done(w, a);
@@ -10879,7 +11498,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!prey || prey.dead || !w.agents.includes(prey) || task.age % 40 === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > 9) {
         prey = null;
         let bd = 80 * 80;
-        for (const o of huntable(w, job)) {
+        for (const o of huntable(w, job, a)) {
           const d2 = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
           if (d2 < bd) {
             bd = d2;
@@ -10902,7 +11521,8 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = a.gear.ranged.range + w.mods.add.huntRange;
       a.stalking = d < 10;
-      if (d > range * 0.85) {
+      const open = d <= range * 0.85 && lineOfFire(w, a.x, a.y, prey.x, prey.y);
+      if (!open) {
         if (d > 9) {
           const r = follow(w, a, job.nav);
           if (r !== "moving") {
@@ -10914,14 +11534,17 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         return;
       }
-      a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 3e-4 * (a.mods.learn ?? 1));
-      const res = shoot(w, a, prey, job.id);
+      const res = shoot(w, a, prey);
       if (res === "kill") {
+        practice(a, job.skill, LEARN.kill);
         w.stats.hunted++;
         a.stalking = false;
         a.stats.hunted++;
         think(w, a, "huntKill", { prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label });
         for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
+        for (const [r, n] of Object.entries(prey.trophy?.got || {})) load(a, r, n);
+        const rare = trophyText(prey.trophy);
+        if (rare) log(w, `<b>${esc(a.name)}</b> ${g(a, "\u0434\u043E\u0431\u044B\u043B", "\u0434\u043E\u0431\u044B\u043B\u0430")} ${SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label}.${rare}`, "wildlife");
         const near2 = w.agents.some((o) => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
         task.oneMore = a.carry.n < 8 && near2;
         task.prey = null;
@@ -11003,7 +11626,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // fight: archers and slingers keep their distance and shoot, everyone else closes in
     { id: "fight", label: (t) => t.shooting ? "\u0441\u0442\u0440\u0435\u043B\u044F\u0435\u0442" : "\u0434\u0435\u0440\u0451\u0442\u0441\u044F", step(w, a, task) {
       const t = task.target;
-      if (!t || t.dead || !w.agents.includes(t)) {
+      if (!t || t.dead || t.downed || !w.agents.includes(t)) {
         done2(w, a);
         return;
       }
@@ -11025,13 +11648,13 @@ dd.q4{color:#c58cff;font-weight:600}
       if (g2?.rangedReady && d > 1.4) {
         const range = g2.ranged.range + (a.faction === "colony" ? w.mods.add.huntRange : 0);
         task.shooting = true;
-        if (d > range * 0.9 || shoot(w, a, t, "hunt") === null && a.cd <= 0) {
+        if (d > range * 0.9 || shoot(w, a, t) === null && a.cd <= 0) {
           if (approach(w, a, t.x, t.y, 1) === null) fail2(w, a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
         }
         return;
       }
       task.shooting = false;
-      if (d > Math.min(0.9, reachOf(a))) {
+      if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, t)) {
         if (approach(w, a, t.x, t.y, 1.1) === null) fail2(w, a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
       } else attack(w, a, t);
     } },
@@ -11044,10 +11667,11 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       guardStep(w, a, b, task);
     } },
-    // a wounded colonist out in the woods: go, dress the wounds, see them home
-    { id: "aid", label: () => "\u0441\u043F\u0435\u0448\u0438\u0442 \u043D\u0430 \u043F\u043E\u043C\u043E\u0449\u044C \u0440\u0430\u043D\u0435\u043D\u043E\u043C\u0443", step(w, a, task) {
+    // a wounded colonist out in the woods: go, dress the wounds, see them home. One who fell senseless
+    // (agents/wounds.js) is helped anywhere, inside the camp too: dressing the wound in time saves a life
+    { id: "aid", label: (t) => t.fallen ? "\u0441\u043F\u0435\u0448\u0438\u0442 \u043A \u0443\u043F\u0430\u0432\u0448\u0435\u043C\u0443" : "\u0441\u043F\u0435\u0448\u0438\u0442 \u043D\u0430 \u043F\u043E\u043C\u043E\u0449\u044C \u0440\u0430\u043D\u0435\u043D\u043E\u043C\u0443", step(w, a, task) {
       const b = w.agents.find((o) => o.id === task.who && !o.dead);
-      if (!b || agentInZone(w, b)) {
+      if (!b || agentInZone(w, b) && !b.downed) {
         done2(w, a);
         return;
       }
@@ -11056,8 +11680,13 @@ dd.q4{color:#c58cff;font-weight:600}
         if (approach(w, a, b.x, b.y, 1.2) === null) fail2(w, a, "\u043A \u0440\u0430\u043D\u0435\u043D\u043E\u043C\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
         return;
       }
+      const fallen = !!b.downed;
       giveAid(w, a, b);
-      a.task = { id: "company", who: b.id, home: true };
+      if (fallen || agentInZone(w, b)) done2(w, a);
+      else a.task = { id: "company", who: b.id, home: true };
+    } },
+    // senseless on the ground after a deadly blow: nothing to do but bleed and wait for help (agents/wounds.js)
+    { id: "downed", label: () => "\u043B\u0435\u0436\u0438\u0442 \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F", step() {
     } },
     { id: "douse", label: () => "\u0442\u0443\u0448\u0438\u0442 \u043F\u043E\u0436\u0430\u0440", step(w, a) {
       if (w.stats.fireNearCamp === 0) {
@@ -11358,9 +11987,11 @@ dd.q4{color:#c58cff;font-weight:600}
       pop: colonists(w).length,
       food: foodTotal(w),
       openSites: openSites(w).length,
-      preyCount: huntable(w, JOBS.get("hunt")).length,
+      preyCount: huntable(w, JOBS.get("hunt"), a).length,
       favourites: favourites(w),
       patients: waiting(w),
+      agent: a,
+      can: (skill, tier) => canDoAction(a, skill, tier),
       orders: new Proxy({}, { get: (o, station) => stationHasWork(w, station, a) })
     };
     const opts = [];
@@ -11370,7 +12001,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     const mate = mates(w, a);
     for (const job of JOBS.all()) {
-      if (!jobUnlocked(w, job) || job.canDo && !job.canDo(w, a)) continue;
+      if (!jobUnlocked(w, job) || !jobAccess(a, job).ok || job.canDo && !job.canDo(w, a)) continue;
       const base = job.desire(w, ctx, job);
       if (base < 0) continue;
       const res = job.resource;
@@ -11454,6 +12085,13 @@ dd.q4{color:#c58cff;font-weight:600}
     step(w, a) {
       const T2 = stepBody(w, a);
       if (a.dead) return;
+      if (a.downed) {
+        if (a.task?.id !== "downed") a.task = { id: "downed" };
+        syncTask(w, a);
+        stepDowned(w, a);
+        return;
+      }
+      healWounds(w, a);
       a.sleeping = false;
       const tid = a.task?.id;
       if (tid !== "douse" && (T2 > 55 || nearFire(w, a, 1.5))) {
@@ -12018,6 +12656,7 @@ dd.q4{color:#c58cff;font-weight:600}
     stepFarms(w);
     stepHerd(w);
     stepLife(w);
+    stepCrafting(w);
     stepRelations(w);
     const t1 = performance.now();
     w.nav.step();
@@ -12779,7 +13418,13 @@ dd.q4{color:#c58cff;font-weight:600}
         this.paintTerrain(w);
         this.tTerrain = t0;
       }
-      this.paintGlowSmoke(w);
+      const st = w.stats, calm = !st.anyFire && (st.smokeMax ?? 1) <= 0 && (st.tempMax ?? Infinity) <= 60;
+      if (!calm || !this.glowCalm || this.glowFor !== w) {
+        this.paintGlowSmoke(w);
+        this.glowCalm = calm;
+        this.glowFor = w;
+      }
+      const lit = !this.glowCalm;
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(this.terrain.c, 0, 0, Wpx, Hpx);
       ctx.imageSmoothingEnabled = true;
@@ -12792,7 +13437,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx);
       }
-      ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
+      if (lit) ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
       const night = nightness(w.tick);
       if (view2.layer === "world" && night > 0) {
         ctx.fillStyle = `rgba(8,12,30,${night * 0.62})`;
@@ -12800,10 +13445,12 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (w.weather.rain > 0.05) this.drawRain(w, Wpx, Hpx);
       ctx.globalCompositeOperation = "lighter";
-      ctx.drawImage(this.glow.c, 0, 0, Wpx, Hpx);
-      ctx.globalAlpha = 0.55;
-      ctx.drawImage(this.glow.c, -S * 1.5, -S * 1.5, Wpx + S * 3, Hpx + S * 3);
-      ctx.globalAlpha = 1;
+      if (lit) {
+        ctx.drawImage(this.glow.c, 0, 0, Wpx, Hpx);
+        ctx.globalAlpha = 0.55;
+        ctx.drawImage(this.glow.c, -S * 1.5, -S * 1.5, Wpx + S * 3, Hpx + S * 3);
+        ctx.globalAlpha = 1;
+      }
       const cx = (w.camp.x + 0.5) * S, cy = (w.camp.y + 0.5) * S;
       if (w.campLit) {
         const fl = 0.9 + Math.random() * 0.1, gr = ctx.createRadialGradient(cx, cy, 2, cx, cy, S * 9 * fl);
@@ -13309,6 +13956,50 @@ dd.q4{color:#c58cff;font-weight:600}
     const sp = SPECIES.get(a.species), lim = limits(sp, peopleOf(sp, a));
     return `<div class="spc">${STATS.all().map((s) => `<span title="${s.label}: ${s.note}. \u0423 \u044D\u0442\u043E\u0439 \u0440\u0430\u0441\u044B ${lim[s.id][0]}\u2013${lim[s.id][1]}"><b>${a.special[s.id]}</b>${s.short}</span>`).join("")}</div>`;
   }
+  function skillsHtml(a) {
+    if (!a.skill) return "";
+    const liked = JOBS.get(a.likes)?.skill, disliked = JOBS.get(a.dislikes)?.skill;
+    return STATS.all().map((st) => {
+      const list = activeSkills().filter((s) => s.stat === st.id);
+      if (!list.length) return "";
+      const v = a.special?.[st.id], tier = skillTier(a, list[0].id), cap = Math.round(softCap(a, list[0].id) * 100);
+      const chips = list.map((s) => [s, a.skill[s.id] || 0]).sort((x, y) => y[1] - x[1]).map(([s, x]) => {
+        const n = Math.round(x * 100), top = n >= cap && cap < 100;
+        return `<span class="chip${s.id === liked ? " like" : s.id === disliked ? " dislike" : ""}" title="${s.label}: ${n} \u0438\u0437 100${top ? "; \u0432\u044B\u0448\u0435 \u043F\u043E\u0442\u043E\u043B\u043A\u0430 \u0443\u0447\u0438\u0442\u0441\u044F \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u043E" : ""}">${s.short} ${n}${top ? "\xB7" : ""}</span>`;
+      }).join("");
+      return `<div class="sk-row"><span class="sk-stat" title="${st.label} ${v ?? "\u2014"}: \u043F\u043E\u0442\u043E\u043B\u043E\u043A \u043D\u0430\u0432\u044B\u043A\u043E\u0432 ${cap}, \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E \u0434\u043E \xAB${TIERS[tier - 1].label}\xBB (T${tier})">${st.short}${v != null ? " " + v : ""} \xB7 T${tier}</span><div class="chips">${chips}</div></div>`;
+    }).join("");
+  }
+  function woundsHtml(w, a) {
+    const out = [];
+    if (a.downed) out.push(`<span class="chip dislike" title="\u0411\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438 \u0443\u043C\u0440\u0451\u0442">\u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F: ${Math.max(0, Math.ceil((a.downed.until - w.tick) / HOUR * 10) / 10)} \u0447 \u0434\u043E \u0441\u043C\u0435\u0440\u0442\u0438</span>`);
+    for (const x of a.wounds || []) {
+      const W = WOUNDS.get(x.id);
+      const left = x.until != null ? `, \u0437\u0430\u0436\u0438\u0432\u0451\u0442 \u0447\u0435\u0440\u0435\u0437 ${Math.max(1, Math.ceil((x.until - w.tick) / DAY))} \u0434\u043D.` : "";
+      out.push(`<span class="chip${W.trauma ? " dislike" : ""}" title="${W.label}: ${W.note}${left}">${W.label}</span>`);
+    }
+    return out.length ? `<div class="chips">${out.join("")}</div>` : "";
+  }
+  function lockedHtml(a) {
+    if (!a.special || !a.prefs) return "";
+    const all = [
+      ...RECIPES.all().map((r) => [(r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short) + (r.makes.silver ? " \u043F\u043E\u0441\u0435\u0440\u0435\u0431\u0440." : ""), recipeAccess(a, r)]),
+      ...JOBS.all().filter((j) => j.tier > 1).map((j) => [j.label, jobAccess(a, j)]),
+      ...JOBS.all().filter((j) => j.tendTier).map((j) => ["\u043B\u0435\u0447\u0438\u0442\u044C \u0432 \u0445\u0438\u0436\u0438\u043D\u0435", actionAccess(a, j.skill, j.tendTier)]),
+      ...JOBS.all().filter((j) => j.riskyTier).map((j) => ["\u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F \u043D\u0430 \u043A\u0440\u0443\u043F\u043D\u043E\u0433\u043E \u0437\u0432\u0435\u0440\u044F", actionAccess(a, j.skill, j.riskyTier)]),
+      ...SPECIES.filter((sp) => sp.tame?.tier > 1).map((sp) => ["\u043F\u0440\u0438\u0440\u0443\u0447\u0430\u0442\u044C: " + sp.label, actionAccess(a, "husbandry", sp.tame.tier)])
+    ].filter(([, r]) => !r.ok).map(([what, r]) => [what, r.reasons[0]]);
+    if (!all.length) return '<p class="muted pc-small">\u0414\u043E\u0441\u0442\u0443\u043F\u043D\u043E \u0432\u0441\u0451, \u0447\u0442\u043E \u0435\u0441\u0442\u044C \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438.</p>';
+    all.sort((x, y) => x[1].need - x[1].have - (y[1].need - y[1].have));
+    const seen = /* @__PURE__ */ new Set(), rows = [];
+    for (const [what, why] of all) {
+      if (seen.has(what)) continue;
+      seen.add(what);
+      rows.push(`<li title="T${why.tier}">${esc(what)}: ${reasonText(why)}</li>`);
+      if (rows.length >= 6) break;
+    }
+    return `<ul class="pc-list">${rows.join("")}</ul>${all.length > rows.length ? `<p class="muted pc-small">\u0438 \u0435\u0449\u0451 ${all.length - rows.length}</p>` : ""}`;
+  }
   var raceOf = (a) => raceLabel(SPECIES.get(a.species), a);
   function traitsText(a) {
     const t = a.traits.map((id) => TRAITS.get(id).label);
@@ -13431,15 +14122,16 @@ dd.q4{color:#c58cff;font-weight:600}
           if (same) same.n++;
           else lines.push({ g: g2, n: g2.kind === "res" ? g2.n : 1 });
         }
-        const rows = lines.sort((x, y) => x.g.kind === y.g.kind ? askPrice(y.g) - askPrice(x.g) : x.g.kind === "item" ? -1 : 1).map(({ g: g2, n }) => {
-          const p = askPrice(g2), can = gold >= p;
+        const tb = c.terms?.b || 0;
+        const rows = lines.sort((x, y) => x.g.kind === y.g.kind ? askPrice(y.g, tb) - askPrice(x.g, tb) : x.g.kind === "item" ? -1 : 1).map(({ g: g2, n }) => {
+          const p = askPrice(g2, tb), can = gold >= p;
           return `<div class="wrow${g2.kind === "item" && g2.q ? " fine" : ""}"><span>${esc(goodsLabel(g2))}${n > 1 || g2.kind === "res" ? " \xD7" + n : ""}</span><b class="${can ? "" : "dear"}">${p} \u0437\u043E\u043B.${n > 1 ? " / \u0448\u0442." : ""}</b></div>`;
         }).join("");
-        goods = `<h2>\u041A\u0443\u043F\u0435\u0446 ${esc(c.name)}</h2><p class="small muted">\u0421\u0435\u0439\u0447\u0430\u0441: ${phase[c.phase]}. \u0413\u0440\u0443\u0437 ${units} \u0438\u0437 ${cap} \u043C\u0435\u0441\u0442, \u0432 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u0435 \u0443 \u043A\u0443\u043F\u0446\u0430 ${Math.floor(c.purse)} \u0437\u043E\u043B. \u041A\u0443\u043F\u0435\u0446 \u043F\u0440\u043E\u0441\u0438\u0442 \xD7${TRADE.ask} \u043E\u0442 \u0446\u0435\u043D\u044B \u0438 \u043F\u043B\u0430\u0442\u0438\u0442 \xD7${TRADE.bid}.</p><div class="wares">${rows || '<p class="muted small">\u0412\u0441\u0451 \u0440\u0430\u0441\u043F\u0440\u043E\u0434\u0430\u043D\u043E.</p>'}</div>`;
+        goods = `<h2>\u041A\u0443\u043F\u0435\u0446 ${esc(c.name)}</h2><p class="small muted">\u0421\u0435\u0439\u0447\u0430\u0441: ${phase[c.phase]}. \u0413\u0440\u0443\u0437 ${units} \u0438\u0437 ${cap} \u043C\u0435\u0441\u0442, \u0432 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u0435 \u0443 \u043A\u0443\u043F\u0446\u0430 ${Math.floor(c.purse)} \u0437\u043E\u043B. \u041A\u0443\u043F\u0435\u0446 \u043F\u0440\u043E\u0441\u0438\u0442 \xD7${+(TRADE.ask - tb).toFixed(2)} \u043E\u0442 \u0446\u0435\u043D\u044B \u0438 \u043F\u043B\u0430\u0442\u0438\u0442 \xD7${+(TRADE.bid + tb).toFixed(2)}${c.terms?.name ? ` (\u0442\u043E\u0440\u0433\u043E\u0432\u0430\u043B${c.terms.f ? "\u0430\u0441\u044C" : "\u0441\u044F"} ${esc(c.terms.name)})` : ""}.</p><div class="wares">${rows || '<p class="muted small">\u0412\u0441\u0451 \u0440\u0430\u0441\u043F\u0440\u043E\u0434\u0430\u043D\u043E.</p>'}</div>`;
       }
       const deals = w.trade.deals.map((d) => {
         const list = (xs) => xs.map(([l, n, g2]) => `${esc(l)}${n > 1 ? " \xD7" + n : ""}`).join(", ");
-        return `<li><b>\u0414\u0435\u043D\u044C ${d.day}, ${esc(d.trader)}</b>: ${d.sold.length ? "\u043F\u0440\u043E\u0434\u0430\u043B\u0438 " + list(d.sold) + ` (+${d.earned})` : "\u043F\u0440\u043E\u0434\u0430\u0442\u044C \u0431\u044B\u043B\u043E \u043D\u0435\u0447\u0435\u0433\u043E"}; ${d.bought.length ? "\u043A\u0443\u043F\u0438\u043B\u0438 " + list(d.bought) + ` (\u2212${d.spent})` : "\u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043A\u0443\u043F\u0438\u043B\u0438"}. \u0412 \u043A\u0430\u0437\u043D\u0435 ${Math.floor(d.gold)}.</li>`;
+        return `<li><b>\u0414\u0435\u043D\u044C ${d.day}, ${esc(d.trader)}</b>${d.by ? ` (\u043F\u0435\u0440\u0435\u0433\u043E\u0432\u043E\u0440\u0449\u0438\u043A ${esc(d.by)}, ${d.b > 0 ? "+" : ""}${Math.round((d.b || 0) * 100)}%)` : ""}: ${d.sold.length ? "\u043F\u0440\u043E\u0434\u0430\u043B\u0438 " + list(d.sold) + ` (+${d.earned})` : "\u043F\u0440\u043E\u0434\u0430\u0442\u044C \u0431\u044B\u043B\u043E \u043D\u0435\u0447\u0435\u0433\u043E"}; ${d.bought.length ? "\u043A\u0443\u043F\u0438\u043B\u0438 " + list(d.bought) + ` (\u2212${d.spent})` : "\u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043A\u0443\u043F\u0438\u043B\u0438"}. \u0412 \u043A\u0430\u0437\u043D\u0435 ${Math.floor(d.gold)}.</li>`;
       }).join("");
       this.set("tradeBox", `${head}${goods}<h2>\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0441\u0434\u0435\u043B\u043A\u0438</h2>${deals ? `<ul class="deals">${deals}</ul>` : '<p class="muted small">\u0422\u043E\u0440\u0433\u043E\u0432\u043B\u0438 \u0435\u0449\u0451 \u043D\u0435 \u0431\u044B\u043B\u043E. \u041A\u0430\u0440\u0430\u0432\u0430\u043D\u044B \u0445\u043E\u0434\u044F\u0442 \u043F\u043E \u0418\u043C\u043F\u0435\u0440\u0441\u043A\u043E\u043C\u0443 \u0442\u0440\u0430\u043A\u0442\u0443 \u0441 10-\u0433\u043E \u0434\u043D\u044F, \u0440\u0430\u0437 \u0432 10 \u0434\u043D\u0435\u0439, \u0438 \u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u043D\u0435 \u0432\u0441\u0435\u0433\u0434\u0430.</p>'}`);
     }
@@ -13681,8 +14373,10 @@ dd.q4{color:#c58cff;font-weight:600}
             const f = furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w));
             return `<span class="cost${f ? "" : " short"}">${f ? `${+f[1].toFixed(1)} ${f[0].short}` : (r.heat ?? 2) >= 2 ? `${r.fuel} \u0443\u0433\u043B\u044F` : `${r.fuel} \u0443\u0433\u043B\u044F \u0438\u043B\u0438 ${r.fuel * 3} \u0434\u0440\u043E\u0432`}</span>`;
           })() : "") + (r.tool ? `<span class="cost${(w.stock[r.tool] || 0) >= 1 ? "" : " short"}">${RESOURCES.get(r.tool).short}</span>` : "");
-          const want2 = r.want(ctx);
-          return `<div class="rc${r.id === cur ? " cur" : ""}"><b>${esc(what)}</b><span class="costs">${cost}</span><span class="muted">${r.id === cur ? "\u0432 \u0440\u0430\u0431\u043E\u0442\u0435" : want2 > 0 ? "\u043D\u0443\u0436\u043D\u043E" : "\u0445\u0432\u0430\u0442\u0430\u0435\u0442"}</span></div>`;
+          const want2 = r.want(ctx), need = recipeNeed(r);
+          const able = need ? colonists(w).filter((x) => canMake(x, r)).map((x) => x.name) : null;
+          const tier = need ? `<span class="cost${able.length ? "" : " short"}" title="${able.length ? "\u041C\u043E\u0433\u0443\u0442: " + esc(able.join(", ")) : "\u0412 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438 \u043D\u0435\u0442 \u0442\u0430\u043A\u043E\u0433\u043E \u043C\u0430\u0441\u0442\u0435\u0440\u0430"}">T${need.tier} \xB7 ${reasonText(need)}</span>` : "";
+          return `<div class="rc${r.id === cur ? " cur" : ""}"><b>${esc(what)}</b><span class="costs">${tier}${cost}</span><span class="muted">${r.id === cur ? "\u0432 \u0440\u0430\u0431\u043E\u0442\u0435" : need && !able.length ? "\u043D\u0435\u043A\u043E\u043C\u0443" : want2 > 0 ? "\u043D\u0443\u0436\u043D\u043E" : "\u0445\u0432\u0430\u0442\u0430\u0435\u0442"}</span></div>`;
         }).join("");
         extra = `<section><h4>\u0427\u0442\u043E \u0437\u0434\u0435\u0441\u044C \u0434\u0435\u043B\u0430\u044E\u0442</h4><div class="recipes">${recs}</div></section>`;
       }
@@ -13715,6 +14409,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // why the colonist does what it does: the choice at the last think, the runner-up, the way, the last
     // task dropped before it was done (agents/brains/colonist.js a.why, a.lastStop; agents/movement.js a.route)
     whyHtml(w, a) {
+      if (a.downed) return "";
       const y = a.why, rows = [];
       const ago = (t) => {
         const m = w.tick - t;
@@ -13786,9 +14481,8 @@ dd.q4{color:#c58cff;font-weight:600}
       const slots = SLOTS.map((s) => {
         const it = a.equip?.[s.id];
         const txt = it ? def(it).short + (Number.isFinite(it.dur) ? ` \xB7 ${Math.max(0, Math.round(it.dur / def(it).dur * 100))}%` : "") + (it.ammo != null ? ` \xB7 \u0441\u0442\u0440\u0435\u043B ${it.ammo}` : "") : "\u2014";
-        return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${def(it).rank}"` : ""}>${esc(txt)}</dd>`;
+        return `<dt>${s.label}</dt><dd class="q${it?.q || 0}"${it?.q ? ` title="${def(it).rank}${it.maker ? ", \u0440\u0430\u0431\u043E\u0442\u0430: " + esc(it.maker) : ""}"` : ""}>${esc(txt)}</dd>`;
       }).join("");
-      const skills = JOBS.filter((j) => j.preferable).map((j) => [j, a.skill[j.id] || 0]).sort((x, y) => y[1] - x[1]).map(([j, v]) => `<span class="chip${j.id === a.likes ? " like" : j.id === a.dislikes ? " dislike" : ""}">${j.short} ${Math.round(v * 100)}</span>`).join("");
       const today = dayOf(w.tick);
       let lastDay = null;
       const diary = a.diary.slice(0, 14).map((e) => {
@@ -13813,6 +14507,7 @@ dd.q4{color:#c58cff;font-weight:600}
           <p class="pc-small">${body}</p>
           ${specialHtml(a)}
           ${inn ? `<div class="chips">${inn}</div>` : ""}
+          ${woundsHtml(w, a)}
           <h4>\u041C\u0438\u0440\u043E\u0432\u043E\u0437\u0437\u0440\u0435\u043D\u0438\u0435</h4>
           ${a.align ? `<p class="pc-small">${axisWord("order", a.align.order)} \xB7 ${axisWord("mercy", a.align.mercy)}</p>` : ""}
           ${vals ? `<div class="chips">${vals}</div>` : ""}
@@ -13820,7 +14515,8 @@ dd.q4{color:#c58cff;font-weight:600}
         </section>
         <section><h4>\u0425\u043E\u0447\u0435\u0442</h4>${want2.length ? `<ul class="pc-list">${want2.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : '<p class="muted pc-small">\u0412\u0441\u0435\u043C \u0434\u043E\u0432\u043E\u043B\u0435\u043D.</p>'}
           <h4>\u0421\u043D\u0430\u0440\u044F\u0436\u0435\u043D\u0438\u0435</h4><dl class="kv">${slots}</dl>
-          <h4>\u041D\u0430\u0432\u044B\u043A\u0438</h4><div class="chips">${skills}</div>
+          <h4>\u041D\u0430\u0432\u044B\u043A\u0438</h4>${skillsHtml(a)}
+          <h4>\u041F\u043E\u043A\u0430 \u043D\u0435 \u043F\u043E \u0441\u0438\u043B\u0430\u043C</h4>${lockedHtml(a)}
         </section>
         <section><h4>\u0414\u043D\u0435\u0432\u043D\u0438\u043A</h4><ul class="pc-diary">${diary || '<li class="muted">\u041F\u043E\u043A\u0430 \u043D\u0438\u0447\u0435\u0433\u043E.</li>'}</ul></section>
       </div>`;
@@ -14157,12 +14853,13 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.38 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a38e80d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.38.1 SPECIAL \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 14e3098" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
-  var SAVE_FORMAT = 2;
-  var FORMATS = [1, 2];
+  var SAVE_FORMAT = 3;
+  var FORMATS = [1, 2, 3];
+  var TASK_BRAINS = /* @__PURE__ */ new Set(["colonist", "raider"]);
   var LIVE = /* @__PURE__ */ new Set(["nav", "rng", "rngs", "astar", "perf", "scratch"]);
   function externals() {
     const m = /* @__PURE__ */ new Map();
@@ -14182,9 +14879,10 @@ dd.q4{color:#c58cff;font-weight:600}
     return { format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, rngs: streamStates(w.rngs), tree };
   }
   function loadWorld(save2) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     if (!save2 || !FORMATS.includes(save2.format)) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
+    checkKnown(w);
     ensureRegion(w);
     ensureOre(w);
     ensurePlants(w);
@@ -14234,18 +14932,42 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const a of w.agents) {
       const sp = SPECIES.get(a.species);
       if (a.special || !sp.special) continue;
-      const share2 = a.hp / (sp.hp || 1);
-      rollCreature({ rng: mulberry(a.id * 6151 + 3) }, a, sp);
-      a.hp = a.maxHp * Math.max(0, Math.min(1, share2));
+      rollCreature({ rngs: { birth: mulberry(a.id * 6151 + 3) } }, a, sp);
+      a.bodyVer = 0;
     }
+    for (const a of w.agents) {
+      if (!a.mods || a.bodyVer === BODY_VER) continue;
+      if (a.bodyVer === 0) {
+        delete a.own;
+        refreshBody(a);
+        a.bodyVer = BODY_VER;
+      } else if (a.bodyVer >= 1) {
+        refreshBody(a);
+        a.bodyVer = BODY_VER;
+      } else adoptBody(a);
+    }
+    for (const a of w.agents) migrateSkills(a);
     for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
-    for (const a of w.agents) if (a.prefs) for (const id of JOBS.ids()) {
-      (_i = a.prefs)[id] ?? (_i[id] = 1);
-      (_j = a.skill)[id] ?? (_j[id] = 0);
+    for (const a of w.agents) if (a.prefs) {
+      for (const id of JOBS.ids()) (_i = a.prefs)[id] ?? (_i[id] = 1);
+      for (const s of activeSkills()) (_j = a.skill)[_k = s.id] ?? (_j[_k] = 0);
     }
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     ensureFlows(w);
     return w;
+  }
+  function checkKnown(w) {
+    const bad2 = /* @__PURE__ */ new Set();
+    for (const a of w.agents || []) {
+      if (!SPECIES.has(a.species)) bad2.add(`\u0432\u0438\u0434 \xAB${a.species}\xBB`);
+      if (!BRAINS.has(a.brain)) bad2.add(`\u043F\u043E\u0432\u0435\u0434\u0435\u043D\u0438\u0435 \xAB${a.brain}\xBB`);
+      if (TASK_BRAINS.has(a.brain) && a.task && !TASKS.has(a.task.id)) bad2.add(`\u0437\u0430\u0434\u0430\u0447\u0430 \xAB${a.task.id}\xBB`);
+      if (a.task?.id === "job" && !JOBS.has(a.task.job)) bad2.add(`\u0440\u0430\u0431\u043E\u0442\u0430 \xAB${a.task.job}\xBB`);
+      for (const it of Object.values(a.equip || {})) if (it?.type && !ITEMS.has(it.type)) bad2.add(`\u043F\u0440\u0435\u0434\u043C\u0435\u0442 \xAB${it.type}\xBB`);
+      for (const r of Object.keys(a.carry?.res || {})) if (!RESOURCES.has(r)) bad2.add(`\u0440\u0435\u0441\u0443\u0440\u0441 \xAB${r}\xBB`);
+    }
+    for (const it of w.armory || []) if (it?.type && !ITEMS.has(it.type)) bad2.add(`\u043F\u0440\u0435\u0434\u043C\u0435\u0442 \xAB${it.type}\xBB`);
+    if (bad2.size) throw new Error(`\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0441\u0434\u0435\u043B\u0430\u043D\u043E \u0434\u0440\u0443\u0433\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0435\u0439 \u0438\u0433\u0440\u044B: \u044D\u0442\u0430 \u0441\u0431\u043E\u0440\u043A\u0430 \u043D\u0435 \u0437\u043D\u0430\u0435\u0442 ${[...bad2].slice(0, 4).join(", ")}.`);
   }
 
   // src/ui/saves.js
@@ -14627,47 +15349,59 @@ dd.q4{color:#c58cff;font-weight:600}
   var panelT = 0;
   function frame(now) {
     if (running) {
-      const dt = Math.min(250, now - last);
-      last = now;
-      acc += dt * view.speed;
-      const budget = now + 22;
-      let n = 0;
-      while (acc >= TICK_MS && n < 40 && performance.now() < budget) {
-        step(world);
-        acc -= TICK_MS;
-        n++;
-      }
-      if (acc > 500) acc = 0;
-      if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
-      if (view.selBld != null && !world.buildings.some((b) => b.id === view.selBld)) view.selBld = null;
-      if (world.over) {
+      try {
+        runFrame(now);
+      } catch (err) {
+        console.error(err);
+        const tick = world?.tick;
         running = false;
-        renderer.draw(world, view);
-        panel.render(world, view);
-        $("game").hidden = true;
-        $("explain").hidden = true;
-        document.body.classList.remove("ingame");
-        showEnd(world, () => {
-          world = null;
-          showMenu();
-        });
-        requestAnimationFrame(frame);
-        return;
-      }
-      if (dayOf(world.tick) !== autoDay) {
-        autoDay = dayOf(world.tick);
-        save(true);
-      }
-      renderer.draw(world, view);
-      view.renderMs = renderer.ms;
-      panel.readout(world, view.hover);
-      if (now - panelT > 300) {
-        panelT = now;
-        panel.render(world, view);
-        panel.renderSelection(world, view);
+        acc = 0;
+        world = null;
+        showMenu();
+        $("loadStatus").textContent = `\u0418\u0433\u0440\u0430 \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0430 \u0438\u0437-\u0437\u0430 \u043E\u0448\u0438\u0431\u043A\u0438${tick != null ? ` \u043D\u0430 \u0442\u0438\u043A\u0435 ${tick}` : ""}: ${err.message}. \u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0446\u0435\u043B\u043E.`;
       }
     }
     requestAnimationFrame(frame);
+  }
+  function runFrame(now) {
+    const dt = Math.min(250, now - last);
+    last = now;
+    acc += dt * view.speed;
+    const budget = now + 22;
+    let n = 0;
+    while (acc >= TICK_MS && n < 40 && performance.now() < budget) {
+      step(world);
+      acc -= TICK_MS;
+      n++;
+    }
+    if (acc > 500) acc = 0;
+    if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
+    if (view.selBld != null && !world.buildings.some((b) => b.id === view.selBld)) view.selBld = null;
+    if (world.over) {
+      running = false;
+      renderer.draw(world, view);
+      panel.render(world, view);
+      $("game").hidden = true;
+      $("explain").hidden = true;
+      document.body.classList.remove("ingame");
+      showEnd(world, () => {
+        world = null;
+        showMenu();
+      });
+      return;
+    }
+    if (dayOf(world.tick) !== autoDay) {
+      autoDay = dayOf(world.tick);
+      save(true);
+    }
+    renderer.draw(world, view);
+    view.renderMs = renderer.ms;
+    panel.readout(world, view.hover);
+    if (now - panelT > 300) {
+      panelT = now;
+      panel.render(world, view);
+      panel.renderSelection(world, view);
+    }
   }
   $("buildTag").textContent = `\u0432\u0435\u0440\u0441\u0438\u044F ${VERSION} \xB7 ${BUILD}`;
   showMenu();

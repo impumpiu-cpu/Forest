@@ -39,6 +39,12 @@ export const TRADE = {
   maxComing: 36,   // hours on the road from the map edge (usually 10–14): a caravan that has not reached the camp by then turns back
   guards: 2, mules: [1, 3], crates: 2, crate: 10, load: [0.5, 1],
   purse: [25, 70], ask: 1.2, bid: 0.7,
+  // the colony's negotiator (settlement/trade.js terms): Charisma × (1 + barter skill) against the trader's;
+  // the contest a / (a + b) moves both prices by up to ±haggle in the colony's favour or against it,
+  // once for the whole visit. With the best terms buying costs 1.1 and selling brings 0.8 of the worth:
+  // there is always a margin, so nothing can be sold and bought back at a profit.
+  haggle: 0.1, traderC: 6, traderBarter: 0.5,
+  practicePerLine: 15, practiceMax: 120,   // barter practice for the negotiator: per line of the deal, at most
   foodShort: 4, foodUpTo: 6, foodKeep: 5, minGain: 0.15, maxShare: 0.85,
   wants: {salt: 12, seedBarley: 8, seedTurnip: 8, seedFlax: 6},   // bought whenever the trader has it, up to this much in stock
   keys: [1, 2], keyChance: 0.8, furnish: 25,

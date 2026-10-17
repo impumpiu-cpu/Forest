@@ -17,13 +17,16 @@ import {boldness} from './brains/predator.js';
 import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
-import {kill} from './agent.js';
+import {lineOfFire} from '../nav/astar.js';
+import {kill, trophyText} from './agent.js';
+import {practice, skillOf, canDoAction} from './skills.js';
+import {recipeSkill, LEARN} from '../data/skills.js';
 import {think, moodOf} from './mind.js';
 import {add} from '../settlement/chronicle.js';
 import {seasonJob} from '../data/seasons.js';
 import {plotAt, needsWork, workPlot} from '../settlement/farming.js';
 import {tend, patients, waiting, healerHutCell} from '../settlement/healing.js';
-import {chores, tameTargets, tryTame, claimed} from '../settlement/herd.js';
+import {chores, tameTargets, tryTame, claimed, canTame} from '../settlement/herd.js';
 import {freeCorpse, graveSpot, bury, workBonus} from '../settlement/life.js';
 import {damage} from './combat.js';
 import {log} from '../core/log.js';
@@ -31,11 +34,12 @@ import {esc, g} from '../core/util.js';
 
 const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.colony() - 0.5) * 0.2; };
 
-// skilled hands work faster, the right tool helps; practice slowly builds skill
-export function workRate(w, a, jobId) {
-  a.skill[jobId] = Math.min(1, (a.skill[jobId] || 0) + 0.0006 * (a.mods.learn ?? 1));
+// How fast a tick of work goes: skilled hands work faster, the right tool helps. Only a speed: reading
+// it teaches nothing. Practice (agents/skills.js) is added where the work is really done.
+// skillId: the skill this piece of work uses (by default the job's own)
+export function workRate(w, a, jobId, skillId = JOBS.get(jobId).skill) {
   // a good mood helps a little, a bad one slows down (±10%)
-  return (1 + 0.7 * a.skill[jobId]) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
+  return (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
 }
 // a building may spare the tools of one job (effects.toolWear in data/buildings.js)
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };
@@ -103,7 +107,9 @@ export const RUNNERS = {
       const back = a.resume;
       if (back && back.job === task.job && back.cell === i && w.tick - back.t < RESUME_FOR) { task.work = Math.max(task.work || 0, back.work); }
       if (back) a.resume = null;
-      task.work = (task.work || 0) + workRate(w, a, job.id);
+      const skill = task.job === 'heal' ? job.gatherSkill : job.skill;
+      task.work = (task.work || 0) + workRate(w, a, job.id, skill);
+      practice(a, skill);
       if (task.work < job.time) return;
       task.work = 0;
       // take() may name what was got (one id or several: honey and a bit of wax)
@@ -119,7 +125,7 @@ export const RUNNERS = {
 
   build(w, a, task) {
     const i = cellOf(w, a), id = w.grid.bld[i], site = id >= 0 ? buildingById(w, id) : null;
-    if (site && !site.done && w.grid.fire[i] === 0) { const amt = workRate(w, a, 'build'); a.stats.labour += amt; addLabour(w, site, amt, a); toolWear(w, a, 'build', 0.05); return; }
+    if (site && !site.done && w.grid.fire[i] === 0) { const amt = workRate(w, a, 'build'); a.stats.labour += amt; addLabour(w, site, amt, a); practice(a, 'construction'); toolWear(w, a, 'build', 0.05); return; }
     const r = follow(w, a, 'sites');
     if (r === 'none' || r === 'arrived') { w.nav.dirty('sites'); if (r === 'none') fail(w, a, 'к стройке нет пути', 'impossible'); else done(w, a); a.think = 10; }   // arrived and nothing left: finished by others, nothing lost
   },
@@ -130,7 +136,7 @@ export const RUNNERS = {
     // keep to the station chosen when the task started, as long as it still has work and a free bench
     if (!task.station || !stationHasWork(w, task.station, a)) {
       const open = job.stations.filter(s => stationHasWork(w, s, a));
-      task.station = open.sort((x, y) => stationPriority(w, y) - stationPriority(w, x))[0];
+      task.station = open.sort((x, y) => stationPriority(w, y, a) - stationPriority(w, x, a))[0];
     }
     if (!task.station) { fail(w, a, 'заказов нет или все верстаки заняты'); a.think = 20; return; }
     // a bench of its own from the start, kept while walking there (nobody else heads for it meanwhile)
@@ -143,7 +149,10 @@ export const RUNNERS = {
     if (r === 'arrived') {
       const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
       // a furnished workshop is a better place to work (settlement/life.js)
-      if (!b || !b.done || !workAt(w, b, workRate(w, a, job.id) * workBonus(b), a)) { fail(w, a, 'заказ не начать: не хватает материалов или топлива'); a.think = 20; }
+      // the order's recipe decides which skill the work uses and trains (data/skills.js recipeSkill)
+      const r = b && b.done ? workAt(w, b, rec => workRate(w, a, job.id, recipeSkill(rec)) * workBonus(b), a) : null;
+      if (r) practice(a, recipeSkill(r));
+      else { fail(w, a, 'заказ не начать: не хватает материалов или топлива'); a.think = 20; }
     } else if (r === 'none') { if (w.nav.dirtySet.has(map)) return; w.nav.dirty(map); fail(w, a, 'к мастерской нет пути', 'impossible'); a.think = 20; }
   },
 
@@ -156,6 +165,7 @@ export const RUNNERS = {
       const p = plotAt(w, i);
       if (!p || !needsWork(w, p)) { w.nav.dirty(job.nav); task.work = 0; return; }
       task.work = (task.work || 0) + workRate(w, a, job.id);
+      practice(a, job.skill);
       if (task.work < job.time) return;
       task.work = 0;
       const got = workPlot(w, i);
@@ -169,12 +179,13 @@ export const RUNNERS = {
 
   // the healer: tend whoever lies in the healer's hut; with nobody to tend, pick herbs (as harvest)
   heal(w, a, task) {
-    if (waiting(w)) {
+    // only a healer whose medicine reaches the job's `tendTier` tends; the others pick herbs
+    if (waiting(w) && canDoAction(a, 'medicine', JOBS.get(task.job).tendTier)) {
       if (a.carry?.n) dropLoad(w, a);
       const r = follow(w, a, 'healer');
       if (r === 'arrived' || healerHutCell(w, a)) {
         const given = tend(w, a, workRate(w, a, 'heal') * workBonus(w.buildings.find(x => x.done && x.key === 'healerhut')));
-        if (given) a.stats.healed = (a.stats.healed || 0) + given;
+        if (given) { a.stats.healed = (a.stats.healed || 0) + given; practice(a, 'medicine'); }   // only a wound really tended teaches
         else if (!patients(w).length && w.rngs.colony() < 0.02) mill(w, a);   // the patients are still on their way
       } else if (r === 'none') { w.nav.dirty('healer'); fail(w, a, 'к хижине лекаря нет пути', 'impossible'); a.think = 20; }
       return;
@@ -188,12 +199,12 @@ export const RUNNERS = {
     const job = JOBS.get(task.job);
     if (a.carry && (a.carry.n >= job.carry || !task.more)) { haulHome(w, a); return; }
     let b = task.beast != null ? w.agents.find(o => o.id === task.beast && !o.dead) : null;
-    const ok = o => o && !claimed(w, o, a) && (o.tame ? chores(w).includes(o) : tameTargets(w).includes(o));
+    const ok = o => o && !claimed(w, o, a) && (o.tame ? chores(w).includes(o) : tameTargets(w).includes(o) && canTame(a, o));
     if (!ok(b)) {
       b = null; task.calm = false; task.tame = null;
       let bd = Infinity;
       for (const o of chores(w)) { if (claimed(w, o, a)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
-      if (!b && !a.carry) for (const o of tameTargets(w)) { if (claimed(w, o, a)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
+      if (!b && !a.carry) for (const o of tameTargets(w)) { if (claimed(w, o, a) || !canTame(a, o)) continue; const d = Math.hypot(o.x - a.x, o.y - a.y); if (d < bd) { bd = d; b = o; } }
       if (!b) { if (a.carry?.n) { task.more = false; return; } fail(w, a, 'некого приручать или доить'); a.think = 30; return; }
       task.beast = b.id; task.work = 0; task.since = w.tick;
     }
@@ -211,6 +222,7 @@ export const RUNNERS = {
       return;
     }
     task.work = (task.work || 0) + workRate(w, a, job.id);
+    practice(a, job.skill);
     if (b.tame) {
       if (task.work < job.time) return;
       task.work = 0;
@@ -253,6 +265,7 @@ export const RUNNERS = {
     const [sx, sy] = task.spot;
     if (Math.hypot(sx - a.x, sy - a.y) > 0.6) { if (approach(w, a, sx, sy, 0.8) === null) { task.spot = graveSpot(w); } return; }
     task.work = (task.work || 0) + workRate(w, a, job.id);
+    practice(a, job.skill);
     if (task.work < job.time) return;
     bury(w, c, a, task.spot); done(w, a);
   },
@@ -298,14 +311,16 @@ export const RUNNERS = {
     // the flow field leads to whichever animal is nearest by path, so keep retargeting to the nearest one
     if (!prey || prey.dead || !w.agents.includes(prey) || (task.age % 40 === 0 && Math.hypot(prey.x - a.x, prey.y - a.y) > 9)) {
       prey = null; let bd = 80 * 80;
-      for (const o of huntable(w, job)) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
+      for (const o of huntable(w, job, a)) { const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2; if (d < bd) { bd = d; prey = o; } }
       task.prey = prey;
       if (!prey) { fail(w, a, 'дичи не видно'); a.think = 30; a.stalking = false; return; }
     }
     if (task.age > 900) { a.mem.chase += 0.2; a.stalking = false; fail(w, a, 'дичь ушла, устал гоняться'); return; }
     const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = a.gear.ranged.range + w.mods.add.huntRange;
     a.stalking = d < 10;
-    if (d > range * 0.85) {
+    // in range but a rock in the way: no shot from here, find a spot to shoot from (approach goes around)
+    const open = d <= range * 0.85 && lineOfFire(w, a.x, a.y, prey.x, prey.y);
+    if (!open) {
       // far away: walk the prey flow field around lakes and rocks; close: creep straight at it
       if (d > 9) {
         const r = follow(w, a, job.nav);
@@ -313,12 +328,17 @@ export const RUNNERS = {
       } else if (approach(w, a, prey.x, prey.y, 0.55) === null) { task.prey = null; }   // across the water: look for another
       return;
     }
-    a.skill[job.id] = Math.min(1, (a.skill[job.id] || 0) + 0.0003 * (a.mods.learn ?? 1));
-    const res = shoot(w, a, prey, job.id);
+    // the shot itself teaches shooting (agents/combat.js); bringing the game down teaches the hunt
+    const res = shoot(w, a, prey);
     if (res === 'kill') {
+      practice(a, job.skill, LEARN.kill);
       w.stats.hunted++; a.stalking = false; a.stats.hunted++;
       think(w, a, 'huntKill', {prey: SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label});
       for (const [r, n] of Object.entries(SPECIES.get(prey.species).yields)) load(a, r, n);
+      // rare trophies of the kill, decided at the death (agents/trophies.js): the hunter carries them home
+      for (const [r, n] of Object.entries(prey.trophy?.got || {})) load(a, r, n);
+      const rare = trophyText(prey.trophy);
+      if (rare) log(w, `<b>${esc(a.name)}</b> ${g(a, 'добыл', 'добыла')} ${SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label}.${rare}`, 'wildlife');
       const near = w.agents.some(o => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
       task.oneMore = a.carry.n < 8 && near; task.prey = null; task.age = 0;
     } else if (res === 'miss' || res === 'hit') {

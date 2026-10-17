@@ -12,7 +12,7 @@ import {SPECIES} from '../../data/species.js';
 import {TERRAIN} from '../../data/terrain.js';
 import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
 import {approach, escapeHeat, sameLand} from '../movement.js';
-import {attack} from '../combat.js';
+import {attack, behindRock} from '../combat.js';
 import {kill, maxHp} from '../agent.js';
 import {think} from '../mind.js';
 import {log} from '../../core/log.js';
@@ -96,7 +96,7 @@ function lure(w, a, sp, S) {
   if ((w.tick + a.id) % 30 || w.tick < (a.lureAt ?? -1e9) + 12 * HOUR) return false;
   let best = null, bd = S.radius;
   for (const o of w.agents) {
-    if (o.faction !== 'colony' || o.dead || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
+    if (o.faction !== 'colony' || o.dead || o.downed || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
     const d = dist(o, a); if (d < bd) { bd = d; best = o; }
   }
   if (best) {
@@ -148,7 +148,7 @@ export const spiritBrain = {
         return;
       }
       a.task = {id: 'maul', target: foe};
-      if (dist(a, foe) > 0.9) approach(w, a, foe.x, foe.y, 1.1); else attack(w, a, foe);
+      if (dist(a, foe) > 0.9 || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.1); else attack(w, a, foe);
       return;
     }
     if (S.aura === 'lure' && active && lure(w, a, sp, S)) return;

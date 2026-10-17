@@ -12,6 +12,12 @@
 // desire(w, ctx, job): how much the colony wants it now; < 0 means "not now"
 // A new workshop job is one entry: {runner: 'craft', stations: [...], desire: atStations(value)}.
 // canDo(w, agent): optional personal condition (hunting needs a usable ranged weapon)
+// skill: the skill (data/skills.js) the job trains and reads; a craft job's orders use their recipe's
+//   skill instead, and the healer picking herbs uses `gatherSkill`
+// tier: the whole job is open only to someone whose letter for its skill reaches this tier (agents/skills.js
+//   jobAccess): ore in the mine shaft (S 4), gold in the shallows and wild honey (P 4). T1 when not given.
+//   Some jobs tier a part only: tending the wounded in the hut (`tendTier`, medicine), big dangerous game
+//   (`riskyTier`, hunting); the herder's wild beasts carry their own tier (species `tame.tier`)
 // sticky: extra hold of the job on someone already doing it (a long walk after a wild goat)
 import {Registry} from '../core/registry.js';
 import {useJobs} from './navmaps.js';
@@ -25,7 +31,8 @@ const HERBS_KEEP = 10;   // the healer picks herbs while the stock is below this
 import {lakeBeside, fishable} from '../world/lakes.js';
 import {oreBeside, oreOf} from '../world/ores.js';
 import {wantedOre, raidAlarm} from '../settlement/query.js';
-import {chores, tameTargets, herd} from '../settlement/herd.js';
+import {chores, tameTargets, herd, canTame} from '../settlement/herd.js';
+import {canDoAction} from '../agents/skills.js';
 import {maybeGoldVein, foundMithril} from '../settlement/precious.js';
 import {reachableCorpses, freeCorpse} from '../settlement/life.js';
 import {hpShare} from '../agents/agent.js';
@@ -53,9 +60,11 @@ const foodWant = (w, ctx, job, k = 1, extra = 0) => {
 // there is nothing else on the map and the colony is going hungry (wild goats are for taming, not
 // the pot, unless the colony is starving)
 // (a boar, `risky`) only when there is no gentler game on the map
-export function huntable(w, job) {
+// `a`: the hunter — big dangerous game only for one whose hunting tier reaches `riskyTier` (agents/skills.js)
+export function huntable(w, job, a = null) {
   const usual = w.agents.filter(o => !o.dead && !o.tame && job.prey.includes(o.species));
   if (usual.length) return usual;
+  if (a && !canDoAction(a, job.skill, job.riskyTier)) return [];
   const risky = w.agents.filter(o => !o.dead && !o.tame && (job.risky || []).includes(o.species));
   if (risky.length || !job.lastResort) return risky;
   const pop = w.agents.filter(o => o.faction === 'colony').length;
@@ -68,13 +77,13 @@ const RESOURCES_FOOD = () => FOODS.all();
 const atStations = value => (w, ctx, job) => (job.stations.some(s => ctx.orders[s]) ? value : -1);
 
 JOBS.registerAll([
-  {id: 'gather', label: 'собирать ягоды', short: 'сбор', verb: 'собирает ягоды', preferable: true,
+  {id: 'gather', skill: 'gathering', label: 'собирать ягоды', short: 'сбор', verb: 'собирает ягоды', preferable: true,
     runner: 'harvest', nav: 'berries', resource: 'berries', food: 'berries', carry: 3, time: 12, memory: 'walkFood',
     desire: (w, ctx, job) => foodWant(w, ctx, job),
     valid: (w, i) => w.grid.food[i] > 0.3 && w.grid.fire[i] === 0,
     take: (w, i) => { w.grid.food[i] -= 0.34; w.nav.dirty('berries'); }},
 
-  {id: 'chop', label: 'рубить лес', short: 'рубка', verb: 'рубит лес', preferable: true,
+  {id: 'chop', skill: 'woodcutting', label: 'рубить лес', short: 'рубка', verb: 'рубит лес', preferable: true,
     runner: 'harvest', nav: 'trees', resource: 'wood', carry: 2, time: 26, memory: 'walkWood',
     // wood is fuel too: with the fire about to die everyone thinks of logs first
     desire: (w, ctx) => (w.stock.wood < 8 ? 0.95 : w.stock.wood < 25 ? 0.55 : w.stock.wood < 40 ? 0.2 : 0.03),
@@ -85,14 +94,14 @@ JOBS.registerAll([
       w.nav.dirty('trees');
     }},
 
-  {id: 'mine', label: 'добывать камень', short: 'камень', verb: 'добывает камень', preferable: true,
+  {id: 'mine', skill: 'mining', label: 'добывать камень', short: 'камень', verb: 'добывает камень', preferable: true,
     runner: 'harvest', nav: 'rockface', resource: 'stone', carry: 2, time: 30, requires: 'quarry',
     desire: (w) => (w.stock.stone < 20 ? 0.48 : w.stock.stone < 40 ? 0.18 : 0.03),
     valid: (w, i) => w.grid.fire[i] === 0,
     take: () => {}},
 
   // the mine: dig whichever ore the colony is short of (iron ore, coal, gems) from the rock face
-  {id: 'dig', label: 'добывать руду', short: 'руда', verb: 'добывает руду', preferable: true,
+  {id: 'dig', skill: 'mining', tier: 2, label: 'добывать руду', short: 'руда', verb: 'добывает руду', preferable: true,
     runner: 'harvest', nav: 'ore', resource: 'ironore', carry: 2, time: 40, requires: 'mineshaft', memory: 'walkOre',
     desire: (w) => (wantedOre(w).size ? 0.42 : -1),
     valid: (w, i) => w.grid.fire[i] === 0 && oreBeside(w, i, wantedOre(w)) >= 0,
@@ -110,81 +119,83 @@ JOBS.registerAll([
 
   // fishing: sit on the shore of a lake that still has fish; needs a rod (in hand or on the back),
   // made at the craftsman's hut. The fisherman's hut only makes it better, as the lodge does for hunting
-  {id: 'fish', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
+  {id: 'fish', skill: 'fishing', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
     runner: 'harvest', nav: 'shore', resource: 'fish', food: 'fish', carry: 3, time: 50, memory: 'walkFish',
     canDo: (w, a) => !!a.gear?.tool.fish,
     desire: (w, ctx, job) => (w.lakes.some(fishable) ? foodWant(w, ctx, job, 0.95, 0.08) : -1),
     valid: (w, i) => !!lakeBeside(w, i),
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},
 
-  {id: 'hunt', label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
+  {id: 'hunt', skill: 'hunting', riskyTier: 2, label: 'охотиться', short: 'охота', verb: 'охотится', preferable: true,
     runner: 'hunt', nav: 'prey', prey: ['hare', 'deer', 'fox', 'salamander'], risky: ['boar', 'elk'], lastResort: ['mule', 'goat'], food: 'meat',
     canDo: (w, a) => !!a.gear?.rangedReady,
     // hides and bones for the crafts, furs for the traders: hunting is wanted beyond food too
     desire: (w, ctx, job) => (ctx.preyCount > 0 ? foodWant(w, ctx, job, 0.75, 0.08 + ((w.stock.hide < 4 || w.stock.bone < 4) ? 0.3 : 0)) : -1)},
 
-  {id: 'craft', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
+  {id: 'craft', skill: 'carpentry', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
     runner: 'craft', stations: ['crafthut'], desire: atStations(0.55)},
 
-  {id: 'charcoal', label: 'жечь уголь', short: 'уголь', verb: 'жжёт уголь', preferable: true,
+  {id: 'charcoal', skill: 'metallurgy', label: 'жечь уголь', short: 'уголь', verb: 'жжёт уголь', preferable: true,
     runner: 'craft', stations: ['charpit'], desire: atStations(0.45)},
 
-  {id: 'smith', label: 'плавить и ковать железо', short: 'кузня', verb: 'работает у горна', preferable: true,
+  {id: 'smith', skill: 'smithing', label: 'плавить и ковать железо', short: 'кузня', verb: 'работает у горна', preferable: true,
     runner: 'craft', stations: ['forge', 'smelter'], desire: atStations(0.55)},
 
-  {id: 'jewel', label: 'делать украшения', short: 'ювелир', verb: 'делает украшения', preferable: true,
+  {id: 'jewel', skill: 'jewelry', label: 'делать украшения', short: 'ювелир', verb: 'делает украшения', preferable: true,
     runner: 'craft', stations: ['jeweler'], desire: atStations(0.35)},
 
   // field work: sow empty plots in spring and summer, reap ripe ones (settlement/farming.js)
-  {id: 'farm', label: 'работать в поле', short: 'поле', verb: 'работает в поле', preferable: true,
+  {id: 'farm', skill: 'farming', label: 'работать в поле', short: 'поле', verb: 'работает в поле', preferable: true,
     runner: 'farm', nav: 'fieldwork', requires: 'field', carry: 4, time: 16,
     desire: (w) => (fields(w).some(b => b.plots.some(p => needsWork(w, p))) ? 0.55 : -1)},
 
-  {id: 'mill', label: 'молоть зерно', short: 'мельник', verb: 'мелет зерно', preferable: true,
+  {id: 'mill', skill: 'cooking', label: 'молоть зерно', short: 'мельник', verb: 'мелет зерно', preferable: true,
     runner: 'craft', stations: ['quern'], desire: atStations(0.4)},
 
-  {id: 'saw', label: 'пилить тёс', short: 'тёс', verb: 'пилит тёс', preferable: true,
+  {id: 'saw', skill: 'carpentry', label: 'пилить тёс', short: 'тёс', verb: 'пилит тёс', preferable: true,
     runner: 'craft', stations: ['sawmill'], desire: atStations(0.45)},
 
-  {id: 'weave', label: 'ткать', short: 'ткач', verb: 'ткёт холст', preferable: true,
+  {id: 'weave', skill: 'tailoring', label: 'ткать', short: 'ткач', verb: 'ткёт холст', preferable: true,
     runner: 'craft', stations: ['loom'], desire: atStations(0.4)},
 
-  {id: 'pottery', label: 'лепить горшки', short: 'гончар', verb: 'лепит горшки', preferable: true,
+  {id: 'pottery', skill: 'pottery', label: 'лепить горшки', short: 'гончар', verb: 'лепит горшки', preferable: true,
     runner: 'craft', stations: ['potter'], desire: atStations(0.4)},
 
-  {id: 'preserve', label: 'делать заготовки', short: 'заготовки', verb: 'вялит и солит припасы', preferable: true,
+  {id: 'preserve', skill: 'cooking', label: 'делать заготовки', short: 'заготовки', verb: 'вялит и солит припасы', preferable: true,
     runner: 'craft', stations: ['dryrack'], desire: atStations(0.5)},
 
-  {id: 'cook', label: 'стряпать', short: 'повар', verb: 'варит похлёбку', preferable: true,
+  {id: 'cook', skill: 'cooking', label: 'стряпать', short: 'повар', verb: 'варит похлёбку', preferable: true,
     runner: 'craft', stations: ['hearth'], desire: atStations(0.55)},
 
-  {id: 'tan', label: 'выделывать кожи', short: 'кожи', verb: 'выделывает кожи', preferable: true,
+  {id: 'tan', skill: 'leatherwork', label: 'выделывать кожи', short: 'кожи', verb: 'выделывает кожи', preferable: true,
     runner: 'craft', stations: ['tannery'], desire: atStations(0.5)},
 
   // the healer: tends the wounded lying in the healer's hut; with nobody to tend, picks healing herbs
-  // while the stock is low (settlement/healing.js). Its skill is the healer's skill.
-  {id: 'heal', label: 'лечить раненых', short: 'лекарь', verb: 'лечит', preferable: true,
+  // while the stock is low (settlement/healing.js). Tending trains medicine, picking herbs trains gathering.
+  {id: 'heal', skill: 'medicine', gatherSkill: 'gathering', tendTier: 2, label: 'лечить раненых', short: 'лекарь', verb: 'лечит', preferable: true,
     runner: 'heal', requires: 'healerhut',
     // one healer at a time: whoever took it first keeps it
     canDo: (w, a) => !w.agents.some(o => o !== a && o.faction === 'colony' && o.task?.job === 'heal'), nav: plantLayer('herbs'), resource: 'herbs', carry: 2, time: 30,
-    desire: (w, ctx) => (ctx.patients ? 0.9 + 0.1 * ctx.patients : (w.stock.herbs || 0) < HERBS_KEEP ? 0.28 : -1),
+    // the wounded call only a healer able to tend them (`tendTier`, medicine); anyone may pick herbs
+    desire: (w, ctx, job) => (ctx.patients && ctx.can(job.skill, job.tendTier) ? 0.9 + 0.1 * ctx.patients : (w.stock.herbs || 0) < HERBS_KEEP ? 0.28 : -1),
     valid: (w, i) => w.grid[plantLayer('herbs')][i] >= PLANTS.get('herbs').ripe && w.grid.fire[i] === 0,
     take: (w, i) => { w.grid[plantLayer('herbs')][i] -= PLANTS.get('herbs').take; w.nav.dirty(plantLayer('herbs')); }},
 
   // the herder: milks the goats and shears them; with nothing to take, goes after a wild goat or mule
-  // with bait from the stock and tries to tame it (settlement/herd.js). Its skill is the herder's skill.
-  {id: 'herd', label: 'ходить за скотом', short: 'скотник', verb: 'ходит за скотом', preferable: true,
+  // with bait from the stock and tries to tame it (settlement/herd.js). Trains and reads husbandry (C).
+  {id: 'herd', skill: 'husbandry', label: 'ходить за скотом', short: 'скотник', verb: 'ходит за скотом', preferable: true,
     runner: 'herd', requires: 'pen', carry: 4, time: 30, tameTime: 70, sticky: 0.3,
-    desire: w => (chores(w).length ? 0.5 : tameTargets(w).length ? (herd(w).length ? 0.45 : 0.62) : -1)},
+    // wild beasts only this herder may go after (species tame.tier, husbandry)
+    desire: (w, ctx) => (chores(w).length ? 0.5 : tameTargets(w).some(b => canTame(ctx.agent, b)) ? (herd(w).length ? 0.45 : 0.62) : -1)},
 
   // the dead are carried to the graves (settlement/life.js); not while raiders are about or wolves near the body
-  {id: 'bury', label: 'хоронить умерших', short: 'похороны', verb: 'хоронит умершего',
+  {id: 'bury', skill: 'athletics', label: 'хоронить умерших', short: 'похороны', verb: 'хоронит умершего',
     runner: 'bury', time: 120,
     // only one bearer per body: the others would take the job, find nothing free and drop it at once
     canDo: (w, a) => hpShare(a) > 0.5 && !!freeCorpse(w, a),
     desire: w => (reachableCorpses(w).length && !raidAlarm(w) ? 0.7 : -1)},
 
-  {id: 'build', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,
+  {id: 'build', skill: 'construction', label: 'строить', short: 'стройка', verb: 'строит', preferable: true,
     runner: 'build', nav: 'sites',
     desire: (w, ctx) => (ctx.openSites ? 0.6 : -1)},
 ]);
@@ -195,7 +206,7 @@ for (const p of PLANTS.filter(x => x.job)) {
   const J = p.job, key = plantLayer(p.id);
   const inSeason = w => !p.seasons || p.seasons.includes(season(w).id);
   const keep = w => (typeof J.keep === 'function' ? J.keep(w) : J.keep);
-  JOBS.register({id: J.id, label: J.label, short: J.short, verb: J.verb, preferable: true,
+  JOBS.register({id: J.id, label: J.label, short: J.short, verb: J.verb, preferable: true, skill: J.skill || 'gathering', tier: J.tier,
     runner: 'harvest', nav: key, resource: p.resource, carry: J.carry, time: J.time,
     also: Object.keys(p.also || {}), bed: p.id,   // what else a picking brings, and the wild bed it needs (settlement/sources.js)
     // only with the right tool (a gold pan); never on a map without such beds
