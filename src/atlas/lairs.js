@@ -136,9 +136,13 @@ function seedRot(a, rnd) {
 
 // a season of the rot: it seeps from the graves, spreads, and fades — faster in frost and heat
 export function stepRot(a) {
-  const F = a.fauna, N = F.W * F.H, rot = a.rot, src = new Float32Array(N), cnt = new Float32Array(N);
-  if (a.f.barrows) for (let i = 0; i < a.n; i++) { if (a.f.ocean[i]) continue; const j = faunaCell(a, i); src[j] += a.f.barrows[i]; cnt[j]++; }
-  const tmp = Float32Array.from(rot);
+  const F = a.fauna, N = F.W * F.H, rot = a.rot;
+  const B = a.rotBuf ||= {src: new Float32Array(N), cnt: new Float32Array(N), tmp: new Float32Array(N), cell: Int32Array.from({length: a.n}, (_, i) => (a.f.ocean[i] ? -1 : faunaCell(a, i)))};
+  const {src, cnt, tmp, cell} = B;
+  src.fill(0); cnt.fill(0);
+  if (a.f.barrows) for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j < 0) continue; src[j] += a.f.barrows[i]; cnt[j]++; }
+  else for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j >= 0) cnt[j]++; }
+  tmp.set(rot);
   for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
     const j = y * F.W + x;
     if (!cnt[j]) { rot[j] = 0; continue; }

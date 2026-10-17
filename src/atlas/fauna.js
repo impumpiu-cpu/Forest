@@ -86,11 +86,13 @@ export function plague(a, rnd) {
 
 // one season; returns the world totals of every species
 export function stepFauna(a, seasonId) {
-  const F = a.fauna, P = FAUNA, n = F.W * F.H, g0 = P.season[seasonId] ?? 1, tmp = new Float32Array(n);
-  const wx = F.weather || new Float32Array(n);
+  const F = a.fauna, P = FAUNA, n = F.W * F.H, g0 = P.season[seasonId] ?? 1;
+  // the season's buffers live on the fauna, so a season makes no garbage
+  const B = F.buf ||= {tmp: new Float32Array(n), zero: new Float32Array(n), eaten: F.list.map(() => new Float32Array(n))};
+  const tmp = B.tmp, wx = F.weather || B.zero, eaten = B.eaten;
+  for (const e of eaten) e.fill(0);
   // a good year speeds growth and softens the winter; a bad one the other way round
   const gAt = j => (g0 > 0 ? g0 * (1 + P.weather * wx[j]) : g0 * (1 - P.weather * wx[j]));
-  const eaten = F.list.map(() => new Float32Array(n));
   // predators eat first: what they take is split over their prey by how much of each is about
   for (const s of F.list) {
     if (s.role !== 'predator' || !s.prey.length) continue;

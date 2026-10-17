@@ -16,24 +16,32 @@ import {scaleOf} from './tectonics.js';
 
 export const roadLevel = v => { let lv = -1; ROADS.levels.forEach((L, k) => { if (v >= L.wear) lv = k; }); return lv; };
 
-// what a step into a cell costs (Infinity: the ocean)
-function stepCost(a, i, people) {
+// what a step into a cell costs without any road (Infinity: the ocean); the land does not change,
+// so it is worked out once per people and kept (a.roadBase)
+function baseCost(a, i, P) {
   const f = a.f;
   if (f.ocean[i]) return Infinity;
   const b = biomeAt(a, i).id;
   let c = ROADS.cost[b] ?? 1.5;
   if (f.lake[i] >= 0) c = ROADS.cost.water;
   // elves walk the woods, dwarves the mountains, as their own roads
-  const P = WORLD_PEOPLES.get(people), mv = P.moves[b];
+  const mv = P.moves[b];
   if (mv) c /= mv;
   c += ROADS.slope * (1 - f.flat[i]) * 0.3;
   if (f.flow[i] >= RIVERS.river * scaleOf(a) ** 2) c += ROADS.river;
-  return c * (1 - ROADS.roadEase * Math.min(1, f.road[i] / ROADS.levels[1].wear));
+  return c;
 }
+function baseCosts(a, people) {
+  const all = a.roadBase ||= {};
+  if (!all[people]) { const P = WORLD_PEOPLES.get(people), out = new Float64Array(a.n); for (let i = 0; i < a.n; i++) out[i] = baseCost(a, i, P); all[people] = out; }
+  return all[people];
+}
+// what a step into a cell costs now: the base, eased by the road worn there
+const stepCost = (a, base, i) => base[i] * (1 - ROADS.roadEase * Math.min(1, a.f.road[i] / ROADS.levels[1].wear));
 
 // A* from one cell to another; the path as a list of cells, or null
 function findPath(a, s, t, people, scratch) {
-  const {w, h} = a, {g, came, touched} = scratch, heap = new Heap(1024), tx = t % w, ty = (t / w) | 0;
+  const {w, h} = a, {g, came, touched} = scratch, heap = new Heap(1024), tx = t % w, ty = (t / w) | 0, base = baseCosts(a, people);
   touched.length = 0;
   const H = i => 0.6 * Math.hypot(i % w - tx, ((i / w) | 0) - ty);
   g[s] = 0; came[s] = s; touched.push(s); heap.push(H(s), s);
@@ -45,7 +53,7 @@ function findPath(a, s, t, people, scratch) {
     for (const [dx, dy, len] of DIRS8) {
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-      const j = ny * w + nx, sc = stepCost(a, j, people);
+      const j = ny * w + nx, sc = stepCost(a, base, j);
       if (sc === Infinity) continue;
       const ng = g[c] + sc * len;
       if (ng < g[j]) { if (g[j] === Infinity) touched.push(j); g[j] = ng; came[j] = c; heap.push(ng + H(j), j); }
