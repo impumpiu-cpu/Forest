@@ -21,6 +21,8 @@
 //   ground 'home':  stands where the race's home suits the biome at least TRIBE_HOME
 //   needsAny:       and in addition on this kind of ground (as `ground` of a beast lair), if given
 //   gen:            the owners in the genitive («набег гоблинов»);  riders / on: their beasts and «on» them
+//   undead lairs:   rotAt, at, spawn (see ROT below); might — the owner's SPECIAL power × this (a necromancer
+//                   leads a horde);  raidVerb — what they did to a town;  leads — who leads the raid
 import {Registry} from '../core/registry.js';
 
 export const LAIRS = new Registry('lair');
@@ -52,10 +54,31 @@ LAIRS.registerAll([
   {id: 'trolls', tribe: true, gen: 'троллей', species: 'troll', from: 'из логова', label: 'логово троллей', g: 'n', color: [90, 130, 110], radius: 8, ground: 'home',
     density: 6, max: 6, breed: 0.05, rivals: [], riders: null,
     nouns: [['логово', 'n'], ['мост', 'm'], ['топь', 'f'], ['валуны', 'pl']]},
+  // ── the dead
+  {id: 'wights', undead: true, gen: 'костяков', species: 'skeleton', from: 'из кургана', label: 'курганник', g: 'm', color: [190, 190, 210], radius: 6, ground: 'rot', rotAt: 0.25, at: 'barrows',
+    spawn: 0.3, max: 8, breed: 0.04, rivals: [], might: 1.8, raidVerb: 'разорили',
+    nouns: [['курган', 'm'], ['могильник', 'm'], ['холм', 'm'], ['кости', 'pl']]},
+  {id: 'ghouls', undead: true, gen: 'упырей', species: 'upyr', from: 'из гнезда', label: 'гнездо упырей', g: 'n', color: [150, 90, 120], radius: 6, ground: 'rot', rotAt: 0.2, at: 'ruins',
+    spawn: 0.35, max: 8, breed: 0.05, rivals: [], might: 1.8, raidVerb: 'обескровили',
+    nouns: [['гнездо', 'n'], ['пепелище', 'n'], ['подвал', 'm'], ['развалины', 'pl']]},
+  {id: 'necromancer', undead: true, gen: 'мертвецов', species: 'necromancer', from: 'из башни', label: 'башня некроманта', labelAcc: 'башню некроманта', g: 'f', color: [120, 60, 160], radius: 10, ground: 'rot', rotAt: 0.5,
+    spawn: 0.1, max: 3, breed: 0, rivals: [], might: 2.5, raidVerb: 'опустошили', leads: 'Некромант повёл мертвецов',
+    nouns: [['башня', 'f'], ['склеп', 'm'], ['цитадель', 'f'], ['обитель', 'f']]},
   {id: 'giants', tribe: true, gen: 'великанов', species: 'giant', from: 'из становища', label: 'становище великанов', g: 'n', color: [200, 200, 190], radius: 11, ground: 'home', needsAny: ['heights'],
     density: 10, max: 4, breed: 0.03, rivals: [], riders: null,
     nouns: [['становище', 'n'], ['престол', 'm'], ['скалы', 'pl'], ['перевал', 'm']]},
 ]);
+
+// The rot of the dead and its lairs. The rot is a field on the beasts' coarse grid, 0..1
+// (atlas/lairs.js stepRot): every season it seeps from the graves (`barrows`, the battlefields, the
+// dead of burnt towns and raids, and a few barrows older than the chronicle), spreads to the
+// neighbours and fades, faster in frost and in heat. Where it is thick enough the dead rise: the
+// undead lairs (`undead: true`) are not placed with the wild but spawn through history, `spawn` a
+// year per kind, on ground with rot at least `rotAt` (and `at`: 'barrows' — on the graves
+// themselves, 'ruins' — by a burnt town). They live off the rot, not prey, and raid any town in
+// reach; what they kill leaves graves, and the rot grows. The peoples fight them as they fight a
+// lair. Vampires wait for the towns to have folk to hide among.
+export const ROT = {seed: 0.08, diffuse: 0.08, decay: 0.02, frost: 0.04, heat: 0.03, ancient: [2, 5], ancientGraves: 0.7, ruinGraves: 0.6, raidGraves: 0.12};
 
 // a tribe's camp stands where its race's home suits the biome at least this much
 export const TRIBE_HOME = 0.45;

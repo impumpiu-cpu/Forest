@@ -23,7 +23,7 @@ import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
 import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
-import {meet, stateOf, stateLabel, stepDiplomacy, trades} from './diplomacy.js';
+import {meet, stateOf, stateLabel, stepDiplomacy, trades, raidGraves} from './diplomacy.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
 
@@ -231,7 +231,7 @@ export function stepPeoples(a, rnd, say) {
         break;
       }
       const loss = TOWN_WAR.raidLoss * raidShare(fx);
-      t.pop *= 1 - loss; t.raided = a.hist.year;
+      t.pop *= 1 - loss; t.raided = a.hist.year; raidGraves(a, t);
       say(`${cap1(owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей.`);
       break;
     }

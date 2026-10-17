@@ -52,6 +52,7 @@ export function startHistory(a) {
   say(a, `Началась ${ERAS.get('wild').label.toLowerCase()}. Городов ещё нет; звери расходятся по своим краям` +
     (parts.length ? `, чудовища заняли логова: ${parts.join(', ')}` : '') + (tribes.length ? `; дикие племена разбили станы: ${tribes.join(', ')}` : '') +
     (old ? `. ${old} ${plural(old, 'логово стоит', 'логова стоят', 'логов стоят')} с незапамятных времён.` : '.'));
+  for (const i of a.ancientBarrows || []) say(a, `Курганы незапамятных времён стоят ${wherePhrase(a, i)}: кто в них лежит, не помнит никто.`);
 }
 
 // one season of history

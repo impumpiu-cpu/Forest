@@ -130,7 +130,7 @@ export class AtlasView {
     else if (this.layer === 'ores') { const o = ORE_GENESIS.get(this.ore); html = sw([70, 72, 66], 'нет') + sw(mix([70, 72, 66], o.color, 0.45), 'бедно') + sw(mix([70, 72, 66], o.color, 0.75), 'есть') + sw(o.color, 'богато'); }
     else if (this.layer === 'biomes') html = Object.entries(BIOME_KINDS).filter(([k]) => k !== 'feature').map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter(b => b.kind === k).map(b => sw(b.color, b.label)).join('')).join('') + '<b>леса</b> темнее, гари светлее';
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
-    else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее');
+    else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + sw([110, 60, 130], 'гниль');
     else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты, крупнее с ростом; кольцо — первые города народа; ' + ROADS.levels.map(L => L.label).join(', ') + '; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв');
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
@@ -202,13 +202,13 @@ export class AtlasView {
         const v = faunaAt(a, i, this.fauna), sp = SPECIES.get(this.fauna), K = a.fauna.list[a.fauna.idx[this.fauna]].K[faunaCellOf(a, i)];
         if (K <= 0) return mix(base, [40, 40, 36], 0.75);
         const col = sp.look?.color ? hexRgb(sp.look.color) : [220, 120, 60];
-        return mix(mix(base, [40, 40, 36], 0.6), col, Math.min(1, v) * 0.9);
+        return this.rotTint(a, i, mix(mix(base, [40, 40, 36], 0.6), col, Math.min(1, v) * 0.9));
       }
       case 'peoples': {
         const g = mix(base, [40, 40, 36], 0.55), land = a.peoples && landOf(a, i);
         let c = land ? mix(g, land.people.color, 0.25 + 0.6 * land.share) : g;
         if (f.barrows && f.barrows[i] > 0) c = mix(c, [120, 90, 90], 0.5 * f.barrows[i]);   // old battlefields
-        return c;
+        return this.rotTint(a, i, c);
       }
       case 'rain': return f.rain ? (f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25)) : base;
       case 'wind': {
@@ -218,6 +218,13 @@ export class AtlasView {
       }
       default: return base;
     }
+  }
+
+  // the rot of the dead (atlas/lairs.js): a violet stain where it is thick
+  rotTint(a, i, c) {
+    if (!a.rot || a.f.ocean[i]) return c;
+    const v = a.rot[faunaCellOf(a, i)];
+    return v > 0.08 ? mix(c, [110, 60, 130], Math.min(0.75, v * 0.8)) : c;
   }
 
   plateColor(a, i) {
@@ -330,6 +337,7 @@ export class AtlasView {
       px.beginPath();
       // a beast's lair is a diamond, a tribe's camp a tent
       if (L.tribe) { px.moveTo(x, y - r * 1.1); px.lineTo(x + r, y + r * 0.7); px.lineTo(x - r, y + r * 0.7); }
+      else if (L.undead) { const t = r * 0.35; px.moveTo(x - t, y - r); px.lineTo(x + t, y - r); px.lineTo(x + t, y - t); px.lineTo(x + r, y - t); px.lineTo(x + r, y + t); px.lineTo(x + t, y + t); px.lineTo(x + t, y + r); px.lineTo(x - t, y + r); px.lineTo(x - t, y + t); px.lineTo(x - r, y + t); px.lineTo(x - r, y - t); px.lineTo(x - t, y - t); }
       else { px.moveTo(x, y - r); px.lineTo(x + r, y); px.lineTo(x, y + r); px.lineTo(x - r, y); }
       px.closePath(); px.fill(); px.stroke();
     }
@@ -431,6 +439,7 @@ export class AtlasView {
     const ruin = ruinAt(a, i);
     if (ruin) parts.push(`пепелище ${ruin.name} (${WORLD_PEOPLES.get(ruin.people).label}), сожжено в год ${ruin.year}`);
     if (f.barrows && f.barrows[i] > 0.15) parts.push('курганы былых битв');
+    if (a.rot && !f.ocean[i] && a.rot[faunaCellOf(a, i)] > 0.08) parts.push(`гниль ${Math.round(a.rot[faunaCellOf(a, i)] * 100)}%`);
     const land = landOf(a, i);
     if (land) parts.push(`земли: ${land.people.label} ${Math.round(land.share * 100)}%`);
     if (a.f.road && a.f.road[i] >= ROADS.levels[0].wear) parts.push(ROADS.levels[roadLevel(a.f.road[i])].label);

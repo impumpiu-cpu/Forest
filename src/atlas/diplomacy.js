@@ -6,6 +6,7 @@
 // a.rel = {'p:q': {att, war: {since, battles, razed} | null, wars, routes, met}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
 import {DIPLOMACY} from '../data/diplomacy.js';
+import {ROT} from '../data/lairs.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {ROADS} from '../data/roads.js';
 import {RELATIONS} from '../data/relations.js';
@@ -48,19 +49,22 @@ export function meet(a, p, q, year) {
 // burn a town: it is gone, a ruin stays where it stood
 function raze(a, t, by, how) {
   t.alive = false; t.died = a.hist.year;
+  barrows(a, t.i, Math.max(2, Math.round(2 * scaleOf(a))), ROT.ruinGraves);   // the dead of a burnt town
   a.ruins ||= [];
   a.ruins.push({i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, by, year: a.hist.year, how});
 }
 
-// old graves around a battlefield
-function barrows(a, i, r) {
+// old graves around a battlefield: `v` at the middle, fading out to `r` cells. A raid on a town
+// leaves a few (ROT.raidGraves); the rot of the dead grows from them (atlas/lairs.js)
+export function barrows(a, i, r, v = 0.5) {
   const f = a.f, x0 = i % a.w, y0 = (i / a.w) | 0;
   f.barrows ||= new Float32Array(a.n);
   for (let y = Math.max(0, y0 - r); y <= Math.min(a.h - 1, y0 + r); y++) for (let x = Math.max(0, x0 - r); x <= Math.min(a.w - 1, x0 + r); x++) {
     const j = y * a.w + x, d = Math.hypot(x - x0, y - y0);
-    if (!f.ocean[j] && d <= r) f.barrows[j] = Math.min(1, f.barrows[j] + 0.5 * (1 - d / (r + 1)));
+    if (!f.ocean[j] && d <= r) f.barrows[j] = Math.min(1, f.barrows[j] + v * (1 - d / (r + 1)));
   }
 }
+export const raidGraves = (a, t) => barrows(a, t.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves);
 
 // where the battle was fought: a few cells out of the beaten town towards the winner, on land — the
 // towns may be far apart, with sea between them, and the graves lie under the town's walls
@@ -149,7 +153,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     r.att = Math.max(-5, r.att - D.raid); raids[t.people] = (raids[t.people] || 0) + 1;
     if (fight(t, rnd) > fight(target, rnd)) {
       const loss = D.raidLoss * raidShare(townFx(target));
-      target.pop *= 1 - loss; t.pop += target.pop * loss * 0.3;
+      target.pop *= 1 - loss; t.pop += target.pop * loss * 0.3; raidGraves(a, target);
       say(`${cap1(label(t.people))} из ${townLabel(t, 2)} ${t.name} разграбили ${townLabel(target, 1)} ${target.name}.`);
     } else {
       t.pop *= 0.9;
