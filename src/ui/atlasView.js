@@ -4,6 +4,9 @@
 import {ATLAS_SIZES, ATLAS_LAND, DEFAULT_ATLAS_CFG} from '../data/atlas.js';
 import {ATLAS_STAGES} from '../atlas/stages.js';
 import {cellGeology} from '../atlas/geology.js';
+import {riverKind} from '../atlas/hydrology.js';
+import {RIVERS} from '../data/hydrology.js';
+import {scaleOf} from '../atlas/tectonics.js';
 import {PLATE_COUNTS, HEMISPHERES, BOUNDARIES, BOUNDARY_BY_CODE, ROCKS, ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
 import {LEVEL_WORDS} from '../data/regions.js';
 import {RAIN_WORDS} from '../data/climate.js';
@@ -33,6 +36,7 @@ function ramp(stops, t) {
   }
   return stops[stops.length - 1][1];
 }
+const FRESH = [58, 104, 150], SALT = [150, 176, 168], RIVER = 'rgba(70,130,190,0.95)';
 const DEEP = [[0, [12, 24, 52]], [1, [46, 92, 130]]];
 const LAND = [[0, [96, 128, 70]], [0.35, [130, 140, 78]], [0.65, [128, 104, 74]], [0.85, [110, 100, 96]], [1, [236, 236, 230]]];
 const HEAT = [[0, [70, 110, 200]], [0.4, [190, 220, 230]], [0.6, [236, 214, 120]], [1, [200, 70, 50]]];
@@ -99,7 +103,7 @@ export class AtlasView {
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
-    else html = sw(DEEP[0][1], 'глубокое море') + sw(DEEP[1][1], 'мелководье') + sw(LAND[0][1], 'низины') + sw(LAND[2][1], 'нагорья') + sw(LAND[4][1], 'вершины');
+    else html = sw(FRESH, 'пресное озеро') + sw(SALT, 'солёное озеро') + `<span><i style="background:${RIVER};height:3px"></i>реки</span>` + sw(DEEP[0][1], 'глубокое море') + sw(DEEP[1][1], 'мелководье') + sw(LAND[0][1], 'низины') + sw(LAND[2][1], 'нагорья') + sw(LAND[4][1], 'вершины');
     $('atlasLegend').innerHTML = html;
   }
 
@@ -124,7 +128,8 @@ export class AtlasView {
       if (f.plate && this.layer === 'plates') return this.plateColor(a, i);
       return [12, 15, 10];
     }
-    const base = f.land ? (f.land[i] ? ramp(LAND, (f.elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, f.elev[i] / (a.sea || 1))) : ramp(LAND, f.elev[i]);
+    let base = f.land ? (f.land[i] ? ramp(LAND, (f.elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, f.elev[i] / (a.sea || 1))) : ramp(LAND, f.elev[i]);
+    if (f.lake && f.lake[i] >= 0) base = a.lakes[f.lake[i]].salt ? SALT : FRESH;
     switch (this.layer) {
       case 'plates': return this.plateColor(a, i);
       case 'rocks': return f.rock ? (f.land[i] ? ROCK_BY_CODE[f.rock[i]].color : mix(ROCK_BY_CODE[f.rock[i]].color, [14, 26, 50], 0.7)) : base;
@@ -170,6 +175,24 @@ export class AtlasView {
     }
     px.putImageData(img, 0, 0);
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
+    if (a.f.flow && ['relief', 'rain', 'rocks', 'temp'].includes(this.layer)) this.rivers(a, px);
+  }
+
+  // rivers: a line from each river cell to the cell it drains into, wider for more water
+  rivers(a, px) {
+    const f = a.f, k2 = scaleOf(a) ** 2;
+    const classes = [[RIVERS.great * k2, 1.6], [RIVERS.river * k2, 1], [RIVERS.stream * k2, 0.55]], paths = classes.map(() => []);
+    for (let i = 0; i < a.n; i++) {
+      const v = f.flow[i], d = f.down[i];
+      if (v < classes[2][0] || d < 0 || f.lake[i] >= 0) continue;
+      paths[classes.findIndex(([thr]) => v >= thr)].push(i);
+    }
+    px.strokeStyle = RIVER; px.lineCap = 'round';
+    classes.forEach(([, lw], c) => {
+      px.lineWidth = lw; px.beginPath();
+      for (const i of paths[c]) { const d = f.down[i]; px.moveTo(i % a.w + 0.5, ((i / a.w) | 0) + 0.5); px.lineTo(d % a.w + 0.5, ((d / a.w) | 0) + 0.5); }
+      px.stroke();
+    });
   }
 
   // wind arrows every few cells, drawn on the map canvas in cell units
@@ -212,7 +235,10 @@ export class AtlasView {
     const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
     if (f.plate) parts.push(`плита ${f.plate[i] + 1}, кора ${f.crust[i] > 0.5 ? 'материковая' : 'океаническая'}`);
     if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
-    if (f.land) parts.push(f.land[i] ? 'суша' : 'море');
+    if (f.land) parts.push(f.lake && f.lake[i] >= 0 ? (a.lakes[f.lake[i]].salt ? 'солёное озеро' : 'озеро') : f.land[i] ? 'суша' : 'море');
+    const rk = f.flow && f.lake[i] < 0 ? riverKind(a, i) : null;
+    if (rk) parts.push({stream: 'ручей', river: 'река', great: 'большая река'}[rk]);
+    if (f.alluvium && f.alluvium[i] > 0.3) parts.push('пойма');
     parts.push(`высота ${f.elev[i].toFixed(3)}`);
     if (f.temp) parts.push(`${f.temp[i].toFixed(1)}°` + (f.trange && f.land[i] ? ` (размах года ${Math.round(f.trange[i])}°)` : ''));
     if (f.windX) { const sp = Math.hypot(f.windX[i], f.windY[i]); if (sp > 0.08) parts.push(`ветер ${windWord(f.windX[i], f.windY[i])}`); }
@@ -222,6 +248,7 @@ export class AtlasView {
     if (geo.rock && f.land[i]) {
       const ores = ORE_GENESIS.all().filter(o => o.region !== 'goldVein' && o.region !== 'magma' && geo.ores[o.region] > 0).map(o => `${o.label} ${LEVEL_WORDS[geo.ores[o.region]]}`);
       if (geo.flags.goldVein) ores.push('золотая жила');
+      if (geo.placer > 0) ores.push(`золотой песок ${LEVEL_WORDS[geo.placer]}`);
       if (geo.flags.magma) ores.push('магма');
       if (ores.length) parts.push(ores.join(', '));
     }

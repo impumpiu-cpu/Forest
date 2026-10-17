@@ -77,6 +77,10 @@ ORE_GENESIS.registerAll([
     rocks: {gneiss: 0.4, schist: 0.35, granite: 0.15}, settings: {craton: 0.3}, levels: [0.24, 0.33, 0.5]},
   {id: 'mithril', region: 'mithril', label: 'мифрил', color: [170, 230, 255],
     rocks: {gneiss: 0.15}, settings: {oldv: 0.7, craton: 0.15}, levels: [0.2, 0.27, 0.34]},
+  // gold sand in the shallows: not from the rock under the cell but washed down by the rivers from
+  // gold upstream (atlas/hydrology.js placer); `from` says so, the ore stage skips it
+  {id: 'placer', region: 'placer', from: 'rivers', label: 'золотой песок', color: [240, 200, 90],
+    rocks: {}, settings: {}, levels: [0.15, 0.3, 0.5]},
   {id: 'magma', region: 'magma', label: 'магма', color: [255, 80, 40],
     rocks: {}, settings: {volc: 1}, levels: [0.03, 0.13, 0.25]},
 ]);

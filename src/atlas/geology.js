@@ -72,7 +72,7 @@ export function ores(a, rnd) {
   const low = new Float32Array(n), warm = new Float32Array(n);
   for (let i = 0; i < n; i++) { const s = settingOf(a, i, f.flat[i]); low[i] = s.low; warm[i] = s.warm; }
   const fields = {coll: f.coll, arc: f.arc, basv: f.basv, volc: f.volc, oldv: f.oldv, craton: f.craton, low, warm};
-  for (const o of ORE_GENESIS.all()) {
+  for (const o of ORE_GENESIS.filter(x => !x.from)) {
     const prov = fbm(rnd, w, h, Math.max(w, h) / 9, 4, 0.55), pot = new Float32Array(n);
     const byRock = [], sets = Object.entries(o.settings).map(([key, wt]) => [fields[key], wt]);
     for (const r of ROCK_BY_CODE) if (r) byRock[r.code] = o.rocks[r.id] || 0;
@@ -96,6 +96,7 @@ export function cellGeology(a, i) {
     const pot = a.f[`ore_${o.id}`]; if (!pot) continue;
     const lv = levelOf(pot[i], o.levels);
     if (o.region === 'goldVein' || o.region === 'magma') out.flags[o.region] = lv >= 1;
+    else if (o.region === 'placer') out.placer = lv;
     else out.ores[o.region] = lv;
   }
   return out;

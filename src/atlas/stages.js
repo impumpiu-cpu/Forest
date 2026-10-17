@@ -2,8 +2,9 @@
 // ones made, writes its own and returns a line for the world's chronicle. Each stage draws from its
 // own random stream (atlas/generate.js), so a stage can be reworked without changing the others.
 //
-// Done: plates → boundaries and hot spots → relief → sea level → rocks → ores → temperature → winds → rain.
-// Next (docs/WORLD.md): erosion with rivers and lakes, soils, biomes, forests, then
+// Done: plates → boundaries and hot spots → relief → sea level → temperature → winds → rain → erosion →
+// rivers and lakes → rocks → ores (with gold sand from the rivers).
+// Next (docs/WORLD.md): soils, biomes, forests, then
 // the eras of history.
 import {Registry} from '../core/registry.js';
 import {plural} from '../core/util.js';
@@ -12,6 +13,8 @@ import {BOUNDARIES, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
 import {makePlates, tectonics, relief} from './tectonics.js';
 import {rocks, ores} from './geology.js';
 import {temperature, winds, rain} from './climate.js';
+import {seaLevel, erode, rivers, placer} from './hydrology.js';
+import {EROSION} from '../data/hydrology.js';
 
 export const ATLAS_STAGES = new Registry('atlasStage');
 
@@ -32,25 +35,11 @@ ATLAS_STAGES.registerAll([
     }},
   {id: 'relief', label: 'Рельеф', era: 'geology', note: 'дно плиты + поднятие от границ + пологие волны и мелкие неровности',
     run(a, rnd) { relief(a, rnd); return 'Поднялись хребты, легли равнины, разверзлись желоба.'; }},
-  {id: 'sea', label: 'Уровень моря', era: 'geology', note: 'море ровно настолько, чтобы суши осталась выбранная доля',
+  {id: 'sea', label: 'Уровень моря', era: 'geology', note: 'океан — вода ниже уровня моря, связанная с краем мира; котловины внутри материков станут озёрами',
     run(a) {
-      const share = ATLAS_LAND[a.cfg.land].share;
-      const sorted = Float32Array.from(a.f.elev).sort();
-      a.sea = sorted[Math.min(a.n - 1, Math.floor(a.n * (1 - share)))];
-      const land = new Uint8Array(a.n); let cnt = 0;
-      for (let i = 0; i < a.n; i++) if (a.f.elev[i] > a.sea) { land[i] = 1; cnt++; }
-      a.f.land = land;
+      seaLevel(a, ATLAS_LAND[a.cfg.land].share);
+      let cnt = 0; for (let i = 0; i < a.n; i++) cnt += a.f.land[i];
       return `Воды отступили: суша заняла ${pct(cnt, a.n)} мира.`;
-    }},
-  {id: 'rocks', label: 'Породы', era: 'geology', note: 'магматические у вулканов и в корнях гор, метаморфические в швах и щитах, осадочные в низинах и мелких морях',
-    run(a, rnd) {
-      const c = rocks(a, rnd), land = Object.values(c).reduce((s, v) => s + v, 0) || 1;
-      return 'Застыли породы. На суше ' + Object.entries(ROCK_KINDS).map(([k, l]) => `${l} — ${pct(c[k] || 0, land)}`).join(', ') + '.';
-    }},
-  {id: 'ores', label: 'Руды', era: 'geology', note: 'руды следуют породам и тектонике и собираются в рудные районы',
-    run(a, rnd) {
-      const r = ores(a, rnd), top = ORE_GENESIS.all().filter(o => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map(o => o.label);
-      return top.length ? `В недрах налились жилы. Больше всего богатых мест: ${top.slice(0, 3).join(', ')}.` : 'В недрах налились жилы, но богатых мест нет.';
     }},
   {id: 'temperature', label: 'Температура', era: 'climate', note: 'по широте и высоте (−6,5° на км); у моря мягче, в глубине материка размах года больше',
     run(a) {
@@ -73,5 +62,29 @@ ATLAS_STAGES.registerAll([
       if (dry / land > 0.03) parts.push(`пустыни и сухие степи легли на ${pct(dry, land)} суши`);
       if (wet / land > 0.03) parts.push(`ливни поливают ${pct(wet, land)}`);
       return 'Пошли дожди' + (parts.length ? ': ' + parts.join(', ') : '') + '. За хребтами легла дождевая тень.';
+    }},
+  {id: 'erosion', label: 'Эрозия', era: 'water', note: `${EROSION.epochs} эпохи: вода стекает по склонам, реки врезаются в долины, склоны оплывают, хребты понемногу растут; климат пересчитывается на новом рельефе`,
+    run(a) {
+      erode(a);
+      return 'Шли века. Дожди точили горы, реки прорезали долины и вынесли камень к морю.';
+    }},
+  {id: 'rivers', label: 'Реки и озёра', era: 'water', note: 'вода заполняет котловины до порога и стекает к морю; бессточные озёра в сухом климате солёные; поймы по равнинным долинам, дельты в устьях',
+    run(a) {
+      const r = rivers(a), parts = [];
+      if (r.lakes) parts.push(`${r.lakes} ${plural(r.lakes, 'озеро', 'озера', 'озёр')}` + (r.salt ? `, из них ${r.salt} ${plural(r.salt, 'солёное', 'солёных', 'солёных')}` : ''));
+      return `Потекли реки${parts.length ? ', разлились ' + parts.join('') : ''}. По равнинам легли поймы, в устьях — дельты.`;
+    }},
+  {id: 'rocks', label: 'Породы', era: 'geology', note: 'магматические у вулканов и в корнях гор, метаморфические в швах и щитах, осадочные в низинах и мелких морях',
+    run(a, rnd) {
+      const c = rocks(a, rnd), land = Object.values(c).reduce((s, v) => s + v, 0) || 1;
+      return 'Застыли породы. На суше ' + Object.entries(ROCK_KINDS).map(([k, l]) => `${l} — ${pct(c[k] || 0, land)}`).join(', ') + '.';
+    }},
+  {id: 'ores', label: 'Руды', era: 'geology', note: 'руды следуют породам и тектонике и собираются в рудные районы',
+    run(a, rnd) {
+      const r = ores(a, rnd);
+      const pl = placer(a), lv = ORE_GENESIS.get('placer').levels;
+      r.placer = 0; for (let i = 0; i < a.n; i++) if (a.f.land[i] && pl[i] >= lv[2]) r.placer++;
+      const top = ORE_GENESIS.all().filter(o => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map(o => o.label);
+      return top.length ? `В недрах налились жилы. Больше всего богатых мест: ${top.slice(0, 3).join(', ')}.` : 'В недрах налились жилы, но богатых мест нет.';
     }},
 ]);

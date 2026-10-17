@@ -14,6 +14,31 @@ const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) conso
 const kinds = {}, ores = {}, coalOnSed = [0, 0];
 const bands = {tropic: [0, 0], subtropic: [0, 0], temperate: [0, 0]}, shadow = {lee: [0, 0], windward: [0, 0]};
 const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
+const lakeRain = {fresh: [0, 0], salt: [0, 0]};
+let lakesAll = 0, saltAll = 0, placerCells = 0;
+
+// every land cell drains to the ocean or into a salt lake, without loops, and the water only grows
+// downstream (except into a salt lake, which keeps it)
+function drainage(a) {
+  const {down, ocean, flow, lake} = a.f, seen = new Int32Array(a.n).fill(-1);
+  let bad = 0, shrink = 0;
+  const salt = i => lake[i] >= 0 && a.lakes[lake[i]].salt;
+  for (let s = 0; s < a.n; s++) {
+    if (ocean[s]) continue;
+    let i = s, steps = 0;
+    while (!ocean[i] && !salt(i) && steps <= a.n) {
+      if (seen[i] === s) { steps = a.n + 1; break; }
+      seen[i] = s;
+      const d = down[i];
+      if (d < 0) break;
+      if (!ocean[d] && !salt(d) && flow[d] + 1e-3 < flow[i]) shrink++;
+      i = d; steps++;
+    }
+    if (steps > a.n || (!ocean[i] && !salt(i))) bad++;
+  }
+  return {bad, shrink};
+}
+
 const mean = acc => acc[0] / (acc[1] || 1);
 
 // rain by belt (all cells, sea too): the rising belts are wet, the sinking ones at ~30° dry
@@ -95,13 +120,25 @@ for (let s = 1; s <= seeds; s++) for (let land = 0; land < ATLAS_LAND.length; la
   }
   landAll += landCnt;
   const share = landCnt / a.n;
-  const shareOk = Math.abs(share - ATLAS_LAND[land].share) < 0.02;
+  // the ocean share jumps when a basin joins the sea through a strait, so the land share may miss by a few points
+  const shareOk = Math.abs(share - ATLAS_LAND[land].share) < 0.05;
   check(`${tag}: доля суши`, shareOk, shareOk ? '' : `${(share * 100).toFixed(1)}%`);
   check(`${tag}: по краю мира море`, edgeLand === 0, edgeLand ? `${edgeLand} клеток суши на краю` : '');
   check(`${tag}: каждая клетка на плите, плиты целые`, unplated === 0 && platesWhole(a));
   check(`${tag}: у каждой клетки суши есть порода`, noRock === 0, noRock ? `${noRock} без породы` : '');
   check(`${tag}: магма только у живых вулканов`, magmaCold === 0, magmaCold ? `${magmaCold} клеток` : '');
   rainBelts(a); rainShadow(a);
+  const dr = drainage(a);
+  check(`${tag}: вся вода стекает в море или в солёное озеро`, dr.bad === 0, dr.bad ? `${dr.bad} клеток без стока` : '');
+  check(`${tag}: вниз по течению воды не меньше`, dr.shrink === 0, dr.shrink ? `${dr.shrink} мест` : '');
+  lakesAll += a.lakes.length; saltAll += a.lakes.filter(L => L.salt).length;
+  for (let i = 0; i < a.n; i++) {
+    if (a.f.lake[i] >= 0) addTo(lakeRain[a.lakes[a.f.lake[i]].salt ? 'salt' : 'fresh'], a.f.rain[i]);
+    if (levelOf(a.f.ore_placer[i], ORE_GENESIS.get('placer').levels) >= 1) {
+      placerCells++;
+      if (a.f.flow[i] < 1) check(`${tag}: золотой песок только в реках`, false, `клетка ${i}`);
+    }
+  }
   const top = rowTemp(a, 0), mid = rowTemp(a, a.h >> 1), bot = rowTemp(a, a.h - 1);
   const bands = hemisphere === 'equator' ? mid > top + 10 && mid > bot + 10 : bot > top + 20;
   check(`${tag}: пояса температуры`, bands, !bands || (s === 1 && land === 1) ? `верх ${top.toFixed(0)}°, середина ${mid.toFixed(0)}°, низ ${bot.toFixed(0)}°` : '');
@@ -122,4 +159,8 @@ const r = v => Math.round(mean(v));
 check('  экватор влажнее конских широт', mean(bands.tropic) > 1.5 * mean(bands.subtropic), `${r(bands.tropic)} против ${r(bands.subtropic)}`);
 check('  умеренные широты влажнее конских', mean(bands.temperate) > 1.3 * mean(bands.subtropic), `${r(bands.temperate)} против ${r(bands.subtropic)}`);
 check('  дождевая тень', mean(shadow.lee) < 0.6 * mean(shadow.windward), `за хребтом ${r(shadow.lee)}, на наветренном берегу ${r(shadow.windward)}`);
+console.log('Вода:');
+check('  озёра есть', lakesAll > 0, `${lakesAll} на ${worlds} миров, солёных ${saltAll}`);
+if (lakeRain.salt[1] && lakeRain.fresh[1]) check('  солёные озёра в сухом климате', mean(lakeRain.salt) < mean(lakeRain.fresh), `у солёных ${Math.round(mean(lakeRain.salt))} мм, у пресных ${Math.round(mean(lakeRain.fresh))} мм`);
+check('  золотой песок где-то есть', placerCells > 0, `${placerCells} клеток уровня «есть» и выше`);
 if (!ok) process.exit(1);

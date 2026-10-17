@@ -14141,6 +14141,18 @@ dd.q4{color:#c58cff;font-weight:600}
       settings: { oldv: 0.7, craton: 0.15 },
       levels: [0.2, 0.27, 0.34]
     },
+    // gold sand in the shallows: not from the rock under the cell but washed down by the rivers from
+    // gold upstream (atlas/hydrology.js placer); `from` says so, the ore stage skips it
+    {
+      id: "placer",
+      region: "placer",
+      from: "rivers",
+      label: "\u0437\u043E\u043B\u043E\u0442\u043E\u0439 \u043F\u0435\u0441\u043E\u043A",
+      color: [240, 200, 90],
+      rocks: {},
+      settings: {},
+      levels: [0.15, 0.3, 0.5]
+    },
     {
       id: "magma",
       region: "magma",
@@ -14553,7 +14565,7 @@ dd.q4{color:#c58cff;font-weight:600}
       warm[i] = s.warm;
     }
     const fields2 = { coll: f.coll, arc: f.arc, basv: f.basv, volc: f.volc, oldv: f.oldv, craton: f.craton, low, warm };
-    for (const o of ORE_GENESIS.all()) {
+    for (const o of ORE_GENESIS.filter((x) => !x.from)) {
       const prov = fbm2(rnd, w, h, Math.max(w, h) / 9, 4, 0.55), pot = new Float32Array(n);
       const byRock = [], sets = Object.entries(o.settings).map(([key2, wt]) => [fields2[key2], wt]);
       for (const r2 of ROCK_BY_CODE) if (r2) byRock[r2.code] = o.rocks[r2.id] || 0;
@@ -14577,6 +14589,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!pot) continue;
       const lv = levelOf(pot[i], o.levels);
       if (o.region === "goldVein" || o.region === "magma") out.flags[o.region] = lv >= 1;
+      else if (o.region === "placer") out.placer = lv;
       else out.ores[o.region] = lv;
     }
     return out;
@@ -14728,6 +14741,222 @@ dd.q4{color:#c58cff;font-weight:600}
     f.rain = out;
   }
 
+  // src/data/hydrology.js
+  var EROSION = { epochs: 4, k: 0.35, m: 0.5, creep: 0.12, creepPasses: 2, uplift: 0.08, lakeEps: 6e-3 };
+  var RIVERS = { unit: 500, stream: 25, river: 120, great: 900, evap: 700, alluvium: 60 };
+
+  // src/atlas/hydrology.js
+  var clamp013 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  function oceanMask(a, z, level) {
+    const { w, h, n } = a, ocean = new Uint8Array(n), stack = [];
+    const seed = (i) => {
+      if (!ocean[i] && z[i] <= level) {
+        ocean[i] = 1;
+        stack.push(i);
+      }
+    };
+    for (let x = 0; x < w; x++) {
+      seed(x);
+      seed((h - 1) * w + x);
+    }
+    for (let y = 0; y < h; y++) {
+      seed(y * w);
+      seed(y * w + w - 1);
+    }
+    while (stack.length) {
+      const i = stack.pop(), x = i % w, y = i / w | 0;
+      if (x > 0) seed(i - 1);
+      if (x < w - 1) seed(i + 1);
+      if (y > 0) seed(i - w);
+      if (y < h - 1) seed(i + w);
+    }
+    return ocean;
+  }
+  function seaLevel(a, share2) {
+    const z = a.f.elev, oceanShare = (lv) => {
+      const oc = oceanMask(a, z, lv);
+      let c = 0;
+      for (let i = 0; i < a.n; i++) c += oc[i];
+      return c / a.n;
+    };
+    let lo = 0, hi = 1;
+    for (let it = 0; it < 22; it++) {
+      const mid = (lo + hi) / 2;
+      if (oceanShare(mid) < 1 - share2) lo = mid;
+      else hi = mid;
+    }
+    const level = Math.abs(oceanShare(lo) - (1 - share2)) < Math.abs(oceanShare(hi) - (1 - share2)) ? lo : hi;
+    a.sea = level;
+    a.f.ocean = oceanMask(a, z, level);
+    const land = new Uint8Array(a.n);
+    for (let i = 0; i < a.n; i++) land[i] = a.f.ocean[i] ? 0 : 1;
+    a.f.land = land;
+  }
+  function flood(a, z) {
+    const { w, h, n } = a, ocean = a.f.ocean, done3 = new Uint8Array(n), filled = Float32Array.from(z);
+    const down = new Int32Array(n).fill(-1), order = new Int32Array(n), heap = new Heap(n >> 2);
+    let cnt = 0;
+    for (let i = 0; i < n; i++) if (ocean[i]) done3[i] = 1;
+    for (let i = 0; i < n; i++) {
+      if (!ocean[i]) continue;
+      const x = i % w, y = i / w | 0;
+      let coast = false;
+      for (const [dx, dy] of DIRS8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < w && ny < h && !ocean[ny * w + nx]) {
+          coast = true;
+          break;
+        }
+      }
+      if (coast) heap.push(a.sea, i);
+    }
+    while (heap.size) {
+      const c = heap.pop(), kc = heap.top, x = c % w, y = c / w | 0;
+      for (const [dx, dy] of DIRS8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (done3[j]) continue;
+        done3[j] = 1;
+        const fz = Math.max(z[j], kc + 1e-7);
+        filled[j] = fz;
+        down[j] = c;
+        order[cnt++] = j;
+        heap.push(fz, j);
+      }
+    }
+    return { filled, down, order, cnt };
+  }
+  function gather(a, fl, own, sink) {
+    const acc2 = Float32Array.from(own), { down, order, cnt } = fl, ocean = a.f.ocean;
+    for (let k = cnt - 1; k >= 0; k--) {
+      const c = order[k], d = down[c];
+      if (d < 0 || ocean[d]) continue;
+      if (sink && sink[c] && !sink[d]) continue;
+      acc2[d] += acc2[c];
+    }
+    return acc2;
+  }
+  var rainUnits = (a) => {
+    const o = new Float32Array(a.n);
+    for (let i = 0; i < a.n; i++) o[i] = a.f.ocean[i] ? 0 : a.f.rain[i] / RIVERS.unit;
+    return o;
+  };
+  var isDiag = (a, i, j) => i % a.w !== j % a.w && (i / a.w | 0) !== (j / a.w | 0);
+  function erode(a) {
+    const E = EROSION, z = a.f.elev, ocean = a.f.ocean, { w, h, n } = a, k = scaleOf(a);
+    const startBelow = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (!ocean[i] && z[i] <= a.sea) startBelow[i] = 1;
+    let cut = 0;
+    const before = Float32Array.from(z), tmp = new Float32Array(n);
+    for (let ep = 0; ep < E.epochs; ep++) {
+      const fl = flood(a, z), acc2 = gather(a, fl, rainUnits(a));
+      for (let q = 0; q < fl.cnt; q++) {
+        const i = fl.order[q], r = fl.down[i], zr = ocean[r] ? a.sea : z[r];
+        if (z[i] <= zr) continue;
+        const F = E.k * Math.pow(acc2[i] / (k * k), E.m) / (isDiag(a, i, r) ? Math.SQRT2 : 1) / 6;
+        z[i] = (z[i] + F * zr) / (1 + F);
+      }
+      for (let p = 0; p < E.creepPasses; p++) {
+        tmp.set(z);
+        for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+          const i = y * w + x;
+          if (ocean[i]) continue;
+          const avg = (tmp[i - 1] + tmp[i + 1] + tmp[i - w] + tmp[i + w]) / 4;
+          z[i] = tmp[i] + E.creep * (avg - tmp[i]);
+        }
+      }
+      for (let i = 0; i < n; i++) if (!ocean[i] && a.f.uplift[i] > 0) z[i] += E.uplift * a.f.uplift[i] / E.epochs;
+      for (let i = 0; i < n; i++) if (!ocean[i] && !startBelow[i] && z[i] <= a.sea) z[i] = a.sea + 1e-4;
+    }
+    for (let i = 0; i < n; i++) if (!ocean[i]) cut += Math.max(0, before[i] - z[i]);
+    temperature(a);
+    rain(a);
+    return cut;
+  }
+  function rivers(a) {
+    const { w, h, n } = a, f = a.f, z = f.elev, k2 = scaleOf(a) ** 2;
+    const fl = flood(a, z);
+    const lake = new Int16Array(n).fill(-1), lakes = [];
+    for (let s = 0; s < n; s++) {
+      if (f.ocean[s] || lake[s] >= 0 || fl.filled[s] - z[s] <= EROSION.lakeEps) continue;
+      const id = lakes.length, cells = [s], stack = [s];
+      lake[s] = id;
+      while (stack.length) {
+        const i = stack.pop(), x = i % w, y = i / w | 0;
+        for (const [dx, dy] of DIRS8) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const j = ny * w + nx;
+          if (lake[j] >= 0 || f.ocean[j] || fl.filled[j] - z[j] <= EROSION.lakeEps) continue;
+          lake[j] = id;
+          cells.push(j);
+          stack.push(j);
+        }
+      }
+      lakes.push({ id, size: cells.length, cells, salt: false });
+    }
+    let flow = gather(a, fl, rainUnits(a));
+    const sink = new Uint8Array(n);
+    for (const L of lakes) {
+      let inflow = 0, evap = 0;
+      for (const c of L.cells) {
+        inflow = Math.max(inflow, flow[c]);
+        evap += RIVERS.evap * Math.max(0.1, 1 + f.temp[c] / 15) / RIVERS.unit;
+      }
+      L.inflow = inflow;
+      if (inflow < evap) {
+        L.salt = true;
+        for (const c of L.cells) sink[c] = 1;
+      }
+      delete L.cells;
+    }
+    if (lakes.some((L) => L.salt)) flow = gather(a, fl, rainUnits(a), sink);
+    for (let i = 0; i < n; i++) if (f.ocean[i]) flow[i] = 0;
+    const allu = new Float32Array(n);
+    const mark2 = (i, r, v) => {
+      const x0 = i % w, y0 = i / w | 0;
+      for (let y = Math.max(0, y0 - r); y <= Math.min(h - 1, y0 + r); y++) for (let x = Math.max(0, x0 - r); x <= Math.min(w - 1, x0 + r); x++) {
+        const j = y * w + x, d = Math.hypot(x - x0, y - y0);
+        if (d <= r + 0.5 && !f.ocean[j] && lake[j] < 0) allu[j] = Math.max(allu[j], v * (1 - d / (r + 1)));
+      }
+    };
+    for (let i = 0; i < n; i++) {
+      if (f.ocean[i] || flow[i] < RIVERS.alluvium * k2) continue;
+      const r = fl.down[i], drop = (z[i] - (f.ocean[r] ? a.sea : z[r])) * 192 * scaleOf(a);
+      const big = Math.log10(flow[i] / (RIVERS.alluvium * k2));
+      if (drop < 0.6) mark2(i, Math.round(1 + big * 1.5), clamp013(0.5 + 0.3 * big));
+      if (f.ocean[r] && flow[i] >= RIVERS.river * k2) mark2(i, Math.round(2 + big * 2), 1);
+    }
+    Object.assign(f, { down: fl.down, flow, lake, alluvium: allu });
+    a.lakes = lakes;
+    a.hydro = { order: fl.order, cnt: fl.cnt };
+    const riverCells = flow.reduce((s, v) => s + (v >= RIVERS.river * k2 ? 1 : 0), 0);
+    return { lakes: lakes.length, salt: lakes.filter((L) => L.salt).length, riverCells };
+  }
+  var riverKind = (a, i) => {
+    const k2 = scaleOf(a) ** 2, v = a.f.flow?.[i] || 0;
+    return v >= RIVERS.great * k2 ? "great" : v >= RIVERS.river * k2 ? "river" : v >= RIVERS.stream * k2 ? "stream" : null;
+  };
+  function placer(a) {
+    const f = a.f, n = a.n, gold = f.ore_gold, k2 = scaleOf(a) ** 2;
+    const fl = { down: f.down, order: a.hydro.order, cnt: a.hydro.cnt };
+    const ones = new Float32Array(n), g3 = new Float32Array(n);
+    for (let i = 0; i < n; i++) if (!f.ocean[i]) {
+      ones[i] = 1;
+      g3[i] = gold[i];
+    }
+    const area = gather(a, fl, ones), load2 = gather(a, fl, g3), out = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      if (f.ocean[i] || f.flow[i] < RIVERS.stream * k2 || f.lake[i] >= 0) continue;
+      const r = f.down[i], drop = (f.elev[i] - (f.ocean[r] ? a.sea : f.elev[r])) * 192 * scaleOf(a);
+      const slow = clamp013(1 - drop / 1.5);
+      out[i] = clamp013((load2[i] - g3[i]) / Math.max(1, area[i] - 1) * 1.6 * (0.3 + 0.7 * slow));
+    }
+    f.ore_placer = out;
+    return out;
+  }
+
   // src/atlas/stages.js
   var ATLAS_STAGES = new Registry("atlasStage");
   var pct = (v, n) => `${Math.round(v / n * 100)}%`;
@@ -14767,39 +14996,12 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "sea",
       label: "\u0423\u0440\u043E\u0432\u0435\u043D\u044C \u043C\u043E\u0440\u044F",
       era: "geology",
-      note: "\u043C\u043E\u0440\u0435 \u0440\u043E\u0432\u043D\u043E \u043D\u0430\u0441\u0442\u043E\u043B\u044C\u043A\u043E, \u0447\u0442\u043E\u0431\u044B \u0441\u0443\u0448\u0438 \u043E\u0441\u0442\u0430\u043B\u0430\u0441\u044C \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u0430\u044F \u0434\u043E\u043B\u044F",
+      note: "\u043E\u043A\u0435\u0430\u043D \u2014 \u0432\u043E\u0434\u0430 \u043D\u0438\u0436\u0435 \u0443\u0440\u043E\u0432\u043D\u044F \u043C\u043E\u0440\u044F, \u0441\u0432\u044F\u0437\u0430\u043D\u043D\u0430\u044F \u0441 \u043A\u0440\u0430\u0435\u043C \u043C\u0438\u0440\u0430; \u043A\u043E\u0442\u043B\u043E\u0432\u0438\u043D\u044B \u0432\u043D\u0443\u0442\u0440\u0438 \u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432 \u0441\u0442\u0430\u043D\u0443\u0442 \u043E\u0437\u0451\u0440\u0430\u043C\u0438",
       run(a) {
-        const share2 = ATLAS_LAND[a.cfg.land].share;
-        const sorted = Float32Array.from(a.f.elev).sort();
-        a.sea = sorted[Math.min(a.n - 1, Math.floor(a.n * (1 - share2)))];
-        const land = new Uint8Array(a.n);
+        seaLevel(a, ATLAS_LAND[a.cfg.land].share);
         let cnt = 0;
-        for (let i = 0; i < a.n; i++) if (a.f.elev[i] > a.sea) {
-          land[i] = 1;
-          cnt++;
-        }
-        a.f.land = land;
+        for (let i = 0; i < a.n; i++) cnt += a.f.land[i];
         return `\u0412\u043E\u0434\u044B \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438: \u0441\u0443\u0448\u0430 \u0437\u0430\u043D\u044F\u043B\u0430 ${pct(cnt, a.n)} \u043C\u0438\u0440\u0430.`;
-      }
-    },
-    {
-      id: "rocks",
-      label: "\u041F\u043E\u0440\u043E\u0434\u044B",
-      era: "geology",
-      note: "\u043C\u0430\u0433\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0443 \u0432\u0443\u043B\u043A\u0430\u043D\u043E\u0432 \u0438 \u0432 \u043A\u043E\u0440\u043D\u044F\u0445 \u0433\u043E\u0440, \u043C\u0435\u0442\u0430\u043C\u043E\u0440\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0432 \u0448\u0432\u0430\u0445 \u0438 \u0449\u0438\u0442\u0430\u0445, \u043E\u0441\u0430\u0434\u043E\u0447\u043D\u044B\u0435 \u0432 \u043D\u0438\u0437\u0438\u043D\u0430\u0445 \u0438 \u043C\u0435\u043B\u043A\u0438\u0445 \u043C\u043E\u0440\u044F\u0445",
-      run(a, rnd) {
-        const c = rocks(a, rnd), land = Object.values(c).reduce((s, v) => s + v, 0) || 1;
-        return "\u0417\u0430\u0441\u0442\u044B\u043B\u0438 \u043F\u043E\u0440\u043E\u0434\u044B. \u041D\u0430 \u0441\u0443\u0448\u0435 " + Object.entries(ROCK_KINDS).map(([k, l]) => `${l} \u2014 ${pct(c[k] || 0, land)}`).join(", ") + ".";
-      }
-    },
-    {
-      id: "ores",
-      label: "\u0420\u0443\u0434\u044B",
-      era: "geology",
-      note: "\u0440\u0443\u0434\u044B \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u043F\u043E\u0440\u043E\u0434\u0430\u043C \u0438 \u0442\u0435\u043A\u0442\u043E\u043D\u0438\u043A\u0435 \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u044E\u0442\u0441\u044F \u0432 \u0440\u0443\u0434\u043D\u044B\u0435 \u0440\u0430\u0439\u043E\u043D\u044B",
-      run(a, rnd) {
-        const r = ores(a, rnd), top = ORE_GENESIS.all().filter((o) => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map((o) => o.label);
-        return top.length ? `\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B. \u0411\u043E\u043B\u044C\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442: ${top.slice(0, 3).join(", ")}.` : "\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B, \u043D\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442 \u043D\u0435\u0442.";
       }
     },
     {
@@ -14839,6 +15041,51 @@ dd.q4{color:#c58cff;font-weight:600}
         if (dry / land > 0.03) parts.push(`\u043F\u0443\u0441\u0442\u044B\u043D\u0438 \u0438 \u0441\u0443\u0445\u0438\u0435 \u0441\u0442\u0435\u043F\u0438 \u043B\u0435\u0433\u043B\u0438 \u043D\u0430 ${pct(dry, land)} \u0441\u0443\u0448\u0438`);
         if (wet / land > 0.03) parts.push(`\u043B\u0438\u0432\u043D\u0438 \u043F\u043E\u043B\u0438\u0432\u0430\u044E\u0442 ${pct(wet, land)}`);
         return "\u041F\u043E\u0448\u043B\u0438 \u0434\u043E\u0436\u0434\u0438" + (parts.length ? ": " + parts.join(", ") : "") + ". \u0417\u0430 \u0445\u0440\u0435\u0431\u0442\u0430\u043C\u0438 \u043B\u0435\u0433\u043B\u0430 \u0434\u043E\u0436\u0434\u0435\u0432\u0430\u044F \u0442\u0435\u043D\u044C.";
+      }
+    },
+    {
+      id: "erosion",
+      label: "\u042D\u0440\u043E\u0437\u0438\u044F",
+      era: "water",
+      note: `${EROSION.epochs} \u044D\u043F\u043E\u0445\u0438: \u0432\u043E\u0434\u0430 \u0441\u0442\u0435\u043A\u0430\u0435\u0442 \u043F\u043E \u0441\u043A\u043B\u043E\u043D\u0430\u043C, \u0440\u0435\u043A\u0438 \u0432\u0440\u0435\u0437\u0430\u044E\u0442\u0441\u044F \u0432 \u0434\u043E\u043B\u0438\u043D\u044B, \u0441\u043A\u043B\u043E\u043D\u044B \u043E\u043F\u043B\u044B\u0432\u0430\u044E\u0442, \u0445\u0440\u0435\u0431\u0442\u044B \u043F\u043E\u043D\u0435\u043C\u043D\u043E\u0433\u0443 \u0440\u0430\u0441\u0442\u0443\u0442; \u043A\u043B\u0438\u043C\u0430\u0442 \u043F\u0435\u0440\u0435\u0441\u0447\u0438\u0442\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043D\u0430 \u043D\u043E\u0432\u043E\u043C \u0440\u0435\u043B\u044C\u0435\u0444\u0435`,
+      run(a) {
+        erode(a);
+        return "\u0428\u043B\u0438 \u0432\u0435\u043A\u0430. \u0414\u043E\u0436\u0434\u0438 \u0442\u043E\u0447\u0438\u043B\u0438 \u0433\u043E\u0440\u044B, \u0440\u0435\u043A\u0438 \u043F\u0440\u043E\u0440\u0435\u0437\u0430\u043B\u0438 \u0434\u043E\u043B\u0438\u043D\u044B \u0438 \u0432\u044B\u043D\u0435\u0441\u043B\u0438 \u043A\u0430\u043C\u0435\u043D\u044C \u043A \u043C\u043E\u0440\u044E.";
+      }
+    },
+    {
+      id: "rivers",
+      label: "\u0420\u0435\u043A\u0438 \u0438 \u043E\u0437\u0451\u0440\u0430",
+      era: "water",
+      note: "\u0432\u043E\u0434\u0430 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u0435\u0442 \u043A\u043E\u0442\u043B\u043E\u0432\u0438\u043D\u044B \u0434\u043E \u043F\u043E\u0440\u043E\u0433\u0430 \u0438 \u0441\u0442\u0435\u043A\u0430\u0435\u0442 \u043A \u043C\u043E\u0440\u044E; \u0431\u0435\u0441\u0441\u0442\u043E\u0447\u043D\u044B\u0435 \u043E\u0437\u0451\u0440\u0430 \u0432 \u0441\u0443\u0445\u043E\u043C \u043A\u043B\u0438\u043C\u0430\u0442\u0435 \u0441\u043E\u043B\u0451\u043D\u044B\u0435; \u043F\u043E\u0439\u043C\u044B \u043F\u043E \u0440\u0430\u0432\u043D\u0438\u043D\u043D\u044B\u043C \u0434\u043E\u043B\u0438\u043D\u0430\u043C, \u0434\u0435\u043B\u044C\u0442\u044B \u0432 \u0443\u0441\u0442\u044C\u044F\u0445",
+      run(a) {
+        const r = rivers(a), parts = [];
+        if (r.lakes) parts.push(`${r.lakes} ${plural(r.lakes, "\u043E\u0437\u0435\u0440\u043E", "\u043E\u0437\u0435\u0440\u0430", "\u043E\u0437\u0451\u0440")}` + (r.salt ? `, \u0438\u0437 \u043D\u0438\u0445 ${r.salt} ${plural(r.salt, "\u0441\u043E\u043B\u0451\u043D\u043E\u0435", "\u0441\u043E\u043B\u0451\u043D\u044B\u0445", "\u0441\u043E\u043B\u0451\u043D\u044B\u0445")}` : ""));
+        return `\u041F\u043E\u0442\u0435\u043A\u043B\u0438 \u0440\u0435\u043A\u0438${parts.length ? ", \u0440\u0430\u0437\u043B\u0438\u043B\u0438\u0441\u044C " + parts.join("") : ""}. \u041F\u043E \u0440\u0430\u0432\u043D\u0438\u043D\u0430\u043C \u043B\u0435\u0433\u043B\u0438 \u043F\u043E\u0439\u043C\u044B, \u0432 \u0443\u0441\u0442\u044C\u044F\u0445 \u2014 \u0434\u0435\u043B\u044C\u0442\u044B.`;
+      }
+    },
+    {
+      id: "rocks",
+      label: "\u041F\u043E\u0440\u043E\u0434\u044B",
+      era: "geology",
+      note: "\u043C\u0430\u0433\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0443 \u0432\u0443\u043B\u043A\u0430\u043D\u043E\u0432 \u0438 \u0432 \u043A\u043E\u0440\u043D\u044F\u0445 \u0433\u043E\u0440, \u043C\u0435\u0442\u0430\u043C\u043E\u0440\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0432 \u0448\u0432\u0430\u0445 \u0438 \u0449\u0438\u0442\u0430\u0445, \u043E\u0441\u0430\u0434\u043E\u0447\u043D\u044B\u0435 \u0432 \u043D\u0438\u0437\u0438\u043D\u0430\u0445 \u0438 \u043C\u0435\u043B\u043A\u0438\u0445 \u043C\u043E\u0440\u044F\u0445",
+      run(a, rnd) {
+        const c = rocks(a, rnd), land = Object.values(c).reduce((s, v) => s + v, 0) || 1;
+        return "\u0417\u0430\u0441\u0442\u044B\u043B\u0438 \u043F\u043E\u0440\u043E\u0434\u044B. \u041D\u0430 \u0441\u0443\u0448\u0435 " + Object.entries(ROCK_KINDS).map(([k, l]) => `${l} \u2014 ${pct(c[k] || 0, land)}`).join(", ") + ".";
+      }
+    },
+    {
+      id: "ores",
+      label: "\u0420\u0443\u0434\u044B",
+      era: "geology",
+      note: "\u0440\u0443\u0434\u044B \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u043F\u043E\u0440\u043E\u0434\u0430\u043C \u0438 \u0442\u0435\u043A\u0442\u043E\u043D\u0438\u043A\u0435 \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u044E\u0442\u0441\u044F \u0432 \u0440\u0443\u0434\u043D\u044B\u0435 \u0440\u0430\u0439\u043E\u043D\u044B",
+      run(a, rnd) {
+        const r = ores(a, rnd);
+        const pl = placer(a), lv = ORE_GENESIS.get("placer").levels;
+        r.placer = 0;
+        for (let i = 0; i < a.n; i++) if (a.f.land[i] && pl[i] >= lv[2]) r.placer++;
+        const top = ORE_GENESIS.all().filter((o) => r[o.id] > 0).sort((x, y) => r[y.id] - r[x.id]).map((o) => o.label);
+        return top.length ? `\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B. \u0411\u043E\u043B\u044C\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442: ${top.slice(0, 3).join(", ")}.` : "\u0412 \u043D\u0435\u0434\u0440\u0430\u0445 \u043D\u0430\u043B\u0438\u043B\u0438\u0441\u044C \u0436\u0438\u043B\u044B, \u043D\u043E \u0431\u043E\u0433\u0430\u0442\u044B\u0445 \u043C\u0435\u0441\u0442 \u043D\u0435\u0442.";
       }
     }
   ]);
@@ -14882,6 +15129,9 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return stops[stops.length - 1][1];
   }
+  var FRESH = [58, 104, 150];
+  var SALT = [150, 176, 168];
+  var RIVER = "rgba(70,130,190,0.95)";
   var DEEP = [[0, [12, 24, 52]], [1, [46, 92, 130]]];
   var LAND = [[0, [96, 128, 70]], [0.35, [130, 140, 78]], [0.65, [128, 104, 74]], [0.85, [110, 100, 96]], [1, [236, 236, 230]]];
   var HEAT = [[0, [70, 110, 200]], [0.4, [190, 220, 230]], [0.6, [236, 214, 120]], [1, [200, 70, 50]]];
@@ -14977,7 +15227,7 @@ dd.q4{color:#c58cff;font-weight:600}
       } else if (this.layer === "rain") html = [[100, "\u043F\u0443\u0441\u0442\u044B\u043D\u044F"], [400, "\u0441\u0443\u0445\u043E"], [800, "\u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E"], [1500, "\u0432\u043B\u0430\u0436\u043D\u043E"], [2500, "\u043E\u0447\u0435\u043D\u044C \u0432\u043B\u0430\u0436\u043D\u043E"]].map(([v, l]) => sw(rainColor(v), `${l} (${v} \u043C\u043C)`)).join("");
       else if (this.layer === "wind") html = sw([240, 240, 230], "\u0441\u0442\u0440\u0435\u043B\u043A\u0438 \u2014 \u043A\u0443\u0434\u0430 \u0434\u0443\u0435\u0442 \u0432\u0435\u0442\u0435\u0440") + sw([90, 110, 150], "\u0442\u0438\u0448\u0435") + sw([200, 210, 240], "\u0441\u0438\u043B\u044C\u043D\u0435\u0435");
       else if (this.layer === "temp") html = sw(HEAT[0][1], "\u221230\xB0") + sw(HEAT[1][1], "\u22124\xB0") + sw(HEAT[2][1], "+9\xB0") + sw(HEAT[3][1], "+35\xB0");
-      else html = sw(DEEP[0][1], "\u0433\u043B\u0443\u0431\u043E\u043A\u043E\u0435 \u043C\u043E\u0440\u0435") + sw(DEEP[1][1], "\u043C\u0435\u043B\u043A\u043E\u0432\u043E\u0434\u044C\u0435") + sw(LAND[0][1], "\u043D\u0438\u0437\u0438\u043D\u044B") + sw(LAND[2][1], "\u043D\u0430\u0433\u043E\u0440\u044C\u044F") + sw(LAND[4][1], "\u0432\u0435\u0440\u0448\u0438\u043D\u044B");
+      else html = sw(FRESH, "\u043F\u0440\u0435\u0441\u043D\u043E\u0435 \u043E\u0437\u0435\u0440\u043E") + sw(SALT, "\u0441\u043E\u043B\u0451\u043D\u043E\u0435 \u043E\u0437\u0435\u0440\u043E") + `<span><i style="background:${RIVER};height:3px"></i>\u0440\u0435\u043A\u0438</span>` + sw(DEEP[0][1], "\u0433\u043B\u0443\u0431\u043E\u043A\u043E\u0435 \u043C\u043E\u0440\u0435") + sw(DEEP[1][1], "\u043C\u0435\u043B\u043A\u043E\u0432\u043E\u0434\u044C\u0435") + sw(LAND[0][1], "\u043D\u0438\u0437\u0438\u043D\u044B") + sw(LAND[2][1], "\u043D\u0430\u0433\u043E\u0440\u044C\u044F") + sw(LAND[4][1], "\u0432\u0435\u0440\u0448\u0438\u043D\u044B");
       $("atlasLegend").innerHTML = html;
     }
     generate() {
@@ -15004,7 +15254,8 @@ dd.q4{color:#c58cff;font-weight:600}
         if (f.plate && this.layer === "plates") return this.plateColor(a, i);
         return [12, 15, 10];
       }
-      const base = f.land ? f.land[i] ? ramp(LAND, (f.elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, f.elev[i] / (a.sea || 1)) : ramp(LAND, f.elev[i]);
+      let base = f.land ? f.land[i] ? ramp(LAND, (f.elev[i] - a.sea) / (1 - a.sea)) : ramp(DEEP, f.elev[i] / (a.sea || 1)) : ramp(LAND, f.elev[i]);
+      if (f.lake && f.lake[i] >= 0) base = a.lakes[f.lake[i]].salt ? SALT : FRESH;
       switch (this.layer) {
         case "plates":
           return this.plateColor(a, i);
@@ -15057,6 +15308,29 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       px.putImageData(img, 0, 0);
       if (this.layer === "wind" && a.f.windX) this.arrows(a, px);
+      if (a.f.flow && ["relief", "rain", "rocks", "temp"].includes(this.layer)) this.rivers(a, px);
+    }
+    // rivers: a line from each river cell to the cell it drains into, wider for more water
+    rivers(a, px) {
+      const f = a.f, k2 = scaleOf(a) ** 2;
+      const classes = [[RIVERS.great * k2, 1.6], [RIVERS.river * k2, 1], [RIVERS.stream * k2, 0.55]], paths = classes.map(() => []);
+      for (let i = 0; i < a.n; i++) {
+        const v = f.flow[i], d = f.down[i];
+        if (v < classes[2][0] || d < 0 || f.lake[i] >= 0) continue;
+        paths[classes.findIndex(([thr]) => v >= thr)].push(i);
+      }
+      px.strokeStyle = RIVER;
+      px.lineCap = "round";
+      classes.forEach(([, lw], c) => {
+        px.lineWidth = lw;
+        px.beginPath();
+        for (const i of paths[c]) {
+          const d = f.down[i];
+          px.moveTo(i % a.w + 0.5, (i / a.w | 0) + 0.5);
+          px.lineTo(d % a.w + 0.5, (d / a.w | 0) + 0.5);
+        }
+        px.stroke();
+      });
     }
     // wind arrows every few cells, drawn on the map canvas in cell units
     arrows(a, px) {
@@ -15098,7 +15372,10 @@ dd.q4{color:#c58cff;font-weight:600}
       const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
       if (f.plate) parts.push(`\u043F\u043B\u0438\u0442\u0430 ${f.plate[i] + 1}, \u043A\u043E\u0440\u0430 ${f.crust[i] > 0.5 ? "\u043C\u0430\u0442\u0435\u0440\u0438\u043A\u043E\u0432\u0430\u044F" : "\u043E\u043A\u0435\u0430\u043D\u0438\u0447\u0435\u0441\u043A\u0430\u044F"}`);
       if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
-      if (f.land) parts.push(f.land[i] ? "\u0441\u0443\u0448\u0430" : "\u043C\u043E\u0440\u0435");
+      if (f.land) parts.push(f.lake && f.lake[i] >= 0 ? a.lakes[f.lake[i]].salt ? "\u0441\u043E\u043B\u0451\u043D\u043E\u0435 \u043E\u0437\u0435\u0440\u043E" : "\u043E\u0437\u0435\u0440\u043E" : f.land[i] ? "\u0441\u0443\u0448\u0430" : "\u043C\u043E\u0440\u0435");
+      const rk = f.flow && f.lake[i] < 0 ? riverKind(a, i) : null;
+      if (rk) parts.push({ stream: "\u0440\u0443\u0447\u0435\u0439", river: "\u0440\u0435\u043A\u0430", great: "\u0431\u043E\u043B\u044C\u0448\u0430\u044F \u0440\u0435\u043A\u0430" }[rk]);
+      if (f.alluvium && f.alluvium[i] > 0.3) parts.push("\u043F\u043E\u0439\u043C\u0430");
       parts.push(`\u0432\u044B\u0441\u043E\u0442\u0430 ${f.elev[i].toFixed(3)}`);
       if (f.temp) parts.push(`${f.temp[i].toFixed(1)}\xB0` + (f.trange && f.land[i] ? ` (\u0440\u0430\u0437\u043C\u0430\u0445 \u0433\u043E\u0434\u0430 ${Math.round(f.trange[i])}\xB0)` : ""));
       if (f.windX) {
@@ -15111,6 +15388,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (geo.rock && f.land[i]) {
         const ores2 = ORE_GENESIS.all().filter((o) => o.region !== "goldVein" && o.region !== "magma" && geo.ores[o.region] > 0).map((o) => `${o.label} ${LEVEL_WORDS[geo.ores[o.region]]}`);
         if (geo.flags.goldVein) ores2.push("\u0437\u043E\u043B\u043E\u0442\u0430\u044F \u0436\u0438\u043B\u0430");
+        if (geo.placer > 0) ores2.push(`\u0437\u043E\u043B\u043E\u0442\u043E\u0439 \u043F\u0435\u0441\u043E\u043A ${LEVEL_WORDS[geo.placer]}`);
         if (geo.flags.magma) ores2.push("\u043C\u0430\u0433\u043C\u0430");
         if (ores2.length) parts.push(ores2.join(", "));
       }
@@ -16025,8 +16303,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.41.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 fd67f6d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.42.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 4dc6911" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;
