@@ -13,3 +13,10 @@ export const ROADS = {
     foothills: 2.4, highlands: 4, swamp: 3.5, volcano: 4, ice: 8, water: 25},
   levels: [{wear: 0.25, label: 'тропа', width: 0.45}, {wear: 1.2, label: 'дорога', width: 0.7}, {wear: 4, label: 'тракт', width: 1}],
 };
+
+// Sea lanes between harbour towns (atlas/sea.js): sailed every `every` years to the `links` nearest
+// harbours within `reach` cells (×`lighthouse` for a town with a lighthouse) of a realm that trades;
+// a cell of water costs `cost` (a cell of meadow road costs 1), a sailed lane takes `ease` of it off;
+// `traffic` and `decay` as for roads; `levels`: wear from which a cell is a lane, a sea road.
+export const SEA = {every: 2, links: 3, reach: 140, lighthouse: 1.4, cost: 0.45, ease: 0.5, traffic: 700, decay: 0.75,
+  levels: [{wear: 0.3, label: 'морская тропа', width: 0.5}, {wear: 1.5, label: 'морской путь', width: 0.9}]};

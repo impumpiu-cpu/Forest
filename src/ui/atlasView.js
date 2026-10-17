@@ -18,6 +18,8 @@ import {newAtlas, runNextStage, atlasDone, landDone} from '../atlas/generate.js'
 import {historyLength, seasonLabel, eraPlan} from '../atlas/history.js';
 import {townAt, landOf, townLabel} from '../atlas/peoples.js';
 import {roadLevel} from '../atlas/roads.js';
+import {seaLevelOf} from '../atlas/sea.js';
+import {SEA} from '../data/roads.js';
 import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
 import {stateOf, stateLabel, attitude, ruinAt, relation} from '../atlas/diplomacy.js';
 import {realmOf, realmLabel} from '../atlas/realms.js';
@@ -132,7 +134,7 @@ export class AtlasView {
     else if (this.layer === 'biomes') html = Object.entries(BIOME_KINDS).filter(([k]) => k !== 'feature').map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter(b => b.kind === k).map(b => sw(b.color, b.label)).join('')).join('') + '<b>леса</b> темнее, гари светлее';
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
     else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + sw([110, 60, 130], 'гниль');
-    else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв');
+    else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; пунктир по воде — морские пути гаваней; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв');
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
@@ -254,6 +256,7 @@ export class AtlasView {
     px.putImageData(img, 0, 0);
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
     if (a.f.road && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
+    if (a.f.sea && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawLanes(a, px);
     if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawLairs(a, px);
     if (a.ruins && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawRuins(a, px);
     if (a.towns && ['relief', 'biomes', 'peoples', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
@@ -295,6 +298,27 @@ export class AtlasView {
       }
       px.stroke();
     });
+  }
+
+  // sea lanes: pale dashed lines over the water between harbours, wider the more sailed
+  drawLanes(a, px) {
+    const r = a.f.sea, w = a.w, k = Math.min(a.w, a.h) / 192, min = SEA.levels[0].wear;
+    px.lineCap = 'butt'; px.setLineDash([2 * k, 2 * k]);
+    SEA.levels.forEach((L, lvl) => {
+      px.strokeStyle = lvl === 1 ? 'rgba(230,240,250,0.9)' : 'rgba(190,210,230,0.7)';
+      px.lineWidth = Math.max(0.35, L.width * k); px.beginPath();
+      for (let i = 0; i < a.n; i++) {
+        if (r[i] < min || seaLevelOf(r[i]) !== lvl) continue;
+        const x = i % w, y = (i / w) | 0;
+        for (const [dx, dy] of [[1, 0], [0, 1], [1, 1], [-1, 1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= w || ny >= a.h || r[ny * w + nx] < min) continue;
+          px.moveTo(x + 0.5, y + 0.5); px.lineTo(nx + 0.5, ny + 0.5);
+        }
+      }
+      px.stroke();
+    });
+    px.setLineDash([]);
   }
 
   // towns: a square in the people's colour, bigger for bigger towns; the first towns of a people ringed
@@ -444,6 +468,7 @@ export class AtlasView {
     const land = landOf(a, i);
     if (land) parts.push(`земли: ${land.people.label} ${Math.round(land.share * 100)}%`);
     if (a.f.road && a.f.road[i] >= ROADS.levels[0].wear) parts.push(ROADS.levels[roadLevel(a.f.road[i])].label);
+    if (a.f.sea && a.f.sea[i] >= SEA.levels[0].wear) parts.push(SEA.levels[seaLevelOf(a.f.sea[i])].label);
     const lair = lairAt(a, i);
     if (lair) { const L = LAIRS.get(lair.kind); parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}`); }
     if (a.fauna && !f.ocean[i]) {

@@ -15,6 +15,7 @@ import {SPECIES} from '../data/species.js';
 import {scaleOf} from './tectonics.js';
 import {townFx, might, raidShare, townLabel} from './towns.js';
 import {realmOf, realmPeople, realmLabel, realmLabelGen, seatFallen, stepRealms} from './realms.js';
+import {laneBetween} from './sea.js';
 
 const D = DIPLOMACY;
 
@@ -115,8 +116,8 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     // trade routes: road-joined towns of the two near each other
     let routes = 0;
     if (trades(a, p, q)) {
-      for (const t of towns) if (t.realm === p) for (const o of towns) if (o.realm === q && Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
-        a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) {
+      for (const t of towns) if (t.realm === p) for (const o of towns) if (o.realm === q && ((Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
+        a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) || laneBetween(a, t, o))) {
         routes += t.built.includes('mint') || o.built.includes('mint') ? 2 : 1;   // coin carries further than barter
         // folk of each settle in the other's town (of another race; kin need no settling)
         if (!kin) for (const [x, y] of [[t, o.people], [o, t.people]]) {

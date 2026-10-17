@@ -100,7 +100,8 @@ export function stepRealms(a, rnd, say) {
     const atWar = Object.entries(a.rel || {}).some(([kk, x]) => x.war && kk.split(':').includes(r.id));
     for (const t of a.towns) {
       if (!t.alive || t.realm !== r.id || t === seat || t.tier < 2) continue;
-      const far = Math.hypot(t.x - seat.x, t.y - seat.y) / (DIPLOMACY.front * k);
+      // a harbour town has the sea's trade of its own, and stands further from the seat than its road
+      const far = Math.hypot(t.x - seat.x, t.y - seat.y) / (DIPLOMACY.front * k) + (t.built.includes('harbor') && !seat.built.includes('harbor') ? SCHISM.harbor : 0);
       if (t.pop >= SCHISM.edge * seat.pop && far >= SCHISM.far) {
         t.contender = (t.contender || 0) + 1;
         if (t.contender === SCHISM.years) say(`${cap1(townLabel(t, 0))} ${t.name} не меньше ${townLabel(seat, 2)} ${seat.name} и стоит далеко от ${townGender(seat) === 'f' ? 'неё' : 'него'}: в державе «${realmLabel(a, r.id)}» зреет раскол.`);

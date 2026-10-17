@@ -23,6 +23,7 @@ import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
 import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
+import {seaAccess} from './sea.js';
 import {meet, raceState, stepDiplomacy, trades, raidGraves} from './diplomacy.js';
 import {foundRealm, joinRealm, realmLabel, realmTowns} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -197,7 +198,7 @@ export function stepPeoples(a, rnd, say) {
     let feed = 0, c = 0;
     for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
     const fx = townFx(t);
-    const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
+    const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
     const target = Math.min(feeds, room(fx));
     t.pop = Math.max(10, t.pop + 0.14 * (1 + 0.6 * fx.prestige) * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
     // what the town needs most gets built; a big town builds faster

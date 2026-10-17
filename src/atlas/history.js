@@ -11,8 +11,10 @@ import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {ERAS, WILD_YEARS, FAUNA} from '../data/history.js';
 import {ELDER_YEARS, YOUNG_YEARS, WORLD_PEOPLES} from '../data/peoples.js';
 import {ROADS} from '../data/roads.js';
-import {arrive, stepPeoples} from './peoples.js';
+import {arrive, stepPeoples, townLabel} from './peoples.js';
 import {wearRoads} from './roads.js';
+import {sailLanes} from './sea.js';
+import {SEA} from '../data/roads.js';
 import {LAIRS} from '../data/lairs.js';
 import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
@@ -93,6 +95,8 @@ export function stepHistory(a) {
     stepPeoples(a, rnd, t => say(a, t));
     if ((H.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
       roadsLine(a, wearRoads(a), t => say(a, t));
+    if ((H.step - wildEnd) % (SEA.every * SEASONS_PER_YEAR) === 0)
+      for (const [p, q] of sailLanes(a)) say(a, `Корабли ${townLabel(p, 2)} ${p.name} проложили морской путь в ${townLabel(q, 1)} ${q.name}.`);
   }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);

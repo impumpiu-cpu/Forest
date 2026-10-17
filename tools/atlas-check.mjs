@@ -15,7 +15,7 @@ import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES, FUTURE_PEOPLES} from '../src/data/townBuildings.js';
 import {placeHas, townFx, room} from '../src/atlas/towns.js';
-import {ROADS} from '../src/data/roads.js';
+import {ROADS, SEA} from '../src/data/roads.js';
 import {RIVERS} from '../src/data/hydrology.js';
 import {DIPLOMACY} from '../src/data/diplomacy.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
@@ -29,7 +29,7 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
-const hist = {schisms: 0, moved: 0, realms: 0, kinWars: 0, undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
+const hist = {lanes: 0, harbors: 0, schisms: 0, moved: 0, realms: 0, kinWars: 0, undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
 
 // the catalogue of town buildings holds together: links to the local map, prerequisites, conditions,
 // peoples and effects are all known, and every people can house and feed a hamlet
@@ -76,6 +76,8 @@ function townsCheck(a, tag) {
     hist.pop[t.people] = (hist.pop[t.people] || 0) + (t.alive ? t.pop : 0);
   }
   for (let i = 0; i < a.n; i++) if (f.road[i] >= ROADS.levels[0].wear) { hist.roads++; if (f.ocean[i]) seaRoad++; }
+  let landLane = 0; if (f.sea) for (let i = 0; i < a.n; i++) if (f.sea[i] >= SEA.levels[0].wear) { hist.lanes++; if (!f.ocean[i]) landLane++; }
+  hist.harbors += a.towns.filter(t => t.alive && t.built.includes('harbor')).length;
   for (const pe of a.peoples) for (let j = 0; j < pe.u.length; j++) if (pe.u[j] > 0 && pe.K[j] <= 0) homeless++;
   // towns at least 6 years old with a town of their own people close by have a worn road at their door
   const towns = a.towns.filter(t => t.alive && a.hist.year - t.founded >= 6);
@@ -120,6 +122,7 @@ function townsCheck(a, tag) {
   check(`${tag}: города на суше`, wet === 0, wet ? `${wet} в воде` : '');
   check(`${tag}: города строят только то, что им можно, где можно и в своём порядке; живут в своих домах`, !misbuilt, misbuilt);
   check(`${tag}: дороги не идут по морю`, seaRoad === 0, seaRoad ? `${seaRoad} клеток` : '');
+  check(`${tag}: морские пути не идут по суше`, landLane === 0, landLane ? `${landLane} клеток` : '');
   check(`${tag}: народы живут только там, где их земля их держит`, homeless === 0, homeless ? `${homeless} клеток` : '');
 }
 
@@ -332,6 +335,7 @@ console.log('Народы:');
 for (const P of WORLD_PEOPLES.all()) check(`  ${P.label} живут в мире`, (hist.towns[P.id] || 0) > 0, `городов ${hist.towns[P.id] || 0} на ${hist.worlds} миров, в среднем ${Math.round((hist.pop[P.id] || 0) / hist.worlds)} жителей на мир`);
 check('  города строят всё', Object.keys(hist.built).length === Object.keys(CATEGORIES).length, Object.entries(CATEGORIES).map(([k, l]) => `${l} ${hist.built[k] || 0}`).join(', '));
 check('  дороги наезжены', hist.roads > 0 && hist.linked[0] >= 0.8 * hist.linked[1], `${hist.linked[0]} из ${hist.linked[1]} городов с соседями своего народа стоят у дороги; клеток дорог ${hist.roads}`);
+check('  гавани ходят по морю', hist.harbors > 0 && hist.lanes > 0, `гаваней ${hist.harbors} на ${hist.worlds} миров, клеток морских путей ${hist.lanes}`);
 check('  народы теснят чудовищ', hist.cleared > 0, `выжжено логов: ${hist.cleared}`);
 check('  мёртвые встают из курганов и пепелищ', hist.undead > 0 && hist.undeadRaids > 0 && hist.undeadCleared > 0, `${hist.undead} логов на ${hist.worlds} миров: ` + LAIRS.filter(L => L.undead).map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', ') + `; набегов удачных ${hist.undeadRaids}; выжжено ${hist.undeadCleared}`);
 check('  племена грабят города, города разоряют станы', hist.raidsWon > 0 && hist.raidsLost > 0 && hist.tribesCleared > 0, `набегов удачных ${hist.raidsWon}, отбито (вместе с мертвецами) ${hist.raidsLost}; станов разорено ${hist.tribesCleared}`);
