@@ -101,13 +101,21 @@ export class AtlasView {
     $('atlasRandom').addEventListener('click', () => { this.cfg.seed = String(100000 + Math.floor(Math.random() * 899999)); this.save(); this.sync(); });
     $('atlasGo').addEventListener('click', () => this.generate());
     $('atlasPause').addEventListener('click', () => { this.paused = !this.paused; this.syncPause(); if (!this.paused) this.run(); });
-    $('atlasBack').addEventListener('click', () => { clearTimeout(this.timer); this.onBack(); });
+    $('atlasBack').addEventListener('click', () => { this.stop(); this.onBack(); });
     const cv = $('atlasMap');
     cv.addEventListener('pointermove', e => this.hover(e));
     cv.addEventListener('pointerleave', () => { $('atlasReadout').textContent = 'Наведите на карту, чтобы увидеть клетку.'; });
   }
 
   show() { this.sync(); if (!this.atlas) this.generate(); }
+
+  // leaving the screen: the generation halts between frames; if it was not finished, it waits as paused and «Дальше» continues it
+  stop() {
+    clearTimeout(this.timer); this.timer = 0;
+    const a = this.atlas;
+    if (a && !atlasDone(a)) this.paused = true;
+    this.syncPause();
+  }
 
   sync() {
     $('atlasSeed').value = this.cfg.seed;
@@ -168,7 +176,7 @@ export class AtlasView {
 
   syncPause() {
     const b = $('atlasPause'), a = this.atlas, busy = a && landDone(a) && !atlasDone(a);
-    b.hidden = !busy && !this.paused;
+    b.hidden = !busy && !(this.paused && a && !atlasDone(a));
     b.textContent = this.paused ? 'Дальше' : 'Пауза';
   }
 

@@ -49,13 +49,16 @@ let world = null, running = false;
 
 const menu = new Menu({onStart: start, onResume: showGame});
 const atlasView = new AtlasView({onBack: showLaunch});
+let screen = 'launch';
 
 // the screens before the game: the launch choice, the world polygon (Мир) and the local map settings (Карта)
 const SCREENS = ['launch', 'atlas', 'menu', 'game'];
-function only(id) { for (const s of SCREENS) $(s).hidden = s !== id; $('explain').hidden = id !== 'menu'; }
+function only(id) { screen = id; for (const s of SCREENS) $(s).hidden = s !== id; $('explain').hidden = id !== 'menu'; }
 
+// the main menu: the game loop stops (the world stays in memory), the world generation halts between frames
 function showLaunch() {
-  running = false;
+  running = false; acc = 0;
+  atlasView.stop();
   hideEnd(); only('launch');
   document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
   $('launchResume').hidden = !world;
@@ -75,6 +78,12 @@ $('launchWorld').addEventListener('click', showAtlas);
 $('launchMap').addEventListener('click', showMenu);
 $('launchResume').addEventListener('click', () => showGame());
 $('menuBack').addEventListener('click', showLaunch);
+// Esc returns to the main menu from any screen, except while typing in a text field
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || screen === 'launch' || e.target.closest('input[type=text], textarea, select')) return;
+  if (screen === 'game' && world?.over) return;
+  e.preventDefault(); showLaunch();
+});
 
 function start(cfg) {
   world = newGame(cfg);
