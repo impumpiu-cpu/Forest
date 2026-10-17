@@ -208,6 +208,7 @@ export function stepPeoples(a, rnd, say) {
       if (!b) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
       t.built.push(b.id);
+      if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
       if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
       else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
     }
@@ -258,6 +259,18 @@ export function stepPeoples(a, rnd, say) {
     return mine ? both / mine : 0;
   };
   stepDiplomacy(a, rnd, say, overlap);
+}
+
+// a bridge (or a ferry, half as good) at a town takes the ford out of the roads' cost on the river
+// cells beside it (atlas/roads.js stepCost reads a.f.bridge)
+function markCrossing(a, i, v) {
+  a.f.bridge ||= new Float32Array(a.n);
+  const x0 = i % a.w, y0 = (i / a.w) | 0;
+  const k2 = scaleOf(a) ** 2;
+  for (let y = Math.max(0, y0 - 1); y <= Math.min(a.h - 1, y0 + 1); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(a.w - 1, x0 + 1); x++) {
+    const j = y * a.w + x;   // only the river cells have a ford to take away
+    if (!a.f.ocean[j] && a.f.flow[j] >= RIVERS.river * k2) a.f.bridge[j] = Math.max(a.f.bridge[j], v);
+  }
 }
 
 // how much the living lairs whose territory reaches a town press on it, 0 … ~1.5

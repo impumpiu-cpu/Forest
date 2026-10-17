@@ -78,7 +78,10 @@ LAIRS.registerAll([
 // themselves, 'ruins' — by a burnt town). They live off the rot, not prey, and raid any town in
 // reach; what they kill leaves graves, and the rot grows. The peoples fight them as they fight a
 // lair. Vampires wait for the towns to have folk to hide among.
-export const ROT = {seed: 0.08, diffuse: 0.08, decay: 0.02, frost: 0.04, heat: 0.03, ancient: [2, 5], ancientGraves: 0.7, ruinGraves: 0.6, raidGraves: 0.12};
+export const ROT = {seed: 0.08, diffuse: 0.08, decay: 0.02, frost: 0.04, heat: 0.03, ancient: [2, 5], ancientGraves: 0.7, ruinGraves: 0.6, raidGraves: 0.12,
+  // the wards of a mage tower and a temple of the fallen: extra fading of the rot around the town (a season),
+  // and how much stronger a town with a mage tower stands against the dead
+  wardMage: 0.06, wardTemple: 0.03, wardMight: 1.8};
 
 // a tribe's camp stands where its race's home suits the biome at least this much
 export const TRIBE_HOME = 0.45;

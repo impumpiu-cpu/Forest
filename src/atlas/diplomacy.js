@@ -117,7 +117,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     if (trades(a, p, q)) {
       for (const t of towns) if (t.realm === p) for (const o of towns) if (o.realm === q && Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
         a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) {
-        routes++;
+        routes += t.built.includes('mint') || o.built.includes('mint') ? 2 : 1;   // coin carries further than barter
         // folk of each settle in the other's town (of another race; kin need no settling)
         if (!kin) for (const [x, y] of [[t, o.people], [o, t.people]]) {
           x.folk ||= {};

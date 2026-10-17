@@ -79,6 +79,7 @@ export function placeHas(a, i, need) {
     case 'flat': return f.flat[i] > 0.85;
     case 'caves': return around(a, i, 2, j => rock(j) === 'limestone' || rock(j) === 'basalt');
     case 'road': return around(a, i, 1, j => f.road[j] >= ROADS.levels[1].wear);
+    case 'graves': return around(a, i, 3, j => (f.barrows?.[j] || 0) >= 0.2);
     case 'warm': return f.temp[i] >= 12;
     case 'dry': return around(a, i, 3, j => ['steppe', 'desert', 'savanna'].includes(bio(j)));
   }
@@ -96,7 +97,7 @@ export function canBuild(a, t, b) {
   if (b.requires && !b.requires.every(id => t.built.includes(id))) return false;
   if (b.requiresAny && !b.requiresAny.some(id => t.built.includes(id))) return false;
   const pk = t.place ||= {};
-  const has = need => (need === 'road' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change, roads do
+  const has = need => (need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change; roads and graves do
   if (b.needs && !b.needs.every(has)) return false;
   if (b.needsAny && !b.needsAny.some(has)) return false;
   return true;

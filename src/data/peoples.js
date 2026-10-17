@@ -79,7 +79,7 @@ export const TIERS = [
     label: {elves: ['селение', 'селение', 'селения', 'селении', 'селением'], dwarves: ['посёлок', 'посёлок', 'посёлка', 'посёлке', 'посёлком'],
       humans: ['деревня', 'деревню', 'деревни', 'деревне', 'деревней'], orcs: ['становище', 'становище', 'становища', 'становище', 'становищем']},
     gender: {elves: 'n', dwarves: 'm', humans: 'f', orcs: 'n'}},
-  {pop: 500, needsAny: ['market', 'stonewall', 'hiddenpaths', 'tunnels', 'warcamp', 'temple', 'ancestorhall'],
+  {pop: 500, needsAny: ['market', 'stonewall', 'hiddenpaths', 'tunnels', 'earthwall', 'temple', 'ancestorhall'],
     label: {elves: ['город', 'город', 'города', 'городе', 'городом'], dwarves: ['крепость', 'крепость', 'крепости', 'крепости', 'крепостью'],
       humans: ['город', 'город', 'города', 'городе', 'городом'], orcs: ['твердыня', 'твердыню', 'твердыни', 'твердыне', 'твердыней']},
     gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'f'}},

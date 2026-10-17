@@ -16,6 +16,10 @@
 //   requires      buildings the town must already have, all of them; requiresAny — at least one
 //   max           how many a town may have (houses and fields can be many), 1 if not said
 //   fx            what it gives, per building (EFFECTS below)
+//   What some buildings do beyond their effects: a bridge or ferry takes the ford out of the road's cost
+//   at the town (atlas/roads.js), a mint doubles the warmth of the town's trade routes (atlas/diplomacy.js),
+//   a harbour opens the sea lanes (atlas/sea.js), a mage tower and a temple of the fallen hold the rot
+//   off (atlas/lairs.js).
 //   local         the building of the local map it stands for (data/buildings.js id), if there is one;
 //                 the rest exist only on the world map for now
 //   notable       the chronicle tells when it is built (also everything from tier 2 up)
@@ -48,7 +52,7 @@ export const PLACE_NEEDS = {
   clay: 'глина: пойма, глинистый сланец или известняк', stone: 'камень: склоны или скалы рядом',
   fertile: 'плодородная земля', forest: 'лес рядом', pasture: 'луга, степь или саванна рядом',
   steep: 'крутые склоны', flat: 'ровная земля', caves: 'пещеры: известняк или базальт', road: 'наезженная дорога',
-  warm: 'тёплый климат', dry: 'степь, пустыня или саванна рядом',
+  warm: 'тёплый климат', dry: 'степь, пустыня или саванна рядом', graves: 'курганы былых битв рядом',
 };
 
 const B = (id, name, g, cat, tier, peoples, fx, more = {}) => ({id, name, g, cat, tier, peoples, fx, max: 1, ...more});
@@ -88,6 +92,8 @@ TOWN_BUILDINGS.registerAll([
   B('vineyard', 'виноградники', 'pl', 'food', 2, [...H, ...E], {trade: 0.15, prestige: 0.05}, {needs: ['warm', 'fertile']}),
   // ── raw materials
   B('woodcut', 'лесосека', 'f', 'raw', 0, [...H, ...D, ...O], {prod: 0.1}, {needs: ['forest']}),
+  // elves do not fell the wood: they take what it gives — honey, wax, resin, dyes
+  B('forestry', 'лесной промысел', 'm', 'raw', 0, E, {prod: 0.15, trade: 0.05}, {needs: ['forest']}),
   B('sawmill', 'лесопилка', 'f', 'raw', 1, [...H, ...D], {prod: 0.15}, {needs: ['forest'], local: 'sawmill'}),
   B('quarry', 'каменоломня', 'f', 'raw', 0, [...H, ...D], {prod: 0.1}, {needs: ['stone'], local: 'quarry'}),
   B('claypit', 'глиняный карьер', 'm', 'raw', 0, [...H, ...D], {prod: 0.05}, {needs: ['clay']}),
@@ -121,13 +127,17 @@ TOWN_BUILDINGS.registerAll([
   B('market', 'рынок', 'm', 'trade', 1, ALL, {trade: 0.3, prestige: 0.05}),
   B('warehouse', 'торговые склады', 'pl', 'trade', 2, [...H, ...D], {trade: 0.15}, {requires: ['market']}),
   B('caravanserai', 'караван-сарай', 'm', 'trade', 2, [...H, ...O], {trade: 0.25}, {needs: ['road', 'dry']}),
-  B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E, ...O], {trade: 0.35}, {needs: ['coast'], requiresAny: ['pier', 'shipyard']}),
+  // the harbour opens the sea lanes (atlas/sea.js): traffic to other harbours, faster than any road
+  B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E, ...O], {trade: 0.35}, {needs: ['coast'], requiresAny: ['pier', 'shipyard'], notable: true}),
+  B('lighthouse', 'маяк', 'm', 'trade', 1, [...H, ...E], {trade: 0.1, defence: 0.05}, {needs: ['coast'], requiresAny: ['pier', 'fishhut']}),
+  B('riverpier', 'речная пристань', 'f', 'trade', 1, [...H, ...E, ...O], {trade: 0.1, food: 0.05}, {needs: ['river'], requiresAny: ['ferry', 'fishhut']}),
   B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {needs: ['precious'], requires: ['market'], pop: 800, capital: true}),
   // ── defence
   B('palisade', 'частокол', 'm', 'defence', 1, [...H, ...E, ...O], {defence: 0.25}, {needs: ['forest'], local: 'palisade'}),
   B('watchtower', 'сторожевая вышка', 'f', 'defence', 1, ALL, {defence: 0.15}, {local: 'watchtower'}),
   B('hiddenpaths', 'тайные тропы', 'pl', 'defence', 1, E, {defence: 0.35}, {needs: ['forest']}),
   B('warcamp', 'боевой стан', 'm', 'defence', 1, O, {defence: 0.3, prestige: 0.1}),
+  B('earthwall', 'земляной вал', 'm', 'defence', 1, O, {defence: 0.3}, {requires: ['warcamp']}),
   B('stonewall', 'каменные стены', 'pl', 'defence', 1, [...H, ...D], {defence: 0.5}, {needs: ['stone'], requires: ['quarry']}),
   B('tunnels', 'подземные ходы', 'pl', 'defence', 1, D, {defence: 0.2, trade: 0.1}, {needsAny: ['steep', 'caves']}),
   B('tower', 'крепостные башни', 'pl', 'defence', 2, [...H, ...D], {defence: 0.3}, {requires: ['stonewall']}),
@@ -140,11 +150,15 @@ TOWN_BUILDINGS.registerAll([
   B('ancestorhall', 'зал предков', 'm', 'faith', 1, D, {faith: 0.3, prestige: 0.1}, {requires: ['shrine']}),
   B('temple', 'храм', 'm', 'faith', 1, [...H, ...E, ...D], {faith: 0.3, prestige: 0.1}, {requires: ['shrine']}),
   B('crypt', 'усыпальница', 'f', 'faith', 2, [...H, ...D], {faith: 0.1}),
+  // by the barrows of old battles: the fallen are laid to rest, and the rot around fades (atlas/lairs.js stepRot)
+  B('fallentemple', 'храм павших', 'm', 'faith', 1, ALL, {faith: 0.25, health: 0.05}, {needs: ['graves'], requires: ['shrine'], notable: true}),
+  B('catacombs', 'катакомбы', 'pl', 'faith', 2, D, {faith: 0.1, housing: 1, health: 0.05}, {needs: ['caves'], requires: ['ancestorhall']}),
   B('cemetery', 'кладбище', 'n', 'faith', 1, ALL, {faith: 0.05, health: 0.05}),
   // ── lore
   B('school', 'школа', 'f', 'lore', 2, [...H, ...E, ...D], {lore: 0.15}),
   B('library', 'библиотека', 'f', 'lore', 2, [...H, ...E, ...D], {lore: 0.3, prestige: 0.1}, {requires: ['school'], pop: 800}),
-  B('magetower', 'башня мага', 'f', 'lore', 2, [...H, ...E], {lore: 0.3, defence: 0.15, prestige: 0.15}, {pop: 800}),
+  // the wards of a mage tower hold the dead off (atlas/lairs.js: the undead's raids on it fail oftener, the rot around fades)
+  B('magetower', 'башня мага', 'f', 'lore', 2, [...H, ...E], {lore: 0.3, defence: 0.15, prestige: 0.15}, {pop: 800, notable: true}),
   // ── power and fame
   B('eldershall', 'дом старейшин', 'm', 'power', 0, ALL, {prestige: 0.1}),
   B('townhall', 'ратуша', 'f', 'power', 2, [...H, ...D], {prestige: 0.2, trade: 0.05}, {requires: ['eldershall']}),

@@ -36,8 +36,8 @@ function baseCosts(a, people) {
   if (!all[people]) { const P = WORLD_PEOPLES.get(people), out = new Float64Array(a.n); for (let i = 0; i < a.n; i++) out[i] = baseCost(a, i, P); all[people] = out; }
   return all[people];
 }
-// what a step into a cell costs now: the base, eased by the road worn there
-const stepCost = (a, base, i) => base[i] * (1 - ROADS.roadEase * Math.min(1, a.f.road[i] / ROADS.levels[1].wear));
+// what a step into a cell costs now: the base, less the ford where a bridge stands, eased by the road worn there
+const stepCost = (a, base, i) => (base[i] - (a.f.bridge ? ROADS.river * a.f.bridge[i] : 0)) * (1 - ROADS.roadEase * Math.min(1, a.f.road[i] / ROADS.levels[1].wear));
 
 // A* from one cell to another; the path as a list of cells, or null
 function findPath(a, s, t, people, scratch) {

@@ -137,8 +137,17 @@ function seedRot(a, rnd) {
 // a season of the rot: it seeps from the graves, spreads, and fades — faster in frost and heat
 export function stepRot(a) {
   const F = a.fauna, N = F.W * F.H, rot = a.rot;
-  const B = a.rotBuf ||= {src: new Float32Array(N), cnt: new Float32Array(N), tmp: new Float32Array(N), cell: Int32Array.from({length: a.n}, (_, i) => (a.f.ocean[i] ? -1 : faunaCell(a, i)))};
-  const {src, cnt, tmp, cell} = B;
+  const B = a.rotBuf ||= {src: new Float32Array(N), cnt: new Float32Array(N), tmp: new Float32Array(N), ward: new Float32Array(N), cell: Int32Array.from({length: a.n}, (_, i) => (a.f.ocean[i] ? -1 : faunaCell(a, i)))};
+  const {src, cnt, tmp, cell, ward} = B;
+  // the wards of mage towers and temples of the fallen: the rot fades faster around them
+  ward.fill(0);
+  for (const t of a.towns || []) {
+    if (!t.alive) continue;
+    const w = (t.built.includes('magetower') ? ROT.wardMage : 0) + (t.built.includes('fallentemple') ? ROT.wardTemple : 0);
+    if (!w) continue;
+    const j = cell[t.i], x0 = j % F.W, y0 = (j / F.W) | 0;
+    for (let y = Math.max(0, y0 - 1); y <= Math.min(F.H - 1, y0 + 1); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(F.W - 1, x0 + 1); x++) ward[y * F.W + x] = Math.max(ward[y * F.W + x], w);
+  }
   src.fill(0); cnt.fill(0);
   if (a.f.barrows) for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j < 0) continue; src[j] += a.f.barrows[i]; cnt[j]++; }
   else for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j >= 0) cnt[j]++; }
@@ -149,7 +158,7 @@ export function stepRot(a) {
     let s = 0, c = 0;
     if (x > 0) { s += tmp[j - 1]; c++; } if (x < F.W - 1) { s += tmp[j + 1]; c++; }
     if (y > 0) { s += tmp[j - F.W]; c++; } if (y < F.H - 1) { s += tmp[j + F.W]; c++; }
-    const T = a.rotTemp[j], fade = ROT.decay + (T < 0 ? ROT.frost * Math.min(1, -T / 10) : 0) + (T > 20 ? ROT.heat * Math.min(1, (T - 20) / 10) : 0);
+    const T = a.rotTemp[j], fade = ROT.decay + ward[j] + (T < 0 ? ROT.frost * Math.min(1, -T / 10) : 0) + (T > 20 ? ROT.heat * Math.min(1, (T - 20) / 10) : 0);
     rot[j] = Math.max(0, Math.min(1, tmp[j] + ROT.seed * src[j] / cnt[j] + ROT.diffuse * (s / c - tmp[j]) - fade * tmp[j]));
   }
 }
@@ -257,7 +266,8 @@ function tribeRaid(a, lair, L, rnd) {
   let target = null, bd = T.reach * k;
   for (const t of a.towns) if (t.alive && dislikes(t)) { const d = dist(lair, t); if (d < bd) { bd = d; target = t; } }
   if (!target) return null;
-  const fx = townFx(target), tribe = lair.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * rnd()), town = might(target, fx) * (0.6 + 0.8 * rnd());
+  const fx = townFx(target), tribe = lair.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * rnd());
+  const town = might(target, fx) * (0.6 + 0.8 * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);   // the tower's wards turn the dead
   const who = L.leads ? L.leads : cap1(race.plural) + (L.riders ? ` ${L.on}` : ''), P = WORLD_PEOPLES.get(target.people);
   target.raided = a.hist.year;
   if (tribe > town) {
