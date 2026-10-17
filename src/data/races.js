@@ -1,4 +1,7 @@
 // Thinking races. Each entry is a species (data/species.js registers them) with a few more fields:
+//   kind     — 'race' (data/species.js KINDS)
+//   home     — how much a biome suits them, 0..1: the carrying capacity of their people on the world
+//              map (atlas/peoples.js) and, later, where their tribes camp; biomes from data/biomes.js
 //   rel      — which line of the relations table (data/relations.js) speaks for it
 //   special  — hard limits per characteristic [min, max] (data/special.js); nothing pushes past them
 //   peoples  — sub-races: `shift` moves the limits, `mods` and `innate` add to the species'
@@ -17,7 +20,8 @@ const person = (size, skin) => ({shape: 'person', size, skin});
 const NEEDS = ['food', 'rest', 'warmth'];
 
 export const RACES = [
-  {id: 'human', label: 'человек', plural: 'люди', rel: 'human', settle: 6,
+  {id: 'human', kind: 'race', home: {meadow: 1, steppe: 0.8, shrubland: 0.8, forest: 0.6, savanna: 0.55, foothills: 0.4, taiga: 0.35, jungle: 0.3, swamp: 0.15, desert: 0.05},
+    label: 'человек', plural: 'люди', rel: 'human', settle: 6,
     hp: 1, speed: 0.13, heatHarm: 70, attack: {power: 1, cooldown: 12}, look: person(0.62, '#e2b48c'),
     special: {S: [1, 10], P: [1, 10], E: [1, 10], C: [1, 10], I: [1, 10], A: [1, 10], L: [1, 10]},
     body: {adult: 16, life: 70, fertility: 0.5, diet: 'всеядный'},
@@ -27,7 +31,8 @@ export const RACES = [
     names: N(['Ждан', 'Горислав', 'Тихон', 'Мирон', 'Ярослав', 'Ратибор', 'Боян', 'Светозар', 'Велимир', 'Добрыня', 'Радим'],
       ['Милава', 'Веселина', 'Любава', 'Злата', 'Дарина', 'Снежана', 'Забава', 'Агния', 'Олеся', 'Василиса', 'Ведана'])},
 
-  {id: 'halfling', label: 'полурослик', plural: 'полурослики', rel: 'halfling', settle: 1.6,
+  {id: 'halfling', kind: 'race', home: {meadow: 1, forest: 0.6, shrubland: 0.5, steppe: 0.3, foothills: 0.3, swamp: 0.1},
+    label: 'полурослик', plural: 'полурослики', rel: 'halfling', settle: 1.6,
     hp: 0.8, speed: 0.12, heatHarm: 70, attack: {power: 0.8, cooldown: 11}, look: person(0.48, '#eac29c'),
     special: {S: [1, 6], P: [3, 11], E: [2, 9], C: [3, 10], I: [1, 10], A: [4, 12], L: [4, 13]},
     body: {adult: 20, life: 100, fertility: 0.5, diet: 'всеядный, ест часто'},
@@ -37,7 +42,8 @@ export const RACES = [
     values: {family: 2, work: 1.4, faith: 0.6, gold: 0.6, nature: 0.8},
     names: N(['Тобо', 'Хэмли', 'Мунго', 'Бодрик', 'Олдо', 'Фирмин'], ['Мелла', 'Розалина', 'Лютика', 'Тилли', 'Марга', 'Пеона'])},
 
-  {id: 'giant', label: 'великан', plural: 'великаны', rel: 'giant', settle: 0.6,
+  {id: 'giant', kind: 'race', home: {highlands: 1, foothills: 0.6, tundra: 0.6, taiga: 0.3, ice: 0.3},
+    label: 'великан', plural: 'великаны', rel: 'giant', settle: 0.6,
     hp: 1.5, speed: 0.13, heatHarm: 70, attack: {power: 1.3, cooldown: 14}, look: person(0.8, '#c9a27e'),
     special: {S: [8, 15], P: [1, 8], E: [7, 14], C: [1, 8], I: [1, 7], A: [1, 6], L: [1, 8]},
     body: {adult: 25, life: 150, fertility: 0.25, diet: 'всеядный, ест за троих'},
@@ -47,7 +53,8 @@ export const RACES = [
     values: {strength: 2, freedom: 1.6, family: 1, nature: 0.8},
     names: N(['Грумбар', 'Ормунд', 'Тяжебор', 'Валуй', 'Скальд'], ['Хельга', 'Ингрид', 'Гудрун', 'Ассвейг'])},
 
-  {id: 'elf', label: 'лесной эльф', plural: 'лесные эльфы', rel: 'elf', settle: 1,
+  {id: 'elf', kind: 'race', home: {forest: 1, jungle: 0.85, taiga: 0.7, meadow: 0.55, swamp: 0.25, shrubland: 0.3, savanna: 0.15, foothills: 0.2},
+    label: 'лесной эльф', plural: 'лесные эльфы', rel: 'elf', settle: 1,
     hp: 0.9, speed: 0.14, heatHarm: 70, attack: {power: 0.9, cooldown: 11}, look: person(0.6, '#f1dcc0'),
     special: {S: [1, 7], P: [5, 13], E: [1, 7], C: [3, 11], I: [3, 11], A: [5, 13], L: [1, 10]},
     body: {adult: 50, life: 600, fertility: 0.08, diet: 'почти травоядный'},
@@ -57,7 +64,8 @@ export const RACES = [
     values: {nature: 2.2, ancestors: 1.4, knowledge: 1, freedom: 0.8},
     names: N(['Аэлдир', 'Илетан', 'Келориэн', 'Тандрил', 'Сильвар'], ['Элоэна', 'Ниэль', 'Лаириэль', 'Аэрин', 'Иримэ'])},
 
-  {id: 'darkelf', label: 'тёмный эльф', plural: 'тёмные эльфы', rel: 'darkelf', settle: 0,
+  {id: 'darkelf', kind: 'race', home: {underground: 1, foothills: 0.3, jungle: 0.3, swamp: 0.3, forest: 0.2},
+    label: 'тёмный эльф', plural: 'тёмные эльфы', rel: 'darkelf', settle: 0,
     hp: 0.9, speed: 0.14, heatHarm: 70, attack: {power: 0.9, cooldown: 11}, look: person(0.6, '#5b5470'),
     special: {S: [1, 7], P: [6, 13], E: [2, 8], C: [2, 10], I: [4, 12], A: [5, 13], L: [1, 10]},
     body: {adult: 50, life: 500, fertility: 0.1, diet: 'всеядный'},
@@ -69,7 +77,8 @@ export const RACES = [
 
   // Dwarves: long-lived, slow to breed, at home under the mountain. Their gut takes fermented
   // grain best of all: a sober dwarf works slower, a dwarf with a cup of braga works better.
-  {id: 'dwarf', label: 'гном', plural: 'гномы', rel: 'dwarf', settle: 1.3,
+  {id: 'dwarf', kind: 'race', home: {foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4},
+    label: 'гном', plural: 'гномы', rel: 'dwarf', settle: 1.3,
     hp: 1.15, speed: 0.115, heatHarm: 82, attack: {power: 1.1, cooldown: 12}, look: person(0.55, '#d59a78'),
     special: {S: [4, 12], P: [3, 10], E: [6, 14], C: [1, 8], I: [3, 11], A: [1, 8], L: [1, 10]},
     body: {adult: 40, life: 300, fertility: 0.2, diet: 'всеядный, брага — тоже еда'},
@@ -88,7 +97,8 @@ export const RACES = [
     names: N(['Торгрим', 'Балдур', 'Хрольф', 'Брокк', 'Ульфгар', 'Кетиль'], ['Дагна', 'Хильда', 'Ингвара', 'Тордис', 'Бруна'])},
 
   // The greenskins: orcs, goblins, ogres, trolls — kin, they may share a camp.
-  {id: 'orc', label: 'орк', plural: 'орки', rel: 'greenskin', settle: 0,
+  {id: 'orc', kind: 'race', home: {steppe: 1, savanna: 0.9, taiga: 0.6, foothills: 0.6, meadow: 0.6, swamp: 0.6, tundra: 0.5, desert: 0.4, highlands: 0.3, shrubland: 0.5},
+    label: 'орк', plural: 'орки', rel: 'greenskin', settle: 0,
     hp: 1.15, speed: 0.13, heatHarm: 70, attack: {power: 1.2, cooldown: 12}, look: person(0.66, '#6f9a4a'),
     special: {S: [5, 13], P: [2, 9], E: [5, 13], C: [1, 9], I: [1, 8], A: [3, 10], L: [1, 9]},
     body: {adult: 12, life: 50, fertility: 0.75, diet: 'хищник-всеядный'},
@@ -98,7 +108,8 @@ export const RACES = [
     values: {strength: 2.2, ancestors: 1.2, faith: 0.8, family: 0.6},
     names: N(['Угрук', 'Мазгаш', 'Зугрог', 'Брагот', 'Корх'], ['Ургха', 'Мокра', 'Зарга', 'Гхаша'])},
 
-  {id: 'goblin', label: 'гоблин', plural: 'гоблины', rel: 'greenskin', settle: 0,
+  {id: 'goblin', kind: 'race', home: {foothills: 0.9, underground: 0.8, swamp: 0.5, forest: 0.5, taiga: 0.4, shrubland: 0.4, highlands: 0.4},
+    label: 'гоблин', plural: 'гоблины', rel: 'greenskin', settle: 0,
     hp: 0.65, speed: 0.135, heatHarm: 70, attack: {power: 0.7, cooldown: 10}, look: person(0.45, '#8fb04c'),
     special: {S: [1, 5], P: [4, 11], E: [1, 7], C: [1, 8], I: [2, 11], A: [5, 12], L: [3, 11]},
     body: {adult: 6, life: 30, fertility: 0.95, diet: 'ест что угодно'},
@@ -108,7 +119,8 @@ export const RACES = [
     values: {gold: 2.2, knowledge: 1.2, freedom: 1},
     names: N(['Сникль', 'Ризз', 'Гнырк', 'Кривоух'], ['Зизи', 'Шмыга', 'Пикша'])},
 
-  {id: 'ogre', label: 'огр', plural: 'огры', rel: 'greenskin', settle: 0,
+  {id: 'ogre', kind: 'race', home: {foothills: 0.8, forest: 0.7, taiga: 0.6, swamp: 0.5, shrubland: 0.4, meadow: 0.3},
+    label: 'огр', plural: 'огры', rel: 'greenskin', settle: 0,
     hp: 1.8, speed: 0.115, heatHarm: 70, attack: {power: 1.6, cooldown: 16}, look: person(0.86, '#9b8a6a'),
     special: {S: [10, 15], P: [1, 6], E: [8, 14], C: [1, 6], I: [1, 5], A: [1, 5], L: [1, 8]},
     body: {adult: 15, life: 60, fertility: 0.3, diet: 'ест что угодно, за четверых'},
@@ -119,7 +131,8 @@ export const RACES = [
     names: N(['Мордоб', 'Брюхан', 'Грыз', 'Тяжак'], ['Хлоба'])},
 
   // Trolls regrow wounds unless fire or acid stops it.
-  {id: 'troll', label: 'тролль', plural: 'тролли', rel: 'greenskin', settle: 0,
+  {id: 'troll', kind: 'race', home: {swamp: 0.9, forest: 0.8, tundra: 0.7, taiga: 0.7, ice: 0.5, foothills: 0.4},
+    label: 'тролль', plural: 'тролли', rel: 'greenskin', settle: 0,
     hp: 1.5, speed: 0.135, heatHarm: 62, attack: {power: 1.5, cooldown: 13}, look: person(0.76, '#4f8f86'),
     special: {S: [7, 13], P: [3, 10], E: [6, 13], C: [1, 7], I: [1, 7], A: [4, 11], L: [1, 8]},
     body: {adult: 14, life: 80, fertility: 0.5, diet: 'хищник'},
@@ -135,7 +148,8 @@ export const RACES = [
     names: N(['Ракаш', 'Вуджин', 'Зекки', 'Тумбо'], ['Шанка', 'Мвира'])},
 
   // Gnolls: hyena-folk, scavengers. Carrion does them no harm; the rot does not take them.
-  {id: 'gnoll', label: 'гнолл', plural: 'гноллы', rel: 'gnoll', settle: 0,
+  {id: 'gnoll', kind: 'race', home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
+    label: 'гнолл', plural: 'гноллы', rel: 'gnoll', settle: 0,
     hp: 1.05, speed: 0.14, heatHarm: 70, attack: {power: 1.2, cooldown: 12}, look: person(0.64, '#a98d5a'),
     special: {S: [4, 11], P: [5, 12], E: [5, 12], C: [1, 6], I: [1, 7], A: [4, 11], L: [1, 8]},
     body: {adult: 8, life: 40, fertility: 0.75, diet: 'падальщик'},
