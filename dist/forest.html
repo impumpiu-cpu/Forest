@@ -344,6 +344,8 @@ dd.q4{color:#c58cff;font-weight:600}
 .atlas-legend span{display:inline-flex;align-items:center;gap:5px}
 .atlas-legend i{display:inline-block;width:11px;height:11px;border-radius:2px}
 .atlas-legend b{font-weight:400;color:var(--fg);margin-left:6px}
+#atlasRels .relhead{color:var(--fg);font-family:var(--font-display);letter-spacing:.04em;margin-top:6px}
+#atlasRels .rel-war{color:var(--raider)} #atlasRels .rel-hostile{color:#e0a080} #atlasRels .rel-tense{color:var(--muted)} #atlasRels .rel-friends{color:var(--good)}
 </style>
 </head>
 <body>
@@ -386,6 +388,7 @@ dd.q4{color:#c58cff;font-weight:600}
       <div class="field"><span class="lbl">Широты</span><div class="seg wrapseg" data-akey="hemisphere"></div><small id="atlasHemiNote"></small></div>
       <div class="field"><span class="lbl">Дикая эра</span><div class="seg" data-akey="wild"></div><small id="atlasWildNote"></small></div>
       <div class="field"><span class="lbl">Эпоха древних</span><div class="seg" data-akey="elder"></div><small id="atlasElderNote"></small></div>
+      <div class="field"><span class="lbl">Эпоха молодых</span><div class="seg" data-akey="young"></div><small id="atlasYoungNote"></small></div>
       <div class="row actions">
         <button type="button" id="atlasGo" class="primary">Сотворить</button>
         <button type="button" id="atlasPause" hidden>Пауза</button>
@@ -393,6 +396,7 @@ dd.q4{color:#c58cff;font-weight:600}
       </div>
       <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="atlasStages"></ol></div>
       <dl class="kv" id="atlasStats"></dl>
+      <dl class="kv" id="atlasRels"></dl>
     </div>
     <div class="atlas-map">
       <div class="seg wrapseg" data-akey="layer"></div>
@@ -600,12 +604,12 @@ dd.q4{color:#c58cff;font-weight:600}
 <script>
 (() => {
   var __defProp = Object.defineProperty;
-  var __defNormalProp = (obj, key2, value2) => key2 in obj ? __defProp(obj, key2, { enumerable: true, configurable: true, writable: true, value: value2 }) : obj[key2] = value2;
+  var __defNormalProp = (obj, key3, value2) => key3 in obj ? __defProp(obj, key3, { enumerable: true, configurable: true, writable: true, value: value2 }) : obj[key3] = value2;
   var __export = (target, all) => {
     for (var name in all)
       __defProp(target, name, { get: all[name], enumerable: true });
   };
-  var __publicField = (obj, key2, value2) => __defNormalProp(obj, typeof key2 !== "symbol" ? key2 + "" : key2, value2);
+  var __publicField = (obj, key3, value2) => __defNormalProp(obj, typeof key3 !== "symbol" ? key3 + "" : key3, value2);
 
   // src/core/registry.js
   var _Registry = class _Registry {
@@ -2209,13 +2213,13 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return items.length ? items[items.length - 1][0] : void 0;
   }
-  function perTick(w, key2, make) {
+  function perTick(w, key3, make) {
     const s = w.scratch || (w.scratch = { tick: w.tick });
     if (s.tick !== w.tick) {
       for (const k of Object.keys(s)) delete s[k];
       s.tick = w.tick;
     }
-    return key2 in s ? s[key2] : s[key2] = make();
+    return key3 in s ? s[key3] : s[key3] = make();
   }
 
   // src/world/grid.js
@@ -2554,8 +2558,8 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/world/region.js
   var RARE = /* @__PURE__ */ new Set(["mithril"]);
-  var shift = (rnd, v, key2) => {
-    if (rnd() >= REGION_SHIFT || v === 0 && RARE.has(key2)) return v;
+  var shift = (rnd, v, key3) => {
+    if (rnd() >= REGION_SHIFT || v === 0 && RARE.has(key3)) return v;
     const k = LEVELS.indexOf(v), up = rnd() < 0.5;
     return LEVELS[Math.max(0, Math.min(LEVELS.length - 1, k + (up ? 1 : -1)))] ?? v;
   };
@@ -2962,8 +2966,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var resourceGroups = () => [.../* @__PURE__ */ new Set([...RESOURCE_GROUPS, ...RESOURCES.all().map((r) => r.group || "\u041F\u0440\u043E\u0447\u0435\u0435")])];
   for (const p of PLANTS.all()) {
-    const r = RESOURCES.get(p.resource), key2 = plantLayer(p.id);
-    r.map ?? (r.map = (w, i) => w.grid[key2]?.[i] || 0);
+    const r = RESOURCES.get(p.resource), key3 = plantLayer(p.id);
+    r.map ?? (r.map = (w, i) => w.grid[key3]?.[i] || 0);
     r.mapColor ?? (r.mapColor = p.mapColor);
   }
 
@@ -3099,8 +3103,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/settlement/query.js
-  var count = (w, key2, any = false) => w.buildings.reduce((n, b) => n + (b.key === key2 && (any || b.done) ? 1 : 0), 0);
-  var has = (w, key2) => w.buildings.some((b) => b.key === key2 && b.done);
+  var count = (w, key3, any = false) => w.buildings.reduce((n, b) => n + (b.key === key3 && (any || b.done) ? 1 : 0), 0);
+  var has = (w, key3) => w.buildings.some((b) => b.key === key3 && b.done);
   var openSites = (w) => w.buildings.filter((b) => !b.done);
   var buildingById = (w, id) => w.buildings.find((b) => b.id === id);
   var colonists = (w) => perTick(w, "colonists", () => w.agents.filter((a) => a.faction === "colony"));
@@ -4247,12 +4251,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   ]);
   for (const p of PLANTS.all()) {
-    const key2 = plantLayer(p.id);
+    const key3 = plantLayer(p.id);
     NAVMAPS.register({
-      id: key2,
+      id: key3,
       period: 300,
-      active: (w) => (!p.seasons || p.seasons.includes(season(w).id)) && inUse(w).has(key2),
-      seed: (w, i) => w.grid[key2]?.[i] >= p.ripe && w.grid.fire[i] === 0
+      active: (w) => (!p.seasons || p.seasons.includes(season(w).id)) && inUse(w).has(key3),
+      seed: (w, i) => w.grid[key3]?.[i] >= p.ripe && w.grid.fire[i] === 0
     });
   }
   NAVMAPS.register({
@@ -4991,21 +4995,21 @@ dd.q4{color:#c58cff;font-weight:600}
   var LEASE = 40;
   var table = (w) => w.reserve || (w.reserve = {});
   var live = (w, r) => r && r.until > w.tick;
-  function reserve(w, key2, a, ttl = LEASE) {
-    const R2 = table(w), r = R2[key2];
+  function reserve(w, key3, a, ttl = LEASE) {
+    const R2 = table(w), r = R2[key3];
     if (live(w, r) && r.by !== a.id) return false;
-    R2[key2] = { by: a.id, until: w.tick + ttl };
-    if (!(a.holds || (a.holds = [])).includes(key2)) a.holds.push(key2);
+    R2[key3] = { by: a.id, until: w.tick + ttl };
+    if (!(a.holds || (a.holds = [])).includes(key3)) a.holds.push(key3);
     return true;
   }
-  var isFree = (w, key2, a) => {
-    const r = w.reserve?.[key2];
+  var isFree = (w, key3, a) => {
+    const r = w.reserve?.[key3];
     return !live(w, r) || !!a && r.by === a.id;
   };
-  function release(w, key2, a) {
-    const r = w.reserve?.[key2];
-    if (r && (!a || r.by === a.id)) delete w.reserve[key2];
-    if (a?.holds) a.holds = a.holds.filter((k) => k !== key2);
+  function release(w, key3, a) {
+    const r = w.reserve?.[key3];
+    if (r && (!a || r.by === a.id)) delete w.reserve[key3];
+    if (a?.holds) a.holds = a.holds.filter((k) => k !== key3);
   }
   function releaseAll(w, a) {
     for (const k of a.holds || []) {
@@ -5017,9 +5021,9 @@ dd.q4{color:#c58cff;font-weight:600}
   function freeSlot(w, prefix, n, a) {
     let free = null;
     for (let k = 0; k < n; k++) {
-      const key2 = `${prefix}:${k}`, r = w.reserve?.[key2];
-      if (live(w, r) && a && r.by === a.id) return key2;
-      if (free == null && !live(w, r)) free = key2;
+      const key3 = `${prefix}:${k}`, r = w.reserve?.[key3];
+      if (live(w, r) && a && r.by === a.id) return key3;
+      if (free == null && !live(w, r)) free = key3;
     }
     return free;
   }
@@ -5261,8 +5265,8 @@ dd.q4{color:#c58cff;font-weight:600}
   function itemDef(type, q = 0) {
     const base = ITEMS.get(type);
     if (!q || base.quality === false) return base;
-    const key2 = type + ":" + q;
-    let d = finer.get(key2);
+    const key3 = type + ":" + q;
+    let d = finer.get(key3);
     if (!d) {
       const Q = qualityOf(q);
       d = {
@@ -5281,7 +5285,7 @@ dd.q4{color:#c58cff;font-weight:600}
       d.rank = Q.rank;
       d.keep = !!Q.keep;
       if (base.tool) d.tool = Object.fromEntries(Object.entries(base.tool).map(([j, m]) => [j, 1 + (m - 1) * (1 + Q.tool) + Q.tool * 0.5]));
-      finer.set(key2, d);
+      finer.set(key3, d);
     }
     return d;
   }
@@ -5289,8 +5293,8 @@ dd.q4{color:#c58cff;font-weight:600}
   function def(inst) {
     const d = itemDef(inst.type, inst.q);
     if (!inst.name && !inst.silver) return d;
-    const key2 = inst.type + ":" + inst.q + ":" + (inst.name || "") + ":" + (inst.silver ? "s" : "");
-    let n = named.get(key2);
+    const key3 = inst.type + ":" + inst.q + ":" + (inst.name || "") + ":" + (inst.silver ? "s" : "");
+    let n = named.get(key3);
     if (!n) {
       n = { ...d };
       if (inst.silver) {
@@ -5303,7 +5307,7 @@ dd.q4{color:#c58cff;font-weight:600}
         n.label = `${inst.name} (${n.label})`;
         n.short = inst.name;
       }
-      named.set(key2, n);
+      named.set(key3, n);
     }
     return n;
   }
@@ -5470,8 +5474,8 @@ dd.q4{color:#c58cff;font-weight:600}
   function bestLoadout(w, a, pool) {
     const byType = /* @__PURE__ */ new Map();
     for (const it of pool) {
-      const key2 = it.type + ":" + (it.q || 0) + (it.silver ? ":s" : ""), k = byType.get(key2);
-      if (!k || it.dur > k.dur) byType.set(key2, it);
+      const key3 = it.type + ":" + (it.q || 0) + (it.silver ? ":s" : ""), k = byType.get(key3);
+      if (!k || it.dur > k.dur) byType.set(key3, it);
     }
     const items = [...byType.values()];
     const hand = items.filter((it) => def(it).slot === "hand");
@@ -6415,7 +6419,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   ]);
   for (const p of PLANTS.filter((x) => x.job)) {
-    const J = p.job, key2 = plantLayer(p.id);
+    const J = p.job, key3 = plantLayer(p.id);
     const inSeason = (w) => !p.seasons || p.seasons.includes(season(w).id);
     const keep = (w) => typeof J.keep === "function" ? J.keep(w) : J.keep;
     JOBS.register({
@@ -6427,7 +6431,7 @@ dd.q4{color:#c58cff;font-weight:600}
       skill: J.skill || "gathering",
       tier: J.tier,
       runner: "harvest",
-      nav: key2,
+      nav: key3,
       resource: p.resource,
       carry: J.carry,
       time: J.time,
@@ -6442,10 +6446,10 @@ dd.q4{color:#c58cff;font-weight:600}
         const k = keep(w), have = w.stock[p.resource] || 0;
         return have < k ? (0.3 + (typeof J.keep === "function" ? 0.4 : 0.2) * (1 - have / k)) * (J.weight ?? 1) : -1;
       },
-      valid: (w, i) => inSeason(w) && w.grid[key2][i] >= p.ripe && w.grid.fire[i] === 0,
+      valid: (w, i) => inSeason(w) && w.grid[key3][i] >= p.ripe && w.grid.fire[i] === 0,
       take: (w, i, a) => {
-        w.grid[key2][i] -= p.take;
-        if (w.grid[key2][i] < p.ripe) w.nav.dirty(key2);
+        w.grid[key3][i] -= p.take;
+        if (w.grid[key3][i] < p.ripe) w.nav.dirty(key3);
         if (J.hurt && a) {
           a.hp -= J.hurt * (0.5 + w.rngs.colony());
           if (a.mem) a.mem.stung = (a.mem.stung || 0) + 0.2;
@@ -6516,8 +6520,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const ks = by ? SPECIES.get(by.species) : null, raid = by?.faction === "raiders";
     r.cause = !by ? `\u0443\u043C\u0435\u0440 \u043E\u0442 ${cause}` : raid ? "\u043F\u043E\u0433\u0438\u0431 \u0432 \u0431\u043E\u044E \u0441 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0430\u043C\u0438" : `\u043F\u043E\u0433\u0438\u0431: ${ks.label}`;
     if (a.gender === "f") r.cause = r.cause.replace("\u043F\u043E\u0433\u0438\u0431", "\u043F\u043E\u0433\u0438\u0431\u043B\u0430").replace("\u0443\u043C\u0435\u0440 \u043E\u0442", "\u0443\u043C\u0435\u0440\u043B\u0430 \u043E\u0442");
-    const key2 = !by ? "\u043E\u0442 " + cause : raid ? "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438" : ks.plural || ks.label;
-    w.chronicle.deaths[key2] = (w.chronicle.deaths[key2] || 0) + 1;
+    const key3 = !by ? "\u043E\u0442 " + cause : raid ? "\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438" : ks.plural || ks.label;
+    w.chronicle.deaths[key3] = (w.chronicle.deaths[key3] || 0) + 1;
   }
   function sampleChronicle(w) {
     const c = w.chronicle, col = colonists(w);
@@ -6527,8 +6531,8 @@ dd.q4{color:#c58cff;font-weight:600}
       a.stats.moodN++;
     }
   }
-  var add = (obj, key2, n = 1) => {
-    obj[key2] = (obj[key2] || 0) + n;
+  var add = (obj, key3, n = 1) => {
+    obj[key3] = (obj[key3] || 0) + n;
   };
   var daysLived = (w, r) => ((r.died ?? r.left ?? w.tick) - r.arrived) / DAY;
 
@@ -7958,9 +7962,9 @@ dd.q4{color:#c58cff;font-weight:600}
     const need = (r, v) => v + (r === "wood" ? fuelReserve(w) : 0);
     return Object.entries(cost).filter(([r, v]) => (w.stock[r] || 0) < need(r, v)).map(([r, v]) => [r, Math.ceil(need(r, v) - (w.stock[r] || 0))]);
   }
-  function eligible(w, key2) {
-    const d = BUILDINGS.get(key2);
-    return !d.captureOnly && count(w, key2, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w)) && (!d.key || (w.stock[d.key] || 0) >= 1);
+  function eligible(w, key3) {
+    const d = BUILDINGS.get(key3);
+    return !d.captureOnly && count(w, key3, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w)) && (!d.key || (w.stock[d.key] || 0) >= 1);
   }
   var lotSize = (d) => d.lot || [2, 2];
   function lotFertility(w, x, y, lw, lh) {
@@ -7999,9 +8003,9 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return best;
   }
-  function laySite(w, key2) {
-    const d = BUILDINGS.get(key2);
-    if (!eligible(w, key2) || !canAfford(w, d.cost)) return null;
+  function laySite(w, key3) {
+    const d = BUILDINGS.get(key3);
+    if (!eligible(w, key3) || !canAfford(w, d.cost)) return null;
     const lot = findLot(w, d);
     if (lot < 0) {
       log(w, "\u0412\u043E\u043A\u0440\u0443\u0433 \u043B\u0430\u0433\u0435\u0440\u044F \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043C\u0435\u0441\u0442\u0430 \u043F\u043E\u0434 \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0443.", "build");
@@ -8010,7 +8014,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
     if (d.key) recomputeMods(w);
     const [lw, lh] = lotSize(d);
-    const b = { id: w.bldSeq++, key: key2, x: lot % w.w, y: lot / w.w | 0, w: lw, h: lh, progress: 0, done: false, cells: [] };
+    const b = { id: w.bldSeq++, key: key3, x: lot % w.w, y: lot / w.w | 0, w: lw, h: lh, progress: 0, done: false, cells: [] };
     const g3 = w.grid;
     for (let yy = 0; yy < lh; yy++) for (let xx = 0; xx < lw; xx++) {
       const j = (b.y + yy) * w.w + b.x + xx;
@@ -8674,7 +8678,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var RECIPES_ALL = () => RECIPES.all();
   var COUNCIL_FROM = 19;
   var COUNCIL_TO = 21.5;
-  var eligible2 = (w, key2) => eligible(w, key2) && missing(w, BUILDINGS.get(key2).cost).every(([r]) => obtainable(w, r));
+  var eligible2 = (w, key3) => eligible(w, key3) && missing(w, BUILDINGS.get(key3).cost).every(([r]) => obtainable(w, r));
   function councilDue(w) {
     const h = hourOf(w.tick);
     return h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
@@ -9024,12 +9028,12 @@ dd.q4{color:#c58cff;font-weight:600}
     const terms = termsOf(w, c), askPrice2 = (g3) => askAt(g3, terms.b), bidPrice2 = (g3) => bidAt(g3, terms.b);
     deal.by = terms.name;
     deal.b = terms.b;
-    const note = (list2, label3, n, gold) => {
-      const x = list2.find((e) => e[0] === label3);
+    const note = (list2, label4, n, gold) => {
+      const x = list2.find((e) => e[0] === label4);
       if (x) {
         x[1] += n;
         x[2] += gold;
-      } else list2.push([label3, n, gold]);
+      } else list2.push([label4, n, gold]);
     };
     const free = () => c.capacity - goodsUnits(c.goods);
     const cash = () => treasury(w);
@@ -10316,9 +10320,9 @@ dd.q4{color:#c58cff;font-weight:600}
   function layPlants(w) {
     w.plantBeds ?? (w.plantBeds = {});
     for (const p of PLANTS.all()) {
-      const key2 = plantLayer(p.id);
-      if (w.grid[key2] && w.plantBeds[p.id]) continue;
-      const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key2)), g3 = w.grid, lvl = floraLevel(w, p.id);
+      const key3 = plantLayer(p.id);
+      if (w.grid[key3] && w.plantBeds[p.id]) continue;
+      const rnd = mulberry(seedNumber(String(w.cfg.seed) + ":" + key3)), g3 = w.grid, lvl = floraLevel(w, p.id);
       const layer3 = new Float32Array(w.n), beds = [], ok = new Set(p.terrain.map((t) => TERRAIN.get(t).code));
       const byWater = (i) => {
         const x = i % w.w, y = i / w.w | 0;
@@ -10335,7 +10339,7 @@ dd.q4{color:#c58cff;font-weight:600}
           layer3[i] = p.start[0] + rnd() * (p.start[1] - p.start[0]);
         }
       }
-      g3[key2] = layer3;
+      g3[key3] = layer3;
       w.plantBeds[p.id] = beds;
     }
   }
@@ -10786,9 +10790,9 @@ dd.q4{color:#c58cff;font-weight:600}
     const map = perTick(w, "orders", () => ({}));
     const b = w.buildings.find((x) => x.key === station && x.done);
     if (!b || !freeBench(w, b, a)) return false;
-    const key2 = station + ":" + accessKey(a);
-    if (!(key2 in map)) map[key2] = b.order ? canMake(a, RECIPES.get(b.order.recipe)) : !!pickRecipe(w, station, void 0, a);
-    return map[key2];
+    const key3 = station + ":" + accessKey(a);
+    if (!(key3 in map)) map[key3] = b.order ? canMake(a, RECIPES.get(b.order.recipe)) : !!pickRecipe(w, station, void 0, a);
+    return map[key3];
   }
   function stationPriority(w, station, a = null) {
     const b = w.buildings.find((x) => x.key === station && x.done);
@@ -13681,11 +13685,11 @@ dd.q4{color:#c58cff;font-weight:600}
       ctx.drawImage(this.terrain.c, 0, 0, Wpx, Hpx);
       ctx.imageSmoothingEnabled = true;
       if (view2.layer !== "world") {
-        const key2 = view2.layer + ":" + [...view2.resHidden].join(",");
-        if (t0 - this.tField > 150 || this.fieldKey !== key2) {
+        const key3 = view2.layer + ":" + [...view2.resHidden].join(",");
+        if (t0 - this.tField > 150 || this.fieldKey !== key3) {
           this.paintField(w, view2.layer, view2);
           this.tField = t0;
-          this.fieldKey = key2;
+          this.fieldKey = key3;
         }
         ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx);
       }
@@ -14107,12 +14111,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     build() {
       document.querySelectorAll("#menu .seg[data-key]").forEach((box) => {
-        const key2 = box.dataset.key;
-        box.innerHTML = OPTS[key2].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join("");
+        const key3 = box.dataset.key;
+        box.innerHTML = OPTS[key3].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join("");
         box.addEventListener("click", (e) => {
           const b = e.target.closest("button");
           if (!b) return;
-          this.cfg[key2] = typeof DEFAULT_CFG[key2] === "number" ? +b.dataset.val : b.dataset.val;
+          this.cfg[key3] = typeof DEFAULT_CFG[key3] === "number" ? +b.dataset.val : b.dataset.val;
           this.save();
           this.sync();
         });
@@ -14159,12 +14163,12 @@ dd.q4{color:#c58cff;font-weight:600}
       $("colonistsOut").textContent = c.colonists;
       $("cfgLightning").checked = !!c.lightning;
       document.querySelectorAll("#menu .seg[data-key]").forEach((box) => {
-        const key2 = box.dataset.key;
-        box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.val === String(c[key2]))));
+        const key3 = box.dataset.key;
+        box.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.val === String(c[key3]))));
       });
-      for (const [key2, fn] of Object.entries(NOTES)) {
-        const el = document.querySelector(`[data-note="${key2}"]`);
-        if (el) el.textContent = fn(c[key2]);
+      for (const [key3, fn] of Object.entries(NOTES)) {
+        const el = document.querySelector(`[data-note="${key3}"]`);
+        if (el) el.textContent = fn(c[key3]);
       }
       this.schedulePreview();
     }
@@ -14212,7 +14216,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var SEASON_DAYS2 = 30;
   var SEASONS_PER_YEAR = 4;
   var YEAR_DAYS = SEASON_DAYS2 * SEASONS_PER_YEAR;
-  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1, plates: 1, hemisphere: "north", wild: 1, elder: 1 };
+  var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1, plates: 1, hemisphere: "north", wild: 1, elder: 1, young: 1 };
 
   // src/data/geology.js
   var PLATE_COUNTS = [
@@ -14345,7 +14349,7 @@ dd.q4{color:#c58cff;font-weight:600}
       this.v = new Int32Array(cap);
       this.size = 0;
     }
-    push(key2, val) {
+    push(key3, val) {
       if (this.size === this.k.length) {
         const k = new Float64Array(this.size * 2), v = new Int32Array(this.size * 2);
         k.set(this.k);
@@ -14357,30 +14361,30 @@ dd.q4{color:#c58cff;font-weight:600}
       const K = this.k, V = this.v;
       while (i > 0) {
         const p = i - 1 >> 1;
-        if (K[p] <= key2) break;
+        if (K[p] <= key3) break;
         K[i] = K[p];
         V[i] = V[p];
         i = p;
       }
-      K[i] = key2;
+      K[i] = key3;
       V[i] = val;
     }
     // removes the smallest; its cost is left in this.top
     pop() {
       const K = this.k, V = this.v, out = V[0];
       this.top = K[0];
-      const n = --this.size, key2 = K[n], val = V[n];
+      const n = --this.size, key3 = K[n], val = V[n];
       let i = 0;
       while (true) {
         let c = 2 * i + 1;
         if (c >= n) break;
         if (c + 1 < n && K[c + 1] < K[c]) c++;
-        if (K[c] >= key2) break;
+        if (K[c] >= key3) break;
         K[i] = K[c];
         V[i] = V[c];
         i = c;
       }
-      K[i] = key2;
+      K[i] = key3;
       V[i] = val;
       return out;
     }
@@ -14532,17 +14536,17 @@ dd.q4{color:#c58cff;font-weight:600}
         if (nx >= w || ny >= h) continue;
         const B3 = plate[ny * w + nx];
         if (B3 === A) continue;
-        const key2 = Math.min(A, B3) * 64 + Math.max(A, B3);
-        if (!pairs.has(key2)) {
+        const key3 = Math.min(A, B3) * 64 + Math.max(A, B3);
+        if (!pairs.has(key3)) {
           const pa = plates[Math.min(A, B3)], pb = plates[Math.max(A, B3)];
           const ux = pb.cx - pa.cx, uy = pb.cy - pa.cy, len = Math.hypot(ux, uy) || 1;
-          pairs.set(key2, { sum: ((pa.vx - pb.vx) * ux + (pa.vy - pb.vy) * uy) / len, cnt: 1 });
+          pairs.set(key3, { sum: ((pa.vx - pb.vx) * ux + (pa.vy - pb.vy) * uy) / len, cnt: 1 });
         }
       }
     }
     const pairConv = /* @__PURE__ */ new Map();
-    for (const [key2, e] of pairs) {
-      const A = Math.floor(key2 / 64), B3 = key2 % 64, conv = e.sum / e.cnt;
+    for (const [key3, e] of pairs) {
+      const A = Math.floor(key3 / 64), B3 = key3 % 64, conv = e.sum / e.cnt;
       const I = Math.min(1.2, Math.max(0.35, Math.abs(conv) / 0.9));
       pairConv.set(A * 64 + B3, { conv, I });
       pairConv.set(B3 * 64 + A, { conv, I });
@@ -14741,7 +14745,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const fields2 = { coll: f.coll, arc: f.arc, basv: f.basv, volc: f.volc, oldv: f.oldv, craton: f.craton, low, warm };
     for (const o of ORE_GENESIS.filter((x) => !x.from)) {
       const prov = fbm2(rnd, w, h, Math.max(w, h) / 9, 4, 0.55), pot = new Float32Array(n);
-      const byRock = [], sets = Object.entries(o.settings).map(([key2, wt]) => [fields2[key2], wt]);
+      const byRock = [], sets = Object.entries(o.settings).map(([key3, wt]) => [fields2[key3], wt]);
       for (const r2 of ROCK_BY_CODE) if (r2) byRock[r2.code] = o.rocks[r2.id] || 0;
       let r = 0;
       for (let i = 0; i < n; i++) {
@@ -15296,6 +15300,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (wooded < 1) add2("meadow", wt * (1 - wooded));
       const rock = ROCK_BY_CODE[f.rock[j]]?.id, cave = rock === "limestone" ? 0.15 : rock === "basalt" ? 0.08 : 0;
       if (cave) add2("underground", wt * cave);
+      if (f.barrows && f.barrows[j] > 0) add2("barrows", wt * 0.5 * f.barrows[j]);
     }
     const out = {};
     for (const [id, v] of Object.entries(acc3)) {
@@ -15478,7 +15483,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var ERAS = new Registry("era");
   ERAS.registerAll([
     { id: "wild", label: "\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430", note: "\u043C\u0438\u0440 \u0431\u0435\u0437 \u0440\u0430\u0437\u0443\u043C\u043D\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432: \u0437\u0432\u0435\u0440\u0438 \u0440\u0430\u0441\u0441\u0435\u043B\u044F\u044E\u0442\u0441\u044F \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u0431\u0438\u043E\u043C\u0430\u043C, \u0445\u0438\u0449\u043D\u0438\u043A\u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0442 \u0437\u0430 \u0434\u043E\u0431\u044B\u0447\u0435\u0439, \u0447\u0443\u0434\u043E\u0432\u0438\u0449\u0430 \u0432\u044C\u044E\u0442 \u043B\u043E\u0433\u043E\u0432\u0430 \u0438 \u0434\u0435\u043B\u044F\u0442 \u0432\u043B\u0430\u0434\u0435\u043D\u0438\u044F" },
-    { id: "elder", label: "\u042D\u043F\u043E\u0445\u0430 \u0434\u0440\u0435\u0432\u043D\u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432", note: "\u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u044D\u043B\u044C\u0444\u044B \u0438 \u0433\u043D\u043E\u043C\u044B: \u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u044B \u0440\u0430\u0441\u043F\u043E\u043B\u0437\u0430\u044E\u0442\u0441\u044F \u0444\u0440\u043E\u043D\u0442\u043E\u043C \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u043A\u0440\u0430\u044F\u043C, \u043E\u0441\u043D\u043E\u0432\u044B\u0432\u0430\u044E\u0442 \u0433\u043E\u0440\u043E\u0434\u0430, \u0441\u0442\u0440\u043E\u044F\u0442\u0441\u044F, \u043D\u0430\u0435\u0437\u0436\u0438\u0432\u0430\u044E\u0442 \u0434\u043E\u0440\u043E\u0433\u0438 \u0438 \u0442\u0435\u0441\u043D\u044F\u0442 \u0447\u0443\u0434\u043E\u0432\u0438\u0449" }
+    { id: "elder", label: "\u042D\u043F\u043E\u0445\u0430 \u0434\u0440\u0435\u0432\u043D\u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432", note: "\u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u044D\u043B\u044C\u0444\u044B \u0438 \u0433\u043D\u043E\u043C\u044B: \u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u044B \u0440\u0430\u0441\u043F\u043E\u043B\u0437\u0430\u044E\u0442\u0441\u044F \u0444\u0440\u043E\u043D\u0442\u043E\u043C \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u043A\u0440\u0430\u044F\u043C, \u043E\u0441\u043D\u043E\u0432\u044B\u0432\u0430\u044E\u0442 \u0433\u043E\u0440\u043E\u0434\u0430, \u0441\u0442\u0440\u043E\u044F\u0442\u0441\u044F, \u043D\u0430\u0435\u0437\u0436\u0438\u0432\u0430\u044E\u0442 \u0434\u043E\u0440\u043E\u0433\u0438 \u0438 \u0442\u0435\u0441\u043D\u044F\u0442 \u0447\u0443\u0434\u043E\u0432\u0438\u0449" },
+    { id: "young", label: "\u042D\u043F\u043E\u0445\u0430 \u043C\u043E\u043B\u043E\u0434\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432", note: "\u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u043B\u044E\u0434\u0438 \u0438 \u043E\u0440\u043A\u0438: \u043D\u0430\u0440\u043E\u0434\u044B \u0442\u0435\u0441\u043D\u044F\u0442 \u0434\u0440\u0443\u0433 \u0434\u0440\u0443\u0433\u0430 \u043D\u0430 \u043E\u0431\u0449\u0438\u0445 \u0437\u0435\u043C\u043B\u044F\u0445, \u0442\u043E\u0440\u0433\u0443\u044E\u0442 \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C, \u0441\u0435\u043B\u044F\u0442\u0441\u044F \u0432 \u0447\u0443\u0436\u0438\u0445 \u0433\u043E\u0440\u043E\u0434\u0430\u0445, \u0432\u0440\u0430\u0436\u0434\u0443\u044E\u0442, \u0432\u043E\u044E\u044E\u0442 \u0438 \u043C\u0438\u0440\u044F\u0442\u0441\u044F" }
   ]);
   var WILD_YEARS = [
     { years: 25, label: "\u041A\u043E\u0440\u043E\u0442\u043A\u0430\u044F" },
@@ -15558,15 +15564,105 @@ dd.q4{color:#c58cff;font-weight:600}
         mid: ["", "\u0430\u043A", "\u0438\u043D", "\u0443\u043C", "\u0430\u0440", "\u0435\u043A", "\u043E\u0434"],
         last: ["-\u0434\u0443\u043C", "\u0433\u0430\u0440\u0434", "\u0445\u0435\u0439\u043C", "\u0431\u0430\u0440", "\u0437\u0430\u0434", "\u0433\u0440\u0438\u043C", "\u0442\u043E\u0440", "\u043A\u0430\u0440\u0430\u043A", "\u0434\u0438\u043D", "\u0431\u0443\u043D\u0434"]
       }
+    },
+    {
+      id: "humans",
+      race: "human",
+      label: "\u043B\u044E\u0434\u0438",
+      labelGen: "\u043B\u044E\u0434\u0435\u0439",
+      adj: "\u043B\u044E\u0434\u0441\u043A\u043E\u0439",
+      era: "young",
+      color: [100, 150, 235],
+      arrive: { verb: "\u043F\u0440\u0438\u043F\u043B\u044B\u043B\u0438 \u0438\u0437-\u0437\u0430 \u043C\u043E\u0440\u044F", groups: 2, where: "\u043A \u0441\u0430\u043C\u043E\u043C\u0443 \u0443\u0434\u043E\u0431\u043D\u043E\u043C\u0443 \u0431\u0435\u0440\u0435\u0433\u0443", mode: "coast" },
+      home: { meadow: 1, steppe: 0.8, shrubland: 0.8, forest: 0.6, savanna: 0.55, foothills: 0.4, taiga: 0.35, jungle: 0.3, swamp: 0.15, desert: 0.05 },
+      moves: { meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1 },
+      movesElse: 0.4,
+      spread: 0.26,
+      growth: 0.24,
+      found: 0.28,
+      spacing: 12,
+      site: { water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2 },
+      taste: { housing: 1, food: 1.2, prod: 1, trade: 1.3, defence: 1, faith: 1, lore: 0.9, prestige: 1.1, health: 1 },
+      names: {
+        first: ["\u0411\u0435\u043B", "\u042F\u0440", "\u0412\u0435\u043B", "\u0421\u0432\u044F\u0442", "\u041C\u0438\u0440", "\u0413\u043B\u0430\u0434", "\u0420\u0430\u0434", "\u041E\u0441\u0442", "\u041B\u044E", "\u0417\u0432\u0435\u043D\u0438", "\u0414\u043E\u0431\u0440", "\u0412\u043B\u0430\u0434"],
+        mid: ["", "\u043E", "\u0435", "\u0438\u043D\u043E"],
+        last: ["\u0433\u0440\u0430\u0434", "\u0433\u043E\u0440\u043E\u0434", "\u0441\u043B\u0430\u0432", "\u043F\u043E\u043B\u044C", "\u0441\u043A", "\u043C\u0438\u0440", "\u0431\u043E\u0440", "\u0435\u0446", "\u0433\u043E\u0440\u0441\u043A", "\u0434\u043E\u043B"]
+      }
+    },
+    {
+      id: "orcs",
+      race: "orc",
+      label: "\u043E\u0440\u043A\u0438",
+      labelGen: "\u043E\u0440\u043A\u043E\u0432",
+      adj: "\u043E\u0440\u043E\u0447\u0438\u0439",
+      era: "young",
+      color: [210, 80, 60],
+      arrive: { verb: "\u043F\u0440\u0438\u0448\u043B\u0438 \u0441 \u0434\u0438\u043A\u0438\u0445 \u043E\u043A\u0440\u0430\u0438\u043D", groups: 2, where: "\u0442\u0443\u0434\u0430, \u0433\u0434\u0435 \u043D\u0438\u043A\u0442\u043E \u0438\u0445 \u043D\u0435 \u0436\u0434\u0430\u043B", mode: "far" },
+      home: { steppe: 1, savanna: 0.9, taiga: 0.6, foothills: 0.6, meadow: 0.6, swamp: 0.6, tundra: 0.5, desert: 0.4, highlands: 0.3, shrubland: 0.5 },
+      ores: 0.3,
+      moves: { steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2 },
+      movesElse: 0.5,
+      spread: 0.3,
+      growth: 0.26,
+      found: 0.3,
+      spacing: 13,
+      site: { water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1 },
+      taste: { housing: 1, food: 1, prod: 0.9, trade: 0.6, defence: 1.4, faith: 0.9, lore: 0.3, prestige: 1.3, health: 0.8 },
+      names: {
+        first: ["\u0413\u043E\u0440", "\u0413\u0440\u0443\u0448", "\u041C\u043E\u0440", "\u0423\u0440\u0433", "\u0417\u043E\u0433", "\u041A\u0440\u0430\u0445", "\u0428\u0430\u0433", "\u0411\u0443\u0433", "\u0413\u0440\u0430", "\u041D\u043E\u0433"],
+        mid: ["", "\u0430\u043A", "\u0443\u043A", "\u0430\u0433", "\u043E\u0440"],
+        last: ["-\u0431\u0430\u0448", "\u0433\u0430\u0442", "\u0440\u0443\u043A", "\u043C\u043E\u0433", "\u0434\u0443\u0448", "\u0437\u0430\u0433", "-\u0442\u0430\u0440", "\u043D\u0430\u043A"]
+      }
     }
   ]);
   var TIERS2 = [
-    { pop: 0, label: { elves: ["\u043F\u0440\u0438\u044E\u0442", "\u043F\u0440\u0438\u044E\u0442", "\u043F\u0440\u0438\u044E\u0442\u0430", "\u043F\u0440\u0438\u044E\u0442\u0435"], dwarves: ["\u0437\u0430\u0441\u0442\u0430\u0432\u0430", "\u0437\u0430\u0441\u0442\u0430\u0432\u0443", "\u0437\u0430\u0441\u0442\u0430\u0432\u044B", "\u0437\u0430\u0441\u0442\u0430\u0432\u0435"] }, gender: { elves: "m", dwarves: "f" } },
-    { pop: 180, label: { elves: ["\u0441\u0435\u043B\u0435\u043D\u0438\u0435", "\u0441\u0435\u043B\u0435\u043D\u0438\u0435", "\u0441\u0435\u043B\u0435\u043D\u0438\u044F", "\u0441\u0435\u043B\u0435\u043D\u0438\u0438"], dwarves: ["\u043F\u043E\u0441\u0451\u043B\u043E\u043A", "\u043F\u043E\u0441\u0451\u043B\u043E\u043A", "\u043F\u043E\u0441\u0451\u043B\u043A\u0430", "\u043F\u043E\u0441\u0451\u043B\u043A\u0435"] }, gender: { elves: "n", dwarves: "m" } },
-    { pop: 700, label: { elves: ["\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434\u0430", "\u0433\u043E\u0440\u043E\u0434\u0435"], dwarves: ["\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u044C", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u044C", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u0438", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u0438"] }, gender: { elves: "m", dwarves: "f" } },
-    { pop: 2200, label: { elves: ["\u0441\u0442\u043E\u043B\u0438\u0446\u0430", "\u0441\u0442\u043E\u043B\u0438\u0446\u0443", "\u0441\u0442\u043E\u043B\u0438\u0446\u044B", "\u0441\u0442\u043E\u043B\u0438\u0446\u0435"], dwarves: ["\u0447\u0435\u0440\u0442\u043E\u0433", "\u0447\u0435\u0440\u0442\u043E\u0433", "\u0447\u0435\u0440\u0442\u043E\u0433\u0430", "\u0447\u0435\u0440\u0442\u043E\u0433\u0435"] }, gender: { elves: "f", dwarves: "m" } }
+    {
+      pop: 0,
+      label: {
+        elves: ["\u043F\u0440\u0438\u044E\u0442", "\u043F\u0440\u0438\u044E\u0442", "\u043F\u0440\u0438\u044E\u0442\u0430", "\u043F\u0440\u0438\u044E\u0442\u0435", "\u043F\u0440\u0438\u044E\u0442\u043E\u043C"],
+        dwarves: ["\u0437\u0430\u0441\u0442\u0430\u0432\u0430", "\u0437\u0430\u0441\u0442\u0430\u0432\u0443", "\u0437\u0430\u0441\u0442\u0430\u0432\u044B", "\u0437\u0430\u0441\u0442\u0430\u0432\u0435", "\u0437\u0430\u0441\u0442\u0430\u0432\u043E\u0439"],
+        humans: ["\u0434\u0435\u0440\u0435\u0432\u043D\u044F", "\u0434\u0435\u0440\u0435\u0432\u043D\u044E", "\u0434\u0435\u0440\u0435\u0432\u043D\u0438", "\u0434\u0435\u0440\u0435\u0432\u043D\u0435", "\u0434\u0435\u0440\u0435\u0432\u043D\u0435\u0439"],
+        orcs: ["\u0441\u0442\u043E\u0439\u0431\u0438\u0449\u0435", "\u0441\u0442\u043E\u0439\u0431\u0438\u0449\u0435", "\u0441\u0442\u043E\u0439\u0431\u0438\u0449\u0430", "\u0441\u0442\u043E\u0439\u0431\u0438\u0449\u0435", "\u0441\u0442\u043E\u0439\u0431\u0438\u0449\u0435\u043C"]
+      },
+      gender: { elves: "m", dwarves: "f", humans: "f", orcs: "n" }
+    },
+    {
+      pop: 180,
+      label: {
+        elves: ["\u0441\u0435\u043B\u0435\u043D\u0438\u0435", "\u0441\u0435\u043B\u0435\u043D\u0438\u0435", "\u0441\u0435\u043B\u0435\u043D\u0438\u044F", "\u0441\u0435\u043B\u0435\u043D\u0438\u0438", "\u0441\u0435\u043B\u0435\u043D\u0438\u0435\u043C"],
+        dwarves: ["\u043F\u043E\u0441\u0451\u043B\u043E\u043A", "\u043F\u043E\u0441\u0451\u043B\u043E\u043A", "\u043F\u043E\u0441\u0451\u043B\u043A\u0430", "\u043F\u043E\u0441\u0451\u043B\u043A\u0435", "\u043F\u043E\u0441\u0451\u043B\u043A\u043E\u043C"],
+        humans: ["\u0441\u0435\u043B\u043E", "\u0441\u0435\u043B\u043E", "\u0441\u0435\u043B\u0430", "\u0441\u0435\u043B\u0435", "\u0441\u0435\u043B\u043E\u043C"],
+        orcs: ["\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0449\u0435", "\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0449\u0435", "\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0449\u0430", "\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0449\u0435", "\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0449\u0435\u043C"]
+      },
+      gender: { elves: "n", dwarves: "m", humans: "n", orcs: "n" }
+    },
+    {
+      pop: 700,
+      label: {
+        elves: ["\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434\u0430", "\u0433\u043E\u0440\u043E\u0434\u0435", "\u0433\u043E\u0440\u043E\u0434\u043E\u043C"],
+        dwarves: ["\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u044C", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u044C", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u0438", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u0438", "\u043A\u0440\u0435\u043F\u043E\u0441\u0442\u044C\u044E"],
+        humans: ["\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434\u0430", "\u0433\u043E\u0440\u043E\u0434\u0435", "\u0433\u043E\u0440\u043E\u0434\u043E\u043C"],
+        orcs: ["\u0442\u0432\u0435\u0440\u0434\u044B\u043D\u044F", "\u0442\u0432\u0435\u0440\u0434\u044B\u043D\u044E", "\u0442\u0432\u0435\u0440\u0434\u044B\u043D\u0438", "\u0442\u0432\u0435\u0440\u0434\u044B\u043D\u0435", "\u0442\u0432\u0435\u0440\u0434\u044B\u043D\u0435\u0439"]
+      },
+      gender: { elves: "m", dwarves: "f", humans: "m", orcs: "f" }
+    },
+    {
+      pop: 2200,
+      label: {
+        elves: ["\u0441\u0442\u043E\u043B\u0438\u0446\u0430", "\u0441\u0442\u043E\u043B\u0438\u0446\u0443", "\u0441\u0442\u043E\u043B\u0438\u0446\u044B", "\u0441\u0442\u043E\u043B\u0438\u0446\u0435", "\u0441\u0442\u043E\u043B\u0438\u0446\u0435\u0439"],
+        dwarves: ["\u0447\u0435\u0440\u0442\u043E\u0433", "\u0447\u0435\u0440\u0442\u043E\u0433", "\u0447\u0435\u0440\u0442\u043E\u0433\u0430", "\u0447\u0435\u0440\u0442\u043E\u0433\u0435", "\u0447\u0435\u0440\u0442\u043E\u0433\u043E\u043C"],
+        humans: ["\u0441\u0442\u043E\u043B\u0438\u0446\u0430", "\u0441\u0442\u043E\u043B\u0438\u0446\u0443", "\u0441\u0442\u043E\u043B\u0438\u0446\u044B", "\u0441\u0442\u043E\u043B\u0438\u0446\u0435", "\u0441\u0442\u043E\u043B\u0438\u0446\u0435\u0439"],
+        orcs: ["\u0441\u0442\u0430\u0432\u043A\u0430", "\u0441\u0442\u0430\u0432\u043A\u0443", "\u0441\u0442\u0430\u0432\u043A\u0438", "\u0441\u0442\u0430\u0432\u043A\u0435", "\u0441\u0442\u0430\u0432\u043A\u043E\u0439"]
+      },
+      gender: { elves: "f", dwarves: "m", humans: "f", orcs: "f" }
+    }
   ];
   var TOWN_WAR = { might: 0.9, chance: 0.08, raidLoss: 0.2, reach: 4 };
+  var YOUNG_YEARS = [
+    { years: 25, label: "\u041A\u043E\u0440\u043E\u0442\u043A\u0430\u044F" },
+    { years: 40, label: "\u041E\u0431\u044B\u0447\u043D\u0430\u044F" },
+    { years: 60, label: "\u0414\u043E\u043B\u0433\u0430\u044F" }
+  ];
   var ELDER_YEARS = [
     { years: 25, label: "\u041A\u043E\u0440\u043E\u0442\u043A\u0430\u044F" },
     { years: 40, label: "\u041E\u0431\u044B\u0447\u043D\u0430\u044F" },
@@ -15721,6 +15817,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var clamp015 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   var lv = (id) => ORE_GENESIS.get(id).levels;
   var KEYS2 = Object.keys(EFFECTS2);
+  var townLabel = (t, cs = 0) => TIERS2[t.tier].label[t.people][cs];
   function townFx(t) {
     const out = Object.fromEntries(KEYS2.map((k) => [k, 0]));
     for (const id of t.built) {
@@ -16277,6 +16374,173 @@ dd.q4{color:#c58cff;font-weight:600}
     return best;
   }
 
+  // src/data/diplomacy.js
+  var DIPLOMACY = {
+    drift: 0.2,
+    pressure: 1.2,
+    trade: 0.1,
+    tradeMax: 0.35,
+    tradeCeil: 2.5,
+    raid: 0.8,
+    warAt: -3.2,
+    weariness: 0.5,
+    peaceAt: -1.8,
+    longest: 12,
+    afterPeace: -1.2,
+    compete: { war: 0.35, hostile: 0.25, tense: 0.12, peace: 0.06, friends: 0.02 },
+    mingle: 0.012,
+    mingleMax: 0.3,
+    front: 40,
+    battleLoss: [0.12, 0.3],
+    raze: 70,
+    raiders: ["orcs"],
+    raidReach: 45,
+    raidChance: 0.15,
+    raidsPerYear: 2,
+    raidLoss: 0.15,
+    barrows: 3,
+    states: [
+      { id: "friends", from: 2, label: "\u0434\u0440\u0443\u0436\u0431\u0430" },
+      { id: "peace", from: -0.5, label: "\u043C\u0438\u0440" },
+      { id: "tense", from: -2, label: "\u043D\u0430\u0441\u0442\u043E\u0440\u043E\u0436\u0435\u043D\u043D\u043E\u0441\u0442\u044C" },
+      { id: "hostile", from: -Infinity, label: "\u0432\u0440\u0430\u0436\u0434\u0430" }
+    ]
+  };
+
+  // src/atlas/diplomacy.js
+  var D2 = DIPLOMACY;
+  function feeling(p, q) {
+    const a = SPECIES.get(WORLD_PEOPLES.get(p).race).rel, b = SPECIES.get(WORLD_PEOPLES.get(q).race).rel;
+    return RELATIONS[a]?.[b] ?? 0;
+  }
+  var key2 = (p, q) => p < q ? `${p}:${q}` : `${q}:${p}`;
+  var cap13 = (s) => s[0].toUpperCase() + s.slice(1);
+  var label3 = (id) => WORLD_PEOPLES.get(id).label;
+  var relation = (a, p, q) => a.rel?.[key2(p, q)] || null;
+  var attitude = (a, p, q) => p === q ? 5 : relation(a, p, q)?.att ?? Math.min(feeling(p, q), feeling(q, p));
+  var atWar = (a, p, q) => p !== q && !!relation(a, p, q)?.war;
+  function stateOf(a, p, q) {
+    if (atWar(a, p, q)) return "war";
+    const v = attitude(a, p, q);
+    return D2.states.find((s) => v >= s.from).id;
+  }
+  var stateLabel = (id) => id === "war" ? "\u0432\u043E\u0439\u043D\u0430" : D2.states.find((s) => s.id === id).label;
+  var trades = (a, p, q) => p === q || !atWar(a, p, q) && attitude(a, p, q) >= -1;
+  function meet(a, p, q, year) {
+    a.rel || (a.rel = {});
+    const k = key2(p, q);
+    if (!a.rel[k]) a.rel[k] = { att: Math.min(feeling(p, q), feeling(q, p)), war: null, wars: 0, routes: 0, met: year };
+    return a.rel[k];
+  }
+  function raze(a, t, by, how) {
+    t.alive = false;
+    t.died = a.hist.year;
+    a.ruins || (a.ruins = []);
+    a.ruins.push({ i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, by, year: a.hist.year, how });
+  }
+  function barrows(a, i, r) {
+    const f = a.f, x0 = i % a.w, y0 = i / a.w | 0;
+    f.barrows || (f.barrows = new Float32Array(a.n));
+    for (let y = Math.max(0, y0 - r); y <= Math.min(a.h - 1, y0 + r); y++) for (let x = Math.max(0, x0 - r); x <= Math.min(a.w - 1, x0 + r); x++) {
+      const j = y * a.w + x, d = Math.hypot(x - x0, y - y0);
+      if (!f.ocean[j] && d <= r) f.barrows[j] = Math.min(1, f.barrows[j] + 0.5 * (1 - d / (r + 1)));
+    }
+  }
+  var fight2 = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
+  function stepDiplomacy(a, rnd, say2, overlap) {
+    const k = scaleOf(a), H2 = a.hist, towns = a.towns.filter((t) => t.alive);
+    const nearest2 = (p, q) => {
+      let best = null, bd = Infinity;
+      for (const t of towns) if (t.people === p && t.alive) {
+        for (const o of towns) if (o.people === q && o.alive) {
+          const d = Math.hypot(t.x - o.x, t.y - o.y);
+          if (d < bd) {
+            bd = d;
+            best = [t, o];
+          }
+        }
+      }
+      return [best, bd];
+    };
+    for (const [kk, r] of Object.entries(a.rel || {})) {
+      const [p, q] = kk.split(":");
+      const old = Math.min(feeling(p, q), feeling(q, p));
+      let routes = 0;
+      if (trades(a, p, q)) {
+        for (const t of towns) if (t.people === p) {
+          for (const o of towns) if (o.people === q && Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k && a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) {
+            routes++;
+            for (const [x, y] of [[t, o.people], [o, t.people]]) {
+              x.folk || (x.folk = {});
+              const was = x.folk[y] || 0;
+              x.folk[y] = Math.min(D2.mingleMax, was + D2.mingle);
+              if (was < 0.1 && x.folk[y] >= 0.1 && x.tier >= 1) say2(`\u0412 ${townLabel(x, 3)} ${x.name} \u043E\u0441\u0435\u043B\u0438 ${label3(y)}: \u043A\u0430\u0436\u0434\u044B\u0439 \u0434\u0435\u0441\u044F\u0442\u044B\u0439 \u0442\u0430\u043C \u0442\u0435\u043F\u0435\u0440\u044C \u0438\u0437 \u043D\u0438\u0445.`);
+            }
+          }
+        }
+        if (routes && !r.routes) say2(`\u041C\u0435\u0436\u0434\u0443 \u0437\u0435\u043C\u043B\u044F\u043C\u0438 ${WORLD_PEOPLES.get(p).labelGen} \u0438 ${WORLD_PEOPLES.get(q).labelGen} \u043F\u043E\u0448\u043B\u0438 \u043F\u0435\u0440\u0432\u044B\u0435 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u044B.`);
+        r.routes = routes;
+      }
+      const sh = overlap(p, q), [pair, gap] = nearest2(p, q), border = sh > 0 || gap <= D2.front * k;
+      r.att += D2.drift * Math.sign(old - r.att) * Math.min(1, Math.abs(old - r.att)) - D2.pressure * sh + (r.att < old + D2.tradeCeil ? Math.min(D2.tradeMax, D2.trade * routes) : 0);
+      if (r.war) {
+        r.att += D2.weariness;
+        const years = H2.year - r.war.since;
+        const best = gap <= D2.front * k ? pair : null;
+        if (best) {
+          const [t, o] = best, ft = fight2(t, rnd), fo = fight2(o, rnd), [win, lose] = ft >= fo ? [t, o] : [o, t];
+          const loss = (D2.battleLoss[0] + (D2.battleLoss[1] - D2.battleLoss[0]) * rnd()) * raidShare(townFx(lose));
+          lose.pop *= 1 - loss;
+          win.pop *= 1 - loss * 0.4;
+          r.war.battles++;
+          barrows(a, Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2), D2.barrows * Math.max(1, Math.round(k)));
+          if (lose.pop < D2.raze && lose.tier <= 1) {
+            raze(a, lose, win.people, "war");
+            r.war.razed++;
+            say2(`${cap13(label3(win.people))} \u0438\u0437 ${townLabel(win, 2)} ${win.name} \u0432\u0437\u044F\u043B\u0438 \u0438 \u0441\u043E\u0436\u0433\u043B\u0438 ${townLabel(lose, 1)} ${lose.name}: \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043F\u0435\u043F\u0435\u043B\u0438\u0449\u0435.`);
+          } else say2(`\u0411\u0438\u0442\u0432\u0430 \u043F\u043E\u0434 ${townLabel(lose, 4)} ${lose.name}: ${label3(win.people)} \u043E\u0434\u043E\u043B\u0435\u043B\u0438 ${WORLD_PEOPLES.get(lose.people).labelGen}, \u043F\u043E\u043B\u0435 \u0443\u0441\u0435\u044F\u043D\u043E \u043A\u0443\u0440\u0433\u0430\u043D\u0430\u043C\u0438.`);
+        }
+        if (r.att >= D2.peaceAt || years >= D2.longest) {
+          say2(`${cap13(label3(p))} \u0438 ${label3(q)} \u0437\u0430\u043A\u043B\u044E\u0447\u0438\u043B\u0438 \u043C\u0438\u0440 \u043F\u043E\u0441\u043B\u0435 ${years} ${years % 10 === 1 && years % 100 !== 11 ? "\u0433\u043E\u0434\u0430" : "\u043B\u0435\u0442"} \u0432\u043E\u0439\u043D\u044B.`);
+          r.war = null;
+          r.att = D2.afterPeace;
+        }
+      } else if (r.att <= D2.warAt && border) {
+        r.war = { since: H2.year, battles: 0, razed: 0 };
+        r.wars++;
+        say2(`${cap13(label3(p))} \u0438 ${label3(q)} \u043D\u0435 \u043F\u043E\u0434\u0435\u043B\u0438\u043B\u0438 \u0437\u0435\u043C\u043B\u0438: \u043D\u0430\u0447\u0430\u043B\u0430\u0441\u044C \u0432\u043E\u0439\u043D\u0430.`);
+      }
+      r.att = Math.max(-5, Math.min(5, r.att));
+    }
+    const raids = {};
+    for (const t of towns) {
+      if (!D2.raiders.includes(t.people) || !t.alive || rnd() > D2.raidChance || (raids[t.people] || 0) >= D2.raidsPerYear) continue;
+      if (!townFx(t).defence) continue;
+      let target = null, bd = D2.raidReach * k;
+      for (const o of towns) if (o.alive && o.people !== t.people && attitude(a, t.people, o.people) < 0) {
+        const d = Math.hypot(t.x - o.x, t.y - o.y);
+        if (d < bd) {
+          bd = d;
+          target = o;
+        }
+      }
+      if (!target) continue;
+      const r = meet(a, t.people, target.people, H2.year);
+      r.att = Math.max(-5, r.att - D2.raid);
+      raids[t.people] = (raids[t.people] || 0) + 1;
+      if (fight2(t, rnd) > fight2(target, rnd)) {
+        const loss = D2.raidLoss * raidShare(townFx(target));
+        target.pop *= 1 - loss;
+        t.pop += target.pop * loss * 0.3;
+        say2(`${cap13(label3(t.people))} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0440\u0430\u0437\u0433\u0440\u0430\u0431\u0438\u043B\u0438 ${townLabel(target, 1)} ${target.name}.`);
+      } else {
+        t.pop *= 0.9;
+        say2(`${cap13(label3(target.people))} \u043E\u0442\u0431\u0438\u043B\u0438 \u043D\u0430\u0431\u0435\u0433 ${WORLD_PEOPLES.get(t.people).labelGen} \u043D\u0430 ${townLabel(target, 1)} ${target.name}.`);
+      }
+    }
+  }
+  var ruinAt = (a, i) => (a.ruins || []).find((r) => Math.abs(r.x - i % a.w) <= 1 && Math.abs(r.y - (i / a.w | 0)) <= 1) || null;
+
   // src/atlas/roads.js
   var roadLevel = (v) => {
     let lv3 = -1;
@@ -16285,10 +16549,6 @@ dd.q4{color:#c58cff;font-weight:600}
     });
     return lv3;
   };
-  function feeling(p, q) {
-    const a = SPECIES.get(WORLD_PEOPLES.get(p).race).rel, b = SPECIES.get(WORLD_PEOPLES.get(q).race).rel;
-    return RELATIONS[a]?.[b] ?? 0;
-  }
   function stepCost(a, i, people) {
     const f = a.f;
     if (f.ocean[i]) return Infinity;
@@ -16346,18 +16606,18 @@ dd.q4{color:#c58cff;font-weight:600}
     const scratch = a.roadScratch || (a.roadScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
     const done3 = /* @__PURE__ */ new Set(), fresh = [];
     for (const t of towns) {
-      const near3 = towns.filter((o) => o !== t && feeling(t.people, o.people) >= -1 && feeling(o.people, t.people) >= -1).map((o) => [o, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, d]) => d <= reach).sort((p, q) => p[1] - q[1]).slice(0, ROADS.links);
+      const near3 = towns.filter((o) => o !== t && trades(a, t.people, o.people)).map((o) => [o, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, d]) => d <= reach).sort((p, q) => p[1] - q[1]).slice(0, ROADS.links);
       for (const [o] of near3) {
-        const key2 = Math.min(t.id, o.id) * 1e5 + Math.max(t.id, o.id);
-        if (done3.has(key2)) continue;
-        done3.add(key2);
+        const key3 = Math.min(t.id, o.id) * 1e5 + Math.max(t.id, o.id);
+        if (done3.has(key3)) continue;
+        done3.add(key3);
         const path = findPath2(a, t.i, o.i, t.people, scratch);
         if (!path) continue;
         const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2);
         for (const c of path) f.road[c] += amt;
         a.roadPairs || (a.roadPairs = /* @__PURE__ */ new Set());
-        if (!a.roadPairs.has(key2)) {
-          a.roadPairs.add(key2);
+        if (!a.roadPairs.has(key3)) {
+          a.roadPairs.add(key3);
           fresh.push([t, o]);
         }
       }
@@ -16443,7 +16703,6 @@ dd.q4{color:#c58cff;font-weight:600}
     });
     return t;
   };
-  var townLabel = (t, cs = 0) => TIERS2[t.tier].label[t.people][cs];
   function foundTown(a, pe, i, rnd, pop, say2) {
     const P = pe.P, H2 = a.hist;
     const t = {
@@ -16464,13 +16723,25 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var APPEARED = { m: "\u043F\u043E\u044F\u0432\u0438\u043B\u0441\u044F", f: "\u043F\u043E\u044F\u0432\u0438\u043B\u0430\u0441\u044C", n: "\u043F\u043E\u044F\u0432\u0438\u043B\u043E\u0441\u044C", pl: "\u043F\u043E\u044F\u0432\u0438\u043B\u0438\u0441\u044C" };
   var GREW = { m: "\u0440\u0430\u0437\u0440\u043E\u0441\u0441\u044F \u0432", f: "\u0440\u0430\u0437\u0440\u043E\u0441\u043B\u0430\u0441\u044C \u0432", n: "\u0440\u0430\u0437\u0440\u043E\u0441\u043B\u043E\u0441\u044C \u0432" };
-  var cap13 = (s) => s[0].toUpperCase() + s.slice(1);
+  var cap14 = (s) => s[0].toUpperCase() + s.slice(1);
   function arrive2(a, era, rnd, say2) {
     initPeoples(a, era);
     const F = a.fauna;
     for (const pe of a.peoples.filter((p) => p.P.era === era)) {
       const P = pe.P, picks = [];
-      const order = [...pe.K.keys()].filter((j) => pe.K[j] > 0.3).sort((p, q) => pe.K[q] * (0.8 + 0.2 * (p * 7919 % 13) / 13) - pe.K[p]);
+      const coast = (j) => {
+        const x0 = j % F.W * F.c, y0 = (j / F.W | 0) * F.c;
+        for (let y = y0; y < Math.min(a.h, y0 + F.c); y++) for (let x = x0; x < Math.min(a.w, x0 + F.c); x++) if (a.f.ocean[y * a.w + x]) return true;
+        return false;
+      };
+      const far = (j) => {
+        const x = (j % F.W + 0.5) * F.c, y = ((j / F.W | 0) + 0.5) * F.c;
+        let d = Infinity;
+        for (const t of a.towns) if (t.alive) d = Math.min(d, Math.hypot(t.x - x, t.y - y));
+        return Math.min(1, d / (a.w / 3));
+      };
+      const mode = P.arrive.mode, score = (j) => pe.K[j] * (mode === "far" ? 0.3 + far(j) : 1) * (0.8 + 0.2 * (j * 7919 % 13) / 13);
+      const order = [...pe.K.keys()].filter((j) => pe.K[j] > 0.3 && (mode !== "coast" || coast(j))).sort((p, q) => score(q) - score(p));
       for (const j of order) {
         if (picks.length >= P.arrive.groups) break;
         if (picks.some((q) => Math.hypot(q % F.W - j % F.W, (q / F.W | 0) - (j / F.W | 0)) < F.W / 4)) continue;
@@ -16483,9 +16754,9 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         const t = foundTown(a, pe, i, rnd, 90 + 60 * rnd());
         t.capital = true;
-        say2(`${cap13(P.label)} ${P.arrive.verb} ${P.arrive.where} \u2014 ${wherePhrase(a, i)} \u2014 \u0438 \u0437\u0430\u043B\u043E\u0436\u0438\u043B\u0438 ${townLabel(t, 1)} ${t.name}.`);
+        say2(`${cap14(P.label)} ${P.arrive.verb} ${P.arrive.where} \u2014 ${wherePhrase(a, i)} \u2014 \u0438 \u0437\u0430\u043B\u043E\u0436\u0438\u043B\u0438 ${townLabel(t, 1)} ${t.name}.`);
       }
-      if (!picks.length) say2(`${cap13(P.label)} \u043D\u0435 \u043D\u0430\u0448\u043B\u0438 \u0432 \u044D\u0442\u043E\u043C \u043C\u0438\u0440\u0435 \u0437\u0435\u043C\u043B\u0438 \u0441\u0435\u0431\u0435 \u043F\u043E \u0434\u0443\u0448\u0435.`);
+      if (!picks.length) say2(`${cap14(P.label)} \u043D\u0435 \u043D\u0430\u0448\u043B\u0438 \u0432 \u044D\u0442\u043E\u043C \u043C\u0438\u0440\u0435 \u0437\u0435\u043C\u043B\u0438 \u0441\u0435\u0431\u0435 \u043F\u043E \u0434\u0443\u0448\u0435.`);
     }
   }
   function stepPeoples(a, rnd, say2) {
@@ -16510,7 +16781,9 @@ dd.q4{color:#c58cff;font-weight:600}
           const q = ny * F.W + nx;
           flux += (mob[j] + mob[q]) / 2 * (tmp[q] - tmp[j]);
         }
-        u[j] = clamp016(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4);
+        let push = 0;
+        for (const o of a.peoples) if (o !== pe && o.u[j] > 0) push += DIPLOMACY.compete[stateOf(a, P.id, o.id)] * o.u[j];
+        u[j] = clamp016(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
       }
     }
     const occ = new Float32Array(N2);
@@ -16528,7 +16801,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (i < 0) continue;
         const t = foundTown(a, pe, i, rnd, 40 + 40 * rnd());
         made++;
-        say2(`${cap13(pe.P.label)} \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
+        say2(`${cap14(pe.P.label)} \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
       }
     }
     for (const t of a.towns) {
@@ -16546,7 +16819,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const tier = tierOf(t.pop);
       if (tier > t.tier) {
         const T2 = TIERS2[tier], was = TIERS2[t.tier];
-        say2(`${cap13(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T2.label[t.people][1]}: ${Math.round(t.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
+        say2(`${cap14(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T2.label[t.people][1]}: ${Math.round(t.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
         t.tier = tier;
       }
       const threat = threatAt(a, t);
@@ -16570,32 +16843,51 @@ dd.q4{color:#c58cff;font-weight:600}
           l.alive = false;
           l.died = a.hist.year;
           l.clearedBy = t.id;
-          say2(`${cap13(P.label)} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0436\u0433\u043B\u0438 ${L.labelAcc || L.label} \xAB${l.name}\xBB: ${owner.plural} \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0442\u0440\u0435\u0432\u043E\u0436\u0430\u0442 \u0438\u0445 \u0437\u0435\u043C\u043B\u0438.`);
+          say2(`${cap14(P.label)} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0436\u0433\u043B\u0438 ${L.labelAcc || L.label} \xAB${l.name}\xBB: ${owner.plural} \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0442\u0440\u0435\u0432\u043E\u0436\u0430\u0442 \u0438\u0445 \u0437\u0435\u043C\u043B\u0438.`);
           break;
         }
         const loss = TOWN_WAR.raidLoss * raidShare(fx);
         t.pop *= 1 - loss;
         t.raided = a.hist.year;
-        say2(`${cap13(owner.plural)} ${L.from} \xAB${l.name}\xBB \u043D\u0430\u043F\u0430\u043B\u0438 \u043D\u0430 ${townLabel(t, 1)} ${t.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
+        say2(`${cap14(owner.plural)} ${L.from} \xAB${l.name}\xBB \u043D\u0430\u043F\u0430\u043B\u0438 \u043D\u0430 ${townLabel(t, 1)} ${t.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
         break;
       }
     }
     for (const p of a.peoples) for (const q of a.peoples) {
       if (p.id >= q.id) continue;
-      const key2 = `${p.id}:${q.id}`;
-      if (a.contacts[key2]) continue;
+      const key3 = `${p.id}:${q.id}`;
+      if (a.contacts[key3]) continue;
       let j0 = -1;
       for (let j = 0; j < N2; j++) if (p.u[j] > 0.1 && q.u[j] > 0.1) {
         j0 = j;
         break;
       }
+      if (j0 < 0) {
+        for (const t of a.towns) if (t.alive && t.people === p.id) {
+          for (const o of a.towns) if (o.alive && o.people === q.id && Math.hypot(t.x - o.x, t.y - o.y) <= DIPLOMACY.front * k) {
+            j0 = faunaCell(a, Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2));
+            break;
+          }
+        }
+      }
       if (j0 < 0) continue;
-      const fe = Math.min(feeling(p.id, q.id), feeling(q.id, p.id));
-      a.contacts[key2] = { year: a.hist.year, feeling: fe };
+      const fe = meet(a, p.id, q.id, a.hist.year).att;
+      a.contacts[key3] = { year: a.hist.year, feeling: fe };
       const how = fe <= -3 ? "\u0441 \u043D\u0435\u043D\u0430\u0432\u0438\u0441\u0442\u044C\u044E" : fe <= -2 ? "\u0441 \u0434\u0430\u0432\u043D\u0435\u0439 \u043D\u0435\u043F\u0440\u0438\u044F\u0437\u043D\u044C\u044E" : fe < 0 ? "\u043D\u0430\u0441\u0442\u043E\u0440\u043E\u0436\u0435\u043D\u043D\u043E" : fe === 0 ? "\u0441 \u043B\u044E\u0431\u043E\u043F\u044B\u0442\u0441\u0442\u0432\u043E\u043C" : "\u043A\u0430\u043A \u0434\u0440\u0443\u0437\u044C\u044F";
       const cell = Math.min(a.n - 1, (j0 / F.W | 0) * F.c * a.w + j0 % F.W * F.c);
-      say2(`${cap13(p.P.label)} \u0438 ${q.P.label} \u0432\u043F\u0435\u0440\u0432\u044B\u0435 \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043B\u0438\u0441\u044C ${wherePhrase(a, cell)} \u0438 \u0441\u043C\u043E\u0442\u0440\u044F\u0442 \u0434\u0440\u0443\u0433 \u043D\u0430 \u0434\u0440\u0443\u0433\u0430 ${how}.` + (fe <= -2 ? " \u0414\u043E\u0440\u043E\u0433 \u043C\u0435\u0436\u0434\u0443 \u043D\u0438\u043C\u0438 \u043D\u0435 \u0431\u0443\u0434\u0435\u0442." : ""));
+      say2(`${cap14(p.P.label)} \u0438 ${q.P.label} \u0432\u043F\u0435\u0440\u0432\u044B\u0435 \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043B\u0438\u0441\u044C ${wherePhrase(a, cell)} \u0438 \u0441\u043C\u043E\u0442\u0440\u044F\u0442 \u0434\u0440\u0443\u0433 \u043D\u0430 \u0434\u0440\u0443\u0433\u0430 ${how}.` + (!trades(a, p.id, q.id) ? " \u0422\u043E\u0440\u0433\u043E\u0432\u0430\u0442\u044C \u043E\u043D\u0438 \u043D\u0435 \u0441\u0442\u0430\u043D\u0443\u0442." : ""));
     }
+    const overlap = (p, q) => {
+      const P1 = a.peoples.find((x) => x.id === p), Q1 = a.peoples.find((x) => x.id === q);
+      let both = 0, mine = 0;
+      for (let j = 0; j < N2; j++) {
+        const u1 = P1.u[j] > 0.1, u2 = Q1.u[j] > 0.1;
+        if (u1 || u2) mine++;
+        if (u1 && u2) both++;
+      }
+      return mine ? both / mine : 0;
+    };
+    stepDiplomacy(a, rnd, say2, overlap);
   }
   function threatAt(a, t) {
     const k = scaleOf(a);
@@ -16623,7 +16915,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var SEASON_LIST = SEASONS.all();
   var eraPlan = (a) => [
     { id: "wild", seasons: WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR },
-    { id: "elder", seasons: ELDER_YEARS[a.cfg.elder ?? 1].years * SEASONS_PER_YEAR }
+    { id: "elder", seasons: ELDER_YEARS[a.cfg.elder ?? 1].years * SEASONS_PER_YEAR },
+    { id: "young", seasons: YOUNG_YEARS[a.cfg.young ?? 1].years * SEASONS_PER_YEAR }
   ];
   var historyLength = (a) => eraPlan(a).reduce((s, e) => s + e.seasons, 0);
   var historyDone = (a) => !!a.hist && a.hist.step >= a.hist.end;
@@ -16666,13 +16959,13 @@ dd.q4{color:#c58cff;font-weight:600}
         say(a, cold ? `\u041B\u044E\u0442\u0430\u044F \u0437\u0438\u043C\u0430 ${wherePhrase(a, cell)}: \u0437\u0432\u0435\u0440\u0438 \u0433\u0438\u0431\u043B\u0438 \u043E\u0442 \u043C\u043E\u0440\u043E\u0437\u0430 \u0438 \u0431\u0435\u0441\u043A\u043E\u0440\u043C\u0438\u0446\u044B.` : `\u0417\u0430\u0441\u0443\u0445\u0430 ${wherePhrase(a, cell)}: \u0442\u0440\u0430\u0432\u044B \u0432\u044B\u0433\u043E\u0440\u0435\u043B\u0438, \u0437\u0432\u0435\u0440\u0438 \u0433\u0438\u0431\u043B\u0438 \u043E\u0442 \u0431\u0435\u0441\u043A\u043E\u0440\u043C\u0438\u0446\u044B.`);
       }
     }
-    const wildEnd = eraPlan(a)[0].seasons;
-    if (H2.step === wildEnd) {
-      H2.era = "elder";
-      say(a, `\u041D\u0430\u0447\u0430\u043B\u0430\u0441\u044C ${ERAS.get("elder").label.toLowerCase()}.`);
-      arrive2(a, "elder", rnd, (t) => say(a, t));
+    const plan = eraPlan(a), wildEnd = plan[0].seasons, elderEnd = wildEnd + plan[1].seasons;
+    if (H2.step === wildEnd || H2.step === elderEnd) {
+      H2.era = H2.step === wildEnd ? "elder" : "young";
+      say(a, `\u041D\u0430\u0447\u0430\u043B\u0430\u0441\u044C ${ERAS.get(H2.era).label.toLowerCase()}.`);
+      arrive2(a, H2.era, rnd, (t) => say(a, t));
     }
-    if (H2.era === "elder" && season2 === "spring") {
+    if (H2.era !== "wild" && season2 === "spring") {
       stepPeoples(a, rnd, (t) => say(a, t));
       if ((H2.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
         for (const [p, q] of wearRoads(a)) say(a, `\u041C\u0435\u0436\u0434\u0443 ${p.name} \u0438 ${q.name} \u043F\u0440\u043E\u0442\u043E\u043F\u0442\u0430\u043B\u0438 \u0434\u043E\u0440\u043E\u0433\u0443.`);
@@ -16706,13 +16999,17 @@ dd.q4{color:#c58cff;font-weight:600}
       const alive = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive;
       say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive} ${plural(alive, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
     }
-    if (H2.step >= H2.end) {
+    if (H2.step === elderEnd || H2.step >= H2.end) {
       const towns = a.towns.filter((t) => t.alive), parts = [];
       for (const pe of a.peoples) {
         const mine = towns.filter((t) => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));
         parts.push(`${pe.P.label} \u2014 ${mine.length} ${plural(mine.length, "\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434\u0430", "\u0433\u043E\u0440\u043E\u0434\u043E\u0432")}, ${pop} ${plural(pop, "\u0436\u0438\u0442\u0435\u043B\u044C", "\u0436\u0438\u0442\u0435\u043B\u044F", "\u0436\u0438\u0442\u0435\u043B\u0435\u0439")}`);
       }
-      say(a, `\u042D\u043F\u043E\u0445\u0430 \u0434\u0440\u0435\u0432\u043D\u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${parts.join("; ")}. \u0421\u043A\u043E\u0440\u043E \u043F\u0440\u0438\u0434\u0443\u0442 \u043B\u044E\u0434\u0438 \u0438 \u043E\u0440\u043A\u0438.`);
+      if (H2.step === elderEnd && H2.step < H2.end) say(a, `\u042D\u043F\u043E\u0445\u0430 \u0434\u0440\u0435\u0432\u043D\u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${parts.join("; ")}. \u0421\u043A\u043E\u0440\u043E \u043F\u0440\u0438\u0434\u0443\u0442 \u043B\u044E\u0434\u0438 \u0438 \u043E\u0440\u043A\u0438.`);
+      else {
+        const wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0), ruins = (a.ruins || []).length;
+        say(a, `\u042D\u043F\u043E\u0445\u0430 \u043C\u043E\u043B\u043E\u0434\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${parts.join("; ")}. \u0412\u043E\u0439\u043D \u0431\u044B\u043B\u043E ${wars}, \u0441\u043E\u0436\u0436\u0435\u043D\u043E \u0433\u043E\u0440\u043E\u0434\u043E\u0432: ${ruins}. \u0418\u0441\u0442\u043E\u0440\u0438\u044F \u043C\u0438\u0440\u0430 \u0436\u0434\u0451\u0442 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0435\u0432.`);
+      }
     }
   }
 
@@ -16752,6 +17049,7 @@ dd.q4{color:#c58cff;font-weight:600}
     hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
     wild: WILD_YEARS.map((e, i) => [i, e.label]),
     elder: ELDER_YEARS.map((e, i) => [i, e.label]),
+    young: YOUNG_YEARS.map((e, i) => [i, e.label]),
     fauna: SPECIES.filter((sp) => sp.habitat).map((sp) => [sp.id, sp.plural]),
     layer: [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["plates", "\u041F\u043B\u0438\u0442\u044B"], ["rocks", "\u041F\u043E\u0440\u043E\u0434\u044B"], ["ores", "\u0420\u0443\u0434\u044B"], ["temp", "\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430"], ["wind", "\u0412\u0435\u0442\u0440\u044B"], ["rain", "\u041E\u0441\u0430\u0434\u043A\u0438"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["soils", "\u041F\u043E\u0447\u0432\u044B"], ["fauna", "\u0417\u0432\u0435\u0440\u0438"], ["peoples", "\u041D\u0430\u0440\u043E\u0434\u044B"]],
     ore: ORE_GENESIS.all().map((o) => [o.id, o.label])
@@ -16806,18 +17104,18 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     build() {
       document.querySelectorAll("#atlas .seg[data-akey]").forEach((box) => {
-        const key2 = box.dataset.akey;
-        box.innerHTML = OPTS2[key2].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join("");
+        const key3 = box.dataset.akey;
+        box.innerHTML = OPTS2[key3].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join("");
         box.addEventListener("click", (e) => {
           const b = e.target.closest("button");
           if (!b) return;
-          if (VIEW_KEYS.has(key2)) {
-            this[key2] = b.dataset.val;
+          if (VIEW_KEYS.has(key3)) {
+            this[key3] = b.dataset.val;
             this.sync();
             this.draw();
             return;
           }
-          this.cfg[key2] = typeof DEFAULT_ATLAS_CFG[key2] === "number" ? +b.dataset.val : b.dataset.val;
+          this.cfg[key3] = typeof DEFAULT_ATLAS_CFG[key3] === "number" ? +b.dataset.val : b.dataset.val;
           this.save();
           this.sync();
         });
@@ -16863,6 +17161,7 @@ dd.q4{color:#c58cff;font-weight:600}
       $("atlasFauna").hidden = this.layer !== "fauna";
       $("atlasWildNote").textContent = `${WILD_YEARS[this.cfg.wild].years} \u043B\u0435\u0442 \u0434\u043E \u043F\u0440\u0438\u0445\u043E\u0434\u0430 \u043D\u0430\u0440\u043E\u0434\u043E\u0432`;
       $("atlasElderNote").textContent = `${ELDER_YEARS[this.cfg.elder].years} \u043B\u0435\u0442 \u044D\u043B\u044C\u0444\u043E\u0432 \u0438 \u0433\u043D\u043E\u043C\u043E\u0432`;
+      $("atlasYoungNote").textContent = `${YOUNG_YEARS[this.cfg.young].years} \u043B\u0435\u0442 \u043B\u044E\u0434\u0435\u0439 \u0438 \u043E\u0440\u043A\u043E\u0432 \u0434\u043E \u0432\u044B\u0441\u0430\u0434\u043A\u0438`;
       this.legend();
     }
     legend() {
@@ -16876,7 +17175,7 @@ dd.q4{color:#c58cff;font-weight:600}
       } else if (this.layer === "biomes") html = Object.entries(BIOME_KINDS).filter(([k]) => k !== "feature").map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter((b) => b.kind === k).map((b) => sw(b.color, b.label)).join("")).join("") + "<b>\u043B\u0435\u0441\u0430</b> \u0442\u0435\u043C\u043D\u0435\u0435, \u0433\u0430\u0440\u0438 \u0441\u0432\u0435\u0442\u043B\u0435\u0435";
       else if (this.layer === "soils") html = SOILS.filter((s) => s.id !== "none").map((s) => sw(s.color, s.label)).join("") + "<b>\u044F\u0440\u0447\u0435</b> \u2014 \u043F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u043D\u0435\u0435";
       else if (this.layer === "fauna") html = sw([70, 70, 64], "\u043D\u0435 \u0438\u0445 \u043A\u0440\u0430\u044F") + sw([120, 116, 100], "\u043C\u043E\u0433\u0443\u0442 \u0436\u0438\u0442\u044C, \u043D\u043E \u043D\u0435\u0442") + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], "\u0441\u0442\u043E\u043B\u044C\u043A\u043E, \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u043A\u0440\u0430\u0439 \u043F\u0440\u043E\u043A\u043E\u0440\u043C\u0438\u0442") + "<b>\u043B\u043E\u0433\u043E\u0432\u0430:</b> " + LAIRS.all().map((L) => sw(L.color, L.label)).join("") + sw([60, 40, 40], "\xD7 \u043E\u043F\u0443\u0441\u0442\u0435\u0432\u0448\u0435\u0435");
-      else if (this.layer === "peoples") html = WORLD_PEOPLES.all().map((P) => sw(P.color, `\u0437\u0435\u043C\u043B\u0438: ${P.label}`)).join("") + "<b>\u0433\u043E\u0440\u043E\u0434\u0430</b> \u2014 \u043A\u0432\u0430\u0434\u0440\u0430\u0442\u044B, \u043A\u0440\u0443\u043F\u043D\u0435\u0435 \u0441 \u0440\u043E\u0441\u0442\u043E\u043C; \u043A\u043E\u043B\u044C\u0446\u043E \u2014 \u043F\u0435\u0440\u0432\u044B\u0435 \u0433\u043E\u0440\u043E\u0434\u0430 \u043D\u0430\u0440\u043E\u0434\u0430; " + ROADS.levels.map((L) => L.label).join(", ");
+      else if (this.layer === "peoples") html = WORLD_PEOPLES.all().map((P) => sw(P.color, `\u0437\u0435\u043C\u043B\u0438: ${P.label}`)).join("") + "<b>\u0433\u043E\u0440\u043E\u0434\u0430</b> \u2014 \u043A\u0432\u0430\u0434\u0440\u0430\u0442\u044B, \u043A\u0440\u0443\u043F\u043D\u0435\u0435 \u0441 \u0440\u043E\u0441\u0442\u043E\u043C; \u043A\u043E\u043B\u044C\u0446\u043E \u2014 \u043F\u0435\u0440\u0432\u044B\u0435 \u0433\u043E\u0440\u043E\u0434\u0430 \u043D\u0430\u0440\u043E\u0434\u0430; " + ROADS.levels.map((L) => L.label).join(", ") + "; \xD7 \u0432 \u043A\u043E\u043B\u044C\u0446\u0435 \u2014 \u0441\u043E\u0436\u0436\u0451\u043D\u043D\u044B\u0439 \u0433\u043E\u0440\u043E\u0434; " + sw([120, 90, 90], "\u043A\u0443\u0440\u0433\u0430\u043D\u044B \u0431\u044B\u043B\u044B\u0445 \u0431\u0438\u0442\u0432");
       else if (this.layer === "rain") html = [[100, "\u043F\u0443\u0441\u0442\u044B\u043D\u044F"], [400, "\u0441\u0443\u0445\u043E"], [800, "\u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E"], [1500, "\u0432\u043B\u0430\u0436\u043D\u043E"], [2500, "\u043E\u0447\u0435\u043D\u044C \u0432\u043B\u0430\u0436\u043D\u043E"]].map(([v, l]) => sw(rainColor(v), `${l} (${v} \u043C\u043C)`)).join("");
       else if (this.layer === "wind") html = sw([240, 240, 230], "\u0441\u0442\u0440\u0435\u043B\u043A\u0438 \u2014 \u043A\u0443\u0434\u0430 \u0434\u0443\u0435\u0442 \u0432\u0435\u0442\u0435\u0440") + sw([90, 110, 150], "\u0442\u0438\u0448\u0435") + sw([200, 210, 240], "\u0441\u0438\u043B\u044C\u043D\u0435\u0435");
       else if (this.layer === "temp") html = sw(HEAT[0][1], "\u221230\xB0") + sw(HEAT[1][1], "\u22124\xB0") + sw(HEAT[2][1], "+9\xB0") + sw(HEAT[3][1], "+35\xB0");
@@ -16957,7 +17256,9 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         case "peoples": {
           const g3 = mix(base, [40, 40, 36], 0.55), land = a.peoples && landOf(a, i);
-          return land ? mix(g3, land.people.color, 0.25 + 0.6 * land.share) : g3;
+          let c = land ? mix(g3, land.people.color, 0.25 + 0.6 * land.share) : g3;
+          if (f.barrows && f.barrows[i] > 0) c = mix(c, [120, 90, 90], 0.5 * f.barrows[i]);
+          return c;
         }
         case "rain":
           return f.rain ? f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25) : base;
@@ -16999,6 +17300,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (this.layer === "wind" && a.f.windX) this.arrows(a, px);
       if (a.f.road && ["relief", "biomes", "peoples", "fauna"].includes(this.layer)) this.drawRoads(a, px);
       if (a.lairs && ["relief", "biomes", "fauna", "peoples"].includes(this.layer)) this.drawLairs(a, px);
+      if (a.ruins && ["relief", "biomes", "peoples"].includes(this.layer)) this.drawRuins(a, px);
       if (a.towns && ["relief", "biomes", "peoples", "fauna", "rain", "soils"].includes(this.layer)) this.drawTowns(a, px);
       if (a.f.flow && ["relief", "rain", "rocks", "temp", "biomes", "soils"].includes(this.layer)) this.rivers(a, px);
     }
@@ -17062,6 +17364,26 @@ dd.q4{color:#c58cff;font-weight:600}
           px.arc(x, y, s * 1.9, 0, Math.PI * 2);
           px.stroke();
         }
+      }
+    }
+    // ruins of burnt towns: a dark cross in a ring of the people that lived there
+    drawRuins(a, px) {
+      const k = Math.min(a.w, a.h) / 192, r = 1.6 * k;
+      for (const ru of a.ruins) {
+        const c = WORLD_PEOPLES.get(ru.people).color, x = ru.x + 0.5, y = ru.y + 0.5;
+        px.strokeStyle = `rgba(${c.join(",")},0.7)`;
+        px.lineWidth = Math.max(0.4, 0.4 * k);
+        px.beginPath();
+        px.arc(x, y, r * 1.3, 0, Math.PI * 2);
+        px.stroke();
+        px.strokeStyle = "rgba(20,14,12,0.95)";
+        px.lineWidth = Math.max(0.5, 0.6 * k);
+        px.beginPath();
+        px.moveTo(x - r, y - r);
+        px.lineTo(x + r, y + r);
+        px.moveTo(x + r, y - r);
+        px.lineTo(x - r, y + r);
+        px.stroke();
       }
     }
     // lairs: a diamond in the owner's colour and a faint ring of its territory; the dead ones as a cross
@@ -17138,12 +17460,25 @@ dd.q4{color:#c58cff;font-weight:600}
         return html;
       })();
       const box = $("atlasChron"), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
-      box.innerHTML = a.chronicle.length ? a.chronicle.map((c) => `<div><small>${c.season != null ? `\u0433\u043E\u0434 ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join("") : '<small class="muted">\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F \u0441 \u043F\u0435\u0440\u0432\u044B\u043C \u044D\u0442\u0430\u043F\u043E\u043C.</small>';
+      if (this.chronOf !== a || !a.chronicle.length) {
+        this.chronOf = a;
+        this.chronShown = 0;
+        box.innerHTML = a.chronicle.length ? "" : '<small class="muted">\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F \u0441 \u043F\u0435\u0440\u0432\u044B\u043C \u044D\u0442\u0430\u043F\u043E\u043C.</small>';
+      }
+      if (a.chronicle.length > this.chronShown) {
+        box.insertAdjacentHTML("beforeend", a.chronicle.slice(this.chronShown).map((c) => `<div><small>${c.season != null ? `\u0433\u043E\u0434 ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join(""));
+        this.chronShown = a.chronicle.length;
+      }
       if (atEnd) box.scrollTop = box.scrollHeight;
-      $("atlasStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${a.n.toLocaleString("ru-RU")}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(a.cfg.seed)}</dd><dt>\u042D\u0442\u0430\u043F</dt><dd>${Math.min(a.stage, all.length)} \u0438\u0437 ${all.length}</dd>` + (a.lairs ? `<dt>\u041B\u043E\u0433\u043E\u0432\u0430 \u0447\u0443\u0434\u043E\u0432\u0438\u0449</dt><dd>${a.lairs.filter((l) => l.alive).length}</dd>` : "") + (a.towns ? WORLD_PEOPLES.all().map((P) => {
+      $("atlasStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${a.n.toLocaleString("ru-RU")}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(a.cfg.seed)}</dd><dt>\u042D\u0442\u0430\u043F</dt><dd>${Math.min(a.stage, all.length)} \u0438\u0437 ${all.length}</dd>` + (a.lairs ? `<dt>\u041B\u043E\u0433\u043E\u0432\u0430 \u0447\u0443\u0434\u043E\u0432\u0438\u0449</dt><dd>${a.lairs.filter((l) => l.alive).length}</dd>` : "") + (a.towns ? WORLD_PEOPLES.all().filter((P) => a.peoples.some((p) => p.id === P.id)).map((P) => {
         const m = a.towns.filter((t) => t.alive && t.people === P.id);
         return `<dt>\u0413\u043E\u0440\u043E\u0434\u0430: ${P.label}</dt><dd>${m.length}</dd>`;
-      }).join("") : "");
+      }).join("") : "") + (a.ruins?.length ? `<dt>\u041F\u0435\u043F\u0435\u043B\u0438\u0449\u0430</dt><dd>${a.ruins.length}</dd>` : "");
+      const rels = Object.entries(a.rel || {}).map(([key3, r]) => {
+        const [p, q] = key3.split(":"), st = stateOf(a, p, q);
+        return `<dt>${WORLD_PEOPLES.get(p).label} \u0438 ${WORLD_PEOPLES.get(q).label}</dt><dd class="rel-${st}" title="\u043E\u0442\u043D\u043E\u0448\u0435\u043D\u0438\u0435 ${r.att.toFixed(1)}, \u0432\u043E\u0439\u043D ${r.wars}, \u0442\u043E\u0440\u0433\u043E\u0432\u044B\u0445 \u043F\u0443\u0442\u0435\u0439 ${r.routes}">${stateLabel(st)}</dd>`;
+      }).join("");
+      $("atlasRels").innerHTML = rels ? `<dt class="relhead">\u041D\u0430\u0440\u043E\u0434\u044B \u043C\u0435\u0436\u0434\u0443 \u0441\u043E\u0431\u043E\u0439</dt><dd></dd>${rels}` : "";
     }
     hover(e) {
       const a = this.atlas;
@@ -17180,8 +17515,12 @@ dd.q4{color:#c58cff;font-weight:600}
         for (const id of town.built) cnt[id] = (cnt[id] || 0) + 1;
         const list = Object.entries(cnt).map(([id, n]) => TOWN_BUILDINGS.get(id).name + (n > 1 ? ` \xD7${n}` : "")).join(", ");
         const gives = Object.entries(EFFECTS2).filter(([k]) => k !== "housing" && fx[k] > 0).map(([k, l]) => `${l} +${Math.round(fx[k] * 100)}%`).join(", ");
-        parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439, \u0434\u043E\u043C\u0430 \u043D\u0430 ${room(fx)}, \u043E\u0441\u043D\u043E\u0432\u0430\u043D \u0432 \u0433\u043E\u0434 ${town.founded}; \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0438: ${list || "\u043D\u0435\u0442"}` + (gives ? `; \u0434\u0430\u0451\u0442: ${gives}` : ""));
+        const folk = Object.entries(town.folk || {}).filter(([, v]) => v >= 0.03).map(([id, v]) => `${WORLD_PEOPLES.get(id).label} ${Math.round(v * 100)}%`).join(", ");
+        parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439${folk ? `, \u0441\u0440\u0435\u0434\u0438 \u043D\u0438\u0445 ${folk}` : ""}, \u0434\u043E\u043C\u0430 \u043D\u0430 ${room(fx)}, \u043E\u0441\u043D\u043E\u0432\u0430\u043D \u0432 \u0433\u043E\u0434 ${town.founded}; \u043F\u043E\u0441\u0442\u0440\u043E\u0439\u043A\u0438: ${list || "\u043D\u0435\u0442"}` + (gives ? `; \u0434\u0430\u0451\u0442: ${gives}` : ""));
       }
+      const ruin = ruinAt(a, i);
+      if (ruin) parts.push(`\u043F\u0435\u043F\u0435\u043B\u0438\u0449\u0435 ${ruin.name} (${WORLD_PEOPLES.get(ruin.people).label}), \u0441\u043E\u0436\u0436\u0435\u043D\u043E \u0432 \u0433\u043E\u0434 ${ruin.year}`);
+      if (f.barrows && f.barrows[i] > 0.15) parts.push("\u043A\u0443\u0440\u0433\u0430\u043D\u044B \u0431\u044B\u043B\u044B\u0445 \u0431\u0438\u0442\u0432");
       const land = landOf(a, i);
       if (land) parts.push(`\u0437\u0435\u043C\u043B\u0438: ${land.people.label} ${Math.round(land.share * 100)}%`);
       if (a.f.road && a.f.road[i] >= ROADS.levels[0].wear) parts.push(ROADS.levels[roadLevel(a.f.road[i])].label);
@@ -17299,7 +17638,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     buildFilters() {
-      const chip = (key2, label3, dot2) => `<button type="button" data-key="${key2}" aria-pressed="${!this.hidden.has(key2)}">${dot2 ? `<i style="background:${dot2}"></i>` : ""}${label3}</button>`;
+      const chip = (key3, label4, dot2) => `<button type="button" data-key="${key3}" aria-pressed="${!this.hidden.has(key3)}">${dot2 ? `<i style="background:${dot2}"></i>` : ""}${label4}</button>`;
       $("logLevels").innerHTML = LEVELS2.map((l) => chip("lv:" + l.id, l.label, l.color)).join("");
       $("logTopics").innerHTML = LOG_TOPICS.all().map((t) => chip("t:" + t.id, t.label)).join("");
       for (const box of [$("logLevels"), $("logTopics")]) box.addEventListener("click", (e) => {
@@ -18069,7 +18408,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }(root, "world");
   }
   function decode(tree, { externals: externals2 = /* @__PURE__ */ new Map() } = {}) {
-    const byKey = new Map([...externals2].map(([obj, key2]) => [key2, obj]));
+    const byKey = new Map([...externals2].map(([obj, key3]) => [key3, obj]));
     const ids = /* @__PURE__ */ new Map();
     return function dec(t) {
       if (t === null || typeof t !== "object") return t;
@@ -18115,8 +18454,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.46.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 663def0" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.47.0 World \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 94733a6" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

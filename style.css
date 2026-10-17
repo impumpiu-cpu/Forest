@@ -334,3 +334,5 @@ dd.q4{color:#c58cff;font-weight:600}
 .atlas-legend span{display:inline-flex;align-items:center;gap:5px}
 .atlas-legend i{display:inline-block;width:11px;height:11px;border-radius:2px}
 .atlas-legend b{font-weight:400;color:var(--fg);margin-left:6px}
+#atlasRels .relhead{color:var(--fg);font-family:var(--font-display);letter-spacing:.04em;margin-top:6px}
+#atlasRels .rel-war{color:var(--raider)} #atlasRels .rel-hostile{color:#e0a080} #atlasRels .rel-tense{color:var(--muted)} #atlasRels .rel-friends{color:var(--good)}

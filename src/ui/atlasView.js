@@ -18,7 +18,8 @@ import {newAtlas, runNextStage, atlasDone, landDone} from '../atlas/generate.js'
 import {historyLength, seasonLabel, eraPlan} from '../atlas/history.js';
 import {townAt, landOf, townLabel} from '../atlas/peoples.js';
 import {roadLevel} from '../atlas/roads.js';
-import {WORLD_PEOPLES, ELDER_YEARS, TIERS} from '../data/peoples.js';
+import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
+import {stateOf, stateLabel, attitude, ruinAt, relation} from '../atlas/diplomacy.js';
 import {ROADS} from '../data/roads.js';
 import {faunaAt} from '../atlas/fauna.js';
 import {lairAt} from '../atlas/lairs.js';
@@ -40,6 +41,7 @@ const OPTS = {
   hemisphere: Object.entries(HEMISPHERES).map(([k, v]) => [k, v.label]),
   wild: WILD_YEARS.map((e, i) => [i, e.label]),
   elder: ELDER_YEARS.map((e, i) => [i, e.label]),
+  young: YOUNG_YEARS.map((e, i) => [i, e.label]),
   fauna: SPECIES.filter(sp => sp.habitat).map(sp => [sp.id, sp.plural]),
   layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['peoples', 'Народы']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
@@ -116,6 +118,7 @@ export class AtlasView {
     $('atlasFauna').hidden = this.layer !== 'fauna';
     $('atlasWildNote').textContent = `${WILD_YEARS[this.cfg.wild].years} лет до прихода народов`;
     $('atlasElderNote').textContent = `${ELDER_YEARS[this.cfg.elder].years} лет эльфов и гномов`;
+    $('atlasYoungNote').textContent = `${YOUNG_YEARS[this.cfg.young].years} лет людей и орков до высадки`;
     this.legend();
   }
 
@@ -128,7 +131,7 @@ export class AtlasView {
     else if (this.layer === 'biomes') html = Object.entries(BIOME_KINDS).filter(([k]) => k !== 'feature').map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter(b => b.kind === k).map(b => sw(b.color, b.label)).join('')).join('') + '<b>леса</b> темнее, гари светлее';
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
     else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова:</b> ' + LAIRS.all().map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее');
-    else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты, крупнее с ростом; кольцо — первые города народа; ' + ROADS.levels.map(L => L.label).join(', ');
+    else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты, крупнее с ростом; кольцо — первые города народа; ' + ROADS.levels.map(L => L.label).join(', ') + '; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв');
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
@@ -203,7 +206,9 @@ export class AtlasView {
       }
       case 'peoples': {
         const g = mix(base, [40, 40, 36], 0.55), land = a.peoples && landOf(a, i);
-        return land ? mix(g, land.people.color, 0.25 + 0.6 * land.share) : g;
+        let c = land ? mix(g, land.people.color, 0.25 + 0.6 * land.share) : g;
+        if (f.barrows && f.barrows[i] > 0) c = mix(c, [120, 90, 90], 0.5 * f.barrows[i]);   // old battlefields
+        return c;
       }
       case 'rain': return f.rain ? (f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25)) : base;
       case 'wind': {
@@ -242,6 +247,7 @@ export class AtlasView {
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
     if (a.f.road && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
     if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawLairs(a, px);
+    if (a.ruins && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawRuins(a, px);
     if (a.towns && ['relief', 'biomes', 'peoples', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
   }
@@ -292,6 +298,18 @@ export class AtlasView {
       px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(12,12,10,0.9)'; px.lineWidth = Math.max(0.4, 0.45 * k);
       px.fillRect(x - s, y - s, 2 * s, 2 * s); px.strokeRect(x - s, y - s, 2 * s, 2 * s);
       if (t.capital) { px.strokeStyle = `rgba(${c.join(',')},0.8)`; px.beginPath(); px.arc(x, y, s * 1.9, 0, Math.PI * 2); px.stroke(); }
+    }
+  }
+
+  // ruins of burnt towns: a dark cross in a ring of the people that lived there
+  drawRuins(a, px) {
+    const k = Math.min(a.w, a.h) / 192, r = 1.6 * k;
+    for (const ru of a.ruins) {
+      const c = WORLD_PEOPLES.get(ru.people).color, x = ru.x + 0.5, y = ru.y + 0.5;
+      px.strokeStyle = `rgba(${c.join(',')},0.7)`; px.lineWidth = Math.max(0.4, 0.4 * k);
+      px.beginPath(); px.arc(x, y, r * 1.3, 0, Math.PI * 2); px.stroke();
+      px.strokeStyle = 'rgba(20,14,12,0.95)'; px.lineWidth = Math.max(0.5, 0.6 * k);
+      px.beginPath(); px.moveTo(x - r, y - r); px.lineTo(x + r, y + r); px.moveTo(x + r, y - r); px.lineTo(x - r, y + r); px.stroke();
     }
   }
 
@@ -349,15 +367,28 @@ export class AtlasView {
       }
       return html;
     })();
+    // the chronicle only grows: new lines are appended, the old ones stay in the page
     const box = $('atlasChron'), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
-    box.innerHTML = a.chronicle.length
-      ? a.chronicle.map(c => `<div><small>${c.season != null ? `год ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join('')
-      : '<small class="muted">Летопись начнётся с первым этапом.</small>';
+    if (this.chronOf !== a || !a.chronicle.length) {
+      this.chronOf = a; this.chronShown = 0;
+      box.innerHTML = a.chronicle.length ? '' : '<small class="muted">Летопись начнётся с первым этапом.</small>';
+    }
+    if (a.chronicle.length > this.chronShown) {
+      box.insertAdjacentHTML('beforeend', a.chronicle.slice(this.chronShown).map(c => `<div><small>${c.season != null ? `год ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join(''));
+      this.chronShown = a.chronicle.length;
+    }
     if (atEnd) box.scrollTop = box.scrollHeight;
     $('atlasStats').innerHTML = `<dt>Клеток</dt><dd>${a.n.toLocaleString('ru-RU')}</dd><dt>Числовой сид</dt><dd>${seedNumber(a.cfg.seed)}</dd>` +
       `<dt>Этап</dt><dd>${Math.min(a.stage, all.length)} из ${all.length}</dd>` +
       (a.lairs ? `<dt>Логова чудовищ</dt><dd>${a.lairs.filter(l => l.alive).length}</dd>` : '') +
-      (a.towns ? WORLD_PEOPLES.all().map(P => { const m = a.towns.filter(t => t.alive && t.people === P.id); return `<dt>Города: ${P.label}</dt><dd>${m.length}</dd>`; }).join('') : '');
+      (a.towns ? WORLD_PEOPLES.all().filter(P => a.peoples.some(p => p.id === P.id)).map(P => { const m = a.towns.filter(t => t.alive && t.people === P.id); return `<dt>Города: ${P.label}</dt><dd>${m.length}</dd>`; }).join('') : '') +
+      (a.ruins?.length ? `<dt>Пепелища</dt><dd>${a.ruins.length}</dd>` : '');
+    // how the peoples that have met get on
+    const rels = Object.entries(a.rel || {}).map(([key, r]) => {
+      const [p, q] = key.split(':'), st = stateOf(a, p, q);
+      return `<dt>${WORLD_PEOPLES.get(p).label} и ${WORLD_PEOPLES.get(q).label}</dt><dd class="rel-${st}" title="отношение ${r.att.toFixed(1)}, войн ${r.wars}, торговых путей ${r.routes}">${stateLabel(st)}</dd>`;
+    }).join('');
+    $('atlasRels').innerHTML = rels ? `<dt class="relhead">Народы между собой</dt><dd></dd>${rels}` : '';
   }
 
   hover(e) {
@@ -390,8 +421,12 @@ export class AtlasView {
       for (const id of town.built) cnt[id] = (cnt[id] || 0) + 1;
       const list = Object.entries(cnt).map(([id, n]) => TOWN_BUILDINGS.get(id).name + (n > 1 ? ` ×${n}` : '')).join(', ');
       const gives = Object.entries(EFFECTS).filter(([k]) => k !== 'housing' && fx[k] > 0).map(([k, l]) => `${l} +${Math.round(fx[k] * 100)}%`).join(', ');
-      parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} жителей, дома на ${room(fx)}, основан в год ${town.founded}; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : ''));
+      const folk = Object.entries(town.folk || {}).filter(([, v]) => v >= 0.03).map(([id, v]) => `${WORLD_PEOPLES.get(id).label} ${Math.round(v * 100)}%`).join(', ');
+      parts.push(`${townLabel(town)} ${town.name} (${P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : ''));
     }
+    const ruin = ruinAt(a, i);
+    if (ruin) parts.push(`пепелище ${ruin.name} (${WORLD_PEOPLES.get(ruin.people).label}), сожжено в год ${ruin.year}`);
+    if (f.barrows && f.barrows[i] > 0.15) parts.push('курганы былых битв');
     const land = landOf(a, i);
     if (land) parts.push(`земли: ${land.people.label} ${Math.round(land.share * 100)}%`);
     if (a.f.road && a.f.road[i] >= ROADS.levels[0].wear) parts.push(ROADS.levels[roadLevel(a.f.road[i])].label);

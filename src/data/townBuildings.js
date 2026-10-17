@@ -17,9 +17,8 @@
 //   notable       the chronicle tells when it is built (also everything from tier 2 up)
 import {Registry} from '../core/registry.js';
 
-// peoples that are not in the world yet but whose buildings are here already (humans and orcs come
-// in the next era)
-export const FUTURE_PEOPLES = ['humans', 'orcs'];
+// peoples that are not in the world yet but whose buildings could be here already
+export const FUTURE_PEOPLES = [];
 
 export const CATEGORIES = {
   housing: 'жильё', food: 'еда', raw: 'добыча', craft: 'ремесло', trade: 'торговля и пути',

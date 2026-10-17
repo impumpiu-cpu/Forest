@@ -13,7 +13,7 @@
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TOWN_WAR} from '../data/peoples.js';
 import {TOWN_BUILDINGS} from '../data/townBuildings.js';
-import {townFx, room, might, raidShare, chooseBuilding} from './towns.js';
+import {townFx, room, might, raidShare, chooseBuilding, townLabel} from './towns.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {SPECIES} from '../data/species.js';
@@ -22,7 +22,9 @@ import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
 import {wherePhrase} from './lairs.js';
-import {feeling, roadAccess} from './roads.js';
+import {roadAccess} from './roads.js';
+import {meet, stateOf, stateLabel, stepDiplomacy, trades} from './diplomacy.js';
+import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -90,8 +92,7 @@ function bestSite(a, P, j, rnd) {
 }
 
 const tierOf = pop => { let t = 0; TIERS.forEach((T, k) => { if (pop >= T.pop) t = k; }); return t; };
-// the town's size word in a case: 0 nominative, 1 accusative, 2 genitive, 3 prepositional
-export const townLabel = (t, cs = 0) => TIERS[t.tier].label[t.people][cs];
+export {townLabel} from './towns.js';
 
 function foundTown(a, pe, i, rnd, pop, say) {
   const P = pe.P, H = a.hist;
@@ -111,7 +112,11 @@ export function arrive(a, era, rnd, say) {
   const F = a.fauna;
   for (const pe of a.peoples.filter(p => p.P.era === era)) {
     const P = pe.P, picks = [];
-    const order = [...pe.K.keys()].filter(j => pe.K[j] > 0.3).sort((p, q) => pe.K[q] * (0.8 + 0.2 * ((p * 7919) % 13) / 13) - pe.K[p]);
+    // where they may come: the best of their land, its best coast, or as far from every town as it lets them
+    const coast = j => { const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c; for (let y = y0; y < Math.min(a.h, y0 + F.c); y++) for (let x = x0; x < Math.min(a.w, x0 + F.c); x++) if (a.f.ocean[y * a.w + x]) return true; return false; };
+    const far = j => { const x = (j % F.W + 0.5) * F.c, y = (((j / F.W) | 0) + 0.5) * F.c; let d = Infinity; for (const t of a.towns) if (t.alive) d = Math.min(d, Math.hypot(t.x - x, t.y - y)); return Math.min(1, d / (a.w / 3)); };
+    const mode = P.arrive.mode, score = j => pe.K[j] * (mode === 'far' ? 0.3 + far(j) : 1) * (0.8 + 0.2 * ((j * 7919) % 13) / 13);
+    const order = [...pe.K.keys()].filter(j => pe.K[j] > 0.3 && (mode !== 'coast' || coast(j))).sort((p, q) => score(q) - score(p));
     for (const j of order) {
       if (picks.length >= P.arrive.groups) break;
       if (picks.some(q => Math.hypot(q % F.W - j % F.W, ((q / F.W) | 0) - ((j / F.W) | 0)) < F.W / 4)) continue;
@@ -146,7 +151,10 @@ export function stepPeoples(a, rnd, say) {
         const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= F.W || ny >= F.H) continue;
         const q = ny * F.W + nx; flux += (mob[j] + mob[q]) / 2 * (tmp[q] - tmp[j]);
       }
-      u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4);
+      // other peoples on the same land push this one out, the more the worse they get on
+      let push = 0;
+      for (const o of a.peoples) if (o !== pe && o.u[j] > 0) push += DIPLOMACY.compete[stateOf(a, P.id, o.id)] * o.u[j];
+      u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
     }
   }
   // people hunt: beasts thin out where people live, predators and monsters most
@@ -221,13 +229,23 @@ export function stepPeoples(a, rnd, say) {
     const key = `${p.id}:${q.id}`; if (a.contacts[key]) continue;
     let j0 = -1;
     for (let j = 0; j < N; j++) if (p.u[j] > 0.1 && q.u[j] > 0.1) { j0 = j; break; }
+    // or their towns stand close
+    if (j0 < 0) for (const t of a.towns) if (t.alive && t.people === p.id) for (const o of a.towns) if (o.alive && o.people === q.id && Math.hypot(t.x - o.x, t.y - o.y) <= DIPLOMACY.front * k) { j0 = faunaCell(a, Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2)); break; }
     if (j0 < 0) continue;
-    const fe = Math.min(feeling(p.id, q.id), feeling(q.id, p.id));
+    const fe = meet(a, p.id, q.id, a.hist.year).att;
     a.contacts[key] = {year: a.hist.year, feeling: fe};
     const how = fe <= -3 ? 'с ненавистью' : fe <= -2 ? 'с давней неприязнью' : fe < 0 ? 'настороженно' : fe === 0 ? 'с любопытством' : 'как друзья';
     const cell = Math.min(a.n - 1, (((j0 / F.W) | 0) * F.c) * a.w + (j0 % F.W) * F.c);
-    say(`${cap1(p.P.label)} и ${q.P.label} впервые встретились ${wherePhrase(a, cell)} и смотрят друг на друга ${how}.` + (fe <= -2 ? ' Дорог между ними не будет.' : ''));
+    say(`${cap1(p.P.label)} и ${q.P.label} впервые встретились ${wherePhrase(a, cell)} и смотрят друг на друга ${how}.` + (!trades(a, p.id, q.id) ? ' Торговать они не станут.' : ''));
   }
+  // their dealings: trade, mingling, raids, wars and peace
+  const overlap = (p, q) => {
+    const P1 = a.peoples.find(x => x.id === p), Q1 = a.peoples.find(x => x.id === q);
+    let both = 0, mine = 0;
+    for (let j = 0; j < N; j++) { const u1 = P1.u[j] > 0.1, u2 = Q1.u[j] > 0.1; if (u1 || u2) mine++; if (u1 && u2) both++; }
+    return mine ? both / mine : 0;
+  };
+  stepDiplomacy(a, rnd, say, overlap);
 }
 
 // how much the living lairs whose territory reaches a town press on it, 0 … ~1.5

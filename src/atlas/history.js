@@ -9,7 +9,7 @@ import {plural} from '../core/util.js';
 import {SEASONS} from '../data/seasons.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {ERAS, WILD_YEARS, FAUNA} from '../data/history.js';
-import {ELDER_YEARS} from '../data/peoples.js';
+import {ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
 import {ROADS} from '../data/roads.js';
 import {arrive, stepPeoples} from './peoples.js';
 import {wearRoads} from './roads.js';
@@ -23,6 +23,7 @@ const SEASON_LIST = SEASONS.all();
 export const eraPlan = a => [
   {id: 'wild', seasons: WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR},
   {id: 'elder', seasons: ELDER_YEARS[a.cfg.elder ?? 1].years * SEASONS_PER_YEAR},
+  {id: 'young', seasons: YOUNG_YEARS[a.cfg.young ?? 1].years * SEASONS_PER_YEAR},
 ];
 export const historyLength = a => eraPlan(a).reduce((s, e) => s + e.seasons, 0);
 export const historyDone = a => !!a.hist && a.hist.step >= a.hist.end;
@@ -72,13 +73,13 @@ export function stepHistory(a) {
     }
   }
   // the elder peoples: they come at the start of their era and live a year at a time from then on
-  const wildEnd = eraPlan(a)[0].seasons;
-  if (H.step === wildEnd) {
-    H.era = 'elder';
-    say(a, `Началась ${ERAS.get('elder').label.toLowerCase()}.`);
-    arrive(a, 'elder', rnd, t => say(a, t));
+  const plan = eraPlan(a), wildEnd = plan[0].seasons, elderEnd = wildEnd + plan[1].seasons;
+  if (H.step === wildEnd || H.step === elderEnd) {
+    H.era = H.step === wildEnd ? 'elder' : 'young';
+    say(a, `Началась ${ERAS.get(H.era).label.toLowerCase()}.`);
+    arrive(a, H.era, rnd, t => say(a, t));
   }
-  if (H.era === 'elder' && season === 'spring') {
+  if (H.era !== 'wild' && season === 'spring') {
     stepPeoples(a, rnd, t => say(a, t));
     if ((H.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
       for (const [p, q] of wearRoads(a)) say(a, `Между ${p.name} и ${q.name} протоптали дорогу.`);
@@ -107,12 +108,16 @@ export function stepHistory(a) {
     const alive = a.lairs.filter(l => l.alive).length, gone = a.lairs.length - alive;
     say(a, `Дикая эра подошла к концу: ${alive} ${plural(alive, 'логово', 'логова', 'логов')} чудовищ стоит, ${gone} ${plural(gone, 'опустело', 'опустели', 'опустели')}. Мир ждёт первых народов.`);
   }
-  if (H.step >= H.end) {
+  if (H.step === elderEnd || H.step >= H.end) {
     const towns = a.towns.filter(t => t.alive), parts = [];
     for (const pe of a.peoples) {
       const mine = towns.filter(t => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));
       parts.push(`${pe.P.label} — ${mine.length} ${plural(mine.length, 'город', 'города', 'городов')}, ${pop} ${plural(pop, 'житель', 'жителя', 'жителей')}`);
     }
-    say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и орки.`);
+    if (H.step === elderEnd && H.step < H.end) say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и орки.`);
+    else {
+      const wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0), ruins = (a.ruins || []).length;
+      say(a, `Эпоха молодых народов подошла к концу: ${parts.join('; ')}. Войн было ${wars}, сожжено городов: ${ruins}. История мира ждёт поселенцев.`);
+    }
   }
 }

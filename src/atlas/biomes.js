@@ -142,7 +142,8 @@ export function vegetation(a, rnd) {
 
 // The biomes of a world cell as a region would have them: shares over the cell and its neighbours
 // (closer counts more). A forest zone that has burnt or thinned out counts partly as forest steppe,
-// and caves add some underground where the rock has them (limestone karst, basalt lava tubes).
+// caves add some underground where the rock has them (limestone karst, basalt lava tubes), and old
+// battlefields add barrows.
 export function cellBiomes(a, i, r = 2) {
   const f = a.f, w = a.w, x0 = i % w, y0 = (i / w) | 0, acc = {};
   let tot = 0;
@@ -155,6 +156,8 @@ export function cellBiomes(a, i, r = 2) {
     if (wooded < 1) add('meadow', wt * (1 - wooded));
     const rock = ROCK_BY_CODE[f.rock[j]]?.id, cave = rock === 'limestone' ? 0.15 : rock === 'basalt' ? 0.08 : 0;
     if (cave) add('underground', wt * cave);
+    // the old graves of battles (atlas/diplomacy.js)
+    if (f.barrows && f.barrows[j] > 0) add('barrows', wt * 0.5 * f.barrows[j]);
   }
   const out = {};
   for (const [id, v] of Object.entries(acc)) { const s = Math.round(v / tot * 100) / 100; if (s >= 0.02) out[id] = s; }

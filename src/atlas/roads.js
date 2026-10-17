@@ -1,26 +1,20 @@
 // Roads worn by traffic (data/roads.js). Every few years each town sends traffic to its nearest towns
 // along the cheapest way (A* over the world grid); a road already there makes the way cheaper, so
 // the traffic of many towns gathers on the same roads and wears them into highways, while roads
-// nobody walks overgrow. Peoples that hate each other do not trade, so no road joins their towns.
+// nobody walks overgrow. Peoples that dislike each other or are at war do not trade, so no road
+// joins their towns (atlas/diplomacy.js).
 //
 // Field (a.f): road — the wear of each cell (0 none; data/roads.js levels: path, road, highway).
 import {Heap, DIRS8} from './heap.js';
 import {ROADS} from '../data/roads.js';
 import {RIVERS} from '../data/hydrology.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
-import {RELATIONS} from '../data/relations.js';
-import {SPECIES} from '../data/species.js';
 import {biomeAt} from './biomes.js';
 import {townFx} from './towns.js';
+import {trades} from './diplomacy.js';
 import {scaleOf} from './tectonics.js';
 
 export const roadLevel = v => { let lv = -1; ROADS.levels.forEach((L, k) => { if (v >= L.wear) lv = k; }); return lv; };
-
-// a people's old feeling for another (data/relations.js), −3 … +2
-export function feeling(p, q) {
-  const a = SPECIES.get(WORLD_PEOPLES.get(p).race).rel, b = SPECIES.get(WORLD_PEOPLES.get(q).race).rel;
-  return RELATIONS[a]?.[b] ?? 0;
-}
 
 // what a step into a cell costs (Infinity: the ocean)
 function stepCost(a, i, people) {
@@ -70,7 +64,7 @@ export function wearRoads(a) {
   const scratch = a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
   const done = new Set(), fresh = [];
   for (const t of towns) {
-    const near = towns.filter(o => o !== t && feeling(t.people, o.people) >= -1 && feeling(o.people, t.people) >= -1)
+    const near = towns.filter(o => o !== t && trades(a, t.people, o.people))
       .map(o => [o, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, d]) => d <= reach).sort((p, q) => p[1] - q[1]).slice(0, ROADS.links);
     for (const [o] of near) {
       const key = Math.min(t.id, o.id) * 100000 + Math.max(t.id, o.id);

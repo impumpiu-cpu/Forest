@@ -14,6 +14,7 @@
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
 import {TOWN_BUILDINGS, EFFECTS} from '../data/townBuildings.js';
+import {TIERS} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {ROADS} from '../data/roads.js';
@@ -25,6 +26,9 @@ import {DIRS8} from './heap.js';
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
 const KEYS = Object.keys(EFFECTS);
+
+// the town's size word in a case: 0 nominative, 1 accusative, 2 genitive, 3 prepositional, 4 instrumental
+export const townLabel = (t, cs = 0) => TIERS[t.tier].label[t.people][cs];
 
 export function townFx(t) {
   const out = Object.fromEntries(KEYS.map(k => [k, 0]));
