@@ -111,8 +111,9 @@ export function stepFauna(a, seasonId) {
     if (s.role === 'prey') for (let j = 0; j < n; j++) {
       const N0 = s.N[j], K = s.K[j];
       const g = gAt(j);
-      // logistic growth; a hard winter thins even a herd below its capacity
-      s.N[j] = K > 0 ? N0 + P.growth * g * N0 * (g > 0 ? 1 - N0 / K : 1) - eaten[k][j] : N0 * 0.5;
+      // logistic growth; a hard winter thins even a herd below its capacity; several predators
+      // together cannot take more than there is
+      s.N[j] = K > 0 ? Math.max(0, N0 + P.growth * g * N0 * (g > 0 ? 1 - N0 / K : 1) - Math.min(eaten[k][j], N0)) : N0 * 0.5;
     }
     diffuse(F, s.N, s.K, P.diffuse * s.speed, tmp);
     for (let j = 0; j < n; j++) if (s.N[j] < P.floor * Math.max(s.K[j], 0.05)) s.N[j] = 0;

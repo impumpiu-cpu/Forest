@@ -44,7 +44,10 @@ export function initPeoples(a, era) {
       mob[j] += P.moves[b] ?? P.movesElse; cnt[j]++;
     }
     for (let j = 0; j < N; j++) { K[j] = cnt[j] ? clamp01(K[j] / (F.c * F.c)) : 0; mob[j] = cnt[j] ? mob[j] / cnt[j] : 0; }
-    a.peoples.push({id: P.id, P, K, mob, u: new Float32Array(N)});
+    // how good each world cell is for a town of theirs: the land does not change, so once is enough
+    const site = new Float32Array(a.n);
+    for (let i = 0; i < a.n; i++) site[i] = siteScore(a, P, i);
+    a.peoples.push({id: P.id, P, K, mob, site, u: new Float32Array(N)});
   }
 }
 
@@ -80,12 +83,20 @@ function siteScore(a, P, i) {
 
 const farFromTowns = (a, x, y, d) => !a.towns.some(t => t.alive && Math.hypot(t.x - x, t.y - y) < d);
 
+// whether a coarse cell and its ring (3c × 3c around its middle) have any room for a town at all:
+// a town closer to the middle than `spacing` minus the window's half-diagonal covers every cell in it
+function roomAround(a, P, j) {
+  const F = a.fauna, c = F.c, mx = (j % F.W + 0.5) * c, my = (((j / F.W) | 0) + 0.5) * c;
+  return farFromTowns(a, mx, my, P.spacing * scaleOf(a) - 1.5 * Math.SQRT2 * c);
+}
+
 // the best spot in a coarse cell and its ring
-function bestSite(a, P, j, rnd) {
-  const F = a.fauna, cx = (j % F.W) * F.c, cy = ((j / F.W) | 0) * F.c, k = scaleOf(a);
+function bestSite(a, pe, j, rnd) {
+  const F = a.fauna, P = pe.P, cx = (j % F.W) * F.c, cy = ((j / F.W) | 0) * F.c, k = scaleOf(a);
+  if (!roomAround(a, P, j)) return -1;
   let best = -1, bv = -Infinity;
   for (let y = Math.max(0, cy - F.c); y < Math.min(a.h, cy + 2 * F.c); y++) for (let x = Math.max(0, cx - F.c); x < Math.min(a.w, cx + 2 * F.c); x++) {
-    const i = y * a.w + x, v = siteScore(a, P, i) + 0.05 * rnd();
+    const i = y * a.w + x, v = pe.site[i] + 0.05 * rnd();
     if (v > bv && farFromTowns(a, x, y, P.spacing * k)) { bv = v; best = i; }
   }
   return bv > 0.4 ? best : -1;
@@ -120,7 +131,7 @@ export function arrive(a, era, rnd, say) {
     for (const j of order) {
       if (picks.length >= P.arrive.groups) break;
       if (picks.some(q => Math.hypot(q % F.W - j % F.W, ((q / F.W) | 0) - ((j / F.W) | 0)) < F.W / 4)) continue;
-      const i = bestSite(a, P, j, rnd);
+      const i = bestSite(a, pe, j, rnd);
       if (i < 0) continue;
       picks.push(j);
       for (const [dx, dy] of [[0, 0], ...DIRS8]) {
@@ -138,12 +149,14 @@ export function arrive(a, era, rnd, say) {
 // a year of the peoples: their fields, their towns, their wars with the wild, their meetings
 export function stepPeoples(a, rnd, say) {
   const F = a.fauna, N = F.W * F.H, tmp = new Float32Array(N), k = scaleOf(a);
-  for (const pe of a.peoples) {
+  // towns are the hearths the fields grow from
+  for (const pe of a.peoples) for (const t of a.towns) if (t.alive && t.people === pe.id) { const j = faunaCell(a, t.i); pe.u[j] = Math.max(pe.u[j], Math.min(1, 0.45 + 0.15 * t.tier + 0.2 * townFx(t).prestige)); }
+  // every people sees the others as they were at the start of the year, whatever the order
+  const was = a.peoples.map(pe => Float32Array.from(pe.u));
+  for (const [pi, pe] of a.peoples.entries()) {
     const {P, K, u, mob} = pe;
-    // towns are the hearths the field grows from
-    for (const t of a.towns) if (t.alive && t.people === P.id) { const j = faunaCell(a, t.i); u[j] = Math.max(u[j], Math.min(1, 0.45 + 0.15 * t.tier + 0.2 * townFx(t).prestige)); }
     // Fisher–KPP: logistic growth where they live, spreading easiest through their own lands
-    tmp.set(u);
+    tmp.set(was[pi]);
     for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
       const j = y * F.W + x; if (K[j] <= 0) { u[j] = 0; continue; }
       let flux = 0;
@@ -153,7 +166,7 @@ export function stepPeoples(a, rnd, say) {
       }
       // other peoples on the same land push this one out, the more the worse they get on
       let push = 0;
-      for (const o of a.peoples) if (o !== pe && o.u[j] > 0) push += DIPLOMACY.compete[stateOf(a, P.id, o.id)] * o.u[j];
+      for (const [oi, o] of a.peoples.entries()) if (o !== pe && was[oi][j] > 0) push += DIPLOMACY.compete[stateOf(a, P.id, o.id)] * was[oi][j];
       u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
     }
   }
@@ -170,7 +183,7 @@ export function stepPeoples(a, rnd, say) {
     let made = 0;
     for (const j of cand) {
       if (made >= 2 || rnd() > 0.35) continue;
-      const i = bestSite(a, pe.P, j, rnd);
+      const i = bestSite(a, pe, j, rnd);
       if (i < 0) continue;
       const t = foundTown(a, pe, i, rnd, 40 + 40 * rnd());
       made++;

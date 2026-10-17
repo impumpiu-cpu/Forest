@@ -62,6 +62,19 @@ function barrows(a, i, r) {
   }
 }
 
+// where the battle was fought: a few cells out of the beaten town towards the winner, on land — the
+// towns may be far apart, with sea between them, and the graves lie under the town's walls
+function battlefield(a, lose, win) {
+  const k = scaleOf(a), dx = win.x - lose.x, dy = win.y - lose.y, d = Math.hypot(dx, dy) || 1, far = Math.min(d / 2, 3 * k);
+  let best = lose.i;
+  for (let s = 1; s <= far; s++) {
+    const x = Math.round(lose.x + dx / d * s), y = Math.round(lose.y + dy / d * s);
+    if (x < 0 || y < 0 || x >= a.w || y >= a.h || a.f.ocean[y * a.w + x]) break;
+    best = y * a.w + x;
+  }
+  return best;
+}
+
 const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
 
 // a year of the peoples' dealings; `overlap(p, q)` is the share of their land they share
@@ -106,7 +119,7 @@ export function stepDiplomacy(a, rnd, say, overlap) {
         const [t, o] = best, ft = fight(t, rnd), fo = fight(o, rnd), [win, lose] = ft >= fo ? [t, o] : [o, t];
         const loss = (D.battleLoss[0] + (D.battleLoss[1] - D.battleLoss[0]) * rnd()) * raidShare(townFx(lose));
         lose.pop *= 1 - loss; win.pop *= 1 - loss * 0.4; r.war.battles++;
-        barrows(a, Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2), D.barrows * Math.max(1, Math.round(k)));
+        barrows(a, battlefield(a, lose, win), D.barrows * Math.max(1, Math.round(k)));
         if (lose.pop < D.raze && lose.tier <= 1) {
           raze(a, lose, win.people, 'war'); r.war.razed++;
           say(`${cap1(label(win.people))} из ${townLabel(win, 2)} ${win.name} взяли и сожгли ${townLabel(lose, 1)} ${lose.name}: осталось пепелище.`);

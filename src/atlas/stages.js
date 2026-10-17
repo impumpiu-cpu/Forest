@@ -2,9 +2,9 @@
 // ones made, writes its own and returns a line for the world's chronicle. Each stage draws from its
 // own random stream (atlas/generate.js), so a stage can be reworked without changing the others.
 //
-// Done: plates → boundaries and hot spots → relief → sea level → temperature → winds → rain → erosion →
+// plates → boundaries and hot spots → relief → sea level → temperature → winds → rain → erosion →
 // rivers and lakes → rocks → ores (with gold sand from the rivers) → biomes → soils → forests.
-// Next (docs/WORLD.md): the eras of history.
+// After the land is made, history runs a season a step (atlas/history.js).
 import {Registry} from '../core/registry.js';
 import {plural} from '../core/util.js';
 import {ATLAS_LAND} from '../data/atlas.js';

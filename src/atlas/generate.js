@@ -51,6 +51,9 @@ export function atlasHash(a) {
   for (const k of Object.keys(a.f).sort()) for (const v of a.f[k]) mix(Math.round(v * 1000) | 0);
   if (a.fauna) for (const s of a.fauna.list) for (const v of s.N) mix(Math.round(v * 1000) | 0);
   for (const l of a.lairs || []) mix(l.i * 31 + Math.round(l.strength * 1000) + (l.alive ? 7 : 0));
+  for (const t of a.towns || []) { mix(t.i * 31 + Math.round(t.pop * 10) + t.tier * 7 + (t.alive ? 3 : 0)); for (const b of t.built) for (let k = 0; k < b.length; k++) mix(b.charCodeAt(k)); }
+  for (const k of Object.keys(a.rel || {}).sort()) { const r = a.rel[k]; mix(Math.round(r.att * 1000) + r.wars * 7 + r.routes * 13 + (r.war ? 1 : 0)); }
+  for (const r of a.ruins || []) mix(r.i * 31 + r.year);
   for (const c of a.chronicle) for (let k = 0; k < c.text.length; k++) mix(c.text.charCodeAt(k));
   return (hsh >>> 0).toString(16);
 }

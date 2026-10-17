@@ -54,10 +54,10 @@ export const TOWN_BUILDINGS = new Registry('townBuilding');
 TOWN_BUILDINGS.registerAll([
   // ── housing
   B('hut', 'шалаши', 'pl', 'housing', 0, ALL, {housing: 1}, {max: 2, local: 'hut'}),
-  B('yurts', 'шатры', 'pl', 'housing', 0, O, {housing: 1.5}, {max: 6}),
+  B('yurts', 'шатры', 'pl', 'housing', 0, O, {housing: 1.5}, {max: 8}),
   B('house', 'избы', 'pl', 'housing', 1, [...H], {housing: 2}, {max: 6, needsAny: ['forest', 'clay'], local: 'house'}),
   B('longhouse', 'длинный дом', 'm', 'housing', 1, [...H, ...O], {housing: 2.5, prestige: 0.03}, {max: 4, needs: ['forest']}),
-  B('treehouse', 'дома на деревьях', 'pl', 'housing', 1, E, {housing: 3}, {max: 6, needs: ['forest']}),
+  B('treehouse', 'дома на деревьях', 'pl', 'housing', 1, E, {housing: 3}, {max: 8, needs: ['forest']}),
   B('hallhomes', 'подгорные жилища', 'pl', 'housing', 1, D, {housing: 4, defence: 0.05}, {max: 8, needsAny: ['steep', 'caves']}),
   B('stonehouse', 'каменные дома', 'pl', 'housing', 2, [...H, ...D], {housing: 4, defence: 0.03}, {max: 8, needs: ['stone'], requires: ['quarry']}),
   B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {housing: 1, defence: 0.25}, {requiresAny: ['armory', 'warcamp']}),
