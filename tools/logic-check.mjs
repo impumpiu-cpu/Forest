@@ -5,7 +5,7 @@
 // T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order;
 // T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
 // T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies;
-// T71–T73 fixes from the review). Each scene builds a flat, empty map, places a few agents by hand and
+// T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -16,7 +16,7 @@ import {BRAINS} from '../src/agents/brains/index.js';
 import {TASKS} from '../src/agents/tasks.js';
 import {T} from '../src/data/terrain.js';
 import {FAR} from '../src/nav/navigation.js';
-import {clearLine} from '../src/nav/astar.js';
+import {clearLine, lineOfFire} from '../src/nav/astar.js';
 import {follow, moveToward, approach} from '../src/agents/movement.js';
 import {cellOf, walkable} from '../src/world/grid.js';
 import {step} from '../src/sim.js';
@@ -33,7 +33,7 @@ import {createSquad, stepSquads, planFor, ROLES} from '../src/agents/squad.js';
 import {kill} from '../src/agents/agent.js';
 import {outsideRisk, escortOption, aidOption, TOGETHER} from '../src/settlement/together.js';
 import {stepRelations, REL} from '../src/settlement/relations.js';
-import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS} from '../src/agents/carcass.js';
+import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS, PACK} from '../src/agents/carcass.js';
 import {DAY, HOUR, nightness} from '../src/core/time.js';
 import {think} from '../src/agents/mind.js';
 import {newItem, outfit, recalcGear, allItems} from '../src/agents/equipment.js';
@@ -44,7 +44,7 @@ import {CRIT} from '../src/data/wounds.js';
 import {decideTrophies, luckBoost, TROPHY} from '../src/agents/trophies.js';
 import {damage, attack, nearestHostile} from '../src/agents/combat.js';
 import {giveAid} from '../src/settlement/together.js';
-import {saveWorld, loadWorld} from '../src/world/save.js';
+import {saveWorld, loadWorld, worldHash, SAVE_FORMAT} from '../src/world/save.js';
 import {practice, practiceGain, softCap, skillTier, migrateSkills, recipeAccess, canMake, jobAccess, canDoAction} from '../src/agents/skills.js';
 import {workRate} from '../src/agents/jobRunners.js';
 import {shoot} from '../src/agents/combat.js';
@@ -947,6 +947,109 @@ check('T73', 'лежащий без сознания не уходит из по
   if (!(moodOf(w, a) < LIFE.leaveBelow)) return 'сцена: настроение недостаточно мрачное ' + moodOf(w, a);
   stepLife(w);
   return (a.faction === 'colony' && a.downed && a.task?.id === 'downed') || `ушёл или встал: ${a.faction}, ${a.task?.id}`;
+});
+
+// ── code review of 16.10 (F01–F06)
+check('T74', 'F01: мир без SPECIAL загружается, делает шаг и загружается одинаково', () => {
+  const w = newGame({...DEFAULT_CFG, seed: 'old', size: 'small'});
+  for (const a of w.agents) { delete a.special; a.bodyVer = 0; }
+  const sv = JSON.parse(JSON.stringify(saveWorld(w)));
+  const w1 = loadWorld(JSON.parse(JSON.stringify(sv))), w2 = loadWorld(JSON.parse(JSON.stringify(sv)));
+  if (!w1.agents.every(a => !SPECIES.get(a.species).special || a.special)) return 'SPECIAL не выдан';
+  if (!w1.agents.every(a => a.hp > 0 && a.hp <= maxHp(a) + 1e-9)) return 'здоровье вне границ после пересчёта тела';
+  if (worldHash(w1) !== worldHash(w2)) return 'две загрузки одного файла разошлись';
+  step(w1);
+  return w1.tick === w.tick + 1 || 'шаг не сделан';
+});
+
+check('T75', 'F02: сохранение с незнакомой задачей отклоняется до загрузки, формат новый', () => {
+  if (SAVE_FORMAT < 3) return 'формат сохранения не поднят: старая сборка примет его';
+  const w = newGame({...DEFAULT_CFG, seed: 'fmt', size: 'small'});
+  const c = w.agents.find(a => a.brain === 'colonist'); c.task = {id: 'из-будущей-версии'};
+  const sv = JSON.parse(JSON.stringify(saveWorld(w)));
+  try { loadWorld(sv); return 'загрузка приняла мир с незнакомой задачей'; } catch (e) { if (!/другой версией/.test(e.message)) return 'непонятная ошибка: ' + e.message; }
+  c.task = {id: 'job', job: 'из-будущей-версии'};
+  const sv2 = JSON.parse(JSON.stringify(saveWorld(w)));
+  try { loadWorld(sv2); } catch (e) { return /другой версией/.test(e.message) || 'непонятная ошибка: ' + e.message; }
+  return 'загрузка приняла мир с незнакомой работой';
+});
+
+check('T76', 'F03: охотник обходит скалу на линии выстрела и стреляет, навык без выстрела не растёт', () => {
+  const w = scene(); fixedRng(w);
+  const h = human(w); h.x = 20.5; h.y = 20.5; armed(w, h);
+  const hare = put(w, 'hare', 'wild', 22.5, 20.5);
+  w.grid.terr[20 * w.w + 21] = T.ROCK; w.nav.buildAll();
+  if (lineOfFire(w, h.x, h.y, hare.x, hare.y)) return 'сцена: линия огня открыта';
+  const x0 = h.x, y0 = h.y, sk0 = h.skill.ranged;
+  h.task = {id: 'job', job: 'hunt', prey: hare};
+  let shots = 0;
+  for (let k = 0; k < 60 && h.task && !shots; k++) {
+    hare.x = 22.5; hare.y = 20.5; hare.task = null; h.cd = 0;
+    const fx = w.fx.length; TASKS.get('job').step(w, h, h.task); if (w.fx.length > fx) shots++;
+    if (!shots && h.skill.ranged !== sk0) return 'навык вырос без выстрела';
+  }
+  if (Math.hypot(h.x - x0, h.y - y0) < 0.3) return 'охотник стоит на месте';
+  return shots > 0 || 'обошёл, но не выстрелил: ' + (h.task?.id ?? JSON.stringify(h.lastStop));
+});
+
+check('T77', 'F04: скрытая русалка не мешает перевязать раненого, видимый враг — мешает', () => {
+  const run = hidden => {
+    const w = scene(); fixedRng(w);
+    const x = w.camp.x + 25.5, y = w.camp.y + 0.5;
+    const H = put(w, 'human', 'colony', x, y), W = put(w, 'human', 'colony', x + 0.5, y);
+    W.hp = maxHp(W) * 0.2;
+    const foe = hidden ? put(w, 'rusalka', 'nechist', x + 0.1, y) : put(w, 'wolf', 'predators', x + 1.5, y);
+    if (hidden) { foe.hiddenUntil = w.tick + 1000; foe.task = {id: 'lurk'}; }
+    H.task = {id: 'aid', who: W.id};
+    const hp0 = W.hp;
+    for (let k = 0; k < 30 && H.task?.id === 'aid'; k++) { TASKS.get('aid').step(w, H, H.task); w.tick++; }
+    return {healed: W.hp > hp0, fought: H.lastFight != null};
+  };
+  const a = run(true), b = run(false);
+  if (!a.healed) return 'скрытая русалка блокирует помощь';
+  return (b.fought) || 'видимого врага помощник не замечает';
+});
+
+check('T78', 'F05: удар не проходит сквозь угол двух скал; без скал — проходит', () => {
+  const run = rocks => {
+    const w = scene();
+    if (rocks) { w.grid.terr[20 * w.w + 21] = T.ROCK; w.grid.terr[21 * w.w + 20] = T.ROCK; }
+    const a = human(w); a.x = 20.9; a.y = 20.9;
+    const r = raider(w); r.x = 21.1; r.y = 21.1;
+    seq(w, [0.5]); a.cd = 0;
+    const hp = r.hp, hit = attack(w, a, r);
+    return {hit, lost: hp - r.hp};
+  };
+  const blocked = run(true), open = run(false);
+  if (blocked.hit || blocked.lost > 0) return `удар сквозь скалы: урон ${blocked.lost.toFixed(3)}`;
+  return (open.hit && open.lost > 0) || 'обычный удар соседу не проходит';
+});
+
+check('T79', 'F05: бойцу за углом скалы не стоится — он обходит, чтобы ударить', () => {
+  const w = scene();
+  w.grid.terr[20 * w.w + 21] = T.ROCK; w.grid.terr[21 * w.w + 20] = T.ROCK; w.nav.buildAll();
+  const a = human(w); a.x = 20.9; a.y = 20.9;
+  const r = raider(w); r.x = 21.1; r.y = 21.1; r.task = null;
+  a.task = {id: 'fight', target: r};
+  seq(w, [0.5]);
+  const hp = r.hp;
+  for (let k = 0; k < 40 && r.hp === hp && a.task; k++) { r.x = 21.1; r.y = 21.1; TASKS.get('fight').step(w, a, a.task); if (a.cd > 0) a.cd--; }
+  return r.hp < hp || 'застрял за углом: ' + (a.task?.id ?? JSON.stringify(a.lastStop));
+});
+
+check('T80', 'F06: отставший волк отдыхает, держит роль wait до порога и возвращается после', () => {
+  const w = scene(); fixedRng(w);
+  const [a, b] = wolves(w, 2, 20.5, 20.5), hare = put(w, 'hare', 'wild', 27.5, 20.5);
+  a.stamina = 0.2;
+  const h = startHunt(w, [a, b], hare, 'game');
+  a.task = {id: 'chase', target: hare}; b.task = {id: 'chase', target: hare};
+  if (h.roles[a.id] !== 'wait') return 'сцена: роль ' + h.roles[a.id];
+  const s0 = a.stamina; brain(w, a);
+  if (!(a.stamina > s0)) return `в ожидании не отдыхает: ${s0} → ${a.stamina}`;
+  a.stamina = 0.3; w.tick += PACK.roles; stepHunts(w);
+  if (h.roles[a.id] !== 'wait') return 'при 0.3 вернулся в охоту: ' + h.roles[a.id];
+  a.stamina = PACK.rested + 0.01; w.tick += PACK.roles; stepHunts(w);
+  return (h.roles[a.id] !== 'wait') || 'отдохнув, не вернулся';
 });
 
 let bad = 0;

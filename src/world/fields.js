@@ -121,7 +121,8 @@ function burn(w) {
 function growth(w) {
   const g = w.grid, S = season(w);
   for (const c of w.gardenCells) if (S.garden > 0 && g.bush[c] && g.fire[c] === 0 && g.food[c] < 1) {
-    g.food[c] = Math.min(1, g.food[c] + 0.0035 * S.garden * (0.4 + 1.2 * g.fert[c]));   // good soil, more berries if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty('berries');
+    g.food[c] = Math.min(1, g.food[c] + 0.0035 * S.garden * (0.4 + 1.2 * g.fert[c]));   // good soil, more berries
+    if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty('berries');   // ripe enough: the berry field must know
   }
   if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
     const x = w.camp.x + xx, y = w.camp.y + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;

@@ -135,9 +135,10 @@ function dealRoles(w, h) {
   const prey = byId(w, h.prey); if (!prey) return;
   const ms = h.members.map(id => byId(w, id)).filter(Boolean).sort((x, y) => dist(x, prey) - dist(y, prey));
   let side = 1;
+  const prev = h.roles || {};   // read before dealing anew: one who waited keeps waiting until rested
   h.roles = {};
   ms.forEach((m, k) => {
-    const winded = m.stamina < PACK.winded || (h.roles[m.id] === 'wait' && m.stamina < PACK.rested);
+    const winded = m.stamina < PACK.winded || (prev[m.id] === 'wait' && m.stamina < PACK.rested);
     h.roles[m.id] = k === 0 ? 'lead' : winded ? 'wait' : (side = -side) > 0 ? 'flankL' : 'flankR';
   });
   h.dealt = w.tick;

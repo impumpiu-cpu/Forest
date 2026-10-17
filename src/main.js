@@ -194,31 +194,42 @@ document.addEventListener('keydown', e => {
 let acc = 0, last = performance.now(), panelT = 0;
 function frame(now) {
   if (running) {
-    const dt = Math.min(250, now - last); last = now;
-    acc += dt * view.speed;
-    const budget = now + 22; let n = 0;
-    while (acc >= TICK_MS && n < 40 && performance.now() < budget) { step(world); acc -= TICK_MS; n++; }
-    if (acc > 500) acc = 0;
-    if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
-    if (view.selBld != null && !world.buildings.some(b => b.id === view.selBld)) view.selBld = null;
-    // the settlement has fallen: stop, draw the last frame and show the chronicle
-    if (world.over) {
-      running = false;
-      renderer.draw(world, view); panel.render(world, view);
-      $('game').hidden = true; $('explain').hidden = true;
-      document.body.classList.remove('ingame');
-      showEnd(world, () => { world = null; showMenu(); });
-      requestAnimationFrame(frame);
-      return;
+    try { runFrame(now); }
+    catch (err) {
+      // the world is in an unknown state now: stop it, say why, and do not let it be resumed or autosaved
+      console.error(err);
+      const tick = world?.tick;
+      running = false; acc = 0; world = null;
+      showMenu();
+      $('loadStatus').textContent = `Игра остановлена из-за ошибки${tick != null ? ` на тике ${tick}` : ''}: ${err.message}. Последнее сохранение цело.`;
     }
-    // autosave once a game day, at the first frame of the new day
-    if (dayOf(world.tick) !== autoDay) { autoDay = dayOf(world.tick); save(true); }
-    renderer.draw(world, view);
-    view.renderMs = renderer.ms;
-    panel.readout(world, view.hover);
-    if (now - panelT > 300) { panelT = now; panel.render(world, view); panel.renderSelection(world, view); }
   }
   requestAnimationFrame(frame);
+}
+
+function runFrame(now) {
+  const dt = Math.min(250, now - last); last = now;
+  acc += dt * view.speed;
+  const budget = now + 22; let n = 0;
+  while (acc >= TICK_MS && n < 40 && performance.now() < budget) { step(world); acc -= TICK_MS; n++; }
+  if (acc > 500) acc = 0;
+  if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
+  if (view.selBld != null && !world.buildings.some(b => b.id === view.selBld)) view.selBld = null;
+  // the settlement has fallen: stop, draw the last frame and show the chronicle
+  if (world.over) {
+    running = false;
+    renderer.draw(world, view); panel.render(world, view);
+    $('game').hidden = true; $('explain').hidden = true;
+    document.body.classList.remove('ingame');
+    showEnd(world, () => { world = null; showMenu(); });
+    return;
+  }
+  // autosave once a game day, at the first frame of the new day
+  if (dayOf(world.tick) !== autoDay) { autoDay = dayOf(world.tick); save(true); }
+  renderer.draw(world, view);
+  view.renderMs = renderer.ms;
+  panel.readout(world, view.hover);
+  if (now - panelT > 300) { panelT = now; panel.render(world, view); panel.renderSelection(world, view); }
 }
 
 $('buildTag').textContent = `версия ${VERSION} · ${BUILD}`;

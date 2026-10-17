@@ -10,7 +10,7 @@ import {FOODS} from '../data/foods.js';
 import {ambientTemp} from '../core/time.js';
 import {cellOf} from '../world/grid.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
-import {attack, shoot, canSee, reachOf} from './combat.js';
+import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
 import {eatMeal, plunder} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
@@ -120,7 +120,7 @@ TASKS.registerAll([
       return;
     }
     task.shooting = false;
-    if (d > Math.min(0.9, reachOf(a))) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
+    if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, t)) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
     else attack(w, a, t);
   }},
 
