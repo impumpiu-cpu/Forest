@@ -206,6 +206,82 @@ export const LOOKS = {
     ctx.fillStyle = '#e9f2c8'; ctx.beginPath(); ctx.arc(px - r * 0.25, py - r * 0.45, r * 0.12, 0, Math.PI * 2); ctx.arc(px + r * 0.25, py - r * 0.45, r * 0.12, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   },
+  // horse: a long body with a neck up and a mane; a tame one wears a halter
+  horse(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    if (a.tame && a.age < 30) r *= 0.7;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r * 0.8, -r * 0.3); ctx.lineTo(r * 1.35, -r * 1.25); ctx.lineTo(r * 1.75, -r * 1.05); ctx.lineTo(r * 1.25, -r * 0.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = shade(color, 0.5); ctx.lineWidth = Math.max(1, r * 0.22);
+    ctx.beginPath(); ctx.moveTo(r * 0.85, -r * 0.55); ctx.lineTo(r * 1.35, -r * 1.3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r * 1.25, -r * 0.1); ctx.quadraticCurveTo(-r * 1.9, r * 0.1, -r * 1.8, r * 0.7); ctx.stroke();
+    if (a.tame) { ctx.strokeStyle = '#c8402e'; ctx.lineWidth = Math.max(1, r * 0.14); ctx.beginPath(); ctx.arc(r * 1.45, -r * 1.05, r * 0.3, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+  },
+  // bull: a heavy dark body, a broad head and two pale horns; reddish when it charges
+  bull(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    if (a.tame && a.age < 40) r *= 0.7;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = a.task?.mule ? '#7a3a2a' : color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.35, r * 0.85, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(r * 1.25, -r * 0.25, r * 0.5, r * 0.42, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#e8dfc8'; ctx.lineWidth = Math.max(1.2, r * 0.18);
+    ctx.beginPath(); ctx.moveTo(r * 1.1, -r * 0.6); ctx.quadraticCurveTo(r * 0.9, -r * 1.3, r * 1.35, -r * 1.25); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r * 1.5, -r * 0.6); ctx.quadraticCurveTo(r * 1.75, -r * 1.3, r * 2.0, -r * 1.05); ctx.stroke();
+    if (a.tame) { ctx.fillStyle = '#c8402e'; ctx.beginPath(); ctx.arc(r * 1.05, -r * 0.1, Math.max(1, r * 0.18), 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  },
+  // lion: a wolf's long body with a dark round mane about the head; reddish when it mauls
+  lion(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = a.task?.id === 'maul' ? '#b06a6a' : color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.4, r * 0.72, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r * 1.35, -r * 0.1); ctx.quadraticCurveTo(-r * 2.1, -r * 0.3, -r * 2.3, r * 0.4); ctx.lineWidth = Math.max(1.2, r * 0.25); ctx.strokeStyle = color; ctx.stroke();
+    ctx.fillStyle = shade(color, 0.55); ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(r * 1.25, -r * 0.35, r * 0.75, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(r * 1.35, -r * 0.35, r * 0.42, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  },
+  // camel: a tall sandy body with one hump and a long neck; the tame one wears a halter
+  camel(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    if (a.tame && a.age < 40) r *= 0.7;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = a.task?.mule ? '#a0683a' : color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.7, r * 0.55, Math.PI, 0); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r * 0.9, -r * 0.2); ctx.lineTo(r * 1.3, -r * 1.4); ctx.lineTo(r * 1.75, -r * 1.3); ctx.lineTo(r * 1.3, -r * 0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (a.tame) { ctx.strokeStyle = '#c8402e'; ctx.lineWidth = Math.max(1, r * 0.14); ctx.beginPath(); ctx.arc(r * 1.45, -r * 1.25, r * 0.28, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+  },
+  // seal: a sleek grey tube with a round head and a pale belly
+  seal(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.4, r * 0.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(r * 1.25, -r * 0.15, r * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = shade(color, 1.3); ctx.beginPath(); ctx.ellipse(-r * 0.1, r * 0.2, r * 0.8, r * 0.25, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0e100b'; ctx.beginPath(); ctx.arc(r * 1.4, -r * 0.25, Math.max(0.8, r * 0.1), 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  },
+  // sheep: a round woolly body on a small dark head; sheared, it is thinner
+  sheep(ctx, a, px, py, r, color) {
+    const dir = a.faceX ?? 1;
+    if (a.tame && a.age < 20) r *= 0.7;
+    const woolly = a.wool == null || a.wool > 0.5;
+    ctx.save(); ctx.translate(px, py); ctx.scale(dir < 0 ? -1 : 1, 1);
+    ctx.fillStyle = color; ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * (woolly ? 1.2 : 1.0), r * (woolly ? 0.95 : 0.7), 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (woolly) for (const [x, y] of [[-0.7, -0.6], [0, -0.85], [0.7, -0.6], [-0.9, 0.3], [0.9, 0.3]]) { ctx.beginPath(); ctx.arc(r * x, r * y, r * 0.35, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = '#3a2e24'; ctx.beginPath(); ctx.ellipse(r * 1.15, -r * 0.3, r * 0.36, r * 0.28, 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (a.tame) { ctx.fillStyle = '#c8402e'; ctx.beginPath(); ctx.arc(r * 0.75, -r * 0.1, Math.max(1, r * 0.16), 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  },
 };
 
 function shade(hex, k) {
