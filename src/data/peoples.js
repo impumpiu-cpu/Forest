@@ -104,6 +104,21 @@ export function tierOf(t) {
 // is the town the crowned seat of its people
 export const crowned = t => !!t.capital && t.built.includes('throne');
 
+// Realms (atlas/realms.js): a people is a race, a realm is a state — a seat and the towns that hold
+// to it. Each founding band is its own realm, so a race starts as two. A realm is named by the land
+// of its seat, so no made-up town name has to be declined: «гномы Медной горы», «эльфы Тёмного леса».
+// The first epithet that fits the seat's cell is taken, in the order: a rich ore, the water, the biome;
+// if that name is already a realm's of the same people, the next in that order.
+export const EPITHETS = {
+  ores: {gold: ['Золотых жил'], silver: ['Серебряных копей'], bronze: ['Медной горы', 'Медных холмов'], iron: ['Железных холмов', 'Ржавых гор'], gems: ['Самоцветных гор'], coal: ['Чёрных копей']},
+  water: {coast: ['Солёного берега', 'Белого берега', 'Дальнего берега'], great: ['Великой реки'], river: ['Тихой реки', 'Быстрой реки', 'Светлой реки'],
+    lake: ['Светлого озера', 'Тихого озера'], salt: ['Солёного озера']},
+  biomes: {forest: ['Тёмного леса', 'Старых дубрав', 'Зелёной сени'], taiga: ['Чёрной тайги', 'Сосновых боров'], jungle: ['Зелёных дебрей'], meadow: ['Широких лугов', 'Вольных трав'],
+    steppe: ['Вольной степи', 'Ковыльного моря'], savanna: ['Жёлтых трав', 'Красной земли'], shrubland: ['Сухих холмов', 'Каменистых пустошей'], desert: ['Красных песков', 'Горячих ветров'],
+    tundra: ['Белых мхов', 'Студёной земли'], foothills: ['Высоких холмов', 'Долгих склонов'], highlands: ['Седых гор', 'Снежных вершин'], swamp: ['Чёрных топей'], volcano: ['Огненной горы'], ice: ['Вечных льдов'], water: ['Семи островов']},
+  else: ['Далёкой земли', 'Края света', 'Новых земель', 'Последнего предела'],
+};
+
 // Towns against the wild: a town fights the lairs whose territory reaches it; the town's might is
 // √pop × `might`, the lair's its strength × its owner's SPECIAL power. A beaten lair is cleared;
 // a town that loses is raided and loses `raidLoss` of its people.

@@ -129,7 +129,8 @@ export function stepHistory(a) {
     const towns = a.towns.filter(t => t.alive), parts = [];
     for (const pe of a.peoples) {
       const mine = towns.filter(t => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));
-      parts.push(`${pe.P.label} — ${mine.length} ${plural(mine.length, 'город', 'города', 'городов')}, ${pop} ${plural(pop, 'житель', 'жителя', 'жителей')}`);
+      const realms = (a.realms || []).filter(r => r.people === pe.id && mine.some(t => t.realm === r.id)).length;
+      parts.push(`${pe.P.label} — ${realms} ${plural(realms, 'держава', 'державы', 'держав')}, ${mine.length} ${plural(mine.length, 'город', 'города', 'городов')}, ${pop} ${plural(pop, 'житель', 'жителя', 'жителей')}`);
     }
     if (H.step === elderEnd && H.step < H.end) say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и орки.`);
     else {

@@ -23,7 +23,8 @@ import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
 import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
-import {meet, stateOf, stateLabel, stepDiplomacy, trades, raidGraves} from './diplomacy.js';
+import {meet, raceState, stepDiplomacy, trades, raidGraves} from './diplomacy.js';
+import {foundRealm, joinRealm, realmLabel, realmTowns} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
 
@@ -33,7 +34,7 @@ const oreWealth = (a, i) => Math.max(...['iron', 'bronze', 'silver', 'gold', 'ge
 
 export function initPeoples(a, era) {
   const F = a.fauna, N = F.W * F.H;
-  a.peoples ||= []; a.towns ||= []; a.contacts ||= {};
+  a.peoples ||= []; a.towns ||= []; a.contacts ||= {}; a.realms ||= [];
   a.f.road ||= new Float32Array(a.n);
   for (const P of WORLD_PEOPLES.filter(p => p.era === era)) {
     const K = new Float32Array(N), mob = new Float32Array(N), cnt = new Float32Array(N);
@@ -138,9 +139,8 @@ export function arrive(a, era, rnd, say) {
         const x = j % F.W + dx, y = ((j / F.W) | 0) + dy;
         if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = 0.6;
       }
-      const t = foundTown(a, pe, i, rnd, 90 + 60 * rnd());
-      t.capital = true;
-      say(`${cap1(P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}.`);
+      const t = foundTown(a, pe, i, rnd, 90 + 60 * rnd()), r = foundRealm(a, t);
+      say(`${cap1(P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
     }
     if (!picks.length) say(`${cap1(P.label)} не нашли в этом мире земли себе по душе.`);
   }
@@ -166,7 +166,7 @@ export function stepPeoples(a, rnd, say) {
       }
       // other peoples on the same land push this one out, the more the worse they get on
       let push = 0;
-      for (const [oi, o] of a.peoples.entries()) if (o !== pe && was[oi][j] > 0) push += DIPLOMACY.compete[stateOf(a, P.id, o.id)] * was[oi][j];
+      for (const [oi, o] of a.peoples.entries()) if (o !== pe && was[oi][j] > 0) push += DIPLOMACY.compete[raceState(a, P.id, o.id)] * was[oi][j];
       u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
     }
   }
@@ -186,8 +186,8 @@ export function stepPeoples(a, rnd, say) {
       const i = bestSite(a, pe, j, rnd);
       if (i < 0) continue;
       const t = foundTown(a, pe, i, rnd, 40 + 40 * rnd());
-      made++;
-      say(`${cap1(pe.P.label)} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
+      joinRealm(a, t); made++;
+      say(`${cap1(realmLabel(a, t.realm))} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
     }
   }
   // towns grow towards what the land around feeds, more on a road, and build as they grow
@@ -208,7 +208,7 @@ export function stepPeoples(a, rnd, say) {
       if (!b) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
       t.built.push(b.id);
-      if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} ${pe.P.labelGen}.`);
+      if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
       else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
     }
     // the step the town has earned by its people and buildings; it falls one when the people are gone
@@ -227,10 +227,9 @@ export function stepPeoples(a, rnd, say) {
     for (const t of a.towns) {
       if (!t.alive || Math.hypot(t.x - l.x, t.y - l.y) > reach || rnd() > TOWN_WAR.chance) continue;
       const fx = townFx(t), town = might(t, fx) * TOWN_WAR.might * (0.6 + 0.8 * rnd()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (0.6 + 0.8 * rnd());
-      const P = WORLD_PEOPLES.get(t.people);
       if (town > beast) {
         l.alive = false; l.died = a.hist.year; l.clearedBy = t.id;
-        say(`${cap1(P.label)} из ${townLabel(t, 2)} ${t.name} выжгли ${L.labelAcc || L.label} «${l.name}»: ${owner.plural} больше не тревожат их земли.`);
+        say(`${cap1(realmLabel(a, t.realm))} из ${townLabel(t, 2)} ${t.name} выжгли ${L.labelAcc || L.label} «${l.name}»: ${owner.plural} больше не тревожат их земли.`);
         break;
       }
       const loss = TOWN_WAR.raidLoss * raidShare(fx);
@@ -239,20 +238,17 @@ export function stepPeoples(a, rnd, say) {
       break;
     }
   }
-  // first meetings of peoples, told once: where their lands first touch
-  for (const p of a.peoples) for (const q of a.peoples) {
-    if (p.id >= q.id) continue;
-    const key = `${p.id}:${q.id}`; if (a.contacts[key]) continue;
-    let j0 = -1;
-    for (let j = 0; j < N; j++) if (p.u[j] > 0.1 && q.u[j] > 0.1) { j0 = j; break; }
-    // or their towns stand close
-    if (j0 < 0) for (const t of a.towns) if (t.alive && t.people === p.id) for (const o of a.towns) if (o.alive && o.people === q.id && Math.hypot(t.x - o.x, t.y - o.y) <= DIPLOMACY.front * k) { j0 = faunaCell(a, Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2)); break; }
-    if (j0 < 0) continue;
-    const fe = meet(a, p.id, q.id, a.hist.year).att;
+  // first meetings of realms, told once: when their towns first stand within the front of each other
+  for (const r of a.realms) for (const q of a.realms) {
+    if (r.id >= q.id) continue;
+    const key = `${r.id}:${q.id}`; if (a.contacts[key]) continue;
+    let where = -1;
+    for (const t of a.towns) if (t.alive && t.realm === r.id) for (const o of a.towns) if (o.alive && o.realm === q.id && Math.hypot(t.x - o.x, t.y - o.y) <= DIPLOMACY.front * k) { where = Math.round((t.y + o.y) / 2) * a.w + Math.round((t.x + o.x) / 2); break; }
+    if (where < 0) continue;
+    const fe = meet(a, r.id, q.id, a.hist.year).att;
     a.contacts[key] = {year: a.hist.year, feeling: fe};
-    const how = fe <= -3 ? 'с ненавистью' : fe <= -2 ? 'с давней неприязнью' : fe < 0 ? 'настороженно' : fe === 0 ? 'с любопытством' : 'как друзья';
-    const cell = Math.min(a.n - 1, (((j0 / F.W) | 0) * F.c) * a.w + (j0 % F.W) * F.c);
-    say(`${cap1(p.P.label)} и ${q.P.label} впервые встретились ${wherePhrase(a, cell)} и смотрят друг на друга ${how}.` + (!trades(a, p.id, q.id) ? ' Торговать они не станут.' : ''));
+    const how = fe <= -3 ? 'с ненавистью' : fe <= -2 ? 'с давней неприязнью' : fe < 0 ? 'настороженно' : fe === 0 ? 'с любопытством' : r.people === q.people ? 'как родня' : 'как друзья';
+    say(`${cap1(realmLabel(a, r.id))} и ${realmLabel(a, q.id)} впервые встретились ${wherePhrase(a, where)} и смотрят друг на друга ${how}.` + (!trades(a, r.id, q.id) ? ' Торговать они не станут.' : ''));
   }
   // their dealings: trade, mingling, raids, wars and peace
   const overlap = (p, q) => {

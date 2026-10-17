@@ -1,9 +1,10 @@
-// How the peoples of the world map get on (data/diplomacy.js): attitudes that move with shared land,
-// trade, raids and wars; trade routes; folk of one people settling in the other's towns; wars with
-// battles between their nearest towns, burnt towns left as ruins and battlefields left as barrows;
-// orc raids; peace when the war has worn both out.
+// How the realms of the world map get on (data/diplomacy.js, atlas/realms.js): attitudes that move
+// with shared land, trade, raids and wars; trade routes; folk of one people settling in the other's
+// towns; wars with battles between their nearest towns, burnt towns left as ruins and battlefields
+// left as barrows; orc raids; peace when the war has worn both out. Two realms of one race deal with
+// each other like any two, starting from their race's memory of itself (data/relations.js).
 //
-// a.rel = {'p:q': {att, war: {since, battles, razed} | null, wars, routes, met}};  a.ruins = [{...}]
+// a.rel = {'rA:rB': {att, war: {since, battles, razed} | null, wars, routes, met}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {ROT} from '../data/lairs.js';
@@ -13,22 +14,26 @@ import {RELATIONS} from '../data/relations.js';
 import {SPECIES} from '../data/species.js';
 import {scaleOf} from './tectonics.js';
 import {townFx, might, raidShare, townLabel} from './towns.js';
+import {realmOf, realmPeople, realmLabel, realmLabelGen} from './realms.js';
 
 const D = DIPLOMACY;
 
-// a people's old feeling for another (data/relations.js), −3 … +2
+// a people's old feeling for another (data/relations.js), −3 … +3; a race remembers itself too
 export function feeling(p, q) {
   const a = SPECIES.get(WORLD_PEOPLES.get(p).race).rel, b = SPECIES.get(WORLD_PEOPLES.get(q).race).rel;
   return RELATIONS[a]?.[b] ?? 0;
 }
+// what two realms start from: the worse of their races' memories of each other
+export const memory = (a, p, q) => { const P = realmPeople(a, p), Q = realmPeople(a, q); return Math.min(feeling(P, Q), feeling(Q, P)); };
 
 const key = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const label = id => WORLD_PEOPLES.get(id).label;
 
+// p and q are realm ids throughout
 export const relation = (a, p, q) => a.rel?.[key(p, q)] || null;
-// the attitude between two peoples: their record, or the old memory of their races before they meet
-export const attitude = (a, p, q) => (p === q ? 5 : relation(a, p, q)?.att ?? Math.min(feeling(p, q), feeling(q, p)));
+// the attitude between two realms: their record, or the old memory of their races before they meet
+export const attitude = (a, p, q) => (p === q ? 5 : relation(a, p, q)?.att ?? memory(a, p, q));
 export const atWar = (a, p, q) => p !== q && !!relation(a, p, q)?.war;
 export function stateOf(a, p, q) {
   if (atWar(a, p, q)) return 'war';
@@ -42,8 +47,19 @@ export const trades = (a, p, q) => p === q || (!atWar(a, p, q) && attitude(a, p,
 export function meet(a, p, q, year) {
   a.rel ||= {};
   const k = key(p, q);
-  if (!a.rel[k]) a.rel[k] = {att: Math.min(feeling(p, q), feeling(q, p)), war: null, wars: 0, routes: 0, met: year};
+  if (!a.rel[k]) a.rel[k] = {att: memory(a, p, q), war: null, wars: 0, routes: 0, met: year};
   return a.rel[k];
+}
+// the worst standing between the realms of two races (for the races' fields pushing each other)
+export function raceState(a, P, Q) {
+  let worst = null;
+  for (const r of a.realms || []) if (r.people === P) for (const o of a.realms) if (o.people === Q && r.id !== o.id) {
+    const st = stateOf(a, r.id, o.id), rank = D.states.findIndex(x => x.id === st) + (st === 'war' ? 10 : 0);
+    if (worst == null || rank > worst[1]) worst = [st, rank];
+  }
+  if (worst) return worst[0];
+  const v = Math.min(feeling(P, Q), feeling(Q, P));
+  return D.states.find(s => v >= s.from).id;
 }
 
 // burn a town: it is gone, a ruin stays where it stood
@@ -51,7 +67,7 @@ function raze(a, t, by, how) {
   t.alive = false; t.died = a.hist.year;
   barrows(a, t.i, Math.max(2, Math.round(2 * scaleOf(a))), ROT.ruinGraves);   // the dead of a burnt town
   a.ruins ||= [];
-  a.ruins.push({i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, by, year: a.hist.year, how});
+  a.ruins.push({i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, realm: t.realm, by, year: a.hist.year, how});
 }
 
 // old graves around a battlefield: `v` at the middle, fading out to `r` cells. A raid on a town
@@ -87,32 +103,33 @@ export function stepDiplomacy(a, rnd, say, overlap) {
   // the nearest towns of two peoples, and how far apart they are
   const nearest = (p, q) => {
     let best = null, bd = Infinity;
-    for (const t of towns) if (t.people === p && t.alive) for (const o of towns) if (o.people === q && o.alive) {
+    for (const t of towns) if (t.realm === p && t.alive) for (const o of towns) if (o.realm === q && o.alive) {
       const d = Math.hypot(t.x - o.x, t.y - o.y); if (d < bd) { bd = d; best = [t, o]; }
     }
     return [best, bd];
   };
   for (const [kk, r] of Object.entries(a.rel || {})) {
-    const [p, q] = kk.split(':');
-    const old = Math.min(feeling(p, q), feeling(q, p));
+    const [p, q] = kk.split(':'), P = realmPeople(a, p), Q = realmPeople(a, q), kin = P === Q;
+    const old = memory(a, p, q);
     // trade routes: road-joined towns of the two near each other
     let routes = 0;
     if (trades(a, p, q)) {
-      for (const t of towns) if (t.people === p) for (const o of towns) if (o.people === q && Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
+      for (const t of towns) if (t.realm === p) for (const o of towns) if (o.realm === q && Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
         a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) {
         routes++;
-        // folk of each settle in the other's town
-        for (const [x, y] of [[t, o.people], [o, t.people]]) {
+        // folk of each settle in the other's town (of another race; kin need no settling)
+        if (!kin) for (const [x, y] of [[t, o.people], [o, t.people]]) {
           x.folk ||= {};
           const was = x.folk[y] || 0;
           x.folk[y] = Math.min(D.mingleMax, was + D.mingle);
           if (was < 0.1 && x.folk[y] >= 0.1 && x.tier >= 1) say(`В ${townLabel(x, 3)} ${x.name} осели ${label(y)}: каждый десятый там теперь из них.`);
         }
       }
-      if (routes && !r.routes) say(`Между землями ${WORLD_PEOPLES.get(p).labelGen} и ${WORLD_PEOPLES.get(q).labelGen} пошли первые караваны.`);
+      if (routes && !r.routes) say(`Между землями ${realmLabelGen(a, p)} и ${realmLabelGen(a, q)} пошли первые караваны.`);
       r.routes = routes;
     }
-    const sh = overlap(p, q), [pair, gap] = nearest(p, q), border = sh > 0 || gap <= D.front * k;
+    // shared land sours two races; two realms of one race share their own land freely
+    const sh = kin ? 0 : overlap(P, Q), [pair, gap] = nearest(p, q), border = sh > 0 || gap <= D.front * k;
     r.att += D.drift * Math.sign(old - r.att) * Math.min(1, Math.abs(old - r.att)) - D.pressure * sh + (r.att < old + D.tradeCeil ? Math.min(D.tradeMax, D.trade * routes) : 0);
     if (r.war) {
       r.att += D.weariness;
@@ -125,17 +142,17 @@ export function stepDiplomacy(a, rnd, say, overlap) {
         lose.pop *= 1 - loss; win.pop *= 1 - loss * 0.4; r.war.battles++;
         barrows(a, battlefield(a, lose, win), D.barrows * Math.max(1, Math.round(k)));
         if (lose.pop < D.raze && lose.tier <= 1) {
-          raze(a, lose, win.people, 'war'); r.war.razed++;
-          say(`${cap1(label(win.people))} из ${townLabel(win, 2)} ${win.name} взяли и сожгли ${townLabel(lose, 1)} ${lose.name}: осталось пепелище.`);
-        } else say(`Битва под ${townLabel(lose, 4)} ${lose.name}: ${label(win.people)} одолели ${WORLD_PEOPLES.get(lose.people).labelGen}, поле усеяно курганами.`);
+          raze(a, lose, win.realm, 'war'); r.war.razed++;
+          say(`${cap1(realmLabel(a, win.realm))} из ${townLabel(win, 2)} ${win.name} взяли и сожгли ${townLabel(lose, 1)} ${lose.name}: осталось пепелище.`);
+        } else say(`Битва под ${townLabel(lose, 4)} ${lose.name}: ${realmLabel(a, win.realm)} одолели ${realmLabelGen(a, lose.realm)}, поле усеяно курганами.`);
       }
       if (r.att >= D.peaceAt || years >= D.longest) {
-        say(`${cap1(label(p))} и ${label(q)} заключили мир после ${years} ${years % 10 === 1 && years % 100 !== 11 ? 'года' : 'лет'} войны.`);
+        say(`${cap1(realmLabel(a, p))} и ${realmLabel(a, q)} заключили мир после ${years} ${years % 10 === 1 && years % 100 !== 11 ? 'года' : 'лет'} войны.`);
         r.war = null; r.att = D.afterPeace;
       }
     } else if (r.att <= D.warAt && border) {
       r.war = {since: H.year, battles: 0, razed: 0}; r.wars++;
-      say(`${cap1(label(p))} и ${label(q)} не поделили земли: началась война.`);
+      say(`${cap1(realmLabel(a, p))} и ${realmLabel(a, q)} не поделили ${kin ? 'власть' : 'земли'}: началась война.`);
     }
     r.att = Math.max(-5, Math.min(5, r.att));
   }
@@ -145,19 +162,19 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     if (!D.raiders.includes(t.people) || !t.alive || rnd() > D.raidChance || (raids[t.people] || 0) >= D.raidsPerYear) continue;
     if (!townFx(t).defence) continue;   // only a camp with warriors goes raiding
     let target = null, bd = D.raidReach * k;
-    for (const o of towns) if (o.alive && o.people !== t.people && relation(a, t.people, o.people) && attitude(a, t.people, o.people) < 0) {
+    for (const o of towns) if (o.alive && o.realm !== t.realm && relation(a, t.realm, o.realm) && attitude(a, t.realm, o.realm) < 0) {
       const d = Math.hypot(t.x - o.x, t.y - o.y); if (d < bd) { bd = d; target = o; }
     }
     if (!target) continue;
-    const r = meet(a, t.people, target.people, H.year);
+    const r = meet(a, t.realm, target.realm, H.year);
     r.att = Math.max(-5, r.att - D.raid); raids[t.people] = (raids[t.people] || 0) + 1;
     if (fight(t, rnd) > fight(target, rnd)) {
       const loss = D.raidLoss * raidShare(townFx(target));
       target.pop *= 1 - loss; t.pop += target.pop * loss * 0.3; raidGraves(a, target);
-      say(`${cap1(label(t.people))} из ${townLabel(t, 2)} ${t.name} разграбили ${townLabel(target, 1)} ${target.name}.`);
+      say(`${cap1(realmLabel(a, t.realm))} из ${townLabel(t, 2)} ${t.name} разграбили ${townLabel(target, 1)} ${target.name}.`);
     } else {
       t.pop *= 0.9;
-      say(`${cap1(label(target.people))} отбили набег ${WORLD_PEOPLES.get(t.people).labelGen} на ${townLabel(target, 1)} ${target.name}.`);
+      say(`${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, t.realm)} на ${townLabel(target, 1)} ${target.name}.`);
     }
   }
 }

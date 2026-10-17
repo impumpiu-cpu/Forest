@@ -72,7 +72,7 @@ export function wearRoads(a) {
   const scratch = a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
   const done = new Set(), fresh = [];
   for (const t of towns) {
-    const near = towns.filter(o => o !== t && trades(a, t.people, o.people))
+    const near = towns.filter(o => o !== t && trades(a, t.realm, o.realm))
       .map(o => [o, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, d]) => d <= reach).sort((p, q) => p[1] - q[1]).slice(0, ROADS.links);
     for (const [o] of near) {
       const key = Math.min(t.id, o.id) * 100000 + Math.max(t.id, o.id);

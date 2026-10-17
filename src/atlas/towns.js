@@ -91,7 +91,7 @@ export function canBuild(a, t, b) {
   if (b.tier > t.tier) return false;
   if (b.pop && t.pop < b.pop) return false;
   if (b.capital && !t.capital) return false;
-  if (b.unique && a.towns.some(o => o !== t && o.alive && o.people === t.people && o.built.includes(b.id))) return false;
+  if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
   if (t.built.filter(id => id === b.id).length >= b.max) return false;
   if (b.requires && !b.requires.every(id => t.built.includes(id))) return false;
   if (b.requiresAny && !b.requiresAny.some(id => t.built.includes(id))) return false;
