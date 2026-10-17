@@ -22,7 +22,9 @@
 //   needsAny:       and in addition on this kind of ground (as `ground` of a beast lair), if given
 //   gen:            the owners in the genitive («набег гоблинов»);  riders / on: their beasts and «on» them
 //   undead lairs:   rotAt, at, spawn (see ROT below); might — the owner's SPECIAL power × this (a necromancer
-//                   leads a horde);  raidVerb — what they did to a town;  leads — who leads the raid
+//                   leads a horde);  raidVerb — what they did to a town;  leads — who leads the raid;
+//                   at 'town' — the lair sits in a mixed town and `drinks` that share of its people a year
+//   fiend lairs:    ground 'rift' (a live volcano or a plate seam), no food: the rift stands as it is
 import {Registry} from '../core/registry.js';
 
 export const LAIRS = new Registry('lair');
@@ -64,6 +66,16 @@ LAIRS.registerAll([
   {id: 'necromancer', undead: true, gen: 'мертвецов', species: 'necromancer', from: 'из башни', label: 'башня некроманта', labelAcc: 'башню некроманта', g: 'f', color: [120, 60, 160], radius: 10, ground: 'rot', rotAt: 0.5,
     spawn: 0.1, max: 3, breed: 0, rivals: [], might: 2.5, raidVerb: 'опустошили', leads: 'Некромант повёл мертвецов',
     nouns: [['башня', 'f'], ['склеп', 'm'], ['цитадель', 'f'], ['обитель', 'f']]},
+  // a vampire settles in a mixed town — where strangers come and go, nobody counts the missing; the lair is the
+  // town itself: it drinks the town, not its land, and the town's own folk root it out as they would a lair
+  {id: 'vampire', undead: true, gen: 'вампира', species: 'vampire', from: 'из усадьбы', label: 'усадьба вампира', labelAcc: 'усадьбу вампира', g: 'f', color: [110, 30, 60], radius: 4, ground: 'rot', rotAt: 0.12, at: 'town',
+    spawn: 0.12, max: 3, breed: 0, rivals: [], might: 1.5, drinks: 0.025, raidVerb: 'обескровили', leads: 'Вампир и его свита',
+    nouns: [['усадьба', 'f'], ['дом', 'm'], ['башня', 'f'], ['подвал', 'm']]},
+  // the rifts: the one magic left — demons come through where the earth is torn, at live volcanoes and the seams of
+  // the plates; a rift does not eat, it just stands, and sends its demons at the nearest town now and then
+  {id: 'rift', fiend: true, gen: 'демонов', species: 'demon', from: 'из разлома', label: 'разлом', g: 'm', color: [220, 40, 20], radius: 8, ground: 'rift',
+    spawn: 0.03, max: 2, breed: 0, rivals: [], might: 2, raidVerb: 'выжгли', leads: 'Демоны',
+    nouns: [['разлом', 'm'], ['жерло', 'n'], ['трещина', 'f'], ['пасть', 'f']]},
   {id: 'giants', tribe: true, gen: 'великанов', species: 'giant', from: 'из становища', label: 'становище великанов', g: 'n', color: [200, 200, 190], radius: 11, ground: 'home', needsAny: ['heights'],
     density: 10, max: 4, breed: 0.03, rivals: [], riders: null,
     nouns: [['становище', 'n'], ['престол', 'm'], ['скалы', 'pl'], ['перевал', 'm']]},
@@ -81,7 +93,10 @@ LAIRS.registerAll([
 export const ROT = {seed: 0.08, diffuse: 0.08, decay: 0.02, frost: 0.04, heat: 0.03, ancient: [2, 5], ancientGraves: 0.7, ruinGraves: 0.6, raidGraves: 0.12,
   // the wards of a mage tower and a temple of the fallen: extra fading of the rot around the town (a season),
   // and how much stronger a town with a mage tower stands against the dead
-  wardMage: 0.06, wardTemple: 0.03, wardMight: 1.8};
+  wardMage: 0.06, wardTemple: 0.03, wardMight: 1.8,
+  // rats: the rot travels with the caravans — a town in rot at `ratsFrom` gives `rats` of it a season to every
+  // town joined to it by road; `ratsHealth` — how much a town's health buildings keep them down
+  ratsFrom: 0.4, rats: 0.03, ratsHealth: 0.5};
 
 // a tribe's camp stands where its race's home suits the biome at least this much
 export const TRIBE_HOME = 0.45;

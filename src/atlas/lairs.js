@@ -32,6 +32,7 @@ function groundFits(a, L, i) {
   if (a.f.ocean[i] || a.f.lake[i] >= 0) return false;
   if (L.ground === 'home') return homeAt(a, L, i) >= TRIBE_HOME && (!L.needsAny || L.needsAny.some(g => groundKind(a, g, i)));
   if (L.ground === 'rot') return !!a.rot && a.rot[faunaCell(a, i)] >= L.rotAt && (L.at === 'barrows' ? (a.f.barrows?.[i] || 0) >= 0.25 : L.at === 'ruins' ? !!ruinNear(a, i) : true);
+  if (L.ground === 'rift') return a.f.volc[i] > 0.6 || (!!a.f.bnd && a.f.bnd[i] > 0 && (a.f.elev[i] - a.sea) / (1 - a.sea) > 0.3);
   return groundKind(a, L.ground, i);
 }
 function groundKind(a, ground, i) {
@@ -50,7 +51,7 @@ function groundKind(a, ground, i) {
 const ruinNear = (a, i) => (a.ruins || []).find(r => Math.abs(r.x - i % a.w) <= 3 && Math.abs(r.y - ((i / a.w) | 0)) <= 3) || null;
 // how good a cell is for the lair's species: its carrying capacity there (a tribe: its race's home;
 // the dead: the rot)
-const goodness = (a, L, i) => (L.undead ? a.rot[faunaCell(a, i)] : L.tribe ? homeAt(a, L, i) : a.fauna.list[a.fauna.idx[L.species]].K[faunaCell(a, i)]);
+const goodness = (a, L, i) => (L.fiend ? 0.5 : L.undead ? a.rot[faunaCell(a, i)] : L.tribe ? homeAt(a, L, i) : a.fauna.list[a.fauna.idx[L.species]].K[faunaCell(a, i)]);
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 // «in the taiga in the north-east» — where a cell lies, for the chronicle: the commonest land biome
@@ -151,6 +152,21 @@ export function stepRot(a) {
   src.fill(0); cnt.fill(0);
   if (a.f.barrows) for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j < 0) continue; src[j] += a.f.barrows[i]; cnt[j]++; }
   else for (let i = 0; i < a.n; i++) { const j = cell[i]; if (j >= 0) cnt[j]++; }
+  // rats: the rot travels with the caravans between towns joined by road
+  if (a.roadPairs && a.towns) {
+    const byId = new Map(a.towns.map(t => [t.id, t]));
+    for (const key of a.roadPairs) {
+      const t = byId.get(Math.floor(key / 100000)), o = byId.get(key % 100000);
+      if (!t || !o || !t.alive || !o.alive) continue;
+      for (const [from, to] of [[t, o], [o, t]]) {
+        const jf = cell[from.i], jt = cell[to.i];
+        if (jf < 0 || jt < 0 || rot[jf] < ROT.ratsFrom) continue;
+        const keep = 1 - ROT.ratsHealth * Math.min(1, townFx(to).health);
+        src[jt] += ROT.rats * rot[jf] * keep * cnt[jt] / ROT.seed;   // in the units of the graves' seeding
+        if (rot[jt] < ROT.ratsFrom && !to.ratsTold) { to.ratsTold = true; (a.ratsLines ||= []).push(`Крысы с обозами занесли гниль в ${townLabel(to, 1)} ${to.name}.`); }
+      }
+    }
+  }
   tmp.set(rot);
   for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
     const j = y * F.W + x;
@@ -168,7 +184,7 @@ export function placeLairs(a, rnd) {
   const tally = {};
   a.ancientBarrows = seedRot(a, rnd);
   for (const L of LAIRS.all()) {
-    if (L.undead) continue;   // the dead rise through history, where the rot is (spawnUndead)
+    if (L.spawn) continue;   // the dead and the rifts come through history (spawnLairs)
     if (L.tribe) a.tribeLand[L.id] = homeField(a, L);
     let fit = 0;
     for (let i = 0; i < a.n; i += 3) if (groundFits(a, L, i) && goodness(a, L, i) > 0.02) fit += 3;
@@ -190,10 +206,11 @@ const power = sp => { const s = SPECIES.get(sp).special; return (s.S[0] + s.S[1]
 export function stepLairs(a, rnd, seasonId) {
   const H = a.hist, F = a.fauna, lines = [];
   stepRot(a);
-  if (seasonId === 'spring') lines.push(...spawnUndead(a, rnd));
+  if (a.ratsLines) { lines.push(...a.ratsLines); a.ratsLines = null; }
+  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd));
   for (const lair of a.lairs) {
     if (!lair.alive) continue;
-    const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead ? null : F.list[F.idx[L.species]];
+    const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead || L.fiend ? null : F.list[F.idx[L.species]];
     // feed: the prey of the owner around the lair, against what the biomes there could hold;
     // a tribe lives off its land, and the peoples' settlers crowd it out
     let food = 0, cap = 0, land = 0, crowd = 0;
@@ -204,22 +221,29 @@ export function stepLairs(a, rnd, seasonId) {
       const j = y * F.W + x; cells.push(j);
       if (s) for (const q of s.prey || []) { food += F.list[q].N[j]; cap += F.list[q].K[j]; }
       else if (L.undead) land = Math.max(land, a.rot[j]);   // the dead feed on the thickest rot they reach
+      else if (L.fiend) land = 0.55;
       else { land += a.tribeLand[L.id][j]; for (const pe of a.peoples || []) crowd += pe.u[j] * pe.K[j]; }
     }
+    const host = L.at === 'town' ? a.towns.find(t => t.id === lair.town) : null;
     const fed = s ? (cap > 0 ? Math.min(1.2, food / cap) : 0.5)
+      : L.fiend ? land
+      : host ? (host.alive ? Math.min(1.2, host.pop / 600) : 0)   // a vampire drinks its town
       : L.undead ? Math.min(1.2, land / (L.rotAt * 1.2))
       : Math.min(1.2, land / cells.length / 0.6) * (1 - 0.8 * Math.min(1, crowd / cells.length));
     const winter = seasonId === 'winter' ? 0.03 : 0;
     lair.strength = Math.max(0, Math.min(1, lair.strength + 0.08 * (fed - 0.45) - winter + 0.02 * (rnd() - 0.5)));
     // the lair keeps its species about: the density near it does not fall below its strength
     if (s) for (const j of cells) if (s.K[j] > 0) s.N[j] = Math.max(s.N[j], s.K[j] * lair.strength);
+    if (host && host.alive && seasonId === 'autumn') { host.pop *= 1 - L.drinks * lair.strength; raidGraves(a, host); }
     if (lair.strength < 0.08) {
       lair.alive = false; lair.died = H.year;
-      lines.push(L.undead ? `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: гниль иссякла, и ${SPECIES.get(L.species).plural} ${L.species === 'necromancer' ? 'ушёл' : 'рассыпались в прах'}.`
+      lines.push(L.at === 'town' ? `${G[L.g].emptied} ${L.label} «${lair.name}»: ${host ? `в ${townLabel(host, 3)} ${host.name} не осталось, кого пить` : 'город сгинул'}, и вампир ушёл.`
+        : L.fiend ? `Закрылся ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: демоны ушли туда, откуда пришли.`
+        : L.undead ? `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: гниль иссякла, и ${SPECIES.get(L.species).plural} ${L.species === 'necromancer' ? 'ушёл' : 'рассыпались в прах'}.`
         : `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: ${s ? 'добычи' : 'земли'} не стало, и ${SPECIES.get(L.species).plural} ушли.`);
       continue;
     }
-    if ((L.tribe || L.undead) && seasonId === 'autumn' && a.towns) { const line = tribeRaid(a, lair, L, rnd); if (line) lines.push(line); }
+    if ((L.tribe || L.undead || L.fiend) && L.at !== 'town' && seasonId === 'autumn' && a.towns) { const line = tribeRaid(a, lair, L, rnd); if (line) lines.push(line); }
     const age = H.year - lair.born;
     if (!lair.ancient && age >= ANCIENT_YEARS) {
       lair.ancient = true;
@@ -261,8 +285,8 @@ export function stepLairs(a, rnd, seasonId) {
 function tribeRaid(a, lair, L, rnd) {
   const T = TRIBE_RAID, k = scaleOf(a);
   if (lair.strength < T.from || rnd() > T.chance) return null;
-  // a tribe raids the peoples its race dislikes (data/relations.js); the dead raid anyone
-  const race = SPECIES.get(L.species), dislikes = t => L.undead || (RELATIONS[race.rel]?.[SPECIES.get(WORLD_PEOPLES.get(t.people).race).rel] ?? 0) < 0;
+  // a tribe raids the peoples its race dislikes (data/relations.js); the dead and the demons raid anyone
+  const race = SPECIES.get(L.species), dislikes = t => L.undead || L.fiend || (RELATIONS[race.rel]?.[SPECIES.get(WORLD_PEOPLES.get(t.people).race).rel] ?? 0) < 0;
   let target = null, bd = T.reach * k;
   for (const t of a.towns) if (t.alive && dislikes(t)) { const d = dist(lair, t); if (d < bd) { bd = d; target = t; } }
   if (!target) return null;
@@ -283,27 +307,40 @@ function tribeRaid(a, lair, L, rnd) {
   return null;
 }
 
-// spring: where the rot is thick enough, the dead rise — a new lair of each undead kind, with a
-// chance a year, on the ground it asks for, apart from its own kind
-function spawnUndead(a, rnd) {
-  const F = a.fauna, lines = [], RISE = {wights: 'На курганах', ghouls: 'На пепелище', necromancer: 'Над'};
-  for (const L of LAIRS.filter(L => L.undead)) {
+// spring: the lairs that come through history. The dead rise where the rot is thick enough (on the
+// barrows, by the ruins, a vampire in a mixed town); a rift opens at a volcano or a seam. Each kind with
+// a chance a year, on the ground it asks for, apart from its own kind.
+function spawnLairs(a, rnd) {
+  const F = a.fauna, lines = [];
+  for (const L of LAIRS.filter(L => L.spawn)) {
     if (rnd() > L.spawn || a.lairs.filter(o => o.alive && o.kind === L.id).length >= L.max) continue;
-    const thick = []; for (let j = 0; j < a.rot.length; j++) if (a.rot[j] >= L.rotAt) thick.push(j);
-    if (!thick.length) continue;
-    let best = -1, bv = 0;
-    for (let t = 0; t < 60; t++) {
-      const j = thick[(rnd() * thick.length) | 0], x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c;
-      const i = Math.min(a.n - 1, (y0 + ((rnd() * F.c) | 0)) * a.w + Math.min(a.w - 1, x0 + ((rnd() * F.c) | 0)));
-      if (!groundFits(a, L, i)) continue;
-      const v = a.rot[j] * (0.7 + 0.3 * rnd()), p = {x: i % a.w, y: (i / a.w) | 0};
-      if (v <= bv || a.lairs.some(o => o.alive && o.kind === L.id && dist(o, p) < 2 * R(a, L))) continue;
-      best = i; bv = v;
+    let best = -1, bv = 0, town = null;
+    if (L.at === 'town') {
+      // a town with folk of another people and some rot about, and no vampire yet
+      const hosts = (a.towns || []).filter(t => t.alive && t.tier >= 1 && Object.values(t.folk || {}).some(v => v >= 0.1) && a.rot[faunaCell(a, t.i)] >= L.rotAt && !a.lairs.some(o => o.alive && o.kind === L.id && o.town === t.id));
+      if (!hosts.length) continue;
+      town = hosts[(rnd() * hosts.length) | 0]; best = town.i;
+    } else {
+      const cells = [];
+      if (L.ground === 'rot') { for (let j = 0; j < a.rot.length; j++) if (a.rot[j] >= L.rotAt) cells.push(j); }
+      else for (let j = 0; j < F.W * F.H; j++) cells.push(j);
+      if (!cells.length) continue;
+      for (let t = 0; t < (L.ground === 'rot' ? 60 : 200); t++) {
+        const j = cells[(rnd() * cells.length) | 0], x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c;
+        const i = Math.min(a.n - 1, (y0 + ((rnd() * F.c) | 0)) * a.w + Math.min(a.w - 1, x0 + ((rnd() * F.c) | 0)));
+        if (!groundFits(a, L, i)) continue;
+        const v = goodness(a, L, i) * (0.7 + 0.3 * rnd()), p = {x: i % a.w, y: (i / a.w) | 0};
+        if (v <= bv || a.lairs.some(o => o.alive && o.kind === L.id && dist(o, p) < 2 * R(a, L))) continue;
+        best = i; bv = v;
+      }
     }
     if (best < 0) continue;
-    const lair = newLair(a, L, best, rnd, 0.35), where = wherePhrase(a, best);
+    const lair = newLair(a, L, best, rnd, L.fiend ? 0.55 : 0.35), where = wherePhrase(a, best);
+    if (town) { lair.town = town.id; a.hist.names.delete(lair.name); lair.name = `${L.nouns[(rnd() * L.nouns.length) | 0][0] === 'усадьба' ? 'Старая' : 'Тёмная'} усадьба`; }
     lines.push(L.id === 'necromancer' ? `Некромант поставил ${L.labelAcc} «${lair.name}» ${where}: по ночам там поднимают мертвецов.`
       : L.id === 'wights' ? `На курганах ${where} поднялись костяки: ${L.label} «${lair.name}».`
+      : L.id === 'vampire' ? `В ${townLabel(town, 3)} ${town.name} поселился вампир: в усадьбе на окраине по ночам горит свет, а на улицах пропадают люди.`
+      : L.id === 'rift' ? `Земля треснула ${where}: из разлома «${lair.name}» лезут демоны.`
       : `На пепелище ${where} завелись упыри: ${L.label} «${lair.name}».`);
   }
   return lines;

@@ -204,6 +204,28 @@ export const BESTIARY = [
     special: around({S: 3, P: 9, E: 5, C: 2, I: 5, A: 10, L: 7}),
     look: {shape: 'spirit', size: 0.4, color: '#6e6a4e'},
     vermin: {eats: 0.004, flee: 3, caught: 0.03, spoils: true, veil: 2}}),
+  // Vodyanoy: the old man of the deep water — the rusalka's strain grown heavy; drags the lone one down by night
+  beast({id: 'vodyanoy', kind: 'spirit', label: 'водяной', labelAcc: 'водяного', plural: 'водяные', mind: 'semi', undead: true, hp: 2.4, speed: 0.08, brain: 'spirit', heatHarm: 45,
+    arrive: {first: 3, message: 'в омуте заворочался водяной. К глубокой воде ночью — только вдвоём'},
+    resident: true, respawn: 10,
+    habitat: {water: 'usual', swamp: 'rare'},
+    special: around({S: 11, P: 8, E: 13, C: 6, I: 5, A: 5, L: 5}),
+    look: {shape: 'spirit', size: 0.9, color: '#4f7a6a'}, attack: {power: 1.8, cooldown: 18}, resist: {melee: 0.5, ranged: 0.4},
+    yields: {fish: 6, slime: 2},
+    killMessage: name => `Водяной утащил поселенца на дно: <b>${name}</b>.`,
+    spirit: {home: 'shore', aura: 'lure', radius: 9, night: true, veil: 0, keepOff: 10, dives: true, regen: 3}}),
+
+  // Poludnitsa: the noon-wife of the open fields; whoever works the meadow under her gaze loses the way
+  beast({id: 'poludnitsa', kind: 'spirit', label: 'полуденница', labelAcc: 'полуденницу', plural: 'полуденницы', mind: 'semi', undead: true, hp: 1.2, speed: 0.1, brain: 'spirit', heatHarm: 60,
+    arrive: {first: 3, message: 'над лугами в жару ходит полуденница: кто работает в полдень, теряет дорогу'},
+    resident: true, respawn: 7,
+    habitat: {meadow: 'usual', steppe: 'usual', savanna: 'rare'},
+    special: around({S: 6, P: 11, E: 7, C: 10, I: 6, A: 9, L: 5}),
+    look: {shape: 'spirit', size: 0.7, color: '#e8d9a0'}, attack: {power: 1.1, cooldown: 15}, resist: {melee: 0.3, ranged: 0.3},
+    yields: {herbs: 3, fiber: 2},
+    killMessage: name => `Полуденница свела поселенца в поле: <b>${name}</b>.`,
+    spirit: {home: 'grass', aura: 'astray', radius: 6, every: 100, veil: 3, regen: 2, keepOff: 12, crowd: 3}}),
+
   // ── beasts of the far lands: the steppe, the hot south, the ice. Few of them reach the first
   // colonies' regions (data/regions.js); they are here for the world map and the lands to come
   // Horse: a herd of the open steppe, fast and shy; tamed, it carries the hunter and the builder

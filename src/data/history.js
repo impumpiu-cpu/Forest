@@ -34,8 +34,9 @@ export const WILD_YEARS = [
 //   at most once in `cooldown` years per species and two species a year
 //   weather:    how much a year's weather (a broad random field, new each year) speeds or slows growth;
 //               a winter this harsh (−1 … 1) somewhere is told in the chronicle and kills `harsh` of the beasts there
+//               and `townHarsh` of the people of the towns there (less with food and health buildings, atlas/history.js)
 //   plague:     chance a year that a crowded species (above `crowd` of K) is struck by a murrain there,
 //               killing `plagueKill` within `plagueRadius` coarse cells
-export const FAUNA = {weather: 0.5, harshAt: -0.7, harsh: 0.35, plague: 0.012, crowd: 0.85, plagueKill: 0.6, plagueRadius: 5,
+export const FAUNA = {weather: 0.5, harshAt: -0.7, harsh: 0.35, townHarsh: 0.12, plague: 0.012, crowd: 0.85, plagueKill: 0.6, plagueRadius: 5,
   cell: 4, diffuse: 0.1, growth: 0.45, season: {spring: 1.4, summer: 1, autumn: 0.35, winter: -0.3},
   predation: 0.35, half: 0.3, trophic: 0.12, starve: 0.25, floor: 0.01, boom: 1.25, bust: 0.6, cooldown: 12};

@@ -20,6 +20,14 @@ const special = (S, P, E, C, I, A, L) => ({S, P, E, C, I, A, L});
 const human = RACES.find(r => r.id === 'human');
 
 export const MONSTERS = [
+  // Demons are the one magic left in the world: they come through the rifts at live volcanoes and plate
+  // seams (atlas/lairs.js `rift`), few and far from the colony. Fire-born: no fire frightens or burns one.
+  {id: 'demon', kind: 'fiend', label: 'демон', labelAcc: 'демона', plural: 'демоны', mind: 'semi', fiend: true,
+    hp: 3.2, speed: 0.12, needs: [], heatHarm: 900, fearHeat: 900, look: {shape: 'spirit', size: 0.9, color: '#c8321e'},
+    attack: {power: 2.2, cooldown: 13}, resist: {ranged: 0.6}, weakTo: ['silver'],
+    special: special([12, 16], [8, 12], [12, 16], [2, 6], [5, 9], [8, 12], [2, 6]),
+    killMessage: name => `Демон разорвал поселенца: <b>${name}</b>.`},
+
   {id: 'zombie', kind: 'undead', label: 'мертвяк', labelAcc: 'мертвяка', plural: 'мертвяки', mind: 'beast', undead: true, mindless: true,
     hp: 0.9, speed: 0.075, needs: [], heatHarm: 45, look: {shape: 'person', size: 0.6, color: '#7f9a78', skin: '#55684f'},
     attack: {power: 0.9, cooldown: 18}, rots: 0.000012,

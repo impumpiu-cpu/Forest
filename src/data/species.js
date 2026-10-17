@@ -25,7 +25,7 @@ export const SPECIES = new Registry('species');
 //              tribes with camps instead of towns (to come)
 //   undead   — the rot's dead: from the barrows of old battles, burnt towns and necromancers (to come)
 //   fiend    — demons: magic is rare in this world; they come through the rifts at live volcanoes
-//              and plate seams, few and far from the colony (to come)
+//              and plate seams (atlas/lairs.js `rift`), few and far from the colony
 export const KINDS = {beast: 'звери', monster: 'чудовища', spirit: 'нечисть', race: 'разумные', undead: 'нежить', fiend: 'демоны'};
 SPECIES.registerAll([
   // Hares graze, rest at night, bolt from people and fire. They never breed here:

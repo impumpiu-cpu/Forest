@@ -23,7 +23,7 @@ export const RAID_BANDS = new Registry('raid band');
 
 // a member's share of the budget, in "human raiders": roughly its health × its blow
 const COST = {human: 1, orc: 2, goblin: 0.6, ogre: 4.5, troll: 5, gnoll: 1.7, darkelf: 2,
-  zombie: 0.9, skeleton: 1, upyr: 1.8, vampire: 7, necromancer: 1.5, varg: 1.8, hyena: 0.8};
+  zombie: 0.9, skeleton: 1, upyr: 1.8, vampire: 7, necromancer: 1.5, varg: 1.8, hyena: 0.8, spider: 2, giant: 7, demon: 6};
 
 // fill the budget with species drawn from `mix` ([[species, weight], …]); at least one member
 function fill(rng, budget, mix, extra = []) {
@@ -54,6 +54,7 @@ const KITS = {
   orc: (rng, t) => [...pick(rng, [['maul'], ['axe', 'shield'], ['club', 'shield'], ['spear'], t > 10 ? ['bronzeaxe', 'shield'] : ['axe']]), ...(rng() < 0.5 ? ['jerkin'] : [])],
   goblin: rng => pick(rng, [['sling'], ['sling'], ['bow', 'quiver'], ['club'], ['spear']]),
   ogre: rng => pick(rng, [['maul'], ['club']]),
+  giant: rng => pick(rng, [['maul'], ['club'], ['club']]),
   gnoll: (rng, t) => [...pick(rng, [['spear'], ['spear', 'shield'], ['bow', 'quiver'], ['axe']]), ...(rng() < 0.3 ? ['jerkin'] : [])],
   darkelf: (rng, t) => [...pick(rng, [['bow', 'quiver'], ['bow', 'quiver'], ['sword'], ['spear', 'shield']]), rng() < 0.6 ? 'hardleather' : 'jerkin'],
   skeleton: rng => pick(rng, [['club'], ['spear'], ['axe'], ['club', 'shield']]),
@@ -82,8 +83,9 @@ RAID_BANDS.registerAll([
   {id: 'goblins', label: 'гоблинская шайка', kind: 'sentient',
     goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1,
     weight: () => 1.5,
-    members: (w, rng, budget) => fill(rng, budget, [['goblin', 1]]),
-    message: () => 'Набег! Гоблинская шайка: мелкие, юркие, тащат всё, что плохо лежит'},
+    // a big band rides: wargs out of the hills, giant spiders out of the deep wood (the tribes' beasts, data/lairs.js)
+    members: (w, rng, budget) => fill(rng, budget, [['goblin', 1], ['varg', budget >= 4 ? 0.3 : 0], ['spider', budget >= 6 ? 0.2 : 0]]),
+    message: (n, group) => `Набег! Гоблинская шайка: мелкие, юркие, тащат всё, что плохо лежит${group.some(a => a.species === 'varg') ? '; верхом на варгах' : ''}${group.some(a => a.species === 'spider') ? '; с ними гигантские пауки' : ''}`},
 
   {id: 'gnolls', label: 'стая гноллов', kind: 'sentient',
     goals: (w, g) => [['loot', 3], ['kill', 0.6 + feud(w)]],
@@ -102,6 +104,12 @@ RAID_BANDS.registerAll([
     weight: (w, t) => (t >= 6 ? 0.8 : 0),
     members: (w, rng, budget) => fill(rng, Math.min(budget, 9.5), [['ogre', 1]]).map(m => ({...m, init: named('ogre')})),
     message: () => 'С гор спустились огры-людоеды'},
+
+  {id: 'giants', label: 'великаны', kind: 'sentient',
+    goals: () => [['loot', 2], ['kill', 1.5], ['burn', 1]], nerve: -0.2,
+    weight: (w, t) => (t >= 8 ? 0.5 : 0),
+    members: (w, rng, budget) => fill(rng, Math.min(budget, 15), [['giant', 1]]).map(m => ({...m, init: (a, w) => { [a.name, a.gender] = pick(w.rngs.outside, SPECIES.get('giant').names); }})),
+    message: n => (n === 1 ? 'С гор спустился великан: ему ваш частокол по колено' : `С гор спустились великаны: ${n}. Им ваш частокол по колено`)},
 
   {id: 'troll', label: 'тролль', kind: 'monster',
     goals: () => [['kill', 2], ['loot', 1]], nerve: -0.15,

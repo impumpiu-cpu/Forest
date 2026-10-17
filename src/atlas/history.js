@@ -12,6 +12,7 @@ import {ERAS, WILD_YEARS, FAUNA} from '../data/history.js';
 import {ELDER_YEARS, YOUNG_YEARS, WORLD_PEOPLES} from '../data/peoples.js';
 import {ROADS} from '../data/roads.js';
 import {arrive, stepPeoples, townLabel} from './peoples.js';
+import {townFx} from './towns.js';
 import {wearRoads} from './roads.js';
 import {sailLanes} from './sea.js';
 import {SEA} from '../data/roads.js';
@@ -81,7 +82,15 @@ export function stepHistory(a) {
       const r = 4, bx = wj % F.W, by = (wj / F.W) | 0, cell = coarseToCell(a, wj);
       for (const s of F.list) if (s.role !== 'spirit') for (let y = Math.max(0, by - r); y <= Math.min(F.H - 1, by + r); y++) for (let x = Math.max(0, bx - r); x <= Math.min(F.W - 1, bx + r); x++) s.N[y * F.W + x] *= 1 - FAUNA.harsh;
       const cold = a.f.temp[cell] - a.f.trange[cell] / 2 < 0;
-      say(a, cold ? `Лютая зима ${wherePhrase(a, cell)}: звери гибли от мороза и бескормицы.` : `Засуха ${wherePhrase(a, cell)}: травы выгорели, звери гибли от бескормицы.`);
+      // the towns of the stricken country starve too: granaries and cellars soften it, healers save the weak
+      const hit = [];
+      for (const t of a.towns || []) {
+        if (!t.alive || Math.abs(((t.x / F.c) | 0) - bx) > r || Math.abs(((t.y / F.c) | 0) - by) > r) continue;
+        const fx = townFx(t), loss = FAUNA.townHarsh * Math.max(0.25, 1 - 0.6 * fx.food - 0.4 * fx.health);
+        t.pop *= 1 - loss; hit.push(t);
+      }
+      const dead = hit.length ? `; в ${hit.length === 1 ? `${townLabel(hit[0], 3)} ${hit[0].name}` : `${hit.length} ${plural(hit.length, 'городе', 'городах', 'городах')}`} ${cold ? 'голод и мор' : 'голод'}` : '';
+      say(a, cold ? `Лютая зима ${wherePhrase(a, cell)}: звери гибли от мороза и бескормицы${dead}.` : `Засуха ${wherePhrase(a, cell)}: травы выгорели, звери гибли от бескормицы${dead}.`);
     }
   }
   // the elder peoples: they come at the start of their era and live a year at a time from then on
