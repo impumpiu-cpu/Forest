@@ -11,7 +11,7 @@
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
-import {WORLD_PEOPLES, TIERS, TOWN_WAR} from '../data/peoples.js';
+import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, tierOf, crowned} from '../data/peoples.js';
 import {TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {townFx, room, might, raidShare, chooseBuilding, townLabel} from './towns.js';
 import {LAIRS} from '../data/lairs.js';
@@ -102,13 +102,12 @@ function bestSite(a, pe, j, rnd) {
   return bv > 0.4 ? best : -1;
 }
 
-const tierOf = pop => { let t = 0; TIERS.forEach((T, k) => { if (pop >= T.pop) t = k; }); return t; };
 export {townLabel} from './towns.js';
 
 function foundTown(a, pe, i, rnd, pop, say) {
   const P = pe.P, H = a.hist;
   const t = {id: (H.nextTown = (H.nextTown || 0) + 1), people: P.id, name: townName(P, rnd, H.names), i, x: i % a.w, y: (i / a.w) | 0,
-    founded: H.year, pop, tier: tierOf(pop), built: [], alive: true};
+    founded: H.year, pop, tier: 0, built: [], alive: true};
   a.towns.push(t);
   return t;
 }
@@ -116,8 +115,6 @@ function foundTown(a, pe, i, rnd, pop, say) {
 const APPEARED = {m: 'появился', f: 'появилась', n: 'появилось', pl: 'появились'};
 const GREW = {m: 'разросся в', f: 'разрослась в', n: 'разрослось в'};
 const SHRANK = {m: 'захирел до', f: 'захирела до', n: 'захирело до'};
-// a town falls a size when it has lost down to this share of the size's threshold (so it does not flicker)
-const TIER_FALL = 0.7;
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 // the peoples arrive: each founding band wakes in the best spot of its land, far from the others
@@ -203,26 +200,24 @@ export function stepPeoples(a, rnd, say) {
     const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (1 + 0.6 * roadAccess(a, t.i)) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
     const target = Math.min(feeds, room(fx));
     t.pop = Math.max(10, t.pop + 0.14 * (1 + 0.6 * fx.prestige) * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
-    const tier = tierOf(t.pop);
-    if (tier > t.tier) {
-      const T = TIERS[tier], was = TIERS[t.tier];
-      say(`${cap1(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T.label[t.people][1]}: ${Math.round(t.pop)} жителей.`);
-      t.tier = tier;
-    } else if (tier < t.tier && t.pop < TIERS[t.tier].pop * TIER_FALL) {
-      // wars, raids and plagues can wear a town down a size; it keeps what it has built
-      const T = TIERS[tier], was = TIERS[t.tier];
-      say(`${cap1(was.label[t.people][0])} ${t.name} ${SHRANK[was.gender[t.people]]} ${T.label[t.people][2]}: осталось ${Math.round(t.pop)} жителей.`);
-      t.tier = tier;
-    }
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);
     for (let q = 0; q < (t.tier >= 2 ? 2 : 1); q++) {
       if (rnd() > 0.65) continue;
       const b = chooseBuilding(a, t, pe.P, townFx(t), {feeds, threat, road: roadAccess(a, t.i)}, rnd);
       if (!b) break;
-      const first = !t.built.includes(b.id);
+      const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
       t.built.push(b.id);
-      if (first && (b.notable || b.tier >= 3)) say(`В ${townLabel(t, 3)} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
+      if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} ${pe.P.labelGen}.`);
+      else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
+    }
+    // the step the town has earned by its people and buildings; it falls one when the people are gone
+    const tier = tierOf(t), fall = t.tier > 0 && t.pop < TIERS[t.tier].pop * TIER_FALL;
+    if (tier > t.tier || (fall && tier < t.tier)) {
+      const T = TIERS[tier], was = TIERS[t.tier];
+      if (tier > t.tier) say(`${cap1(was.label[t.people][0])} ${t.name} ${GREW[was.gender[t.people]]} ${T.label[t.people][1]}: ${Math.round(t.pop)} жителей.`);
+      else say(`${cap1(was.label[t.people][0])} ${t.name} ${SHRANK[was.gender[t.people]]} ${T.label[t.people][2]}: осталось ${Math.round(t.pop)} жителей.`);
+      t.tier = tier;
     }
   }
   // towns against the lairs that reach them

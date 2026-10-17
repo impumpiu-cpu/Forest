@@ -14,7 +14,7 @@
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
 import {TOWN_BUILDINGS, EFFECTS} from '../data/townBuildings.js';
-import {TIERS} from '../data/peoples.js';
+import {TIERS, CAPITAL, crowned} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {ROADS} from '../data/roads.js';
@@ -27,8 +27,10 @@ const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
 const KEYS = Object.keys(EFFECTS);
 
-// the town's size word in a case: 0 nominative, 1 accusative, 2 genitive, 3 prepositional, 4 instrumental
-export const townLabel = (t, cs = 0) => TIERS[t.tier].label[t.people][cs];
+// the town's size word in a case: 0 nominative, 1 accusative, 2 genitive, 3 prepositional, 4 instrumental;
+// the crowned seat of a people goes by its own word
+export const townLabel = (t, cs = 0) => (crowned(t) ? CAPITAL.label[t.people][cs] : TIERS[t.tier].label[t.people][cs]);
+export const townGender = t => (crowned(t) ? CAPITAL.gender[t.people] : TIERS[t.tier].gender[t.people]);
 
 export function townFx(t) {
   const out = Object.fromEntries(KEYS.map(k => [k, 0]));
@@ -87,6 +89,9 @@ export function placeHas(a, i, need) {
 export function canBuild(a, t, b) {
   if (b.peoples && !b.peoples.includes(t.people)) return false;
   if (b.tier > t.tier) return false;
+  if (b.pop && t.pop < b.pop) return false;
+  if (b.capital && !t.capital) return false;
+  if (b.unique && a.towns.some(o => o !== t && o.alive && o.people === t.people && o.built.includes(b.id))) return false;
   if (t.built.filter(id => id === b.id).length >= b.max) return false;
   if (b.requires && !b.requires.every(id => t.built.includes(id))) return false;
   if (b.requiresAny && !b.requiresAny.some(id => t.built.includes(id))) return false;

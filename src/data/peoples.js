@@ -64,23 +64,45 @@ WORLD_PEOPLES.registerAll([
       last: ['-баш', 'гат', 'рук', 'мог', 'душ', 'заг', '-тар', 'нак']}},
 ]);
 
-// Town sizes. A town's people grow towards what its land feeds; at `pop` it becomes the next size.
+// Town sizes: three steps, earned by what the town has built (docs/WORLD.md, «Ступени и столицы»).
+// A town is a step when it has at least `pop` people and any of the buildings in `needsAny`
+// (data/townBuildings.js); it falls a step when its people drop below TIER_FALL of that `pop`.
+// Within a step the size runs free: a town is a town at 400 and at 6000.
 // What each people calls a town of that size, in the cases the chronicle needs:
 // [nominative, accusative, genitive, prepositional, instrumental], and the gender of the word.
 export const TIERS = [
-  {pop: 0, label: {elves: ['приют', 'приют', 'приюта', 'приюте', 'приютом'], dwarves: ['застава', 'заставу', 'заставы', 'заставе', 'заставой'],
-    humans: ['деревня', 'деревню', 'деревни', 'деревне', 'деревней'], orcs: ['стойбище', 'стойбище', 'стойбища', 'стойбище', 'стойбищем']},
-    gender: {elves: 'm', dwarves: 'f', humans: 'f', orcs: 'n'}},
-  {pop: 180, label: {elves: ['селение', 'селение', 'селения', 'селении', 'селением'], dwarves: ['посёлок', 'посёлок', 'посёлка', 'посёлке', 'посёлком'],
-    humans: ['село', 'село', 'села', 'селе', 'селом'], orcs: ['становище', 'становище', 'становища', 'становище', 'становищем']},
-    gender: {elves: 'n', dwarves: 'm', humans: 'n', orcs: 'n'}},
-  {pop: 700, label: {elves: ['город', 'город', 'города', 'городе', 'городом'], dwarves: ['крепость', 'крепость', 'крепости', 'крепости', 'крепостью'],
-    humans: ['город', 'город', 'города', 'городе', 'городом'], orcs: ['твердыня', 'твердыню', 'твердыни', 'твердыне', 'твердыней']},
+  {pop: 0, needsAny: null,
+    label: {elves: ['приют', 'приют', 'приюта', 'приюте', 'приютом'], dwarves: ['застава', 'заставу', 'заставы', 'заставе', 'заставой'],
+      humans: ['хутор', 'хутор', 'хутора', 'хуторе', 'хутором'], orcs: ['стойбище', 'стойбище', 'стойбища', 'стойбище', 'стойбищем']},
+    gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'n'}},
+  {pop: 60, needsAny: ['granary', 'eldershall', 'shrine', 'shamanhut', 'sacredgrove', 'stonecircle'],
+    label: {elves: ['селение', 'селение', 'селения', 'селении', 'селением'], dwarves: ['посёлок', 'посёлок', 'посёлка', 'посёлке', 'посёлком'],
+      humans: ['деревня', 'деревню', 'деревни', 'деревне', 'деревней'], orcs: ['становище', 'становище', 'становища', 'становище', 'становищем']},
+    gender: {elves: 'n', dwarves: 'm', humans: 'f', orcs: 'n'}},
+  {pop: 500, needsAny: ['market', 'stonewall', 'hiddenpaths', 'tunnels', 'warcamp', 'temple', 'ancestorhall'],
+    label: {elves: ['город', 'город', 'города', 'городе', 'городом'], dwarves: ['крепость', 'крепость', 'крепости', 'крепости', 'крепостью'],
+      humans: ['город', 'город', 'города', 'городе', 'городом'], orcs: ['твердыня', 'твердыню', 'твердыни', 'твердыне', 'твердыней']},
     gender: {elves: 'm', dwarves: 'f', humans: 'm', orcs: 'f'}},
-  {pop: 2200, label: {elves: ['столица', 'столицу', 'столицы', 'столице', 'столицей'], dwarves: ['чертог', 'чертог', 'чертога', 'чертоге', 'чертогом'],
-    humans: ['столица', 'столицу', 'столицы', 'столице', 'столицей'], orcs: ['ставка', 'ставку', 'ставки', 'ставке', 'ставкой']},
-    gender: {elves: 'f', dwarves: 'm', humans: 'f', orcs: 'f'}},
 ];
+export const TIER_FALL = 0.7;
+// the capital: not a step but a flag — the seat of a people's realm, crowned by its throne hall
+// (data/townBuildings.js `throne`); what each people calls it
+export const CAPITAL = {
+  label: {elves: ['столица', 'столицу', 'столицы', 'столице', 'столицей'], dwarves: ['чертог', 'чертог', 'чертога', 'чертоге', 'чертогом'],
+    humans: ['столица', 'столицу', 'столицы', 'столице', 'столицей'], orcs: ['ставка', 'ставку', 'ставки', 'ставке', 'ставкой']},
+  gender: {elves: 'f', dwarves: 'm', humans: 'f', orcs: 'f'},
+};
+// the step a town has earned: the highest whose people and buildings it has (steps are not skipped)
+export function tierOf(t) {
+  let k = 0;
+  for (let i = 1; i < TIERS.length; i++) {
+    const T = TIERS[i];
+    if (t.pop >= T.pop && T.needsAny.some(id => t.built.includes(id))) k = i; else break;
+  }
+  return k;
+}
+// is the town the crowned seat of its people
+export const crowned = t => !!t.capital && t.built.includes('throne');
 
 // Towns against the wild: a town fights the lairs whose territory reaches it; the town's might is
 // √pop × `might`, the lair's its strength × its owner's SPECIAL power. A beaten lair is cleared;
