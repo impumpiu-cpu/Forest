@@ -13217,6 +13217,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return { c, ctx, img: ctx.createImageData(w.w, w.h) };
   }
   var MAX_CELL_PX = 40;
+  var FIELD_EVERY = { temp: 150, nav: 500, res: 1e3, soil: 2e3 };
   var Renderer = class {
     constructor(canvas) {
       this.cv = canvas;
@@ -13285,6 +13286,7 @@ dd.q4{color:#c58cff;font-weight:600}
     paintTerrain(w) {
       const d = this.terrain.img.data, g2 = w.grid;
       const [tr, tg, tb, tk] = season(w).tint, wet = season(w).snow;
+      const PL = PLANTS_TINT.filter((p) => g2[p.key]), layers = PL.map((p) => g2[p.key]), tints = PL.map((p) => p.tint), np = PL.length;
       for (let i = 0; i < w.n; i++) {
         let [r, gg, b] = BY_CODE[g2.terr[i]].color(g2.hgt[i], g2.fert[i], g2.wood[i]);
         const ore = g2.ore?.[i];
@@ -13294,13 +13296,13 @@ dd.q4{color:#c58cff;font-weight:600}
           gg = gg * (1 - k) + c[1] * k;
           b = b * (1 - k) + c[2] * k;
         }
-        for (const p of PLANTS_TINT) {
-          const v = g2[p.key]?.[i];
+        for (let q = 0; q < np; q++) {
+          const v = layers[q][i];
           if (v > 0.2) {
-            const k = v * 0.6;
-            r = r * (1 - k) + p.tint[0] * k;
-            gg = gg * (1 - k) + p.tint[1] * k;
-            b = b * (1 - k) + p.tint[2] * k;
+            const k = v * 0.6, tint = tints[q];
+            r = r * (1 - k) + tint[0] * k;
+            gg = gg * (1 - k) + tint[1] * k;
+            b = b * (1 - k) + tint[2] * k;
           }
         }
         if (g2.bush[i] && g2.food[i] > 0.2) {
@@ -13414,9 +13416,12 @@ dd.q4{color:#c58cff;font-weight:600}
       ctx.fillStyle = "#0d0f0a";
       ctx.fillRect(0, 0, cw, ch);
       ctx.setTransform(dpr, 0, 0, dpr, this.ox * dpr, this.oy * dpr);
-      if (t0 - this.tTerrain > 200) {
+      const terrKey = season(w).id;
+      if (this.terrFor !== w || this.terrKey !== terrKey || t0 - this.tTerrain > (w.stats.anyFire ? 250 : 1e3)) {
         this.paintTerrain(w);
         this.tTerrain = t0;
+        this.terrFor = w;
+        this.terrKey = terrKey;
       }
       const st = w.stats, calm = !st.anyFire && (st.smokeMax ?? 1) <= 0 && (st.tempMax ?? Infinity) <= 60;
       if (!calm || !this.glowCalm || this.glowFor !== w) {
@@ -13430,10 +13435,11 @@ dd.q4{color:#c58cff;font-weight:600}
       ctx.imageSmoothingEnabled = true;
       if (view2.layer !== "world") {
         const key2 = view2.layer + ":" + [...view2.resHidden].join(",");
-        if (t0 - this.tField > 150 || this.fieldKey !== key2) {
+        if (t0 - this.tField > (FIELD_EVERY[view2.layer] ?? 150) || this.fieldKey !== key2 || this.fieldFor !== w) {
           this.paintField(w, view2.layer, view2);
           this.tField = t0;
           this.fieldKey = key2;
+          this.fieldFor = w;
         }
         ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx);
       }
@@ -14854,7 +14860,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.38.1 SPECIAL \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 14e3098" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a4b30f1" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

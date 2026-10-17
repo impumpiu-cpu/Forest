@@ -48,6 +48,10 @@ function layer(w) {
 // the closest the camera comes: one cell this many CSS pixels wide
 export const MAX_CELL_PX = 40;
 
+// how often an overlay layer is repainted, ms: heat moves fast, the resource beds and the paths to camp
+// slowly, the soil hardly at all
+const FIELD_EVERY = {temp: 150, nav: 500, res: 1000, soil: 2000};
+
 export class Renderer {
   constructor(canvas) { this.cv = canvas; this.ctx = canvas.getContext('2d'); this.ms = 0; this.S = 1; this.ox = 0; this.oy = 0; }
 
@@ -93,11 +97,13 @@ export class Renderer {
     const d = this.terrain.img.data, g = w.grid;
     // the season tints grass and forest: autumn gold, winter snow (water freezes white at the edges only)
     const [tr, tg, tb, tk] = season(w).tint, wet = season(w).snow;
+    // plant layers looked up once per repaint, not by name in every cell
+    const PL = PLANTS_TINT.filter(p => g[p.key]), layers = PL.map(p => g[p.key]), tints = PL.map(p => p.tint), np = PL.length;
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
       const ore = g.ore?.[i];
       if (ore) { const c = ORE_BY_CODE[ore].tint, k = 0.55; r = r * (1 - k) + c[0] * k; gg = gg * (1 - k) + c[1] * k; b = b * (1 - k) + c[2] * k; }
-      for (const p of PLANTS_TINT) { const v = g[p.key]?.[i]; if (v > 0.2) { const k = v * 0.6; r = r * (1 - k) + p.tint[0] * k; gg = gg * (1 - k) + p.tint[1] * k; b = b * (1 - k) + p.tint[2] * k; } }
+      for (let q = 0; q < np; q++) { const v = layers[q][i]; if (v > 0.2) { const k = v * 0.6, tint = tints[q]; r = r * (1 - k) + tint[0] * k; gg = gg * (1 - k) + tint[1] * k; b = b * (1 - k) + tint[2] * k; } }
       if (g.bush[i] && g.food[i] > 0.2) { const k = g.food[i] * 0.55; r = r * (1 - k) + 196 * k; gg = gg * (1 - k) + 92 * k; b = b * (1 - k) + 149 * k; }
       if (tk && (g.terr[i] === T.GRASS || g.terr[i] === T.FOREST || g.terr[i] === T.BURNT || (wet && g.terr[i] === T.ROCK))) {
         const k = g.terr[i] === T.FOREST ? tk * 0.7 : tk;
@@ -154,9 +160,14 @@ export class Renderer {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#0d0f0a'; ctx.fillRect(0, 0, cw, ch);
     ctx.setTransform(dpr, 0, 0, dpr, this.ox * dpr, this.oy * dpr);
-    // terrain and the overlay layers change slowly: repaint them a few times a second, not every frame
-    // (fire glow and smoke stay per frame)
-    if (t0 - this.tTerrain > 200) { this.paintTerrain(w); this.tTerrain = t0; }
+    // terrain and the overlay layers change slowly: repaint each as often as it really changes, not every
+    // frame (a huge map's terrain costs ~9 ms, the resource layer ~18 ms). Fire glow and smoke stay per frame.
+    // A burning map repaints its terrain often (forest turns to ash), a quiet one once a second; a new
+    // world or season repaints at once.
+    const terrKey = season(w).id;
+    if (this.terrFor !== w || this.terrKey !== terrKey || t0 - this.tTerrain > (w.stats.anyFire ? 250 : 1000)) {
+      this.paintTerrain(w); this.tTerrain = t0; this.terrFor = w; this.terrKey = terrKey;
+    }
     // with nothing burning, smoking or hot the two layers are empty: paint them clear once, then skip them
     const st = w.stats, calm = !st.anyFire && (st.smokeMax ?? 1) <= 0 && (st.tempMax ?? Infinity) <= 60;
     if (!calm || !this.glowCalm || this.glowFor !== w) { this.paintGlowSmoke(w); this.glowCalm = calm; this.glowFor = w; }
@@ -165,7 +176,7 @@ export class Renderer {
     ctx.imageSmoothingEnabled = true;
     if (view.layer !== 'world') {
       const key = view.layer + ':' + [...view.resHidden].join(',');
-      if (t0 - this.tField > 150 || this.fieldKey !== key) { this.paintField(w, view.layer, view); this.tField = t0; this.fieldKey = key; }
+      if (t0 - this.tField > (FIELD_EVERY[view.layer] ?? 150) || this.fieldKey !== key || this.fieldFor !== w) { this.paintField(w, view.layer, view); this.tField = t0; this.fieldKey = key; this.fieldFor = w; }
       ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx); }
     if (lit) ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
 
