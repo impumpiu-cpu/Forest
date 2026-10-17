@@ -47,9 +47,11 @@ export function startHistory(a) {
   a.hist = {era: 'wild', year: 1, season: 0, step: 0, end: historyLength(a), rnd, nextLair: 1, names: new Set(), last: {}};
   initFauna(a, rnd);
   const t = placeLairs(a, rnd);
-  const parts = LAIRS.filter(L => t[L.id]).map(L => `${L.label} — ${t[L.id]}`), old = a.lairs.filter(l => l.ancient).length;
-  say(a, `Началась ${ERAS.get('wild').label.toLowerCase()}. Разумных народов ещё нет; звери расходятся по своим краям` +
-    (parts.length ? `, чудовища заняли логова: ${parts.join(', ')}` + (old ? `; ${old} из них стоят с незапамятных времён.` : '.') : '.'));
+  const parts = LAIRS.filter(L => !L.tribe && t[L.id]).map(L => `${L.label} — ${t[L.id]}`), tribes = LAIRS.filter(L => L.tribe && t[L.id]).map(L => `${L.label} — ${t[L.id]}`);
+  const old = a.lairs.filter(l => l.ancient).length;
+  say(a, `Началась ${ERAS.get('wild').label.toLowerCase()}. Городов ещё нет; звери расходятся по своим краям` +
+    (parts.length ? `, чудовища заняли логова: ${parts.join(', ')}` : '') + (tribes.length ? `; дикие племена разбили станы: ${tribes.join(', ')}` : '') +
+    (old ? `. ${old} ${plural(old, 'логово стоит', 'логова стоят', 'логов стоят')} с незапамятных времён.` : '.'));
 }
 
 // one season of history

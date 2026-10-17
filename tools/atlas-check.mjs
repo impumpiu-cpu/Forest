@@ -29,7 +29,7 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
-const hist = {lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
+const hist = {tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
 
 // the catalogue of town buildings holds together: links to the local map, prerequisites, conditions,
 // peoples and effects are all known, and every people can house and feed a hamlet
@@ -87,7 +87,10 @@ function townsCheck(a, tag) {
     for (let y = t.y - 2; y <= t.y + 2 && !road; y++) for (let x = t.x - 2; x <= t.x + 2; x++) if (x >= 0 && y >= 0 && x < a.w && y < a.h && f.road[y * a.w + x] >= ROADS.levels[0].wear) { road = true; break; }
     if (road) hist.linked[0]++;
   }
-  hist.cleared += a.lairs.filter(l => l.clearedBy).length;
+  hist.cleared += a.lairs.filter(l => l.clearedBy && !LAIRS.get(l.kind).tribe).length;
+  hist.tribesCleared += a.lairs.filter(l => l.clearedBy && LAIRS.get(l.kind).tribe).length;
+  hist.tribes += a.lairs.filter(l => LAIRS.get(l.kind).tribe).length;
+  for (const c of a.chronicle) { if (/^(Гоблины|Гноллы|Огры|Тролли|Великаны) .*разграбили/.test(c.text)) hist.raidsWon++; else if (/отбили набег (гоблинов|гноллов|огров|троллей|великанов)/.test(c.text)) hist.raidsLost++; }
   // dealings: attitudes in bounds, every war in the chronicle, burnt towns left as ruins, battles as barrows
   let relBad = '';
   const warsTold = a.chronicle.filter(c => /началась война/.test(c.text)).length, wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0);
@@ -312,13 +315,15 @@ check('  зоны по широте: тундра севернее тайги, �
 check('  леса лесистые, степи и пустыни нет', Tr('forest') > 0.5 && Tr('taiga') > 0.5 && Tr('steppe') < 0.1 && Tr('desert') < 0.05, `лес ${Math.round(Tr('forest') * 100)}%, тайга ${Math.round(Tr('taiga') * 100)}%, степь ${Math.round(Tr('steppe') * 100)}%`);
 check('  чернозём и поймы плодороднее подзола и латерита', F('chernozem') > F('podzol') && F('alluvial') > F('laterite'), `чернозём ${Math.round(F('chernozem') * 100)}%, пойма ${Math.round(F('alluvial') * 100)}%, подзол ${Math.round(F('podzol') * 100)}%, латерит ${Math.round(F('laterite') * 100)}%`);
 console.log('Дикая эра:');
-check('  логова чудовищ есть', hist.lairs > 0, `${hist.lairs} за эру на ${hist.worlds} миров, к концу живы ${hist.alive}; ` + LAIRS.all().map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', '));
+check('  логова чудовищ есть', hist.lairs - hist.tribes > 0, `${hist.lairs - hist.tribes} за эру на ${hist.worlds} миров; ` + LAIRS.filter(L => !L.tribe).map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', '));
+check('  племена стоят станами', hist.tribes > 0, `${hist.tribes} за эру на ${hist.worlds} миров; ` + LAIRS.filter(L => L.tribe).map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', '));
 check('  летопись эры пишется', hist.lines >= 10 * hist.worlds, `${(hist.lines / hist.worlds).toFixed(0)} записей на мир`);
 console.log('Народы:');
 for (const P of WORLD_PEOPLES.all()) check(`  ${P.label} живут в мире`, (hist.towns[P.id] || 0) > 0, `городов ${hist.towns[P.id] || 0} на ${hist.worlds} миров, в среднем ${Math.round((hist.pop[P.id] || 0) / hist.worlds)} жителей на мир`);
 check('  города строят всё', Object.keys(hist.built).length === Object.keys(CATEGORIES).length, Object.entries(CATEGORIES).map(([k, l]) => `${l} ${hist.built[k] || 0}`).join(', '));
 check('  дороги наезжены', hist.roads > 0 && hist.linked[0] >= 0.8 * hist.linked[1], `${hist.linked[0]} из ${hist.linked[1]} городов с соседями своего народа стоят у дороги; клеток дорог ${hist.roads}`);
 check('  народы теснят чудовищ', hist.cleared > 0, `выжжено логов: ${hist.cleared}`);
+check('  племена грабят города, города разоряют станы', hist.raidsWon > 0 && hist.raidsLost > 0 && hist.tribesCleared > 0, `набегов удачных ${hist.raidsWon}, отбитых ${hist.raidsLost}; станов разорено ${hist.tribesCleared}`);
 console.log('Эпоха молодых:');
 check('  народы враждуют и торгуют', hist.wars > 0 && hist.trade > 0, `войн ${hist.wars}, сожжено городов ${hist.ruins}, пар народов с торговлей ${hist.trade}; среднее отношение: ` + Object.keys(hist.rel).sort().map(kk => `${kk} ${(hist.rel[kk] / hist.relN[kk]).toFixed(1)}`).join(', '));
 console.log('Вода:');
