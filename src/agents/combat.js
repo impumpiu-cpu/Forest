@@ -96,13 +96,19 @@ function scorch(w, t) {
   w.nav.dirty('fire');
 }
 
-// one melee blow; nothing happens (false) unless the target is alive, seen and within reach
+// rock between the two: no blow and no bite across it. Whoever is that close should step around instead
+// (approach() walks around rock), so the callers treat it like "not close enough yet".
+export const behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
+
+// one melee blow; nothing happens (false) unless the target is alive, seen, within reach and not behind rock
 // The blow reads and trains the melee skill (data/skills.js): skill only adds (× 1 + MELEE_SKILL × skill),
 // so a creature without it hits as before.
 export const MELEE_SKILL = 0.4;
 export function attack(w, a, t) {
   if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
+  // rock stops a blow as it stops a shot (a line through the corner of two rocks included); water does not
+  if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(4, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
   damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item));

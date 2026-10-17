@@ -25,11 +25,18 @@ import {recomputeMods} from '../settlement/mods.js';
 import {RESOURCES} from '../data/resources.js';
 import {drawFoodPrefs} from '../data/foods.js';
 import {JOBS} from '../data/jobs.js';
+import {TASKS} from '../agents/tasks.js';
+import {ITEMS} from '../data/items.js';
+import {BRAINS} from '../agents/brains/index.js';
 
 // 2: random streams by subsystem (core/rng.js). A format-1 save (one stream) still loads: its streams
 // are seeded from the game's seed and the saved position of the old stream, the same every time.
-export const SAVE_FORMAT = 2;
-const FORMATS = [1, 2];
+// 3: SPECIAL states (the `downed` task, tiers, trophies). Builds that know only 1–2 refuse it before
+// loading instead of crashing on the first tick; this build still reads 1 and 2.
+export const SAVE_FORMAT = 3;
+const FORMATS = [1, 2, 3];
+// brains that run their task through the TASKS registry: an id it does not know would stop the game
+const TASK_BRAINS = new Set(['colonist', 'raider']);
 
 // world keys that are rebuilt rather than saved
 const LIVE = new Set(['nav', 'rng', 'rngs', 'astar', 'perf', 'scratch']);
@@ -55,6 +62,7 @@ export function saveWorld(w) {
 export function loadWorld(save) {
   if (!save || !FORMATS.includes(save.format)) throw new Error('Это не сохранение «Тёплого Брода» или оно из несовместимой версии.');
   const {world: w, nav} = decode(save.tree, {externals: externals()});
+  checkKnown(w);
   ensureRegion(w);
   ensureOre(w);
   ensurePlants(w);
@@ -121,6 +129,22 @@ export function loadWorld(save) {
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};
   ensureFlows(w);   // arrivals added since the save get their first date (draws from the restored random stream)
   return w;
+}
+
+// Everything the first tick will look up by id must exist in this build. A save from a newer build
+// (or another branch) is refused here, before it replaces the running game, with the reason.
+function checkKnown(w) {
+  const bad = new Set();
+  for (const a of w.agents || []) {
+    if (!SPECIES.has(a.species)) bad.add(`вид «${a.species}»`);
+    if (!BRAINS.has(a.brain)) bad.add(`поведение «${a.brain}»`);
+    if (TASK_BRAINS.has(a.brain) && a.task && !TASKS.has(a.task.id)) bad.add(`задача «${a.task.id}»`);
+    if (a.task?.id === 'job' && !JOBS.has(a.task.job)) bad.add(`работа «${a.task.job}»`);
+    for (const it of Object.values(a.equip || {})) if (it?.type && !ITEMS.has(it.type)) bad.add(`предмет «${it.type}»`);
+    for (const r of Object.keys(a.carry?.res || {})) if (!RESOURCES.has(r)) bad.add(`ресурс «${r}»`);
+  }
+  for (const it of w.armory || []) if (it?.type && !ITEMS.has(it.type)) bad.add(`предмет «${it.type}»`);
+  if (bad.size) throw new Error(`Сохранение сделано другой версией игры: эта сборка не знает ${[...bad].slice(0, 4).join(', ')}.`);
 }
 
 // a fingerprint of the full state: two worlds with the same hash are the same world

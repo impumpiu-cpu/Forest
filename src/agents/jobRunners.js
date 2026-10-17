@@ -17,6 +17,7 @@ import {boldness} from './brains/predator.js';
 import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
+import {lineOfFire} from '../nav/astar.js';
 import {kill, trophyText} from './agent.js';
 import {practice, skillOf, canDoAction} from './skills.js';
 import {recipeSkill, LEARN} from '../data/skills.js';
@@ -317,7 +318,9 @@ export const RUNNERS = {
     if (task.age > 900) { a.mem.chase += 0.2; a.stalking = false; fail(w, a, 'дичь ушла, устал гоняться'); return; }
     const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = a.gear.ranged.range + w.mods.add.huntRange;
     a.stalking = d < 10;
-    if (d > range * 0.85) {
+    // in range but a rock in the way: no shot from here, find a spot to shoot from (approach goes around)
+    const open = d <= range * 0.85 && lineOfFire(w, a.x, a.y, prey.x, prey.y);
+    if (!open) {
       // far away: walk the prey flow field around lakes and rocks; close: creep straight at it
       if (d > 9) {
         const r = follow(w, a, job.nav);

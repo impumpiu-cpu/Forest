@@ -7042,9 +7042,10 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!prey) return;
     const ms = h.members.map((id) => byId2(w, id)).filter(Boolean).sort((x, y) => dist2(x, prey) - dist2(y, prey));
     let side = 1;
+    const prev = h.roles || {};
     h.roles = {};
     ms.forEach((m, k) => {
-      const winded = m.stamina < PACK.winded || h.roles[m.id] === "wait" && m.stamina < PACK.rested;
+      const winded = m.stamina < PACK.winded || prev[m.id] === "wait" && m.stamina < PACK.rested;
       h.roles[m.id] = k === 0 ? "lead" : winded ? "wait" : (side = -side) > 0 ? "flankL" : "flankR";
     });
     h.dealt = w.tick;
@@ -7438,10 +7439,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     w.nav.dirty("fire");
   }
+  var behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
   var MELEE_SKILL = 0.4;
   function attack(w, a, t) {
     if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
     if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
+    if (behindRock(w, a, t)) return false;
     const g2 = ensureGear(a);
     a.cd = Math.max(4, Math.round(g2.melee.cd * (a.mods?.swing ?? 1)));
     a.flash = 4;
@@ -7607,7 +7610,7 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
         a.task = { id: "maul", target: foe };
-        if (dist3(a, foe) > 0.9) approach(w, a, foe.x, foe.y, 1.1);
+        if (dist3(a, foe) > 0.9 || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.1);
         else attack(w, a, foe);
         return;
       }
@@ -9209,10 +9212,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return best ? [{ id: "company", who: best.id }, bs, () => `\u0432 \u043B\u0435\u0441\u0443 \u043E\u043F\u0430\u0441\u043D\u043E, ${best.name} ${g(best, "\u043E\u0434\u0438\u043D", "\u043E\u0434\u043D\u0430")}${bop >= REL.friend ? " \u2014 \u0430 \u044D\u0442\u043E \u0434\u0440\u0443\u0433" : ""}`] : null;
   }
-  function threatTo(w, b, r) {
+  var FOES = /* @__PURE__ */ new Set(["predators", "nechist", "raiders"]);
+  function threatTo(w, b, r, viewer = null) {
     let best = null, bd = r;
     for (const o of w.agents) {
-      if (o.dead || o.tame || !["predators", "nechist", "raiders"].includes(o.faction)) continue;
+      if (o.dead || o.tame || !FOES.has(o.faction)) continue;
+      if (viewer && (o.downed || !canSee(w, viewer, o))) continue;
       const d = dist4(o, b);
       if (d < bd) {
         bd = d;
@@ -9222,11 +9227,11 @@ dd.q4{color:#c58cff;font-weight:600}
     return best;
   }
   function guardStep(w, a, b, task) {
-    const foe = threatTo(w, b, TOGETHER.guard);
+    const foe = threatTo(w, b, TOGETHER.guard, a);
     if (foe) {
       task.fought ?? (task.fought = foe.id);
       const d = dist4(a, foe);
-      if (d > Math.min(0.9, reachOf(a))) approach(w, a, foe.x, foe.y, 1.15);
+      if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.15);
       else attack(w, a, foe);
       a.lastFight = w.tick;
       return "fight";
@@ -10388,6 +10393,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const g2 = w.grid, S = season(w);
     for (const c of w.gardenCells) if (S.garden > 0 && g2.bush[c] && g2.fire[c] === 0 && g2.food[c] < 1) {
       g2.food[c] = Math.min(1, g2.food[c] + 35e-4 * S.garden * (0.4 + 1.2 * g2.fert[c]));
+      if (g2.food[c] > 0.35 && g2.food[c] < 0.354) w.nav.dirty("berries");
     }
     if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
       const x = w.camp.x + xx, y = w.camp.y + yy;
@@ -10779,6 +10785,11 @@ dd.q4{color:#c58cff;font-weight:600}
     const n = company(w, v, P.loneRadius);
     log(w, b > 0.8 && n ? `\u0418\u0437\u0433\u043E\u043B\u043E\u0434\u0430\u0432\u0448\u0438\u0435\u0441\u044F ${sp.plural} \u0431\u0440\u043E\u0441\u0430\u044E\u0442\u0441\u044F \u043D\u0430 \u043B\u044E\u0434\u0435\u0439! <b>${esc(v.name)}</b> \u0438 \u0441\u043F\u0443\u0442\u043D\u0438\u043A(\u0438) \u0432\u0434\u0430\u043B\u0438 \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F.` : `${who[0].toUpperCase() + who.slice(1)} ${many ? "\u043D\u0430\u043F\u0430\u0434\u0430\u044E\u0442" : "\u043D\u0430\u043F\u0430\u0434\u0430\u0435\u0442"}! <b>${esc(v.name)}</b> \u0434\u0430\u043B\u0435\u043A\u043E \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F \u0438 \u0431\u0435\u0437 \u043F\u043E\u043C\u043E\u0449\u0438.`, "danger");
   }
+  function ignoreFor(w, a, id, ticks) {
+    const m = a.ignore || (a.ignore = /* @__PURE__ */ new Map());
+    for (const [k, t] of m) if (t <= w.tick) m.delete(k);
+    m.set(id, w.tick + ticks);
+  }
   var predatorBrain = {
     id: "predator",
     step(w, a) {
@@ -10852,7 +10863,7 @@ dd.q4{color:#c58cff;font-weight:600}
             t.since = w.tick;
           }
           if (w.tick - t.since > 90 || approach(w, a, tx2, ty, sprintMul(a, P.sprint, P.stamina)) === null) {
-            for (const m of pack2) (m.ignore || (m.ignore = /* @__PURE__ */ new Map())).set(prey.id, w.tick + 600);
+            for (const m of pack2) ignoreFor(w, m, prey.id, 600);
             endHunt(w, h, "unreachable");
             return;
           }
@@ -10860,6 +10871,7 @@ dd.q4{color:#c58cff;font-weight:600}
           a.task = { id: "rest" };
           return;
         }
+        if (h.roles[a.id] === "wait") recover(a);
         if (SPECIES.get(prey.species).big) {
           if (dist5(a, prey) < 1) {
             attack(w, a, prey);
@@ -10871,7 +10883,7 @@ dd.q4{color:#c58cff;font-weight:600}
           }
           return;
         }
-        if (dist5(a, prey) < 0.7) {
+        if (dist5(a, prey) < 0.7 && !behindRock(w, a, prey)) {
           kill(w, prey, "\u0437\u0443\u0431\u043E\u0432", a);
           w.stats.wolfKills++;
           endHunt(w, h, "kill");
@@ -10906,7 +10918,7 @@ dd.q4{color:#c58cff;font-weight:600}
           a.calmUntil = w.tick + P.calm * 0.5;
           return;
         }
-        if (dist5(a, v) > 0.9) {
+        if (dist5(a, v) > 0.9 || behindRock(w, a, v)) {
           if (approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) {
             endHunt(w, huntOf(w, a), "unreachable");
             a.task = { id: "roam" };
@@ -10991,7 +11003,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         if (s) {
           if (approach(w, a, s.x, s.y, 0.85) !== null) return;
-          (a.ignore || (a.ignore = /* @__PURE__ */ new Map())).set(s.id, w.tick + 600);
+          ignoreFor(w, a, s.id, 600);
           r.scent = null;
         }
       }
@@ -11509,7 +11521,8 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = a.gear.ranged.range + w.mods.add.huntRange;
       a.stalking = d < 10;
-      if (d > range * 0.85) {
+      const open = d <= range * 0.85 && lineOfFire(w, a.x, a.y, prey.x, prey.y);
+      if (!open) {
         if (d > 9) {
           const r = follow(w, a, job.nav);
           if (r !== "moving") {
@@ -11641,7 +11654,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       task.shooting = false;
-      if (d > Math.min(0.9, reachOf(a))) {
+      if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, t)) {
         if (approach(w, a, t.x, t.y, 1.1) === null) fail2(w, a, "\u043A \u0432\u0440\u0430\u0433\u0443 \u043D\u0435 \u043F\u043E\u0434\u043E\u0439\u0442\u0438", "impossible");
       } else attack(w, a, t);
     } },
@@ -13405,7 +13418,13 @@ dd.q4{color:#c58cff;font-weight:600}
         this.paintTerrain(w);
         this.tTerrain = t0;
       }
-      this.paintGlowSmoke(w);
+      const st = w.stats, calm = !st.anyFire && (st.smokeMax ?? 1) <= 0 && (st.tempMax ?? Infinity) <= 60;
+      if (!calm || !this.glowCalm || this.glowFor !== w) {
+        this.paintGlowSmoke(w);
+        this.glowCalm = calm;
+        this.glowFor = w;
+      }
+      const lit = !this.glowCalm;
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(this.terrain.c, 0, 0, Wpx, Hpx);
       ctx.imageSmoothingEnabled = true;
@@ -13418,7 +13437,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx);
       }
-      ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
+      if (lit) ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
       const night = nightness(w.tick);
       if (view2.layer === "world" && night > 0) {
         ctx.fillStyle = `rgba(8,12,30,${night * 0.62})`;
@@ -13426,10 +13445,12 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (w.weather.rain > 0.05) this.drawRain(w, Wpx, Hpx);
       ctx.globalCompositeOperation = "lighter";
-      ctx.drawImage(this.glow.c, 0, 0, Wpx, Hpx);
-      ctx.globalAlpha = 0.55;
-      ctx.drawImage(this.glow.c, -S * 1.5, -S * 1.5, Wpx + S * 3, Hpx + S * 3);
-      ctx.globalAlpha = 1;
+      if (lit) {
+        ctx.drawImage(this.glow.c, 0, 0, Wpx, Hpx);
+        ctx.globalAlpha = 0.55;
+        ctx.drawImage(this.glow.c, -S * 1.5, -S * 1.5, Wpx + S * 3, Hpx + S * 3);
+        ctx.globalAlpha = 1;
+      }
       const cx = (w.camp.x + 0.5) * S, cy = (w.camp.y + 0.5) * S;
       if (w.campLit) {
         const fl = 0.9 + Math.random() * 0.1, gr = ctx.createRadialGradient(cx, cy, 2, cx, cy, S * 9 * fl);
@@ -14832,12 +14853,13 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.38 \xB7 15.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 8963ada" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.38.1 SPECIAL \xB7 17.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 14e3098" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
-  var SAVE_FORMAT = 2;
-  var FORMATS = [1, 2];
+  var SAVE_FORMAT = 3;
+  var FORMATS = [1, 2, 3];
+  var TASK_BRAINS = /* @__PURE__ */ new Set(["colonist", "raider"]);
   var LIVE = /* @__PURE__ */ new Set(["nav", "rng", "rngs", "astar", "perf", "scratch"]);
   function externals() {
     const m = /* @__PURE__ */ new Map();
@@ -14860,6 +14882,7 @@ dd.q4{color:#c58cff;font-weight:600}
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     if (!save2 || !FORMATS.includes(save2.format)) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
+    checkKnown(w);
     ensureRegion(w);
     ensureOre(w);
     ensurePlants(w);
@@ -14932,6 +14955,19 @@ dd.q4{color:#c58cff;font-weight:600}
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     ensureFlows(w);
     return w;
+  }
+  function checkKnown(w) {
+    const bad2 = /* @__PURE__ */ new Set();
+    for (const a of w.agents || []) {
+      if (!SPECIES.has(a.species)) bad2.add(`\u0432\u0438\u0434 \xAB${a.species}\xBB`);
+      if (!BRAINS.has(a.brain)) bad2.add(`\u043F\u043E\u0432\u0435\u0434\u0435\u043D\u0438\u0435 \xAB${a.brain}\xBB`);
+      if (TASK_BRAINS.has(a.brain) && a.task && !TASKS.has(a.task.id)) bad2.add(`\u0437\u0430\u0434\u0430\u0447\u0430 \xAB${a.task.id}\xBB`);
+      if (a.task?.id === "job" && !JOBS.has(a.task.job)) bad2.add(`\u0440\u0430\u0431\u043E\u0442\u0430 \xAB${a.task.job}\xBB`);
+      for (const it of Object.values(a.equip || {})) if (it?.type && !ITEMS.has(it.type)) bad2.add(`\u043F\u0440\u0435\u0434\u043C\u0435\u0442 \xAB${it.type}\xBB`);
+      for (const r of Object.keys(a.carry?.res || {})) if (!RESOURCES.has(r)) bad2.add(`\u0440\u0435\u0441\u0443\u0440\u0441 \xAB${r}\xBB`);
+    }
+    for (const it of w.armory || []) if (it?.type && !ITEMS.has(it.type)) bad2.add(`\u043F\u0440\u0435\u0434\u043C\u0435\u0442 \xAB${it.type}\xBB`);
+    if (bad2.size) throw new Error(`\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0441\u0434\u0435\u043B\u0430\u043D\u043E \u0434\u0440\u0443\u0433\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0435\u0439 \u0438\u0433\u0440\u044B: \u044D\u0442\u0430 \u0441\u0431\u043E\u0440\u043A\u0430 \u043D\u0435 \u0437\u043D\u0430\u0435\u0442 ${[...bad2].slice(0, 4).join(", ")}.`);
   }
 
   // src/ui/saves.js
@@ -15313,47 +15349,59 @@ dd.q4{color:#c58cff;font-weight:600}
   var panelT = 0;
   function frame(now) {
     if (running) {
-      const dt = Math.min(250, now - last);
-      last = now;
-      acc += dt * view.speed;
-      const budget = now + 22;
-      let n = 0;
-      while (acc >= TICK_MS && n < 40 && performance.now() < budget) {
-        step(world);
-        acc -= TICK_MS;
-        n++;
-      }
-      if (acc > 500) acc = 0;
-      if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
-      if (view.selBld != null && !world.buildings.some((b) => b.id === view.selBld)) view.selBld = null;
-      if (world.over) {
+      try {
+        runFrame(now);
+      } catch (err) {
+        console.error(err);
+        const tick = world?.tick;
         running = false;
-        renderer.draw(world, view);
-        panel.render(world, view);
-        $("game").hidden = true;
-        $("explain").hidden = true;
-        document.body.classList.remove("ingame");
-        showEnd(world, () => {
-          world = null;
-          showMenu();
-        });
-        requestAnimationFrame(frame);
-        return;
-      }
-      if (dayOf(world.tick) !== autoDay) {
-        autoDay = dayOf(world.tick);
-        save(true);
-      }
-      renderer.draw(world, view);
-      view.renderMs = renderer.ms;
-      panel.readout(world, view.hover);
-      if (now - panelT > 300) {
-        panelT = now;
-        panel.render(world, view);
-        panel.renderSelection(world, view);
+        acc = 0;
+        world = null;
+        showMenu();
+        $("loadStatus").textContent = `\u0418\u0433\u0440\u0430 \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0430 \u0438\u0437-\u0437\u0430 \u043E\u0448\u0438\u0431\u043A\u0438${tick != null ? ` \u043D\u0430 \u0442\u0438\u043A\u0435 ${tick}` : ""}: ${err.message}. \u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0446\u0435\u043B\u043E.`;
       }
     }
     requestAnimationFrame(frame);
+  }
+  function runFrame(now) {
+    const dt = Math.min(250, now - last);
+    last = now;
+    acc += dt * view.speed;
+    const budget = now + 22;
+    let n = 0;
+    while (acc >= TICK_MS && n < 40 && performance.now() < budget) {
+      step(world);
+      acc -= TICK_MS;
+      n++;
+    }
+    if (acc > 500) acc = 0;
+    if (view.selected && (view.selected.dead || !world.agents.includes(view.selected))) view.selected = null;
+    if (view.selBld != null && !world.buildings.some((b) => b.id === view.selBld)) view.selBld = null;
+    if (world.over) {
+      running = false;
+      renderer.draw(world, view);
+      panel.render(world, view);
+      $("game").hidden = true;
+      $("explain").hidden = true;
+      document.body.classList.remove("ingame");
+      showEnd(world, () => {
+        world = null;
+        showMenu();
+      });
+      return;
+    }
+    if (dayOf(world.tick) !== autoDay) {
+      autoDay = dayOf(world.tick);
+      save(true);
+    }
+    renderer.draw(world, view);
+    view.renderMs = renderer.ms;
+    panel.readout(world, view.hover);
+    if (now - panelT > 300) {
+      panelT = now;
+      panel.render(world, view);
+      panel.renderSelection(world, view);
+    }
   }
   $("buildTag").textContent = `\u0432\u0435\u0440\u0441\u0438\u044F ${VERSION} \xB7 ${BUILD}`;
   showMenu();

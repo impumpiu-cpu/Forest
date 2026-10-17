@@ -24,7 +24,7 @@ import {HOUR, nightness} from '../core/time.js';
 import {maxHp, hpShare} from '../agents/agent.js';
 import {strength} from '../agents/squad.js';
 import {approach} from '../agents/movement.js';
-import {attack, reachOf} from '../agents/combat.js';
+import {attack, reachOf, canSee, behindRock} from '../agents/combat.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {REL} from './relations.js';
@@ -104,11 +104,15 @@ export function escortOption(w, a) {
   return best ? [{id: 'company', who: best.id}, bs, () => `в лесу опасно, ${best.name} ${g(best, 'один', 'одна')}${bop >= REL.friend ? ' — а это друг' : ''}`] : null;
 }
 
-// the foe closest to b within r: a beast that hunts people, the nechist, a raider
-export function threatTo(w, b, r) {
+// the foe closest to b within r: a beast that hunts people, the nechist, a raider.
+// With `viewer`, only a foe that one can see and still fight (combat.js canSee; the fallen are out):
+// a rusalka hidden under the water cannot be struck, so it must not keep a helper from the wounded.
+const FOES = new Set(['predators', 'nechist', 'raiders']);
+export function threatTo(w, b, r, viewer = null) {
   let best = null, bd = r;
   for (const o of w.agents) {
-    if (o.dead || o.tame || !['predators', 'nechist', 'raiders'].includes(o.faction)) continue;
+    if (o.dead || o.tame || !FOES.has(o.faction)) continue;
+    if (viewer && (o.downed || !canSee(w, viewer, o))) continue;
     const d = dist(o, b); if (d < bd) { bd = d; best = o; }
   }
   return best;
@@ -117,11 +121,11 @@ export function threatTo(w, b, r) {
 // one step of guarding `b` (the escort and aid tasks): fight what comes for them, else keep close.
 // Returns 'fight' or 'near' or 'far'.
 export function guardStep(w, a, b, task) {
-  const foe = threatTo(w, b, TOGETHER.guard);
+  const foe = threatTo(w, b, TOGETHER.guard, a);
   if (foe) {
     task.fought ??= foe.id;
     const d = dist(a, foe);
-    if (d > Math.min(0.9, reachOf(a))) approach(w, a, foe.x, foe.y, 1.15); else attack(w, a, foe);
+    if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.15); else attack(w, a, foe);
     a.lastFight = w.tick;
     return 'fight';
   }

@@ -13,7 +13,7 @@ import {nightness} from '../../core/time.js';
 import {cellOf, walkable} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, ascend, shunsHeat, sameLand} from '../movement.js';
 import {agentInZone} from '../../settlement/zone.js';
-import {attack} from '../combat.js';
+import {attack, behindRock} from '../combat.js';
 import {SPECIES as SP} from '../../data/species.js';
 import {stepBody} from '../body.js';
 import {kill, maxHp} from '../agent.js';
@@ -87,6 +87,13 @@ function startMaul(w, a, v, b) {
     : `${who[0].toUpperCase() + who.slice(1)} ${many ? 'нападают' : 'нападает'}! <b>${esc(v.name)}</b> далеко от лагеря и без помощи.`, 'danger');
 }
 
+// leave prey `id` alone for `ticks`; marks that ran out are dropped here, so the list (it is saved) stays small
+function ignoreFor(w, a, id, ticks) {
+  const m = a.ignore || (a.ignore = new Map());
+  for (const [k, t] of m) if (t <= w.tick) m.delete(k);
+  m.set(id, w.tick + ticks);
+}
+
 export const predatorBrain = {
   id: 'predator',
   step(w, a) {
@@ -137,10 +144,11 @@ export const predatorBrain = {
       if (h.roles[a.id] === 'lead') {
         if (!t.anchor || dist(a, t.anchor) > 3) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
         if (w.tick - t.since > 90 || approach(w, a, tx, ty, sprintMul(a, P.sprint, P.stamina)) === null) {
-          for (const m of pack) (m.ignore || (m.ignore = new Map())).set(prey.id, w.tick + 600);
+          for (const m of pack) ignoreFor(w, m, prey.id, 600);
           endHunt(w, h, 'unreachable'); return;
         }
       } else if (approach(w, a, tx, ty, sprint ? sprintMul(a, P.sprint, P.stamina) : 0.75) === null) { a.task = {id: 'rest'}; return; }
+      if (h.roles[a.id] === 'wait') recover(a);   // dropped back to catch its breath: it does
       // big game is not caught with one bite: the pack bites it down while it kicks back
       if (SP.get(prey.species).big) {
         if (dist(a, prey) < 1.0) {
@@ -149,7 +157,7 @@ export const predatorBrain = {
         }
         return;
       }
-      if (dist(a, prey) < 0.7) {
+      if (dist(a, prey) < 0.7 && !behindRock(w, a, prey)) {
         kill(w, prey, 'зубов', a); w.stats.wolfKills++;
         endHunt(w, h, 'kill'); toTheKill(w, a, prey, P.meal, pack);
       }
@@ -171,7 +179,7 @@ export const predatorBrain = {
       if (!t.anchor || dist(a, t.anchor) > 3 || dist(a, v) < 1.5) { t.anchor = {x: a.x, y: a.y}; t.since = w.tick; }
       if (w.tick - t.since > 120) { endHunt(w, huntOf(w, a), 'unreachable'); a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; return; }
       // too far to bite: close in and nothing more this tick
-      if (dist(a, v) > 0.9) {
+      if (dist(a, v) > 0.9 || behindRock(w, a, v)) {
         if (approach(w, a, v.x, v.y, sprintMul(a, P.sprint, P.stamina * 0.6)) === null) { endHunt(w, huntOf(w, a), 'unreachable'); a.task = {id: 'roam'}; a.calmUntil = w.tick + P.calm * 0.5; }
         return;
       }
@@ -238,7 +246,7 @@ export const predatorBrain = {
       }
       if (s) {
         if (approach(w, a, s.x, s.y, 0.85) !== null) return;
-        (a.ignore || (a.ignore = new Map())).set(s.id, w.tick + 600); r.scent = null;
+        ignoreFor(w, a, s.id, 600); r.scent = null;
       }
     }
     // pick a new spot when there or when stuck (no progress for a while, e.g. a lake in the way)

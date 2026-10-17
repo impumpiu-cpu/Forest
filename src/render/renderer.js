@@ -157,14 +157,17 @@ export class Renderer {
     // terrain and the overlay layers change slowly: repaint them a few times a second, not every frame
     // (fire glow and smoke stay per frame)
     if (t0 - this.tTerrain > 200) { this.paintTerrain(w); this.tTerrain = t0; }
-    this.paintGlowSmoke(w);
+    // with nothing burning, smoking or hot the two layers are empty: paint them clear once, then skip them
+    const st = w.stats, calm = !st.anyFire && (st.smokeMax ?? 1) <= 0 && (st.tempMax ?? Infinity) <= 60;
+    if (!calm || !this.glowCalm || this.glowFor !== w) { this.paintGlowSmoke(w); this.glowCalm = calm; this.glowFor = w; }
+    const lit = !this.glowCalm;
     ctx.imageSmoothingEnabled = false; ctx.drawImage(this.terrain.c, 0, 0, Wpx, Hpx);
     ctx.imageSmoothingEnabled = true;
     if (view.layer !== 'world') {
       const key = view.layer + ':' + [...view.resHidden].join(',');
       if (t0 - this.tField > 150 || this.fieldKey !== key) { this.paintField(w, view.layer, view); this.tField = t0; this.fieldKey = key; }
       ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx); }
-    ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
+    if (lit) ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
 
     const night = nightness(w.tick);
     if (view.layer === 'world' && night > 0) { ctx.fillStyle = `rgba(8,12,30,${night * 0.62})`; ctx.fillRect(0, 0, Wpx, Hpx); }
@@ -172,8 +175,10 @@ export class Renderer {
 
     // light: fire glow (crisp + soft halo) and the campfire
     ctx.globalCompositeOperation = 'lighter';
-    ctx.drawImage(this.glow.c, 0, 0, Wpx, Hpx);
-    ctx.globalAlpha = 0.55; ctx.drawImage(this.glow.c, -S * 1.5, -S * 1.5, Wpx + S * 3, Hpx + S * 3); ctx.globalAlpha = 1;
+    if (lit) {
+      ctx.drawImage(this.glow.c, 0, 0, Wpx, Hpx);
+      ctx.globalAlpha = 0.55; ctx.drawImage(this.glow.c, -S * 1.5, -S * 1.5, Wpx + S * 3, Hpx + S * 3); ctx.globalAlpha = 1;
+    }
     const cx = (w.camp.x + 0.5) * S, cy = (w.camp.y + 0.5) * S;
     if (w.campLit) {
       const fl = 0.9 + Math.random() * 0.1, gr = ctx.createRadialGradient(cx, cy, 2, cx, cy, S * 9 * fl);
