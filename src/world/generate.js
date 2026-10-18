@@ -274,7 +274,46 @@ function layGates(site, t) {
     if (best < 0) break;
     ford(t, best);
   }
+  // a camp walled in by rock (a hollow in the mountains) would see nobody come and nobody leave:
+  // when no edge of the map can be reached, a pass is cut to the nearest edge — the cheapest way
+  // out where rock costs dearly and water becomes a ford
+  openPass(t);
   return out;
+}
+
+function openPass(t) {
+  const {w, h, terr, under} = t, n = w * h, from = t.cy * w + t.cx;
+  const reach = reachableFrom(t, from);
+  for (let i = 0; i < n; i++) { const x = i % w, y = (i / w) | 0; if ((x === 0 || y === 0 || x === w - 1 || y === h - 1) && reach[i]) return; }
+  const dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n);
+  const hI = new Int32Array(n * 5), hD = new Float64Array(n * 5); let hn = 0;
+  const push = (i, d) => { let k = hn++; while (k > 0) { const p = (k - 1) >> 1; if (hD[p] <= d) break; hI[k] = hI[p]; hD[k] = hD[p]; k = p; } hI[k] = i; hD[k] = d; };
+  const cost = j => (terr[j] === T.ROCK ? 25 : terr[j] === T.WATER ? 30 : BY_CODE[terr[j]].walkable ? 1 : 25);
+  dist[from] = 0; push(from, 0);
+  let goal = -1;
+  while (hn > 0) {
+    const i = hI[0], d = hD[0];
+    hn--; const li = hI[hn], ld = hD[hn]; let k = 0;
+    for (;;) { let c = 2 * k + 1; if (c >= hn) break; if (c + 1 < hn && hD[c + 1] < hD[c]) c++; if (hD[c] >= ld) break; hI[k] = hI[c]; hD[k] = hD[c]; k = c; }
+    hI[k] = li; hD[k] = ld;
+    if (done[i]) continue; done[i] = 1;
+    const x = i % w, y = (i / w) | 0;
+    if (x === 0 || y === 0 || x === w - 1 || y === h - 1) { goal = i; break; }
+    for (let q = 0; q < 4; q++) {
+      const nx = x + DX[q], ny = y + DY[q]; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      const j = ny * w + nx, nd = d + cost(j);
+      if (nd < dist[j]) { dist[j] = nd; prev[j] = i; push(j, nd); }
+    }
+  }
+  if (goal < 0) return;
+  // the pass is two cells wide, so that the diagonal rule does not close it again
+  for (let c = goal; c !== -1; c = prev[c]) {
+    const x = c % w, y = (c / w) | 0;
+    for (const j of [c, x + 1 < w ? c + 1 : c - 1]) {
+      if (terr[j] === T.ROCK) { terr[j] = OPEN[under[j]] ? under[j] : T.GRASS; under[j] = terr[j]; }
+      else if (terr[j] === T.WATER) terr[j] = T.FORD;
+    }
+  }
 }
 
 export function createWorld(cfg) {
