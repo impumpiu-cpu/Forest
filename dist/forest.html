@@ -3707,9 +3707,9 @@ dd.q4{color:#c58cff;font-weight:600}
       label: "\u0417\u0438\u043C\u0430",
       next: "\u0432\u0435\u0441\u043D\u0430",
       dress: 3,
-      grow: 0,
+      grow: 0.4,
       wither: 0.04,
-      garden: 0,
+      garden: 0.4,
       jobs: { fish: 0.5, gather: 0.6, chop: 0.85 },
       hares: 0.35,
       hunger: 1.35,
@@ -3719,7 +3719,7 @@ dd.q4{color:#c58cff;font-weight:600}
       drying: false,
       frost: 0.15,
       tint: [190, 176, 120, 0.3],
-      note: "\u0421\u043D\u0435\u0433 \u0438 \u043C\u043E\u0440\u043E\u0437: \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0440\u0430\u0441\u0442\u0451\u0442, \u0440\u044B\u0431\u0430 \u043B\u043E\u0432\u0438\u0442\u0441\u044F \u0432\u0434\u0432\u043E\u0435 \u0445\u0443\u0436\u0435, \u0432\u043E\u043B\u043A\u0438 \u0433\u043E\u043B\u043E\u0434\u043D\u044B. \u0416\u0438\u0432\u0443\u0442 \u0437\u0430\u043F\u0430\u0441\u0430\u043C\u0438 \u0438 \u043A\u043E\u0441\u0442\u0440\u043E\u043C."
+      note: "\u041C\u043E\u0440\u043E\u0437: \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0440\u0430\u0441\u0442\u0451\u0442, \u0440\u044B\u0431\u0430 \u043B\u043E\u0432\u0438\u0442\u0441\u044F \u0432\u0434\u0432\u043E\u0435 \u0445\u0443\u0436\u0435, \u0432\u043E\u043B\u043A\u0438 \u0433\u043E\u043B\u043E\u0434\u043D\u044B. \u0416\u0438\u0432\u0443\u0442 \u0437\u0430\u043F\u0430\u0441\u0430\u043C\u0438 \u0438 \u043A\u043E\u0441\u0442\u0440\u043E\u043C. \u0413\u0434\u0435 \u0437\u0438\u043C\u0430 \u0442\u0451\u043F\u043B\u0430\u044F, \u044D\u0442\u043E \u043F\u0440\u043E\u0441\u0442\u043E \u0441\u043A\u0443\u0434\u043D\u0430\u044F \u043F\u043E\u0440\u0430."
     }
   ]);
   var LIST = SEASONS.all();
@@ -3728,14 +3728,32 @@ dd.q4{color:#c58cff;font-weight:600}
   var SEASON_IDS = LIST.map((s) => s.id);
   var calendarDay = (w, tick = w.tick) => tick / DAY_TICKS + (w.calendar?.startDay || 0);
   var seasonIndex = (w, tick) => Math.floor(calendarDay(w, tick) / SEASON_DAYS) % LIST.length;
-  var season = (w, tick) => LIST[seasonIndex(w, tick)];
+  var seasonRaw = (w, tick) => LIST[seasonIndex(w, tick)];
+  function season(w) {
+    return perTick(w, "season", () => {
+      const S = seasonRaw(w), T2 = dayMeanTemp(w), frozen = T2 < -1, gf = frozen ? 0 : clamp01((T2 + 6) / 10);
+      if (gf >= 1 && !frozen && !S.frost) return S;
+      return {
+        ...S,
+        grow: S.grow * gf,
+        garden: S.garden * gf,
+        wither: frozen ? S.wither : 0,
+        frost: frozen ? S.frost : null,
+        jobs: frozen ? S.jobs : {},
+        drying: S.drying || !frozen,
+        hares: frozen ? S.hares : Math.max(S.hares, 0.8),
+        hunger: frozen ? S.hunger : Math.min(S.hunger, 1.1),
+        spoil: frozen ? Math.min(S.spoil, 0.25) : Math.max(S.spoil, 0.8)
+      };
+    });
+  }
+  var clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   var seasonDay = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS + 1;
   var yearOf = (w, tick) => Math.floor(calendarDay(w, tick) / YEAR_DAYS) + 1;
   var daysLeftInSeason = (w, tick) => SEASON_DAYS - calendarDay(w, tick) % SEASON_DAYS;
   var seasonStarts = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS === 0;
   function seasonalTemp(w, tick = w.tick) {
-    const mid = SEASON_DAYS / 2;
-    return w.climate.trange / 2 * Math.sin(2 * Math.PI * (calendarDay(w, tick) - mid) / YEAR_DAYS);
+    return w.climate.trange / 2 * Math.sin(2 * Math.PI * (calendarDay(w, tick) - SEASON_DAYS / 2) / YEAR_DAYS + Math.PI / 4);
   }
   var dayMeanTemp = (w, tick = w.tick) => w.climate.meanT + seasonalTemp(w, tick);
   var snowy = (w, tick = w.tick) => dayMeanTemp(w, tick) < -1;
@@ -3872,10 +3890,10 @@ dd.q4{color:#c58cff;font-weight:600}
     dry: { label: "\u0417\u0430\u0441\u0443\u0448\u043B\u0438\u0432\u044B\u0439", note: "\u0436\u0430\u0440\u043A\u043E, \u0434\u043E\u0436\u0434\u0438 \u0440\u0435\u0434\u043A\u0438, \u0437\u0438\u043C\u0430 \u0431\u0435\u0437 \u0441\u043D\u0435\u0433\u0430, \u043B\u0435\u0441 \u0432\u0441\u043F\u044B\u0445\u0438\u0432\u0430\u0435\u0442 \u043B\u0435\u0433\u0447\u0435", meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22 }
   };
   var START = {
-    spring: { label: "\u0412\u0435\u0441\u043D\u0430", day: 0 },
-    summer: { label: "\u041B\u0435\u0442\u043E", day: 30 },
-    autumn: { label: "\u041E\u0441\u0435\u043D\u044C", day: 60 },
-    winter: { label: "\u0417\u0438\u043C\u0430", day: 90 }
+    spring: { label: "\u0412\u0435\u0441\u043D\u0430", day: 0, stock: 1 },
+    summer: { label: "\u041B\u0435\u0442\u043E", day: 30, stock: 1 },
+    autumn: { label: "\u041E\u0441\u0435\u043D\u044C", day: 60, stock: 1.6, perHead: { jerky: 3, wood: 2 } },
+    winter: { label: "\u0417\u0438\u043C\u0430", day: 90, stock: 2, clothes: 1, perHead: { jerky: 8, driedFish: 4, wood: 5 } }
   };
   var LEVELS3 = ["\u043C\u0430\u043B\u043E", "\u043E\u0431\u044B\u0447\u043D\u043E", "\u043C\u043D\u043E\u0433\u043E"];
   var STOCKS = {
@@ -5678,10 +5696,10 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/agents/skills.js
   var STAT_IDS = STATS.ids();
-  var clamp01 = (v) => Math.max(0, Math.min(1, v));
+  var clamp012 = (v) => Math.max(0, Math.min(1, v));
   var statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
   var letterFactor = (v) => Math.max(LEARN.minFactor, LEARN.base + LEARN.perPoint * v);
-  var softCap = (a, skillId) => clamp01(statFor(a, skillId) / 10);
+  var softCap = (a, skillId) => clamp012(statFor(a, skillId) / 10);
   var tierFor = (stat) => TIERS.filter((t) => stat >= t.min).at(-1).id;
   var skillTier = (a, skillId) => tierFor(statFor(a, skillId));
   var skillOf = (a, skillId) => a.skill?.[skillId] ?? 0;
@@ -11547,7 +11565,12 @@ dd.q4{color:#c58cff;font-weight:600}
         g3.fuel[i] += 0.2;
       }
     }
-    for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
+    const startMul = START[cfg.start]?.stock ?? 1;
+    for (const r of RESOURCES.all()) world2.stock[r.id] = Math.round((STOCKS[cfg.stock].stock[r.id] || 0) * startMul);
+    for (const [id, per] of Object.entries(START[cfg.start]?.perHead || {})) world2.stock[id] = (world2.stock[id] || 0) + per * cfg.colonists;
+    if (snowy(world2) && season(world2).frost != null) {
+      for (let i = 0; i < n; i++) if (g3.bush[i]) g3.food[i] *= season(world2).frost;
+    }
     findLakes(world2);
     layOre(world2);
     layPlants(world2);
@@ -14005,8 +14028,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const n = cfg.colonists;
     w.founding = true;
     for (let k = 0; k < n; k++) createAgent(w, "human", "colony", w.camp.x + 0.5 + (w.rngs.birth() * 5 - 2.5), w.camp.y + 0.5 + (w.rngs.birth() * 5 - 2.5));
-    const st = STOCKS[cfg.stock];
-    for (let k = 0; k < Math.round(n * st.clothes); k++) w.armory.push(newItem("clothes"));
+    const st = STOCKS[cfg.stock], clothes = Math.max(st.clothes, START[cfg.start]?.clothes ?? 0);
+    for (let k = 0; k < Math.round(n * clothes); k++) w.armory.push(newItem("clothes"));
     for (const t of st.kit) w.armory.push(newItem(t));
     w.armoryVersion = 1;
     w.founding = false;
@@ -16003,18 +16026,18 @@ dd.q4{color:#c58cff;font-weight:600}
   var towardEquator = (a, y) => Math.sign(latitude(a, y));
 
   // src/atlas/geology.js
-  var clamp012 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var clamp013 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   function settingOf(a, i, flat) {
     const f = a.f, e = f.elev[i], rel2 = (e - a.sea) / (1 - a.sea), y = i / a.w | 0;
-    const low = f.land[i] ? clamp012(1 - rel2 / 0.25) * (0.4 + 0.6 * flat) : 0;
+    const low = f.land[i] ? clamp013(1 - rel2 / 0.25) * (0.4 + 0.6 * flat) : 0;
     const warm = 0.4 * warmth(a, y) + 0.6 * (f.paleo ? f.paleo[i] : 0.5);
-    return { coll: f.coll[i], arc: f.arc[i], basv: f.basv[i], volc: f.volc[i], oldv: f.oldv[i], craton: f.craton[i], low, hill: clamp012(rel2 / 0.25), warm, rel: rel2 };
+    return { coll: f.coll[i], arc: f.arc[i], basv: f.basv[i], volc: f.volc[i], oldv: f.oldv[i], craton: f.craton[i], low, hill: clamp013(rel2 / 0.25), warm, rel: rel2 };
   }
   function flatness(a) {
     const { w, h, n } = a, e = a.f.elev, out = new Float32Array(n), k = scaleOf(a);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const i = y * w + x, gx = e[y * w + Math.min(w - 1, x + 1)] - e[y * w + Math.max(0, x - 1)], gy = e[Math.min(h - 1, y + 1) * w + x] - e[Math.max(0, y - 1) * w + x];
-      out[i] = clamp012(1 - Math.hypot(gx, gy) * 30 * k);
+      out[i] = clamp013(1 - Math.hypot(gx, gy) * 30 * k);
     }
     return out;
   }
@@ -16073,7 +16096,7 @@ dd.q4{color:#c58cff;font-weight:600}
       for (let i = 0; i < n; i++) {
         let v = byRock[f.rock[i]] || 0;
         for (const [fld, wt] of sets) v += wt * fld[i];
-        pot[i] = clamp012(Math.min(1, v) * (0.2 + prov[i]));
+        pot[i] = clamp013(Math.min(1, v) * (0.2 + prov[i]));
         if (f.land[i] && pot[i] >= o.levels[2]) r++;
       }
       f[`ore_${o.id}`] = pot;
@@ -16247,7 +16270,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var RIVERS = { unit: 500, stream: 25, river: 120, great: 900, evap: 700, alluvium: 60 };
 
   // src/atlas/hydrology.js
-  var clamp013 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var clamp014 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   function oceanMask(a, z, level) {
     const { w, h, n } = a, ocean = new Uint8Array(n), stack = [];
     const seed = (i) => {
@@ -16426,7 +16449,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (f.ocean[i] || flow[i] < RIVERS.alluvium * k2) continue;
       const r = fl.down[i], drop = (z[i] - (f.ocean[r] ? a.sea : z[r])) * 192 * scaleOf(a);
       const big = Math.log10(flow[i] / (RIVERS.alluvium * k2));
-      if (drop < 0.6) mark2(i, Math.round(1 + big * 1.5), clamp013(0.5 + 0.3 * big));
+      if (drop < 0.6) mark2(i, Math.round(1 + big * 1.5), clamp014(0.5 + 0.3 * big));
       if (f.ocean[r] && flow[i] >= RIVERS.river * k2) mark2(i, Math.round(2 + big * 2), 1);
     }
     Object.assign(f, { down: fl.down, flow, lake, alluvium: allu });
@@ -16451,8 +16474,8 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let i = 0; i < n; i++) {
       if (f.ocean[i] || f.flow[i] < RIVERS.stream * k2 || f.lake[i] >= 0) continue;
       const r = f.down[i], drop = (f.elev[i] - (f.ocean[r] ? a.sea : f.elev[r])) * 192 * scaleOf(a);
-      const slow = clamp013(1 - drop / 1.5);
-      out[i] = clamp013((load2[i] - g3[i]) / Math.max(1, area[i] - 1) * 1.6 * (0.3 + 0.7 * slow));
+      const slow = clamp014(1 - drop / 1.5);
+      out[i] = clamp014((load2[i] - g3[i]) / Math.max(1, area[i] - 1) * 1.6 * (0.3 + 0.7 * slow));
     }
     f.ore_placer = out;
     return out;
@@ -16486,7 +16509,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var B = (id) => BIOME_LIST2.findIndex((b) => b.id === id) + 1;
   var biomeAt = (a, i) => a.f.biome && a.f.biome[i] ? BIOME_LIST2[a.f.biome[i] - 1] : null;
   var soilAt = (a, i) => a.f.soil && a.f.soil[i] ? SOIL_LIST[a.f.soil[i] - 1] : null;
-  var clamp014 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var clamp015 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   var dryness = (T2) => KOPPEN.dryness[0] * T2 + KOPPEN.dryness[1];
   function classify2(c) {
     const K = KOPPEN, Tw = c.T + c.range / 2, Tc = c.T - c.range / 2, Pd = Math.max(1, dryness(c.T));
@@ -16539,7 +16562,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (f.alluvium[i] >= ALLUVIAL_FROM && b.id !== "water" && b.id !== "ice") s = SOIL_LIST[alluvial];
       else s = (byBiome[b.id] || []).find((x) => !x.rain || f.rain[i] >= x.rain[0] && f.rain[i] < x.rain[1]) || SOILS.get("none");
       soil[i] = SOIL_LIST.indexOf(s) + 1;
-      fert[i] = s.fert > 0 ? clamp014(s.fert + (ROCK_FERT[ROCK_BY_CODE[f.rock[i]]?.id] || 0)) : 0;
+      fert[i] = s.fert > 0 ? clamp015(s.fert + (ROCK_FERT[ROCK_BY_CODE[f.rock[i]]?.id] || 0)) : 0;
     }
     f.soil = soil;
     f.fert = fert;
@@ -16551,7 +16574,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!b) continue;
       cap[i] = b.trees;
       const Pd = Math.max(1, dryness(f.temp[i]));
-      fire[i] = clamp014(1.4 - f.rain[i] / (1.6 * Pd)) * clamp014((f.temp[i] + f.trange[i] / 2) / 25);
+      fire[i] = clamp015(1.4 - f.rain[i] / (1.6 * Pd)) * clamp015((f.temp[i] + f.trange[i] / 2) / 25);
     }
     let t = new Float32Array(n), t2 = new Float32Array(n);
     for (let i = 0; i < n; i++) t[i] = cap[i] * rnd() * 0.5;
@@ -16617,7 +16640,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const j = y * w + x, b = biomeAt(a, j);
       if (!b) continue;
       const wt = 1 / (1 + (x - x0) ** 2 + (y - y0) ** 2);
-      const wooded = b.trees > 0.6 ? clamp014(f.trees[j] / b.trees) : 1;
+      const wooded = b.trees > 0.6 ? clamp015(f.trees[j] / b.trees) : 1;
       add2(b.id, wt * wooded);
       if (wooded < 1) add2("meadow", wt * (1 - wooded));
       const rock = ROCK_BY_CODE[f.rock[j]]?.id, cave = rock === "limestone" ? 0.15 : rock === "basalt" ? 0.08 : 0;
@@ -17202,7 +17225,7 @@ dd.q4{color:#c58cff;font-weight:600}
   ]);
 
   // src/atlas/towns.js
-  var clamp015 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var clamp016 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   var lv = (id) => ORE_GENESIS.get(id).levels;
   var KEYS2 = Object.keys(EFFECTS2);
   var townLabel = (t, cs = 0) => crowned(t) ? CAPITAL.label[t.people][cs] : TIERS2[t.tier].label[t.people][cs];
@@ -17300,8 +17323,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function townNeeds(a, t, fx, ctx) {
     return {
-      housing: 1.5 * clamp015((t.pop / room(fx) - 0.55) / 0.4),
-      food: 1.3 * clamp015((t.pop / Math.max(1, ctx.feeds) - 0.55) / 0.4),
+      housing: 1.5 * clamp016((t.pop / room(fx) - 0.55) / 0.4),
+      food: 1.3 * clamp016((t.pop / Math.max(1, ctx.feeds) - 0.55) / 0.4),
       defence: Math.min(1.5, ctx.threat + (t.raided != null && a.hist.year - t.raided < 6 ? 0.8 : 0)) + 0.1,
       trade: 0.15 + 0.6 * ctx.road + (t.tier >= 2 ? 0.3 : 0),
       prod: 0.4 + 0.1 * t.tier,
@@ -18805,7 +18828,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/atlas/peoples.js
-  var clamp016 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+  var clamp017 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   var lv3 = (id) => ORE_GENESIS.get(id).levels;
   var oreWealth = (a, i) => Math.max(...["iron", "bronze", "silver", "gold", "gems"].map((id) => a.f[`ore_${id}`][i] / lv3(id)[2]));
   function initPeoples(a, era) {
@@ -18826,7 +18849,7 @@ dd.q4{color:#c58cff;font-weight:600}
         cnt[j]++;
       }
       for (let j = 0; j < N2; j++) {
-        K[j] = cnt[j] ? clamp016(K[j] / (F.c * F.c)) : 0;
+        K[j] = cnt[j] ? clamp017(K[j] / (F.c * F.c)) : 0;
         mob[j] = cnt[j] ? mob[j] / cnt[j] : 0;
       }
       const site = new Float32Array(a.n);
@@ -18965,7 +18988,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         let push = 0;
         for (const [oi, o] of a.peoples.entries()) if (o !== pe && was[oi][j] > 0) push += compete[pi][oi] * was[oi][j];
-        u[j] = clamp016(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
+        u[j] = clamp017(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
       }
     }
     const occ = new Float32Array(N2);
@@ -20729,7 +20752,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 aa03f2c" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 850ef22" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

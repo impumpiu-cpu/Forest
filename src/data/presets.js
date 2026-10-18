@@ -16,9 +16,15 @@ export const CLIMATES = {
   dry:       {label: 'Засушливый', note: 'жарко, дожди редки, зима без снега, лес вспыхивает легче', meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22},
 };
 
-// in which season the game begins (the calendar day the colony lands on, data/seasons.js)
+// in which season the game begins (the calendar day the colony lands on, data/seasons.js). A group that
+// sets out late in the year brings more with it: `stock` × the starting supplies plus `perHead` of preserved
+// food and firewood for every settler, and in winter everyone comes dressed (`clothes`); the wild bushes
+// are already bare where it is freezing
 export const START = {
-  spring: {label: 'Весна', day: 0}, summer: {label: 'Лето', day: 30}, autumn: {label: 'Осень', day: 60}, winter: {label: 'Зима', day: 90},
+  spring: {label: 'Весна', day: 0, stock: 1},
+  summer: {label: 'Лето', day: 30, stock: 1},
+  autumn: {label: 'Осень', day: 60, stock: 1.6, perHead: {jerky: 3, wood: 2}},
+  winter: {label: 'Зима', day: 90, stock: 2, clothes: 1, perHead: {jerky: 8, driedFish: 4, wood: 5}},
 };
 
 export const LEVELS3 = ['мало', 'обычно', 'много'];

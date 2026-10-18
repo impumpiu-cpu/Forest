@@ -9,7 +9,8 @@ import {makeSite, paintOrder, SIDES} from './site.js';
 import {findPath} from '../nav/astar.js';
 import {DX, DY} from './grid.js';
 const BIOME_LIST = BIOMES.all();
-import {STOCKS} from '../data/presets.js';
+import {STOCKS, START} from '../data/presets.js';
+import {snowy, season} from '../data/seasons.js';
 import {RESOURCES} from '../data/resources.js';
 import {initOutside} from '../outside/index.js';
 import {emptyMods} from '../settlement/mods.js';
@@ -301,7 +302,11 @@ export function createWorld(cfg) {
     if (tt === T.FOREST) { g.wood[i] = 0.6 + 0.4 * t.rng(); g.fuel[i] += g.wood[i]; }
     else if (BY_CODE[tt].bush > 0 && t.rng() < 0.07 * BY_CODE[tt].bush * g.fert[i] && !isCampArea(world, i)) { g.bush[i] = 1; g.food[i] = 0.5 + 0.5 * t.rng(); g.fuel[i] += 0.2; }
   }
-  for (const r of RESOURCES.all()) world.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
+  const startMul = START[cfg.start]?.stock ?? 1;   // landing late in the year, the group brought more
+  for (const r of RESOURCES.all()) world.stock[r.id] = Math.round((STOCKS[cfg.stock].stock[r.id] || 0) * startMul);
+  for (const [id, per] of Object.entries(START[cfg.start]?.perHead || {})) world.stock[id] = (world.stock[id] || 0) + per * cfg.colonists;
+  // where it is already freezing, the wild bushes stand bare (the first frost has been)
+  if (snowy(world) && season(world).frost != null) for (let i = 0; i < n; i++) if (g.bush[i]) g.food[i] *= season(world).frost;
   findLakes(world);
   layOre(world);
   layPlants(world);

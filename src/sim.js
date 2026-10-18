@@ -26,7 +26,7 @@ import {checkEnd} from './settlement/ending.js';
 import {createAgent} from './agents/agent.js';
 import {newItem, outfit} from './agents/equipment.js';
 import {think} from './agents/mind.js';
-import {STOCKS} from './data/presets.js';
+import {STOCKS, START} from './data/presets.js';
 import {log} from './core/log.js';
 import {plural, esc} from './core/util.js';
 
@@ -39,8 +39,8 @@ export function newGame(cfg) {
   w.founding = true;
   for (let k = 0; k < n; k++) createAgent(w, 'human', 'colony', w.camp.x + 0.5 + (w.rngs.birth() * 5 - 2.5), w.camp.y + 0.5 + (w.rngs.birth() * 5 - 2.5));
   // starting gear: clothes for some or all, the kit goes to the store and is handed out at once
-  const st = STOCKS[cfg.stock];
-  for (let k = 0; k < Math.round(n * st.clothes); k++) w.armory.push(newItem('clothes'));
+  const st = STOCKS[cfg.stock], clothes = Math.max(st.clothes, START[cfg.start]?.clothes ?? 0);   // nobody sets out in winter undressed
+  for (let k = 0; k < Math.round(n * clothes); k++) w.armory.push(newItem('clothes'));
   for (const t of st.kit) w.armory.push(newItem(t));
   w.armoryVersion = 1;
   w.founding = false;

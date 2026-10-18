@@ -7,7 +7,7 @@
 // yearly mean `meanT` and yearly range `trange`) as a sine over the year, warmest in the middle of
 // summer and coldest in the middle of winter (seasonalTemp). Snow is where that is below freezing.
 //
-//   grow:    how fast wild berries and herbs ripen (×); 0 — nothing grows
+//   grow:    how fast wild berries and herbs ripen (×) in a warm enough day; the cold scales it down to nothing (season())
 //   wither:  share of what is ripe on wild bushes lost per sampled step (berries drop, frost bites)
 //   garden:  how fast a planted garden ripens (×)
 //   jobs:    work speed by job id (fishing through the ice is slow, picking in snow is slower)
@@ -20,6 +20,7 @@
 //   dress:   how much people value warm clothing over armour (×)
 //   frost:   when the season begins, wild bushes keep only this share of their berries (the first frost)
 import {Registry} from '../core/registry.js';
+import {perTick} from '../core/util.js';
 
 export const SEASON_DAYS = 30;
 
@@ -35,9 +36,9 @@ SEASONS.registerAll([
   {id: 'autumn', label: 'Осень', next: 'зима', dress: 1.5, grow: 0.5, wither: 0, garden: 0.6, jobs: {},
     hares: 0.8, hunger: 1.1, spoil: 0.8, rain: 1.3, ignite: 5, drying: true, tint: [208, 178, 70, 0.3],
     note: 'Пора заготовок: сушить, солить, запасать дрова. Зима близко.'},
-  {id: 'winter', label: 'Зима', next: 'весна', dress: 3, grow: 0, wither: 0.04, garden: 0, jobs: {fish: 0.5, gather: 0.6, chop: 0.85},
+  {id: 'winter', label: 'Зима', next: 'весна', dress: 3, grow: 0.4, wither: 0.04, garden: 0.4, jobs: {fish: 0.5, gather: 0.6, chop: 0.85},
     hares: 0.35, hunger: 1.35, spoil: 0.25, rain: 0.9, ignite: 40, drying: false, frost: 0.15, tint: [190, 176, 120, 0.3],
-    note: 'Снег и мороз: ничего не растёт, рыба ловится вдвое хуже, волки голодны. Живут запасами и костром.'},
+    note: 'Мороз: ничего не растёт, рыба ловится вдвое хуже, волки голодны. Живут запасами и костром. Где зима тёплая, это просто скудная пора.'},
 ]);
 
 const LIST = SEASONS.all();
@@ -49,18 +50,34 @@ export const SEASON_IDS = LIST.map(s => s.id);
 // calendar day of a tick: the game's age plus the day the game began on (fractional: days + hours)
 export const calendarDay = (w, tick = w.tick) => tick / DAY_TICKS + (w.calendar?.startDay || 0);
 export const seasonIndex = (w, tick) => Math.floor(calendarDay(w, tick) / SEASON_DAYS) % LIST.length;
-export const season = (w, tick) => LIST[seasonIndex(w, tick)];
+// the season's record as written (by the calendar alone)
+export const seasonRaw = (w, tick) => LIST[seasonIndex(w, tick)];
+// The season as the game feels it: the record of the calendar season, with everything that is
+// really the cold's doing scaled by the climate's temperature of the day (data/presets.js CLIMATES).
+// A dry winter at +5° is a lean season, not a dead one; a cold spring at −8° is still frozen:
+//   grow, garden — × a growth factor from the day's mean (nothing while frozen, then from −6° up to full at 4°);
+//   wither, frost, the slow jobs (ice fishing), no drying, hungry predators, few hares, slow spoil — only when frozen.
+export function season(w) {
+  return perTick(w, 'season', () => {
+    const S = seasonRaw(w), T = dayMeanTemp(w), frozen = T < -1, gf = frozen ? 0 : clamp01((T + 6) / 10);
+    if (gf >= 1 && !frozen && !S.frost) return S;
+    return {...S, grow: S.grow * gf, garden: S.garden * gf, wither: frozen ? S.wither : 0, frost: frozen ? S.frost : null,
+      jobs: frozen ? S.jobs : {}, drying: S.drying || !frozen, hares: frozen ? S.hares : Math.max(S.hares, 0.8),
+      hunger: frozen ? S.hunger : Math.min(S.hunger, 1.1), spoil: frozen ? Math.min(S.spoil, 0.25) : Math.max(S.spoil, 0.8)};
+  });
+}
+const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 export const seasonDay = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS + 1;
 export const yearOf = (w, tick) => Math.floor(calendarDay(w, tick) / YEAR_DAYS) + 1;
 export const daysLeftInSeason = (w, tick) => SEASON_DAYS - calendarDay(w, tick) % SEASON_DAYS;
 // the first day of a season (for «a new season begins» once a day)
 export const seasonStarts = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS === 0;
 
-// the seasonal part of the air temperature: a sine over the year, 0 in the middle of spring and autumn,
-// +trange/2 in the middle of summer and −trange/2 in the middle of winter
+// the seasonal part of the air temperature: a sine over the year that crosses the yearly mean on the
+// first day of spring, peaks at +trange/2 in the middle of summer and bottoms at −trange/2 in the middle
+// of winter — so spring warms from its first day and autumn cools to the first snow by its end
 export function seasonalTemp(w, tick = w.tick) {
-  const mid = SEASON_DAYS / 2;   // middle of spring
-  return (w.climate.trange / 2) * Math.sin(2 * Math.PI * (calendarDay(w, tick) - mid) / YEAR_DAYS);
+  return (w.climate.trange / 2) * Math.sin(2 * Math.PI * (calendarDay(w, tick) - SEASON_DAYS / 2) / YEAR_DAYS + Math.PI / 4);
 }
 // mean air temperature of the day (no hour): what decides snow and frost
 export const dayMeanTemp = (w, tick = w.tick) => w.climate.meanT + seasonalTemp(w, tick);
