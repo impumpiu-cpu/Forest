@@ -58,13 +58,14 @@ for (let s = 1; s <= seeds; s++) {
   console.log(`     ${shares}`);
   // water and rock as the site asked (pools of the bogs come on top of the water)
   const pools = Object.entries(site.biomes).reduce((s, [b, v]) => s + (b === 'water' ? 0 : BIOMES.get(b).pools * v), 0);
-  check(`${tag}: воды столько, сколько просит участок`, share('water') >= site.water - 0.01 && share('water') <= site.water + pools + 0.03, `${pct(share('water'))} при ${pct(site.water)} + заводи ${pct(pools)}`);
+  const riverShare = (t1.river?.cells.length || 0) / n;
+  check(`${tag}: воды столько, сколько просит участок`, share('water') >= site.water - 0.01 && share('water') <= site.water + pools + riverShare + 0.03, `${pct(share('water'))} при ${pct(site.water)} + заводи ${pct(pools)} + река ${pct(riverShare)}`);
   check(`${tag}: скал столько, сколько просит участок`, share('rock') >= site.rock - 0.01 && share('rock') <= site.rock + 0.3, `${pct(share('rock'))} при ${pct(site.rock)}`);
   // every land biome of the region is on the map, with about its share of the land, and each land cell has a biome
   const landN = n - cnt.water - cnt.rock, byBiome = {}, forestIn = {};
   let noBiome = 0;
   for (let i = 0; i < n; i++) {
-    const code = t1.terr[i]; if (code === T.WATER || code === T.ROCK) continue;
+    const code = t1.terr[i]; if (BY_CODE[code].kind === 'water' || BY_CODE[code].kind === 'rock') continue;
     const b = t1.biome[i] ? BIOMES.all()[t1.biome[i] - 1].id : null;
     if (!b) { noBiome++; continue; }
     byBiome[b] = (byBiome[b] || 0) + 1;
@@ -111,6 +112,7 @@ for (let s = 1; s <= seeds; s++) {
   // gates: on the edge, passable, joined to the camp; a road gate has a road that reaches the camp
   const gateBad = [];
   for (const g of w.gates || []) {
+    if (g.kind === 'river') continue;   // water by design, checked with the river
     const onEdge = g.x === 0 || g.y === 0 || g.x === w.w - 1 || g.y === w.h - 1;
     if (!onEdge || !WALKABLE[w.grid.terr[g.i]] || !(d[g.i] < FAR)) gateBad.push(`${g.kind} ${g.side}: ${!onEdge ? 'не на краю' : !WALKABLE[w.grid.terr[g.i]] ? 'непроходимы' : 'нет пути к лагерю'}`);
     if (g.kind === 'road' && !g.road) gateBad.push(`${g.side}: дорога не проложена`);
@@ -118,6 +120,20 @@ for (let s = 1; s <= seeds; s++) {
   const roadCells = w.grid.terr.reduce((s, t) => s + (t === T.ROAD), 0), roadGates = (w.gates || []).filter(g => g.kind === 'road').length;
   check(`${tag}: ворота на краю, проходимы и связаны с лагерем`, !gateBad.length, gateBad.length ? gateBad.join('; ') : `ворот ${(w.gates || []).length}, дорог ${roadGates} (тракт ${w.region.road}), клеток дороги ${roadCells}`);
   check(`${tag}: дорога есть ровно у дорожных ворот`, (roadGates > 0) === (roadCells > 0), '');
+  // the river: runs from its source gate to its mouth gate over water and fords, has at least one ford, holds fish
+  if (w.river) {
+    const cellsSet = new Set(w.river.cells), src = w.gates.find(g => g.kind === 'river' && g.role === 'source'), mouth = w.gates.find(g => g.kind === 'river' && g.role === 'mouth');
+    const wet = w.river.cells.every(j => w.grid.terr[j] === T.WATER || w.grid.terr[j] === T.FORD);
+    const fords = w.river.cells.filter(j => w.grid.terr[j] === T.FORD).length;
+    // joined: a flood fill over the river's own cells from the source reaches the mouth
+    const seen = new Set([w.river.source]), stack = [w.river.source];
+    while (stack.length) { const i = stack.pop(); for (const d of [1, -1, w.w, -w.w]) { const j = i + d; if (cellsSet.has(j) && !seen.has(j) && Math.abs((j % w.w) - (i % w.w)) <= 1) { seen.add(j); stack.push(j); } } }
+    const onEdge = g => g && (g.x === 0 || g.y === 0 || g.x === w.w - 1 || g.y === w.h - 1);
+    check(`${tag}: река идёт от истока к устью по воде и бродам`, wet && seen.has(w.river.mouth) && onEdge(src) && onEdge(mouth), `клеток ${w.river.cells.length}${w.river.wide ? ', широкая' : ''}, бродов ${fords}`);
+    check(`${tag}: через реку есть брод`, fords > 0, '');
+    const lakeIds = new Set(w.river.cells.map(j => w.grid.lake[j]).filter(v => v >= 0));
+    check(`${tag}: в реке водится рыба`, [...lakeIds].some(id => w.lakes[id].cap > 0), `водоёмов на реке ${lakeIds.size}, рыбы ${[...lakeIds].reduce((s, id) => s + w.lakes[id].cap, 0)}`);
+  }
   const ore = exposedOre(w), missing = Object.entries(w.region.ores).filter(([id, lvl]) => lvl > 0 && !(ore[id] > 0)).map(([id]) => id);
   check(`${tag}: каждая руда региона выходит на склон`, !missing.length, missing.length ? `нет на склоне: ${missing.join(', ')}` : Object.entries(ore).filter(([, v]) => v > 0).map(([k, v]) => `${k} ${Math.round(v)}`).join(', '));
   const fishy = w.lakes.filter(l => l.cap > 0);

@@ -50,10 +50,14 @@ TERRAIN.registerAll([
   {id: 'road',   code: 8, label: 'дорога', kind: 'ground', walkable: true,  pathCost: 0.6, speed: 1.2, fuel: 0,
     open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
     color: (h) => [168 + h * 14, 150 + h * 12, 118 + h * 8]},
+  // a ford: shallow water one can wade through, where a road meets a river; slow going
+  {id: 'ford',   code: 9, label: 'брод',  kind: 'water',  walkable: true,  pathCost: 2.2, speed: 0.5, fuel: 0,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 1, tint: false,
+    color: (h) => [96 + h * 30, 128 + h * 40, 140 + h * 30]},
 ]);
 
 // numeric codes for hot loops
-export const T = {WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8};
+export const T = {WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8, FORD: 9};
 
 // lookup tables indexed by code, built once from the registry
 export const BY_CODE = [];

@@ -39,7 +39,7 @@ export function rollRegion(seed) {
   for (const r of all) { x -= r.weight; if (x <= 0) { t = r; break; } }
   const levels = obj => Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, shift(rnd, v, k)]));
   const reg = {id: t.id, label: t.label, note: t.note, ores: levels(t.ores), placer: shift(rnd, t.placer),
-    goldVein: t.goldVein, magma: t.magma, road: t.road, biomes: rollBiomes(rnd, t.biomes), flora: levels(t.flora), faunaShift: {}};
+    goldVein: t.goldVein, magma: t.magma, road: t.road, river: t.river || 0, biomes: rollBiomes(rnd, t.biomes), flora: levels(t.flora), faunaShift: {}};
   // two valleys of one kind still differ: each beast a little more or less common
   for (const sp of SPECIES.filter(s => s.habitat)) reg.faunaShift[sp.id] = Math.round((0.7 + rnd() * 0.6) * 100) / 100;
   // everyone needs a way to live: some game or goats

@@ -820,13 +820,33 @@ dd.q4{color:#c58cff;font-weight:600}
       wet: 0,
       tint: false,
       color: (h) => [168 + h * 14, 150 + h * 12, 118 + h * 8]
+    },
+    // a ford: shallow water one can wade through, where a road meets a river; slow going
+    {
+      id: "ford",
+      code: 9,
+      label: "\u0431\u0440\u043E\u0434",
+      kind: "water",
+      walkable: true,
+      pathCost: 2.2,
+      speed: 0.5,
+      fuel: 0,
+      open: false,
+      bush: 0,
+      wood: 0,
+      graze: 0,
+      shelter: false,
+      wet: 1,
+      tint: false,
+      color: (h) => [96 + h * 30, 128 + h * 40, 140 + h * 30]
     }
   ]);
-  var T = { WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8 };
+  var T = { WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8, FORD: 9 };
   var BY_CODE = [];
   for (const d of TERRAIN.all()) BY_CODE[d.code] = d;
   var WALKABLE = Uint8Array.from(BY_CODE.map((d) => d.walkable ? 1 : 0));
   var OPEN = Uint8Array.from(BY_CODE.map((d) => d.open ? 1 : 0));
+  var isWater = (code2) => BY_CODE[code2].kind === "water";
 
   // src/data/foods.js
   var FOODS = new Registry("food");
@@ -2822,6 +2842,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: false,
       magma: false,
       road: 1,
+      river: 0.5,
       biomes: { forest: 0.55, meadow: 0.25, foothills: 0.1, swamp: 0.1 },
       flora: { hive: 1, herbs: 1, saltlick: 0, wildflax: 0.5 }
     },
@@ -2835,6 +2856,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: false,
       magma: false,
       road: 1.3,
+      river: 1,
       biomes: { meadow: 0.55, forest: 0.2, water: 0.15, swamp: 0.1 },
       flora: { hive: 1, herbs: 1, saltlick: 0, wildflax: 1 }
     },
@@ -2848,6 +2870,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: true,
       magma: false,
       road: 0.8,
+      river: 0.6,
       biomes: { foothills: 0.5, highlands: 0.2, meadow: 0.15, underground: 0.15 },
       flora: { hive: 0.5, herbs: 0.5, saltlick: 1, wildflax: 0 }
     },
@@ -2861,6 +2884,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: false,
       magma: false,
       road: 0.7,
+      river: 0.6,
       biomes: { taiga: 0.6, swamp: 0.2, forest: 0.1, water: 0.1 },
       flora: { hive: 0.5, herbs: 1, saltlick: 0, wildflax: 0.5 }
     },
@@ -2874,6 +2898,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: true,
       magma: true,
       road: 0.5,
+      river: 0,
       biomes: { foothills: 0.3, underground: 0.3, volcano: 0.25, barrows: 0.15 },
       flora: { hive: 0, herbs: 0.5, saltlick: 0.5, wildflax: 0 }
     },
@@ -2887,6 +2912,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: false,
       magma: false,
       road: 0.7,
+      river: 1,
       biomes: { swamp: 0.45, forest: 0.35, water: 0.2 },
       flora: { hive: 1, herbs: 1.6, saltlick: 0, wildflax: 1 }
     },
@@ -2900,6 +2926,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: false,
       magma: false,
       road: 1.1,
+      river: 0.3,
       biomes: { steppe: 0.45, barrows: 0.4, swamp: 0.15 },
       flora: { hive: 0.5, herbs: 0.5, saltlick: 1, wildflax: 0.5 }
     }
@@ -2913,6 +2940,7 @@ dd.q4{color:#c58cff;font-weight:600}
     goldVein: false,
     magma: false,
     road: 1,
+    river: 0,
     biomes: { forest: 0.45, meadow: 0.3, foothills: 0.15, taiga: 0.1 },
     flora: { hive: 1, herbs: 1, saltlick: 0, wildflax: 0 }
   };
@@ -3242,6 +3270,7 @@ dd.q4{color:#c58cff;font-weight:600}
       goldVein: t.goldVein,
       magma: t.magma,
       road: t.road,
+      river: t.river || 0,
       biomes: rollBiomes(rnd, t.biomes),
       flora: levels(t.flora),
       faunaShift: {}
@@ -3917,6 +3946,13 @@ dd.q4{color:#c58cff;font-weight:600}
     const roads = region2.road >= 1.1 ? 2 : region2.road >= 0.8 ? 1 : 0;
     const gates = [], first = rnd() * 4 | 0;
     for (let k = 0; k < roads; k++) gates.push({ kind: "road", side: SIDES[(first + 2 * k) % 4], at: 0.2 + rnd() * 0.6 });
+    if (rnd() < (region2.river || 0)) {
+      const a = rnd() * 4 | 0, across = rnd() < 0.7, b = (a + (across ? 2 : 1)) % 4, wide = (region2.river || 0) >= 1;
+      const far = [[0.1, 0.45], [0.55, 0.9]];
+      const AWAY = { 0: [0, 1], 1: [0, 0], 2: [1, 0], 3: [1, 1] }[a];
+      const at = (k) => across ? 0.15 + rnd() * 0.7 : far[AWAY[k]][0] + rnd() * (far[AWAY[k]][1] - far[AWAY[k]][0]);
+      gates.push({ kind: "river", role: "source", side: SIDES[a], at: at(0), wide }, { kind: "river", role: "mouth", side: SIDES[b], at: at(1), wide });
+    }
     return gates;
   }
   function paintOrder(site) {
@@ -11067,7 +11103,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const x = i % w.w, y = i / w.w | 0;
         for (let k = 0; k < 4; k++) {
           const nx = x + DX[k], ny = y + DY[k];
-          if (nx >= 0 && ny >= 0 && nx < w.w && ny < w.h && g3.terr[ny * w.w + nx] === T.WATER) return true;
+          if (nx >= 0 && ny >= 0 && nx < w.w && ny < w.h && isWater(g3.terr[ny * w.w + nx])) return true;
         }
         return false;
       };
@@ -11200,6 +11236,7 @@ dd.q4{color:#c58cff;font-weight:600}
       for (let k2 = 0; k2 < m; k2++) terr[cells[k2]] = T.FOREST;
     }
     for (let i = 0; i < n; i++) if (!under[i]) under[i] = T.GRASS;
+    const river = layRiver(site, { w, h, terr, under, hgt, fert, noise: cq });
     let best = -1, bd = 1e9;
     const mx = Math.round(w * 0.12), my = Math.round(h * 0.12);
     const blocked = (t) => !BY_CODE[t].walkable;
@@ -11227,8 +11264,122 @@ dd.q4{color:#c58cff;font-weight:600}
       terr[j] = OPEN[under[j]] ? under[j] : T.GRASS;
       under[j] = terr[j];
     }
-    const gates = layGates(site, { w, h, terr, under, cx, cy });
-    return { w, h, terr, hgt, fert, under, biome, cx, cy, rng, site, gates };
+    const gates = layGates(site, { w, h, terr, under, biome, cx, cy, river });
+    return { w, h, terr, hgt, fert, under, biome, cx, cy, rng, site, gates, river };
+  }
+  function waterPath(w, h, terr, hgt, noise, from, to) {
+    const n = w * h, dist9 = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done3 = new Uint8Array(n);
+    const hI = new Int32Array(n * 9), hD = new Float64Array(n * 9);
+    let hn = 0;
+    const push = (i, d) => {
+      let k = hn++;
+      while (k > 0) {
+        const p = k - 1 >> 1;
+        if (hD[p] <= d) break;
+        hI[k] = hI[p];
+        hD[k] = hD[p];
+        k = p;
+      }
+      hI[k] = i;
+      hD[k] = d;
+    };
+    const cost = (j) => terr[j] === T.WATER ? 0.15 : terr[j] === T.ROCK ? 14 : 0.25 + 8 * hgt[j] * hgt[j] + 0.7 * noise[j];
+    dist9[from] = 0;
+    push(from, 0);
+    while (hn > 0) {
+      const i = hI[0], d = hD[0];
+      hn--;
+      const li = hI[hn], ld = hD[hn];
+      let k = 0;
+      for (; ; ) {
+        let c = 2 * k + 1;
+        if (c >= hn) break;
+        if (c + 1 < hn && hD[c + 1] < hD[c]) c++;
+        if (hD[c] >= ld) break;
+        hI[k] = hI[c];
+        hD[k] = hD[c];
+        k = c;
+      }
+      hI[k] = li;
+      hD[k] = ld;
+      if (done3[i]) continue;
+      done3[i] = 1;
+      if (i === to) break;
+      const x = i % w, y = i / w | 0;
+      for (let q = 0; q < 4; q++) {
+        const nx = x + DX[q], ny = y + DY[q];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx, nd = d + cost(j);
+        if (nd < dist9[j]) {
+          dist9[j] = nd;
+          prev[j] = i;
+          push(j, nd);
+        }
+      }
+    }
+    if (!done3[to]) return null;
+    const path = [];
+    for (let c = to; c !== -1; c = prev[c]) path.push(c);
+    return path.reverse();
+  }
+  function layRiver(site, t) {
+    const { w, h, terr, under, hgt, fert, noise } = t;
+    const g3 = (site.gates || []).filter((x) => x.kind === "river");
+    if (g3.length < 2) return null;
+    const edge = (x) => {
+      const along = x.side === "north" || x.side === "south" ? w : h, k = Math.round(x.at * (along - 1));
+      return x.side === "north" ? k : x.side === "south" ? (h - 1) * w + k : x.side === "west" ? k * w : k * w + w - 1;
+    };
+    let [a, b] = [edge(g3.find((x) => x.role === "source")), edge(g3.find((x) => x.role === "mouth"))];
+    if (hgt[a] < hgt[b]) [a, b] = [b, a];
+    const path = waterPath(w, h, terr, hgt, noise, a, b);
+    if (!path) return null;
+    const cells = new Set(path);
+    if (g3[0].wide) for (let k = 0; k + 1 < path.length; k++) {
+      const i = path[k], horizontal = (path[k + 1] / w | 0) === (i / w | 0);
+      const j = horizontal ? (i / w | 0) + 1 < h ? i + w : i - w : i % w + 1 < w ? i + 1 : i - 1;
+      if (terr[j] !== T.ROCK) cells.add(j);
+    }
+    for (const i of cells) {
+      terr[i] = T.WATER;
+      under[i] = T.GRASS;
+    }
+    for (const i of path) {
+      const x = i % w, y = i / w | 0;
+      for (let yy = -2; yy <= 2; yy++) for (let xx = -2; xx <= 2; xx++) {
+        const px = x + xx, py = y + yy;
+        if (px < 0 || py < 0 || px >= w || py >= h) continue;
+        const j = py * w + px;
+        if (BY_CODE[terr[j]].kind === "ground" || terr[j] === T.FOREST) fert[j] = Math.min(1, fert[j] + 0.12);
+      }
+    }
+    return { source: a, mouth: b, cells: [...cells], wide: !!g3[0].wide };
+  }
+  function reachableFrom(t, from) {
+    const { w, h, terr } = t, seen = new Uint8Array(w * h), stack = [from];
+    seen[from] = 1;
+    while (stack.length) {
+      const i = stack.pop(), x = i % w, y = i / w | 0;
+      for (let q = 0; q < 8; q++) {
+        const nx = x + DX[q], ny = y + DY[q];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (seen[j] || !BY_CODE[terr[j]].walkable) continue;
+        if (q >= 4 && (!BY_CODE[terr[y * w + nx]].walkable || !BY_CODE[terr[ny * w + x]].walkable)) continue;
+        seen[j] = 1;
+        stack.push(j);
+      }
+    }
+    return seen;
+  }
+  function ford(t, i) {
+    const { w, h, terr } = t, x = i % w, y = i / w | 0;
+    for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) {
+      const px = x + xx, py = y + yy;
+      if (px < 0 || py < 0 || px >= w || py >= h) continue;
+      const j = py * w + px;
+      if (terr[j] === T.WATER && t.river.cells.includes(j)) terr[j] = T.FORD;
+    }
   }
   function gateCell2(t, g3) {
     const { w, h, terr } = t;
@@ -11243,24 +11394,77 @@ dd.q4{color:#c58cff;font-weight:600}
     return cellAt(k0);
   }
   function layGates(site, t) {
-    const { w, h, terr, under } = t, out = [];
-    const tmp = { w, h, n: w * h, grid: { terr } };
+    const { w, h, terr, under, river } = t, out = [];
+    const walk = Uint8Array.from(terr);
+    if (river) for (const j of river.cells) walk[j] = T.FORD;
+    const tmp = { w, h, n: w * h, grid: { terr: walk } };
+    let fords = 0;
     for (const g3 of site.gates || []) {
+      if (g3.kind === "river") {
+        const i2 = river ? g3.role === "source" ? river.source : river.mouth : -1;
+        if (i2 >= 0) out.push({ ...g3, i: i2, x: i2 % w, y: i2 / w | 0 });
+        continue;
+      }
       const i = gateCell2(t, g3), gate = { ...g3, i, x: i % w, y: i / w | 0, road: false };
       if (!BY_CODE[terr[i]].walkable) {
         terr[i] = OPEN[under[i]] ? under[i] : T.GRASS;
+        under[i] = terr[i];
+        if (!t.biome[i]) t.biome[i] = t.biome[i + (gate.x === 0 ? 1 : gate.x === w - 1 ? -1 : gate.y === 0 ? w : -w)] || 1;
       }
       if (g3.kind === "road") {
         const path = findPath(tmp, gate.x, gate.y, t.cx, t.cy, w * h * 2);
         if (path) {
-          for (const j of [i, ...path]) if (Math.abs(j % w - t.cx) > 1 || Math.abs((j / w | 0) - t.cy) > 1) {
-            terr[j] = T.ROAD;
-            under[j] = T.ROAD;
+          for (const j of [i, ...path]) {
+            if (Math.abs(j % w - t.cx) <= 1 && Math.abs((j / w | 0) - t.cy) <= 1) continue;
+            if (terr[j] === T.WATER) {
+              ford(t, j);
+              fords++;
+            } else {
+              terr[j] = T.ROAD;
+              under[j] = T.ROAD;
+            }
           }
           gate.road = true;
         }
       }
       out.push(gate);
+    }
+    if (river) for (let k = 0; k < 4; k++) {
+      const reach = reachableFrom(t, t.cy * w + t.cx);
+      const bank = new Int8Array(w * h);
+      for (const j of river.cells) {
+        if (terr[j] !== T.WATER) continue;
+        const x = j % w, y = j / w | 0;
+        for (let q = 0; q < 4; q++) {
+          const nx = x + DX[q], ny = y + DY[q];
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const m = ny * w + nx;
+          if (!BY_CODE[terr[m]].walkable || terr[m] === T.FORD) continue;
+          bank[j] |= reach[m] ? 1 : 2;
+        }
+      }
+      let best = -1, bd = Infinity;
+      for (const j of river.cells) {
+        if (!(bank[j] & 1)) continue;
+        const x = j % w, y = j / w | 0;
+        let far = false;
+        for (let yy = -1; yy <= 1 && !far; yy++) for (let xx = -1; xx <= 1; xx++) {
+          const px = x + xx, py = y + yy;
+          if (px < 0 || py < 0 || px >= w || py >= h) continue;
+          if (bank[py * w + px] & 2) {
+            far = true;
+            break;
+          }
+        }
+        if (!far) continue;
+        const d = (x - t.cx) ** 2 + (y - t.cy) ** 2;
+        if (d < bd) {
+          bd = d;
+          best = j;
+        }
+      }
+      if (best < 0) break;
+      ford(t, best);
     }
     return out;
   }
@@ -11280,6 +11484,7 @@ dd.q4{color:#c58cff;font-weight:600}
       site: t.site,
       region: t.site.region,
       gates: t.gates,
+      river: t.river,
       grid: {
         terr: t.terr,
         hgt: t.hgt,
@@ -20524,7 +20729,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 742d00d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 aa03f2c" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

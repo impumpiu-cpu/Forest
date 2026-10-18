@@ -16,7 +16,9 @@
 //   gates       — where the outside world enters: [{kind: 'road', side, at}] — side north/south/west/east,
 //                 `at` 0..1 along that edge. A road gate gets a road to the camp; a group that comes by
 //                 road (caravans, settlers) enters there. How many road gates, the region's `road` says:
-//                 the imperial road runs through (two gates), passes by (one) or is far (none)
+//                 the imperial road runs through (two gates), passes by (one) or is far (none).
+//                 A river has two gates too, {kind: 'river', role: 'source' | 'mouth', wide}: the generator
+//                 runs it from the one to the other along the low ground, and a road crosses it by a ford
 // The menu's three sliders (water, forest, rock) are read here and nowhere else: they scale what
 // the region's biomes ask for, so «many lakes» on a steppe still makes a drier land than a valley.
 import {SIZES, CLIMATES, START} from '../data/presets.js';
@@ -51,6 +53,15 @@ export function rollGates(seed, region) {
   const roads = region.road >= 1.1 ? 2 : region.road >= 0.8 ? 1 : 0;
   const gates = [], first = (rnd() * 4) | 0;
   for (let k = 0; k < roads; k++) gates.push({kind: 'road', side: SIDES[(first + 2 * k) % 4], at: 0.2 + rnd() * 0.6});
+  if (rnd() < (region.river || 0)) {
+    // across the map (opposite sides) or round a corner (adjacent sides, both gates away from that corner,
+    // or the river would hug the edge); `at` runs west→east on the north and south edges, north→south on the others
+    const a = (rnd() * 4) | 0, across = rnd() < 0.7, b = (a + (across ? 2 : 1)) % 4, wide = (region.river || 0) >= 1;
+    const far = [[0.1, 0.45], [0.55, 0.9]];   // the half of an edge away from the corner, by side pair
+    const AWAY = {0: [0, 1], 1: [0, 0], 2: [1, 0], 3: [1, 1]}[a];   // N→E, E→S, S→W, W→N
+    const at = k => (across ? 0.15 + rnd() * 0.7 : far[AWAY[k]][0] + rnd() * (far[AWAY[k]][1] - far[AWAY[k]][0]));
+    gates.push({kind: 'river', role: 'source', side: SIDES[a], at: at(0), wide}, {kind: 'river', role: 'mouth', side: SIDES[b], at: at(1), wide});
+  }
   return gates;
 }
 
