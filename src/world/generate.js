@@ -5,7 +5,8 @@ import {clamp} from '../core/util.js';
 import {HOUR} from '../core/time.js';
 import {T, BY_CODE, OPEN, TERRAIN} from '../data/terrain.js';
 import {BIOMES} from '../data/biomes.js';
-import {makeSite, paintOrder} from './site.js';
+import {makeSite, paintOrder, SIDES} from './site.js';
+import {findPath} from '../nav/astar.js';
 const BIOME_LIST = BIOMES.all();
 import {STOCKS} from '../data/presets.js';
 import {RESOURCES} from '../data/resources.js';
@@ -123,7 +124,41 @@ export function makeTerrain(input) {
   if (best < 0) best = (h >> 1) * w + (w >> 1);
   const cx = best % w, cy = (best / w) | 0;
   for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) { const j = (cy + yy) * w + cx + xx; terr[j] = OPEN[under[j]] ? under[j] : T.GRASS; under[j] = terr[j]; }
-  return {w, h, terr, hgt, fert, under, biome, cx, cy, rng, site};
+  const gates = layGates(site, {w, h, terr, under, cx, cy});
+  return {w, h, terr, hgt, fert, under, biome, cx, cy, rng, site, gates};
+}
+
+// the gate cell of a side: `at` along that edge, moved to the nearest passable cell of the edge
+function gateCell(t, g) {
+  const {w, h, terr} = t;
+  const along = g.side === 'north' || g.side === 'south' ? w : h;
+  const cellAt = k => (g.side === 'north' ? k : g.side === 'south' ? (h - 1) * w + k : g.side === 'west' ? k * w : k * w + w - 1);
+  const k0 = Math.round(g.at * (along - 1));
+  for (let d = 0; d < along; d++) for (const k of [k0 + d, k0 - d]) {
+    if (k < 0 || k >= along) continue;
+    const i = cellAt(k); if (BY_CODE[terr[i]].walkable) return i;
+  }
+  return cellAt(k0);
+}
+
+// gates get a cell on the edge and, for a road gate, a road to the camp: the cheapest path over the
+// land (A* by terrain cost: a road goes round bogs and through meadows rather than forest)
+function layGates(site, t) {
+  const {w, h, terr, under} = t, out = [];
+  const tmp = {w, h, n: w * h, grid: {terr}};
+  for (const g of site.gates || []) {
+    const i = gateCell(t, g), gate = {...g, i, x: i % w, y: (i / w) | 0, road: false};
+    if (!BY_CODE[terr[i]].walkable) { terr[i] = OPEN[under[i]] ? under[i] : T.GRASS; }
+    if (g.kind === 'road') {
+      const path = findPath(tmp, gate.x, gate.y, t.cx, t.cy, w * h * 2);
+      if (path) {
+        for (const j of [i, ...path]) if (Math.abs((j % w) - t.cx) > 1 || Math.abs(((j / w) | 0) - t.cy) > 1) { terr[j] = T.ROAD; under[j] = T.ROAD; }
+        gate.road = true;
+      }
+    }
+    out.push(gate);
+  }
+  return out;
 }
 
 export function createWorld(cfg) {
@@ -132,7 +167,7 @@ export function createWorld(cfg) {
   const world = {
     cfg: {...cfg}, climate: t.site.climate, calendar: {startDay: t.site.startDay},
     w: t.w, h: t.h, n, rng: t.rng, rngs: newStreams(cfg.seed), tick: Math.round(7 * HOUR),
-    site: t.site, region: t.site.region,
+    site: t.site, region: t.site.region, gates: t.gates,
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, under: t.under, biome: t.biome, food: f32(), wood: f32(), fuel: f32(), fire: f32(),
       heat: f32(), heat2: f32(), smoke: f32(), smoke2: f32(), bush: new Uint8Array(n), bld: new Int16Array(n).fill(-1)},
     camp: {x: t.cx, y: t.cy, cells: [], set: null},

@@ -801,9 +801,28 @@ dd.q4{color:#c58cff;font-weight:600}
       wet: 0,
       tint: false,
       color: (h) => [196 + h * 20, 178 + h * 18, 132 + h * 10]
+    },
+    // the road from a gate of the map to the camp (world/site.js gates): the cheapest way there is; nothing grows on it
+    {
+      id: "road",
+      code: 8,
+      label: "\u0434\u043E\u0440\u043E\u0433\u0430",
+      kind: "ground",
+      walkable: true,
+      pathCost: 0.6,
+      speed: 1.2,
+      fuel: 0,
+      open: false,
+      bush: 0,
+      wood: 0,
+      graze: 0,
+      shelter: false,
+      wet: 0,
+      tint: false,
+      color: (h) => [168 + h * 14, 150 + h * 12, 118 + h * 8]
     }
   ]);
-  var T = { WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7 };
+  var T = { WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8 };
   var BY_CODE = [];
   for (const d of TERRAIN.all()) BY_CODE[d.code] = d;
   var WALKABLE = Uint8Array.from(BY_CODE.map((d) => d.walkable ? 1 : 0));
@@ -3888,10 +3907,152 @@ dd.q4{color:#c58cff;font-weight:600}
     const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share2("water")), 0.02, 0.45);
     const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
     const climate = { id: cfg.climate, ...CLIMATES[cfg.climate] };
-    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0 };
+    const gates = rollGates(cfg.seed, region2);
+    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0, gates };
+  }
+  var SIDES = ["north", "east", "south", "west"];
+  var SIDE_FROM = { north: "\u0441\u0435\u0432\u0435\u0440\u0430", east: "\u0432\u043E\u0441\u0442\u043E\u043A\u0430", south: "\u044E\u0433\u0430", west: "\u0437\u0430\u043F\u0430\u0434\u0430" };
+  function rollGates(seed, region2) {
+    const rnd = mulberry(seedNumber(String(seed) + ":gates"));
+    const roads = region2.road >= 1.1 ? 2 : region2.road >= 0.8 ? 1 : 0;
+    const gates = [], first = rnd() * 4 | 0;
+    for (let k = 0; k < roads; k++) gates.push({ kind: "road", side: SIDES[(first + 2 * k) % 4], at: 0.2 + rnd() * 0.6 });
+    return gates;
   }
   function paintOrder(site) {
     return Object.entries(site.biomes).map(([id, v]) => [BIOMES.get(id), v]).filter(([b]) => b.id !== "water").sort((a, b) => a[0].dry - b[0].dry || a[0].id.localeCompare(b[0].id));
+  }
+
+  // src/nav/astar.js
+  var ROCK2 = T.ROCK;
+  var SQRT2 = Math.SQRT2;
+  function buffers(w) {
+    if (w.astar) return w.astar;
+    const n = w.n;
+    return w.astar = {
+      g: new Float32Array(n),
+      seen: new Int32Array(n),
+      closed: new Int32Array(n),
+      parent: new Int32Array(n),
+      heapI: new Int32Array(n * 8),
+      heapF: new Float32Array(n * 8),
+      stamp: 0
+    };
+  }
+  function walkLine(w, x0, y0, x1, y1, visit) {
+    let cx = Math.floor(x0), cy = Math.floor(y0);
+    const ex = Math.floor(x1), ey = Math.floor(y1), dx = x1 - x0, dy = y1 - y0;
+    const inside2 = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
+    if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
+    const sx = Math.sign(dx), sy = Math.sign(dy);
+    const tdx = dx ? Math.abs(1 / dx) : Infinity, tdy = dy ? Math.abs(1 / dy) : Infinity;
+    let tx2 = dx ? (sx > 0 ? cx + 1 - x0 : x0 - cx) * tdx : Infinity;
+    let ty = dy ? (sy > 0 ? cy + 1 - y0 : y0 - cy) * tdy : Infinity;
+    for (let guard = 0; (cx !== ex || cy !== ey) && guard < 4 * (w.w + w.h); guard++) {
+      if (Math.abs(tx2 - ty) < 1e-9) {
+        if (!inside2(cx + sx, cy) || !visit(cy * w.w + cx + sx)) return false;
+        if (!inside2(cx, cy + sy) || !visit((cy + sy) * w.w + cx)) return false;
+        cx += sx;
+        cy += sy;
+        tx2 += tdx;
+        ty += tdy;
+      } else if (tx2 < ty) {
+        cx += sx;
+        tx2 += tdx;
+      } else {
+        cy += sy;
+        ty += tdy;
+      }
+      if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
+    }
+    return true;
+  }
+  var clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => WALKABLE[w.grid.terr[i]] === 1);
+  var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK2);
+  function findPath(w, sx, sy, gx, gy, budget = 6e3) {
+    const W = w.w, H2 = w.h, terr = w.grid.terr, b = buffers(w);
+    const start2 = (sy | 0) * W + (sx | 0);
+    let goal = (gy | 0) * W + (gx | 0);
+    if (!WALKABLE[terr[goal]]) {
+      let best = -1, bd = Infinity;
+      const x = gx | 0, y = gy | 0;
+      for (let k = 0; k < 8; k++) {
+        const nx = x + DX[k], ny = y + DY[k];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
+        const j = ny * W + nx;
+        if (WALKABLE[terr[j]] && k < bd) {
+          bd = k;
+          best = j;
+        }
+      }
+      if (best < 0) return null;
+      goal = best;
+    }
+    if (start2 === goal) return [];
+    const stamp = ++b.stamp, { g: g3, seen, closed, parent, heapI, heapF } = b;
+    const gxC = goal % W, gyC = goal / W | 0;
+    const h = (i) => {
+      const dx = Math.abs(i % W - gxC), dy = Math.abs((i / W | 0) - gyC);
+      return dx + dy + (SQRT2 - 2) * Math.min(dx, dy);
+    };
+    let hn = 0;
+    const push = (i, f) => {
+      let k = hn++;
+      while (k > 0) {
+        const p = k - 1 >> 1;
+        if (heapF[p] <= f) break;
+        heapI[k] = heapI[p];
+        heapF[k] = heapF[p];
+        k = p;
+      }
+      heapI[k] = i;
+      heapF[k] = f;
+    };
+    seen[start2] = stamp;
+    g3[start2] = 0;
+    parent[start2] = -1;
+    push(start2, h(start2));
+    let expanded = 0;
+    while (hn > 0) {
+      const i = heapI[0];
+      hn--;
+      const li = heapI[hn], lf = heapF[hn];
+      let k = 0;
+      for (; ; ) {
+        let c = 2 * k + 1;
+        if (c >= hn) break;
+        if (c + 1 < hn && heapF[c + 1] < heapF[c]) c++;
+        if (heapF[c] >= lf) break;
+        heapI[k] = heapI[c];
+        heapF[k] = heapF[c];
+        k = c;
+      }
+      heapI[k] = li;
+      heapF[k] = lf;
+      if (closed[i] === stamp) continue;
+      closed[i] = stamp;
+      if (i === goal) {
+        const path = [];
+        for (let c = goal; c !== start2; c = parent[c]) path.push(c);
+        return path.reverse();
+      }
+      if (++expanded > budget || hn >= heapI.length - 8) return null;
+      const x = i % W, y = i / W | 0, gi = g3[i];
+      for (let q = 0; q < 8; q++) {
+        const nx = x + DX[q], ny = y + DY[q];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
+        const j = ny * W + nx;
+        if (!WALKABLE[terr[j]]) continue;
+        if (q >= 4 && (!WALKABLE[terr[y * W + nx]] || !WALKABLE[terr[ny * W + x]])) continue;
+        const ng = gi + BY_CODE[terr[j]].pathCost * (q >= 4 ? SQRT2 : 1);
+        if (seen[j] === stamp && ng >= g3[j]) continue;
+        seen[j] = stamp;
+        g3[j] = ng;
+        parent[j] = i;
+        push(j, ng + h(j));
+      }
+    }
+    return null;
   }
 
   // src/data/buildings.js
@@ -5093,138 +5254,6 @@ dd.q4{color:#c58cff;font-weight:600}
       if (best) this.build(best);
     }
   };
-
-  // src/nav/astar.js
-  var ROCK2 = T.ROCK;
-  var SQRT2 = Math.SQRT2;
-  function buffers(w) {
-    if (w.astar) return w.astar;
-    const n = w.n;
-    return w.astar = {
-      g: new Float32Array(n),
-      seen: new Int32Array(n),
-      closed: new Int32Array(n),
-      parent: new Int32Array(n),
-      heapI: new Int32Array(n * 8),
-      heapF: new Float32Array(n * 8),
-      stamp: 0
-    };
-  }
-  function walkLine(w, x0, y0, x1, y1, visit) {
-    let cx = Math.floor(x0), cy = Math.floor(y0);
-    const ex = Math.floor(x1), ey = Math.floor(y1), dx = x1 - x0, dy = y1 - y0;
-    const inside2 = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
-    if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
-    const sx = Math.sign(dx), sy = Math.sign(dy);
-    const tdx = dx ? Math.abs(1 / dx) : Infinity, tdy = dy ? Math.abs(1 / dy) : Infinity;
-    let tx2 = dx ? (sx > 0 ? cx + 1 - x0 : x0 - cx) * tdx : Infinity;
-    let ty = dy ? (sy > 0 ? cy + 1 - y0 : y0 - cy) * tdy : Infinity;
-    for (let guard = 0; (cx !== ex || cy !== ey) && guard < 4 * (w.w + w.h); guard++) {
-      if (Math.abs(tx2 - ty) < 1e-9) {
-        if (!inside2(cx + sx, cy) || !visit(cy * w.w + cx + sx)) return false;
-        if (!inside2(cx, cy + sy) || !visit((cy + sy) * w.w + cx)) return false;
-        cx += sx;
-        cy += sy;
-        tx2 += tdx;
-        ty += tdy;
-      } else if (tx2 < ty) {
-        cx += sx;
-        tx2 += tdx;
-      } else {
-        cy += sy;
-        ty += tdy;
-      }
-      if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
-    }
-    return true;
-  }
-  var clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => WALKABLE[w.grid.terr[i]] === 1);
-  var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK2);
-  function findPath(w, sx, sy, gx, gy, budget = 6e3) {
-    const W = w.w, H2 = w.h, terr = w.grid.terr, b = buffers(w);
-    const start2 = (sy | 0) * W + (sx | 0);
-    let goal = (gy | 0) * W + (gx | 0);
-    if (!WALKABLE[terr[goal]]) {
-      let best = -1, bd = Infinity;
-      const x = gx | 0, y = gy | 0;
-      for (let k = 0; k < 8; k++) {
-        const nx = x + DX[k], ny = y + DY[k];
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
-        const j = ny * W + nx;
-        if (WALKABLE[terr[j]] && k < bd) {
-          bd = k;
-          best = j;
-        }
-      }
-      if (best < 0) return null;
-      goal = best;
-    }
-    if (start2 === goal) return [];
-    const stamp = ++b.stamp, { g: g3, seen, closed, parent, heapI, heapF } = b;
-    const gxC = goal % W, gyC = goal / W | 0;
-    const h = (i) => {
-      const dx = Math.abs(i % W - gxC), dy = Math.abs((i / W | 0) - gyC);
-      return dx + dy + (SQRT2 - 2) * Math.min(dx, dy);
-    };
-    let hn = 0;
-    const push = (i, f) => {
-      let k = hn++;
-      while (k > 0) {
-        const p = k - 1 >> 1;
-        if (heapF[p] <= f) break;
-        heapI[k] = heapI[p];
-        heapF[k] = heapF[p];
-        k = p;
-      }
-      heapI[k] = i;
-      heapF[k] = f;
-    };
-    seen[start2] = stamp;
-    g3[start2] = 0;
-    parent[start2] = -1;
-    push(start2, h(start2));
-    let expanded = 0;
-    while (hn > 0) {
-      const i = heapI[0];
-      hn--;
-      const li = heapI[hn], lf = heapF[hn];
-      let k = 0;
-      for (; ; ) {
-        let c = 2 * k + 1;
-        if (c >= hn) break;
-        if (c + 1 < hn && heapF[c + 1] < heapF[c]) c++;
-        if (heapF[c] >= lf) break;
-        heapI[k] = heapI[c];
-        heapF[k] = heapF[c];
-        k = c;
-      }
-      heapI[k] = li;
-      heapF[k] = lf;
-      if (closed[i] === stamp) continue;
-      closed[i] = stamp;
-      if (i === goal) {
-        const path = [];
-        for (let c = goal; c !== start2; c = parent[c]) path.push(c);
-        return path.reverse();
-      }
-      if (++expanded > budget || hn >= heapI.length - 8) return null;
-      const x = i % W, y = i / W | 0, gi = g3[i];
-      for (let q = 0; q < 8; q++) {
-        const nx = x + DX[q], ny = y + DY[q];
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
-        const j = ny * W + nx;
-        if (!WALKABLE[terr[j]]) continue;
-        if (q >= 4 && (!WALKABLE[terr[y * W + nx]] || !WALKABLE[terr[ny * W + x]])) continue;
-        const ng = gi + BY_CODE[terr[j]].pathCost * (q >= 4 ? SQRT2 : 1);
-        if (seen[j] === stamp && ng >= g3[j]) continue;
-        seen[j] = stamp;
-        g3[j] = ng;
-        parent[j] = i;
-        push(j, ng + h(j));
-      }
-    }
-    return null;
-  }
 
   // src/agents/movement.js
   function speedOf(w, a) {
@@ -10452,6 +10481,7 @@ dd.q4{color:#c58cff;font-weight:600}
       faction: "colony",
       topic: "people",
       retry: 2 * HOUR,
+      gate: "road",
       blocked: (w) => colonists(w).length >= popCap(w) ? "\u043D\u0435\u0442 \u043C\u0435\u0441\u0442\u0430, \u043D\u0443\u0436\u0435\u043D \u0448\u0430\u043B\u0430\u0448" : foodTotal(w) <= colonists(w).length * 5 ? "\u043C\u0430\u043B\u043E \u0435\u0434\u044B \u0432 \u0437\u0430\u043F\u0430\u0441\u0435" : null,
       accept: (w, n) => MIGRATIONS.get("settlers").blocked(w) ? 0 : n,
       members: (w, rng, n) => Array.from({ length: n }, () => ({ species: settlerSpecies(w, rng) })),
@@ -10573,6 +10603,7 @@ dd.q4{color:#c58cff;font-weight:600}
       minDist: 25,
       topic: "trade",
       level: "notice",
+      gate: "road",
       accept: (w, n) => w.caravan || !colonists(w).length ? 0 : n,
       members: (w, rng) => {
         const pickName = (list) => list[Math.floor(rng() * list.length)];
@@ -10736,11 +10767,17 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return [-1, ""];
   }
+  function gateCell(w, kind) {
+    const dCamp = w.nav.get("camp"), open = (w.gates || []).filter((g4) => g4.kind === kind && walkable(w, g4.i) && dCamp[g4.i] < FAR);
+    if (!open.length) return null;
+    const g3 = open[w.rngs.outside() * open.length | 0];
+    return [g3.i, SIDE_FROM[g3.side]];
+  }
   function spawnGroup(w, id, n, opts = {}) {
     const def2 = MIGRATIONS.get(id);
     if (!n) return [];
     const home = def2.spawnAt ? def2.spawnAt(w) : -1;
-    const [e, side] = home >= 0 ? [home, ""] : edgeCell(w, def2.minDist ?? 30);
+    const [e, side] = home >= 0 ? [home, ""] : def2.gate && gateCell(w, def2.gate) || edgeCell(w, def2.minDist ?? 30);
     if (e < 0) {
       if (id === "raiders") log(w, "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u043D\u0430\u0448\u043B\u0438 \u0434\u043E\u0440\u043E\u0433\u0438 \u043A \u043B\u0430\u0433\u0435\u0440\u044E.", "danger", "notice");
       return [];
@@ -11190,7 +11227,42 @@ dd.q4{color:#c58cff;font-weight:600}
       terr[j] = OPEN[under[j]] ? under[j] : T.GRASS;
       under[j] = terr[j];
     }
-    return { w, h, terr, hgt, fert, under, biome, cx, cy, rng, site };
+    const gates = layGates(site, { w, h, terr, under, cx, cy });
+    return { w, h, terr, hgt, fert, under, biome, cx, cy, rng, site, gates };
+  }
+  function gateCell2(t, g3) {
+    const { w, h, terr } = t;
+    const along = g3.side === "north" || g3.side === "south" ? w : h;
+    const cellAt = (k) => g3.side === "north" ? k : g3.side === "south" ? (h - 1) * w + k : g3.side === "west" ? k * w : k * w + w - 1;
+    const k0 = Math.round(g3.at * (along - 1));
+    for (let d = 0; d < along; d++) for (const k of [k0 + d, k0 - d]) {
+      if (k < 0 || k >= along) continue;
+      const i = cellAt(k);
+      if (BY_CODE[terr[i]].walkable) return i;
+    }
+    return cellAt(k0);
+  }
+  function layGates(site, t) {
+    const { w, h, terr, under } = t, out = [];
+    const tmp = { w, h, n: w * h, grid: { terr } };
+    for (const g3 of site.gates || []) {
+      const i = gateCell2(t, g3), gate = { ...g3, i, x: i % w, y: i / w | 0, road: false };
+      if (!BY_CODE[terr[i]].walkable) {
+        terr[i] = OPEN[under[i]] ? under[i] : T.GRASS;
+      }
+      if (g3.kind === "road") {
+        const path = findPath(tmp, gate.x, gate.y, t.cx, t.cy, w * h * 2);
+        if (path) {
+          for (const j of [i, ...path]) if (Math.abs(j % w - t.cx) > 1 || Math.abs((j / w | 0) - t.cy) > 1) {
+            terr[j] = T.ROAD;
+            under[j] = T.ROAD;
+          }
+          gate.road = true;
+        }
+      }
+      out.push(gate);
+    }
+    return out;
   }
   function createWorld(cfg) {
     const t = makeTerrain(cfg), n = t.w * t.h;
@@ -11207,6 +11279,7 @@ dd.q4{color:#c58cff;font-weight:600}
       tick: Math.round(7 * HOUR),
       site: t.site,
       region: t.site.region,
+      gates: t.gates,
       grid: {
         terr: t.terr,
         hgt: t.hgt,
@@ -20451,7 +20524,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 745a423" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 742d00d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

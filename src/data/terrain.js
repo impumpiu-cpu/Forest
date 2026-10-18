@@ -46,10 +46,14 @@ TERRAIN.registerAll([
   {id: 'sand',   code: 7, label: 'песок', kind: 'ground', walkable: true,  pathCost: 1.2, speed: 0.9, fuel: 0,
     open: true, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
     color: (h) => [196 + h * 20, 178 + h * 18, 132 + h * 10]},
+  // the road from a gate of the map to the camp (world/site.js gates): the cheapest way there is; nothing grows on it
+  {id: 'road',   code: 8, label: 'дорога', kind: 'ground', walkable: true,  pathCost: 0.6, speed: 1.2, fuel: 0,
+    open: false, bush: 0, wood: 0, graze: 0, shelter: false, wet: 0, tint: false,
+    color: (h) => [168 + h * 14, 150 + h * 12, 118 + h * 8]},
 ]);
 
 // numeric codes for hot loops
-export const T = {WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7};
+export const T = {WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7, ROAD: 8};
 
 // lookup tables indexed by code, built once from the registry
 export const BY_CODE = [];

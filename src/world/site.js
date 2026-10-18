@@ -13,12 +13,17 @@
 //   fert        — × on fertility everywhere
 //   climate     — {meanT, trange, rain, regrow, ign, label} (data/presets.js CLIMATES), copied so that the world map can hand its own
 //   startDay    — calendar day the game begins on (data/presets.js START)
+//   gates       — where the outside world enters: [{kind: 'road', side, at}] — side north/south/west/east,
+//                 `at` 0..1 along that edge. A road gate gets a road to the camp; a group that comes by
+//                 road (caravans, settlers) enters there. How many road gates, the region's `road` says:
+//                 the imperial road runs through (two gates), passes by (one) or is far (none)
 // The menu's three sliders (water, forest, rock) are read here and nowhere else: they scale what
 // the region's biomes ask for, so «many lakes» on a steppe still makes a drier land than a valley.
 import {SIZES, CLIMATES, START} from '../data/presets.js';
 import {BIOMES} from '../data/biomes.js';
 import {rollRegion} from './region.js';
 import {clamp} from '../core/util.js';
+import {mulberry, seedNumber} from '../core/rng.js';
 
 // what the sliders mean: a base share for water and rock, a factor for forest
 const WATER = [0.07, 0.12, 0.2], ROCK = [0.08, 0.13, 0.2], TREES = [0.75, 1, 1.25];
@@ -34,7 +39,19 @@ export function makeSite(cfg) {
   const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share('water')), 0.02, 0.45);
   const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
   const climate = {id: cfg.climate, ...CLIMATES[cfg.climate]};
-  return {seed: String(cfg.seed), w, h, region, biomes, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0};
+  const gates = rollGates(cfg.seed, region);
+  return {seed: String(cfg.seed), w, h, region, biomes, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0, gates};
+}
+
+export const SIDES = ['north', 'east', 'south', 'west'];
+export const SIDE_FROM = {north: 'севера', east: 'востока', south: 'юга', west: 'запада'};
+// the road gates, on their own random stream so they do not move the rest of the map
+export function rollGates(seed, region) {
+  const rnd = mulberry(seedNumber(String(seed) + ':gates'));
+  const roads = region.road >= 1.1 ? 2 : region.road >= 0.8 ? 1 : 0;
+  const gates = [], first = (rnd() * 4) | 0;
+  for (let k = 0; k < roads; k++) gates.push({kind: 'road', side: SIDES[(first + 2 * k) % 4], at: 0.2 + rnd() * 0.6});
+  return gates;
 }
 
 // the site's land biomes in the order the painter lays them out: driest first, open water last

@@ -83,11 +83,11 @@ for (let s = 1; s <= seeds; s++) {
     if (f > lim) over.push(`${b} ${pct(f)} > ${pct(lim)}`);
     stats.forestInBiome[b] = (stats.forestInBiome[b] || 0) + (forestIn[b] || 0); stats.cellsInBiome[b] = (stats.cellsInBiome[b] || 0) + cells;
     const ground = TERRAIN.get(B.ground).code;
-    let bad = 0; for (let i = 0; i < n; i++) if (t1.biome[i] === BIOMES.all().indexOf(B) + 1 && BY_CODE[t1.terr[i]].kind === 'ground' && t1.terr[i] !== ground && t1.terr[i] !== T.BURNT) bad++;
+    let bad = 0; for (let i = 0; i < n; i++) if (t1.biome[i] === BIOMES.all().indexOf(B) + 1 && BY_CODE[t1.terr[i]].kind === 'ground' && t1.terr[i] !== ground && t1.terr[i] !== T.BURNT && t1.terr[i] !== T.ROAD) bad++;
     if (bad > 0.02 * cells) wrongGround.push(`${b}: ${bad} клеток не ${B.ground}`);
   }
   check(`${tag}: лес не гуще, чем допускает биом`, !over.length, over.join('; '));
-  check(`${tag}: земля биома — его собственная (лагерь не в счёт)`, !wrongGround.length, wrongGround.join('; '));
+  check(`${tag}: земля биома — его собственная (лагерь и дорога не в счёт)`, !wrongGround.length, wrongGround.join('; '));
   // the driest biome lies on drier cells than the wettest (the painter put them by moisture)
   const order = landBiomes.map(([b]) => BIOMES.get(b)).sort((a, b) => a.dry - b.dry);
   if (order.length >= 2 && !order.every(b => b.kind === 'altitude')) {
@@ -108,6 +108,16 @@ for (let s = 1; s <= seeds; s++) {
   let walk = 0; for (let i = 0; i < w.n; i++) if (WALKABLE[w.grid.terr[i]]) walk++;
   check(`${tag}: от лагеря есть путь к краю карты`, closed.length < 4, `края ${Object.entries(edges).map(([k, v]) => `${k} ${v}`).join(', ')}; досягаемо ${pct(reach / walk)} проходимых клеток`);
   check(`${tag}: с лагеря досягаема большая часть суши`, reach / walk > 0.7, pct(reach / walk));
+  // gates: on the edge, passable, joined to the camp; a road gate has a road that reaches the camp
+  const gateBad = [];
+  for (const g of w.gates || []) {
+    const onEdge = g.x === 0 || g.y === 0 || g.x === w.w - 1 || g.y === w.h - 1;
+    if (!onEdge || !WALKABLE[w.grid.terr[g.i]] || !(d[g.i] < FAR)) gateBad.push(`${g.kind} ${g.side}: ${!onEdge ? 'не на краю' : !WALKABLE[w.grid.terr[g.i]] ? 'непроходимы' : 'нет пути к лагерю'}`);
+    if (g.kind === 'road' && !g.road) gateBad.push(`${g.side}: дорога не проложена`);
+  }
+  const roadCells = w.grid.terr.reduce((s, t) => s + (t === T.ROAD), 0), roadGates = (w.gates || []).filter(g => g.kind === 'road').length;
+  check(`${tag}: ворота на краю, проходимы и связаны с лагерем`, !gateBad.length, gateBad.length ? gateBad.join('; ') : `ворот ${(w.gates || []).length}, дорог ${roadGates} (тракт ${w.region.road}), клеток дороги ${roadCells}`);
+  check(`${tag}: дорога есть ровно у дорожных ворот`, (roadGates > 0) === (roadCells > 0), '');
   const ore = exposedOre(w), missing = Object.entries(w.region.ores).filter(([id, lvl]) => lvl > 0 && !(ore[id] > 0)).map(([id]) => id);
   check(`${tag}: каждая руда региона выходит на склон`, !missing.length, missing.length ? `нет на склоне: ${missing.join(', ')}` : Object.entries(ore).filter(([, v]) => v > 0).map(([k, v]) => `${k} ${Math.round(v)}`).join(', '));
   const fishy = w.lakes.filter(l => l.cap > 0);
