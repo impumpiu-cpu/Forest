@@ -158,6 +158,10 @@ TASKS.registerAll([
 
   {id: 'job', label: t => JOBS.get(t.job).verb, runnerOf: t => JOBS.get(t.job).runner, step(w, a, task) { RUNNERS[JOBS.get(task.job).runner](w, a, task); }},
 
+  // a moment's thought between two jobs: stands, then takes up what it had settled on
+  {id: 'ponder', label: () => 'прикидывает, за что взяться', step(w, a, task) {
+    if (w.tick >= task.until) { a.task = task.next; a.think = 0; }
+  }},
   {id: 'idle', label: () => 'отдыхает', step(w, a, task) {
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 2.5);
   }},

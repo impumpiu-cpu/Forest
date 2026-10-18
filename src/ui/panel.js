@@ -343,7 +343,9 @@ export class Panel {
       const need = (r, v) => v + (r === 'wood' ? fuelReserve(w) : 0);
       goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= need(r, v) ? '' : ' short'}">${RESOURCES.get(r).label} ${Math.min(need(r, v), Math.floor(w.stock[r] || 0))}/${need(r, v)}${need(r, v) > v ? ` (из них ${need(r, v) - v} на костёр)` : ''}</span>`).join(' ')}</div>` + this.waitingHtml(w, d);
     }
-    this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}`);
+    // the roster (settlement/plan.js): who does what today, and why
+    const p = w.plan, roster = p?.lines?.length ? `<h4>Наряд (${p.reason})</h4><ul class="args">${p.lines.map(l => `<li>${esc(l.text)}</li>`).join('')}</ul>` : '';
+    this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}${roster}`);
   }
 
   // why the council's goal is not laid yet: each missing resource, where it comes from and who is at it;

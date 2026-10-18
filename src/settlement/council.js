@@ -19,6 +19,7 @@ import {oreSeen} from '../world/ores.js';
 import {season} from '../data/seasons.js';
 import {moodOf} from '../agents/mind.js';
 import {penRoom, herd} from './herd.js';
+import {councilRoster} from './plan.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
 
@@ -175,4 +176,6 @@ function hold(w, present, total) {
     if (a.task?.id === 'council') a.task = null;
   }
   w.stats.spoiledToday = 0;
+  // the second half of the council: who does what tomorrow (settlement/plan.js)
+  councilRoster(w);
 }

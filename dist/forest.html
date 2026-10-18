@@ -3823,304 +3823,6 @@ dd.q4{color:#c58cff;font-weight:600}
   });
   var clampCell = (w, o) => Math.min(w.h - 1, Math.max(0, o.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, o.x | 0));
 
-  // src/settlement/behaviour.js
-  var newBehaviour = () => ({
-    ticks: 0,
-    idle: 0,
-    muster: 0,
-    company: 0,
-    switches: 0,
-    stops: 0,
-    outcomes: {},
-    noPath: 0,
-    react: { sum: 0, n: 0, missed: 0 },
-    invalid: 0,
-    invalidWhat: {},
-    squads: { started: 0, goal: 0, retreat: 0, wiped: 0 },
-    hunts: { started: 0 },
-    social: { escort: 0, aid: 0, yield: 0, calm: 0, bond: 0 }
-  });
-  var REACT = /* @__PURE__ */ new Set(["fight", "runHome", "flee"]);
-  var THINK = 15;
-  function bad(w, what) {
-    const b = w.behave;
-    b.invalid++;
-    b.invalidWhat[what] = (b.invalidWhat[what] || 0) + 1;
-  }
-  function sampleBehaviour(w) {
-    const b = w.behave || (w.behave = newBehaviour());
-    for (const a of w.agents) {
-      if (a.dead || a.gone) continue;
-      if (!(a.x >= 0 && a.y >= 0 && a.x < w.w && a.y < w.h)) {
-        bad(w, "\u0437\u0430 \u043A\u0430\u0440\u0442\u043E\u0439");
-        continue;
-      }
-      if (!walkable(w, (a.y | 0) * w.w + (a.x | 0))) bad(w, "\u0432 \u0441\u043A\u0430\u043B\u0435 \u0438\u043B\u0438 \u0432\u043E\u0434\u0435");
-    }
-    for (const a of colonists(w)) {
-      b.ticks++;
-      const t = a.task?.id;
-      if (!t || t === "idle") b.idle++;
-      if (t === "muster") b.muster++;
-      if (t === "company" || t === "aid") b.company = (b.company || 0) + 1;
-      if (a.carry && a.carry.n !== Object.values(a.carry.res).reduce((s, v) => s + v, 0)) bad(w, "\u0433\u0440\u0443\u0437 \u043D\u0435 \u0441\u0445\u043E\u0434\u0438\u0442\u0441\u044F");
-      const attacked = w.agents.some((o) => o.task?.id === "maul" && o.task.target === a && !o.dead);
-      if (attacked && a.attackedAt == null) a.attackedAt = w.tick;
-      if (a.attackedAt != null && REACT.has(t)) {
-        b.react.sum += w.tick - a.attackedAt;
-        b.react.n++;
-        a.attackedAt = null;
-      } else if (a.attackedAt != null && !attacked) {
-        if (w.tick - a.attackedAt > THINK) b.react.missed++;
-        a.attackedAt = null;
-      }
-    }
-  }
-
-  // src/data/presets.js
-  var presets_exports = {};
-  __export(presets_exports, {
-    CLIMATES: () => CLIMATES,
-    DEFAULT_CFG: () => DEFAULT_CFG,
-    LEVELS3: () => LEVELS3,
-    PREDATORS: () => PREDATORS,
-    RAIDS: () => RAIDS,
-    SIZES: () => SIZES,
-    START: () => START,
-    STOCKS: () => STOCKS,
-    WILDLIFE: () => WILDLIFE
-  });
-  var SIZES = {
-    small: { w: 96, h: 72, label: "\u041C\u0430\u043B\u044B\u0439", note: "96 \xD7 72, \u0431\u044B\u0441\u0442\u0440\u044B\u0439" },
-    medium: { w: 128, h: 96, label: "\u0421\u0440\u0435\u0434\u043D\u0438\u0439", note: "128 \xD7 96" },
-    large: { w: 192, h: 144, label: "\u0411\u043E\u043B\u044C\u0448\u043E\u0439", note: "192 \xD7 144" },
-    huge: { w: 256, h: 192, label: "\u041E\u0433\u0440\u043E\u043C\u043D\u044B\u0439", note: "256 \xD7 192, \u0442\u044F\u0436\u0435\u043B\u0435\u0435 \u0434\u043B\u044F \u043D\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438" }
-  };
-  var CLIMATES = {
-    cold: { label: "\u0425\u043E\u043B\u043E\u0434\u043D\u044B\u0439", note: "\u043D\u043E\u0447\u0438 \u0443 \u043D\u0443\u043B\u044F, \u0441\u043D\u0435\u0433 \u0442\u0440\u0438 \u0441\u0435\u0437\u043E\u043D\u0430 \u0438\u0437 \u0447\u0435\u0442\u044B\u0440\u0451\u0445, \u043A\u043E\u0441\u0442\u0451\u0440 \u043D\u0443\u0436\u0435\u043D \u0432\u0441\u0435\u0433\u0434\u0430, \u0447\u0430\u0441\u0442\u043E \u0434\u043E\u0436\u0434\u0438", meanT: 0, trange: 22, ign: 25, regrow: 0.7, rain: 0.5 },
-    temperate: { label: "\u0423\u043C\u0435\u0440\u0435\u043D\u043D\u044B\u0439", note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u0434\u043D\u0438, \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u044B\u0435 \u043D\u043E\u0447\u0438, \u0441\u043D\u0435\u0436\u043D\u0430\u044F \u0437\u0438\u043C\u0430, \u0434\u043E\u0436\u0434\u0438 \u0447\u0435\u0440\u0435\u0437 \u0434\u0435\u043D\u044C-\u0434\u0432\u0430", meanT: 7, trange: 20, ign: 0, regrow: 1, rain: 0.4 },
-    dry: { label: "\u0417\u0430\u0441\u0443\u0448\u043B\u0438\u0432\u044B\u0439", note: "\u0436\u0430\u0440\u043A\u043E, \u0434\u043E\u0436\u0434\u0438 \u0440\u0435\u0434\u043A\u0438, \u0437\u0438\u043C\u0430 \u0431\u0435\u0437 \u0441\u043D\u0435\u0433\u0430, \u043B\u0435\u0441 \u0432\u0441\u043F\u044B\u0445\u0438\u0432\u0430\u0435\u0442 \u043B\u0435\u0433\u0447\u0435", meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22 }
-  };
-  var START = {
-    spring: { label: "\u0412\u0435\u0441\u043D\u0430", day: 0, stock: 1 },
-    summer: { label: "\u041B\u0435\u0442\u043E", day: 30, stock: 1 },
-    autumn: { label: "\u041E\u0441\u0435\u043D\u044C", day: 60, stock: 1.6, perHead: { jerky: 3, wood: 2 } },
-    winter: { label: "\u0417\u0438\u043C\u0430", day: 90, stock: 2, clothes: 1, perHead: { jerky: 8, driedFish: 4, wood: 5 } }
-  };
-  var LEVELS3 = ["\u043C\u0430\u043B\u043E", "\u043E\u0431\u044B\u0447\u043D\u043E", "\u043C\u043D\u043E\u0433\u043E"];
-  var STOCKS = {
-    poor: { label: "\u0421\u043A\u0443\u0434\u043D\u044B\u0435", stock: { berries: 8, wood: 6 }, clothes: 0.5, kit: ["sling", "club"] },
-    normal: { label: "\u041E\u0431\u044B\u0447\u043D\u044B\u0435", stock: { berries: 22, wood: 16, bone: 2, hide: 2 }, clothes: 1, kit: ["sling", "sling", "club", "spear"] },
-    rich: {
-      label: "\u0429\u0435\u0434\u0440\u044B\u0435",
-      stock: { berries: 45, wood: 35, bone: 6, hide: 4, leather: 2, arrows: 15 },
-      clothes: 1,
-      kit: ["bow", "quiver", "sling", "spear", "shield", "axe", "club"]
-    }
-  };
-  var RAIDS = {
-    off: { label: "\u041D\u0435\u0442", dist: null },
-    rare: { label: "\u0420\u0435\u0434\u043A\u0438\u0435", dist: 6, chance: 0.6 },
-    often: { label: "\u0427\u0430\u0441\u0442\u044B\u0435", dist: 3, chance: 0.6 }
-  };
-  var WILDLIFE = {
-    none: { label: "\u041D\u0435\u0442", hares: 0 },
-    few: { label: "\u041C\u0430\u043B\u043E", hares: 0.5 },
-    many: { label: "\u041C\u043D\u043E\u0433\u043E", hares: 1.2 }
-  };
-  var PREDATORS = {
-    none: { label: "\u041D\u0435\u0442", wolves: 0 },
-    few: { label: "\u0420\u0435\u0434\u043A\u043E", wolves: 0.5 },
-    many: { label: "\u0421\u0442\u0430\u0438", wolves: 1 }
-  };
-  var DEFAULT_CFG = {
-    name: "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434",
-    seed: "20261010",
-    size: "medium",
-    water: 1,
-    forest: 1,
-    rock: 1,
-    climate: "temperate",
-    start: "spring",
-    colonists: 8,
-    stock: "normal",
-    raids: "off",
-    wildlife: "few",
-    predators: "few",
-    lightning: false,
-    windDir: 20,
-    windStr: 35
-  };
-
-  // src/world/site.js
-  var WATER = [0.07, 0.12, 0.2];
-  var ROCK = [0.08, 0.13, 0.2];
-  var TREES = [0.75, 1, 1.25];
-  var MOUNTAIN = ["foothills", "highlands", "underground", "volcano"];
-  function makeSite(cfg) {
-    const { w, h } = SIZES[cfg.size], region2 = rollRegion(cfg.seed);
-    const biomes2 = {};
-    for (const [id, v] of Object.entries(region2.biomes)) if (BIOMES.has(id) && v > 0) biomes2[id] = v;
-    const share2 = (id) => biomes2[id] || 0;
-    const mountains = MOUNTAIN.reduce((s, id) => s + share2(id), 0);
-    const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share2("water")), 0.02, 0.45);
-    const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
-    const climate = { id: cfg.climate, ...CLIMATES[cfg.climate] };
-    const gates = rollGates(cfg.seed, region2);
-    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0, gates };
-  }
-  var SIDES = ["north", "east", "south", "west"];
-  var SIDE_FROM = { north: "\u0441\u0435\u0432\u0435\u0440\u0430", east: "\u0432\u043E\u0441\u0442\u043E\u043A\u0430", south: "\u044E\u0433\u0430", west: "\u0437\u0430\u043F\u0430\u0434\u0430" };
-  function rollGates(seed, region2) {
-    const rnd = mulberry(seedNumber(String(seed) + ":gates"));
-    const roads = region2.road >= 1.1 ? 2 : region2.road >= 0.8 ? 1 : 0;
-    const gates = [], first = rnd() * 4 | 0;
-    for (let k = 0; k < roads; k++) gates.push({ kind: "road", side: SIDES[(first + 2 * k) % 4], at: 0.2 + rnd() * 0.6 });
-    if (rnd() < (region2.river || 0)) {
-      const a = rnd() * 4 | 0, across = rnd() < 0.7, b = (a + (across ? 2 : 1)) % 4, wide = (region2.river || 0) >= 1;
-      const far = [[0.1, 0.45], [0.55, 0.9]];
-      const AWAY = { 0: [0, 1], 1: [0, 0], 2: [1, 0], 3: [1, 1] }[a];
-      const at = (k) => across ? 0.15 + rnd() * 0.7 : far[AWAY[k]][0] + rnd() * (far[AWAY[k]][1] - far[AWAY[k]][0]);
-      gates.push({ kind: "river", role: "source", side: SIDES[a], at: at(0), wide }, { kind: "river", role: "mouth", side: SIDES[b], at: at(1), wide });
-    }
-    return gates;
-  }
-  function paintOrder(site) {
-    return Object.entries(site.biomes).map(([id, v]) => [BIOMES.get(id), v]).filter(([b]) => b.id !== "water").sort((a, b) => a[0].dry - b[0].dry || a[0].id.localeCompare(b[0].id));
-  }
-
-  // src/nav/astar.js
-  var ROCK2 = T.ROCK;
-  var SQRT2 = Math.SQRT2;
-  function buffers(w) {
-    if (w.astar) return w.astar;
-    const n = w.n;
-    return w.astar = {
-      g: new Float32Array(n),
-      seen: new Int32Array(n),
-      closed: new Int32Array(n),
-      parent: new Int32Array(n),
-      heapI: new Int32Array(n * 8),
-      heapF: new Float32Array(n * 8),
-      stamp: 0
-    };
-  }
-  function walkLine(w, x0, y0, x1, y1, visit) {
-    let cx = Math.floor(x0), cy = Math.floor(y0);
-    const ex = Math.floor(x1), ey = Math.floor(y1), dx = x1 - x0, dy = y1 - y0;
-    const inside2 = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
-    if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
-    const sx = Math.sign(dx), sy = Math.sign(dy);
-    const tdx = dx ? Math.abs(1 / dx) : Infinity, tdy = dy ? Math.abs(1 / dy) : Infinity;
-    let tx2 = dx ? (sx > 0 ? cx + 1 - x0 : x0 - cx) * tdx : Infinity;
-    let ty = dy ? (sy > 0 ? cy + 1 - y0 : y0 - cy) * tdy : Infinity;
-    for (let guard = 0; (cx !== ex || cy !== ey) && guard < 4 * (w.w + w.h); guard++) {
-      if (Math.abs(tx2 - ty) < 1e-9) {
-        if (!inside2(cx + sx, cy) || !visit(cy * w.w + cx + sx)) return false;
-        if (!inside2(cx, cy + sy) || !visit((cy + sy) * w.w + cx)) return false;
-        cx += sx;
-        cy += sy;
-        tx2 += tdx;
-        ty += tdy;
-      } else if (tx2 < ty) {
-        cx += sx;
-        tx2 += tdx;
-      } else {
-        cy += sy;
-        ty += tdy;
-      }
-      if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
-    }
-    return true;
-  }
-  var clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => WALKABLE[w.grid.terr[i]] === 1);
-  var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK2);
-  function findPath(w, sx, sy, gx, gy, budget = 6e3) {
-    const W = w.w, H2 = w.h, terr = w.grid.terr, b = buffers(w);
-    const start2 = (sy | 0) * W + (sx | 0);
-    let goal = (gy | 0) * W + (gx | 0);
-    if (!WALKABLE[terr[goal]]) {
-      let best = -1, bd = Infinity;
-      const x = gx | 0, y = gy | 0;
-      for (let k = 0; k < 8; k++) {
-        const nx = x + DX[k], ny = y + DY[k];
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
-        const j = ny * W + nx;
-        if (WALKABLE[terr[j]] && k < bd) {
-          bd = k;
-          best = j;
-        }
-      }
-      if (best < 0) return null;
-      goal = best;
-    }
-    if (start2 === goal) return [];
-    const stamp = ++b.stamp, { g: g3, seen, closed, parent, heapI, heapF } = b;
-    const gxC = goal % W, gyC = goal / W | 0;
-    const h = (i) => {
-      const dx = Math.abs(i % W - gxC), dy = Math.abs((i / W | 0) - gyC);
-      return dx + dy + (SQRT2 - 2) * Math.min(dx, dy);
-    };
-    let hn = 0;
-    const push = (i, f) => {
-      let k = hn++;
-      while (k > 0) {
-        const p = k - 1 >> 1;
-        if (heapF[p] <= f) break;
-        heapI[k] = heapI[p];
-        heapF[k] = heapF[p];
-        k = p;
-      }
-      heapI[k] = i;
-      heapF[k] = f;
-    };
-    seen[start2] = stamp;
-    g3[start2] = 0;
-    parent[start2] = -1;
-    push(start2, h(start2));
-    let expanded = 0;
-    while (hn > 0) {
-      const i = heapI[0];
-      hn--;
-      const li = heapI[hn], lf = heapF[hn];
-      let k = 0;
-      for (; ; ) {
-        let c = 2 * k + 1;
-        if (c >= hn) break;
-        if (c + 1 < hn && heapF[c + 1] < heapF[c]) c++;
-        if (heapF[c] >= lf) break;
-        heapI[k] = heapI[c];
-        heapF[k] = heapF[c];
-        k = c;
-      }
-      heapI[k] = li;
-      heapF[k] = lf;
-      if (closed[i] === stamp) continue;
-      closed[i] = stamp;
-      if (i === goal) {
-        const path = [];
-        for (let c = goal; c !== start2; c = parent[c]) path.push(c);
-        return path.reverse();
-      }
-      if (++expanded > budget || hn >= heapI.length - 8) return null;
-      const x = i % W, y = i / W | 0, gi = g3[i];
-      for (let q = 0; q < 8; q++) {
-        const nx = x + DX[q], ny = y + DY[q];
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
-        const j = ny * W + nx;
-        if (!WALKABLE[terr[j]]) continue;
-        if (q >= 4 && (!WALKABLE[terr[y * W + nx]] || !WALKABLE[terr[ny * W + x]])) continue;
-        const ng = gi + BY_CODE[terr[j]].pathCost * (q >= 4 ? SQRT2 : 1);
-        if (seen[j] === stamp && ng >= g3[j]) continue;
-        seen[j] = stamp;
-        g3[j] = ng;
-        parent[j] = i;
-        push(j, ng + h(j));
-      }
-    }
-    return null;
-  }
-
   // src/data/buildings.js
   var penRoom = (w) => w.buildings.reduce((s, b) => s + (b.done && b.key === "pen" ? 6 : 0), 0) - w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.space : 0), 0);
   var BUILDINGS = new Registry("building");
@@ -4739,6 +4441,446 @@ dd.q4{color:#c58cff;font-weight:600}
       motive: (a) => [[a.mem.wolf * 1.2 + a.mem.raid * 0.8, "\u0445\u043E\u0447\u0435\u0442 \u0432\u0438\u0434\u0435\u0442\u044C \u043E\u043F\u0430\u0441\u043D\u043E\u0441\u0442\u044C \u0438\u0437\u0434\u0430\u043B\u0435\u043A\u0430"]]
     }
   ]);
+
+  // src/settlement/mods.js
+  function emptyMods() {
+    return {
+      add: { beds: 0, popCap: 0, coolCamp: 0, huntRange: 0, bedWarmth: 0 },
+      mul: { spoil: 1, defense: 1, loot: 1, douse: 1, wear: 1 },
+      yield: {},
+      jobSpeed: {},
+      toolWear: {},
+      best: {}
+    };
+  }
+  function merge(m, e) {
+    for (const [k, v] of Object.entries(e.add || {})) m.add[k] = (m.add[k] || 0) + v;
+    for (const [k, v] of Object.entries(e.mul || {})) m.mul[k] = (m.mul[k] ?? 1) * v;
+    for (const [k, v] of Object.entries(e.yield || {})) m.yield[k] = (m.yield[k] ?? 1) * v;
+    for (const [k, v] of Object.entries(e.jobSpeed || {})) m.jobSpeed[k] = (m.jobSpeed[k] ?? 1) * v;
+    for (const [k, v] of Object.entries(e.toolWear || {})) m.toolWear[k] = (m.toolWear[k] ?? 1) * v;
+    for (const [k, v] of Object.entries(e.best || {})) m.best[k] = Math.max(m.best[k] ?? 1, v);
+  }
+  function recomputeMods(w) {
+    const m = emptyMods();
+    for (const b of w.buildings) if (b.done) merge(m, BUILDINGS.get(b.key).effects || {});
+    const tame = {};
+    for (const a of w.agents) if (a.tame && !a.dead) tame[a.species] = (tame[a.species] || 0) + 1;
+    for (const [sp, n] of Object.entries(tame)) {
+      const T2 = SPECIES.get(sp).tame;
+      if (T2.effects) for (let k = 0; k < Math.min(n, T2.stack || 1); k++) merge(m, T2.effects);
+    }
+    for (const r of RESOURCES.filter((x) => x.effects)) if ((w.stock[r.id] || 0) >= 1 && (!r.with || tame[r.with])) merge(m, r.effects);
+    w.mods = m;
+  }
+  var yieldOf = (w, res) => w.mods.yield[res] ?? 1;
+  var jobSpeedOf = (w, job) => w.mods.jobSpeed[job] ?? 1;
+
+  // src/settlement/stock.js
+  var foods = () => RESOURCES.filter((r) => r.tags.includes("food"));
+  function deposit(w, res, amount) {
+    w.stock[res] = (w.stock[res] || 0) + amount * yieldOf(w, res);
+  }
+  function chooseMeal(w, a) {
+    const likes = a?.food?.likes, dislikes = a?.food?.dislikes;
+    let best = null, bv = -Infinity;
+    for (const r of foods()) {
+      const have = w.stock[r.id] || 0;
+      if (have < 1) continue;
+      const f = FOODS.get(r.id), t = tasteOf(f);
+      const v = (t === likes ? 10 - (f.of ? 1 : 0) : 0) - (t === dislikes ? 1e6 : 0) + (f.dish ? 6 : 0) + f.spoil * 2 + Math.min(1, have / 20);
+      if (v > bv) {
+        bv = v;
+        best = r;
+      }
+    }
+    return best;
+  }
+  function eatMeal(w, a) {
+    const best = chooseMeal(w, a);
+    if (!best) return { fed: 0, res: null, mood: null };
+    w.stock[best.id] -= 1;
+    const t = tasteOf(FOODS.get(best.id));
+    const mood = a?.food?.likes === t ? "liked" : a?.food?.dislikes === t ? "disliked" : null;
+    return { fed: best.nutrition, res: best, mood };
+  }
+  var cf;
+  var sf;
+  var campFuels = () => cf || (cf = RESOURCES.filter((r) => r.tags.includes("fuel")).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
+  function campFuel(w) {
+    return campFuels().find((r) => (w.stock[r.id] || 0) > 0.05) || null;
+  }
+  function burnCampFuel(w, amount) {
+    const r = campFuel(w);
+    if (!r) return false;
+    w.stock[r.id] = Math.max(0, w.stock[r.id] - amount / (r.heat || 1));
+    return true;
+  }
+  var FURNACE = { bellows: 0.75, bellowsWork: 1.25, bellowsFine: 0.05, coalSpare: 6 };
+  var furnaceFuels = () => sf || (sf = RESOURCES.filter((r) => r.furnace).sort((x, y) => x.furnace.tier - y.furnace.tier));
+  var fuelNeed = (w, units) => units * ((w.stock.bellows || 0) >= 1 ? FURNACE.bellows : 1);
+  function furnacePick(w, heat, units, woodReserve = 0) {
+    const need = fuelNeed(w, units);
+    const ok = furnaceFuels().filter((r) => r.furnace.tier >= heat);
+    const coal = ok.find((r) => r.furnace.tier >= 2), wood = ok.find((r) => r.furnace.tier < 2);
+    const have = (r) => (w.stock[r.id] || 0) - (r === wood ? woodReserve : 0);
+    if (coal && have(coal) >= need * coal.furnace.per + (wood ? FURNACE.coalSpare : 0)) return [coal, need * coal.furnace.per];
+    if (wood && have(wood) >= need * wood.furnace.per) return [wood, need * wood.furnace.per];
+    if (coal && have(coal) >= need * coal.furnace.per) return [coal, need * coal.furnace.per];
+    return null;
+  }
+  var furnaceHeat = (w, heat = 2) => furnaceFuels().filter((r) => r.furnace.tier >= heat).reduce((s, r) => s + (w.stock[r.id] || 0) / r.furnace.per, 0);
+  var POT_HOLDS = 6;
+  function potShare(w) {
+    let food = 0;
+    for (const r of foods()) food += w.stock[r.id] || 0;
+    return food <= 0 ? 1 : Math.min(1, (w.stock.pots || 0) * POT_HOLDS / food);
+  }
+  var exposedShare = (w) => (1 - potShare(w)) * (w.buildings.some((b) => b.key === "granary" && b.done) ? 0.5 : 1);
+  function nibble(w, amount) {
+    const open = exposedShare(w);
+    if (open <= 0) return;
+    let best = null;
+    for (const r of foods()) if ((w.stock[r.id] || 0) >= 1 && (!best || w.stock[r.id] > w.stock[best.id])) best = r;
+    if (!best) return;
+    const lost = Math.min(w.stock[best.id], amount * open);
+    w.stock[best.id] -= lost;
+    w.stats.ratsAte = (w.stats.ratsAte || 0) + lost;
+  }
+  function spoil(w) {
+    const S = season(w), sealed = 1 - 0.6 * potShare(w);
+    for (const r of foods()) {
+      const lost = w.stock[r.id] * 15e-5 * r.spoil * w.mods.mul.spoil * S.spoil * sealed;
+      w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
+      w.stats.spoiledToday += lost;
+    }
+  }
+  function burnStock(w, frac) {
+    for (const r of RESOURCES.all()) w.stock[r.id] = Math.max(0, w.stock[r.id] * (1 - frac));
+  }
+  function plunder(w) {
+    let total = 0;
+    const chest = w.buildings.some((b) => b.done && b.furniture?.includes("chest")) ? 0.4 : 1;
+    for (const r of RESOURCES.all()) {
+      const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot * (r.money ? chest : 1));
+      w.stock[r.id] -= take;
+      total += take;
+    }
+    return total;
+  }
+
+  // src/settlement/behaviour.js
+  var newBehaviour = () => ({
+    ticks: 0,
+    idle: 0,
+    muster: 0,
+    company: 0,
+    switches: 0,
+    stops: 0,
+    outcomes: {},
+    noPath: 0,
+    react: { sum: 0, n: 0, missed: 0 },
+    invalid: 0,
+    invalidWhat: {},
+    crowd: 0,
+    crowdTicks: 0,
+    nightTicks: 0,
+    fireless: 0,
+    squads: { started: 0, goal: 0, retreat: 0, wiped: 0 },
+    hunts: { started: 0 },
+    social: { escort: 0, aid: 0, yield: 0, calm: 0, bond: 0 }
+  });
+  var REACT = /* @__PURE__ */ new Set(["fight", "runHome", "flee"]);
+  var THINK = 15;
+  function bad(w, what) {
+    const b = w.behave;
+    b.invalid++;
+    b.invalidWhat[what] = (b.invalidWhat[what] || 0) + 1;
+  }
+  function sampleBehaviour(w) {
+    const b = w.behave || (w.behave = newBehaviour());
+    for (const a of w.agents) {
+      if (a.dead || a.gone) continue;
+      if (!(a.x >= 0 && a.y >= 0 && a.x < w.w && a.y < w.h)) {
+        bad(w, "\u0437\u0430 \u043A\u0430\u0440\u0442\u043E\u0439");
+        continue;
+      }
+      if (!walkable(w, (a.y | 0) * w.w + (a.x | 0))) bad(w, "\u0432 \u0441\u043A\u0430\u043B\u0435 \u0438\u043B\u0438 \u0432\u043E\u0434\u0435");
+    }
+    const col = colonists(w), onJob = {};
+    for (const a of col) if (a.task?.id === "job") onJob[a.task.job] = (onJob[a.task.job] || 0) + 1;
+    const busy2 = Object.values(onJob).reduce((s, v) => s + v, 0);
+    if (busy2 >= 3) {
+      b.crowd = (b.crowd || 0) + Math.max(...Object.values(onJob)) / busy2;
+      b.crowdTicks = (b.crowdTicks || 0) + 1;
+    }
+    if (nightness(w.tick) > 0.3 && col.length) {
+      b.nightTicks = (b.nightTicks || 0) + 1;
+      if (!campFuel(w)) b.fireless = (b.fireless || 0) + 1;
+    }
+    for (const a of col) {
+      b.ticks++;
+      const t = a.task?.id;
+      if (!t || t === "idle") b.idle++;
+      if (t === "muster") b.muster++;
+      if (t === "company" || t === "aid") b.company = (b.company || 0) + 1;
+      if (a.carry && a.carry.n !== Object.values(a.carry.res).reduce((s, v) => s + v, 0)) bad(w, "\u0433\u0440\u0443\u0437 \u043D\u0435 \u0441\u0445\u043E\u0434\u0438\u0442\u0441\u044F");
+      const attacked = w.agents.some((o) => o.task?.id === "maul" && o.task.target === a && !o.dead);
+      if (attacked && a.attackedAt == null) a.attackedAt = w.tick;
+      if (a.attackedAt != null && REACT.has(t)) {
+        b.react.sum += w.tick - a.attackedAt;
+        b.react.n++;
+        a.attackedAt = null;
+      } else if (a.attackedAt != null && !attacked) {
+        if (w.tick - a.attackedAt > THINK) b.react.missed++;
+        a.attackedAt = null;
+      }
+    }
+  }
+
+  // src/data/presets.js
+  var presets_exports = {};
+  __export(presets_exports, {
+    CLIMATES: () => CLIMATES,
+    DEFAULT_CFG: () => DEFAULT_CFG,
+    LEVELS3: () => LEVELS3,
+    PREDATORS: () => PREDATORS,
+    RAIDS: () => RAIDS,
+    SIZES: () => SIZES,
+    START: () => START,
+    STOCKS: () => STOCKS,
+    WILDLIFE: () => WILDLIFE
+  });
+  var SIZES = {
+    small: { w: 96, h: 72, label: "\u041C\u0430\u043B\u044B\u0439", note: "96 \xD7 72, \u0431\u044B\u0441\u0442\u0440\u044B\u0439" },
+    medium: { w: 128, h: 96, label: "\u0421\u0440\u0435\u0434\u043D\u0438\u0439", note: "128 \xD7 96" },
+    large: { w: 192, h: 144, label: "\u0411\u043E\u043B\u044C\u0448\u043E\u0439", note: "192 \xD7 144" },
+    huge: { w: 256, h: 192, label: "\u041E\u0433\u0440\u043E\u043C\u043D\u044B\u0439", note: "256 \xD7 192, \u0442\u044F\u0436\u0435\u043B\u0435\u0435 \u0434\u043B\u044F \u043D\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438" }
+  };
+  var CLIMATES = {
+    cold: { label: "\u0425\u043E\u043B\u043E\u0434\u043D\u044B\u0439", note: "\u043D\u043E\u0447\u0438 \u0443 \u043D\u0443\u043B\u044F, \u0441\u043D\u0435\u0433 \u0442\u0440\u0438 \u0441\u0435\u0437\u043E\u043D\u0430 \u0438\u0437 \u0447\u0435\u0442\u044B\u0440\u0451\u0445, \u043A\u043E\u0441\u0442\u0451\u0440 \u043D\u0443\u0436\u0435\u043D \u0432\u0441\u0435\u0433\u0434\u0430, \u0447\u0430\u0441\u0442\u043E \u0434\u043E\u0436\u0434\u0438", meanT: 0, trange: 22, ign: 25, regrow: 0.7, rain: 0.5 },
+    temperate: { label: "\u0423\u043C\u0435\u0440\u0435\u043D\u043D\u044B\u0439", note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u0434\u043D\u0438, \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u044B\u0435 \u043D\u043E\u0447\u0438, \u0441\u043D\u0435\u0436\u043D\u0430\u044F \u0437\u0438\u043C\u0430, \u0434\u043E\u0436\u0434\u0438 \u0447\u0435\u0440\u0435\u0437 \u0434\u0435\u043D\u044C-\u0434\u0432\u0430", meanT: 7, trange: 20, ign: 0, regrow: 1, rain: 0.4 },
+    dry: { label: "\u0417\u0430\u0441\u0443\u0448\u043B\u0438\u0432\u044B\u0439", note: "\u0436\u0430\u0440\u043A\u043E, \u0434\u043E\u0436\u0434\u0438 \u0440\u0435\u0434\u043A\u0438, \u0437\u0438\u043C\u0430 \u0431\u0435\u0437 \u0441\u043D\u0435\u0433\u0430, \u043B\u0435\u0441 \u0432\u0441\u043F\u044B\u0445\u0438\u0432\u0430\u0435\u0442 \u043B\u0435\u0433\u0447\u0435", meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22 }
+  };
+  var START = {
+    spring: { label: "\u0412\u0435\u0441\u043D\u0430", day: 0, stock: 1 },
+    summer: { label: "\u041B\u0435\u0442\u043E", day: 30, stock: 1 },
+    autumn: { label: "\u041E\u0441\u0435\u043D\u044C", day: 60, stock: 1.6, perHead: { jerky: 3, wood: 2 } },
+    winter: { label: "\u0417\u0438\u043C\u0430", day: 90, stock: 2, clothes: 1, perHead: { jerky: 8, driedFish: 4, wood: 5 } }
+  };
+  var LEVELS3 = ["\u043C\u0430\u043B\u043E", "\u043E\u0431\u044B\u0447\u043D\u043E", "\u043C\u043D\u043E\u0433\u043E"];
+  var STOCKS = {
+    poor: { label: "\u0421\u043A\u0443\u0434\u043D\u044B\u0435", stock: { berries: 8, wood: 6 }, clothes: 0.5, kit: ["sling", "club"] },
+    normal: { label: "\u041E\u0431\u044B\u0447\u043D\u044B\u0435", stock: { berries: 22, wood: 16, bone: 2, hide: 2 }, clothes: 1, kit: ["sling", "sling", "club", "spear"] },
+    rich: {
+      label: "\u0429\u0435\u0434\u0440\u044B\u0435",
+      stock: { berries: 45, wood: 35, bone: 6, hide: 4, leather: 2, arrows: 15 },
+      clothes: 1,
+      kit: ["bow", "quiver", "sling", "spear", "shield", "axe", "club"]
+    }
+  };
+  var RAIDS = {
+    off: { label: "\u041D\u0435\u0442", dist: null },
+    rare: { label: "\u0420\u0435\u0434\u043A\u0438\u0435", dist: 6, chance: 0.6 },
+    often: { label: "\u0427\u0430\u0441\u0442\u044B\u0435", dist: 3, chance: 0.6 }
+  };
+  var WILDLIFE = {
+    none: { label: "\u041D\u0435\u0442", hares: 0 },
+    few: { label: "\u041C\u0430\u043B\u043E", hares: 0.5 },
+    many: { label: "\u041C\u043D\u043E\u0433\u043E", hares: 1.2 }
+  };
+  var PREDATORS = {
+    none: { label: "\u041D\u0435\u0442", wolves: 0 },
+    few: { label: "\u0420\u0435\u0434\u043A\u043E", wolves: 0.5 },
+    many: { label: "\u0421\u0442\u0430\u0438", wolves: 1 }
+  };
+  var DEFAULT_CFG = {
+    name: "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434",
+    seed: "20261010",
+    size: "medium",
+    water: 1,
+    forest: 1,
+    rock: 1,
+    climate: "temperate",
+    start: "spring",
+    colonists: 8,
+    stock: "normal",
+    raids: "off",
+    wildlife: "few",
+    predators: "few",
+    lightning: false,
+    windDir: 20,
+    windStr: 35
+  };
+
+  // src/world/site.js
+  var WATER = [0.07, 0.12, 0.2];
+  var ROCK = [0.08, 0.13, 0.2];
+  var TREES = [0.75, 1, 1.25];
+  var MOUNTAIN = ["foothills", "highlands", "underground", "volcano"];
+  function makeSite(cfg) {
+    const { w, h } = SIZES[cfg.size], region2 = rollRegion(cfg.seed);
+    const biomes2 = {};
+    for (const [id, v] of Object.entries(region2.biomes)) if (BIOMES.has(id) && v > 0) biomes2[id] = v;
+    const share2 = (id) => biomes2[id] || 0;
+    const mountains = MOUNTAIN.reduce((s, id) => s + share2(id), 0);
+    const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share2("water")), 0.02, 0.45);
+    const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
+    const climate = { id: cfg.climate, ...CLIMATES[cfg.climate] };
+    const gates = rollGates(cfg.seed, region2);
+    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0, gates };
+  }
+  var SIDES = ["north", "east", "south", "west"];
+  var SIDE_FROM = { north: "\u0441\u0435\u0432\u0435\u0440\u0430", east: "\u0432\u043E\u0441\u0442\u043E\u043A\u0430", south: "\u044E\u0433\u0430", west: "\u0437\u0430\u043F\u0430\u0434\u0430" };
+  function rollGates(seed, region2) {
+    const rnd = mulberry(seedNumber(String(seed) + ":gates"));
+    const roads = region2.road >= 1.1 ? 2 : region2.road >= 0.8 ? 1 : 0;
+    const gates = [], first = rnd() * 4 | 0;
+    for (let k = 0; k < roads; k++) gates.push({ kind: "road", side: SIDES[(first + 2 * k) % 4], at: 0.2 + rnd() * 0.6 });
+    if (rnd() < (region2.river || 0)) {
+      const a = rnd() * 4 | 0, across = rnd() < 0.7, b = (a + (across ? 2 : 1)) % 4, wide = (region2.river || 0) >= 1;
+      const far = [[0.1, 0.45], [0.55, 0.9]];
+      const AWAY = { 0: [0, 1], 1: [0, 0], 2: [1, 0], 3: [1, 1] }[a];
+      const at = (k) => across ? 0.15 + rnd() * 0.7 : far[AWAY[k]][0] + rnd() * (far[AWAY[k]][1] - far[AWAY[k]][0]);
+      gates.push({ kind: "river", role: "source", side: SIDES[a], at: at(0), wide }, { kind: "river", role: "mouth", side: SIDES[b], at: at(1), wide });
+    }
+    return gates;
+  }
+  function paintOrder(site) {
+    return Object.entries(site.biomes).map(([id, v]) => [BIOMES.get(id), v]).filter(([b]) => b.id !== "water").sort((a, b) => a[0].dry - b[0].dry || a[0].id.localeCompare(b[0].id));
+  }
+
+  // src/nav/astar.js
+  var ROCK2 = T.ROCK;
+  var SQRT2 = Math.SQRT2;
+  function buffers(w) {
+    if (w.astar) return w.astar;
+    const n = w.n;
+    return w.astar = {
+      g: new Float32Array(n),
+      seen: new Int32Array(n),
+      closed: new Int32Array(n),
+      parent: new Int32Array(n),
+      heapI: new Int32Array(n * 8),
+      heapF: new Float32Array(n * 8),
+      stamp: 0
+    };
+  }
+  function walkLine(w, x0, y0, x1, y1, visit) {
+    let cx = Math.floor(x0), cy = Math.floor(y0);
+    const ex = Math.floor(x1), ey = Math.floor(y1), dx = x1 - x0, dy = y1 - y0;
+    const inside2 = (x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
+    if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
+    const sx = Math.sign(dx), sy = Math.sign(dy);
+    const tdx = dx ? Math.abs(1 / dx) : Infinity, tdy = dy ? Math.abs(1 / dy) : Infinity;
+    let tx2 = dx ? (sx > 0 ? cx + 1 - x0 : x0 - cx) * tdx : Infinity;
+    let ty = dy ? (sy > 0 ? cy + 1 - y0 : y0 - cy) * tdy : Infinity;
+    for (let guard = 0; (cx !== ex || cy !== ey) && guard < 4 * (w.w + w.h); guard++) {
+      if (Math.abs(tx2 - ty) < 1e-9) {
+        if (!inside2(cx + sx, cy) || !visit(cy * w.w + cx + sx)) return false;
+        if (!inside2(cx, cy + sy) || !visit((cy + sy) * w.w + cx)) return false;
+        cx += sx;
+        cy += sy;
+        tx2 += tdx;
+        ty += tdy;
+      } else if (tx2 < ty) {
+        cx += sx;
+        tx2 += tdx;
+      } else {
+        cy += sy;
+        ty += tdy;
+      }
+      if (!inside2(cx, cy) || !visit(cy * w.w + cx)) return false;
+    }
+    return true;
+  }
+  var clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => WALKABLE[w.grid.terr[i]] === 1);
+  var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK2);
+  function findPath(w, sx, sy, gx, gy, budget = 6e3) {
+    const W = w.w, H2 = w.h, terr = w.grid.terr, b = buffers(w);
+    const start2 = (sy | 0) * W + (sx | 0);
+    let goal = (gy | 0) * W + (gx | 0);
+    if (!WALKABLE[terr[goal]]) {
+      let best = -1, bd = Infinity;
+      const x = gx | 0, y = gy | 0;
+      for (let k = 0; k < 8; k++) {
+        const nx = x + DX[k], ny = y + DY[k];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
+        const j = ny * W + nx;
+        if (WALKABLE[terr[j]] && k < bd) {
+          bd = k;
+          best = j;
+        }
+      }
+      if (best < 0) return null;
+      goal = best;
+    }
+    if (start2 === goal) return [];
+    const stamp = ++b.stamp, { g: g3, seen, closed, parent, heapI, heapF } = b;
+    const gxC = goal % W, gyC = goal / W | 0;
+    const h = (i) => {
+      const dx = Math.abs(i % W - gxC), dy = Math.abs((i / W | 0) - gyC);
+      return dx + dy + (SQRT2 - 2) * Math.min(dx, dy);
+    };
+    let hn = 0;
+    const push = (i, f) => {
+      let k = hn++;
+      while (k > 0) {
+        const p = k - 1 >> 1;
+        if (heapF[p] <= f) break;
+        heapI[k] = heapI[p];
+        heapF[k] = heapF[p];
+        k = p;
+      }
+      heapI[k] = i;
+      heapF[k] = f;
+    };
+    seen[start2] = stamp;
+    g3[start2] = 0;
+    parent[start2] = -1;
+    push(start2, h(start2));
+    let expanded = 0;
+    while (hn > 0) {
+      const i = heapI[0];
+      hn--;
+      const li = heapI[hn], lf = heapF[hn];
+      let k = 0;
+      for (; ; ) {
+        let c = 2 * k + 1;
+        if (c >= hn) break;
+        if (c + 1 < hn && heapF[c + 1] < heapF[c]) c++;
+        if (heapF[c] >= lf) break;
+        heapI[k] = heapI[c];
+        heapF[k] = heapF[c];
+        k = c;
+      }
+      heapI[k] = li;
+      heapF[k] = lf;
+      if (closed[i] === stamp) continue;
+      closed[i] = stamp;
+      if (i === goal) {
+        const path = [];
+        for (let c = goal; c !== start2; c = parent[c]) path.push(c);
+        return path.reverse();
+      }
+      if (++expanded > budget || hn >= heapI.length - 8) return null;
+      const x = i % W, y = i / W | 0, gi = g3[i];
+      for (let q = 0; q < 8; q++) {
+        const nx = x + DX[q], ny = y + DY[q];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
+        const j = ny * W + nx;
+        if (!WALKABLE[terr[j]]) continue;
+        if (q >= 4 && (!WALKABLE[terr[y * W + nx]] || !WALKABLE[terr[ny * W + x]])) continue;
+        const ng = gi + BY_CODE[terr[j]].pathCost * (q >= 4 ? SQRT2 : 1);
+        if (seen[j] === stamp && ng >= g3[j]) continue;
+        seen[j] = stamp;
+        g3[j] = ng;
+        parent[j] = i;
+        push(j, ng + h(j));
+      }
+    }
+    return null;
+  }
 
   // src/settlement/zone.js
   function mark(w, cx, cy, r) {
@@ -5819,40 +5961,6 @@ dd.q4{color:#c58cff;font-weight:600}
     if (w.tick % 200 || !w.reserve) return;
     for (const [k, r] of Object.entries(w.reserve)) if (!live(w, r)) delete w.reserve[k];
   }
-
-  // src/settlement/mods.js
-  function emptyMods() {
-    return {
-      add: { beds: 0, popCap: 0, coolCamp: 0, huntRange: 0, bedWarmth: 0 },
-      mul: { spoil: 1, defense: 1, loot: 1, douse: 1, wear: 1 },
-      yield: {},
-      jobSpeed: {},
-      toolWear: {},
-      best: {}
-    };
-  }
-  function merge(m, e) {
-    for (const [k, v] of Object.entries(e.add || {})) m.add[k] = (m.add[k] || 0) + v;
-    for (const [k, v] of Object.entries(e.mul || {})) m.mul[k] = (m.mul[k] ?? 1) * v;
-    for (const [k, v] of Object.entries(e.yield || {})) m.yield[k] = (m.yield[k] ?? 1) * v;
-    for (const [k, v] of Object.entries(e.jobSpeed || {})) m.jobSpeed[k] = (m.jobSpeed[k] ?? 1) * v;
-    for (const [k, v] of Object.entries(e.toolWear || {})) m.toolWear[k] = (m.toolWear[k] ?? 1) * v;
-    for (const [k, v] of Object.entries(e.best || {})) m.best[k] = Math.max(m.best[k] ?? 1, v);
-  }
-  function recomputeMods(w) {
-    const m = emptyMods();
-    for (const b of w.buildings) if (b.done) merge(m, BUILDINGS.get(b.key).effects || {});
-    const tame = {};
-    for (const a of w.agents) if (a.tame && !a.dead) tame[a.species] = (tame[a.species] || 0) + 1;
-    for (const [sp, n] of Object.entries(tame)) {
-      const T2 = SPECIES.get(sp).tame;
-      if (T2.effects) for (let k = 0; k < Math.min(n, T2.stack || 1); k++) merge(m, T2.effects);
-    }
-    for (const r of RESOURCES.filter((x) => x.effects)) if ((w.stock[r.id] || 0) >= 1 && (!r.with || tame[r.with])) merge(m, r.effects);
-    w.mods = m;
-  }
-  var yieldOf = (w, res) => w.mods.yield[res] ?? 1;
-  var jobSpeedOf = (w, job) => w.mods.jobSpeed[job] ?? 1;
 
   // src/data/thoughts.js
   var THOUGHTS = new Registry("thought");
@@ -9511,6 +9619,875 @@ dd.q4{color:#c58cff;font-weight:600}
     return out;
   }
 
+  // src/settlement/healing.js
+  var HEAL = {
+    seekBelow: 0.75,
+    // a colonist this hurt (share of health) goes to the healer's hut…
+    until: 0.97,
+    // …and stays until healed this far
+    rate: 22e-4,
+    // health per tick a patient gets from a healer working at speed 1
+    noHerbs: 0.4,
+    // without herbs the healer manages this share of it
+    perHerb: 0.35
+    // health healed per herb used
+  };
+  var hurt = (a) => a.hp < maxHp(a) * HEAL.seekBelow;
+  var hutOf = (w) => w.buildings.find((b) => b.key === "healerhut" && b.done);
+  var bedsOf = () => BUILDINGS.get("healerhut").beds || 2;
+  var freeBed = (w, a) => {
+    const b = hutOf(w);
+    return b ? freeSlot(w, "bed:" + b.id, bedsOf(), a) : null;
+  };
+  var patients = (w) => perTick(w, "patients", () => colonists(w).filter((a) => a.task?.id === "treat" && a.task.lying && a.task.bed));
+  var waiting = (w) => colonists(w).filter((a) => a.task?.id === "treat").length;
+  function tend(w, healer, rate) {
+    const ps = patients(w);
+    if (!ps.length) return 0;
+    let given = 0;
+    for (const p of ps) {
+      const herbs = (w.stock.herbs || 0) >= 1 || (w.herbCredit || 0) > 0;
+      const amount = Math.min(maxHp(p) - p.hp, HEAL.rate * rate * (herbs ? 1 : HEAL.noHerbs) / Math.max(1, ps.length * 0.6));
+      if (amount <= 0) continue;
+      p.hp += amount;
+      given += amount;
+      p.task.healer = healer.id;
+      if (herbs) {
+        w.herbCredit = (w.herbCredit || 0) - amount;
+        if (w.herbCredit <= 0 && (w.stock.herbs || 0) >= 1) {
+          w.stock.herbs -= 1;
+          w.herbCredit += HEAL.perHerb;
+        }
+      }
+    }
+    return given;
+  }
+  var healerHutCell = (w, a) => w.grid.bld[cellOf(w, a)] >= 0 && w.buildings.some((b) => b.key === "healerhut" && b.done && b.id === w.grid.bld[cellOf(w, a)]);
+
+  // src/settlement/crafting.js
+  var PRESERVED = () => FOODS.filter((f) => f.of);
+  function reserved(w, res) {
+    const g3 = w.council.goal;
+    if (!g3) return 0;
+    const v = BUILDINGS.get(g3).cost[res] || 0;
+    return v && res === "wood" ? v + fuelReserve(w) : v;
+  }
+  function canStart(w, r) {
+    if (r.needs && !r.needs.every((b) => has(w, b))) return false;
+    if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0))) return false;
+    if (r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;
+    return Object.entries(r.cost).every(([res, v]) => {
+      const have = w.stock[res] || 0;
+      return have >= v && (have - v >= reserved(w, res) || have < reserved(w, res) * 0.5);
+    });
+  }
+  var craftContext = (w) => perTick(w, "craftCtx", () => makeCraftContext(w));
+  function makeCraftContext(w) {
+    const col = colonists(w), counts = {};
+    const count2 = (it) => {
+      counts[it.type] = (counts[it.type] || 0) + 1;
+    };
+    for (const a of col) for (const it of allItems(a)) count2(it);
+    for (const it of w.armory) count2(it);
+    const owned = (id) => counts[id] || 0;
+    let silvered = 0;
+    for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
+    for (const it of w.armory) if (def(it).silver) silvered++;
+    return {
+      pop: col.length,
+      owned,
+      likes: (job) => col.filter((a) => a.likes === job).length,
+      timid: col.filter((a) => a.mods.bravery < 0.8).length,
+      stock: (res) => w.stock[res] || 0,
+      bows: owned("bow"),
+      has: (b) => has(w, b),
+      fishing: w.lakes.some(fishable),
+      food: foodTotal(w),
+      season: season(w).id,
+      drying: season(w).drying,
+      stockpile: { spring: 0.7, summer: 1, autumn: 1.6, winter: 1 }[season(w).id] ?? 1,
+      stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
+      fans: (food) => col.filter((a) => a.food?.likes === food).length,
+      get fuel() {
+        return furnaceHeat(w, 2);
+      },
+      melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
+      freeSlots: freeSlots(w),
+      silvered: () => silvered,
+      silverFoes: w.chronicle.silverFoes || 0,
+      placers: (w.plantBeds?.placer?.length || 0) > 0,
+      spare: (res) => {
+        const r = RESOURCES.get(res);
+        return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20);
+      }
+    };
+  }
+  var byStation = null;
+  function recipesAt(station) {
+    var _a;
+    if (!byStation) {
+      byStation = {};
+      for (const r of RECIPES.all()) (byStation[_a = r.at] || (byStation[_a] = [])).push(r);
+    }
+    return byStation[station] || [];
+  }
+  var melee = null;
+  var MELEE = () => melee || (melee = ITEMS.filter((d) => d.slot === "hand" && d.melee && !d.ranged));
+  var anyoneCan = (w, r) => !recipeNeed(r) || w.agents.some((a) => a.faction === "colony" && !a.dead && canMake(a, r));
+  function pickRecipe(w, station, ctx = craftContext(w), a = null) {
+    let best = null, bv = 0;
+    for (const r of recipesAt(station)) {
+      const v = r.want(ctx);
+      if (v > bv && (a ? canMake(a, r) : anyoneCan(w, r)) && canStart(w, r)) {
+        bv = v;
+        best = r;
+      }
+    }
+    return best;
+  }
+  var benchesOf = (b) => BUILDINGS.get(b.key).benches || 1;
+  var benchPrefix = (b) => "bench:" + b.id;
+  var freeBench = (w, b, a) => freeSlot(w, benchPrefix(b), benchesOf(b), a);
+  function stationHasWork(w, station, a) {
+    const map = perTick(w, "orders", () => ({}));
+    const b = w.buildings.find((x) => x.key === station && x.done);
+    if (!b || !freeBench(w, b, a)) return false;
+    const key3 = station + ":" + accessKey(a);
+    if (!(key3 in map)) map[key3] = b.order ? canMake(a, RECIPES.get(b.order.recipe)) : !!pickRecipe(w, station, void 0, a);
+    return map[key3];
+  }
+  function stationPriority(w, station, a = null) {
+    const b = w.buildings.find((x) => x.key === station && x.done);
+    if (!b) return 0;
+    const ctx = craftContext(w);
+    if (b.order) {
+      const r2 = RECIPES.get(b.order.recipe);
+      return a && !canMake(a, r2) ? 0 : r2.want(ctx) + 0.5;
+    }
+    const r = pickRecipe(w, station, ctx, a);
+    return r ? r.want(ctx) : 0;
+  }
+  function workAt(w, b, amount, a) {
+    var _a, _b;
+    if (b.order && a && !canMake(a, RECIPES.get(b.order.recipe))) return false;
+    if (!b.order) {
+      const r2 = pickRecipe(w, b.key, void 0, a);
+      if (!r2) return false;
+      const fuel = r2.fuel ? furnacePick(w, r2.heat ?? 2, r2.fuel, fuelReserve(w) + (r2.cost.wood || 0)) : null;
+      if (r2.fuel && !fuel) return false;
+      if (w.scratch) delete w.scratch.orders;
+      for (const [res, v] of Object.entries(r2.cost)) w.stock[res] -= v;
+      if (fuel) w.stock[fuel[0].id] -= fuel[1];
+      b.order = { recipe: r2.id, progress: 0 };
+      if (fuel) b.order.fuel = [fuel[0].id, fuel[1]];
+    }
+    const r = RECIPES.get(b.order.recipe);
+    const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
+    const labour = typeof amount === "function" ? amount(r) : amount;
+    b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
+    if (a) ((_a = b.order).by || (_a.by = {}))[a.id] = (b.order.by?.[a.id] || 0) + labour;
+    if (b.order.progress < r.work) return r;
+    const by = b.order.by;
+    b.order = null;
+    w.stats.crafted++;
+    if (w.scratch) delete w.scratch.craftCtx;
+    if (r.makes.item) {
+      const extra = {}, master = masterOf(w, by, a), skill = master ? skillOf(master, recipeSkill(r)) : 0;
+      if (r.makes.silver) extra.silver = true;
+      const q = ITEMS.get(r.makes.item).quality === false ? 0 : qualityRoll(w.rngs.colony(), skill, bellows ? FURNACE.bellowsFine : 0);
+      if (q) {
+        extra.q = q;
+        if (master) extra.maker = master.name;
+      }
+      const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
+      w.armory.push(it);
+      w.armoryVersion = (w.armoryVersion || 0) + 1;
+      if (q) {
+        const f = (_b = w.chronicle).fine || (_b.fine = {});
+        f[q] = (f[q] || 0) + 1;
+      }
+      const who = master ? `<b>${esc(master.name)}</b>` : "\u043C\u0430\u0441\u0442\u0435\u0440";
+      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${q === 1 ? ` ${who} \u043F\u043E\u0441\u0442\u0430\u0440\u0430\u043B${master?.gender === "f" ? "\u0430\u0441\u044C" : "\u0441\u044F"}: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439.` : q === 2 ? ` \u0420\u0430\u0431\u043E\u0442\u0430 \u043C\u0430\u0441\u0442\u0435\u0440\u0430: ${who} \u0441\u0434\u0435\u043B\u0430\u043B${master?.gender === "f" ? "\u0430" : ""} \u0432\u0435\u0449\u044C, \u043A\u0430\u043A\u043E\u0439 \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438 \u0435\u0449\u0451 \u043D\u0435 \u0432\u0438\u0434\u0435\u043B\u0438.` : q >= 3 ? ` \u0427\u0443\u0434\u043E \u0440\u0435\u043C\u0435\u0441\u043B\u0430! ${who} \u0441\u0430\u043C${master?.gender === "f" ? "\u0430" : ""} \u043D\u0435 \u0432\u0435\u0440\u0438\u0442, \u0447\u0442\u043E \u044D\u0442\u043E ${master?.gender === "f" ? "\u0435\u0451" : "\u0435\u0433\u043E"} \u0440\u0443\u043A \u0434\u0435\u043B\u043E (${def(it).rank}).` : ""}`, "craft", q >= 3 ? "notice" : void 0);
+      if (a) {
+        think(w, a, "madeItem", { item: name });
+        a.stats.crafted++;
+      }
+      w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
+    } else {
+      w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
+      const res = RESOURCES.get(r.makes.resource);
+      if (res.tags.includes("luxury") || res.tags.includes("furniture")) {
+        log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${res.short}.`, "craft");
+        if (a) {
+          think(w, a, "madeItem", { item: res.short });
+          a.stats.crafted++;
+        }
+      }
+    }
+    return r;
+  }
+  function stepCrafting(w) {
+    if (w.tick % HOUR !== 7) return;
+    for (const b of w.buildings) {
+      if (!b.done || !b.order) continue;
+      const r = RECIPES.get(b.order.recipe);
+      if (anyoneCan(w, r) || !w.agents.some((a) => a.faction === "colony" && !a.dead)) continue;
+      for (const [res, v] of Object.entries(r.cost)) w.stock[res] = (w.stock[res] || 0) + v;
+      if (b.order.fuel) w.stock[b.order.fuel[0]] = (w.stock[b.order.fuel[0]] || 0) + b.order.fuel[1];
+      b.order = null;
+      if (w.scratch) {
+        delete w.scratch.orders;
+        delete w.scratch.craftCtx;
+      }
+      const what = r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short;
+      const need = recipeNeed(r);
+      log(w, `\u041D\u0435\u043A\u043E\u043C\u0443 \u0434\u043E\u0434\u0435\u043B\u0430\u0442\u044C: ${what} (${need ? "\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F " + reasonText(need) : "\u043D\u0443\u0436\u0435\u043D \u043C\u0430\u0441\u0442\u0435\u0440"}). \u0417\u0430\u043A\u0430\u0437 \u0441\u043D\u044F\u0442, \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 \u0441\u043A\u043B\u0430\u0434.`, "craft");
+    }
+  }
+  function masterOf(w, by, last2) {
+    let best = null, bv = -1;
+    for (const [id, v] of Object.entries(by || {})) {
+      const o = w.agents.find((x) => x.id === +id && !x.dead);
+      if (o && v > bv) {
+        bv = v;
+        best = o;
+      }
+    }
+    return best || last2 || null;
+  }
+  function orderText(b) {
+    if (!b.order) return "\u0436\u0434\u0451\u0442 \u0437\u0430\u043A\u0430\u0437\u0430";
+    const r = RECIPES.get(b.order.recipe);
+    const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${RESOURCES.get(r.makes.resource).short} \xD7${r.makes.n}`;
+    return `${what}: ${Math.floor(b.order.progress / r.work * 100)}%`;
+  }
+
+  // src/data/relations.js
+  var KINS = new Registry("kin");
+  KINS.registerAll([
+    { id: "human", label: "\u043B\u044E\u0434\u0438" },
+    { id: "halfling", label: "\u043F\u043E\u043B\u0443\u0440\u043E\u0441\u043B\u0438\u043A\u0438" },
+    { id: "giant", label: "\u0432\u0435\u043B\u0438\u043A\u0430\u043D\u044B" },
+    { id: "elf", label: "\u043B\u0435\u0441\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B" },
+    { id: "darkelf", label: "\u0442\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B" },
+    { id: "dwarf", label: "\u0433\u043D\u043E\u043C\u044B" },
+    { id: "greenskin", label: "\u0437\u0435\u043B\u0435\u043D\u043E\u043A\u043E\u0436\u0438\u0435" },
+    { id: "gnoll", label: "\u0433\u043D\u043E\u043B\u043B\u044B" }
+  ]);
+  var COLS = ["human", "halfling", "giant", "elf", "darkelf", "dwarf", "greenskin", "gnoll"];
+  var ROWS = {
+    human: [1, 1, 0, 0, -2, 1, -1, -3],
+    halfling: [1, 2, 0, 1, -2, 0, -2, -3],
+    giant: [0, 1, 2, 0, -1, -1, 0, -2],
+    elf: [0, 1, 0, 2, -3, -2, -2, -3],
+    darkelf: [-1, -2, -1, -3, 1, -1, 0, -1],
+    dwarf: [1, 0, -1, -2, -2, 2, -3, -2],
+    greenskin: [-1, -1, 1, -2, 0, -3, 1, 0],
+    gnoll: [-2, -2, -1, -2, 0, -2, 1, 0]
+  };
+  var RELATIONS = Object.fromEntries(Object.entries(ROWS).map(([r, row]) => [r, Object.fromEntries(COLS.map((c, k) => [c, row[k]]))]));
+  var kinship = (fromSpecies, toSpecies) => {
+    const a = SPECIES.get(fromSpecies).rel, b = SPECIES.get(toSpecies).rel;
+    return a && b ? RELATIONS[a][b] : 0;
+  };
+  var OPINION = {
+    shared: 0.5,
+    // per value both hold dear
+    clash: 0.75,
+    // per pair of values that clash
+    mercyGap: 3,
+    // this far apart on mercy → −1
+    orderGap: 4,
+    // this far apart on order → −0.5
+    grudgeCap: 4
+    // personal history (good or bad) counts at most this much either way
+  };
+  function opinion(a, b) {
+    let v = kinship(a.species, b.species);
+    const va = a.values || [], vb = b.values || [];
+    for (const x of va) {
+      if (vb.includes(x)) v += OPINION.shared;
+      for (const y of vb) if (VALUES.get(x).clash.includes(y)) v -= OPINION.clash;
+    }
+    if (a.align && b.align) {
+      if (Math.abs(a.align.mercy - b.align.mercy) >= OPINION.mercyGap) v -= 1;
+      if (Math.abs(a.align.order - b.align.order) >= OPINION.orderGap) v -= 0.5;
+    }
+    if (b.special) v += EFFECTS.charm(b.special);
+    const g3 = a.grudge?.[b.id] || 0;
+    return v + Math.max(-OPINION.grudgeCap, Math.min(OPINION.grudgeCap, g3));
+  }
+  function opinionWord(v) {
+    if (v >= 3) return "\u0434\u0440\u0443\u0436\u0438\u0442";
+    if (v >= 1.5) return "\u043B\u0430\u0434\u0438\u0442";
+    if (v > -1.5) return "\u0442\u0435\u0440\u043F\u0438\u0442";
+    if (v > -3.5) return "\u043D\u0435\u0434\u043E\u043B\u044E\u0431\u043B\u0438\u0432\u0430\u0435\u0442";
+    return "\u043D\u0435\u043D\u0430\u0432\u0438\u0434\u0438\u0442";
+  }
+
+  // src/settlement/relations.js
+  var REL = {
+    dislike: -2,
+    // opinion at or below this weighs on the mood
+    friend: 2.5,
+    // at or above this cheers up
+    quarrelEvery: 2 * HOUR,
+    quarrelNear: 4,
+    // cells apart
+    quarrelBase: 0.05,
+    // chance per check and per point of mutual dislike past −2
+    quarrelMax: 0.35,
+    grudge: 0.6,
+    // a quarrel adds this much to the grudge on both sides
+    fade: 0.96,
+    // grudges shrink this much each day
+    fadeGood: 0.985,
+    // good memories, this much
+    settlerFloor: -1
+    // a race the colony dislikes worse than this does not come
+  };
+  function settlerSpecies(w, rng) {
+    const col = colonists(w);
+    const opts = SPECIES.filter((sp) => sp.settle > 0).map((sp) => {
+      if (!col.length || sp.id === "human") return [sp.id, sp.settle];
+      const into = col.reduce((s, a) => s + kinship(sp.id, a.species), 0) / col.length;
+      const from = col.reduce((s, a) => s + kinship(a.species, sp.id), 0) / col.length;
+      if (Math.min(into, from) < REL.settlerFloor) return [sp.id, 0];
+      return [sp.id, sp.settle * Math.exp(0.5 * (into + from) / 2)];
+    });
+    return weighted(rng, opts) || "human";
+  }
+  var near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < REL.quarrelNear;
+  var busy = (a) => a.sleeping || a.downed || ["fight", "muster", "treat", "runHome", "flee", "downed"].includes(a.task?.id);
+  function reason(a, b) {
+    const kin = kinship(a.species, b.species);
+    if (kin <= -2) return `${SPECIES.get(a.species).plural} \u0438 ${SPECIES.get(b.species).plural} \u2014 \u0434\u0430\u0432\u043D\u0438\u0435 \u0432\u0440\u0430\u0433\u0438`;
+    for (const x of a.values || []) for (const y of b.values || []) if (VALUES.get(x).clash.includes(y)) return `\u043E\u0434\u043D\u043E\u043C\u0443 \u0434\u043E\u0440\u043E\u0436\u0435 \u0432\u0441\u0435\u0433\u043E ${VALUES.get(x).label}, \u0434\u0440\u0443\u0433\u043E\u043C\u0443 ${VALUES.get(y).label}`;
+    if (a.align && b.align && Math.abs(a.align.mercy - b.align.mercy) >= OPINION.mercyGap) return "\u043D\u0435 \u0441\u043E\u0448\u043B\u0438\u0441\u044C \u0432 \u0442\u043E\u043C, \u043A\u0430\u043A \u043E\u0431\u0445\u043E\u0434\u0438\u0442\u044C\u0441\u044F \u0441 \u043F\u043B\u0435\u043D\u043D\u044B\u043C\u0438 \u0438 \u0441\u043B\u0430\u0431\u044B\u043C\u0438";
+    return "\u0441\u0442\u0430\u0440\u044B\u0435 \u043E\u0431\u0438\u0434\u044B";
+  }
+  function quarrels(w) {
+    const col = colonists(w).filter((a) => !busy(a));
+    for (let i = 0; i < col.length; i++) for (let j = i + 1; j < col.length; j++) {
+      const a = col[i], b = col[j];
+      if (!near(a, b)) continue;
+      const mutual = opinion(a, b) + opinion(b, a);
+      const p = clamp((REL.dislike * 2 - mutual) * REL.quarrelBase, 0, REL.quarrelMax);
+      if (p <= 0 || w.rngs.social() >= p) continue;
+      if (raidAlarm(w) || w.stats.fireNearCamp > 0 || threatTo(w, a, 12) || threatTo(w, b, 12)) {
+        if (w.behave) w.behave.social.calm++;
+        continue;
+      }
+      for (const [x, y] of [[a, b], [b, a]]) {
+        (x.grudge || (x.grudge = {}))[y.id] = (x.grudge[y.id] || 0) - REL.grudge;
+        think(w, x, "quarrel", { name: y.name });
+      }
+      w.chronicle.quarrels = (w.chronicle.quarrels || 0) + 1;
+      log(w, `\u0421\u043A\u043B\u043E\u043A\u0430: <b>${esc(a.name)}</b> \u0438 <b>${esc(b.name)}</b> \u0441\u0446\u0435\u043F\u0438\u043B\u0438\u0441\u044C \u2014 ${reason(a, b)}.`, "people");
+      return;
+    }
+  }
+  function daily(w) {
+    const col = colonists(w);
+    for (const a of col) {
+      if (a.grudge) for (const id of Object.keys(a.grudge)) {
+        a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade;
+        if (Math.abs(a.grudge[id]) < 0.05 || !col.some((o) => o.id === +id)) delete a.grudge[id];
+      }
+      let worst = null, wv = Infinity, best = null, bv = -Infinity;
+      for (const b of col) {
+        if (b === a) continue;
+        const v = opinion(a, b);
+        if (v < wv) {
+          wv = v;
+          worst = b;
+        }
+        if (v > bv) {
+          bv = v;
+          best = b;
+        }
+      }
+      if (worst && wv <= REL.dislike) think(w, a, "dislikesNeighbour", { name: worst.name, mood: clamp(wv * 0.04, -0.25, -0.06) });
+      if (best && bv >= REL.friend) think(w, a, "goodCompany", { name: best.name });
+    }
+  }
+  function stepRelations(w) {
+    if (w.tick % DAY === Math.floor(DAY * 0.55)) daily(w);
+    if (w.tick % REL.quarrelEvery === 37) quarrels(w);
+    if (w.tick % HOUR === 11) workTogether(w);
+    const alarm = raidAlarm(w);
+    if (alarm && w.raidSince == null) w.raidSince = w.tick;
+    else if (!alarm && w.raidSince != null) {
+      afterRaid(w, w.raidSince);
+      w.raidSince = null;
+    }
+  }
+  var history = (a, b) => a.grudge?.[b.id] || 0;
+  function feelings(w, a) {
+    return colonists(w).filter((b) => b !== a).map((b) => [b, opinion(a, b)]).sort((x, y) => x[1] - y[1]);
+  }
+
+  // src/settlement/together.js
+  var TOGETHER = {
+    riskFrom: 0.3,
+    // a gatherer is worth escorting from this risk up…
+    riskTill: 0.15,
+    // …and the escort goes back to its own work below this
+    escortShare: 0.2,
+    // at most this share of the colony escorts at a time
+    keep: 2.2,
+    // the escort stays this close
+    guard: 8,
+    // and takes on anything hostile this close to its charge
+    aidBelow: 0.4,
+    // health share under which a colonist out in the woods needs help
+    aidEvery: 12 * HOUR,
+    // once dressed, not again for this long
+    aidHeal: 0.2,
+    // of max health, more with the healer's skill
+    aidFallen: 1.7,
+    // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
+    aidPractice: 60,
+    // medicine practice for a life saved (units of agents/skills.js practice)
+    far: 40,
+    // nobody goes further than this to escort or help
+    mate: 0.05,
+    // a friend (or a foe) on the same job, ± per person…
+    mateCap: 0.1,
+    // …at most
+    yieldGap: 0.3,
+    // a patient gives the bed up to someone this much worse off…
+    yieldFrom: 0.5,
+    // …when itself is at least this healthy
+    bondEscort: 0.05,
+    // per hour side by side
+    bondDefend: 0.5,
+    // standing up for someone in a fight
+    bondAid: 1,
+    // a wound dressed in the woods
+    bondWork: 0.04,
+    // per hour on the same job close by
+    bondTrouble: 0.3,
+    // having fought the same raid
+    mendTrouble: 0.8
+    // …more for two who could not stand each other
+  };
+  var dist4 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  var byId3 = (w, id) => w.agents.find((o) => o.id === id && !o.dead);
+  var social = (w) => w.behave?.social;
+  function bond(w, a, b, v) {
+    if (!a || !b || a === b) return;
+    const gr = a.grudge || (a.grudge = {});
+    gr[b.id] = clamp((gr[b.id] || 0) + v, -OPINION.grudgeCap, OPINION.grudgeCap);
+  }
+  var outsideRisk = (w) => perTick(w, "outsideRisk", () => {
+    const col = colonists(w);
+    if (!col.length) return 0;
+    const avg = col.reduce((s, a) => s + strength(a), 0) / col.length || 1;
+    let t = 0;
+    for (const o of w.agents) if (!o.dead && !o.tame && (o.faction === "predators" || o.faction === "nechist")) t += strength(o) / avg;
+    return clamp(0.1 * t * (0.7 + 0.5 * nightness(w.tick)), 0, 1);
+  });
+  var OUT = /* @__PURE__ */ new Set(["harvest", "hunt"]);
+  var outWork = (a) => a.task?.id === "job" && OUT.has(JOBS.get(a.task.job).runner);
+  var escortOf = (w, a) => colonists(w).find((o) => o.task?.id === "company" && o.task.who === a.id);
+  var walkers = (w) => perTick(w, "walkers", () => outsideRisk(w) < TOGETHER.riskFrom ? [] : colonists(w).filter((a) => outWork(a) && !a.task.hauling && !escortOf(w, a)));
+  function escortOption(w, a) {
+    const risk = outsideRisk(w);
+    if (a.task?.id === "company") {
+      const b = escortGoing(w, a, a.task);
+      if (b) return [a.task, 0.2 + 0.6 * risk + (a.task.home ? 0.6 : 0), () => a.task.home ? `\u0432\u0435\u0434\u0451\u0442 ${b.name} \u043A \u0441\u0432\u043E\u0438\u043C` : `\u0432 \u043B\u0435\u0441\u0443 \u043E\u043F\u0430\u0441\u043D\u043E, ${b.name} \u043D\u0435 ${g(b, "\u043E\u0434\u0438\u043D", "\u043E\u0434\u043D\u0430")}`];
+    }
+    const ws = walkers(w);
+    if (!ws.length || hpShare(a) < 0.6 || a.mods.bravery < 0.6) return null;
+    const col = colonists(w);
+    if (col.filter((o) => o.task?.id === "company").length >= Math.max(1, Math.floor(col.length * TOGETHER.escortShare)) && a.task?.id !== "company") return null;
+    let best = null, bs = -Infinity, bop = 0;
+    for (const b of ws) {
+      if (b === a || dist4(a, b) > TOGETHER.far) continue;
+      const op = opinion(a, b);
+      if (op < -1.5) continue;
+      const s = 0.2 + 0.6 * risk + 0.05 * clamp(op, -2, 4) + 0.15 * (a.mods.bravery - 1) + (a.gear?.rangedReady || a.gear?.melee?.item ? 0.08 : 0);
+      if (s > bs) {
+        bs = s;
+        best = b;
+        bop = op;
+      }
+    }
+    return best ? [{ id: "company", who: best.id }, bs, () => `\u0432 \u043B\u0435\u0441\u0443 \u043E\u043F\u0430\u0441\u043D\u043E, ${best.name} ${g(best, "\u043E\u0434\u0438\u043D", "\u043E\u0434\u043D\u0430")}${bop >= REL.friend ? " \u2014 \u0430 \u044D\u0442\u043E \u0434\u0440\u0443\u0433" : ""}`] : null;
+  }
+  var FOES = /* @__PURE__ */ new Set(["predators", "nechist", "raiders"]);
+  function threatTo(w, b, r, viewer = null) {
+    let best = null, bd = r;
+    for (const o of w.agents) {
+      if (o.dead || o.tame || !FOES.has(o.faction)) continue;
+      if (viewer && (o.downed || !canSee(w, viewer, o))) continue;
+      const d = dist4(o, b);
+      if (d < bd) {
+        bd = d;
+        best = o;
+      }
+    }
+    return best;
+  }
+  function guardStep(w, a, b, task) {
+    const foe = threatTo(w, b, TOGETHER.guard, a);
+    if (foe) {
+      task.fought ?? (task.fought = foe.id);
+      const d = dist4(a, foe);
+      if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.15);
+      else attack(w, a, foe);
+      a.lastFight = w.tick;
+      return "fight";
+    }
+    if (task.fought != null) {
+      bond(w, b, a, TOGETHER.bondDefend);
+      think(w, b, "stoodUp", { name: a.name, gender: a.gender });
+      task.fought = null;
+    }
+    if (dist4(a, b) > TOGETHER.keep) {
+      approach(w, a, b.x, b.y);
+      return "far";
+    }
+    if (w.tick % HOUR === 0) {
+      bond(w, a, b, TOGETHER.bondEscort);
+      bond(w, b, a, TOGETHER.bondEscort);
+    }
+    return "near";
+  }
+  function escortGoing(w, a, task) {
+    const b = byId3(w, task.who);
+    if (!b) return null;
+    if (task.home) return agentInZone(w, b) ? null : b;
+    return outWork(b) && outsideRisk(w) >= TOGETHER.riskTill ? b : null;
+  }
+  function enterEscort(w, a, task) {
+    const b = byId3(w, task.who);
+    if (!b) return;
+    const s = social(w);
+    if (s && !task.home) s.escort++;
+    if (!task.home) think(w, b, "escorted", { name: a.name, gender: a.gender });
+  }
+  var helper = (w, id) => colonists(w).find((o) => o.task?.id === "aid" && o.task.who === id);
+  var needsAid = (w, b) => !!b.downed || hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === "treat" && b.task.lying) && !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery);
+  var aidScore = (b) => b.downed ? TOGETHER.aidFallen : 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2;
+  var aidWhy = (b) => b.downed ? `${b.name} ${g(b, "\u0443\u043F\u0430\u043B", "\u0443\u043F\u0430\u043B\u0430")} \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F \u0438 \u0438\u0441\u0442\u0435\u043A\u0430\u0435\u0442 \u043A\u0440\u043E\u0432\u044C\u044E` : `${b.name} ${g(b, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(b) * 100)}%`;
+  function aidOption(w, a) {
+    if (hpShare(a) < 0.5) return null;
+    if (a.task?.id === "aid") {
+      const b = byId3(w, a.task.who);
+      if (b && needsAid(w, b)) return [a.task, aidScore(b), () => aidWhy(b)];
+    }
+    let best = null, bs = -Infinity;
+    for (const b of colonists(w)) {
+      if (b === a || !needsAid(w, b) || dist4(a, b) > TOGETHER.far) continue;
+      const h = helper(w, b.id);
+      if (h && h !== a) continue;
+      const op = opinion(a, b);
+      if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
+      const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
+      if (s > bs) {
+        bs = s;
+        best = b;
+      }
+    }
+    return best ? [{ id: "aid", who: best.id, fallen: !!best.downed }, bs, () => aidWhy(best)] : null;
+  }
+  function giveAid(w, a, b) {
+    if (b.downed) {
+      stabilize(w, a, b);
+      bond(w, b, a, TOGETHER.bondAid * 2);
+      bond(w, a, b, TOGETHER.bondAid * 0.5);
+      const s2 = social(w);
+      if (s2) s2.aid++;
+      practice(a, "medicine", TOGETHER.aidPractice);
+      return;
+    }
+    const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
+    b.hp += amt;
+    b.aidedAt = w.tick;
+    bond(w, b, a, TOGETHER.bondAid);
+    bond(w, a, b, TOGETHER.bondAid * 0.3);
+    think(w, b, "aided", { name: a.name, gender: a.gender });
+    think(w, a, "gaveAid", { name: b.name });
+    const s = social(w);
+    if (s) s.aid++;
+    log(w, `<b>${esc(a.name)}</b> ${g(a, "\u043F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B", "\u043F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B\u0430")} \u0440\u0430\u043D\u044B <b>${esc(b.name)}</b> \u043F\u0440\u044F\u043C\u043E \u0432 \u043B\u0435\u0441\u0443 \u0438 ${g(a, "\u043F\u043E\u0432\u0451\u043B", "\u043F\u043E\u0432\u0435\u043B\u0430")} \u043A \u0441\u0432\u043E\u0438\u043C.`, "people");
+  }
+  function mates(w, a) {
+    var _a;
+    const by = {};
+    for (const o of colonists(w)) if (o !== a && o.task?.id === "job") (by[_a = o.task.job] || (by[_a] = [])).push(o);
+    return (job) => {
+      let v = 0, friend = null, foe = null;
+      for (const o of by[job] || []) {
+        const op = opinion(a, o);
+        if (op >= REL.friend) {
+          v += TOGETHER.mate;
+          friend ?? (friend = o);
+        } else if (op <= REL.dislike) {
+          v -= TOGETHER.mate;
+          foe ?? (foe = o);
+        }
+      }
+      return { v: clamp(v, -TOGETHER.mateCap, TOGETHER.mateCap), friend, foe };
+    };
+  }
+  function askForBed(w, a, end) {
+    const mine = hpShare(a);
+    let best = null;
+    for (const p of colonists(w)) {
+      if (p === a || p.task?.id !== "treat" || !p.task.bed) continue;
+      const h = hpShare(p);
+      if (h < TOGETHER.yieldFrom || h - mine < TOGETHER.yieldGap) continue;
+      if (opinion(p, a) <= REL.dislike && (p.align?.mercy ?? 0) < 2) continue;
+      if (!best || h > hpShare(best)) best = p;
+    }
+    if (!best) return null;
+    const bed = best.task.bed;
+    end(w, best, "done");
+    bond(w, a, best, TOGETHER.bondAid * 0.6);
+    think(w, a, "gotBed", { name: best.name, gender: best.gender });
+    think(w, best, "yieldedBed", { name: a.name });
+    const s = social(w);
+    if (s) s.yield++;
+    log(w, `<b>${esc(best.name)}</b> ${g(best, "\u0443\u0441\u0442\u0443\u043F\u0438\u043B", "\u0443\u0441\u0442\u0443\u043F\u0438\u043B\u0430")} \u043A\u043E\u0439\u043A\u0443 \u0443 \u043B\u0435\u043A\u0430\u0440\u044F <b>${esc(a.name)}</b>: \u0442\u043E\u043C\u0443 \u0445\u0443\u0436\u0435.`, "people");
+    return bed;
+  }
+  function afterRaid(w, since) {
+    const fought = colonists(w).filter((a) => (a.lastFight ?? -Infinity) >= since);
+    for (let i = 0; i < fought.length; i++) for (let j = i + 1; j < fought.length; j++) {
+      const a = fought[i], b = fought[j], foes = opinion(a, b) <= REL.dislike || opinion(b, a) <= REL.dislike;
+      const v = foes ? TOGETHER.mendTrouble : TOGETHER.bondTrouble;
+      bond(w, a, b, v);
+      bond(w, b, a, v);
+      if (foes) {
+        const s = social(w);
+        if (s) s.bond++;
+        think(w, a, "sharedTrouble", { name: b.name });
+        think(w, b, "sharedTrouble", { name: a.name });
+        log(w, `\u041E\u0431\u0449\u0430\u044F \u0431\u0435\u0434\u0430 \u0441\u0431\u043B\u0438\u0437\u0438\u043B\u0430 <b>${esc(a.name)}</b> \u0438 <b>${esc(b.name)}</b>: \u043F\u043B\u0435\u0447\u043E\u043C \u043A \u043F\u043B\u0435\u0447\u0443 \u043F\u0440\u043E\u0442\u0438\u0432 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 \u0441\u0442\u0430\u0440\u044B\u0435 \u043E\u0431\u0438\u0434\u044B \u0437\u0430\u0431\u044B\u0432\u0430\u044E\u0442\u0441\u044F.`, "people");
+      }
+    }
+  }
+  function workTogether(w) {
+    const col = colonists(w);
+    for (let i = 0; i < col.length; i++) for (let j = i + 1; j < col.length; j++) {
+      const a = col[i], b = col[j];
+      if (a.task?.id !== "job" || b.task?.id !== "job" || a.task.job !== b.task.job || dist4(a, b) > 8) continue;
+      if (opinion(a, b) <= REL.dislike || opinion(b, a) <= REL.dislike) continue;
+      bond(w, a, b, TOGETHER.bondWork);
+      bond(w, b, a, TOGETHER.bondWork);
+    }
+  }
+
+  // src/settlement/plan.js
+  var PLAN = {
+    fuelDays: 3,
+    // keep this many days of firewood ahead…
+    fuelDaysCold: 5,
+    // …and this many when it freezes
+    foodDays: 6,
+    // days of food the colony likes to have ahead
+    foodDaysAutumn: 12,
+    // …before winter (autumn): stock up
+    minWeight: 0.08,
+    // a job wanted less than this gets no place in the roster
+    habit: 0.35,
+    // fitness for doing the same job as yesterday
+    best: 0.5
+    // fitness for being the colony's best at the job's skill
+  };
+  function dailyBurn(w) {
+    let f = 4e-3 * 600;
+    for (const b of w.buildings) {
+      const H2 = b.done && BUILDINGS.get(b.key).heat;
+      if (H2) f += H2.fuel * 1200;
+    }
+    return f;
+  }
+  var fuelStock = (w) => RESOURCES.filter((r) => r.tags.includes("fuel")).reduce((s, r) => s + (w.stock[r.id] || 0) * (r.heat || 1), 0);
+  function needs(w) {
+    const col = colonists(w).filter((a) => !a.downed), pop = Math.max(1, col.length);
+    const ctx = {
+      pop,
+      food: foodTotal(w),
+      openSites: openSites(w).length,
+      preyCount: huntable(w, JOBS.get("hunt")).length,
+      favourites: favourites(w),
+      patients: waiting(w),
+      agent: null,
+      can: () => true,
+      orders: new Proxy({}, { get: (o, station) => col.some((a) => stationHasWork(w, station, a)) })
+    };
+    const out = {};
+    const burn2 = dailyBurn(w), fuelDays = fuelStock(w) / Math.max(0.1, burn2);
+    const S = season(w), foodDays = ctx.food / Math.max(0.5, pop * 0.9);
+    const wantFoodDays = S.id === "autumn" ? PLAN.foodDaysAutumn : PLAN.foodDays;
+    for (const job of JOBS.all()) {
+      if (!jobUnlocked(w, job)) continue;
+      if (!col.some((a) => jobAccess(a, job).ok && (!job.canDo || job.canDo(w, a)))) continue;
+      let v = job.desire(w, ctx, job), why = [];
+      if (v < 0) continue;
+      if (job.resource) v += goalNeed(w, job.resource);
+      if (job.id === "chop") {
+        const keep = snowy(w) ? PLAN.fuelDaysCold : PLAN.fuelDays;
+        if (fuelDays < keep) {
+          v = Math.max(v, 0.5 + 0.5 * (1 - fuelDays / keep));
+          why.push(`\u0434\u0440\u043E\u0432 \u043D\u0430 ${fuelDays.toFixed(1)} \u0434\u043D., \u043D\u0443\u0436\u043D\u043E \u043D\u0430 ${keep}`);
+        }
+      }
+      if (job.food) {
+        if (foodDays < wantFoodDays) {
+          const f = FOODS.get(job.food);
+          v = Math.max(v, (0.35 + 0.5 * (1 - foodDays / wantFoodDays)) * (0.7 + 0.3 * f.nutrition));
+          why.push(`\u0435\u0434\u044B \u043D\u0430 ${foodDays.toFixed(1)} \u0434\u043D., \u043D\u0443\u0436\u043D\u043E \u043D\u0430 ${wantFoodDays}`);
+        }
+      }
+      if (goalNeed(w, job.resource) > 0) why.push(`\u043A\u043E\u043F\u0438\u043C \u043D\u0430 ${BUILDINGS.get(w.council.goal).name.toLowerCase()}`);
+      if (v >= PLAN.minWeight) out[job.id] = { w: +v.toFixed(3), why: why.join(", ") };
+    }
+    return out;
+  }
+  function crewCap(w, job) {
+    if (job.crew) return job.crew(w);
+    if (job.runner === "craft") return job.stations.reduce((s, st) => s + w.buildings.filter((b) => b.key === st && b.done).reduce((n, b) => n + (BUILDINGS.get(st).benches || 1), 0), 0);
+    if (job.runner === "build") return Math.min(4, openSites(w).length * 2);
+    if (job.id === "hunt") return Math.max(1, Math.min(3, Math.ceil(huntable(w, job).length / 3)));
+    if (job.id === "fish") return Math.max(1, Math.min(3, w.lakes.filter((l) => l.cap > 0 && l.fish >= 1).length));
+    if (["heal", "herd", "bury"].includes(job.id)) return 1;
+    if (job.id === "farm") return Math.min(3, count(w, "field"));
+    return Infinity;
+  }
+  function fitness(w, a, job, bestSkill, yesterday) {
+    if (a.downed) return -Infinity;
+    if (!jobAccess(a, job).ok || job.canDo && !job.canDo(w, a)) return -Infinity;
+    const sk = skillOf(a, job.skill), why = [];
+    let f = sk / 10;
+    if (sk > 0 && sk >= bestSkill) {
+      f += PLAN.best;
+      why.push("\u043B\u0443\u0447\u0448\u0435 \u0432\u0441\u0435\u0445");
+    }
+    if (yesterday === job.id) {
+      f += PLAN.habit;
+      why.push("\u043A\u0430\u043A \u0432\u0447\u0435\u0440\u0430");
+    }
+    const p = a.prefs?.[job.id] ?? 1;
+    f += (p - 1) * 1.2;
+    if (job.id === a.likes) why.push("\u043B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E");
+    else if (job.id === a.dislikes) why.push("\u043D\u0435 \u043F\u043E \u0434\u0443\u0448\u0435");
+    return [f, why.join(", ")];
+  }
+  function makePlan(w, reason2 = "") {
+    const col = colonists(w).filter((a) => !a.downed), day = dayOf(w.tick);
+    const need = needs(w), jobs = Object.keys(need).sort((x, y) => need[y].w - need[x].w);
+    const total = jobs.reduce((s, j) => s + need[j].w, 0) || 1;
+    const pairs = outsideRisk(w) >= TOGETHER.riskFrom, outdoor = (j) => ["harvest", "hunt"].includes(JOBS.get(j).runner);
+    const places = [], spare = [], quota = {};
+    let used = 0;
+    for (const j of jobs) {
+      const q = col.length * need[j].w / total;
+      quota[j] = Math.min(crewCap(w, JOBS.get(j)), need[j].w >= 0.6 ? Math.max(1, Math.floor(q)) : Math.floor(q));
+      used += quota[j];
+    }
+    for (const j of jobs.slice().sort((x, y) => col.length * need[y].w / total - quota[y] - (col.length * need[x].w / total - quota[x]))) {
+      if (used >= col.length) break;
+      if (quota[j] < crewCap(w, JOBS.get(j)) && col.length * need[j].w / total - quota[j] > 0.3) {
+        quota[j]++;
+        used++;
+      }
+    }
+    if (pairs) {
+      const singles = jobs.filter((j) => quota[j] === 1 && outdoor(j));
+      for (let k = 1; k < singles.length; k += 2) {
+        quota[singles[k]] = 0;
+        quota[singles[k - 1]] = 2;
+      }
+    }
+    for (const j of jobs) {
+      for (let k = 0; k < quota[j]; k++) places.push(j);
+      if (crewCap(w, JOBS.get(j)) > quota[j]) spare.push(j);
+    }
+    for (let k = 0; places.length < col.length && spare.length; k++) {
+      const j = spare[k % spare.length];
+      places.push(j);
+      if (places.filter((p) => p === j).length >= crewCap(w, JOBS.get(j))) spare.splice(spare.indexOf(j), 1);
+    }
+    const prev = w.plan?.assign || {}, best = {};
+    for (const j of jobs) best[JOBS.get(j).skill] = Math.max(0, ...col.map((a) => skillOf(a, JOBS.get(j).skill)));
+    const free = new Set(col.map((a) => a.id)), assign = {}, byId6 = Object.fromEntries(col.map((a) => [a.id, a]));
+    for (const j of places) {
+      const job = JOBS.get(j);
+      let pick3 = null, pf = -Infinity, pw = "";
+      for (const id of free) {
+        const a = byId6[id], r = fitness(w, a, job, best[job.skill], prev[id]?.job);
+        if (r === -Infinity) continue;
+        const [f, why] = r;
+        if (f > pf || f === pf && a.id < pick3.id) {
+          pf = f;
+          pick3 = a;
+          pw = why;
+        }
+      }
+      if (!pick3) continue;
+      free.delete(pick3.id);
+      assign[pick3.id] = { job: j, why: pw || "\u043D\u0443\u0436\u043D\u044B \u0440\u0443\u043A\u0438", alt: [] };
+    }
+    for (const a of col) {
+      const e = assign[a.id] || (assign[a.id] = { job: null, why: "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u044B\u0435 \u0440\u0443\u043A\u0438", alt: [] });
+      e.alt = jobs.filter((j) => j !== e.job && jobAccess(a, JOBS.get(j)).ok && (!JOBS.get(j).canDo || JOBS.get(j).canDo(w, a))).slice(0, 2);
+    }
+    w.plan = {
+      day,
+      at: w.tick,
+      reason: reason2,
+      need,
+      assign,
+      pop: col.length,
+      built: w.buildings.filter((b) => b.done).length,
+      lines: rosterLines(w, assign, need)
+    };
+    return w.plan;
+  }
+  function rosterLines(w, assign, need) {
+    var _a;
+    const by = {};
+    for (const [id, e] of Object.entries(assign)) {
+      const a = w.agents.find((x) => x.id === +id);
+      if (!a) continue;
+      (by[_a = e.job || "\u2014"] || (by[_a] = [])).push({ name: a.name, why: e.why });
+    }
+    const lines = [];
+    for (const [j, people] of Object.entries(by)) {
+      const job = j === "\u2014" ? null : JOBS.get(j);
+      const names = people.map((p) => p.name).join(", ");
+      const whys = [...new Set(people.map((p) => p.why).filter((x) => x && x !== "\u043D\u0443\u0436\u043D\u043E \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044E"))].join("; ");
+      lines.push({ job: j, text: `${names} \u2014 ${job ? job.label : "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u044B\u0435 \u0440\u0443\u043A\u0438"}${need[j]?.why ? ` (${need[j].why})` : ""}${whys && job ? ` \xB7 ${whys}` : ""}` });
+    }
+    return lines;
+  }
+  function rosterOf(w, a) {
+    const p = w.plan;
+    if (!p) return null;
+    return p.assign[a.id] || null;
+  }
+  function planStale(w) {
+    const p = w.plan;
+    if (!p) return true;
+    const col = colonists(w).filter((a) => !a.downed);
+    return p.pop !== col.length || p.built !== w.buildings.filter((b) => b.done).length || dayOf(w.tick) > p.day + 1;
+  }
+  function ensurePlan(w) {
+    if (planStale(w)) makePlan(w, w.plan ? "\u043F\u0435\u0440\u0435\u043C\u0435\u043D\u044B \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438" : "\u043F\u0435\u0440\u0432\u044B\u0439 \u0434\u0435\u043D\u044C");
+    return w.plan;
+  }
+  function councilRoster(w) {
+    const p = makePlan(w, "\u0441\u043E\u0432\u0435\u0442");
+    const text = p.lines.map((l) => l.text).join("; ");
+    if (text) log(w, `\u041D\u0430\u0440\u044F\u0434 \u043D\u0430 \u0437\u0430\u0432\u0442\u0440\u0430: ${esc(text)}.`, "council");
+    return p;
+  }
+
   // src/settlement/council.js
   var RECIPES_ALL = () => RECIPES.all();
   var COUNCIL_FROM = 19;
@@ -9678,6 +10655,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (a.task?.id === "council") a.task = null;
     }
     w.stats.spoiledToday = 0;
+    councilRoster(w);
   }
 
   // src/settlement/trade.js
@@ -9963,14 +10941,14 @@ dd.q4{color:#c58cff;font-weight:600}
         note(deal.bought, goodsLabel(g3), 1, p);
       }
     }
-    const needs = gearNeeds(w);
+    const needs2 = gearNeeds(w);
     for (; ; ) {
       let best = null, bv = 0;
       for (const g3 of c.goods) {
         if (g3.kind !== "item") continue;
         const [role, score] = roleOf(itemDef(g3.type, g3.q));
-        if (!role || !needs[role]) continue;
-        const gain = score - needs[role][0], p = askPrice2(g3);
+        if (!role || !needs2[role]) continue;
+        const gain = score - needs2[role][0], p = askPrice2(g3);
         if (gain < TRADE.minGain || p > cash() * TRADE.maxShare) continue;
         const v = gain / Math.max(0.5, p);
         if (v > bv) {
@@ -9982,8 +10960,8 @@ dd.q4{color:#c58cff;font-weight:600}
       c.goods.splice(c.goods.indexOf(best.g), 1);
       w.armory.push(newItem(best.g.type, { ...best.g.q ? { q: best.g.q } : {}, ...best.g.silver ? { silver: true } : {} }));
       w.armoryVersion = (w.armoryVersion || 0) + 1;
-      needs[best.role][0] = best.score;
-      needs[best.role].sort((x, y) => x - y);
+      needs2[best.role][0] = best.score;
+      needs2[best.role].sort((x, y) => x - y);
       deal.spent += best.p;
       note(deal.bought, goodsLabel(best.g), 1, best.p);
     }
@@ -10058,518 +11036,6 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!d) return;
     const got = d.bought.map((x) => x[0]).slice(0, 2).join(", ");
     think(w, a, "tradeDay", { trader: w.caravan.name, got });
-  }
-
-  // src/settlement/stock.js
-  var foods = () => RESOURCES.filter((r) => r.tags.includes("food"));
-  function deposit(w, res, amount) {
-    w.stock[res] = (w.stock[res] || 0) + amount * yieldOf(w, res);
-  }
-  function chooseMeal(w, a) {
-    const likes = a?.food?.likes, dislikes = a?.food?.dislikes;
-    let best = null, bv = -Infinity;
-    for (const r of foods()) {
-      const have = w.stock[r.id] || 0;
-      if (have < 1) continue;
-      const f = FOODS.get(r.id), t = tasteOf(f);
-      const v = (t === likes ? 10 - (f.of ? 1 : 0) : 0) - (t === dislikes ? 1e6 : 0) + (f.dish ? 6 : 0) + f.spoil * 2 + Math.min(1, have / 20);
-      if (v > bv) {
-        bv = v;
-        best = r;
-      }
-    }
-    return best;
-  }
-  function eatMeal(w, a) {
-    const best = chooseMeal(w, a);
-    if (!best) return { fed: 0, res: null, mood: null };
-    w.stock[best.id] -= 1;
-    const t = tasteOf(FOODS.get(best.id));
-    const mood = a?.food?.likes === t ? "liked" : a?.food?.dislikes === t ? "disliked" : null;
-    return { fed: best.nutrition, res: best, mood };
-  }
-  var cf;
-  var sf;
-  var campFuels = () => cf || (cf = RESOURCES.filter((r) => r.tags.includes("fuel")).sort((x, y) => (x.burn ?? 9) - (y.burn ?? 9)));
-  function campFuel(w) {
-    return campFuels().find((r) => (w.stock[r.id] || 0) > 0.05) || null;
-  }
-  function burnCampFuel(w, amount) {
-    const r = campFuel(w);
-    if (!r) return false;
-    w.stock[r.id] = Math.max(0, w.stock[r.id] - amount / (r.heat || 1));
-    return true;
-  }
-  var FURNACE = { bellows: 0.75, bellowsWork: 1.25, bellowsFine: 0.05, coalSpare: 6 };
-  var furnaceFuels = () => sf || (sf = RESOURCES.filter((r) => r.furnace).sort((x, y) => x.furnace.tier - y.furnace.tier));
-  var fuelNeed = (w, units) => units * ((w.stock.bellows || 0) >= 1 ? FURNACE.bellows : 1);
-  function furnacePick(w, heat, units, woodReserve = 0) {
-    const need = fuelNeed(w, units);
-    const ok = furnaceFuels().filter((r) => r.furnace.tier >= heat);
-    const coal = ok.find((r) => r.furnace.tier >= 2), wood = ok.find((r) => r.furnace.tier < 2);
-    const have = (r) => (w.stock[r.id] || 0) - (r === wood ? woodReserve : 0);
-    if (coal && have(coal) >= need * coal.furnace.per + (wood ? FURNACE.coalSpare : 0)) return [coal, need * coal.furnace.per];
-    if (wood && have(wood) >= need * wood.furnace.per) return [wood, need * wood.furnace.per];
-    if (coal && have(coal) >= need * coal.furnace.per) return [coal, need * coal.furnace.per];
-    return null;
-  }
-  var furnaceHeat = (w, heat = 2) => furnaceFuels().filter((r) => r.furnace.tier >= heat).reduce((s, r) => s + (w.stock[r.id] || 0) / r.furnace.per, 0);
-  var POT_HOLDS = 6;
-  function potShare(w) {
-    let food = 0;
-    for (const r of foods()) food += w.stock[r.id] || 0;
-    return food <= 0 ? 1 : Math.min(1, (w.stock.pots || 0) * POT_HOLDS / food);
-  }
-  var exposedShare = (w) => (1 - potShare(w)) * (w.buildings.some((b) => b.key === "granary" && b.done) ? 0.5 : 1);
-  function nibble(w, amount) {
-    const open = exposedShare(w);
-    if (open <= 0) return;
-    let best = null;
-    for (const r of foods()) if ((w.stock[r.id] || 0) >= 1 && (!best || w.stock[r.id] > w.stock[best.id])) best = r;
-    if (!best) return;
-    const lost = Math.min(w.stock[best.id], amount * open);
-    w.stock[best.id] -= lost;
-    w.stats.ratsAte = (w.stats.ratsAte || 0) + lost;
-  }
-  function spoil(w) {
-    const S = season(w), sealed = 1 - 0.6 * potShare(w);
-    for (const r of foods()) {
-      const lost = w.stock[r.id] * 15e-5 * r.spoil * w.mods.mul.spoil * S.spoil * sealed;
-      w.stock[r.id] = Math.max(0, w.stock[r.id] - lost);
-      w.stats.spoiledToday += lost;
-    }
-  }
-  function burnStock(w, frac) {
-    for (const r of RESOURCES.all()) w.stock[r.id] = Math.max(0, w.stock[r.id] * (1 - frac));
-  }
-  function plunder(w) {
-    let total = 0;
-    const chest = w.buildings.some((b) => b.done && b.furniture?.includes("chest")) ? 0.4 : 1;
-    for (const r of RESOURCES.all()) {
-      const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot * (r.money ? chest : 1));
-      w.stock[r.id] -= take;
-      total += take;
-    }
-    return total;
-  }
-
-  // src/data/relations.js
-  var KINS = new Registry("kin");
-  KINS.registerAll([
-    { id: "human", label: "\u043B\u044E\u0434\u0438" },
-    { id: "halfling", label: "\u043F\u043E\u043B\u0443\u0440\u043E\u0441\u043B\u0438\u043A\u0438" },
-    { id: "giant", label: "\u0432\u0435\u043B\u0438\u043A\u0430\u043D\u044B" },
-    { id: "elf", label: "\u043B\u0435\u0441\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B" },
-    { id: "darkelf", label: "\u0442\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B" },
-    { id: "dwarf", label: "\u0433\u043D\u043E\u043C\u044B" },
-    { id: "greenskin", label: "\u0437\u0435\u043B\u0435\u043D\u043E\u043A\u043E\u0436\u0438\u0435" },
-    { id: "gnoll", label: "\u0433\u043D\u043E\u043B\u043B\u044B" }
-  ]);
-  var COLS = ["human", "halfling", "giant", "elf", "darkelf", "dwarf", "greenskin", "gnoll"];
-  var ROWS = {
-    human: [1, 1, 0, 0, -2, 1, -1, -3],
-    halfling: [1, 2, 0, 1, -2, 0, -2, -3],
-    giant: [0, 1, 2, 0, -1, -1, 0, -2],
-    elf: [0, 1, 0, 2, -3, -2, -2, -3],
-    darkelf: [-1, -2, -1, -3, 1, -1, 0, -1],
-    dwarf: [1, 0, -1, -2, -2, 2, -3, -2],
-    greenskin: [-1, -1, 1, -2, 0, -3, 1, 0],
-    gnoll: [-2, -2, -1, -2, 0, -2, 1, 0]
-  };
-  var RELATIONS = Object.fromEntries(Object.entries(ROWS).map(([r, row]) => [r, Object.fromEntries(COLS.map((c, k) => [c, row[k]]))]));
-  var kinship = (fromSpecies, toSpecies) => {
-    const a = SPECIES.get(fromSpecies).rel, b = SPECIES.get(toSpecies).rel;
-    return a && b ? RELATIONS[a][b] : 0;
-  };
-  var OPINION = {
-    shared: 0.5,
-    // per value both hold dear
-    clash: 0.75,
-    // per pair of values that clash
-    mercyGap: 3,
-    // this far apart on mercy → −1
-    orderGap: 4,
-    // this far apart on order → −0.5
-    grudgeCap: 4
-    // personal history (good or bad) counts at most this much either way
-  };
-  function opinion(a, b) {
-    let v = kinship(a.species, b.species);
-    const va = a.values || [], vb = b.values || [];
-    for (const x of va) {
-      if (vb.includes(x)) v += OPINION.shared;
-      for (const y of vb) if (VALUES.get(x).clash.includes(y)) v -= OPINION.clash;
-    }
-    if (a.align && b.align) {
-      if (Math.abs(a.align.mercy - b.align.mercy) >= OPINION.mercyGap) v -= 1;
-      if (Math.abs(a.align.order - b.align.order) >= OPINION.orderGap) v -= 0.5;
-    }
-    if (b.special) v += EFFECTS.charm(b.special);
-    const g3 = a.grudge?.[b.id] || 0;
-    return v + Math.max(-OPINION.grudgeCap, Math.min(OPINION.grudgeCap, g3));
-  }
-  function opinionWord(v) {
-    if (v >= 3) return "\u0434\u0440\u0443\u0436\u0438\u0442";
-    if (v >= 1.5) return "\u043B\u0430\u0434\u0438\u0442";
-    if (v > -1.5) return "\u0442\u0435\u0440\u043F\u0438\u0442";
-    if (v > -3.5) return "\u043D\u0435\u0434\u043E\u043B\u044E\u0431\u043B\u0438\u0432\u0430\u0435\u0442";
-    return "\u043D\u0435\u043D\u0430\u0432\u0438\u0434\u0438\u0442";
-  }
-
-  // src/settlement/together.js
-  var TOGETHER = {
-    riskFrom: 0.3,
-    // a gatherer is worth escorting from this risk up…
-    riskTill: 0.15,
-    // …and the escort goes back to its own work below this
-    escortShare: 0.2,
-    // at most this share of the colony escorts at a time
-    keep: 2.2,
-    // the escort stays this close
-    guard: 8,
-    // and takes on anything hostile this close to its charge
-    aidBelow: 0.4,
-    // health share under which a colonist out in the woods needs help
-    aidEvery: 12 * HOUR,
-    // once dressed, not again for this long
-    aidHeal: 0.2,
-    // of max health, more with the healer's skill
-    aidFallen: 1.7,
-    // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
-    aidPractice: 60,
-    // medicine practice for a life saved (units of agents/skills.js practice)
-    far: 40,
-    // nobody goes further than this to escort or help
-    mate: 0.05,
-    // a friend (or a foe) on the same job, ± per person…
-    mateCap: 0.1,
-    // …at most
-    yieldGap: 0.3,
-    // a patient gives the bed up to someone this much worse off…
-    yieldFrom: 0.5,
-    // …when itself is at least this healthy
-    bondEscort: 0.05,
-    // per hour side by side
-    bondDefend: 0.5,
-    // standing up for someone in a fight
-    bondAid: 1,
-    // a wound dressed in the woods
-    bondWork: 0.04,
-    // per hour on the same job close by
-    bondTrouble: 0.3,
-    // having fought the same raid
-    mendTrouble: 0.8
-    // …more for two who could not stand each other
-  };
-  var dist4 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  var byId3 = (w, id) => w.agents.find((o) => o.id === id && !o.dead);
-  var social = (w) => w.behave?.social;
-  function bond(w, a, b, v) {
-    if (!a || !b || a === b) return;
-    const gr = a.grudge || (a.grudge = {});
-    gr[b.id] = clamp((gr[b.id] || 0) + v, -OPINION.grudgeCap, OPINION.grudgeCap);
-  }
-  var outsideRisk = (w) => perTick(w, "outsideRisk", () => {
-    const col = colonists(w);
-    if (!col.length) return 0;
-    const avg = col.reduce((s, a) => s + strength(a), 0) / col.length || 1;
-    let t = 0;
-    for (const o of w.agents) if (!o.dead && !o.tame && (o.faction === "predators" || o.faction === "nechist")) t += strength(o) / avg;
-    return clamp(0.1 * t * (0.7 + 0.5 * nightness(w.tick)), 0, 1);
-  });
-  var OUT = /* @__PURE__ */ new Set(["harvest", "hunt"]);
-  var outWork = (a) => a.task?.id === "job" && OUT.has(JOBS.get(a.task.job).runner);
-  var escortOf = (w, a) => colonists(w).find((o) => o.task?.id === "company" && o.task.who === a.id);
-  var walkers = (w) => perTick(w, "walkers", () => outsideRisk(w) < TOGETHER.riskFrom ? [] : colonists(w).filter((a) => outWork(a) && !a.task.hauling && !escortOf(w, a)));
-  function escortOption(w, a) {
-    const risk = outsideRisk(w);
-    if (a.task?.id === "company") {
-      const b = escortGoing(w, a, a.task);
-      if (b) return [a.task, 0.2 + 0.6 * risk + (a.task.home ? 0.6 : 0), () => a.task.home ? `\u0432\u0435\u0434\u0451\u0442 ${b.name} \u043A \u0441\u0432\u043E\u0438\u043C` : `\u0432 \u043B\u0435\u0441\u0443 \u043E\u043F\u0430\u0441\u043D\u043E, ${b.name} \u043D\u0435 ${g(b, "\u043E\u0434\u0438\u043D", "\u043E\u0434\u043D\u0430")}`];
-    }
-    const ws = walkers(w);
-    if (!ws.length || hpShare(a) < 0.6 || a.mods.bravery < 0.6) return null;
-    const col = colonists(w);
-    if (col.filter((o) => o.task?.id === "company").length >= Math.max(1, Math.floor(col.length * TOGETHER.escortShare)) && a.task?.id !== "company") return null;
-    let best = null, bs = -Infinity, bop = 0;
-    for (const b of ws) {
-      if (b === a || dist4(a, b) > TOGETHER.far) continue;
-      const op = opinion(a, b);
-      if (op < -1.5) continue;
-      const s = 0.2 + 0.6 * risk + 0.05 * clamp(op, -2, 4) + 0.15 * (a.mods.bravery - 1) + (a.gear?.rangedReady || a.gear?.melee?.item ? 0.08 : 0);
-      if (s > bs) {
-        bs = s;
-        best = b;
-        bop = op;
-      }
-    }
-    return best ? [{ id: "company", who: best.id }, bs, () => `\u0432 \u043B\u0435\u0441\u0443 \u043E\u043F\u0430\u0441\u043D\u043E, ${best.name} ${g(best, "\u043E\u0434\u0438\u043D", "\u043E\u0434\u043D\u0430")}${bop >= REL.friend ? " \u2014 \u0430 \u044D\u0442\u043E \u0434\u0440\u0443\u0433" : ""}`] : null;
-  }
-  var FOES = /* @__PURE__ */ new Set(["predators", "nechist", "raiders"]);
-  function threatTo(w, b, r, viewer = null) {
-    let best = null, bd = r;
-    for (const o of w.agents) {
-      if (o.dead || o.tame || !FOES.has(o.faction)) continue;
-      if (viewer && (o.downed || !canSee(w, viewer, o))) continue;
-      const d = dist4(o, b);
-      if (d < bd) {
-        bd = d;
-        best = o;
-      }
-    }
-    return best;
-  }
-  function guardStep(w, a, b, task) {
-    const foe = threatTo(w, b, TOGETHER.guard, a);
-    if (foe) {
-      task.fought ?? (task.fought = foe.id);
-      const d = dist4(a, foe);
-      if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, foe)) approach(w, a, foe.x, foe.y, 1.15);
-      else attack(w, a, foe);
-      a.lastFight = w.tick;
-      return "fight";
-    }
-    if (task.fought != null) {
-      bond(w, b, a, TOGETHER.bondDefend);
-      think(w, b, "stoodUp", { name: a.name, gender: a.gender });
-      task.fought = null;
-    }
-    if (dist4(a, b) > TOGETHER.keep) {
-      approach(w, a, b.x, b.y);
-      return "far";
-    }
-    if (w.tick % HOUR === 0) {
-      bond(w, a, b, TOGETHER.bondEscort);
-      bond(w, b, a, TOGETHER.bondEscort);
-    }
-    return "near";
-  }
-  function escortGoing(w, a, task) {
-    const b = byId3(w, task.who);
-    if (!b) return null;
-    if (task.home) return agentInZone(w, b) ? null : b;
-    return outWork(b) && outsideRisk(w) >= TOGETHER.riskTill ? b : null;
-  }
-  function enterEscort(w, a, task) {
-    const b = byId3(w, task.who);
-    if (!b) return;
-    const s = social(w);
-    if (s && !task.home) s.escort++;
-    if (!task.home) think(w, b, "escorted", { name: a.name, gender: a.gender });
-  }
-  var helper = (w, id) => colonists(w).find((o) => o.task?.id === "aid" && o.task.who === id);
-  var needsAid = (w, b) => !!b.downed || hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === "treat" && b.task.lying) && !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery);
-  var aidScore = (b) => b.downed ? TOGETHER.aidFallen : 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2;
-  var aidWhy = (b) => b.downed ? `${b.name} ${g(b, "\u0443\u043F\u0430\u043B", "\u0443\u043F\u0430\u043B\u0430")} \u0431\u0435\u0437 \u0441\u043E\u0437\u043D\u0430\u043D\u0438\u044F \u0438 \u0438\u0441\u0442\u0435\u043A\u0430\u0435\u0442 \u043A\u0440\u043E\u0432\u044C\u044E` : `${b.name} ${g(b, "\u0440\u0430\u043D\u0435\u043D", "\u0440\u0430\u043D\u0435\u043D\u0430")} \u0432 \u043B\u0435\u0441\u0443: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(b) * 100)}%`;
-  function aidOption(w, a) {
-    if (hpShare(a) < 0.5) return null;
-    if (a.task?.id === "aid") {
-      const b = byId3(w, a.task.who);
-      if (b && needsAid(w, b)) return [a.task, aidScore(b), () => aidWhy(b)];
-    }
-    let best = null, bs = -Infinity;
-    for (const b of colonists(w)) {
-      if (b === a || !needsAid(w, b) || dist4(a, b) > TOGETHER.far) continue;
-      const h = helper(w, b.id);
-      if (h && h !== a) continue;
-      const op = opinion(a, b);
-      if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
-      const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
-      if (s > bs) {
-        bs = s;
-        best = b;
-      }
-    }
-    return best ? [{ id: "aid", who: best.id, fallen: !!best.downed }, bs, () => aidWhy(best)] : null;
-  }
-  function giveAid(w, a, b) {
-    if (b.downed) {
-      stabilize(w, a, b);
-      bond(w, b, a, TOGETHER.bondAid * 2);
-      bond(w, a, b, TOGETHER.bondAid * 0.5);
-      const s2 = social(w);
-      if (s2) s2.aid++;
-      practice(a, "medicine", TOGETHER.aidPractice);
-      return;
-    }
-    const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
-    b.hp += amt;
-    b.aidedAt = w.tick;
-    bond(w, b, a, TOGETHER.bondAid);
-    bond(w, a, b, TOGETHER.bondAid * 0.3);
-    think(w, b, "aided", { name: a.name, gender: a.gender });
-    think(w, a, "gaveAid", { name: b.name });
-    const s = social(w);
-    if (s) s.aid++;
-    log(w, `<b>${esc(a.name)}</b> ${g(a, "\u043F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B", "\u043F\u0435\u0440\u0435\u0432\u044F\u0437\u0430\u043B\u0430")} \u0440\u0430\u043D\u044B <b>${esc(b.name)}</b> \u043F\u0440\u044F\u043C\u043E \u0432 \u043B\u0435\u0441\u0443 \u0438 ${g(a, "\u043F\u043E\u0432\u0451\u043B", "\u043F\u043E\u0432\u0435\u043B\u0430")} \u043A \u0441\u0432\u043E\u0438\u043C.`, "people");
-  }
-  function mates(w, a) {
-    var _a;
-    const by = {};
-    for (const o of colonists(w)) if (o !== a && o.task?.id === "job") (by[_a = o.task.job] || (by[_a] = [])).push(o);
-    return (job) => {
-      let v = 0, friend = null, foe = null;
-      for (const o of by[job] || []) {
-        const op = opinion(a, o);
-        if (op >= REL.friend) {
-          v += TOGETHER.mate;
-          friend ?? (friend = o);
-        } else if (op <= REL.dislike) {
-          v -= TOGETHER.mate;
-          foe ?? (foe = o);
-        }
-      }
-      return { v: clamp(v, -TOGETHER.mateCap, TOGETHER.mateCap), friend, foe };
-    };
-  }
-  function askForBed(w, a, end) {
-    const mine = hpShare(a);
-    let best = null;
-    for (const p of colonists(w)) {
-      if (p === a || p.task?.id !== "treat" || !p.task.bed) continue;
-      const h = hpShare(p);
-      if (h < TOGETHER.yieldFrom || h - mine < TOGETHER.yieldGap) continue;
-      if (opinion(p, a) <= REL.dislike && (p.align?.mercy ?? 0) < 2) continue;
-      if (!best || h > hpShare(best)) best = p;
-    }
-    if (!best) return null;
-    const bed = best.task.bed;
-    end(w, best, "done");
-    bond(w, a, best, TOGETHER.bondAid * 0.6);
-    think(w, a, "gotBed", { name: best.name, gender: best.gender });
-    think(w, best, "yieldedBed", { name: a.name });
-    const s = social(w);
-    if (s) s.yield++;
-    log(w, `<b>${esc(best.name)}</b> ${g(best, "\u0443\u0441\u0442\u0443\u043F\u0438\u043B", "\u0443\u0441\u0442\u0443\u043F\u0438\u043B\u0430")} \u043A\u043E\u0439\u043A\u0443 \u0443 \u043B\u0435\u043A\u0430\u0440\u044F <b>${esc(a.name)}</b>: \u0442\u043E\u043C\u0443 \u0445\u0443\u0436\u0435.`, "people");
-    return bed;
-  }
-  function afterRaid(w, since) {
-    const fought = colonists(w).filter((a) => (a.lastFight ?? -Infinity) >= since);
-    for (let i = 0; i < fought.length; i++) for (let j = i + 1; j < fought.length; j++) {
-      const a = fought[i], b = fought[j], foes = opinion(a, b) <= REL.dislike || opinion(b, a) <= REL.dislike;
-      const v = foes ? TOGETHER.mendTrouble : TOGETHER.bondTrouble;
-      bond(w, a, b, v);
-      bond(w, b, a, v);
-      if (foes) {
-        const s = social(w);
-        if (s) s.bond++;
-        think(w, a, "sharedTrouble", { name: b.name });
-        think(w, b, "sharedTrouble", { name: a.name });
-        log(w, `\u041E\u0431\u0449\u0430\u044F \u0431\u0435\u0434\u0430 \u0441\u0431\u043B\u0438\u0437\u0438\u043B\u0430 <b>${esc(a.name)}</b> \u0438 <b>${esc(b.name)}</b>: \u043F\u043B\u0435\u0447\u043E\u043C \u043A \u043F\u043B\u0435\u0447\u0443 \u043F\u0440\u043E\u0442\u0438\u0432 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 \u0441\u0442\u0430\u0440\u044B\u0435 \u043E\u0431\u0438\u0434\u044B \u0437\u0430\u0431\u044B\u0432\u0430\u044E\u0442\u0441\u044F.`, "people");
-      }
-    }
-  }
-  function workTogether(w) {
-    const col = colonists(w);
-    for (let i = 0; i < col.length; i++) for (let j = i + 1; j < col.length; j++) {
-      const a = col[i], b = col[j];
-      if (a.task?.id !== "job" || b.task?.id !== "job" || a.task.job !== b.task.job || dist4(a, b) > 8) continue;
-      if (opinion(a, b) <= REL.dislike || opinion(b, a) <= REL.dislike) continue;
-      bond(w, a, b, TOGETHER.bondWork);
-      bond(w, b, a, TOGETHER.bondWork);
-    }
-  }
-
-  // src/settlement/relations.js
-  var REL = {
-    dislike: -2,
-    // opinion at or below this weighs on the mood
-    friend: 2.5,
-    // at or above this cheers up
-    quarrelEvery: 2 * HOUR,
-    quarrelNear: 4,
-    // cells apart
-    quarrelBase: 0.05,
-    // chance per check and per point of mutual dislike past −2
-    quarrelMax: 0.35,
-    grudge: 0.6,
-    // a quarrel adds this much to the grudge on both sides
-    fade: 0.96,
-    // grudges shrink this much each day
-    fadeGood: 0.985,
-    // good memories, this much
-    settlerFloor: -1
-    // a race the colony dislikes worse than this does not come
-  };
-  function settlerSpecies(w, rng) {
-    const col = colonists(w);
-    const opts = SPECIES.filter((sp) => sp.settle > 0).map((sp) => {
-      if (!col.length || sp.id === "human") return [sp.id, sp.settle];
-      const into = col.reduce((s, a) => s + kinship(sp.id, a.species), 0) / col.length;
-      const from = col.reduce((s, a) => s + kinship(a.species, sp.id), 0) / col.length;
-      if (Math.min(into, from) < REL.settlerFloor) return [sp.id, 0];
-      return [sp.id, sp.settle * Math.exp(0.5 * (into + from) / 2)];
-    });
-    return weighted(rng, opts) || "human";
-  }
-  var near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < REL.quarrelNear;
-  var busy = (a) => a.sleeping || a.downed || ["fight", "muster", "treat", "runHome", "flee", "downed"].includes(a.task?.id);
-  function reason(a, b) {
-    const kin = kinship(a.species, b.species);
-    if (kin <= -2) return `${SPECIES.get(a.species).plural} \u0438 ${SPECIES.get(b.species).plural} \u2014 \u0434\u0430\u0432\u043D\u0438\u0435 \u0432\u0440\u0430\u0433\u0438`;
-    for (const x of a.values || []) for (const y of b.values || []) if (VALUES.get(x).clash.includes(y)) return `\u043E\u0434\u043D\u043E\u043C\u0443 \u0434\u043E\u0440\u043E\u0436\u0435 \u0432\u0441\u0435\u0433\u043E ${VALUES.get(x).label}, \u0434\u0440\u0443\u0433\u043E\u043C\u0443 ${VALUES.get(y).label}`;
-    if (a.align && b.align && Math.abs(a.align.mercy - b.align.mercy) >= OPINION.mercyGap) return "\u043D\u0435 \u0441\u043E\u0448\u043B\u0438\u0441\u044C \u0432 \u0442\u043E\u043C, \u043A\u0430\u043A \u043E\u0431\u0445\u043E\u0434\u0438\u0442\u044C\u0441\u044F \u0441 \u043F\u043B\u0435\u043D\u043D\u044B\u043C\u0438 \u0438 \u0441\u043B\u0430\u0431\u044B\u043C\u0438";
-    return "\u0441\u0442\u0430\u0440\u044B\u0435 \u043E\u0431\u0438\u0434\u044B";
-  }
-  function quarrels(w) {
-    const col = colonists(w).filter((a) => !busy(a));
-    for (let i = 0; i < col.length; i++) for (let j = i + 1; j < col.length; j++) {
-      const a = col[i], b = col[j];
-      if (!near(a, b)) continue;
-      const mutual = opinion(a, b) + opinion(b, a);
-      const p = clamp((REL.dislike * 2 - mutual) * REL.quarrelBase, 0, REL.quarrelMax);
-      if (p <= 0 || w.rngs.social() >= p) continue;
-      if (raidAlarm(w) || w.stats.fireNearCamp > 0 || threatTo(w, a, 12) || threatTo(w, b, 12)) {
-        if (w.behave) w.behave.social.calm++;
-        continue;
-      }
-      for (const [x, y] of [[a, b], [b, a]]) {
-        (x.grudge || (x.grudge = {}))[y.id] = (x.grudge[y.id] || 0) - REL.grudge;
-        think(w, x, "quarrel", { name: y.name });
-      }
-      w.chronicle.quarrels = (w.chronicle.quarrels || 0) + 1;
-      log(w, `\u0421\u043A\u043B\u043E\u043A\u0430: <b>${esc(a.name)}</b> \u0438 <b>${esc(b.name)}</b> \u0441\u0446\u0435\u043F\u0438\u043B\u0438\u0441\u044C \u2014 ${reason(a, b)}.`, "people");
-      return;
-    }
-  }
-  function daily(w) {
-    const col = colonists(w);
-    for (const a of col) {
-      if (a.grudge) for (const id of Object.keys(a.grudge)) {
-        a.grudge[id] *= a.grudge[id] > 0 ? REL.fadeGood : REL.fade;
-        if (Math.abs(a.grudge[id]) < 0.05 || !col.some((o) => o.id === +id)) delete a.grudge[id];
-      }
-      let worst = null, wv = Infinity, best = null, bv = -Infinity;
-      for (const b of col) {
-        if (b === a) continue;
-        const v = opinion(a, b);
-        if (v < wv) {
-          wv = v;
-          worst = b;
-        }
-        if (v > bv) {
-          bv = v;
-          best = b;
-        }
-      }
-      if (worst && wv <= REL.dislike) think(w, a, "dislikesNeighbour", { name: worst.name, mood: clamp(wv * 0.04, -0.25, -0.06) });
-      if (best && bv >= REL.friend) think(w, a, "goodCompany", { name: best.name });
-    }
-  }
-  function stepRelations(w) {
-    if (w.tick % DAY === Math.floor(DAY * 0.55)) daily(w);
-    if (w.tick % REL.quarrelEvery === 37) quarrels(w);
-    if (w.tick % HOUR === 11) workTogether(w);
-    const alarm = raidAlarm(w);
-    if (alarm && w.raidSince == null) w.raidSince = w.tick;
-    else if (!alarm && w.raidSince != null) {
-      afterRaid(w, w.raidSince);
-      w.raidSince = null;
-    }
-  }
-  var history = (a, b) => a.grudge?.[b.id] || 0;
-  function feelings(w, a) {
-    return colonists(w).filter((b) => b !== a).map((b) => [b, opinion(a, b)]).sort((x, y) => x[1] - y[1]);
   }
 
   // src/data/migrations.js
@@ -11904,204 +12370,6 @@ dd.q4{color:#c58cff;font-weight:600}
     spoil(w);
   }
 
-  // src/settlement/crafting.js
-  var PRESERVED = () => FOODS.filter((f) => f.of);
-  function reserved(w, res) {
-    const g3 = w.council.goal;
-    if (!g3) return 0;
-    const v = BUILDINGS.get(g3).cost[res] || 0;
-    return v && res === "wood" ? v + fuelReserve(w) : v;
-  }
-  function canStart(w, r) {
-    if (r.needs && !r.needs.every((b) => has(w, b))) return false;
-    if (r.fuel && !furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0))) return false;
-    if (r.tool && !((w.stock[r.tool] || 0) >= 1)) return false;
-    return Object.entries(r.cost).every(([res, v]) => {
-      const have = w.stock[res] || 0;
-      return have >= v && (have - v >= reserved(w, res) || have < reserved(w, res) * 0.5);
-    });
-  }
-  var craftContext = (w) => perTick(w, "craftCtx", () => makeCraftContext(w));
-  function makeCraftContext(w) {
-    const col = colonists(w), counts = {};
-    const count2 = (it) => {
-      counts[it.type] = (counts[it.type] || 0) + 1;
-    };
-    for (const a of col) for (const it of allItems(a)) count2(it);
-    for (const it of w.armory) count2(it);
-    const owned = (id) => counts[id] || 0;
-    let silvered = 0;
-    for (const a of col) for (const it of allItems(a)) if (def(it).silver) silvered++;
-    for (const it of w.armory) if (def(it).silver) silvered++;
-    return {
-      pop: col.length,
-      owned,
-      likes: (job) => col.filter((a) => a.likes === job).length,
-      timid: col.filter((a) => a.mods.bravery < 0.8).length,
-      stock: (res) => w.stock[res] || 0,
-      bows: owned("bow"),
-      has: (b) => has(w, b),
-      fishing: w.lakes.some(fishable),
-      food: foodTotal(w),
-      season: season(w).id,
-      drying: season(w).drying,
-      stockpile: { spring: 0.7, summer: 1, autumn: 1.6, winter: 1 }[season(w).id] ?? 1,
-      stores: PRESERVED().reduce((s, f) => s + (w.stock[f.id] || 0), 0),
-      fans: (food) => col.filter((a) => a.food?.likes === food).length,
-      get fuel() {
-        return furnaceHeat(w, 2);
-      },
-      melee: () => MELEE().reduce((s, d) => s + owned(d.id), 0),
-      freeSlots: freeSlots(w),
-      silvered: () => silvered,
-      silverFoes: w.chronicle.silverFoes || 0,
-      placers: (w.plantBeds?.placer?.length || 0) > 0,
-      spare: (res) => {
-        const r = RESOURCES.get(res);
-        return (w.stock[res] || 0) - 0.6 * (r.keep ?? r.target ?? 20);
-      }
-    };
-  }
-  var byStation = null;
-  function recipesAt(station) {
-    var _a;
-    if (!byStation) {
-      byStation = {};
-      for (const r of RECIPES.all()) (byStation[_a = r.at] || (byStation[_a] = [])).push(r);
-    }
-    return byStation[station] || [];
-  }
-  var melee = null;
-  var MELEE = () => melee || (melee = ITEMS.filter((d) => d.slot === "hand" && d.melee && !d.ranged));
-  var anyoneCan = (w, r) => !recipeNeed(r) || w.agents.some((a) => a.faction === "colony" && !a.dead && canMake(a, r));
-  function pickRecipe(w, station, ctx = craftContext(w), a = null) {
-    let best = null, bv = 0;
-    for (const r of recipesAt(station)) {
-      const v = r.want(ctx);
-      if (v > bv && (a ? canMake(a, r) : anyoneCan(w, r)) && canStart(w, r)) {
-        bv = v;
-        best = r;
-      }
-    }
-    return best;
-  }
-  var benchesOf = (b) => BUILDINGS.get(b.key).benches || 1;
-  var benchPrefix = (b) => "bench:" + b.id;
-  var freeBench = (w, b, a) => freeSlot(w, benchPrefix(b), benchesOf(b), a);
-  function stationHasWork(w, station, a) {
-    const map = perTick(w, "orders", () => ({}));
-    const b = w.buildings.find((x) => x.key === station && x.done);
-    if (!b || !freeBench(w, b, a)) return false;
-    const key3 = station + ":" + accessKey(a);
-    if (!(key3 in map)) map[key3] = b.order ? canMake(a, RECIPES.get(b.order.recipe)) : !!pickRecipe(w, station, void 0, a);
-    return map[key3];
-  }
-  function stationPriority(w, station, a = null) {
-    const b = w.buildings.find((x) => x.key === station && x.done);
-    if (!b) return 0;
-    const ctx = craftContext(w);
-    if (b.order) {
-      const r2 = RECIPES.get(b.order.recipe);
-      return a && !canMake(a, r2) ? 0 : r2.want(ctx) + 0.5;
-    }
-    const r = pickRecipe(w, station, ctx, a);
-    return r ? r.want(ctx) : 0;
-  }
-  function workAt(w, b, amount, a) {
-    var _a, _b;
-    if (b.order && a && !canMake(a, RECIPES.get(b.order.recipe))) return false;
-    if (!b.order) {
-      const r2 = pickRecipe(w, b.key, void 0, a);
-      if (!r2) return false;
-      const fuel = r2.fuel ? furnacePick(w, r2.heat ?? 2, r2.fuel, fuelReserve(w) + (r2.cost.wood || 0)) : null;
-      if (r2.fuel && !fuel) return false;
-      if (w.scratch) delete w.scratch.orders;
-      for (const [res, v] of Object.entries(r2.cost)) w.stock[res] -= v;
-      if (fuel) w.stock[fuel[0].id] -= fuel[1];
-      b.order = { recipe: r2.id, progress: 0 };
-      if (fuel) b.order.fuel = [fuel[0].id, fuel[1]];
-    }
-    const r = RECIPES.get(b.order.recipe);
-    const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
-    const labour = typeof amount === "function" ? amount(r) : amount;
-    b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
-    if (a) ((_a = b.order).by || (_a.by = {}))[a.id] = (b.order.by?.[a.id] || 0) + labour;
-    if (b.order.progress < r.work) return r;
-    const by = b.order.by;
-    b.order = null;
-    w.stats.crafted++;
-    if (w.scratch) delete w.scratch.craftCtx;
-    if (r.makes.item) {
-      const extra = {}, master = masterOf(w, by, a), skill = master ? skillOf(master, recipeSkill(r)) : 0;
-      if (r.makes.silver) extra.silver = true;
-      const q = ITEMS.get(r.makes.item).quality === false ? 0 : qualityRoll(w.rngs.colony(), skill, bellows ? FURNACE.bellowsFine : 0);
-      if (q) {
-        extra.q = q;
-        if (master) extra.maker = master.name;
-      }
-      const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
-      w.armory.push(it);
-      w.armoryVersion = (w.armoryVersion || 0) + 1;
-      if (q) {
-        const f = (_b = w.chronicle).fine || (_b.fine = {});
-        f[q] = (f[q] || 0) + 1;
-      }
-      const who = master ? `<b>${esc(master.name)}</b>` : "\u043C\u0430\u0441\u0442\u0435\u0440";
-      log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${name}.${q === 1 ? ` ${who} \u043F\u043E\u0441\u0442\u0430\u0440\u0430\u043B${master?.gender === "f" ? "\u0430\u0441\u044C" : "\u0441\u044F"}: \u0432\u0435\u0449\u044C \u0432\u044B\u0448\u043B\u0430 \u0434\u043E\u0431\u0440\u043E\u0442\u043D\u043E\u0439.` : q === 2 ? ` \u0420\u0430\u0431\u043E\u0442\u0430 \u043C\u0430\u0441\u0442\u0435\u0440\u0430: ${who} \u0441\u0434\u0435\u043B\u0430\u043B${master?.gender === "f" ? "\u0430" : ""} \u0432\u0435\u0449\u044C, \u043A\u0430\u043A\u043E\u0439 \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438 \u0435\u0449\u0451 \u043D\u0435 \u0432\u0438\u0434\u0435\u043B\u0438.` : q >= 3 ? ` \u0427\u0443\u0434\u043E \u0440\u0435\u043C\u0435\u0441\u043B\u0430! ${who} \u0441\u0430\u043C${master?.gender === "f" ? "\u0430" : ""} \u043D\u0435 \u0432\u0435\u0440\u0438\u0442, \u0447\u0442\u043E \u044D\u0442\u043E ${master?.gender === "f" ? "\u0435\u0451" : "\u0435\u0433\u043E"} \u0440\u0443\u043A \u0434\u0435\u043B\u043E (${def(it).rank}).` : ""}`, "craft", q >= 3 ? "notice" : void 0);
-      if (a) {
-        think(w, a, "madeItem", { item: name });
-        a.stats.crafted++;
-      }
-      w.chronicle.crafted[r.makes.item] = (w.chronicle.crafted[r.makes.item] || 0) + 1;
-    } else {
-      w.stock[r.makes.resource] = (w.stock[r.makes.resource] || 0) + r.makes.n;
-      const res = RESOURCES.get(r.makes.resource);
-      if (res.tags.includes("luxury") || res.tags.includes("furniture")) {
-        log(w, `\u0421\u0434\u0435\u043B\u0430\u043D\u043E: ${res.short}.`, "craft");
-        if (a) {
-          think(w, a, "madeItem", { item: res.short });
-          a.stats.crafted++;
-        }
-      }
-    }
-    return r;
-  }
-  function stepCrafting(w) {
-    if (w.tick % HOUR !== 7) return;
-    for (const b of w.buildings) {
-      if (!b.done || !b.order) continue;
-      const r = RECIPES.get(b.order.recipe);
-      if (anyoneCan(w, r) || !w.agents.some((a) => a.faction === "colony" && !a.dead)) continue;
-      for (const [res, v] of Object.entries(r.cost)) w.stock[res] = (w.stock[res] || 0) + v;
-      if (b.order.fuel) w.stock[b.order.fuel[0]] = (w.stock[b.order.fuel[0]] || 0) + b.order.fuel[1];
-      b.order = null;
-      if (w.scratch) {
-        delete w.scratch.orders;
-        delete w.scratch.craftCtx;
-      }
-      const what = r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short;
-      const need = recipeNeed(r);
-      log(w, `\u041D\u0435\u043A\u043E\u043C\u0443 \u0434\u043E\u0434\u0435\u043B\u0430\u0442\u044C: ${what} (${need ? "\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F " + reasonText(need) : "\u043D\u0443\u0436\u0435\u043D \u043C\u0430\u0441\u0442\u0435\u0440"}). \u0417\u0430\u043A\u0430\u0437 \u0441\u043D\u044F\u0442, \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 \u0441\u043A\u043B\u0430\u0434.`, "craft");
-    }
-  }
-  function masterOf(w, by, last2) {
-    let best = null, bv = -1;
-    for (const [id, v] of Object.entries(by || {})) {
-      const o = w.agents.find((x) => x.id === +id && !x.dead);
-      if (o && v > bv) {
-        bv = v;
-        best = o;
-      }
-    }
-    return best || last2 || null;
-  }
-  function orderText(b) {
-    if (!b.order) return "\u0436\u0434\u0451\u0442 \u0437\u0430\u043A\u0430\u0437\u0430";
-    const r = RECIPES.get(b.order.recipe);
-    const what = r.makes.item ? ITEMS.get(r.makes.item).short : `${RESOURCES.get(r.makes.resource).short} \xD7${r.makes.n}`;
-    return `${what}: ${Math.floor(b.order.progress / r.work * 100)}%`;
-  }
-
   // src/agents/body.js
   var NEED_THOUGHT = { food: "starving", warmth: "freezing", rest: "exhausted" };
   var REMEMBER_BELOW = { food: 0.3, rest: 0.25, warmth: 0.4 };
@@ -12485,51 +12753,6 @@ dd.q4{color:#c58cff;font-weight:600}
       if (r.spot && approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.85 : 0.7) === null) r.spot = null;
     }
   };
-
-  // src/settlement/healing.js
-  var HEAL = {
-    seekBelow: 0.75,
-    // a colonist this hurt (share of health) goes to the healer's hut…
-    until: 0.97,
-    // …and stays until healed this far
-    rate: 22e-4,
-    // health per tick a patient gets from a healer working at speed 1
-    noHerbs: 0.4,
-    // without herbs the healer manages this share of it
-    perHerb: 0.35
-    // health healed per herb used
-  };
-  var hurt = (a) => a.hp < maxHp(a) * HEAL.seekBelow;
-  var hutOf = (w) => w.buildings.find((b) => b.key === "healerhut" && b.done);
-  var bedsOf = () => BUILDINGS.get("healerhut").beds || 2;
-  var freeBed = (w, a) => {
-    const b = hutOf(w);
-    return b ? freeSlot(w, "bed:" + b.id, bedsOf(), a) : null;
-  };
-  var patients = (w) => perTick(w, "patients", () => colonists(w).filter((a) => a.task?.id === "treat" && a.task.lying && a.task.bed));
-  var waiting = (w) => colonists(w).filter((a) => a.task?.id === "treat").length;
-  function tend(w, healer, rate) {
-    const ps = patients(w);
-    if (!ps.length) return 0;
-    let given = 0;
-    for (const p of ps) {
-      const herbs = (w.stock.herbs || 0) >= 1 || (w.herbCredit || 0) > 0;
-      const amount = Math.min(maxHp(p) - p.hp, HEAL.rate * rate * (herbs ? 1 : HEAL.noHerbs) / Math.max(1, ps.length * 0.6));
-      if (amount <= 0) continue;
-      p.hp += amount;
-      given += amount;
-      p.task.healer = healer.id;
-      if (herbs) {
-        w.herbCredit = (w.herbCredit || 0) - amount;
-        if (w.herbCredit <= 0 && (w.stock.herbs || 0) >= 1) {
-          w.stock.herbs -= 1;
-          w.herbCredit += HEAL.perHerb;
-        }
-      }
-    }
-    return given;
-  }
-  var healerHutCell = (w, a) => w.grid.bld[cellOf(w, a)] >= 0 && w.buildings.some((b) => b.key === "healerhut" && b.done && b.id === w.grid.bld[cellOf(w, a)]);
 
   // src/agents/jobRunners.js
   var mill = (w, a) => {
@@ -13173,6 +13396,13 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "job", label: (t) => JOBS.get(t.job).verb, runnerOf: (t) => JOBS.get(t.job).runner, step(w, a, task) {
       RUNNERS[JOBS.get(task.job).runner](w, a, task);
     } },
+    // a moment's thought between two jobs: stands, then takes up what it had settled on
+    { id: "ponder", label: () => "\u043F\u0440\u0438\u043A\u0438\u0434\u044B\u0432\u0430\u0435\u0442, \u0437\u0430 \u0447\u0442\u043E \u0432\u0437\u044F\u0442\u044C\u0441\u044F", step(w, a, task) {
+      if (w.tick >= task.until) {
+        a.task = task.next;
+        a.think = 0;
+      }
+    } },
     { id: "idle", label: () => "\u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442", step(w, a, task) {
       if (follow(w, a, "camp") === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 4) mill2(w, a, task, 2.5);
     } },
@@ -13420,10 +13650,13 @@ dd.q4{color:#c58cff;font-weight:600}
   var taskLabel = (a) => a.task ? TASKS.get(a.task.id).label(a.task) : "\u0434\u0443\u043C\u0430\u0435\u0442";
 
   // src/agents/brains/colonist.js
+  var ROSTER = { main: [1.5, 0.3], alt: [1, 0.05], other: [0.45, 0], keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16] };
   var ATTACKED = 2.6;
   var label2 = (t) => TASKS.get(t.id).label(t);
-  function jobWhy(w, a, job, ctx, goal, tasty, night) {
+  function jobWhy(w, a, job, ctx, goal, tasty, night, role) {
     const parts = [];
+    if (role === "main") parts.push("\u043F\u043E \u043D\u0430\u0440\u044F\u0434\u0443 \u0441\u043E\u0432\u0435\u0442\u0430");
+    else if (role === "alt") parts.push("\u0437\u0430\u043F\u0430\u0441\u043D\u043E\u0435 \u0434\u0435\u043B\u043E \u043F\u043E \u043D\u0430\u0440\u044F\u0434\u0443");
     if (job.resource) parts.push(`${RESOURCES.get(job.resource).label} \u0432 \u0437\u0430\u043F\u0430\u0441\u0435 ${Math.floor(w.stock[job.resource] || 0)}`);
     else if (job.food) parts.push(`\u0435\u0434\u044B ${Math.floor(ctx.food)} \u043D\u0430 ${ctx.pop} \u0447\u0435\u043B.`);
     else if (job.runner === "build") parts.push(`\u0441\u0442\u0440\u043E\u0439\u043A\u0430 \u0436\u0434\u0451\u0442`);
@@ -13459,16 +13692,19 @@ dd.q4{color:#c58cff;font-weight:600}
       opts.push([{ id: n.task }, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ", \u043D\u043E \u043B\u0430\u0433\u0435\u0440\u044C \u0433\u043E\u0440\u0438\u0442" : ""}`]);
     }
     const mate = mates(w, a);
+    ensurePlan(w);
+    const roster = rosterOf(w, a), roleOf2 = (id) => roster?.job === id ? "main" : roster?.alt?.includes(id) ? "alt" : "other";
     for (const job of JOBS.all()) {
       if (!jobUnlocked(w, job) || !jobAccess(a, job).ok || job.canDo && !job.canDo(w, a)) continue;
       const base = job.desire(w, ctx, job);
       if (base < 0) continue;
       const res = job.resource;
       const goal = res ? goalNeed(w, res) : 0;
-      const dayWork = job.runner === "build" ? night * 0.3 : night * 0.2;
+      const outdoor = job.runner === "harvest" || job.runner === "hunt";
+      const dayWork = (job.runner === "build" ? night * 0.3 : night * 0.2) + (outdoor && night > 0.6 ? (night - 0.6) * 1.5 * (0.5 + outsideRisk(w)) : 0);
       const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
-      const m = mate(job.id);
-      opts.push([{ id: "job", job: job.id }, (base + goal - dayWork) * (a.prefs[job.id] ?? 1) * tasty + m.v, () => jobWhy(w, a, job, ctx, goal, tasty, night) + (m.friend ? `, \u0442\u0430\u043C ${m.friend.name}` : m.foe ? `, \u043D\u043E \u0442\u0430\u043C ${m.foe.name}` : "")]);
+      const m = mate(job.id), role = roleOf2(job.id), [mul, add2] = ROSTER[role];
+      opts.push([{ id: "job", job: job.id }, Math.min(1, ((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add2) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night, role) + (m.friend ? `, \u0442\u0430\u043C ${m.friend.name}` : m.foe ? `, \u043D\u043E \u0442\u0430\u043C ${m.foe.name}` : "")]);
     }
     opts.push([{ id: "idle" }, 0.15, () => "\u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435\u0447\u0435\u043C \u0437\u0430\u043D\u044F\u0442\u044C\u0441\u044F"]);
     const esc2 = escortOption(w, a);
@@ -13498,7 +13734,8 @@ dd.q4{color:#c58cff;font-weight:600}
     if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{ id: "runHome" }, 1.6, () => "\u0442\u044F\u0436\u0435\u043B\u043E \u0440\u0430\u043D\u0435\u043D, \u0430 \u0432\u0440\u0430\u0433 \u0440\u044F\u0434\u043E\u043C"]);
     let best = null, bs = -Infinity;
     const cur = key(a.task);
-    const keep = 0.12 + (a.task?.id === "job" ? JOBS.get(a.task.job).sticky || 0 : 0);
+    const committed = a.task?.id === "job" && (a.task.work > 0 || a.carry?.n > 0 || a.task.hauling);
+    const keep = ROSTER.keep + (a.task?.id === "job" ? JOBS.get(a.task.job).sticky || 0 : 0) + (committed ? ROSTER.committed : 0);
     let bestWhy = null, alt = null, as = -Infinity, altWhy = null;
     for (const [t, s, why] of opts) {
       if (key(t) !== cur && skipped(w, a, t)) continue;
@@ -13529,7 +13766,14 @@ dd.q4{color:#c58cff;font-weight:600}
       altWhy: altWhy?.() || ""
     };
     if (key(best) !== cur) {
-      if (a.task && !["idle", "council", "trade", "eat", "sleep", "warm", "muster", "sulk"].includes(a.task.id)) a.switchWhy = `\u0440\u0430\u0434\u0438 \xAB${a.why.task}\xBB: ${a.why.why}`;
+      if (a.task?.id === "job" && best.id === "job" && bs < 1.2 && !skipped(w, a, a.task)) {
+        const [lo, hi] = ROSTER.ponder;
+        a.switchWhy = `\u0440\u0430\u0434\u0438 \xAB${a.why.task}\xBB: ${a.why.why}`;
+        w.behave.switches++;
+        a.task = { id: "ponder", next: best, until: w.tick + lo + Math.floor(w.rngs.colony() * hi), why: a.why.why };
+        return;
+      }
+      if (a.task && !["idle", "council", "trade", "eat", "sleep", "warm", "muster", "sulk", "ponder"].includes(a.task.id)) a.switchWhy = `\u0440\u0430\u0434\u0438 \xAB${a.why.task}\xBB: ${a.why.why}`;
       else if (a.task) a.task.closed = "done";
       if (a.task) w.behave.switches++;
       a.task = best;
@@ -13562,8 +13806,9 @@ dd.q4{color:#c58cff;font-weight:600}
       const tid2 = a.task?.id;
       const attacked = w.agents.some((o) => o.task?.id === "maul" && o.task.target === a);
       if (tid2 !== "fight" && tid2 !== "runHome" && tid2 !== "flee" && attacked) a.think = 0;
+      if (w.tick % 5 === 0 && a.task?.id !== "fight" && a.task?.id !== "runHome" && nearestHostile(w, a, 8)) a.think = 0;
       if (a.task?.id !== "flee" && --a.think <= 0) {
-        a.think = 15;
+        a.think = a.task?.id === "job" && outsideRisk(w) < TOGETHER.riskFrom ? ROSTER.think : 15;
         const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some((v) => v < 0.12) || !!nearestHostile(w, a, 8);
         const busy2 = !urgent && a.task?.id === "job" && a.task.hauling;
         if (!busy2) decide(w, a);
@@ -20186,7 +20431,8 @@ dd.q4{color:#c58cff;font-weight:600}
         const need = (r, v) => v + (r === "wood" ? fuelReserve(w) : 0);
         goal = `<div class="goal">\u041A\u043E\u043F\u0438\u043C \u043D\u0430 ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= need(r, v) ? "" : " short"}">${RESOURCES.get(r).label} ${Math.min(need(r, v), Math.floor(w.stock[r] || 0))}/${need(r, v)}${need(r, v) > v ? ` (\u0438\u0437 \u043D\u0438\u0445 ${need(r, v) - v} \u043D\u0430 \u043A\u043E\u0441\u0442\u0451\u0440)` : ""}</span>`).join(" ")}</div>` + this.waitingHtml(w, d);
       }
-      this.set("council", `<div class="when">\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0441\u043E\u0432\u0435\u0442: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ""}${args ? `<ul class="args">${args}</ul>` : ""}`);
+      const p = w.plan, roster = p?.lines?.length ? `<h4>\u041D\u0430\u0440\u044F\u0434 (${p.reason})</h4><ul class="args">${p.lines.map((l) => `<li>${esc(l.text)}</li>`).join("")}</ul>` : "";
+      this.set("council", `<div class="when">\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0441\u043E\u0432\u0435\u0442: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ""}${args ? `<ul class="args">${args}</ul>` : ""}${roster}`);
     }
     // why the council's goal is not laid yet: each missing resource, where it comes from and who is at it;
     // how long the colony has been saving and how much of the shortfall is already made up
@@ -20238,10 +20484,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     renderPeople(w, selected) {
       const col = colonists(w);
-      const needs = SPECIES.get("human").needs.map((id) => NEEDS2.get(id));
+      const needs2 = SPECIES.get("human").needs.map((id) => NEEDS2.get(id));
       this.set("people", (col.map((a) => `<div class="person${a === selected ? " sel" : ""}" data-id="${a.id}">
       <span class="nm">${esc(a.name)} <i class="race">${raceOf(a)}</i></span><span class="task">${taskLabel(a)}${a.carry?.n ? ` \xB7 \u043D\u0435\u0441\u0451\u0442 ${a.carry.n}` : ""}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
-      <div class="bars" title="${needs.map((n) => n.label).join(" \xB7 ")} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435">${needs.map((n) => bar(a.needs[n.id], n.color)).join("")}${bar(hpShare(a), "var(--good)")}</div></div>`).join("") || '<div class="task">\u041A\u043E\u043B\u043E\u043D\u0438\u044F \u043F\u043E\u0433\u0438\u0431\u043B\u0430. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \xAB\u041C\u0435\u043D\u044E \u043C\u0438\u0440\u0430\xBB, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0447\u0430\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
+      <div class="bars" title="${needs2.map((n) => n.label).join(" \xB7 ")} \xB7 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435">${needs2.map((n) => bar(a.needs[n.id], n.color)).join("")}${bar(hpShare(a), "var(--good)")}</div></div>`).join("") || '<div class="task">\u041A\u043E\u043B\u043E\u043D\u0438\u044F \u043F\u043E\u0433\u0438\u0431\u043B\u0430. \u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \xAB\u041C\u0435\u043D\u044E \u043C\u0438\u0440\u0430\xBB, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0447\u0430\u0442\u044C \u0437\u0430\u043D\u043E\u0432\u043E.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
     }
     herdHtml(w) {
       const list = herd(w);
@@ -20429,7 +20675,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const traits = a.traits.map((id) => `<span class="chip">${TRAITS.get(id).label}</span>`).join("");
       const fresh = a.diary.filter((e) => e.until > w.tick && e.mood !== 0).sort((x, y) => Math.abs(y.mood) - Math.abs(x.mood)).slice(0, 2);
       const moodPct = Math.round((mood + 1) * 50);
-      const needs = sp.needs.map((id) => {
+      const needs2 = sp.needs.map((id) => {
         const n = NEEDS2.get(id);
         return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`;
       }).join("") + `<div class="pc-bar"><span>\u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435</span>${bar(hpShare(a), "var(--good)")}<b>${Math.round(hpShare(a) * 100)}</b></div>`;
@@ -20462,7 +20708,7 @@ dd.q4{color:#c58cff;font-weight:600}
           ${a.food ? `<p class="pc-small">\u041B\u044E\u0431\u0438\u043C\u0430\u044F \u0435\u0434\u0430: ${FOODS.get(a.food.likes).label}${a.food.dislikes ? `, \u043D\u0435 \u043B\u044E\u0431\u0438\u0442: ${FOODS.get(a.food.dislikes).label}` : ""}.</p>` : ""}
           <div class="chips">${traits || '<span class="muted pc-small">\u043D\u0438\u0447\u0435\u043C \u043E\u0441\u043E\u0431\u044B\u043C \u043D\u0435 \u0432\u044B\u0434\u0435\u043B\u044F\u0435\u0442\u0441\u044F</span>'}</div>
           <h4>\u041D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435</h4><div class="pc-moodbar"><i style="left:${moodPct}%"></i></div>
-          <h4>\u0421\u0430\u043C\u043E\u0447\u0443\u0432\u0441\u0442\u0432\u0438\u0435</h4>${needs}
+          <h4>\u0421\u0430\u043C\u043E\u0447\u0443\u0432\u0441\u0442\u0432\u0438\u0435</h4>${needs2}
         </section>
         <section><h4>\u041F\u0440\u0438\u0440\u043E\u0434\u0430</h4>
           <p class="pc-small">${body}</p>
@@ -20815,7 +21061,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 bd39a7b" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a223a31" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

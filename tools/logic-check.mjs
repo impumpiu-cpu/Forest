@@ -56,6 +56,7 @@ import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../
 import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
 import {heatTo} from '../src/world/heat.js';
+import {makePlan} from '../src/settlement/plan.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -1052,6 +1053,30 @@ check('T80', 'F06: отставший волк отдыхает, держит р
   if (h.roles[a.id] !== 'wait') return 'при 0.3 вернулся в охоту: ' + h.roles[a.id];
   a.stamina = PACK.rested + 0.01; w.tick += PACK.roles; stepHunts(w);
   return (h.roles[a.id] !== 'wait') || 'отдохнув, не вернулся';
+});
+
+// ── the roster (settlement/plan.js): everyone gets a place, the colony's best at a skill takes that
+// job, a one-person job has one person, the same site plans the same roster twice
+check('T81', 'наряд: у каждого есть дело, лучший по навыку берёт своё, лекарь один, план детерминирован, привычка держит', () => {
+  const w = scene('roster');
+  const people = ['a', 'b', 'c', 'd', 'e', 'f'].map((n, k) => put(w, 'human', 'colony', 30.5 + k, 30.5));
+  w.stock.wood = 2; w.stock.berries = 4;   // short of both: wood and food are wanted
+  for (const a of people) a.skill = {};
+  people[2].skill.woodcutting = 9;   // the colony's best woodcutter
+  const p1 = makePlan(w, 'test');
+  if (Object.keys(p1.assign).length !== people.length) return 'не всем дано дело: ' + Object.keys(p1.assign).length;
+  if (p1.assign[people[2].id].job !== 'chop') return `лучший дровосек не рубит лес: ${p1.assign[people[2].id].job} (${p1.assign[people[2].id].why})`;
+  for (const a of people) if (!p1.assign[a.id].job && !p1.assign[a.id].alt.length) return `${a.name}: ни дела, ни запасного`;
+  const healers = Object.values(p1.assign).filter(e => e.job === 'heal').length;
+  if (healers > 1) return 'лекарей ' + healers;
+  const prev = w.plan; w.plan = null;   // (a second plan on top of the first would keep the habits of the first)
+  const p2 = makePlan(w, 'test');
+  if (JSON.stringify(p1.assign) !== JSON.stringify(p2.assign)) return 'тот же мир даёт другой наряд';
+  w.plan = prev;
+  // the habit sticks: planned again on top of the first, the woodcutter keeps his job
+  const p3 = makePlan(w, 'test');
+  if (p3.assign[people[2].id].job !== 'chop' || !p3.assign[people[2].id].why.includes('как вчера')) return 'привычка не держит: ' + p3.assign[people[2].id].why;
+  return true;
 });
 
 let bad = 0;

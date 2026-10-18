@@ -68,6 +68,8 @@ METRICS.registerAll([
   // how creatures behave (settlement/behaviour.js): rates per colonist and day, shares of colonist time
   {id: 'invalid', label: 'Недопустимых состояний (должно быть 0)', group: 'Поведение', fmt: 0, get: w => w.behave?.invalid || 0},
   {id: 'idle', label: 'Простой, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'idle')},
+  {id: 'crowd', label: 'Толпа: доля работающих на самом людном деле, %', group: 'Поведение', fmt: 0, get: w => (w.behave.crowdTicks ? 100 * w.behave.crowd / w.behave.crowdTicks : 0)},
+  {id: 'fireless', label: 'Ночь без огня (нет дров), % ночных тиков', group: 'Поведение', fmt: 1, get: w => (w.behave.nightTicks ? 100 * w.behave.fireless / w.behave.nightTicks : 0)},
   {id: 'muster', label: 'В тревоге у костра, % времени', group: 'Поведение', fmt: 1, get: w => share(w, 'muster')},
   {id: 'switches', label: 'Смен дела на человека в день', group: 'Поведение', fmt: 1, get: w => perDay(w, 'switches')},
   {id: 'stops', label: 'Брошено дел на человека в день', group: 'Поведение', fmt: 2, get: w => perDay(w, 'stops')},
