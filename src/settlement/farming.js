@@ -3,7 +3,7 @@
 // (one seed each, the crop the colony needs most of those it has seed for) and reaps ripe ones.
 // Growth follows the season's `grow`; the first frost of winter kills what is still unripe.
 import {CROPS} from '../data/crops.js';
-import {T} from '../data/terrain.js';
+import {T, OPEN} from '../data/terrain.js';
 import {DAY} from '../core/time.js';
 import {season} from '../data/seasons.js';
 import {isCampArea} from '../world/grid.js';
@@ -32,7 +32,7 @@ export function plowField(w, b) {
   for (let yy = -3; yy <= 4; yy++) for (let xx = -3; xx <= 4; xx++) {
     const x = b.x + xx, y = b.y + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
     const j = y * w.w + x;
-    if ((g.terr[j] === T.GRASS || g.terr[j] === T.BURNT || g.terr[j] === T.FOREST) && g.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
+    if ((OPEN[g.terr[j]] || g.terr[j] === T.FOREST) && g.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
   }
   cand.sort((p, q) => p[1] - q[1]);
   b.plots = [];

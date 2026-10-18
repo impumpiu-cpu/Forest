@@ -12,7 +12,7 @@ import {clamp} from '../core/util.js';
 import {nightness} from '../core/time.js';
 import {CHUNK, HEAT_EPS, SMOKE_EPS, chunks, airTemp, touchHeat, ensureHeat} from './heat.js';
 export {CHUNK, chunks, chunkOf, airTemp, tempAt, heatTo, coolTo, touchHeat, ensureHeat} from './heat.js';
-import {T} from '../data/terrain.js';
+import {T, BY_CODE} from '../data/terrain.js';
 import {isCampArea, distToCamp2} from './grid.js';
 import {burnBuilding} from '../settlement/buildings.js';
 import {burnStock, spoil, campFuel, burnCampFuel} from '../settlement/stock.js';
@@ -169,7 +169,7 @@ function burn(w) {
 function burnCell(w, g, i, rain, st, amb, ignF, ignG) {
   const f = g.fire[i];
   if (f > 0) {
-    const wet = g.fert[i];
+    const wet = Math.max(g.fert[i], BY_CODE[g.terr[i]].wet);
     g.fuel[i] -= FIRE.burn * f;
     let nf = g.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain)) : f * 0.85;
     if (w.rngs.fire() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;   // a wet patch chokes the flame
@@ -191,7 +191,7 @@ function burnCell(w, g, i, rain, st, amb, ignF, ignG) {
       if (isCampArea(w, i)) burnStock(w, 0.0015);
     }
   } else if (g.fuel[i] > 0.12) {
-    const forest = g.fuel[i] > 1, wet = g.fert[i];
+    const forest = g.fuel[i] > 1, wet = Math.max(g.fert[i], BY_CODE[g.terr[i]].wet);
     if (amb + g.heat[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet &&
         w.rngs.fire() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain)) { g.fire[i] = 0.2; w.nav.dirty('fire'); touchHeat(w, i); }
   }
@@ -214,17 +214,17 @@ function growth(w) {
   const samples = Math.round(160 * w.n / 12288 * w.climate.regrow);
   for (let k = 0; k < samples; k++) {
     const i = (w.rngs.fire() * w.n) | 0; if (g.fire[i] > 0 || g.bld[i] >= 0) continue;
-    const t = g.terr[i], f = g.fert[i];
-    if (t === T.BURNT) { if (w.rngs.fire() < 0.02) { g.terr[i] = T.GRASS; g.fuel[i] = 0.1; } }
-    else if (t === T.GRASS) {
-      if (g.fuel[i] < 0.4) g.fuel[i] = Math.min(0.4, g.fuel[i] + 0.02);
+    const t = g.terr[i], f = g.fert[i], d = BY_CODE[t];
+    if (t === T.BURNT) { if (w.rngs.fire() < 0.02) { g.terr[i] = g.under?.[i] || T.GRASS; g.fuel[i] = 0.1; } }
+    else if (d.kind === 'ground') {
+      if (g.fuel[i] < d.fuel) g.fuel[i] = Math.min(d.fuel, g.fuel[i] + 0.02);
       if (g.bush[i]) {
         // in season the bush ripens; in winter what is left drops or freezes
         if (S.grow > 0) { g.food[i] = Math.min(1, g.food[i] + 0.05 * f * S.grow); if (g.food[i] > 0.35) w.nav.dirty('berries'); }
         else if (S.wither && g.food[i] > 0) { g.food[i] = Math.max(0, g.food[i] - S.wither * 4); if (g.food[i] < 0.35) w.nav.dirty('berries'); }
       }
-      else if (S.grow > 0 && !isCampArea(w, i) && w.rngs.fire() < 0.0025 * f) { g.bush[i] = 1; g.food[i] = 0.1; g.fuel[i] += 0.2; }
-      if (S.grow > 0 && w.rngs.fire() < 0.0015 * f && f > 0.55 && !isCampArea(w, i)) { g.terr[i] = T.FOREST; g.wood[i] = 0.3; g.fuel[i] = 1.5; g.bush[i] = 0; }
+      else if (S.grow > 0 && d.bush > 0 && !isCampArea(w, i) && w.rngs.fire() < 0.0025 * f * d.bush) { g.bush[i] = 1; g.food[i] = 0.1; g.fuel[i] += 0.2; }
+      if (S.grow > 0 && d.wood > 0 && w.rngs.fire() < 0.0015 * f * d.wood && f > 0.55 && !isCampArea(w, i)) { g.terr[i] = T.FOREST; g.wood[i] = 0.3; g.fuel[i] = 1.5; g.bush[i] = 0; }
     } else if (t === T.FOREST && g.wood[i] < 1) { g.wood[i] = Math.min(1, g.wood[i] + 0.03); g.fuel[i] = 1.2 + g.wood[i]; }
   }
 }

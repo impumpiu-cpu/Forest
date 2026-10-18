@@ -10,7 +10,7 @@ import {Registry} from '../core/registry.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
-import {T} from './terrain.js';
+import {T, BY_CODE} from './terrain.js';
 import {HOUR, DAY} from '../core/time.js';
 import {season} from './seasons.js';
 import {homeCell} from '../agents/brains/spirit.js';
@@ -28,7 +28,7 @@ export const MIGRATIONS = new Registry('migration');
 
 // meadow cells on the map (counted again a few times a day): what grazers can live on
 function grassland(w) {
-  if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
+  if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + BY_CODE[t].graze, 0);
   return w.cache.grass;
 }
 

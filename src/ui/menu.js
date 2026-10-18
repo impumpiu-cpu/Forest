@@ -79,7 +79,8 @@ export class Menu {
     px.beginPath(); px.arc(t.cx + 0.5, t.cy + 0.5, 4.5, 0, Math.PI * 2); px.stroke();
     const pct = code => ((cnt[code] || 0) / n * 100).toFixed(0) + '%';
     $('previewStats').innerHTML = `<dt>Клеток</dt><dd>${n.toLocaleString('ru-RU')}</dd>` +
-      [T.WATER, T.FOREST, T.GRASS, T.ROCK].map(c => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct(c)}</dd>`).join('') +
+      BY_CODE.map(d => d.code).filter(c => cnt[c] > 0).map(c => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct(c)}</dd>`).join('') +
+      `<dt>Земля</dt><dd>${t.site.region.label}</dd>` +
       `<dt>Числовой сид</dt><dd>${seedNumber(this.cfg.seed)}</dd>`;
   }
 }

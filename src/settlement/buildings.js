@@ -1,7 +1,7 @@
 // Construction: picking a lot, laying a site, finishing it, losing it to fire.
 import {BUILDINGS} from '../data/buildings.js';
 import {RESOURCES} from '../data/resources.js';
-import {T} from '../data/terrain.js';
+import {T, OPEN} from '../data/terrain.js';
 import {log} from '../core/log.js';
 import {walkable, isCampArea} from '../world/grid.js';
 import {count, has, buildingById} from './query.js';
@@ -102,7 +102,7 @@ const FINISH_HOOKS = {
     for (let yy = -4; yy <= 5; yy++) for (let xx = -4; xx <= 5; xx++) {
       const x = b.x + xx, y = b.y + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
       const j = y * w.w + x;
-      if ((g.terr[j] === T.GRASS || g.terr[j] === T.BURNT) && g.bld[j] < 0 && !isCampArea(w, j) && !g.bush[j]) cand.push([j, xx * xx + yy * yy]);
+      if (OPEN[g.terr[j]] && g.bld[j] < 0 && !isCampArea(w, j) && !g.bush[j]) cand.push([j, xx * xx + yy * yy]);
     }
     cand.sort((p, q) => p[1] - q[1]);
     b.plots = [];

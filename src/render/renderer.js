@@ -100,7 +100,7 @@ export class Renderer {
       if (ore) { const c = ORE_BY_CODE[ore].tint, k = 0.55; r = r * (1 - k) + c[0] * k; gg = gg * (1 - k) + c[1] * k; b = b * (1 - k) + c[2] * k; }
       for (const p of PLANTS_TINT) { const v = g[p.key]?.[i]; if (v > 0.2) { const k = v * 0.6; r = r * (1 - k) + p.tint[0] * k; gg = gg * (1 - k) + p.tint[1] * k; b = b * (1 - k) + p.tint[2] * k; } }
       if (g.bush[i] && g.food[i] > 0.2) { const k = g.food[i] * 0.55; r = r * (1 - k) + 196 * k; gg = gg * (1 - k) + 92 * k; b = b * (1 - k) + 149 * k; }
-      if (tk && (g.terr[i] === T.GRASS || g.terr[i] === T.FOREST || g.terr[i] === T.BURNT || (wet && g.terr[i] === T.ROCK))) {
+      if (tk && (BY_CODE[g.terr[i]].tint || (wet && g.terr[i] === T.ROCK))) {
         const k = g.terr[i] === T.FOREST ? tk * 0.7 : tk;
         r = r * (1 - k) + tr * k; gg = gg * (1 - k) + tg * k; b = b * (1 - k) + tb * k;
       }

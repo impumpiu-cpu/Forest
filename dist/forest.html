@@ -657,57 +657,156 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "water",
       code: 0,
       label: "\u0432\u043E\u0434\u0430",
+      kind: "water",
       walkable: false,
       pathCost: 0,
       speed: 1,
       fuel: 0,
+      open: false,
+      bush: 0,
+      wood: 0,
+      graze: 0,
+      shelter: false,
+      wet: 1,
+      tint: false,
       color: (h) => [30 + h * 40, 64 + h * 60, 86 + h * 50]
     },
     {
       id: "grass",
       code: 1,
       label: "\u0442\u0440\u0430\u0432\u0430",
+      kind: "ground",
       walkable: true,
       pathCost: 1,
       speed: 1,
       fuel: 0.4,
+      open: true,
+      bush: 1,
+      wood: 1,
+      graze: 1,
+      shelter: false,
+      wet: 0,
+      tint: true,
       color: (h, f) => [98 - f * 26 + h * 20, 112 + f * 18 + h * 16, 56 - f * 8]
     },
     {
       id: "forest",
       code: 2,
       label: "\u043B\u0435\u0441",
+      kind: "wood",
       walkable: true,
       pathCost: 1.6,
       speed: 0.7,
       fuel: 1.2,
+      open: false,
+      bush: 0,
+      wood: 0,
+      graze: 0,
+      shelter: true,
+      wet: 0,
+      tint: true,
       color: (h, f, wood) => [40 + (1 - wood) * 30, 70 + (1 - wood) * 30, 40 + (1 - wood) * 8]
     },
     {
       id: "rock",
       code: 3,
       label: "\u0441\u043A\u0430\u043B\u0430",
+      kind: "rock",
       walkable: false,
       pathCost: 0,
       speed: 1,
       fuel: 0,
+      open: false,
+      bush: 0,
+      wood: 0,
+      graze: 0,
+      shelter: false,
+      wet: 0,
+      tint: false,
       color: (h) => [100 + h * 30, 97 + h * 28, 88 + h * 24]
     },
     {
       id: "burnt",
       code: 4,
       label: "\u0433\u0430\u0440\u044C",
+      kind: "ground",
       walkable: true,
       pathCost: 1,
       speed: 1,
       fuel: 0,
+      open: true,
+      bush: 0,
+      wood: 0,
+      graze: 0,
+      shelter: false,
+      wet: 0,
+      tint: true,
       color: () => [50, 43, 37]
+    },
+    // ── painted from the site's biomes (world/site.js)
+    // bog: slow going, never burns, reeds and clay, a hiding place for rats and kikimoras; nothing is built on it
+    {
+      id: "swamp",
+      code: 5,
+      label: "\u0442\u043E\u043F\u044C",
+      kind: "ground",
+      walkable: true,
+      pathCost: 2.4,
+      speed: 0.5,
+      fuel: 0.1,
+      open: false,
+      bush: 0.3,
+      wood: 0.15,
+      graze: 0.2,
+      shelter: true,
+      wet: 1,
+      tint: true,
+      color: (h, f) => [84 + f * 6, 88 + f * 10, 58]
+    },
+    // dry grass of the steppe and savanna: burns readily, few bushes, no forest comes by itself
+    {
+      id: "steppe",
+      code: 6,
+      label: "\u0441\u0442\u0435\u043F\u044C",
+      kind: "ground",
+      walkable: true,
+      pathCost: 1,
+      speed: 1,
+      fuel: 0.55,
+      open: true,
+      bush: 0.3,
+      wood: 0,
+      graze: 0.7,
+      shelter: false,
+      wet: 0,
+      tint: true,
+      color: (h, f) => [150 - f * 20 + h * 16, 140 + f * 8 + h * 10, 72]
+    },
+    // sand, salt flats and ash: nothing grows, nothing burns
+    {
+      id: "sand",
+      code: 7,
+      label: "\u043F\u0435\u0441\u043E\u043A",
+      kind: "ground",
+      walkable: true,
+      pathCost: 1.2,
+      speed: 0.9,
+      fuel: 0,
+      open: true,
+      bush: 0,
+      wood: 0,
+      graze: 0,
+      shelter: false,
+      wet: 0,
+      tint: false,
+      color: (h) => [196 + h * 20, 178 + h * 18, 132 + h * 10]
     }
   ]);
-  var T = { WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4 };
+  var T = { WATER: 0, GRASS: 1, FOREST: 2, ROCK: 3, BURNT: 4, SWAMP: 5, STEPPE: 6, SAND: 7 };
   var BY_CODE = [];
   for (const d of TERRAIN.all()) BY_CODE[d.code] = d;
   var WALKABLE = Uint8Array.from(BY_CODE.map((d) => d.walkable ? 1 : 0));
+  var OPEN = Uint8Array.from(BY_CODE.map((d) => d.open ? 1 : 0));
 
   // src/data/foods.js
   var FOODS = new Registry("food");
@@ -2425,7 +2524,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "herbs",
       resource: "herbs",
       label: "\u043B\u0435\u0447\u0435\u0431\u043D\u044B\u0435 \u0442\u0440\u0430\u0432\u044B",
-      terrain: ["grass", "forest"],
+      terrain: ["grass", "forest", "swamp"],
       fertMin: 0.5,
       chance: 6e-3,
       start: [0.4, 1],
@@ -2456,7 +2555,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "reeds",
       resource: "reeds",
       label: "\u043A\u0430\u043C\u044B\u0448",
-      terrain: ["grass"],
+      terrain: ["grass", "swamp"],
       nearWater: true,
       chance: 0.35,
       start: [0.5, 1],
@@ -2472,7 +2571,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "clay",
       resource: "clay",
       label: "\u0433\u043B\u0438\u043D\u0430",
-      terrain: ["grass"],
+      terrain: ["grass", "swamp", "steppe"],
       nearWater: true,
       chance: 0.12,
       hardy: true,
@@ -2506,7 +2605,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "meadow",
       resource: "hay",
       label: "\u043B\u0443\u0433\u043E\u0432\u0430\u044F \u0442\u0440\u0430\u0432\u0430",
-      terrain: ["grass"],
+      terrain: ["grass", "steppe"],
       fertMin: 0.45,
       chance: 0.05,
       seasons: ["summer", "autumn"],
@@ -2526,7 +2625,7 @@ dd.q4{color:#c58cff;font-weight:600}
       resource: "goldDust",
       also: { goldNugget: 0.02 },
       label: "\u0437\u043E\u043B\u043E\u0442\u043E\u043D\u043E\u0441\u043D\u044B\u0439 \u043F\u0435\u0441\u043E\u043A",
-      terrain: ["grass"],
+      terrain: ["grass", "sand", "steppe"],
       nearWater: true,
       chance: 0.06,
       seasons: ["spring", "summer", "autumn"],
@@ -2543,7 +2642,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "saltlick",
       resource: "salt",
       label: "\u0441\u043E\u043B\u043E\u043D\u0435\u0446",
-      terrain: ["grass"],
+      terrain: ["grass", "steppe", "sand"],
       fertMin: 0,
       chance: 4e-3,
       hardy: true,
@@ -2561,7 +2660,7 @@ dd.q4{color:#c58cff;font-weight:600}
       resource: "seedFlax",
       also: { fiber: 0.5 },
       label: "\u0434\u0438\u043A\u0438\u0439 \u043B\u0451\u043D",
-      terrain: ["grass"],
+      terrain: ["grass", "steppe"],
       fertMin: 0.5,
       chance: 8e-3,
       seasons: ["autumn"],
@@ -2811,6 +2910,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "EF",
       color: [236, 242, 246],
       trees: 0,
+      ground: "sand",
+      fert: 0.1,
+      rock: 0.3,
+      pools: 0,
+      dry: 3,
       note: "\u043B\u0435\u0434\u043D\u0438\u043A\u043E\u0432\u044B\u0435 \u0449\u0438\u0442\u044B \u0438 \u0441\u043D\u0435\u0436\u043D\u044B\u0435 \u043F\u043E\u043B\u044F: \u043D\u0438 \u043E\u0434\u0438\u043D \u043C\u0435\u0441\u044F\u0446 \u043D\u0435 \u0442\u0435\u043F\u043B\u0435\u0435 \u043D\u0443\u043B\u044F"
     },
     {
@@ -2821,6 +2925,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "ET",
       color: [150, 160, 140],
       trees: 0.04,
+      ground: "grass",
+      fert: 0.4,
+      rock: 0.1,
+      pools: 0.05,
+      dry: 4,
       note: "\u043C\u0445\u0438, \u043B\u0438\u0448\u0430\u0439\u043D\u0438\u043A\u0438, \u043A\u0430\u0440\u043B\u0438\u043A\u043E\u0432\u044B\u0435 \u0431\u0435\u0440\u0451\u0437\u044B \u0438 \u0432\u0435\u0447\u043D\u0430\u044F \u043C\u0435\u0440\u0437\u043B\u043E\u0442\u0430: \u043B\u0435\u0442\u043E \u043A\u043E\u0440\u043E\u0447\u0435 \u0438 \u0445\u043E\u043B\u043E\u0434\u043D\u0435\u0435, \u0447\u0435\u043C \u043D\u0443\u0436\u043D\u043E \u043B\u0435\u0441\u0443"
     },
     {
@@ -2831,6 +2940,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "Dfc, Dsc",
       color: [56, 92, 70],
       trees: 0.82,
+      ground: "grass",
+      fert: 0.7,
+      rock: 0,
+      pools: 0.03,
+      dry: 7,
       note: "\u0435\u043B\u044C\u043D\u0438\u043A\u0438, \u043F\u0438\u0445\u0442\u0430\u0447\u0438 \u0438 \u0441\u043E\u0441\u043D\u044F\u043A\u0438 \u043D\u0430 \u043F\u043E\u0434\u0437\u043E\u043B\u0430\u0445; \u0437\u0438\u043C\u0430 \u0434\u043E\u043B\u0433\u0430\u044F \u0438 \u043C\u043E\u0440\u043E\u0437\u043D\u0430\u044F, \u043B\u0435\u0442\u043E \u043A\u043E\u0440\u043E\u0442\u043A\u043E\u0435"
     },
     {
@@ -2841,6 +2955,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "Cfb, Cfa, Dfb",
       color: [74, 128, 70],
       trees: 0.88,
+      ground: "grass",
+      fert: 1,
+      rock: 0,
+      pools: 0,
+      dry: 6,
       note: "\u0434\u0443\u0431\u0440\u0430\u0432\u044B, \u0431\u0443\u043A\u043E\u0432\u044B\u0435 \u0438 \u0441\u043C\u0435\u0448\u0430\u043D\u043D\u044B\u0435 \u043B\u0435\u0441\u0430 \u0443\u043C\u0435\u0440\u0435\u043D\u043D\u043E\u0433\u043E \u043F\u043E\u044F\u0441\u0430, \u0441\u0432\u0435\u0442\u043B\u044B\u0435 \u043F\u043E\u043B\u044F\u043D\u044B"
     },
     {
@@ -2851,6 +2970,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "Dfb, Cfb (\u0441\u0443\u0448\u0435)",
       color: [134, 160, 86],
       trees: 0.35,
+      ground: "grass",
+      fert: 1.1,
+      rock: 0,
+      pools: 0,
+      dry: 5,
       note: "\u043B\u0443\u0433\u0430 \u0441 \u043F\u0435\u0440\u0435\u043B\u0435\u0441\u043A\u0430\u043C\u0438 \u043D\u0430 \u0433\u0440\u0430\u043D\u0438\u0446\u0435 \u043B\u0435\u0441\u0430 \u0438 \u0441\u0442\u0435\u043F\u0438; \u043F\u043E \u0440\u0435\u0447\u043D\u044B\u043C \u043F\u043E\u0439\u043C\u0430\u043C \u2014 \u0437\u0430\u043B\u0438\u0432\u043D\u044B\u0435 \u043B\u0443\u0433\u0430"
     },
     {
@@ -2861,6 +2985,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "BSk",
       color: [190, 182, 110],
       trees: 0.05,
+      ground: "steppe",
+      fert: 0.9,
+      rock: 0,
+      pools: 0,
+      dry: 1,
       note: "\u043A\u043E\u0432\u044B\u043B\u044C \u0438 \u043F\u043E\u043B\u044B\u043D\u044C \u043D\u0430 \u0447\u0435\u0440\u043D\u043E\u0437\u0451\u043C\u0430\u0445 \u0438 \u043A\u0430\u0448\u0442\u0430\u043D\u043E\u0432\u044B\u0445 \u043F\u043E\u0447\u0432\u0430\u0445; \u0434\u043E\u0436\u0434\u0435\u0439 \u043C\u0435\u043D\u044C\u0448\u0435, \u0447\u0435\u043C \u0438\u0441\u043F\u0430\u0440\u044F\u0435\u0442\u0441\u044F"
     },
     {
@@ -2871,6 +3000,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "Csa, Csb",
       color: [150, 140, 80],
       trees: 0.3,
+      ground: "steppe",
+      fert: 0.7,
+      rock: 0.05,
+      pools: 0,
+      dry: 2,
       note: "\u043C\u0430\u043A\u0432\u0438\u0441 \u0438 \u0433\u0430\u0440\u0438\u0433\u0430 \u0442\u0451\u043F\u043B\u044B\u0445 \u0441\u0443\u0445\u0438\u0445 \u0431\u0435\u0440\u0435\u0433\u043E\u0432: \u0434\u0443\u0431 \u043A\u0430\u043C\u0435\u043D\u043D\u044B\u0439, \u043C\u043E\u0436\u0436\u0435\u0432\u0435\u043B\u044C\u043D\u0438\u043A, \u043B\u0430\u0432\u0440"
     },
     {
@@ -2881,6 +3015,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "BWh, BWk",
       color: [222, 196, 140],
       trees: 0,
+      ground: "sand",
+      fert: 0.15,
+      rock: 0.05,
+      pools: 0,
+      dry: 0,
       note: "\u043F\u0435\u0441\u043A\u0438, \u0449\u0435\u0431\u0435\u043D\u044C \u0438 \u0441\u043E\u043B\u043E\u043D\u0447\u0430\u043A\u0438: \u0432\u043E\u0434\u044B \u0432\u044B\u043F\u0430\u0434\u0430\u0435\u0442 \u043C\u0435\u043D\u044C\u0448\u0435 \u043F\u043E\u043B\u043E\u0432\u0438\u043D\u044B \u0442\u043E\u0433\u043E, \u0447\u0442\u043E \u043C\u043E\u0433\u043B\u043E \u0431\u044B \u0438\u0441\u043F\u0430\u0440\u0438\u0442\u044C\u0441\u044F"
     },
     {
@@ -2891,6 +3030,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "Aw, BSh",
       color: [182, 168, 80],
       trees: 0.18,
+      ground: "steppe",
+      fert: 0.8,
+      rock: 0,
+      pools: 0,
+      dry: 1,
       note: "\u0432\u044B\u0441\u043E\u043A\u0438\u0435 \u0442\u0440\u0430\u0432\u044B \u0438 \u0440\u0435\u0434\u043A\u0438\u0435 \u0434\u0435\u0440\u0435\u0432\u044C\u044F \u0436\u0430\u0440\u043A\u0438\u0445 \u043A\u0440\u0430\u0451\u0432 \u0441 \u0441\u0443\u0445\u0438\u043C \u0441\u0435\u0437\u043E\u043D\u043E\u043C"
     },
     {
@@ -2901,6 +3045,11 @@ dd.q4{color:#c58cff;font-weight:600}
       koppen: "Af, Am",
       color: [30, 106, 60],
       trees: 0.96,
+      ground: "grass",
+      fert: 0.7,
+      rock: 0,
+      pools: 0.02,
+      dry: 8,
       note: "\u043C\u043D\u043E\u0433\u043E\u044F\u0440\u0443\u0441\u043D\u044B\u0439 \u043B\u0435\u0441 \u0432\u0435\u0447\u043D\u043E\u0433\u043E \u043B\u0435\u0442\u0430 \u0438 \u043B\u0438\u0432\u043D\u0435\u0439; \u043F\u043E\u0447\u0432\u0430 \u043F\u043E\u0434 \u043D\u0438\u043C \u0431\u0435\u0434\u043D\u0430\u044F"
     },
     // ── mountain belts
@@ -2911,6 +3060,11 @@ dd.q4{color:#c58cff;font-weight:600}
       where: "\u0432 \u043F\u0440\u0435\u0434\u0433\u043E\u0440\u044C\u044F\u0445",
       color: [140, 128, 100],
       trees: 0.45,
+      ground: "grass",
+      fert: 0.6,
+      rock: 0.45,
+      pools: 0,
+      dry: 4,
       note: "\u043A\u0440\u0443\u0442\u044B\u0435 \u043A\u0430\u043C\u0435\u043D\u0438\u0441\u0442\u044B\u0435 \u0441\u043A\u043B\u043E\u043D\u044B \u043D\u0438\u0436\u0435 \u0433\u0440\u0430\u043D\u0438\u0446\u044B \u043B\u0435\u0441\u0430: \u043E\u0441\u044B\u043F\u0438, \u0441\u043A\u0430\u043B\u044B, \u0433\u043E\u0440\u043D\u044B\u0435 \u043B\u0443\u0433\u0430"
     },
     {
@@ -2920,6 +3074,11 @@ dd.q4{color:#c58cff;font-weight:600}
       where: "\u0432 \u0432\u044B\u0441\u043E\u043A\u043E\u0433\u043E\u0440\u044C\u0435",
       color: [150, 138, 126],
       trees: 0.03,
+      ground: "grass",
+      fert: 0.3,
+      rock: 0.8,
+      pools: 0,
+      dry: 4,
       note: "\u0430\u043B\u044C\u043F\u0438\u0439\u0441\u043A\u0438\u0439 \u043F\u043E\u044F\u0441 \u0432\u044B\u0448\u0435 \u0433\u0440\u0430\u043D\u0438\u0446\u044B \u043B\u0435\u0441\u0430: \u0441\u043A\u0430\u043B\u044B, \u043B\u0443\u0433\u0430, \u043B\u0435\u0434\u043D\u0438\u043A\u0438, \u0433\u043D\u0451\u0437\u0434\u0430 \u043D\u0430 \u0443\u0441\u0442\u0443\u043F\u0430\u0445"
     },
     // ── set by the ground
@@ -2930,6 +3089,11 @@ dd.q4{color:#c58cff;font-weight:600}
       where: "\u043D\u0430 \u0431\u043E\u043B\u043E\u0442\u0430\u0445",
       color: [86, 112, 90],
       trees: 0.4,
+      ground: "swamp",
+      fert: 0.6,
+      rock: 0,
+      pools: 0.15,
+      dry: 9,
       note: "\u043F\u0435\u0440\u0435\u0443\u0432\u043B\u0430\u0436\u043D\u0451\u043D\u043D\u044B\u0435 \u043D\u0438\u0437\u0438\u043D\u044B: \u0442\u043E\u0440\u0444\u044F\u043D\u0438\u043A\u0438 \u0438 \u0442\u043E\u043F\u0438 \u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u0435, \u043F\u043B\u0430\u0432\u043D\u0438 \u0438 \u043C\u0430\u043D\u0433\u0440\u044B \u043D\u0430 \u044E\u0433\u0435"
     },
     {
@@ -2939,6 +3103,11 @@ dd.q4{color:#c58cff;font-weight:600}
       where: "\u0443 \u0432\u043E\u0434\u044B",
       color: [58, 104, 150],
       trees: 0,
+      ground: "grass",
+      fert: 1,
+      rock: 0,
+      pools: 1,
+      dry: 10,
       note: "\u043E\u0437\u0451\u0440\u0430 \u0438 \u0431\u043E\u043B\u044C\u0448\u0438\u0435 \u0440\u0435\u043A\u0438 \u0441 \u043E\u043C\u0443\u0442\u0430\u043C\u0438"
     },
     {
@@ -2948,6 +3117,11 @@ dd.q4{color:#c58cff;font-weight:600}
       where: "\u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u0430\u0445 \u0432\u0443\u043B\u043A\u0430\u043D\u0430",
       color: [96, 70, 64],
       trees: 0.1,
+      ground: "sand",
+      fert: 0.5,
+      rock: 0.6,
+      pools: 0,
+      dry: 2,
       note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u043A\u0430\u043C\u043D\u0438, \u043F\u0435\u043F\u0435\u043B, \u0433\u043E\u0440\u044F\u0447\u0438\u0435 \u043A\u043B\u044E\u0447\u0438"
     },
     // ── not nature
@@ -2958,6 +3132,11 @@ dd.q4{color:#c58cff;font-weight:600}
       where: "\u0441\u0440\u0435\u0434\u0438 \u043A\u0443\u0440\u0433\u0430\u043D\u043E\u0432",
       color: [150, 120, 120],
       trees: 0,
+      ground: "steppe",
+      fert: 0.6,
+      rock: 0.05,
+      pools: 0,
+      dry: 2,
       note: "\u043F\u0443\u0441\u0442\u043E\u0448\u0438 \u0441 \u0434\u0440\u0435\u0432\u043D\u0438\u043C\u0438 \u043C\u043E\u0433\u0438\u043B\u0430\u043C\u0438; \u043D\u0430 \u043A\u0430\u0440\u0442\u0435 \u043C\u0438\u0440\u0430 \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u0438\u0437 \u0438\u0441\u0442\u043E\u0440\u0438\u0438"
     },
     {
@@ -2967,6 +3146,11 @@ dd.q4{color:#c58cff;font-weight:600}
       where: "\u0432 \u043F\u043E\u0434\u0437\u0435\u043C\u044C\u0435",
       color: [70, 64, 80],
       trees: 0,
+      ground: "grass",
+      fert: 0.5,
+      rock: 0.9,
+      pools: 0,
+      dry: 4,
       note: "\u043F\u0435\u0449\u0435\u0440\u044B \u043F\u043E\u0434 \u0441\u043A\u0430\u043B\u0430\u043C\u0438: \u043A\u0430\u0440\u0441\u0442 \u0432 \u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044F\u043A\u0435, \u043B\u0430\u0432\u043E\u0432\u044B\u0435 \u0442\u0440\u0443\u0431\u043A\u0438 \u0432 \u0431\u0430\u0437\u0430\u043B\u044C\u0442\u0435, \u0441\u0442\u0430\u0440\u044B\u0435 \u0432\u044B\u0440\u0430\u0431\u043E\u0442\u043A\u0438"
     }
   ]);
@@ -3694,6 +3878,25 @@ dd.q4{color:#c58cff;font-weight:600}
     windDir: 20,
     windStr: 35
   };
+
+  // src/world/site.js
+  var WATER = [0.07, 0.12, 0.2];
+  var ROCK = [0.08, 0.13, 0.2];
+  var TREES = [0.75, 1, 1.25];
+  var MOUNTAIN = ["foothills", "highlands", "underground", "volcano"];
+  function makeSite(cfg) {
+    const { w, h } = SIZES[cfg.size], region2 = rollRegion(cfg.seed);
+    const biomes2 = {};
+    for (const [id, v] of Object.entries(region2.biomes)) if (BIOMES.has(id) && v > 0) biomes2[id] = v;
+    const share2 = (id) => biomes2[id] || 0;
+    const mountains = MOUNTAIN.reduce((s, id) => s + share2(id), 0);
+    const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share2("water")), 0.02, 0.45);
+    const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
+    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1 };
+  }
+  function paintOrder(site) {
+    return Object.entries(site.biomes).map(([id, v]) => [BIOMES.get(id), v]).filter(([b]) => b.id !== "water").sort((a, b) => a[0].dry - b[0].dry || a[0].id.localeCompare(b[0].id));
+  }
 
   // src/data/buildings.js
   var penRoom = (w) => w.buildings.reduce((s, b) => s + (b.done && b.key === "pen" ? 6 : 0), 0) - w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.space : 0), 0);
@@ -4496,7 +4699,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const x = b.x + xx, y = b.y + yy;
       if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
       const j = y * w.w + x;
-      if ((g3.terr[j] === T.GRASS || g3.terr[j] === T.BURNT || g3.terr[j] === T.FOREST) && g3.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
+      if ((OPEN[g3.terr[j]] || g3.terr[j] === T.FOREST) && g3.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
     }
     cand.sort((p, q) => p[1] - q[1]);
     b.plots = [];
@@ -4896,7 +5099,7 @@ dd.q4{color:#c58cff;font-weight:600}
   };
 
   // src/nav/astar.js
-  var ROCK = T.ROCK;
+  var ROCK2 = T.ROCK;
   var SQRT2 = Math.SQRT2;
   function buffers(w) {
     if (w.astar) return w.astar;
@@ -4940,7 +5143,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return true;
   }
   var clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => WALKABLE[w.grid.terr[i]] === 1);
-  var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK);
+  var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK2);
   function findPath(w, sx, sy, gx, gy, budget = 6e3) {
     const W = w.w, H2 = w.h, terr = w.grid.terr, b = buffers(w);
     const start2 = (sy | 0) * W + (sx | 0);
@@ -6590,8 +6793,8 @@ dd.q4{color:#c58cff;font-weight:600}
         const g3 = w.grid;
         g3.wood[i] -= 0.35;
         if (g3.wood[i] < 0.1) {
-          g3.terr[i] = T.GRASS;
-          g3.fuel[i] = 0.4;
+          g3.terr[i] = g3.under?.[i] || T.GRASS;
+          g3.fuel[i] = BY_CODE[g3.terr[i]].fuel;
           g3.wood[i] = 0;
         }
         w.nav.dirty("trees");
@@ -8557,7 +8760,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const x = b.x + xx, y = b.y + yy;
         if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
         const j = y * w.w + x;
-        if ((g3.terr[j] === T.GRASS || g3.terr[j] === T.BURNT) && g3.bld[j] < 0 && !isCampArea(w, j) && !g3.bush[j]) cand.push([j, xx * xx + yy * yy]);
+        if (OPEN[g3.terr[j]] && g3.bld[j] < 0 && !isCampArea(w, j) && !g3.bush[j]) cand.push([j, xx * xx + yy * yy]);
       }
       cand.sort((p, q) => p[1] - q[1]);
       b.plots = [];
@@ -10241,7 +10444,7 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/data/migrations.js
   var MIGRATIONS = new Registry("migration");
   function grassland(w) {
-    if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
+    if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + BY_CODE[t].graze, 0);
     return w.cache.grass;
   }
   MIGRATIONS.registerAll([
@@ -10870,6 +11073,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var ensurePlants = layPlants;
 
   // src/world/generate.js
+  var BIOME_LIST = BIOMES.all();
   function noiseLayer(rnd, w, h, cell) {
     const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2;
     const g3 = new Float32Array(gw * gh);
@@ -10885,9 +11089,9 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return out;
   }
-  function fbm(rnd, w, h) {
+  function fbm(rnd, w, h, scale = 1) {
     const k = Math.sqrt(w * h / (128 * 96));
-    const layers = [[36 * Math.min(k, 1.3), 0.5], [18, 0.27], [9, 0.15], [4, 0.08]].map(([c, wt]) => [noiseLayer(rnd, w, h, c), wt]);
+    const layers = [[36 * Math.min(k, 1.3) * scale, 0.5], [18 * scale, 0.27], [9 * scale, 0.15], [4 * scale, 0.08]].map(([c, wt]) => [noiseLayer(rnd, w, h, c), wt]);
     const n = w * h, o = new Float32Array(n);
     let mn = 1e9, mx = -1e9;
     for (let i = 0; i < n; i++) {
@@ -10900,26 +11104,81 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let i = 0; i < n; i++) o[i] = (o[i] - mn) / (mx - mn);
     return o;
   }
-  function makeTerrain(cfg) {
-    const { w, h } = SIZES[cfg.size], n = w * h;
-    const rng = mulberry(seedNumber(cfg.seed));
-    const hgt = fbm(rng, w, h), moist = fbm(rng, w, h);
-    const waterLvl = [0.2, 0.3, 0.4][cfg.water], rockLvl = [0.88, 0.8, 0.7][cfg.rock], forestLvl = [0.66, 0.56, 0.44][cfg.forest];
-    const terr = new Uint8Array(n), fert = new Float32Array(n);
+  function ranks(v) {
+    const n = v.length, idx = new Uint32Array(n);
+    for (let i = 0; i < n; i++) idx[i] = i;
+    idx.sort((a, b) => v[a] - v[b] || a - b);
+    const r = new Float32Array(n);
+    for (let k = 0; k < n; k++) r[idx[k]] = k / n;
+    return r;
+  }
+  function makeTerrain(input) {
+    const site = input.biomes ? input : makeSite(input);
+    const { w, h } = site, n = w * h;
+    const rng = mulberry(seedNumber(site.seed));
+    const hgt = fbm(rng, w, h), moist = fbm(rng, w, h), tree = fbm(rng, w, h, 0.4), crag = fbm(rng, w, h, 0.4);
+    const hq = ranks(hgt), mq = ranks(moist), tq = ranks(tree), cq = ranks(crag);
+    const terr = new Uint8Array(n), fert = new Float32Array(n), under = new Uint8Array(n), biome = new Uint8Array(n);
+    const G2 = (id) => TERRAIN.get(id).code;
+    const land = [];
     for (let i = 0; i < n; i++) {
-      const hh = hgt[i], m = moist[i];
-      terr[i] = hh < waterLvl ? T.WATER : hh > rockLvl ? T.ROCK : m > forestLvl ? T.FOREST : T.GRASS;
-      fert[i] = clamp(m * 1.25 - (hh - 0.5) * 0.6, 0.05, 1);
+      if (hq[i] < site.water) terr[i] = T.WATER;
+      else if (hq[i] >= 1 - site.rock) terr[i] = T.ROCK;
+      else land.push(i);
     }
+    const order = paintOrder(site);
+    const mountain = order.filter(([b]) => b.kind === "altitude" || b.id === "underground" || b.id === "volcano");
+    const lowland = order.filter(([b]) => b.kind !== "water" && !mountain.some(([m]) => m === b));
+    const total = order.reduce((s, [, v]) => s + v, 0) || 1;
+    const hn = (i) => hq[i] + 0.12 * (cq[i] - 0.5);
+    const byHeight = land.slice().sort((a, b) => hn(b) - hn(a) || a - b);
+    const assigned = new Uint8Array(n);
+    let k = 0;
+    for (const [b, v] of mountain) {
+      const m = Math.round(land.length * v / total);
+      for (let q = 0; q < m && k < byHeight.length; q++, k++) {
+        biome[byHeight[k]] = BIOME_LIST.indexOf(b) + 1;
+        assigned[byHeight[k]] = 1;
+      }
+    }
+    const rest = land.filter((i) => !assigned[i]).sort((a, b) => mq[a] - mq[b] || a - b);
+    const lowTotal = lowland.reduce((s, [, v]) => s + v, 0) || 1;
+    let at = 0;
+    lowland.forEach(([b, v], idx) => {
+      const m = idx === lowland.length - 1 ? rest.length - at : Math.round(rest.length * v / lowTotal);
+      for (let q = 0; q < m && at < rest.length; q++, at++) biome[rest[at]] = BIOME_LIST.indexOf(b) + 1;
+    });
+    const ground = /* @__PURE__ */ new Map();
+    for (const i of land) {
+      const b = BIOME_LIST[biome[i] - 1] || BIOMES.get("meadow");
+      under[i] = G2(b.ground);
+      if (b.pools > 0 && hq[i] < site.water + b.pools) terr[i] = T.WATER;
+      else if (b.rock > 0 && cq[i] > 1 - b.rock * 0.5) terr[i] = T.ROCK;
+      else {
+        terr[i] = under[i];
+        (ground.get(b) || ground.set(b, []).get(b)).push(i);
+      }
+      fert[i] = clamp((moist[i] * 1.25 - (hgt[i] - 0.5) * 0.6) * b.fert * site.fert, 0.05, 1);
+    }
+    for (const [b, cells] of ground) {
+      const m = Math.round(cells.length * Math.min(1, b.trees * site.trees));
+      if (!m) continue;
+      cells.sort((p, q) => tq[p] - tq[q] || p - q);
+      for (let k2 = 0; k2 < m; k2++) terr[cells[k2]] = T.FOREST;
+    }
+    for (let i = 0; i < n; i++) if (!under[i]) under[i] = T.GRASS;
     let best = -1, bd = 1e9;
     const mx = Math.round(w * 0.12), my = Math.round(h * 0.12);
     const blocked = (t) => !BY_CODE[t].walkable;
     for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) {
-      if (blocked(terr[y * w + x])) continue;
+      if (!OPEN[terr[y * w + x]]) continue;
       let ok = true;
-      for (let yy = -3; yy <= 3 && ok; yy++) for (let xx = -3; xx <= 3; xx++) if (blocked(terr[(y + yy) * w + x + xx])) {
-        ok = false;
-        break;
+      for (let yy = -3; yy <= 3 && ok; yy++) for (let xx = -3; xx <= 3; xx++) {
+        const t = terr[(y + yy) * w + x + xx];
+        if (blocked(t) || t === T.SWAMP) {
+          ok = false;
+          break;
+        }
       }
       if (!ok) continue;
       const d = (x - w / 2) ** 2 + (y - h / 2) ** 2;
@@ -10930,8 +11189,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     if (best < 0) best = (h >> 1) * w + (w >> 1);
     const cx = best % w, cy = best / w | 0;
-    for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) terr[(cy + yy) * w + cx + xx] = T.GRASS;
-    return { w, h, terr, hgt, fert, cx, cy, rng };
+    for (let yy = -3; yy <= 3; yy++) for (let xx = -3; xx <= 3; xx++) {
+      const j = (cy + yy) * w + cx + xx;
+      terr[j] = OPEN[under[j]] ? under[j] : T.GRASS;
+      under[j] = terr[j];
+    }
+    return { w, h, terr, hgt, fert, under, biome, cx, cy, rng, site };
   }
   function createWorld(cfg) {
     const t = makeTerrain(cfg), n = t.w * t.h;
@@ -10945,10 +11208,14 @@ dd.q4{color:#c58cff;font-weight:600}
       rng: t.rng,
       rngs: newStreams(cfg.seed),
       tick: Math.round(7 * HOUR),
+      site: t.site,
+      region: t.site.region,
       grid: {
         terr: t.terr,
         hgt: t.hgt,
         fert: t.fert,
+        under: t.under,
+        biome: t.biome,
         food: f32(),
         wood: f32(),
         fuel: f32(),
@@ -10999,7 +11266,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (tt === T.FOREST) {
         g3.wood[i] = 0.6 + 0.4 * t.rng();
         g3.fuel[i] += g3.wood[i];
-      } else if (tt === T.GRASS && t.rng() < 0.07 * g3.fert[i] && !isCampArea(world2, i)) {
+      } else if (BY_CODE[tt].bush > 0 && t.rng() < 0.07 * BY_CODE[tt].bush * g3.fert[i] && !isCampArea(world2, i)) {
         g3.bush[i] = 1;
         g3.food[i] = 0.5 + 0.5 * t.rng();
         g3.fuel[i] += 0.2;
@@ -11007,7 +11274,6 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
     findLakes(world2);
-    world2.region = rollRegion(cfg.seed);
     layOre(world2);
     layPlants(world2);
     recomputeZone(world2);
@@ -11181,7 +11447,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function burnCell(w, g3, i, rain2, st, amb, ignF, ignG) {
     const f = g3.fire[i];
     if (f > 0) {
-      const wet = g3.fert[i];
+      const wet = Math.max(g3.fert[i], BY_CODE[g3.terr[i]].wet);
       g3.fuel[i] -= FIRE.burn * f;
       let nf = g3.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain2)) : f * 0.85;
       if (w.rngs.fire() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;
@@ -11210,7 +11476,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (isCampArea(w, i)) burnStock(w, 15e-4);
       }
     } else if (g3.fuel[i] > 0.12) {
-      const forest = g3.fuel[i] > 1, wet = g3.fert[i];
+      const forest = g3.fuel[i] > 1, wet = Math.max(g3.fert[i], BY_CODE[g3.terr[i]].wet);
       if (amb + g3.heat[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && w.rngs.fire() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain2)) {
         g3.fire[i] = 0.2;
         w.nav.dirty("fire");
@@ -11237,14 +11503,14 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let k = 0; k < samples; k++) {
       const i = w.rngs.fire() * w.n | 0;
       if (g3.fire[i] > 0 || g3.bld[i] >= 0) continue;
-      const t = g3.terr[i], f = g3.fert[i];
+      const t = g3.terr[i], f = g3.fert[i], d = BY_CODE[t];
       if (t === T.BURNT) {
         if (w.rngs.fire() < 0.02) {
-          g3.terr[i] = T.GRASS;
+          g3.terr[i] = g3.under?.[i] || T.GRASS;
           g3.fuel[i] = 0.1;
         }
-      } else if (t === T.GRASS) {
-        if (g3.fuel[i] < 0.4) g3.fuel[i] = Math.min(0.4, g3.fuel[i] + 0.02);
+      } else if (d.kind === "ground") {
+        if (g3.fuel[i] < d.fuel) g3.fuel[i] = Math.min(d.fuel, g3.fuel[i] + 0.02);
         if (g3.bush[i]) {
           if (S.grow > 0) {
             g3.food[i] = Math.min(1, g3.food[i] + 0.05 * f * S.grow);
@@ -11253,12 +11519,12 @@ dd.q4{color:#c58cff;font-weight:600}
             g3.food[i] = Math.max(0, g3.food[i] - S.wither * 4);
             if (g3.food[i] < 0.35) w.nav.dirty("berries");
           }
-        } else if (S.grow > 0 && !isCampArea(w, i) && w.rngs.fire() < 25e-4 * f) {
+        } else if (S.grow > 0 && d.bush > 0 && !isCampArea(w, i) && w.rngs.fire() < 25e-4 * f * d.bush) {
           g3.bush[i] = 1;
           g3.food[i] = 0.1;
           g3.fuel[i] += 0.2;
         }
-        if (S.grow > 0 && w.rngs.fire() < 15e-4 * f && f > 0.55 && !isCampArea(w, i)) {
+        if (S.grow > 0 && d.wood > 0 && w.rngs.fire() < 15e-4 * f * d.wood && f > 0.55 && !isCampArea(w, i)) {
           g3.terr[i] = T.FOREST;
           g3.wood[i] = 0.3;
           g3.fuel[i] = 1.5;
@@ -13286,7 +13552,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!inMap(w, x, y)) continue;
       const i = (y | 0) * w.w + (x | 0);
       if (!walkable(w, i) || !sameLand(w, a, i)) continue;
-      const v = (w.grid.terr[i] === T.FOREST || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rngs.wild() * 0.5;
+      const v = (BY_CODE[w.grid.terr[i]].shelter || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rngs.wild() * 0.5;
       if (v > bv) {
         bv = v;
         best = [x, y];
@@ -14345,7 +14611,7 @@ dd.q4{color:#c58cff;font-weight:600}
           gg = gg * (1 - k) + 92 * k;
           b = b * (1 - k) + 149 * k;
         }
-        if (tk && (g3.terr[i] === T.GRASS || g3.terr[i] === T.FOREST || g3.terr[i] === T.BURNT || wet && g3.terr[i] === T.ROCK)) {
+        if (tk && (BY_CODE[g3.terr[i]].tint || wet && g3.terr[i] === T.ROCK)) {
           const k = g3.terr[i] === T.FOREST ? tk * 0.7 : tk;
           r = r * (1 - k) + tr * k;
           gg = gg * (1 - k) + tg * k;
@@ -14978,7 +15244,7 @@ dd.q4{color:#c58cff;font-weight:600}
       px.arc(t.cx + 0.5, t.cy + 0.5, 4.5, 0, Math.PI * 2);
       px.stroke();
       const pct2 = (code2) => ((cnt[code2] || 0) / n * 100).toFixed(0) + "%";
-      $("previewStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${n.toLocaleString("ru-RU")}</dd>` + [T.WATER, T.FOREST, T.GRASS, T.ROCK].map((c) => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct2(c)}</dd>`).join("") + `<dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(this.cfg.seed)}</dd>`;
+      $("previewStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${n.toLocaleString("ru-RU")}</dd>` + BY_CODE.map((d2) => d2.code).filter((c) => cnt[c] > 0).map((c) => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct2(c)}</dd>`).join("") + `<dt>\u0417\u0435\u043C\u043B\u044F</dt><dd>${t.site.region.label}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(this.cfg.seed)}</dd>`;
     }
   };
 
@@ -15939,10 +16205,10 @@ dd.q4{color:#c58cff;font-weight:600}
   var ALLUVIAL_FROM = 0.45;
 
   // src/atlas/biomes.js
-  var BIOME_LIST = BIOMES.all();
+  var BIOME_LIST2 = BIOMES.all();
   var SOIL_LIST = SOILS.all();
-  var B = (id) => BIOME_LIST.findIndex((b) => b.id === id) + 1;
-  var biomeAt = (a, i) => a.f.biome && a.f.biome[i] ? BIOME_LIST[a.f.biome[i] - 1] : null;
+  var B = (id) => BIOME_LIST2.findIndex((b) => b.id === id) + 1;
+  var biomeAt = (a, i) => a.f.biome && a.f.biome[i] ? BIOME_LIST2[a.f.biome[i] - 1] : null;
   var soilAt = (a, i) => a.f.soil && a.f.soil[i] ? SOIL_LIST[a.f.soil[i] - 1] : null;
   var clamp014 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
   var dryness = (T2) => KOPPEN.dryness[0] * T2 + KOPPEN.dryness[1];
@@ -19639,7 +19905,8 @@ dd.q4{color:#c58cff;font-weight:600}
         $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) \u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A \xB7 ${lake.cap ? `\u0440\u044B\u0431\u044B ${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E, \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"} \xB7 ${tempAt(w, i).toFixed(1)} \xB0C`;
         return;
       }
-      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g3.terr[i]].label}${ore} \xB7 ${tempAt(w, i).toFixed(1)} \xB0C \xB7 \u043F\u043E\u0447\u0432\u0430 ${Math.round(g3.fert[i] * 100)}% \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g3.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g3.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g3.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g3.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g3.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
+      const biome = g3.biome?.[i] ? ` (${BIOMES.all()[g3.biome[i] - 1].label})` : "";
+      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g3.terr[i]].label}${biome}${ore} \xB7 ${tempAt(w, i).toFixed(1)} \xB0C \xB7 \u043F\u043E\u0447\u0432\u0430 ${Math.round(g3.fert[i] * 100)}% \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g3.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g3.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g3.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g3.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g3.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
     }
     // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
     renderSelection(w, view2) {
@@ -20186,7 +20453,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 225ef72" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 29f47a9" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

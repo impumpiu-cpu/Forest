@@ -6,7 +6,7 @@
 // for a carcass in the woods first.
 import {SPECIES} from '../../data/species.js';
 import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
-import {T} from '../../data/terrain.js';
+import {T, BY_CODE} from '../../data/terrain.js';
 import {follow, bolt, nearFire, escapeHeat, approach, sameLand} from '../movement.js';
 import {kill} from '../agent.js';
 import {nibble} from '../../settlement/stock.js';
@@ -34,7 +34,7 @@ function denOf(w, a) {
     if (!inMap(w, x, y)) continue;
     const i = (y | 0) * w.w + (x | 0);
     if (!walkable(w, i) || !sameLand(w, a, i)) continue;
-    const v = (w.grid.terr[i] === T.FOREST || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rngs.wild() * 0.5;
+    const v = (BY_CODE[w.grid.terr[i]].shelter || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rngs.wild() * 0.5;
     if (v > bv) { bv = v; best = [x, y]; }
   }
   return (a.den = best || [w.camp.x + 0.5 + VERMIN.den[0], w.camp.y + 0.5]);

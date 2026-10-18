@@ -426,7 +426,8 @@ export class Panel {
     const lake = g.lake[i] >= 0 ? w.lakes[g.lake[i]] : null;
     const ore = oreOf(w, i) ? ` · ${oreOf(w, i).label} ${Math.ceil(g.oreLeft[i])}` : '';
     if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${tempAt(w, i).toFixed(1)} °C`; return; }
-    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${ore} · ${tempAt(w, i).toFixed(1)} °C · почва ${Math.round(g.fert[i] * 100)}% · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
+    const biome = g.biome?.[i] ? ` (${BIOMES.all()[g.biome[i] - 1].label})` : '';
+    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${biome}${ore} · ${tempAt(w, i).toFixed(1)} °C · почва ${Math.round(g.fert[i] * 100)}% · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
   }
 
   // the pane under the map: the selected creature, building or cell; a hint when nothing is picked

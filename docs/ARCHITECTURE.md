@@ -1,4 +1,4 @@
-[Главная](../README.md) · **Архитектура** · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [SPECIAL](SPECIAL.md)
+[Главная](../README.md) · **Архитектура** · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [SPECIAL](SPECIAL.md)
 
 # Архитектура
 
@@ -35,7 +35,7 @@ src/
     log.js        журнал поселения: log(w, html, рубрика, уровень)
     util.js       clamp, plural, esc, shuffle, weighted, perTick (значение, посчитанное раз за тик)
   data/        СПРАВОЧНИКИ — сюда добавляется новое
-    terrain.js    типы местности: проходимость, цена пути, топливо, цвет
+    terrain.js    типы местности: вид, проходимость, цена пути, топливо, что на ней растёт и строится, цвет
     resources.js  ресурсы склада, их группы и теги (food, fuel, smelt, ore, metal, luxury, ammo)
     foods.js      еда отдельным списком: сытность, порча, вкус; любимая и нелюбимая еда
     ores.js       руды: какой ресурс дают, как лежат жилы, цвет на карте
@@ -80,7 +80,8 @@ src/
     hydrology.js  карта мира: эпохи и сила эрозии, пороги рек, испарение озёр, поймы
     logTopics.js  рубрики и уровни журнала
   world/       слой 1: мир и физика
-    generate.js   генерация рельефа и начального состояния
+    site.js       участок: что генератор знает о земле (доли биомов, вода, скалы, лес, регион) — из меню сегодня, из карты мира после шва
+    generate.js   рисунок карты из участка (вода, скалы, биомы по высоте и влажности, лес по лесистости) и начальное состояние
     fields.js     тепло, дым, огонь по активным чанкам, рост растений, костёр
     heat.js       тепло для остальных: tempAt (воздух + отклонение клетки), heatTo, touchHeat, чанки
     weather.js    ветер, дождь, молнии
@@ -149,7 +150,7 @@ src/
   commands.js  всё, что игрок может сделать с миром: ветер, поджог, ливень, набег
   headless.js  игра без экрана: simulate(cfg, {days}) с ежедневными замерами
 tools/
-  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  report.mjs
+  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  map-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  report.mjs
 ```
 
 </details>
