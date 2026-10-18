@@ -1,6 +1,6 @@
 // Game clock: 1 day = 1200 ticks, 20 ticks per real second at 1×.
 import {clamp} from './util.js';
-import {seasonTemp} from '../data/seasons.js';
+import {seasonalTemp} from '../data/seasons.js';
 
 export const DAY = 1200;
 export const HOUR = DAY / 24;
@@ -20,7 +20,7 @@ export function nightness(t) {
   return clamp((0.2 - sun) * 2.2, 0, 1);
 }
 
-// air temperature, shifted by the climate and the season (data/seasons.js)
+// air temperature: the climate's yearly mean, the season (a sine over the year, data/seasons.js) and the hour
 export function ambientTemp(world, t = world.tick) {
-  return 11 + world.climate.tOff + seasonTemp(t) + 9 * Math.sin(2 * Math.PI * (hourOf(t) - 9) / 24);
+  return world.climate.meanT + seasonalTemp(world, t) + 9 * Math.sin(2 * Math.PI * (hourOf(t) - 9) / 24);
 }

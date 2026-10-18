@@ -5,7 +5,7 @@
 import {CROPS} from '../data/crops.js';
 import {T, OPEN} from '../data/terrain.js';
 import {DAY} from '../core/time.js';
-import {season} from '../data/seasons.js';
+import {season, seasonStarts} from '../data/seasons.js';
 import {isCampArea} from '../world/grid.js';
 import {colonists, foodTotal} from './query.js';
 import {log} from '../core/log.js';
@@ -67,7 +67,7 @@ export function stepFarms(w) {
   if (w.tick % EVERY) return;
   const S = season(w);
   // the first frost: whatever is still unripe in the ground is lost
-  if (S.frost != null && w.tick % DAY < EVERY && w.tick / DAY % 30 < 1) {
+  if (S.frost != null && w.tick % DAY < EVERY && seasonStarts(w)) {
     let lost = 0;
     for (const b of fields(w)) for (const p of b.plots) if (p.crop && p.g < 1) { p.crop = null; p.g = 0; lost++; }
     if (lost) log(w, `Мороз побил несжатые посевы: ${lost} грядок пропало.`, 'weather', 'notice');

@@ -1,5 +1,5 @@
 // Start menu: world settings with a live terrain preview (same generator as the game).
-import {SIZES, CLIMATES, LEVELS3, STOCKS, RAIDS, WILDLIFE, PREDATORS, DEFAULT_CFG} from '../data/presets.js';
+import {SIZES, CLIMATES, START, LEVELS3, STOCKS, RAIDS, WILDLIFE, PREDATORS, DEFAULT_CFG} from '../data/presets.js';
 import {makeTerrain} from '../world/generate.js';
 import {seedNumber} from '../core/rng.js';
 import {BY_CODE, T} from '../data/terrain.js';
@@ -9,6 +9,7 @@ const OPTS = {
   size: Object.entries(SIZES).map(([k, v]) => [k, v.label]),
   water: LEVELS3.map((l, i) => [i, l]), forest: LEVELS3.map((l, i) => [i, l]), rock: LEVELS3.map((l, i) => [i, l]),
   climate: Object.entries(CLIMATES).map(([k, v]) => [k, v.label]),
+  start: Object.entries(START).map(([k, v]) => [k, v.label]),
   stock: Object.entries(STOCKS).map(([k, v]) => [k, v.label]),
   raids: Object.entries(RAIDS).map(([k, v]) => [k, v.label]),
   wildlife: Object.entries(WILDLIFE).map(([k, v]) => [k, v.label]),

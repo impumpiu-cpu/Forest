@@ -6,11 +6,19 @@ export const SIZES = {
   huge:   {w: 256, h: 192, label: 'Огромный', note: '256 × 192, тяжелее для навигации'},
 };
 
-// tOff: air temperature offset; ign: ignition threshold offset; regrow: plant growth; rain: showers per day
+// The climate of a site, in numbers (the world map will hand these over per cell, docs/SEAM.md):
+//   meanT: yearly mean air temperature, °C;  trange: yearly range (summer midday noon to winter, °C);
+//   rain: showers per day;  regrow: plant growth ×;  ign: ignition threshold offset
+// The three presets are named points on that scale; the site copies one (world/site.js).
 export const CLIMATES = {
-  cold:      {label: 'Холодный',   note: 'ночи у нуля, костёр нужен всегда, часто дожди', tOff: -8, ign: 25, regrow: 0.7, rain: 0.5},
-  temperate: {label: 'Умеренный',  note: 'тёплые дни, прохладные ночи, дожди через день-два', tOff: 0, ign: 0, regrow: 1, rain: 0.4},
-  dry:       {label: 'Засушливый', note: 'жарко, дожди редки, лес вспыхивает легче', tOff: 7, ign: -5, regrow: 0.75, rain: 0.22},
+  cold:      {label: 'Холодный',   note: 'ночи у нуля, снег три сезона из четырёх, костёр нужен всегда, часто дожди', meanT: 0, trange: 22, ign: 25, regrow: 0.7, rain: 0.5},
+  temperate: {label: 'Умеренный',  note: 'тёплые дни, прохладные ночи, снежная зима, дожди через день-два', meanT: 7, trange: 20, ign: 0, regrow: 1, rain: 0.4},
+  dry:       {label: 'Засушливый', note: 'жарко, дожди редки, зима без снега, лес вспыхивает легче', meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22},
+};
+
+// in which season the game begins (the calendar day the colony lands on, data/seasons.js)
+export const START = {
+  spring: {label: 'Весна', day: 0}, summer: {label: 'Лето', day: 30}, autumn: {label: 'Осень', day: 60}, winter: {label: 'Зима', day: 90},
 };
 
 export const LEVELS3 = ['мало', 'обычно', 'много'];
@@ -46,6 +54,6 @@ export const PREDATORS = {
 
 export const DEFAULT_CFG = {
   name: 'Тёплый Брод', seed: '20261010', size: 'medium', water: 1, forest: 1, rock: 1,
-  climate: 'temperate', colonists: 8, stock: 'normal', raids: 'off', wildlife: 'few', predators: 'few', lightning: false,
+  climate: 'temperate', start: 'spring', colonists: 8, stock: 'normal', raids: 'off', wildlife: 'few', predators: 'few', lightning: false,
   windDir: 20, windStr: 35,
 };

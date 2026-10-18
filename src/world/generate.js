@@ -7,7 +7,7 @@ import {T, BY_CODE, OPEN, TERRAIN} from '../data/terrain.js';
 import {BIOMES} from '../data/biomes.js';
 import {makeSite, paintOrder} from './site.js';
 const BIOME_LIST = BIOMES.all();
-import {CLIMATES, STOCKS} from '../data/presets.js';
+import {STOCKS} from '../data/presets.js';
 import {RESOURCES} from '../data/resources.js';
 import {initOutside} from '../outside/index.js';
 import {emptyMods} from '../settlement/mods.js';
@@ -130,7 +130,7 @@ export function createWorld(cfg) {
   const t = makeTerrain(cfg), n = t.w * t.h;
   const f32 = () => new Float32Array(n);
   const world = {
-    cfg: {...cfg}, climate: CLIMATES[cfg.climate],
+    cfg: {...cfg}, climate: t.site.climate, calendar: {startDay: t.site.startDay},
     w: t.w, h: t.h, n, rng: t.rng, rngs: newStreams(cfg.seed), tick: Math.round(7 * HOUR),
     site: t.site, region: t.site.region,
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, under: t.under, biome: t.biome, food: f32(), wood: f32(), fuel: f32(), fire: f32(),

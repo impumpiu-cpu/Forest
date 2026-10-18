@@ -27,7 +27,7 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
-import {season, seasonDay, yearOf, daysLeftInSeason} from '../data/seasons.js';
+import {season, seasonDay, yearOf, daysLeftInSeason, snowy} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, hourOf, dayOf, ambientTemp} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
@@ -187,11 +187,11 @@ export class Panel {
   render(w, view) {
     if (this.legendFor !== w) { this.legendFor = w; this.buildLegend(w); }
     $('clock').textContent = clockStr(w.tick);
-    const S = season(w), left = Math.ceil(daysLeftInSeason(w.tick));
-    $('season').textContent = `${S.label}, ${seasonDay(w.tick)}-й день · год ${yearOf(w.tick)}`;
+    const S = season(w), left = Math.ceil(daysLeftInSeason(w));
+    $('season').textContent = `${S.label}, ${seasonDay(w)}-й день · год ${yearOf(w)}`;
     $('season').title = `${S.note} До смены сезона: ${left} ${plural(left, 'день', 'дня', 'дней')}.`;
     $('season').dataset.s = S.id;
-    $('amb').textContent = ambientTemp(w).toFixed(1) + ' °C' + (w.weather.rain > 0.1 ? (season(w).snow ? ', снег' : ', дождь') : '') + (w.stats.fireCount ? ` · горит клеток: ${w.stats.fireCount}` : '');
+    $('amb').textContent = ambientTemp(w).toFixed(1) + ' °C' + (w.weather.rain > 0.1 ? (snowy(w) ? ', снег' : ', дождь') : '') + (w.stats.fireCount ? ` · горит клеток: ${w.stats.fireCount}` : '');
     $('windTxt').textContent = w.wind.str < 0.03 ? 'штиль' : `ветер ${DIRS[Math.round(((w.wind.dir + 180) % 360) / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} м/с`;
     const col = colonists(w);
     $('popCount').textContent = col.length;
@@ -284,7 +284,7 @@ export class Panel {
 
   renderWorld(w, view, tps) {
     const c = w.cfg, sz = SIZES[c.size];
-    $('worldLine').textContent = `Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${CLIMATES[c.climate].label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`;
+    $('worldLine').textContent = `Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${w.climate.label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`;
     const col = colonists(w), raiders = w.agents.filter(a => a.faction === 'raiders').length, hares = ofSpecies(w, 'hare').length;
     const ore = exposedOre(w);
     this.set('worldKv',

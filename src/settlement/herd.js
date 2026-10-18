@@ -163,11 +163,11 @@ export function stepHerd(w) {
   // a couple of goats are kept for breeding whatever happens. Planned on the first day of winter, then
   // checked again every day (the hay may go to bedding, or be stolen)
   if (S.id === 'winter') {
-    const plan = daysLeftInSeason(w.tick) > SEASON_DAYS - 1;
+    const plan = daysLeftInSeason(w) > SEASON_DAYS - 1;
     const culled = [];
     for (let k = 0; k < 30; k++) {
       const daily = herd(w).reduce((s, a) => s + tameOf(a).eats * (a.age < (tameOf(a).grownDays || 0) ? 0.5 : 1) * (1 - grass), 0);
-      if ((w.stock.hay || 0) >= daily * daysLeftInSeason(w.tick) * (plan ? 1 : 0.8)) break;
+      if ((w.stock.hay || 0) >= daily * daysLeftInSeason(w) * (plan ? 1 : 0.8)) break;
       const goats = herd(w).filter(a => a.species === 'goat');
       const cull = [...herd(w)].filter(a => a.species !== 'goat' || goats.length > HERD.keepGoats)
         .sort((x, y) => (x.species === 'goat' ? 0 : 1) - (y.species === 'goat' ? 0 : 1) || (x.age || 0) - (y.age || 0))[0];

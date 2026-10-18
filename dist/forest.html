@@ -435,6 +435,7 @@ dd.q4{color:#c58cff;font-weight:600}
         <div class="field"><span class="lbl">Горы</span><div class="seg" data-key="rock"></div></div>
       </div>
       <div class="field"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
+      <div class="field"><span class="lbl">Начало</span><div class="seg" data-key="start"></div></div>
       <div class="field">
         <label for="cfgColonists">Поселенцев на старте: <output id="colonistsOut">8</output></label>
         <input id="cfgColonists" type="range" min="3" max="14" value="8">
@@ -3597,14 +3598,12 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/data/seasons.js
   var SEASON_DAYS = 30;
-  var BLEND_DAYS = 4;
   var SEASONS = new Registry("season");
   SEASONS.registerAll([
     {
       id: "spring",
       label: "\u0412\u0435\u0441\u043D\u0430",
       next: "\u043B\u0435\u0442\u043E",
-      temp: -2,
       dress: 1,
       grow: 1,
       wither: 0,
@@ -3614,7 +3613,6 @@ dd.q4{color:#c58cff;font-weight:600}
       hunger: 1,
       spoil: 0.9,
       rain: 1.4,
-      snow: false,
       ignite: 15,
       drying: true,
       tint: [120, 170, 90, 0.08],
@@ -3624,7 +3622,6 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "summer",
       label: "\u041B\u0435\u0442\u043E",
       next: "\u043E\u0441\u0435\u043D\u044C",
-      temp: 5,
       dress: 0.5,
       grow: 1.4,
       wither: 0,
@@ -3634,7 +3631,6 @@ dd.q4{color:#c58cff;font-weight:600}
       hunger: 1,
       spoil: 1.4,
       rain: 0.8,
-      snow: false,
       ignite: -8,
       drying: true,
       tint: [0, 0, 0, 0],
@@ -3644,7 +3640,6 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "autumn",
       label: "\u041E\u0441\u0435\u043D\u044C",
       next: "\u0437\u0438\u043C\u0430",
-      temp: -3,
       dress: 1.5,
       grow: 0.5,
       wither: 0,
@@ -3654,7 +3649,6 @@ dd.q4{color:#c58cff;font-weight:600}
       hunger: 1.1,
       spoil: 0.8,
       rain: 1.3,
-      snow: false,
       ignite: 5,
       drying: true,
       tint: [208, 178, 70, 0.3],
@@ -3664,7 +3658,6 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "winter",
       label: "\u0417\u0438\u043C\u0430",
       next: "\u0432\u0435\u0441\u043D\u0430",
-      temp: -13,
       dress: 3,
       grow: 0,
       wither: 0.04,
@@ -3674,38 +3667,32 @@ dd.q4{color:#c58cff;font-weight:600}
       hunger: 1.35,
       spoil: 0.25,
       rain: 0.9,
-      snow: true,
       ignite: 40,
       drying: false,
       frost: 0.15,
-      tint: [236, 240, 246, 0.62],
+      tint: [190, 176, 120, 0.3],
       note: "\u0421\u043D\u0435\u0433 \u0438 \u043C\u043E\u0440\u043E\u0437: \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0440\u0430\u0441\u0442\u0451\u0442, \u0440\u044B\u0431\u0430 \u043B\u043E\u0432\u0438\u0442\u0441\u044F \u0432\u0434\u0432\u043E\u0435 \u0445\u0443\u0436\u0435, \u0432\u043E\u043B\u043A\u0438 \u0433\u043E\u043B\u043E\u0434\u043D\u044B. \u0416\u0438\u0432\u0443\u0442 \u0437\u0430\u043F\u0430\u0441\u0430\u043C\u0438 \u0438 \u043A\u043E\u0441\u0442\u0440\u043E\u043C."
     }
   ]);
   var LIST = SEASONS.all();
   var DAY_TICKS = 1200;
-  var YEAR = () => LIST.length * SEASON_DAYS;
-  var seasonIndex = (tick) => Math.floor(tick / DAY_TICKS / SEASON_DAYS) % LIST.length;
-  var seasonAt = (tick) => LIST[seasonIndex(tick)];
-  var season = (w) => seasonAt(w.tick);
-  var seasonDay = (tick) => Math.floor(tick / DAY_TICKS) % SEASON_DAYS + 1;
-  var yearOf = (tick) => Math.floor(tick / DAY_TICKS / YEAR()) + 1;
-  var daysLeftInSeason = (tick) => SEASON_DAYS - tick / DAY_TICKS % SEASON_DAYS;
-  function seasonTemp(tick) {
-    const d = tick / DAY_TICKS, i = seasonIndex(tick), into = d % SEASON_DAYS, cur = LIST[i].temp;
-    const half = BLEND_DAYS / 2;
-    if (into < half) {
-      const prev = LIST[(i + LIST.length - 1) % LIST.length].temp;
-      const k = 0.5 + into / BLEND_DAYS;
-      return prev + (cur - prev) * k;
-    }
-    if (into > SEASON_DAYS - half) {
-      const nxt = LIST[(i + 1) % LIST.length].temp;
-      const k = (into - (SEASON_DAYS - half)) / BLEND_DAYS;
-      return cur + (nxt - cur) * k;
-    }
-    return cur;
+  var YEAR_DAYS = LIST.length * SEASON_DAYS;
+  var SEASON_IDS = LIST.map((s) => s.id);
+  var calendarDay = (w, tick = w.tick) => tick / DAY_TICKS + (w.calendar?.startDay || 0);
+  var seasonIndex = (w, tick) => Math.floor(calendarDay(w, tick) / SEASON_DAYS) % LIST.length;
+  var season = (w, tick) => LIST[seasonIndex(w, tick)];
+  var seasonDay = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS + 1;
+  var yearOf = (w, tick) => Math.floor(calendarDay(w, tick) / YEAR_DAYS) + 1;
+  var daysLeftInSeason = (w, tick) => SEASON_DAYS - calendarDay(w, tick) % SEASON_DAYS;
+  var seasonStarts = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS === 0;
+  function seasonalTemp(w, tick = w.tick) {
+    const mid = SEASON_DAYS / 2;
+    return w.climate.trange / 2 * Math.sin(2 * Math.PI * (calendarDay(w, tick) - mid) / YEAR_DAYS);
   }
+  var dayMeanTemp = (w, tick = w.tick) => w.climate.meanT + seasonalTemp(w, tick);
+  var snowy = (w, tick = w.tick) => dayMeanTemp(w, tick) < -1;
+  var SNOW_TINT = [236, 240, 246, 0.62];
+  var seasonTint = (w) => snowy(w) ? SNOW_TINT : season(w).tint;
   var seasonJob = (w, job) => season(w).jobs[job] ?? 1;
 
   // src/core/time.js
@@ -3723,7 +3710,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return clamp((0.2 - sun) * 2.2, 0, 1);
   }
   function ambientTemp(world2, t = world2.tick) {
-    return 11 + world2.climate.tOff + seasonTemp(t) + 9 * Math.sin(2 * Math.PI * (hourOf(t) - 9) / 24);
+    return world2.climate.meanT + seasonalTemp(world2, t) + 9 * Math.sin(2 * Math.PI * (hourOf(t) - 9) / 24);
   }
 
   // src/settlement/query.js
@@ -3821,6 +3808,7 @@ dd.q4{color:#c58cff;font-weight:600}
     PREDATORS: () => PREDATORS,
     RAIDS: () => RAIDS,
     SIZES: () => SIZES,
+    START: () => START,
     STOCKS: () => STOCKS,
     WILDLIFE: () => WILDLIFE
   });
@@ -3831,9 +3819,15 @@ dd.q4{color:#c58cff;font-weight:600}
     huge: { w: 256, h: 192, label: "\u041E\u0433\u0440\u043E\u043C\u043D\u044B\u0439", note: "256 \xD7 192, \u0442\u044F\u0436\u0435\u043B\u0435\u0435 \u0434\u043B\u044F \u043D\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438" }
   };
   var CLIMATES = {
-    cold: { label: "\u0425\u043E\u043B\u043E\u0434\u043D\u044B\u0439", note: "\u043D\u043E\u0447\u0438 \u0443 \u043D\u0443\u043B\u044F, \u043A\u043E\u0441\u0442\u0451\u0440 \u043D\u0443\u0436\u0435\u043D \u0432\u0441\u0435\u0433\u0434\u0430, \u0447\u0430\u0441\u0442\u043E \u0434\u043E\u0436\u0434\u0438", tOff: -8, ign: 25, regrow: 0.7, rain: 0.5 },
-    temperate: { label: "\u0423\u043C\u0435\u0440\u0435\u043D\u043D\u044B\u0439", note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u0434\u043D\u0438, \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u044B\u0435 \u043D\u043E\u0447\u0438, \u0434\u043E\u0436\u0434\u0438 \u0447\u0435\u0440\u0435\u0437 \u0434\u0435\u043D\u044C-\u0434\u0432\u0430", tOff: 0, ign: 0, regrow: 1, rain: 0.4 },
-    dry: { label: "\u0417\u0430\u0441\u0443\u0448\u043B\u0438\u0432\u044B\u0439", note: "\u0436\u0430\u0440\u043A\u043E, \u0434\u043E\u0436\u0434\u0438 \u0440\u0435\u0434\u043A\u0438, \u043B\u0435\u0441 \u0432\u0441\u043F\u044B\u0445\u0438\u0432\u0430\u0435\u0442 \u043B\u0435\u0433\u0447\u0435", tOff: 7, ign: -5, regrow: 0.75, rain: 0.22 }
+    cold: { label: "\u0425\u043E\u043B\u043E\u0434\u043D\u044B\u0439", note: "\u043D\u043E\u0447\u0438 \u0443 \u043D\u0443\u043B\u044F, \u0441\u043D\u0435\u0433 \u0442\u0440\u0438 \u0441\u0435\u0437\u043E\u043D\u0430 \u0438\u0437 \u0447\u0435\u0442\u044B\u0440\u0451\u0445, \u043A\u043E\u0441\u0442\u0451\u0440 \u043D\u0443\u0436\u0435\u043D \u0432\u0441\u0435\u0433\u0434\u0430, \u0447\u0430\u0441\u0442\u043E \u0434\u043E\u0436\u0434\u0438", meanT: 0, trange: 22, ign: 25, regrow: 0.7, rain: 0.5 },
+    temperate: { label: "\u0423\u043C\u0435\u0440\u0435\u043D\u043D\u044B\u0439", note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u0434\u043D\u0438, \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u044B\u0435 \u043D\u043E\u0447\u0438, \u0441\u043D\u0435\u0436\u043D\u0430\u044F \u0437\u0438\u043C\u0430, \u0434\u043E\u0436\u0434\u0438 \u0447\u0435\u0440\u0435\u0437 \u0434\u0435\u043D\u044C-\u0434\u0432\u0430", meanT: 7, trange: 20, ign: 0, regrow: 1, rain: 0.4 },
+    dry: { label: "\u0417\u0430\u0441\u0443\u0448\u043B\u0438\u0432\u044B\u0439", note: "\u0436\u0430\u0440\u043A\u043E, \u0434\u043E\u0436\u0434\u0438 \u0440\u0435\u0434\u043A\u0438, \u0437\u0438\u043C\u0430 \u0431\u0435\u0437 \u0441\u043D\u0435\u0433\u0430, \u043B\u0435\u0441 \u0432\u0441\u043F\u044B\u0445\u0438\u0432\u0430\u0435\u0442 \u043B\u0435\u0433\u0447\u0435", meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22 }
+  };
+  var START = {
+    spring: { label: "\u0412\u0435\u0441\u043D\u0430", day: 0 },
+    summer: { label: "\u041B\u0435\u0442\u043E", day: 30 },
+    autumn: { label: "\u041E\u0441\u0435\u043D\u044C", day: 60 },
+    winter: { label: "\u0417\u0438\u043C\u0430", day: 90 }
   };
   var LEVELS3 = ["\u043C\u0430\u043B\u043E", "\u043E\u0431\u044B\u0447\u043D\u043E", "\u043C\u043D\u043E\u0433\u043E"];
   var STOCKS = {
@@ -3869,6 +3863,7 @@ dd.q4{color:#c58cff;font-weight:600}
     forest: 1,
     rock: 1,
     climate: "temperate",
+    start: "spring",
     colonists: 8,
     stock: "normal",
     raids: "off",
@@ -3892,7 +3887,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const mountains = MOUNTAIN.reduce((s, id) => s + share2(id), 0);
     const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share2("water")), 0.02, 0.45);
     const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
-    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1 };
+    const climate = { id: cfg.climate, ...CLIMATES[cfg.climate] };
+    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0 };
   }
   function paintOrder(site) {
     return Object.entries(site.biomes).map(([id, v]) => [BIOMES.get(id), v]).filter(([b]) => b.id !== "water").sort((a, b) => a[0].dry - b[0].dry || a[0].id.localeCompare(b[0].id));
@@ -4740,7 +4736,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function stepFarms(w) {
     if (w.tick % EVERY) return;
     const S = season(w);
-    if (S.frost != null && w.tick % DAY < EVERY && w.tick / DAY % 30 < 1) {
+    if (S.frost != null && w.tick % DAY < EVERY && seasonStarts(w)) {
       let lost = 0;
       for (const b of fields(w)) for (const p of b.plots) if (p.crop && p.g < 1) {
         p.crop = null;
@@ -6442,11 +6438,11 @@ dd.q4{color:#c58cff;font-weight:600}
       for (let k = 0; k + 1 < grown.length; k += 2) if (penRoom2(w) >= T2.space && w.rngs.wild() < T2.breed) bear(w, grown[k]);
     }
     if (S.id === "winter") {
-      const plan = daysLeftInSeason(w.tick) > SEASON_DAYS - 1;
+      const plan = daysLeftInSeason(w) > SEASON_DAYS - 1;
       const culled = [];
       for (let k = 0; k < 30; k++) {
         const daily2 = herd(w).reduce((s, a) => s + tameOf(a).eats * (a.age < (tameOf(a).grownDays || 0) ? 0.5 : 1) * (1 - grass), 0);
-        if ((w.stock.hay || 0) >= daily2 * daysLeftInSeason(w.tick) * (plan ? 1 : 0.8)) break;
+        if ((w.stock.hay || 0) >= daily2 * daysLeftInSeason(w) * (plan ? 1 : 0.8)) break;
         const goats = herd(w).filter((a) => a.species === "goat");
         const cull = [...herd(w)].filter((a) => a.species !== "goat" || goats.length > HERD.keepGoats).sort((x, y) => (x.species === "goat" ? 0 : 1) - (y.species === "goat" ? 0 : 1) || (x.age || 0) - (y.age || 0))[0];
         if (!cull) break;
@@ -10982,7 +10978,7 @@ dd.q4{color:#c58cff;font-weight:600}
     w.wind.y = Math.sin(a) * w.wind.str * 0.5;
   }
   function stepWeather(w) {
-    if (w.tick % DAY === 0 && seasonDay(w.tick) === 1) {
+    if (w.tick % DAY === 0 && seasonStarts(w)) {
       const S = season(w);
       log(w, `\u041D\u0430\u0441\u0442\u0443\u043F\u0430\u0435\u0442 ${S.label.toLowerCase()}. ${S.note}`, "weather", "notice");
       if (S.frost != null) {
@@ -10995,20 +10991,20 @@ dd.q4{color:#c58cff;font-weight:600}
     if (wx.rainLeft > 0) {
       wx.rainLeft--;
       wx.rain = Math.min(1, wx.rain + 0.02);
-      if (wx.rainLeft === 0) log(w, season(w).snow ? "\u0421\u043D\u0435\u0433\u043E\u043F\u0430\u0434 \u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F." : "\u0414\u043E\u0436\u0434\u044C \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F.", "weather");
+      if (wx.rainLeft === 0) log(w, snowy(w) ? "\u0421\u043D\u0435\u0433\u043E\u043F\u0430\u0434 \u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F." : "\u0414\u043E\u0436\u0434\u044C \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F.", "weather");
     } else {
       wx.rain = Math.max(0, wx.rain - 0.01);
       const fireClouds = 1 + fires / 20;
       if (w.rngs.weather() < w.climate.rain * season(w).rain * fireClouds / DAY) {
         wx.rainLeft = Math.round(HOUR * (1.5 + w.rngs.weather() * 3));
-        if (season(w).snow) log(w, fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433.", "weather");
+        if (snowy(w)) log(w, fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433.", "weather");
         else log(w, fires > 40 ? "\u041D\u0430\u0434 \u043F\u043E\u0436\u0430\u0440\u043E\u043C \u0441\u043E\u0431\u0440\u0430\u043B\u0438\u0441\u044C \u0442\u0443\u0447\u0438, \u043F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C." : fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C.", "weather");
       }
     }
     if (w.cfg.lightning) lightning(w);
   }
   function lightning(w) {
-    const h = hourOf(w.tick), dry = w.cfg.climate === "dry" ? 2 : w.cfg.climate === "cold" ? 0.4 : 1;
+    const h = hourOf(w.tick), dry = 0.4 / Math.max(0.1, w.climate.rain);
     if (h < 11 || h > 19 || w.weather.rain > 0.2 || w.rngs.weather() >= 25e-5 * dry * w.n / 12288) return;
     for (let k = 0; k < 40; k++) {
       const i = w.rngs.weather() * w.n | 0, x = i % w.w, y = i / w.w | 0;
@@ -11201,7 +11197,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const f32 = () => new Float32Array(n);
     const world2 = {
       cfg: { ...cfg },
-      climate: CLIMATES[cfg.climate],
+      climate: t.site.climate,
+      calendar: { startDay: t.site.startDay },
       w: t.w,
       h: t.h,
       n,
@@ -14586,7 +14583,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     paintTerrain(w) {
       const d = this.terrain.img.data, g3 = w.grid;
-      const [tr, tg, tb, tk] = season(w).tint, wet = season(w).snow;
+      const [tr, tg, tb, tk] = seasonTint(w), wet = snowy(w);
       for (let i = 0; i < w.n; i++) {
         let [r, gg, b] = BY_CODE[g3.terr[i]].color(g3.hgt[i], g3.fert[i], g3.wood[i]);
         const ore = g3.ore?.[i];
@@ -14853,7 +14850,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     drawRain(w, Wpx, Hpx) {
       const ctx = this.ctx, r = w.weather.rain;
-      if (season(w).snow) {
+      if (snowy(w)) {
         ctx.fillStyle = `rgba(235,240,250,${r * 0.12})`;
         ctx.fillRect(0, 0, Wpx, Hpx);
         ctx.fillStyle = `rgba(250,252,255,${0.4 + r * 0.5})`;
@@ -15127,6 +15124,7 @@ dd.q4{color:#c58cff;font-weight:600}
     forest: LEVELS3.map((l, i) => [i, l]),
     rock: LEVELS3.map((l, i) => [i, l]),
     climate: Object.entries(CLIMATES).map(([k, v]) => [k, v.label]),
+    start: Object.entries(START).map(([k, v]) => [k, v.label]),
     stock: Object.entries(STOCKS).map(([k, v]) => [k, v.label]),
     raids: Object.entries(RAIDS).map(([k, v]) => [k, v.label]),
     wildlife: Object.entries(WILDLIFE).map(([k, v]) => [k, v.label]),
@@ -15261,7 +15259,7 @@ dd.q4{color:#c58cff;font-weight:600}
   ];
   var SEASON_DAYS2 = 30;
   var SEASONS_PER_YEAR = 4;
-  var YEAR_DAYS = SEASON_DAYS2 * SEASONS_PER_YEAR;
+  var YEAR_DAYS2 = SEASON_DAYS2 * SEASONS_PER_YEAR;
   var DEFAULT_ATLAS_CFG = { seed: "1", size: "medium", land: 1, plates: 1, hemisphere: "north", wild: 1, elder: 1, young: 1 };
 
   // src/data/geology.js
@@ -19667,11 +19665,11 @@ dd.q4{color:#c58cff;font-weight:600}
         this.buildLegend(w);
       }
       $("clock").textContent = clockStr(w.tick);
-      const S = season(w), left = Math.ceil(daysLeftInSeason(w.tick));
-      $("season").textContent = `${S.label}, ${seasonDay(w.tick)}-\u0439 \u0434\u0435\u043D\u044C \xB7 \u0433\u043E\u0434 ${yearOf(w.tick)}`;
+      const S = season(w), left = Math.ceil(daysLeftInSeason(w));
+      $("season").textContent = `${S.label}, ${seasonDay(w)}-\u0439 \u0434\u0435\u043D\u044C \xB7 \u0433\u043E\u0434 ${yearOf(w)}`;
       $("season").title = `${S.note} \u0414\u043E \u0441\u043C\u0435\u043D\u044B \u0441\u0435\u0437\u043E\u043D\u0430: ${left} ${plural(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}.`;
       $("season").dataset.s = S.id;
-      $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? season(w).snow ? ", \u0441\u043D\u0435\u0433" : ", \u0434\u043E\u0436\u0434\u044C" : "") + (w.stats.fireCount ? ` \xB7 \u0433\u043E\u0440\u0438\u0442 \u043A\u043B\u0435\u0442\u043E\u043A: ${w.stats.fireCount}` : "");
+      $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? snowy(w) ? ", \u0441\u043D\u0435\u0433" : ", \u0434\u043E\u0436\u0434\u044C" : "") + (w.stats.fireCount ? ` \xB7 \u0433\u043E\u0440\u0438\u0442 \u043A\u043B\u0435\u0442\u043E\u043A: ${w.stats.fireCount}` : "");
       $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `\u0432\u0435\u0442\u0435\u0440 ${DIRS2[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       const col = colonists(w);
       $("popCount").textContent = col.length;
@@ -19772,7 +19770,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     renderWorld(w, view2, tps) {
       const c = w.cfg, sz = SIZES[c.size];
-      $("worldLine").textContent = `\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${CLIMATES[c.climate].label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}, \u0432\u043E\u043B\u043A\u0438: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`;
+      $("worldLine").textContent = `\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${w.climate.label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}, \u0432\u043E\u043B\u043A\u0438: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`;
       const col = colonists(w), raiders = w.agents.filter((a) => a.faction === "raiders").length, hares = ofSpecies(w, "hare").length;
       const ore = exposedOre(w);
       this.set(
@@ -20453,7 +20451,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 29f47a9" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 745a423" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

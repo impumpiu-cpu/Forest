@@ -11,9 +11,11 @@
 //   rock        — share of all cells that is bare rock
 //   trees       — × on every biome's forest cover (data/biomes.js `trees`)
 //   fert        — × on fertility everywhere
+//   climate     — {meanT, trange, rain, regrow, ign, label} (data/presets.js CLIMATES), copied so that the world map can hand its own
+//   startDay    — calendar day the game begins on (data/presets.js START)
 // The menu's three sliders (water, forest, rock) are read here and nowhere else: they scale what
 // the region's biomes ask for, so «many lakes» on a steppe still makes a drier land than a valley.
-import {SIZES} from '../data/presets.js';
+import {SIZES, CLIMATES, START} from '../data/presets.js';
 import {BIOMES} from '../data/biomes.js';
 import {rollRegion} from './region.js';
 import {clamp} from '../core/util.js';
@@ -31,7 +33,8 @@ export function makeSite(cfg) {
   // open water: the slider's base, more where the region has lakes; rock: more where it has mountains
   const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share('water')), 0.02, 0.45);
   const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
-  return {seed: String(cfg.seed), w, h, region, biomes, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1};
+  const climate = {id: cfg.climate, ...CLIMATES[cfg.climate]};
+  return {seed: String(cfg.seed), w, h, region, biomes, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0};
 }
 
 // the site's land biomes in the order the painter lays them out: driest first, open water last

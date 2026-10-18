@@ -14,7 +14,7 @@ import {DX, DY} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {LOOKS} from './looks.js';
 import {ORE_BY_CODE} from '../data/ores.js';
-import {season} from '../data/seasons.js';
+import {season, seasonTint, snowy} from '../data/seasons.js';
 import {CROPS} from '../data/crops.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 
@@ -93,7 +93,7 @@ export class Renderer {
   paintTerrain(w) {
     const d = this.terrain.img.data, g = w.grid;
     // the season tints grass and forest: autumn gold, winter snow (water freezes white at the edges only)
-    const [tr, tg, tb, tk] = season(w).tint, wet = season(w).snow;
+    const [tr, tg, tb, tk] = seasonTint(w), wet = snowy(w);
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
       const ore = g.ore?.[i];
@@ -242,7 +242,7 @@ export class Renderer {
 
   drawRain(w, Wpx, Hpx) {
     const ctx = this.ctx, r = w.weather.rain;
-    if (season(w).snow) {   // snow: slow white flakes
+    if (snowy(w)) {   // snow: slow white flakes
       ctx.fillStyle = `rgba(235,240,250,${r * 0.12})`; ctx.fillRect(0, 0, Wpx, Hpx);
       ctx.fillStyle = `rgba(250,252,255,${0.4 + r * 0.5})`;
       const n = Math.round(r * 320), off = (w.tick * 2) % 600;
