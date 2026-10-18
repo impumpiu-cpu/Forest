@@ -5054,6 +5054,52 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var fishTotals = (w) => w.lakes.reduce((s, l) => [s[0] + l.fish, s[1] + l.cap], [0, 0]);
 
+  // src/world/heat.js
+  var CHUNK = 8;
+  var HEAT_EPS = 0.05;
+  var SMOKE_EPS = 2e-3;
+  var airTemp = (w) => perTick(w, "airTemp", () => ambientTemp(w));
+  var tempAt = (w, i) => airTemp(w) + w.grid.heat[i];
+  function heatTo(w, i, t) {
+    const d = t - airTemp(w);
+    if (w.grid.heat[i] < d) w.grid.heat[i] = d;
+    touchHeat(w, i);
+  }
+  function coolTo(w, i, t) {
+    const d = t - airTemp(w);
+    if (w.grid.heat[i] > d) w.grid.heat[i] = d;
+    touchHeat(w, i);
+  }
+  function chunks(w) {
+    if (w.chunks && w.chunks.n === w.n) return w.chunks;
+    const cw = Math.ceil(w.w / CHUNK), ch = Math.ceil(w.h / CHUNK);
+    return w.chunks = { n: w.n, cw, ch, active: new Uint8Array(cw * ch) };
+  }
+  var chunkOf = (w, i) => {
+    const c = chunks(w);
+    return ((i / w.w | 0) / CHUNK | 0) * c.cw + (i % w.w / CHUNK | 0);
+  };
+  function touchHeat(w, i) {
+    chunks(w).active[chunkOf(w, i)] = 1;
+  }
+  function ensureHeat(w) {
+    const g3 = w.grid;
+    if (!g3.heat) {
+      g3.heat = new Float32Array(w.n);
+      if (g3.temp) {
+        const amb = ambientTemp(w);
+        for (let i = 0; i < w.n; i++) g3.heat[i] = g3.temp[i] - amb;
+      }
+    }
+    delete g3.temp;
+    delete g3.temp2;
+    g3.heat2 ?? (g3.heat2 = new Float32Array(w.n));
+    if (!w.chunks || w.chunks.n !== w.n) {
+      delete w.chunks;
+      chunks(w).active.fill(1);
+    }
+  }
+
   // src/data/crops.js
   var CROPS = new Registry("crop");
   CROPS.registerAll([
@@ -5231,12 +5277,14 @@ dd.q4{color:#c58cff;font-weight:600}
     JOBS_REF = reg;
     HUNTABLE = huntable2;
   };
+  var WARM_AT = 18;
   NAVMAPS.registerAll([
     { id: "camp", seed: (w, i) => w.camp.set.has(i) },
-    // where to get warm: the camp fire and every finished lived-in building (heated while the fire burns)
+    // where to get warm: the camp fire and every finished lived-in building whose hearth really warms
+    // the room (warmth grows only above 18°, data/needs.js; a drafty hut in a hard frost stays at 10–13°)
     {
       id: "warm",
-      prepare: (w) => new Set(w.buildings.filter((b) => b.done && BUILDINGS.get(b.key).heat).flatMap((b) => b.cells)),
+      prepare: (w) => new Set(w.buildings.filter((b) => b.done && BUILDINGS.get(b.key).heat).flatMap((b) => b.cells).filter((i) => tempAt(w, i) > WARM_AT)),
       seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)
     },
     { id: "edge", seed: (w, i) => {
@@ -5332,52 +5380,6 @@ dd.q4{color:#c58cff;font-weight:600}
       prepare: (w) => new Set(w.buildings.filter((x) => x.key === b.id && x.done).flatMap((x) => x.cells)),
       seed: (w, i, cells) => cells.has(i)
     });
-  }
-
-  // src/world/heat.js
-  var CHUNK = 8;
-  var HEAT_EPS = 0.05;
-  var SMOKE_EPS = 2e-3;
-  var airTemp = (w) => perTick(w, "airTemp", () => ambientTemp(w));
-  var tempAt = (w, i) => airTemp(w) + w.grid.heat[i];
-  function heatTo(w, i, t) {
-    const d = t - airTemp(w);
-    if (w.grid.heat[i] < d) w.grid.heat[i] = d;
-    touchHeat(w, i);
-  }
-  function coolTo(w, i, t) {
-    const d = t - airTemp(w);
-    if (w.grid.heat[i] > d) w.grid.heat[i] = d;
-    touchHeat(w, i);
-  }
-  function chunks(w) {
-    if (w.chunks && w.chunks.n === w.n) return w.chunks;
-    const cw = Math.ceil(w.w / CHUNK), ch = Math.ceil(w.h / CHUNK);
-    return w.chunks = { n: w.n, cw, ch, active: new Uint8Array(cw * ch) };
-  }
-  var chunkOf = (w, i) => {
-    const c = chunks(w);
-    return ((i / w.w | 0) / CHUNK | 0) * c.cw + (i % w.w / CHUNK | 0);
-  };
-  function touchHeat(w, i) {
-    chunks(w).active[chunkOf(w, i)] = 1;
-  }
-  function ensureHeat(w) {
-    const g3 = w.grid;
-    if (!g3.heat) {
-      g3.heat = new Float32Array(w.n);
-      if (g3.temp) {
-        const amb = ambientTemp(w);
-        for (let i = 0; i < w.n; i++) g3.heat[i] = g3.temp[i] - amb;
-      }
-    }
-    delete g3.temp;
-    delete g3.temp2;
-    g3.heat2 ?? (g3.heat2 = new Float32Array(w.n));
-    if (!w.chunks || w.chunks.n !== w.n) {
-      delete w.chunks;
-      chunks(w).active.fill(1);
-    }
   }
 
   // src/world/weather.js
@@ -8669,6 +8671,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/agents/combat.js
   var aggressor = (a, o) => o.task?.id === "maul" && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
+  var attackerOf = (w, a) => w.agents.find((o) => !o.dead && o !== a && (o.task?.id === "maul" || o.task?.id === "fight") && o.task.target === a) || null;
   function canSee(w, a, t) {
     if (t.hiddenUntil > w.tick) return false;
     if (t.veil == null || aggressor(a, t)) return true;
@@ -13416,7 +13419,8 @@ dd.q4{color:#c58cff;font-weight:600}
       } else if (carriedFood(a) >= 1) {
         eatCarried(a);
         done2(w, a);
-      } else a.task = { id: "job", job: "gather", eatNow: true };
+      } else if (skipped(w, a, { id: "job", job: "gather" })) fail2(w, a, "\u0435\u0441\u0442\u044C \u043D\u0435\u0447\u0435\u0433\u043E: \u0441\u043A\u043B\u0430\u0434 \u043F\u0443\u0441\u0442, \u044F\u0433\u043E\u0434 \u043D\u0435\u0442");
+      else a.task = { id: "job", job: "gather", eatNow: true };
     } },
     { id: "sleep", label: () => "\u0441\u043F\u0438\u0442", step(w, a, task) {
       if (follow(w, a, "camp") !== "arrived") return;
@@ -13436,8 +13440,17 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     } },
     { id: "warm", label: () => "\u0433\u0440\u0435\u0435\u0442\u0441\u044F", step(w, a, task) {
-      if (follow(w, a, "warm") !== "arrived") return;
-      if (w.camp.set.has(cellOf(w, a))) mill2(w, a, task, 1.2);
+      if (!campFuel(w)) {
+        fail2(w, a, "\u043A\u043E\u0441\u0442\u0451\u0440 \u043F\u043E\u0433\u0430\u0441: \u0442\u043E\u043F\u043B\u0438\u0432\u0430 \u043D\u0435\u0442");
+        return;
+      }
+      const i = cellOf(w, a);
+      if (!task.toFire && !w.camp.set.has(i) && w.nav.get("warm")[i] === 0 && tempAt(w, i) <= WARM_AT) {
+        w.nav.dirty("warm");
+        task.toFire = true;
+      }
+      if (follow(w, a, task.toFire ? "camp" : "warm") !== "arrived") return;
+      if (w.camp.set.has(i)) mill2(w, a, task, 1.2);
       if (a.needs.warmth > 0.92) done2(w, a);
     } },
     { id: "council", label: () => "\u043D\u0430 \u0441\u043E\u0432\u0435\u0442\u0435 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", step(w, a, task) {
@@ -13841,6 +13854,10 @@ dd.q4{color:#c58cff;font-weight:600}
     const opts = [];
     for (const id of SPECIES.get(a.species).needs) {
       const n = NEEDS2.get(id);
+      if (n.task === "sleep" && a.task?.id === "sleep" && a.needs[id] >= 1 && night > 0.75 && !raidAlarm(w)) {
+        opts.push([{ id: "sleep" }, 1 * campOk, () => "\u0434\u043E\u0441\u044B\u043F\u0430\u0435\u0442 \u0434\u043E \u0440\u0430\u0441\u0441\u0432\u0435\u0442\u0430"]);
+        continue;
+      }
       opts.push([{ id: n.task }, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ", \u043D\u043E \u043B\u0430\u0433\u0435\u0440\u044C \u0433\u043E\u0440\u0438\u0442" : ""}`]);
     }
     const mate = mates(w, a);
@@ -13872,11 +13889,11 @@ dd.q4{color:#c58cff;font-weight:600}
     if (tradeOpen(w)) opts.push([{ id: "trade" }, 1.1, () => "\u0442\u043E\u0440\u0433 \u0441 \u043A\u0443\u043F\u0446\u043E\u043C"]);
     const brave = a.mods.bravery;
     if (w.stats.fireNearCamp > 0 && hpShare(a) > 0.6 && brave > 0.7) opts.push([{ id: "douse" }, 0.8 * brave, () => "\u043F\u043E\u0436\u0430\u0440 \u0443 \u043B\u0430\u0433\u0435\u0440\u044F"]);
-    const hunter = w.agents.find((o) => !o.dead && o.task?.id === "maul" && o.task.target === a);
+    const hunter = attackerOf(w, a);
     if (hunter) {
       if (hunter.species === "wolf") a.mem.wolf += 0.05;
       const who = SPECIES.get(hunter.species).label;
-      const stand = brave * hpShare(a) > 0.85 || agentInZone(w, a) && hpShare(a) > 0.3;
+      const stand = brave * hpShare(a) > 0.85 || agentInZone(w, a);
       opts.push(stand ? [{ id: "fight", target: hunter }, ATTACKED, () => `\u043D\u0430\u043F\u0430\u043B ${who}: \u0441\u043C\u0435\u043B\u043E\u0441\u0442\u0438 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 \u0434\u0430\u0442\u044C \u043E\u0442\u043F\u043E\u0440`] : [{ id: "runHome" }, ATTACKED, () => `\u043D\u0430\u043F\u0430\u043B ${who}: \u0431\u0435\u0436\u0430\u0442\u044C \u043A \u0441\u0432\u043E\u0438\u043C`]);
     }
     const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
@@ -13956,7 +13973,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (tid === "douse" && (T2 > 58 || hpShare(a) < 0.6)) a.task = { id: "flee" };
       if (a.task?.id === "flee" || a.task?.id === "douse") a.mem.fire += 6e-3;
       const tid2 = a.task?.id;
-      const attacked = w.agents.some((o) => o.task?.id === "maul" && o.task.target === a);
+      const attacked = !!attackerOf(w, a);
       if (tid2 !== "fight" && tid2 !== "runHome" && tid2 !== "flee" && attacked) a.think = 0;
       if (w.tick % 5 === 0 && a.task?.id !== "fight" && a.task?.id !== "runHome" && nearestHostile(w, a, 8)) a.think = 0;
       if (a.task?.id !== "flee" && --a.think <= 0) {
@@ -18727,7 +18744,15 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let y = Math.max(0, y0 - rr); y <= Math.min(a.h - 1, y0 + rr); y++) for (let x = Math.max(0, x0 - rr); x <= Math.min(a.w - 1, x0 + rr); x++)
       if (Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) <= r) f[y * a.w + x] = 1;
   }
-  function armyDay(a, p) {
+  function warOver(a, p) {
+    return !a.rel[p.war]?.war;
+  }
+  function armyDay(a, p, rnd, say2) {
+    if (p.state !== "home" && warOver(a, p)) {
+      say2(`${cap13(p.label)} ${p.state === "stay" ? "\u0441\u043D\u044F\u043B\u043E \u043E\u0441\u0430\u0434\u0443" : "\u043F\u043E\u0432\u0435\u0440\u043D\u0443\u043B\u043E \u043D\u0430\u0437\u0430\u0434"}: \u0437\u0430\u043A\u043B\u044E\u0447\u0451\u043D \u043C\u0438\u0440.`);
+      goHome(a, p);
+      return;
+    }
     p.supplies--;
     if (p.supplies < 0) {
       p.men *= 1 - ARMY.attrition;
@@ -18840,16 +18865,17 @@ dd.q4{color:#c58cff;font-weight:600}
       if (r.war) {
         r.att += D2.weariness;
         const years = H2.year - r.war.since;
-        const armyOut = (a.parties || []).some((x) => x.kind === "army" && x.war === kk && x.state !== "gone");
-        if (gap <= D2.front * k && !armyOut) {
-          const [t, o] = pair, mine = r.war.turn === q ? [o, t] : [t, o];
-          r.war.turn = mine[0].realm === p ? q : p;
-          muster(a, mine[0], mine[1], kk, rnd, say2);
-        }
         if (r.att >= D2.peaceAt || years >= D2.longest) {
           say2(`${cap13(realmLabel(a, p))} \u0438 ${realmLabel(a, q)} \u0437\u0430\u043A\u043B\u044E\u0447\u0438\u043B\u0438 \u043C\u0438\u0440 \u043F\u043E\u0441\u043B\u0435 ${years} ${years % 10 === 1 && years % 100 !== 11 ? "\u0433\u043E\u0434\u0430" : "\u043B\u0435\u0442"} \u0432\u043E\u0439\u043D\u044B.`);
           r.war = null;
           r.att = D2.afterPeace;
+        } else {
+          const armyOut = (a.parties || []).some((x) => x.kind === "army" && x.war === kk && x.state !== "gone");
+          if (gap <= D2.front * k && !armyOut) {
+            const [t, o] = pair, mine = r.war.turn === q ? [o, t] : [t, o];
+            r.war.turn = mine[0].realm === p ? q : p;
+            muster(a, mine[0], mine[1], kk, rnd, say2);
+          }
         }
       } else if (r.att <= D2.warAt && border) {
         r.war = { since: H2.year, battles: 0, razed: 0 };
@@ -22166,8 +22192,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.49.0 World \xB7 18.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 d8f29e5" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.49.1 Fix \xB7 18.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 30915fc" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;
