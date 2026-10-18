@@ -15,7 +15,7 @@ NEEDS.registerAll([
   {id: 'rest', label: 'бодрость', color: '#7d9be0', task: 'sleep', memory: 'tired', start: [0.6, 1],
     decay: (w, a) => (a.sleeping ? 0 : 0.00045 * (a.mods.sleep ?? 1)),
     harm: 0, cause: 'усталости',
-    urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w.tick) > 0.6 && v < 0.75 ? 0.35 : 0)},
+    urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w) > 0.6 && v < 0.75 ? 0.35 : 0)},
   // warmth follows the temperature field under the agent's feet
   {id: 'warmth', label: 'тепло', color: 'var(--ember)', task: 'warm', memory: 'cold', start: [0.9, 0.9],
     // clothing keeps part of the cold out

@@ -1,15 +1,17 @@
 // Grazer brain (hares and other skittish animals): nibble around the meadows, sit still at night,
 // bolt from people and fire, and now and then wander off the map for good.
 import {SPECIES, matchesKind} from '../../data/species.js';
-import {TERRAIN} from '../../data/terrain.js';
+import {grazeCodes} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
 import {moveToward, escapeHeat, nearFire, bolt, follow, sprintMul, recover, approach, shunsHeat, sameLand} from '../movement.js';
 import {kill} from '../agent.js';
+import {tempAt} from '../../world/heat.js';
+import {nearAgents} from '../spatial.js';
 
 function threatsNear(w, a, radius, from) {
   const out = [];
-  for (const o of w.agents) {
+  for (const o of nearAgents(w, a.x, a.y, radius)) {
     if (o === a || o.dead || !matchesKind(o.species, from)) continue;
     if (o.task?.tame === a.id) continue;   // the herder coming with bait moves slowly: it lets them come
     const r = radius * (o.stalking ? 0.55 : 1);   // a creeping hunter is noticed much later
@@ -21,7 +23,7 @@ function threatsNear(w, a, radius, from) {
 export const grazerBrain = {
   id: 'grazer',
   step(w, a) {
-    const sp = SPECIES.get(a.species), i = cellOf(w, a), T = w.grid.temp[i];
+    const sp = SPECIES.get(a.species), i = cellOf(w, a), T = tempAt(w, i);
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, sp.flee.sprint); return; }
 
@@ -35,18 +37,18 @@ export const grazerBrain = {
     }
     recover(a);
     // a herder holding out hay: it stops and sniffs at it
-    if (w.agents.some(o => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
+    if (nearAgents(w, a.x, a.y, 3).some(o => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
     if (a.task?.id === 'leave' || w.rngs.wild() < sp.leaveChance) {
       a.task = {id: 'leave'};
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;
       return;
     }
-    if (nightness(w.tick) > 0.7) { a.task = {id: 'rest'}; return; }
+    if (nightness(w) > 0.7) { a.task = {id: 'rest'}; return; }
 
     // graze: hop to a nearby patch of preferred terrain, nibble berries on the way
     const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});
     if (!t.spot || w.rngs.wild() < 0.01) {
-      const ok = new Set(sp.grazes.terrain.map(id => TERRAIN.get(id).code));
+      const ok = grazeCodes(sp.grazes.terrain);
       // mostly nibble nearby, now and then wander off to another meadow; of a few candidate
       // patches take the lushest one that is not hard against the map edge
       const reach = w.rngs.wild() < 0.15 ? 30 : 7;

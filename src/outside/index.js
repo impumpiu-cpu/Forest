@@ -29,6 +29,7 @@ export function initOutside(w, providerId = 'scripted') {
 // flows that this game has not scheduled yet (a save from before they existed) get their first date
 export function ensureFlows(w) {
   for (const [id, f] of Object.entries(provider(w).flows)) if (!(id in w.outside.next)) w.outside.next[id] = f.first(w, w.rngs.outside);
+  w.outside.soon ??= 0;   // a save from before the date: recounted on the next step
 }
 
 // the colony sends something out of the map
@@ -61,18 +62,23 @@ export function arriveNow(w, flowId) {
 export function stepOutside(w) {
   if (w.tick % DAY === 0) tell(w, 'report', colonyReport(w));
   const o = w.outside, P = provider(w);
+  // nothing is due before the earliest date among the flows (o.soon, recounted whenever a date changes here)
+  if (o.soon > w.tick) return;
+  let soonest = Infinity;
   for (const [id, f] of Object.entries(P.flows)) {
-    if (w.tick < o.next[id]) continue;
+    if (w.tick < o.next[id]) { if (o.next[id] < soonest) soonest = o.next[id]; continue; }
     const offered = f.offer(w, w.rngs.outside);
     const group = offered ? arrive(w, id, offered) : [];
     if (!offered && f.missed) { const m = f.missed(w); if (m) log(w, ...m); }
     // a due arrival that the colony could not take in is retried soon without resetting its schedule
     const retry = MIGRATIONS.get(id).retry;
-    if (offered && !group.length && retry) { o.next[id] = w.tick + retry; o.due[id] ??= w.tick; continue; }
+    if (offered && !group.length && retry) { o.next[id] = w.tick + retry; o.due[id] ??= w.tick; if (o.next[id] < soonest) soonest = o.next[id]; continue; }
     if (group.length && id === 'settlers') tell(w, 'report', colonyReport(w));   // word of a newcomer travels fast
     o.next[id] = f.next(w, w.rngs.outside, group.length);
     o.due[id] = null;
+    if (o.next[id] < soonest) soonest = o.next[id];
   }
+  o.soon = Number.isFinite(soonest) ? soonest : 0;   // Infinity does not survive JSON
 }
 
 // for the panel: each neighbour with its distance and the next arrival from it

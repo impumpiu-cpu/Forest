@@ -2,7 +2,8 @@
 // scaled up: terrain crisp, fields smooth. Fire is added with 'lighter' for a glow; night darkens.
 import {CARCASS} from '../agents/carcass.js';
 import {hpShare} from '../agents/agent.js';
-import {BY_CODE, T, WALKABLE} from '../data/terrain.js';
+import {BY_CODE, T, WALKABLE, isWater} from '../data/terrain.js';
+import {airTemp} from '../world/heat.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -13,7 +14,7 @@ import {DX, DY} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {LOOKS} from './looks.js';
 import {ORE_BY_CODE} from '../data/ores.js';
-import {season} from '../data/seasons.js';
+import {season, seasonTint, snowy} from '../data/seasons.js';
 import {CROPS} from '../data/crops.js';
 import {PLANTS, plantLayer} from '../data/plants.js';
 
@@ -90,16 +91,19 @@ export class Renderer {
   pan(w, cam, dx, dy) { this.clampCam(w, cam); cam.cx -= dx / this.S; cam.cy -= dy / this.S; this.clampCam(w, cam); }
 
   paintTerrain(w) {
+    const shoreOf = (g, i, W, H) => { const x = i % W, y = (i / W) | 0; return (x > 0 && !isWater(g.terr[i - 1])) || (x < W - 1 && !isWater(g.terr[i + 1])) || (y > 0 && !isWater(g.terr[i - W])) || (y < H - 1 && !isWater(g.terr[i + W])); };
     const d = this.terrain.img.data, g = w.grid;
     // the season tints grass and forest: autumn gold, winter snow (water freezes white at the edges only)
-    const [tr, tg, tb, tk] = season(w).tint, wet = season(w).snow;
+    const [tr, tg, tb, tk] = seasonTint(w), wet = (w.snow || 0) > 0.15, W = w.w;
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
+      // the shore: water beside land is shallow and pale (an edge for the eye, not a kind of ground)
+      if (g.terr[i] === T.WATER && shoreOf(g, i, W, w.h)) { r = r * 0.6 + 70; gg = gg * 0.6 + 80; b = b * 0.6 + 70; }
       const ore = g.ore?.[i];
       if (ore) { const c = ORE_BY_CODE[ore].tint, k = 0.55; r = r * (1 - k) + c[0] * k; gg = gg * (1 - k) + c[1] * k; b = b * (1 - k) + c[2] * k; }
       for (const p of PLANTS_TINT) { const v = g[p.key]?.[i]; if (v > 0.2) { const k = v * 0.6; r = r * (1 - k) + p.tint[0] * k; gg = gg * (1 - k) + p.tint[1] * k; b = b * (1 - k) + p.tint[2] * k; } }
       if (g.bush[i] && g.food[i] > 0.2) { const k = g.food[i] * 0.55; r = r * (1 - k) + 196 * k; gg = gg * (1 - k) + 92 * k; b = b * (1 - k) + 149 * k; }
-      if (tk && (g.terr[i] === T.GRASS || g.terr[i] === T.FOREST || g.terr[i] === T.BURNT || (wet && g.terr[i] === T.ROCK))) {
+      if (tk && (BY_CODE[g.terr[i]].tint || (wet && g.terr[i] === T.ROCK))) {
         const k = g.terr[i] === T.FOREST ? tk * 0.7 : tk;
         r = r * (1 - k) + tr * k; gg = gg * (1 - k) + tg * k; b = b * (1 - k) + tb * k;
       }
@@ -109,9 +113,9 @@ export class Renderer {
   }
 
   paintGlowSmoke(w) {
-    const gd = this.glow.img.data, sd = this.smoke.img.data, g = w.grid;
+    const gd = this.glow.img.data, sd = this.smoke.img.data, g = w.grid, amb = airTemp(w);
     for (let i = 0; i < w.n; i++) {
-      const f = g.fire[i], o = i * 4, hot = clamp((g.temp[i] - 60) / 400, 0, 1);
+      const f = g.fire[i], o = i * 4, hot = clamp((amb + g.heat[i] - 60) / 400, 0, 1);
       gd[o] = 255; gd[o + 1] = 120 + f * 90; gd[o + 2] = 40 + f * 40; gd[o + 3] = Math.min(255, f * 255 + hot * 120);
       const sm = Math.min(1, g.smoke[i] * 0.6); sd[o] = 150; sd[o + 1] = 150; sd[o + 2] = 144; sd[o + 3] = sm * 190;
     }
@@ -119,11 +123,11 @@ export class Renderer {
   }
 
   paintField(w, mode, view) {
-    const d = this.field.img.data, g = w.grid, dCamp = w.nav.get('camp');
+    const d = this.field.img.data, g = w.grid, dCamp = w.nav.get('camp'), amb = airTemp(w);
     const shown = RESOURCES.filter(r => r.map && !view.resHidden.has(r.id));
     for (let i = 0; i < w.n; i++) {
       const o = i * 4; let r = 0, gg = 0, b = 0, a = 0;
-      if (mode === 'temp') { [r, gg, b] = tempColor(g.temp[i]); a = 205; }
+      if (mode === 'temp') { [r, gg, b] = tempColor(amb + g.heat[i]); a = 205; }
       else if (mode === 'res') {
         // the strongest of the resources switched on in the filter; everything else is dimmed
         let best = 0.05, col = null;
@@ -169,7 +173,7 @@ export class Renderer {
       ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx); }
     if (lit) ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
 
-    const night = nightness(w.tick);
+    const night = nightness(w);
     if (view.layer === 'world' && night > 0) { ctx.fillStyle = `rgba(8,12,30,${night * 0.62})`; ctx.fillRect(0, 0, Wpx, Hpx); }
     if (w.weather.rain > 0.05) this.drawRain(w, Wpx, Hpx);
 
@@ -241,7 +245,7 @@ export class Renderer {
 
   drawRain(w, Wpx, Hpx) {
     const ctx = this.ctx, r = w.weather.rain;
-    if (season(w).snow) {   // snow: slow white flakes
+    if (snowy(w)) {   // snow: slow white flakes
       ctx.fillStyle = `rgba(235,240,250,${r * 0.12})`; ctx.fillRect(0, 0, Wpx, Hpx);
       ctx.fillStyle = `rgba(250,252,255,${0.4 + r * 0.5})`;
       const n = Math.round(r * 320), off = (w.tick * 2) % 600;

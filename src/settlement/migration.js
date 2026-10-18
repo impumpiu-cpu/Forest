@@ -10,6 +10,8 @@ import {FAR} from '../nav/navigation.js';
 import {dress} from '../agents/equipment.js';
 import {think} from '../agents/mind.js';
 
+import {SIDE_FROM} from '../world/site.js';
+
 const SIDE = ['запада', 'востока', 'севера', 'юга'];
 
 // an edge cell connected to the camp and at least minDist away from it
@@ -24,12 +26,21 @@ function edgeCell(w, minDist) {
   return [-1, ''];
 }
 
+// a gate of the given kind that is joined to the camp (world/site.js gates), or null
+export function gateCell(w, kind) {
+  const dCamp = w.nav.get('camp'), open = (w.gates || []).filter(g => g.kind === kind && walkable(w, g.i) && dCamp[g.i] < FAR);
+  if (!open.length) return null;
+  const g = open[(w.rngs.outside() * open.length) | 0];
+  return [g.i, SIDE_FROM[g.side]];
+}
+
 export function spawnGroup(w, id, n, opts = {}) {
   const def = MIGRATIONS.get(id);
   if (!n) return [];
-  // most groups walk in from a map edge; some appear at their own ground (`spawnAt`, the nechist)
+  // most groups walk in from a map edge; some come by road through its gate (`gate`), some appear at
+  // their own ground (`spawnAt`, the nechist)
   const home = def.spawnAt ? def.spawnAt(w) : -1;
-  const [e, side] = home >= 0 ? [home, ''] : edgeCell(w, def.minDist ?? 30);
+  const [e, side] = home >= 0 ? [home, ''] : (def.gate && gateCell(w, def.gate)) || edgeCell(w, def.minDist ?? 30);
   if (e < 0) { if (id === 'raiders') log(w, 'Налётчики не нашли дороги к лагерю.', 'danger', 'notice'); return []; }
   const ex = e % w.w, ey = (e / w.w) | 0, group = [];
   // a mixed group (a caravan) lists its members; otherwise n of the one species

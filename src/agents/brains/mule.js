@@ -7,7 +7,7 @@
 // when its trader is gone it heads for the map edge. A wild one grazes and now and then wanders off.
 // All numbers come from the species' `mule` block in data/species.js.
 import {SPECIES} from '../../data/species.js';
-import {TERRAIN} from '../../data/terrain.js';
+import {grazeCodes} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, shunsHeat, sameLand} from '../movement.js';
@@ -16,6 +16,7 @@ import {kill, maxHp} from '../agent.js';
 import {season} from '../../data/seasons.js';
 import {log} from '../../core/log.js';
 import {esc} from '../../core/util.js';
+import {tempAt} from '../../world/heat.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead);
@@ -45,7 +46,7 @@ function kick(w, a, t, M, charging) {
 function graze(w, a, sp) {
   const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});
   if (!t.spot || w.rngs.wild() < 0.006) {
-    const ok = new Set((sp.mule?.terrain || ['grass']).map(id => TERRAIN.get(id).code));
+    const ok = grazeCodes(sp.mule?.terrain || ['grass']);
     const reach = w.rngs.wild() < 0.1 ? 24 : 6;
     let bestV = -Infinity;
     for (let k = 0; k < 10; k++) {
@@ -63,7 +64,7 @@ function graze(w, a, sp) {
 export const muleBrain = {
   id: 'mule',
   step(w, a) {
-    const sp = SPECIES.get(a.species), M = sp.mule, i = cellOf(w, a), T = w.grid.temp[i];
+    const sp = SPECIES.get(a.species), M = sp.mule, i = cellOf(w, a), T = tempAt(w, i);
     if (a.cd > 0) a.cd--;
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
@@ -103,7 +104,7 @@ export const muleBrain = {
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;
       return;
     }
-    if (nightness(w.tick) > 0.75) { a.task = {id: 'rest'}; return; }
+    if (nightness(w) > 0.75) { a.task = {id: 'rest'}; return; }
     // a herder holding out hay: it stops and lets them come
     if (w.agents.some(o => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
     graze(w, a, sp);

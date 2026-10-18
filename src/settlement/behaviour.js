@@ -22,9 +22,11 @@
 //                or a load whose total does not match its contents. Should stay 0.
 import {colonists} from './query.js';
 import {walkable} from '../world/grid.js';
+import {campFuel} from './stock.js';
+import {nightness} from '../core/time.js';
 
 export const newBehaviour = () => ({ticks: 0, idle: 0, muster: 0, company: 0, switches: 0, stops: 0, outcomes: {}, noPath: 0,
-  react: {sum: 0, n: 0, missed: 0}, invalid: 0, invalidWhat: {},
+  react: {sum: 0, n: 0, missed: 0}, invalid: 0, invalidWhat: {}, crowd: 0, crowdTicks: 0, nightTicks: 0, fireless: 0,
   squads: {started: 0, goal: 0, retreat: 0, wiped: 0}, hunts: {started: 0}, social: {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0}});
 
 const REACT = new Set(['fight', 'runHome', 'flee']);
@@ -43,7 +45,13 @@ export function sampleBehaviour(w) {
     if (!(a.x >= 0 && a.y >= 0 && a.x < w.w && a.y < w.h)) { bad(w, 'за картой'); continue; }
     if (!walkable(w, (a.y | 0) * w.w + (a.x | 0))) bad(w, 'в скале или воде');
   }
-  for (const a of colonists(w)) {
+  // crowding: the share of the colony on the one most crowded job; fireless nights: the fire wanted and no fuel
+  const col = colonists(w), onJob = {};
+  for (const a of col) if (a.task?.id === 'job') onJob[a.task.job] = (onJob[a.task.job] || 0) + 1;
+  const busy = Object.values(onJob).reduce((s, v) => s + v, 0);
+  if (busy >= 3) { b.crowd = (b.crowd || 0) + Math.max(...Object.values(onJob)) / busy; b.crowdTicks = (b.crowdTicks || 0) + 1; }
+  if (nightness(w) > 0.3 && col.length) { b.nightTicks = (b.nightTicks || 0) + 1; if (!campFuel(w)) b.fireless = (b.fireless || 0) + 1; }
+  for (const a of col) {
     b.ticks++;
     const t = a.task?.id;
     if (!t || t === 'idle') b.idle++;

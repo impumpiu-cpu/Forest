@@ -25,7 +25,7 @@ import {SPECIES} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 
 // which band sets out: each weighs itself by the threat it sees and the hour
-export const pickBand = (w, rng) => { const sc = scoutedBand(w); return weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w.tick)) * (b.id === sc ? 4 : 1)])); };
+export const pickBand = (w, rng) => { const sc = scoutedBand(w); return weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1)])); };
 
 const raidDist = w => RAIDS[w.cfg.raids].dist;
 

@@ -3,6 +3,8 @@
 import {NAVMAPS} from '../data/navmaps.js';
 import {BY_CODE, WALKABLE} from '../data/terrain.js';
 import {DX, DY} from '../world/grid.js';
+import {airTemp} from '../world/heat.js';
+import {SNOW} from '../world/weather.js';
 
 export const FAR = 1e9;
 // rebuild pacing, in ticks (multiplied by `every` on big maps); a navmap may override minGap/period
@@ -13,7 +15,7 @@ export class Navigation {
     this.w = world;
     const n = world.n;
     this.dist = {};
-    for (const d of NAVMAPS.all()) this.dist[d.id] = new Float64Array(n).fill(FAR);
+    for (const d of NAVMAPS.all()) this.dist[d.id] = new Float32Array(n).fill(FAR);
     this.dirtySet = new Set(NAVMAPS.ids());
     this.order = NAVMAPS.ids();
     this.last = Object.fromEntries(this.order.map(id => [id, -Infinity]));   // tick of the last rebuild
@@ -21,6 +23,7 @@ export class Navigation {
     this.closed = new Uint8Array(n);
     this.heapI = new Int32Array(n * 9);
     this.heapD = new Float64Array(n * 9);
+    this.costTick = -1; this.costHazard = null;
     // bigger maps rebuild each field less often, so a tick stays cheap
     this.every = Math.max(1, Math.round(n / 12288));
   }
@@ -30,12 +33,16 @@ export class Navigation {
 
   // fire, heat and smoke make cells expensive; `hazard` scales that for the escape map
   computeCost(hazard) {
-    const g = this.w.grid, cost = this.cost;
+    // several maps may be rebuilt in one tick (sites, prey, fire…): the cost is the same for the same hazard
+    if (this.costTick === this.w.tick && this.costHazard === hazard) return;
+    if (Math.abs((this.w.snow || 0) - (this.costSnow || 0)) > 0.1) { this.costSnow = this.w.snow || 0; for (const id of this.order) this.dirtySet.add(id); }
+    this.costTick = this.w.tick; this.costHazard = hazard;
+    const g = this.w.grid, cost = this.cost, amb = airTemp(this.w), snow = 1 + SNOW.cost * (this.w.snow || 0);
     for (let i = 0; i < this.w.n; i++) {
       const t = g.terr[i];
       if (!WALKABLE[t]) { cost[i] = -1; continue; }
-      let c = BY_CODE[t].pathCost + (g.fire[i] * 60 + g.smoke[i] * 1.5) * hazard;
-      if (g.temp[i] > 45) c += (g.temp[i] - 45) * 0.3 * hazard;
+      let c = BY_CODE[t].pathCost * (BY_CODE[t].kind === 'water' ? 1 : snow) + (g.fire[i] * 60 + g.smoke[i] * 1.5) * hazard;
+      if (amb + g.heat[i] > 45) c += (amb + g.heat[i] - 45) * 0.3 * hazard;
       cost[i] = c;
     }
   }
@@ -60,7 +67,7 @@ export class Navigation {
         const nx = x + DX[q], ny = y + DY[q]; if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const j = ny * W + nx; let c = cost[j]; if (c < 0) continue;
         if (q >= 4) { if (cost[y * W + nx] < 0 || cost[ny * W + x] < 0) continue; c *= 1.414; }
-        const nd = d + c; if (nd < dist[j]) { dist[j] = nd; push(j, nd); }
+        const nd = d + c; if (nd < dist[j]) { dist[j] = nd; push(j, dist[j]); }   // push what was stored: the map is Float32, the heap Float64
       }
     }
     this.dirtySet.delete(id);

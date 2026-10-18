@@ -10,6 +10,7 @@ import {damage} from '../combat.js';
 import {pens} from '../../settlement/herd.js';
 import {BUILDINGS} from '../../data/buildings.js';
 import {buildingById} from '../../settlement/query.js';
+import {tempAt} from '../../world/heat.js';
 
 // the pen this animal belongs to: the one it had, or the first with room
 function penOf(w, a) {
@@ -29,7 +30,7 @@ const inside = (b, a) => a.x >= b.x && a.y >= b.y && a.x < b.x + b.w && a.y < b.
 export const livestockBrain = {
   id: 'livestock',
   step(w, a) {
-    const sp = SPECIES.get(a.species), i = cellOf(w, a), T = w.grid.temp[i];
+    const sp = SPECIES.get(a.species), i = cellOf(w, a), T = tempAt(w, i);
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
     if (a.cd > 0) a.cd--;
@@ -56,7 +57,7 @@ export const livestockBrain = {
       if (approach(w, a, pen.x + pen.w / 2, pen.y + pen.h / 2, 0.9) === null) follow(w, a, 'camp', 0.9);
       return;
     }
-    if (nightness(w.tick) > 0.7) { a.task = {id: 'rest'}; return; }
+    if (nightness(w) > 0.7) { a.task = {id: 'rest'}; return; }
     const t = a.task?.id === 'penned' ? a.task : (a.task = {id: 'penned'});
     if (!t.spot || w.rngs.wild() < 0.008) t.spot = [pen.x + 0.3 + w.rngs.wild() * (pen.w - 0.6), pen.y + 0.3 + w.rngs.wild() * (pen.h - 0.6)];
     if (Math.hypot(t.spot[0] - a.x, t.spot[1] - a.y) > 0.2) moveToward(w, a, t.spot[0], t.spot[1], 0.3);

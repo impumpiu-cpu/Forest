@@ -3,9 +3,9 @@
 // (one seed each, the crop the colony needs most of those it has seed for) and reaps ripe ones.
 // Growth follows the season's `grow`; the first frost of winter kills what is still unripe.
 import {CROPS} from '../data/crops.js';
-import {T} from '../data/terrain.js';
+import {T, OPEN} from '../data/terrain.js';
 import {DAY} from '../core/time.js';
-import {season} from '../data/seasons.js';
+import {season, seasonStarts} from '../data/seasons.js';
 import {isCampArea} from '../world/grid.js';
 import {colonists, foodTotal} from './query.js';
 import {log} from '../core/log.js';
@@ -32,7 +32,7 @@ export function plowField(w, b) {
   for (let yy = -3; yy <= 4; yy++) for (let xx = -3; xx <= 4; xx++) {
     const x = b.x + xx, y = b.y + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
     const j = y * w.w + x;
-    if ((g.terr[j] === T.GRASS || g.terr[j] === T.BURNT || g.terr[j] === T.FOREST) && g.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
+    if ((OPEN[g.terr[j]] || g.terr[j] === T.FOREST) && g.bld[j] < 0 && !isCampArea(w, j)) cand.push([j, xx * xx + yy * yy]);
   }
   cand.sort((p, q) => p[1] - q[1]);
   b.plots = [];
@@ -67,7 +67,7 @@ export function stepFarms(w) {
   if (w.tick % EVERY) return;
   const S = season(w);
   // the first frost: whatever is still unripe in the ground is lost
-  if (S.frost != null && w.tick % DAY < EVERY && w.tick / DAY % 30 < 1) {
+  if (S.frost != null && w.tick % DAY < EVERY && seasonStarts(w)) {
     let lost = 0;
     for (const b of fields(w)) for (const p of b.plots) if (p.crop && p.g < 1) { p.crop = null; p.g = 0; lost++; }
     if (lost) log(w, `Мороз побил несжатые посевы: ${lost} грядок пропало.`, 'weather', 'notice');

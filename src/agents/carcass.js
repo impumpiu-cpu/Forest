@@ -81,7 +81,7 @@ export function eat(w, a, c, rate) {
 export function stepCarcasses(w) {
   const cs = w.carcasses; if (!cs?.length) return;
   if (w.tick % 60) return;
-  const night = nightness(w.tick);
+  const night = nightness(w);
   for (const c of cs) {
     const age = w.tick - c.t;
     // rot eats into it too, slowly at first

@@ -1,14 +1,15 @@
 // Start menu: world settings with a live terrain preview (same generator as the game).
-import {SIZES, CLIMATES, LEVELS3, STOCKS, RAIDS, WILDLIFE, PREDATORS, DEFAULT_CFG} from '../data/presets.js';
+import {SIZES, CLIMATES, START, LEVELS3, STOCKS, RAIDS, WILDLIFE, PREDATORS, DEFAULT_CFG} from '../data/presets.js';
 import {makeTerrain} from '../world/generate.js';
 import {seedNumber} from '../core/rng.js';
-import {BY_CODE, T} from '../data/terrain.js';
+import {BY_CODE, T, isWater} from '../data/terrain.js';
 import {$} from './dom.js';
 
 const OPTS = {
   size: Object.entries(SIZES).map(([k, v]) => [k, v.label]),
   water: LEVELS3.map((l, i) => [i, l]), forest: LEVELS3.map((l, i) => [i, l]), rock: LEVELS3.map((l, i) => [i, l]),
   climate: Object.entries(CLIMATES).map(([k, v]) => [k, v.label]),
+  start: Object.entries(START).map(([k, v]) => [k, v.label]),
   stock: Object.entries(STOCKS).map(([k, v]) => [k, v.label]),
   raids: Object.entries(RAIDS).map(([k, v]) => [k, v.label]),
   wildlife: Object.entries(WILDLIFE).map(([k, v]) => [k, v.label]),
@@ -71,7 +72,8 @@ export class Menu {
     const img = px.createImageData(t.w, t.h), d = img.data, n = t.w * t.h, cnt = [];
     for (let i = 0; i < n; i++) {
       const code = t.terr[i]; cnt[code] = (cnt[code] || 0) + 1;
-      const [r, g, b] = BY_CODE[code].color(t.hgt[i], t.fert[i], 0.8);
+      let [r, g, b] = BY_CODE[code].color(t.hgt[i], t.fert[i], 0.8);
+      if (code === T.WATER) { const x = i % t.w, y = (i / t.w) | 0, land = k => !isWater(t.terr[k]); if ((x > 0 && land(i - 1)) || (x < t.w - 1 && land(i + 1)) || (y > 0 && land(i - t.w)) || (y < t.h - 1 && land(i + t.w))) { r = r * 0.6 + 70; g = g * 0.6 + 80; b = b * 0.6 + 70; } }
       const o = i * 4; d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
     }
     px.putImageData(img, 0, 0);
@@ -79,7 +81,8 @@ export class Menu {
     px.beginPath(); px.arc(t.cx + 0.5, t.cy + 0.5, 4.5, 0, Math.PI * 2); px.stroke();
     const pct = code => ((cnt[code] || 0) / n * 100).toFixed(0) + '%';
     $('previewStats').innerHTML = `<dt>Клеток</dt><dd>${n.toLocaleString('ru-RU')}</dd>` +
-      [T.WATER, T.FOREST, T.GRASS, T.ROCK].map(c => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct(c)}</dd>`).join('') +
+      BY_CODE.map(d => d.code).filter(c => cnt[c] > 0).map(c => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct(c)}</dd>`).join('') +
+      `<dt>Земля</dt><dd>${t.site.region.label}</dd>` +
       `<dt>Числовой сид</dt><dd>${seedNumber(this.cfg.seed)}</dd>`;
   }
 }

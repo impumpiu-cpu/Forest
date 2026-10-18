@@ -2,7 +2,8 @@
 import {DAY, HOUR, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {T} from '../data/terrain.js';
-import {season, seasonDay} from '../data/seasons.js';
+import {season, seasonStarts, snowy, dayMeanTemp} from '../data/seasons.js';
+import {heatTo} from './heat.js';
 
 export function setWind(w) {
   const a = w.wind.dir * Math.PI / 180;
@@ -10,9 +11,19 @@ export function setWind(w) {
   w.wind.y = Math.sin(a) * w.wind.str * 0.5;
 }
 
+// Snow cover, 0 (bare) … 1 (deep): it builds while the days are freezing (faster when it snows) and
+// melts when they are not. One depth for the whole map: what matters is that it lies, and how deep
+export const SNOW = {fall: 0.0004, storm: 0.0016, melt: 0.0012, slow: 0.35, cost: 0.6};
+export const snowCover = w => w.snow || 0;
+function stepSnow(w) {
+  if (snowy(w)) w.snow = Math.min(1, (w.snow || 0) + (w.weather.rain > 0.1 ? SNOW.storm : SNOW.fall));
+  else if (w.snow > 0) w.snow = Math.max(0, w.snow - SNOW.melt * Math.max(0.3, (dayMeanTemp(w) + 1) / 6));
+}
+
 export function stepWeather(w) {
+  stepSnow(w);
   // a new season: say what it brings
-  if (w.tick % DAY === 0 && seasonDay(w.tick) === 1) {
+  if (w.tick % DAY === 0 && seasonStarts(w)) {
     const S = season(w);
     log(w, `Наступает ${S.label.toLowerCase()}. ${S.note}`, 'weather', 'notice');
     // the first frost: wild bushes lose most of their berries at once (planted gardens are tended)
@@ -21,14 +32,14 @@ export function stepWeather(w) {
   const wx = w.weather, fires = w.stats.fireCount;
   if (wx.rainLeft > 0) {
     wx.rainLeft--; wx.rain = Math.min(1, wx.rain + 0.02);
-    if (wx.rainLeft === 0) log(w, season(w).snow ? 'Снегопад кончился.' : 'Дождь закончился.', 'weather');
+    if (wx.rainLeft === 0) log(w, snowy(w) ? 'Снегопад кончился.' : 'Дождь закончился.', 'weather');
   } else {
     wx.rain = Math.max(0, wx.rain - 0.01);
     // a big fire pulls up smoke clouds (pyrocumulus): rain gets much more likely while it burns
     const fireClouds = 1 + fires / 20;
     if (w.rngs.weather() < w.climate.rain * season(w).rain * fireClouds / DAY) {
       wx.rainLeft = Math.round(HOUR * (1.5 + w.rngs.weather() * 3));
-      if (season(w).snow) log(w, fires > 0 ? 'Пошёл снег, огонь слабеет.' : 'Пошёл снег.', 'weather');
+      if (snowy(w)) log(w, fires > 0 ? 'Пошёл снег, огонь слабеет.' : 'Пошёл снег.', 'weather');
       else log(w, fires > 40 ? 'Над пожаром собрались тучи, пошёл дождь.' : fires > 0 ? 'Пошёл дождь, огонь слабеет.' : 'Пошёл дождь.', 'weather');
     }
   }
@@ -36,12 +47,12 @@ export function stepWeather(w) {
 }
 
 function lightning(w) {
-  const h = hourOf(w.tick), dry = w.cfg.climate === 'dry' ? 2 : w.cfg.climate === 'cold' ? 0.4 : 1;
+  const h = hourOf(w.tick), dry = 0.4 / Math.max(0.1, w.climate.rain);   // the drier the climate, the more often lightning strikes
   if (h < 11 || h > 19 || w.weather.rain > 0.2 || w.rngs.weather() >= 0.00025 * dry * w.n / 12288) return;
   for (let k = 0; k < 40; k++) {
     const i = (w.rngs.weather() * w.n) | 0, x = i % w.w, y = (i / w.w) | 0;
     if (w.grid.terr[i] !== T.FOREST || w.grid.fire[i] > 0 || (x - w.camp.x) ** 2 + (y - w.camp.y) ** 2 < 22 * 22) continue;
-    w.grid.fire[i] = 0.7; w.grid.temp[i] = 350; w.nav.dirty('fire');
+    w.grid.fire[i] = 0.7; heatTo(w, i, 350); w.nav.dirty('fire');
     log(w, `Молния ударила в лес в ${Math.round(Math.hypot(x - w.camp.x, y - w.camp.y))} клетках от лагеря.`, 'weather', 'notice');
     return;
   }

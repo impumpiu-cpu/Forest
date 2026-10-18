@@ -4,10 +4,15 @@ import {BY_CODE} from '../data/terrain.js';
 import {cellOf, walkable, inBounds, canStep, DX, DY, inMap} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {clearLine, findPath} from '../nav/astar.js';
+import {tempAt} from '../world/heat.js';
+import {SNOW} from '../world/weather.js';
 
 export function speedOf(w, a) {
   const web = a.webbed && w.tick < a.webbed.until ? a.webbed.slow : 1;   // tangled in a spider's web
-  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
+  const d = BY_CODE[w.grid.terr[cellOf(w, a)]];
+  // snow underfoot: deep snow halves the pace on open ground, less in the woods (a species that lives in it, `snowfoot`, is not slowed)
+  const snow = w.snow > 0 && d.kind !== 'water' && !SPECIES.get(a.species).snowfoot ? 1 - SNOW.slow * w.snow * (d.kind === 'wood' ? 0.6 : 1) : 1;
+  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * d.speed * snow;
 }
 
 // returns true when arrived, false while moving, null when the step is blocked
@@ -58,7 +63,7 @@ export function follow(w, a, mapId, mul = 1) {
   return 'moving';
 }
 
-export const danger = (w, i) => w.grid.temp[i] + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
+export const danger = (w, i) => tempAt(w, i) + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
 
 // does this animal run from the heat here: too hot underfoot, or flames close by (unless it fears no fire)
 export const shunsHeat = (w, a, sp, T, r) => T > fearHeat(sp) || (fearsFire(sp) && nearFire(w, a, r));
@@ -173,9 +178,14 @@ export function sprintMul(a, sprint, drain) {
 export const recover = a => { a.stamina = Math.min(1, a.stamina + 0.002); };
 
 // soft push so agents don't stack on the same spot
+// (a sweep: the pairs are visited in list order, as before, but only those within 0.4 along x)
 export function separate(w) {
-  const ags = w.agents;
-  for (let p = 0; p < ags.length; p++) for (let q = p + 1; q < ags.length; q++) {
+  const ags = w.agents, n = ags.length;
+  const order = Array.from({length: n}, (_, k) => k).sort((p, q) => ags[p].x - ags[q].x || p - q);
+  const pairs = [];
+  for (let s = 0; s < n; s++) for (let t = s + 1; t < n && ags[order[t]].x - ags[order[s]].x < 0.4; t++) pairs.push(order[s] < order[t] ? [order[s], order[t]] : [order[t], order[s]]);
+  pairs.sort((u, v) => u[0] - v[0] || u[1] - v[1]);
+  for (const [p, q] of pairs) {
     const A = ags[p], B = ags[q], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy;
     if (d2 >= 0.16 || d2 < 1e-6) continue;
     const d = Math.sqrt(d2), push = (0.4 - d) * 0.25, ux = dx / d * push, uy = dy / d * push;

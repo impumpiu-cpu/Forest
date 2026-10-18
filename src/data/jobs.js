@@ -21,7 +21,7 @@
 // sticky: extra hold of the job on someone already doing it (a long walk after a wild goat)
 import {Registry} from '../core/registry.js';
 import {useJobs} from './navmaps.js';
-import {T} from './terrain.js';
+import {T, BY_CODE} from './terrain.js';
 import {FOODS} from './foods.js';
 import {PLANTS, plantLayer} from './plants.js';
 import {season} from './seasons.js';
@@ -90,7 +90,7 @@ JOBS.registerAll([
     valid: (w, i) => w.grid.terr[i] === T.FOREST && w.grid.wood[i] > 0.25 && w.grid.fire[i] === 0,
     take: (w, i) => {
       const g = w.grid; g.wood[i] -= 0.35;
-      if (g.wood[i] < 0.1) { g.terr[i] = T.GRASS; g.fuel[i] = 0.4; g.wood[i] = 0; }
+      if (g.wood[i] < 0.1) { g.terr[i] = g.under?.[i] || T.GRASS; g.fuel[i] = BY_CODE[g.terr[i]].fuel; g.wood[i] = 0; }
       w.nav.dirty('trees');
     }},
 

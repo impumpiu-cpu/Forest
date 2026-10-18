@@ -20,6 +20,7 @@ import {esc, g} from '../../core/util.js';
 import {nightness, HOUR, DAY} from '../../core/time.js';
 import {contest} from '../../data/special.js';
 import {agentInZone} from '../../settlement/zone.js';
+import {tempAt} from '../../world/heat.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -52,7 +53,7 @@ const spellbound = a => ['fight', 'flee', 'treat', 'astray', 'lured', 'runHome',
 
 function wander(w, a, S) {
   const t = a.task?.id === 'lurk' || a.task?.id === 'sing' ? a.task : (a.task = {id: 'lurk'});
-  if (S.night && nightness(w.tick) <= 0.5) t.id = 'lurk';
+  if (S.night && nightness(w) <= 0.5) t.id = 'lurk';
   if (!t.spot || dist(a, {x: t.spot[0], y: t.spot[1]}) < 0.8 || w.rngs.nechist() < 0.004) {
     t.spot = null;
     for (let k = 0; k < 30; k++) {
@@ -120,7 +121,7 @@ function lure(w, a, sp, S) {
 export const spiritBrain = {
   id: 'spirit',
   step(w, a) {
-    const sp = SPECIES.get(a.species), S = sp.spirit, i = cellOf(w, a), T = w.grid.temp[i];
+    const sp = SPECIES.get(a.species), S = sp.spirit, i = cellOf(w, a), T = tempAt(w, i);
     if (T > sp.heatHarm) {
       a.hp -= Math.min(0.02, (T - sp.heatHarm) * 0.0002);
       if (a.hp <= 0) { kill(w, a, 'огня'); return; }
@@ -128,7 +129,7 @@ export const spiritBrain = {
     }
     if (a.cd > 0) a.cd--;
     if (isHome(w, i, S.home) && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a) * (S.regen || 1));
-    const active = !S.night || nightness(w.tick) > 0.5;
+    const active = !S.night || nightness(w) > 0.5;
     // hidden: a rusalka under the water, a leshy deep in the thicket — nobody sees it till it comes out
     if (a.hiddenUntil > w.tick) {
       a.veil = 0;

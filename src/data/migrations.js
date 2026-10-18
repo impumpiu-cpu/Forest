@@ -10,7 +10,7 @@ import {Registry} from '../core/registry.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
-import {T} from './terrain.js';
+import {T, BY_CODE} from './terrain.js';
 import {HOUR, DAY} from '../core/time.js';
 import {season} from './seasons.js';
 import {homeCell} from '../agents/brains/spirit.js';
@@ -28,7 +28,7 @@ export const MIGRATIONS = new Registry('migration');
 
 // meadow cells on the map (counted again a few times a day): what grazers can live on
 function grassland(w) {
-  if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + (t === T.GRASS), 0);
+  if (w.cache.grass == null || w.tick % 1200 < 240) w.cache.grass = w.grid.terr.reduce((s, t) => s + BY_CODE[t].graze, 0);
   return w.cache.grass;
 }
 
@@ -36,7 +36,7 @@ MIGRATIONS.registerAll([
   // newcomers need a free place to sleep and food to spare
   // newcomers need a free place to sleep and food to spare. Most come from the kin; now and then
   // someone of a friendly race (settlement/relations.js) — the more the colony's folk like them, the likelier
-  {id: 'settlers', faction: 'colony', topic: 'people', retry: 2 * HOUR,
+  {id: 'settlers', faction: 'colony', topic: 'people', retry: 2 * HOUR, gate: 'road',
     blocked: w => (colonists(w).length >= popCap(w) ? 'нет места, нужен шалаш' : foodTotal(w) <= colonists(w).length * 5 ? 'мало еды в запасе' : null),
     accept: (w, n) => (MIGRATIONS.get('settlers').blocked(w) ? 0 : n),
     members: (w, rng, n) => Array.from({length: n}, () => ({species: settlerSpecies(w, rng)})),
@@ -91,7 +91,7 @@ MIGRATIONS.registerAll([
 
   // a trader's caravan: the trader, guards in imperial iron, and pack mules with crates.
   // One caravan at a time; the colony has to be alive to be worth the trip.
-  {id: 'caravan', faction: 'traders', minDist: 25, topic: 'trade', level: 'notice',
+  {id: 'caravan', faction: 'traders', minDist: 25, topic: 'trade', level: 'notice', gate: 'road',
     accept: (w, n) => (w.caravan || !colonists(w).length ? 0 : n),
     members: (w, rng) => {
       const pickName = list => list[Math.floor(rng() * list.length)];

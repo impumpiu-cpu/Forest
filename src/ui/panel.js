@@ -27,7 +27,7 @@ import {JOBS} from '../data/jobs.js';
 import {TRAITS} from '../data/traits.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
-import {season, seasonDay, yearOf, daysLeftInSeason} from '../data/seasons.js';
+import {season, seasonDay, yearOf, daysLeftInSeason, snowy} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {clockStr, hourOf, dayOf, ambientTemp} from '../core/time.js';
 import {esc, clamp, plural} from '../core/util.js';
@@ -58,6 +58,7 @@ import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
+import {tempAt} from '../world/heat.js';
 import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
 import {MIGRATIONS} from '../data/migrations.js';
@@ -186,11 +187,11 @@ export class Panel {
   render(w, view) {
     if (this.legendFor !== w) { this.legendFor = w; this.buildLegend(w); }
     $('clock').textContent = clockStr(w.tick);
-    const S = season(w), left = Math.ceil(daysLeftInSeason(w.tick));
-    $('season').textContent = `${S.label}, ${seasonDay(w.tick)}-й день · год ${yearOf(w.tick)}`;
+    const S = season(w), left = Math.ceil(daysLeftInSeason(w));
+    $('season').textContent = `${S.label}, ${seasonDay(w)}-й день · год ${yearOf(w)}`;
     $('season').title = `${S.note} До смены сезона: ${left} ${plural(left, 'день', 'дня', 'дней')}.`;
     $('season').dataset.s = S.id;
-    $('amb').textContent = ambientTemp(w).toFixed(1) + ' °C' + (w.weather.rain > 0.1 ? (season(w).snow ? ', снег' : ', дождь') : '') + (w.stats.fireCount ? ` · горит клеток: ${w.stats.fireCount}` : '');
+    $('amb').textContent = ambientTemp(w).toFixed(1) + ' °C' + (w.weather.rain > 0.1 ? (snowy(w) ? ', снег' : ', дождь') : '') + (w.stats.fireCount ? ` · горит клеток: ${w.stats.fireCount}` : '');
     $('windTxt').textContent = w.wind.str < 0.03 ? 'штиль' : `ветер ${DIRS[Math.round(((w.wind.dir + 180) % 360) / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} м/с`;
     const col = colonists(w);
     $('popCount').textContent = col.length;
@@ -283,7 +284,7 @@ export class Panel {
 
   renderWorld(w, view, tps) {
     const c = w.cfg, sz = SIZES[c.size];
-    $('worldLine').textContent = `Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${CLIMATES[c.climate].label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`;
+    $('worldLine').textContent = `Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${w.climate.label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`;
     const col = colonists(w), raiders = w.agents.filter(a => a.faction === 'raiders').length, hares = ofSpecies(w, 'hare').length;
     const ore = exposedOre(w);
     this.set('worldKv',
@@ -342,7 +343,9 @@ export class Panel {
       const need = (r, v) => v + (r === 'wood' ? fuelReserve(w) : 0);
       goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= need(r, v) ? '' : ' short'}">${RESOURCES.get(r).label} ${Math.min(need(r, v), Math.floor(w.stock[r] || 0))}/${need(r, v)}${need(r, v) > v ? ` (из них ${need(r, v) - v} на костёр)` : ''}</span>`).join(' ')}</div>` + this.waitingHtml(w, d);
     }
-    this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}`);
+    // the roster (settlement/plan.js): who does what today, and why
+    const p = w.plan, roster = p?.lines?.length ? `<h4>Наряд (${p.reason})</h4><ul class="args">${p.lines.map(l => `<li>${esc(l.text)}</li>`).join('')}</ul>` : '';
+    this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}${roster}`);
   }
 
   // why the council's goal is not laid yet: each missing resource, where it comes from and who is at it;
@@ -424,8 +427,9 @@ export class Panel {
     const g = w.grid, i = hoverCell, d = w.nav.get('camp')[i];
     const lake = g.lake[i] >= 0 ? w.lakes[g.lake[i]] : null;
     const ore = oreOf(w, i) ? ` · ${oreOf(w, i).label} ${Math.ceil(g.oreLeft[i])}` : '';
-    if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${g.temp[i].toFixed(1)} °C`; return; }
-    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${ore} · ${g.temp[i].toFixed(1)} °C · почва ${Math.round(g.fert[i] * 100)}% · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
+    if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${tempAt(w, i).toFixed(1)} °C`; return; }
+    const biome = g.biome?.[i] ? ` (${BIOMES.all()[g.biome[i] - 1].label})` : '';
+    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${biome}${ore} · ${tempAt(w, i).toFixed(1)} °C · почва ${Math.round(g.fert[i] * 100)}% · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
   }
 
   // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
@@ -502,7 +506,7 @@ export class Panel {
     if (g.wood[i] > 0) rows.push(`<dt>Древесина</dt><dd>${g.wood[i].toFixed(2)}</dd>`);
     if (g.bush[i]) rows.push(`<dt>Ягоды</dt><dd>${g.food[i].toFixed(2)}</dd>`);
     if (WALKABLE[g.terr[i]]) rows.push(`<dt>Плодородие</dt><dd>${Math.round(g.fert[i] * 100)}% · ${soilWord(g.fert[i])}</dd>`);
-    rows.push(`<dt>Температура</dt><dd>${g.temp[i].toFixed(1)} °C</dd>`, `<dt>Путь до лагеря</dt><dd>${d >= 1e8 ? 'нет' : Math.round(d)}</dd>`);
+    rows.push(`<dt>Температура</dt><dd>${tempAt(w, i).toFixed(1)} °C</dd>`, `<dt>Путь до лагеря</dt><dd>${d >= 1e8 ? 'нет' : Math.round(d)}</dd>`);
     if (g.fire[i] > 0) rows.push(`<dt>Огонь</dt><dd>${g.fire[i].toFixed(2)}</dd>`);
     for (const gr of w.graves || []) if (gr.x === x && gr.y === y) rows.push(`<dt>Могила</dt><dd>${esc(gr.name)} · умер${gr.f ? 'ла' : ''} в день ${dayOf(gr.died) + 1}${gr.rite ? ', похоронен' + (gr.f ? 'а' : '') + ' с обрядом' : ''}</dd>`);
     for (const c of w.corpses || []) if ((c.x | 0) === x && (c.y | 0) === y) rows.push(`<dt>Тело</dt><dd>${esc(c.name)}, ещё не похоронен${c.f ? 'а' : ''}</dd>`);
@@ -533,7 +537,7 @@ export class Panel {
   }
 
   creatureHtml(w, a) {
-    const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
+    const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a)).toFixed(1);
     const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
     if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
     const h = huntOf(w, a);

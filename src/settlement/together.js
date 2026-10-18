@@ -73,7 +73,7 @@ export const outsideRisk = w => perTick(w, 'outsideRisk', () => {
   const avg = col.reduce((s, a) => s + strength(a), 0) / col.length || 1;
   let t = 0;
   for (const o of w.agents) if (!o.dead && !o.tame && (o.faction === 'predators' || o.faction === 'nechist')) t += strength(o) / avg;
-  return clamp(0.1 * t * (0.7 + 0.5 * nightness(w.tick)), 0, 1);
+  return clamp(0.1 * t * (0.7 + 0.5 * nightness(w)), 0, 1);
 });
 
 // ── escort

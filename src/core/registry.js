@@ -14,7 +14,7 @@ export class Registry {
   register(def) {
     if (!def || !def.id) throw new Error(`${this.kind}: definition without id`);
     if (this.items.has(def.id)) throw new Error(`${this.kind}: duplicate id "${def.id}"`);
-    this.items.set(def.id, def);
+    this.items.set(def.id, def); this._all = null;
     return def;
   }
 
@@ -27,7 +27,8 @@ export class Registry {
   }
 
   has(id) { return this.items.has(id); }
-  all() { return [...this.items.values()]; }
+  // the list is rebuilt on the first call after a change and shared after that (hot loops call it every tick)
+  all() { return this._all || (this._all = Object.freeze([...this.items.values()])); }
   ids() { return [...this.items.keys()]; }
   filter(fn) { return this.all().filter(fn); }
 }

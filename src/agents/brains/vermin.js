@@ -6,7 +6,7 @@
 // for a carcass in the woods first.
 import {SPECIES} from '../../data/species.js';
 import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
-import {T} from '../../data/terrain.js';
+import {T, BY_CODE} from '../../data/terrain.js';
 import {follow, bolt, nearFire, escapeHeat, approach, sameLand} from '../movement.js';
 import {kill} from '../agent.js';
 import {nibble} from '../../settlement/stock.js';
@@ -14,6 +14,7 @@ import {smellCarcass} from '../carcass.js';
 import {log} from '../../core/log.js';
 import {nightness} from '../../core/time.js';
 import {esc, g} from '../../core/util.js';
+import {tempAt} from '../../world/heat.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const VERMIN = {
@@ -33,7 +34,7 @@ function denOf(w, a) {
     if (!inMap(w, x, y)) continue;
     const i = (y | 0) * w.w + (x | 0);
     if (!walkable(w, i) || !sameLand(w, a, i)) continue;
-    const v = (w.grid.terr[i] === T.FOREST || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rngs.wild() * 0.5;
+    const v = (BY_CODE[w.grid.terr[i]].shelter || w.grid.bush[i] ? 2 : 0) + (w.zone[i] ? 0 : 1) + w.rngs.wild() * 0.5;
     if (v > bv) { bv = v; best = [x, y]; }
   }
   return (a.den = best || [w.camp.x + 0.5 + VERMIN.den[0], w.camp.y + 0.5]);
@@ -42,7 +43,7 @@ function denOf(w, a) {
 export const verminBrain = {
   id: 'vermin',
   step(w, a) {
-    const sp = SPECIES.get(a.species), V = sp.vermin, Tc = w.grid.temp[cellOf(w, a)];
+    const sp = SPECIES.get(a.species), V = sp.vermin, Tc = tempAt(w, cellOf(w, a));
     // a kikimora is seen only up close (agents/combat.js): colonists do not chase her across the map
     if (V.veil != null) a.veil = V.veil;
     if (Tc > sp.heatHarm || nearFire(w, a, 1)) { escapeHeat(w, a, 1.2); return; }
@@ -65,7 +66,7 @@ export const verminBrain = {
       const camp = {x: w.camp.x + 0.5, y: w.camp.y + 0.5};
       const watched = w.agents.some(o => o.faction === 'colony' && !o.dead && !o.sleeping && dist(o, camp) < VERMIN.watch);
       const bold = w.tick - (a.waited ?? w.tick) > VERMIN.patience;
-      if ((V.spoils && nightness(w.tick) < 0.4) || (watched && !bold) || (a.task?.id === 'hide' && w.tick - (a.waited ?? 0) < 60)) {
+      if ((V.spoils && nightness(w) < 0.4) || (watched && !bold) || (a.task?.id === 'hide' && w.tick - (a.waited ?? 0) < 60)) {
         a.waited ??= w.tick;
         const [dx, dy] = denOf(w, a);
         if (a.task?.id !== 'hide') a.task = {id: 'hide'};
