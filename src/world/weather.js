@@ -2,7 +2,7 @@
 import {DAY, HOUR, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {T} from '../data/terrain.js';
-import {season, seasonStarts, snowy} from '../data/seasons.js';
+import {season, seasonStarts, snowy, dayMeanTemp} from '../data/seasons.js';
 import {heatTo} from './heat.js';
 
 export function setWind(w) {
@@ -11,7 +11,17 @@ export function setWind(w) {
   w.wind.y = Math.sin(a) * w.wind.str * 0.5;
 }
 
+// Snow cover, 0 (bare) … 1 (deep): it builds while the days are freezing (faster when it snows) and
+// melts when they are not. One depth for the whole map: what matters is that it lies, and how deep
+export const SNOW = {fall: 0.0004, storm: 0.0016, melt: 0.0012, slow: 0.35, cost: 0.6};
+export const snowCover = w => w.snow || 0;
+function stepSnow(w) {
+  if (snowy(w)) w.snow = Math.min(1, (w.snow || 0) + (w.weather.rain > 0.1 ? SNOW.storm : SNOW.fall));
+  else if (w.snow > 0) w.snow = Math.max(0, w.snow - SNOW.melt * Math.max(0.3, (dayMeanTemp(w) + 1) / 6));
+}
+
 export function stepWeather(w) {
+  stepSnow(w);
   // a new season: say what it brings
   if (w.tick % DAY === 0 && seasonStarts(w)) {
     const S = season(w);

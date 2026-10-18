@@ -31,7 +31,7 @@ SPECIES.registerAll([
   // Hares graze, rest at night, bolt from people and fire. They never breed here:
   // their numbers change only through migration (see migrations.js).
   // game: shows up on the prey flow field that hunters and predators follow
-  {id: 'hare', kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', hp: 0.12, speed: 0.17, needs: [], brain: 'grazer', game: true,
+  {id: 'hare', snowfoot: true, kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', hp: 0.12, speed: 0.17, needs: [], brain: 'grazer', game: true,
     special: around({S: 1, P: 8, E: 2, C: 1, I: 1, A: 9, L: 5}), habitat: {meadow: 'common', steppe: 'common', forest: 'usual', taiga: 'usual', shrubland: 'usual', savanna: 'rare', tundra: 'rare', foothills: 'rare', barrows: 'usual'},
     heatHarm: 60, look: {shape: 'hare', size: 0.42, color: '#cdbb9a'},
     yields: {meat: 2, hide: 1, bone: 1},

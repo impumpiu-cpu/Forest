@@ -5,10 +5,14 @@ import {cellOf, walkable, inBounds, canStep, DX, DY, inMap} from '../world/grid.
 import {FAR} from '../nav/navigation.js';
 import {clearLine, findPath} from '../nav/astar.js';
 import {tempAt} from '../world/heat.js';
+import {SNOW} from '../world/weather.js';
 
 export function speedOf(w, a) {
   const web = a.webbed && w.tick < a.webbed.until ? a.webbed.slow : 1;   // tangled in a spider's web
-  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
+  const d = BY_CODE[w.grid.terr[cellOf(w, a)]];
+  // snow underfoot: deep snow halves the pace on open ground, less in the woods (a species that lives in it, `snowfoot`, is not slowed)
+  const snow = w.snow > 0 && d.kind !== 'water' && !SPECIES.get(a.species).snowfoot ? 1 - SNOW.slow * w.snow * (d.kind === 'wood' ? 0.6 : 1) : 1;
+  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * d.speed * snow;
 }
 
 // returns true when arrived, false while moving, null when the step is blocked

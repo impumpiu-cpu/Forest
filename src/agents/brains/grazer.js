@@ -43,7 +43,7 @@ export const grazerBrain = {
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;
       return;
     }
-    if (nightness(w.tick) > 0.7) { a.task = {id: 'rest'}; return; }
+    if (nightness(w) > 0.7) { a.task = {id: 'rest'}; return; }
 
     // graze: hop to a nearby patch of preferred terrain, nibble berries on the way
     const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});

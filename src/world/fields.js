@@ -132,7 +132,7 @@ function heatAndSmoke(w) {
 // the campfire is a heat source fed from the stock: wood, then charcoal, then coal
 function campfire(w) {
   const cold = colonists(w).some(a => a.needs.warmth < 0.6);
-  w.campLit = !!campFuel(w) && (nightness(w.tick) > 0.3 || cold);
+  w.campLit = !!campFuel(w) && (nightness(w) > 0.3 || cold);
   if (!w.campLit) return;
   burnCampFuel(w, 0.004);
   const g = w.grid, amb = airTemp(w);

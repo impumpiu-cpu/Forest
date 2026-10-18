@@ -26,7 +26,7 @@ export const raiderBrain = {
     let cause = null;
     if (T > sp.heatHarm) { a.hp -= Math.min(sp.undead ? 0.012 : 0.006, (T - sp.heatHarm) * (sp.undead ? 0.0001 : 0.00005)); cause = 'огня'; }
     if (sp.rots && T > 12) { a.hp -= sp.rots * (T - 12); cause ??= 'тепла'; }
-    const day = 1 - nightness(w.tick);
+    const day = 1 - nightness(w);
     if (sp.sun && day > 0.5) { a.hp -= sp.sun * day; cause ??= 'солнца'; }
     if (a.hp <= 0) { kill(w, a, cause || 'ран'); return; }   // one way to die: the common kill (agents/agent.js)
     // orcs and trolls close their wounds even on a raid; fire close by stops a troll's

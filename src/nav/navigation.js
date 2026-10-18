@@ -4,6 +4,7 @@ import {NAVMAPS} from '../data/navmaps.js';
 import {BY_CODE, WALKABLE} from '../data/terrain.js';
 import {DX, DY} from '../world/grid.js';
 import {airTemp} from '../world/heat.js';
+import {SNOW} from '../world/weather.js';
 
 export const FAR = 1e9;
 // rebuild pacing, in ticks (multiplied by `every` on big maps); a navmap may override minGap/period
@@ -34,12 +35,13 @@ export class Navigation {
   computeCost(hazard) {
     // several maps may be rebuilt in one tick (sites, prey, fire…): the cost is the same for the same hazard
     if (this.costTick === this.w.tick && this.costHazard === hazard) return;
+    if (Math.abs((this.w.snow || 0) - (this.costSnow || 0)) > 0.1) { this.costSnow = this.w.snow || 0; for (const id of this.order) this.dirtySet.add(id); }
     this.costTick = this.w.tick; this.costHazard = hazard;
-    const g = this.w.grid, cost = this.cost, amb = airTemp(this.w);
+    const g = this.w.grid, cost = this.cost, amb = airTemp(this.w), snow = 1 + SNOW.cost * (this.w.snow || 0);
     for (let i = 0; i < this.w.n; i++) {
       const t = g.terr[i];
       if (!WALKABLE[t]) { cost[i] = -1; continue; }
-      let c = BY_CODE[t].pathCost + (g.fire[i] * 60 + g.smoke[i] * 1.5) * hazard;
+      let c = BY_CODE[t].pathCost * (BY_CODE[t].kind === 'water' ? 1 : snow) + (g.fire[i] * 60 + g.smoke[i] * 1.5) * hazard;
       if (amb + g.heat[i] > 45) c += (amb + g.heat[i] - 45) * 0.3 * hazard;
       cost[i] = c;
     }

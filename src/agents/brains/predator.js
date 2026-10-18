@@ -106,7 +106,7 @@ export const predatorBrain = {
     if (a.cd > 0) a.cd--;
     if (shunsHeat(w, a, sp, T, 2.5)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.4); return; }
 
-    const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
+    const food = a.needs.food, b = boldness(a, P), night = nightness(w);
     const dZone = w.nav.get('zone')[i];
     const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
     const people = nearAgents(w, a.x, a.y, 6).filter(o => !o.dead && matchesKind(o.species, P.victims) && dist(o, a) < 6);

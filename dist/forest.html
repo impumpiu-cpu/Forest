@@ -1642,6 +1642,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // Lynx: an ambush from the branches, mostly hares and foxes; a lone person only when starving
     beast({
       id: "lynx",
+      snowfoot: true,
       kind: "beast",
       label: "\u0440\u044B\u0441\u044C",
       labelAcc: "\u0440\u044B\u0441\u044C",
@@ -2204,6 +2205,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // White bear: the lord of the ice; hunts seals, and anything else that walks the snow
     beast({
       id: "polarbear",
+      snowfoot: true,
       kind: "beast",
       label: "\u0431\u0435\u043B\u044B\u0439 \u043C\u0435\u0434\u0432\u0435\u0434\u044C",
       labelAcc: "\u0431\u0435\u043B\u043E\u0433\u043E \u043C\u0435\u0434\u0432\u0435\u0434\u044F",
@@ -2289,6 +2291,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // game: shows up on the prey flow field that hunters and predators follow
     {
       id: "hare",
+      snowfoot: true,
       kind: "beast",
       label: "\u0437\u0430\u044F\u0446",
       labelAcc: "\u0437\u0430\u0439\u0446\u0430",
@@ -3764,13 +3767,23 @@ dd.q4{color:#c58cff;font-weight:600}
   var yearOf = (w, tick) => Math.floor(calendarDay(w, tick) / YEAR_DAYS) + 1;
   var daysLeftInSeason = (w, tick) => SEASON_DAYS - calendarDay(w, tick) % SEASON_DAYS;
   var seasonStarts = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS === 0;
+  var LAG = 7.5;
   function seasonalTemp(w, tick = w.tick) {
-    return w.climate.trange / 2 * Math.sin(2 * Math.PI * (calendarDay(w, tick) - SEASON_DAYS / 2) / YEAR_DAYS + Math.PI / 4);
+    return w.climate.trange / 2 * Math.sin(2 * Math.PI * (calendarDay(w, tick) - LAG) / YEAR_DAYS);
+  }
+  function daylight(w, tick = w.tick) {
+    return 12 + (w.climate.daylight ?? 4) * Math.sin(2 * Math.PI * calendarDay(w, tick) / YEAR_DAYS);
   }
   var dayMeanTemp = (w, tick = w.tick) => w.climate.meanT + seasonalTemp(w, tick);
   var snowy = (w, tick = w.tick) => dayMeanTemp(w, tick) < -1;
   var SNOW_TINT = [236, 240, 246, 0.62];
-  var seasonTint = (w) => snowy(w) ? SNOW_TINT : season(w).tint;
+  var seasonTint = (w) => {
+    const s = w.snow || 0;
+    if (s < 0.05) return season(w).tint;
+    const [r, g3, b, k] = season(w).tint;
+    const m = Math.min(1, s / 0.6);
+    return [r * (1 - m) + SNOW_TINT[0] * m, g3 * (1 - m) + SNOW_TINT[1] * m, b * (1 - m) + SNOW_TINT[2] * m, k * (1 - m) + SNOW_TINT[3] * m];
+  };
   var seasonJob = (w, job) => season(w).jobs[job] ?? 1;
 
   // src/core/time.js
@@ -3783,8 +3796,9 @@ dd.q4{color:#c58cff;font-weight:600}
     const d = dayOf(t) + 1, h = hourOf(t), hh = Math.floor(h), mm = Math.floor((h - hh) * 6) * 10;
     return `\u0414\u0435\u043D\u044C ${d}, ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
   }
-  function nightness(t) {
-    const sun = Math.sin(2 * Math.PI * (hourOf(t) - 6) / 24);
+  function nightness(w, t = w.tick) {
+    const day = daylight(w, t), h = hourOf(t), rise = 12 - day / 2, set = 12 + day / 2;
+    const sun = h >= rise && h <= set ? Math.sin(Math.PI * (h - rise) / day) : -Math.sin(Math.PI * ((h - set + 24) % 24) / (24 - day));
     return clamp((0.2 - sun) * 2.2, 0, 1);
   }
   function ambientTemp(world2, t = world2.tick) {
@@ -4614,7 +4628,7 @@ dd.q4{color:#c58cff;font-weight:600}
       b.crowd = (b.crowd || 0) + Math.max(...Object.values(onJob)) / busy2;
       b.crowdTicks = (b.crowdTicks || 0) + 1;
     }
-    if (nightness(w.tick) > 0.3 && col.length) {
+    if (nightness(w) > 0.3 && col.length) {
       b.nightTicks = (b.nightTicks || 0) + 1;
       if (!campFuel(w)) b.fireless = (b.fireless || 0) + 1;
     }
@@ -4658,14 +4672,14 @@ dd.q4{color:#c58cff;font-weight:600}
     huge: { w: 256, h: 192, label: "\u041E\u0433\u0440\u043E\u043C\u043D\u044B\u0439", note: "256 \xD7 192, \u0442\u044F\u0436\u0435\u043B\u0435\u0435 \u0434\u043B\u044F \u043D\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438" }
   };
   var CLIMATES = {
-    cold: { label: "\u0425\u043E\u043B\u043E\u0434\u043D\u044B\u0439", note: "\u043D\u043E\u0447\u0438 \u0443 \u043D\u0443\u043B\u044F, \u0441\u043D\u0435\u0433 \u0442\u0440\u0438 \u0441\u0435\u0437\u043E\u043D\u0430 \u0438\u0437 \u0447\u0435\u0442\u044B\u0440\u0451\u0445, \u043A\u043E\u0441\u0442\u0451\u0440 \u043D\u0443\u0436\u0435\u043D \u0432\u0441\u0435\u0433\u0434\u0430, \u0447\u0430\u0441\u0442\u043E \u0434\u043E\u0436\u0434\u0438", meanT: 0, trange: 22, ign: 25, regrow: 0.7, rain: 0.5 },
-    temperate: { label: "\u0423\u043C\u0435\u0440\u0435\u043D\u043D\u044B\u0439", note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u0434\u043D\u0438, \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u044B\u0435 \u043D\u043E\u0447\u0438, \u0441\u043D\u0435\u0436\u043D\u0430\u044F \u0437\u0438\u043C\u0430, \u0434\u043E\u0436\u0434\u0438 \u0447\u0435\u0440\u0435\u0437 \u0434\u0435\u043D\u044C-\u0434\u0432\u0430", meanT: 7, trange: 20, ign: 0, regrow: 1, rain: 0.4 },
-    dry: { label: "\u0417\u0430\u0441\u0443\u0448\u043B\u0438\u0432\u044B\u0439", note: "\u0436\u0430\u0440\u043A\u043E, \u0434\u043E\u0436\u0434\u0438 \u0440\u0435\u0434\u043A\u0438, \u0437\u0438\u043C\u0430 \u0431\u0435\u0437 \u0441\u043D\u0435\u0433\u0430, \u043B\u0435\u0441 \u0432\u0441\u043F\u044B\u0445\u0438\u0432\u0430\u0435\u0442 \u043B\u0435\u0433\u0447\u0435", meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22 }
+    cold: { label: "\u0425\u043E\u043B\u043E\u0434\u043D\u044B\u0439", note: "\u043D\u043E\u0447\u0438 \u0443 \u043D\u0443\u043B\u044F, \u0441\u043D\u0435\u0433 \u0442\u0440\u0438 \u0441\u0435\u0437\u043E\u043D\u0430 \u0438\u0437 \u0447\u0435\u0442\u044B\u0440\u0451\u0445, \u043A\u043E\u0441\u0442\u0451\u0440 \u043D\u0443\u0436\u0435\u043D \u0432\u0441\u0435\u0433\u0434\u0430, \u0447\u0430\u0441\u0442\u043E \u0434\u043E\u0436\u0434\u0438", meanT: 0, trange: 22, ign: 25, regrow: 0.7, rain: 0.5, daylight: 6 },
+    temperate: { label: "\u0423\u043C\u0435\u0440\u0435\u043D\u043D\u044B\u0439", note: "\u0442\u0451\u043F\u043B\u044B\u0435 \u0434\u043D\u0438, \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u044B\u0435 \u043D\u043E\u0447\u0438, \u0441\u043D\u0435\u0436\u043D\u0430\u044F \u0437\u0438\u043C\u0430, \u0434\u043E\u0436\u0434\u0438 \u0447\u0435\u0440\u0435\u0437 \u0434\u0435\u043D\u044C-\u0434\u0432\u0430", meanT: 7, trange: 20, ign: 0, regrow: 1, rain: 0.4, daylight: 4 },
+    dry: { label: "\u0417\u0430\u0441\u0443\u0448\u043B\u0438\u0432\u044B\u0439", note: "\u0436\u0430\u0440\u043A\u043E, \u0434\u043E\u0436\u0434\u0438 \u0440\u0435\u0434\u043A\u0438, \u0437\u0438\u043C\u0430 \u0431\u0435\u0437 \u0441\u043D\u0435\u0433\u0430, \u043B\u0435\u0441 \u0432\u0441\u043F\u044B\u0445\u0438\u0432\u0430\u0435\u0442 \u043B\u0435\u0433\u0447\u0435", meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22, daylight: 2 }
   };
   var START = {
     spring: { label: "\u0412\u0435\u0441\u043D\u0430", day: 0, stock: 1 },
     summer: { label: "\u041B\u0435\u0442\u043E", day: 30, stock: 1 },
-    autumn: { label: "\u041E\u0441\u0435\u043D\u044C", day: 60, stock: 1.6, perHead: { jerky: 3, wood: 2 } },
+    autumn: { label: "\u041E\u0441\u0435\u043D\u044C", day: 60, stock: 1.6, perHead: { jerky: 5, driedFish: 2, wood: 3 } },
     winter: { label: "\u0417\u0438\u043C\u0430", day: 90, stock: 2, clothes: 1, perHead: { jerky: 8, driedFish: 4, wood: 5 } }
   };
   var LEVELS3 = ["\u043C\u0430\u043B\u043E", "\u043E\u0431\u044B\u0447\u043D\u043E", "\u043C\u043D\u043E\u0433\u043E"];
@@ -5327,6 +5341,58 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   }
 
+  // src/world/weather.js
+  function setWind(w) {
+    const a = w.wind.dir * Math.PI / 180;
+    w.wind.x = Math.cos(a) * w.wind.str * 0.5;
+    w.wind.y = Math.sin(a) * w.wind.str * 0.5;
+  }
+  var SNOW = { fall: 4e-4, storm: 16e-4, melt: 12e-4, slow: 0.35, cost: 0.6 };
+  function stepSnow(w) {
+    if (snowy(w)) w.snow = Math.min(1, (w.snow || 0) + (w.weather.rain > 0.1 ? SNOW.storm : SNOW.fall));
+    else if (w.snow > 0) w.snow = Math.max(0, w.snow - SNOW.melt * Math.max(0.3, (dayMeanTemp(w) + 1) / 6));
+  }
+  function stepWeather(w) {
+    stepSnow(w);
+    if (w.tick % DAY === 0 && seasonStarts(w)) {
+      const S = season(w);
+      log(w, `\u041D\u0430\u0441\u0442\u0443\u043F\u0430\u0435\u0442 ${S.label.toLowerCase()}. ${S.note}`, "weather", "notice");
+      if (S.frost != null) {
+        const g3 = w.grid, garden = new Set(w.gardenCells);
+        for (let i = 0; i < w.n; i++) if (g3.bush[i]) g3.food[i] *= garden.has(i) ? Math.max(S.frost, 0.4) : S.frost;
+        w.nav.dirty("berries");
+      }
+    }
+    const wx = w.weather, fires = w.stats.fireCount;
+    if (wx.rainLeft > 0) {
+      wx.rainLeft--;
+      wx.rain = Math.min(1, wx.rain + 0.02);
+      if (wx.rainLeft === 0) log(w, snowy(w) ? "\u0421\u043D\u0435\u0433\u043E\u043F\u0430\u0434 \u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F." : "\u0414\u043E\u0436\u0434\u044C \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F.", "weather");
+    } else {
+      wx.rain = Math.max(0, wx.rain - 0.01);
+      const fireClouds = 1 + fires / 20;
+      if (w.rngs.weather() < w.climate.rain * season(w).rain * fireClouds / DAY) {
+        wx.rainLeft = Math.round(HOUR * (1.5 + w.rngs.weather() * 3));
+        if (snowy(w)) log(w, fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433.", "weather");
+        else log(w, fires > 40 ? "\u041D\u0430\u0434 \u043F\u043E\u0436\u0430\u0440\u043E\u043C \u0441\u043E\u0431\u0440\u0430\u043B\u0438\u0441\u044C \u0442\u0443\u0447\u0438, \u043F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C." : fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C.", "weather");
+      }
+    }
+    if (w.cfg.lightning) lightning(w);
+  }
+  function lightning(w) {
+    const h = hourOf(w.tick), dry = 0.4 / Math.max(0.1, w.climate.rain);
+    if (h < 11 || h > 19 || w.weather.rain > 0.2 || w.rngs.weather() >= 25e-5 * dry * w.n / 12288) return;
+    for (let k = 0; k < 40; k++) {
+      const i = w.rngs.weather() * w.n | 0, x = i % w.w, y = i / w.w | 0;
+      if (w.grid.terr[i] !== T.FOREST || w.grid.fire[i] > 0 || (x - w.camp.x) ** 2 + (y - w.camp.y) ** 2 < 22 * 22) continue;
+      w.grid.fire[i] = 0.7;
+      heatTo(w, i, 350);
+      w.nav.dirty("fire");
+      log(w, `\u041C\u043E\u043B\u043D\u0438\u044F \u0443\u0434\u0430\u0440\u0438\u043B\u0430 \u0432 \u043B\u0435\u0441 \u0432 ${Math.round(Math.hypot(x - w.camp.x, y - w.camp.y))} \u043A\u043B\u0435\u0442\u043A\u0430\u0445 \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F.`, "weather", "notice");
+      return;
+    }
+  }
+
   // src/nav/navigation.js
   var FAR = 1e9;
   var MIN_GAP = 24;
@@ -5358,16 +5424,20 @@ dd.q4{color:#c58cff;font-weight:600}
     // fire, heat and smoke make cells expensive; `hazard` scales that for the escape map
     computeCost(hazard) {
       if (this.costTick === this.w.tick && this.costHazard === hazard) return;
+      if (Math.abs((this.w.snow || 0) - (this.costSnow || 0)) > 0.1) {
+        this.costSnow = this.w.snow || 0;
+        for (const id of this.order) this.dirtySet.add(id);
+      }
       this.costTick = this.w.tick;
       this.costHazard = hazard;
-      const g3 = this.w.grid, cost = this.cost, amb = airTemp(this.w);
+      const g3 = this.w.grid, cost = this.cost, amb = airTemp(this.w), snow = 1 + SNOW.cost * (this.w.snow || 0);
       for (let i = 0; i < this.w.n; i++) {
         const t = g3.terr[i];
         if (!WALKABLE[t]) {
           cost[i] = -1;
           continue;
         }
-        let c = BY_CODE[t].pathCost + (g3.fire[i] * 60 + g3.smoke[i] * 1.5) * hazard;
+        let c = BY_CODE[t].pathCost * (BY_CODE[t].kind === "water" ? 1 : snow) + (g3.fire[i] * 60 + g3.smoke[i] * 1.5) * hazard;
         if (amb + g3.heat[i] > 45) c += (amb + g3.heat[i] - 45) * 0.3 * hazard;
         cost[i] = c;
       }
@@ -5471,7 +5541,9 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/agents/movement.js
   function speedOf(w, a) {
     const web = a.webbed && w.tick < a.webbed.until ? a.webbed.slow : 1;
-    return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * BY_CODE[w.grid.terr[cellOf(w, a)]].speed;
+    const d = BY_CODE[w.grid.terr[cellOf(w, a)]];
+    const snow = w.snow > 0 && d.kind !== "water" && !SPECIES.get(a.species).snowfoot ? 1 - SNOW.slow * w.snow * (d.kind === "wood" ? 0.6 : 1) : 1;
+    return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * d.speed * snow;
   }
   function moveToward(w, a, tx2, ty, mul = 1) {
     const dx = tx2 - a.x, dy = ty - a.y, len = Math.hypot(dx, dy), sp = speedOf(w, a) * mul;
@@ -5727,7 +5799,7 @@ dd.q4{color:#c58cff;font-weight:600}
       decay: (w, a) => a.sleeping ? 0 : 45e-5 * (a.mods.sleep ?? 1),
       harm: 0,
       cause: "\u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438",
-      urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w.tick) > 0.6 && v < 0.75 ? 0.35 : 0)
+      urge: (w, a, v) => (1 - v) ** 2 * 1.8 + (nightness(w) > 0.6 && v < 0.75 ? 0.35 : 0)
     },
     // warmth follows the temperature field under the agent's feet
     {
@@ -8155,7 +8227,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const cs = w.carcasses;
     if (!cs?.length) return;
     if (w.tick % 60) return;
-    const night = nightness(w.tick);
+    const night = nightness(w);
     for (const c of cs) {
       const age = w.tick - c.t;
       if (age > CARCASS.rotFrom) c.food = Math.max(0, c.food - c.food0 * 0.01);
@@ -8699,7 +8771,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var spellbound = (a) => ["fight", "flee", "treat", "astray", "lured", "runHome", "muster"].includes(a.task?.id) || a.sleeping;
   function wander(w, a, S) {
     const t = a.task?.id === "lurk" || a.task?.id === "sing" ? a.task : a.task = { id: "lurk" };
-    if (S.night && nightness(w.tick) <= 0.5) t.id = "lurk";
+    if (S.night && nightness(w) <= 0.5) t.id = "lurk";
     if (!t.spot || dist3(a, { x: t.spot[0], y: t.spot[1] }) < 0.8 || w.rngs.nechist() < 4e-3) {
       t.spot = null;
       for (let k = 0; k < 30; k++) {
@@ -8787,7 +8859,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (a.cd > 0) a.cd--;
       if (isHome(w, i, S.home) && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 3e-4 * maxHp(a) * (S.regen || 1));
-      const active = !S.night || nightness(w.tick) > 0.5;
+      const active = !S.night || nightness(w) > 0.5;
       if (a.hiddenUntil > w.tick) {
         a.veil = 0;
         const t = a.task?.id === "hide" ? a.task : a.task = { id: "hide", spot: null };
@@ -10086,7 +10158,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const avg = col.reduce((s, a) => s + strength(a), 0) / col.length || 1;
     let t = 0;
     for (const o of w.agents) if (!o.dead && !o.tame && (o.faction === "predators" || o.faction === "nechist")) t += strength(o) / avg;
-    return clamp(0.1 * t * (0.7 + 0.5 * nightness(w.tick)), 0, 1);
+    return clamp(0.1 * t * (0.7 + 0.5 * nightness(w)), 0, 1);
   });
   var OUT = /* @__PURE__ */ new Set(["harvest", "hunt"]);
   var outWork = (a) => a.task?.id === "job" && OUT.has(JOBS.get(a.task.job).runner);
@@ -11396,7 +11468,7 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/outside/scripted.js
   var pickBand = (w, rng) => {
     const sc = scoutedBand(w);
-    return weighted(rng, RAID_BANDS.all().map((b) => [b.id, b.weight(w, raidThreat(w), nightness(w.tick)) * (b.id === sc ? 4 : 1)]));
+    return weighted(rng, RAID_BANDS.all().map((b) => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1)]));
   };
   var raidDist = (w) => RAIDS[w.cfg.raids].dist;
   var caravanDay = (w, day, rng) => Math.max(w.tick + 1, day * DAY + (TRADE.setOut[0] + rng() * (TRADE.setOut[1] - TRADE.setOut[0])) * HOUR);
@@ -11588,52 +11660,6 @@ dd.q4{color:#c58cff;font-weight:600}
       dist: P.distance(w, n.id),
       flows: n.flows.filter((f) => P.flows[f]).map((f) => ({ id: f, next: w.outside.next[f], due: w.outside.due[f] }))
     }));
-  }
-
-  // src/world/weather.js
-  function setWind(w) {
-    const a = w.wind.dir * Math.PI / 180;
-    w.wind.x = Math.cos(a) * w.wind.str * 0.5;
-    w.wind.y = Math.sin(a) * w.wind.str * 0.5;
-  }
-  function stepWeather(w) {
-    if (w.tick % DAY === 0 && seasonStarts(w)) {
-      const S = season(w);
-      log(w, `\u041D\u0430\u0441\u0442\u0443\u043F\u0430\u0435\u0442 ${S.label.toLowerCase()}. ${S.note}`, "weather", "notice");
-      if (S.frost != null) {
-        const g3 = w.grid, garden = new Set(w.gardenCells);
-        for (let i = 0; i < w.n; i++) if (g3.bush[i]) g3.food[i] *= garden.has(i) ? Math.max(S.frost, 0.4) : S.frost;
-        w.nav.dirty("berries");
-      }
-    }
-    const wx = w.weather, fires = w.stats.fireCount;
-    if (wx.rainLeft > 0) {
-      wx.rainLeft--;
-      wx.rain = Math.min(1, wx.rain + 0.02);
-      if (wx.rainLeft === 0) log(w, snowy(w) ? "\u0421\u043D\u0435\u0433\u043E\u043F\u0430\u0434 \u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F." : "\u0414\u043E\u0436\u0434\u044C \u0437\u0430\u043A\u043E\u043D\u0447\u0438\u043B\u0441\u044F.", "weather");
-    } else {
-      wx.rain = Math.max(0, wx.rain - 0.01);
-      const fireClouds = 1 + fires / 20;
-      if (w.rngs.weather() < w.climate.rain * season(w).rain * fireClouds / DAY) {
-        wx.rainLeft = Math.round(HOUR * (1.5 + w.rngs.weather() * 3));
-        if (snowy(w)) log(w, fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0441\u043D\u0435\u0433.", "weather");
-        else log(w, fires > 40 ? "\u041D\u0430\u0434 \u043F\u043E\u0436\u0430\u0440\u043E\u043C \u0441\u043E\u0431\u0440\u0430\u043B\u0438\u0441\u044C \u0442\u0443\u0447\u0438, \u043F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C." : fires > 0 ? "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C, \u043E\u0433\u043E\u043D\u044C \u0441\u043B\u0430\u0431\u0435\u0435\u0442." : "\u041F\u043E\u0448\u0451\u043B \u0434\u043E\u0436\u0434\u044C.", "weather");
-      }
-    }
-    if (w.cfg.lightning) lightning(w);
-  }
-  function lightning(w) {
-    const h = hourOf(w.tick), dry = 0.4 / Math.max(0.1, w.climate.rain);
-    if (h < 11 || h > 19 || w.weather.rain > 0.2 || w.rngs.weather() >= 25e-5 * dry * w.n / 12288) return;
-    for (let k = 0; k < 40; k++) {
-      const i = w.rngs.weather() * w.n | 0, x = i % w.w, y = i / w.w | 0;
-      if (w.grid.terr[i] !== T.FOREST || w.grid.fire[i] > 0 || (x - w.camp.x) ** 2 + (y - w.camp.y) ** 2 < 22 * 22) continue;
-      w.grid.fire[i] = 0.7;
-      heatTo(w, i, 350);
-      w.nav.dirty("fire");
-      log(w, `\u041C\u043E\u043B\u043D\u0438\u044F \u0443\u0434\u0430\u0440\u0438\u043B\u0430 \u0432 \u043B\u0435\u0441 \u0432 ${Math.round(Math.hypot(x - w.camp.x, y - w.camp.y))} \u043A\u043B\u0435\u0442\u043A\u0430\u0445 \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F.`, "weather", "notice");
-      return;
-    }
   }
 
   // src/world/plants.js
@@ -11899,7 +11925,21 @@ dd.q4{color:#c58cff;font-weight:600}
         if (BY_CODE[terr[j]].kind === "ground" || terr[j] === T.FOREST) fert[j] = Math.min(1, fert[j] + 0.12);
       }
     }
-    return { source: a, mouth: b, cells: [...cells], wide: !!g3[0].wide };
+    const flow = new Int32Array(w * h).fill(-1);
+    for (let k = 0; k + 1 < path.length; k++) flow[path[k]] = path[k + 1];
+    for (const i of cells) if (flow[i] < 0 && i !== b) {
+      const x = i % w, y = i / w | 0;
+      for (let q = 0; q < 4; q++) {
+        const nx = x + DX[q], ny = y + DY[q];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (cells.has(j) && flow[j] >= 0) {
+          flow[i] = flow[j];
+          break;
+        }
+      }
+    }
+    return { source: a, mouth: b, cells: [...cells], wide: !!g3[0].wide, channel: path, flow };
   }
   function reachableFrom(t, from) {
     const { w, h, terr } = t, seen = new Uint8Array(w * h), stack = [from];
@@ -12234,7 +12274,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function campfire(w) {
     const cold = colonists(w).some((a) => a.needs.warmth < 0.6);
-    w.campLit = !!campFuel(w) && (nightness(w.tick) > 0.3 || cold);
+    w.campLit = !!campFuel(w) && (nightness(w) > 0.3 || cold);
     if (!w.campLit) return;
     burnCampFuel(w, 4e-3);
     const g3 = w.grid, amb = airTemp(w);
@@ -12529,7 +12569,7 @@ dd.q4{color:#c58cff;font-weight:600}
         escapeHeat(w, a, 1.4);
         return;
       }
-      const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
+      const food = a.needs.food, b = boldness(a, P), night = nightness(w);
       const dZone = w.nav.get("zone")[i];
       const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
       const people = nearAgents(w, a.x, a.y, 6).filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist5(o, a) < 6);
@@ -13671,7 +13711,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var key = (t) => t ? t.id === "job" ? "job:" + t.job : t.id : "";
   function decide(w, a) {
-    const night = nightness(w.tick), camp = w.camp.cells, g3 = w.grid;
+    const night = nightness(w), camp = w.camp.cells, g3 = w.grid;
     let campHot = 0;
     for (const c of camp) campHot = Math.max(campHot, tempAt(w, c) + g3.fire[c] * 400);
     const campOk = campHot < 40 ? 1 : 0.1;
@@ -13843,7 +13883,7 @@ dd.q4{color:#c58cff;font-weight:600}
         a.hp -= sp.rots * (T2 - 12);
         cause ?? (cause = "\u0442\u0435\u043F\u043B\u0430");
       }
-      const day = 1 - nightness(w.tick);
+      const day = 1 - nightness(w);
       if (sp.sun && day > 0.5) {
         a.hp -= sp.sun * day;
         cause ?? (cause = "\u0441\u043E\u043B\u043D\u0446\u0430");
@@ -13924,7 +13964,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (follow(w, a, "edge") === "arrived") a.gone = true;
         return;
       }
-      if (nightness(w.tick) > 0.7) {
+      if (nightness(w) > 0.7) {
         a.task = { id: "rest" };
         return;
       }
@@ -14054,7 +14094,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (follow(w, a, "edge") === "arrived") a.gone = true;
         return;
       }
-      if (nightness(w.tick) > 0.75) {
+      if (nightness(w) > 0.75) {
         a.task = { id: "rest" };
         return;
       }
@@ -14201,7 +14241,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const camp = { x: w.camp.x + 0.5, y: w.camp.y + 0.5 };
         const watched = w.agents.some((o) => o.faction === "colony" && !o.dead && !o.sleeping && dist7(o, camp) < VERMIN.watch);
         const bold = w.tick - (a.waited ?? w.tick) > VERMIN.patience;
-        if (V.spoils && nightness(w.tick) < 0.4 || watched && !bold || a.task?.id === "hide" && w.tick - (a.waited ?? 0) < 60) {
+        if (V.spoils && nightness(w) < 0.4 || watched && !bold || a.task?.id === "hide" && w.tick - (a.waited ?? 0) < 60) {
           a.waited ?? (a.waited = w.tick);
           const [dx, dy] = denOf(w, a);
           if (a.task?.id !== "hide") a.task = { id: "hide" };
@@ -14295,7 +14335,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (approach(w, a, pen.x + pen.w / 2, pen.y + pen.h / 2, 0.9) === null) follow(w, a, "camp", 0.9);
         return;
       }
-      if (nightness(w.tick) > 0.7) {
+      if (nightness(w) > 0.7) {
         a.task = { id: "rest" };
         return;
       }
@@ -15191,10 +15231,19 @@ dd.q4{color:#c58cff;font-weight:600}
       this.clampCam(w, cam);
     }
     paintTerrain(w) {
+      const shoreOf = (g4, i, W2, H2) => {
+        const x = i % W2, y = i / W2 | 0;
+        return x > 0 && !isWater(g4.terr[i - 1]) || x < W2 - 1 && !isWater(g4.terr[i + 1]) || y > 0 && !isWater(g4.terr[i - W2]) || y < H2 - 1 && !isWater(g4.terr[i + W2]);
+      };
       const d = this.terrain.img.data, g3 = w.grid;
-      const [tr, tg, tb, tk] = seasonTint(w), wet = snowy(w);
+      const [tr, tg, tb, tk] = seasonTint(w), wet = (w.snow || 0) > 0.15, W = w.w;
       for (let i = 0; i < w.n; i++) {
         let [r, gg, b] = BY_CODE[g3.terr[i]].color(g3.hgt[i], g3.fert[i], g3.wood[i]);
+        if (g3.terr[i] === T.WATER && shoreOf(g3, i, W, w.h)) {
+          r = r * 0.6 + 70;
+          gg = gg * 0.6 + 80;
+          b = b * 0.6 + 70;
+        }
         const ore = g3.ore?.[i];
         if (ore) {
           const c = ORE_BY_CODE[ore].tint, k = 0.55;
@@ -15346,7 +15395,7 @@ dd.q4{color:#c58cff;font-weight:600}
         ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx);
       }
       if (lit) ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
-      const night = nightness(w.tick);
+      const night = nightness(w);
       if (view2.layer === "world" && night > 0) {
         ctx.fillStyle = `rgba(8,12,30,${night * 0.62})`;
         ctx.fillRect(0, 0, Wpx, Hpx);
@@ -15837,7 +15886,15 @@ dd.q4{color:#c58cff;font-weight:600}
       for (let i = 0; i < n; i++) {
         const code2 = t.terr[i];
         cnt[code2] = (cnt[code2] || 0) + 1;
-        const [r, g3, b] = BY_CODE[code2].color(t.hgt[i], t.fert[i], 0.8);
+        let [r, g3, b] = BY_CODE[code2].color(t.hgt[i], t.fert[i], 0.8);
+        if (code2 === T.WATER) {
+          const x = i % t.w, y = i / t.w | 0, land = (k) => !isWater(t.terr[k]);
+          if (x > 0 && land(i - 1) || x < t.w - 1 && land(i + 1) || y > 0 && land(i - t.w) || y < t.h - 1 && land(i + t.w)) {
+            r = r * 0.6 + 70;
+            g3 = g3 * 0.6 + 80;
+            b = b * 0.6 + 70;
+          }
+        }
         const o = i * 4;
         d[o] = r;
         d[o + 1] = g3;
@@ -21061,7 +21118,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a223a31" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 d0cec9e" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

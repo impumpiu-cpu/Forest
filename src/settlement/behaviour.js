@@ -50,7 +50,7 @@ export function sampleBehaviour(w) {
   for (const a of col) if (a.task?.id === 'job') onJob[a.task.job] = (onJob[a.task.job] || 0) + 1;
   const busy = Object.values(onJob).reduce((s, v) => s + v, 0);
   if (busy >= 3) { b.crowd = (b.crowd || 0) + Math.max(...Object.values(onJob)) / busy; b.crowdTicks = (b.crowdTicks || 0) + 1; }
-  if (nightness(w.tick) > 0.3 && col.length) { b.nightTicks = (b.nightTicks || 0) + 1; if (!campFuel(w)) b.fireless = (b.fireless || 0) + 1; }
+  if (nightness(w) > 0.3 && col.length) { b.nightTicks = (b.nightTicks || 0) + 1; if (!campFuel(w)) b.fireless = (b.fireless || 0) + 1; }
   for (const a of col) {
     b.ticks++;
     const t = a.task?.id;

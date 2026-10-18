@@ -2,7 +2,7 @@
 // scaled up: terrain crisp, fields smooth. Fire is added with 'lighter' for a glow; night darkens.
 import {CARCASS} from '../agents/carcass.js';
 import {hpShare} from '../agents/agent.js';
-import {BY_CODE, T, WALKABLE} from '../data/terrain.js';
+import {BY_CODE, T, WALKABLE, isWater} from '../data/terrain.js';
 import {airTemp} from '../world/heat.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
@@ -91,11 +91,14 @@ export class Renderer {
   pan(w, cam, dx, dy) { this.clampCam(w, cam); cam.cx -= dx / this.S; cam.cy -= dy / this.S; this.clampCam(w, cam); }
 
   paintTerrain(w) {
+    const shoreOf = (g, i, W, H) => { const x = i % W, y = (i / W) | 0; return (x > 0 && !isWater(g.terr[i - 1])) || (x < W - 1 && !isWater(g.terr[i + 1])) || (y > 0 && !isWater(g.terr[i - W])) || (y < H - 1 && !isWater(g.terr[i + W])); };
     const d = this.terrain.img.data, g = w.grid;
     // the season tints grass and forest: autumn gold, winter snow (water freezes white at the edges only)
-    const [tr, tg, tb, tk] = seasonTint(w), wet = snowy(w);
+    const [tr, tg, tb, tk] = seasonTint(w), wet = (w.snow || 0) > 0.15, W = w.w;
     for (let i = 0; i < w.n; i++) {
       let [r, gg, b] = BY_CODE[g.terr[i]].color(g.hgt[i], g.fert[i], g.wood[i]);
+      // the shore: water beside land is shallow and pale (an edge for the eye, not a kind of ground)
+      if (g.terr[i] === T.WATER && shoreOf(g, i, W, w.h)) { r = r * 0.6 + 70; gg = gg * 0.6 + 80; b = b * 0.6 + 70; }
       const ore = g.ore?.[i];
       if (ore) { const c = ORE_BY_CODE[ore].tint, k = 0.55; r = r * (1 - k) + c[0] * k; gg = gg * (1 - k) + c[1] * k; b = b * (1 - k) + c[2] * k; }
       for (const p of PLANTS_TINT) { const v = g[p.key]?.[i]; if (v > 0.2) { const k = v * 0.6; r = r * (1 - k) + p.tint[0] * k; gg = gg * (1 - k) + p.tint[1] * k; b = b * (1 - k) + p.tint[2] * k; } }
@@ -170,7 +173,7 @@ export class Renderer {
       ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx); }
     if (lit) ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
 
-    const night = nightness(w.tick);
+    const night = nightness(w);
     if (view.layer === 'world' && night > 0) { ctx.fillStyle = `rgba(8,12,30,${night * 0.62})`; ctx.fillRect(0, 0, Wpx, Hpx); }
     if (w.weather.rain > 0.05) this.drawRain(w, Wpx, Hpx);
 

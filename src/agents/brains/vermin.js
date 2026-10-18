@@ -66,7 +66,7 @@ export const verminBrain = {
       const camp = {x: w.camp.x + 0.5, y: w.camp.y + 0.5};
       const watched = w.agents.some(o => o.faction === 'colony' && !o.dead && !o.sleeping && dist(o, camp) < VERMIN.watch);
       const bold = w.tick - (a.waited ?? w.tick) > VERMIN.patience;
-      if ((V.spoils && nightness(w.tick) < 0.4) || (watched && !bold) || (a.task?.id === 'hide' && w.tick - (a.waited ?? 0) < 60)) {
+      if ((V.spoils && nightness(w) < 0.4) || (watched && !bold) || (a.task?.id === 'hide' && w.tick - (a.waited ?? 0) < 60)) {
         a.waited ??= w.tick;
         const [dx, dy] = denOf(w, a);
         if (a.task?.id !== 'hide') a.task = {id: 'hide'};

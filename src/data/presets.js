@@ -8,12 +8,13 @@ export const SIZES = {
 
 // The climate of a site, in numbers (the world map will hand these over per cell, docs/SEAM.md):
 //   meanT: yearly mean air temperature, °C;  trange: yearly range (summer midday noon to winter, °C);
-//   rain: showers per day;  regrow: plant growth ×;  ign: ignition threshold offset
+//   rain: showers per day;  regrow: plant growth ×;  ign: ignition threshold offset;
+//   daylight: hours the day gains at the summer solstice and loses at the winter one (data/seasons.js daylight)
 // The three presets are named points on that scale; the site copies one (world/site.js).
 export const CLIMATES = {
-  cold:      {label: 'Холодный',   note: 'ночи у нуля, снег три сезона из четырёх, костёр нужен всегда, часто дожди', meanT: 0, trange: 22, ign: 25, regrow: 0.7, rain: 0.5},
-  temperate: {label: 'Умеренный',  note: 'тёплые дни, прохладные ночи, снежная зима, дожди через день-два', meanT: 7, trange: 20, ign: 0, regrow: 1, rain: 0.4},
-  dry:       {label: 'Засушливый', note: 'жарко, дожди редки, зима без снега, лес вспыхивает легче', meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22},
+  cold:      {label: 'Холодный',   note: 'ночи у нуля, снег три сезона из четырёх, костёр нужен всегда, часто дожди', meanT: 0, trange: 22, ign: 25, regrow: 0.7, rain: 0.5, daylight: 6},
+  temperate: {label: 'Умеренный',  note: 'тёплые дни, прохладные ночи, снежная зима, дожди через день-два', meanT: 7, trange: 20, ign: 0, regrow: 1, rain: 0.4, daylight: 4},
+  dry:       {label: 'Засушливый', note: 'жарко, дожди редки, зима без снега, лес вспыхивает легче', meanT: 15, trange: 20, ign: -5, regrow: 0.75, rain: 0.22, daylight: 2},
 };
 
 // in which season the game begins (the calendar day the colony lands on, data/seasons.js). A group that
@@ -23,7 +24,7 @@ export const CLIMATES = {
 export const START = {
   spring: {label: 'Весна', day: 0, stock: 1},
   summer: {label: 'Лето', day: 30, stock: 1},
-  autumn: {label: 'Осень', day: 60, stock: 1.6, perHead: {jerky: 3, wood: 2}},
+  autumn: {label: 'Осень', day: 60, stock: 1.6, perHead: {jerky: 5, driedFish: 2, wood: 3}},
   winter: {label: 'Зима', day: 90, stock: 2, clothes: 1, perHead: {jerky: 8, driedFish: 4, wood: 5}},
 };
 

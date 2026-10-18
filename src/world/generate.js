@@ -183,7 +183,12 @@ function layRiver(site, t) {
       const j = py * w + px; if (BY_CODE[terr[j]].kind === 'ground' || terr[j] === T.FOREST) fert[j] = Math.min(1, fert[j] + 0.12);
     }
   }
-  return {source: a, mouth: b, cells: [...cells], wide: !!g[0].wide};
+  // the flow: the channel in order from the source, and for every river cell the next one downstream
+  // (a side cell of a wide river joins the channel at its step). Nothing uses it yet; a dam will
+  const flow = new Int32Array(w * h).fill(-1);
+  for (let k = 0; k + 1 < path.length; k++) flow[path[k]] = path[k + 1];
+  for (const i of cells) if (flow[i] < 0 && i !== b) { const x = i % w, y = (i / w) | 0; for (let q = 0; q < 4; q++) { const nx = x + DX[q], ny = y + DY[q]; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue; const j = ny * w + nx; if (cells.has(j) && flow[j] >= 0) { flow[i] = flow[j]; break; } } }
+  return {source: a, mouth: b, cells: [...cells], wide: !!g[0].wide, channel: path, flow};
 }
 
 // which cells can be walked to from cell `from` (four directions and the diagonal rule of the game)

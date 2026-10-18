@@ -58,7 +58,7 @@ function jobWhy(w, a, job, ctx, goal, tasty, night, role) {
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
 function decide(w, a) {
-  const night = nightness(w.tick), camp = w.camp.cells, g = w.grid;
+  const night = nightness(w), camp = w.camp.cells, g = w.grid;
   let campHot = 0; for (const c of camp) campHot = Math.max(campHot, tempAt(w, c) + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
   const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,

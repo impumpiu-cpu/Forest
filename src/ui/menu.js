@@ -2,7 +2,7 @@
 import {SIZES, CLIMATES, START, LEVELS3, STOCKS, RAIDS, WILDLIFE, PREDATORS, DEFAULT_CFG} from '../data/presets.js';
 import {makeTerrain} from '../world/generate.js';
 import {seedNumber} from '../core/rng.js';
-import {BY_CODE, T} from '../data/terrain.js';
+import {BY_CODE, T, isWater} from '../data/terrain.js';
 import {$} from './dom.js';
 
 const OPTS = {
@@ -72,7 +72,8 @@ export class Menu {
     const img = px.createImageData(t.w, t.h), d = img.data, n = t.w * t.h, cnt = [];
     for (let i = 0; i < n; i++) {
       const code = t.terr[i]; cnt[code] = (cnt[code] || 0) + 1;
-      const [r, g, b] = BY_CODE[code].color(t.hgt[i], t.fert[i], 0.8);
+      let [r, g, b] = BY_CODE[code].color(t.hgt[i], t.fert[i], 0.8);
+      if (code === T.WATER) { const x = i % t.w, y = (i / t.w) | 0, land = k => !isWater(t.terr[k]); if ((x > 0 && land(i - 1)) || (x < t.w - 1 && land(i + 1)) || (y > 0 && land(i - t.w)) || (y < t.h - 1 && land(i + t.w))) { r = r * 0.6 + 70; g = g * 0.6 + 80; b = b * 0.6 + 70; } }
       const o = i * 4; d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
     }
     px.putImageData(img, 0, 0);

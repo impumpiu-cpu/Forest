@@ -73,18 +73,27 @@ export const daysLeftInSeason = (w, tick) => SEASON_DAYS - calendarDay(w, tick) 
 // the first day of a season (for «a new season begins» once a day)
 export const seasonStarts = (w, tick) => Math.floor(calendarDay(w, tick)) % SEASON_DAYS === 0;
 
-// the seasonal part of the air temperature: a sine over the year that crosses the yearly mean on the
-// first day of spring, peaks at +trange/2 in the middle of summer and bottoms at −trange/2 in the middle
-// of winter — so spring warms from its first day and autumn cools to the first snow by its end
+// the seasonal part of the air temperature: a sine over the year a week behind the sun (daylight
+// below): warmest a week after the summer solstice, coldest a week after the winter one, so the
+// first week of spring is still cold and the first snow comes a week into winter
+const LAG = 7.5;
 export function seasonalTemp(w, tick = w.tick) {
-  return (w.climate.trange / 2) * Math.sin(2 * Math.PI * (calendarDay(w, tick) - SEASON_DAYS / 2) / YEAR_DAYS + Math.PI / 4);
+  return (w.climate.trange / 2) * Math.sin(2 * Math.PI * (calendarDay(w, tick) - LAG) / YEAR_DAYS);
 }
+// hours of daylight: 12 at the equinoxes (the first day of spring and of autumn), longest at the
+// summer solstice (the first day of summer), shortest at the winter one; the swing is the climate's
+// `daylight` (data/presets.js) — the far north has white nights and a winter that is almost all night
+export function daylight(w, tick = w.tick) {
+  return 12 + (w.climate.daylight ?? 4) * Math.sin(2 * Math.PI * calendarDay(w, tick) / YEAR_DAYS);
+}
+
 // mean air temperature of the day (no hour): what decides snow and frost
 export const dayMeanTemp = (w, tick = w.tick) => w.climate.meanT + seasonalTemp(w, tick);
 // snow instead of rain, white ground: a cold season when the day's mean is below freezing
 export const snowy = (w, tick = w.tick) => dayMeanTemp(w, tick) < -1;
 // snow on the ground paints everything white, whatever the season
 const SNOW_TINT = [236, 240, 246, 0.62];
-export const seasonTint = w => (snowy(w) ? SNOW_TINT : season(w).tint);
+// snow on the ground paints by its depth (world/weather.js w.snow), over the season's own colour
+export const seasonTint = w => { const s = w.snow || 0; if (s < 0.05) return season(w).tint; const [r, g, b, k] = season(w).tint; const m = Math.min(1, s / 0.6); return [r * (1 - m) + SNOW_TINT[0] * m, g * (1 - m) + SNOW_TINT[1] * m, b * (1 - m) + SNOW_TINT[2] * m, k * (1 - m) + SNOW_TINT[3] * m]; };
 
 export const seasonJob = (w, job) => season(w).jobs[job] ?? 1;

@@ -61,7 +61,7 @@ export const BESTIARY = [
     mule: stands({kickRange: 1.2, charge: 1.9, chargeHit: 1.7, grudge: 500, giveUp: 26, fleeBelow: 0.2, leaveChance: 0.00015, terrain: ['grass', 'forest']})}),
 
   // Lynx: an ambush from the branches, mostly hares and foxes; a lone person only when starving
-  beast({id: 'lynx', kind: 'beast', label: 'рысь', labelAcc: 'рысь', plural: 'рыси', hp: 0.6, speed: 0.16, needs: ['food'], brain: 'predator',
+  beast({id: 'lynx', snowfoot: true, kind: 'beast', label: 'рысь', labelAcc: 'рысь', plural: 'рыси', hp: 0.6, speed: 0.16, needs: ['food'], brain: 'predator',
     arrive: {group: [1, 1], every: [3, 4], chance: 0.5, cap: 1, first: 3, message: 'в чаще поселилась рысь'},
     habitat: {taiga: 'usual', forest: 'rare'},
     special: around({S: 5, P: 11, E: 5, C: 2, I: 3, A: 12, L: 5}),
@@ -314,7 +314,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'rat', 'fox'], weakPrey: ['saiga'], boldPeople: 0.5, groupFear: 2, sight: 14, meal: 1.2})}),
 
   // White bear: the lord of the ice; hunts seals, and anything else that walks the snow
-  beast({id: 'polarbear', kind: 'beast', label: 'белый медведь', labelAcc: 'белого медведя', plural: 'белые медведи', hp: 4.2, speed: 0.12, needs: ['food'], brain: 'predator', big: true, heatHarm: 55,
+  beast({id: 'polarbear', snowfoot: true, kind: 'beast', label: 'белый медведь', labelAcc: 'белого медведя', plural: 'белые медведи', hp: 4.2, speed: 0.12, needs: ['food'], brain: 'predator', big: true, heatHarm: 55,
     arrive: {group: [1, 1], every: [4, 7], chance: 0.4, cap: 1, first: 4, message: 'по льду пришёл белый медведь'},
     habitat: {ice: 'common', tundra: 'usual'},
     special: around({S: 15, P: 6, E: 14, C: 2, I: 3, A: 5, L: 4}),

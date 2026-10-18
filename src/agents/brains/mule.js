@@ -104,7 +104,7 @@ export const muleBrain = {
       if (follow(w, a, 'edge') === 'arrived') a.gone = true;
       return;
     }
-    if (nightness(w.tick) > 0.75) { a.task = {id: 'rest'}; return; }
+    if (nightness(w) > 0.75) { a.task = {id: 'rest'}; return; }
     // a herder holding out hay: it stops and lets them come
     if (w.agents.some(o => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
     graze(w, a, sp);

@@ -57,7 +57,7 @@ export const livestockBrain = {
       if (approach(w, a, pen.x + pen.w / 2, pen.y + pen.h / 2, 0.9) === null) follow(w, a, 'camp', 0.9);
       return;
     }
-    if (nightness(w.tick) > 0.7) { a.task = {id: 'rest'}; return; }
+    if (nightness(w) > 0.7) { a.task = {id: 'rest'}; return; }
     const t = a.task?.id === 'penned' ? a.task : (a.task = {id: 'penned'});
     if (!t.spot || w.rngs.wild() < 0.008) t.spot = [pen.x + 0.3 + w.rngs.wild() * (pen.w - 0.6), pen.y + 0.3 + w.rngs.wild() * (pen.h - 0.6)];
     if (Math.hypot(t.spot[0] - a.x, t.spot[1] - a.y) > 0.2) moveToward(w, a, t.spot[0], t.spot[1], 0.3);

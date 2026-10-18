@@ -440,7 +440,7 @@ check('T31', 'неубранная туша в темноте поднимает
   const w = scene(); fixedRng(w, 0);
   const c = dropCarcass(w, {species: 'deer', x: 50.5, y: 30.5}, 1.6, null);
   c.t = w.tick - CARCASS.rotFrom - 10;
-  while (!(nightness(w.tick) > 0.7 && w.tick % 60 === 0)) w.tick++;   // deep night, on a carcass check
+  while (!(nightness(w) > 0.7 && w.tick % 60 === 0)) w.tick++;   // deep night, on a carcass check
   stepCarcasses(w);
   return w.agents.some(o => o.species === 'upyr') || 'упырь не поднялся';
 });
