@@ -320,7 +320,12 @@ dd.q4{color:#c58cff;font-weight:600}
 .atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}
 .atlas-map{display:flex;flex-direction:column;gap:8px;min-width:0}
 .atlas-map .seg{align-self:flex-start}
-#atlasMap{display:block;width:100%;height:auto;aspect-ratio:4/3;image-rendering:pixelated;cursor:crosshair}
+#atlasMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+#atlasMap.dragging{cursor:grabbing}
+.atlas-tools{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.atlas-tools .wrapseg{flex:1 1 0;min-width:0}
+.zoomseg{flex:0 0 auto}
+.zoomseg button{min-width:30px}
 .atlas-chron .log{max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
 .atlas-chron .log small{color:var(--ember);font-family:var(--font-mono);font-size:11px;margin-right:4px}
 .stages{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px;counter-reset:st}
