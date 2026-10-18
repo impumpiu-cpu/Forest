@@ -28,7 +28,8 @@ import {meet, raceState, stepDiplomacy, trades, raidGraves} from './diplomacy.js
 import {foundRealm, joinRealm, realmLabel, realmTowns, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
-import {placeSite, raidSite, stepNet, fedTowns} from './sites.js';
+import {placeSite, raidSite, stepNet, fedTowns, scourgedFood} from './sites.js';
+import {fadeScourge} from './diplomacy.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -202,6 +203,7 @@ export function stepPeoples(a, rnd, say) {
   }
   // what each town's land and living works feed (people), then the net: the surplus of one town
   // flows to the towns it is linked with that lack (atlas/sites.js)
+  fadeScourge(a);
   const feedsOf = new Map();
   for (const t of a.towns) {
     if (!t.alive) continue;
@@ -209,7 +211,7 @@ export function stepPeoples(a, rnd, say) {
     let feed = 0, c = 0;
     for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
     const fx = townFx(t);
-    feedsOf.set(t.id, [1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (0.7 + 0.3 * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade), room(fx)]);
+    feedsOf.set(t.id, [1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (0.7 + 0.3 * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food - scourgedFood(a, t) + 0.3 * fx.trade), room(fx)]);
   }
   stepNet(a, feedsOf);
   for (const [t, o, by] of fedTowns(a)) say(`${cap1(townLabel(t, 0))} ${t.name} живёт привозным хлебом: ${Math.round(by * 100)}% еды везут из ${townLabel(o, 2)} ${o.name}.`);

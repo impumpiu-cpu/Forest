@@ -176,6 +176,14 @@ export function fedTowns(a) {
   return out;
 }
 
+// the food of a town's works that lie in the scourge of an army (a.f.scourge, atlas/diplomacy.js): lost this year
+export function scourgedFood(a, t) {
+  if (!a.f.scourge) return 0;
+  let v = 0;
+  for (const s of townSites(a, t)) if (a.f.scourge[s.i] >= 0.5) v += TOWN_BUILDINGS.get(s.kind).fx.food || 0;
+  return v;
+}
+
 // what a town's works yield, for the panel: {food, raw} as shares of its land's feed and of its craft
 export function siteYields(a, t) {
   const out = {food: 0, raw: 0};

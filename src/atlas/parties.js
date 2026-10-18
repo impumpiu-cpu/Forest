@@ -15,7 +15,7 @@ import {SEASON_DAYS} from '../data/atlas.js';
 import {findPath, moveCost} from './roads.js';
 import {scaleOf} from './tectonics.js';
 
-export const BEHAVIOURS = {};   // kind → {arrive(a, p, rnd, say), stay(a, p, rnd, say), home(a, p, rnd, say)}; filled by the systems that own the kinds
+export const BEHAVIOURS = {};   // kind → {day, arrive, stay, home, lost}(a, p, rnd, say); filled by the systems that own the kinds
 
 const scratchOf = a => (a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []});
 
@@ -78,6 +78,8 @@ export function stepParties(a, rnd, say) {
     for (const p of a.parties) {
       if (p.state === 'gone') continue;
       const B = BEHAVIOURS[p.kind];
+      B.day?.(a, p, rnd, say);
+      if (p.state === 'gone') continue;
       if (p.state === 'go' || p.state === 'home') {
         p.days++;
         const there = walk(a, p);

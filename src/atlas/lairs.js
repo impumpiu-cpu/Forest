@@ -349,7 +349,7 @@ BEHAVIOURS.brood = {
   arrive(a, p, rnd, say) {
     const L = LAIRS.get(p.lairKind), parent = a.lairs.find(l => l.id === p.owner);
     p.state = 'gone';
-    if (a.lairs.some(o => o.alive && o.kind === L.id && dist(o, {x: p.goal % a.w, y: (p.goal / a.w) | 0}) < R(a, L))) return;
+    if (a.lairs.some(o => o.alive && o.kind === L.id && dist(o, {x: p.goal % a.w, y: (p.goal / a.w) | 0}) < 2 * R(a, L))) return;   // another brood got there first
     const young = newLair(a, L, p.goal, rnd, 0.35);
     say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${parent ? parent.name : '…'}» основали ${G[L.g].fresh} ${acc(L)} — «${young.name}» ${wherePhrase(a, p.goal)}.`);
   },

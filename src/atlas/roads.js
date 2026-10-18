@@ -100,7 +100,7 @@ export function wearRoads(a) {
     if (!path) continue;
     const flow = net?.get(key)?.flow || 0;
     const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2) + flow / NET.wear;
-    for (const c of path) f.road[c] += amt;
+    for (const c of path) if (!f.scourge || f.scourge[c] < 0.5) f.road[c] += amt;   // no caravan goes where an army's foragers are
     a.roadPairs ||= new Set();
     if (!a.roadPairs.has(key)) { a.roadPairs.add(key); fresh.push([t, o]); }
   }

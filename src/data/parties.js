@@ -22,15 +22,17 @@ export const PARTIES = {
 // turn it is musters an army at its town nearest the enemy: `levy` of the town's people march, with
 // the town's might × `might`; the army walks to the enemy's nearest town and besieges it.
 //   siege: each day the besiegers burn one of the town's works with chance `burn`, so its food falls;
-//          the town eats its stock (`stock` seasons of food in granaries and cellars, ×(1 + food
-//          effects)); when the stock is gone the people starve by `starve` a day; the army assaults
+//          the town eats its stock (`stock` seasons of food in granaries and cellars, ×(1 + `stockFood`
+//          × its food effects)); when the stock is gone the people starve by `starve` a day; the army assaults
 //          when the town is weakened enough (`assaultAt` × its might, walls counting) or after
-//          `longest` days; a lost assault sends the army home with `beatenLoss` of its men
-//   supplies: days an army feeds itself; beyond them it loses `attrition` of its men a day and turns home
+//          `longest` days; a lost assault sends the army home with `beatenLoss` of its men; a town taken
+//          with fewer than `broken` of the people it had when the siege began is burnt, whatever its size
+//   supplies: days an army feeds itself (each work burnt at a siege adds `forage` days); beyond them it
+//             loses `attrition` of its men a day and turns home
 //   scourge: radius (cells) around a marching or besieging army where its foragers rule: the works
 //            there yield nothing and no road is worn (a.f.scourge, fading by `scourgeFade` a season)
-export const ARMY = {levy: 0.2, might: 0.9, minMen: 40, burn: 0.08, stock: 2, starve: 0.004, assaultAt: 0.85, longest: 90, beatenLoss: 0.35, winLoss: 0.15,
-  supplies: 120, attrition: 0.02, scourge: 2.5, scourgeFade: 0.5, everyYears: 1};
+export const ARMY = {levy: 0.25, might: 1.8, minMen: 40, burn: 0.08, stock: 1.5, stockFood: 0.25, starve: 0.008, assaultAt: 0.9, longest: 120, beatenLoss: 0.35, winLoss: 0.15, broken: 0.55,
+  supplies: 120, forage: 15, attrition: 0.02, scourge: 2.5, scourgeFade: 0.5, everyYears: 1};
 
 // The dragon (data/bestiary.js `dragon`; the lair kind in data/lairs.js): one or two in a world, in
 // an ancient lair at a volcano. It sleeps for years, then flies out: to the richest town within

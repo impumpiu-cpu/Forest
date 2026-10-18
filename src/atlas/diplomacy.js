@@ -18,6 +18,9 @@ import {raidSite, razeSites} from './sites.js';
 import {BURNT} from './peoples.js';
 import {realmOf, realmPeople, realmLabel, realmLabelGen, seatFallen, stepRealms} from './realms.js';
 import {laneBetween} from './sea.js';
+import {ARMY} from '../data/parties.js';
+import {SEASON_DAYS} from '../data/atlas.js';
+import {BEHAVIOURS, sendParty, goHome} from './parties.js';
 
 const D = DIPLOMACY;
 
@@ -102,6 +105,75 @@ function battlefield(a, lose, win) {
 
 const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
 
+// ── armies (data/parties.js ARMY). A realm at war musters an army at its town nearest the enemy:
+// a levy of the town's people with the town's arms; it marches to the enemy's town and lays siege.
+// Each day of the siege the besiegers burn the town's works and eat its stock; when the town is
+// starved or the siege has gone on long enough the army assaults. The foragers of a marching or
+// besieging army scourge the land around it (a.f.scourge): the works there yield nothing.
+const armyMight = (men, fx) => Math.sqrt(men) * (1 + 0.3 * fx.prod + 0.5 * fx.defence);
+function muster(a, t, target, war, rnd, say) {
+  const A = ARMY, men = Math.round(A.levy * t.pop);
+  if (men < A.minMen || !target.alive) return;
+  const fx = townFx(t), R = realmOf(a, t.realm);
+  const p = sendParty(a, 'army', t.i, target.i, {owner: t.realm, from: t.id, target: target.id, war, men, might: armyMight(men, fx) * A.might,
+    supplies: A.supplies, people: t.people, speed: 'foot', label: `войско ${realmLabelGen(a, t.realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color, burnt: 0});
+  if (!p) return;
+  t.pop -= men;
+  say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов и двинулись на ${townLabel(target, 1)} ${target.name}.`);
+}
+// the foragers: the land around the army is scourged this season
+function scourge(a, p) {
+  const f = a.f.scourge ||= new Float32Array(a.n), r = ARMY.scourge * scaleOf(a), x0 = p.x | 0, y0 = p.y | 0, rr = Math.ceil(r);
+  for (let y = Math.max(0, y0 - rr); y <= Math.min(a.h - 1, y0 + rr); y++) for (let x = Math.max(0, x0 - rr); x <= Math.min(a.w - 1, x0 + rr); x++)
+    if (Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) <= r) f[y * a.w + x] = 1;
+}
+function armyDay(a, p) {
+  p.supplies--;
+  if (p.supplies < 0) { p.men *= 1 - ARMY.attrition; if (p.state === 'go') goHome(a, p); }
+  if (p.state === 'stay' || p.days % 3 === 0) scourge(a, p);
+}
+BEHAVIOURS.army = {
+  day: armyDay,
+  arrive(a, p, rnd, say) {
+    const t = a.towns.find(t => t.id === p.target);
+    if (!t || !t.alive) { goHome(a, p); return; }
+    p.state = 'stay'; p.siege = {stock: Math.round(ARMY.stock * SEASON_DAYS * (1 + ARMY.stockFood * townFx(t).food)), starved: 0, pop0: t.pop};
+    say(`${cap1(p.label)} осадило ${townLabel(t, 1)} ${t.name}.`);
+  },
+  stay(a, p, rnd, say) {
+    const t = a.towns.find(t => t.id === p.target), A = ARMY, S = p.siege;
+    if (!t || !t.alive) { goHome(a, p); return; }
+    if (rnd() < A.burn && raidSite(a, t, rnd)) { p.burnt++; p.supplies += A.forage; }   // the besiegers eat what they take
+    if (S.stock > 0) S.stock--; else { const d = t.pop * A.starve; t.pop -= d; S.starved += d; }
+    const fx = townFx(t), town = might(t, fx);
+    const ready = p.might >= A.assaultAt * town || p.stay >= A.longest || p.supplies < 0;
+    if (!ready) return;
+    const r = a.rel[p.war]; if (r?.war) r.war.battles++;
+    const we = p.might * (0.6 + 0.8 * rnd()), they = town * (0.6 + 0.8 * rnd());
+    const hunger = S.starved > 0 ? `, в ${townLabel(t, 3)} умерло от голода ${Math.round(S.starved)}` : '', burnt = p.burnt ? `, сожжено угодий: ${p.burnt}` : '';
+    barrows(a, battlefield(a, t, {x: p.x, y: p.y}), DIPLOMACY.barrows * Math.max(1, Math.round(scaleOf(a))));
+    if (we > they) {
+      const loss = (D.battleLoss[0] + (D.battleLoss[1] - D.battleLoss[0]) * rnd()) * raidShare(fx);
+      t.pop *= 1 - loss; p.men *= 1 - A.winLoss; t.raided = a.hist.year;
+      if (t.pop < D.raze || t.pop < D.razeShare * TIERS[t.tier].pop || t.pop < A.broken * S.pop0) {   // beaten down, bled, or broken by the siege
+        say(`${cap1(p.label)} взяло штурмом и сожгло ${townLabel(t, 1)} ${t.name}: осталось пепелище${burnt}${hunger}.`);
+        raze(a, t, p.owner, 'war', rnd, say); if (r?.war) r.war.razed++;
+      } else say(`${cap1(p.label)} взяло штурмом ${townLabel(t, 1)} ${t.name} и разграбило ${townLabel(t, 1)}: погибло ${Math.round(loss * 100)}% жителей${burnt}${hunger}.`);
+    } else {
+      p.men *= 1 - A.beatenLoss;
+      say(`${cap1(WORLD_PEOPLES.get(t.people).label)} ${townLabel(t, 2)} ${t.name} отбили штурм ${p.label.replace(/^войско /, 'войска ')} и сняли осаду${burnt}${hunger}.`);
+    }
+    goHome(a, p);
+  },
+  home(a, p) {
+    const t = a.towns.find(t => t.id === p.from);
+    if (t && t.alive) t.pop += Math.round(p.men);
+  },
+  lost(a, p, rnd, say) { say(`${cap1(p.label)} не дошло до ${(() => { const t = a.towns.find(t => t.id === p.target); return t ? `${townLabel(t, 2)} ${t.name}` : 'цели'; })()} и повернуло назад.`); },
+};
+// the scourge of the foragers fades
+export function fadeScourge(a) { if (a.f.scourge) for (let i = 0; i < a.n; i++) a.f.scourge[i] *= ARMY.scourgeFade; }
+
 // a year of the peoples' dealings; `overlap(p, q)` is the share of their land they share
 export function stepDiplomacy(a, rnd, say, overlap) {
   const k = scaleOf(a), H = a.hist, towns = a.towns.filter(t => t.alive);
@@ -139,18 +211,13 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     if (r.war) {
       r.att += D.weariness;
       const years = H.year - r.war.since;
-      // the front: the nearest pair of towns of the two fight it out
-      const best = gap <= D.front * k ? pair : null;
-      if (best) {
-        const [t, o] = best, ft = fight(t, rnd), fo = fight(o, rnd), [win, lose] = ft >= fo ? [t, o] : [o, t];
-        const loss = (D.battleLoss[0] + (D.battleLoss[1] - D.battleLoss[0]) * rnd()) * raidShare(townFx(lose));
-        lose.pop *= 1 - loss; win.pop *= 1 - loss * 0.4; r.war.battles++;
-        const burnt = raidSite(a, lose, rnd);   // the winners ravage the fields of the beaten
-        barrows(a, battlefield(a, lose, win), D.barrows * Math.max(1, Math.round(k)));
-        if (lose.pop < D.raze || lose.pop < D.razeShare * TIERS[lose.tier].pop) {   // a hamlet beaten down, or a big town bled to a shadow of its step
-          say(`${cap1(realmLabel(a, win.realm))} из ${townLabel(win, 2)} ${win.name} взяли и сожгли ${townLabel(lose, 1)} ${lose.name}: осталось пепелище.`);
-          raze(a, lose, win.realm, 'war', rnd, say); r.war.razed++;
-        } else say(`Битва под ${townLabel(lose, 4)} ${lose.name}: ${realmLabel(a, win.realm)} одолели ${realmLabelGen(a, lose.realm)}, поле усеяно курганами${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`);
+      // the front: the nearest pair of towns of the two; the realms take turns to muster an army
+      // there and march on the other's town (atlas/parties.js); one army of a war at a time
+      const armyOut = (a.parties || []).some(x => x.kind === 'army' && x.war === kk && x.state !== 'gone');
+      if (gap <= D.front * k && !armyOut) {
+        const [t, o] = pair, mine = r.war.turn === q ? [o, t] : [t, o];
+        r.war.turn = mine[0].realm === p ? q : p;
+        muster(a, mine[0], mine[1], kk, rnd, say);
       }
       if (r.att >= D.peaceAt || years >= D.longest) {
         say(`${cap1(realmLabel(a, p))} и ${realmLabel(a, q)} заключили мир после ${years} ${years % 10 === 1 && years % 100 !== 11 ? 'года' : 'лет'} войны.`);
