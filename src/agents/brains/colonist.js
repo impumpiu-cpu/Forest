@@ -31,7 +31,7 @@ import {tempAt} from '../../world/heat.js';
 import {ensurePlan, rosterOf} from '../../settlement/plan.js';
 
 // how much the roster pulls (settlement/plan.js): the assigned job, a fallback, anything else
-const ROSTER = {main: [1.5, 0.3], alt: [1.0, 0.05], other: [0.45, 0], keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16]};
+const ROSTER = {main: [1.5, 0.3], alt: [1.0, 0.05], other: [0.6, 0], keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16]};
 
 // the weight of answering an attack on oneself: more than any need can reach
 const ATTACKED = 2.6;
@@ -91,7 +91,7 @@ function decide(w, a) {
     // the roster ranks work against work; it never lifts work above the alarm, the council or the body (≤ 1)
     opts.push([{id: 'job', job: job.id}, Math.min(1, ((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night, role) + (m.friend ? `, там ${m.friend.name}` : m.foe ? `, но там ${m.foe.name}` : '')]);
   }
-  opts.push([{id: 'idle'}, 0.15, () => 'больше нечем заняться']);
+  opts.push([{id: 'idle'}, 0.08, () => 'больше нечем заняться']);
   // together (settlement/together.js): go along with a lone gatherer when beasts roam, help the wounded
   const esc = escortOption(w, a); if (esc) opts.push(esc);
   const aid = aidOption(w, a); if (aid) opts.push(aid);
@@ -190,7 +190,7 @@ export const colonistBrain = {
       // at work a colonist thinks about work rarely: a task ends through the lifecycle and asks for a
       // decision then (a.think = 0); meanwhile only the body and the threats are watched here
       // (with beasts that hunt people about, everyone looks round more often: help may be needed)
-      a.think = a.task?.id === 'job' && outsideRisk(w) < TOGETHER.riskFrom ? ROSTER.think : 15;
+      a.think = a.task?.id === 'job' && outsideRisk(w) < TOGETHER.riskFrom && !raidAlarm(w) ? ROSTER.think : 15;
       // a delivery under way is finished first — unless something urgent comes up: an attack, a foe
       // close by, a body at its limit. The load stays in the hands whatever is chosen.
       const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some(v => v < 0.12) || !!nearestHostile(w, a, 8);

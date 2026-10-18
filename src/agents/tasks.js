@@ -8,6 +8,7 @@ import {BUILDINGS} from '../data/buildings.js';
 import {NEEDS} from '../data/needs.js';
 import {FOODS} from '../data/foods.js';
 import {cellOf} from '../world/grid.js';
+import {nightness} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
@@ -67,6 +68,9 @@ TASKS.registerAll([
     a.needs.rest = Math.min(1, a.needs.rest + 0.004 * (1 + 0.6 * beds));
     if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 0.0028 * warm * (w.campLit ? 1 : 0.5));
     mill(w, a, task, 1.2);
+    // rested before dawn: sleep on till first light rather than stand about in the dark (nobody goes to the
+    // woods by night); a tired body or an alarm still wakes anyone
+    if (a.needs.rest >= 1 && nightness(w) > 0.75 && !raidAlarm(w)) return;
     if (a.needs.rest >= 1) {
       if (warm > 0.6) { const c = homeComfort(w); think(w, a, 'sleptHouse', {mood: 0.22 + c * 1.2, fine: c > 0.1}); }
       else think(w, a, beds > 0 ? 'sleptHut' : 'sleptOutside');

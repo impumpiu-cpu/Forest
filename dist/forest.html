@@ -12052,7 +12052,79 @@ dd.q4{color:#c58cff;font-weight:600}
       if (best < 0) break;
       ford(t, best);
     }
+    openPass(t);
     return out;
+  }
+  function openPass(t) {
+    const { w, h, terr, under } = t, n = w * h, from = t.cy * w + t.cx;
+    const reach = reachableFrom(t, from);
+    for (let i = 0; i < n; i++) {
+      const x = i % w, y = i / w | 0;
+      if ((x === 0 || y === 0 || x === w - 1 || y === h - 1) && reach[i]) return;
+    }
+    const dist9 = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done3 = new Uint8Array(n);
+    const hI = new Int32Array(n * 5), hD = new Float64Array(n * 5);
+    let hn = 0;
+    const push = (i, d) => {
+      let k = hn++;
+      while (k > 0) {
+        const p = k - 1 >> 1;
+        if (hD[p] <= d) break;
+        hI[k] = hI[p];
+        hD[k] = hD[p];
+        k = p;
+      }
+      hI[k] = i;
+      hD[k] = d;
+    };
+    const cost = (j) => terr[j] === T.ROCK ? 25 : terr[j] === T.WATER ? 30 : BY_CODE[terr[j]].walkable ? 1 : 25;
+    dist9[from] = 0;
+    push(from, 0);
+    let goal = -1;
+    while (hn > 0) {
+      const i = hI[0], d = hD[0];
+      hn--;
+      const li = hI[hn], ld = hD[hn];
+      let k = 0;
+      for (; ; ) {
+        let c = 2 * k + 1;
+        if (c >= hn) break;
+        if (c + 1 < hn && hD[c + 1] < hD[c]) c++;
+        if (hD[c] >= ld) break;
+        hI[k] = hI[c];
+        hD[k] = hD[c];
+        k = c;
+      }
+      hI[k] = li;
+      hD[k] = ld;
+      if (done3[i]) continue;
+      done3[i] = 1;
+      const x = i % w, y = i / w | 0;
+      if (x === 0 || y === 0 || x === w - 1 || y === h - 1) {
+        goal = i;
+        break;
+      }
+      for (let q = 0; q < 4; q++) {
+        const nx = x + DX[q], ny = y + DY[q];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx, nd = d + cost(j);
+        if (nd < dist9[j]) {
+          dist9[j] = nd;
+          prev[j] = i;
+          push(j, nd);
+        }
+      }
+    }
+    if (goal < 0) return;
+    for (let c = goal; c !== -1; c = prev[c]) {
+      const x = c % w, y = c / w | 0;
+      for (const j of [c, x + 1 < w ? c + 1 : c - 1]) {
+        if (terr[j] === T.ROCK) {
+          terr[j] = OPEN[under[j]] ? under[j] : T.GRASS;
+          under[j] = terr[j];
+        } else if (terr[j] === T.WATER) terr[j] = T.FORD;
+      }
+    }
   }
   function createWorld(cfg) {
     const t = makeTerrain(cfg), n = t.w * t.h;
@@ -13315,6 +13387,7 @@ dd.q4{color:#c58cff;font-weight:600}
       a.needs.rest = Math.min(1, a.needs.rest + 4e-3 * (1 + 0.6 * beds));
       if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 28e-4 * warm * (w.campLit ? 1 : 0.5));
       mill2(w, a, task, 1.2);
+      if (a.needs.rest >= 1 && nightness(w) > 0.75 && !raidAlarm(w)) return;
       if (a.needs.rest >= 1) {
         if (warm > 0.6) {
           const c = homeComfort(w);
@@ -13690,7 +13763,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var taskLabel = (a) => a.task ? TASKS.get(a.task.id).label(a.task) : "\u0434\u0443\u043C\u0430\u0435\u0442";
 
   // src/agents/brains/colonist.js
-  var ROSTER = { main: [1.5, 0.3], alt: [1, 0.05], other: [0.45, 0], keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16] };
+  var ROSTER = { main: [1.5, 0.3], alt: [1, 0.05], other: [0.6, 0], keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16] };
   var ATTACKED = 2.6;
   var label2 = (t) => TASKS.get(t.id).label(t);
   function jobWhy(w, a, job, ctx, goal, tasty, night, role) {
@@ -13746,7 +13819,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const m = mate(job.id), role = roleOf2(job.id), [mul, add2] = ROSTER[role];
       opts.push([{ id: "job", job: job.id }, Math.min(1, ((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add2) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night, role) + (m.friend ? `, \u0442\u0430\u043C ${m.friend.name}` : m.foe ? `, \u043D\u043E \u0442\u0430\u043C ${m.foe.name}` : "")]);
     }
-    opts.push([{ id: "idle" }, 0.15, () => "\u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435\u0447\u0435\u043C \u0437\u0430\u043D\u044F\u0442\u044C\u0441\u044F"]);
+    opts.push([{ id: "idle" }, 0.08, () => "\u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435\u0447\u0435\u043C \u0437\u0430\u043D\u044F\u0442\u044C\u0441\u044F"]);
     const esc2 = escortOption(w, a);
     if (esc2) opts.push(esc2);
     const aid = aidOption(w, a);
@@ -13848,7 +13921,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (tid2 !== "fight" && tid2 !== "runHome" && tid2 !== "flee" && attacked) a.think = 0;
       if (w.tick % 5 === 0 && a.task?.id !== "fight" && a.task?.id !== "runHome" && nearestHostile(w, a, 8)) a.think = 0;
       if (a.task?.id !== "flee" && --a.think <= 0) {
-        a.think = a.task?.id === "job" && outsideRisk(w) < TOGETHER.riskFrom ? ROSTER.think : 15;
+        a.think = a.task?.id === "job" && outsideRisk(w) < TOGETHER.riskFrom && !raidAlarm(w) ? ROSTER.think : 15;
         const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some((v) => v < 0.12) || !!nearestHostile(w, a, 8);
         const busy2 = !urgent && a.task?.id === "job" && a.task.hauling;
         if (!busy2) decide(w, a);
@@ -21117,8 +21190,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 d0cec9e" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.48.0 Map \xB7 18.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 928d773" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;
