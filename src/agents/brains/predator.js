@@ -26,10 +26,11 @@ import {tempAt} from '../../world/heat.js';
 // how far a hungry predator smells its prey (cells)
 const SCENT = 70;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+import {nearAgents} from '../spatial.js';
 
 function nearest(w, a, species, r, filter = () => true) {
   let best = null, bd = r;
-  for (const o of w.agents) {
+  for (const o of nearAgents(w, a.x, a.y, r)) {
     if (o.dead || o.tame || !matchesKind(o.species, species) || !filter(o)) continue;   // the pen's animals are not prey
     const d = dist(a, o); if (d < bd) { bd = d; best = o; }
   }
@@ -37,7 +38,7 @@ function nearest(w, a, species, r, filter = () => true) {
 }
 
 // how many others of the victim's kind stand close to it
-const company = (w, v, r) => w.agents.filter(o => o !== v && !o.dead && (o.species === v.species || (!!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel)) && dist(o, v) < r).length;
+const company = (w, v, r) => nearAgents(w, v.x, v.y, r).filter(o => o !== v && !o.dead && (o.species === v.species || (!!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel)) && dist(o, v) < r).length;
 const packOf = (w, a) => w.agents.filter(o => !o.dead && o.pack === a.pack);
 // big game (a mule) is prey only once it is badly hurt
 const weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < maxHp(o) * P.weakBelow;
@@ -59,8 +60,9 @@ export function preyValue(w, a, P, o, packSize) {
 }
 function bestPrey(w, a, P, reach, packSize) {
   let best = null, bv = 0.05;
-  for (const o of w.agents) {
-    if (o.dead || o.tame || !matchesKind(o.species, preyKinds(P)) || dist(a, o) > reach) continue;
+  const kinds = preyKinds(P);
+  for (const o of nearAgents(w, a.x, a.y, reach)) {
+    if (o.dead || o.tame || !matchesKind(o.species, kinds) || dist(a, o) > reach) continue;
     if (!weakEnough(o, P) || agentInZone(w, o) || a.ignore?.get(o.id) > w.tick) continue;
     const v = preyValue(w, a, P, o, packSize);
     if (v > bv) { bv = v; best = o; }
@@ -107,7 +109,7 @@ export const predatorBrain = {
     const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
     const dZone = w.nav.get('zone')[i];
     const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
-    const people = w.agents.filter(o => !o.dead && matchesKind(o.species, P.victims) && dist(o, a) < 6);
+    const people = nearAgents(w, a.x, a.y, 6).filter(o => !o.dead && matchesKind(o.species, P.victims) && dist(o, a) < 6);
     const pack = packOf(w, a), leader = pack[0];
 
     // wounded — or a night hunter at sunrise: leave for good

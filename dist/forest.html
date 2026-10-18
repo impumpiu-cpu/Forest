@@ -623,6 +623,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!def2 || !def2.id) throw new Error(`${this.kind}: definition without id`);
       if (this.items.has(def2.id)) throw new Error(`${this.kind}: duplicate id "${def2.id}"`);
       this.items.set(def2.id, def2);
+      this._all = null;
       return def2;
     }
     registerAll(defs) {
@@ -637,8 +638,9 @@ dd.q4{color:#c58cff;font-weight:600}
     has(id) {
       return this.items.has(id);
     }
+    // the list is rebuilt on the first call after a change and shared after that (hot loops call it every tick)
     all() {
-      return [...this.items.values()];
+      return this._all || (this._all = Object.freeze([...this.items.values()]));
     }
     ids() {
       return [...this.items.keys()];
@@ -847,6 +849,16 @@ dd.q4{color:#c58cff;font-weight:600}
   var WALKABLE = Uint8Array.from(BY_CODE.map((d) => d.walkable ? 1 : 0));
   var OPEN = Uint8Array.from(BY_CODE.map((d) => d.open ? 1 : 0));
   var isWater = (code2) => BY_CODE[code2].kind === "water";
+  var GRAZE_SETS = /* @__PURE__ */ new Map();
+  function grazeCodes(list) {
+    const key3 = list.join(",");
+    let s = GRAZE_SETS.get(key3);
+    if (!s) {
+      s = /* @__PURE__ */ new Set([...list.map((id) => TERRAIN.get(id).code), ...BY_CODE.filter((d) => d.graze >= 0.5).map((d) => d.code)]);
+      GRAZE_SETS.set(key3, s);
+    }
+    return s;
+  }
 
   // src/data/foods.js
   var FOODS = new Registry("food");
@@ -5183,7 +5195,7 @@ dd.q4{color:#c58cff;font-weight:600}
       this.w = world2;
       const n = world2.n;
       this.dist = {};
-      for (const d of NAVMAPS.all()) this.dist[d.id] = new Float64Array(n).fill(FAR);
+      for (const d of NAVMAPS.all()) this.dist[d.id] = new Float32Array(n).fill(FAR);
       this.dirtySet = new Set(NAVMAPS.ids());
       this.order = NAVMAPS.ids();
       this.last = Object.fromEntries(this.order.map((id) => [id, -Infinity]));
@@ -5191,6 +5203,8 @@ dd.q4{color:#c58cff;font-weight:600}
       this.closed = new Uint8Array(n);
       this.heapI = new Int32Array(n * 9);
       this.heapD = new Float64Array(n * 9);
+      this.costTick = -1;
+      this.costHazard = null;
       this.every = Math.max(1, Math.round(n / 12288));
     }
     get(id) {
@@ -5201,6 +5215,9 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     // fire, heat and smoke make cells expensive; `hazard` scales that for the escape map
     computeCost(hazard) {
+      if (this.costTick === this.w.tick && this.costHazard === hazard) return;
+      this.costTick = this.w.tick;
+      this.costHazard = hazard;
       const g3 = this.w.grid, cost = this.cost, amb = airTemp(this.w);
       for (let i = 0; i < this.w.n; i++) {
         const t = g3.terr[i];
@@ -5269,7 +5286,7 @@ dd.q4{color:#c58cff;font-weight:600}
           const nd = d + c;
           if (nd < dist9[j]) {
             dist9[j] = nd;
-            push(j, nd);
+            push(j, dist9[j]);
           }
         }
       }
@@ -5500,8 +5517,12 @@ dd.q4{color:#c58cff;font-weight:600}
     a.stamina = Math.min(1, a.stamina + 2e-3);
   };
   function separate(w) {
-    const ags = w.agents;
-    for (let p = 0; p < ags.length; p++) for (let q = p + 1; q < ags.length; q++) {
+    const ags = w.agents, n = ags.length;
+    const order = Array.from({ length: n }, (_, k) => k).sort((p, q) => ags[p].x - ags[q].x || p - q);
+    const pairs = [];
+    for (let s = 0; s < n; s++) for (let t = s + 1; t < n && ags[order[t]].x - ags[order[s]].x < 0.4; t++) pairs.push(order[s] < order[t] ? [order[s], order[t]] : [order[t], order[s]]);
+    pairs.sort((u, v) => u[0] - v[0] || u[1] - v[1]);
+    for (const [p, q] of pairs) {
       const A = ags[p], B3 = ags[q], dx = B3.x - A.x, dy = B3.y - A.y, d2 = dx * dx + dy * dy;
       if (d2 >= 0.16 || d2 < 1e-6) continue;
       const d = Math.sqrt(d2), push = (0.4 - d) * 0.25, ux = dx / d * push, uy = dy / d * push;
@@ -8396,6 +8417,37 @@ dd.q4{color:#c58cff;font-weight:600}
     think(w, a, "woundHealed");
   }
 
+  // src/agents/spatial.js
+  var CELL = 8;
+  function bins(w) {
+    return perTick(w, "agentBins", () => {
+      const bw = Math.ceil(w.w / CELL), bh = Math.ceil(w.h / CELL), cells = new Array(bw * bh);
+      const ags = w.agents;
+      for (let k = 0; k < ags.length; k++) {
+        const a = ags[k];
+        const bx = Math.min(bw - 1, Math.max(0, a.x / CELL | 0)), by = Math.min(bh - 1, Math.max(0, a.y / CELL | 0));
+        const c = by * bw + bx;
+        (cells[c] || (cells[c] = [])).push(k);
+      }
+      return { bw, bh, cells, ags };
+    });
+  }
+  function nearAgents(w, x, y, r) {
+    const B3 = bins(w), { bw, bh, cells, ags } = B3;
+    if (r >= Math.max(w.w, w.h)) return ags;
+    const x0 = Math.max(0, (x - r) / CELL | 0), x1 = Math.min(bw - 1, (x + r) / CELL | 0);
+    const y0 = Math.max(0, (y - r) / CELL | 0), y1 = Math.min(bh - 1, (y + r) / CELL | 0);
+    const idx = [];
+    for (let by = y0; by <= y1; by++) for (let bx = x0; bx <= x1; bx++) {
+      const c = cells[by * bw + bx];
+      if (c) for (const k of c) idx.push(k);
+    }
+    if (y1 - y0 > 0 && x1 - x0 > 0) idx.sort((p, q) => p - q);
+    const out = new Array(idx.length);
+    for (let k = 0; k < idx.length; k++) out[k] = ags[idx[k]];
+    return out;
+  }
+
   // src/agents/combat.js
   var aggressor = (a, o) => o.task?.id === "maul" && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
   function canSee(w, a, t) {
@@ -8405,7 +8457,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function nearestHostile(w, a, r) {
     let best = null, bd = r * r;
-    for (const o of w.agents) {
+    for (const o of nearAgents(w, a.x, a.y, r)) {
       if (o === a || o.dead || o.downed || !(isHostile(a, o) || aggressor(a, o))) continue;
       const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
       if (d >= bd || !canSee(w, a, o)) continue;
@@ -11009,7 +11061,9 @@ dd.q4{color:#c58cff;font-weight:600}
     ensureFlows(w);
   }
   function ensureFlows(w) {
+    var _a;
     for (const [id, f] of Object.entries(provider(w).flows)) if (!(id in w.outside.next)) w.outside.next[id] = f.first(w, w.rngs.outside);
+    (_a = w.outside).soon ?? (_a.soon = 0);
   }
   function tell(w, kind, data) {
     const msg = { tick: w.tick, kind, data };
@@ -11034,8 +11088,13 @@ dd.q4{color:#c58cff;font-weight:600}
     var _a;
     if (w.tick % DAY === 0) tell(w, "report", colonyReport(w));
     const o = w.outside, P = provider(w);
+    if (o.soon > w.tick) return;
+    let soonest = Infinity;
     for (const [id, f] of Object.entries(P.flows)) {
-      if (w.tick < o.next[id]) continue;
+      if (w.tick < o.next[id]) {
+        if (o.next[id] < soonest) soonest = o.next[id];
+        continue;
+      }
       const offered = f.offer(w, w.rngs.outside);
       const group = offered ? arrive(w, id, offered) : [];
       if (!offered && f.missed) {
@@ -11046,12 +11105,15 @@ dd.q4{color:#c58cff;font-weight:600}
       if (offered && !group.length && retry) {
         o.next[id] = w.tick + retry;
         (_a = o.due)[id] ?? (_a[id] = w.tick);
+        if (o.next[id] < soonest) soonest = o.next[id];
         continue;
       }
       if (group.length && id === "settlers") tell(w, "report", colonyReport(w));
       o.next[id] = f.next(w, w.rngs.outside, group.length);
       o.due[id] = null;
+      if (o.next[id] < soonest) soonest = o.next[id];
     }
+    o.soon = Number.isFinite(soonest) ? soonest : 0;
   }
   function neighbours(w) {
     const P = provider(w);
@@ -12126,7 +12188,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var dist5 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   function nearest(w, a, species, r, filter = () => true) {
     let best = null, bd = r;
-    for (const o of w.agents) {
+    for (const o of nearAgents(w, a.x, a.y, r)) {
       if (o.dead || o.tame || !matchesKind(o.species, species) || !filter(o)) continue;
       const d = dist5(a, o);
       if (d < bd) {
@@ -12136,7 +12198,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return best;
   }
-  var company = (w, v, r) => w.agents.filter((o) => o !== v && !o.dead && (o.species === v.species || !!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel) && dist5(o, v) < r).length;
+  var company = (w, v, r) => nearAgents(w, v.x, v.y, r).filter((o) => o !== v && !o.dead && (o.species === v.species || !!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel) && dist5(o, v) < r).length;
   var packOf = (w, a) => w.agents.filter((o) => !o.dead && o.pack === a.pack);
   var weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < maxHp(o) * P.weakBelow;
   var preyKinds = (P) => [...P.prey, ...P.weakPrey || []];
@@ -12153,8 +12215,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function bestPrey(w, a, P, reach, packSize) {
     let best = null, bv = 0.05;
-    for (const o of w.agents) {
-      if (o.dead || o.tame || !matchesKind(o.species, preyKinds(P)) || dist5(a, o) > reach) continue;
+    const kinds = preyKinds(P);
+    for (const o of nearAgents(w, a.x, a.y, reach)) {
+      if (o.dead || o.tame || !matchesKind(o.species, kinds) || dist5(a, o) > reach) continue;
       if (!weakEnough(o, P) || agentInZone(w, o) || a.ignore?.get(o.id) > w.tick) continue;
       const v = preyValue(w, a, P, o, packSize);
       if (v > bv) {
@@ -12201,7 +12264,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const food = a.needs.food, b = boldness(a, P), night = nightness(w.tick);
       const dZone = w.nav.get("zone")[i];
       const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
-      const people = w.agents.filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist5(o, a) < 6);
+      const people = nearAgents(w, a.x, a.y, 6).filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist5(o, a) < 6);
       const pack2 = packOf(w, a), leader = pack2[0];
       if (sp.nocturnal && night < 0.3 && a.task?.id !== "leave") a.task = { id: "leave" };
       if (a.task?.id === "leave" || a.hp < maxHp(a) * 0.35) {
@@ -13574,7 +13637,7 @@ dd.q4{color:#c58cff;font-weight:600}
   // src/agents/brains/grazer.js
   function threatsNear(w, a, radius, from) {
     const out = [];
-    for (const o of w.agents) {
+    for (const o of nearAgents(w, a.x, a.y, radius)) {
       if (o === a || o.dead || !matchesKind(o.species, from)) continue;
       if (o.task?.tame === a.id) continue;
       const r = radius * (o.stalking ? 0.55 : 1);
@@ -13607,7 +13670,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       recover(a);
-      if (w.agents.some((o) => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) {
+      if (nearAgents(w, a.x, a.y, 3).some((o) => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) {
         a.task = { id: "graze" };
         return;
       }
@@ -13622,7 +13685,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       const t = a.task?.id === "graze" ? a.task : a.task = { id: "graze" };
       if (!t.spot || w.rngs.wild() < 0.01) {
-        const ok = new Set(sp.grazes.terrain.map((id) => TERRAIN.get(id).code));
+        const ok = grazeCodes(sp.grazes.terrain);
         const reach = w.rngs.wild() < 0.15 ? 30 : 7;
         let bestV = -Infinity;
         for (let k = 0; k < 12; k++) {
@@ -13671,7 +13734,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function graze(w, a, sp) {
     const t = a.task?.id === "graze" ? a.task : a.task = { id: "graze" };
     if (!t.spot || w.rngs.wild() < 6e-3) {
-      const ok = new Set((sp.mule?.terrain || ["grass"]).map((id) => TERRAIN.get(id).code));
+      const ok = grazeCodes(sp.mule?.terrain || ["grass"]);
       const reach = w.rngs.wild() < 0.1 ? 24 : 6;
       let bestV = -Infinity;
       for (let k = 0; k < 10; k++) {
@@ -20752,7 +20815,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 850ef22" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 bd39a7b" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

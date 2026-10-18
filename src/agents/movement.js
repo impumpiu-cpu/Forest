@@ -174,9 +174,14 @@ export function sprintMul(a, sprint, drain) {
 export const recover = a => { a.stamina = Math.min(1, a.stamina + 0.002); };
 
 // soft push so agents don't stack on the same spot
+// (a sweep: the pairs are visited in list order, as before, but only those within 0.4 along x)
 export function separate(w) {
-  const ags = w.agents;
-  for (let p = 0; p < ags.length; p++) for (let q = p + 1; q < ags.length; q++) {
+  const ags = w.agents, n = ags.length;
+  const order = Array.from({length: n}, (_, k) => k).sort((p, q) => ags[p].x - ags[q].x || p - q);
+  const pairs = [];
+  for (let s = 0; s < n; s++) for (let t = s + 1; t < n && ags[order[t]].x - ags[order[s]].x < 0.4; t++) pairs.push(order[s] < order[t] ? [order[s], order[t]] : [order[t], order[s]]);
+  pairs.sort((u, v) => u[0] - v[0] || u[1] - v[1]);
+  for (const [p, q] of pairs) {
     const A = ags[p], B = ags[q], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy;
     if (d2 >= 0.16 || d2 < 1e-6) continue;
     const d = Math.sqrt(d2), push = (0.4 - d) * 0.25, ux = dx / d * push, uy = dy / d * push;

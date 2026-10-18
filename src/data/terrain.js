@@ -65,4 +65,13 @@ for (const d of TERRAIN.all()) BY_CODE[d.code] = d;
 export const WALKABLE = Uint8Array.from(BY_CODE.map(d => (d.walkable ? 1 : 0)));
 export const OPEN = Uint8Array.from(BY_CODE.map(d => (d.open ? 1 : 0)));
 export const isWater = code => BY_CODE[code].kind === 'water';
+// where a grazer may feed: the terrains its species names plus every open meadow (graze ≥ 0.5 — grass,
+// steppe), so that a hare born on the steppe does not search the map for a patch of grass. One Set per list.
+const GRAZE_SETS = new Map();
+export function grazeCodes(list) {
+  const key = list.join(',');
+  let s = GRAZE_SETS.get(key);
+  if (!s) { s = new Set([...list.map(id => TERRAIN.get(id).code), ...BY_CODE.filter(d => d.graze >= 0.5).map(d => d.code)]); GRAZE_SETS.set(key, s); }
+  return s;
+}
 export const isGround = code => BY_CODE[code].kind === 'ground';

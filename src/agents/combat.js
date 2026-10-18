@@ -13,6 +13,7 @@ import {critChance, lethal} from './wounds.js';
 import {CRIT} from '../data/wounds.js';
 import {noteHit} from './trophies.js';
 import {heatTo} from '../world/heat.js';
+import {nearAgents} from './spatial.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
@@ -28,7 +29,7 @@ export function canSee(w, a, t) {
 
 export function nearestHostile(w, a, r) {
   let best = null, bd = r * r;
-  for (const o of w.agents) {
+  for (const o of nearAgents(w, a.x, a.y, r)) {
     if (o === a || o.dead || o.downed || !(isHostile(a, o) || aggressor(a, o))) continue;   // the fallen are out of the fight
     const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
     if (d >= bd || !canSee(w, a, o)) continue;

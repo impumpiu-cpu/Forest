@@ -7,7 +7,7 @@
 // when its trader is gone it heads for the map edge. A wild one grazes and now and then wanders off.
 // All numbers come from the species' `mule` block in data/species.js.
 import {SPECIES} from '../../data/species.js';
-import {TERRAIN} from '../../data/terrain.js';
+import {grazeCodes} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, bolt, follow, sprintMul, recover, shunsHeat, sameLand} from '../movement.js';
@@ -46,7 +46,7 @@ function kick(w, a, t, M, charging) {
 function graze(w, a, sp) {
   const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});
   if (!t.spot || w.rngs.wild() < 0.006) {
-    const ok = new Set((sp.mule?.terrain || ['grass']).map(id => TERRAIN.get(id).code));
+    const ok = grazeCodes(sp.mule?.terrain || ['grass']);
     const reach = w.rngs.wild() < 0.1 ? 24 : 6;
     let bestV = -Infinity;
     for (let k = 0; k < 10; k++) {
