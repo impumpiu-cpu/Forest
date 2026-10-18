@@ -19,6 +19,7 @@ import {VERSION} from '../version.js';
 import {ensureOre} from './ores.js';
 import {ensurePlants} from './plants.js';
 import {ensureRegion} from './region.js';
+import {ensureHeat} from './heat.js';
 import {newTradeState} from '../settlement/trade.js';
 import {ensureFlows} from '../outside/index.js';
 import {recomputeMods} from '../settlement/mods.js';
@@ -39,7 +40,9 @@ const FORMATS = [1, 2, 3];
 const TASK_BRAINS = new Set(['colonist', 'raider']);
 
 // world keys that are rebuilt rather than saved
-const LIVE = new Set(['nav', 'rng', 'rngs', 'astar', 'perf', 'scratch']);
+const LIVE = new Set(['nav', 'rng', 'rngs', 'astar', 'perf', 'scratch', 'chunks']);
+// grid buffers that the next field pass overwrites anyway
+const GRID_LIVE = new Set(['heat2', 'smoke2']);
 
 // definitions and presets are referenced by name, never copied into the save
 function externals() {
@@ -55,7 +58,7 @@ function externals() {
 export function saveWorld(w) {
   const nav = w.nav;
   const tree = encode({world: w, nav: {dist: nav.dist, dirty: [...nav.dirtySet], last: nav.last}},
-    {externals: externals(), skip: (path, k) => path === 'world.world' && LIVE.has(k)});
+    {externals: externals(), skip: (path, k) => (path === 'world.world' && LIVE.has(k)) || (path === 'world.world.grid' && GRID_LIVE.has(k))});
   return {format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, rngs: streamStates(w.rngs), tree};
 }
 
@@ -66,6 +69,8 @@ export function loadWorld(save) {
   ensureRegion(w);
   ensureOre(w);
   ensurePlants(w);
+  w.grid.smoke2 ??= new Float32Array(w.n);
+  ensureHeat(w);   // old saves hold an absolute temperature; the chunks are rebuilt and settle in one pass
   w.trade ??= newTradeState(); w.caravan ??= null;
   w.corpses ??= []; w.graves ??= []; w.graveyard ??= null;
   w.behave ??= newBehaviour();

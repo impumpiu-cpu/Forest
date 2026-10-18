@@ -27,6 +27,7 @@ import {escortOption, aidOption, mates} from '../../settlement/together.js';
 import {stepDowned, healWounds} from '../wounds.js';
 import {canDoAction, jobAccess} from '../skills.js';
 import {BUILDINGS} from '../../data/buildings.js';
+import {tempAt} from '../../world/heat.js';
 
 // the weight of answering an attack on oneself: more than any need can reach
 const ATTACKED = 2.6;
@@ -53,7 +54,7 @@ const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 
 function decide(w, a) {
   const night = nightness(w.tick), camp = w.camp.cells, g = w.grid;
-  let campHot = 0; for (const c of camp) campHot = Math.max(campHot, g.temp[c] + g.fire[c] * 400);
+  let campHot = 0; for (const c of camp) campHot = Math.max(campHot, tempAt(w, c) + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
   const ctx = {pop: colonists(w).length, food: foodTotal(w), openSites: openSites(w).length,
     preyCount: huntable(w, JOBS.get('hunt'), a).length, favourites: favourites(w), patients: waiting(w),

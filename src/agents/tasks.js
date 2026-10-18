@@ -7,7 +7,6 @@ import {JOBS} from '../data/jobs.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NEEDS} from '../data/needs.js';
 import {FOODS} from '../data/foods.js';
-import {ambientTemp} from '../core/time.js';
 import {cellOf} from '../world/grid.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
@@ -24,6 +23,7 @@ import {homeComfort, prayed} from '../settlement/life.js';
 import {squadOf, noteHome, SQUAD} from './squad.js';
 import {enterEscort, escortGoing, guardStep, giveAid, askForBed, bond, TOGETHER} from '../settlement/together.js';
 import {agentInZone} from '../settlement/zone.js';
+import {heatTo, coolTo} from '../world/heat.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -90,7 +90,7 @@ TASKS.registerAll([
 
   {id: 'flee', label: () => 'бежит от огня', step(w, a) {
     escapeHeat(w, a);
-    if (w.grid.temp[cellOf(w, a)] < ambientTemp(w) + 16 && !nearFire(w, a, 3)) done(w, a);
+    if (w.grid.heat[cellOf(w, a)] < 16 && !nearFire(w, a, 3)) done(w, a);
   }},
 
   // fight: archers and slingers keep their distance and shoot, everyone else closes in
@@ -152,7 +152,7 @@ TASKS.registerAll([
     for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
       if (x < 0 || y < 0 || x >= w.w || y >= w.h || (x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 > 2.9) continue;
       const j = y * w.w + x;
-      if (g.fire[j] > 0) { g.fire[j] = Math.max(0, g.fire[j] - power); g.temp[j] -= 6; if (g.fire[j] === 0) g.temp[j] = Math.min(g.temp[j], 60); }
+      if (g.fire[j] > 0) { g.fire[j] = Math.max(0, g.fire[j] - power); g.heat[j] -= 6; if (g.fire[j] === 0) coolTo(w, j, 60); }
     }
   }},
 
@@ -198,7 +198,7 @@ TASKS.registerAll([
     for (const c of b.cells) { const d = Math.hypot((c % w.w) + 0.5 - a.x, ((c / w.w) | 0) + 0.5 - a.y); if (d < bd) { bd = d; best = c; } }
     if (best == null) { done(w, a); return; }
     if (bd > SQUAD.burnNear) { if (approach(w, a, (best % w.w) + 0.5, ((best / w.w) | 0) + 0.5) === null) fail(w, a, 'к постройке не подойти', 'impossible'); return; }
-    w.grid.fire[best] = Math.max(w.grid.fire[best], 0.6); w.grid.temp[best] = Math.max(w.grid.temp[best], 300); w.grid.fuel[best] = Math.max(w.grid.fuel[best], 0.9);
+    w.grid.fire[best] = Math.max(w.grid.fire[best], 0.6); heatTo(w, best, 300); w.grid.fuel[best] = Math.max(w.grid.fuel[best], 0.9);
     w.nav.dirty('fire');
     sq.lit = w.tick;
     log(w, `${a.name} ${a.gender === 'f' ? 'подожгла' : 'поджёг'} ${BUILDINGS.get(b.key).name.toLowerCase()}! Тушите!`, 'danger', 'notice');

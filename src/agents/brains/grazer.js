@@ -6,6 +6,7 @@ import {nightness} from '../../core/time.js';
 import {cellOf, walkable, inBounds, inMap} from '../../world/grid.js';
 import {moveToward, escapeHeat, nearFire, bolt, follow, sprintMul, recover, approach, shunsHeat, sameLand} from '../movement.js';
 import {kill} from '../agent.js';
+import {tempAt} from '../../world/heat.js';
 
 function threatsNear(w, a, radius, from) {
   const out = [];
@@ -21,7 +22,7 @@ function threatsNear(w, a, radius, from) {
 export const grazerBrain = {
   id: 'grazer',
   step(w, a) {
-    const sp = SPECIES.get(a.species), i = cellOf(w, a), T = w.grid.temp[i];
+    const sp = SPECIES.get(a.species), i = cellOf(w, a), T = tempAt(w, i);
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, sp.flee.sprint); return; }
 

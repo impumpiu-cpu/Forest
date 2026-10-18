@@ -12,6 +12,7 @@ import {SPECIES} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {maxHp, kill} from '../agent.js';
 import {squadOf, planFor} from '../squad.js';
+import {tempAt} from '../../world/heat.js';
 
 // the mindless dead go for whoever is this close; anyone further off they find by shambling to the camp
 // (the camp flow field always leads there; a long A* chase across the map would stall instead)
@@ -20,7 +21,7 @@ const HUNT_RADIUS = 16;
 export const raiderBrain = {
   id: 'raider',
   step(w, a) {
-    const T = w.grid.temp[cellOf(w, a)], sp = SPECIES.get(a.species), mindless = sp.mindless || a.warBeast;   // goes for people, never for the stores
+    const T = tempAt(w, cellOf(w, a)), sp = SPECIES.get(a.species), mindless = sp.mindless || a.warBeast;   // goes for people, never for the stores
     // the dead burn twice as easily as the living
     let cause = null;
     if (T > sp.heatHarm) { a.hp -= Math.min(sp.undead ? 0.012 : 0.006, (T - sp.heatHarm) * (sp.undead ? 0.0001 : 0.00005)); cause = 'огня'; }

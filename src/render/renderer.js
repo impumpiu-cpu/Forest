@@ -3,6 +3,7 @@
 import {CARCASS} from '../agents/carcass.js';
 import {hpShare} from '../agents/agent.js';
 import {BY_CODE, T, WALKABLE} from '../data/terrain.js';
+import {airTemp} from '../world/heat.js';
 import {SPECIES} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -109,9 +110,9 @@ export class Renderer {
   }
 
   paintGlowSmoke(w) {
-    const gd = this.glow.img.data, sd = this.smoke.img.data, g = w.grid;
+    const gd = this.glow.img.data, sd = this.smoke.img.data, g = w.grid, amb = airTemp(w);
     for (let i = 0; i < w.n; i++) {
-      const f = g.fire[i], o = i * 4, hot = clamp((g.temp[i] - 60) / 400, 0, 1);
+      const f = g.fire[i], o = i * 4, hot = clamp((amb + g.heat[i] - 60) / 400, 0, 1);
       gd[o] = 255; gd[o + 1] = 120 + f * 90; gd[o + 2] = 40 + f * 40; gd[o + 3] = Math.min(255, f * 255 + hot * 120);
       const sm = Math.min(1, g.smoke[i] * 0.6); sd[o] = 150; sd[o + 1] = 150; sd[o + 2] = 144; sd[o + 3] = sm * 190;
     }
@@ -119,11 +120,11 @@ export class Renderer {
   }
 
   paintField(w, mode, view) {
-    const d = this.field.img.data, g = w.grid, dCamp = w.nav.get('camp');
+    const d = this.field.img.data, g = w.grid, dCamp = w.nav.get('camp'), amb = airTemp(w);
     const shown = RESOURCES.filter(r => r.map && !view.resHidden.has(r.id));
     for (let i = 0; i < w.n; i++) {
       const o = i * 4; let r = 0, gg = 0, b = 0, a = 0;
-      if (mode === 'temp') { [r, gg, b] = tempColor(g.temp[i]); a = 205; }
+      if (mode === 'temp') { [r, gg, b] = tempColor(amb + g.heat[i]); a = 205; }
       else if (mode === 'res') {
         // the strongest of the resources switched on in the filter; everything else is dimmed
         let best = 0.05, col = null;

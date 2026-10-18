@@ -3,6 +3,7 @@ import {DAY, HOUR, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {T} from '../data/terrain.js';
 import {season, seasonDay} from '../data/seasons.js';
+import {heatTo} from './heat.js';
 
 export function setWind(w) {
   const a = w.wind.dir * Math.PI / 180;
@@ -41,7 +42,7 @@ function lightning(w) {
   for (let k = 0; k < 40; k++) {
     const i = (w.rngs.weather() * w.n) | 0, x = i % w.w, y = (i / w.w) | 0;
     if (w.grid.terr[i] !== T.FOREST || w.grid.fire[i] > 0 || (x - w.camp.x) ** 2 + (y - w.camp.y) ** 2 < 22 * 22) continue;
-    w.grid.fire[i] = 0.7; w.grid.temp[i] = 350; w.nav.dirty('fire');
+    w.grid.fire[i] = 0.7; heatTo(w, i, 350); w.nav.dirty('fire');
     log(w, `Молния ударила в лес в ${Math.round(Math.hypot(x - w.camp.x, y - w.camp.y))} клетках от лагеря.`, 'weather', 'notice');
     return;
   }

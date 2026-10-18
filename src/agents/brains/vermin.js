@@ -14,6 +14,7 @@ import {smellCarcass} from '../carcass.js';
 import {log} from '../../core/log.js';
 import {nightness} from '../../core/time.js';
 import {esc, g} from '../../core/util.js';
+import {tempAt} from '../../world/heat.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const VERMIN = {
@@ -42,7 +43,7 @@ function denOf(w, a) {
 export const verminBrain = {
   id: 'vermin',
   step(w, a) {
-    const sp = SPECIES.get(a.species), V = sp.vermin, Tc = w.grid.temp[cellOf(w, a)];
+    const sp = SPECIES.get(a.species), V = sp.vermin, Tc = tempAt(w, cellOf(w, a));
     // a kikimora is seen only up close (agents/combat.js): colonists do not chase her across the map
     if (V.veil != null) a.veil = V.veil;
     if (Tc > sp.heatHarm || nearFire(w, a, 1)) { escapeHeat(w, a, 1.2); return; }

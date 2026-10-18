@@ -4686,8 +4686,7 @@ dd.q4{color:#c58cff;font-weight:600}
       active: (w) => w.stats.fireCount > 0,
       hazard: 25,
       urgent: true,
-      prepare: (w) => ambientTemp(w) + 14,
-      seed: (w, i, lim) => w.grid.temp[i] < lim && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6
+      seed: (w, i) => w.grid.heat[i] < 14 && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6
     }
   ]);
   for (const p of PLANTS.all()) {
@@ -4712,6 +4711,52 @@ dd.q4{color:#c58cff;font-weight:600}
       prepare: (w) => new Set(w.buildings.filter((x) => x.key === b.id && x.done).flatMap((x) => x.cells)),
       seed: (w, i, cells) => cells.has(i)
     });
+  }
+
+  // src/world/heat.js
+  var CHUNK = 8;
+  var HEAT_EPS = 0.05;
+  var SMOKE_EPS = 2e-3;
+  var airTemp = (w) => perTick(w, "airTemp", () => ambientTemp(w));
+  var tempAt = (w, i) => airTemp(w) + w.grid.heat[i];
+  function heatTo(w, i, t) {
+    const d = t - airTemp(w);
+    if (w.grid.heat[i] < d) w.grid.heat[i] = d;
+    touchHeat(w, i);
+  }
+  function coolTo(w, i, t) {
+    const d = t - airTemp(w);
+    if (w.grid.heat[i] > d) w.grid.heat[i] = d;
+    touchHeat(w, i);
+  }
+  function chunks(w) {
+    if (w.chunks && w.chunks.n === w.n) return w.chunks;
+    const cw = Math.ceil(w.w / CHUNK), ch = Math.ceil(w.h / CHUNK);
+    return w.chunks = { n: w.n, cw, ch, active: new Uint8Array(cw * ch) };
+  }
+  var chunkOf = (w, i) => {
+    const c = chunks(w);
+    return ((i / w.w | 0) / CHUNK | 0) * c.cw + (i % w.w / CHUNK | 0);
+  };
+  function touchHeat(w, i) {
+    chunks(w).active[chunkOf(w, i)] = 1;
+  }
+  function ensureHeat(w) {
+    const g3 = w.grid;
+    if (!g3.heat) {
+      g3.heat = new Float32Array(w.n);
+      if (g3.temp) {
+        const amb = ambientTemp(w);
+        for (let i = 0; i < w.n; i++) g3.heat[i] = g3.temp[i] - amb;
+      }
+    }
+    delete g3.temp;
+    delete g3.temp2;
+    g3.heat2 ?? (g3.heat2 = new Float32Array(w.n));
+    if (!w.chunks || w.chunks.n !== w.n) {
+      delete w.chunks;
+      chunks(w).active.fill(1);
+    }
   }
 
   // src/nav/navigation.js
@@ -4742,7 +4787,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     // fire, heat and smoke make cells expensive; `hazard` scales that for the escape map
     computeCost(hazard) {
-      const g3 = this.w.grid, cost = this.cost;
+      const g3 = this.w.grid, cost = this.cost, amb = airTemp(this.w);
       for (let i = 0; i < this.w.n; i++) {
         const t = g3.terr[i];
         if (!WALKABLE[t]) {
@@ -4750,7 +4795,7 @@ dd.q4{color:#c58cff;font-weight:600}
           continue;
         }
         let c = BY_CODE[t].pathCost + (g3.fire[i] * 60 + g3.smoke[i] * 1.5) * hazard;
-        if (g3.temp[i] > 45) c += (g3.temp[i] - 45) * 0.3 * hazard;
+        if (amb + g3.heat[i] > 45) c += (amb + g3.heat[i] - 45) * 0.3 * hazard;
         cost[i] = c;
       }
     }
@@ -5055,7 +5100,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (r === null) moveToward(w, a, x + 0.5, y + 0.5, mul);
     return "moving";
   }
-  var danger = (w, i) => w.grid.temp[i] + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
+  var danger = (w, i) => tempAt(w, i) + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
   var shunsHeat = (w, a, sp, T2, r) => T2 > fearHeat(sp) || fearsFire(sp) && nearFire(w, a, r);
   function nearFire(w, a, r) {
     const cx = a.x | 0, cy = a.y | 0, R2 = Math.ceil(r);
@@ -8147,7 +8192,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const i = y * w.w + x;
       if (w.grid.fuel[i] > 0.05) {
         w.grid.fire[i] = Math.max(w.grid.fire[i], 0.5);
-        w.grid.temp[i] = Math.max(w.grid.temp[i], 260);
+        heatTo(w, i, 260);
       }
     }
     w.nav.dirty("fire");
@@ -8288,7 +8333,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var spiritBrain = {
     id: "spirit",
     step(w, a) {
-      const sp = SPECIES.get(a.species), S = sp.spirit, i = cellOf(w, a), T2 = w.grid.temp[i];
+      const sp = SPECIES.get(a.species), S = sp.spirit, i = cellOf(w, a), T2 = tempAt(w, i);
       if (T2 > sp.heatHarm) {
         a.hp -= Math.min(0.02, (T2 - sp.heatHarm) * 2e-4);
         if (a.hp <= 0) {
@@ -10766,7 +10811,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const i = w.rngs.weather() * w.n | 0, x = i % w.w, y = i / w.w | 0;
       if (w.grid.terr[i] !== T.FOREST || w.grid.fire[i] > 0 || (x - w.camp.x) ** 2 + (y - w.camp.y) ** 2 < 22 * 22) continue;
       w.grid.fire[i] = 0.7;
-      w.grid.temp[i] = 350;
+      heatTo(w, i, 350);
       w.nav.dirty("fire");
       log(w, `\u041C\u043E\u043B\u043D\u0438\u044F \u0443\u0434\u0430\u0440\u0438\u043B\u0430 \u0432 \u043B\u0435\u0441 \u0432 ${Math.round(Math.hypot(x - w.camp.x, y - w.camp.y))} \u043A\u043B\u0435\u0442\u043A\u0430\u0445 \u043E\u0442 \u043B\u0430\u0433\u0435\u0440\u044F.`, "weather", "notice");
       return;
@@ -10908,8 +10953,8 @@ dd.q4{color:#c58cff;font-weight:600}
         wood: f32(),
         fuel: f32(),
         fire: f32(),
-        temp: f32(),
-        temp2: f32(),
+        heat: f32(),
+        heat2: f32(),
         smoke: f32(),
         smoke2: f32(),
         bush: new Uint8Array(n),
@@ -10948,7 +10993,6 @@ dd.q4{color:#c58cff;font-weight:600}
     const g3 = world2.grid;
     for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) world2.camp.cells.push((t.cy + yy) * t.w + t.cx + xx);
     world2.camp.set = new Set(world2.camp.cells);
-    const amb = ambientTemp(world2);
     for (let i = 0; i < n; i++) {
       const tt = g3.terr[i];
       g3.fuel[i] = BY_CODE[tt].fuel;
@@ -10960,7 +11004,6 @@ dd.q4{color:#c58cff;font-weight:600}
         g3.food[i] = 0.5 + 0.5 * t.rng();
         g3.fuel[i] += 0.2;
       }
-      g3.temp[i] = amb;
     }
     for (const r of RESOURCES.all()) world2.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
     findLakes(world2);
@@ -10975,13 +11018,28 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/world/fields.js
   var FIRE = { cap: 320, heat: 46, pF: 0.011, pG: 5e-3, burn: 0.03, wetIgn: 80, outBase: 2e-3, outWet: 0.012, ignForest: 80, ignGrass: 120 };
-  function advect(w, src, dst, ux, uy) {
-    const W = w.w, H2 = w.h;
-    if (ux === 0 && uy === 0) {
-      dst.set(src);
-      return;
+  function planChunks(w) {
+    const c = chunks(w), { cw, ch, active } = c;
+    const todo = c.todo ?? (c.todo = new Uint8Array(cw * ch));
+    todo.fill(0);
+    let any = false;
+    for (let cy = 0; cy < ch; cy++) for (let cx = 0; cx < cw; cx++) {
+      if (!active[cy * cw + cx]) continue;
+      any = true;
+      for (let y = Math.max(0, cy - 1); y <= Math.min(ch - 1, cy + 1); y++) for (let x = Math.max(0, cx - 1); x <= Math.min(cw - 1, cx + 1); x++) todo[y * cw + x] = 1;
     }
-    const X0 = new Int32Array(W), TX = new Float64Array(W), Y0 = new Int32Array(H2), TY = new Float64Array(H2);
+    return any;
+  }
+  var TABLES = /* @__PURE__ */ new WeakMap();
+  function sampling(w, ux, uy) {
+    let m = TABLES.get(w);
+    if (!m) TABLES.set(w, m = /* @__PURE__ */ new Map());
+    const key3 = ux + ":" + uy;
+    let t = m.get(key3);
+    if (t) return t;
+    if (m.size >= 4) m.clear();
+    const W = w.w, H2 = w.h;
+    const X0 = new Int32Array(W), TX = new Float32Array(W), Y0 = new Int32Array(H2), TY = new Float32Array(H2);
     for (let x = 0; x < W; x++) {
       const sx = clamp(x - ux, 0, W - 1.001);
       X0[x] = sx | 0;
@@ -10992,50 +11050,94 @@ dd.q4{color:#c58cff;font-weight:600}
       Y0[y] = sy | 0;
       TY[y] = sy - Y0[y];
     }
-    for (let y = 0; y < H2; y++) {
-      const ty = TY[y], row = Y0[y] * W, out = y * W;
-      for (let x = 0; x < W; x++) {
-        const tx2 = TX[x], i0 = row + X0[x];
-        dst[out + x] = (src[i0] * (1 - tx2) + src[i0 + 1] * tx2) * (1 - ty) + (src[i0 + W] * (1 - tx2) + src[i0 + W + 1] * tx2) * ty;
+    m.set(key3, t = { X0, TX, Y0, TY });
+    return t;
+  }
+  function advect(w, src, dst, ux, uy, set) {
+    const W = w.w, H2 = w.h, c = chunks(w), cw = c.cw, ch = c.ch;
+    const still = ux === 0 && uy === 0, tb = still ? null : sampling(w, ux, uy);
+    for (let cy = 0; cy < ch; cy++) for (let cx = 0; cx < cw; cx++) {
+      if (!set[cy * cw + cx]) continue;
+      const y0 = cy * CHUNK, y1 = Math.min(H2, y0 + CHUNK), x0 = cx * CHUNK, x1 = Math.min(W, x0 + CHUNK);
+      if (still) for (let y = y0; y < y1; y++) dst.set(src.subarray(y * W + x0, y * W + x1), y * W + x0);
+      else {
+        const { X0, TX, Y0, TY } = tb;
+        for (let y = y0; y < y1; y++) {
+          const ty = TY[y], row = Y0[y] * W, out = y * W;
+          for (let x = x0; x < x1; x++) {
+            const tx2 = TX[x], i0 = row + X0[x];
+            dst[out + x] = (src[i0] * (1 - tx2) + src[i0 + 1] * tx2) * (1 - ty) + (src[i0 + W] * (1 - tx2) + src[i0 + W + 1] * tx2) * ty;
+          }
+        }
       }
+      if (cy > 0 && !set[(cy - 1) * cw + cx]) dst.fill(0, (y0 - 1) * W + x0, (y0 - 1) * W + x1);
+      if (y1 < H2 && !set[(cy + 1) * cw + cx]) dst.fill(0, y1 * W + x0, y1 * W + x1);
+      if (cx > 0 && !set[cy * cw + cx - 1]) for (let y = y0; y < y1; y++) dst[y * W + x0 - 1] = 0;
+      if (x1 < W && !set[cy * cw + cx + 1]) for (let y = y0; y < y1; y++) dst[y * W + x1] = 0;
     }
   }
-  var SMOKE_GONE = 2e-3;
   function heatAndSmoke(w) {
-    const g3 = w.grid, W = w.w, H2 = w.h, amb = ambientTemp(w), rain2 = w.weather.rain, st = w.stats;
-    const smokeOn = st.fireCount > 0 || (st.smokeMax ?? 1) >= SMOKE_GONE;
-    if (smokeOn) {
-      advect(w, g3.smoke, g3.smoke2, w.wind.x, w.wind.y);
-      [g3.smoke, g3.smoke2] = [g3.smoke2, g3.smoke];
-    } else if (st.smokeMax > 0) {
+    const g3 = w.grid, W = w.w, H2 = w.h, rain2 = w.weather.rain, st = w.stats, c = chunks(w);
+    if (!g3.heat) ensureHeat(w);
+    const smokeOn = st.fireCount > 0 || (st.smokeMax ?? 1) >= SMOKE_EPS;
+    if (!smokeOn && st.smokeMax > 0) {
       g3.smoke.fill(0);
       g3.smoke2.fill(0);
       st.smokeMax = 0;
     }
-    advect(w, g3.temp, g3.temp2, w.wind.x * 0.35, w.wind.y * 0.35);
-    [g3.temp, g3.temp2] = [g3.temp2, g3.temp];
-    const { temp, temp2, smoke, smoke2, fire, terr } = g3;
-    let smax = 0, tmax = -Infinity, anyFire = false;
-    for (let y = 0; y < H2; y++) for (let x = 0; x < W; x++) {
-      const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H2 - 1 ? i + W : i;
-      const Tc = temp[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
-      const Tn = Tc + 0.15 * (temp[l] + temp[r] + temp[u] + temp[d] - 4 * Tc) + (relax + rain2 * 0.03) * (amb - Tc) + fire[i] * FIRE.heat;
-      const tv = Tn > FIRE.cap ? FIRE.cap : Tn;
-      temp2[i] = tv;
-      if (tv > tmax) tmax = tv;
-      if (fire[i] > 0) anyFire = true;
-      if (!smokeOn) continue;
-      const Sm = smoke[i], Sn = Sm + 0.12 * (smoke[l] + smoke[r] + smoke[u] + smoke[d] - 4 * Sm) - 0.012 * Sm + fire[i] * 0.25;
-      const sv = Sn > 4 ? 4 : Sn;
-      smoke2[i] = sv;
-      if (sv > smax) smax = sv;
+    st.tempMax = airTemp(w) + (st.heatMax ?? 0);
+    if (!planChunks(w)) {
+      st.heatMax = 0;
+      st.tempMax = airTemp(w);
+      st.anyFire = false;
+      return;
     }
-    [g3.temp, g3.temp2] = [g3.temp2, g3.temp];
+    const { todo, active, cw } = c;
+    if (smokeOn) {
+      advect(w, g3.smoke, g3.smoke2, w.wind.x, w.wind.y, todo);
+      [g3.smoke, g3.smoke2] = [g3.smoke2, g3.smoke];
+    }
+    advect(w, g3.heat, g3.heat2, w.wind.x * 0.35, w.wind.y * 0.35, todo);
+    [g3.heat, g3.heat2] = [g3.heat2, g3.heat];
+    const { heat, heat2, smoke, smoke2, fire, terr } = g3;
+    let smax = 0, hmax = 0, anyFire = false;
+    for (let cy = 0; cy < c.ch; cy++) for (let cx = 0; cx < cw; cx++) {
+      const ci = cy * cw + cx;
+      if (!todo[ci]) continue;
+      const y0 = cy * CHUNK, y1 = Math.min(H2, y0 + CHUNK), x0 = cx * CHUNK, x1 = Math.min(W, x0 + CHUNK);
+      let cmax = 0, csm = 0, cfire = false;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+        const i = y * W + x, l = x > 0 ? i - 1 : i, r = x < W - 1 ? i + 1 : i, u = y > 0 ? i - W : i, d = y < H2 - 1 ? i + W : i;
+        const Dc = heat[i], relax = terr[i] === T.WATER ? 0.05 : 0.012;
+        let Dn = Dc + 0.15 * (heat[l] + heat[r] + heat[u] + heat[d] - 4 * Dc) - (relax + rain2 * 0.03) * Dc + fire[i] * FIRE.heat;
+        if (Dn > FIRE.cap) Dn = FIRE.cap;
+        heat2[i] = Dn;
+        const ad = Dn < 0 ? -Dn : Dn;
+        if (ad > cmax) cmax = ad;
+        if (fire[i] > 0) cfire = true;
+        if (!smokeOn) continue;
+        const Sm = smoke[i], Sn = Sm + 0.12 * (smoke[l] + smoke[r] + smoke[u] + smoke[d] - 4 * Sm) - 0.012 * Sm + fire[i] * 0.25;
+        const sv = Sn > 4 ? 4 : Sn;
+        smoke2[i] = sv;
+        if (sv > csm) csm = sv;
+      }
+      const live2 = cfire || cmax >= HEAT_EPS || csm >= SMOKE_EPS;
+      active[ci] = live2 ? 1 : 0;
+      if (!live2) for (let y = y0; y < y1; y++) {
+        heat2.fill(0, y * W + x0, y * W + x1);
+        if (smokeOn) smoke2.fill(0, y * W + x0, y * W + x1);
+      }
+      if (cmax > hmax) hmax = cmax;
+      if (csm > smax) smax = csm;
+      if (cfire) anyFire = true;
+    }
+    [g3.heat, g3.heat2] = [g3.heat2, g3.heat];
     if (smokeOn) {
       [g3.smoke, g3.smoke2] = [g3.smoke2, g3.smoke];
       st.smokeMax = smax;
     }
-    st.tempMax = tmax;
+    st.heatMax = hmax;
+    st.tempMax = airTemp(w) + hmax;
     st.anyFire = anyFire;
   }
   function campfire(w) {
@@ -11043,7 +11145,11 @@ dd.q4{color:#c58cff;font-weight:600}
     w.campLit = !!campFuel(w) && (nightness(w.tick) > 0.3 || cold);
     if (!w.campLit) return;
     burnCampFuel(w, 4e-3);
-    for (const c of w.camp.cells) if (w.grid.temp[c] < 30) w.grid.temp[c] += 3.2;
+    const g3 = w.grid, amb = airTemp(w);
+    for (const c of w.camp.cells) if (g3.heat[c] < 30 - amb) {
+      g3.heat[c] += 3.2;
+      touchHeat(w, c);
+    }
     const hay = (w.stock.hay || 0) >= 1;
     for (const b of w.buildings) {
       const H2 = b.done && BUILDINGS.get(b.key).heat;
@@ -11054,52 +11160,61 @@ dd.q4{color:#c58cff;font-weight:600}
         to += 5;
         w.stock.hay -= 3e-4;
       }
-      for (const c of b.cells) if (w.grid.temp[c] < to) w.grid.temp[c] += H2.add;
+      for (const c of b.cells) if (g3.heat[c] < to - amb) {
+        g3.heat[c] += H2.add;
+        touchHeat(w, c);
+      }
     }
   }
   function burn(w) {
-    const g3 = w.grid, rain2 = w.weather.rain, st = w.stats;
+    const g3 = w.grid, rain2 = w.weather.rain, st = w.stats, c = chunks(w), W = w.w, H2 = w.h, amb = airTemp(w);
     const sig = season(w).ignite, ignF = FIRE.ignForest + w.climate.ign + sig, ignG = FIRE.ignGrass + w.climate.ign + sig;
     st.fireCount = 0;
     st.fireNearCamp = 0;
     if (!st.anyFire && st.tempMax != null && st.tempMax < Math.min(ignF, ignG)) return;
-    for (let i = 0; i < w.n; i++) {
-      const f = g3.fire[i];
-      if (f > 0) {
-        const wet = g3.fert[i];
-        g3.fuel[i] -= FIRE.burn * f;
-        let nf = g3.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain2)) : f * 0.85;
-        if (w.rngs.fire() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;
-        nf -= rain2 * 0.045;
-        if (g3.fuel[i] <= 0) g3.fuel[i] = 0;
-        if (nf < 0.03) {
-          g3.fire[i] = 0;
-          if (g3.fuel[i] < 0.25) {
-            if (g3.terr[i] !== T.WATER && g3.terr[i] !== T.ROCK) g3.terr[i] = T.BURNT;
-            g3.wood[i] = 0;
-            g3.food[i] = 0;
-            g3.bush[i] = 0;
-            st.burntCells++;
-            g3.fert[i] = Math.min(1, g3.fert[i] + 0.08);
-            w.nav.dirty("trees");
-            w.nav.dirty("berries");
-            if (g3.bld[i] >= 0) burnBuilding(w, g3.bld[i]);
-          } else {
-            g3.wood[i] = Math.min(g3.wood[i], Math.max(0, g3.fuel[i] - 1.2));
-            w.nav.dirty("trees");
-          }
-        } else g3.fire[i] = nf;
-        if (g3.fire[i] > 0) {
-          st.fireCount++;
-          if (distToCamp2(w, i) < 400) st.fireNearCamp++;
-          if (isCampArea(w, i)) burnStock(w, 15e-4);
+    for (let cy = 0; cy < c.ch; cy++) for (let cx = 0; cx < c.cw; cx++) {
+      if (!c.active[cy * c.cw + cx]) continue;
+      const y0 = cy * CHUNK, y1 = Math.min(H2, y0 + CHUNK), x0 = cx * CHUNK, x1 = Math.min(W, x0 + CHUNK);
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) burnCell(w, g3, y * W + x, rain2, st, amb, ignF, ignG);
+    }
+  }
+  function burnCell(w, g3, i, rain2, st, amb, ignF, ignG) {
+    const f = g3.fire[i];
+    if (f > 0) {
+      const wet = g3.fert[i];
+      g3.fuel[i] -= FIRE.burn * f;
+      let nf = g3.fuel[i] > 0.15 ? Math.min(1, f + 0.05 * (1 - rain2)) : f * 0.85;
+      if (w.rngs.fire() < FIRE.outBase + FIRE.outWet * wet) nf *= 0.6;
+      nf -= rain2 * 0.045;
+      if (g3.fuel[i] <= 0) g3.fuel[i] = 0;
+      if (nf < 0.03) {
+        g3.fire[i] = 0;
+        if (g3.fuel[i] < 0.25) {
+          if (g3.terr[i] !== T.WATER && g3.terr[i] !== T.ROCK) g3.terr[i] = T.BURNT;
+          g3.wood[i] = 0;
+          g3.food[i] = 0;
+          g3.bush[i] = 0;
+          st.burntCells++;
+          g3.fert[i] = Math.min(1, g3.fert[i] + 0.08);
+          w.nav.dirty("trees");
+          w.nav.dirty("berries");
+          if (g3.bld[i] >= 0) burnBuilding(w, g3.bld[i]);
+        } else {
+          g3.wood[i] = Math.min(g3.wood[i], Math.max(0, g3.fuel[i] - 1.2));
+          w.nav.dirty("trees");
         }
-      } else if (g3.fuel[i] > 0.12) {
-        const forest = g3.fuel[i] > 1, wet = g3.fert[i];
-        if (g3.temp[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && w.rngs.fire() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain2)) {
-          g3.fire[i] = 0.2;
-          w.nav.dirty("fire");
-        }
+      } else g3.fire[i] = nf;
+      if (g3.fire[i] > 0) {
+        st.fireCount++;
+        if (distToCamp2(w, i) < 400) st.fireNearCamp++;
+        if (isCampArea(w, i)) burnStock(w, 15e-4);
+      }
+    } else if (g3.fuel[i] > 0.12) {
+      const forest = g3.fuel[i] > 1, wet = g3.fert[i];
+      if (amb + g3.heat[i] > (forest ? ignF : ignG) + FIRE.wetIgn * wet && w.rngs.fire() < (forest ? FIRE.pF : FIRE.pG) * (1 - 0.6 * wet) * (1 - 0.9 * rain2)) {
+        g3.fire[i] = 0.2;
+        w.nav.dirty("fire");
+        touchHeat(w, i);
       }
     }
   }
@@ -11109,11 +11224,14 @@ dd.q4{color:#c58cff;font-weight:600}
       g3.food[c] = Math.min(1, g3.food[c] + 35e-4 * S.garden * (0.4 + 1.2 * g3.fert[c]));
       if (g3.food[c] > 0.35 && g3.food[c] < 0.354) w.nav.dirty("berries");
     }
-    if (w.mods.add.coolCamp) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
-      const x = w.camp.x + xx, y = w.camp.y + yy;
-      if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
-      const j = y * w.w + x;
-      if (g3.temp[j] > 40) g3.temp[j] -= (g3.temp[j] - 40) * 0.08;
+    if (w.mods.add.coolCamp) {
+      const amb = airTemp(w), lim = 40 - amb;
+      for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
+        const x = w.camp.x + xx, y = w.camp.y + yy;
+        if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
+        const j = y * w.w + x;
+        if (g3.heat[j] > lim) g3.heat[j] -= (g3.heat[j] - lim) * 0.08;
+      }
     }
     const samples = Math.round(160 * w.n / 12288 * w.climate.regrow);
     for (let k = 0; k < samples; k++) {
@@ -11371,7 +11489,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
   }
   function stepBody(w, a) {
-    const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
+    const sp = SPECIES.get(a.species), T2 = tempAt(w, cellOf(w, a));
     let starving = null;
     for (const id of sp.needs) {
       const n = NEEDS2.get(id);
@@ -11507,7 +11625,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var predatorBrain = {
     id: "predator",
     step(w, a) {
-      const sp = SPECIES.get(a.species), P = sp.predator, i = cellOf(w, a), T2 = w.grid.temp[i];
+      const sp = SPECIES.get(a.species), P = sp.predator, i = cellOf(w, a), T2 = tempAt(w, i);
       stepBody(w, a);
       if (a.dead) return;
       if (a.cd > 0) a.cd--;
@@ -12335,7 +12453,7 @@ dd.q4{color:#c58cff;font-weight:600}
     } },
     { id: "flee", label: () => "\u0431\u0435\u0436\u0438\u0442 \u043E\u0442 \u043E\u0433\u043D\u044F", step(w, a) {
       escapeHeat(w, a);
-      if (w.grid.temp[cellOf(w, a)] < ambientTemp(w) + 16 && !nearFire(w, a, 3)) done2(w, a);
+      if (w.grid.heat[cellOf(w, a)] < 16 && !nearFire(w, a, 3)) done2(w, a);
     } },
     // fight: archers and slingers keep their distance and shoot, everyone else closes in
     { id: "fight", label: (t) => t.shooting ? "\u0441\u0442\u0440\u0435\u043B\u044F\u0435\u0442" : "\u0434\u0435\u0440\u0451\u0442\u0441\u044F", step(w, a, task) {
@@ -12420,8 +12538,8 @@ dd.q4{color:#c58cff;font-weight:600}
         const j = y * w.w + x;
         if (g3.fire[j] > 0) {
           g3.fire[j] = Math.max(0, g3.fire[j] - power2);
-          g3.temp[j] -= 6;
-          if (g3.fire[j] === 0) g3.temp[j] = Math.min(g3.temp[j], 60);
+          g3.heat[j] -= 6;
+          if (g3.fire[j] === 0) coolTo(w, j, 60);
         }
       }
     } },
@@ -12504,7 +12622,7 @@ dd.q4{color:#c58cff;font-weight:600}
         return;
       }
       w.grid.fire[best] = Math.max(w.grid.fire[best], 0.6);
-      w.grid.temp[best] = Math.max(w.grid.temp[best], 300);
+      heatTo(w, best, 300);
       w.grid.fuel[best] = Math.max(w.grid.fuel[best], 0.9);
       w.nav.dirty("fire");
       sq.lit = w.tick;
@@ -12695,7 +12813,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function decide(w, a) {
     const night = nightness(w.tick), camp = w.camp.cells, g3 = w.grid;
     let campHot = 0;
-    for (const c of camp) campHot = Math.max(campHot, g3.temp[c] + g3.fire[c] * 400);
+    for (const c of camp) campHot = Math.max(campHot, tempAt(w, c) + g3.fire[c] * 400);
     const campOk = campHot < 40 ? 1 : 0.1;
     const ctx = {
       pop: colonists(w).length,
@@ -12843,7 +12961,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var raiderBrain = {
     id: "raider",
     step(w, a) {
-      const T2 = w.grid.temp[cellOf(w, a)], sp = SPECIES.get(a.species), mindless = sp.mindless || a.warBeast;
+      const T2 = tempAt(w, cellOf(w, a)), sp = SPECIES.get(a.species), mindless = sp.mindless || a.warBeast;
       let cause = null;
       if (T2 > sp.heatHarm) {
         a.hp -= Math.min(sp.undead ? 0.012 : 6e-3, (T2 - sp.heatHarm) * (sp.undead ? 1e-4 : 5e-5));
@@ -12903,7 +13021,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var grazerBrain = {
     id: "grazer",
     step(w, a) {
-      const sp = SPECIES.get(a.species), i = cellOf(w, a), T2 = w.grid.temp[i];
+      const sp = SPECIES.get(a.species), i = cellOf(w, a), T2 = tempAt(w, i);
       if (T2 > sp.heatHarm) {
         a.hp -= Math.min(0.01, (T2 - sp.heatHarm) * 1e-4);
         if (a.hp <= 0) {
@@ -13009,7 +13127,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var muleBrain = {
     id: "mule",
     step(w, a) {
-      const sp = SPECIES.get(a.species), M = sp.mule, i = cellOf(w, a), T2 = w.grid.temp[i];
+      const sp = SPECIES.get(a.species), M = sp.mule, i = cellOf(w, a), T2 = tempAt(w, i);
       if (a.cd > 0) a.cd--;
       if (T2 > sp.heatHarm) {
         a.hp -= Math.min(0.01, (T2 - sp.heatHarm) * 1e-4);
@@ -13087,7 +13205,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var caravanBrain = {
     id: "caravan",
     step(w, a) {
-      const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)];
+      const sp = SPECIES.get(a.species), T2 = tempAt(w, cellOf(w, a));
       if (a.cd > 0) a.cd--;
       if (T2 > sp.heatHarm) {
         a.hp -= Math.min(6e-3, (T2 - sp.heatHarm) * 5e-5);
@@ -13180,7 +13298,7 @@ dd.q4{color:#c58cff;font-weight:600}
     id: "vermin",
     step(w, a) {
       var _a;
-      const sp = SPECIES.get(a.species), V = sp.vermin, Tc = w.grid.temp[cellOf(w, a)];
+      const sp = SPECIES.get(a.species), V = sp.vermin, Tc = tempAt(w, cellOf(w, a));
       if (V.veil != null) a.veil = V.veil;
       if (Tc > sp.heatHarm || nearFire(w, a, 1)) {
         escapeHeat(w, a, 1.2);
@@ -13262,7 +13380,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var livestockBrain = {
     id: "livestock",
     step(w, a) {
-      const sp = SPECIES.get(a.species), i = cellOf(w, a), T2 = w.grid.temp[i];
+      const sp = SPECIES.get(a.species), i = cellOf(w, a), T2 = tempAt(w, i);
       if (T2 > sp.heatHarm) {
         a.hp -= Math.min(0.01, (T2 - sp.heatHarm) * 1e-4);
         if (a.hp <= 0) {
@@ -14242,9 +14360,9 @@ dd.q4{color:#c58cff;font-weight:600}
       this.terrain.ctx.putImageData(this.terrain.img, 0, 0);
     }
     paintGlowSmoke(w) {
-      const gd = this.glow.img.data, sd = this.smoke.img.data, g3 = w.grid;
+      const gd = this.glow.img.data, sd = this.smoke.img.data, g3 = w.grid, amb = airTemp(w);
       for (let i = 0; i < w.n; i++) {
-        const f = g3.fire[i], o = i * 4, hot = clamp((g3.temp[i] - 60) / 400, 0, 1);
+        const f = g3.fire[i], o = i * 4, hot = clamp((amb + g3.heat[i] - 60) / 400, 0, 1);
         gd[o] = 255;
         gd[o + 1] = 120 + f * 90;
         gd[o + 2] = 40 + f * 40;
@@ -14259,13 +14377,13 @@ dd.q4{color:#c58cff;font-weight:600}
       this.smoke.ctx.putImageData(this.smoke.img, 0, 0);
     }
     paintField(w, mode, view2) {
-      const d = this.field.img.data, g3 = w.grid, dCamp = w.nav.get("camp");
+      const d = this.field.img.data, g3 = w.grid, dCamp = w.nav.get("camp"), amb = airTemp(w);
       const shown = RESOURCES.filter((r) => r.map && !view2.resHidden.has(r.id));
       for (let i = 0; i < w.n; i++) {
         const o = i * 4;
         let r = 0, gg = 0, b = 0, a = 0;
         if (mode === "temp") {
-          [r, gg, b] = tempColor(g3.temp[i]);
+          [r, gg, b] = tempColor(amb + g3.heat[i]);
           a = 205;
         } else if (mode === "res") {
           let best = 0.05, col = null;
@@ -19518,10 +19636,10 @@ dd.q4{color:#c58cff;font-weight:600}
       const lake = g3.lake[i] >= 0 ? w.lakes[g3.lake[i]] : null;
       const ore = oreOf(w, i) ? ` \xB7 ${oreOf(w, i).label} ${Math.ceil(g3.oreLeft[i])}` : "";
       if (lake) {
-        $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) \u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A \xB7 ${lake.cap ? `\u0440\u044B\u0431\u044B ${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E, \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"} \xB7 ${g3.temp[i].toFixed(1)} \xB0C`;
+        $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) \u043E\u0437\u0435\u0440\u043E, ${lake.size} \u043A\u043B\u0435\u0442\u043E\u043A \xB7 ${lake.cap ? `\u0440\u044B\u0431\u044B ${Math.floor(lake.fish)} \u0438\u0437 ${lake.cap}${lake.resting ? ", \u0432\u044B\u043B\u043E\u0432\u043B\u0435\u043D\u043E, \u043E\u0442\u0434\u044B\u0445\u0430\u0435\u0442" : ""}` : "\u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u043E \u0434\u043B\u044F \u0440\u044B\u0431\u044B"} \xB7 ${tempAt(w, i).toFixed(1)} \xB0C`;
         return;
       }
-      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g3.terr[i]].label}${ore} \xB7 ${g3.temp[i].toFixed(1)} \xB0C \xB7 \u043F\u043E\u0447\u0432\u0430 ${Math.round(g3.fert[i] * 100)}% \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g3.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g3.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g3.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g3.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g3.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
+      $("readout").textContent = `(${i % w.w}, ${i / w.w | 0}) ${BY_CODE[g3.terr[i]].label}${ore} \xB7 ${tempAt(w, i).toFixed(1)} \xB0C \xB7 \u043F\u043E\u0447\u0432\u0430 ${Math.round(g3.fert[i] * 100)}% \xB7 \u0442\u043E\u043F\u043B\u0438\u0432\u043E ${g3.fuel[i].toFixed(2)} \xB7 \u043E\u0433\u043E\u043D\u044C ${g3.fire[i].toFixed(2)} \xB7 \u0434\u044B\u043C ${g3.smoke[i].toFixed(2)} \xB7 \u044F\u0433\u043E\u0434\u044B ${g3.food[i].toFixed(2)} \xB7 \u0434\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430 ${g3.wood[i].toFixed(2)} \xB7 \u043F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F ${d >= 1e8 ? "\u043D\u0435\u0442" : d.toFixed(0)}`;
     }
     // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
     renderSelection(w, view2) {
@@ -19607,7 +19725,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (g3.wood[i] > 0) rows.push(`<dt>\u0414\u0440\u0435\u0432\u0435\u0441\u0438\u043D\u0430</dt><dd>${g3.wood[i].toFixed(2)}</dd>`);
       if (g3.bush[i]) rows.push(`<dt>\u042F\u0433\u043E\u0434\u044B</dt><dd>${g3.food[i].toFixed(2)}</dd>`);
       if (WALKABLE[g3.terr[i]]) rows.push(`<dt>\u041F\u043B\u043E\u0434\u043E\u0440\u043E\u0434\u0438\u0435</dt><dd>${Math.round(g3.fert[i] * 100)}% \xB7 ${soilWord(g3.fert[i])}</dd>`);
-      rows.push(`<dt>\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430</dt><dd>${g3.temp[i].toFixed(1)} \xB0C</dd>`, `<dt>\u041F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F</dt><dd>${d >= 1e8 ? "\u043D\u0435\u0442" : Math.round(d)}</dd>`);
+      rows.push(`<dt>\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430</dt><dd>${tempAt(w, i).toFixed(1)} \xB0C</dd>`, `<dt>\u041F\u0443\u0442\u044C \u0434\u043E \u043B\u0430\u0433\u0435\u0440\u044F</dt><dd>${d >= 1e8 ? "\u043D\u0435\u0442" : Math.round(d)}</dd>`);
       if (g3.fire[i] > 0) rows.push(`<dt>\u041E\u0433\u043E\u043D\u044C</dt><dd>${g3.fire[i].toFixed(2)}</dd>`);
       for (const gr of w.graves || []) if (gr.x === x && gr.y === y) rows.push(`<dt>\u041C\u043E\u0433\u0438\u043B\u0430</dt><dd>${esc(gr.name)} \xB7 \u0443\u043C\u0435\u0440${gr.f ? "\u043B\u0430" : ""} \u0432 \u0434\u0435\u043D\u044C ${dayOf(gr.died) + 1}${gr.rite ? ", \u043F\u043E\u0445\u043E\u0440\u043E\u043D\u0435\u043D" + (gr.f ? "\u0430" : "") + " \u0441 \u043E\u0431\u0440\u044F\u0434\u043E\u043C" : ""}</dd>`);
       for (const c of w.corpses || []) if ((c.x | 0) === x && (c.y | 0) === y) rows.push(`<dt>\u0422\u0435\u043B\u043E</dt><dd>${esc(c.name)}, \u0435\u0449\u0451 \u043D\u0435 \u043F\u043E\u0445\u043E\u0440\u043E\u043D\u0435\u043D${c.f ? "\u0430" : ""}</dd>`);
@@ -19638,7 +19756,7 @@ dd.q4{color:#c58cff;font-weight:600}
       return rows.length ? `<dl class="kv why">${rows.join("")}</dl>` : "";
     }
     creatureHtml(w, a) {
-      const sp = SPECIES.get(a.species), T2 = w.grid.temp[cellOf(w, a)].toFixed(1);
+      const sp = SPECIES.get(a.species), T2 = tempAt(w, cellOf(w, a)).toFixed(1);
       const rows = [`<dt>\u0421\u0435\u0439\u0447\u0430\u0441</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>\u0417\u0434\u043E\u0440\u043E\u0432\u044C\u0435</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
       if (a.band) rows.push(`<dt>\u041A\u0442\u043E</dt><dd>${RAID_BANDS.get(a.band).label}; ${{ beast: "\u043D\u0435\u0440\u0430\u0437\u0443\u043C\u0435\u043D", semi: "\u043F\u043E\u043B\u0443\u0440\u0430\u0437\u0443\u043C\u0435\u043D", sentient: "\u0440\u0430\u0437\u0443\u043C\u0435\u043D" }[sp.mind]}</dd>`);
       const h = huntOf(w, a);
@@ -19752,7 +19870,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const i = y * w.w + x;
         if (w.grid.fuel[i] > 0.05) {
           w.grid.fire[i] = 0.6;
-          w.grid.temp[i] = 300;
+          heatTo(w, i, 300);
         }
       }
       w.nav.dirty("fire");
@@ -19765,7 +19883,7 @@ dd.q4{color:#c58cff;font-weight:600}
         if (!inBounds(w, x, y) || (x - cx) ** 2 + (y - cy) ** 2 > 49) continue;
         const i = y * w.w + x;
         g3.fire[i] = 0;
-        g3.temp[i] = Math.min(g3.temp[i], amb - 2);
+        coolTo(w, i, amb - 2);
         g3.smoke[i] *= 0.3;
       }
       w.nav.dirty("fire");
@@ -20068,13 +20186,14 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.47.0 World \xB7 17.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 cba1e4d" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 225ef72" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;
   var FORMATS = [1, 2, 3];
   var TASK_BRAINS = /* @__PURE__ */ new Set(["colonist", "raider"]);
-  var LIVE = /* @__PURE__ */ new Set(["nav", "rng", "rngs", "astar", "perf", "scratch"]);
+  var LIVE = /* @__PURE__ */ new Set(["nav", "rng", "rngs", "astar", "perf", "scratch", "chunks"]);
+  var GRID_LIVE = /* @__PURE__ */ new Set(["heat2", "smoke2"]);
   function externals() {
     const m = /* @__PURE__ */ new Map();
     for (const r of Registry.list) for (const d of r.all()) m.set(d, `${r.kind}:${d.id}`);
@@ -20088,30 +20207,32 @@ dd.q4{color:#c58cff;font-weight:600}
     const nav = w.nav;
     const tree = encode(
       { world: w, nav: { dist: nav.dist, dirty: [...nav.dirtySet], last: nav.last } },
-      { externals: externals(), skip: (path, k) => path === "world.world" && LIVE.has(k) }
+      { externals: externals(), skip: (path, k) => path === "world.world" && LIVE.has(k) || path === "world.world.grid" && GRID_LIVE.has(k) }
     );
     return { format: SAVE_FORMAT, version: VERSION, name: w.cfg.name, tick: w.tick, savedAt: Date.now(), rng: w.rng.state, rngs: streamStates(w.rngs), tree };
   }
   function loadWorld(save2) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
     if (!save2 || !FORMATS.includes(save2.format)) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \xAB\u0422\u0451\u043F\u043B\u043E\u0433\u043E \u0411\u0440\u043E\u0434\u0430\xBB \u0438\u043B\u0438 \u043E\u043D\u043E \u0438\u0437 \u043D\u0435\u0441\u043E\u0432\u043C\u0435\u0441\u0442\u0438\u043C\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438.");
     const { world: w, nav } = decode(save2.tree, { externals: externals() });
     checkKnown(w);
     ensureRegion(w);
     ensureOre(w);
     ensurePlants(w);
+    (_a = w.grid).smoke2 ?? (_a.smoke2 = new Float32Array(w.n));
+    ensureHeat(w);
     w.trade ?? (w.trade = newTradeState());
     w.caravan ?? (w.caravan = null);
     w.corpses ?? (w.corpses = []);
     w.graves ?? (w.graves = []);
     w.graveyard ?? (w.graveyard = null);
     w.behave ?? (w.behave = newBehaviour());
-    (_a = w.behave).outcomes ?? (_a.outcomes = {});
-    (_b = w.behave).company ?? (_b.company = 0);
-    (_c = w.behave).squads ?? (_c.squads = { started: 0, goal: 0, retreat: 0, wiped: 0 });
-    (_d = w.behave).hunts ?? (_d.hunts = { started: 0 });
+    (_b = w.behave).outcomes ?? (_b.outcomes = {});
+    (_c = w.behave).company ?? (_c.company = 0);
+    (_d = w.behave).squads ?? (_d.squads = { started: 0, goal: 0, retreat: 0, wiped: 0 });
+    (_e = w.behave).hunts ?? (_e.hunts = { started: 0 });
     for (const a of w.agents) if (a.task?.id === "chase" && a.hunt == null) a.task = { id: "roam" };
-    (_e = w.behave).social ?? (_e.social = { escort: 0, aid: 0, yield: 0, calm: 0, bond: 0 });
+    (_f = w.behave).social ?? (_f.social = { escort: 0, aid: 0, yield: 0, calm: 0, bond: 0 });
     for (const b of w.buildings) delete b.workers;
     for (const c of w.corpses) {
       delete c.by;
@@ -20127,7 +20248,7 @@ dd.q4{color:#c58cff;font-weight:600}
       w.stock.coal = (w.stock.coal || 0) + w.stock.charcoal;
       delete w.stock.charcoal;
     }
-    for (const r of RESOURCES.all()) (_f = w.stock)[_g = r.id] ?? (_f[_g] = 0);
+    for (const r of RESOURCES.all()) (_g = w.stock)[_h = r.id] ?? (_g[_h] = 0);
     w.rng = mulberry(0);
     w.rng.state = save2.rng;
     w.rngs = save2.rngs ? restoreStreams(save2.rngs, w.cfg.seed) : newStreams(`${w.cfg.seed}:${save2.rng}`);
@@ -20142,7 +20263,7 @@ dd.q4{color:#c58cff;font-weight:600}
       w.chronicle.deaths["\u043E\u0442 " + k] = (w.chronicle.deaths["\u043E\u0442 " + k] || 0) + w.chronicle.deaths[k];
       delete w.chronicle.deaths[k];
     }
-    for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) (_h = a.mods)[k] ?? (_h[k] = v);
+    for (const a of w.agents) if (a.mods) for (const [k, v] of Object.entries(BASE_MODS)) (_i = a.mods)[k] ?? (_i[k] = v);
     for (const a of w.agents) {
       const sp = SPECIES.get(a.species);
       if (a.special || !sp.special) continue;
@@ -20163,8 +20284,8 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const a of w.agents) migrateSkills(a);
     for (const a of w.agents) if (a.prefs && !a.food) a.food = drawFoodPrefs(mulberry(a.id * 7919 + 17));
     for (const a of w.agents) if (a.prefs) {
-      for (const id of JOBS.ids()) (_i = a.prefs)[id] ?? (_i[id] = 1);
-      for (const s of activeSkills()) (_j = a.skill)[_k = s.id] ?? (_j[_k] = 0);
+      for (const id of JOBS.ids()) (_j = a.prefs)[id] ?? (_j[id] = 1);
+      for (const s of activeSkills()) (_k = a.skill)[_l = s.id] ?? (_k[_l] = 0);
     }
     w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
     ensureFlows(w);

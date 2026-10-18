@@ -12,6 +12,7 @@ import {LEARN} from '../data/skills.js';
 import {critChance, lethal} from './wounds.js';
 import {CRIT} from '../data/wounds.js';
 import {noteHit} from './trophies.js';
+import {heatTo} from '../world/heat.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
@@ -91,7 +92,7 @@ function scorch(w, t) {
   for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) {
     if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
     const i = y * w.w + x;
-    if (w.grid.fuel[i] > 0.05) { w.grid.fire[i] = Math.max(w.grid.fire[i], 0.5); w.grid.temp[i] = Math.max(w.grid.temp[i], 260); }
+    if (w.grid.fuel[i] > 0.05) { w.grid.fire[i] = Math.max(w.grid.fire[i], 0.5); heatTo(w, i, 260); }
   }
   w.nav.dirty('fire');
 }

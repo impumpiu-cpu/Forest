@@ -20,6 +20,7 @@ import {esc, g} from '../../core/util.js';
 import {nightness, HOUR, DAY} from '../../core/time.js';
 import {contest} from '../../data/special.js';
 import {agentInZone} from '../../settlement/zone.js';
+import {tempAt} from '../../world/heat.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -120,7 +121,7 @@ function lure(w, a, sp, S) {
 export const spiritBrain = {
   id: 'spirit',
   step(w, a) {
-    const sp = SPECIES.get(a.species), S = sp.spirit, i = cellOf(w, a), T = w.grid.temp[i];
+    const sp = SPECIES.get(a.species), S = sp.spirit, i = cellOf(w, a), T = tempAt(w, i);
     if (T > sp.heatHarm) {
       a.hp -= Math.min(0.02, (T - sp.heatHarm) * 0.0002);
       if (a.hp <= 0) { kill(w, a, 'огня'); return; }

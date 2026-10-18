@@ -4,6 +4,7 @@ import {BY_CODE} from '../data/terrain.js';
 import {cellOf, walkable, inBounds, canStep, DX, DY, inMap} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {clearLine, findPath} from '../nav/astar.js';
+import {tempAt} from '../world/heat.js';
 
 export function speedOf(w, a) {
   const web = a.webbed && w.tick < a.webbed.until ? a.webbed.slow : 1;   // tangled in a spider's web
@@ -58,7 +59,7 @@ export function follow(w, a, mapId, mul = 1) {
   return 'moving';
 }
 
-export const danger = (w, i) => w.grid.temp[i] + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
+export const danger = (w, i) => tempAt(w, i) + w.grid.fire[i] * 400 + w.grid.smoke[i] * 6;
 
 // does this animal run from the heat here: too hot underfoot, or flames close by (unless it fears no fire)
 export const shunsHeat = (w, a, sp, T, r) => T > fearHeat(sp) || (fearsFire(sp) && nearFire(w, a, r));

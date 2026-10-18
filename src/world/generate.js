@@ -2,7 +2,7 @@
 import {newBehaviour} from '../settlement/behaviour.js';
 import {mulberry, seedNumber, newStreams} from '../core/rng.js';
 import {clamp} from '../core/util.js';
-import {HOUR, ambientTemp} from '../core/time.js';
+import {HOUR} from '../core/time.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {SIZES, CLIMATES, STOCKS} from '../data/presets.js';
 import {RESOURCES} from '../data/resources.js';
@@ -76,7 +76,7 @@ export function createWorld(cfg) {
     cfg: {...cfg}, climate: CLIMATES[cfg.climate],
     w: t.w, h: t.h, n, rng: t.rng, rngs: newStreams(cfg.seed), tick: Math.round(7 * HOUR),
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, food: f32(), wood: f32(), fuel: f32(), fire: f32(),
-      temp: f32(), temp2: f32(), smoke: f32(), smoke2: f32(), bush: new Uint8Array(n), bld: new Int16Array(n).fill(-1)},
+      heat: f32(), heat2: f32(), smoke: f32(), smoke2: f32(), bush: new Uint8Array(n), bld: new Int16Array(n).fill(-1)},
     camp: {x: t.cx, y: t.cy, cells: [], set: null},
     stock: {}, agents: [], buildings: [], gardenCells: [], armory: [], fx: [], corpses: [], graves: [], graveyard: null,
     nextId: 1, nameIdx: 0, bldSeq: 0,
@@ -92,13 +92,11 @@ export function createWorld(cfg) {
   for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) world.camp.cells.push((t.cy + yy) * t.w + t.cx + xx);
   world.camp.set = new Set(world.camp.cells);
 
-  const amb = ambientTemp(world);
   for (let i = 0; i < n; i++) {
     const tt = g.terr[i];
     g.fuel[i] = BY_CODE[tt].fuel;
     if (tt === T.FOREST) { g.wood[i] = 0.6 + 0.4 * t.rng(); g.fuel[i] += g.wood[i]; }
     else if (tt === T.GRASS && t.rng() < 0.07 * g.fert[i] && !isCampArea(world, i)) { g.bush[i] = 1; g.food[i] = 0.5 + 0.5 * t.rng(); g.fuel[i] += 0.2; }
-    g.temp[i] = amb;
   }
   for (const r of RESOURCES.all()) world.stock[r.id] = STOCKS[cfg.stock].stock[r.id] || 0;
   findLakes(world);

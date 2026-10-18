@@ -21,6 +21,7 @@ import {log} from '../../core/log.js';
 import {think} from '../mind.js';
 import {esc, clamp} from '../../core/util.js';
 import {dropCarcass, carcassById, smellCarcass, eat, startHunt, endHunt, huntOf, huntAim, CARCASS} from '../carcass.js';
+import {tempAt} from '../../world/heat.js';
 
 // how far a hungry predator smells its prey (cells)
 const SCENT = 70;
@@ -97,7 +98,7 @@ function ignoreFor(w, a, id, ticks) {
 export const predatorBrain = {
   id: 'predator',
   step(w, a) {
-    const sp = SPECIES.get(a.species), P = sp.predator, i = cellOf(w, a), T = w.grid.temp[i];
+    const sp = SPECIES.get(a.species), P = sp.predator, i = cellOf(w, a), T = tempAt(w, i);
     stepBody(w, a);
     if (a.dead) return;
     if (a.cd > 0) a.cd--;

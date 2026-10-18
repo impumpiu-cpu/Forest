@@ -58,6 +58,7 @@ import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidSize} from '../settlement/threat.js';
+import {tempAt} from '../world/heat.js';
 import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
 import {MIGRATIONS} from '../data/migrations.js';
@@ -424,8 +425,8 @@ export class Panel {
     const g = w.grid, i = hoverCell, d = w.nav.get('camp')[i];
     const lake = g.lake[i] >= 0 ? w.lakes[g.lake[i]] : null;
     const ore = oreOf(w, i) ? ` · ${oreOf(w, i).label} ${Math.ceil(g.oreLeft[i])}` : '';
-    if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${g.temp[i].toFixed(1)} °C`; return; }
-    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${ore} · ${g.temp[i].toFixed(1)} °C · почва ${Math.round(g.fert[i] * 100)}% · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
+    if (lake) { $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) озеро, ${lake.size} клеток · ${lake.cap ? `рыбы ${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', выловлено, отдыхает' : ''}` : 'слишком мало для рыбы'} · ${tempAt(w, i).toFixed(1)} °C`; return; }
+    $('readout').textContent = `(${i % w.w}, ${(i / w.w) | 0}) ${BY_CODE[g.terr[i]].label}${ore} · ${tempAt(w, i).toFixed(1)} °C · почва ${Math.round(g.fert[i] * 100)}% · топливо ${g.fuel[i].toFixed(2)} · огонь ${g.fire[i].toFixed(2)} · дым ${g.smoke[i].toFixed(2)} · ягоды ${g.food[i].toFixed(2)} · древесина ${g.wood[i].toFixed(2)} · путь до лагеря ${d >= 1e8 ? 'нет' : d.toFixed(0)}`;
   }
 
   // the pane under the map: the selected creature, building or cell; a hint when nothing is picked
@@ -502,7 +503,7 @@ export class Panel {
     if (g.wood[i] > 0) rows.push(`<dt>Древесина</dt><dd>${g.wood[i].toFixed(2)}</dd>`);
     if (g.bush[i]) rows.push(`<dt>Ягоды</dt><dd>${g.food[i].toFixed(2)}</dd>`);
     if (WALKABLE[g.terr[i]]) rows.push(`<dt>Плодородие</dt><dd>${Math.round(g.fert[i] * 100)}% · ${soilWord(g.fert[i])}</dd>`);
-    rows.push(`<dt>Температура</dt><dd>${g.temp[i].toFixed(1)} °C</dd>`, `<dt>Путь до лагеря</dt><dd>${d >= 1e8 ? 'нет' : Math.round(d)}</dd>`);
+    rows.push(`<dt>Температура</dt><dd>${tempAt(w, i).toFixed(1)} °C</dd>`, `<dt>Путь до лагеря</dt><dd>${d >= 1e8 ? 'нет' : Math.round(d)}</dd>`);
     if (g.fire[i] > 0) rows.push(`<dt>Огонь</dt><dd>${g.fire[i].toFixed(2)}</dd>`);
     for (const gr of w.graves || []) if (gr.x === x && gr.y === y) rows.push(`<dt>Могила</dt><dd>${esc(gr.name)} · умер${gr.f ? 'ла' : ''} в день ${dayOf(gr.died) + 1}${gr.rite ? ', похоронен' + (gr.f ? 'а' : '') + ' с обрядом' : ''}</dd>`);
     for (const c of w.corpses || []) if ((c.x | 0) === x && (c.y | 0) === y) rows.push(`<dt>Тело</dt><dd>${esc(c.name)}, ещё не похоронен${c.f ? 'а' : ''}</dd>`);
@@ -533,7 +534,7 @@ export class Panel {
   }
 
   creatureHtml(w, a) {
-    const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)].toFixed(1);
+    const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a)).toFixed(1);
     const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
     if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
     const h = huntOf(w, a);

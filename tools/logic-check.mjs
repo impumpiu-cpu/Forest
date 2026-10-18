@@ -55,13 +55,14 @@ import {TRADE} from '../src/data/trade.js';
 import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../src/settlement/trade.js';
 import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
+import {heatTo} from '../src/world/heat.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
   const w = newGame({...DEFAULT_CFG, seed, size: 'small', colonists: 0, wildlife: 'none', predators: 'none', raids: 'off'});
   w.agents = [];
   const g = w.grid;
-  for (let i = 0; i < w.w * w.h; i++) { g.terr[i] = T.GRASS; g.temp[i] = 20; g.fire[i] = 0; g.smoke[i] = 0; g.wood[i] = 0; g.lake && (g.lake[i] = -1); }
+  for (let i = 0; i < w.w * w.h; i++) { g.terr[i] = T.GRASS; g.heat[i] = 0; g.fire[i] = 0; g.smoke[i] = 0; g.wood[i] = 0; g.lake && (g.lake[i] = -1); }
   w.lakes = [];
   w.nav.buildAll();
   return w;
@@ -157,7 +158,7 @@ check('T06', 'яд действует на любое живое существ�
 check('T07', 'жаростойкий зверь не бежит от тёплой земли', () => {
   const w = scene();
   const s = put(w, 'salamander', 'wild', 30.5, 30.5);
-  w.grid.temp[cellOf(w, s)] = 100;
+  heatTo(w, cellOf(w, s), 100);
   brain(w, s);
   return s.task?.id !== 'bolt' || 'убегает';
 });

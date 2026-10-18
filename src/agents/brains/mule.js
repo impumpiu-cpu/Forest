@@ -16,6 +16,7 @@ import {kill, maxHp} from '../agent.js';
 import {season} from '../../data/seasons.js';
 import {log} from '../../core/log.js';
 import {esc} from '../../core/util.js';
+import {tempAt} from '../../world/heat.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead);
@@ -63,7 +64,7 @@ function graze(w, a, sp) {
 export const muleBrain = {
   id: 'mule',
   step(w, a) {
-    const sp = SPECIES.get(a.species), M = sp.mule, i = cellOf(w, a), T = w.grid.temp[i];
+    const sp = SPECIES.get(a.species), M = sp.mule, i = cellOf(w, a), T = tempAt(w, i);
     if (a.cd > 0) a.cd--;
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }

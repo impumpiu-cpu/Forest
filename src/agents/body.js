@@ -4,6 +4,7 @@ import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
 import {kill, maxHp} from './agent.js';
 import {think} from './mind.js';
+import {tempAt} from '../world/heat.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 
@@ -22,7 +23,7 @@ export function stepEffects(w, a) {
 }
 
 export function stepBody(w, a) {
-  const sp = SPECIES.get(a.species), T = w.grid.temp[cellOf(w, a)];
+  const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a));
   let starving = null;
   for (const id of sp.needs) {
     const n = NEEDS.get(id);

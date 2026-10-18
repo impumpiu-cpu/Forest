@@ -7,7 +7,6 @@ import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
 import {has, openSites} from '../settlement/query.js';
 import {nextToRock} from '../world/grid.js';
-import {ambientTemp} from '../core/time.js';
 import {SPECIES} from './species.js';
 import {cellOf} from '../world/grid.js';
 import {BUILDINGS} from './buildings.js';
@@ -79,8 +78,7 @@ NAVMAPS.registerAll([
     seed: (w, i) => w.grid.fire[i] > 0.05 && ((i % w.w) - w.camp.x) ** 2 + (((i / w.w) | 0) - w.camp.y) ** 2 < 400},
   // escape map: seeds are cells barely warmer than the air; fire is made almost impassable
   {id: 'safe', active: w => w.stats.fireCount > 0, hazard: 25, urgent: true,
-    prepare: w => ambientTemp(w) + 14,
-    seed: (w, i, lim) => w.grid.temp[i] < lim && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6},
+    seed: (w, i) => w.grid.heat[i] < 14 && w.grid.fire[i] === 0 && w.grid.smoke[i] < 0.6},
 ]);
 
 // one map per wild plant (data/plants.js): its ripe beds
