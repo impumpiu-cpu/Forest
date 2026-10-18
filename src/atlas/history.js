@@ -20,6 +20,7 @@ import {LAIRS} from '../data/lairs.js';
 import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {forgetSites} from './sites.js';
+import {stepParties} from './parties.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -49,6 +50,7 @@ function say(a, text) {
 export function startHistory(a) {
   const rnd = mulberry(seedNumber(`${a.cfg.seed}:atlas:history`));
   a.hist = {era: 'wild', year: 1, season: 0, step: 0, end: historyLength(a), rnd, nextLair: 1, names: new Set(), last: {}};
+  a.f.road ||= new Float32Array(a.n); a.towns ||= [];   // the parties of the wild walk a world without roads or towns yet
   initFauna(a, rnd);
   const t = placeLairs(a, rnd);
   const parts = LAIRS.filter(L => !L.tribe && t[L.id]).map(L => `${L.label} — ${t[L.id]}`), tribes = LAIRS.filter(L => L.tribe && t[L.id]).map(L => `${L.label} — ${t[L.id]}`);
@@ -111,6 +113,7 @@ export function stepHistory(a) {
   }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
+  stepParties(a, rnd, t => say(a, t));
   // the year's beaten raids of the tribes and the dead, in one line
   if (H.season === 3 && H.repelled) {
     const parts = Object.entries(H.repelled).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} — ${n}`);

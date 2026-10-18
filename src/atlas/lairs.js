@@ -22,6 +22,8 @@ import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
 import {raidSite} from './sites.js';
+import {PARTIES} from '../data/parties.js';
+import {BEHAVIOURS, sendParty, goHome} from './parties.js';
 import {BURNT} from './peoples.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
@@ -254,11 +256,7 @@ export function stepLairs(a, rnd, seasonId) {
     // a strong lair sends out a brood in spring
     if (seasonId === 'spring' && lair.strength > 0.85 && age >= 3 && rnd() < L.breed && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * 1.5) {
       const i = findSpot(a, L, rnd, lair, 60);
-      if (i >= 0) {
-        lair.strength *= 0.75;
-        const young = newLair(a, L, i, rnd, 0.35);
-        lines.push(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${lair.name}» основали ${G[L.g].fresh} ${acc(L)} — «${young.name}» ${wherePhrase(a, i)}.`);
-      }
+      if (i >= 0 && sendParty(a, 'brood', lair.i, i, {owner: lair.id, lairKind: L.id, speed: L.flies ? 'flight' : L.riders ? 'rider' : 'foot', label: `выводок: ${SPECIES.get(L.species).plural}`, color: L.color})) lair.strength *= 0.75;
     }
   }
   // rivals whose territories touch fight now and then; the stronger and the fiercer wins
@@ -292,24 +290,70 @@ function tribeRaid(a, lair, L, rnd) {
   let target = null, bd = T.reach * k;
   for (const t of a.towns) if (t.alive && dislikes(t)) { const d = dist(lair, t); if (d < bd) { bd = d; target = t; } }
   if (!target) return null;
-  const fx = townFx(target), tribe = lair.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * rnd());
+  const tribe = lair.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * rnd());
+  // a strong raid walks the map as a party and strikes when it gets there (data/parties.js threshold);
+  // a weak one is settled where it stands, by chance, as the small bands always were
+  if (tribe >= PARTIES.threshold) {
+    const p = sendParty(a, 'raid', lair.i, target.i, {owner: lair.id, target: target.id, might: tribe, speed: L.riders ? 'rider' : 'foot', label: raidWho(L), color: L.color});
+    if (p) return `${raidWho(L)} ${L.from} «${lair.name}» ${L.leads ? 'на' : 'двинулись на'} ${townLabel(target, 1)} ${target.name}.`;
+  }
+  return strikeTown(a, lair, L, target, tribe, rnd, true);
+}
+
+// who comes: «Гноллы с гиенами», «Некромант повёл мертвецов»
+function raidWho(L) {
+  const race = SPECIES.get(L.species), sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
+  return L.leads ? L.leads : cap1(sub?.plural || race.plural) + (L.riders ? ` ${L.on}` : '');
+}
+
+// the raid strikes the town: the raiders' might against the town's; the loot feeds the camp (at once,
+// or when the party gets home), a beating thins it
+function strikeTown(a, lair, L, target, tribe, rnd, atOnce) {
+  const T = TRIBE_RAID, fx = townFx(target);
   const town = might(target, fx) * (0.6 + 0.8 * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);   // the tower's wards turn the dead
-  const sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
-  const who = L.leads ? L.leads : cap1(sub?.plural || race.plural) + (L.riders ? ` ${L.on}` : ''), P = WORLD_PEOPLES.get(target.people);
   target.raided = a.hist.year;
   if (tribe > town) {
     const loss = T.loss * raidShare(fx);
-    target.pop *= 1 - loss; lair.strength = Math.min(1, lair.strength + T.loot);
+    target.pop *= 1 - loss;
+    if (atOnce) lair.strength = Math.min(1, lair.strength + T.loot);
     raidGraves(a, target);   // the dead of the raid lie unburied, and the rot takes them
     const burnt = raidSite(a, target, rnd);
-    return `${who} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
+    return `${raidWho(L)} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
   }
   lair.strength *= T.beaten;
+  if (!atOnce) return `${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отбили набег ${L.gen} ${L.from} «${lair.name}».`;
   // a beaten raid is counted and told once a year (atlas/history.js), not one line each
   const rep = a.hist.repelled ||= {};
   rep[target.people] = (rep[target.people] || 0) + 1;
   return null;
 }
+
+// the raid party: strikes when it arrives, carries the loot home
+BEHAVIOURS.raid = {
+  arrive(a, p, rnd, say) {
+    const lair = a.lairs.find(l => l.id === p.owner), target = a.towns.find(t => t.id === p.target);
+    if (lair && lair.alive && target && target.alive) {
+      const line = strikeTown(a, lair, LAIRS.get(lair.kind), target, p.might, rnd, false);
+      p.loot = /погибло/.test(line) ? TRIBE_RAID.loot : 0;
+      say(line);
+    }
+    goHome(a, p);
+  },
+  home(a, p) {
+    const lair = a.lairs.find(l => l.id === p.owner);
+    if (lair && lair.alive && p.loot) lair.strength = Math.min(1, lair.strength + p.loot);
+  },
+};
+// the brood: founds the new lair where it arrives, if the spot is still free
+BEHAVIOURS.brood = {
+  arrive(a, p, rnd, say) {
+    const L = LAIRS.get(p.lairKind), parent = a.lairs.find(l => l.id === p.owner);
+    p.state = 'gone';
+    if (a.lairs.some(o => o.alive && o.kind === L.id && dist(o, {x: p.goal % a.w, y: (p.goal / a.w) | 0}) < R(a, L))) return;
+    const young = newLair(a, L, p.goal, rnd, 0.35);
+    say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${parent ? parent.name : '…'}» основали ${G[L.g].fresh} ${acc(L)} — «${young.name}» ${wherePhrase(a, p.goal)}.`);
+  },
+};
 
 // spring: the lairs that come through history. The dead rise where the rot is thick enough (on the
 // barrows, by the ruins, a vampire in a mixed town); a rift opens at a volcano or a seam. Each kind with

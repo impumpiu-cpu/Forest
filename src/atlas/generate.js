@@ -56,6 +56,7 @@ export function atlasHash(a) {
   for (const k of Object.keys(a.rel || {}).sort()) { const r = a.rel[k]; mix(Math.round(r.att * 1000) + r.wars * 7 + r.routes * 13 + (r.war ? 1 : 0)); }
   for (const r of a.ruins || []) mix(r.i * 31 + r.year);
   for (const s of a.sites || []) mix(s.i * 31 + s.built * 7 + (s.alive ? 3 : 0));
+  for (const p of a.parties || []) mix(p.i * 31 + Math.round(p.x * 100) + Math.round(p.y * 100) * 7 + p.id);
   for (const l of a.net?.links.values() || []) mix(l.p.id * 131 + l.q.id * 7 + Math.round(l.c * 1000));
   for (const r of a.realms || []) { mix(r.capital * 31 + r.founded); for (let k = 0; k < r.name.length; k++) mix(r.name.charCodeAt(k)); }
   for (const c of a.chronicle) for (let k = 0; k < c.text.length; k++) mix(c.text.charCodeAt(k));

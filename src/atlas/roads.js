@@ -32,13 +32,18 @@ function baseCost(a, i, P) {
   if (f.flow[i] >= RIVERS.river * scaleOf(a) ** 2) c += ROADS.river;
   return c;
 }
+// the costs of a people, or of anyone (`null`: the wild, with no roads of its own)
+const ANYONE = {moves: {}};
 function baseCosts(a, people) {
   const all = a.roadBase ||= {};
-  if (!all[people]) { const P = WORLD_PEOPLES.get(people), out = new Float64Array(a.n); for (let i = 0; i < a.n; i++) out[i] = baseCost(a, i, P); all[people] = out; }
-  return all[people];
+  const key = people || 'anyone';
+  if (!all[key]) { const P = people ? WORLD_PEOPLES.get(people) : ANYONE, out = new Float64Array(a.n); for (let i = 0; i < a.n; i++) out[i] = baseCost(a, i, P); all[key] = out; }
+  return all[key];
 }
 // what a step into a cell costs now: the base, less the ford where a bridge stands, eased by the road worn there
 const stepCost = (a, base, i) => (base[i] - (a.f.bridge ? ROADS.river * a.f.bridge[i] : 0)) * (1 - ROADS.roadEase * Math.min(1, a.f.road[i] / ROADS.levels[1].wear));
+// the cost of a step into a cell for a traveller of this people (atlas/parties.js); Infinity: the sea
+export const moveCost = (a, i, people) => stepCost(a, baseCosts(a, people), i);
 
 // A* from one cell to another; the path as a list of cells, or null
 export function findPath(a, s, t, people, scratch) {

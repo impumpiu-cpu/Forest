@@ -30,7 +30,7 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
-const hist = {lanes: 0, harbors: 0, schisms: 0, moved: 0, realms: 0, kinWars: 0, undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0], sites: 0, stumps: 0, links: 0, thick: 0, flows: 0, fed: 0, feeders: 0};
+const hist = {lanes: 0, harbors: 0, schisms: 0, moved: 0, realms: 0, kinWars: 0, undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0], sites: 0, stumps: 0, links: 0, thick: 0, flows: 0, fed: 0, feeders: 0, sent: 0, arrived: 0, partyLost: 0, wetParties: 0};
 
 // the catalogue of town buildings holds together: links to the local map, prerequisites, conditions,
 // peoples and effects are all known, and every people can house and feed a hamlet
@@ -125,7 +125,10 @@ function townsCheck(a, tag) {
   hist.undead += a.lairs.filter(l => LAIRS.get(l.kind).undead).length;
   hist.undeadCleared += a.lairs.filter(l => l.clearedBy && LAIRS.get(l.kind).undead).length;
   for (const c of a.chronicle) if (/(Костяки|Упыри|Некромант повёл) .*(разорили|обескровили|опустошили)/.test(c.text)) hist.undeadRaids++;
-  for (const c of a.chronicle) { if (/^(Гоблины|Гноллы|Огры|Тролли|Великаны) .*разграбили/.test(c.text)) hist.raidsWon++; const m = c.text.match(/^За год отбито (\d+) набег/); if (m) hist.raidsLost += +m[1]; }
+  for (const c of a.chronicle) { if (/^(Гоблины|Гноллы|Огры|Тролли|Великаны) .*разграбили/.test(c.text)) hist.raidsWon++; const m = c.text.match(/^За год отбито (\d+) набег/); if (m) hist.raidsLost += +m[1]; if (/отбили набег .* из /.test(c.text)) hist.raidsLost++; }
+  // the parties: strong raids and broods walk the map and mostly get where they go
+  if (a.hist.parties) { hist.sent += a.hist.parties.sent; hist.arrived += a.hist.parties.arrived; hist.partyLost += a.hist.parties.lost; }
+  for (const p of a.parties || []) if (f.ocean[p.i]) hist.wetParties++;
   // dealings: attitudes in bounds, every war in the chronicle, burnt towns left as ruins, battles as barrows
   let relBad = '';
   const warsTold = a.chronicle.filter(c => /началась война/.test(c.text)).length, wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0);
@@ -366,6 +369,7 @@ for (const P of WORLD_PEOPLES.all()) check(`  ${P.label} живут в мире`
 check('  города строят всё', Object.keys(hist.built).length === Object.keys(CATEGORIES).length, Object.entries(CATEGORIES).map(([k, l]) => `${l} ${hist.built[k] || 0}`).join(', '));
 check('  дороги наезжены', hist.roads > 0 && hist.linked[0] >= 0.8 * hist.linked[1], `${hist.linked[0]} из ${hist.linked[1]} городов с соседями своего народа стоят у дороги; клеток дорог ${hist.roads}`);
 check('  гавани ходят по морю', hist.harbors > 0 && hist.lanes > 0, `гаваней ${hist.harbors} на ${hist.worlds} миров, клеток морских путей ${hist.lanes}`);
+check('  отряды ходят по карте и доходят', hist.sent > 0 && hist.arrived >= 0.8 * hist.sent && !hist.wetParties, `отрядов отправлено ${hist.sent} на ${hist.worlds} миров, дошло ${hist.arrived}, заблудилось ${hist.partyLost}`);
 check('  города обстраиваются угодьями, хлеб идёт по связям', hist.sites > 0 && hist.flows > 0, `угодий ${hist.sites} на ${hist.worlds} миров, пней ${hist.stumps}; связей сети ${hist.links}, с потоком ${hist.flows}, наезженных ${hist.thick}; городов на привозном хлебе ${hist.fed}, кормильцев ${hist.feeders}`);
 check('  народы теснят чудовищ', hist.cleared > 0, `выжжено логов: ${hist.cleared}`);
 check('  мёртвые встают из курганов и пепелищ', hist.undead > 0 && hist.undeadRaids > 0 && hist.undeadCleared > 0, `${hist.undead} логов на ${hist.worlds} миров: ` + LAIRS.filter(L => L.undead).map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', ') + `; набегов удачных ${hist.undeadRaids}; выжжено ${hist.undeadCleared}`);

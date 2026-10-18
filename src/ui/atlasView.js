@@ -40,6 +40,7 @@ import {esc} from '../core/util.js';
 import {$} from './dom.js';
 import {Camera} from '../render/camera.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
+import {partyAt} from '../atlas/parties.js';
 import {CATEGORIES} from '../data/townBuildings.js';
 
 const STORE = 'forest.atlas';
@@ -232,7 +233,8 @@ export class AtlasView {
       const sp = SPEEDS.find(S => S.id === this.speed) || SPEEDS[0], land = !landDone(a);
       const steps = land ? 1 : sp.steps, t0 = Date.now();
       for (let k = 0; k < steps && !atlasDone(a); k++) { runNextStage(a); if (sp.budget && Date.now() - t0 > sp.budget) break; }
-      this.draw(); this.renderSide();
+      this.tickAt = performance.now(); this.tickWait = land ? 0 : sp.wait;
+      this.draw(); this.renderSide(); this.animate();
       if (land && landDone(a)) this.syncPause();   // the land is made: the pace and the pause appear
       if (!atlasDone(a)) this.timer = setTimeout(next, land ? 30 : sp.wait); else this.syncPause();
     };
@@ -359,6 +361,7 @@ export class AtlasView {
     if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawLairs(a, px);
     if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
     if (a.sites && ['relief', 'biomes', 'peoples', 'soils'].includes(this.layer)) this.drawSites(a, px);
+    if (a.parties && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawParties(a, px);
     if (a.ruins && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawRuins(a, px);
     if (a.towns && ['relief', 'biomes', 'peoples', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
@@ -463,6 +466,49 @@ export class AtlasView {
       // close up, the kind of work in a word under the mark
       if (close) { px.fillStyle = 'rgba(240,235,220,0.9)'; px.font = `${Math.max(0.25, 0.3 * k)}px "PT Sans", sans-serif`; px.textAlign = 'center'; px.fillText(b.name, x, y + r + 0.35 * k); }
     }
+  }
+
+  // the parties on the move (atlas/parties.js): a dot in the owner's colour with a tail behind it,
+  // slid between where it stood at the last tick and where it stands now; the way ahead dotted
+  drawParties(a, px) {
+    const k = this.unit(a), r = Math.max(0.5, 0.8 * k), t = this.slide();
+    for (const p of a.parties) {
+      const x = p.px + (p.x - p.px) * t, y = p.py + (p.y - p.py) * t, c = p.color;
+      if (p.path && p.k < p.path.length && p.speed !== 'flight') {
+        px.strokeStyle = `rgba(${c.join(',')},0.4)`; px.lineWidth = Math.max(this.minW, 0.12 * k); px.setLineDash([0.4 * k, 0.5 * k]);
+        px.beginPath(); px.moveTo(x, y);
+        for (let q = p.k; q < p.path.length; q++) px.lineTo(p.path[q] % a.w + 0.5, ((p.path[q] / a.w) | 0) + 0.5);
+        px.stroke(); px.setLineDash([]);
+      }
+      const dx = p.x - p.px, dy = p.y - p.py, d = Math.hypot(dx, dy) || 1;
+      px.strokeStyle = `rgba(${c.join(',')},0.8)`; px.lineWidth = Math.max(this.minW, 0.25 * k);
+      px.beginPath(); px.moveTo(x, y); px.lineTo(x - dx / d * r * 2.2, y - dy / d * r * 2.2); px.stroke();
+      px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(255,250,235,0.95)'; px.lineWidth = Math.max(this.minW, 0.22 * k);
+      px.beginPath();
+      if (p.kind === 'army') px.rect(x - r, y - r, 2 * r, 2 * r);
+      else if (p.kind === 'dragon') { px.moveTo(x - 1.8 * r, y); px.lineTo(x, y - 0.9 * r); px.lineTo(x + 1.8 * r, y); px.lineTo(x, y + 0.5 * r); px.closePath(); }
+      else px.arc(x, y, r * (p.kind === 'brood' ? 0.7 : 1), 0, Math.PI * 2);
+      px.fill(); px.stroke();
+    }
+  }
+
+  // how far between the last tick and the next the screen is, 0 … 1: the parties slide by it
+  slide() {
+    if (!this.tickAt || this.paused || !this.tickWait) return 1;
+    return Math.min(1, (performance.now() - this.tickAt) / this.tickWait);
+  }
+
+  // between ticks the parties keep sliding: a frame loop while history runs and there is something to slide
+  animate() {
+    if (this.raf) return;
+    const loop = () => {
+      this.raf = 0;
+      const a = this.atlas;
+      if (!a || this.paused || atlasDone(a) || !a.parties?.length || !this.tickWait || this.tickWait < 50) return;
+      this.draw();
+      this.raf = requestAnimationFrame(loop);
+    };
+    this.raf = requestAnimationFrame(loop);
   }
 
   // the links of the supply net between towns: the thicker, the more flows down them
@@ -605,6 +651,11 @@ export class AtlasView {
       const folk = Object.entries(town.folk || {}).filter(([, v]) => v >= 0.03).map(([id, v]) => `${WORLD_PEOPLES.get(id).label} ${Math.round(v * 100)}%`).join(', ');
       const sup = town.supply, feed = sup ? (sup.got > 0.05 * town.pop ? `; привозят еды на ${Math.round(sup.got)}` : sup.gave > 0.05 * town.pop ? `; отправляют еды на ${Math.round(sup.gave)}` : '') : '';
       parts.push(`${townLabel(town)} ${town.name} (${town.realm ? realmLabel(a, town.realm) : P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}, угодья в ${siteRadius(a, town)} клетках; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : '') + feed);
+    }
+    const party = partyAt(a, i);
+    if (party) {
+      const tgt = party.target != null ? a.towns.find(t => t.id === party.target) : null, lair = party.owner != null && party.kind !== 'army' ? a.lairs.find(l => l.id === party.owner) : null;
+      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
     }
     const site = siteAt(a, i);
     if (site) { const b = TOWN_BUILDINGS.get(site.kind), t = a.towns.find(t => t.id === site.town); parts.push(`${b.name} (${CATEGORIES[b.cat]}) ${townLabel(t, 2)} ${t.name}, с года ${site.built}`); }
