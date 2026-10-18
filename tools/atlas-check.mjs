@@ -19,6 +19,7 @@ import {ROADS, SEA} from '../src/data/roads.js';
 import {RIVERS} from '../src/data/hydrology.js';
 import {DIPLOMACY} from '../src/data/diplomacy.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
+import {siteRadius} from '../src/atlas/sites.js';
 
 const seeds = +(process.argv[2] || 3), size = process.argv[3] || 'small';
 let ok = true;
@@ -29,7 +30,7 @@ const addTo = (acc, v) => { acc[0] += v; acc[1]++; };
 const lakeRain = {fresh: [0, 0], salt: [0, 0]};
 let lakesAll = 0, saltAll = 0, placerCells = 0;
 const bioLat = {}, bioTrees = {}, bioCount = {}, soilFert = {};
-const hist = {lanes: 0, harbors: 0, schisms: 0, moved: 0, realms: 0, kinWars: 0, undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0]};
+const hist = {lanes: 0, harbors: 0, schisms: 0, moved: 0, realms: 0, kinWars: 0, undead: 0, undeadRaids: 0, undeadCleared: 0, tribes: 0, raidsWon: 0, raidsLost: 0, tribesCleared: 0, lairs: 0, alive: 0, lines: 0, worlds: 0, kinds: {}, towns: {}, pop: {}, built: {}, rel: {}, relN: {}, wars: 0, ruins: 0, trade: 0, cleared: 0, roads: 0, linked: [0, 0], sites: 0, stumps: 0, links: 0, thick: 0, flows: 0, fed: 0, feeders: 0, sent: 0, arrived: 0, partyLost: 0, wetParties: 0};
 
 // the catalogue of town buildings holds together: links to the local map, prerequisites, conditions,
 // peoples and effects are all known, and every people can house and feed a hamlet
@@ -58,17 +59,23 @@ function townsCheck(a, tag) {
   for (const t of a.towns) {
     if (f.ocean[t.i] || f.lake[t.i] >= 0) wet++;
     // everything built fits the town's people, the place and what was built before it, within its max
-    const seen = {};
+    const seen = {}, seenSites = new Set();
     for (const id of t.built) {
       const b = TOWN_BUILDINGS.get(id);
       seen[id] = (seen[id] || 0) + 1;
       if (b.peoples && !b.peoples.includes(t.people)) misbuilt ||= `${t.name}: ${b.name} — не их постройка`;
       if (seen[id] > b.max) misbuilt ||= `${t.name}: ${b.name} больше ${b.max}`;
-      if (b.needs && !b.needs.every(nd => nd === 'road' || placeHas(a, t.i, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
-      if (b.needsAny && !b.needsAny.some(nd => nd === 'road' || placeHas(a, t.i, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
-      const before = t.built.slice(0, t.built.indexOf(id));
-      if (b.requires && !b.requires.every(r => before.includes(r))) misbuilt ||= `${t.name}: ${b.name} раньше, чем ${b.requires.join(', ')}`;
-      if (b.requiresAny && !b.requiresAny.some(r => before.includes(r))) misbuilt ||= `${t.name}: ${b.name} без ${b.requiresAny.join(' / ')}`;
+      const at = b.site ? (a.sites.find(s => s.alive && s.town === t.id && s.kind === id && !seenSites.has(s.id)) || null) : null;
+      if (at) seenSites.add(at.id);
+      const where = b.site ? at?.i : t.i;   // an outlying work has its place in its own cell
+      if (b.site && at == null && t.alive) misbuilt ||= `${t.name}: ${b.name} без своей клетки`;
+      if (where != null && b.needs && !b.needs.every(nd => nd === 'road' || placeHas(a, where, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
+      if (where != null && b.needsAny && !b.needsAny.some(nd => nd === 'road' || placeHas(a, where, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
+      // what it needed had to stand first; an outlying work that burnt and was built anew is later in the
+      // list now, so for those it is enough that the town ever had one
+      const before = t.built.slice(0, t.built.indexOf(id)), had = r => before.includes(r) || (TOWN_BUILDINGS.get(r).site && (a.sites || []).some(s => s.town === t.id && s.kind === r));
+      if (b.requires && !b.requires.every(had)) misbuilt ||= `${t.name}: ${b.name} раньше, чем ${b.requires.join(', ')}`;
+      if (b.requiresAny && !b.requiresAny.some(had)) misbuilt ||= `${t.name}: ${b.name} без ${b.requiresAny.join(' / ')}`;
     }
     if (t.alive && t.pop > Math.max(170, 1.1 * room(townFx(t)))) misbuilt ||= `${t.name}: ${Math.round(t.pop)} жителей в домах на ${room(townFx(t))}`;
     for (const id of t.built) hist.built[TOWN_BUILDINGS.get(id).cat] = (hist.built[TOWN_BUILDINGS.get(id).cat] || 0) + 1;
@@ -78,6 +85,29 @@ function townsCheck(a, tag) {
   for (let i = 0; i < a.n; i++) if (f.road[i] >= ROADS.levels[0].wear) { hist.roads++; if (f.ocean[i]) seaRoad++; }
   let landLane = 0; if (f.sea) for (let i = 0; i < a.n; i++) if (f.sea[i] >= SEA.levels[0].wear) { hist.lanes++; if (!f.ocean[i]) landLane++; }
   hist.harbors += a.towns.filter(t => t.alive && t.built.includes('harbor')).length;
+  // the works of the towns stand on free land within their town's reach, one to a cell, and the
+  // net of supply carries food between towns
+  {
+    const cells = new Set();
+    let badSite = '';
+    for (const s of a.sites || []) {
+      if (!s.alive) continue;
+      const t = a.towns.find(t => t.id === s.town);
+      if (!t || !t.alive) badSite ||= `${TOWN_BUILDINGS.get(s.kind).name} без живого города`;
+      else if (Math.max(Math.abs(t.x - s.x), Math.abs(t.y - s.y)) > siteRadius(a, t)) badSite ||= `${TOWN_BUILDINGS.get(s.kind).name} ${t.name} дальше ${siteRadius(a, t)} клеток`;
+      else if (!t.built.includes(s.kind)) badSite ||= `${t.name}: ${TOWN_BUILDINGS.get(s.kind).name} стоит, а в городе не числится`;
+      if (f.ocean[s.i] || f.lake[s.i] >= 0) badSite ||= `${TOWN_BUILDINGS.get(s.kind).name} в воде`;
+      if (cells.has(s.i)) badSite ||= `две постройки в одной клетке`;
+      cells.add(s.i);
+      if (a.siteAt[s.i] !== s.id) badSite ||= `siteAt не сходится`;
+      hist.sites++;
+    }
+    hist.stumps += (a.sites || []).filter(s => !s.alive && s.died > 0).length;
+    for (const l of a.net?.links.values() || []) { hist.links++; if (l.c > 0.3) hist.thick++; if (l.flow > 0) hist.flows++; if (!(l.c >= 0 && l.c <= 1)) badSite ||= `проводимость ${l.c}`; }
+    hist.fed += a.towns.filter(t => t.alive && t.supply && t.supply.got >= 0.2 * t.pop).length;
+    hist.feeders += a.towns.filter(t => t.alive && t.supply && t.supply.gave >= 0.2 * t.pop).length;
+    check(`${tag}: угодья городов стоят на своих клетках, сеть снабжения в пределах`, !badSite, badSite);
+  }
   for (const pe of a.peoples) for (let j = 0; j < pe.u.length; j++) if (pe.u[j] > 0 && pe.K[j] <= 0) homeless++;
   // towns at least 6 years old with a town of their own people close by have a worn road at their door
   const towns = a.towns.filter(t => t.alive && a.hist.year - t.founded >= 6);
@@ -95,7 +125,10 @@ function townsCheck(a, tag) {
   hist.undead += a.lairs.filter(l => LAIRS.get(l.kind).undead).length;
   hist.undeadCleared += a.lairs.filter(l => l.clearedBy && LAIRS.get(l.kind).undead).length;
   for (const c of a.chronicle) if (/(Костяки|Упыри|Некромант повёл) .*(разорили|обескровили|опустошили)/.test(c.text)) hist.undeadRaids++;
-  for (const c of a.chronicle) { if (/^(Гоблины|Гноллы|Огры|Тролли|Великаны) .*разграбили/.test(c.text)) hist.raidsWon++; const m = c.text.match(/^За год отбито (\d+) набег/); if (m) hist.raidsLost += +m[1]; }
+  for (const c of a.chronicle) { if (/^(Гоблины|Гноллы|Огры|Тролли|Великаны) .*разграбили/.test(c.text)) hist.raidsWon++; const m = c.text.match(/^За год отбито (\d+) набег/); if (m) hist.raidsLost += +m[1]; if (/отбили набег .* из /.test(c.text)) hist.raidsLost++; }
+  // the parties: strong raids and broods walk the map and mostly get where they go
+  if (a.hist.parties) { hist.sent += a.hist.parties.sent; hist.arrived += a.hist.parties.arrived; hist.partyLost += a.hist.parties.lost; }
+  for (const p of a.parties || []) if (f.ocean[p.i]) hist.wetParties++;
   // dealings: attitudes in bounds, every war in the chronicle, burnt towns left as ruins, battles as barrows
   let relBad = '';
   const warsTold = a.chronicle.filter(c => /началась война/.test(c.text)).length, wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0);
@@ -336,6 +369,8 @@ for (const P of WORLD_PEOPLES.all()) check(`  ${P.label} живут в мире`
 check('  города строят всё', Object.keys(hist.built).length === Object.keys(CATEGORIES).length, Object.entries(CATEGORIES).map(([k, l]) => `${l} ${hist.built[k] || 0}`).join(', '));
 check('  дороги наезжены', hist.roads > 0 && hist.linked[0] >= 0.8 * hist.linked[1], `${hist.linked[0]} из ${hist.linked[1]} городов с соседями своего народа стоят у дороги; клеток дорог ${hist.roads}`);
 check('  гавани ходят по морю', hist.harbors > 0 && hist.lanes > 0, `гаваней ${hist.harbors} на ${hist.worlds} миров, клеток морских путей ${hist.lanes}`);
+check('  отряды ходят по карте и доходят', hist.sent > 0 && hist.arrived >= 0.8 * hist.sent && !hist.wetParties, `отрядов отправлено ${hist.sent} на ${hist.worlds} миров, дошло ${hist.arrived}, заблудилось ${hist.partyLost}`);
+check('  города обстраиваются угодьями, хлеб идёт по связям', hist.sites > 0 && hist.flows > 0, `угодий ${hist.sites} на ${hist.worlds} миров, пней ${hist.stumps}; связей сети ${hist.links}, с потоком ${hist.flows}, наезженных ${hist.thick}; городов на привозном хлебе ${hist.fed}, кормильцев ${hist.feeders}`);
 check('  народы теснят чудовищ', hist.cleared > 0, `выжжено логов: ${hist.cleared}`);
 check('  мёртвые встают из курганов и пепелищ', hist.undead > 0 && hist.undeadRaids > 0 && hist.undeadCleared > 0, `${hist.undead} логов на ${hist.worlds} миров: ` + LAIRS.filter(L => L.undead).map(L => `${L.label} ${hist.kinds[L.id] || 0}`).join(', ') + `; набегов удачных ${hist.undeadRaids}; выжжено ${hist.undeadCleared}`);
 check('  племена грабят города, города разоряют станы', hist.raidsWon > 0 && hist.raidsLost > 0 && hist.tribesCleared > 0, `набегов удачных ${hist.raidsWon}, отбито (вместе с мертвецами) ${hist.raidsLost}; станов разорено ${hist.tribesCleared}`);

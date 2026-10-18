@@ -53,6 +53,7 @@
       <div class="row actions">
         <button type="button" id="atlasGo" class="primary">Сотворить</button>
         <button type="button" id="atlasPause" hidden>Пауза</button>
+        <div class="seg" id="atlasSpeed" hidden title="Темп истории: сезонов за кадр"></div>
         <button type="button" id="atlasBack" class="quiet" title="Esc">← Главное меню</button>
       </div>
       <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="atlasStages"></ol></div>
@@ -60,7 +61,14 @@
       <dl class="kv" id="atlasRels"></dl>
     </div>
     <div class="atlas-map">
-      <div class="seg wrapseg" data-akey="layer"></div>
+      <div class="atlas-tools">
+        <div class="seg wrapseg" data-akey="layer"></div>
+        <div class="seg zoomseg" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
+          <button type="button" id="atlasZoomIn" aria-label="Приблизить">+</button>
+          <button type="button" id="atlasZoomOut" aria-label="Отдалить">−</button>
+          <button type="button" id="atlasZoomFit" aria-label="Весь мир">⌂</button>
+        </div>
+      </div>
       <div class="seg wrapseg" data-akey="ore" id="atlasOre" hidden></div>
       <div class="seg wrapseg" data-akey="fauna" id="atlasFauna" hidden></div>
       <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>

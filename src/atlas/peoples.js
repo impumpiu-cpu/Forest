@@ -28,6 +28,8 @@ import {meet, raceState, stepDiplomacy, trades, raidGraves} from './diplomacy.js
 import {foundRealm, joinRealm, realmLabel, realmTowns, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
+import {placeSite, raidSite, stepNet, fedTowns, scourgedFood} from './sites.js';
+import {fadeScourge} from './diplomacy.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -115,6 +117,7 @@ function foundTown(a, pe, i, rnd, pop, say) {
 }
 
 const APPEARED = {m: 'появился', f: 'появилась', n: 'появилось', pl: 'появились'};
+export const BURNT = {m: 'сожжён', f: 'сожжена', n: 'сожжено', pl: 'сожжены'};
 const GREW = {m: 'разросся в', f: 'разрослась в', n: 'разрослось в'};
 const SHRANK = {m: 'захирел до', f: 'захирела до', n: 'захирело до'};
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
@@ -198,14 +201,27 @@ export function stepPeoples(a, rnd, say) {
       say(`${cap1(realmLabel(a, t.realm))} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
     }
   }
-  // towns grow towards what the land around feeds, more on a road, and build as they grow
+  // what each town's land and living works feed (people), then the net: the surplus of one town
+  // flows to the towns it is linked with that lack (atlas/sites.js)
+  fadeScourge(a);
+  const feedsOf = new Map();
   for (const t of a.towns) {
     if (!t.alive) continue;
     const pe = a.peoples.find(p => p.id === t.people), j = faunaCell(a, t.i);
     let feed = 0, c = 0;
     for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
     const fx = townFx(t);
-    const feeds = 1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (0.7 + 0.3 * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food + 0.3 * fx.trade);
+    feedsOf.set(t.id, [1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (0.7 + 0.3 * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food - scourgedFood(a, t) + 0.3 * fx.trade), room(fx)]);
+  }
+  stepNet(a, feedsOf);
+  for (const [t, o, by] of fedTowns(a)) say(`${cap1(townLabel(t, 0))} ${t.name} живёт привозным хлебом: ${Math.round(by * 100)}% еды везут из ${townLabel(o, 2)} ${o.name}.`);
+  // towns grow towards what they are fed — their land, their works, the supply down the links, less
+  // what they send away — within the room their houses give; and build as they grow
+  for (const t of a.towns) {
+    if (!t.alive) continue;
+    const pe = a.peoples.find(p => p.id === t.people);
+    const fx = townFx(t);
+    const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
     const target = Math.min(feeds, room(fx));
     t.pop = Math.max(10, t.pop + 0.14 * (1 + 0.6 * fx.prestige) * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
     // what the town needs most gets built; a big town builds faster
@@ -215,6 +231,7 @@ export function stepPeoples(a, rnd, say) {
       const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i)}, rnd);
       if (!b) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
+      if (b.site && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js)
       t.built.push(b.id);
       if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
       if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
@@ -243,7 +260,8 @@ export function stepPeoples(a, rnd, say) {
       }
       const loss = TOWN_WAR.raidLoss * raidShare(fx);
       t.pop *= 1 - loss; t.raided = a.hist.year; raidGraves(a, t);
-      say(`${cap1(owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей.`);
+      const burnt = raidSite(a, t, rnd);
+      say(`${cap1(owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`);
       break;
     }
   }

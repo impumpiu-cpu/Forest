@@ -121,6 +121,18 @@ export const BESTIARY = [
     killMessage: name => `Виверна ужалила поселенца насмерть: <b>${name}</b>.`,
     predator: hunts({prey: ['goat', 'deer', 'boar'], weakPrey: ['mule', 'elk'], weakBelow: 0.6, sight: 26, boldPeople: 0.45, groupFear: 4})}),
 
+  // Dragon: the one great beast of a world — one or two, in an ancient lair at a volcano (data/lairs.js
+  // `dragon`). It never comes to the local map on its own (no `arrive`, no `habitat`): on the world map it
+  // sleeps for years and flies out to burn a town's works and people (atlas/parties.js DRAGON). Its
+  // habitat only says where its lair may be: the dragon is a lair, not a field of beasts
+  beast({id: 'dragon', kind: 'monster', label: 'дракон', labelAcc: 'дракона', plural: 'драконы', hp: 12, speed: 0.16, needs: ['food'], brain: 'predator', heatHarm: 800,
+    fearHeat: 800, habitat: {volcano: 'rare'},
+    special: around({S: 40, P: 14, E: 36, C: 6, I: 9, A: 10, L: 6}, 2),
+    look: {shape: 'bird', size: 1.4, color: '#8a2418'}, attack: {power: 5, cooldown: 12}, breath: 0.5,
+    yields: {meat: 20, scales: 12, gland: 3}, trophies: [{res: 'scales', n: 4, chance: 0.4, tier: 3}, {res: 'gland', n: 2, chance: 0.3, tier: 4}],
+    killMessage: name => `Дракон сжёг поселенца: <b>${name}</b>.`,
+    predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk', 'aurochs'], sight: 30, boldPeople: 0.6, groupFear: 10, meal: 6, bigMeal: 10})}),
+
   // Drake: a young dragon with no mind yet; its breath sets the grass on fire
   beast({id: 'drake', kind: 'monster', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', hp: 4.5, speed: 0.14, needs: ['food'], brain: 'predator', heatHarm: 400,
     arrive: {group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: 'с вулкана прилетел дрейк. Где он дышит, загорается трава'},
