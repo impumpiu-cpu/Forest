@@ -1,4 +1,4 @@
-[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · **Проверки и баланс** · [Карта мира](WORLD.md) · [SPECIAL](SPECIAL.md)
+[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · **Проверки и баланс** · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [SPECIAL](SPECIAL.md)
 
 # Проверки и балансный прогон
 
