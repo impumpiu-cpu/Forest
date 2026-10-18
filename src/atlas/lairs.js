@@ -22,7 +22,7 @@ import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
 import {raidSite} from './sites.js';
-import {PARTIES} from '../data/parties.js';
+import {PARTIES, DRAGON} from '../data/parties.js';
 import {BEHAVIOURS, sendParty, goHome} from './parties.js';
 import {BURNT} from './peoples.js';
 
@@ -55,7 +55,7 @@ function groundKind(a, ground, i) {
 const ruinNear = (a, i) => (a.ruins || []).find(r => Math.abs(r.x - i % a.w) <= 3 && Math.abs(r.y - ((i / a.w) | 0)) <= 3) || null;
 // how good a cell is for the lair's species: its carrying capacity there (a tribe: its race's home;
 // the dead: the rot)
-const goodness = (a, L, i) => (L.fiend ? 0.5 : L.undead ? a.rot[faunaCell(a, i)] : L.tribe ? homeAt(a, L, i) : a.fauna.list[a.fauna.idx[L.species]].K[faunaCell(a, i)]);
+const goodness = (a, L, i) => (L.fiend || L.dragon ? 0.5 : L.undead ? a.rot[faunaCell(a, i)] : L.tribe ? homeAt(a, L, i) : a.fauna.list[a.fauna.idx[L.species]].K[faunaCell(a, i)]);
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 // «in the taiga in the north-east» — where a cell lies, for the chronicle: the commonest land biome
@@ -197,7 +197,7 @@ export function placeLairs(a, rnd) {
       const i = findSpot(a, L, rnd);
       if (i < 0) break;
       // the lairs of the wild were there long before the chronicle begins
-      newLair(a, L, i, rnd, 0.4 + 0.5 * rnd(), 1 - Math.floor(rnd() * 2 * ANCIENT_YEARS));
+      newLair(a, L, i, rnd, L.dragon ? 0.9 : 0.4 + 0.5 * rnd(), 1 - Math.floor(rnd() * 2 * ANCIENT_YEARS) - (L.dragon ? 10 * ANCIENT_YEARS : 0));
       tally[L.id] = (tally[L.id] || 0) + 1;
     }
   }
@@ -214,7 +214,7 @@ export function stepLairs(a, rnd, seasonId) {
   if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd));
   for (const lair of a.lairs) {
     if (!lair.alive) continue;
-    const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead || L.fiend ? null : F.list[F.idx[L.species]];
+    const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead || L.fiend || L.dragon ? null : F.list[F.idx[L.species]];
     // feed: the prey of the owner around the lair, against what the biomes there could hold;
     // a tribe lives off its land, and the peoples' settlers crowd it out
     let food = 0, cap = 0, land = 0, crowd = 0;
@@ -225,12 +225,12 @@ export function stepLairs(a, rnd, seasonId) {
       const j = y * F.W + x; cells.push(j);
       if (s) for (const q of s.prey || []) { food += F.list[q].N[j]; cap += F.list[q].K[j]; }
       else if (L.undead) land = Math.max(land, a.rot[j]);   // the dead feed on the thickest rot they reach
-      else if (L.fiend) land = 0.55;
+      else if (L.fiend || L.dragon) land = 0.55;
       else { land += a.tribeLand[L.id][j]; for (const pe of a.peoples || []) crowd += pe.u[j] * pe.K[j]; }
     }
     const host = L.at === 'town' ? a.towns.find(t => t.id === lair.town) : null;
     const fed = s ? (cap > 0 ? Math.min(1.2, food / cap) : 0.5)
-      : L.fiend ? land
+      : L.fiend || L.dragon ? land
       : host ? (host.alive ? Math.min(1.2, host.pop / 600) : 0)   // a vampire drinks its town
       : L.undead ? Math.min(1.2, land / (L.rotAt * 1.2))
       : Math.min(1.2, land / cells.length / 0.6) * (1 - 0.8 * Math.min(1, crowd / cells.length));
@@ -248,6 +248,7 @@ export function stepLairs(a, rnd, seasonId) {
       continue;
     }
     if ((L.tribe || L.undead || L.fiend) && L.at !== 'town' && seasonId === 'autumn' && a.towns) { const line = tribeRaid(a, lair, L, rnd); if (line) lines.push(line); }
+    if (L.dragon && seasonId === 'summer') { const line = dragonFlight(a, lair, L, rnd); if (line) lines.push(line); }
     const age = H.year - lair.born;
     if (!lair.ancient && age >= ANCIENT_YEARS) {
       lair.ancient = true;
@@ -327,6 +328,42 @@ function strikeTown(a, lair, L, target, tribe, rnd, atOnce) {
   rep[target.people] = (rep[target.people] || 0) + 1;
   return null;
 }
+
+// the dragon: it sleeps for years, then in summer flies out to the richest town in reach, burns its
+// works and its people, and flies home to sleep again (data/parties.js DRAGON)
+function dragonFlight(a, lair, L, rnd) {
+  const D = DRAGON, k = scaleOf(a);
+  if (lair.sleep == null) lair.sleep = D.sleep[0] + Math.floor(rnd() * (D.sleep[1] - D.sleep[0] + 1));
+  if (--lair.sleep > 0 || !a.towns.length) return null;
+  let target = null, bv = 0;
+  for (const t of a.towns) if (t.alive && dist(lair, t) <= D.reach * k) { const v = t.pop * (0.7 + 0.6 * rnd()); if (v > bv) { bv = v; target = t; } }
+  if (!target) { lair.sleep = 2; return null; }
+  const p = sendParty(a, 'dragon', lair.i, target.i, {owner: lair.id, target: target.id, might: D.might, speed: 'flight', label: 'дракон', color: L.color});
+  if (!p) return null;
+  return `Дракон ${L.from} «${lair.name}» проснулся и полетел на ${townLabel(target, 1)} ${target.name}.`;
+}
+BEHAVIOURS.dragon = {
+  arrive(a, p, rnd, say) {
+    const lair = a.lairs.find(l => l.id === p.owner), target = a.towns.find(t => t.id === p.target), D = DRAGON;
+    if (lair && target && target.alive) {
+      const fx = townFx(target), town = might(target, fx) * (0.6 + 0.8 * rnd());
+      if (town > p.might * (0.6 + 0.8 * rnd())) say(`${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отогнали дракона: стрелы и копья его не взяли, но и он не стал жечь.`);
+      else {
+        let burnt = 0;
+        const n = D.burns[0] + Math.floor(rnd() * (D.burns[1] - D.burns[0] + 1));
+        for (let q = 0; q < n; q++) if (raidSite(a, target, () => 0)) burnt++;
+        const loss = D.loss * raidShare(fx);
+        target.pop *= 1 - loss; target.raided = a.hist.year; raidGraves(a, target);
+        say(`Дракон ${LAIRS.get(lair.kind).from} «${lair.name}» выжег ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, сгорело угодий: ${burnt}` : ''}.`);
+      }
+    }
+    goHome(a, p);
+  },
+  home(a, p, rnd) {
+    const lair = a.lairs.find(l => l.id === p.owner);
+    if (lair) lair.sleep = DRAGON.sleep[0] + Math.floor(rnd() * (DRAGON.sleep[1] - DRAGON.sleep[0] + 1));
+  },
+};
 
 // the raid party: strikes when it arrives, carries the loot home
 BEHAVIOURS.raid = {

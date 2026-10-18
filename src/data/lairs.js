@@ -11,6 +11,7 @@
 //   breed:    chance a year that a strong lair sends out a brood to found a new one
 //   rivals:   lair kinds it fights when territories touch
 //   flies:    the owners fly: their broods go on the wing (atlas/parties.js)
+//   dragon:   the dragon's lair — no prey, no broods, no raids of the usual kind; it flies out itself
 //   nouns:    the second word of a lair's name, [word, gender]; adjectives come from NAME_ADJ
 //
 // Tribes (`tribe: true`) are lairs with a thinking owner (data/races.js): a camp of goblins, gnolls,
@@ -37,6 +38,10 @@ LAIRS.registerAll([
     nouns: [['логово', 'n'], ['ущелье', 'n'], ['гора', 'f'], ['пик', 'm']]},
   {id: 'drake', species: 'drake', flies: true, from: 'из логова', label: 'логово дрейка', g: 'n', color: [220, 80, 50], radius: 12, ground: 'volcano', density: 80, max: 4, breed: 0.05, rivals: ['griffin', 'wyvern'],
     nouns: [['жерло', 'n'], ['кратер', 'm'], ['пепелище', 'n'], ['гора', 'f']]},
+  // the dragon's lair: one or two in a world, ancient, at a volcano; it does not feed on prey and sends no
+  // broods — the dragon sleeps for years and flies out (atlas/parties.js, data/parties.js DRAGON)
+  {id: 'dragon', dragon: true, species: 'dragon', flies: true, from: 'из логова', label: 'логово дракона', g: 'n', color: [150, 30, 20], radius: 14, ground: 'volcano', density: 30, max: 2, breed: 0, rivals: [],
+    nouns: [['жерло', 'n'], ['престол', 'm'], ['гора', 'f'], ['пещера', 'f']]},
   {id: 'spider', species: 'spider', from: 'из гнезда', label: 'паучье гнездо', g: 'n', color: [150, 110, 170], radius: 6, ground: 'deep', density: 14, max: 10, breed: 0.07, rivals: [],
     nouns: [['чаща', 'f'], ['паутинник', 'm'], ['дебри', 'pl'], ['лог', 'm']]},
   {id: 'stoneworm', species: 'stoneworm', from: 'из норы', label: 'нора каменного червя', labelAcc: 'нору каменного червя', g: 'f', color: [160, 140, 110], radius: 8, ground: 'caves', density: 10, max: 6, breed: 0.06, rivals: [],
