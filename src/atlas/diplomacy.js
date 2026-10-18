@@ -14,6 +14,8 @@ import {RELATIONS} from '../data/relations.js';
 import {SPECIES} from '../data/species.js';
 import {scaleOf} from './tectonics.js';
 import {townFx, might, raidShare, townLabel} from './towns.js';
+import {raidSite, razeSites} from './sites.js';
+import {BURNT} from './peoples.js';
 import {realmOf, realmPeople, realmLabel, realmLabelGen, seatFallen, stepRealms} from './realms.js';
 import {laneBetween} from './sea.js';
 
@@ -66,6 +68,7 @@ export function raceState(a, P, Q) {
 // burn a town: it is gone, a ruin stays where it stood
 function raze(a, t, by, how, rnd, say) {
   t.alive = false; t.died = a.hist.year;
+  razeSites(a, t, a.hist.year);   // its works burn with it
   barrows(a, t.i, Math.max(2, Math.round(2 * scaleOf(a))), ROT.ruinGraves);   // the dead of a burnt town
   a.ruins ||= [];
   a.ruins.push({i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, realm: t.realm, by, year: a.hist.year, how});
@@ -142,11 +145,12 @@ export function stepDiplomacy(a, rnd, say, overlap) {
         const [t, o] = best, ft = fight(t, rnd), fo = fight(o, rnd), [win, lose] = ft >= fo ? [t, o] : [o, t];
         const loss = (D.battleLoss[0] + (D.battleLoss[1] - D.battleLoss[0]) * rnd()) * raidShare(townFx(lose));
         lose.pop *= 1 - loss; win.pop *= 1 - loss * 0.4; r.war.battles++;
+        const burnt = raidSite(a, lose, rnd);   // the winners ravage the fields of the beaten
         barrows(a, battlefield(a, lose, win), D.barrows * Math.max(1, Math.round(k)));
         if (lose.pop < D.raze || lose.pop < D.razeShare * TIERS[lose.tier].pop) {   // a hamlet beaten down, or a big town bled to a shadow of its step
           say(`${cap1(realmLabel(a, win.realm))} из ${townLabel(win, 2)} ${win.name} взяли и сожгли ${townLabel(lose, 1)} ${lose.name}: осталось пепелище.`);
           raze(a, lose, win.realm, 'war', rnd, say); r.war.razed++;
-        } else say(`Битва под ${townLabel(lose, 4)} ${lose.name}: ${realmLabel(a, win.realm)} одолели ${realmLabelGen(a, lose.realm)}, поле усеяно курганами.`);
+        } else say(`Битва под ${townLabel(lose, 4)} ${lose.name}: ${realmLabel(a, win.realm)} одолели ${realmLabelGen(a, lose.realm)}, поле усеяно курганами${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`);
       }
       if (r.att >= D.peaceAt || years >= D.longest) {
         say(`${cap1(realmLabel(a, p))} и ${realmLabel(a, q)} заключили мир после ${years} ${years % 10 === 1 && years % 100 !== 11 ? 'года' : 'лет'} войны.`);
@@ -173,7 +177,8 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     if (fight(t, rnd) > fight(target, rnd)) {
       const loss = D.raidLoss * raidShare(townFx(target));
       target.pop *= 1 - loss; t.pop += target.pop * loss * 0.3; raidGraves(a, target);
-      say(`${cap1(realmLabel(a, t.realm))} из ${townLabel(t, 2)} ${t.name} разграбили ${townLabel(target, 1)} ${target.name}.`);
+      const burnt = raidSite(a, target, rnd);
+      say(`${cap1(realmLabel(a, t.realm))} из ${townLabel(t, 2)} ${t.name} разграбили ${townLabel(target, 1)} ${target.name}${burnt ? `: ${BURNT[burnt.g]} ${burnt.name}` : ''}.`);
     } else {
       t.pop *= 0.9;
       say(`${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, t.realm)} на ${townLabel(target, 1)} ${target.name}.`);

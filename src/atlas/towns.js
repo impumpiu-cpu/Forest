@@ -22,6 +22,7 @@ import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
+import {siteCell} from './sites.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -96,6 +97,7 @@ export function canBuild(a, t, b) {
   if (t.built.filter(id => id === b.id).length >= b.max) return false;
   if (b.requires && !b.requires.every(id => t.built.includes(id))) return false;
   if (b.requiresAny && !b.requiresAny.some(id => t.built.includes(id))) return false;
+  if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
   const pk = t.place ||= {};
   const has = need => (need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change; roads and graves do
   if (b.needs && !b.needs.every(has)) return false;

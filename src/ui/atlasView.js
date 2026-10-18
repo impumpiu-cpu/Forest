@@ -39,6 +39,8 @@ import {seedNumber} from '../core/rng.js';
 import {esc} from '../core/util.js';
 import {$} from './dom.js';
 import {Camera} from '../render/camera.js';
+import {siteAt, siteRadius} from '../atlas/sites.js';
+import {CATEGORIES} from '../data/townBuildings.js';
 
 const STORE = 'forest.atlas';
 const ERA = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
@@ -63,7 +65,9 @@ const SPEEDS = [
   {id: 'x16', label: '×16', steps: 16, wait: 60},
   {id: 'max', label: 'Сразу', steps: Infinity, wait: 30, budget: 30},
 ];
-const DRAG_PX = 5;   // a press that moves less than this is a click (a hover); further, it drags the map
+const DRAG_PX = 5;
+// the marks of the towns' works, by the building's category (data/townBuildings.js CATEGORIES)
+const SITE_COLORS = {food: [196, 182, 72], raw: [168, 150, 128], trade: [220, 190, 120]};   // a press that moves less than this is a click (a hover); further, it drags the map
 
 const mix = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
 const hexRgb = h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16));
@@ -202,7 +206,7 @@ export class AtlasView {
     else if (this.layer === 'biomes') html = Object.entries(BIOME_KINDS).filter(([k]) => k !== 'feature').map(([k, l]) => `<b>${l}:</b> ` + BIOMES.filter(b => b.kind === k).map(b => sw(b.color, b.label)).join('')).join('') + '<b>леса</b> темнее, гари светлее';
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
     else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + sw([110, 60, 130], 'гниль');
-    else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; пунктир по воде — морские пути гаваней; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв');
+    else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; пунктир по воде — морские пути гаваней; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв') + '<b>угодья городов</b>: ' + sw(SITE_COLORS.food, 'пашни, выгоны, рощи (круг)') + sw(SITE_COLORS.raw, 'рудники, каменоломни, лесосеки (квадрат)') + '× пень — сожжено; тонкие тропы к городу; <b>жёлтые связи</b> между городами — по ним идёт хлеб, ярче — больше';
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
@@ -353,6 +357,8 @@ export class AtlasView {
     if (a.f.road && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
     if (a.f.sea && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawLanes(a, px);
     if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawLairs(a, px);
+    if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
+    if (a.sites && ['relief', 'biomes', 'peoples', 'soils'].includes(this.layer)) this.drawSites(a, px);
     if (a.ruins && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawRuins(a, px);
     if (a.towns && ['relief', 'biomes', 'peoples', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
@@ -425,6 +431,47 @@ export class AtlasView {
       px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(12,12,10,0.9)'; px.lineWidth = Math.max(this.minW, 0.45 * k);
       px.fillRect(x - s, y - s, 2 * s, 2 * s); px.strokeRect(x - s, y - s, 2 * s, 2 * s);
       if (t.capital) { px.strokeStyle = `rgba(${c.join(',')},0.8)`; px.beginPath(); px.arc(x, y, s * 1.9, 0, Math.PI * 2); px.stroke(); }
+    }
+  }
+
+  // the works of the towns (atlas/sites.js): a track from each to its town, and a mark by what it is —
+  // a round field, a square mine or quarry, a tent-shaped lodge; a stump where one burnt
+  drawSites(a, px) {
+    const k = this.unit(a), s0 = Math.max(0.35, 0.5 * k), close = this.cam.zoom > 6;
+    px.lineCap = 'round'; px.strokeStyle = 'rgba(200,180,140,0.7)'; px.lineWidth = Math.max(this.minW, 0.25 * k);
+    px.beginPath();
+    for (const s of a.sites) {
+      if (!s.alive) continue;
+      for (let q = 1; q < s.path.length; q++) { const u = s.path[q - 1], v = s.path[q]; px.moveTo(u % a.w + 0.5, ((u / a.w) | 0) + 0.5); px.lineTo(v % a.w + 0.5, ((s.path[q] / a.w) | 0) + 0.5); }
+    }
+    px.stroke();
+    for (const s of a.sites) {
+      if (s.died < 0) continue;
+      const b = TOWN_BUILDINGS.get(s.kind), x = s.x + 0.5, y = s.y + 0.5, r = s0 * (b.notable ? 1.25 : 1);
+      if (!s.alive) {   // a stump
+        px.strokeStyle = 'rgba(40,30,24,0.7)'; px.lineWidth = Math.max(this.minW, 0.3 * k);
+        px.beginPath(); px.moveTo(x - r * 0.6, y - r * 0.6); px.lineTo(x + r * 0.6, y + r * 0.6); px.moveTo(x + r * 0.6, y - r * 0.6); px.lineTo(x - r * 0.6, y + r * 0.6); px.stroke();
+        continue;
+      }
+      const c = SITE_COLORS[b.cat] || [200, 200, 200];
+      px.fillStyle = `rgb(${c.join(',')})`; px.strokeStyle = 'rgba(12,12,10,0.85)'; px.lineWidth = Math.max(this.minW, 0.2 * k);
+      px.beginPath();
+      if (b.cat === 'food' && b.id !== 'lodge') px.arc(x, y, r, 0, Math.PI * 2);
+      else if (b.id === 'lodge') { px.moveTo(x, y - r); px.lineTo(x + r, y + r * 0.8); px.lineTo(x - r, y + r * 0.8); px.closePath(); }
+      else px.rect(x - r * 0.85, y - r * 0.85, r * 1.7, r * 1.7);
+      px.fill(); px.stroke();
+      // close up, the kind of work in a word under the mark
+      if (close) { px.fillStyle = 'rgba(240,235,220,0.9)'; px.font = `${Math.max(0.25, 0.3 * k)}px "PT Sans", sans-serif`; px.textAlign = 'center'; px.fillText(b.name, x, y + r + 0.35 * k); }
+    }
+  }
+
+  // the links of the supply net between towns: the thicker, the more flows down them
+  drawLinks(a, px) {
+    const k = this.unit(a);
+    for (const l of a.net.links.values()) {
+      if (!l.p.alive || !l.q.alive || l.c < 0.08) continue;
+      px.strokeStyle = `rgba(255,225,160,${(0.12 + 0.5 * l.c).toFixed(2)})`; px.lineWidth = Math.max(this.minW, (0.15 + 0.5 * l.c) * k);
+      px.beginPath(); px.moveTo(l.p.x + 0.5, l.p.y + 0.5); px.lineTo(l.q.x + 0.5, l.q.y + 0.5); px.stroke();
     }
   }
 
@@ -556,8 +603,11 @@ export class AtlasView {
       const list = Object.entries(cnt).map(([id, n]) => TOWN_BUILDINGS.get(id).name + (n > 1 ? ` ×${n}` : '')).join(', ');
       const gives = Object.entries(EFFECTS).filter(([k]) => k !== 'housing' && fx[k] > 0).map(([k, l]) => `${l} +${Math.round(fx[k] * 100)}%`).join(', ');
       const folk = Object.entries(town.folk || {}).filter(([, v]) => v >= 0.03).map(([id, v]) => `${WORLD_PEOPLES.get(id).label} ${Math.round(v * 100)}%`).join(', ');
-      parts.push(`${townLabel(town)} ${town.name} (${town.realm ? realmLabel(a, town.realm) : P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : ''));
+      const sup = town.supply, feed = sup ? (sup.got > 0.05 * town.pop ? `; привозят еды на ${Math.round(sup.got)}` : sup.gave > 0.05 * town.pop ? `; отправляют еды на ${Math.round(sup.gave)}` : '') : '';
+      parts.push(`${townLabel(town)} ${town.name} (${town.realm ? realmLabel(a, town.realm) : P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}, угодья в ${siteRadius(a, town)} клетках; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : '') + feed);
     }
+    const site = siteAt(a, i);
+    if (site) { const b = TOWN_BUILDINGS.get(site.kind), t = a.towns.find(t => t.id === site.town); parts.push(`${b.name} (${CATEGORIES[b.cat]}) ${townLabel(t, 2)} ${t.name}, с года ${site.built}`); }
     const ruin = ruinAt(a, i);
     if (ruin) parts.push(`пепелище ${ruin.name} (${WORLD_PEOPLES.get(ruin.people).label}), сожжено в год ${ruin.year}`);
     if (f.barrows && f.barrows[i] > 0.15) parts.push('курганы былых битв');

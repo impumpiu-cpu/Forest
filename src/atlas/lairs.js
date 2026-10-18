@@ -21,6 +21,8 @@ import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
+import {raidSite} from './sites.js';
+import {BURNT} from './peoples.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
 
@@ -299,7 +301,8 @@ function tribeRaid(a, lair, L, rnd) {
     const loss = T.loss * raidShare(fx);
     target.pop *= 1 - loss; lair.strength = Math.min(1, lair.strength + T.loot);
     raidGraves(a, target);   // the dead of the raid lie unburied, and the rot takes them
-    return `${who} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей.`;
+    const burnt = raidSite(a, target, rnd);
+    return `${who} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
   }
   lair.strength *= T.beaten;
   // a beaten raid is counted and told once a year (atlas/history.js), not one line each

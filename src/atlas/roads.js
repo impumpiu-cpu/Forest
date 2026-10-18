@@ -7,6 +7,7 @@
 // Field (a.f): road — the wear of each cell (0 none; data/roads.js levels: path, road, highway).
 import {Heap, DIRS8} from './heap.js';
 import {ROADS} from '../data/roads.js';
+import {NET} from '../data/sites.js';
 import {RIVERS} from '../data/hydrology.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {biomeAt} from './biomes.js';
@@ -40,7 +41,7 @@ function baseCosts(a, people) {
 const stepCost = (a, base, i) => (base[i] - (a.f.bridge ? ROADS.river * a.f.bridge[i] : 0)) * (1 - ROADS.roadEase * Math.min(1, a.f.road[i] / ROADS.levels[1].wear));
 
 // A* from one cell to another; the path as a list of cells, or null
-function findPath(a, s, t, people, scratch) {
+export function findPath(a, s, t, people, scratch) {
   const {w, h} = a, {g, came, touched} = scratch, heap = new Heap(1024), tx = t % w, ty = (t / w) | 0, base = baseCosts(a, people);
   touched.length = 0;
   const H = i => 0.6 * Math.hypot(i % w - tx, ((i / w) | 0) - ty);
@@ -65,27 +66,38 @@ function findPath(a, s, t, people, scratch) {
   return path;
 }
 
-// one round of traffic between towns; returns the pairs that got a road for the first time
-export function wearRoads(a) {
-  const f = a.f, k = scaleOf(a), towns = a.towns.filter(t => t.alive), reach = ROADS.reach * k;
-  for (let i = 0; i < a.n; i++) f.road[i] *= ROADS.decay;
-  const scratch = a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
-  const done = new Set(), fresh = [];
+// the pairs of living towns that deal with each other: each town with its `links` nearest within
+// `reach` cells (of a 192-cell-high world) whose realm trades with its own; each pair once
+export function tradeLinks(a, links = ROADS.links, reach = ROADS.reach) {
+  const towns = a.towns.filter(t => t.alive), far = reach * scaleOf(a), done = new Set(), out = [];
   for (const t of towns) {
     const near = towns.filter(o => o !== t && trades(a, t.realm, o.realm))
-      .map(o => [o, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, d]) => d <= reach).sort((p, q) => p[1] - q[1]).slice(0, ROADS.links);
+      .map(o => [o, Math.hypot(o.x - t.x, o.y - t.y)]).filter(([, d]) => d <= far).sort((p, q) => p[1] - q[1]).slice(0, links);
     for (const [o] of near) {
       const key = Math.min(t.id, o.id) * 100000 + Math.max(t.id, o.id);
-      if (done.has(key)) continue;
-      done.add(key);
-      const path = findPath(a, t.i, o.i, t.people, scratch);
-      if (!path) continue;
-      // trading towns send more down the road
-      const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2);
-      for (const c of path) f.road[c] += amt;
-      a.roadPairs ||= new Set();
-      if (!a.roadPairs.has(key)) { a.roadPairs.add(key); fresh.push([t, o]); }
+      if (!done.has(key)) { done.add(key); out.push([t, o]); }
     }
+  }
+  return out;
+}
+
+// one round of traffic between towns; returns the pairs that got a road for the first time.
+// The traffic of a pair is its trade (√ of the peoples, more for trading towns) and the supply that
+// flowed down its link of the net this year (atlas/sites.js; data/sites.js NET.wear)
+export function wearRoads(a) {
+  const f = a.f;
+  for (let i = 0; i < a.n; i++) f.road[i] *= ROADS.decay;
+  const scratch = a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []};
+  const fresh = [], net = a.net?.links;
+  for (const [t, o] of tradeLinks(a)) {
+    const key = Math.min(t.id, o.id) * 100000 + Math.max(t.id, o.id);
+    const path = findPath(a, t.i, o.i, t.people, scratch);
+    if (!path) continue;
+    const flow = net?.get(key)?.flow || 0;
+    const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2) + flow / NET.wear;
+    for (const c of path) f.road[c] += amt;
+    a.roadPairs ||= new Set();
+    if (!a.roadPairs.has(key)) { a.roadPairs.add(key); fresh.push([t, o]); }
   }
   return fresh;
 }
