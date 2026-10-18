@@ -17,6 +17,7 @@ import {oreBeside} from '../world/ores.js';
 import {wantedOre} from '../settlement/query.js';
 import {PLANTS, plantLayer} from './plants.js';
 import {season} from './seasons.js';
+import {tempAt} from '../world/heat.js';
 import {fields, needsWork} from '../settlement/farming.js';
 
 export const NAVMAPS = new Registry('navmap');
@@ -39,11 +40,14 @@ export const inUse = w => perTick(w, 'navInUse', () => {
 let JOBS_REF = null, HUNTABLE = null;
 export const useJobs = (reg, huntable) => { JOBS_REF = reg; HUNTABLE = huntable; };
 const onDemand = id => w => inUse(w).has(id);
+// the warmth of the body grows only above this temperature (data/needs.js warmth)
+export const WARM_AT = 18;
 
 NAVMAPS.registerAll([
   {id: 'camp', seed: (w, i) => w.camp.set.has(i)},
-  // where to get warm: the camp fire and every finished lived-in building (heated while the fire burns)
-  {id: 'warm', prepare: w => new Set(w.buildings.filter(b => b.done && BUILDINGS.get(b.key).heat).flatMap(b => b.cells)),
+  // where to get warm: the camp fire and every finished lived-in building whose hearth really warms
+  // the room (warmth grows only above 18°, data/needs.js; a drafty hut in a hard frost stays at 10–13°)
+  {id: 'warm', prepare: w => new Set(w.buildings.filter(b => b.done && BUILDINGS.get(b.key).heat).flatMap(b => b.cells).filter(i => tempAt(w, i) > WARM_AT)),
     seed: (w, i, huts) => w.camp.set.has(i) || huts.has(i)},
   {id: 'edge', seed: (w, i) => { const x = i % w.w, y = (i / w.w) | 0; return x === 0 || y === 0 || x === w.w - 1 || y === w.h - 1; }},
   // bushes ripen almost every tick somewhere: the map follows them only while someone picks, and at most every 40 ticks

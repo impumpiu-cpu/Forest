@@ -17,6 +17,8 @@ import {nearAgents} from './spatial.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
+// who is attacking `a` right now: a beast that mauls (maul) or a raider that fights (fight) with `a` as its target
+export const attackerOf = (w, a) => w.agents.find(o => !o.dead && o !== a && (o.task?.id === 'maul' || o.task?.id === 'fight') && o.task.target === a) || null;
 
 // Can `a` see `t` right now? The nechist is seen only up close (`veil` cells: a leshy among the trees)
 // or not at all while it hides (`hiddenUntil`: a rusalka under the water) — unless it is attacking.

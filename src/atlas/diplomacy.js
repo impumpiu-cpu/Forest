@@ -127,7 +127,13 @@ function scourge(a, p) {
   for (let y = Math.max(0, y0 - rr); y <= Math.min(a.h - 1, y0 + rr); y++) for (let x = Math.max(0, x0 - rr); x <= Math.min(a.w - 1, x0 + rr); x++)
     if (Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) <= r) f[y * a.w + x] = 1;
 }
-function armyDay(a, p) {
+// the war the army was sent to is over (peace made while it marched or sat under the walls): it turns home
+function warOver(a, p) { return !a.rel[p.war]?.war; }
+function armyDay(a, p, rnd, say) {
+  if (p.state !== 'home' && warOver(a, p)) {
+    say(`${cap1(p.label)} ${p.state === 'stay' ? 'сняло осаду' : 'повернуло назад'}: заключён мир.`);
+    goHome(a, p); return;
+  }
   p.supplies--;
   if (p.supplies < 0) { p.men *= 1 - ARMY.attrition; if (p.state === 'go') goHome(a, p); }
   if (p.state === 'stay' || p.days % 3 === 0) scourge(a, p);
@@ -213,15 +219,18 @@ export function stepDiplomacy(a, rnd, say, overlap) {
       const years = H.year - r.war.since;
       // the front: the nearest pair of towns of the two; the realms take turns to muster an army
       // there and march on the other's town (atlas/parties.js); one army of a war at a time
-      const armyOut = (a.parties || []).some(x => x.kind === 'army' && x.war === kk && x.state !== 'gone');
-      if (gap <= D.front * k && !armyOut) {
-        const [t, o] = pair, mine = r.war.turn === q ? [o, t] : [t, o];
-        r.war.turn = mine[0].realm === p ? q : p;
-        muster(a, mine[0], mine[1], kk, rnd, say);
-      }
+      // peace comes first: no army sets out in the year the war ends, and one already on the march
+      // turns home when the news reaches it (army.day)
       if (r.att >= D.peaceAt || years >= D.longest) {
         say(`${cap1(realmLabel(a, p))} и ${realmLabel(a, q)} заключили мир после ${years} ${years % 10 === 1 && years % 100 !== 11 ? 'года' : 'лет'} войны.`);
         r.war = null; r.att = D.afterPeace;
+      } else {
+        const armyOut = (a.parties || []).some(x => x.kind === 'army' && x.war === kk && x.state !== 'gone');
+        if (gap <= D.front * k && !armyOut) {
+          const [t, o] = pair, mine = r.war.turn === q ? [o, t] : [t, o];
+          r.war.turn = mine[0].realm === p ? q : p;
+          muster(a, mine[0], mine[1], kk, rnd, say);
+        }
       }
     } else if (r.att <= D.warAt && border) {
       r.war = {since: H.year, battles: 0, razed: 0}; r.wars++;
