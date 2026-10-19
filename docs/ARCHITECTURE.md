@@ -168,7 +168,7 @@ src/
   commands.js  всё, что игрок может сделать с миром: ветер, поджог, ливень, набег
   headless.js  игра без экрана: simulate(cfg, {days}) с ежедневными замерами
 tools/
-  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  atlas-save-check.mjs  map-check.mjs  seam-check.mjs  campaign-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  report.mjs
+  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  atlas-save-check.mjs  map-check.mjs  seam-check.mjs  campaign-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  campaign-balance.mjs  report.mjs
 ```
 
 </details>

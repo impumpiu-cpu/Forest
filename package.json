@@ -18,7 +18,8 @@
     "atlas:save": "node tools/atlas-save-check.mjs",
     "map": "node tools/map-check.mjs",
     "seam": "node tools/seam-check.mjs",
-    "campaign": "node tools/campaign-check.mjs"
+    "campaign": "node tools/campaign-check.mjs",
+    "campaign:balance": "node tools/campaign-balance.mjs"
   },
   "devDependencies": {
     "esbuild": "0.24.0"

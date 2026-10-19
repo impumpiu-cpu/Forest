@@ -61,7 +61,8 @@ function spawn(a, K) {
 // ── a half day of moving: hunters go for the caravan when they notice it, the rest wander (traders along
 // the roads); a thing left far behind melts away
 function move(a, K, r, guided) {
-  const B = bubbleOf(K), sense = sc(a, BUBBLE.sense), gone = sc(a, BUBBLE.gone);
+  // a quiet people (elves) is noticed from less far (data/bubble.js `quiet`)
+  const B = bubbleOf(K), sense = sc(a, BUBBLE.sense) * (BUBBLE.quiet[K.people] ?? 1), gone = sc(a, BUBBLE.gone);
   for (const t of B.things) {
     const T = THINGS[t.kind], step = sc(a, T.speed) / 2, d = dist(K, t);
     let nx = t.x, ny = t.y;

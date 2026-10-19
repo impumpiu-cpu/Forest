@@ -9,12 +9,14 @@ export const BUBBLE = {
   near: 4, far: 8, gone: 10,
   // each day this many cells of the ring are looked at; each danger of a cell (campaign/land.js dangers)
   // sends a thing with its chance × `spawn`, the traders and herds with their own; near a friendly town × `friendly`
-  samples: 4, spawn: 0.42, friendly: 0.3,
+  samples: 4, spawn: 0.3, friendly: 0.3,
   // at most this many things at once (the world's parties are not counted); a thing that is not hunting the
   // caravan wanders off back into the field after `life` days
   max: 10, life: 20,
   // a thing that hunts notices the caravan within `sense` and goes for it; it reaches it within `contact`
   sense: 6, contact: 0.7,
+  // a people that walks quietly is noticed only this near (× sense): the forest folk, frail in a fight, keep out of one
+  quiet: {elves: 0.6},
   // the old field's chance of a night visitor nobody saw coming (a lone beast, a thief)
   stray: 0.012,
   // with a guide, a hunting thing loses the trail with this chance a day

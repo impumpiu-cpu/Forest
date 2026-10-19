@@ -27,7 +27,7 @@ export const CAMP = {
   // the foe: a band's budget in «human raiders» (data/raids.js) from its might (data/campaign.js FOES)
   // × the thing's strength × `budget`; beasts come as a pack of `pack` × strength; the threat the band
   // carries its gear and aim by (settlement/threat.js) — × strength
-  budget: 0.7, pack: [2, 4], threat: 6,
+  budget: 0.55, pack: [2, 4], threat: 6,
   // a building packed in the wagon is put up at the camp: it stands with this share of its work left
   // (the caravan finishes it with its own hands before the night)
   deploy: 0.25,

@@ -20,7 +20,7 @@ export const CAMPAIGN = {
   // the chronicle tells of a new hunger only `again` days after the last told, of its end after `over` days of it
   hunger: {starveAt: 0.5, slow: 0.5, wasteAfter: 12, waste: 0.025, tell: {again: 20, over: 4}},
   // health a day: on the march, in a camp
-  heal: {march: 0.03, camp: 0.1},
+  heal: {march: 0.05, camp: 0.1},
   // the evening council stops the march: to forage when the food left lasts less than `foodDays` and the
   // land can feed them (richness ≥ `foodLand`); to heal when the core's mean health is below `hp` or one
   // of them is below `badly`; not where the night is dangerous (`danger`), unless they already starve;
@@ -43,9 +43,11 @@ export const CAMPAIGN = {
   night: {base: 0.02, max: 0.22, friendly: 0.3},
   // a fight: the foe's might × U(0.6, 1.4) against the caravan's; the caravan takes `hurt` × the foe's might
   // (more when it loses) in blows of `blow` health, the knights `shield` times as often as the squires;
-  // in a fight they win nobody falls (the wounded are carried off at `saved` health); a lost fight costs
-  // `lost` of the food
-  fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4]},
+  // the quick mode's fight (campaign/fight.js autoFight): in a fight they win one struck down is carried off at
+  // `saved` health; any blow may be mortal (`mortal`, win or lose), as on the local map; a lost fight costs `lost`
+  // of the food. `mortal` is tuned so that the quick mode loses as many of the eight as the local map
+  // (tools/campaign-balance.mjs)
+  fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02},
   // a morning after a quiet night: a little food is found with `food`, something of worth with `treasure`
   morning: {food: 0.22, foodN: [1, 3], treasure: 0.012, gold: [3, 15]},
   // the goal of the walk (this stage: a point; later the clues, docs/CAMPAIGN.md): a land cell this share
@@ -75,7 +77,7 @@ export const RETINUE = {
   humans:  {knight: ['рыцарь', 'рыцари', 'рыцаря'], squire: ['оруженосец', 'оруженосцы', 'оруженосца'],
     knightGear: [['bronzespear', 'shield'], ['bronzeaxe', 'shield'], ['bronzespear', 'shield'], ['bow', 'quiver']]},
   elves:   {knight: ['страж', 'стражи', 'стража'], squire: ['помощник', 'помощники', 'помощника'],
-    knightGear: [['bow', 'quiver'], ['bow', 'quiver'], ['bronzespear', 'shield'], ['bow', 'quiver']]},
+    knightGear: [['bow', 'quiver'], ['bronzespear', 'shield'], ['bow', 'quiver'], ['bronzespear', 'shield']]},
   dwarves: {knight: ['хирдман', 'хирдманы', 'хирдмана'], squire: ['подмастерье', 'подмастерья', 'подмастерья'],
     knightGear: [['bronzeaxe', 'shield'], ['bronzeaxe', 'shield'], ['bronzespear', 'shield'], ['bronzeaxe', 'shield']]},
   orcs:    {knight: ['рубака', 'рубаки', 'рубаки'], squire: ['прислужник', 'прислужники', 'прислужника'],

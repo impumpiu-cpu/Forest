@@ -176,7 +176,9 @@ function autoFight(a, K, d, r, how) {
     for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;
     if (!hit.includes(m)) hit.push(m);
-    if (m.hp <= 0) { if (win) m.hp = F.saved; else die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`); }
+    const mortal = r() < F.mortal;
+    if (mortal || (m.hp <= 0 && !win)) die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`);
+    else if (m.hp <= 0) m.hp = F.saved;
   }
   if (!alive(K).length) return win;
   if (win) {
