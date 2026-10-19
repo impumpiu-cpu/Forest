@@ -90,7 +90,16 @@
       <div class="seg wrapseg" data-akey="fauna" id="atlasFauna" hidden></div>
       <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
       <div class="legend atlas-legend" id="atlasLegend"></div>
-      <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку.</div>
+      <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку. Щелчок по суше — выбрать место для поселения.</div>
+      <div class="card cellcard" id="atlasCell" hidden>
+        <h2>Место для поселения</h2>
+        <dl class="kv cellkv" id="atlasCellInfo"></dl>
+        <div class="row actions">
+          <button type="button" id="atlasSettle" class="primary">Основать поселение здесь</button>
+          <button type="button" id="atlasUnpick" class="quiet">Снять выбор</button>
+        </div>
+        <small id="atlasCellNote" class="muted"></small>
+      </div>
     </div>
     <div class="card atlas-chron">
       <h2>Летопись мира</h2>
@@ -106,7 +115,14 @@
         <label for="cfgName">Название поселения</label>
         <input id="cfgName" type="text" maxlength="32" autocomplete="off">
       </div>
-      <div class="field">
+      <div class="field"><span class="lbl">Где</span><div class="seg" data-key="source"></div>
+        <small data-note="source"></small></div>
+      <div class="field" data-only="world">
+        <span class="lbl">Клетка мира</span>
+        <dl class="kv cellkv" id="cellInfo"></dl>
+        <div class="row"><button type="button" id="cellPick">Выбрать на карте мира…</button></div>
+      </div>
+      <div class="field" data-only="poly">
         <label for="cfgSeed">Сид мира</label>
         <div class="row">
           <input id="cfgSeed" type="text" maxlength="24" autocomplete="off">
@@ -115,12 +131,12 @@
         <small>Число или любое слово. Один и тот же сид с теми же настройками даёт тот же мир.</small>
       </div>
       <div class="field"><span class="lbl">Размер мира</span><div class="seg wrapseg" data-key="size"></div><small data-note="size"></small></div>
-      <div class="field-grid">
+      <div class="field-grid" data-only="poly">
         <div class="field"><span class="lbl">Вода</span><div class="seg" data-key="water"></div></div>
         <div class="field"><span class="lbl">Лес</span><div class="seg" data-key="forest"></div></div>
         <div class="field"><span class="lbl">Горы</span><div class="seg" data-key="rock"></div></div>
       </div>
-      <div class="field"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
+      <div class="field" data-only="poly"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
       <div class="field"><span class="lbl">Начало</span><div class="seg" data-key="start"></div></div>
       <div class="field">
         <label for="cfgColonists">Поселенцев на старте: <output id="colonistsOut">8</output></label>
@@ -128,10 +144,16 @@
       </div>
       <div class="field-grid">
         <div class="field"><span class="lbl">Запасы</span><div class="seg" data-key="stock"></div></div>
-        <div class="field"><span class="lbl">Набеги «Серых волков»</span><div class="seg" data-key="raids"></div></div>
         <div class="field"><span class="lbl">Зайцы</span><div class="seg" data-key="wildlife"></div></div>
         <div class="field"><span class="lbl">Волки</span><div class="seg" data-key="predators"></div></div>
       </div>
+      <div class="field-grid" data-only="poly">
+        <div class="field"><span class="lbl">Набеги</span><div class="seg" data-key="raids"></div></div>
+        <div class="field"><span class="lbl">Чудища</span><div class="seg" data-key="monsters"></div></div>
+      </div>
+      <div class="field" data-only="poly"><span class="lbl">Кто ходит в набеги</span><div class="seg wrapseg" id="cfgBands"></div>
+        <small>Нажатые банды могут прийти; на клетке мира это решают соседи.</small></div>
+      <label class="check" data-only="poly"><input id="cfgSpirits" type="checkbox"> Нечисть: леший, русалка, кикимора, водяной, полуденница</label>
       <label class="check"><input id="cfgLightning" type="checkbox"> Молнии поджигают лес в жаркие часы</label>
       <div class="row actions">
         <button type="button" id="startGame" class="primary">Основать поселение</button>

@@ -215,6 +215,10 @@ button.quiet{background:transparent;color:var(--muted)}
 .kv dt{white-space:nowrap}
 .kv dd{overflow-wrap:anywhere}
 [hidden]{display:none!important}
+.cellkv{grid-template-columns:max-content minmax(0,1fr)}
+.cellkv dd{text-align:left;font-family:inherit;font-size:13px;line-height:1.4}
+.cellkv .warn{color:var(--ember)}
+.cellcard{margin-top:8px;border-color:var(--ember)}
 .kv dd.nb{font-family:inherit;font-size:12px;line-height:1.35}
 .status{font-size:12px;color:var(--muted)}
 .savelist{display:flex;flex-direction:column;gap:4px;margin:4px 0 8px}
@@ -437,7 +441,16 @@ dd.q4{color:#c58cff;font-weight:600}
       <div class="seg wrapseg" data-akey="fauna" id="atlasFauna" hidden></div>
       <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
       <div class="legend atlas-legend" id="atlasLegend"></div>
-      <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку.</div>
+      <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку. Щелчок по суше — выбрать место для поселения.</div>
+      <div class="card cellcard" id="atlasCell" hidden>
+        <h2>Место для поселения</h2>
+        <dl class="kv cellkv" id="atlasCellInfo"></dl>
+        <div class="row actions">
+          <button type="button" id="atlasSettle" class="primary">Основать поселение здесь</button>
+          <button type="button" id="atlasUnpick" class="quiet">Снять выбор</button>
+        </div>
+        <small id="atlasCellNote" class="muted"></small>
+      </div>
     </div>
     <div class="card atlas-chron">
       <h2>Летопись мира</h2>
@@ -453,7 +466,14 @@ dd.q4{color:#c58cff;font-weight:600}
         <label for="cfgName">Название поселения</label>
         <input id="cfgName" type="text" maxlength="32" autocomplete="off">
       </div>
-      <div class="field">
+      <div class="field"><span class="lbl">Где</span><div class="seg" data-key="source"></div>
+        <small data-note="source"></small></div>
+      <div class="field" data-only="world">
+        <span class="lbl">Клетка мира</span>
+        <dl class="kv cellkv" id="cellInfo"></dl>
+        <div class="row"><button type="button" id="cellPick">Выбрать на карте мира…</button></div>
+      </div>
+      <div class="field" data-only="poly">
         <label for="cfgSeed">Сид мира</label>
         <div class="row">
           <input id="cfgSeed" type="text" maxlength="24" autocomplete="off">
@@ -462,12 +482,12 @@ dd.q4{color:#c58cff;font-weight:600}
         <small>Число или любое слово. Один и тот же сид с теми же настройками даёт тот же мир.</small>
       </div>
       <div class="field"><span class="lbl">Размер мира</span><div class="seg wrapseg" data-key="size"></div><small data-note="size"></small></div>
-      <div class="field-grid">
+      <div class="field-grid" data-only="poly">
         <div class="field"><span class="lbl">Вода</span><div class="seg" data-key="water"></div></div>
         <div class="field"><span class="lbl">Лес</span><div class="seg" data-key="forest"></div></div>
         <div class="field"><span class="lbl">Горы</span><div class="seg" data-key="rock"></div></div>
       </div>
-      <div class="field"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
+      <div class="field" data-only="poly"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
       <div class="field"><span class="lbl">Начало</span><div class="seg" data-key="start"></div></div>
       <div class="field">
         <label for="cfgColonists">Поселенцев на старте: <output id="colonistsOut">8</output></label>
@@ -475,10 +495,16 @@ dd.q4{color:#c58cff;font-weight:600}
       </div>
       <div class="field-grid">
         <div class="field"><span class="lbl">Запасы</span><div class="seg" data-key="stock"></div></div>
-        <div class="field"><span class="lbl">Набеги «Серых волков»</span><div class="seg" data-key="raids"></div></div>
         <div class="field"><span class="lbl">Зайцы</span><div class="seg" data-key="wildlife"></div></div>
         <div class="field"><span class="lbl">Волки</span><div class="seg" data-key="predators"></div></div>
       </div>
+      <div class="field-grid" data-only="poly">
+        <div class="field"><span class="lbl">Набеги</span><div class="seg" data-key="raids"></div></div>
+        <div class="field"><span class="lbl">Чудища</span><div class="seg" data-key="monsters"></div></div>
+      </div>
+      <div class="field" data-only="poly"><span class="lbl">Кто ходит в набеги</span><div class="seg wrapseg" id="cfgBands"></div>
+        <small>Нажатые банды могут прийти; на клетке мира это решают соседи.</small></div>
+      <label class="check" data-only="poly"><input id="cfgSpirits" type="checkbox"> Нечисть: леший, русалка, кикимора, водяной, полуденница</label>
       <label class="check"><input id="cfgLightning" type="checkbox"> Молнии поджигают лес в жаркие часы</label>
       <div class="row actions">
         <button type="button" id="startGame" class="primary">Основать поселение</button>
@@ -4717,6 +4743,7 @@ dd.q4{color:#c58cff;font-weight:600}
     CLIMATES: () => CLIMATES,
     DEFAULT_CFG: () => DEFAULT_CFG,
     LEVELS3: () => LEVELS3,
+    MONSTERS: () => MONSTERS2,
     PREDATORS: () => PREDATORS,
     RAIDS: () => RAIDS,
     SIZES: () => SIZES,
@@ -4767,6 +4794,12 @@ dd.q4{color:#c58cff;font-weight:600}
     few: { label: "\u0420\u0435\u0434\u043A\u043E", wolves: 0.5 },
     many: { label: "\u0421\u0442\u0430\u0438", wolves: 1 }
   };
+  var MONSTERS2 = {
+    none: { label: "\u041D\u0435\u0442", k: 0 },
+    few: { label: "\u0420\u0435\u0434\u043A\u043E", k: 0.5 },
+    usual: { label: "\u041E\u0431\u044B\u0447\u043D\u043E", k: 1 },
+    many: { label: "\u0427\u0430\u0441\u0442\u043E", k: 1.6 }
+  };
   var DEFAULT_CFG = {
     name: "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434",
     seed: "20261010",
@@ -4782,6 +4815,10 @@ dd.q4{color:#c58cff;font-weight:600}
     wildlife: "few",
     predators: "few",
     lightning: false,
+    bands: null,
+    monsters: "usual",
+    spirits: true,
+    // bands: null — all of data/raids.js, or a list of the allowed ids
     windDir: 20,
     windStr: 35
   };
@@ -4792,16 +4829,19 @@ dd.q4{color:#c58cff;font-weight:600}
   var TREES = [0.75, 1, 1.25];
   var MOUNTAIN = ["foothills", "highlands", "underground", "volcano"];
   function makeSite(cfg) {
-    const { w, h } = SIZES[cfg.size], region2 = rollRegion(cfg.seed);
+    if (cfg.cell) return siteFromRegion({ ...cfg, water: 1, rock: 1, forest: 1 }, cfg.cell.region, { ...cfg.cell.extra, world: cfg.cell.ref });
+    const region2 = rollRegion(cfg.seed);
+    return siteFromRegion(cfg, region2, { climate: { id: cfg.climate, ...CLIMATES[cfg.climate] }, gates: rollGates(cfg.seed, region2) });
+  }
+  function siteFromRegion(cfg, region2, extra = {}) {
+    const { w, h } = SIZES[cfg.size];
     const biomes2 = {};
     for (const [id, v] of Object.entries(region2.biomes)) if (BIOMES.has(id) && v > 0) biomes2[id] = v;
     const share2 = (id) => biomes2[id] || 0;
     const mountains = MOUNTAIN.reduce((s, id) => s + share2(id), 0);
     const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share2("water")), 0.02, 0.45);
     const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
-    const climate = { id: cfg.climate, ...CLIMATES[cfg.climate] };
-    const gates = rollGates(cfg.seed, region2);
-    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0, gates };
+    return { seed: String(cfg.seed), w, h, region: region2, biomes: biomes2, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, startDay: START[cfg.start]?.day ?? 0, gates: [], ...extra };
   }
   var SIDES = ["north", "east", "south", "west"];
   var SIDE_FROM = { north: "\u0441\u0435\u0432\u0435\u0440\u0430", east: "\u0432\u043E\u0441\u0442\u043E\u043A\u0430", south: "\u044E\u0433\u0430", west: "\u0437\u0430\u043F\u0430\u0434\u0430" };
@@ -4957,10 +4997,10 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/settlement/zone.js
   function mark(w, cx, cy, r) {
-    const z = w.zone, r2 = r * r;
+    const z = w.zone, r22 = r * r;
     for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(w.h - 1, Math.ceil(cy + r)); y++)
       for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(w.w - 1, Math.ceil(cx + r)); x++)
-        if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r2) z[y * w.w + x] = 1;
+        if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r22) z[y * w.w + x] = 1;
   }
   function recomputeZone(w) {
     if (!w.zone) w.zone = new Uint8Array(w.n);
@@ -5735,8 +5775,8 @@ dd.q4{color:#c58cff;font-weight:600}
     a.route = { how: where + " \u043F\u0440\u044F\u043C\u043E", t: w.tick };
     if (clearLine(w, a.x, a.y, tx2, ty)) {
       a.path = null;
-      const r2 = moveToward(w, a, tx2, ty, mul);
-      if (r2 !== null) return r2;
+      const r3 = moveToward(w, a, tx2, ty, mul);
+      if (r3 !== null) return r3;
     }
     let p = a.path;
     const goal = (ty | 0) * w.w + (tx2 | 0);
@@ -9895,8 +9935,8 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!b) return 0;
     const ctx = craftContext(w);
     if (b.order) {
-      const r2 = RECIPES.get(b.order.recipe);
-      return a && !canMake(a, r2) ? 0 : r2.want(ctx) + 0.5;
+      const r3 = RECIPES.get(b.order.recipe);
+      return a && !canMake(a, r3) ? 0 : r3.want(ctx) + 0.5;
     }
     const r = pickRecipe(w, station, ctx, a);
     return r ? r.want(ctx) : 0;
@@ -9905,14 +9945,14 @@ dd.q4{color:#c58cff;font-weight:600}
     var _a, _b;
     if (b.order && a && !canMake(a, RECIPES.get(b.order.recipe))) return false;
     if (!b.order) {
-      const r2 = pickRecipe(w, b.key, void 0, a);
-      if (!r2) return false;
-      const fuel = r2.fuel ? furnacePick(w, r2.heat ?? 2, r2.fuel, fuelReserve(w) + (r2.cost.wood || 0)) : null;
-      if (r2.fuel && !fuel) return false;
+      const r3 = pickRecipe(w, b.key, void 0, a);
+      if (!r3) return false;
+      const fuel = r3.fuel ? furnacePick(w, r3.heat ?? 2, r3.fuel, fuelReserve(w) + (r3.cost.wood || 0)) : null;
+      if (r3.fuel && !fuel) return false;
       if (w.scratch) delete w.scratch.orders;
-      for (const [res, v] of Object.entries(r2.cost)) w.stock[res] -= v;
+      for (const [res, v] of Object.entries(r3.cost)) w.stock[res] -= v;
       if (fuel) w.stock[fuel[0].id] -= fuel[1];
-      b.order = { recipe: r2.id, progress: 0 };
+      b.order = { recipe: r3.id, progress: 0 };
       if (fuel) b.order.fuel = [fuel[0].id, fuel[1]];
     }
     const r = RECIPES.get(b.order.recipe);
@@ -11528,16 +11568,32 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/outside/scripted.js
+  var worldNb = (w) => w.site?.neighbours || null;
+  var NB_ID = { kin: "kin", empire: "empire", hostile: "hostile" };
+  function bandAllowed(w, id) {
+    const nb = worldNb(w);
+    if (nb) return nb.hostile?.bands?.[id] || 0;
+    return !w.cfg.bands || w.cfg.bands.includes(id) ? 1 : 0;
+  }
   var pickBand = (w, rng) => {
     const sc = scoutedBand(w);
-    return weighted(rng, RAID_BANDS.all().map((b) => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1)]));
+    return weighted(rng, RAID_BANDS.all().map((b) => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1) * bandAllowed(w, b.id)]));
   };
-  var raidDist = (w) => RAIDS[w.cfg.raids].dist;
+  var anyBand = (w) => RAID_BANDS.all().some((b) => bandAllowed(w, b.id) > 0);
+  var raidDist = (w) => {
+    const nb = worldNb(w);
+    return nb ? nb.hostile && anyBand(w) ? nb.hostile.dist : null : anyBand(w) ? RAIDS[w.cfg.raids].dist : null;
+  };
+  var raidOdds = (w) => ({ dist: raidDist(w), chance: raidChance(w) });
+  var raidChance = (w) => {
+    const nb = worldNb(w);
+    return nb ? nb.hostile?.chance ?? 0 : RAIDS[w.cfg.raids].chance ?? 1;
+  };
   var caravanDay = (w, day, rng) => Math.max(w.tick + 1, day * DAY + (TRADE.setOut[0] + rng() * (TRADE.setOut[1] - TRADE.setOut[0])) * HOUR);
   var scripted = {
     id: "scripted",
     label: "\u0421\u0446\u0435\u043D\u0430\u0440\u0438\u0439",
-    distance: (w, id) => id === "hostile" ? raidDist(w) : NEIGHBOURS.get(id).dist,
+    distance: (w, id) => id === "hostile" ? raidDist(w) : worldNb(w) && NB_ID[id] ? worldNb(w)[NB_ID[id]]?.dist ?? null : NEIGHBOURS.get(id).dist,
     flows: {
       // one newcomer at a time from the kin; the wait grows with the colony (it hears how big it is)
       settlers: {
@@ -11619,7 +11675,7 @@ dd.q4{color:#c58cff;font-weight:600}
       raiders: {
         from: "hostile",
         first: (w, rng) => scripted.flows.raiders.next(w, rng),
-        offer: (w, rng) => rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? { n: raidSize(w), band: pickBand(w, rng) } : 0,
+        offer: (w, rng) => rng() < raidChance(w) ? { n: raidSize(w), band: pickBand(w, rng) } : 0,
         size: (w) => ({ n: raidSize(w), band: pickBand(w, w.rngs.outside) }),
         missed: () => ["\u0427\u0443\u0436\u0438\u0435 \u0440\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438 \u043F\u043E\u0431\u0440\u043E\u0434\u0438\u043B\u0438 \u0443 \u043A\u0440\u0430\u044F \u043B\u0435\u0441\u0430 \u0438 \u0443\u0448\u043B\u0438. \u041D\u0430\u0431\u0435\u0433\u0430 \u0432 \u044D\u0442\u043E\u0442 \u0440\u0430\u0437 \u043D\u0435 \u0431\u0443\u0434\u0435\u0442.", "danger", "info"],
         next: (w, rng) => raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) * (scoutedBand(w) ? 0.6 : 1) : Infinity
@@ -11637,12 +11693,13 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   for (const sp of SPECIES.filter((s) => s.arrive)) {
     const A = sp.arrive, when = (w, t) => A.night ? evening2(t) : t;
-    const setting = (w) => sp.resident ? 1 : sp.brain === "predator" ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0;
+    const monsters = (w) => sp.kind === "monster" ? MONSTERS2[w.cfg.monsters ?? "usual"]?.k ?? 1 : 1;
+    const setting = (w) => sp.resident ? w.cfg.spirits === false ? 0 : 1 : (sp.brain === "predator" ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0) * monsters(w);
     scripted.flows[sp.id] = {
       from: sp.resident ? "local" : "wilds",
       first: (w, rng) => when(w, w.tick + (A.first + rng()) * DAY),
       offer: (w, rng) => {
-        if (sp.resident) return 1;
+        if (sp.resident) return setting(w);
         const k = setting(w), lvl = faunaLevel(w, sp.id);
         if (!k || !lvl || rng() >= A.chance * k * Math.min(1.5, lvl)) return 0;
         return A.group[0] + Math.floor(rng() * (A.group[1] - A.group[0] + 1));
@@ -11717,8 +11774,10 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function neighbours(w) {
     const P = provider(w);
+    const nb = w.site?.neighbours || {};
     return NEIGHBOURS.all().map((n) => ({
       ...n,
+      ...nb[n.id] ? { label: nb[n.id].label, note: nb[n.id].note } : {},
       dist: P.distance(w, n.id),
       flows: n.flows.filter((f) => P.flows[f]).map((f) => ({ id: f, next: w.outside.next[f], due: w.outside.due[f] }))
     }));
@@ -12960,7 +13019,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var carriedFood = (a) => Object.entries(a.carry?.res || {}).reduce((s, [r, n]) => s + (FOODS.has(r) ? n : 0), 0);
   function eatCarried(a) {
     let fed = 0;
-    for (const r of Object.keys(a.carry?.res || {}).filter((r2) => FOODS.has(r2)).sort((x, y) => FOODS.get(y).nutrition - FOODS.get(x).nutrition)) {
+    for (const r of Object.keys(a.carry?.res || {}).filter((r3) => FOODS.has(r3)).sort((x, y) => FOODS.get(y).nutrition - FOODS.get(x).nutrition)) {
       while (a.needs.food + fed < 0.95 && unload(a, r, 1)) fed += 0.4 * FOODS.get(r).nutrition;
     }
     a.needs.food = Math.min(1, a.needs.food + fed);
@@ -13076,8 +13135,8 @@ dd.q4{color:#c58cff;font-weight:600}
       const r = follow(w, a, map);
       if (r === "arrived") {
         const b = buildingById(w, w.grid.bld[cellOf(w, a)]);
-        const r2 = b && b.done ? workAt(w, b, (rec) => workRate(w, a, job.id, recipeSkill(rec)) * workBonus(b), a) : null;
-        if (r2) practice(a, recipeSkill(r2));
+        const r3 = b && b.done ? workAt(w, b, (rec) => workRate(w, a, job.id, recipeSkill(rec)) * workBonus(b), a) : null;
+        if (r3) practice(a, recipeSkill(r3));
         else {
           fail(w, a, "\u0437\u0430\u043A\u0430\u0437 \u043D\u0435 \u043D\u0430\u0447\u0430\u0442\u044C: \u043D\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u043E\u0432 \u0438\u043B\u0438 \u0442\u043E\u043F\u043B\u0438\u0432\u0430");
           a.think = 20;
@@ -13226,10 +13285,10 @@ dd.q4{color:#c58cff;font-weight:600}
           got.wool = T2.wool;
           b.wool = 0;
         }
-        for (const [r2, n] of Object.entries(got)) {
-          load(a, r2, n);
-          add(a.stats.gathered, r2, n);
-          add(w.chronicle.gathered, r2, n);
+        for (const [r3, n] of Object.entries(got)) {
+          load(a, r3, n);
+          add(a.stats.gathered, r3, n);
+          add(w.chronicle.gathered, r3, n);
         }
         release(w, "beast:" + b.id, a);
         task.beast = null;
@@ -15911,6 +15970,37 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   };
 
+  // src/ui/cellText.js
+  var SIDE2 = { north: "\u0441 \u0441\u0435\u0432\u0435\u0440\u0430", south: "\u0441 \u044E\u0433\u0430", east: "\u0441 \u0432\u043E\u0441\u0442\u043E\u043A\u0430", west: "\u0441 \u0437\u0430\u043F\u0430\u0434\u0430" };
+  var pct = (v) => `${Math.round(v * 100)}%`;
+  var oreLabel = (id) => ORES.has(id) ? ORES.get(id).label : id;
+  function cellSummary(plan) {
+    const R2 = plan.region, X = plan.extra, rows = [];
+    const row = (k, v) => rows.push(`<dt>${k}</dt><dd>${v}</dd>`);
+    row("\u041C\u0438\u0440", `${esc(plan.ref.name)} \xB7 \u043A\u043B\u0435\u0442\u043A\u0430 ${plan.ref.x}, ${plan.ref.y}${plan.ref.year ? ` \xB7 ${plan.ref.year}-\u0439 \u0433\u043E\u0434` : ""}`);
+    row("\u041C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C", `${esc(R2.label)}: ` + Object.entries(R2.biomes).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, v]) => `${BIOMES.has(id) ? BIOMES.get(id).label : id} ${pct(v)}`).join(", "));
+    row("\u041A\u043B\u0438\u043C\u0430\u0442", `${esc(X.climate.label)}, ${esc(X.climate.note)}`);
+    const ores2 = Object.entries(R2.ores).filter(([, v]) => v > 0).map(([id, v]) => `${oreLabel(id)} \u2014 ${LEVEL_WORDS[v]}`);
+    if (R2.placer > 0) ores2.push(`\u0437\u043E\u043B\u043E\u0442\u043E\u0439 \u043F\u0435\u0441\u043E\u043A \u2014 ${LEVEL_WORDS[R2.placer]}`);
+    row("\u0420\u0443\u0434\u044B", ores2.join(", ") || "\u043D\u0435\u0442");
+    const roads = X.gates.filter((g3) => g3.kind === "road").map((g3) => SIDE2[g3.side]), river = X.gates.find((g3) => g3.kind === "river" && g3.role === "source");
+    const mouth = X.gates.find((g3) => g3.kind === "river" && g3.role === "mouth");
+    row("\u041F\u0443\u0442\u0438", [roads.length ? `\u0434\u043E\u0440\u043E\u0433\u0430 ${roads.join(" \u0438 ")}` : "\u0434\u043E\u0440\u043E\u0433 \u043D\u0435\u0442", river ? `${river.wide ? "\u0431\u043E\u043B\u044C\u0448\u0430\u044F \u0440\u0435\u043A\u0430" : "\u0440\u0435\u043A\u0430"} \u0442\u0435\u0447\u0451\u0442 ${SIDE2[river.side]} ${mouth ? "\u043D\u0430 " + { north: "\u0441\u0435\u0432\u0435\u0440", south: "\u044E\u0433", east: "\u0432\u043E\u0441\u0442\u043E\u043A", west: "\u0437\u0430\u043F\u0430\u0434" }[mouth.side] : ""}` : "\u0440\u0435\u043A\u0438 \u043D\u0435\u0442"].join("; "));
+    const nb = X.neighbours || {};
+    if (nb.kin) row("\u0421\u0432\u043E\u0438", `${esc(nb.kin.label)} \u2014 ${nb.kin.dist} \u0434\u043D. (${esc(nb.kin.note.split(":")[0])})`);
+    if (nb.empire) row("\u0422\u043E\u0440\u0433", nb.empire.town === nb.kin?.town ? "\u0442\u0430\u043C \u0436\u0435" : `${esc(nb.empire.label)} \u2014 ${nb.empire.dist} \u0434\u043D.`);
+    if (nb.hostile) {
+      const bands = Object.entries(nb.hostile.bands).sort((a, b) => b[1] - a[1]).map(([id]) => RAID_BANDS.has(id) ? RAID_BANDS.get(id).label : id);
+      row("\u0423\u0433\u0440\u043E\u0437\u0430", `${bands.join(", ")} \u2014 \u0431\u043B\u0438\u0436\u0430\u0439\u0448\u0438\u0435 \u0432 ${nb.hostile.dist} \u0434\u043D.<br><small>${esc(nb.hostile.note)}</small>`);
+    } else row("\u0423\u0433\u0440\u043E\u0437\u0430", "\u043D\u0430\u0431\u0435\u0433\u043E\u0432 \u0436\u0434\u0430\u0442\u044C \u043D\u0435\u043E\u0442\u043A\u0443\u0434\u0430");
+    const fert = Object.entries(R2.biomes).reduce((s, [id, v]) => s + v * (BIOMES.has(id) ? BIOMES.get(id).fert : 1), 0) * (X.fert ?? 1);
+    const warn = [];
+    if (fert < 0.4) warn.push("\u0437\u0435\u043C\u043B\u044F \u043F\u043E\u0447\u0442\u0438 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0440\u043E\u0434\u0438\u0442: \u0435\u0434\u044B \u043D\u0435 \u0431\u0443\u0434\u0435\u0442, \u043A\u0440\u043E\u043C\u0435 \u043F\u0440\u0438\u0432\u0435\u0437\u0451\u043D\u043D\u043E\u0439 \u0438 \u0434\u043E\u0431\u044B\u0442\u043E\u0439 \u043E\u0445\u043E\u0442\u043E\u0439");
+    if (X.climate.meanT < 1) warn.push("\u0445\u043E\u043B\u043E\u0434\u043D\u043E \u043A\u0440\u0443\u0433\u043B\u044B\u0439 \u0433\u043E\u0434: \u0431\u0435\u0437 \u0442\u0451\u043F\u043B\u043E\u0439 \u043E\u0434\u0435\u0436\u0434\u044B \u0438 \u0434\u0440\u043E\u0432 \u043D\u0435 \u0432\u044B\u0436\u0438\u0442\u044C");
+    if (warn.length) rows.push(`<dt class="warn">\u0412\u043D\u0438\u043C\u0430\u043D\u0438\u0435</dt><dd class="warn">${warn.join("; ")}</dd>`);
+    return rows.join("");
+  }
+
   // src/ui/dom.js
   var $ = (id) => document.getElementById(id);
   function segmented(box, attr, onPick) {
@@ -15936,24 +16026,31 @@ dd.q4{color:#c58cff;font-weight:600}
     stock: Object.entries(STOCKS).map(([k, v]) => [k, v.label]),
     raids: Object.entries(RAIDS).map(([k, v]) => [k, v.label]),
     wildlife: Object.entries(WILDLIFE).map(([k, v]) => [k, v.label]),
-    predators: Object.entries(PREDATORS).map(([k, v]) => [k, v.label])
+    predators: Object.entries(PREDATORS).map(([k, v]) => [k, v.label]),
+    monsters: Object.entries(MONSTERS2).map(([k, v]) => [k, v.label]),
+    source: [["poly", "\u041F\u043E\u043B\u0438\u0433\u043E\u043D"], ["world", "\u041A\u043B\u0435\u0442\u043A\u0430 \u043C\u0438\u0440\u0430"]]
   };
-  var NOTES = { size: (v) => SIZES[v].note, climate: (v) => CLIMATES[v].note };
+  var NOTES = {
+    size: (v) => SIZES[v].note,
+    climate: (v) => CLIMATES[v].note,
+    source: (v) => v === "world" ? "\u0417\u0435\u043C\u043B\u044F, \u043A\u043B\u0438\u043C\u0430\u0442, \u0441\u043E\u0441\u0435\u0434\u0438 \u0438 \u043D\u0430\u0431\u0435\u0433\u0438 \u2014 \u0438\u0437 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u0433\u043E \u043C\u0438\u0440\u0430." : "\u0418\u0441\u043F\u044B\u0442\u0430\u0442\u0435\u043B\u044C\u043D\u0430\u044F \u043F\u043B\u043E\u0449\u0430\u0434\u043A\u0430: \u0432\u0441\u0451 \u0437\u0430\u0434\u0430\u0451\u0442\u0441\u044F \u0437\u0434\u0435\u0441\u044C."
+  };
   var STORE = "forest.cfg";
   var Menu = class {
-    constructor({ onStart, onResume }) {
+    constructor({ onStart, onResume, onPickCell }) {
       this.cfg = this.load();
       this.onStart = onStart;
       this.onResume = onResume;
+      this.onPickCell = onPickCell;
       this.build();
     }
     load() {
       try {
         const raw = localStorage.getItem(STORE);
-        if (raw) return { ...DEFAULT_CFG, ...JSON.parse(raw) };
+        if (raw) return { ...DEFAULT_CFG, source: "poly", cell: null, ...JSON.parse(raw) };
       } catch (e) {
       }
-      return { ...DEFAULT_CFG };
+      return { ...DEFAULT_CFG, source: "poly", cell: null };
     }
     save() {
       try {
@@ -15969,6 +16066,12 @@ dd.q4{color:#c58cff;font-weight:600}
           const b = e.target.closest("button");
           if (!b) return;
           this.cfg[key3] = typeof DEFAULT_CFG[key3] === "number" ? +b.dataset.val : b.dataset.val;
+          if (key3 === "source" && b.dataset.val === "world" && !this.cfg.cell) {
+            this.save();
+            this.sync();
+            this.onPickCell();
+            return;
+          }
           this.save();
           this.sync();
         });
@@ -15996,19 +16099,55 @@ dd.q4{color:#c58cff;font-weight:600}
         this.cfg.lightning = e.target.checked;
         this.save();
       });
+      $("cfgSpirits").addEventListener("change", (e) => {
+        this.cfg.spirits = e.target.checked;
+        this.save();
+      });
+      const bands = $("cfgBands");
+      bands.innerHTML = RAID_BANDS.all().map((b) => `<button type="button" data-band="${b.id}" aria-pressed="true">${b.label}</button>`).join("");
+      bands.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        const all = RAID_BANDS.all().map((x) => x.id), on = new Set(this.cfg.bands || all);
+        if (on.has(b.dataset.band)) on.delete(b.dataset.band);
+        else on.add(b.dataset.band);
+        this.cfg.bands = on.size === all.length ? null : all.filter((id) => on.has(id));
+        this.save();
+        this.sync();
+      });
+      $("cellPick").addEventListener("click", () => this.onPickCell());
       $("resetCfg").addEventListener("click", () => {
-        this.cfg = { ...DEFAULT_CFG };
+        this.cfg = { ...DEFAULT_CFG, source: this.cfg.source, cell: this.cfg.cell };
         this.save();
         this.sync();
       });
       $("startGame").addEventListener("click", () => {
         this.save();
-        this.onStart({ ...this.cfg });
+        this.onStart(this.gameCfg());
       });
       $("backToGame").addEventListener("click", () => this.onResume());
     }
+    // a cell of the world map chosen on the «Мир» screen
+    useCell(plan) {
+      this.cfg.cell = plan;
+      this.cfg.source = "world";
+      this.save();
+    }
+    // the settings a game starts with: on a world cell its seed and plan, on the polygon none of them
+    gameCfg() {
+      const { source, cell, ...c } = this.cfg;
+      return source === "world" && cell ? { ...c, seed: cell.seed, cell } : c;
+    }
     sync() {
-      const c = this.cfg;
+      const c = this.cfg, world2 = c.source === "world";
+      document.querySelectorAll("#menu [data-only]").forEach((el) => {
+        el.hidden = el.dataset.only !== (world2 ? "world" : "poly");
+      });
+      $("cellInfo").innerHTML = c.cell ? cellSummary(c.cell) : "<dt>\u041A\u043B\u0435\u0442\u043A\u0430</dt><dd>\u043D\u0435 \u0432\u044B\u0431\u0440\u0430\u043D\u0430: \u043E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u043C\u0438\u0440 \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041C\u0438\u0440\xBB \u0438 \u0449\u0451\u043B\u043A\u043D\u0438\u0442\u0435 \u043F\u043E \u0441\u0443\u0448\u0435</dd>";
+      $("startGame").disabled = world2 && !c.cell;
+      $("cfgSpirits").checked = c.spirits !== false;
+      const onBands = new Set(c.bands || RAID_BANDS.all().map((b) => b.id));
+      $("cfgBands").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(onBands.has(b.dataset.band))));
       $("cfgName").value = c.name;
       $("cfgSeed").value = c.seed;
       $("cfgColonists").value = c.colonists;
@@ -16029,7 +16168,12 @@ dd.q4{color:#c58cff;font-weight:600}
       this.timer = setTimeout(() => this.preview(), 60);
     }
     preview() {
-      const t = makeTerrain(this.cfg), pc = $("preview"), px = pc.getContext("2d");
+      const cfg = this.gameCfg();
+      if (this.cfg.source === "world" && !this.cfg.cell) {
+        $("previewStats").innerHTML = "<dt>\u041A\u043B\u0435\u0442\u043A\u0430</dt><dd>\u043D\u0435 \u0432\u044B\u0431\u0440\u0430\u043D\u0430</dd>";
+        return;
+      }
+      const t = makeTerrain(cfg), pc = $("preview"), px = pc.getContext("2d");
       pc.width = t.w;
       pc.height = t.h;
       const img = px.createImageData(t.w, t.h), d = img.data, n = t.w * t.h, cnt = [];
@@ -16057,8 +16201,8 @@ dd.q4{color:#c58cff;font-weight:600}
       px.beginPath();
       px.arc(t.cx + 0.5, t.cy + 0.5, 4.5, 0, Math.PI * 2);
       px.stroke();
-      const pct2 = (code2) => ((cnt[code2] || 0) / n * 100).toFixed(0) + "%";
-      $("previewStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${n.toLocaleString("ru-RU")}</dd>` + BY_CODE.map((d2) => d2.code).filter((c) => cnt[c] > 0).map((c) => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct2(c)}</dd>`).join("") + `<dt>\u0417\u0435\u043C\u043B\u044F</dt><dd>${t.site.region.label}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(this.cfg.seed)}</dd>`;
+      const pct3 = (code2) => ((cnt[code2] || 0) / n * 100).toFixed(0) + "%";
+      $("previewStats").innerHTML = `<dt>\u041A\u043B\u0435\u0442\u043E\u043A</dt><dd>${n.toLocaleString("ru-RU")}</dd>` + BY_CODE.map((d2) => d2.code).filter((c) => cnt[c] > 0).map((c) => `<dt>${BY_CODE[c].label[0].toUpperCase() + BY_CODE[c].label.slice(1)}</dt><dd>${pct3(c)}</dd>`).join("") + `<dt>\u0417\u0435\u043C\u043B\u044F</dt><dd>${t.site.region.label}</dd><dt>\u0427\u0438\u0441\u043B\u043E\u0432\u043E\u0439 \u0441\u0438\u0434</dt><dd>${seedNumber(cfg.seed)}</dd>`;
     }
   };
 
@@ -16606,7 +16750,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const o of ORE_GENESIS.filter((x) => !x.from)) {
       const prov = fbm2(rnd, w, h, Math.max(w, h) / 9, 4, 0.55), pot = new Float32Array(n);
       const byRock = [], sets = Object.entries(o.settings).map(([key3, wt]) => [fields2[key3], wt]);
-      for (const r2 of ROCK_BY_CODE) if (r2) byRock[r2.code] = o.rocks[r2.id] || 0;
+      for (const r3 of ROCK_BY_CODE) if (r3) byRock[r3.code] = o.rocks[r3.id] || 0;
       let r = 0;
       for (let i = 0; i < n; i++) {
         let v = byRock[f.rock[i]] || 0;
@@ -17172,7 +17316,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/atlas/stages.js
   var ATLAS_STAGES = new Registry("atlasStage");
-  var pct = (v, n) => `${Math.round(v / n * 100)}%`;
+  var pct2 = (v, n) => `${Math.round(v / n * 100)}%`;
   ATLAS_STAGES.registerAll([
     {
       id: "plates",
@@ -17214,7 +17358,7 @@ dd.q4{color:#c58cff;font-weight:600}
         seaLevel(a, ATLAS_LAND[a.cfg.land].share);
         let cnt = 0;
         for (let i = 0; i < a.n; i++) cnt += a.f.land[i];
-        return `\u0412\u043E\u0434\u044B \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438: \u0441\u0443\u0448\u0430 \u0437\u0430\u043D\u044F\u043B\u0430 ${pct(cnt, a.n)} \u043C\u0438\u0440\u0430.`;
+        return `\u0412\u043E\u0434\u044B \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438: \u0441\u0443\u0448\u0430 \u0437\u0430\u043D\u044F\u043B\u0430 ${pct2(cnt, a.n)} \u043C\u0438\u0440\u0430.`;
       }
     },
     {
@@ -17251,8 +17395,8 @@ dd.q4{color:#c58cff;font-weight:600}
           else if (a.f.rain[i] > 1300) wet++;
         }
         const parts = [];
-        if (dry / land > 0.03) parts.push(`\u043F\u0443\u0441\u0442\u044B\u043D\u0438 \u0438 \u0441\u0443\u0445\u0438\u0435 \u0441\u0442\u0435\u043F\u0438 \u043B\u0435\u0433\u043B\u0438 \u043D\u0430 ${pct(dry, land)} \u0441\u0443\u0448\u0438`);
-        if (wet / land > 0.03) parts.push(`\u043B\u0438\u0432\u043D\u0438 \u043F\u043E\u043B\u0438\u0432\u0430\u044E\u0442 ${pct(wet, land)}`);
+        if (dry / land > 0.03) parts.push(`\u043F\u0443\u0441\u0442\u044B\u043D\u0438 \u0438 \u0441\u0443\u0445\u0438\u0435 \u0441\u0442\u0435\u043F\u0438 \u043B\u0435\u0433\u043B\u0438 \u043D\u0430 ${pct2(dry, land)} \u0441\u0443\u0448\u0438`);
+        if (wet / land > 0.03) parts.push(`\u043B\u0438\u0432\u043D\u0438 \u043F\u043E\u043B\u0438\u0432\u0430\u044E\u0442 ${pct2(wet, land)}`);
         return "\u041F\u043E\u0448\u043B\u0438 \u0434\u043E\u0436\u0434\u0438" + (parts.length ? ": " + parts.join(", ") : "") + ". \u0417\u0430 \u0445\u0440\u0435\u0431\u0442\u0430\u043C\u0438 \u043B\u0435\u0433\u043B\u0430 \u0434\u043E\u0436\u0434\u0435\u0432\u0430\u044F \u0442\u0435\u043D\u044C.";
       }
     },
@@ -17284,7 +17428,7 @@ dd.q4{color:#c58cff;font-weight:600}
       note: "\u043C\u0430\u0433\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0443 \u0432\u0443\u043B\u043A\u0430\u043D\u043E\u0432 \u0438 \u0432 \u043A\u043E\u0440\u043D\u044F\u0445 \u0433\u043E\u0440, \u043C\u0435\u0442\u0430\u043C\u043E\u0440\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0432 \u0448\u0432\u0430\u0445 \u0438 \u0449\u0438\u0442\u0430\u0445, \u043E\u0441\u0430\u0434\u043E\u0447\u043D\u044B\u0435 \u0432 \u043D\u0438\u0437\u0438\u043D\u0430\u0445 \u0438 \u043C\u0435\u043B\u043A\u0438\u0445 \u043C\u043E\u0440\u044F\u0445",
       run(a, rnd) {
         const c = rocks(a, rnd), land = Object.values(c).reduce((s, v) => s + v, 0) || 1;
-        return "\u0417\u0430\u0441\u0442\u044B\u043B\u0438 \u043F\u043E\u0440\u043E\u0434\u044B. \u041D\u0430 \u0441\u0443\u0448\u0435 " + Object.entries(ROCK_KINDS).map(([k, l]) => `${l} \u2014 ${pct(c[k] || 0, land)}`).join(", ") + ".";
+        return "\u0417\u0430\u0441\u0442\u044B\u043B\u0438 \u043F\u043E\u0440\u043E\u0434\u044B. \u041D\u0430 \u0441\u0443\u0448\u0435 " + Object.entries(ROCK_KINDS).map(([k, l]) => `${l} \u2014 ${pct2(c[k] || 0, land)}`).join(", ") + ".";
       }
     },
     {
@@ -17308,7 +17452,7 @@ dd.q4{color:#c58cff;font-weight:600}
       note: "\u043F\u043E \u041A\u0451\u043F\u043F\u0435\u043D\u0443: \u0442\u0435\u043F\u043B\u043E \u043B\u0435\u0442\u0430 \u0438 \u0437\u0438\u043C\u044B, \u043E\u0441\u0430\u0434\u043A\u0438 \u043F\u0440\u043E\u0442\u0438\u0432 \u0438\u0441\u043F\u0430\u0440\u0435\u043D\u0438\u044F, \u0432\u044B\u0441\u043E\u0442\u0430 \u0438 \u043A\u0440\u0443\u0442\u0438\u0437\u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u043E\u0432, \u0432\u043E\u0434\u0430 \u0432 \u0437\u0435\u043C\u043B\u0435",
       run(a) {
         const c = biomes(a), land = Object.values(c).reduce((x, v) => x + v, 0) || 1;
-        const top = BIOMES.filter((b) => c[b.id]).sort((x, y) => c[y.id] - c[x.id]).slice(0, 4).map((b) => `${b.label} \u2014 ${pct(c[b.id], land)}`);
+        const top = BIOMES.filter((b) => c[b.id]).sort((x, y) => c[y.id] - c[x.id]).slice(0, 4).map((b) => `${b.label} \u2014 ${pct2(c[b.id], land)}`);
         return `\u0417\u0435\u043C\u043B\u044F \u043E\u0434\u0435\u043B\u0430\u0441\u044C \u0436\u0438\u0437\u043D\u044C\u044E: ${top.join(", ")}.`;
       }
     },
@@ -17324,7 +17468,7 @@ dd.q4{color:#c58cff;font-weight:600}
           land++;
           if (a.f.fert[i] >= 0.8) best++;
         }
-        return `\u041F\u043E\u0434 \u0442\u0440\u0430\u0432\u043E\u0439 \u0438 \u043B\u0435\u0441\u043E\u043C \u043B\u0435\u0433\u043B\u0438 \u043F\u043E\u0447\u0432\u044B; \u0442\u0443\u0447\u043D\u044B\u0445 \u0437\u0435\u043C\u0435\u043B\u044C \u2014 ${pct(best, land)} \u0441\u0443\u0448\u0438.`;
+        return `\u041F\u043E\u0434 \u0442\u0440\u0430\u0432\u043E\u0439 \u0438 \u043B\u0435\u0441\u043E\u043C \u043B\u0435\u0433\u043B\u0438 \u043F\u043E\u0447\u0432\u044B; \u0442\u0443\u0447\u043D\u044B\u0445 \u0437\u0435\u043C\u0435\u043B\u044C \u2014 ${pct2(best, land)} \u0441\u0443\u0448\u0438.`;
       }
     },
     {
@@ -18341,10 +18485,10 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function foundRealm(a, t, subId = null) {
     a.realms || (a.realms = []);
-    const P = WORLD_PEOPLES.get(t.people), used = new Set(a.realms.filter((r2) => r2.people === t.people).map((r2) => r2.name));
+    const P = WORLD_PEOPLES.get(t.people), used = new Set(a.realms.filter((r3) => r3.people === t.people).map((r3) => r3.name));
     const sub = subId ? worldSubs(P.race).find((p) => p.id === subId) : subFor(P.race, biomeAt(a, t.i)?.id);
     const name = epithets(a, t.i, P).find((n) => !used.has(n)) || `${EPITHETS.else[0]} ${used.size}`;
-    const nth = a.realms.filter((r2) => r2.people === t.people).length;
+    const nth = a.realms.filter((r3) => r3.people === t.people).length;
     const shade2 = [1, 0.72, 1.25, 0.55, 1.45][nth % 5], color = P.color.map((v) => Math.max(0, Math.min(255, Math.round(v * shade2))));
     const r = { id: `r${a.realms.length + 1}`, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color };
     a.realms.push(r);
@@ -20629,8 +20773,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.50.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 69353e4" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.51.0 Campaign \xB7 19.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 b9ae392" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";
@@ -20781,6 +20925,208 @@ dd.q4{color:#c58cff;font-weight:600}
     return { a, rec };
   }
 
+  // src/data/seam.js
+  var SEAM = {
+    // how far around the cell the world is asked about neighbours, in world cells (× the world's scale)
+    reach: 26,
+    // days of travel a raiding band needs from a source `d` cells away: from + d × perCell, capped;
+    // the local raid schedule checks every dist / 2 days (outside/scripted.js); the nearest foe is never
+    // closer than the polygon's «Частые» (3 days, data/presets.js RAIDS)
+    days: { from: 3, perCell: 0.3, max: 12 },
+    // a source this many days away or nearer sends raids at all
+    raidDays: 11,
+    // the raid's chance per check, as the polygon's «Редкие/Частые» (data/presets.js RAIDS)
+    raidChance: 0.6,
+    // roads: roadAccess 0 … 1 in the cell and its ring → the region's `road` (× the chance a caravan comes);
+    // ≥ 1.1 brings two road gates, ≥ 0.8 one (world/site.js rollGates — here the gates follow the world's roads)
+    road: { base: 0.5, perAccess: 0.8 },
+    // a lair whose territory holds the cell makes its beast this much more common here
+    lairBeast: 1.6,
+    // the cell's rot (atlas/lairs.js) above this sends the dead — as from a barrow `rotCells` cells away:
+    // the rot is spread thin over the land, not a camp next door
+    rotUndead: 0.25,
+    rotCells: 7,
+    // fertility of the world's soil (0 … 1) → the site's × on fertility
+    fert: { base: 0.5, per: 0.7, min: 0.4, max: 1.3 },
+    // the world's climate → the local climate's numbers (data/presets.js CLIMATES):
+    //   rain: showers a day from mm a year;  regrow: from rain and warmth;  ign: harder to set alight in the cold
+    //   and the wet, easier in the heat and the dry;  daylight: hours gained at the solstice from the latitude
+    climate: { rainBase: 0.06, rainPerMm: 1 / 2e3, rainMax: 0.75, regrowMm: 700, ignPerDeg: 2.5, ignDry: -5, ignWet: 5, daylightPerDeg: 0.1, daylightMax: 9 }
+  };
+  var LAIR_BANDS = {
+    goblins: "goblins",
+    gnolls: "gnolls",
+    ogres: "ogres",
+    trolls: "troll",
+    swamptrolls: "troll",
+    icetrolls: "troll",
+    giants: "giants",
+    wights: "undead",
+    necromancer: "undead",
+    ghouls: "upyrs",
+    vampire: "vampire"
+  };
+  var REALM_BANDS = { orcs: "orcs", humans: "bandits" };
+  var OUTLAWS = { band: "bandits", weight: 0.4 };
+  var FLORA = {
+    hive: { forest: 1.2, meadow: 1.1, taiga: 0.6, shrubland: 0.8, jungle: 0.8, savanna: 0.5, foothills: 0.5, swamp: 0.3 },
+    herbs: { forest: 1, meadow: 1, swamp: 1.6, taiga: 1, jungle: 1.4, foothills: 0.6, tundra: 0.4, shrubland: 0.6 },
+    saltlick: { steppe: 1.2, desert: 1.4, foothills: 1, highlands: 1, barrows: 1, savanna: 0.8, volcano: 0.8 },
+    wildflax: { meadow: 1.1, swamp: 1, forest: 0.6, steppe: 0.5, taiga: 0.4 }
+  };
+  var FLORA_STEPS = [0.15, 0.45, 1.1];
+
+  // src/seam/cell.js
+  var ORE_KEYS = Object.keys(REGIONS.all()[0].ores);
+  var cap16 = (s) => s[0].toUpperCase() + s.slice(1);
+  var r2 = (v) => Math.round(v * 100) / 100;
+  var xy = (a, i) => [i % a.w, i / a.w | 0];
+  var RING = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+  var settleable = (a, i) => !!a.f.land && !a.f.ocean[i] && !(a.f.lake && a.f.lake[i] >= 0);
+  function sideTo(a, i, j) {
+    const [x0, y0] = xy(a, i), [x, y] = xy(a, j), dx = x - x0, dy = y - y0;
+    return Math.abs(dx) >= Math.abs(dy) ? dx > 0 ? "east" : "west" : dy > 0 ? "south" : "north";
+  }
+  var OPPOSITE = { north: "south", south: "north", east: "west", west: "east" };
+  var neighboursOf = (a, i) => {
+    const [x, y] = xy(a, i);
+    return RING.map(([dx, dy]) => [x + dx, y + dy]).filter(([u, v]) => u >= 0 && v >= 0 && u < a.w && v < a.h).map(([u, v]) => v * a.w + u);
+  };
+  var stepLevel = (v, steps) => LEVELS[steps.filter((s) => v >= s).length];
+  function cellRegion(a, i) {
+    const geo = cellGeology(a, i), biomes2 = {};
+    for (const [id, v] of Object.entries(cellBiomes(a, i))) if (BIOMES.has(id)) biomes2[id] = v;
+    const sum = Object.values(biomes2).reduce((s, v) => s + v, 0) || 1;
+    for (const id of Object.keys(biomes2)) biomes2[id] = r2(biomes2[id] / sum);
+    const ores2 = {};
+    for (const k of ORE_KEYS) ores2[k] = geo.ores[k] ?? 0;
+    const flora = {};
+    for (const [id, wts] of Object.entries(FLORA)) flora[id] = stepLevel(Object.entries(biomes2).reduce((s, [b2, v]) => s + v * (wts[b2] || 0), 0), FLORA_STEPS);
+    const faunaShift = {}, lair = lairAt(a, i), L = lair ? LAIRS.get(lair.kind) : null;
+    for (const sp of SPECIES.filter((s) => s.habitat)) {
+      const known = a.fauna && sp.id in a.fauna.idx;
+      let v = known ? clamp(faunaAt(a, i, sp.id), 0, 1.6) : 1;
+      if (L?.species === sp.id) v = Math.max(v, 0.5) * SEAM.lairBeast;
+      faunaShift[sp.id] = r2(v);
+    }
+    const acc3 = Math.max(roadAccess(a, i), ...neighboursOf(a, i).map((j) => roadAccess(a, j)));
+    const river = riverKind(a, i), b = biomeAt(a, i);
+    const reg = {
+      id: "world",
+      label: cap16(b?.label || "\u0437\u0435\u043C\u043B\u044F") + (river === "great" ? " \u0443 \u0431\u043E\u043B\u044C\u0448\u043E\u0439 \u0440\u0435\u043A\u0438" : river === "river" ? " \u0443 \u0440\u0435\u043A\u0438" : ""),
+      note: `\u043A\u043B\u0435\u0442\u043A\u0430 \u043C\u0438\u0440\u0430 ${xy(a, i).join(", ")}`,
+      ores: ores2,
+      placer: geo.placer ?? 0,
+      goldVein: !!geo.flags.goldVein,
+      magma: !!geo.flags.magma,
+      road: r2(SEAM.road.base + SEAM.road.perAccess * acc3),
+      river: river === "great" ? 1 : river === "river" ? 0.6 : 0,
+      biomes: biomes2,
+      flora,
+      faunaShift,
+      extra: {}
+    };
+    if (faunaLevel({ region: reg }, "deer") <= 0 && faunaLevel({ region: reg }, "goat") <= 0) reg.extra.deer = 0.5;
+    return reg;
+  }
+  function cellClimate(a, i) {
+    const f = a.f, C = SEAM.climate, T2 = f.temp[i], mm = f.rain[i], lat = Math.abs(latitude(a, xy(a, i)[1]));
+    const warm = clamp((T2 + 8) / 15, 0.2, 1.2);
+    const ign = Math.round(clamp((7 - T2) * C.ignPerDeg + (mm < 400 ? C.ignDry : mm > 1200 ? C.ignWet : 0), -10, 30));
+    return {
+      id: "world",
+      label: `${T2 >= 0 ? "+" : "\u2212"}${Math.abs(Math.round(T2))}\xB0 \u0432 \u0441\u0440\u0435\u0434\u043D\u0435\u043C`,
+      note: `\u0440\u0430\u0437\u043C\u0430\u0445 \u0433\u043E\u0434\u0430 ${Math.round(f.trange[i])}\xB0, \u043E\u0441\u0430\u0434\u043A\u043E\u0432 ${Math.round(mm)} \u043C\u043C \u0432 \u0433\u043E\u0434`,
+      meanT: r2(T2),
+      trange: r2(f.trange[i]),
+      rain: r2(clamp(C.rainBase + mm * C.rainPerMm, C.rainBase, C.rainMax)),
+      regrow: r2(clamp(0.4 + 0.6 * Math.min(1.2, mm / C.regrowMm) * warm, 0.3, 1.3)),
+      ign,
+      daylight: r2(Math.min(C.daylightMax, lat * C.daylightPerDeg))
+    };
+  }
+  function cellGates(a, i, seed) {
+    const f = a.f, rnd = mulberry(seedNumber(seed + ":gates")), gates = [];
+    const bySide = {};
+    for (const j of neighboursOf(a, i)) if (f.road && roadLevel(f.road[j]) >= 0) {
+      const s = sideTo(a, i, j);
+      bySide[s] = Math.max(bySide[s] || 0, f.road[j]);
+    }
+    for (const s of Object.entries(bySide).sort((p, q) => q[1] - p[1]).slice(0, 2).map((e) => e[0])) gates.push({ kind: "road", side: s, at: r2(0.25 + rnd() * 0.5) });
+    const kind = riverKind(a, i);
+    if ((kind === "river" || kind === "great") && f.down && f.down[i] !== i && f.down[i] >= 0) {
+      const mouth = sideTo(a, i, f.down[i]);
+      let up = -1, best = 0;
+      for (const j of neighboursOf(a, i)) if (f.down[j] === i && f.flow[j] > best) {
+        best = f.flow[j];
+        up = j;
+      }
+      let source = up >= 0 ? sideTo(a, i, up) : OPPOSITE[mouth];
+      if (source === mouth) source = OPPOSITE[mouth];
+      gates.push(
+        { kind: "river", role: "source", side: source, at: r2(0.3 + rnd() * 0.4), wide: kind === "great" },
+        { kind: "river", role: "mouth", side: mouth, at: r2(0.3 + rnd() * 0.4), wide: kind === "great" }
+      );
+    }
+    return gates;
+  }
+  var daysFor = (d) => Math.round(Math.min(SEAM.days.max, SEAM.days.from + d * SEAM.days.perCell) * 10) / 10;
+  var peopleRace = (id) => WORLD_PEOPLES.get(id)?.race;
+  var realmName = (a, id) => id && (a.realms || []).some((r) => r.id === id) ? realmLabel(a, id) : "\u0432\u043E\u043B\u044C\u043D\u044B\u0435 \u0437\u0435\u043C\u043B\u0438";
+  function cellNeighbours(a, i, race = "human") {
+    const [x0, y0] = xy(a, i), k = scaleOf(a), reach = SEAM.reach * k;
+    const dist9 = (x, y) => Math.hypot(x - x0, y - y0) / k;
+    const towns = (a.towns || []).filter((t) => t.alive).map((t) => ({ t, d: dist9(t.x, t.y) })).filter((o) => o.d * k <= reach).sort((p, q) => p.d - q.d);
+    const kin = towns.find((o) => peopleRace(o.t.people) === race) || towns[0] || null;
+    const own = kin?.t.realm || null;
+    const tLabel = (t) => `${cap16(townLabel(t, 0))} ${t.name}`;
+    const out = {};
+    if (kin) out.kin = { label: tLabel(kin.t), town: kin.t.id, note: `${realmName(a, kin.t.realm)}: \u043E\u0442\u0441\u044E\u0434\u0430 \u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u043F\u0435\u0440\u0435\u0441\u0435\u043B\u0435\u043D\u0446\u044B`, dist: daysFor(kin.d), people: kin.t.people, realm: own };
+    const market = towns.find((o) => !own || !o.t.realm || trades(a, own, o.t.realm));
+    if (market) out.empire = { label: `\u041A\u0430\u0440\u0430\u0432\u0430\u043D\u044B \u0438\u0437 ${townLabel(market.t, 2)} ${market.t.name}`, town: market.t.id, note: `${realmName(a, market.t.realm)}: \u043E\u0442\u0441\u044E\u0434\u0430 \u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u044B`, dist: daysFor(market.d) };
+    const sources = [];
+    for (const l of a.lairs || []) {
+      const band = LAIR_BANDS[l.kind];
+      if (!l.alive || !band) continue;
+      const d = dist9(l.x, l.y);
+      if (d * k > reach) continue;
+      sources.push({ band, d, wt: Math.max(0.2, l.strength), label: `${LAIRS.get(l.kind).label} \xAB${l.name}\xBB` });
+    }
+    for (const { t, d } of towns) {
+      const band = REALM_BANDS[t.people];
+      if (band && (own && t.realm ? t.realm !== own && (atWar(a, own, t.realm) || !trades(a, own, t.realm)) : t.people === "orcs"))
+        sources.push({ band, d, wt: Math.sqrt(t.pop) / 10, label: `${tLabel(t)} (${realmName(a, t.realm)})` });
+    }
+    const men = towns.find((o) => o.t.people === "humans");
+    if (men) sources.push({ band: OUTLAWS.band, d: men.d, wt: OUTLAWS.weight, label: "\u043B\u0438\u0445\u0438\u0435 \u043B\u044E\u0434\u0438 \u043D\u0430 \u0434\u043E\u0440\u043E\u0433\u0430\u0445" });
+    if (a.rot && a.rot[faunaCell(a, i)] > SEAM.rotUndead) sources.push({ band: "undead", d: SEAM.rotCells, wt: a.rot[faunaCell(a, i)], label: "\u0433\u043D\u0438\u043B\u044C \u0432 \u0437\u0434\u0435\u0448\u043D\u0435\u0439 \u0437\u0435\u043C\u043B\u0435" });
+    const near4 = sources.map((s) => ({ ...s, days: daysFor(s.d) })).filter((s) => s.days <= SEAM.raidDays).sort((p, q) => p.days - q.days);
+    if (near4.length) {
+      const bands = {};
+      for (const s of near4) bands[s.band] = (bands[s.band] || 0) + s.wt / s.days;
+      const top = Math.max(...Object.values(bands));
+      for (const b of Object.keys(bands)) bands[b] = r2(Math.max(0.05, bands[b] / top));
+      out.hostile = {
+        label: near4.length === 1 ? cap16(near4[0].label) : "\u0412\u0440\u0430\u0436\u0434\u0435\u0431\u043D\u044B\u0435 \u0441\u043E\u0441\u0435\u0434\u0438",
+        note: near4.slice(0, 4).map((s) => `${s.label} \u2014 ${s.days} \u0434\u043D.`).join("; "),
+        dist: near4[0].days,
+        chance: SEAM.raidChance,
+        bands
+      };
+    }
+    return out;
+  }
+  function cellPlan(a, i, { name = "", id = null, race = "human" } = {}) {
+    const [x, y] = xy(a, i), seed = `${a.cfg.seed}@${x},${y}`;
+    const soil = a.f.fert ? a.f.fert[i] : 0.6, F = SEAM.fert;
+    return {
+      seed,
+      ref: { id, name: name || `\u041C\u0438\u0440 ${a.cfg.seed}`, seed: a.cfg.seed, x, y, year: a.hist?.year ?? 0 },
+      region: cellRegion(a, i),
+      extra: { climate: cellClimate(a, i), gates: cellGates(a, i, seed), fert: r2(clamp(F.base + F.per * soil, F.min, F.max)), neighbours: cellNeighbours(a, i, race) }
+    };
+  }
+
   // src/ui/atlasView.js
   var STORE2 = "forest.atlas";
   var ERA = { geology: "\u0413\u0435\u043E\u043B\u043E\u0433\u0438\u044F", climate: "\u041A\u043B\u0438\u043C\u0430\u0442", water: "\u0412\u043E\u0434\u0430", life: "\u0416\u0438\u0437\u043D\u044C" };
@@ -20827,7 +21173,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var COMPASS = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
   var windWord = (x, y) => COMPASS[(Math.round(Math.atan2(-y, -x) / (Math.PI / 4)) + 8) % 8];
   var AtlasView = class {
-    constructor({ onBack }) {
+    constructor({ onBack, onSettle }) {
       this.cfg = this.load();
       this.atlas = null;
       this.layer = "relief";
@@ -20843,6 +21189,8 @@ dd.q4{color:#c58cff;font-weight:600}
       this.worldId = null;
       this.worldName = "";
       this.onBack = onBack;
+      this.onSettle = onSettle;
+      this.pick = -1;
       this.build();
     }
     load() {
@@ -20937,8 +21285,19 @@ dd.q4{color:#c58cff;font-weight:600}
         this.grab = null;
         cv.classList.remove("dragging");
       };
-      cv.addEventListener("pointerup", release2);
+      cv.addEventListener("pointerup", (e) => {
+        const g3 = this.grab;
+        if (g3 && g3.id === e.pointerId && !g3.drag && e.button === 0) this.pickAt(e);
+        release2();
+      });
       cv.addEventListener("pointercancel", release2);
+      $("atlasSettle").addEventListener("click", () => {
+        const a = this.atlas;
+        if (!a || this.pick < 0) return;
+        this.stop();
+        this.onSettle(cellPlan(a, this.pick, { name: this.worldName || `\u041C\u0438\u0440 ${a.cfg.seed}`, id: this.worldId }));
+      });
+      $("atlasUnpick").addEventListener("click", () => this.setPick(-1));
       cv.addEventListener("pointerleave", () => {
         $("atlasReadout").textContent = "\u041D\u0430\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430 \u043A\u0430\u0440\u0442\u0443, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u043A\u043B\u0435\u0442\u043A\u0443.";
       });
@@ -20981,10 +21340,27 @@ dd.q4{color:#c58cff;font-weight:600}
       this.cam.zoomAt(cw, ch, f, cw / 2, ch / 2);
       this.draw();
     }
-    show() {
+    // `goto` — {id, x, y}: open that saved world (if it is not the one shown) and pick that cell
+    async show(goto = null) {
       this.sync();
       this.refreshWorlds();
-      if (!this.atlas) this.generate();
+      if (goto?.id && goto.id !== this.worldId) {
+        $("atlasSaveStatus").textContent = "\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u044E \u043C\u0438\u0440\u2026";
+        try {
+          const list = await listWorlds(), rec = list.find((r) => r.id === goto.id);
+          if (rec) {
+            this.showWorld(await openWorld(rec.id), rec.id, rec.name);
+            $("atlasSaveStatus").textContent = `\u041E\u0442\u043A\u0440\u044B\u0442 \u043C\u0438\u0440 \xAB${rec.name}\xBB.`;
+          } else $("atlasSaveStatus").textContent = "\u041C\u0438\u0440 \u044D\u0442\u043E\u0439 \u043A\u043B\u0435\u0442\u043A\u0438 \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u043B\u0435\u0436\u0438\u0442 \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0435.";
+        } catch (e) {
+          $("atlasSaveStatus").textContent = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u044C: " + e.message;
+        }
+      }
+      if (!this.atlas) {
+        this.generate();
+        return;
+      }
+      if (goto && goto.id === this.worldId && goto.x < this.atlas.w && goto.y < this.atlas.h) this.setPick(goto.y * this.atlas.w + goto.x);
     }
     // leaving the screen: the generation halts between frames; if it was not finished, it waits as paused and «Дальше» continues it
     stop() {
@@ -21037,6 +21413,7 @@ dd.q4{color:#c58cff;font-weight:600}
       this.paused = false;
       this.syncPause();
       this.bind(null, "");
+      this.setPick(-1);
       this.renderSide();
       this.run();
     }
@@ -21149,6 +21526,7 @@ dd.q4{color:#c58cff;font-weight:600}
       this.paused = !atlasDone(a);
       this.bind(id, name);
       this.sync();
+      this.setPick(-1);
       this.draw();
       this.renderSide();
       this.syncPause();
@@ -21291,6 +21669,30 @@ dd.q4{color:#c58cff;font-weight:600}
     unit(a) {
       return Math.min(a.w, a.h) / 192 / Math.pow(this.cam.zoom, 0.6);
     }
+    // ── picking a cell for a settlement: land that is not a lake, once the land is made
+    pickAt(e) {
+      const a = this.atlas;
+      if (!a || !this.cam || !landDone(a)) return;
+      const cv = $("atlasMap"), r = cv.getBoundingClientRect();
+      const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top), x = Math.floor(fx), y = Math.floor(fy);
+      if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
+      const i = y * a.w + x;
+      if (!settleable(a, i)) {
+        $("atlasCellNote").textContent = "\u0417\u0434\u0435\u0441\u044C \u0432\u043E\u0434\u0430: \u0432\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u043A\u043B\u0435\u0442\u043A\u0443 \u0441\u0443\u0448\u0438.";
+        return;
+      }
+      this.setPick(i);
+    }
+    setPick(i) {
+      this.pick = i;
+      const a = this.atlas, box = $("atlasCell");
+      box.hidden = i < 0 || !a;
+      if (i >= 0 && a) {
+        $("atlasCellInfo").innerHTML = cellSummary(cellPlan(a, i, { name: this.worldName || `\u041C\u0438\u0440 ${a.cfg.seed}`, id: this.worldId }));
+        $("atlasCellNote").textContent = !atlasDone(a) ? "\u0418\u0441\u0442\u043E\u0440\u0438\u044F \u0435\u0449\u0451 \u0438\u0434\u0451\u0442: \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 \u0443\u0432\u0438\u0434\u0438\u0442 \u043C\u0438\u0440 \u0442\u0430\u043A\u0438\u043C, \u043A\u0430\u043A\u0438\u043C \u043E\u043D \u0441\u0442\u0430\u043B \u043A \u044D\u0442\u043E\u043C\u0443 \u0433\u043E\u0434\u0443." : this.worldId ? "" : "\u041C\u0438\u0440 \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D: \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 \u0437\u0430\u043F\u043E\u043C\u043D\u0438\u0442 \u043C\u0435\u0441\u0442\u043E, \u043D\u043E \u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043A \u044D\u0442\u043E\u043C\u0443 \u043C\u0438\u0440\u0443 \u043C\u043E\u0436\u043D\u043E, \u0442\u043E\u043B\u044C\u043A\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0432 \u0435\u0433\u043E.";
+      }
+      this.draw();
+    }
     draw() {
       const a = this.atlas;
       if (!a || !this.cam) return;
@@ -21318,6 +21720,15 @@ dd.q4{color:#c58cff;font-weight:600}
       if (a.ruins && ["relief", "biomes", "peoples"].includes(this.layer)) this.drawRuins(a, px);
       if (a.towns && ["relief", "biomes", "peoples", "fauna", "rain", "soils"].includes(this.layer)) this.drawTowns(a, px);
       if (a.f.flow && ["relief", "rain", "rocks", "temp", "biomes", "soils"].includes(this.layer)) this.rivers(a, px);
+      if (this.pick >= 0) {
+        const x = this.pick % a.w, y = this.pick / a.w | 0, m = Math.max(0.6, 3 / cam.S);
+        px.lineWidth = Math.max(this.minW * 2, 0.12);
+        px.strokeStyle = "#ffd36a";
+        px.strokeRect(x - m, y - m, 1 + 2 * m, 1 + 2 * m);
+        px.strokeStyle = "rgba(0,0,0,0.6)";
+        px.lineWidth = this.minW;
+        px.strokeRect(x, y, 1, 1);
+      }
     }
     // rivers: a line from each river cell to the cell it drains into, wider for more water
     rivers(a, px) {
@@ -21972,12 +22383,13 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     renderWorld(w, view2, tps) {
       const c = w.cfg, sz = SIZES[c.size];
-      $("worldLine").textContent = `\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${w.climate.label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}, \u0432\u043E\u043B\u043A\u0438: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`;
+      const at = w.site?.world;
+      $("worldLine").textContent = at ? `\u041A\u0430\u0440\u0442\u0430 ${sz.w} \xD7 ${sz.h} \u043D\u0430 \u043A\u043B\u0435\u0442\u043A\u0435 ${at.x}, ${at.y} \u043C\u0438\u0440\u0430 \xAB${at.name}\xBB (\u0441\u0438\u0434 ${at.seed}), \u043A\u043B\u0438\u043C\u0430\u0442: ${w.climate.label}, ${w.climate.note}; \u043D\u0430\u0431\u0435\u0433\u0438 \u0440\u0435\u0448\u0430\u044E\u0442 \u0441\u043E\u0441\u0435\u0434\u0438 \xB7 \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}` : `\u041C\u0438\u0440 ${sz.w} \xD7 ${sz.h}, \u0441\u0438\u0434 \xAB${c.seed}\xBB, \u043A\u043B\u0438\u043C\u0430\u0442 ${w.climate.label.toLowerCase()}, \u043D\u0430\u0431\u0435\u0433\u0438: ${RAIDS[c.raids].label.toLowerCase()}, \u0437\u0430\u0439\u0446\u0435\u0432: ${WILDLIFE[c.wildlife].label.toLowerCase()}, \u0432\u043E\u043B\u043A\u0438: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ", \u043C\u043E\u043B\u043D\u0438\u0438" : ""}.`;
       const col = colonists(w), raiders = w.agents.filter((a) => a.faction === "raiders").length, hares = ofSpecies(w, "hare").length;
       const ore = exposedOre(w);
       this.set(
         "worldKv",
-        `<dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C</dt><dd class="nb">${this.regionText(w)}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt title="\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u0432\u0438\u0434\u044F\u0442 \u043B\u0430\u0433\u0435\u0440\u044C: \u043E\u043D\u0438 \u0437\u043D\u0430\u044E\u0442 \u043E \u043D\u0451\u043C \u043F\u043E \u0441\u043B\u0443\u0445\u0430\u043C, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u0440\u0430\u0437 \u0432 \u0434\u0435\u043D\u044C">\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` \xB7 ${this.waitText(w, w.outside.next.raiders)}, \u0435\u0441\u043B\u0438 \u0432\u044B\u0439\u0434\u0443\u0442 (${Math.round((RAIDS[w.cfg.raids].chance ?? 1) * 100)}%)` : ""}</dd><dt>\u0421\u043E\u0441\u0435\u0434\u0438</dt><dd class="nb">${neighbours(w).filter((n) => n.dist).map((n) => `<span title="${esc(n.note)}">${esc(n.label)} \xB7 ${n.dist} \u0434\u043D. \u043F\u0443\u0442\u0438</span>`).join("<br>") || "\u2014"}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>` + (fishTotals(w)[1] ? `<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>${Math.floor(fishTotals(w)[0])} \u0438\u0437 ${fishTotals(w)[1]}</dd>` : "<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>\u043D\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0438\u0445 \u043E\u0437\u0451\u0440</dd>") + `<dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd><dt title="\u0421\u043A\u043E\u043B\u044C\u043A\u043E \u0440\u0443\u0434\u044B \u043C\u043E\u0436\u043D\u043E \u0432\u044B\u043A\u043E\u043F\u0430\u0442\u044C \u0441 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043A\u043B\u043E\u043D\u0430 \u0441\u043A\u0430\u043B">\u0420\u0443\u0434\u0430 \u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u0430\u0445</dt><dd class="nb">${ORES.filter((o) => ore[o.id] > 0).map((o) => `${o.label} ${Math.round(ore[o.id])}`).join(" \xB7 ") || "\u043D\u0435 \u0432\u0438\u0434\u043D\u043E"}</dd>`
+        `<dt>\u0416\u0438\u0442\u0435\u043B\u0438</dt><dd>${col.length} \u0438\u0437 ${popCap(w)}${raiders ? ` \xB7 \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432 ${raiders}` : ""}</dd><dt>\u041C\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C</dt><dd class="nb">${this.regionText(w)}</dd><dt>\u041D\u043E\u0432\u044B\u0439 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0435\u0446</dt><dd>${this.settlerText(w)}</dd><dt title="\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u0432\u0438\u0434\u044F\u0442 \u043B\u0430\u0433\u0435\u0440\u044C: \u043E\u043D\u0438 \u0437\u043D\u0430\u044E\u0442 \u043E \u043D\u0451\u043C \u043F\u043E \u0441\u043B\u0443\u0445\u0430\u043C, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u043E\u0431\u043D\u043E\u0432\u043B\u044F\u044E\u0442\u0441\u044F \u0440\u0430\u0437 \u0432 \u0434\u0435\u043D\u044C">\u0423\u0433\u0440\u043E\u0437\u0430 \u043D\u0430\u043B\u0451\u0442\u0430</dt><dd>${raidThreat(w).toFixed(1)} \xB7 \u0431\u0430\u043D\u0434\u0430 ~${raidSize(w)}${raidOdds(w).dist ? ` \xB7 ${this.waitText(w, w.outside.next.raiders)}, \u0435\u0441\u043B\u0438 \u0432\u044B\u0439\u0434\u0443\u0442 (${Math.round(raidOdds(w).chance * 100)}%)` : ""}</dd><dt>\u0421\u043E\u0441\u0435\u0434\u0438</dt><dd class="nb">${neighbours(w).filter((n) => n.dist).map((n) => `<span title="${esc(n.note)}">${esc(n.label)} \xB7 ${n.dist} \u0434\u043D. \u043F\u0443\u0442\u0438</span>`).join("<br>") || "\u2014"}</dd><dt>\u0417\u0430\u0439\u0446\u044B \u0440\u044F\u0434\u043E\u043C</dt><dd>${hares} \xB7 \u0434\u043E\u0431\u044B\u0442\u043E ${w.stats.hunted}</dd>` + (fishTotals(w)[1] ? `<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>${Math.floor(fishTotals(w)[0])} \u0438\u0437 ${fishTotals(w)[1]}</dd>` : "<dt>\u0420\u044B\u0431\u0430 \u0432 \u043E\u0437\u0451\u0440\u0430\u0445</dt><dd>\u043D\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0438\u0445 \u043E\u0437\u0451\u0440</dd>") + `<dt>\u0412\u043E\u043B\u043A\u0438</dt><dd>${ofSpecies(w, "wolf").length || "\u043D\u0435\u0442"}</dd><dt title="\u0421\u043A\u043E\u043B\u044C\u043A\u043E \u0440\u0443\u0434\u044B \u043C\u043E\u0436\u043D\u043E \u0432\u044B\u043A\u043E\u043F\u0430\u0442\u044C \u0441 \u043E\u0442\u043A\u0440\u044B\u0442\u043E\u0433\u043E \u0441\u043A\u043B\u043E\u043D\u0430 \u0441\u043A\u0430\u043B">\u0420\u0443\u0434\u0430 \u043D\u0430 \u0441\u043A\u043B\u043E\u043D\u0430\u0445</dt><dd class="nb">${ORES.filter((o) => ore[o.id] > 0).map((o) => `${o.label} ${Math.round(ore[o.id])}`).join(" \xB7 ") || "\u043D\u0435 \u0432\u0438\u0434\u043D\u043E"}</dd>`
       );
       $("pFlabel").textContent = `\u041F\u043E\u043B\u044F (${w.n.toLocaleString("ru-RU")} \u043A\u043B\u0435\u0442\u043E\u043A)`;
       $("pF").textContent = w.perf.fields.toFixed(2);
@@ -22739,8 +23151,11 @@ dd.q4{color:#c58cff;font-weight:600}
   buildResFilter();
   var world = null;
   var running = false;
-  var menu = new Menu({ onStart: start, onResume: showGame });
-  var atlasView = new AtlasView({ onBack: showLaunch });
+  var menu = new Menu({ onStart: start, onResume: showGame, onPickCell: () => showAtlas(menu.cfg.cell?.ref || null) });
+  var atlasView = new AtlasView({ onBack: showLaunch, onSettle: (plan) => {
+    menu.useCell(plan);
+    showMenu();
+  } });
   var screen = "launch";
   var SCREENS = ["launch", "atlas", "menu", "game"];
   function only(id) {
@@ -22760,16 +23175,16 @@ dd.q4{color:#c58cff;font-weight:600}
     $("colonyName").textContent = "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434";
     $("worldInfo").textContent = "\xAB\u041C\u0438\u0440\xBB \u2014 \u0433\u043B\u043E\u0431\u0430\u043B\u044C\u043D\u0430\u044F \u043A\u0430\u0440\u0442\u0430 \u0438 \u0435\u0451 \u0438\u0441\u0442\u043E\u0440\u0438\u044F; \u043C\u0438\u0440\u044B \u0441 \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u044C\u044E \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0443. \xAB\u041A\u0430\u0440\u0442\u0430\xBB \u2014 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 \u043D\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u0435. \xAB\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u044F\xBB \u2014 \u043F\u043E\u0445\u043E\u0434 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430 \u043F\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u043C\u0443 \u043C\u0438\u0440\u0443 (\u0433\u043E\u0442\u043E\u0432\u0438\u0442\u0441\u044F).";
   }
-  function showAtlas() {
+  function showAtlas(goto = null) {
     running = false;
     only("atlas");
     document.body.classList.remove("ingame");
     $("worldInfo").hidden = false;
     $("colonyName").textContent = "\u041C\u0438\u0440";
     $("worldInfo").textContent = "\u041F\u043E\u043B\u0438\u0433\u043E\u043D \u0433\u043B\u043E\u0431\u0430\u043B\u044C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u044B. \u041C\u0438\u0440 \u0441\u043E\u0437\u0434\u0430\u0451\u0442\u0441\u044F \u043F\u043E \u044D\u0442\u0430\u043F\u0430\u043C, \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043F\u0438\u0448\u0435\u0442\u0441\u044F \u0441\u043F\u0440\u0430\u0432\u0430.";
-    atlasView.show();
+    atlasView.show(goto);
   }
-  $("launchWorld").addEventListener("click", showAtlas);
+  $("launchWorld").addEventListener("click", () => showAtlas());
   $("launchMap").addEventListener("click", showMenu);
   $("launchResume").addEventListener("click", () => showGame());
   $("menuBack").addEventListener("click", showLaunch);

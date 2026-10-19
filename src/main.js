@@ -47,8 +47,9 @@ function buildResFilter() {
 buildResFilter();
 let world = null, running = false;
 
-const menu = new Menu({onStart: start, onResume: showGame});
-const atlasView = new AtlasView({onBack: showLaunch});
+const menu = new Menu({onStart: start, onResume: showGame, onPickCell: () => showAtlas(menu.cfg.cell?.ref || null)});
+// a cell picked on the world map becomes the land of a new settlement in the «Карта» menu (seam/cell.js)
+const atlasView = new AtlasView({onBack: showLaunch, onSettle: plan => { menu.useCell(plan); showMenu(); }});
 let screen = 'launch';
 
 // the screens before the game: the launch choice, the world polygon (Мир) and the local map settings (Карта)
@@ -66,15 +67,15 @@ function showLaunch() {
   $('worldInfo').textContent = '«Мир» — глобальная карта и её история; миры с летописью сохраняются в библиотеку. «Карта» — поселение на локальной карте. «Кампания» — поход каравана по сохранённому миру (готовится).';
 }
 
-function showAtlas() {
+function showAtlas(goto = null) {
   running = false;
   only('atlas');
   document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
   $('colonyName').textContent = 'Мир';
   $('worldInfo').textContent = 'Полигон глобальной карты. Мир создаётся по этапам, летопись пишется справа.';
-  atlasView.show();
+  atlasView.show(goto);
 }
-$('launchWorld').addEventListener('click', showAtlas);
+$('launchWorld').addEventListener('click', () => showAtlas());
 $('launchMap').addEventListener('click', showMenu);
 $('launchResume').addEventListener('click', () => showGame());
 $('menuBack').addEventListener('click', showLaunch);

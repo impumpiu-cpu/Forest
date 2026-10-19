@@ -67,6 +67,7 @@ src/
     raids.js      банды налётов: кто приходит, кого больше ночью, снаряжение
     neighbours.js соседи за краем карты (пока заданы сценарием)
     metrics.js    что измеряет балансный прогон
+    seam.js       числа шва: дни пути от клеток, банды логов и держав, грядки по биомам, климат мира → климат карты
     presets.js    настройки стартового меню
     atlas.js      настройки карты мира: размеры, доля суши, календарь
     geology.js    карта мира: число плит, широты, виды границ плит, породы, откуда берутся руды
@@ -124,6 +125,7 @@ src/
     healing.js    лечение: кто ложится в хижину лекаря, сколько здоровья даёт лекарь, расход трав
     relations.js  соседство: неприязнь и дружба в дневниках, склоки, кто из рас придёт следующим
     together.js   совместные действия: сопровождение в лесу, помощь раненому, товарищи по работе, уступленная койка, общая беда
+  seam/        шов: клетка мира → участок локальной карты (cell.js) — единственное место, где встречаются atlas/ и world/
   outside/     граница с внешним миром — единственная связь карты с остальным миром
     index.js      шаг границы: кто прибывает, что колония отправляет наружу, соседи
     scripted.js   поставщик-заглушка: расписания вместо карты мира
@@ -158,7 +160,7 @@ src/
   commands.js  всё, что игрок может сделать с миром: ветер, поджог, ливень, набег
   headless.js  игра без экрана: simulate(cfg, {days}) с ежедневными замерами
 tools/
-  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  atlas-save-check.mjs  map-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  report.mjs
+  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  atlas-save-check.mjs  map-check.mjs  seam-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  report.mjs
 ```
 
 </details>
