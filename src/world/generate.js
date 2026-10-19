@@ -320,7 +320,7 @@ export function createWorld(cfg) {
   const t = makeTerrain(cfg), n = t.w * t.h;
   const f32 = () => new Float32Array(n);
   const world = {
-    cfg: {...cfg}, climate: t.site.climate, calendar: {startDay: t.site.startDay},
+    cfg: {...cfg}, light: !!cfg.light, climate: t.site.climate, calendar: {startDay: t.site.startDay},
     w: t.w, h: t.h, n, rng: t.rng, rngs: newStreams(cfg.seed), tick: Math.round(7 * HOUR),
     site: t.site, region: t.site.region, gates: t.gates, river: t.river,
     grid: {terr: t.terr, hgt: t.hgt, fert: t.fert, under: t.under, biome: t.biome, food: f32(), wood: f32(), fuel: f32(), fire: f32(),
@@ -355,7 +355,7 @@ export function createWorld(cfg) {
   layOre(world);
   layPlants(world);
   recomputeZone(world);
-  initOutside(world);
+  initOutside(world, cfg.provider || 'scripted');   // a campaign's camp has its own border (campaign/camp.js)
   setWind(world);
   return world;
 }

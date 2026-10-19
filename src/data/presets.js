@@ -59,8 +59,18 @@ export const PREDATORS = {
   many: {label: 'Стаи',    wolves: 1},
 };
 
+// the polygon's monsters (data/bestiary.js kind 'monster': vargs, griffins, wyverns, drakes, spiders, stone
+// worms): × on top of the wolves' or the game's setting; the world map decides by itself
+export const MONSTERS = {
+  none:  {label: 'Нет',     k: 0},
+  few:   {label: 'Редко',   k: 0.5},
+  usual: {label: 'Обычно',  k: 1},
+  many:  {label: 'Часто',   k: 1.6},
+};
+
 export const DEFAULT_CFG = {
   name: 'Тёплый Брод', seed: '20261010', size: 'medium', water: 1, forest: 1, rock: 1,
   climate: 'temperate', start: 'spring', colonists: 8, stock: 'normal', raids: 'off', wildlife: 'few', predators: 'few', lightning: false,
+  bands: null, monsters: 'usual', spirits: true,   // bands: null — all of data/raids.js, or a list of the allowed ids
   windDir: 20, windStr: 35,
 };

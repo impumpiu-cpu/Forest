@@ -68,8 +68,9 @@ function roadsLine(a, fresh, say) {
   say(`Протоптали ${fresh.length === 1 ? 'дорогу' : 'дороги'} между ${named.join(', между ')}` + (rest ? ` и ещё ${rest} ${plural(rest, 'парой городов', 'парами городов', 'парами городов')}` : '') + '.');
 }
 
-// one season of history
-export function stepHistory(a) {
+// one season of history. `onDay(day)` — optional: called after the parties' every day of the season
+// (atlas/parties.js), so that a campaign's caravan walks the same days as the world's armies (campaign/)
+export function stepHistory(a, onDay = null) {
   const H = a.hist, rnd = H.rnd, season = SEASON_LIST[H.season].id, F = a.fauna;
   if (H.season === 0) {
     rollWeather(a, rnd);
@@ -113,7 +114,7 @@ export function stepHistory(a) {
   }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
-  stepParties(a, rnd, t => say(a, t));
+  stepParties(a, rnd, t => say(a, t), onDay);
   // the year's beaten raids of the tribes and the dead, in one line
   if (H.season === 3 && H.repelled) {
     const parts = Object.entries(H.repelled).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} — ${n}`);
@@ -143,7 +144,8 @@ export function stepHistory(a) {
     const alive = a.lairs.filter(l => l.alive).length, gone = a.lairs.length - alive;
     say(a, `Дикая эра подошла к концу: ${alive} ${plural(alive, 'логово', 'логова', 'логов')} чудовищ стоит, ${gone} ${plural(gone, 'опустело', 'опустели', 'опустели')}. Мир ждёт первых народов.`);
   }
-  if (H.step === elderEnd || H.step >= H.end) {
+  // the end of an era is told once: a campaign lets history run on past the planned end (campaign/)
+  if (H.step === elderEnd || (H.step === H.end && !H.endTold)) {
     const towns = a.towns.filter(t => t.alive), parts = [];
     for (const pe of a.peoples) {
       const mine = towns.filter(t => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));
@@ -153,6 +155,7 @@ export function stepHistory(a) {
     if (H.step === elderEnd && H.step < H.end) say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и орки.`);
     else {
       const wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0), ruins = (a.ruins || []).length;
+      H.endTold = true;
       say(a, `Эпоха молодых народов подошла к концу: ${parts.join('; ')}. Войн было ${wars}, сожжено городов: ${ruins}. История мира ждёт поселенцев.`);
     }
   }

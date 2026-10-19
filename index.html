@@ -29,6 +29,11 @@
       <b>Карта</b>
       <span>Основать поселение: поля, огонь, колонисты, совет, набеги и торговля.</span>
     </button>
+    <button type="button" class="launch-card" id="launchCampaign">
+      <span class="tag">поход</span>
+      <b>Кампания</b>
+      <span>Караван из столицы идёт по живому миру: восемь человек, еда на спине, поручение. Мир берётся из библиотеки — сохраните его на экране «Мир».</span>
+    </button>
     <button type="button" id="launchResume" class="primary" hidden>Вернуться к игре</button>
   </section>
 
@@ -56,6 +61,18 @@
         <div class="seg" id="atlasSpeed" hidden title="Темп истории: сезонов за кадр"></div>
         <button type="button" id="atlasBack" class="quiet" title="Esc">← Главное меню</button>
       </div>
+      <div class="field saves">
+        <label for="atlasName">Сохранить мир с летописью</label>
+        <div class="row">
+          <input id="atlasName" type="text" maxlength="40" autocomplete="off" placeholder="Название мира">
+          <button type="button" id="atlasSave" title="В библиотеку миров этого браузера">Сохранить</button>
+          <button type="button" id="atlasFile" title="Скачать мир файлом">В файл</button>
+        </div>
+        <small class="status" id="atlasSaveStatus" role="status"></small>
+        <span class="lbl">Библиотека миров</span>
+        <div id="atlasWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
+        <label class="filebtn">Открыть файл мира…<input type="file" id="atlasLoadFile" accept=".gz,.json,application/gzip,application/json"></label>
+      </div>
       <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="atlasStages"></ol></div>
       <dl class="kv" id="atlasStats"></dl>
       <dl class="kv" id="atlasRels"></dl>
@@ -73,11 +90,76 @@
       <div class="seg wrapseg" data-akey="fauna" id="atlasFauna" hidden></div>
       <div class="preview-box"><canvas id="atlasMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
       <div class="legend atlas-legend" id="atlasLegend"></div>
-      <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку.</div>
+      <div class="readout" id="atlasReadout">Наведите на карту, чтобы увидеть клетку. Щелчок по суше — выбрать место для поселения.</div>
+      <div class="card cellcard" id="atlasCell" hidden>
+        <h2>Место для поселения</h2>
+        <dl class="kv cellkv" id="atlasCellInfo"></dl>
+        <div class="row actions">
+          <button type="button" id="atlasSettle" class="primary">Основать поселение здесь</button>
+          <button type="button" id="atlasUnpick" class="quiet">Снять выбор</button>
+        </div>
+        <small id="atlasCellNote" class="muted"></small>
+      </div>
     </div>
     <div class="card atlas-chron">
       <h2>Летопись мира</h2>
       <div class="log" id="atlasChron"></div>
+    </div>
+  </section>
+
+  <!-- ───────── the campaign: a caravan walks the world ───────── -->
+  <section id="campaign" class="atlas" hidden aria-labelledby="campTitle">
+    <div class="menu-form atlas-form">
+      <h2 id="campTitle" class="menu-title">Кампания</h2>
+      <div id="campSetup">
+        <div class="field"><span class="lbl">Мир из библиотеки</span><div id="campWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
+          <small id="campWorldNote" class="status" role="status"></small></div>
+        <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
+          <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small></div>
+        <div class="field" id="campPastField" hidden><span class="lbl">Походы в этом мире</span><div id="campPast" class="savelist"></div>
+          <small>Летописи окончённых походов хранятся вместе с миром.</small></div>
+        <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
+      </div>
+      <div id="campRun" hidden>
+        <div class="row actions">
+          <button type="button" id="campPause">Пауза</button>
+          <div class="seg" id="campSpeed" title="Темп: дней в секунду"></div>
+        </div>
+        <dl class="kv" id="campStatus"></dl>
+        <span class="lbl">Отряд</span>
+        <div id="campRoster" class="roster"></div>
+        <div class="row actions">
+          <button type="button" id="campSave" title="В библиотеку миров: мир вместе с походом">Сохранить мир с походом</button>
+          <button type="button" id="campAgain" hidden title="Тот же мир, после этого похода: выбрать столицу и снарядить новый караван">Новый поход в этом мире</button>
+          <button type="button" id="campNew" class="quiet">Другой мир</button>
+        </div>
+        <small class="status" id="campSaveStatus" role="status"></small>
+      </div>
+      <div class="row actions"><button type="button" id="campBack" class="quiet" title="Esc">← Главное меню</button></div>
+    </div>
+    <div class="atlas-map">
+      <div class="atlas-tools">
+        <div class="seg wrapseg" id="campLayer"></div>
+        <div class="seg zoomseg" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
+          <button type="button" id="campZoomIn" aria-label="Приблизить">+</button>
+          <button type="button" id="campZoomOut" aria-label="Отдалить">−</button>
+          <button type="button" id="campZoomFit" aria-label="Весь мир">⌂</button>
+          <button type="button" id="campFollow" aria-pressed="true" title="Следить за караваном: он в середине, виден весь пузырь вокруг">◎</button>
+          <button type="button" id="campWatch" aria-pressed="true" title="Показывать бои и стоянки на локальной карте (на темпе ×1 и ×4)">⚔</button>
+        </div>
+      </div>
+      <div class="preview-box camp-box"><canvas id="campMap" width="256" height="192" aria-label="Карта мира с караваном"></canvas>
+        <canvas id="campLocal" hidden aria-label="Стоянка каравана на локальной карте"></canvas>
+        <div id="campLocalBar" class="camp-local-bar" hidden><span id="campLocalText"></span><button type="button" id="campLocalSkip">Дальше по карте мира</button></div></div>
+      <div class="legend atlas-legend" id="campLegend"></div>
+      <div class="readout" id="campReadout">Наведите на карту, чтобы увидеть клетку.</div>
+    </div>
+    <div class="card atlas-chron">
+      <h2>Летопись похода</h2>
+      <div class="seg wrapseg camp-topics" id="campTopics" title="Темы летописи: нажмите, чтобы скрыть или показать"></div>
+      <small id="campWho" class="camp-who" hidden></small>
+      <div class="log" id="campLog"></div>
+      <div class="row actions"><button type="button" id="campExport" title="Вся летопись похода текстом: отряд, поручение, итог, строки по дням, судьбы">Летопись в файл</button></div>
     </div>
   </section>
 
@@ -89,7 +171,14 @@
         <label for="cfgName">Название поселения</label>
         <input id="cfgName" type="text" maxlength="32" autocomplete="off">
       </div>
-      <div class="field">
+      <div class="field"><span class="lbl">Где</span><div class="seg" data-key="source"></div>
+        <small data-note="source"></small></div>
+      <div class="field" data-only="world">
+        <span class="lbl">Клетка мира</span>
+        <dl class="kv cellkv" id="cellInfo"></dl>
+        <div class="row"><button type="button" id="cellPick">Выбрать на карте мира…</button></div>
+      </div>
+      <div class="field" data-only="poly">
         <label for="cfgSeed">Сид мира</label>
         <div class="row">
           <input id="cfgSeed" type="text" maxlength="24" autocomplete="off">
@@ -98,12 +187,12 @@
         <small>Число или любое слово. Один и тот же сид с теми же настройками даёт тот же мир.</small>
       </div>
       <div class="field"><span class="lbl">Размер мира</span><div class="seg wrapseg" data-key="size"></div><small data-note="size"></small></div>
-      <div class="field-grid">
+      <div class="field-grid" data-only="poly">
         <div class="field"><span class="lbl">Вода</span><div class="seg" data-key="water"></div></div>
         <div class="field"><span class="lbl">Лес</span><div class="seg" data-key="forest"></div></div>
         <div class="field"><span class="lbl">Горы</span><div class="seg" data-key="rock"></div></div>
       </div>
-      <div class="field"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
+      <div class="field" data-only="poly"><span class="lbl">Климат</span><div class="seg" data-key="climate"></div><small data-note="climate"></small></div>
       <div class="field"><span class="lbl">Начало</span><div class="seg" data-key="start"></div></div>
       <div class="field">
         <label for="cfgColonists">Поселенцев на старте: <output id="colonistsOut">8</output></label>
@@ -111,10 +200,16 @@
       </div>
       <div class="field-grid">
         <div class="field"><span class="lbl">Запасы</span><div class="seg" data-key="stock"></div></div>
-        <div class="field"><span class="lbl">Набеги «Серых волков»</span><div class="seg" data-key="raids"></div></div>
         <div class="field"><span class="lbl">Зайцы</span><div class="seg" data-key="wildlife"></div></div>
         <div class="field"><span class="lbl">Волки</span><div class="seg" data-key="predators"></div></div>
       </div>
+      <div class="field-grid" data-only="poly">
+        <div class="field"><span class="lbl">Набеги</span><div class="seg" data-key="raids"></div></div>
+        <div class="field"><span class="lbl">Чудища</span><div class="seg" data-key="monsters"></div></div>
+      </div>
+      <div class="field" data-only="poly"><span class="lbl">Кто ходит в набеги</span><div class="seg wrapseg" id="cfgBands"></div>
+        <small>Нажатые банды могут прийти; на клетке мира это решают соседи.</small></div>
+      <label class="check" data-only="poly"><input id="cfgSpirits" type="checkbox"> Нечисть: леший, русалка, кикимора, водяной, полуденница</label>
       <label class="check"><input id="cfgLightning" type="checkbox"> Молнии поджигают лес в жаркие часы</label>
       <div class="row actions">
         <button type="button" id="startGame" class="primary">Основать поселение</button>

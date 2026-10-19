@@ -63,6 +63,7 @@ import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {neighbours} from '../outside/index.js';
+import {raidOdds} from '../outside/scripted.js';
 import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
 import {statusOf} from '../settlement/life.js';
 import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
@@ -284,14 +285,16 @@ export class Panel {
 
   renderWorld(w, view, tps) {
     const c = w.cfg, sz = SIZES[c.size];
-    $('worldLine').textContent = `Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${w.climate.label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`;
+    const at = w.site?.world;   // a cell of the world map (seam/cell.js)
+    $('worldLine').textContent = at ? `Карта ${sz.w} × ${sz.h} на клетке ${at.x}, ${at.y} мира «${at.name}» (сид ${at.seed}), климат: ${w.climate.label}, ${w.climate.note}; набеги решают соседи` + ` · зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}`
+      : `Мир ${sz.w} × ${sz.h}, сид «${c.seed}», климат ${w.climate.label.toLowerCase()}, набеги: ${RAIDS[c.raids].label.toLowerCase()}, зайцев: ${WILDLIFE[c.wildlife].label.toLowerCase()}, волки: ${PREDATORS[c.predators].label.toLowerCase()}${c.lightning ? ', молнии' : ''}.`;
     const col = colonists(w), raiders = w.agents.filter(a => a.faction === 'raiders').length, hares = ofSpecies(w, 'hare').length;
     const ore = exposedOre(w);
     this.set('worldKv',
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
       `<dt>Местность</dt><dd class="nb">${this.regionText(w)}</dd>` +
       `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
-      `<dt title="Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${RAIDS[w.cfg.raids].dist ? ` · ${this.waitText(w, w.outside.next.raiders)}, если выйдут (${Math.round((RAIDS[w.cfg.raids].chance ?? 1) * 100)}%)` : ''}</dd>` +
+      `<dt title="Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${raidOdds(w).dist ? ` · ${this.waitText(w, w.outside.next.raiders)}, если выйдут (${Math.round(raidOdds(w).chance * 100)}%)` : ''}</dd>` +
       `<dt>Соседи</dt><dd class="nb">${neighbours(w).filter(n => n.dist).map(n => `<span title="${esc(n.note)}">${esc(n.label)} · ${n.dist} дн. пути</span>`).join('<br>') || '—'}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +

@@ -84,8 +84,9 @@ export function stepOutside(w) {
 // for the panel: each neighbour with its distance and the next arrival from it
 export function neighbours(w) {
   const P = provider(w);
+  const nb = w.site?.neighbours || {};   // a cell of the world map names its own neighbours (seam/cell.js)
   return NEIGHBOURS.all().map(n => ({
-    ...n, dist: P.distance(w, n.id),
+    ...n, ...(nb[n.id] ? {label: nb[n.id].label, note: nb[n.id].note} : {}), dist: P.distance(w, n.id),
     flows: n.flows.filter(f => P.flows[f]).map(f => ({id: f, next: w.outside.next[f], due: w.outside.due[f]})),
   }));
 }

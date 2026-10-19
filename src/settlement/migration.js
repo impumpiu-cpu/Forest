@@ -40,7 +40,8 @@ export function spawnGroup(w, id, n, opts = {}) {
   // most groups walk in from a map edge; some come by road through its gate (`gate`), some appear at
   // their own ground (`spawnAt`, the nechist)
   const home = def.spawnAt ? def.spawnAt(w) : -1;
-  const [e, side] = home >= 0 ? [home, ''] : (def.gate && gateCell(w, def.gate)) || edgeCell(w, def.minDist ?? 30);
+  // a campaign's camp may name the cell and the least distance (campaign/camp.js: an ambush comes from close by)
+  const [e, side] = opts.at != null ? [opts.at, opts.side || ''] : home >= 0 ? [home, ''] : (def.gate && gateCell(w, def.gate)) || edgeCell(w, opts.minDist ?? def.minDist ?? 30);
   if (e < 0) { if (id === 'raiders') log(w, 'Налётчики не нашли дороги к лагерю.', 'danger', 'notice'); return []; }
   const ex = e % w.w, ey = (e / w.w) | 0, group = [];
   // a mixed group (a caravan) lists its members; otherwise n of the one species

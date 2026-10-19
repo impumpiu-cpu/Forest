@@ -205,12 +205,18 @@ button.quiet{background:transparent;color:var(--muted)}
 .kv dt{white-space:nowrap}
 .kv dd{overflow-wrap:anywhere}
 [hidden]{display:none!important}
+.cellkv{grid-template-columns:max-content minmax(0,1fr)}
+.cellkv dd{text-align:left;font-family:inherit;font-size:13px;line-height:1.4}
+.cellkv .warn{color:var(--ember)}
+.cellcard{margin-top:8px;border-color:var(--ember)}
 .kv dd.nb{font-family:inherit;font-size:12px;line-height:1.35}
 .status{font-size:12px;color:var(--muted)}
 .savelist{display:flex;flex-direction:column;gap:4px;margin:4px 0 8px}
 .savelist .sv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border:1px solid var(--line);border-radius:6px}
 .savelist .sv .t{flex:1;min-width:160px}
 .savelist .sv small{color:var(--muted)}
+.savelist .sv.cur{border-color:var(--ember)}
+#atlasWorlds{max-height:260px;overflow-y:auto}
 .filebtn{display:inline-block;font-size:13px;border:1px dashed var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
 .filebtn input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .filebtn:focus-within{outline:2px solid var(--ember);outline-offset:2px}
@@ -313,20 +319,45 @@ dd.q4{color:#c58cff;font-weight:600}
 .launch-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:18px 20px;min-height:150px;border-radius:8px}
 .launch-card b{font-family:var(--font-display);font-size:30px;letter-spacing:.04em;font-weight:700}
 .launch-card > span:last-child{color:var(--muted);font-size:14px;max-width:46ch}
-.launch-card:hover{border-color:var(--ember)}
+.launch-card:hover:not(:disabled){border-color:var(--ember)}
+.launch-card:disabled{opacity:.55;cursor:default}
 #launchResume{grid-column:1/-1;justify-self:start}
 
 /* ───── the world map polygon ───── */
 .atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}
 .atlas-map{display:flex;flex-direction:column;gap:8px;min-width:0}
 .atlas-map .seg{align-self:flex-start}
-#atlasMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
-#atlasMap.dragging{cursor:grabbing}
+#atlasMap,#campMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+#atlasMap.dragging,#campMap.dragging{cursor:grabbing}
+/* a camp of the caravan played on the local map, over the world map (ui/campaignView.js) */
+.camp-box{position:relative}
+#campLocal{position:absolute;inset:0;width:100%;height:100%;display:block}
+#campLocal[hidden],.camp-local-bar[hidden]{display:none}
+.camp-local-bar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:5px;background:rgba(13,15,10,.82);color:var(--fg);font-size:13px}
+.camp-local-bar button{flex:none}
 .atlas-tools{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .atlas-tools .wrapseg{flex:1 1 0;min-width:0}
 .zoomseg{flex:0 0 auto}
 .zoomseg button{min-width:30px}
 .atlas-chron .log{max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.roster{display:flex;flex-direction:column;gap:3px;margin:4px 0 8px}
+.roster .rm{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:2px 8px;align-items:center;padding:3px 6px;border:1px solid var(--line);border-radius:5px;font-size:13px}
+.roster .rm small{color:var(--muted);grid-column:1/-1;font-size:11px}
+.roster .rm.dead{opacity:.5}
+.roster .hp{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.roster .hp i{display:block;height:100%;background:#8fbf6a}
+.roster .hp i.low{background:var(--ember)}
+.savelist .sv.cap i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
+.camp-topics{margin:0 0 6px}
+.camp-topics button{font-size:11.5px;padding:2px 8px}
+.camp-who{display:block;margin:0 0 6px;color:var(--muted)}
+.camp-who button{margin-left:6px;font-size:11px;padding:1px 6px}
+.atlas-chron .log div.lv-alert{border-left:2px solid var(--raider);padding-left:6px}
+.atlas-chron .log div.lv-notice{border-left:2px solid #e2b84a;padding-left:6px}
+.atlas-chron .log div.lv-info{border-left:2px solid transparent;padding-left:6px}
+.atlas-chron .log .fold{color:var(--muted);font-size:11.5px}
+.roster .rm{cursor:pointer}
+.roster .rm.pick{border-color:var(--ember)}
 .atlas-chron .log small{color:var(--ember);font-family:var(--font-mono);font-size:11px;margin-right:4px}
 .stages{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px;counter-reset:st}
 .stages li{display:flex;justify-content:space-between;gap:8px;color:var(--muted);padding:2px 6px;border-left:3px solid var(--line);counter-increment:st}

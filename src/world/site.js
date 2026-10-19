@@ -31,8 +31,20 @@ import {mulberry, seedNumber} from '../core/rng.js';
 const WATER = [0.07, 0.12, 0.2], ROCK = [0.08, 0.13, 0.2], TREES = [0.75, 1, 1.25];
 const MOUNTAIN = ['foothills', 'highlands', 'underground', 'volcano'];
 
+// The polygon's site: the region rolled from the seed, gates rolled by its road and river, a preset
+// climate. A game on a cell of the world map carries the cell's plan in its settings (`cfg.cell`,
+// made by seam/cell.js: the region, climate, gates, fertility, neighbours and where in the world it
+// is); the map's size and the season of landing still come from the menu, the sliders do not.
 export function makeSite(cfg) {
-  const {w, h} = SIZES[cfg.size], region = rollRegion(cfg.seed);
+  if (cfg.cell) return siteFromRegion({...cfg, water: 1, rock: 1, forest: 1}, cfg.cell.region, {...cfg.cell.extra, world: cfg.cell.ref});
+  const region = rollRegion(cfg.seed);
+  return siteFromRegion(cfg, region, {climate: {id: cfg.climate, ...CLIMATES[cfg.climate]}, gates: rollGates(cfg.seed, region)});
+}
+
+// a site from a region: water, rock and forest from its biomes (scaled by the polygon's sliders, if
+// any); `extra` gives what the caller knows better — the climate, the gates, fertility, neighbours
+export function siteFromRegion(cfg, region, extra = {}) {
+  const {w, h} = cfg.dims || SIZES[cfg.size];   // a campaign's camp has its own small map (data/camp.js)
   const biomes = {};
   for (const [id, v] of Object.entries(region.biomes)) if (BIOMES.has(id) && v > 0) biomes[id] = v;
   const share = id => biomes[id] || 0;
@@ -40,9 +52,7 @@ export function makeSite(cfg) {
   // open water: the slider's base, more where the region has lakes; rock: more where it has mountains
   const water = clamp(WATER[cfg.water ?? 1] * (0.5 + 3.5 * share('water')), 0.02, 0.45);
   const rock = clamp(ROCK[cfg.rock ?? 1] * (0.4 + 2.2 * mountains), 0.03, 0.5);
-  const climate = {id: cfg.climate, ...CLIMATES[cfg.climate]};
-  const gates = rollGates(cfg.seed, region);
-  return {seed: String(cfg.seed), w, h, region, biomes, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, climate, startDay: START[cfg.start]?.day ?? 0, gates};
+  return {seed: String(cfg.seed), w, h, region, biomes, water, rock, trees: TREES[cfg.forest ?? 1], fert: 1, startDay: START[cfg.start]?.day ?? 0, gates: [], ...extra};
 }
 
 export const SIDES = ['north', 'east', 'south', 'west'];

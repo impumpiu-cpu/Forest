@@ -12,7 +12,7 @@
 //   receive — messages the colony sends out (its daily report, later tribute and envoys).
 import {region} from '../world/region.js';
 import {DAY} from '../core/time.js';
-import {RAIDS, WILDLIFE, PREDATORS} from '../data/presets.js';
+import {RAIDS, WILDLIFE, PREDATORS, MONSTERS} from '../data/presets.js';
 import {NEIGHBOURS} from '../data/neighbours.js';
 import {raidSize, settlerWaitDays} from '../settlement/threat.js';
 import {TRADE} from '../data/trade.js';
@@ -24,17 +24,33 @@ import {weighted} from '../core/util.js';
 import {SPECIES} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 
-// which band sets out: each weighs itself by the threat it sees and the hour
-export const pickBand = (w, rng) => { const sc = scoutedBand(w); return weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1)])); };
+// Who is beyond the edge: on a cell of the world map the site names its neighbours (seam/cell.js) —
+// how far the hostile are and which bands they send, where the kin and the market are; on the
+// polygon the presets and the fixed neighbours of data/neighbours.js decide, and the menu may allow
+// only some bands (cfg.bands).
+const worldNb = w => w.site?.neighbours || null;
+const NB_ID = {kin: 'kin', empire: 'empire', hostile: 'hostile'};
+// how much a band is wanted here: 0 — it never comes
+export function bandAllowed(w, id) {
+  const nb = worldNb(w);
+  if (nb) return nb.hostile?.bands?.[id] || 0;
+  return !w.cfg.bands || w.cfg.bands.includes(id) ? 1 : 0;
+}
+// which band sets out: each weighs itself by the threat it sees and the hour, and by whether it lives near
+export const pickBand = (w, rng) => { const sc = scoutedBand(w); return weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1) * bandAllowed(w, b.id)])); };
+const anyBand = w => RAID_BANDS.all().some(b => bandAllowed(w, b.id) > 0);
 
-const raidDist = w => RAIDS[w.cfg.raids].dist;
+const raidDist = w => { const nb = worldNb(w); return nb ? (nb.hostile && anyBand(w) ? nb.hostile.dist : null) : anyBand(w) ? RAIDS[w.cfg.raids].dist : null; };
+// for the panel: how far the raiders are and how likely a check brings them
+export const raidOdds = w => ({dist: raidDist(w), chance: raidChance(w)});
+const raidChance = w => { const nb = worldNb(w); return nb ? nb.hostile?.chance ?? 0 : RAIDS[w.cfg.raids].chance ?? 1; };
 
 const caravanDay = (w, day, rng) => Math.max(w.tick + 1, day * DAY + (TRADE.setOut[0] + rng() * (TRADE.setOut[1] - TRADE.setOut[0])) * HOUR);
 
 export const scripted = {
   id: 'scripted', label: 'Сценарий',
 
-  distance: (w, id) => (id === 'hostile' ? raidDist(w) : NEIGHBOURS.get(id).dist),
+  distance: (w, id) => (id === 'hostile' ? raidDist(w) : worldNb(w) && NB_ID[id] ? worldNb(w)[NB_ID[id]]?.dist ?? null : NEIGHBOURS.get(id).dist),
 
   flows: {
     // one newcomer at a time from the kin; the wait grows with the colony (it hears how big it is)
@@ -87,7 +103,7 @@ export const scripted = {
     // Which band comes is drawn from data/raids.js: bandits, orcs, goblins, gnolls, the dead…
     raiders: {from: 'hostile',
       first: (w, rng) => scripted.flows.raiders.next(w, rng),
-      offer: (w, rng) => (rng() < (RAIDS[w.cfg.raids].chance ?? 1) ? {n: raidSize(w), band: pickBand(w, rng)} : 0),
+      offer: (w, rng) => (rng() < raidChance(w) ? {n: raidSize(w), band: pickBand(w, rng)} : 0),
       size: w => ({n: raidSize(w), band: pickBand(w, w.rngs.outside)}),
       missed: () => ['Чужие разведчики побродили у края леса и ушли. Набега в этот раз не будет.', 'danger', 'info'],
       next: (w, rng) => (raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) * (scoutedBand(w) ? 0.6 : 1) : Infinity)},
@@ -104,11 +120,13 @@ export const scripted = {
 const evening = t => { let x = Math.floor(t / DAY) * DAY + 21.5 * HOUR; if (x < t) x += DAY; return x; };
 for (const sp of SPECIES.filter(s => s.arrive)) {
   const A = sp.arrive, when = (w, t) => (A.night ? evening(t) : t);
-  const setting = w => (sp.resident ? 1 : sp.brain === 'predator' ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0);
+  // the polygon's «Чудища» scales the monsters on top of the wolves' or the game's setting; «Нечисть» turns the spirits off
+  const monsters = w => (sp.kind === 'monster' ? MONSTERS[w.cfg.monsters ?? 'usual']?.k ?? 1 : 1);
+  const setting = w => (sp.resident ? (w.cfg.spirits === false ? 0 : 1) : (sp.brain === 'predator' ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0) * monsters(w));
   scripted.flows[sp.id] = {from: sp.resident ? 'local' : 'wilds',
     first: (w, rng) => when(w, w.tick + (A.first + rng()) * DAY),
     offer: (w, rng) => {
-      if (sp.resident) return 1;
+      if (sp.resident) return setting(w);
       const k = setting(w), lvl = faunaLevel(w, sp.id);
       if (!k || !lvl || rng() >= A.chance * k * Math.min(1.5, lvl)) return 0;
       return A.group[0] + Math.floor(rng() * (A.group[1] - A.group[0] + 1));

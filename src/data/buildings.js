@@ -1,4 +1,5 @@
 // Buildings. Cost is paid when the council lays the site; colonists then add `work` labour.
+// `portable: true` — a simple building a campaign's wagon can carry packed (data/transport.js CAMP_FX).
 // `effects` are merged into world.mods when a building is finished (see settlement/mods.js):
 //   numbers under add.*  are summed, numbers under mul.* are multiplied,
 //   yield.<resource> and jobSpeed.<job> multiply production, toolWear.<job> how fast that job's tools wear,
@@ -37,7 +38,7 @@ export const ZONE = {camp: 8, building: 5};
 BUILDINGS.registerAll([
   // the shelter of the first season: poles and bark from what lies around. Drafty: in a hard
   // winter its fire eats wood and its sleepers still get cold.
-  {id: 'hut', name: 'Шалаш', gender: 'm', cost: {wood: 18}, work: 160, max: 4, wooden: true, color: '#b88a52', mark: 'Ш',
+  {id: 'hut', portable: true, name: 'Шалаш', gender: 'm', cost: {wood: 18}, work: 160, max: 4, wooden: true, color: '#b88a52', mark: 'Ш',
     heat: {to: 20, add: 3, fuel: 0.0016},
     effect: 'Сон на 60% быстрее. Лагерь примет на 4 жителей больше. Продувается: зимой греет плохо и съедает много дров.',
     effects: {add: {beds: 4, popCap: 4, bedWarmth: 2}},
@@ -76,7 +77,7 @@ BUILDINGS.registerAll([
     wish: 'хочет еду поближе к дому',
     motive: (a) => [[a.mem.hunger * 1.2, 'голодает'], [a.mem.walkFood, 'далеко ходить за ягодами'], [(a.prefs.gather - 1) * 0.6, 'любит возиться с ягодами']]},
 
-  {id: 'lodge', name: 'Охотничий навес', gender: 'm', cost: {wood: 20}, furnish: true, work: 160, max: 1, wooden: true, color: '#9a7b56', mark: 'Н',
+  {id: 'lodge', portable: true, name: 'Охотничий навес', gender: 'm', cost: {wood: 20}, furnish: true, work: 160, max: 1, wooden: true, color: '#9a7b56', mark: 'Н',
     effect: 'Луки бьют дальше на 2 клетки, каждый заяц даёт в полтора раза больше мяса.',
     effects: {add: {huntRange: 2}, yield: {meat: 1.5}},
     wish: 'хочет охотиться удачнее',
@@ -129,7 +130,7 @@ BUILDINGS.registerAll([
     motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
   // built by the water when it can be: the nearest lot within reach that touches a lake with fish
-  {id: 'fishhut', name: 'Хижина рыбака', gender: 'f', cost: {wood: 16}, furnish: true, work: 160, max: 1, wooden: true, color: '#5d8fa8', mark: 'Ры',
+  {id: 'fishhut', portable: true, name: 'Хижина рыбака', gender: 'f', cost: {wood: 16}, furnish: true, work: 160, max: 1, wooden: true, color: '#5d8fa8', mark: 'Ры',
     near: 'fish',
     effect: 'Сети и вешала для рыбы: рыбаки ловят на треть быстрее, каждая рыба даёт в полтора раза больше еды, удочки изнашиваются вдвое медленнее.',
     effects: {jobSpeed: {fish: 1.35}, yield: {fish: 1.5}, toolWear: {fish: 0.5}},
@@ -137,7 +138,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[c.fishLakes ? 0.15 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4 + (a.skill.fishing || 0) * 0.4, 'любит рыбачить'], [a.mem.walkFish * 0.8, 'далеко носить рыбу'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом'], [c.fishLakes && a.food?.likes === 'fish' ? 0.35 : 0, 'скучает по рыбе']],
     available: w => w.lakes.some(l => l.cap > 0)},
 
-  {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, furnish: true, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
+  {id: 'crafthut', portable: true, name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, furnish: true, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
     effect: 'Здесь делают одежду, оружие, луки, пращи, удочки, инструменты, колчаны и стрелы из дерева, кости и кожи.',
     effects: {},
     wish: 'хочет делать снаряжение',
@@ -176,7 +177,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[(c.stock('ironore') + c.stock('bronzeOre') + c.stock('silverOre')) * 0.07 + c.stock('goldDust') * 0.03, 'руда лежит без дела'],
       [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна'], [c.unarmed * 0.4, 'нужно оружие получше']]},
 
-  {id: 'forge', name: 'Походная кузня', gender: 'f', cost: {stone: 18, wood: 16, iron: 2, anvil: 1}, key: 'anvil', furnish: true, work: 260, max: 1, wooden: false, color: '#8e8f96', mark: 'Кз', station: true, benches: 1, needs: 'smelter',
+  {id: 'forge', portable: true, name: 'Походная кузня', gender: 'f', cost: {stone: 18, wood: 16, iron: 2, anvil: 1}, key: 'anvil', furnish: true, work: 260, max: 1, wooden: false, color: '#8e8f96', mark: 'Кз', station: true, benches: 1, needs: 'smelter',
     effect: 'Навес, горн и покупная наковальня: куют мечи, копья с железными наконечниками, железные топоры, ламеллярные доспехи и оковку для сундуков. Кольчуги и тонкие клинки — только у торговцев.',
     effects: {},
     wish: 'хочет железное оружие',
@@ -206,7 +207,7 @@ BUILDINGS.registerAll([
 
   // the healer's hut: the wounded lie here and a healer tends them, many times faster than wounds
   // close by themselves; herbs make the treatment work fully (settlement/healing.js)
-  {id: 'healerhut', name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, furnish: true, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
+  {id: 'healerhut', portable: true, name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, furnish: true, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
     effect: 'Раненые лежат здесь, а лекарь их выхаживает: раны затягиваются в несколько раз быстрее, с травами — ещё быстрее. Лекарь же собирает лечебные травы.',
     effects: {}, beds: 3,
     wish: 'хочет, чтобы раненых было где лечить',
