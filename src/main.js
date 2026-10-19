@@ -63,7 +63,7 @@ function showLaunch() {
   document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
   $('launchResume').hidden = !world;
   $('colonyName').textContent = 'Тёплый Брод';
-  $('worldInfo').textContent = 'Два полигона: «Мир» — глобальная карта и её история, «Карта» — поселение на локальной карте. Позже они сошьются: место поселения будет выбираться на карте мира.';
+  $('worldInfo').textContent = '«Мир» — глобальная карта и её история; миры с летописью сохраняются в библиотеку. «Карта» — поселение на локальной карте. «Кампания» — поход каравана по сохранённому миру (готовится).';
 }
 
 function showAtlas() {

@@ -42,6 +42,7 @@ import {Camera} from '../render/camera.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {CATEGORIES} from '../data/townBuildings.js';
+import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from './worlds.js';
 
 const STORE = 'forest.atlas';
 const ERA = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
@@ -96,6 +97,7 @@ export class AtlasView {
   constructor({onBack}) {
     this.cfg = this.load(); this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.fauna = 'wolf'; this.timer = 0; this.paused = false;
     this.speed = 'x1'; this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.grab = null;
+    this.worldId = null; this.worldName = '';   // the library record this world is saved as, if any
     this.onBack = onBack;
     this.build();
   }
@@ -128,6 +130,7 @@ export class AtlasView {
       this.speed = b.dataset.val; this.paused = false; this.syncPause(); this.run();
     });
     $('atlasBack').addEventListener('click', () => { this.stop(); this.onBack(); });
+    this.buildLibrary();
     // the camera: the wheel zooms at the cursor, dragging pans, the buttons zoom at the middle
     const cv = $('atlasMap');
     const local = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
@@ -171,7 +174,7 @@ export class AtlasView {
   box() { const cv = $('atlasMap'); return [cv.clientWidth || 1, cv.clientHeight || 1]; }
   zoomCentre(f) { if (!this.cam) return; const [cw, ch] = this.box(); this.cam.zoomAt(cw, ch, f, cw / 2, ch / 2); this.draw(); }
 
-  show() { this.sync(); if (!this.atlas) this.generate(); }
+  show() { this.sync(); this.refreshWorlds(); if (!this.atlas) this.generate(); }
 
   // leaving the screen: the generation halts between frames; if it was not finished, it waits as paused and «Дальше» continues it
   stop() {
@@ -220,8 +223,81 @@ export class AtlasView {
     const a = this.atlas = newAtlas(this.cfg);
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = '';
     this.paused = false; this.syncPause();
+    this.bind(null, '');
     this.renderSide();
     this.run();
+  }
+
+  // ── the library of worlds (ui/worlds.js): save, open, delete, files
+  buildLibrary() {
+    const say = t => { $('atlasSaveStatus').textContent = t; };
+    $('atlasName').addEventListener('input', e => { this.worldName = e.target.value.trim(); });
+    $('atlasSave').addEventListener('click', async () => {
+      const a = this.atlas; if (!a || !landDone(a)) return;
+      const name = this.worldName || `Мир ${a.cfg.seed}`;
+      say('Сохраняю…');
+      try {
+        const rec = await saveWorldToLibrary(a, name, this.worldId);
+        say(`${this.worldId ? 'Сохранено поверх' : 'Сохранено'}: «${rec.name}», ${rec.year} лет истории, ${(rec.bytes / 1e6).toFixed(1)} МБ.`);
+        this.bind(rec.id, rec.name); this.refreshWorlds();
+      } catch (e) { say('Не удалось сохранить: ' + e.message); }
+    });
+    $('atlasFile').addEventListener('click', async () => {
+      const a = this.atlas; if (!a || !landDone(a)) return;
+      try { const r = await downloadWorld(a, this.worldName || `Мир ${a.cfg.seed}`); say(r === 'declined' ? 'Файл не сохранён.' : 'Файл мира готов.'); }
+      catch (e) { say('Не удалось: ' + e.message); }
+    });
+    $('atlasWorlds').addEventListener('click', async e => {
+      const b = e.target.closest('button'), row = e.target.closest('.sv'); if (!b || !row) return;
+      const id = row.dataset.id;
+      if (b.dataset.act === 'del') {
+        if (!confirm(`Удалить мир «${row.dataset.name}» из библиотеки? Это не отменить.`)) return;
+        await deleteWorld(id); if (this.worldId === id) this.bind(null, this.worldName);
+        this.refreshWorlds(); return;
+      }
+      say('Открываю…');
+      try { this.showWorld(await openWorld(id), id, row.dataset.name); say(`Открыт мир «${row.dataset.name}».`); }
+      catch (err) { say('Не удалось открыть: ' + err.message); }
+    });
+    $('atlasLoadFile').addEventListener('change', async e => {
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+      say('Открываю файл…');
+      try { const {a, rec} = await importWorld(f); this.showWorld(a, rec.id, rec.name); this.refreshWorlds(); say(`Мир «${rec.name}» открыт и добавлен в библиотеку.`); }
+      catch (err) { say('Не удалось открыть: ' + err.message); }
+    });
+  }
+
+  // which library record the shown world is: saving again writes over it
+  bind(id, name) {
+    this.worldId = id; this.worldName = name;
+    $('atlasName').value = name;
+    $('atlasTitle').textContent = name || 'Новый мир';
+    this.syncSave();
+  }
+  syncSave() {
+    const ready = !!this.atlas && landDone(this.atlas);
+    $('atlasSave').disabled = !ready; $('atlasFile').disabled = !ready;
+    $('atlasSave').textContent = this.worldId ? 'Сохранить поверх' : 'Сохранить';
+  }
+
+  async refreshWorlds() {
+    const box = $('atlasWorlds');
+    let list;
+    try { list = await listWorlds(); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна. Мир можно сохранить файлом.</small>'; return; }
+    if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров.</small>'; return; }
+    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · сид ${esc(r.seed)} · ${esc(r.sizeLabel)}` +
+      `<br><small>${r.done ? `${r.year} лет истории` : r.year ? `история на ${r.year}-м году` : 'только суша'} · городов ${r.towns} · держав ${r.realms} · ${new Date(r.savedAt).toLocaleString('ru-RU', {dateStyle: 'short', timeStyle: 'short'})}</small></span>` +
+      `<button type="button" data-act="load">Открыть</button><button type="button" data-act="del" class="quiet" aria-label="Удалить мир">Удалить</button></div>`).join('');
+  }
+
+  // a saved world on the screen: its settings, a fresh camera and chronicle; unfinished history waits for «Дальше»
+  showWorld(a, id, name) {
+    clearTimeout(this.timer); this.timer = 0;
+    this.atlas = a; this.cfg = {...DEFAULT_ATLAS_CFG, ...a.cfg}; this.save();
+    this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.chronOf = null;
+    this.paused = !atlasDone(a);
+    this.bind(id, name); this.sync();
+    this.draw(); this.renderSide(); this.syncPause();
   }
 
   // the land a stage a frame, then history at the chosen pace (SPEEDS); pausing stops between frames
@@ -235,7 +311,7 @@ export class AtlasView {
       for (let k = 0; k < steps && !atlasDone(a); k++) { runNextStage(a); if (sp.budget && Date.now() - t0 > sp.budget) break; }
       this.tickAt = performance.now(); this.tickWait = land ? 0 : sp.wait;
       this.draw(); this.renderSide(); this.animate();
-      if (land && landDone(a)) this.syncPause();   // the land is made: the pace and the pause appear
+      if (land && landDone(a)) { this.syncPause(); this.syncSave(); }   // the land is made: the pace, the pause and saving appear
       if (!atlasDone(a)) this.timer = setTimeout(next, land ? 30 : sp.wait); else this.syncPause();
     };
     this.timer = setTimeout(next, 30);

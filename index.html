@@ -29,6 +29,11 @@
       <b>Карта</b>
       <span>Основать поселение: поля, огонь, колонисты, совет, набеги и торговля.</span>
     </button>
+    <button type="button" class="launch-card" id="launchCampaign" disabled aria-disabled="true">
+      <span class="tag">скоро</span>
+      <b>Кампания</b>
+      <span>Поход каравана из столицы за короной на сохранённом мире. Сохраните мир на экране «Мир» — кампания возьмёт его из библиотеки.</span>
+    </button>
     <button type="button" id="launchResume" class="primary" hidden>Вернуться к игре</button>
   </section>
 
@@ -55,6 +60,18 @@
         <button type="button" id="atlasPause" hidden>Пауза</button>
         <div class="seg" id="atlasSpeed" hidden title="Темп истории: сезонов за кадр"></div>
         <button type="button" id="atlasBack" class="quiet" title="Esc">← Главное меню</button>
+      </div>
+      <div class="field saves">
+        <label for="atlasName">Сохранить мир с летописью</label>
+        <div class="row">
+          <input id="atlasName" type="text" maxlength="40" autocomplete="off" placeholder="Название мира">
+          <button type="button" id="atlasSave" title="В библиотеку миров этого браузера">Сохранить</button>
+          <button type="button" id="atlasFile" title="Скачать мир файлом">В файл</button>
+        </div>
+        <small class="status" id="atlasSaveStatus" role="status"></small>
+        <span class="lbl">Библиотека миров</span>
+        <div id="atlasWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
+        <label class="filebtn">Открыть файл мира…<input type="file" id="atlasLoadFile" accept=".gz,.json,application/gzip,application/json"></label>
       </div>
       <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="atlasStages"></ol></div>
       <dl class="kv" id="atlasStats"></dl>
