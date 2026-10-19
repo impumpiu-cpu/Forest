@@ -134,8 +134,22 @@ export class AtlasView {
     });
     $('atlasBack').addEventListener('click', () => { this.stop(); this.onBack(); });
     this.buildLibrary();
-    // the camera: the wheel zooms at the cursor, dragging pans, the buttons zoom at the middle
-    const cv = $('atlasMap');
+    $('atlasSettle').addEventListener('click', () => {
+      const a = this.atlas; if (!a || this.pick < 0) return;
+      this.stop();
+      this.onSettle(cellPlan(a, this.pick, {name: this.worldName || `Мир ${a.cfg.seed}`, id: this.worldId}));
+    });
+    $('atlasUnpick').addEventListener('click', () => this.setPick(-1));
+    this.wireCamera({map: 'atlasMap', readout: 'atlasReadout', zoomIn: 'atlasZoomIn', zoomOut: 'atlasZoomOut', zoomFit: 'atlasZoomFit', screen: 'atlas',
+      hint: 'Наведите на карту, чтобы увидеть клетку. Щелчок по суше — выбрать место для поселения.'});
+  }
+
+  // the camera over the map: the wheel zooms at the cursor, dragging pans, the buttons and keys zoom;
+  // a press that does not drag is a click (clickAt). Shared with the campaign screen (ui/campaignView.js).
+  wireCamera(ids) {
+    this.ids = ids;
+    const cv = $(ids.map);
+
     const local = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     cv.addEventListener('pointerdown', e => {
       if (!this.cam) return;
@@ -153,15 +167,9 @@ export class AtlasView {
       this.hover(e);
     });
     const release = () => { this.grab = null; cv.classList.remove('dragging'); };
-    cv.addEventListener('pointerup', e => { const g = this.grab; if (g && g.id === e.pointerId && !g.drag && e.button === 0) this.pickAt(e); release(); });
+    cv.addEventListener('pointerup', e => { const g = this.grab; if (g && g.id === e.pointerId && !g.drag && e.button === 0) this.clickAt(e); release(); });
     cv.addEventListener('pointercancel', release);
-    $('atlasSettle').addEventListener('click', () => {
-      const a = this.atlas; if (!a || this.pick < 0) return;
-      this.stop();
-      this.onSettle(cellPlan(a, this.pick, {name: this.worldName || `Мир ${a.cfg.seed}`, id: this.worldId}));
-    });
-    $('atlasUnpick').addEventListener('click', () => this.setPick(-1));
-    cv.addEventListener('pointerleave', () => { $('atlasReadout').textContent = 'Наведите на карту, чтобы увидеть клетку.'; });
+    cv.addEventListener('pointerleave', () => { $(ids.readout).textContent = ids.hint; });
     cv.addEventListener('contextmenu', e => e.preventDefault());
     cv.addEventListener('wheel', e => {
       if (!this.cam) return;
@@ -169,19 +177,20 @@ export class AtlasView {
       const [px, py] = local(e), [cw, ch] = this.box();
       this.cam.zoomAt(cw, ch, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)), px, py); this.draw();
     }, {passive: false});
-    $('atlasZoomIn').addEventListener('click', () => this.zoomCentre(1.6));
-    $('atlasZoomOut').addEventListener('click', () => this.zoomCentre(1 / 1.6));
-    $('atlasZoomFit').addEventListener('click', () => { if (this.cam) { this.cam.reset(); this.draw(); } });
+    $(ids.zoomIn).addEventListener('click', () => this.zoomCentre(1.6));
+    $(ids.zoomOut).addEventListener('click', () => this.zoomCentre(1 / 1.6));
+    $(ids.zoomFit).addEventListener('click', () => { if (this.cam) { this.cam.reset(); this.draw(); } });
     document.addEventListener('keydown', e => {
-      if ($('atlas').hidden || e.target !== document.body || e.ctrlKey || e.metaKey) return;
+      if ($(ids.screen).hidden || e.target !== document.body || e.ctrlKey || e.metaKey) return;
       if (e.key === '+' || e.key === '=') this.zoomCentre(1.6);
       else if (e.key === '-' || e.key === '_') this.zoomCentre(1 / 1.6);
       else if (e.key === '0' || e.key === 'Home') { if (this.cam) { this.cam.reset(); this.draw(); } }
     });
   }
+  clickAt(e) { this.pickAt(e); }
 
   // the size of the map's box in CSS pixels (the canvas is kept at the box's size, at device resolution)
-  box() { const cv = $('atlasMap'); return [cv.clientWidth || 1, cv.clientHeight || 1]; }
+  box() { const cv = $(this.ids.map); return [cv.clientWidth || 1, cv.clientHeight || 1]; }
   zoomCentre(f) { if (!this.cam) return; const [cw, ch] = this.box(); this.cam.zoomAt(cw, ch, f, cw / 2, ch / 2); this.draw(); }
 
   // `goto` — {id, x, y}: open that saved world (if it is not the one shown) and pick that cell
@@ -443,7 +452,7 @@ export class AtlasView {
   // ── picking a cell for a settlement: land that is not a lake, once the land is made
   pickAt(e) {
     const a = this.atlas; if (!a || !this.cam || !landDone(a)) return;
-    const cv = $('atlasMap'), r = cv.getBoundingClientRect();
+    const cv = $(this.ids.map), r = cv.getBoundingClientRect();
     const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top), x = Math.floor(fx), y = Math.floor(fy);
     if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
     const i = y * a.w + x;
@@ -463,7 +472,7 @@ export class AtlasView {
 
   draw() {
     const a = this.atlas; if (!a || !this.cam) return;
-    const cv = $('atlasMap'), [cw, ch] = this.box(), dpr = window.devicePixelRatio || 1;
+    const cv = $(this.ids.map), [cw, ch] = this.box(), dpr = window.devicePixelRatio || 1;
     if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) { cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr); }
     const cam = this.cam.clamp(cw, ch), px = cv.getContext('2d');
     px.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -483,6 +492,11 @@ export class AtlasView {
     if (a.ruins && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawRuins(a, px);
     if (a.towns && ['relief', 'biomes', 'peoples', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
+    this.overlay(a, px, cam);
+  }
+
+  // what is drawn over the map in cell units: on the «Мир» screen the picked cell
+  overlay(a, px, cam) {
     if (this.pick >= 0) {
       const x = this.pick % a.w, y = (this.pick / a.w) | 0, m = Math.max(0.6, 3 / cam.S);
       px.lineWidth = Math.max(this.minW * 2, 0.12); px.strokeStyle = '#ffd36a';
@@ -597,6 +611,7 @@ export class AtlasView {
   drawParties(a, px) {
     const k = this.unit(a), r = Math.max(0.5, 0.8 * k), t = this.slide();
     for (const p of a.parties) {
+      if (p.kind === 'caravan') continue;   // the campaign screen draws its own (ui/campaignView.js)
       const x = p.px + (p.x - p.px) * t, y = p.py + (p.y - p.py) * t, c = p.color;
       if (p.path && p.k < p.path.length && p.speed !== 'flight') {
         px.strokeStyle = `rgba(${c.join(',')},0.4)`; px.lineWidth = Math.max(this.minW, 0.12 * k); px.setLineDash([0.4 * k, 0.5 * k]);
@@ -743,10 +758,10 @@ export class AtlasView {
 
   hover(e) {
     const a = this.atlas; if (!a || !a.f.elev) return;
-    const cv = $('atlasMap'), r = cv.getBoundingClientRect();
+    const cv = $(this.ids.map), r = cv.getBoundingClientRect();
     if (!this.cam) return;
     const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top), x = Math.floor(fx), y = Math.floor(fy);
-    if (x < 0 || y < 0 || x >= a.w || y >= a.h) { $('atlasReadout').textContent = 'Наведите на карту, чтобы увидеть клетку.'; return; }
+    if (x < 0 || y < 0 || x >= a.w || y >= a.h) { $(this.ids.readout).textContent = this.ids.hint; return; }
     const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
     if (f.plate) parts.push(`плита ${f.plate[i] + 1}, кора ${f.crust[i] > 0.5 ? 'материковая' : 'океаническая'}`);
     if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
@@ -807,6 +822,6 @@ export class AtlasView {
       if (geo.flags.magma) ores.push('магма');
       if (ores.length) parts.push(ores.join(', '));
     }
-    $('atlasReadout').textContent = parts.join(' · ');
+    $(this.ids.readout).textContent = parts.join(' · ');
   }
 }

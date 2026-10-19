@@ -327,13 +327,21 @@ dd.q4{color:#c58cff;font-weight:600}
 .atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}
 .atlas-map{display:flex;flex-direction:column;gap:8px;min-width:0}
 .atlas-map .seg{align-self:flex-start}
-#atlasMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
-#atlasMap.dragging{cursor:grabbing}
+#atlasMap,#campMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+#atlasMap.dragging,#campMap.dragging{cursor:grabbing}
 .atlas-tools{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .atlas-tools .wrapseg{flex:1 1 0;min-width:0}
 .zoomseg{flex:0 0 auto}
 .zoomseg button{min-width:30px}
 .atlas-chron .log{max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.roster{display:flex;flex-direction:column;gap:3px;margin:4px 0 8px}
+.roster .rm{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:2px 8px;align-items:center;padding:3px 6px;border:1px solid var(--line);border-radius:5px;font-size:13px}
+.roster .rm small{color:var(--muted);grid-column:1/-1;font-size:11px}
+.roster .rm.dead{opacity:.5}
+.roster .hp{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.roster .hp i{display:block;height:100%;background:#8fbf6a}
+.roster .hp i.low{background:var(--ember)}
+.savelist .sv.cap i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
 .atlas-chron .log small{color:var(--ember);font-family:var(--font-mono);font-size:11px;margin-right:4px}
 .stages{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px;counter-reset:st}
 .stages li{display:flex;justify-content:space-between;gap:8px;color:var(--muted);padding:2px 6px;border-left:3px solid var(--line);counter-increment:st}

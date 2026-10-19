@@ -337,13 +337,21 @@ dd.q4{color:#c58cff;font-weight:600}
 .atlas{display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(220px,300px);gap:16px;align-items:start}
 .atlas-map{display:flex;flex-direction:column;gap:8px;min-width:0}
 .atlas-map .seg{align-self:flex-start}
-#atlasMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
-#atlasMap.dragging{cursor:grabbing}
+#atlasMap,#campMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+#atlasMap.dragging,#campMap.dragging{cursor:grabbing}
 .atlas-tools{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .atlas-tools .wrapseg{flex:1 1 0;min-width:0}
 .zoomseg{flex:0 0 auto}
 .zoomseg button{min-width:30px}
 .atlas-chron .log{max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.roster{display:flex;flex-direction:column;gap:3px;margin:4px 0 8px}
+.roster .rm{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:2px 8px;align-items:center;padding:3px 6px;border:1px solid var(--line);border-radius:5px;font-size:13px}
+.roster .rm small{color:var(--muted);grid-column:1/-1;font-size:11px}
+.roster .rm.dead{opacity:.5}
+.roster .hp{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.roster .hp i{display:block;height:100%;background:#8fbf6a}
+.roster .hp i.low{background:var(--ember)}
+.savelist .sv.cap i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
 .atlas-chron .log small{color:var(--ember);font-family:var(--font-mono);font-size:11px;margin-right:4px}
 .stages{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px;counter-reset:st}
 .stages li{display:flex;justify-content:space-between;gap:8px;color:var(--muted);padding:2px 6px;border-left:3px solid var(--line);counter-increment:st}
@@ -380,10 +388,10 @@ dd.q4{color:#c58cff;font-weight:600}
       <b>Карта</b>
       <span>Основать поселение: поля, огонь, колонисты, совет, набеги и торговля.</span>
     </button>
-    <button type="button" class="launch-card" id="launchCampaign" disabled aria-disabled="true">
-      <span class="tag">скоро</span>
+    <button type="button" class="launch-card" id="launchCampaign">
+      <span class="tag">поход</span>
       <b>Кампания</b>
-      <span>Поход каравана из столицы за короной на сохранённом мире. Сохраните мир на экране «Мир» — кампания возьмёт его из библиотеки.</span>
+      <span>Караван из столицы идёт по живому миру: восемь человек, еда на спине, поручение. Мир берётся из библиотеки — сохраните его на экране «Мир».</span>
     </button>
     <button type="button" id="launchResume" class="primary" hidden>Вернуться к игре</button>
   </section>
@@ -455,6 +463,52 @@ dd.q4{color:#c58cff;font-weight:600}
     <div class="card atlas-chron">
       <h2>Летопись мира</h2>
       <div class="log" id="atlasChron"></div>
+    </div>
+  </section>
+
+  <!-- ───────── the campaign: a caravan walks the world ───────── -->
+  <section id="campaign" class="atlas" hidden aria-labelledby="campTitle">
+    <div class="menu-form atlas-form">
+      <h2 id="campTitle" class="menu-title">Кампания</h2>
+      <div id="campSetup">
+        <div class="field"><span class="lbl">Мир из библиотеки</span><div id="campWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
+          <small id="campWorldNote" class="status" role="status"></small></div>
+        <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
+          <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small></div>
+        <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
+      </div>
+      <div id="campRun" hidden>
+        <div class="row actions">
+          <button type="button" id="campPause">Пауза</button>
+          <div class="seg" id="campSpeed" title="Темп: дней в секунду"></div>
+        </div>
+        <dl class="kv" id="campStatus"></dl>
+        <span class="lbl">Отряд</span>
+        <div id="campRoster" class="roster"></div>
+        <div class="row actions">
+          <button type="button" id="campSave" title="В библиотеку миров: мир вместе с походом">Сохранить мир с походом</button>
+          <button type="button" id="campNew" class="quiet">Другой поход</button>
+        </div>
+        <small class="status" id="campSaveStatus" role="status"></small>
+      </div>
+      <div class="row actions"><button type="button" id="campBack" class="quiet" title="Esc">← Главное меню</button></div>
+    </div>
+    <div class="atlas-map">
+      <div class="atlas-tools">
+        <div class="seg wrapseg" id="campLayer"></div>
+        <div class="seg zoomseg" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
+          <button type="button" id="campZoomIn" aria-label="Приблизить">+</button>
+          <button type="button" id="campZoomOut" aria-label="Отдалить">−</button>
+          <button type="button" id="campZoomFit" aria-label="Весь мир">⌂</button>
+        </div>
+      </div>
+      <div class="preview-box"><canvas id="campMap" width="256" height="192" aria-label="Карта мира с караваном"></canvas></div>
+      <div class="legend atlas-legend" id="campLegend"></div>
+      <div class="readout" id="campReadout">Наведите на карту, чтобы увидеть клетку.</div>
+    </div>
+    <div class="card atlas-chron">
+      <h2>Летопись похода</h2>
+      <div class="log" id="campLog"></div>
     </div>
   </section>
 
@@ -3916,8 +3970,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const camp = w.nav.get("camp"), reach = ALARM_HOURS * HOUR * 0.8;
     return w.agents.some((o) => {
       if (o.faction !== "raiders" || o.dead) return false;
-      const pace = SPECIES.get(o.species).speed * (o.mods?.speed ?? 1);
-      return camp[clampCell(w, o)] <= pace * reach;
+      const pace2 = SPECIES.get(o.species).speed * (o.mods?.speed ?? 1);
+      return camp[clampCell(w, o)] <= pace2 * reach;
     });
   });
   var clampCell = (w, o) => Math.min(w.h - 1, Math.max(0, o.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, o.x | 0));
@@ -6663,8 +6717,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function wishes(w, a, councilWish2) {
     const out = [];
-    const say2 = { food: "\u043F\u043E\u0435\u0441\u0442\u044C", rest: "\u0432\u044B\u0441\u043F\u0430\u0442\u044C\u0441\u044F", warmth: "\u0441\u043E\u0433\u0440\u0435\u0442\u044C\u0441\u044F" };
-    for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(say2[id] || NEEDS2.get(id).label);
+    const say3 = { food: "\u043F\u043E\u0435\u0441\u0442\u044C", rest: "\u0432\u044B\u0441\u043F\u0430\u0442\u044C\u0441\u044F", warmth: "\u0441\u043E\u0433\u0440\u0435\u0442\u044C\u0441\u044F" };
+    for (const [id, v] of Object.entries(a.needs).sort((x, y) => x[1] - y[1])) if (v < 0.4) out.push(say3[id] || NEEDS2.get(id).label);
     const hands = handItems(a).map(def);
     if (a.equip) {
       if (!hands.some((d) => d.melee || d.ranged)) out.push("\u043E\u0440\u0443\u0436\u0438\u0435 \u0432 \u0440\u0443\u043A\u0438");
@@ -6966,11 +7020,11 @@ dd.q4{color:#c58cff;font-weight:600}
       while ((w.stock[f.id] || 0) >= 1) {
         const room2 = furnishable(w).filter((b2) => (b2.furniture?.length || 0) < FURNISH_MAX);
         if (!room2.length) return;
-        const rank = (b2) => {
+        const rank2 = (b2) => {
           const k = ORDER.indexOf(b2.key);
           return (k < 0 ? ORDER.length : k) * 10 + statusOf(b2) * 20;
         };
-        const b = room2.sort((x, y) => rank(x) - rank(y))[0];
+        const b = room2.sort((x, y) => rank2(x) - rank2(y))[0];
         (b.furniture || (b.furniture = [])).push(f.id);
         w.stock[f.id] -= 1;
         const d = BUILDINGS.get(b.key);
@@ -7876,7 +7930,7 @@ dd.q4{color:#c58cff;font-weight:600}
       label: "\u043E\u0442\u0440\u044F\u0434 \u0442\u0451\u043C\u043D\u044B\u0445 \u044D\u043B\u044C\u0444\u043E\u0432",
       kind: "sentient",
       goals: (w, g3) => [["kill", 2], ["loot", 1], ["scout", scouting(w, g3)]],
-      weight: (w, t, night) => t >= 8 ? 0.6 + night : 0,
+      weight: (w, t, night2) => t >= 8 ? 0.6 + night2 : 0,
       members: (w, rng, budget) => fill(rng, budget, [["darkelf", 1]]),
       message: () => "\u041D\u0430\u0431\u0435\u0433! \u0422\u0451\u043C\u043D\u044B\u0435 \u044D\u043B\u044C\u0444\u044B \u0432\u044B\u0448\u043B\u0438 \u0438\u0437-\u043F\u043E\u0434 \u0437\u0435\u043C\u043B\u0438 \u0437\u0430 \u0440\u0430\u0431\u0430\u043C\u0438 \u0438 \u0434\u043E\u0431\u044B\u0447\u0435\u0439"
     },
@@ -7917,7 +7971,7 @@ dd.q4{color:#c58cff;font-weight:600}
       id: "undead",
       label: "\u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B",
       kind: "monster",
-      weight: (w, t, night) => t >= 3 ? 0.8 + 2 * night : 0,
+      weight: (w, t, night2) => t >= 3 ? 0.8 + 2 * night2 : 0,
       members: (w, rng, budget, t) => {
         const lead = t >= 10 ? [{ species: "necromancer", init: (a) => {
           a.role = "necromancer";
@@ -7940,7 +7994,7 @@ dd.q4{color:#c58cff;font-weight:600}
       kind: "monster",
       goals: () => [["kill", 3]],
       nerve: -0.1,
-      weight: (w, t, night) => t >= 6 && night > 0.5 ? 1.2 : 0,
+      weight: (w, t, night2) => t >= 6 && night2 > 0.5 ? 1.2 : 0,
       members: (w, rng, budget) => fill(rng, Math.min(budget, 6), [["upyr", 1]]),
       message: () => "\u041D\u043E\u0447\u044C\u044E \u043A \u043B\u0430\u0433\u0435\u0440\u044E \u043F\u0440\u0438\u0448\u043B\u0438 \u0443\u043F\u044B\u0440\u0438. \u0418\u043C \u043D\u0443\u0436\u043D\u0430 \u043A\u0440\u043E\u0432\u044C, \u0441\u043E\u043B\u043D\u0446\u0435 \u0433\u043E\u043D\u0438\u0442 \u0438\u0445 \u043F\u0440\u043E\u0447\u044C"
     },
@@ -7950,7 +8004,7 @@ dd.q4{color:#c58cff;font-weight:600}
       kind: "sentient",
       goals: () => [["kill", 3], ["loot", 0.5]],
       nerve: -0.2,
-      weight: (w, t, night) => t >= 20 && night > 0.5 ? 0.5 : 0,
+      weight: (w, t, night2) => t >= 20 && night2 > 0.5 ? 0.5 : 0,
       members: (w, rng, budget) => fill(rng, budget, [["upyr", 1]], [{ species: "vampire", init: (a, w2) => {
         [a.name, a.gender] = pick(w2.rngs.outside, SPECIES.get("vampire").names);
       } }]),
@@ -8328,12 +8382,12 @@ dd.q4{color:#c58cff;font-weight:600}
     const cs = w.carcasses;
     if (!cs?.length) return;
     if (w.tick % 60) return;
-    const night = nightness(w);
+    const night2 = nightness(w);
     for (const c of cs) {
       const age = w.tick - c.t;
       if (age > CARCASS.rotFrom) c.food = Math.max(0, c.food - c.food0 * 0.01);
       const big = (SPECIES.get(c.species).hp || 0) >= CARCASS.upyrFrom && share(c) >= CARCASS.upyrLeft;
-      if (age > CARCASS.rotFrom && big && !c.risen && night > 0.7 && w.rngs.wild() < CARCASS.upyr * 60 / (DAY * 0.3) && SPECIES.has("upyr")) {
+      if (age > CARCASS.rotFrom && big && !c.risen && night2 > 0.7 && w.rngs.wild() < CARCASS.upyr * 60 / (DAY * 0.3) && SPECIES.has("upyr")) {
         c.risen = true;
         const u = createAgent(w, "upyr", "raiders", c.x, c.y);
         u.brain = "raider";
@@ -9755,14 +9809,14 @@ dd.q4{color:#c58cff;font-weight:600}
   var livesHere = (w, id) => faunaLevel(w, id) > 0 || w.agents.some((o) => o.species === id && !o.dead && !o.tame);
   function fromJob(w, job, res, depth, seen) {
     if (!jobUnlocked(w, job)) return null;
-    const say2 = job.label;
-    if (job.resource === res || job.also?.includes(res)) return !job.bed || (w.plantBeds?.[job.bed]?.length || 0) > 0 ? say2 : null;
+    const say3 = job.label;
+    if (job.resource === res || job.also?.includes(res)) return !job.bed || (w.plantBeds?.[job.bed]?.length || 0) > 0 ? say3 : null;
     if (job.runner === "hunt") {
       const game = [...job.prey, ...job.risky || []].filter((id) => SPECIES.get(id).yields?.[res] && livesHere(w, id));
-      return game.length ? `${say2} (${game.map((id) => SPECIES.get(id).plural || SPECIES.get(id).label).join(", ")})` : null;
+      return game.length ? `${say3} (${game.map((id) => SPECIES.get(id).plural || SPECIES.get(id).label).join(", ")})` : null;
     }
-    if (job.runner === "farm") return CROPS.all().some((c) => c.yields?.[res] && ((w.stock[c.seed] || 0) >= 1 || obtainable(w, c.seed, depth - 1, seen))) ? say2 : null;
-    if (job.runner === "herd") return SPECIES.filter((s) => s.tame?.[res]).some((s) => livesHere(w, s.id)) ? say2 : null;
+    if (job.runner === "farm") return CROPS.all().some((c) => c.yields?.[res] && ((w.stock[c.seed] || 0) >= 1 || obtainable(w, c.seed, depth - 1, seen))) ? say3 : null;
+    if (job.runner === "herd") return SPECIES.filter((s) => s.tame?.[res]).some((s) => livesHere(w, s.id)) ? say3 : null;
     return null;
   }
   function fromRecipe(w, r, depth, seen) {
@@ -12763,12 +12817,12 @@ dd.q4{color:#c58cff;font-weight:600}
         escapeHeat(w, a, 1.4);
         return;
       }
-      const food = a.needs.food, b = boldness(a, P), night = nightness(w);
+      const food = a.needs.food, b = boldness(a, P), night2 = nightness(w);
       const dZone = w.nav.get("zone")[i];
-      const shy = (night > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
+      const shy = (night2 > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
       const people = nearAgents(w, a.x, a.y, 6).filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist5(o, a) < 6);
       const pack2 = packOf(w, a), leader = pack2[0];
-      if (sp.nocturnal && night < 0.3 && a.task?.id !== "leave") a.task = { id: "leave" };
+      if (sp.nocturnal && night2 < 0.3 && a.task?.id !== "leave") a.task = { id: "leave" };
       if (a.task?.id === "leave" || a.hp < maxHp(a) * 0.35) {
         if (a.task?.id !== "leave") {
           a.task = { id: "leave" };
@@ -12937,7 +12991,7 @@ dd.q4{color:#c58cff;font-weight:600}
           return;
         }
       }
-      if (w.tick > (a.calmUntil || 0) && b + night * 0.25 >= P.boldPeople) {
+      if (w.tick > (a.calmUntil || 0) && b + night2 * 0.25 >= P.boldPeople) {
         const v = nearest(w, a, P.victims, P.sight * (0.6 + 0.4 * b), (o) => o.faction === "colony" && !o.downed && !agentInZone(w, o) && company(w, o, P.loneRadius) <= (b > 0.8 ? Math.max(0, pack2.length - 2) : 0));
         if (v) {
           startMaul(w, a, v, b);
@@ -12984,7 +13038,7 @@ dd.q4{color:#c58cff;font-weight:600}
           break;
         }
       }
-      if (r.spot && approach(w, a, r.spot[0], r.spot[1], night > 0.5 ? 0.85 : 0.7) === null) r.spot = null;
+      if (r.spot && approach(w, a, r.spot[0], r.spot[1], night2 > 0.5 ? 0.85 : 0.7) === null) r.spot = null;
     }
   };
 
@@ -13898,7 +13952,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var ROSTER = { main: [1.5, 0.3], alt: [1, 0.05], other: [0.6, 0], keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16] };
   var ATTACKED = 2.6;
   var label2 = (t) => TASKS.get(t.id).label(t);
-  function jobWhy(w, a, job, ctx, goal, tasty, night, role) {
+  function jobWhy(w, a, job, ctx, goal, tasty, night2, role) {
     const parts = [];
     if (role === "main") parts.push("\u043F\u043E \u043D\u0430\u0440\u044F\u0434\u0443 \u0441\u043E\u0432\u0435\u0442\u0430");
     else if (role === "alt") parts.push("\u0437\u0430\u043F\u0430\u0441\u043D\u043E\u0435 \u0434\u0435\u043B\u043E \u043F\u043E \u043D\u0430\u0440\u044F\u0434\u0443");
@@ -13911,12 +13965,12 @@ dd.q4{color:#c58cff;font-weight:600}
     if (job.id === a.likes) parts.push("\u043B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E");
     else if (job.id === a.dislikes) parts.push("\u043D\u0435 \u043F\u043E \u0434\u0443\u0448\u0435");
     if (tasty > 1) parts.push("\u043B\u044E\u0431\u0438\u043C\u0430\u044F \u0435\u0434\u0430");
-    if (night > 0.6) parts.push("\u043D\u043E\u0447\u044C, \u0440\u0430\u0431\u043E\u0442\u0430 \u0438\u0434\u0451\u0442 \u043D\u0435\u043E\u0445\u043E\u0442\u043D\u043E");
+    if (night2 > 0.6) parts.push("\u043D\u043E\u0447\u044C, \u0440\u0430\u0431\u043E\u0442\u0430 \u0438\u0434\u0451\u0442 \u043D\u0435\u043E\u0445\u043E\u0442\u043D\u043E");
     return parts.join(", ") || "\u043D\u0443\u0436\u043D\u043E \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044E";
   }
   var key = (t) => t ? t.id === "job" ? "job:" + t.job : t.id : "";
   function decide(w, a) {
-    const night = nightness(w), camp = w.camp.cells, g3 = w.grid;
+    const night2 = nightness(w), camp = w.camp.cells, g3 = w.grid;
     let campHot = 0;
     for (const c of camp) campHot = Math.max(campHot, tempAt(w, c) + g3.fire[c] * 400);
     const campOk = campHot < 40 ? 1 : 0.1;
@@ -13934,7 +13988,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const opts = [];
     for (const id of SPECIES.get(a.species).needs) {
       const n = NEEDS2.get(id);
-      if (n.task === "sleep" && a.task?.id === "sleep" && a.needs[id] >= 0.995 && night > 0.75 && !raidAlarm(w)) {
+      if (n.task === "sleep" && a.task?.id === "sleep" && a.needs[id] >= 0.995 && night2 > 0.75 && !raidAlarm(w)) {
         opts.push([{ id: "sleep" }, 1 * campOk, () => "\u0434\u043E\u0441\u044B\u043F\u0430\u0435\u0442 \u0434\u043E \u0440\u0430\u0441\u0441\u0432\u0435\u0442\u0430"]);
         continue;
       }
@@ -13950,10 +14004,10 @@ dd.q4{color:#c58cff;font-weight:600}
       const res = job.resource;
       const goal = res ? goalNeed(w, res) : 0;
       const outdoor = job.runner === "harvest" || job.runner === "hunt";
-      const dayWork = (job.runner === "build" ? night * 0.3 : night * 0.2) + (outdoor && night > 0.6 ? (night - 0.6) * 1.5 * (0.5 + outsideRisk(w)) : 0);
+      const dayWork = (job.runner === "build" ? night2 * 0.3 : night2 * 0.2) + (outdoor && night2 > 0.6 ? (night2 - 0.6) * 1.5 * (0.5 + outsideRisk(w)) : 0);
       const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
       const m = mate(job.id), role = roleOf2(job.id), [mul, add2] = ROSTER[role];
-      opts.push([{ id: "job", job: job.id }, Math.min(1, ((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add2) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night, role) + (m.friend ? `, \u0442\u0430\u043C ${m.friend.name}` : m.foe ? `, \u043D\u043E \u0442\u0430\u043C ${m.foe.name}` : "")]);
+      opts.push([{ id: "job", job: job.id }, Math.min(1, ((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add2) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night2, role) + (m.friend ? `, \u0442\u0430\u043C ${m.friend.name}` : m.foe ? `, \u043D\u043E \u0442\u0430\u043C ${m.foe.name}` : "")]);
     }
     opts.push([{ id: "idle" }, 0.08, () => "\u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435\u0447\u0435\u043C \u0437\u0430\u043D\u044F\u0442\u044C\u0441\u044F"]);
     const esc2 = escortOption(w, a);
@@ -13963,7 +14017,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (a.task?.id === "sulk" && w.tick < a.task.until) opts.push([a.task, 0.95, () => "\u0445\u0430\u043D\u0434\u0440\u0430: \u0434\u0430\u0432\u043D\u043E \u043D\u0435 \u0432 \u0434\u0443\u0445\u0435"]);
     if (a.task?.spell && w.tick < a.task.until) opts.push([a.task, a.task.spell, () => "\u0447\u0430\u0440\u044B \u043D\u0435\u0447\u0438\u0441\u0442\u0438"]);
     const pray = wantsPrayer(w, a);
-    if (pray > 0.1 && night < 0.5) opts.push([{ id: "pray" }, 0.3 + pray * 1.2, () => "\u0442\u044F\u0436\u0435\u043B\u043E \u043D\u0430 \u0434\u0443\u0448\u0435"]);
+    if (pray > 0.1 && night2 < 0.5) opts.push([{ id: "pray" }, 0.3 + pray * 1.2, () => "\u0442\u044F\u0436\u0435\u043B\u043E \u043D\u0430 \u0434\u0443\u0448\u0435"]);
     if (councilDue(w)) opts.push([{ id: "council" }, 1.3, () => "\u0432\u0440\u0435\u043C\u044F \u0441\u043E\u0432\u0435\u0442\u0430"]);
     if ((hurt(a) || a.task?.id === "treat" && a.hp < maxHp(a) * HEAL.until) && has(w, "healerhut") && freeBed(w, a)) opts.push([{ id: "treat" }, (1 - a.hp / maxHp(a)) * 2 + 0.25, () => `\u0440\u0430\u043D\u0435\u043D: \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 ${Math.round(hpShare(a) * 100)}%`]);
     if (tradeOpen(w)) opts.push([{ id: "trade" }, 1.1, () => "\u0442\u043E\u0440\u0433 \u0441 \u043A\u0443\u043F\u0446\u043E\u043C"]);
@@ -15604,9 +15658,9 @@ dd.q4{color:#c58cff;font-weight:600}
         ctx.drawImage(this.field.c, 0, 0, Wpx, Hpx);
       }
       if (lit) ctx.drawImage(this.smoke.c, 0, 0, Wpx, Hpx);
-      const night = nightness(w);
-      if (view2.layer === "world" && night > 0) {
-        ctx.fillStyle = `rgba(8,12,30,${night * 0.62})`;
+      const night2 = nightness(w);
+      if (view2.layer === "world" && night2 > 0) {
+        ctx.fillStyle = `rgba(8,12,30,${night2 * 0.62})`;
         ctx.fillRect(0, 0, Wpx, Hpx);
       }
       if (w.weather.rain > 0.05) this.drawRain(w, Wpx, Hpx);
@@ -15620,7 +15674,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const cx = (w.camp.x + 0.5) * S, cy = (w.camp.y + 0.5) * S;
       if (w.campLit) {
         const fl = 0.9 + Math.random() * 0.1, gr = ctx.createRadialGradient(cx, cy, 2, cx, cy, S * 9 * fl);
-        gr.addColorStop(0, `rgba(255,160,70,${0.55 + night * 0.25})`);
+        gr.addColorStop(0, `rgba(255,160,70,${0.55 + night2 * 0.25})`);
         gr.addColorStop(1, "rgba(255,120,40,0)");
         ctx.fillStyle = gr;
         ctx.beginPath();
@@ -18507,6 +18561,7 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var realmPeople = (a, id) => realmOf(a, id).people;
   var capitalOf = (a, id) => a.towns.find((t) => t.id === realmOf(a, id).capital) || null;
+  var realmTowns = (a, id) => a.towns.filter((t) => t.alive && t.realm === id);
   function joinRealm(a, t) {
     let best = null, bd = Infinity;
     for (const o of a.towns) if (o !== t && o.alive && o.people === t.people && o.realm) {
@@ -18532,20 +18587,20 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return went;
   }
-  function breakAway(a, r, seat, rnd, say2, why) {
+  function breakAway(a, r, seat, rnd, say3, why) {
     const old = capitalOf(a, r.id), nr = foundRealm(a, seat), went = old ? divide(a, r.id, nr.id, old, seat) : 0;
     a.contacts[r.id < nr.id ? `${r.id}:${nr.id}` : `${nr.id}:${r.id}`] = { year: a.hist.year, feeling: SCHISM.attitude };
     const rel2 = meet(a, r.id, nr.id, a.hist.year);
     rel2.att = SCHISM.attitude;
-    say2(`${why} ${townLabel(seat, 0)} ${seat.name} \u043E\u0431\u044A\u044F\u0432\u0438\u043B${TIERS2[seat.tier].gender[seat.people] === "f" ? "\u0430" : TIERS2[seat.tier].gender[seat.people] === "n" ? "\u043E" : ""} \u0441\u0435\u0431\u044F \u0441\u0442\u043E\u043B\u0438\u0446\u0435\u0439 \u043D\u043E\u0432\u043E\u0439 \u0434\u0435\u0440\u0436\u0430\u0432\u044B \xAB${realmLabel(a, nr.id)}\xBB` + (went ? `; \u0441 ${went === 1 ? "\u043D\u0435\u0439 \u0443\u0448\u0451\u043B 1 \u0433\u043E\u0440\u043E\u0434" : `\u043D\u0435\u0439 \u0443\u0448\u043B\u0438 ${went} ${went < 5 ? "\u0433\u043E\u0440\u043E\u0434\u0430" : "\u0433\u043E\u0440\u043E\u0434\u043E\u0432"}`}.` : "."));
+    say3(`${why} ${townLabel(seat, 0)} ${seat.name} \u043E\u0431\u044A\u044F\u0432\u0438\u043B${TIERS2[seat.tier].gender[seat.people] === "f" ? "\u0430" : TIERS2[seat.tier].gender[seat.people] === "n" ? "\u043E" : ""} \u0441\u0435\u0431\u044F \u0441\u0442\u043E\u043B\u0438\u0446\u0435\u0439 \u043D\u043E\u0432\u043E\u0439 \u0434\u0435\u0440\u0436\u0430\u0432\u044B \xAB${realmLabel(a, nr.id)}\xBB` + (went ? `; \u0441 ${went === 1 ? "\u043D\u0435\u0439 \u0443\u0448\u0451\u043B 1 \u0433\u043E\u0440\u043E\u0434" : `\u043D\u0435\u0439 \u0443\u0448\u043B\u0438 ${went} ${went < 5 ? "\u0433\u043E\u0440\u043E\u0434\u0430" : "\u0433\u043E\u0440\u043E\u0434\u043E\u0432"}`}.` : "."));
     if (old && rnd() < SCHISM.war) {
       rel2.war = { since: a.hist.year, battles: 0, razed: 0 };
       rel2.wars++;
-      say2(`${cap12(realmLabel(a, r.id))} \u0438 ${realmLabel(a, nr.id)} \u043D\u0435 \u043F\u043E\u0434\u0435\u043B\u0438\u043B\u0438 \u0432\u043B\u0430\u0441\u0442\u044C: \u043D\u0430\u0447\u0430\u043B\u0430\u0441\u044C \u0432\u043E\u0439\u043D\u0430.`);
+      say3(`${cap12(realmLabel(a, r.id))} \u0438 ${realmLabel(a, nr.id)} \u043D\u0435 \u043F\u043E\u0434\u0435\u043B\u0438\u043B\u0438 \u0432\u043B\u0430\u0441\u0442\u044C: \u043D\u0430\u0447\u0430\u043B\u0430\u0441\u044C \u0432\u043E\u0439\u043D\u0430.`);
     }
     return nr;
   }
-  function stepRealms(a, rnd, say2) {
+  function stepRealms(a, rnd, say3) {
     const H2 = a.hist, k = scaleOf(a);
     for (const r of a.realms) {
       const seat = capitalOf(a, r.id);
@@ -18556,33 +18611,33 @@ dd.q4{color:#c58cff;font-weight:600}
         const far = Math.hypot(t.x - seat.x, t.y - seat.y) / (DIPLOMACY.front * k) + (t.built.includes("harbor") && !seat.built.includes("harbor") ? SCHISM.harbor : 0);
         if (t.pop >= SCHISM.edge * seat.pop && far >= SCHISM.far) {
           t.contender = (t.contender || 0) + 1;
-          if (t.contender === SCHISM.years) say2(`${cap12(townLabel(t, 0))} ${t.name} \u043D\u0435 \u043C\u0435\u043D\u044C\u0448\u0435 ${townLabel(seat, 2)} ${seat.name} \u0438 \u0441\u0442\u043E\u0438\u0442 \u0434\u0430\u043B\u0435\u043A\u043E \u043E\u0442 ${townGender(seat) === "f" ? "\u043D\u0435\u0451" : "\u043D\u0435\u0433\u043E"}: \u0432 \u0434\u0435\u0440\u0436\u0430\u0432\u0435 \xAB${realmLabel(a, r.id)}\xBB \u0437\u0440\u0435\u0435\u0442 \u0440\u0430\u0441\u043A\u043E\u043B.`);
+          if (t.contender === SCHISM.years) say3(`${cap12(townLabel(t, 0))} ${t.name} \u043D\u0435 \u043C\u0435\u043D\u044C\u0448\u0435 ${townLabel(seat, 2)} ${seat.name} \u0438 \u0441\u0442\u043E\u0438\u0442 \u0434\u0430\u043B\u0435\u043A\u043E \u043E\u0442 ${townGender(seat) === "f" ? "\u043D\u0435\u0451" : "\u043D\u0435\u0433\u043E"}: \u0432 \u0434\u0435\u0440\u0436\u0430\u0432\u0435 \xAB${realmLabel(a, r.id)}\xBB \u0437\u0440\u0435\u0435\u0442 \u0440\u0430\u0441\u043A\u043E\u043B.`);
           if (t.contender < SCHISM.years) continue;
           const shaken = atWar2 || seat.raided != null && H2.year - seat.raided < 6;
           if (rnd() < SCHISM.chance * far * (shaken ? SCHISM.shaken : 1)) {
             t.contender = 0;
-            breakAway(a, r, t, rnd, say2, `\u0420\u0430\u0441\u043A\u043E\u043B:`);
+            breakAway(a, r, t, rnd, say3, `\u0420\u0430\u0441\u043A\u043E\u043B:`);
             break;
           }
         } else t.contender = 0;
       }
     }
   }
-  function seatFallen(a, t, rnd, say2) {
+  function seatFallen(a, t, rnd, say3) {
     const r = realmOf(a, t.realm);
     if (!r || r.capital !== t.id) return;
     t.capital = false;
     const left = a.towns.filter((o) => o.alive && o.realm === r.id).sort((p, q) => glory(q) - glory(p));
     if (!left.length) {
       r.fallen = a.hist.year;
-      say2(`\u0414\u0435\u0440\u0436\u0430\u0432\u0430 \xAB${realmLabel(a, r.id)}\xBB \u0441\u0433\u0438\u043D\u0443\u043B\u0430 \u0432\u043C\u0435\u0441\u0442\u0435 \u0441\u043E \u0441\u0432\u043E\u0435\u0439 \u0441\u0442\u043E\u043B\u0438\u0446\u0435\u0439.`);
+      say3(`\u0414\u0435\u0440\u0436\u0430\u0432\u0430 \xAB${realmLabel(a, r.id)}\xBB \u0441\u0433\u0438\u043D\u0443\u043B\u0430 \u0432\u043C\u0435\u0441\u0442\u0435 \u0441\u043E \u0441\u0432\u043E\u0435\u0439 \u0441\u0442\u043E\u043B\u0438\u0446\u0435\u0439.`);
       return;
     }
     const [first, second] = left;
     r.capital = first.id;
     first.capital = true;
-    say2(`\u0421\u0442\u043E\u043B\u0438\u0446\u0430 \u0434\u0435\u0440\u0436\u0430\u0432\u044B \xAB${realmLabel(a, r.id)}\xBB \u043F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u0430 \u0432 ${townLabel(first, 1)} ${first.name}.`);
-    if (second && glory(second) >= SCHISM.rival * glory(first)) breakAway(a, r, second, rnd, say2, `\u0412\u043B\u0430\u0441\u0442\u044C \u043D\u0435 \u0443\u0434\u0435\u0440\u0436\u0430\u043B\u0438:`);
+    say3(`\u0421\u0442\u043E\u043B\u0438\u0446\u0430 \u0434\u0435\u0440\u0436\u0430\u0432\u044B \xAB${realmLabel(a, r.id)}\xBB \u043F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u0430 \u0432 ${townLabel(first, 1)} ${first.name}.`);
+    if (second && glory(second) >= SCHISM.rival * glory(first)) breakAway(a, r, second, rnd, say3, `\u0412\u043B\u0430\u0441\u0442\u044C \u043D\u0435 \u0443\u0434\u0435\u0440\u0436\u0430\u043B\u0438:`);
   }
 
   // src/atlas/sea.js
@@ -18603,8 +18658,8 @@ dd.q4{color:#c58cff;font-weight:600}
     return -1;
   }
   var stepCost = (a, i) => a.f.ocean[i] ? SEA.cost * (1 - SEA.ease * Math.min(1, a.f.sea[i] / SEA.levels[0].wear)) : Infinity;
-  function sail(a, s, t, scratch) {
-    const { w, h } = a, { g: g3, came, touched } = scratch, heap = new Heap(1024), tx2 = t % w, ty = t / w | 0;
+  function sail(a, s, t, scratch2) {
+    const { w, h } = a, { g: g3, came, touched } = scratch2, heap = new Heap(1024), tx2 = t % w, ty = t / w | 0;
     touched.length = 0;
     const H2 = (i) => SEA.cost * (1 - SEA.ease) * Math.hypot(i % w - tx2, (i / w | 0) - ty);
     g3[s] = 0;
@@ -18648,7 +18703,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (let i = 0; i < a.n; i++) f.sea[i] *= SEA.decay;
     const ports = a.towns.filter(hasHarbor).map((t) => [t, quay(a, t)]).filter(([, q]) => q >= 0);
     if (ports.length < 2) return [];
-    const scratch = a.seaScratch || (a.seaScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
+    const scratch2 = a.seaScratch || (a.seaScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
     const done3 = /* @__PURE__ */ new Set(), fresh = [];
     a.lanes || (a.lanes = /* @__PURE__ */ new Set());
     for (const [t, qt] of ports) {
@@ -18658,7 +18713,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const key3 = Math.min(t.id, o.id) * 1e5 + Math.max(t.id, o.id);
         if (done3.has(key3)) continue;
         done3.add(key3);
-        const path = sail(a, qt, qo, scratch);
+        const path = sail(a, qt, qo, scratch2);
         if (!path) continue;
         const amt = Math.sqrt(t.pop * o.pop) / SEA.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2);
         for (const c of path) f.sea[c] += amt;
@@ -18679,6 +18734,8 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/atlas/parties.js
   var BEHAVIOURS = {};
+  BEHAVIOURS.caravan = { arrive() {
+  } };
   var scratchOf = (a) => a.roadScratch || (a.roadScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
   function sendParty(a, kind, from, goal, props) {
     var _a;
@@ -18756,9 +18813,10 @@ dd.q4{color:#c58cff;font-weight:600}
     p.state = "home";
     if (!aim(a, p, p.home)) p.state = "gone";
   }
-  function stepParties(a, rnd, say2) {
+  function stepParties(a, rnd, say3, onDay = null) {
     var _a;
-    if (!a.parties || !a.parties.length) return;
+    if ((!a.parties || !a.parties.length) && !onDay) return;
+    a.parties || (a.parties = []);
     for (const p of a.parties) {
       p.px = p.x;
       p.py = p.y;
@@ -18767,7 +18825,7 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const p of a.parties) {
         if (p.state === "gone") continue;
         const B3 = BEHAVIOURS[p.kind];
-        B3.day?.(a, p, rnd, say2);
+        B3.day?.(a, p, rnd, say3);
         if (p.state === "gone") continue;
         if (p.state === "go" || p.state === "home") {
           p.days++;
@@ -18775,25 +18833,26 @@ dd.q4{color:#c58cff;font-weight:600}
           const tally2 = (_a = a.hist).parties || (_a.parties = { sent: 0, arrived: 0, lost: 0 });
           if (there) {
             if (p.state === "home") {
-              B3.home?.(a, p, rnd, say2);
+              B3.home?.(a, p, rnd, say3);
               p.state = "gone";
             } else {
               tally2.arrived++;
-              B3.arrive(a, p, rnd, say2);
+              B3.arrive(a, p, rnd, say3);
             }
           } else if (p.days > PARTIES.giveUp) {
             if (p.state === "home") p.state = "gone";
             else {
               tally2.lost++;
-              B3.lost?.(a, p, rnd, say2);
+              B3.lost?.(a, p, rnd, say3);
               goHome(a, p);
             }
           }
         } else if (p.state === "stay") {
           p.stay++;
-          B3.stay?.(a, p, rnd, say2);
+          B3.stay?.(a, p, rnd, say3);
         }
       }
+      onDay?.(day);
     }
     a.parties = a.parties.filter((p) => p.state !== "gone");
   }
@@ -18844,22 +18903,22 @@ dd.q4{color:#c58cff;font-weight:600}
     let worst = null;
     for (const r of a.realms || []) if (r.people === P) {
       for (const o of a.realms) if (o.people === Q && r.id !== o.id) {
-        const st = stateOf(a, r.id, o.id), rank = D2.states.findIndex((x) => x.id === st) + (st === "war" ? 10 : 0);
-        if (worst == null || rank > worst[1]) worst = [st, rank];
+        const st = stateOf(a, r.id, o.id), rank2 = D2.states.findIndex((x) => x.id === st) + (st === "war" ? 10 : 0);
+        if (worst == null || rank2 > worst[1]) worst = [st, rank2];
       }
     }
     if (worst) return worst[0];
     const v = Math.min(feeling(P, Q), feeling(Q, P));
     return D2.states.find((s) => v >= s.from).id;
   }
-  function raze(a, t, by, how, rnd, say2) {
+  function raze(a, t, by, how, rnd, say3) {
     t.alive = false;
     t.died = a.hist.year;
     razeSites(a, t, a.hist.year);
     barrows(a, t.i, Math.max(2, Math.round(2 * scaleOf(a))), ROT.ruinGraves);
     a.ruins || (a.ruins = []);
     a.ruins.push({ i: t.i, x: t.x, y: t.y, name: t.name, people: t.people, realm: t.realm, by, year: a.hist.year, how });
-    if (t.capital) seatFallen(a, t, rnd, say2);
+    if (t.capital) seatFallen(a, t, rnd, say3);
   }
   function barrows(a, i, r, v = 0.5) {
     const f = a.f, x0 = i % a.w, y0 = i / a.w | 0;
@@ -18882,7 +18941,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var fight2 = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
   var armyMight = (men, fx) => Math.sqrt(men) * (1 + 0.3 * fx.prod + 0.5 * fx.defence);
-  function muster(a, t, target, war, rnd, say2) {
+  function muster(a, t, target, war, rnd, say3) {
     const A = ARMY, men = Math.round(A.levy * t.pop);
     if (men < A.minMen || !target.alive) return;
     const fx = townFx(t), R2 = realmOf(a, t.realm);
@@ -18902,7 +18961,7 @@ dd.q4{color:#c58cff;font-weight:600}
     });
     if (!p) return;
     t.pop -= men;
-    say2(`${cap13(realmLabel(a, t.realm))} \u0441\u043E\u0431\u0440\u0430\u043B\u0438 \u0432 ${townLabel(t, 3)} ${t.name} \u0432\u043E\u0439\u0441\u043A\u043E \u0432 ${men} \u0431\u043E\u0439\u0446\u043E\u0432 \u0438 \u0434\u0432\u0438\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 ${townLabel(target, 1)} ${target.name}.`);
+    say3(`${cap13(realmLabel(a, t.realm))} \u0441\u043E\u0431\u0440\u0430\u043B\u0438 \u0432 ${townLabel(t, 3)} ${t.name} \u0432\u043E\u0439\u0441\u043A\u043E \u0432 ${men} \u0431\u043E\u0439\u0446\u043E\u0432 \u0438 \u0434\u0432\u0438\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430 ${townLabel(target, 1)} ${target.name}.`);
   }
   function scourge(a, p) {
     var _a;
@@ -18913,9 +18972,9 @@ dd.q4{color:#c58cff;font-weight:600}
   function warOver(a, p) {
     return !a.rel[p.war]?.war;
   }
-  function armyDay(a, p, rnd, say2) {
+  function armyDay(a, p, rnd, say3) {
     if (p.state !== "home" && warOver(a, p)) {
-      say2(`${cap13(p.label)} ${p.state === "stay" ? "\u0441\u043D\u044F\u043B\u043E \u043E\u0441\u0430\u0434\u0443" : "\u043F\u043E\u0432\u0435\u0440\u043D\u0443\u043B\u043E \u043D\u0430\u0437\u0430\u0434"}: \u0437\u0430\u043A\u043B\u044E\u0447\u0451\u043D \u043C\u0438\u0440.`);
+      say3(`${cap13(p.label)} ${p.state === "stay" ? "\u0441\u043D\u044F\u043B\u043E \u043E\u0441\u0430\u0434\u0443" : "\u043F\u043E\u0432\u0435\u0440\u043D\u0443\u043B\u043E \u043D\u0430\u0437\u0430\u0434"}: \u0437\u0430\u043A\u043B\u044E\u0447\u0451\u043D \u043C\u0438\u0440.`);
       goHome(a, p);
       return;
     }
@@ -18928,7 +18987,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   BEHAVIOURS.army = {
     day: armyDay,
-    arrive(a, p, rnd, say2) {
+    arrive(a, p, rnd, say3) {
       const t = a.towns.find((t2) => t2.id === p.target);
       if (!t || !t.alive) {
         goHome(a, p);
@@ -18936,9 +18995,9 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       p.state = "stay";
       p.siege = { stock: Math.round(ARMY.stock * SEASON_DAYS2 * (1 + ARMY.stockFood * townFx(t).food)), starved: 0, pop0: t.pop };
-      say2(`${cap13(p.label)} \u043E\u0441\u0430\u0434\u0438\u043B\u043E ${townLabel(t, 1)} ${t.name}.`);
+      say3(`${cap13(p.label)} \u043E\u0441\u0430\u0434\u0438\u043B\u043E ${townLabel(t, 1)} ${t.name}.`);
     },
-    stay(a, p, rnd, say2) {
+    stay(a, p, rnd, say3) {
       const t = a.towns.find((t2) => t2.id === p.target), A = ARMY, S = p.siege;
       if (!t || !t.alive) {
         goHome(a, p);
@@ -18968,13 +19027,13 @@ dd.q4{color:#c58cff;font-weight:600}
         p.men *= 1 - A.winLoss;
         t.raided = a.hist.year;
         if (t.pop < D2.raze || t.pop < D2.razeShare * TIERS2[t.tier].pop || t.pop < A.broken * S.pop0) {
-          say2(`${cap13(p.label)} \u0432\u0437\u044F\u043B\u043E \u0448\u0442\u0443\u0440\u043C\u043E\u043C \u0438 \u0441\u043E\u0436\u0433\u043B\u043E ${townLabel(t, 1)} ${t.name}: \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043F\u0435\u043F\u0435\u043B\u0438\u0449\u0435${burnt}${hunger}.`);
-          raze(a, t, p.owner, "war", rnd, say2);
+          say3(`${cap13(p.label)} \u0432\u0437\u044F\u043B\u043E \u0448\u0442\u0443\u0440\u043C\u043E\u043C \u0438 \u0441\u043E\u0436\u0433\u043B\u043E ${townLabel(t, 1)} ${t.name}: \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043F\u0435\u043F\u0435\u043B\u0438\u0449\u0435${burnt}${hunger}.`);
+          raze(a, t, p.owner, "war", rnd, say3);
           if (r?.war) r.war.razed++;
-        } else say2(`${cap13(p.label)} \u0432\u0437\u044F\u043B\u043E \u0448\u0442\u0443\u0440\u043C\u043E\u043C ${townLabel(t, 1)} ${t.name} \u0438 \u0440\u0430\u0437\u0433\u0440\u0430\u0431\u0438\u043B\u043E ${townLabel(t, 1)}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439${burnt}${hunger}.`);
+        } else say3(`${cap13(p.label)} \u0432\u0437\u044F\u043B\u043E \u0448\u0442\u0443\u0440\u043C\u043E\u043C ${townLabel(t, 1)} ${t.name} \u0438 \u0440\u0430\u0437\u0433\u0440\u0430\u0431\u0438\u043B\u043E ${townLabel(t, 1)}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439${burnt}${hunger}.`);
       } else {
         p.men *= 1 - A.beatenLoss;
-        say2(`${cap13(WORLD_PEOPLES.get(t.people).label)} ${townLabel(t, 2)} ${t.name} \u043E\u0442\u0431\u0438\u043B\u0438 \u0448\u0442\u0443\u0440\u043C ${p.label.replace(/^войско /, "\u0432\u043E\u0439\u0441\u043A\u0430 ")} \u0438 \u0441\u043D\u044F\u043B\u0438 \u043E\u0441\u0430\u0434\u0443${burnt}${hunger}.`);
+        say3(`${cap13(WORLD_PEOPLES.get(t.people).label)} ${townLabel(t, 2)} ${t.name} \u043E\u0442\u0431\u0438\u043B\u0438 \u0448\u0442\u0443\u0440\u043C ${p.label.replace(/^войско /, "\u0432\u043E\u0439\u0441\u043A\u0430 ")} \u0438 \u0441\u043D\u044F\u043B\u0438 \u043E\u0441\u0430\u0434\u0443${burnt}${hunger}.`);
       }
       goHome(a, p);
     },
@@ -18982,8 +19041,8 @@ dd.q4{color:#c58cff;font-weight:600}
       const t = a.towns.find((t2) => t2.id === p.from);
       if (t && t.alive) t.pop += Math.round(p.men);
     },
-    lost(a, p, rnd, say2) {
-      say2(`${cap13(p.label)} \u043D\u0435 \u0434\u043E\u0448\u043B\u043E \u0434\u043E ${(() => {
+    lost(a, p, rnd, say3) {
+      say3(`${cap13(p.label)} \u043D\u0435 \u0434\u043E\u0448\u043B\u043E \u0434\u043E ${(() => {
         const t = a.towns.find((t2) => t2.id === p.target);
         return t ? `${townLabel(t, 2)} ${t.name}` : "\u0446\u0435\u043B\u0438";
       })()} \u0438 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u043B\u043E \u043D\u0430\u0437\u0430\u0434.`);
@@ -18992,7 +19051,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function fadeScourge(a) {
     if (a.f.scourge) for (let i = 0; i < a.n; i++) a.f.scourge[i] *= ARMY.scourgeFade;
   }
-  function stepDiplomacy(a, rnd, say2, overlap) {
+  function stepDiplomacy(a, rnd, say3, overlap) {
     const k = scaleOf(a), H2 = a.hist, towns = a.towns.filter((t) => t.alive);
     const nearest2 = (p, q) => {
       let best = null, bd = Infinity;
@@ -19019,11 +19078,11 @@ dd.q4{color:#c58cff;font-weight:600}
               x.folk || (x.folk = {});
               const was = x.folk[y] || 0;
               x.folk[y] = Math.min(D2.mingleMax, was + D2.mingle);
-              if (was < 0.1 && x.folk[y] >= 0.1 && x.tier >= 1) say2(`\u0412 ${townLabel(x, 3)} ${x.name} \u043E\u0441\u0435\u043B\u0438 ${label3(y)}: \u043A\u0430\u0436\u0434\u044B\u0439 \u0434\u0435\u0441\u044F\u0442\u044B\u0439 \u0442\u0430\u043C \u0442\u0435\u043F\u0435\u0440\u044C \u0438\u0437 \u043D\u0438\u0445.`);
+              if (was < 0.1 && x.folk[y] >= 0.1 && x.tier >= 1) say3(`\u0412 ${townLabel(x, 3)} ${x.name} \u043E\u0441\u0435\u043B\u0438 ${label3(y)}: \u043A\u0430\u0436\u0434\u044B\u0439 \u0434\u0435\u0441\u044F\u0442\u044B\u0439 \u0442\u0430\u043C \u0442\u0435\u043F\u0435\u0440\u044C \u0438\u0437 \u043D\u0438\u0445.`);
             }
           }
         }
-        if (routes && !r.routes) say2(`\u041C\u0435\u0436\u0434\u0443 \u0437\u0435\u043C\u043B\u044F\u043C\u0438 ${realmLabelGen(a, p)} \u0438 ${realmLabelGen(a, q)} \u043F\u043E\u0448\u043B\u0438 \u043F\u0435\u0440\u0432\u044B\u0435 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u044B.`);
+        if (routes && !r.routes) say3(`\u041C\u0435\u0436\u0434\u0443 \u0437\u0435\u043C\u043B\u044F\u043C\u0438 ${realmLabelGen(a, p)} \u0438 ${realmLabelGen(a, q)} \u043F\u043E\u0448\u043B\u0438 \u043F\u0435\u0440\u0432\u044B\u0435 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u044B.`);
         r.routes = routes;
       }
       const sh = kin ? 0 : overlap(P, Q), [pair, gap] = nearest2(p, q), border = sh > 0 || gap <= D2.front * k;
@@ -19032,7 +19091,7 @@ dd.q4{color:#c58cff;font-weight:600}
         r.att += D2.weariness;
         const years = H2.year - r.war.since;
         if (r.att >= D2.peaceAt || years >= D2.longest) {
-          say2(`${cap13(realmLabel(a, p))} \u0438 ${realmLabel(a, q)} \u0437\u0430\u043A\u043B\u044E\u0447\u0438\u043B\u0438 \u043C\u0438\u0440 \u043F\u043E\u0441\u043B\u0435 ${years} ${years % 10 === 1 && years % 100 !== 11 ? "\u0433\u043E\u0434\u0430" : "\u043B\u0435\u0442"} \u0432\u043E\u0439\u043D\u044B.`);
+          say3(`${cap13(realmLabel(a, p))} \u0438 ${realmLabel(a, q)} \u0437\u0430\u043A\u043B\u044E\u0447\u0438\u043B\u0438 \u043C\u0438\u0440 \u043F\u043E\u0441\u043B\u0435 ${years} ${years % 10 === 1 && years % 100 !== 11 ? "\u0433\u043E\u0434\u0430" : "\u043B\u0435\u0442"} \u0432\u043E\u0439\u043D\u044B.`);
           r.war = null;
           r.att = D2.afterPeace;
         } else {
@@ -19040,13 +19099,13 @@ dd.q4{color:#c58cff;font-weight:600}
           if (gap <= D2.front * k && !armyOut) {
             const [t, o] = pair, mine = r.war.turn === q ? [o, t] : [t, o];
             r.war.turn = mine[0].realm === p ? q : p;
-            muster(a, mine[0], mine[1], kk, rnd, say2);
+            muster(a, mine[0], mine[1], kk, rnd, say3);
           }
         }
       } else if (r.att <= D2.warAt && border) {
         r.war = { since: H2.year, battles: 0, razed: 0 };
         r.wars++;
-        say2(`${cap13(realmLabel(a, p))} \u0438 ${realmLabel(a, q)} \u043D\u0435 \u043F\u043E\u0434\u0435\u043B\u0438\u043B\u0438 ${kin ? "\u0432\u043B\u0430\u0441\u0442\u044C" : "\u0437\u0435\u043C\u043B\u0438"}: \u043D\u0430\u0447\u0430\u043B\u0430\u0441\u044C \u0432\u043E\u0439\u043D\u0430.`);
+        say3(`${cap13(realmLabel(a, p))} \u0438 ${realmLabel(a, q)} \u043D\u0435 \u043F\u043E\u0434\u0435\u043B\u0438\u043B\u0438 ${kin ? "\u0432\u043B\u0430\u0441\u0442\u044C" : "\u0437\u0435\u043C\u043B\u0438"}: \u043D\u0430\u0447\u0430\u043B\u0430\u0441\u044C \u0432\u043E\u0439\u043D\u0430.`);
       }
       r.att = Math.max(-5, Math.min(5, r.att));
     }
@@ -19072,13 +19131,13 @@ dd.q4{color:#c58cff;font-weight:600}
         t.pop += target.pop * loss * 0.3;
         raidGraves(a, target);
         const burnt = raidSite(a, target, rnd);
-        say2(`${cap13(realmLabel(a, t.realm))} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0440\u0430\u0437\u0433\u0440\u0430\u0431\u0438\u043B\u0438 ${townLabel(target, 1)} ${target.name}${burnt ? `: ${BURNT[burnt.g]} ${burnt.name}` : ""}.`);
+        say3(`${cap13(realmLabel(a, t.realm))} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0440\u0430\u0437\u0433\u0440\u0430\u0431\u0438\u043B\u0438 ${townLabel(target, 1)} ${target.name}${burnt ? `: ${BURNT[burnt.g]} ${burnt.name}` : ""}.`);
       } else {
         t.pop *= 0.9;
-        say2(`${cap13(realmLabel(a, target.realm))} \u043E\u0442\u0431\u0438\u043B\u0438 \u043D\u0430\u0431\u0435\u0433 ${realmLabelGen(a, t.realm)} \u043D\u0430 ${townLabel(target, 1)} ${target.name}.`);
+        say3(`${cap13(realmLabel(a, target.realm))} \u043E\u0442\u0431\u0438\u043B\u0438 \u043D\u0430\u0431\u0435\u0433 ${realmLabelGen(a, t.realm)} \u043D\u0430 ${townLabel(target, 1)} ${target.name}.`);
       }
     }
-    stepRealms(a, rnd, say2);
+    stepRealms(a, rnd, say3);
   }
   var ruinAt = (a, i) => (a.ruins || []).find((r) => Math.abs(r.x - i % a.w) <= 1 && Math.abs(r.y - (i / a.w | 0)) <= 1) || null;
 
@@ -19115,8 +19174,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var stepCost2 = (a, base, i) => (base[i] - (a.f.bridge ? ROADS.river * a.f.bridge[i] : 0)) * (1 - ROADS.roadEase * Math.min(1, a.f.road[i] / ROADS.levels[1].wear));
   var moveCost = (a, i, people) => stepCost2(a, baseCosts(a, people), i);
-  function findPath2(a, s, t, people, scratch) {
-    const { w, h } = a, { g: g3, came, touched } = scratch, heap = new Heap(1024), tx2 = t % w, ty = t / w | 0, base = baseCosts(a, people);
+  function findPath2(a, s, t, people, scratch2) {
+    const { w, h } = a, { g: g3, came, touched } = scratch2, heap = new Heap(1024), tx2 = t % w, ty = t / w | 0, base = baseCosts(a, people);
     touched.length = 0;
     const H2 = (i) => 0.6 * Math.hypot(i % w - tx2, (i / w | 0) - ty);
     g3[s] = 0;
@@ -19171,11 +19230,11 @@ dd.q4{color:#c58cff;font-weight:600}
   function wearRoads(a) {
     const f = a.f;
     for (let i = 0; i < a.n; i++) f.road[i] *= ROADS.decay;
-    const scratch = a.roadScratch || (a.roadScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
+    const scratch2 = a.roadScratch || (a.roadScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
     const fresh = [], net = a.net?.links;
     for (const [t, o] of tradeLinks(a)) {
       const key3 = Math.min(t.id, o.id) * 1e5 + Math.max(t.id, o.id);
-      const path = findPath2(a, t.i, o.i, t.people, scratch);
+      const path = findPath2(a, t.i, o.i, t.people, scratch2);
       if (!path) continue;
       const flow = net?.get(key3)?.flow || 0;
       const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2) + flow / NET.wear;
@@ -19246,8 +19305,8 @@ dd.q4{color:#c58cff;font-weight:600}
     a.sites || (a.sites = []);
     a.siteAt || (a.siteAt = new Int32Array(a.n));
     t.sites || (t.sites = []);
-    const scratch = a.roadScratch || (a.roadScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
-    const path = findPath2(a, i, t.i, t.people, scratch) || [i, t.i];
+    const scratch2 = a.roadScratch || (a.roadScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
+    const path = findPath2(a, i, t.i, t.people, scratch2) || [i, t.i];
     const s = { id: a.sites.length + 1, town: t.id, kind: b.id, i, x: i % a.w, y: i / a.w | 0, built: a.hist.year, alive: true, died: 0, path };
     a.sites.push(s);
     a.siteAt[i] = s.id;
@@ -19289,14 +19348,14 @@ dd.q4{color:#c58cff;font-weight:600}
   function stepNet(a, feeds) {
     const net = a.net || (a.net = { links: /* @__PURE__ */ new Map() }), L = net.links;
     for (const l of L.values()) l.flow = 0;
-    const alive = /* @__PURE__ */ new Set();
+    const alive2 = /* @__PURE__ */ new Set();
     for (const [t, o] of tradeLinks(a, NET.links, NET.reach)) {
       const key3 = linkKey(t, o);
-      alive.add(key3);
+      alive2.add(key3);
       if (!L.has(key3)) L.set(key3, { p: t, q: o, c: NET.start, flow: 0 });
     }
     for (const [key3, l] of L) if (!l.p.alive || !l.q.alive) L.delete(key3);
-    else if (!alive.has(key3)) {
+    else if (!alive2.has(key3)) {
       l.c *= 1 - NET.decay;
       if (l.c < NET.min) L.delete(key3);
     }
@@ -19983,11 +20042,11 @@ dd.q4{color:#c58cff;font-weight:600}
     return `\u0414\u0440\u0430\u043A\u043E\u043D ${L.from} \xAB${lair.name}\xBB \u043F\u0440\u043E\u0441\u043D\u0443\u043B\u0441\u044F \u0438 \u043F\u043E\u043B\u0435\u0442\u0435\u043B \u043D\u0430 ${townLabel(target, 1)} ${target.name}.`;
   }
   BEHAVIOURS.dragon = {
-    arrive(a, p, rnd, say2) {
+    arrive(a, p, rnd, say3) {
       const lair = a.lairs.find((l) => l.id === p.owner), target = a.towns.find((t) => t.id === p.target), D3 = DRAGON;
       if (lair && target && target.alive) {
         const fx = townFx(target), town = might(target, fx) * (0.6 + 0.8 * rnd());
-        if (town > p.might * (0.6 + 0.8 * rnd())) say2(`${cap14(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} \u043E\u0442\u043E\u0433\u043D\u0430\u043B\u0438 \u0434\u0440\u0430\u043A\u043E\u043D\u0430: \u0441\u0442\u0440\u0435\u043B\u044B \u0438 \u043A\u043E\u043F\u044C\u044F \u0435\u0433\u043E \u043D\u0435 \u0432\u0437\u044F\u043B\u0438, \u043D\u043E \u0438 \u043E\u043D \u043D\u0435 \u0441\u0442\u0430\u043B \u0436\u0435\u0447\u044C.`);
+        if (town > p.might * (0.6 + 0.8 * rnd())) say3(`${cap14(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} \u043E\u0442\u043E\u0433\u043D\u0430\u043B\u0438 \u0434\u0440\u0430\u043A\u043E\u043D\u0430: \u0441\u0442\u0440\u0435\u043B\u044B \u0438 \u043A\u043E\u043F\u044C\u044F \u0435\u0433\u043E \u043D\u0435 \u0432\u0437\u044F\u043B\u0438, \u043D\u043E \u0438 \u043E\u043D \u043D\u0435 \u0441\u0442\u0430\u043B \u0436\u0435\u0447\u044C.`);
         else {
           let burnt = 0;
           const n = D3.burns[0] + Math.floor(rnd() * (D3.burns[1] - D3.burns[0] + 1));
@@ -19996,7 +20055,7 @@ dd.q4{color:#c58cff;font-weight:600}
           target.pop *= 1 - loss;
           target.raided = a.hist.year;
           raidGraves(a, target);
-          say2(`\u0414\u0440\u0430\u043A\u043E\u043D ${LAIRS.get(lair.kind).from} \xAB${lair.name}\xBB \u0432\u044B\u0436\u0435\u0433 ${townLabel(target, 1)} ${target.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439${burnt ? `, \u0441\u0433\u043E\u0440\u0435\u043B\u043E \u0443\u0433\u043E\u0434\u0438\u0439: ${burnt}` : ""}.`);
+          say3(`\u0414\u0440\u0430\u043A\u043E\u043D ${LAIRS.get(lair.kind).from} \xAB${lair.name}\xBB \u0432\u044B\u0436\u0435\u0433 ${townLabel(target, 1)} ${target.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439${burnt ? `, \u0441\u0433\u043E\u0440\u0435\u043B\u043E \u0443\u0433\u043E\u0434\u0438\u0439: ${burnt}` : ""}.`);
         }
       }
       goHome(a, p);
@@ -20007,12 +20066,12 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   };
   BEHAVIOURS.raid = {
-    arrive(a, p, rnd, say2) {
+    arrive(a, p, rnd, say3) {
       const lair = a.lairs.find((l) => l.id === p.owner), target = a.towns.find((t) => t.id === p.target);
       if (lair && lair.alive && target && target.alive) {
         const line2 = strikeTown(a, lair, LAIRS.get(lair.kind), target, p.might, rnd, false);
         p.loot = /погибло/.test(line2) ? TRIBE_RAID.loot : 0;
-        say2(line2);
+        say3(line2);
       }
       goHome(a, p);
     },
@@ -20022,13 +20081,13 @@ dd.q4{color:#c58cff;font-weight:600}
     }
   };
   BEHAVIOURS.brood = {
-    arrive(a, p, rnd, say2) {
+    arrive(a, p, rnd, say3) {
       const L = LAIRS.get(p.lairKind), parent = a.lairs.find((l) => l.id === p.owner);
       p.state = "gone";
       if (a.lairs.some((o) => o.alive && o.kind === L.id && dist8(o, { x: p.goal % a.w, y: p.goal / a.w | 0 }) < 2 * R(a, L))) return;
       if (!groundFits(a, L, p.goal)) return;
       const young = newLair(a, L, p.goal, rnd, 0.35);
-      say2(`\u041C\u043E\u043B\u043E\u0434\u044B\u0435 ${SPECIES.get(L.species).plural} ${L.from} \xAB${parent ? parent.name : "\u2026"}\xBB \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${G[L.g].fresh} ${acc(L)} \u2014 \xAB${young.name}\xBB ${wherePhrase(a, p.goal)}.`);
+      say3(`\u041C\u043E\u043B\u043E\u0434\u044B\u0435 ${SPECIES.get(L.species).plural} ${L.from} \xAB${parent ? parent.name : "\u2026"}\xBB \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${G[L.g].fresh} ${acc(L)} \u2014 \xAB${young.name}\xBB ${wherePhrase(a, p.goal)}.`);
     }
   };
   function spawnLairs(a, rnd) {
@@ -20168,7 +20227,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return bv > 0.4 ? best : -1;
   }
-  function foundTown(a, pe, i, rnd, pop, say2) {
+  function foundTown(a, pe, i, rnd, pop, say3) {
     const P = pe.P, H2 = a.hist;
     const t = {
       id: H2.nextTown = (H2.nextTown || 0) + 1,
@@ -20191,7 +20250,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var GREW = { m: "\u0440\u0430\u0437\u0440\u043E\u0441\u0441\u044F \u0432", f: "\u0440\u0430\u0437\u0440\u043E\u0441\u043B\u0430\u0441\u044C \u0432", n: "\u0440\u0430\u0437\u0440\u043E\u0441\u043B\u043E\u0441\u044C \u0432" };
   var SHRANK = { m: "\u0437\u0430\u0445\u0438\u0440\u0435\u043B \u0434\u043E", f: "\u0437\u0430\u0445\u0438\u0440\u0435\u043B\u0430 \u0434\u043E", n: "\u0437\u0430\u0445\u0438\u0440\u0435\u043B\u043E \u0434\u043E" };
   var cap15 = (s) => s[0].toUpperCase() + s.slice(1);
-  function arrive2(a, era, rnd, say2) {
+  function arrive2(a, era, rnd, say3) {
     initPeoples(a, era);
     const F = a.fauna;
     for (const pe of a.peoples.filter((p) => p.P.era === era)) {
@@ -20222,14 +20281,14 @@ dd.q4{color:#c58cff;font-weight:600}
             if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = 0.6;
           }
           const t = foundTown(a, pe, i, rnd, 90 + 60 * rnd()), r = foundRealm(a, t, sub?.id);
-          say2(`${cap15(sub?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} \u2014 ${wherePhrase(a, i)} \u2014 \u0438 \u0437\u0430\u043B\u043E\u0436\u0438\u043B\u0438 ${townLabel(t, 1)} ${t.name}. \u0422\u0430\u043A \u043D\u0430\u0447\u0430\u043B\u0430\u0441\u044C \u0434\u0435\u0440\u0436\u0430\u0432\u0430 \xAB${realmLabel(a, r.id)}\xBB.`);
+          say3(`${cap15(sub?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} \u2014 ${wherePhrase(a, i)} \u2014 \u0438 \u0437\u0430\u043B\u043E\u0436\u0438\u043B\u0438 ${townLabel(t, 1)} ${t.name}. \u0422\u0430\u043A \u043D\u0430\u0447\u0430\u043B\u0430\u0441\u044C \u0434\u0435\u0440\u0436\u0430\u0432\u0430 \xAB${realmLabel(a, r.id)}\xBB.`);
           break;
         }
       }
-      if (!picks.length) say2(`${cap15(P.label)} \u043D\u0435 \u043D\u0430\u0448\u043B\u0438 \u0432 \u044D\u0442\u043E\u043C \u043C\u0438\u0440\u0435 \u0437\u0435\u043C\u043B\u0438 \u0441\u0435\u0431\u0435 \u043F\u043E \u0434\u0443\u0448\u0435.`);
+      if (!picks.length) say3(`${cap15(P.label)} \u043D\u0435 \u043D\u0430\u0448\u043B\u0438 \u0432 \u044D\u0442\u043E\u043C \u043C\u0438\u0440\u0435 \u0437\u0435\u043C\u043B\u0438 \u0441\u0435\u0431\u0435 \u043F\u043E \u0434\u0443\u0448\u0435.`);
     }
   }
-  function stepPeoples(a, rnd, say2) {
+  function stepPeoples(a, rnd, say3) {
     const F = a.fauna, N2 = F.W * F.H, tmp = new Float32Array(N2), k = scaleOf(a);
     for (const pe of a.peoples) for (const t of a.towns) if (t.alive && t.people === pe.id) {
       const j = faunaCell(a, t.i);
@@ -20274,7 +20333,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const t = foundTown(a, pe, i, rnd, 40 + 40 * rnd());
         joinRealm(a, t);
         made++;
-        say2(`${cap15(realmLabel(a, t.realm))} \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
+        say3(`${cap15(realmLabel(a, t.realm))} \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
       }
     }
     fadeScourge(a);
@@ -20291,7 +20350,7 @@ dd.q4{color:#c58cff;font-weight:600}
       feedsOf.set(t.id, [1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (0.7 + 0.3 * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food - scourgedFood(a, t) + 0.3 * fx.trade), room(fx)]);
     }
     stepNet(a, feedsOf);
-    for (const [t, o, by] of fedTowns(a)) say2(`${cap15(townLabel(t, 0))} ${t.name} \u0436\u0438\u0432\u0451\u0442 \u043F\u0440\u0438\u0432\u043E\u0437\u043D\u044B\u043C \u0445\u043B\u0435\u0431\u043E\u043C: ${Math.round(by * 100)}% \u0435\u0434\u044B \u0432\u0435\u0437\u0443\u0442 \u0438\u0437 ${townLabel(o, 2)} ${o.name}.`);
+    for (const [t, o, by] of fedTowns(a)) say3(`${cap15(townLabel(t, 0))} ${t.name} \u0436\u0438\u0432\u0451\u0442 \u043F\u0440\u0438\u0432\u043E\u0437\u043D\u044B\u043C \u0445\u043B\u0435\u0431\u043E\u043C: ${Math.round(by * 100)}% \u0435\u0434\u044B \u0432\u0435\u0437\u0443\u0442 \u0438\u0437 ${townLabel(o, 2)} ${o.name}.`);
     for (const t of a.towns) {
       if (!t.alive) continue;
       const pe = a.peoples.find((p) => p.id === t.people);
@@ -20308,14 +20367,14 @@ dd.q4{color:#c58cff;font-weight:600}
         if (b.site && !placeSite(a, t, b, rnd)) break;
         t.built.push(b.id);
         if (b.id === "bridge" || b.id === "ferry") markCrossing(a, t.i, b.id === "bridge" ? 1 : 0.5);
-        if (first && b.id === "throne") say2(`\u0412 ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: \u043E\u0442\u043D\u044B\u043D\u0435 \u044D\u0442\u043E ${townLabel(t, 0)} \u0434\u0435\u0440\u0436\u0430\u0432\u044B \xAB${realmLabel(a, t.realm)}\xBB.`);
-        else if (first && (b.notable || b.pop)) say2(`\u0412 ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
+        if (first && b.id === "throne") say3(`\u0412 ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: \u043E\u0442\u043D\u044B\u043D\u0435 \u044D\u0442\u043E ${townLabel(t, 0)} \u0434\u0435\u0440\u0436\u0430\u0432\u044B \xAB${realmLabel(a, t.realm)}\xBB.`);
+        else if (first && (b.notable || b.pop)) say3(`\u0412 ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
       }
       const tier = tierOf(t), fall2 = t.tier > 0 && t.pop < TIERS2[t.tier].pop * TIER_FALL;
       if (tier > t.tier || fall2 && tier < t.tier) {
         const T2 = TIERS2[tier], was2 = TIERS2[t.tier];
-        if (tier > t.tier) say2(`${cap15(was2.label[t.people][0])} ${t.name} ${GREW[was2.gender[t.people]]} ${T2.label[t.people][1]}: ${Math.round(t.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
-        else say2(`${cap15(was2.label[t.people][0])} ${t.name} ${SHRANK[was2.gender[t.people]]} ${T2.label[t.people][2]}: \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${Math.round(t.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
+        if (tier > t.tier) say3(`${cap15(was2.label[t.people][0])} ${t.name} ${GREW[was2.gender[t.people]]} ${T2.label[t.people][1]}: ${Math.round(t.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
+        else say3(`${cap15(was2.label[t.people][0])} ${t.name} ${SHRANK[was2.gender[t.people]]} ${T2.label[t.people][2]}: \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${Math.round(t.pop)} \u0436\u0438\u0442\u0435\u043B\u0435\u0439.`);
         t.tier = tier;
       }
     }
@@ -20329,7 +20388,7 @@ dd.q4{color:#c58cff;font-weight:600}
           l.alive = false;
           l.died = a.hist.year;
           l.clearedBy = t.id;
-          say2(`${cap15(realmLabel(a, t.realm))} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0436\u0433\u043B\u0438 ${L.labelAcc || L.label} \xAB${l.name}\xBB: ${owner.plural} \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0442\u0440\u0435\u0432\u043E\u0436\u0430\u0442 \u0438\u0445 \u0437\u0435\u043C\u043B\u0438.`);
+          say3(`${cap15(realmLabel(a, t.realm))} \u0438\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0436\u0433\u043B\u0438 ${L.labelAcc || L.label} \xAB${l.name}\xBB: ${owner.plural} \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 \u0442\u0440\u0435\u0432\u043E\u0436\u0430\u0442 \u0438\u0445 \u0437\u0435\u043C\u043B\u0438.`);
           break;
         }
         const loss = TOWN_WAR.raidLoss * raidShare(fx);
@@ -20337,7 +20396,7 @@ dd.q4{color:#c58cff;font-weight:600}
         t.raided = a.hist.year;
         raidGraves(a, t);
         const burnt = raidSite(a, t, rnd);
-        say2(`${cap15(owner.plural)} ${L.from} \xAB${l.name}\xBB \u043D\u0430\u043F\u0430\u043B\u0438 \u043D\u0430 ${townLabel(t, 1)} ${t.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ""}.`);
+        say3(`${cap15(owner.plural)} ${L.from} \xAB${l.name}\xBB \u043D\u0430\u043F\u0430\u043B\u0438 \u043D\u0430 ${townLabel(t, 1)} ${t.name}: \u043F\u043E\u0433\u0438\u0431\u043B\u043E ${Math.round(loss * 100)}% \u0436\u0438\u0442\u0435\u043B\u0435\u0439${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ""}.`);
         break;
       }
     }
@@ -20356,7 +20415,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const fe = meet(a, r.id, q.id, a.hist.year).att;
       a.contacts[key3] = { year: a.hist.year, feeling: fe };
       const how = fe <= -3 ? "\u0441 \u043D\u0435\u043D\u0430\u0432\u0438\u0441\u0442\u044C\u044E" : fe <= -2 ? "\u0441 \u0434\u0430\u0432\u043D\u0435\u0439 \u043D\u0435\u043F\u0440\u0438\u044F\u0437\u043D\u044C\u044E" : fe < 0 ? "\u043D\u0430\u0441\u0442\u043E\u0440\u043E\u0436\u0435\u043D\u043D\u043E" : fe === 0 ? "\u0441 \u043B\u044E\u0431\u043E\u043F\u044B\u0442\u0441\u0442\u0432\u043E\u043C" : r.people === q.people ? "\u043A\u0430\u043A \u0440\u043E\u0434\u043D\u044F" : "\u043A\u0430\u043A \u0434\u0440\u0443\u0437\u044C\u044F";
-      say2(`${cap15(realmLabel(a, r.id))} \u0438 ${realmLabel(a, q.id)} \u0432\u043F\u0435\u0440\u0432\u044B\u0435 \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043B\u0438\u0441\u044C ${wherePhrase(a, where)} \u0438 \u0441\u043C\u043E\u0442\u0440\u044F\u0442 \u0434\u0440\u0443\u0433 \u043D\u0430 \u0434\u0440\u0443\u0433\u0430 ${how}.` + (!trades(a, r.id, q.id) ? " \u0422\u043E\u0440\u0433\u043E\u0432\u0430\u0442\u044C \u043E\u043D\u0438 \u043D\u0435 \u0441\u0442\u0430\u043D\u0443\u0442." : ""));
+      say3(`${cap15(realmLabel(a, r.id))} \u0438 ${realmLabel(a, q.id)} \u0432\u043F\u0435\u0440\u0432\u044B\u0435 \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043B\u0438\u0441\u044C ${wherePhrase(a, where)} \u0438 \u0441\u043C\u043E\u0442\u0440\u044F\u0442 \u0434\u0440\u0443\u0433 \u043D\u0430 \u0434\u0440\u0443\u0433\u0430 ${how}.` + (!trades(a, r.id, q.id) ? " \u0422\u043E\u0440\u0433\u043E\u0432\u0430\u0442\u044C \u043E\u043D\u0438 \u043D\u0435 \u0441\u0442\u0430\u043D\u0443\u0442." : ""));
     }
     const overlap = (p, q) => {
       const P1 = a.peoples.find((x) => x.id === p), Q1 = a.peoples.find((x) => x.id === q);
@@ -20368,7 +20427,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       return mine ? both / mine : 0;
     };
-    stepDiplomacy(a, rnd, say2, overlap);
+    stepDiplomacy(a, rnd, say3, overlap);
   }
   function markCrossing(a, i, v) {
     var _a;
@@ -20435,12 +20494,12 @@ dd.q4{color:#c58cff;font-weight:600}
     say(a, `\u041D\u0430\u0447\u0430\u043B\u0430\u0441\u044C ${ERAS.get("wild").label.toLowerCase()}. \u0413\u043E\u0440\u043E\u0434\u043E\u0432 \u0435\u0449\u0451 \u043D\u0435\u0442; \u0437\u0432\u0435\u0440\u0438 \u0440\u0430\u0441\u0445\u043E\u0434\u044F\u0442\u0441\u044F \u043F\u043E \u0441\u0432\u043E\u0438\u043C \u043A\u0440\u0430\u044F\u043C` + (parts.length ? `, \u0447\u0443\u0434\u043E\u0432\u0438\u0449\u0430 \u0437\u0430\u043D\u044F\u043B\u0438 \u043B\u043E\u0433\u043E\u0432\u0430: ${parts.join(", ")}` : "") + (tribes.length ? `; \u0434\u0438\u043A\u0438\u0435 \u043F\u043B\u0435\u043C\u0435\u043D\u0430 \u0440\u0430\u0437\u0431\u0438\u043B\u0438 \u0441\u0442\u0430\u043D\u044B: ${tribes.join(", ")}` : "") + (old ? `. ${old} ${plural(old, "\u043B\u043E\u0433\u043E\u0432\u043E \u0441\u0442\u043E\u0438\u0442", "\u043B\u043E\u0433\u043E\u0432\u0430 \u0441\u0442\u043E\u044F\u0442", "\u043B\u043E\u0433\u043E\u0432 \u0441\u0442\u043E\u044F\u0442")} \u0441 \u043D\u0435\u0437\u0430\u043F\u0430\u043C\u044F\u0442\u043D\u044B\u0445 \u0432\u0440\u0435\u043C\u0451\u043D.` : "."));
     for (const i of a.ancientBarrows || []) say(a, `\u041A\u0443\u0440\u0433\u0430\u043D\u044B \u043D\u0435\u0437\u0430\u043F\u0430\u043C\u044F\u0442\u043D\u044B\u0445 \u0432\u0440\u0435\u043C\u0451\u043D \u0441\u0442\u043E\u044F\u0442 ${wherePhrase(a, i)}: \u043A\u0442\u043E \u0432 \u043D\u0438\u0445 \u043B\u0435\u0436\u0438\u0442, \u043D\u0435 \u043F\u043E\u043C\u043D\u0438\u0442 \u043D\u0438\u043A\u0442\u043E.`);
   }
-  function roadsLine(a, fresh, say2) {
+  function roadsLine(a, fresh, say3) {
     if (!fresh.length) return;
     const named3 = fresh.slice(0, 2).map(([p, q]) => `${p.name} \u0438 ${q.name}`), rest = fresh.length - named3.length;
-    say2(`\u041F\u0440\u043E\u0442\u043E\u043F\u0442\u0430\u043B\u0438 ${fresh.length === 1 ? "\u0434\u043E\u0440\u043E\u0433\u0443" : "\u0434\u043E\u0440\u043E\u0433\u0438"} \u043C\u0435\u0436\u0434\u0443 ${named3.join(", \u043C\u0435\u0436\u0434\u0443 ")}` + (rest ? ` \u0438 \u0435\u0449\u0451 ${rest} ${plural(rest, "\u043F\u0430\u0440\u043E\u0439 \u0433\u043E\u0440\u043E\u0434\u043E\u0432", "\u043F\u0430\u0440\u0430\u043C\u0438 \u0433\u043E\u0440\u043E\u0434\u043E\u0432", "\u043F\u0430\u0440\u0430\u043C\u0438 \u0433\u043E\u0440\u043E\u0434\u043E\u0432")}` : "") + ".");
+    say3(`\u041F\u0440\u043E\u0442\u043E\u043F\u0442\u0430\u043B\u0438 ${fresh.length === 1 ? "\u0434\u043E\u0440\u043E\u0433\u0443" : "\u0434\u043E\u0440\u043E\u0433\u0438"} \u043C\u0435\u0436\u0434\u0443 ${named3.join(", \u043C\u0435\u0436\u0434\u0443 ")}` + (rest ? ` \u0438 \u0435\u0449\u0451 ${rest} ${plural(rest, "\u043F\u0430\u0440\u043E\u0439 \u0433\u043E\u0440\u043E\u0434\u043E\u0432", "\u043F\u0430\u0440\u0430\u043C\u0438 \u0433\u043E\u0440\u043E\u0434\u043E\u0432", "\u043F\u0430\u0440\u0430\u043C\u0438 \u0433\u043E\u0440\u043E\u0434\u043E\u0432")}` : "") + ".");
   }
-  function stepHistory(a) {
+  function stepHistory(a, onDay = null) {
     const H2 = a.hist, rnd = H2.rnd, season2 = SEASON_LIST[H2.season].id, F = a.fauna;
     if (H2.season === 0) {
       rollWeather(a, rnd);
@@ -20484,7 +20543,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     const totals = stepFauna(a, season2);
     for (const line2 of stepLairs(a, rnd, season2)) say(a, line2);
-    stepParties(a, rnd, (t) => say(a, t));
+    stepParties(a, rnd, (t) => say(a, t), onDay);
     if (H2.season === 3 && H2.repelled) {
       const parts = Object.entries(H2.repelled).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} \u2014 ${n}`);
       const total = Object.values(H2.repelled).reduce((x, v) => x + v, 0);
@@ -20515,10 +20574,10 @@ dd.q4{color:#c58cff;font-weight:600}
     H2.season = (H2.season + 1) % SEASON_LIST.length;
     if (H2.season === 0) H2.year++;
     if (H2.step === wildEnd) {
-      const alive = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive;
-      say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive} ${plural(alive, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
+      const alive2 = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive2;
+      say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive2} ${plural(alive2, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
     }
-    if (H2.step === elderEnd || H2.step >= H2.end) {
+    if (H2.step === elderEnd || H2.step === H2.end && !H2.endTold) {
       const towns = a.towns.filter((t) => t.alive), parts = [];
       for (const pe of a.peoples) {
         const mine = towns.filter((t) => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));
@@ -20528,6 +20587,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (H2.step === elderEnd && H2.step < H2.end) say(a, `\u042D\u043F\u043E\u0445\u0430 \u0434\u0440\u0435\u0432\u043D\u0438\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${parts.join("; ")}. \u0421\u043A\u043E\u0440\u043E \u043F\u0440\u0438\u0434\u0443\u0442 \u043B\u044E\u0434\u0438 \u0438 \u043E\u0440\u043A\u0438.`);
       else {
         const wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0), ruins = (a.ruins || []).length;
+        H2.endTold = true;
         say(a, `\u042D\u043F\u043E\u0445\u0430 \u043C\u043E\u043B\u043E\u0434\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${parts.join("; ")}. \u0412\u043E\u0439\u043D \u0431\u044B\u043B\u043E ${wars}, \u0441\u043E\u0436\u0436\u0435\u043D\u043E \u0433\u043E\u0440\u043E\u0434\u043E\u0432: ${ruins}. \u0418\u0441\u0442\u043E\u0440\u0438\u044F \u043C\u0438\u0440\u0430 \u0436\u0434\u0451\u0442 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0435\u0432.`);
       }
     }
@@ -20773,8 +20833,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.51.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 b9ae392" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.52.0 Campaign \xB7 19.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 531fb03" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";
@@ -20801,7 +20861,9 @@ dd.q4{color:#c58cff;font-weight:600}
       realms: (a.realms || []).length,
       lines: a.chronicle.length,
       hash: atlasHash(a),
-      version: VERSION
+      version: VERSION,
+      // a campaign under way in this world (campaign/): where it is
+      campaign: a.campaign ? { phase: a.campaign.phase, day: a.campaign.day, from: a.campaign.capitalFrom || a.campaign.capitalName } : null
     };
   }
   function saveAtlas(a, name) {
@@ -21255,7 +21317,28 @@ dd.q4{color:#c58cff;font-weight:600}
         this.onBack();
       });
       this.buildLibrary();
-      const cv = $("atlasMap");
+      $("atlasSettle").addEventListener("click", () => {
+        const a = this.atlas;
+        if (!a || this.pick < 0) return;
+        this.stop();
+        this.onSettle(cellPlan(a, this.pick, { name: this.worldName || `\u041C\u0438\u0440 ${a.cfg.seed}`, id: this.worldId }));
+      });
+      $("atlasUnpick").addEventListener("click", () => this.setPick(-1));
+      this.wireCamera({
+        map: "atlasMap",
+        readout: "atlasReadout",
+        zoomIn: "atlasZoomIn",
+        zoomOut: "atlasZoomOut",
+        zoomFit: "atlasZoomFit",
+        screen: "atlas",
+        hint: "\u041D\u0430\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430 \u043A\u0430\u0440\u0442\u0443, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u043A\u043B\u0435\u0442\u043A\u0443. \u0429\u0435\u043B\u0447\u043E\u043A \u043F\u043E \u0441\u0443\u0448\u0435 \u2014 \u0432\u044B\u0431\u0440\u0430\u0442\u044C \u043C\u0435\u0441\u0442\u043E \u0434\u043B\u044F \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044F."
+      });
+    }
+    // the camera over the map: the wheel zooms at the cursor, dragging pans, the buttons and keys zoom;
+    // a press that does not drag is a click (clickAt). Shared with the campaign screen (ui/campaignView.js).
+    wireCamera(ids) {
+      this.ids = ids;
+      const cv = $(ids.map);
       const local2 = (e) => {
         const r = cv.getBoundingClientRect();
         return [e.clientX - r.left, e.clientY - r.top];
@@ -21287,19 +21370,12 @@ dd.q4{color:#c58cff;font-weight:600}
       };
       cv.addEventListener("pointerup", (e) => {
         const g3 = this.grab;
-        if (g3 && g3.id === e.pointerId && !g3.drag && e.button === 0) this.pickAt(e);
+        if (g3 && g3.id === e.pointerId && !g3.drag && e.button === 0) this.clickAt(e);
         release2();
       });
       cv.addEventListener("pointercancel", release2);
-      $("atlasSettle").addEventListener("click", () => {
-        const a = this.atlas;
-        if (!a || this.pick < 0) return;
-        this.stop();
-        this.onSettle(cellPlan(a, this.pick, { name: this.worldName || `\u041C\u0438\u0440 ${a.cfg.seed}`, id: this.worldId }));
-      });
-      $("atlasUnpick").addEventListener("click", () => this.setPick(-1));
       cv.addEventListener("pointerleave", () => {
-        $("atlasReadout").textContent = "\u041D\u0430\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430 \u043A\u0430\u0440\u0442\u0443, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u043A\u043B\u0435\u0442\u043A\u0443.";
+        $(ids.readout).textContent = ids.hint;
       });
       cv.addEventListener("contextmenu", (e) => e.preventDefault());
       cv.addEventListener("wheel", (e) => {
@@ -21309,16 +21385,16 @@ dd.q4{color:#c58cff;font-weight:600}
         this.cam.zoomAt(cw, ch, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 18e-4)), px, py);
         this.draw();
       }, { passive: false });
-      $("atlasZoomIn").addEventListener("click", () => this.zoomCentre(1.6));
-      $("atlasZoomOut").addEventListener("click", () => this.zoomCentre(1 / 1.6));
-      $("atlasZoomFit").addEventListener("click", () => {
+      $(ids.zoomIn).addEventListener("click", () => this.zoomCentre(1.6));
+      $(ids.zoomOut).addEventListener("click", () => this.zoomCentre(1 / 1.6));
+      $(ids.zoomFit).addEventListener("click", () => {
         if (this.cam) {
           this.cam.reset();
           this.draw();
         }
       });
       document.addEventListener("keydown", (e) => {
-        if ($("atlas").hidden || e.target !== document.body || e.ctrlKey || e.metaKey) return;
+        if ($(ids.screen).hidden || e.target !== document.body || e.ctrlKey || e.metaKey) return;
         if (e.key === "+" || e.key === "=") this.zoomCentre(1.6);
         else if (e.key === "-" || e.key === "_") this.zoomCentre(1 / 1.6);
         else if (e.key === "0" || e.key === "Home") {
@@ -21329,9 +21405,12 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       });
     }
+    clickAt(e) {
+      this.pickAt(e);
+    }
     // the size of the map's box in CSS pixels (the canvas is kept at the box's size, at device resolution)
     box() {
-      const cv = $("atlasMap");
+      const cv = $(this.ids.map);
       return [cv.clientWidth || 1, cv.clientHeight || 1];
     }
     zoomCentre(f) {
@@ -21419,7 +21498,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     // ── the library of worlds (ui/worlds.js): save, open, delete, files
     buildLibrary() {
-      const say2 = (t) => {
+      const say3 = (t) => {
         $("atlasSaveStatus").textContent = t;
       };
       $("atlasName").addEventListener("input", (e) => {
@@ -21429,14 +21508,14 @@ dd.q4{color:#c58cff;font-weight:600}
         const a = this.atlas;
         if (!a || !landDone(a)) return;
         const name = this.worldName || `\u041C\u0438\u0440 ${a.cfg.seed}`;
-        say2("\u0421\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u2026");
+        say3("\u0421\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u2026");
         try {
           const rec = await saveWorldToLibrary(a, name, this.worldId);
-          say2(`${this.worldId ? "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \u043F\u043E\u0432\u0435\u0440\u0445" : "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E"}: \xAB${rec.name}\xBB, ${rec.year} \u043B\u0435\u0442 \u0438\u0441\u0442\u043E\u0440\u0438\u0438, ${(rec.bytes / 1e6).toFixed(1)} \u041C\u0411.`);
+          say3(`${this.worldId ? "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E \u043F\u043E\u0432\u0435\u0440\u0445" : "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E"}: \xAB${rec.name}\xBB, ${rec.year} \u043B\u0435\u0442 \u0438\u0441\u0442\u043E\u0440\u0438\u0438, ${(rec.bytes / 1e6).toFixed(1)} \u041C\u0411.`);
           this.bind(rec.id, rec.name);
           this.refreshWorlds();
         } catch (e) {
-          say2("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C: " + e.message);
+          say3("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C: " + e.message);
         }
       });
       $("atlasFile").addEventListener("click", async () => {
@@ -21444,9 +21523,9 @@ dd.q4{color:#c58cff;font-weight:600}
         if (!a || !landDone(a)) return;
         try {
           const r = await downloadWorld(a, this.worldName || `\u041C\u0438\u0440 ${a.cfg.seed}`);
-          say2(r === "declined" ? "\u0424\u0430\u0439\u043B \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D." : "\u0424\u0430\u0439\u043B \u043C\u0438\u0440\u0430 \u0433\u043E\u0442\u043E\u0432.");
+          say3(r === "declined" ? "\u0424\u0430\u0439\u043B \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D." : "\u0424\u0430\u0439\u043B \u043C\u0438\u0440\u0430 \u0433\u043E\u0442\u043E\u0432.");
         } catch (e) {
-          say2("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C: " + e.message);
+          say3("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C: " + e.message);
         }
       });
       $("atlasWorlds").addEventListener("click", async (e) => {
@@ -21460,26 +21539,26 @@ dd.q4{color:#c58cff;font-weight:600}
           this.refreshWorlds();
           return;
         }
-        say2("\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u044E\u2026");
+        say3("\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u044E\u2026");
         try {
           this.showWorld(await openWorld(id), id, row.dataset.name);
-          say2(`\u041E\u0442\u043A\u0440\u044B\u0442 \u043C\u0438\u0440 \xAB${row.dataset.name}\xBB.`);
+          say3(`\u041E\u0442\u043A\u0440\u044B\u0442 \u043C\u0438\u0440 \xAB${row.dataset.name}\xBB.`);
         } catch (err) {
-          say2("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u044C: " + err.message);
+          say3("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u044C: " + err.message);
         }
       });
       $("atlasLoadFile").addEventListener("change", async (e) => {
         const f = e.target.files[0];
         e.target.value = "";
         if (!f) return;
-        say2("\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u044E \u0444\u0430\u0439\u043B\u2026");
+        say3("\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u044E \u0444\u0430\u0439\u043B\u2026");
         try {
           const { a, rec } = await importWorld(f);
           this.showWorld(a, rec.id, rec.name);
           this.refreshWorlds();
-          say2(`\u041C\u0438\u0440 \xAB${rec.name}\xBB \u043E\u0442\u043A\u0440\u044B\u0442 \u0438 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0443.`);
+          say3(`\u041C\u0438\u0440 \xAB${rec.name}\xBB \u043E\u0442\u043A\u0440\u044B\u0442 \u0438 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0443.`);
         } catch (err) {
-          say2("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u044C: " + err.message);
+          say3("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u044C: " + err.message);
         }
       });
     }
@@ -21673,7 +21752,7 @@ dd.q4{color:#c58cff;font-weight:600}
     pickAt(e) {
       const a = this.atlas;
       if (!a || !this.cam || !landDone(a)) return;
-      const cv = $("atlasMap"), r = cv.getBoundingClientRect();
+      const cv = $(this.ids.map), r = cv.getBoundingClientRect();
       const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top), x = Math.floor(fx), y = Math.floor(fy);
       if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
       const i = y * a.w + x;
@@ -21696,7 +21775,7 @@ dd.q4{color:#c58cff;font-weight:600}
     draw() {
       const a = this.atlas;
       if (!a || !this.cam) return;
-      const cv = $("atlasMap"), [cw, ch] = this.box(), dpr = window.devicePixelRatio || 1;
+      const cv = $(this.ids.map), [cw, ch] = this.box(), dpr = window.devicePixelRatio || 1;
       if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) {
         cv.width = Math.round(cw * dpr);
         cv.height = Math.round(ch * dpr);
@@ -21720,6 +21799,10 @@ dd.q4{color:#c58cff;font-weight:600}
       if (a.ruins && ["relief", "biomes", "peoples"].includes(this.layer)) this.drawRuins(a, px);
       if (a.towns && ["relief", "biomes", "peoples", "fauna", "rain", "soils"].includes(this.layer)) this.drawTowns(a, px);
       if (a.f.flow && ["relief", "rain", "rocks", "temp", "biomes", "soils"].includes(this.layer)) this.rivers(a, px);
+      this.overlay(a, px, cam);
+    }
+    // what is drawn over the map in cell units: on the «Мир» screen the picked cell
+    overlay(a, px, cam) {
       if (this.pick >= 0) {
         const x = this.pick % a.w, y = this.pick / a.w | 0, m = Math.max(0.6, 3 / cam.S);
         px.lineWidth = Math.max(this.minW * 2, 0.12);
@@ -21873,6 +21956,7 @@ dd.q4{color:#c58cff;font-weight:600}
     drawParties(a, px) {
       const k = this.unit(a), r = Math.max(0.5, 0.8 * k), t = this.slide();
       for (const p of a.parties) {
+        if (p.kind === "caravan") continue;
         const x = p.px + (p.x - p.px) * t, y = p.py + (p.y - p.py) * t, c = p.color;
         if (p.path && p.k < p.path.length && p.speed !== "flight") {
           px.strokeStyle = `rgba(${c.join(",")},0.4)`;
@@ -22074,11 +22158,11 @@ dd.q4{color:#c58cff;font-weight:600}
     hover(e) {
       const a = this.atlas;
       if (!a || !a.f.elev) return;
-      const cv = $("atlasMap"), r = cv.getBoundingClientRect();
+      const cv = $(this.ids.map), r = cv.getBoundingClientRect();
       if (!this.cam) return;
       const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top), x = Math.floor(fx), y = Math.floor(fy);
       if (x < 0 || y < 0 || x >= a.w || y >= a.h) {
-        $("atlasReadout").textContent = "\u041D\u0430\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430 \u043A\u0430\u0440\u0442\u0443, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u043A\u043B\u0435\u0442\u043A\u0443.";
+        $(this.ids.readout).textContent = this.ids.hint;
         return;
       }
       const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
@@ -22151,7 +22235,884 @@ dd.q4{color:#c58cff;font-weight:600}
         if (geo.flags.magma) ores2.push("\u043C\u0430\u0433\u043C\u0430");
         if (ores2.length) parts.push(ores2.join(", "));
       }
-      $("atlasReadout").textContent = parts.join(" \xB7 ");
+      $(this.ids.readout).textContent = parts.join(" \xB7 ");
+    }
+  };
+
+  // src/data/campaign.js
+  var CAMPAIGN = {
+    // the peoples whose capitals can send a caravan (the major ones; the minor join on the way, later)
+    peoples: ["humans", "elves", "dwarves", "orcs"],
+    // the core: those who set out; when all of them are dead the campaign is lost
+    knights: 4,
+    squires: 4,
+    // food in rations: a ration feeds one for a day; each carries `pack` on the back (stage 4 brings slots,
+    // beasts and carts). The capital gives nothing else: the satchels are full when they set out
+    pack: 6,
+    ration: 1,
+    // food found a day per person, × the land's richness (campaign/land.js): on the march only what is
+    // picked by the way, in a camp the whole day goes to hunting, fishing and gathering
+    forage: { march: 0.4, camp: 1.6, spread: 0.6 },
+    // the season's × on what the land gives; in hard frost (a winter day's mean below −5°) × `frost` more
+    seasonFood: { spring: 0.9, summer: 1.1, autumn: 1.2, winter: 0.6, frost: 0.7 },
+    // hunger: a day fed below `starveAt` of the need is a hungry day; hungry, the caravan walks at `slow`
+    // and nobody heals; after `wasteAfter` hungry days in a row everyone loses `waste` health a day
+    // the chronicle tells of a new hunger only `again` days after the last told, of its end after `over` days of it
+    hunger: { starveAt: 0.5, slow: 0.5, wasteAfter: 12, waste: 0.025, tell: { again: 20, over: 4 } },
+    // health a day: on the march, in a camp
+    heal: { march: 0.03, camp: 0.1 },
+    // the evening council stops the march: to forage when the food left lasts less than `foodDays` and the
+    // land can feed them (richness ≥ `foodLand`); to heal when the core's mean health is below `hp` or one
+    // of them is below `badly`; not where the night is dangerous (`danger`), unless they already starve;
+    // a camp lasts at most `maxDays`, then they go on whatever happens; it breaks up sooner when the packs
+    // are `full` (a food camp) or the core is `healed` (a camp of the wounded)
+    camp: { foodDays: 1.5, foodLand: 0.35, hp: 0.6, badly: 0.35, danger: 0.1, maxDays: 6, full: 0.9, healed: 0.85 },
+    // in frost the march is slower (winter, the day's mean below 0°)
+    frost: 0.7,
+    // the speed a day on open meadow, cells of a 192-high world (as the world's parties on foot, data/parties.js)
+    speed: 0.7,
+    // the fog: what the caravan knows of the world. At the start: `known` cells around the towns of its realm
+    // and `partner` around the towns of the realms it trades with; on the way: `sight` cells around it
+    fog: { known: 8, partner: 3, sight: 3 },
+    // a member's might in a fight: role × weapon × armour × health × Strength
+    might: { knight: 1, squire: 0.4, perDmg: 0.35, perArmor: 1, perStr: 0.06 },
+    // a night: the chance something finds the camp = base + the land's dangers (campaign/land.js), at most `max`;
+    // near a town of friends the chance is × `friendly`
+    night: { base: 0.02, max: 0.22, friendly: 0.3 },
+    // a fight: the foe's might × U(0.6, 1.4) against the caravan's; the caravan takes `hurt` × the foe's might
+    // (more when it loses) in blows of `blow` health, the knights `shield` times as often as the squires;
+    // in a fight they win nobody falls (the wounded are carried off at `saved` health); a lost fight costs
+    // `lost` of the food
+    fight: { hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4] },
+    // a morning after a quiet night: a little food is found with `food`, something of worth with `treasure`
+    morning: { food: 0.22, foodN: [1, 3], treasure: 0.012, gold: [3, 15] },
+    // the goal of the walk (this stage: a point; later the clues, docs/CAMPAIGN.md): a land cell this share
+    // of the world's diagonal away from the capital; when none can be walked to, the ring widens to `wide`
+    goal: { near: 0.22, far: 0.4, wide: [0.06, 0.6] },
+    // the campaign gives up after this many years
+    maxYears: 25
+  };
+  var GAME = { deer: 1, boar: 1, elk: 1.3, goat: 0.8, hare: 0.5, saiga: 1, aurochs: 1.3, horse: 0.7, camel: 0.7, sheep: 0.8, seal: 0.9, toad: 0.2 };
+  var FOES2 = {
+    lair: { label: "\u0447\u0443\u0434\u0438\u0449\u0430 \u0438\u0437 \u043B\u043E\u0433\u043E\u0432\u0430", might: 4 },
+    tribe: { label: "\u0434\u0438\u043A\u0430\u0440\u0438", might: 5 },
+    undead: { label: "\u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B", might: 4 },
+    wolves: { label: "\u0432\u043E\u043B\u0447\u044C\u044F \u0441\u0442\u0430\u044F", might: 2.5 },
+    army: { label: "\u0444\u0443\u0440\u0430\u0436\u0438\u0440\u044B \u0447\u0443\u0436\u043E\u0433\u043E \u0432\u043E\u0439\u0441\u043A\u0430", might: 6 },
+    bandits: { label: "\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0438 \u0441 \u0431\u043E\u043B\u044C\u0448\u043E\u0439 \u0434\u043E\u0440\u043E\u0433\u0438", might: 3 }
+  };
+  var RETINUE = {
+    humans: {
+      knight: ["\u0440\u044B\u0446\u0430\u0440\u044C", "\u0440\u044B\u0446\u0430\u0440\u0438"],
+      squire: ["\u043E\u0440\u0443\u0436\u0435\u043D\u043E\u0441\u0435\u0446", "\u043E\u0440\u0443\u0436\u0435\u043D\u043E\u0441\u0446\u044B"],
+      knightGear: [["bronzespear", "shield"], ["bronzeaxe", "shield"], ["bronzespear", "shield"], ["bow", "quiver"]]
+    },
+    elves: {
+      knight: ["\u0441\u0442\u0440\u0430\u0436", "\u0441\u0442\u0440\u0430\u0436\u0438"],
+      squire: ["\u043F\u043E\u043C\u043E\u0449\u043D\u0438\u043A", "\u043F\u043E\u043C\u043E\u0449\u043D\u0438\u043A\u0438"],
+      knightGear: [["bow", "quiver"], ["bow", "quiver"], ["bronzespear", "shield"], ["bow", "quiver"]]
+    },
+    dwarves: {
+      knight: ["\u0445\u0438\u0440\u0434\u043C\u0430\u043D", "\u0445\u0438\u0440\u0434\u043C\u0430\u043D\u044B"],
+      squire: ["\u043F\u043E\u0434\u043C\u0430\u0441\u0442\u0435\u0440\u044C\u0435", "\u043F\u043E\u0434\u043C\u0430\u0441\u0442\u0435\u0440\u044C\u044F"],
+      knightGear: [["bronzeaxe", "shield"], ["bronzeaxe", "shield"], ["bronzespear", "shield"], ["bronzeaxe", "shield"]]
+    },
+    orcs: {
+      knight: ["\u0440\u0443\u0431\u0430\u043A\u0430", "\u0440\u0443\u0431\u0430\u043A\u0438"],
+      squire: ["\u043F\u0440\u0438\u0441\u043B\u0443\u0436\u043D\u0438\u043A", "\u043F\u0440\u0438\u0441\u043B\u0443\u0436\u043D\u0438\u043A\u0438"],
+      knightGear: [["bronzeaxe"], ["bronzeaxe", "shield"], ["bronzespear"], ["bronzeaxe"]]
+    },
+    // shared by all
+    armour: ["jerkin", "hardleather", "jerkin", "hardleather"],
+    squireGear: [["axe"], ["maul"], ["rod"], ["pan"]],
+    squireBody: "clothes"
+  };
+
+  // src/campaign/land.js
+  function richness(a, i) {
+    if (!a.f.land || a.f.ocean[i]) return 0;
+    const reg = cellRegion(a, i), w = { region: reg };
+    let game = 0;
+    for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id)) game += faunaLevel(w, id) * k;
+    const plants = Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : 0.5), 0) * (0.5 + 0.5 * (a.f.fert?.[i] ?? 0.6));
+    const water = a.f.flow && a.f.lake ? a.f.lake[i] >= 0 || reg.river > 0 ? 0.25 : 0 : 0;
+    return clamp(0.45 * Math.min(2, game) + 0.55 * plants + water, 0, 1.6);
+  }
+  function seasonFood(a, i, seasonId) {
+    const k = CAMPAIGN.seasonFood[seasonId] ?? 1;
+    const cold = a.f.temp[i] - (seasonId === "winter" ? a.f.trange[i] / 2 : 0);
+    return cold < -5 ? k * CAMPAIGN.seasonFood.frost : k;
+  }
+  var nightRisk = (a, i) => dangers(a, i).reduce((s, d) => s + d.p, 0);
+  function dangers(a, i) {
+    const out = [];
+    const lair = lairAt(a, i);
+    if (lair) {
+      const L = LAIRS.get(lair.kind), kind = L.undead ? "undead" : L.tribe ? "tribe" : "lair";
+      out.push({ kind, p: 0.05 + 0.05 * Math.min(1.5, lair.strength), strength: 0.6 + 0.6 * Math.min(2, lair.strength), label: `${L.label} \xAB${lair.name}\xBB` });
+    }
+    const wolves = faunaLevel({ region: cellRegion(a, i) }, "wolf");
+    if (wolves > 0) out.push({ kind: "wolves", p: 0.025 * Math.min(2, wolves), strength: 0.7 + 0.3 * Math.min(2, wolves) });
+    if (a.f.scourge && a.f.scourge[i] > 0.3) out.push({ kind: "army", p: 0.2 * a.f.scourge[i], strength: 1 });
+    if (a.rot && a.fauna && a.rot[faunaCell(a, i)] > 0.2) out.push({ kind: "undead", p: 0.06 * a.rot[faunaCell(a, i)], strength: 0.8 + a.rot[faunaCell(a, i)] });
+    const road = roadAccess(a, i);
+    if (road > 0.1) out.push({ kind: "bandits", p: 0.02 * road, strength: 1 });
+    return out;
+  }
+
+  // src/campaign/start.js
+  function draw(K, name) {
+    const r = mulberry(K.rng[name] ?? seedNumber(`${K.seed}:campaign:${name}`));
+    return { r, done: () => {
+      K.rng[name] = r.state;
+    } };
+  }
+  function capitals(a) {
+    return (a.realms || []).filter((r) => CAMPAIGN.peoples.includes(r.people)).map((r) => a.towns.find((t) => t.id === r.capital && t.alive)).filter(Boolean).map((t) => ({
+      town: t.id,
+      name: t.name,
+      label: `${townLabel(t, 0)} ${t.name}`,
+      realm: t.realm,
+      realmLabel: realmLabel(a, t.realm),
+      people: t.people,
+      peopleLabel: WORLD_PEOPLES.get(t.people).label,
+      x: t.x,
+      y: t.y,
+      pop: Math.round(t.pop),
+      towns: realmTowns(a, t.realm).length
+    }));
+  }
+  function member(K, a, rnd, used, role, k) {
+    const r = realmOf(a, K.realm), race = WORLD_PEOPLES.get(K.people).race, sp = SPECIES.get(race);
+    const spOf = r.sub && sp.peoples ? { ...sp, peoples: sp.peoples.filter((p) => p.id === r.sub) } : sp;
+    const m = { id: K.members.length + 1, name: sp.label, gender: "m", race, role, hp: 1, alive: true, joined: 0 };
+    rollCreature({ rngs: { birth: rnd } }, m, spOf);
+    const names = (sp.names || []).filter((n) => !used.has(n[0]));
+    if (names.length) {
+      const n = names[rnd() * names.length | 0];
+      [m.name, m.gender] = n;
+      used.add(n[0]);
+    }
+    const R2 = RETINUE[K.people];
+    m.gear = role === "knight" ? { hand: [...R2.knightGear[k % R2.knightGear.length]], body: RETINUE.armour[k % RETINUE.armour.length] } : { hand: [...RETINUE.squireGear[k % RETINUE.squireGear.length]], body: RETINUE.squireBody };
+    return m;
+  }
+  function pickGoal(a, K, rnd) {
+    const diag = Math.hypot(a.w, a.h), [x0, y0] = [K.home % a.w, K.home / a.w | 0], G2 = CAMPAIGN.goal;
+    const seen = new Uint8Array(a.n), reach = [], queue = [K.home];
+    seen[K.home] = 1;
+    while (queue.length) {
+      const c = queue.pop(), x = c % a.w, y = c / a.w | 0;
+      if (settleable(a, c)) reach.push(c);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy, j = ny * a.w + nx;
+        if ((dx || dy) && nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && !seen[j] && moveCost(a, j, K.people) < Infinity) {
+          seen[j] = 1;
+          queue.push(j);
+        }
+      }
+    }
+    reach.sort((p, q) => p - q);
+    const dist9 = (i) => Math.hypot(i % a.w - x0, (i / a.w | 0) - y0) / diag;
+    for (const [near4, far2] of [[G2.near, G2.far], G2.wide]) {
+      const ring = reach.filter((i) => dist9(i) >= near4 && dist9(i) <= far2);
+      if (ring.length) return ring[rnd() * ring.length | 0];
+    }
+    const far = reach.reduce((b, i) => dist9(i) > dist9(b) ? i : b, K.home);
+    return far === K.home ? null : far;
+  }
+  function newCampaign(a, townId, { seed = null } = {}) {
+    if (!landDone(a) || !a.hist) throw new Error("\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u0438 \u043D\u0443\u0436\u0435\u043D \u043C\u0438\u0440 \u0441 \u0438\u0441\u0442\u043E\u0440\u0438\u0435\u0439.");
+    const t = a.towns.find((x) => x.id === townId && x.alive);
+    if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u0442\u043E\u043B\u0438\u0446\u0430 \u043C\u0430\u0436\u043E\u0440\u043D\u043E\u0433\u043E \u043D\u0430\u0440\u043E\u0434\u0430.");
+    const K = a.campaign = {
+      seed: seed || `${a.cfg.seed}:${t.id}`,
+      started: { year: a.hist.year, season: a.hist.season },
+      day: 0,
+      capital: t.id,
+      capitalName: t.name,
+      capitalFrom: `${townLabel(t, 2)} ${t.name}`,
+      realm: t.realm,
+      people: t.people,
+      home: t.i,
+      goal: null,
+      phase: "out",
+      members: [],
+      food: 0,
+      gold: 0,
+      i: t.i,
+      x: t.x + 0.5,
+      y: t.y + 0.5,
+      path: null,
+      k: 0,
+      camp: 0,
+      why: "",
+      hungry: 0,
+      seen: new Uint8Array(a.n),
+      log: [],
+      track: [],
+      stats: { walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0 },
+      rng: {},
+      party: null
+    };
+    const { r, done: done3 } = draw(K, "birth"), used = /* @__PURE__ */ new Set();
+    for (let k2 = 0; k2 < CAMPAIGN.knights; k2++) K.members.push(member(K, a, r, used, "knight", k2));
+    for (let k2 = 0; k2 < CAMPAIGN.squires; k2++) K.members.push(member(K, a, r, used, "squire", k2));
+    K.food = CAMPAIGN.pack * K.members.length;
+    K.goal = pickGoal(a, K, r);
+    done3();
+    const k = scaleOf(a);
+    for (const o of a.towns.filter((x) => x.alive)) {
+      if (o.realm === K.realm) reveal(a, K, o.i, CAMPAIGN.fog.known * k);
+      else if (o.realm && trades(a, K.realm, o.realm)) reveal(a, K, o.i, CAMPAIGN.fog.partner * k);
+    }
+    reveal(a, K, K.home, CAMPAIGN.fog.known * k);
+    const p = {
+      id: a.hist.nextParty = (a.hist.nextParty || 0) + 1,
+      kind: "caravan",
+      i: t.i,
+      x: K.x,
+      y: K.y,
+      px: K.x,
+      py: K.y,
+      home: t.i,
+      goal: K.goal,
+      state: "camp",
+      days: 0,
+      stay: 0,
+      speed: "foot",
+      people: t.people,
+      might: 0,
+      men: K.members.length,
+      owner: t.realm,
+      target: null,
+      label: `\u043A\u0430\u0440\u0430\u0432\u0430\u043D ${townLabel(t, 2)} ${t.name}`,
+      color: WORLD_PEOPLES.get(t.people).color
+    };
+    (a.parties || (a.parties = [])).push(p);
+    K.party = p.id;
+    const R2 = RETINUE[t.people];
+    say2(a, K, `\u0418\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0448\u0435\u043B \u043A\u0430\u0440\u0430\u0432\u0430\u043D: ${CAMPAIGN.knights} ${R2.knight[1]} \u0438 ${CAMPAIGN.squires} ${R2.squire[1]} \u2014 ${K.members.map((m) => m.name).join(", ")}. ` + (K.goal == null ? "\u041A\u0443\u0434\u0430 \u0438\u0434\u0442\u0438, \u043D\u0438\u043A\u0442\u043E \u043D\u0435 \u0437\u043D\u0430\u0435\u0442." : `\u0423 \u043D\u0438\u0445 \u043F\u043E\u0440\u0443\u0447\u0435\u043D\u0438\u0435 \u0438 \u0435\u0434\u044B \u043D\u0430 ${CAMPAIGN.pack} \u0434\u043D\u0435\u0439.`), "start", true);
+    if (K.goal == null) K.phase = "lost";
+    return K;
+  }
+
+  // src/campaign/march.js
+  var SEASON_LIST2 = SEASONS.all();
+  var between3 = (r, [lo, hi]) => lo + r() * (hi - lo);
+  var xyOf = (a, i) => [i % a.w, i / a.w | 0];
+  var SCRATCH2 = /* @__PURE__ */ new WeakMap();
+  var scratch = (a) => {
+    let s = SCRATCH2.get(a);
+    if (!s) SCRATCH2.set(a, s = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
+    return s;
+  };
+  var alive = (K) => K.members.filter((m) => m.alive);
+  var ended = (K) => ["won", "lost", "timeout"].includes(K.phase);
+  var rank = (K, m) => RETINUE[K.people][m.role][0];
+  function say2(a, K, text, kind = "march", world2 = false) {
+    const H2 = a.hist, line2 = { day: K.day, year: H2.year, season: H2.season, i: K.i, text, kind };
+    K.log.push(line2);
+    if (world2) a.chronicle.push({ era: H2.era, year: H2.year, season: H2.season, text, campaign: true });
+  }
+  function reveal(a, K, i, r) {
+    const [x0, y0] = xyOf(a, i), rr = Math.ceil(r);
+    for (let y = Math.max(0, y0 - rr); y <= Math.min(a.h - 1, y0 + rr); y++) for (let x = Math.max(0, x0 - rr); x <= Math.min(a.w - 1, x0 + rr); x++)
+      if ((x - x0) ** 2 + (y - y0) ** 2 <= r * r) K.seen[y * a.w + x] = 1;
+  }
+  var itemDef2 = (id) => ITEMS.has(id) ? ITEMS.get(id) : null;
+  function memberMight(m) {
+    const M = CAMPAIGN.might, s = m.special || {};
+    const dmg = Math.max(0, ...m.gear.hand.map((id) => itemDef2(id)?.melee?.dmg ?? 0), itemDef2(m.gear.hand.find((id) => itemDef2(id)?.ranged))?.ranged?.dmg ?? 0);
+    const armor = itemDef2(m.gear.body)?.armor ?? 0;
+    return M[m.role] * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * (0.3 + 0.7 * m.hp);
+  }
+  var memberPace = (m) => SPECIES.get(m.race).speed / SPECIES.get("human").speed * EFFECTS.speed(m.special || { A: NORM }) * (0.55 + 0.45 * clamp(m.hp / 0.6, 0, 1));
+  var caravanMight = (K) => alive(K).reduce((s, m) => s + memberMight(m), 0);
+  function pace(a, K, seasonId) {
+    const ms = alive(K);
+    if (!ms.length) return 0;
+    let v = CAMPAIGN.speed * scaleOf(a) * Math.min(...ms.map(memberPace));
+    if (K.hungry > 0) v *= CAMPAIGN.hunger.slow;
+    if (seasonId === "winter" && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0) v *= CAMPAIGN.frost;
+    return v;
+  }
+  function die(a, K, m, why) {
+    m.alive = false;
+    m.hp = 0;
+    m.died = { day: K.day, year: a.hist.year, why };
+    const left = alive(K).length;
+    say2(a, K, `${m.name}, ${rank(K, m)}, ${why}.${left ? ` \u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${left} \u0438\u0437 ${K.members.length}.` : ""}`, "death", !left);
+  }
+  function march(a, K, v) {
+    let budget = 1, moved = 0;
+    while (budget > 0 && K.path && K.k < K.path.length) {
+      const next = K.path[K.k], nx = next % a.w + 0.5, ny = (next / a.w | 0) + 0.5;
+      const d = Math.hypot(nx - K.x, ny - K.y), c = moveCost(a, next, K.people);
+      if (c === Infinity) {
+        K.path = null;
+        break;
+      }
+      const sp = v / Math.max(0.3, c), can = sp * budget;
+      if (can >= d) {
+        K.x = nx;
+        K.y = ny;
+        K.i = next;
+        K.k++;
+        budget -= d / sp;
+        moved += d;
+      } else {
+        K.x += (nx - K.x) / d * can;
+        K.y += (ny - K.y) / d * can;
+        moved += can;
+        budget = 0;
+      }
+    }
+    K.stats.walked += moved;
+    return moved;
+  }
+  function entered(a, K, before) {
+    const b = biomeAt(a, K.i), t = townAt(a, K.i);
+    if (t && t.id !== before.town) say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u043F\u0440\u0438\u0448\u0451\u043B \u0432 ${townLabel(t, 1)} ${t.name}${t.realm && t.realm !== K.realm ? ` (${realmLabel(a, t.realm)})` : ""}.`);
+    else if (b && b.id !== before.biome && !t) say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0438\u0434\u0451\u0442 ${b.where}.`, "land");
+  }
+  function evening3(a, K) {
+    const ms = alive(K), need = ms.length * CAMPAIGN.ration;
+    if (K.goal != null && K.i === K.goal && K.phase === "out") {
+      say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0434\u043E\u0448\u0451\u043B \u0434\u043E \u0446\u0435\u043B\u0438 \u2014 ${biomeAt(a, K.i)?.where || "\u043D\u0430 \u043A\u0440\u0430\u0439 \u0441\u0432\u0435\u0442\u0430"}. \u041F\u043E\u0440\u0443\u0447\u0435\u043D\u0438\u0435 \u0438\u0441\u043F\u043E\u043B\u043D\u0435\u043D\u043E, \u043F\u043E\u0440\u0430 \u0434\u043E\u043C\u043E\u0439.`, "goal", true);
+      K.phase = "back";
+      K.goal = K.home;
+      K.path = null;
+    } else if (K.phase === "back" && K.i === K.home) {
+      const t = a.towns.find((x) => x.id === K.capital);
+      say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F \u0432 ${t ? `${townLabel(t, 1)} ${t.name}` : "\u0440\u043E\u0434\u043D\u044B\u0435 \u043A\u0440\u0430\u044F"}: ${ms.length} \u0438\u0437 ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} \u043B\u0435\u0442 \u0432 \u043F\u0443\u0442\u0438.`, "home", true);
+      K.phase = "won";
+      return;
+    }
+    const rich = richness(a, K.i), core = ms.reduce((s, m) => s + m.hp, 0) / ms.length;
+    const C0 = CAMPAIGN.camp;
+    if (K.camp > 0 && (K.why === "food" && K.food >= C0.full * CAMPAIGN.pack * ms.length || K.why === "heal" && core >= C0.healed)) K.camp = 0;
+    if (K.camp > 0) K.camp--;
+    else {
+      const C = CAMPAIGN.camp, badly = ms.some((m) => m.hp < C.badly);
+      let why = K.food < need * C.foodDays && rich >= C.foodLand ? "food" : core < C.hp || badly ? "heal" : "";
+      if (why && !K.hungry && nightRisk(a, K.i) > C.danger && K.path && K.k < K.path.length) why = "";
+      if (why && K.why !== why) {
+        K.camp = C.maxDays;
+        K.why = why;
+        K.stats.camps++;
+        const left = Math.floor(K.food / need);
+        say2(a, K, why === "food" ? `${left > 0 ? `\u0415\u0434\u044B \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0430 ${left} ${plural(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : "\u0415\u0434\u044B \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C"}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C, \u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C.` : "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u0435\u043B\u0435 \u0438\u0434\u0443\u0442: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C \u0438 \u043E\u0442\u043B\u0435\u0436\u0430\u0442\u044C\u0441\u044F.", "camp");
+      } else if (!why) K.why = "";
+    }
+    if (!K.path || K.k >= K.path.length) {
+      if (K.goal != null && K.i !== K.goal) {
+        const p = findPath2(a, K.i, K.goal, K.people, scratch(a));
+        if (p) {
+          p.reverse();
+          K.path = p.slice(1);
+          K.k = 0;
+        } else {
+          K.path = null;
+          say2(a, K, "\u0414\u043E\u0440\u043E\u0433\u0438 \u043A \u0446\u0435\u043B\u0438 \u043D\u0435\u0442: \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u0442\u043E\u043F\u0447\u0435\u0442\u0441\u044F \u043D\u0430 \u043C\u0435\u0441\u0442\u0435.", "lost");
+        }
+      }
+    }
+  }
+  function night(a, K) {
+    const { r, done: done3 } = draw(K, "night");
+    const near4 = townAt(a, K.i), friendly = near4 && near4.realm && (near4.realm === K.realm || trades(a, K.realm, near4.realm) && !atWar(a, K.realm, near4.realm));
+    const ds = dangers(a, K.i);
+    let p = CAMPAIGN.night.base + ds.reduce((s, d) => s + d.p, 0);
+    if (friendly) p *= CAMPAIGN.night.friendly;
+    p = Math.min(CAMPAIGN.night.max, p);
+    if (r() < p) {
+      let x = r() * (ds.reduce((s, d2) => s + d2.p, 0) || 1), d = ds[0] || { kind: "wolves", strength: 0.7 };
+      for (const o of ds) {
+        x -= o.p;
+        if (x <= 0) {
+          d = o;
+          break;
+        }
+      }
+      fight3(a, K, d, r);
+    } else {
+      const M = CAMPAIGN.morning;
+      if (r() < M.food * Math.min(1.2, richness(a, K.i) + 0.2)) {
+        const n = Math.round(between3(r, M.foodN));
+        K.food += n;
+        K.stats.finds++;
+        if (r() < 0.25) say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u043F\u043E\u0434\u0441\u0442\u0440\u0435\u043B\u0438\u043B\u0438 \u0434\u0438\u0447\u044C: +${n} ${plural(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "find");
+      }
+      if (r() < M.treasure) {
+        const g3 = Math.round(between3(r, M.gold));
+        K.gold += g3;
+        K.stats.finds++;
+        say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u0443 \u0440\u0443\u0447\u044C\u044F \u043D\u0430\u0448\u043B\u0438 \u043E\u0431\u0440\u043E\u043D\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0448\u0435\u043B\u044C: ${g3} ${plural(g3, "\u0437\u043E\u043B\u043E\u0442\u043E\u0439", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445")}.`, "find");
+      }
+    }
+    done3();
+  }
+  function fight3(a, K, d, r) {
+    const F = CAMPAIGN.fight, foe = FOES2[d.kind], E2 = foe.might * (d.strength ?? 1) * between3(r, [0.6, 1.4]), P = caravanMight(K);
+    const share2 = P / (P + E2), win = r() < share2;
+    K.stats.fights++;
+    let hurt2 = E2 * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share2)) * (win ? 1 : F.lostHurt);
+    const hit = [];
+    while (hurt2 > 0 && alive(K).length) {
+      const ms = alive(K), wts = ms.map((m2) => m2.role === "knight" ? F.shield : 1);
+      let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
+      for (let q = 0; q < ms.length; q++) {
+        x -= wts[q];
+        if (x <= 0) {
+          m = ms[q];
+          break;
+        }
+      }
+      const b = between3(r, F.blow);
+      m.hp -= b;
+      hurt2 -= b * 2;
+      if (!hit.includes(m)) hit.push(m);
+      if (m.hp <= 0) {
+        if (win) m.hp = F.saved;
+        else die(a, K, m, `\u043F\u0430\u043B \u0432 \u043D\u043E\u0447\u043D\u043E\u043C \u0431\u043E\u044E (${foe.label})`);
+      }
+    }
+    const where = d.label ? ` \u2014 ${d.label}` : "";
+    if (!alive(K).length) return;
+    if (win) {
+      K.stats.won++;
+      const loot = Math.round(between3(r, F.loot));
+      K.food += loot;
+      say2(a, K, `\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438 ${foe.label}${where}. \u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C${hit.length ? `, \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u043D\u0438\u043A\u0442\u043E"}` : " \u0431\u0435\u0437 \u0440\u0430\u043D"}; \u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 \u0435\u0434\u044B \u043D\u0430 ${loot} ${plural(loot, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "fight");
+    } else {
+      K.stats.fled++;
+      const lost = Math.round(K.food * F.lost);
+      K.food -= lost;
+      say2(a, K, `\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438 ${foe.label}${where}. \u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438 \u0438 \u0431\u0435\u0436\u0430\u043B\u0438 \u0432 \u0442\u0435\u043C\u043D\u043E\u0442\u0435${lost ? `, \u0431\u0440\u043E\u0441\u0438\u0432 ${lost} ${plural(lost, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}` : ""}${hit.length ? `; \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u2014"}` : ""}.`, "fight");
+      K.camp = 0;
+      K.why = "";
+    }
+  }
+  function caravanDay2(a, K, day) {
+    if (ended(K)) return;
+    const seasonId = SEASON_LIST2[a.hist.season].id, ms = alive(K), before = { town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id };
+    const { r, done: done3 } = draw(K, "day");
+    const rich = richness(a, K.i) * seasonFood(a, K.i, seasonId), Fo = CAMPAIGN.forage;
+    const camping = K.camp > 0 || !K.path || K.k >= K.path.length;
+    if (!camping) march(a, K, pace(a, K, seasonId));
+    K.food += ms.length * (camping ? Fo.camp : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+    const need = ms.length * CAMPAIGN.ration, eat2 = Math.min(K.food, need), fed = eat2 / need;
+    K.food = Math.max(0, K.food - eat2);
+    const HT = CAMPAIGN.hunger.tell;
+    if (fed < CAMPAIGN.hunger.starveAt) {
+      if (!K.hungry && K.day - (K.hungerTold ?? -999) > HT.again) {
+        say2(a, K, "\u0415\u0434\u0430 \u043A\u043E\u043D\u0447\u0438\u043B\u0430\u0441\u044C: \u0435\u0434\u044F\u0442 \u0442\u043E, \u0447\u0442\u043E \u043F\u043E\u0439\u043C\u0430\u044E\u0442 \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0435. \u0418\u0434\u0443\u0442 \u0432\u0434\u0432\u043E\u0435 \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u0435\u0435, \u0440\u0430\u043D\u044B \u043D\u0435 \u0437\u0430\u0436\u0438\u0432\u0430\u044E\u0442.", "hunger");
+        K.hungerTold = K.day;
+      }
+      K.hungry++;
+      K.stats.hungryDays++;
+    } else if (K.hungry) {
+      if (K.hungry >= HT.over) say2(a, K, `\u0413\u043E\u043B\u043E\u0434 \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B \u043F\u043E\u0441\u043B\u0435 ${K.hungry} ${plural(K.hungry, "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439", "\u0434\u043D\u0435\u0439")}.`, "hunger");
+      K.hungry = 0;
+    }
+    for (const m of ms) {
+      if (K.hungry > CAMPAIGN.hunger.wasteAfter) {
+        m.hp -= CAMPAIGN.hunger.waste * (0.5 + r());
+        if (m.hp <= 0) {
+          die(a, K, m, "\u0443\u043C\u0435\u0440 \u043E\u0442 \u0433\u043E\u043B\u043E\u0434\u0430");
+          continue;
+        }
+      } else if (!K.hungry) m.hp = Math.min(1, m.hp + (camping ? CAMPAIGN.heal.camp : CAMPAIGN.heal.march));
+    }
+    done3();
+    K.food = Math.min(K.food, CAMPAIGN.pack * alive(K).length);
+    if (alive(K).length) {
+      entered(a, K, before);
+      evening3(a, K);
+    }
+    if (alive(K).length && !ended(K)) night(a, K);
+    if (!alive(K).length && !ended(K)) {
+      K.phase = "lost";
+      say2(a, K, "\u041D\u0438\u043A\u043E\u0433\u043E \u0438\u0437 \u0442\u0435\u0445, \u043A\u0442\u043E \u0432\u044B\u0448\u0435\u043B \u0438\u0437 \u0441\u0442\u043E\u043B\u0438\u0446\u044B, \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0432 \u0436\u0438\u0432\u044B\u0445. \u041A\u0430\u0440\u0430\u0432\u0430\u043D \u043D\u0435 \u0434\u043E\u0439\u0434\u0451\u0442.", "end", true);
+    }
+    if (!ended(K) && K.day >= CAMPAIGN.maxYears * 30 * SEASONS_PER_YEAR) {
+      K.phase = "timeout";
+      say2(a, K, `\u041F\u0440\u043E\u0448\u043B\u043E ${CAMPAIGN.maxYears} \u043B\u0435\u0442: \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u0442\u0430\u043A \u0438 \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F.`, "end", true);
+    }
+    reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a));
+    K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);
+    const p = (a.parties || []).find((x) => x.id === K.party);
+    if (p) {
+      p.x = K.x;
+      p.y = K.y;
+      p.i = K.i;
+      p.men = alive(K).length;
+      p.goal = K.goal;
+      if (ended(K)) p.state = "gone";
+    }
+    K.day++;
+  }
+
+  // src/campaign/index.js
+  function stepCampaign(a) {
+    const K = a.campaign;
+    if (!K || ended(K)) return false;
+    if (!a.hist) startHistory(a);
+    if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;
+    K.track = [];
+    stepHistory(a, () => caravanDay2(a, K, K.day));
+    return !ended(K);
+  }
+
+  // src/ui/campaignView.js
+  var itemShort = (id) => ITEMS.has(id) ? ITEMS.get(id).short : id;
+  var SEASON_LIST3 = SEASONS.all();
+  var SPEEDS2 = [
+    { id: "x1", label: "\xD71", wait: 3e3 },
+    { id: "x4", label: "\xD74", wait: 750 },
+    { id: "x16", label: "\xD716", wait: 190 },
+    { id: "max", label: "\u0421\u0440\u0430\u0437\u0443", wait: 30, budget: 30 }
+  ];
+  var LAYERS = [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["peoples", "\u041D\u0430\u0440\u043E\u0434\u044B"], ["fauna", "\u0417\u0432\u0435\u0440\u0438"]];
+  var PHASE = { out: "\u0438\u0434\u0443\u0442 \u043A \u0446\u0435\u043B\u0438", back: "\u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u044E\u0442\u0441\u044F \u0434\u043E\u043C\u043E\u0439", won: "\u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u0441 \u043F\u043E\u0431\u0435\u0434\u043E\u0439", lost: "\u043F\u043E\u0433\u0438\u0431\u043B\u0438", timeout: "\u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C" };
+  var seasonWord = (s) => SEASON_LIST3[s % SEASON_LIST3.length].label.toLowerCase();
+  var CampaignView = class extends AtlasView {
+    // the «Мир» screen's controls are not built here: only the campaign's
+    build() {
+      this.layer = "peoples";
+      this.capPick = null;
+      this.logShown = 0;
+      this.fog = null;
+      this.fogKey = "";
+      this.wireCamera({
+        map: "campMap",
+        readout: "campReadout",
+        zoomIn: "campZoomIn",
+        zoomOut: "campZoomOut",
+        zoomFit: "campZoomFit",
+        screen: "campaign",
+        hint: "\u041D\u0430\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u0430 \u043A\u0430\u0440\u0442\u0443, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u043A\u043B\u0435\u0442\u043A\u0443."
+      });
+      const lay = $("campLayer");
+      lay.innerHTML = LAYERS.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.layer}">${l}</button>`).join("");
+      lay.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        this.layer = b.dataset.val;
+        lay.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        this.draw();
+      });
+      const sp = $("campSpeed");
+      sp.innerHTML = SPEEDS2.map((S) => `<button type="button" data-val="${S.id}" aria-pressed="${S.id === this.speed}">${S.label}</button>`).join("");
+      sp.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        this.speed = b.dataset.val;
+        this.paused = false;
+        this.syncRun();
+        this.run();
+      });
+      $("campPause").addEventListener("click", () => {
+        this.paused = !this.paused;
+        this.syncRun();
+        if (!this.paused) this.run();
+      });
+      $("campWorlds").addEventListener("click", (e) => {
+        const row = e.target.closest(".sv");
+        if (row) this.openFromLibrary(row.dataset.id, row.dataset.name);
+      });
+      $("campCaps").addEventListener("click", (e) => {
+        const row = e.target.closest(".sv");
+        if (!row) return;
+        this.capPick = +row.dataset.town;
+        this.renderCaps();
+        this.draw();
+      });
+      $("campGo").addEventListener("click", () => this.begin());
+      $("campNew").addEventListener("click", () => {
+        this.halt();
+        this.atlas = null;
+        this.worldId = null;
+        this.setupMode();
+        this.refresh();
+      });
+      $("campSave").addEventListener("click", () => this.saveRun());
+      $("campBack").addEventListener("click", () => {
+        this.halt();
+        this.onBack();
+      });
+    }
+    show() {
+      this.refresh();
+      if (this.atlas?.campaign) {
+        this.runMode();
+        this.draw();
+      } else this.setupMode();
+    }
+    // leaving the screen: the walk halts between seasons and waits
+    halt() {
+      clearTimeout(this.timer);
+      this.timer = 0;
+      if (this.atlas?.campaign && !ended(this.atlas.campaign)) this.paused = true;
+      this.syncRun();
+    }
+    // ── setup: a world, a capital
+    async refresh() {
+      const box = $("campWorlds");
+      let list;
+      try {
+        list = await listWorlds();
+      } catch (e) {
+        box.innerHTML = "<small>\u0411\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0430 \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430.</small>";
+        return;
+      }
+      if (!list.length) {
+        box.innerHTML = "<small>\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0445 \u043C\u0438\u0440\u043E\u0432: \u0441\u043E\u0442\u0432\u043E\u0440\u0438\u0442\u0435 \u043C\u0438\u0440 \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041C\u0438\u0440\xBB \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0435\u0433\u043E.</small>";
+        return;
+      }
+      box.innerHTML = list.map((r) => `<div class="sv${r.id === this.worldId ? " cur" : ""}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> \xB7 ${esc(r.sizeLabel)} \xB7 ${r.year} \u043B\u0435\u0442` + (r.campaign ? `<br><small>\u043F\u043E\u0445\u043E\u0434 \u0438\u0437 ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} \u043B\u0435\u0442 \u0432 \u043F\u0443\u0442\u0438</small>` : `<br><small>\u0433\u043E\u0440\u043E\u0434\u043E\u0432 ${r.towns} \xB7 \u0434\u0435\u0440\u0436\u0430\u0432 ${r.realms}${r.done ? "" : " \xB7 \u0438\u0441\u0442\u043E\u0440\u0438\u044F \u043D\u0435 \u0434\u043E\u0436\u0438\u0442\u0430"}</small>`) + `</span><button type="button">${r.campaign && !["won", "lost", "timeout"].includes(r.campaign.phase) ? "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C" : "\u041E\u0442\u043A\u0440\u044B\u0442\u044C"}</button></div>`).join("");
+    }
+    async openFromLibrary(id, name) {
+      this.halt();
+      $("campWorldNote").textContent = "\u041E\u0442\u043A\u0440\u044B\u0432\u0430\u044E \u043C\u0438\u0440\u2026";
+      try {
+        const a = await openWorld(id);
+        if (!atlasDone(a) && !a.campaign) {
+          $("campWorldNote").textContent = "\u0418\u0441\u0442\u043E\u0440\u0438\u044F \u044D\u0442\u043E\u0433\u043E \u043C\u0438\u0440\u0430 \u043D\u0435 \u0434\u043E\u0436\u0438\u0442\u0430: \u0434\u043E\u0432\u0435\u0434\u0438\u0442\u0435 \u0435\u0451 \u0434\u043E \u043A\u043E\u043D\u0446\u0430 \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041C\u0438\u0440\xBB.";
+          return;
+        }
+        this.atlas = a;
+        this.worldId = id;
+        this.worldName = name;
+        this.saveId = a.campaign ? id : null;
+        this.cam = null;
+        this.bitmap = null;
+        this.bitmapKey = "";
+        this.fogKey = "";
+        this.logShown = 0;
+        this.capPick = null;
+        this.cam = new Camera(a.w, a.h);
+        $("campWorldNote").textContent = "";
+        if (a.campaign) {
+          this.paused = true;
+          this.runMode();
+        } else this.setupMode();
+        this.refresh();
+        this.draw();
+      } catch (e) {
+        $("campWorldNote").textContent = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043A\u0440\u044B\u0442\u044C: " + e.message;
+      }
+    }
+    setupMode() {
+      $("campSetup").hidden = false;
+      $("campRun").hidden = true;
+      $("campTitle").textContent = this.atlas ? this.worldName : "\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u044F";
+      $("campCapsField").hidden = !this.atlas;
+      this.renderCaps();
+      this.renderLog();
+    }
+    renderCaps() {
+      const a = this.atlas;
+      if (!a) {
+        $("campGo").disabled = true;
+        return;
+      }
+      const caps = capitals(a);
+      $("campCaps").innerHTML = caps.length ? caps.map((c) => `<div class="sv cap${c.town === this.capPick ? " cur" : ""}" data-town="${c.town}"><span class="t"><i style="background:rgb(${WORLD_PEOPLES.get(c.people).color.join(",")})"></i><b>${esc(c.label)}</b> \xB7 ${esc(c.peopleLabel)}<br><small>${esc(c.realmLabel)} \xB7 ${c.towns} ${plural(c.towns, "\u0433\u043E\u0440\u043E\u0434", "\u0433\u043E\u0440\u043E\u0434\u0430", "\u0433\u043E\u0440\u043E\u0434\u043E\u0432")} \xB7 ${c.pop} \u0436\u0438\u0442\u0435\u043B\u0435\u0439 \xB7 ${RETINUE[c.people].knight[1]} \u0438 ${RETINUE[c.people].squire[1]}</small></span><button type="button">\u0412\u044B\u0431\u0440\u0430\u0442\u044C</button></div>`).join("") : "<small>\u0412 \u044D\u0442\u043E\u043C \u043C\u0438\u0440\u0435 \u043D\u0435\u0442 \u0441\u0442\u043E\u043B\u0438\u0446 \u043B\u044E\u0434\u0435\u0439, \u044D\u043B\u044C\u0444\u043E\u0432, \u0433\u043D\u043E\u043C\u043E\u0432 \u0438\u043B\u0438 \u043E\u0440\u043A\u043E\u0432.</small>";
+      $("campGo").disabled = this.capPick == null;
+    }
+    begin() {
+      const a = this.atlas;
+      if (!a || this.capPick == null) return;
+      newCampaign(a, this.capPick);
+      this.saveId = null;
+      this.logShown = 0;
+      this.paused = false;
+      this.runMode();
+      this.run();
+    }
+    // ── the walk
+    runMode() {
+      $("campSetup").hidden = true;
+      $("campRun").hidden = false;
+      const K = this.atlas.campaign;
+      $("campTitle").textContent = `\u041F\u043E\u0445\u043E\u0434 \u0438\u0437 ${K.capitalFrom || K.capitalName}`;
+      this.syncRun();
+      this.renderSide();
+      const sw = (c, l) => `<span><i style="background:${c}"></i>${l}</span>`;
+      $("campLegend").innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(",")})`, "\u043A\u0430\u0440\u0430\u0432\u0430\u043D (\u0444\u043B\u0430\u0436\u043E\u043A)") + sw("rgba(255,215,110,0.8)", "\u043F\u0443\u0442\u044C \u0432\u043F\u0435\u0440\u0451\u0434 (\u043F\u0443\u043D\u043A\u0442\u0438\u0440), \u0446\u0435\u043B\u044C (\xD7), \u0434\u043E\u043C (\u043A\u043E\u043B\u044C\u0446\u043E)") + sw("rgb(40,42,36)", "\u0442\u0443\u043C\u0430\u043D: \u0447\u0435\u0433\u043E \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u043D\u0435 \u0437\u043D\u0430\u0435\u0442") + "<b>\u043A\u0430\u0440\u0442\u0430</b> \u2014 \u043A\u0430\u043A \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041C\u0438\u0440\xBB: \u0433\u043E\u0440\u043E\u0434\u0430, \u0434\u043E\u0440\u043E\u0433\u0438, \u043B\u043E\u0433\u043E\u0432\u0430, \u043E\u0442\u0440\u044F\u0434\u044B \u0438 \u0432\u043E\u0439\u0441\u043A\u0430";
+    }
+    syncRun() {
+      const K = this.atlas?.campaign, done3 = !K || ended(K);
+      $("campPause").hidden = done3;
+      $("campSpeed").hidden = done3;
+      $("campPause").textContent = this.paused ? "\u0414\u0430\u043B\u044C\u0448\u0435" : "\u041F\u0430\u0443\u0437\u0430";
+      $("campSpeed").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.val === this.speed)));
+    }
+    run() {
+      const a = this.atlas;
+      clearTimeout(this.timer);
+      const next = () => {
+        if (a !== this.atlas || this.paused || !a.campaign || ended(a.campaign)) {
+          this.syncRun();
+          return;
+        }
+        const sp = SPEEDS2.find((S) => S.id === this.speed) || SPEEDS2[0], t0 = Date.now();
+        do {
+          stepCampaign(a);
+        } while (sp.budget && !ended(a.campaign) && Date.now() - t0 < sp.budget);
+        this.tickAt = performance.now();
+        this.tickWait = sp.budget ? 0 : sp.wait;
+        this.renderSide();
+        this.draw();
+        this.animate();
+        if (!ended(a.campaign)) this.timer = setTimeout(next, sp.wait);
+        else this.syncRun();
+      };
+      this.timer = setTimeout(next, 30);
+    }
+    // the season plays back: a frame loop while the caravan slides along its days
+    animate() {
+      if (this.raf) return;
+      const loop = () => {
+        this.raf = 0;
+        if (!this.atlas?.campaign || this.paused || !this.tickWait || this.slide() >= 1) {
+          this.draw();
+          return;
+        }
+        this.draw();
+        this.raf = requestAnimationFrame(loop);
+      };
+      this.raf = requestAnimationFrame(loop);
+    }
+    // where the caravan is at this moment of the playback
+    caravanAt() {
+      const K = this.atlas.campaign, T2 = K.track;
+      if (!T2.length) return [K.x, K.y];
+      const t = this.slide(), f = t * (T2.length - 1), k = Math.floor(f), u = f - k, p = T2[k], q = T2[Math.min(T2.length - 1, k + 1)];
+      return [p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u];
+    }
+    // the fog: what the caravan does not know is dimmed (a bitmap a pixel a cell, rebuilt each season)
+    fogBitmap(a, K) {
+      const key3 = `${K.day}:${a.w}`;
+      if (this.fog && this.fogKey === key3) return this.fog;
+      const off = this.fog || document.createElement("canvas");
+      off.width = a.w;
+      off.height = a.h;
+      const px = off.getContext("2d"), img = px.createImageData(a.w, a.h), d = img.data;
+      for (let i = 0; i < a.n; i++) if (!K.seen[i]) {
+        d[i * 4] = 10;
+        d[i * 4 + 1] = 12;
+        d[i * 4 + 2] = 9;
+        d[i * 4 + 3] = 190;
+      }
+      px.putImageData(img, 0, 0);
+      this.fog = off;
+      this.fogKey = key3;
+      return off;
+    }
+    overlay(a, px, cam) {
+      const K = a.campaign, k = this.unit(a);
+      if (!K) {
+        for (const c of capitals(a)) {
+          const r3 = (c.town === this.capPick ? 2.4 : 1.4) * Math.max(0.6, k);
+          px.strokeStyle = c.town === this.capPick ? "#ffd36a" : "rgba(255,250,235,0.7)";
+          px.lineWidth = Math.max(this.minW, 0.25 * k);
+          px.beginPath();
+          px.arc(c.x + 0.5, c.y + 0.5, r3, 0, Math.PI * 2);
+          px.stroke();
+        }
+        return;
+      }
+      px.imageSmoothingEnabled = false;
+      px.drawImage(this.fogBitmap(a, K), 0, 0, a.w, a.h);
+      const [x, y] = this.caravanAt(), col = WORLD_PEOPLES.get(K.people).color, r = Math.max(0.7, 1.1 * k);
+      if (K.path && K.k < K.path.length && !ended(K)) {
+        px.strokeStyle = "rgba(255,215,110,0.6)";
+        px.lineWidth = Math.max(this.minW, 0.18 * k);
+        px.setLineDash([0.5 * k, 0.6 * k]);
+        px.beginPath();
+        px.moveTo(K.x, K.y);
+        for (let q = K.k; q < K.path.length; q++) px.lineTo(K.path[q] % a.w + 0.5, (K.path[q] / a.w | 0) + 0.5);
+        px.stroke();
+        px.setLineDash([]);
+      }
+      const mark2 = (i, color, size) => {
+        const gx = i % a.w + 0.5, gy = (i / a.w | 0) + 0.5, s = size * Math.max(0.6, k);
+        px.strokeStyle = color;
+        px.lineWidth = Math.max(this.minW * 1.5, 0.3 * k);
+        px.beginPath();
+        px.moveTo(gx - s, gy - s);
+        px.lineTo(gx + s, gy + s);
+        px.moveTo(gx + s, gy - s);
+        px.lineTo(gx - s, gy + s);
+        px.stroke();
+      };
+      if (K.goal != null && K.phase === "out") mark2(K.goal, "#ffd36a", 1.4);
+      px.strokeStyle = "rgba(255,215,110,0.9)";
+      px.lineWidth = Math.max(this.minW, 0.25 * k);
+      px.beginPath();
+      px.arc(K.home % a.w + 0.5, (K.home / a.w | 0) + 0.5, 1.8 * Math.max(0.6, k), 0, Math.PI * 2);
+      px.stroke();
+      px.fillStyle = ended(K) && K.phase !== "won" ? "rgb(90,90,90)" : `rgb(${col.join(",")})`;
+      px.strokeStyle = "rgba(255,250,235,0.95)";
+      px.lineWidth = Math.max(this.minW, 0.25 * k);
+      px.beginPath();
+      px.arc(x, y, r, 0, Math.PI * 2);
+      px.fill();
+      px.stroke();
+      px.beginPath();
+      px.moveTo(x, y - r);
+      px.lineTo(x, y - 3 * r);
+      px.lineTo(x + 1.6 * r, y - 2.5 * r);
+      px.lineTo(x, y - 2 * r);
+      px.stroke();
+    }
+    renderSide() {
+      const a = this.atlas, K = a.campaign;
+      if (!K) return;
+      const ms = alive(K), need = ms.length * CAMPAIGN.ration, H2 = a.hist;
+      const plan = ended(K) ? PHASE[K.phase] : K.hungry ? `\u0433\u043E\u043B\u043E\u0434\u0430\u044E\u0442 ${K.hungry} ${plural(K.hungry, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : K.camp > 0 ? K.why === "heal" ? "\u043B\u0430\u0433\u0435\u0440\u044C: \u0440\u0430\u043D\u0435\u043D\u044B\u0435 \u043E\u0442\u043B\u0451\u0436\u0438\u0432\u0430\u044E\u0442\u0441\u044F" : "\u043B\u0430\u0433\u0435\u0440\u044C: \u043E\u0445\u043E\u0442\u044F\u0442\u0441\u044F \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u044E\u0442" : PHASE[K.phase];
+      $("campStatus").innerHTML = `<dt>\u0414\u0430\u0442\u0430</dt><dd>\u0433\u043E\u0434 ${H2.year}, ${seasonWord(H2.season)}</dd><dt>\u0412 \u043F\u0443\u0442\u0438</dt><dd>${K.day} ${plural(K.day, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} (${(K.day / 120).toFixed(1)} \u0433.)</dd><dt>\u0427\u0442\u043E \u0434\u0435\u043B\u0430\u044E\u0442</dt><dd>${plan}</dd><dt>\u0415\u0434\u0430</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \xB7 \u043D\u0430 ${need ? (K.food / need).toFixed(1) : 0} \u0434\u043D.</dd><dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${K.gold} \u0437\u043E\u043B.</dd><dt>\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C</dt><dd>${pace(a, K, SEASON_LIST3[H2.season].id).toFixed(2)} \u043A\u043B./\u0434\u0435\u043D\u044C</dd><dt>\u041F\u0440\u043E\u0439\u0434\u0435\u043D\u043E</dt><dd>${Math.round(K.stats.walked)} \u043A\u043B\u0435\u0442\u043E\u043A</dd><dt>\u041D\u043E\u0447\u043D\u044B\u0445 \u0431\u043E\u0451\u0432</dt><dd>${K.stats.fights} \xB7 \u043E\u0442\u0431\u0438\u043B\u0438\u0441\u044C ${K.stats.won}</dd>`;
+      $("campRoster").innerHTML = K.members.map((m) => {
+        const sp = SPECIES.get(m.race), rk = RETINUE[K.people][m.role][0];
+        return `<div class="rm${m.alive ? "" : " dead"}"><span><b>${esc(m.name)}</b> \xB7 ${rk}</span><span class="hp"><i class="${m.hp < 0.4 ? "low" : ""}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span><small>${esc(raceLabel(sp, m))} \xB7 ${m.gear.hand.map(itemShort).join(", ")} \xB7 ${itemShort(m.gear.body)}${m.alive ? "" : ` \xB7 ${esc(m.died.why)}, ${m.died.year}-\u0439 \u0433\u043E\u0434`}</small></div>`;
+      }).join("");
+      this.renderLog();
+    }
+    renderLog() {
+      const box = $("campLog"), K = this.atlas?.campaign;
+      if (!K) {
+        box.innerHTML = '<small class="muted">\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F, \u043A\u043E\u0433\u0434\u0430 \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u0432\u044B\u0441\u0442\u0443\u043F\u0438\u0442.</small>';
+        this.logShown = 0;
+        return;
+      }
+      const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
+      if (this.logShown === 0) box.innerHTML = "";
+      if (K.log.length > this.logShown) {
+        box.insertAdjacentHTML("beforeend", K.log.slice(this.logShown).map((l) => `<div><small>\u0433\u043E\u0434 ${l.year}, ${seasonWord(l.season)}, \u0434\u0435\u043D\u044C ${l.day + 1}</small> ${esc(l.text)}</div>`).join(""));
+        this.logShown = K.log.length;
+      }
+      if (atEnd) box.scrollTop = box.scrollHeight;
+    }
+    async saveRun() {
+      const a = this.atlas;
+      if (!a?.campaign) return;
+      const say3 = (t) => {
+        $("campSaveStatus").textContent = t;
+      };
+      say3("\u0421\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u2026");
+      try {
+        const rec = await saveWorldToLibrary(a, this.saveId ? this.worldName : `${this.worldName}: \u043F\u043E\u0445\u043E\u0434 \u0438\u0437 ${a.campaign.capitalFrom || a.campaign.capitalName}`, this.saveId);
+        this.saveId = rec.id;
+        this.worldId = rec.id;
+        this.worldName = rec.name;
+        say3(`\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E: \xAB${rec.name}\xBB.`);
+        this.refresh();
+      } catch (e) {
+        say3("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C: " + e.message);
+      }
     }
   };
 
@@ -22823,7 +23784,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function summarize(w) {
     const c = w.chronicle, people = c.people, now = w.tick;
     const days = now / DAY;
-    const alive = colonists(w);
+    const alive2 = colonists(w);
     const finished = c.built.length;
     const totals = [
       ["\u041F\u0440\u043E\u0434\u0435\u0440\u0436\u0430\u043B\u043E\u0441\u044C", daysText(days)],
@@ -22893,7 +23854,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const r of people) if (r.likes) likes[r.likes] = (likes[r.likes] || 0) + 1;
     const topLike = Object.entries(likes).sort((a, b) => b[1] - a[1])[0];
     if (topLike) facts.push(`\u041B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438: ${JOBS.get(topLike[0]).label} (${topLike[1]} \u0438\u0437 ${people.length}).`);
-    if (alive.length === 1) facts.push(`\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u043C ${g(alive[0], "\u0434\u0435\u0440\u0436\u0430\u043B\u0441\u044F", "\u0434\u0435\u0440\u0436\u0430\u043B\u0430\u0441\u044C")} ${alive[0].name}.`);
+    if (alive2.length === 1) facts.push(`\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u043C ${g(alive2[0], "\u0434\u0435\u0440\u0436\u0430\u043B\u0441\u044F", "\u0434\u0435\u0440\u0436\u0430\u043B\u0430\u0441\u044C")} ${alive2[0].name}.`);
     const roll = people.map((r) => ({
       name: r.name,
       founder: r.founder,
@@ -23157,7 +24118,7 @@ dd.q4{color:#c58cff;font-weight:600}
     showMenu();
   } });
   var screen = "launch";
-  var SCREENS = ["launch", "atlas", "menu", "game"];
+  var SCREENS = ["launch", "atlas", "campaign", "menu", "game"];
   function only(id) {
     screen = id;
     for (const s of SCREENS) $(s).hidden = s !== id;
@@ -23167,13 +24128,14 @@ dd.q4{color:#c58cff;font-weight:600}
     running = false;
     acc2 = 0;
     atlasView.stop();
+    campaignView.halt();
     hideEnd();
     only("launch");
     document.body.classList.remove("ingame");
     $("worldInfo").hidden = false;
     $("launchResume").hidden = !world;
     $("colonyName").textContent = "\u0422\u0451\u043F\u043B\u044B\u0439 \u0411\u0440\u043E\u0434";
-    $("worldInfo").textContent = "\xAB\u041C\u0438\u0440\xBB \u2014 \u0433\u043B\u043E\u0431\u0430\u043B\u044C\u043D\u0430\u044F \u043A\u0430\u0440\u0442\u0430 \u0438 \u0435\u0451 \u0438\u0441\u0442\u043E\u0440\u0438\u044F; \u043C\u0438\u0440\u044B \u0441 \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u044C\u044E \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0443. \xAB\u041A\u0430\u0440\u0442\u0430\xBB \u2014 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 \u043D\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u0435. \xAB\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u044F\xBB \u2014 \u043F\u043E\u0445\u043E\u0434 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430 \u043F\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u043C\u0443 \u043C\u0438\u0440\u0443 (\u0433\u043E\u0442\u043E\u0432\u0438\u0442\u0441\u044F).";
+    $("worldInfo").textContent = "\xAB\u041C\u0438\u0440\xBB \u2014 \u0433\u043B\u043E\u0431\u0430\u043B\u044C\u043D\u0430\u044F \u043A\u0430\u0440\u0442\u0430 \u0438 \u0435\u0451 \u0438\u0441\u0442\u043E\u0440\u0438\u044F; \u043C\u0438\u0440\u044B \u0441 \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u044C\u044E \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F \u0432 \u0431\u0438\u0431\u043B\u0438\u043E\u0442\u0435\u043A\u0443. \xAB\u041A\u0430\u0440\u0442\u0430\xBB \u2014 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435 \u043D\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u0435. \xAB\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u044F\xBB \u2014 \u043F\u043E\u0445\u043E\u0434 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430 \u0438\u0437 \u0441\u0442\u043E\u043B\u0438\u0446\u044B \u043F\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u043E\u043C\u0443 \u0436\u0438\u0432\u043E\u043C\u0443 \u043C\u0438\u0440\u0443.";
   }
   function showAtlas(goto = null) {
     running = false;
@@ -23185,6 +24147,17 @@ dd.q4{color:#c58cff;font-weight:600}
     atlasView.show(goto);
   }
   $("launchWorld").addEventListener("click", () => showAtlas());
+  var campaignView = new CampaignView({ onBack: showLaunch });
+  function showCampaign() {
+    running = false;
+    only("campaign");
+    document.body.classList.remove("ingame");
+    $("worldInfo").hidden = false;
+    $("colonyName").textContent = "\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u044F";
+    $("worldInfo").textContent = "\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0438\u0437 \u0441\u0442\u043E\u043B\u0438\u0446\u044B \u0438\u0434\u0451\u0442 \u043F\u043E \u0436\u0438\u0432\u043E\u043C\u0443 \u043C\u0438\u0440\u0443: \u0434\u043D\u0451\u043C \u0432 \u043F\u0443\u0442\u0438, \u043D\u043E\u0447\u044C\u044E \u0432 \u043B\u0430\u0433\u0435\u0440\u0435. \u0412\u0441\u0451, \u0447\u0442\u043E \u0441 \u043D\u0438\u043C \u0441\u043B\u0443\u0447\u0438\u0442\u0441\u044F, \u043F\u0438\u0448\u0435\u0442\u0441\u044F \u0432 \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043F\u043E\u0445\u043E\u0434\u0430.";
+    campaignView.show();
+  }
+  $("launchCampaign").addEventListener("click", showCampaign);
   $("launchMap").addEventListener("click", showMenu);
   $("launchResume").addEventListener("click", () => showGame());
   $("menuBack").addEventListener("click", showLaunch);

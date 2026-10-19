@@ -16,6 +16,8 @@ import {findPath, moveCost} from './roads.js';
 import {scaleOf} from './tectonics.js';
 
 export const BEHAVIOURS = {};   // kind → {day, arrive, stay, home, lost}(a, p, rnd, say); filled by the systems that own the kinds
+// a campaign's caravan (campaign/) is a party the world does not walk: state 'camp', moved by the campaign itself
+BEHAVIOURS.caravan = {arrive() {}};
 
 const scratchOf = a => (a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []});
 
@@ -70,9 +72,11 @@ export function goHome(a, p) {
   if (!aim(a, p, p.home)) p.state = 'gone';
 }
 
-// a season of all parties: SEASON_DAYS days each; the lines go to `say`
-export function stepParties(a, rnd, say) {
-  if (!a.parties || !a.parties.length) return;
+// a season of all parties: SEASON_DAYS days each; the lines go to `say`; `onDay(day)` runs after every
+// day of the parties (a campaign's caravan, campaign/), even when no party is out
+export function stepParties(a, rnd, say, onDay = null) {
+  if ((!a.parties || !a.parties.length) && !onDay) return;
+  a.parties ||= [];
   for (const p of a.parties) { p.px = p.x; p.py = p.y; }
   for (let day = 0; day < SEASON_DAYS; day++) {
     for (const p of a.parties) {
@@ -92,6 +96,7 @@ export function stepParties(a, rnd, say) {
         }
       } else if (p.state === 'stay') { p.stay++; B.stay?.(a, p, rnd, say); }
     }
+    onDay?.(day);
   }
   a.parties = a.parties.filter(p => p.state !== 'gone');
 }

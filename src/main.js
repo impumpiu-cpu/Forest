@@ -3,6 +3,7 @@ import {newGame, step} from './sim.js';
 import {Renderer} from './render/renderer.js';
 import {Menu} from './ui/menu.js';
 import {AtlasView} from './ui/atlasView.js';
+import {CampaignView} from './ui/campaignView.js';
 import {Panel} from './ui/panel.js';
 import {TOOLS} from './ui/tools.js';
 import {showEnd, hideEnd} from './ui/endScreen.js';
@@ -53,18 +54,18 @@ const atlasView = new AtlasView({onBack: showLaunch, onSettle: plan => { menu.us
 let screen = 'launch';
 
 // the screens before the game: the launch choice, the world polygon (Мир) and the local map settings (Карта)
-const SCREENS = ['launch', 'atlas', 'menu', 'game'];
+const SCREENS = ['launch', 'atlas', 'campaign', 'menu', 'game'];
 function only(id) { screen = id; for (const s of SCREENS) $(s).hidden = s !== id; $('explain').hidden = id !== 'menu'; }
 
 // the main menu: the game loop stops (the world stays in memory), the world generation halts between frames
 function showLaunch() {
   running = false; acc = 0;
-  atlasView.stop();
+  atlasView.stop(); campaignView.halt();
   hideEnd(); only('launch');
   document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
   $('launchResume').hidden = !world;
   $('colonyName').textContent = 'Тёплый Брод';
-  $('worldInfo').textContent = '«Мир» — глобальная карта и её история; миры с летописью сохраняются в библиотеку. «Карта» — поселение на локальной карте. «Кампания» — поход каравана по сохранённому миру (готовится).';
+  $('worldInfo').textContent = '«Мир» — глобальная карта и её история; миры с летописью сохраняются в библиотеку. «Карта» — поселение на локальной карте. «Кампания» — поход каравана из столицы по сохранённому живому миру.';
 }
 
 function showAtlas(goto = null) {
@@ -76,6 +77,17 @@ function showAtlas(goto = null) {
   atlasView.show(goto);
 }
 $('launchWorld').addEventListener('click', () => showAtlas());
+// the campaign: a caravan walks a world from the library (ui/campaignView.js)
+const campaignView = new CampaignView({onBack: showLaunch});
+function showCampaign() {
+  running = false;
+  only('campaign');
+  document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
+  $('colonyName').textContent = 'Кампания';
+  $('worldInfo').textContent = 'Караван из столицы идёт по живому миру: днём в пути, ночью в лагере. Всё, что с ним случится, пишется в летопись похода.';
+  campaignView.show();
+}
+$('launchCampaign').addEventListener('click', showCampaign);
 $('launchMap').addEventListener('click', showMenu);
 $('launchResume').addEventListener('click', () => showGame());
 $('menuBack').addEventListener('click', showLaunch);

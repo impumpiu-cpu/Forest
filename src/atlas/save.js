@@ -36,6 +36,8 @@ export function worldMeta(a, name) {
     name: name || `Мир ${a.cfg.seed}`, seed: a.cfg.seed, size: a.cfg.size, sizeLabel: ATLAS_SIZES[a.cfg.size]?.label || a.cfg.size,
     year: a.hist?.year ?? 0, done: atlasDone(a), land: landDone(a), towns, realms: (a.realms || []).length,
     lines: a.chronicle.length, hash: atlasHash(a), version: VERSION,
+    // a campaign under way in this world (campaign/): where it is
+    campaign: a.campaign ? {phase: a.campaign.phase, day: a.campaign.day, from: a.campaign.capitalFrom || a.campaign.capitalName} : null,
   };
 }
 

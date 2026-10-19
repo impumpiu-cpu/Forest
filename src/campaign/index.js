@@ -1,0 +1,36 @@
+// The campaign's clock: the world's season (atlas/history.js stepHistory), with the caravan's day after
+// each of the world's days (campaign/march.js). History runs on past its planned end for as long as the
+// campaign lasts, so the caravan walks a living world: wars, raids, towns that grow and burn.
+import {stepHistory, startHistory} from '../atlas/history.js';
+import {caravanDay, ended, alive} from './march.js';
+
+export {newCampaign, capitals} from './start.js';
+export {ended, alive, caravanMight, memberMight, pace} from './march.js';
+
+// one season of the world with the campaign in it; false once the campaign has ended
+export function stepCampaign(a) {
+  const K = a.campaign;
+  if (!K || ended(K)) return false;
+  if (!a.hist) startHistory(a);
+  if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;   // history goes on past its plan
+  K.track = [];
+  stepHistory(a, () => caravanDay(a, K, K.day));
+  return !ended(K);
+}
+
+// the whole campaign at once (tests, headless); at most `seasons`
+export function runCampaign(a, seasons = Infinity) {
+  let n = 0;
+  while (n < seasons && stepCampaign(a)) n++;
+  return a.campaign;
+}
+
+// a short fingerprint of the campaign: the same seed must give the same walk
+export function campaignHash(K) {
+  let h = 2166136261;
+  const mix = v => { h ^= v; h = Math.imul(h, 16777619); };
+  mix(K.day); mix(Math.round(K.x * 100)); mix(Math.round(K.y * 100)); mix(Math.round(K.food * 100)); mix(K.gold);
+  for (const m of K.members) { mix(Math.round(m.hp * 1000)); mix(m.alive ? 1 : 0); }
+  for (const l of K.log) for (let k = 0; k < l.text.length; k++) mix(l.text.charCodeAt(k));
+  return `${(h >>> 0).toString(16)} · ${alive(K).length}/${K.members.length}`;
+}
