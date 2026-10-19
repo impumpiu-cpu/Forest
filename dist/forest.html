@@ -339,6 +339,12 @@ dd.q4{color:#c58cff;font-weight:600}
 .atlas-map .seg{align-self:flex-start}
 #atlasMap,#campMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
 #atlasMap.dragging,#campMap.dragging{cursor:grabbing}
+/* a camp of the caravan played on the local map, over the world map (ui/campaignView.js) */
+.camp-box{position:relative}
+#campLocal{position:absolute;inset:0;width:100%;height:100%;display:block}
+#campLocal[hidden],.camp-local-bar[hidden]{display:none}
+.camp-local-bar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:5px;background:rgba(13,15,10,.82);color:var(--fg);font-size:13px}
+.camp-local-bar button{flex:none}
 .atlas-tools{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .atlas-tools .wrapseg{flex:1 1 0;min-width:0}
 .zoomseg{flex:0 0 auto}
@@ -501,9 +507,12 @@ dd.q4{color:#c58cff;font-weight:600}
           <button type="button" id="campZoomOut" aria-label="Отдалить">−</button>
           <button type="button" id="campZoomFit" aria-label="Весь мир">⌂</button>
           <button type="button" id="campFollow" aria-pressed="true" title="Следить за караваном: он в середине, виден весь пузырь вокруг">◎</button>
+          <button type="button" id="campWatch" aria-pressed="true" title="Показывать бои и стоянки на локальной карте (на темпе ×1 и ×4)">⚔</button>
         </div>
       </div>
-      <div class="preview-box"><canvas id="campMap" width="256" height="192" aria-label="Карта мира с караваном"></canvas></div>
+      <div class="preview-box camp-box"><canvas id="campMap" width="256" height="192" aria-label="Карта мира с караваном"></canvas>
+        <canvas id="campLocal" hidden aria-label="Стоянка каравана на локальной карте"></canvas>
+        <div id="campLocalBar" class="camp-local-bar" hidden><span id="campLocalText"></span><button type="button" id="campLocalSkip">Дальше по карте мира</button></div></div>
       <div class="legend atlas-legend" id="campLegend"></div>
       <div class="readout" id="campReadout">Наведите на карту, чтобы увидеть клетку.</div>
     </div>
@@ -4898,7 +4907,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return siteFromRegion(cfg, region2, { climate: { id: cfg.climate, ...CLIMATES[cfg.climate] }, gates: rollGates(cfg.seed, region2) });
   }
   function siteFromRegion(cfg, region2, extra = {}) {
-    const { w, h } = SIZES[cfg.size];
+    const { w, h } = cfg.dims || SIZES[cfg.size];
     const biomes2 = {};
     for (const [id, v] of Object.entries(region2.biomes)) if (BIOMES.has(id) && v > 0) biomes2[id] = v;
     const share2 = (id) => biomes2[id] || 0;
@@ -7025,8 +7034,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var workBonus = (b) => 1 + statusOf(b);
   var ORDER = ["house", "shrine", "healerhut", "hearth", "crafthut"];
   function furnish(w) {
-    const pieces3 = FURNITURE.filter((f) => (w.stock[f.id] || 0) >= 1).sort((x, y) => y.comfort - x.comfort);
-    for (const f of pieces3) {
+    const pieces4 = FURNITURE.filter((f) => (w.stock[f.id] || 0) >= 1).sort((x, y) => y.comfort - x.comfort);
+    for (const f of pieces4) {
       while ((w.stock[f.id] || 0) >= 1) {
         const room2 = furnishable(w).filter((b2) => (b2.furniture?.length || 0) < FURNISH_MAX);
         if (!room2.length) return;
@@ -8572,13 +8581,13 @@ dd.q4{color:#c58cff;font-weight:600}
     (a.own || (a.own = {})).mul = { bravery: 0.85 + rng() * 0.3 };
     a.food = drawFoodPrefs(rng);
   }
-  function freshName2(w, names) {
+  function freshName2(w, names2) {
     const used = new Set(w.agents.filter((o) => o.faction === "colony" && !o.dead).map((o) => o.name));
-    for (let k = 0; k < names.length; k++) {
-      const n = names[w.nameIdx++ % names.length];
+    for (let k = 0; k < names2.length; k++) {
+      const n = names2[w.nameIdx++ % names2.length];
       if (!used.has(n[0])) return n;
     }
-    return names[w.nameIdx++ % names.length];
+    return names2[w.nameIdx++ % names2.length];
   }
   function createAgent(w, speciesId, factionId, x, y) {
     const sp = SPECIES.get(speciesId), fa = FACTIONS.get(factionId);
@@ -9196,6 +9205,23 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
     if (d.key) recomputeMods(w);
+    const b = putLot(w, key3, lot);
+    log(w, `\u0417\u0430\u043B\u043E\u0436\u0435\u043D${ending(d)} ${d.name.toLowerCase()}. \u041D\u0443\u0436\u043D\u043E ${d.work} \u0447\u0435\u043B\u043E\u0432\u0435\u043A\u043E-\u0442\u0438\u043A\u043E\u0432 \u0440\u0430\u0431\u043E\u0442\u044B.`, "build");
+    return b;
+  }
+  function putUp(w, key3, left = 0) {
+    const d = BUILDINGS.get(key3), lot = findLot(w, d);
+    if (lot < 0) return null;
+    const b = putLot(w, key3, lot);
+    b.packed = true;
+    if (left <= 0) {
+      b.progress = d.work - 1;
+      addLabour(w, b, 1, null);
+    } else b.progress = Math.floor(d.work * (1 - left));
+    return b;
+  }
+  function putLot(w, key3, lot) {
+    const d = BUILDINGS.get(key3);
     const [lw, lh] = lotSize(d);
     const b = { id: w.bldSeq++, key: key3, x: lot % w.w, y: lot / w.w | 0, w: lw, h: lh, progress: 0, done: false, cells: [] };
     const g3 = w.grid;
@@ -9212,7 +9238,6 @@ dd.q4{color:#c58cff;font-weight:600}
     w.buildings.push(b);
     recomputeZone(w);
     for (const id of ["sites", "berries", "trees"]) w.nav.dirty(id);
-    log(w, `\u0417\u0430\u043B\u043E\u0436\u0435\u043D${ending(d)} ${d.name.toLowerCase()}. \u041D\u0443\u0436\u043D\u043E ${d.work} \u0447\u0435\u043B\u043E\u0432\u0435\u043A\u043E-\u0442\u0438\u043A\u043E\u0432 \u0440\u0430\u0431\u043E\u0442\u044B.`, "build");
     return b;
   }
   var FINISH_HOOKS = {
@@ -10698,9 +10723,9 @@ dd.q4{color:#c58cff;font-weight:600}
     const lines = [];
     for (const [j, people2] of Object.entries(by)) {
       const job = j === "\u2014" ? null : JOBS.get(j);
-      const names = people2.map((p) => p.name).join(", ");
+      const names2 = people2.map((p) => p.name).join(", ");
       const whys = [...new Set(people2.map((p) => p.why).filter((x) => x && x !== "\u043D\u0443\u0436\u043D\u043E \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044E"))].join("; ");
-      lines.push({ job: j, text: `${names} \u2014 ${job ? job.label : "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u044B\u0435 \u0440\u0443\u043A\u0438"}${need[j]?.why ? ` (${need[j].why})` : ""}${whys && job ? ` \xB7 ${whys}` : ""}` });
+      lines.push({ job: j, text: `${names2} \u2014 ${job ? job.label : "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u044B\u0435 \u0440\u0443\u043A\u0438"}${need[j]?.why ? ` (${need[j].why})` : ""}${whys && job ? ` \xB7 ${whys}` : ""}` });
     }
     return lines;
   }
@@ -10733,7 +10758,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var eligible2 = (w, key3) => eligible(w, key3) && missing(w, BUILDINGS.get(key3).cost).every(([r]) => obtainable(w, r));
   function councilDue(w) {
     const h = hourOf(w.tick);
-    return h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
+    return !w.light && h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
   }
   function goalNeed(w, res) {
     if (!w.council.goal) return 0;
@@ -11587,7 +11612,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const def2 = MIGRATIONS.get(id);
     if (!n) return [];
     const home = def2.spawnAt ? def2.spawnAt(w) : -1;
-    const [e, side] = home >= 0 ? [home, ""] : def2.gate && gateCell(w, def2.gate) || edgeCell(w, def2.minDist ?? 30);
+    const [e, side] = opts.at != null ? [opts.at, opts.side || ""] : home >= 0 ? [home, ""] : def2.gate && gateCell(w, def2.gate) || edgeCell(w, opts.minDist ?? def2.minDist ?? 30);
     if (e < 0) {
       if (id === "raiders") log(w, "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 \u043D\u0435 \u043D\u0430\u0448\u043B\u0438 \u0434\u043E\u0440\u043E\u0433\u0438 \u043A \u043B\u0430\u0433\u0435\u0440\u044E.", "danger", "notice");
       return [];
@@ -12316,6 +12341,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const f32 = () => new Float32Array(n);
     const world2 = {
       cfg: { ...cfg },
+      light: !!cfg.light,
       climate: t.site.climate,
       calendar: { startDay: t.site.startDay },
       w: t.w,
@@ -12400,7 +12426,7 @@ dd.q4{color:#c58cff;font-weight:600}
     layOre(world2);
     layPlants(world2);
     recomputeZone(world2);
-    initOutside(world2);
+    initOutside(world2, cfg.provider || "scripted");
     setWind(world2);
     return world2;
   }
@@ -14692,8 +14718,10 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const f of w.fx) f.t--;
       w.fx = w.fx.filter((f) => f.t > 0);
     }
-    stepCouncil(w);
-    stepTrade(w);
+    if (!w.light) {
+      stepCouncil(w);
+      stepTrade(w);
+    }
     stepOutside(w);
     sampleChronicle(w);
     sampleBehaviour(w);
@@ -19358,14 +19386,14 @@ dd.q4{color:#c58cff;font-weight:600}
   function stepNet(a, feeds) {
     const net = a.net || (a.net = { links: /* @__PURE__ */ new Map() }), L = net.links;
     for (const l of L.values()) l.flow = 0;
-    const alive4 = /* @__PURE__ */ new Set();
+    const alive5 = /* @__PURE__ */ new Set();
     for (const [t, o] of tradeLinks(a, NET.links, NET.reach)) {
       const key3 = linkKey(t, o);
-      alive4.add(key3);
+      alive5.add(key3);
       if (!L.has(key3)) L.set(key3, { p: t, q: o, c: NET.start, flow: 0 });
     }
     for (const [key3, l] of L) if (!l.p.alive || !l.q.alive) L.delete(key3);
-    else if (!alive4.has(key3)) {
+    else if (!alive5.has(key3)) {
       l.c *= 1 - NET.decay;
       if (l.c < NET.min) L.delete(key3);
     }
@@ -20584,8 +20612,8 @@ dd.q4{color:#c58cff;font-weight:600}
     H2.season = (H2.season + 1) % SEASON_LIST.length;
     if (H2.season === 0) H2.year++;
     if (H2.step === wildEnd) {
-      const alive4 = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive4;
-      say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive4} ${plural(alive4, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
+      const alive5 = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive5;
+      say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive5} ${plural(alive5, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
     }
     if (H2.step === elderEnd || H2.step === H2.end && !H2.endTold) {
       const towns = a.towns.filter((t) => t.alive), parts = [];
@@ -20843,8 +20871,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.55.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 11b90a6" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.56.0 Campaign \xB7 19.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 46a1492" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";
@@ -20912,9 +20940,9 @@ dd.q4{color:#c58cff;font-weight:600}
     });
   }
   async function tx(stores, mode, fn) {
-    const names = [].concat(stores), d = await db();
+    const names2 = [].concat(stores), d = await db();
     return new Promise((ok, fail3) => {
-      const t = d.transaction(names, mode), r = fn(...names.map((n) => t.objectStore(n)));
+      const t = d.transaction(names2, mode), r = fn(...names2.map((n) => t.objectStore(n)));
       t.oncomplete = () => {
         d.close();
         ok(r?.result);
@@ -22416,13 +22444,18 @@ dd.q4{color:#c58cff;font-weight:600}
     const cold = a.f.temp[i] - (seasonId === "winter" ? a.f.trange[i] / 2 : 0);
     return cold < -5 ? k * CAMPAIGN.seasonFood.frost : k;
   }
+  function lairFoe(kind) {
+    const L = LAIRS.get(kind);
+    if (LAIR_BANDS[kind]) return { band: LAIR_BANDS[kind] };
+    return L?.species && !L.dragon ? { beast: L.species } : {};
+  }
   var nightRisk = (a, i) => dangers(a, i).reduce((s, d) => s + d.p, 0);
   function dangers(a, i) {
     const out = [];
     const lair = lairAt(a, i);
     if (lair) {
       const L = LAIRS.get(lair.kind), kind = L.undead ? "undead" : L.tribe ? "tribe" : "lair";
-      out.push({ kind, p: 0.05 + 0.05 * Math.min(1.5, lair.strength), strength: 0.6 + 0.6 * Math.min(2, lair.strength), label: `${L.label} \xAB${lair.name}\xBB` });
+      out.push({ kind, p: 0.05 + 0.05 * Math.min(1.5, lair.strength), strength: 0.6 + 0.6 * Math.min(2, lair.strength), label: `${L.label} \xAB${lair.name}\xBB`, ...lairFoe(lair.kind) });
     }
     const wolves = faunaLevel({ region: cellRegion2(a, i) }, "wolf");
     if (wolves > 0) out.push({ kind: "wolves", p: 0.025 * Math.min(2, wolves), strength: 0.7 + 0.3 * Math.min(2, wolves) });
@@ -22612,8 +22645,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const sp = SPECIES.get(race), spOf = sub && sp.peoples ? { ...sp, peoples: sp.peoples.filter((p) => p.id === sub) } : sp;
     const m = { id: K.nextMember = (K.nextMember || K.members.length) + 1, name: sp.label, gender: "m", race, role, core: core2, hp: 1, alive: true, joined: K.day, back: 1, ride: null, ...more };
     rollCreature({ rngs: { birth: rnd } }, m, spOf);
-    const used = new Set(K.members.map((x) => x.name)), names = (sp.names || []).filter((n) => !used.has(n[0]));
-    if (names.length) [m.name, m.gender] = names[rnd() * names.length | 0];
+    const used = new Set(K.members.map((x) => x.name)), names2 = (sp.names || []).filter((n) => !used.has(n[0]));
+    if (names2.length) [m.name, m.gender] = names2[rnd() * names2.length | 0];
     m.gear = { hand: [...gear.hand], body: gear.body };
     return m;
   }
@@ -22646,12 +22679,13 @@ dd.q4{color:#c58cff;font-weight:600}
     const far = reach.reduce((b, i) => dist10(i) > dist10(b) ? i : b, K.home);
     return far === K.home ? null : far;
   }
-  function newCampaign(a, townId, { seed = null } = {}) {
+  function newCampaign(a, townId, { seed = null, mode = "local" } = {}) {
     if (!landDone(a) || !a.hist) throw new Error("\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u0438 \u043D\u0443\u0436\u0435\u043D \u043C\u0438\u0440 \u0441 \u0438\u0441\u0442\u043E\u0440\u0438\u0435\u0439.");
     const t = a.towns.find((x) => x.id === townId && x.alive);
     if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u0442\u043E\u043B\u0438\u0446\u0430 \u043C\u0430\u0436\u043E\u0440\u043D\u043E\u0433\u043E \u043D\u0430\u0440\u043E\u0434\u0430.");
     const K = a.campaign = {
       seed: seed || `${a.cfg.seed}:${t.id}`,
+      mode,
       started: { year: a.hist.year, season: a.hist.season },
       day: 0,
       capital: t.id,
@@ -22729,6 +22763,65 @@ dd.q4{color:#c58cff;font-weight:600}
     return K;
   }
 
+  // src/data/camp.js
+  var CAMP = {
+    // the map: smaller than a settlement's, room enough for the foe to come from the edge
+    size: { w: 64, h: 48 },
+    // the campaign's ration in the local map's nutrition (data/foods.js): a person eats ~0.7 of it a day,
+    // a ration is a day's food with what spills and spoils; the caravan's food is laid out as jerky
+    perRation: 0.8,
+    food: "jerky",
+    // firewood they gathered for the night (the local map's stores); hay for each beast, cut on the way
+    wood: 4,
+    hay: 1.5,
+    // a night: from dusk till dawn; the foe comes in the dark, the play ends when it is done (dead, gone)
+    // and the camp is quiet for `quiet` hours, or at dawn
+    night: { from: 19.5, come: [21, 3], until: 7.5 },
+    // tired after the day's march they sleep early, by the fire (`rest` — the need they come with)
+    rest: { night: 0.25, ambush: 0.85, stop: 0.85 },
+    // an ambush on the march: midday, the foe close by at once, the caravan together and on its feet
+    ambush: { from: 11, come: [11, 11.05], until: 18, near: 10 },
+    quiet: 1,
+    // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
+    far: 18,
+    // the foe: a band's budget in «human raiders» (data/raids.js) from its might (data/campaign.js FOES)
+    // × the thing's strength × `budget`; beasts come as a pack of `pack` × strength; the threat the band
+    // carries its gear and aim by (settlement/threat.js) — × strength
+    budget: 0.7,
+    pack: [2, 4],
+    threat: 6,
+    // a building packed in the wagon is put up at the camp: it stands with this share of its work left
+    // (the caravan finishes it with its own hands before the night)
+    deploy: 0.25,
+    // the skills the ranks bring (data/skills.js, 0 … 1): the knights fight, the squires work their tools
+    skills: { knight: { melee: 0.35, ranged: 0.3 }, squire: {}, sellsword: { melee: 0.4, ranged: 0.2 }, guide: { hunting: 0.3, ranged: 0.2 } },
+    tools: { axe: "woodcutting", ironaxe: "woodcutting", maul: "construction", rod: "fishing", pan: "gathering" },
+    toolSkill: 0.3,
+    // the quiver of a bowman
+    arrows: 14,
+    // a beast with this little health or less on the map is counted lost (killed or bolted)
+    beastGone: 0.05,
+    // a cart or wagon stands at the camp: when the foe looted the stores, it is broken with this chance
+    wreck: 0.35,
+    // a stop on the map (a deliberate camp to hunt and gather): played day by day, at most `maxDays`
+    // of it on the map; the rest of the stop goes on as before, on the world map
+    // they come to it fed (the day's meal is the campaign's), the land's game on the map: × its level
+    stop: { maxDays: 2, from: 7, until: 19.5, game: 2.2 },
+    // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
+    spoils: 12,
+    // how many played camps the campaign keeps to be watched again (ui/campaignView.js)
+    keep: 8
+  };
+  var GAME_FLOW = { deer: "deer", boar: "boars", goat: "goats", hare: "hares" };
+  var CAMP_FOES = {
+    bandits: { band: "bandits" },
+    army: { band: "bandits", threat: 1.6 },
+    tribe: { band: "goblins" },
+    undead: { band: "undead" },
+    lair: { beast: "varg" },
+    wolves: { beast: "wolves" }
+  };
+
   // src/data/bubble.js
   var BUBBLE = {
     near: 4,
@@ -22779,152 +22872,6 @@ dd.q4{color:#c58cff;font-weight:600}
   var TRAIN = { chance: 0.12, food: [15, 40], buy: 1.6, sell: 0.55 };
   var HERD2 = { chance: 0.08, food: [4, 10] };
 
-  // src/campaign/bubble.js
-  var bubbleOf = (K) => K.bubble || (K.bubble = { next: 1, things: [] });
-  var sc = (a, v) => v * scaleOf(a);
-  var dist9 = (K, t) => Math.hypot(t.x - K.x, t.y - K.y);
-  var cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
-  var land = (a, i) => !!a.f.land && !a.f.ocean[i];
-  function friendlyNear(a, K, i) {
-    const t = townAt(a, i);
-    return !!t && t.realm && (t.realm === K.realm || trades(a, K.realm, t.realm) && !atWar(a, K.realm, t.realm));
-  }
-  function herdOf(a, i) {
-    const reg = cellRegion2(a, i), w = { region: reg };
-    let best = null, bv = 0;
-    for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id) && k >= 0.8) {
-      const v = faunaLevel(w, id);
-      if (v > bv) {
-        bv = v;
-        best = id;
-      }
-    }
-    return best ? { id: best, level: bv } : null;
-  }
-  function spawn(a, K) {
-    const B3 = bubbleOf(K), near4 = sc(a, BUBBLE.near), far = sc(a, BUBBLE.far);
-    const pick3 = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`));
-    for (let s = 0; s < BUBBLE.samples && B3.things.length < BUBBLE.max; s++) {
-      const ang = pick3() * Math.PI * 2, d = near4 + pick3() * (far - near4), x = K.x + Math.cos(ang) * d, y = K.y + Math.sin(ang) * d;
-      if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
-      const i = cellAt(a, x, y);
-      if (!land(a, i)) continue;
-      const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = friendlyNear(a, K, i) ? BUBBLE.friendly : 1;
-      const add2 = (props) => {
-        if (B3.things.length < BUBBLE.max) B3.things.push({ id: B3.next++, x, y, i, born: K.day, sated: -1, seen: false, ...props });
-      };
-      for (const dg of dangers(a, i)) if (r() < dg.p * BUBBLE.spawn * k) add2({ kind: dg.kind, strength: dg.strength ?? 1, label: dg.label || THINGS[dg.kind].label });
-      const road = roadAccess(a, i);
-      if (road > 0.2 && r() < TRAIN.chance * road) add2({ kind: "trader", strength: 0, label: THINGS.trader.label, goods: Math.round(TRAIN.food[0] + r() * (TRAIN.food[1] - TRAIN.food[0])) });
-      const herd2 = herdOf(a, i);
-      if (herd2 && r() < HERD2.chance * Math.min(1.5, herd2.level)) add2({ kind: "herd", strength: 0, label: `\u0441\u0442\u0430\u0434\u043E: ${SPECIES.get(herd2.id).plural}`, game: herd2.id });
-    }
-  }
-  function move(a, K, r, guided2) {
-    const B3 = bubbleOf(K), sense = sc(a, BUBBLE.sense), gone = sc(a, BUBBLE.gone);
-    for (const t of B3.things) {
-      const T2 = THINGS[t.kind], step2 = sc(a, T2.speed) / 2, d = dist9(K, t);
-      let nx = t.x, ny = t.y;
-      if (T2.hunts && t.sated < K.day && d <= sense && !K.inTown) {
-        if (guided2 && r() < BUBBLE.guideLoses / 2) t.sated = K.day + 2;
-        else {
-          const k = Math.min(1, step2 / Math.max(1e-6, d));
-          nx += (K.x - t.x) * k;
-          ny += (K.y - t.y) * k;
-        }
-      } else {
-        const ang = r() * Math.PI * 2;
-        nx += Math.cos(ang) * step2 * 0.6;
-        ny += Math.sin(ang) * step2 * 0.6;
-        if (T2.road && a.f.road) {
-          const x0 = Math.floor(t.x), y0 = Math.floor(t.y);
-          let best = -1, bv = a.f.road[t.i] || 0;
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            const j2 = cellAt(a, x0 + dx, y0 + dy);
-            if ((a.f.road[j2] || 0) > bv && land(a, j2) && r() < 0.6) {
-              bv = a.f.road[j2];
-              best = j2;
-            }
-          }
-          if (best >= 0) {
-            nx = t.x + (best % a.w + 0.5 - t.x) * 0.5;
-            ny = t.y + ((best / a.w | 0) + 0.5 - t.y) * 0.5;
-          }
-        }
-      }
-      const j = cellAt(a, nx, ny);
-      if (nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && land(a, j)) {
-        t.x = nx;
-        t.y = ny;
-        t.i = j;
-      }
-    }
-    B3.things = B3.things.filter((t) => dist9(K, t) <= gone && (K.day - t.born <= BUBBLE.life || THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= sense));
-  }
-  function worldThings(a, K) {
-    const out = [], sense = sc(a, BUBBLE.sense), P = BUBBLE.partyMight;
-    for (const p of a.parties || []) {
-      if (p.kind === "caravan" || p.state === "gone" || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
-      let kind = null;
-      if (p.kind === "army") kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? "army" : null;
-      else if (p.kind === "raid") {
-        const l = (a.lairs || []).find((x) => x.id === p.owner), L = l && LAIRS.get(l.kind);
-        kind = L?.undead ? "undead" : "tribe";
-      } else if (p.kind === "brood" || p.kind === "dragon") kind = "lair";
-      if (!kind) continue;
-      out.push({
-        id: `p${p.id}`,
-        party: p.id,
-        kind,
-        x: p.x,
-        y: p.y,
-        i: p.i,
-        label: p.label || THINGS[kind].label,
-        sated: (K.partySated || {})[p.id] ?? -1,
-        strength: Math.min(P.max, Math.max(P.min, (p.might || 3) * P.per))
-      });
-    }
-    return out;
-  }
-  function stepBubble(a, K, phase, r, guided2) {
-    if (phase === "day") spawn(a, K);
-    move(a, K, r, guided2);
-    const contact = sc(a, BUBBLE.contact);
-    return [...bubbleOf(K).things, ...worldThings(a, K)].filter((t) => dist9(K, t) <= contact && t.sated < K.day);
-  }
-  var pursuers = (a, K, sight) => [...bubbleOf(K).things, ...worldThings(a, K)].filter((t) => THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= Math.min(sight, sc(a, BUBBLE.sense)));
-  function lose(K, t, days) {
-    if (t.party) (K.partySated || (K.partySated = {}))[t.party] = K.day + days;
-    else t.sated = K.day + days;
-  }
-  var huntersNear = (a, K) => [...bubbleOf(K).things, ...worldThings(a, K)].some((t) => THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= sc(a, BUBBLE.sense) * BUBBLE.wary);
-  function sighted(a, K, sight) {
-    const out = [];
-    for (const t of [...bubbleOf(K).things, ...worldThings(a, K)]) {
-      if (t.seen || dist9(K, t) > sight || THINGS[t.kind].mood !== "hostile" || t.kind === "wolves") continue;
-      if (t.party) {
-        K.partySeen || (K.partySeen = {});
-        if (K.partySeen[t.party]) continue;
-        K.partySeen[t.party] = K.day;
-      } else t.seen = true;
-      out.push(t);
-    }
-    return out;
-  }
-  function settle(K, t, won) {
-    const B3 = bubbleOf(K);
-    if (t.party) {
-      (K.partySated || (K.partySated = {}))[t.party] = K.day + BUBBLE.sated;
-      return;
-    }
-    if (won) B3.things = B3.things.filter((x) => x.id !== t.id);
-    else t.sated = K.day + BUBBLE.sated;
-  }
-  var removeThing = (K, t) => {
-    const B3 = bubbleOf(K);
-    B3.things = B3.things.filter((x) => x.id !== t.id);
-  };
-
   // src/data/market.js
   var STANDING = {
     own: { buy: 0.9, sell: 0.8, label: "\u0441\u0432\u043E\u0438" },
@@ -22935,6 +22882,8 @@ dd.q4{color:#c58cff;font-weight:600}
     // it cheaper — × (food − feeds × the town's food effect, data/townBuildings.js), never below `floor`
     ration: 0.25,
     food: { base: 1.4, feeds: 0.6, floor: 0.7 },
+    // the spoils of fights (worn arms and armour): × their worth
+    spoils: 0.5,
     // what a town buys of the caravan's goods, × value; a tannery pays more for hides, a market for everything
     sellBonus: { tannery: { hide: 1.3 }, market: { all: 1.15 } },
     // work in town: gold a day for each member who works (a squire with a tool, a knight hiring out as a guard);
@@ -23008,11 +22957,671 @@ dd.q4{color:#c58cff;font-weight:600}
   var VISIT = { reach: 8, winterReach: 14, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, hungryGold: 5, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5 };
   var EARN = { hide: 0.3, pan: 0.4 };
 
-  // src/campaign/town.js
+  // src/campaign/camp.js
+  PROVIDERS.register({ id: "camp", label: "\u0421\u0442\u043E\u044F\u043D\u043A\u0430 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430", flows: {}, distance: () => null, receive() {
+  } });
+  BRAINS.register({
+    id: "led",
+    step(w, a) {
+      const r = w.agents.find((o) => o.id === a.ledBy);
+      if (!r || r.dead) {
+        a.brain = "livestock";
+        a.ledBy = null;
+        a.task = null;
+        return;
+      }
+      if (r.gone) {
+        a.gone = true;
+        a.stolen = true;
+        return;
+      }
+      a.task = { id: "led" };
+      if (Math.hypot(r.x - a.x, r.y - a.y) > 0.8) approach(w, a, r.x, r.y, 1.1);
+    }
+  });
   var alive2 = (K) => K.members.filter((m) => m.alive);
+  var round12 = (v) => Math.round(v * 10) / 10;
+  function campSetup(a, K, ev) {
+    const race = WORLD_PEOPLES.get(K.people).race;
+    const plan2 = cellPlan(a, K.i, { name: "\u0421\u0442\u043E\u044F\u043D\u043A\u0430", race });
+    return {
+      day: K.day,
+      year: a.hist.year,
+      kind: ev.kind,
+      seed: `${K.seed}:camp:${K.day}:${ev.kind}`,
+      i: K.i,
+      startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0),
+      plan: plan2,
+      people: K.people,
+      members: alive2(K).map((m) => ({
+        id: m.id,
+        name: m.name,
+        gender: m.gender,
+        race: m.race,
+        people: m.people,
+        role: m.role,
+        special: m.special,
+        align: m.align,
+        values: m.values,
+        hp: m.hp,
+        gear: { hand: [...m.gear.hand], body: m.gear.body },
+        local: m.local || null
+      })),
+      beasts: K.beasts.filter((b) => b.hp > 0).map((b) => ({ id: b.id, kind: b.kind, hp: b.hp })),
+      vehicles: K.vehicles.map((v, k) => ({ k, kind: v.kind, building: v.building || null })),
+      food: K.food,
+      cargo: { ...K.cargo },
+      foe: ev.foe ? { kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES2[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null } : null
+    };
+  }
+  function hours(S, r) {
+    const H2 = S.kind === "ambush" ? CAMP.ambush : S.kind === "stop" ? CAMP.stop : CAMP.night;
+    const t0 = Math.round(H2.from * HOUR), wrap = (h) => h < H2.from ? h + 24 : h;
+    const until = Math.round(wrap(H2.until) * HOUR);
+    const come = H2.come ? Math.round(wrap(H2.come[0] + r() * (H2.come[1] - H2.come[0] + (H2.come[1] < H2.come[0] ? 24 : 0))) * HOUR) : null;
+    return { t0, until, come };
+  }
+  function openCamp(S) {
+    const plan2 = S.plan;
+    const cfg = {
+      ...DEFAULT_CFG,
+      name: "\u0421\u0442\u043E\u044F\u043D\u043A\u0430",
+      seed: S.seed,
+      size: "small",
+      dims: CAMP.size,
+      colonists: 0,
+      stock: "poor",
+      start: "spring",
+      raids: "off",
+      light: true,
+      provider: "camp",
+      cell: { ...plan2, extra: { ...plan2.extra, startDay: S.startDay } }
+    };
+    const w = createWorld(cfg);
+    w.nav = new Navigation(w);
+    w.nav.buildAll();
+    w.perf = { fields: 0, nav: 0, agents: 0, render: 0 };
+    const r = mulberry(seedNumber(S.seed + ":plan")), H2 = hours(S, r);
+    w.tick = H2.t0;
+    w.campaign = { S, foeAt: H2.come, until: H2.until, spawned: !S.foe, foes: [], foeObjs: [], people: /* @__PURE__ */ new Map(), herd: /* @__PURE__ */ new Map(), quiet: null, built: [], start: H2.t0, rnd: r };
+    for (const k of Object.keys(w.stock)) w.stock[k] = 0;
+    w.stock[CAMP.food] = S.food * CAMP.perRation / FOODS.get(CAMP.food).nutrition;
+    for (const [id, n] of Object.entries(S.cargo || {})) if (RESOURCES.has(id)) w.stock[id] = (w.stock[id] || 0) + n;
+    w.stock.wood = (w.stock.wood || 0) + CAMP.wood;
+    if (S.beasts.length) w.stock.hay = (w.stock.hay || 0) + CAMP.hay * S.beasts.length;
+    w.founding = true;
+    const ring = (k, n, rad) => [w.camp.x + 0.5 + Math.cos(k / n * 6.283) * rad, w.camp.y + 0.5 + Math.sin(k / n * 6.283) * rad];
+    S.members.forEach((m, k) => {
+      const [x, y] = ring(k, S.members.length, 2);
+      const ag = createAgent(w, m.race, "colony", x, y);
+      ag.member = m.id;
+      w.campaign.people.set(m.id, ag);
+      ag.name = m.name;
+      ag.gender = m.gender;
+      ag.people = m.people;
+      ag.special = { ...m.special };
+      if (m.align) ag.align = { ...m.align };
+      if (m.values) ag.values = [...m.values];
+      const L = m.local;
+      if (L) Object.assign(ag, { likes: L.likes, dislikes: L.dislikes, prefs: { ...L.prefs }, traits: [...L.traits], food: { ...L.food }, own: { ...L.own }, skill: { ...L.skill } });
+      else {
+        for (const [id, v] of Object.entries(CAMP.skills[m.role] || {})) ag.skill[id] = Math.max(ag.skill[id] || 0, v);
+        for (const id of m.gear.hand) if (CAMP.tools[id]) ag.skill[CAMP.tools[id]] = Math.max(ag.skill[CAMP.tools[id]] || 0, CAMP.toolSkill);
+      }
+      const rec = recordOf(w, ag);
+      if (rec) rec.name = m.name;
+      refreshBody(ag);
+      ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
+      dress(ag, [...m.gear.hand, m.gear.body].filter((id) => ITEMS.has(id)), CAMP.arrows);
+      for (const it of Object.values(ag.equip)) if (it) it.own = m.id;
+      for (const n of Object.keys(ag.needs)) ag.needs[n] = Math.max(ag.needs[n], 0.75);
+      ag.needs.rest = CAMP.rest[S.kind] ?? 0.85;
+      if (S.kind === "stop") ag.needs.food = 1;
+    });
+    w.founding = false;
+    S.beasts.forEach((b, k) => {
+      const [x, y] = ring(k + 0.5, Math.max(3, S.beasts.length), 4);
+      const sp = BEASTS[b.kind].species || b.kind, ag = createAgent(w, sp, "herd", x, y);
+      makeTame(w, ag, null, true);
+      ag.age = SPECIES.get(sp).tame?.grownDays || 0;
+      ag.wool = 0;
+      ag.beast = b.id;
+      w.campaign.herd.set(b.id, ag);
+      ag.hp = maxHp(ag) * Math.max(0.1, Math.min(1, b.hp));
+    });
+    const packed = S.vehicles.filter((v) => v.building);
+    if (S.kind === "stop") stockGame(w, r);
+    w.campaign.food0 = foodNow(w);
+    w.campaign.stock0 = { ...w.stock };
+    if (S.kind !== "ambush") for (const v of packed) {
+      const b = putUp(w, v.building, CAMP.deploy);
+      if (b) w.campaign.built.push({ k: v.k, id: b.id });
+    }
+    w.logLines = [];
+    return w;
+  }
+  function stockGame(w, r) {
+    for (const sp of Object.keys(GAME)) {
+      const flow = GAME_FLOW[sp] || sp;
+      if (!MIGRATIONS.has(flow) || !SPECIES.has(sp)) continue;
+      const lvl = faunaLevel(w, sp);
+      if (lvl <= 0) continue;
+      const n = Math.round(CAMP.stop.game * Math.min(2, lvl) * (0.4 + r()) * (GAME[sp] >= 0.8 ? 1 : 1.5));
+      if (n > 0) spawnGroup(w, flow, n, { minDist: 10 });
+    }
+  }
+  var foodNow = (w) => FOODS.all().reduce((s, f) => s + (w.stock[f.id] || 0) * f.nutrition, 0);
+  function spawnFoe(w) {
+    const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
+    const at = S.kind === "ambush" ? nearCell(w, CAMP.ambush.near, r) : null;
+    const opts = { minDist: S.kind === "ambush" ? CAMP.ambush.near : CAMP.far, ...at != null ? { at } : {} };
+    const beast2 = F.beast || map.beast, band = F.band || map.band;
+    let group = [];
+    if (beast2 && MIGRATIONS.has(beast2)) {
+      const n = Math.max(1, Math.round((CAMP.pack[0] + r() * (CAMP.pack[1] - CAMP.pack[0])) * Math.min(2, F.strength) * (beast2 === "wolves" ? 1 : 0.5)));
+      group = spawnGroup(w, beast2, n, opts);
+      for (const g3 of group) {
+        g3.needs.food = Math.min(g3.needs.food ?? 1, 0.2);
+        g3.hunger = true;
+      }
+    } else {
+      const want2 = CAMP.threat * F.strength * (map.threat || 1);
+      w.fame = 0;
+      w.fame = want2 - raidThreat(w);
+      const budget = Math.max(1, Math.round(FOES2[F.kind].might * F.strength * CAMP.budget));
+      group = spawnGroup(w, "raiders", budget, { ...opts, band: band || "bandits" });
+    }
+    C.foes = group.map((g3) => g3.id);
+    C.foeObjs = group;
+    C.spawned = true;
+  }
+  function nearCell(w, d, r) {
+    const dCamp = w.nav.get("camp");
+    for (let k = 0; k < 200; k++) {
+      const ang = r() * 6.283, x = Math.round(w.camp.x + Math.cos(ang) * d), y = Math.round(w.camp.y + Math.sin(ang) * d);
+      if (x < 1 || y < 1 || x >= w.w - 1 || y >= w.h - 1) continue;
+      const i = y * w.w + x;
+      if (walkable(w, i) && dCamp[i] < FAR) return i;
+    }
+    return null;
+  }
+  var foesLeft = (w) => w.agents.filter((o) => w.campaign.foes.includes(o.id) && !o.dead && !o.gone && o.task?.id !== "leave").length;
+  function stepCamp(w) {
+    const C = w.campaign;
+    if (!C.spawned && w.tick >= C.foeAt) spawnFoe(w);
+    step(w);
+    if (w.tick % 10 === 0) for (const o of w.agents) {
+      if (o.faction !== "raiders" || o.dead || !o.looted || o.task?.id !== "leave" || o.leads) continue;
+      const b = w.agents.find((x) => x.tame && !x.dead && !x.ledBy && Math.hypot(x.x - o.x, x.y - o.y) < 2.5);
+      if (b) {
+        b.ledBy = o.id;
+        b.brain = "led";
+        o.leads = b.id;
+      }
+    }
+    if (C.spawned && C.foes.length) {
+      if (foesLeft(w) === 0) C.quiet ?? (C.quiet = w.tick);
+      else C.quiet = null;
+    }
+  }
+  function campDone(w) {
+    const C = w.campaign;
+    if (w.over || !w.agents.some((a) => a.faction === "colony" && !a.dead)) return true;
+    if (w.tick >= C.until) return true;
+    return C.S.kind !== "stop" && C.spawned && C.quiet != null && w.tick - C.quiet >= CAMP.quiet * HOUR && !w.agents.some((a) => a.downed && !a.dead);
+  }
+  function runCamp(S) {
+    const w = openCamp(S);
+    for (let guard = 0; guard < 2 * DAY && !campDone(w); guard++) stepCamp(w);
+    return w;
+  }
+  function campOutcome(w) {
+    const C = w.campaign, S = C.S;
+    const members2 = S.members.map((m) => {
+      const ag = C.people.get(m.id);
+      if (!ag || ag.dead) return { id: m.id, alive: false, cause: ag && w.chronicle.people.find((p) => p.id === ag.id)?.cause || "\u043F\u043E\u0433\u0438\u0431" };
+      const local2 = { likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill };
+      return { id: m.id, alive: true, hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local2)) };
+    });
+    const beasts = S.beasts.map((b) => {
+      const ag = C.herd.get(b.id);
+      if (!ag) return { id: b.id, alive: false, stolen: false };
+      if (ag.stolen) return { id: b.id, alive: false, stolen: true };
+      if (ag.dead || !ag.tame || ag.gone || ag.hp / maxHp(ag) <= CAMP.beastGone) return { id: b.id, alive: false, stolen: false, bolted: !ag.dead };
+      return { id: b.id, alive: true, hp: Math.min(1, ag.hp / maxHp(ag)) };
+    });
+    const carried = [...C.people.values()].filter((ag) => !ag.dead).reduce((v, ag) => v + Object.entries(ag.carry?.res || {}).reduce((t, [id, n2]) => t + (FOODS.has(id) ? n2 * FOODS.get(id).nutrition : 0), 0), 0);
+    const food = Math.max(0, (foodNow(w) + carried) / CAMP.perRation);
+    const got = {};
+    for (const [id, n2] of Object.entries(w.stock)) {
+      const d = n2 - (C.stock0[id] || 0);
+      if (d >= 1) got[id] = Math.floor(d);
+    }
+    const cargo = {};
+    for (const id of /* @__PURE__ */ new Set([...Object.keys(S.cargo || {}), "hide"])) {
+      const n2 = Math.floor((w.stock[id] || 0) + 1e-6);
+      if (n2 > 0) cargo[id] = n2;
+    }
+    const items = w.armory.filter((it) => it.dur > 0 && !it.own && ITEMS.has(it.type)).map((it) => it.type);
+    const killed = C.foeObjs.filter((o) => o.dead).length, fled = C.foeObjs.filter((o) => !o.dead && (o.gone || o.task?.id === "leave")).length;
+    const plundered = w.stats.lastSteal >= C.start;
+    const lost = members2.filter((m) => !m.alive).length, stolen = beasts.filter((b) => b.stolen).length;
+    const vehicles = S.vehicles.map((v) => {
+      const b = C.built.find((x) => x.k === v.k);
+      return { k: v.k, wrecked: plundered && C.rnd() < CAMP.wreck, burnt: !!b && !w.buildings.some((x) => x.id === b.id) };
+    });
+    const n = C.foeObjs.length;
+    const won = !n ? true : lost === 0 ? !plundered || killed > 0 : killed >= lost && !plundered;
+    return {
+      kind: S.kind,
+      day: S.day,
+      won,
+      members: members2,
+      beasts,
+      food: round12(food),
+      got,
+      cargo,
+      items,
+      vehicles,
+      plundered,
+      stolen,
+      foes: { n, killed, fled, left: n - killed - fled },
+      ticks: w.tick - C.start,
+      lines: campLines(w)
+    };
+  }
+  var outcomeHash = (o) => `${o.won ? "w" : "l"}:${o.members.map((m) => m.alive ? Math.round(m.hp * 100) : "x").join(",")}:${o.beasts.map((b) => b.alive ? 1 : 0).join("")}:${o.food}:${o.foes.killed}/${o.foes.n}`;
+  function campLines(w) {
+    return (w.logLines || []).filter((l) => ["danger", "death"].includes(l.topic) || l.level === "alert").slice(0, 12).reverse().map((l) => `${l.when.replace(/^День \d+, /, "")} ${l.html.replace(/<[^>]+>/g, "")}`);
+  }
+
+  // src/campaign/fight.js
+  var between3 = (r, [lo, hi]) => lo + r() * (hi - lo);
+  var pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
+  var names = (list) => list.join(", ");
+  function fight3(a, K, d, r, how = "night") {
+    if (how === "ambush") K.stats.ambushes = (K.stats.ambushes || 0) + 1;
+    K.stats.fights++;
+    const win = K.mode === "auto" ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
+    if (!alive3(K).length) return win;
+    if (win) {
+      K.stats.won++;
+      shake(K, LOYALTY.won);
+      spoils(a, K, d, r);
+    } else {
+      K.stats.fled++;
+      shake(K, LOYALTY.lost);
+      K.camp = 0;
+      K.why = "";
+      K.build = null;
+    }
+    return win;
+  }
+  var opening = (d, how) => `${how === "ambush" ? "\u041D\u0430 \u043C\u0430\u0440\u0448\u0435 \u0438\u0437 \u0437\u0430\u0441\u0430\u0434\u044B \u0443\u0434\u0430\u0440\u0438\u043B\u0438" : "\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438"} ${FOES2[d.kind].label}${d.label && d.label !== FOES2[d.kind].label ? ` \u2014 ${d.label}` : ""}`;
+  function localFight(a, K, d, how) {
+    const S = campSetup(a, K, { kind: how, foe: d, dayIn: K.dayIn });
+    const o = play(K, S, how, d.label || FOES2[d.kind].label, d);
+    applyCamp(a, K, S, o, d, how);
+    return o.won;
+  }
+  function playStop(a, K) {
+    const S = campSetup(a, K, { kind: "stop", dayIn: K.dayIn });
+    const o = play(K, S, "stop", "\u0441\u0442\u043E\u044F\u043D\u043A\u0430");
+    const food0 = K.food;
+    applyCamp(a, K, S, o, null, "stop");
+    const got = Object.entries(o.got).filter(([id]) => FOODS.has(id) || id === "hide").map(([id, n]) => `${RESOURCES.get(id).label} ${n}`);
+    K.stats.stopDays = (K.stats.stopDays || 0) + 1;
+    say2(a, K, `\u0414\u0435\u043D\u044C \u0441\u0442\u043E\u044F\u043D\u043A\u0438: \u043E\u0445\u043E\u0442\u0438\u043B\u0438\u0441\u044C, \u0441\u043E\u0431\u0438\u0440\u0430\u043B\u0438 \u0438 \u0440\u044B\u0431\u0430\u0447\u0438\u043B\u0438 \u2014 ${got.length ? `\u043F\u0440\u0438\u043D\u0435\u0441\u043B\u0438 ${names(got)} (+${pieces(Math.max(0, Math.round(K.food - food0)), "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")})` : "\u0437\u0435\u043C\u043B\u044F \u043F\u043E\u0447\u0442\u0438 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0434\u0430\u043B\u0430"}.`, "stop");
+  }
+  function play(K, S, how, label4, d = null) {
+    var _a;
+    const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+    const w = runCamp(S), o = campOutcome(w);
+    const L = (_a = K.stats).local || (_a.local = { camps: 0, ticks: 0, ms: 0 });
+    L.camps++;
+    L.ticks += o.ticks;
+    L.ms += (typeof performance !== "undefined" ? performance.now() : 0) - t0;
+    (K.camps || (K.camps = [])).push({ day: K.day, kind: how, label: label4, setup: S, won: o.won, dead: o.members.filter((m) => !m.alive).length, hash: outcomeHash(o) });
+    if (K.camps.length > CAMP.keep) K.camps.shift();
+    return o;
+  }
+  function applyCamp(a, K, S, o, d, how) {
+    const hurt2 = [], fallen = [];
+    const where = how === "ambush" ? "\u0437\u0430\u0441\u0430\u0434\u0435" : how === "night" ? "\u043D\u043E\u0447\u043D\u043E\u043C \u0431\u043E\u044E" : "\u0441\u0442\u043E\u044F\u043D\u043A\u0435";
+    for (const mo of o.members) {
+      const m = K.members.find((x) => x.id === mo.id);
+      if (!m || !m.alive) continue;
+      if (!mo.alive) {
+        fallen.push(m);
+        continue;
+      }
+      if (mo.hp < m.hp - 0.05) hurt2.push(m.name);
+      m.hp = mo.hp;
+      m.local = mo.local;
+    }
+    const lostB = [], stolenB = [];
+    for (const bo of o.beasts) {
+      const b = K.beasts.find((x) => x.id === bo.id);
+      if (!b) continue;
+      if (bo.alive) {
+        b.hp = bo.hp;
+        continue;
+      }
+      (bo.stolen ? stolenB : lostB).push(b);
+    }
+    if (lostB.length || stolenB.length) {
+      K.beasts = K.beasts.filter((b) => !lostB.includes(b) && !stolenB.includes(b));
+      assign(K);
+      K.path = null;
+    }
+    const food0 = K.food;
+    K.food = o.food;
+    K.cargo = o.cargo;
+    const broken = [];
+    for (const vo of o.vehicles) {
+      const v = K.vehicles[vo.k];
+      if (!v) continue;
+      if (vo.burnt && v.building) {
+        broken.push(`\xAB${BUILDINGS.get(v.building).name}\xBB \u0441\u0433\u043E\u0440\u0435\u043B\u043E`);
+        v.building = null;
+      }
+      if (vo.wrecked) {
+        broken.push(`\u0440\u0430\u0437\u0431\u0438\u043B\u0438 ${VEHICLES[v.kind].label === "\u0442\u0435\u043B\u0435\u0436\u043A\u0430" ? "\u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u043F\u043E\u0432\u043E\u0437\u043A\u0443"}`);
+        v.gone = true;
+      }
+    }
+    if (K.vehicles.some((v) => v.gone)) {
+      K.vehicles = K.vehicles.filter((v) => !v.gone);
+      assign(K);
+      K.path = null;
+    }
+    const took = takeGear(K, o.items);
+    if (how === "stop") {
+      if (lostB.length || stolenB.length) say2(a, K, `\u041D\u0430 \u0441\u0442\u043E\u044F\u043D\u043A\u0435 \u043F\u043E\u0442\u0435\u0440\u044F\u043B\u0438 ${names([...stolenB, ...lostB].map((b) => BEASTS[b.kind].acc))}.`, "beast");
+      for (const m of fallen) die(a, K, m, `\u043F\u043E\u0433\u0438\u0431${m.gender === "f" ? "\u043B\u0430" : ""} \u043D\u0430 \u0441\u0442\u043E\u044F\u043D\u043A\u0435`);
+      return;
+    }
+    const F = o.foes, parts = [];
+    if (F.n) parts.push(`${pieces(F.n, "\u0432\u0440\u0430\u0433", "\u0432\u0440\u0430\u0433\u0430", "\u0432\u0440\u0430\u0433\u043E\u0432")}: ${F.killed ? `${F.killed} \u0443\u0431\u0438\u0442\u043E` : "\u043D\u0438\u043A\u043E\u0433\u043E \u043D\u0435 \u0443\u0431\u0438\u043B\u0438"}${F.fled ? `, ${F.fled} \u0431\u0435\u0436\u0430\u043B\u0438` : ""}${F.left ? `, ${F.left} \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C` : ""}`);
+    if (fallen.length) parts.push(`\u043F\u0430\u043B\u0438 ${names(fallen.map((m) => m.name))}`);
+    if (hurt2.length) parts.push(`\u0440\u0430\u043D\u0435\u043D\u044B ${names(hurt2)}`);
+    if (stolenB.length) parts.push(`\u0443\u0432\u0435\u043B\u0438 ${names(stolenB.map((b) => BEASTS[b.kind].acc))}`);
+    if (lostB.length) parts.push(`\u043F\u043E\u0442\u0435\u0440\u044F\u043B\u0438 ${names(lostB.map((b) => BEASTS[b.kind].acc))}`);
+    if (o.plundered) parts.push(`\u0441\u043A\u043B\u0430\u0434 \u0440\u0430\u0437\u0433\u0440\u0430\u0431\u043B\u0435\u043D${K.food < food0 - 0.5 ? ` (\u2212${Math.round(food0 - K.food)} \u043F\u0430\u0439\u043A\u043E\u0432)` : ""}`);
+    parts.push(...broken);
+    if (took.length) parts.push(`\u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 ${names(took)}`);
+    const verdict = o.won ? F.n ? "\u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C" : "\u041E\u0431\u043E\u0448\u043B\u043E\u0441\u044C" : "\u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438";
+    say2(a, K, `${opening(d, how)}. ${verdict} \u2014 \u0431\u043E\u0439 \u043D\u0430 \u043C\u0435\u0441\u0442\u0435${parts.length ? `: ${parts.join("; ")}` : ""}.`, "fight");
+    for (const m of fallen) die(a, K, m, `\u043F\u0430\u043B${m.gender === "f" ? "\u0430" : ""} \u0432 ${where} (${FOES2[d.kind].label})`);
+  }
+  function takeGear(K, items) {
+    const ms = alive3(K), took = [];
+    const armor = (id) => ITEMS.get(id)?.armor ?? 0, dmg = (m) => Math.max(0, ...m.gear.hand.map((id) => ITEMS.get(id)?.melee?.dmg ?? 0));
+    for (const id of items) {
+      const it = ITEMS.get(id);
+      if (!it) continue;
+      if (it.slot === "body") {
+        const m = ms.slice().sort((p, q) => armor(p.gear.body) - armor(q.gear.body))[0];
+        if (m && armor(m.gear.body) < (it.armor ?? 0)) {
+          K.spoils = [...K.spoils || [], m.gear.body];
+          m.gear.body = id;
+          took.push(`${it.short} (${m.name})`);
+          continue;
+        }
+      } else if (it.melee && !it.tool && it.hands === 1 && !it.ranged) {
+        const m = ms.filter((x) => x.role === "knight" || x.role === "sellsword").sort((p, q) => dmg(p) - dmg(q))[0];
+        const k = m ? m.gear.hand.findIndex((x) => ITEMS.get(x)?.melee && !ITEMS.get(x)?.ranged && x !== "shield") : -1;
+        if (m && k >= 0 && dmg(m) < it.melee.dmg) {
+          K.spoils = [...K.spoils || [], m.gear.hand[k]];
+          m.gear.hand[k] = id;
+          took.push(`${it.short} (${m.name})`);
+          continue;
+        }
+      }
+      if ((it.value ?? 0) >= 1) K.spoils = [...K.spoils || [], id];
+    }
+    if (K.spoils?.length > CAMP.spoils) K.spoils = K.spoils.sort((p, q) => (ITEMS.get(q)?.value ?? 0) - (ITEMS.get(p)?.value ?? 0)).slice(0, CAMP.spoils);
+    const sold = (K.spoils || []).length;
+    if (sold && !took.length && items.length) took.push(`\u0442\u0440\u043E\u0444\u0435\u0438 \u043D\u0430 \u043F\u0440\u043E\u0434\u0430\u0436\u0443 (${pieces(sold, "\u0432\u0435\u0449\u044C", "\u0432\u0435\u0449\u0438", "\u0432\u0435\u0449\u0435\u0439")} \u0432 \u043E\u0431\u043E\u0437\u0435)`);
+    return took;
+  }
+  function spoils(a, K, d, r) {
+    const joined = () => alive3(K).filter((m) => m.loyalty != null).length;
+    if (FREED.chance[d.kind] && alive3(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
+      const n = 1 + (r() < 0.35 ? 1 : 0), got = [];
+      for (let q = 0; q < n && alive3(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
+        const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
+        const race = minor ? COMPANIONS.minorRaces[r() * COMPANIONS.minorRaces.length | 0] : peoples[r() * peoples.length | 0].race;
+        const m = makeMember(K, r, { race, role: "freed", gear: FREED.gear, loyalty: FREED.loyalty });
+        K.members.push(m);
+        got.push(`${m.name} (${SPECIES.get(race).label})`);
+      }
+      say2(a, K, `\u0412 \u043B\u0430\u0433\u0435\u0440\u0435 \u0432\u0440\u0430\u0433\u043E\u0432 \u043D\u0430\u0448\u043B\u0438 \u043F\u043B\u0435\u043D\u043D\u0438\u043A\u043E\u0432 \u0438 \u043E\u0441\u0432\u043E\u0431\u043E\u0434\u0438\u043B\u0438: ${names(got)}. ${n > 1 ? "\u041F\u043E\u043A\u0430 \u0438\u0434\u0443\u0442 \u0441 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C" : "\u041F\u043E\u043A\u0430 \u0438\u0434\u0451\u0442 \u0441 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C"} \u2014 \u043D\u0430\u0434\u043E\u043B\u0433\u043E \u043B\u0438, \u043D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u043E.`, "people");
+    }
+    for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) {
+      gainBeast(a, K, kind, "\u0423 \u0432\u0440\u0430\u0433\u043E\u0432 \u043E\u0442\u0431\u0438\u043B\u0438");
+      break;
+    }
+    const T2 = GETTING.spoilTool;
+    if (T2[d.kind] && toolTier(K) < 2 && r() < T2[d.kind]) {
+      const m = alive3(K).find((x) => x.role === "squire") || alive3(K)[0], old = m.gear.hand[0];
+      m.gear.hand[0] = T2.item;
+      say2(a, K, `\u0421\u0440\u0435\u0434\u0438 \u0431\u0440\u043E\u0448\u0435\u043D\u043D\u043E\u0433\u043E \u0432\u0440\u0430\u0433\u0430\u043C\u0438 \u043D\u0430\u0448\u0451\u043B\u0441\u044F ${ITEMS.get(T2.item).label.toLowerCase()}: ${m.name} \u0441\u043C\u0435\u043D\u0438\u043B${m.gender === "f" ? "\u0430" : ""} \u043D\u0430 \u043D\u0435\u0433\u043E ${ITEMS.has(old) ? ITEMS.get(old).short : "\u0441\u0432\u043E\u0439 \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442"}. \u0421 \u0436\u0435\u043B\u0435\u0437\u043E\u043C \u043C\u043E\u0436\u043D\u043E \u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u043F\u043E\u0432\u043E\u0437\u043A\u0443.`, "build");
+    }
+  }
+  function autoFight(a, K, d, r, how) {
+    const F = CAMPAIGN.fight, foe = FOES2[d.kind], E2 = foe.might * (d.strength ?? 1) * between3(r, [0.6, 1.4]), P = caravanMight(K) * (how === "ambush" ? AMBUSH.surprise : 1);
+    const share2 = P / (P + E2), win = r() < share2;
+    let hurt2 = E2 * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share2)) * (win ? 1 : F.lostHurt);
+    const hit = [];
+    while (hurt2 > 0 && alive3(K).length) {
+      const ms = alive3(K), wts = ms.map((m2) => m2.role === "knight" ? F.shield : 1);
+      let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
+      for (let q = 0; q < ms.length; q++) {
+        x -= wts[q];
+        if (x <= 0) {
+          m = ms[q];
+          break;
+        }
+      }
+      const b = between3(r, F.blow);
+      m.hp -= b;
+      hurt2 -= b * 2;
+      if (!hit.includes(m)) hit.push(m);
+      if (m.hp <= 0) {
+        if (win) m.hp = F.saved;
+        else die(a, K, m, `\u043F\u0430\u043B \u0432 ${how === "ambush" ? "\u0437\u0430\u0441\u0430\u0434\u0435" : "\u043D\u043E\u0447\u043D\u043E\u043C \u0431\u043E\u044E"} (${foe.label})`);
+      }
+    }
+    if (!alive3(K).length) return win;
+    if (win) {
+      const loot = Math.round(between3(r, F.loot));
+      K.food += loot;
+      say2(a, K, `${opening(d, how)}. \u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C${hit.length ? `, \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u043D\u0438\u043A\u0442\u043E"}` : " \u0431\u0435\u0437 \u0440\u0430\u043D"}; \u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 \u0435\u0434\u044B \u043D\u0430 ${pieces(loot, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "fight");
+      return true;
+    }
+    const lost = Math.round(K.food * F.lost);
+    K.food -= lost;
+    say2(a, K, `${opening(d, how)}. \u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438 \u0438 \u0431\u0435\u0436\u0430\u043B\u0438${how === "night" ? " \u0432 \u0442\u0435\u043C\u043D\u043E\u0442\u0435" : ""}${lost ? `, \u0431\u0440\u043E\u0441\u0438\u0432 ${pieces(lost, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}` : ""}${hit.length ? `; \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u2014"}` : ""}.`, "fight");
+    const gone = K.beasts.filter(() => r() < GETTING.lose.beast);
+    if (gone.length) {
+      K.beasts = K.beasts.filter((b) => !gone.includes(b));
+      assign(K);
+      K.path = null;
+      const words = Object.keys(BEASTS).map((kind) => {
+        const n = gone.filter((b) => b.kind === kind).length;
+        return n ? n === 1 ? BEASTS[kind].acc : `${BEASTS[kind].plural} (${n})` : null;
+      }).filter(Boolean);
+      say2(a, K, `${how === "night" ? "\u0412 \u0442\u0435\u043C\u043D\u043E\u0442\u0435 \u0443\u0432\u0435\u043B\u0438 \u0438\u043B\u0438 \u0443\u0431\u0438\u043B\u0438" : "\u0412 \u0441\u0443\u043C\u0430\u0442\u043E\u0445\u0435 \u0443\u0432\u0435\u043B\u0438 \u0438\u043B\u0438 \u0443\u0431\u0438\u043B\u0438"} ${words.join(", ")}.`, "beast");
+    }
+    for (const v of [...K.vehicles]) if (r() < GETTING.lose.vehicle) {
+      K.vehicles = K.vehicles.filter((x) => x !== v);
+      assign(K);
+      K.path = null;
+      say2(a, K, `\u0412\u0440\u0430\u0433\u0438 \u0440\u0430\u0437\u0431\u0438\u043B\u0438 ${VEHICLES[v.kind].label === "\u0442\u0435\u043B\u0435\u0436\u043A\u0430" ? "\u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u043F\u043E\u0432\u043E\u0437\u043A\u0443"}${v.building ? ` \u0432\u043C\u0435\u0441\u0442\u0435 \u0441 \xAB${BUILDINGS.get(v.building).name}\xBB` : ""}.`, "beast");
+    }
+    return false;
+  }
+
+  // src/campaign/bubble.js
+  var bubbleOf = (K) => K.bubble || (K.bubble = { next: 1, things: [] });
+  var sc = (a, v) => v * scaleOf(a);
+  var dist9 = (K, t) => Math.hypot(t.x - K.x, t.y - K.y);
+  var cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
+  var land = (a, i) => !!a.f.land && !a.f.ocean[i];
+  function friendlyNear(a, K, i) {
+    const t = townAt(a, i);
+    return !!t && t.realm && (t.realm === K.realm || trades(a, K.realm, t.realm) && !atWar(a, K.realm, t.realm));
+  }
+  function herdOf(a, i) {
+    const reg = cellRegion2(a, i), w = { region: reg };
+    let best = null, bv = 0;
+    for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id) && k >= 0.8) {
+      const v = faunaLevel(w, id);
+      if (v > bv) {
+        bv = v;
+        best = id;
+      }
+    }
+    return best ? { id: best, level: bv } : null;
+  }
+  function spawn(a, K) {
+    const B3 = bubbleOf(K), near4 = sc(a, BUBBLE.near), far = sc(a, BUBBLE.far);
+    const pick3 = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`));
+    for (let s = 0; s < BUBBLE.samples && B3.things.length < BUBBLE.max; s++) {
+      const ang = pick3() * Math.PI * 2, d = near4 + pick3() * (far - near4), x = K.x + Math.cos(ang) * d, y = K.y + Math.sin(ang) * d;
+      if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
+      const i = cellAt(a, x, y);
+      if (!land(a, i)) continue;
+      const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = friendlyNear(a, K, i) ? BUBBLE.friendly : 1;
+      const add2 = (props) => {
+        if (B3.things.length < BUBBLE.max) B3.things.push({ id: B3.next++, x, y, i, born: K.day, sated: -1, seen: false, ...props });
+      };
+      for (const dg of dangers(a, i)) if (r() < dg.p * BUBBLE.spawn * k) add2({ kind: dg.kind, strength: dg.strength ?? 1, label: dg.label || THINGS[dg.kind].label, ...dg.band ? { band: dg.band } : {}, ...dg.beast ? { beast: dg.beast } : {} });
+      const road = roadAccess(a, i);
+      if (road > 0.2 && r() < TRAIN.chance * road) add2({ kind: "trader", strength: 0, label: THINGS.trader.label, goods: Math.round(TRAIN.food[0] + r() * (TRAIN.food[1] - TRAIN.food[0])) });
+      const herd2 = herdOf(a, i);
+      if (herd2 && r() < HERD2.chance * Math.min(1.5, herd2.level)) add2({ kind: "herd", strength: 0, label: `\u0441\u0442\u0430\u0434\u043E: ${SPECIES.get(herd2.id).plural}`, game: herd2.id });
+    }
+  }
+  function move(a, K, r, guided2) {
+    const B3 = bubbleOf(K), sense = sc(a, BUBBLE.sense), gone = sc(a, BUBBLE.gone);
+    for (const t of B3.things) {
+      const T2 = THINGS[t.kind], step2 = sc(a, T2.speed) / 2, d = dist9(K, t);
+      let nx = t.x, ny = t.y;
+      if (T2.hunts && t.sated < K.day && d <= sense && !K.inTown) {
+        if (guided2 && r() < BUBBLE.guideLoses / 2) t.sated = K.day + 2;
+        else {
+          const k = Math.min(1, step2 / Math.max(1e-6, d));
+          nx += (K.x - t.x) * k;
+          ny += (K.y - t.y) * k;
+        }
+      } else {
+        const ang = r() * Math.PI * 2;
+        nx += Math.cos(ang) * step2 * 0.6;
+        ny += Math.sin(ang) * step2 * 0.6;
+        if (T2.road && a.f.road) {
+          const x0 = Math.floor(t.x), y0 = Math.floor(t.y);
+          let best = -1, bv = a.f.road[t.i] || 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const j2 = cellAt(a, x0 + dx, y0 + dy);
+            if ((a.f.road[j2] || 0) > bv && land(a, j2) && r() < 0.6) {
+              bv = a.f.road[j2];
+              best = j2;
+            }
+          }
+          if (best >= 0) {
+            nx = t.x + (best % a.w + 0.5 - t.x) * 0.5;
+            ny = t.y + ((best / a.w | 0) + 0.5 - t.y) * 0.5;
+          }
+        }
+      }
+      const j = cellAt(a, nx, ny);
+      if (nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && land(a, j)) {
+        t.x = nx;
+        t.y = ny;
+        t.i = j;
+      }
+    }
+    B3.things = B3.things.filter((t) => dist9(K, t) <= gone && (K.day - t.born <= BUBBLE.life || THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= sense));
+  }
+  function worldThings(a, K) {
+    const out = [], sense = sc(a, BUBBLE.sense), P = BUBBLE.partyMight;
+    for (const p of a.parties || []) {
+      if (p.kind === "caravan" || p.state === "gone" || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
+      let kind = null, who = {};
+      if (p.kind === "army") {
+        kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? "army" : null;
+        who = { band: REALM_BANDS[p.people] || "bandits" };
+      } else if (p.kind === "raid") {
+        const l = (a.lairs || []).find((x) => x.id === p.owner), L = l && LAIRS.get(l.kind);
+        kind = L?.undead ? "undead" : "tribe";
+        who = l ? lairFoe(l.kind) : {};
+      } else if (p.kind === "brood" || p.kind === "dragon") {
+        kind = "lair";
+        const l = (a.lairs || []).find((x) => x.id === p.owner);
+        who = l ? lairFoe(l.kind) : {};
+      }
+      if (!kind) continue;
+      out.push({
+        id: `p${p.id}`,
+        party: p.id,
+        kind,
+        ...who,
+        x: p.x,
+        y: p.y,
+        i: p.i,
+        label: p.label || THINGS[kind].label,
+        sated: (K.partySated || {})[p.id] ?? -1,
+        strength: Math.min(P.max, Math.max(P.min, (p.might || 3) * P.per))
+      });
+    }
+    return out;
+  }
+  function stepBubble(a, K, phase, r, guided2) {
+    if (phase === "day") spawn(a, K);
+    move(a, K, r, guided2);
+    const contact = sc(a, BUBBLE.contact);
+    return [...bubbleOf(K).things, ...worldThings(a, K)].filter((t) => dist9(K, t) <= contact && t.sated < K.day);
+  }
+  var pursuers = (a, K, sight) => [...bubbleOf(K).things, ...worldThings(a, K)].filter((t) => THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= Math.min(sight, sc(a, BUBBLE.sense)));
+  function lose(K, t, days) {
+    if (t.party) (K.partySated || (K.partySated = {}))[t.party] = K.day + days;
+    else t.sated = K.day + days;
+  }
+  var huntersNear = (a, K) => [...bubbleOf(K).things, ...worldThings(a, K)].some((t) => THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= sc(a, BUBBLE.sense) * BUBBLE.wary);
+  function sighted(a, K, sight) {
+    const out = [];
+    for (const t of [...bubbleOf(K).things, ...worldThings(a, K)]) {
+      if (t.seen || dist9(K, t) > sight || THINGS[t.kind].mood !== "hostile" || t.kind === "wolves") continue;
+      if (t.party) {
+        K.partySeen || (K.partySeen = {});
+        if (K.partySeen[t.party]) continue;
+        K.partySeen[t.party] = K.day;
+      } else t.seen = true;
+      out.push(t);
+    }
+    return out;
+  }
+  function settle(K, t, won) {
+    const B3 = bubbleOf(K);
+    if (t.party) {
+      (K.partySated || (K.partySated = {}))[t.party] = K.day + BUBBLE.sated;
+      return;
+    }
+    if (won) B3.things = B3.things.filter((x) => x.id !== t.id);
+    else t.sated = K.day + BUBBLE.sated;
+  }
+  var removeThing = (K, t) => {
+    const B3 = bubbleOf(K);
+    B3.things = B3.things.filter((x) => x.id !== t.id);
+  };
+
+  // src/campaign/town.js
+  var alive4 = (K) => K.members.filter((m) => m.alive);
   var has2 = (t, ids) => ids.some((id) => t.built.includes(id));
   var gold = (v) => Math.round(v * 10) / 10;
-  var pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
+  var pieces2 = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
   function standing(a, K, t) {
     if (!t || !t.alive) return null;
     if (t.realm && t.realm === K.realm) return "own";
@@ -23032,9 +23641,9 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var offerPrice = (o, st) => (o.price ?? (ITEMS.has(o.id) ? ITEMS.get(o.id).value : 10)) * STANDING[st].buy;
   var offers = (t) => OFFERS.filter((o) => has2(t, o.at) && (!o.also || has2(t, o.also)));
-  var reserveFor = (K, t, st, days) => days * alive2(K).length * CAMPAIGN.ration * rationPrice(t, st);
+  var reserveFor = (K, t, st, days) => days * alive4(K).length * CAMPAIGN.ration * rationPrice(t, st);
   function wants(a, K, t, st) {
-    const out = [], ms = alive2(K), tier = toolTier(K);
+    const out = [], ms = alive4(K), tier = toolTier(K);
     let fits = null;
     const wheelsFit = () => {
       if (fits == null) {
@@ -23059,7 +23668,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var bestDmg = (m) => Math.max(0, ...m.gear.hand.map((id) => ITEMS.get(id)?.melee?.dmg ?? 0));
   function equip(K, id) {
-    const d = ITEMS.get(id), ms = alive2(K);
+    const d = ITEMS.get(id), ms = alive4(K);
     if (d.slot === "body") {
       const m2 = ms.filter((x) => x.role === "knight" || x.role === "sellsword").sort((p, q) => (ITEMS.get(p.gear.body)?.armor ?? 0) - (ITEMS.get(q.gear.body)?.armor ?? 0))[0] || ms[0];
       m2.gear.body = id;
@@ -23087,14 +23696,20 @@ dd.q4{color:#c58cff;font-weight:600}
         done3.push(`\u043F\u0440\u043E\u0434\u0430\u043B\u0438 ${RESOURCES.get(id).label} (${n2}) \u0437\u0430 ${gold(p)} \u0437\u043E\u043B.`);
       }
     }
+    if (K.spoils?.length) {
+      const p = K.spoils.reduce((v, id) => v + (ITEMS.get(id)?.value ?? 0), 0) * STANDING[st].sell * MARKET.spoils;
+      got += p;
+      done3.push(`\u043F\u0440\u043E\u0434\u0430\u043B\u0438 \u0442\u0440\u043E\u0444\u0435\u0438 (${K.spoils.length}) \u0437\u0430 ${gold(p)} \u0437\u043E\u043B.`);
+      K.spoils = [];
+    }
     K.gold = gold(K.gold + got);
-    const need = alive2(K).length * CAMPAIGN.ration, price = rationPrice(t, st);
+    const need = alive4(K).length * CAMPAIGN.ration, price = rationPrice(t, st);
     const room2 = Math.max(0, capacity(K) - load2(K)), want2 = Math.max(0, Math.min(room2, need * WANTS.foodDays - K.food));
     const n = Math.floor(Math.min(want2, K.gold / price));
     if (n > 0) {
       K.food += n;
       K.gold = gold(K.gold - n * price);
-      done3.push(`\u043A\u0443\u043F\u0438\u043B\u0438 ${pieces(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \u043F\u043E ${gold(price)}`);
+      done3.push(`\u043A\u0443\u043F\u0438\u043B\u0438 ${pieces2(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \u043F\u043E ${gold(price)}`);
     }
     for (const o of wants(a, K, t, st)) {
       const p = offerPrice(o, st);
@@ -23102,7 +23717,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (o.kind === "building" && !K.vehicles.some((x) => x.kind === "wagon" && !x.building)) continue;
       if (o.kind === "vehicle" && (o.id === "cart" ? K.vehicles.length : K.vehicles.some((x) => x.kind === "wagon"))) continue;
       if (o.kind === "beast" && BEASTS[o.id].use === "pack" && K.beasts.filter((b) => b.kind === o.id && b.hp > 0).length >= 2) continue;
-      if (o.kind === "beast" && BEASTS[o.id].use === "ride" && K.beasts.filter((b) => BEASTS[b.kind].use === "ride" && b.hp > 0).length >= alive2(K).length) continue;
+      if (o.kind === "beast" && BEASTS[o.id].use === "ride" && K.beasts.filter((b) => BEASTS[b.kind].use === "ride" && b.hp > 0).length >= alive4(K).length) continue;
       K.gold = gold(K.gold - p);
       if (o.kind === "beast") {
         K.beasts.push({ id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null });
@@ -23126,7 +23741,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function labour(K) {
     const L = MARKET.labour, tier = toolTier(K);
     let g3 = 0;
-    for (const m of alive2(K)) {
+    for (const m of alive4(K)) {
       if (m.role === "squire" && m.gear.hand.some((id) => ITEMS.get(id)?.tool)) g3 += L.squire * (1 + L.perTier * tier);
       else if (m.role === "knight") g3 += L.knight;
       else g3 += L.other;
@@ -23137,7 +23752,7 @@ dd.q4{color:#c58cff;font-weight:600}
   var healHere = (t) => has2(t, MARKET.healers) ? MARKET.heal.healer : MARKET.heal.base;
   var hireAt = (t, H2) => has2(t, H2.at) || t.tier >= H2.tier;
   function hire(a, K, t, st, r) {
-    const said = [], ms = alive2(K);
+    const said = [], ms = alive4(K);
     for (const [id, H2] of Object.entries(HIRES)) {
       if (typeof H2 !== "object" || !H2.wage) continue;
       if (ms.length >= COMPANY_MAX || K.members.filter((m2) => m2.alive && m2.role === id).length >= HIRES.max || !hireAt(t, H2)) continue;
@@ -23146,14 +23761,14 @@ dd.q4{color:#c58cff;font-weight:600}
       K.gold = gold(K.gold - cost);
       const m = makeMember(K, r, { race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H2.gear, contract: { until: K.day + days, wage: H2.wage } });
       K.members.push(m);
-      said.push(`\u043D\u0430\u043D\u044F\u043B\u0438 ${H2.label}\u0430 ${m.name} \u043D\u0430 ${pieces(days, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} \u0437\u0430 ${cost} \u0437\u043E\u043B.`);
+      said.push(`\u043D\u0430\u043D\u044F\u043B\u0438 ${H2.label}\u0430 ${m.name} \u043D\u0430 ${pieces2(days, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} \u0437\u0430 ${cost} \u0437\u043E\u043B.`);
     }
     return said;
   }
   function companion(a, K, t, st, r) {
     const C = COMPANIONS;
-    if (alive2(K).length >= COMPANY_MAX || alive2(K).filter((m2) => m2.loyalty != null).length >= JOINED_MAX || r() >= C.chance[st] * (t.built.includes("inn") ? C.inn : 1)) return null;
-    const charm = Math.max(...alive2(K).map((m2) => m2.special?.C ?? NORM)), free = charm >= C.freeAt;
+    if (alive4(K).length >= COMPANY_MAX || alive4(K).filter((m2) => m2.loyalty != null).length >= JOINED_MAX || r() >= C.chance[st] * (t.built.includes("inn") ? C.inn : 1)) return null;
+    const charm = Math.max(...alive4(K).map((m2) => m2.special?.C ?? NORM)), free = charm >= C.freeAt;
     if (!free && K.gold - C.fee < reserveFor(K, t, st, WANTS.reserve)) return null;
     const minor = r() < C.minor ? C.minorRaces[r() * C.minorRaces.length | 0] : null;
     const race = minor || WORLD_PEOPLES.get(t.people).race;
@@ -23166,11 +23781,10 @@ dd.q4{color:#c58cff;font-weight:600}
   var townLine = (a, t, st) => `${townName2(t)} (${STANDING[st].label}${t.realm ? `, ${realmLabel(a, t.realm)}` : ""})`;
 
   // src/campaign/march.js
-  var SPECIES_LABEL = (race) => SPECIES.get(race).label;
   var SEASON_LIST2 = SEASONS.all();
-  var between3 = (r, [lo, hi]) => lo + r() * (hi - lo);
+  var between4 = (r, [lo, hi]) => lo + r() * (hi - lo);
   var xyOf = (a, i) => [i % a.w, i / a.w | 0];
-  var pieces2 = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
+  var pieces3 = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
   var alive3 = (K) => K.members.filter((m) => m.alive);
   var isCore = (m) => m.core ?? ["knight", "squire"].includes(m.role);
   var core = (K) => K.members.filter((m) => m.alive && isCore(m));
@@ -23329,12 +23943,12 @@ dd.q4{color:#c58cff;font-weight:600}
         if (K.route !== "road") say2(a, K, `\u0421\u043E\u0432\u0435\u0442: \u0438\u0434\u0442\u0438 \u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C${foot && road.cost > foot.cost * 1.05 ? ` \u2014 \u0434\u043E\u043B\u044C\u0448\u0435 \u043D\u0430 ${Math.round((road.cost / foot.cost - 1) * 100)}%, \u0437\u0430\u0442\u043E \u0432\u0441\u0451 \u0441 \u0441\u043E\u0431\u043E\u0439` : ""}.`, "route");
         K.route = "road";
       } else {
-        const names = K.vehicles.map((v) => VEHICLES[v.kind].label).join(" \u0438 ");
+        const names2 = K.vehicles.map((v) => VEHICLES[v.kind].label).join(" \u0438 ");
         K.vehicles = [];
         K.stats.left++;
         assign(K);
         const lost = overflow(K);
-        say2(a, K, `\u0421\u043E\u0432\u0435\u0442: ${road ? `\u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C \u043A \u0446\u0435\u043B\u0438 \u0432 ${(road.cost / foot.cost).toFixed(1)} \u0440\u0430\u0437\u0430 \u0434\u043E\u043B\u044C\u0448\u0435` : "\u043A\u043E\u043B\u0451\u0441\u0430\u043C \u0442\u0443\u0434\u0430 \u043D\u0435 \u043F\u0440\u043E\u0439\u0442\u0438"} \u2014 \u0431\u0440\u043E\u0441\u0438\u043B\u0438 ${names} \u0438 \u043F\u043E\u0448\u043B\u0438 \u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A${lost ? `, \u043E\u0441\u0442\u0430\u0432\u0438\u0432 ${Math.round(lost)} \u0435\u0434\u0438\u043D\u0438\u0446 \u0433\u0440\u0443\u0437\u0430` : ""}.`, "route");
+        say2(a, K, `\u0421\u043E\u0432\u0435\u0442: ${road ? `\u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C \u043A \u0446\u0435\u043B\u0438 \u0432 ${(road.cost / foot.cost).toFixed(1)} \u0440\u0430\u0437\u0430 \u0434\u043E\u043B\u044C\u0448\u0435` : "\u043A\u043E\u043B\u0451\u0441\u0430\u043C \u0442\u0443\u0434\u0430 \u043D\u0435 \u043F\u0440\u043E\u0439\u0442\u0438"} \u2014 \u0431\u0440\u043E\u0441\u0438\u043B\u0438 ${names2} \u0438 \u043F\u043E\u0448\u043B\u0438 \u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A${lost ? `, \u043E\u0441\u0442\u0430\u0432\u0438\u0432 ${Math.round(lost)} \u0435\u0434\u0438\u043D\u0438\u0446 \u0433\u0440\u0443\u0437\u0430` : ""}.`, "route");
         K.route = "straight";
       }
     } else K.route = null;
@@ -23525,8 +24139,9 @@ dd.q4{color:#c58cff;font-weight:600}
         K.camp = why === "build" ? K.build.days + 1 : C.maxDays;
         K.why = why;
         K.stats.camps++;
+        K.stopPlayed = 0;
         const left = Math.floor(K.food / need);
-        const text = why === "food" ? `${left > 0 ? `\u0415\u0434\u044B \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0430 ${pieces2(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : "\u0415\u0434\u044B \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C"}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C, \u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C.` : why === "heal" ? "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u0435\u043B\u0435 \u0438\u0434\u0443\u0442: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C \u0438 \u043E\u0442\u043B\u0435\u0436\u0430\u0442\u044C\u0441\u044F." : why === "build" ? `\u0421\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u0432 \u043B\u0435\u0441\u0443 \u0438 ${K.build.kind === "building" ? `\u0441\u0440\u0443\u0431\u0438\u0442\u044C \xAB${BUILDINGS.get(K.build.id).name}\xBB \u0434\u043B\u044F \u043F\u043E\u0432\u043E\u0437\u043A\u0438` : K.build.kind === "cart" ? "\u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u043F\u043E\u0432\u043E\u0437\u043A\u0443"}: ${pieces2(K.build.days, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} \u0440\u0430\u0431\u043E\u0442\u044B.` : `\u0417\u0434\u0435\u0441\u044C \u043F\u0430\u0441\u0443\u0442\u0441\u044F \u0434\u0438\u043A\u0438\u0435 ${BEASTS[why.slice(5)].plural}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u0438 \u043F\u0440\u0438\u0440\u0443\u0447\u0438\u0442\u044C.`;
+        const text = why === "food" ? `${left > 0 ? `\u0415\u0434\u044B \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0430 ${pieces3(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : "\u0415\u0434\u044B \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C"}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C, \u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C.` : why === "heal" ? "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u0435\u043B\u0435 \u0438\u0434\u0443\u0442: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C \u0438 \u043E\u0442\u043B\u0435\u0436\u0430\u0442\u044C\u0441\u044F." : why === "build" ? `\u0421\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u0432 \u043B\u0435\u0441\u0443 \u0438 ${K.build.kind === "building" ? `\u0441\u0440\u0443\u0431\u0438\u0442\u044C \xAB${BUILDINGS.get(K.build.id).name}\xBB \u0434\u043B\u044F \u043F\u043E\u0432\u043E\u0437\u043A\u0438` : K.build.kind === "cart" ? "\u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u043F\u043E\u0432\u043E\u0437\u043A\u0443"}: ${pieces3(K.build.days, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} \u0440\u0430\u0431\u043E\u0442\u044B.` : `\u0417\u0434\u0435\u0441\u044C \u043F\u0430\u0441\u0443\u0442\u0441\u044F \u0434\u0438\u043A\u0438\u0435 ${BEASTS[why.slice(5)].plural}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u0438 \u043F\u0440\u0438\u0440\u0443\u0447\u0438\u0442\u044C.`;
         say2(a, K, text, "camp");
       } else if (!why) K.why = "";
     }
@@ -23538,7 +24153,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const near4 = townAt(a, K.i), friendly = near4 && near4.realm && (near4.realm === K.realm || trades(a, K.realm, near4.realm) && !atWar(a, K.realm, near4.realm));
     const foes = stepBubble(a, K, "night", r, guided(K)).filter((t) => THINGS[t.kind].mood === "hostile").sort((p, q) => Math.hypot(p.x - K.x, p.y - K.y) - Math.hypot(q.x - K.x, q.y - K.y));
     if (foes.length) {
-      const t = foes[0], win = fight3(a, K, { kind: THINGS[t.kind].foe, strength: t.strength, label: t.label }, r, "night");
+      const t = foes[0], win = fight3(a, K, foeOf2(t), r, "night");
       settle(K, t, win);
       K.stats.met = (K.stats.met || 0) + 1;
     } else if (r() < BUBBLE.stray * (friendly ? CAMPAIGN.night.friendly : 1)) {
@@ -23548,112 +24163,27 @@ dd.q4{color:#c58cff;font-weight:600}
     } else {
       const M = CAMPAIGN.morning;
       if (r() < M.food * Math.min(1.2, richness(a, K.i) + 0.2)) {
-        const n = Math.round(between3(r, M.foodN));
+        const n = Math.round(between4(r, M.foodN));
         K.food += n;
         K.stats.finds++;
-        if (r() < 0.25) say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u043F\u043E\u0434\u0441\u0442\u0440\u0435\u043B\u0438\u043B\u0438 \u0434\u0438\u0447\u044C: +${pieces2(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "find");
+        if (r() < 0.25) say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u043F\u043E\u0434\u0441\u0442\u0440\u0435\u043B\u0438\u043B\u0438 \u0434\u0438\u0447\u044C: +${pieces3(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "find");
       }
       if (r() < M.treasure) {
-        const g3 = Math.round(between3(r, M.gold));
+        const g3 = Math.round(between4(r, M.gold));
         K.gold += g3;
         K.stats.finds++;
-        say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u0443 \u0440\u0443\u0447\u044C\u044F \u043D\u0430\u0448\u043B\u0438 \u043E\u0431\u0440\u043E\u043D\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0448\u0435\u043B\u044C: ${pieces2(g3, "\u0437\u043E\u043B\u043E\u0442\u043E\u0439", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445")}.`, "find");
+        say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u0443 \u0440\u0443\u0447\u044C\u044F \u043D\u0430\u0448\u043B\u0438 \u043E\u0431\u0440\u043E\u043D\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0448\u0435\u043B\u044C: ${pieces3(g3, "\u0437\u043E\u043B\u043E\u0442\u043E\u0439", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445")}.`, "find");
       }
     }
     done3();
   }
-  function fight3(a, K, d, r, how = "night") {
-    const F = CAMPAIGN.fight, foe = FOES2[d.kind], E2 = foe.might * (d.strength ?? 1) * between3(r, [0.6, 1.4]), P = caravanMight(K) * (how === "ambush" ? AMBUSH.surprise : 1);
-    const opening = how === "ambush" ? `\u041D\u0430 \u043C\u0430\u0440\u0448\u0435 \u0438\u0437 \u0437\u0430\u0441\u0430\u0434\u044B \u0443\u0434\u0430\u0440\u0438\u043B\u0438 ${foe.label}` : `\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438 ${foe.label}`;
-    if (how === "ambush") K.stats.ambushes = (K.stats.ambushes || 0) + 1;
-    const share2 = P / (P + E2), win = r() < share2;
-    K.stats.fights++;
-    let hurt2 = E2 * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share2)) * (win ? 1 : F.lostHurt);
-    const hit = [];
-    while (hurt2 > 0 && alive3(K).length) {
-      const ms = alive3(K), wts = ms.map((m2) => m2.role === "knight" ? F.shield : 1);
-      let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
-      for (let q = 0; q < ms.length; q++) {
-        x -= wts[q];
-        if (x <= 0) {
-          m = ms[q];
-          break;
-        }
-      }
-      const b = between3(r, F.blow);
-      m.hp -= b;
-      hurt2 -= b * 2;
-      if (!hit.includes(m)) hit.push(m);
-      if (m.hp <= 0) {
-        if (win) m.hp = F.saved;
-        else die(a, K, m, `\u043F\u0430\u043B \u0432 ${how === "ambush" ? "\u0437\u0430\u0441\u0430\u0434\u0435" : "\u043D\u043E\u0447\u043D\u043E\u043C \u0431\u043E\u044E"} (${foe.label})`);
-      }
-    }
-    const where = d.label && d.label !== foe.label ? ` \u2014 ${d.label}` : "";
-    if (!alive3(K).length) return win;
-    if (win) {
-      K.stats.won++;
-      shake(K, LOYALTY.won);
-      const joined = () => alive3(K).filter((m) => m.loyalty != null).length;
-      if (FREED.chance[d.kind] && alive3(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
-        const n = 1 + (r() < 0.35 ? 1 : 0), names = [];
-        for (let q = 0; q < n && alive3(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
-          const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
-          const race = minor ? COMPANIONS.minorRaces[r() * COMPANIONS.minorRaces.length | 0] : peoples[r() * peoples.length | 0].race;
-          const m = makeMember(K, r, { race, role: "freed", gear: FREED.gear, loyalty: FREED.loyalty });
-          K.members.push(m);
-          names.push(`${m.name} (${SPECIES_LABEL(race)})`);
-        }
-        say2(a, K, `\u0412 \u043B\u0430\u0433\u0435\u0440\u0435 \u0432\u0440\u0430\u0433\u043E\u0432 \u043D\u0430\u0448\u043B\u0438 \u043F\u043B\u0435\u043D\u043D\u0438\u043A\u043E\u0432 \u0438 \u043E\u0441\u0432\u043E\u0431\u043E\u0434\u0438\u043B\u0438: ${names.join(", ")}. ${n > 1 ? "\u041F\u043E\u043A\u0430 \u0438\u0434\u0443\u0442 \u0441 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C" : "\u041F\u043E\u043A\u0430 \u0438\u0434\u0451\u0442 \u0441 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C"} \u2014 \u043D\u0430\u0434\u043E\u043B\u0433\u043E \u043B\u0438, \u043D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u043E.`, "people");
-      }
-      const loot = Math.round(between3(r, F.loot));
-      K.food += loot;
-      say2(a, K, `${opening}${where}. \u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C${hit.length ? `, \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u043D\u0438\u043A\u0442\u043E"}` : " \u0431\u0435\u0437 \u0440\u0430\u043D"}; \u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 \u0435\u0434\u044B \u043D\u0430 ${pieces2(loot, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "fight");
-      for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) {
-        gainBeast(a, K, kind, "\u0423 \u0432\u0440\u0430\u0433\u043E\u0432 \u043E\u0442\u0431\u0438\u043B\u0438");
-        break;
-      }
-      const T2 = GETTING.spoilTool;
-      if (T2[d.kind] && toolTier(K) < 2 && r() < T2[d.kind]) {
-        const m = alive3(K).find((x) => x.role === "squire") || alive3(K)[0], old = m.gear.hand[0];
-        m.gear.hand[0] = T2.item;
-        say2(a, K, `\u0421\u0440\u0435\u0434\u0438 \u0431\u0440\u043E\u0448\u0435\u043D\u043D\u043E\u0433\u043E \u0432\u0440\u0430\u0433\u0430\u043C\u0438 \u043D\u0430\u0448\u0451\u043B\u0441\u044F ${ITEMS.get(T2.item).label.toLowerCase()}: ${m.name} \u0441\u043C\u0435\u043D\u0438\u043B${m.gender === "f" ? "\u0430" : ""} \u043D\u0430 \u043D\u0435\u0433\u043E ${ITEMS.has(old) ? ITEMS.get(old).short : "\u0441\u0432\u043E\u0439 \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442"}. \u0421 \u0436\u0435\u043B\u0435\u0437\u043E\u043C \u043C\u043E\u0436\u043D\u043E \u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u043F\u043E\u0432\u043E\u0437\u043A\u0443.`, "build");
-      }
-    } else {
-      K.stats.fled++;
-      shake(K, LOYALTY.lost);
-      const lost = Math.round(K.food * F.lost);
-      K.food -= lost;
-      say2(a, K, `${opening}${where}. \u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438 \u0438 \u0431\u0435\u0436\u0430\u043B\u0438${how === "night" ? " \u0432 \u0442\u0435\u043C\u043D\u043E\u0442\u0435" : ""}${lost ? `, \u0431\u0440\u043E\u0441\u0438\u0432 ${pieces2(lost, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}` : ""}${hit.length ? `; \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u2014"}` : ""}.`, "fight");
-      const gone = K.beasts.filter(() => r() < GETTING.lose.beast);
-      if (gone.length) {
-        K.beasts = K.beasts.filter((b) => !gone.includes(b));
-        assign(K);
-        K.path = null;
-        const names = Object.keys(BEASTS).map((kind) => {
-          const n = gone.filter((b) => b.kind === kind).length;
-          return n ? n === 1 ? BEASTS[kind].acc : `${BEASTS[kind].plural} (${n})` : null;
-        }).filter(Boolean);
-        say2(a, K, `${how === "night" ? "\u0412 \u0442\u0435\u043C\u043D\u043E\u0442\u0435 \u0443\u0432\u0435\u043B\u0438 \u0438\u043B\u0438 \u0443\u0431\u0438\u043B\u0438" : "\u0412 \u0441\u0443\u043C\u0430\u0442\u043E\u0445\u0435 \u0443\u0432\u0435\u043B\u0438 \u0438\u043B\u0438 \u0443\u0431\u0438\u043B\u0438"} ${names.join(", ")}.`, "beast");
-      }
-      for (const v of [...K.vehicles]) if (r() < GETTING.lose.vehicle) {
-        K.vehicles = K.vehicles.filter((x) => x !== v);
-        assign(K);
-        K.path = null;
-        say2(a, K, `\u0412\u0440\u0430\u0433\u0438 \u0440\u0430\u0437\u0431\u0438\u043B\u0438 ${VEHICLES[v.kind].label === "\u0442\u0435\u043B\u0435\u0436\u043A\u0430" ? "\u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u043F\u043E\u0432\u043E\u0437\u043A\u0443"}${v.building ? ` \u0432\u043C\u0435\u0441\u0442\u0435 \u0441 \xAB${BUILDINGS.get(v.building).name}\xBB` : ""}.`, "beast");
-      }
-      K.camp = 0;
-      K.why = "";
-      K.build = null;
-    }
-    return win;
-  }
+  var foeOf2 = (t) => ({ kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null });
   function dayMeetings(a, K, r, marched) {
     const met = stepBubble(a, K, "day", r, guided(K));
     for (const t of met) {
       const T2 = THINGS[t.kind];
       if (T2.mood === "hostile" && T2.ambush && marched && core(K).length) {
-        const win = fight3(a, K, { kind: T2.foe, strength: t.strength, label: t.label }, r, "ambush");
+        const win = fight3(a, K, foeOf2(t), r, "ambush");
         settle(K, t, win);
         break;
       }
@@ -23662,11 +24192,11 @@ dd.q4{color:#c58cff;font-weight:600}
         roadTrade(a, K, t);
       }
       if (T2.mood === "game") {
-        const n = Math.round(between3(r, HERD2.food) * Math.min(1.5, alive3(K).length / 6));
+        const n = Math.round(between4(r, HERD2.food) * Math.min(1.5, alive3(K).length / 6));
         K.food += n;
         K.cargo.hide = (K.cargo.hide || 0) + 1;
         K.stats.herds = (K.stats.herds || 0) + 1;
-        say2(a, K, `\u041D\u0430\u0433\u043D\u0430\u043B\u0438 ${t.label.replace("\u0441\u0442\u0430\u0434\u043E: ", "\u0441\u0442\u0430\u0434\u043E \u2014 ")}: \u0434\u043E\u0431\u044B\u043B\u0438 ${pieces2(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \u043C\u044F\u0441\u0430 \u0438 \u0448\u043A\u0443\u0440\u0443.`, "find");
+        say2(a, K, `\u041D\u0430\u0433\u043D\u0430\u043B\u0438 ${t.label.replace("\u0441\u0442\u0430\u0434\u043E: ", "\u0441\u0442\u0430\u0434\u043E \u2014 ")}: \u0434\u043E\u0431\u044B\u043B\u0438 ${pieces3(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \u043C\u044F\u0441\u0430 \u0438 \u0448\u043A\u0443\u0440\u0443.`, "find");
         removeThing(K, t);
       }
     }
@@ -23698,7 +24228,7 @@ dd.q4{color:#c58cff;font-weight:600}
       K.food += n;
       K.gold = Math.round((K.gold - n * price) * 10) / 10;
       t.goods -= n;
-      parts.push(`\u043A\u0443\u043F\u0438\u043B\u0438 ${pieces2(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \u043F\u043E ${Math.round(price * 100) / 100}`);
+      parts.push(`\u043A\u0443\u043F\u0438\u043B\u0438 ${pieces3(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \u043F\u043E ${Math.round(price * 100) / 100}`);
     }
     K.stats.trains = (K.stats.trains || 0) + 1;
     if (parts.length) say2(a, K, `\u041D\u0430 \u0434\u043E\u0440\u043E\u0433\u0435 \u0432\u0441\u0442\u0440\u0435\u0442\u0438\u043B\u0438 \u0442\u043E\u0440\u0433\u043E\u0432\u044B\u0439 \u043E\u0431\u043E\u0437: ${parts.join("; ")}.`, "town");
@@ -23707,6 +24237,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (ended(K)) return;
     const seasonId = SEASON_LIST2[a.hist.season].id, before = { town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id };
     assign(K);
+    K.dayIn = day % SEASON_DAYS;
     const ms = alive3(K), { r, done: done3 } = draw(K, "day");
     const rich = richness(a, K.i) * seasonFood(a, K.i, seasonId), Fo = CAMPAIGN.forage;
     const town = K.inTown ? a.towns.find((x) => x.id === K.inTown.id) : null;
@@ -23721,12 +24252,18 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     } else if (!camping) march(a, K, pace(a, K, seasonId));
     else campWork(a, K, r);
+    const onMap3 = camping && K.why === "food" && K.mode !== "auto" && (K.stopPlayed ?? 0) < CAMP.stop.maxDays && core(K).length;
+    if (onMap3) {
+      K.stopPlayed = (K.stopPlayed ?? 0) + 1;
+      playStop(a, K);
+    }
     if (!town && core(K).length) {
       const rb = draw(K, "bubble");
       dayMeetings(a, K, rb.r, !camping);
       rb.done();
     }
-    if (!town) K.food += ms.length * (camping ? Fo.camp * campFx(K, "forage") : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+    const forage = ms.length * (camping ? Fo.camp * campFx(K, "forage") : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+    if (!town && !onMap3) K.food += forage;
     const need = ms.length * CAMPAIGN.ration, eat2 = Math.min(K.food, need), fed = eat2 / need;
     K.food = Math.max(0, K.food - eat2);
     const HT = CAMPAIGN.hunger.tell;
@@ -23738,7 +24275,7 @@ dd.q4{color:#c58cff;font-weight:600}
       K.hungry++;
       K.stats.hungryDays++;
     } else if (K.hungry) {
-      if (K.hungry >= HT.over) say2(a, K, `\u0413\u043E\u043B\u043E\u0434 \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B \u043F\u043E\u0441\u043B\u0435 ${pieces2(K.hungry, "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439", "\u0434\u043D\u0435\u0439")}.`, "hunger");
+      if (K.hungry >= HT.over) say2(a, K, `\u0413\u043E\u043B\u043E\u0434 \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B \u043F\u043E\u0441\u043B\u0435 ${pieces3(K.hungry, "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439", "\u0434\u043D\u0435\u0439")}.`, "hunger");
       K.hungry = 0;
     }
     for (const m of ms) {
@@ -23812,6 +24349,8 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "x16", label: "\xD716", wait: 190 },
     { id: "max", label: "\u0421\u0440\u0430\u0437\u0443", wait: 30, budget: 30 }
   ];
+  var LOCAL = { x1: { ticks: 2, stops: true }, x4: { ticks: 5 } };
+  var LOCAL_KIND = { night: "\u041D\u043E\u0447\u044C", ambush: "\u0417\u0430\u0441\u0430\u0434\u0430 \u043D\u0430 \u043C\u0430\u0440\u0448\u0435", stop: "\u0421\u0442\u043E\u044F\u043D\u043A\u0430" };
   var LAYERS = [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["peoples", "\u041D\u0430\u0440\u043E\u0434\u044B"], ["fauna", "\u0417\u0432\u0435\u0440\u0438"]];
   var PHASE = { out: "\u0438\u0434\u0443\u0442 \u043A \u0446\u0435\u043B\u0438", back: "\u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u044E\u0442\u0441\u044F \u0434\u043E\u043C\u043E\u0439", won: "\u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u0441 \u043F\u043E\u0431\u0435\u0434\u043E\u0439", lost: "\u043F\u043E\u0433\u0438\u0431\u043B\u0438", timeout: "\u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C" };
   var seasonWord = (s) => SEASON_LIST3[s % SEASON_LIST3.length].label.toLowerCase();
@@ -23887,6 +24426,16 @@ dd.q4{color:#c58cff;font-weight:600}
         this.syncFollow();
         this.draw();
       });
+      this.watch = true;
+      this.queue = [];
+      this.local = null;
+      $("campWatch").addEventListener("click", () => {
+        this.watch = !this.watch;
+        $("campWatch").setAttribute("aria-pressed", String(this.watch));
+        if (!this.watch) this.endLocal();
+      });
+      $("campLocalSkip").addEventListener("click", () => this.endLocal());
+      this.localR = new Renderer($("campLocal"));
     }
     dragged() {
       if (this.follow) {
@@ -23921,6 +24470,8 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     // leaving the screen: the walk halts between seasons and waits
     halt() {
+      this.endLocal();
+      this.queue = [];
       clearTimeout(this.timer);
       this.timer = 0;
       if (this.atlas?.campaign && !ended(this.atlas.campaign)) this.paused = true;
@@ -24029,12 +24580,18 @@ dd.q4{color:#c58cff;font-weight:600}
           this.syncRun();
           return;
         }
-        const sp = SPEEDS2.find((S) => S.id === this.speed) || SPEEDS2[0], t0 = Date.now();
+        if (this.local) {
+          this.timer = setTimeout(next, 200);
+          return;
+        }
+        const sp = SPEEDS2.find((S) => S.id === this.speed) || SPEEDS2[0], t0 = Date.now(), d0 = a.campaign.day;
         do {
           stepCampaign(a);
         } while (sp.budget && !ended(a.campaign) && Date.now() - t0 < sp.budget);
         this.tickAt = performance.now();
         this.tickWait = sp.budget ? 0 : sp.wait;
+        const L = LOCAL[this.speed], K = a.campaign, n = Math.max(1, K.track.length - 1);
+        this.queue = this.watch && L ? (K.camps || []).filter((c) => c.day >= d0 && (c.kind !== "stop" || L.stops)).map((c) => ({ ...c, at: Math.min(1, (c.day - d0) / n) })) : [];
         this.renderSide();
         this.draw();
         this.animate();
@@ -24048,6 +24605,16 @@ dd.q4{color:#c58cff;font-weight:600}
       if (this.raf) return;
       const loop = () => {
         this.raf = 0;
+        if (this.local) {
+          this.stepLocal();
+          this.raf = requestAnimationFrame(loop);
+          return;
+        }
+        if (this.queue.length && this.atlas?.campaign && !this.paused && this.slide() >= this.queue[0].at) {
+          this.startLocal(this.queue.shift());
+          this.raf = requestAnimationFrame(loop);
+          return;
+        }
         if (!this.atlas?.campaign || this.paused || !this.tickWait || this.slide() >= 1) {
           this.draw();
           return;
@@ -24056,6 +24623,52 @@ dd.q4{color:#c58cff;font-weight:600}
         this.raf = requestAnimationFrame(loop);
       };
       this.raf = requestAnimationFrame(loop);
+    }
+    // ── a camp on the local map: played again from its setup over the world map, then the season goes on
+    startLocal(c) {
+      let w;
+      try {
+        w = openCamp(c.setup);
+      } catch (e) {
+        console.warn("\u0441\u0442\u043E\u044F\u043D\u043A\u0430 \u043D\u0435 \u043E\u0442\u043A\u0440\u044B\u043B\u0430\u0441\u044C", e);
+        return;
+      }
+      const frac = this.slide();
+      this.local = { w, c, frac, view: { cam: { zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5 }, layer: "world", resHidden: /* @__PURE__ */ new Set(), selected: null, selBld: null, selCell: null }, done: 0 };
+      $("campLocal").hidden = false;
+      $("campLocalBar").hidden = false;
+      this.localR.setup(w);
+      this.localText();
+    }
+    localText() {
+      const L = this.local, c = L.c, w = L.w, last2 = w.logLines[0];
+      $("campLocalText").innerHTML = `<b>${LOCAL_KIND[c.kind] || "\u0421\u0442\u043E\u044F\u043D\u043A\u0430"}</b>${c.kind !== "stop" ? ` \u2014 ${esc(c.label)}` : ""}, \u0434\u0435\u043D\u044C ${c.day + 1}${last2 ? ` \xB7 <small>${esc(last2.when.replace(/^День \d+, /, ""))} ${last2.html.replace(/<[^>]+>/g, "")}</small>` : ""}`;
+    }
+    stepLocal() {
+      const L = this.local, w = L.w, per = (LOCAL[this.speed] || LOCAL.x4).ticks;
+      if (!this.paused) {
+        if (!campDone(w)) {
+          for (let k = 0; k < per && !campDone(w); k++) stepCamp(w);
+        } else if (!L.done) L.done = performance.now();
+        else if (performance.now() - L.done > 1500) {
+          this.endLocal();
+          return;
+        }
+      }
+      this.localR.draw(w, L.view);
+      if (w.logVersion !== L.logV) {
+        L.logV = w.logVersion;
+        this.localText();
+      }
+    }
+    endLocal() {
+      const L = this.local;
+      if (!L) return;
+      this.local = null;
+      $("campLocal").hidden = true;
+      $("campLocalBar").hidden = true;
+      if (this.tickWait) this.tickAt = performance.now() - L.frac * this.tickWait;
+      this.animate();
     }
     // where the caravan is at this moment of the playback
     caravanAt() {
@@ -24891,7 +25504,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function summarize(w) {
     const c = w.chronicle, people2 = c.people, now = w.tick;
     const days = now / DAY;
-    const alive4 = colonists(w);
+    const alive5 = colonists(w);
     const finished = c.built.length;
     const totals = [
       ["\u041F\u0440\u043E\u0434\u0435\u0440\u0436\u0430\u043B\u043E\u0441\u044C", daysText(days)],
@@ -24961,7 +25574,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const r of people2) if (r.likes) likes[r.likes] = (likes[r.likes] || 0) + 1;
     const topLike = Object.entries(likes).sort((a, b) => b[1] - a[1])[0];
     if (topLike) facts.push(`\u041B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438: ${JOBS.get(topLike[0]).label} (${topLike[1]} \u0438\u0437 ${people2.length}).`);
-    if (alive4.length === 1) facts.push(`\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u043C ${g(alive4[0], "\u0434\u0435\u0440\u0436\u0430\u043B\u0441\u044F", "\u0434\u0435\u0440\u0436\u0430\u043B\u0430\u0441\u044C")} ${alive4[0].name}.`);
+    if (alive5.length === 1) facts.push(`\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u043C ${g(alive5[0], "\u0434\u0435\u0440\u0436\u0430\u043B\u0441\u044F", "\u0434\u0435\u0440\u0436\u0430\u043B\u0430\u0441\u044C")} ${alive5[0].name}.`);
     const roll = people2.map((r) => ({
       name: r.name,
       founder: r.founder,

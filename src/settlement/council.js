@@ -29,7 +29,7 @@ export const eligible = (w, key) => buildable(w, key) && missing(w, BUILDINGS.ge
 
 export function councilDue(w) {
   const h = hourOf(w.tick);
-  return h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
+  return !w.light && h >= COUNCIL_FROM && h < COUNCIL_TO && w.council.lastDay !== dayOf(w.tick) && colonists(w).length > 0;
 }
 
 // extra pull toward work that brings in what the current goal still lacks. «Lacks» is measured the way

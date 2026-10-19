@@ -14,6 +14,8 @@ export const MARKET = {
   // a ration of road food (grain, dried meat and fish): its base price; a town that feeds itself well sells
   // it cheaper — × (food − feeds × the town's food effect, data/townBuildings.js), never below `floor`
   ration: 0.25, food: {base: 1.4, feeds: 0.6, floor: 0.7},
+  // the spoils of fights (worn arms and armour): × their worth
+  spoils: 0.5,
   // what a town buys of the caravan's goods, × value; a tannery pays more for hides, a market for everything
   sellBonus: {tannery: {hide: 1.3}, market: {all: 1.15}},
   // work in town: gold a day for each member who works (a squire with a tool, a knight hiring out as a guard);

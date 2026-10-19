@@ -142,9 +142,12 @@
           <button type="button" id="campZoomOut" aria-label="Отдалить">−</button>
           <button type="button" id="campZoomFit" aria-label="Весь мир">⌂</button>
           <button type="button" id="campFollow" aria-pressed="true" title="Следить за караваном: он в середине, виден весь пузырь вокруг">◎</button>
+          <button type="button" id="campWatch" aria-pressed="true" title="Показывать бои и стоянки на локальной карте (на темпе ×1 и ×4)">⚔</button>
         </div>
       </div>
-      <div class="preview-box"><canvas id="campMap" width="256" height="192" aria-label="Карта мира с караваном"></canvas></div>
+      <div class="preview-box camp-box"><canvas id="campMap" width="256" height="192" aria-label="Карта мира с караваном"></canvas>
+        <canvas id="campLocal" hidden aria-label="Стоянка каравана на локальной карте"></canvas>
+        <div id="campLocalBar" class="camp-local-bar" hidden><span id="campLocalText"></span><button type="button" id="campLocalSkip">Дальше по карте мира</button></div></div>
       <div class="legend atlas-legend" id="campLegend"></div>
       <div class="readout" id="campReadout">Наведите на карту, чтобы увидеть клетку.</div>
     </div>

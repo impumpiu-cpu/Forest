@@ -329,6 +329,12 @@ dd.q4{color:#c58cff;font-weight:600}
 .atlas-map .seg{align-self:flex-start}
 #atlasMap,#campMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
 #atlasMap.dragging,#campMap.dragging{cursor:grabbing}
+/* a camp of the caravan played on the local map, over the world map (ui/campaignView.js) */
+.camp-box{position:relative}
+#campLocal{position:absolute;inset:0;width:100%;height:100%;display:block}
+#campLocal[hidden],.camp-local-bar[hidden]{display:none}
+.camp-local-bar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:5px;background:rgba(13,15,10,.82);color:var(--fg);font-size:13px}
+.camp-local-bar button{flex:none}
 .atlas-tools{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .atlas-tools .wrapseg{flex:1 1 0;min-width:0}
 .zoomseg{flex:0 0 auto}

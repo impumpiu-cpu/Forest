@@ -16,7 +16,8 @@ import {SPECIES} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 import {BUBBLE, THINGS, TRAIN, HERD} from '../data/bubble.js';
 import {GAME} from '../data/campaign.js';
-import {dangers, cellRegion} from './land.js';
+import {dangers, cellRegion, lairFoe} from './land.js';
+import {REALM_BANDS} from '../data/seam.js';
 
 export const bubbleOf = K => (K.bubble ||= {next: 1, things: []});
 const sc = (a, v) => v * scaleOf(a);
@@ -49,7 +50,7 @@ function spawn(a, K) {
     const i = cellAt(a, x, y); if (!land(a, i)) continue;
     const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = friendlyNear(a, K, i) ? BUBBLE.friendly : 1;
     const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, ...props}); };
-    for (const dg of dangers(a, i)) if (r() < dg.p * BUBBLE.spawn * k) add({kind: dg.kind, strength: dg.strength ?? 1, label: dg.label || THINGS[dg.kind].label});
+    for (const dg of dangers(a, i)) if (r() < dg.p * BUBBLE.spawn * k) add({kind: dg.kind, strength: dg.strength ?? 1, label: dg.label || THINGS[dg.kind].label, ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {})});
     const road = roadAccess(a, i);
     if (road > 0.2 && r() < TRAIN.chance * road) add({kind: 'trader', strength: 0, label: THINGS.trader.label, goods: Math.round(TRAIN.food[0] + r() * (TRAIN.food[1] - TRAIN.food[0]))});
     const herd = herdOf(a, i);
@@ -87,12 +88,12 @@ export function worldThings(a, K) {
   const out = [], sense = sc(a, BUBBLE.sense), P = BUBBLE.partyMight;
   for (const p of a.parties || []) {
     if (p.kind === 'caravan' || p.state === 'gone' || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
-    let kind = null;
-    if (p.kind === 'army') kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? 'army' : null;
-    else if (p.kind === 'raid') { const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind); kind = L?.undead ? 'undead' : 'tribe'; }
-    else if (p.kind === 'brood' || p.kind === 'dragon') kind = 'lair';
+    let kind = null, who = {};
+    if (p.kind === 'army') { kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? 'army' : null; who = {band: REALM_BANDS[p.people] || 'bandits'}; }
+    else if (p.kind === 'raid') { const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind); kind = L?.undead ? 'undead' : 'tribe'; who = l ? lairFoe(l.kind) : {}; }
+    else if (p.kind === 'brood' || p.kind === 'dragon') { kind = 'lair'; const l = (a.lairs || []).find(x => x.id === p.owner); who = l ? lairFoe(l.kind) : {}; }
     if (!kind) continue;
-    out.push({id: `p${p.id}`, party: p.id, kind, x: p.x, y: p.y, i: p.i, label: p.label || THINGS[kind].label, sated: (K.partySated || {})[p.id] ?? -1,
+    out.push({id: `p${p.id}`, party: p.id, kind, ...who, x: p.x, y: p.y, i: p.i, label: p.label || THINGS[kind].label, sated: (K.partySated || {})[p.id] ?? -1,
       strength: Math.min(P.max, Math.max(P.min, (p.might || 3) * P.per))});
   }
   return out;

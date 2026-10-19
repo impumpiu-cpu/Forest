@@ -92,6 +92,8 @@ export function trade(a, K, t, st) {
   const done = [];
   let got = 0;
   for (const [id, n] of Object.entries(K.cargo)) { const p = sellPrice(t, st, id) * n; if (p > 0) { got += p; delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); } }
+  // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
+  if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + (ITEMS.get(id)?.value ?? 0), 0) * STANDING[st].sell * MARKET.spoils; got += p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   K.gold = gold(K.gold + got);
   // food: up to `foodDays` days, as far as the room and the gold go
   const need = alive(K).length * CAMPAIGN.ration, price = rationPrice(t, st);

@@ -78,8 +78,8 @@ export function step(w) {
   stepCarcasses(w);
   separate(w);
   if (w.fx.length) { for (const f of w.fx) f.t--; w.fx = w.fx.filter(f => f.t > 0); }   // shot traces fade
-  stepCouncil(w);
-  stepTrade(w);
+  // a campaign's camp (campaign/camp.js) is no settlement: no council, no trade
+  if (!w.light) { stepCouncil(w); stepTrade(w); }
   stepOutside(w);
   sampleChronicle(w);
   sampleBehaviour(w);

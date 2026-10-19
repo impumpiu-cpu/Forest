@@ -20,6 +20,7 @@ import {faunaCell} from '../atlas/fauna.js';
 import {roadAccess} from '../atlas/roads.js';
 import {BIOMES} from '../data/biomes.js';
 import {LAIRS} from '../data/lairs.js';
+import {LAIR_BANDS} from '../data/seam.js';
 import {SPECIES} from '../data/species.js';
 import {GAME, CAMPAIGN} from '../data/campaign.js';
 import {FODDER} from '../data/transport.js';
@@ -53,6 +54,13 @@ export function seasonFood(a, i, seasonId) {
   return cold < -5 ? k * CAMPAIGN.seasonFood.frost : k;
 }
 
+// who a lair sends on the local map (campaign/camp.js): its band (data/seam.js LAIR_BANDS) or its beast
+export function lairFoe(kind) {
+  const L = LAIRS.get(kind);
+  if (LAIR_BANDS[kind]) return {band: LAIR_BANDS[kind]};
+  return L?.species && !L.dragon ? {beast: L.species} : {};
+}
+
 // what may come at night, each with how likely it makes a fight: [{kind, p, might, label}]
 export const nightRisk = (a, i) => dangers(a, i).reduce((s, d) => s + d.p, 0);
 export function dangers(a, i) {
@@ -60,7 +68,7 @@ export function dangers(a, i) {
   const lair = lairAt(a, i);
   if (lair) {
     const L = LAIRS.get(lair.kind), kind = L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair';
-    out.push({kind, p: 0.05 + 0.05 * Math.min(1.5, lair.strength), strength: 0.6 + 0.6 * Math.min(2, lair.strength), label: `${L.label} «${lair.name}»`});
+    out.push({kind, p: 0.05 + 0.05 * Math.min(1.5, lair.strength), strength: 0.6 + 0.6 * Math.min(2, lair.strength), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind)});
   }
   const wolves = faunaLevel({region: cellRegion(a, i)}, 'wolf');
   if (wolves > 0) out.push({kind: 'wolves', p: 0.025 * Math.min(2, wolves), strength: 0.7 + 0.3 * Math.min(2, wolves)});

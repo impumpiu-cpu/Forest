@@ -3,7 +3,8 @@
 // season with the caravan's thirty days in it); the screen then plays the season back day by day —
 // the caravan slides along the day's positions (K.track), the world's parties slide as on the «Мир»
 // screen. The map is the «Мир» screen's own drawing (ui/atlasView.js), with the fog, the caravan, its
-// way, its goal and its home on top.
+// way, its goal and its home on top. A fight or a stop the core played on the local map (campaign/camp.js)
+// is played again over the map when the playback reaches its day: the same setup gives the same camp.
 import {AtlasView} from './atlasView.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
 import {capitals, newCampaign, stepCampaign, ended, alive, pace} from '../campaign/index.js';
@@ -24,6 +25,8 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {townLabel} from '../atlas/towns.js';
 import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
+import {openCamp, stepCamp, campDone} from '../campaign/camp.js';
+import {Renderer} from '../render/renderer.js';
 const itemShort = id => (ITEMS.has(id) ? ITEMS.get(id).short : id);
 
 const SEASON_LIST = SEASONS.all();
@@ -34,6 +37,9 @@ const SPEEDS = [
   {id: 'x16', label: '×16', wait: 190},
   {id: 'max', label: 'Сразу', wait: 30, budget: 30},
 ];
+// the local map's pace, ticks a frame, by the season's pace; a stop is shown only at the slowest
+const LOCAL = {x1: {ticks: 2, stops: true}, x4: {ticks: 5}};
+const LOCAL_KIND = {night: 'Ночь', ambush: 'Засада на марше', stop: 'Стоянка'};
 const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples', 'Народы'], ['fauna', 'Звери']];
 const PHASE = {out: 'идут к цели', back: 'возвращаются домой', won: 'вернулись с победой', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
@@ -60,6 +66,11 @@ export class CampaignView extends AtlasView {
     // following the caravan: it stays in the middle, near enough to see its bubble; a drag stops it
     this.follow = true;
     $('campFollow').addEventListener('click', () => { this.follow = !this.follow; if (this.follow) this.closeUp(); this.syncFollow(); this.draw(); });
+    // the camps on the local map: watched as the playback reaches their day, or not at all
+    this.watch = true; this.queue = []; this.local = null;
+    $('campWatch').addEventListener('click', () => { this.watch = !this.watch; $('campWatch').setAttribute('aria-pressed', String(this.watch)); if (!this.watch) this.endLocal(); });
+    $('campLocalSkip').addEventListener('click', () => this.endLocal());
+    this.localR = new Renderer($('campLocal'));
   }
 
   dragged() { if (this.follow) { this.follow = false; this.syncFollow(); } }
@@ -77,7 +88,7 @@ export class CampaignView extends AtlasView {
 
   show() { this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode(); }
   // leaving the screen: the walk halts between seasons and waits
-  halt() { clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !ended(this.atlas.campaign)) this.paused = true; this.syncRun(); }
+  halt() { this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !ended(this.atlas.campaign)) this.paused = true; this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
@@ -151,9 +162,14 @@ export class CampaignView extends AtlasView {
     const a = this.atlas; clearTimeout(this.timer);
     const next = () => {
       if (a !== this.atlas || this.paused || !a.campaign || ended(a.campaign)) { this.syncRun(); return; }
-      const sp = SPEEDS.find(S => S.id === this.speed) || SPEEDS[0], t0 = Date.now();
+      // a camp on the local map is being watched: the next season waits for it
+      if (this.local) { this.timer = setTimeout(next, 200); return; }
+      const sp = SPEEDS.find(S => S.id === this.speed) || SPEEDS[0], t0 = Date.now(), d0 = a.campaign.day;
       do { stepCampaign(a); } while (sp.budget && !ended(a.campaign) && Date.now() - t0 < sp.budget);
       this.tickAt = performance.now(); this.tickWait = sp.budget ? 0 : sp.wait;
+      // the season's camps to watch, each at its day of the playback
+      const L = LOCAL[this.speed], K = a.campaign, n = Math.max(1, K.track.length - 1);
+      this.queue = this.watch && L ? (K.camps || []).filter(c => c.day >= d0 && (c.kind !== 'stop' || L.stops)).map(c => ({...c, at: Math.min(1, (c.day - d0) / n)})) : [];
       this.renderSide(); this.draw(); this.animate();
       if (!ended(a.campaign)) this.timer = setTimeout(next, sp.wait); else this.syncRun();
     };
@@ -164,10 +180,45 @@ export class CampaignView extends AtlasView {
     if (this.raf) return;
     const loop = () => {
       this.raf = 0;
+      if (this.local) { this.stepLocal(); this.raf = requestAnimationFrame(loop); return; }
+      if (this.queue.length && this.atlas?.campaign && !this.paused && this.slide() >= this.queue[0].at) { this.startLocal(this.queue.shift()); this.raf = requestAnimationFrame(loop); return; }
       if (!this.atlas?.campaign || this.paused || !this.tickWait || this.slide() >= 1) { this.draw(); return; }
       this.draw(); this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
+  }
+
+  // ── a camp on the local map: played again from its setup over the world map, then the season goes on
+  startLocal(c) {
+    let w;
+    try { w = openCamp(c.setup); } catch (e) { console.warn('стоянка не открылась', e); return; }
+    const frac = this.slide();
+    this.local = {w, c, frac, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
+    $('campLocal').hidden = false; $('campLocalBar').hidden = false;
+    this.localR.setup(w);
+    this.localText();
+  }
+  localText() {
+    const L = this.local, c = L.c, w = L.w, last = w.logLines[0];
+    $('campLocalText').innerHTML = `<b>${LOCAL_KIND[c.kind] || 'Стоянка'}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день ${c.day + 1}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
+  }
+  stepLocal() {
+    const L = this.local, w = L.w, per = (LOCAL[this.speed] || LOCAL.x4).ticks;
+    if (!this.paused) {
+      if (!campDone(w)) { for (let k = 0; k < per && !campDone(w); k++) stepCamp(w); }
+      else if (!L.done) L.done = performance.now();
+      else if (performance.now() - L.done > 1500) { this.endLocal(); return; }
+    }
+    this.localR.draw(w, L.view);
+    if (w.logVersion !== L.logV) { L.logV = w.logVersion; this.localText(); }
+  }
+  endLocal() {
+    const L = this.local; if (!L) return;
+    this.local = null;
+    $('campLocal').hidden = true; $('campLocalBar').hidden = true;
+    // the season's playback goes on from where it stopped
+    if (this.tickWait) this.tickAt = performance.now() - L.frac * this.tickWait;
+    this.animate();
   }
 
   // where the caravan is at this moment of the playback

@@ -44,7 +44,7 @@ export function makeSite(cfg) {
 // a site from a region: water, rock and forest from its biomes (scaled by the polygon's sliders, if
 // any); `extra` gives what the caller knows better — the climate, the gates, fertility, neighbours
 export function siteFromRegion(cfg, region, extra = {}) {
-  const {w, h} = SIZES[cfg.size];
+  const {w, h} = cfg.dims || SIZES[cfg.size];   // a campaign's camp has its own small map (data/camp.js)
   const biomes = {};
   for (const [id, v] of Object.entries(region.biomes)) if (BIOMES.has(id) && v > 0) biomes[id] = v;
   const share = id => biomes[id] || 0;

@@ -74,6 +74,24 @@ export function laySite(w, key) {
   if (lot < 0) { log(w, 'Вокруг лагеря не осталось места под постройку.', 'build'); return null; }
   for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
   if (d.key) recomputeMods(w);   // a tool left the stock
+  const b = putLot(w, key, lot);
+  log(w, `Заложен${ending(d)} ${d.name.toLowerCase()}. Нужно ${d.work} человеко-тиков работы.`, 'build');
+  return b;
+}
+
+// a building brought packed (a campaign's wagon, campaign/camp.js): put up by the camp with `left` of its
+// work still to do, whatever it would cost or need to be laid; null when there is no room
+export function putUp(w, key, left = 0) {
+  const d = BUILDINGS.get(key), lot = findLot(w, d);
+  if (lot < 0) return null;
+  const b = putLot(w, key, lot);
+  b.packed = true;
+  if (left <= 0) { b.progress = d.work - 1; addLabour(w, b, 1, null); } else b.progress = Math.floor(d.work * (1 - left));
+  return b;
+}
+
+function putLot(w, key, lot) {
+  const d = BUILDINGS.get(key);
   const [lw, lh] = lotSize(d);
   const b = {id: w.bldSeq++, key, x: lot % w.w, y: (lot / w.w) | 0, w: lw, h: lh, progress: 0, done: false, cells: []};
   const g = w.grid;
@@ -84,7 +102,6 @@ export function laySite(w, key) {
   w.buildings.push(b);
   recomputeZone(w);
   for (const id of ['sites', 'berries', 'trees']) w.nav.dirty(id);
-  log(w, `Заложен${ending(d)} ${d.name.toLowerCase()}. Нужно ${d.work} человеко-тиков работы.`, 'build');
   return b;
 }
 

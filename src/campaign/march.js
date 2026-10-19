@@ -6,7 +6,7 @@
 //             the beasts graze, or starve where nothing grows;
 //   evening — the council: the goal reached? camp — for food, for the wounded, to tame, to build? the way:
 //             along the roads with the wheels, or straight on foot, leaving them;
-//   night   — something may find the camp: the fight is settled at once (this stage: no local map).
+//   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
 import {scaleOf} from '../atlas/tectonics.js';
 import {townAt} from '../atlas/peoples.js';
@@ -15,7 +15,7 @@ import {realmLabel} from '../atlas/realms.js';
 import {biomeAt} from '../atlas/biomes.js';
 import {townLabel} from '../atlas/towns.js';
 import {faunaLevel} from '../world/region.js';
-import {SEASONS} from '../data/seasons.js';
+import {SEASONS, SEASON_DAYS} from '../data/seasons.js';
 import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
@@ -27,6 +27,8 @@ import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion} from './l
 import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, fieldBuildings, buildDays, handler} from './baggage.js';
 import {draw, makeMember} from './start.js';
+import {fight, playStop} from './fight.js';
+import {CAMP} from '../data/camp.js';
 import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose} from './bubble.js';
 import {BUBBLE, THINGS, AMBUSH, TRAIN, HERD} from '../data/bubble.js';
 import {RESOURCES} from '../data/resources.js';
@@ -85,7 +87,7 @@ export function pace(a, K, seasonId) {
   return v;
 }
 
-function die(a, K, m, why) {
+export function die(a, K, m, why) {
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why};
   const left = core(K).length, n = K.members.filter(isCore).length;
   say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left);
@@ -93,7 +95,7 @@ function die(a, K, m, why) {
 
 // ── the baggage changes: a beast, a vehicle; the way is planned afresh
 const beastWord = (kind, cs = 'label') => BEASTS[kind][cs];
-function gainBeast(a, K, kind, how) {
+export function gainBeast(a, K, kind, how) {
   K.beasts.push({id: K.nextBeast++, kind, hp: 0.8, job: null, rider: null}); K.stats.tamed++;
   say(a, K, `${how} ${beastWord(kind, 'acc')}. Теперь в обозе: ${baggageText(K)}.`, 'beast');
   assign(K); K.path = null;
@@ -298,7 +300,7 @@ function leave(a, K, m, text) {
   m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year};
   say(a, K, text + '.', 'leave'); assign(K);
 }
-const shake = (K, d) => { for (const m of alive(K)) if (m.loyalty != null && m.loyalty < 1) m.loyalty = Math.max(0, Math.min(1, m.loyalty + d)); };
+export const shake = (K, d) => { for (const m of alive(K)) if (m.loyalty != null && m.loyalty < 1) m.loyalty = Math.max(0, Math.min(1, m.loyalty + d)); };
 
 function evening(a, K) {
   const ms = alive(K), need = ms.length * CAMPAIGN.ration, seasonId = SEASON_LIST[a.hist.season].id;
@@ -357,7 +359,7 @@ function evening(a, K) {
       else if (tame) { why = 'tame:' + tame; K.tamedAt = K.day; }
     }
     if (why && K.why !== why) {
-      K.camp = why === 'build' ? K.build.days + 1 : C.maxDays; K.why = why; K.stats.camps++;
+      K.camp = why === 'build' ? K.build.days + 1 : C.maxDays; K.why = why; K.stats.camps++; K.stopPlayed = 0;
       const left = Math.floor(K.food / need);
       const text = why === 'food' ? `${left > 0 ? `Еды осталось на ${pieces(left, 'день', 'дня', 'дней')}` : 'Еды не осталось'}: совет решил встать лагерем, охотиться и собирать.`
         : why === 'heal' ? 'Раненые еле идут: совет решил встать лагерем и отлежаться.'
@@ -378,7 +380,7 @@ function night(a, K) {
   const near = townAt(a, K.i), friendly = near && near.realm && (near.realm === K.realm || (trades(a, K.realm, near.realm) && !atWar(a, K.realm, near.realm)));
   const foes = stepBubble(a, K, 'night', r, guided(K)).filter(t => THINGS[t.kind].mood === 'hostile').sort((p, q) => Math.hypot(p.x - K.x, p.y - K.y) - Math.hypot(q.x - K.x, q.y - K.y));
   if (foes.length) {
-    const t = foes[0], win = fight(a, K, {kind: THINGS[t.kind].foe, strength: t.strength, label: t.label}, r, 'night');
+    const t = foes[0], win = fight(a, K, foeOf(t), r, 'night');
     settle(K, t, win); K.stats.met = (K.stats.met || 0) + 1;
   } else if (r() < BUBBLE.stray * (friendly ? CAMPAIGN.night.friendly : 1)) {
     const ds = dangers(a, K.i), d = ds.length ? ds[(r() * ds.length) | 0] : {kind: 'wolves', strength: 0.7};
@@ -392,69 +394,8 @@ function night(a, K) {
   done();
 }
 
-// a fight at the camp, settled at once: the foe's might against the caravan's
-// how: 'night' — at the camp; 'ambush' — on the march, the caravan caught unawares. True when they won
-function fight(a, K, d, r, how = 'night') {
-  const F = CAMPAIGN.fight, foe = FOES[d.kind], E = foe.might * (d.strength ?? 1) * between(r, [0.6, 1.4]), P = caravanMight(K) * (how === 'ambush' ? AMBUSH.surprise : 1);
-  const opening = how === 'ambush' ? `На марше из засады ударили ${foe.label}` : `Ночью на лагерь напали ${foe.label}`;
-  if (how === 'ambush') K.stats.ambushes = (K.stats.ambushes || 0) + 1;
-  const share = P / (P + E), win = r() < share;
-  K.stats.fights++;
-  // the blows: more when they lose, mostly on the knights, who shield the squires
-  let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);
-  const hit = [];
-  while (hurt > 0 && alive(K).length) {
-    const ms = alive(K), wts = ms.map(m => (m.role === 'knight' ? F.shield : 1));
-    let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
-    for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
-    const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;
-    if (!hit.includes(m)) hit.push(m);
-    if (m.hp <= 0) { if (win) m.hp = F.saved; else die(a, K, m, `пал в ${how === 'ambush' ? 'засаде' : 'ночном бою'} (${foe.label})`); }
-  }
-  const where = d.label && d.label !== foe.label ? ` — ${d.label}` : '';
-  if (!alive(K).length) return win;
-  if (win) {
-    K.stats.won++; shake(K, LOYALTY.won);
-    // captives set free: they may go along
-    const joined = () => alive(K).filter(m => m.loyalty != null).length;
-    if (FREED.chance[d.kind] && alive(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
-      const n = 1 + (r() < 0.35 ? 1 : 0), names = [];
-      for (let q = 0; q < n && alive(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
-        const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
-        const race = minor ? COMPANIONS.minorRaces[(r() * COMPANIONS.minorRaces.length) | 0] : peoples[(r() * peoples.length) | 0].race;
-        const m = makeMember(K, r, {race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});
-        K.members.push(m); names.push(`${m.name} (${SPECIES_LABEL(race)})`);
-      }
-      say(a, K, `В лагере врагов нашли пленников и освободили: ${names.join(', ')}. ${n > 1 ? 'Пока идут с караваном' : 'Пока идёт с караваном'} — надолго ли, неизвестно.`, 'people');
-    }
-    const loot = Math.round(between(r, F.loot)); K.food += loot;
-    say(a, K, `${opening}${where}. Отбились${hit.length ? `, ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || 'никто'}` : ' без ран'}; с убитых взяли еды на ${pieces(loot, 'паёк', 'пайка', 'пайков')}.`, 'fight');
-    // those who keep beasts leave some behind
-    for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) { gainBeast(a, K, kind, 'У врагов отбили'); break; }
-    const T = GETTING.spoilTool;
-    if (T[d.kind] && toolTier(K) < 2 && r() < T[d.kind]) {
-      const m = alive(K).find(x => x.role === 'squire') || alive(K)[0], old = m.gear.hand[0];
-      m.gear.hand[0] = T.item;
-      say(a, K, `Среди брошенного врагами нашёлся ${ITEMS.get(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${ITEMS.has(old) ? ITEMS.get(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
-    }
-  } else {
-    K.stats.fled++; shake(K, LOYALTY.lost);
-    const lost = Math.round(K.food * F.lost); K.food -= lost;
-    say(a, K, `${opening}${where}. Не устояли и бежали${how === 'night' ? ' в темноте' : ''}${lost ? `, бросив ${pieces(lost, 'паёк', 'пайка', 'пайков')}` : ''}${hit.length ? `; ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || '—'}` : ''}.`, 'fight');
-    const gone = K.beasts.filter(() => r() < GETTING.lose.beast);
-    if (gone.length) {
-      K.beasts = K.beasts.filter(b => !gone.includes(b)); assign(K); K.path = null;
-      const names = Object.keys(BEASTS).map(kind => { const n = gone.filter(b => b.kind === kind).length; return n ? (n === 1 ? BEASTS[kind].acc : `${BEASTS[kind].plural} (${n})`) : null; }).filter(Boolean);
-      say(a, K, `${how === 'night' ? 'В темноте увели или убили' : 'В суматохе увели или убили'} ${names.join(', ')}.`, 'beast');
-    }
-    for (const v of [...K.vehicles]) if (r() < GETTING.lose.vehicle) {
-      K.vehicles = K.vehicles.filter(x => x !== v); assign(K); K.path = null;
-      say(a, K, `Враги разбили ${VEHICLES[v.kind].label === 'тележка' ? 'тележку' : 'повозку'}${v.building ? ` вместе с «${BUILDINGS.get(v.building).name}»` : ''}.`, 'beast');
-    }
-    K.camp = 0; K.why = ''; K.build = null;
-  }
-  return win;
-}
+// what a thing of the bubble brings to a fight: its foe, its strength, and who it is on the local map
+const foeOf = t => ({kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null});
 
 // ── meeting the bubble by day: an ambush on the march, a merchant's train on the road, a herd to hunt
 function dayMeetings(a, K, r, marched) {
@@ -462,7 +403,7 @@ function dayMeetings(a, K, r, marched) {
   for (const t of met) {
     const T = THINGS[t.kind];
     if (T.mood === 'hostile' && T.ambush && marched && core(K).length) {
-      const win = fight(a, K, {kind: T.foe, strength: t.strength, label: t.label}, r, 'ambush');
+      const win = fight(a, K, foeOf(t), r, 'ambush');
       settle(K, t, win);
       break;   // one ambush a day is enough
     }
@@ -507,6 +448,7 @@ export function caravanDay(a, K, day) {
   if (ended(K)) return;
   const seasonId = SEASON_LIST[a.hist.season].id, before = {town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id};
   assign(K);
+  K.dayIn = day % SEASON_DAYS;   // the day of the season: a camp on the local map begins on it (campaign/camp.js)
   const ms = alive(K), {r, done} = draw(K, 'day');
   // the day: a camp or the march; food from the land either way
   const rich = richness(a, K.i) * seasonFood(a, K.i, seasonId), Fo = CAMPAIGN.forage;
@@ -518,8 +460,13 @@ export function caravanDay(a, K, day) {
     const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; }
   } else if (!camping) march(a, K, pace(a, K, seasonId));
   else campWork(a, K, r);
+  // the first days of a stop to hunt and gather are played on the local map (campaign/fight.js playStop):
+  // what the land gave there is the day's forage
+  const onMap = camping && K.why === 'food' && K.mode !== 'auto' && (K.stopPlayed ?? 0) < CAMP.stop.maxDays && core(K).length;
+  if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; playStop(a, K); }
   if (!town && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
-  if (!town) K.food += ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+  const forage = ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+  if (!town && !onMap) K.food += forage;
   // the meal
   const need = ms.length * CAMPAIGN.ration, eat = Math.min(K.food, need), fed = eat / need;
   K.food = Math.max(0, K.food - eat);

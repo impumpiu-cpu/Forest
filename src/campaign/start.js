@@ -78,12 +78,13 @@ function pickGoal(a, K, rnd) {
   return far === K.home ? null : far;
 }
 
-export function newCampaign(a, townId, {seed = null} = {}) {
+// mode: 'local' — fights and stops are played on the local map (campaign/camp.js); 'auto' — settled at once (quick runs)
+export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
   if (!landDone(a) || !a.hist) throw new Error('Кампании нужен мир с историей.');
   const t = a.towns.find(x => x.id === townId && x.alive);
   if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error('Это не столица мажорного народа.');
   const K = a.campaign = {
-    seed: seed || `${a.cfg.seed}:${t.id}`, started: {year: a.hist.year, season: a.hist.season}, day: 0,
+    seed: seed || `${a.cfg.seed}:${t.id}`, mode, started: {year: a.hist.year, season: a.hist.season}, day: 0,
     capital: t.id, capitalName: t.name, capitalFrom: `${townLabel(t, 2)} ${t.name}`, realm: t.realm, people: t.people, home: t.i, goal: null, phase: 'out',
     members: [], food: 0, gold: 0, i: t.i, x: t.x + 0.5, y: t.y + 0.5, path: null, k: 0, camp: 0, why: '', hungry: 0,
     seen: new Uint8Array(a.n), log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null,
