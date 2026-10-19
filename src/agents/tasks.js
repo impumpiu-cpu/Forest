@@ -1,6 +1,6 @@
 // Tasks are what an agent is doing right now: {id, ...state}. Brains choose them, TASKS run them.
 // Shared by every brain, so a new creature can reuse 'fight', 'flee' or 'idle' as they are.
-import {endTask} from './lifecycle.js';
+import {endTask, skipped} from './lifecycle.js';
 import {maxHp} from './agent.js';
 import {Registry} from '../core/registry.js';
 import {JOBS} from '../data/jobs.js';
@@ -12,7 +12,7 @@ import {nightness} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
-import {eatMeal, plunder} from '../settlement/stock.js';
+import {eatMeal, plunder, campFuel} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
@@ -24,7 +24,8 @@ import {homeComfort, prayed} from '../settlement/life.js';
 import {squadOf, noteHome, SQUAD} from './squad.js';
 import {enterEscort, escortGoing, guardStep, giveAid, askForBed, bond, TOGETHER} from '../settlement/together.js';
 import {agentInZone} from '../settlement/zone.js';
-import {heatTo, coolTo} from '../world/heat.js';
+import {heatTo, coolTo, tempAt} from '../world/heat.js';
+import {WARM_AT} from '../data/navmaps.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -53,8 +54,11 @@ TASKS.registerAll([
       else if (a.needs.food < 0.35) think(w, a, 'ateHungry', {food: f.label});
       a.needs.food = Math.min(1, a.needs.food + fed); done(w, a);
     }
-    // empty stock: eat what food is in the hands, otherwise straight from the bushes
+    // empty stock: eat what food is in the hands, otherwise straight from the bushes — unless the bushes
+    // are bare too (winter: gathering just came back blocked): then there is nothing to eat, and the
+    // meal waits so that the hunt or the rod gets its turn instead of eat → gather → eat on the spot
     else if (carriedFood(a) >= 1) { eatCarried(a); done(w, a); }
+    else if (skipped(w, a, {id: 'job', job: 'gather'})) fail(w, a, 'есть нечего: склад пуст, ягод нет');
     else a.task = {id: 'job', job: 'gather', eatNow: true};
   }},
 
@@ -79,8 +83,14 @@ TASKS.registerAll([
   }},
 
   {id: 'warm', label: () => 'греется', step(w, a, task) {
-    if (follow(w, a, 'warm') !== 'arrived') return;
-    if (w.camp.set.has(cellOf(w, a))) mill(w, a, task, 1.2);
+    // no fuel: there is no fire to warm at, neither at the camp nor in a hut — rather than stand freezing by
+    // the cold ashes, go for logs (the chop job wants them most when the stock is empty)
+    if (!campFuel(w)) { fail(w, a, 'костёр погас: топлива нет'); return; }
+    const i = cellOf(w, a);
+    // the hearth here has gone cold (a hut in a hard frost): the field is stale, the fire is the place
+    if (!task.toFire && !w.camp.set.has(i) && w.nav.get('warm')[i] === 0 && tempAt(w, i) <= WARM_AT) { w.nav.dirty('warm'); task.toFire = true; }
+    if (follow(w, a, task.toFire ? 'camp' : 'warm') !== 'arrived') return;
+    if (w.camp.set.has(i)) mill(w, a, task, 1.2);
     if (a.needs.warmth > 0.92) done(w, a);
   }},
 

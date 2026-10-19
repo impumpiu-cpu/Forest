@@ -24,7 +24,7 @@ import {faunaCell} from './fauna.js';
 import {raidSite} from './sites.js';
 import {PARTIES, DRAGON} from '../data/parties.js';
 import {BEHAVIOURS, sendParty, goHome} from './parties.js';
-import {BURNT} from './peoples.js';
+import {BURNT, townAt} from './peoples.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
 
@@ -34,6 +34,9 @@ const homeAt = (a, L, i) => { const R = SPECIES.get(L.species), sub = L.sub ? R.
 // can this kind of lair stand on this cell
 function groundFits(a, L, i) {
   if (a.f.ocean[i] || a.f.lake[i] >= 0) return false;
+  // not in a living town or on its works: a nest «founded» in the market square is nonsense (a vampire's
+  // manor is the exception, placed by spawnLairs in a town on purpose, not through here)
+  if (townAt(a, i) || (a.siteAt && a.siteAt[i])) return false;
   if (L.ground === 'home') return homeAt(a, L, i) >= TRIBE_HOME && (!L.needsAny || L.needsAny.some(g => groundKind(a, g, i)));
   if (L.ground === 'rot') return !!a.rot && a.rot[faunaCell(a, i)] >= L.rotAt && (L.at === 'barrows' ? (a.f.barrows?.[i] || 0) >= 0.25 : L.at === 'ruins' ? !!ruinNear(a, i) : true);
   if (L.ground === 'rift') return a.f.volc[i] > 0.6 || (!!a.f.bnd && a.f.bnd[i] > 0 && (a.f.elev[i] - a.sea) / (1 - a.sea) > 0.3);
@@ -297,6 +300,7 @@ function tribeRaid(a, lair, L, rnd) {
   if (tribe >= PARTIES.threshold) {
     const p = sendParty(a, 'raid', lair.i, target.i, {owner: lair.id, target: target.id, might: tribe, speed: L.riders ? 'rider' : 'foot', label: raidWho(L), color: L.color});
     if (p) return `${raidWho(L)} ${L.from} «${lair.name}» ${L.leads ? 'на' : 'двинулись на'} ${townLabel(target, 1)} ${target.name}.`;
+    return null;   // no way there (the sea between): the raid does not happen, rather than strike across the water
   }
   return strikeTown(a, lair, L, target, tribe, rnd, true);
 }
@@ -387,6 +391,7 @@ BEHAVIOURS.brood = {
     const L = LAIRS.get(p.lairKind), parent = a.lairs.find(l => l.id === p.owner);
     p.state = 'gone';
     if (a.lairs.some(o => o.alive && o.kind === L.id && dist(o, {x: p.goal % a.w, y: (p.goal / a.w) | 0}) < 2 * R(a, L))) return;   // another brood got there first
+    if (!groundFits(a, L, p.goal)) return;   // a town or its works grew over the spot while the brood was on its way
     const young = newLair(a, L, p.goal, rnd, 0.35);
     say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${parent ? parent.name : '…'}» основали ${G[L.g].fresh} ${acc(L)} — «${young.name}» ${wherePhrase(a, p.goal)}.`);
   },

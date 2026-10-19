@@ -6,7 +6,7 @@ import {SPECIES} from '../../data/species.js';
 import {nightness, ambientTemp} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
 import {nearFire} from '../movement.js';
-import {nearestHostile} from '../combat.js';
+import {nearestHostile, attackerOf} from '../combat.js';
 import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
 import {maxHp, hpShare} from '../agent.js';
@@ -68,6 +68,9 @@ function decide(w, a) {
   const opts = [];
   for (const id of SPECIES.get(a.species).needs) {
     const n = NEEDS.get(id);
+    // rested before dawn: the sleeper sleeps on till first light (agents/tasks.js sleep) — above any
+    // work (≤ 1), below the alarm, the council and an attack
+    if (n.task === 'sleep' && a.task?.id === 'sleep' && a.needs[id] >= 0.995 && night > 0.75 && !raidAlarm(w)) { opts.push([{id: 'sleep'}, 1.0 * campOk, () => 'досыпает до рассвета']); continue; }
     opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ', но лагерь горит' : ''}`]);
   }
   const mate = mates(w, a);   // friends (and foes) at work (settlement/together.js)
@@ -107,15 +110,19 @@ function decide(w, a) {
   if (tradeOpen(w)) opts.push([{id: 'trade'}, 1.1, () => 'торг с купцом']);   // right after the council, the second gathering of the evening
   const brave = a.mods.bravery;
   if (w.stats.fireNearCamp > 0 && hpShare(a) > 0.6 && brave > 0.7) opts.push([{id: 'douse'}, 0.8 * brave, () => 'пожар у лагеря']);
-  // something is hunting me: brave and healthy people fight back, the rest run for the camp
-  const hunter = w.agents.find(o => !o.dead && o.task?.id === 'maul' && o.task.target === a);
+  // something is hunting me (a beast mauls, a raider fights): brave and healthy people fight back, the
+  // rest run for the camp — nobody keeps digging clay, lies at the healer's or sits at the council
+  // under the blows
+  const hunter = attackerOf(w, a);
   if (hunter) {
     if (hunter.species === 'wolf') a.mem.wolf += 0.05;
     const who = SPECIES.get(hunter.species).label;
     // above every bodily need (sleep at night peaks near 2.2): nobody sleeps on while being mauled
-    // already inside the settlement there is nowhere to run to: stand and fight unless badly hurt
-    const stand = brave * hpShare(a) > 0.85 || (agentInZone(w, a) && hpShare(a) > 0.3);
-    opts.push(stand ? [{id: 'fight', target: hunter}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
+    // already inside the settlement there is nowhere to run to: stand and fight, however badly hurt
+    // (running "home" from home ends at once and leaves the wounded standing under the blows)
+    const stand = brave * hpShare(a) > 0.85 || agentInZone(w, a);
+    // the answer to an attack is a reflex: no skip from an earlier fight with the same foe holds it back
+    opts.push(stand ? [{id: 'fight', target: hunter, reflex: true}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
   }
   const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
   // alarm: while raiders are on the map everyone gathers inside the settlement zone and meets them
@@ -134,7 +141,7 @@ function decide(w, a) {
   let bestWhy = null, alt = null, as = -Infinity, altWhy = null;
   // a task that just ended blocked or impossible stays out of the choice for a while (agents/lifecycle.js)
   for (const [t, s, why] of opts) {
-    if (key(t) !== cur && skipped(w, a, t)) continue;
+    if (key(t) !== cur && !t.reflex && skipped(w, a, t)) continue;
     const sc = s + (key(t) === cur ? keep : 0);
     if (sc > bs) { if (best && key(best) !== key(t)) { alt = best; as = bs; altWhy = bestWhy; } bs = sc; best = t; bestWhy = why; }
     else if (sc > as && key(t) !== key(best)) { alt = t; as = sc; altWhy = why; }
@@ -182,7 +189,7 @@ export const colonistBrain = {
     if (a.task?.id === 'flee' || a.task?.id === 'douse') a.mem.fire += 0.006;
     // being attacked can't wait for the next think
     const tid2 = a.task?.id;
-    const attacked = w.agents.some(o => o.task?.id === 'maul' && o.task.target === a);
+    const attacked = !!attackerOf(w, a);
     if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && attacked) a.think = 0;
     // a foe within reach is noticed at once, not at the next think
     if (w.tick % 5 === 0 && a.task?.id !== 'fight' && a.task?.id !== 'runHome' && nearestHostile(w, a, 8)) a.think = 0;
