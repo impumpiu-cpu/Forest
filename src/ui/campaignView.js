@@ -39,9 +39,9 @@ const SPEEDS = [
 ];
 // the local map's pace, ticks a frame, by the season's pace; a stop is shown only at the slowest
 const LOCAL = {x1: {ticks: 2, stops: true}, x4: {ticks: 5}};
-const LOCAL_KIND = {night: 'Ночь', ambush: 'Засада на марше', stop: 'Стоянка'};
+const LOCAL_KIND = {night: 'Ночь', ambush: 'Засада на марше', stop: 'Стоянка', guard: 'Штурм'};
 const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples', 'Народы'], ['fauna', 'Звери']];
-const PHASE = {out: 'идут к цели', back: 'возвращаются домой', won: 'вернулись с победой', lost: 'погибли', timeout: 'не вернулись'};
+const PHASE = {out: 'ищут корону', back: 'несут корону домой', won: 'вернулись с короной', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 
 export class CampaignView extends AtlasView {
@@ -147,7 +147,7 @@ export class CampaignView extends AtlasView {
     $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`;
     this.syncRun(); this.renderSide();
     const sw = (c, l) => `<span><i style="background:${c}"></i>${l}</span>`;
-    $('campLegend').innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(',')})`, 'караван (флажок)') + sw('rgba(255,215,110,0.8)', 'путь пешком (пунктир), цель (×), дом (кольцо)') + sw('rgba(240,160,90,0.9)', 'путь с колёсами — по дорогам (длинный штрих)') +
+    $('campLegend').innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(',')})`, 'караван (флажок)') + sw('rgba(255,215,110,0.8)', 'путь пешком (пунктир), дом (кольцо)') + sw('rgba(255,211,106,0.75)', 'где искать след (круг), найденный след (ромб: жёлтый — к нему идут, серый — взят)') + sw('rgba(240,110,80,0.8)', 'где-то здесь корона (круг), корона (зубцы; красная — у врагов)') + sw('rgba(240,160,90,0.9)', 'путь с колёсами — по дорогам (длинный штрих)') +
       sw('rgb(40,42,36)', 'туман: чего караван не знает') + '<b>карта</b> — как на экране «Мир»: города, дороги, логова, отряды и войска' +
       sw('rgb(230,80,60)', 'угроза рядом (треугольник; темнее — сыта или не заметила)') + sw('rgb(235,200,90)', 'торговый обоз') + sw('rgb(140,200,110)', 'стадо') + sw('rgba(255,240,200,0.3)', 'кольцо пузыря');
   }
@@ -262,7 +262,8 @@ export class CampaignView extends AtlasView {
       px.stroke(); px.setLineDash([]);
     }
     const mark = (i, color, size) => { const gx = i % a.w + 0.5, gy = ((i / a.w) | 0) + 0.5, s = size * Math.max(0.6, k); px.strokeStyle = color; px.lineWidth = Math.max(this.minW * 1.5, 0.3 * k); px.beginPath(); px.moveTo(gx - s, gy - s); px.lineTo(gx + s, gy + s); px.moveTo(gx + s, gy - s); px.lineTo(gx - s, gy + s); px.stroke(); };
-    if (K.goal != null && K.phase === 'out') mark(K.goal, '#ffd36a', 1.4);
+    if (K.goal != null && K.phase === 'out' && !K.quest) mark(K.goal, '#ffd36a', 1.4);
+    if (K.quest && !ended(K)) this.drawQuest(a, px, K, k, mark);
     px.strokeStyle = 'rgba(255,215,110,0.9)'; px.lineWidth = Math.max(this.minW, 0.25 * k);
     px.beginPath(); px.arc(K.home % a.w + 0.5, ((K.home / a.w) | 0) + 0.5, 1.8 * Math.max(0.6, k), 0, Math.PI * 2); px.stroke();
     // the bubble (campaign/bubble.js): a faint ring where things are born, the things themselves —
@@ -287,6 +288,25 @@ export class CampaignView extends AtlasView {
     px.beginPath(); px.moveTo(x, y - r); px.lineTo(x, y - 3 * r); px.lineTo(x + 1.6 * r, y - 2.5 * r); px.lineTo(x, y - 2 * r); px.stroke();
   }
 
+  // the quest (campaign/quest.js): the circles where a clue or the crown is known to lie, the places found
+  drawQuest(a, px, K, k, mark) {
+    const Q = K.quest, C = Q.crown, at = i => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
+    const ring = (A, color) => { px.strokeStyle = color; px.lineWidth = Math.max(this.minW, 0.18 * k); px.setLineDash([0.7 * k, 0.5 * k]); px.beginPath(); px.arc(A.x, A.y, A.r, 0, Math.PI * 2); px.stroke(); px.setLineDash([]); };
+    const diamond = (i, fill) => { const [x, y] = at(i), s = Math.max(0.5, 0.8 * k); px.fillStyle = fill; px.strokeStyle = 'rgba(20,20,16,0.85)'; px.lineWidth = Math.max(this.minW, 0.12 * k); px.beginPath(); px.moveTo(x, y - s); px.lineTo(x + s, y); px.lineTo(x, y + s); px.lineTo(x - s, y); px.closePath(); px.fill(); px.stroke(); };
+    for (const c of Q.clues) {
+      if (c.found) diamond(c.at, 'rgb(150,150,130)');
+      else if (c.seen) diamond(c.at, '#ffd36a');
+      else if (c.area) ring(c.area, 'rgba(255,211,106,0.75)');
+    }
+    if (C.state === 'carried') return;
+    if (C.area && !C.exact && !C.seen) ring(C.area, 'rgba(240,110,80,0.8)');
+    if (C.exact || C.seen) {   // the crown: three points on a band
+      const [x, y] = at(C.at), s = Math.max(0.7, 1.1 * k);
+      px.fillStyle = C.state === 'taken' ? 'rgb(230,80,60)' : '#ffd36a'; px.strokeStyle = 'rgba(20,20,16,0.9)'; px.lineWidth = Math.max(this.minW, 0.14 * k);
+      px.beginPath(); px.moveTo(x - s, y + s * 0.6); px.lineTo(x - s, y - s * 0.4); px.lineTo(x - s * 0.5, y + s * 0.05); px.lineTo(x, y - s * 0.7); px.lineTo(x + s * 0.5, y + s * 0.05); px.lineTo(x + s, y - s * 0.4); px.lineTo(x + s, y + s * 0.6); px.closePath(); px.fill(); px.stroke();
+    }
+  }
+
   renderSide() {
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
@@ -297,6 +317,8 @@ export class CampaignView extends AtlasView {
     $('campStatus').innerHTML = `<dt>Дата</dt><dd>год ${H.year}, ${seasonWord(H.season)}</dd>` +
       `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
+      (K.quest ? (() => { const Q = K.quest, C = Q.crown, st = C.state === 'carried' ? `несёт ${esc(K.members.find(m => m.id === C.carrier)?.name || '—')}` : C.state === 'taken' ? 'у врагов: отбить' : C.exact || C.seen ? `известно где: ${esc(C.label)}` : C.area ? `где-то в круге ${Math.round(C.area.r)} кл.` : 'где — неизвестно';
+        return `<dt>Корона</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>Следы</dt><dd>найдено ${Q.found} из ${Q.clues.length}${K.stats.storms ? ` · штурмов ${K.stats.storms}` : ''}</dd>`; })() : '') +
       `<dt>Еда</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), 'паёк', 'пайка', 'пайков')} · на ${need ? (K.food / need).toFixed(1) : 0} дн.</dd>` +
       `<dt>Груз</dt><dd>${Math.round(load(K))} из ${capacity(K)} мест</dd>` +
       `<dt>Обоз</dt><dd class="nb">${esc(baggageText(K))}</dd>` +

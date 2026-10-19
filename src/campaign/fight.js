@@ -19,6 +19,7 @@ import {assign, toolTier} from './baggage.js';
 import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash} from './camp.js';
 import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
+import {afterFight} from './quest.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
@@ -32,10 +33,12 @@ export function fight(a, K, d, r, how = 'night') {
   if (!alive(K).length) return win;
   if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); }
   else { K.stats.fled++; shake(K, LOYALTY.lost); K.camp = 0; K.why = ''; K.build = null; }
+  afterFight(a, K, d, win, (text, kind, world) => say(a, K, text, kind, world));   // the crown's carrier fell? (campaign/quest.js)
   return win;
 }
 
-const opening = (d, how) => `${how === 'ambush' ? 'На марше из засады ударили' : 'Ночью на лагерь напали'} ${FOES[d.kind].label}${d.label && d.label !== FOES[d.kind].label ? ` — ${d.label}` : ''}`;
+const opening = (d, how) => (how === 'guard' ? `Караван пошёл на штурм: ${d.label || FOES[d.kind].label}` : `${how === 'ambush' ? 'На марше из засады ударили' : 'Ночью на лагерь напали'} ${FOES[d.kind].label}${d.label && d.label !== FOES[d.kind].label ? ` — ${d.label}` : ''}`);
+const WHERE = {ambush: 'засаде', night: 'ночном бою', guard: 'штурме', stop: 'стоянке'};
 
 // ── on the local map
 function localFight(a, K, d, how) {
@@ -70,7 +73,7 @@ function play(K, S, how, label, d = null) {
 // the camp's outcome into the campaign
 export function applyCamp(a, K, S, o, d, how) {
   const hurt = [], fallen = [];
-  const where = how === 'ambush' ? 'засаде' : how === 'night' ? 'ночном бою' : 'стоянке';
+  const where = WHERE[how] || 'бою';
   for (const mo of o.members) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
     if (!mo.alive) { fallen.push(m); continue; }
@@ -111,7 +114,7 @@ export function applyCamp(a, K, S, o, d, how) {
   if (o.plundered) parts.push(`склад разграблен${K.food < food0 - 0.5 ? ` (−${Math.round(food0 - K.food)} пайков)` : ''}`);
   parts.push(...broken);
   if (took.length) parts.push(`с убитых взяли ${names(took)}`);
-  const verdict = o.won ? (F.n ? 'Отбились' : 'Обошлось') : 'Не устояли';
+  const verdict = o.won ? (how === 'guard' ? 'Взяли верх' : F.n ? 'Отбились' : 'Обошлось') : how === 'guard' ? 'Отступили' : 'Не устояли';
   say(a, K, `${opening(d, how)}. ${verdict} — бой на месте${parts.length ? `: ${parts.join('; ')}` : ''}.`, 'fight');
   for (const m of fallen) die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`);
 }
@@ -173,16 +176,16 @@ function autoFight(a, K, d, r, how) {
     for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;
     if (!hit.includes(m)) hit.push(m);
-    if (m.hp <= 0) { if (win) m.hp = F.saved; else die(a, K, m, `пал в ${how === 'ambush' ? 'засаде' : 'ночном бою'} (${foe.label})`); }
+    if (m.hp <= 0) { if (win) m.hp = F.saved; else die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`); }
   }
   if (!alive(K).length) return win;
   if (win) {
     const loot = Math.round(between(r, F.loot)); K.food += loot;
-    say(a, K, `${opening(d, how)}. Отбились${hit.length ? `, ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || 'никто'}` : ' без ран'}; с убитых взяли еды на ${pieces(loot, 'паёк', 'пайка', 'пайков')}.`, 'fight');
+    say(a, K, `${opening(d, how)}. ${how === 'guard' ? 'Взяли верх' : 'Отбились'}${hit.length ? `, ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || 'никто'}` : ' без ран'}; с убитых взяли еды на ${pieces(loot, 'паёк', 'пайка', 'пайков')}.`, 'fight');
     return true;
   }
-  const lost = Math.round(K.food * F.lost); K.food -= lost;
-  say(a, K, `${opening(d, how)}. Не устояли и бежали${how === 'night' ? ' в темноте' : ''}${lost ? `, бросив ${pieces(lost, 'паёк', 'пайка', 'пайков')}` : ''}${hit.length ? `; ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || '—'}` : ''}.`, 'fight');
+  const lost = how === 'guard' ? 0 : Math.round(K.food * F.lost); K.food -= lost;   // a storm beaten back: the baggage stayed in camp
+  say(a, K, `${opening(d, how)}. ${how === 'guard' ? 'Отступили' : 'Не устояли и бежали'}${how === 'night' ? ' в темноте' : ''}${lost ? `, бросив ${pieces(lost, 'паёк', 'пайка', 'пайков')}` : ''}${hit.length ? `; ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || '—'}` : ''}.`, 'fight');
   const gone = K.beasts.filter(() => r() < GETTING.lose.beast);
   if (gone.length) {
     K.beasts = K.beasts.filter(b => !gone.includes(b)); assign(K); K.path = null;

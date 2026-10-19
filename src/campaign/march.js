@@ -28,6 +28,7 @@ import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, fieldBuildings, buildDays, handler} from './baggage.js';
 import {draw, makeMember} from './start.js';
 import {fight, playStop} from './fight.js';
+import {questArrive, questTarget, questSight, pursuit, crownHands, rumour} from './quest.js';
 import {CAMP} from '../data/camp.js';
 import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose} from './bubble.js';
 import {BUBBLE, THINGS, AMBUSH, TRAIN, HERD} from '../data/bubble.js';
@@ -257,7 +258,7 @@ function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach) {
   }
   return urgent ? fallback : null;
 }
-const VISIT_WHY = {winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну'};
+const VISIT_WHY = {winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну', rumour: 'расспросить о следах'};
 
 // the caravan comes into a town: trade, hire, meet who would go along
 function enterTown(a, K, t) {
@@ -265,8 +266,9 @@ function enterTown(a, K, t) {
   K.via = null; K.viaWhy = null; K.path = null; K.camp = 0; K.why = '';
   if (!st) { say(a, K, `${townName(t)} закрыл ворота перед караваном.`, 'town'); return; }
   const {r, done} = draw(K, 'town');
-  const parts = [...trade(a, K, t, st), ...hire(a, K, t, st, r)], c = companion(a, K, t, st, r);
+  const parts = [...trade(a, K, t, st), ...hire(a, K, t, st, r)], c = companion(a, K, t, st, r), heard = rumour(a, K, t, r);
   if (c) parts.push(c);
+  if (heard) parts.push(heard);
   done();
   K.inTown = {id: t.id, since: K.day, why}; K.lastVisit = K.day; K.stats.towns = (K.stats.towns || 0) + 1;
   if (why === 'winter') K.winterYear = a.hist.year;
@@ -302,6 +304,12 @@ function leave(a, K, m, text) {
 }
 export const shake = (K, d) => { for (const m of alive(K)) if (m.loyalty != null && m.loyalty < 1) m.loyalty = Math.max(0, Math.min(1, m.loyalty + d)); };
 
+function homecoming(a, K, ms) {
+  const t = a.towns.find(x => x.id === K.capital), Q = K.quest;
+  say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}${Q ? ` с короной — ${Q.name} снова дома` : ''}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
+  K.phase = 'won';
+}
+
 function evening(a, K) {
   const ms = alive(K), need = ms.length * CAMPAIGN.ration, seasonId = SEASON_LIST[a.hist.season].id;
   if (K.inTown) { townEvening(a, K, seasonId); if (K.inTown) return; }
@@ -314,15 +322,25 @@ function evening(a, K) {
       if (way) { K.path = way.path; K.k = 0; } else { K.via = null; K.viaWhy = null; K.path = null; }
     }
   }
-  // the goal: there and back
-  if (K.goal != null && K.i === K.goal && K.phase === 'out') {
+  // the quest (campaign/quest.js): at a place it seeks — a clue taken, the crown, a storm of the guards
+  if (K.quest) {
+    const {r, done} = draw(K, 'quest'), tell = (text, kind, world) => say(a, K, text, kind, world);
+    const busy = !K.inTown && K.via == null && questArrive(a, K, r, d => fight(a, K, d, r, 'guard'), tell);
+    const any = K.members.some(m => m.alive && isCore(m));
+    if (any && K.phase === 'back' && K.i === K.home && K.quest.crown.state === 'carried') { done(); homecoming(a, K, ms); return; }
+    const g = any ? questTarget(a, K, r) : null;
+    if (g !== K.goal) { K.goal = g; K.path = null; }
+    // nothing known of where to look: the council goes to a town to ask
+    if (g == null && K.via == null && !K.inTown) {
+      const found = findTown(a, K, true, VISIT.detour, VISIT.winterReach);
+      if (found) { K.via = found.t.id; K.viaWhy = 'rumour'; K.path = found.way.path; K.k = 0; say(a, K, `Совет: где искать дальше, не знает никто — свернуть в ${townLabel(found.t, 1)} ${found.t.name} расспросить старожилов.`, 'town'); if (!K.path.length) enterTown(a, K, found.t); }
+    }
+    done();
+    if (busy || !K.members.some(m => m.alive && isCore(m))) return;
+  } else if (K.goal != null && K.i === K.goal && K.phase === 'out') {   // a campaign from before the quest: there and back
     say(a, K, `Караван дошёл до цели — ${biomeAt(a, K.i)?.where || 'на край света'}. Поручение исполнено, пора домой.`, 'goal', true);
     K.phase = 'back'; K.goal = K.home; K.path = null;
-  } else if (K.phase === 'back' && K.i === K.home) {
-    const t = a.towns.find(x => x.id === K.capital);
-    say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
-    K.phase = 'won'; return;
-  }
+  } else if (K.phase === 'back' && K.i === K.home) { homecoming(a, K, ms); return; }
   // a town on the way: to buy food, to heal, to spend the treasury, to winter
   if (K.via == null && K.camp === 0) {
     const why = wantVisit(a, K, seasonId);
@@ -481,6 +499,7 @@ export function caravanDay(a, K, day) {
     else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : camping ? CAMPAIGN.heal.camp * campFx(K, 'heal') : CAMPAIGN.heal.march * (m.ride ? 1.5 : 1)));
   }
   people(a, K, r);
+  crownHands(K, (text, kind) => say(a, K, text, kind));
   // the beasts graze where grass grows and starve where it does not
   const grass = pasture(a, K.i, seasonId);
   for (const b of [...K.beasts]) {
@@ -502,6 +521,11 @@ export function caravanDay(a, K, day) {
   // what they can carry, again: the night's loot, the morning's finds, the town's buys, someone gone
   assign(K); overflow(K);
   reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
+  // the quest: what the scouts see of the places sought; with the crown, the world's pursuit
+  if (K.quest && !ended(K)) {
+    const tell = (text, kind, world) => say(a, K, text, kind, world), {r: rq, done: dq} = draw(K, 'pursuit');
+    questSight(a, K, tell); pursuit(a, K, rq, tell); dq();
+  }
   K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);
   const p = (a.parties || []).find(x => x.id === K.party);
   if (p) { p.x = K.x; p.y = K.y; p.i = K.i; p.men = alive(K).length; p.goal = K.goal; if (ended(K)) p.state = 'gone'; }

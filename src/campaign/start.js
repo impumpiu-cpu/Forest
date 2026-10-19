@@ -13,13 +13,12 @@ import {WORLD_PEOPLES} from '../data/peoples.js';
 import {CAMPAIGN, RETINUE} from '../data/campaign.js';
 import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
 import {trades} from '../atlas/diplomacy.js';
-import {moveCost} from '../atlas/roads.js';
 import {scaleOf} from '../atlas/tectonics.js';
-import {settleable} from '../seam/cell.js';
 import {townLabel} from '../atlas/towns.js';
 import {landDone} from '../atlas/generate.js';
 import {say, reveal} from './march.js';
 import {capacity} from './baggage.js';
+import {makeQuest, questTarget, questIntro} from './quest.js';
 
 // a named random stream of the campaign, kept by its position (so the campaign stays plain data)
 export function draw(K, name) {
@@ -55,29 +54,6 @@ function member(K, a, rnd, role, k) {
   return makeMember(K, rnd, {race: WORLD_PEOPLES.get(K.people).race, sub: r.sub, role, gear, core: true});
 }
 
-// where the caravan goes this stage: a land cell far enough, that can be walked to
-// (the land that can be walked to from home is found first: a capital may stand on an island)
-function pickGoal(a, K, rnd) {
-  const diag = Math.hypot(a.w, a.h), [x0, y0] = [K.home % a.w, (K.home / a.w) | 0], G = CAMPAIGN.goal;
-  const seen = new Uint8Array(a.n), reach = [], queue = [K.home]; seen[K.home] = 1;
-  while (queue.length) {
-    const c = queue.pop(), x = c % a.w, y = (c / a.w) | 0;
-    if (settleable(a, c)) reach.push(c);
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      const nx = x + dx, ny = y + dy, j = ny * a.w + nx;
-      if ((dx || dy) && nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && !seen[j] && moveCost(a, j, K.people) < Infinity) { seen[j] = 1; queue.push(j); }
-    }
-  }
-  reach.sort((p, q) => p - q);   // the order of the flood must not decide the draw
-  const dist = i => Math.hypot(i % a.w - x0, ((i / a.w) | 0) - y0) / diag;
-  for (const [near, far] of [[G.near, G.far], G.wide]) {
-    const ring = reach.filter(i => dist(i) >= near && dist(i) <= far);
-    if (ring.length) return ring[(rnd() * ring.length) | 0];
-  }
-  const far = reach.reduce((b, i) => (dist(i) > dist(b) ? i : b), K.home);
-  return far === K.home ? null : far;
-}
-
 // mode: 'local' — fights and stops are played on the local map (campaign/camp.js); 'auto' — settled at once (quick runs)
 export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
   if (!landDone(a) || !a.hist) throw new Error('Кампании нужен мир с историей.');
@@ -95,7 +71,9 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
   for (let k = 0; k < CAMPAIGN.knights; k++) K.members.push(member(K, a, r, 'knight', k));
   for (let k = 0; k < CAMPAIGN.squires; k++) K.members.push(member(K, a, r, 'squire', k));
   K.food = capacity(K);   // the satchels are full: a cell of food on every back
-  K.goal = pickGoal(a, K, r);
+  // the quest (campaign/quest.js): the crown, the clues; the first target — where the capital says to look
+  K.quest = makeQuest(a, K, r);
+  K.goal = K.quest ? questTarget(a, K, r) : null;
   done();
   // what they know: their realm's lands, the towns of those their realm trades with
   const k = scaleOf(a);
@@ -111,7 +89,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
   (a.parties ||= []).push(p); K.party = p.id;
   const R = RETINUE[t.people];
   say(a, K, `Из ${townLabel(t, 2)} ${t.name} вышел караван: ${CAMPAIGN.knights} ${R.knight[1]} и ${CAMPAIGN.squires} ${R.squire[1]} — ${K.members.map(m => m.name).join(', ')}. ` +
-    (K.goal == null ? 'Куда идти, никто не знает.' : `У них поручение и еды на ${Math.floor(K.food / K.members.length)} дней.`), 'start', true);
-  if (K.goal == null) K.phase = 'lost';
+    (K.quest ? `${questIntro(a, K)} Еды — на ${Math.floor(K.food / K.members.length)} дней.` : 'Куда идти, никто не знает.'), 'start', true);
+  if (!K.quest) K.phase = 'lost';
   return K;
 }

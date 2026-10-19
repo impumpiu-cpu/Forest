@@ -1045,7 +1045,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function drawFoodPrefs(rnd) {
     const all = BASE_FOODS();
     if (all.length < 2) return { likes: all[0]?.id ?? null, dislikes: null };
-    const pick3 = (skip, sign) => {
+    const pick4 = (skip, sign) => {
       const opts = all.filter((f) => f.id !== skip), ws = opts.map((f) => Math.max(0.15, 1 + sign * (f.taste || 0)));
       let r = rnd() * ws.reduce((s, x) => s + x, 0);
       for (let k = 0; k < opts.length; k++) {
@@ -1054,8 +1054,8 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       return opts[opts.length - 1].id;
     };
-    const likes = pick3(null, 1);
-    return { likes, dislikes: pick3(likes, -1) };
+    const likes = pick4(null, 1);
+    return { likes, dislikes: pick4(likes, -1) };
   }
 
   // src/data/luxury.js
@@ -4982,13 +4982,13 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => WALKABLE[w.grid.terr[i]] === 1);
   var lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, (i) => w.grid.terr[i] !== ROCK2);
-  function findPath(w, sx, sy, gx, gy, budget = 6e3) {
+  function findPath(w, sx, sy, gx2, gy, budget = 6e3) {
     const W = w.w, H2 = w.h, terr = w.grid.terr, b = buffers(w);
     const start2 = (sy | 0) * W + (sx | 0);
-    let goal = (gy | 0) * W + (gx | 0);
+    let goal = (gy | 0) * W + (gx2 | 0);
     if (!WALKABLE[terr[goal]]) {
       let best = -1, bd = Infinity;
-      const x = gx | 0, y = gy | 0;
+      const x = gx2 | 0, y = gy | 0;
       for (let k = 0; k < 8; k++) {
         const nx = x + DX[k], ny = y + DY[k];
         if (nx < 0 || ny < 0 || nx >= W || ny >= H2) continue;
@@ -5618,10 +5618,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     build(id) {
       const def2 = NAVMAPS.get(id), w = this.w, W = w.w, H2 = w.h;
-      const dist10 = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
+      const dist11 = this.dist[id], cost = this.cost, closed = this.closed, hI = this.heapI, hD = this.heapD;
       this.computeCost(def2.hazard ?? 1);
       const ctx = def2.prepare ? def2.prepare(w) : null;
-      dist10.fill(FAR);
+      dist11.fill(FAR);
       closed.fill(0);
       let hn = 0;
       const push = (i, d) => {
@@ -5637,7 +5637,7 @@ dd.q4{color:#c58cff;font-weight:600}
         hD[k] = d;
       };
       for (let i = 0; i < w.n; i++) if (cost[i] >= 0 && def2.seed(w, i, ctx)) {
-        dist10[i] = 0;
+        dist11[i] = 0;
         push(i, 0);
       }
       while (hn > 0) {
@@ -5656,7 +5656,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         hI[k] = li;
         hD[k] = ld;
-        if (closed[i] || d > dist10[i]) continue;
+        if (closed[i] || d > dist11[i]) continue;
         closed[i] = 1;
         const x = i % W, y = i / W | 0;
         for (let q = 0; q < 8; q++) {
@@ -5670,9 +5670,9 @@ dd.q4{color:#c58cff;font-weight:600}
             c *= 1.414;
           }
           const nd = d + c;
-          if (nd < dist10[j]) {
-            dist10[j] = nd;
-            push(j, dist10[j]);
+          if (nd < dist11[j]) {
+            dist11[j] = nd;
+            push(j, dist11[j]);
           }
         }
       }
@@ -5767,21 +5767,21 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var fieldName = (id) => FIELD_NAMES[id] || (id.startsWith("station:") ? "\u043A \u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u043E\u0439" : id.startsWith("plant") ? "\u043A \u0437\u0430\u0440\u043E\u0441\u043B\u044F\u043C" : "\u043F\u043E \u0442\u0440\u043E\u043F\u0435");
   function follow(w, a, mapId, mul = 1) {
-    const dist10 = w.nav.get(mapId), i = cellOf(w, a);
-    if (dist10[i] === 0) return "arrived";
-    a.route = { how: dist10[i] >= FAR ? `${fieldName(mapId)}: \u043F\u0443\u0442\u0438 \u043D\u0435\u0442` : `${fieldName(mapId)}, \u0435\u0449\u0451 ~${Math.round(dist10[i])} \u043A\u043B.`, t: w.tick };
+    const dist11 = w.nav.get(mapId), i = cellOf(w, a);
+    if (dist11[i] === 0) return "arrived";
+    a.route = { how: dist11[i] >= FAR ? `${fieldName(mapId)}: \u043F\u0443\u0442\u0438 \u043D\u0435\u0442` : `${fieldName(mapId)}, \u0435\u0449\u0451 ~${Math.round(dist11[i])} \u043A\u043B.`, t: w.tick };
     const x = i % w.w, y = i / w.w | 0;
-    let best = dist10[i], bj = -1;
+    let best = dist11[i], bj = -1;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (!inBounds(w, nx, ny)) continue;
       const j = ny * w.w + nx;
-      if (dist10[j] < best && canStep(w, i, j)) {
-        best = dist10[j];
+      if (dist11[j] < best && canStep(w, i, j)) {
+        best = dist11[j];
         bj = j;
       }
     }
-    if (bj < 0) return dist10[i] >= FAR ? "none" : "stuck";
+    if (bj < 0) return dist11[i] >= FAR ? "none" : "stuck";
     const tx2 = bj % w.w + 0.5, ty = (bj / w.w | 0) + 0.5;
     const r = moveToward(w, a, tx2, ty, mul);
     if (r === null) moveToward(w, a, x + 0.5, y + 0.5, mul);
@@ -5882,14 +5882,14 @@ dd.q4{color:#c58cff;font-weight:600}
     return false;
   }
   function ascend(w, a, mapId, mul = 1) {
-    const dist10 = w.nav.get(mapId), i = cellOf(w, a), x = i % w.w, y = i / w.w | 0;
-    let best = dist10[i], bj = -1;
+    const dist11 = w.nav.get(mapId), i = cellOf(w, a), x = i % w.w, y = i / w.w | 0;
+    let best = dist11[i], bj = -1;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (!inBounds(w, nx, ny)) continue;
       const j = ny * w.w + nx;
-      if (walkable(w, j) && dist10[j] > best && dist10[j] < FAR) {
-        best = dist10[j];
+      if (walkable(w, j) && dist11[j] > best && dist11[j] < FAR) {
+        best = dist11[j];
         bj = j;
       }
     }
@@ -7764,9 +7764,9 @@ dd.q4{color:#c58cff;font-weight:600}
       const pool = Object.entries(sp.values).filter(([, v]) => v > 0), want2 = rng() < 0.45 ? 3 : 2;
       a.values = [];
       while (a.values.length < want2 && pool.length) {
-        const pick3 = weighted(rng, pool.map((e) => [e, e[1]]));
-        a.values.push(pick3[0]);
-        pool.splice(pool.indexOf(pick3), 1);
+        const pick4 = weighted(rng, pool.map((e) => [e, e[1]]));
+        a.values.push(pick4[0]);
+        pool.splice(pool.indexOf(pick4), 1);
       }
     }
   }
@@ -10646,7 +10646,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const need = needs(w), jobs = Object.keys(need).sort((x, y) => need[y].w - need[x].w);
     const total = jobs.reduce((s, j) => s + need[j].w, 0) || 1;
     const pairs = outsideRisk(w) >= TOGETHER.riskFrom, outdoor = (j) => ["harvest", "hunt"].includes(JOBS.get(j).runner);
-    const places = [], spare = [], quota = {};
+    const places2 = [], spare = [], quota = {};
     let used = 0;
     for (const j of jobs) {
       const q = col.length * need[j].w / total;
@@ -10668,33 +10668,33 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     for (const j of jobs) {
-      for (let k = 0; k < quota[j]; k++) places.push(j);
+      for (let k = 0; k < quota[j]; k++) places2.push(j);
       if (crewCap(w, JOBS.get(j)) > quota[j]) spare.push(j);
     }
-    for (let k = 0; places.length < col.length && spare.length; k++) {
+    for (let k = 0; places2.length < col.length && spare.length; k++) {
       const j = spare[k % spare.length];
-      places.push(j);
-      if (places.filter((p) => p === j).length >= crewCap(w, JOBS.get(j))) spare.splice(spare.indexOf(j), 1);
+      places2.push(j);
+      if (places2.filter((p) => p === j).length >= crewCap(w, JOBS.get(j))) spare.splice(spare.indexOf(j), 1);
     }
     const prev = w.plan?.assign || {}, best = {};
     for (const j of jobs) best[JOBS.get(j).skill] = Math.max(0, ...col.map((a) => skillOf(a, JOBS.get(j).skill)));
     const free = new Set(col.map((a) => a.id)), assign2 = {}, byId6 = Object.fromEntries(col.map((a) => [a.id, a]));
-    for (const j of places) {
+    for (const j of places2) {
       const job = JOBS.get(j);
-      let pick3 = null, pf = -Infinity, pw = "";
+      let pick4 = null, pf = -Infinity, pw = "";
       for (const id of free) {
         const a = byId6[id], r = fitness(w, a, job, best[job.skill], prev[id]?.job);
         if (r === -Infinity) continue;
         const [f, why] = r;
-        if (f > pf || f === pf && a.id < pick3.id) {
+        if (f > pf || f === pf && a.id < pick4.id) {
           pf = f;
-          pick3 = a;
+          pick4 = a;
           pw = why;
         }
       }
-      if (!pick3) continue;
-      free.delete(pick3.id);
-      assign2[pick3.id] = { job: j, why: pw || "\u043D\u0443\u0436\u043D\u044B \u0440\u0443\u043A\u0438", alt: [] };
+      if (!pick4) continue;
+      free.delete(pick4.id);
+      assign2[pick4.id] = { job: j, why: pw || "\u043D\u0443\u0436\u043D\u044B \u0440\u0443\u043A\u0438", alt: [] };
     }
     for (const a of col) {
       const e = assign2[a.id] || (assign2[a.id] = { job: null, why: "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u044B\u0435 \u0440\u0443\u043A\u0438", alt: [] });
@@ -12050,7 +12050,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return { w, h, terr, hgt, fert, under, biome, cx, cy, rng, site, gates, river };
   }
   function waterPath(w, h, terr, hgt, noise, from, to) {
-    const n = w * h, dist10 = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done3 = new Uint8Array(n);
+    const n = w * h, dist11 = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done3 = new Uint8Array(n);
     const hI = new Int32Array(n * 9), hD = new Float64Array(n * 9);
     let hn = 0;
     const push = (i, d) => {
@@ -12066,7 +12066,7 @@ dd.q4{color:#c58cff;font-weight:600}
       hD[k] = d;
     };
     const cost = (j) => terr[j] === T.WATER ? 0.15 : terr[j] === T.ROCK ? 14 : 0.25 + 8 * hgt[j] * hgt[j] + 0.7 * noise[j];
-    dist10[from] = 0;
+    dist11[from] = 0;
     push(from, 0);
     while (hn > 0) {
       const i = hI[0], d = hD[0];
@@ -12092,8 +12092,8 @@ dd.q4{color:#c58cff;font-weight:600}
         const nx = x + DX[q], ny = y + DY[q];
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
         const j = ny * w + nx, nd = d + cost(j);
-        if (nd < dist10[j]) {
-          dist10[j] = nd;
+        if (nd < dist11[j]) {
+          dist11[j] = nd;
           prev[j] = i;
           push(j, nd);
         }
@@ -12180,14 +12180,14 @@ dd.q4{color:#c58cff;font-weight:600}
   function gateCell2(t, g3) {
     const { w, h, terr } = t;
     const along = g3.side === "north" || g3.side === "south" ? w : h;
-    const cellAt2 = (k) => g3.side === "north" ? k : g3.side === "south" ? (h - 1) * w + k : g3.side === "west" ? k * w : k * w + w - 1;
+    const cellAt3 = (k) => g3.side === "north" ? k : g3.side === "south" ? (h - 1) * w + k : g3.side === "west" ? k * w : k * w + w - 1;
     const k0 = Math.round(g3.at * (along - 1));
     for (let d = 0; d < along; d++) for (const k of [k0 + d, k0 - d]) {
       if (k < 0 || k >= along) continue;
-      const i = cellAt2(k);
+      const i = cellAt3(k);
       if (BY_CODE[terr[i]].walkable) return i;
     }
-    return cellAt2(k0);
+    return cellAt3(k0);
   }
   function layGates(site, t) {
     const { w, h, terr, under, river } = t, out = [];
@@ -12272,7 +12272,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const x = i % w, y = i / w | 0;
       if ((x === 0 || y === 0 || x === w - 1 || y === h - 1) && reach[i]) return;
     }
-    const dist10 = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done3 = new Uint8Array(n);
+    const dist11 = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done3 = new Uint8Array(n);
     const hI = new Int32Array(n * 5), hD = new Float64Array(n * 5);
     let hn = 0;
     const push = (i, d) => {
@@ -12288,7 +12288,7 @@ dd.q4{color:#c58cff;font-weight:600}
       hD[k] = d;
     };
     const cost = (j) => terr[j] === T.ROCK ? 25 : terr[j] === T.WATER ? 30 : BY_CODE[terr[j]].walkable ? 1 : 25;
-    dist10[from] = 0;
+    dist11[from] = 0;
     push(from, 0);
     let goal = -1;
     while (hn > 0) {
@@ -12318,8 +12318,8 @@ dd.q4{color:#c58cff;font-weight:600}
         const nx = x + DX[q], ny = y + DY[q];
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
         const j = ny * w + nx, nd = d + cost(j);
-        if (nd < dist10[j]) {
-          dist10[j] = nd;
+        if (nd < dist11[j]) {
+          dist11[j] = nd;
           prev[j] = i;
           push(j, nd);
         }
@@ -15969,18 +15969,18 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
       for (const gr of w.graves || []) {
-        const gx = gr.x * S, gy = gr.y * S;
+        const gx2 = gr.x * S, gy = gr.y * S;
         ctx.fillStyle = "rgba(90,70,48,0.85)";
         ctx.beginPath();
-        ctx.ellipse(gx + S / 2, gy + S * 0.65, S * 0.35, S * 0.22, 0, 0, Math.PI * 2);
+        ctx.ellipse(gx2 + S / 2, gy + S * 0.65, S * 0.35, S * 0.22, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = gr.rite ? "#2a1d10" : "#5a4630";
         ctx.lineWidth = Math.max(1.2, S * 0.12);
         ctx.beginPath();
-        ctx.moveTo(gx + S / 2, gy + S * 0.15);
-        ctx.lineTo(gx + S / 2, gy + S * 0.6);
-        ctx.moveTo(gx + S * 0.32, gy + S * 0.3);
-        ctx.lineTo(gx + S * 0.68, gy + S * 0.3);
+        ctx.moveTo(gx2 + S / 2, gy + S * 0.15);
+        ctx.lineTo(gx2 + S / 2, gy + S * 0.6);
+        ctx.moveTo(gx2 + S * 0.32, gy + S * 0.3);
+        ctx.lineTo(gx2 + S * 0.68, gy + S * 0.3);
         ctx.stroke();
       }
       for (const c of w.carcasses || []) {
@@ -16648,7 +16648,7 @@ dd.q4{color:#c58cff;font-weight:600}
       pairConv.set(B3 * 64 + A, { conv, I });
     }
     const crust = a.f.crust, tally2 = {};
-    const bnd = new Uint8Array(n), bI = new Float32Array(n), dist10 = new Float64Array(n).fill(Infinity), src = new Int32Array(n).fill(-1);
+    const bnd = new Uint8Array(n), bI = new Float32Array(n), dist11 = new Float64Array(n).fill(Infinity), src = new Int32Array(n).fill(-1);
     const heap = new Heap(n >> 2), R2 = 48 * k;
     for (let i = 0; i < n; i++) {
       const x = i % w, y = i / w | 0, A = plate[i];
@@ -16663,7 +16663,7 @@ dd.q4{color:#c58cff;font-weight:600}
         bnd[i] = BOUNDARIES.get(kind).code;
         bI[i] = pc.I;
         tally2[kind] = (tally2[kind] || 0) + 1;
-        dist10[i] = 0;
+        dist11[i] = 0;
         src[i] = i;
         heap.push(0, i);
         break;
@@ -16671,14 +16671,14 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     while (heap.size) {
       const c = heap.pop(), d = heap.top;
-      if (d > dist10[c]) continue;
+      if (d > dist11[c]) continue;
       const x = c % w, y = c / w | 0;
       for (const [dx, dy, len] of DIRS8) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
         const j = ny * w + nx, nd = d + len;
-        if (plate[j] !== plate[c] || nd >= dist10[j] || nd > R2) continue;
-        dist10[j] = nd;
+        if (plate[j] !== plate[c] || nd >= dist11[j] || nd > R2) continue;
+        dist11[j] = nd;
         src[j] = src[c];
         heap.push(nd, j);
       }
@@ -16687,7 +16687,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const up = f32(), coll = f32(), arc = f32(), basv = f32(), volc = f32(), oldv = f32(), craton = f32();
     const KIND = BOUNDARIES.all().map((b) => b.id), kindOf = (c) => KIND[bnd[c] - 1];
     for (let i = 0; i < n; i++) {
-      const d = dist10[i];
+      const d = dist11[i];
       if (isCont(crust[i])) craton[i] = smooth((crust[i] - 0.55) / 0.3) * (d === Infinity ? 1 : smooth((d - 10 * k) / (16 * k)));
       if (src[i] < 0) continue;
       const I = bI[src[i]] * (0.7 + 0.6 * rough[i]);
@@ -16743,7 +16743,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     blur(a, up, Math.max(1, Math.round(2 * k)));
-    Object.assign(a.f, { bnd, bdist: Float32Array.from(dist10), uplift: up, coll, arc, basv, volc, oldv, craton });
+    Object.assign(a.f, { bnd, bdist: Float32Array.from(dist11), uplift: up, coll, arc, basv, volc, oldv, craton });
     for (const kd of Object.keys(tally2)) tally2[kd] = Math.max(1, Math.round(tally2[kd] / (12 * k)));
     return tally2;
   }
@@ -16787,8 +16787,8 @@ dd.q4{color:#c58cff;font-weight:600}
   function flatness(a) {
     const { w, h, n } = a, e = a.f.elev, out = new Float32Array(n), k = scaleOf(a);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = y * w + x, gx = e[y * w + Math.min(w - 1, x + 1)] - e[y * w + Math.max(0, x - 1)], gy = e[Math.min(h - 1, y + 1) * w + x] - e[Math.max(0, y - 1) * w + x];
-      out[i] = clamp013(1 - Math.hypot(gx, gy) * 30 * k);
+      const i = y * w + x, gx2 = e[y * w + Math.min(w - 1, x + 1)] - e[y * w + Math.max(0, x - 1)], gy = e[Math.min(h - 1, y + 1) * w + x] - e[Math.max(0, y - 1) * w + x];
+      out[i] = clamp013(1 - Math.hypot(gx2, gy) * 30 * k);
     }
     return out;
   }
@@ -16897,27 +16897,27 @@ dd.q4{color:#c58cff;font-weight:600}
     return { east: z.east, eq: z.eq, rise: z.rise };
   }
   function continentality(a) {
-    const { w, h, n } = a, land2 = a.f.land, k = scaleOf(a), dist10 = new Float64Array(n).fill(Infinity), heap = new Heap(n >> 2);
+    const { w, h, n } = a, land2 = a.f.land, k = scaleOf(a), dist11 = new Float64Array(n).fill(Infinity), heap = new Heap(n >> 2);
     for (let i = 0; i < n; i++) if (!land2[i]) {
-      dist10[i] = 0;
+      dist11[i] = 0;
       heap.push(0, i);
     }
     while (heap.size) {
       const c = heap.pop(), d = heap.top;
-      if (d > dist10[c]) continue;
+      if (d > dist11[c]) continue;
       const x = c % w, y = c / w | 0;
       for (const [dx, dy, len] of DIRS8) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
         const j = ny * w + nx, nd = d + len;
-        if (nd < dist10[j]) {
-          dist10[j] = nd;
+        if (nd < dist11[j]) {
+          dist11[j] = nd;
           heap.push(nd, j);
         }
       }
     }
     const out = new Float32Array(n);
-    for (let i = 0; i < n; i++) out[i] = smooth2(dist10[i] / (40 * k));
+    for (let i = 0; i < n; i++) out[i] = smooth2(dist11[i] / (40 * k));
     return out;
   }
   var heightKm = (a, e) => e > a.sea ? (a.cfg.peakKm ?? 5) * ((e - a.sea) / (1 - a.sea)) ** 1.6 : 0;
@@ -20222,8 +20222,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function townName(P, rnd, used) {
     for (let t = 0; t < 40; t++) {
-      const pick3 = (arr) => arr[rnd() * arr.length | 0];
-      let n = pick3(P.names.first) + pick3(P.names.mid) + pick3(P.names.last);
+      const pick4 = (arr) => arr[rnd() * arr.length | 0];
+      let n = pick4(P.names.first) + pick4(P.names.mid) + pick4(P.names.last);
       n = n.replace(/-+/g, "-");
       if (!used.has(n)) {
         used.add(n);
@@ -20871,8 +20871,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.56.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 46a1492" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.57.0 Campaign \xB7 19.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 47694cf" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";
@@ -21175,8 +21175,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var realmName = (a, id) => id && (a.realms || []).some((r) => r.id === id) ? realmLabel(a, id) : "\u0432\u043E\u043B\u044C\u043D\u044B\u0435 \u0437\u0435\u043C\u043B\u0438";
   function cellNeighbours(a, i, race = "human") {
     const [x0, y0] = xy(a, i), k = scaleOf(a), reach = SEAM.reach * k;
-    const dist10 = (x, y) => Math.hypot(x - x0, y - y0) / k;
-    const towns = (a.towns || []).filter((t) => t.alive).map((t) => ({ t, d: dist10(t.x, t.y) })).filter((o) => o.d * k <= reach).sort((p, q) => p.d - q.d);
+    const dist11 = (x, y) => Math.hypot(x - x0, y - y0) / k;
+    const towns = (a.towns || []).filter((t) => t.alive).map((t) => ({ t, d: dist11(t.x, t.y) })).filter((o) => o.d * k <= reach).sort((p, q) => p.d - q.d);
     const kin = towns.find((o) => peopleRace(o.t.people) === race) || towns[0] || null;
     const own = kin?.t.realm || null;
     const tLabel = (t) => `${cap16(townLabel(t, 0))} ${t.name}`;
@@ -21188,7 +21188,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const l of a.lairs || []) {
       const band = LAIR_BANDS[l.kind];
       if (!l.alive || !band) continue;
-      const d = dist10(l.x, l.y);
+      const d = dist11(l.x, l.y);
       if (d * k > reach) continue;
       sources.push({ band, d, wt: Math.max(0.2, l.strength), label: `${LAIRS.get(l.kind).label} \xAB${l.name}\xBB` });
     }
@@ -22619,207 +22619,54 @@ dd.q4{color:#c58cff;font-weight:600}
   var buildDays = (b) => Math.ceil(b.cost.wood / FIELD_BUILD.woodPerDay);
   var handler = (K) => 1 + Math.max(0, ...alive(K).map((m) => EFFECTS.charm(m.special || { C: NORM })));
 
-  // src/campaign/start.js
-  function draw(K, name) {
-    const r = mulberry(K.rng[name] ?? seedNumber(`${K.seed}:campaign:${name}`));
-    return { r, done: () => {
-      K.rng[name] = r.state;
-    } };
-  }
-  function capitals(a) {
-    return (a.realms || []).filter((r) => CAMPAIGN.peoples.includes(r.people)).map((r) => a.towns.find((t) => t.id === r.capital && t.alive)).filter(Boolean).map((t) => ({
-      town: t.id,
-      name: t.name,
-      label: `${townLabel(t, 0)} ${t.name}`,
-      realm: t.realm,
-      realmLabel: realmLabel(a, t.realm),
-      people: t.people,
-      peopleLabel: WORLD_PEOPLES.get(t.people).label,
-      x: t.x,
-      y: t.y,
-      pop: Math.round(t.pop),
-      towns: realmTowns(a, t.realm).length
-    }));
-  }
-  function makeMember(K, rnd, { race, sub = null, role, gear, core: core2 = false, ...more }) {
-    const sp = SPECIES.get(race), spOf = sub && sp.peoples ? { ...sp, peoples: sp.peoples.filter((p) => p.id === sub) } : sp;
-    const m = { id: K.nextMember = (K.nextMember || K.members.length) + 1, name: sp.label, gender: "m", race, role, core: core2, hp: 1, alive: true, joined: K.day, back: 1, ride: null, ...more };
-    rollCreature({ rngs: { birth: rnd } }, m, spOf);
-    const used = new Set(K.members.map((x) => x.name)), names2 = (sp.names || []).filter((n) => !used.has(n[0]));
-    if (names2.length) [m.name, m.gender] = names2[rnd() * names2.length | 0];
-    m.gear = { hand: [...gear.hand], body: gear.body };
-    return m;
-  }
-  function member(K, a, rnd, role, k) {
-    const r = realmOf(a, K.realm), R2 = RETINUE[K.people];
-    const gear = role === "knight" ? { hand: R2.knightGear[k % R2.knightGear.length], body: RETINUE.armour[k % RETINUE.armour.length] } : { hand: RETINUE.squireGear[k % RETINUE.squireGear.length], body: RETINUE.squireBody };
-    return makeMember(K, rnd, { race: WORLD_PEOPLES.get(K.people).race, sub: r.sub, role, gear, core: true });
-  }
-  function pickGoal(a, K, rnd) {
-    const diag = Math.hypot(a.w, a.h), [x0, y0] = [K.home % a.w, K.home / a.w | 0], G2 = CAMPAIGN.goal;
-    const seen = new Uint8Array(a.n), reach = [], queue = [K.home];
-    seen[K.home] = 1;
-    while (queue.length) {
-      const c = queue.pop(), x = c % a.w, y = c / a.w | 0;
-      if (settleable(a, c)) reach.push(c);
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        const nx = x + dx, ny = y + dy, j = ny * a.w + nx;
-        if ((dx || dy) && nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && !seen[j] && moveCost(a, j, K.people) < Infinity) {
-          seen[j] = 1;
-          queue.push(j);
-        }
-      }
-    }
-    reach.sort((p, q) => p - q);
-    const dist10 = (i) => Math.hypot(i % a.w - x0, (i / a.w | 0) - y0) / diag;
-    for (const [near4, far2] of [[G2.near, G2.far], G2.wide]) {
-      const ring = reach.filter((i) => dist10(i) >= near4 && dist10(i) <= far2);
-      if (ring.length) return ring[rnd() * ring.length | 0];
-    }
-    const far = reach.reduce((b, i) => dist10(i) > dist10(b) ? i : b, K.home);
-    return far === K.home ? null : far;
-  }
-  function newCampaign(a, townId, { seed = null, mode = "local" } = {}) {
-    if (!landDone(a) || !a.hist) throw new Error("\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u0438 \u043D\u0443\u0436\u0435\u043D \u043C\u0438\u0440 \u0441 \u0438\u0441\u0442\u043E\u0440\u0438\u0435\u0439.");
-    const t = a.towns.find((x) => x.id === townId && x.alive);
-    if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u0442\u043E\u043B\u0438\u0446\u0430 \u043C\u0430\u0436\u043E\u0440\u043D\u043E\u0433\u043E \u043D\u0430\u0440\u043E\u0434\u0430.");
-    const K = a.campaign = {
-      seed: seed || `${a.cfg.seed}:${t.id}`,
-      mode,
-      started: { year: a.hist.year, season: a.hist.season },
-      day: 0,
-      capital: t.id,
-      capitalName: t.name,
-      capitalFrom: `${townLabel(t, 2)} ${t.name}`,
-      realm: t.realm,
-      people: t.people,
-      home: t.i,
-      goal: null,
-      phase: "out",
-      members: [],
-      food: 0,
-      gold: 0,
-      i: t.i,
-      x: t.x + 0.5,
-      y: t.y + 0.5,
-      path: null,
-      k: 0,
-      camp: 0,
-      why: "",
-      hungry: 0,
-      seen: new Uint8Array(a.n),
-      log: [],
-      track: [],
-      stats: { walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0 },
-      rng: {},
-      party: null,
-      // the baggage (campaign/baggage.js): beasts, vehicles, goods besides food, what is being built in camp, the way chosen
-      beasts: [],
-      nextBeast: 1,
-      vehicles: [],
-      cargo: {},
-      build: null,
-      route: null
-    };
-    const { r, done: done3 } = draw(K, "birth");
-    for (let k2 = 0; k2 < CAMPAIGN.knights; k2++) K.members.push(member(K, a, r, "knight", k2));
-    for (let k2 = 0; k2 < CAMPAIGN.squires; k2++) K.members.push(member(K, a, r, "squire", k2));
-    K.food = capacity(K);
-    K.goal = pickGoal(a, K, r);
-    done3();
-    const k = scaleOf(a);
-    for (const o of a.towns.filter((x) => x.alive)) {
-      if (o.realm === K.realm) reveal(a, K, o.i, CAMPAIGN.fog.known * k);
-      else if (o.realm && trades(a, K.realm, o.realm)) reveal(a, K, o.i, CAMPAIGN.fog.partner * k);
-    }
-    reveal(a, K, K.home, CAMPAIGN.fog.known * k);
-    const p = {
-      id: a.hist.nextParty = (a.hist.nextParty || 0) + 1,
-      kind: "caravan",
-      i: t.i,
-      x: K.x,
-      y: K.y,
-      px: K.x,
-      py: K.y,
-      home: t.i,
-      goal: K.goal,
-      state: "camp",
-      days: 0,
-      stay: 0,
-      speed: "foot",
-      people: t.people,
-      might: 0,
-      men: K.members.length,
-      owner: t.realm,
-      target: null,
-      label: `\u043A\u0430\u0440\u0430\u0432\u0430\u043D ${townLabel(t, 2)} ${t.name}`,
-      color: WORLD_PEOPLES.get(t.people).color
-    };
-    (a.parties || (a.parties = [])).push(p);
-    K.party = p.id;
-    const R2 = RETINUE[t.people];
-    say2(a, K, `\u0418\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0448\u0435\u043B \u043A\u0430\u0440\u0430\u0432\u0430\u043D: ${CAMPAIGN.knights} ${R2.knight[1]} \u0438 ${CAMPAIGN.squires} ${R2.squire[1]} \u2014 ${K.members.map((m) => m.name).join(", ")}. ` + (K.goal == null ? "\u041A\u0443\u0434\u0430 \u0438\u0434\u0442\u0438, \u043D\u0438\u043A\u0442\u043E \u043D\u0435 \u0437\u043D\u0430\u0435\u0442." : `\u0423 \u043D\u0438\u0445 \u043F\u043E\u0440\u0443\u0447\u0435\u043D\u0438\u0435 \u0438 \u0435\u0434\u044B \u043D\u0430 ${Math.floor(K.food / K.members.length)} \u0434\u043D\u0435\u0439.`), "start", true);
-    if (K.goal == null) K.phase = "lost";
-    return K;
-  }
-
-  // src/data/camp.js
-  var CAMP = {
-    // the map: smaller than a settlement's, room enough for the foe to come from the edge
-    size: { w: 64, h: 48 },
-    // the campaign's ration in the local map's nutrition (data/foods.js): a person eats ~0.7 of it a day,
-    // a ration is a day's food with what spills and spoils; the caravan's food is laid out as jerky
-    perRation: 0.8,
-    food: "jerky",
-    // firewood they gathered for the night (the local map's stores); hay for each beast, cut on the way
-    wood: 4,
-    hay: 1.5,
-    // a night: from dusk till dawn; the foe comes in the dark, the play ends when it is done (dead, gone)
-    // and the camp is quiet for `quiet` hours, or at dawn
-    night: { from: 19.5, come: [21, 3], until: 7.5 },
-    // tired after the day's march they sleep early, by the fire (`rest` — the need they come with)
-    rest: { night: 0.25, ambush: 0.85, stop: 0.85 },
-    // an ambush on the march: midday, the foe close by at once, the caravan together and on its feet
-    ambush: { from: 11, come: [11, 11.05], until: 18, near: 10 },
-    quiet: 1,
-    // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
-    far: 18,
-    // the foe: a band's budget in «human raiders» (data/raids.js) from its might (data/campaign.js FOES)
-    // × the thing's strength × `budget`; beasts come as a pack of `pack` × strength; the threat the band
-    // carries its gear and aim by (settlement/threat.js) — × strength
-    budget: 0.7,
-    pack: [2, 4],
-    threat: 6,
-    // a building packed in the wagon is put up at the camp: it stands with this share of its work left
-    // (the caravan finishes it with its own hands before the night)
-    deploy: 0.25,
-    // the skills the ranks bring (data/skills.js, 0 … 1): the knights fight, the squires work their tools
-    skills: { knight: { melee: 0.35, ranged: 0.3 }, squire: {}, sellsword: { melee: 0.4, ranged: 0.2 }, guide: { hunting: 0.3, ranged: 0.2 } },
-    tools: { axe: "woodcutting", ironaxe: "woodcutting", maul: "construction", rod: "fishing", pan: "gathering" },
-    toolSkill: 0.3,
-    // the quiver of a bowman
-    arrows: 14,
-    // a beast with this little health or less on the map is counted lost (killed or bolted)
-    beastGone: 0.05,
-    // a cart or wagon stands at the camp: when the foe looted the stores, it is broken with this chance
-    wreck: 0.35,
-    // a stop on the map (a deliberate camp to hunt and gather): played day by day, at most `maxDays`
-    // of it on the map; the rest of the stop goes on as before, on the world map
-    // they come to it fed (the day's meal is the campaign's), the land's game on the map: × its level
-    stop: { maxDays: 2, from: 7, until: 19.5, game: 2.2 },
-    // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
-    spoils: 12,
-    // how many played camps the campaign keeps to be watched again (ui/campaignView.js)
-    keep: 8
-  };
-  var GAME_FLOW = { deer: "deer", boar: "boars", goat: "goats", hare: "hares" };
-  var CAMP_FOES = {
-    bandits: { band: "bandits" },
-    army: { band: "bandits", threat: 1.6 },
-    tribe: { band: "goblins" },
-    undead: { band: "undead" },
-    lair: { beast: "varg" },
-    wolves: { beast: "wolves" }
+  // src/data/quest.js
+  var QUEST = {
+    // the crown's names, one drawn for a campaign: [as named, accusative, gender]
+    names: [
+      ["\u0412\u0435\u043D\u0435\u0446 \u041F\u0435\u0440\u0432\u044B\u0445 \u041A\u043E\u0440\u043E\u043B\u0435\u0439", "\u0412\u0435\u043D\u0435\u0446 \u041F\u0435\u0440\u0432\u044B\u0445 \u041A\u043E\u0440\u043E\u043B\u0435\u0439", "m"],
+      ["\u0416\u0435\u043B\u0435\u0437\u043D\u0430\u044F \u043A\u043E\u0440\u043E\u043D\u0430", "\u0416\u0435\u043B\u0435\u0437\u043D\u0443\u044E \u043A\u043E\u0440\u043E\u043D\u0443", "f"],
+      ["\u041A\u043E\u0440\u043E\u043D\u0430 \u0417\u0430\u0440\u0438", "\u041A\u043E\u0440\u043E\u043D\u0443 \u0417\u0430\u0440\u0438", "f"],
+      ["\u0412\u0435\u043D\u0435\u0446 \u0421\u0435\u043C\u0438 \u0417\u0432\u0451\u0437\u0434", "\u0412\u0435\u043D\u0435\u0446 \u0421\u0435\u043C\u0438 \u0417\u0432\u0451\u0437\u0434", "m"],
+      ["\u0425\u043E\u043B\u043E\u0434\u043D\u0430\u044F \u043A\u043E\u0440\u043E\u043D\u0430", "\u0425\u043E\u043B\u043E\u0434\u043D\u0443\u044E \u043A\u043E\u0440\u043E\u043D\u0443", "f"],
+      ["\u041A\u043E\u0440\u043E\u043D\u0430 \u041F\u0440\u0435\u0434\u043A\u043E\u0432", "\u041A\u043E\u0440\u043E\u043D\u0443 \u041F\u0440\u0435\u0434\u043A\u043E\u0432", "f"],
+      ["\u0412\u0435\u043D\u0435\u0446 \u041E\u0441\u043D\u043E\u0432\u0430\u0442\u0435\u043B\u044F", "\u0412\u0435\u043D\u0435\u0446 \u041E\u0441\u043D\u043E\u0432\u0430\u0442\u0435\u043B\u044F", "m"],
+      ["\u0422\u0435\u0440\u043D\u043E\u0432\u044B\u0439 \u0432\u0435\u043D\u0435\u0446", "\u0422\u0435\u0440\u043D\u043E\u0432\u044B\u0439 \u0432\u0435\u043D\u0435\u0446", "m"]
+    ],
+    // where the crown may lie, by the world's history: weight of each kind of place
+    //   barrow — an ancient barrow (the old king took it to his grave); dragon — a dragon's lair;
+    //   ruin — a lair the peoples cleared, a burnt town (it vanished in the fall); dread — a living lair of
+    //   the dead (a necromancer's tower, a vampire's manor, a wights' barrow)
+    crownAt: { barrow: 3, dragon: 2, dread: 2, ruin: 1.5 },
+    // the clues: three places on the way, each farther from home than the last (at these shares of the
+    // way to the crown), scattered off the straight line by up to `scatter` of its length
+    clueAt: [0.3, 0.55, 0.8],
+    scatter: 0.3,
+    // what a clue is, by the place it is found in: a sage of a friendly town (no guard), a living lair (its
+    // owners guard it), a barrow or ruin (the dead or the outlaws who settled there)
+    clueKinds: { town: 1.2, lair: 1, barrow: 1, ruin: 1 },
+    // what each clue tells of the crown: the circle it narrows it to (cells), the last one shows the place
+    narrow: [30, 12, 0],
+    // where a clue is: told as a circle of this radius, its centre off the place by up to `off` × the radius
+    area: 7,
+    off: 0.7,
+    // the search: within this of the place the scouts see it (+ the fog's sight); a search of an area walks
+    // to a cell of it, at most `tries` cells before the council gives it up for a while (`rest` days)
+    sight: 1.5,
+    tries: 6,
+    rest: 30,
+    // a guarded place: the guards' strength — base + perDiag × the distance from home as a share of the
+    // world's diagonal (× crown for the crown's own); the council storms it when the company is this whole,
+    // and after a lost storm waits `retry` days
+    guard: { base: 0.7, perDiag: 1.8, crown: 1.25, max: 3 },
+    storm: 0.75,
+    retry: 12,
+    // rumours in a friendly town: a hint where an unknown clue lies, for `price` gold or free to a speaker
+    // with Charisma `charm` and more; at most one a visit, with this chance
+    rumour: { chance: 0.6, price: 3, charm: 7 },
+    // the way home with the crown: the world sends its bands after the caravan — one every `every` days,
+    // (no more than `at` on its trail at once), of strength base + per year carried, at most max; they hunt from
+    // the edge of the bubble and go home after a fight, won or lost
+    pursuit: { every: 30, at: 2, base: 0.9, perYear: 0.3, max: 2.6 }
   };
 
   // src/data/bubble.js
@@ -22871,6 +22718,710 @@ dd.q4{color:#c58cff;font-weight:600}
   var AMBUSH = { surprise: 0.85 };
   var TRAIN = { chance: 0.12, food: [15, 40], buy: 1.6, sell: 0.55 };
   var HERD2 = { chance: 0.08, food: [4, 10] };
+
+  // src/campaign/bubble.js
+  var bubbleOf = (K) => K.bubble || (K.bubble = { next: 1, things: [] });
+  var sc = (a, v) => v * scaleOf(a);
+  var dist9 = (K, t) => Math.hypot(t.x - K.x, t.y - K.y);
+  var cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
+  var land = (a, i) => !!a.f.land && !a.f.ocean[i];
+  function friendlyNear(a, K, i) {
+    const t = townAt(a, i);
+    return !!t && t.realm && (t.realm === K.realm || trades(a, K.realm, t.realm) && !atWar(a, K.realm, t.realm));
+  }
+  function herdOf(a, i) {
+    const reg = cellRegion2(a, i), w = { region: reg };
+    let best = null, bv = 0;
+    for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id) && k >= 0.8) {
+      const v = faunaLevel(w, id);
+      if (v > bv) {
+        bv = v;
+        best = id;
+      }
+    }
+    return best ? { id: best, level: bv } : null;
+  }
+  function spawn(a, K) {
+    const B3 = bubbleOf(K), near4 = sc(a, BUBBLE.near), far = sc(a, BUBBLE.far);
+    const pick4 = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`));
+    for (let s = 0; s < BUBBLE.samples && B3.things.length < BUBBLE.max; s++) {
+      const ang = pick4() * Math.PI * 2, d = near4 + pick4() * (far - near4), x = K.x + Math.cos(ang) * d, y = K.y + Math.sin(ang) * d;
+      if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
+      const i = cellAt(a, x, y);
+      if (!land(a, i)) continue;
+      const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = friendlyNear(a, K, i) ? BUBBLE.friendly : 1;
+      const add2 = (props) => {
+        if (B3.things.length < BUBBLE.max) B3.things.push({ id: B3.next++, x, y, i, born: K.day, sated: -1, seen: false, ...props });
+      };
+      for (const dg of dangers(a, i)) if (r() < dg.p * BUBBLE.spawn * k) add2({ kind: dg.kind, strength: dg.strength ?? 1, label: dg.label || THINGS[dg.kind].label, ...dg.band ? { band: dg.band } : {}, ...dg.beast ? { beast: dg.beast } : {} });
+      const road = roadAccess(a, i);
+      if (road > 0.2 && r() < TRAIN.chance * road) add2({ kind: "trader", strength: 0, label: THINGS.trader.label, goods: Math.round(TRAIN.food[0] + r() * (TRAIN.food[1] - TRAIN.food[0])) });
+      const herd2 = herdOf(a, i);
+      if (herd2 && r() < HERD2.chance * Math.min(1.5, herd2.level)) add2({ kind: "herd", strength: 0, label: `\u0441\u0442\u0430\u0434\u043E: ${SPECIES.get(herd2.id).plural}`, game: herd2.id });
+    }
+  }
+  function move(a, K, r, guided2) {
+    const B3 = bubbleOf(K), sense = sc(a, BUBBLE.sense), gone = sc(a, BUBBLE.gone);
+    for (const t of B3.things) {
+      const T2 = THINGS[t.kind], step2 = sc(a, T2.speed) / 2, d = dist9(K, t);
+      let nx = t.x, ny = t.y;
+      if (T2.hunts && t.sated < K.day && (d <= sense || t.pursuit) && !K.inTown) {
+        if (guided2 && r() < BUBBLE.guideLoses / 2) t.sated = K.day + 2;
+        else {
+          const k = Math.min(1, step2 / Math.max(1e-6, d));
+          nx += (K.x - t.x) * k;
+          ny += (K.y - t.y) * k;
+        }
+      } else {
+        const ang = r() * Math.PI * 2;
+        nx += Math.cos(ang) * step2 * 0.6;
+        ny += Math.sin(ang) * step2 * 0.6;
+        if (T2.road && a.f.road) {
+          const x0 = Math.floor(t.x), y0 = Math.floor(t.y);
+          let best = -1, bv = a.f.road[t.i] || 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const j2 = cellAt(a, x0 + dx, y0 + dy);
+            if ((a.f.road[j2] || 0) > bv && land(a, j2) && r() < 0.6) {
+              bv = a.f.road[j2];
+              best = j2;
+            }
+          }
+          if (best >= 0) {
+            nx = t.x + (best % a.w + 0.5 - t.x) * 0.5;
+            ny = t.y + ((best / a.w | 0) + 0.5 - t.y) * 0.5;
+          }
+        }
+      }
+      const j = cellAt(a, nx, ny);
+      if (nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && land(a, j)) {
+        t.x = nx;
+        t.y = ny;
+        t.i = j;
+      }
+    }
+    B3.things = B3.things.filter((t) => t.pursuit ? dist9(K, t) <= gone * 2 : dist9(K, t) <= gone && (K.day - t.born <= BUBBLE.life || THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= sense));
+  }
+  function worldThings(a, K) {
+    const out = [], sense = sc(a, BUBBLE.sense), P = BUBBLE.partyMight;
+    for (const p of a.parties || []) {
+      if (p.kind === "caravan" || p.state === "gone" || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
+      let kind = null, who = {};
+      if (p.kind === "army") {
+        kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? "army" : null;
+        who = { band: REALM_BANDS[p.people] || "bandits" };
+      } else if (p.kind === "raid") {
+        const l = (a.lairs || []).find((x) => x.id === p.owner), L = l && LAIRS.get(l.kind);
+        kind = L?.undead ? "undead" : "tribe";
+        who = l ? lairFoe(l.kind) : {};
+      } else if (p.kind === "brood" || p.kind === "dragon") {
+        kind = "lair";
+        const l = (a.lairs || []).find((x) => x.id === p.owner);
+        who = l ? lairFoe(l.kind) : {};
+      }
+      if (!kind) continue;
+      out.push({
+        id: `p${p.id}`,
+        party: p.id,
+        kind,
+        ...who,
+        x: p.x,
+        y: p.y,
+        i: p.i,
+        label: p.label || THINGS[kind].label,
+        sated: (K.partySated || {})[p.id] ?? -1,
+        strength: Math.min(P.max, Math.max(P.min, (p.might || 3) * P.per))
+      });
+    }
+    return out;
+  }
+  function stepBubble(a, K, phase, r, guided2) {
+    if (phase === "day") spawn(a, K);
+    move(a, K, r, guided2);
+    const contact = sc(a, BUBBLE.contact);
+    return [...bubbleOf(K).things, ...worldThings(a, K)].filter((t) => dist9(K, t) <= contact && t.sated < K.day);
+  }
+  var pursuers = (a, K, sight) => [...bubbleOf(K).things, ...worldThings(a, K)].filter((t) => THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= Math.min(sight, sc(a, BUBBLE.sense)));
+  function lose(K, t, days) {
+    if (t.party) (K.partySated || (K.partySated = {}))[t.party] = K.day + days;
+    else t.sated = K.day + days;
+  }
+  var huntersNear = (a, K) => [...bubbleOf(K).things, ...worldThings(a, K)].some((t) => THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= sc(a, BUBBLE.sense) * BUBBLE.wary);
+  function sighted(a, K, sight) {
+    const out = [];
+    for (const t of [...bubbleOf(K).things, ...worldThings(a, K)]) {
+      if (t.seen || dist9(K, t) > sight || THINGS[t.kind].mood !== "hostile" || t.kind === "wolves") continue;
+      if (t.party) {
+        K.partySeen || (K.partySeen = {});
+        if (K.partySeen[t.party]) continue;
+        K.partySeen[t.party] = K.day;
+      } else t.seen = true;
+      out.push(t);
+    }
+    return out;
+  }
+  function settle(K, t, won) {
+    const B3 = bubbleOf(K);
+    if (t.party) {
+      (K.partySated || (K.partySated = {}))[t.party] = K.day + BUBBLE.sated;
+      return;
+    }
+    if (won || t.pursuit) B3.things = B3.things.filter((x) => x.id !== t.id);
+    else t.sated = K.day + BUBBLE.sated;
+  }
+  var removeThing = (K, t) => {
+    const B3 = bubbleOf(K);
+    B3.things = B3.things.filter((x) => x.id !== t.id);
+  };
+
+  // src/campaign/quest.js
+  var DIRS2 = ["\u043D\u0430 \u0432\u043E\u0441\u0442\u043E\u043A\u0435", "\u043D\u0430 \u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u043A\u0435", "\u043D\u0430 \u044E\u0433\u0435", "\u043D\u0430 \u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u0435", "\u043D\u0430 \u0437\u0430\u043F\u0430\u0434\u0435", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u0435", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u0435", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u043A\u0435"];
+  var xy2 = (a, i) => [i % a.w + 0.5, (i / a.w | 0) + 0.5];
+  var dist10 = (a, i, j) => {
+    const [x, y] = xy2(a, i), [p, q] = xy2(a, j);
+    return Math.hypot(x - p, y - q);
+  };
+  var gx = (Q, f, m) => Q.g === "m" ? m : f;
+  var pick3 = (r, list) => list[r() * list.length | 0];
+  function weighted2(r, list) {
+    const tot = list.reduce((s, e) => s + e[1], 0);
+    let x = r() * tot;
+    for (const [it, wt] of list) {
+      x -= wt;
+      if (x <= 0) return it;
+    }
+    return list.at(-1)?.[0] ?? null;
+  }
+  function reachable(a, K) {
+    const seen = new Uint8Array(a.n), cells = [], queue = [K.home];
+    seen[K.home] = 1;
+    while (queue.length) {
+      const c = queue.pop(), x = c % a.w, y = c / a.w | 0;
+      if (settleable(a, c)) cells.push(c);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy, j = ny * a.w + nx;
+        if ((dx || dy) && nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && !seen[j] && moveCost(a, j, K.people) < Infinity) {
+          seen[j] = 1;
+          queue.push(j);
+        }
+      }
+    }
+    cells.sort((p, q) => p - q);
+    return { mask: seen, cells };
+  }
+  function foot(a, mask, i, r = 3) {
+    if (mask[i]) return i;
+    const x0 = i % a.w, y0 = i / a.w | 0;
+    let best = -1, bd = Infinity;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const x = x0 + dx, y = y0 + dy;
+      if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
+      const j = y * a.w + x, d = dx * dx + dy * dy;
+      if (mask[j] && d < bd) {
+        bd = d;
+        best = j;
+      }
+    }
+    return best;
+  }
+  var lairName2 = (l) => `${LAIRS.get(l.kind).label} \xAB${l.name}\xBB`;
+  var friendly = (a, K, t) => t.realm && (t.realm === K.realm || trades(a, K.realm, t.realm) && !atWar(a, K.realm, t.realm));
+  function places(a, K, mask) {
+    const out = [], add2 = (p, at) => {
+      const i = foot(a, mask, at);
+      if (i >= 0) out.push({ ...p, at, i });
+    };
+    for (const b of a.ancientBarrows || []) add2({ kind: "barrow", label: "\u0434\u0440\u0435\u0432\u043D\u0438\u0439 \u043A\u0443\u0440\u0433\u0430\u043D" }, b);
+    for (const l of a.lairs || []) {
+      const L = LAIRS.get(l.kind);
+      if (!L || L.fiend) continue;
+      if (L.dragon) {
+        if (l.alive) add2({ kind: "dragon", label: lairName2(l), lair: l.id }, l.i);
+        continue;
+      }
+      if (!l.alive) {
+        const by = l.clearedBy != null && a.towns.find((t) => t.id === l.clearedBy);
+        add2({ kind: "ruin", label: `\u0440\u0430\u0437\u0432\u0430\u043B\u0438\u043D\u044B \u2014 ${lairName2(l)}`, lair: l.id, died: l.died, by: by ? `${townLabel(by, 2)} ${by.name}` : null }, l.i);
+      } else add2({ kind: L.undead ? "dread" : "lair", label: lairName2(l), lair: l.id }, l.i);
+    }
+    for (const t of a.towns || []) {
+      if (!t.alive) add2({ kind: "ruin", label: `\u043F\u0435\u043F\u0435\u043B\u0438\u0449\u0435 \u2014 ${townLabel(t, 0)} ${t.name}`, town: t.id, died: t.died }, t.i);
+      else if (friendly(a, K, t) && t.id !== K.capital) add2({ kind: "town", label: `${townLabel(t, 0)} ${t.name}`, town: t.id }, t.i);
+    }
+    return out;
+  }
+  function guardOf(a, K, p, crown = false) {
+    const G2 = QUEST.guard, diag = Math.hypot(a.w, a.h), s = Math.min(G2.max, (G2.base + G2.perDiag * dist10(a, K.home, p.i) / diag) * (crown ? G2.crown : 1));
+    const l = p.lair != null ? a.lairs.find((x) => x.id === p.lair) : null, L = l && LAIRS.get(l.kind);
+    if (p.kind === "town") return null;
+    if (p.kind === "dragon") return { kind: "lair", strength: s, label: `\u0432\u044B\u0432\u043E\u0434\u043E\u043A \u0434\u0440\u0430\u043A\u043E\u043D\u0430 \u2014 ${p.label}`, beast: "drake" };
+    if (p.kind === "barrow") return { kind: "undead", strength: s, label: "\u043C\u0435\u0440\u0442\u0432\u0435\u0446\u044B \u0434\u0440\u0435\u0432\u043D\u0435\u0433\u043E \u043A\u0443\u0440\u0433\u0430\u043D\u0430", band: "undead" };
+    if (p.kind === "ruin") return { kind: "bandits", strength: s, label: `\u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0438, \u0437\u0430\u0441\u0435\u0432\u0448\u0438\u0435 ${p.town != null ? "\u043D\u0430 \u043F\u0435\u043F\u0435\u043B\u0438\u0449\u0435" : "\u0432 \u0440\u0430\u0437\u0432\u0430\u043B\u0438\u043D\u0430\u0445"}`, band: "bandits" };
+    return { kind: L?.undead ? "undead" : L?.tribe ? "tribe" : "lair", strength: s, label: p.label, ...l ? lairFoe(l.kind) : {} };
+  }
+  var PAST = { m: "\u043F\u0430\u043B", f: "\u043F\u0430\u043B\u0430", n: "\u043F\u0430\u043B\u043E", pl: "\u043F\u0430\u043B\u0438" };
+  function story(a, p, g3) {
+    const she = g3 === "f" ? "\u041E\u043D\u0430" : "\u041E\u043D", her = g3 === "f" ? "\u0435\u0451" : "\u0435\u0433\u043E", lost = g3 === "f" ? "\u0441\u0433\u0438\u043D\u0443\u043B\u0430" : "\u0441\u0433\u0438\u043D\u0443\u043B";
+    if (p.kind === "barrow") return `\u0414\u0440\u0435\u0432\u043D\u0438\u0439 \u043A\u043E\u0440\u043E\u043B\u044C \u0443\u043D\u0451\u0441 ${her} \u0441 \u0441\u043E\u0431\u043E\u0439 \u0432 \u043C\u043E\u0433\u0438\u043B\u0443, \u0438 \u043A\u0443\u0440\u0433\u0430\u043D \u0435\u0433\u043E \u0434\u043E \u0441\u0438\u0445 \u043F\u043E\u0440 \u0441\u0442\u0435\u0440\u0435\u0436\u0451\u0442 \u043C\u0451\u0440\u0442\u0432\u044B\u0439 \u043A\u0430\u0440\u0430\u0443\u043B.`;
+    if (p.kind === "dragon") return `${she} \u0432 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u043D\u0438\u0446\u0435 \u0434\u0440\u0430\u043A\u043E\u043D\u0430 \u2014 ${p.label}.`;
+    if (p.kind === "dread") return `${she} \u0443 \u043D\u0435\u0447\u0438\u0441\u0442\u0438: ${p.label}.`;
+    if (p.kind === "ruin" && p.lair != null) {
+      const l = a.lairs.find((x) => x.id === p.lair), L = l && LAIRS.get(l.kind);
+      return `${she} ${lost}${p.died != null ? ` \u0432 ${p.died}-\u043C \u0433\u043E\u0434\u0443` : ""}, \u043A\u043E\u0433\u0434\u0430 ${PAST[L?.g] || "\u043F\u0430\u043B\u043E"} ${L ? `${L.label} \xAB${l.name}\xBB` : "\u0441\u0442\u0430\u0440\u043E\u0435 \u043B\u043E\u0433\u043E\u0432\u043E"}${p.by ? ` \u2014 \u0435\u0433\u043E \u0440\u0430\u0437\u043E\u0440\u0438\u043B\u0438 \u0438\u0437 ${p.by}` : ""}.`;
+    }
+    if (p.kind === "ruin") return `${she} ${lost}${p.died != null ? ` \u0432 ${p.died}-\u043C \u0433\u043E\u0434\u0443` : ""} \u0432 \u043E\u0433\u043D\u0435: ${p.label}.`;
+    return `\u0413\u0434\u0435 ${she.toLowerCase()} ${lost}, \u043D\u0435 \u043F\u043E\u043C\u043D\u0438\u0442 \u043D\u0438\u043A\u0442\u043E.`;
+  }
+  function circle(a, i, r, rnd) {
+    const R2 = r * scaleOf(a), [x, y] = xy2(a, i), ang = rnd() * Math.PI * 2, d = rnd() * QUEST.off * R2;
+    return { x: Math.min(a.w - 0.5, Math.max(0.5, x + Math.cos(ang) * d)), y: Math.min(a.h - 0.5, Math.max(0.5, y + Math.sin(ang) * d)), r: R2 };
+  }
+  function makeQuest(a, K, rnd) {
+    const { mask, cells } = reachable(a, K);
+    if (!cells.length) return null;
+    const diag = Math.hypot(a.w, a.h), G2 = CAMPAIGN.goal, home = K.home, d = (i) => dist10(a, home, i) / diag;
+    const all = places(a, K, mask);
+    let crown = null;
+    for (const [near4, far] of [[G2.near, G2.far], G2.wide]) {
+      const fit = all.filter((p) => QUEST.crownAt[p.kind] && d(p.i) >= near4 && d(p.i) <= far);
+      if (fit.length) {
+        crown = weighted2(rnd, fit.map((p) => [p, QUEST.crownAt[p.kind]]));
+        break;
+      }
+    }
+    if (!crown) {
+      const far = cells.filter((i2) => d(i2) >= G2.near);
+      const i = far.length ? pick3(rnd, far) : cells.reduce((b, c) => d(c) > d(b) ? c : b, home);
+      if (i === home) return null;
+      crown = { kind: "wild", label: biomeAt(a, i)?.where || "\u0432 \u0433\u043B\u0443\u0448\u0438", at: i, i };
+    }
+    const used = /* @__PURE__ */ new Set([crown.at]), clues = [];
+    const [hx, hy] = xy2(a, home), [cx, cy] = xy2(a, crown.i), len = Math.hypot(cx - hx, cy - hy), nx = -(cy - hy) / (len || 1), ny = (cx - hx) / (len || 1);
+    for (let k = 0; k < QUEST.clueAt.length; k++) {
+      const f = QUEST.clueAt[k], off = (rnd() * 2 - 1) * QUEST.scatter * len;
+      const px = hx + (cx - hx) * f + nx * off, py = hy + (cy - hy) * f + ny * off;
+      const fit = all.filter((p) => QUEST.clueKinds[p.kind] && !used.has(p.at) && p.i !== home);
+      let best = null, bv = Infinity;
+      for (const p of fit) {
+        const [x, y] = xy2(a, p.i), v = Math.hypot(x - px, y - py) / QUEST.clueKinds[p.kind];
+        if (v < bv) {
+          bv = v;
+          best = p;
+        }
+      }
+      if (!best || bv > len * 0.5) {
+        const i = foot(a, mask, Math.round(Math.min(a.h - 1, Math.max(0, py))) * a.w + Math.round(Math.min(a.w - 1, Math.max(0, px))), 6);
+        best = i >= 0 ? { kind: "cairn", label: `\u043A\u0430\u043C\u0435\u043D\u043D\u0430\u044F \u043F\u0438\u0440\u0430\u043C\u0438\u0434\u0430 ${biomeAt(a, i)?.where || ""}`.trim(), at: i, i } : fit[0];
+      }
+      if (!best) continue;
+      used.add(best.at);
+      clues.push({ k, kind: best.kind, at: best.at, i: best.i, label: best.label, town: best.town ?? null, guard: best.kind === "cairn" ? null : guardOf(a, K, best), area: null, seen: false, found: false });
+    }
+    const [name, acc3, g3] = pick3(rnd, QUEST.names);
+    const Q = { name, acc: acc3, g: g3, story: story(a, crown, g3), crown: {
+      kind: crown.kind,
+      at: crown.at,
+      i: crown.i,
+      label: crown.label,
+      guard: crown.kind === "wild" ? guardOf(a, K, { ...crown, kind: "ruin" }, true) : guardOf(a, K, crown, true),
+      area: null,
+      exact: false,
+      seen: false,
+      state: "lost",
+      carrier: null
+    }, clues, search: null, stormAt: 0, next: null, found: 0 };
+    if (clues.length) clues[0].area = circle(a, clues[0].i, QUEST.area, rnd);
+    return Q;
+  }
+  function whereFrom(a, K, from, area) {
+    const [x, y] = xy2(a, from), ang = Math.atan2(area.y - y, area.x - x), d = Math.hypot(area.x - x, area.y - y);
+    const days = Math.max(1, Math.round(d / (CAMPAIGN.speed * scaleOf(a))));
+    return d < area.r ? "\u0441\u043E\u0432\u0441\u0435\u043C \u0440\u044F\u0434\u043E\u043C" : `${DIRS2[(Math.round(ang / (Math.PI / 4)) + 8) % 8]}, \u0434\u043D\u0435\u0439 \u0437\u0430 ${days} \u043F\u0443\u0442\u0438`;
+  }
+  var KIND_HINT = { town: "\u0443 \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u0446\u0435\u0432 \u043E\u0434\u043D\u043E\u0433\u043E \u0438\u0437 \u0434\u0440\u0443\u0436\u0435\u0441\u043A\u0438\u0445 \u0433\u043E\u0440\u043E\u0434\u043E\u0432", lair: "\u0432 \u043B\u043E\u0433\u043E\u0432\u0435", dread: "\u0432 \u043B\u043E\u0433\u043E\u0432\u0435 \u043D\u0435\u0447\u0438\u0441\u0442\u0438", barrow: "\u0432 \u0434\u0440\u0435\u0432\u043D\u0435\u043C \u043A\u0443\u0440\u0433\u0430\u043D\u0435", ruin: "\u0432 \u0440\u0430\u0437\u0432\u0430\u043B\u0438\u043D\u0430\u0445", cairn: "\u043F\u043E\u0434 \u043A\u0430\u043C\u0435\u043D\u043D\u043E\u0439 \u043F\u0438\u0440\u0430\u043C\u0438\u0434\u043E\u0439", dragon: "\u0432 \u043B\u043E\u0433\u043E\u0432\u0435 \u0434\u0440\u0430\u043A\u043E\u043D\u0430" };
+  var clueHint = (a, K, c, from) => `${KIND_HINT[c.kind] || "\u0433\u0434\u0435-\u0442\u043E"} ${whereFrom(a, K, from, c.area)}`;
+  var questIntro = (a, K) => {
+    const Q = K.quest, c = Q.clues[0];
+    return `\u0418\u0445 \u043F\u043E\u0440\u0443\u0447\u0435\u043D\u0438\u0435 \u2014 \u043D\u0430\u0439\u0442\u0438 ${Q.acc || Q.name}. ${Q.story} \u0413\u0434\u0435 ${gx(Q, "\u043E\u043D\u0430 \u043B\u0435\u0436\u0438\u0442", "\u043E\u043D \u043B\u0435\u0436\u0438\u0442")}, \u043D\u0435 \u0437\u043D\u0430\u0435\u0442 \u043D\u0438\u043A\u0442\u043E; \u0432 \u0441\u0442\u043E\u043B\u0438\u0446\u0435 \u0437\u043D\u0430\u044E\u0442 \u043B\u0438\u0448\u044C, \u0433\u0434\u0435 \u0438\u0441\u043A\u0430\u0442\u044C \u043F\u0435\u0440\u0432\u044B\u0439 \u0441\u043B\u0435\u0434: ${c ? clueHint(a, K, c, K.home) : "\u043D\u0438\u0433\u0434\u0435"}.`;
+  };
+  var cellAt2 = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
+  function questTarget(a, K, rnd) {
+    const Q = K.quest;
+    if (!Q) return K.goal;
+    const C = Q.crown;
+    if (C.state === "carried") return K.home;
+    if (C.exact || C.seen) return C.i;
+    const open = Q.clues.filter((c) => !c.found && (c.seen || c.area) && !(c.rest > K.day));
+    const near4 = (p, q) => distTo(a, K, p) - distTo(a, K, q);
+    const seen = open.filter((c) => c.seen).sort(near4)[0];
+    if (seen) return seen.i;
+    const area = open.sort(near4)[0] || (C.area && !(C.rest > K.day) ? C : null);
+    if (area) return searchCell(a, K, area, rnd);
+    return null;
+  }
+  var distTo = (a, K, c) => Math.hypot(c.area ? c.area.x - K.x : xy2(a, c.i)[0] - K.x, c.area ? c.area.y - K.y : xy2(a, c.i)[1] - K.y);
+  function searchCell(a, K, place, rnd) {
+    const Q = K.quest, key3 = place === Q.crown ? "crown" : place.k;
+    const mask = reachMask(a, K);
+    if (Q.search?.key === key3 && K.i !== Q.search.i) return Q.search.i;
+    if (Q.search?.key === key3 && ++Q.search.tries >= QUEST.tries) {
+      place.rest = K.day + QUEST.rest;
+      Q.search = null;
+      return questTarget(a, K, rnd);
+    }
+    const A = place.area;
+    let i = -1;
+    for (let k = 0; k < 30 && i < 0; k++) {
+      const first = Q.search?.key !== key3 && k === 0, ang = rnd() * Math.PI * 2, d = first ? 0 : Math.sqrt(rnd()) * A.r;
+      i = foot(a, mask, cellAt2(a, A.x + Math.cos(ang) * d, A.y + Math.sin(ang) * d), 2);
+    }
+    if (i < 0) {
+      place.rest = K.day + QUEST.rest;
+      return null;
+    }
+    Q.search = { key: key3, i, tries: Q.search?.key === key3 ? Q.search.tries : 0 };
+    return i;
+  }
+  var MASKS = /* @__PURE__ */ new WeakMap();
+  function reachMask(a, K) {
+    let m = MASKS.get(K);
+    if (!m) MASKS.set(K, m = reachable(a, K).mask);
+    return m;
+  }
+  function questSight(a, K, say3) {
+    const Q = K.quest;
+    if (!Q) return;
+    const sight = (QUEST.sight + CAMPAIGN.fog.sight) * scaleOf(a), d = (i) => Math.hypot(xy2(a, i)[0] - K.x, xy2(a, i)[1] - K.y);
+    for (const c of Q.clues) if (!c.found && !c.seen && c.area && d(c.at) <= sight) {
+      c.seen = true;
+      K.path = null;
+      say3(`\u0420\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438 \u043D\u0430\u0448\u043B\u0438 \u0442\u043E, \u0447\u0442\u043E \u0438\u0441\u043A\u0430\u043B\u0438: ${c.label}${c.guard ? ` (\u0441\u0442\u0440\u0430\u0436\u0430 \u2014 ${c.guard.label === c.label ? FOES2[c.guard.kind].label : c.guard.label})` : ""}.`, "quest");
+    }
+    const C = Q.crown;
+    if (C.state !== "carried" && !C.seen && (C.area || C.exact || C.state === "taken") && d(C.at) <= sight) {
+      C.seen = true;
+      K.path = null;
+      if (!C.exact) say3(`\u0420\u0430\u0437\u0432\u0435\u0434\u0447\u0438\u043A\u0438 \u043D\u0430\u0448\u043B\u0438 \u043C\u0435\u0441\u0442\u043E, \u0433\u0434\u0435 \u043B\u0435\u0436\u0438\u0442 ${Q.name}: ${C.label}.`, "quest", true);
+    }
+  }
+  function questArrive(a, K, rnd, fight4, say3) {
+    const Q = K.quest;
+    if (!Q) return false;
+    const C = Q.crown, here = [...Q.clues.filter((c) => !c.found && c.seen), ...C.state !== "carried" && (C.seen || C.exact) ? [C] : []].find((p) => p.i === K.i);
+    if (!here) return false;
+    if (here.guard) {
+      const ms = K.members.filter((m) => m.alive), hp = ms.reduce((s, m) => s + m.hp, 0) / Math.max(1, ms.length);
+      if (K.day < Q.stormAt || hp < QUEST.storm) return false;
+      K.stats.storms = (K.stats.storms || 0) + 1;
+      const win = fight4(here.guard);
+      if (!win) {
+        Q.stormAt = K.day + QUEST.retry;
+        return true;
+      }
+    }
+    if (here === C) takeCrown(a, K, say3);
+    else takeClue(a, K, here, rnd, say3);
+    K.path = null;
+    Q.search = null;
+    return true;
+  }
+  function takeClue(a, K, c, rnd, say3) {
+    const Q = K.quest, C = Q.crown;
+    c.found = true;
+    Q.found++;
+    const t = c.town != null ? a.towns.find((x) => x.id === c.town) : null;
+    const how = t ? `\u0412 ${townLabel(t, 3)} ${t.name} \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u0435\u0446 \u043E\u0442\u043A\u0440\u044B\u043B \u0441\u0442\u0430\u0440\u044B\u0435 \u0441\u0432\u0438\u0442\u043A\u0438` : c.guard ? "\u0421\u0440\u0435\u0434\u0438 \u0434\u043E\u0431\u044B\u0447\u0438 \u043D\u0430\u0448\u043B\u0430\u0441\u044C \u0441\u0442\u0430\u0440\u0430\u044F \u0433\u0440\u0430\u043C\u043E\u0442\u0430" : "\u041F\u043E\u0434 \u043A\u0430\u043C\u043D\u044F\u043C\u0438 \u043D\u0430\u0448\u043B\u0430\u0441\u044C \u0441\u0442\u0430\u0440\u0430\u044F \u0433\u0440\u0430\u043C\u043E\u0442\u0430";
+    const r = QUEST.narrow[Math.min(Q.found, QUEST.narrow.length) - 1];
+    let told;
+    if (r <= 0 || Q.found >= QUEST.narrow.length) {
+      C.exact = true;
+      C.area = null;
+      told = `${Q.name} \u043B\u0435\u0436\u0438\u0442 \u0437\u0434\u0435\u0441\u044C: ${C.label}, ${whereFrom(a, K, K.i, { x: xy2(a, C.i)[0], y: xy2(a, C.i)[1], r: 0 })}`;
+    } else {
+      C.area = circle(a, C.i, r, rnd);
+      told = `${Q.name} \u0433\u0434\u0435-\u0442\u043E ${whereFrom(a, K, K.i, C.area)} \u2014 \u0432 \u043E\u043A\u0440\u0443\u0433\u0435 ${Math.round(C.area.r)} \u043A\u043B\u0435\u0442\u043E\u043A`;
+    }
+    const next = Q.clues.filter((x) => !x.found && !x.area).sort((p, q) => dist10(a, c.i, p.i) - dist10(a, c.i, q.i))[0];
+    if (next && !C.exact) next.area = circle(a, next.i, QUEST.area, rnd);
+    say3(`${how}: ${told}.${next && !C.exact ? ` \u0422\u0430\u043C \u0436\u0435 \u0441\u043A\u0430\u0437\u0430\u043D\u043E, \u0433\u0434\u0435 \u0438\u0441\u043A\u0430\u0442\u044C \u0434\u0440\u0443\u0433\u043E\u0439 \u0441\u043B\u0435\u0434: ${clueHint(a, K, next, K.i)}.` : ""} \u041F\u043E\u0434\u0441\u043A\u0430\u0437\u043E\u043A \u043D\u0430\u0439\u0434\u0435\u043D\u043E: ${Q.found} \u0438\u0437 ${Q.clues.length}.`, "quest", true);
+  }
+  function takeCrown(a, K, say3) {
+    const Q = K.quest, C = Q.crown, m = bearer(K);
+    const again = C.state === "taken";
+    C.state = "carried";
+    C.carrier = m?.id ?? null;
+    C.seen = false;
+    C.exact = false;
+    K.phase = "back";
+    K.goal = K.home;
+    Q.next = K.day + 3;
+    Q.carriedFrom = K.day;
+    say3(again ? `${Q.name} ${gx(Q, "\u043E\u0442\u0431\u0438\u0442\u0430", "\u043E\u0442\u0431\u0438\u0442")} \u0443 \u0432\u0440\u0430\u0433\u043E\u0432: \u0442\u0435\u043F\u0435\u0440\u044C ${gx(Q, "\u0435\u0451", "\u0435\u0433\u043E")} \u043D\u0435\u0441\u0451\u0442 ${m?.name}. \u0414\u043E\u043C\u043E\u0439!` : `${Q.name} ${gx(Q, "\u043D\u0430\u0439\u0434\u0435\u043D\u0430", "\u043D\u0430\u0439\u0434\u0435\u043D")} \u2014 ${C.label}! ${gx(Q, "\u0415\u0451", "\u0415\u0433\u043E")} \u043D\u0435\u0441\u0451\u0442 ${m?.name}. \u0412\u0435\u0441\u0442\u044C \u043E\u0431 \u044D\u0442\u043E\u043C \u043B\u0435\u0442\u0438\u0442 \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430: \u0432\u0440\u0430\u0433\u0438 \u043D\u0435 \u0434\u0430\u0434\u0443\u0442 \u0434\u043E\u043D\u0435\u0441\u0442\u0438 ${gx(Q, "\u0435\u0451", "\u0435\u0433\u043E")} \u0441\u043F\u043E\u043A\u043E\u0439\u043D\u043E.`, "crown", true);
+  }
+  function bearer(K) {
+    const ms = K.members.filter((m) => m.alive);
+    return ms.filter((m) => m.role === "knight").sort((p, q) => q.hp - p.hp)[0] || ms.filter((m) => m.core).sort((p, q) => q.hp - p.hp)[0] || ms[0] || null;
+  }
+  function afterFight(a, K, d, win, say3) {
+    const Q = K.quest;
+    if (!Q || Q.crown.state !== "carried") return;
+    const C = Q.crown, m = K.members.find((x2) => x2.id === C.carrier);
+    if (m?.alive) return;
+    const next = bearer(K);
+    if (win && next) {
+      C.carrier = next.id;
+      say3(`${Q.name} \u043D\u0435 ${gx(Q, "\u0434\u043E\u0441\u0442\u0430\u043B\u0430\u0441\u044C", "\u0434\u043E\u0441\u0442\u0430\u043B\u0441\u044F")} \u0432\u0440\u0430\u0433\u0430\u043C: ${gx(Q, "\u0435\u0451", "\u0435\u0433\u043E")} \u043F\u043E\u0434\u043E\u0431\u0440\u0430\u043B${next.gender === "f" ? "\u0430" : ""} ${next.name}.`, "crown");
+      return;
+    }
+    if (!next) return;
+    const mask = reachMask(a, K), [x, y] = [K.x, K.y], ang = K.day * 7919 % 360 / 57.3, r = 3 * scaleOf(a);
+    const i = foot(a, mask, cellAt2(a, x + Math.cos(ang) * r, y + Math.sin(ang) * r), 4);
+    C.state = "taken";
+    C.carrier = null;
+    C.at = i >= 0 ? i : K.i;
+    C.i = C.at;
+    C.exact = true;
+    C.seen = true;
+    const who = (d.label || FOES2[d.kind].label).replace(/^погоня: /, "");
+    C.guard = { ...d, label: who, strength: Math.min(QUEST.guard.max, (d.strength ?? 1) * 1.15) };
+    C.label = `\u0441\u0442\u0430\u043D \u0432\u0440\u0430\u0433\u043E\u0432 (${who})`;
+    K.phase = "out";
+    K.path = null;
+    say3(`${Q.name} ${gx(Q, "\u0434\u043E\u0441\u0442\u0430\u043B\u0430\u0441\u044C", "\u0434\u043E\u0441\u0442\u0430\u043B\u0441\u044F")} \u0432\u0440\u0430\u0433\u0430\u043C (${who}): ${gx(Q, "\u0435\u0451", "\u0435\u0433\u043E")} \u0443\u043D\u0435\u0441\u043B\u0438 \u0438 \u0432\u0441\u0442\u0430\u043B\u0438 \u0441\u0442\u0430\u043D\u043E\u043C \u043D\u0435\u043F\u043E\u0434\u0430\u043B\u0451\u043A\u0443. ${gx(Q, "\u0415\u0451", "\u0415\u0433\u043E")} \u043F\u0440\u0438\u0434\u0451\u0442\u0441\u044F \u043E\u0442\u0431\u0438\u0442\u044C.`, "crown", true);
+  }
+  function crownHands(K, say3) {
+    const Q = K.quest;
+    if (!Q || Q.crown.state !== "carried") return;
+    const m = K.members.find((x) => x.id === Q.crown.carrier);
+    if (m?.alive) return;
+    const next = bearer(K);
+    if (!next) return;
+    Q.crown.carrier = next.id;
+    say3(`${Q.name} \u0442\u0435\u043F\u0435\u0440\u044C \u0443 ${next.name}.`, "crown");
+  }
+  function rumour(a, K, t, rnd) {
+    const Q = K.quest;
+    if (!Q || Q.crown.state === "carried" || Q.crown.exact) return null;
+    const unknown = Q.clues.filter((c2) => !c2.found && !c2.area);
+    if (!unknown.length || rnd() > QUEST.rumour.chance) return null;
+    const charm = Math.max(...K.members.filter((m) => m.alive).map((m) => m.special?.C ?? 5)), R2 = QUEST.rumour;
+    if (charm < R2.charm && K.gold < R2.price) return null;
+    if (charm < R2.charm) K.gold = Math.round((K.gold - R2.price) * 10) / 10;
+    const c = unknown.sort((p, q) => dist10(a, t.i, p.i) - dist10(a, t.i, q.i))[0];
+    c.area = circle(a, c.i, QUEST.area, rnd);
+    K.path = null;
+    K.stats.rumours = (K.stats.rumours || 0) + 1;
+    return `${charm >= R2.charm ? "\u0440\u0430\u0437\u0433\u043E\u0432\u043E\u0440\u0438\u043B\u0438" : `\u0437\u0430 ${R2.price} \u0437\u043E\u043B. \u0432\u044B\u0432\u0435\u0434\u0430\u043B\u0438 \u0443`} \u0441\u0442\u0430\u0440\u043E\u0436\u0438\u043B\u043E\u0432, \u0433\u0434\u0435 \u0438\u0441\u043A\u0430\u0442\u044C \u0441\u043B\u0435\u0434: ${clueHint(a, K, c, t.i)}`;
+  }
+  function pursuit(a, K, rnd, say3) {
+    const Q = K.quest;
+    if (!Q || Q.crown.state !== "carried" || K.inTown || K.day < (Q.next ?? Infinity)) return;
+    const P = QUEST.pursuit;
+    if (bubbleOf(K).things.filter((t) => t.pursuit).length >= P.at) {
+      Q.next = K.day + 3;
+      return;
+    }
+    Q.next = K.day + Math.round(P.every * (0.7 + 0.6 * rnd()));
+    const years = (K.day - (Q.carriedFrom ?? K.day)) / 120, strength2 = Math.min(P.max, P.base + P.perYear * years);
+    const enemy = (a.realms || []).filter((r) => r.id !== K.realm && (atWar(a, K.realm, r.id) || !trades(a, K.realm, r.id))).map((r) => ({ r, d: Math.min(...(a.towns || []).filter((t) => t.alive && t.realm === r.id).map((t) => Math.hypot(t.x - K.x, t.y - K.y))) })).filter((e) => Number.isFinite(e.d)).sort((p, q) => p.d - q.d)[0];
+    const lair = (a.lairs || []).filter((l) => l.alive && LAIRS.get(l.kind)?.tribe).sort((p, q) => Math.hypot(p.x - K.x, p.y - K.y) - Math.hypot(q.x - K.x, q.y - K.y))[0];
+    let thing;
+    if (enemy && rnd() < 0.6) thing = { kind: "army", label: `\u043F\u043E\u0433\u043E\u043D\u044F: \u0432\u043E\u0439\u0441\u043A\u043E ${realmLabelGen(a, enemy.r.id)}`, band: REALM_BANDS[enemy.r.people] || "bandits" };
+    else if (lair) thing = { kind: "tribe", label: `\u043F\u043E\u0433\u043E\u043D\u044F: ${lairName2(lair)}`, ...lairFoe(lair.kind) };
+    else thing = { kind: "bandits", label: "\u043F\u043E\u0433\u043E\u043D\u044F: \u043E\u0445\u043E\u0442\u043D\u0438\u043A\u0438 \u0437\u0430 \u043A\u043E\u0440\u043E\u043D\u043E\u0439", band: "bandits" };
+    const B3 = bubbleOf(K), far = BUBBLE.far * scaleOf(a);
+    for (let k = 0; k < 12; k++) {
+      const ang = rnd() * Math.PI * 2, x = K.x + Math.cos(ang) * far, y = K.y + Math.sin(ang) * far;
+      if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
+      const i = cellAt2(a, x, y);
+      if (!a.f.land || a.f.ocean[i]) continue;
+      B3.things.push({ id: B3.next++, x, y, i, born: K.day, sated: -1, seen: false, strength: strength2, pursuit: true, ...thing });
+      K.stats.pursuers = (K.stats.pursuers || 0) + 1;
+      if (K.stats.pursuers === 1 || rnd() < 0.3) say3(`\u0417\u0430 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C \u0441\u043D\u0430\u0440\u044F\u0434\u0438\u043B\u0438 \u043F\u043E\u0433\u043E\u043D\u044E: ${thing.label.replace("\u043F\u043E\u0433\u043E\u043D\u044F: ", "")}.`, "sight");
+      return;
+    }
+  }
+
+  // src/campaign/start.js
+  function draw(K, name) {
+    const r = mulberry(K.rng[name] ?? seedNumber(`${K.seed}:campaign:${name}`));
+    return { r, done: () => {
+      K.rng[name] = r.state;
+    } };
+  }
+  function capitals(a) {
+    return (a.realms || []).filter((r) => CAMPAIGN.peoples.includes(r.people)).map((r) => a.towns.find((t) => t.id === r.capital && t.alive)).filter(Boolean).map((t) => ({
+      town: t.id,
+      name: t.name,
+      label: `${townLabel(t, 0)} ${t.name}`,
+      realm: t.realm,
+      realmLabel: realmLabel(a, t.realm),
+      people: t.people,
+      peopleLabel: WORLD_PEOPLES.get(t.people).label,
+      x: t.x,
+      y: t.y,
+      pop: Math.round(t.pop),
+      towns: realmTowns(a, t.realm).length
+    }));
+  }
+  function makeMember(K, rnd, { race, sub = null, role, gear, core: core2 = false, ...more }) {
+    const sp = SPECIES.get(race), spOf = sub && sp.peoples ? { ...sp, peoples: sp.peoples.filter((p) => p.id === sub) } : sp;
+    const m = { id: K.nextMember = (K.nextMember || K.members.length) + 1, name: sp.label, gender: "m", race, role, core: core2, hp: 1, alive: true, joined: K.day, back: 1, ride: null, ...more };
+    rollCreature({ rngs: { birth: rnd } }, m, spOf);
+    const used = new Set(K.members.map((x) => x.name)), names2 = (sp.names || []).filter((n) => !used.has(n[0]));
+    if (names2.length) [m.name, m.gender] = names2[rnd() * names2.length | 0];
+    m.gear = { hand: [...gear.hand], body: gear.body };
+    return m;
+  }
+  function member(K, a, rnd, role, k) {
+    const r = realmOf(a, K.realm), R2 = RETINUE[K.people];
+    const gear = role === "knight" ? { hand: R2.knightGear[k % R2.knightGear.length], body: RETINUE.armour[k % RETINUE.armour.length] } : { hand: RETINUE.squireGear[k % RETINUE.squireGear.length], body: RETINUE.squireBody };
+    return makeMember(K, rnd, { race: WORLD_PEOPLES.get(K.people).race, sub: r.sub, role, gear, core: true });
+  }
+  function newCampaign(a, townId, { seed = null, mode = "local" } = {}) {
+    if (!landDone(a) || !a.hist) throw new Error("\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u0438 \u043D\u0443\u0436\u0435\u043D \u043C\u0438\u0440 \u0441 \u0438\u0441\u0442\u043E\u0440\u0438\u0435\u0439.");
+    const t = a.towns.find((x) => x.id === townId && x.alive);
+    if (!t || !t.capital || !CAMPAIGN.peoples.includes(t.people)) throw new Error("\u042D\u0442\u043E \u043D\u0435 \u0441\u0442\u043E\u043B\u0438\u0446\u0430 \u043C\u0430\u0436\u043E\u0440\u043D\u043E\u0433\u043E \u043D\u0430\u0440\u043E\u0434\u0430.");
+    const K = a.campaign = {
+      seed: seed || `${a.cfg.seed}:${t.id}`,
+      mode,
+      started: { year: a.hist.year, season: a.hist.season },
+      day: 0,
+      capital: t.id,
+      capitalName: t.name,
+      capitalFrom: `${townLabel(t, 2)} ${t.name}`,
+      realm: t.realm,
+      people: t.people,
+      home: t.i,
+      goal: null,
+      phase: "out",
+      members: [],
+      food: 0,
+      gold: 0,
+      i: t.i,
+      x: t.x + 0.5,
+      y: t.y + 0.5,
+      path: null,
+      k: 0,
+      camp: 0,
+      why: "",
+      hungry: 0,
+      seen: new Uint8Array(a.n),
+      log: [],
+      track: [],
+      stats: { walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0 },
+      rng: {},
+      party: null,
+      // the baggage (campaign/baggage.js): beasts, vehicles, goods besides food, what is being built in camp, the way chosen
+      beasts: [],
+      nextBeast: 1,
+      vehicles: [],
+      cargo: {},
+      build: null,
+      route: null
+    };
+    const { r, done: done3 } = draw(K, "birth");
+    for (let k2 = 0; k2 < CAMPAIGN.knights; k2++) K.members.push(member(K, a, r, "knight", k2));
+    for (let k2 = 0; k2 < CAMPAIGN.squires; k2++) K.members.push(member(K, a, r, "squire", k2));
+    K.food = capacity(K);
+    K.quest = makeQuest(a, K, r);
+    K.goal = K.quest ? questTarget(a, K, r) : null;
+    done3();
+    const k = scaleOf(a);
+    for (const o of a.towns.filter((x) => x.alive)) {
+      if (o.realm === K.realm) reveal(a, K, o.i, CAMPAIGN.fog.known * k);
+      else if (o.realm && trades(a, K.realm, o.realm)) reveal(a, K, o.i, CAMPAIGN.fog.partner * k);
+    }
+    reveal(a, K, K.home, CAMPAIGN.fog.known * k);
+    const p = {
+      id: a.hist.nextParty = (a.hist.nextParty || 0) + 1,
+      kind: "caravan",
+      i: t.i,
+      x: K.x,
+      y: K.y,
+      px: K.x,
+      py: K.y,
+      home: t.i,
+      goal: K.goal,
+      state: "camp",
+      days: 0,
+      stay: 0,
+      speed: "foot",
+      people: t.people,
+      might: 0,
+      men: K.members.length,
+      owner: t.realm,
+      target: null,
+      label: `\u043A\u0430\u0440\u0430\u0432\u0430\u043D ${townLabel(t, 2)} ${t.name}`,
+      color: WORLD_PEOPLES.get(t.people).color
+    };
+    (a.parties || (a.parties = [])).push(p);
+    K.party = p.id;
+    const R2 = RETINUE[t.people];
+    say2(a, K, `\u0418\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0448\u0435\u043B \u043A\u0430\u0440\u0430\u0432\u0430\u043D: ${CAMPAIGN.knights} ${R2.knight[1]} \u0438 ${CAMPAIGN.squires} ${R2.squire[1]} \u2014 ${K.members.map((m) => m.name).join(", ")}. ` + (K.quest ? `${questIntro(a, K)} \u0415\u0434\u044B \u2014 \u043D\u0430 ${Math.floor(K.food / K.members.length)} \u0434\u043D\u0435\u0439.` : "\u041A\u0443\u0434\u0430 \u0438\u0434\u0442\u0438, \u043D\u0438\u043A\u0442\u043E \u043D\u0435 \u0437\u043D\u0430\u0435\u0442."), "start", true);
+    if (!K.quest) K.phase = "lost";
+    return K;
+  }
+
+  // src/data/camp.js
+  var CAMP = {
+    // the map: smaller than a settlement's, room enough for the foe to come from the edge
+    size: { w: 64, h: 48 },
+    // the campaign's ration in the local map's nutrition (data/foods.js): a person eats ~0.7 of it a day,
+    // a ration is a day's food with what spills and spoils; the caravan's food is laid out as jerky
+    perRation: 0.8,
+    food: "jerky",
+    // firewood they gathered for the night (the local map's stores); hay for each beast, cut on the way
+    wood: 4,
+    hay: 1.5,
+    // a night: from dusk till dawn; the foe comes in the dark, the play ends when it is done (dead, gone)
+    // and the camp is quiet for `quiet` hours, or at dawn
+    night: { from: 19.5, come: [21, 3], until: 7.5 },
+    // tired after the day's march they sleep early, by the fire (`rest` — the need they come with)
+    rest: { night: 0.25, ambush: 0.85, stop: 0.85, guard: 0.9 },
+    // an ambush on the march: midday, the foe close by at once, the caravan together and on its feet
+    ambush: { from: 11, come: [11, 11.05], until: 18, near: 10 },
+    // a storm of a guarded place of the quest (campaign/quest.js): in the morning, rested, the guards at hand
+    guard: { from: 9, come: [9, 9.05], until: 18, near: 12 },
+    quiet: 1,
+    // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
+    far: 18,
+    // the foe: a band's budget in «human raiders» (data/raids.js) from its might (data/campaign.js FOES)
+    // × the thing's strength × `budget`; beasts come as a pack of `pack` × strength; the threat the band
+    // carries its gear and aim by (settlement/threat.js) — × strength
+    budget: 0.7,
+    pack: [2, 4],
+    threat: 6,
+    // a building packed in the wagon is put up at the camp: it stands with this share of its work left
+    // (the caravan finishes it with its own hands before the night)
+    deploy: 0.25,
+    // the skills the ranks bring (data/skills.js, 0 … 1): the knights fight, the squires work their tools
+    skills: { knight: { melee: 0.35, ranged: 0.3 }, squire: {}, sellsword: { melee: 0.4, ranged: 0.2 }, guide: { hunting: 0.3, ranged: 0.2 } },
+    tools: { axe: "woodcutting", ironaxe: "woodcutting", maul: "construction", rod: "fishing", pan: "gathering" },
+    toolSkill: 0.3,
+    // the quiver of a bowman
+    arrows: 14,
+    // a beast with this little health or less on the map is counted lost (killed or bolted)
+    beastGone: 0.05,
+    // a cart or wagon stands at the camp: when the foe looted the stores, it is broken with this chance
+    wreck: 0.35,
+    // a stop on the map (a deliberate camp to hunt and gather): played day by day, at most `maxDays`
+    // of it on the map; the rest of the stop goes on as before, on the world map
+    // they come to it fed (the day's meal is the campaign's), the land's game on the map: × its level
+    stop: { maxDays: 2, from: 7, until: 19.5, game: 2.2 },
+    // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
+    spoils: 12,
+    // how many played camps the campaign keeps to be watched again (ui/campaignView.js)
+    keep: 8
+  };
+  var GAME_FLOW = { deer: "deer", boar: "boars", goat: "goats", hare: "hares" };
+  var CAMP_FOES = {
+    bandits: { band: "bandits" },
+    army: { band: "bandits", threat: 1.6 },
+    tribe: { band: "goblins" },
+    undead: { band: "undead" },
+    lair: { beast: "varg" },
+    wolves: { beast: "wolves" }
+  };
 
   // src/data/market.js
   var STANDING = {
@@ -23015,7 +23566,7 @@ dd.q4{color:#c58cff;font-weight:600}
     };
   }
   function hours(S, r) {
-    const H2 = S.kind === "ambush" ? CAMP.ambush : S.kind === "stop" ? CAMP.stop : CAMP.night;
+    const H2 = CAMP[S.kind] && S.kind !== "night" ? CAMP[S.kind] : CAMP.night;
     const t0 = Math.round(H2.from * HOUR), wrap = (h) => h < H2.from ? h + 24 : h;
     const until = Math.round(wrap(H2.until) * HOUR);
     const come = H2.come ? Math.round(wrap(H2.come[0] + r() * (H2.come[1] - H2.come[0] + (H2.come[1] < H2.come[0] ? 24 : 0))) * HOUR) : null;
@@ -23093,7 +23644,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (S.kind === "stop") stockGame(w, r);
     w.campaign.food0 = foodNow(w);
     w.campaign.stock0 = { ...w.stock };
-    if (S.kind !== "ambush") for (const v of packed) {
+    if (S.kind === "night" || S.kind === "stop") for (const v of packed) {
       const b = putUp(w, v.building, CAMP.deploy);
       if (b) w.campaign.built.push({ k: v.k, id: b.id });
     }
@@ -23113,8 +23664,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var foodNow = (w) => FOODS.all().reduce((s, f) => s + (w.stock[f.id] || 0) * f.nutrition, 0);
   function spawnFoe(w) {
     const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
-    const at = S.kind === "ambush" ? nearCell(w, CAMP.ambush.near, r) : null;
-    const opts = { minDist: S.kind === "ambush" ? CAMP.ambush.near : CAMP.far, ...at != null ? { at } : {} };
+    const close2 = S.kind === "ambush" || S.kind === "guard", at = close2 ? nearCell(w, CAMP[S.kind].near, r) : null;
+    const opts = { minDist: close2 ? CAMP[S.kind].near : CAMP.far, ...at != null ? { at } : {} };
     const beast2 = F.beast || map.beast, band = F.band || map.band;
     let group = [];
     if (beast2 && MIGRATIONS.has(beast2)) {
@@ -23255,9 +23806,11 @@ dd.q4{color:#c58cff;font-weight:600}
       K.why = "";
       K.build = null;
     }
+    afterFight(a, K, d, win, (text, kind, world2) => say2(a, K, text, kind, world2));
     return win;
   }
-  var opening = (d, how) => `${how === "ambush" ? "\u041D\u0430 \u043C\u0430\u0440\u0448\u0435 \u0438\u0437 \u0437\u0430\u0441\u0430\u0434\u044B \u0443\u0434\u0430\u0440\u0438\u043B\u0438" : "\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438"} ${FOES2[d.kind].label}${d.label && d.label !== FOES2[d.kind].label ? ` \u2014 ${d.label}` : ""}`;
+  var opening = (d, how) => how === "guard" ? `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u043F\u043E\u0448\u0451\u043B \u043D\u0430 \u0448\u0442\u0443\u0440\u043C: ${d.label || FOES2[d.kind].label}` : `${how === "ambush" ? "\u041D\u0430 \u043C\u0430\u0440\u0448\u0435 \u0438\u0437 \u0437\u0430\u0441\u0430\u0434\u044B \u0443\u0434\u0430\u0440\u0438\u043B\u0438" : "\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438"} ${FOES2[d.kind].label}${d.label && d.label !== FOES2[d.kind].label ? ` \u2014 ${d.label}` : ""}`;
+  var WHERE = { ambush: "\u0437\u0430\u0441\u0430\u0434\u0435", night: "\u043D\u043E\u0447\u043D\u043E\u043C \u0431\u043E\u044E", guard: "\u0448\u0442\u0443\u0440\u043C\u0435", stop: "\u0441\u0442\u043E\u044F\u043D\u043A\u0435" };
   function localFight(a, K, d, how) {
     const S = campSetup(a, K, { kind: how, foe: d, dayIn: K.dayIn });
     const o = play(K, S, how, d.label || FOES2[d.kind].label, d);
@@ -23287,7 +23840,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function applyCamp(a, K, S, o, d, how) {
     const hurt2 = [], fallen = [];
-    const where = how === "ambush" ? "\u0437\u0430\u0441\u0430\u0434\u0435" : how === "night" ? "\u043D\u043E\u0447\u043D\u043E\u043C \u0431\u043E\u044E" : "\u0441\u0442\u043E\u044F\u043D\u043A\u0435";
+    const where = WHERE[how] || "\u0431\u043E\u044E";
     for (const mo of o.members) {
       const m = K.members.find((x) => x.id === mo.id);
       if (!m || !m.alive) continue;
@@ -23350,7 +23903,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (o.plundered) parts.push(`\u0441\u043A\u043B\u0430\u0434 \u0440\u0430\u0437\u0433\u0440\u0430\u0431\u043B\u0435\u043D${K.food < food0 - 0.5 ? ` (\u2212${Math.round(food0 - K.food)} \u043F\u0430\u0439\u043A\u043E\u0432)` : ""}`);
     parts.push(...broken);
     if (took.length) parts.push(`\u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 ${names(took)}`);
-    const verdict = o.won ? F.n ? "\u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C" : "\u041E\u0431\u043E\u0448\u043B\u043E\u0441\u044C" : "\u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438";
+    const verdict = o.won ? how === "guard" ? "\u0412\u0437\u044F\u043B\u0438 \u0432\u0435\u0440\u0445" : F.n ? "\u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C" : "\u041E\u0431\u043E\u0448\u043B\u043E\u0441\u044C" : how === "guard" ? "\u041E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438" : "\u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438";
     say2(a, K, `${opening(d, how)}. ${verdict} \u2014 \u0431\u043E\u0439 \u043D\u0430 \u043C\u0435\u0441\u0442\u0435${parts.length ? `: ${parts.join("; ")}` : ""}.`, "fight");
     for (const m of fallen) die(a, K, m, `\u043F\u0430\u043B${m.gender === "f" ? "\u0430" : ""} \u0432 ${where} (${FOES2[d.kind].label})`);
   }
@@ -23430,19 +23983,19 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!hit.includes(m)) hit.push(m);
       if (m.hp <= 0) {
         if (win) m.hp = F.saved;
-        else die(a, K, m, `\u043F\u0430\u043B \u0432 ${how === "ambush" ? "\u0437\u0430\u0441\u0430\u0434\u0435" : "\u043D\u043E\u0447\u043D\u043E\u043C \u0431\u043E\u044E"} (${foe.label})`);
+        else die(a, K, m, `\u043F\u0430\u043B \u0432 ${WHERE[how] || "\u0431\u043E\u044E"} (${foe.label})`);
       }
     }
     if (!alive3(K).length) return win;
     if (win) {
       const loot = Math.round(between3(r, F.loot));
       K.food += loot;
-      say2(a, K, `${opening(d, how)}. \u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C${hit.length ? `, \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u043D\u0438\u043A\u0442\u043E"}` : " \u0431\u0435\u0437 \u0440\u0430\u043D"}; \u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 \u0435\u0434\u044B \u043D\u0430 ${pieces(loot, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "fight");
+      say2(a, K, `${opening(d, how)}. ${how === "guard" ? "\u0412\u0437\u044F\u043B\u0438 \u0432\u0435\u0440\u0445" : "\u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C"}${hit.length ? `, \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u043D\u0438\u043A\u0442\u043E"}` : " \u0431\u0435\u0437 \u0440\u0430\u043D"}; \u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 \u0435\u0434\u044B \u043D\u0430 ${pieces(loot, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "fight");
       return true;
     }
-    const lost = Math.round(K.food * F.lost);
+    const lost = how === "guard" ? 0 : Math.round(K.food * F.lost);
     K.food -= lost;
-    say2(a, K, `${opening(d, how)}. \u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438 \u0438 \u0431\u0435\u0436\u0430\u043B\u0438${how === "night" ? " \u0432 \u0442\u0435\u043C\u043D\u043E\u0442\u0435" : ""}${lost ? `, \u0431\u0440\u043E\u0441\u0438\u0432 ${pieces(lost, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}` : ""}${hit.length ? `; \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u2014"}` : ""}.`, "fight");
+    say2(a, K, `${opening(d, how)}. ${how === "guard" ? "\u041E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438" : "\u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438 \u0438 \u0431\u0435\u0436\u0430\u043B\u0438"}${how === "night" ? " \u0432 \u0442\u0435\u043C\u043D\u043E\u0442\u0435" : ""}${lost ? `, \u0431\u0440\u043E\u0441\u0438\u0432 ${pieces(lost, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}` : ""}${hit.length ? `; \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u2014"}` : ""}.`, "fight");
     const gone = K.beasts.filter(() => r() < GETTING.lose.beast);
     if (gone.length) {
       K.beasts = K.beasts.filter((b) => !gone.includes(b));
@@ -23462,160 +24015,6 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return false;
   }
-
-  // src/campaign/bubble.js
-  var bubbleOf = (K) => K.bubble || (K.bubble = { next: 1, things: [] });
-  var sc = (a, v) => v * scaleOf(a);
-  var dist9 = (K, t) => Math.hypot(t.x - K.x, t.y - K.y);
-  var cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
-  var land = (a, i) => !!a.f.land && !a.f.ocean[i];
-  function friendlyNear(a, K, i) {
-    const t = townAt(a, i);
-    return !!t && t.realm && (t.realm === K.realm || trades(a, K.realm, t.realm) && !atWar(a, K.realm, t.realm));
-  }
-  function herdOf(a, i) {
-    const reg = cellRegion2(a, i), w = { region: reg };
-    let best = null, bv = 0;
-    for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id) && k >= 0.8) {
-      const v = faunaLevel(w, id);
-      if (v > bv) {
-        bv = v;
-        best = id;
-      }
-    }
-    return best ? { id: best, level: bv } : null;
-  }
-  function spawn(a, K) {
-    const B3 = bubbleOf(K), near4 = sc(a, BUBBLE.near), far = sc(a, BUBBLE.far);
-    const pick3 = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`));
-    for (let s = 0; s < BUBBLE.samples && B3.things.length < BUBBLE.max; s++) {
-      const ang = pick3() * Math.PI * 2, d = near4 + pick3() * (far - near4), x = K.x + Math.cos(ang) * d, y = K.y + Math.sin(ang) * d;
-      if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
-      const i = cellAt(a, x, y);
-      if (!land(a, i)) continue;
-      const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = friendlyNear(a, K, i) ? BUBBLE.friendly : 1;
-      const add2 = (props) => {
-        if (B3.things.length < BUBBLE.max) B3.things.push({ id: B3.next++, x, y, i, born: K.day, sated: -1, seen: false, ...props });
-      };
-      for (const dg of dangers(a, i)) if (r() < dg.p * BUBBLE.spawn * k) add2({ kind: dg.kind, strength: dg.strength ?? 1, label: dg.label || THINGS[dg.kind].label, ...dg.band ? { band: dg.band } : {}, ...dg.beast ? { beast: dg.beast } : {} });
-      const road = roadAccess(a, i);
-      if (road > 0.2 && r() < TRAIN.chance * road) add2({ kind: "trader", strength: 0, label: THINGS.trader.label, goods: Math.round(TRAIN.food[0] + r() * (TRAIN.food[1] - TRAIN.food[0])) });
-      const herd2 = herdOf(a, i);
-      if (herd2 && r() < HERD2.chance * Math.min(1.5, herd2.level)) add2({ kind: "herd", strength: 0, label: `\u0441\u0442\u0430\u0434\u043E: ${SPECIES.get(herd2.id).plural}`, game: herd2.id });
-    }
-  }
-  function move(a, K, r, guided2) {
-    const B3 = bubbleOf(K), sense = sc(a, BUBBLE.sense), gone = sc(a, BUBBLE.gone);
-    for (const t of B3.things) {
-      const T2 = THINGS[t.kind], step2 = sc(a, T2.speed) / 2, d = dist9(K, t);
-      let nx = t.x, ny = t.y;
-      if (T2.hunts && t.sated < K.day && d <= sense && !K.inTown) {
-        if (guided2 && r() < BUBBLE.guideLoses / 2) t.sated = K.day + 2;
-        else {
-          const k = Math.min(1, step2 / Math.max(1e-6, d));
-          nx += (K.x - t.x) * k;
-          ny += (K.y - t.y) * k;
-        }
-      } else {
-        const ang = r() * Math.PI * 2;
-        nx += Math.cos(ang) * step2 * 0.6;
-        ny += Math.sin(ang) * step2 * 0.6;
-        if (T2.road && a.f.road) {
-          const x0 = Math.floor(t.x), y0 = Math.floor(t.y);
-          let best = -1, bv = a.f.road[t.i] || 0;
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            const j2 = cellAt(a, x0 + dx, y0 + dy);
-            if ((a.f.road[j2] || 0) > bv && land(a, j2) && r() < 0.6) {
-              bv = a.f.road[j2];
-              best = j2;
-            }
-          }
-          if (best >= 0) {
-            nx = t.x + (best % a.w + 0.5 - t.x) * 0.5;
-            ny = t.y + ((best / a.w | 0) + 0.5 - t.y) * 0.5;
-          }
-        }
-      }
-      const j = cellAt(a, nx, ny);
-      if (nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && land(a, j)) {
-        t.x = nx;
-        t.y = ny;
-        t.i = j;
-      }
-    }
-    B3.things = B3.things.filter((t) => dist9(K, t) <= gone && (K.day - t.born <= BUBBLE.life || THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= sense));
-  }
-  function worldThings(a, K) {
-    const out = [], sense = sc(a, BUBBLE.sense), P = BUBBLE.partyMight;
-    for (const p of a.parties || []) {
-      if (p.kind === "caravan" || p.state === "gone" || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
-      let kind = null, who = {};
-      if (p.kind === "army") {
-        kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? "army" : null;
-        who = { band: REALM_BANDS[p.people] || "bandits" };
-      } else if (p.kind === "raid") {
-        const l = (a.lairs || []).find((x) => x.id === p.owner), L = l && LAIRS.get(l.kind);
-        kind = L?.undead ? "undead" : "tribe";
-        who = l ? lairFoe(l.kind) : {};
-      } else if (p.kind === "brood" || p.kind === "dragon") {
-        kind = "lair";
-        const l = (a.lairs || []).find((x) => x.id === p.owner);
-        who = l ? lairFoe(l.kind) : {};
-      }
-      if (!kind) continue;
-      out.push({
-        id: `p${p.id}`,
-        party: p.id,
-        kind,
-        ...who,
-        x: p.x,
-        y: p.y,
-        i: p.i,
-        label: p.label || THINGS[kind].label,
-        sated: (K.partySated || {})[p.id] ?? -1,
-        strength: Math.min(P.max, Math.max(P.min, (p.might || 3) * P.per))
-      });
-    }
-    return out;
-  }
-  function stepBubble(a, K, phase, r, guided2) {
-    if (phase === "day") spawn(a, K);
-    move(a, K, r, guided2);
-    const contact = sc(a, BUBBLE.contact);
-    return [...bubbleOf(K).things, ...worldThings(a, K)].filter((t) => dist9(K, t) <= contact && t.sated < K.day);
-  }
-  var pursuers = (a, K, sight) => [...bubbleOf(K).things, ...worldThings(a, K)].filter((t) => THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= Math.min(sight, sc(a, BUBBLE.sense)));
-  function lose(K, t, days) {
-    if (t.party) (K.partySated || (K.partySated = {}))[t.party] = K.day + days;
-    else t.sated = K.day + days;
-  }
-  var huntersNear = (a, K) => [...bubbleOf(K).things, ...worldThings(a, K)].some((t) => THINGS[t.kind].hunts && t.sated < K.day && dist9(K, t) <= sc(a, BUBBLE.sense) * BUBBLE.wary);
-  function sighted(a, K, sight) {
-    const out = [];
-    for (const t of [...bubbleOf(K).things, ...worldThings(a, K)]) {
-      if (t.seen || dist9(K, t) > sight || THINGS[t.kind].mood !== "hostile" || t.kind === "wolves") continue;
-      if (t.party) {
-        K.partySeen || (K.partySeen = {});
-        if (K.partySeen[t.party]) continue;
-        K.partySeen[t.party] = K.day;
-      } else t.seen = true;
-      out.push(t);
-    }
-    return out;
-  }
-  function settle(K, t, won) {
-    const B3 = bubbleOf(K);
-    if (t.party) {
-      (K.partySated || (K.partySated = {}))[t.party] = K.day + BUBBLE.sated;
-      return;
-    }
-    if (won) B3.things = B3.things.filter((x) => x.id !== t.id);
-    else t.sated = K.day + BUBBLE.sated;
-  }
-  var removeThing = (K, t) => {
-    const B3 = bubbleOf(K);
-    B3.things = B3.things.filter((x) => x.id !== t.id);
-  };
 
   // src/campaign/town.js
   var alive4 = (K) => K.members.filter((m) => m.alive);
@@ -23647,8 +24046,8 @@ dd.q4{color:#c58cff;font-weight:600}
     let fits = null;
     const wheelsFit = () => {
       if (fits == null) {
-        const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true);
-        fits = !!(road && foot && road.cost <= ROUTE.keep * foot.cost);
+        const foot2 = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true);
+        fits = !!(road && foot2 && road.cost <= ROUTE.keep * foot2.cost);
       }
       return fits;
     };
@@ -23934,13 +24333,13 @@ dd.q4{color:#c58cff;font-weight:600}
     return have < 2 + wagon;
   }
   function plan(a, K) {
-    const foot = route(a, K.i, K.goal, K.people, false);
-    let way = foot;
+    const foot2 = route(a, K.i, K.goal, K.people, false);
+    let way = foot2;
     if (wheeled(K)) {
       const road = route(a, K.i, K.goal, K.people, true), keep = K.vehicles.some((v) => v.building) ? ROUTE.keepBuilding : ROUTE.keep;
-      if (road && (!foot || road.cost <= keep * foot.cost)) {
+      if (road && (!foot2 || road.cost <= keep * foot2.cost)) {
         way = road;
-        if (K.route !== "road") say2(a, K, `\u0421\u043E\u0432\u0435\u0442: \u0438\u0434\u0442\u0438 \u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C${foot && road.cost > foot.cost * 1.05 ? ` \u2014 \u0434\u043E\u043B\u044C\u0448\u0435 \u043D\u0430 ${Math.round((road.cost / foot.cost - 1) * 100)}%, \u0437\u0430\u0442\u043E \u0432\u0441\u0451 \u0441 \u0441\u043E\u0431\u043E\u0439` : ""}.`, "route");
+        if (K.route !== "road") say2(a, K, `\u0421\u043E\u0432\u0435\u0442: \u0438\u0434\u0442\u0438 \u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C${foot2 && road.cost > foot2.cost * 1.05 ? ` \u2014 \u0434\u043E\u043B\u044C\u0448\u0435 \u043D\u0430 ${Math.round((road.cost / foot2.cost - 1) * 100)}%, \u0437\u0430\u0442\u043E \u0432\u0441\u0451 \u0441 \u0441\u043E\u0431\u043E\u0439` : ""}.`, "route");
         K.route = "road";
       } else {
         const names2 = K.vehicles.map((v) => VEHICLES[v.kind].label).join(" \u0438 ");
@@ -23948,7 +24347,7 @@ dd.q4{color:#c58cff;font-weight:600}
         K.stats.left++;
         assign(K);
         const lost = overflow(K);
-        say2(a, K, `\u0421\u043E\u0432\u0435\u0442: ${road ? `\u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C \u043A \u0446\u0435\u043B\u0438 \u0432 ${(road.cost / foot.cost).toFixed(1)} \u0440\u0430\u0437\u0430 \u0434\u043E\u043B\u044C\u0448\u0435` : "\u043A\u043E\u043B\u0451\u0441\u0430\u043C \u0442\u0443\u0434\u0430 \u043D\u0435 \u043F\u0440\u043E\u0439\u0442\u0438"} \u2014 \u0431\u0440\u043E\u0441\u0438\u043B\u0438 ${names2} \u0438 \u043F\u043E\u0448\u043B\u0438 \u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A${lost ? `, \u043E\u0441\u0442\u0430\u0432\u0438\u0432 ${Math.round(lost)} \u0435\u0434\u0438\u043D\u0438\u0446 \u0433\u0440\u0443\u0437\u0430` : ""}.`, "route");
+        say2(a, K, `\u0421\u043E\u0432\u0435\u0442: ${road ? `\u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C \u043A \u0446\u0435\u043B\u0438 \u0432 ${(road.cost / foot2.cost).toFixed(1)} \u0440\u0430\u0437\u0430 \u0434\u043E\u043B\u044C\u0448\u0435` : "\u043A\u043E\u043B\u0451\u0441\u0430\u043C \u0442\u0443\u0434\u0430 \u043D\u0435 \u043F\u0440\u043E\u0439\u0442\u0438"} \u2014 \u0431\u0440\u043E\u0441\u0438\u043B\u0438 ${names2} \u0438 \u043F\u043E\u0448\u043B\u0438 \u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A${lost ? `, \u043E\u0441\u0442\u0430\u0432\u0438\u0432 ${Math.round(lost)} \u0435\u0434\u0438\u043D\u0438\u0446 \u0433\u0440\u0443\u0437\u0430` : ""}.`, "route");
         K.route = "straight";
       }
     } else K.route = null;
@@ -23964,8 +24363,8 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!((biomeAt(a, K.i)?.trees ?? 0) >= 0.3)) return null;
     const tier = toolTier(K), has3 = (kind) => K.vehicles.some((v) => v.kind === kind);
     const fit = () => {
-      const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true);
-      return road && foot && road.cost <= ROUTE.keep * foot.cost;
+      const foot2 = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true);
+      return road && foot2 && road.cost <= ROUTE.keep * foot2.cost;
     };
     const days = (d) => Math.max(1, Math.round(d * campFx(K, "build")));
     if (has3("wagon")) {
@@ -24004,7 +24403,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return urgent ? fallback : null;
   }
-  var VISIT_WHY = { winter: "\u043F\u0435\u0440\u0435\u0437\u0438\u043C\u043E\u0432\u0430\u0442\u044C", food: "\u043A\u0443\u043F\u0438\u0442\u044C \u0435\u0434\u044B", heal: "\u043F\u043E\u0434\u043B\u0435\u0447\u0438\u0442\u044C \u0440\u0430\u043D\u0435\u043D\u044B\u0445", shop: "\u043F\u043E\u0442\u0440\u0430\u0442\u0438\u0442\u044C \u043A\u0430\u0437\u043D\u0443" };
+  var VISIT_WHY = { winter: "\u043F\u0435\u0440\u0435\u0437\u0438\u043C\u043E\u0432\u0430\u0442\u044C", food: "\u043A\u0443\u043F\u0438\u0442\u044C \u0435\u0434\u044B", heal: "\u043F\u043E\u0434\u043B\u0435\u0447\u0438\u0442\u044C \u0440\u0430\u043D\u0435\u043D\u044B\u0445", shop: "\u043F\u043E\u0442\u0440\u0430\u0442\u0438\u0442\u044C \u043A\u0430\u0437\u043D\u0443", rumour: "\u0440\u0430\u0441\u0441\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u043E \u0441\u043B\u0435\u0434\u0430\u0445" };
   function enterTown(a, K, t) {
     const st = standing(a, K, t), why = K.viaWhy;
     K.via = null;
@@ -24017,8 +24416,9 @@ dd.q4{color:#c58cff;font-weight:600}
       return;
     }
     const { r, done: done3 } = draw(K, "town");
-    const parts = [...trade(a, K, t, st), ...hire(a, K, t, st, r)], c = companion(a, K, t, st, r);
+    const parts = [...trade(a, K, t, st), ...hire(a, K, t, st, r)], c = companion(a, K, t, st, r), heard = rumour(a, K, t, r);
     if (c) parts.push(c);
+    if (heard) parts.push(heard);
     done3();
     K.inTown = { id: t.id, since: K.day, why };
     K.lastVisit = K.day;
@@ -24061,6 +24461,11 @@ dd.q4{color:#c58cff;font-weight:600}
   var shake = (K, d) => {
     for (const m of alive3(K)) if (m.loyalty != null && m.loyalty < 1) m.loyalty = Math.max(0, Math.min(1, m.loyalty + d));
   };
+  function homecoming(a, K, ms) {
+    const t = a.towns.find((x) => x.id === K.capital), Q = K.quest;
+    say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F \u0432 ${t ? `${townLabel(t, 1)} ${t.name}` : "\u0440\u043E\u0434\u043D\u044B\u0435 \u043A\u0440\u0430\u044F"}${Q ? ` \u0441 \u043A\u043E\u0440\u043E\u043D\u043E\u0439 \u2014 ${Q.name} \u0441\u043D\u043E\u0432\u0430 \u0434\u043E\u043C\u0430` : ""}: ${ms.length} \u0438\u0437 ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} \u043B\u0435\u0442 \u0432 \u043F\u0443\u0442\u0438; \u0432 \u043E\u0431\u043E\u0437\u0435 ${baggageText(K)}.`, "home", true);
+    K.phase = "won";
+  }
   function evening3(a, K) {
     const ms = alive3(K), need = ms.length * CAMPAIGN.ration, seasonId = SEASON_LIST2[a.hist.season].id;
     if (K.inTown) {
@@ -24087,15 +24492,40 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
     }
-    if (K.goal != null && K.i === K.goal && K.phase === "out") {
+    if (K.quest) {
+      const { r, done: done3 } = draw(K, "quest"), tell2 = (text, kind, world2) => say2(a, K, text, kind, world2);
+      const busy2 = !K.inTown && K.via == null && questArrive(a, K, r, (d) => fight3(a, K, d, r, "guard"), tell2);
+      const any = K.members.some((m) => m.alive && isCore(m));
+      if (any && K.phase === "back" && K.i === K.home && K.quest.crown.state === "carried") {
+        done3();
+        homecoming(a, K, ms);
+        return;
+      }
+      const g3 = any ? questTarget(a, K, r) : null;
+      if (g3 !== K.goal) {
+        K.goal = g3;
+        K.path = null;
+      }
+      if (g3 == null && K.via == null && !K.inTown) {
+        const found = findTown(a, K, true, VISIT.detour, VISIT.winterReach);
+        if (found) {
+          K.via = found.t.id;
+          K.viaWhy = "rumour";
+          K.path = found.way.path;
+          K.k = 0;
+          say2(a, K, `\u0421\u043E\u0432\u0435\u0442: \u0433\u0434\u0435 \u0438\u0441\u043A\u0430\u0442\u044C \u0434\u0430\u043B\u044C\u0448\u0435, \u043D\u0435 \u0437\u043D\u0430\u0435\u0442 \u043D\u0438\u043A\u0442\u043E \u2014 \u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C \u0432 ${townLabel(found.t, 1)} ${found.t.name} \u0440\u0430\u0441\u0441\u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0441\u0442\u0430\u0440\u043E\u0436\u0438\u043B\u043E\u0432.`, "town");
+          if (!K.path.length) enterTown(a, K, found.t);
+        }
+      }
+      done3();
+      if (busy2 || !K.members.some((m) => m.alive && isCore(m))) return;
+    } else if (K.goal != null && K.i === K.goal && K.phase === "out") {
       say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0434\u043E\u0448\u0451\u043B \u0434\u043E \u0446\u0435\u043B\u0438 \u2014 ${biomeAt(a, K.i)?.where || "\u043D\u0430 \u043A\u0440\u0430\u0439 \u0441\u0432\u0435\u0442\u0430"}. \u041F\u043E\u0440\u0443\u0447\u0435\u043D\u0438\u0435 \u0438\u0441\u043F\u043E\u043B\u043D\u0435\u043D\u043E, \u043F\u043E\u0440\u0430 \u0434\u043E\u043C\u043E\u0439.`, "goal", true);
       K.phase = "back";
       K.goal = K.home;
       K.path = null;
     } else if (K.phase === "back" && K.i === K.home) {
-      const t = a.towns.find((x) => x.id === K.capital);
-      say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F \u0432 ${t ? `${townLabel(t, 1)} ${t.name}` : "\u0440\u043E\u0434\u043D\u044B\u0435 \u043A\u0440\u0430\u044F"}: ${ms.length} \u0438\u0437 ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} \u043B\u0435\u0442 \u0432 \u043F\u0443\u0442\u0438; \u0432 \u043E\u0431\u043E\u0437\u0435 ${baggageText(K)}.`, "home", true);
-      K.phase = "won";
+      homecoming(a, K, ms);
       return;
     }
     if (K.via == null && K.camp === 0) {
@@ -24150,13 +24580,13 @@ dd.q4{color:#c58cff;font-weight:600}
   function night(a, K) {
     if (K.inTown) return;
     const { r, done: done3 } = draw(K, "night");
-    const near4 = townAt(a, K.i), friendly = near4 && near4.realm && (near4.realm === K.realm || trades(a, K.realm, near4.realm) && !atWar(a, K.realm, near4.realm));
+    const near4 = townAt(a, K.i), friendly2 = near4 && near4.realm && (near4.realm === K.realm || trades(a, K.realm, near4.realm) && !atWar(a, K.realm, near4.realm));
     const foes = stepBubble(a, K, "night", r, guided(K)).filter((t) => THINGS[t.kind].mood === "hostile").sort((p, q) => Math.hypot(p.x - K.x, p.y - K.y) - Math.hypot(q.x - K.x, q.y - K.y));
     if (foes.length) {
       const t = foes[0], win = fight3(a, K, foeOf2(t), r, "night");
       settle(K, t, win);
       K.stats.met = (K.stats.met || 0) + 1;
-    } else if (r() < BUBBLE.stray * (friendly ? CAMPAIGN.night.friendly : 1)) {
+    } else if (r() < BUBBLE.stray * (friendly2 ? CAMPAIGN.night.friendly : 1)) {
       const ds = dangers(a, K.i), d = ds.length ? ds[r() * ds.length | 0] : { kind: "wolves", strength: 0.7 };
       fight3(a, K, d, r, "night");
       K.stats.strays = (K.stats.strays || 0) + 1;
@@ -24288,6 +24718,7 @@ dd.q4{color:#c58cff;font-weight:600}
       } else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : camping ? CAMPAIGN.heal.camp * campFx(K, "heal") : CAMPAIGN.heal.march * (m.ride ? 1.5 : 1)));
     }
     people(a, K, r);
+    crownHands(K, (text, kind) => say2(a, K, text, kind));
     const grass = pasture(a, K.i, seasonId);
     for (const b of [...K.beasts]) {
       b.hp = grass ? Math.min(1, b.hp + 0.03) : b.hp - FODDER.starve * (0.5 + r());
@@ -24316,6 +24747,12 @@ dd.q4{color:#c58cff;font-weight:600}
     assign(K);
     overflow(K);
     reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
+    if (K.quest && !ended(K)) {
+      const tell2 = (text, kind, world2) => say2(a, K, text, kind, world2), { r: rq, done: dq } = draw(K, "pursuit");
+      questSight(a, K, tell2);
+      pursuit(a, K, rq, tell2);
+      dq();
+    }
     K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);
     const p = (a.parties || []).find((x) => x.id === K.party);
     if (p) {
@@ -24350,9 +24787,9 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "max", label: "\u0421\u0440\u0430\u0437\u0443", wait: 30, budget: 30 }
   ];
   var LOCAL = { x1: { ticks: 2, stops: true }, x4: { ticks: 5 } };
-  var LOCAL_KIND = { night: "\u041D\u043E\u0447\u044C", ambush: "\u0417\u0430\u0441\u0430\u0434\u0430 \u043D\u0430 \u043C\u0430\u0440\u0448\u0435", stop: "\u0421\u0442\u043E\u044F\u043D\u043A\u0430" };
+  var LOCAL_KIND = { night: "\u041D\u043E\u0447\u044C", ambush: "\u0417\u0430\u0441\u0430\u0434\u0430 \u043D\u0430 \u043C\u0430\u0440\u0448\u0435", stop: "\u0421\u0442\u043E\u044F\u043D\u043A\u0430", guard: "\u0428\u0442\u0443\u0440\u043C" };
   var LAYERS = [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["peoples", "\u041D\u0430\u0440\u043E\u0434\u044B"], ["fauna", "\u0417\u0432\u0435\u0440\u0438"]];
-  var PHASE = { out: "\u0438\u0434\u0443\u0442 \u043A \u0446\u0435\u043B\u0438", back: "\u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u044E\u0442\u0441\u044F \u0434\u043E\u043C\u043E\u0439", won: "\u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u0441 \u043F\u043E\u0431\u0435\u0434\u043E\u0439", lost: "\u043F\u043E\u0433\u0438\u0431\u043B\u0438", timeout: "\u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C" };
+  var PHASE = { out: "\u0438\u0449\u0443\u0442 \u043A\u043E\u0440\u043E\u043D\u0443", back: "\u043D\u0435\u0441\u0443\u0442 \u043A\u043E\u0440\u043E\u043D\u0443 \u0434\u043E\u043C\u043E\u0439", won: "\u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u0441 \u043A\u043E\u0440\u043E\u043D\u043E\u0439", lost: "\u043F\u043E\u0433\u0438\u0431\u043B\u0438", timeout: "\u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C" };
   var seasonWord = (s) => SEASON_LIST3[s % SEASON_LIST3.length].label.toLowerCase();
   var CampaignView = class extends AtlasView {
     // the «Мир» screen's controls are not built here: only the campaign's
@@ -24563,7 +25000,7 @@ dd.q4{color:#c58cff;font-weight:600}
       this.syncRun();
       this.renderSide();
       const sw = (c, l) => `<span><i style="background:${c}"></i>${l}</span>`;
-      $("campLegend").innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(",")})`, "\u043A\u0430\u0440\u0430\u0432\u0430\u043D (\u0444\u043B\u0430\u0436\u043E\u043A)") + sw("rgba(255,215,110,0.8)", "\u043F\u0443\u0442\u044C \u043F\u0435\u0448\u043A\u043E\u043C (\u043F\u0443\u043D\u043A\u0442\u0438\u0440), \u0446\u0435\u043B\u044C (\xD7), \u0434\u043E\u043C (\u043A\u043E\u043B\u044C\u0446\u043E)") + sw("rgba(240,160,90,0.9)", "\u043F\u0443\u0442\u044C \u0441 \u043A\u043E\u043B\u0451\u0441\u0430\u043C\u0438 \u2014 \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C (\u0434\u043B\u0438\u043D\u043D\u044B\u0439 \u0448\u0442\u0440\u0438\u0445)") + sw("rgb(40,42,36)", "\u0442\u0443\u043C\u0430\u043D: \u0447\u0435\u0433\u043E \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u043D\u0435 \u0437\u043D\u0430\u0435\u0442") + "<b>\u043A\u0430\u0440\u0442\u0430</b> \u2014 \u043A\u0430\u043A \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041C\u0438\u0440\xBB: \u0433\u043E\u0440\u043E\u0434\u0430, \u0434\u043E\u0440\u043E\u0433\u0438, \u043B\u043E\u0433\u043E\u0432\u0430, \u043E\u0442\u0440\u044F\u0434\u044B \u0438 \u0432\u043E\u0439\u0441\u043A\u0430" + sw("rgb(230,80,60)", "\u0443\u0433\u0440\u043E\u0437\u0430 \u0440\u044F\u0434\u043E\u043C (\u0442\u0440\u0435\u0443\u0433\u043E\u043B\u044C\u043D\u0438\u043A; \u0442\u0435\u043C\u043D\u0435\u0435 \u2014 \u0441\u044B\u0442\u0430 \u0438\u043B\u0438 \u043D\u0435 \u0437\u0430\u043C\u0435\u0442\u0438\u043B\u0430)") + sw("rgb(235,200,90)", "\u0442\u043E\u0440\u0433\u043E\u0432\u044B\u0439 \u043E\u0431\u043E\u0437") + sw("rgb(140,200,110)", "\u0441\u0442\u0430\u0434\u043E") + sw("rgba(255,240,200,0.3)", "\u043A\u043E\u043B\u044C\u0446\u043E \u043F\u0443\u0437\u044B\u0440\u044F");
+      $("campLegend").innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(",")})`, "\u043A\u0430\u0440\u0430\u0432\u0430\u043D (\u0444\u043B\u0430\u0436\u043E\u043A)") + sw("rgba(255,215,110,0.8)", "\u043F\u0443\u0442\u044C \u043F\u0435\u0448\u043A\u043E\u043C (\u043F\u0443\u043D\u043A\u0442\u0438\u0440), \u0434\u043E\u043C (\u043A\u043E\u043B\u044C\u0446\u043E)") + sw("rgba(255,211,106,0.75)", "\u0433\u0434\u0435 \u0438\u0441\u043A\u0430\u0442\u044C \u0441\u043B\u0435\u0434 (\u043A\u0440\u0443\u0433), \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0439 \u0441\u043B\u0435\u0434 (\u0440\u043E\u043C\u0431: \u0436\u0451\u043B\u0442\u044B\u0439 \u2014 \u043A \u043D\u0435\u043C\u0443 \u0438\u0434\u0443\u0442, \u0441\u0435\u0440\u044B\u0439 \u2014 \u0432\u0437\u044F\u0442)") + sw("rgba(240,110,80,0.8)", "\u0433\u0434\u0435-\u0442\u043E \u0437\u0434\u0435\u0441\u044C \u043A\u043E\u0440\u043E\u043D\u0430 (\u043A\u0440\u0443\u0433), \u043A\u043E\u0440\u043E\u043D\u0430 (\u0437\u0443\u0431\u0446\u044B; \u043A\u0440\u0430\u0441\u043D\u0430\u044F \u2014 \u0443 \u0432\u0440\u0430\u0433\u043E\u0432)") + sw("rgba(240,160,90,0.9)", "\u043F\u0443\u0442\u044C \u0441 \u043A\u043E\u043B\u0451\u0441\u0430\u043C\u0438 \u2014 \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C (\u0434\u043B\u0438\u043D\u043D\u044B\u0439 \u0448\u0442\u0440\u0438\u0445)") + sw("rgb(40,42,36)", "\u0442\u0443\u043C\u0430\u043D: \u0447\u0435\u0433\u043E \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u043D\u0435 \u0437\u043D\u0430\u0435\u0442") + "<b>\u043A\u0430\u0440\u0442\u0430</b> \u2014 \u043A\u0430\u043A \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041C\u0438\u0440\xBB: \u0433\u043E\u0440\u043E\u0434\u0430, \u0434\u043E\u0440\u043E\u0433\u0438, \u043B\u043E\u0433\u043E\u0432\u0430, \u043E\u0442\u0440\u044F\u0434\u044B \u0438 \u0432\u043E\u0439\u0441\u043A\u0430" + sw("rgb(230,80,60)", "\u0443\u0433\u0440\u043E\u0437\u0430 \u0440\u044F\u0434\u043E\u043C (\u0442\u0440\u0435\u0443\u0433\u043E\u043B\u044C\u043D\u0438\u043A; \u0442\u0435\u043C\u043D\u0435\u0435 \u2014 \u0441\u044B\u0442\u0430 \u0438\u043B\u0438 \u043D\u0435 \u0437\u0430\u043C\u0435\u0442\u0438\u043B\u0430)") + sw("rgb(235,200,90)", "\u0442\u043E\u0440\u0433\u043E\u0432\u044B\u0439 \u043E\u0431\u043E\u0437") + sw("rgb(140,200,110)", "\u0441\u0442\u0430\u0434\u043E") + sw("rgba(255,240,200,0.3)", "\u043A\u043E\u043B\u044C\u0446\u043E \u043F\u0443\u0437\u044B\u0440\u044F");
     }
     syncRun() {
       const K = this.atlas?.campaign, done3 = !K || ended(K);
@@ -24723,17 +25160,18 @@ dd.q4{color:#c58cff;font-weight:600}
         px.setLineDash([]);
       }
       const mark2 = (i, color, size) => {
-        const gx = i % a.w + 0.5, gy = (i / a.w | 0) + 0.5, s = size * Math.max(0.6, k);
+        const gx2 = i % a.w + 0.5, gy = (i / a.w | 0) + 0.5, s = size * Math.max(0.6, k);
         px.strokeStyle = color;
         px.lineWidth = Math.max(this.minW * 1.5, 0.3 * k);
         px.beginPath();
-        px.moveTo(gx - s, gy - s);
-        px.lineTo(gx + s, gy + s);
-        px.moveTo(gx + s, gy - s);
-        px.lineTo(gx - s, gy + s);
+        px.moveTo(gx2 - s, gy - s);
+        px.lineTo(gx2 + s, gy + s);
+        px.moveTo(gx2 + s, gy - s);
+        px.lineTo(gx2 - s, gy + s);
         px.stroke();
       };
-      if (K.goal != null && K.phase === "out") mark2(K.goal, "#ffd36a", 1.4);
+      if (K.goal != null && K.phase === "out" && !K.quest) mark2(K.goal, "#ffd36a", 1.4);
+      if (K.quest && !ended(K)) this.drawQuest(a, px, K, k, mark2);
       px.strokeStyle = "rgba(255,215,110,0.9)";
       px.lineWidth = Math.max(this.minW, 0.25 * k);
       px.beginPath();
@@ -24782,6 +25220,57 @@ dd.q4{color:#c58cff;font-weight:600}
       px.lineTo(x, y - 2 * r);
       px.stroke();
     }
+    // the quest (campaign/quest.js): the circles where a clue or the crown is known to lie, the places found
+    drawQuest(a, px, K, k, mark2) {
+      const Q = K.quest, C = Q.crown, at = (i) => [i % a.w + 0.5, (i / a.w | 0) + 0.5];
+      const ring = (A, color) => {
+        px.strokeStyle = color;
+        px.lineWidth = Math.max(this.minW, 0.18 * k);
+        px.setLineDash([0.7 * k, 0.5 * k]);
+        px.beginPath();
+        px.arc(A.x, A.y, A.r, 0, Math.PI * 2);
+        px.stroke();
+        px.setLineDash([]);
+      };
+      const diamond = (i, fill2) => {
+        const [x, y] = at(i), s = Math.max(0.5, 0.8 * k);
+        px.fillStyle = fill2;
+        px.strokeStyle = "rgba(20,20,16,0.85)";
+        px.lineWidth = Math.max(this.minW, 0.12 * k);
+        px.beginPath();
+        px.moveTo(x, y - s);
+        px.lineTo(x + s, y);
+        px.lineTo(x, y + s);
+        px.lineTo(x - s, y);
+        px.closePath();
+        px.fill();
+        px.stroke();
+      };
+      for (const c of Q.clues) {
+        if (c.found) diamond(c.at, "rgb(150,150,130)");
+        else if (c.seen) diamond(c.at, "#ffd36a");
+        else if (c.area) ring(c.area, "rgba(255,211,106,0.75)");
+      }
+      if (C.state === "carried") return;
+      if (C.area && !C.exact && !C.seen) ring(C.area, "rgba(240,110,80,0.8)");
+      if (C.exact || C.seen) {
+        const [x, y] = at(C.at), s = Math.max(0.7, 1.1 * k);
+        px.fillStyle = C.state === "taken" ? "rgb(230,80,60)" : "#ffd36a";
+        px.strokeStyle = "rgba(20,20,16,0.9)";
+        px.lineWidth = Math.max(this.minW, 0.14 * k);
+        px.beginPath();
+        px.moveTo(x - s, y + s * 0.6);
+        px.lineTo(x - s, y - s * 0.4);
+        px.lineTo(x - s * 0.5, y + s * 0.05);
+        px.lineTo(x, y - s * 0.7);
+        px.lineTo(x + s * 0.5, y + s * 0.05);
+        px.lineTo(x + s, y - s * 0.4);
+        px.lineTo(x + s, y + s * 0.6);
+        px.closePath();
+        px.fill();
+        px.stroke();
+      }
+    }
     renderSide() {
       const a = this.atlas, K = a.campaign;
       if (!K) return;
@@ -24790,7 +25279,10 @@ dd.q4{color:#c58cff;font-weight:600}
       const tameKind = K.why?.startsWith("tame:") ? BEASTS[K.why.slice(5)] : null;
       const townOf = (id) => a.towns.find((t) => t.id === id), inTown = K.inTown && townOf(K.inTown.id), via = K.via != null && townOf(K.via);
       const plan2 = ended(K) ? PHASE[K.phase] : inTown ? `\u0432 ${townLabel(inTown, 3)} ${inTown.name}: ${K.inTown.why === "winter" ? "\u0437\u0438\u043C\u0443\u044E\u0442" : "\u0442\u043E\u0440\u0433\u0443\u044E\u0442, \u0440\u0430\u0431\u043E\u0442\u0430\u044E\u0442, \u043B\u0435\u0447\u0430\u0442\u0441\u044F"}` : K.hungry ? `\u0433\u043E\u043B\u043E\u0434\u0430\u044E\u0442 ${K.hungry} ${plural(K.hungry, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : via ? `\u0438\u0434\u0443\u0442 \u0432 ${townLabel(via, 1)} ${via.name}` : K.camp > 0 ? tameKind ? `\u043B\u0430\u0433\u0435\u0440\u044C: \u043F\u0440\u0438\u0440\u0443\u0447\u0430\u044E\u0442 \u2014 ${tameKind.plural}` : doing[K.why] || "\u043B\u0430\u0433\u0435\u0440\u044C" : PHASE[K.phase];
-      $("campStatus").innerHTML = `<dt>\u0414\u0430\u0442\u0430</dt><dd>\u0433\u043E\u0434 ${H2.year}, ${seasonWord(H2.season)}</dd><dt>\u0412 \u043F\u0443\u0442\u0438</dt><dd>${K.day} ${plural(K.day, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} (${(K.day / 120).toFixed(1)} \u0433.)</dd><dt>\u0427\u0442\u043E \u0434\u0435\u043B\u0430\u044E\u0442</dt><dd>${plan2}</dd><dt>\u0415\u0434\u0430</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \xB7 \u043D\u0430 ${need ? (K.food / need).toFixed(1) : 0} \u0434\u043D.</dd><dt>\u0413\u0440\u0443\u0437</dt><dd>${Math.round(load2(K))} \u0438\u0437 ${capacity(K)} \u043C\u0435\u0441\u0442</dd><dt>\u041E\u0431\u043E\u0437</dt><dd class="nb">${esc(baggageText(K))}</dd>` + (K.route ? `<dt>\u041F\u0443\u0442\u044C</dt><dd>${K.route === "road" ? "\u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C" : "\u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A, \u043D\u0430\u043B\u0435\u0433\u043A\u0435"}</dd>` : "") + `<dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${K.gold} \u0437\u043E\u043B.</dd><dt>\u0412 \u0433\u043E\u0440\u043E\u0434\u0430\u0445</dt><dd>${K.stats.towns || 0} \u0440\u0430\u0437</dd><dt>\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C</dt><dd>${pace(a, K, SEASON_LIST3[H2.season].id).toFixed(2)} \u043A\u043B./\u0434\u0435\u043D\u044C</dd><dt>\u041F\u0440\u043E\u0439\u0434\u0435\u043D\u043E</dt><dd>${Math.round(K.stats.walked)} \u043A\u043B\u0435\u0442\u043E\u043A</dd><dt>\u0411\u043E\u0451\u0432</dt><dd>${K.stats.fights} \xB7 \u043E\u0442\u0431\u0438\u043B\u0438\u0441\u044C ${K.stats.won} \xB7 \u0437\u0430\u0441\u0430\u0434 ${K.stats.ambushes || 0}</dd>` + (() => {
+      $("campStatus").innerHTML = `<dt>\u0414\u0430\u0442\u0430</dt><dd>\u0433\u043E\u0434 ${H2.year}, ${seasonWord(H2.season)}</dd><dt>\u0412 \u043F\u0443\u0442\u0438</dt><dd>${K.day} ${plural(K.day, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} (${(K.day / 120).toFixed(1)} \u0433.)</dd><dt>\u0427\u0442\u043E \u0434\u0435\u043B\u0430\u044E\u0442</dt><dd>${plan2}</dd>` + (K.quest ? (() => {
+        const Q = K.quest, C = Q.crown, st = C.state === "carried" ? `\u043D\u0435\u0441\u0451\u0442 ${esc(K.members.find((m) => m.id === C.carrier)?.name || "\u2014")}` : C.state === "taken" ? "\u0443 \u0432\u0440\u0430\u0433\u043E\u0432: \u043E\u0442\u0431\u0438\u0442\u044C" : C.exact || C.seen ? `\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u043E \u0433\u0434\u0435: ${esc(C.label)}` : C.area ? `\u0433\u0434\u0435-\u0442\u043E \u0432 \u043A\u0440\u0443\u0433\u0435 ${Math.round(C.area.r)} \u043A\u043B.` : "\u0433\u0434\u0435 \u2014 \u043D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u043E";
+        return `<dt>\u041A\u043E\u0440\u043E\u043D\u0430</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>\u0421\u043B\u0435\u0434\u044B</dt><dd>\u043D\u0430\u0439\u0434\u0435\u043D\u043E ${Q.found} \u0438\u0437 ${Q.clues.length}${K.stats.storms ? ` \xB7 \u0448\u0442\u0443\u0440\u043C\u043E\u0432 ${K.stats.storms}` : ""}</dd>`;
+      })() : "") + `<dt>\u0415\u0434\u0430</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \xB7 \u043D\u0430 ${need ? (K.food / need).toFixed(1) : 0} \u0434\u043D.</dd><dt>\u0413\u0440\u0443\u0437</dt><dd>${Math.round(load2(K))} \u0438\u0437 ${capacity(K)} \u043C\u0435\u0441\u0442</dd><dt>\u041E\u0431\u043E\u0437</dt><dd class="nb">${esc(baggageText(K))}</dd>` + (K.route ? `<dt>\u041F\u0443\u0442\u044C</dt><dd>${K.route === "road" ? "\u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C" : "\u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A, \u043D\u0430\u043B\u0435\u0433\u043A\u0435"}</dd>` : "") + `<dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${K.gold} \u0437\u043E\u043B.</dd><dt>\u0412 \u0433\u043E\u0440\u043E\u0434\u0430\u0445</dt><dd>${K.stats.towns || 0} \u0440\u0430\u0437</dd><dt>\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C</dt><dd>${pace(a, K, SEASON_LIST3[H2.season].id).toFixed(2)} \u043A\u043B./\u0434\u0435\u043D\u044C</dd><dt>\u041F\u0440\u043E\u0439\u0434\u0435\u043D\u043E</dt><dd>${Math.round(K.stats.walked)} \u043A\u043B\u0435\u0442\u043E\u043A</dd><dt>\u0411\u043E\u0451\u0432</dt><dd>${K.stats.fights} \xB7 \u043E\u0442\u0431\u0438\u043B\u0438\u0441\u044C ${K.stats.won} \xB7 \u0437\u0430\u0441\u0430\u0434 ${K.stats.ambushes || 0}</dd>` + (() => {
         const T2 = K.bubble?.things || [], n = (m) => T2.filter((t) => THINGS[t.kind].mood === m).length;
         return `<dt>\u0420\u044F\u0434\u043E\u043C</dt><dd>${[n("hostile") ? `\u0443\u0433\u0440\u043E\u0437 ${n("hostile")}` : "", n("trade") ? `\u043E\u0431\u043E\u0437\u043E\u0432 ${n("trade")}` : "", n("game") ? `\u0441\u0442\u0430\u0434 ${n("game")}` : ""].filter(Boolean).join(" \xB7 ") || "\u0442\u0438\u0445\u043E"}</dd>`;
       })();
@@ -24838,7 +25330,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/ui/panel.js
   var soilWord = (f) => f < 0.3 ? "\u0442\u043E\u0449\u0430\u044F" : f < 0.5 ? "\u0441\u0440\u0435\u0434\u043D\u044F\u044F" : f < 0.7 ? "\u0434\u043E\u0431\u0440\u0430\u044F" : "\u0436\u0438\u0440\u043D\u0430\u044F";
-  var DIRS2 = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
+  var DIRS3 = ["\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439", "\u044E\u0436\u043D\u044B\u0439", "\u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043D\u044B\u0439", "\u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0439"];
   var bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
   var costHtml = (w, cost) => Object.entries(cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= v ? "" : " short"}">${v} ${RESOURCES.get(r).label}</span>`).join("");
   function specialHtml(a) {
@@ -24964,7 +25456,7 @@ dd.q4{color:#c58cff;font-weight:600}
       $("season").title = `${S.note} \u0414\u043E \u0441\u043C\u0435\u043D\u044B \u0441\u0435\u0437\u043E\u043D\u0430: ${left} ${plural(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}.`;
       $("season").dataset.s = S.id;
       $("amb").textContent = ambientTemp(w).toFixed(1) + " \xB0C" + (w.weather.rain > 0.1 ? snowy(w) ? ", \u0441\u043D\u0435\u0433" : ", \u0434\u043E\u0436\u0434\u044C" : "") + (w.stats.fireCount ? ` \xB7 \u0433\u043E\u0440\u0438\u0442 \u043A\u043B\u0435\u0442\u043E\u043A: ${w.stats.fireCount}` : "");
-      $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `\u0432\u0435\u0442\u0435\u0440 ${DIRS2[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
+      $("windTxt").textContent = w.wind.str < 0.03 ? "\u0448\u0442\u0438\u043B\u044C" : `\u0432\u0435\u0442\u0435\u0440 ${DIRS3[Math.round((w.wind.dir + 180) % 360 / 45) % 8]}, ${(w.wind.str * 10).toFixed(1)} \u043C/\u0441`;
       const col = colonists(w);
       $("popCount").textContent = col.length;
       $("goldCount").textContent = w.caravan && w.caravan.phase !== "leaving" ? "\u25CF" : Math.floor(treasury(w)) || "";

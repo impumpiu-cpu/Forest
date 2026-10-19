@@ -2,7 +2,8 @@
 // of the realm's race (four knights, four squires) in their own gear, food on their backs, a goal that
 // can be walked to — and walks the world day by day while history goes on. Checked: the caravan reaches
 // its goal and comes home (or dies trying) with no broken numbers; the same seed gives the same walk;
-// a world saved in the middle of a campaign goes on exactly as the unbroken one; the world lives on
+// a world saved in the middle of a campaign goes on exactly as the unbroken one; the quest: a crown and three
+// clues on walkable land, the circles that narrow it hold it, a won walk came home with the crown; the world lives on
 // (history past its end, told once); the caravan is a party of the world. The baggage: the load never
 // outgrows the room, wheels only go where wheels can, a caravan comes by beasts and a cart and chooses
 // between the road and the straight way; wheels never cross a swamp without a road. Towns and people: the
@@ -39,7 +40,7 @@ const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLo
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const finite = K => [K.food, K.x, K.y, K.gold, ...K.members.map(m => m.hp)].every(Number.isFinite);
-const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0};
+const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0};
 
 // the local map of a walk: every fight and stop was played on it, the kept camps played again come out the same
 function countLocal(K, label, bad) {
@@ -64,7 +65,16 @@ for (let s = 0; s < seeds; s++) {
     if (knights !== CAMPAIGN.knights || squires !== CAMPAIGN.squires || K.members.some(m => m.race !== race || !m.special)) bad.push(`${c.label}: состав ${knights}+${squires}`);
     if (K.members.some(m => [...m.gear.hand, m.gear.body].some(id => !ITEMS.has(id)))) bad.push(`${c.label}: неизвестная вещь`);
     if (K.members.some(m => m.role === 'knight' && !['jerkin', 'hardleather'].includes(m.gear.body))) bad.push(`${c.label}: рыцарь не в коже`);
-    if (K.goal == null || !findPath(a, K.home, K.goal, K.people, scratch(a))) bad.push(`${c.label}: к цели нет пути`);
+    // the quest: a crown and three clues on land the caravan can walk to, each in its own place; the capital
+    // tells where to look for the first clue
+    const Q = K.quest;
+    if (!Q) bad.push(`${c.label}: нет квеста`);
+    else {
+      const spots = [Q.crown, ...Q.clues];
+      if (Q.clues.length !== 3 || new Set(spots.map(p => p.at)).size !== spots.length) bad.push(`${c.label}: подсказок ${Q.clues.length}, мест ${new Set(spots.map(p => p.at)).size}`);
+      for (const p of spots) if (!findPath(a, K.home, p.i, K.people, scratch(a))) { bad.push(`${c.label}: к «${p.label}» нет пути`); break; }
+      if (!Q.clues[0]?.area || Q.clues.slice(1).some(x => x.area)) bad.push(`${c.label}: столица должна знать ровно один след`);
+    }
     if (!(a.parties || []).some(p => p.kind === 'caravan' && p.id === K.party)) bad.push(`${c.label}: караван не отряд мира`);
     const y0 = a.hist.year;
     while (stepCampaign(a)) {
@@ -75,7 +85,7 @@ for (let s = 0; s < seeds; s++) {
       const live = K.members.filter(m => m.alive);
       if (live.length > COMPANY_MAX || live.filter(m => m.loyalty != null).length > JOINED_MAX) { bad.push(`${c.label}: в отряде ${live.length}`); break; }
       const things = K.bubble?.things || [];
-      if (things.length > BUBBLE.max || things.some(t => !THINGS[t.kind] || Math.hypot(t.x - K.x, t.y - K.y) > BUBBLE.gone * scaleOf(a) + 1e-6 || a.f.ocean[t.i])) { bad.push(`${c.label}: пузырь — ${things.length} вещей, есть за краем или в море`); break; }
+      if (things.filter(t => !t.pursuit).length > BUBBLE.max || things.some(t => !THINGS[t.kind] || Math.hypot(t.x - K.x, t.y - K.y) > (t.pursuit ? 2 : 1) * BUBBLE.gone * scaleOf(a) + 1e-6 || a.f.ocean[t.i])) { bad.push(`${c.label}: пузырь — ${things.length} вещей, есть за краем или в море`); break; }
     }
     if (K.log.some(l => l.kind === 'beast')) got.beast++;
     if (K.log.some(l => l.kind === 'build' && /тележк|повозк/.test(l.text))) got.cart++;
@@ -90,7 +100,10 @@ for (let s = 0; s < seeds; s++) {
     if ((K.phase === 'lost') !== (core(K).length === 0)) bad.push(`${c.label}: ${K.phase} при ${core(K).length} из восьми`);
     tally[K.phase]++;
     if (!finite(K)) bad.push(`${c.label}: числа сломались`);
-    if (K.phase === 'won' && !(K.log.some(l => l.kind === 'goal') && K.log.some(l => l.kind === 'home'))) bad.push(`${c.label}: вернулся, не дойдя до цели`);
+    if (K.phase === 'won' && !(K.log.some(l => l.kind === 'crown') && K.log.some(l => l.kind === 'home') && Q.crown.state === 'carried' && K.members.find(m => m.id === Q.crown.carrier)?.alive)) bad.push(`${c.label}: вернулся без короны`);
+    // the crown is never narrowed to a circle that does not hold it
+    if (Q?.crown.area && Math.hypot(Q.crown.area.x - (Q.crown.i % a.w + 0.5), Q.crown.area.y - (((Q.crown.i / a.w) | 0) + 0.5)) > Q.crown.area.r + 1e-6) bad.push(`${c.label}: круг поиска короны не содержит её`);
+    if (Q) { quest.clues += Q.found; if (K.log.some(l => l.kind === 'crown')) quest.crown++; quest.storms += K.stats.storms || 0; quest.rumours += K.stats.rumours || 0; quest.pursuers += K.stats.pursuers || 0; if (Q.crown.state === 'taken' || K.log.some(l => /досталась врагам|достался врагам/.test(l.text))) quest.taken++; }
     if (!(a.hist.year > y0) && K.day > 120) bad.push(`${c.label}: мир не жил`);
     if (a.chronicle.filter(l => /Эпоха молодых народов подошла к концу/.test(l.text)).length !== 1) bad.push(`${c.label}: конец эпохи сказан не один раз`);
     if (!a.chronicle.some(l => l.campaign)) bad.push(`${c.label}: в летописи мира нет похода`);
@@ -123,7 +136,8 @@ for (let s = 0; s < seeds; s++) {
   for (let k = 0; k < 3; k++) { stepCampaign(A); stepCampaign(C); }
   check(`сид ${seed}: сохранённый посреди похода мир идёт так же`, campaignHash(A.campaign) === campaignHash(C.campaign) && atlasHash(A) === atlasHash(C), `день ${A.campaign.day}`);
 }
-check('хотя бы один караван дошёл и вернулся', tally.won > 0, JSON.stringify(tally));
+check('хотя бы один караван нашёл корону и вернулся с ней', tally.won > 0, JSON.stringify(tally));
+check('квест: подсказки найдены, места взяты штурмом, корону ищут и за ней гонятся', quest.clues > 0 && quest.crown > 0 && quest.storms > 0 && quest.pursuers > 0, `подсказок ${quest.clues}, корону нашли ${quest.crown} раз, штурмов ${quest.storms}, слухов ${quest.rumours}, погонь ${quest.pursuers}, корону отбивали ${quest.taken}`);
 check('караваны торгуют в городах, к ним пристают и от них уходят', got.trade > 0 && got.joined > 0 && got.left > 0, `торговали ${got.trade}, с нанятыми или приставшими ${got.joined}, с ушедшими ${got.left}`);
 check('пузырь: ночные бои от тех, кто дошёл до лагеря, засады на марше, обозы и стада на пути', got.met > 0 && got.ambush > 0 && got.road > 0, `с ночными встречами ${got.met}, с засадами ${got.ambush}, с обозами или стадами ${got.road}`);
 check('локальная карта: бои и стоянки сыграны на ней, повтор стоянки даёт то же', local.camps > 0 && local.stops > 0 && local.same === local.replays,

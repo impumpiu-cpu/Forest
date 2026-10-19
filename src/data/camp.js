@@ -16,9 +16,11 @@ export const CAMP = {
   // and the camp is quiet for `quiet` hours, or at dawn
   night: {from: 19.5, come: [21, 3], until: 7.5},
   // tired after the day's march they sleep early, by the fire (`rest` — the need they come with)
-  rest: {night: 0.25, ambush: 0.85, stop: 0.85},
+  rest: {night: 0.25, ambush: 0.85, stop: 0.85, guard: 0.9},
   // an ambush on the march: midday, the foe close by at once, the caravan together and on its feet
   ambush: {from: 11, come: [11, 11.05], until: 18, near: 10},
+  // a storm of a guarded place of the quest (campaign/quest.js): in the morning, rested, the guards at hand
+  guard: {from: 9, come: [9, 9.05], until: 18, near: 12},
   quiet: 1,
   // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
   far: 18,

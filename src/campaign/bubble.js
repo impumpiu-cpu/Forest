@@ -65,7 +65,7 @@ function move(a, K, r, guided) {
   for (const t of B.things) {
     const T = THINGS[t.kind], step = sc(a, T.speed) / 2, d = dist(K, t);
     let nx = t.x, ny = t.y;
-    if (T.hunts && t.sated < K.day && d <= sense && !K.inTown) {
+    if (T.hunts && t.sated < K.day && (d <= sense || t.pursuit) && !K.inTown) {
       if (guided && r() < BUBBLE.guideLoses / 2) t.sated = K.day + 2;   // the guide leads them off the trail
       else { const k = Math.min(1, step / Math.max(1e-6, d)); nx += (K.x - t.x) * k; ny += (K.y - t.y) * k; }
     } else {
@@ -80,7 +80,8 @@ function move(a, K, r, guided) {
     const j = cellAt(a, nx, ny);
     if (nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && land(a, j)) { t.x = nx; t.y = ny; t.i = j; }
   }
-  B.things = B.things.filter(t => dist(K, t) <= gone && (K.day - t.born <= BUBBLE.life || (THINGS[t.kind].hunts && t.sated < K.day && dist(K, t) <= sense)));
+  // a pursuit sent after the crown (campaign/quest.js) does not melt away: it follows from further off
+  B.things = B.things.filter(t => (t.pursuit ? dist(K, t) <= gone * 2 : dist(K, t) <= gone && (K.day - t.born <= BUBBLE.life || (THINGS[t.kind].hunts && t.sated < K.day && dist(K, t) <= sense))));
 }
 
 // the world's parties near the caravan, as things: a lair's raid or brood, an army that is no friend, a dragon
@@ -130,7 +131,7 @@ export function sighted(a, K, sight) {
 export function settle(K, t, won) {
   const B = bubbleOf(K);
   if (t.party) { (K.partySated ||= {})[t.party] = K.day + BUBBLE.sated; return; }
-  if (won) B.things = B.things.filter(x => x.id !== t.id);
+  if (won || t.pursuit) B.things = B.things.filter(x => x.id !== t.id);   // a pursuit goes home after its fight
   else t.sated = K.day + BUBBLE.sated;
 }
 export const removeThing = (K, t) => { const B = bubbleOf(K); B.things = B.things.filter(x => x.id !== t.id); };

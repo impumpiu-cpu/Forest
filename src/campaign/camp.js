@@ -78,7 +78,7 @@ export function campSetup(a, K, ev) {
 
 // the hours of a camp: when it begins, when the foe comes, when it ends at the latest (ticks)
 function hours(S, r) {
-  const H = S.kind === 'ambush' ? CAMP.ambush : S.kind === 'stop' ? CAMP.stop : CAMP.night;
+  const H = CAMP[S.kind] && S.kind !== 'night' ? CAMP[S.kind] : CAMP.night;
   const t0 = Math.round(H.from * HOUR), wrap = h => (h < H.from ? h + 24 : h);
   const until = Math.round(wrap(H.until) * HOUR);
   const come = H.come ? Math.round(wrap(H.come[0] + r() * (H.come[1] - H.come[0] + (H.come[1] < H.come[0] ? 24 : 0))) * HOUR) : null;
@@ -139,7 +139,7 @@ export function openCamp(S) {
   if (S.kind === 'stop') stockGame(w, r);
   w.campaign.food0 = foodNow(w); w.campaign.stock0 = {...w.stock};
   // (on the march, after an ambush, the building stays packed)
-  if (S.kind !== 'ambush') for (const v of packed) { const b = putUp(w, v.building, CAMP.deploy); if (b) w.campaign.built.push({k: v.k, id: b.id}); }
+  if (S.kind === 'night' || S.kind === 'stop') for (const v of packed) { const b = putUp(w, v.building, CAMP.deploy); if (b) w.campaign.built.push({k: v.k, id: b.id}); }
   w.logLines = [];
   return w;
 }
@@ -158,8 +158,8 @@ const foodNow = w => FOODS.all().reduce((s, f) => s + (w.stock[f.id] || 0) * f.n
 // the foe comes: a band of raiders (data/raids.js) or a pack of beasts, at the edge or close by
 function spawnFoe(w) {
   const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
-  const at = S.kind === 'ambush' ? nearCell(w, CAMP.ambush.near, r) : null;
-  const opts = {minDist: S.kind === 'ambush' ? CAMP.ambush.near : CAMP.far, ...(at != null ? {at} : {})};
+  const close = S.kind === 'ambush' || S.kind === 'guard', at = close ? nearCell(w, CAMP[S.kind].near, r) : null;
+  const opts = {minDist: close ? CAMP[S.kind].near : CAMP.far, ...(at != null ? {at} : {})};
   const beast = F.beast || map.beast, band = F.band || map.band;
   let group = [];
   if (beast && MIGRATIONS.has(beast)) {
