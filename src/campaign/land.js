@@ -1,7 +1,19 @@
 // The land as the caravan sees it: how much food a cell gives to those who hunt and gather there, and
 // what may find their camp at night. Both are read from the world's fields and things — the beasts
 // (atlas/fauna.js), the soils and biomes, the lairs and tribes, armies' foragers, the rot, the roads.
-import {cellRegion} from '../seam/cell.js';
+import {cellRegion as regionOf} from '../seam/cell.js';
+
+// a cell's region (seam/cell.js) is asked several times a day; the beasts in it change once a season, so it
+// is kept per cell until the world's season moves on (beside the world, never saved)
+const CACHE = new WeakMap();
+export function cellRegion(a, i) {
+  const step = a.hist ? a.hist.step : -1;
+  let c = CACHE.get(a);
+  if (!c || c.step !== step) CACHE.set(a, c = {step, map: new Map()});
+  let r = c.map.get(i);
+  if (!r) c.map.set(i, r = regionOf(a, i));
+  return r;
+}
 import {faunaLevel} from '../world/region.js';
 import {lairAt} from '../atlas/lairs.js';
 import {faunaCell} from '../atlas/fauna.js';
@@ -10,6 +22,7 @@ import {BIOMES} from '../data/biomes.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {GAME, CAMPAIGN} from '../data/campaign.js';
+import {FODDER} from '../data/transport.js';
 import {clamp} from '../core/util.js';
 
 // how many people a day of hunting and gathering in a cell feeds, per person, before the season: 0 … ~1.5.
@@ -22,6 +35,15 @@ export function richness(a, i) {
   const plants = Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : 0.5), 0) * (0.5 + 0.5 * (a.f.fert?.[i] ?? 0.6));
   const water = a.f.flow && a.f.lake ? (a.f.lake[i] >= 0 || reg.river > 0 ? 0.25 : 0) : 0;   // fish
   return clamp(0.45 * Math.min(2, game) + 0.55 * plants + water, 0, 1.6);
+}
+
+// whether beasts find grass in a cell: plants enough (soil and biomes) and no hard frost
+export function pasture(a, i, seasonId) {
+  if (!a.f.land || a.f.ocean[i]) return false;
+  const reg = cellRegion(a, i);
+  const plants = Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : 0.5), 0);
+  const frost = seasonId === 'winter' && a.f.temp[i] - a.f.trange[i] / 2 < -5;
+  return plants >= FODDER.graze && !frost;
 }
 
 // the season's × on food: the calendar's, less in frost (the winter half of the year below zero)

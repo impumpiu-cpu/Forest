@@ -12,6 +12,8 @@
 // Trade (data/trade.js, settlement/trade.js): `value` is the price of one unit in imperial gold;
 // `keep` (or `keepPerHead` × colonists) is what the colony holds back when it sells to a trader
 // (default: `target`, else 20); `sell: false` never goes to a trader.
+// `bulk` — room one unit takes in a caravan's cells and boxes (campaign, data/transport.js; default 1):
+// a box holds 10 units, so 2.5 logs or 5 lumps of ore.
 import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
 import {FOODS} from './foods.js';
@@ -29,10 +31,10 @@ RESOURCES.registerAll([
   ...FOODS.all().map(f => ({id: f.id, label: f.label, short: f.short || f.label, tags: ['food'], group: f.group || 'Еда',
     nutrition: f.nutrition, spoil: f.spoil, loot: f.loot, color: f.color, map: f.map, mapColor: f.mapColor, value: f.value, keepPerHead: f.keepPerHead})),
 
-  {id: 'wood',    label: 'древесина', short: 'древесина', tags: ['fuel', 'material'], group: 'Материалы', burn: 1, loot: 4, value: 0.1, keep: 40, color: '#a5794a',
+  {id: 'wood',    label: 'древесина', short: 'древесина', tags: ['fuel', 'material'], bulk: 4, group: 'Материалы', burn: 1, loot: 4, value: 0.1, keep: 40, color: '#a5794a',
     furnace: {tier: 1, per: 3},
     map: (w, i) => (w.grid.terr[i] === T.FOREST ? w.grid.wood[i] : 0), mapColor: [120, 210, 90]},
-  {id: 'stone',   label: 'камень',  short: 'камень',  tags: ['material'], group: 'Материалы', loot: 2, value: 0.1, keep: 35, color: '#b9b4a6',
+  {id: 'stone',   label: 'камень',  short: 'камень',  tags: ['material'], bulk: 2, group: 'Материалы', loot: 2, value: 0.1, keep: 35, color: '#b9b4a6',
     map: (w, i) => (w.grid.terr[i] === T.ROCK && !w.grid.ore?.[i] ? 0.6 : 0), mapColor: [215, 210, 196]},
   {id: 'bone',    label: 'кости',   short: 'кости',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.2, keep: 12, color: '#e8e2cf'},
   {id: 'hide',    label: 'шкуры',   short: 'шкуры',   tags: ['material'], group: 'Материалы', loot: 1, value: 0.5, keep: 6, color: '#9b7650'},
@@ -79,7 +81,7 @@ RESOURCES.registerAll([
     target: 12, furnace: {tier: 2, per: 1}},
 
   // ore from the mine
-  {id: 'ironore', label: 'железная руда', short: 'руда', tags: ['ore'], group: 'Руда', loot: 1, value: 0.5, color: '#9a5a3c',
+  {id: 'ironore', label: 'железная руда', short: 'руда', tags: ['ore'], bulk: 2, group: 'Руда', loot: 1, value: 0.5, color: '#9a5a3c',
     target: 14},
   {id: 'gems',    label: 'самоцветы', short: 'самоцветы', tags: ['ore'], group: 'Руда', loot: 1, value: 4, color: '#7fd3c8',
     target: 6},

@@ -3,7 +3,8 @@
 //   body — armour or clothing; back — any single item (a quiver and a basket work there,
 //   anything else is simply carried as a spare and swapped in when needed).
 // Harsh neolithic at first: wood, bone, hide and leather. With a mine, a furnace and a forge come
-// iron blades (`iron: true`), better and longer-lived; the only iron armour is lamellar.
+// iron blades (`iron: true`), better and longer-lived; the only iron armour is lamellar. Bronze (`bronze: true`)
+// is between: a bronze tool can build a cart, an iron one a wagon (data/transport.js).
 //
 // Fields:
 //   slot: 'hand' | 'body' | 'back' (where it is worn; any item may also ride on the back)
@@ -48,8 +49,8 @@ ITEMS.registerAll([
   {id: 'rod',    label: 'Удочка с деревянным крючком', short: 'удочка', slot: 'hand', hands: 2, tool: {fish: 1.6}, dur: 80, value: 1, glyph: 'rod'},
   // iron, from the forge
   // cast in bronze at the furnace on a wood fire: better than bone, short of iron
-  {id: 'bronzespear', label: 'Копьё с бронзовым наконечником', short: 'бронз. копьё', slot: 'hand', hands: 1, melee: {dmg: 1.75, cd: 13}, dur: 95, value: 3, glyph: 'ironspear'},
-  {id: 'bronzeaxe',   label: 'Бронзовый топор', short: 'бронз. топор', slot: 'hand', hands: 1, melee: {dmg: 1.5, cd: 13}, tool: {chop: 1.9, build: 1.08}, dur: 120, value: 3, glyph: 'ironaxe'},
+  {id: 'bronzespear', label: 'Копьё с бронзовым наконечником', short: 'бронз. копьё', slot: 'hand', hands: 1, bronze: true, melee: {dmg: 1.75, cd: 13}, dur: 95, value: 3, glyph: 'ironspear'},
+  {id: 'bronzeaxe',   label: 'Бронзовый топор', short: 'бронз. топор', slot: 'hand', hands: 1, bronze: true, melee: {dmg: 1.5, cd: 13}, tool: {chop: 1.9, build: 1.08}, dur: 120, value: 3, glyph: 'ironaxe'},
   {id: 'ironspear', label: 'Копьё с железным наконечником', short: 'жел. копьё', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.95, cd: 12}, dur: 120, value: 4, glyph: 'ironspear'},
   {id: 'ironaxe',   label: 'Железный топор', short: 'жел. топор', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.7, cd: 12}, tool: {chop: 2.2, build: 1.15}, dur: 160, value: 4, glyph: 'ironaxe'},
   {id: 'sword',     label: 'Железный меч', short: 'меч', slot: 'hand', hands: 1, iron: true, melee: {dmg: 2.15, cd: 11}, block: 0.1, dur: 150, value: 6, glyph: 'sword'},

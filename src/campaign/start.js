@@ -18,7 +18,8 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {settleable} from '../seam/cell.js';
 import {townLabel} from '../atlas/towns.js';
 import {landDone} from '../atlas/generate.js';
-import {say, reveal, scratch} from './march.js';
+import {say, reveal} from './march.js';
+import {capacity} from './baggage.js';
 
 // a named random stream of the campaign, kept by its position (so the campaign stays plain data)
 export function draw(K, name) {
@@ -37,7 +38,7 @@ export function capitals(a) {
 function member(K, a, rnd, used, role, k) {
   const r = realmOf(a, K.realm), race = WORLD_PEOPLES.get(K.people).race, sp = SPECIES.get(race);
   const spOf = r.sub && sp.peoples ? {...sp, peoples: sp.peoples.filter(p => p.id === r.sub)} : sp;
-  const m = {id: K.members.length + 1, name: sp.label, gender: 'm', race, role, hp: 1, alive: true, joined: 0};
+  const m = {id: K.members.length + 1, name: sp.label, gender: 'm', race, role, hp: 1, alive: true, joined: 0, back: 1, ride: null};
   rollCreature({rngs: {birth: rnd}}, m, spOf);
   const names = (sp.names || []).filter(n => !used.has(n[0]));
   if (names.length) { const n = names[(rnd() * names.length) | 0]; [m.name, m.gender] = n; used.add(n[0]); }
@@ -78,12 +79,14 @@ export function newCampaign(a, townId, {seed = null} = {}) {
     seed: seed || `${a.cfg.seed}:${t.id}`, started: {year: a.hist.year, season: a.hist.season}, day: 0,
     capital: t.id, capitalName: t.name, capitalFrom: `${townLabel(t, 2)} ${t.name}`, realm: t.realm, people: t.people, home: t.i, goal: null, phase: 'out',
     members: [], food: 0, gold: 0, i: t.i, x: t.x + 0.5, y: t.y + 0.5, path: null, k: 0, camp: 0, why: '', hungry: 0,
-    seen: new Uint8Array(a.n), log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0}, rng: {}, party: null,
+    seen: new Uint8Array(a.n), log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null,
+    // the baggage (campaign/baggage.js): beasts, vehicles, goods besides food, what is being built in camp, the way chosen
+    beasts: [], nextBeast: 1, vehicles: [], cargo: {}, build: null, route: null,
   };
   const {r, done} = draw(K, 'birth'), used = new Set();
   for (let k = 0; k < CAMPAIGN.knights; k++) K.members.push(member(K, a, r, used, 'knight', k));
   for (let k = 0; k < CAMPAIGN.squires; k++) K.members.push(member(K, a, r, used, 'squire', k));
-  K.food = CAMPAIGN.pack * K.members.length;
+  K.food = capacity(K);   // the satchels are full: a cell of food on every back
   K.goal = pickGoal(a, K, r);
   done();
   // what they know: their realm's lands, the towns of those their realm trades with
@@ -100,7 +103,7 @@ export function newCampaign(a, townId, {seed = null} = {}) {
   (a.parties ||= []).push(p); K.party = p.id;
   const R = RETINUE[t.people];
   say(a, K, `Из ${townLabel(t, 2)} ${t.name} вышел караван: ${CAMPAIGN.knights} ${R.knight[1]} и ${CAMPAIGN.squires} ${R.squire[1]} — ${K.members.map(m => m.name).join(', ')}. ` +
-    (K.goal == null ? 'Куда идти, никто не знает.' : `У них поручение и еды на ${CAMPAIGN.pack} дней.`), 'start', true);
+    (K.goal == null ? 'Куда идти, никто не знает.' : `У них поручение и еды на ${Math.floor(K.food / K.members.length)} дней.`), 'start', true);
   if (K.goal == null) K.phase = 'lost';
   return K;
 }

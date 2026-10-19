@@ -7,9 +7,9 @@ export const CAMPAIGN = {
   peoples: ['humans', 'elves', 'dwarves', 'orcs'],
   // the core: those who set out; when all of them are dead the campaign is lost
   knights: 4, squires: 4,
-  // food in rations: a ration feeds one for a day; each carries `pack` on the back (stage 4 brings slots,
-  // beasts and carts). The capital gives nothing else: the satchels are full when they set out
-  pack: 6, ration: 1,
+  // food in rations: a ration feeds one for a day and takes one unit of room (data/transport.js: a back is
+  // one cell of 6 units, so each sets out with 6 days of food; the capital gives nothing else)
+  ration: 1,
   // food found a day per person, × the land's richness (campaign/land.js): on the march only what is
   // picked by the way, in a camp the whole day goes to hunting, fishing and gathering
   forage: {march: 0.4, camp: 1.6, spread: 0.6},
@@ -25,8 +25,10 @@ export const CAMPAIGN = {
   // land can feed them (richness ≥ `foodLand`); to heal when the core's mean health is below `hp` or one
   // of them is below `badly`; not where the night is dangerous (`danger`), unless they already starve;
   // a camp lasts at most `maxDays`, then they go on whatever happens; it breaks up sooner when the packs
-  // are `full` (a food camp) or the core is `healed` (a camp of the wounded)
-  camp: {foodDays: 1.5, foodLand: 0.35, hp: 0.6, badly: 0.35, danger: 0.1, maxDays: 6, full: 0.9, healed: 0.85},
+  // are `full` (a food camp: that share of what they can carry, at most `stock` days of food) or the core
+  // is `healed` (a camp of the wounded). Fed and in a quiet place, every `think` days the council looks
+  // whether to stop to build (a cart, a wagon, a building for it) or to tame (data/transport.js)
+  camp: {foodDays: 1.5, foodLand: 0.35, hp: 0.6, badly: 0.35, danger: 0.1, maxDays: 6, full: 0.9, healed: 0.85, stock: 12, think: 10},
   // in frost the march is slower (winter, the day's mean below 0°)
   frost: 0.7,
   // the speed a day on open meadow, cells of a 192-high world (as the world's parties on foot, data/parties.js)

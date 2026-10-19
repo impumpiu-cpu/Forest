@@ -17,6 +17,10 @@ import {plural, esc} from '../core/util.js';
 import {$} from './dom.js';
 import {Camera} from '../render/camera.js';
 import {ITEMS} from '../data/items.js';
+import {BUILDINGS} from '../data/buildings.js';
+import {BEASTS} from '../data/transport.js';
+import {capacity, load, wheeled} from '../campaign/baggage.js';
+import {baggageText} from '../campaign/march.js';
 const itemShort = id => (ITEMS.has(id) ? ITEMS.get(id).short : id);
 
 const SEASON_LIST = SEASONS.all();
@@ -112,7 +116,7 @@ export class CampaignView extends AtlasView {
     $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`;
     this.syncRun(); this.renderSide();
     const sw = (c, l) => `<span><i style="background:${c}"></i>${l}</span>`;
-    $('campLegend').innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(',')})`, 'караван (флажок)') + sw('rgba(255,215,110,0.8)', 'путь вперёд (пунктир), цель (×), дом (кольцо)') +
+    $('campLegend').innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(',')})`, 'караван (флажок)') + sw('rgba(255,215,110,0.8)', 'путь пешком (пунктир), цель (×), дом (кольцо)') + sw('rgba(240,160,90,0.9)', 'путь с колёсами — по дорогам (длинный штрих)') +
       sw('rgb(40,42,36)', 'туман: чего караван не знает') + '<b>карта</b> — как на экране «Мир»: города, дороги, логова, отряды и войска';
   }
   syncRun() {
@@ -180,7 +184,7 @@ export class CampaignView extends AtlasView {
     const [x, y] = this.caravanAt(), col = WORLD_PEOPLES.get(K.people).color, r = Math.max(0.7, 1.1 * k);
     // the way ahead, the goal, home
     if (K.path && K.k < K.path.length && !ended(K)) {
-      px.strokeStyle = 'rgba(255,215,110,0.6)'; px.lineWidth = Math.max(this.minW, 0.18 * k); px.setLineDash([0.5 * k, 0.6 * k]);
+      px.strokeStyle = wheeled(K) ? 'rgba(240,160,90,0.75)' : 'rgba(255,215,110,0.6)'; px.lineWidth = Math.max(this.minW, (wheeled(K) ? 0.26 : 0.18) * k); px.setLineDash(wheeled(K) ? [1.1 * k, 0.4 * k] : [0.5 * k, 0.6 * k]);
       px.beginPath(); px.moveTo(K.x, K.y);
       for (let q = K.k; q < K.path.length; q++) px.lineTo(K.path[q] % a.w + 0.5, ((K.path[q] / a.w) | 0) + 0.5);
       px.stroke(); px.setLineDash([]);
@@ -198,18 +202,24 @@ export class CampaignView extends AtlasView {
   renderSide() {
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
-    const plan = ended(K) ? PHASE[K.phase] : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : K.camp > 0 ? (K.why === 'heal' ? 'лагерь: раненые отлёживаются' : 'лагерь: охотятся и собирают') : PHASE[K.phase];
+    const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};
+    const tameKind = K.why?.startsWith('tame:') ? BEASTS[K.why.slice(5)] : null;
+    const plan = ended(K) ? PHASE[K.phase] : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : PHASE[K.phase];
     $('campStatus').innerHTML = `<dt>Дата</dt><dd>год ${H.year}, ${seasonWord(H.season)}</dd>` +
       `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
       `<dt>Еда</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), 'паёк', 'пайка', 'пайков')} · на ${need ? (K.food / need).toFixed(1) : 0} дн.</dd>` +
+      `<dt>Груз</dt><dd>${Math.round(load(K))} из ${capacity(K)} мест</dd>` +
+      `<dt>Обоз</dt><dd class="nb">${esc(baggageText(K))}</dd>` +
+      (K.route ? `<dt>Путь</dt><dd>${K.route === 'road' ? 'с обозом по дорогам' : 'напрямик, налегке'}</dd>` : '') +
       `<dt>Казна</dt><dd>${K.gold} зол.</dd>` +
       `<dt>Скорость</dt><dd>${pace(a, K, SEASON_LIST[H.season].id).toFixed(2)} кл./день</dd>` +
       `<dt>Пройдено</dt><dd>${Math.round(K.stats.walked)} клеток</dd>` +
       `<dt>Ночных боёв</dt><dd>${K.stats.fights} · отбились ${K.stats.won}</dd>`;
     $('campRoster').innerHTML = K.members.map(m => {
       const sp = SPECIES.get(m.race), rk = RETINUE[K.people][m.role][0];
-      return `<div class="rm${m.alive ? '' : ' dead'}"><span><b>${esc(m.name)}</b> · ${rk}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
+      const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : ''].filter(Boolean).join(', ');
+      return `<div class="rm${m.alive ? '' : ' dead'}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
         `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.alive ? '' : ` · ${esc(m.died.why)}, ${m.died.year}-й год`}</small></div>`;
     }).join('');
     this.renderLog();
