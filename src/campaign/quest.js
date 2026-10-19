@@ -134,21 +134,23 @@ export function makeQuest(a, K, rnd) {
     crown = {kind: 'wild', label: biomeAt(a, i)?.where || 'в глуши', at: i, i};
   }
   // the clues: places near points on the way, each a little off the straight line
-  const used = new Set([crown.at]), clues = [];
+  const used = new Set([crown.at]), usedI = new Set([crown.i]), clues = [];
   const [hx, hy] = xy(a, home), [cx, cy] = xy(a, crown.i), len = Math.hypot(cx - hx, cy - hy), nx = -(cy - hy) / (len || 1), ny = (cx - hx) / (len || 1);
   for (let k = 0; k < QUEST.clueAt.length; k++) {
     const f = QUEST.clueAt[k], off = (rnd() * 2 - 1) * QUEST.scatter * len;
     const px = hx + (cx - hx) * f + nx * off, py = hy + (cy - hy) * f + ny * off;
-    const fit = all.filter(p => QUEST.clueKinds[p.kind] && !used.has(p.at) && p.i !== home);
+    const fit = all.filter(p => QUEST.clueKinds[p.kind] && !used.has(p.at) && !usedI.has(p.i) && p.i !== home);
     let best = null, bv = Infinity;
     for (const p of fit) { const [x, y] = xy(a, p.i), v = Math.hypot(x - px, y - py) / QUEST.clueKinds[p.kind]; if (v < bv) { bv = v; best = p; } }
     // no place of history near: a cairn in the wilds keeps the clue
+    // (on a small island: the walkable cell nearest to the point that no other place of the quest holds)
     if (!best || bv > len * 0.5) {
-      const i = foot(a, mask, Math.round(Math.min(a.h - 1, Math.max(0, py))) * a.w + Math.round(Math.min(a.w - 1, Math.max(0, px))), 6);
+      let i = -1, id = Infinity;
+      for (const c of cells) { if (usedI.has(c) || c === home) continue; const [x, y] = xy(a, c), v = Math.hypot(x - px, y - py); if (v < id) { id = v; i = c; } }
       best = i >= 0 ? {kind: 'cairn', label: `каменная пирамида ${biomeAt(a, i)?.where || ''}`.trim(), at: i, i} : fit[0];
     }
     if (!best) continue;
-    used.add(best.at);
+    used.add(best.at); usedI.add(best.i);
     clues.push({k, kind: best.kind, at: best.at, i: best.i, label: best.label, town: best.town ?? null, guard: best.kind === 'cairn' ? null : guardOf(a, K, best), area: null, seen: false, found: false});
   }
   const [name, acc, g] = pick(rnd, QUEST.names);
@@ -263,7 +265,7 @@ function takeCrown(a, K, say) {
   const again = C.state === 'taken';
   C.state = 'carried'; C.carrier = m?.id ?? null; C.seen = false; C.exact = false;
   K.phase = 'back'; K.goal = K.home; Q.next = K.day + 3; Q.carriedFrom = K.day;
-  say(again ? `${Q.name} ${gx(Q, 'отбита', 'отбит')} у врагов: теперь ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой!` : `${Q.name} ${gx(Q, 'найдена', 'найден')} — ${C.label}! ${gx(Q, 'Её', 'Его')} несёт ${m?.name}. Весть об этом летит быстрее каравана: враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true);
+  say(again ? `${Q.name} ${gx(Q, 'отбита', 'отбит')} у врагов: теперь ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой!` : `${Q.name} ${gx(Q, 'найдена', 'найден')} — ${C.label}! ${gx(Q, 'Её', 'Его')} несёт ${m?.name}. Весть об этом летит быстрее каравана: враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null);
 }
 // who carries the crown: a knight first, the healthiest
 function bearer(K) {

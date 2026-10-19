@@ -3,7 +3,9 @@
 // can be walked to — and walks the world day by day while history goes on. Checked: the caravan reaches
 // its goal and comes home (or dies trying) with no broken numbers; the same seed gives the same walk;
 // a world saved in the middle of a campaign goes on exactly as the unbroken one; the quest: a crown and three
-// clues on walkable land, the circles that narrow it hold it, a won walk came home with the crown; the world lives on
+// clues on walkable land, the circles that narrow it hold it, a won walk came home with the crown; the end:
+// the epilogue tells the fates, the campaign goes to the world's archive (a second caravan may follow), the
+// chronicle as text holds all of it; the world lives on
 // (history past its end, told once); the caravan is a party of the world. The baggage: the load never
 // outgrows the room, wheels only go where wheels can, a caravan comes by beasts and a cart and chooses
 // between the road and the straight way; wheels never cross a swamp without a road. Towns and people: the
@@ -19,7 +21,7 @@
 // Usage: node tools/campaign-check.mjs [seeds=1] [size=small] [local]
 import {generateAtlas, atlasHash} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
-import {capitals, newCampaign, stepCampaign, runCampaign, campaignHash, alive} from '../src/campaign/index.js';
+import {capitals, newCampaign, stepCampaign, runCampaign, campaignHash, alive, finished, chronicleText} from '../src/campaign/index.js';
 import {findPath} from '../src/atlas/roads.js';
 import {scratch} from '../src/campaign/march.js';
 import {CAMPAIGN} from '../src/data/campaign.js';
@@ -40,7 +42,7 @@ const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLo
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const finite = K => [K.food, K.x, K.y, K.gold, ...K.members.map(m => m.hp)].every(Number.isFinite);
-const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0};
+const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
 
 // the local map of a walk: every fight and stop was played on it, the kept camps played again come out the same
 function countLocal(K, label, bad) {
@@ -105,6 +107,15 @@ for (let s = 0; s < seeds; s++) {
     if (Q?.crown.area && Math.hypot(Q.crown.area.x - (Q.crown.i % a.w + 0.5), Q.crown.area.y - (((Q.crown.i / a.w) | 0) + 0.5)) > Q.crown.area.r + 1e-6) bad.push(`${c.label}: круг поиска короны не содержит её`);
     if (Q) { quest.clues += Q.found; if (K.log.some(l => l.kind === 'crown')) quest.crown++; quest.storms += K.stats.storms || 0; quest.rumours += K.stats.rumours || 0; quest.pursuers += K.stats.pursuers || 0; if (Q.crown.state === 'taken' || K.log.some(l => /досталась врагам|достался врагам/.test(l.text))) quest.taken++; }
     if (!(a.hist.year > y0) && K.day > 120) bad.push(`${c.label}: мир не жил`);
+    // the end: the epilogue told (fates of those who were left), the campaign in the world's archive, the
+    // chronicle as text; a crown home makes its realm stronger
+    const epi = K.log.filter(l => l.kind === 'epilogue');
+    if (!finished(K) || a.campaignsDone?.length !== 1 || !epi.length) bad.push(`${c.label}: эпилог не рассказан или поход не в архиве мира`);
+    if (K.members.some(m => m.alive && !m.fate) || (K.lostWith || []).some(id => !K.members.find(m => m.id === id)?.fate)) bad.push(`${c.label}: не у всех оставшихся есть судьба`);
+    if (K.phase === 'won' && !(a.towns.find(t => t.id === K.capital)?.relic && a.realms.find(r => r.id === K.realm)?.crown)) bad.push(`${c.label}: корона дома, а держава о ней не знает`);
+    const text = chronicleText(a, a.campaignsDone?.[0] || K);
+    if (!text.includes('ЛЕТОПИСЬ ПОХОДА') || text.split('\n').length < K.log.length + K.members.length) bad.push(`${c.label}: летопись текстом неполна`);
+    ending[K.phase] = (ending[K.phase] || 0) + 1; ending.lines += epi.length;
     if (a.chronicle.filter(l => /Эпоха молодых народов подошла к концу/.test(l.text)).length !== 1) bad.push(`${c.label}: конец эпохи сказан не один раз`);
     if (!a.chronicle.some(l => l.campaign)) bad.push(`${c.label}: в летописи мира нет похода`);
     const dead = K.members.filter(m => isCore(m) && !m.alive).length, extra = K.members.filter(m => !isCore(m));
@@ -117,6 +128,30 @@ for (let s = 0; s < seeds; s++) {
     for (let i = 0; i < a.n; i++) { if (a.f.ocean[i]) continue; if (onRoad(a, i)) road.push(i); else if (WHEELS.block.includes(biomeAt(a, i)?.id)) blocked.push(i); }
     check(`сид ${seed}: колёса — по дорогам, не по болотам и горам`, road.length > 0 && road.every(i => stepCost(a, i, 'humans', true) < Infinity) && blocked.every(i => stepCost(a, i, 'humans', true) === Infinity),
       `клеток дорог ${road.length}, закрытых для колёс ${blocked.length}`);
+  }
+
+  // a second caravan in the same world, after the first is over: both in the archive
+  {
+    const a = fresh(), K1 = newCampaign(a, pick[0].town, {mode: 'auto'});
+    for (let k = 0; k < 400 && stepCampaign(a); k++);
+    const K2 = newCampaign(a, (pick[1] || pick[0]).town, {mode: 'auto'});
+    for (let k = 0; k < 400 && stepCampaign(a); k++);
+    const saved = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a))));
+    check(`сид ${seed}: второй поход в том же мире после первого; оба в архиве, архив сохраняется`, finished(K1) && finished(K2) && a.campaignsDone.length === 2 && saved.campaignsDone?.length === 2 && saved.campaignsDone[0].log.length === K1.log.length,
+      `${K1.phase} и ${K2.phase}`);
+  }
+
+  // a lost caravan (the eight fall at once): the joined go their own ways in the epilogue, the crown's fate is
+  // told, the world's chronicle has the end
+  {
+    const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'});
+    stepCampaign(a);
+    K.members.push({...K.members[0], id: 999, name: 'Пристав', core: false, role: 'freed', loyalty: 0.5, alive: true, hp: 1});
+    for (const m of K.members.filter(x => x.core)) { m.alive = false; m.died = {day: K.day, year: a.hist.year, why: 'пал в проверке'}; }
+    for (let k = 0; k < 10 && stepCampaign(a); k++);
+    const epi = K.log.filter(l => l.kind === 'epilogue').map(l => l.text);
+    check(`сид ${seed}: поход проигран — эпилог о приставших и о короне, строка в летописи мира`, K.phase === 'lost' && finished(K) && !!K.members.find(m => m.id === 999)?.fate && epi.some(t => /лежит|у врагов|пропал/.test(t)) && a.chronicle.some(l => l.campaign && /помнят/.test(l.text)),
+      epi.slice(0, 2).join(' / '));
   }
 
   // the local map: a stretch of a walk played in full — its fights and stops on the map
@@ -137,6 +172,7 @@ for (let s = 0; s < seeds; s++) {
   check(`сид ${seed}: сохранённый посреди похода мир идёт так же`, campaignHash(A.campaign) === campaignHash(C.campaign) && atlasHash(A) === atlasHash(C), `день ${A.campaign.day}`);
 }
 check('хотя бы один караван нашёл корону и вернулся с ней', tally.won > 0, JSON.stringify(tally));
+check('конец: эпилог с судьбами, поход в архиве мира, летопись текстом', Object.keys(ending).length > 1, `${JSON.stringify(ending)}`);
 check('квест: подсказки найдены, места взяты штурмом, корону ищут и за ней гонятся', quest.clues > 0 && quest.crown > 0 && quest.storms > 0 && quest.pursuers > 0, `подсказок ${quest.clues}, корону нашли ${quest.crown} раз, штурмов ${quest.storms}, слухов ${quest.rumours}, погонь ${quest.pursuers}, корону отбивали ${quest.taken}`);
 check('караваны торгуют в городах, к ним пристают и от них уходят', got.trade > 0 && got.joined > 0 && got.left > 0, `торговали ${got.trade}, с нанятыми или приставшими ${got.joined}, с ушедшими ${got.left}`);
 check('пузырь: ночные бои от тех, кто дошёл до лагеря, засады на марше, обозы и стада на пути', got.met > 0 && got.ambush > 0 && got.road > 0, `с ночными встречами ${got.met}, с засадами ${got.ambush}, с обозами или стадами ${got.road}`);

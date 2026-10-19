@@ -7,7 +7,10 @@
 // is played again over the map when the playback reaches its day: the same setup gives the same camp.
 import {AtlasView} from './atlasView.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
-import {capitals, newCampaign, stepCampaign, ended, alive, pace} from '../campaign/index.js';
+import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chronicleText} from '../campaign/index.js';
+import {readLines, lineLevel, dateOf} from '../campaign/chronicle.js';
+import {CHRONICLE} from '../data/campaign.js';
+import {offerText, latinTitle} from './store.js';
 import {CAMPAIGN, RETINUE} from '../data/campaign.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
@@ -44,6 +47,10 @@ const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples'
 const PHASE = {out: 'ищут корону', back: 'несут корону домой', won: 'вернулись с короной', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 
+// the hidden themes of the chronicle, remembered in this browser
+function loadHidden() { try { return new Set(JSON.parse(localStorage.getItem('forest.campTopics') || '[]')); } catch (e) { return new Set(); } }
+function saveHidden(set) { try { localStorage.setItem('forest.campTopics', JSON.stringify([...set])); } catch (e) { /* storage unavailable */ } }
+
 export class CampaignView extends AtlasView {
   // the «Мир» screen's controls are not built here: only the campaign's
   build() {
@@ -71,6 +78,16 @@ export class CampaignView extends AtlasView {
     $('campWatch').addEventListener('click', () => { this.watch = !this.watch; $('campWatch').setAttribute('aria-pressed', String(this.watch)); if (!this.watch) this.endLocal(); });
     $('campLocalSkip').addEventListener('click', () => this.endLocal());
     this.localR = new Renderer($('campLocal'));
+    // the chronicle: themes to hide (remembered in this browser), one member's lines, the text into a file
+    this.hidden = loadHidden(); this.who = null; this.logKey = '';
+    const tp = $('campTopics');
+    tp.innerHTML = CHRONICLE.topics.map(t => `<button type="button" data-val="${t.id}" aria-pressed="${!this.hidden.has(t.id)}">${t.label}</button>`).join('');
+    tp.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const id = b.dataset.val; if (this.hidden.has(id)) this.hidden.delete(id); else this.hidden.add(id); b.setAttribute('aria-pressed', String(!this.hidden.has(id))); saveHidden(this.hidden); this.renderLog(); });
+    $('campRoster').addEventListener('click', e => { const row = e.target.closest('.rm'); if (!row) return; const id = +row.dataset.id; this.who = this.who === id ? null : id; this.renderSide(); });
+    $('campWho').addEventListener('click', e => { if (e.target.closest('button')) { this.who = null; this.renderSide(); } });
+    $('campExport').addEventListener('click', () => { const K = this.atlas?.campaign; if (K) offerText(latinTitle(`letopis-${K.capitalName}-${K.started?.year ?? ''}`), chronicleText(this.atlas, K)); });
+    $('campPast').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const P = this.atlas?.campaignsDone?.[+b.dataset.k]; if (P) offerText(latinTitle(`letopis-${P.from}-${P.started?.year ?? ''}`), chronicleText(this.atlas, P)); });
+    $('campAgain').addEventListener('click', () => { this.halt(); this.capPick = null; this.setupMode(); this.draw(); });
   }
 
   dragged() { if (this.follow) { this.follow = false; this.syncFollow(); } }
@@ -88,7 +105,7 @@ export class CampaignView extends AtlasView {
 
   show() { this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode(); }
   // leaving the screen: the walk halts between seasons and waits
-  halt() { this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !ended(this.atlas.campaign)) this.paused = true; this.syncRun(); }
+  halt() { this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true; this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
@@ -97,7 +114,7 @@ export class CampaignView extends AtlasView {
     try { list = await listWorlds(); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }
     if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров: сотворите мир на экране «Мир» и сохраните его.</small>'; return; }
     box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)} · ${r.year} лет` +
-      (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} лет в пути</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
+      (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
       `</span><button type="button">${r.campaign && !['won', 'lost', 'timeout'].includes(r.campaign.phase) ? 'Продолжить' : 'Открыть'}</button></div>`).join('');
   }
 
@@ -118,9 +135,13 @@ export class CampaignView extends AtlasView {
   }
 
   setupMode() {
+    this.choosing = true;
     $('campSetup').hidden = false; $('campRun').hidden = true;
     $('campTitle').textContent = this.atlas ? this.worldName : 'Кампания';
     $('campCapsField').hidden = !this.atlas;
+    const past = this.atlas?.campaignsDone || [];
+    $('campPastField').hidden = !past.length;
+    $('campPast').innerHTML = past.map((P, k) => `<div class="sv"><span class="t"><b>Поход из ${esc(P.from)}</b> · ${PHASE[P.phase] || P.phase}<br><small>${P.started?.year ?? '?'}–${P.ended?.year ?? '?'} год · ${P.crown ? esc(P.crown) : ''} · вернулись ${P.members.filter(m => m.core && !m.died).length} из ${P.members.filter(m => m.core).length}</small></span><button type="button" data-k="${k}">В файл</button></div>`).join('');
     this.renderCaps(); this.renderLog();
   }
   renderCaps() {
@@ -136,12 +157,13 @@ export class CampaignView extends AtlasView {
     const a = this.atlas; if (!a || this.capPick == null) return;
     newCampaign(a, this.capPick);
     if (this.follow) this.closeUp();
-    this.saveId = null; this.logShown = 0; this.paused = false;
+    this.saveId = null; this.logShown = 0; this.logKey = ''; this.who = null; this.paused = false;
     this.runMode(); this.run();
   }
 
   // ── the walk
   runMode() {
+    this.choosing = false;
     $('campSetup').hidden = true; $('campRun').hidden = false;
     const K = this.atlas.campaign;
     $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`;
@@ -152,7 +174,8 @@ export class CampaignView extends AtlasView {
       sw('rgb(230,80,60)', 'угроза рядом (треугольник; темнее — сыта или не заметила)') + sw('rgb(235,200,90)', 'торговый обоз') + sw('rgb(140,200,110)', 'стадо') + sw('rgba(255,240,200,0.3)', 'кольцо пузыря');
   }
   syncRun() {
-    const K = this.atlas?.campaign, done = !K || ended(K);
+    const K = this.atlas?.campaign, done = !K || finished(K);
+    $('campAgain').hidden = !done || !K;
     $('campPause').hidden = done; $('campSpeed').hidden = done;
     $('campPause').textContent = this.paused ? 'Дальше' : 'Пауза';
     $('campSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === this.speed)));
@@ -161,17 +184,17 @@ export class CampaignView extends AtlasView {
   run() {
     const a = this.atlas; clearTimeout(this.timer);
     const next = () => {
-      if (a !== this.atlas || this.paused || !a.campaign || ended(a.campaign)) { this.syncRun(); return; }
+      if (a !== this.atlas || this.paused || !a.campaign || finished(a.campaign)) { this.syncRun(); return; }
       // a camp on the local map is being watched: the next season waits for it
       if (this.local) { this.timer = setTimeout(next, 200); return; }
       const sp = SPEEDS.find(S => S.id === this.speed) || SPEEDS[0], t0 = Date.now(), d0 = a.campaign.day;
-      do { stepCampaign(a); } while (sp.budget && !ended(a.campaign) && Date.now() - t0 < sp.budget);
+      do { stepCampaign(a); } while (sp.budget && !finished(a.campaign) && Date.now() - t0 < sp.budget);
       this.tickAt = performance.now(); this.tickWait = sp.budget ? 0 : sp.wait;
       // the season's camps to watch, each at its day of the playback
       const L = LOCAL[this.speed], K = a.campaign, n = Math.max(1, K.track.length - 1);
       this.queue = this.watch && L ? (K.camps || []).filter(c => c.day >= d0 && (c.kind !== 'stop' || L.stops)).map(c => ({...c, at: Math.min(1, (c.day - d0) / n)})) : [];
       this.renderSide(); this.draw(); this.animate();
-      if (!ended(a.campaign)) this.timer = setTimeout(next, sp.wait); else this.syncRun();
+      if (!finished(a.campaign)) this.timer = setTimeout(next, sp.wait); else this.syncRun();
     };
     this.timer = setTimeout(next, 30);
   }
@@ -243,7 +266,7 @@ export class CampaignView extends AtlasView {
 
   overlay(a, px, cam) {
     const K = a.campaign, k = this.unit(a);
-    if (!K) {   // choosing: the capitals, the picked one ringed
+    if (!K || this.choosing) {   // choosing: the capitals, the picked one ringed
       for (const c of capitals(a)) {
         const r = (c.town === this.capPick ? 2.4 : 1.4) * Math.max(0.6, k);
         px.strokeStyle = c.town === this.capPick ? '#ffd36a' : 'rgba(255,250,235,0.7)'; px.lineWidth = Math.max(this.minW, 0.25 * k);
@@ -332,22 +355,28 @@ export class CampaignView extends AtlasView {
     $('campRoster').innerHTML = [...K.members].sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : ''].filter(Boolean).join(', ');
-      return `<div class="rm${m.alive ? '' : ' dead'}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
-        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ушёл${m.gender === 'f' ? 'а' : ''}, ${m.left?.year ?? ''}-й год`}</small></div>`;
+      return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
+        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ушёл${m.gender === 'f' ? 'а' : ''}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');
     this.renderLog();
   }
 
+  // the chronicle: hidden themes left out, one member's lines only, a run of repeating lines folded into one
   renderLog() {
     const box = $('campLog'), K = this.atlas?.campaign;
-    if (!K) { box.innerHTML = '<small class="muted">Летопись начнётся, когда караван выступит.</small>'; this.logShown = 0; return; }
+    if (!K) { box.innerHTML = '<small class="muted">Летопись начнётся, когда караван выступит.</small>'; this.logKey = ''; $('campWho').hidden = true; $('campExport').disabled = true; return; }
+    $('campExport').disabled = false;
+    const m = this.who != null ? K.members.find(x => x.id === this.who) : null;
+    $('campWho').hidden = !m;
+    if (m) $('campWho').innerHTML = `Только о ${esc(m.name)}<button type="button">все строки</button>`;
+    const key = `${K.log.length}:${[...this.hidden].join(',')}:${this.who}`;
+    if (key === this.logKey) return;
+    this.logKey = key;
     const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
-    if (this.logShown === 0) box.innerHTML = '';
-    if (K.log.length > this.logShown) {
-      box.insertAdjacentHTML('beforeend', K.log.slice(this.logShown).map(l => `<div><small>год ${l.year}, ${seasonWord(l.season)}, день ${l.day + 1}</small> ${esc(l.text)}</div>`).join(''));
-      this.logShown = K.log.length;
-    }
-    if (atEnd) box.scrollTop = box.scrollHeight;
+    box.innerHTML = readLines(K.log, {hidden: this.hidden, member: m}).map(({line: l, n, last}) =>
+      `<div class="lv-${lineLevel(l)}"><small>${dateOf(l)}</small> ${esc(l.text)}${n > 1 ? ` <span class="fold">и ещё ${n - 1} ${plural(n - 1, 'такая строка', 'такие строки', 'таких строк')}, до ${last.day + 1}-го дня</span>` : ''}</div>`).join('') || '<small class="muted">Нет строк по выбранным темам.</small>';
+    if (atEnd || !this.logShown) box.scrollTop = box.scrollHeight;
+    this.logShown = 1;
   }
 
   async saveRun() {

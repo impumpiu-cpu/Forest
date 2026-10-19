@@ -88,7 +88,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
     label: `караван ${townLabel(t, 2)} ${t.name}`, color: WORLD_PEOPLES.get(t.people).color};
   (a.parties ||= []).push(p); K.party = p.id;
   const R = RETINUE[t.people];
-  say(a, K, `Из ${townLabel(t, 2)} ${t.name} вышел караван: ${CAMPAIGN.knights} ${R.knight[1]} и ${CAMPAIGN.squires} ${R.squire[1]} — ${K.members.map(m => m.name).join(', ')}. ` +
+  say(a, K, `Из ${townLabel(t, 2)} ${t.name} вышел караван: ${CAMPAIGN.knights} ${R.knight[2]} и ${CAMPAIGN.squires} ${R.squire[2]} — ${K.members.map(m => m.name).join(', ')}. ` +
     (K.quest ? `${questIntro(a, K)} Еды — на ${Math.floor(K.food / K.members.length)} дней.` : 'Куда идти, никто не знает.'), 'start', true);
   if (!K.quest) K.phase = 'lost';
   return K;

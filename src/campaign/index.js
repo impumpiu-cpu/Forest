@@ -2,20 +2,29 @@
 // each of the world's days (campaign/march.js). History runs on past its planned end for as long as the
 // campaign lasts, so the caravan walks a living world: wars, raids, towns that grow and burn.
 import {stepHistory, startHistory} from '../atlas/history.js';
-import {caravanDay, ended, alive} from './march.js';
+import {caravanDay, ended, finished, alive} from './march.js';
+import {finish, stepEpilogue} from './ending.js';
 
 export {newCampaign, capitals} from './start.js';
-export {ended, alive, caravanMight, memberMight, pace} from './march.js';
+export {ended, finished, alive, caravanMight, memberMight, pace} from './march.js';
+export {chronicleText} from './chronicle.js';
 
-// one season of the world with the campaign in it; false once the campaign has ended
+// one season of the world with the campaign in it;
+// after the end, a few seasons of the epilogue (campaign/ending.js); false once that is told too
 export function stepCampaign(a) {
   const K = a.campaign;
-  if (!K || ended(K)) return false;
+  if (!K) return false;
+  if (ended(K)) {
+    if (!K.epilogue) finish(a, K);   // a campaign saved at its very end, before this was
+    if (!K.epilogue.done) stepEpilogue(a, K);
+    return !finished(K);
+  }
   if (!a.hist) startHistory(a);
   if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;   // history goes on past its plan
   K.track = [];
   stepHistory(a, () => caravanDay(a, K, K.day));
-  return !ended(K);
+  if (ended(K)) finish(a, K);
+  return !finished(K);
 }
 
 // the whole campaign at once (tests, headless); at most `seasons`

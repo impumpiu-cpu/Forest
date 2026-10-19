@@ -166,4 +166,5 @@ export function companion(a, K, t, st, r) {
   return `к каравану ${free ? 'по доброй воле' : `за ${C.fee} зол.`} пристал${m.gender === 'f' ? 'а' : ''} ${m.name}${minor ? ` из народа ${sp.gen || sp.plural}` : ''}`;
 }
 
-export const townLine = (a, t, st) => `${townName(t)} (${STANDING[st].label}${t.realm ? `, ${realmLabel(a, t.realm)}` : ''})`;
+// in the accusative: «вошёл в деревню X (свои, …)»
+export const townLine = (a, t, st) => `${townLabel(t, 1)} ${t.name} (${STANDING[st].label}${t.realm ? `, ${realmLabel(a, t.realm)}` : ''})`;

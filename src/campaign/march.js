@@ -54,11 +54,15 @@ export const isCore = m => m.core ?? ['knight', 'squire'].includes(m.role);
 export const core = K => K.members.filter(m => m.alive && isCore(m));
 const guided = K => alive(K).some(m => m.role === 'guide');
 export const ended = K => ['won', 'lost', 'timeout'].includes(K.phase);
+// ended, and its epilogue told (campaign/ending.js)
+export const finished = K => ended(K) && (!K.epilogue || K.epilogue.done);
 export const rank = (K, m) => RETINUE[K.people][m.role]?.[0] || HIRES[m.role]?.label || ROLES[m.role] || 'спутник';
 
 // a line of the campaign's log; `world` — also into the world's chronicle
-export function say(a, K, text, kind = 'march', world = false) {
+// who — the members the line is about (ids): the chronicle can be read for one of them
+export function say(a, K, text, kind = 'march', world = false, who = null) {
   const H = a.hist, line = {day: K.day, year: H.year, season: H.season, i: K.i, text, kind};
+  if (who?.length) line.who = who;
   K.log.push(line);
   if (world) a.chronicle.push({era: H.era, year: H.year, season: H.season, text, campaign: true});
 }
@@ -89,9 +93,10 @@ export function pace(a, K, seasonId) {
 }
 
 export function die(a, K, m, why) {
+  if (m.gender === 'f') why = why.replace(/^(умер|пал|погиб)(?=\s)/, w => ({умер: 'умерла', пал: 'пала', погиб: 'погибла'})[w]);
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why};
   const left = core(K).length, n = K.members.filter(isCore).length;
-  say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left);
+  say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left, [m.id]);
 }
 
 // ── the baggage changes: a beast, a vehicle; the way is planned afresh
@@ -294,7 +299,7 @@ function people(a, K, r) {
     if (m.contract && K.day >= m.contract.until) { leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${m.gender === 'f' ? 'а' : ''} срок и ушёл${m.gender === 'f' ? 'а' : ''}`); continue; }
     if (m.loyalty == null || m.loyalty >= 1) continue;
     m.loyalty = Math.max(0, Math.min(1, m.loyalty + LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0)));
-    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? 'не вынес голода и' : 'однажды утром'} ушёл${m.gender === 'f' ? 'а' : ''} своей дорогой`);
+    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? `не вынес${m.gender === 'f' ? 'ла' : ''} голода и` : 'однажды утром'} ушёл${m.gender === 'f' ? 'а' : ''} своей дорогой`);
     else if (m.loyalty >= 1) say(a, K, `${m.name} теперь свой${m.gender === 'f' ? '' : ''}: идёт с караваном до конца.`, 'people');
   }
 }
@@ -324,7 +329,7 @@ function evening(a, K) {
   }
   // the quest (campaign/quest.js): at a place it seeks — a clue taken, the crown, a storm of the guards
   if (K.quest) {
-    const {r, done} = draw(K, 'quest'), tell = (text, kind, world) => say(a, K, text, kind, world);
+    const {r, done} = draw(K, 'quest'), tell = (text, kind, world, who) => say(a, K, text, kind, world, who);
     const busy = !K.inTown && K.via == null && questArrive(a, K, r, d => fight(a, K, d, r, 'guard'), tell);
     const any = K.members.some(m => m.alive && isCore(m));
     if (any && K.phase === 'back' && K.i === K.home && K.quest.crown.state === 'carried') { done(); homecoming(a, K, ms); return; }
@@ -513,6 +518,7 @@ export function caravanDay(a, K, day) {
   if (core(K).length && !ended(K)) night(a, K);
   // the end: when none of the eight is left, those who joined go their own ways
   if (!core(K).length && !ended(K)) {
+    K.lostWith = alive(K).map(m => m.id);   // their fates are told in the epilogue (campaign/ending.js)
     for (const m of alive(K)) { m.alive = false; m.left = {day: K.day, year: a.hist.year}; }
     K.phase = 'lost';
     say(a, K, 'Никого из тех, кто вышел из столицы, не осталось в живых. Караван не дойдёт.', 'end', true);
@@ -523,7 +529,7 @@ export function caravanDay(a, K, day) {
   reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
   // the quest: what the scouts see of the places sought; with the crown, the world's pursuit
   if (K.quest && !ended(K)) {
-    const tell = (text, kind, world) => say(a, K, text, kind, world), {r: rq, done: dq} = draw(K, 'pursuit');
+    const tell = (text, kind, world, who) => say(a, K, text, kind, world, who), {r: rq, done: dq} = draw(K, 'pursuit');
     questSight(a, K, tell); pursuit(a, K, rq, tell); dq();
   }
   K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);

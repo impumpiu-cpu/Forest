@@ -69,19 +69,47 @@ export const FOES = {
   bandits: {label: 'разбойники с большой дороги', might: 3},
 };
 
-// the core of each people: ranks (one, many) and the gear they set out in (data/items.js ids).
+// the core of each people: ranks (one, many, «four of») and the gear they set out in (data/items.js ids).
 // Knights: leather or hardened leather and a good weapon, not iron; squires: a plain tool, no armour.
 export const RETINUE = {
-  humans:  {knight: ['рыцарь', 'рыцари'], squire: ['оруженосец', 'оруженосцы'],
+  humans:  {knight: ['рыцарь', 'рыцари', 'рыцаря'], squire: ['оруженосец', 'оруженосцы', 'оруженосца'],
     knightGear: [['bronzespear', 'shield'], ['bronzeaxe', 'shield'], ['bronzespear', 'shield'], ['bow', 'quiver']]},
-  elves:   {knight: ['страж', 'стражи'], squire: ['помощник', 'помощники'],
+  elves:   {knight: ['страж', 'стражи', 'стража'], squire: ['помощник', 'помощники', 'помощника'],
     knightGear: [['bow', 'quiver'], ['bow', 'quiver'], ['bronzespear', 'shield'], ['bow', 'quiver']]},
-  dwarves: {knight: ['хирдман', 'хирдманы'], squire: ['подмастерье', 'подмастерья'],
+  dwarves: {knight: ['хирдман', 'хирдманы', 'хирдмана'], squire: ['подмастерье', 'подмастерья', 'подмастерья'],
     knightGear: [['bronzeaxe', 'shield'], ['bronzeaxe', 'shield'], ['bronzespear', 'shield'], ['bronzeaxe', 'shield']]},
-  orcs:    {knight: ['рубака', 'рубаки'], squire: ['прислужник', 'прислужники'],
+  orcs:    {knight: ['рубака', 'рубаки', 'рубаки'], squire: ['прислужник', 'прислужники', 'прислужника'],
     knightGear: [['bronzeaxe'], ['bronzeaxe', 'shield'], ['bronzespear'], ['bronzeaxe']]},
   // shared by all
   armour: ['jerkin', 'hardleather', 'jerkin', 'hardleather'],
   squireGear: [['axe'], ['maul'], ['rod'], ['pan']],
   squireBody: 'clothes',
+};
+
+// The campaign's chronicle (campaign/chronicle.js): every line has a kind (campaign/march.js say), every kind a
+// theme and a level — the screen hides themes and colours the levels, as the settlement's journal does
+// (data/logTopics.js). `fold` — kinds whose lines repeat (a day of the stop, a morning's find, a new land):
+// a run of them in a row is shown as one line with a count.
+export const CHRONICLE = {
+  topics: [
+    {id: 'quest', label: 'корона и следы'},
+    {id: 'fight', label: 'бои'},
+    {id: 'death', label: 'смерти'},
+    {id: 'people', label: 'люди'},
+    {id: 'town', label: 'города'},
+    {id: 'camp', label: 'стоянки'},
+    {id: 'road', label: 'дорога'},
+    {id: 'baggage', label: 'обоз'},
+  ],
+  kinds: {
+    start: ['quest', 'alert'], quest: ['quest', 'notice'], crown: ['quest', 'alert'], goal: ['quest', 'notice'], home: ['quest', 'alert'], end: ['death', 'alert'], epilogue: ['quest', 'notice'],
+    fight: ['fight', 'notice'], sight: ['fight', 'info'],
+    death: ['death', 'alert'], hunger: ['death', 'notice'],
+    people: ['people', 'notice'], leave: ['people', 'info'],
+    town: ['town', 'notice'],
+    camp: ['camp', 'info'], stop: ['camp', 'info'], find: ['camp', 'info'],
+    march: ['road', 'info'], land: ['road', 'info'], route: ['road', 'info'], lost: ['road', 'notice'],
+    beast: ['baggage', 'info'], build: ['baggage', 'info'],
+  },
+  fold: ['stop', 'find', 'land', 'sight'],
 };

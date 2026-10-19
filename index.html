@@ -116,6 +116,8 @@
           <small id="campWorldNote" class="status" role="status"></small></div>
         <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
           <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small></div>
+        <div class="field" id="campPastField" hidden><span class="lbl">Походы в этом мире</span><div id="campPast" class="savelist"></div>
+          <small>Летописи окончённых походов хранятся вместе с миром.</small></div>
         <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
       </div>
       <div id="campRun" hidden>
@@ -128,7 +130,8 @@
         <div id="campRoster" class="roster"></div>
         <div class="row actions">
           <button type="button" id="campSave" title="В библиотеку миров: мир вместе с походом">Сохранить мир с походом</button>
-          <button type="button" id="campNew" class="quiet">Другой поход</button>
+          <button type="button" id="campAgain" hidden title="Тот же мир, после этого похода: выбрать столицу и снарядить новый караван">Новый поход в этом мире</button>
+          <button type="button" id="campNew" class="quiet">Другой мир</button>
         </div>
         <small class="status" id="campSaveStatus" role="status"></small>
       </div>
@@ -153,7 +156,10 @@
     </div>
     <div class="card atlas-chron">
       <h2>Летопись похода</h2>
+      <div class="seg wrapseg camp-topics" id="campTopics" title="Темы летописи: нажмите, чтобы скрыть или показать"></div>
+      <small id="campWho" class="camp-who" hidden></small>
       <div class="log" id="campLog"></div>
+      <div class="row actions"><button type="button" id="campExport" title="Вся летопись похода текстом: отряд, поручение, итог, строки по дням, судьбы">Летопись в файл</button></div>
     </div>
   </section>
 

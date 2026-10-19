@@ -77,7 +77,7 @@ export function applyCamp(a, K, S, o, d, how) {
   for (const mo of o.members) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
     if (!mo.alive) { fallen.push(m); continue; }
-    if (mo.hp < m.hp - 0.05) hurt.push(m.name);
+    if (mo.hp < m.hp - 0.05) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local;
   }
   // the beasts: killed, bolted into the dark, led off by the thieves
@@ -108,14 +108,14 @@ export function applyCamp(a, K, S, o, d, how) {
   const F = o.foes, parts = [];
   if (F.n) parts.push(`${pieces(F.n, 'враг', 'врага', 'врагов')}: ${F.killed ? `${F.killed} убито` : 'никого не убили'}${F.fled ? `, ${F.fled} бежали` : ''}${F.left ? `, ${F.left} осталось` : ''}`);
   if (fallen.length) parts.push(`пали ${names(fallen.map(m => m.name))}`);
-  if (hurt.length) parts.push(`ранены ${names(hurt)}`);
+  if (hurt.length) parts.push(`ранены ${names(hurt.map(m => m.name))}`);
   if (stolenB.length) parts.push(`увели ${names(stolenB.map(b => BEASTS[b.kind].acc))}`);
   if (lostB.length) parts.push(`потеряли ${names(lostB.map(b => BEASTS[b.kind].acc))}`);
   if (o.plundered) parts.push(`склад разграблен${K.food < food0 - 0.5 ? ` (−${Math.round(food0 - K.food)} пайков)` : ''}`);
   parts.push(...broken);
   if (took.length) parts.push(`с убитых взяли ${names(took)}`);
   const verdict = o.won ? (how === 'guard' ? 'Взяли верх' : F.n ? 'Отбились' : 'Обошлось') : how === 'guard' ? 'Отступили' : 'Не устояли';
-  say(a, K, `${opening(d, how)}. ${verdict} — бой на месте${parts.length ? `: ${parts.join('; ')}` : ''}.`, 'fight');
+  say(a, K, `${opening(d, how)}. ${verdict} — бой на месте${parts.length ? `: ${parts.join('; ')}` : ''}.`, 'fight', false, [...fallen, ...hurt].map(m => m.id));
   for (const m of fallen) die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`);
 }
 

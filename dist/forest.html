@@ -358,6 +358,16 @@ dd.q4{color:#c58cff;font-weight:600}
 .roster .hp i{display:block;height:100%;background:#8fbf6a}
 .roster .hp i.low{background:var(--ember)}
 .savelist .sv.cap i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
+.camp-topics{margin:0 0 6px}
+.camp-topics button{font-size:11.5px;padding:2px 8px}
+.camp-who{display:block;margin:0 0 6px;color:var(--muted)}
+.camp-who button{margin-left:6px;font-size:11px;padding:1px 6px}
+.atlas-chron .log div.lv-alert{border-left:2px solid var(--raider);padding-left:6px}
+.atlas-chron .log div.lv-notice{border-left:2px solid #e2b84a;padding-left:6px}
+.atlas-chron .log div.lv-info{border-left:2px solid transparent;padding-left:6px}
+.atlas-chron .log .fold{color:var(--muted);font-size:11.5px}
+.roster .rm{cursor:pointer}
+.roster .rm.pick{border-color:var(--ember)}
 .atlas-chron .log small{color:var(--ember);font-family:var(--font-mono);font-size:11px;margin-right:4px}
 .stages{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;font-size:13px;counter-reset:st}
 .stages li{display:flex;justify-content:space-between;gap:8px;color:var(--muted);padding:2px 6px;border-left:3px solid var(--line);counter-increment:st}
@@ -481,6 +491,8 @@ dd.q4{color:#c58cff;font-weight:600}
           <small id="campWorldNote" class="status" role="status"></small></div>
         <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
           <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small></div>
+        <div class="field" id="campPastField" hidden><span class="lbl">Походы в этом мире</span><div id="campPast" class="savelist"></div>
+          <small>Летописи окончённых походов хранятся вместе с миром.</small></div>
         <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
       </div>
       <div id="campRun" hidden>
@@ -493,7 +505,8 @@ dd.q4{color:#c58cff;font-weight:600}
         <div id="campRoster" class="roster"></div>
         <div class="row actions">
           <button type="button" id="campSave" title="В библиотеку миров: мир вместе с походом">Сохранить мир с походом</button>
-          <button type="button" id="campNew" class="quiet">Другой поход</button>
+          <button type="button" id="campAgain" hidden title="Тот же мир, после этого похода: выбрать столицу и снарядить новый караван">Новый поход в этом мире</button>
+          <button type="button" id="campNew" class="quiet">Другой мир</button>
         </div>
         <small class="status" id="campSaveStatus" role="status"></small>
       </div>
@@ -518,7 +531,10 @@ dd.q4{color:#c58cff;font-weight:600}
     </div>
     <div class="card atlas-chron">
       <h2>Летопись похода</h2>
+      <div class="seg wrapseg camp-topics" id="campTopics" title="Темы летописи: нажмите, чтобы скрыть или показать"></div>
+      <small id="campWho" class="camp-who" hidden></small>
       <div class="log" id="campLog"></div>
+      <div class="row actions"><button type="button" id="campExport" title="Вся летопись похода текстом: отряд, поручение, итог, строки по дням, судьбы">Летопись в файл</button></div>
     </div>
   </section>
 
@@ -1045,7 +1061,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function drawFoodPrefs(rnd) {
     const all = BASE_FOODS();
     if (all.length < 2) return { likes: all[0]?.id ?? null, dislikes: null };
-    const pick4 = (skip, sign) => {
+    const pick5 = (skip, sign) => {
       const opts = all.filter((f) => f.id !== skip), ws = opts.map((f) => Math.max(0.15, 1 + sign * (f.taste || 0)));
       let r = rnd() * ws.reduce((s, x) => s + x, 0);
       for (let k = 0; k < opts.length; k++) {
@@ -1054,8 +1070,8 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       return opts[opts.length - 1].id;
     };
-    const likes = pick4(null, 1);
-    return { likes, dislikes: pick4(likes, -1) };
+    const likes = pick5(null, 1);
+    return { likes, dislikes: pick5(likes, -1) };
   }
 
   // src/data/luxury.js
@@ -5152,8 +5168,8 @@ dd.q4{color:#c58cff;font-weight:600}
           }
         }
       }
-      const cap = cells.length >= FISHING.minCells ? Math.min(FISHING.maxStock, Math.round(cells.length * FISHING.perCell)) : 0;
-      lakes.push({ id, size: cells.length, cap, fish: cap });
+      const cap2 = cells.length >= FISHING.minCells ? Math.min(FISHING.maxStock, Math.round(cells.length * FISHING.perCell)) : 0;
+      lakes.push({ id, size: cells.length, cap: cap2, fish: cap2 });
     }
     w.grid.lake = lakeId;
     w.lakes = lakes;
@@ -7764,9 +7780,9 @@ dd.q4{color:#c58cff;font-weight:600}
       const pool = Object.entries(sp.values).filter(([, v]) => v > 0), want2 = rng() < 0.45 ? 3 : 2;
       a.values = [];
       while (a.values.length < want2 && pool.length) {
-        const pick4 = weighted(rng, pool.map((e) => [e, e[1]]));
-        a.values.push(pick4[0]);
-        pool.splice(pool.indexOf(pick4), 1);
+        const pick5 = weighted(rng, pool.map((e) => [e, e[1]]));
+        a.values.push(pick5[0]);
+        pool.splice(pool.indexOf(pick5), 1);
       }
     }
   }
@@ -10681,20 +10697,20 @@ dd.q4{color:#c58cff;font-weight:600}
     const free = new Set(col.map((a) => a.id)), assign2 = {}, byId6 = Object.fromEntries(col.map((a) => [a.id, a]));
     for (const j of places2) {
       const job = JOBS.get(j);
-      let pick4 = null, pf = -Infinity, pw = "";
+      let pick5 = null, pf = -Infinity, pw = "";
       for (const id of free) {
         const a = byId6[id], r = fitness(w, a, job, best[job.skill], prev[id]?.job);
         if (r === -Infinity) continue;
         const [f, why] = r;
-        if (f > pf || f === pf && a.id < pick4.id) {
+        if (f > pf || f === pf && a.id < pick5.id) {
           pf = f;
-          pick4 = a;
+          pick5 = a;
           pw = why;
         }
       }
-      if (!pick4) continue;
-      free.delete(pick4.id);
-      assign2[pick4.id] = { job: j, why: pw || "\u043D\u0443\u0436\u043D\u044B \u0440\u0443\u043A\u0438", alt: [] };
+      if (!pick5) continue;
+      free.delete(pick5.id);
+      assign2[pick5.id] = { job: j, why: pw || "\u043D\u0443\u0436\u043D\u044B \u0440\u0443\u043A\u0438", alt: [] };
     }
     for (const a of col) {
       const e = assign2[a.id] || (assign2[a.id] = { job: null, why: "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u044B\u0435 \u0440\u0443\u043A\u0438", alt: [] });
@@ -11010,12 +11026,12 @@ dd.q4{color:#c58cff;font-weight:600}
   function startCaravan(w, group) {
     const rng = w.rngs.outside, id = w.tick;
     const trader = group.find((a) => a.role === "trader"), mules = group.filter((a) => a.species === "mule");
-    const cap = TRADE.crates * TRADE.crate;
+    const cap2 = TRADE.crates * TRADE.crate;
     let units = 0;
     for (const [k, m] of mules.entries()) {
       m.owner = trader.id;
       m.slot = k;
-      m.load = Math.round(cap * (TRADE.load[0] + rng() * (TRADE.load[1] - TRADE.load[0])));
+      m.load = Math.round(cap2 * (TRADE.load[0] + rng() * (TRADE.load[1] - TRADE.load[0])));
       units += m.load;
     }
     for (const a of group) a.caravan = id;
@@ -11026,7 +11042,7 @@ dd.q4{color:#c58cff;font-weight:600}
       name: trader.name,
       gender: trader.gender,
       set: w.tick,
-      capacity: mules.length * cap,
+      capacity: mules.length * cap2,
       goods: makeGoods(rng, units),
       purse: between2(rng, TRADE.purse),
       arrived: null,
@@ -11050,9 +11066,9 @@ dd.q4{color:#c58cff;font-weight:600}
   function reload(w, c) {
     const mules = members(w, c).filter((a) => a.species === "mule");
     let units = goodsUnits(c.goods);
-    const cap = TRADE.crates * TRADE.crate;
+    const cap2 = TRADE.crates * TRADE.crate;
     for (const m of mules) {
-      m.load = Math.min(cap, units);
+      m.load = Math.min(cap2, units);
       units -= m.load;
     }
   }
@@ -11142,8 +11158,8 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const o of offers2) {
       const p = bidPrice2(o.g);
       if (p <= 0) continue;
-      const cap = isFood(o.g) ? Math.floor(foodTotal(w) - pop * TRADE.foodKeep) : Infinity;
-      const n = Math.min(o.n, cap, Math.floor(c.purse / p), free());
+      const cap2 = isFood(o.g) ? Math.floor(foodTotal(w) - pop * TRADE.foodKeep) : Infinity;
+      const n = Math.min(o.n, cap2, Math.floor(c.purse / p), free());
       if (n <= 0) continue;
       if (o.inst) w.armory.splice(w.armory.indexOf(o.inst), 1);
       else w.stock[o.g.id] -= n;
@@ -11331,8 +11347,8 @@ dd.q4{color:#c58cff;font-weight:600}
       topic: "wildlife",
       accept: (w, n) => {
         const k = WILDLIFE[w.cfg.wildlife].hares;
-        const cap = Math.round(grassland(w) / 500 * k);
-        return Math.max(0, Math.min(n, cap - ofSpecies(w, "hare").length));
+        const cap2 = Math.round(grassland(w) / 500 * k);
+        return Math.max(0, Math.min(n, cap2 - ofSpecies(w, "hare").length));
       },
       message: (w, group, side) => group.length > 1 ? `\u0421 ${side} \u043F\u0440\u0438\u0431\u0435\u0436\u0430\u043B\u0438 \u0437\u0430\u0439\u0446\u044B: ${group.length}.` : null
     },
@@ -13133,14 +13149,14 @@ dd.q4{color:#c58cff;font-weight:600}
   RUNNER_EXIT.farm = keepProgress;
   var RUNNERS = {
     harvest(w, a, task) {
-      const job = JOBS.get(task.job), cap = job.carry + (a.gear?.carry || 0);
+      const job = JOBS.get(task.job), cap2 = job.carry + (a.gear?.carry || 0);
       if (task.eatNow) {
         if (carriedFood(a) >= 1) {
           eatCarried(a);
           done(w, a);
           return;
         }
-      } else if (a.carry && (a.carry.n >= cap || task.full)) {
+      } else if (a.carry && (a.carry.n >= cap2 || task.full)) {
         haulHome(w, a);
         return;
       }
@@ -15009,7 +15025,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // filled to how much of its load is left
     mule(ctx, a, px, py, r, color) {
       if (a.owner != null) {
-        const cap = 20, k = Math.min(1, (a.load || 0) / cap), s = r * 0.85;
+        const cap2 = 20, k = Math.min(1, (a.load || 0) / cap2), s = r * 0.85;
         for (const side of [-1, 1]) {
           const x = px + side * (r + s * 0.55) - s / 2, y = py - s / 2;
           ctx.fillStyle = "#3b2a17";
@@ -16440,9 +16456,9 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/atlas/heap.js
   var Heap = class {
-    constructor(cap = 1024) {
-      this.k = new Float64Array(cap);
-      this.v = new Int32Array(cap);
+    constructor(cap2 = 1024) {
+      this.k = new Float64Array(cap2);
+      this.v = new Int32Array(cap2);
       this.size = 0;
     }
     push(key3, val) {
@@ -17319,21 +17335,21 @@ dd.q4{color:#c58cff;font-weight:600}
     f.fert = fert;
   }
   function vegetation(a, rnd) {
-    const { w, h, n } = a, f = a.f, cap = new Float32Array(n), fire = new Float32Array(n);
+    const { w, h, n } = a, f = a.f, cap2 = new Float32Array(n), fire = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       const b = biomeAt(a, i);
       if (!b) continue;
-      cap[i] = b.trees;
+      cap2[i] = b.trees;
       const Pd = Math.max(1, dryness(f.temp[i]));
       fire[i] = clamp015(1.4 - f.rain[i] / (1.6 * Pd)) * clamp015((f.temp[i] + f.trange[i] / 2) / 25);
     }
     let t = new Float32Array(n), t2 = new Float32Array(n);
-    for (let i = 0; i < n; i++) t[i] = cap[i] * rnd() * 0.5;
+    for (let i = 0; i < n; i++) t[i] = cap2[i] * rnd() * 0.5;
     const burnt = new Uint8Array(n), steps = 70, stack = [];
     for (let s = 0; s < steps; s++) {
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const i = y * w + x;
-        if (!cap[i]) {
+        if (!cap2[i]) {
           t2[i] = 0;
           continue;
         }
@@ -17345,7 +17361,7 @@ dd.q4{color:#c58cff;font-weight:600}
           c++;
         }
         const seed = 0.02 + 0.25 * nb / c;
-        t2[i] = t[i] + seed * (cap[i] - t[i]) * (0.6 + 0.4 * rnd());
+        t2[i] = t[i] + seed * (cap2[i] - t[i]) * (0.6 + 0.4 * rnd());
       }
       [t, t2] = [t2, t];
       const strikes = Math.max(1, Math.round(n / 12e3));
@@ -19941,7 +19957,7 @@ dd.q4{color:#c58cff;font-weight:600}
     for (const lair of a.lairs) {
       if (!lair.alive) continue;
       const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead || L.fiend || L.dragon ? null : F.list[F.idx[L.species]];
-      let food = 0, cap = 0, land2 = 0, crowd = 0;
+      let food = 0, cap2 = 0, land2 = 0, crowd = 0;
       const cells = [], c = F.c, rr = Math.ceil(r / c);
       const cx = lair.x / c | 0, cy = lair.y / c | 0;
       for (let y = Math.max(0, cy - rr); y <= Math.min(F.H - 1, cy + rr); y++) for (let x = Math.max(0, cx - rr); x <= Math.min(F.W - 1, cx + rr); x++) {
@@ -19950,7 +19966,7 @@ dd.q4{color:#c58cff;font-weight:600}
         cells.push(j);
         if (s) for (const q of s.prey || []) {
           food += F.list[q].N[j];
-          cap += F.list[q].K[j];
+          cap2 += F.list[q].K[j];
         }
         else if (L.undead) land2 = Math.max(land2, a.rot[j]);
         else if (L.fiend || L.dragon) land2 = 0.55;
@@ -19960,7 +19976,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
       const host = L.at === "town" ? a.towns.find((t) => t.id === lair.town) : null;
-      const fed = s ? cap > 0 ? Math.min(1.2, food / cap) : 0.5 : L.fiend || L.dragon ? land2 : host ? host.alive ? Math.min(1.2, host.pop / 600) : 0 : L.undead ? Math.min(1.2, land2 / (L.rotAt * 1.2)) : Math.min(1.2, land2 / cells.length / 0.6) * (1 - 0.8 * Math.min(1, crowd / cells.length));
+      const fed = s ? cap2 > 0 ? Math.min(1.2, food / cap2) : 0.5 : L.fiend || L.dragon ? land2 : host ? host.alive ? Math.min(1.2, host.pop / 600) : 0 : L.undead ? Math.min(1.2, land2 / (L.rotAt * 1.2)) : Math.min(1.2, land2 / cells.length / 0.6) * (1 - 0.8 * Math.min(1, crowd / cells.length));
       const winter = seasonId === "winter" ? 0.03 : 0;
       lair.strength = Math.max(0, Math.min(1, lair.strength + 0.08 * (fed - 0.45) - winter + 0.02 * (rnd() - 0.5)));
       if (s) {
@@ -20222,8 +20238,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function townName(P, rnd, used) {
     for (let t = 0; t < 40; t++) {
-      const pick4 = (arr) => arr[rnd() * arr.length | 0];
-      let n = pick4(P.names.first) + pick4(P.names.mid) + pick4(P.names.last);
+      const pick5 = (arr) => arr[rnd() * arr.length | 0];
+      let n = pick5(P.names.first) + pick5(P.names.mid) + pick5(P.names.last);
       n = n.replace(/-+/g, "-");
       if (!used.has(n)) {
         used.add(n);
@@ -20538,13 +20554,13 @@ dd.q4{color:#c58cff;font-weight:600}
     say3(`\u041F\u0440\u043E\u0442\u043E\u043F\u0442\u0430\u043B\u0438 ${fresh.length === 1 ? "\u0434\u043E\u0440\u043E\u0433\u0443" : "\u0434\u043E\u0440\u043E\u0433\u0438"} \u043C\u0435\u0436\u0434\u0443 ${named3.join(", \u043C\u0435\u0436\u0434\u0443 ")}` + (rest ? ` \u0438 \u0435\u0449\u0451 ${rest} ${plural(rest, "\u043F\u0430\u0440\u043E\u0439 \u0433\u043E\u0440\u043E\u0434\u043E\u0432", "\u043F\u0430\u0440\u0430\u043C\u0438 \u0433\u043E\u0440\u043E\u0434\u043E\u0432", "\u043F\u0430\u0440\u0430\u043C\u0438 \u0433\u043E\u0440\u043E\u0434\u043E\u0432")}` : "") + ".");
   }
   function stepHistory(a, onDay = null) {
-    const H2 = a.hist, rnd = H2.rnd, season2 = SEASON_LIST[H2.season].id, F = a.fauna;
+    const H2 = a.hist, rnd = H2.rnd, season3 = SEASON_LIST[H2.season].id, F = a.fauna;
     if (H2.season === 0) {
       rollWeather(a, rnd);
       const m = plague(a, rnd);
       if (m) say(a, `\u041C\u043E\u0440: ${m.s.sp.plural} \u0433\u0438\u0431\u043D\u0443\u0442 ${wherePhrase(a, coarseToCell(a, m.j))}.`);
     }
-    if (season2 === "winter" && rnd() < 0.5) {
+    if (season3 === "winter" && rnd() < 0.5) {
       let worst = 0, wj = -1;
       for (let j = 0; j < F.weather.length; j++) if (F.weather[j] < worst && F.list.some((s) => s.K[j] > 0.3)) {
         worst = F.weather[j];
@@ -20571,7 +20587,7 @@ dd.q4{color:#c58cff;font-weight:600}
       say(a, `\u041D\u0430\u0447\u0430\u043B\u0430\u0441\u044C ${ERAS.get(H2.era).label.toLowerCase()}.`);
       arrive2(a, H2.era, rnd, (t) => say(a, t));
     }
-    if (H2.era !== "wild" && season2 === "spring") {
+    if (H2.era !== "wild" && season3 === "spring") {
       forgetSites(a, H2.year);
       stepPeoples(a, rnd, (t) => say(a, t));
       if ((H2.step - wildEnd) % (ROADS.every * SEASONS_PER_YEAR) === 0)
@@ -20579,8 +20595,8 @@ dd.q4{color:#c58cff;font-weight:600}
       if ((H2.step - wildEnd) % (SEA.every * SEASONS_PER_YEAR) === 0)
         for (const [p, q] of sailLanes(a)) say(a, `\u041A\u043E\u0440\u0430\u0431\u043B\u0438 ${townLabel(p, 2)} ${p.name} \u043F\u0440\u043E\u043B\u043E\u0436\u0438\u043B\u0438 \u043C\u043E\u0440\u0441\u043A\u043E\u0439 \u043F\u0443\u0442\u044C \u0432 ${townLabel(q, 1)} ${q.name}.`);
     }
-    const totals = stepFauna(a, season2);
-    for (const line2 of stepLairs(a, rnd, season2)) say(a, line2);
+    const totals = stepFauna(a, season3);
+    for (const line2 of stepLairs(a, rnd, season3)) say(a, line2);
     stepParties(a, rnd, (t) => say(a, t), onDay);
     if (H2.season === 3 && H2.repelled) {
       const parts = Object.entries(H2.repelled).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} \u2014 ${n}`);
@@ -20871,8 +20887,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.57.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 47694cf" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.58.0 Campaign \xB7 19.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 0969ec6" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";
@@ -20901,7 +20917,9 @@ dd.q4{color:#c58cff;font-weight:600}
       hash: atlasHash(a),
       version: VERSION,
       // a campaign under way in this world (campaign/): where it is
-      campaign: a.campaign ? { phase: a.campaign.phase, day: a.campaign.day, from: a.campaign.capitalFrom || a.campaign.capitalName } : null
+      campaign: a.campaign ? { phase: a.campaign.phase, day: a.campaign.day, from: a.campaign.capitalFrom || a.campaign.capitalName, crown: a.campaign.quest?.name || null } : null,
+      // campaigns finished in this world (campaign/ending.js): their chronicles stay with it
+      campaigns: (a.campaignsDone || []).length
     };
   }
   function saveAtlas(a, name) {
@@ -20968,6 +20986,8 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!gz) return new TextDecoder().decode(bytes);
     return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
   }
+  var LAT = { \u0430: "a", \u0431: "b", \u0432: "v", \u0433: "g", \u0434: "d", \u0435: "e", \u0451: "e", \u0436: "zh", \u0437: "z", \u0438: "i", \u0439: "y", \u043A: "k", \u043B: "l", \u043C: "m", \u043D: "n", \u043E: "o", \u043F: "p", \u0440: "r", \u0441: "s", \u0442: "t", \u0443: "u", \u0444: "f", \u0445: "kh", \u0446: "ts", \u0447: "ch", \u0448: "sh", \u0449: "shch", \u044A: "", \u044B: "y", \u044C: "", \u044D: "e", \u044E: "yu", \u044F: "ya" };
+  var latinTitle = (s) => fileTitle([...String(s).toLowerCase()].map((c) => LAT[c] ?? c).join(""));
   var fileTitle = (s) => String(s).replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "forest";
   async function offerFile(base, text) {
     const host = typeof window !== "undefined" && window.claude?.use ? await window.claude.use("downloads").catch(() => null) : null;
@@ -20984,6 +21004,26 @@ dd.q4{color:#c58cff;font-weight:600}
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([data], { type: gz ? "application/gzip" : "application/json" }));
     a.download = base + (gz ? ".gz" : ".json");
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5e3);
+    return "saved";
+  }
+  async function offerText(base, text) {
+    const host = typeof window !== "undefined" && window.claude?.use ? await window.claude.use("downloads").catch(() => null) : null;
+    if (host) {
+      try {
+        await host.save({ filename: base + ".json", data: JSON.stringify({ title: base, text }) });
+        return "saved";
+      } catch (e) {
+        if (e?.code === "declined") return "declined";
+        throw new Error(e?.message || "\u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E");
+      }
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+    a.download = base + ".txt";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -22345,29 +22385,67 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   var RETINUE = {
     humans: {
-      knight: ["\u0440\u044B\u0446\u0430\u0440\u044C", "\u0440\u044B\u0446\u0430\u0440\u0438"],
-      squire: ["\u043E\u0440\u0443\u0436\u0435\u043D\u043E\u0441\u0435\u0446", "\u043E\u0440\u0443\u0436\u0435\u043D\u043E\u0441\u0446\u044B"],
+      knight: ["\u0440\u044B\u0446\u0430\u0440\u044C", "\u0440\u044B\u0446\u0430\u0440\u0438", "\u0440\u044B\u0446\u0430\u0440\u044F"],
+      squire: ["\u043E\u0440\u0443\u0436\u0435\u043D\u043E\u0441\u0435\u0446", "\u043E\u0440\u0443\u0436\u0435\u043D\u043E\u0441\u0446\u044B", "\u043E\u0440\u0443\u0436\u0435\u043D\u043E\u0441\u0446\u0430"],
       knightGear: [["bronzespear", "shield"], ["bronzeaxe", "shield"], ["bronzespear", "shield"], ["bow", "quiver"]]
     },
     elves: {
-      knight: ["\u0441\u0442\u0440\u0430\u0436", "\u0441\u0442\u0440\u0430\u0436\u0438"],
-      squire: ["\u043F\u043E\u043C\u043E\u0449\u043D\u0438\u043A", "\u043F\u043E\u043C\u043E\u0449\u043D\u0438\u043A\u0438"],
+      knight: ["\u0441\u0442\u0440\u0430\u0436", "\u0441\u0442\u0440\u0430\u0436\u0438", "\u0441\u0442\u0440\u0430\u0436\u0430"],
+      squire: ["\u043F\u043E\u043C\u043E\u0449\u043D\u0438\u043A", "\u043F\u043E\u043C\u043E\u0449\u043D\u0438\u043A\u0438", "\u043F\u043E\u043C\u043E\u0449\u043D\u0438\u043A\u0430"],
       knightGear: [["bow", "quiver"], ["bow", "quiver"], ["bronzespear", "shield"], ["bow", "quiver"]]
     },
     dwarves: {
-      knight: ["\u0445\u0438\u0440\u0434\u043C\u0430\u043D", "\u0445\u0438\u0440\u0434\u043C\u0430\u043D\u044B"],
-      squire: ["\u043F\u043E\u0434\u043C\u0430\u0441\u0442\u0435\u0440\u044C\u0435", "\u043F\u043E\u0434\u043C\u0430\u0441\u0442\u0435\u0440\u044C\u044F"],
+      knight: ["\u0445\u0438\u0440\u0434\u043C\u0430\u043D", "\u0445\u0438\u0440\u0434\u043C\u0430\u043D\u044B", "\u0445\u0438\u0440\u0434\u043C\u0430\u043D\u0430"],
+      squire: ["\u043F\u043E\u0434\u043C\u0430\u0441\u0442\u0435\u0440\u044C\u0435", "\u043F\u043E\u0434\u043C\u0430\u0441\u0442\u0435\u0440\u044C\u044F", "\u043F\u043E\u0434\u043C\u0430\u0441\u0442\u0435\u0440\u044C\u044F"],
       knightGear: [["bronzeaxe", "shield"], ["bronzeaxe", "shield"], ["bronzespear", "shield"], ["bronzeaxe", "shield"]]
     },
     orcs: {
-      knight: ["\u0440\u0443\u0431\u0430\u043A\u0430", "\u0440\u0443\u0431\u0430\u043A\u0438"],
-      squire: ["\u043F\u0440\u0438\u0441\u043B\u0443\u0436\u043D\u0438\u043A", "\u043F\u0440\u0438\u0441\u043B\u0443\u0436\u043D\u0438\u043A\u0438"],
+      knight: ["\u0440\u0443\u0431\u0430\u043A\u0430", "\u0440\u0443\u0431\u0430\u043A\u0438", "\u0440\u0443\u0431\u0430\u043A\u0438"],
+      squire: ["\u043F\u0440\u0438\u0441\u043B\u0443\u0436\u043D\u0438\u043A", "\u043F\u0440\u0438\u0441\u043B\u0443\u0436\u043D\u0438\u043A\u0438", "\u043F\u0440\u0438\u0441\u043B\u0443\u0436\u043D\u0438\u043A\u0430"],
       knightGear: [["bronzeaxe"], ["bronzeaxe", "shield"], ["bronzespear"], ["bronzeaxe"]]
     },
     // shared by all
     armour: ["jerkin", "hardleather", "jerkin", "hardleather"],
     squireGear: [["axe"], ["maul"], ["rod"], ["pan"]],
     squireBody: "clothes"
+  };
+  var CHRONICLE = {
+    topics: [
+      { id: "quest", label: "\u043A\u043E\u0440\u043E\u043D\u0430 \u0438 \u0441\u043B\u0435\u0434\u044B" },
+      { id: "fight", label: "\u0431\u043E\u0438" },
+      { id: "death", label: "\u0441\u043C\u0435\u0440\u0442\u0438" },
+      { id: "people", label: "\u043B\u044E\u0434\u0438" },
+      { id: "town", label: "\u0433\u043E\u0440\u043E\u0434\u0430" },
+      { id: "camp", label: "\u0441\u0442\u043E\u044F\u043D\u043A\u0438" },
+      { id: "road", label: "\u0434\u043E\u0440\u043E\u0433\u0430" },
+      { id: "baggage", label: "\u043E\u0431\u043E\u0437" }
+    ],
+    kinds: {
+      start: ["quest", "alert"],
+      quest: ["quest", "notice"],
+      crown: ["quest", "alert"],
+      goal: ["quest", "notice"],
+      home: ["quest", "alert"],
+      end: ["death", "alert"],
+      epilogue: ["quest", "notice"],
+      fight: ["fight", "notice"],
+      sight: ["fight", "info"],
+      death: ["death", "alert"],
+      hunger: ["death", "notice"],
+      people: ["people", "notice"],
+      leave: ["people", "info"],
+      town: ["town", "notice"],
+      camp: ["camp", "info"],
+      stop: ["camp", "info"],
+      find: ["camp", "info"],
+      march: ["road", "info"],
+      land: ["road", "info"],
+      route: ["road", "info"],
+      lost: ["road", "notice"],
+      beast: ["baggage", "info"],
+      build: ["baggage", "info"]
+    },
+    fold: ["stop", "find", "land", "sight"]
   };
 
   // src/data/transport.js
@@ -22743,9 +22821,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function spawn(a, K) {
     const B3 = bubbleOf(K), near4 = sc(a, BUBBLE.near), far = sc(a, BUBBLE.far);
-    const pick4 = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`));
+    const pick5 = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`));
     for (let s = 0; s < BUBBLE.samples && B3.things.length < BUBBLE.max; s++) {
-      const ang = pick4() * Math.PI * 2, d = near4 + pick4() * (far - near4), x = K.x + Math.cos(ang) * d, y = K.y + Math.sin(ang) * d;
+      const ang = pick5() * Math.PI * 2, d = near4 + pick5() * (far - near4), x = K.x + Math.cos(ang) * d, y = K.y + Math.sin(ang) * d;
       if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
       const i = cellAt(a, x, y);
       if (!land(a, i)) continue;
@@ -22994,12 +23072,12 @@ dd.q4{color:#c58cff;font-weight:600}
       if (i === home) return null;
       crown = { kind: "wild", label: biomeAt(a, i)?.where || "\u0432 \u0433\u043B\u0443\u0448\u0438", at: i, i };
     }
-    const used = /* @__PURE__ */ new Set([crown.at]), clues = [];
+    const used = /* @__PURE__ */ new Set([crown.at]), usedI = /* @__PURE__ */ new Set([crown.i]), clues = [];
     const [hx, hy] = xy2(a, home), [cx, cy] = xy2(a, crown.i), len = Math.hypot(cx - hx, cy - hy), nx = -(cy - hy) / (len || 1), ny = (cx - hx) / (len || 1);
     for (let k = 0; k < QUEST.clueAt.length; k++) {
       const f = QUEST.clueAt[k], off = (rnd() * 2 - 1) * QUEST.scatter * len;
       const px = hx + (cx - hx) * f + nx * off, py = hy + (cy - hy) * f + ny * off;
-      const fit = all.filter((p) => QUEST.clueKinds[p.kind] && !used.has(p.at) && p.i !== home);
+      const fit = all.filter((p) => QUEST.clueKinds[p.kind] && !used.has(p.at) && !usedI.has(p.i) && p.i !== home);
       let best = null, bv = Infinity;
       for (const p of fit) {
         const [x, y] = xy2(a, p.i), v = Math.hypot(x - px, y - py) / QUEST.clueKinds[p.kind];
@@ -23009,11 +23087,20 @@ dd.q4{color:#c58cff;font-weight:600}
         }
       }
       if (!best || bv > len * 0.5) {
-        const i = foot(a, mask, Math.round(Math.min(a.h - 1, Math.max(0, py))) * a.w + Math.round(Math.min(a.w - 1, Math.max(0, px))), 6);
+        let i = -1, id = Infinity;
+        for (const c of cells) {
+          if (usedI.has(c) || c === home) continue;
+          const [x, y] = xy2(a, c), v = Math.hypot(x - px, y - py);
+          if (v < id) {
+            id = v;
+            i = c;
+          }
+        }
         best = i >= 0 ? { kind: "cairn", label: `\u043A\u0430\u043C\u0435\u043D\u043D\u0430\u044F \u043F\u0438\u0440\u0430\u043C\u0438\u0434\u0430 ${biomeAt(a, i)?.where || ""}`.trim(), at: i, i } : fit[0];
       }
       if (!best) continue;
       used.add(best.at);
+      usedI.add(best.i);
       clues.push({ k, kind: best.kind, at: best.at, i: best.i, label: best.label, town: best.town ?? null, guard: best.kind === "cairn" ? null : guardOf(a, K, best), area: null, seen: false, found: false });
     }
     const [name, acc3, g3] = pick3(rnd, QUEST.names);
@@ -23155,7 +23242,7 @@ dd.q4{color:#c58cff;font-weight:600}
     K.goal = K.home;
     Q.next = K.day + 3;
     Q.carriedFrom = K.day;
-    say3(again ? `${Q.name} ${gx(Q, "\u043E\u0442\u0431\u0438\u0442\u0430", "\u043E\u0442\u0431\u0438\u0442")} \u0443 \u0432\u0440\u0430\u0433\u043E\u0432: \u0442\u0435\u043F\u0435\u0440\u044C ${gx(Q, "\u0435\u0451", "\u0435\u0433\u043E")} \u043D\u0435\u0441\u0451\u0442 ${m?.name}. \u0414\u043E\u043C\u043E\u0439!` : `${Q.name} ${gx(Q, "\u043D\u0430\u0439\u0434\u0435\u043D\u0430", "\u043D\u0430\u0439\u0434\u0435\u043D")} \u2014 ${C.label}! ${gx(Q, "\u0415\u0451", "\u0415\u0433\u043E")} \u043D\u0435\u0441\u0451\u0442 ${m?.name}. \u0412\u0435\u0441\u0442\u044C \u043E\u0431 \u044D\u0442\u043E\u043C \u043B\u0435\u0442\u0438\u0442 \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430: \u0432\u0440\u0430\u0433\u0438 \u043D\u0435 \u0434\u0430\u0434\u0443\u0442 \u0434\u043E\u043D\u0435\u0441\u0442\u0438 ${gx(Q, "\u0435\u0451", "\u0435\u0433\u043E")} \u0441\u043F\u043E\u043A\u043E\u0439\u043D\u043E.`, "crown", true);
+    say3(again ? `${Q.name} ${gx(Q, "\u043E\u0442\u0431\u0438\u0442\u0430", "\u043E\u0442\u0431\u0438\u0442")} \u0443 \u0432\u0440\u0430\u0433\u043E\u0432: \u0442\u0435\u043F\u0435\u0440\u044C ${gx(Q, "\u0435\u0451", "\u0435\u0433\u043E")} \u043D\u0435\u0441\u0451\u0442 ${m?.name}. \u0414\u043E\u043C\u043E\u0439!` : `${Q.name} ${gx(Q, "\u043D\u0430\u0439\u0434\u0435\u043D\u0430", "\u043D\u0430\u0439\u0434\u0435\u043D")} \u2014 ${C.label}! ${gx(Q, "\u0415\u0451", "\u0415\u0433\u043E")} \u043D\u0435\u0441\u0451\u0442 ${m?.name}. \u0412\u0435\u0441\u0442\u044C \u043E\u0431 \u044D\u0442\u043E\u043C \u043B\u0435\u0442\u0438\u0442 \u0431\u044B\u0441\u0442\u0440\u0435\u0435 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430: \u0432\u0440\u0430\u0433\u0438 \u043D\u0435 \u0434\u0430\u0434\u0443\u0442 \u0434\u043E\u043D\u0435\u0441\u0442\u0438 ${gx(Q, "\u0435\u0451", "\u0435\u0433\u043E")} \u0441\u043F\u043E\u043A\u043E\u0439\u043D\u043E.`, "crown", true, m ? [m.id] : null);
   }
   function bearer(K) {
     const ms = K.members.filter((m) => m.alive);
@@ -23357,7 +23444,7 @@ dd.q4{color:#c58cff;font-weight:600}
     (a.parties || (a.parties = [])).push(p);
     K.party = p.id;
     const R2 = RETINUE[t.people];
-    say2(a, K, `\u0418\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0448\u0435\u043B \u043A\u0430\u0440\u0430\u0432\u0430\u043D: ${CAMPAIGN.knights} ${R2.knight[1]} \u0438 ${CAMPAIGN.squires} ${R2.squire[1]} \u2014 ${K.members.map((m) => m.name).join(", ")}. ` + (K.quest ? `${questIntro(a, K)} \u0415\u0434\u044B \u2014 \u043D\u0430 ${Math.floor(K.food / K.members.length)} \u0434\u043D\u0435\u0439.` : "\u041A\u0443\u0434\u0430 \u0438\u0434\u0442\u0438, \u043D\u0438\u043A\u0442\u043E \u043D\u0435 \u0437\u043D\u0430\u0435\u0442."), "start", true);
+    say2(a, K, `\u0418\u0437 ${townLabel(t, 2)} ${t.name} \u0432\u044B\u0448\u0435\u043B \u043A\u0430\u0440\u0430\u0432\u0430\u043D: ${CAMPAIGN.knights} ${R2.knight[2]} \u0438 ${CAMPAIGN.squires} ${R2.squire[2]} \u2014 ${K.members.map((m) => m.name).join(", ")}. ` + (K.quest ? `${questIntro(a, K)} \u0415\u0434\u044B \u2014 \u043D\u0430 ${Math.floor(K.food / K.members.length)} \u0434\u043D\u0435\u0439.` : "\u041A\u0443\u0434\u0430 \u0438\u0434\u0442\u0438, \u043D\u0438\u043A\u0442\u043E \u043D\u0435 \u0437\u043D\u0430\u0435\u0442."), "start", true);
     if (!K.quest) K.phase = "lost";
     return K;
   }
@@ -23848,7 +23935,7 @@ dd.q4{color:#c58cff;font-weight:600}
         fallen.push(m);
         continue;
       }
-      if (mo.hp < m.hp - 0.05) hurt2.push(m.name);
+      if (mo.hp < m.hp - 0.05) hurt2.push(m);
       m.hp = mo.hp;
       m.local = mo.local;
     }
@@ -23897,14 +23984,14 @@ dd.q4{color:#c58cff;font-weight:600}
     const F = o.foes, parts = [];
     if (F.n) parts.push(`${pieces(F.n, "\u0432\u0440\u0430\u0433", "\u0432\u0440\u0430\u0433\u0430", "\u0432\u0440\u0430\u0433\u043E\u0432")}: ${F.killed ? `${F.killed} \u0443\u0431\u0438\u0442\u043E` : "\u043D\u0438\u043A\u043E\u0433\u043E \u043D\u0435 \u0443\u0431\u0438\u043B\u0438"}${F.fled ? `, ${F.fled} \u0431\u0435\u0436\u0430\u043B\u0438` : ""}${F.left ? `, ${F.left} \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C` : ""}`);
     if (fallen.length) parts.push(`\u043F\u0430\u043B\u0438 ${names(fallen.map((m) => m.name))}`);
-    if (hurt2.length) parts.push(`\u0440\u0430\u043D\u0435\u043D\u044B ${names(hurt2)}`);
+    if (hurt2.length) parts.push(`\u0440\u0430\u043D\u0435\u043D\u044B ${names(hurt2.map((m) => m.name))}`);
     if (stolenB.length) parts.push(`\u0443\u0432\u0435\u043B\u0438 ${names(stolenB.map((b) => BEASTS[b.kind].acc))}`);
     if (lostB.length) parts.push(`\u043F\u043E\u0442\u0435\u0440\u044F\u043B\u0438 ${names(lostB.map((b) => BEASTS[b.kind].acc))}`);
     if (o.plundered) parts.push(`\u0441\u043A\u043B\u0430\u0434 \u0440\u0430\u0437\u0433\u0440\u0430\u0431\u043B\u0435\u043D${K.food < food0 - 0.5 ? ` (\u2212${Math.round(food0 - K.food)} \u043F\u0430\u0439\u043A\u043E\u0432)` : ""}`);
     parts.push(...broken);
     if (took.length) parts.push(`\u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 ${names(took)}`);
     const verdict = o.won ? how === "guard" ? "\u0412\u0437\u044F\u043B\u0438 \u0432\u0435\u0440\u0445" : F.n ? "\u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C" : "\u041E\u0431\u043E\u0448\u043B\u043E\u0441\u044C" : how === "guard" ? "\u041E\u0442\u0441\u0442\u0443\u043F\u0438\u043B\u0438" : "\u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438";
-    say2(a, K, `${opening(d, how)}. ${verdict} \u2014 \u0431\u043E\u0439 \u043D\u0430 \u043C\u0435\u0441\u0442\u0435${parts.length ? `: ${parts.join("; ")}` : ""}.`, "fight");
+    say2(a, K, `${opening(d, how)}. ${verdict} \u2014 \u0431\u043E\u0439 \u043D\u0430 \u043C\u0435\u0441\u0442\u0435${parts.length ? `: ${parts.join("; ")}` : ""}.`, "fight", false, [...fallen, ...hurt2].map((m) => m.id));
     for (const m of fallen) die(a, K, m, `\u043F\u0430\u043B${m.gender === "f" ? "\u0430" : ""} \u0432 ${where} (${FOES2[d.kind].label})`);
   }
   function takeGear(K, items) {
@@ -24001,11 +24088,11 @@ dd.q4{color:#c58cff;font-weight:600}
       K.beasts = K.beasts.filter((b) => !gone.includes(b));
       assign(K);
       K.path = null;
-      const words = Object.keys(BEASTS).map((kind) => {
+      const words2 = Object.keys(BEASTS).map((kind) => {
         const n = gone.filter((b) => b.kind === kind).length;
         return n ? n === 1 ? BEASTS[kind].acc : `${BEASTS[kind].plural} (${n})` : null;
       }).filter(Boolean);
-      say2(a, K, `${how === "night" ? "\u0412 \u0442\u0435\u043C\u043D\u043E\u0442\u0435 \u0443\u0432\u0435\u043B\u0438 \u0438\u043B\u0438 \u0443\u0431\u0438\u043B\u0438" : "\u0412 \u0441\u0443\u043C\u0430\u0442\u043E\u0445\u0435 \u0443\u0432\u0435\u043B\u0438 \u0438\u043B\u0438 \u0443\u0431\u0438\u043B\u0438"} ${words.join(", ")}.`, "beast");
+      say2(a, K, `${how === "night" ? "\u0412 \u0442\u0435\u043C\u043D\u043E\u0442\u0435 \u0443\u0432\u0435\u043B\u0438 \u0438\u043B\u0438 \u0443\u0431\u0438\u043B\u0438" : "\u0412 \u0441\u0443\u043C\u0430\u0442\u043E\u0445\u0435 \u0443\u0432\u0435\u043B\u0438 \u0438\u043B\u0438 \u0443\u0431\u0438\u043B\u0438"} ${words2.join(", ")}.`, "beast");
     }
     for (const v of [...K.vehicles]) if (r() < GETTING.lose.vehicle) {
       K.vehicles = K.vehicles.filter((x) => x !== v);
@@ -24177,7 +24264,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const sp = SPECIES.get(race);
     return `\u043A \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0443 ${free ? "\u043F\u043E \u0434\u043E\u0431\u0440\u043E\u0439 \u0432\u043E\u043B\u0435" : `\u0437\u0430 ${C.fee} \u0437\u043E\u043B.`} \u043F\u0440\u0438\u0441\u0442\u0430\u043B${m.gender === "f" ? "\u0430" : ""} ${m.name}${minor ? ` \u0438\u0437 \u043D\u0430\u0440\u043E\u0434\u0430 ${sp.gen || sp.plural}` : ""}`;
   }
-  var townLine = (a, t, st) => `${townName2(t)} (${STANDING[st].label}${t.realm ? `, ${realmLabel(a, t.realm)}` : ""})`;
+  var townLine = (a, t, st) => `${townLabel(t, 1)} ${t.name} (${STANDING[st].label}${t.realm ? `, ${realmLabel(a, t.realm)}` : ""})`;
 
   // src/campaign/march.js
   var SEASON_LIST2 = SEASONS.all();
@@ -24189,9 +24276,11 @@ dd.q4{color:#c58cff;font-weight:600}
   var core = (K) => K.members.filter((m) => m.alive && isCore(m));
   var guided = (K) => alive3(K).some((m) => m.role === "guide");
   var ended = (K) => ["won", "lost", "timeout"].includes(K.phase);
+  var finished = (K) => ended(K) && (!K.epilogue || K.epilogue.done);
   var rank = (K, m) => RETINUE[K.people][m.role]?.[0] || HIRES[m.role]?.label || ROLES2[m.role] || "\u0441\u043F\u0443\u0442\u043D\u0438\u043A";
-  function say2(a, K, text, kind = "march", world2 = false) {
+  function say2(a, K, text, kind = "march", world2 = false, who = null) {
     const H2 = a.hist, line2 = { day: K.day, year: H2.year, season: H2.season, i: K.i, text, kind };
+    if (who?.length) line2.who = who;
     K.log.push(line2);
     if (world2) a.chronicle.push({ era: H2.era, year: H2.year, season: H2.season, text, campaign: true });
   }
@@ -24215,12 +24304,13 @@ dd.q4{color:#c58cff;font-weight:600}
     return v;
   }
   function die(a, K, m, why) {
+    if (m.gender === "f") why = why.replace(/^(умер|пал|погиб)(?=\s)/, (w) => ({ \u0443\u043C\u0435\u0440: "\u0443\u043C\u0435\u0440\u043B\u0430", \u043F\u0430\u043B: "\u043F\u0430\u043B\u0430", \u043F\u043E\u0433\u0438\u0431: "\u043F\u043E\u0433\u0438\u0431\u043B\u0430" })[w]);
     m.alive = false;
     m.hp = 0;
     m.ride = null;
     m.died = { day: K.day, year: a.hist.year, why };
     const left = core(K).length, n = K.members.filter(isCore).length;
-    say2(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` \u0418\u0437 \u0432\u044B\u0448\u0435\u0434\u0448\u0438\u0445 \u0438\u0437 \u0441\u0442\u043E\u043B\u0438\u0446\u044B \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${left} \u0438\u0437 ${n}.` : ""}`, "death", isCore(m) && !left);
+    say2(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` \u0418\u0437 \u0432\u044B\u0448\u0435\u0434\u0448\u0438\u0445 \u0438\u0437 \u0441\u0442\u043E\u043B\u0438\u0446\u044B \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${left} \u0438\u0437 ${n}.` : ""}`, "death", isCore(m) && !left, [m.id]);
   }
   var beastWord = (kind, cs = "label") => BEASTS[kind][cs];
   function gainBeast(a, K, kind, how) {
@@ -24447,7 +24537,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
       if (m.loyalty == null || m.loyalty >= 1) continue;
       m.loyalty = Math.max(0, Math.min(1, m.loyalty + LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0)));
-      if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave3(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? "\u043D\u0435 \u0432\u044B\u043D\u0435\u0441 \u0433\u043E\u043B\u043E\u0434\u0430 \u0438" : "\u043E\u0434\u043D\u0430\u0436\u0434\u044B \u0443\u0442\u0440\u043E\u043C"} \u0443\u0448\u0451\u043B${m.gender === "f" ? "\u0430" : ""} \u0441\u0432\u043E\u0435\u0439 \u0434\u043E\u0440\u043E\u0433\u043E\u0439`);
+      if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave3(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? `\u043D\u0435 \u0432\u044B\u043D\u0435\u0441${m.gender === "f" ? "\u043B\u0430" : ""} \u0433\u043E\u043B\u043E\u0434\u0430 \u0438` : "\u043E\u0434\u043D\u0430\u0436\u0434\u044B \u0443\u0442\u0440\u043E\u043C"} \u0443\u0448\u0451\u043B${m.gender === "f" ? "\u0430" : ""} \u0441\u0432\u043E\u0435\u0439 \u0434\u043E\u0440\u043E\u0433\u043E\u0439`);
       else if (m.loyalty >= 1) say2(a, K, `${m.name} \u0442\u0435\u043F\u0435\u0440\u044C \u0441\u0432\u043E\u0439${m.gender === "f" ? "" : ""}: \u0438\u0434\u0451\u0442 \u0441 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C \u0434\u043E \u043A\u043E\u043D\u0446\u0430.`, "people");
     }
   }
@@ -24493,7 +24583,7 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     if (K.quest) {
-      const { r, done: done3 } = draw(K, "quest"), tell2 = (text, kind, world2) => say2(a, K, text, kind, world2);
+      const { r, done: done3 } = draw(K, "quest"), tell2 = (text, kind, world2, who) => say2(a, K, text, kind, world2, who);
       const busy2 = !K.inTown && K.via == null && questArrive(a, K, r, (d) => fight3(a, K, d, r, "guard"), tell2);
       const any = K.members.some((m) => m.alive && isCore(m));
       if (any && K.phase === "back" && K.i === K.home && K.quest.crown.state === "carried") {
@@ -24733,6 +24823,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     if (core(K).length && !ended(K)) night(a, K);
     if (!core(K).length && !ended(K)) {
+      K.lostWith = alive3(K).map((m) => m.id);
       for (const m of alive3(K)) {
         m.alive = false;
         m.left = { day: K.day, year: a.hist.year };
@@ -24748,7 +24839,7 @@ dd.q4{color:#c58cff;font-weight:600}
     overflow(K);
     reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
     if (K.quest && !ended(K)) {
-      const tell2 = (text, kind, world2) => say2(a, K, text, kind, world2), { r: rq, done: dq } = draw(K, "pursuit");
+      const tell2 = (text, kind, world2, who) => say2(a, K, text, kind, world2, who), { r: rq, done: dq } = draw(K, "pursuit");
       questSight(a, K, tell2);
       pursuit(a, K, rq, tell2);
       dq();
@@ -24766,20 +24857,219 @@ dd.q4{color:#c58cff;font-weight:600}
     K.day++;
   }
 
+  // src/data/epilogue.js
+  var EPILOGUE = {
+    // the world goes on for this many seasons after the end, telling the fates (at most `perSeason` a season)
+    seasons: 4,
+    perSeason: 3,
+    // a crown brought home: the capital grows (pilgrims, the court, the fame), the realms that know the realm
+    // think better of it (attitude, data/diplomacy.js), the realm keeps the crown as its relic
+    crown: { pop: 1.12, att: 1, attMax: 5 }
+  };
+  var pick4 = (r, list) => list[r() * list.length | 0];
+  var FATES = {
+    // the crown brought home
+    won: {
+      knight: [
+        (m, w) => `${m.name} ${w.g("\u043F\u043E\u043B\u0443\u0447\u0438\u043B", "\u043F\u043E\u043B\u0443\u0447\u0438\u043B\u0430")} \u043E\u0442 \u043F\u0440\u0430\u0432\u0438\u0442\u0435\u043B\u044F \u0437\u0435\u043C\u043B\u044E \u043F\u043E\u0434 ${w.town[4]} \u0438 \u0442\u0438\u0442\u0443\u043B.`,
+        (m, w) => `${m.name} ${w.g("\u0441\u0442\u0430\u043B \u0445\u0440\u0430\u043D\u0438\u0442\u0435\u043B\u0435\u043C", "\u0441\u0442\u0430\u043B\u0430 \u0445\u0440\u0430\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u0438\u0446\u0435\u0439")} \u043A\u043E\u0440\u043E\u043D\u044B: ${w.crown} \u043D\u0435 \u043F\u043E\u043A\u0438\u0434\u0430\u0435\u0442 ${w.capital[2]} \u0431\u0435\u0437 ${w.g("\u043D\u0435\u0433\u043E", "\u043D\u0435\u0451")}.`,
+        (m, w) => `${m.name} \u0435\u0449\u0451 \u043D\u0435 \u0440\u0430\u0437 ${w.g("\u0432\u043E\u0434\u0438\u043B", "\u0432\u043E\u0434\u0438\u043B\u0430")} \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u044B, \u0430 \u043E \u043F\u043E\u0445\u043E\u0434\u0435 \u0437\u0430 \u043A\u043E\u0440\u043E\u043D\u043E\u0439 ${w.g("\u0440\u0430\u0441\u0441\u043A\u0430\u0437\u044B\u0432\u0430\u043B", "\u0440\u0430\u0441\u0441\u043A\u0430\u0437\u044B\u0432\u0430\u043B\u0430")} \u0434\u043E \u0441\u0430\u043C\u043E\u0439 \u0441\u0442\u0430\u0440\u043E\u0441\u0442\u0438.`,
+        (m, w) => `${m.name} ${w.g("\u0432\u043E\u0437\u0433\u043B\u0430\u0432\u0438\u043B", "\u0432\u043E\u0437\u0433\u043B\u0430\u0432\u0438\u043B\u0430")} \u0441\u0442\u0440\u0430\u0436\u0443 ${w.capital[2]}.`
+      ],
+      squire: [
+        (m, w) => `${m.name} ${w.g("\u043F\u043E\u0441\u0432\u044F\u0449\u0451\u043D", "\u043F\u043E\u0441\u0432\u044F\u0449\u0435\u043D\u0430")} \u0432 ${w.knights} \u2014 \u0437\u0430 \u0432\u0435\u0440\u043D\u043E\u0441\u0442\u044C \u0432 \u043F\u043E\u0445\u043E\u0434\u0435.`,
+        (m, w) => `${m.name} ${w.g("\u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F", "\u0432\u0435\u0440\u043D\u0443\u043B\u0430\u0441\u044C")} \u0432 \u0440\u043E\u0434\u043D\u044B\u0435 \u043C\u0435\u0441\u0442\u0430 \u0438 ${w.g("\u0437\u0430\u0432\u0451\u043B", "\u0437\u0430\u0432\u0435\u043B\u0430")} \u0441\u0432\u043E\u0451 \u0445\u043E\u0437\u044F\u0439\u0441\u0442\u0432\u043E; ${w.g("\u0435\u0433\u043E", "\u0435\u0451")} \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442 \u0432\u0438\u0441\u0438\u0442 \u043D\u0430\u0434 \u043E\u0447\u0430\u0433\u043E\u043C \u043A\u0430\u043A \u043F\u0430\u043C\u044F\u0442\u044C \u043E \u043F\u043E\u0445\u043E\u0434\u0435.`,
+        (m, w) => `${m.name} ${w.g("\u043E\u0441\u0442\u0430\u043B\u0441\u044F", "\u043E\u0441\u0442\u0430\u043B\u0430\u0441\u044C")} \u043F\u0440\u0438 \u0434\u0432\u043E\u0440\u0435: ${w.g("\u0435\u0433\u043E", "\u0435\u0451")} \u0443\u043C\u0435\u043D\u0438\u044F \u043F\u0440\u0438\u0433\u043E\u0434\u0438\u043B\u0438\u0441\u044C \u0441\u0442\u043E\u043B\u0438\u0446\u0435.`,
+        (m, w) => `${m.name} ${w.g("\u043E\u0442\u043A\u0440\u044B\u043B", "\u043E\u0442\u043A\u0440\u044B\u043B\u0430")} \u043C\u0430\u0441\u0442\u0435\u0440\u0441\u043A\u0443\u044E \u0432 ${w.town[3]}.`
+      ],
+      other: [
+        (m, w) => `${m.name} (${w.race}) ${w.g("\u043E\u0441\u0435\u043B", "\u043E\u0441\u0435\u043B\u0430")} \u0432 ${w.capital[3]}.`,
+        (m, w) => `${m.name} (${w.race}) ${w.g("\u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F", "\u0432\u0435\u0440\u043D\u0443\u043B\u0430\u0441\u044C")} \u043A \u0441\u0432\u043E\u0435\u043C\u0443 \u043D\u0430\u0440\u043E\u0434\u0443 \u0441 \u0440\u0430\u0441\u0441\u043A\u0430\u0437\u0430\u043C\u0438 \u043E \u043A\u043E\u0440\u043E\u043D\u0435.`,
+        (m, w) => `${m.name} (${w.race}) ${w.g("\u0443\u0448\u0451\u043B", "\u0443\u0448\u043B\u0430")} ${w.where} \u0438\u0441\u043A\u0430\u0442\u044C \u0441\u0432\u043E\u0435\u0439 \u0441\u0443\u0434\u044C\u0431\u044B.`
+      ]
+    },
+    // none of the eight left: those who had joined go their own ways
+    lost: [
+      (m, w) => `${m.name} (${w.race}) ${w.g("\u0434\u043E\u0431\u0440\u0430\u043B\u0441\u044F", "\u0434\u043E\u0431\u0440\u0430\u043B\u0430\u0441\u044C")} \u0434\u043E ${w.town[2]} \u0438 ${w.g("\u043E\u0441\u0435\u043B", "\u043E\u0441\u0435\u043B\u0430")} \u0442\u0430\u043C.`,
+      (m, w) => `${m.name} (${w.race}) ${w.g("\u043F\u0440\u0438\u0441\u0442\u0430\u043B", "\u043F\u0440\u0438\u0441\u0442\u0430\u043B\u0430")} \u043A \u0440\u0430\u0437\u0431\u043E\u0439\u043D\u0438\u043A\u0430\u043C \u0441 \u0431\u043E\u043B\u044C\u0448\u043E\u0439 \u0434\u043E\u0440\u043E\u0433\u0438.`,
+      (m, w) => `${m.name} (${w.race}) ${w.g("\u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F", "\u0432\u0435\u0440\u043D\u0443\u043B\u0430\u0441\u044C")} \u043A \u0441\u0432\u043E\u0435\u043C\u0443 \u043D\u0430\u0440\u043E\u0434\u0443.`,
+      (m, w) => `${m.name} (${w.race}) ${w.g("\u0443\u0448\u0451\u043B", "\u0443\u0448\u043B\u0430")} ${w.where} \u2014 \u0431\u043E\u043B\u044C\u0448\u0435 ${w.g("\u0435\u0433\u043E", "\u0435\u0451")} \u043D\u0438\u043A\u0442\u043E \u043D\u0435 \u0432\u0438\u0434\u0435\u043B.`
+    ],
+    // twenty-five years on the road: those still walking settle where they are
+    timeout: [
+      (m, w) => `${m.name} ${w.g("\u043E\u0441\u0435\u043B", "\u043E\u0441\u0435\u043B\u0430")} \u0432 ${w.town[3]} \u0438 \u0431\u043E\u043B\u044C\u0448\u0435 \u043D\u0435 ${w.g("\u0438\u0441\u043A\u0430\u043B", "\u0438\u0441\u043A\u0430\u043B\u0430")} \u043A\u043E\u0440\u043E\u043D\u044B.`,
+      (m, w) => `${m.name} ${w.g("\u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F", "\u0432\u0435\u0440\u043D\u0443\u043B\u0430\u0441\u044C")} \u0432 ${w.capital[1]} \u0441\u0442\u0430\u0440\u0438\u043A\u043E\u043C \u2014 \u0431\u0435\u0437 \u043A\u043E\u0440\u043E\u043D\u044B, \u043D\u043E \u0436\u0438\u0432\u044B\u043C.`.replace("\u0441\u0442\u0430\u0440\u0438\u043A\u043E\u043C \u2014 \u0431\u0435\u0437 \u043A\u043E\u0440\u043E\u043D\u044B, \u043D\u043E \u0436\u0438\u0432\u044B\u043C", w.g("\u0441\u0442\u0430\u0440\u0438\u043A\u043E\u043C \u2014 \u0431\u0435\u0437 \u043A\u043E\u0440\u043E\u043D\u044B, \u043D\u043E \u0436\u0438\u0432\u044B\u043C", "\u0441\u0442\u0430\u0440\u0443\u0445\u043E\u0439 \u2014 \u0431\u0435\u0437 \u043A\u043E\u0440\u043E\u043D\u044B, \u043D\u043E \u0436\u0438\u0432\u043E\u0439")),
+      (m, w) => `${m.name} \u0442\u0430\u043A \u0438 ${w.g("\u043E\u0441\u0442\u0430\u043B\u0441\u044F", "\u043E\u0441\u0442\u0430\u043B\u0430\u0441\u044C")} \u0432 \u043F\u0443\u0442\u0438: \u0433\u043E\u0432\u043E\u0440\u044F\u0442, ${w.g("\u043E\u043D", "\u043E\u043D\u0430")} \u0434\u043E \u0441\u0438\u0445 \u043F\u043E\u0440 \u0438\u0449\u0435\u0442 ${w.crownAcc}.`
+    ]
+  };
+  function fate(r, list, used) {
+    const fresh = list.filter((f2) => !used.has(f2)), f = pick4(r, fresh.length ? fresh : list);
+    used.add(f);
+    return f;
+  }
+
+  // src/campaign/ending.js
+  var cap = (s) => s[0].toUpperCase() + s.slice(1);
+  var SIDES2 = ["\u043D\u0430 \u0432\u043E\u0441\u0442\u043E\u043A", "\u043D\u0430 \u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u043A", "\u043D\u0430 \u044E\u0433", "\u043D\u0430 \u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434", "\u043D\u0430 \u0437\u0430\u043F\u0430\u0434", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440", "\u043D\u0430 \u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u043A"];
+  var cases = (t) => t ? [0, 1, 2, 3, 4].map((k) => `${townLabel(t, k)} ${t.name}`) : ["\u0440\u043E\u0434\u043D\u044B\u0435 \u043A\u0440\u0430\u044F", "\u0440\u043E\u0434\u043D\u044B\u0435 \u043A\u0440\u0430\u044F", "\u0440\u043E\u0434\u043D\u044B\u0445 \u043A\u0440\u0430\u0451\u0432", "\u0440\u043E\u0434\u043D\u044B\u0445 \u043A\u0440\u0430\u044F\u0445", "\u0440\u043E\u0434\u043D\u044B\u043C\u0438 \u043A\u0440\u0430\u044F\u043C\u0438"];
+  function words(a, K, m, r) {
+    const capital = a.towns.find((t) => t.id === K.capital && t.alive) || null, towns = K.realm ? realmTowns(a, K.realm) : [];
+    const Q = K.quest, town = towns.length ? towns[r() * towns.length | 0] : capital;
+    return {
+      g: (male, female) => m.gender === "f" ? female : male,
+      town: cases(town),
+      capital: cases(capital),
+      crown: Q?.name || "\u043A\u043E\u0440\u043E\u043D\u0430",
+      crownAcc: Q?.acc || Q?.name || "\u043A\u043E\u0440\u043E\u043D\u0443",
+      knights: RETINUE[K.people].knight[1],
+      where: SIDES2[r() * SIDES2.length | 0],
+      race: SPECIES.get(m.race)?.label || m.race
+    };
+  }
+  function crownFate(a, K) {
+    const Q = K.quest;
+    if (!Q) return null;
+    const C = Q.crown, f = Q.g !== "m";
+    if (C.state === "carried") return `${Q.name} ${f ? "\u043F\u0440\u043E\u043F\u0430\u043B\u0430" : "\u043F\u0440\u043E\u043F\u0430\u043B"} \u0432\u043C\u0435\u0441\u0442\u0435 \u0441 \u043E\u0441\u0442\u0430\u0442\u043A\u0430\u043C\u0438 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430: \u0433\u0434\u0435 ${f ? "\u043E\u043D\u0430" : "\u043E\u043D"} \u0442\u0435\u043F\u0435\u0440\u044C, \u043D\u0435 \u0437\u043D\u0430\u0435\u0442 \u043D\u0438\u043A\u0442\u043E.`;
+    if (C.state === "taken") return `${Q.name} ${f ? "\u043E\u0441\u0442\u0430\u043B\u0430\u0441\u044C" : "\u043E\u0441\u0442\u0430\u043B\u0441\u044F"} \u0443 \u0432\u0440\u0430\u0433\u043E\u0432: ${C.label}.`;
+    return `${Q.name} \u0442\u0430\u043A \u0438 ${f ? "\u043B\u0435\u0436\u0438\u0442" : "\u043B\u0435\u0436\u0438\u0442"} \u0442\u0430\u043C, \u0433\u0434\u0435 ${f ? "\u043B\u0435\u0436\u0430\u043B\u0430" : "\u043B\u0435\u0436\u0430\u043B"}: ${C.label}.`;
+  }
+  function finish2(a, K) {
+    if (K.epilogue) return;
+    const { r, done: done3 } = draw(K, "epilogue"), lines = [], Q = K.quest, E2 = EPILOGUE.crown;
+    const capital = a.towns.find((t) => t.id === K.capital && t.alive);
+    const used = /* @__PURE__ */ new Set(), tellFate = (m, list) => {
+      const w = words(a, K, m, r);
+      m.fate = fate(r, list, used)(m, w);
+      lines.push({ text: m.fate, who: [m.id] });
+    };
+    if (K.phase === "won") {
+      let friends = 0;
+      if (capital) {
+        capital.pop = Math.round(capital.pop * E2.pop);
+        capital.relic = { name: Q?.name || "\u043A\u043E\u0440\u043E\u043D\u0430", year: a.hist.year };
+      }
+      const R2 = (a.realms || []).find((x) => x.id === K.realm);
+      if (R2) {
+        R2.crown = { name: Q?.name || "\u043A\u043E\u0440\u043E\u043D\u0430", year: a.hist.year };
+        for (const o of a.realms) {
+          const rel2 = o.id !== R2.id && relation(a, R2.id, o.id);
+          if (rel2) {
+            rel2.att = Math.min(E2.attMax, rel2.att + E2.att);
+            friends++;
+          }
+        }
+      }
+      lines.push({ text: `\u0412 ${capital ? `${townLabel(capital, 3)} ${capital.name}` : "\u0441\u0442\u043E\u043B\u0438\u0446\u0435"} \u043F\u0440\u0430\u0437\u0434\u043D\u0443\u044E\u0442 \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0435\u043D\u0438\u0435 \u043A\u043E\u0440\u043E\u043D\u044B. \u0421\u043B\u0430\u0432\u0430 \u0434\u0435\u0440\u0436\u0430\u0432\u044B ${R2 ? realmLabelGen(a, R2.id) : ""} \u0440\u0430\u0441\u0442\u0451\u0442${friends ? `; ${friends === 1 ? "\u0441\u043E\u0441\u0435\u0434\u0438 \u0438\u0449\u0443\u0442" : "\u0441\u043E\u0441\u0435\u0434\u043D\u0438\u0435 \u0434\u0435\u0440\u0436\u0430\u0432\u044B \u0438\u0449\u0443\u0442"} \u0441 \u043D\u0435\u0439 \u0434\u0440\u0443\u0436\u0431\u044B` : ""}, \u0432 \u0441\u0442\u043E\u043B\u0438\u0446\u0443 \u0442\u044F\u043D\u0443\u0442\u0441\u044F \u043D\u043E\u0432\u044B\u0435 \u0436\u0438\u0442\u0435\u043B\u0438.`.replace("\u0434\u0435\u0440\u0436\u0430\u0432\u044B  \u0440\u0430\u0441\u0442\u0451\u0442", "\u0434\u0435\u0440\u0436\u0430\u0432\u044B \u0440\u0430\u0441\u0442\u0451\u0442"), world: true });
+      for (const m of K.members.filter((x) => x.alive)) tellFate(m, isCore(m) ? FATES.won[m.role === "knight" ? "knight" : "squire"] : FATES.won.other);
+      const fallen = K.members.filter((m) => isCore(m) && m.died);
+      if (fallen.length) lines.push({ text: `\u0423 \u0432\u043E\u0440\u043E\u0442 ${capital ? `${townLabel(capital, 2)} ${capital.name}` : "\u0441\u0442\u043E\u043B\u0438\u0446\u044B"} \u043F\u043E\u0441\u0442\u0430\u0432\u0438\u043B\u0438 \u043A\u0430\u043C\u0435\u043D\u044C \u0432 \u043F\u0430\u043C\u044F\u0442\u044C \u043E \u0442\u0435\u0445, \u043A\u0442\u043E \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F: ${fallen.map((m) => `${m.name}, ${rank(K, m)}`).join("; ")}.`, who: fallen.map((m) => m.id) });
+    } else {
+      const survivors = K.phase === "lost" ? K.members.filter((m) => (K.lostWith || []).includes(m.id)) : K.members.filter((m) => m.alive);
+      for (const m of survivors) tellFate(m, K.phase === "lost" ? FATES.lost : FATES.timeout);
+      if (K.phase === "lost" && !survivors.length) lines.push({ text: "\u0418\u0437 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0430 \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F \u043D\u0438\u043A\u0442\u043E; \u043E \u0442\u043E\u043C, \u0433\u0434\u0435 \u043E\u043D \u0441\u0433\u0438\u043D\u0443\u043B, \u0440\u0430\u0441\u0441\u043A\u0430\u0437\u0430\u043B\u0438 \u043B\u0438\u0448\u044C \u043A\u0443\u043F\u0446\u044B \u043D\u0430 \u0434\u043E\u0440\u043E\u0433\u0430\u0445." });
+      const cf2 = crownFate(a, K);
+      if (cf2) lines.push({ text: cf2, world: true });
+      lines.push({ text: `${capital ? `\u0412 ${townLabel(capital, 3)} ${capital.name}` : "\u041D\u0430 \u0440\u043E\u0434\u0438\u043D\u0435"} \u0434\u043E\u043B\u0433\u043E \u0436\u0434\u0430\u043B\u0438 \u043A\u0430\u0440\u0430\u0432\u0430\u043D. ${K.realm ? `${cap(realmLabel(a, K.realm))} \u043F\u043E\u043C\u043D\u044F\u0442` : "\u041F\u043E\u043C\u043D\u044F\u0442"} \u0443\u0448\u0435\u0434\u0448\u0438\u0445: ${K.members.filter(isCore).map((m) => m.name).join(", ")}.`, world: true });
+    }
+    done3();
+    K.epilogue = { left: EPILOGUE.seasons, queue: lines, done: false };
+  }
+  function stepEpilogue(a, K) {
+    const E2 = K.epilogue;
+    if (!E2 || E2.done) return;
+    if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;
+    K.track = [];
+    stepHistory(a);
+    E2.left--;
+    const n = E2.left <= 0 ? E2.queue.length : Math.min(EPILOGUE.perSeason, Math.ceil(E2.queue.length / Math.max(1, E2.left + 1)));
+    for (const l of E2.queue.splice(0, n)) say2(a, K, l.text, "epilogue", !!l.world, l.who);
+    if (E2.left <= 0) {
+      E2.done = true;
+      archive(a, K);
+    }
+  }
+  function archive(a, K) {
+    const Q = K.quest;
+    (a.campaignsDone || (a.campaignsDone = [])).push({
+      from: K.capitalFrom || K.capitalName,
+      capital: K.capital,
+      people: K.people,
+      realm: K.realm,
+      phase: K.phase,
+      crown: Q?.name || null,
+      clues: Q?.found ?? 0,
+      started: K.started,
+      ended: { year: a.hist.year, season: a.hist.season },
+      days: K.day,
+      members: K.members.map((m) => ({ name: m.name, gender: m.gender, race: m.race, role: m.role, core: isCore(m), rank: rank(K, m), died: m.died || null, left: m.left || null, fate: m.fate || null })),
+      log: K.log.map((l) => ({ day: l.day, year: l.year, season: l.season, kind: l.kind, text: l.text }))
+    });
+  }
+
+  // src/campaign/chronicle.js
+  var SEASON_LIST3 = SEASONS.all();
+  var season2 = (s) => SEASON_LIST3[s % SEASON_LIST3.length].label.toLowerCase();
+  var lineTopic = (l) => (CHRONICLE.kinds[l.kind] || ["road", "info"])[0];
+  var lineLevel = (l) => (CHRONICLE.kinds[l.kind] || ["road", "info"])[1];
+  var dateOf = (l) => l.kind === "epilogue" ? `\u0433\u043E\u0434 ${l.year}, ${season2(l.season)}` : `\u0433\u043E\u0434 ${l.year}, ${season2(l.season)}, \u0434\u0435\u043D\u044C ${l.day + 1}`;
+  function readLines(log2, { hidden = /* @__PURE__ */ new Set(), member: member2 = null } = {}) {
+    const out = [];
+    for (const l of log2) {
+      if (hidden.has(lineTopic(l))) continue;
+      if (member2 && !(l.who?.includes(member2.id) || l.text.includes(member2.name))) continue;
+      const prev = out.at(-1);
+      if (prev && prev.line.kind === l.kind && CHRONICLE.fold.includes(l.kind)) {
+        prev.n++;
+        prev.last = l;
+        continue;
+      }
+      out.push({ line: l, n: 1, last: l });
+    }
+    return out;
+  }
+  function chronicleText(a, K) {
+    const P = WORLD_PEOPLES.get(K.people);
+    const rankOf = (m) => m.rank || (K.log ? rank(K, m) : m.role);
+    const out = [];
+    out.push(`\u041B\u0415\u0422\u041E\u041F\u0418\u0421\u042C \u041F\u041E\u0425\u041E\u0414\u0410 \u0418\u0417 ${(K.capitalFrom || K.from || "").toUpperCase()}`, "");
+    out.push(`\u041C\u0438\u0440: ${a.cfg?.name || `\u0441\u0438\u0434 ${a.cfg?.seed}`}. \u041D\u0430\u0440\u043E\u0434: ${P?.label || K.people}.`);
+    if (K.started) out.push(`\u0412\u044B\u0448\u043B\u0438: ${K.started.year}-\u0439 \u0433\u043E\u0434, ${season2(K.started.season)}.`);
+    const crown = K.quest?.name || K.crown;
+    if (crown) out.push(`\u041F\u043E\u0440\u0443\u0447\u0435\u043D\u0438\u0435: \u043D\u0430\u0439\u0442\u0438 ${K.quest?.acc || crown}.${K.quest ? ` ${K.quest.story}` : ""}`);
+    const result = { won: "\u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u0441 \u043A\u043E\u0440\u043E\u043D\u043E\u0439", lost: "\u043F\u043E\u0433\u0438\u0431\u043B\u0438 \u0432\u0441\u0435, \u043A\u0442\u043E \u0432\u044B\u0448\u0435\u043B \u0438\u0437 \u0441\u0442\u043E\u043B\u0438\u0446\u044B", timeout: "\u0437\u0430 \u0434\u0432\u0430\u0434\u0446\u0430\u0442\u044C \u043F\u044F\u0442\u044C \u043B\u0435\u0442 \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C", out: "\u0432 \u043F\u0443\u0442\u0438", back: "\u043D\u0435\u0441\u0443\u0442 \u043A\u043E\u0440\u043E\u043D\u0443 \u0434\u043E\u043C\u043E\u0439" }[K.phase] || K.phase;
+    out.push(`\u0418\u0442\u043E\u0433: ${result}; \u0432 \u043F\u0443\u0442\u0438 ${Math.round(K.day ?? K.days ?? 0)} \u0434\u043D\u0435\u0439 (${((K.day ?? K.days ?? 0) / 120).toFixed(1)} \u0433.).`, "");
+    out.push("\u041E\u0442\u0440\u044F\u0434:");
+    for (const m of K.members) {
+      const core2 = m.core ?? ["knight", "squire"].includes(m.role);
+      const end = m.fate || (m.died ? `${m.died.why}, ${m.died.year}-\u0439 \u0433\u043E\u0434` : m.left ? `\u0443\u0448\u0451\u043B${m.gender === "f" ? "\u0430" : ""}, ${m.left.year}-\u0439 \u0433\u043E\u0434` : m.alive ? "\u0436\u0438\u0432" + (m.gender === "f" ? "\u0430" : "") : "");
+      out.push(`  ${m.name} \u2014 ${rankOf(m)}${core2 ? "" : " (\u043F\u0440\u0438\u0441\u0442\u0430\u043B \u0432 \u043F\u0443\u0442\u0438)"}, ${SPECIES.get(m.race)?.label || m.race}${end ? `: ${end}` : ""}`);
+    }
+    out.push("", "\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C:");
+    for (const l of K.log) out.push(`${dateOf(l)}. ${l.text}`);
+    return out.join("\n") + "\n";
+  }
+
   // src/campaign/index.js
   function stepCampaign(a) {
     const K = a.campaign;
-    if (!K || ended(K)) return false;
+    if (!K) return false;
+    if (ended(K)) {
+      if (!K.epilogue) finish2(a, K);
+      if (!K.epilogue.done) stepEpilogue(a, K);
+      return !finished(K);
+    }
     if (!a.hist) startHistory(a);
     if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;
     K.track = [];
     stepHistory(a, () => caravanDay2(a, K, K.day));
-    return !ended(K);
+    if (ended(K)) finish2(a, K);
+    return !finished(K);
   }
 
   // src/ui/campaignView.js
   var itemShort = (id) => ITEMS.has(id) ? ITEMS.get(id).short : id;
-  var SEASON_LIST3 = SEASONS.all();
+  var SEASON_LIST4 = SEASONS.all();
   var SPEEDS2 = [
     { id: "x1", label: "\xD71", wait: 3e3 },
     { id: "x4", label: "\xD74", wait: 750 },
@@ -24790,7 +25080,20 @@ dd.q4{color:#c58cff;font-weight:600}
   var LOCAL_KIND = { night: "\u041D\u043E\u0447\u044C", ambush: "\u0417\u0430\u0441\u0430\u0434\u0430 \u043D\u0430 \u043C\u0430\u0440\u0448\u0435", stop: "\u0421\u0442\u043E\u044F\u043D\u043A\u0430", guard: "\u0428\u0442\u0443\u0440\u043C" };
   var LAYERS = [["relief", "\u0420\u0435\u043B\u044C\u0435\u0444"], ["biomes", "\u0411\u0438\u043E\u043C\u044B"], ["peoples", "\u041D\u0430\u0440\u043E\u0434\u044B"], ["fauna", "\u0417\u0432\u0435\u0440\u0438"]];
   var PHASE = { out: "\u0438\u0449\u0443\u0442 \u043A\u043E\u0440\u043E\u043D\u0443", back: "\u043D\u0435\u0441\u0443\u0442 \u043A\u043E\u0440\u043E\u043D\u0443 \u0434\u043E\u043C\u043E\u0439", won: "\u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C \u0441 \u043A\u043E\u0440\u043E\u043D\u043E\u0439", lost: "\u043F\u043E\u0433\u0438\u0431\u043B\u0438", timeout: "\u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C" };
-  var seasonWord = (s) => SEASON_LIST3[s % SEASON_LIST3.length].label.toLowerCase();
+  var seasonWord = (s) => SEASON_LIST4[s % SEASON_LIST4.length].label.toLowerCase();
+  function loadHidden() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem("forest.campTopics") || "[]"));
+    } catch (e) {
+      return /* @__PURE__ */ new Set();
+    }
+  }
+  function saveHidden(set) {
+    try {
+      localStorage.setItem("forest.campTopics", JSON.stringify([...set]));
+    } catch (e) {
+    }
+  }
   var CampaignView = class extends AtlasView {
     // the «Мир» screen's controls are not built here: only the campaign's
     build() {
@@ -24873,6 +25176,50 @@ dd.q4{color:#c58cff;font-weight:600}
       });
       $("campLocalSkip").addEventListener("click", () => this.endLocal());
       this.localR = new Renderer($("campLocal"));
+      this.hidden = loadHidden();
+      this.who = null;
+      this.logKey = "";
+      const tp = $("campTopics");
+      tp.innerHTML = CHRONICLE.topics.map((t) => `<button type="button" data-val="${t.id}" aria-pressed="${!this.hidden.has(t.id)}">${t.label}</button>`).join("");
+      tp.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        const id = b.dataset.val;
+        if (this.hidden.has(id)) this.hidden.delete(id);
+        else this.hidden.add(id);
+        b.setAttribute("aria-pressed", String(!this.hidden.has(id)));
+        saveHidden(this.hidden);
+        this.renderLog();
+      });
+      $("campRoster").addEventListener("click", (e) => {
+        const row = e.target.closest(".rm");
+        if (!row) return;
+        const id = +row.dataset.id;
+        this.who = this.who === id ? null : id;
+        this.renderSide();
+      });
+      $("campWho").addEventListener("click", (e) => {
+        if (e.target.closest("button")) {
+          this.who = null;
+          this.renderSide();
+        }
+      });
+      $("campExport").addEventListener("click", () => {
+        const K = this.atlas?.campaign;
+        if (K) offerText(latinTitle(`letopis-${K.capitalName}-${K.started?.year ?? ""}`), chronicleText(this.atlas, K));
+      });
+      $("campPast").addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        const P = this.atlas?.campaignsDone?.[+b.dataset.k];
+        if (P) offerText(latinTitle(`letopis-${P.from}-${P.started?.year ?? ""}`), chronicleText(this.atlas, P));
+      });
+      $("campAgain").addEventListener("click", () => {
+        this.halt();
+        this.capPick = null;
+        this.setupMode();
+        this.draw();
+      });
     }
     dragged() {
       if (this.follow) {
@@ -24911,7 +25258,7 @@ dd.q4{color:#c58cff;font-weight:600}
       this.queue = [];
       clearTimeout(this.timer);
       this.timer = 0;
-      if (this.atlas?.campaign && !ended(this.atlas.campaign)) this.paused = true;
+      if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true;
       this.syncRun();
     }
     // ── setup: a world, a capital
@@ -24928,7 +25275,7 @@ dd.q4{color:#c58cff;font-weight:600}
         box.innerHTML = "<small>\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D\u043D\u044B\u0445 \u043C\u0438\u0440\u043E\u0432: \u0441\u043E\u0442\u0432\u043E\u0440\u0438\u0442\u0435 \u043C\u0438\u0440 \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041C\u0438\u0440\xBB \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435 \u0435\u0433\u043E.</small>";
         return;
       }
-      box.innerHTML = list.map((r) => `<div class="sv${r.id === this.worldId ? " cur" : ""}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> \xB7 ${esc(r.sizeLabel)} \xB7 ${r.year} \u043B\u0435\u0442` + (r.campaign ? `<br><small>\u043F\u043E\u0445\u043E\u0434 \u0438\u0437 ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} \u043B\u0435\u0442 \u0432 \u043F\u0443\u0442\u0438</small>` : `<br><small>\u0433\u043E\u0440\u043E\u0434\u043E\u0432 ${r.towns} \xB7 \u0434\u0435\u0440\u0436\u0430\u0432 ${r.realms}${r.done ? "" : " \xB7 \u0438\u0441\u0442\u043E\u0440\u0438\u044F \u043D\u0435 \u0434\u043E\u0436\u0438\u0442\u0430"}</small>`) + `</span><button type="button">${r.campaign && !["won", "lost", "timeout"].includes(r.campaign.phase) ? "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C" : "\u041E\u0442\u043A\u0440\u044B\u0442\u044C"}</button></div>`).join("");
+      box.innerHTML = list.map((r) => `<div class="sv${r.id === this.worldId ? " cur" : ""}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> \xB7 ${esc(r.sizeLabel)} \xB7 ${r.year} \u043B\u0435\u0442` + (r.campaign ? `<br><small>\u043F\u043E\u0445\u043E\u0434 \u0438\u0437 ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} \u043B\u0435\u0442 \u0432 \u043F\u0443\u0442\u0438${r.campaigns ? ` \xB7 \u043E\u043A\u043E\u043D\u0447\u0435\u043D\u043E \u043F\u043E\u0445\u043E\u0434\u043E\u0432: ${r.campaigns}` : ""}</small>` : `<br><small>\u0433\u043E\u0440\u043E\u0434\u043E\u0432 ${r.towns} \xB7 \u0434\u0435\u0440\u0436\u0430\u0432 ${r.realms}${r.done ? "" : " \xB7 \u0438\u0441\u0442\u043E\u0440\u0438\u044F \u043D\u0435 \u0434\u043E\u0436\u0438\u0442\u0430"}</small>`) + `</span><button type="button">${r.campaign && !["won", "lost", "timeout"].includes(r.campaign.phase) ? "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C" : "\u041E\u0442\u043A\u0440\u044B\u0442\u044C"}</button></div>`).join("");
     }
     async openFromLibrary(id, name) {
       this.halt();
@@ -24963,10 +25310,14 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     setupMode() {
+      this.choosing = true;
       $("campSetup").hidden = false;
       $("campRun").hidden = true;
       $("campTitle").textContent = this.atlas ? this.worldName : "\u041A\u0430\u043C\u043F\u0430\u043D\u0438\u044F";
       $("campCapsField").hidden = !this.atlas;
+      const past = this.atlas?.campaignsDone || [];
+      $("campPastField").hidden = !past.length;
+      $("campPast").innerHTML = past.map((P, k) => `<div class="sv"><span class="t"><b>\u041F\u043E\u0445\u043E\u0434 \u0438\u0437 ${esc(P.from)}</b> \xB7 ${PHASE[P.phase] || P.phase}<br><small>${P.started?.year ?? "?"}\u2013${P.ended?.year ?? "?"} \u0433\u043E\u0434 \xB7 ${P.crown ? esc(P.crown) : ""} \xB7 \u0432\u0435\u0440\u043D\u0443\u043B\u0438\u0441\u044C ${P.members.filter((m) => m.core && !m.died).length} \u0438\u0437 ${P.members.filter((m) => m.core).length}</small></span><button type="button" data-k="${k}">\u0412 \u0444\u0430\u0439\u043B</button></div>`).join("");
       this.renderCaps();
       this.renderLog();
     }
@@ -24987,12 +25338,15 @@ dd.q4{color:#c58cff;font-weight:600}
       if (this.follow) this.closeUp();
       this.saveId = null;
       this.logShown = 0;
+      this.logKey = "";
+      this.who = null;
       this.paused = false;
       this.runMode();
       this.run();
     }
     // ── the walk
     runMode() {
+      this.choosing = false;
       $("campSetup").hidden = true;
       $("campRun").hidden = false;
       const K = this.atlas.campaign;
@@ -25003,7 +25357,8 @@ dd.q4{color:#c58cff;font-weight:600}
       $("campLegend").innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(",")})`, "\u043A\u0430\u0440\u0430\u0432\u0430\u043D (\u0444\u043B\u0430\u0436\u043E\u043A)") + sw("rgba(255,215,110,0.8)", "\u043F\u0443\u0442\u044C \u043F\u0435\u0448\u043A\u043E\u043C (\u043F\u0443\u043D\u043A\u0442\u0438\u0440), \u0434\u043E\u043C (\u043A\u043E\u043B\u044C\u0446\u043E)") + sw("rgba(255,211,106,0.75)", "\u0433\u0434\u0435 \u0438\u0441\u043A\u0430\u0442\u044C \u0441\u043B\u0435\u0434 (\u043A\u0440\u0443\u0433), \u043D\u0430\u0439\u0434\u0435\u043D\u043D\u044B\u0439 \u0441\u043B\u0435\u0434 (\u0440\u043E\u043C\u0431: \u0436\u0451\u043B\u0442\u044B\u0439 \u2014 \u043A \u043D\u0435\u043C\u0443 \u0438\u0434\u0443\u0442, \u0441\u0435\u0440\u044B\u0439 \u2014 \u0432\u0437\u044F\u0442)") + sw("rgba(240,110,80,0.8)", "\u0433\u0434\u0435-\u0442\u043E \u0437\u0434\u0435\u0441\u044C \u043A\u043E\u0440\u043E\u043D\u0430 (\u043A\u0440\u0443\u0433), \u043A\u043E\u0440\u043E\u043D\u0430 (\u0437\u0443\u0431\u0446\u044B; \u043A\u0440\u0430\u0441\u043D\u0430\u044F \u2014 \u0443 \u0432\u0440\u0430\u0433\u043E\u0432)") + sw("rgba(240,160,90,0.9)", "\u043F\u0443\u0442\u044C \u0441 \u043A\u043E\u043B\u0451\u0441\u0430\u043C\u0438 \u2014 \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C (\u0434\u043B\u0438\u043D\u043D\u044B\u0439 \u0448\u0442\u0440\u0438\u0445)") + sw("rgb(40,42,36)", "\u0442\u0443\u043C\u0430\u043D: \u0447\u0435\u0433\u043E \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u043D\u0435 \u0437\u043D\u0430\u0435\u0442") + "<b>\u043A\u0430\u0440\u0442\u0430</b> \u2014 \u043A\u0430\u043A \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041C\u0438\u0440\xBB: \u0433\u043E\u0440\u043E\u0434\u0430, \u0434\u043E\u0440\u043E\u0433\u0438, \u043B\u043E\u0433\u043E\u0432\u0430, \u043E\u0442\u0440\u044F\u0434\u044B \u0438 \u0432\u043E\u0439\u0441\u043A\u0430" + sw("rgb(230,80,60)", "\u0443\u0433\u0440\u043E\u0437\u0430 \u0440\u044F\u0434\u043E\u043C (\u0442\u0440\u0435\u0443\u0433\u043E\u043B\u044C\u043D\u0438\u043A; \u0442\u0435\u043C\u043D\u0435\u0435 \u2014 \u0441\u044B\u0442\u0430 \u0438\u043B\u0438 \u043D\u0435 \u0437\u0430\u043C\u0435\u0442\u0438\u043B\u0430)") + sw("rgb(235,200,90)", "\u0442\u043E\u0440\u0433\u043E\u0432\u044B\u0439 \u043E\u0431\u043E\u0437") + sw("rgb(140,200,110)", "\u0441\u0442\u0430\u0434\u043E") + sw("rgba(255,240,200,0.3)", "\u043A\u043E\u043B\u044C\u0446\u043E \u043F\u0443\u0437\u044B\u0440\u044F");
     }
     syncRun() {
-      const K = this.atlas?.campaign, done3 = !K || ended(K);
+      const K = this.atlas?.campaign, done3 = !K || finished(K);
+      $("campAgain").hidden = !done3 || !K;
       $("campPause").hidden = done3;
       $("campSpeed").hidden = done3;
       $("campPause").textContent = this.paused ? "\u0414\u0430\u043B\u044C\u0448\u0435" : "\u041F\u0430\u0443\u0437\u0430";
@@ -25013,7 +25368,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const a = this.atlas;
       clearTimeout(this.timer);
       const next = () => {
-        if (a !== this.atlas || this.paused || !a.campaign || ended(a.campaign)) {
+        if (a !== this.atlas || this.paused || !a.campaign || finished(a.campaign)) {
           this.syncRun();
           return;
         }
@@ -25024,7 +25379,7 @@ dd.q4{color:#c58cff;font-weight:600}
         const sp = SPEEDS2.find((S) => S.id === this.speed) || SPEEDS2[0], t0 = Date.now(), d0 = a.campaign.day;
         do {
           stepCampaign(a);
-        } while (sp.budget && !ended(a.campaign) && Date.now() - t0 < sp.budget);
+        } while (sp.budget && !finished(a.campaign) && Date.now() - t0 < sp.budget);
         this.tickAt = performance.now();
         this.tickWait = sp.budget ? 0 : sp.wait;
         const L = LOCAL[this.speed], K = a.campaign, n = Math.max(1, K.track.length - 1);
@@ -25032,7 +25387,7 @@ dd.q4{color:#c58cff;font-weight:600}
         this.renderSide();
         this.draw();
         this.animate();
-        if (!ended(a.campaign)) this.timer = setTimeout(next, sp.wait);
+        if (!finished(a.campaign)) this.timer = setTimeout(next, sp.wait);
         else this.syncRun();
       };
       this.timer = setTimeout(next, 30);
@@ -25135,7 +25490,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     overlay(a, px, cam) {
       const K = a.campaign, k = this.unit(a);
-      if (!K) {
+      if (!K || this.choosing) {
         for (const c of capitals(a)) {
           const r3 = (c.town === this.capPick ? 2.4 : 1.4) * Math.max(0.6, k);
           px.strokeStyle = c.town === this.capPick ? "#ffd36a" : "rgba(255,250,235,0.7)";
@@ -25282,31 +25637,38 @@ dd.q4{color:#c58cff;font-weight:600}
       $("campStatus").innerHTML = `<dt>\u0414\u0430\u0442\u0430</dt><dd>\u0433\u043E\u0434 ${H2.year}, ${seasonWord(H2.season)}</dd><dt>\u0412 \u043F\u0443\u0442\u0438</dt><dd>${K.day} ${plural(K.day, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} (${(K.day / 120).toFixed(1)} \u0433.)</dd><dt>\u0427\u0442\u043E \u0434\u0435\u043B\u0430\u044E\u0442</dt><dd>${plan2}</dd>` + (K.quest ? (() => {
         const Q = K.quest, C = Q.crown, st = C.state === "carried" ? `\u043D\u0435\u0441\u0451\u0442 ${esc(K.members.find((m) => m.id === C.carrier)?.name || "\u2014")}` : C.state === "taken" ? "\u0443 \u0432\u0440\u0430\u0433\u043E\u0432: \u043E\u0442\u0431\u0438\u0442\u044C" : C.exact || C.seen ? `\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u043E \u0433\u0434\u0435: ${esc(C.label)}` : C.area ? `\u0433\u0434\u0435-\u0442\u043E \u0432 \u043A\u0440\u0443\u0433\u0435 ${Math.round(C.area.r)} \u043A\u043B.` : "\u0433\u0434\u0435 \u2014 \u043D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u043E";
         return `<dt>\u041A\u043E\u0440\u043E\u043D\u0430</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>\u0421\u043B\u0435\u0434\u044B</dt><dd>\u043D\u0430\u0439\u0434\u0435\u043D\u043E ${Q.found} \u0438\u0437 ${Q.clues.length}${K.stats.storms ? ` \xB7 \u0448\u0442\u0443\u0440\u043C\u043E\u0432 ${K.stats.storms}` : ""}</dd>`;
-      })() : "") + `<dt>\u0415\u0434\u0430</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \xB7 \u043D\u0430 ${need ? (K.food / need).toFixed(1) : 0} \u0434\u043D.</dd><dt>\u0413\u0440\u0443\u0437</dt><dd>${Math.round(load2(K))} \u0438\u0437 ${capacity(K)} \u043C\u0435\u0441\u0442</dd><dt>\u041E\u0431\u043E\u0437</dt><dd class="nb">${esc(baggageText(K))}</dd>` + (K.route ? `<dt>\u041F\u0443\u0442\u044C</dt><dd>${K.route === "road" ? "\u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C" : "\u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A, \u043D\u0430\u043B\u0435\u0433\u043A\u0435"}</dd>` : "") + `<dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${K.gold} \u0437\u043E\u043B.</dd><dt>\u0412 \u0433\u043E\u0440\u043E\u0434\u0430\u0445</dt><dd>${K.stats.towns || 0} \u0440\u0430\u0437</dd><dt>\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C</dt><dd>${pace(a, K, SEASON_LIST3[H2.season].id).toFixed(2)} \u043A\u043B./\u0434\u0435\u043D\u044C</dd><dt>\u041F\u0440\u043E\u0439\u0434\u0435\u043D\u043E</dt><dd>${Math.round(K.stats.walked)} \u043A\u043B\u0435\u0442\u043E\u043A</dd><dt>\u0411\u043E\u0451\u0432</dt><dd>${K.stats.fights} \xB7 \u043E\u0442\u0431\u0438\u043B\u0438\u0441\u044C ${K.stats.won} \xB7 \u0437\u0430\u0441\u0430\u0434 ${K.stats.ambushes || 0}</dd>` + (() => {
+      })() : "") + `<dt>\u0415\u0434\u0430</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \xB7 \u043D\u0430 ${need ? (K.food / need).toFixed(1) : 0} \u0434\u043D.</dd><dt>\u0413\u0440\u0443\u0437</dt><dd>${Math.round(load2(K))} \u0438\u0437 ${capacity(K)} \u043C\u0435\u0441\u0442</dd><dt>\u041E\u0431\u043E\u0437</dt><dd class="nb">${esc(baggageText(K))}</dd>` + (K.route ? `<dt>\u041F\u0443\u0442\u044C</dt><dd>${K.route === "road" ? "\u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C" : "\u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A, \u043D\u0430\u043B\u0435\u0433\u043A\u0435"}</dd>` : "") + `<dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${K.gold} \u0437\u043E\u043B.</dd><dt>\u0412 \u0433\u043E\u0440\u043E\u0434\u0430\u0445</dt><dd>${K.stats.towns || 0} \u0440\u0430\u0437</dd><dt>\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C</dt><dd>${pace(a, K, SEASON_LIST4[H2.season].id).toFixed(2)} \u043A\u043B./\u0434\u0435\u043D\u044C</dd><dt>\u041F\u0440\u043E\u0439\u0434\u0435\u043D\u043E</dt><dd>${Math.round(K.stats.walked)} \u043A\u043B\u0435\u0442\u043E\u043A</dd><dt>\u0411\u043E\u0451\u0432</dt><dd>${K.stats.fights} \xB7 \u043E\u0442\u0431\u0438\u043B\u0438\u0441\u044C ${K.stats.won} \xB7 \u0437\u0430\u0441\u0430\u0434 ${K.stats.ambushes || 0}</dd>` + (() => {
         const T2 = K.bubble?.things || [], n = (m) => T2.filter((t) => THINGS[t.kind].mood === m).length;
         return `<dt>\u0420\u044F\u0434\u043E\u043C</dt><dd>${[n("hostile") ? `\u0443\u0433\u0440\u043E\u0437 ${n("hostile")}` : "", n("trade") ? `\u043E\u0431\u043E\u0437\u043E\u0432 ${n("trade")}` : "", n("game") ? `\u0441\u0442\u0430\u0434 ${n("game")}` : ""].filter(Boolean).join(" \xB7 ") || "\u0442\u0438\u0445\u043E"}</dd>`;
       })();
       $("campRoster").innerHTML = [...K.members].sort((p, q) => q.alive - p.alive || isCore(q) - isCore(p)).map((m) => {
         const sp = SPECIES.get(m.race), rk = rank(K, m);
         const mount = m.ride ? K.beasts.find((b) => b.id === m.ride) : null, extra = [mount ? `\u0432\u0435\u0440\u0445\u043E\u043C: ${BEASTS[mount.kind].label}` : "", (m.back ?? 1) > 1 ? "\u0441 \u043A\u043E\u0440\u043E\u0431\u043E\u043C" : ""].filter(Boolean).join(", ");
-        return `<div class="rm${m.alive ? "" : " dead"}"><span><b>${esc(m.name)}</b> \xB7 ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ""}</span><span class="hp"><i class="${m.hp < 0.4 ? "low" : ""}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span><small>${esc(raceLabel(sp, m))} \xB7 ${m.gear.hand.map(itemShort).join(", ")} \xB7 ${itemShort(m.gear.body)}${m.alive ? m.contract ? ` \xB7 \u043F\u043E \u043D\u0430\u0439\u043C\u0443 \u0434\u043E ${m.contract.until + 1}-\u0433\u043E \u0434\u043D\u044F` : m.loyalty != null ? ` \xB7 \u0432\u0435\u0440\u043D\u043E\u0441\u0442\u044C ${Math.round(m.loyalty * 100)}%` : "" : m.died ? ` \xB7 ${esc(m.died.why)}, ${m.died.year}-\u0439 \u0433\u043E\u0434` : ` \xB7 \u0443\u0448\u0451\u043B${m.gender === "f" ? "\u0430" : ""}, ${m.left?.year ?? ""}-\u0439 \u0433\u043E\u0434`}</small></div>`;
+        return `<div class="rm${m.alive ? "" : " dead"}${this.who === m.id ? " pick" : ""}" data-id="${m.id}" title="\u0421\u0442\u0440\u043E\u043A\u0438 \u043B\u0435\u0442\u043E\u043F\u0438\u0441\u0438 \u043E ${esc(m.name)}"><span><b>${esc(m.name)}</b> \xB7 ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ""}</span><span class="hp"><i class="${m.hp < 0.4 ? "low" : ""}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span><small>${esc(raceLabel(sp, m))} \xB7 ${m.gear.hand.map(itemShort).join(", ")} \xB7 ${itemShort(m.gear.body)}${m.fate ? ` \xB7 ${esc(m.fate)}` : m.alive ? m.contract ? ` \xB7 \u043F\u043E \u043D\u0430\u0439\u043C\u0443 \u0434\u043E ${m.contract.until + 1}-\u0433\u043E \u0434\u043D\u044F` : m.loyalty != null ? ` \xB7 \u0432\u0435\u0440\u043D\u043E\u0441\u0442\u044C ${Math.round(m.loyalty * 100)}%` : "" : m.died ? ` \xB7 ${esc(m.died.why)}, ${m.died.year}-\u0439 \u0433\u043E\u0434` : ` \xB7 \u0443\u0448\u0451\u043B${m.gender === "f" ? "\u0430" : ""}, ${m.left?.year ?? ""}-\u0439 \u0433\u043E\u0434`}</small></div>`;
       }).join("");
       this.renderLog();
     }
+    // the chronicle: hidden themes left out, one member's lines only, a run of repeating lines folded into one
     renderLog() {
       const box = $("campLog"), K = this.atlas?.campaign;
       if (!K) {
         box.innerHTML = '<small class="muted">\u041B\u0435\u0442\u043E\u043F\u0438\u0441\u044C \u043D\u0430\u0447\u043D\u0451\u0442\u0441\u044F, \u043A\u043E\u0433\u0434\u0430 \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u0432\u044B\u0441\u0442\u0443\u043F\u0438\u0442.</small>';
-        this.logShown = 0;
+        this.logKey = "";
+        $("campWho").hidden = true;
+        $("campExport").disabled = true;
         return;
       }
+      $("campExport").disabled = false;
+      const m = this.who != null ? K.members.find((x) => x.id === this.who) : null;
+      $("campWho").hidden = !m;
+      if (m) $("campWho").innerHTML = `\u0422\u043E\u043B\u044C\u043A\u043E \u043E ${esc(m.name)}<button type="button">\u0432\u0441\u0435 \u0441\u0442\u0440\u043E\u043A\u0438</button>`;
+      const key3 = `${K.log.length}:${[...this.hidden].join(",")}:${this.who}`;
+      if (key3 === this.logKey) return;
+      this.logKey = key3;
       const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
-      if (this.logShown === 0) box.innerHTML = "";
-      if (K.log.length > this.logShown) {
-        box.insertAdjacentHTML("beforeend", K.log.slice(this.logShown).map((l) => `<div><small>\u0433\u043E\u0434 ${l.year}, ${seasonWord(l.season)}, \u0434\u0435\u043D\u044C ${l.day + 1}</small> ${esc(l.text)}</div>`).join(""));
-        this.logShown = K.log.length;
-      }
-      if (atEnd) box.scrollTop = box.scrollHeight;
+      box.innerHTML = readLines(K.log, { hidden: this.hidden, member: m }).map(({ line: l, n, last: last2 }) => `<div class="lv-${lineLevel(l)}"><small>${dateOf(l)}</small> ${esc(l.text)}${n > 1 ? ` <span class="fold">\u0438 \u0435\u0449\u0451 ${n - 1} ${plural(n - 1, "\u0442\u0430\u043A\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430", "\u0442\u0430\u043A\u0438\u0435 \u0441\u0442\u0440\u043E\u043A\u0438", "\u0442\u0430\u043A\u0438\u0445 \u0441\u0442\u0440\u043E\u043A")}, \u0434\u043E ${last2.day + 1}-\u0433\u043E \u0434\u043D\u044F</span>` : ""}</div>`).join("") || '<small class="muted">\u041D\u0435\u0442 \u0441\u0442\u0440\u043E\u043A \u043F\u043E \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u043C \u0442\u0435\u043C\u0430\u043C.</small>';
+      if (atEnd || !this.logShown) box.scrollTop = box.scrollHeight;
+      this.logShown = 1;
     }
     async saveRun() {
       const a = this.atlas;
@@ -25344,12 +25706,12 @@ dd.q4{color:#c58cff;font-weight:600}
     return STATS.all().map((st) => {
       const list = activeSkills().filter((s) => s.stat === st.id);
       if (!list.length) return "";
-      const v = a.special?.[st.id], tier = skillTier(a, list[0].id), cap = Math.round(softCap(a, list[0].id) * 100);
+      const v = a.special?.[st.id], tier = skillTier(a, list[0].id), cap2 = Math.round(softCap(a, list[0].id) * 100);
       const chips = list.map((s) => [s, a.skill[s.id] || 0]).sort((x, y) => y[1] - x[1]).map(([s, x]) => {
-        const n = Math.round(x * 100), top = n >= cap && cap < 100;
+        const n = Math.round(x * 100), top = n >= cap2 && cap2 < 100;
         return `<span class="chip${s.id === liked ? " like" : s.id === disliked ? " dislike" : ""}" title="${s.label}: ${n} \u0438\u0437 100${top ? "; \u0432\u044B\u0448\u0435 \u043F\u043E\u0442\u043E\u043B\u043A\u0430 \u0443\u0447\u0438\u0442\u0441\u044F \u043C\u0435\u0434\u043B\u0435\u043D\u043D\u043E" : ""}">${s.short} ${n}${top ? "\xB7" : ""}</span>`;
       }).join("");
-      return `<div class="sk-row"><span class="sk-stat" title="${st.label} ${v ?? "\u2014"}: \u043F\u043E\u0442\u043E\u043B\u043E\u043A \u043D\u0430\u0432\u044B\u043A\u043E\u0432 ${cap}, \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E \u0434\u043E \xAB${TIERS[tier - 1].label}\xBB (T${tier})">${st.short}${v != null ? " " + v : ""} \xB7 T${tier}</span><div class="chips">${chips}</div></div>`;
+      return `<div class="sk-row"><span class="sk-stat" title="${st.label} ${v ?? "\u2014"}: \u043F\u043E\u0442\u043E\u043B\u043E\u043A \u043D\u0430\u0432\u044B\u043A\u043E\u0432 ${cap2}, \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E \u0434\u043E \xAB${TIERS[tier - 1].label}\xBB (T${tier})">${st.short}${v != null ? " " + v : ""} \xB7 T${tier}</span><div class="chips">${chips}</div></div>`;
     }).join("");
   }
   function woundsHtml(w, a) {
@@ -25497,7 +25859,7 @@ dd.q4{color:#c58cff;font-weight:600}
       let head = `<dl class="kv"><dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${treasury(w).toFixed(1)} \u0437\u043E\u043B.: \u043C\u043E\u043D\u0435\u0442\u0430\u043C\u0438 ${gold2.toFixed(1)}${metal.length ? "; " + metal.join(", ") : ""}</dd><dt>\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043A\u0430\u0440\u0430\u0432\u0430\u043D</dt><dd>${c ? "\u0443\u0436\u0435 \u0437\u0434\u0435\u0441\u044C" : this.caravanWhen(w)}</dd><dt>\u041A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u0432 \u0431\u044B\u043B\u043E</dt><dd>${w.trade.visits} \xB7 \u0432\u044B\u0440\u0443\u0447\u0435\u043D\u043E ${Math.floor(w.trade.earned)} \xB7 \u043F\u043E\u0442\u0440\u0430\u0447\u0435\u043D\u043E ${Math.floor(w.trade.spent)}</dd></dl>`;
       let goods = "";
       if (c) {
-        const units = goodsUnits(c.goods), cap = c.capacity;
+        const units = goodsUnits(c.goods), cap2 = c.capacity;
         const lines = [];
         for (const g3 of c.goods) {
           const same = g3.kind === "item" && lines.find((x) => x.g.kind === "item" && x.g.type === g3.type && (x.g.q || 0) === (g3.q || 0));
@@ -25509,7 +25871,7 @@ dd.q4{color:#c58cff;font-weight:600}
           const p = askPrice(g3, tb), can = gold2 >= p;
           return `<div class="wrow${g3.kind === "item" && g3.q ? " fine" : ""}"><span>${esc(goodsLabel(g3))}${n > 1 || g3.kind === "res" ? " \xD7" + n : ""}</span><b class="${can ? "" : "dear"}">${p} \u0437\u043E\u043B.${n > 1 ? " / \u0448\u0442." : ""}</b></div>`;
         }).join("");
-        goods = `<h2>\u041A\u0443\u043F\u0435\u0446 ${esc(c.name)}</h2><p class="small muted">\u0421\u0435\u0439\u0447\u0430\u0441: ${phase[c.phase]}. \u0413\u0440\u0443\u0437 ${units} \u0438\u0437 ${cap} \u043C\u0435\u0441\u0442, \u0432 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u0435 \u0443 \u043A\u0443\u043F\u0446\u0430 ${Math.floor(c.purse)} \u0437\u043E\u043B. \u041A\u0443\u043F\u0435\u0446 \u043F\u0440\u043E\u0441\u0438\u0442 \xD7${+(TRADE.ask - tb).toFixed(2)} \u043E\u0442 \u0446\u0435\u043D\u044B \u0438 \u043F\u043B\u0430\u0442\u0438\u0442 \xD7${+(TRADE.bid + tb).toFixed(2)}${c.terms?.name ? ` (\u0442\u043E\u0440\u0433\u043E\u0432\u0430\u043B${c.terms.f ? "\u0430\u0441\u044C" : "\u0441\u044F"} ${esc(c.terms.name)})` : ""}.</p><div class="wares">${rows || '<p class="muted small">\u0412\u0441\u0451 \u0440\u0430\u0441\u043F\u0440\u043E\u0434\u0430\u043D\u043E.</p>'}</div>`;
+        goods = `<h2>\u041A\u0443\u043F\u0435\u0446 ${esc(c.name)}</h2><p class="small muted">\u0421\u0435\u0439\u0447\u0430\u0441: ${phase[c.phase]}. \u0413\u0440\u0443\u0437 ${units} \u0438\u0437 ${cap2} \u043C\u0435\u0441\u0442, \u0432 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u0435 \u0443 \u043A\u0443\u043F\u0446\u0430 ${Math.floor(c.purse)} \u0437\u043E\u043B. \u041A\u0443\u043F\u0435\u0446 \u043F\u0440\u043E\u0441\u0438\u0442 \xD7${+(TRADE.ask - tb).toFixed(2)} \u043E\u0442 \u0446\u0435\u043D\u044B \u0438 \u043F\u043B\u0430\u0442\u0438\u0442 \xD7${+(TRADE.bid + tb).toFixed(2)}${c.terms?.name ? ` (\u0442\u043E\u0440\u0433\u043E\u0432\u0430\u043B${c.terms.f ? "\u0430\u0441\u044C" : "\u0441\u044F"} ${esc(c.terms.name)})` : ""}.</p><div class="wares">${rows || '<p class="muted small">\u0412\u0441\u0451 \u0440\u0430\u0441\u043F\u0440\u043E\u0434\u0430\u043D\u043E.</p>'}</div>`;
       }
       const deals = w.trade.deals.map((d) => {
         const list = (xs) => xs.map(([l, n, g3]) => `${esc(l)}${n > 1 ? " \xD7" + n : ""}`).join(", ");
@@ -25997,12 +26359,12 @@ dd.q4{color:#c58cff;font-weight:600}
     const c = w.chronicle, people2 = c.people, now = w.tick;
     const days = now / DAY;
     const alive5 = colonists(w);
-    const finished = c.built.length;
+    const finished2 = c.built.length;
     const totals = [
       ["\u041F\u0440\u043E\u0434\u0435\u0440\u0436\u0430\u043B\u043E\u0441\u044C", daysText(days)],
       ["\u0416\u0438\u0442\u0435\u043B\u0435\u0439 \u0432 \u043B\u0443\u0447\u0448\u0438\u0435 \u0434\u043D\u0438", c.peakPop],
       ["\u0412\u0441\u0435\u0433\u043E \u043F\u0440\u043E\u0448\u043B\u043E \u0447\u0435\u0440\u0435\u0437 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435", people2.length],
-      ["\u0417\u0434\u0430\u043D\u0438\u0439 \u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E", finished],
+      ["\u0417\u0434\u0430\u043D\u0438\u0439 \u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E", finished2],
       ["\u0421\u0434\u0435\u043B\u0430\u043D\u043E \u0432\u0435\u0449\u0435\u0439", sumVals(c.crafted)],
       ["\u041D\u0430\u043B\u0451\u0442\u043E\u0432 \u043F\u0435\u0440\u0435\u0436\u0438\u0442\u043E", Math.max(0, w.stats.raids - (w.over?.reason === "raided" ? 1 : 0))],
       ["\u0421\u0440\u0430\u0436\u0435\u043D\u043E \u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u043E\u0432", c.raidersKilled],
