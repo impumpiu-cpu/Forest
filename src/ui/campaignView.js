@@ -19,6 +19,9 @@ import {Camera} from '../render/camera.js';
 import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {BEASTS} from '../data/transport.js';
+import {BUBBLE, THINGS} from '../data/bubble.js';
+import {scaleOf} from '../atlas/tectonics.js';
+import {townLabel} from '../atlas/towns.js';
 import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
 const itemShort = id => (ITEMS.has(id) ? ITEMS.get(id).short : id);
@@ -54,6 +57,22 @@ export class CampaignView extends AtlasView {
     $('campNew').addEventListener('click', () => { this.halt(); this.atlas = null; this.worldId = null; this.setupMode(); this.refresh(); });
     $('campSave').addEventListener('click', () => this.saveRun());
     $('campBack').addEventListener('click', () => { this.halt(); this.onBack(); });
+    // following the caravan: it stays in the middle, near enough to see its bubble; a drag stops it
+    this.follow = true;
+    $('campFollow').addEventListener('click', () => { this.follow = !this.follow; if (this.follow) this.closeUp(); this.syncFollow(); this.draw(); });
+  }
+
+  dragged() { if (this.follow) { this.follow = false; this.syncFollow(); } }
+  syncFollow() { $('campFollow').setAttribute('aria-pressed', String(this.follow)); }
+  // a zoom that shows about three bubbles across
+  closeUp() {
+    const a = this.atlas; if (!a || !this.cam) return;
+    this.cam.zoom = Math.max(1, Math.min(a.w, a.h) / (6 * BUBBLE.far * scaleOf(a)));
+  }
+  draw() {
+    const a = this.atlas;
+    if (this.follow && a?.campaign && this.cam) { const [x, y] = this.caravanAt(); this.cam.cx = x; this.cam.cy = y; }
+    super.draw();
   }
 
   show() { this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode(); }
@@ -81,7 +100,7 @@ export class CampaignView extends AtlasView {
       this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0; this.capPick = null;
       this.cam = new Camera(a.w, a.h);
       $('campWorldNote').textContent = '';
-      if (a.campaign) { this.paused = true; this.runMode(); }
+      if (a.campaign) { this.paused = true; this.runMode(); if (this.follow) this.closeUp(); }
       else this.setupMode();
       this.refresh(); this.draw();
     } catch (e) { $('campWorldNote').textContent = 'Не удалось открыть: ' + e.message; }
@@ -105,6 +124,7 @@ export class CampaignView extends AtlasView {
   begin() {
     const a = this.atlas; if (!a || this.capPick == null) return;
     newCampaign(a, this.capPick);
+    if (this.follow) this.closeUp();
     this.saveId = null; this.logShown = 0; this.paused = false;
     this.runMode(); this.run();
   }
@@ -117,7 +137,8 @@ export class CampaignView extends AtlasView {
     this.syncRun(); this.renderSide();
     const sw = (c, l) => `<span><i style="background:${c}"></i>${l}</span>`;
     $('campLegend').innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(',')})`, 'караван (флажок)') + sw('rgba(255,215,110,0.8)', 'путь пешком (пунктир), цель (×), дом (кольцо)') + sw('rgba(240,160,90,0.9)', 'путь с колёсами — по дорогам (длинный штрих)') +
-      sw('rgb(40,42,36)', 'туман: чего караван не знает') + '<b>карта</b> — как на экране «Мир»: города, дороги, логова, отряды и войска';
+      sw('rgb(40,42,36)', 'туман: чего караван не знает') + '<b>карта</b> — как на экране «Мир»: города, дороги, логова, отряды и войска' +
+      sw('rgb(230,80,60)', 'угроза рядом (треугольник; темнее — сыта или не заметила)') + sw('rgb(235,200,90)', 'торговый обоз') + sw('rgb(140,200,110)', 'стадо') + sw('rgba(255,240,200,0.3)', 'кольцо пузыря');
   }
   syncRun() {
     const K = this.atlas?.campaign, done = !K || ended(K);
@@ -193,6 +214,22 @@ export class CampaignView extends AtlasView {
     if (K.goal != null && K.phase === 'out') mark(K.goal, '#ffd36a', 1.4);
     px.strokeStyle = 'rgba(255,215,110,0.9)'; px.lineWidth = Math.max(this.minW, 0.25 * k);
     px.beginPath(); px.arc(K.home % a.w + 0.5, ((K.home / a.w) | 0) + 0.5, 1.8 * Math.max(0.6, k), 0, Math.PI * 2); px.stroke();
+    // the bubble (campaign/bubble.js): a faint ring where things are born, the things themselves —
+    // the hostile as red triangles, merchants' trains as yellow squares, herds as green dots
+    if (!ended(K)) {
+      px.strokeStyle = 'rgba(255,240,200,0.12)'; px.lineWidth = Math.max(this.minW, 0.12 * k);
+      px.beginPath(); px.arc(x, y, BUBBLE.far * scaleOf(a), 0, Math.PI * 2); px.stroke();
+      const s = Math.max(0.35, 0.7 * k);
+      for (const t of K.bubble?.things || []) {
+        const mood = THINGS[t.kind].mood, hunt = THINGS[t.kind].hunts && t.sated < K.day;
+        px.lineWidth = Math.max(this.minW, 0.12 * k); px.strokeStyle = 'rgba(20,20,16,0.8)';
+        px.beginPath();
+        if (mood === 'hostile') { px.fillStyle = hunt ? 'rgb(230,80,60)' : 'rgb(160,90,80)'; px.moveTo(t.x, t.y - s); px.lineTo(t.x + s, t.y + s * 0.8); px.lineTo(t.x - s, t.y + s * 0.8); px.closePath(); }
+        else if (mood === 'trade') { px.fillStyle = 'rgb(235,200,90)'; px.rect(t.x - s * 0.7, t.y - s * 0.7, s * 1.4, s * 1.4); }
+        else { px.fillStyle = 'rgb(140,200,110)'; px.arc(t.x, t.y, s * 0.6, 0, Math.PI * 2); }
+        px.fill(); px.stroke();
+      }
+    }
     // the caravan: a banner in the people's colour
     px.fillStyle = ended(K) && K.phase !== 'won' ? 'rgb(90,90,90)' : `rgb(${col.join(',')})`; px.strokeStyle = 'rgba(255,250,235,0.95)'; px.lineWidth = Math.max(this.minW, 0.25 * k);
     px.beginPath(); px.arc(x, y, r, 0, Math.PI * 2); px.fill(); px.stroke();
@@ -205,7 +242,7 @@ export class CampaignView extends AtlasView {
     const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};
     const tameKind = K.why?.startsWith('tame:') ? BEASTS[K.why.slice(5)] : null;
     const townOf = id => a.towns.find(t => t.id === id), inTown = K.inTown && townOf(K.inTown.id), via = K.via != null && townOf(K.via);
-    const plan = ended(K) ? PHASE[K.phase] : inTown ? `в ${inTown.name}: ${K.inTown.why === 'winter' ? 'зимуют' : 'торгуют, работают, лечатся'}` : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : via ? `идут в ${via.name}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : PHASE[K.phase];
+    const plan = ended(K) ? PHASE[K.phase] : inTown ? `в ${townLabel(inTown, 3)} ${inTown.name}: ${K.inTown.why === 'winter' ? 'зимуют' : 'торгуют, работают, лечатся'}` : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : via ? `идут в ${townLabel(via, 1)} ${via.name}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : PHASE[K.phase];
     $('campStatus').innerHTML = `<dt>Дата</dt><dd>год ${H.year}, ${seasonWord(H.season)}</dd>` +
       `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
@@ -217,7 +254,8 @@ export class CampaignView extends AtlasView {
       `<dt>В городах</dt><dd>${K.stats.towns || 0} раз</dd>` +
       `<dt>Скорость</dt><dd>${pace(a, K, SEASON_LIST[H.season].id).toFixed(2)} кл./день</dd>` +
       `<dt>Пройдено</dt><dd>${Math.round(K.stats.walked)} клеток</dd>` +
-      `<dt>Ночных боёв</dt><dd>${K.stats.fights} · отбились ${K.stats.won}</dd>`;
+      `<dt>Боёв</dt><dd>${K.stats.fights} · отбились ${K.stats.won} · засад ${K.stats.ambushes || 0}</dd>` +
+      (() => { const T = K.bubble?.things || [], n = m => T.filter(t => THINGS[t.kind].mood === m).length; return `<dt>Рядом</dt><dd>${[n('hostile') ? `угроз ${n('hostile')}` : '', n('trade') ? `обозов ${n('trade')}` : '', n('game') ? `стад ${n('game')}` : ''].filter(Boolean).join(' · ') || 'тихо'}</dd>`; })();
     $('campRoster').innerHTML = [...K.members].sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : ''].filter(Boolean).join(', ');

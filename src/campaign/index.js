@@ -32,5 +32,6 @@ export function campaignHash(K) {
   mix(K.day); mix(Math.round(K.x * 100)); mix(Math.round(K.y * 100)); mix(Math.round(K.food * 100)); mix(K.gold);
   for (const m of K.members) { mix(Math.round(m.hp * 1000)); mix(m.alive ? 1 : 0); }
   for (const l of K.log) for (let k = 0; k < l.text.length; k++) mix(l.text.charCodeAt(k));
+  for (const t of K.bubble?.things || []) { mix(t.id); mix(Math.round(t.x * 100)); mix(Math.round(t.y * 100)); }
   return `${(h >>> 0).toString(16)} · ${alive(K).length}/${K.members.length}`;
 }

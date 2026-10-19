@@ -160,7 +160,7 @@ export class AtlasView {
     cv.addEventListener('pointermove', e => {
       const g = this.grab;
       if (g && g.id === e.pointerId) {
-        if (!g.drag && Math.hypot(e.clientX - g.x, e.clientY - g.y) > DRAG_PX) g.drag = true;
+        if (!g.drag && Math.hypot(e.clientX - g.x, e.clientY - g.y) > DRAG_PX) { g.drag = true; this.dragged?.(); }
         if (g.drag) { const [cw, ch] = this.box(); this.cam.pan(cw, ch, e.clientX - g.lx, e.clientY - g.ly); cv.classList.add('dragging'); this.draw(); }
         g.lx = e.clientX; g.ly = e.clientY;
       }

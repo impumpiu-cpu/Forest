@@ -25,8 +25,11 @@ import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {plural} from '../core/util.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion} from './land.js';
 import {route, stepCost} from './path.js';
-import {assign, capacity, cargoLoad, overflow, slowest, wheeled, campFx, toolTier, fieldBuildings, buildDays, handler} from './baggage.js';
+import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, fieldBuildings, buildDays, handler} from './baggage.js';
 import {draw, makeMember} from './start.js';
+import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose} from './bubble.js';
+import {BUBBLE, THINGS, AMBUSH, TRAIN, HERD} from '../data/bubble.js';
+import {RESOURCES} from '../data/resources.js';
 import {standing, townName, townLine, trade, labour, healHere, hire, companion, rationPrice} from './town.js';
 import {HIRES, ROLES, LOYALTY, FREED, COMPANIONS, COMPANY_MAX, JOINED_MAX, VISIT, EARN, WANTS, MARKET} from '../data/market.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -340,12 +343,13 @@ function evening(a, K) {
   if (K.camp > 0 && ((K.why === 'food' && K.food >= C.full * stock) || (K.why === 'heal' && core >= C.healed))) K.camp = 0;
   if (K.camp > 0) K.camp--;
   else {
-    const badly = ms.some(m => m.hp < C.badly), quiet = nightRisk(a, K.i) <= C.danger;
+    // a quiet place: the land's dangers low; to build or to tame they also wait till nothing hunts them near
+    const badly = ms.some(m => m.hp < C.badly), quiet = nightRisk(a, K.i) <= C.danger, calm = quiet && !huntersNear(a, K);
     let why = K.food < need * C.foodDays && rich >= C.foodLand ? 'food' : core < C.hp || badly ? 'heal' : '';
     // a long camp where something hunts at night is death: they look for a quieter place, unless they already starve
     if (why && !K.hungry && !quiet && K.path && K.k < K.path.length) why = '';
     // fed, whole and in a quiet place: to build, or to tame the beasts that graze here
-    if (!why && !K.hungry && quiet && K.food >= need * C.foodDays && K.day >= (K.nextThink ?? 0)) {
+    if (!why && !K.hungry && calm && K.food >= need * C.foodDays && K.day >= (K.nextThink ?? 0)) {
       K.nextThink = K.day + C.think;
       const B = wantBuild(a, K), reg = cellRegion(a, K.i);
       const tame = K.day - (K.tamedAt ?? -999) >= GETTING.tameEvery && Object.keys(BEASTS).find(kind => lacking(K, kind) && faunaLevel({region: reg}, kind) >= GETTING.tameLand);
@@ -366,20 +370,19 @@ function evening(a, K) {
   if ((!K.path || K.k >= K.path.length) && K.goal != null && K.i !== K.goal) plan(a, K);
 }
 
+// the night: the hunters of the bubble that reach the camp (campaign/bubble.js) — the first to come, the
+// nearest, attacks; now and then a stray nobody saw coming
 function night(a, K) {
   if (K.inTown) return;   // behind a town's walls nothing finds the camp
   const {r, done} = draw(K, 'night');
   const near = townAt(a, K.i), friendly = near && near.realm && (near.realm === K.realm || (trades(a, K.realm, near.realm) && !atWar(a, K.realm, near.realm)));
-  const ds = dangers(a, K.i);
-  let p = CAMPAIGN.night.base + ds.reduce((s, d) => s + d.p, 0);
-  if (friendly) p *= CAMPAIGN.night.friendly;
-  if (guided(K)) p *= HIRES.guide.night;
-  p = Math.min(CAMPAIGN.night.max, p);
-  if (r() < p) {
-    // which danger it was
-    let x = r() * (ds.reduce((s, d) => s + d.p, 0) || 1), d = ds[0] || {kind: 'wolves', strength: 0.7};
-    for (const o of ds) { x -= o.p; if (x <= 0) { d = o; break; } }
-    fight(a, K, d, r);
+  const foes = stepBubble(a, K, 'night', r, guided(K)).filter(t => THINGS[t.kind].mood === 'hostile').sort((p, q) => Math.hypot(p.x - K.x, p.y - K.y) - Math.hypot(q.x - K.x, q.y - K.y));
+  if (foes.length) {
+    const t = foes[0], win = fight(a, K, {kind: THINGS[t.kind].foe, strength: t.strength, label: t.label}, r, 'night');
+    settle(K, t, win); K.stats.met = (K.stats.met || 0) + 1;
+  } else if (r() < BUBBLE.stray * (friendly ? CAMPAIGN.night.friendly : 1)) {
+    const ds = dangers(a, K.i), d = ds.length ? ds[(r() * ds.length) | 0] : {kind: 'wolves', strength: 0.7};
+    fight(a, K, d, r, 'night'); K.stats.strays = (K.stats.strays || 0) + 1;
   } else {
     // a quiet night: a little found in the morning while they packed
     const M = CAMPAIGN.morning;
@@ -390,8 +393,11 @@ function night(a, K) {
 }
 
 // a fight at the camp, settled at once: the foe's might against the caravan's
-function fight(a, K, d, r) {
-  const F = CAMPAIGN.fight, foe = FOES[d.kind], E = foe.might * (d.strength ?? 1) * between(r, [0.6, 1.4]), P = caravanMight(K);
+// how: 'night' — at the camp; 'ambush' — on the march, the caravan caught unawares. True when they won
+function fight(a, K, d, r, how = 'night') {
+  const F = CAMPAIGN.fight, foe = FOES[d.kind], E = foe.might * (d.strength ?? 1) * between(r, [0.6, 1.4]), P = caravanMight(K) * (how === 'ambush' ? AMBUSH.surprise : 1);
+  const opening = how === 'ambush' ? `На марше из засады ударили ${foe.label}` : `Ночью на лагерь напали ${foe.label}`;
+  if (how === 'ambush') K.stats.ambushes = (K.stats.ambushes || 0) + 1;
   const share = P / (P + E), win = r() < share;
   K.stats.fights++;
   // the blows: more when they lose, mostly on the knights, who shield the squires
@@ -403,10 +409,10 @@ function fight(a, K, d, r) {
     for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;
     if (!hit.includes(m)) hit.push(m);
-    if (m.hp <= 0) { if (win) m.hp = F.saved; else die(a, K, m, `пал в ночном бою (${foe.label})`); }
+    if (m.hp <= 0) { if (win) m.hp = F.saved; else die(a, K, m, `пал в ${how === 'ambush' ? 'засаде' : 'ночном бою'} (${foe.label})`); }
   }
-  const where = d.label ? ` — ${d.label}` : '';
-  if (!alive(K).length) return;
+  const where = d.label && d.label !== foe.label ? ` — ${d.label}` : '';
+  if (!alive(K).length) return win;
   if (win) {
     K.stats.won++; shake(K, LOYALTY.won);
     // captives set free: they may go along
@@ -422,7 +428,7 @@ function fight(a, K, d, r) {
       say(a, K, `В лагере врагов нашли пленников и освободили: ${names.join(', ')}. ${n > 1 ? 'Пока идут с караваном' : 'Пока идёт с караваном'} — надолго ли, неизвестно.`, 'people');
     }
     const loot = Math.round(between(r, F.loot)); K.food += loot;
-    say(a, K, `Ночью на лагерь напали ${foe.label}${where}. Отбились${hit.length ? `, ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || 'никто'}` : ' без ран'}; с убитых взяли еды на ${pieces(loot, 'паёк', 'пайка', 'пайков')}.`, 'fight');
+    say(a, K, `${opening}${where}. Отбились${hit.length ? `, ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || 'никто'}` : ' без ран'}; с убитых взяли еды на ${pieces(loot, 'паёк', 'пайка', 'пайков')}.`, 'fight');
     // those who keep beasts leave some behind
     for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) { gainBeast(a, K, kind, 'У врагов отбили'); break; }
     const T = GETTING.spoilTool;
@@ -434,12 +440,12 @@ function fight(a, K, d, r) {
   } else {
     K.stats.fled++; shake(K, LOYALTY.lost);
     const lost = Math.round(K.food * F.lost); K.food -= lost;
-    say(a, K, `Ночью на лагерь напали ${foe.label}${where}. Не устояли и бежали в темноте${lost ? `, бросив ${pieces(lost, 'паёк', 'пайка', 'пайков')}` : ''}${hit.length ? `; ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || '—'}` : ''}.`, 'fight');
+    say(a, K, `${opening}${where}. Не устояли и бежали${how === 'night' ? ' в темноте' : ''}${lost ? `, бросив ${pieces(lost, 'паёк', 'пайка', 'пайков')}` : ''}${hit.length ? `; ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || '—'}` : ''}.`, 'fight');
     const gone = K.beasts.filter(() => r() < GETTING.lose.beast);
     if (gone.length) {
       K.beasts = K.beasts.filter(b => !gone.includes(b)); assign(K); K.path = null;
       const names = Object.keys(BEASTS).map(kind => { const n = gone.filter(b => b.kind === kind).length; return n ? (n === 1 ? BEASTS[kind].acc : `${BEASTS[kind].plural} (${n})`) : null; }).filter(Boolean);
-      say(a, K, `В темноте увели или убили ${names.join(', ')}.`, 'beast');
+      say(a, K, `${how === 'night' ? 'В темноте увели или убили' : 'В суматохе увели или убили'} ${names.join(', ')}.`, 'beast');
     }
     for (const v of [...K.vehicles]) if (r() < GETTING.lose.vehicle) {
       K.vehicles = K.vehicles.filter(x => x !== v); assign(K); K.path = null;
@@ -447,6 +453,53 @@ function fight(a, K, d, r) {
     }
     K.camp = 0; K.why = ''; K.build = null;
   }
+  return win;
+}
+
+// ── meeting the bubble by day: an ambush on the march, a merchant's train on the road, a herd to hunt
+function dayMeetings(a, K, r, marched) {
+  const met = stepBubble(a, K, 'day', r, guided(K));
+  for (const t of met) {
+    const T = THINGS[t.kind];
+    if (T.mood === 'hostile' && T.ambush && marched && core(K).length) {
+      const win = fight(a, K, {kind: T.foe, strength: t.strength, label: t.label}, r, 'ambush');
+      settle(K, t, win);
+      break;   // one ambush a day is enough
+    }
+    if (T.mood === 'trade' && !t.met) { t.met = true; roadTrade(a, K, t); }
+    if (T.mood === 'game') {
+      const n = Math.round(between(r, HERD.food) * Math.min(1.5, alive(K).length / 6));
+      K.food += n; K.cargo.hide = (K.cargo.hide || 0) + 1; K.stats.herds = (K.stats.herds || 0) + 1;
+      say(a, K, `Нагнали ${t.label.replace('стадо: ', 'стадо — ')}: добыли ${pieces(n, 'паёк', 'пайка', 'пайков')} мяса и шкуру.`, 'find');
+      removeThing(K, t);
+    }
+  }
+  // what the scouts see: the first sight of a strong thing near
+  // a pursuer stronger than they are: they muddle the trail and try to slip away
+  const sight = (CAMPAIGN.fog.sight + (guided(K) ? HIRES.guide.sight : 0)) * scaleOf(a), P = caravanMight(K);
+  for (const t of pursuers(a, K, sight)) {
+    if (FOES[THINGS[t.kind].foe].might * t.strength <= P * BUBBLE.evadeAt) continue;
+    if (r() < BUBBLE.evade + (guided(K) ? BUBBLE.guideEvade : 0)) {
+      lose(K, t, BUBBLE.lost); K.stats.evaded = (K.stats.evaded || 0) + 1;
+      if (r() < 0.5) say(a, K, `За караваном шли ${t.label}: путали следы${guided(K) ? ' по тропам проводника' : ''} и ушли от погони.`, 'sight');
+    }
+  }
+  // (only what matters: a world's party, or a thing as strong as the caravan)
+  for (const t of sighted(a, K, sight)) {
+    const strong = FOES[THINGS[t.kind].foe].might * t.strength > caravanMight(K) * BUBBLE.strong;
+    if (t.party || strong) say(a, K, `Разведчики заметили неподалёку: ${t.label}${strong ? ' — сила за ними большая' : ''}.`, 'sight');
+  }
+}
+
+// a merchants' train met on the road: it sells food dearer than a town and buys hides cheaper
+function roadTrade(a, K, t) {
+  const parts = [];
+  if (K.cargo.hide) { const g = Math.round(K.cargo.hide * (RESOURCES.get('hide').value ?? 0.5) * TRAIN.sell * 10) / 10; parts.push(`продали шкуры (${K.cargo.hide}) за ${g} зол.`); K.gold = Math.round((K.gold + g) * 10) / 10; delete K.cargo.hide; }
+  const price = MARKET.ration * TRAIN.buy, need = alive(K).length * CAMPAIGN.ration;
+  const room = Math.max(0, capacity(K) - load(K)), n = Math.floor(Math.min(t.goods || 0, room, need * 10 - K.food, K.gold / price));
+  if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; t.goods -= n; parts.push(`купили ${pieces(n, 'паёк', 'пайка', 'пайков')} по ${Math.round(price * 100) / 100}`); }
+  K.stats.trains = (K.stats.trains || 0) + 1;
+  if (parts.length) say(a, K, `На дороге встретили торговый обоз: ${parts.join('; ')}.`, 'town');
 }
 
 // one day of the campaign (the world's day `day` of the current season)
@@ -465,6 +518,7 @@ export function caravanDay(a, K, day) {
     const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; }
   } else if (!camping) march(a, K, pace(a, K, seasonId));
   else campWork(a, K, r);
+  if (!town && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
   if (!town) K.food += ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   // the meal
   const need = ms.length * CAMPAIGN.ration, eat = Math.min(K.food, need), fed = eat / need;

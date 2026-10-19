@@ -8,7 +8,9 @@
 // between the road and the straight way; wheels never cross a swamp without a road. Towns and people: the
 // caravan trades in friendly towns, the treasury never goes below nothing, the core stays the eight who set
 // out, nobody joins beyond the limits, the hired and the joined come and go; the campaign is lost exactly
-// when none of the eight is left. Prints how each went.
+// when none of the eight is left. The bubble: never more things than its limit, none beyond the ring where
+// they melt away, all on land; night fights come from things that reach the camp, ambushes happen on the
+// march, merchants' trains and herds are met. Prints how each went.
 // Usage: node tools/campaign-check.mjs [seeds=1] [size=small]
 import {generateAtlas, atlasHash} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
@@ -25,12 +27,14 @@ import {baggageText} from '../src/campaign/march.js';
 import {WHEELS} from '../src/data/transport.js';
 import {COMPANY_MAX, JOINED_MAX} from '../src/data/market.js';
 import {core, isCore} from '../src/campaign/march.js';
+import {BUBBLE, THINGS} from '../src/data/bubble.js';
+import {scaleOf} from '../src/atlas/tectonics.js';
 
 const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small';
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const finite = K => [K.food, K.x, K.y, K.gold, ...K.members.map(m => m.hp)].every(Number.isFinite);
-const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0};
+const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0};
 
 for (let s = 0; s < seeds; s++) {
   const seed = String(777 + s * 13), base = generateAtlas({seed, size, land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
@@ -56,6 +60,8 @@ for (let s = 0; s < seeds; s++) {
       if (K.members.filter(isCore).length !== 8) { bad.push(`${c.label}: основной состав ${K.members.filter(isCore).length}`); break; }
       const live = K.members.filter(m => m.alive);
       if (live.length > COMPANY_MAX || live.filter(m => m.loyalty != null).length > JOINED_MAX) { bad.push(`${c.label}: в отряде ${live.length}`); break; }
+      const things = K.bubble?.things || [];
+      if (things.length > BUBBLE.max || things.some(t => !THINGS[t.kind] || Math.hypot(t.x - K.x, t.y - K.y) > BUBBLE.gone * scaleOf(a) + 1e-6 || a.f.ocean[t.i])) { bad.push(`${c.label}: пузырь — ${things.length} вещей, есть за краем или в море`); break; }
     }
     if (K.log.some(l => l.kind === 'beast')) got.beast++;
     if (K.log.some(l => l.kind === 'build' && /тележк|повозк/.test(l.text))) got.cart++;
@@ -63,6 +69,9 @@ for (let s = 0; s < seeds; s++) {
     if (K.log.some(l => l.kind === 'town' && /купили|продали/.test(l.text))) got.trade++;
     if (K.members.some(m => !isCore(m))) got.joined++;
     if (K.log.some(l => l.kind === 'leave')) got.left++;
+    if (K.stats.met) got.met++;
+    if (K.stats.ambushes) got.ambush++;
+    if (K.stats.trains || K.stats.herds) got.road++;
     if ((K.phase === 'lost') !== (core(K).length === 0)) bad.push(`${c.label}: ${K.phase} при ${core(K).length} из восьми`);
     tally[K.phase]++;
     if (!finite(K)) bad.push(`${c.label}: числа сломались`);
@@ -93,5 +102,6 @@ for (let s = 0; s < seeds; s++) {
 }
 check('хотя бы один караван дошёл и вернулся', tally.won > 0, JSON.stringify(tally));
 check('караваны торгуют в городах, к ним пристают и от них уходят', got.trade > 0 && got.joined > 0 && got.left > 0, `торговали ${got.trade}, с нанятыми или приставшими ${got.joined}, с ушедшими ${got.left}`);
+check('пузырь: ночные бои от тех, кто дошёл до лагеря, засады на марше, обозы и стада на пути', got.met > 0 && got.ambush > 0 && got.road > 0, `с ночными встречами ${got.met}, с засадами ${got.ambush}, с обозами или стадами ${got.road}`);
 check('караваны обзаводятся обозом и выбирают между трактом и прямой дорогой', got.beast > 0 && got.cart > 0 && got.route > 0, `со зверями ${got.beast}, с тележкой или повозкой ${got.cart}, с выбором пути ${got.route}`);
 if (!ok) process.exit(1);
