@@ -30,9 +30,11 @@ export const PARTIES = {
 //   supplies: days an army feeds itself (each work burnt at a siege adds `forage` days); beyond them it
 //             loses `attrition` of its men a day and turns home
 //   scourge: radius (cells) around a marching or besieging army where its foragers rule: the works
-//            there yield nothing and no road is worn (a.f.scourge, fading by `scourgeFade` a season)
+//            there yield nothing and no road is worn (a.f.scourge: 1 under the army, fading by `scourgeFade` a
+//            year; the works and the roads count the land as scourged above `scourged` — so a year after the
+//            army has gone, at exactly 0.45, it is clear again; the fade must stay ≤ the threshold)
 export const ARMY = {levy: 0.25, might: 1.8, minMen: 40, burn: 0.08, stock: 1.5, stockFood: 0.25, starve: 0.008, assaultAt: 0.9, longest: 120, beatenLoss: 0.35, winLoss: 0.15, broken: 0.55,
-  supplies: 120, forage: 15, attrition: 0.02, scourge: 2.5, scourgeFade: 0.5, everyYears: 1};
+  supplies: 120, forage: 15, attrition: 0.02, scourge: 2.5, scourgeFade: 0.45, scourged: 0.45, everyYears: 1};
 
 // The dragon (data/bestiary.js `dragon`; the lair kind in data/lairs.js): one or two in a world, in
 // an ancient lair at a volcano. It sleeps for years, then flies out: to the richest town within

@@ -18,6 +18,7 @@ import {SITES, NET} from '../data/sites.js';
 import {TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {placeHas} from './towns.js';
 import {findPath, tradeLinks} from './roads.js';
+import {ARMY} from '../data/parties.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 
@@ -102,7 +103,11 @@ export function raidSite(a, t, rnd) {
   return TOWN_BUILDINGS.get(s.kind);
 }
 // a town is razed: all its works with it
-export function razeSites(a, t, year) { for (const id of t.sites || []) razeSite(a, a.sites[id - 1], year); }
+export function razeSites(a, t, year) {
+  for (const id of t.sites || []) razeSite(a, a.sites[id - 1], year);
+  // the net forgets the town at once: no link keeps a share of a living town's surplus for a dead end
+  if (a.net) for (const [key, l] of a.net.links) if (l.p === t || l.q === t) a.net.links.delete(key);
+}
 
 // old stumps are forgotten
 export function forgetSites(a, year) {
@@ -129,14 +134,18 @@ export function stepNet(a, feeds) {
     const key = linkKey(t, o); alive.add(key);
     if (!L.has(key)) L.set(key, {p: t, q: o, c: NET.start, flow: 0});
   }
-  for (const [key, l] of L) if (!alive.has(key) || !l.p.alive || !l.q.alive) { l.c *= 1 - NET.decay; if (l.c < NET.min) L.delete(key); }
+  // a link to a razed town dies with it: a dead end must not keep a share of the living town's surplus
+  for (const [key, l] of L) if (!l.p.alive || !l.q.alive) L.delete(key); else if (!alive.has(key)) { l.c *= 1 - NET.decay; if (l.c < NET.min) L.delete(key); }
   // what each town has over its need, or lacks
   const surplus = new Map(), deficit = new Map(), outC = new Map();
   for (const t of a.towns) {
     if (!t.alive) continue;
     const [own, room] = feeds.get(t.id) || [0, 0];
     t.supply = {own, got: 0, gave: 0};
-    surplus.set(t.id, NET.give * Math.max(0, own - NET.keep * t.pop)); deficit.set(t.id, Math.max(0, Math.min(room, NET.want * t.pop) - own));
+    // a town has either a surplus (its land feeds more than `keep` × its people) or a lack (less than its
+    // houses hold), never both: the one that gives does not take back down the same link the same year
+    const sur = NET.give * Math.max(0, own - NET.keep * t.pop);
+    surplus.set(t.id, sur); deficit.set(t.id, sur > 0 ? 0 : Math.max(0, Math.min(room, NET.want * t.pop) - own));
   }
   for (const l of L.values()) { outC.set(l.p.id, (outC.get(l.p.id) || 0) + l.c); outC.set(l.q.id, (outC.get(l.q.id) || 0) + l.c); }
   // the flow: each surplus is split among the town's links by their conductance, and each link lets
@@ -176,11 +185,12 @@ export function fedTowns(a) {
   return out;
 }
 
-// the food of a town's works that lie in the scourge of an army (a.f.scourge, atlas/diplomacy.js): lost this year
+// the food of a town's works that lie in the scourge of an army (a.f.scourge, atlas/diplomacy.js, above
+// data/parties.js ARMY.scourged): lost this year
 export function scourgedFood(a, t) {
   if (!a.f.scourge) return 0;
   let v = 0;
-  for (const s of townSites(a, t)) if (a.f.scourge[s.i] >= 0.5) v += TOWN_BUILDINGS.get(s.kind).fx.food || 0;
+  for (const s of townSites(a, t)) if (a.f.scourge[s.i] > ARMY.scourged) v += TOWN_BUILDINGS.get(s.kind).fx.food || 0;
   return v;
 }
 

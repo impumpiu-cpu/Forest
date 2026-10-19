@@ -8663,7 +8663,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const c = cells[by * bw + bx];
       if (c) for (const k of c) idx.push(k);
     }
-    if (y1 - y0 > 0 && x1 - x0 > 0) idx.sort((p, q) => p - q);
+    if (y1 > y0 || x1 > x0) idx.sort((p, q) => p - q);
     const out = new Array(idx.length);
     for (let k = 0; k < idx.length; k++) out[k] = ags[idx[k]];
     return out;
@@ -12564,8 +12564,9 @@ dd.q4{color:#c58cff;font-weight:600}
     impossible: { label: "\u043D\u0435\u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E", skip: 600 },
     interrupted: { label: "\u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E", skip: 0 }
   };
-  var taskKey = (t) => t.id === "job" ? "job:" + t.job : t.id;
-  var skipped = (w, a, t) => (a.skips?.[taskKey(t)] ?? -1) > w.tick;
+  var taskKey = (t) => t.id === "job" ? "job:" + t.job : t.id === "fight" ? "fight:" + (t.target?.id ?? "") : t.id === "aid" ? "aid:" + t.who : t.id;
+  var REFLEX = /* @__PURE__ */ new Set(["runHome", "flee", "muster", "douse"]);
+  var skipped = (w, a, t) => !REFLEX.has(t.id) && (a.skips?.[taskKey(t)] ?? -1) > w.tick;
   var label = (t) => TASKS.get(t.id).label(t);
   var RUNNER_EXIT = {};
   function close(w, a, t, outcome, why) {
@@ -12579,7 +12580,7 @@ dd.q4{color:#c58cff;font-weight:600}
     def2.exit?.(w, a, t, outcome);
     if (t.id === "job") RUNNER_EXIT[def2.runnerOf?.(t)]?.(w, a, t, outcome);
     const skip = OUTCOMES[outcome].skip;
-    if (skip) (a.skips || (a.skips = {}))[taskKey(t)] = w.tick + skip;
+    if (skip && !REFLEX.has(t.id)) (a.skips || (a.skips = {}))[taskKey(t)] = w.tick + skip;
     const b = w.behave;
     if (b && t.id === "job") (b.outcomes || (b.outcomes = {}))[outcome] = (b.outcomes[outcome] || 0) + 1;
     if (outcome !== "done" && why && (outcome !== "interrupted" || t.id === "job")) {
@@ -13854,7 +13855,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const opts = [];
     for (const id of SPECIES.get(a.species).needs) {
       const n = NEEDS2.get(id);
-      if (n.task === "sleep" && a.task?.id === "sleep" && a.needs[id] >= 1 && night > 0.75 && !raidAlarm(w)) {
+      if (n.task === "sleep" && a.task?.id === "sleep" && a.needs[id] >= 0.995 && night > 0.75 && !raidAlarm(w)) {
         opts.push([{ id: "sleep" }, 1 * campOk, () => "\u0434\u043E\u0441\u044B\u043F\u0430\u0435\u0442 \u0434\u043E \u0440\u0430\u0441\u0441\u0432\u0435\u0442\u0430"]);
         continue;
       }
@@ -13894,7 +13895,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (hunter.species === "wolf") a.mem.wolf += 0.05;
       const who = SPECIES.get(hunter.species).label;
       const stand = brave * hpShare(a) > 0.85 || agentInZone(w, a);
-      opts.push(stand ? [{ id: "fight", target: hunter }, ATTACKED, () => `\u043D\u0430\u043F\u0430\u043B ${who}: \u0441\u043C\u0435\u043B\u043E\u0441\u0442\u0438 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 \u0434\u0430\u0442\u044C \u043E\u0442\u043F\u043E\u0440`] : [{ id: "runHome" }, ATTACKED, () => `\u043D\u0430\u043F\u0430\u043B ${who}: \u0431\u0435\u0436\u0430\u0442\u044C \u043A \u0441\u0432\u043E\u0438\u043C`]);
+      opts.push(stand ? [{ id: "fight", target: hunter, reflex: true }, ATTACKED, () => `\u043D\u0430\u043F\u0430\u043B ${who}: \u0441\u043C\u0435\u043B\u043E\u0441\u0442\u0438 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 \u0434\u0430\u0442\u044C \u043E\u0442\u043F\u043E\u0440`] : [{ id: "runHome" }, ATTACKED, () => `\u043D\u0430\u043F\u0430\u043B ${who}: \u0431\u0435\u0436\u0430\u0442\u044C \u043A \u0441\u0432\u043E\u0438\u043C`]);
     }
     const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
     const raid = raidAlarm(w);
@@ -13907,7 +13908,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const keep = ROSTER.keep + (a.task?.id === "job" ? JOBS.get(a.task.job).sticky || 0 : 0) + (committed ? ROSTER.committed : 0);
     let bestWhy = null, alt = null, as = -Infinity, altWhy = null;
     for (const [t, s, why] of opts) {
-      if (key(t) !== cur && skipped(w, a, t)) continue;
+      if (key(t) !== cur && !t.reflex && skipped(w, a, t)) continue;
       const sc = s + (key(t) === cur ? keep : 0);
       if (sc > bs) {
         if (best && key(best) !== key(t)) {
@@ -17761,6 +17762,41 @@ dd.q4{color:#c58cff;font-weight:600}
     years: 3
   };
 
+  // src/data/parties.js
+  var PARTIES = {
+    // might from which a raid moves as a party rather than being settled by chance — about a strong
+    // camp (strength 0,6 × a greenskin's SPECIAL ≈ 3); armies and dragons always do
+    threshold: 3,
+    // cells a day over open meadow (of a 192-cell-high world; scaled with the map); a cell's cost
+    // (data/roads.js ROADS.cost, eased by a road) divides it; flight ignores the ground
+    speed: { foot: 0.7, rider: 1.1, flight: 2.5 },
+    // a party that cannot reach its goal (no path, the goal gone) goes home; one that cannot go home disbands
+    giveUp: 200
+    // days a party may be on the way before it turns back
+  };
+  var ARMY = {
+    levy: 0.25,
+    might: 1.8,
+    minMen: 40,
+    burn: 0.08,
+    stock: 1.5,
+    stockFood: 0.25,
+    starve: 8e-3,
+    assaultAt: 0.9,
+    longest: 120,
+    beatenLoss: 0.35,
+    winLoss: 0.15,
+    broken: 0.55,
+    supplies: 120,
+    forage: 15,
+    attrition: 0.02,
+    scourge: 2.5,
+    scourgeFade: 0.45,
+    scourged: 0.45,
+    everyYears: 1
+  };
+  var DRAGON = { sleep: [6, 14], reach: 45, burns: [2, 4], loss: 0.1, might: 60 };
+
   // src/data/diplomacy.js
   var DIPLOMACY = {
     drift: 0.2,
@@ -18477,40 +18513,6 @@ dd.q4{color:#c58cff;font-weight:600}
     return q < 0 ? 0 : Math.min(1, a.f.sea[q] / SEA.levels[1].wear);
   }
 
-  // src/data/parties.js
-  var PARTIES = {
-    // might from which a raid moves as a party rather than being settled by chance — about a strong
-    // camp (strength 0,6 × a greenskin's SPECIAL ≈ 3); armies and dragons always do
-    threshold: 3,
-    // cells a day over open meadow (of a 192-cell-high world; scaled with the map); a cell's cost
-    // (data/roads.js ROADS.cost, eased by a road) divides it; flight ignores the ground
-    speed: { foot: 0.7, rider: 1.1, flight: 2.5 },
-    // a party that cannot reach its goal (no path, the goal gone) goes home; one that cannot go home disbands
-    giveUp: 200
-    // days a party may be on the way before it turns back
-  };
-  var ARMY = {
-    levy: 0.25,
-    might: 1.8,
-    minMen: 40,
-    burn: 0.08,
-    stock: 1.5,
-    stockFood: 0.25,
-    starve: 8e-3,
-    assaultAt: 0.9,
-    longest: 120,
-    beatenLoss: 0.35,
-    winLoss: 0.15,
-    broken: 0.55,
-    supplies: 120,
-    forage: 15,
-    attrition: 0.02,
-    scourge: 2.5,
-    scourgeFade: 0.5,
-    everyYears: 1
-  };
-  var DRAGON = { sleep: [6, 14], reach: 45, burns: [2, 4], loss: 0.1, might: 60 };
-
   // src/atlas/parties.js
   var BEHAVIOURS = {};
   var scratchOf = (a) => a.roadScratch || (a.roadScratch = { g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: [] });
@@ -19013,7 +19015,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!path) continue;
       const flow = net?.get(key3)?.flow || 0;
       const amt = Math.sqrt(t.pop * o.pop) / ROADS.traffic * (1 + (townFx(t).trade + townFx(o).trade) / 2) + flow / NET.wear;
-      for (const c of path) if (!f.scourge || f.scourge[c] < 0.5) f.road[c] += amt;
+      for (const c of path) if (!f.scourge || f.scourge[c] <= ARMY.scourged) f.road[c] += amt;
       a.roadPairs || (a.roadPairs = /* @__PURE__ */ new Set());
       if (!a.roadPairs.has(key3)) {
         a.roadPairs.add(key3);
@@ -19109,6 +19111,9 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function razeSites(a, t, year) {
     for (const id of t.sites || []) razeSite(a, a.sites[id - 1], year);
+    if (a.net) {
+      for (const [key3, l] of a.net.links) if (l.p === t || l.q === t) a.net.links.delete(key3);
+    }
   }
   function forgetSites(a, year) {
     if (!a.sites) return;
@@ -19126,7 +19131,8 @@ dd.q4{color:#c58cff;font-weight:600}
       alive.add(key3);
       if (!L.has(key3)) L.set(key3, { p: t, q: o, c: NET.start, flow: 0 });
     }
-    for (const [key3, l] of L) if (!alive.has(key3) || !l.p.alive || !l.q.alive) {
+    for (const [key3, l] of L) if (!l.p.alive || !l.q.alive) L.delete(key3);
+    else if (!alive.has(key3)) {
       l.c *= 1 - NET.decay;
       if (l.c < NET.min) L.delete(key3);
     }
@@ -19135,8 +19141,9 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!t.alive) continue;
       const [own, room2] = feeds.get(t.id) || [0, 0];
       t.supply = { own, got: 0, gave: 0 };
-      surplus.set(t.id, NET.give * Math.max(0, own - NET.keep * t.pop));
-      deficit.set(t.id, Math.max(0, Math.min(room2, NET.want * t.pop) - own));
+      const sur = NET.give * Math.max(0, own - NET.keep * t.pop);
+      surplus.set(t.id, sur);
+      deficit.set(t.id, sur > 0 ? 0 : Math.max(0, Math.min(room2, NET.want * t.pop) - own));
     }
     for (const l of L.values()) {
       outC.set(l.p.id, (outC.get(l.p.id) || 0) + l.c);
@@ -19187,7 +19194,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function scourgedFood(a, t) {
     if (!a.f.scourge) return 0;
     let v = 0;
-    for (const s of townSites(a, t)) if (a.f.scourge[s.i] >= 0.5) v += TOWN_BUILDINGS.get(s.kind).fx.food || 0;
+    for (const s of townSites(a, t)) if (a.f.scourge[s.i] > ARMY.scourged) v += TOWN_BUILDINGS.get(s.kind).fx.food || 0;
     return v;
   }
 
@@ -19461,6 +19468,7 @@ dd.q4{color:#c58cff;font-weight:600}
   };
   function groundFits(a, L, i) {
     if (a.f.ocean[i] || a.f.lake[i] >= 0) return false;
+    if (townAt(a, i) || a.siteAt && a.siteAt[i]) return false;
     if (L.ground === "home") return homeAt(a, L, i) >= TRIBE_HOME && (!L.needsAny || L.needsAny.some((g3) => groundKind(a, g3, i)));
     if (L.ground === "rot") return !!a.rot && a.rot[faunaCell(a, i)] >= L.rotAt && (L.at === "barrows" ? (a.f.barrows?.[i] || 0) >= 0.25 : L.at === "ruins" ? !!ruinNear(a, i) : true);
     if (L.ground === "rift") return a.f.volc[i] > 0.6 || !!a.f.bnd && a.f.bnd[i] > 0 && (a.f.elev[i] - a.sea) / (1 - a.sea) > 0.3;
@@ -19763,6 +19771,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (tribe >= PARTIES.threshold) {
       const p = sendParty(a, "raid", lair.i, target.i, { owner: lair.id, target: target.id, might: tribe, speed: L.riders ? "rider" : "foot", label: raidWho(L), color: L.color });
       if (p) return `${raidWho(L)} ${L.from} \xAB${lair.name}\xBB ${L.leads ? "\u043D\u0430" : "\u0434\u0432\u0438\u043D\u0443\u043B\u0438\u0441\u044C \u043D\u0430"} ${townLabel(target, 1)} ${target.name}.`;
+      return null;
     }
     return strikeTown(a, lair, L, target, tribe, rnd, true);
   }
@@ -19853,6 +19862,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const L = LAIRS.get(p.lairKind), parent = a.lairs.find((l) => l.id === p.owner);
       p.state = "gone";
       if (a.lairs.some((o) => o.alive && o.kind === L.id && dist8(o, { x: p.goal % a.w, y: p.goal / a.w | 0 }) < 2 * R(a, L))) return;
+      if (!groundFits(a, L, p.goal)) return;
       const young = newLair(a, L, p.goal, rnd, 0.35);
       say2(`\u041C\u043E\u043B\u043E\u0434\u044B\u0435 ${SPECIES.get(L.species).plural} ${L.from} \xAB${parent ? parent.name : "\u2026"}\xBB \u043E\u0441\u043D\u043E\u0432\u0430\u043B\u0438 ${G[L.g].fresh} ${acc(L)} \u2014 \xAB${young.name}\xBB ${wherePhrase(a, p.goal)}.`);
     }
@@ -22192,8 +22202,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.49.1 Fix \xB7 18.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 30915fc" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.49.2 Fix \xB7 19.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 23efdca" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/world/save.js
   var SAVE_FORMAT = 3;

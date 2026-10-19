@@ -1079,6 +1079,43 @@ check('T81', 'наряд: у каждого есть дело, лучший по
   return true;
 });
 
+// ── the fixes after the World merge: reflexes against skips, the raider's blow, the night's rest, the net
+check('T82', 'пауза после «враг скрылся» держит только того врага: на нападение другого отвечают сразу', () => {
+  const w = scene(); fixedRng(w);
+  const man = put(w, 'human', 'colony', 30.5, 30.5); man.mods.bravery = 1.5;
+  const first = put(w, 'wolf', 'predators', 40.5, 30.5), second = put(w, 'wolf', 'predators', 31.5, 30.5);
+  first.hiddenUntil = w.tick + 1000;   // out of sight: the fight with it ends blocked
+  man.task = {id: 'fight', target: first}; syncTask(w, man);
+  TASKS.get('fight').step(w, man, man.task);   // looks about where it was seen last…
+  w.tick += 100; TASKS.get('fight').step(w, man, man.task);   // …and gives up
+  if (man.task) return 'бой со скрывшимся не кончился';
+  if (!skipped(w, man, {id: 'fight', target: first})) return 'нет паузы на скрывшегося врага';
+  if (skipped(w, man, {id: 'fight', target: second})) return 'пауза легла на другого врага';
+  second.pack = second.id; second.needs.food = 0.05; second.task = {id: 'maul', target: man};
+  man.think = 0; brain(w, man);
+  return (man.task?.id === 'fight' && man.task.target === second) || `атакованный вторым волком занят «${man.task?.id}»`;
+});
+
+check('T83', 'удар налётчика — нападение: бьют в ответ, а не копают глину', () => {
+  const w = scene(); fixedRng(w);
+  const man = put(w, 'human', 'colony', 30.5, 30.5); man.mods.bravery = 0.5; man.hp = maxHp(man) * 0.5;
+  const raider = put(w, 'human', 'raiders', 31.5, 30.5); raider.brain = 'raider'; raider.task = {id: 'fight', target: man};
+  man.task = {id: 'job', job: 'clay'}; syncTask(w, man);
+  man.think = 0; brain(w, man);
+  return ['fight', 'runHome'].includes(man.task?.id) || `под ударами налётчика занят «${man.task?.id}»`;
+});
+
+check('T84', 'выспавшийся до рассвета досыпает, а не идёт в лес', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 2 * HOUR;   // deep night
+  if (nightness(w) <= 0.75) return 'сцена не ночная: ' + nightness(w).toFixed(2);
+  const man = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  w.stock.wood = 1;   // logs wanted badly
+  man.needs.rest = 1; man.sleeping = true; man.task = {id: 'sleep'}; syncTask(w, man);
+  man.think = 0; brain(w, man);
+  return man.task?.id === 'sleep' || `ночью встал: «${man.task?.id}/${man.task?.job}»`;
+});
+
 let bad = 0;
 for (const [id, what, err] of results) { console.log(`${err ? 'FAIL' : 'ok  '} ${id} ${what}${err ? ' — ' + err : ''}`); if (err) bad++; }
 if (bad) process.exit(1);

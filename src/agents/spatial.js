@@ -29,7 +29,7 @@ export function nearAgents(w, x, y, r) {
   const y0 = Math.max(0, ((y - r) / CELL) | 0), y1 = Math.min(bh - 1, ((y + r) / CELL) | 0);
   const idx = [];
   for (let by = y0; by <= y1; by++) for (let bx = x0; bx <= x1; bx++) { const c = cells[by * bw + bx]; if (c) for (const k of c) idx.push(k); }
-  if (y1 - y0 > 0 && x1 - x0 > 0) idx.sort((p, q) => p - q);   // several bins: back into list order
+  if (y1 > y0 || x1 > x0) idx.sort((p, q) => p - q);   // several bins (a row, a column or a block): back into list order
   const out = new Array(idx.length); for (let k = 0; k < idx.length; k++) out[k] = ags[idx[k]];
   return out;
 }

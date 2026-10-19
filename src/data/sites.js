@@ -21,7 +21,8 @@ export const SITES = {
 // The net of supply. Each spring every town counts what its land and its living sites feed
 // (`feeds`, in people). A town with more than `keep` × its people has a surplus and sends up to
 // `give` of it down its links; a town whose houses hold more than its land feeds (up to `want` × its
-// people) lacks, and takes. A link's conductance c (0 … 1) decides how much may pass:
+// people) lacks, and takes; a town is one or the other, never both in one year. A link to a razed town
+// is dropped at once. A link's conductance c (0 … 1) decides how much may pass:
 //   flow p→q = c · min(share of p's surplus for this link, q's lack),  share ∝ c among p's links
 //   c grows by `grow` × (flow / need of q) a year and wastes by `decay` without flow; a link below
 //   `min` is dropped. New links start at `start`. Links join the `links` nearest towns within `reach`

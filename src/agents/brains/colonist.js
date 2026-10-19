@@ -70,7 +70,7 @@ function decide(w, a) {
     const n = NEEDS.get(id);
     // rested before dawn: the sleeper sleeps on till first light (agents/tasks.js sleep) — above any
     // work (≤ 1), below the alarm, the council and an attack
-    if (n.task === 'sleep' && a.task?.id === 'sleep' && a.needs[id] >= 1 && night > 0.75 && !raidAlarm(w)) { opts.push([{id: 'sleep'}, 1.0 * campOk, () => 'досыпает до рассвета']); continue; }
+    if (n.task === 'sleep' && a.task?.id === 'sleep' && a.needs[id] >= 0.995 && night > 0.75 && !raidAlarm(w)) { opts.push([{id: 'sleep'}, 1.0 * campOk, () => 'досыпает до рассвета']); continue; }
     opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ', но лагерь горит' : ''}`]);
   }
   const mate = mates(w, a);   // friends (and foes) at work (settlement/together.js)
@@ -121,7 +121,8 @@ function decide(w, a) {
     // already inside the settlement there is nowhere to run to: stand and fight, however badly hurt
     // (running "home" from home ends at once and leaves the wounded standing under the blows)
     const stand = brave * hpShare(a) > 0.85 || agentInZone(w, a);
-    opts.push(stand ? [{id: 'fight', target: hunter}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
+    // the answer to an attack is a reflex: no skip from an earlier fight with the same foe holds it back
+    opts.push(stand ? [{id: 'fight', target: hunter, reflex: true}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
   }
   const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
   // alarm: while raiders are on the map everyone gathers inside the settlement zone and meets them
@@ -140,7 +141,7 @@ function decide(w, a) {
   let bestWhy = null, alt = null, as = -Infinity, altWhy = null;
   // a task that just ended blocked or impossible stays out of the choice for a while (agents/lifecycle.js)
   for (const [t, s, why] of opts) {
-    if (key(t) !== cur && skipped(w, a, t)) continue;
+    if (key(t) !== cur && !t.reflex && skipped(w, a, t)) continue;
     const sc = s + (key(t) === cur ? keep : 0);
     if (sc > bs) { if (best && key(best) !== key(t)) { alt = best; as = bs; altWhy = bestWhy; } bs = sc; best = t; bestWhy = why; }
     else if (sc > as && key(t) !== key(best)) { alt = t; as = sc; altWhy = why; }
