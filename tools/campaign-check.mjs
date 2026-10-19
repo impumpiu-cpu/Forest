@@ -5,7 +5,10 @@
 // a world saved in the middle of a campaign goes on exactly as the unbroken one; the world lives on
 // (history past its end, told once); the caravan is a party of the world. The baggage: the load never
 // outgrows the room, wheels only go where wheels can, a caravan comes by beasts and a cart and chooses
-// between the road and the straight way; wheels never cross a swamp without a road. Prints how each went.
+// between the road and the straight way; wheels never cross a swamp without a road. Towns and people: the
+// caravan trades in friendly towns, the treasury never goes below nothing, the core stays the eight who set
+// out, nobody joins beyond the limits, the hired and the joined come and go; the campaign is lost exactly
+// when none of the eight is left. Prints how each went.
 // Usage: node tools/campaign-check.mjs [seeds=1] [size=small]
 import {generateAtlas, atlasHash} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
@@ -20,12 +23,14 @@ import {stepCost, onRoad} from '../src/campaign/path.js';
 import {biomeAt} from '../src/atlas/biomes.js';
 import {baggageText} from '../src/campaign/march.js';
 import {WHEELS} from '../src/data/transport.js';
+import {COMPANY_MAX, JOINED_MAX} from '../src/data/market.js';
+import {core, isCore} from '../src/campaign/march.js';
 
 const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small';
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const finite = K => [K.food, K.x, K.y, K.gold, ...K.members.map(m => m.hp)].every(Number.isFinite);
-const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0};
+const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0};
 
 for (let s = 0; s < seeds; s++) {
   const seed = String(777 + s * 13), base = generateAtlas({seed, size, land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
@@ -47,19 +52,26 @@ for (let s = 0; s < seeds; s++) {
     while (stepCampaign(a)) {
       if (load(K) > capacity(K) + 1e-6) { bad.push(`${c.label}: груз ${load(K).toFixed(1)} больше места ${capacity(K)}`); break; }
       if (wheeled(K) && K.path && K.path.slice(K.k).some(i => stepCost(a, i, K.people, true) === Infinity)) { bad.push(`${c.label}: колёса идут по бездорожью`); break; }
+      if (!(K.gold >= 0)) { bad.push(`${c.label}: казна ${K.gold}`); break; }
+      if (K.members.filter(isCore).length !== 8) { bad.push(`${c.label}: основной состав ${K.members.filter(isCore).length}`); break; }
+      const live = K.members.filter(m => m.alive);
+      if (live.length > COMPANY_MAX || live.filter(m => m.loyalty != null).length > JOINED_MAX) { bad.push(`${c.label}: в отряде ${live.length}`); break; }
     }
     if (K.log.some(l => l.kind === 'beast')) got.beast++;
     if (K.log.some(l => l.kind === 'build' && /тележк|повозк/.test(l.text))) got.cart++;
     if (K.log.some(l => l.kind === 'route')) got.route++;
+    if (K.log.some(l => l.kind === 'town' && /купили|продали/.test(l.text))) got.trade++;
+    if (K.members.some(m => !isCore(m))) got.joined++;
+    if (K.log.some(l => l.kind === 'leave')) got.left++;
+    if ((K.phase === 'lost') !== (core(K).length === 0)) bad.push(`${c.label}: ${K.phase} при ${core(K).length} из восьми`);
     tally[K.phase]++;
     if (!finite(K)) bad.push(`${c.label}: числа сломались`);
     if (K.phase === 'won' && !(K.log.some(l => l.kind === 'goal') && K.log.some(l => l.kind === 'home'))) bad.push(`${c.label}: вернулся, не дойдя до цели`);
-    if (K.phase === 'lost' && alive(K).length) bad.push(`${c.label}: проигрыш с живыми`);
     if (!(a.hist.year > y0) && K.day > 120) bad.push(`${c.label}: мир не жил`);
     if (a.chronicle.filter(l => /Эпоха молодых народов подошла к концу/.test(l.text)).length !== 1) bad.push(`${c.label}: конец эпохи сказан не один раз`);
     if (!a.chronicle.some(l => l.campaign)) bad.push(`${c.label}: в летописи мира нет похода`);
-    const dead = K.members.filter(m => !m.alive).length;
-    console.log(`     ${c.label.padEnd(24)} ${K.phase.padEnd(7)} ${(K.day / 120).toFixed(1).padStart(4)} лет, живы ${8 - dead}/8, боёв ${K.stats.fights}, голодных дней ${K.stats.hungryDays}, мир ${y0}→${a.hist.year}; обоз: ${baggageText(K)}`);
+    const dead = K.members.filter(m => isCore(m) && !m.alive).length, extra = K.members.filter(m => !isCore(m));
+    console.log(`     ${c.label.padEnd(24)} ${K.phase.padEnd(7)} ${(K.day / 120).toFixed(1).padStart(4)} лет, живы ${8 - dead}/8 (+${extra.filter(m => m.alive).length} из ${extra.length} приставших), в городах ${K.stats.towns || 0} раз, казна ${K.gold}, боёв ${K.stats.fights}, голодных дней ${K.stats.hungryDays}, мир ${y0}→${a.hist.year}; обоз: ${baggageText(K)}`);
   }
   check(`сид ${seed}: походы от столиц каждого народа`, !bad.length, bad.slice(0, 5).join('; '));
   // wheels: a road is passable, a swamp or a mountain without one is not
@@ -80,5 +92,6 @@ for (let s = 0; s < seeds; s++) {
   check(`сид ${seed}: сохранённый посреди похода мир идёт так же`, campaignHash(A.campaign) === campaignHash(C.campaign) && atlasHash(A) === atlasHash(C), `день ${A.campaign.day}`);
 }
 check('хотя бы один караван дошёл и вернулся', tally.won > 0, JSON.stringify(tally));
+check('караваны торгуют в городах, к ним пристают и от них уходят', got.trade > 0 && got.joined > 0 && got.left > 0, `торговали ${got.trade}, с нанятыми или приставшими ${got.joined}, с ушедшими ${got.left}`);
 check('караваны обзаводятся обозом и выбирают между трактом и прямой дорогой', got.beast > 0 && got.cart > 0 && got.route > 0, `со зверями ${got.beast}, с тележкой или повозкой ${got.cart}, с выбором пути ${got.route}`);
 if (!ok) process.exit(1);

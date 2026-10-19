@@ -7024,8 +7024,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var workBonus = (b) => 1 + statusOf(b);
   var ORDER = ["house", "shrine", "healerhut", "hearth", "crafthut"];
   function furnish(w) {
-    const pieces2 = FURNITURE.filter((f) => (w.stock[f.id] || 0) >= 1).sort((x, y) => y.comfort - x.comfort);
-    for (const f of pieces2) {
+    const pieces3 = FURNITURE.filter((f) => (w.stock[f.id] || 0) >= 1).sort((x, y) => y.comfort - x.comfort);
+    for (const f of pieces3) {
       while ((w.stock[f.id] || 0) >= 1) {
         const room2 = furnishable(w).filter((b2) => (b2.furniture?.length || 0) < FURNISH_MAX);
         if (!room2.length) return;
@@ -7725,10 +7725,10 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/agents/special.js
   var peopleOf = (sp, a) => a.people && sp.peoples ? sp.peoples.find((p) => p.id === a.people) : null;
-  function limits(sp, people) {
+  function limits(sp, people2) {
     const out = {};
     for (const id of STATS.ids()) {
-      const [lo, hi] = sp.special?.[id] ?? [5, 5], s = people?.shift?.[id] || 0;
+      const [lo, hi] = sp.special?.[id] ?? [5, 5], s = people2?.shift?.[id] || 0;
       out[id] = [Math.max(0, lo + s), Math.max(0, hi + s)];
     }
     return out;
@@ -7743,7 +7743,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!sp.special) return;
     const rng = w.rngs.birth;
     if (sp.peoples) a.people = weighted(rng, sp.peoples.map((p) => [p, p.weight ?? 1])).id;
-    const people = peopleOf(sp, a), lim = limits(sp, people);
+    const people2 = peopleOf(sp, a), lim = limits(sp, people2);
     a.special = {};
     for (const [id, [lo, hi]] of Object.entries(lim)) a.special[id] = Math.round(lo + (hi - lo) * (rng() + rng()) / 2);
     if (sp.align) {
@@ -7774,8 +7774,8 @@ dd.q4{color:#c58cff;font-weight:600}
     let full = null;
     if (a.special && sp.special) {
       full = specialInto(m, a, sp);
-      const people = peopleOf(sp, a);
-      for (const [k, v] of Object.entries(people?.mods || {})) mod(m, k, v);
+      const people2 = peopleOf(sp, a);
+      for (const [k, v] of Object.entries(people2?.mods || {})) mod(m, k, v);
       for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(m, k, v);
     }
     for (const id of a.traits || []) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) mod(m, k, v);
@@ -8112,8 +8112,8 @@ dd.q4{color:#c58cff;font-weight:600}
       if (bs.length) target = bs[Math.floor(w.rngs.outside() * bs.length)].id;
       else goal = "loot";
     }
-    const people = group.filter((a) => !a.warBeast);
-    const leader = group.find((a) => a.role === "necromancer" || a.species === "vampire") || people.sort((x, y) => strength(y) - strength(x))[0] || group[0];
+    const people2 = group.filter((a) => !a.warBeast);
+    const leader = group.find((a) => a.role === "necromancer" || a.species === "vampire") || people2.sort((x, y) => strength(y) - strength(x))[0] || group[0];
     if (leader.name === "\u041D\u0430\u043B\u0451\u0442\u0447\u0438\u043A") leader.name = "\u0410\u0442\u0430\u043C\u0430\u043D";
     else if (kind === "living" && group.length > 1 && !leader.role && !leader.warBeast && leader.name === SPECIES.get(leader.species).label.replace(/^./, (c) => c.toUpperCase())) leader.name += "-\u0432\u043E\u0436\u0430\u043A";
     const sq = sqs[id] = {
@@ -10020,9 +10020,9 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     const r = RECIPES.get(b.order.recipe);
     const bellows = r.fuel && (w.stock.bellows || 0) >= 1;
-    const labour = typeof amount === "function" ? amount(r) : amount;
-    b.order.progress += labour * (bellows ? FURNACE.bellowsWork : 1);
-    if (a) ((_a = b.order).by || (_a.by = {}))[a.id] = (b.order.by?.[a.id] || 0) + labour;
+    const labour2 = typeof amount === "function" ? amount(r) : amount;
+    b.order.progress += labour2 * (bellows ? FURNACE.bellowsWork : 1);
+    if (a) ((_a = b.order).by || (_a.by = {}))[a.id] = (b.order.by?.[a.id] || 0) + labour2;
     if (b.order.progress < r.work) return r;
     const by = b.order.by;
     b.order = null;
@@ -10695,10 +10695,10 @@ dd.q4{color:#c58cff;font-weight:600}
       (by[_a = e.job || "\u2014"] || (by[_a] = [])).push({ name: a.name, why: e.why });
     }
     const lines = [];
-    for (const [j, people] of Object.entries(by)) {
+    for (const [j, people2] of Object.entries(by)) {
       const job = j === "\u2014" ? null : JOBS.get(j);
-      const names = people.map((p) => p.name).join(", ");
-      const whys = [...new Set(people.map((p) => p.why).filter((x) => x && x !== "\u043D\u0443\u0436\u043D\u043E \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044E"))].join("; ");
+      const names = people2.map((p) => p.name).join(", ");
+      const whys = [...new Set(people2.map((p) => p.why).filter((x) => x && x !== "\u043D\u0443\u0436\u043D\u043E \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044E"))].join("; ");
       lines.push({ job: j, text: `${names} \u2014 ${job ? job.label : "\u0441\u0432\u043E\u0431\u043E\u0434\u043D\u044B\u0435 \u0440\u0443\u043A\u0438"}${need[j]?.why ? ` (${need[j].why})` : ""}${whys && job ? ` \xB7 ${whys}` : ""}` });
     }
     return lines;
@@ -11080,12 +11080,12 @@ dd.q4{color:#c58cff;font-weight:600}
     const terms = termsOf(w, c), askPrice2 = (g3) => askAt(g3, terms.b), bidPrice2 = (g3) => bidAt(g3, terms.b);
     deal.by = terms.name;
     deal.b = terms.b;
-    const note = (list2, label4, n, gold) => {
+    const note = (list2, label4, n, gold2) => {
       const x = list2.find((e) => e[0] === label4);
       if (x) {
         x[1] += n;
-        x[2] += gold;
-      } else list2.push([label4, n, gold]);
+        x[2] += gold2;
+      } else list2.push([label4, n, gold2]);
     };
     const free = () => c.capacity - goodsUnits(c.goods);
     const cash = () => treasury(w);
@@ -11096,11 +11096,11 @@ dd.q4{color:#c58cff;font-weight:600}
     };
     const keyCost = c.goods.filter((g3) => g3.kind === "res" && RESOURCES.get(g3.id).tags.includes("key") && keyWanted(w, g3.id)).reduce((t, g3) => t + askPrice2(g3), 0);
     const keepK = keyCost > cash() ? 0.5 : 1;
-    const offers = [];
+    const offers2 = [];
     for (const r of RESOURCES.all()) {
       if (r.sell === false || !(r.value > 0)) continue;
       const spare = Math.floor((w.stock[r.id] || 0) - keepOf(r, pop) * keepK);
-      if (spare > 0) offers.push({ g: { kind: "res", id: r.id, n: 1 }, n: spare });
+      if (spare > 0) offers2.push({ g: { kind: "res", id: r.id, n: 1 }, n: spare });
     }
     const worn = gearNeeds(w, false), kinds = /* @__PURE__ */ new Map();
     for (const it of w.armory) {
@@ -11110,10 +11110,10 @@ dd.q4{color:#c58cff;font-weight:600}
       const k = it.type + ":" + (it.q || 0);
       (kinds.get(k) || kinds.set(k, []).get(k)).push(it);
     }
-    for (const list2 of kinds.values()) for (const it of list2.slice(1)) offers.push({ g: { kind: "item", type: it.type, q: it.q || 0 }, n: 1, inst: it });
-    offers.sort((x, y) => bidPrice2(y.g) - bidPrice2(x.g));
+    for (const list2 of kinds.values()) for (const it of list2.slice(1)) offers2.push({ g: { kind: "item", type: it.type, q: it.q || 0 }, n: 1, inst: it });
+    offers2.sort((x, y) => bidPrice2(y.g) - bidPrice2(x.g));
     const isFood = (g3) => g3.kind === "res" && RESOURCES.get(g3.id).tags.includes("food");
-    for (const o of offers) {
+    for (const o of offers2) {
       const p = bidPrice2(o.g);
       if (p <= 0) continue;
       const cap = isFood(o.g) ? Math.floor(foodTotal(w) - pop * TRADE.foodKeep) : Infinity;
@@ -12829,7 +12829,7 @@ dd.q4{color:#c58cff;font-weight:600}
       const food = a.needs.food, b = boldness(a, P), night2 = nightness(w);
       const dZone = w.nav.get("zone")[i];
       const shy = (night2 > 0.5 || w.campLit ? P.zoneShyNight : P.zoneShy) * (1 - 0.6 * b);
-      const people = nearAgents(w, a.x, a.y, 6).filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist5(o, a) < 6);
+      const people2 = nearAgents(w, a.x, a.y, 6).filter((o) => !o.dead && matchesKind(o.species, P.victims) && dist5(o, a) < 6);
       const pack2 = packOf(w, a), leader = pack2[0];
       if (sp.nocturnal && night2 < 0.3 && a.task?.id !== "leave") a.task = { id: "leave" };
       if (a.task?.id === "leave" || a.hp < maxHp(a) * 0.35) {
@@ -12840,9 +12840,9 @@ dd.q4{color:#c58cff;font-weight:600}
         if (follow(w, a, "edge", 1.2) === "arrived") a.gone = true;
         return;
       }
-      if (people.length >= P.groupFear + Math.floor(b * 2)) {
+      if (people2.length >= P.groupFear + Math.floor(b * 2)) {
         a.task = { id: "bolt" };
-        bolt(w, a, people, sprintMul(a, P.sprint, P.stamina));
+        bolt(w, a, people2, sprintMul(a, P.sprint, P.stamina));
         return;
       }
       if (dZone < shy && a.task?.id !== "maul") {
@@ -17185,12 +17185,12 @@ dd.q4{color:#c58cff;font-weight:600}
     return v >= RIVERS.great * k2 ? "great" : v >= RIVERS.river * k2 ? "river" : v >= RIVERS.stream * k2 ? "stream" : null;
   };
   function placer(a) {
-    const f = a.f, n = a.n, gold = f.ore_gold, k2 = scaleOf(a) ** 2;
+    const f = a.f, n = a.n, gold2 = f.ore_gold, k2 = scaleOf(a) ** 2;
     const fl = { down: f.down, order: a.hydro.order, cnt: a.hydro.cnt };
     const ones = new Float32Array(n), g3 = new Float32Array(n);
     for (let i = 0; i < n; i++) if (!f.ocean[i]) {
       ones[i] = 1;
-      g3[i] = gold[i];
+      g3[i] = gold2[i];
     }
     const area = gather(a, fl, ones), load3 = gather(a, fl, g3), out = new Float32Array(n);
     for (let i = 0; i < n; i++) {
@@ -19171,20 +19171,20 @@ dd.q4{color:#c58cff;font-weight:600}
     return c;
   }
   var ANYONE = { moves: {} };
-  function baseCosts(a, people) {
+  function baseCosts(a, people2) {
     const all = a.roadBase || (a.roadBase = {});
-    const key3 = people || "anyone";
+    const key3 = people2 || "anyone";
     if (!all[key3]) {
-      const P = people ? WORLD_PEOPLES.get(people) : ANYONE, out = new Float64Array(a.n);
+      const P = people2 ? WORLD_PEOPLES.get(people2) : ANYONE, out = new Float64Array(a.n);
       for (let i = 0; i < a.n; i++) out[i] = baseCost(a, i, P);
       all[key3] = out;
     }
     return all[key3];
   }
   var stepCost2 = (a, base, i) => (base[i] - (a.f.bridge ? ROADS.river * a.f.bridge[i] : 0)) * (1 - ROADS.roadEase * Math.min(1, a.f.road[i] / ROADS.levels[1].wear));
-  var moveCost = (a, i, people) => stepCost2(a, baseCosts(a, people), i);
-  function findPath2(a, s, t, people, scratch) {
-    const { w, h } = a, { g: g3, came, touched } = scratch, heap = new Heap(1024), tx2 = t % w, ty = t / w | 0, base = baseCosts(a, people);
+  var moveCost = (a, i, people2) => stepCost2(a, baseCosts(a, people2), i);
+  function findPath2(a, s, t, people2, scratch) {
+    const { w, h } = a, { g: g3, came, touched } = scratch, heap = new Heap(1024), tx2 = t % w, ty = t / w | 0, base = baseCosts(a, people2);
     touched.length = 0;
     const H2 = (i) => 0.6 * Math.hypot(i % w - tx2, (i / w | 0) - ty);
     g3[s] = 0;
@@ -19357,14 +19357,14 @@ dd.q4{color:#c58cff;font-weight:600}
   function stepNet(a, feeds) {
     const net = a.net || (a.net = { links: /* @__PURE__ */ new Map() }), L = net.links;
     for (const l of L.values()) l.flow = 0;
-    const alive3 = /* @__PURE__ */ new Set();
+    const alive4 = /* @__PURE__ */ new Set();
     for (const [t, o] of tradeLinks(a, NET.links, NET.reach)) {
       const key3 = linkKey(t, o);
-      alive3.add(key3);
+      alive4.add(key3);
       if (!L.has(key3)) L.set(key3, { p: t, q: o, c: NET.start, flow: 0 });
     }
     for (const [key3, l] of L) if (!l.p.alive || !l.q.alive) L.delete(key3);
-    else if (!alive3.has(key3)) {
+    else if (!alive4.has(key3)) {
       l.c *= 1 - NET.decay;
       if (l.c < NET.min) L.delete(key3);
     }
@@ -19523,9 +19523,9 @@ dd.q4{color:#c58cff;font-weight:600}
     if (b.requiresAny && !b.requiresAny.some((id) => t.built.includes(id))) return false;
     if (b.site) return siteCell(a, t, b) >= 0;
     const pk = t.place || (t.place = {});
-    const has2 = (need) => need === "road" || need === "graves" ? placeHas(a, t.i, need) : pk[need] ?? (pk[need] = placeHas(a, t.i, need));
-    if (b.needs && !b.needs.every(has2)) return false;
-    if (b.needsAny && !b.needsAny.some(has2)) return false;
+    const has3 = (need) => need === "road" || need === "graves" ? placeHas(a, t.i, need) : pk[need] ?? (pk[need] = placeHas(a, t.i, need));
+    if (b.needs && !b.needs.every(has3)) return false;
+    if (b.needsAny && !b.needsAny.some(has3)) return false;
     return true;
   }
   function townNeeds(a, t, fx, ctx) {
@@ -20583,8 +20583,8 @@ dd.q4{color:#c58cff;font-weight:600}
     H2.season = (H2.season + 1) % SEASON_LIST.length;
     if (H2.season === 0) H2.year++;
     if (H2.step === wildEnd) {
-      const alive3 = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive3;
-      say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive3} ${plural(alive3, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
+      const alive4 = a.lairs.filter((l) => l.alive).length, gone = a.lairs.length - alive4;
+      say(a, `\u0414\u0438\u043A\u0430\u044F \u044D\u0440\u0430 \u043F\u043E\u0434\u043E\u0448\u043B\u0430 \u043A \u043A\u043E\u043D\u0446\u0443: ${alive4} ${plural(alive4, "\u043B\u043E\u0433\u043E\u0432\u043E", "\u043B\u043E\u0433\u043E\u0432\u0430", "\u043B\u043E\u0433\u043E\u0432")} \u0447\u0443\u0434\u043E\u0432\u0438\u0449 \u0441\u0442\u043E\u0438\u0442, ${gone} ${plural(gone, "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u043E", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438", "\u043E\u043F\u0443\u0441\u0442\u0435\u043B\u0438")}. \u041C\u0438\u0440 \u0436\u0434\u0451\u0442 \u043F\u0435\u0440\u0432\u044B\u0445 \u043D\u0430\u0440\u043E\u0434\u043E\u0432.`);
     }
     if (H2.step === elderEnd || H2.step === H2.end && !H2.endTold) {
       const towns = a.towns.filter((t) => t.alive), parts = [];
@@ -20842,8 +20842,8 @@ dd.q4{color:#c58cff;font-weight:600}
   }
 
   // src/version.js
-  var VERSION = "0.53.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 21b8aa0" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var VERSION = "0.54.0 Campaign \xB7 19.10.2026";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 5f8e0f9" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";
@@ -22285,7 +22285,7 @@ dd.q4{color:#c58cff;font-weight:600}
     // and `partner` around the towns of the realms it trades with; on the way: `sight` cells around it
     fog: { known: 8, partner: 3, sight: 3 },
     // a member's might in a fight: role × weapon × armour × health × Strength
-    might: { knight: 1, squire: 0.4, perDmg: 0.35, perArmor: 1, perStr: 0.06 },
+    might: { knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06 },
     // a night: the chance something finds the camp = base + the land's dangers (campaign/land.js), at most `max`;
     // near a town of friends the chance is × `friendly`
     night: { base: 0.02, max: 0.22, friendly: 0.3 },
@@ -22438,15 +22438,15 @@ dd.q4{color:#c58cff;font-weight:600}
     return s;
   };
   var onRoad = (a, i) => !!a.f.road && roadLevel(a.f.road[i]) >= 0 && a.f.road[i] >= WHEELS.roadAt;
-  function stepCost3(a, i, people, wheeled2) {
-    const c = moveCost(a, i, people);
+  function stepCost3(a, i, people2, wheeled2) {
+    const c = moveCost(a, i, people2);
     if (!wheeled2 || c === Infinity || onRoad(a, i)) return c;
     const b = biomeAt(a, i);
     if (!b || WHEELS.block.includes(b.id)) return Infinity;
     if (b.trees >= WHEELS.denseForest && a.f.trees && a.f.trees[i] >= WHEELS.denseForest) return Infinity;
     return c * WHEELS.offRoad;
   }
-  function route(a, s, t, people, wheeled2) {
+  function route(a, s, t, people2, wheeled2) {
     if (s === t) return { path: [], cost: 0 };
     const { w, h } = a, { g: g3, came, touched } = scratchOf2(a), heap = new Heap(1024), tx2 = t % w, ty = t / w | 0;
     touched.length = 0;
@@ -22466,7 +22466,7 @@ dd.q4{color:#c58cff;font-weight:600}
       for (const [dx, dy, len] of DIRS82) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-        const j = ny * w + nx, sc = stepCost3(a, j, people, wheeled2);
+        const j = ny * w + nx, sc = stepCost3(a, j, people2, wheeled2);
         if (sc === Infinity) continue;
         const ng = g3[c] + sc * len;
         if (ng < g3[j]) {
@@ -22604,20 +22604,19 @@ dd.q4{color:#c58cff;font-weight:600}
       towns: realmTowns(a, t.realm).length
     }));
   }
-  function member(K, a, rnd, used, role, k) {
-    const r = realmOf(a, K.realm), race = WORLD_PEOPLES.get(K.people).race, sp = SPECIES.get(race);
-    const spOf = r.sub && sp.peoples ? { ...sp, peoples: sp.peoples.filter((p) => p.id === r.sub) } : sp;
-    const m = { id: K.members.length + 1, name: sp.label, gender: "m", race, role, hp: 1, alive: true, joined: 0, back: 1, ride: null };
+  function makeMember(K, rnd, { race, sub = null, role, gear, core: core2 = false, ...more }) {
+    const sp = SPECIES.get(race), spOf = sub && sp.peoples ? { ...sp, peoples: sp.peoples.filter((p) => p.id === sub) } : sp;
+    const m = { id: K.nextMember = (K.nextMember || K.members.length) + 1, name: sp.label, gender: "m", race, role, core: core2, hp: 1, alive: true, joined: K.day, back: 1, ride: null, ...more };
     rollCreature({ rngs: { birth: rnd } }, m, spOf);
-    const names = (sp.names || []).filter((n) => !used.has(n[0]));
-    if (names.length) {
-      const n = names[rnd() * names.length | 0];
-      [m.name, m.gender] = n;
-      used.add(n[0]);
-    }
-    const R2 = RETINUE[K.people];
-    m.gear = role === "knight" ? { hand: [...R2.knightGear[k % R2.knightGear.length]], body: RETINUE.armour[k % RETINUE.armour.length] } : { hand: [...RETINUE.squireGear[k % RETINUE.squireGear.length]], body: RETINUE.squireBody };
+    const used = new Set(K.members.map((x) => x.name)), names = (sp.names || []).filter((n) => !used.has(n[0]));
+    if (names.length) [m.name, m.gender] = names[rnd() * names.length | 0];
+    m.gear = { hand: [...gear.hand], body: gear.body };
     return m;
+  }
+  function member(K, a, rnd, role, k) {
+    const r = realmOf(a, K.realm), R2 = RETINUE[K.people];
+    const gear = role === "knight" ? { hand: R2.knightGear[k % R2.knightGear.length], body: RETINUE.armour[k % RETINUE.armour.length] } : { hand: RETINUE.squireGear[k % RETINUE.squireGear.length], body: RETINUE.squireBody };
+    return makeMember(K, rnd, { race: WORLD_PEOPLES.get(K.people).race, sub: r.sub, role, gear, core: true });
   }
   function pickGoal(a, K, rnd) {
     const diag = Math.hypot(a.w, a.h), [x0, y0] = [K.home % a.w, K.home / a.w | 0], G2 = CAMPAIGN.goal;
@@ -22684,9 +22683,9 @@ dd.q4{color:#c58cff;font-weight:600}
       build: null,
       route: null
     };
-    const { r, done: done3 } = draw(K, "birth"), used = /* @__PURE__ */ new Set();
-    for (let k2 = 0; k2 < CAMPAIGN.knights; k2++) K.members.push(member(K, a, r, used, "knight", k2));
-    for (let k2 = 0; k2 < CAMPAIGN.squires; k2++) K.members.push(member(K, a, r, used, "squire", k2));
+    const { r, done: done3 } = draw(K, "birth");
+    for (let k2 = 0; k2 < CAMPAIGN.knights; k2++) K.members.push(member(K, a, r, "knight", k2));
+    for (let k2 = 0; k2 < CAMPAIGN.squires; k2++) K.members.push(member(K, a, r, "squire", k2));
     K.food = capacity(K);
     K.goal = pickGoal(a, K, r);
     done3();
@@ -22726,14 +22725,258 @@ dd.q4{color:#c58cff;font-weight:600}
     return K;
   }
 
+  // src/data/market.js
+  var STANDING = {
+    own: { buy: 0.9, sell: 0.8, label: "\u0441\u0432\u043E\u0438" },
+    friend: { buy: 1.15, sell: 0.7, label: "\u0434\u0440\u0443\u0437\u044C\u044F" }
+  };
+  var MARKET = {
+    // a ration of road food (grain, dried meat and fish): its base price; a town that feeds itself well sells
+    // it cheaper — × (food − feeds × the town's food effect, data/townBuildings.js), never below `floor`
+    ration: 0.25,
+    food: { base: 1.4, feeds: 0.6, floor: 0.7 },
+    // what a town buys of the caravan's goods, × value; a tannery pays more for hides, a market for everything
+    sellBonus: { tannery: { hide: 1.3 }, market: { all: 1.15 } },
+    // work in town: gold a day for each member who works (a squire with a tool, a knight hiring out as a guard);
+    // × (1 + `perTier` × the tool's metal)
+    labour: { squire: 0.45, knight: 0.4, other: 0.3, perTier: 0.25 },
+    // healing in town: × on camp healing; more where a healer, a hospice or a temple stands
+    heal: { base: 1.3, healer: 2 },
+    healers: ["healerhut", "hospice", "temple", "bathhouse"]
+  };
+  var OFFERS = [
+    { kind: "beast", id: "horse", at: ["pasture", "pen", "caravanserai"], price: 20 },
+    { kind: "beast", id: "mule", at: ["pasture", "pen", "caravanserai", "market"], price: 12 },
+    { kind: "beast", id: "camel", at: ["caravanserai"], price: 20 },
+    { kind: "vehicle", id: "cart", at: ["crafthut", "sawmill", "woodcut"], price: 10 },
+    { kind: "vehicle", id: "wagon", at: ["sawmill", "crafthut"], also: ["forge", "smelter"], price: 25 },
+    { kind: "item", id: "ironaxe", at: ["forge", "smelter", "foundry"] },
+    { kind: "item", id: "ironspear", at: ["forge", "armory"] },
+    { kind: "item", id: "sword", at: ["forge", "armory"] },
+    { kind: "item", id: "bow", at: ["bowyer"] },
+    { kind: "item", id: "shield", at: ["crafthut", "armory"] },
+    { kind: "item", id: "hardleather", at: ["tannery"] },
+    { kind: "item", id: "lamellar", at: ["forge", "armory"] },
+    { kind: "item", id: "chainmail", at: ["armory", "foundry"] },
+    { kind: "item", id: "furcoat", at: ["tannery", "lodge"] },
+    { kind: "building", id: "healerhut", at: ["healerhut", "hospice"], price: 15 },
+    { kind: "building", id: "forge", at: ["forge"], price: 30 },
+    { kind: "building", id: "crafthut", at: ["crafthut"], price: 12 }
+  ];
+  var WANTS = { reserve: 6, foodDays: 20 };
+  var HIRES = {
+    guide: {
+      label: "\u043F\u0440\u043E\u0432\u043E\u0434\u043D\u0438\u043A",
+      plural: "\u043F\u0440\u043E\u0432\u043E\u0434\u043D\u0438\u043A\u0438",
+      at: ["inn", "caravanserai", "toll", "hiddenpaths"],
+      tier: 1,
+      wage: 0.6,
+      days: [30, 60],
+      gear: { hand: ["staff"], body: "jerkin" },
+      night: 0.75,
+      sight: 2,
+      pace: 1.1
+    },
+    sellsword: {
+      label: "\u043D\u0430\u0451\u043C\u043D\u0438\u043A",
+      plural: "\u043D\u0430\u0451\u043C\u043D\u0438\u043A\u0438",
+      at: ["barracks", "warcamp", "arena", "inn"],
+      tier: 2,
+      wage: 0.9,
+      days: [30, 60],
+      gear: { hand: ["sword", "shield"], body: "lamellar" }
+    },
+    // the caravan hires when it has the gold for the whole term and keeps `reserve` days of food money; at most `max` of each
+    max: 1,
+    reserve: 8
+  };
+  var COMPANIONS = {
+    chance: { own: 0.2, friend: 0.08 },
+    inn: 1.5,
+    fee: 8,
+    freeAt: 7,
+    loyalty: 0.6,
+    minor: 0.3,
+    minorRaces: ["halfling", "giant", "gnoll"],
+    gear: { hand: ["club"], body: "clothes" }
+  };
+  var FREED = { chance: { tribe: 0.12, bandits: 0.08, army: 0.06, undead: 0.05 }, loyalty: 0.25, gear: { hand: [], body: "clothes" } };
+  var LOYALTY = { daily: 8e-3, hungry: -0.04, lost: -0.1, won: 0.03, leave: 0.06 };
+  var ROLES2 = { companion: "\u0441\u043F\u0443\u0442\u043D\u0438\u043A", freed: "\u0432\u044B\u0437\u0432\u043E\u043B\u0435\u043D\u043D\u044B\u0439 \u0438\u0437 \u043F\u043B\u0435\u043D\u0430" };
+  var COMPANY_MAX = 12;
+  var JOINED_MAX = 4;
+  var VISIT = { reach: 8, winterReach: 14, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, hungryGold: 5, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5 };
+  var EARN = { hide: 0.3, pan: 0.4 };
+
+  // src/campaign/town.js
+  var alive2 = (K) => K.members.filter((m) => m.alive);
+  var has2 = (t, ids) => ids.some((id) => t.built.includes(id));
+  var gold = (v) => Math.round(v * 10) / 10;
+  var pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
+  function standing(a, K, t) {
+    if (!t || !t.alive) return null;
+    if (t.realm && t.realm === K.realm) return "own";
+    if (!t.realm || !K.realm) return null;
+    return trades(a, K.realm, t.realm) && !atWar(a, K.realm, t.realm) ? "friend" : null;
+  }
+  var townName2 = (t) => `${townLabel(t, 0)} ${t.name}`;
+  function rationPrice(t, st) {
+    const F = MARKET.food, fx = townFx(t);
+    return MARKET.ration * Math.max(F.floor, F.base - F.feeds * (fx.food || 0)) * STANDING[st].buy;
+  }
+  var sellPrice = (t, st, id) => {
+    const v = RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0;
+    let k = STANDING[st].sell;
+    for (const [b, bonus] of Object.entries(MARKET.sellBonus)) if (t.built.includes(b)) k *= bonus[id] ?? bonus.all ?? 1;
+    return v * k;
+  };
+  var offerPrice = (o, st) => (o.price ?? (ITEMS.has(o.id) ? ITEMS.get(o.id).value : 10)) * STANDING[st].buy;
+  var offers = (t) => OFFERS.filter((o) => has2(t, o.at) && (!o.also || has2(t, o.also)));
+  var reserveFor = (K, t, st, days) => days * alive2(K).length * CAMPAIGN.ration * rationPrice(t, st);
+  function wants(a, K, t, st) {
+    const out = [], ms = alive2(K), tier = toolTier(K);
+    let fits = null;
+    const wheelsFit = () => {
+      if (fits == null) {
+        const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true);
+        fits = !!(road && foot && road.cost <= ROUTE.keep * foot.cost);
+      }
+      return fits;
+    };
+    const count2 = (kind) => K.beasts.filter((b) => b.kind === kind && b.hp > 0).length;
+    const riders = K.beasts.filter((b) => BEASTS[b.kind].use === "ride" && b.hp > 0).length;
+    for (const o of offers(t)) {
+      if (o.kind === "beast" && BEASTS[o.id].use === "pack" && count2(o.id) < 2) out.push([3, o]);
+      if (o.kind === "beast" && BEASTS[o.id].use === "ride" && riders < ms.length) out.push([5, o]);
+      if (o.kind === "vehicle" && o.id === "cart" && !K.vehicles.length && K.goal != null && wheelsFit()) out.push([4, o]);
+      if (o.kind === "vehicle" && o.id === "wagon" && !K.vehicles.some((v) => v.kind === "wagon") && K.beasts.some((b) => BEASTS[b.kind].pulls >= 1) && K.goal != null && wheelsFit()) out.push([6, o]);
+      if (o.kind === "item" && ITEMS.get(o.id).tool && tier < 2 && ITEMS.get(o.id).iron) out.push([2, o]);
+      if (o.kind === "item" && ITEMS.get(o.id).slot === "body" && ms.some((m) => m.role === "knight" && (ITEMS.get(m.gear.body)?.armor ?? 0) < ITEMS.get(o.id).armor)) out.push([7, o]);
+      if (o.kind === "item" && ITEMS.get(o.id).melee && !ITEMS.get(o.id).tool && ms.some((m) => m.role === "knight" && bestDmg(m) < ITEMS.get(o.id).melee.dmg)) out.push([8, o]);
+      if (o.kind === "building" && K.vehicles.some((v) => v.kind === "wagon" && !v.building)) out.push([6.5, o]);
+    }
+    return out.sort((p, q) => p[0] - q[0]).map((e) => e[1]);
+  }
+  var bestDmg = (m) => Math.max(0, ...m.gear.hand.map((id) => ITEMS.get(id)?.melee?.dmg ?? 0));
+  function equip(K, id) {
+    const d = ITEMS.get(id), ms = alive2(K);
+    if (d.slot === "body") {
+      const m2 = ms.filter((x) => x.role === "knight" || x.role === "sellsword").sort((p, q) => (ITEMS.get(p.gear.body)?.armor ?? 0) - (ITEMS.get(q.gear.body)?.armor ?? 0))[0] || ms[0];
+      m2.gear.body = id;
+      return m2;
+    }
+    if (d.tool) {
+      const m2 = ms.find((x) => x.role === "squire") || ms[0];
+      m2.gear.hand[0] = id;
+      return m2;
+    }
+    const m = ms.filter((x) => x.role === "knight").sort((p, q) => bestDmg(p) - bestDmg(q))[0] || ms[0];
+    const k = m.gear.hand.findIndex((x) => ITEMS.get(x)?.melee && !ITEMS.get(x)?.ranged && x !== "shield");
+    if (k >= 0) m.gear.hand[k] = id;
+    else m.gear.hand[0] = id;
+    return m;
+  }
+  function trade(a, K, t, st) {
+    const done3 = [];
+    let got = 0;
+    for (const [id, n2] of Object.entries(K.cargo)) {
+      const p = sellPrice(t, st, id) * n2;
+      if (p > 0) {
+        got += p;
+        delete K.cargo[id];
+        done3.push(`\u043F\u0440\u043E\u0434\u0430\u043B\u0438 ${RESOURCES.get(id).label} (${n2}) \u0437\u0430 ${gold(p)} \u0437\u043E\u043B.`);
+      }
+    }
+    K.gold = gold(K.gold + got);
+    const need = alive2(K).length * CAMPAIGN.ration, price = rationPrice(t, st);
+    const room2 = Math.max(0, capacity(K) - load2(K)), want2 = Math.max(0, Math.min(room2, need * WANTS.foodDays - K.food));
+    const n = Math.floor(Math.min(want2, K.gold / price));
+    if (n > 0) {
+      K.food += n;
+      K.gold = gold(K.gold - n * price);
+      done3.push(`\u043A\u0443\u043F\u0438\u043B\u0438 ${pieces(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \u043F\u043E ${gold(price)}`);
+    }
+    for (const o of wants(a, K, t, st)) {
+      const p = offerPrice(o, st);
+      if (K.gold - p < reserveFor(K, t, st, WANTS.reserve)) continue;
+      if (o.kind === "building" && !K.vehicles.some((x) => x.kind === "wagon" && !x.building)) continue;
+      if (o.kind === "vehicle" && (o.id === "cart" ? K.vehicles.length : K.vehicles.some((x) => x.kind === "wagon"))) continue;
+      if (o.kind === "beast" && BEASTS[o.id].use === "pack" && K.beasts.filter((b) => b.kind === o.id && b.hp > 0).length >= 2) continue;
+      if (o.kind === "beast" && BEASTS[o.id].use === "ride" && K.beasts.filter((b) => BEASTS[b.kind].use === "ride" && b.hp > 0).length >= alive2(K).length) continue;
+      K.gold = gold(K.gold - p);
+      if (o.kind === "beast") {
+        K.beasts.push({ id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null });
+        done3.push(`${BEASTS[o.id].acc} \u0437\u0430 ${gold(p)}`);
+      } else if (o.kind === "vehicle") {
+        K.vehicles.push({ kind: o.id, building: null, pulled: false });
+        done3.push(`${o.id === "cart" ? "\u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u043F\u043E\u0432\u043E\u0437\u043A\u0443"} \u0437\u0430 ${gold(p)}`);
+      } else if (o.kind === "building") {
+        const v = K.vehicles.find((x) => x.kind === "wagon" && !x.building);
+        v.building = o.id;
+        done3.push(`\u0440\u0430\u0437\u043E\u0431\u0440\u0430\u043D\u043D\u0443\u044E \xAB${BUILDINGS.get(o.id).name}\xBB \u0432 \u043F\u043E\u0432\u043E\u0437\u043A\u0443 \u0437\u0430 ${gold(p)}`);
+      } else {
+        const m = equip(K, o.id);
+        done3.push(`${ITEMS.get(o.id).label.toLowerCase()} \u0434\u043B\u044F ${m.name} \u0437\u0430 ${gold(p)}`);
+      }
+      assign(K);
+      K.path = null;
+    }
+    return done3;
+  }
+  function labour(K) {
+    const L = MARKET.labour, tier = toolTier(K);
+    let g3 = 0;
+    for (const m of alive2(K)) {
+      if (m.role === "squire" && m.gear.hand.some((id) => ITEMS.get(id)?.tool)) g3 += L.squire * (1 + L.perTier * tier);
+      else if (m.role === "knight") g3 += L.knight;
+      else g3 += L.other;
+    }
+    K.gold = gold(K.gold + g3);
+    return g3;
+  }
+  var healHere = (t) => has2(t, MARKET.healers) ? MARKET.heal.healer : MARKET.heal.base;
+  var hireAt = (t, H2) => has2(t, H2.at) || t.tier >= H2.tier;
+  function hire(a, K, t, st, r) {
+    const said = [], ms = alive2(K);
+    for (const [id, H2] of Object.entries(HIRES)) {
+      if (typeof H2 !== "object" || !H2.wage) continue;
+      if (ms.length >= COMPANY_MAX || K.members.filter((m2) => m2.alive && m2.role === id).length >= HIRES.max || !hireAt(t, H2)) continue;
+      const days = Math.round(H2.days[0] + r() * (H2.days[1] - H2.days[0])), cost = gold(H2.wage * days * STANDING[st].buy);
+      if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve)) continue;
+      K.gold = gold(K.gold - cost);
+      const m = makeMember(K, r, { race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H2.gear, contract: { until: K.day + days, wage: H2.wage } });
+      K.members.push(m);
+      said.push(`\u043D\u0430\u043D\u044F\u043B\u0438 ${H2.label}\u0430 ${m.name} \u043D\u0430 ${pieces(days, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} \u0437\u0430 ${cost} \u0437\u043E\u043B.`);
+    }
+    return said;
+  }
+  function companion(a, K, t, st, r) {
+    const C = COMPANIONS;
+    if (alive2(K).length >= COMPANY_MAX || alive2(K).filter((m2) => m2.loyalty != null).length >= JOINED_MAX || r() >= C.chance[st] * (t.built.includes("inn") ? C.inn : 1)) return null;
+    const charm = Math.max(...alive2(K).map((m2) => m2.special?.C ?? NORM)), free = charm >= C.freeAt;
+    if (!free && K.gold - C.fee < reserveFor(K, t, st, WANTS.reserve)) return null;
+    const minor = r() < C.minor ? C.minorRaces[r() * C.minorRaces.length | 0] : null;
+    const race = minor || WORLD_PEOPLES.get(t.people).race;
+    if (!free) K.gold = gold(K.gold - C.fee);
+    const m = makeMember(K, r, { race, role: "companion", gear: C.gear, loyalty: C.loyalty });
+    K.members.push(m);
+    const sp = SPECIES.get(race);
+    return `\u043A \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u0443 ${free ? "\u043F\u043E \u0434\u043E\u0431\u0440\u043E\u0439 \u0432\u043E\u043B\u0435" : `\u0437\u0430 ${C.fee} \u0437\u043E\u043B.`} \u043F\u0440\u0438\u0441\u0442\u0430\u043B${m.gender === "f" ? "\u0430" : ""} ${m.name}${minor ? ` \u0438\u0437 \u043D\u0430\u0440\u043E\u0434\u0430 ${sp.gen || sp.plural}` : ""}`;
+  }
+  var townLine = (a, t, st) => `${townName2(t)} (${STANDING[st].label}${t.realm ? `, ${realmLabel(a, t.realm)}` : ""})`;
+
   // src/campaign/march.js
+  var SPECIES_LABEL = (race) => SPECIES.get(race).label;
   var SEASON_LIST2 = SEASONS.all();
   var between3 = (r, [lo, hi]) => lo + r() * (hi - lo);
   var xyOf = (a, i) => [i % a.w, i / a.w | 0];
-  var pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
-  var alive2 = (K) => K.members.filter((m) => m.alive);
+  var pieces2 = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
+  var alive3 = (K) => K.members.filter((m) => m.alive);
+  var isCore = (m) => m.core ?? ["knight", "squire"].includes(m.role);
+  var core = (K) => K.members.filter((m) => m.alive && isCore(m));
+  var guided = (K) => alive3(K).some((m) => m.role === "guide");
   var ended = (K) => ["won", "lost", "timeout"].includes(K.phase);
-  var rank = (K, m) => RETINUE[K.people][m.role][0];
+  var rank = (K, m) => RETINUE[K.people][m.role]?.[0] || HIRES[m.role]?.label || ROLES2[m.role] || "\u0441\u043F\u0443\u0442\u043D\u0438\u043A";
   function say2(a, K, text, kind = "march", world2 = false) {
     const H2 = a.hist, line2 = { day: K.day, year: H2.year, season: H2.season, i: K.i, text, kind };
     K.log.push(line2);
@@ -22751,9 +22994,9 @@ dd.q4{color:#c58cff;font-weight:600}
     const armor = itemDef2(m.gear.body)?.armor ?? 0;
     return M[m.role] * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * (0.3 + 0.7 * m.hp);
   }
-  var caravanMight = (K) => alive2(K).reduce((s, m) => s + memberMight(m), 0);
+  var caravanMight = (K) => alive3(K).reduce((s, m) => s + memberMight(m), 0);
   function pace(a, K, seasonId) {
-    let v = CAMPAIGN.speed * scaleOf(a) * slowest(K);
+    let v = CAMPAIGN.speed * scaleOf(a) * slowest(K) * (guided(K) ? HIRES.guide.pace : 1);
     if (K.hungry > 0) v *= CAMPAIGN.hunger.slow;
     if (seasonId === "winter" && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0) v *= CAMPAIGN.frost;
     return v;
@@ -22763,8 +23006,8 @@ dd.q4{color:#c58cff;font-weight:600}
     m.hp = 0;
     m.ride = null;
     m.died = { day: K.day, year: a.hist.year, why };
-    const left = alive2(K).length;
-    say2(a, K, `${m.name}, ${rank(K, m)}, ${why}.${left ? ` \u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${left} \u0438\u0437 ${K.members.length}.` : ""}`, "death", !left);
+    const left = core(K).length, n = K.members.filter(isCore).length;
+    say2(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` \u0418\u0437 \u0432\u044B\u0448\u0435\u0434\u0448\u0438\u0445 \u0438\u0437 \u0441\u0442\u043E\u043B\u0438\u0446\u044B \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C ${left} \u0438\u0437 ${n}.` : ""}`, "death", isCore(m) && !left);
   }
   var beastWord = (kind, cs = "label") => BEASTS[kind][cs];
   function gainBeast(a, K, kind, how) {
@@ -22829,12 +23072,23 @@ dd.q4{color:#c58cff;font-weight:600}
       if (lvl > 0 && lacking(K, kind) && r() < GETTING.tame * Math.min(1.6, lvl) * handler(K)) gainBeast(a, K, kind, "\u041F\u0440\u0438\u0440\u0443\u0447\u0438\u043B\u0438");
     }
     if ((wooded || (b?.trees ?? 0) >= 0.1) && r() < 0.5) {
-      const m = alive2(K).filter((x) => (x.back ?? 1) === 1).sort((p, q) => (p.role === "squire") - (q.role === "squire")).pop();
+      const m = alive3(K).filter((x) => (x.back ?? 1) === 1).sort((p, q) => (p.role === "squire") - (q.role === "squire")).pop();
       if (m) {
         m.back = 1 + GETTING.basket.cells;
-        const done3 = alive2(K).every((x) => (x.back ?? 1) > 1), first = alive2(K).filter((x) => (x.back ?? 1) > 1).length === 1;
+        const done3 = alive3(K).every((x) => (x.back ?? 1) > 1), first = alive3(K).filter((x) => (x.back ?? 1) > 1).length === 1;
         if (first) say2(a, K, `${m.name} \u0441\u043F\u043B\u0451\u043B${m.gender === "f" ? "\u0430" : ""} \u0438\u0437 \u043B\u044B\u043A\u0430 \u0438 \u043B\u043E\u0437\u044B \u0437\u0430\u043F\u043B\u0435\u0447\u043D\u044B\u0439 \u043A\u043E\u0440\u043E\u0431: \u043D\u0430 \u0441\u043F\u0438\u043D\u0443 \u043B\u043E\u0436\u0438\u0442\u0441\u044F \u0432\u0442\u0440\u043E\u0435 \u0431\u043E\u043B\u044C\u0448\u0435. \u041E\u0441\u0442\u0430\u043B\u044C\u043D\u044B\u0435 \u0432\u0437\u044F\u043B\u0438\u0441\u044C \u0437\u0430 \u0441\u0432\u043E\u0438.`, "build");
         else if (done3) say2(a, K, "\u0422\u0435\u043F\u0435\u0440\u044C \u0443 \u043A\u0430\u0436\u0434\u043E\u0433\u043E \u0437\u0430 \u0441\u043F\u0438\u043D\u043E\u0439 \u043A\u043E\u0440\u043E\u0431.", "build");
+      }
+    }
+    const game = ["deer", "boar", "elk", "aurochs", "saiga", "goat"].reduce((s, id) => s + faunaLevel({ region: reg }, id), 0);
+    if (r() < EARN.hide * Math.min(1.5, game)) K.cargo.hide = (K.cargo.hide || 0) + 1;
+    if (reg.placer > 0 && alive3(K).some((m) => m.gear.hand.includes("pan"))) {
+      const g3 = Math.round(EARN.pan * reg.placer * (0.5 + r()) * 10) / 10;
+      K.gold = Math.round((K.gold + g3) * 10) / 10;
+      K.stats.panned = (K.stats.panned || 0) + g3;
+      if (!K.pannedTold || K.day - K.pannedTold > 60) {
+        K.pannedTold = K.day;
+        say2(a, K, "\u0412 \u0440\u0435\u0447\u043D\u043E\u043C \u043F\u0435\u0441\u043A\u0435 \u0431\u043B\u0435\u0441\u0442\u0438\u0442 \u0437\u043E\u043B\u043E\u0442\u043E: \u043B\u043E\u0442\u043E\u043A \u043D\u0435 \u043F\u0443\u0441\u0442\u0443\u0435\u0442, \u043A\u0430\u0437\u043D\u0430 \u043F\u043E\u043D\u0435\u043C\u043D\u043E\u0433\u0443 \u0440\u0430\u0441\u0442\u0451\u0442.", "find");
       }
     }
     if (K.build && wooded) {
@@ -22861,7 +23115,7 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function lacking(K, kind) {
     const have = K.beasts.filter((b) => b.kind === kind && b.hp > 0).length, B3 = BEASTS[kind];
-    if (B3.use === "ride") return K.beasts.filter((b) => BEASTS[b.kind].use === "ride" && b.hp > 0).length < alive2(K).length;
+    if (B3.use === "ride") return K.beasts.filter((b) => BEASTS[b.kind].use === "ride" && b.hp > 0).length < alive3(K).length;
     const wagon = K.vehicles.some((v) => v.kind === "wagon") ? 1 : 0;
     return have < 2 + wagon;
   }
@@ -22894,24 +23148,131 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   function wantBuild(a, K) {
     if (!((biomeAt(a, K.i)?.trees ?? 0) >= 0.3)) return null;
-    const tier = toolTier(K), has2 = (kind) => K.vehicles.some((v) => v.kind === kind);
+    const tier = toolTier(K), has3 = (kind) => K.vehicles.some((v) => v.kind === kind);
     const fit = () => {
       const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true);
       return road && foot && road.cost <= ROUTE.keep * foot.cost;
     };
     const days = (d) => Math.max(1, Math.round(d * campFx(K, "build")));
-    if (has2("wagon")) {
+    if (has3("wagon")) {
       const w = K.vehicles.find((v) => v.kind === "wagon" && !v.building);
       const b = w && fieldBuildings().find((x) => !K.vehicles.some((v) => v.building === x.id));
       return b ? { kind: "building", id: b.id, days: days(buildDays(b)) } : null;
     }
     const draft = K.beasts.some((b) => BEASTS[b.kind].pulls >= 1) || K.beasts.filter((b) => BEASTS[b.kind].pulls > 0).length >= 2;
     if (tier >= VEHICLES.wagon.tool && draft && fit()) return { kind: "wagon", days: days(VEHICLES.wagon.days) };
-    if (!has2("cart") && tier >= VEHICLES.cart.tool && fit()) return { kind: "cart", days: days(VEHICLES.cart.days) };
+    if (!has3("cart") && tier >= VEHICLES.cart.tool && fit()) return { kind: "cart", days: days(VEHICLES.cart.days) };
     return null;
   }
+  var freezing = (a, i) => a.f.temp[i] - a.f.trange[i] / 2 < VISIT.winterBelow;
+  function wantVisit(a, K, seasonId) {
+    const ms = alive3(K), need = ms.length * CAMPAIGN.ration, C = CAMPAIGN.camp;
+    if ((seasonId === "winter" || seasonId === "autumn" && a.hist && K.day % 30 >= 20) && freezing(a, K.i) && K.winterYear !== a.hist.year) return "winter";
+    if (K.day < (K.nextVisit ?? 0)) return "";
+    if (K.food < need * C.foodDays) return "food";
+    if (ms.some((m) => m.hp < C.badly)) return "heal";
+    if (K.gold >= VISIT.money && K.day - (K.lastVisit ?? -999) >= VISIT.every) return "shop";
+    return "";
+  }
+  function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach) {
+    const v = Math.max(0.05, pace(a, K, SEASON_LIST2[a.hist.season].id)), R2 = days * v, x0 = K.i % a.w, y0 = K.i / a.w | 0, wh = wheeled(K);
+    const near4 = (a.towns || []).filter((t) => t.alive && standing(a, K, t) && Math.hypot(t.x - x0, t.y - y0) <= R2).sort((p, q) => Math.hypot(p.x - x0, p.y - y0) - Math.hypot(q.x - x0, q.y - y0)).slice(0, 4);
+    const direct = K.goal == null ? null : route(a, K.i, K.goal, K.people, wh);
+    let fallback = null;
+    for (const t of near4) {
+      const way = route(a, K.i, t.i, K.people, wh);
+      if (!way) continue;
+      fallback || (fallback = { t, way });
+      if (!direct) return { t, way };
+      const on = route(a, t.i, K.goal, K.people, wh);
+      if (way.cost > R2 * 1.6) continue;
+      if (on && on.cost < direct.cost && way.cost + on.cost <= direct.cost * (1 + detour) + VISIT.slack) return { t, way };
+    }
+    return urgent ? fallback : null;
+  }
+  var VISIT_WHY = { winter: "\u043F\u0435\u0440\u0435\u0437\u0438\u043C\u043E\u0432\u0430\u0442\u044C", food: "\u043A\u0443\u043F\u0438\u0442\u044C \u0435\u0434\u044B", heal: "\u043F\u043E\u0434\u043B\u0435\u0447\u0438\u0442\u044C \u0440\u0430\u043D\u0435\u043D\u044B\u0445", shop: "\u043F\u043E\u0442\u0440\u0430\u0442\u0438\u0442\u044C \u043A\u0430\u0437\u043D\u0443" };
+  function enterTown(a, K, t) {
+    const st = standing(a, K, t), why = K.viaWhy;
+    K.via = null;
+    K.viaWhy = null;
+    K.path = null;
+    K.camp = 0;
+    K.why = "";
+    if (!st) {
+      say2(a, K, `${townName2(t)} \u0437\u0430\u043A\u0440\u044B\u043B \u0432\u043E\u0440\u043E\u0442\u0430 \u043F\u0435\u0440\u0435\u0434 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C.`, "town");
+      return;
+    }
+    const { r, done: done3 } = draw(K, "town");
+    const parts = [...trade(a, K, t, st), ...hire(a, K, t, st, r)], c = companion(a, K, t, st, r);
+    if (c) parts.push(c);
+    done3();
+    K.inTown = { id: t.id, since: K.day, why };
+    K.lastVisit = K.day;
+    K.stats.towns = (K.stats.towns || 0) + 1;
+    if (why === "winter") K.winterYear = a.hist.year;
+    say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0432\u043E\u0448\u0451\u043B \u0432 ${townLine(a, t, st)}${why === "winter" ? " \u043D\u0430 \u0437\u0438\u043C\u043E\u0432\u043A\u0443" : ""}${parts.length ? ": " + parts.join("; ") : ""}. \u041A\u0430\u0437\u043D\u0430: ${K.gold} \u0437\u043E\u043B.`, "town");
+  }
+  function townEvening(a, K, seasonId) {
+    const t = a.towns.find((x) => x.id === K.inTown.id), st = standing(a, K, t), ms = alive3(K);
+    const stocked = K.food >= 0.9 * Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays);
+    const healed = ms.every((m) => m.hp >= CAMPAIGN.camp.healed);
+    const wintering = K.inTown.why === "winter" && (seasonId === "winter" || seasonId === "autumn");
+    if (st && (wintering || K.day - K.inTown.since < VISIT.stay && !(stocked && healed))) return;
+    const parts = st ? trade(a, K, t, st) : [];
+    say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0432\u044B\u0445\u043E\u0434\u0438\u0442 \u0438\u0437 ${townLabel(t, 2)} ${t.name}${parts.length ? ": " + parts.join("; ") : ""}. \u041A\u0430\u0437\u043D\u0430: ${K.gold} \u0437\u043E\u043B.`, "town");
+    K.inTown = null;
+    K.path = null;
+    K.nextVisit = K.day + VISIT.every;
+  }
+  function people(a, K, r) {
+    for (const m of alive3(K)) {
+      if (isCore(m)) continue;
+      if (m.contract && K.day >= m.contract.until) {
+        leave3(a, K, m, `${m.name}, ${rank(K, m)}, \u043E\u0442\u0441\u043B\u0443\u0436\u0438\u043B${m.gender === "f" ? "\u0430" : ""} \u0441\u0440\u043E\u043A \u0438 \u0443\u0448\u0451\u043B${m.gender === "f" ? "\u0430" : ""}`);
+        continue;
+      }
+      if (m.loyalty == null || m.loyalty >= 1) continue;
+      m.loyalty = Math.max(0, Math.min(1, m.loyalty + LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0)));
+      if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave3(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? "\u043D\u0435 \u0432\u044B\u043D\u0435\u0441 \u0433\u043E\u043B\u043E\u0434\u0430 \u0438" : "\u043E\u0434\u043D\u0430\u0436\u0434\u044B \u0443\u0442\u0440\u043E\u043C"} \u0443\u0448\u0451\u043B${m.gender === "f" ? "\u0430" : ""} \u0441\u0432\u043E\u0435\u0439 \u0434\u043E\u0440\u043E\u0433\u043E\u0439`);
+      else if (m.loyalty >= 1) say2(a, K, `${m.name} \u0442\u0435\u043F\u0435\u0440\u044C \u0441\u0432\u043E\u0439${m.gender === "f" ? "" : ""}: \u0438\u0434\u0451\u0442 \u0441 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C \u0434\u043E \u043A\u043E\u043D\u0446\u0430.`, "people");
+    }
+  }
+  function leave3(a, K, m, text) {
+    m.alive = false;
+    m.ride = null;
+    m.left = { day: K.day, year: a.hist.year };
+    say2(a, K, text + ".", "leave");
+    assign(K);
+  }
+  var shake = (K, d) => {
+    for (const m of alive3(K)) if (m.loyalty != null && m.loyalty < 1) m.loyalty = Math.max(0, Math.min(1, m.loyalty + d));
+  };
   function evening3(a, K) {
-    const ms = alive2(K), need = ms.length * CAMPAIGN.ration;
+    const ms = alive3(K), need = ms.length * CAMPAIGN.ration, seasonId = SEASON_LIST2[a.hist.season].id;
+    if (K.inTown) {
+      townEvening(a, K, seasonId);
+      if (K.inTown) return;
+    }
+    if (K.via != null && !K.inTown) {
+      const t = a.towns.find((x) => x.id === K.via);
+      if (!t || !t.alive) {
+        K.via = null;
+        K.path = null;
+      } else if (K.i === t.i) {
+        enterTown(a, K, t);
+        return;
+      } else if (!K.path || K.k >= K.path.length) {
+        const way = route(a, K.i, t.i, K.people, wheeled(K));
+        if (way) {
+          K.path = way.path;
+          K.k = 0;
+        } else {
+          K.via = null;
+          K.viaWhy = null;
+          K.path = null;
+        }
+      }
+    }
     if (K.goal != null && K.i === K.goal && K.phase === "out") {
       say2(a, K, `\u041A\u0430\u0440\u0430\u0432\u0430\u043D \u0434\u043E\u0448\u0451\u043B \u0434\u043E \u0446\u0435\u043B\u0438 \u2014 ${biomeAt(a, K.i)?.where || "\u043D\u0430 \u043A\u0440\u0430\u0439 \u0441\u0432\u0435\u0442\u0430"}. \u041F\u043E\u0440\u0443\u0447\u0435\u043D\u0438\u0435 \u0438\u0441\u043F\u043E\u043B\u043D\u0435\u043D\u043E, \u043F\u043E\u0440\u0430 \u0434\u043E\u043C\u043E\u0439.`, "goal", true);
       K.phase = "back";
@@ -22923,13 +23284,30 @@ dd.q4{color:#c58cff;font-weight:600}
       K.phase = "won";
       return;
     }
-    const rich = richness(a, K.i), core = ms.reduce((s, m) => s + m.hp, 0) / ms.length, C = CAMPAIGN.camp;
+    if (K.via == null && K.camp === 0) {
+      const why = wantVisit(a, K, seasonId);
+      const rich2 = K.gold >= VISIT.hungryGold * need * MARKET.ration;
+      const urgent = why === "winter" || why === "heal" && ms.some((m) => m.hp < CAMPAIGN.camp.badly) || why === "food" && K.hungry > 0 && rich2;
+      const days = why === "winter" ? VISIT.winterReach : why === "food" ? Math.min(VISIT.reach, K.food / need + VISIT.foodSpare) : VISIT.reach;
+      const found = why && findTown(a, K, urgent, K.hungry ? VISIT.hungryDetour : VISIT.detour, days);
+      if (found) {
+        K.via = found.t.id;
+        K.viaWhy = why;
+        K.path = found.way.path;
+        K.k = 0;
+        say2(a, K, `\u0421\u043E\u0432\u0435\u0442: \u0441\u0432\u0435\u0440\u043D\u0443\u0442\u044C \u0432 ${townLabel(found.t, 1)} ${found.t.name} \u2014 ${VISIT_WHY[why]}.`, "town");
+        if (!K.path.length) enterTown(a, K, found.t);
+        return;
+      }
+    }
+    if (K.via != null && !(K.hungry && richness(a, K.i) >= CAMPAIGN.camp.foodLand)) return;
+    const rich = richness(a, K.i), core2 = ms.reduce((s, m) => s + m.hp, 0) / ms.length, C = CAMPAIGN.camp;
     const stock = Math.min(capacity(K) - cargoLoad(K), need * C.stock);
-    if (K.camp > 0 && (K.why === "food" && K.food >= C.full * stock || K.why === "heal" && core >= C.healed)) K.camp = 0;
+    if (K.camp > 0 && (K.why === "food" && K.food >= C.full * stock || K.why === "heal" && core2 >= C.healed)) K.camp = 0;
     if (K.camp > 0) K.camp--;
     else {
       const badly = ms.some((m) => m.hp < C.badly), quiet = nightRisk(a, K.i) <= C.danger;
-      let why = K.food < need * C.foodDays && rich >= C.foodLand ? "food" : core < C.hp || badly ? "heal" : "";
+      let why = K.food < need * C.foodDays && rich >= C.foodLand ? "food" : core2 < C.hp || badly ? "heal" : "";
       if (why && !K.hungry && !quiet && K.path && K.k < K.path.length) why = "";
       if (!why && !K.hungry && quiet && K.food >= need * C.foodDays && K.day >= (K.nextThink ?? 0)) {
         K.nextThink = K.day + C.think;
@@ -22948,18 +23326,20 @@ dd.q4{color:#c58cff;font-weight:600}
         K.why = why;
         K.stats.camps++;
         const left = Math.floor(K.food / need);
-        const text = why === "food" ? `${left > 0 ? `\u0415\u0434\u044B \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0430 ${pieces(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : "\u0415\u0434\u044B \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C"}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C, \u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C.` : why === "heal" ? "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u0435\u043B\u0435 \u0438\u0434\u0443\u0442: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C \u0438 \u043E\u0442\u043B\u0435\u0436\u0430\u0442\u044C\u0441\u044F." : why === "build" ? `\u0421\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u0432 \u043B\u0435\u0441\u0443 \u0438 ${K.build.kind === "building" ? `\u0441\u0440\u0443\u0431\u0438\u0442\u044C \xAB${BUILDINGS.get(K.build.id).name}\xBB \u0434\u043B\u044F \u043F\u043E\u0432\u043E\u0437\u043A\u0438` : K.build.kind === "cart" ? "\u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u043F\u043E\u0432\u043E\u0437\u043A\u0443"}: ${pieces(K.build.days, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} \u0440\u0430\u0431\u043E\u0442\u044B.` : `\u0417\u0434\u0435\u0441\u044C \u043F\u0430\u0441\u0443\u0442\u0441\u044F \u0434\u0438\u043A\u0438\u0435 ${BEASTS[why.slice(5)].plural}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u0438 \u043F\u0440\u0438\u0440\u0443\u0447\u0438\u0442\u044C.`;
+        const text = why === "food" ? `${left > 0 ? `\u0415\u0434\u044B \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043D\u0430 ${pieces2(left, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : "\u0415\u0434\u044B \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C"}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C, \u043E\u0445\u043E\u0442\u0438\u0442\u044C\u0441\u044F \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u0442\u044C.` : why === "heal" ? "\u0420\u0430\u043D\u0435\u043D\u044B\u0435 \u0435\u043B\u0435 \u0438\u0434\u0443\u0442: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u043B\u0430\u0433\u0435\u0440\u0435\u043C \u0438 \u043E\u0442\u043B\u0435\u0436\u0430\u0442\u044C\u0441\u044F." : why === "build" ? `\u0421\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u0432 \u043B\u0435\u0441\u0443 \u0438 ${K.build.kind === "building" ? `\u0441\u0440\u0443\u0431\u0438\u0442\u044C \xAB${BUILDINGS.get(K.build.id).name}\xBB \u0434\u043B\u044F \u043F\u043E\u0432\u043E\u0437\u043A\u0438` : K.build.kind === "cart" ? "\u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u043F\u043E\u0432\u043E\u0437\u043A\u0443"}: ${pieces2(K.build.days, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} \u0440\u0430\u0431\u043E\u0442\u044B.` : `\u0417\u0434\u0435\u0441\u044C \u043F\u0430\u0441\u0443\u0442\u0441\u044F \u0434\u0438\u043A\u0438\u0435 ${BEASTS[why.slice(5)].plural}: \u0441\u043E\u0432\u0435\u0442 \u0440\u0435\u0448\u0438\u043B \u0432\u0441\u0442\u0430\u0442\u044C \u0438 \u043F\u0440\u0438\u0440\u0443\u0447\u0438\u0442\u044C.`;
         say2(a, K, text, "camp");
       } else if (!why) K.why = "";
     }
     if ((!K.path || K.k >= K.path.length) && K.goal != null && K.i !== K.goal) plan(a, K);
   }
   function night(a, K) {
+    if (K.inTown) return;
     const { r, done: done3 } = draw(K, "night");
     const near4 = townAt(a, K.i), friendly = near4 && near4.realm && (near4.realm === K.realm || trades(a, K.realm, near4.realm) && !atWar(a, K.realm, near4.realm));
     const ds = dangers(a, K.i);
     let p = CAMPAIGN.night.base + ds.reduce((s, d) => s + d.p, 0);
     if (friendly) p *= CAMPAIGN.night.friendly;
+    if (guided(K)) p *= HIRES.guide.night;
     p = Math.min(CAMPAIGN.night.max, p);
     if (r() < p) {
       let x = r() * (ds.reduce((s, d2) => s + d2.p, 0) || 1), d = ds[0] || { kind: "wolves", strength: 0.7 };
@@ -22977,13 +23357,13 @@ dd.q4{color:#c58cff;font-weight:600}
         const n = Math.round(between3(r, M.foodN));
         K.food += n;
         K.stats.finds++;
-        if (r() < 0.25) say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u043F\u043E\u0434\u0441\u0442\u0440\u0435\u043B\u0438\u043B\u0438 \u0434\u0438\u0447\u044C: +${pieces(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "find");
+        if (r() < 0.25) say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u043F\u043E\u0434\u0441\u0442\u0440\u0435\u043B\u0438\u043B\u0438 \u0434\u0438\u0447\u044C: +${pieces2(n, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "find");
       }
       if (r() < M.treasure) {
         const g3 = Math.round(between3(r, M.gold));
         K.gold += g3;
         K.stats.finds++;
-        say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u0443 \u0440\u0443\u0447\u044C\u044F \u043D\u0430\u0448\u043B\u0438 \u043E\u0431\u0440\u043E\u043D\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0448\u0435\u043B\u044C: ${pieces(g3, "\u0437\u043E\u043B\u043E\u0442\u043E\u0439", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445")}.`, "find");
+        say2(a, K, `\u0423\u0442\u0440\u043E\u043C \u0443 \u0440\u0443\u0447\u044C\u044F \u043D\u0430\u0448\u043B\u0438 \u043E\u0431\u0440\u043E\u043D\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0448\u0435\u043B\u044C: ${pieces2(g3, "\u0437\u043E\u043B\u043E\u0442\u043E\u0439", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445", "\u0437\u043E\u043B\u043E\u0442\u044B\u0445")}.`, "find");
       }
     }
     done3();
@@ -22994,8 +23374,8 @@ dd.q4{color:#c58cff;font-weight:600}
     K.stats.fights++;
     let hurt2 = E2 * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share2)) * (win ? 1 : F.lostHurt);
     const hit = [];
-    while (hurt2 > 0 && alive2(K).length) {
-      const ms = alive2(K), wts = ms.map((m2) => m2.role === "knight" ? F.shield : 1);
+    while (hurt2 > 0 && alive3(K).length) {
+      const ms = alive3(K), wts = ms.map((m2) => m2.role === "knight" ? F.shield : 1);
       let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
       for (let q = 0; q < ms.length; q++) {
         x -= wts[q];
@@ -23014,27 +23394,41 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     const where = d.label ? ` \u2014 ${d.label}` : "";
-    if (!alive2(K).length) return;
+    if (!alive3(K).length) return;
     if (win) {
       K.stats.won++;
+      shake(K, LOYALTY.won);
+      const joined = () => alive3(K).filter((m) => m.loyalty != null).length;
+      if (FREED.chance[d.kind] && alive3(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
+        const n = 1 + (r() < 0.35 ? 1 : 0), names = [];
+        for (let q = 0; q < n && alive3(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
+          const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
+          const race = minor ? COMPANIONS.minorRaces[r() * COMPANIONS.minorRaces.length | 0] : peoples[r() * peoples.length | 0].race;
+          const m = makeMember(K, r, { race, role: "freed", gear: FREED.gear, loyalty: FREED.loyalty });
+          K.members.push(m);
+          names.push(`${m.name} (${SPECIES_LABEL(race)})`);
+        }
+        say2(a, K, `\u0412 \u043B\u0430\u0433\u0435\u0440\u0435 \u0432\u0440\u0430\u0433\u043E\u0432 \u043D\u0430\u0448\u043B\u0438 \u043F\u043B\u0435\u043D\u043D\u0438\u043A\u043E\u0432 \u0438 \u043E\u0441\u0432\u043E\u0431\u043E\u0434\u0438\u043B\u0438: ${names.join(", ")}. ${n > 1 ? "\u041F\u043E\u043A\u0430 \u0438\u0434\u0443\u0442 \u0441 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C" : "\u041F\u043E\u043A\u0430 \u0438\u0434\u0451\u0442 \u0441 \u043A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u043C"} \u2014 \u043D\u0430\u0434\u043E\u043B\u0433\u043E \u043B\u0438, \u043D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u043E.`, "people");
+      }
       const loot = Math.round(between3(r, F.loot));
       K.food += loot;
-      say2(a, K, `\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438 ${foe.label}${where}. \u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C${hit.length ? `, \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u043D\u0438\u043A\u0442\u043E"}` : " \u0431\u0435\u0437 \u0440\u0430\u043D"}; \u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 \u0435\u0434\u044B \u043D\u0430 ${pieces(loot, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "fight");
+      say2(a, K, `\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438 ${foe.label}${where}. \u041E\u0442\u0431\u0438\u043B\u0438\u0441\u044C${hit.length ? `, \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u043D\u0438\u043A\u0442\u043E"}` : " \u0431\u0435\u0437 \u0440\u0430\u043D"}; \u0441 \u0443\u0431\u0438\u0442\u044B\u0445 \u0432\u0437\u044F\u043B\u0438 \u0435\u0434\u044B \u043D\u0430 ${pieces2(loot, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}.`, "fight");
       for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) {
         gainBeast(a, K, kind, "\u0423 \u0432\u0440\u0430\u0433\u043E\u0432 \u043E\u0442\u0431\u0438\u043B\u0438");
         break;
       }
       const T2 = GETTING.spoilTool;
       if (T2[d.kind] && toolTier(K) < 2 && r() < T2[d.kind]) {
-        const m = alive2(K).find((x) => x.role === "squire") || alive2(K)[0], old = m.gear.hand[0];
+        const m = alive3(K).find((x) => x.role === "squire") || alive3(K)[0], old = m.gear.hand[0];
         m.gear.hand[0] = T2.item;
         say2(a, K, `\u0421\u0440\u0435\u0434\u0438 \u0431\u0440\u043E\u0448\u0435\u043D\u043D\u043E\u0433\u043E \u0432\u0440\u0430\u0433\u0430\u043C\u0438 \u043D\u0430\u0448\u0451\u043B\u0441\u044F ${ITEMS.get(T2.item).label.toLowerCase()}: ${m.name} \u0441\u043C\u0435\u043D\u0438\u043B${m.gender === "f" ? "\u0430" : ""} \u043D\u0430 \u043D\u0435\u0433\u043E ${ITEMS.has(old) ? ITEMS.get(old).short : "\u0441\u0432\u043E\u0439 \u0438\u043D\u0441\u0442\u0440\u0443\u043C\u0435\u043D\u0442"}. \u0421 \u0436\u0435\u043B\u0435\u0437\u043E\u043C \u043C\u043E\u0436\u043D\u043E \u0441\u043A\u043E\u043B\u043E\u0442\u0438\u0442\u044C \u043F\u043E\u0432\u043E\u0437\u043A\u0443.`, "build");
       }
     } else {
       K.stats.fled++;
+      shake(K, LOYALTY.lost);
       const lost = Math.round(K.food * F.lost);
       K.food -= lost;
-      say2(a, K, `\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438 ${foe.label}${where}. \u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438 \u0438 \u0431\u0435\u0436\u0430\u043B\u0438 \u0432 \u0442\u0435\u043C\u043D\u043E\u0442\u0435${lost ? `, \u0431\u0440\u043E\u0441\u0438\u0432 ${pieces(lost, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}` : ""}${hit.length ? `; \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u2014"}` : ""}.`, "fight");
+      say2(a, K, `\u041D\u043E\u0447\u044C\u044E \u043D\u0430 \u043B\u0430\u0433\u0435\u0440\u044C \u043D\u0430\u043F\u0430\u043B\u0438 ${foe.label}${where}. \u041D\u0435 \u0443\u0441\u0442\u043E\u044F\u043B\u0438 \u0438 \u0431\u0435\u0436\u0430\u043B\u0438 \u0432 \u0442\u0435\u043C\u043D\u043E\u0442\u0435${lost ? `, \u0431\u0440\u043E\u0441\u0438\u0432 ${pieces2(lost, "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")}` : ""}${hit.length ? `; \u0440\u0430\u043D\u0435\u043D\u044B: ${hit.filter((m) => m.alive).map((m) => m.name).join(", ") || "\u2014"}` : ""}.`, "fight");
       const gone = K.beasts.filter(() => r() < GETTING.lose.beast);
       if (gone.length) {
         K.beasts = K.beasts.filter((b) => !gone.includes(b));
@@ -23061,12 +23455,21 @@ dd.q4{color:#c58cff;font-weight:600}
     if (ended(K)) return;
     const seasonId = SEASON_LIST2[a.hist.season].id, before = { town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id };
     assign(K);
-    const ms = alive2(K), { r, done: done3 } = draw(K, "day");
+    const ms = alive3(K), { r, done: done3 } = draw(K, "day");
     const rich = richness(a, K.i) * seasonFood(a, K.i, seasonId), Fo = CAMPAIGN.forage;
-    const camping = K.camp > 0 || !K.path || K.k >= K.path.length;
-    if (!camping) march(a, K, pace(a, K, seasonId));
+    const town = K.inTown ? a.towns.find((x) => x.id === K.inTown.id) : null;
+    const camping = !town && (K.camp > 0 || !K.path || K.k >= K.path.length);
+    if (town) {
+      labour(K);
+      const st = standing(a, K, town), price = st ? rationPrice(town, st) : Infinity, want2 = Math.max(0, ms.length * CAMPAIGN.ration * 2 - K.food);
+      const n = Math.min(want2, Math.floor(K.gold / price));
+      if (n > 0) {
+        K.food += n;
+        K.gold = Math.round((K.gold - n * price) * 10) / 10;
+      }
+    } else if (!camping) march(a, K, pace(a, K, seasonId));
     else campWork(a, K, r);
-    K.food += ms.length * (camping ? Fo.camp * campFx(K, "forage") : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+    if (!town) K.food += ms.length * (camping ? Fo.camp * campFx(K, "forage") : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
     const need = ms.length * CAMPAIGN.ration, eat2 = Math.min(K.food, need), fed = eat2 / need;
     K.food = Math.max(0, K.food - eat2);
     const HT = CAMPAIGN.hunger.tell;
@@ -23078,7 +23481,7 @@ dd.q4{color:#c58cff;font-weight:600}
       K.hungry++;
       K.stats.hungryDays++;
     } else if (K.hungry) {
-      if (K.hungry >= HT.over) say2(a, K, `\u0413\u043E\u043B\u043E\u0434 \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B \u043F\u043E\u0441\u043B\u0435 ${pieces(K.hungry, "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439", "\u0434\u043D\u0435\u0439")}.`, "hunger");
+      if (K.hungry >= HT.over) say2(a, K, `\u0413\u043E\u043B\u043E\u0434 \u043E\u0442\u0441\u0442\u0443\u043F\u0438\u043B \u043F\u043E\u0441\u043B\u0435 ${pieces2(K.hungry, "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439", "\u0434\u043D\u0435\u0439")}.`, "hunger");
       K.hungry = 0;
     }
     for (const m of ms) {
@@ -23088,8 +23491,9 @@ dd.q4{color:#c58cff;font-weight:600}
           die(a, K, m, "\u0443\u043C\u0435\u0440 \u043E\u0442 \u0433\u043E\u043B\u043E\u0434\u0430");
           continue;
         }
-      } else if (!K.hungry) m.hp = Math.min(1, m.hp + (camping ? CAMPAIGN.heal.camp * campFx(K, "heal") : CAMPAIGN.heal.march * (m.ride ? 1.5 : 1)));
+      } else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : camping ? CAMPAIGN.heal.camp * campFx(K, "heal") : CAMPAIGN.heal.march * (m.ride ? 1.5 : 1)));
     }
+    people(a, K, r);
     const grass = pasture(a, K.i, seasonId);
     for (const b of [...K.beasts]) {
       b.hp = grass ? Math.min(1, b.hp + 0.03) : b.hp - FODDER.starve * (0.5 + r());
@@ -23098,12 +23502,16 @@ dd.q4{color:#c58cff;font-weight:600}
     done3();
     assign(K);
     overflow(K);
-    if (alive2(K).length) {
+    if (core(K).length) {
       entered(a, K, before);
       evening3(a, K);
     }
-    if (alive2(K).length && !ended(K)) night(a, K);
-    if (!alive2(K).length && !ended(K)) {
+    if (core(K).length && !ended(K)) night(a, K);
+    if (!core(K).length && !ended(K)) {
+      for (const m of alive3(K)) {
+        m.alive = false;
+        m.left = { day: K.day, year: a.hist.year };
+      }
       K.phase = "lost";
       say2(a, K, "\u041D\u0438\u043A\u043E\u0433\u043E \u0438\u0437 \u0442\u0435\u0445, \u043A\u0442\u043E \u0432\u044B\u0448\u0435\u043B \u0438\u0437 \u0441\u0442\u043E\u043B\u0438\u0446\u044B, \u043D\u0435 \u043E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0432 \u0436\u0438\u0432\u044B\u0445. \u041A\u0430\u0440\u0430\u0432\u0430\u043D \u043D\u0435 \u0434\u043E\u0439\u0434\u0451\u0442.", "end", true);
     }
@@ -23111,14 +23519,16 @@ dd.q4{color:#c58cff;font-weight:600}
       K.phase = "timeout";
       say2(a, K, `\u041F\u0440\u043E\u0448\u043B\u043E ${CAMPAIGN.maxYears} \u043B\u0435\u0442: \u043A\u0430\u0440\u0430\u0432\u0430\u043D \u0442\u0430\u043A \u0438 \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F.`, "end", true);
     }
-    reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a));
+    assign(K);
+    overflow(K);
+    reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
     K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);
     const p = (a.parties || []).find((x) => x.id === K.party);
     if (p) {
       p.x = K.x;
       p.y = K.y;
       p.i = K.i;
-      p.men = alive2(K).length;
+      p.men = alive3(K).length;
       p.goal = K.goal;
       if (ended(K)) p.state = "gone";
     }
@@ -23443,15 +23853,16 @@ dd.q4{color:#c58cff;font-weight:600}
     renderSide() {
       const a = this.atlas, K = a.campaign;
       if (!K) return;
-      const ms = alive2(K), need = ms.length * CAMPAIGN.ration, H2 = a.hist;
+      const ms = alive3(K), need = ms.length * CAMPAIGN.ration, H2 = a.hist;
       const doing = { heal: "\u043B\u0430\u0433\u0435\u0440\u044C: \u0440\u0430\u043D\u0435\u043D\u044B\u0435 \u043E\u0442\u043B\u0451\u0436\u0438\u0432\u0430\u044E\u0442\u0441\u044F", food: "\u043B\u0430\u0433\u0435\u0440\u044C: \u043E\u0445\u043E\u0442\u044F\u0442\u0441\u044F \u0438 \u0441\u043E\u0431\u0438\u0440\u0430\u044E\u0442", build: K.build ? `\u043B\u0430\u0433\u0435\u0440\u044C: ${K.build.kind === "building" ? `\u0440\u0443\u0431\u044F\u0442 \xAB${BUILDINGS.get(K.build.id).name}\xBB` : K.build.kind === "cart" ? "\u0441\u043A\u043E\u043B\u0430\u0447\u0438\u0432\u0430\u044E\u0442 \u0442\u0435\u043B\u0435\u0436\u043A\u0443" : "\u0441\u043A\u043E\u043B\u0430\u0447\u0438\u0432\u0430\u044E\u0442 \u043F\u043E\u0432\u043E\u0437\u043A\u0443"}, \u0435\u0449\u0451 ${K.build.days} \u0434\u043D.` : "\u043B\u0430\u0433\u0435\u0440\u044C: \u0441\u0442\u0440\u043E\u044F\u0442" };
       const tameKind = K.why?.startsWith("tame:") ? BEASTS[K.why.slice(5)] : null;
-      const plan2 = ended(K) ? PHASE[K.phase] : K.hungry ? `\u0433\u043E\u043B\u043E\u0434\u0430\u044E\u0442 ${K.hungry} ${plural(K.hungry, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : K.camp > 0 ? tameKind ? `\u043B\u0430\u0433\u0435\u0440\u044C: \u043F\u0440\u0438\u0440\u0443\u0447\u0430\u044E\u0442 \u2014 ${tameKind.plural}` : doing[K.why] || "\u043B\u0430\u0433\u0435\u0440\u044C" : PHASE[K.phase];
-      $("campStatus").innerHTML = `<dt>\u0414\u0430\u0442\u0430</dt><dd>\u0433\u043E\u0434 ${H2.year}, ${seasonWord(H2.season)}</dd><dt>\u0412 \u043F\u0443\u0442\u0438</dt><dd>${K.day} ${plural(K.day, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} (${(K.day / 120).toFixed(1)} \u0433.)</dd><dt>\u0427\u0442\u043E \u0434\u0435\u043B\u0430\u044E\u0442</dt><dd>${plan2}</dd><dt>\u0415\u0434\u0430</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \xB7 \u043D\u0430 ${need ? (K.food / need).toFixed(1) : 0} \u0434\u043D.</dd><dt>\u0413\u0440\u0443\u0437</dt><dd>${Math.round(load2(K))} \u0438\u0437 ${capacity(K)} \u043C\u0435\u0441\u0442</dd><dt>\u041E\u0431\u043E\u0437</dt><dd class="nb">${esc(baggageText(K))}</dd>` + (K.route ? `<dt>\u041F\u0443\u0442\u044C</dt><dd>${K.route === "road" ? "\u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C" : "\u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A, \u043D\u0430\u043B\u0435\u0433\u043A\u0435"}</dd>` : "") + `<dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${K.gold} \u0437\u043E\u043B.</dd><dt>\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C</dt><dd>${pace(a, K, SEASON_LIST3[H2.season].id).toFixed(2)} \u043A\u043B./\u0434\u0435\u043D\u044C</dd><dt>\u041F\u0440\u043E\u0439\u0434\u0435\u043D\u043E</dt><dd>${Math.round(K.stats.walked)} \u043A\u043B\u0435\u0442\u043E\u043A</dd><dt>\u041D\u043E\u0447\u043D\u044B\u0445 \u0431\u043E\u0451\u0432</dt><dd>${K.stats.fights} \xB7 \u043E\u0442\u0431\u0438\u043B\u0438\u0441\u044C ${K.stats.won}</dd>`;
-      $("campRoster").innerHTML = K.members.map((m) => {
-        const sp = SPECIES.get(m.race), rk = RETINUE[K.people][m.role][0];
+      const townOf = (id) => a.towns.find((t) => t.id === id), inTown = K.inTown && townOf(K.inTown.id), via = K.via != null && townOf(K.via);
+      const plan2 = ended(K) ? PHASE[K.phase] : inTown ? `\u0432 ${inTown.name}: ${K.inTown.why === "winter" ? "\u0437\u0438\u043C\u0443\u044E\u0442" : "\u0442\u043E\u0440\u0433\u0443\u044E\u0442, \u0440\u0430\u0431\u043E\u0442\u0430\u044E\u0442, \u043B\u0435\u0447\u0430\u0442\u0441\u044F"}` : K.hungry ? `\u0433\u043E\u043B\u043E\u0434\u0430\u044E\u0442 ${K.hungry} ${plural(K.hungry, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")}` : via ? `\u0438\u0434\u0443\u0442 \u0432 ${via.name}` : K.camp > 0 ? tameKind ? `\u043B\u0430\u0433\u0435\u0440\u044C: \u043F\u0440\u0438\u0440\u0443\u0447\u0430\u044E\u0442 \u2014 ${tameKind.plural}` : doing[K.why] || "\u043B\u0430\u0433\u0435\u0440\u044C" : PHASE[K.phase];
+      $("campStatus").innerHTML = `<dt>\u0414\u0430\u0442\u0430</dt><dd>\u0433\u043E\u0434 ${H2.year}, ${seasonWord(H2.season)}</dd><dt>\u0412 \u043F\u0443\u0442\u0438</dt><dd>${K.day} ${plural(K.day, "\u0434\u0435\u043D\u044C", "\u0434\u043D\u044F", "\u0434\u043D\u0435\u0439")} (${(K.day / 120).toFixed(1)} \u0433.)</dd><dt>\u0427\u0442\u043E \u0434\u0435\u043B\u0430\u044E\u0442</dt><dd>${plan2}</dd><dt>\u0415\u0434\u0430</dt><dd>${Math.floor(K.food)} ${plural(Math.floor(K.food), "\u043F\u0430\u0451\u043A", "\u043F\u0430\u0439\u043A\u0430", "\u043F\u0430\u0439\u043A\u043E\u0432")} \xB7 \u043D\u0430 ${need ? (K.food / need).toFixed(1) : 0} \u0434\u043D.</dd><dt>\u0413\u0440\u0443\u0437</dt><dd>${Math.round(load2(K))} \u0438\u0437 ${capacity(K)} \u043C\u0435\u0441\u0442</dd><dt>\u041E\u0431\u043E\u0437</dt><dd class="nb">${esc(baggageText(K))}</dd>` + (K.route ? `<dt>\u041F\u0443\u0442\u044C</dt><dd>${K.route === "road" ? "\u0441 \u043E\u0431\u043E\u0437\u043E\u043C \u043F\u043E \u0434\u043E\u0440\u043E\u0433\u0430\u043C" : "\u043D\u0430\u043F\u0440\u044F\u043C\u0438\u043A, \u043D\u0430\u043B\u0435\u0433\u043A\u0435"}</dd>` : "") + `<dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${K.gold} \u0437\u043E\u043B.</dd><dt>\u0412 \u0433\u043E\u0440\u043E\u0434\u0430\u0445</dt><dd>${K.stats.towns || 0} \u0440\u0430\u0437</dd><dt>\u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C</dt><dd>${pace(a, K, SEASON_LIST3[H2.season].id).toFixed(2)} \u043A\u043B./\u0434\u0435\u043D\u044C</dd><dt>\u041F\u0440\u043E\u0439\u0434\u0435\u043D\u043E</dt><dd>${Math.round(K.stats.walked)} \u043A\u043B\u0435\u0442\u043E\u043A</dd><dt>\u041D\u043E\u0447\u043D\u044B\u0445 \u0431\u043E\u0451\u0432</dt><dd>${K.stats.fights} \xB7 \u043E\u0442\u0431\u0438\u043B\u0438\u0441\u044C ${K.stats.won}</dd>`;
+      $("campRoster").innerHTML = [...K.members].sort((p, q) => q.alive - p.alive || isCore(q) - isCore(p)).map((m) => {
+        const sp = SPECIES.get(m.race), rk = rank(K, m);
         const mount = m.ride ? K.beasts.find((b) => b.id === m.ride) : null, extra = [mount ? `\u0432\u0435\u0440\u0445\u043E\u043C: ${BEASTS[mount.kind].label}` : "", (m.back ?? 1) > 1 ? "\u0441 \u043A\u043E\u0440\u043E\u0431\u043E\u043C" : ""].filter(Boolean).join(", ");
-        return `<div class="rm${m.alive ? "" : " dead"}"><span><b>${esc(m.name)}</b> \xB7 ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ""}</span><span class="hp"><i class="${m.hp < 0.4 ? "low" : ""}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span><small>${esc(raceLabel(sp, m))} \xB7 ${m.gear.hand.map(itemShort).join(", ")} \xB7 ${itemShort(m.gear.body)}${m.alive ? "" : ` \xB7 ${esc(m.died.why)}, ${m.died.year}-\u0439 \u0433\u043E\u0434`}</small></div>`;
+        return `<div class="rm${m.alive ? "" : " dead"}"><span><b>${esc(m.name)}</b> \xB7 ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ""}</span><span class="hp"><i class="${m.hp < 0.4 ? "low" : ""}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span><small>${esc(raceLabel(sp, m))} \xB7 ${m.gear.hand.map(itemShort).join(", ")} \xB7 ${itemShort(m.gear.body)}${m.alive ? m.contract ? ` \xB7 \u043F\u043E \u043D\u0430\u0439\u043C\u0443 \u0434\u043E ${m.contract.until + 1}-\u0433\u043E \u0434\u043D\u044F` : m.loyalty != null ? ` \xB7 \u0432\u0435\u0440\u043D\u043E\u0441\u0442\u044C ${Math.round(m.loyalty * 100)}%` : "" : m.died ? ` \xB7 ${esc(m.died.why)}, ${m.died.year}-\u0439 \u0433\u043E\u0434` : ` \xB7 \u0443\u0448\u0451\u043B${m.gender === "f" ? "\u0430" : ""}, ${m.left?.year ?? ""}-\u0439 \u0433\u043E\u0434`}</small></div>`;
       }).join("");
       this.renderLog();
     }
@@ -23653,10 +24064,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     // the treasury, the caravan in camp with its goods and prices, the last deals
     renderTrade(w) {
-      const gold = w.stock.gold || 0, c = w.caravan;
+      const gold2 = w.stock.gold || 0, c = w.caravan;
       const phase = { coming: "\u0438\u0434\u0451\u0442 \u043A \u043B\u0430\u0433\u0435\u0440\u044E", camp: "\u0441\u0442\u043E\u0438\u0442 \u043B\u0430\u0433\u0435\u0440\u0435\u043C, \u0442\u043E\u0440\u0433 \u043F\u043E\u0441\u043B\u0435 \u0441\u043E\u0432\u0435\u0442\u0430", trading: "\u0438\u0434\u0451\u0442 \u0442\u043E\u0440\u0433", night: "\u043D\u043E\u0447\u0443\u0435\u0442 \u0443 \u043A\u043E\u0441\u0442\u0440\u0430", leaving: "\u0443\u0445\u043E\u0434\u0438\u0442" };
       const metal = RESOURCES.filter((r) => r.money && (w.stock[r.id] || 0) >= 0.05).map((r) => `${r.short} ${w.stock[r.id].toFixed(r.value < 1 ? 1 : 0)} (\u2248${(w.stock[r.id] * r.value * r.money).toFixed(1)})`);
-      let head = `<dl class="kv"><dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${treasury(w).toFixed(1)} \u0437\u043E\u043B.: \u043C\u043E\u043D\u0435\u0442\u0430\u043C\u0438 ${gold.toFixed(1)}${metal.length ? "; " + metal.join(", ") : ""}</dd><dt>\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043A\u0430\u0440\u0430\u0432\u0430\u043D</dt><dd>${c ? "\u0443\u0436\u0435 \u0437\u0434\u0435\u0441\u044C" : this.caravanWhen(w)}</dd><dt>\u041A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u0432 \u0431\u044B\u043B\u043E</dt><dd>${w.trade.visits} \xB7 \u0432\u044B\u0440\u0443\u0447\u0435\u043D\u043E ${Math.floor(w.trade.earned)} \xB7 \u043F\u043E\u0442\u0440\u0430\u0447\u0435\u043D\u043E ${Math.floor(w.trade.spent)}</dd></dl>`;
+      let head = `<dl class="kv"><dt>\u041A\u0430\u0437\u043D\u0430</dt><dd>${treasury(w).toFixed(1)} \u0437\u043E\u043B.: \u043C\u043E\u043D\u0435\u0442\u0430\u043C\u0438 ${gold2.toFixed(1)}${metal.length ? "; " + metal.join(", ") : ""}</dd><dt>\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u043A\u0430\u0440\u0430\u0432\u0430\u043D</dt><dd>${c ? "\u0443\u0436\u0435 \u0437\u0434\u0435\u0441\u044C" : this.caravanWhen(w)}</dd><dt>\u041A\u0430\u0440\u0430\u0432\u0430\u043D\u043E\u0432 \u0431\u044B\u043B\u043E</dt><dd>${w.trade.visits} \xB7 \u0432\u044B\u0440\u0443\u0447\u0435\u043D\u043E ${Math.floor(w.trade.earned)} \xB7 \u043F\u043E\u0442\u0440\u0430\u0447\u0435\u043D\u043E ${Math.floor(w.trade.spent)}</dd></dl>`;
       let goods = "";
       if (c) {
         const units = goodsUnits(c.goods), cap = c.capacity;
@@ -23668,7 +24079,7 @@ dd.q4{color:#c58cff;font-weight:600}
         }
         const tb = c.terms?.b || 0;
         const rows = lines.sort((x, y) => x.g.kind === y.g.kind ? askPrice(y.g, tb) - askPrice(x.g, tb) : x.g.kind === "item" ? -1 : 1).map(({ g: g3, n }) => {
-          const p = askPrice(g3, tb), can = gold >= p;
+          const p = askPrice(g3, tb), can = gold2 >= p;
           return `<div class="wrow${g3.kind === "item" && g3.q ? " fine" : ""}"><span>${esc(goodsLabel(g3))}${n > 1 || g3.kind === "res" ? " \xD7" + n : ""}</span><b class="${can ? "" : "dear"}">${p} \u0437\u043E\u043B.${n > 1 ? " / \u0448\u0442." : ""}</b></div>`;
         }).join("");
         goods = `<h2>\u041A\u0443\u043F\u0435\u0446 ${esc(c.name)}</h2><p class="small muted">\u0421\u0435\u0439\u0447\u0430\u0441: ${phase[c.phase]}. \u0413\u0440\u0443\u0437 ${units} \u0438\u0437 ${cap} \u043C\u0435\u0441\u0442, \u0432 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u0435 \u0443 \u043A\u0443\u043F\u0446\u0430 ${Math.floor(c.purse)} \u0437\u043E\u043B. \u041A\u0443\u043F\u0435\u0446 \u043F\u0440\u043E\u0441\u0438\u0442 \xD7${+(TRADE.ask - tb).toFixed(2)} \u043E\u0442 \u0446\u0435\u043D\u044B \u0438 \u043F\u043B\u0430\u0442\u0438\u0442 \xD7${+(TRADE.bid + tb).toFixed(2)}${c.terms?.name ? ` (\u0442\u043E\u0440\u0433\u043E\u0432\u0430\u043B${c.terms.f ? "\u0430\u0441\u044C" : "\u0441\u044F"} ${esc(c.terms.name)})` : ""}.</p><div class="wares">${rows || '<p class="muted small">\u0412\u0441\u0451 \u0440\u0430\u0441\u043F\u0440\u043E\u0434\u0430\u043D\u043E.</p>'}</div>`;
@@ -24156,14 +24567,14 @@ dd.q4{color:#c58cff;font-weight:600}
     return out.slice(0, 3);
   }
   function summarize(w) {
-    const c = w.chronicle, people = c.people, now = w.tick;
+    const c = w.chronicle, people2 = c.people, now = w.tick;
     const days = now / DAY;
-    const alive3 = colonists(w);
+    const alive4 = colonists(w);
     const finished = c.built.length;
     const totals = [
       ["\u041F\u0440\u043E\u0434\u0435\u0440\u0436\u0430\u043B\u043E\u0441\u044C", daysText(days)],
       ["\u0416\u0438\u0442\u0435\u043B\u0435\u0439 \u0432 \u043B\u0443\u0447\u0448\u0438\u0435 \u0434\u043D\u0438", c.peakPop],
-      ["\u0412\u0441\u0435\u0433\u043E \u043F\u0440\u043E\u0448\u043B\u043E \u0447\u0435\u0440\u0435\u0437 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435", people.length],
+      ["\u0412\u0441\u0435\u0433\u043E \u043F\u0440\u043E\u0448\u043B\u043E \u0447\u0435\u0440\u0435\u0437 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0435", people2.length],
       ["\u0417\u0434\u0430\u043D\u0438\u0439 \u043F\u043E\u0441\u0442\u0440\u043E\u0435\u043D\u043E", finished],
       ["\u0421\u0434\u0435\u043B\u0430\u043D\u043E \u0432\u0435\u0449\u0435\u0439", sumVals(c.crafted)],
       ["\u041D\u0430\u043B\u0451\u0442\u043E\u0432 \u043F\u0435\u0440\u0435\u0436\u0438\u0442\u043E", Math.max(0, w.stats.raids - (w.over?.reason === "raided" ? 1 : 0))],
@@ -24172,7 +24583,7 @@ dd.q4{color:#c58cff;font-weight:600}
     ];
     const award = (title, metric, text, min = 0.5) => {
       let best2 = null, bv = min;
-      for (const r of people) {
+      for (const r of people2) {
         const v = metric(r);
         if (v > bv) {
           bv = v;
@@ -24200,7 +24611,7 @@ dd.q4{color:#c58cff;font-weight:600}
       award("\u0412\u0435\u0447\u043D\u043E \u043D\u0435\u0434\u043E\u0432\u043E\u043B\u044C\u043D\u044B\u0439", (r) => (moodAvg(r) == null ? -9 : -moodAvg(r)) + 1, (r) => `\u0447\u0430\u0449\u0435 \u0432\u0441\u0435\u0445 ${g(r, "\u0431\u044B\u043B", "\u0431\u044B\u043B\u0430")} \u043D\u0435 \u0432 \u0434\u0443\u0445\u0435`, 1.05)
     ].filter(Boolean);
     const facts = [];
-    const dead = people.filter((r) => r.died != null).sort((a, b) => a.died - b.died);
+    const dead = people2.filter((r) => r.died != null).sort((a, b) => a.died - b.died);
     if (dead.length) facts.push(`\u041F\u0435\u0440\u0432\u043E\u0439 \u043F\u043E\u0442\u0435\u0440\u0435\u0439 ${g(dead[0], "\u0441\u0442\u0430\u043B", "\u0441\u0442\u0430\u043B\u0430")} ${dead[0].name} \u043D\u0430 ${dayNo(dead[0].died)}-\u0439 \u0434\u0435\u043D\u044C: ${dead[0].cause}.`);
     const byCause = Object.entries(c.deaths).sort((a, b) => b[1] - a[1]);
     if (byCause.length) facts.push(`\u041F\u043E\u0433\u0438\u0431\u043B\u0438: ${byCause.map(([k, v]) => `${k} \u2014 ${v}`).join(", ")}.`);
@@ -24225,11 +24636,11 @@ dd.q4{color:#c58cff;font-weight:600}
     if (c.left) facts.push(`\u041D\u0435 \u0432\u044B\u0434\u0435\u0440\u0436\u0430\u043B\u0438 \u0438 \u0443\u0448\u043B\u0438 \u0438\u0437 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u044F: ${c.left}.`);
     if (w.stats.burntCells) facts.push(`\u041E\u0433\u043E\u043D\u044C \u0432\u044B\u0436\u0435\u0433 ${w.stats.burntCells} ${plural(w.stats.burntCells, "\u043A\u043B\u0435\u0442\u043A\u0443", "\u043A\u043B\u0435\u0442\u043A\u0438", "\u043A\u043B\u0435\u0442\u043E\u043A")} \u043B\u0435\u0441\u0430 \u0438 \u043B\u0443\u0433\u0430.`);
     const likes = {};
-    for (const r of people) if (r.likes) likes[r.likes] = (likes[r.likes] || 0) + 1;
+    for (const r of people2) if (r.likes) likes[r.likes] = (likes[r.likes] || 0) + 1;
     const topLike = Object.entries(likes).sort((a, b) => b[1] - a[1])[0];
-    if (topLike) facts.push(`\u041B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438: ${JOBS.get(topLike[0]).label} (${topLike[1]} \u0438\u0437 ${people.length}).`);
-    if (alive3.length === 1) facts.push(`\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u043C ${g(alive3[0], "\u0434\u0435\u0440\u0436\u0430\u043B\u0441\u044F", "\u0434\u0435\u0440\u0436\u0430\u043B\u0430\u0441\u044C")} ${alive3[0].name}.`);
-    const roll = people.map((r) => ({
+    if (topLike) facts.push(`\u041B\u044E\u0431\u0438\u043C\u043E\u0435 \u0434\u0435\u043B\u043E \u0432 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0438\u0438: ${JOBS.get(topLike[0]).label} (${topLike[1]} \u0438\u0437 ${people2.length}).`);
+    if (alive4.length === 1) facts.push(`\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u043C ${g(alive4[0], "\u0434\u0435\u0440\u0436\u0430\u043B\u0441\u044F", "\u0434\u0435\u0440\u0436\u0430\u043B\u0430\u0441\u044C")} ${alive4[0].name}.`);
+    const roll = people2.map((r) => ({
       name: r.name,
       founder: r.founder,
       arrivedDay: dayNo(r.arrived),

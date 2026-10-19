@@ -26,7 +26,12 @@ import {plural} from '../core/util.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion} from './land.js';
 import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, overflow, slowest, wheeled, campFx, toolTier, fieldBuildings, buildDays, handler} from './baggage.js';
-import {draw} from './start.js';
+import {draw, makeMember} from './start.js';
+import {standing, townName, townLine, trade, labour, healHere, hire, companion, rationPrice} from './town.js';
+import {HIRES, ROLES, LOYALTY, FREED, COMPANIONS, COMPANY_MAX, JOINED_MAX, VISIT, EARN, WANTS, MARKET} from '../data/market.js';
+import {WORLD_PEOPLES} from '../data/peoples.js';
+import {SPECIES} from '../data/species.js';
+const SPECIES_LABEL = race => SPECIES.get(race).label;
 
 const SEASON_LIST = SEASONS.all();
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
@@ -38,8 +43,12 @@ const SCRATCH = new WeakMap();
 export const scratch = a => { let s = SCRATCH.get(a); if (!s) SCRATCH.set(a, s = {g: new Float64Array(a.n).fill(Infinity), came: new Int32Array(a.n), touched: []}); return s; };
 
 export const alive = K => K.members.filter(m => m.alive);
+// the eight who set out from the capital (saves from before the joiners: the knights and squires)
+export const isCore = m => m.core ?? ['knight', 'squire'].includes(m.role);
+export const core = K => K.members.filter(m => m.alive && isCore(m));
+const guided = K => alive(K).some(m => m.role === 'guide');
 export const ended = K => ['won', 'lost', 'timeout'].includes(K.phase);
-const rank = (K, m) => RETINUE[K.people][m.role][0];
+export const rank = (K, m) => RETINUE[K.people][m.role]?.[0] || HIRES[m.role]?.label || ROLES[m.role] || 'спутник';
 
 // a line of the campaign's log; `world` — also into the world's chronicle
 export function say(a, K, text, kind = 'march', world = false) {
@@ -67,7 +76,7 @@ export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0
 
 // cells a day: as the slowest who walks (campaign/baggage.js), slower hungry and in frost
 export function pace(a, K, seasonId) {
-  let v = CAMPAIGN.speed * scaleOf(a) * slowest(K);
+  let v = CAMPAIGN.speed * scaleOf(a) * slowest(K) * (guided(K) ? HIRES.guide.pace : 1);
   if (K.hungry > 0) v *= CAMPAIGN.hunger.slow;
   if (seasonId === 'winter' && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0) v *= CAMPAIGN.frost;
   return v;
@@ -75,8 +84,8 @@ export function pace(a, K, seasonId) {
 
 function die(a, K, m, why) {
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why};
-  const left = alive(K).length;
-  say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${left ? ` Осталось ${left} из ${K.members.length}.` : ''}`, 'death', !left);
+  const left = core(K).length, n = K.members.filter(isCore).length;
+  say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left);
 }
 
 // ── the baggage changes: a beast, a vehicle; the way is planned afresh
@@ -136,6 +145,14 @@ function campWork(a, K, r) {
       if (first) say(a, K, `${m.name} сплёл${m.gender === 'f' ? 'а' : ''} из лыка и лозы заплечный короб: на спину ложится втрое больше. Остальные взялись за свои.`, 'build');
       else if (done) say(a, K, 'Теперь у каждого за спиной короб.', 'build');
     }
+  }
+  // earnings: hides from the hunt, gold panned from the river's sand by the one with a pan
+  const game = ['deer', 'boar', 'elk', 'aurochs', 'saiga', 'goat'].reduce((s, id) => s + faunaLevel({region: reg}, id), 0);
+  if (r() < EARN.hide * Math.min(1.5, game)) K.cargo.hide = (K.cargo.hide || 0) + 1;
+  if (reg.placer > 0 && alive(K).some(m => m.gear.hand.includes('pan'))) {
+    const g = Math.round(EARN.pan * reg.placer * (0.5 + r()) * 10) / 10;
+    K.gold = Math.round((K.gold + g) * 10) / 10; K.stats.panned = (K.stats.panned || 0) + g;
+    if (!K.pannedTold || K.day - K.pannedTold > 60) { K.pannedTold = K.day; say(a, K, 'В речном песке блестит золото: лоток не пустует, казна понемногу растёт.', 'find'); }
   }
   if (K.build && wooded) {
     K.build.days--;
@@ -206,8 +223,92 @@ function wantBuild(a, K) {
   return null;
 }
 
+// ── towns on the way (campaign/town.js): why the council would turn to one, and which one
+const freezing = (a, i) => a.f.temp[i] - a.f.trange[i] / 2 < VISIT.winterBelow;
+function wantVisit(a, K, seasonId) {
+  const ms = alive(K), need = ms.length * CAMPAIGN.ration, C = CAMPAIGN.camp;
+  if ((seasonId === 'winter' || (seasonId === 'autumn' && a.hist && K.day % 30 >= 20)) && freezing(a, K.i) && K.winterYear !== a.hist.year) return 'winter';
+  if (K.day < (K.nextVisit ?? 0)) return '';   // just out of a town: on to the goal first
+  if (K.food < need * C.foodDays) return 'food';
+  if (ms.some(m => m.hp < C.badly)) return 'heal';
+  if (K.gold >= VISIT.money && K.day - (K.lastVisit ?? -999) >= VISIT.every) return 'shop';
+  return '';
+}
+// a friendly town that can be reached: one on the way to the goal — ahead of the caravan (nearer the goal
+// than it is) and not much of a detour; when `urgent` (the winter, the badly wounded) and there is none
+// ahead, the nearest one whichever way
+function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach) {
+  const v = Math.max(0.05, pace(a, K, SEASON_LIST[a.hist.season].id)), R = days * v, x0 = K.i % a.w, y0 = (K.i / a.w) | 0, wh = wheeled(K);
+  const near = (a.towns || []).filter(t => t.alive && standing(a, K, t) && Math.hypot(t.x - x0, t.y - y0) <= R).sort((p, q) => Math.hypot(p.x - x0, p.y - y0) - Math.hypot(q.x - x0, q.y - y0)).slice(0, 4);
+  const direct = K.goal == null ? null : route(a, K.i, K.goal, K.people, wh);
+  let fallback = null;
+  for (const t of near) {
+    const way = route(a, K.i, t.i, K.people, wh); if (!way) continue;
+    fallback ||= {t, way};
+    if (!direct) return {t, way};
+    const on = route(a, t.i, K.goal, K.people, wh);
+    if (way.cost > R * 1.6) continue;   // the cells' price: roads cheaper, mountains dearer than the straight line
+    if (on && on.cost < direct.cost && way.cost + on.cost <= direct.cost * (1 + detour) + VISIT.slack) return {t, way};
+  }
+  return urgent ? fallback : null;
+}
+const VISIT_WHY = {winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну'};
+
+// the caravan comes into a town: trade, hire, meet who would go along
+function enterTown(a, K, t) {
+  const st = standing(a, K, t), why = K.viaWhy;
+  K.via = null; K.viaWhy = null; K.path = null; K.camp = 0; K.why = '';
+  if (!st) { say(a, K, `${townName(t)} закрыл ворота перед караваном.`, 'town'); return; }
+  const {r, done} = draw(K, 'town');
+  const parts = [...trade(a, K, t, st), ...hire(a, K, t, st, r)], c = companion(a, K, t, st, r);
+  if (c) parts.push(c);
+  done();
+  K.inTown = {id: t.id, since: K.day, why}; K.lastVisit = K.day; K.stats.towns = (K.stats.towns || 0) + 1;
+  if (why === 'winter') K.winterYear = a.hist.year;
+  say(a, K, `Караван вошёл в ${townLine(a, t, st)}${why === 'winter' ? ' на зимовку' : ''}${parts.length ? ': ' + parts.join('; ') : ''}. Казна: ${K.gold} зол.`, 'town');
+}
+
+// an evening in town: stay (the winter through, or till healed and stocked), or go on, spending the earnings
+function townEvening(a, K, seasonId) {
+  const t = a.towns.find(x => x.id === K.inTown.id), st = standing(a, K, t), ms = alive(K);
+  const stocked = K.food >= 0.9 * Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays);
+  const healed = ms.every(m => m.hp >= CAMPAIGN.camp.healed);
+  const wintering = K.inTown.why === 'winter' && (seasonId === 'winter' || seasonId === 'autumn');
+  if (st && (wintering || (K.day - K.inTown.since < VISIT.stay && !(stocked && healed)))) return;
+  const parts = st ? trade(a, K, t, st) : [];
+  say(a, K, `Караван выходит из ${townLabel(t, 2)} ${t.name}${parts.length ? ': ' + parts.join('; ') : ''}. Казна: ${K.gold} зол.`, 'town');
+  K.inTown = null; K.path = null; K.nextVisit = K.day + VISIT.every;
+}
+
+// those who are not the core: the hired go when their term is up, the joined may go any day
+function people(a, K, r) {
+  for (const m of alive(K)) {
+    if (isCore(m)) continue;
+    if (m.contract && K.day >= m.contract.until) { leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${m.gender === 'f' ? 'а' : ''} срок и ушёл${m.gender === 'f' ? 'а' : ''}`); continue; }
+    if (m.loyalty == null || m.loyalty >= 1) continue;
+    m.loyalty = Math.max(0, Math.min(1, m.loyalty + LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0)));
+    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? 'не вынес голода и' : 'однажды утром'} ушёл${m.gender === 'f' ? 'а' : ''} своей дорогой`);
+    else if (m.loyalty >= 1) say(a, K, `${m.name} теперь свой${m.gender === 'f' ? '' : ''}: идёт с караваном до конца.`, 'people');
+  }
+}
+function leave(a, K, m, text) {
+  m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year};
+  say(a, K, text + '.', 'leave'); assign(K);
+}
+const shake = (K, d) => { for (const m of alive(K)) if (m.loyalty != null && m.loyalty < 1) m.loyalty = Math.max(0, Math.min(1, m.loyalty + d)); };
+
 function evening(a, K) {
-  const ms = alive(K), need = ms.length * CAMPAIGN.ration;
+  const ms = alive(K), need = ms.length * CAMPAIGN.ration, seasonId = SEASON_LIST[a.hist.season].id;
+  if (K.inTown) { townEvening(a, K, seasonId); if (K.inTown) return; }
+  if (K.via != null && !K.inTown) {
+    const t = a.towns.find(x => x.id === K.via);
+    if (!t || !t.alive) { K.via = null; K.path = null; }
+    else if (K.i === t.i) { enterTown(a, K, t); return; }
+    else if (!K.path || K.k >= K.path.length) {   // the way was lost (a beast gone, a vehicle broken): find it again, or give the town up
+      const way = route(a, K.i, t.i, K.people, wheeled(K));
+      if (way) { K.path = way.path; K.k = 0; } else { K.via = null; K.viaWhy = null; K.path = null; }
+    }
+  }
   // the goal: there and back
   if (K.goal != null && K.i === K.goal && K.phase === 'out') {
     say(a, K, `Караван дошёл до цели — ${biomeAt(a, K.i)?.where || 'на край света'}. Поручение исполнено, пора домой.`, 'goal', true);
@@ -217,6 +318,22 @@ function evening(a, K) {
     say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
     K.phase = 'won'; return;
   }
+  // a town on the way: to buy food, to heal, to spend the treasury, to winter
+  if (K.via == null && K.camp === 0) {
+    const why = wantVisit(a, K, seasonId);
+    // urgent — any way to the nearest: the winter, the badly wounded, hunger with the gold to end it
+    const rich = K.gold >= VISIT.hungryGold * need * MARKET.ration;
+    const urgent = why === 'winter' || (why === 'heal' && ms.some(m => m.hp < CAMPAIGN.camp.badly)) || (why === 'food' && K.hungry > 0 && rich);
+    const days = why === 'winter' ? VISIT.winterReach : why === 'food' ? Math.min(VISIT.reach, K.food / need + VISIT.foodSpare) : VISIT.reach;
+    const found = why && findTown(a, K, urgent, K.hungry ? VISIT.hungryDetour : VISIT.detour, days);
+    if (found) {
+      K.via = found.t.id; K.viaWhy = why; K.path = found.way.path; K.k = 0;
+      say(a, K, `Совет: свернуть в ${townLabel(found.t, 1)} ${found.t.name} — ${VISIT_WHY[why]}.`, 'town');
+      if (!K.path.length) enterTown(a, K, found.t);
+      return;
+    }
+  }
+  if (K.via != null && !(K.hungry && richness(a, K.i) >= CAMPAIGN.camp.foodLand)) return;
   // a camp: for food when it runs short and the land can feed them, for the wounded, to tame or to build
   const rich = richness(a, K.i), core = ms.reduce((s, m) => s + m.hp, 0) / ms.length, C = CAMPAIGN.camp;
   const stock = Math.min(capacity(K) - cargoLoad(K), need * C.stock);
@@ -250,11 +367,13 @@ function evening(a, K) {
 }
 
 function night(a, K) {
+  if (K.inTown) return;   // behind a town's walls nothing finds the camp
   const {r, done} = draw(K, 'night');
   const near = townAt(a, K.i), friendly = near && near.realm && (near.realm === K.realm || (trades(a, K.realm, near.realm) && !atWar(a, K.realm, near.realm)));
   const ds = dangers(a, K.i);
   let p = CAMPAIGN.night.base + ds.reduce((s, d) => s + d.p, 0);
   if (friendly) p *= CAMPAIGN.night.friendly;
+  if (guided(K)) p *= HIRES.guide.night;
   p = Math.min(CAMPAIGN.night.max, p);
   if (r() < p) {
     // which danger it was
@@ -289,7 +408,19 @@ function fight(a, K, d, r) {
   const where = d.label ? ` — ${d.label}` : '';
   if (!alive(K).length) return;
   if (win) {
-    K.stats.won++;
+    K.stats.won++; shake(K, LOYALTY.won);
+    // captives set free: they may go along
+    const joined = () => alive(K).filter(m => m.loyalty != null).length;
+    if (FREED.chance[d.kind] && alive(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
+      const n = 1 + (r() < 0.35 ? 1 : 0), names = [];
+      for (let q = 0; q < n && alive(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
+        const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
+        const race = minor ? COMPANIONS.minorRaces[(r() * COMPANIONS.minorRaces.length) | 0] : peoples[(r() * peoples.length) | 0].race;
+        const m = makeMember(K, r, {race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});
+        K.members.push(m); names.push(`${m.name} (${SPECIES_LABEL(race)})`);
+      }
+      say(a, K, `В лагере врагов нашли пленников и освободили: ${names.join(', ')}. ${n > 1 ? 'Пока идут с караваном' : 'Пока идёт с караваном'} — надолго ли, неизвестно.`, 'people');
+    }
     const loot = Math.round(between(r, F.loot)); K.food += loot;
     say(a, K, `Ночью на лагерь напали ${foe.label}${where}. Отбились${hit.length ? `, ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || 'никто'}` : ' без ран'}; с убитых взяли еды на ${pieces(loot, 'паёк', 'пайка', 'пайков')}.`, 'fight');
     // those who keep beasts leave some behind
@@ -301,7 +432,7 @@ function fight(a, K, d, r) {
       say(a, K, `Среди брошенного врагами нашёлся ${ITEMS.get(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${ITEMS.has(old) ? ITEMS.get(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
     }
   } else {
-    K.stats.fled++;
+    K.stats.fled++; shake(K, LOYALTY.lost);
     const lost = Math.round(K.food * F.lost); K.food -= lost;
     say(a, K, `Ночью на лагерь напали ${foe.label}${where}. Не устояли и бежали в темноте${lost ? `, бросив ${pieces(lost, 'паёк', 'пайка', 'пайков')}` : ''}${hit.length ? `; ранены: ${hit.filter(m => m.alive).map(m => m.name).join(', ') || '—'}` : ''}.`, 'fight');
     const gone = K.beasts.filter(() => r() < GETTING.lose.beast);
@@ -326,10 +457,15 @@ export function caravanDay(a, K, day) {
   const ms = alive(K), {r, done} = draw(K, 'day');
   // the day: a camp or the march; food from the land either way
   const rich = richness(a, K.i) * seasonFood(a, K.i, seasonId), Fo = CAMPAIGN.forage;
-  const camping = K.camp > 0 || !K.path || K.k >= K.path.length;
-  if (!camping) march(a, K, pace(a, K, seasonId));
+  const town = K.inTown ? a.towns.find(x => x.id === K.inTown.id) : null;
+  const camping = !town && (K.camp > 0 || !K.path || K.k >= K.path.length);
+  if (town) {   // a day in town: work for hire, buy the day's food at the market
+    labour(K);
+    const st = standing(a, K, town), price = st ? rationPrice(town, st) : Infinity, want = Math.max(0, ms.length * CAMPAIGN.ration * 2 - K.food);
+    const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; }
+  } else if (!camping) march(a, K, pace(a, K, seasonId));
   else campWork(a, K, r);
-  K.food += ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+  if (!town) K.food += ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   // the meal
   const need = ms.length * CAMPAIGN.ration, eat = Math.min(K.food, need), fed = eat / need;
   K.food = Math.max(0, K.food - eat);
@@ -341,8 +477,9 @@ export function caravanDay(a, K, day) {
   } else if (K.hungry) { if (K.hungry >= HT.over) say(a, K, `Голод отступил после ${pieces(K.hungry, 'дня', 'дней', 'дней')}.`, 'hunger'); K.hungry = 0; }
   for (const m of ms) {
     if (K.hungry > CAMPAIGN.hunger.wasteAfter) { m.hp -= CAMPAIGN.hunger.waste * (0.5 + r()) * (camping ? campFx(K, 'shelter') : 1); if (m.hp <= 0) { die(a, K, m, 'умер от голода'); continue; } }
-    else if (!K.hungry) m.hp = Math.min(1, m.hp + (camping ? CAMPAIGN.heal.camp * campFx(K, 'heal') : CAMPAIGN.heal.march * (m.ride ? 1.5 : 1)));
+    else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : camping ? CAMPAIGN.heal.camp * campFx(K, 'heal') : CAMPAIGN.heal.march * (m.ride ? 1.5 : 1)));
   }
+  people(a, K, r);
   // the beasts graze where grass grows and starve where it does not
   const grass = pasture(a, K.i, seasonId);
   for (const b of [...K.beasts]) {
@@ -352,15 +489,18 @@ export function caravanDay(a, K, day) {
   done();
   // what they can carry
   assign(K); overflow(K);
-  if (alive(K).length) { entered(a, K, before); evening(a, K); }
-  if (alive(K).length && !ended(K)) night(a, K);
-  // the end
-  if (!alive(K).length && !ended(K)) {
+  if (core(K).length) { entered(a, K, before); evening(a, K); }
+  if (core(K).length && !ended(K)) night(a, K);
+  // the end: when none of the eight is left, those who joined go their own ways
+  if (!core(K).length && !ended(K)) {
+    for (const m of alive(K)) { m.alive = false; m.left = {day: K.day, year: a.hist.year}; }
     K.phase = 'lost';
     say(a, K, 'Никого из тех, кто вышел из столицы, не осталось в живых. Караван не дойдёт.', 'end', true);
   }
   if (!ended(K) && K.day >= CAMPAIGN.maxYears * 30 * SEASONS_PER_YEAR) { K.phase = 'timeout'; say(a, K, `Прошло ${CAMPAIGN.maxYears} лет: караван так и не вернулся.`, 'end', true); }
-  reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a));
+  // what they can carry, again: the night's loot, the morning's finds, the town's buys, someone gone
+  assign(K); overflow(K);
+  reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
   K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);
   const p = (a.parties || []).find(x => x.id === K.party);
   if (p) { p.x = K.x; p.y = K.y; p.i = K.i; p.men = alive(K).length; p.goal = K.goal; if (ended(K)) p.state = 'gone'; }

@@ -34,18 +34,25 @@ export function capitals(a) {
       peopleLabel: WORLD_PEOPLES.get(t.people).label, x: t.x, y: t.y, pop: Math.round(t.pop), towns: realmTowns(a, t.realm).length}));
 }
 
-// one of the eight: a creature of the realm's race and sub-race, rolled as the local map rolls them
-function member(K, a, rnd, used, role, k) {
-  const r = realmOf(a, K.realm), race = WORLD_PEOPLES.get(K.people).race, sp = SPECIES.get(race);
-  const spOf = r.sub && sp.peoples ? {...sp, peoples: sp.peoples.filter(p => p.id === r.sub)} : sp;
-  const m = {id: K.members.length + 1, name: sp.label, gender: 'm', race, role, hp: 1, alive: true, joined: 0, back: 1, ride: null};
+// someone who walks with the caravan: a creature of a race (and sub-race), rolled as the local map rolls
+// them, with a name nobody in the caravan has. `core` — one of the eight who set out (the campaign is lost
+// when none of them is left); the rest are hired (`contract`) or joined on the way (`loyalty`)
+export function makeMember(K, rnd, {race, sub = null, role, gear, core = false, ...more}) {
+  const sp = SPECIES.get(race), spOf = sub && sp.peoples ? {...sp, peoples: sp.peoples.filter(p => p.id === sub)} : sp;
+  const m = {id: (K.nextMember = (K.nextMember || K.members.length) + 1), name: sp.label, gender: 'm', race, role, core, hp: 1, alive: true, joined: K.day, back: 1, ride: null, ...more};
   rollCreature({rngs: {birth: rnd}}, m, spOf);
-  const names = (sp.names || []).filter(n => !used.has(n[0]));
-  if (names.length) { const n = names[(rnd() * names.length) | 0]; [m.name, m.gender] = n; used.add(n[0]); }
-  const R = RETINUE[K.people];
-  m.gear = role === 'knight' ? {hand: [...R.knightGear[k % R.knightGear.length]], body: RETINUE.armour[k % RETINUE.armour.length]}
-    : {hand: [...RETINUE.squireGear[k % RETINUE.squireGear.length]], body: RETINUE.squireBody};
+  const used = new Set(K.members.map(x => x.name)), names = (sp.names || []).filter(n => !used.has(n[0]));
+  if (names.length) [m.name, m.gender] = names[(rnd() * names.length) | 0];
+  m.gear = {hand: [...gear.hand], body: gear.body};
   return m;
+}
+
+// one of the eight: of the realm's race and sub-race, in the gear of their rank
+function member(K, a, rnd, role, k) {
+  const r = realmOf(a, K.realm), R = RETINUE[K.people];
+  const gear = role === 'knight' ? {hand: R.knightGear[k % R.knightGear.length], body: RETINUE.armour[k % RETINUE.armour.length]}
+    : {hand: RETINUE.squireGear[k % RETINUE.squireGear.length], body: RETINUE.squireBody};
+  return makeMember(K, rnd, {race: WORLD_PEOPLES.get(K.people).race, sub: r.sub, role, gear, core: true});
 }
 
 // where the caravan goes this stage: a land cell far enough, that can be walked to
@@ -83,9 +90,9 @@ export function newCampaign(a, townId, {seed = null} = {}) {
     // the baggage (campaign/baggage.js): beasts, vehicles, goods besides food, what is being built in camp, the way chosen
     beasts: [], nextBeast: 1, vehicles: [], cargo: {}, build: null, route: null,
   };
-  const {r, done} = draw(K, 'birth'), used = new Set();
-  for (let k = 0; k < CAMPAIGN.knights; k++) K.members.push(member(K, a, r, used, 'knight', k));
-  for (let k = 0; k < CAMPAIGN.squires; k++) K.members.push(member(K, a, r, used, 'squire', k));
+  const {r, done} = draw(K, 'birth');
+  for (let k = 0; k < CAMPAIGN.knights; k++) K.members.push(member(K, a, r, 'knight', k));
+  for (let k = 0; k < CAMPAIGN.squires; k++) K.members.push(member(K, a, r, 'squire', k));
   K.food = capacity(K);   // the satchels are full: a cell of food on every back
   K.goal = pickGoal(a, K, r);
   done();

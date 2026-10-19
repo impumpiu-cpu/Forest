@@ -20,7 +20,7 @@ import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {BEASTS} from '../data/transport.js';
 import {capacity, load, wheeled} from '../campaign/baggage.js';
-import {baggageText} from '../campaign/march.js';
+import {baggageText, rank, isCore} from '../campaign/march.js';
 const itemShort = id => (ITEMS.has(id) ? ITEMS.get(id).short : id);
 
 const SEASON_LIST = SEASONS.all();
@@ -204,7 +204,8 @@ export class CampaignView extends AtlasView {
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
     const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};
     const tameKind = K.why?.startsWith('tame:') ? BEASTS[K.why.slice(5)] : null;
-    const plan = ended(K) ? PHASE[K.phase] : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : PHASE[K.phase];
+    const townOf = id => a.towns.find(t => t.id === id), inTown = K.inTown && townOf(K.inTown.id), via = K.via != null && townOf(K.via);
+    const plan = ended(K) ? PHASE[K.phase] : inTown ? `в ${inTown.name}: ${K.inTown.why === 'winter' ? 'зимуют' : 'торгуют, работают, лечатся'}` : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : via ? `идут в ${via.name}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : PHASE[K.phase];
     $('campStatus').innerHTML = `<dt>Дата</dt><dd>год ${H.year}, ${seasonWord(H.season)}</dd>` +
       `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
@@ -213,14 +214,15 @@ export class CampaignView extends AtlasView {
       `<dt>Обоз</dt><dd class="nb">${esc(baggageText(K))}</dd>` +
       (K.route ? `<dt>Путь</dt><dd>${K.route === 'road' ? 'с обозом по дорогам' : 'напрямик, налегке'}</dd>` : '') +
       `<dt>Казна</dt><dd>${K.gold} зол.</dd>` +
+      `<dt>В городах</dt><dd>${K.stats.towns || 0} раз</dd>` +
       `<dt>Скорость</dt><dd>${pace(a, K, SEASON_LIST[H.season].id).toFixed(2)} кл./день</dd>` +
       `<dt>Пройдено</dt><dd>${Math.round(K.stats.walked)} клеток</dd>` +
       `<dt>Ночных боёв</dt><dd>${K.stats.fights} · отбились ${K.stats.won}</dd>`;
-    $('campRoster').innerHTML = K.members.map(m => {
-      const sp = SPECIES.get(m.race), rk = RETINUE[K.people][m.role][0];
+    $('campRoster').innerHTML = [...K.members].sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
+      const sp = SPECIES.get(m.race), rk = rank(K, m);
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
-        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.alive ? '' : ` · ${esc(m.died.why)}, ${m.died.year}-й год`}</small></div>`;
+        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ушёл${m.gender === 'f' ? 'а' : ''}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');
     this.renderLog();
   }
