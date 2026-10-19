@@ -8,6 +8,7 @@ import {FOODS} from '../src/data/foods.js';
 import {ORES} from '../src/data/ores.js';
 import {LUXURY} from '../src/data/luxury.js';
 import {ITEMS} from '../src/data/items.js';
+import {TABLES} from '../src/data/balance/index.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
@@ -88,6 +89,19 @@ for (const d of ITEMS.all()) {
   if (!d.tradeOnly && !RECIPES.all().some(r => r.makes?.item === d.id) && !Object.values(STOCKS).some(s => s.kit?.includes(d.id))) warn(`предмет ${d.id}: его нельзя сделать и нет в стартовых наборах`);
   if (d.tradeOnly && RECIPES.all().some(r => r.makes?.item === d.id)) err(`предмет ${d.id}: tradeOnly, но есть рецепт`);
   if (!(d.value > 0)) warn(`предмет ${d.id}: нет цены value, торговец отдаст его даром`);
+}
+// the balance tables (data/balance/): every row belongs to an item, no item sits in two tables, and the
+// numbers a fight divides by or compares are sane
+const seenRow = new Map();
+for (const [name, t] of Object.entries(TABLES)) for (const [id, r] of Object.entries(t)) {
+  const where = `data/balance/${name}.js: ${id}`;
+  if (!ITEMS.has(id)) err(`${where}: нет такого предмета в data/items.js`);
+  if (seenRow.has(id)) err(`${where}: строка есть и в ${seenRow.get(id)}.js`); else seenRow.set(id, name);
+  if (!Number.isInteger(r.tier) || r.tier < 0) err(`${where}: tier должен быть целым от 0`);
+  if (r.melee && !(r.melee.cd > 0 && r.melee.dmg > 0)) err(`${where}: melee без dmg или cd`);
+  if (r.ranged && !(r.ranged.cd > 0 && r.ranged.dmg > 0 && r.ranged.range > 0)) err(`${where}: ranged без dmg, range или cd`);
+  for (const k of ['armor', 'block', 'warmth']) if (r[k] != null && !(r[k] >= 0 && r[k] < 1)) err(`${where}: ${k} должен быть от 0 до 1`);
+  if (!(r.dur > 0)) err(`${where}: dur должен быть больше нуля`);
 }
 
 for (const s of SPECIES.all()) { costs(`вид ${s.id}`, s.yields); if (!LOOKS[s.look?.shape]) err(`вид ${s.id}: нет рисовальщика «${s.look?.shape}»`); }

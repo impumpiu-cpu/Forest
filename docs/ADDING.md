@@ -1,4 +1,4 @@
-[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · **Как добавить новое** · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md)
+[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · **Как добавить новое** · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Баланс вещей](BALANCE.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md)
 
 # Как добавить новое
 
@@ -69,7 +69,7 @@
 
 ### Предмет
 
-Запись в `data/items.js`: слот, число рук, `melee`, `ranged`, `block`, `armor`, `warmth`, `tool`, `dur`. Поселенцы сами оценят предмет и наденут его, если он им выгоден. Если у вещи есть особый значок в руке, добавьте его в `GLYPHS` в `render/looks.js`. Чтобы предмет можно было делать, добавьте рецепт.
+Запись в `data/items.js`: название, слот, число рук, значок, из чего сделан. Числа — строкой в `data/balance/weapons.js`, `armor.js` или `gear.js`: тир, форма, `melee`, `ranged`, `block`, `armor`, `warmth`, `speed`, `tool`, `dur`, `value`. Без строки игра не загрузится. После — `npm run items` и `npm run arena` ([Баланс вещей](BALANCE.md)). Поселенцы сами оценят предмет и наденут его, если он им выгоден. Если у вещи есть особый значок в руке, добавьте его в `GLYPHS` в `render/looks.js`. Чтобы предмет можно было делать, добавьте рецепт.
 
 ### Руда
 

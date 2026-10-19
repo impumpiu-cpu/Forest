@@ -12,6 +12,7 @@ import {esc} from '../core/util.js';
 import {think} from './mind.js';
 import {qualityOf} from '../data/quality.js';
 import {season} from '../data/seasons.js';
+import {CAPS, PRICES} from '../data/balance/index.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
 // made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
@@ -29,9 +30,9 @@ export function itemDef(type, q = 0) {
       dur: base.dur * (1 + Q.dur)};
     if (base.melee) d.melee = {...base.melee, dmg: base.melee.dmg * (1 + Q.hit)};
     if (base.ranged) d.ranged = {...base.ranged, dmg: base.ranged.dmg * (1 + Q.hit)};
-    if (base.block) d.block = Math.min(0.75 + Q.cap, base.block + Q.guard);
-    if (base.armor) d.armor = Math.min(0.8 + Q.cap, base.armor + Q.guard);
-    if (base.warmth) d.warmth = Math.min(0.9 + Q.cap, base.warmth + Q.warmth);
+    if (base.block) d.block = Math.min(CAPS.block + Q.cap, base.block + Q.guard);
+    if (base.armor) d.armor = Math.min(CAPS.armor + Q.cap, base.armor + Q.guard);
+    if (base.warmth) d.warmth = Math.min(CAPS.warmth + Q.cap, base.warmth + Q.warmth);
     d.rank = Q.rank; d.keep = !!Q.keep;
     if (base.tool) d.tool = Object.fromEntries(Object.entries(base.tool).map(([j, m]) => [j, 1 + (m - 1) * (1 + Q.tool) + Q.tool * 0.5]));
     finer.set(key, d);
@@ -58,7 +59,7 @@ export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, .
 
 // price of one piece in imperial gold: the plain piece plus the step up in quality
 // a silvered iron blade costs this much more than a plain one
-export const SILVERING = 5;
+export const SILVERING = PRICES.silvering;
 export function itemPrice(type, q = 0, silver = false) {
   const base = ITEMS.get(type), Q = qualityOf(q);
   return (base.value || 0) + (base.slot === 'body' || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0) + (silver && !base.silver ? SILVERING : 0);

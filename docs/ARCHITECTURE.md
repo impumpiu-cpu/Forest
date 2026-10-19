@@ -1,4 +1,4 @@
-[Главная](../README.md) · **Архитектура** · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md)
+[Главная](../README.md) · **Архитектура** · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Баланс вещей](BALANCE.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md)
 
 # Архитектура
 
@@ -45,7 +45,8 @@ src/
     crops.js      полевые культуры: семена, урожай, сколько семян возвращается, сроки
     seasons.js    времена года: длина, температура, рост, рыбалка, звери, порча, снег, цвет земли
     trade.js      торговцы: когда приходят, состав каравана, товары, цены, правила торга
-    items.js      снаряжение: слоты, одноручное и двуручное, броня, вещи для спины
+    items.js      снаряжение: что это за вещь — слоты, одноручное и двуручное, броня, вещи для спины, значки
+    balance/      числа вещей и боя: weapons, armor, gear, combat; rules и power — для проверок (docs/BALANCE.md)
     recipes.js    рецепты мастерских и то, насколько колонии нужна каждая вещь
     needs.js      потребности: убывание, вред, задача, срочность
     jobs.js       работы: где цель, сколько длится, что даёт, насколько нужна
@@ -168,7 +169,7 @@ src/
   commands.js  всё, что игрок может сделать с миром: ветер, поджог, ливень, набег
   headless.js  игра без экрана: simulate(cfg, {days}) с ежедневными замерами
 tools/
-  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  atlas-save-check.mjs  map-check.mjs  seam-check.mjs  campaign-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  campaign-balance.mjs  report.mjs
+  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  atlas-save-check.mjs  map-check.mjs  seam-check.mjs  campaign-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  campaign-balance.mjs  report.mjs  items-check.mjs  arena.mjs  arena-report.mjs
 ```
 
 </details>

@@ -6319,6 +6319,93 @@ dd.q4{color:#c58cff;font-weight:600}
     [-Infinity, ["\u043F\u043E\u0434\u0430\u0432\u043B\u0435\u043D", "\u043F\u043E\u0434\u0430\u0432\u043B\u0435\u043D\u0430"]]
   ];
 
+  // src/data/balance/weapons.js
+  var WEAPONS = {
+    // tier 0: the woods give it
+    club: { tier: 0, form: "club", melee: { dmg: 1.3, cd: 12 }, dur: 70, value: 0.5 },
+    spear: { tier: 0, form: "spear", melee: { dmg: 1.55, cd: 13 }, dur: 55, value: 1 },
+    axe: { tier: 0, form: "axe", melee: { dmg: 1.3, cd: 13 }, tool: { chop: 1.6 }, dur: 90, value: 2 },
+    staff: { tier: 0, form: "staff", melee: { dmg: 1.1, cd: 11 }, block: 0.15, speed: 1.05, dur: 80, value: 0.5 },
+    maul: { tier: 0, form: "maul", melee: { dmg: 1.9, cd: 18 }, tool: { build: 1.45, mine: 1.35 }, dur: 90, value: 2 },
+    bow: { tier: 0, form: "bow", melee: { dmg: 0.6, cd: 14 }, ranged: { dmg: 1.7, range: 7, cd: 22 }, dur: 90, value: 5 },
+    sling: { tier: 0, form: "sling", melee: { dmg: 0.5, cd: 14 }, ranged: { dmg: 0.6, range: 4.5, cd: 20 }, dur: 60, value: 0.5 },
+    // tier 1: cast in bronze (or silver) at the furnace on a wood fire
+    bronzespear: { tier: 1, form: "spear", melee: { dmg: 1.75, cd: 13 }, dur: 95, value: 3 },
+    bronzeaxe: { tier: 1, form: "axe", melee: { dmg: 1.5, cd: 13 }, tool: { chop: 1.9, build: 1.08 }, dur: 120, value: 3 },
+    silverknife: { tier: 1, form: "dagger", melee: { dmg: 1.3, cd: 9 }, dur: 70, value: 7 },
+    // tier 2: forged iron
+    ironspear: { tier: 2, form: "spear", melee: { dmg: 1.95, cd: 12 }, dur: 120, value: 4 },
+    ironaxe: { tier: 2, form: "axe", melee: { dmg: 1.7, cd: 12 }, tool: { chop: 2.2, build: 1.15 }, dur: 160, value: 4 },
+    sword: { tier: 2, form: "sword", melee: { dmg: 2.15, cd: 11 }, block: 0.1, dur: 150, value: 6 }
+  };
+
+  // src/data/balance/armor.js
+  var ARMOR = {
+    // shields (held in a hand)
+    shield: { tier: 0, form: "shield", block: 0.32, dur: 35, value: 3 },
+    // clothing: warm before it is armour
+    clothes: { tier: 0, form: "cloth", armor: 0.08, warmth: 0.35, dur: 50, value: 1 },
+    linen: { tier: 0, form: "cloth", armor: 0.1, warmth: 0.45, dur: 90, value: 3 },
+    woolens: { tier: 0, form: "cloth", armor: 0.1, warmth: 0.7, dur: 110, value: 5 },
+    furcoat: { tier: 0, form: "fur", armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4 },
+    furlined: { tier: 0, form: "fur", armor: 0.16, warmth: 0.95, speed: 0.97, dur: 100, value: 9 },
+    // armour
+    jerkin: { tier: 0, form: "leather", armor: 0.2, warmth: 0.55, dur: 70, value: 3 },
+    hardleather: { tier: 0, form: "leather", armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, value: 9 },
+    lamellar: { tier: 2, form: "plates", armor: 0.5, warmth: 0.4, speed: 0.93, dur: 170, value: 30 },
+    scalemail: { tier: 2, form: "plates", armor: 0.48, warmth: 0.35, speed: 0.94, dur: 190, value: 25 },
+    chainmail: { tier: 2, form: "mail", armor: 0.55, warmth: 0.3, speed: 0.95, dur: 220, value: 40 }
+  };
+
+  // src/data/balance/gear.js
+  var GEAR = {
+    rod: { tier: 0, tool: { fish: 1.6 }, dur: 80, value: 1 },
+    quiver: { tier: 0, max: 15, dur: Infinity, value: 1 },
+    pan: { tier: 0, tool: { pan: 1.2 }, dur: 150, value: 1 },
+    basket: { tier: 0, carry: 2, dur: Infinity, value: 1 }
+  };
+
+  // src/data/balance/combat.js
+  var COMBAT = {
+    // one melee blow before the weapon and the body: base + random × spread, × weapon dmg × strength × skill
+    blow: { base: 0.1, spread: 0.12 },
+    // one shot that hit, the same way, × weapon dmg (× a colony boost for sling stones)
+    shot: { base: 0.12, spread: 0.1 },
+    // melee skill (0–1) adds to the blow: × (1 + meleeSkill × skill)
+    meleeSkill: 0.4,
+    // the chance a shot hits: base + skill × ranged skill + aim (Perception) − far × distance / range − moving
+    // (the target runs); a creature without the skill shoots as with `noSkill`
+    hit: { base: 0.4, skill: 0.4, far: 0.2, moving: 0.12, noSkill: 0.2 },
+    // the fastest a creature may strike, in ticks, whatever its agility
+    minCooldown: 4,
+    // arm's length (a species may have its own `attack.reach`)
+    reach: 1.25,
+    // colonists inside the settlement zone strike this much harder
+    home: 1.25,
+    // creatures that fear silver: a silvered blade bites them × bane, anything else × plain
+    silver: { bane: 2.5, plain: 0.5 }
+  };
+  var CAPS = { block: 0.75, armor: 0.8, warmth: 0.9 };
+  var PRICES = {
+    silvering: 5
+    // a silvered iron blade costs this much more than a plain one
+  };
+
+  // src/data/balance/index.js
+  var TABLES = { weapons: WEAPONS, armor: ARMOR, gear: GEAR };
+  function rowOf(id) {
+    for (const [name, t] of Object.entries(TABLES)) if (Object.hasOwn(t, id)) return { table: name, row: t[id] };
+    return null;
+  }
+  function statsFor(item) {
+    const found = rowOf(item.id);
+    if (!found) throw new Error(`item ${item.id}: no row in data/balance (weapons.js, armor.js or gear.js)`);
+    const { max, ...row } = found.row, out = { ...item };
+    for (const [k, v] of Object.entries(row)) out[k] = v && typeof v === "object" && item[k] && typeof item[k] === "object" ? { ...v, ...item[k] } : v;
+    if (max != null && item.holds) out.holds = { ...item.holds, max };
+    return out;
+  }
+
   // src/data/items.js
   var SLOTS = [
     { id: "left", label: "\u043B\u0435\u0432\u0430\u044F \u0440\u0443\u043A\u0430", hand: true },
@@ -6329,73 +6416,51 @@ dd.q4{color:#c58cff;font-weight:600}
   var ITEMS = new Registry("item");
   ITEMS.registerAll([
     // one-handed
-    { id: "club", label: "\u0414\u0443\u0431\u0438\u043D\u0430", short: "\u0434\u0443\u0431\u0438\u043D\u0430", slot: "hand", hands: 1, melee: { dmg: 1.3, cd: 12 }, dur: 70, value: 0.5, glyph: "club" },
-    { id: "spear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, melee: { dmg: 1.55, cd: 13 }, dur: 55, value: 1, glyph: "spear" },
-    { id: "axe", label: "\u0422\u043E\u043F\u043E\u0440 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C \u043A\u043B\u0438\u043D\u043E\u043C", short: "\u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, melee: { dmg: 1.3, cd: 13 }, tool: { chop: 1.6 }, dur: 90, value: 2, glyph: "axe" },
-    { id: "shield", label: "\u0429\u0438\u0442 \u0438\u0437 \u0436\u0435\u0440\u0434\u0435\u0439 \u0438 \u0448\u043A\u0443\u0440\u044B", short: "\u0449\u0438\u0442", slot: "hand", hands: 1, block: 0.32, dur: 35, value: 3, glyph: "shield" },
+    { id: "club", label: "\u0414\u0443\u0431\u0438\u043D\u0430", short: "\u0434\u0443\u0431\u0438\u043D\u0430", slot: "hand", hands: 1, glyph: "club" },
+    { id: "spear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, glyph: "spear" },
+    { id: "axe", label: "\u0422\u043E\u043F\u043E\u0440 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C \u043A\u043B\u0438\u043D\u043E\u043C", short: "\u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, glyph: "axe" },
+    { id: "shield", label: "\u0429\u0438\u0442 \u0438\u0437 \u0436\u0435\u0440\u0434\u0435\u0439 \u0438 \u0448\u043A\u0443\u0440\u044B", short: "\u0449\u0438\u0442", slot: "hand", hands: 1, glyph: "shield" },
     // two-handed
-    { id: "staff", label: "\u041F\u043E\u0441\u043E\u0445", short: "\u043F\u043E\u0441\u043E\u0445", slot: "hand", hands: 2, melee: { dmg: 1.1, cd: 11 }, block: 0.15, speed: 1.05, dur: 80, value: 0.5, glyph: "staff" },
-    { id: "maul", label: "\u0414\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u0439 \u043C\u043E\u043B\u043E\u0442", short: "\u043C\u043E\u043B\u043E\u0442", slot: "hand", hands: 2, melee: { dmg: 1.9, cd: 18 }, tool: { build: 1.45, mine: 1.35 }, dur: 90, value: 2, glyph: "maul" },
-    {
-      id: "bow",
-      label: "\u041B\u0443\u043A",
-      short: "\u043B\u0443\u043A",
-      slot: "hand",
-      hands: 2,
-      melee: { dmg: 0.6, cd: 14 },
-      ranged: { dmg: 1.7, range: 7, cd: 22, ammo: "arrows" },
-      dur: 90,
-      value: 5,
-      glyph: "bow"
-    },
+    { id: "staff", label: "\u041F\u043E\u0441\u043E\u0445", short: "\u043F\u043E\u0441\u043E\u0445", slot: "hand", hands: 2, glyph: "staff" },
+    { id: "maul", label: "\u0414\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u0439 \u043C\u043E\u043B\u043E\u0442", short: "\u043C\u043E\u043B\u043E\u0442", slot: "hand", hands: 2, glyph: "maul" },
+    { id: "bow", label: "\u041B\u0443\u043A", short: "\u043B\u0443\u043A", slot: "hand", hands: 2, ranged: { ammo: "arrows" }, glyph: "bow" },
     // stones lie everywhere: no ammo, but the sling is far weaker and shorter; a quarry gives better stones
-    {
-      id: "sling",
-      label: "\u041F\u0440\u0430\u0449\u0430",
-      short: "\u043F\u0440\u0430\u0449\u0430",
-      slot: "hand",
-      hands: 2,
-      melee: { dmg: 0.5, cd: 14 },
-      ranged: { dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: "slingStones" },
-      dur: 60,
-      value: 0.5,
-      glyph: "sling"
-    },
+    { id: "sling", label: "\u041F\u0440\u0430\u0449\u0430", short: "\u043F\u0440\u0430\u0449\u0430", slot: "hand", hands: 2, ranged: { ammo: null, boost: "slingStones" }, glyph: "sling" },
     // a rod with a wooden gorge hook and a line of twisted bast; works from the back as well
-    { id: "rod", label: "\u0423\u0434\u043E\u0447\u043A\u0430 \u0441 \u0434\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u043C \u043A\u0440\u044E\u0447\u043A\u043E\u043C", short: "\u0443\u0434\u043E\u0447\u043A\u0430", slot: "hand", hands: 2, tool: { fish: 1.6 }, dur: 80, value: 1, glyph: "rod" },
-    // iron, from the forge
+    { id: "rod", label: "\u0423\u0434\u043E\u0447\u043A\u0430 \u0441 \u0434\u0435\u0440\u0435\u0432\u044F\u043D\u043D\u044B\u043C \u043A\u0440\u044E\u0447\u043A\u043E\u043C", short: "\u0443\u0434\u043E\u0447\u043A\u0430", slot: "hand", hands: 2, glyph: "rod" },
     // cast in bronze at the furnace on a wood fire: better than bone, short of iron
-    { id: "bronzespear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u0431\u0440\u043E\u043D\u0437. \u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, bronze: true, melee: { dmg: 1.75, cd: 13 }, dur: 95, value: 3, glyph: "ironspear" },
-    { id: "bronzeaxe", label: "\u0411\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0439 \u0442\u043E\u043F\u043E\u0440", short: "\u0431\u0440\u043E\u043D\u0437. \u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, bronze: true, melee: { dmg: 1.5, cd: 13 }, tool: { chop: 1.9, build: 1.08 }, dur: 120, value: 3, glyph: "ironaxe" },
-    { id: "ironspear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u0436\u0435\u043B\u0435\u0437\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u0436\u0435\u043B. \u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, iron: true, melee: { dmg: 1.95, cd: 12 }, dur: 120, value: 4, glyph: "ironspear" },
-    { id: "ironaxe", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u0442\u043E\u043F\u043E\u0440", short: "\u0436\u0435\u043B. \u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, iron: true, melee: { dmg: 1.7, cd: 12 }, tool: { chop: 2.2, build: 1.15 }, dur: 160, value: 4, glyph: "ironaxe" },
-    { id: "sword", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u043C\u0435\u0447", short: "\u043C\u0435\u0447", slot: "hand", hands: 1, iron: true, melee: { dmg: 2.15, cd: 11 }, block: 0.1, dur: 150, value: 6, glyph: "sword" },
+    { id: "bronzespear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u0431\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u0431\u0440\u043E\u043D\u0437. \u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, bronze: true, glyph: "ironspear" },
+    { id: "bronzeaxe", label: "\u0411\u0440\u043E\u043D\u0437\u043E\u0432\u044B\u0439 \u0442\u043E\u043F\u043E\u0440", short: "\u0431\u0440\u043E\u043D\u0437. \u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, bronze: true, glyph: "ironaxe" },
+    // iron, from the forge
+    { id: "ironspear", label: "\u041A\u043E\u043F\u044C\u0451 \u0441 \u0436\u0435\u043B\u0435\u0437\u043D\u044B\u043C \u043D\u0430\u043A\u043E\u043D\u0435\u0447\u043D\u0438\u043A\u043E\u043C", short: "\u0436\u0435\u043B. \u043A\u043E\u043F\u044C\u0451", slot: "hand", hands: 1, iron: true, glyph: "ironspear" },
+    { id: "ironaxe", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u0442\u043E\u043F\u043E\u0440", short: "\u0436\u0435\u043B. \u0442\u043E\u043F\u043E\u0440", slot: "hand", hands: 1, iron: true, glyph: "ironaxe" },
+    { id: "sword", label: "\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u043C\u0435\u0447", short: "\u043C\u0435\u0447", slot: "hand", hands: 1, iron: true, glyph: "sword" },
     // silver: soft, but what fears silver (vampires) it burns. A dagger cast whole at the furnace on a wood fire,
     // no iron needed; iron blades can also be silvered at the forge (a `silver: true` piece, data/recipes.js)
-    { id: "silverknife", label: "\u0421\u0435\u0440\u0435\u0431\u0440\u044F\u043D\u044B\u0439 \u043A\u0438\u043D\u0436\u0430\u043B", short: "\u0441\u0435\u0440. \u043A\u0438\u043D\u0436\u0430\u043B", slot: "hand", hands: 1, silver: true, melee: { dmg: 1.3, cd: 9 }, dur: 70, value: 7, glyph: "dagger" },
+    { id: "silverknife", label: "\u0421\u0435\u0440\u0435\u0431\u0440\u044F\u043D\u044B\u0439 \u043A\u0438\u043D\u0436\u0430\u043B", short: "\u0441\u0435\u0440. \u043A\u0438\u043D\u0436\u0430\u043B", slot: "hand", hands: 1, silver: true, glyph: "dagger" },
     // body
     // lamellar: small iron plates laced onto a leather coat; heavy, but stops most blows
-    { id: "lamellar", label: "\u041B\u0430\u043C\u0435\u043B\u043B\u044F\u0440\u043D\u044B\u0439 \u0434\u043E\u0441\u043F\u0435\u0445", short: "\u043B\u0430\u043C\u0435\u043B\u044F\u0440", slot: "body", iron: true, armor: 0.5, warmth: 0.4, speed: 0.93, dur: 170, value: 30, color: "#8f989f" },
+    { id: "lamellar", label: "\u041B\u0430\u043C\u0435\u043B\u043B\u044F\u0440\u043D\u044B\u0439 \u0434\u043E\u0441\u043F\u0435\u0445", short: "\u043B\u0430\u043C\u0435\u043B\u044F\u0440", slot: "body", iron: true, color: "#8f989f" },
     // imperial iron armour: the outpost cannot make it, only buy it from a trader (or find it)
-    { id: "chainmail", label: "\u041A\u043E\u043B\u044C\u0447\u0443\u0433\u0430", short: "\u043A\u043E\u043B\u044C\u0447\u0443\u0433\u0430", slot: "body", iron: true, tradeOnly: true, armor: 0.55, warmth: 0.3, speed: 0.95, dur: 220, value: 40, color: "#b4bcc2" },
-    { id: "scalemail", label: "\u0427\u0435\u0448\u0443\u0439\u0447\u0430\u0442\u044B\u0439 \u0434\u043E\u0441\u043F\u0435\u0445", short: "\u0447\u0435\u0448\u0443\u044F", slot: "body", iron: true, tradeOnly: true, armor: 0.48, warmth: 0.35, speed: 0.94, dur: 190, value: 25, color: "#9aa0a0" },
-    { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", armor: 0.08, warmth: 0.35, dur: 50, value: 1, color: "#c9b38a" },
-    // fur: hare and wolf hides sewn hair-in — the winter coat
+    { id: "chainmail", label: "\u041A\u043E\u043B\u044C\u0447\u0443\u0433\u0430", short: "\u043A\u043E\u043B\u044C\u0447\u0443\u0433\u0430", slot: "body", iron: true, tradeOnly: true, color: "#b4bcc2" },
+    { id: "scalemail", label: "\u0427\u0435\u0448\u0443\u0439\u0447\u0430\u0442\u044B\u0439 \u0434\u043E\u0441\u043F\u0435\u0445", short: "\u0447\u0435\u0448\u0443\u044F", slot: "body", iron: true, tradeOnly: true, color: "#9aa0a0" },
+    { id: "clothes", label: "\u041E\u0434\u0435\u0436\u0434\u0430 \u0438\u0437 \u043B\u0443\u0431\u044F\u043D\u043E\u0439 \u0442\u043A\u0430\u043D\u0438", short: "\u0442\u043A\u0430\u043D\u044C", slot: "body", color: "#c9b38a" },
     // the furs the woods give, kept at home: a coat lined with fox fur, the warmest thing the outpost makes
-    { id: "furlined", label: "\u0422\u0443\u043B\u0443\u043F \u043D\u0430 \u043B\u0438\u0441\u044C\u0435\u043C \u043C\u0435\u0445\u0443", short: "\u0442\u0443\u043B\u0443\u043F \u043D\u0430 \u043C\u0435\u0445\u0443", slot: "body", armor: 0.16, warmth: 0.95, speed: 0.97, dur: 100, value: 9, color: "#d0844a" },
-    { id: "furcoat", label: "\u0422\u0443\u043B\u0443\u043F \u0438\u0437 \u0448\u043A\u0443\u0440", short: "\u0442\u0443\u043B\u0443\u043F", slot: "body", armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4, color: "#b89a72" },
+    { id: "furlined", label: "\u0422\u0443\u043B\u0443\u043F \u043D\u0430 \u043B\u0438\u0441\u044C\u0435\u043C \u043C\u0435\u0445\u0443", short: "\u0442\u0443\u043B\u0443\u043F \u043D\u0430 \u043C\u0435\u0445\u0443", slot: "body", color: "#d0844a" },
+    // fur: hare and wolf hides sewn hair-in — the winter coat
+    { id: "furcoat", label: "\u0422\u0443\u043B\u0443\u043F \u0438\u0437 \u0448\u043A\u0443\u0440", short: "\u0442\u0443\u043B\u0443\u043F", slot: "body", color: "#b89a72" },
     // homespun wool from the pen's goats: a long coat, warm and not too heavy
-    { id: "woolens", label: "\u0428\u0435\u0440\u0441\u0442\u044F\u043D\u0430\u044F \u0441\u0432\u0438\u0442\u0430", short: "\u0441\u0432\u0438\u0442\u0430", slot: "body", armor: 0.1, warmth: 0.7, dur: 110, value: 5, color: "#cfc4a8" },
+    { id: "woolens", label: "\u0428\u0435\u0440\u0441\u0442\u044F\u043D\u0430\u044F \u0441\u0432\u0438\u0442\u0430", short: "\u0441\u0432\u0438\u0442\u0430", slot: "body", color: "#cfc4a8" },
     // rough linen from the loom: better than bast, warmer in the cold
-    { id: "linen", label: "\u0425\u043E\u043B\u0449\u043E\u0432\u0430\u044F \u0440\u0443\u0431\u0430\u0445\u0430 \u0438 \u043F\u043E\u0440\u0442\u044B", short: "\u0445\u043E\u043B\u0441\u0442", slot: "body", armor: 0.1, warmth: 0.45, dur: 90, value: 3, color: "#ddd2b6" },
-    { id: "jerkin", label: "\u041A\u043E\u0436\u0430\u043D\u0430\u044F \u043A\u0443\u0440\u0442\u043A\u0430", short: "\u043A\u043E\u0436\u0430", slot: "body", armor: 0.2, warmth: 0.55, dur: 70, value: 3, color: "#8a5a2b" },
-    { id: "hardleather", label: "\u041A\u043E\u0436\u0430 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C\u0438 \u043F\u043B\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438", short: "\u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u0436\u0430", slot: "body", armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, value: 9, color: "#e0d6c0" },
+    { id: "linen", label: "\u0425\u043E\u043B\u0449\u043E\u0432\u0430\u044F \u0440\u0443\u0431\u0430\u0445\u0430 \u0438 \u043F\u043E\u0440\u0442\u044B", short: "\u0445\u043E\u043B\u0441\u0442", slot: "body", color: "#ddd2b6" },
+    { id: "jerkin", label: "\u041A\u043E\u0436\u0430\u043D\u0430\u044F \u043A\u0443\u0440\u0442\u043A\u0430", short: "\u043A\u043E\u0436\u0430", slot: "body", color: "#8a5a2b" },
+    { id: "hardleather", label: "\u041A\u043E\u0436\u0430 \u0441 \u043A\u043E\u0441\u0442\u044F\u043D\u044B\u043C\u0438 \u043F\u043B\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438", short: "\u0443\u043A\u0440\u0435\u043F\u043B\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u0436\u0430", slot: "body", color: "#e0d6c0" },
     // back
-    { id: "quiver", label: "\u041A\u043E\u043B\u0447\u0430\u043D", short: "\u043A\u043E\u043B\u0447\u0430\u043D", slot: "back", holds: { ammo: "arrows", max: 15 }, dur: Infinity, value: 1, quality: false },
+    { id: "quiver", label: "\u041A\u043E\u043B\u0447\u0430\u043D", short: "\u043A\u043E\u043B\u0447\u0430\u043D", slot: "back", holds: { ammo: "arrows" }, quality: false },
     // a wooden pan for washing gold out of the river sand (data/plants.js 'placer')
-    { id: "pan", label: "\u041F\u0440\u043E\u043C\u044B\u0432\u043E\u0447\u043D\u044B\u0439 \u043B\u043E\u0442\u043E\u043A", short: "\u043B\u043E\u0442\u043E\u043A", slot: "back", tool: { pan: 1.2 }, dur: 150, value: 1, quality: false },
-    { id: "basket", label: "\u0417\u0430\u043F\u043B\u0435\u0447\u043D\u044B\u0439 \u043A\u043E\u0440\u043E\u0431", short: "\u043A\u043E\u0440\u043E\u0431", slot: "back", carry: 2, dur: Infinity, value: 1, quality: false }
-  ]);
+    { id: "pan", label: "\u041F\u0440\u043E\u043C\u044B\u0432\u043E\u0447\u043D\u044B\u0439 \u043B\u043E\u0442\u043E\u043A", short: "\u043B\u043E\u0442\u043E\u043A", slot: "back", quality: false },
+    { id: "basket", label: "\u0417\u0430\u043F\u043B\u0435\u0447\u043D\u044B\u0439 \u043A\u043E\u0440\u043E\u0431", short: "\u043A\u043E\u0440\u043E\u0431", slot: "back", quality: false }
+  ].map(statsFor));
   var isWeapon = (def2) => !!(def2.melee || def2.ranged);
 
   // src/data/quality.js
@@ -6437,9 +6502,9 @@ dd.q4{color:#c58cff;font-weight:600}
       };
       if (base.melee) d.melee = { ...base.melee, dmg: base.melee.dmg * (1 + Q.hit) };
       if (base.ranged) d.ranged = { ...base.ranged, dmg: base.ranged.dmg * (1 + Q.hit) };
-      if (base.block) d.block = Math.min(0.75 + Q.cap, base.block + Q.guard);
-      if (base.armor) d.armor = Math.min(0.8 + Q.cap, base.armor + Q.guard);
-      if (base.warmth) d.warmth = Math.min(0.9 + Q.cap, base.warmth + Q.warmth);
+      if (base.block) d.block = Math.min(CAPS.block + Q.cap, base.block + Q.guard);
+      if (base.armor) d.armor = Math.min(CAPS.armor + Q.cap, base.armor + Q.guard);
+      if (base.warmth) d.warmth = Math.min(CAPS.warmth + Q.cap, base.warmth + Q.warmth);
       d.rank = Q.rank;
       d.keep = !!Q.keep;
       if (base.tool) d.tool = Object.fromEntries(Object.entries(base.tool).map(([j, m]) => [j, 1 + (m - 1) * (1 + Q.tool) + Q.tool * 0.5]));
@@ -6470,7 +6535,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return n;
   }
   var newItem = (type, extra = {}) => ({ type, ...extra, dur: def({ type, ...extra }).dur });
-  var SILVERING = 5;
+  var SILVERING = PRICES.silvering;
   function itemPrice(type, q = 0, silver = false) {
     const base = ITEMS.get(type), Q = qualityOf(q);
     return (base.value || 0) + (base.slot === "body" || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0) + (silver && !base.silver ? SILVERING : 0);
@@ -8837,7 +8902,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return best;
   }
-  var MELEE_REACH = 1.25;
+  var MELEE_REACH = COMBAT.reach;
   var reachOf = (a) => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
   var ensureGear = (a) => a.gear || { melee: { dmg: (SPECIES.get(a.species).attack || { power: 1 }).power, cd: (SPECIES.get(a.species).attack || { cooldown: 12 }).cooldown }, armor: 0, block: 0 };
   function damage(w, by, t, raw, { melee: melee2 = true } = {}) {
@@ -8865,7 +8930,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const cs = (_a = w.chronicle).combat || (_a.combat = { hits: 0, crits: 0 });
     cs.hits++;
     if (crit) cs.crits++;
-    const home = by.faction === "colony" && agentInZone(w, by) ? 1.25 : 1;
+    const home = by.faction === "colony" && agentInZone(w, by) ? COMBAT.home : 1;
     const wall = t.faction === "colony" && agentInZone(w, t) ? w.mods.mul.defense : 1;
     let dmg = raw * home * wall * (1 - (g3.armor || 0));
     noteHit(t, by);
@@ -8888,7 +8953,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (t.hp <= 0) lethal(w, t, "\u0440\u0430\u043D", by);
     return dmg;
   }
-  var SILVER = { bane: 2.5, plain: 0.5 };
+  var SILVER = COMBAT.silver;
   var silverFactor = (t, item) => SPECIES.get(t.species).weakTo?.includes("silver") ? item && def(item).silver ? SILVER.bane : SILVER.plain : 1;
   function scorch(w, t) {
     const cx = t.x | 0, cy = t.y | 0;
@@ -8903,15 +8968,18 @@ dd.q4{color:#c58cff;font-weight:600}
     w.nav.dirty("fire");
   }
   var behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
-  var MELEE_SKILL = 0.4;
+  var MELEE_SKILL = COMBAT.meleeSkill;
+  var BLOW = COMBAT.blow;
+  var SHOT = COMBAT.shot;
+  var HIT = COMBAT.hit;
   function attack(w, a, t) {
     if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
     if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
     if (behindRock(w, a, t)) return false;
     const g3 = ensureGear(a);
-    a.cd = Math.max(4, Math.round(g3.melee.cd * (a.mods?.swing ?? 1)));
+    a.cd = Math.max(COMBAT.minCooldown, Math.round(g3.melee.cd * (a.mods?.swing ?? 1)));
     a.flash = 4;
-    damage(w, a, t, (0.1 + w.rngs.combat() * 0.12) * g3.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g3.melee.item));
+    damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g3.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g3.melee.item));
     practice(a, "melee", LEARN.blow);
     if (g3.melee.item) wear(w, a, g3.melee.item);
     return true;
@@ -8927,13 +8995,13 @@ dd.q4{color:#c58cff;font-weight:600}
       if (a.equip.back.ammo <= 0) g3.rangedReady = false;
     }
     wear(w, a, r.item);
-    const skill = a.skill?.ranged ?? 0.2, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? 0.12 : 0;
-    const hit = w.rngs.combat() < 0.4 + 0.4 * skill + (a.mods?.aim || 0) - d / range * 0.2 - moving;
+    const skill = a.skill?.ranged ?? HIT.noSkill, moving = t.task?.id === "bolt" || t.task?.id === "chase" ? HIT.moving : 0;
+    const hit = w.rngs.combat() < HIT.base + HIT.skill * skill + (a.mods?.aim || 0) - d / range * HIT.far - moving;
     practice(a, "ranged", LEARN.shot);
     w.fx.push({ x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? "arrow" : "stone" });
     if (!hit) return "miss";
     const boost = r.boost && a.faction === "colony" ? w.mods.best[r.boost] || 1 : 1;
-    const res = damage(w, a, t, (0.12 + w.rngs.combat() * 0.1) * r.dmg * boost * silverFactor(t, null), { melee: false });
+    const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null), { melee: false });
     return t.dead ? "kill" : res === "blocked" || res === "dodged" ? "miss" : "hit";
   }
 
@@ -12461,10 +12529,10 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return any;
   }
-  var TABLES = /* @__PURE__ */ new WeakMap();
+  var TABLES2 = /* @__PURE__ */ new WeakMap();
   function sampling(w, ux, uy) {
-    let m = TABLES.get(w);
-    if (!m) TABLES.set(w, m = /* @__PURE__ */ new Map());
+    let m = TABLES2.get(w);
+    if (!m) TABLES2.set(w, m = /* @__PURE__ */ new Map());
     const key3 = ux + ":" + uy;
     let t = m.get(key3);
     if (t) return t;
@@ -20888,7 +20956,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.59.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 a42dffb" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 89d7c11" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";
