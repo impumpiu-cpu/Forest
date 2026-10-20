@@ -12,6 +12,8 @@ import {esc} from '../core/util.js';
 import {think} from './mind.js';
 import {qualityOf} from '../data/quality.js';
 import {season} from '../data/seasons.js';
+import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS} from '../data/balance/combat.js';
+import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
 // made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
@@ -29,9 +31,9 @@ export function itemDef(type, q = 0) {
       dur: base.dur * (1 + Q.dur)};
     if (base.melee) d.melee = {...base.melee, dmg: base.melee.dmg * (1 + Q.hit)};
     if (base.ranged) d.ranged = {...base.ranged, dmg: base.ranged.dmg * (1 + Q.hit)};
-    if (base.block) d.block = Math.min(0.75 + Q.cap, base.block + Q.guard);
-    if (base.armor) d.armor = Math.min(0.8 + Q.cap, base.armor + Q.guard);
-    if (base.warmth) d.warmth = Math.min(0.9 + Q.cap, base.warmth + Q.warmth);
+    if (base.block) d.block = Math.min(CAPS.block + Q.cap, base.block + Q.guard);
+    if (base.armor) d.armor = Math.min(CAPS.armor + Q.cap, base.armor + Q.guard);
+    if (base.warmth) d.warmth = Math.min(CAPS.warmth + Q.cap, base.warmth + Q.warmth);
     d.rank = Q.rank; d.keep = !!Q.keep;
     if (base.tool) d.tool = Object.fromEntries(Object.entries(base.tool).map(([j, m]) => [j, 1 + (m - 1) * (1 + Q.tool) + Q.tool * 0.5]));
     finer.set(key, d);
@@ -58,10 +60,11 @@ export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, .
 
 // price of one piece in imperial gold: the plain piece plus the step up in quality
 // a silvered iron blade costs this much more than a plain one
-export const SILVERING = 5;
+export const SILVERING = SERVICES.silvering;
 export function itemPrice(type, q = 0, silver = false) {
-  const base = ITEMS.get(type), Q = qualityOf(q);
-  return (base.value || 0) + (base.slot === 'body' || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0) + (silver && !base.silver ? SILVERING : 0);
+  const base = ITEMS.get(type);
+  const step = q ? QUALITY_PRICE[q][base.slot === 'body' || base.block ? 'armor' : 'weapon'] : 0;
+  return (base.value || 0) + step + (silver && !base.silver ? SILVERING : 0);
 }
 
 // How much silver in the hand is worth: a lot while something that fears it is on the map, a little once
@@ -86,19 +89,21 @@ export function rangedAmmo(a, d) {
 // recompute cached stats after any change of equipment
 export function recalcGear(a) {
   const sp = SPECIES.get(a.species), base = sp.attack || {power: 1, cooldown: 12};
-  const g = {melee: {dmg: base.power, cd: base.cooldown, item: null}, ranged: null, rangedReady: false,
-    block: 0, blockItem: null, armor: 0, warmth: 0, speed: 1, tool: {}, toolItem: {}, carry: 0};
+  const g = {melee: {dmg: base.power, cd: base.cooldown, item: null, type: base.type || DEFAULT_BLOW.melee, scale: null}, ranged: null, rangedReady: false,
+    block: 0, blockItem: null, blockVs: null, cover: 0, coverItem: null, coverVs: null, armor: 0, armorVs: null, warmth: 0, speed: 1, tool: {}, toolItem: {}, carry: 0};
   if (!a.equip) { a.gear = g; return g; }
   for (const it of handItems(a)) {
     const d = def(it);
-    if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it};
+    if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null};
     if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it};
-    if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; }
+    if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs || null; }
+    // a shot is caught only by what covers (a shield), with `cover` of its block (forms.js)
+    if ((d.block || 0) * (d.cover || 0) > g.cover) { g.cover = d.block * d.cover; g.coverItem = it; g.coverVs = d.vs || null; }
     if (d.speed) g.speed *= d.speed;
   }
   if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;
   const body = a.equip.body;
-  if (body) { const d = def(body); g.armor = d.armor || 0; g.warmth = d.warmth || 0; if (d.speed) g.speed *= d.speed; }
+  if (body) { const d = def(body); g.armor = d.armor || 0; g.armorVs = d.vs || null; g.warmth = d.warmth || 0; if (d.speed) g.speed *= d.speed; }
   // tools work from the hands or from the back (the worker swaps them in)
   for (const it of [...handItems(a), a.equip.back].filter(Boolean)) {
     for (const [job, m] of Object.entries(def(it).tool || {})) if (m > (g.tool[job] || 1)) { g.tool[job] = m; g.toolItem[job] = it; }
@@ -167,6 +172,12 @@ export function stripAll(a, target) {
 }
 
 // ── choosing gear ────────────────────────────────────────────────────────────
+// how much of a blow the striker's letters give (data/balance/combat.js `scale`): Strength alone by default
+export function blowStat(a, scale = DEFAULT_SCALE) {
+  let rest = 1, v = 0;
+  for (const [k, wt] of Object.entries(scale || DEFAULT_SCALE)) { rest -= wt; v += wt * (a.mods?.[SCALE_MODS[k]] ?? 1); }
+  return rest + v;
+}
 // a tool for a job this colonist may not do (agents/skills.js jobAccess) is worth nothing to them:
 // a gold pan goes to someone who can pan
 const toolUse = (a, job) => (JOBS.has(job) && !jobAccess(a, JOBS.get(job)).ok ? 0 : 1);
@@ -175,7 +186,9 @@ const toolUse = (a, job) => (JOBS.has(job) && !jobAccess(a, JOBS.get(job)).ok ? 
 function value(a, d, w) {
   const brave = 0.5 + 0.5 * a.mods.bravery;
   let v = 0;
-  if (d.melee) v += (d.melee.dmg - 1) * 0.6 * brave + 0.15;
+  // a blow as this colonist strikes it: the weapon's damage a tick (against a blow of 1 every 12 ticks) and the
+  // letters it is struck with (an agile one is worth more with a dagger, a strong one with a maul)
+  if (d.melee) v += (d.melee.dmg * 12 / d.melee.cd * blowStat(a, d.scale) - 1) * 0.6 * brave + 0.15;
   if (d.silver && d.melee) v += silverWorth(w) * brave;
   if (d.ranged) {
     const boost = d.ranged.boost ? (w.mods.best[d.ranged.boost] || 1) : 1;

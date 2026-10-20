@@ -20,7 +20,8 @@ import {refreshBody} from '../agents/special.js';
 import {dress, def} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
 import {putUp} from '../settlement/buildings.js';
-import {raidThreat} from '../settlement/threat.js';
+import {raidThreat, THREAT} from '../settlement/threat.js';
+import {raiderStrength} from '../data/raids.js';
 import {recordOf} from '../settlement/chronicle.js';
 import {BRAINS} from '../agents/brains/index.js';
 import {approach} from '../agents/movement.js';
@@ -170,8 +171,9 @@ function spawnFoe(w) {
     // the threat the band carries its gear by: × the thing's strength (settlement/threat.js reads w.fame on top)
     const want = CAMP.threat * F.strength * (map.threat || 1);
     w.fame = 0; w.fame = want - raidThreat(w);
-    const budget = Math.max(1, Math.round(FOES[F.kind].might * F.strength * CAMP.budget));
-    group = spawnGroup(w, 'raiders', budget, {...opts, band: band || 'bandits'});
+    // the band in bandits of its level, counted out in strength rating (data/raids.js fill)
+    const heads = Math.max(1, Math.round(FOES[F.kind].might * F.strength * CAMP.budget));
+    group = spawnGroup(w, 'raiders', heads * raiderStrength(raidThreat(w)) * THREAT.share, {...opts, band: band || 'bandits'});
   }
   C.foes = group.map(g => g.id); C.foeObjs = group; C.spawned = true;
 }

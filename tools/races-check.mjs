@@ -1,4 +1,5 @@
-// Races and raids check: every raid band arrives at an ordinary colony on day `days` and fights it out;
+// Races and raids check: every raid band arrives at an ordinary colony on day `days` and fights it out
+// (sized by the threat in strength rating: the budget → what came, against the colony's own rating);
 // settlers of other races come; nothing throws. Prints casualties per band, to compare with bandits.
 // Usage: node tools/races-check.mjs [days] [seeds]
 import {newGame, step} from '../src/sim.js';
@@ -7,7 +8,8 @@ import {colonists} from '../src/settlement/query.js';
 import {DAY, HOUR} from '../src/core/time.js';
 import {RAID_BANDS} from '../src/data/raids.js';
 import {arrive} from '../src/outside/index.js';
-import {raidSize} from '../src/settlement/threat.js';
+import {raidStrength, colonyStrength} from '../src/settlement/threat.js';
+import {strengthOf} from '../src/agents/strength.js';
 import {settlerSpecies} from '../src/settlement/relations.js';
 import {SPECIES} from '../src/data/species.js';
 import {raceLabel} from '../src/agents/special.js';
@@ -27,13 +29,14 @@ for (let s = 0; s < seeds; s++) {
 for (const band of RAID_BANDS.all()) {
   const out = [];
   for (const base of bases) {
-    const w = loadGame(base), pop0 = colonists(w).length, n = raidSize(w);
+    const w = loadGame(base), pop0 = colonists(w).length, n = raidStrength(w);
     const group = arrive(w, 'raiders', {n, band: band.id});
     if (!group.length) { console.log(`FAIL ${band.id}: nobody came`); failed = true; continue; }
     const who = {}; for (const a of group) { const k = raceLabel(SPECIES.get(a.species), a); who[k] = (who[k] || 0) + 1; }
+    const ks = Math.round(group.reduce((t, a) => t + strengthOf(a, {now: true}), 0)), home = Math.round(colonists(w).reduce((t, a) => t + strengthOf(a), 0));
     for (let t = 0; t < DAY && !w.over; t++) step(w);
     const killed = group.filter(a => a.dead).length;
-    out.push(`[${n}] ${Object.entries(who).map(([k, v]) => `${k} ${v}`).join(', ')}: убито ${killed}/${group.length}, колонистов ${pop0}→${colonists(w).length}${w.over ? ' ПАЛО' : ''}`);
+    out.push(`[КС ${n}→${ks}, колония ${home}] ${Object.entries(who).map(([k, v]) => `${k} ${v}`).join(', ')}: убито ${killed}/${group.length}, колонистов ${pop0}→${colonists(w).length}${w.over ? ' ПАЛО' : ''}`);
   }
   console.log(`${band.id.padEnd(9)} ${out.join(' | ')}`);
 }

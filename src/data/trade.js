@@ -8,7 +8,8 @@
 // Who: a trader, `guards` guards with their kit, and 1…3 pack mules. A mule carries `crates` crates
 // of `crate` goods each (2 × 10 = 20); each mule is loaded `load` full (0.5…1).
 //
-// Goods: every unit of a resource and every item takes one place in a crate. What fills a crate is
+// Goods: a place in a crate holds one stack of a resource (data/balance/prices.js `stack`: 20 berries,
+// 10 logs, 1 bench) or one item. What fills a crate is
 // drawn from WARES by weight: mostly food and plain things, sometimes finer (+1, +2) pieces and
 // imperial iron armour, which the outpost cannot make. +3 pieces are never sold (data/quality.js).
 //   {food: true, n}                      — one of the foods (data/foods.js)
@@ -17,8 +18,9 @@
 //                                          (not tradeOnly, not iron), 'any' = anything that can be finer;
 //                                          `silver: true` — silvered (iron blades; a silver dagger is silver anyway)
 //
-// Prices are in imperial gold (resource `value`, item `value` + the quality step). A trader asks
-// `ask` × the price and pays `bid` × the price, and carries `purse` gold to buy with.
+// Prices are in imperial gold (resource `value`, item `value` + the quality step), all of them and the
+// trader's terms (ask, bid, haggle, purse) in data/balance/prices.js. A trader asks `ask` × the price and pays
+// `bid` × the price, and carries `purse` gold to buy with.
 //
 // The colony's side (settlement/trade.js): it sells what it has beyond what it keeps (resource
 // `keep`, `keepPerHead`), spare pieces from the gear store and all the jeweller's work; then it
@@ -33,17 +35,18 @@
 //              colony still lacks — the first one it could use always, the others with keyChance; the
 //              colony buys one as soon as it could use it, selling down to half its reserves if it must
 //   furnish:   finer furniture is bought only with at least this much gold left over after it
+import {TRADE as PT} from './balance/prices.js';
 export const TRADE = {
   firstDay: 10, everyDays: 10, chance: 0.7,
   setOut: [4, 6], leaveHour: 7, tradeUntil: 23, maxStay: 2,   // days, in case it never gets to trade
   maxComing: 36,   // hours on the road from the map edge (usually 10–14): a caravan that has not reached the camp by then turns back
   guards: 2, mules: [1, 3], crates: 2, crate: 10, load: [0.5, 1],
-  purse: [25, 70], ask: 1.2, bid: 0.7,
+  purse: PT.purse, ask: PT.ask, bid: PT.bid,   // data/balance/prices.js
   // the colony's negotiator (settlement/trade.js terms): Charisma × (1 + barter skill) against the trader's;
   // the contest a / (a + b) moves both prices by up to ±haggle in the colony's favour or against it,
   // once for the whole visit. With the best terms buying costs 1.1 and selling brings 0.8 of the worth:
   // there is always a margin, so nothing can be sold and bought back at a profit.
-  haggle: 0.1, traderC: 6, traderBarter: 0.5,
+  haggle: PT.haggle, traderC: 6, traderBarter: 0.5,
   practicePerLine: 15, practiceMax: 120,   // barter practice for the negotiator: per line of the deal, at most
   foodShort: 4, foodUpTo: 6, foodKeep: 5, minGain: 0.15, maxShare: 0.85,
   wants: {salt: 12, seedBarley: 8, seedTurnip: 8, seedFlax: 6},   // bought whenever the trader has it, up to this much in stock
@@ -51,7 +54,7 @@ export const TRADE = {
   // silver blades: the colony buys them up to this share of its people once something that fears silver
   // has come; before that one at most, and only when it costs no more than `silverSpare` of the gold in hand
   silverShare: 0.5, silverSpare: 0.3,
-  mithrilPurse: 35,   // a trader who has heard of mithril carries this much more gold per unit in stock (up to 3)
+  mithrilPurse: PT.mithrilPurse,   // a trader who has heard of mithril carries this much more gold per unit in stock (up to 3)
 
   WARES: [
     {w: 40, food: true, n: [3, 8]},

@@ -1,4 +1,4 @@
-[Главная](../README.md) · **Архитектура** · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md)
+[Главная](../README.md) · **Архитектура** · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Баланс вещей](BALANCE.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md)
 
 # Архитектура
 
@@ -45,7 +45,8 @@ src/
     crops.js      полевые культуры: семена, урожай, сколько семян возвращается, сроки
     seasons.js    времена года: длина, температура, рост, рыбалка, звери, порча, снег, цвет земли
     trade.js      торговцы: когда приходят, состав каравана, товары, цены, правила торга
-    items.js      снаряжение: слоты, одноручное и двуручное, броня, вещи для спины
+    items.js      снаряжение: слоты и сборка предметов из форм и материалов (balance/forms.js × materials.js)
+    balance/      числа: forms и materials — предмет как форма × материал; prices — все цены, стаки и денежные коэффициенты; combat — числа боя; creatures — библиотека существ (SPECIAL, тело, коэффициент силы); rules и power — для проверок (docs/BALANCE.md)
     recipes.js    рецепты мастерских и то, насколько колонии нужна каждая вещь
     needs.js      потребности: убывание, вред, задача, срочность
     jobs.js       работы: где цель, сколько длится, что даёт, насколько нужна
@@ -110,6 +111,7 @@ src/
     body.js       потребности и здоровье по справочнику needs
     movement.js   шаги, спуск по полю, бегство от огня, отскок от угроз
     combat.js     удары, выстрелы из лука и пращи, броня и щиты
+    strength.js   коэффициент силы (КС): сколько существо стоит в бою, человек тира 0 = 100, складывается по сторонам
     squad.js      отряд налётчиков: цель визита, вожак, роли, боевой дух, отступление
     carcass.js    туши на карте и охота стаей: роли в погоне, последнее место, итог охоты
     equipment.js  инвентарь: слоты, двуручные предметы, износ, выбор снаряжения
@@ -126,7 +128,7 @@ src/
     crafting.js   мастерские: выбор заказа, материалы, готовые вещи
     zone.js       зона поселения: круги вокруг лагеря и построек сливаются в одну
     migration.js  высадка прибывшей группы у края карты
-    threat.js     угроза налёта (по слухам о колонии)
+    threat.js     угроза налёта в КС и её уровень (по слухам о колонии)
     trade.js      визит каравана по шагам и сделка: что колония продаёт и покупает
     farming.js    поля: распашка грядок, посев, рост по сезону, жатва, мороз
     healing.js    лечение: кто ложится в хижину лекаря, сколько здоровья даёт лекарь, расход трав
@@ -168,7 +170,7 @@ src/
   commands.js  всё, что игрок может сделать с миром: ветер, поджог, ливень, набег
   headless.js  игра без экрана: simulate(cfg, {days}) с ежедневными замерами
 tools/
-  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  atlas-save-check.mjs  map-check.mjs  seam-check.mjs  campaign-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  campaign-balance.mjs  report.mjs
+  build.mjs  check-layers.mjs  check-data.mjs  atlas-check.mjs  atlas-save-check.mjs  map-check.mjs  seam-check.mjs  campaign-check.mjs  determinism.mjs  rng-check.mjs  smoke.mjs  balance.mjs  campaign-balance.mjs  report.mjs  items-check.mjs  arena.mjs  arena-report.mjs
 ```
 
 </details>

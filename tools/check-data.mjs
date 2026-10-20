@@ -8,6 +8,9 @@ import {FOODS} from '../src/data/foods.js';
 import {ORES} from '../src/data/ores.js';
 import {LUXURY} from '../src/data/luxury.js';
 import {ITEMS} from '../src/data/items.js';
+import {FORMS, MATERIALS, PRICES} from '../src/data/balance/index.js';
+import {QUALITY} from '../src/data/quality.js';
+import {STRENGTH, CREATURES} from '../src/data/balance/creatures.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
@@ -29,7 +32,7 @@ import {BIOMES, RARITY, FAUNA_FLOOR} from '../src/data/biomes.js';
 import {faunaFrom} from '../src/world/region.js';
 import {VALUES} from '../src/data/values.js';
 import {RELATIONS, KINS} from '../src/data/relations.js';
-import {RAID_BANDS, bandCost, kitFor} from '../src/data/raids.js';
+import {RAID_BANDS, memberStrength, kitFor} from '../src/data/raids.js';
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
@@ -85,10 +88,59 @@ for (const d of ITEMS.all()) {
   if (d.slot === 'body' && !d.color) warn(`предмет ${d.id}: броня без color, обводка не покажет её`);
   if (d.ranged?.ammo) res(`предмет ${d.id}`, d.ranged.ammo);
   for (const job of Object.keys(d.tool || {})) if (!JOBS.has(job)) err(`предмет ${d.id}: tool для неизвестной работы «${job}»`);
-  if (!d.tradeOnly && !RECIPES.all().some(r => r.makes?.item === d.id) && !Object.values(STOCKS).some(s => s.kit?.includes(d.id))) warn(`предмет ${d.id}: его нельзя сделать и нет в стартовых наборах`);
+  // a form × material the game names itself (forms.js `ids`) should come from somewhere; the others (a bronze
+  // sword, a mithril spear) are made by others: found, taken, bought
+  if (FORMS[d.form]?.ids?.[d.material] === d.id && !d.tradeOnly && !RECIPES.all().some(r => r.makes?.item === d.id) && !Object.values(STOCKS).some(s => s.kit?.includes(d.id))) warn(`предмет ${d.id}: его нельзя сделать и нет в стартовых наборах`);
   if (d.tradeOnly && RECIPES.all().some(r => r.makes?.item === d.id)) err(`предмет ${d.id}: tradeOnly, но есть рецепт`);
   if (!(d.value > 0)) warn(`предмет ${d.id}: нет цены value, торговец отдаст его даром`);
 }
+// the creatures library (data/balance/creatures.js): a row for every species and a species for every row,
+// sane bodies, and a yardstick for the strength rating that names real things
+for (const id of Object.keys(CREATURES)) if (!SPECIES.has(id)) err(`data/balance/creatures.js: ${id} — нет такого вида`);
+for (const [id, r] of Object.entries(CREATURES)) {
+  const where = `data/balance/creatures.js: ${id}`;
+  for (const k of STATS.ids()) { const v = r.special?.[k]; if (!Array.isArray(v) || !(v[0] <= v[1]) || v[0] < 0) err(`${where}: special.${k} должен быть [min, max], 0 ≤ min ≤ max`); }
+  if (!(r.hp > 0) || !(r.speed > 0)) err(`${where}: hp и speed должны быть больше нуля`);
+  if (r.attack && !(r.attack.power > 0 && r.attack.cooldown > 0)) err(`${where}: attack без power или cooldown`);
+  if (r.ks != null && !(r.ks > 0)) err(`${where}: ks должен быть больше нуля`);
+  for (const p of Object.keys(r.peoples || {})) if (!SPECIES.get(id)?.peoples?.some(x => x.id === p)) err(`${where}: peoples.${p} — у вида нет такого народа`);
+}
+if (!SPECIES.has(STRENGTH.ref.species)) err(`data/balance/creatures.js: STRENGTH.ref — нет вида «${STRENGTH.ref.species}»`);
+STRENGTH.ref.kit.forEach(i => item('data/balance/creatures.js: STRENGTH.ref.kit', i));
+if (!(STRENGTH.alpha > 0 && STRENGTH.alpha <= 1.5)) err('data/balance/creatures.js: STRENGTH.alpha вне (0, 1.5]');
+// forms and materials (data/balance/forms.js, materials.js): every form takes something, stands at a material
+// of its own classes, names only such materials; every material is priced; every item they make is sane
+const classes = new Set(Object.values(MATERIALS).flatMap(m => m.class));
+for (const [id, f] of Object.entries(FORMS)) {
+  const where = `data/balance/forms.js: ${id}`, fits = m => MATERIALS[m]?.class.some(c => f.of.includes(c));
+  for (const c of f.of) if (!classes.has(c)) err(`${where}: ни один материал не класса «${c}»`);
+  if (!fits(f.ref)) err(`${where}: ref «${f.ref}» — не материал из её классов`);
+  for (const m of [...Object.keys(f.ids || {}), ...Object.keys(f.names || {})]) if (!fits(m)) err(`${where}: «${m}» в ids или names — не материал из её классов`);
+  if (typeof f.name !== 'function') err(`${where}: нет name(m) для материалов без своего имени`);
+  for (const r of Object.keys(f.parts || {})) if (r !== 'material') res(where, r);
+}
+for (const [id, m] of Object.entries(MATERIALS)) {
+  const where = `data/balance/materials.js: ${id}`;
+  if (!PRICES.RESOURCES[m.resource]) err(`${where}: у ресурса «${m.resource}» нет цены в prices.js`);
+  if (!(m.rarity in PRICES.ITEMS.rarity)) err(`${where}: неизвестная редкость «${m.rarity}»`);
+  if (!Number.isInteger(m.tier) || m.tier < 0) err(`${where}: tier должен быть целым от 0`);
+  for (const k of ['m', 'f', 'n', 'ins']) if (!m.adj?.[k]) err(`${where}: нет формы слова adj.${k}`);
+}
+for (const d of ITEMS.all()) {
+  const where = `предмет ${d.id} (${d.form} × ${d.material})`;
+  if (d.melee && !(d.melee.cd > 0 && d.melee.dmg > 0)) err(`${where}: melee без dmg или cd`);
+  for (const k of ['armor', 'block', 'warmth']) if (d[k] != null && !(d[k] >= 0 && d[k] < 1)) err(`${where}: ${k} должен быть от 0 до 1`);
+  if (d.cover != null && !(d.cover > 0 && d.cover <= 1 && d.block)) err(`${where}: cover — доля блока от 0 до 1, и только у того, что блокирует`);
+  if (!(d.dur > 0)) err(`${where}: dur должен быть больше нуля`);
+  if (!(d.value > 0)) err(`${where}: нет цены`);
+}
+// prices (data/balance/prices.js): a row for every resource and a resource for every row; stacks are whole
+for (const [id, p] of Object.entries(PRICES.RESOURCES)) {
+  if (!RESOURCES.has(id)) err(`data/balance/prices.js: ${id} — нет такого ресурса`);
+  if (!(p.price >= 0)) err(`data/balance/prices.js: ${id} — нет цены`);
+  if (!Number.isInteger(p.stack) || p.stack < 1) err(`data/balance/prices.js: ${id} — stack должен быть целым от 1`);
+}
+for (const q of QUALITY.all().filter(x => x.q > 0)) if (!PRICES.QUALITY[q.q]) err(`data/balance/prices.js: нет цены качества +${q.q}`);
 
 for (const s of SPECIES.all()) { costs(`вид ${s.id}`, s.yields); if (!LOOKS[s.look?.shape]) err(`вид ${s.id}: нет рисовальщика «${s.look?.shape}»`); }
 for (const [k, s] of Object.entries(STOCKS)) { costs(`запасы ${k}`, s.stock); (s.kit || []).forEach(i => item(`запасы ${k}`, i)); }
@@ -123,9 +175,9 @@ for (const k of KINS.ids()) if (!RELATIONS[k] || Object.keys(RELATIONS[k]).lengt
 for (const v of VALUES.all()) for (const c of v.clash) if (!VALUES.has(c)) err(`ценность ${v.id}: нет ценности «${c}» в clash`);
 {
   const rng = (() => { let x = 7; return () => ((x = (x * 16807) % 2147483647) / 2147483647); })();
-  for (const b of RAID_BANDS.all()) for (const t of [2, 12, 25]) for (const m of b.members({}, rng, 6, t)) {
+  for (const b of RAID_BANDS.all()) for (const t of [2, 12, 25]) for (const m of b.members({}, rng, 600, t)) {
     if (!SPECIES.has(m.species)) { err(`банда ${b.id}: нет вида «${m.species}»`); continue; }
-    if (bandCost(m.species) == null) err(`банда ${b.id}: у «${m.species}» нет цены в COST`);
+    if (!(memberStrength(m.species, t) > 0)) err(`банда ${b.id}: у «${m.species}» нет коэффициента силы`);
     for (const it of kitFor(m.species, rng, t)) item(`банда ${b.id}`, typeof it === 'string' ? it : it.type);
   }
 }

@@ -2,6 +2,7 @@
 // three clues that narrow down where it lies, rumours in the towns, guardians that grow stronger the
 // further from home, the world that learns of the crown and sends its bands after the caravan.
 // Distances are cells of a 192-high world (× the world's scale) unless said otherwise.
+import {CAMPAIGN} from './balance/prices.js';
 
 export const QUEST = {
   // the crown's names, one drawn for a campaign: [as named, accusative, gender]
@@ -32,7 +33,7 @@ export const QUEST = {
   guard: {base: 0.7, perDiag: 1.8, crown: 1.25, max: 3}, storm: 0.75, retry: 12,
   // rumours in a friendly town: a hint where an unknown clue lies, for `price` gold or free to a speaker
   // with Charisma `charm` and more; at most one a visit, with this chance
-  rumour: {chance: 0.6, price: 3, charm: 7},
+  rumour: {chance: 0.6, price: CAMPAIGN.rumour, charm: 7},
   // the way home with the crown: the world sends its bands after the caravan — one every `every` days,
   // (no more than `at` on its trail at once), of strength base + per year carried, at most max; they hunt from
   // the edge of the bubble and go home after a fight, won or lost

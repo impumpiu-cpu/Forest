@@ -7,7 +7,7 @@ import {RESOURCES} from './resources.js';
 import {colonists, ofSpecies, foodTotal} from '../settlement/query.js';
 import {moodOf} from '../agents/mind.js';
 import {fishTotals} from '../world/lakes.js';
-import {raidThreat, raidSize} from '../settlement/threat.js';
+import {raidThreat, raidStrength, colonyStrength} from '../settlement/threat.js';
 import {colonyReport} from '../outside/report.js';
 import {DAY} from '../core/time.js';
 import {SPECIES} from './species.js';
@@ -55,8 +55,9 @@ METRICS.registerAll([
   {id: 'broken', label: 'Вещей сломано', group: 'Поселение', fmt: 0, get: w => w.stats.broken},
   {id: 'armed', label: 'Вооружённых', group: 'Оборона', fmt: 0, get: w => colonyReport(w).armed},
   {id: 'armour', label: 'Сумма брони', group: 'Оборона', fmt: 2, get: w => colonyReport(w).armour},
-  {id: 'threat', label: 'Угроза налёта', group: 'Оборона', fmt: 1, get: raidThreat},
-  {id: 'raidSize', label: 'Размер следующей банды', group: 'Оборона', fmt: 0, get: raidSize},
+  {id: 'threat', label: 'Уровень угрозы', group: 'Оборона', fmt: 1, get: raidThreat},
+  {id: 'raidKs', label: 'Угроза: КС следующей банды', group: 'Оборона', fmt: 0, get: raidStrength},
+  {id: 'colonyKs', label: 'КС колонии по слухам', group: 'Оборона', fmt: 0, get: colonyStrength},
   {id: 'raids', label: 'Набегов было', group: 'Оборона', fmt: 0, get: w => w.stats.raids},
   {id: 'raidersKilled', label: 'Налётчиков убито', group: 'Оборона', fmt: 0, get: w => w.chronicle.raidersKilled},
   {id: 'hares', label: 'Зайцев на карте', group: 'Природа', fmt: 0, get: w => ofSpecies(w, 'hare').length},

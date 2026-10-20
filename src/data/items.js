@@ -3,24 +3,38 @@
 //   body — armour or clothing; back — any single item (a quiver and a basket work there,
 //   anything else is simply carried as a spare and swapped in when needed).
 // Harsh neolithic at first: wood, bone, hide and leather. With a mine, a furnace and a forge come
-// iron blades (`iron: true`), better and longer-lived; the only iron armour is lamellar. Bronze (`bronze: true`)
-// is between: a bronze tool can build a cart, an iron one a wagon (data/transport.js).
+// bronze and iron (`bronze: true`, `iron: true`): a bronze tool can build a cart, an iron one a wagon
+// (data/transport.js).
 //
-// Fields:
-//   slot: 'hand' | 'body' | 'back' (where it is worn; any item may also ride on the back)
-//   hands: 1 | 2 for hand items
-//   melee:  {dmg, cd}            close combat, dmg multiplies the base blow
-//   ranged: {dmg, range, cd, ammo, boost}  ammo: resource id carried in a quiver (null = picked up anywhere);
-//                                 boost: a colony modifier from world.mods.best that strengthens the shot
-//   block: chance to stop a melee blow (shields, staves)
-//   armor: share of damage absorbed; warmth: share of cold kept out; speed: walking multiplier
-//   tool: {job: speed multiplier} while working that job (in hands or on the back)
-//   carry: extra units carried while harvesting (back only); holds: {ammo, max} (back only)
-//   dur: how many uses before it breaks
-//   value: price of a plain (+0) piece in imperial gold; finer pieces cost more (data/quality.js)
-//   tradeOnly: the outpost cannot make it, it can only be bought (or found)
-//   quality: false — the item has nothing finer work could improve (a basket is a basket)
+// An item is a form × a material (docs/BALANCE.md, «Форма и материал»):
+//   data/balance/forms.js     — what it is shaped as: slot, hands, blow, block, armour, tools, parts, labour
+//   data/balance/materials.js — what it is made of: tier, rarity, multipliers, the words for its name
+//   data/balance/prices.js    — what the parts and the labour cost, and the rarity's step
+// Every form is made here of every material whose class it takes: a new material gives every such form,
+// a new form comes in every such material. The pieces the game already had keep their ids (forms.js `ids`).
+//
+// The fields of an item (the code reads only these):
+//   id, label, short, form, material, tier, slot, hands, glyph, color
+//   melee {dmg, cd}            close combat, dmg multiplies the base blow
+//   blow, scale                how it strikes (pierce, slash, blunt) and with which letters (data/balance/combat.js)
+//   vs                         protection against each kind of blow, × armor or × block
+//   ranged {dmg, range, cd, ammo, boost}  ammo: resource id carried in a quiver (null = picked up anywhere);
+//                              boost: a colony modifier from world.mods.best that strengthens the shot
+//   block                      chance to stop a melee blow (shields, staves)
+//   cover                      share of that chance which also stops a shot (a shield: 0.5; a parry stops none)
+//   armor, warmth, speed       share of damage absorbed; share of cold kept out; walking multiplier
+//   tool {job: ×}              work speed while working that job (in hands or on the back)
+//   carry, holds {ammo, max}   extra units carried while harvesting; what a back item holds
+//   dur                        uses before it breaks
+//   value                      price of a plain (+0) piece in imperial gold; finer pieces cost more (data/quality.js)
+//   iron / bronze / silver     what it is made of (recipes, transport, silver-fearing creatures)
+//   tradeOnly                  the outpost cannot make it, it can only be bought (or found)
+//   sold: false                traders never carry it (a rare material)
+//   quality: false             nothing finer work could improve (a basket is a basket)
 import {Registry} from '../core/registry.js';
+import {FORMS} from './balance/forms.js';
+import {MATERIALS} from './balance/materials.js';
+import {RESOURCES as PRICE, ITEMS as ITEM_PRICE} from './balance/prices.js';
 
 export const SLOTS = [
   {id: 'left',  label: 'левая рука', hand: true},
@@ -31,55 +45,56 @@ export const SLOTS = [
 
 export const ITEMS = new Registry('item');
 
-ITEMS.registerAll([
-  // one-handed
-  {id: 'club',   label: 'Дубина',  short: 'дубина', slot: 'hand', hands: 1, melee: {dmg: 1.3, cd: 12}, dur: 70, value: 0.5, glyph: 'club'},
-  {id: 'spear',  label: 'Копьё с костяным наконечником', short: 'копьё', slot: 'hand', hands: 1, melee: {dmg: 1.55, cd: 13}, dur: 55, value: 1, glyph: 'spear'},
-  {id: 'axe',    label: 'Топор с костяным клином', short: 'топор', slot: 'hand', hands: 1, melee: {dmg: 1.3, cd: 13}, tool: {chop: 1.6}, dur: 90, value: 2, glyph: 'axe'},
-  {id: 'shield', label: 'Щит из жердей и шкуры', short: 'щит', slot: 'hand', hands: 1, block: 0.32, dur: 35, value: 3, glyph: 'shield'},
-  // two-handed
-  {id: 'staff',  label: 'Посох',   short: 'посох', slot: 'hand', hands: 2, melee: {dmg: 1.1, cd: 11}, block: 0.15, speed: 1.05, dur: 80, value: 0.5, glyph: 'staff'},
-  {id: 'maul',   label: 'Деревянный молот', short: 'молот', slot: 'hand', hands: 2, melee: {dmg: 1.9, cd: 18}, tool: {build: 1.45, mine: 1.35}, dur: 90, value: 2, glyph: 'maul'},
-  {id: 'bow',    label: 'Лук',     short: 'лук', slot: 'hand', hands: 2, melee: {dmg: 0.6, cd: 14},
-    ranged: {dmg: 1.7, range: 7, cd: 22, ammo: 'arrows'}, dur: 90, value: 5, glyph: 'bow'},
-  // stones lie everywhere: no ammo, but the sling is far weaker and shorter; a quarry gives better stones
-  {id: 'sling',  label: 'Праща',   short: 'праща', slot: 'hand', hands: 2, melee: {dmg: 0.5, cd: 14},
-    ranged: {dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: 'slingStones'}, dur: 60, value: 0.5, glyph: 'sling'},
-  // a rod with a wooden gorge hook and a line of twisted bast; works from the back as well
-  {id: 'rod',    label: 'Удочка с деревянным крючком', short: 'удочка', slot: 'hand', hands: 2, tool: {fish: 1.6}, dur: 80, value: 1, glyph: 'rod'},
-  // iron, from the forge
-  // cast in bronze at the furnace on a wood fire: better than bone, short of iron
-  {id: 'bronzespear', label: 'Копьё с бронзовым наконечником', short: 'бронз. копьё', slot: 'hand', hands: 1, bronze: true, melee: {dmg: 1.75, cd: 13}, dur: 95, value: 3, glyph: 'ironspear'},
-  {id: 'bronzeaxe',   label: 'Бронзовый топор', short: 'бронз. топор', slot: 'hand', hands: 1, bronze: true, melee: {dmg: 1.5, cd: 13}, tool: {chop: 1.9, build: 1.08}, dur: 120, value: 3, glyph: 'ironaxe'},
-  {id: 'ironspear', label: 'Копьё с железным наконечником', short: 'жел. копьё', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.95, cd: 12}, dur: 120, value: 4, glyph: 'ironspear'},
-  {id: 'ironaxe',   label: 'Железный топор', short: 'жел. топор', slot: 'hand', hands: 1, iron: true, melee: {dmg: 1.7, cd: 12}, tool: {chop: 2.2, build: 1.15}, dur: 160, value: 4, glyph: 'ironaxe'},
-  {id: 'sword',     label: 'Железный меч', short: 'меч', slot: 'hand', hands: 1, iron: true, melee: {dmg: 2.15, cd: 11}, block: 0.1, dur: 150, value: 6, glyph: 'sword'},
-  // silver: soft, but what fears silver (vampires) it burns. A dagger cast whole at the furnace on a wood fire,
-  // no iron needed; iron blades can also be silvered at the forge (a `silver: true` piece, data/recipes.js)
-  {id: 'silverknife', label: 'Серебряный кинжал', short: 'сер. кинжал', slot: 'hand', hands: 1, silver: true, melee: {dmg: 1.3, cd: 9}, dur: 70, value: 7, glyph: 'dagger'},
-  // body
-  // lamellar: small iron plates laced onto a leather coat; heavy, but stops most blows
-  {id: 'lamellar',    label: 'Ламеллярный доспех', short: 'ламеляр', slot: 'body', iron: true, armor: 0.5, warmth: 0.4, speed: 0.93, dur: 170, value: 30, color: '#8f989f'},
-  // imperial iron armour: the outpost cannot make it, only buy it from a trader (or find it)
-  {id: 'chainmail',   label: 'Кольчуга', short: 'кольчуга', slot: 'body', iron: true, tradeOnly: true, armor: 0.55, warmth: 0.3, speed: 0.95, dur: 220, value: 40, color: '#b4bcc2'},
-  {id: 'scalemail',   label: 'Чешуйчатый доспех', short: 'чешуя', slot: 'body', iron: true, tradeOnly: true, armor: 0.48, warmth: 0.35, speed: 0.94, dur: 190, value: 25, color: '#9aa0a0'},
-  {id: 'clothes',     label: 'Одежда из лубяной ткани', short: 'ткань', slot: 'body', armor: 0.08, warmth: 0.35, dur: 50, value: 1, color: '#c9b38a'},
-  // fur: hare and wolf hides sewn hair-in — the winter coat
-  // the furs the woods give, kept at home: a coat lined with fox fur, the warmest thing the outpost makes
-  {id: 'furlined',    label: 'Тулуп на лисьем меху', short: 'тулуп на меху', slot: 'body', armor: 0.16, warmth: 0.95, speed: 0.97, dur: 100, value: 9, color: '#d0844a'},
-  {id: 'furcoat',     label: 'Тулуп из шкур', short: 'тулуп', slot: 'body', armor: 0.14, warmth: 0.85, speed: 0.97, dur: 80, value: 4, color: '#b89a72'},
-  // homespun wool from the pen's goats: a long coat, warm and not too heavy
-  {id: 'woolens',     label: 'Шерстяная свита', short: 'свита', slot: 'body', armor: 0.1, warmth: 0.7, dur: 110, value: 5, color: '#cfc4a8'},
-  // rough linen from the loom: better than bast, warmer in the cold
-  {id: 'linen',       label: 'Холщовая рубаха и порты', short: 'холст', slot: 'body', armor: 0.1, warmth: 0.45, dur: 90, value: 3, color: '#ddd2b6'},
-  {id: 'jerkin',      label: 'Кожаная куртка', short: 'кожа', slot: 'body', armor: 0.2, warmth: 0.55, dur: 70, value: 3, color: '#8a5a2b'},
-  {id: 'hardleather', label: 'Кожа с костяными пластинами', short: 'укреплённая кожа', slot: 'body', armor: 0.35, warmth: 0.45, speed: 0.95, dur: 90, value: 9, color: '#e0d6c0'},
-  // back
-  {id: 'quiver', label: 'Колчан', short: 'колчан', slot: 'back', holds: {ammo: 'arrows', max: 15}, dur: Infinity, value: 1, quality: false},
-  // a wooden pan for washing gold out of the river sand (data/plants.js 'placer')
-  {id: 'pan',    label: 'Промывочный лоток', short: 'лоток', slot: 'back', tool: {pan: 1.2}, dur: 150, value: 1, quality: false},
-  {id: 'basket', label: 'Заплечный короб', short: 'короб', slot: 'back', carry: 2, dur: Infinity, value: 1, quality: false},
-]);
+// the price of one piece: its parts and its labour, × what it protects, × the rarity of its material
+// (data/balance/prices.js); `d` — the piece as made (its armour and block)
+export function priceOf(form, mat, d = {}) {
+  const res = id => {
+    const r = id === 'material' ? mat.resource : id;
+    if (!PRICE[r]) throw new Error(`price: no resource «${r}» in data/balance/prices.js`);
+    return PRICE[r].price * (id === 'material' ? mat.amount ?? 1 : 1);
+  };
+  const parts = Object.entries(form.parts || {}).reduce((s, [id, n]) => s + res(id) * n, 0);
+  const work = (form.work || 0) / 1000 * ITEM_PRICE.labour * (mat.labour ?? 1);
+  const raw = (parts + work) * (1 + ITEM_PRICE.protection * ((d.armor || 0) + (d.block || 0))) * (ITEM_PRICE.rarity[mat.rarity] ?? 1);
+  return Math.max(ITEM_PRICE.round, Math.round(raw / ITEM_PRICE.round) * ITEM_PRICE.round);
+}
+
+// one form in one material: the form's numbers scaled from its reference material to this one
+export function makeItem(formId, matId) {
+  const form = FORMS[formId], mat = MATERIALS[matId], ref = MATERIALS[form.ref];
+  const r = k => (mat[k] ?? 1) / (ref[k] ?? 1);
+  const id = form.ids?.[matId] ?? matId + formId;
+  const [label, short] = form.names?.[matId] ?? form.name(mat);
+  const d = {id, label, short, form: formId, material: matId, tier: mat.tier + (form.tier || 0), slot: form.slot};
+  if (form.hands) d.hands = form.hands;
+  const g = form.glyph;
+  if (g) d.glyph = typeof g === 'string' ? g : g[matId] ?? mat.class.map(c => g[c]).find(Boolean) ?? g.default;
+  if (form.slot === 'body') d.color = form.colors?.[matId] ?? mat.color;
+  if (form.melee) d.melee = {dmg: +(form.melee.dmg * r('dmg')).toFixed(3), cd: Math.max(4, Math.round(form.melee.cd * r('swing')))};
+  if (form.ranged) d.ranged = {...form.ranged, dmg: +(form.ranged.dmg * r('dmg')).toFixed(3)};
+  if (form.blow) d.blow = form.blow;
+  if (form.scale) d.scale = {...form.scale};
+  if (form.block) d.block = +(form.block * r('block')).toFixed(3);
+  if (form.armor) d.armor = +(form.armor * r('armor')).toFixed(3);
+  if (form.cover) d.cover = form.cover;
+  if (form.vs) d.vs = {...form.vs};
+  if (form.warmth) d.warmth = +Math.min(0.98, form.warmth * r('warmth')).toFixed(3);
+  // heavy armour slows: the slowing scales with the material's weight; a staff's lightness stays as it is
+  if (form.speed) d.speed = form.speed < 1 ? +(1 - (1 - form.speed) * r('weight')).toFixed(3) : form.speed;
+  if (form.tool) d.tool = Object.fromEntries(Object.entries(form.tool).map(([job, m]) => [job, +(1 + (m - 1) * r('work')).toFixed(3)]));
+  if (form.carry) d.carry = form.carry;
+  if (form.holds) d.holds = {...form.holds};
+  d.dur = Number.isFinite(form.dur) ? Math.round(form.dur * r('dur') / 5) * 5 : form.dur;
+  d.value = priceOf(form, mat, d);
+  for (const [k, v] of Object.entries(mat.flags || {})) d[k] = v;
+  if (form.tradeOnly) d.tradeOnly = true;
+  if (form.quality === false) d.quality = false;
+  if (mat.rarity !== 'common' && mat.rarity !== 'uncommon') d.sold = false;
+  return d;
+}
+
+ITEMS.registerAll(Object.entries(FORMS).flatMap(([formId, form]) =>
+  Object.entries(MATERIALS).filter(([, m]) => m.class.some(c => form.of.includes(c))).map(([matId]) => makeItem(formId, matId))));
 
 export const isHandItem = def => def.slot === 'hand';
 export const isWeapon = def => !!(def.melee || def.ranged);
