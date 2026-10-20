@@ -46,7 +46,7 @@ export function settlerSpecies(w, rng) {
 
 // ── everyday friction
 const near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < REL.quarrelNear;
-const busy = a => a.sleeping || a.downed || ['fight', 'muster', 'treat', 'runHome', 'flee', 'downed'].includes(a.task?.id);
+const busy = a => a.sleeping || a.downed || ['fight', 'muster', 'reserve', 'treat', 'runHome', 'flee', 'downed'].includes(a.task?.id);
 
 // what the two fall out over: the biggest reason between them
 function reason(a, b) {

@@ -7,7 +7,7 @@ import {nightness, ambientTemp} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
 import {nearFire} from '../movement.js';
 import {attackerOf} from '../combat.js';
-import {flagOptions, knownFoeWithin, noteChoice, BOARD} from '../../settlement/board.js';
+import {flagOptions, knownFoeWithin, redInSight, noteChoice, BOARD} from '../../settlement/board.js';
 import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
 import {maxHp, hpShare} from '../agent.js';
@@ -134,6 +134,12 @@ function decide(w, a) {
   // zone and meets them together; one who sees a foe weighs its flag instead; the wounded fall back
   const raid = raidAlarm(w);
   if (raid && !enemy) opts.push([{id: 'muster'}, 1.25, () => 'тревога: враги подходят к лагерю']);
+  // a red alarm in sight (a raid, an attack on one of ours) cannot be ignored: who does not go to the
+  // fight keeps out of harm's way — at the fire while raiders are about, else back to the settlement —
+  // instead of going on with the work (settlement/board.js)
+  const red = redInSight(w, a, BOARD.sight * (a.mods.sight ?? 1));
+  if (red && (raid || red.kind === 'raid')) opts.push([{id: 'reserve'}, BOARD.reserve, () => `тревога: ${red.label} ${red.where}, держится у огня`]);
+  else if (red && !agentInZone(w, a)) opts.push([{id: 'runHome'}, BOARD.reserve, () => `тревога: ${red.label} ${red.where}, к своим`]);
   if (enemy && hpShare(a) <= BOARD.hurt && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
 
   let best = null, bs = -Infinity;
@@ -146,7 +152,7 @@ function decide(w, a) {
   // a task that just ended blocked or impossible stays out of the choice for a while (agents/lifecycle.js)
   for (const [t, s, why] of opts) {
     if (key(t) !== cur && !t.reflex && skipped(w, a, t)) continue;
-    const sc = s + (key(t) === cur ? keep : 0);
+    const sc = s + (key(t) === cur && t.id !== 'reserve' ? keep : 0);   // the reserve is weighed afresh every time
     if (sc > bs) { if (best && key(best) !== key(t)) { alt = best; as = bs; altWhy = bestWhy; } bs = sc; best = t; bestWhy = why; }
     else if (sc > as && key(t) !== key(best)) { alt = t; as = sc; altWhy = why; }
   }
@@ -166,7 +172,7 @@ function decide(w, a) {
     }
     // the task it drops is closed as interrupted by syncTask(), with this reason; eating, sleeping and
     // warming up wind down when the need is met, which is no dropped task
-    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'sulk', 'ponder'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
+    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'reserve', 'sulk', 'ponder'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
     else if (a.task) a.task.closed = 'done';
     if (a.task) w.behave.switches++;
     a.task = best;

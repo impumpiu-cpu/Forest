@@ -28,7 +28,7 @@ export const OUTCOMES = {
 // from the next foe or the next wounded; a cry answered in vain keeps one from that cry, not from the next
 export const taskKey = t => (t.id === 'job' ? 'job:' + t.job : t.id === 'fight' ? 'fight:' + (t.target?.id ?? '') : t.id === 'aid' ? 'aid:' + t.who : t.id === 'answer' ? 'answer:' + t.flag : t.id);
 // the reflexes are never skipped: running from fire or home, the alarm, the firefighting
-const REFLEX = new Set(['runHome', 'flee', 'muster', 'douse']);
+const REFLEX = new Set(['runHome', 'flee', 'muster', 'reserve', 'douse']);
 export const skipped = (w, a, t) => !REFLEX.has(t.id) && (a.skips?.[taskKey(t)] ?? -1) > w.tick;
 const label = t => TASKS.get(t.id).label(t);
 

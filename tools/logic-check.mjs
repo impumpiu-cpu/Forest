@@ -5,8 +5,8 @@
 // T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order;
 // T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
 // T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies;
-// T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T91 the colony's
-// board: lookouts, the cry, soft places, docs/MIND.md stage 1). Each scene builds a flat, empty map, places a few agents by hand and
+// T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T92 the colony's
+// board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -1153,18 +1153,20 @@ check('T86', 'спящий слышит крик с шансом по Воспр
   return (res[0] && !res[1]) || `P 7: ${res[0] ? 'услышал' : 'не услышал'}, P 3: ${res[1] ? 'услышал' : 'не услышал'}`;
 });
 
-check('T87', 'мягкие места: занявший флаг облегчает его для остальных; новый волк в стае делает его тяжелее', () => {
+check('T87', 'жёлтая тревога (волк рядом, ни на кого не нападает): занявший флаг облегчает его для остальных, второй волк делает тяжелее', () => {
   const w = scene(); fixedRng(w);
-  const v = put(w, 'human', 'colony', 30.5, 30.5), x = put(w, 'human', 'colony', 33.5, 30.5), y = put(w, 'human', 'colony', 33.5, 32.5);
+  const x = put(w, 'human', 'colony', 30.5, 30.5), y = put(w, 'human', 'colony', 30.5, 32.5);
   for (const c of [x, y]) { c.mods.bravery = 1; outfit(w, c); }
-  const wolf = wolfOn(w, 31.5, 30.5, v);
+  const wolf = put(w, 'wolf', 'predators', 38.5, 30.5); wolf.pack = wolf.id;
   lookRound(w);
+  const f = flagOf(w);
+  if (!f || f.red) return f ? 'флаг красный, а волк ни на кого не нападает' : 'флага нет';
   const score = c => flagOptions(w, c)[0]?.[1] ?? 0;
   const before = score(y);
   x.task = {id: 'fight', target: wolf}; w.tick++;   // a new tick: the answerers are counted again
   const after = score(y);
   if (!(after < before)) return `второй видит флаг не легче: ${before.toFixed(2)} → ${after.toFixed(2)}`;
-  const second = put(w, 'wolf', 'predators', 32.5, 31.5); second.pack = wolf.pack; second.task = {id: 'maul', target: v};
+  const second = put(w, 'wolf', 'predators', 39.5, 31.5); second.pack = wolf.pack;
   lookRound(w);
   const more = score(y);
   return more > after || `второй волк не сделал флаг тяжелее: ${after.toFixed(2)} → ${more.toFixed(2)}`;
@@ -1215,6 +1217,26 @@ check('T91', 'доска сохраняется и продолжается ти
   const c = loadWorld(JSON.parse(JSON.stringify(saveWorld(w))));
   if (!c.board || Object.keys(c.board.flags).length !== Object.keys(w.board.flags).length) return 'доска не сохранилась';
   return worldHash(c) === worldHash(w) || 'отпечаток после загрузки другой';
+});
+
+check('T92', 'красная тревога: не легчает от откликнувшихся, робкий в виду налёта уходит к огню, а не работает; отступил отряд — флаг снят', () => {
+  const w = scene(); fixedRng(w);
+  const brave = put(w, 'human', 'colony', w.camp.x + 4.5, w.camp.y + 0.5), timid = put(w, 'human', 'colony', w.camp.x + 4.5, w.camp.y + 2.5);
+  brave.mods.bravery = 1.5; timid.mods.bravery = 0.3;
+  const [g, sq] = band(w, 3, w.camp.x + 12.5, w.camp.y + 0.5);
+  lookRound(w);
+  const f = flagOf(w);
+  if (!f?.red) return f ? 'флаг налёта не красный' : 'флага налёта нет';
+  const before = flagOptions(w, timid)[0]?.[1] ?? 0;
+  brave.task = {id: 'fight', target: g[0]}; w.tick++;
+  const after = flagOptions(w, timid)[0]?.[1] ?? 0;
+  if (after < before) return `красный флаг полегчал: ${before.toFixed(2)} → ${after.toFixed(2)}`;
+  timid.task = {id: 'job', job: 'clay'}; syncTask(w, timid);
+  timid.think = 0; brain(w, timid);
+  if (!['reserve', 'muster', 'runHome', 'fight'].includes(timid.task?.id)) return `робкий в виду налёта занят «${timid.task?.id}/${timid.task?.job}»`;
+  sq.state = 'retreat';
+  lookRound(w);
+  return !flagOf(w) || 'флаг висит после отступления отряда';
 });
 
 let bad = 0;

@@ -27,7 +27,7 @@ import {agentInZone} from '../settlement/zone.js';
 import {heatTo, coolTo, tempAt} from '../world/heat.js';
 import {WARM_AT} from '../data/navmaps.js';
 import {liveById} from './lookup.js';
-import {flagLead} from '../settlement/board.js';
+import {flagLead, raidOnBoard} from '../settlement/board.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -251,8 +251,16 @@ TASKS.registerAll([
 
   // gather by the fire when raiders come; done as soon as the alarm is over
   {id: 'muster', label: () => 'собирается по тревоге', step(w, a, task) {
-    if (!raidAlarm(w)) { done(w, a); return; }
+    if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
     think(w, a, 'raidAlarm');
+    if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+  }},
+
+  // a red alarm in sight that one does not go to fight (settlement/board.js): stand at the fire with the
+  // others, out of harm's way, while the raid lasts. Not held on to (colonist.js gives it no keep), so
+  // at every think it is weighed afresh against going to the fight
+  {id: 'reserve', label: () => 'держится у огня', step(w, a, task) {
+    if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
     if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
   }},
 

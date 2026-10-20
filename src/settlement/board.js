@@ -9,8 +9,12 @@
 //   3. cries out: a lookout who sees a new threat (or one still in view, every RESHOUT ticks) shouts,
 //      everyone awake within SHOUT hears it at once and shouts on (a relay, no delay), and a sleeper
 //      hears it with a chance by Perception. Who heard knows of the flag; nobody else does;
-//   4. weighs each flag: its urgency × the share of the threat nobody covers yet (soft places: every
-//      defender lowers it for the others, a newcomer foe or a fallen defender raises it again);
+//   4. weighs each flag. A red flag — a raid, or a foe attacking one of ours — cannot be ignored and does
+//      not get lighter, however many answer it, until it is over (the raiders are dead or fall back,
+//      the attack stops); who does not fight keeps out of harm's way rather than going back to work.
+//      A yellow flag — a wolf about, the nechist not attacking anyone — has soft places: its urgency ×
+//      the share of the threat nobody covers yet; every defender lowers it for the others, a newcomer
+//      foe or a fallen defender raises it again;
 //   5. wakes those who should think again — who just learned of a flag, or whose flag got heavier.
 // It never names anyone and never moves anyone. The colonist's own brain (agents/brains/colonist.js)
 // reads the flags it knows through flagOptions() and weighs them by itself: courage, health, distance,
@@ -18,11 +22,11 @@
 // answered by the colonist's reflexes as before, without the board.
 //
 // Plain data on the world (w.board), creatures by id; saved with it.
-import {colonists, raidAlarm} from './query.js';
+import {colonists} from './query.js';
 import {isHostile} from '../data/factions.js';
 import {SPECIES} from '../data/species.js';
 import {canSee} from '../agents/combat.js';
-import {strength} from '../agents/squad.js';
+import {strength, squadOf} from '../agents/squad.js';
 import {liveById} from '../agents/lookup.js';
 import {hpShare} from '../agents/agent.js';
 import {perTick} from '../core/util.js';
@@ -38,12 +42,13 @@ export const BOARD = {
   shout: 30,         // how far a cry carries
   hearAsleep: 0.1,   // × Perception: the chance a sleeper hears a cry (P 5 — every other one)
   reshout: 100,      // a threat still in view is cried again so that newcomers learn of it
-  forget: 300,       // a member unseen this long is struck off the flag
-  // the colony feels a threat covered at this × its strength: a raiding band came to kill, loot and burn,
-  // not to trade blows one on one, so it takes more than its weight in a fight to hold it off
-  margin: {raid: 1.5, other: 1.5},
+  forget: {red: 300, yellow: 100},   // a member unseen this long is struck off the flag
+  margin: 1.5,       // a yellow flag is covered at this × the threat's strength
   far: 40,           // nobody answers a flag further away than this
-  urgency: {raid: 1.35, other: 1.1},   // the weight of an uncovered flag (× the colonist's courage)
+  // the weight of a flag (× the colonist's courage; a yellow one × its uncovered share): a raid, an
+  // attack on one of ours, the nechist about, a beast about
+  urgency: {raid: 1.35, attack: 1.1, nechist: 1.1, beast: 0.9},
+  reserve: 1.05,     // a red flag in sight, not fought: keep out of harm's way (the fire, the settlement)
   wake: 0.25,        // a flag this much heavier wakes those who know it
   hurt: 0.3,         // health share at or under which one does not go to a fight
 };
@@ -52,12 +57,20 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const boardOf = w => (w.board ??= {flags: {}, seq: 0});
 const sightOf = a => BOARD.sight * (a.mods.sight ?? 1);
 
-// a foe of the colony: at war with it (raiders, the nechist), or mauling one of ours
+// attacking one of ours right now: a beast that mauls, a raider that fights
+const attacking = o => (o.task?.id === 'maul' || o.task?.id === 'fight') && o.task.target?.faction === 'colony';
+// a threat to the colony: whatever attacks one of ours; raiders while their squad is on the march (once
+// it falls back or leaves with its loot it is no longer the colony's alarm); the nechist; a beast of prey
 const COLONY = {faction: 'colony'};
-function isFoe(o) {
+function isFoe(w, o) {
   if (o.dead || o.tame || o.downed || o.faction === 'colony') return false;
-  return isHostile(COLONY, o) || (o.task?.id === 'maul' && o.task.target?.faction === 'colony');
+  if (attacking(o)) return true;
+  if (o.faction === 'raiders') { const sq = squadOf(w, o); return !sq || sq.state === 'march'; }
+  return isHostile(COLONY, o) || o.faction === 'predators';
 }
+// a red flag: a raid, or any of its members attacking one of ours
+const isRed = (f, ms) => f.kind === 'raid' || ms.some(attacking);
+const urgencyOf = (f, ms) => (f.kind === 'raid' ? BOARD.urgency.raid : ms.some(attacking) ? BOARD.urgency.attack : BOARD.urgency[f.kind] ?? BOARD.urgency.beast);
 // which flag a foe belongs to: its raiding squad (agents/squad.js; one raid, not the band's kind), its
 // pack, or itself
 const keyOf = o => (o.squad != null ? 'squad:' + o.squad : o.pack != null ? 'pack:' + o.pack : 'one:' + o.id);
@@ -81,7 +94,7 @@ function flagLabel(w, f) {
 }
 
 // the flag's members still alive and still foes
-const liveMembers = (w, f) => f.members.map(id => liveById(w, id)).filter(o => o && isFoe(o));
+const liveMembers = (w, f) => f.members.map(id => liveById(w, id)).filter(o => o && isFoe(w, o));
 
 // who of ours is answering each flag: fighting one of its members or on the way to it. Counted once a
 // tick over the whole colony; a colonist who takes a flag in the middle of the tick is added at once
@@ -98,9 +111,11 @@ const answerers = w => perTick(w, 'board.answer', () => {
 });
 const answering = (w, f) => (answerers(w)[f.key] || []).filter(c => !c.dead && !c.downed);
 
-// the share of a flag still uncovered, 0…1; `without` leaves one defender out (its own weighing)
+// the share of a flag still uncovered, 0…1; `without` leaves one defender out (its own weighing).
+// A red flag is never covered: it stays open until it is over
 function uncovered(w, f, ms, without = null) {
-  const need = ms.reduce((s, o) => s + strength(o), 0) * (f.kind === 'raid' ? BOARD.margin.raid : BOARD.margin.other);
+  if (isRed(f, ms)) return 1;
+  const need = ms.reduce((s, o) => s + strength(o), 0) * BOARD.margin;
   if (need <= 0) return 0;
   const covered = answering(w, f).reduce((s, c) => s + (c === without ? 0 : strength(c)), 0);
   return clamp(1 - covered / need, 0, 1);
@@ -139,7 +154,7 @@ export function stepBoard(w) {
   const B = boardOf(w), col = colonists(w);
   if (!col.length && !Object.keys(B.flags).length) return;
   const foes = [];
-  for (const o of w.agents) if (isFoe(o)) foes.push(o);
+  for (const o of w.agents) if (isFoe(w, o)) foes.push(o);
   // 1. the lookouts look round
   const seenBy = new Map();   // flag key → the first lookout who saw it this tick
   if (foes.length) {
@@ -163,16 +178,19 @@ export function stepBoard(w) {
   }
   // 2–5. every flag: members, place, the cry, the weight, the wake-up, the end
   for (const f of Object.values(B.flags)) {
-    for (const id of Object.keys(f.seen)) if (w.tick - f.seen[id].t > BOARD.forget) { delete f.seen[id]; f.members = f.members.filter(m => m !== +id); }
+    const forget = f.red ? BOARD.forget.red : BOARD.forget.yellow;
+    for (const id of Object.keys(f.seen)) if (w.tick - f.seen[id].t > forget) { delete f.seen[id]; f.members = f.members.filter(m => m !== +id); }
     const ms = liveMembers(w, f);
     if (!ms.length) { closeFlag(w, B, f); continue; }
+    f.red = isRed(f, ms);
+    if (f.red && !f.redLogged) { f.redLogged = true; logRed(w, f, ms, seenBy.get(f.key)); }
     const pts = Object.values(f.seen);
     if (pts.length) { f.x = pts.reduce((s, p) => s + p.x, 0) / pts.length; f.y = pts.reduce((s, p) => s + p.y, 0) / pts.length; }
     f.label = flagLabel(w, f); f.where = whereFromCamp(w, f.x, f.y);
     const L = seenBy.get(f.key);
     if (L && (f.fresh || f.grew || w.tick - f.shoutAt >= BOARD.reshout)) shout(w, L, f);
     f.fresh = false; f.grew = false;
-    f.weight = (f.kind === 'raid' || raidAlarm(w) ? BOARD.urgency.raid : BOARD.urgency.other) * uncovered(w, f, ms);
+    f.weight = urgencyOf(f, ms) * uncovered(w, f, ms);
     for (const c of answering(w, f)) f.answered[c.id] = true;
     if (f.weight - f.wokeAt >= BOARD.wake) { for (const id of Object.keys(f.known)) { const c = liveById(w, id); if (c) c.think = 0; } }
     if (f.weight - f.wokeAt >= BOARD.wake || f.weight < f.wokeAt) f.wokeAt = f.weight;
@@ -185,11 +203,18 @@ function newFlag(w, B, key, o, by) {
     known: {}, answered: {}, ignored: {}, killed: {}, shoutAt: -Infinity, weight: 0, wokeAt: 0, fresh: true, grew: false};
   f.label = flagLabel(w, {...f, members: [o.id]}); f.where = whereFromCamp(w, o.x, o.y);
   const b = w.behave?.board; if (b) b.flags++;
-  // a raid has its own journal lines (agents/squad.js); beasts and the nechist get theirs here
-  if (kind !== 'raid') log(w, `<b>${esc(by.name)}</b> ${g(by, 'заметил', 'заметила')} ${f.label === 'враг' ? 'врага' : esc(accOf(o))} ${f.where} и ${g(by, 'поднял', 'подняла')} тревогу.`, 'danger');
   return f;
 }
-const accOf = o => SPECIES.get(o.species).labelAcc || SPECIES.get(o.species).label;
+
+// the journal hears of a red alarm once, when it turns red (a raid has its own lines, agents/squad.js):
+// a wolf seen about is the colony's everyday, a wolf on one of ours is news
+function logRed(w, f, ms, spotter) {
+  const b = w.behave?.board; if (b) b.red++;
+  if (f.kind === 'raid') return;
+  const att = ms.find(attacking), v = att?.task.target, by = spotter || liveById(w, f.by);
+  if (!att || !v) return;
+  log(w, `${by && by !== v ? `<b>${esc(by.name)}</b> ${g(by, 'поднял', 'подняла')} тревогу: ` : 'Тревога: '}${esc(SPECIES.get(att.species).label)} ${att.task.id === 'maul' ? 'набросился' : 'напал'} на <b>${esc(v.name)}</b> ${f.where}.`, 'danger');
+}
 
 function closeFlag(w, B, f) {
   delete B.flags[f.key];
@@ -224,6 +249,16 @@ export function knownFlags(w, a) {
   return out;
 }
 
+// a red flag this colonist knows of with a foe of it within r (its own sight): the one who does not
+// fight it keeps out of harm's way (agents/brains/colonist.js) rather than going back to work
+export function redInSight(w, a, r) {
+  for (const {f, ms} of knownFlags(w, a)) if (isRed(f, ms) && ms.some(o => dist(a, o) <= r)) return f;
+  return null;
+}
+
+// a raid on the board: the gathering at the fire (agents/tasks.js muster) holds while it is
+export const raidOnBoard = w => Object.values(w.board?.flags || {}).some(f => f.kind === 'raid');
+
 // the closest live member of a known flag within r, or null
 export function knownFoeWithin(w, a, r) {
   let best = null, bd = r;
@@ -237,18 +272,21 @@ export function flagOptions(w, a) {
   if (hpShare(a) <= BOARD.hurt) return [];
   const out = [], r = sightOf(a);
   for (const {f, ms} of knownFlags(w, a)) {
-    const base = (f.kind === 'raid' || raidAlarm(w) ? BOARD.urgency.raid : BOARD.urgency.other) * uncovered(w, f, ms, a);
+    const base = urgencyOf(f, ms) * uncovered(w, f, ms, a);
     if (base <= 0) continue;
     // the closest member it can see, else the place where they were seen
     let tgt = null, td = Infinity;
     for (const o of ms) { const d = dist(a, o); if (d < td && d <= r && canSee(w, a, o)) { td = d; tgt = o; } }
+    // a raid is met together: one who cannot see the raiders gathers at the fire with the others
+    // (agents/brains/colonist.js muster) instead of running out to meet the band alone
+    if (!tgt && f.kind === 'raid') continue;
     const d = tgt ? td : Math.hypot(f.x - a.x, f.y - a.y);
     if (d > BOARD.far) continue;
     const near = d <= r ? 1 : 1 - 0.5 * (d - r) / Math.max(1, BOARD.far - r);
     const score = base * a.mods.bravery * near;
     const going = answering(w, f).filter(c => c !== a);
     const why = () => `${f.byName && f.by !== a.id ? `крик: ${f.label} ${f.where}` : `${f.label} ${f.where}`}${going.length ? `, уже ${going.length > 1 ? 'идут' : 'идёт'} ${going.slice(0, 3).map(c => c.name).join(', ')}` : ''}`;
-    out.push([tgt ? {id: 'fight', target: tgt, flag: f.key} : {id: 'answer', flag: f.key}, score, why, f]);
+    out.push([tgt ? {id: 'fight', target: tgt, flag: f.key} : {id: 'answer', flag: f.key}, score, why, f, isRed(f, ms)]);
   }
   return out;
 }
@@ -290,6 +328,6 @@ export function boardSummary(w) {
   const B = w.board; if (!B) return [];
   return Object.values(B.flags).map(f => {
     const ms = liveMembers(w, f), going = answering(w, f);
-    return {key: f.key, label: f.label, where: f.where, by: f.byName, byG: f.byG, weight: f.weight, known: Object.keys(f.known).length, going: going.map(c => c.name)};
+    return {key: f.key, red: !!f.red, label: f.label, where: f.where, by: f.byName, byG: f.byG, weight: f.weight, known: Object.keys(f.known).length, going: going.map(c => c.name)};
   });
 }
