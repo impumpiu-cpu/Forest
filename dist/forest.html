@@ -4890,7 +4890,7 @@ dd.q4{color:#c58cff;font-weight:600}
     squads: { started: 0, goal: 0, retreat: 0, wiped: 0 },
     hunts: { started: 0 },
     social: { escort: 0, aid: 0, yield: 0, calm: 0, bond: 0 },
-    board: { flags: 0, shouts: 0, heardAsleep: 0, closed: 0, responders: 0, unanswered: 0, ignored: 0 }
+    board: { flags: 0, red: 0, shouts: 0, heardAsleep: 0, closed: 0, responders: 0, unanswered: 0, ignored: 0 }
   });
   var REACT = /* @__PURE__ */ new Set(["fight", "runHome", "flee"]);
   var THINK = 15;
@@ -4926,7 +4926,7 @@ dd.q4{color:#c58cff;font-weight:600}
       b.ticks++;
       const t = a.task?.id;
       if (!t || t === "idle") b.idle++;
-      if (t === "muster") b.muster++;
+      if (t === "muster" || t === "reserve") b.muster++;
       if (t === "company" || t === "aid") b.company = (b.company || 0) + 1;
       if (a.carry && a.carry.n !== Object.values(a.carry.res).reduce((s, v) => s + v, 0)) bad(w, "\u0433\u0440\u0443\u0437 \u043D\u0435 \u0441\u0445\u043E\u0434\u0438\u0442\u0441\u044F");
       const attacked = mauled.has(a);
@@ -9416,14 +9416,17 @@ dd.q4{color:#c58cff;font-weight:600}
     // × Perception: the chance a sleeper hears a cry (P 5 — every other one)
     reshout: 100,
     // a threat still in view is cried again so that newcomers learn of it
-    forget: 300,
+    forget: { red: 300, yellow: 100 },
     // a member unseen this long is struck off the flag
     margin: 1.5,
-    // the colony feels a threat covered at this × its strength
+    // a yellow flag is covered at this × the threat's strength
     far: 40,
     // nobody answers a flag further away than this
-    urgency: { raid: 1.35, other: 1.1 },
-    // the weight of an uncovered flag (× the colonist's courage)
+    // the weight of a flag (× the colonist's courage; a yellow one × its uncovered share): a raid, an
+    // attack on one of ours, the nechist about, a beast about
+    urgency: { raid: 1.35, attack: 1.1, nechist: 1.1, beast: 0.9 },
+    reserve: 1.05,
+    // a red flag in sight, not fought: keep out of harm's way (the fire, the settlement)
     wake: 0.25,
     // a flag this much heavier wakes those who know it
     hurt: 0.3
@@ -9432,12 +9435,20 @@ dd.q4{color:#c58cff;font-weight:600}
   var dist3 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   var boardOf = (w) => w.board ?? (w.board = { flags: {}, seq: 0 });
   var sightOf = (a) => BOARD.sight * (a.mods.sight ?? 1);
+  var attacking = (o) => (o.task?.id === "maul" || o.task?.id === "fight") && o.task.target?.faction === "colony";
   var COLONY = { faction: "colony" };
-  function isFoe(o) {
+  function isFoe(w, o) {
     if (o.dead || o.tame || o.downed || o.faction === "colony") return false;
-    return isHostile(COLONY, o) || o.task?.id === "maul" && o.task.target?.faction === "colony";
+    if (attacking(o)) return true;
+    if (o.faction === "raiders") {
+      const sq = squadOf(w, o);
+      return !sq || sq.state === "march";
+    }
+    return isHostile(COLONY, o) || o.faction === "predators";
   }
-  var keyOf = (o) => o.band != null ? "band:" + o.band : o.pack != null ? "pack:" + o.pack : "one:" + o.id;
+  var isRed = (f, ms) => f.kind === "raid" || ms.some(attacking);
+  var urgencyOf = (f, ms) => f.kind === "raid" ? BOARD.urgency.raid : ms.some(attacking) ? BOARD.urgency.attack : BOARD.urgency[f.kind] ?? BOARD.urgency.beast;
+  var keyOf = (o) => o.squad != null ? "squad:" + o.squad : o.pack != null ? "pack:" + o.pack : "one:" + o.id;
   var kindOf = (o) => o.faction === "raiders" ? "raid" : o.faction === "nechist" ? "nechist" : "beast";
   var SIDES2 = ["\u043A \u0432\u043E\u0441\u0442\u043E\u043A\u0443", "\u043A \u044E\u0433\u043E-\u0432\u043E\u0441\u0442\u043E\u043A\u0443", "\u043A \u044E\u0433\u0443", "\u043A \u044E\u0433\u043E-\u0437\u0430\u043F\u0430\u0434\u0443", "\u043A \u0437\u0430\u043F\u0430\u0434\u0443", "\u043A \u0441\u0435\u0432\u0435\u0440\u043E-\u0437\u0430\u043F\u0430\u0434\u0443", "\u043A \u0441\u0435\u0432\u0435\u0440\u0443", "\u043A \u0441\u0435\u0432\u0435\u0440\u043E-\u0432\u043E\u0441\u0442\u043E\u043A\u0443"];
   function whereFromCamp(w, x, y) {
@@ -9452,7 +9463,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (f.kind === "raid") return `\u043D\u0430\u043B\u0451\u0442\u0447\u0438\u043A\u0438 (${ms.length})`;
     return ms.length > 1 ? `${sp.plural || sp.label} (${ms.length})` : sp.label;
   }
-  var liveMembers = (w, f) => f.members.map((id) => liveById(w, id)).filter((o) => o && isFoe(o));
+  var liveMembers = (w, f) => f.members.map((id) => liveById(w, id)).filter((o) => o && isFoe(w, o));
   var answerers = (w) => perTick(w, "board.answer", () => {
     const by = {}, flags = w.board?.flags || {}, owner = /* @__PURE__ */ new Map();
     for (const f of Object.values(flags)) for (const id of f.members) owner.set(id, f.key);
@@ -9465,6 +9476,7 @@ dd.q4{color:#c58cff;font-weight:600}
   });
   var answering = (w, f) => (answerers(w)[f.key] || []).filter((c) => !c.dead && !c.downed);
   function uncovered(w, f, ms, without = null) {
+    if (isRed(f, ms)) return 1;
     const need = ms.reduce((s, o) => s + strength(o), 0) * BOARD.margin;
     if (need <= 0) return 0;
     const covered = answering(w, f).reduce((s, c) => s + (c === without ? 0 : strength(c)), 0);
@@ -9498,7 +9510,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const B3 = boardOf(w), col = colonists(w);
     if (!col.length && !Object.keys(B3.flags).length) return;
     const foes = [];
-    for (const o of w.agents) if (isFoe(o)) foes.push(o);
+    for (const o of w.agents) if (isFoe(w, o)) foes.push(o);
     const seenBy = /* @__PURE__ */ new Map();
     if (foes.length) {
       for (const L of col) {
@@ -9522,7 +9534,8 @@ dd.q4{color:#c58cff;font-weight:600}
       }
     }
     for (const f of Object.values(B3.flags)) {
-      for (const id of Object.keys(f.seen)) if (w.tick - f.seen[id].t > BOARD.forget) {
+      const forget2 = f.red ? BOARD.forget.red : BOARD.forget.yellow;
+      for (const id of Object.keys(f.seen)) if (w.tick - f.seen[id].t > forget2) {
         delete f.seen[id];
         f.members = f.members.filter((m) => m !== +id);
       }
@@ -9530,6 +9543,11 @@ dd.q4{color:#c58cff;font-weight:600}
       if (!ms.length) {
         closeFlag(w, B3, f);
         continue;
+      }
+      f.red = isRed(f, ms);
+      if (f.red && !f.redLogged) {
+        f.redLogged = true;
+        logRed(w, f, ms, seenBy.get(f.key));
       }
       const pts = Object.values(f.seen);
       if (pts.length) {
@@ -9542,7 +9560,7 @@ dd.q4{color:#c58cff;font-weight:600}
       if (L && (f.fresh || f.grew || w.tick - f.shoutAt >= BOARD.reshout)) shout(w, L, f);
       f.fresh = false;
       f.grew = false;
-      f.weight = (f.kind === "raid" || raidAlarm(w) ? BOARD.urgency.raid : BOARD.urgency.other) * uncovered(w, f, ms);
+      f.weight = urgencyOf(f, ms) * uncovered(w, f, ms);
       for (const c of answering(w, f)) f.answered[c.id] = true;
       if (f.weight - f.wokeAt >= BOARD.wake) {
         for (const id of Object.keys(f.known)) {
@@ -9581,10 +9599,16 @@ dd.q4{color:#c58cff;font-weight:600}
     f.where = whereFromCamp(w, o.x, o.y);
     const b = w.behave?.board;
     if (b) b.flags++;
-    if (kind !== "raid") log(w, `<b>${esc(by.name)}</b> ${g(by, "\u0437\u0430\u043C\u0435\u0442\u0438\u043B", "\u0437\u0430\u043C\u0435\u0442\u0438\u043B\u0430")} ${f.label === "\u0432\u0440\u0430\u0433" ? "\u0432\u0440\u0430\u0433\u0430" : esc(accOf(o))} ${f.where} \u0438 ${g(by, "\u043F\u043E\u0434\u043D\u044F\u043B", "\u043F\u043E\u0434\u043D\u044F\u043B\u0430")} \u0442\u0440\u0435\u0432\u043E\u0433\u0443.`, "danger");
     return f;
   }
-  var accOf = (o) => SPECIES.get(o.species).labelAcc || SPECIES.get(o.species).label;
+  function logRed(w, f, ms, spotter) {
+    const b = w.behave?.board;
+    if (b) b.red++;
+    if (f.kind === "raid") return;
+    const att = ms.find(attacking), v = att?.task.target, by = spotter || liveById(w, f.by);
+    if (!att || !v) return;
+    log(w, `${by && by !== v ? `<b>${esc(by.name)}</b> ${g(by, "\u043F\u043E\u0434\u043D\u044F\u043B", "\u043F\u043E\u0434\u043D\u044F\u043B\u0430")} \u0442\u0440\u0435\u0432\u043E\u0433\u0443: ` : "\u0422\u0440\u0435\u0432\u043E\u0433\u0430: "}${esc(SPECIES.get(att.species).label)} ${att.task.id === "maul" ? "\u043D\u0430\u0431\u0440\u043E\u0441\u0438\u043B\u0441\u044F" : "\u043D\u0430\u043F\u0430\u043B"} \u043D\u0430 <b>${esc(v.name)}</b> ${f.where}.`, "danger");
+  }
   function closeFlag(w, B3, f) {
     delete B3.flags[f.key];
     const who = Object.keys(f.answered).map((id) => liveById(w, +id)).filter(Boolean);
@@ -9617,6 +9641,11 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     return out;
   }
+  function redInSight(w, a, r) {
+    for (const { f, ms } of knownFlags(w, a)) if (isRed(f, ms) && ms.some((o) => dist3(a, o) <= r)) return f;
+    return null;
+  }
+  var raidOnBoard = (w) => Object.values(w.board?.flags || {}).some((f) => f.kind === "raid");
   function knownFoeWithin(w, a, r) {
     let best = null, bd = r;
     for (const { ms } of knownFlags(w, a)) for (const o of ms) {
@@ -9632,7 +9661,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (hpShare(a) <= BOARD.hurt) return [];
     const out = [], r = sightOf(a);
     for (const { f, ms } of knownFlags(w, a)) {
-      const base = (f.kind === "raid" || raidAlarm(w) ? BOARD.urgency.raid : BOARD.urgency.other) * uncovered(w, f, ms, a);
+      const base = urgencyOf(f, ms) * uncovered(w, f, ms, a);
       if (base <= 0) continue;
       let tgt = null, td = Infinity;
       for (const o of ms) {
@@ -9642,13 +9671,14 @@ dd.q4{color:#c58cff;font-weight:600}
           tgt = o;
         }
       }
+      if (!tgt && f.kind === "raid") continue;
       const d = tgt ? td : Math.hypot(f.x - a.x, f.y - a.y);
       if (d > BOARD.far) continue;
       const near4 = d <= r ? 1 : 1 - 0.5 * (d - r) / Math.max(1, BOARD.far - r);
       const score = base * a.mods.bravery * near4;
       const going = answering(w, f).filter((c) => c !== a);
       const why = () => `${f.byName && f.by !== a.id ? `\u043A\u0440\u0438\u043A: ${f.label} ${f.where}` : `${f.label} ${f.where}`}${going.length ? `, \u0443\u0436\u0435 ${going.length > 1 ? "\u0438\u0434\u0443\u0442" : "\u0438\u0434\u0451\u0442"} ${going.slice(0, 3).map((c) => c.name).join(", ")}` : ""}`;
-      out.push([tgt ? { id: "fight", target: tgt, flag: f.key } : { id: "answer", flag: f.key }, score, why, f]);
+      out.push([tgt ? { id: "fight", target: tgt, flag: f.key } : { id: "answer", flag: f.key }, score, why, f, isRed(f, ms)]);
     }
     return out;
   }
@@ -9704,7 +9734,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (!B3) return [];
     return Object.values(B3.flags).map((f) => {
       const ms = liveMembers(w, f), going = answering(w, f);
-      return { key: f.key, label: f.label, where: f.where, by: f.byName, byG: f.byG, weight: f.weight, known: Object.keys(f.known).length, going: going.map((c) => c.name) };
+      return { key: f.key, red: !!f.red, label: f.label, where: f.where, by: f.byName, byG: f.byG, weight: f.weight, known: Object.keys(f.known).length, going: going.map((c) => c.name) };
     });
   }
 
@@ -11304,7 +11334,7 @@ dd.q4{color:#c58cff;font-weight:600}
     return weighted(rng, opts) || "human";
   }
   var near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < REL.quarrelNear;
-  var busy = (a) => a.sleeping || a.downed || ["fight", "muster", "treat", "runHome", "flee", "downed"].includes(a.task?.id);
+  var busy = (a) => a.sleeping || a.downed || ["fight", "muster", "reserve", "treat", "runHome", "flee", "downed"].includes(a.task?.id);
   function reason(a, b) {
     const kin = kinship(a.species, b.species);
     if (kin <= -2) return `${SPECIES.get(a.species).plural} \u0438 ${SPECIES.get(b.species).plural} \u2014 \u0434\u0430\u0432\u043D\u0438\u0435 \u0432\u0440\u0430\u0433\u0438`;
@@ -13824,8 +13854,8 @@ dd.q4{color:#c58cff;font-weight:600}
     impossible: { label: "\u043D\u0435\u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E", skip: 600 },
     interrupted: { label: "\u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E", skip: 0 }
   };
-  var taskKey = (t) => t.id === "job" ? "job:" + t.job : t.id === "fight" ? "fight:" + (t.target?.id ?? "") : t.id === "aid" ? "aid:" + t.who : t.id;
-  var REFLEX = /* @__PURE__ */ new Set(["runHome", "flee", "muster", "douse"]);
+  var taskKey = (t) => t.id === "job" ? "job:" + t.job : t.id === "fight" ? "fight:" + (t.target?.id ?? "") : t.id === "aid" ? "aid:" + t.who : t.id === "answer" ? "answer:" + t.flag : t.id;
+  var REFLEX = /* @__PURE__ */ new Set(["runHome", "flee", "muster", "reserve", "douse"]);
   var skipped = (w, a, t) => !REFLEX.has(t.id) && (a.skips?.[taskKey(t)] ?? -1) > w.tick;
   var label = (t) => TASKS.get(t.id).label(t);
   var RUNNER_EXIT = {};
@@ -14957,11 +14987,21 @@ dd.q4{color:#c58cff;font-weight:600}
     } },
     // gather by the fire when raiders come; done as soon as the alarm is over
     { id: "muster", label: () => "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442\u0441\u044F \u043F\u043E \u0442\u0440\u0435\u0432\u043E\u0433\u0435", step(w, a, task) {
-      if (!raidAlarm(w)) {
+      if (!raidAlarm(w) && !raidOnBoard(w)) {
         done2(w, a);
         return;
       }
       think(w, a, "raidAlarm");
+      if (follow(w, a, "camp", 1.2) === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 3) mill2(w, a, task, 2.2);
+    } },
+    // a red alarm in sight that one does not go to fight (settlement/board.js): stand at the fire with the
+    // others, out of harm's way, while the raid lasts. Not held on to (colonist.js gives it no keep), so
+    // at every think it is weighed afresh against going to the fight
+    { id: "reserve", label: () => "\u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F \u0443 \u043E\u0433\u043D\u044F", step(w, a, task) {
+      if (!raidAlarm(w) && !raidOnBoard(w)) {
+        done2(w, a);
+        return;
+      }
       if (follow(w, a, "camp", 1.2) === "arrived" || w.nav.get("camp")[cellOf(w, a)] < 3) mill2(w, a, task, 2.2);
     } },
     // run for the settlement zone when something is hunting you
@@ -15183,6 +15223,9 @@ dd.q4{color:#c58cff;font-weight:600}
     const enemy = knownFoeWithin(w, a, BOARD.sight * (a.mods.sight ?? 1));
     const raid = raidAlarm(w);
     if (raid && !enemy) opts.push([{ id: "muster" }, 1.25, () => "\u0442\u0440\u0435\u0432\u043E\u0433\u0430: \u0432\u0440\u0430\u0433\u0438 \u043F\u043E\u0434\u0445\u043E\u0434\u044F\u0442 \u043A \u043B\u0430\u0433\u0435\u0440\u044E"]);
+    const red = redInSight(w, a, BOARD.sight * (a.mods.sight ?? 1));
+    if (red && (raid || red.kind === "raid")) opts.push([{ id: "reserve" }, BOARD.reserve, () => `\u0442\u0440\u0435\u0432\u043E\u0433\u0430: ${red.label} ${red.where}, \u0434\u0435\u0440\u0436\u0438\u0442\u0441\u044F \u0443 \u043E\u0433\u043D\u044F`]);
+    else if (red && !agentInZone(w, a)) opts.push([{ id: "runHome" }, BOARD.reserve, () => `\u0442\u0440\u0435\u0432\u043E\u0433\u0430: ${red.label} ${red.where}, \u043A \u0441\u0432\u043E\u0438\u043C`]);
     if (enemy && hpShare(a) <= BOARD.hurt && !agentInZone(w, a)) opts.push([{ id: "runHome" }, 1.6, () => "\u0442\u044F\u0436\u0435\u043B\u043E \u0440\u0430\u043D\u0435\u043D, \u0430 \u0432\u0440\u0430\u0433 \u0440\u044F\u0434\u043E\u043C"]);
     let best = null, bs = -Infinity;
     const cur = key(a.task);
@@ -15191,7 +15234,7 @@ dd.q4{color:#c58cff;font-weight:600}
     let bestWhy = null, alt = null, as = -Infinity, altWhy = null;
     for (const [t, s, why] of opts) {
       if (key(t) !== cur && !t.reflex && skipped(w, a, t)) continue;
-      const sc2 = s + (key(t) === cur ? keep : 0);
+      const sc2 = s + (key(t) === cur && t.id !== "reserve" ? keep : 0);
       if (sc2 > bs) {
         if (best && key(best) !== key(t)) {
           alt = best;
@@ -15226,7 +15269,7 @@ dd.q4{color:#c58cff;font-weight:600}
         a.task = { id: "ponder", next: best, until: w.tick + lo + Math.floor(w.rngs.colony() * hi), why: a.why.why };
         return;
       }
-      if (a.task && !["idle", "council", "trade", "eat", "sleep", "warm", "muster", "sulk", "ponder"].includes(a.task.id)) a.switchWhy = `\u0440\u0430\u0434\u0438 \xAB${a.why.task}\xBB: ${a.why.why}`;
+      if (a.task && !["idle", "council", "trade", "eat", "sleep", "warm", "muster", "reserve", "sulk", "ponder"].includes(a.task.id)) a.switchWhy = `\u0440\u0430\u0434\u0438 \xAB${a.why.task}\xBB: ${a.why.why}`;
       else if (a.task) a.task.closed = "done";
       if (a.task) w.behave.switches++;
       a.task = best;
@@ -21990,7 +22033,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.59.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 963bbb5" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 9d99961" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";
