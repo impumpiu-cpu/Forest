@@ -29,20 +29,21 @@ import {stepDowned, healWounds} from '../wounds.js';
 import {canDoAction, jobAccess} from '../skills.js';
 import {BUILDINGS} from '../../data/buildings.js';
 import {tempAt} from '../../world/heat.js';
-import {ensurePlan, rosterOf} from '../../settlement/plan.js';
+import {ensurePlan, vacancyPull, signUp} from '../../settlement/plan.js';
 
-// how much the roster pulls (settlement/plan.js): the assigned job, a fallback, anything else
-const ROSTER = {main: [1.5, 0.3], alt: [1.0, 0.05], other: [0.6, 0], keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16]};
+// keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
+// colony's vacancies is settlement/plan.js vacancyPull)
+const ROSTER = {keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16]};
 
 // the weight of answering an attack on oneself: more than any need can reach
 const ATTACKED = 2.6;
 
 const label = t => TASKS.get(t.id).label(t);
 
-// why a job tempts: the colony's need, the council's goal, the colonist's own liking
-function jobWhy(w, a, job, ctx, goal, tasty, night, role) {
+// why a job tempts: the colony's vacancy, its need, the council's goal, the colonist's own liking
+function jobWhy(w, a, job, ctx, goal, tasty, night, vac) {
   const parts = [];
-  if (role === 'main') parts.push('по наряду совета'); else if (role === 'alt') parts.push('запасное дело по наряду');
+  if (vac) parts.push(vac);
   if (job.resource) parts.push(`${RESOURCES.get(job.resource).label} в запасе ${Math.floor(w.stock[job.resource] || 0)}`);
   else if (job.food) parts.push(`еды ${Math.floor(ctx.food)} на ${ctx.pop} чел.`);
   else if (job.runner === 'build') parts.push(`стройка ждёт`);
@@ -57,6 +58,8 @@ function jobWhy(w, a, job, ctx, goal, tasty, night, role) {
 
 
 const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
+// work's ceiling: as it was up to 0.8, then bending under 1 instead of cut off at it
+const softCap = x => (x <= 0.8 ? x : 0.8 + 0.2 * (1 - Math.exp(-(x - 0.8) / 0.2)));
 
 function decide(w, a) {
   const night = nightness(w), camp = w.camp.cells, g = w.grid;
@@ -75,9 +78,9 @@ function decide(w, a) {
     opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ', но лагерь горит' : ''}`]);
   }
   const mate = mates(w, a);   // friends (and foes) at work (settlement/together.js)
-  // the roster (settlement/plan.js): what the council gave this colonist to do, and the fallbacks
+  // the colony's vacancies (settlement/plan.js): how many hands each job wants today; the colonist
+  // weighs them by itself — its own place, an open place, a job nobody asked for
   ensurePlan(w);
-  const roster = rosterOf(w, a), roleOf = id => (roster?.job === id ? 'main' : roster?.alt?.includes(id) ? 'alt' : 'other');
   for (const job of JOBS.all()) {
     // can I? (the job's tier, agents/skills.js) — then do I want to?
     if (!jobUnlocked(w, job) || !jobAccess(a, job).ok || (job.canDo && !job.canDo(w, a))) continue;
@@ -91,9 +94,10 @@ function decide(w, a) {
     const dayWork = (job.runner === 'build' ? night * 0.3 : night * 0.2) + (outdoor && night > 0.6 ? (night - 0.6) * 1.5 * (0.5 + outsideRisk(w)) : 0);
     // a job that brings your favourite food is a little more tempting
     const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
-    const m = mate(job.id), role = roleOf(job.id), [mul, add] = ROSTER[role];
-    // the roster ranks work against work; it never lifts work above the alarm, the council or the body (≤ 1)
-    opts.push([{id: 'job', job: job.id}, Math.min(1, ((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night, role) + (m.friend ? `, там ${m.friend.name}` : m.foe ? `, но там ${m.foe.name}` : '')]);
+    const m = mate(job.id), [mul, add, vac] = vacancyPull(w, a, job);
+    // the vacancies rank work against work; they never lift work above the alarm, the council or the body (≤ 1).
+    // The ceiling is soft, so that two jobs both wanted badly still differ by who is better at which
+    opts.push([{id: 'job', job: job.id}, softCap(((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night, vac) + (m.friend ? `, там ${m.friend.name}` : m.foe ? `, но там ${m.foe.name}` : '')]);
   }
   opts.push([{id: 'idle'}, 0.08, () => 'больше нечем заняться']);
   // together (settlement/together.js): go along with a lone gatherer when beasts roam, help the wounded
@@ -171,6 +175,7 @@ function decide(w, a) {
       a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
       w.behave.switches++;
       a.task = {id: 'ponder', next: best, until: w.tick + lo + Math.floor(w.rngs.colony() * hi), why: a.why.why};
+      signUp(w, a, best.job);   // decided: the place is taken now, the walk over comes after the thought
       return;
     }
     // the task it drops is closed as interrupted by syncTask(), with this reason; eating, sleeping and
@@ -179,6 +184,7 @@ function decide(w, a) {
     else if (a.task) a.task.closed = 'done';
     if (a.task) w.behave.switches++;
     a.task = best;
+    if (best.id === 'job' && !best.eatNow) signUp(w, a, best.job);   // takes that place for the day
     if (best.id === 'job' && !best.eatNow) {
       if (best.job === a.likes) think(w, a, 'likedWork', {job: JOBS.get(best.job).label});
       else if (best.job === a.dislikes) think(w, a, 'dislikedWork', {job: JOBS.get(best.job).label});

@@ -58,7 +58,7 @@ import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../
 import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
 import {heatTo} from '../src/world/heat.js';
-import {makePlan} from '../src/settlement/plan.js';
+import {makePlan, vacancyPull, signUp} from '../src/settlement/plan.js';
 import {stepBoard, flagOptions, watchOption, BOARD, WATCH} from '../src/settlement/board.js';
 import {raidAlarm} from '../src/settlement/query.js';
 import {dropLoad} from '../src/agents/jobRunners.js';
@@ -1060,29 +1060,46 @@ check('T80', 'F06: отставший волк отдыхает, держит р
   return (h.roles[a.id] !== 'wait') || 'отдохнув, не вернулся';
 });
 
-// ── the roster (settlement/plan.js): everyone gets a place, the colony's best at a skill takes that
-// job, a one-person job has one person, the same site plans the same roster twice
-check('T81', 'наряд: у каждого есть дело, лучший по навыку берёт своё, лекарь один, план детерминирован, привычка держит', () => {
-  const w = scene('roster');
-  const people = ['a', 'b', 'c', 'd', 'e', 'f'].map((n, k) => put(w, 'human', 'colony', 30.5 + k, 30.5));
+// ── the vacancies (settlement/plan.js, docs/MIND.md stage 3): the council posts places, nobody is named;
+// the colonists take them by themselves — the best at a skill is drawn to it, a taken place pulls less,
+// one's own place holds, yesterday's job sticks
+check('T81', 'вакансии: мест столько, сколько рук, лекарь один, никто не назван; лучший дровосек сам берёт рубку, занятое место тянет слабее, своё держит, вчерашнее дело тянет', () => {
+  const w = scene('roster'); fixedRng(w);
+  const people = ['a', 'b', 'c', 'd', 'e', 'f'].map((n, k) => put(w, 'human', 'colony', w.camp.x + 0.5 + k, w.camp.y + 0.5));
   w.stock.wood = 2; w.stock.berries = 4;   // short of both: wood and food are wanted
-  for (const a of people) a.skill = {};
-  people[2].skill.woodcutting = 9;   // the colony's best woodcutter
+  for (const a of people) { a.skill = {}; a.prefs = {}; a.likes = a.dislikes = null; }
+  const best = people[2]; best.skill.woodcutting = 9;   // the colony's best woodcutter
   const p1 = makePlan(w, 'test');
-  if (Object.keys(p1.assign).length !== people.length) return 'не всем дано дело: ' + Object.keys(p1.assign).length;
-  if (p1.assign[people[2].id].job !== 'chop') return `лучший дровосек не рубит лес: ${p1.assign[people[2].id].job} (${p1.assign[people[2].id].why})`;
-  for (const a of people) if (!p1.assign[a.id].job && !p1.assign[a.id].alt.length) return `${a.name}: ни дела, ни запасного`;
-  const healers = Object.values(p1.assign).filter(e => e.job === 'heal').length;
-  if (healers > 1) return 'лекарей ' + healers;
-  const prev = w.plan; w.plan = null;   // (a second plan on top of the first would keep the habits of the first)
+  if (p1.assign) return 'в плане остались назначения по именам';
+  const places = Object.values(p1.vac).reduce((s, v) => s + v.places, 0);
+  if (places !== people.length) return `мест ${places} на ${people.length} человек`;
+  if ((p1.vac.heal?.places || 0) > 1) return 'мест лекаря ' + p1.vac.heal.places;
+  if (!p1.vac.chop) return 'лесу не дано мест при пустом дровнике';
   const p2 = makePlan(w, 'test');
-  if (JSON.stringify(p1.assign) !== JSON.stringify(p2.assign)) return 'тот же мир даёт другой наряд';
-  w.plan = prev;
-  // the habit sticks: planned again on top of the first, the woodcutter keeps his job
-  const p3 = makePlan(w, 'test');
-  if (p3.assign[people[2].id].job !== 'chop' || !p3.assign[people[2].id].why.includes('как вчера')) return 'привычка не держит: ' + p3.assign[people[2].id].why;
-  return true;
+  if (JSON.stringify(p1.vac) !== JSON.stringify(p2.vac)) return 'тот же мир даёт другие вакансии';
+  const chop = JOBS.get('chop');
+  // the best woodcutter is drawn to the woods more than anyone
+  const pullOf = a => { const [m, add] = vacancyPull(w, a, chop); return m + add; };
+  if (!people.filter(a => a !== best).every(a => pullOf(best) > pullOf(a))) return 'лучшего дровосека рубка тянет не сильнее других';
+  const other = people[0], before = pullOf(other);
+  best.think = 0; brain(w, best);   // (the flat scene has no trees: the job itself ends blocked at once)
+  if (best.shift?.job !== 'chop') return `лучший дровосек записался на «${best.shift?.job}»: ${best.why?.why}`;
+  // a taken place pulls the others less (here the only one: the best woodcutter took it); one's own holds
+  for (const a of people.slice(3, 2 + p1.vac.chop.places)) signUp(w, a, 'chop');   // any further places
+  const after = pullOf(other);
+  if (!(after < before)) return `занятые места тянут не слабее: ${before.toFixed(2)} → ${after.toFixed(2)}`;
+  const [mm, ma] = vacancyPull(w, best, chop);
+  if (!(mm + ma > after)) return 'своё место тянет не сильнее чужого занятого';
+  // the next day: of two alike, the one who was at the woods yesterday is drawn there a little more
+  const fresh = people[1], twin = people[0];
+  w.tick += DAY; makePlan(w, 'test');
+  fresh.shift = {day: Math.floor(w.tick / DAY) - 1, job: 'chop'}; signUp(w, fresh, null);   // yesterday at the woods
+  twin.shift = {day: Math.floor(w.tick / DAY) - 1, job: 'clay'}; signUp(w, twin, null);     // yesterday at the clay pit
+  w.tick++;
+  const [f1, fa1] = vacancyPull(w, fresh, chop), [t1, ta1] = vacancyPull(w, twin, chop);
+  return fresh.shiftPrev === 'chop' && (f1 + fa1 > t1 + ta1) || `вчерашнее дело не тянет: вчера в лесу ${(f1 + fa1).toFixed(2)}, вчера на глине ${(t1 + ta1).toFixed(2)}`;
 });
+
 
 // ── the fixes after the World merge: reflexes against skips, the raider's blow, the night's rest, the net
 check('T82', 'пауза после «враг скрылся» держит только того врага: на нападение другого отвечают сразу', () => {

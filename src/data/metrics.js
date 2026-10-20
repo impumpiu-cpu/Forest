@@ -92,6 +92,7 @@ METRICS.registerAll([
   {id: 'alarmUnanswered', label: 'Тревог без отклика', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.unanswered || 0},
   {id: 'alarmIgnored', label: 'Слышали тревогу и не пошли (раз)', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.ignored || 0},
   {id: 'alarmHeardAsleep', label: 'Спящих разбудил крик', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.heardAsleep || 0},
+  {id: 'vacFilled', label: 'Вакансий занято к полудню, %', group: 'Поведение', fmt: 0, get: w => (w.behave?.vacancies?.places ? 100 * w.behave.vacancies.held / w.behave.vacancies.places : 0)},
   {id: 'lootBack', label: 'Добычи отбито у налётчиков, ед.', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.lootBack || 0},
   {id: 'lootLost', label: 'Добычи унесено налётчиками, ед.', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.lootLost || 0},
   {id: 'nightsWatched', label: 'Ночей с дозорным', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.watched || 0},

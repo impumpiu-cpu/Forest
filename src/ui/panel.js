@@ -68,6 +68,7 @@ import {neighbours} from '../outside/index.js';
 import {raidOdds} from '../outside/scripted.js';
 import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
 import {statusOf} from '../settlement/life.js';
+import {vacancyLines} from '../settlement/plan.js';
 import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
@@ -348,8 +349,8 @@ export class Panel {
       const need = (r, v) => v + (r === 'wood' ? fuelReserve(w) : 0);
       goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= need(r, v) ? '' : ' short'}">${RESOURCES.get(r).label} ${Math.min(need(r, v), Math.floor(w.stock[r] || 0))}/${need(r, v)}${need(r, v) > v ? ` (из них ${need(r, v) - v} на костёр)` : ''}</span>`).join(' ')}</div>` + this.waitingHtml(w, d);
     }
-    // the roster (settlement/plan.js): who does what today, and why
-    const p = w.plan, roster = p?.lines?.length ? `<h4>Наряд (${p.reason})</h4><ul class="args">${p.lines.map(l => `<li>${esc(l.text)}</li>`).join('')}</ul>` : '';
+    // the vacancies (settlement/plan.js): how many hands each job wants today, who took the places
+    const lines = vacancyLines(w, true), roster = lines.length ? `<h4>Работа на сегодня (${w.plan.reason})</h4><ul class="args">${lines.map(l => `<li>${esc(l.text)}</li>`).join('')}</ul>` : '';
     this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}${roster}`);
   }
 
