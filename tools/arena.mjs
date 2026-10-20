@@ -1,6 +1,6 @@
 // Arena: thousands of fights without graphics, with a report. Three parts:
 //   1. weapons   — duels: which weapon, armour, race, skill and characteristic wins in which tier
-//                  (for damage, cooldowns, armour and prices: data/balance/weapons.js, armor.js);
+//                  (for damage, cooldowns, armour and prices: data/balance/forms.js, materials.js, prices.js);
 //   2. races     — group battles of the thinking races, N against M: do sides with the same total strength
 //                  rating (КС) win half the time, what `alpha` fits, which race or tier the rating misjudges;
 //   3. monsters  — every creature that fights (beasts, monsters, spirits, the undead) in battles against

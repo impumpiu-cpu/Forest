@@ -12,6 +12,7 @@ import {TRADE} from '../data/trade.js';
 import {RESOURCES} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {ITEMS} from '../data/items.js';
+import {RECIPES} from '../data/recipes.js';
 import {QUALITY} from '../data/quality.js';
 import {DAY, HOUR, dayOf, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
@@ -48,7 +49,11 @@ const between = (rng, [a, b]) => a + Math.floor(rng() * (b - a + 1));
 const round1 = v => Math.round(v * 10) / 10;
 
 // ── goods: {kind: 'res', id, n} or {kind: 'item', type, q}
-export const goodsUnits = goods => goods.reduce((s, g) => s + (g.kind === 'res' ? g.n : 1), 0);
+// places the goods take in the crates: a resource by stacks (data/balance/prices.js `stack`), an item one each
+const stackOf = id => RESOURCES.get(id).stack || 1;
+export const goodsUnits = goods => goods.reduce((s, g) => s + (g.kind === 'res' ? Math.ceil(g.n / stackOf(g.id)) : 1), 0);
+// how many more units of a resource fit: the free places, and what is left in its last stack
+const roomFor = (c, id) => { const have = c.goods.find(g => g.kind === 'res' && g.id === id)?.n || 0, st = stackOf(id); return (c.capacity - goodsUnits(c.goods)) * st + (have % st ? st - have % st : 0); };
 export const unitPrice = g => (g.kind === 'res' ? RESOURCES.get(g.id).value || 0 : itemPrice(g.type, g.q, g.silver));
 export const goodsLabel = g => (g.kind === 'res' ? RESOURCES.get(g.id).label : itemOf(g).label.toLowerCase());
 // prices at the visit's terms: b (−haggle…+haggle) is the colony's gain from haggling, 0 without terms
@@ -78,11 +83,12 @@ export function termsOf(w, c = w.caravan) {
 }
 const round2 = v => Math.round(v * 100) / 100;
 
-// items a ware line can be: 'plain' — what the outpost could make itself; 'any' — anything finer work improves
+// items a ware line can be: 'plain' — what the outpost could make itself (it has a recipe), short of iron;
+// 'any' — anything finer work improves and a trader may carry (not of a rare material)
 function itemPool(spec) {
   if (Array.isArray(spec)) return spec;
-  if (spec === 'plain') return ITEMS.filter(d => !d.tradeOnly && !d.iron).map(d => d.id);
-  return ITEMS.filter(d => d.quality !== false).map(d => d.id);
+  if (spec === 'plain') return ITEMS.filter(d => !d.iron && RECIPES.all().some(r => r.makes?.item === d.id)).map(d => d.id);
+  return ITEMS.filter(d => d.quality !== false && d.sold !== false).map(d => d.id);
 }
 
 function addGoods(goods, g) {
@@ -104,8 +110,8 @@ export function makeGoods(rng, units) {
       addGoods(goods, {kind: 'item', type, q: line.q || 0, ...(line.silver && !ITEMS.get(type).silver ? {silver: true} : {})}); left--;
     } else {
       const id = line.food ? pick(rng, FOODS.filter(f => !f.dish).map(f => f.id)) : pick(rng, line.resource);
-      const n = Math.min(left, between(rng, line.n));
-      addGoods(goods, {kind: 'res', id, n}); left -= n;
+      const st = RESOURCES.get(id).stack || 1, n = Math.min(left * st, between(rng, line.n));
+      addGoods(goods, {kind: 'res', id, n}); left -= Math.ceil(n / st);
     }
   }
   return goods;
@@ -230,7 +236,7 @@ export function holdTrade(w) {
     const p = bidPrice(o.g); if (p <= 0) continue;
     // food never goes below the colony's reserve in all
     const cap = isFood(o.g) ? Math.floor(foodTotal(w) - pop * TRADE.foodKeep) : Infinity;
-    const n = Math.min(o.n, cap, Math.floor(c.purse / p), free());
+    const n = Math.min(o.n, cap, Math.floor(c.purse / p), o.g.kind === 'res' ? roomFor(c, o.g.id) : free());
     if (n <= 0) continue;
     if (o.inst) w.armory.splice(w.armory.indexOf(o.inst), 1);
     else w.stock[o.g.id] -= n;

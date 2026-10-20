@@ -5,6 +5,7 @@
 // into the field beyond `gone` (a margin past `far`, so that nothing blinks at the edge). The world's own
 // parties (atlas/parties.js: raids, armies, broods) are things already; inside the bubble they count too.
 // Distances are cells of a 192-high world (× the world's scale), speeds — cells a day.
+import {CAMPAIGN} from './balance/prices.js';
 export const BUBBLE = {
   near: 4, far: 8, gone: 10,
   // each day this many cells of the ring are looked at; each danger of a cell (campaign/land.js dangers)
@@ -49,6 +50,6 @@ export const THINGS = {
 export const AMBUSH = {surprise: 0.85};
 
 // the merchants' train on the road: how much it carries and its prices (× a town's: data/market.js)
-export const TRAIN = {chance: 0.12, food: [15, 40], buy: 1.6, sell: 0.55};
+export const TRAIN = {chance: 0.12, food: [15, 40], ...CAMPAIGN.train};   // buy, sell: data/balance/prices.js
 // a herd: its chance where game lives (× the cell's game), and the food a hunt of it gives
 export const HERD = {chance: 0.08, food: [4, 10]};

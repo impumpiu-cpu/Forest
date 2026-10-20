@@ -10,7 +10,7 @@
 // Signs: ✗ — a piece is worse than another in every way and costs no less; ⚠ — worth a look; · — a note.
 import {writeFileSync} from 'node:fs';
 import {ITEMS} from '../src/data/items.js';
-import {RULES, rowOf} from '../src/data/balance/index.js';
+import {RULES, PRICES, FORMS, MATERIALS} from '../src/data/balance/index.js';
 import {toPL, attackPL, shotPL, defencePL, toolPL} from '../src/data/balance/power.js';
 import {QUALITY} from '../src/data/quality.js';
 import {RECIPES} from '../src/data/recipes.js';
@@ -39,7 +39,7 @@ const items = ITEMS.all().map(d => {
   const worth = kind === 'armor' ? def + warm : kind === 'shield' ? def : kind === 'ranged' ? rng : (atk ?? 0) + def + RULES.toolWeight * toolPL(d);
   const inputs = RECIPES.all().filter(r => r.makes?.item === d.id).map(r => Object.entries(r.cost || {}).reduce((s, [res, n]) => s + (RESOURCES.get(res).value || 0) * n, 0));
   return {d, id: d.id, kind, tier: d.tier, form: d.form, atk, rng, def, warm, tool: toolPL(d), worth, value: d.value, dur: d.dur,
-    input: inputs.length ? Math.min(...inputs) : null, table: rowOf(d.id)?.table};
+    input: inputs.length ? Math.min(...inputs) : null, material: d.material};
 });
 const byId = Object.fromEntries(items.map(x => [x.id, x]));
 
@@ -51,7 +51,9 @@ function fit(xs) {
   const b = pts.reduce((s, x) => s + (x.worth - mx) * (Math.log(x.value) - my), 0) / Math.max(1e-9, pts.reduce((s, x) => s + (x.worth - mx) ** 2, 0));
   return {a: my - b * mx, b, at: pl => Math.exp(my - b * mx + b * pl)};
 }
-const curves = {weapon: fit(items.filter(x => x.kind === 'onehand' || x.kind === 'twohand')), armor: fit(items.filter(x => x.kind === 'armor'))};
+// the curve is fitted over common materials: an uncommon or rare one is priced by its rarity on top
+const common = x => MATERIALS[x.d.material]?.rarity === 'common';
+const curves = {weapon: fit(items.filter(x => common(x) && (x.kind === 'onehand' || x.kind === 'twohand'))), armor: fit(items.filter(x => common(x) && x.kind === 'armor'))};
 for (const x of items) {
   const c = x.kind === 'armor' ? curves.armor : x.kind === 'onehand' || x.kind === 'twohand' ? curves.weapon : null;
   x.fair = c ? c.at(x.worth) : null;
@@ -89,6 +91,7 @@ for (const x of items) {
   const kind = x.kind === 'onehand' ? 'weapon' : x.kind === 'twohand' ? 'twohand' : x.kind === 'armor' ? 'armor' : null;
   if (!kind) continue;
   const pl = kind === 'weapon' ? x.atk : kind === 'twohand' ? x.atk + x.def : x.def, band = RULES.tierPL[kind][x.tier];
+  if (RULES.niche.some(f => x.d[f])) continue;   // a niche piece (silver) is weak on purpose
   if (!band) { mark('⚠', `${label(x)}: для тира ${x.tier} нет коридора в rules.js`); continue; }
   if (pl < band[0] - 1e-9 || pl > band[1] + 1e-9) mark('⚠', `${label(x)}: ${kind === 'weapon' ? 'атака' : kind === 'twohand' ? 'атака + защита' : 'защита'} PL ${f1(pl).trim()} вне коридора тира [${band[0]}…${band[1]}]`);
 }
@@ -97,7 +100,7 @@ for (const x of items) {
 for (const kind of ['onehand', 'twohand', 'armor']) {
   const xs = items.filter(x => x.kind === kind), pl = x => (kind === 'armor' ? x.def : x.atk);
   for (const lo of xs) for (const hi of xs) {
-    if (lo.tier >= hi.tier) continue;
+    if (lo.tier >= hi.tier || RULES.niche.some(f => hi.d[f])) continue;
     if (pl(lo) > pl(hi) + RULES.overlap) mark('⚠', `${label(lo)} сильнее, чем ${label(hi)}: PL ${f1(pl(lo)).trim()} против ${f1(pl(hi)).trim()}`);
   }
 }
@@ -127,7 +130,7 @@ for (const x of items.filter(x => x.kind === 'twohand')) {
 
 // prices
 for (const x of items) {
-  if (x.fair && !RULES.niche.some(f => x.d[f]) && (x.value > x.fair * RULES.priceOff || x.value < x.fair / RULES.priceOff)) mark('⚠', `${label(x)}: цена ${x.value}, по кривой ~${x.fair.toFixed(1)} (в ${(x.value / x.fair).toFixed(1)} раза)`);
+  if (x.fair && common(x) && !RULES.niche.some(f => x.d[f]) && (x.value > x.fair * RULES.priceOff || x.value < x.fair / RULES.priceOff)) mark('⚠', `${label(x)}: цена ${x.value}, по кривой ~${x.fair.toFixed(1)} (в ${(x.value / x.fair).toFixed(1)} раза)`);
   if (x.input != null && x.value < x.input) mark('·', `${label(x)}: стоит ${x.value}, а сырьё на него — ${x.input.toFixed(1)}: делать на продажу невыгодно`);
 }
 
@@ -147,11 +150,12 @@ console.log('');
 for (const [k, c] of Object.entries(curves)) if (c) console.log(`кривая цены (${k === 'weapon' ? 'оружие' : 'броня'}): ${Math.exp(c.a).toFixed(2)} × ${Math.exp(c.b).toFixed(2)}^PL — каждый уровень дороже в ${Math.exp(c.b).toFixed(2)} раза`);
 console.log('«выстр» — выстрел против удара при равной меткости; дальний бой честно сравнивает только `npm run arena`.');
 
-console.log('\nКачество (data/quality.js): что даёт шаг и сколько стоит');
+console.log('\nКачество (data/quality.js, цены — data/balance/prices.js): что даёт шаг и сколько стоит');
 console.log(`${pad('', 6)}${lpad('атака +PL', 10)}${lpad('оружие +', 10)}${lpad('за 1 PL', 9)}${lpad('броня +', 9)}${lpad('редкость', 14)}`);
 for (const Q of QUALITY.all().filter(q => q.q > 0)) {
   const dpl = log(1 + Q.hit);
-  console.log(`${pad(Q.label, 6)}${lpad(f1(dpl), 10)}${lpad(Q.addWeapon, 10)}${lpad((Q.addWeapon / dpl).toFixed(0), 9)}${lpad(Q.addArmor, 9)}${lpad(Q.rank, 14)}`);
+  const QP = PRICES.QUALITY[Q.q];
+  console.log(`${pad(Q.label, 6)}${lpad(f1(dpl), 10)}${lpad(QP.weapon, 10)}${lpad((QP.weapon / dpl).toFixed(0), 9)}${lpad(QP.armor, 9)}${lpad(Q.rank, 14)}`);
 }
 const matStep = curves.weapon ? Math.exp(curves.weapon.b) : null;
 if (matStep) console.log(`для сравнения: ступень материала (+1 PL) по кривой дороже в ${matStep.toFixed(2)} раза — у меча это ~${(byId.sword.value * (matStep - 1)).toFixed(0)} зол.`);
@@ -180,12 +184,25 @@ for (const T of tiersAll) {
   }
 }
 
+// ── forms × materials: the price and the power of every pair (data/balance/forms.js, materials.js)
+{
+  const mats = Object.keys(MATERIALS).filter(m => Object.values(FORMS).some(f => MATERIALS[m].class.some(c => f.of.includes(c))));
+  const cell = x => (x ? `${x.value}${x.kind === 'armor' || x.kind === 'shield' ? '' : ''}` : '');
+  console.log('\nФорма × материал: цена (и PL итога) каждой пары; пусто — форма из этого материала не бывает');
+  const used = mats.filter(m => items.some(x => x.d.material === m && Object.keys(FORMS).includes(x.d.form)));
+  console.log(pad('', 10) + used.map(m => lpad(m, 13)).join(''));
+  for (const f of Object.keys(FORMS)) {
+    const row = used.map(m => { const x = items.find(y => y.d.form === f && y.d.material === m); return lpad(x ? `${x.value} (${f1(x.worth).trim()})` : '', 13); });
+    console.log(pad(f, 10) + row.join(''));
+  }
+}
+
 console.log(`\nНаходки (${marks.length}):`);
 for (const s of ['✗', '⚠', '·']) for (const m of marks.filter(x => x.sign === s)) console.log(`  ${m.sign} ${m.text}`);
 if (!marks.length) console.log('  нет');
 
 if (csvPath) {
-  const cols = ['id', 'short', 'table', 'kind', 'tier', 'form', 'atk', 'rng', 'def', 'warm', 'tool', 'worth', 'value', 'fair', 'input', 'dur'];
+  const cols = ['id', 'short', 'material', 'kind', 'tier', 'form', 'atk', 'rng', 'def', 'warm', 'tool', 'worth', 'value', 'fair', 'input', 'dur'];
   const cell = v => (v == null ? '' : typeof v === 'number' ? (Number.isFinite(v) ? +v.toFixed(3) : 'inf') : /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   writeFileSync(csvPath, [cols.join(','), ...items.map(x => cols.map(c => cell(c === 'short' ? x.d.short : x[c])).join(','))].join('\n') + '\n');
   console.log(`\nтаблица: ${csvPath}`);

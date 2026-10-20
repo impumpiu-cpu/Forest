@@ -12,7 +12,8 @@ import {esc} from '../core/util.js';
 import {think} from './mind.js';
 import {qualityOf} from '../data/quality.js';
 import {season} from '../data/seasons.js';
-import {CAPS, PRICES} from '../data/balance/index.js';
+import {CAPS} from '../data/balance/combat.js';
+import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
 // made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
@@ -59,10 +60,11 @@ export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, .
 
 // price of one piece in imperial gold: the plain piece plus the step up in quality
 // a silvered iron blade costs this much more than a plain one
-export const SILVERING = PRICES.silvering;
+export const SILVERING = SERVICES.silvering;
 export function itemPrice(type, q = 0, silver = false) {
-  const base = ITEMS.get(type), Q = qualityOf(q);
-  return (base.value || 0) + (base.slot === 'body' || base.block ? Q.addArmor : Q.addWeapon) * (q ? 1 : 0) + (silver && !base.silver ? SILVERING : 0);
+  const base = ITEMS.get(type);
+  const step = q ? QUALITY_PRICE[q][base.slot === 'body' || base.block ? 'armor' : 'weapon'] : 0;
+  return (base.value || 0) + step + (silver && !base.silver ? SILVERING : 0);
 }
 
 // How much silver in the hand is worth: a lot while something that fears it is on the map, a little once

@@ -1,5 +1,5 @@
 // The numbers of the fight itself (agents/combat.js, agents/equipment.js read them).
-// Weapon and armour numbers: data/balance/weapons.js, armor.js. Critical blows and the deadly wound:
+// Weapon and armour numbers: data/balance/forms.js and materials.js. Critical blows and the deadly wound:
 // data/wounds.js. What SPECIAL does to a blow (strength, swing, dodge): data/special.js EFFECTS.
 export const COMBAT = {
   // one melee blow before the weapon and the body: base + random × spread, × weapon dmg × strength × skill
@@ -23,8 +23,3 @@ export const COMBAT = {
 
 // how far finer work (data/quality.js) may push a piece; a quality's own `cap` adds to these
 export const CAPS = {block: 0.75, armor: 0.8, warmth: 0.9};
-
-// prices that are not an item's own `value`
-export const PRICES = {
-  silvering: 5,   // a silvered iron blade costs this much more than a plain one
-};

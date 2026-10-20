@@ -15,9 +15,8 @@
 //   hit:    melee and ranged damage ×(1 + hit)          guard: armour and shield block + guard
 //   tool:   tool speed ×(1 + tool)                     dur:   durability ×(1 + dur)
 //   warmth: clothing warmth + warmth
-// Price on top of the plain piece (gold), after the 5th-edition habit: a magic weapon is
-// "uncommon", magic armour one rarity higher, and every step up costs several times more.
-//   addWeapon — weapons, tools and anything else;  addArmor — body armour and shields
+// The price on top of the plain piece lives in data/balance/prices.js (QUALITY), after the 5th-edition
+// habit: a magic weapon is "uncommon", magic armour one rarity higher, every step up several times dearer.
 //   sold:     whether a trader may carry it;  keep: the colony never sells it
 //   rank:     the rarity word shown on the card;  cap: how far it may push armour and block
 import {Registry} from '../core/registry.js';
@@ -25,11 +24,11 @@ import {Registry} from '../core/registry.js';
 export const QUALITY = new Registry('quality');
 
 QUALITY.registerAll([
-  {id: 'q0', q: 0, label: '',   rank: 'обычное',     hit: 0,    guard: 0,    tool: 0,    dur: 0,   warmth: 0,    addWeapon: 0,    addArmor: 0,    sold: true,  cap: 0,    craftBase: 1,        craftSkill: 0},
-  {id: 'q1', q: 1, label: '+1', rank: 'добротное',   hit: 0.15, guard: 0.05, tool: 0.15, dur: 0.5, warmth: 0.05, addWeapon: 10,   addArmor: 25,   sold: true,  cap: 0,    craftBase: 0.03,     craftSkill: 0.17},
-  {id: 'q2', q: 2, label: '+2', rank: 'мастерское',  hit: 0.3,  guard: 0.1,  tool: 0.3,  dur: 1,   warmth: 0.1,  addWeapon: 60,   addArmor: 150,  sold: true,  cap: 0,    craftBase: 0.003,    craftSkill: 0.03},
-  {id: 'q3', q: 3, label: '+3', rank: 'редкое',      hit: 0.45, guard: 0.15, tool: 0.45, dur: 1.5, warmth: 0.15, addWeapon: 400,  addArmor: 900,  sold: false, cap: 0.03, craftBase: 0.0002,   craftSkill: 0.002},
-  {id: 'q4', q: 4, label: '+4', rank: 'эпическое',   hit: 0.7,  guard: 0.22, tool: 0.7,  dur: 3,   warmth: 0.22, addWeapon: 3000, addArmor: 6000, sold: false, cap: 0.07, keep: true, craftBase: 0.000002, craftSkill: 0.000006},
+  {id: 'q0', q: 0, label: '',   rank: 'обычное',     hit: 0,    guard: 0,    tool: 0,    dur: 0,   warmth: 0,    sold: true,  cap: 0,    craftBase: 1,        craftSkill: 0},
+  {id: 'q1', q: 1, label: '+1', rank: 'добротное',   hit: 0.15, guard: 0.05, tool: 0.15, dur: 0.5, warmth: 0.05, sold: true,  cap: 0,    craftBase: 0.03,     craftSkill: 0.17},
+  {id: 'q2', q: 2, label: '+2', rank: 'мастерское',  hit: 0.3,  guard: 0.1,  tool: 0.3,  dur: 1,   warmth: 0.1,  sold: true,  cap: 0,    craftBase: 0.003,    craftSkill: 0.03},
+  {id: 'q3', q: 3, label: '+3', rank: 'редкое',      hit: 0.45, guard: 0.15, tool: 0.45, dur: 1.5, warmth: 0.15, sold: false, cap: 0.03, craftBase: 0.0002,   craftSkill: 0.002},
+  {id: 'q4', q: 4, label: '+4', rank: 'эпическое',   hit: 0.7,  guard: 0.22, tool: 0.7,  dur: 3,   warmth: 0.22, sold: false, cap: 0.07, keep: true, craftBase: 0.000002, craftSkill: 0.000006},
 ]);
 
 // the chance that a piece made by a master of this skill (0–1) comes out at least this fine
