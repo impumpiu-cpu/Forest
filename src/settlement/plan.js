@@ -41,7 +41,8 @@ export const PLAN = {
   // how a vacancy pulls a colonist's choice (vacancyPull): × and + on the job's own score
   mine: [1.5, 0.3],   // a place this colonist holds today (as the roster's own job used to)
   open: [0.6, 0.9, 0.3],   // a place free: × 0.6 + 0.9 × open share, + 0.3 × open share
-  none: [0.6, 0],     // a job with no place for tomorrow, or with every place taken
+  wanted: [0.85, 0],  // a job the colony wants but whose places are all taken (or that got none): a fallback
+  none: [0.6, 0],     // a job the colony does not want tomorrow
   // a colonist's own fitness for a place, added while some of it is open
   skill: 0.15,        // × skill / 10
   best: 0.15,         // the colony's best at the job's skill
@@ -112,23 +113,31 @@ export function makePlan(w, reason = '') {
   // rather than one to the bushes and one to the clay (settlement/together.js risk)
   const pairs = outsideRisk(w) >= TOGETHER.riskFrom, outdoor = j => ['harvest', 'hunt'].includes(JOBS.get(j).runner);
   const quota = {};
+  // no more places than the colony has hands able to fill them (a place nobody can take wastes a hand)
+  const able = j => { const job = JOBS.get(j); return col.filter(a => jobAccess(a, job).ok && (!job.canDo || job.canDo(w, a))).length; };
+  const cap = {};
+  for (const j of jobs) cap[j] = Math.min(crewCap(w, JOBS.get(j)), able(j));
   let used = 0;
-  for (const j of jobs) { const q = col.length * need[j].w / total; quota[j] = Math.min(crewCap(w, JOBS.get(j)), need[j].w >= 0.6 ? Math.max(1, Math.floor(q)) : Math.floor(q)); used += quota[j]; }
+  for (const j of jobs) { const q = col.length * need[j].w / total; quota[j] = Math.min(cap[j], need[j].w >= 0.6 ? Math.max(1, Math.floor(q)) : Math.floor(q)); used += quota[j]; }
   for (const j of jobs.slice().sort((x, y) => (col.length * need[y].w / total - quota[y]) - (col.length * need[x].w / total - quota[x]))) {
     if (used >= col.length) break;
-    if (quota[j] < crewCap(w, JOBS.get(j)) && col.length * need[j].w / total - quota[j] > 0.3) { quota[j]++; used++; }
+    if (quota[j] < cap[j] && col.length * need[j].w / total - quota[j] > 0.3) { quota[j]++; used++; }
   }
   if (pairs) {
-    // lone outdoor places are merged: the second of two singleton outdoor jobs joins the first (more wanted)
-    const singles = jobs.filter(j => quota[j] === 1 && outdoor(j));
-    for (let k = 1; k < singles.length; k += 2) { quota[singles[k]] = 0; quota[singles[k - 1]] = 2; }
+    // lone outdoor places are merged: the second of two singleton outdoor jobs joins the first (more wanted).
+    // Food is never merged away: a lone food place becomes two of its own instead (when two can do it)
+    const singles = jobs.filter(j => quota[j] === 1 && outdoor(j) && cap[j] >= 2);
+    const food = singles.filter(j => JOBS.get(j).food), other = singles.filter(j => !JOBS.get(j).food);
+    for (const j of food) quota[j] = 2;
+    for (let k = 1; k < other.length; k += 2) { quota[other[k]] = 0; quota[other[k - 1]] = 2; }
+    used = jobs.reduce((s, j) => s + quota[j], 0);
   }
   // hands left over go to the most wanted jobs that still have room, one each in turn
-  const spare = jobs.filter(j => crewCap(w, JOBS.get(j)) > quota[j]);
+  const spare = jobs.filter(j => cap[j] > quota[j]);
   for (let k = 0; used < col.length && spare.length; k++) {
     const j = spare[k % spare.length];
     quota[j]++; used++;
-    if (quota[j] >= crewCap(w, JOBS.get(j))) spare.splice(spare.indexOf(j), 1);
+    if (quota[j] >= cap[j]) spare.splice(spare.indexOf(j), 1);
   }
   const vac = {};
   for (const j of jobs) if (quota[j] > 0) vac[j] = {places: quota[j], why: need[j].why};
@@ -164,9 +173,9 @@ const bestAt = (w, skill) => perTick(w, 'plan.best:' + skill, () => Math.max(0, 
 export function vacancyPull(w, a, job) {
   const v = w.plan?.vac?.[job.id];
   if (a.shift?.day === today(w) && a.shift.job === job.id && v) return [...PLAN.mine, `${job.short || job.label}: моё место на сегодня`];
-  if (!v) return [...PLAN.none, ''];
+  if (!v) return w.plan?.need?.[job.id] ? [...PLAN.wanted, 'нужно поселению, мест не дали'] : [...PLAN.none, ''];
   const taken = holdersOf(w, job.id).filter(o => o !== a).length, open = Math.max(0, v.places - taken), share = open / v.places;
-  if (open <= 0) return [...PLAN.none, `места заняты (${v.places})`];
+  if (open <= 0) return [...PLAN.wanted, `места заняты (${v.places})`];
   const [f, why] = fit(w, a, job), [m0, m1, add] = PLAN.open;
   return [m0 + m1 * share, add * share + f, `вакансия: свободно ${open} из ${v.places}${why.length ? ', ' + why.join(', ') : ''}`];
 }
