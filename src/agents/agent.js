@@ -21,6 +21,7 @@ import {noteHuntDeath} from './carcass.js';
 import {RESOURCES} from '../data/resources.js';
 import {decideTrophies} from './trophies.js';
 import {noteBoardDeath} from '../settlement/board.js';
+import {load} from './jobRunners.js';
 
 // a line for the log about the rare trophies of a kill
 export function trophyText(t) {
@@ -93,6 +94,17 @@ export const hpShare = a => a.hp / maxHp(a);
 
 // mark dead; the sim removes dead agents at the end of the tick. `quiet`: the caller has written the
 // death to the log in its own words (agents/wounds.js: bled out)
+// a raider with the colony's goods on its back brought down by one of ours: the goods go onto the
+// victor's back and back to the stores (the colonist brain drops a load at the camp)
+function takeBackLoot(w, a, by) {
+  const parts = [];
+  let n = 0;
+  for (const [r, v] of Object.entries(a.loot)) { if (v <= 0) continue; load(by, r, v); n += v; parts.push(`${RESOURCES.get(r).label} ${Math.round(v * 10) / 10}`); }
+  a.loot = null;
+  const b = w.behave?.board; if (b) b.lootBack = (b.lootBack || 0) + n;
+  if (n > 0.5) log(w, `<b>${esc(by.name)}</b> ${g(by, 'отбил', 'отбила')} у налётчика добычу: ${parts.join(', ')}.`, 'danger');
+}
+
 export function kill(w, a, cause, by, {quiet = false} = {}) {
   if (a.dead) return;
   a.dead = true; a.hp = 0;
@@ -100,6 +112,7 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   noteFallen(w, a);   // a raider's band counts its losses (agents/squad.js)
   noteHuntDeath(w, a);   // a pack hunting it stops (agents/carcass.js)
   noteBoardDeath(w, a);   // the colony's board remembers which foe fell (settlement/board.js)
+  if (a.loot && by?.faction === 'colony' && !by.dead) takeBackLoot(w, a, by);
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
   // rare trophies, decided now and once (agents/trophies.js): only for what the colony brought down

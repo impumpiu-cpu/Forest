@@ -58,7 +58,7 @@ import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidStrength, colonyStrength} from '../settlement/threat.js';
-import {boardSummary} from '../settlement/board.js';
+import {boardSummary, watchSummary} from '../settlement/board.js';
 import {strengthOf} from '../agents/strength.js';
 import {tempAt} from '../world/heat.js';
 import {DAY, HOUR} from '../core/time.js';
@@ -419,10 +419,11 @@ export class Panel {
 
   // the colony's board (settlement/board.js): the threats it knows of, who cried out, who is answering
   alarmHtml(w) {
-    const flags = boardSummary(w);
-    if (!flags.length) return '';
-    const rows = flags.map(f => `<li><b>${esc(f.label)}</b> ${esc(f.where)} · ${f.by ? `тревогу ${f.byG === 'f' ? 'подняла' : 'поднял'} ${esc(f.by)}, ` : ''}знают ${f.known} · ${f.going.length ? `идут: ${f.going.map(esc).join(', ')}` : 'никто не идёт'}${f.weight > 0.05 ? ` · нужда ${Math.round(f.weight * 100)}` : ' · покрыто'}</li>`).join('');
-    return `<h3 class="psec">Тревога · ${flags.length}</h3><ul class="pc-list">${rows}</ul>`;
+    const flags = boardSummary(w), watch = watchSummary(w);
+    const night = watch ? `<p class="pc-small">Ночной дозор: ${watch.by ? `<b>${esc(watch.by)}</b>${watch.slept ? ' — уснул на посту' : watch.onPost ? ' у огня' : ''}` : 'место свободно'}</p>` : '';
+    if (!flags.length) return night ? `<h3 class="psec">Ночь</h3>${night}` : '';
+    const rows = flags.map(f => `<li>${f.red ? '<span style="color:var(--raider)">●</span> ' : '<span style="color:var(--ember)">●</span> '}<b>${esc(f.label)}</b> ${esc(f.where)} · ${f.by ? `тревогу ${f.byG === 'f' ? 'подняла' : 'поднял'} ${esc(f.by)}, ` : ''}знают ${f.known} · ${f.going.length ? `идут: ${f.going.map(esc).join(', ')}` : 'никто не идёт'}${f.weight > 0.05 ? ` · нужда ${Math.round(f.weight * 100)}` : ' · покрыто'}</li>`).join('');
+    return `<h3 class="psec">Тревога · ${flags.length}</h3><ul class="pc-list">${rows}</ul>${night}`;
   }
 
   // the colony's spirits: average mood, who is in low spirits, the dead and the graves

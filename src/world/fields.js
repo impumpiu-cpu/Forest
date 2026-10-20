@@ -19,6 +19,7 @@ import {burnStock, spoil, campFuel, burnCampFuel} from '../settlement/stock.js';
 import {colonists} from '../settlement/query.js';
 import {season} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
+import {watchOnPost, WATCH} from '../settlement/board.js';
 
 // Fire model knobs. Wet ground (high fertility) is harder to ignite and puts fires out by itself.
 export const FIRE = {cap: 320, heat: 46, pF: 0.011, pG: 0.005, burn: 0.03, wetIgn: 80, outBase: 0.002, outWet: 0.012, ignForest: 80, ignGrass: 120};
@@ -134,7 +135,7 @@ function campfire(w) {
   const cold = colonists(w).some(a => a.needs.warmth < 0.6);
   w.campLit = !!campFuel(w) && (nightness(w) > 0.3 || cold);
   if (!w.campLit) return;
-  burnCampFuel(w, 0.004);
+  burnCampFuel(w, 0.004 * (watchOnPost(w) ? WATCH.fuel : 1));   // a watchman tends it: less wood (settlement/board.js)
   const g = w.grid, amb = airTemp(w);
   for (const c of w.camp.cells) if (g.heat[c] < 30 - amb) { g.heat[c] += 3.2; touchHeat(w, c); }
   // lived-in buildings keep a hearth of their own on the same stock (data/buildings.js `heat`):

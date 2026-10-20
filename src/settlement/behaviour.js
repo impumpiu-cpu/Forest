@@ -28,7 +28,8 @@ import {nightness} from '../core/time.js';
 export const newBehaviour = () => ({ticks: 0, idle: 0, muster: 0, company: 0, switches: 0, stops: 0, outcomes: {}, noPath: 0,
   react: {sum: 0, n: 0, missed: 0}, invalid: 0, invalidWhat: {}, crowd: 0, crowdTicks: 0, nightTicks: 0, fireless: 0,
   squads: {started: 0, goal: 0, retreat: 0, wiped: 0}, hunts: {started: 0}, social: {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0},
-  board: {flags: 0, red: 0, shouts: 0, heardAsleep: 0, closed: 0, responders: 0, unanswered: 0, ignored: 0}});
+  board: {flags: 0, red: 0, shouts: 0, heardAsleep: 0, closed: 0, responders: 0, unanswered: 0, ignored: 0,
+    lootBack: 0, lootLost: 0, watched: 0, unwatched: 0, sleptOnWatch: 0}});
 
 const REACT = new Set(['fight', 'runHome', 'flee']);
 const THINK = 15;   // a colonist thinks again at least this often (agents/brains/colonist.js)

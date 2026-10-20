@@ -7,7 +7,7 @@ import {nightness, ambientTemp} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
 import {nearFire} from '../movement.js';
 import {attackerOf} from '../combat.js';
-import {flagOptions, knownFoeWithin, redInSight, noteChoice, BOARD} from '../../settlement/board.js';
+import {flagOptions, knownFoeWithin, redInSight, noteChoice, watchOption, noteWatch, BOARD} from '../../settlement/board.js';
 import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
 import {maxHp, hpShare} from '../agent.js';
@@ -125,6 +125,8 @@ function decide(w, a) {
     // the answer to an attack is a reflex: no skip from an earlier fight with the same foe holds it back
     opts.push(stand ? [{id: 'fight', target: hunter, reflex: true}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
   }
+  // the night watch (settlement/board.js): the council's rule — one place, taken by whoever wants it
+  const watch = watchOption(w, a); if (watch) opts.push(watch);
   // the colony's board (settlement/board.js): the threats this colonist knows of — seen or heard of —
   // each weighed by the colonist itself: how much of it nobody covers yet, courage, distance
   const flags = flagOptions(w, a);
@@ -160,6 +162,7 @@ function decide(w, a) {
   a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
     alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || ''};
   if (flags.length) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
+  noteWatch(w, a, best, a.task?.id);
   if (key(best) !== cur) {
     // leaving one job for another of one's own accord: a moment's thought first («прикидывает, за что
     // взяться»), unless the body or a threat is pressing
@@ -172,7 +175,7 @@ function decide(w, a) {
     }
     // the task it drops is closed as interrupted by syncTask(), with this reason; eating, sleeping and
     // warming up wind down when the need is met, which is no dropped task
-    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'reserve', 'sulk', 'ponder'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
+    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'reserve', 'watch', 'sulk', 'ponder'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
     else if (a.task) a.task.closed = 'done';
     if (a.task) w.behave.switches++;
     a.task = best;

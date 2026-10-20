@@ -12,7 +12,7 @@ import {nightness} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
-import {eatMeal, plunder, campFuel} from '../settlement/stock.js';
+import {eatMeal, plunder, lootTotal, campFuel} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
@@ -214,11 +214,16 @@ TASKS.registerAll([
   // raiders
   {id: 'assault', label: () => 'идёт к складу', step(w, a) {
     if (follow(w, a, 'camp') !== 'arrived') return;
-    const took = plunder(w);
+    const got = plunder(w), took = lootTotal(got);
     if (took > 0.5 && w.tick - w.stats.lastSteal > 40) log(w, 'Налётчики грабят склад.', 'danger');
+    if (took > 0) a.loot = got;   // carried off on its back: whoever brings it down takes it back
     w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
   }},
-  {id: 'leave', label: () => 'уходит', step(w, a) { if (follow(w, a, 'edge') === 'arrived') { a.gone = true; noteHome(w, a); } }},
+  {id: 'leave', label: () => 'уходит', step(w, a) {
+    if (follow(w, a, 'edge') !== 'arrived') return;
+    a.gone = true; noteHome(w, a);
+    if (a.loot) { const b = w.behave?.board; if (b) b.lootLost = (b.lootLost || 0) + lootTotal(a.loot); a.loot = null; }   // gone for good
+  }},
   // a torch-bearer of a band that came to burn (agents/squad.js): to the camp, then to the building, and
   // a fire under its wall
   {id: 'torch', label: () => 'несёт факел', step(w, a, task) {
@@ -262,6 +267,12 @@ TASKS.registerAll([
   {id: 'reserve', label: () => 'держится у огня', step(w, a, task) {
     if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
     if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+  }},
+
+  // the night watch (settlement/board.js): by the fire all night, looking round for everyone; done at dawn
+  {id: 'watch', label: () => 'дежурит у огня', step(w, a, task) {
+    if (task.over) { done(w, a); return; }
+    if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
   }},
 
   // run for the settlement zone when something is hunting you

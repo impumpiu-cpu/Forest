@@ -6,7 +6,8 @@
 // T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
 // T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies;
 // T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T92 the colony's
-// board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1). Each scene builds a flat, empty map, places a few agents by hand and
+// board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
+// back, the chase, the night watch, stage 2). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -58,7 +59,9 @@ import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
 import {heatTo} from '../src/world/heat.js';
 import {makePlan} from '../src/settlement/plan.js';
-import {stepBoard, flagOptions, BOARD} from '../src/settlement/board.js';
+import {stepBoard, flagOptions, watchOption, BOARD, WATCH} from '../src/settlement/board.js';
+import {raidAlarm} from '../src/settlement/query.js';
+import {dropLoad} from '../src/agents/jobRunners.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -1237,6 +1240,94 @@ check('T92', 'красная тревога: не легчает от откли
   sq.state = 'retreat';
   lookRound(w);
   return !flagOf(w) || 'флаг висит после отступления отряда';
+});
+
+check('T93', 'налётчик уносит добычу на себе; кто его убил, забирает её и несёт на склад', () => {
+  const w = scene(); fixedRng(w);
+  w.stock.berries = 40; w.stock.wood = 30;
+  const [g] = band(w, 1, w.camp.x + 0.5, w.camp.y + 0.5);
+  const r = g[0]; r.task = {id: 'assault'};
+  const before = w.stock.berries + w.stock.wood;
+  TASKS.get('assault').step(w, r, r.task);
+  const taken = Object.values(r.loot || {}).reduce((s, v) => s + v, 0);
+  if (!(taken > 0)) return 'налётчик ничего не унёс на себе';
+  const man = put(w, 'human', 'colony', r.x + 1, r.y);
+  kill(w, r, 'убит', man);
+  if (r.loot) return 'добыча осталась на убитом';
+  if (!(man.carry?.n >= taken - 1e-6)) return `у победителя в руках ${man.carry?.n ?? 0} из ${taken.toFixed(1)}`;
+  dropLoad(w, man);
+  const after = w.stock.berries + w.stock.wood;
+  return Math.abs(after - before) < 0.6 || `склад до ${before.toFixed(1)}, после ${after.toFixed(1)}`;
+});
+
+check('T94', 'погоня: отступивший отряд с добычей — жёлтый флаг, тревога у огня снята, за ним бегут и издалека', () => {
+  const w = scene(); fixedRng(w);
+  const brave = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5); brave.mods.bravery = 1.5;
+  const [g, sq] = band(w, 2, w.camp.x + 10.5, w.camp.y + 0.5);
+  g[0].loot = {berries: 5}; g[0].looted = true; g[0].task = {id: 'leave'};
+  sq.state = 'retreat';
+  lookRound(w);
+  const f = flagOf(w);
+  if (!f) return 'флага погони нет';
+  if (f.red) return 'погоня — красный флаг';
+  if (f.members.includes(g[1].id)) return 'налётчик без добычи на флаге погони';
+  if (raidAlarm(w)) return 'тревога налёта держится при отступившем отряде';
+  // the looter runs off out of sight: the brave one runs after it
+  g[0].x = w.camp.x + 26.5; brave.think = 0; brain(w, brave);
+  return ['answer', 'fight'].includes(brave.task?.id) || `смелый занят «${brave.task?.id}» — за добычей не побежал`;
+});
+
+check('T95', 'ночной дозор: одно место, его берёт бодрый и смелый, второй не берёт; дежуривший не берёт следующей ночью', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 22 * HOUR;   // after the evening council (19:00–21:30), which comes first
+  const fresh = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5), worn = put(w, 'human', 'colony', w.camp.x + 1.5, w.camp.y + 0.5);
+  fresh.needs.rest = 0.95; fresh.mods.bravery = 1.4; worn.needs.rest = 0.25; worn.mods.bravery = 0.7;
+  stepBoard(w);
+  const sf = watchOption(w, fresh)?.[1] ?? 0, sw = watchOption(w, worn)?.[1] ?? 0;
+  if (!(sf > sw)) return `бодрый и смелый хочет дежурить не больше уставшего: ${sf.toFixed(2)} против ${sw.toFixed(2)}`;
+  fresh.think = 0; brain(w, fresh);
+  if (fresh.task?.id !== 'watch') return `бодрый занят «${fresh.task?.id}», а не дозором`;
+  if (watchOption(w, worn)?.[0].id === 'watch') return 'второму предлагают занятое место';
+  // the morning: the watch is over, the watchman sleeps it off
+  w.tick = 4 * DAY + (WATCH.till + 0.5) * HOUR; fresh.needs.rest = 0.4; stepBoard(w);
+  if (fresh.lastWatch !== 3) return 'ночь дозора не записана';
+  const off = watchOption(w, fresh);
+  if (off?.[0].id !== 'sleep') return 'утром дозорный не отсыпается';
+  // the next evening: someone else's turn
+  w.tick = 4 * DAY + WATCH.from * HOUR + 10; fresh.needs.rest = 1; fresh.offDuty = 0; stepBoard(w);
+  return !watchOption(w, fresh) || 'дежуривший прошлой ночью снова берёт дозор';
+});
+
+check('T96', 'ночью взгляд вдвое короче, у костра полный; дозорный видит за всех и поднимает тревогу, пока все спят', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 2 * HOUR;
+  if (nightness(w) < 0.9) return 'сцена не ночная';
+  const far = put(w, 'human', 'colony', w.camp.x + 20.5, w.camp.y + 0.5);   // far from the fire
+  const wolf = put(w, 'wolf', 'predators', w.camp.x + 32.5, w.camp.y + 0.5); wolf.pack = wolf.id;   // 12 from `far`
+  lookRound(w);
+  if (flagOf(w)) return 'в темноте вдали от огня увидели за 12 клеток';
+  // a watchman by the fire, the others asleep
+  const sleeper = put(w, 'human', 'colony', w.camp.x + 1.5, w.camp.y + 0.5); sleeper.sleeping = true; sleeper.task = {id: 'sleep'};
+  const watchman = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  w.board.watch = {night: 2, by: watchman.id, name: watchman.name, done: false}; watchman.task = {id: 'watch'};
+  far.x = 2.5; far.y = 2.5; sleeper.x = w.camp.x + 1.5;   // nobody else is awake near the wolf
+  wolf.x = w.camp.x + 12.5;
+  w.tick++; while ((w.tick + watchman.id) % BOARD.look === 0) w.tick++;   // not its turn by the roster
+  stepBoard(w);   // the watchman looks every tick
+  const f = flagOf(w);
+  return (f && f.known[watchman.id]) || 'дозорный не увидел волка у лагеря';
+});
+
+check('T97', 'дозорный, которого сморил сон, засыпает на посту — это в журнале', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 3 * HOUR;
+  const a = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  w.board ??= {flags: {}, seq: 0};
+  w.board.watch = {night: 2, by: a.id, name: a.name, done: false}; a.task = {id: 'watch'}; syncTask(w, a);
+  a.needs.rest = 0.02;
+  a.think = 0; brain(w, a);
+  if (a.task?.id !== 'sleep') return `выбившийся из сил дозорный занят «${a.task?.id}»`;
+  return w.logLines.some(l => /уснул[а]? на посту/.test(l.html)) || 'в журнале нет, что дозорный уснул';
 });
 
 let bad = 0;

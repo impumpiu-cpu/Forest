@@ -47,6 +47,9 @@ export const raidAlarm = w => perTick(w, 'raidAlarm', () => {
   const camp = w.nav.get('camp'), reach = ALARM_HOURS * HOUR * 0.8;   // 0.8: woods and detours slow the march
   return w.agents.some(o => {
     if (o.faction !== 'raiders' || o.dead) return false;
+    // a squad falling back or leaving with its loot is no alarm any more (agents/squad.js state); who
+    // still carries our goods off is a chase on the colony's board (settlement/board.js)
+    if (o.squad != null && w.squads?.[o.squad] && w.squads[o.squad].state !== 'march') return false;
     const pace = SPECIES.get(o.species).speed * (o.mods?.speed ?? 1);
     return camp[clampCell(w, o)] <= pace * reach;
   });
