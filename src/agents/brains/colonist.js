@@ -192,7 +192,7 @@ export const colonistBrain = {
     const attacked = !!attackerOf(w, a);
     if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && attacked) a.think = 0;
     // a foe within reach is noticed at once, not at the next think
-    if (w.tick % 5 === 0 && a.task?.id !== 'fight' && a.task?.id !== 'runHome' && nearestHostile(w, a, 8)) a.think = 0;
+    if ((w.tick + a.id) % 5 === 0 && a.task?.id !== 'fight' && a.task?.id !== 'runHome' && nearestHostile(w, a, 8)) a.think = 0;
     if (a.task?.id !== 'flee' && --a.think <= 0) {
       // at work a colonist thinks about work rarely: a task ends through the lifecycle and asks for a
       // decision then (a.think = 0); meanwhile only the body and the threats are watched here

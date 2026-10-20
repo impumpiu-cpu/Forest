@@ -17,14 +17,15 @@ import {season} from '../../data/seasons.js';
 import {log} from '../../core/log.js';
 import {esc} from '../../core/util.js';
 import {tempAt} from '../../world/heat.js';
+import {liveById} from '../lookup.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead);
+const byId = liveById;
 
 // who it is angry with: someone attacking it right now, or whoever hurt it lately and is still near
 function foeOf(w, a, M) {
   let foe = null, bd = 3;
-  for (const o of w.agents) {
+  for (const o of w.agents) {   // scan: mules and boars only, a handful per map
     if (o === a || o.dead || o.task?.target !== a || !(o.task.id === 'maul' || o.task.id === 'chase' || o.task.id === 'fight')) continue;
     const d = dist(a, o); if (d < bd) { bd = d; foe = o; }
   }
@@ -106,7 +107,7 @@ export const muleBrain = {
     }
     if (nightness(w) > 0.75) { a.task = {id: 'rest'}; return; }
     // a herder holding out hay: it stops and lets them come
-    if (w.agents.some(o => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
+    if (w.agents.some(o => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }   // scan: a beast being tamed only
     graze(w, a, sp);
   },
 };

@@ -13,6 +13,7 @@
 import {SPECIES} from '../data/species.js';
 import {NORM} from '../data/special.js';
 import {canDoAction, practice} from './skills.js';
+import {liveById} from './lookup.js';
 
 export const TROPHY = {lucky: 0.5, soft: 5, practice: 40};
 
@@ -35,7 +36,7 @@ export function decideTrophies(w, t, by) {
   const out = t.trophy = {got: {}, spoiled: []};
   if (!table.length || !ids.length) return out;
   const L = ids.reduce((s, id) => s + hit[id], 0) / ids.length;
-  const crew = ids.map(id => w.agents.find(o => o.id === +id && !o.dead)).filter(Boolean);
+  const crew = ids.map(id => liveById(w, +id)).filter(Boolean);
   for (const e of table) {
     if (!(w.rngs.combat() < Math.min(1, e.chance * luckBoost(L)))) continue;
     if ((e.tier || 1) > 1) {

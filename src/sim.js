@@ -15,6 +15,7 @@ import {stepRelations} from './settlement/relations.js';
 import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
+import {noteAttacker} from './agents/lookup.js';
 import {stepSquads} from './agents/squad.js';
 import {stepHunts, stepCarcasses} from './agents/carcass.js';
 import {stepCouncil} from './settlement/council.js';
@@ -70,6 +71,7 @@ export function step(w) {
   for (const a of w.agents) {
     if (!a.dead) stepEffects(w, a);
     if (!a.dead) BRAINS.get(a.brain).step(w, a);
+    noteAttacker(w, a);   // who attacks whom (agents/lookup.js) follows the step that may have changed it
     if (a.flash) a.flash--;
   }
   w.agents = w.agents.filter(a => !a.dead && !a.gone);

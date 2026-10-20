@@ -31,6 +31,7 @@ import {season, snowy} from '../data/seasons.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {outsideRisk, TOGETHER} from './together.js';
+import {agentById} from '../agents/lookup.js';
 
 export const PLAN = {
   fuelDays: 3,        // keep this many days of firewood ahead…
@@ -168,7 +169,7 @@ export function makePlan(w, reason = '') {
 // the roster in words: «Ждан и Тихон — рубить лес (дров на 1,2 дн.); Горислав — охотиться (лучше всех)»
 function rosterLines(w, assign, need) {
   const by = {};
-  for (const [id, e] of Object.entries(assign)) { const a = w.agents.find(x => x.id === +id); if (!a) continue; (by[e.job || '—'] ||= []).push({name: a.name, why: e.why}); }
+  for (const [id, e] of Object.entries(assign)) { const a = agentById(w, +id); if (!a) continue; (by[e.job || '—'] ||= []).push({name: a.name, why: e.why}); }
   const lines = [];
   for (const [j, people] of Object.entries(by)) {
     const job = j === '—' ? null : JOBS.get(j);

@@ -31,6 +31,7 @@ import {freeCorpse, graveSpot, bury, workBonus} from '../settlement/life.js';
 import {damage} from './combat.js';
 import {log} from '../core/log.js';
 import {esc, g} from '../core/util.js';
+import {liveById, ofSpeciesList, noteAttacker} from './lookup.js';
 
 const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.colony() - 0.5) * 0.2; };
 
@@ -198,7 +199,7 @@ export const RUNNERS = {
   herd(w, a, task) {
     const job = JOBS.get(task.job);
     if (a.carry && (a.carry.n >= job.carry || !task.more)) { haulHome(w, a); return; }
-    let b = task.beast != null ? w.agents.find(o => o.id === task.beast && !o.dead) : null;
+    let b = liveById(w, task.beast);
     const ok = o => o && !claimed(w, o, a) && (o.tame ? chores(w).includes(o) : tameTargets(w).includes(o) && canTame(a, o));
     if (!ok(b)) {
       b = null; task.calm = false; task.tame = null;
@@ -285,16 +286,16 @@ export const RUNNERS = {
         task.c = c.id;
         const d = Math.hypot(c.x - a.x, c.y - a.y);
         if (d < CARCASS.scare) {
-          for (const o of w.agents) {
+          for (const o of w.agents) {   // scan: a hunter beside a carcass only
             if (o.dead || o.task?.id !== 'feed' || o.task.c !== c.id || Math.hypot(o.x - a.x, o.y - a.y) > CARCASS.scare) continue;
             const P = SPECIES.get(o.species).predator;
-            if (P && boldness(o, P) > 0.6) o.task = {id: 'maul', target: a};   // a starving beast will not give up its meal
+            if (P && boldness(o, P) > 0.6) { o.task = {id: 'maul', target: a}; noteAttacker(w, o); }   // a starving beast will not give up its meal
             else { o.task = {id: 'bolt'}; o.calmUntil = w.tick + 300; }
             task.scared = true;
           }
         }
         if (d > CARCASS.takeAt) { if (approach(w, a, c.x, c.y) === null) task.c = null; return; }
-        const feeders = w.agents.some(o => !o.dead && o.task?.id === 'maul' && o.task.target === a);
+        const feeders = w.agents.some(o => !o.dead && o.task?.id === 'maul' && o.task.target === a);   // scan: a hunter beside a carcass only
         if (feeders) return;   // the fight comes first (the brain answers it)
         const got = butcher(w, c);
         for (const [r, n] of Object.entries(got)) load(a, r, n);
@@ -339,7 +340,7 @@ export const RUNNERS = {
       for (const [r, n] of Object.entries(prey.trophy?.got || {})) load(a, r, n);
       const rare = trophyText(prey.trophy);
       if (rare) log(w, `<b>${esc(a.name)}</b> ${g(a, 'добыл', 'добыла')} ${SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label}.${rare}`, 'wildlife');
-      const near = w.agents.some(o => job.prey.includes(o.species) && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
+      const near = ofSpeciesList(w, job.prey).some(o => !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
       task.oneMore = a.carry.n < 8 && near; task.prey = null; task.age = 0;
     } else if (res === 'miss' || res === 'hit') {
       prey.spooked = 40;   // the shot whistles past or wounds: the hare bolts

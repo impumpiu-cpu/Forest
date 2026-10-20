@@ -16,11 +16,13 @@ import {noteHit} from './trophies.js';
 import {heatTo} from '../world/heat.js';
 import {nearAgents} from './spatial.js';
 import {COMBAT, DEFAULT_BLOW, ARMOR_VS_CAP} from '../data/balance/combat.js';
+import {firstAttacker} from './lookup.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
 // who is attacking `a` right now: a beast that mauls (maul) or a raider that fights (fight) with `a` as its target
-export const attackerOf = (w, a) => w.agents.find(o => !o.dead && o !== a && (o.task?.id === 'maul' || o.task?.id === 'fight') && o.task.target === a) || null;
+// (agents/lookup.js keeps who attacks whom, so this is not a walk over every creature)
+export const attackerOf = (w, a) => firstAttacker(w, a);
 
 // Can `a` see `t` right now? The nechist is seen only up close (`veil` cells: a leshy among the trees)
 // or not at all while it hides (`hiddenUntil`: a rusalka under the water) — unless it is attacking.

@@ -14,9 +14,10 @@ import {SPECIES} from '../data/species.js';
 import {jobUnlocked, has} from './query.js';
 import {faunaLevel} from '../world/region.js';
 import {BUILDINGS} from '../data/buildings.js';
+import {ofSpeciesList} from '../agents/lookup.js';
 
 const DEPTH = 3;
-const livesHere = (w, id) => faunaLevel(w, id) > 0 || w.agents.some(o => o.species === id && !o.dead && !o.tame);
+const livesHere = (w, id) => faunaLevel(w, id) > 0 || ofSpeciesList(w, [id]).some(o => !o.dead && !o.tame);
 
 // a job that brings res: how (a short phrase for the council's panel) — or null
 function fromJob(w, job, res, depth, seen) {

@@ -30,6 +30,7 @@ import {log} from '../core/log.js';
 import {REL} from './relations.js';
 import {stabilize} from '../agents/wounds.js';
 import {practice} from '../agents/skills.js';
+import {liveById} from '../agents/lookup.js';
 
 export const TOGETHER = {
   riskFrom: 0.3,       // a gatherer is worth escorting from this risk up…
@@ -56,7 +57,7 @@ export const TOGETHER = {
 };
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead);
+const byId = liveById;
 const social = w => w.behave?.social;
 
 // personal history: what happened between a and b, on a's side
