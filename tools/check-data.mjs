@@ -130,6 +130,7 @@ for (const d of ITEMS.all()) {
   const where = `предмет ${d.id} (${d.form} × ${d.material})`;
   if (d.melee && !(d.melee.cd > 0 && d.melee.dmg > 0)) err(`${where}: melee без dmg или cd`);
   for (const k of ['armor', 'block', 'warmth']) if (d[k] != null && !(d[k] >= 0 && d[k] < 1)) err(`${where}: ${k} должен быть от 0 до 1`);
+  if (d.cover != null && !(d.cover > 0 && d.cover <= 1 && d.block)) err(`${where}: cover — доля блока от 0 до 1, и только у того, что блокирует`);
   if (!(d.dur > 0)) err(`${where}: dur должен быть больше нуля`);
   if (!(d.value > 0)) err(`${where}: нет цены`);
 }

@@ -21,6 +21,7 @@
 //   ranged {dmg, range, cd, ammo, boost}  ammo: resource id carried in a quiver (null = picked up anywhere);
 //                              boost: a colony modifier from world.mods.best that strengthens the shot
 //   block                      chance to stop a melee blow (shields, staves)
+//   cover                      share of that chance which also stops a shot (a shield: 0.5; a parry stops none)
 //   armor, warmth, speed       share of damage absorbed; share of cold kept out; walking multiplier
 //   tool {job: ×}              work speed while working that job (in hands or on the back)
 //   carry, holds {ammo, max}   extra units carried while harvesting; what a back item holds
@@ -75,6 +76,7 @@ export function makeItem(formId, matId) {
   if (form.scale) d.scale = {...form.scale};
   if (form.block) d.block = +(form.block * r('block')).toFixed(3);
   if (form.armor) d.armor = +(form.armor * r('armor')).toFixed(3);
+  if (form.cover) d.cover = form.cover;
   if (form.vs) d.vs = {...form.vs};
   if (form.warmth) d.warmth = +Math.min(0.98, form.warmth * r('warmth')).toFixed(3);
   // heavy armour slows: the slowing scales with the material's weight; a staff's lightness stays as it is

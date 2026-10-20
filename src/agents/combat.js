@@ -52,11 +52,12 @@ const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack |
 // (forms.js: mail turns a cut, a hide shield catches a spear point and gives under a club) — one rule for both
 const against = (value, vs, type) => (vs && type ? Math.min(ARMOR_VS_CAP, (value || 0) * (vs[type] ?? 1)) : value || 0);
 export const armorAgainst = (g, type) => against(g.armor, g.armorVs, type);
-export const blockAgainst = (g, type) => against(g.block, g.blockVs, type);
+// a shot meets only what covers: a shield, at `cover` of its block (forms.js); a sword or a staff parries no arrow
+export const blockAgainst = (g, type, melee = true) => (melee ? against(g.block, g.blockVs, type) : against(g.cover, g.coverVs, type));
 // what the body does to a blow of this kind and delivery (creatures.js `resist`: pierce, slash, blunt, melee, ranged)
 export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1) * (sp.resist[melee ? 'melee' : 'ranged'] ?? 1) : 1);
 
-// Apply a hit: shields may stop melee blows, armour absorbs part of the rest.
+// Apply a hit: a shield may stop a blow or a shot (a parry only a blow), armour absorbs part of the rest.
 // Inside the settlement zone colonists fight harder and a palisade shields them.
 // A hit that lands (not dodged, not blocked) may be critical: one check on the attacker's Luck
 // (agents/wounds.js critChance), × CRIT.mul, before armour. A blow that takes the last health goes to
@@ -72,7 +73,8 @@ export function damage(w, by, t, raw, {melee = true, type = null} = {}) {
   // what kind of blow: the caller's word, else what the striker holds or strikes with
   type ||= melee ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged;
   raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
-  if (melee && g.block && w.rngs.combat() < blockAgainst(g, type)) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
+  const block = blockAgainst(g, type, melee);
+  if (block > 0 && w.rngs.combat() < block) { wear(w, t, melee ? g.blockItem : g.coverItem); t.flash = 3; return 'blocked'; }
   const crit = w.rngs.combat() < critChance(by);
   if (crit) { raw *= CRIT.mul; t.flash = 6; }
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;

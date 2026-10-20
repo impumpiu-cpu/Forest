@@ -46,7 +46,7 @@ export const FORMS = {
   // the metal answer to armour: what a cut slides off, a blow of a mace or a hammer goes through
   mace:     {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.85, cd: 12}, dur: 150,
     parts: {material: 3, wood: 1}, work: 800, name: m => [`${cap(m.adj.f)} булава`, `${m.short} булава`], glyph: 'club'},
-  shield:   {vs: {pierce: 1.1, slash: 1.05, blunt: 0.8}, slot: 'hand', hands: 1, of: ['wood', 'metal'], ref: 'wood', block: 0.32, dur: 35,
+  shield:   {vs: {pierce: 1.1, slash: 1.05, blunt: 0.8}, slot: 'hand', hands: 1, of: ['wood', 'metal'], ref: 'wood', block: 0.32, cover: 0.5, dur: 35,
     parts: {material: 3, hide: 2}, work: 700, ids: {wood: 'shield'}, names: {wood: ['Щит из жердей и шкуры', 'щит']}, name: m => [`${cap(m.adj.m)} щит`, `${m.short} щит`], glyph: 'shield'},
   // ── two-handed: each makes up for the shield it leaves no hand for
   staff:    {vs: {pierce: 0.85, slash: 1, blunt: 1.1}, blow: 'blunt', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', melee: {dmg: 1.4, cd: 10}, block: 0.15, speed: 1.05, dur: 80,

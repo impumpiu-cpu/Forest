@@ -37,7 +37,9 @@ export const STRENGTH = {
   // `npm run arena:calibrate` fits these two (part 2): 0.55 — melee in the open is close to everyone striking at once
   alpha: 0.55,
   // shots count for this share of their damage on top of the blow (a bow shoots while the foe is coming or held)
-  rangedWeight: 0.52,
+  rangedWeight: 0.47,
+  // of the blows a fighter meets, this share are shots (what a shield's `cover` is worth in the rating)
+  shotShare: 0.25,
   // blood drunk: health stretched as if it were 1 / (1 − drinks × this)
   drinksWeight: 0.5,
 };
@@ -69,7 +71,7 @@ export const CREATURES = {
   zombie:      {special: {S: [5, 8], P: [1, 3], E: [7, 10], C: [0, 0], I: [0, 1], A: [1, 3], L: [0, 0]}, hp: 0.9, speed: 0.075, attack: {power: 0.9, cooldown: 18}, ks: 1.03},
   skeleton:    {special: {S: [4, 7], P: [2, 4], E: [5, 8], C: [0, 0], I: [0, 1], A: [3, 6], L: [0, 0]}, hp: 0.7, speed: 0.11, attack: {power: 1, cooldown: 14}, resist: {pierce: 0.5, slash: 0.8, blunt: 1.3}, ks: 1.03},
   upyr:        {special: {S: [5, 10], P: [5, 9], E: [6, 10], C: [0, 2], I: [1, 3], A: [5, 10], L: [1, 4]}, hp: 0.95, speed: 0.155, attack: {power: 1.15, cooldown: 12, type: 'pierce'}, ks: 0.94},
-  vampire:     {special: {S: [9, 12], P: [8, 12], E: [9, 12], C: [8, 13], I: [8, 13], A: [8, 12], L: [3, 8]}, hp: 1.4, speed: 0.15, attack: {power: 1.6, cooldown: 11, type: 'pierce'}, ks: 0.99},
+  vampire:     {special: {S: [9, 12], P: [8, 12], E: [9, 12], C: [8, 13], I: [8, 13], A: [8, 12], L: [3, 8]}, hp: 1.4, speed: 0.15, attack: {power: 1.6, cooldown: 11, type: 'pierce'}, ks: 0.94},
   necromancer: {special: {S: [1, 10], P: [1, 10], E: [1, 10], C: [2, 8], I: [7, 10], A: [1, 10], L: [1, 10]}, hp: 0.9, speed: 0.13, attack: {power: 1, cooldown: 12}, ks: 1.09},
   // the bestiary (data/bestiary.js)
   varg:        {special: around({S: 10, P: 10, E: 9, C: 2, I: 4, A: 9, L: 4}), hp: 1.5, speed: 0.15, attack: {power: 1.35, cooldown: 13, type: 'pierce'}, ks: 1.06},
@@ -83,7 +85,7 @@ export const CREATURES = {
   dragon:      {special: around({S: 40, P: 14, E: 36, C: 6, I: 9, A: 10, L: 6}, 2), hp: 12, speed: 0.16, attack: {power: 5, cooldown: 12, type: 'slash'}, ks: 0.94},
   drake:       {special: around({S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5}, 2), hp: 4.5, speed: 0.14, attack: {power: 2.6, cooldown: 15, type: 'slash'}, ks: 0.92},
   spider:      {special: around({S: 8, P: 9, E: 7, C: 0, I: 2, A: 12, L: 4}), hp: 1.1, speed: 0.13, attack: {power: 1, cooldown: 12, type: 'pierce'}, ks: 1.03},
-  stoneworm:   {special: around({S: 18, P: 3, E: 18, C: 0, I: 1, A: 3, L: 3}), hp: 6, speed: 0.06, attack: {power: 2.8, cooldown: 22}, ks: 1.02},
+  stoneworm:   {special: around({S: 18, P: 3, E: 18, C: 0, I: 1, A: 3, L: 3}), hp: 6, speed: 0.06, attack: {power: 2.8, cooldown: 22}, ks: 1.06},
   bat:         {special: around({S: 2, P: 12, E: 2, C: 0, I: 2, A: 13, L: 6}), hp: 0.2, speed: 0.17, attack: {power: 0.35, cooldown: 9, type: 'pierce'}, ks: 1.09},
   salamander:  {special: around({S: 4, P: 7, E: 8, C: 1, I: 2, A: 8, L: 5}), hp: 0.5, speed: 0.12},
   leshy:       {special: around({S: 12, P: 12, E: 14, C: 3, I: 6, A: 4, L: 6}), hp: 3, speed: 0.07, attack: {power: 1.4, cooldown: 16}, resist: {melee: 0.35, ranged: 0.25}, ks: 1.06},
@@ -98,7 +100,7 @@ export const CREATURES = {
   crocodile:   {special: around({S: 14, P: 6, E: 15, C: 1, I: 1, A: 4, L: 3}), hp: 3.6, speed: 0.08, attack: {power: 2.6, cooldown: 20, type: 'pierce'}, ks: 1.01},
   camel:       {special: around({S: 10, P: 5, E: 12, C: 2, I: 2, A: 4, L: 4}), hp: 3, speed: 0.12, attack: {power: 1.6, cooldown: 16}, ks: 1.05},
   scorpion:    {special: around({S: 6, P: 8, E: 7, C: 0, I: 1, A: 10, L: 4}), hp: 0.9, speed: 0.12, attack: {power: 0.8, cooldown: 12, type: 'pierce'}, ks: 1.03},
-  polarbear:   {special: around({S: 15, P: 6, E: 14, C: 2, I: 3, A: 5, L: 4}), hp: 4.2, speed: 0.12, attack: {power: 2.6, cooldown: 16, type: 'slash'}, ks: 0.93},
+  polarbear:   {special: around({S: 15, P: 6, E: 14, C: 2, I: 3, A: 5, L: 4}), hp: 4.2, speed: 0.12, attack: {power: 2.6, cooldown: 16, type: 'slash'}, ks: 0.88},
   seal:        {special: around({S: 5, P: 6, E: 8, C: 1, I: 2, A: 4, L: 5}), hp: 0.8, speed: 0.07},
   sheep:       {special: around({S: 3, P: 5, E: 5, C: 2, I: 1, A: 6, L: 4}), hp: 0.35, speed: 0.12},
 };

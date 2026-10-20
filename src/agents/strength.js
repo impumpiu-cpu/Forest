@@ -40,7 +40,7 @@ export function strengthParts(a, {now = false} = {}) {
   // staying power: health over the share of blows that land and hurt
   // against the average blow: armour and the body's resistance taken over the three kinds of blow
   const kinds = Object.keys(BLOWS), mean = f => kinds.reduce((s, k) => s + f(k), 0) / kinds.length;
-  let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - mean(k => armorAgainst(g, k))) * (1 - mean(k => blockAgainst(g, k))) * (1 - (m.dodge || 0)));
+  let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - mean(k => armorAgainst(g, k))) * (1 - mean(k => (1 - STRENGTH.shotShare) * blockAgainst(g, k) + STRENGTH.shotShare * blockAgainst(g, k, false))) * (1 - (m.dodge || 0)));
   staying /= mean(k => resistOf(sp, k, true));
   if (sp.weakTo?.includes('silver')) staying /= COMBAT.silver.plain;   // against plain weapons
   if (sp.drinks) staying /= 1 - sp.drinks * STRENGTH.drinksWeight;
