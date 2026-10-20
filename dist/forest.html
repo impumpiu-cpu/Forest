@@ -1240,6 +1240,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var EFFECTS = {
     // melee damage grows a little slower than strength: an ogre (14) hits ~2.3× a human (5)
     str: (s) => Math.max(0.2, s.S / NORM) ** 0.8,
+    // the same for a blow struck with agility (a dagger, half of a sword: data/balance/forms.js `scale`)
+    fin: (s) => Math.max(0.2, s.A / NORM) ** 0.8,
     // health: E 5 → ×1, E 10 → ×1.4, E 14 → ×1.72
     hp: (s) => Math.max(0.3, 0.6 + 0.08 * s.E),
     // how hard the cold bites
@@ -1274,10 +1276,10 @@ dd.q4{color:#c58cff;font-weight:600}
   var CREATURES = {
     // beasts of data/species.js
     hare: { special: around({ S: 1, P: 8, E: 2, C: 1, I: 1, A: 9, L: 5 }), hp: 0.12, speed: 0.17 },
-    wolf: { special: around({ S: 6, P: 10, E: 7, C: 2, I: 3, A: 8, L: 4 }), hp: 0.8, speed: 0.14, attack: { power: 0.85, cooldown: 14 }, ks: 1.06 },
+    wolf: { special: around({ S: 6, P: 10, E: 7, C: 2, I: 3, A: 8, L: 4 }), hp: 0.8, speed: 0.14, attack: { power: 0.85, cooldown: 14, type: "pierce" }, ks: 1.06 },
     deer: { special: around({ S: 4, P: 8, E: 5, C: 2, I: 1, A: 8, L: 4 }), hp: 0.45, speed: 0.15 },
     fox: { special: around({ S: 2, P: 9, E: 3, C: 2, I: 3, A: 9, L: 6 }), hp: 0.15, speed: 0.18 },
-    boar: { special: around({ S: 8, P: 4, E: 9, C: 1, I: 1, A: 4, L: 3 }), hp: 1.3, speed: 0.12, attack: { power: 1.45, cooldown: 14 }, ks: 1.03 },
+    boar: { special: around({ S: 8, P: 4, E: 9, C: 1, I: 1, A: 4, L: 3 }), hp: 1.3, speed: 0.12, attack: { power: 1.45, cooldown: 14, type: "pierce" }, ks: 1.03 },
     rat: { special: around({ S: 1, P: 6, E: 1, C: 0, I: 2, A: 7, L: 7 }), hp: 0.05, speed: 0.15 },
     mule: { special: around({ S: 10, P: 4, E: 10, C: 2, I: 2, A: 3, L: 4 }), hp: 3.2, speed: 0.11, attack: { power: 1.9, cooldown: 16 }, ks: 1.04 },
     goat: { special: around({ S: 3, P: 6, E: 5, C: 2, I: 2, A: 8, L: 5 }), hp: 0.3, speed: 0.14 },
@@ -1289,45 +1291,45 @@ dd.q4{color:#c58cff;font-weight:600}
     darkelf: { special: { S: [1, 7], P: [6, 13], E: [2, 8], C: [2, 10], I: [4, 12], A: [5, 13], L: [1, 10] }, hp: 0.9, speed: 0.14, attack: { power: 0.9, cooldown: 11 }, ks: 1.03 },
     dwarf: { special: { S: [4, 12], P: [3, 10], E: [6, 14], C: [1, 8], I: [3, 11], A: [1, 8], L: [1, 10] }, peoples: { hill: { C: 1, E: -1 }, deep: { P: 2, E: 1, C: -1, A: 0, S: -1 } }, hp: 1.15, speed: 0.115, attack: { power: 1.1, cooldown: 12 }, ks: 0.99 },
     orc: { special: { S: [5, 13], P: [2, 9], E: [5, 13], C: [1, 9], I: [1, 8], A: [3, 10], L: [1, 9] }, hp: 1.15, speed: 0.13, attack: { power: 1.2, cooldown: 12 }, ks: 1 },
-    goblin: { special: { S: [1, 5], P: [4, 11], E: [1, 7], C: [1, 8], I: [2, 11], A: [5, 12], L: [3, 11] }, hp: 0.65, speed: 0.135, attack: { power: 0.7, cooldown: 10 }, ks: 1.05 },
+    goblin: { special: { S: [1, 5], P: [4, 11], E: [1, 7], C: [1, 8], I: [2, 11], A: [5, 12], L: [3, 11] }, hp: 0.65, speed: 0.135, attack: { power: 0.7, cooldown: 10 }, ks: 1.01 },
     ogre: { special: { S: [10, 15], P: [1, 6], E: [8, 14], C: [1, 6], I: [1, 5], A: [1, 5], L: [1, 8] }, hp: 1.8, speed: 0.115, attack: { power: 1.6, cooldown: 16 }, ks: 0.96 },
     troll: { special: { S: [7, 13], P: [3, 10], E: [6, 13], C: [1, 7], I: [1, 7], A: [4, 11], L: [1, 8] }, peoples: { swamp: { E: 1, A: -1 }, ice: { S: 1, I: -1 } }, hp: 1.5, speed: 0.135, attack: { power: 1.5, cooldown: 13 }, ks: 0.98 },
     gnoll: { special: { S: [4, 11], P: [5, 12], E: [5, 12], C: [1, 6], I: [1, 7], A: [4, 11], L: [1, 8] }, hp: 1.05, speed: 0.14, attack: { power: 1.2, cooldown: 12 }, ks: 1.02 },
     // raid monsters (data/monsters.js)
-    demon: { special: { S: [12, 16], P: [8, 12], E: [12, 16], C: [2, 6], I: [5, 9], A: [8, 12], L: [2, 6] }, hp: 3.2, speed: 0.12, attack: { power: 2.2, cooldown: 13 }, ks: 0.95 },
-    zombie: { special: { S: [5, 8], P: [1, 3], E: [7, 10], C: [0, 0], I: [0, 1], A: [1, 3], L: [0, 0] }, hp: 0.9, speed: 0.075, attack: { power: 0.9, cooldown: 18 }, ks: 0.99 },
-    skeleton: { special: { S: [4, 7], P: [2, 4], E: [5, 8], C: [0, 0], I: [0, 1], A: [3, 6], L: [0, 0] }, hp: 0.7, speed: 0.11, attack: { power: 1, cooldown: 14 }, ks: 1.03 },
-    upyr: { special: { S: [5, 10], P: [5, 9], E: [6, 10], C: [0, 2], I: [1, 3], A: [5, 10], L: [1, 4] }, hp: 0.95, speed: 0.155, attack: { power: 1.15, cooldown: 12 }, ks: 0.94 },
-    vampire: { special: { S: [9, 12], P: [8, 12], E: [9, 12], C: [8, 13], I: [8, 13], A: [8, 12], L: [3, 8] }, hp: 1.4, speed: 0.15, attack: { power: 1.6, cooldown: 11 }, ks: 1.03 },
+    demon: { special: { S: [12, 16], P: [8, 12], E: [12, 16], C: [2, 6], I: [5, 9], A: [8, 12], L: [2, 6] }, hp: 3.2, speed: 0.12, attack: { power: 2.2, cooldown: 13, type: "slash" }, resist: { ranged: 0.6 }, ks: 0.86 },
+    zombie: { special: { S: [5, 8], P: [1, 3], E: [7, 10], C: [0, 0], I: [0, 1], A: [1, 3], L: [0, 0] }, hp: 0.9, speed: 0.075, attack: { power: 0.9, cooldown: 18 }, ks: 1.03 },
+    skeleton: { special: { S: [4, 7], P: [2, 4], E: [5, 8], C: [0, 0], I: [0, 1], A: [3, 6], L: [0, 0] }, hp: 0.7, speed: 0.11, attack: { power: 1, cooldown: 14 }, resist: { pierce: 0.5, slash: 0.8, blunt: 1.3 }, ks: 1.03 },
+    upyr: { special: { S: [5, 10], P: [5, 9], E: [6, 10], C: [0, 2], I: [1, 3], A: [5, 10], L: [1, 4] }, hp: 0.95, speed: 0.155, attack: { power: 1.15, cooldown: 12, type: "pierce" }, ks: 0.94 },
+    vampire: { special: { S: [9, 12], P: [8, 12], E: [9, 12], C: [8, 13], I: [8, 13], A: [8, 12], L: [3, 8] }, hp: 1.4, speed: 0.15, attack: { power: 1.6, cooldown: 11, type: "pierce" }, ks: 0.99 },
     necromancer: { special: { S: [1, 10], P: [1, 10], E: [1, 10], C: [2, 8], I: [7, 10], A: [1, 10], L: [1, 10] }, hp: 0.9, speed: 0.13, attack: { power: 1, cooldown: 12 }, ks: 1.04 },
     // the bestiary (data/bestiary.js)
-    varg: { special: around({ S: 10, P: 10, E: 9, C: 2, I: 4, A: 9, L: 4 }), hp: 1.5, speed: 0.15, attack: { power: 1.35, cooldown: 13 }, ks: 1.06 },
-    bear: { special: around({ S: 14, P: 6, E: 13, C: 2, I: 3, A: 5, L: 4 }), hp: 3.6, speed: 0.12, attack: { power: 2.4, cooldown: 16 }, ks: 1.03 },
-    lynx: { special: around({ S: 5, P: 11, E: 5, C: 2, I: 3, A: 12, L: 5 }), hp: 0.6, speed: 0.16, attack: { power: 1, cooldown: 11 }, ks: 1.05 },
+    varg: { special: around({ S: 10, P: 10, E: 9, C: 2, I: 4, A: 9, L: 4 }), hp: 1.5, speed: 0.15, attack: { power: 1.35, cooldown: 13, type: "pierce" }, ks: 1.06 },
+    bear: { special: around({ S: 14, P: 6, E: 13, C: 2, I: 3, A: 5, L: 4 }), hp: 3.6, speed: 0.12, attack: { power: 2.4, cooldown: 16, type: "slash" }, ks: 0.94 },
+    lynx: { special: around({ S: 5, P: 11, E: 5, C: 2, I: 3, A: 12, L: 5 }), hp: 0.6, speed: 0.16, attack: { power: 1, cooldown: 11, type: "slash" }, ks: 1 },
     elk: { special: around({ S: 11, P: 6, E: 12, C: 2, I: 2, A: 6, L: 4 }), hp: 3.4, speed: 0.13, attack: { power: 2, cooldown: 16 }, ks: 1.03 },
-    hyena: { special: around({ S: 6, P: 10, E: 8, C: 1, I: 3, A: 9, L: 5 }), hp: 0.7, speed: 0.15, attack: { power: 0.9, cooldown: 12 }, ks: 1.06 },
-    toad: { special: around({ S: 7, P: 6, E: 9, C: 1, I: 1, A: 4, L: 4 }), hp: 1, speed: 0.06, attack: { power: 1.2, cooldown: 20 }, ks: 0.94 },
-    griffin: { special: around({ S: 16, P: 14, E: 13, C: 4, I: 5, A: 13, L: 5 }), hp: 2.4, speed: 0.18, attack: { power: 1.9, cooldown: 13 }, ks: 1.04 },
-    wyvern: { special: around({ S: 15, P: 10, E: 14, C: 2, I: 3, A: 10, L: 4 }), hp: 2.8, speed: 0.15, attack: { power: 1.7, cooldown: 14 }, ks: 1.04 },
-    dragon: { special: around({ S: 40, P: 14, E: 36, C: 6, I: 9, A: 10, L: 6 }, 2), hp: 12, speed: 0.16, attack: { power: 5, cooldown: 12 }, ks: 1.02 },
-    drake: { special: around({ S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5 }, 2), hp: 4.5, speed: 0.14, attack: { power: 2.6, cooldown: 15 }, ks: 1.03 },
-    spider: { special: around({ S: 8, P: 9, E: 7, C: 0, I: 2, A: 12, L: 4 }), hp: 1.1, speed: 0.13, attack: { power: 1, cooldown: 12 }, ks: 1.03 },
+    hyena: { special: around({ S: 6, P: 10, E: 8, C: 1, I: 3, A: 9, L: 5 }), hp: 0.7, speed: 0.15, attack: { power: 0.9, cooldown: 12, type: "pierce" }, ks: 1.06 },
+    toad: { special: around({ S: 7, P: 6, E: 9, C: 1, I: 1, A: 4, L: 4 }), hp: 1, speed: 0.06, attack: { power: 1.2, cooldown: 20 }, ks: 0.98 },
+    griffin: { special: around({ S: 16, P: 14, E: 13, C: 4, I: 5, A: 13, L: 5 }), hp: 2.4, speed: 0.18, attack: { power: 1.9, cooldown: 13, type: "slash" }, ks: 0.96 },
+    wyvern: { special: around({ S: 15, P: 10, E: 14, C: 2, I: 3, A: 10, L: 4 }), hp: 2.8, speed: 0.15, attack: { power: 1.7, cooldown: 14, type: "slash" }, ks: 0.97 },
+    dragon: { special: around({ S: 40, P: 14, E: 36, C: 6, I: 9, A: 10, L: 6 }, 2), hp: 12, speed: 0.16, attack: { power: 5, cooldown: 12, type: "slash" }, ks: 0.94 },
+    drake: { special: around({ S: 22, P: 11, E: 20, C: 3, I: 4, A: 9, L: 5 }, 2), hp: 4.5, speed: 0.14, attack: { power: 2.6, cooldown: 15, type: "slash" }, ks: 0.92 },
+    spider: { special: around({ S: 8, P: 9, E: 7, C: 0, I: 2, A: 12, L: 4 }), hp: 1.1, speed: 0.13, attack: { power: 1, cooldown: 12, type: "pierce" }, ks: 1.03 },
     stoneworm: { special: around({ S: 18, P: 3, E: 18, C: 0, I: 1, A: 3, L: 3 }), hp: 6, speed: 0.06, attack: { power: 2.8, cooldown: 22 }, ks: 1.02 },
-    bat: { special: around({ S: 2, P: 12, E: 2, C: 0, I: 2, A: 13, L: 6 }), hp: 0.2, speed: 0.17, attack: { power: 0.35, cooldown: 9 }, ks: 1.09 },
+    bat: { special: around({ S: 2, P: 12, E: 2, C: 0, I: 2, A: 13, L: 6 }), hp: 0.2, speed: 0.17, attack: { power: 0.35, cooldown: 9, type: "pierce" }, ks: 1.09 },
     salamander: { special: around({ S: 4, P: 7, E: 8, C: 1, I: 2, A: 8, L: 5 }), hp: 0.5, speed: 0.12 },
-    leshy: { special: around({ S: 12, P: 12, E: 14, C: 3, I: 6, A: 4, L: 6 }), hp: 3, speed: 0.07, attack: { power: 1.4, cooldown: 16 }, ks: 1.01 },
-    rusalka: { special: around({ S: 5, P: 9, E: 6, C: 12, I: 5, A: 9, L: 5 }), hp: 1, speed: 0.11, attack: { power: 1, cooldown: 14 }, ks: 1.03 },
+    leshy: { special: around({ S: 12, P: 12, E: 14, C: 3, I: 6, A: 4, L: 6 }), hp: 3, speed: 0.07, attack: { power: 1.4, cooldown: 16 }, resist: { melee: 0.35, ranged: 0.25 }, ks: 1.06 },
+    rusalka: { special: around({ S: 5, P: 9, E: 6, C: 12, I: 5, A: 9, L: 5 }), hp: 1, speed: 0.11, attack: { power: 1, cooldown: 14, type: "slash" }, ks: 0.95 },
     kikimora: { special: around({ S: 3, P: 9, E: 5, C: 2, I: 5, A: 10, L: 7 }), hp: 0.5, speed: 0.13 },
-    vodyanoy: { special: around({ S: 11, P: 8, E: 13, C: 6, I: 5, A: 5, L: 5 }), hp: 2.4, speed: 0.08, attack: { power: 1.8, cooldown: 18 }, ks: 0.99 },
-    poludnitsa: { special: around({ S: 6, P: 11, E: 7, C: 10, I: 6, A: 9, L: 5 }), hp: 1.2, speed: 0.1, attack: { power: 1.1, cooldown: 15 }, ks: 1.03 },
+    vodyanoy: { special: around({ S: 11, P: 8, E: 13, C: 6, I: 5, A: 5, L: 5 }), hp: 2.4, speed: 0.08, attack: { power: 1.8, cooldown: 18 }, resist: { melee: 0.5, ranged: 0.4 }, ks: 1.04 },
+    poludnitsa: { special: around({ S: 6, P: 11, E: 7, C: 10, I: 6, A: 9, L: 5 }), hp: 1.2, speed: 0.1, attack: { power: 1.1, cooldown: 15, type: "slash" }, resist: { melee: 0.3, ranged: 0.3 }, ks: 0.9 },
     horse: { special: around({ S: 9, P: 7, E: 9, C: 3, I: 2, A: 7, L: 5 }), hp: 2.4, speed: 0.17 },
     aurochs: { special: around({ S: 13, P: 5, E: 13, C: 1, I: 1, A: 4, L: 4 }), hp: 4.2, speed: 0.12, attack: { power: 2.3, cooldown: 17 }, ks: 1.04 },
     saiga: { special: around({ S: 4, P: 8, E: 6, C: 1, I: 1, A: 9, L: 5 }), hp: 0.5, speed: 0.19 },
-    lion: { special: around({ S: 12, P: 10, E: 11, C: 3, I: 3, A: 9, L: 4 }), hp: 3, speed: 0.15, attack: { power: 2.2, cooldown: 13 }, ks: 1.06 },
-    crocodile: { special: around({ S: 14, P: 6, E: 15, C: 1, I: 1, A: 4, L: 3 }), hp: 3.6, speed: 0.08, attack: { power: 2.6, cooldown: 20 }, ks: 1.05 },
+    lion: { special: around({ S: 12, P: 10, E: 11, C: 3, I: 3, A: 9, L: 4 }), hp: 3, speed: 0.15, attack: { power: 2.2, cooldown: 13, type: "slash" }, ks: 0.92 },
+    crocodile: { special: around({ S: 14, P: 6, E: 15, C: 1, I: 1, A: 4, L: 3 }), hp: 3.6, speed: 0.08, attack: { power: 2.6, cooldown: 20, type: "pierce" }, ks: 1.05 },
     camel: { special: around({ S: 10, P: 5, E: 12, C: 2, I: 2, A: 4, L: 4 }), hp: 3, speed: 0.12, attack: { power: 1.6, cooldown: 16 }, ks: 1.05 },
-    scorpion: { special: around({ S: 6, P: 8, E: 7, C: 0, I: 1, A: 10, L: 4 }), hp: 0.9, speed: 0.12, attack: { power: 0.8, cooldown: 12 }, ks: 1.03 },
-    polarbear: { special: around({ S: 15, P: 6, E: 14, C: 2, I: 3, A: 5, L: 4 }), hp: 4.2, speed: 0.12, attack: { power: 2.6, cooldown: 16 }, ks: 1.04 },
+    scorpion: { special: around({ S: 6, P: 8, E: 7, C: 0, I: 1, A: 10, L: 4 }), hp: 0.9, speed: 0.12, attack: { power: 0.8, cooldown: 12, type: "pierce" }, ks: 1.03 },
+    polarbear: { special: around({ S: 15, P: 6, E: 14, C: 2, I: 3, A: 5, L: 4 }), hp: 4.2, speed: 0.12, attack: { power: 2.6, cooldown: 16, type: "slash" }, ks: 0.93 },
     seal: { special: around({ S: 5, P: 6, E: 8, C: 1, I: 2, A: 4, L: 5 }), hp: 0.8, speed: 0.07 },
     sheep: { special: around({ S: 3, P: 5, E: 5, C: 2, I: 1, A: 6, L: 4 }), hp: 0.35, speed: 0.12 }
   };
@@ -1337,6 +1339,8 @@ dd.q4{color:#c58cff;font-weight:600}
     const out = { ...entry, special: row.special, hp: row.hp, speed: row.speed };
     if (row.attack) out.attack = { ...row.attack };
     else delete out.attack;
+    if (row.resist) out.resist = { ...row.resist };
+    else delete out.resist;
     if (row.peoples && entry.peoples) out.peoples = entry.peoples.map((p) => row.peoples[p.id] ? { ...p, shift: row.peoples[p.id] } : p);
     if (row.ks != null) out.ks = row.ks;
     else delete out.ks;
@@ -1616,7 +1620,6 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 900,
       fearHeat: 900,
       look: { shape: "spirit", size: 0.9, color: "#c8321e" },
-      resist: { ranged: 0.6 },
       weakTo: ["silver"],
       killMessage: (name) => `\u0414\u0435\u043C\u043E\u043D \u0440\u0430\u0437\u043E\u0440\u0432\u0430\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`
     },
@@ -1648,7 +1651,6 @@ dd.q4{color:#c58cff;font-weight:600}
       heatHarm: 55,
       inventory: true,
       look: { shape: "person", size: 0.58, color: "#d8d2bd", skin: "#8f8a78" },
-      resist: { ranged: 0.45 },
       killMessage: (name) => `\u041A\u043E\u0441\u0442\u044F\u043A\u0438 \u0437\u0430\u0440\u0443\u0431\u0438\u043B\u0438 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430: <b>${name}</b>.`
     },
     {
@@ -2014,7 +2016,6 @@ dd.q4{color:#c58cff;font-weight:600}
       respawn: 8,
       habitat: { forest: "usual", taiga: "usual", jungle: "rare" },
       look: { shape: "spirit", size: 0.86, color: "#4f6b3a" },
-      resist: { melee: 0.35, ranged: 0.25 },
       yields: { herbs: 4, wood: 6 },
       killMessage: (name) => `\u041B\u0435\u0448\u0438\u0439 \u0437\u0430\u0434\u0430\u0432\u0438\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430 \u0432 \u0447\u0430\u0449\u0435: <b>${name}</b>.`,
       spirit: { home: "forest", aura: "astray", radius: 7, every: 120, veil: 4, regen: 4, keepOff: 16, crowd: 3 }
@@ -2072,7 +2073,6 @@ dd.q4{color:#c58cff;font-weight:600}
       respawn: 10,
       habitat: { water: "usual", swamp: "rare" },
       look: { shape: "spirit", size: 0.9, color: "#4f7a6a" },
-      resist: { melee: 0.5, ranged: 0.4 },
       yields: { fish: 6, slime: 2 },
       killMessage: (name) => `\u0412\u043E\u0434\u044F\u043D\u043E\u0439 \u0443\u0442\u0430\u0449\u0438\u043B \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430 \u043D\u0430 \u0434\u043D\u043E: <b>${name}</b>.`,
       spirit: { home: "shore", aura: "lure", radius: 9, night: true, veil: 0, keepOff: 10, dives: true, regen: 3 }
@@ -2093,7 +2093,6 @@ dd.q4{color:#c58cff;font-weight:600}
       respawn: 7,
       habitat: { meadow: "usual", steppe: "usual", savanna: "rare" },
       look: { shape: "spirit", size: 0.7, color: "#e8d9a0" },
-      resist: { melee: 0.3, ranged: 0.3 },
       yields: { herbs: 3, fiber: 2 },
       killMessage: (name) => `\u041F\u043E\u043B\u0443\u0434\u0435\u043D\u043D\u0438\u0446\u0430 \u0441\u0432\u0435\u043B\u0430 \u043F\u043E\u0441\u0435\u043B\u0435\u043D\u0446\u0430 \u0432 \u043F\u043E\u043B\u0435: <b>${name}</b>.`,
       spirit: { home: "grass", aura: "astray", radius: 6, every: 100, veil: 3, regen: 2, keepOff: 12, crowd: 3 }
@@ -6352,6 +6351,8 @@ dd.q4{color:#c58cff;font-weight:600}
   var FORMS = {
     // ── one-handed
     club: {
+      blow: "blunt",
+      scale: { S: 1 },
       slot: "hand",
       hands: 1,
       of: ["wood"],
@@ -6366,6 +6367,8 @@ dd.q4{color:#c58cff;font-weight:600}
       glyph: "club"
     },
     spear: {
+      blow: "pierce",
+      scale: { S: 0.5, A: 0.3 },
       slot: "hand",
       hands: 1,
       of: ["bone", "metal"],
@@ -6381,6 +6384,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // an axe is a tool first: in a fight it falls a little short of a spear of its tier
     axe: {
+      blow: "slash",
+      scale: { S: 1 },
       slot: "hand",
       hands: 1,
       of: ["bone", "metal"],
@@ -6397,6 +6402,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // quick, but short: a dagger of a tier falls short of its spear; a silver one is soft and only for what fears silver
     dagger: {
+      blow: "pierce",
+      scale: { A: 1 },
       slot: "hand",
       hands: 1,
       of: ["metal", "silver"],
@@ -6410,6 +6417,8 @@ dd.q4{color:#c58cff;font-weight:600}
       glyph: "dagger"
     },
     sword: {
+      blow: "slash",
+      scale: { S: 0.5, A: 0.5 },
       slot: "hand",
       hands: 1,
       of: ["metal"],
@@ -6423,6 +6432,21 @@ dd.q4{color:#c58cff;font-weight:600}
       names: { iron: ["\u0416\u0435\u043B\u0435\u0437\u043D\u044B\u0439 \u043C\u0435\u0447", "\u043C\u0435\u0447"] },
       name: (m) => [`${cap(m.adj.m)} \u043C\u0435\u0447`, `${m.short} \u043C\u0435\u0447`],
       glyph: "sword"
+    },
+    // the metal answer to armour: what a cut slides off, a blow of a mace or a hammer goes through
+    mace: {
+      blow: "blunt",
+      scale: { S: 1 },
+      slot: "hand",
+      hands: 1,
+      of: ["metal"],
+      ref: "iron",
+      melee: { dmg: 1.85, cd: 12 },
+      dur: 150,
+      parts: { material: 3, wood: 1 },
+      work: 800,
+      name: (m) => [`${cap(m.adj.f)} \u0431\u0443\u043B\u0430\u0432\u0430`, `${m.short} \u0431\u0443\u043B\u0430\u0432\u0430`],
+      glyph: "club"
     },
     shield: {
       slot: "hand",
@@ -6440,6 +6464,8 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // ── two-handed: each makes up for the shield it leaves no hand for
     staff: {
+      blow: "blunt",
+      scale: { S: 0.5, A: 0.5 },
       slot: "hand",
       hands: 2,
       of: ["wood"],
@@ -6456,6 +6482,8 @@ dd.q4{color:#c58cff;font-weight:600}
       glyph: "staff"
     },
     maul: {
+      blow: "blunt",
+      scale: { S: 1 },
       slot: "hand",
       hands: 2,
       of: ["wood"],
@@ -6470,14 +6498,29 @@ dd.q4{color:#c58cff;font-weight:600}
       name: (m) => [`${cap(m.adj.m)} \u043C\u043E\u043B\u043E\u0442`, `${m.short} \u043C\u043E\u043B\u043E\u0442`],
       glyph: "maul"
     },
+    warhammer: {
+      blow: "blunt",
+      scale: { S: 1 },
+      slot: "hand",
+      hands: 2,
+      of: ["metal"],
+      ref: "iron",
+      melee: { dmg: 3.1, cd: 14 },
+      dur: 160,
+      parts: { material: 4, wood: 2 },
+      work: 1e3,
+      name: (m) => [`${cap(m.adj.m)} \u0431\u043E\u0435\u0432\u043E\u0439 \u043C\u043E\u043B\u043E\u0442`, `${m.short} \u043C\u043E\u043B\u043E\u0442`],
+      glyph: "maul"
+    },
     // bows and slings lose a duel to a club on purpose: they shoot from afar while others hold the line
     bow: {
+      blow: "blunt",
       slot: "hand",
       hands: 2,
       of: ["wood"],
       ref: "wood",
       melee: { dmg: 0.6, cd: 14 },
-      ranged: { dmg: 1.7, range: 7, cd: 22, ammo: "arrows" },
+      ranged: { dmg: 1.7, range: 7, cd: 22, ammo: "arrows", type: "pierce" },
       dur: 90,
       parts: { material: 3, leather: 1, rope: 1 },
       work: 800,
@@ -6488,12 +6531,13 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // stones lie everywhere: no ammo, but the sling is far weaker and shorter; a quarry gives better stones
     sling: {
+      blow: "blunt",
       slot: "hand",
       hands: 2,
       of: ["hide"],
       ref: "hide",
       melee: { dmg: 0.5, cd: 14 },
-      ranged: { dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: "slingStones" },
+      ranged: { dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: "slingStones", type: "blunt" },
       dur: 60,
       parts: { material: 1 },
       work: 600,
@@ -6519,6 +6563,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // ── body: clothing is warm before it is armour
     garment: {
+      vs: { pierce: 1, slash: 0.9, blunt: 1.1 },
       slot: "body",
       of: ["cloth"],
       ref: "bast",
@@ -6533,6 +6578,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // hides sewn hair-in — the winter coat; lined with fox fur — the warmest thing the outpost makes
     coat: {
+      vs: { pierce: 0.9, slash: 1.1, blunt: 1.1 },
       slot: "body",
       of: ["fur"],
       ref: "hide",
@@ -6547,6 +6593,7 @@ dd.q4{color:#c58cff;font-weight:600}
       name: (m) => [`${cap(m.adj.m)} \u0442\u0443\u043B\u0443\u043F`, `${m.short} \u0442\u0443\u043B\u0443\u043F`]
     },
     jerkin: {
+      vs: { pierce: 0.9, slash: 1.1, blunt: 1 },
       slot: "body",
       of: ["leather"],
       ref: "leather",
@@ -6561,6 +6608,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // small plates laced onto a leather coat: bone ones are the outpost's first armour, iron ones a forge's
     lamellar: {
+      vs: { pierce: 1, slash: 1.15, blunt: 0.8 },
       slot: "body",
       of: ["bone", "metal"],
       ref: "iron",
@@ -6577,6 +6625,7 @@ dd.q4{color:#c58cff;font-weight:600}
     },
     // imperial armour: the outpost cannot make it, only buy it from a trader (or find it)
     scale: {
+      vs: { pierce: 1.1, slash: 1.1, blunt: 0.75 },
       slot: "body",
       of: ["metal"],
       ref: "iron",
@@ -6593,6 +6642,7 @@ dd.q4{color:#c58cff;font-weight:600}
       colors: { iron: "#9aa0a0" }
     },
     mail: {
+      vs: { pierce: 0.85, slash: 1.25, blunt: 0.8 },
       slot: "body",
       of: ["metal"],
       ref: "iron",
@@ -6824,8 +6874,11 @@ dd.q4{color:#c58cff;font-weight:600}
     if (form.slot === "body") d.color = form.colors?.[matId] ?? mat.color;
     if (form.melee) d.melee = { dmg: +(form.melee.dmg * r("dmg")).toFixed(3), cd: Math.max(4, Math.round(form.melee.cd * r("swing"))) };
     if (form.ranged) d.ranged = { ...form.ranged, dmg: +(form.ranged.dmg * r("dmg")).toFixed(3) };
+    if (form.blow) d.blow = form.blow;
+    if (form.scale) d.scale = { ...form.scale };
     if (form.block) d.block = +(form.block * r("block")).toFixed(3);
     if (form.armor) d.armor = +(form.armor * r("armor")).toFixed(3);
+    if (form.vs) d.vs = { ...form.vs };
     if (form.warmth) d.warmth = +Math.min(0.98, form.warmth * r("warmth")).toFixed(3);
     if (form.speed) d.speed = form.speed < 1 ? +(1 - (1 - form.speed) * r("weight")).toFixed(3) : form.speed;
     if (form.tool) d.tool = Object.fromEntries(Object.entries(form.tool).map(([job, m]) => [job, +(1 + (m - 1) * r("work")).toFixed(3)]));
@@ -6883,6 +6936,11 @@ dd.q4{color:#c58cff;font-weight:600}
     silver: { bane: 2.5, plain: 0.5 }
   };
   var CAPS = { block: 0.75, armor: 0.8, warmth: 0.9 };
+  var BLOWS = { pierce: "\u043A\u043E\u043B\u044E\u0449\u0438\u0439", slash: "\u0440\u0443\u0431\u044F\u0449\u0438\u0439", blunt: "\u0434\u0440\u043E\u0431\u044F\u0449\u0438\u0439" };
+  var DEFAULT_BLOW = { melee: "blunt", ranged: "pierce" };
+  var ARMOR_VS_CAP = 0.85;
+  var DEFAULT_SCALE = { S: 1 };
+  var SCALE_MODS = { S: "str", A: "fin" };
 
   // src/agents/equipment.js
   var finer = /* @__PURE__ */ new Map();
@@ -6959,12 +7017,13 @@ dd.q4{color:#c58cff;font-weight:600}
   function recalcGear(a) {
     const sp = SPECIES.get(a.species), base = sp.attack || { power: 1, cooldown: 12 };
     const g3 = {
-      melee: { dmg: base.power, cd: base.cooldown, item: null },
+      melee: { dmg: base.power, cd: base.cooldown, item: null, type: base.type || DEFAULT_BLOW.melee, scale: null },
       ranged: null,
       rangedReady: false,
       block: 0,
       blockItem: null,
       armor: 0,
+      armorVs: null,
       warmth: 0,
       speed: 1,
       tool: {},
@@ -6977,7 +7036,7 @@ dd.q4{color:#c58cff;font-weight:600}
     }
     for (const it of handItems(a)) {
       const d = def(it);
-      if (d.melee && d.melee.dmg > (g3.melee.item ? def(g3.melee.item).melee.dmg : 0)) g3.melee = { dmg: d.melee.dmg, cd: d.melee.cd, item: it };
+      if (d.melee && d.melee.dmg > (g3.melee.item ? def(g3.melee.item).melee.dmg : 0)) g3.melee = { dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null };
       if (d.ranged && (!g3.ranged || d.ranged.dmg > g3.ranged.dmg)) g3.ranged = { ...d.ranged, item: it };
       if ((d.block || 0) > g3.block) {
         g3.block = d.block;
@@ -6990,6 +7049,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (body) {
       const d = def(body);
       g3.armor = d.armor || 0;
+      g3.armorVs = d.vs || null;
       g3.warmth = d.warmth || 0;
       if (d.speed) g3.speed *= d.speed;
     }
@@ -7061,11 +7121,19 @@ dd.q4{color:#c58cff;font-weight:600}
     if (a.equip) a.equip = emptySlots();
     recalcGear(a);
   }
+  function blowStat(a, scale = DEFAULT_SCALE) {
+    let rest = 1, v = 0;
+    for (const [k, wt] of Object.entries(scale || DEFAULT_SCALE)) {
+      rest -= wt;
+      v += wt * (a.mods?.[SCALE_MODS[k]] ?? 1);
+    }
+    return rest + v;
+  }
   var toolUse = (a, job) => JOBS.has(job) && !jobAccess(a, JOBS.get(job)).ok ? 0 : 1;
   function value(a, d, w) {
     const brave = 0.5 + 0.5 * a.mods.bravery;
     let v = 0;
-    if (d.melee) v += (d.melee.dmg - 1) * 0.6 * brave + 0.15;
+    if (d.melee) v += (d.melee.dmg * 12 / d.melee.cd * blowStat(a, d.scale) - 1) * 0.6 * brave + 0.15;
     if (d.silver && d.melee) v += silverWorth(w) * brave;
     if (d.ranged) {
       const boost = d.ranged.boost ? w.mods.best[d.ranged.boost] || 1 : 1;
@@ -8100,7 +8168,7 @@ dd.q4{color:#c58cff;font-weight:600}
     { id: "diligent", label: "\u0443\u0441\u0435\u0440\u0434\u043D\u044B\u0439", group: "work", weight: 1, mods: { work: 1.2 } },
     { id: "lazy", label: "\u043B\u0435\u043D\u0438\u0432\u044B\u0439", group: "work", weight: 1, mods: { work: 0.8 } }
   ]);
-  var BASE_MODS = { bravery: 1, cold: 1, hunger: 1, speed: 1, work: 1, sleep: 1, regen: 1, learn: 1, str: 1, swing: 1, sight: 1, aim: 0, dodge: 0 };
+  var BASE_MODS = { bravery: 1, cold: 1, hunger: 1, speed: 1, work: 1, sleep: 1, regen: 1, learn: 1, str: 1, fin: 1, swing: 1, sight: 1, aim: 0, dodge: 0 };
   var LIKE_RANGE = [1.45, 1.65];
   var DISLIKE_RANGE = [0.45, 0.65];
   var NEUTRAL_RANGE = [0.85, 1.15];
@@ -8208,7 +8276,7 @@ dd.q4{color:#c58cff;font-weight:600}
   WOUNDS.registerAll([
     { id: "grave", label: "\u0442\u044F\u0436\u0451\u043B\u0430\u044F \u0440\u0430\u043D\u0430", note: "\u0437\u0430\u0436\u0438\u0432\u0430\u0435\u0442", days: 4, mods: { speed: 0.85, work: 0.75 } },
     { id: "limp", label: "\u0445\u0440\u043E\u043C\u043E\u0442\u0430", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 3, mods: { speed: 0.85 } },
-    { id: "maimedHand", label: "\u043F\u043E\u043A\u0430\u043B\u0435\u0447\u0435\u043D\u043D\u0430\u044F \u0440\u0443\u043A\u0430", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 3, mods: { work: 0.85, str: 0.85 } },
+    { id: "maimedHand", label: "\u043F\u043E\u043A\u0430\u043B\u0435\u0447\u0435\u043D\u043D\u0430\u044F \u0440\u0443\u043A\u0430", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 3, mods: { work: 0.85, str: 0.85, fin: 0.85 } },
     { id: "chest", label: "\u043F\u0440\u043E\u0431\u0438\u0442\u0430\u044F \u0433\u0440\u0443\u0434\u044C", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, hp: 0.85, mods: { cold: 1.15 } },
     { id: "eye", label: "\u0432\u044B\u0431\u0438\u0442\u044B\u0439 \u0433\u043B\u0430\u0437", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, mods: { sight: 0.8, aim: -0.08 } },
     { id: "dread", label: "\u0441\u0442\u0440\u0430\u0445 \u0441\u043C\u0435\u0440\u0442\u0438", note: "\u043D\u0430 \u0432\u0441\u044E \u0436\u0438\u0437\u043D\u044C", trauma: true, weight: 2, mods: { bravery: -0.3 } }
@@ -8256,7 +8324,7 @@ dd.q4{color:#c58cff;font-weight:600}
   function specialInto(m, a, sp) {
     const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;
     const rel2 = (k) => base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s);
-    for (const k of ["str", "speed", "swing", "learn", "sight", "cold"]) mod(m, k, rel2(k));
+    for (const k of ["str", "fin", "speed", "swing", "learn", "sight", "cold"]) mod(m, k, rel2(k));
     mod(m, "aim", EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
     mod(m, "dodge", Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
     return sp.hp * rel2("hp");
@@ -8291,7 +8359,7 @@ dd.q4{color:#c58cff;font-weight:600}
     a.hp = (a.maxHp || sp.hp) * Math.max(0, Math.min(1, share2));
   }
   var RULE_KEYS = /* @__PURE__ */ new Set(["learn", "aim", "dodge"]);
-  var BODY_VER = 2;
+  var BODY_VER = 3;
   function adoptBody(a) {
     if (!a.mods || a.bodyVer >= 1) return;
     const saved = a.mods, hp = a.hp, maxHp2 = a.maxHp;
@@ -8593,7 +8661,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const sp = SPECIES.get(a.species), g3 = a.gear || recalcGear(a), m = a.mods || {};
     const crit = 1 + critChance(a) * (CRIT.mul - 1);
     const cd = Math.max(COMBAT.minCooldown, Math.round(g3.melee.cd * (m.swing ?? 1)));
-    let melee2 = (BLOW.base + BLOW.spread / 2) * g3.melee.dmg * (m.str ?? 1) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
+    let melee2 = (BLOW.base + BLOW.spread / 2) * g3.melee.dmg * blowStat(a, g3.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
     if (sp.venom) melee2 += sp.venom.dmg * Math.min(1, sp.venom.ticks / cd);
     let shot = 0;
     if (g3.ranged) {
@@ -8601,8 +8669,9 @@ dd.q4{color:#c58cff;font-weight:600}
       shot = (SHOT.base + SHOT.spread / 2) * g3.ranged.dmg * crit * hit / g3.ranged.cd * STRENGTH.rangedWeight;
     }
     const offence = melee2 + shot;
-    let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - (g3.armor || 0)) * (1 - (g3.block || 0)) * (1 - (m.dodge || 0)));
-    if (sp.resist?.melee) staying /= sp.resist.melee;
+    const kinds = Object.keys(BLOWS), mean = (f) => kinds.reduce((s, k) => s + f(k), 0) / kinds.length;
+    let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - mean((k) => armorAgainst(g3, k))) * (1 - (g3.block || 0)) * (1 - (m.dodge || 0)));
+    staying /= mean((k) => resistOf(sp, k, true));
     if (sp.weakTo?.includes("silver")) staying /= COMBAT.silver.plain;
     if (sp.drinks) staying /= 1 - sp.drinks * STRENGTH.drinksWeight;
     return { offence, staying, raw: offence * staying };
@@ -9355,8 +9424,10 @@ dd.q4{color:#c58cff;font-weight:600}
   }
   var MELEE_REACH = COMBAT.reach;
   var reachOf = (a) => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
-  var ensureGear = (a) => a.gear || { melee: { dmg: (SPECIES.get(a.species).attack || { power: 1 }).power, cd: (SPECIES.get(a.species).attack || { cooldown: 12 }).cooldown }, armor: 0, block: 0 };
-  function damage(w, by, t, raw, { melee: melee2 = true } = {}) {
+  var ensureGear = (a) => a.gear || { melee: { dmg: (SPECIES.get(a.species).attack || { power: 1 }).power, cd: (SPECIES.get(a.species).attack || { cooldown: 12 }).cooldown, type: SPECIES.get(a.species).attack?.type || DEFAULT_BLOW.melee }, armor: 0, block: 0 };
+  var armorAgainst = (g3, type) => g3.armorVs && type ? Math.min(ARMOR_VS_CAP, (g3.armor || 0) * (g3.armorVs[type] ?? 1)) : g3.armor || 0;
+  var resistOf = (sp, type, melee2) => sp.resist ? (sp.resist[type] ?? 1) * (sp.resist[melee2 ? "melee" : "ranged"] ?? 1) : 1;
+  function damage(w, by, t, raw, { melee: melee2 = true, type = null } = {}) {
     var _a;
     if (t.downed || t.dead) return "downed";
     const g3 = ensureGear(t);
@@ -9366,8 +9437,8 @@ dd.q4{color:#c58cff;font-weight:600}
       return "dodged";
     }
     const tsp = SPECIES.get(t.species);
-    if (!melee2 && tsp.resist?.ranged) raw *= tsp.resist.ranged;
-    if (melee2 && tsp.resist?.melee) raw *= tsp.resist.melee;
+    type || (type = melee2 ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged);
+    raw *= resistOf(tsp, type, melee2);
     if (melee2 && g3.block && w.rngs.combat() < g3.block) {
       wear(w, t, g3.blockItem);
       t.flash = 3;
@@ -9383,7 +9454,7 @@ dd.q4{color:#c58cff;font-weight:600}
     if (crit) cs.crits++;
     const home = by.faction === "colony" && agentInZone(w, by) ? COMBAT.home : 1;
     const wall = t.faction === "colony" && agentInZone(w, t) ? w.mods.mul.defense : 1;
-    let dmg = raw * home * wall * (1 - (g3.armor || 0));
+    let dmg = raw * home * wall * (1 - armorAgainst(g3, type));
     noteHit(t, by);
     if (g3.armor && t.equip?.body) wear(w, t, t.equip.body);
     t.hp -= dmg;
@@ -9430,7 +9501,7 @@ dd.q4{color:#c58cff;font-weight:600}
     const g3 = ensureGear(a);
     a.cd = Math.max(COMBAT.minCooldown, Math.round(g3.melee.cd * (a.mods?.swing ?? 1)));
     a.flash = 4;
-    damage(w, a, t, (BLOW2.base + w.rngs.combat() * BLOW2.spread) * g3.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g3.melee.item));
+    damage(w, a, t, (BLOW2.base + w.rngs.combat() * BLOW2.spread) * g3.melee.dmg * blowStat(a, g3.melee.scale) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g3.melee.item), { type: g3.melee.type });
     practice(a, "melee", LEARN.blow);
     if (g3.melee.item) wear(w, a, g3.melee.item);
     return true;
@@ -9452,7 +9523,7 @@ dd.q4{color:#c58cff;font-weight:600}
     w.fx.push({ x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? "arrow" : "stone" });
     if (!hit) return "miss";
     const boost = r.boost && a.faction === "colony" ? w.mods.best[r.boost] || 1 : 1;
-    const res = damage(w, a, t, (SHOT2.base + w.rngs.combat() * SHOT2.spread) * r.dmg * boost * silverFactor(t, null), { melee: false });
+    const res = damage(w, a, t, (SHOT2.base + w.rngs.combat() * SHOT2.spread) * r.dmg * boost * silverFactor(t, null), { melee: false, type: r.type || DEFAULT_BLOW.ranged });
     return t.dead ? "kill" : res === "blocked" || res === "dodged" ? "miss" : "hit";
   }
 
@@ -21437,7 +21508,7 @@ dd.q4{color:#c58cff;font-weight:600}
 
   // src/version.js
   var VERSION = "0.59.0 Campaign \xB7 19.10.2026";
-  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 4559afc" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
+  var BUILD = true ? "\u0441\u0431\u043E\u0440\u043A\u0430 4556ebd" : "\u0438\u0441\u0445\u043E\u0434\u043D\u0438\u043A\u0438";
 
   // src/atlas/save.js
   var WORLD_KIND = "forest-world";

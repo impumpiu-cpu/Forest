@@ -10,7 +10,7 @@
 //   mindless  — walks into fire, never flees, goes straight for the living instead of the stores
 //   rots      — health lost per tick in warmth (above 12 °C); `sun` — extra loss in daylight
 //   drinks    — share of the damage it deals that heals it (blood)
-//   resist    — damage multipliers by kind: {ranged: 0.5}
+//   (resist — what blows do to its body — lives in data/balance/creatures.js with its other numbers)
 //   weakTo    — ['silver']: plain weapons barely hurt it (agents/combat.js)
 //   undead    — no needs, no fear, the rot: a necromancer steers it (`a.master`)
 //   kind      — 'undead' (data/species.js KINDS); the necromancer is a race, a human gone wrong
@@ -24,7 +24,7 @@ export const MONSTERS = [
   // seams (atlas/lairs.js `rift`), few and far from the colony. Fire-born: no fire frightens or burns one.
   {id: 'demon', kind: 'fiend', label: 'демон', labelAcc: 'демона', plural: 'демоны', mind: 'semi', fiend: true,
     needs: [], heatHarm: 900, fearHeat: 900, look: {shape: 'spirit', size: 0.9, color: '#c8321e'},
-    resist: {ranged: 0.6}, weakTo: ['silver'],
+    weakTo: ['silver'],
     killMessage: name => `Демон разорвал поселенца: <b>${name}</b>.`},
 
   {id: 'zombie', kind: 'undead', label: 'мертвяк', labelAcc: 'мертвяка', plural: 'мертвяки', mind: 'beast', undead: true, mindless: true,
@@ -34,7 +34,6 @@ export const MONSTERS = [
 
   {id: 'skeleton', kind: 'undead', label: 'костяк', labelAcc: 'костяка', plural: 'костяки', mind: 'beast', undead: true, mindless: true,
     needs: [], heatHarm: 55, inventory: true, look: {shape: 'person', size: 0.58, color: '#d8d2bd', skin: '#8f8a78'},
-    resist: {ranged: 0.45},
     killMessage: name => `Костяки зарубили поселенца: <b>${name}</b>.`},
 
   {id: 'upyr', kind: 'undead', label: 'упырь', labelAcc: 'упыря', plural: 'упыри', mind: 'semi', undead: true,

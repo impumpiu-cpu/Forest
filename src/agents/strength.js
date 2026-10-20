@@ -16,7 +16,9 @@ import {STATS} from '../data/special.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {critChance} from './wounds.js';
 import {createAgent, maxHp} from './agent.js';
-import {dress, recalcGear} from './equipment.js';
+import {dress, recalcGear, blowStat} from './equipment.js';
+import {armorAgainst, resistOf} from './combat.js';
+import {BLOWS} from '../data/balance/combat.js';
 import {refreshBody} from './special.js';
 
 const {blow: BLOW, shot: SHOT, hit: HIT} = COMBAT;
@@ -26,7 +28,7 @@ export function strengthParts(a, {now = false} = {}) {
   const crit = 1 + critChance(a) * (CRIT.mul - 1);
   // offence: a blow per tick, and shots on top for one who carries a bow or a sling
   const cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (m.swing ?? 1)));
-  let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * (m.str ?? 1) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
+  let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
   if (sp.venom) melee += sp.venom.dmg * Math.min(1, sp.venom.ticks / cd);
   let shot = 0;
   if (g.ranged) {
@@ -36,8 +38,10 @@ export function strengthParts(a, {now = false} = {}) {
   // a shooter shoots while the foe comes or is held by others, and strikes with the bow once it is close
   const offence = melee + shot;
   // staying power: health over the share of blows that land and hurt
-  let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - (g.armor || 0)) * (1 - (g.block || 0)) * (1 - (m.dodge || 0)));
-  if (sp.resist?.melee) staying /= sp.resist.melee;
+  // against the average blow: armour and the body's resistance taken over the three kinds of blow
+  const kinds = Object.keys(BLOWS), mean = f => kinds.reduce((s, k) => s + f(k), 0) / kinds.length;
+  let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - mean(k => armorAgainst(g, k))) * (1 - (g.block || 0)) * (1 - (m.dodge || 0)));
+  staying /= mean(k => resistOf(sp, k, true));
   if (sp.weakTo?.includes('silver')) staying /= COMBAT.silver.plain;   // against plain weapons
   if (sp.drinks) staying /= 1 - sp.drinks * STRENGTH.drinksWeight;
   return {offence, staying, raw: offence * staying};

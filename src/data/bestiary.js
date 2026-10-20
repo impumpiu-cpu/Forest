@@ -17,7 +17,7 @@
 //   resident    — nechist (the spirits): lives here, comes back `respawn` days after it was killed;
 //                 `undead` on a spirit means only that there is no life in it to poison or to kill —
 //                 it is laid to rest, not slain (agents/agent.js) — not that it is the rot's
-//   resist      — damage multipliers {melee, ranged}: plain weapons barely hurt a leshy; fire does
+//   (resist — what blows do to its body — lives in data/balance/creatures.js with its other numbers)
 //   tameWith    — (later) races in the colony that let the herder tame it
 //   arrive      — how it comes (data/migrations.js builds the arrival, outside/scripted.js the schedule):
 //                 group [min, max], every [min, max] days, chance per check (× how common it is here),
@@ -178,7 +178,7 @@ export const BESTIARY = [
     arrive: {first: 2, message: 'в чаще завёлся леший: лесорубы и охотники будут плутать'},
     resident: true, respawn: 8,
     habitat: {forest: 'usual', taiga: 'usual', jungle: 'rare'},
-    look: {shape: 'spirit', size: 0.86, color: '#4f6b3a'}, resist: {melee: 0.35, ranged: 0.25},
+    look: {shape: 'spirit', size: 0.86, color: '#4f6b3a'},
     yields: {herbs: 4, wood: 6},
     killMessage: name => `Леший задавил поселенца в чаще: <b>${name}</b>.`,
     spirit: {home: 'forest', aura: 'astray', radius: 7, every: 120, veil: 4, regen: 4, keepOff: 16, crowd: 3}}),
@@ -204,7 +204,7 @@ export const BESTIARY = [
     arrive: {first: 3, message: 'в омуте заворочался водяной. К глубокой воде ночью — только вдвоём'},
     resident: true, respawn: 10,
     habitat: {water: 'usual', swamp: 'rare'},
-    look: {shape: 'spirit', size: 0.9, color: '#4f7a6a'}, resist: {melee: 0.5, ranged: 0.4},
+    look: {shape: 'spirit', size: 0.9, color: '#4f7a6a'},
     yields: {fish: 6, slime: 2},
     killMessage: name => `Водяной утащил поселенца на дно: <b>${name}</b>.`,
     spirit: {home: 'shore', aura: 'lure', radius: 9, night: true, veil: 0, keepOff: 10, dives: true, regen: 3}}),
@@ -214,7 +214,7 @@ export const BESTIARY = [
     arrive: {first: 3, message: 'над лугами в жару ходит полуденница: кто работает в полдень, теряет дорогу'},
     resident: true, respawn: 7,
     habitat: {meadow: 'usual', steppe: 'usual', savanna: 'rare'},
-    look: {shape: 'spirit', size: 0.7, color: '#e8d9a0'}, resist: {melee: 0.3, ranged: 0.3},
+    look: {shape: 'spirit', size: 0.7, color: '#e8d9a0'},
     yields: {herbs: 3, fiber: 2},
     killMessage: name => `Полуденница свела поселенца в поле: <b>${name}</b>.`,
     spirit: {home: 'grass', aura: 'astray', radius: 6, every: 100, veil: 3, regen: 2, keepOff: 12, crowd: 3}}),

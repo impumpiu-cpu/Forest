@@ -64,7 +64,7 @@ export function rollCreature(w, a, sp) {
 function specialInto(m, a, sp) {
   const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;
   const rel = (k) => (base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s));
-  for (const k of ['str', 'speed', 'swing', 'learn', 'sight', 'cold']) mod(m, k, rel(k));
+  for (const k of ['str', 'fin', 'speed', 'swing', 'learn', 'sight', 'cold']) mod(m, k, rel(k));
   mod(m, 'aim', EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
   mod(m, 'dodge', Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
   return sp.hp * rel('hp');
@@ -110,7 +110,7 @@ export function refreshBody(a) {
 // keys whose formula changed since bodies were stacked in place: they follow the new rule, not the save
 // (learn — data/skills.js; aim and dodge no longer read Luck)
 const RULE_KEYS = new Set(['learn', 'aim', 'dodge']);
-export const BODY_VER = 2;
+export const BODY_VER = 3;   // 3: `fin` (agility in a blow) joined the body
 
 export function adoptBody(a) {
   if (!a.mods || a.bodyVer >= 1) return;

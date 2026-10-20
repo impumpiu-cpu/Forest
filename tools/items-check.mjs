@@ -135,15 +135,24 @@ for (const x of items) {
 }
 
 // ── print
-const head = `${pad('предмет', 18)}${pad('вид', 9)}${lpad('тир', 4)} ${lpad('атака', 6)}${lpad('выстр', 6)}${lpad('защита', 7)}${lpad('тепло', 6)}${lpad('работа', 7)}${lpad('итог', 6)}${lpad('цена', 7)}${lpad('кривая', 8)}${lpad('сырьё', 7)}${lpad('прочн', 7)}`;
+const head = `${pad('предмет', 18)}${pad('вид', 9)}${pad('удар', 9)}${lpad('тир', 4)} ${lpad('атака', 6)}${lpad('выстр', 6)}${lpad('защита', 7)}${lpad('тепло', 6)}${lpad('работа', 7)}${lpad('итог', 6)}${lpad('цена', 7)}${lpad('кривая', 8)}${lpad('сырьё', 7)}${lpad('прочн', 7)}`;
 const KIND = {onehand: '1 рука', twohand: '2 руки', ranged: 'стрелк.', shield: 'щит', armor: 'броня', gear: 'снасть'};
 console.log(`Сила вещей в PL: один уровень — ×${RULES.step} к урону за тик или к запасу здоровья; PL 0 — ${ref.short}.`);
 console.log(`Итог: оружие — атака + защита + ${RULES.toolWeight} × работа; броня — защита + тепло (${RULES.warmth} PL за полное); щит — защита; лук и праща — выстрел.\n`);
+// how it strikes and with what: к/р/д — колющий, рубящий, дробящий; S, A — the letters of its `scale` (forms.js);
+// armour: its best and worst kind of blow to meet (`vs`)
+const BLOW_RU = {pierce: 'к', slash: 'р', blunt: 'д'};
+function blowText(d) {
+  if (d.vs) { const e = Object.entries(d.vs).sort((a, b) => b[1] - a[1]); return `+${BLOW_RU[e[0][0]]} −${BLOW_RU[e.at(-1)[0]]}`; }
+  if (!d.blow) return '';
+  return BLOW_RU[d.ranged?.type || d.blow] + ' ' + Object.entries(d.scale || {S: 1}).filter(([, v]) => v > 0).map(([k, v]) => (v === 1 ? k : k + String(v).replace('0.', '.'))).join('');
+}
+console.log('удар: к/р/д — колющий, рубящий, дробящий, и буквы, которыми бьют (S, A с долей); у брони — против чего она лучше (+) и хуже (−)');
 console.log(head); console.log('─'.repeat(head.length));
 const order = ['onehand', 'twohand', 'ranged', 'shield', 'armor', 'gear'];
 for (const kind of order) {
   for (const x of items.filter(y => y.kind === kind).sort((a, b) => a.tier - b.tier || a.worth - b.worth)) {
-    console.log(`${pad(x.d.short, 18)}${pad(KIND[kind], 9)}${lpad(x.tier, 4)} ${lpad(f1(x.atk), 6)}${lpad(f1(x.rng), 6)}${lpad(f1(x.def || null), 7)}${lpad(f1(x.warm || null), 6)}${lpad(f1(x.tool || null), 7)}${lpad(f1(x.worth), 6)}${lpad(x.value, 7)}${lpad(x.fair ? '~' + x.fair.toFixed(1) : '—', 8)}${lpad(x.input == null ? '—' : x.input.toFixed(1), 7)}${lpad(Number.isFinite(x.dur) ? x.dur : '∞', 7)}`);
+    console.log(`${pad(x.d.short, 18)}${pad(KIND[kind], 9)}${pad(blowText(x.d), 9)}${lpad(x.tier, 4)} ${lpad(f1(x.atk), 6)}${lpad(f1(x.rng), 6)}${lpad(f1(x.def || null), 7)}${lpad(f1(x.warm || null), 6)}${lpad(f1(x.tool || null), 7)}${lpad(f1(x.worth), 6)}${lpad(x.value, 7)}${lpad(x.fair ? '~' + x.fair.toFixed(1) : '—', 8)}${lpad(x.input == null ? '—' : x.input.toFixed(1), 7)}${lpad(Number.isFinite(x.dur) ? x.dur : '∞', 7)}`);
   }
 }
 console.log('');

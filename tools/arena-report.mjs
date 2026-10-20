@@ -224,6 +224,31 @@ export function analyse(results, {opt, names, version, tiers, seconds}) {
       matrix: matrix(xs, f => f.weapon, item),
     });
   }
+  // The kind of blow against the kind of armour (data/balance/forms.js `blow`, `vs`), melee duels of one tier.
+  // A raw win rate mixes three things: how strong the blow's weapons are, how strong the armour is, and how the
+  // two meet. The table shows the last: the cell less its row's and its column's average (plus the overall),
+  // so +10 means this blow does ten points better against this armour than its weapons and that armour would say.
+  const BL = {pierce: 'колющий', slash: 'рубящий', blunt: 'дробящий'}, ARM = {none: 'без брони', garment: 'одежда', coat: 'тулуп', jerkin: 'кожа', lamellar: 'ламелляр', scale: 'чешуя', mail: 'кольчуга'};
+  const melee = same.filter(x => x.me.blow && !x.me.ranged && !x.foe.ranged);
+  const rate = xs => (xs.length ? xs.reduce((t, x) => t + x.score, 0) / xs.length : null);
+  const cols = Object.keys(ARM).filter(k => melee.some(x => x.foe.armorForm === k)), rows = Object.keys(BL).filter(b => melee.some(x => x.me.blow === b));
+  const raw = Object.fromEntries(rows.flatMap(b => cols.map(f => { const xs = melee.filter(x => x.me.blow === b && x.foe.armorForm === f); return [b + '|' + f, {n: xs.length, rate: rate(xs)}]; })));
+  const rowM = Object.fromEntries(rows.map(b => [b, rate(melee.filter(x => x.me.blow === b && cols.includes(x.foe.armorForm)))]));
+  const colM = Object.fromEntries(cols.map(f => [f, rate(melee.filter(x => x.foe.armorForm === f && rows.includes(x.me.blow)))]));
+  const all = rate(melee);
+  for (const [k, c] of Object.entries(raw)) { const [b, f] = k.split('|'); c.extra = c.n >= 20 ? c.rate - rowM[b] - colM[f] + all : null; }
+  out.blows = {rows, cols, labels: {...BL, ...ARM}, cells: raw};
+  // What each weapon is struck with (forms.js `scale`): per form, a regression of the outcome on the differences
+  // between the two (the same as «при прочих равных»), read for Strength and Agility; races are held equal by the
+  // other letters, health and kit in the fit
+  out.scales = opt.stats === 'norm' ? [] : [...new Set(melee.map(x => x.me.form))].map(f => {
+    const xs = melee.filter(x => x.me.form === f);
+    if (xs.length < 150) return null;
+    const F = FEATURES.filter(ft => ['S', 'A', 'E', 'L', 'skill', 'size', 'atk', 'def'].includes(ft.id));
+    const fit = fitLogit(xs.map(x => F.map(ft => ft.x(x.me) - ft.x(x.foe))), xs.map(x => x.score));
+    const at = id => { const i = F.findIndex(ft => ft.id === id); return {pp: fit.beta[i] / 4, se: fit.se[i] / 4}; };
+    return {form: f, n: xs.length, S: at('S'), A: at('A')};
+  }).filter(Boolean).sort((a, b) => (b.A.pp - b.S.pp) - (a.A.pp - a.S.pp));
   out.races = group(same, x => x.me.species, sp);
   out.raceMatrix = matrix(same, f => f.species, sp);
   out.skill = group(same, x => bucket(x.me.skill, SKILL_EDGES)).sort((a, b) => byEdges(SKILL_EDGES)(a) - byEdges(SKILL_EDGES)(b));
@@ -268,6 +293,12 @@ export function consoleSummary(s) {
     const ar = t.armor.filter(g => g.verdict);
     if (ar.length) L.push(`  броня: ${ar.map(g => g.label + mark(g)).join(', ')}`);
   }
+  if (s.fights && s.blows?.cols.length) {
+    L.push(`\nУдар против брони: насколько этот удар лучше против этой брони, чем в среднем (п.п.; ближний бой одного тира):`);
+    L.push('  ' + ''.padEnd(10) + s.blows.cols.map(c => s.blows.labels[c].padStart(11)).join(''));
+    for (const r of s.blows.rows) L.push('  ' + s.blows.labels[r].padEnd(10) + s.blows.cols.map(c => { const x = s.blows.cells[r + '|' + c]; return (x?.extra == null ? '—' : (x.extra >= 0 ? '+' : '') + Math.round(x.extra * 100)).padStart(11); }).join(''));
+  }
+  if (s.fights && s.scales?.length) L.push('Чем бьёт оружие (+1 к букве при прочих равных, п.п.): ' + s.scales.map(x => `${x.form} S ${(x.S.pp * 100).toFixed(1)} A ${(x.A.pp * 100).toFixed(1)}`).join(' · '));
   if (s.fights && s.races.length > 1) L.push(`\nРасы (все тиры): ${s.races.map(g => `${g.label} ${pct(g.rate)}`).join(' · ')}`);
   if (s.fights && s.skillVaried) L.push(`Навык: ${s.skill.map(g => `${g.key} → ${pct(g.rate)}`).join(' · ')}`);
   if (s.fights && s.statsVaried) for (const k of ['S', 'A', 'E', 'L']) if (s.stats[k].length > 1) L.push(`${k}: ${s.stats[k].map(g => `${g.key} → ${pct(g.rate)}`).join(' · ')}`);
@@ -383,6 +414,9 @@ export function renderArena(s) {
   ${s.model ? `<section class="card"><h2>При прочих равных</h2><p class="muted">Логистическая регрессия исхода по разнице двух бойцов, ${s.model.n} ближних боёв (лук и праща не входят: их сила зависит от дистанции). «К шансу» — насколько вырастает шанс победы в равном бою; «в PL оружия» — сколько уровней оружия стоит эта прибавка. Это и есть курс обмена: сколько Силы орка покрывает ступень материала.</p>
     <div class="scroll"><table><thead><tr><th>что</th><th>к шансу</th><th>95%</th><th>в PL оружия</th></tr></thead><tbody>${s.model.features.map(f => `<tr><td>${esc(f.label)}</td><td>${(f.pp >= 0 ? '+' : '') + (f.pp * 100).toFixed(1)} п.п.</td><td class="muted">${(f.lo * 100).toFixed(1)}…${(f.hi * 100).toFixed(1)}</td><td>${f.perAtk == null ? '—' : f.perAtk.toFixed(2)}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
   ${tiers}
+  ${s.blows?.cols.length ? `<section class="card"><h2>Удар против брони</h2><p class="muted">Ближний бой, оба из одного тира (data/balance/forms.js: blow у оружия, vs у брони). Сырая доля побед смешивает силу оружия и силу брони, поэтому в клетке — насколько этот удар лучше против этой брони, чем говорят его оружие и эта броня по отдельности (клетка − среднее строки − среднее столбца + общее среднее, п.п.). В скобках — сырая доля побед.</p>
+    <div class="scroll"><table class="mx"><thead><tr><th>удар</th>${s.blows.cols.map(c => `<th>${esc(s.blows.labels[c])}</th>`).join('')}</tr></thead><tbody>${s.blows.rows.map(r => `<tr><td>${esc(s.blows.labels[r])}</td>${s.blows.cols.map(c => { const x = s.blows.cells[r + '|' + c]; return x?.extra != null ? `<td style="${heat(0.5 + x.extra * 2)}" title="${x.n} боёв">${(x.extra >= 0 ? '+' : '') + Math.round(x.extra * 100)} <span class="muted">(${pct(x.rate)})</span></td>` : '<td class="muted">—</td>'; }).join('')}</tr>`).join('')}</tbody></table></div>
+    ${s.scales?.length ? `<h3>Чем бьёт оружие</h3><p class="muted">Для каждой формы — сколько даёт +1 к Силе и +1 к Ловкости при прочих равных (регрессия по разнице бойцов; data/balance/forms.js: scale). У кинжала должна решать Ловкость, у молота — Сила.</p><div class="scroll"><table><thead><tr><th>форма</th><th>Сила +1</th><th>Ловкость +1</th><th>боёв</th></tr></thead><tbody>${s.scales.map(x => `<tr><td>${esc(x.form)}</td><td>${(x.S.pp * 100).toFixed(1)} п.п. <span class="muted">± ${(1.96 * x.S.se * 100).toFixed(1)}</span></td><td>${(x.A.pp * 100).toFixed(1)} п.п. <span class="muted">± ${(1.96 * x.A.se * 100).toFixed(1)}</span></td><td>${x.n}</td></tr>`).join('')}</tbody></table></div>` : ''}</section>` : ''}
   ${s.races.length > 1 ? `<section class="card"><h2>Расы</h2><p class="muted">все тиры вместе, снаряжение у обоих из одного тира</p><div class="grid2"><div>${table(s.races, {first: 'раса'})}</div><div>${grid(s.raceMatrix, 'раса')}</div></div></section>` : ''}
   ${s.skillVaried || statRows.length && s.statsVaried ? `<section class="card"><h2>Навык и SPECIAL</h2><div class="grid2">
     ${s.skillVaried ? `<div><h3>Свой навык боя</h3>${table(s.skill, {first: 'навык', extra: false})}</div><div><h3>Навык против навыка противника</h3>${table(s.skillDiff, {first: 'разница', extra: false})}</div>` : ''}

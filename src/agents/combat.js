@@ -4,7 +4,7 @@
 import {isHostile} from '../data/factions.js';
 import {SPECIES} from '../data/species.js';
 import {maxHp} from './agent.js';
-import {wear, def} from './equipment.js';
+import {wear, def, blowStat} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
 import {lineOfFire} from '../nav/astar.js';
@@ -15,7 +15,7 @@ import {CRIT} from '../data/wounds.js';
 import {noteHit} from './trophies.js';
 import {heatTo} from '../world/heat.js';
 import {nearAgents} from './spatial.js';
-import {COMBAT} from '../data/balance/index.js';
+import {COMBAT, DEFAULT_BLOW, ARMOR_VS_CAP} from '../data/balance/combat.js';
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
@@ -46,14 +46,19 @@ export function nearestHostile(w, a, r) {
 export const MELEE_REACH = COMBAT.reach;
 export const reachOf = a => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
 
-const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack || {power: 1}).power, cd: (SPECIES.get(a.species).attack || {cooldown: 12}).cooldown}, armor: 0, block: 0};
+const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack || {power: 1}).power, cd: (SPECIES.get(a.species).attack || {cooldown: 12}).cooldown, type: SPECIES.get(a.species).attack?.type || DEFAULT_BLOW.melee}, armor: 0, block: 0};
+
+// the armour a blow meets: the body's armour against this kind of blow (forms.js `vs`)
+export const armorAgainst = (g, type) => (g.armorVs && type ? Math.min(ARMOR_VS_CAP, (g.armor || 0) * (g.armorVs[type] ?? 1)) : g.armor || 0);
+// what the body does to a blow of this kind and delivery (creatures.js `resist`: pierce, slash, blunt, melee, ranged)
+export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1) * (sp.resist[melee ? 'melee' : 'ranged'] ?? 1) : 1);
 
 // Apply a hit: shields may stop melee blows, armour absorbs part of the rest.
 // Inside the settlement zone colonists fight harder and a palisade shields them.
 // A hit that lands (not dodged, not blocked) may be critical: one check on the attacker's Luck
 // (agents/wounds.js critChance), × CRIT.mul, before armour. A blow that takes the last health goes to
 // lethal(): death, or for a colonist with luck a fall (data/wounds.js). The fallen are not struck again.
-export function damage(w, by, t, raw, {melee = true} = {}) {
+export function damage(w, by, t, raw, {melee = true, type = null} = {}) {
   if (t.downed || t.dead) return 'downed';
   const g = ensureGear(t);
   // the victim remembers who hurt it and from how far (a mule charges whoever shot it)
@@ -61,15 +66,16 @@ export function damage(w, by, t, raw, {melee = true} = {}) {
   // luck: now and then a blow or a shot simply misses (SPECIAL L)
   if (t.mods?.dodge > 0 && w.rngs.combat() < t.mods.dodge) { t.flash = 2; return 'dodged'; }
   const tsp = SPECIES.get(t.species);
-  if (!melee && tsp.resist?.ranged) raw *= tsp.resist.ranged;   // arrows pass through a skeleton
-  if (melee && tsp.resist?.melee) raw *= tsp.resist.melee;      // an axe in a mycelium does little
+  // what kind of blow: the caller's word, else what the striker holds or strikes with
+  type ||= melee ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged;
+  raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
   if (melee && g.block && w.rngs.combat() < g.block) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
   const crit = w.rngs.combat() < critChance(by);
   if (crit) { raw *= CRIT.mul; t.flash = 6; }
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
-  let dmg = raw * home * wall * (1 - (g.armor || 0));
+  let dmg = raw * home * wall * (1 - armorAgainst(g, type));
   noteHit(t, by);   // the colonists who fought it share in its rare trophies (agents/trophies.js)
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
   t.hp -= dmg;
@@ -118,7 +124,7 @@ export function attack(w, a, t) {
   if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
-  damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * (a.mods?.str ?? 1) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item));
+  damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type});
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it
   if (g.melee.item) wear(w, a, g.melee.item);
   return true;
@@ -141,7 +147,7 @@ export function shoot(w, a, t) {
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
-  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null), {melee: false});
+  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null), {melee: false, type: r.type || DEFAULT_BLOW.ranged});
   return t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
 }
 

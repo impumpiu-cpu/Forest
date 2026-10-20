@@ -16,6 +16,8 @@
 // The fields of an item (the code reads only these):
 //   id, label, short, form, material, tier, slot, hands, glyph, color
 //   melee {dmg, cd}            close combat, dmg multiplies the base blow
+//   blow, scale                how it strikes (pierce, slash, blunt) and with which letters (data/balance/combat.js)
+//   vs                         armour against each kind of blow, × armor
 //   ranged {dmg, range, cd, ammo, boost}  ammo: resource id carried in a quiver (null = picked up anywhere);
 //                              boost: a colony modifier from world.mods.best that strengthens the shot
 //   block                      chance to stop a melee blow (shields, staves)
@@ -69,8 +71,11 @@ export function makeItem(formId, matId) {
   if (form.slot === 'body') d.color = form.colors?.[matId] ?? mat.color;
   if (form.melee) d.melee = {dmg: +(form.melee.dmg * r('dmg')).toFixed(3), cd: Math.max(4, Math.round(form.melee.cd * r('swing')))};
   if (form.ranged) d.ranged = {...form.ranged, dmg: +(form.ranged.dmg * r('dmg')).toFixed(3)};
+  if (form.blow) d.blow = form.blow;
+  if (form.scale) d.scale = {...form.scale};
   if (form.block) d.block = +(form.block * r('block')).toFixed(3);
   if (form.armor) d.armor = +(form.armor * r('armor')).toFixed(3);
+  if (form.vs) d.vs = {...form.vs};
   if (form.warmth) d.warmth = +Math.min(0.98, form.warmth * r('warmth')).toFixed(3);
   // heavy armour slows: the slowing scales with the material's weight; a staff's lightness stays as it is
   if (form.speed) d.speed = form.speed < 1 ? +(1 - (1 - form.speed) * r('weight')).toFixed(3) : form.speed;

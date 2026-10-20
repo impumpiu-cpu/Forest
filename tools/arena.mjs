@@ -164,6 +164,7 @@ function card(E, a, who) {
   if (k) {
     const ref = E.ITEMS.get(E.RULES.ref), wd = E.itemDef(k.weapon, k.wq);
     c.ranged = wd.ranged ? 1 : 0;
+    c.blow = wd.blow || 'blunt'; c.form = wd.form; c.armorForm = k.body ? E.ITEMS.get(k.body).form : 'none';
     c.atk = +(E.power.attackPL(wd, ref) ?? 0).toFixed(3);
     c.def = +(E.power.defencePL(wd) + (k.shield ? E.power.defencePL(E.itemDef(k.shield, k.sq)) : 0) + (k.body ? E.power.defencePL(E.itemDef(k.body, k.bq)) : 0)).toFixed(3);
   }
@@ -430,7 +431,7 @@ async function main() {
   writeFileSync(join(out, 'summary.json'), JSON.stringify(summary));
   writeFileSync(join(out, 'report.html'), renderArena(summary));
   if (duels.length) {
-    const cols = ['i', 'kind', 'tier', 'winner', 'ticks', 'left'], side = ['species', 'people', 'tier', 'S', 'P', 'E', 'A', 'L', 'skill', 'hp', 'size', 'weapon', 'wq', 'shield', 'sq', 'body', 'bq', 'atk', 'def', 'ranged'];
+    const cols = ['i', 'kind', 'tier', 'winner', 'ticks', 'left'], side = ['species', 'people', 'tier', 'S', 'P', 'E', 'A', 'L', 'skill', 'hp', 'size', 'weapon', 'wq', 'shield', 'sq', 'body', 'bq', 'atk', 'def', 'ranged', 'blow', 'armorForm'];
     const rows = [[...cols, ...side.map(c => 'a_' + c), ...side.map(c => 'b_' + c)].join(',')];
     for (const r of duels) rows.push([...cols.map(c => r[c] ?? ''), ...side.map(c => r.a[c] ?? ''), ...side.map(c => r.b[c] ?? '')].join(','));
     writeFileSync(join(out, 'fights.csv'), rows.join('\n') + '\n');

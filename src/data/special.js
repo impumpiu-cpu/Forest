@@ -42,6 +42,8 @@ export const contest = (a, b) => (a + b > 0 ? a / (a + b) : 0.5);
 export const EFFECTS = {
   // melee damage grows a little slower than strength: an ogre (14) hits ~2.3× a human (5)
   str:   s => Math.max(0.2, s.S / NORM) ** 0.8,
+  // the same for a blow struck with agility (a dagger, half of a sword: data/balance/forms.js `scale`)
+  fin:   s => Math.max(0.2, s.A / NORM) ** 0.8,
   // health: E 5 → ×1, E 10 → ×1.4, E 14 → ×1.72
   hp:    s => Math.max(0.3, 0.6 + 0.08 * s.E),
   // how hard the cold bites
