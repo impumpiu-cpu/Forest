@@ -18,7 +18,7 @@ import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
-import {RAID_BANDS, banditKit, kitFor} from './raids.js';
+import {RAID_BANDS, banditKit, kitFor, raiderBody} from './raids.js';
 import {createSquad} from '../agents/squad.js';
 import {SPECIES} from './species.js';
 import {raceLabel, refreshBody} from '../agents/special.js';
@@ -108,8 +108,8 @@ MIGRATIONS.registerAll([
       return `С ${side} по тракту идёт торговый караван: купец, охрана и ${mules} ${plural(mules, 'вьючный мул', 'вьючных мула', 'вьючных мулов')}.`;
     }},
 
-  // A band from the hostile lands (data/raids.js): the provider says which one sets out and how big it
-  // is in "human raiders"; toughness and aim grow with the threat they see.
+  // A band from the hostile lands (data/raids.js): the provider says which one sets out and how strong it
+  // is (n: a budget in strength rating, КС); toughness and aim grow with the threat level they have reached.
   {id: 'raiders', faction: 'raiders', minDist: 40, topic: 'danger',
     members: (w, rng, n, opts) => {
       const band = RAID_BANDS.get(opts.band || 'bandits'), t = raidThreat(w);
@@ -125,10 +125,8 @@ MIGRATIONS.registerAll([
       const t = raidThreat(w); w.stats.raids++;
       const big = w.chronicle.biggestRaid;
       if (!big || group.length > big.size) w.chronicle.biggestRaid = {size: group.length, tick: w.tick};
-      for (const a of group) {
-        a.hp = (a.maxHp || 1) * Math.min(1.1, 0.75 + t * 0.012);
-        a.skill = {ranged: Math.min(0.7, 0.1 + t * 0.025)}; a.skillVer = 1;
-      }
+      const body = raiderBody(t);
+      for (const a of group) { a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged}; a.skillVer = 1; }
       RAID_BANDS.get(group[0].band).groupInit?.(group, w);
       createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)
     },

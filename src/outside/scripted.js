@@ -14,7 +14,7 @@ import {region} from '../world/region.js';
 import {DAY} from '../core/time.js';
 import {RAIDS, WILDLIFE, PREDATORS, MONSTERS} from '../data/presets.js';
 import {NEIGHBOURS} from '../data/neighbours.js';
-import {raidSize, settlerWaitDays} from '../settlement/threat.js';
+import {raidStrength, settlerWaitDays} from '../settlement/threat.js';
 import {TRADE} from '../data/trade.js';
 import {season} from '../data/seasons.js';
 import {HOUR, dayOf, nightness} from '../core/time.js';
@@ -103,8 +103,8 @@ export const scripted = {
     // Which band comes is drawn from data/raids.js: bandits, orcs, goblins, gnolls, the dead…
     raiders: {from: 'hostile',
       first: (w, rng) => scripted.flows.raiders.next(w, rng),
-      offer: (w, rng) => (rng() < raidChance(w) ? {n: raidSize(w), band: pickBand(w, rng)} : 0),
-      size: w => ({n: raidSize(w), band: pickBand(w, w.rngs.outside)}),
+      offer: (w, rng) => (rng() < raidChance(w) ? {n: raidStrength(w), band: pickBand(w, rng)} : 0),
+      size: w => ({n: raidStrength(w), band: pickBand(w, w.rngs.outside)}),
       missed: () => ['Чужие разведчики побродили у края леса и ушли. Набега в этот раз не будет.', 'danger', 'info'],
       next: (w, rng) => (raidDist(w) ? w.tick + raidDist(w) / 2 * DAY * Math.max(0.6, 1 - w.stats.raids * 0.05) * (0.6 + rng() * 0.8) * (scoutedBand(w) ? 0.6 : 1) : Infinity)},
   },

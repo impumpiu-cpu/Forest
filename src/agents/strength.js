@@ -7,12 +7,13 @@
 //   strengthOf(a, {now})   — the same at its present health (the wounded count for less)
 //   sideStrength(list)     — the sum over the living
 //   strengthParts(a)       — offence, staying power and the raw product, for the card and the arena
+//   expectedStrength(sp, …) — what one of a species is worth on average as a band brings it (raids plan by it)
 import {STRENGTH} from '../data/balance/creatures.js';
 import {COMBAT} from '../data/balance/combat.js';
 import {CRIT} from '../data/wounds.js';
 import {SPECIES} from '../data/species.js';
 import {STATS} from '../data/special.js';
-import {mulberry} from '../core/rng.js';
+import {mulberry, seedNumber} from '../core/rng.js';
 import {critChance} from './wounds.js';
 import {createAgent, maxHp} from './agent.js';
 import {dress, recalcGear} from './equipment.js';
@@ -57,3 +58,25 @@ export function referenceRaw() {
 export const ratingOf = (raw, species, alpha = STRENGTH.alpha) => STRENGTH.base * (raw / referenceRaw()) ** alpha * (SPECIES.get(species).ks ?? 1);
 export const strengthOf = (a, opt) => ratingOf(strengthParts(a, opt).raw, a.species);
 export const sideStrength = (list, opt) => list.reduce((s, a) => s + (a.dead ? 0 : strengthOf(a, opt)), 0);
+
+// What a creature of a species is expected to be worth as it comes: `n` of them rolled on a scratch world
+// with private random numbers (nothing the game draws is touched), each given `kit` (a list of items, or a
+// function rng → list for kits that are drawn) and `prepare(a)` (what the band does to its members),
+// rated at their present health. Kept per `key`: the caller names what makes two estimates the same.
+const expected = new Map();
+export function expectedStrength(species, {key = "", kit = null, prepare = null, n = 64} = {}) {
+  const k = species + '|' + key;
+  if (expected.has(k)) return expected.get(k);
+  const rng = mulberry(seedNumber('expected/' + k)), w = {rngs: {birth: rng}, agents: [], nextId: 1, nameIdx: 0};
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    w.agents = [];
+    const a = createAgent(w, species, 'raiders', 0, 0);
+    const list = typeof kit === 'function' ? kit(rng) : kit;
+    if (list?.length && a.equip) dress(a, list, 15);
+    prepare?.(a);
+    sum += strengthOf(a, {now: true});
+  }
+  expected.set(k, sum / n);
+  return sum / n;
+}

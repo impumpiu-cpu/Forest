@@ -57,7 +57,8 @@ import {squadText} from '../agents/squad.js';
 import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
-import {raidThreat, raidSize} from '../settlement/threat.js';
+import {raidThreat, raidStrength, colonyStrength} from '../settlement/threat.js';
+import {strengthOf} from '../agents/strength.js';
 import {tempAt} from '../world/heat.js';
 import {DAY, HOUR} from '../core/time.js';
 import {RAIDS} from '../data/presets.js';
@@ -294,7 +295,7 @@ export class Panel {
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
       `<dt>Местность</dt><dd class="nb">${this.regionText(w)}</dd>` +
       `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
-      `<dt title="Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidThreat(w).toFixed(1)} · банда ~${raidSize(w)}${raidOdds(w).dist ? ` · ${this.waitText(w, w.outside.next.raiders)}, если выйдут (${Math.round(raidOdds(w).chance * 100)}%)` : ''}</dd>` +
+      `<dt title="Сила следующей банды в коэффициенте силы (КС: обычный человек с костяным копьём — 100). Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidStrength(w)} КС (уровень ${raidThreat(w).toFixed(1)}) · колония ${Math.round(col.reduce((s, a) => s + strengthOf(a), 0))} КС, по слухам ${Math.round(colonyStrength(w))}${raidOdds(w).dist ? ` · ${this.waitText(w, w.outside.next.raiders)}, если выйдут (${Math.round(raidOdds(w).chance * 100)}%)` : ''}</dd>` +
       `<dt>Соседи</dt><dd class="nb">${neighbours(w).filter(n => n.dist).map(n => `<span title="${esc(n.note)}">${esc(n.label)} · ${n.dist} дн. пути</span>`).join('<br>') || '—'}</dd>` +
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +

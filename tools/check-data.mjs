@@ -31,7 +31,7 @@ import {BIOMES, RARITY, FAUNA_FLOOR} from '../src/data/biomes.js';
 import {faunaFrom} from '../src/world/region.js';
 import {VALUES} from '../src/data/values.js';
 import {RELATIONS, KINS} from '../src/data/relations.js';
-import {RAID_BANDS, bandCost, kitFor} from '../src/data/raids.js';
+import {RAID_BANDS, memberStrength, kitFor} from '../src/data/raids.js';
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
@@ -152,9 +152,9 @@ for (const k of KINS.ids()) if (!RELATIONS[k] || Object.keys(RELATIONS[k]).lengt
 for (const v of VALUES.all()) for (const c of v.clash) if (!VALUES.has(c)) err(`ценность ${v.id}: нет ценности «${c}» в clash`);
 {
   const rng = (() => { let x = 7; return () => ((x = (x * 16807) % 2147483647) / 2147483647); })();
-  for (const b of RAID_BANDS.all()) for (const t of [2, 12, 25]) for (const m of b.members({}, rng, 6, t)) {
+  for (const b of RAID_BANDS.all()) for (const t of [2, 12, 25]) for (const m of b.members({}, rng, 600, t)) {
     if (!SPECIES.has(m.species)) { err(`банда ${b.id}: нет вида «${m.species}»`); continue; }
-    if (bandCost(m.species) == null) err(`банда ${b.id}: у «${m.species}» нет цены в COST`);
+    if (!(memberStrength(m.species, t) > 0)) err(`банда ${b.id}: у «${m.species}» нет коэффициента силы`);
     for (const it of kitFor(m.species, rng, t)) item(`банда ${b.id}`, typeof it === 'string' ? it : it.type);
   }
 }
