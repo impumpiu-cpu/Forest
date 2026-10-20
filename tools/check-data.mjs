@@ -9,6 +9,7 @@ import {ORES} from '../src/data/ores.js';
 import {LUXURY} from '../src/data/luxury.js';
 import {ITEMS} from '../src/data/items.js';
 import {TABLES} from '../src/data/balance/index.js';
+import {STRENGTH} from '../src/data/balance/strength.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
@@ -90,6 +91,11 @@ for (const d of ITEMS.all()) {
   if (d.tradeOnly && RECIPES.all().some(r => r.makes?.item === d.id)) err(`предмет ${d.id}: tradeOnly, но есть рецепт`);
   if (!(d.value > 0)) warn(`предмет ${d.id}: нет цены value, торговец отдаст его даром`);
 }
+// the strength rating (data/balance/strength.js): its yardstick and corrections name real things
+if (!SPECIES.has(STRENGTH.ref.species)) err(`data/balance/strength.js: ref — нет вида «${STRENGTH.ref.species}»`);
+STRENGTH.ref.kit.forEach(i => item('data/balance/strength.js: ref.kit', i));
+for (const [k, v] of Object.entries(STRENGTH.adjust)) { if (!SPECIES.has(k)) err(`data/balance/strength.js: adjust — нет вида «${k}»`); if (!(v > 0)) err(`data/balance/strength.js: adjust.${k} должен быть больше нуля`); }
+if (!(STRENGTH.alpha > 0 && STRENGTH.alpha <= 1.5)) err('data/balance/strength.js: alpha вне (0, 1.5]');
 // the balance tables (data/balance/): every row belongs to an item, no item sits in two tables, and the
 // numbers a fight divides by or compares are sane
 const seenRow = new Map();

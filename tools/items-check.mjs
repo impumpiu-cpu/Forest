@@ -15,6 +15,13 @@ import {toPL, attackPL, shotPL, defencePL, toolPL} from '../src/data/balance/pow
 import {QUALITY} from '../src/data/quality.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {RESOURCES} from '../src/data/resources.js';
+import {STRENGTH} from '../src/data/balance/strength.js';
+import {strengthOf} from '../src/agents/strength.js';
+import {createAgent, maxHp} from '../src/agents/agent.js';
+import {dress} from '../src/agents/equipment.js';
+import {refreshBody} from '../src/agents/special.js';
+import {STATS} from '../src/data/special.js';
+import {mulberry} from '../src/core/rng.js';
 
 const args = process.argv.slice(2);
 const csvPath = args.includes('--csv') ? args[args.indexOf('--csv') + 1] : null, strict = args.includes('--strict');
@@ -79,11 +86,11 @@ for (const b of bodies) for (const a of bodies) {
 
 // the tier corridor: where a plain piece of its tier should sit
 for (const x of items) {
-  const kind = x.kind === 'onehand' || x.kind === 'twohand' ? 'weapon' : x.kind === 'armor' ? 'armor' : null;
+  const kind = x.kind === 'onehand' ? 'weapon' : x.kind === 'twohand' ? 'twohand' : x.kind === 'armor' ? 'armor' : null;
   if (!kind) continue;
-  const pl = kind === 'weapon' ? x.atk : x.def, band = RULES.tierPL[kind][x.tier];
+  const pl = kind === 'weapon' ? x.atk : kind === 'twohand' ? x.atk + x.def : x.def, band = RULES.tierPL[kind][x.tier];
   if (!band) { mark('⚠', `${label(x)}: для тира ${x.tier} нет коридора в rules.js`); continue; }
-  if (pl < band[0] - 1e-9 || pl > band[1] + 1e-9) mark('⚠', `${label(x)}: ${kind === 'weapon' ? 'атака' : 'защита'} PL ${f1(pl).trim()} вне коридора тира [${band[0]}…${band[1]}]`);
+  if (pl < band[0] - 1e-9 || pl > band[1] + 1e-9) mark('⚠', `${label(x)}: ${kind === 'weapon' ? 'атака' : kind === 'twohand' ? 'атака + защита' : 'защита'} PL ${f1(pl).trim()} вне коридора тира [${band[0]}…${band[1]}]`);
 }
 
 // overlapping tiers: a lower tier clearly stronger than a higher one of the same kind
@@ -120,7 +127,7 @@ for (const x of items.filter(x => x.kind === 'twohand')) {
 
 // prices
 for (const x of items) {
-  if (x.fair && (x.value > x.fair * RULES.priceOff || x.value < x.fair / RULES.priceOff)) mark('⚠', `${label(x)}: цена ${x.value}, по кривой ~${x.fair.toFixed(1)} (в ${(x.value / x.fair).toFixed(1)} раза)`);
+  if (x.fair && !RULES.niche.some(f => x.d[f]) && (x.value > x.fair * RULES.priceOff || x.value < x.fair / RULES.priceOff)) mark('⚠', `${label(x)}: цена ${x.value}, по кривой ~${x.fair.toFixed(1)} (в ${(x.value / x.fair).toFixed(1)} раза)`);
   if (x.input != null && x.value < x.input) mark('·', `${label(x)}: стоит ${x.value}, а сырьё на него — ${x.input.toFixed(1)}: делать на продажу невыгодно`);
 }
 
@@ -148,6 +155,30 @@ for (const Q of QUALITY.all().filter(q => q.q > 0)) {
 }
 const matStep = curves.weapon ? Math.exp(curves.weapon.b) : null;
 if (matStep) console.log(`для сравнения: ступень материала (+1 PL) по кривой дороже в ${matStep.toFixed(2)} раза — у меча это ~${(byId.sword.value * (matStep - 1)).toFixed(0)} зол.`);
+
+// ── the strength rating (КС) of the reference fighter in every kit: what a piece adds to a fighter
+const R = STRENGTH.ref, scratch = {rngs: {birth: mulberry(1)}, agents: [], nextId: 1, nameIdx: 0};
+function ks(kit) {
+  scratch.agents = [];
+  const a = createAgent(scratch, R.species, 'raiders', 0, 0);
+  if (a.special) { for (const st of STATS.ids()) a.special[st] = R.special; refreshBody(a); a.hp = maxHp(a); }
+  a.skill = {melee: R.skill, ranged: R.skill};
+  const quiver = kit.map(id => ITEMS.get(id).ranged?.ammo).filter(Boolean).map(ammo => ITEMS.all().find(d => d.holds?.ammo === ammo)?.id)[0];
+  dress(a, quiver ? [...kit, quiver] : kit, quiver ? ITEMS.get(quiver).holds.max : 0);
+  return strengthOf(a);
+}
+const tiersAll = [...new Set(items.filter(x => x.d.slot === 'hand' && (x.d.melee || x.d.ranged)).map(x => x.tier))].sort((a, b) => a - b);
+const shieldId = items.find(x => x.kind === 'shield')?.id;
+console.log(`\nКС (коэффициент силы, data/balance/strength.js): ${R.species}, SPECIAL ${R.special}, навык ${R.skill}, ${R.kit.map(id => ITEMS.get(id).short).join(' + ')} = ${STRENGTH.base}`);
+for (const T of tiersAll) {
+  const bodies = items.filter(x => x.kind === 'armor' && x.tier <= T), best = bodies.sort((a, b) => b.def - a.def)[0];
+  const cloth = ITEMS.has('clothes') ? 'clothes' : null;
+  console.log(`  тир ${T}${pad('', 18)}${lpad(cloth ? ITEMS.get(cloth).short : 'без', 8)}${lpad(best ? best.d.short : '—', 18)}`);
+  for (const x of items.filter(y => (y.kind === 'onehand' || y.kind === 'twohand' || y.kind === 'ranged') && y.tier === T)) {
+    const kits = x.d.hands === 1 && shieldId ? [[x.id], [x.id, shieldId]] : [[x.id]];
+    for (const k of kits) console.log(`    ${pad(k.map(id => ITEMS.get(id).short).join(' + '), 20)}${lpad(ks(cloth ? [...k, cloth] : k).toFixed(0), 8)}${lpad(best ? ks([...k, best.id]).toFixed(0) : '—', 18)}`);
+  }
+}
 
 console.log(`\nНаходки (${marks.length}):`);
 for (const s of ['✗', '⚠', '·']) for (const m of marks.filter(x => x.sign === s)) console.log(`  ${m.sign} ${m.text}`);
