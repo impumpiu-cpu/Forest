@@ -29,7 +29,7 @@ export const RULES = {
   niche: ['silver'],
   // npm run arena: a piece whose whole 95% interval of wins sits above `strong` dominates its tier,
   // below `weak` lags behind; groups with fewer than `minN` duels are not judged
-  // a battle correction (part 2) is offered only when it is sure and off by more than `adjustMin` (±5% is noise
-  // between seeds)
-  arena: {strong: 0.55, weak: 0.45, minN: 30, adjustMin: 0.05},
+  // a correction of the strength rating (parts 2 and 3) for a species already calibrated is made only when
+  // it is sure and off by more than `adjustMin`: from seed to seed the factors wander by some ±6%
+  arena: {strong: 0.55, weak: 0.45, minN: 30, adjustMin: 0.08},
 };

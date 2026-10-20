@@ -9,7 +9,7 @@ import {ORES} from '../src/data/ores.js';
 import {LUXURY} from '../src/data/luxury.js';
 import {ITEMS} from '../src/data/items.js';
 import {TABLES} from '../src/data/balance/index.js';
-import {STRENGTH} from '../src/data/balance/strength.js';
+import {STRENGTH, CREATURES} from '../src/data/balance/creatures.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
@@ -91,11 +91,20 @@ for (const d of ITEMS.all()) {
   if (d.tradeOnly && RECIPES.all().some(r => r.makes?.item === d.id)) err(`предмет ${d.id}: tradeOnly, но есть рецепт`);
   if (!(d.value > 0)) warn(`предмет ${d.id}: нет цены value, торговец отдаст его даром`);
 }
-// the strength rating (data/balance/strength.js): its yardstick and corrections name real things
-if (!SPECIES.has(STRENGTH.ref.species)) err(`data/balance/strength.js: ref — нет вида «${STRENGTH.ref.species}»`);
-STRENGTH.ref.kit.forEach(i => item('data/balance/strength.js: ref.kit', i));
-for (const [k, v] of Object.entries(STRENGTH.adjust)) { if (!SPECIES.has(k)) err(`data/balance/strength.js: adjust — нет вида «${k}»`); if (!(v > 0)) err(`data/balance/strength.js: adjust.${k} должен быть больше нуля`); }
-if (!(STRENGTH.alpha > 0 && STRENGTH.alpha <= 1.5)) err('data/balance/strength.js: alpha вне (0, 1.5]');
+// the creatures library (data/balance/creatures.js): a row for every species and a species for every row,
+// sane bodies, and a yardstick for the strength rating that names real things
+for (const id of Object.keys(CREATURES)) if (!SPECIES.has(id)) err(`data/balance/creatures.js: ${id} — нет такого вида`);
+for (const [id, r] of Object.entries(CREATURES)) {
+  const where = `data/balance/creatures.js: ${id}`;
+  for (const k of STATS.ids()) { const v = r.special?.[k]; if (!Array.isArray(v) || !(v[0] <= v[1]) || v[0] < 0) err(`${where}: special.${k} должен быть [min, max], 0 ≤ min ≤ max`); }
+  if (!(r.hp > 0) || !(r.speed > 0)) err(`${where}: hp и speed должны быть больше нуля`);
+  if (r.attack && !(r.attack.power > 0 && r.attack.cooldown > 0)) err(`${where}: attack без power или cooldown`);
+  if (r.ks != null && !(r.ks > 0)) err(`${where}: ks должен быть больше нуля`);
+  for (const p of Object.keys(r.peoples || {})) if (!SPECIES.get(id)?.peoples?.some(x => x.id === p)) err(`${where}: peoples.${p} — у вида нет такого народа`);
+}
+if (!SPECIES.has(STRENGTH.ref.species)) err(`data/balance/creatures.js: STRENGTH.ref — нет вида «${STRENGTH.ref.species}»`);
+STRENGTH.ref.kit.forEach(i => item('data/balance/creatures.js: STRENGTH.ref.kit', i));
+if (!(STRENGTH.alpha > 0 && STRENGTH.alpha <= 1.5)) err('data/balance/creatures.js: STRENGTH.alpha вне (0, 1.5]');
 // the balance tables (data/balance/): every row belongs to an item, no item sits in two tables, and the
 // numbers a fight divides by or compares are sane
 const seenRow = new Map();

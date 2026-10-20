@@ -15,7 +15,7 @@ import {toPL, attackPL, shotPL, defencePL, toolPL} from '../src/data/balance/pow
 import {QUALITY} from '../src/data/quality.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {RESOURCES} from '../src/data/resources.js';
-import {STRENGTH} from '../src/data/balance/strength.js';
+import {STRENGTH} from '../src/data/balance/creatures.js';
 import {strengthOf} from '../src/agents/strength.js';
 import {createAgent, maxHp} from '../src/agents/agent.js';
 import {dress} from '../src/agents/equipment.js';
@@ -169,7 +169,7 @@ function ks(kit) {
 }
 const tiersAll = [...new Set(items.filter(x => x.d.slot === 'hand' && (x.d.melee || x.d.ranged)).map(x => x.tier))].sort((a, b) => a - b);
 const shieldId = items.find(x => x.kind === 'shield')?.id;
-console.log(`\nКС (коэффициент силы, data/balance/strength.js): ${R.species}, SPECIAL ${R.special}, навык ${R.skill}, ${R.kit.map(id => ITEMS.get(id).short).join(' + ')} = ${STRENGTH.base}`);
+console.log(`\nКС (коэффициент силы, data/balance/creatures.js): ${R.species}, SPECIAL ${R.special}, навык ${R.skill}, ${R.kit.map(id => ITEMS.get(id).short).join(' + ')} = ${STRENGTH.base}`);
 for (const T of tiersAll) {
   const bodies = items.filter(x => x.kind === 'armor' && x.tier <= T), best = bodies.sort((a, b) => b.def - a.def)[0];
   const cloth = ITEMS.has('clothes') ? 'clothes' : null;

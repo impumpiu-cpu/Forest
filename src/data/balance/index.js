@@ -8,6 +8,7 @@ import {GEAR} from './gear.js';
 export {WEAPONS, ARMOR, GEAR};
 export {COMBAT, CAPS, PRICES} from './combat.js';
 export {RULES} from './rules.js';
+export {CREATURES, STRENGTH} from './creatures.js';
 
 export const TABLES = {weapons: WEAPONS, armor: ARMOR, gear: GEAR};
 

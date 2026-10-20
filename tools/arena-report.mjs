@@ -108,61 +108,100 @@ function model(results) {
   return {n: rows.length, features: out};
 }
 
-// ── part 2: the strength rating against group battles ─────────────────────────
-// Each battle: side A's and side B's total rating (data/balance/strength.js) and who won. The questions:
+// ── parts 2 and 3: the strength rating against group battles ─────────────────
+// Each battle: side A's and side B's total rating (data/balance/creatures.js) and who won.
+// Part 2, the races:
 //   calibration — do sides with equal totals win half the time, and the stronger side more the bigger the gap;
 //   alpha       — which exponent makes the totals predict best (the ratings are recomputed for each);
-//   adjust      — with that alpha, which kind of fighter the rating over- or underrates: for each species
-//                 (humans are the yardstick) and each tier a factor m, such that the outcome follows
-//                 ln(m·ΣA / ΣB); a factor whose 95% interval misses 1 is worth putting into `adjust`;
+//   ks          — with that alpha, which race (humans are the yardstick), tier or kind of weapon the rating
+//                 misjudges: a factor m for each, such that the outcome follows ln(m·ΣA / ΣB);
 //   crowd       — whether numbers win more than the totals say (then alpha is too high) or less.
+// Part 3, the creatures: the races taken as calibrated, one factor m for each creature.
+// What to write: a species with no `ks` yet gets m (it is being met for the first time); one that has it
+// is moved half the way (× √m) only when m is sure (its 95% interval misses 1) and off by more than `adjustMin`.
 const RATIO_EDGES = [[0, 0.67, 'A слабее в 1,5+ раза'], [0.67, 0.87, 'A слабее на 15–50%'], [0.87, 1.15, 'почти равны'], [1.15, 1.5, 'A сильнее на 15–50%'], [1.5, 99, 'A сильнее в 1,5+ раза']];
-function analyseStrength(battles, S, typical, sp, rangedIds = {}) {
-  if (!battles.length) return null;
-  const y = battles.map(r => (r.winner === 'a' ? 1 : r.winner === 'draw' ? 0.5 : 0));
-  const ks = (side, alpha) => side.units.reduce((t, u) => t + S.base * (u.raw / S.refRaw) ** alpha * (S.adjust[side.species] ?? 1), 0);
-  const xAt = alpha => battles.map(r => Math.log(ks(r.a, alpha) / ks(r.b, alpha)));
-  // calibration at the present alpha
-  const x0 = xAt(S.alpha), cal = fitLogit(x0.map(x => [1, x]), y);
+const yOf = battles => battles.map(r => (r.winner === 'a' ? 1 : r.winner === 'draw' ? 0.5 : 0));
+const round2 = x => Math.round(x * 100) / 100;
+function calibration(battles, x, y) {
+  const cal = fitLogit(x.map(v => [1, v]), y);
   const bins = RATIO_EDGES.map(([lo, hi, label]) => {
-    const idx = battles.map((_, n) => n).filter(n => Math.exp(x0[n]) >= lo && Math.exp(x0[n]) < hi);
+    const idx = battles.map((_, n) => n).filter(n => Math.exp(x[n]) >= lo && Math.exp(x[n]) < hi);
     const sc = idx.reduce((t, n) => t + y[n], 0), [l, h] = wilson(sc, idx.length);
-    const pred = idx.reduce((t, n) => t + 1 / (1 + Math.exp(-cal.beta[1] * x0[n])), 0);
+    const pred = idx.reduce((t, n) => t + 1 / (1 + Math.exp(-cal.beta[1] * x[n])), 0);
     return {label, n: idx.length, rate: idx.length ? sc / idx.length : null, lo: l, hi: h, pred: idx.length ? pred / idx.length : null};
   });
-  // alpha: the exponent whose totals predict best
+  return {bias: 1 / (1 + Math.exp(-cal.beta[0])), slope: cal.beta[1], bins};
+}
+// one factor per column of the fit: m = exp(γ / slope), with its 95% interval
+function factors(fit, cols, battles, minN) {
+  const b1 = fit.beta[0];
+  return cols.map((c, i) => {
+    const g = fit.beta[i + 1], se = fit.se[i + 1], n = battles.filter(r => c.f(r.a) || c.f(r.b)).length;
+    const m = Math.exp(g / b1), lo = Math.exp((g - Z * se) / b1), hi = Math.exp((g + Z * se) / b1);
+    return {id: c.id, n, m, lo, hi, sure: n >= minN && (lo > 1 || hi < 1) && Math.abs(Math.log(m)) > Math.log(1 + RULES.arena.adjustMin)};
+  });
+}
+// what to write for a species: assign when it has no ks yet, refine when sure
+// (a species already calibrated moves half the way: noise between seeds should not rock it)
+function proposal(f, now, enough) {
+  if (now == null) return enough ? round2(Math.min(10, Math.max(0.1, f.m))) : null;
+  return f.sure ? round2(now * Math.sqrt(f.m)) : null;
+}
+
+export function analyseRaces(battles, S, sp, rangedIds = {}) {
+  if (!battles.length) return null;
+  const y = yOf(battles), A = RULES.arena;
+  const ks = (side, alpha) => side.units.reduce((t, u) => t + S.base * (u.raw / S.refRaw) ** alpha * (S.ks[side.species] ?? 1), 0);
+  const xAt = alpha => battles.map(r => Math.log(ks(r.a, alpha) / ks(r.b, alpha)));
+  const cal = calibration(battles, xAt(S.alpha), y);
   const scan = [];
-  for (let a = 0.3; a <= 1.2001; a += 0.05) { const xs = xAt(a), f = fitLogit(xs.map(x => [x]), y); scan.push({alpha: +a.toFixed(2), ll: f.ll, slope: f.beta[0]}); }
+  for (let a = 0.3; a <= 1.2001; a += 0.05) { const xs = xAt(a), f = fitLogit(xs.map(x => [x]), y); scan.push({alpha: +a.toFixed(2), ll: f.ll}); }
   const best = scan.reduce((b, r) => (r.ll > b.ll ? r : b));
-  // corrections at the best alpha
   const xb = xAt(best.alpha), refSp = S.ref.species;
   const kinds = [...new Set(battles.flatMap(r => [r.a.species, r.b.species]))].filter(k => k !== refSp);
   const tiersSeen = [...new Set(battles.flatMap(r => [r.a.tier, r.b.tier]).filter(t => t != null))].sort((a, b) => a - b).filter(t => t !== 0);
   // the share of a side's rating carried by bows and slings: its factor says whether shots are rated right
   const rangedShare = side => { let r = 0, t = 0; for (const u of side.units) { const k = (u.raw / S.refRaw) ** best.alpha; t += k; if (rangedIds[u.weapon]) r += k; } return t ? r / t : 0; };
   const cols = [...kinds.map(k => ({id: k, f: side => (side.species === k ? 1 : 0)})), ...tiersSeen.map(t => ({id: 'tier' + t, f: side => (side.tier === t ? 1 : 0)})), {id: 'ranged', f: rangedShare}];
-  const fit = fitLogit(battles.map((r, n) => [xb[n], ...cols.map(c => c.f(r.a) - c.f(r.b))]), y), b1 = fit.beta[0];
-  const factor = (i, minN) => {
-    const g = fit.beta[i + 1], se = fit.se[i + 1], c = cols[i], n = battles.filter(r => c.f(r.a) || c.f(r.b)).length;
-    const m = Math.exp(g / b1), lo = Math.exp((g - Z * se) / b1), hi = Math.exp((g + Z * se) / b1);
-    return {id: c.id, n, m, lo, hi, sure: n >= minN && (lo > 1 || hi < 1) && Math.abs(Math.log(m)) > Math.log(1 + RULES.arena.adjustMin)};
-  };
-  const species = kinds.map((k, i) => ({...factor(i, RULES.arena.minN), label: sp(k), now: S.adjust[k] ?? 1})).sort((a, b) => a.m - b.m);
-  for (const f of species) f.suggest = f.sure ? +(f.now * f.m).toFixed(2) : f.now;
-  const tierF = tiersSeen.map((t, i) => ({...factor(kinds.length + i, RULES.arena.minN), tier: t}));
-  const rf = factor(kinds.length + tiersSeen.length, RULES.arena.minN);
-  // rating ∝ offence^alpha and a bow's offence is × rangedWeight, so the weight moves by m^(1/alpha)
-  const ranged = {...rf, now: S.rangedWeight, suggest: rf.sure ? +(S.rangedWeight * rf.m ** (1 / best.alpha)).toFixed(2) : S.rangedWeight};
-  // crowd: numbers beyond what the totals say
+  const fit = fitLogit(battles.map((r, n) => [xb[n], ...cols.map(c => c.f(r.a) - c.f(r.b))]), y);
+  const fs = factors(fit, cols, battles, A.minN);
+  const species = fs.slice(0, kinds.length).map(f => ({...f, label: sp(f.id), now: S.ks[f.id]})).sort((a, b) => a.m - b.m);
+  for (const f of species) f.write = proposal(f, f.now, f.n >= A.minN);
+  const tiers = fs.slice(kinds.length, kinds.length + tiersSeen.length).map((f, i) => ({...f, tier: tiersSeen[i]}));
+  const rf = fs.at(-1);
+  // rating ∝ offence^alpha and shots are a part of offence × rangedWeight: the weight moves by m^(1/alpha) at
+  // most; half of that in log, as with ks, so that it settles rather than swings
+  const ranged = {...rf, now: S.rangedWeight, suggest: rf.sure ? round2(S.rangedWeight * rf.m ** (0.5 / best.alpha)) : S.rangedWeight};
   const crowd = fitLogit(battles.map((r, n) => [xb[n], Math.log(r.a.n / r.b.n)]), y);
-  const adjust = Object.fromEntries(species.filter(f => f.suggest !== 1).map(f => [f.id, f.suggest]));
   return {n: battles.length, draws: battles.filter(r => r.winner === 'draw').length, ticks: median(battles.map(r => r.ticks)),
-    alpha: S.alpha, base: S.base, ref: S.ref, bias: 1 / (1 + Math.exp(-cal.beta[0])), slope: cal.beta[1], bins, scan, best, species, tiers: tierF, ranged,
-    crowd: {beta: crowd.beta[1] / crowd.beta[0], se: crowd.se[1] / Math.abs(crowd.beta[0])}, adjust,
-    typical: typical && {races: typical.races.map(r => ({...r, label: sp(r.species)})), foes: typical.foes.map(f => ({...f, label: sp(f.species)}))}};
+    alpha: S.alpha, base: S.base, ref: S.ref, ...cal, scan, best, species, tiers, ranged,
+    crowd: {beta: crowd.beta[1] / crowd.beta[0], se: crowd.se[1] / Math.abs(crowd.beta[0])},
+    writeAlpha: Math.abs(best.alpha - S.alpha) >= 0.05 - 1e-9 ? best.alpha : null,
+    write: Object.fromEntries(species.filter(f => f.write != null).map(f => [f.id, f.write]))};
 }
 
-export function analyse(results, {opt, names, version, tiers, seconds, battles = [], strength = null, typical = null}) {
+export function analyseCreatures(battles, S, sp, harmless = []) {
+  if (!battles.length) return null;
+  const y = yOf(battles), A = RULES.arena, x = battles.map(r => Math.log(r.a.ks / r.b.ks));
+  const cal = calibration(battles, x, y);
+  const kinds = [...new Set(battles.map(r => r.a.species))];
+  const cols = kinds.map(k => ({id: k, f: side => (side.species === k ? 1 : 0)}));
+  const fit = fitLogit(battles.map((r, n) => [x[n], ...cols.map(c => c.f(r.a) - c.f(r.b))]), y);
+  const list = factors(fit, cols, battles, A.minN).map(f => {
+    const mine = battles.filter(r => r.a.species === f.id);
+    const even = mine.filter(r => Math.abs(Math.log(r.a.ks / r.b.ks)) < Math.log(1.5)).length;
+    const won = mine.reduce((t, r) => t + (r.winner === 'a' ? 1 : r.winner === 'draw' ? 0.5 : 0), 0) / mine.length;
+    const size = median(mine.map(r => r.a.n)), against = median(mine.map(r => r.b.n));
+    return {...f, label: sp(f.id), now: S.ks[f.id], even, won, size, against, write: null};
+  });
+  // too few even battles: the creature is far stronger or weaker than any side the races could field
+  for (const f of list) f.write = proposal(f, f.now, f.even >= 10);
+  list.sort((a, b) => a.m - b.m);
+  return {n: battles.length, draws: battles.filter(r => r.winner === 'draw').length, ticks: median(battles.map(r => r.ticks)), ...cal,
+    list, harmless, write: Object.fromEntries(list.filter(f => f.write != null).map(f => [f.id, f.write]))};
+}
+
+export function analyse(results, {opt, names, version, tiers, seconds}) {
   const S = sides(results), item = id => names.items[id] || id, sp = id => names.species[id] || id;
   const kit = f => (f.weapon ? item(f.weapon) + (f.wq ? ` +${f.wq}` : '') + (f.shield ? ' + ' + item(f.shield) : '') : null);
   const same = S.filter(x => x.kind === 'same');
@@ -209,7 +248,6 @@ export function analyse(results, {opt, names, version, tiers, seconds, battles =
     return {species: f, label: sp(f), duels: xs.length, rate: xs.reduce((s, x) => s + x.score, 0) / xs.length,
       tiers: group(xs, x => x.tier, t => `тир ${t}`).sort((a, b) => a.key - b.key), weapons: group(xs, x => x.me.weapon, item)};
   });
-  out.strength = strength ? analyseStrength(battles, strength, typical, sp, names.ranged) : null;
   return out;
 }
 
@@ -239,26 +277,32 @@ export function consoleSummary(s) {
   }
   for (const c of s.cross) L.push(`Тир ${c.lower} против тира ${c.upper}: слабое снаряжение побеждает в ${pct(c.upset)} боёв (${c.duels})`);
   for (const f of s.foes) L.push(`Против: ${f.label} — ${pct(f.rate)} (${f.duels}); по тирам ${f.tiers.map(g => `${g.key}: ${pct(g.rate)}`).join(', ')}`);
-  const K = s.strength;
+  const f2 = x => x.toFixed(2), K = s.raceKs, C = s.creatures, T = s.typical;
   if (K) {
-    const f2 = x => x.toFixed(2);
-    L.push(`\nЧАСТЬ 2. КОЭФФИЦИЕНТ СИЛЫ (${K.n} групповых боёв, ~${K.ticks} тиков; ${K.ref.species} с ${K.ref.kit.join(' + ')} = ${K.base})`);
+    L.push(`\nЧАСТЬ 2. КС РАЗУМНЫХ РАС (${K.n} боёв, ~${K.ticks} тиков; ${K.ref.species} с ${K.ref.kit.join(' + ')} = ${K.base})`);
     L.push(`  при равных КС сторона A побеждает в ${pct(K.bias)} боёв (должно быть ~50%)`);
     for (const b of K.bins) if (b.n) L.push(`  ${b.label.padEnd(24)} побед A ${pct(b.rate).padStart(4)} [${pct(b.lo)}…${pct(b.hi)}], n=${b.n}`);
-    L.push(`  alpha: сейчас ${K.alpha}, лучше всего ${K.best.alpha}${K.best.alpha !== K.alpha ? ` (правдоподобие ${K.best.ll.toFixed(0)} против ${K.scan.find(r => Math.abs(r.alpha - K.alpha) < 1e-9)?.ll.toFixed(0) ?? '—'})` : ''}`);
+    L.push(`  alpha: сейчас ${K.alpha}, лучше всего ${K.best.alpha}`);
     L.push(`  толпа: ${Math.abs(K.crowd.beta) < 2 * K.crowd.se ? 'числом сверх КС не берут' : K.crowd.beta > 0 ? 'числа побеждают больше, чем говорит КС' : 'числа побеждают меньше, чем говорит КС'} (${f2(K.crowd.beta)} ± ${f2(K.crowd.se)})`);
-    L.push(`  поправки при alpha ${K.best.alpha} (× к КС вида; * — уверенно):`);
-    L.push('    ' + K.species.map(f => `${f.label} ×${f2(f.m)}${f.sure ? '*' : ''}`).join(' · '));
+    L.push(`  поправки при alpha ${K.best.alpha} (× к КС; * — уверенно; → что записать в ks):`);
+    L.push('    ' + K.species.map(f => `${f.label} ×${f2(f.m)}${f.sure ? '*' : ''}${f.write != null ? ` → ${f.write}` : ''}`).join(' · '));
     if (K.tiers.length) L.push('  снаряжение тира: ' + K.tiers.map(f => `тир ${f.tier} ×${f2(f.m)}${f.sure ? '*' : ''}`).join(' · ') + ' (больше 1 — КС его недооценивает)');
-    L.push(`  лук и праща: ×${f2(K.ranged.m)}${K.ranged.sure ? '*' : ''} [${f2(K.ranged.lo)}…${f2(K.ranged.hi)}] к КС стрелков → rangedWeight ${K.ranged.suggest}`);
-    L.push(`  в data/balance/strength.js: alpha: ${K.best.alpha}, rangedWeight: ${K.ranged.suggest}, adjust: ${JSON.stringify(K.adjust)}`);
-    if (K.typical) {
-      const h0 = K.typical.races.find(r => r.species === K.ref.species)?.tiers[0]?.mean;
-      L.push('  типичный КС по тирам' + (h0 ? ' (и сколько их на одного человека тира 0)' : '') + ':');
-      for (const r of K.typical.races) L.push(`    ${r.label.padEnd(14)} ${Object.entries(r.tiers).map(([t, v]) => `тир ${t}: ${v.mean.toFixed(0).padStart(4)}`).join('  ')}${h0 ? `   ×${(h0 / r.tiers[0].mean).toFixed(2)}` : ''}`);
-      for (const f of K.typical.foes) L.push(`    ${f.label.padEnd(14)} ${f.mean.toFixed(0).padStart(4)}${h0 ? `   ×${(h0 / f.mean).toFixed(2)}` : ''}`);
-    }
+    L.push(`  лук и праща: ×${f2(K.ranged.m)}${K.ranged.sure ? '*' : ''} [${f2(K.ranged.lo)}…${f2(K.ranged.hi)}] → rangedWeight ${K.ranged.suggest}`);
   }
+  if (C) {
+    L.push(`\nЧАСТЬ 3. КС СУЩЕСТВ (${C.n} боёв против рас, ~${C.ticks} тиков; при равных КС существа побеждают в ${pct(C.bias)})`);
+    L.push(`  ${'кто'.padEnd(26)}${'×'.padStart(6)}  ${'95%'.padEnd(11)}${'равных'.padStart(7)}${'стаей'.padStart(7)}${'ks'.padStart(7)}  → запись`);
+    for (const f of C.list) L.push(`  ${f.label.slice(0, 25).padEnd(26)}${f2(f.m).padStart(6)}${f.sure ? '*' : ' '} ${(f2(f.lo) + '…' + f2(f.hi)).padEnd(11)}${String(f.even).padStart(7)}${String(f.size).padStart(7)}${String(f.now ?? '—').padStart(7)}  ${f.write != null ? '→ ' + f.write : f.even < 10 ? 'мало равных боёв' : ''}`);
+    if (C.harmless.length) L.push(`  не дерутся (нет attack), КС не считается: ${C.harmless.join(', ')}`);
+  }
+  if (T) {
+    const h0 = T.races.find(r => r.species === T.ref.species)?.tiers[0]?.mean;
+    L.push(`\nТипичный КС${h0 ? ' (и сколько их на одного человека тира 0)' : ''}:`);
+    for (const r of T.races) L.push(`  ${r.label.padEnd(14)} ${Object.entries(r.tiers).map(([t, v]) => `тир ${t}: ${v.mean.toFixed(0).padStart(4)}`).join('  ')}${h0 ? `   ×${(h0 / r.tiers[0].mean).toFixed(2)}` : ''}`);
+    L.push('  ' + T.creatures.map(c => `${c.label} ${c.mean.toFixed(0)}`).join(' · '));
+  }
+  if (s.written) L.push(s.written.length ? `\nЗаписано в data/balance/creatures.js:\n  ${s.written.join('\n  ')}` : '\nВ data/balance/creatures.js менять нечего: КС сходится.');
+  else if ((K && (K.writeAlpha != null || K.ranged.sure || Object.keys(K.write).length)) || (C && Object.keys(C.write).length)) L.push('\nЕсть что записать в data/balance/creatures.js: npm run arena:calibrate (или --write).');
   return L.join('\n');
 }
 
@@ -280,34 +324,44 @@ function grid(m, note) {
     `<tr><td>${esc(m.labels[a])}</td>${m.keys.map(b => { const c = m.cells[a + '|' + b]; return c ? `<td style="${heat(c.rate)}" title="${c.n} боёв">${a === b ? '·' : pct(c.rate)}</td>` : '<td class="muted">—</td>'; }).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-function strengthHtml(K) {
+function racesHtml(K) {
   const f2 = x => x.toFixed(2);
-  const h0 = K.typical?.races.find(r => r.species === K.ref.species)?.tiers[0]?.mean;
-  const tiersT = K.typical ? Object.keys(K.typical.races[0]?.tiers || {}) : [];
   const maxLL = K.best.ll, minLL = Math.min(...K.scan.map(r => r.ll));
-  return `<h1 class="part">Часть 2. Коэффициент силы — групповые бои</h1>
-  <section class="card"><h2>Сходится ли КС</h2><p class="muted">${K.n} боёв «N против M», ~${K.ticks} тиков, ничьих ${K.draws}. КС ${esc(K.ref.species)} с ${esc(K.ref.kit.join(' + '))} = ${K.base}; КС стороны — сумма КС бойцов (data/balance/strength.js). Если КС верен, стороны с равной суммой побеждают поровну, а с большей — тем чаще, чем больше разрыв.</p>
+  return `<h1 class="part">Часть 2. КС разумных рас — групповые бои</h1>
+  <section class="card"><h2>Сходится ли КС</h2><p class="muted">${K.n} боёв «N против M», ~${K.ticks} тиков, ничьих ${K.draws}. КС ${esc(K.ref.species)} с ${esc(K.ref.kit.join(' + '))} = ${K.base}; КС стороны — сумма КС бойцов (data/balance/creatures.js). Если КС верен, стороны с равной суммой побеждают поровну, а с большей — тем чаще, чем больше разрыв.</p>
     <p>При равных КС сторона A побеждает в <b>${pct(K.bias)}</b> боёв.</p>
-    <div class="scroll"><table><thead><tr><th>соотношение КС</th><th>побед A</th><th>95%</th><th>по модели</th><th>боёв</th></tr></thead><tbody>${K.bins.filter(b => b.n).map(b => `<tr><td>${esc(b.label)}</td><td style="${heat(b.rate)}">${pct(b.rate)}</td><td class="muted">${pct(b.lo)}…${pct(b.hi)}</td><td>${pct(b.pred)}</td><td>${b.n}</td></tr>`).join('')}</tbody></table></div>
+    ${binsHtml(K.bins)}
     <div class="grid2"><div><h3>alpha: как сила складывается в толпе</h3><p class="muted">1 — каждый дерётся с одним, 0,5 — все бьют разом (квадратичный закон Ланчестера). Сейчас ${K.alpha}, лучше всего предсказывает <b>${K.best.alpha}</b>.</p>
       <div class="scroll"><table><thead><tr><th>alpha</th><th>правдоподобие</th><th></th></tr></thead><tbody>${K.scan.map(r => `<tr><td>${r.alpha}${r.alpha === K.best.alpha ? ' ★' : ''}${Math.abs(r.alpha - K.alpha) < 1e-9 ? ' (сейчас)' : ''}</td><td>${r.ll.toFixed(0)}</td><td style="text-align:left"><span style="display:inline-block;height:8px;border-radius:4px;background:var(--good);width:${Math.round(4 + 120 * (r.ll - minLL) / Math.max(1e-9, maxLL - minLL))}px"></span></td></tr>`).join('')}</tbody></table></div>
       <p class="muted">Толпа: ${Math.abs(K.crowd.beta) < 2 * K.crowd.se ? 'числом сверх КС не берут' : K.crowd.beta > 0 ? 'числа побеждают больше, чем говорит КС' : 'числа побеждают меньше, чем говорит КС'} (${f2(K.crowd.beta)} ± ${f2(K.crowd.se)}).</p></div>
-    <div><h3>Поправки при alpha ${K.best.alpha}</h3><p class="muted">Множитель к КС вида: больше 1 — вид сильнее, чем говорит формула. Люди — мерило. Уверенные (интервал не задевает 1) отмечены.</p>
-      <div class="scroll"><table><thead><tr><th>вид</th><th>×</th><th>95%</th><th>боёв</th><th>adjust</th></tr></thead><tbody>${K.species.map(f => `<tr><td>${esc(f.label)}</td><td style="${heat(0.5 + Math.log(f.m) / 2)}">${f2(f.m)}</td><td class="muted">${f2(f.lo)}…${f2(f.hi)}</td><td>${f.n}</td><td>${f.sure ? `<b>${f.suggest}</b>` : f.now}</td></tr>`).join('')}
-      ${K.tiers.map(f => `<tr><td>снаряжение тира ${f.tier}</td><td style="${heat(0.5 + Math.log(f.m) / 2)}">${f2(f.m)}</td><td class="muted">${f2(f.lo)}…${f2(f.hi)}</td><td>${f.n}</td><td class="muted">к тиру 0</td></tr>`).join('')}</tbody></table></div></div></div>
-    <p class="muted">Лук и праща: множитель к КС стрелков ×${f2(K.ranged.m)} (${f2(K.ranged.lo)}…${f2(K.ranged.hi)})${K.ranged.sure ? ', уверенно' : ''}. Поправки меньше ${Math.round(RULES.arena.adjustMin * 100)}% не предлагаются: это разброс между сидами.</p>
-    <h3>Вставить в data/balance/strength.js</h3><pre>alpha: ${K.best.alpha},
-rangedWeight: ${K.ranged.suggest},
-adjust: ${esc(JSON.stringify(K.adjust))},</pre>
-  </section>
-  ${K.typical ? `<section class="card"><h2>Типичный КС</h2><p class="muted">Среднее по 300 бойцам: SPECIAL по расе, навык ${'как в прогоне'}, снаряжение тира случайное. «На одного человека» — сколько их нужно против человека тира 0. Это КС при нынешних alpha и adjust.</p>
-    <div class="scroll"><table><thead><tr><th>кто</th>${tiersT.map(t => `<th>тир ${t}</th>`).join('')}<th>на одного человека</th></tr></thead><tbody>${K.typical.races.map(r => `<tr><td>${esc(r.label)}</td>${tiersT.map(t => `<td title="25–75%: ${r.tiers[t].p25.toFixed(0)}–${r.tiers[t].p75.toFixed(0)}">${r.tiers[t].mean.toFixed(0)}</td>`).join('')}<td>${h0 ? (h0 / r.tiers[tiersT[0]].mean).toFixed(2) : '—'}</td></tr>`).join('')}
-    ${K.typical.foes.map(f => `<tr><td>${esc(f.label)}</td><td colspan="${tiersT.length}" style="text-align:center" title="25–75%: ${f.p25.toFixed(0)}–${f.p75.toFixed(0)}">${f.mean.toFixed(0)}</td><td>${h0 ? (h0 / f.mean).toFixed(2) : '—'}</td></tr>`).join('')}</tbody></table></div></section>` : ''}`;
+    <div><h3>Поправки при alpha ${K.best.alpha}</h3><p class="muted">Множитель к КС: больше 1 — сильнее, чем говорит формула. Люди — мерило. «ks» — что сейчас в строке вида и что туда записать.</p>
+      <div class="scroll"><table><thead><tr><th>кто</th><th>×</th><th>95%</th><th>боёв</th><th>ks</th></tr></thead><tbody>${K.species.map(f => `<tr><td>${esc(f.label)}</td><td style="${heat(0.5 + Math.log(f.m) / 2)}">${f2(f.m)}</td><td class="muted">${f2(f.lo)}…${f2(f.hi)}</td><td>${f.n}</td><td>${f.now ?? '—'}${f.write != null ? ` → <b>${f.write}</b>` : ''}</td></tr>`).join('')}
+      ${K.tiers.map(f => `<tr><td>снаряжение тира ${f.tier}</td><td style="${heat(0.5 + Math.log(f.m) / 2)}">${f2(f.m)}</td><td class="muted">${f2(f.lo)}…${f2(f.hi)}</td><td>${f.n}</td><td class="muted">к тиру 0</td></tr>`).join('')}
+      <tr><td>лук и праща</td><td style="${heat(0.5 + Math.log(K.ranged.m) / 2)}">${f2(K.ranged.m)}</td><td class="muted">${f2(K.ranged.lo)}…${f2(K.ranged.hi)}</td><td>${K.ranged.n}</td><td>rangedWeight ${K.ranged.now}${K.ranged.suggest !== K.ranged.now ? ` → <b>${K.ranged.suggest}</b>` : ''}</td></tr></tbody></table></div>
+      <p class="muted">Поправки меньше ${Math.round(RULES.arena.adjustMin * 100)}% не предлагаются: это разброс между сидами. ${K.writeAlpha != null ? `alpha → <b>${K.writeAlpha}</b>.` : ''}</p></div></div>
+  </section>`;
+}
+const binsHtml = bins => `<div class="scroll"><table><thead><tr><th>соотношение КС</th><th>побед A</th><th>95%</th><th>по модели</th><th>боёв</th></tr></thead><tbody>${bins.filter(b => b.n).map(b => `<tr><td>${esc(b.label)}</td><td style="${heat(b.rate)}">${pct(b.rate)}</td><td class="muted">${pct(b.lo)}…${pct(b.hi)}</td><td>${pct(b.pred)}</td><td>${b.n}</td></tr>`).join('')}</tbody></table></div>`;
+function creaturesHtml(C) {
+  const f2 = x => x.toFixed(2);
+  return `<h1 class="part">Часть 3. КС существ — против рас</h1>
+  <section class="card"><h2>Поправки ks</h2><p class="muted">${C.n} боёв: стая одного вида (с тем, что он носит в набегах) против отряда одной расы, суммы КС от ½ до 2 к одному. Расы считаются откалиброванными (часть 2). При равных КС существа побеждают в <b>${pct(C.bias)}</b>. «×» — во сколько раз существо сильнее, чем говорит формула; «равных» — боёв, где суммы отличались меньше чем в 1,5 раза (на них и держится поправка); «стаей» — сколько их обычно выходило. Без ks вид получает поправку при 10+ равных боях; с ks — только уверенную и больше ${Math.round(RULES.arena.adjustMin * 100)}%, и на полшага (×√m), чтобы шум между сидами не раскачивал её.</p>
+    ${binsHtml(C.bins)}
+    <div class="scroll"><table><thead><tr><th>кто</th><th>×</th><th>95%</th><th>боёв</th><th>равных</th><th>побед</th><th>стаей</th><th>против</th><th>ks</th></tr></thead><tbody>${C.list.map(f => `<tr><td>${esc(f.label)}</td><td style="${heat(0.5 + Math.log(f.m) / 2)}">${f2(f.m)}${f.sure ? ' *' : ''}</td><td class="muted">${f2(f.lo)}…${f2(f.hi)}</td><td>${f.n}</td><td>${f.even}</td><td>${pct(f.won)}</td><td>${f.size}</td><td>${f.against}</td><td>${f.now ?? '—'}${f.write != null ? ` → <b>${f.write}</b>` : f.even < 10 ? ' <span class="muted">мало равных</span>' : ''}</td></tr>`).join('')}</tbody></table></div>
+    ${C.harmless.length ? `<p class="muted">Не дерутся (нет attack), КС не считается: ${esc(C.harmless.join(', '))}.</p>` : ''}
+  </section>`;
+}
+function typicalHtml(T) {
+  const h0 = T.races.find(r => r.species === T.ref.species)?.tiers[0]?.mean, tiersT = Object.keys(T.races[0]?.tiers || {});
+  const cr = [...T.creatures].sort((a, b) => a.mean - b.mean);
+  return `<section class="card"><h2>Типичный КС</h2><p class="muted">Среднее по 300: расы — SPECIAL по расе, навык как в прогоне, снаряжение тира случайное; существа — как в набегах. «На одного человека» — сколько их нужно против человека тира 0. Это КС после записи, если она была.</p>
+    <div class="grid2"><div class="scroll"><table><thead><tr><th>раса</th>${tiersT.map(t => `<th>тир ${t}</th>`).join('')}<th>на одного человека</th></tr></thead><tbody>${T.races.map(r => `<tr><td>${esc(r.label)}</td>${tiersT.map(t => `<td title="25–75%: ${r.tiers[t].p25.toFixed(0)}–${r.tiers[t].p75.toFixed(0)}">${r.tiers[t].mean.toFixed(0)}</td>`).join('')}<td>${h0 ? (h0 / r.tiers[tiersT[0]].mean).toFixed(2) : '—'}</td></tr>`).join('')}</tbody></table></div>
+    <div class="scroll"><table><thead><tr><th>существо</th><th>КС</th><th>ks</th><th>на одного человека</th></tr></thead><tbody>${cr.map(c => `<tr><td>${esc(c.label)}</td><td title="25–75%: ${c.p25.toFixed(0)}–${c.p75.toFixed(0)}">${c.mean.toFixed(0)}</td><td>${c.ks ?? '—'}</td><td>${h0 ? (h0 / c.mean).toFixed(2) : '—'}</td></tr>`).join('')}</tbody></table></div></div></section>`;
 }
 
 export function renderArena(s) {
   const o = s.opt;
-  const setup = [`поединков ${s.fights}`, ...(s.strength ? [`групповых боёв ${s.strength.n}`] : []), `расы: ${o.races === 'all' ? 'все' : o.races}`, `SPECIAL: ${o.stats === 'norm' ? 'все 5' : 'по расе'}`, `навык: ${o.skill === 'random' ? 'случайный 0–1' : o.skill}`,
+  const setup = [`поединков ${s.fights}`, ...(s.raceKs ? [`боёв рас ${s.raceKs.n}`] : []), ...(s.creatures ? [`боёв существ ${s.creatures.n}`] : []), `расы: ${o.races === 'all' ? 'все' : o.races}`, `SPECIAL: ${o.stats === 'norm' ? 'все 5' : 'по расе'}`, `навык: ${o.skill === 'random' ? 'случайный 0–1' : o.skill}`,
     `броня: ${{tier: 'своего тира', any: 'любая до тира', none: 'без брони'}[o.armor] || o.armor}`, `щит у одноручного: ${pct(o.shield)}`, `качество: ${o.quality === 'mix' ? 'смесь +0…+3' : 'только +0'}`,
     `старт на ${o.distance} клетках`, `сид «${o.seed}»`].join(' · ');
   const tiers = s.tiers.map(t => `
@@ -337,7 +391,10 @@ export function renderArena(s) {
   ${s.cross.length ? `<section class="card"><h2>Тир против следующего</h2><p class="muted">Как часто снаряжение тира ниже побеждает снаряжение тира выше. Раса, SPECIAL и навык у обоих случайные.</p>${s.cross.map(c => `
     <h3>Тир ${c.lower} против тира ${c.upper}: ${pct(c.upset)} побед слабого (${c.duels} боёв)</h3><div class="grid2"><div>${table(c.weapons, {first: 'оружие тира ' + c.lower})}</div><div>${table(c.races, {first: 'раса'})}</div></div>`).join('')}</section>` : ''}
   ${s.foes.length ? `<section class="card"><h2>Против существ</h2>${s.foes.map(f => `<h3>${esc(f.label)}: ${pct(f.rate)} побед вооружённого (${f.duels} боёв)</h3><div class="grid2"><div>${table(f.tiers, {first: 'тир'})}</div><div>${table(f.weapons, {first: 'оружие'})}</div></div>`).join('')}</section>` : ''}
-  ${s.strength ? strengthHtml(s.strength) : ''}`;
+  ${s.raceKs ? racesHtml(s.raceKs) : ''}
+  ${s.creatures ? creaturesHtml(s.creatures) : ''}
+  ${s.typical ? typicalHtml(s.typical) : ''}
+  ${s.written ? `<section class="card"><h2>Записано в data/balance/creatures.js</h2>${s.written.length ? `<pre>${esc(s.written.join('\n'))}</pre>` : '<p>Менять нечего: КС сходится.</p>'}</section>` : ''}`;
   return `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Арена</title>
