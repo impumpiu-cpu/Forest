@@ -1,4 +1,4 @@
-[Главная](../README.md) · **Архитектура** · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Баланс вещей](BALANCE.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md)
+[Главная](../README.md) · **Архитектура** · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Баланс вещей](BALANCE.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · [Шов](SEAM.md) · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md) · [Надмозг и пешки](MIND.md)
 
 # Архитектура
 
