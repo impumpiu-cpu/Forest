@@ -25,8 +25,8 @@ export const OUTCOMES = {
 
 // a task's key for skipping: a job by its job id, anything else by its task id. A fight and help are
 // keyed by whom: «the foe slipped away» or «could not reach the wounded» keeps one from that one, not
-// from the next foe or the next wounded
-export const taskKey = t => (t.id === 'job' ? 'job:' + t.job : t.id === 'fight' ? 'fight:' + (t.target?.id ?? '') : t.id === 'aid' ? 'aid:' + t.who : t.id);
+// from the next foe or the next wounded; a cry answered in vain keeps one from that cry, not from the next
+export const taskKey = t => (t.id === 'job' ? 'job:' + t.job : t.id === 'fight' ? 'fight:' + (t.target?.id ?? '') : t.id === 'aid' ? 'aid:' + t.who : t.id === 'answer' ? 'answer:' + t.flag : t.id);
 // the reflexes are never skipped: running from fire or home, the alarm, the firefighting
 const REFLEX = new Set(['runHome', 'flee', 'muster', 'douse']);
 export const skipped = (w, a, t) => !REFLEX.has(t.id) && (a.skips?.[taskKey(t)] ?? -1) > w.tick;

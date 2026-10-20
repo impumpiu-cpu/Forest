@@ -56,8 +56,9 @@ function isFoe(o) {
   if (o.dead || o.tame || o.downed || o.faction === 'colony') return false;
   return isHostile(COLONY, o) || (o.task?.id === 'maul' && o.task.target?.faction === 'colony');
 }
-// which flag a foe belongs to: its band, its pack, or itself
-const keyOf = o => (o.band != null ? 'band:' + o.band : o.pack != null ? 'pack:' + o.pack : 'one:' + o.id);
+// which flag a foe belongs to: its raiding squad (agents/squad.js; one raid, not the band's kind), its
+// pack, or itself
+const keyOf = o => (o.squad != null ? 'squad:' + o.squad : o.pack != null ? 'pack:' + o.pack : 'one:' + o.id);
 const kindOf = o => (o.faction === 'raiders' ? 'raid' : o.faction === 'nechist' ? 'nechist' : 'beast');
 
 // where a point lies from the camp, in words
