@@ -39,7 +39,9 @@ export const BOARD = {
   hearAsleep: 0.1,   // × Perception: the chance a sleeper hears a cry (P 5 — every other one)
   reshout: 100,      // a threat still in view is cried again so that newcomers learn of it
   forget: 300,       // a member unseen this long is struck off the flag
-  margin: 1.5,       // the colony feels a threat covered at this × its strength
+  // the colony feels a threat covered at this × its strength: a raiding band came to kill, loot and burn,
+  // not to trade blows one on one, so it takes more than its weight in a fight to hold it off
+  margin: {raid: 1.5, other: 1.5},
   far: 40,           // nobody answers a flag further away than this
   urgency: {raid: 1.35, other: 1.1},   // the weight of an uncovered flag (× the colonist's courage)
   wake: 0.25,        // a flag this much heavier wakes those who know it
@@ -98,7 +100,7 @@ const answering = (w, f) => (answerers(w)[f.key] || []).filter(c => !c.dead && !
 
 // the share of a flag still uncovered, 0…1; `without` leaves one defender out (its own weighing)
 function uncovered(w, f, ms, without = null) {
-  const need = ms.reduce((s, o) => s + strength(o), 0) * BOARD.margin;
+  const need = ms.reduce((s, o) => s + strength(o), 0) * (f.kind === 'raid' ? BOARD.margin.raid : BOARD.margin.other);
   if (need <= 0) return 0;
   const covered = answering(w, f).reduce((s, c) => s + (c === without ? 0 : strength(c)), 0);
   return clamp(1 - covered / need, 0, 1);

@@ -130,11 +130,10 @@ function decide(w, a) {
   const flags = flagOptions(w, a);
   for (const o of flags) opts.push(o);
   const enemy = knownFoeWithin(w, a, BOARD.sight * (a.mods.sight ?? 1));
-  // alarm: while raiders are on the map everyone gathers inside the settlement zone; whoever does not go
-  // to a fight stands there in reserve — not back at work — and joins in when the flag grows heavier
-  // (a defender falls, more raiders come); the wounded fall back
+  // alarm: while raiders are on the map everyone who has no foe in sight gathers inside the settlement
+  // zone and meets them together; one who sees a foe weighs its flag instead; the wounded fall back
   const raid = raidAlarm(w);
-  if (raid) opts.push([{id: 'muster'}, 1.25, () => (enemy ? 'тревога: в резерве у огня' : 'тревога: враги подходят к лагерю')]);
+  if (raid && !enemy) opts.push([{id: 'muster'}, 1.25, () => 'тревога: враги подходят к лагерю']);
   if (enemy && hpShare(a) <= BOARD.hurt && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
 
   let best = null, bs = -Infinity;
