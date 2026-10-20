@@ -28,6 +28,7 @@ import {think, moodOf} from '../agents/mind.js';
 import {walkable, isCampArea} from '../world/grid.js';
 import {stripAll} from '../agents/equipment.js';
 import {SPECIES} from '../data/species.js';
+import {ofSpeciesList} from '../agents/lookup.js';
 
 // races that live on brew (dwarves: `brew` in data/races.js) work slower without it
 const brewOf = a => SPECIES.get(a.species).brew;
@@ -85,7 +86,7 @@ export function addCorpse(w, a) {
 }
 export const corpses = w => w.corpses || [];
 // a body nobody else is carrying (reservation 'corpse:<id>', settlement/reserve.js); not while wolves prowl near it
-const wolvesNear = (w, c) => w.agents.some(o => o.species === 'wolf' && !o.dead && Math.hypot(o.x - c.x, o.y - c.y) < 20);
+const wolvesNear = (w, c) => ofSpeciesList(w, ['wolf']).some(o => !o.dead && Math.hypot(o.x - c.x, o.y - c.y) < 20);
 export const reachableCorpses = w => corpses(w).filter(c => !wolvesNear(w, c));
 export function freeCorpse(w, a) {
   let best = null, bd = Infinity;

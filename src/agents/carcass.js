@@ -24,6 +24,7 @@ import {log} from '../core/log.js';
 import {agentInZone} from '../settlement/zone.js';
 import {createAgent} from './agent.js';
 import {inMap, walkable} from '../world/grid.js';
+import {agentById, liveById} from './lookup.js';
 
 export const CARCASS = {
   life: 4 * DAY,       // rots away entirely after this
@@ -47,7 +48,7 @@ export const PACK = {
 };
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead);
+const byId = liveById;
 const hunts = w => w.hunts || (w.hunts = {});
 
 // ── carcasses
@@ -148,7 +149,7 @@ function dealRoles(w, h) {
 export function stepHunts(w) {
   const hs = w.hunts; if (!hs) return;
   for (const h of Object.values(hs)) {
-    const prey = w.agents.find(o => o.id === h.prey);
+    const prey = agentById(w, h.prey);
     const ms = h.members.map(id => byId(w, id)).filter(m => m && m.hunt === h.id);
     if (!ms.length) { endHunt(w, h, 'gave'); continue; }
     // the pack's own kill ends the hunt at the bite (agents/brains/predator.js); dead otherwise: someone else got it

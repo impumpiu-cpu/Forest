@@ -27,6 +27,7 @@ import {freeSlots} from './life.js';
 import {treasury, pay} from './precious.js';
 import {contest} from '../data/special.js';
 import {practice} from '../agents/skills.js';
+import {liveById} from '../agents/lookup.js';
 
 // ── keys: town-made tools (tag 'key'). One is wanted while the colony has none and could use it:
 // a building that needs it could be built (it is the only thing missing), or the tool works by itself
@@ -119,7 +120,7 @@ export function makeGoods(rng, units) {
 
 // ── the caravan on the map
 const members = (w, c) => w.agents.filter(o => o.caravan === c.id && !o.dead);
-export const traderOf = (w, c = w.caravan) => (c ? w.agents.find(o => o.id === c.traderId && !o.dead) : null);
+export const traderOf = (w, c = w.caravan) => (c ? liveById(w, c.traderId) : null);
 
 // called by the migration when the group reaches the map edge (data/migrations.js 'caravan')
 export function startCaravan(w, group) {
@@ -334,7 +335,7 @@ export function holdTrade(w) {
   reload(w, c);
 
   // the negotiator learns from a real deal only, by how much there was to haggle over
-  const lines = deal.sold.length + deal.bought.length, neg = terms.by != null ? w.agents.find(o => o.id === terms.by && !o.dead) : null;
+  const lines = deal.sold.length + deal.bought.length, neg = liveById(w, terms.by);
   if (neg && lines) practice(neg, 'barter', Math.min(TRADE.practiceMax, TRADE.practicePerLine * lines));
   const list = xs => xs.map(([l, n, g]) => `${l}${n > 1 ? ' ×' + n : ''}`).join(', ');
   const haggled = terms.name ? ` Торговал${terms.f ? 'ась' : 'ся'} за поселение <b>${esc(terms.name)}</b>: ${terms.b > 0 ? `цены на ${Math.round(terms.b * 100)}% выгоднее` : terms.b < 0 ? `купец переторговал, цены на ${Math.round(-terms.b * 100)}% хуже` : 'сошлись на обычных ценах'}.` : '';

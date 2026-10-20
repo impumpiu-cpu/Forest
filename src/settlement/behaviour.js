@@ -51,6 +51,9 @@ export function sampleBehaviour(w) {
   const busy = Object.values(onJob).reduce((s, v) => s + v, 0);
   if (busy >= 3) { b.crowd = (b.crowd || 0) + Math.max(...Object.values(onJob)) / busy; b.crowdTicks = (b.crowdTicks || 0) + 1; }
   if (nightness(w) > 0.3 && col.length) { b.nightTicks = (b.nightTicks || 0) + 1; if (!campFuel(w)) b.fireless = (b.fireless || 0) + 1; }
+  // who is being mauled right now: one pass over the creatures, not one per colonist
+  const mauled = new Set();
+  for (const o of w.agents) if (o.task?.id === 'maul' && !o.dead && o.task.target) mauled.add(o.task.target);
   for (const a of col) {
     b.ticks++;
     const t = a.task?.id;
@@ -59,7 +62,7 @@ export function sampleBehaviour(w) {
     if (t === 'company' || t === 'aid') b.company = (b.company || 0) + 1;
     if (a.carry && a.carry.n !== Object.values(a.carry.res).reduce((s, v) => s + v, 0)) bad(w, 'груз не сходится');
     // reaction to an attack: from the first tick something mauls it to the first tick it fights or runs
-    const attacked = w.agents.some(o => o.task?.id === 'maul' && o.task.target === a && !o.dead);
+    const attacked = mauled.has(a);
     if (attacked && a.attackedAt == null) a.attackedAt = w.tick;
     if (a.attackedAt != null && REACT.has(t)) { b.react.sum += w.tick - a.attackedAt; b.react.n++; a.attackedAt = null; }
     // an attack broken off within one think (the beast saw company and backed away) needed no answer

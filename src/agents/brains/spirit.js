@@ -21,6 +21,7 @@ import {nightness, HOUR, DAY} from '../../core/time.js';
 import {contest} from '../../data/special.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {tempAt} from '../../world/heat.js';
+import {liveById} from '../lookup.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -48,7 +49,7 @@ export function homeCell(w, home, minDist) {
   return -1;
 }
 
-const lonely = (w, v, r) => !w.agents.some(o => o !== v && !o.dead && o.faction === 'colony' && dist(o, v) < r);
+const lonely = (w, v, r) => !w.agents.some(o => o !== v && !o.dead && o.faction === 'colony' && dist(o, v) < r);   // scan: spirits only, one or two per map
 const spellbound = a => ['fight', 'flee', 'treat', 'astray', 'lured', 'runHome', 'muster'].includes(a.task?.id) || a.sleeping;
 
 function wander(w, a, S) {
@@ -71,7 +72,7 @@ function wander(w, a, S) {
 // the leshy: those nearby lose their way
 function leadAstray(w, a, sp, S) {
   if ((w.tick + a.id) % S.every) return;
-  const lost = w.agents.filter(o => o.faction === 'colony' && !o.dead && dist(o, a) < S.radius && !agentInZone(w, o) && !spellbound(o));
+  const lost = w.agents.filter(o => o.faction === 'colony' && !o.dead && dist(o, a) < S.radius && !agentInZone(w, o) && !spellbound(o));   // scan: spirits only
   for (const v of lost) { v.task = {id: 'astray', until: w.tick + HOUR * (1 + w.rngs.nechist()), spell: 1.2}; think(w, v, 'leshyLost'); }
   if (lost.length && w.tick - (w.lastAstray || -1e9) > DAY / 2) {
     w.lastAstray = w.tick;
@@ -81,7 +82,7 @@ function leadAstray(w, a, sp, S) {
 
 // the rusalka: by night she calls a lonely colonist to the water
 function lure(w, a, sp, S) {
-  const v = w.agents.find(o => !o.dead && o.task?.id === 'lured' && o.task.by === a.id);
+  const v = w.agents.find(o => !o.dead && o.task?.id === 'lured' && o.task.by === a.id);   // scan: spirits only
   if (v) {
     if (!lonely(w, v, 5)) {   // someone came close: the spell breaks
       v.task = null; v.think = 0;
@@ -97,7 +98,7 @@ function lure(w, a, sp, S) {
   // one song a night: after a try (kept, broken or resisted) she waits for the next night
   if ((w.tick + a.id) % 30 || w.tick < (a.lureAt ?? -1e9) + 12 * HOUR) return false;
   let best = null, bd = S.radius;
-  for (const o of w.agents) {
+  for (const o of w.agents) {   // scan: spirits only
     if (o.faction !== 'colony' || o.dead || o.downed || spellbound(o) || agentInZone(w, o) || !lonely(w, o, 5)) continue;
     const d = dist(o, a); if (d < bd) { bd = d; best = o; }
   }
@@ -140,10 +141,10 @@ export const spiritBrain = {
     }
     // whoever hurts it: a rusalka dives; a leshy fights back one on one, but slips away from a crowd
     // …but not into the settlement: the nechist keeps to its wood and water
-    const h = a.hurtBy, foe = h && w.tick - h.tick < 200 ? w.agents.find(o => o.id === h.id && !o.dead && dist(o, a) < 12 && !agentInZone(w, o)) : null;
+    const h = a.hurtBy, foe = h && w.tick - h.tick < 200 ? [liveById(w, h.id)].find(o => o && dist(o, a) < 12 && !agentInZone(w, o)) : null;
     a.veil = foe ? null : S.aura === 'lure' && active && a.task?.id === 'sing' ? 6 : S.veil;
     if (foe) {
-      const crowd = w.agents.filter(o => o.faction === 'colony' && !o.dead && dist(o, a) < 5).length;
+      const crowd = w.agents.filter(o => o.faction === 'colony' && !o.dead && dist(o, a) < 5).length;   // scan: spirits only
       if (S.dives || crowd >= (S.crowd || 3)) {
         a.hiddenUntil = w.tick + (S.dives ? 2 : 1) * HOUR; a.hurtBy = null; a.veil = 0;
         log(w, S.dives ? `${sp.label[0].toUpperCase() + sp.label.slice(1)} ушла под воду.` : `${sp.label[0].toUpperCase() + sp.label.slice(1)} растворился в чаще.`, 'wildlife');

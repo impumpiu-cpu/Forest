@@ -48,7 +48,7 @@ export const verminBrain = {
     if (V.veil != null) a.veil = V.veil;
     if (Tc > sp.heatHarm || nearFire(w, a, 1)) { escapeHeat(w, a, 1.2); return; }
     let near = null;
-    for (const o of w.agents) if (o.faction === 'colony' && !o.dead && !o.sleeping && dist(o, a) < V.flee) { near = o; break; }
+    for (const o of w.agents) if (o.faction === 'colony' && !o.dead && !o.sleeping && dist(o, a) < V.flee) { near = o; break; }   // scan: rats only, few at a time
     if (near) {
       if (dist(near, a) < 0.8 && w.rngs.wild() < V.caught) {
         kill(w, a, 'палки', near);
@@ -64,7 +64,7 @@ export const verminBrain = {
     // (a kikimora keeps to the marsh while it is light, whatever happens)
     if (a.task?.id !== 'nibble') {
       const camp = {x: w.camp.x + 0.5, y: w.camp.y + 0.5};
-      const watched = w.agents.some(o => o.faction === 'colony' && !o.dead && !o.sleeping && dist(o, camp) < VERMIN.watch);
+      const watched = w.agents.some(o => o.faction === 'colony' && !o.dead && !o.sleeping && dist(o, camp) < VERMIN.watch);   // scan: rats only
       const bold = w.tick - (a.waited ?? w.tick) > VERMIN.patience;
       if ((V.spoils && nightness(w) < 0.4) || (watched && !bold) || (a.task?.id === 'hide' && w.tick - (a.waited ?? 0) < 60)) {
         a.waited ??= w.tick;

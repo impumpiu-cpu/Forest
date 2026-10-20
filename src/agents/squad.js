@@ -22,6 +22,7 @@ import {esc, clamp, weighted} from '../core/util.js';
 import {hpShare} from './agent.js';
 import {cellOf} from '../world/grid.js';
 import {nearestHostile, canSee} from './combat.js';
+import {agentById, liveById, attackersOf} from './lookup.js';
 
 export const SQUAD = {
   think: 10,         // morale and the goal are checked this often
@@ -54,7 +55,7 @@ export const ROLES = {front: 'передний боец', shooter: 'стрело
 const table = w => w.squads || (w.squads = {});
 const Label = sq => { const l = RAID_BANDS.get(sq.band).label; return l[0].toUpperCase() + l.slice(1); };
 export const squadOf = (w, a) => (a.squad != null ? w.squads?.[a.squad] || null : null);
-const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead && !o.gone);
+const byId = (w, id) => { const o = liveById(w, id); return o && !o.gone ? o : null; };
 const membersOf = (w, sq) => sq.members.map(id => byId(w, id)).filter(Boolean);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -121,11 +122,11 @@ export function createSquad(w, group) {
 
 function announce(w, sq) {
   const tipped = sq.announce === 'tipped'; sq.announce = null;
-  const victim = sq.target != null && sq.goal === 'kill' ? w.agents.find(o => o.id === sq.target) : null;
+  const victim = sq.goal === 'kill' ? agentById(w, sq.target) : null;
   const g = GOALS[sq.goal], aim = typeof g.aim === 'function' ? g.aim(`<b>${esc(victim?.name || '?')}</b> (${sq.why})`) : g.aim;
   const b = sq.goal === 'burn' ? w.buildings.find(x => x.id === sq.target) : null;
   const what = b ? ` (${BUILDINGS.get(b.key).name.toLowerCase()})` : '';
-  const leader = w.agents.find(o => o.id === sq.leader);
+  const leader = agentById(w, sq.leader);
   log(w, `${Label(sq)}: ${aim}${what}.${sq.kind === 'living' && sq.size > 1 && leader ? ` Ведёт ${esc(leader.name)}.` : ''}${tipped ? ' Дорогу им показали разведчики.' : ''}`, 'danger');
 }
 
@@ -198,7 +199,7 @@ export function stepSquads(w) {
       else if (!looters.length && ms.some(m => m.looted)) setState(w, sq, 'withdraw', GOALS.loot.done);
     } else if (g === 'kill') {
       if (sq.targetDown) setState(w, sq, 'withdraw', GOALS.kill.done);
-      else if (!w.agents.some(o => o.id === sq.target)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'front' && !m.looted && w.rngs.outside() < SQUAD.looters) m.sqRole = 'looter'; }
+      else if (!agentById(w, sq.target)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'front' && !m.looted && w.rngs.outside() < SQUAD.looters) m.sqRole = 'looter'; }
     } else if (g === 'burn') {
       if (sq.lit != null && w.tick - sq.lit > SQUAD.burnFor) setState(w, sq, 'withdraw', GOALS.burn.done);
       else if (sq.lit == null && !w.buildings.some(b => b.id === sq.target && b.done)) { sq.goal = 'loot'; for (const m of ms) if (m.sqRole === 'torch') m.sqRole = 'looter'; }
@@ -231,7 +232,7 @@ export function planFor(w, a, sq, radius) {
     return {id: 'leave'};
   }
   // a blow taken or a foe at arm's length is answered whatever the plan says
-  const attacker = w.agents.find(o => !o.dead && o.faction === 'colony' && o.task?.id === 'fight' && o.task.target === a);
+  const attacker = attackersOf(w, a).find(o => !o.dead && o.faction === 'colony' && o.task?.id === 'fight' && o.task.target === a);
   const close = nearestHostile(w, a, 2.5);
   const role = a.sqRole;
   if (role === 'looter') {
@@ -250,7 +251,7 @@ export function planFor(w, a, sq, radius) {
     return a.task?.id === 'scout' ? a.task : {id: 'scout'};
   }
   if (sq.goal === 'kill') {
-    const v = w.agents.find(o => o.id === sq.target && !o.dead && !o.downed);
+    const v = [liveById(w, sq.target)].find(o => o && !o.downed);
     if (v && canSee(w, a, v) && dist(a, v) < 30 && !close) return fight(w, a, v);
   }
   const e = holdFoe(w, a, nearestHostile(w, a, radius));
@@ -263,7 +264,7 @@ export function planFor(w, a, sq, radius) {
 // for the card
 export function squadText(w, a) {
   const sq = squadOf(w, a); if (!sq) return null;
-  const goal = GOALS[sq.goal].label + (sq.goal === 'kill' ? `: ${w.agents.find(o => o.id === sq.target)?.name || '—'}` : '');
+  const goal = GOALS[sq.goal].label + (sq.goal === 'kill' ? `: ${agentById(w, sq.target)?.name || '—'}` : '');
   const state = sq.state === 'march' ? `боевой дух ${Math.round(clamp(sq.morale, 0, 1.5) * 100)}%` : sq.state === 'retreat' ? `отступают (${sq.reason})` : `уходят (${sq.reason})`;
   const left = membersOf(w, sq).length;
   return `${ROLES[a.sqRole] || '—'}${a.id === sq.leader && a.sqRole !== 'leader' ? ', вожак' : ''}; цель — ${goal}; ${state}; в строю ${left} из ${sq.size}`;

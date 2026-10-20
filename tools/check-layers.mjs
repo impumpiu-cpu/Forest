@@ -29,6 +29,26 @@ for (const f of files) {
 if (bad.length) { console.log('Ядро зависит от оболочки:\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log(`ok   ядро (${files.filter(f => !SHELL.includes(relative(src, f).split(/[\\/]/)[0])).length} файлов) не зависит от экрана`);
 
+// Code that runs for every creature every tick must not walk every creature: that grows as the square of
+// their number (tools/stress.mjs). Ask an index instead — agents/lookup.js (by id, pack, species, who
+// attacks whom) or agents/spatial.js (who is near). A walk that stays cheap because only a few creatures
+// ever make it (a spirit, a caravan guard) is marked on its line: `// scan: why it is cheap`.
+const PER_AGENT = /^(agents[\\/]brains[\\/]|agents[\\/](tasks|jobRunners|combat|movement)\.js$|data[\\/]jobs\.js$)/;
+const SCAN = /\bw\.agents\.(find|filter|some|every|reduce|forEach|map)\(|\bof w\.agents\b/;
+const scans = [];
+for (const f of files) {
+  const rel = relative(src, f);
+  if (!PER_AGENT.test(rel)) continue;
+  readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+    if (SCAN.test(line.replace(/\/\/.*$/, '')) && !/scan:/.test(line)) scans.push(`${rel}:${i + 1}  ${line.trim().slice(0, 90)}`);
+  });
+}
+if (scans.length) {
+  console.log('Перебор всех существ в коде, который работает для каждого существа каждый тик (нужен индекс из agents/lookup.js или agents/spatial.js, либо пометка «// scan: почему дёшево»):\n  ' + scans.join('\n  '));
+  process.exit(1);
+}
+console.log('ok   пошаговый код существ не перебирает всех существ (кроме помеченных «scan:»)');
+
 // every source file must at least parse (the shell is not loaded by the other tests)
 import {execFileSync} from 'node:child_process';
 const broken = [];

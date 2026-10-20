@@ -26,6 +26,7 @@ import {enterEscort, escortGoing, guardStep, giveAid, askForBed, bond, TOGETHER}
 import {agentInZone} from '../settlement/zone.js';
 import {heatTo, coolTo, tempAt} from '../world/heat.js';
 import {WARM_AT} from '../data/navmaps.js';
+import {liveById} from './lookup.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -147,7 +148,7 @@ TASKS.registerAll([
   // a wounded colonist out in the woods: go, dress the wounds, see them home. One who fell senseless
   // (agents/wounds.js) is helped anywhere, inside the camp too: dressing the wound in time saves a life
   {id: 'aid', label: t => (t.fallen ? 'спешит к упавшему' : 'спешит на помощь раненому'), step(w, a, task) {
-    const b = w.agents.find(o => o.id === task.who && !o.dead);
+    const b = liveById(w, task.who);
     if (!b || (agentInZone(w, b) && !b.downed)) { done(w, a); return; }
     if (guardStep(w, a, b, task) === 'fight') return;
     if (Math.hypot(b.x - a.x, b.y - a.y) > 1.4) { if (approach(w, a, b.x, b.y, 1.2) === null) fail(w, a, 'к раненому не подойти', 'impossible'); return; }
@@ -232,7 +233,7 @@ TASKS.registerAll([
   }},
   // the mindless dead: shamble to the camp and wander there until something living comes close
   {id: 'haunt', label: () => 'бредёт к лагерю', step(w, a, task) {
-    if (!w.agents.some(o => o.faction === 'colony' && !o.dead)) { a.task = {id: 'leave'}; return; }
+    if (!w.agents.some(o => o.faction === 'colony' && !o.dead)) { a.task = {id: 'leave'}; return; }   // scan: leavers only: the colony has fallen
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 3);
   }},
 
@@ -253,7 +254,7 @@ TASKS.registerAll([
     if (!has(w, 'healerhut')) { fail(w, a, 'хижины лекаря нет'); return; }
     const max = maxHp(a);
     if (a.hp >= max * HEAL.until) {
-      const healer = task.healer != null ? w.agents.find(o => o.id === task.healer && !o.dead) : null;
+      const healer = liveById(w, task.healer);
       if (healer) { think(w, a, 'treated', {name: healer.name}); think(w, healer, 'healedSomeone', {name: a.name}); }
       done(w, a); return;
     }
@@ -320,7 +321,7 @@ TASKS.registerAll([
   }},
   // the rusalka's song: the colonist walks to the water; someone close by breaks the spell (spirit.js)
   {id: 'lured', label: () => 'идёт на голос у воды', step(w, a, task) {
-    const s = w.agents.find(o => o.id === task.by && !o.dead);
+    const s = liveById(w, task.by);
     if (!s || w.tick >= task.until) { done(w, a); return; }
     if (Math.hypot(s.x - a.x, s.y - a.y) > 0.8) approach(w, a, s.x, s.y, 0.7);
   }},

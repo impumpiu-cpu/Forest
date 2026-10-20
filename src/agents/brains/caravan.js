@@ -12,13 +12,14 @@ import {nearestHostile} from '../combat.js';
 import {TASKS} from '../tasks.js';
 import {kill, maxHp} from '../agent.js';
 import {tempAt} from '../../world/heat.js';
+import {liveById} from '../lookup.js';
 
 // how close to the camp fire the caravan sets up (cells along the camp flow field)
 const CAMP_AT = 6;
 // how long the trader waits for a straggler before going on without it
 const LATE_WAIT = 50;
 
-const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead);
+const byId = liveById;
 
 function leave(w, a) {
   a.task = {id: 'leave'};
@@ -40,7 +41,7 @@ export const caravanBrain = {
 
     if (a.role === 'guard') {
       // anyone going for the caravan within reach gets the guards on them
-      const e = nearestHostile(w, a, 9) || w.agents.find(o => !o.dead && o.task?.target?.caravan === c.id && (o.task.id === 'maul' || o.task.id === 'chase') && Math.hypot(o.x - a.x, o.y - a.y) < 12);
+      const e = nearestHostile(w, a, 9) || w.agents.find(o => !o.dead && o.task?.target?.caravan === c.id && (o.task.id === 'maul' || o.task.id === 'chase') && Math.hypot(o.x - a.x, o.y - a.y) < 12);   // scan: only the few caravan guards ask, and only while their caravan is set upon
       if (e) {
         if (a.task?.id !== 'fight' || a.task.target !== e) a.task = {id: 'fight', target: e};
         TASKS.get('fight').step(w, a, a.task);
@@ -62,7 +63,7 @@ export const caravanBrain = {
       if (d <= CAMP_AT) { c.arrived = w.tick; c.spot = [a.x, a.y]; return; }
       // wait for the slow mules now and then, so the caravan arrives together — but not for one that
       // has been behind for an hour (stuck behind water): then the trader goes on without waiting
-      const late = w.agents.some(o => o.caravan === c.id && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) > 6);
+      const late = w.agents.some(o => o.caravan === c.id && !o.dead && Math.hypot(o.x - a.x, o.y - a.y) > 6);   // scan: the caravan leader only, waiting for stragglers
       if (late) { c.lateSince ??= w.tick; if (w.tick - c.lateSince < LATE_WAIT) return; } else c.lateSince = null;
       // no way to the camp at all is no arrival: settlement/trade.js sends the caravan away
       if (follow(w, a, 'camp', 0.9) === 'none') c.noPath = (c.noPath || 0) + 1; else c.noPath = 0;

@@ -27,6 +27,7 @@ import {tempAt} from '../../world/heat.js';
 const SCENT = 70;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 import {nearAgents} from '../spatial.js';
+import {liveById, packMembers} from '../lookup.js';
 
 function nearest(w, a, species, r, filter = () => true) {
   let best = null, bd = r;
@@ -39,7 +40,7 @@ function nearest(w, a, species, r, filter = () => true) {
 
 // how many others of the victim's kind stand close to it
 const company = (w, v, r) => nearAgents(w, v.x, v.y, r).filter(o => o !== v && !o.dead && (o.species === v.species || (!!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel)) && dist(o, v) < r).length;
-const packOf = (w, a) => w.agents.filter(o => !o.dead && o.pack === a.pack);
+const packOf = (w, a) => packMembers(w, a.pack);
 // big game (a mule) is prey only once it is badly hurt
 const weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < maxHp(o) * P.weakBelow;
 const preyKinds = P => [...P.prey, ...(P.weakPrey || [])];
@@ -242,7 +243,7 @@ export const predatorBrain = {
     // the trail is picked again now and then, and one that leads nowhere is dropped for a while
     const r = a.task;
     if (food < P.hungry) {
-      let s = r.scent != null ? w.agents.find(o => o.id === r.scent && !o.dead && !o.tame) : null;
+      let s = [liveById(w, r.scent)].find(o => o && !o.tame) || null;
       if (!s || w.tick - (r.scentAt || 0) > 120) {
         s = nearest(w, a, P.prey, SCENT, o => !agentInZone(w, o) && !(a.ignore?.get(o.id) > w.tick));
         r.scent = s?.id ?? null; r.scentAt = w.tick;

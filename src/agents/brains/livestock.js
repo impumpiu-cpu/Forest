@@ -19,7 +19,7 @@ function penOf(w, a) {
   a.pen = null;
   const space = SPECIES.get(a.species).tame.space;
   for (const p of pens(w)) {
-    const used = w.agents.filter(o => o.tame && !o.dead && o.pen === p.id).reduce((s, o) => s + SPECIES.get(o.species).tame.space, 0);
+    const used = w.agents.filter(o => o.tame && !o.dead && o.pen === p.id).reduce((s, o) => s + SPECIES.get(o.species).tame.space, 0);   // scan: once per pen check of a tame beast; the herd is small
     if (used + space <= BUILDINGS.get(p.key).pen) { a.pen = p.id; return p; }
   }
   return null;
@@ -36,7 +36,7 @@ export const livestockBrain = {
     if (a.cd > 0) a.cd--;
     // a beast of prey or a raider right here (any of the bestiary's hunters, not only wolves):
     // a mule turns and kicks, a goat runs
-    const wolf = w.agents.find(o => !o.dead && (o.brain === 'predator' || o.faction === 'raiders') && Math.hypot(o.x - a.x, o.y - a.y) < 3);
+    const wolf = w.agents.find(o => !o.dead && (o.brain === 'predator' || o.faction === 'raiders') && Math.hypot(o.x - a.x, o.y - a.y) < 3);   // scan: tame beasts only (a handful)
     if (wolf) {
       if (sp.mule && Math.hypot(wolf.x - a.x, wolf.y - a.y) < sp.mule.kickRange && a.cd <= 0) {
         a.cd = sp.attack.cooldown; a.flash = 4; damage(w, a, wolf, (0.1 + w.rngs.wild() * 0.12) * sp.attack.power);
