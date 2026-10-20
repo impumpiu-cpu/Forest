@@ -27,6 +27,7 @@ import {agentInZone} from '../settlement/zone.js';
 import {heatTo, coolTo, tempAt} from '../world/heat.js';
 import {WARM_AT} from '../data/navmaps.js';
 import {liveById} from './lookup.js';
+import {flagLead} from '../settlement/board.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -137,6 +138,17 @@ TASKS.registerAll([
     task.shooting = false;
     if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, t)) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
     else attack(w, a, t);
+  }},
+
+  // answering a cry (settlement/board.js): run to where the threat was seen; once a foe of it is in
+  // sight, fight it. Gone from the board — done; nobody there — the cry was in vain
+  {id: 'answer', label: () => 'спешит на крик', step(w, a, task) {
+    const lead = flagLead(w, a, task.flag);
+    if (!lead) { done(w, a); return; }
+    if (lead.target) { a.task = {id: 'fight', target: lead.target, flag: task.flag}; return; }
+    const r = approach(w, a, lead.at.x, lead.at.y, 1.1);
+    if (r === null) fail(w, a, 'к месту тревоги не пройти', 'impossible');
+    else if (r === true) fail(w, a, 'на месте никого');
   }},
 
   // going along with someone in the woods (settlement/together.js): keep close, take on what comes

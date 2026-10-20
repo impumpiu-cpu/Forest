@@ -6,7 +6,8 @@ import {SPECIES} from '../../data/species.js';
 import {nightness, ambientTemp} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
 import {nearFire} from '../movement.js';
-import {nearestHostile, attackerOf} from '../combat.js';
+import {attackerOf} from '../combat.js';
+import {flagOptions, knownFoeWithin, noteChoice, BOARD} from '../../settlement/board.js';
 import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
 import {maxHp, hpShare} from '../agent.js';
@@ -124,13 +125,16 @@ function decide(w, a) {
     // the answer to an attack is a reflex: no skip from an earlier fight with the same foe holds it back
     opts.push(stand ? [{id: 'fight', target: hunter, reflex: true}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
   }
-  const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
+  // the colony's board (settlement/board.js): the threats this colonist knows of — seen or heard of —
+  // each weighed by the colonist itself: how much of it nobody covers yet, courage, distance
+  const flags = flagOptions(w, a);
+  for (const o of flags) opts.push(o);
+  const enemy = knownFoeWithin(w, a, BOARD.sight * (a.mods.sight ?? 1));
   // alarm: while raiders are on the map everyone gathers inside the settlement zone and meets them
   // together; the wounded fall back
   const raid = raidAlarm(w);
   if (raid && !enemy) opts.push([{id: 'muster'}, 1.25, () => 'тревога: враги подходят к лагерю']);
-  if (enemy && hpShare(a) > 0.3) opts.push([{id: 'fight', target: enemy}, (raid ? 1.35 : 1.1) * brave, () => `враг рядом: ${SPECIES.get(enemy.species).label}`]);
-  if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
+  if (enemy && hpShare(a) <= BOARD.hurt && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);
@@ -149,6 +153,7 @@ function decide(w, a) {
   // the choice explained for the colonist's card: what, why, the runner-up, and whether it was kept
   a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
     alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || ''};
+  if (flags.length) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
   if (key(best) !== cur) {
     // leaving one job for another of one's own accord: a moment's thought first («прикидывает, за что
     // взяться»), unless the body or a threat is pressing
@@ -170,7 +175,7 @@ function decide(w, a) {
       else if (best.job === a.dislikes) think(w, a, 'dislikedWork', {job: JOBS.get(best.job).label});
     }
   }
-  else if (best.id === 'fight') a.task.target = best.target;
+  else if (best.id === 'fight') { a.task.target = best.target; a.task.flag = best.flag; }
 }
 
 export const colonistBrain = {
@@ -191,8 +196,8 @@ export const colonistBrain = {
     const tid2 = a.task?.id;
     const attacked = !!attackerOf(w, a);
     if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && attacked) a.think = 0;
-    // a foe within reach is noticed at once, not at the next think
-    if ((w.tick + a.id) % 5 === 0 && a.task?.id !== 'fight' && a.task?.id !== 'runHome' && nearestHostile(w, a, 8)) a.think = 0;
+    // a foe within reach is noticed at once, not at the next think: the colony's lookouts see it and
+    // wake whoever should think again (settlement/board.js)
     if (a.task?.id !== 'flee' && --a.think <= 0) {
       // at work a colonist thinks about work rarely: a task ends through the lifecycle and asks for a
       // decision then (a.think = 0); meanwhile only the body and the threats are watched here
@@ -200,7 +205,7 @@ export const colonistBrain = {
       a.think = a.task?.id === 'job' && outsideRisk(w) < TOGETHER.riskFrom && !raidAlarm(w) ? ROSTER.think : 15;
       // a delivery under way is finished first — unless something urgent comes up: an attack, a foe
       // close by, a body at its limit. The load stays in the hands whatever is chosen.
-      const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some(v => v < 0.12) || !!nearestHostile(w, a, 8);
+      const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some(v => v < 0.12) || !!knownFoeWithin(w, a, BOARD.near);
       const busy = !urgent && a.task?.id === 'job' && a.task.hauling;
       if (!busy) decide(w, a);
     }

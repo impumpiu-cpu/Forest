@@ -20,6 +20,7 @@ import {noteFallen} from './squad.js';
 import {noteHuntDeath} from './carcass.js';
 import {RESOURCES} from '../data/resources.js';
 import {decideTrophies} from './trophies.js';
+import {noteBoardDeath} from '../settlement/board.js';
 
 // a line for the log about the rare trophies of a kill
 export function trophyText(t) {
@@ -98,6 +99,7 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   releaseAll(w, a);   // a bench, a bed, a body or a beast it held is free again
   noteFallen(w, a);   // a raider's band counts its losses (agents/squad.js)
   noteHuntDeath(w, a);   // a pack hunting it stops (agents/carcass.js)
+  noteBoardDeath(w, a);   // the colony's board remembers which foe fell (settlement/board.js)
   const sp = SPECIES.get(a.species);
   const killer = by ? SPECIES.get(by.species) : null;
   // rare trophies, decided now and once (agents/trophies.js): only for what the colony brought down

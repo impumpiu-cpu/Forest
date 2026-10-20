@@ -5,7 +5,8 @@
 // T40–T46 SPECIAL stage 2: tiers at the forge and the worker in choosing an order;
 // T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
 // T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies;
-// T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06). Each scene builds a flat, empty map, places a few agents by hand and
+// T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T91 the colony's
+// board: lookouts, the cry, soft places, docs/MIND.md stage 1). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -57,6 +58,7 @@ import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
 import {heatTo} from '../src/world/heat.js';
 import {makePlan} from '../src/settlement/plan.js';
+import {stepBoard, flagOptions, BOARD} from '../src/settlement/board.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -1114,6 +1116,105 @@ check('T84', 'выспавшийся до рассвета досыпает, а 
   man.needs.rest = 1; man.sleeping = true; man.task = {id: 'sleep'}; syncTask(w, man);
   man.think = 0; brain(w, man);
   return man.task?.id === 'sleep' || `ночью встал: «${man.task?.id}/${man.task?.job}»`;
+});
+
+// ── the colony's board (settlement/board.js, docs/MIND.md stage 1)
+// every colonist looks round once in BOARD.look ticks: run the board that many ticks
+const lookRound = w => { for (let k = 0; k < BOARD.look; k++) { w.tick++; stepBoard(w); } };
+const flagOf = w => Object.values(w.board?.flags || {})[0];
+const wolfOn = (w, x, y, victim) => { const o = put(w, 'wolf', 'predators', x, y); o.pack = o.id; o.task = {id: 'maul', target: victim}; return o; };
+
+check('T85', 'крик: увидевший поднимает тревогу, слышат в радиусе, эстафета несёт дальше, одиночка вдали не знает', () => {
+  const w = scene(); fixedRng(w);
+  const a = put(w, 'human', 'colony', 20.5, 30.5), b = put(w, 'human', 'colony', 45.5, 30.5), c = put(w, 'human', 'colony', 70.5, 30.5);
+  const lone = put(w, 'human', 'colony', 20.5, 70.5);   // 40 from a, 46 from b: out of every cry
+  wolfOn(w, 21.5, 30.5, a);
+  lookRound(w);
+  const f = flagOf(w);
+  if (!f) return 'флага нет';
+  if (!f.known[a.id]) return 'увидевший не знает';
+  if (!f.known[b.id]) return 'в радиусе крика не услышали';
+  if (!f.known[c.id]) return 'эстафета не донесла';
+  if (f.known[lone.id]) return 'одиночка вдали узнал';
+  return true;
+});
+
+check('T86', 'спящий слышит крик с шансом по Восприятию', () => {
+  const res = [];
+  for (const P of [7, 3]) {
+    const w = scene(); fixedRng(w, 0.5);   // the roll: 0.5 — hears when 0.1 × P > 0.5
+    const a = put(w, 'human', 'colony', 20.5, 30.5), s = put(w, 'human', 'colony', 30.5, 30.5);
+    s.special = {...s.special, P}; s.sleeping = true; s.task = {id: 'sleep'};
+    wolfOn(w, 21.5, 30.5, a);
+    // the sleeper does not look round itself: only the cry can reach it
+    for (let k = 0; k < BOARD.look; k++) { w.tick++; s.sleeping = true; stepBoard(w); }
+    res.push(!!flagOf(w)?.known[s.id]);
+  }
+  return (res[0] && !res[1]) || `P 7: ${res[0] ? 'услышал' : 'не услышал'}, P 3: ${res[1] ? 'услышал' : 'не услышал'}`;
+});
+
+check('T87', 'мягкие места: занявший флаг облегчает его для остальных; новый волк в стае делает его тяжелее', () => {
+  const w = scene(); fixedRng(w);
+  const v = put(w, 'human', 'colony', 30.5, 30.5), x = put(w, 'human', 'colony', 33.5, 30.5), y = put(w, 'human', 'colony', 33.5, 32.5);
+  for (const c of [x, y]) { c.mods.bravery = 1; outfit(w, c); }
+  const wolf = wolfOn(w, 31.5, 30.5, v);
+  lookRound(w);
+  const score = c => flagOptions(w, c)[0]?.[1] ?? 0;
+  const before = score(y);
+  x.task = {id: 'fight', target: wolf}; w.tick++;   // a new tick: the answerers are counted again
+  const after = score(y);
+  if (!(after < before)) return `второй видит флаг не легче: ${before.toFixed(2)} → ${after.toFixed(2)}`;
+  const second = put(w, 'wolf', 'predators', 32.5, 31.5); second.pack = wolf.pack; second.task = {id: 'maul', target: v};
+  lookRound(w);
+  const more = score(y);
+  return more > after || `второй волк не сделал флаг тяжелее: ${after.toFixed(2)} → ${more.toFixed(2)}`;
+});
+
+check('T88', 'флаг снимается, когда угрозы нет; в журнале — кто её одолел', () => {
+  const w = scene(); fixedRng(w);
+  const v = put(w, 'human', 'colony', 30.5, 30.5), x = put(w, 'human', 'colony', 33.5, 30.5);
+  const wolf = wolfOn(w, 31.5, 30.5, v);
+  lookRound(w);
+  if (!flagOf(w)) return 'флага нет';
+  x.task = {id: 'fight', target: wolf}; lookRound(w);
+  kill(w, wolf, 'убит', x);
+  lookRound(w);
+  if (flagOf(w)) return 'флаг висит после гибели волка';
+  const line = w.logLines.find(l => /одолел/.test(l.html));
+  return (line && line.html.includes(x.name)) || 'в журнале нет, кто одолел волка';
+});
+
+check('T89', 'кто услышал издалека, бежит на крик и вступает в бой, когда видит врага', () => {
+  const w = scene(); fixedRng(w);
+  const v = put(w, 'human', 'colony', 20.5, 30.5), far = put(w, 'human', 'colony', 45.5, 30.5);
+  far.mods.bravery = 1.5;
+  const wolf = wolfOn(w, 21.5, 30.5, v); wolf.speed = 0;
+  lookRound(w);
+  far.think = 0; brain(w, far);
+  if (far.task?.id !== 'answer') return `услышавший издалека занят «${far.task?.id}»`;
+  for (let k = 0; k < 400 && far.task?.id === 'answer'; k++) { w.tick++; TASKS.get('answer').step(w, far, far.task); wolf.x = 21.5; wolf.y = 30.5; }
+  return (far.task?.id === 'fight' && far.task.target === wolf) || `на месте занят «${far.task?.id}»`;
+});
+
+check('T90', 'робкий слышит тревогу, но не идёт, и пишет в дневник почему', () => {
+  const w = scene(); fixedRng(w);
+  const v = put(w, 'human', 'colony', 30.5, 30.5), t = put(w, 'human', 'colony', 34.5, 30.5);
+  t.mods.bravery = 0.3;
+  wolfOn(w, 31.5, 30.5, v);
+  lookRound(w);
+  t.think = 0; brain(w, t);
+  if (['fight', 'answer'].includes(t.task?.id)) return 'робкий пошёл драться';
+  return t.diary.some(e => e.id === 'ignoredAlarm') || 'в дневнике нет, почему не пошёл';
+});
+
+check('T91', 'доска сохраняется и продолжается тик в тик', () => {
+  const w = scene(); fixedRng(w);
+  const v = put(w, 'human', 'colony', 30.5, 30.5); put(w, 'human', 'colony', 34.5, 30.5);
+  wolfOn(w, 31.5, 30.5, v);
+  lookRound(w);
+  const c = loadWorld(JSON.parse(JSON.stringify(saveWorld(w))));
+  if (!c.board || Object.keys(c.board.flags).length !== Object.keys(w.board.flags).length) return 'доска не сохранилась';
+  return worldHash(c) === worldHash(w) || 'отпечаток после загрузки другой';
 });
 
 let bad = 0;

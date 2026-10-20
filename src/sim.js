@@ -16,6 +16,7 @@ import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
 import {noteAttacker} from './agents/lookup.js';
+import {stepBoard} from './settlement/board.js';
 import {stepSquads} from './agents/squad.js';
 import {stepHunts, stepCarcasses} from './agents/carcass.js';
 import {stepCouncil} from './settlement/council.js';
@@ -65,6 +66,7 @@ export function step(w) {
   stepLife(w);
   stepCrafting(w);
   stepRelations(w);
+  stepBoard(w);   // the colony's lookouts, the cry, the flags (settlement/board.js)
   const t1 = performance.now();
   w.nav.step();
   const t2 = performance.now();

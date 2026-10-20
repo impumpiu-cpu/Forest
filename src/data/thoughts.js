@@ -56,6 +56,10 @@ THOUGHTS.registerAll([
   {id: 'goodCompany', mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `Рад${g(a, '', 'а')}, что рядом ${c.name}: с таким соседом легче.`},
   // doing things together (settlement/together.js)
   {id: 'escorted', mood: 0.06, lasts: 6 * HOUR, once: 6 * HOUR, text: (a, c) => `В лесу неспокойно, но ${c.name} ${g(c, 'пошёл', 'пошла')} рядом. Вдвоём не так страшно.`},
+  // the alarm (settlement/board.js): a cry heard, a flag taken or left
+  {id: 'heardAlarm', mood: -0.05, lasts: 6 * HOUR, once: HOUR, text: (a, c) => `${g(a, 'Услышал', 'Услышала')}, как ${c.who} кричит: ${c.what} ${c.where}.`},
+  {id: 'answeredAlarm', mood: 0.05, lasts: 8 * HOUR, once: HOUR, text: (a, c) => `${g(a, 'Схватил', 'Схватила')} оружие и ${g(a, 'побежал', 'побежала')} на крик: ${c.what} ${c.where}.`},
+  {id: 'ignoredAlarm', mood: 0, lasts: 6 * HOUR, once: HOUR, text: (a, c) => `Слышал${g(a, '', 'а')} тревогу (${c.what}), но не ${g(a, 'пошёл', 'пошла')}: ${c.why}.`},
   {id: 'stoodUp', mood: 0.12, lasts: DAY, once: 6 * HOUR, text: (a, c) => `Когда на меня кинулись, ${c.name} ${g(c, 'встал', 'встала')} рядом. Этого не забыть.`},
   {id: 'aided', mood: 0.15, lasts: DAY, once: 12 * HOUR, text: (a, c) => `${g(a, 'Лежал', 'Лежала')} раненый в лесу, а ${c.name} ${g(c, 'пришёл и перевязал', 'пришла и перевязала')}. Есть на кого положиться.`},
   {id: 'gaveAid', mood: 0.08, lasts: 12 * HOUR, once: 12 * HOUR, text: (a, c) => `${g(a, 'Перевязал', 'Перевязала')} ${c.name} прямо в лесу и ${g(a, 'довёл', 'довела')} до своих.`},

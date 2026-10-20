@@ -58,6 +58,7 @@ import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidStrength, colonyStrength} from '../settlement/threat.js';
+import {boardSummary} from '../settlement/board.js';
 import {strengthOf} from '../agents/strength.js';
 import {tempAt} from '../world/heat.js';
 import {DAY, HOUR} from '../core/time.js';
@@ -403,7 +404,7 @@ export class Panel {
   renderPeople(w, selected) {
     const col = colonists(w);
     const needs = SPECIES.get('human').needs.map(id => NEEDS.get(id));
-    this.set('people', (col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
+    this.set('people', this.alarmHtml(w) + (col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
       <span class="nm">${esc(a.name)} <i class="race">${raceOf(a)}</i></span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
       <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(hpShare(a), 'var(--good)')}</div></div>`).join('')
       || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
@@ -414,6 +415,14 @@ export class Panel {
     if (!list.length && !has(w, 'pen')) return '';
     const rows = list.map(a => `<div class="person beast" data-id="${a.id}"><span class="nm">${esc(a.name)}</span><span class="task">${SPECIES.get(a.species).label} · ${taskLabel(a)}</span><span class="likes">${beastText(w, a)}</span></div>`).join('');
     return `<h3 class="psec">Скот · ${list.length}${has(w, 'pen') ? ` · мест ${penRoom(w)} из ${penSpace(w)}` : ''} · сена ${Math.floor(w.stock.hay || 0)}</h3>${rows || '<p class="muted pc-small">Загон пуст: скотник ждёт диких коз и мулов.</p>'}`;
+  }
+
+  // the colony's board (settlement/board.js): the threats it knows of, who cried out, who is answering
+  alarmHtml(w) {
+    const flags = boardSummary(w);
+    if (!flags.length) return '';
+    const rows = flags.map(f => `<li><b>${esc(f.label)}</b> ${esc(f.where)} · ${f.by ? `тревогу ${f.byG === 'f' ? 'подняла' : 'поднял'} ${esc(f.by)}, ` : ''}знают ${f.known} · ${f.going.length ? `идут: ${f.going.map(esc).join(', ')}` : 'никто не идёт'}${f.weight > 0.05 ? ` · нужда ${Math.round(f.weight * 100)}` : ' · покрыто'}</li>`).join('');
+    return `<h3 class="psec">Тревога · ${flags.length}</h3><ul class="pc-list">${rows}</ul>`;
   }
 
   // the colony's spirits: average mood, who is in low spirits, the dead and the graves

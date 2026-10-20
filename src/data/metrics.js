@@ -86,6 +86,12 @@ METRICS.registerAll([
   {id: 'noPathColony', label: 'Отказов «пути нет» у поселенцев', group: 'Поведение', fmt: 0, get: w => Object.entries(w.behave?.noPathBy || {}).filter(([k]) => RACE_IDS().has(k.split(':')[0])).reduce((s, [, v]) => s + v, 0)},
   {id: 'react', label: 'Реакция на нападение, тиков', group: 'Поведение', fmt: 1, get: w => (w.behave?.react.n ? w.behave.react.sum / w.behave.react.n : 0)},
   {id: 'reactMissed', label: 'Нападений без ответа', group: 'Поведение', fmt: 0, get: w => w.behave?.react.missed || 0},
+  // the colony's board (settlement/board.js): threats spotted, cries, who answered
+  {id: 'alarms', label: 'Тревог поднято (угроз на доске)', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.flags || 0},
+  {id: 'alarmResponders', label: 'Откликнулось на тревогу, человек в среднем', group: 'Поведение', fmt: 1, get: w => (w.behave?.board?.closed ? w.behave.board.responders / w.behave.board.closed : 0)},
+  {id: 'alarmUnanswered', label: 'Тревог без отклика', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.unanswered || 0},
+  {id: 'alarmIgnored', label: 'Слышали тревогу и не пошли (раз)', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.ignored || 0},
+  {id: 'alarmHeardAsleep', label: 'Спящих разбудил крик', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.heardAsleep || 0},
   // raider bands (agents/squad.js): how their visits ended
   {id: 'squads', label: 'Отрядов налётчиков пришло', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.started || 0},
   {id: 'squadsGoal', label: 'Отрядов ушло, добившись цели', group: 'Поведение', fmt: 0, get: w => w.behave?.squads?.goal || 0},
