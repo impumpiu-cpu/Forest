@@ -47,21 +47,41 @@ export function ofSpeciesList(w, species, keep) {
   return keep ? l.filter(keep) : l.slice();
 }
 
-// Who was attacking whom (a «maul» or «fight» task with a target) when the tick's first question was
-// asked: target → the attackers in list order. Tasks change while the creatures step, so this one is
-// a snapshot, and the question checks each attacker is still at it. An attack begun after the tick's
-// first question is seen on the next tick — 50 ms of game time, the delay an attacker further down
-// the list always had (it steps after its victim).
-export function attackersOf(w, a) {
-  const m = perTick(w, 'lk.attack', () => {
-    const m = new Map();
-    for (const o of w.agents) {
-      const t = o.task;
-      if (o.dead || !t?.target || (t.id !== 'maul' && t.id !== 'fight')) continue;
-      let l = m.get(t.target); if (!l) m.set(t.target, l = []); l.push(o);
-    }
-    return m;
+// Who is attacking whom: target → the creatures whose task is «maul» or «fight» against it. Tasks
+// change while the creatures step, so the index is kept up to date instead of being a snapshot:
+// sim.js notes each creature after its step (noteAttacker), and so do the two places where one
+// creature sets another's attack (a pack joining its leader, a beast defending its meal); a fresh
+// list (the sweep of the dead, a newcomer) rebuilds it from the tasks as they are. The question
+// checks each candidate is still at it, and of several returns the first in w.agents, as the old
+// walk over the whole list did — the answer is the same, tick for tick.
+const ATTACK = new Set(['maul', 'fight']);
+const attacks = w => cached(w, 'lk.attack', ags => {
+  const by = new Map(), pos = new Map();
+  ags.forEach((o, k) => {
+    pos.set(o, k);
+    const t = o.task;
+    if (!o.dead && t?.target && ATTACK.has(t.id)) { let l = by.get(t.target); if (!l) by.set(t.target, l = []); l.push(o); }
   });
-  return m.get(a) || NONE;
+  return {by, pos};
+});
+
+export function noteAttacker(w, o) {
+  const t = o.task;
+  if (o.dead || !t?.target || !ATTACK.has(t.id)) return;
+  const {by} = attacks(w);
+  let l = by.get(t.target); if (!l) by.set(t.target, l = []);
+  if (!l.includes(o)) l.push(o);
 }
-const NONE = [];
+
+// the first creature in w.agents attacking `a` right now that passes `ok` (as w.agents.find would)
+export function firstAttacker(w, a, ok) {
+  const {by, pos} = attacks(w), l = by.get(a);
+  if (!l) return null;
+  let best = null, bk = Infinity;
+  for (const o of l) {
+    if (o.dead || o === a || o.task?.target !== a || !ATTACK.has(o.task.id) || (ok && !ok(o))) continue;
+    const k = pos.get(o) ?? w.agents.indexOf(o);
+    if (k < bk) { bk = k; best = o; }
+  }
+  return best;
+}

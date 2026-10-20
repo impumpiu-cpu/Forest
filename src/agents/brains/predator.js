@@ -27,7 +27,7 @@ import {tempAt} from '../../world/heat.js';
 const SCENT = 70;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 import {nearAgents} from '../spatial.js';
-import {liveById, packMembers} from '../lookup.js';
+import {liveById, packMembers, noteAttacker} from '../lookup.js';
 
 function nearest(w, a, species, r, filter = () => true) {
   let best = null, bd = r;
@@ -82,7 +82,7 @@ function startMaul(w, a, v, b) {
   for (const m of packOf(w, a)) m.calmUntil = w.tick + P.calm * (1 - 0.5 * b);   // one try at a time
   const join = packOf(w, a).filter(m => (m === a || dist(m, a) < 12) && m.task?.id !== 'feed');
   const h = startHunt(w, join, v, 'person');
-  for (const m of join) m.task = {id: 'maul', target: v, hunt: h.id};
+  for (const m of join) { m.task = {id: 'maul', target: v, hunt: h.id}; noteAttacker(w, m); }
   w.stats.wolfAttacks++;
   const sp = SPECIES.get(a.species), many = packOf(w, a).length > 1, who = many ? sp.plural : sp.label;
   think(w, v, 'wolfAttack', {who: sp.plural});

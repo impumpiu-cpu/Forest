@@ -31,7 +31,7 @@ import {freeCorpse, graveSpot, bury, workBonus} from '../settlement/life.js';
 import {damage} from './combat.js';
 import {log} from '../core/log.js';
 import {esc, g} from '../core/util.js';
-import {liveById, ofSpeciesList} from './lookup.js';
+import {liveById, ofSpeciesList, noteAttacker} from './lookup.js';
 
 const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.colony() - 0.5) * 0.2; };
 
@@ -289,7 +289,7 @@ export const RUNNERS = {
           for (const o of w.agents) {   // scan: a hunter beside a carcass only
             if (o.dead || o.task?.id !== 'feed' || o.task.c !== c.id || Math.hypot(o.x - a.x, o.y - a.y) > CARCASS.scare) continue;
             const P = SPECIES.get(o.species).predator;
-            if (P && boldness(o, P) > 0.6) o.task = {id: 'maul', target: a};   // a starving beast will not give up its meal
+            if (P && boldness(o, P) > 0.6) { o.task = {id: 'maul', target: a}; noteAttacker(w, o); }   // a starving beast will not give up its meal
             else { o.task = {id: 'bolt'}; o.calmUntil = w.tick + 300; }
             task.scared = true;
           }

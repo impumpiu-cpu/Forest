@@ -22,7 +22,7 @@ import {esc, clamp, weighted} from '../core/util.js';
 import {hpShare} from './agent.js';
 import {cellOf} from '../world/grid.js';
 import {nearestHostile, canSee} from './combat.js';
-import {agentById, liveById, attackersOf} from './lookup.js';
+import {agentById, liveById, firstAttacker} from './lookup.js';
 
 export const SQUAD = {
   think: 10,         // morale and the goal are checked this often
@@ -232,7 +232,7 @@ export function planFor(w, a, sq, radius) {
     return {id: 'leave'};
   }
   // a blow taken or a foe at arm's length is answered whatever the plan says
-  const attacker = attackersOf(w, a).find(o => !o.dead && o.faction === 'colony' && o.task?.id === 'fight' && o.task.target === a);
+  const attacker = firstAttacker(w, a, o => o.faction === 'colony' && o.task.id === 'fight');
   const close = nearestHostile(w, a, 2.5);
   const role = a.sqRole;
   if (role === 'looter') {
