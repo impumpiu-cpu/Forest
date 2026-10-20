@@ -140,14 +140,14 @@ const KIND = {onehand: '1 рука', twohand: '2 руки', ranged: 'стрел�
 console.log(`Сила вещей в PL: один уровень — ×${RULES.step} к урону за тик или к запасу здоровья; PL 0 — ${ref.short}.`);
 console.log(`Итог: оружие — атака + защита + ${RULES.toolWeight} × работа; броня — защита + тепло (${RULES.warmth} PL за полное); щит — защита; лук и праща — выстрел.\n`);
 // how it strikes and with what: к/р/д — колющий, рубящий, дробящий; S, A — the letters of its `scale` (forms.js);
-// armour: its best and worst kind of blow to meet (`vs`)
+// armour and what blocks: its best and worst kind of blow to meet (`vs`)
 const BLOW_RU = {pierce: 'к', slash: 'р', blunt: 'д'};
 function blowText(d) {
-  if (d.vs) { const e = Object.entries(d.vs).sort((a, b) => b[1] - a[1]); return `+${BLOW_RU[e[0][0]]} −${BLOW_RU[e.at(-1)[0]]}`; }
-  if (!d.blow) return '';
-  return BLOW_RU[d.ranged?.type || d.blow] + ' ' + Object.entries(d.scale || {S: 1}).filter(([, v]) => v > 0).map(([k, v]) => (v === 1 ? k : k + String(v).replace('0.', '.'))).join('');
+  const guard = d.vs ? (() => { const e = Object.entries(d.vs).sort((a, b) => b[1] - a[1]); return `+${BLOW_RU[e[0][0]]}−${BLOW_RU[e.at(-1)[0]]}`; })() : '';
+  if (!d.blow) return guard;
+  return BLOW_RU[d.ranged?.type || d.blow] + ' ' + Object.entries(d.scale || {S: 1}).filter(([, v]) => v > 0).map(([k, v]) => (v === 1 ? k : k + String(v).replace('0.', '.'))).join('') + (guard ? ' ' + guard : '');
 }
-console.log('удар: к/р/д — колющий, рубящий, дробящий, и буквы, которыми бьют (S, A с долей); у брони — против чего она лучше (+) и хуже (−)');
+console.log('удар: к/р/д — колющий, рубящий, дробящий, и буквы, которыми бьют (S, A с долей); у брони, щита и парирующего оружия — против чего они лучше (+) и хуже (−)');
 console.log(head); console.log('─'.repeat(head.length));
 const order = ['onehand', 'twohand', 'ranged', 'shield', 'armor', 'gear'];
 for (const kind of order) {

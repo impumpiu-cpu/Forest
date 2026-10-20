@@ -48,8 +48,11 @@ export const reachOf = a => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
 
 const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack || {power: 1}).power, cd: (SPECIES.get(a.species).attack || {cooldown: 12}).cooldown, type: SPECIES.get(a.species).attack?.type || DEFAULT_BLOW.melee}, armor: 0, block: 0};
 
-// the armour a blow meets: the body's armour against this kind of blow (forms.js `vs`)
-export const armorAgainst = (g, type) => (g.armorVs && type ? Math.min(ARMOR_VS_CAP, (g.armor || 0) * (g.armorVs[type] ?? 1)) : g.armor || 0);
+// what a blow of this kind meets: the body's armour and the block of the hand that blocks, each × its own `vs`
+// (forms.js: mail turns a cut, a hide shield catches a spear point and gives under a club) — one rule for both
+const against = (value, vs, type) => (vs && type ? Math.min(ARMOR_VS_CAP, (value || 0) * (vs[type] ?? 1)) : value || 0);
+export const armorAgainst = (g, type) => against(g.armor, g.armorVs, type);
+export const blockAgainst = (g, type) => against(g.block, g.blockVs, type);
 // what the body does to a blow of this kind and delivery (creatures.js `resist`: pierce, slash, blunt, melee, ranged)
 export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1) * (sp.resist[melee ? 'melee' : 'ranged'] ?? 1) : 1);
 
@@ -69,7 +72,7 @@ export function damage(w, by, t, raw, {melee = true, type = null} = {}) {
   // what kind of blow: the caller's word, else what the striker holds or strikes with
   type ||= melee ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged;
   raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
-  if (melee && g.block && w.rngs.combat() < g.block) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
+  if (melee && g.block && w.rngs.combat() < blockAgainst(g, type)) { wear(w, t, g.blockItem); t.flash = 3; return 'blocked'; }
   const crit = w.rngs.combat() < critChance(by);
   if (crit) { raw *= CRIT.mul; t.flash = 6; }
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;

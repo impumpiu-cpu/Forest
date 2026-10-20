@@ -90,13 +90,13 @@ export function rangedAmmo(a, d) {
 export function recalcGear(a) {
   const sp = SPECIES.get(a.species), base = sp.attack || {power: 1, cooldown: 12};
   const g = {melee: {dmg: base.power, cd: base.cooldown, item: null, type: base.type || DEFAULT_BLOW.melee, scale: null}, ranged: null, rangedReady: false,
-    block: 0, blockItem: null, armor: 0, armorVs: null, warmth: 0, speed: 1, tool: {}, toolItem: {}, carry: 0};
+    block: 0, blockItem: null, blockVs: null, armor: 0, armorVs: null, warmth: 0, speed: 1, tool: {}, toolItem: {}, carry: 0};
   if (!a.equip) { a.gear = g; return g; }
   for (const it of handItems(a)) {
     const d = def(it);
     if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null};
     if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it};
-    if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; }
+    if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs || null; }
     if (d.speed) g.speed *= d.speed;
   }
   if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;

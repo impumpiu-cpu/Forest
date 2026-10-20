@@ -9,7 +9,9 @@
 //                     `ranged.type` (data/balance/combat.js BLOWS: armour and bodies answer to it)
 //   scale           — the letters the blow is struck with, {S: weight, A: weight} (combat.js: the rest of 1 is the
 //                     weapon's own): a maul is all Strength, a dagger all Agility, a spear serves anyone
-//   vs              — armour against each kind of blow, × its armour: mail turns a cut and lets a hammer through
+//   vs              — protection against each kind of blow, × its armour or its block — one rule for both: mail turns a
+//                     cut and lets a hammer through, a hide shield catches a spear point and gives under a club,
+//                     a blade parries a cut better than a thrust
 //   melee {dmg, cd}, ranged {dmg, range, cd, ammo, boost, type}, block, speed, tool {job: ×},
 //   armor, warmth, carry, holds {ammo, max}, dur — as on any item (docs/BALANCE.md)
 //   parts           — what one piece takes, for its price: {material: n, wood: n, …} ('material' — the material's
@@ -39,15 +41,15 @@ export const FORMS = {
   // quick, but short: a dagger of a tier falls short of its spear; a silver one is soft and only for what fears silver
   dagger:   {blow: 'pierce', scale: {A: 1}, slot: 'hand', hands: 1, of: ['metal', 'silver'], ref: 'iron', melee: {dmg: 1.3, cd: 9}, dur: 115,
     parts: {material: 1, leather: 1}, work: 400, ids: {silver: 'silverknife'}, name: m => [`${cap(m.adj.m)} кинжал`, `${m.short} кинжал`], glyph: 'dagger'},
-  sword:    {blow: 'slash', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.95, cd: 11}, block: 0.1, dur: 150,
+  sword:    {vs: {pierce: 0.9, slash: 1.15, blunt: 0.8}, blow: 'slash', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.95, cd: 11}, block: 0.1, dur: 150,
     parts: {material: 3, leather: 1}, work: 900, ids: {iron: 'sword'}, names: {iron: ['Железный меч', 'меч']}, name: m => [`${cap(m.adj.m)} меч`, `${m.short} меч`], glyph: 'sword'},
   // the metal answer to armour: what a cut slides off, a blow of a mace or a hammer goes through
   mace:     {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.85, cd: 12}, dur: 150,
     parts: {material: 3, wood: 1}, work: 800, name: m => [`${cap(m.adj.f)} булава`, `${m.short} булава`], glyph: 'club'},
-  shield:   {slot: 'hand', hands: 1, of: ['wood', 'metal'], ref: 'wood', block: 0.32, dur: 35,
+  shield:   {vs: {pierce: 1.1, slash: 1.05, blunt: 0.8}, slot: 'hand', hands: 1, of: ['wood', 'metal'], ref: 'wood', block: 0.32, dur: 35,
     parts: {material: 3, hide: 2}, work: 700, ids: {wood: 'shield'}, names: {wood: ['Щит из жердей и шкуры', 'щит']}, name: m => [`${cap(m.adj.m)} щит`, `${m.short} щит`], glyph: 'shield'},
   // ── two-handed: each makes up for the shield it leaves no hand for
-  staff:    {blow: 'blunt', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', melee: {dmg: 1.4, cd: 10}, block: 0.15, speed: 1.05, dur: 80,
+  staff:    {vs: {pierce: 0.85, slash: 1, blunt: 1.1}, blow: 'blunt', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', melee: {dmg: 1.4, cd: 10}, block: 0.15, speed: 1.05, dur: 80,
     parts: {material: 2}, work: 600, ids: {wood: 'staff'}, names: {wood: ['Посох', 'посох']}, name: m => [`${cap(m.adj.m)} посох`, `${m.short} посох`], glyph: 'staff'},
   maul:     {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', melee: {dmg: 2.5, cd: 15}, tool: {build: 1.45, mine: 1.35}, dur: 90,
     parts: {material: 4, bone: 1}, work: 750, ids: {wood: 'maul'}, names: {wood: ['Деревянный молот', 'молот']}, name: m => [`${cap(m.adj.m)} молот`, `${m.short} молот`], glyph: 'maul'},

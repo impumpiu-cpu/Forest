@@ -17,7 +17,7 @@
 //   id, label, short, form, material, tier, slot, hands, glyph, color
 //   melee {dmg, cd}            close combat, dmg multiplies the base blow
 //   blow, scale                how it strikes (pierce, slash, blunt) and with which letters (data/balance/combat.js)
-//   vs                         armour against each kind of blow, × armor
+//   vs                         protection against each kind of blow, × armor or × block
 //   ranged {dmg, range, cd, ammo, boost}  ammo: resource id carried in a quiver (null = picked up anywhere);
 //                              boost: a colony modifier from world.mods.best that strengthens the shot
 //   block                      chance to stop a melee blow (shields, staves)
