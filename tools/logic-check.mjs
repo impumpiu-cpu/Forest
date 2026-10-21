@@ -9,7 +9,7 @@
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -72,6 +72,8 @@ import {bindOption, captiveAllows, captives, canBind} from '../src/settlement/ca
 import {CAPTIVE} from '../src/data/captives.js';
 import {councilDue} from '../src/settlement/council.js';
 import {agentInZone} from '../src/settlement/zone.js';
+import {stepEscape, startEscape, toolsAway} from '../src/settlement/escape.js';
+import {ESCAPE, BONDS, bestBonds} from '../src/data/captives.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -1657,6 +1659,137 @@ check('T115', 'пленный сохраняется и после загруз�
   if (!q?.captive || q.faction !== 'colony' || q.captive.bonds !== p.captive.bonds) return 'статус пленного не сохранился';
   for (let k = 0; k < 120; k++) step(c);
   return (!q.dead && q.captive && agentInZone(c, q)) || `после загрузки пленный ${q.dead ? 'умер' : agentInZone(c, q) ? '?' : 'ушёл за периметр'}`;
+});
+
+
+// ── stage 2: the will to run (settlement/escape.js)
+// the evening council of a given day is over: the escape rolls are due
+const councilOver = w => { w.tick = Math.floor(w.tick / DAY) * DAY + 21 * HOUR + 20; w.council.lastDay = Math.floor(w.tick / DAY); };
+const rngAt = (w, v) => { w.rngs.colony = Object.assign(() => v, {state: 0}); };
+
+check('T116', 'путы держат по материалу: мифрил лучше стали, сталь — железа, железо — бронзы, бронза — верёвки; вяжут лучшими', () => {
+  const order = ['mithril', 'steel', 'iron', 'bronze', 'rope'].map(id => BONDS.get(id).hold);
+  if (order.some((v, k) => k && v <= order[k - 1])) return `держат: ${order}`;
+  if (bestBonds({rope: 4, shacklesSteel: 1})?.id !== 'steel') return 'со сталью и верёвкой вяжут не сталью';
+  return bestBonds({rope: 1}) === null || 'одной верёвки хватило на пленного';
+});
+
+check('T117', 'совет: захотевший бежать начинает сговор, ночью бегут все несмирившиеся; смирившийся не бежит', () => {
+  const w = scene(); fixedRng(w);
+  const [p1, c] = captive(w);
+  const [r2] = fallenRaider(w, w.camp.x + 2.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r2.id}; bindAll(w, c);
+  const [r3] = fallenRaider(w, w.camp.x - 1.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r3.id}; bindAll(w, c);
+  r3.captive.resigned = w.tick;
+  p1.captive.will = 1; r2.captive.will = 0.3;
+  w.stock.berries = 200;   // plenty of food: no cut ration
+  councilOver(w); rngAt(w, 0.1); r3.captive.service = 0;
+  // the resigned one does not tell (a roll above the informer's chance)
+  const keep = w.rngs.colony; let k = 0; w.rngs.colony = Object.assign(() => (k++ < 2 ? 0.05 : 0.99), {state: 0});
+  stepEscape(w);
+  const plot = w.escape?.plot;
+  if (!plot) return 'сговора нет';
+  if (!plot.ids.includes(p1.id) || !plot.ids.includes(r2.id) || plot.ids.includes(r3.id)) return `в сговоре ${plot.ids}`;
+  // the night after: they run
+  w.tick = (Math.floor(w.tick / DAY) + 1) * DAY + 1.2 * HOUR; w.rngs.colony = keep;
+  stepEscape(w);
+  if (p1.faction !== 'fugitives' || r2.faction !== 'fugitives') return `бегут не все: ${p1.faction}, ${r2.faction}`;
+  return r3.faction === 'colony' && !r3.fugitive || 'смирившийся бежит';
+});
+
+check('T118', 'донос: смирившийся выдаёт сговор — побега нет, зачинщику воля, доносчику очки службы', () => {
+  const w = scene(); fixedRng(w);
+  const [p1, c] = captive(w);
+  const [r2] = fallenRaider(w, w.camp.x + 2.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r2.id}; bindAll(w, c);
+  r2.captive.resigned = w.tick; p1.captive.will = 0.7; w.stock.berries = 200;
+  councilOver(w); rngAt(w, 0.01);
+  stepEscape(w);
+  if (w.escape.plot) return 'сговор состоялся при доносе';
+  if (!(p1.captive.will > 0.7)) return `воля зачинщика ${p1.captive.will}`;
+  return (r2.captive.service || 0) > 0 || 'доносчику не засчитано';
+});
+
+check('T119', 'беглец бежит к краю медленнее в кандалах, чем в верёвке; добежал — ушёл', () => {
+  const pace = bonds => {
+    const w = scene(); fixedRng(w);
+    const [p] = captive(w); p.captive.bonds = bonds;
+    startEscape(w, p, 'plot');
+    const x0 = p.x, y0 = p.y;
+    for (let k = 0; k < 40; k++) { w.tick++; BRAINS.get(p.brain).step(w, p); }
+    return Math.hypot(p.x - x0, p.y - y0);
+  };
+  const rope = pace('rope'), iron = pace('iron');
+  if (!(rope > iron * 1.1)) return `в верёвке ${rope.toFixed(1)}, в кандалах ${iron.toFixed(1)} клеток`;
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w);
+  startEscape(w, p, 'plot');
+  for (let k = 0; k < 4000 && !p.gone; k++) { w.tick++; BRAINS.get(p.brain).step(w, p); }
+  return (p.gone && (w.chronicle.captives.escaped || 0) === 1) || 'беглец не ушёл за край';
+});
+
+check('T120', 'беглеца видят, на доске жёлтый флаг; кто догнал — хватает, и он снова в путах и злее', () => {
+  const w = scene(); fixedRng(w);
+  const [p, c] = captive(w);
+  p.captive.will = 0.5;
+  startEscape(w, p, 'plot');
+  c.x = p.x + 3; c.y = p.y; c.mods.bravery = 1.5;
+  lookRound(w);
+  const f = flagOf(w);
+  if (!f || f.kind !== 'escape' || f.red) return `флаг: ${f?.kind}, красный ${f?.red}`;
+  c.think = 0; brain(w, c);
+  if (!['answer', 'fight'].includes(c.task?.id)) return `за беглецом не пошли: ${c.task?.id}`;
+  for (let k = 0; k < 200 && p.faction === 'fugitives'; k++) { w.tick++; brain(w, c); if (p.faction === 'fugitives') BRAINS.get(p.brain).step(w, p); }
+  if (p.faction !== 'colony' || !p.captive || p.fugitive) return `беглец не пойман: ${p.faction}`;
+  return p.captive.will > 0.5 || `воля пойманного ${p.captive.will}`;
+});
+
+check('T121', 'красная тревога: пленный бросает на побег один раз за тревогу, свои в налёте — охотнее', () => {
+  const runs = kin => {
+    let n = 0;
+    for (let s = 0; s < 40; s++) {
+      const w = scene('kin' + s);
+      const [p] = captive(w); p.captive.will = 1;
+      const [g] = band(w, 3, w.camp.x + 12.5, w.camp.y + 0.5);
+      if (!kin) for (const o of g) o.species = 'orc';
+      for (let k = 0; k < 3; k++) { w.tick++; stepEscape(w); }
+      if (p.faction === 'fugitives') n++;
+    }
+    return n;
+  };
+  const kin = runs(true), other = runs(false);
+  return kin > other || `бежали при своих ${kin}, при чужих ${other} из 40`;
+});
+
+check('T122', 'на ночь пленный сдаёт инструмент на склад и до рассвета его не берёт; утром берёт снова', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w);
+  w.armory = [newItem('ironaxe')]; w.tick = Math.floor(w.tick / DAY) * DAY + 12 * HOUR;
+  outfit(w, p);
+  if (!allItems(p).some(it => it.type === 'ironaxe')) return 'днём не взял топор';
+  w.tick = Math.floor(w.tick / DAY) * DAY + 22 * HOUR;
+  if (!toolsAway(w)) return 'ночь не ночь';
+  stepEscape(w);
+  if (allItems(p).some(it => it.type === 'ironaxe') || !w.armory.some(it => it.type === 'ironaxe')) return 'топор не сдан';
+  outfit(w, p);
+  if (allItems(p).some(it => it.type === 'ironaxe')) return 'ночью снова взял топор';
+  w.tick = (Math.floor(w.tick / DAY) + 1) * DAY + 7 * HOUR;
+  outfit(w, p);
+  return allItems(p).some(it => it.type === 'ironaxe') || 'утром топор не взял';
+});
+
+check('T123', 'паёк: мало еды — совет урезает паёк пленным; едят меньше, работают медленнее, воля растёт к утру', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w);
+  for (const r of RESOURCES.filter(r => r.tags.includes('food'))) w.stock[r.id] = 0;
+  const hunger = p.mods.hunger, work = p.mods.work, will = p.captive.will ?? ESCAPE.will.start;
+  councilOver(w); rngAt(w, 0.99);
+  stepEscape(w);
+  if (!w.escape.cut || !p.captive.cut) return 'паёк не урезан';
+  if (!(p.mods.hunger < hunger) || !(p.mods.work < work)) return `голод ${hunger}→${p.mods.hunger}, работа ${work}→${p.mods.work}`;
+  w.tick = (Math.floor(w.tick / DAY) + 1) * DAY + 6.5 * HOUR; p.needs.food = 0.7;
+  stepEscape(w);
+  if (!(p.captive.will > will)) return `воля ${will} → ${p.captive.will}`;
+  w.stock.berries = 200; councilOver(w); stepEscape(w);
+  return (!p.captive.cut && Math.abs(p.mods.hunger - hunger) < 1e-9) || 'полный паёк не вернули';
 });
 
 let bad = 0;

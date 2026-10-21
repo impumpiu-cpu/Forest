@@ -20,7 +20,7 @@ import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash} from './camp.js';
 import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
 import {afterFight} from './quest.js';
-import {free, takeAuto, takeFromCamp} from './captives.js';
+import {free, takeAuto, takeFromCamp, captivesInFight, escaped} from './captives.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
@@ -30,6 +30,7 @@ const names = list => list.join(', ');
 export function fight(a, K, d, r, how = 'night') {
   if (how === 'ambush') K.stats.ambushes = (K.stats.ambushes || 0) + 1;
   K.stats.fights++;
+  if (K.mode === 'auto') captivesInFight(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));   // (on the local map the camp plays it)
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
   if (!alive(K).length) return win;
   if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); }
@@ -77,7 +78,9 @@ export function applyCamp(a, K, S, o, d, how) {
   const where = WHERE[how] || 'бою';
   for (const mo of o.members) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
+    if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
     if (!mo.alive) { fallen.push(m); continue; }
+    if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - 0.05) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local;
   }

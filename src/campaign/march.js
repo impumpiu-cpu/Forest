@@ -37,7 +37,7 @@ import {standing, townName, townLine, trade, labour, healHere, hire, companion, 
 import {HIRES, ROLES, LOYALTY, FREED, COMPANIONS, COMPANY_MAX, JOINED_MAX, VISIT, EARN, WANTS, MARKET} from '../data/market.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {free, unbind} from './captives.js';
+import {free, unbind, mouths, captivesEvening} from './captives.js';
 const SPECIES_LABEL = race => SPECIES.get(race).label;
 
 const SEASON_LIST = SEASONS.all();
@@ -298,6 +298,7 @@ function townEvening(a, K, seasonId) {
 
 // those who are not the core: the hired go when their term is up, the joined may go any day
 function people(a, K, r) {
+  captivesEvening(a, K, r, (text, kind, who) => say(a, K, text, kind, false, who));   // the captives' evening (campaign/captives.js)
   for (const m of alive(K)) {
     if (isCore(m)) continue;
     if (m.contract && K.day >= m.contract.until) { leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${m.gender === 'f' ? 'а' : ''} срок и ушёл${m.gender === 'f' ? 'а' : ''}`); continue; }
@@ -495,7 +496,7 @@ export function caravanDay(a, K, day) {
   const forage = ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   if (!town && !onMap) K.food += forage;
   // the meal
-  const need = ms.length * CAMPAIGN.ration, eat = Math.min(K.food, need), fed = eat / need;
+  const need = mouths(K) * CAMPAIGN.ration, eat = Math.min(K.food, need), fed = eat / need;   // a captive on a cut ration eats less (campaign/captives.js)
   K.food = Math.max(0, K.food - eat);
   // the chronicle tells of a hunger that matters: a new one after a while, its end after a few days of it
   const HT = CAMPAIGN.hunger.tell;

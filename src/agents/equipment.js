@@ -4,7 +4,9 @@
 // An item instance is {type, dur, ammo?}. A two-handed item sits in both hand slots at once
 // (the same object in `left` and `right`).
 import {jobAccess} from './skills.js';
-import {CAPTIVE} from '../data/captives.js';
+import {CAPTIVE, ESCAPE} from '../data/captives.js';
+import {hourOf} from '../core/time.js';
+import {COUNCIL_TO} from '../settlement/council.js';
 import {JOBS} from '../data/jobs.js';
 import {ITEMS, SLOTS, isWeapon} from '../data/items.js';
 import {SPECIES} from '../data/species.js';
@@ -269,7 +271,9 @@ export function captiveItem(it) {
 export function outfit(w, a) {
   if (!a.equip) return false;
   let changed = false;
-  const own = allItems(a), pool = a.captive ? [...own, ...w.armory].filter(captiveItem) : [...own, ...w.armory];
+  // a captive: a tool and clothes only, and no tool from the council till dawn (settlement/escape.js)
+  const night = a.captive && (hourOf(w.tick) >= COUNCIL_TO || hourOf(w.tick) < ESCAPE.tools.dawn);
+  const own = allItems(a), pool = a.captive ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory];
   const best = bestLoadout(w, a, pool);
   if (best && best.score > currentScore(w, a) + 0.12) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));

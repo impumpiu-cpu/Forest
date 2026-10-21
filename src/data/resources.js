@@ -132,6 +132,9 @@ RESOURCES.registerAll([
   // bonds for captives (data/captives.js BONDS): cast at the furnace or forged, bought in towns; rope is the crafts' own
   {id: 'shacklesBronze', label: 'бронзовые кандалы', short: 'бронз. кандалы', tags: ['bonds'], group: 'Инструменты', loot: 1, keep: 2, color: '#b98a4a'},
   {id: 'shacklesIron',   label: 'железные кандалы', short: 'жел. кандалы', tags: ['bonds'], group: 'Инструменты', loot: 1, keep: 2, color: '#8e959b'},
+  // steel and mithril the outpost cannot work: only traders and the towns' foundries bring them
+  {id: 'shacklesSteel',  label: 'стальные кандалы', short: 'стал. кандалы', tags: ['bonds'], group: 'Инструменты', loot: 1, keep: 2, color: '#b4bcc4'},
+  {id: 'shacklesMithril', label: 'мифриловые кандалы', short: 'мифр. кандалы', tags: ['bonds'], group: 'Инструменты', loot: 1, keep: 2, color: '#9fe0ff'},
   {id: 'pitsaw',     label: 'продольная пила', short: 'пила', tags: ['key'], group: 'Инструменты', loot: 1, sell: false, color: '#b9c2c8',
     opens: 'козлы для распила: тёс на избы'},
   {id: 'bellows',    label: 'кузнечные меха', short: 'меха', tags: ['key'], group: 'Инструменты', loot: 1, sell: false, color: '#8a6a48',

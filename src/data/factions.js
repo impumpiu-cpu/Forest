@@ -16,6 +16,8 @@ FACTIONS.registerAll([
   // the rot's folk of wood and water (data/bestiary.js): they start no war, but colonists fight them on sight
   {id: 'nechist', label: 'нечисть', brain: null, color: '#7aa08a', hostile: [], legend: 'нечисть'},
   {id: 'leavers', label: 'ушедшие', brain: null, color: '#9a9a9a', hostile: []},
+  // captives running away (settlement/escape.js): at war with nobody; the colony chases them as a yellow flag
+  {id: 'fugitives', label: 'беглецы', brain: 'fugitive', color: '#c79a5a', hostile: [], legend: 'беглый пленный'},
   // a trader's caravan: at war with nobody, but its guards answer anyone who goes for it
   {id: 'traders', label: 'торговцы',      brain: 'caravan',  color: '#e3c14a', hostile: [], legend: 'торговый караван'},
 ]);

@@ -13,6 +13,7 @@ import {sampleBehaviour} from './settlement/behaviour.js';
 import {sweepReserve} from './settlement/reserve.js';
 import {stepRelations} from './settlement/relations.js';
 import {Navigation} from './nav/navigation.js';
+import {stepEscape} from './settlement/escape.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
 import {noteAttacker} from './agents/lookup.js';
@@ -72,6 +73,7 @@ export function step(w) {
   stepCrafting(w);
   stepRelations(w);
   stepBoard(w);   // the colony's lookouts, the cry, the flags (settlement/board.js)
+  stepEscape(w);   // the captives' will to run: the council's rolls, the plot, the red alarm (settlement/escape.js)
   stepAttention(w);   // the colony's events that make colonists think again (agents/attention.js)
   stepHerds(w);   // wild herds: pasture, lookouts, alarm (agents/wildHerd.js)
   const t1 = performance.now();

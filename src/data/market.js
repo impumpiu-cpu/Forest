@@ -48,6 +48,7 @@ export const OFFERS = [
   // bonds for captives (data/captives.js): rope in any town, shackles where iron is worked
   {kind: 'goods', id: 'rope', n: 4, any: true, at: []},
   {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'smelter', 'foundry']},
+  {kind: 'goods', id: 'shacklesSteel', n: 1, at: ['foundry']},
   {kind: 'building', id: 'healerhut', at: ['healerhut', 'hospice'], price: CAMPAIGN.services.healerhut},
   {kind: 'building', id: 'forge', at: ['forge'], price: CAMPAIGN.services.forge},
   {kind: 'building', id: 'crafthut', at: ['crafthut'], price: CAMPAIGN.services.crafthut},
