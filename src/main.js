@@ -65,7 +65,7 @@ function showLaunch() {
   document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
   $('launchResume').hidden = !world;
   $('colonyName').textContent = 'Тёплый Брод';
-  $('worldInfo').textContent = '«Мир» — глобальная карта и её история; миры с летописью сохраняются в библиотеку. «Карта» — поселение на локальной карте. «Кампания» — поход каравана из столицы по сохранённому живому миру.';
+  $('worldInfo').textContent = '«Мир» — глобальная карта и её история; миры с летописью сохраняются в библиотеку. «Карта» — поселение на локальной карте. «Кампания» — поход каравана из столицы по сохранённому живому миру. «Эпическая кампания» — новый мир с долгой историей и поход по нему, всё на одном экране.';
 }
 
 function showAtlas(goto = null) {
@@ -79,15 +79,20 @@ function showAtlas(goto = null) {
 $('launchWorld').addEventListener('click', () => showAtlas());
 // the campaign: a caravan walks a world from the library (ui/campaignView.js)
 const campaignView = new CampaignView({onBack: showLaunch});
-function showCampaign() {
+// mode: 'library' — a world from the library; 'epic' — the epic campaign: a new world with a long history made here,
+// then the capital and the walk, all on one screen
+function showCampaign(mode = 'library') {
   running = false;
   only('campaign');
   document.body.classList.remove('ingame'); $('worldInfo').hidden = false;
-  $('colonyName').textContent = 'Кампания';
-  $('worldInfo').textContent = 'Караван из столицы идёт по живому миру: днём в пути, ночью в лагере. Всё, что с ним случится, пишется в летопись похода.';
-  campaignView.show();
+  $('colonyName').textContent = mode === 'epic' ? 'Эпическая кампания' : 'Кампания';
+  $('worldInfo').textContent = mode === 'epic'
+    ? 'Сначала мир проживает долгую историю — три эпохи по 75–150 лет, — потом из выбранной столицы выходит караван. Мир сохраняется в библиотеку сам.'
+    : 'Караван из столицы идёт по живому миру: днём в пути, ночью в лагере. Всё, что с ним случится, пишется в летопись похода.';
+  campaignView.show(mode);
 }
-$('launchCampaign').addEventListener('click', showCampaign);
+$('launchCampaign').addEventListener('click', () => showCampaign('library'));
+$('launchEpic').addEventListener('click', () => showCampaign('epic'));
 $('launchMap').addEventListener('click', showMenu);
 $('launchResume').addEventListener('click', () => showGame());
 $('menuBack').addEventListener('click', showLaunch);

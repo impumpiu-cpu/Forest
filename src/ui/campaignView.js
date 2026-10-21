@@ -160,7 +160,13 @@ export class CampaignView extends AtlasView {
     super.draw();
   }
 
-  show() { this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode(); }
+  // mode: 'library' — a world from the library; 'epic' — a new epic world made here, then the walk. Coming in with the
+  // other mode, a world not under way is let go (one under way goes on: it is its own world either way)
+  show(mode = 'library') {
+    if (mode !== this.mode && this.atlas && !(this.atlas.campaign && !finished(this.atlas.campaign))) { this.atlas = null; this.worldId = null; this.capPick = null; }
+    this.mode = mode;
+    this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode();
+  }
   // leaving the screen: the walk halts between seasons and waits
   halt() { if (this.making) { this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить'; } this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true; this.syncRun(); }
 
@@ -193,8 +199,10 @@ export class CampaignView extends AtlasView {
 
   setupMode() {
     this.choosing = true;
+    const epic = this.mode === 'epic';
     $('campSetup').hidden = false; $('campRun').hidden = true;
-    $('campTitle').textContent = this.atlas ? this.worldName : 'Кампания';
+    $('campLibField').hidden = epic; $('campEpicField').hidden = !epic;
+    $('campTitle').textContent = this.atlas ? this.worldName : epic ? 'Эпическая кампания' : 'Кампания';
     $('campCapsField').hidden = !this.atlas;
     const past = this.atlas?.campaignsDone || [];
     $('campPastField').hidden = !past.length;

@@ -34,6 +34,11 @@
       <b>Кампания</b>
       <span>Караван из столицы идёт по живому миру: восемь человек, еда на спине, поручение. Мир берётся из библиотеки — сохраните его на экране «Мир».</span>
     </button>
+    <button type="button" class="launch-card" id="launchEpic">
+      <span class="tag">эпос</span>
+      <b>Эпическая кампания</b>
+      <span>Всё сразу: сотворить мир с долгой историей — три эпохи по 75–150 лет, — выбрать столицу и выступить в поход.</span>
+    </button>
     <button type="button" id="launchResume" class="primary" hidden>Вернуться к игре</button>
   </section>
 
@@ -112,9 +117,9 @@
     <div class="menu-form atlas-form">
       <h2 id="campTitle" class="menu-title">Кампания</h2>
       <div id="campSetup">
-        <div class="field"><span class="lbl">Мир из библиотеки</span><div id="campWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
+        <div class="field" id="campLibField"><span class="lbl">Мир из библиотеки</span><div id="campWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
           <small id="campWorldNote" class="status" role="status"></small></div>
-        <div class="field" id="campEpicField"><span class="lbl">Или новый эпический мир</span>
+        <div class="field" id="campEpicField" hidden><span class="lbl">Новый эпический мир</span>
           <div class="row">
             <input id="campEpicSeed" type="text" maxlength="24" autocomplete="off" aria-label="Сид эпического мира">
             <div class="seg" id="campEpicSize"></div>
