@@ -31,6 +31,7 @@ import {BUILDINGS} from '../../data/buildings.js';
 import {tempAt} from '../../world/heat.js';
 import {ensurePlan, vacancyPull, signUp} from '../../settlement/plan.js';
 import {wake, noticeSelf, heartOf, noteThink} from '../attention.js';
+import {bindOption, captiveAllows, keepInside} from '../../settlement/captives.js';
 
 // keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
 // colony's vacancies is settlement/plan.js vacancyPull)
@@ -71,7 +72,7 @@ function decide(w, a, woke = 'дело кончилось') {
     preyCount: huntable(w, JOBS.get('hunt'), a).length, favourites: favourites(w), patients: waiting(w),
     agent: a, can: (skill, tier) => canDoAction(a, skill, tier),
     orders: new Proxy({}, {get: (o, station) => stationHasWork(w, station, a)})};
-  const opts = [];
+  let opts = [];
   for (const id of SPECIES.get(a.species).needs) {
     const n = NEEDS.get(id);
     // rested before dawn: the sleeper sleeps on till first light (agents/tasks.js sleep) — above any
@@ -149,6 +150,10 @@ function decide(w, a, woke = 'дело кончилось') {
   if (red && (raid || red.kind === 'raid')) opts.push([{id: 'reserve'}, BOARD.reserve, () => `тревога: ${red.label} ${red.where}, держится у огня`]);
   else if (red && !agentInZone(w, a)) opts.push([{id: 'runHome'}, BOARD.reserve, () => `тревога: ${red.label} ${red.where}, к своим`]);
   if (enemy && hpShare(a) <= BOARD.hurt && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
+  // after the fight: a foe lying senseless may be bound and taken (settlement/captives.js)
+  const bind = bindOption(w, a); if (bind) opts.push(bind);
+  // a captive's lot: no council, no flag, no watch, no work beyond the zone, no fight but for its life
+  if (a.captive) opts = opts.filter(([t]) => captiveAllows(t));
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);
@@ -168,7 +173,7 @@ function decide(w, a, woke = 'дело кончилось') {
   a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
     alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || '', woke};
   noteThink(w, a.wakeKind || woke, key(best) === cur);
-  if (flags.length) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
+  if (flags.length && !a.captive) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
   noteWatch(w, a, best, a.task?.id);
   if (key(best) !== cur) {
     // leaving one job for another of one's own accord: a moment's thought first («прикидывает, за что
@@ -232,6 +237,8 @@ export const colonistBrain = {
       if (!busy) decide(w, a, woke); else a.think = heartOf(a);
     }
     if (!a.task) decide(w, a);
+    // a captive may not leave the settlement zone: turned back to the fire (settlement/captives.js)
+    if (a.captive) keepInside(w, a, agentInZone(w, a));
     // passing through the camp: swap gear with the store, top up arrows
     if (w.nav.get('camp')[cellOf(w, a)] < 3 && (w.tick - (a.outfitAt || -999) > 300 || a.seenArmory !== w.armoryVersion) && a.task?.id !== 'fight') {
       a.outfitAt = w.tick; a.seenArmory = w.armoryVersion; outfit(w, a);

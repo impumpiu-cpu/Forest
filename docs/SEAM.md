@@ -1,4 +1,4 @@
-[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Баланс вещей](BALANCE.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · **Шов** · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md) · [Надмозг и пешки](MIND.md) · [Отложено](TODO.md)
+[Главная](../README.md) · [Архитектура](ARCHITECTURE.md) · [Как добавить новое](ADDING.md) · [Механики](MECHANICS.md) · [Справочник](REFERENCE.md) · [Проверки и баланс](TESTING.md) · [Баланс вещей](BALANCE.md) · [Карта мира](WORLD.md) · [Локальная карта](MAP.md) · **Шов** · [Кампания](CAMPAIGN.md) · [SPECIAL](SPECIAL.md) · [Надмозг и пешки](MIND.md) · [Плен и свита](CAPTIVES.md) · [Отложено](TODO.md)
 
 # Шов: соединение карты мира и локальной карты
 

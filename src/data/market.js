@@ -45,6 +45,9 @@ export const OFFERS = [
   {kind: 'item', id: 'lamellar', at: ['forge', 'armory']},
   {kind: 'item', id: 'chainmail', at: ['armory', 'foundry']},
   {kind: 'item', id: 'furcoat', at: ['tannery', 'lodge']},
+  // bonds for captives (data/captives.js): rope in any town, shackles where iron is worked
+  {kind: 'goods', id: 'rope', n: 4, any: true, at: []},
+  {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'smelter', 'foundry']},
   {kind: 'building', id: 'healerhut', at: ['healerhut', 'hospice'], price: CAMPAIGN.services.healerhut},
   {kind: 'building', id: 'forge', at: ['forge'], price: CAMPAIGN.services.forge},
   {kind: 'building', id: 'crafthut', at: ['crafthut'], price: CAMPAIGN.services.crafthut},
@@ -82,7 +85,7 @@ export const FREED = {chance: {tribe: 0.12, bandits: 0.08, army: 0.06, undead: 0
 export const LOYALTY = {daily: 0.008, hungry: -0.04, lost: -0.1, won: 0.03, leave: 0.06};
 
 // what those who are not the core are called
-export const ROLES = {companion: 'спутник', freed: 'вызволенный из плена'};
+export const ROLES = {companion: 'спутник', freed: 'вызволенный из плена', captive: 'пленный'};
 
 // the most who walk with the caravan (the core included), and the most of those who joined on the way
 // (companions and the freed); nobody joins beyond them

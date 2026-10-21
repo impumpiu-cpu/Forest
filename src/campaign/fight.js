@@ -20,6 +20,7 @@ import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash} from './camp.js';
 import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
 import {afterFight} from './quest.js';
+import {free, takeAuto, takeFromCamp} from './captives.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
@@ -99,6 +100,7 @@ export function applyCamp(a, K, S, o, d, how) {
   }
   if (K.vehicles.some(v => v.gone)) { K.vehicles = K.vehicles.filter(v => !v.gone); assign(K); K.path = null; }
   const took = takeGear(K, o.items);
+  const taken = takeFromCamp(a, K, o, (text, kind, who) => say(a, K, text, kind, false, who));   // the fallen foes the camp bound
   if (how === 'stop') {   // a quiet day: only what went wrong is told (a beast lost, someone fallen)
     if (lostB.length || stolenB.length) say(a, K, `На стоянке потеряли ${names([...stolenB, ...lostB].map(b => BEASTS[b.kind].acc))}.`, 'beast');
     for (const m of fallen) die(a, K, m, `погиб${m.gender === 'f' ? 'ла' : ''} на стоянке`);
@@ -106,7 +108,7 @@ export function applyCamp(a, K, S, o, d, how) {
   }
   // the line: what happened, who fell, who is hurt, what is lost and won
   const F = o.foes, parts = [];
-  if (F.n) parts.push(`${pieces(F.n, 'враг', 'врага', 'врагов')}: ${F.killed ? `${F.killed} убито` : 'никого не убили'}${F.fled ? `, ${F.fled} бежали` : ''}${F.left ? `, ${F.left} осталось` : ''}`);
+  if (F.n) parts.push(`${pieces(F.n, 'враг', 'врага', 'врагов')}: ${F.killed ? `${F.killed} убито` : 'никого не убили'}${F.taken ? `, ${F.taken} в плену` : ''}${F.fled ? `, ${F.fled} бежали` : ''}${F.left ? `, ${F.left} осталось` : ''}`);
   if (fallen.length) parts.push(`пали ${names(fallen.map(m => m.name))}`);
   if (hurt.length) parts.push(`ранены ${names(hurt.map(m => m.name))}`);
   if (stolenB.length) parts.push(`увели ${names(stolenB.map(b => BEASTS[b.kind].acc))}`);
@@ -121,7 +123,7 @@ export function applyCamp(a, K, S, o, d, how) {
 
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town
 function takeGear(K, items) {
-  const ms = alive(K), took = [];
+  const ms = free(K), took = [];   // no arms or armour for a captive
   const armor = id => ITEMS.get(id)?.armor ?? 0, dmg = m => Math.max(0, ...m.gear.hand.map(id => ITEMS.get(id)?.melee?.dmg ?? 0));
   for (const id of items) {
     const it = ITEMS.get(id); if (!it) continue;
@@ -143,10 +145,12 @@ function takeGear(K, items) {
 
 // ── after a won fight: captives set free, beasts the foe kept, now and then an iron tool
 function spoils(a, K, d, r) {
-  const joined = () => alive(K).filter(m => m.loyalty != null).length;
-  if (FREED.chance[d.kind] && alive(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
+  const joined = () => free(K).filter(m => m.loyalty != null).length;
+  // the fallen foes bound and taken (campaign/captives.js): on the local map the camp does it itself
+  if (K.mode === 'auto') takeAuto(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));
+  if (FREED.chance[d.kind] && free(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
     const n = 1 + (r() < 0.35 ? 1 : 0), got = [];
-    for (let q = 0; q < n && alive(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
+    for (let q = 0; q < n && free(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
       const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
       const race = minor ? COMPANIONS.minorRaces[(r() * COMPANIONS.minorRaces.length) | 0] : peoples[(r() * peoples.length) | 0].race;
       const m = makeMember(K, r, {race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});
@@ -157,7 +161,7 @@ function spoils(a, K, d, r) {
   for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) { gainBeast(a, K, kind, 'У врагов отбили'); break; }
   const T = GETTING.spoilTool;
   if (T[d.kind] && toolTier(K) < 2 && r() < T[d.kind]) {
-    const m = alive(K).find(x => x.role === 'squire') || alive(K)[0], old = m.gear.hand[0];
+    const m = free(K).find(x => x.role === 'squire') || free(K)[0], old = m.gear.hand[0];
     m.gear.hand[0] = T.item;
     say(a, K, `Среди брошенного врагами нашёлся ${ITEMS.get(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${ITEMS.has(old) ? ITEMS.get(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
   }
@@ -171,7 +175,7 @@ function autoFight(a, K, d, r, how) {
   let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);
   const hit = [];
   while (hurt > 0 && alive(K).length) {
-    const ms = alive(K), wts = ms.map(m => (m.role === 'knight' ? F.shield : 1));
+    const ms = alive(K), wts = ms.map(m => (m.role === 'knight' ? F.shield : m.captive ? F.captive : 1));   // a captive keeps out of it
     let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
     for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;

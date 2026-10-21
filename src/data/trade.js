@@ -68,6 +68,8 @@ export const TRADE = {
     // silver against what fears it: silvered imperial blades and silver daggers
     {w: 5, items: ['sword', 'ironspear', 'silverknife', 'silverknife'], q: 0, silver: true},
     {w: 4, resource: ['mirror', 'tapestry', 'lamp'], n: [1, 1]},
+    // bonds for captives (data/captives.js)
+    {w: 4, resource: ['rope', 'shacklesBronze', 'shacklesIron'], n: [1, 3]},
   ],
 
   // the guards' kit: imperial iron armour, a finer sword and shield

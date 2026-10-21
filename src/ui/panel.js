@@ -1,6 +1,7 @@
 // Panels around the map: the clock line above it, the selection pane under it and the tabs on its right
 // (stock and jobs, colonists, buildings, council, journal, world). Only the open tab is redrawn.
 import {hpShare} from '../agents/agent.js';
+import {captiveText} from '../settlement/captives.js';
 import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {TRADE} from '../data/trade.js';
@@ -103,6 +104,7 @@ function skillsHtml(a) {
 // a deadly wound and what it left (agents/wounds.js): bleeding now, a grave wound healing, traumas for life
 function woundsHtml(w, a) {
   const out = [];
+  if (a.captive) out.push(`<span class="chip dislike" title="Без оружия, за периметр нельзя, на совет не ходит">${captiveText(w, a)}</span>`);
   if (a.downed) out.push(`<span class="chip dislike" title="Без помощи умрёт">без сознания: ${Math.max(0, Math.ceil((a.downed.until - w.tick) / HOUR * 10) / 10)} ч до смерти</span>`);
   for (const x of a.wounds || []) {
     const W = WOUNDS.get(x.id);

@@ -52,12 +52,12 @@ export function finish(a, K) {
       for (const o of a.realms) { const rel = o.id !== R.id && relation(a, R.id, o.id); if (rel) { rel.att = Math.min(E.attMax, rel.att + E.att); friends++; } }
     }
     lines.push({text: `В ${capital ? `${townLabel(capital, 3)} ${capital.name}` : 'столице'} празднуют возвращение короны. Слава державы ${R ? realmLabelGen(a, R.id) : ''} растёт${friends ? `; ${friends === 1 ? 'соседи ищут' : 'соседние державы ищут'} с ней дружбы` : ''}, в столицу тянутся новые жители.`.replace('державы  растёт', 'державы растёт'), world: true});
-    for (const m of K.members.filter(x => x.alive)) tellFate(m, isCore(m) ? FATES.won[m.role === 'knight' ? 'knight' : 'squire'] : FATES.won.other);
+    for (const m of K.members.filter(x => x.alive)) tellFate(m, m.captive ? FATES.captive.won : isCore(m) ? FATES.won[m.role === 'knight' ? 'knight' : 'squire'] : FATES.won.other);
     const fallen = K.members.filter(m => isCore(m) && m.died);
     if (fallen.length) lines.push({text: `У ворот ${capital ? `${townLabel(capital, 2)} ${capital.name}` : 'столицы'} поставили камень в память о тех, кто не вернулся: ${fallen.map(m => `${m.name}, ${rank(K, m)}`).join('; ')}.`, who: fallen.map(m => m.id)});
   } else {
     const survivors = K.phase === 'lost' ? K.members.filter(m => (K.lostWith || []).includes(m.id)) : K.members.filter(m => m.alive);
-    for (const m of survivors) tellFate(m, K.phase === 'lost' ? FATES.lost : FATES.timeout);
+    for (const m of survivors) tellFate(m, m.captive ? FATES.captive.lost : K.phase === 'lost' ? FATES.lost : FATES.timeout);
     if (K.phase === 'lost' && !survivors.length) lines.push({text: 'Из каравана не вернулся никто; о том, где он сгинул, рассказали лишь купцы на дорогах.'});
     const cf = crownFate(a, K); if (cf) lines.push({text: cf, world: true});
     lines.push({text: `${capital ? `В ${townLabel(capital, 3)} ${capital.name}` : 'На родине'} долго ждали караван. ${K.realm ? `${cap(realmLabel(a, K.realm))} помнят` : 'Помнят'} ушедших: ${K.members.filter(isCore).map(m => m.name).join(', ')}.`, world: true});

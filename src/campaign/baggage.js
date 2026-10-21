@@ -8,6 +8,7 @@
 // K.beasts = [{id, kind, hp, job: 'ride' | 'pack' | 'draft', rider}];  K.vehicles = [{kind, building}]
 // K.cargo = {resource id → units} besides the food;  member.back — cells on the member's back
 import {SPECIES} from '../data/species.js';
+import {BONDS} from '../data/captives.js';
 import {ITEMS} from '../data/items.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -43,8 +44,9 @@ export function assign(K) {
     return false;
   };
   for (const v of [...K.vehicles].sort((p, q) => (VEHICLES[q.kind].pull === 'draft') - (VEHICLES[p.kind].pull === 'draft'))) v.pulled = VEHICLES[v.kind].pull === 'draft' ? harness() : harness() ? 'beasts' : ms.length >= 2 ? 'people' : false;
-  // riders: the wounded first, then the knights, then the rest
-  const order = [...ms].sort((p, q) => (p.hp < 0.5) - (q.hp < 0.5) || (p.role === 'knight') - (q.role === 'knight') || p.id - q.id).reverse();
+  // riders: the wounded first, then the knights, then the rest; a captive only on a beast nobody free needs
+  const order = ms.filter(m => !m.captive).sort((p, q) => (p.hp < 0.5) - (q.hp < 0.5) || (p.role === 'knight') - (q.role === 'knight') || p.id - q.id).reverse();
+  order.push(...ms.filter(m => m.captive));
   for (const m of order) {
     const b = free().find(x => BEASTS[x.kind].use === 'ride'); if (!b) break;
     b.job = 'ride'; b.rider = m.id; m.ride = b.id;
@@ -65,13 +67,16 @@ export const load = K => K.food + cargoLoad(K);
 // what does not fit is left behind: goods first, then food; returns what was left
 export function overflow(K) {
   let over = load(K) - capacity(K), left = 0;
-  for (const id of Object.keys(K.cargo).sort()) {
-    if (over <= 0) break;
+  // the goods first, then food; bonds for captives last: they weigh little and nothing else binds (data/captives.js)
+  const bonds = id => BONDS.all().some(b => b.resource === id);
+  const drop = id => {
     const n = Math.min(K.cargo[id], Math.ceil(over / bulk(id)));
     K.cargo[id] -= n; over -= n * bulk(id); left += n * bulk(id);
     if (K.cargo[id] <= 0) delete K.cargo[id];
-  }
-  if (over > 0) { const f = Math.min(K.food, over); K.food -= f; left += f; }
+  };
+  for (const id of Object.keys(K.cargo).filter(id => !bonds(id)).sort()) { if (over <= 0) break; drop(id); }
+  if (over > 0) { const f = Math.min(K.food, over); K.food -= f; over -= f; left += f; }
+  for (const id of Object.keys(K.cargo).filter(bonds).sort()) { if (over <= 0) break; drop(id); }
   return left;
 }
 
@@ -100,4 +105,4 @@ export const fieldBuildings = () => BUILDINGS.filter(b => b.portable && Object.k
 export const buildDays = b => Math.ceil(b.cost.wood / FIELD_BUILD.woodPerDay);
 
 // the best handler's way with beasts: 1 + Charisma's charm (data/special.js)
-export const handler = K => 1 + Math.max(0, ...alive(K).map(m => EFFECTS.charm(m.special || {C: NORM})));
+export const handler = K => 1 + Math.max(0, ...alive(K).filter(m => !m.captive).map(m => EFFECTS.charm(m.special || {C: NORM})));

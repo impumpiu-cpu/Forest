@@ -8,7 +8,7 @@ import {dayOf} from '../core/time.js';
 import {strengthOf} from '../agents/strength.js';
 
 export function colonyReport(w) {
-  const col = colonists(w);
+  const col = colonists(w).filter(a => !a.captive);   // captives are no strength of the colony's (settlement/captives.js)
   return {
     tick: w.tick, day: dayOf(w.tick),
     pop: col.length,

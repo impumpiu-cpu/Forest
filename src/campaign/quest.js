@@ -269,7 +269,7 @@ function takeCrown(a, K, say) {
 }
 // who carries the crown: a knight first, the healthiest
 function bearer(K) {
-  const ms = K.members.filter(m => m.alive);
+  const ms = K.members.filter(m => m.alive && !m.captive);   // a captive never carries the crown
   return ms.filter(m => m.role === 'knight').sort((p, q) => q.hp - p.hp)[0] || ms.filter(m => m.core).sort((p, q) => q.hp - p.hp)[0] || ms[0] || null;
 }
 
@@ -307,7 +307,7 @@ export function rumour(a, K, t, rnd) {
   const Q = K.quest; if (!Q || Q.crown.state === 'carried' || Q.crown.exact) return null;
   const unknown = Q.clues.filter(c => !c.found && !c.area);
   if (!unknown.length || rnd() > QUEST.rumour.chance) return null;
-  const charm = Math.max(...K.members.filter(m => m.alive).map(m => m.special?.C ?? 5)), R = QUEST.rumour;
+  const charm = Math.max(...K.members.filter(m => m.alive && !m.captive).map(m => m.special?.C ?? 5)), R = QUEST.rumour;
   if (charm < R.charm && K.gold < R.price) return null;
   if (charm < R.charm) K.gold = Math.round((K.gold - R.price) * 10) / 10;
   const c = unknown.sort((p, q) => dist(a, t.i, p.i) - dist(a, t.i, q.i))[0];

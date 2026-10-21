@@ -110,6 +110,10 @@ RECIPES.registerAll([
   {id: 'bronzeaxe', skill: 'smithing', at: 'smelter', cost: {bronze: 2, wood: 1}, fuel: 0.5, heat: 1, work: 600, makes: {item: 'bronzeaxe'},
     want: c => (short(c.owned('ironaxe') + c.owned('bronzeaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 1.9 : 0)},
 
+  // shackles for captives (data/captives.js): a pair while the colony has none to spare and metal to spare
+  {id: 'shacklesBronze', skill: 'smithing', at: 'smelter', cost: {bronze: 2}, fuel: 0.5, heat: 1, work: 400, makes: {resource: 'shacklesBronze', n: 1},
+    want: c => (c.stock('shacklesBronze') + c.stock('shacklesIron') < 2 && c.spare('bronze') >= 2 ? 0.5 : 0)},
+
   // ── the forge: iron blades and lamellar armour; each piece takes one fuel. Forging is smithing (S): an axe
   // head anyone can beat out (T1, the apprentice's work), a spear point wants a stronger arm (T2), a sword and
   // lamellar a real smith (T3), a silvered sword a master (T4)
@@ -119,6 +123,8 @@ RECIPES.registerAll([
     want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
+  {id: 'shacklesIron', at: 'forge', cost: {iron: 2}, fuel: 1, work: 500, makes: {resource: 'shacklesIron', n: 1},
+    want: c => (c.stock('shacklesIron') < 2 && c.spare('iron') >= 2 ? 0.55 : 0)},
   // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare
   // Before anyone has seen a vampire: a few, while there is silver to spare. Once one has come
   // (ctx.silverFoes): a silver blade for every second colonist, and the last bar goes into it.

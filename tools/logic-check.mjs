@@ -9,7 +9,7 @@
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -68,6 +68,10 @@ import {prune, nextLookouts, inTurn, see, fade, seenMiddle} from '../src/agents/
 import {stepBoard, flagOptions, watchOption, BOARD, WATCH} from '../src/settlement/board.js';
 import {raidAlarm} from '../src/settlement/query.js';
 import {dropLoad} from '../src/agents/jobRunners.js';
+import {bindOption, captiveAllows, captives, canBind} from '../src/settlement/captives.js';
+import {CAPTIVE} from '../src/data/captives.js';
+import {councilDue} from '../src/settlement/council.js';
+import {agentInZone} from '../src/settlement/zone.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -756,14 +760,15 @@ check('T53', 'перевязка спасает: тяжёлая рана тян�
   return a.wounds.some(x => x.id === trauma) || 'неизлечимая травма прошла';
 });
 
-check('T54', 'удар далеко за край, налётчик и яд — без проверки удачи', () => {
+check('T54', 'удар далеко за край, нежить и яд — без проверки удачи', () => {
   const w = scene(), a = human(w), r = raider(w);
   seq(w, [0]);
   a.hp = -2 * maxHp(a); lethal(w, a, 'ран', r);
   if (!a.dead) return 'оверкилл дал проверку';
-  const w2 = scene(), bad = raider(w2), c = human(w2);
+  // (a thinking raider may fall now, to be taken captive: docs/CAPTIVES.md; the undead never fall)
+  const w2 = scene(), bad = put(w2, 'zombie', 'raiders', 31.5, 30.5), c = human(w2);
   seq(w2, [0]); bad.hp = 0.01; damage(w2, c, bad, 0.5);
-  if (!bad.dead || bad.downed) return 'налётчик упал вместо смерти';
+  if (!bad.dead || bad.downed) return 'мертвяк упал вместо смерти';
   const w3 = scene(), p = human(w3);
   seq(w3, [0]); p.hp = -0.01; lethal(w3, p, 'яда');
   return p.dead || 'яд дал проверку удачи';
@@ -1529,6 +1534,129 @@ check('T108', 'каркас групп: ушедшие выбывают, доз�
   const gone = fade(f, 120, 100);
   if (gone.length !== 1 || gone[0] !== live[0].id || !f.seen[live[2].id]) return 'забыто не то';
   return seenMiddle(f).x === live[2].x || 'середина виденного не там';
+});
+
+
+// ── captives (docs/CAPTIVES.md, stage 1)
+// a raider brought down and left lying: the luck checks all come out «survive, clean»
+const fell = (w, r, by) => { const keep = w.rngs.combat; w.rngs.combat = Object.assign(() => 0, {state: 0}); r.hp = -0.01; lethal(w, r, 'ран', by); w.rngs.combat = keep; return r; };
+// a raider in sword and lamellar, fallen near a colonist
+function fallenRaider(w, x = 40.5, y = 30.5) {
+  const [g, sq] = band(w, 1, x, y), r = g[0];
+  r.equip.right = newItem('sword'); r.equip.body = newItem('lamellar'); recalcGear(r);
+  return [fell(w, r, null), sq];
+}
+const bindAll = (w, a) => { for (let k = 0; k < 400 && a.task?.id === 'bind'; k++) { syncTask(w, a); TASKS.get(a.task.id).step(w, a, a.task); syncTask(w, a); w.tick++; } };
+
+check('T109', 'разумный налётчик падает без сознания, нежить и зверь — нет; упавший выбывает из банды один раз', () => {
+  const w = scene(); fixedRng(w);
+  const c = put(w, 'human', 'colony', 30.5, 30.5);
+  const [r, sq] = fallenRaider(w);
+  if (!r.downed || r.dead) return 'разумный налётчик не упал';
+  if (sq.fallen !== 1) return `банда насчитала павших: ${sq.fallen}`;
+  const z = fell(w, put(w, 'zombie', 'raiders', 35.5, 30.5), c), wolf = fell(w, put(w, 'wolf', 'predators', 36.5, 30.5), c);
+  if (!z.dead || !wolf.dead) return 'мертвяк или волк упал вместо смерти';
+  for (let k = 0; k < 3; k++) BRAINS.get(r.brain).step(w, r);
+  if (r.task?.id !== 'downed' || r.x !== 40.5) return `упавший налётчик ходит: ${r.task?.id}`;
+  kill(w, r, 'ран', c);
+  return sq.fallen === 1 || `павший и добитый посчитан дважды: ${sq.fallen}`;
+});
+
+check('T110', 'есть путы — поселенец идёт вязать упавшего; без пут или при враге на ногах рядом — нет', () => {
+  const w = scene(); fixedRng(w);
+  const c = put(w, 'human', 'colony', 30.5, 30.5);
+  const [r] = fallenRaider(w);
+  w.stock.rope = 0; w.stock.shacklesIron = 0; w.stock.shacklesBronze = 0;
+  if (bindOption(w, c)) return 'вяжет без пут';
+  w.stock.rope = 2;
+  const o = bindOption(w, c);
+  if (o?.[0].id !== 'bind' || o[0].who !== r.id) return 'с верёвкой на складе не идёт вязать';
+  const foe = put(w, 'human', 'raiders', r.x + 3, r.y); w.tick++;   // (who is near is laid out once a tick)
+  if (bindOption(w, c)) return 'идёт вязать, когда рядом враг на ногах';
+  kill(w, foe, 'ран'); w.tick++;
+  c.think = 0; brain(w, c);
+  return c.task?.id === 'bind' || `после боя выбрал «${c.task?.id}» (${c.why?.task}: ${c.why?.why}; ${c.lastStop ? JSON.stringify(c.lastStop) : ''}), а не связать`;
+});
+
+check('T111', 'связанный жив и перевязан, пленный поселения, оружие и доспех на складе, путы списаны — лучшие первыми', () => {
+  const w = scene(); fixedRng(w);
+  const c = put(w, 'human', 'colony', 39.5, 30.5);
+  const [r] = fallenRaider(w);
+  w.stock.rope = 4; w.stock.shacklesIron = 1; w.stock.shacklesBronze = 0;
+  c.task = {id: 'bind', who: r.id};
+  bindAll(w, c);
+  if (!r.captive || r.faction !== 'colony' || r.downed || r.dead) return `не пленный: ${r.faction}, упал ${!!r.downed}`;
+  if (r.captive.bonds !== 'iron' || w.stock.shacklesIron !== 0 || w.stock.rope !== 4) return `путы: ${r.captive.bonds}, кандалов ${w.stock.shacklesIron}, верёвки ${w.stock.rope}`;
+  if (allItems(r).length) return `при пленном осталось: ${allItems(r).map(it => it.type)}`;
+  if (!w.armory.some(it => it.type === 'sword') || !w.armory.some(it => it.type === 'lamellar')) return 'меч и ламеляр не на складе';
+  if (r.brain !== 'colonist' || r.squad != null || !r.prefs) return 'пленный не думает как поселенец';
+  // the second one is bound with rope
+  const [r2] = fallenRaider(w, 41.5, 30.5);
+  c.task = {id: 'bind', who: r2.id}; bindAll(w, c);
+  if (r2.captive?.bonds !== 'rope' || w.stock.rope !== 2) return `второй связан ${r2.captive?.bonds}, верёвки ${w.stock.rope}`;
+  return captives(w).length === 2 || `пленных ${captives(w).length}`;
+});
+
+// a captive by the fire: a raider taken the way the game takes it
+function captive(w) {
+  const c = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 1.5);
+  const [r] = fallenRaider(w, w.camp.x + 1.5, w.camp.y + 1.5);
+  w.stock.rope = 2; c.task = {id: 'bind', who: r.id}; bindAll(w, c);
+  c.task = null;
+  return [r, c];
+}
+
+check('T112', 'пленный не идёт на совет, на флаги и в дозор, не берёт работу за периметром и оружие, но берёт инструмент', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w);
+  for (const t of [{id: 'council'}, {id: 'trade'}, {id: 'watch'}, {id: 'answer', flag: 'x'}, {id: 'fight', target: null}, {id: 'aid', who: 1}, {id: 'company', who: 1}, {id: 'bind', who: 1}, {id: 'job', job: 'chop'}, {id: 'job', job: 'hunt'}, {id: 'job', job: 'gather'}])
+    if (captiveAllows(t)) return `пленному можно «${t.id}${t.job ? ':' + t.job : ''}»`;
+  for (const t of [{id: 'eat'}, {id: 'sleep'}, {id: 'job', job: 'build'}, {id: 'job', job: 'craft'}, {id: 'fight', reflex: true}, {id: 'reserve'}])
+    if (!captiveAllows(t)) return `пленному нельзя «${t.id}${t.job ? ':' + t.job : ''}»`;
+  // the council hour: the free colonist goes, the captive does not
+  w.tick = Math.floor(w.tick / DAY) * DAY + 20 * HOUR;
+  if (!councilDue(w)) return 'совет не идёт';
+  for (const n of Object.keys(p.needs)) p.needs[n] = 1;
+  p.think = 0; brain(w, p);
+  if (p.task?.id === 'council') return 'пленный сел на совет';
+  // the gear store: a sword, lamellar and an axe — the captive takes the axe only
+  w.armory = [newItem('sword'), newItem('lamellar'), newItem('ironaxe'), newItem('shield')];
+  outfit(w, p);
+  const has = allItems(p).map(it => it.type);
+  return (has.includes('ironaxe') && !has.some(t => ['sword', 'lamellar', 'shield'].includes(t))) || `пленный взял: ${has.join(', ') || 'ничего'}`;
+});
+
+check('T113', 'пленный за периметром возвращается к огню; на него напали — отвечает', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w);
+  p.x = w.camp.x + 30.5; p.y = w.camp.y + 0.5; p.task = {id: 'idle'}; p.think = 50;
+  if (agentInZone(w, p)) return 'точка в периметре';
+  brain(w, p);
+  if (p.task?.id !== 'runHome') return `за периметром занят «${p.task?.id}»`;
+  const wolf = wolfOn(w, p.x + 1, p.y, p);
+  p.think = 0; brain(w, p);
+  return ['fight', 'runHome'].includes(p.task?.id) || `на него напали, а он «${p.task?.id}»`;
+});
+
+check('T114', 'пленный видит волка и поднимает тревогу', () => {
+  const w = scene(); fixedRng(w);
+  const [p, c] = captive(w);
+  c.x = w.camp.x + 40.5; c.y = w.camp.y + 30.5;   // the free one is far off
+  const wolf = put(w, 'wolf', 'predators', p.x + 6, p.y); wolf.pack = wolf.id;
+  lookRound(w);
+  const f = flagOf(w);
+  return (f && f.known?.[p.id] != null) || 'флага нет или пленный о нём не знает';
+});
+
+check('T115', 'пленный сохраняется и после загрузки живёт пленным', () => {
+  const w = scene();   // (real streams: a fixed one is not what a save keeps)
+  const [p] = captive(w);
+  const c = loadWorld(JSON.parse(JSON.stringify(saveWorld(w))));
+  if (worldHash(c) !== worldHash(w)) return 'отпечаток после загрузки другой';
+  const q = c.agents.find(o => o.id === p.id);
+  if (!q?.captive || q.faction !== 'colony' || q.captive.bonds !== p.captive.bonds) return 'статус пленного не сохранился';
+  for (let k = 0; k < 120; k++) step(c);
+  return (!q.dead && q.captive && agentInZone(c, q)) || `после загрузки пленный ${q.dead ? 'умер' : agentInZone(c, q) ? '?' : 'ушёл за периметр'}`;
 });
 
 let bad = 0;

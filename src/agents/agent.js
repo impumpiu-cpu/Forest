@@ -22,6 +22,7 @@ import {RESOURCES} from '../data/resources.js';
 import {decideTrophies} from './trophies.js';
 import {noteBoardDeath} from '../settlement/board.js';
 import {load} from './jobRunners.js';
+import {captiveDied} from '../settlement/captives.js';
 
 // a line for the log about the rare trophies of a kill
 export function trophyText(t) {
@@ -38,7 +39,7 @@ const between = (rng, [a, b]) => a + rng() * (b - a);
 
 // liked and disliked work are drawn from preferable jobs; up to two traits from different groups.
 // Skills start from SPECIAL (agents/skills.js): a little of everything, more where the letter is strong.
-function personality(w, a) {
+export function personality(w, a) {
   const rng = w.rngs.birth, pool = shuffle(rng, JOBS.filter(j => j.preferable).map(j => j.id));
   a.prefs = {};
   for (const id of JOBS.ids()) a.prefs[id] = between(rng, NEUTRAL_RANGE);
@@ -59,7 +60,7 @@ function personality(w, a) {
 }
 
 // the next name from the list that no living colonist carries
-function freshName(w, names) {
+export function freshName(w, names) {
   const used = new Set(w.agents.filter(o => o.faction === 'colony' && !o.dead).map(o => o.name));
   for (let k = 0; k < names.length; k++) { const n = names[w.nameIdx++ % names.length]; if (!used.has(n[0])) return n; }
   return names[w.nameIdx++ % names.length];
@@ -118,6 +119,7 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   // rare trophies, decided now and once (agents/trophies.js): only for what the colony brought down
   const trophy = sp.trophies && by?.faction === 'colony' ? decideTrophies(w, a, by) : null;
   if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }
+  if (a.captive) captiveDied(w, a);   // shackles back to the stock (settlement/captives.js)
   if (a.tame) { lostBeast(w, a, killer?.predator ? `задрали ${killer.plural || killer.label}` : by ? 'убили' : cause); return; }
   // the nechist comes back some time after it was killed (data/migrations.js `resident`)
   if (sp.resident) (w.residents ||= {})[sp.id] = w.tick;
@@ -143,7 +145,7 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   }
   // the necromancer falls: his dead lose their way
   if (a.role === 'necromancer' && w.agents.some(o => o.master === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');
-  if (a.faction === 'colony') for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) { think(w, o, 'grief', {name: a.name, f: a.gender === 'f'}); o.mem.grief += 0.5; }
+  if (a.faction === 'colony' && !a.captive) for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) { think(w, o, 'grief', {name: a.name, f: a.gender === 'f'}); o.mem.grief += 0.5; }
   if (by?.faction === 'colony') { if (sp.predator || sp.resident) think(w, by, 'killedWolf', {beast: sp.labelAcc || sp.label}); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
   // a fallen colonist's gear goes back to the store
   if (a.faction === 'colony' && a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }

@@ -57,7 +57,7 @@ const table = w => w.squads || (w.squads = {});
 const Label = sq => { const l = RAID_BANDS.get(sq.band).label; return l[0].toUpperCase() + l.slice(1); };
 export const squadOf = (w, a) => (a.squad != null ? w.squads?.[a.squad] || null : null);
 const byId = (w, id) => { const o = liveById(w, id); return o && !o.gone ? o : null; };
-const membersOf = (w, sq) => liveMembers(w, sq, o => !o.gone);
+const membersOf = (w, sq) => liveMembers(w, sq, o => !o.gone && !o.downed && o.squad === sq.id);   // the fallen and the taken are out of it
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 // a fighter's weight in the odds: health × the hardest blow it can strike
@@ -134,7 +134,8 @@ function announce(w, sq) {
 // a member died (agents/agent.js kill)
 export function noteFallen(w, a) {
   for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;   // the one they came for
-  const sq = squadOf(w, a); if (!sq) return;
+  const sq = squadOf(w, a); if (!sq || a.fellNoted) return;
+  a.fellNoted = true;   // fallen senseless first, killed after: one loss (agents/wounds.js)
   sq.fallen++;
   if (a.id === sq.leader && sq.kind === 'living' && membersOf(w, sq).some(o => o !== a)) log(w, `Пал вожак: ${esc(a.name)}.`, 'danger', 'notice');
 }
@@ -151,7 +152,7 @@ function setState(w, sq, state, reason) {
 // the defenders' strength near any member of the band
 function defenders(w, ms) {
   let s = 0;
-  for (const o of colonists(w)) if (!o.sleeping && ms.some(m => dist(m, o) < SQUAD.view)) s += strength(o);
+  for (const o of colonists(w)) if (!o.sleeping && !o.captive && ms.some(m => dist(m, o) < SQUAD.view)) s += strength(o);   // a captive fights only for itself
   return s;
 }
 

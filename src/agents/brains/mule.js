@@ -124,7 +124,7 @@ export const muleBrain = {
     }
     if (nightness(w) > 0.75) { a.task = {id: 'rest'}; return; }
     // a herder holding out hay: it stops and lets them come
-    if (calmHerders(w).some(o => o.task.tame === a.id && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
+    if (calmHerders(w).some(o => o.task?.tame === a.id && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
     if (H) {
       // the herd's alarm: stand alert, step away from what comes too close (an elk does not bolt)
       const al = herdAlarm(w, H);

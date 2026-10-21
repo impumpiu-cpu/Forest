@@ -19,6 +19,7 @@ import {landDone} from '../atlas/generate.js';
 import {say, reveal} from './march.js';
 import {capacity} from './baggage.js';
 import {makeQuest, questTarget, questIntro} from './quest.js';
+import {CAPTIVE} from '../data/captives.js';
 
 // a named random stream of the campaign, kept by its position (so the campaign stays plain data)
 export function draw(K, name) {
@@ -65,7 +66,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
     members: [], food: 0, gold: 0, i: t.i, x: t.x + 0.5, y: t.y + 0.5, path: null, k: 0, camp: 0, why: '', hungry: 0,
     seen: new Uint8Array(a.n), log: [], track: [], stats: {walked: 0, camps: 0, fights: 0, won: 0, fled: 0, hungryDays: 0, finds: 0, tamed: 0, built: 0, left: 0}, rng: {}, party: null,
     // the baggage (campaign/baggage.js): beasts, vehicles, goods besides food, what is being built in camp, the way chosen
-    beasts: [], nextBeast: 1, vehicles: [], cargo: {}, build: null, route: null,
+    beasts: [], nextBeast: 1, vehicles: [], cargo: {rope: CAPTIVE.campaign.startRope}, build: null, route: null,
   };
   const {r, done} = draw(K, 'birth');
   for (let k = 0; k < CAMPAIGN.knights; k++) K.members.push(member(K, a, r, 'knight', k));

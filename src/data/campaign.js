@@ -47,7 +47,8 @@ export const CAMPAIGN = {
   // `saved` health; any blow may be mortal (`mortal`, win or lose), as on the local map; a lost fight costs `lost`
   // of the food. `mortal` is tuned so that the quick mode loses as many of the eight as the local map
   // (tools/campaign-balance.mjs)
-  fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02},
+  // captive: the weight of a captive among those the blows fall on (it keeps out of the fight)
+  fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, captive: 0.4, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02},
   // a morning after a quiet night: a little food is found with `food`, something of worth with `treasure`
   morning: {food: 0.22, foodN: [1, 3], treasure: 0.012, gold: [3, 15]},
   // the goal of the walk (this stage: a point; later the clues, docs/CAMPAIGN.md): a land cell this share

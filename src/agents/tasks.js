@@ -29,6 +29,8 @@ import {WARM_AT} from '../data/navmaps.js';
 import {liveById} from './lookup.js';
 import {flagLead, raidOnBoard} from '../settlement/board.js';
 import {wake} from './attention.js';
+import {bindStillOn, bindCaptive} from '../settlement/captives.js';
+import {CAPTIVE} from '../data/captives.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -153,7 +155,7 @@ TASKS.registerAll([
   }},
 
   // going along with someone in the woods (settlement/together.js): keep close, take on what comes
-  {id: 'company', label: t => (t.home ? 'ведёт раненого к своим' : 'сопровождает в лесу'), enter: enterEscort, step(w, a, task) {
+  {id: 'company', label: t => (t.captive ? 'ведёт пленного в лагерь' : t.home ? 'ведёт раненого к своим' : 'сопровождает в лесу'), enter: enterEscort, step(w, a, task) {
     const b = escortGoing(w, a, task);
     if (!b) { done(w, a); return; }
     guardStep(w, a, b, task);
@@ -168,6 +170,17 @@ TASKS.registerAll([
     const fallen = !!b.downed;
     giveAid(w, a, b);
     if (fallen || agentInZone(w, b)) done(w, a); else a.task = {id: 'company', who: b.id, home: true};
+  }},
+
+  // a foe lying senseless after the fight (settlement/captives.js): go, dress the wound, tie it up, see it
+  // into the camp. Gone (bled out, bound by another), no bonds left, a foe close by again — the task is over
+  {id: 'bind', label: () => 'вяжет упавшего врага', step(w, a, task) {
+    const f = bindStillOn(w, a, task);
+    if (!f) { done(w, a); return; }
+    if (Math.hypot(f.x - a.x, f.y - a.y) > 1.3) { task.work = 0; if (approach(w, a, f.x, f.y, 1.2) === null) fail(w, a, 'к упавшему не подойти', 'impossible'); return; }
+    if ((task.work = (task.work || 0) + 1) < CAPTIVE.bindTicks) return;
+    if (!bindCaptive(w, a, f)) { fail(w, a, 'нечем связать'); return; }
+    if (agentInZone(w, f)) done(w, a); else a.task = {id: 'company', who: f.id, home: true, captive: true};
   }},
 
   // senseless on the ground after a deadly blow: nothing to do but bleed and wait for help (agents/wounds.js)

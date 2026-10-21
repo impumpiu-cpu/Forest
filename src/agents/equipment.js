@@ -4,6 +4,7 @@
 // An item instance is {type, dur, ammo?}. A two-handed item sits in both hand slots at once
 // (the same object in `left` and `right`).
 import {jobAccess} from './skills.js';
+import {CAPTIVE} from '../data/captives.js';
 import {JOBS} from '../data/jobs.js';
 import {ITEMS, SLOTS, isWeapon} from '../data/items.js';
 import {SPECIES} from '../data/species.js';
@@ -239,7 +240,7 @@ function bestLoadout(w, a, pool) {
     const hd = h.hands.map(def), rest = items.filter(it => !h.hands.includes(it));
     let body = null, bv = 0, back = null, kv = 0;
     for (const it of rest) { const d = def(it); if (d.slot === 'body') { const v = bodyValue(a, d, w); if (v > bv) { bv = v; body = it; } } }
-    for (const it of rest) { if (def(it).slot === 'body') continue; const v = backValue(a, def(it), w, hd); if (v > kv) { kv = v; back = it; } }
+    for (const it of rest) { if (def(it).slot === 'body' || (a.captive && def(it).slot === 'hand')) continue; const v = backValue(a, def(it), w, hd); if (v > kv) { kv = v; back = it; } }   // a captive: one tool, none spare
     const score = handsValue(w, a, h.hands) + bv + kv;
     if (!best || score > best.score) best = {hands: h.hands, two: h.two, body, back, score};
   }
@@ -254,12 +255,21 @@ function currentScore(w, a) {
   return s;
 }
 
+// what a captive may hold (settlement/captives.js): a tool (not a shield, not a bow, not a blade that is only a
+// blade), clothes on the body (not armour), a basket on the back (not a quiver)
+export function captiveItem(it) {
+  const d = def(it);
+  if (d.slot === 'body') return (d.armor || 0) <= CAPTIVE.armour;
+  if (d.slot === 'back') return !d.holds;
+  return !!d.tool && Object.keys(d.tool).length > 0 && !d.ranged && !(d.block > 0);
+}
+
 // called when a colonist is at the camp: swap gear with the store if it is clearly better,
 // and top up the quiver from the stock
 export function outfit(w, a) {
   if (!a.equip) return false;
   let changed = false;
-  const own = allItems(a), pool = [...own, ...w.armory];
+  const own = allItems(a), pool = a.captive ? [...own, ...w.armory].filter(captiveItem) : [...own, ...w.armory];
   const best = bestLoadout(w, a, pool);
   if (best && best.score > currentScore(w, a) + 0.12) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));

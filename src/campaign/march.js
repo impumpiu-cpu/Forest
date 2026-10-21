@@ -37,6 +37,7 @@ import {standing, townName, townLine, trade, labour, healHere, hire, companion, 
 import {HIRES, ROLES, LOYALTY, FREED, COMPANIONS, COMPANY_MAX, JOINED_MAX, VISIT, EARN, WANTS, MARKET} from '../data/market.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
+import {free, unbind} from './captives.js';
 const SPECIES_LABEL = race => SPECIES.get(race).label;
 
 const SEASON_LIST = SEASONS.all();
@@ -56,7 +57,8 @@ const guided = K => alive(K).some(m => m.role === 'guide');
 export const ended = K => ['won', 'lost', 'timeout'].includes(K.phase);
 // ended, and its epilogue told (campaign/ending.js)
 export const finished = K => ended(K) && (!K.epilogue || K.epilogue.done);
-export const rank = (K, m) => RETINUE[K.people][m.role]?.[0] || HIRES[m.role]?.label || ROLES[m.role] || 'спутник';
+export const rank = (K, m) => (m.captive ? (m.gender === 'f' ? 'пленная' : 'пленный') : RETINUE[K.people][m.role]?.[0] || HIRES[m.role]?.label || ROLES[m.role] || 'спутник');
+export {free};
 
 // a line of the campaign's log; `world` — also into the world's chronicle
 // who — the members the line is about (ids): the chronicle can be read for one of them
@@ -77,6 +79,7 @@ export function reveal(a, K, i, r) {
 // ── the members
 const itemDef = id => (ITEMS.has(id) ? ITEMS.get(id) : null);
 export function memberMight(m) {
+  if (m.captive) return 0;   // a captive fights for nobody but itself (campaign/captives.js)
   const M = CAMPAIGN.might, s = m.special || {};
   const dmg = Math.max(0, ...m.gear.hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(m.gear.hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
   const armor = itemDef(m.gear.body)?.armor ?? 0;
@@ -95,6 +98,7 @@ export function pace(a, K, seasonId) {
 export function die(a, K, m, why) {
   if (m.gender === 'f') why = why.replace(/^(умер|пал|погиб)(?=\s)/, w => ({умер: 'умерла', пал: 'пала', погиб: 'погибла'})[w]);
   m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why};
+  if (m.captive) unbind(K, m);   // shackles back to the baggage
   const left = core(K).length, n = K.members.filter(isCore).length;
   say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left, [m.id]);
 }
@@ -185,7 +189,7 @@ function campWork(a, K, r) {
 // how many of a kind of beast the caravan would still take
 function lacking(K, kind) {
   const have = K.beasts.filter(b => b.kind === kind && b.hp > 0).length, B = BEASTS[kind];
-  if (B.use === 'ride') return K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length < alive(K).length;
+  if (B.use === 'ride') return K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length < free(K).length;   // captives walk
   const wagon = K.vehicles.some(v => v.kind === 'wagon') ? 1 : 0;
   return have < 2 + wagon;
 }
