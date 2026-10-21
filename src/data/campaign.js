@@ -38,9 +38,9 @@ export const CAMPAIGN = {
   fog: {known: 8, partner: 3, sight: 3},
   // a member's might in a fight: role × weapon × armour × health × Strength
   might: {knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, former: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06},
-  // a night: the chance something finds the camp = base + the land's dangers (campaign/land.js), at most `max`;
-  // near a town of friends the chance is × `friendly`
-  night: {base: 0.02, max: 0.22, friendly: 0.3},
+  // a night: what finds the camp comes out of the bubble (campaign/bubble.js); a stray nobody saw coming is
+  // × `friendly` near a town of friends
+  night: {friendly: 0.3},
   // a fight: the foe's might × U(0.6, 1.4) against the caravan's; the caravan takes `hurt` × the foe's might
   // (more when it loses) in blows of `blow` health, the knights `shield` times as often as the squires;
   // the quick mode's fight (campaign/fight.js autoFight): in a fight they win one struck down is carried off at

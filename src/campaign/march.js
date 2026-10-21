@@ -34,7 +34,8 @@ import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose} f
 import {BUBBLE, THINGS, AMBUSH, TRAIN, HERD} from '../data/bubble.js';
 import {RESOURCES} from '../data/resources.js';
 import {standing, townName, townLine, trade, labour, healHere, hire, companion, rationPrice} from './town.js';
-import {HIRES, ROLES, LOYALTY, FREED, COMPANIONS, COMPANY_MAX, JOINED_MAX, VISIT, EARN, WANTS, MARKET, CONTRACT} from '../data/market.js';
+import {HIRES, ROLES, LOYALTY, VISIT, EARN, WANTS, MARKET, CONTRACT} from '../data/market.js';
+import {room} from './company.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.js';
@@ -322,6 +323,11 @@ function contractDay(a, K, m, r) {
   c.opinion = Math.max(0, Math.min(1, (c.opinion ?? C.start) + C.daily + (K.hungry ? C.hungry : 0) + (m.hp < 0.5 ? C.hurt : 0)));
   if (K.day < c.until) {
     if (c.opinion < C.desert && r() < C.deserts) { K.stats.deserted = (K.stats.deserted || 0) + 1; leave(a, K, m, `${m.name}, ${rank(K, m)}, не дождал${f ? 'ась' : 'ся'} конца срока и сбежал${f ? 'а' : ''}: служба ${f ? 'ей' : 'ему'} опостылела`); }
+    return;
+  }
+  if (c.opinion >= C.stay && !room(K, 'stay')) {   // it would stay, but the joined are full: it goes with thanks
+    K.stats.stayFull = (K.stats.stayFull || 0) + 1;
+    leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и остал${f ? 'ась' : 'ся'} бы с караваном, но места в отряде нет: ушёл${f ? 'а' : ''} с благодарностью`);
     return;
   }
   if (c.opinion >= C.stay) {

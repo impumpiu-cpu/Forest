@@ -67,8 +67,10 @@ const round1 = v => Math.round(v * 10) / 10;
 export function campSetup(a, K, ev) {
   const race = WORLD_PEOPLES.get(K.people).race;
   const plan = cellPlan(a, K.i, {name: 'Стоянка', race});
+  // the second camp of a kind on the same day gets a seed of its own (the first keeps the old one)
+  const n = (K.camps || []).filter(c => c.day === K.day && c.kind === ev.kind).length;
   return {
-    day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}`, i: K.i,
+    day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}${n ? `:${n}` : ''}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
     members: alive(K).map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
       align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),

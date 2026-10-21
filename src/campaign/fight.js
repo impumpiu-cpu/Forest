@@ -11,7 +11,8 @@ import {ITEMS} from '../data/items.js';
 import {FOODS} from '../data/foods.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
-import {LOYALTY, FREED, COMPANIONS, COMPANY_MAX, JOINED_MAX} from '../data/market.js';
+import {LOYALTY, FREED, COMPANIONS} from '../data/market.js';
+import {room} from './company.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
@@ -148,12 +149,11 @@ function takeGear(K, items) {
 
 // ── after a won fight: captives set free, beasts the foe kept, now and then an iron tool
 function spoils(a, K, d, r) {
-  const joined = () => free(K).filter(m => m.loyalty != null).length;
   // the fallen foes bound and taken (campaign/captives.js): on the local map the camp does it itself
   if (K.mode === 'auto') takeAuto(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));
-  if (FREED.chance[d.kind] && free(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
+  if (FREED.chance[d.kind] && room(K, 'joined') && r() < FREED.chance[d.kind]) {
     const n = 1 + (r() < 0.35 ? 1 : 0), got = [];
-    for (let q = 0; q < n && free(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
+    for (let q = 0; q < n && room(K, 'joined'); q++) {
       const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
       const race = minor ? COMPANIONS.minorRaces[(r() * COMPANIONS.minorRaces.length) | 0] : peoples[(r() * peoples.length) | 0].race;
       const m = makeMember(K, r, {race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});

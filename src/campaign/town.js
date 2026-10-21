@@ -12,7 +12,8 @@ import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
 import {BEASTS, VEHICLES} from '../data/transport.js';
-import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, COMPANY_MAX, JOINED_MAX} from '../data/market.js';
+import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS} from '../data/market.js';
+import {room} from './company.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {plural} from '../core/util.js';
 import {capacity, load, assign, toolTier} from './baggage.js';
@@ -144,10 +145,10 @@ export const healHere = t => (has(t, MARKET.healers) ? MARKET.heal.healer : MARK
 // ── people: hirelings for a term, companions who want to go along
 const hireAt = (t, H) => has(t, H.at) || t.tier >= H.tier;
 export function hire(a, K, t, st, r) {
-  const said = [], ms = free(K);   // captives take no place in the company (campaign/captives.js)
+  const said = [];   // captives take no place in the company (campaign/company.js)
   for (const [id, H] of Object.entries(HIRES)) {
     if (typeof H !== 'object' || !H.wage) continue;
-    if (ms.length >= COMPANY_MAX || K.members.filter(m => m.alive && m.role === id).length >= HIRES.max || !hireAt(t, H)) continue;
+    if (!room(K, `hire:${id}`) || !hireAt(t, H)) continue;
     const days = Math.round(H.days[0] + r() * (H.days[1] - H.days[0])), cost = gold(H.wage * days * STANDING[st].buy);
     if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve)) continue;
     K.gold = gold(K.gold - cost);
@@ -161,7 +162,7 @@ export function hire(a, K, t, st, r) {
 // who wants to go along from here: one at most a visit; for a fee, or for nothing to a good talker
 export function companion(a, K, t, st, r) {
   const C = COMPANIONS;
-  if (free(K).length >= COMPANY_MAX || free(K).filter(m => m.loyalty != null).length >= JOINED_MAX || r() >= C.chance[st] * (t.built.includes('inn') ? C.inn : 1)) return null;
+  if (!room(K, 'joined') || r() >= C.chance[st] * (t.built.includes('inn') ? C.inn : 1)) return null;
   const charm = Math.max(...free(K).map(m => m.special?.C ?? NORM)), gratis = charm >= C.freeAt;
   if (!gratis && K.gold - C.fee < reserveFor(K, t, st, WANTS.reserve)) return null;
   // of the town's people, or of a minor people living near (as their homes favour the land)

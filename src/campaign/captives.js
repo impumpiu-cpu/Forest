@@ -12,6 +12,7 @@ import {assign} from './baggage.js';
 import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {makeMember} from './start.js';
+import {room} from './company.js';
 
 const C = CAPTIVE.campaign;
 const alive = K => K.members.filter(m => m.alive);
@@ -19,7 +20,6 @@ export const free = K => K.members.filter(m => m.alive && !m.captive);
 export const held = K => K.members.filter(m => m.alive && m.captive);
 export const bondsSets = K => BONDS.all().reduce((n, b) => n + Math.floor((K.cargo[b.resource] || 0) / b.n), 0);
 export const isBonds = id => BONDS.all().some(b => b.resource === id);
-const room = K => CAPTIVE.max - held(K).length;
 
 function spend(K) {
   const B = bestBonds(K.cargo); if (!B) return null;
@@ -37,7 +37,7 @@ export function takeAuto(a, K, d, r, say) {
   const p = C.auto[d.kind]; if (!p || r() >= p) return [];
   const n = 1 + (r() < C.two ? 1 : 0), got = [];
   const races = C.races[d.kind] || ['human'];
-  for (let q = 0; q < n && room(K) > 0; q++) {
+  for (let q = 0; q < n && room(K, 'captive'); q++) {
     const B = spend(K); if (!B) break;
     const race = races[(r() * races.length) | 0];
     const m = makeMember(K, r, {race, role: 'captive', gear: C.gear, captive: {since: K.day, bonds: B.id, from: d.kind, will: ESCAPE.will.start}});
@@ -53,7 +53,7 @@ export function takeAuto(a, K, d, r, say) {
 export function takeFromCamp(a, K, o, say) {
   const got = [];
   for (const t of o.taken || []) {
-    if (room(K) <= 0) break;
+    if (!room(K, 'captive')) break;
     const m = {id: (K.nextMember = (K.nextMember || K.members.length) + 1), name: t.name, gender: t.gender, race: t.race, people: t.people || null,
       role: 'captive', core: false, hp: t.hp, alive: true, joined: K.day, back: 1, ride: null, special: t.special, align: t.align || null, values: t.values || null,
       gear: {hand: [...(t.gear?.hand || [])], body: t.gear?.body || C.gear.body}, local: t.local || null,
@@ -152,6 +152,10 @@ export function freedomEvening(a, K, say) {
   const vouch = free(K).find(m => m.master && !m.former);
   for (const m of held(K)) {
     if (!vouch || !m.captive.resigned || (m.captive.service || 0) < FREEDOM.free) continue;
+    if (!room(K, 'former')) {   // no place among the joined: it waits, resigned, till one is free
+      if (!m.captive.waitTold) { m.captive.waitTold = K.day; say(`${m.name} заслужил${gw(m, '', 'а')} свободу, но в отряде нет места: пока остаётся в путах.`, 'people', [m.id]); }
+      continue;
+    }
     unbind(K, m);
     m.former = {since: K.day, fought: false, service: m.captive.service || 0};
     m.captive = null; m.role = 'former'; m.loyalty = FREEDOM.bond.start;

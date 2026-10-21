@@ -39,6 +39,9 @@ import {core, isCore} from '../src/campaign/march.js';
 import {BUBBLE, THINGS} from '../src/data/bubble.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
 import {runCamp, campOutcome, outcomeHash} from '../src/campaign/camp.js';
+import {room, freeOf, joinedOf} from '../src/campaign/company.js';
+import {freedomEvening} from '../src/campaign/captives.js';
+import {FREEDOM} from '../src/data/captives.js';
 
 const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLocal = process.argv[4] === 'local';
 let ok = true;
@@ -159,6 +162,25 @@ for (let s = 0; s < seeds; s++) {
     const epi = K.log.filter(l => l.kind === 'epilogue').map(l => l.text);
     check(`сид ${seed}: поход проигран — эпилог о приставших и о короне, строка в летописи мира`, K.phase === 'lost' && finished(K) && !!K.members.find(m => m.id === 999)?.fate && epi.some(t => /лежит|у врагов|пропал/.test(t)) && a.chronicle.some(l => l.campaign && /помнят/.test(l.text)),
       epi.slice(0, 2).join(' / '));
+  }
+
+  // a full company (docs/CAMPAIGN.md «Пополнение», campaign/company.js): with four joined nobody more joins, and a
+  // captive who has earned its freedom waits in its bonds; with a place free it is freed
+  {
+    const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'}), say = () => {};
+    const add = (props) => K.members.push({...K.members[4], id: 900 + K.members.length, name: `Проверка ${K.members.length}`, core: false, alive: true, hp: 1, ...props});
+    for (let k = 0; k < JOINED_MAX; k++) add({role: 'companion', loyalty: 0.5});
+    K.members[0].master = {skill: 'smithing', day: 0};
+    add({role: 'captive', captive: {since: 0, bonds: 'rope', will: 0.1, resigned: 1, service: FREEDOM.free + 1}});
+    const full = !room(K, 'joined') && !room(K, 'former') && !room(K, 'stay') && !room(K, 'hire:guide') && room(K, 'captive');   // 8 + 4 = 12
+    freedomEvening(a, K, say);
+    const waited = K.members.at(-1).captive && joinedOf(K).length === JOINED_MAX;
+    K.members.find(m => m.role === 'companion').alive = false;
+    freedomEvening(a, K, say);
+    const freed = !K.members.at(-1).captive && K.members.at(-1).role === 'former' && joinedOf(K).length === JOINED_MAX;
+    const capped = freeOf(K).length === COMPANY_MAX && !room(K, 'hire:guide') && !room(K, 'joined');
+    check(`сид ${seed}: полный отряд — приставших не больше ${JOINED_MAX}, заслуживший свободу ждёт места, всех не больше ${COMPANY_MAX}`, full && waited && freed && capped,
+      `полон ${full}, ждал ${waited}, освобождён ${freed}, предел ${capped}`);
   }
 
   // the local map: a stretch of a walk played in full — its fights and stops on the map

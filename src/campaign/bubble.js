@@ -15,6 +15,7 @@ import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 import {BUBBLE, THINGS, TRAIN, HERD} from '../data/bubble.js';
+import {HIRES} from '../data/market.js';
 import {GAME} from '../data/campaign.js';
 import {dangers, cellRegion, lairFoe} from './land.js';
 import {REALM_BANDS} from '../data/seam.js';
@@ -40,15 +41,16 @@ function herdOf(a, i) {
 }
 
 // ── birth: a few cells of the ring a day; each cell's dangers, its road and its game may send a thing.
-// The roll of a cell is seeded by the cell and the day, so the same day in the same place sends the same
-function spawn(a, K) {
+// The roll of a cell is seeded by the cell and the day, so the same day in the same place sends the same.
+// A guide knows the land and keeps the caravan out of harm's way: the hostile are born × HIRES.guide.night
+function spawn(a, K, guided) {
   const B = bubbleOf(K), near = sc(a, BUBBLE.near), far = sc(a, BUBBLE.far);
   const pick = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`));
   for (let s = 0; s < BUBBLE.samples && B.things.length < BUBBLE.max; s++) {
     const ang = pick() * Math.PI * 2, d = near + pick() * (far - near), x = K.x + Math.cos(ang) * d, y = K.y + Math.sin(ang) * d;
     if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
     const i = cellAt(a, x, y); if (!land(a, i)) continue;
-    const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = friendlyNear(a, K, i) ? BUBBLE.friendly : 1;
+    const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = (friendlyNear(a, K, i) ? BUBBLE.friendly : 1) * (guided ? HIRES.guide.night : 1);
     const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, ...props}); };
     for (const dg of dangers(a, i)) if (r() < dg.p * BUBBLE.spawn * k) add({kind: dg.kind, strength: dg.strength ?? 1, label: dg.label || THINGS[dg.kind].label, ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {})});
     const road = roadAccess(a, i);
@@ -103,7 +105,7 @@ export function worldThings(a, K) {
 
 // a day's moving and the things that reach the caravan: `phase` 'day' — after the march, 'night' — at the camp
 export function stepBubble(a, K, phase, r, guided) {
-  if (phase === 'day') spawn(a, K);
+  if (phase === 'day') spawn(a, K, guided);
   move(a, K, r, guided);
   const contact = sc(a, BUBBLE.contact);
   return [...bubbleOf(K).things, ...worldThings(a, K)].filter(t => dist(K, t) <= contact && t.sated < K.day);
