@@ -23,6 +23,7 @@ import {hpShare} from './agent.js';
 import {cellOf} from '../world/grid.js';
 import {nearestHostile, canSee} from './combat.js';
 import {agentById, liveById, firstAttacker} from './lookup.js';
+import {liveMembers} from './group.js';
 
 export const SQUAD = {
   think: 10,         // morale and the goal are checked this often
@@ -56,7 +57,7 @@ const table = w => w.squads || (w.squads = {});
 const Label = sq => { const l = RAID_BANDS.get(sq.band).label; return l[0].toUpperCase() + l.slice(1); };
 export const squadOf = (w, a) => (a.squad != null ? w.squads?.[a.squad] || null : null);
 const byId = (w, id) => { const o = liveById(w, id); return o && !o.gone ? o : null; };
-const membersOf = (w, sq) => sq.members.map(id => byId(w, id)).filter(Boolean);
+const membersOf = (w, sq) => liveMembers(w, sq, o => !o.gone);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 // a fighter's weight in the odds: health × the hardest blow it can strike

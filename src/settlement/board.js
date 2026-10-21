@@ -40,6 +40,7 @@ import {log} from '../core/log.js';
 import {clamp, esc, g, plural} from '../core/util.js';
 import {nightness, hourOf, dayOf, DAY, HOUR} from '../core/time.js';
 import {wake} from '../agents/attention.js';
+import {liveMembers as groupMembers, inTurn, see, fade, seenMiddle} from '../agents/group.js';
 
 export const BOARD = {
   look: 5,           // a colonist looks round every this many ticks, in turn by id (as before the board)
@@ -122,7 +123,7 @@ function flagLabel(w, f) {
 }
 
 // the flag's members still alive and still foes
-const liveMembers = (w, f) => f.members.map(id => liveById(w, id)).filter(o => o && isFoe(w, o));
+const liveMembers = (w, f) => groupMembers(w, f, o => isFoe(w, o));
 
 // who of ours is answering each flag: fighting one of its members or on the way to it. Counted once a
 // tick over the whole colony; a colonist who takes a flag in the middle of the tick is added at once
@@ -188,7 +189,7 @@ export function stepBoard(w) {
   if (foes.length) {
     for (const L of col) {
       // the night watchman looks round every tick, everyone else in turn
-      if (L.dead || L.downed || L.sleeping || ((w.tick + L.id) % BOARD.look !== 0 && !isWatchman(w, L))) continue;
+      if (L.dead || L.downed || L.sleeping || (!inTurn(w, L, BOARD.look) && !isWatchman(w, L))) continue;
       const r = sightOf(w, L);
       for (const o of foes) {
         const d = dist(L, o);
@@ -197,7 +198,7 @@ export function stepBoard(w) {
         let f = B.flags[key];
         if (!f) f = B.flags[key] = newFlag(w, B, key, o, L);
         if (!f.members.includes(o.id)) { f.members.push(o.id); f.grew = true; }
-        f.seen[o.id] = {x: o.x, y: o.y, t: w.tick};
+        see(f, o, w.tick);
         if (!seenBy.has(key)) seenBy.set(key, L);
         if (!f.known[L.id]) learn(w, L, f, null);
         // a foe this close: the one who sees it thinks again at once (not mid-fight or mid-flight)
@@ -209,13 +210,13 @@ export function stepBoard(w) {
   // 2–5. every flag: members, place, the cry, the weight, the wake-up, the end
   for (const f of Object.values(B.flags)) {
     const forget = f.red ? BOARD.forget.red : BOARD.forget.yellow;
-    for (const id of Object.keys(f.seen)) if (w.tick - f.seen[id].t > forget) { delete f.seen[id]; f.members = f.members.filter(m => m !== +id); }
+    for (const id of fade(f, w.tick, forget)) f.members = f.members.filter(m => m !== id);
     const ms = liveMembers(w, f);
     if (!ms.length) { closeFlag(w, B, f); continue; }
     f.red = isRed(f, ms, w);
     if (f.red && !f.redLogged) { f.redLogged = true; logRed(w, f, ms, seenBy.get(f.key)); }
-    const pts = Object.values(f.seen);
-    if (pts.length) { f.x = pts.reduce((s, p) => s + p.x, 0) / pts.length; f.y = pts.reduce((s, p) => s + p.y, 0) / pts.length; }
+    const at = seenMiddle(f);
+    if (at) { f.x = at.x; f.y = at.y; }
     f.label = flagLabel(w, f); f.where = whereFromCamp(w, f.x, f.y);
     const L = seenBy.get(f.key);
     if (L && (f.fresh || f.grew || w.tick - f.shoutAt >= BOARD.reshout)) shout(w, L, f);

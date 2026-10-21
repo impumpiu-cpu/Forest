@@ -8,7 +8,8 @@
 // T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T92 the colony's
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
-// T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10). Each scene builds a flat, empty map, places a few agents by hand and
+// T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
+// T108 the groups' common skeleton, stage 6). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -63,6 +64,7 @@ import {makePlan, vacancyPull, signUp} from '../src/settlement/plan.js';
 import {stepAttention, HEART} from '../src/agents/attention.js';
 import {stepHerds, herdOf, herdAlarm, HERD} from '../src/agents/wildHerd.js';
 import {preyValue} from '../src/agents/brains/predator.js';
+import {prune, nextLookouts, inTurn, see, fade, seenMiddle} from '../src/agents/group.js';
 import {stepBoard, flagOptions, watchOption, BOARD, WATCH} from '../src/settlement/board.js';
 import {raidAlarm} from '../src/settlement/query.js';
 import {dropLoad} from '../src/agents/jobRunners.js';
@@ -1507,6 +1509,26 @@ check('T107', 'потяжелевшая тревога будит всех, кт
   x.task = null;   // and the defender walks off
   lookRound(w);
   return (y.think === 0 && /тяжелее/.test(y.wakeWhy || '')) || `знавший о тревоге не проснулся, когда она потяжелела (${y.think}, ${y.wakeWhy})`;
+});
+
+check('T108', 'каркас групп: ушедшие выбывают, дозорные обходят всех по очереди, забытое — забыто', () => {
+  const w = scene(); fixedRng(w);
+  const ms = [0, 1, 2, 3, 4].map(k => put(w, 'deer', 'wild', 30.5 + k, 30.5));
+  const g = {members: ms.map(a => a.id), look: 0};
+  kill(w, ms[1], 'тест'); ms[3].gone = true;
+  const dropped = [];
+  const live = prune(w, g, a => !a.gone, a => dropped.push(a.id));
+  if (g.n !== 3 || live.includes(ms[1]) || live.includes(ms[3])) return `осталось ${g.n}: ${g.members}`;
+  if (dropped.length !== 1 || dropped[0] !== ms[3].id) return 'не сказано о живом, но ушедшем';
+  const seen = new Set();
+  for (let t = 0; t < 2; t++) for (const L of nextLookouts(g, live, 2)) seen.add(L.id);
+  if (seen.size !== 3) return `за два тика по двое оглянулись не все: ${seen.size}`;
+  const turns = new Set(); for (let t = 0; t < 5; t++) { w.tick = 100 + t; if (inTurn(w, live[0], 5)) turns.add(t); }
+  if (turns.size !== 1) return 'в очереди раз в 5 тиков — не ровно один раз';
+  const f = {}; see(f, live[0], 10); see(f, live[2], 50);
+  const gone = fade(f, 120, 100);
+  if (gone.length !== 1 || gone[0] !== live[0].id || !f.seen[live[2].id]) return 'забыто не то';
+  return seenMiddle(f).x === live[2].x || 'середина виденного не там';
 });
 
 let bad = 0;

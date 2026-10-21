@@ -21,6 +21,7 @@ import {nearAgents} from './spatial.js';
 import {liveById} from './lookup.js';
 import {perTick} from '../core/util.js';
 import {hpShare} from './agent.js';
+import {prune, middleOf, nextLookouts} from './group.js';
 
 export const HERD = {
   join: 10,           // a beast joins a herd of its kind whose middle is this close…
@@ -105,11 +106,9 @@ export function stepHerds(w) {
   }
   // 2. every herd: members, middle, pasture, lookouts
   for (const H of Object.values(herds)) {
-    const ms = [];
-    for (const id of H.members) { const a = liveById(w, id); if (a && isHerdBeast(a) && a.herd === H.id) ms.push(a); else if (a && a.herd === H.id) a.herd = null; }
+    const ms = prune(w, H, a => isHerdBeast(a) && a.herd === H.id, a => { if (a.herd === H.id) a.herd = null; });
     if (!ms.length) { delete herds[H.id]; continue; }
-    H.members = ms.map(a => a.id); H.n = ms.length;
-    let sx = 0, sy = 0; for (const a of ms) { sx += a.x; sy += a.y; } H.cx = sx / ms.length; H.cy = sy / ms.length;
+    const mid = middleOf(ms); H.cx = mid.x; H.cy = mid.y;
     const sp = SPECIES.get(H.species);
     // the pasture: moved on once the herd has got there, now and then for no reason, never during an alarm
     const calm = !herdAlarm(w, H);
@@ -120,8 +119,7 @@ export function stepHerds(w) {
     // the lookouts: a few members, in turn, look round for everyone
     const r = (sp.flee?.radius || sp.herd.alert || 6);
     const from = sp.flee?.from || ['people', 'wolf'];
-    for (let k = 0; k < Math.min(HERD.lookouts, ms.length); k++) {
-      const L = ms[(H.look++) % ms.length];
+    for (const L of nextLookouts(H, ms, HERD.lookouts)) {
       const seen = threatsNear(w, L, r * (L.nerve ? 1.2 / L.nerve : 1), from);
       if (!seen.length) continue;
       const al = H.alarm && w.tick - H.alarm.t <= HERD.alarmFor ? H.alarm : (H.alarm = {start: w.tick, t: w.tick, ids: []});

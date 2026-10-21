@@ -25,6 +25,7 @@ import {agentInZone} from '../settlement/zone.js';
 import {createAgent} from './agent.js';
 import {inMap, walkable} from '../world/grid.js';
 import {agentById, liveById} from './lookup.js';
+import {liveMembers} from './group.js';
 
 export const CARCASS = {
   life: 4 * DAY,       // rots away entirely after this
@@ -134,7 +135,7 @@ export function endHunt(w, h, outcome) {
 // the closest one leads, the winded wait, the rest come in from alternate sides
 function dealRoles(w, h) {
   const prey = byId(w, h.prey); if (!prey) return;
-  const ms = h.members.map(id => byId(w, id)).filter(Boolean).sort((x, y) => dist(x, prey) - dist(y, prey));
+  const ms = liveMembers(w, h).sort((x, y) => dist(x, prey) - dist(y, prey));
   let side = 1;
   const prev = h.roles || {};   // read before dealing anew: one who waited keeps waiting until rested
   h.roles = {};
@@ -150,7 +151,7 @@ export function stepHunts(w) {
   const hs = w.hunts; if (!hs) return;
   for (const h of Object.values(hs)) {
     const prey = agentById(w, h.prey);
-    const ms = h.members.map(id => byId(w, id)).filter(m => m && m.hunt === h.id);
+    const ms = liveMembers(w, h, m => m.hunt === h.id);
     if (!ms.length) { endHunt(w, h, 'gave'); continue; }
     // the pack's own kill ends the hunt at the bite (agents/brains/predator.js); dead otherwise: someone else got it
     if (!prey || prey.dead) { endHunt(w, h, prey?.dead || h.preyDead ? 'taken' : 'escaped'); continue; }
