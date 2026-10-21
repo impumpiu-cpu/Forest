@@ -14,7 +14,7 @@ import {herdOf, herdAlarm, bolts, toPatch, threatsNear, calmHerders} from '../wi
 import {hpShare} from '../agent.js';
 
 // a herder holding out hay close by: it stops and sniffs at it
-const hay = (w, a) => calmHerders(w).some(o => o.task.tame === a.id && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9);
+const hay = (w, a) => calmHerders(w).some(o => o.task?.tame === a.id && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9);
 
 // a herd beast's step after the reflexes (heat): the herd's alarm, its pasture
 function herdStep(w, a, sp, H, i) {
