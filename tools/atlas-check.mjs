@@ -10,7 +10,10 @@ import {latitude} from '../src/atlas/latitude.js';
 import {biomeAt, soilAt, cellBiomes, dryness} from '../src/atlas/biomes.js';
 import {BIOMES, KOPPEN} from '../src/data/biomes.js';
 import {LAIRS} from '../src/data/lairs.js';
-import {historyLength} from '../src/atlas/history.js';
+import {historyLength, eraPlan, epicYears} from '../src/atlas/history.js';
+import {newAtlas} from '../src/atlas/generate.js';
+import {EPIC_YEARS} from '../src/data/history.js';
+import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES, FUTURE_PEOPLES} from '../src/data/townBuildings.js';
@@ -380,4 +383,20 @@ console.log('Вода:');
 check('  озёра есть', lakesAll > 0, `${lakesAll} на ${worlds} миров, солёных ${saltAll}`);
 if (lakeRain.salt[1] && lakeRain.fresh[1]) check('  солёные озёра в сухом климате', mean(lakeRain.salt) < mean(lakeRain.fresh), `у солёных ${Math.round(mean(lakeRain.salt))} мм, у пресных ${Math.round(mean(lakeRain.fresh))} мм`);
 check('  золотой песок где-то есть', placerCells > 0, `${placerCells} клеток уровня «есть» и выше`);
+// the epic world of the campaign (cfg.epic): its eras' years are drawn from their own stream, inside EPIC_YEARS, and kept
+// in the world; a short one (the eras set by hand) lives its whole history and is saved and opened the same
+console.log('Эпический мир кампании:');
+{
+  const drawn = ['3', '11', '29'].map(seed => epicYears(newAtlas({seed, size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true})));
+  const inside = drawn.every(Y => Object.entries(EPIC_YEARS).every(([id, [lo, hi]]) => Y[id] >= lo && Y[id] <= hi));
+  const again = JSON.stringify(epicYears(newAtlas({seed: '3', size: 'small', epic: true}))) === JSON.stringify(drawn[0]);
+  check('  годы эпох — от 75 до 150, по сиду одни и те же', inside && again, drawn.map(Y => `${Y.wild}+${Y.elder}+${Y.young}`).join(', '));
+  const cfg = {seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, epicYears: {wild: 20, elder: 20, young: 20}};
+  const a = generateAtlas(cfg), plan = eraPlan(a).map(e => e.seasons / 4);
+  const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a))));
+  check('  короткий эпический мир доживает историю, сохраняется и открывается тем же', a.hist.year >= 60 && a.hist.era === 'young' && plan.join() === '20,20,20' && atlasHash(b) === atlasHash(a) && eraPlan(b).map(e => e.seasons / 4).join() === '20,20,20',
+    `${a.hist.year} лет, эпохи ${plan.join(' + ')}, городов ${a.towns.filter(t => t.alive).length}`);
+  const plain = {seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0};
+  check('  без эпоса эпохи прежние', eraPlan(newAtlas(plain)).map(e => e.seasons / 4).join() === '25,25,25');
+}
 if (!ok) process.exit(1);

@@ -11,6 +11,10 @@ ERAS.registerAll([
   {id: 'young', label: 'Эпоха молодых народов', note: 'приходят люди и орки: народы теснят друг друга на общих землях, торгуют по дорогам, селятся в чужих городах, враждуют, воюют и мирятся'},
 ]);
 
+// The epic world of the campaign (cfg.epic, docs/CAMPAIGN.md «Доработка, этап 6»): each era lasts this many years,
+// drawn once from the world's own stream (seed:atlas:epic), so that the history has room for its calamities
+export const EPIC_YEARS = {wild: [75, 150], elder: [75, 150], young: [75, 150]};
+
 // How long the wild era lasts (the start setting «Дикая эра»), in years.
 export const WILD_YEARS = [
   {years: 25, label: 'Короткая'},
