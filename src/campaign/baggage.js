@@ -44,9 +44,9 @@ export function assign(K) {
     return false;
   };
   for (const v of [...K.vehicles].sort((p, q) => (VEHICLES[q.kind].pull === 'draft') - (VEHICLES[p.kind].pull === 'draft'))) v.pulled = VEHICLES[v.kind].pull === 'draft' ? harness() : harness() ? 'beasts' : ms.length >= 2 ? 'people' : false;
-  // riders: the wounded first, then the knights, then the rest
-  // riders (a captive walks)
+  // riders: the wounded first, then the knights, then the rest; a captive only on a beast nobody free needs
   const order = ms.filter(m => !m.captive).sort((p, q) => (p.hp < 0.5) - (q.hp < 0.5) || (p.role === 'knight') - (q.role === 'knight') || p.id - q.id).reverse();
+  order.push(...ms.filter(m => m.captive));
   for (const m of order) {
     const b = free().find(x => BEASTS[x.kind].use === 'ride'); if (!b) break;
     b.job = 'ride'; b.rider = m.id; m.ride = b.id;
