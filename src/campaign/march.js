@@ -31,7 +31,7 @@ import {draw, makeMember} from './start.js';
 import {fight, playStop} from './fight.js';
 import {questArrive, questTarget, questSight, pursuit, crownHands, rumour} from './quest.js';
 import {CAMP} from '../data/camp.js';
-import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose} from './bubble.js';
+import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose, hunting} from './bubble.js';
 import {BUBBLE, THINGS, AMBUSH, TRAIN, HERD} from '../data/bubble.js';
 import {RESOURCES} from '../data/resources.js';
 import {standing, townName, townLine, trade, labour, healHere, hire, companion, rationPrice} from './town.js';
@@ -520,7 +520,7 @@ function dayMeetings(a, K, r, marched) {
   const met = stepBubble(a, K, 'day', r, guided(K));
   for (const t of met) {
     const T = THINGS[t.kind];
-    if (T.mood === 'hostile' && T.ambush && marched && core(K).length) {
+    if (T.mood === 'hostile' && T.ambush && marched && core(K).length && hunting(t)) {   // only one that saw them coming lies in wait
       const win = fight(a, K, foeOf(t), r, 'ambush');
       settle(K, t, win);
       break;   // one ambush a day is enough
