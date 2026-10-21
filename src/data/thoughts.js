@@ -33,6 +33,9 @@ THOUGHTS.registerAll([
   // masters (settlement/masters.js)
   {id: 'namedMaster', mood: 0.5, lasts: 3 * DAY, text: (a, c) => `Совет нарёк ${g(a, 'его', 'её')} при всех: ${c.title}. Честь!`},
   {id: 'masterNamed', mood: 0.03, lasts: DAY, once: DAY, text: (a, c) => `${c.name} теперь ${c.title}: будет у кого поучиться.`},
+  // former slaves (settlement/freedom.js)
+  {id: 'freedFromBonds', mood: 0.6, lasts: 4 * DAY, text: (a, c) => `С ${g(a, 'него', 'неё')} сняли путы${c.name ? `: ${c.name} поручился` : ''}. Не свобода, но уже не плен.`},
+  {id: 'madeMember', mood: 0.6, lasts: 4 * DAY, text: a => `Совет принял ${g(a, 'его', 'её')} в поселение как своего.`},
   // captives (settlement/captives.js)
   {id: 'captured', mood: -0.5, lasts: 3 * DAY, text: (a, c) => `Очнул${g(a, 'ся', 'ась')} связанн${g(a, 'ым', 'ой')} в чужом лагере${c.bonds ? ` — ${c.bonds}` : ''}. Жив${g(a, '', 'а')}, но в плену.`},
   {id: 'tookCaptive', mood: 0.12, lasts: DAY, text: (a, c) => `Связал${g(a, '', 'а')} упавшего врага: ${c.name} теперь пленный.`},

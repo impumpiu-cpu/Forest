@@ -13,6 +13,7 @@ import {sampleBehaviour} from './settlement/behaviour.js';
 import {sweepReserve} from './settlement/reserve.js';
 import {stepRelations} from './settlement/relations.js';
 import {Navigation} from './nav/navigation.js';
+import {stepFreedom} from './settlement/freedom.js';
 import {stepMasters} from './settlement/masters.js';
 import {stepEscape} from './settlement/escape.js';
 import {BRAINS} from './agents/brains/index.js';
@@ -76,6 +77,7 @@ export function step(w) {
   stepBoard(w);   // the colony's lookouts, the cry, the flags (settlement/board.js)
   stepEscape(w);   // the captives' will to run: the council's rolls, the plot, the red alarm (settlement/escape.js)
   stepMasters(w);   // the council names masters; learners learn beside them (settlement/masters.js)
+  stepFreedom(w);   // captives freed, former slaves who stay, leave or become members (settlement/freedom.js)
   stepAttention(w);   // the colony's events that make colonists think again (agents/attention.js)
   stepHerds(w);   // wild herds: pasture, lookouts, alarm (agents/wildHerd.js)
   const t1 = performance.now();

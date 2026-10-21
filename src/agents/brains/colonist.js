@@ -33,6 +33,7 @@ import {ensurePlan, vacancyPull, signUp} from '../../settlement/plan.js';
 import {wake, noticeSelf, heartOf, noteThink} from '../attention.js';
 import {bindOption, captiveAllows, keepInside} from '../../settlement/captives.js';
 import {assistOption} from '../../settlement/masters.js';
+import {formerAllows} from '../../settlement/freedom.js';
 
 // keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
 // colony's vacancies is settlement/plan.js vacancyPull)
@@ -157,6 +158,7 @@ function decide(w, a, woke = 'дело кончилось') {
   const learn = assistOption(w, a); if (learn) opts.push(learn);
   // a captive's lot: no council, no flag, no watch, no work beyond the zone, no fight but for its life
   if (a.captive) opts = opts.filter(([t]) => captiveAllows(t));
+  else if (a.former) opts = opts.filter(([t]) => formerAllows(t));   // a former slave: no flag, watch or council (settlement/freedom.js)
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);
@@ -176,7 +178,7 @@ function decide(w, a, woke = 'дело кончилось') {
   a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
     alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || '', woke};
   noteThink(w, a.wakeKind || woke, key(best) === cur);
-  if (flags.length && !a.captive) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
+  if (flags.length && !a.captive && !a.former) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
   noteWatch(w, a, best, a.task?.id);
   if (key(best) !== cur) {
     // leaving one job for another of one's own accord: a moment's thought first («прикидывает, за что

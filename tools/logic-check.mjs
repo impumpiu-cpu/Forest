@@ -9,7 +9,7 @@
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -76,6 +76,8 @@ import {stepEscape, startEscape, toolsAway} from '../src/settlement/escape.js';
 import {ESCAPE, BONDS, bestBonds} from '../src/data/captives.js';
 import {stepMasters, assistOption, apprenticeBonus, placeOf, masterOf} from '../src/settlement/masters.js';
 import {MASTER} from '../src/data/masters.js';
+import {stepFreedom, formerAllows, freeCaptive} from '../src/settlement/freedom.js';
+import {FREEDOM} from '../src/data/captives.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -1880,6 +1882,66 @@ check('T129', 'пленный при мастере за работой копи
   p.task = assistOption(w, p)[0]; w.tick++;
   for (let k = 0; k < 600; k++) { sm.master.workedAt = w.tick; stepMasters(w); w.tick++; }
   return p.captive.service > 0.5 || `очков службы за день работы: ${p.captive.service.toFixed(2)}`;
+});
+
+
+// ── stage 4: former slaves (settlement/freedom.js)
+// a resigned captive who served a master, the master at hand
+function served(w, service = FREEDOM.free) {
+  const [p] = captive(w, true);
+  const m = crafter(w, p.x + 1, p.y, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0};
+  p.captive.resigned = w.tick; p.captive.service = service; p.captive.teacher = m.id;
+  return [p, m];
+}
+
+check('T130', 'совет снимает путы со смирившегося, отслужившего при мастере, когда мастер ручается; кандалы — на склад', () => {
+  const w = scene(); fixedRng(w);
+  const [p, m] = served(w, FREEDOM.free - 0.5); p.captive.bonds = 'iron';
+  councilOver(w); stepFreedom(w);
+  if (!p.captive || p.former) return 'освобождён, не отслужив';
+  p.captive.service = FREEDOM.free; m.master = null;
+  councilOver(w); w.tick += DAY; w.council.lastDay = Math.floor(w.tick / DAY); stepFreedom(w);
+  if (!p.captive) return 'освобождён без мастера, который поручится';
+  m.master = {skill: 'smithing', since: 0}; w.stock.shacklesIron = 0;
+  w.tick += DAY; w.council.lastDay = Math.floor(w.tick / DAY); stepFreedom(w);
+  if (p.captive || !p.former) return 'не освобождён: отслужил, мастер есть';
+  return w.stock.shacklesIron === 1 || `кандалы на складе: ${w.stock.shacklesIron}`;
+});
+
+check('T131', 'бывший раб ходит на работы за периметром, но без оружия и доспеха, без флагов, дозора и совета', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = served(w); freeCaptive(w, p, null);
+  if (!formerAllows({id: 'job', job: 'chop'}) || !formerAllows({id: 'fight', reflex: true})) return 'бывшему рабу нельзя за лес или отбиться';
+  for (const t of [{id: 'council'}, {id: 'watch'}, {id: 'answer', flag: 'x'}, {id: 'fight', target: null}, {id: 'trade'}]) if (formerAllows(t)) return `бывшему рабу можно «${t.id}»`;
+  w.armory = [newItem('sword'), newItem('lamellar'), newItem('ironaxe')]; w.tick = Math.floor(w.tick / DAY) * DAY + 12 * HOUR;
+  outfit(w, p);
+  const has = allItems(p).map(it => it.type);
+  if (has.includes('sword') || has.includes('lamellar') || !has.includes('ironaxe')) return `бывший раб взял: ${has}`;
+  p.x = w.camp.x + 30.5; p.task = {id: 'job', job: 'chop'}; p.think = 50; brain(w, p);
+  return p.task?.id !== 'runHome' || 'бывшего раба гонят назад за периметр';
+});
+
+check('T132', 'связь бывшего раба: голод её точит, слабая — уходит на совете', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = served(w); freeCaptive(w, p, null);
+  const b0 = p.former.bond;
+  p.needs.food = 0.1; w.tick = (Math.floor(w.tick / DAY) + 1) * DAY + 6.5 * HOUR; stepFreedom(w);
+  if (!(p.former.bond < b0)) return `связь голодного ${b0} → ${p.former.bond}`;
+  p.former.bond = 0.05; rngAt(w, 0.01);
+  councilOver(w); stepFreedom(w);
+  return p.faction === 'leavers' || `со слабой связью не ушёл: ${p.faction}`;
+});
+
+check('T133', 'бывший раб, бившийся в налёте, — на совете полноправный член', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = served(w); freeCaptive(w, p, null);
+  const [g] = band(w, 2, p.x + 3, p.y);
+  p.task = {id: 'fight', target: g[0], reflex: true};
+  w.tick++; stepFreedom(w);
+  if (!p.former.fought) return 'бой в налёте не замечен';
+  for (const o of g) kill(w, o, 'ран'); w.agents = w.agents.filter(o => !o.dead);
+  councilOver(w); stepFreedom(w);
+  return (!p.former && !p.captive && p.faction === 'colony') || 'не принят в члены';
 });
 
 let bad = 0;

@@ -3,6 +3,7 @@
 import {hpShare} from '../agents/agent.js';
 import {captiveText} from '../settlement/captives.js';
 import {masterTitle} from '../settlement/masters.js';
+import {formerText} from '../settlement/freedom.js';
 import {RESOURCES, resourceGroups} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {TRADE} from '../data/trade.js';
@@ -107,6 +108,7 @@ function woundsHtml(w, a) {
   const out = [];
   if (a.master) out.push(`<span class="chip like" title="Назван советом; при нём ученики">${masterTitle(a)}</span>`);
   if (a.task?.id === 'assist') out.push(`<span class="chip" title="Помогает мастеру и учится">ученик мастера</span>`);
+  if (a.former) out.push(`<span class="chip" title="Путы сняты; без оружия, без места на совете">${formerText(a)}</span>`);
   if (a.captive) out.push(`<span class="chip dislike" title="Без оружия, за периметр нельзя, на совет не ходит">${captiveText(w, a)}</span>`);
   if (a.downed) out.push(`<span class="chip dislike" title="Без помощи умрёт">без сознания: ${Math.max(0, Math.ceil((a.downed.until - w.tick) / HOUR * 10) / 10)} ч до смерти</span>`);
   for (const x of a.wounds || []) {

@@ -83,10 +83,20 @@ export const FREED = {chance: {tribe: 0.12, bandits: 0.08, army: 0.06, undead: 0
 // loyalty of those who joined on the way (not the core, not the hired): every day `daily` more, less when
 // hungry (`hungry`) or after a lost fight (`lost`), more after a won one (`won`); every day one may leave
 // with `leave` × (1 − loyalty)²; at 1 they stay for good
-export const LOYALTY = {daily: 0.008, hungry: -0.04, lost: -0.1, won: 0.03, leave: 0.06};
+export const LOYALTY = {daily: 0.008, hungry: -0.04, lost: -0.1, won: 0.03, leave: 0.06,
+  // stage 4 (docs/CAPTIVES.md): a badly wounded one loses heart (`hurt` a day under half health), a cut ration for
+  // the captives is a hard sight (`cruel` a day), a leader with a way with words keeps them (`charm` × (best C − 5))
+  hurt: -0.01, cruel: -0.004, charm: 0.002};
+
+// a hireling's opinion of the service (0…1, from `start`): a day `daily`; a fight won `won`, lost `lost`; a hungry
+// day `hungry`, a day badly wounded `hurt`. Below `desert` it may run off any day (`deserts` a day). At the end of the
+// term: from `stay` it stays for good (a member, no wage); from `extend` it asks for another term of `days` at its
+// wage — paid if the caravan has the gold beyond `reserve` days of food money, else it goes; below — it goes.
+export const CONTRACT = {start: 0.5, daily: 0.006, won: 0.04, lost: -0.08, hungry: -0.04, hurt: -0.01,
+  desert: 0.15, deserts: 0.08, stay: 0.8, extend: 0.45, days: 30, reserve: 6};
 
 // what those who are not the core are called
-export const ROLES = {companion: 'спутник', freed: 'вызволенный из плена', captive: 'пленный'};
+export const ROLES = {companion: 'спутник', freed: 'вызволенный из плена', captive: 'пленный', former: 'бывший раб'};
 
 // the most who walk with the caravan (the core included), and the most of those who joined on the way
 // (companions and the freed); nobody joins beyond them

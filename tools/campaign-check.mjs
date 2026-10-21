@@ -44,7 +44,7 @@ const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLo
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const finite = K => [K.food, K.x, K.y, K.gold, ...K.members.map(m => m.hp)].every(Number.isFinite);
-const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0, captives: 0, bound: 0, escaped: 0, caught: 0, told: 0, resigned: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
+const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0, captives: 0, bound: 0, escaped: 0, caught: 0, told: 0, resigned: 0, stayed: 0, extended: 0, deserted: 0, freed: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
 
 // the local map of a walk: every fight and stop was played on it, the kept camps played again come out the same
 function countLocal(K, label, bad) {
@@ -90,6 +90,7 @@ for (let s = 0; s < seeds; s++) {
       if (live.length > COMPANY_MAX || live.filter(m => m.loyalty != null).length > JOINED_MAX) { bad.push(`${c.label}: в отряде ${live.length}`); break; }
       // captives (docs/CAPTIVES.md): no more than the limit, no strength of the caravan, never the crown's carrier, no weapon
       if (held.length > CAPTIVE.max || held.some(m => memberMight(m) !== 0 || m.loyalty != null || m.id === K.quest?.crown?.carrier || m.gear.hand.some(id => ITEMS.get(id)?.melee && !ITEMS.get(id)?.tool))) { bad.push(`${c.label}: пленные — ${held.length}, с силой, оружием или короной`); break; }
+      if (K.members.some(m => m.alive && m.former && (m.captive || m.gear.hand.some(id => ITEMS.get(id)?.melee && !ITEMS.get(id)?.tool) || (ITEMS.get(m.gear.body)?.armor ?? 0) > 0.12))) { bad.push(`${c.label}: бывший раб с оружием, доспехом или в путах`); break; }
       if (Object.values(K.cargo).some(n => !(n >= 0))) { bad.push(`${c.label}: груз ${JSON.stringify(K.cargo)}`); break; }
       const things = K.bubble?.things || [];
       if (things.filter(t => !t.pursuit).length > BUBBLE.max || things.some(t => !THINGS[t.kind] || Math.hypot(t.x - K.x, t.y - K.y) > (t.pursuit ? 2 : 1) * BUBBLE.gone * scaleOf(a) + 1e-6 || a.f.ocean[t.i])) { bad.push(`${c.label}: пузырь — ${things.length} вещей, есть за краем или в море`); break; }
@@ -99,7 +100,7 @@ for (let s = 0; s < seeds; s++) {
     if (K.log.some(l => l.kind === 'route')) got.route++;
     if (K.log.some(l => l.kind === 'town' && /купили|продали/.test(l.text))) got.trade++;
     if (K.members.some(m => !isCore(m) && !m.captive)) got.joined++;
-    got.captives += K.members.filter(m => m.captive).length; got.escaped += K.stats.escaped || 0; got.caught += K.stats.caught || 0; got.told += K.stats.told || 0; got.resigned += K.log.filter(l => /смирил/.test(l.text)).length; if (K.log.some(l => /связали|В плен взяли/.test(l.text))) got.bound++;
+    got.captives += K.members.filter(m => m.captive).length; got.escaped += K.stats.escaped || 0; got.caught += K.stats.caught || 0; got.told += K.stats.told || 0; got.resigned += K.log.filter(l => /смирил/.test(l.text)).length; got.stayed += K.stats.stayed || 0; got.extended += K.stats.extended || 0; got.deserted += K.stats.deserted || 0; got.freed += K.stats.freed || 0; if (K.log.some(l => /связали|В плен взяли/.test(l.text))) got.bound++;
     if (K.log.some(l => l.kind === 'leave')) got.left++;
     countLocal(K, c.label, bad);
     if (K.stats.met) got.met++;
@@ -183,6 +184,7 @@ check('квест: подсказки найдены, места взяты шт
 check('караваны торгуют в городах, к ним пристают и от них уходят', got.trade > 0 && got.joined > 0 && got.left > 0, `торговали ${got.trade}, с нанятыми или приставшими ${got.joined}, с ушедшими ${got.left}`);
 check('пленные: упавших врагов вяжут и ведут с караваном', got.captives > 0 && got.bound > 0, `пленных ${got.captives}, походов с пленными ${got.bound}`);
 check('пленные бегут и смиряются, беглецов ловят', got.escaped > 0 && got.resigned > 0 && got.caught > 0, `попыток побега ${got.escaped + got.caught}: ушли ${got.escaped}, пойманы ${got.caught}; смирились ${got.resigned}, доносов ${got.told}`);
+check('наёмники в конце срока остаются, продлевают или уходят', got.stayed + got.extended > 0, `остались ${got.stayed}, продлили ${got.extended}, сбежали ${got.deserted}; освобождено пленных ${got.freed}`);
 check('пузырь: ночные бои от тех, кто дошёл до лагеря, засады на марше, обозы и стада на пути', got.met > 0 && got.ambush > 0 && got.road > 0, `с ночными встречами ${got.met}, с засадами ${got.ambush}, с обозами или стадами ${got.road}`);
 check('локальная карта: бои и стоянки сыграны на ней, повтор стоянки даёт то же', local.camps > 0 && local.stops > 0 && local.same === local.replays,
   `сыграно ${local.camps} (дней стоянок ${local.stops}), в среднем ${Math.round(local.ticks / Math.max(1, local.camps))} тиков и ${Math.round(local.ms / Math.max(1, local.camps))} мс; повторов ${local.same} из ${local.replays}`);

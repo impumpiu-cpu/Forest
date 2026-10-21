@@ -242,7 +242,7 @@ function bestLoadout(w, a, pool) {
     const hd = h.hands.map(def), rest = items.filter(it => !h.hands.includes(it));
     let body = null, bv = 0, back = null, kv = 0;
     for (const it of rest) { const d = def(it); if (d.slot === 'body') { const v = bodyValue(a, d, w); if (v > bv) { bv = v; body = it; } } }
-    for (const it of rest) { if (def(it).slot === 'body' || (a.captive && def(it).slot === 'hand')) continue; const v = backValue(a, def(it), w, hd); if (v > kv) { kv = v; back = it; } }   // a captive: one tool, none spare
+    for (const it of rest) { if (def(it).slot === 'body' || ((a.captive || a.former) && def(it).slot === 'hand')) continue; const v = backValue(a, def(it), w, hd); if (v > kv) { kv = v; back = it; } }   // a captive: one tool, none spare
     const score = handsValue(w, a, h.hands) + bv + kv;
     if (!best || score > best.score) best = {hands: h.hands, two: h.two, body, back, score};
   }
@@ -273,7 +273,8 @@ export function outfit(w, a) {
   let changed = false;
   // a captive: a tool and clothes only, and no tool from the council till dawn (settlement/escape.js)
   const night = a.captive && (hourOf(w.tick) >= COUNCIL_TO || hourOf(w.tick) < ESCAPE.tools.dawn);
-  const own = allItems(a), pool = a.captive ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory];
+  // (a former slave: a tool and clothes too, day and night — settlement/freedom.js)
+  const own = allItems(a), pool = a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory];
   const best = bestLoadout(w, a, pool);
   if (best && best.score > currentScore(w, a) + 0.12) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));

@@ -78,7 +78,7 @@ const bestDmg = m => Math.max(0, ...m.gear.hand.map(id => ITEMS.get(id)?.melee?.
 
 // a bought item goes to who gains most by it: armour and arms to the knights, a tool to a squire
 function equip(K, id) {
-  const d = ITEMS.get(id), ms = free(K);
+  const d = ITEMS.get(id), ms = free(K).filter(m => !m.former);   // no arms for a former slave
   if (d.slot === 'body') {
     const m = ms.filter(x => x.role === 'knight' || x.role === 'sellsword').sort((p, q) => (ITEMS.get(p.gear.body)?.armor ?? 0) - (ITEMS.get(q.gear.body)?.armor ?? 0))[0] || ms[0];
     m.gear.body = id; return m;

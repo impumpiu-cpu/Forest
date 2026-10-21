@@ -20,7 +20,7 @@ import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash} from './camp.js';
 import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
 import {afterFight} from './quest.js';
-import {free, takeAuto, takeFromCamp, captivesInFight, escaped} from './captives.js';
+import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
@@ -33,7 +33,7 @@ export function fight(a, K, d, r, how = 'night') {
   if (K.mode === 'auto') captivesInFight(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));   // (on the local map the camp plays it)
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
   if (!alive(K).length) return win;
-  if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); }
+  if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); formersFought(K); }
   else { K.stats.fled++; shake(K, LOYALTY.lost); K.camp = 0; K.why = ''; K.build = null; }
   afterFight(a, K, d, win, (text, kind, world) => say(a, K, text, kind, world));   // the crown's carrier fell? (campaign/quest.js)
   return win;
@@ -126,7 +126,7 @@ export function applyCamp(a, K, S, o, d, how) {
 
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town
 function takeGear(K, items) {
-  const ms = free(K), took = [];   // no arms or armour for a captive
+  const ms = free(K).filter(m => !m.former), took = [];   // no arms or armour for a captive or a former slave
   const armor = id => ITEMS.get(id)?.armor ?? 0, dmg = m => Math.max(0, ...m.gear.hand.map(id => ITEMS.get(id)?.melee?.dmg ?? 0));
   for (const id of items) {
     const it = ITEMS.get(id); if (!it) continue;

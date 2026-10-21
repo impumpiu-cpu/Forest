@@ -36,7 +36,8 @@ export const MASTER = {
   bonus: [0.25, 0.1],   // × the master's work: the first learner, the second
   near: 2.5,            // a learner this close to the master helps
   learn: 1.5,           // a tick of the master's work teaches a learner this many ticks of practice
-  service: 1 / 600,     // service a captive learner earns a tick of help (about one a day of work)
+  service: 1 / 400,     // service a captive learner earns a tick of help (about one and a half a day of work)
+  beside: 0.5,          // × that for a captive working the master's own craft beside it (at the next bench)
   // the pull of a learner's place in the colonist's choice: below a free vacancy of one's own, above idling;
   // a free colonist before a captive («свои ученики, потом пленные»); more for a liked craft, more the less one knows
   weight: {free: 0.45, captive: 0.4, liked: 0.15, lack: 0.3},

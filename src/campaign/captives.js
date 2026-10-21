@@ -6,7 +6,7 @@
 //   takeAuto(a, K, d, r, say)   — after a fight won in the quick mode: one or two of the fallen bound
 //   takeFromCamp(a, K, o, say)  — the captives the camp on the local map took (campaign/camp.js outcome)
 //   bondsSets(K)                — how many more the baggage can bind
-import {BONDS, CAPTIVE, ESCAPE, bestBonds} from '../data/captives.js';
+import {BONDS, CAPTIVE, ESCAPE, FREEDOM, bestBonds} from '../data/captives.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {assign} from './baggage.js';
 import {SPECIES} from '../data/species.js';
@@ -142,3 +142,27 @@ export function captivesInFight(a, K, d, r, say) {
     if (r() < E.base * willOf(m) * holdOf(m) * (kin ? E.kin : 1) * (tool ? E.tool : 1)) escaped(a, K, m, `В суматохе боя ${m.name}, ${gw(m, 'пленный', 'пленная')}, ${gw(m, 'бежал', 'бежала')}${kin ? ' к своим' : ''}`, say);
   }
 }
+
+// ── stage 4 (docs/CAPTIVES.md; data/captives.js FREEDOM): a resigned captive with enough service — days beside a
+// master on the local map, a plot told — is freed at the evening, when the caravan has a master to vouch for it:
+// a former slave, role 'former', with the loyalty of one who joined (campaign/march.js people). One who stood in
+// a fight the caravan won is taken in as one of its own at the next evening.
+export function freedomEvening(a, K, say) {
+  const vouch = free(K).find(m => m.master && !m.former);
+  for (const m of held(K)) {
+    if (!vouch || !m.captive.resigned || (m.captive.service || 0) < FREEDOM.free) continue;
+    unbind(K, m);
+    m.former = {since: K.day, fought: false, service: m.captive.service || 0};
+    m.captive = null; m.role = 'former'; m.loyalty = FREEDOM.bond.start;
+    K.stats.freed = (K.stats.freed || 0) + 1;
+    say(`С ${m.name} сняли путы: за ${gw(m, 'него', 'неё')} поручился ${vouch.name}. Теперь ${gw(m, 'бывший раб', 'бывшая рабыня')} — без оружия, но не в путах.`, 'people', [m.id, vouch.id]);
+  }
+  for (const m of K.members.filter(x => x.alive && x.former)) {
+    if (!m.former.fought) continue;
+    m.former = null; m.role = 'companion'; m.loyalty = 1;
+    K.stats.formerMembers = (K.stats.formerMembers || 0) + 1;
+    say(`${m.name} ${gw(m, 'бился', 'билась')} за караван: теперь ${gw(m, 'он', 'она')} свой и идёт до конца.`, 'people', [m.id]);
+  }
+}
+// a fight won: the former slaves in it stood with the caravan
+export const formersFought = K => { for (const m of K.members) if (m.alive && m.former) m.former.fought = true; };

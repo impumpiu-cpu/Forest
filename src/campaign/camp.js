@@ -71,7 +71,7 @@ export function campSetup(a, K, ev) {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
     members: alive(K).map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
-      align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null})),
+      align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind, building: v.building || null})),
     food: K.food, cargo: {...K.cargo},
@@ -120,7 +120,8 @@ export function openCamp(S) {
       for (const id of m.gear.hand) if (CAMP.tools[id]) ag.skill[CAMP.tools[id]] = Math.max(ag.skill[CAMP.tools[id]] || 0, CAMP.toolSkill);
     }
     const rec = recordOf(w, ag); if (rec) rec.name = m.name;
-    if (m.master) ag.master = {skill: m.master.skill, since: w.tick, workedAt: -1};   // a master of the caravan (campaign/masters.js)
+    if (m.master) ag.master = {skill: m.master.skill, since: w.tick, workedAt: -1};
+    if (m.former) ag.former = {since: w.tick, bond: m.loyalty ?? 0.6, fought: false};   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
     // a captive of the caravan stays one on the map (settlement/captives.js)
     if (m.captive) { ag.captive = {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned || null, service: m.captive.service || 0}; if (rec) rec.captive = true; }
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));

@@ -80,3 +80,18 @@ export const ESCAPE = {
   ration: {cutDays: 3, eat: 0.65, work: 0.85},
   tools: {dawn: 6},
 };
+
+// Stage 4 (docs/CAPTIVES.md): from captive to former slave to member.
+//   free    — a resigned captive with at least this much service (a day as a master's learner ≈ 1.5, at the next
+//             bench under its eye half that, a told plot 1) is
+//             freed by the council, when the master who taught it last vouches: its liking of the captive at
+//             least `vouch` (−2…+4). In the campaign: any master of the caravan vouches.
+//   bond    — a former slave's tie to the colony (0…1), from `start`; at dawn: `day` more, `hungry` less when its
+//             belly is empty, `hurt` less when badly wounded, `content` more when fed and healthy. At the council,
+//             below `stay` it may leave: `leave` × (1 − bond)² (as a companion does in the campaign).
+//   member  — a former slave who fought for the colony (answered a blow in a red alarm, or stood in a fight the
+//             caravan won) is made a full member at the next council.
+export const FREEDOM = {
+  free: 2, vouch: 0,
+  bond: {start: 0.6, day: 0.01, hungry: -0.04, hurt: -0.02, content: 0.005, stay: 0.5, leave: 0.25},
+};

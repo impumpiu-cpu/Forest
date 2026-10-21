@@ -27,6 +27,8 @@ METRICS.registerAll([
   // captives (settlement/captives.js): held now, taken in all; foes who fell senseless instead of dying
   {id: 'captives', label: 'Пленных сейчас', group: 'Люди', fmt: 0, get: w => colonists(w).filter(a => a.captive).length},
   {id: 'captivesTaken', label: 'Взято в плен', group: 'Люди', fmt: 0, get: w => w.chronicle.captives?.taken || 0},
+  {id: 'captivesFreed', label: 'Пленных освобождено', group: 'Люди', fmt: 0, get: w => w.chronicle.captives?.freed || 0},
+  {id: 'captivesEscaped', label: 'Пленных бежало', group: 'Люди', fmt: 0, get: w => w.chronicle.captives?.escaped || 0},
   {id: 'foesDown', label: 'Врагов упало без сознания', group: 'Люди', fmt: 0, get: w => w.chronicle.foeFalls?.down || 0},
   {id: 'arrived', label: 'Пришло переселенцев', group: 'Люди', fmt: 0, get: w => w.chronicle.people.filter(p => !p.founder).length},
   {id: 'deaths', label: 'Смертей всего', group: 'Люди', fmt: 0, get: allDeaths},

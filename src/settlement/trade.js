@@ -69,7 +69,7 @@ const haggler = a => (a.special?.C ?? 5) * (1 + (a.skill?.barter || 0));
 export function negotiator(w) {
   let best = null, bv = -1;
   for (const a of colonists(w)) {
-    if (a.downed || a.captive || (a.task?.id === 'treat' && a.task.lying)) continue;   // (a captive never haggles for its captors)
+    if (a.downed || a.captive || a.former || (a.task?.id === 'treat' && a.task.lying)) continue;   // (a captive never haggles for its captors)
     const v = haggler(a); if (v > bv) { bv = v; best = a; }
   }
   return best;

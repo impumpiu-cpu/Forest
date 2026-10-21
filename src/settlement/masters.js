@@ -106,6 +106,14 @@ export function stepMasters(w) {
   const S = (w.mastersState ??= {named: -1});
   const day = dayOf(w.tick);
   if (!w.light && S.named !== day && hourOf(w.tick) >= COUNCIL_FROM && w.council?.lastDay === day) { S.named = day; nameMasters(w); }
+  // a captive working the master's craft beside the master at work earns half a learner's service: it learns
+  // under the master's eye (the way out of captivity, settlement/freedom.js)
+  for (const m of masters(w)) {
+    if ((m.master.workedAt ?? -1) < w.tick - 1 || !atCraft(m)) continue;
+    for (const c of colonists(w)) if (c.captive && c !== m && c.task?.id === 'job' && c.task.job === m.task.job && dist(c, m) <= MASTER.near) {
+      c.captive.service = (c.captive.service || 0) + MASTER.service * MASTER.beside; c.captive.teacher = m.id;
+    }
+  }
   const by = learners(w);
   for (const [id, ls] of Object.entries(by)) {
     const m = liveById(w, +id);
@@ -113,7 +121,7 @@ export function stepMasters(w) {
     ls.slice(0, MASTER.places).forEach(c => {
       if (dist(c, m) > MASTER.near) return;
       practice(c, m.master.skill, MASTER.learn);
-      if (c.captive) c.captive.service = (c.captive.service || 0) + MASTER.service;
+      if (c.captive) { c.captive.service = (c.captive.service || 0) + MASTER.service; c.captive.teacher = m.id; }   // the master who would vouch (settlement/freedom.js)
       c.learnt = (c.learnt || 0) + 1;
     });
   }
