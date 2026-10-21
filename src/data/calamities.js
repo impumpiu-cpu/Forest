@@ -86,3 +86,20 @@ export const CAL = {
   boss: {stats: ['S', 'E', 'A'], add: [6, 12], cap: 40, floor: 0.75, might: 3, breed: 4},
   grave: {r: 2, v: 0.8},
 };
+
+// The alliances against a calamity (atlas/alliance.js; docs/CAMPAIGN.md «Доработка, этап 8»): after the wild era the
+// peoples band together against a boss. Years unless said:
+//   after:    the alliance forms this long after the boss rose, [lo, hi] (first the raids, then the fear)
+//   reach:    the realms with a living town within this many cells of the boss (× the world's scale) are its
+//             members; if none, the `nearest` realms by their nearest town
+//   truce:    wars between members stop; while the alliance lasts their attitude is at least `truce` and rises `bond`
+//   levy:     each member musters this share of its town nearest the boss (at least `minMen` men), the army's
+//             might as a war's (data/parties.js ARMY), and marches on the boss's lair
+//   wait:     days the armies that came wait at the lair for the others before they storm it
+//   boss:     the boss's might in the battle: its lair's strength × its kind's SPECIAL power × `boss`, plus `retinue`
+//             × each living lair of its retinue; the armies' sum × U(0.6, 1.4) against it × U(0.6, 1.4)
+//   loss:     the armies' men lost: when they win, when they are beaten;  retry — a beaten alliance tries again after
+//   peace:    years of peace after the boss fell before the alliance falls apart, [lo, hi]; then every pair's attitude
+//             goes back `back` of the way to what it was before, and a member that sent no army is held `shirk` worse
+export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3, levy: 0.2, minMen: 30, wait: 60,
+  boss: 8, retinue: 8, loss: {won: 0.25, beaten: 0.6}, retry: 5, peace: [5, 15], back: 0.7, shirk: 1};

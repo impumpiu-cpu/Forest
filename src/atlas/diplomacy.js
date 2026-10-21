@@ -20,6 +20,8 @@ import {realmOf, realmPeople, realmLabel, realmLabelGen, seatFallen, stepRealms}
 import {laneBetween} from './sea.js';
 import {ARMY} from '../data/parties.js';
 import {SEASON_DAYS} from '../data/atlas.js';
+import {allianceStay} from './alliance.js';
+import {tell, fallToAlliance} from './calamity.js';
 import {BEHAVIOURS, sendParty, goHome} from './parties.js';
 
 const D = DIPLOMACY;
@@ -130,7 +132,7 @@ function scourge(a, p) {
 // the war the army was sent to is over (peace made while it marched or sat under the walls): it turns home
 function warOver(a, p) { return !a.rel[p.war]?.war; }
 function armyDay(a, p, rnd, say) {
-  if (p.state !== 'home' && warOver(a, p)) {
+  if (p.ally == null && p.state !== 'home' && warOver(a, p)) {   // an alliance's army has no war to end (atlas/alliance.js)
     say(`${cap1(p.label)} ${p.state === 'stay' ? 'сняло осаду' : 'повернуло назад'}: заключён мир.`);
     goHome(a, p); return;
   }
@@ -141,12 +143,22 @@ function armyDay(a, p, rnd, say) {
 BEHAVIOURS.army = {
   day: armyDay,
   arrive(a, p, rnd, say) {
+    if (p.lair != null) {   // an alliance's army at a boss's lair: it waits for the others (atlas/alliance.js)
+      const l = a.lairs.find(x => x.id === p.lair);
+      if (!l || !l.alive) { goHome(a, p); return; }
+      p.state = 'stay'; say(`${cap1(p.label)} встало у «${l.name}»: ждёт войска союзников.`); return;
+    }
     const t = a.towns.find(t => t.id === p.target);
     if (!t || !t.alive) { goHome(a, p); return; }
     p.state = 'stay'; p.siege = {stock: Math.round(ARMY.stock * SEASON_DAYS * (1 + ARMY.stockFood * townFx(t).food)), starved: 0, pop0: t.pop};
     say(`${cap1(p.label)} осадило ${townLabel(t, 1)} ${t.name}.`);
   },
   stay(a, p, rnd, say) {
+    if (p.lair != null) {
+      const A = (a.alliances || []).find(x => x.id === p.ally), c = A && a.calamities?.find(x => x.id === A.calamity);
+      allianceStay(a, p, rnd, t => tell(a, t, c), line => c && fallToAlliance(a, c, line));
+      return;
+    }
     const t = a.towns.find(t => t.id === p.target), A = ARMY, S = p.siege;
     if (!t || !t.alive) { goHome(a, p); return; }
     if (rnd() < A.burn && raidSite(a, t, rnd)) { p.burnt++; p.supplies += A.forage; }   // the besiegers eat what they take

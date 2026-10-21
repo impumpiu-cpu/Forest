@@ -410,6 +410,12 @@ console.log('Эпический мир кампании:');
   const half = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(mid))));
   while (runNextStage(mid)); while (runNextStage(half));
   check('  эпос: мир, сохранённый посреди бедствия, идёт так же', atlasHash(mid) === atlasHash(half) && atlasHash(mid) === atlasHash(a), `${atlasHash(mid)} / ${atlasHash(half)}`);
+  // the alliances (atlas/alliance.js): after the wild era the realms in a boss's reach band together and send armies;
+  // a boss falls to them or to the heroes; an alliance whose boss is long gone falls apart. Eras of 40 years, seed 7
+  const e = generateAtlas({...cfg, seed: '7', epicYears: {wild: 40, elder: 40, young: 40}}), AL = e.alliances || [];
+  const later = (e.calamities || []).filter(c => c.era !== 'wild');
+  check('  эпос: против бедствий после дикой эры собираются союзы, шлют войска, союз распадается после мира', AL.length === later.length && AL.every(A => A.members.length && A.tries > 0 && A.sent.length) && AL.some(A => A.broken) && later.some(c => c.fell?.by === 'alliance'),
+    AL.map(A => `союз ${A.members.length} держав, походов ${A.tries}, прислали войска ${A.sent.length}${A.broken ? ', распался' : ''}`).join('; ') + '; ' + later.map(c => `${c.kind} пал от ${c.fell?.by}`).join(', '));
   const plain = {seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0};
   check('  без эпоса эпохи прежние', eraPlan(newAtlas(plain)).map(e => e.seasons / 4).join() === '25,25,25');
 }

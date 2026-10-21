@@ -22,6 +22,7 @@ import {newLair, findSpot, wherePhrase} from './lairs.js';
 import {barrows} from './diplomacy.js';
 import {townLabel} from './towns.js';
 import {eraPlan} from './history.js';
+import {stepAlliance} from './alliance.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pick = (r, list) => list[(r() * list.length) | 0];
@@ -36,7 +37,7 @@ function draw(a) {
 }
 
 // a line of the chronicle of calamities (atlas/history.js say, with its topic)
-function tell(a, text, c = null) {
+export function tell(a, text, c = null) {
   const H = a.hist;
   a.chronicle.push({era: H.era, year: H.year, season: H.season, text, topic: 'calamity', ...(c ? {calamity: c.id} : {})});
 }
@@ -87,6 +88,8 @@ export function stepCalamities(a) {
       else if (c.era === 'wild' && y >= c.fallAt) fall(a, c, r, 'dragon');
       else if (y >= c.heroesAt) fall(a, c, r, 'heroes');
     }
+    // after the wild era the peoples band together against it, and fall apart after (atlas/alliance.js)
+    if (c.era !== 'wild' && (c.phase === 'rise' || c.phase === 'fallen')) stepAlliance(a, c, r, text => tell(a, text, c));
   }
   done();
 }
@@ -171,7 +174,10 @@ function rise(a, c, r) {
   tell(a, FALL.taken.replace('{artifact}', A.name).replace('{found}', A.g === 'f' ? 'ла' : A.g === 'n' ? 'ло' : 'ёл').replace('{boss}', bossName(c)), c);
 }
 
-function fall(a, c, r, by) {
+// the boss falls to an alliance (atlas/alliance.js): `line` tells how
+export const fallToAlliance = (a, c, line) => { if (c.phase === 'rise') fall(a, c, null, 'alliance', line); };
+
+function fall(a, c, r, by, told = null) {
   const lair = a.lairs.find(l => l.id === c.lair), where = wherePhrase(a, c.i), f = fem(c);
   const words = s => s.replace(/\{boss\}/g, bossName(c)).replace(/\{lair\}/g, lair?.name || '').replace(/\{where\}/g, where).replace(/\{a\}/g, f ? 'а' : '')
     .replace(/\{him\}/g, f ? 'ней' : 'ним').replace(/\{gen\}/g, f ? 'неё' : 'него').replace(/\{dat\}/g, f ? 'ей' : 'ему').replace(/\{he\}/g, f ? 'она' : 'он').replace(/\{his\}/g, f ? 'её' : 'его');
@@ -185,7 +191,7 @@ function fall(a, c, r, by) {
       d.sleep = Math.max(5, Math.round(Y.elder.from + Y.elder.len / 2 - a.hist.year));   // wounded: it wakes deep in the next era
       line = words(FALL.dragon).replace('{dragon}', d.name);
     } else { by = 'beasts'; line = words(FALL.beasts); }
-  } else line = words(FALL[by]);
+  } else line = told || words(FALL[by]);
   if (lair && lair.alive) { lair.alive = false; lair.died = a.hist.year; }
   c.phase = 'fallen'; c.fell = {year: a.hist.year, by};
   // the grave where it fell
