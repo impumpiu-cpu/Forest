@@ -9,6 +9,7 @@
 // world.caravan is the visit in progress (null between visits); world.trade keeps the totals and
 // the last deals for the panel.
 import {TRADE} from '../data/trade.js';
+import {mulberry, seedNumber} from '../core/rng.js';
 import {sellCaptives, buyCaptive, traderCaptive} from './slavery.js';
 import {RESOURCES} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
@@ -138,7 +139,8 @@ export function startCaravan(w, group) {
   w.caravan = {id, phase: 'coming', traderId: trader.id, name: trader.name, gender: trader.gender, set: w.tick,
     capacity: mules.length * cap, goods: makeGoods(rng, units),
     purse: between(rng, TRADE.purse), arrived: null, traded: false, tradedAt: null, tradeEnd: null, spot: null, deal: null,
-    captive: traderCaptive(rng)};   // now and then a captive for sale (settlement/slavery.js)
+    // now and then a captive for sale (settlement/slavery.js): its own roll, so the border's stream (raids, arrivals) stays as it was
+    captive: traderCaptive(mulberry(seedNumber(`${w.cfg?.seed ?? ''}:trader-captive:${w.trade.visits}`)))};
   // the rumour of mithril brings a trader with a fatter purse
   const mith = Math.min(3, Math.floor(w.stock.mithrilOre || 0));
   if (mith) { w.caravan.purse += TRADE.mithrilPurse * mith; w.caravan.buyer = true; }
