@@ -107,12 +107,17 @@ export function burnStock(w, frac) { for (const r of RESOURCES.all()) w.stock[r.
 
 // raiders take up to `loot` units of each resource, less behind a palisade; gold and silver locked in
 // a forged chest (furniture, settlement/life.js) are harder to get at; returns the total taken
+// a raider takes its share of the stores: what it carries off, by resource (agents/tasks.js assault).
+// It is on the raider's back (a.loot) until it leaves the map with it — or someone of ours brings it down
+// and takes it back (agents/agent.js kill)
 export function plunder(w) {
-  let total = 0;
+  const got = {};
   const chest = w.buildings.some(b => b.done && b.furniture?.includes('chest')) ? 0.4 : 1;
   for (const r of RESOURCES.all()) {
     const take = Math.min(w.stock[r.id], (r.loot || 0) * w.mods.mul.loot * (r.money ? chest : 1));
-    w.stock[r.id] -= take; total += take;
+    if (take <= 0) continue;
+    w.stock[r.id] -= take; got[r.id] = take;
   }
-  return total;
+  return got;
 }
+export const lootTotal = loot => Object.values(loot || {}).reduce((s, v) => s + v, 0);

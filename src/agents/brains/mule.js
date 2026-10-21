@@ -6,6 +6,9 @@
 // A pack mule ({owner: id}) walks behind its trader and carries the caravan's crates (a.load units);
 // when its trader is gone it heads for the map edge. A wild one grazes and now and then wanders off.
 // All numbers come from the species' `mule` block in data/species.js.
+// An elk lives in a small herd (agents/wildHerd.js): it grazes on the herd's pasture; when one of the
+// herd is attacked, a bold bull (its own nerve) goes for the attacker, the rest draw off; at the herd's
+// alarm they stand alert and step away from whatever comes too close.
 import {SPECIES} from '../../data/species.js';
 import {grazeCodes} from '../../data/terrain.js';
 import {nightness} from '../../core/time.js';
@@ -17,14 +20,19 @@ import {season} from '../../data/seasons.js';
 import {log} from '../../core/log.js';
 import {esc} from '../../core/util.js';
 import {tempAt} from '../../world/heat.js';
+import {liveById} from '../lookup.js';
+import {herdOf, herdAlarm, toPatch, nerveOf, calmHerders} from '../wildHerd.js';
+import {hpShare} from '../agent.js';
+// a bull this bold (agents/wildHerd.js nerve) stands up for its herd
+const BULL = 1.15;
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const byId = (w, id) => w.agents.find(o => o.id === id && !o.dead);
+const byId = liveById;
 
 // who it is angry with: someone attacking it right now, or whoever hurt it lately and is still near
 function foeOf(w, a, M) {
   let foe = null, bd = 3;
-  for (const o of w.agents) {
+  for (const o of w.agents) {   // scan: mules and boars only, a handful per map
     if (o === a || o.dead || o.task?.target !== a || !(o.task.id === 'maul' || o.task.id === 'chase' || o.task.id === 'fight')) continue;
     const d = dist(a, o); if (d < bd) { bd = d; foe = o; }
   }
@@ -69,7 +77,17 @@ export const muleBrain = {
     if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
 
-    const foe = foeOf(w, a, M);
+    const H = herdOf(w, a);
+    // a bold, healthy bull stands up for one of its herd under attack
+    let foe = foeOf(w, a, M);
+    if (!foe && H && nerveOf(w, a) >= BULL && hpShare(a) > 0.6) {
+      for (const id of H.members) {
+        const m = id !== a.id ? byId(w, id) : null;
+        const f = m && dist(m, a) < 12 ? foeOf(w, m, M) : null;
+        if (f) { foe = f; if (!a.defends) { a.defends = m.id; } break; }
+      }
+    }
+    if (!foe) a.defends = null;
     if (foe) {
       const d = dist(a, foe);
       // badly hurt: limp away, but still kick whoever is right at its flank
@@ -106,7 +124,19 @@ export const muleBrain = {
     }
     if (nightness(w) > 0.75) { a.task = {id: 'rest'}; return; }
     // a herder holding out hay: it stops and lets them come
-    if (w.agents.some(o => o.task?.tame === a.id && o.task.calm && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
+    if (calmHerders(w).some(o => o.task.tame === a.id && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9)) { a.task = {id: 'graze'}; return; }
+    if (H) {
+      // the herd's alarm: stand alert, step away from what comes too close (an elk does not bolt)
+      const al = herdAlarm(w, H);
+      if (al) {
+        const near = al.threats.filter(o => dist(a, o) < sp.herd.alert / nerveOf(w, a));
+        if (near.length) { a.task = {id: 'drawOff'}; bolt(w, a, near, 0.8); } else a.task = {id: 'alert'};
+        return;
+      }
+      const t = a.task?.id === 'graze' ? a.task : (a.task = {id: 'graze'});
+      toPatch(w, a, H, t, 0.4, approach);
+      return;
+    }
     graze(w, a, sp);
   },
 };

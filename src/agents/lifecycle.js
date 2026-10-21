@@ -15,6 +15,7 @@
 // around every step.
 import {releaseAll} from '../settlement/reserve.js';
 import {TASKS} from './tasks.js';
+import {wake} from './attention.js';
 
 export const OUTCOMES = {
   done:        {label: 'сделано', skip: 0},
@@ -25,10 +26,10 @@ export const OUTCOMES = {
 
 // a task's key for skipping: a job by its job id, anything else by its task id. A fight and help are
 // keyed by whom: «the foe slipped away» or «could not reach the wounded» keeps one from that one, not
-// from the next foe or the next wounded
-export const taskKey = t => (t.id === 'job' ? 'job:' + t.job : t.id === 'fight' ? 'fight:' + (t.target?.id ?? '') : t.id === 'aid' ? 'aid:' + t.who : t.id);
+// from the next foe or the next wounded; a cry answered in vain keeps one from that cry, not from the next
+export const taskKey = t => (t.id === 'job' ? 'job:' + t.job : t.id === 'fight' ? 'fight:' + (t.target?.id ?? '') : t.id === 'aid' ? 'aid:' + t.who : t.id === 'answer' ? 'answer:' + t.flag : t.id);
 // the reflexes are never skipped: running from fire or home, the alarm, the firefighting
-const REFLEX = new Set(['runHome', 'flee', 'muster', 'douse']);
+const REFLEX = new Set(['runHome', 'flee', 'muster', 'reserve', 'douse']);
 export const skipped = (w, a, t) => !REFLEX.has(t.id) && (a.skips?.[taskKey(t)] ?? -1) > w.tick;
 const label = t => TASKS.get(t.id).label(t);
 
@@ -44,7 +45,11 @@ function close(w, a, t, outcome, why) {
   def.exit?.(w, a, t, outcome);
   if (t.id === 'job') RUNNER_EXIT[def.runnerOf?.(t)]?.(w, a, t, outcome);
   const skip = OUTCOMES[outcome].skip;
-  if (skip && !REFLEX.has(t.id)) (a.skips ||= {})[taskKey(t)] = w.tick + skip;
+  if (skip && !REFLEX.has(t.id)) {
+    const sk = a.skips ||= {};
+    for (const k in sk) if (sk[k] <= w.tick) delete sk[k];   // spent pauses go (a fight or a cry per foe would pile up)
+    sk[taskKey(t)] = w.tick + skip;
+  }
   const b = w.behave;
   if (b && t.id === 'job') (b.outcomes ||= {})[outcome] = (b.outcomes[outcome] || 0) + 1;
   // the card shows refusals of any task, and interruptions of work (a council or a meal giving way to
@@ -58,7 +63,7 @@ function close(w, a, t, outcome, why) {
 // a task ends itself: done, blocked or impossible (with the reason for the card)
 export function endTask(w, a, outcome = 'done', why = null) {
   const t = a.task;
-  a.task = null; a.think = 0;
+  a.task = null; wake(a, outcome === 'done' ? 'дело сделано' : `не вышло: ${why || OUTCOMES[outcome].label}`, outcome === 'done' ? 'дело сделано' : 'дело не вышло');
   close(w, a, t, outcome, why);
 }
 

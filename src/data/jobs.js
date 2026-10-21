@@ -36,6 +36,7 @@ import {canDoAction} from '../agents/skills.js';
 import {maybeGoldVein, foundMithril} from '../settlement/precious.js';
 import {reachableCorpses, freeCorpse} from '../settlement/life.js';
 import {hpShare} from '../agents/agent.js';
+import {ofSpeciesList} from '../agents/lookup.js';
 
 export const JOBS = new Registry('job');
 useJobs(JOBS, (w, job) => huntable(w, job));   // navmaps.js needs each job's flow field, and what hunters are after
@@ -62,14 +63,15 @@ const foodWant = (w, ctx, job, k = 1, extra = 0) => {
 // (a boar, `risky`) only when there is no gentler game on the map
 // `a`: the hunter — big dangerous game only for one whose hunting tier reaches `riskyTier` (agents/skills.js)
 export function huntable(w, job, a = null) {
-  const usual = w.agents.filter(o => !o.dead && !o.tame && job.prey.includes(o.species));
+  const alive = o => !o.dead && !o.tame;
+  const usual = ofSpeciesList(w, job.prey, alive);
   if (usual.length) return usual;
   if (a && !canDoAction(a, job.skill, job.riskyTier)) return [];
-  const risky = w.agents.filter(o => !o.dead && !o.tame && (job.risky || []).includes(o.species));
+  const risky = job.risky ? ofSpeciesList(w, job.risky, alive) : [];
   if (risky.length || !job.lastResort) return risky;
-  const pop = w.agents.filter(o => o.faction === 'colony').length;
+  const pop = w.agents.filter(o => o.faction === 'colony').length;   // scan: last-resort hunting only, when there is no other game
   const hungry = RESOURCES_FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0) < pop * 2;
-  return hungry ? w.agents.filter(o => !o.dead && o.faction === 'wild' && job.lastResort.includes(o.species)) : [];
+  return hungry ? w.agents.filter(o => !o.dead && o.faction === 'wild' && job.lastResort.includes(o.species)) : [];   // scan: last-resort hunting only
 }
 const RESOURCES_FOOD = () => FOODS.all();
 
@@ -175,7 +177,7 @@ JOBS.registerAll([
   {id: 'heal', skill: 'medicine', gatherSkill: 'gathering', tendTier: 2, label: 'лечить раненых', short: 'лекарь', verb: 'лечит', preferable: true,
     runner: 'heal', requires: 'healerhut',
     // one healer at a time: whoever took it first keeps it
-    canDo: (w, a) => !w.agents.some(o => o !== a && o.faction === 'colony' && o.task?.job === 'heal'), nav: plantLayer('herbs'), resource: 'herbs', carry: 2, time: 30,
+    canDo: (w, a) => !w.agents.some(o => o !== a && o.faction === 'colony' && o.task?.job === 'heal'), nav: plantLayer('herbs'), resource: 'herbs', carry: 2, time: 30,   // scan: TODO: every colonist asks it in decide — the job board (docs/TESTING.md, stress test)
     // the wounded call only a healer able to tend them (`tendTier`, medicine); anyone may pick herbs
     desire: (w, ctx, job) => (ctx.patients && ctx.can(job.skill, job.tendTier) ? 0.9 + 0.1 * ctx.patients : (w.stock.herbs || 0) < HERBS_KEEP ? 0.28 : -1),
     valid: (w, i) => w.grid[plantLayer('herbs')][i] >= PLANTS.get('herbs').ripe && w.grid.fire[i] === 0,

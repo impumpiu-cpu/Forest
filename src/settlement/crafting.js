@@ -26,6 +26,7 @@ import {recipeSkill} from '../data/skills.js';
 import {qualityRoll} from '../data/quality.js';
 import {esc} from '../core/util.js';
 import {HOUR} from '../core/time.js';
+import {liveById} from '../agents/lookup.js';
 
 const PRESERVED = () => FOODS.filter(f => f.of);
 
@@ -217,7 +218,7 @@ export function stepCrafting(w) {
 function masterOf(w, by, last) {
   let best = null, bv = -1;
   for (const [id, v] of Object.entries(by || {})) {
-    const o = w.agents.find(x => x.id === +id && !x.dead);
+    const o = liveById(w, +id);
     if (o && v > bv) { bv = v; best = o; }
   }
   return best || last || null;

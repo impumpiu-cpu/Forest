@@ -6,7 +6,8 @@ import {SPECIES} from '../../data/species.js';
 import {nightness, ambientTemp} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
 import {nearFire} from '../movement.js';
-import {nearestHostile, attackerOf} from '../combat.js';
+import {attackerOf} from '../combat.js';
+import {flagOptions, knownFoeWithin, redInSight, noteChoice, watchOption, noteWatch, BOARD} from '../../settlement/board.js';
 import {TASKS} from '../tasks.js';
 import {stepBody} from '../body.js';
 import {maxHp, hpShare} from '../agent.js';
@@ -28,20 +29,22 @@ import {stepDowned, healWounds} from '../wounds.js';
 import {canDoAction, jobAccess} from '../skills.js';
 import {BUILDINGS} from '../../data/buildings.js';
 import {tempAt} from '../../world/heat.js';
-import {ensurePlan, rosterOf} from '../../settlement/plan.js';
+import {ensurePlan, vacancyPull, signUp} from '../../settlement/plan.js';
+import {wake, noticeSelf, heartOf, noteThink} from '../attention.js';
 
-// how much the roster pulls (settlement/plan.js): the assigned job, a fallback, anything else
-const ROSTER = {main: [1.5, 0.3], alt: [1.0, 0.05], other: [0.6, 0], keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16]};
+// keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
+// colony's vacancies is settlement/plan.js vacancyPull)
+const ROSTER = {keep: 0.2, committed: 0.25, ponder: [8, 16]};
 
 // the weight of answering an attack on oneself: more than any need can reach
 const ATTACKED = 2.6;
 
 const label = t => TASKS.get(t.id).label(t);
 
-// why a job tempts: the colony's need, the council's goal, the colonist's own liking
-function jobWhy(w, a, job, ctx, goal, tasty, night, role) {
+// why a job tempts: the colony's vacancy, its need, the council's goal, the colonist's own liking
+function jobWhy(w, a, job, ctx, goal, tasty, night, vac) {
   const parts = [];
-  if (role === 'main') parts.push('по наряду совета'); else if (role === 'alt') parts.push('запасное дело по наряду');
+  if (vac) parts.push(vac);
   if (job.resource) parts.push(`${RESOURCES.get(job.resource).label} в запасе ${Math.floor(w.stock[job.resource] || 0)}`);
   else if (job.food) parts.push(`еды ${Math.floor(ctx.food)} на ${ctx.pop} чел.`);
   else if (job.runner === 'build') parts.push(`стройка ждёт`);
@@ -55,9 +58,12 @@ function jobWhy(w, a, job, ctx, goal, tasty, night, role) {
 }
 
 
-const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
+// a task's identity in the choice: a job by its job, a run to a cry by its flag (two cries are two choices)
+const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id === 'answer' ? 'answer:' + t.flag : t.id) : '');
+// work's ceiling: as it was up to 0.8, then bending under 1 instead of cut off at it
+const softCap = x => (x <= 0.8 ? x : 0.8 + 0.2 * (1 - Math.exp(-(x - 0.8) / 0.2)));
 
-function decide(w, a) {
+function decide(w, a, woke = 'дело кончилось') {
   const night = nightness(w), camp = w.camp.cells, g = w.grid;
   let campHot = 0; for (const c of camp) campHot = Math.max(campHot, tempAt(w, c) + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
@@ -74,9 +80,9 @@ function decide(w, a) {
     opts.push([{id: n.task}, n.urge(w, a, a.needs[id]) * campOk, () => `${n.label} ${Math.round(a.needs[id] * 100)}%${campOk < 1 ? ', но лагерь горит' : ''}`]);
   }
   const mate = mates(w, a);   // friends (and foes) at work (settlement/together.js)
-  // the roster (settlement/plan.js): what the council gave this colonist to do, and the fallbacks
+  // the colony's vacancies (settlement/plan.js): how many hands each job wants today; the colonist
+  // weighs them by itself — its own place, an open place, a job nobody asked for
   ensurePlan(w);
-  const roster = rosterOf(w, a), roleOf = id => (roster?.job === id ? 'main' : roster?.alt?.includes(id) ? 'alt' : 'other');
   for (const job of JOBS.all()) {
     // can I? (the job's tier, agents/skills.js) — then do I want to?
     if (!jobUnlocked(w, job) || !jobAccess(a, job).ok || (job.canDo && !job.canDo(w, a))) continue;
@@ -90,9 +96,10 @@ function decide(w, a) {
     const dayWork = (job.runner === 'build' ? night * 0.3 : night * 0.2) + (outdoor && night > 0.6 ? (night - 0.6) * 1.5 * (0.5 + outsideRisk(w)) : 0);
     // a job that brings your favourite food is a little more tempting
     const tasty = job.food && a.food?.likes === job.food ? 1.2 : 1;
-    const m = mate(job.id), role = roleOf(job.id), [mul, add] = ROSTER[role];
-    // the roster ranks work against work; it never lifts work above the alarm, the council or the body (≤ 1)
-    opts.push([{id: 'job', job: job.id}, Math.min(1, ((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night, role) + (m.friend ? `, там ${m.friend.name}` : m.foe ? `, но там ${m.foe.name}` : '')]);
+    const m = mate(job.id), [mul, add, vac] = vacancyPull(w, a, job);
+    // the vacancies rank work against work; they never lift work above the alarm, the council or the body (≤ 1).
+    // The ceiling is soft, so that two jobs both wanted badly still differ by who is better at which
+    opts.push([{id: 'job', job: job.id}, softCap(((base + goal) * (a.prefs[job.id] ?? 1) * tasty + m.v) * mul + add) - dayWork, () => jobWhy(w, a, job, ctx, goal, tasty, night, vac) + (m.friend ? `, там ${m.friend.name}` : m.foe ? `, но там ${m.foe.name}` : '')]);
   }
   opts.push([{id: 'idle'}, 0.08, () => 'больше нечем заняться']);
   // together (settlement/together.js): go along with a lone gatherer when beasts roam, help the wounded
@@ -124,13 +131,24 @@ function decide(w, a) {
     // the answer to an attack is a reflex: no skip from an earlier fight with the same foe holds it back
     opts.push(stand ? [{id: 'fight', target: hunter, reflex: true}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
   }
-  const enemy = nearestHostile(w, a, 16 * (a.mods.sight ?? 1));
-  // alarm: while raiders are on the map everyone gathers inside the settlement zone and meets them
-  // together; the wounded fall back
+  // the night watch (settlement/board.js): the council's rule — one place, taken by whoever wants it
+  const watch = watchOption(w, a); if (watch) opts.push(watch);
+  // the colony's board (settlement/board.js): the threats this colonist knows of — seen or heard of —
+  // each weighed by the colonist itself: how much of it nobody covers yet, courage, distance
+  const flags = flagOptions(w, a);
+  for (const o of flags) opts.push(o);
+  const enemy = knownFoeWithin(w, a, BOARD.sight * (a.mods.sight ?? 1));
+  // alarm: while raiders are on the map everyone who has no foe in sight gathers inside the settlement
+  // zone and meets them together; one who sees a foe weighs its flag instead; the wounded fall back
   const raid = raidAlarm(w);
   if (raid && !enemy) opts.push([{id: 'muster'}, 1.25, () => 'тревога: враги подходят к лагерю']);
-  if (enemy && hpShare(a) > 0.3) opts.push([{id: 'fight', target: enemy}, (raid ? 1.35 : 1.1) * brave, () => `враг рядом: ${SPECIES.get(enemy.species).label}`]);
-  if (enemy && hpShare(a) <= 0.3 && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
+  // a red alarm in sight (a raid, an attack on one of ours) cannot be ignored: who does not go to the
+  // fight keeps out of harm's way — at the fire while raiders are about, else back to the settlement —
+  // instead of going on with the work (settlement/board.js)
+  const red = redInSight(w, a, BOARD.sight * (a.mods.sight ?? 1));
+  if (red && (raid || red.kind === 'raid')) opts.push([{id: 'reserve'}, BOARD.reserve, () => `тревога: ${red.label} ${red.where}, держится у огня`]);
+  else if (red && !agentInZone(w, a)) opts.push([{id: 'runHome'}, BOARD.reserve, () => `тревога: ${red.label} ${red.where}, к своим`]);
+  if (enemy && hpShare(a) <= BOARD.hurt && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);
@@ -142,13 +160,16 @@ function decide(w, a) {
   // a task that just ended blocked or impossible stays out of the choice for a while (agents/lifecycle.js)
   for (const [t, s, why] of opts) {
     if (key(t) !== cur && !t.reflex && skipped(w, a, t)) continue;
-    const sc = s + (key(t) === cur ? keep : 0);
+    const sc = s + (key(t) === cur && t.id !== 'reserve' && t.id !== 'answer' ? keep : 0);   // the reserve and a run to a cry are weighed afresh every time: a heavier cry wins
     if (sc > bs) { if (best && key(best) !== key(t)) { alt = best; as = bs; altWhy = bestWhy; } bs = sc; best = t; bestWhy = why; }
     else if (sc > as && key(t) !== key(best)) { alt = t; as = sc; altWhy = why; }
   }
   // the choice explained for the colonist's card: what, why, the runner-up, and whether it was kept
   a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
-    alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || ''};
+    alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || '', woke};
+  noteThink(w, a.wakeKind || woke, key(best) === cur);
+  if (flags.length) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
+  noteWatch(w, a, best, a.task?.id);
   if (key(best) !== cur) {
     // leaving one job for another of one's own accord: a moment's thought first («прикидывает, за что
     // взяться»), unless the body or a threat is pressing
@@ -157,20 +178,25 @@ function decide(w, a) {
       a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
       w.behave.switches++;
       a.task = {id: 'ponder', next: best, until: w.tick + lo + Math.floor(w.rngs.colony() * hi), why: a.why.why};
+      signUp(w, a, best.job);   // decided: the place is taken now, the walk over comes after the thought
+      a.think = a.task.until - w.tick + 1; a.wakeWhy = null; a.wakeKind = null;   // nothing to weigh till the thought is over
       return;
     }
     // the task it drops is closed as interrupted by syncTask(), with this reason; eating, sleeping and
     // warming up wind down when the need is met, which is no dropped task
-    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'sulk', 'ponder'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
+    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'reserve', 'watch', 'sulk', 'ponder'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
     else if (a.task) a.task.closed = 'done';
     if (a.task) w.behave.switches++;
     a.task = best;
+    if (best.id === 'job' && !best.eatNow) signUp(w, a, best.job);   // takes that place for the day
     if (best.id === 'job' && !best.eatNow) {
       if (best.job === a.likes) think(w, a, 'likedWork', {job: JOBS.get(best.job).label});
       else if (best.job === a.dislikes) think(w, a, 'dislikedWork', {job: JOBS.get(best.job).label});
     }
   }
-  else if (best.id === 'fight') a.task.target = best.target;
+  else if (best.id === 'fight') { a.task.target = best.target; a.task.flag = best.flag; }
+  // nothing to wake it: it looks round again after a while anyway (agents/attention.js)
+  a.think = heartOf(a); a.wakeWhy = null; a.wakeKind = null;
 }
 
 export const colonistBrain = {
@@ -178,6 +204,7 @@ export const colonistBrain = {
   step(w, a) {
     const T = stepBody(w, a);   // reads last tick's `sleeping`
     if (a.dead) return;
+    noticeSelf(w, a);   // a need past a band, a wound: think again (agents/attention.js)
     // fallen senseless after a deadly blow: lies and bleeds until helped or until time runs out
     if (a.downed) { if (a.task?.id !== 'downed') a.task = {id: 'downed'}; syncTask(w, a); stepDowned(w, a); return; }
     healWounds(w, a);
@@ -190,19 +217,19 @@ export const colonistBrain = {
     // being attacked can't wait for the next think
     const tid2 = a.task?.id;
     const attacked = !!attackerOf(w, a);
-    if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && attacked) a.think = 0;
-    // a foe within reach is noticed at once, not at the next think
-    if (w.tick % 5 === 0 && a.task?.id !== 'fight' && a.task?.id !== 'runHome' && nearestHostile(w, a, 8)) a.think = 0;
+    if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && attacked) wake(a, 'на меня напали', 'нападение');
+    // a foe within reach is noticed at once, not at the next think: the colony's lookouts see it and
+    // wake whoever should think again (settlement/board.js)
+    // think again when something happened (agents/attention.js: the task ended, a need, a wound, the
+    // night, the council, the alarm, a cry, new work…) or, with nothing at all, after a long while
     if (a.task?.id !== 'flee' && --a.think <= 0) {
-      // at work a colonist thinks about work rarely: a task ends through the lifecycle and asks for a
-      // decision then (a.think = 0); meanwhile only the body and the threats are watched here
-      // (with beasts that hunt people about, everyone looks round more often: help may be needed)
-      a.think = a.task?.id === 'job' && outsideRisk(w) < TOGETHER.riskFrom && !raidAlarm(w) ? ROSTER.think : 15;
+      const woke = a.wakeWhy ?? 'давно не оглядывался';
+      if (a.wakeWhy == null) a.wakeKind = 'по привычке';
       // a delivery under way is finished first — unless something urgent comes up: an attack, a foe
       // close by, a body at its limit. The load stays in the hands whatever is chosen.
-      const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some(v => v < 0.12) || !!nearestHostile(w, a, 8);
+      const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some(v => v < 0.12) || !!knownFoeWithin(w, a, BOARD.near);
       const busy = !urgent && a.task?.id === 'job' && a.task.hauling;
-      if (!busy) decide(w, a);
+      if (!busy) decide(w, a, woke); else a.think = heartOf(a);
     }
     if (!a.task) decide(w, a);
     // passing through the camp: swap gear with the store, top up arrows

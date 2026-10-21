@@ -13,6 +13,7 @@ import {nightness} from '../../core/time.js';
 import {maxHp, kill} from '../agent.js';
 import {squadOf, planFor} from '../squad.js';
 import {tempAt} from '../../world/heat.js';
+import {liveById} from '../lookup.js';
 
 // the mindless dead go for whoever is this close; anyone further off they find by shambling to the camp
 // (the camp flow field always leads there; a long A* chase across the map would stall instead)
@@ -32,10 +33,10 @@ export const raiderBrain = {
     // orcs and trolls close their wounds even on a raid; fire close by stops a troll's
     if (a.mods.regen > 1 && T < 30 && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a) * (a.mods.regen - 1));
     if (!sp.mindless && (T > 50 || nearFire(w, a, 1.5))) { escapeHeat(w, a); return; }
-    const lost = a.master != null && !w.agents.some(o => o.id === a.master && !o.dead);
+    const lost = a.master != null && !liveById(w, a.master);
     if (lost) a.master = null, a.lost = true;
     // a war beast goes home with its masters: once no rider or handler of its band is left, it leaves
-    if (a.warBeast && !w.agents.some(o => o.band === a.band && !o.warBeast && !o.dead && !o.gone && o.task?.id !== 'leave')) a.lost = true;
+    if (a.warBeast && !w.agents.some(o => o.band === a.band && !o.warBeast && !o.dead && !o.gone && o.task?.id !== 'leave')) a.lost = true;   // scan: war beasts only, a few per band
     if (a.lost || (sp.sun && day > 0.6)) a.task = {id: 'leave'};
     else if (!sp.mindless && a.hp < 0.3 * maxHp(a)) a.task = {id: 'leave'};
     if (a.task?.id !== 'leave') {

@@ -77,6 +77,7 @@ SPECIES.registerAll([
     yields: {meat: 5, hide: 2, bone: 2},
     flee: {radius: 7, sprint: 1.6, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0.002},
+    herd: {cap: 12},   // grazes in herds (agents/wildHerd.js)
     leaveChance: 0.0003},
 
   // Fox: small and quick, hunted for its fur, which traders pay well for.
@@ -138,6 +139,7 @@ SPECIES.registerAll([
     yields: {meat: 3, hide: 1, bone: 1},
     flee: {radius: 4.5, sprint: 1.5, from: ['people', 'wolf'], stamina: 0.006},
     grazes: {terrain: ['grass'], eatsBerries: 0.002},
+    herd: {cap: 8},
     leaveChance: 0.0001,
     // tame: how the herder's job (data/jobs.js 'herd') and the pen (settlement/herd.js) treat it;
     //   tier: the husbandry tier (C) a herder needs to go after it — a kicking mule wants a calm hand (T3)

@@ -1,21 +1,20 @@
-// The day's roster (наряд): who does what tomorrow, decided once for the whole colony at the
-// evening council (and again when the colony changes), instead of every colonist weighing every job
-// every minute and all of them picking the same one.
+// The day's vacancies (docs/MIND.md stage 3): what work the colony needs tomorrow and how many hands
+// each job wants — posted once at the evening council (and again when the colony changes) — and the
+// colonists take the places themselves, as in Dwarf Fortress. The council never names anyone.
 //
-// Three steps, all here:
+// Two steps here:
 //   1. needs with a horizon (needs): what the colony wants of each job tomorrow — the job's own
 //      `desire` (data/jobs.js) as the colony's weight, pulled up where tomorrow is foreseeable:
 //      firewood for the nights ahead, food for the days ahead, what the council is saving for;
-//   2. hands (crews): how many people each job wants, out of everyone able to work — the weights
+//   2. places (vacancies): how many people each job wants, out of everyone able to work — the weights
 //      shared out, bounded by what the job can take (benches at a workshop, one healer, a hunter per
-//      few head of game);
-//   3. names (assign): who fills each place — the fittest free pair of hands: skill first (the best
-//      smith forges), then the habit of yesterday (a trade sticks), then the liking, then whoever is
-//      left; everyone also gets a second and a third choice for when the first is blocked.
-// The brain (agents/brains/colonist.js) reads the roster through rosterOf(): the assigned job pulls
-// hardest, the alternatives less, everything else only when nothing of the roster can be done.
-// The roster is plain data on the world (w.plan) and is saved with it; the council's journal line and
-// the panel show it with the reasons, so that «why is he doing that» has an answer at colony level too.
+//      few head of game).
+// The third step is each colonist's own (agents/brains/colonist.js, through vacancyPull()): a job with
+// open places pulls more the more of it is open (soft places: every taker lowers it for the others), and
+// more for someone good at it, used to it since yesterday, or fond of it. Taking a job signs the colonist
+// up for it for the day (a.shift), so a place stays taken while its holder eats or sleeps.
+// Plain data on the world (w.plan) and on the colonists (a.shift), saved with them; the council's journal
+// line and the panel show the places, who took them and why.
 import {JOBS, huntable} from '../data/jobs.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {colonists, foodTotal, openSites, jobUnlocked, favourites, has, count} from './query.js';
@@ -31,15 +30,23 @@ import {season, snowy} from '../data/seasons.js';
 import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {outsideRisk, TOGETHER} from './together.js';
+import {perTick} from '../core/util.js';
 
 export const PLAN = {
   fuelDays: 3,        // keep this many days of firewood ahead…
   fuelDaysCold: 5,    // …and this many when it freezes
   foodDays: 6,        // days of food the colony likes to have ahead
   foodDaysAutumn: 12, // …before winter (autumn): stock up
-  minWeight: 0.08,    // a job wanted less than this gets no place in the roster
-  habit: 0.35,        // fitness for doing the same job as yesterday
-  best: 0.5,          // fitness for being the colony's best at the job's skill
+  minWeight: 0.08,    // a job wanted less than this gets no place
+  // how a vacancy pulls a colonist's choice (vacancyPull): × and + on the job's own score
+  mine: [1.5, 0.3],   // a place this colonist holds today (as the roster's own job used to)
+  open: [0.6, 0.9, 0.3],   // a place free: × 0.6 + 0.9 × open share, + 0.3 × open share
+  wanted: [0.85, 0],  // a job the colony wants but whose places are all taken (or that got none): a fallback
+  none: [0.6, 0],     // a job the colony does not want tomorrow
+  // a colonist's own fitness for a place, added while some of it is open
+  skill: 0.15,        // × skill / 10
+  best: 0.15,         // the colony's best at the job's skill
+  habit: 0.12,        // the same job as yesterday
 };
 
 // how much firewood the colony burns in a day: the campfire through the night, every hearth all day
@@ -94,21 +101,7 @@ function crewCap(w, job) {
   return Infinity;
 }
 
-// fitness of a colonist for a job: skill, the colony's best, habit, liking; −Infinity when unable
-function fitness(w, a, job, bestSkill, yesterday) {
-  if (a.downed) return -Infinity;
-  if (!jobAccess(a, job).ok || (job.canDo && !job.canDo(w, a))) return -Infinity;
-  const sk = skillOf(a, job.skill), why = [];
-  let f = sk / 10;
-  if (sk > 0 && sk >= bestSkill) { f += PLAN.best; why.push('лучше всех'); }
-  if (yesterday === job.id) { f += PLAN.habit; why.push('как вчера'); }
-  const p = a.prefs?.[job.id] ?? 1;
-  f += (p - 1) * 1.2;
-  if (job.id === a.likes) why.push('любимое дело'); else if (job.id === a.dislikes) why.push('не по душе');
-  return [f, why.join(', ')];
-}
-
-// the roster: needs → hands → names. `reason` says what called for it (the journal)
+// the vacancies: needs → places. `reason` says what called for it (the journal)
 export function makePlan(w, reason = '') {
   const col = colonists(w).filter(a => !a.downed), day = dayOf(w.tick);
   const need = needs(w), jobs = Object.keys(need).sort((x, y) => need[y].w - need[x].w);
@@ -119,75 +112,98 @@ export function makePlan(w, reason = '') {
   // when beasts that hunt people roam the woods, outdoor work goes out in pairs: two to the same bushes
   // rather than one to the bushes and one to the clay (settlement/together.js risk)
   const pairs = outsideRisk(w) >= TOGETHER.riskFrom, outdoor = j => ['harvest', 'hunt'].includes(JOBS.get(j).runner);
-  const places = [], spare = [], quota = {};
+  const quota = {};
+  // no more places than the colony has hands able to fill them (a place nobody can take wastes a hand)
+  const able = j => { const job = JOBS.get(j); return col.filter(a => jobAccess(a, job).ok && (!job.canDo || job.canDo(w, a))).length; };
+  const cap = {};
+  for (const j of jobs) cap[j] = Math.min(crewCap(w, JOBS.get(j)), able(j));
   let used = 0;
-  for (const j of jobs) { const q = col.length * need[j].w / total; quota[j] = Math.min(crewCap(w, JOBS.get(j)), need[j].w >= 0.6 ? Math.max(1, Math.floor(q)) : Math.floor(q)); used += quota[j]; }
+  for (const j of jobs) { const q = col.length * need[j].w / total; quota[j] = Math.min(cap[j], need[j].w >= 0.6 ? Math.max(1, Math.floor(q)) : Math.floor(q)); used += quota[j]; }
   for (const j of jobs.slice().sort((x, y) => (col.length * need[y].w / total - quota[y]) - (col.length * need[x].w / total - quota[x]))) {
     if (used >= col.length) break;
-    if (quota[j] < crewCap(w, JOBS.get(j)) && col.length * need[j].w / total - quota[j] > 0.3) { quota[j]++; used++; }
+    if (quota[j] < cap[j] && col.length * need[j].w / total - quota[j] > 0.3) { quota[j]++; used++; }
   }
   if (pairs) {
-    // lone outdoor places are merged: the second of two singleton outdoor jobs joins the first (more wanted)
-    const singles = jobs.filter(j => quota[j] === 1 && outdoor(j));
-    for (let k = 1; k < singles.length; k += 2) { quota[singles[k]] = 0; quota[singles[k - 1]] = 2; }
+    // lone outdoor places are merged: the second of two singleton outdoor jobs joins the first (more wanted).
+    // Food is never merged away: a lone food place becomes two of its own instead (when two can do it)
+    const singles = jobs.filter(j => quota[j] === 1 && outdoor(j) && cap[j] >= 2);
+    const food = singles.filter(j => JOBS.get(j).food), other = singles.filter(j => !JOBS.get(j).food);
+    for (const j of food) quota[j] = 2;
+    for (let k = 1; k < other.length; k += 2) { quota[other[k]] = 0; quota[other[k - 1]] = 2; }
+    used = jobs.reduce((s, j) => s + quota[j], 0);
   }
-  for (const j of jobs) { for (let k = 0; k < quota[j]; k++) places.push(j); if (crewCap(w, JOBS.get(j)) > quota[j]) spare.push(j); }
-  // hands left over join the most wanted jobs that still have room, one each in turn
-  for (let k = 0; places.length < col.length && spare.length; k++) {
+  // hands left over go to the most wanted jobs that still have room, one each in turn
+  const spare = jobs.filter(j => cap[j] > quota[j]);
+  for (let k = 0; used < col.length && spare.length; k++) {
     const j = spare[k % spare.length];
-    places.push(j);
-    if (places.filter(p => p === j).length >= crewCap(w, JOBS.get(j))) spare.splice(spare.indexOf(j), 1);
+    quota[j]++; used++;
+    if (quota[j] >= cap[j]) spare.splice(spare.indexOf(j), 1);
   }
-  // names: the most wanted place first, the fittest free hands for it
-  const prev = w.plan?.assign || {}, best = {};
-  for (const j of jobs) best[JOBS.get(j).skill] = Math.max(0, ...col.map(a => skillOf(a, JOBS.get(j).skill)));
-  const free = new Set(col.map(a => a.id)), assign = {}, byId = Object.fromEntries(col.map(a => [a.id, a]));
-  for (const j of places) {
-    const job = JOBS.get(j);
-    let pick = null, pf = -Infinity, pw = '';
-    for (const id of free) {
-      const a = byId[id], r = fitness(w, a, job, best[job.skill], prev[id]?.job);
-      if (r === -Infinity) continue;
-      const [f, why] = r;
-      if (f > pf || (f === pf && a.id < pick.id)) { pf = f; pick = a; pw = why; }
-    }
-    if (!pick) continue;
-    free.delete(pick.id);
-    assign[pick.id] = {job: j, why: pw || 'нужны руки', alt: []};
-  }
-  // nobody placed: free hands, the old way — and everyone gets two fallbacks among the wanted jobs
-  for (const a of col) {
-    const e = assign[a.id] || (assign[a.id] = {job: null, why: 'свободные руки', alt: []});
-    e.alt = jobs.filter(j => j !== e.job && jobAccess(a, JOBS.get(j)).ok && (!JOBS.get(j).canDo || JOBS.get(j).canDo(w, a))).slice(0, 2);
-  }
-  w.plan = {day, at: w.tick, reason, need, assign, pop: col.length, built: w.buildings.filter(b => b.done).length,
-    lines: rosterLines(w, assign, need)};
+  const vac = {};
+  for (const j of jobs) if (quota[j] > 0) vac[j] = {places: quota[j], why: need[j].why};
+  w.plan = {day, at: w.tick, reason, need, vac, pop: col.length, built: w.buildings.filter(b => b.done).length};
   return w.plan;
 }
 
-// the roster in words: «Ждан и Тихон — рубить лес (дров на 1,2 дн.); Горислав — охотиться (лучше всех)»
-function rosterLines(w, assign, need) {
-  const by = {};
-  for (const [id, e] of Object.entries(assign)) { const a = w.agents.find(x => x.id === +id); if (!a) continue; (by[e.job || '—'] ||= []).push({name: a.name, why: e.why}); }
-  const lines = [];
-  for (const [j, people] of Object.entries(by)) {
-    const job = j === '—' ? null : JOBS.get(j);
-    const names = people.map(p => p.name).join(', ');
-    const whys = [...new Set(people.map(p => p.why).filter(x => x && x !== 'нужно поселению'))].join('; ');
-    lines.push({job: j, text: `${names} — ${job ? job.label : 'свободные руки'}${need[j]?.why ? ` (${need[j].why})` : ''}${whys && job ? ` · ${whys}` : ''}`});
-  }
-  return lines;
+// ── the colonists' side: shifts and the pull of a vacancy
+
+// who holds a place today, by job: the colonists signed up (a.shift) for today. Counted once a tick;
+// a colonist who signs up in the middle of the tick is added at once (signUp), so the next one to weigh
+// that job already sees the place taken
+const today = w => dayOf(w.tick);
+const holders = w => perTick(w, 'plan.holders', () => {
+  const by = {}, d = today(w);
+  for (const a of colonists(w)) if (!a.dead && !a.downed && a.shift?.day === d && a.shift.job) (by[a.shift.job] ||= []).push(a);
+  return by;
+});
+export const holdersOf = (w, job) => (holders(w)[job] || []).filter(a => !a.dead && !a.downed);
+
+// a colonist's own fitness for a job's place: skill, being the colony's best, yesterday's habit
+function fit(w, a, job) {
+  const sk = skillOf(a, job.skill), why = [];
+  let f = PLAN.skill * sk / 10;
+  if (sk > 0 && sk >= bestAt(w, job.skill)) { f += PLAN.best; why.push('лучше всех'); }
+  if (a.shiftPrev === job.id) { f += PLAN.habit; why.push('как вчера'); }
+  return [f, why];
+}
+const bestAt = (w, skill) => perTick(w, 'plan.best:' + skill, () => Math.max(0, ...colonists(w).filter(a => !a.dead).map(a => skillOf(a, skill))));
+
+// how the vacancies pull a colonist toward a job: [×, +, why]. The job's own score (desire × liking)
+// is the colonist's; this is what the colony asks for on top of it
+export function vacancyPull(w, a, job) {
+  const v = w.plan?.vac?.[job.id];
+  if (a.shift?.day === today(w) && a.shift.job === job.id && v) return [...PLAN.mine, `${job.short || job.label}: моё место на сегодня`];
+  if (!v) return w.plan?.need?.[job.id] ? [...PLAN.wanted, 'нужно поселению, мест не дали'] : [...PLAN.none, ''];
+  const taken = holdersOf(w, job.id).filter(o => o !== a).length, open = Math.max(0, v.places - taken), share = open / v.places;
+  if (open <= 0) return [...PLAN.wanted, `места заняты (${v.places})`];
+  const [f, why] = fit(w, a, job), [m0, m1, add] = PLAN.open;
+  return [m0 + m1 * share, add * share + f, `вакансия: свободно ${open} из ${v.places}${why.length ? ', ' + why.join(', ') : ''}`];
 }
 
-// the roster entry of a colonist, or null when there is no roster yet / it is stale
-export function rosterOf(w, a) {
-  const p = w.plan; if (!p) return null;
-  return p.assign[a.id] || null;
+// the colonist took a job (agents/brains/colonist.js decide): it holds that place for the day
+export function signUp(w, a, jobId) {
+  const d = today(w);
+  if (a.shift?.day === d && a.shift.job === jobId) return;
+  if (a.shift && a.shift.day < d) a.shiftPrev = a.shift.job;   // yesterday's job: the habit
+  const by = holders(w);
+  if (a.shift?.day === d && a.shift.job && by[a.shift.job]) by[a.shift.job] = by[a.shift.job].filter(o => o !== a);
+  a.shift = {day: d, job: jobId};
+  if (jobId) (by[jobId] ||= []).push(a);
 }
 
-// the roster is remade when the colony has changed under it: a newcomer, a loss, a building done
+// the vacancies in words: «рубить лес — 3 (дров на 1,2 дн.)»; with `who`, the holders of each today
+export function vacancyLines(w, who = false) {
+  const p = w.plan; if (!p?.vac) return [];
+  return Object.entries(p.vac).map(([j, v]) => {
+    const job = JOBS.get(j), hs = who ? holdersOf(w, j) : [];
+    const names = hs.map(a => a.name).join(', ');
+    return {job: j, text: who ? `${job.label}: ${hs.length} из ${v.places}${names ? ' — ' + names : ''}${v.why ? ` (${v.why})` : ''}` : `${job.label} — ${v.places}${v.why ? ` (${v.why})` : ''}`};
+  });
+}
+
+// the vacancies are posted anew when the colony has changed under them: a newcomer, a loss, a building done
 export function planStale(w) {
-  const p = w.plan; if (!p) return true;
+  const p = w.plan; if (!p?.vac) return true;   // an old save's roster by names: post vacancies instead
   const col = colonists(w).filter(a => !a.downed);
   return p.pop !== col.length || p.built !== w.buildings.filter(b => b.done).length || dayOf(w.tick) > p.day + 1;
 }
@@ -196,10 +212,10 @@ export function ensurePlan(w) {
   return w.plan;
 }
 
-// the council's roster for tomorrow, with a journal line
+// the council's vacancies for tomorrow, with a journal line
 export function councilRoster(w) {
   const p = makePlan(w, 'совет');
-  const text = p.lines.map(l => l.text).join('; ');
-  if (text) log(w, `Наряд на завтра: ${esc(text)}.`, 'council');
+  const text = vacancyLines(w).map(l => l.text).join('; ');
+  if (text) log(w, `Работа на завтра: ${esc(text)}.`, 'council');
   return p;
 }

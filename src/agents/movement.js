@@ -177,20 +177,48 @@ export function sprintMul(a, sprint, drain) {
 }
 export const recover = a => { a.stamina = Math.min(1, a.stamina + 0.002); };
 
-// soft push so agents don't stack on the same spot
-// (a sweep: the pairs are visited in list order, as before, but only those within 0.4 along x)
+// soft push so agents don't stack on the same spot.
+// The pairs closer than 0.4 are found through a grid of 1 × 1 cells (a creature's own cell and the
+// eight around it), not by comparing everyone with everyone: in a crowded camp that grew as the
+// square of the crowd. They are then pushed in the old order — by the first one's place in
+// w.agents, then the second one's — so the result is the one the old sweep gave: that sweep took
+// every pair within 0.4 along x and skipped the ones farther apart at their turn; the grid leaves
+// out only pairs a whole cell apart along y, which no push brings within 0.4 before their turn.
+const SEP = new WeakMap();   // per world: the grid buffers, reused every tick (never saved)
 export function separate(w) {
-  const ags = w.agents, n = ags.length;
-  const order = Array.from({length: n}, (_, k) => k).sort((p, q) => ags[p].x - ags[q].x || p - q);
-  const pairs = [];
-  for (let s = 0; s < n; s++) for (let t = s + 1; t < n && ags[order[t]].x - ags[order[s]].x < 0.4; t++) pairs.push(order[s] < order[t] ? [order[s], order[t]] : [order[t], order[s]]);
-  pairs.sort((u, v) => u[0] - v[0] || u[1] - v[1]);
-  for (const [p, q] of pairs) {
+  const ags = w.agents, n = ags.length, W = w.w, H = w.h;
+  let b = SEP.get(w);
+  if (!b || b.head.length !== W * H) SEP.set(w, b = {head: new Int32Array(W * H).fill(-1), next: new Int32Array(64), cell: new Int32Array(64), pairs: new Float64Array(256)});
+  if (b.next.length < n) { b.next = new Int32Array(n * 2); b.cell = new Int32Array(n * 2); }
+  const {head, next, cell} = b;
+  for (let k = n - 1; k >= 0; k--) {   // backwards, so that each cell's list runs in list order
+    const a = ags[k], cx = Math.min(W - 1, Math.max(0, a.x | 0)), cy = Math.min(H - 1, Math.max(0, a.y | 0)), c = cy * W + cx;
+    cell[k] = c; next[k] = head[c]; head[c] = k;
+  }
+  let np = 0;
+  for (let p = 0; p < n; p++) {
+    const A = ags[p], c = cell[p], cx = c % W, cy = (c - cx) / W;
+    for (let yy = Math.max(0, cy - 1); yy <= Math.min(H - 1, cy + 1); yy++) {
+      for (let xx = Math.max(0, cx - 1); xx <= Math.min(W - 1, cx + 1); xx++) {
+        for (let q = head[yy * W + xx]; q !== -1; q = next[q]) {
+          if (q <= p) continue;
+          const B = ags[q];
+          if (Math.abs(B.x - A.x) >= 0.4 || Math.abs(B.y - A.y) >= 1) continue;
+          if (np === b.pairs.length) { const g = new Float64Array(np * 2); g.set(b.pairs); b.pairs = g; }
+          b.pairs[np++] = p * n + q;
+        }
+      }
+    }
+  }
+  for (let k = 0; k < n; k++) head[cell[k]] = -1;   // clear only what was used
+  const pairs = b.pairs.subarray(0, np).sort();
+  const ok = (x, y) => inMap(w, x, y) && walkable(w, (y | 0) * w.w + (x | 0));
+  for (let k = 0; k < np; k++) {
+    const p = Math.floor(pairs[k] / n), q = pairs[k] - p * n;
     const A = ags[p], B = ags[q], dx = B.x - A.x, dy = B.y - A.y, d2 = dx * dx + dy * dy;
     if (d2 >= 0.16 || d2 < 1e-6) continue;
     const d = Math.sqrt(d2), push = (0.4 - d) * 0.25, ux = dx / d * push, uy = dy / d * push;
     // x >= 0 first: (−0.03 | 0) is 0, and a creature was pushed just off the map's top edge
-    const ok = (x, y) => inMap(w, x, y) && walkable(w, (y | 0) * w.w + (x | 0));
     if (ok(A.x - ux, A.y - uy)) { A.x -= ux; A.y -= uy; }
     if (ok(B.x + ux, B.y + uy)) { B.x += ux; B.y += uy; }
   }

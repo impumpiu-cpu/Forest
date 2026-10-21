@@ -27,6 +27,8 @@ import {tempAt} from '../../world/heat.js';
 const SCENT = 70;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 import {nearAgents} from '../spatial.js';
+import {liveById, packMembers, noteAttacker} from '../lookup.js';
+import {stragglerOf} from '../wildHerd.js';
 
 function nearest(w, a, species, r, filter = () => true) {
   let best = null, bd = r;
@@ -39,7 +41,7 @@ function nearest(w, a, species, r, filter = () => true) {
 
 // how many others of the victim's kind stand close to it
 const company = (w, v, r) => nearAgents(w, v.x, v.y, r).filter(o => o !== v && !o.dead && (o.species === v.species || (!!SPECIES.get(o.species).rel && !!SPECIES.get(v.species).rel)) && dist(o, v) < r).length;
-const packOf = (w, a) => w.agents.filter(o => !o.dead && o.pack === a.pack);
+const packOf = (w, a) => packMembers(w, a.pack);
 // big game (a mule) is prey only once it is badly hurt
 const weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < maxHp(o) * P.weakBelow;
 const preyKinds = P => [...P.prey, ...(P.weakPrey || [])];
@@ -53,7 +55,8 @@ export function preyValue(w, a, P, o, packSize) {
   const perHead = (big ? P.bigMeal : P.meal) / Math.max(1, packSize);
   const mine = SPECIES.get(a.species).speed * P.sprint * (0.5 + 0.5 * a.stamina);
   const theirs = ps.speed * (ps.flee?.sprint || 1);
-  const caught = big ? 1 : clamp(mine / (theirs || 0.1) * 0.8, 0.15, 1);
+  // a straggler — a herd beast far from its herd, or hurt and lagging — is easier to catch (agents/wildHerd.js)
+  const caught = big ? 1 : clamp(mine / (theirs || 0.1) * 0.8 * (stragglerOf(w, o) ? 1.4 : 1), 0.15, 1);
   const way = 1 - 0.5 * clamp(dist(a, o) / P.sight, 0, 1);
   const risk = big ? 0.3 * (o.hp / maxHp(o)) : 0;
   return perHead * caught * way - risk;
@@ -81,7 +84,7 @@ function startMaul(w, a, v, b) {
   for (const m of packOf(w, a)) m.calmUntil = w.tick + P.calm * (1 - 0.5 * b);   // one try at a time
   const join = packOf(w, a).filter(m => (m === a || dist(m, a) < 12) && m.task?.id !== 'feed');
   const h = startHunt(w, join, v, 'person');
-  for (const m of join) m.task = {id: 'maul', target: v, hunt: h.id};
+  for (const m of join) { m.task = {id: 'maul', target: v, hunt: h.id}; noteAttacker(w, m); }
   w.stats.wolfAttacks++;
   const sp = SPECIES.get(a.species), many = packOf(w, a).length > 1, who = many ? sp.plural : sp.label;
   think(w, v, 'wolfAttack', {who: sp.plural});
@@ -242,7 +245,7 @@ export const predatorBrain = {
     // the trail is picked again now and then, and one that leads nowhere is dropped for a while
     const r = a.task;
     if (food < P.hungry) {
-      let s = r.scent != null ? w.agents.find(o => o.id === r.scent && !o.dead && !o.tame) : null;
+      let s = [liveById(w, r.scent)].find(o => o && !o.tame) || null;
       if (!s || w.tick - (r.scentAt || 0) > 120) {
         s = nearest(w, a, P.prey, SCENT, o => !agentInZone(w, o) && !(a.ignore?.get(o.id) > w.tick));
         r.scent = s?.id ?? null; r.scentAt = w.tick;

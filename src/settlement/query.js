@@ -5,6 +5,7 @@ import {HOUR} from '../core/time.js';
 import {SPECIES} from '../data/species.js';
 import {exposedOre} from '../world/ores.js';
 import {ORE_BY_CODE} from '../data/ores.js';
+import {ofSpeciesList} from '../agents/lookup.js';
 
 export const count = (w, key, any = false) => w.buildings.reduce((n, b) => n + (b.key === key && (any || b.done) ? 1 : 0), 0);
 export const has = (w, key) => w.buildings.some(b => b.key === key && b.done);
@@ -13,7 +14,7 @@ export const buildingById = (w, id) => w.buildings.find(b => b.id === id);
 
 // asked many times a tick by brains, panels and buildings: the list is made once per tick
 export const colonists = w => perTick(w, 'colonists', () => w.agents.filter(a => a.faction === 'colony'));
-export const ofSpecies = (w, id) => w.agents.filter(a => a.species === id);
+export const ofSpecies = (w, id) => ofSpeciesList(w, [id]);
 
 const FOOD = () => RESOURCES.filter(r => r.tags.includes('food'));
 export const foodTotal = w => FOOD().reduce((s, r) => s + (w.stock[r.id] || 0), 0);
@@ -46,6 +47,9 @@ export const raidAlarm = w => perTick(w, 'raidAlarm', () => {
   const camp = w.nav.get('camp'), reach = ALARM_HOURS * HOUR * 0.8;   // 0.8: woods and detours slow the march
   return w.agents.some(o => {
     if (o.faction !== 'raiders' || o.dead) return false;
+    // a squad falling back or leaving with its loot is no alarm any more (agents/squad.js state); who
+    // still carries our goods off is a chase on the colony's board (settlement/board.js)
+    if (o.squad != null && w.squads?.[o.squad] && w.squads[o.squad].state !== 'march') return false;
     const pace = SPECIES.get(o.species).speed * (o.mods?.speed ?? 1);
     return camp[clampCell(w, o)] <= pace * reach;
   });

@@ -12,7 +12,7 @@ import {nightness} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
-import {eatMeal, plunder, campFuel} from '../settlement/stock.js';
+import {eatMeal, plunder, lootTotal, campFuel} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
@@ -26,6 +26,9 @@ import {enterEscort, escortGoing, guardStep, giveAid, askForBed, bond, TOGETHER}
 import {agentInZone} from '../settlement/zone.js';
 import {heatTo, coolTo, tempAt} from '../world/heat.js';
 import {WARM_AT} from '../data/navmaps.js';
+import {liveById} from './lookup.js';
+import {flagLead, raidOnBoard} from '../settlement/board.js';
+import {wake} from './attention.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -138,6 +141,17 @@ TASKS.registerAll([
     else attack(w, a, t);
   }},
 
+  // answering a cry (settlement/board.js): run to where the threat was seen; once a foe of it is in
+  // sight, fight it. Gone from the board — done; nobody there — the cry was in vain
+  {id: 'answer', label: () => 'спешит на крик', step(w, a, task) {
+    const lead = flagLead(w, a, task.flag);
+    if (!lead) { done(w, a); return; }
+    if (lead.target) { a.task = {id: 'fight', target: lead.target, flag: task.flag}; return; }
+    const r = approach(w, a, lead.at.x, lead.at.y, 1.1);
+    if (r === null) fail(w, a, 'к месту тревоги не пройти', 'impossible');
+    else if (r === true) fail(w, a, 'на месте никого');
+  }},
+
   // going along with someone in the woods (settlement/together.js): keep close, take on what comes
   {id: 'company', label: t => (t.home ? 'ведёт раненого к своим' : 'сопровождает в лесу'), enter: enterEscort, step(w, a, task) {
     const b = escortGoing(w, a, task);
@@ -147,7 +161,7 @@ TASKS.registerAll([
   // a wounded colonist out in the woods: go, dress the wounds, see them home. One who fell senseless
   // (agents/wounds.js) is helped anywhere, inside the camp too: dressing the wound in time saves a life
   {id: 'aid', label: t => (t.fallen ? 'спешит к упавшему' : 'спешит на помощь раненому'), step(w, a, task) {
-    const b = w.agents.find(o => o.id === task.who && !o.dead);
+    const b = liveById(w, task.who);
     if (!b || (agentInZone(w, b) && !b.downed)) { done(w, a); return; }
     if (guardStep(w, a, b, task) === 'fight') return;
     if (Math.hypot(b.x - a.x, b.y - a.y) > 1.4) { if (approach(w, a, b.x, b.y, 1.2) === null) fail(w, a, 'к раненому не подойти', 'impossible'); return; }
@@ -174,7 +188,7 @@ TASKS.registerAll([
 
   // a moment's thought between two jobs: stands, then takes up what it had settled on
   {id: 'ponder', label: () => 'прикидывает, за что взяться', step(w, a, task) {
-    if (w.tick >= task.until) { a.task = task.next; a.think = 0; }
+    if (w.tick >= task.until) { a.task = task.next; wake(a, 'обдумал, за что взяться', 'обдумал'); }
   }},
   {id: 'idle', label: () => 'отдыхает', step(w, a, task) {
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 2.5);
@@ -201,11 +215,16 @@ TASKS.registerAll([
   // raiders
   {id: 'assault', label: () => 'идёт к складу', step(w, a) {
     if (follow(w, a, 'camp') !== 'arrived') return;
-    const took = plunder(w);
+    const got = plunder(w), took = lootTotal(got);
     if (took > 0.5 && w.tick - w.stats.lastSteal > 40) log(w, 'Налётчики грабят склад.', 'danger');
+    if (took > 0) a.loot = got;   // carried off on its back: whoever brings it down takes it back
     w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
   }},
-  {id: 'leave', label: () => 'уходит', step(w, a) { if (follow(w, a, 'edge') === 'arrived') { a.gone = true; noteHome(w, a); } }},
+  {id: 'leave', label: () => 'уходит', step(w, a) {
+    if (follow(w, a, 'edge') !== 'arrived') return;
+    a.gone = true; noteHome(w, a);
+    if (a.loot) { const b = w.behave?.board; if (b) b.lootLost = (b.lootLost || 0) + lootTotal(a.loot); a.loot = null; }   // gone for good
+  }},
   // a torch-bearer of a band that came to burn (agents/squad.js): to the camp, then to the building, and
   // a fire under its wall
   {id: 'torch', label: () => 'несёт факел', step(w, a, task) {
@@ -232,15 +251,29 @@ TASKS.registerAll([
   }},
   // the mindless dead: shamble to the camp and wander there until something living comes close
   {id: 'haunt', label: () => 'бредёт к лагерю', step(w, a, task) {
-    if (!w.agents.some(o => o.faction === 'colony' && !o.dead)) { a.task = {id: 'leave'}; return; }
+    if (!w.agents.some(o => o.faction === 'colony' && !o.dead)) { a.task = {id: 'leave'}; return; }   // scan: leavers only: the colony has fallen
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 3);
   }},
 
   // gather by the fire when raiders come; done as soon as the alarm is over
   {id: 'muster', label: () => 'собирается по тревоге', step(w, a, task) {
-    if (!raidAlarm(w)) { done(w, a); return; }
+    if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
     think(w, a, 'raidAlarm');
     if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+  }},
+
+  // a red alarm in sight that one does not go to fight (settlement/board.js): stand at the fire with the
+  // others, out of harm's way, while the raid lasts. Not held on to (colonist.js gives it no keep), so
+  // at every think it is weighed afresh against going to the fight
+  {id: 'reserve', label: () => 'держится у огня', step(w, a, task) {
+    if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
+    if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
+  }},
+
+  // the night watch (settlement/board.js): by the fire all night, looking round for everyone; done at dawn
+  {id: 'watch', label: () => 'дежурит у огня', step(w, a, task) {
+    if (task.over) { done(w, a); return; }
+    if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
   }},
 
   // run for the settlement zone when something is hunting you
@@ -253,7 +286,7 @@ TASKS.registerAll([
     if (!has(w, 'healerhut')) { fail(w, a, 'хижины лекаря нет'); return; }
     const max = maxHp(a);
     if (a.hp >= max * HEAL.until) {
-      const healer = task.healer != null ? w.agents.find(o => o.id === task.healer && !o.dead) : null;
+      const healer = liveById(w, task.healer);
       if (healer) { think(w, a, 'treated', {name: healer.name}); think(w, healer, 'healedSomeone', {name: a.name}); }
       done(w, a); return;
     }
@@ -301,6 +334,8 @@ TASKS.registerAll([
   {id: 'nibble', label: () => 'грызёт припасы', step() {}},
   {id: 'rest', label: () => 'дремлет', step() {}},
   {id: 'bolt', label: () => 'убегает', step() {}},
+  {id: 'alert', label: () => 'насторожился', step() {}},
+  {id: 'drawOff', label: () => 'отходит от опасности', step() {}},
   {id: 'roam', label: () => 'рыщет', step() {}},
   {id: 'chase', label: () => 'гонит добычу', step() {}},
   {id: 'maul', label: t => (t.mule ? (t.charging ? 'несётся на обидчика' : 'лягается') : 'нападает'), step() {}},
@@ -320,7 +355,7 @@ TASKS.registerAll([
   }},
   // the rusalka's song: the colonist walks to the water; someone close by breaks the spell (spirit.js)
   {id: 'lured', label: () => 'идёт на голос у воды', step(w, a, task) {
-    const s = w.agents.find(o => o.id === task.by && !o.dead);
+    const s = liveById(w, task.by);
     if (!s || w.tick >= task.until) { done(w, a); return; }
     if (Math.hypot(s.x - a.x, s.y - a.y) > 0.8) approach(w, a, s.x, s.y, 0.7);
   }},

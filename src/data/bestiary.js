@@ -74,6 +74,7 @@ export const BESTIARY = [
     look: {shape: 'deer', size: 0.84, color: '#5e4630'},
     yields: {meat: 12, hide: 3, bone: 3},
     killMessage: name => `Лось затоптал поселенца: <b>${name}</b>.`,
+    herd: {cap: 4, alert: 6},   // a small herd; a bold bull stands up for the others (agents/brains/mule.js)
     mule: stands({terrain: ['grass', 'forest'], leaveChance: 0.0003})}),
 
   // Hyenas: scavengers of the barrow steppe, packs, bold by night; gnolls keep them

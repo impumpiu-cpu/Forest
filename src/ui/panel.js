@@ -58,6 +58,7 @@ import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidStrength, colonyStrength} from '../settlement/threat.js';
+import {boardSummary, watchSummary} from '../settlement/board.js';
 import {strengthOf} from '../agents/strength.js';
 import {tempAt} from '../world/heat.js';
 import {DAY, HOUR} from '../core/time.js';
@@ -67,7 +68,9 @@ import {neighbours} from '../outside/index.js';
 import {raidOdds} from '../outside/scripted.js';
 import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
 import {statusOf} from '../settlement/life.js';
+import {vacancyLines} from '../settlement/plan.js';
 import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
+import {herdOf, herdAlarm, stragglerOf} from '../agents/wildHerd.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -347,8 +350,8 @@ export class Panel {
       const need = (r, v) => v + (r === 'wood' ? fuelReserve(w) : 0);
       goal = `<div class="goal">Копим на ${d.name.toLowerCase()}: ${Object.entries(d.cost).map(([r, v]) => `<span class="cost${(w.stock[r] || 0) >= need(r, v) ? '' : ' short'}">${RESOURCES.get(r).label} ${Math.min(need(r, v), Math.floor(w.stock[r] || 0))}/${need(r, v)}${need(r, v) > v ? ` (из них ${need(r, v) - v} на костёр)` : ''}</span>`).join(' ')}</div>` + this.waitingHtml(w, d);
     }
-    // the roster (settlement/plan.js): who does what today, and why
-    const p = w.plan, roster = p?.lines?.length ? `<h4>Наряд (${p.reason})</h4><ul class="args">${p.lines.map(l => `<li>${esc(l.text)}</li>`).join('')}</ul>` : '';
+    // the vacancies (settlement/plan.js): how many hands each job wants today, who took the places
+    const lines = vacancyLines(w, true), roster = lines.length ? `<h4>Работа на сегодня (${w.plan.reason})</h4><ul class="args">${lines.map(l => `<li>${esc(l.text)}</li>`).join('')}</ul>` : '';
     this.set('council', `<div class="when">Следующий совет: ${when}</div><p class="decision">${c.decision}</p>${goal}${votes ? `<div class="votes">${votes}</div>` : ''}${args ? `<ul class="args">${args}</ul>` : ''}${roster}`);
   }
 
@@ -403,7 +406,7 @@ export class Panel {
   renderPeople(w, selected) {
     const col = colonists(w);
     const needs = SPECIES.get('human').needs.map(id => NEEDS.get(id));
-    this.set('people', (col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
+    this.set('people', this.alarmHtml(w) + (col.map(a => `<div class="person${a === selected ? ' sel' : ''}" data-id="${a.id}">
       <span class="nm">${esc(a.name)} <i class="race">${raceOf(a)}</i></span><span class="task">${taskLabel(a)}${a.carry?.n ? ` · несёт ${a.carry.n}` : ''}</span><span class="likes">${traitsText(a)}</span><span class="gear">${gearText(a)}</span>
       <div class="bars" title="${needs.map(n => n.label).join(' · ')} · здоровье">${needs.map(n => bar(a.needs[n.id], n.color)).join('')}${bar(hpShare(a), 'var(--good)')}</div></div>`).join('')
       || '<div class="task">Колония погибла. Откройте «Меню мира», чтобы начать заново.</div>') + this.herdHtml(w) + this.lifeHtml(w, col));
@@ -414,6 +417,15 @@ export class Panel {
     if (!list.length && !has(w, 'pen')) return '';
     const rows = list.map(a => `<div class="person beast" data-id="${a.id}"><span class="nm">${esc(a.name)}</span><span class="task">${SPECIES.get(a.species).label} · ${taskLabel(a)}</span><span class="likes">${beastText(w, a)}</span></div>`).join('');
     return `<h3 class="psec">Скот · ${list.length}${has(w, 'pen') ? ` · мест ${penRoom(w)} из ${penSpace(w)}` : ''} · сена ${Math.floor(w.stock.hay || 0)}</h3>${rows || '<p class="muted pc-small">Загон пуст: скотник ждёт диких коз и мулов.</p>'}`;
+  }
+
+  // the colony's board (settlement/board.js): the threats it knows of, who cried out, who is answering
+  alarmHtml(w) {
+    const flags = boardSummary(w), watch = watchSummary(w);
+    const night = watch ? `<p class="pc-small">Ночной дозор: ${watch.by ? `<b>${esc(watch.by)}</b>${watch.slept ? ' — уснул на посту' : watch.onPost ? ' у огня' : ''}` : 'место свободно'}</p>` : '';
+    if (!flags.length) return night ? `<h3 class="psec">Ночь</h3>${night}` : '';
+    const rows = flags.map(f => `<li>${f.red ? '<span style="color:var(--raider)">●</span> ' : '<span style="color:var(--ember)">●</span> '}<b>${esc(f.label)}</b> ${esc(f.where)} · ${f.by ? `тревогу ${f.byG === 'f' ? 'подняла' : 'поднял'} ${esc(f.by)}, ` : ''}знают ${f.known} · ${f.going.length ? `идут: ${f.going.map(esc).join(', ')}` : 'никто не идёт'}${f.weight > 0.05 ? ` · нужда ${Math.round(f.weight * 100)}` : ' · покрыто'}</li>`).join('');
+    return `<h3 class="psec">Тревога · ${flags.length}</h3><ul class="pc-list">${rows}</ul>${night}`;
   }
 
   // the colony's spirits: average mood, who is in low spirits, the dead and the graves
@@ -532,6 +544,7 @@ export class Panel {
     const y = a.why, rows = [];
     const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
     if (y) {
+      if (y.woke) rows.push(`<dt>Задумался</dt><dd>${ago(y.t)}: ${esc(y.woke)}</dd>`);
       rows.push(`<dt>Выбор</dt><dd><b>${esc(y.task)}</b> (${y.score})${y.why ? ` — ${esc(y.why)}` : ''}${y.kept ? '; продолжает начатое' : ''}</dd>`);
       if (y.alt) rows.push(`<dt>Второе</dt><dd class="alt">${esc(y.alt)} (${y.altScore})${y.altWhy ? ` — ${esc(y.altWhy)}` : ''}</dd>`);
     }
@@ -544,6 +557,8 @@ export class Panel {
     const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a)).toFixed(1);
     const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
     if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+    const herd = herdOf(w, a);
+    if (herd) rows.push(`<dt>Стадо</dt><dd>${herd.n} ${herd.n > 1 ? sp.plural || sp.label : sp.label}${herdAlarm(w, herd) ? ', настороже' : ''}; ${a.nerve == null ? '' : a.nerve < 0.85 ? 'пугливый' : a.nerve > 1.15 ? 'невозмутимый' : 'спокойный'}${stragglerOf(w, a) ? ', отстаёт' : ''}</dd>`);
     const h = huntOf(w, a);
     if (h) { const prey = w.agents.find(o => o.id === h.prey); rows.push(`<dt>Охота</dt><dd>стаей на ${prey ? (SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label) : '—'}${prey?.name && prey.faction === 'colony' ? ` (${esc(prey.name)})` : ''}: ${ROLE_LABEL[h.roles[a.id]] || 'в погоне'}; ${h.members.length} в стае; ${w.tick - h.seen.t < 5 ? 'добыча на виду' : `из виду ${w.tick - h.seen.t} ${plural(w.tick - h.seen.t, 'тик', 'тика', 'тиков')}`}</dd>`); }
     if (a.task?.id === 'feed' && a.task.c != null) { const c = carcassById(w, a.task.c); if (c) rows.push(`<dt>Туша</dt><dd>${SPECIES.get(c.species).label}: осталось ${Math.round(c.food / c.food0 * 100)}%</dd>`); }

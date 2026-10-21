@@ -23,6 +23,7 @@ import {createSquad} from '../agents/squad.js';
 import {SPECIES} from './species.js';
 import {raceLabel, refreshBody} from '../agents/special.js';
 import {settlerSpecies} from '../settlement/relations.js';
+import {ofSpeciesList} from '../agents/lookup.js';
 
 export const MIGRATIONS = new Registry('migration');
 
@@ -137,7 +138,7 @@ MIGRATIONS.registerAll([
 // ── the bestiary's beasts (data/bestiary.js `arrive`): one arrival each, built from the entry.
 // Beasts that hunt people come as predators, the nechist as nechist, the rest as wild game.
 export const factionOf = sp => (sp.resident ? 'nechist' : sp.brain === 'predator' ? 'predators' : 'wild');
-const onMap = (w, id) => w.agents.filter(o => o.species === id && !o.dead && !o.tame).length;
+const onMap = (w, id) => ofSpeciesList(w, [id], o => !o.dead && !o.tame).length;
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 for (const sp of SPECIES.filter(s => s.arrive)) {

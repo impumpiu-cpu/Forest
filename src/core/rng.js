@@ -38,6 +38,7 @@ export const STREAMS = {
   social:  'отношения и склоки',
   outside: 'внешний мир: прибытия, банды, отряды, торговля',
   birth:   'рождение существ: характер, SPECIAL, вещи',
+  alarm:   'тревога: кто из спящих услышал крик',
 };
 export function newStreams(seed) {
   return Object.fromEntries(Object.keys(STREAMS).map(k => [k, mulberry(seedNumber(`${seed}/${k}`))]));

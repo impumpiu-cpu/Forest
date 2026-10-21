@@ -15,6 +15,10 @@ import {stepRelations} from './settlement/relations.js';
 import {Navigation} from './nav/navigation.js';
 import {BRAINS} from './agents/brains/index.js';
 import {separate} from './agents/movement.js';
+import {noteAttacker} from './agents/lookup.js';
+import {stepBoard} from './settlement/board.js';
+import {stepAttention} from './agents/attention.js';
+import {stepHerds} from './agents/wildHerd.js';
 import {stepSquads} from './agents/squad.js';
 import {stepHunts, stepCarcasses} from './agents/carcass.js';
 import {stepCouncil} from './settlement/council.js';
@@ -54,6 +58,9 @@ const ema = (old, v) => old * 0.95 + v * 0.05;
 
 export function step(w) {
   if (w.over) return;
+  // the tick's caches (core/util.js perTick) start empty: the panel may have filled them between two
+  // ticks from a state the tick itself then changes — a browser game must not drift from a headless one
+  w.scratch = {tick: w.tick};
   const t0 = performance.now();
   stepFields(w);
   stepWeather(w);
@@ -64,12 +71,16 @@ export function step(w) {
   stepLife(w);
   stepCrafting(w);
   stepRelations(w);
+  stepBoard(w);   // the colony's lookouts, the cry, the flags (settlement/board.js)
+  stepAttention(w);   // the colony's events that make colonists think again (agents/attention.js)
+  stepHerds(w);   // wild herds: pasture, lookouts, alarm (agents/wildHerd.js)
   const t1 = performance.now();
   w.nav.step();
   const t2 = performance.now();
   for (const a of w.agents) {
     if (!a.dead) stepEffects(w, a);
     if (!a.dead) BRAINS.get(a.brain).step(w, a);
+    noteAttacker(w, a);   // who attacks whom (agents/lookup.js) follows the step that may have changed it
     if (a.flash) a.flash--;
   }
   w.agents = w.agents.filter(a => !a.dead && !a.gone);
