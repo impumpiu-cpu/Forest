@@ -54,7 +54,7 @@ export const BOARD = {
   far: 40,           // nobody answers a flag further away than this
   // the weight of a flag (× the colonist's courage; a yellow one × its uncovered share): a raid, an
   // attack on one of ours, the nechist about, a beast about
-  urgency: {raid: 1.35, attack: 1.1, nechist: 1.1, beast: 0.9, chase: 1.0},   // chase: raiders going off with our goods
+  urgency: {raid: 1.35, attack: 1.1, nechist: 1.1, beast: 0.9, chase: 1.0, escape: 0.95},   // chase: raiders going off with our goods; escape: captives running away
   reserve: 1.05,     // a red flag in sight, not fought: keep out of harm's way (the fire, the settlement)
   wake: 0.25,        // a flag this much heavier wakes those who know it
   hurt: 0.3,         // health share at or under which one does not go to a fight
@@ -90,6 +90,7 @@ export const marching = (w, o) => { if (o.faction !== 'raiders') return false; c
 const COLONY = {faction: 'colony'};
 function isFoe(w, o) {
   if (o.dead || o.tame || o.downed || o.faction === 'colony') return false;
+  if (o.faction === 'fugitives') return true;   // a captive running away (settlement/escape.js): a yellow flag
   if (attacking(o)) return true;
   if (o.faction === 'raiders') return marching(w, o) || !!o.loot;
   return isHostile(COLONY, o) || o.faction === 'predators';
@@ -102,8 +103,8 @@ const urgencyOf = (w, f, ms) => (isRaid(w, f, ms) ? BOARD.urgency.raid : ms.some
   : f.kind === 'raid' ? BOARD.urgency.chase : BOARD.urgency[f.kind] ?? BOARD.urgency.beast);
 // which flag a foe belongs to: its raiding squad (agents/squad.js; one raid, not the band's kind), its
 // pack, or itself
-const keyOf = o => (o.squad != null ? 'squad:' + o.squad : o.pack != null ? 'pack:' + o.pack : 'one:' + o.id);
-const kindOf = o => (o.faction === 'raiders' ? 'raid' : o.faction === 'nechist' ? 'nechist' : 'beast');
+const keyOf = o => (o.faction === 'fugitives' ? 'escape' : o.squad != null ? 'squad:' + o.squad : o.pack != null ? 'pack:' + o.pack : 'one:' + o.id);
+const kindOf = o => (o.faction === 'raiders' ? 'raid' : o.faction === 'fugitives' ? 'escape' : o.faction === 'nechist' ? 'nechist' : 'beast');
 
 // where a point lies from the camp, in words
 const SIDES = ['к востоку', 'к юго-востоку', 'к югу', 'к юго-западу', 'к западу', 'к северо-западу', 'к северу', 'к северо-востоку'];
@@ -119,6 +120,7 @@ function flagLabel(w, f) {
   if (!ms.length) return f.label || 'враг';
   const sp = SPECIES.get(ms[0].species);
   if (f.kind === 'raid') return ms.some(o => marching(w, o)) ? `налётчики (${ms.length})` : `уходят с добычей (${ms.length})`;
+  if (f.kind === 'escape') return ms.length > 1 ? `беглецы (${ms.length})` : 'беглый пленный';
   return ms.length > 1 ? `${sp.plural || sp.label} (${ms.length})` : sp.label;
 }
 
@@ -252,7 +254,7 @@ function closeFlag(w, B, f) {
   const who = Object.keys(f.answered).map(id => liveById(w, +id)).filter(Boolean);
   const b = w.behave?.board;
   if (b) { b.closed++; b.responders += who.length; if (!who.length) b.unanswered++; }
-  if (f.kind === 'raid' || !who.length) return;
+  if (f.kind === 'raid' || f.kind === 'escape' || !who.length) return;   // (a chase after runaways tells its own end: settlement/escape.js)
   const names = who.map(c => `<b>${esc(c.name)}</b>`);
   const list = names.length > 1 ? names.slice(0, -1).join(', ') + ' и ' + names.at(-1) : names[0];
   const killed = Object.keys(f.killed).length > 0 && f.members.every(id => f.killed[id] || !liveById(w, id));

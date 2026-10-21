@@ -9,7 +9,7 @@
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4; T134–T137 the trade in captives, stage 5). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -60,7 +60,7 @@ import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../
 import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
 import {heatTo} from '../src/world/heat.js';
-import {makePlan, vacancyPull, signUp} from '../src/settlement/plan.js';
+import {makePlan, vacancyPull, signUp, PLAN} from '../src/settlement/plan.js';
 import {stepAttention, HEART} from '../src/agents/attention.js';
 import {stepHerds, herdOf, herdAlarm, HERD} from '../src/agents/wildHerd.js';
 import {preyValue} from '../src/agents/brains/predator.js';
@@ -72,6 +72,15 @@ import {bindOption, captiveAllows, captives, canBind} from '../src/settlement/ca
 import {CAPTIVE} from '../src/data/captives.js';
 import {councilDue} from '../src/settlement/council.js';
 import {agentInZone} from '../src/settlement/zone.js';
+import {stepEscape, startEscape, toolsAway} from '../src/settlement/escape.js';
+import {ESCAPE, BONDS, bestBonds} from '../src/data/captives.js';
+import {stepMasters, assistOption, apprenticeBonus, placeOf, masterOf} from '../src/settlement/masters.js';
+import {MASTER} from '../src/data/masters.js';
+import {stepFreedom, formerAllows, freeCaptive} from '../src/settlement/freedom.js';
+import {FREEDOM} from '../src/data/captives.js';
+import {captivePrice, lawOf, SLAVE} from '../src/data/slavery.js';
+import {sellCaptives, buyCaptive, forSale} from '../src/settlement/slavery.js';
+import {tradeCaptives} from '../src/campaign/slavery.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -1598,11 +1607,12 @@ check('T111', 'связанный жив и перевязан, пленный �
 });
 
 // a captive by the fire: a raider taken the way the game takes it
-function captive(w) {
+function captive(w, healed = false) {
   const c = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 1.5);
   const [r] = fallenRaider(w, w.camp.x + 1.5, w.camp.y + 1.5);
   w.stock.rope = 2; c.task = {id: 'bind', who: r.id}; bindAll(w, c);
   c.task = null;
+  if (healed) r.hp = maxHp(r);   // the wound of the fall healed: fit to work
   return [r, c];
 }
 
@@ -1657,6 +1667,348 @@ check('T115', 'пленный сохраняется и после загруз�
   if (!q?.captive || q.faction !== 'colony' || q.captive.bonds !== p.captive.bonds) return 'статус пленного не сохранился';
   for (let k = 0; k < 120; k++) step(c);
   return (!q.dead && q.captive && agentInZone(c, q)) || `после загрузки пленный ${q.dead ? 'умер' : agentInZone(c, q) ? '?' : 'ушёл за периметр'}`;
+});
+
+
+// ── stage 2: the will to run (settlement/escape.js)
+// the evening council of a given day is over: the escape rolls are due
+const councilOver = w => { w.tick = Math.floor(w.tick / DAY) * DAY + 21 * HOUR + 20; w.council.lastDay = Math.floor(w.tick / DAY); };
+const rngAt = (w, v) => { w.rngs.colony = Object.assign(() => v, {state: 0}); };
+
+check('T116', 'путы держат по материалу: мифрил лучше стали, сталь — железа, железо — бронзы, бронза — верёвки; вяжут лучшими', () => {
+  const order = ['mithril', 'steel', 'iron', 'bronze', 'rope'].map(id => BONDS.get(id).hold);
+  if (order.some((v, k) => k && v <= order[k - 1])) return `держат: ${order}`;
+  if (bestBonds({rope: 4, shacklesSteel: 1})?.id !== 'steel') return 'со сталью и верёвкой вяжут не сталью';
+  return bestBonds({rope: 1}) === null || 'одной верёвки хватило на пленного';
+});
+
+check('T117', 'совет: захотевший бежать начинает сговор, ночью бегут все несмирившиеся; смирившийся не бежит', () => {
+  const w = scene(); fixedRng(w);
+  const [p1, c] = captive(w);
+  const [r2] = fallenRaider(w, w.camp.x + 2.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r2.id}; bindAll(w, c);
+  const [r3] = fallenRaider(w, w.camp.x - 1.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r3.id}; bindAll(w, c);
+  r3.captive.resigned = w.tick;
+  p1.captive.will = 1; r2.captive.will = 0.3;
+  w.stock.berries = 200;   // plenty of food: no cut ration
+  councilOver(w); rngAt(w, 0.1); r3.captive.service = 0;
+  // the resigned one does not tell (a roll above the informer's chance)
+  const keep = w.rngs.colony; let k = 0; w.rngs.colony = Object.assign(() => (k++ < 2 ? 0.05 : 0.99), {state: 0});
+  stepEscape(w);
+  const plot = w.escape?.plot;
+  if (!plot) return 'сговора нет';
+  if (!plot.ids.includes(p1.id) || !plot.ids.includes(r2.id) || plot.ids.includes(r3.id)) return `в сговоре ${plot.ids}`;
+  // the night after: they run
+  w.tick = (Math.floor(w.tick / DAY) + 1) * DAY + 1.2 * HOUR; w.rngs.colony = keep;
+  stepEscape(w);
+  if (p1.faction !== 'fugitives' || r2.faction !== 'fugitives') return `бегут не все: ${p1.faction}, ${r2.faction}`;
+  return r3.faction === 'colony' && !r3.fugitive || 'смирившийся бежит';
+});
+
+check('T118', 'донос: смирившийся выдаёт сговор — побега нет, зачинщику воля, доносчику очки службы', () => {
+  const w = scene(); fixedRng(w);
+  const [p1, c] = captive(w);
+  const [r2] = fallenRaider(w, w.camp.x + 2.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r2.id}; bindAll(w, c);
+  r2.captive.resigned = w.tick; p1.captive.will = 0.7; w.stock.berries = 200;
+  councilOver(w); rngAt(w, 0.01);
+  stepEscape(w);
+  if (w.escape.plot) return 'сговор состоялся при доносе';
+  if (!(p1.captive.will > 0.7)) return `воля зачинщика ${p1.captive.will}`;
+  return (r2.captive.service || 0) > 0 || 'доносчику не засчитано';
+});
+
+check('T119', 'беглец бежит к краю медленнее в кандалах, чем в верёвке; добежал — ушёл', () => {
+  const pace = bonds => {
+    const w = scene(); fixedRng(w);
+    const [p] = captive(w); p.captive.bonds = bonds;
+    startEscape(w, p, 'plot');
+    const x0 = p.x, y0 = p.y;
+    for (let k = 0; k < 40; k++) { w.tick++; BRAINS.get(p.brain).step(w, p); }
+    return Math.hypot(p.x - x0, p.y - y0);
+  };
+  const rope = pace('rope'), iron = pace('iron');
+  if (!(rope > iron * 1.1)) return `в верёвке ${rope.toFixed(1)}, в кандалах ${iron.toFixed(1)} клеток`;
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w);
+  startEscape(w, p, 'plot');
+  for (let k = 0; k < 4000 && !p.gone; k++) { w.tick++; BRAINS.get(p.brain).step(w, p); }
+  return (p.gone && (w.chronicle.captives.escaped || 0) === 1) || 'беглец не ушёл за край';
+});
+
+check('T120', 'беглеца видят, на доске жёлтый флаг; кто догнал — хватает, и он снова в путах и злее', () => {
+  const w = scene(); fixedRng(w);
+  const [p, c] = captive(w);
+  p.captive.will = 0.5;
+  startEscape(w, p, 'plot');
+  c.x = p.x + 3; c.y = p.y; c.mods.bravery = 1.5;
+  lookRound(w);
+  const f = flagOf(w);
+  if (!f || f.kind !== 'escape' || f.red) return `флаг: ${f?.kind}, красный ${f?.red}`;
+  c.think = 0; brain(w, c);
+  if (!['answer', 'fight'].includes(c.task?.id)) return `за беглецом не пошли: ${c.task?.id}`;
+  for (let k = 0; k < 200 && p.faction === 'fugitives'; k++) { w.tick++; brain(w, c); if (p.faction === 'fugitives') BRAINS.get(p.brain).step(w, p); }
+  if (p.faction !== 'colony' || !p.captive || p.fugitive) return `беглец не пойман: ${p.faction}`;
+  return p.captive.will > 0.5 || `воля пойманного ${p.captive.will}`;
+});
+
+check('T121', 'красная тревога: пленный бросает на побег один раз за тревогу, свои в налёте — охотнее', () => {
+  const runs = kin => {
+    let n = 0;
+    for (let s = 0; s < 40; s++) {
+      const w = scene('kin' + s);
+      const [p] = captive(w); p.captive.will = 1;
+      const [g] = band(w, 3, w.camp.x + 12.5, w.camp.y + 0.5);
+      if (!kin) for (const o of g) o.species = 'orc';
+      for (let k = 0; k < 3; k++) { w.tick++; stepEscape(w); }
+      if (p.faction === 'fugitives') n++;
+    }
+    return n;
+  };
+  const kin = runs(true), other = runs(false);
+  return kin > other || `бежали при своих ${kin}, при чужих ${other} из 40`;
+});
+
+check('T122', 'на ночь пленный сдаёт инструмент на склад и до рассвета его не берёт; утром берёт снова', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w);
+  w.armory = [newItem('ironaxe')]; w.tick = Math.floor(w.tick / DAY) * DAY + 12 * HOUR;
+  outfit(w, p);
+  if (!allItems(p).some(it => it.type === 'ironaxe')) return 'днём не взял топор';
+  w.tick = Math.floor(w.tick / DAY) * DAY + 22 * HOUR;
+  if (!toolsAway(w)) return 'ночь не ночь';
+  stepEscape(w);
+  if (allItems(p).some(it => it.type === 'ironaxe') || !w.armory.some(it => it.type === 'ironaxe')) return 'топор не сдан';
+  outfit(w, p);
+  if (allItems(p).some(it => it.type === 'ironaxe')) return 'ночью снова взял топор';
+  w.tick = (Math.floor(w.tick / DAY) + 1) * DAY + 7 * HOUR;
+  outfit(w, p);
+  return allItems(p).some(it => it.type === 'ironaxe') || 'утром топор не взял';
+});
+
+check('T123', 'паёк: мало еды — совет урезает паёк пленным; едят меньше, работают медленнее, воля растёт к утру', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w);
+  for (const r of RESOURCES.filter(r => r.tags.includes('food'))) w.stock[r.id] = 0;
+  const hunger = p.mods.hunger, work = p.mods.work, will = p.captive.will ?? ESCAPE.will.start;
+  councilOver(w); rngAt(w, 0.99);
+  stepEscape(w);
+  if (!w.escape.cut || !p.captive.cut) return 'паёк не урезан';
+  if (!(p.mods.hunger < hunger) || !(p.mods.work < work)) return `голод ${hunger}→${p.mods.hunger}, работа ${work}→${p.mods.work}`;
+  w.tick = (Math.floor(w.tick / DAY) + 1) * DAY + 6.5 * HOUR; p.needs.food = 0.7;
+  stepEscape(w);
+  if (!(p.captive.will > will)) return `воля ${will} → ${p.captive.will}`;
+  w.stock.berries = 200; councilOver(w); stepEscape(w);
+  return (!p.captive.cut && Math.abs(p.mods.hunger - hunger) < 1e-9) || 'полный паёк не вернули';
+});
+
+
+// ── stage 3: masters and their learners (settlement/masters.js)
+const crafter = (w, x, y, skill, v) => { const a = put(w, 'human', 'colony', x, y); a.skill[skill] = v; return a; };
+// a master at the forge: on its job, with the work just read
+const atForge = (w, m) => { m.task = {id: 'job', job: 'smith'}; m.master.workedAt = w.tick; };
+
+check('T124', 'совет нарекает мастера: лучший свободный с навыком от порога, по одному на ремесло; пленного и слабого — нет', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w); p.skill.smithing = 0.9;
+  const a = crafter(w, 30.5, 30.5, 'smithing', 0.6), b = crafter(w, 31.5, 30.5, 'smithing', 0.5), c = crafter(w, 32.5, 30.5, 'fishing', MASTER.min - 0.05);
+  councilOver(w); stepMasters(w);
+  if (p.master) return 'пленный назван мастером';
+  if (a.master?.skill !== 'smithing' || b.master) return `мастер-кузнец: ${a.master?.skill}, второй ${b.master?.skill}`;
+  if (c.master) return 'назван мастером ниже порога';
+  councilOver(w); w.tick += DAY; w.council.lastDay = Math.floor(w.tick / DAY); stepMasters(w);
+  return (!b.master && masterOf(w, 'smithing') === a) || 'второй кузнец при живом мастере';
+});
+
+check('T125', 'ученик мастера: свободный идёт к мастеру за работой, мест два, третьему нет', () => {
+  const w = scene(); fixedRng(w);
+  const m = crafter(w, 30.5, 30.5, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0}; atForge(w, m);
+  const ls = [0, 1, 2].map(k => crafter(w, 33.5 + k, 30.5, 'smithing', 0.1));
+  if (assistOption(w, m)) return 'мастер — ученик самому себе';
+  const o = assistOption(w, ls[0]);
+  if (o?.[0].id !== 'assist' || o[0].master !== m.id) return 'к мастеру за работой не идут';
+  ls[0].task = o[0]; ls[1].task = {...assistOption(w, ls[1])[0]}; w.tick++;
+  if (assistOption(w, ls[2])) return 'третий взял место при двух занятых';
+  m.task = {id: 'idle'}; w.tick++;
+  return !assistOption(w, crafter(w, 40.5, 30.5, 'smithing', 0.1)) || 'идут к мастеру, который не работает';
+});
+
+check('T126', 'свои ученики прежде пленных: свободный занимает место пленного, тот остаётся без места', () => {
+  const w = scene(); fixedRng(w);
+  const m = crafter(w, w.camp.x + 0.5, w.camp.y + 0.5, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0}; atForge(w, m);
+  const [p1, c] = captive(w, true);
+  const [r2] = fallenRaider(w, w.camp.x + 2.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r2.id}; bindAll(w, c); r2.hp = maxHp(r2);
+  atForge(w, m);
+  p1.task = assistOption(w, p1)?.[0]; w.tick++; atForge(w, m);
+  r2.task = assistOption(w, r2)?.[0]; w.tick++; atForge(w, m);
+  if (p1.task?.id !== 'assist' || r2.task?.id !== 'assist') return `пленные не взяли места: ${p1.task?.id}, ${r2.task?.id}`;
+  const f = crafter(w, w.camp.x + 1.5, w.camp.y + 0.5, 'smithing', 0.1);
+  const o = assistOption(w, f);
+  if (!o) return 'свободному не нашлось места при двух пленных';
+  f.task = o[0]; w.tick++;
+  if (placeOf(w, f) !== 0) return `свободный не первый: место ${placeOf(w, f)}`;
+  return [p1, r2].some(x => placeOf(w, x) === -1) || 'оба пленных при местах сверх мест';
+});
+
+check('T127', 'при учениках мастер работает быстрее; ученик учится, только пока мастер работает рядом', () => {
+  const w = scene(); fixedRng(w);
+  const m = crafter(w, 30.5, 30.5, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0}; atForge(w, m);
+  const solo = workRate(w, m, 'smith');
+  const l1 = crafter(w, 31.5, 30.5, 'smithing', 0.1), l2 = crafter(w, 30.5, 31.5, 'smithing', 0.1);
+  l1.task = assistOption(w, l1)[0]; w.tick++; l2.task = assistOption(w, l2)[0]; w.tick++;
+  const both = workRate(w, m, 'smith'), k = both / solo;
+  if (Math.abs(k - (1 + MASTER.bonus[0] + MASTER.bonus[1])) > 1e-6) return `с двумя учениками ×${k.toFixed(3)}`;
+  if (apprenticeBonus(w, m, 'chop')) return 'ученики ускоряют чужое ремесло';
+  const s0 = l1.skill.smithing;
+  m.master.workedAt = w.tick; stepMasters(w);
+  if (!(l1.skill.smithing > s0)) return 'ученик не учится, пока мастер работает';
+  const s1 = l1.skill.smithing; w.tick += 5; stepMasters(w);
+  if (l1.skill.smithing !== s1) return 'ученик учится, пока мастер не работает';
+  l2.x = 40.5; m.master.workedAt = w.tick; const s2 = l2.skill.smithing; stepMasters(w);
+  return l2.skill.smithing === s2 || 'ученик учится вдали от мастера';
+});
+
+check('T128', 'пленный учится только при мастере, что работает в лагере, и только когда своя вакансия не тянет сильнее', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w, true);
+  const wood = crafter(w, w.camp.x + 1.5, w.camp.y + 0.5, 'woodcutting', 0.7); wood.master = {skill: 'woodcutting', since: 0}; wood.task = {id: 'job', job: 'chop'};
+  if (assistOption(w, p)) return 'пленный идёт за лесорубом в лес';
+  const sm = crafter(w, w.camp.x + 0.5, w.camp.y + 1.5, 'smithing', 0.7); sm.master = {skill: 'smithing', since: 0}; atForge(w, sm); w.tick++; atForge(w, sm);
+  const o = assistOption(w, p);
+  if (o?.[0].master !== sm.id) return 'пленный не идёт к кузнецу в лагере';
+  const free = assistOption(w, crafter(w, w.camp.x + 2.5, w.camp.y + 1.5, 'smithing', 0.1));
+  return (o[1] < free[1] && o[1] < PLAN.open[0] + PLAN.open[1]) || `вес пленного ${o[1].toFixed(2)}, свободного ${free[1].toFixed(2)}`;
+});
+
+check('T129', 'пленный при мастере за работой копит очки службы', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w, true); p.captive.service = 0;
+  const sm = crafter(w, p.x + 0.5, p.y, 'smithing', 0.7); sm.master = {skill: 'smithing', since: 0}; atForge(w, sm);
+  p.task = assistOption(w, p)[0]; w.tick++;
+  for (let k = 0; k < 600; k++) { sm.master.workedAt = w.tick; stepMasters(w); w.tick++; }
+  return p.captive.service > 0.5 || `очков службы за день работы: ${p.captive.service.toFixed(2)}`;
+});
+
+
+// ── stage 4: former slaves (settlement/freedom.js)
+// a resigned captive who served a master, the master at hand
+function served(w, service = FREEDOM.free) {
+  const [p] = captive(w, true);
+  const m = crafter(w, p.x + 1, p.y, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0};
+  p.captive.resigned = w.tick; p.captive.service = service; p.captive.teacher = m.id;
+  return [p, m];
+}
+
+check('T130', 'совет снимает путы со смирившегося, отслужившего при мастере, когда мастер ручается; кандалы — на склад', () => {
+  const w = scene(); fixedRng(w);
+  const [p, m] = served(w, FREEDOM.free - 0.5); p.captive.bonds = 'iron';
+  councilOver(w); stepFreedom(w);
+  if (!p.captive || p.former) return 'освобождён, не отслужив';
+  p.captive.service = FREEDOM.free; m.master = null;
+  councilOver(w); w.tick += DAY; w.council.lastDay = Math.floor(w.tick / DAY); stepFreedom(w);
+  if (!p.captive) return 'освобождён без мастера, который поручится';
+  m.master = {skill: 'smithing', since: 0}; w.stock.shacklesIron = 0;
+  w.tick += DAY; w.council.lastDay = Math.floor(w.tick / DAY); stepFreedom(w);
+  if (p.captive || !p.former) return 'не освобождён: отслужил, мастер есть';
+  return w.stock.shacklesIron === 1 || `кандалы на складе: ${w.stock.shacklesIron}`;
+});
+
+check('T131', 'бывший раб ходит на работы за периметром, но без оружия и доспеха, без флагов, дозора и совета', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = served(w); freeCaptive(w, p, null);
+  if (!formerAllows({id: 'job', job: 'chop'}) || !formerAllows({id: 'fight', reflex: true})) return 'бывшему рабу нельзя за лес или отбиться';
+  for (const t of [{id: 'council'}, {id: 'watch'}, {id: 'answer', flag: 'x'}, {id: 'fight', target: null}, {id: 'trade'}]) if (formerAllows(t)) return `бывшему рабу можно «${t.id}»`;
+  w.armory = [newItem('sword'), newItem('lamellar'), newItem('ironaxe')]; w.tick = Math.floor(w.tick / DAY) * DAY + 12 * HOUR;
+  outfit(w, p);
+  const has = allItems(p).map(it => it.type);
+  if (has.includes('sword') || has.includes('lamellar') || !has.includes('ironaxe')) return `бывший раб взял: ${has}`;
+  p.x = w.camp.x + 30.5; p.task = {id: 'job', job: 'chop'}; p.think = 50; brain(w, p);
+  return p.task?.id !== 'runHome' || 'бывшего раба гонят назад за периметр';
+});
+
+check('T132', 'связь бывшего раба: голод её точит, слабая — уходит на совете', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = served(w); freeCaptive(w, p, null);
+  const b0 = p.former.bond;
+  p.needs.food = 0.1; w.tick = (Math.floor(w.tick / DAY) + 1) * DAY + 6.5 * HOUR; stepFreedom(w);
+  if (!(p.former.bond < b0)) return `связь голодного ${b0} → ${p.former.bond}`;
+  p.former.bond = 0.05; rngAt(w, 0.01);
+  councilOver(w); stepFreedom(w);
+  return p.faction === 'leavers' || `со слабой связью не ушёл: ${p.faction}`;
+});
+
+check('T133', 'бывший раб, бившийся в налёте, — на совете полноправный член', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = served(w); freeCaptive(w, p, null);
+  const [g] = band(w, 2, p.x + 3, p.y);
+  p.task = {id: 'fight', target: g[0], reflex: true};
+  w.tick++; stepFreedom(w);
+  if (!p.former.fought) return 'бой в налёте не замечен';
+  for (const o of g) kill(w, o, 'ран'); w.agents = w.agents.filter(o => !o.dead);
+  councilOver(w); stepFreedom(w);
+  return (!p.former && !p.captive && p.faction === 'colony') || 'не принят в члены';
+});
+
+
+// ── stage 5: the trade in captives (data/slavery.js, settlement/slavery.js, campaign/slavery.js)
+check('T134', 'цена пленного: смирившийся дороже, буйный дешевле; здоровье, Сила и ремесло — дороже', () => {
+  const p = o => captivePrice({hp: 1, S: 5, will: 0.4, ...o});
+  if (!(p({resigned: true}) > p({}) && p({}) > p({will: 0.8}))) return `смирившийся ${p({resigned: true})}, обычный ${p({})}, буйный ${p({will: 0.8})}`;
+  if (!(p({hp: 1}) > p({hp: 0.3}))) return 'раненый не дешевле';
+  if (!(p({S: 8}) > p({S: 3}))) return 'сильный не дороже';
+  return p({skill: {smithing: 0.6}}) > p({}) || 'умелый не дороже';
+});
+
+check('T135', 'закон: у эльфов не торгуют, у гномов терпят — продажа портит отношения державы, у людей — свободно', () => {
+  if (lawOf('elves').law !== 'banned' || lawOf('dwarves').law !== 'frowned' || lawOf('humans').law !== 'legal') return 'законы не те';
+  const make = () => {
+    const m = {id: 1, name: 'Гнырк', gender: 'm', race: 'goblin', role: 'captive', alive: true, hp: 1, special: {S: 5}, gear: {hand: [], body: 'clothes'},
+      captive: {since: 0, bonds: 'rope', will: 0.9}};
+    const f = {id: 2, name: 'Любава', gender: 'f', race: 'human', role: 'former', alive: true, hp: 1, loyalty: 0.7, former: {since: 0}, gear: {hand: [], body: 'clothes'}};
+    const K = {members: [m, f], cargo: {}, food: 100, gold: 0, stats: {}, rng: {}, seed: 't', day: 10, realm: 1, beasts: [], vehicles: []};
+    const a = {hist: {year: 1}, rel: {'1:2': {att: 1}}};
+    return {K, a, m, f};
+  };
+  const e = make(); tradeCaptives(e.a, e.K, {people: 'elves', realm: 2}, 'friend');
+  if (!e.m.alive || e.K.gold) return 'у эльфов продали пленного';
+  const d = make(); tradeCaptives(d.a, d.K, {people: 'dwarves', realm: 2}, 'friend');
+  if (d.m.alive || !(d.K.gold > 0)) return 'у гномов буйного не продали';
+  if (!(d.a.rel['1:2'].att < 1)) return 'продажа у гномов не задела отношения державы';
+  if (!(d.f.loyalty < 0.7)) return 'бывший раб не огорчён продажей';
+  const h = make(); tradeCaptives(h.a, h.K, {people: 'humans', realm: 2}, 'friend');
+  return (!h.m.alive && h.a.rel['1:2'].att === 1) || 'у людей продажа задела отношения или не случилась';
+});
+
+check('T136', 'поселение продаёт торговцу буйного пленного, смирившегося — только в голод, отслужившего — никогда; остальным пленным страшнее', () => {
+  const w = scene(); fixedRng(w);
+  const [p1, c] = captive(w, true);
+  const [r2] = fallenRaider(w, w.camp.x + 2.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r2.id}; bindAll(w, c);
+  const [r3] = fallenRaider(w, w.camp.x - 1.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r3.id}; bindAll(w, c);
+  p1.captive.will = 0.9; r2.captive.will = 0.3; r2.captive.resigned = w.tick; r3.captive.will = 0.9; r3.captive.service = SLAVE.sell.service;
+  w.stock.berries = 300;
+  const sale = forSale(w);
+  if (!sale.includes(p1) || sale.includes(r2) || sale.includes(r3)) return `на продажу: ${sale.map(a => a.name)}`;
+  const car = {name: 'Гай', purse: 100}, deal = {sold: [], bought: [], earned: 0, spent: 0};
+  const will3 = r3.captive.will; r3.captive.will = 0.5;
+  sellCaptives(w, car, deal, (list, label, n, gold) => list.push([label, n, gold]));
+  if (!p1.gone || !p1.sold || !(w.stock.gold > 0) || !(car.purse < 100)) return 'буйного не продали';
+  if (!(r3.captive.will > 0.5)) return 'оставшимся пленным не страшнее';
+  for (const f of RESOURCES.filter(r => r.tags.includes('food'))) w.stock[f.id] = 0;
+  return (forSale(w).includes(r2) && !forSale(w).includes(r3)) || 'в голод смирившегося не продают или продают отслужившего';
+});
+
+check('T137', 'поселение покупает у торговца пленного, когда есть путы и золото; без пут — нет', () => {
+  const w = scene(); fixedRng(w);
+  put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  const deal = () => ({sold: [], bought: [], earned: 0, spent: 0}), note = (list, label, n, gold) => list.push([label, n, gold]);
+  let gold = 200; const cash = () => gold, spend = p => { if (gold < p) return false; gold -= p; return true; };
+  w.stock.rope = 0; w.stock.shacklesIron = 0; w.stock.shacklesBronze = 0;
+  const car = {name: 'Гай', purse: 50, captive: {race: 'orc'}};
+  buyCaptive(w, car, deal(), note, cash, spend, null);
+  if (captives(w).length || gold !== 200) return 'купили без пут';
+  w.stock.shacklesIron = 1;
+  buyCaptive(w, car, deal(), note, cash, spend, null);
+  const got = captives(w);
+  if (got.length !== 1 || got[0].species !== 'orc' || got[0].captive.bonds !== 'iron' || w.stock.shacklesIron !== 0) return `куплено: ${got.length}, путы ${got[0]?.captive?.bonds}`;
+  return (gold < 200 && !car.captive) || 'не заплатили или торговец не отдал';
 });
 
 let bad = 0;

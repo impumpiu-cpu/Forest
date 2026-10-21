@@ -180,7 +180,7 @@ function dawn(w) {
 }
 
 // someone who has had enough walks away, leaving their gear in the store
-function leave(w, a) {
+export function leave(w, a) {
   if (a.equip) { stripAll(a, w.armory); w.armoryVersion = (w.armoryVersion || 0) + 1; }
   a.faction = 'leavers'; a.brain = 'leaver'; a.task = {id: 'leave'}; a.carry = null;
   if (w.scratch) delete w.scratch.colonists;

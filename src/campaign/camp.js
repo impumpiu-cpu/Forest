@@ -71,7 +71,7 @@ export function campSetup(a, K, ev) {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
     members: alive(K).map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
-      align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null})),
+      align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind, building: v.building || null})),
     food: K.food, cargo: {...K.cargo},
@@ -120,8 +120,10 @@ export function openCamp(S) {
       for (const id of m.gear.hand) if (CAMP.tools[id]) ag.skill[CAMP.tools[id]] = Math.max(ag.skill[CAMP.tools[id]] || 0, CAMP.toolSkill);
     }
     const rec = recordOf(w, ag); if (rec) rec.name = m.name;
+    if (m.master) ag.master = {skill: m.master.skill, since: w.tick, workedAt: -1};
+    if (m.former) ag.former = {since: w.tick, bond: m.loyalty ?? 0.6, fought: false};   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
     // a captive of the caravan stays one on the map (settlement/captives.js)
-    if (m.captive) { ag.captive = {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true}; if (rec) rec.captive = true; }
+    if (m.captive) { ag.captive = {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned || null, service: m.captive.service || 0}; if (rec) rec.captive = true; }
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => ITEMS.has(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
@@ -233,10 +235,12 @@ export function campOutcome(w) {
   const C = w.campaign, S = C.S;
   const members = S.members.map(m => {
     const ag = C.people.get(m.id);
+    if (ag?.fugitive && !ag.dead) return {id: m.id, alive: false, escaped: true};   // a captive got away (settlement/escape.js)
     if (!ag || ag.dead) return {id: m.id, alive: false, cause: (ag && w.chronicle.people.find(p => p.id === ag.id)?.cause) || 'погиб'};
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill};
     // a fallen one still bleeding when the camp ends: the others bind the wound — barely alive
-    return {id: m.id, alive: true, hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local))};
+    const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned || null, service: ag.captive.service || 0} : null;
+    return {id: m.id, alive: true, hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);
@@ -257,9 +261,9 @@ export function campOutcome(w) {
   const items = w.armory.filter(it => it.dur > 0 && !it.own && ITEMS.has(it.type)).map(it => it.type);
   const killed = C.foeObjs.filter(o => o.dead).length, fled = C.foeObjs.filter(o => !o.dead && !o.captive && (o.gone || o.task?.id === 'leave')).length;
   // the fallen foes the caravan bound (settlement/captives.js): they walk on with it
-  const taken = w.agents.filter(o => o.captive && !o.captive.member && !o.dead).map(o => ({
+  const taken = w.agents.filter(o => o.captive && !o.captive.member && !o.dead && !o.fugitive).map(o => ({
     name: o.name, gender: o.gender, race: o.species, people: o.people || null, special: {...o.special}, align: o.align ? {...o.align} : null, values: o.values ? [...o.values] : null,
-    hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, from: S.foe?.kind || null,
+    hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, from: S.foe?.kind || null, will: o.captive.will,
     gear: {hand: [...new Set(allItems(o).filter(it => itemOf(it).slot === 'hand').map(it => it.type))].filter(id => ITEMS.has(id)), body: allItems(o).find(it => itemOf(it).slot === 'body')?.type || 'clothes'},
     local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill}))}));
   const plundered = w.stats.lastSteal >= C.start;

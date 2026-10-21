@@ -9,6 +9,8 @@
 // world.caravan is the visit in progress (null between visits); world.trade keeps the totals and
 // the last deals for the panel.
 import {TRADE} from '../data/trade.js';
+import {mulberry, seedNumber} from '../core/rng.js';
+import {sellCaptives, buyCaptive, traderCaptive} from './slavery.js';
 import {RESOURCES} from '../data/resources.js';
 import {FOODS} from '../data/foods.js';
 import {ITEMS} from '../data/items.js';
@@ -69,7 +71,7 @@ const haggler = a => (a.special?.C ?? 5) * (1 + (a.skill?.barter || 0));
 export function negotiator(w) {
   let best = null, bv = -1;
   for (const a of colonists(w)) {
-    if (a.downed || a.captive || (a.task?.id === 'treat' && a.task.lying)) continue;   // (a captive never haggles for its captors)
+    if (a.downed || a.captive || a.former || (a.task?.id === 'treat' && a.task.lying)) continue;   // (a captive never haggles for its captors)
     const v = haggler(a); if (v > bv) { bv = v; best = a; }
   }
   return best;
@@ -136,7 +138,9 @@ export function startCaravan(w, group) {
   for (const a of group) a.caravan = id;
   w.caravan = {id, phase: 'coming', traderId: trader.id, name: trader.name, gender: trader.gender, set: w.tick,
     capacity: mules.length * cap, goods: makeGoods(rng, units),
-    purse: between(rng, TRADE.purse), arrived: null, traded: false, tradedAt: null, tradeEnd: null, spot: null, deal: null};
+    purse: between(rng, TRADE.purse), arrived: null, traded: false, tradedAt: null, tradeEnd: null, spot: null, deal: null,
+    // now and then a captive for sale (settlement/slavery.js): its own roll, so the border's stream (raids, arrivals) stays as it was
+    captive: traderCaptive(mulberry(seedNumber(`${w.cfg?.seed ?? ''}:trader-captive:${w.trade.visits}`)))};
   // the rumour of mithril brings a trader with a fatter purse
   const mith = Math.min(3, Math.floor(w.stock.mithrilOre || 0));
   if (mith) { w.caravan.purse += TRADE.mithrilPurse * mith; w.caravan.buyer = true; }
@@ -246,6 +250,9 @@ export function holdTrade(w) {
     deal.earned += p * n; note(deal.sold, goodsLabel(o.g), n, p * n);
   }
 
+  // 1b. captives (settlement/slavery.js): an unruly one, or any when food is short, goes with the trader
+  sellCaptives(w, c, deal, note);
+
   // 2. buy food when short: the most filling for the money first
   if (foodTotal(w) < pop * TRADE.foodShort) {
     const foods = c.goods.filter(g => g.kind === 'res' && RESOURCES.get(g.id).tags.includes('food'))
@@ -280,6 +287,9 @@ export function holdTrade(w) {
     deal.spent += p * n; note(deal.bought, RESOURCES.get(id).label, n, p * n);
   }
   c.goods = c.goods.filter(g => g.kind !== 'res' || g.n > 0);
+
+  // 2b'. a captive the trader brought (settlement/slavery.js)
+  buyCaptive(w, c, deal, note, cash, spend, traderOf(w, c));
 
   // 2c. silver blades: once something that fears silver has come, enough for half the colony, cheapest first;
   //     before that, one spare if it is cheap for the colony

@@ -30,7 +30,9 @@ import {liveById} from './lookup.js';
 import {flagLead, raidOnBoard} from '../settlement/board.js';
 import {wake} from './attention.js';
 import {bindStillOn, bindCaptive} from '../settlement/captives.js';
-import {CAPTIVE} from '../data/captives.js';
+import {CAPTIVE, ESCAPE} from '../data/captives.js';
+import {catchRunaway} from '../settlement/escape.js';
+import {assistStillOn} from '../settlement/masters.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -124,6 +126,8 @@ TASKS.registerAll([
       return;
     }
     task.lost = null;
+    // a runaway captive (settlement/escape.js) is not fought: whoever gets within reach grabs it
+    if (t.fugitive) { if (Math.hypot(t.x - a.x, t.y - a.y) <= ESCAPE.catch.reach) { catchRunaway(w, a, t); done(w, a); } else if (approach(w, a, t.x, t.y, 1.2) === null) fail(w, a, 'беглеца не догнать', 'impossible'); return; }
     if (a.faction === 'colony') {
       a.lastFight = w.tick;
       // standing up for someone the foe is on: they remember it (settlement/together.js)
@@ -182,6 +186,17 @@ TASKS.registerAll([
     if (!bindCaptive(w, a, f)) { fail(w, a, 'нечем связать'); return; }
     if (agentInZone(w, f)) done(w, a); else a.task = {id: 'company', who: f.id, home: true, captive: true};
   }},
+
+  // a learner beside a master (settlement/masters.js): keep close while the master works; the learning and the
+  // master's speed are the master's work itself (agents/jobRunners.js workRate, settlement/masters.js stepMasters)
+  {id: 'assist', label: () => 'учится у мастера', step(w, a, task) {
+    const m = assistStillOn(w, a, task);
+    if (!m) { done(w, a); return; }
+    if (Math.hypot(m.x - a.x, m.y - a.y) > 1.6) { if (approach(w, a, m.x, m.y, 1.1) === null) fail(w, a, 'к мастеру не подойти', 'impossible'); }
+  }},
+
+  // a captive running away (settlement/escape.js, agents/brains/fugitive.js)
+  {id: 'escape', label: () => 'бежит из плена', step() {}},
 
   // senseless on the ground after a deadly blow: nothing to do but bleed and wait for help (agents/wounds.js)
   {id: 'downed', label: () => 'лежит без сознания', step() {}},

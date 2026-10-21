@@ -32,6 +32,8 @@ import {tempAt} from '../../world/heat.js';
 import {ensurePlan, vacancyPull, signUp} from '../../settlement/plan.js';
 import {wake, noticeSelf, heartOf, noteThink} from '../attention.js';
 import {bindOption, captiveAllows, keepInside} from '../../settlement/captives.js';
+import {assistOption} from '../../settlement/masters.js';
+import {formerAllows} from '../../settlement/freedom.js';
 
 // keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
 // colony's vacancies is settlement/plan.js vacancyPull)
@@ -152,8 +154,11 @@ function decide(w, a, woke = 'дело кончилось') {
   if (enemy && hpShare(a) <= BOARD.hurt && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);
   // after the fight: a foe lying senseless may be bound and taken (settlement/captives.js)
   const bind = bindOption(w, a); if (bind) opts.push(bind);
+  // a learner's place beside a master at work (settlement/masters.js)
+  const learn = assistOption(w, a); if (learn) opts.push(learn);
   // a captive's lot: no council, no flag, no watch, no work beyond the zone, no fight but for its life
   if (a.captive) opts = opts.filter(([t]) => captiveAllows(t));
+  else if (a.former) opts = opts.filter(([t]) => formerAllows(t));   // a former slave: no flag, watch or council (settlement/freedom.js)
 
   let best = null, bs = -Infinity;
   const cur = key(a.task);
@@ -173,7 +178,7 @@ function decide(w, a, woke = 'дело кончилось') {
   a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
     alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || '', woke};
   noteThink(w, a.wakeKind || woke, key(best) === cur);
-  if (flags.length && !a.captive) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
+  if (flags.length && !a.captive && !a.former) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
   noteWatch(w, a, best, a.task?.id);
   if (key(best) !== cur) {
     // leaving one job for another of one's own accord: a moment's thought first («прикидывает, за что
@@ -189,7 +194,7 @@ function decide(w, a, woke = 'дело кончилось') {
     }
     // the task it drops is closed as interrupted by syncTask(), with this reason; eating, sleeping and
     // warming up wind down when the need is met, which is no dropped task
-    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'reserve', 'watch', 'sulk', 'ponder'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
+    if (a.task && !['idle', 'council', 'trade', 'eat', 'sleep', 'warm', 'muster', 'reserve', 'watch', 'sulk', 'ponder', 'assist'].includes(a.task.id)) a.switchWhy = `ради «${a.why.task}»: ${a.why.why}`;
     else if (a.task) a.task.closed = 'done';
     if (a.task) w.behave.switches++;
     a.task = best;

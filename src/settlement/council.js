@@ -103,7 +103,7 @@ export function stepCouncil(w) {
     if (w.council.lastDay !== day && h >= COUNCIL_TO && colonists(w).length) w.council.lastDay = day;   // nobody came
     return;
   }
-  const col = colonists(w).filter(a => !a.captive), present = col.filter(a => a.task?.id === 'council' && a.task.seated);   // captives have no seat (settlement/captives.js)
+  const col = colonists(w).filter(a => !a.captive && !a.former), present = col.filter(a => a.task?.id === 'council' && a.task.seated);   // captives have no seat (settlement/captives.js)
   if (!present.length || (present.length < Math.ceil(col.length * 0.7) && h < COUNCIL_TO - 0.3)) return;
   hold(w, present, col.length);
 }

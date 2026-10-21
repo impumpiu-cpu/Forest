@@ -11,7 +11,7 @@
 //   captiveAllows(t)      — what a captive may choose (agents/brains/colonist.js)
 //   captiveItem(it)       — what a captive may hold (agents/equipment.js outfit)
 import {SPECIES} from '../data/species.js';
-import {BONDS, CAPTIVE, bestBonds} from '../data/captives.js';
+import {BONDS, CAPTIVE, ESCAPE, bestBonds} from '../data/captives.js';
 import {CAN_FALL, WOUNDS, GRAVE_TICKS, DEATHBLOW} from '../data/wounds.js';
 import {JOBS} from '../data/jobs.js';
 import {isHostile} from '../data/factions.js';
@@ -80,7 +80,7 @@ export const bindStillOn = (w, a, task) => { const f = liveById(w, task.who); re
 
 // what a captive may choose (the colonist brain's options): the body, work inside the zone, an answer to an
 // attack on itself (a reflex), getting back inside, keeping out of harm's way at the fire
-const ALLOWED = new Set(['eat', 'sleep', 'warm', 'idle', 'sulk', 'pray', 'treat', 'douse', 'flee', 'runHome', 'muster', 'reserve', 'ponder']);
+const ALLOWED = new Set(['eat', 'sleep', 'warm', 'idle', 'sulk', 'pray', 'douse', 'flee', 'runHome', 'muster', 'reserve', 'ponder', 'assist']);
 export function captiveAllows(t) {
   if (t.id === 'job') return CAPTIVE.camp.includes(JOBS.get(t.job).runner);
   if (t.id === 'fight') return !!t.reflex;
@@ -117,7 +117,9 @@ export function bindCaptive(w, by, f) {
   // one of the settlement now
   const sp = SPECIES.get(f.species), was = f.name;
   releaseAll(w, f);
-  f.captive = {since: w.tick, bonds: B.id, by: by.id, band: f.band || null, people: f.people || null, was: f.faction};
+  // (a runaway brought down is bound again: it stays the captive it was — will, years, service)
+  f.captive = f.captive ? {...f.captive, bonds: B.id} : {since: w.tick, bonds: B.id, by: by.id, band: f.band || null, people: f.people || null, was: f.faction, will: ESCAPE.will.start};
+  f.fugitive = null;
   f.faction = 'colony'; f.brain = 'colonist';
   f.squad = null; f.band = null; f.role = null; f.looted = false; f.lost = false; f.leads = null; f.master = null;
   if (!f.prefs) personality(w, f);

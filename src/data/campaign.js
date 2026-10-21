@@ -37,7 +37,7 @@ export const CAMPAIGN = {
   // and `partner` around the towns of the realms it trades with; on the way: `sight` cells around it
   fog: {known: 8, partner: 3, sight: 3},
   // a member's might in a fight: role × weapon × armour × health × Strength
-  might: {knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06},
+  might: {knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, former: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06},
   // a night: the chance something finds the camp = base + the land's dangers (campaign/land.js), at most `max`;
   // near a town of friends the chance is × `friendly`
   night: {base: 0.02, max: 0.22, friendly: 0.3},
