@@ -9,7 +9,7 @@
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -60,7 +60,7 @@ import {negotiator, termsOf, holdTrade, askPrice, bidPrice, unitPrice} from '../
 import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
 import {heatTo} from '../src/world/heat.js';
-import {makePlan, vacancyPull, signUp} from '../src/settlement/plan.js';
+import {makePlan, vacancyPull, signUp, PLAN} from '../src/settlement/plan.js';
 import {stepAttention, HEART} from '../src/agents/attention.js';
 import {stepHerds, herdOf, herdAlarm, HERD} from '../src/agents/wildHerd.js';
 import {preyValue} from '../src/agents/brains/predator.js';
@@ -74,6 +74,8 @@ import {councilDue} from '../src/settlement/council.js';
 import {agentInZone} from '../src/settlement/zone.js';
 import {stepEscape, startEscape, toolsAway} from '../src/settlement/escape.js';
 import {ESCAPE, BONDS, bestBonds} from '../src/data/captives.js';
+import {stepMasters, assistOption, apprenticeBonus, placeOf, masterOf} from '../src/settlement/masters.js';
+import {MASTER} from '../src/data/masters.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -1600,11 +1602,12 @@ check('T111', 'связанный жив и перевязан, пленный �
 });
 
 // a captive by the fire: a raider taken the way the game takes it
-function captive(w) {
+function captive(w, healed = false) {
   const c = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 1.5);
   const [r] = fallenRaider(w, w.camp.x + 1.5, w.camp.y + 1.5);
   w.stock.rope = 2; c.task = {id: 'bind', who: r.id}; bindAll(w, c);
   c.task = null;
+  if (healed) r.hp = maxHp(r);   // the wound of the fall healed: fit to work
   return [r, c];
 }
 
@@ -1790,6 +1793,93 @@ check('T123', 'паёк: мало еды — совет урезает паёк 
   if (!(p.captive.will > will)) return `воля ${will} → ${p.captive.will}`;
   w.stock.berries = 200; councilOver(w); stepEscape(w);
   return (!p.captive.cut && Math.abs(p.mods.hunger - hunger) < 1e-9) || 'полный паёк не вернули';
+});
+
+
+// ── stage 3: masters and their learners (settlement/masters.js)
+const crafter = (w, x, y, skill, v) => { const a = put(w, 'human', 'colony', x, y); a.skill[skill] = v; return a; };
+// a master at the forge: on its job, with the work just read
+const atForge = (w, m) => { m.task = {id: 'job', job: 'smith'}; m.master.workedAt = w.tick; };
+
+check('T124', 'совет нарекает мастера: лучший свободный с навыком от порога, по одному на ремесло; пленного и слабого — нет', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w); p.skill.smithing = 0.9;
+  const a = crafter(w, 30.5, 30.5, 'smithing', 0.6), b = crafter(w, 31.5, 30.5, 'smithing', 0.5), c = crafter(w, 32.5, 30.5, 'fishing', MASTER.min - 0.05);
+  councilOver(w); stepMasters(w);
+  if (p.master) return 'пленный назван мастером';
+  if (a.master?.skill !== 'smithing' || b.master) return `мастер-кузнец: ${a.master?.skill}, второй ${b.master?.skill}`;
+  if (c.master) return 'назван мастером ниже порога';
+  councilOver(w); w.tick += DAY; w.council.lastDay = Math.floor(w.tick / DAY); stepMasters(w);
+  return (!b.master && masterOf(w, 'smithing') === a) || 'второй кузнец при живом мастере';
+});
+
+check('T125', 'ученик мастера: свободный идёт к мастеру за работой, мест два, третьему нет', () => {
+  const w = scene(); fixedRng(w);
+  const m = crafter(w, 30.5, 30.5, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0}; atForge(w, m);
+  const ls = [0, 1, 2].map(k => crafter(w, 33.5 + k, 30.5, 'smithing', 0.1));
+  if (assistOption(w, m)) return 'мастер — ученик самому себе';
+  const o = assistOption(w, ls[0]);
+  if (o?.[0].id !== 'assist' || o[0].master !== m.id) return 'к мастеру за работой не идут';
+  ls[0].task = o[0]; ls[1].task = {...assistOption(w, ls[1])[0]}; w.tick++;
+  if (assistOption(w, ls[2])) return 'третий взял место при двух занятых';
+  m.task = {id: 'idle'}; w.tick++;
+  return !assistOption(w, crafter(w, 40.5, 30.5, 'smithing', 0.1)) || 'идут к мастеру, который не работает';
+});
+
+check('T126', 'свои ученики прежде пленных: свободный занимает место пленного, тот остаётся без места', () => {
+  const w = scene(); fixedRng(w);
+  const m = crafter(w, w.camp.x + 0.5, w.camp.y + 0.5, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0}; atForge(w, m);
+  const [p1, c] = captive(w, true);
+  const [r2] = fallenRaider(w, w.camp.x + 2.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r2.id}; bindAll(w, c); r2.hp = maxHp(r2);
+  atForge(w, m);
+  p1.task = assistOption(w, p1)?.[0]; w.tick++; atForge(w, m);
+  r2.task = assistOption(w, r2)?.[0]; w.tick++; atForge(w, m);
+  if (p1.task?.id !== 'assist' || r2.task?.id !== 'assist') return `пленные не взяли места: ${p1.task?.id}, ${r2.task?.id}`;
+  const f = crafter(w, w.camp.x + 1.5, w.camp.y + 0.5, 'smithing', 0.1);
+  const o = assistOption(w, f);
+  if (!o) return 'свободному не нашлось места при двух пленных';
+  f.task = o[0]; w.tick++;
+  if (placeOf(w, f) !== 0) return `свободный не первый: место ${placeOf(w, f)}`;
+  return [p1, r2].some(x => placeOf(w, x) === -1) || 'оба пленных при местах сверх мест';
+});
+
+check('T127', 'при учениках мастер работает быстрее; ученик учится, только пока мастер работает рядом', () => {
+  const w = scene(); fixedRng(w);
+  const m = crafter(w, 30.5, 30.5, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0}; atForge(w, m);
+  const solo = workRate(w, m, 'smith');
+  const l1 = crafter(w, 31.5, 30.5, 'smithing', 0.1), l2 = crafter(w, 30.5, 31.5, 'smithing', 0.1);
+  l1.task = assistOption(w, l1)[0]; w.tick++; l2.task = assistOption(w, l2)[0]; w.tick++;
+  const both = workRate(w, m, 'smith'), k = both / solo;
+  if (Math.abs(k - (1 + MASTER.bonus[0] + MASTER.bonus[1])) > 1e-6) return `с двумя учениками ×${k.toFixed(3)}`;
+  if (apprenticeBonus(w, m, 'chop')) return 'ученики ускоряют чужое ремесло';
+  const s0 = l1.skill.smithing;
+  m.master.workedAt = w.tick; stepMasters(w);
+  if (!(l1.skill.smithing > s0)) return 'ученик не учится, пока мастер работает';
+  const s1 = l1.skill.smithing; w.tick += 5; stepMasters(w);
+  if (l1.skill.smithing !== s1) return 'ученик учится, пока мастер не работает';
+  l2.x = 40.5; m.master.workedAt = w.tick; const s2 = l2.skill.smithing; stepMasters(w);
+  return l2.skill.smithing === s2 || 'ученик учится вдали от мастера';
+});
+
+check('T128', 'пленный учится только при мастере, что работает в лагере, и только когда своя вакансия не тянет сильнее', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w, true);
+  const wood = crafter(w, w.camp.x + 1.5, w.camp.y + 0.5, 'woodcutting', 0.7); wood.master = {skill: 'woodcutting', since: 0}; wood.task = {id: 'job', job: 'chop'};
+  if (assistOption(w, p)) return 'пленный идёт за лесорубом в лес';
+  const sm = crafter(w, w.camp.x + 0.5, w.camp.y + 1.5, 'smithing', 0.7); sm.master = {skill: 'smithing', since: 0}; atForge(w, sm); w.tick++; atForge(w, sm);
+  const o = assistOption(w, p);
+  if (o?.[0].master !== sm.id) return 'пленный не идёт к кузнецу в лагере';
+  const free = assistOption(w, crafter(w, w.camp.x + 2.5, w.camp.y + 1.5, 'smithing', 0.1));
+  return (o[1] < free[1] && o[1] < PLAN.open[0] + PLAN.open[1]) || `вес пленного ${o[1].toFixed(2)}, свободного ${free[1].toFixed(2)}`;
+});
+
+check('T129', 'пленный при мастере за работой копит очки службы', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w, true); p.captive.service = 0;
+  const sm = crafter(w, p.x + 0.5, p.y, 'smithing', 0.7); sm.master = {skill: 'smithing', since: 0}; atForge(w, sm);
+  p.task = assistOption(w, p)[0]; w.tick++;
+  for (let k = 0; k < 600; k++) { sm.master.workedAt = w.tick; stepMasters(w); w.tick++; }
+  return p.captive.service > 0.5 || `очков службы за день работы: ${p.captive.service.toFixed(2)}`;
 });
 
 let bad = 0;

@@ -30,6 +30,9 @@ THOUGHTS.registerAll([
   // the deadly wound (agents/wounds.js)
   {id: 'fell', mood: -0.5, lasts: DAY, text: a => `Упал${g(a, '', 'а')} без сознания. Последнее, что помнит, — удар.`},
   {id: 'survived', mood: 0.4, lasts: 2 * DAY, text: (a, c) => `${c.name ? `${c.name} ${c.gender === 'f' ? 'вытащила' : 'вытащил'}` : 'Вытащили'} с того света. Жив${g(a, '', 'а')}!`},
+  // masters (settlement/masters.js)
+  {id: 'namedMaster', mood: 0.5, lasts: 3 * DAY, text: (a, c) => `Совет нарёк ${g(a, 'его', 'её')} при всех: ${c.title}. Честь!`},
+  {id: 'masterNamed', mood: 0.03, lasts: DAY, once: DAY, text: (a, c) => `${c.name} теперь ${c.title}: будет у кого поучиться.`},
   // captives (settlement/captives.js)
   {id: 'captured', mood: -0.5, lasts: 3 * DAY, text: (a, c) => `Очнул${g(a, 'ся', 'ась')} связанн${g(a, 'ым', 'ой')} в чужом лагере${c.bonds ? ` — ${c.bonds}` : ''}. Жив${g(a, '', 'а')}, но в плену.`},
   {id: 'tookCaptive', mood: 0.12, lasts: DAY, text: (a, c) => `Связал${g(a, '', 'а')} упавшего врага: ${c.name} теперь пленный.`},

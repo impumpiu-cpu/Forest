@@ -32,6 +32,7 @@ import {damage} from './combat.js';
 import {log} from '../core/log.js';
 import {esc, g} from '../core/util.js';
 import {liveById, ofSpeciesList, noteAttacker} from './lookup.js';
+import {apprenticeBonus} from '../settlement/masters.js';
 
 const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.colony() - 0.5) * 0.2; };
 
@@ -39,8 +40,9 @@ const mill = (w, a) => { a.x += (w.rngs.colony() - 0.5) * 0.2; a.y += (w.rngs.co
 // it teaches nothing. Practice (agents/skills.js) is added where the work is really done.
 // skillId: the skill this piece of work uses (by default the job's own)
 export function workRate(w, a, jobId, skillId = JOBS.get(jobId).skill) {
-  // a good mood helps a little, a bad one slows down (±10%)
-  return (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
+  if (a.master) a.master.workedAt = w.tick;   // a master at work: the learners beside it learn (settlement/masters.js)
+  // a good mood helps a little, a bad one slows down (±10%); learners beside a master speed it up
+  return (1 + apprenticeBonus(w, a, jobId)) * (1 + 0.7 * skillOf(a, skillId)) * a.mods.work * jobSpeedOf(w, jobId) * seasonJob(w, jobId) * (a.gear?.tool[jobId] || 1) * (1 + 0.1 * moodOf(w, a)) * brewFactor(w, a);
 }
 // a building may spare the tools of one job (effects.toolWear in data/buildings.js)
 const toolWear = (w, a, jobId, amount = 1) => { const it = a.gear?.toolItem[jobId]; if (it) wear(w, a, it, amount * (w.mods.toolWear?.[jobId] ?? 1)); };

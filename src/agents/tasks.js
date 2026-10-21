@@ -32,6 +32,7 @@ import {wake} from './attention.js';
 import {bindStillOn, bindCaptive} from '../settlement/captives.js';
 import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {catchRunaway} from '../settlement/escape.js';
+import {assistStillOn} from '../settlement/masters.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -184,6 +185,14 @@ TASKS.registerAll([
     if ((task.work = (task.work || 0) + 1) < CAPTIVE.bindTicks) return;
     if (!bindCaptive(w, a, f)) { fail(w, a, 'нечем связать'); return; }
     if (agentInZone(w, f)) done(w, a); else a.task = {id: 'company', who: f.id, home: true, captive: true};
+  }},
+
+  // a learner beside a master (settlement/masters.js): keep close while the master works; the learning and the
+  // master's speed are the master's work itself (agents/jobRunners.js workRate, settlement/masters.js stepMasters)
+  {id: 'assist', label: () => 'учится у мастера', step(w, a, task) {
+    const m = assistStillOn(w, a, task);
+    if (!m) { done(w, a); return; }
+    if (Math.hypot(m.x - a.x, m.y - a.y) > 1.6) { if (approach(w, a, m.x, m.y, 1.1) === null) fail(w, a, 'к мастеру не подойти', 'impossible'); }
   }},
 
   // a captive running away (settlement/escape.js, agents/brains/fugitive.js)
