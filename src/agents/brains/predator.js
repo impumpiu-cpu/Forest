@@ -28,6 +28,7 @@ const SCENT = 70;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 import {nearAgents} from '../spatial.js';
 import {liveById, packMembers, noteAttacker} from '../lookup.js';
+import {stragglerOf} from '../wildHerd.js';
 
 function nearest(w, a, species, r, filter = () => true) {
   let best = null, bd = r;
@@ -54,7 +55,8 @@ export function preyValue(w, a, P, o, packSize) {
   const perHead = (big ? P.bigMeal : P.meal) / Math.max(1, packSize);
   const mine = SPECIES.get(a.species).speed * P.sprint * (0.5 + 0.5 * a.stamina);
   const theirs = ps.speed * (ps.flee?.sprint || 1);
-  const caught = big ? 1 : clamp(mine / (theirs || 0.1) * 0.8, 0.15, 1);
+  // a straggler — a herd beast far from its herd, or hurt and lagging — is easier to catch (agents/wildHerd.js)
+  const caught = big ? 1 : clamp(mine / (theirs || 0.1) * 0.8 * (stragglerOf(w, o) ? 1.4 : 1), 0.15, 1);
   const way = 1 - 0.5 * clamp(dist(a, o) / P.sight, 0, 1);
   const risk = big ? 0.3 * (o.hp / maxHp(o)) : 0;
   return perHead * caught * way - risk;

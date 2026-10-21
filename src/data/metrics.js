@@ -60,6 +60,8 @@ METRICS.registerAll([
   {id: 'colonyKs', label: 'КС колонии по слухам', group: 'Оборона', fmt: 0, get: colonyStrength},
   {id: 'raids', label: 'Набегов было', group: 'Оборона', fmt: 0, get: w => w.stats.raids},
   {id: 'raidersKilled', label: 'Налётчиков убито', group: 'Оборона', fmt: 0, get: w => w.chronicle.raidersKilled},
+  {id: 'herds', label: 'Диких стад на карте', group: 'Природа', fmt: 0, get: w => Object.keys(w.herds || {}).length},
+  {id: 'herdSize', label: 'Голов в стаде в среднем', group: 'Природа', fmt: 1, get: w => { const hs = Object.values(w.herds || {}); return hs.length ? hs.reduce((s, h) => s + h.n, 0) / hs.length : 0; }},
   {id: 'hares', label: 'Зайцев на карте', group: 'Природа', fmt: 0, get: w => ofSpecies(w, 'hare').length},
   {id: 'hunted', label: 'Зайцев добыто', group: 'Природа', fmt: 0, get: w => w.stats.hunted},
   {id: 'wolves', label: 'Волков на карте', group: 'Природа', fmt: 0, get: w => ofSpecies(w, 'wolf').length},

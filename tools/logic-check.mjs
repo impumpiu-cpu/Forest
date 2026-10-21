@@ -7,7 +7,8 @@
 // T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies;
 // T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T92 the colony's
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
-// back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4). Each scene builds a flat, empty map, places a few agents by hand and
+// back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
+// T101–T104 wild herds, stage 5). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -60,6 +61,8 @@ import {canTame} from '../src/settlement/herd.js';
 import {heatTo} from '../src/world/heat.js';
 import {makePlan, vacancyPull, signUp} from '../src/settlement/plan.js';
 import {stepAttention, HEART} from '../src/agents/attention.js';
+import {stepHerds, herdOf, herdAlarm, HERD} from '../src/agents/wildHerd.js';
+import {preyValue} from '../src/agents/brains/predator.js';
 import {stepBoard, flagOptions, watchOption, BOARD, WATCH} from '../src/settlement/board.js';
 import {raidAlarm} from '../src/settlement/query.js';
 import {dropLoad} from '../src/agents/jobRunners.js';
@@ -1394,6 +1397,70 @@ check('T100', 'свой в беде: упавший без сознания бу
   if (h.think !== 0) return 'упавший никого не разбудил';
   w.tick++; brain(w, h);
   return h.task?.id === 'aid' || `разбуженный занят «${h.task?.id}»: ${h.why?.why}`;
+});
+
+// ── wild herds (agents/wildHerd.js, docs/MIND.md stage 5)
+const deerAt = (w, x, y, nerve) => { const d = put(w, 'deer', 'wild', x, y); d.nerve = nerve; return d; };
+check('T101', 'стадо: олени рядом — одно стадо; оглядываются по очереди; пугливый срывается первым, спокойный — позже', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 10 * HOUR;
+  const jumpy = deerAt(w, 40.5, 30.5, 0.6), calm = deerAt(w, 42.5, 30.5, 1.4);
+  for (let k = 0; k < 4; k++) deerAt(w, 41.5 + k * 0.5, 32.5, 1);
+  stepHerds(w);
+  const H = herdOf(w, jumpy);
+  if (!H || herdOf(w, calm) !== H || H.n !== 6) return `стадо не собралось: ${H?.n}`;
+  const wolf = put(w, 'wolf', 'predators', 31.5, 30.5); wolf.pack = wolf.id;   // 9 from the jumpy one, 11 from the calm
+  let jumpyAt = null, calmAt = null;
+  for (let t = 0; t < 30; t++) {
+    stepHerds(w);
+    for (const d of w.agents) if (d.species === 'deer') brain(w, d);
+    wolf.x = 31.5; wolf.y = 30.5;
+    if (jumpyAt == null && jumpy.task?.id === 'bolt') jumpyAt = t;
+    if (calmAt == null && calm.task?.id === 'bolt') calmAt = t;
+    w.tick++;
+  }
+  if (!herdAlarm(w, H) && jumpyAt == null) return 'стадо не заметило волка';
+  if (jumpyAt == null) return 'пугливый не сорвался';
+  if (calmAt != null && calmAt <= jumpyAt) return `спокойный сорвался не позже пугливого: ${calmAt} и ${jumpyAt}`;
+  return calmAt != null || 'спокойный так и не побежал за стадом';
+});
+
+check('T102', 'раненый в стаде бежит медленнее и отстаёт', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 10 * HOUR;
+  const fine = deerAt(w, 40.5, 30.5, 0.6), hurt = deerAt(w, 40.5, 33.5, 0.6);
+  hurt.hp = maxHp(hurt) * 0.3;
+  const wolf = put(w, 'wolf', 'predators', 34.5, 31.5); wolf.pack = wolf.id;
+  const x0 = [fine.x, hurt.x];
+  for (let t = 0; t < 25; t++) { stepHerds(w); brain(w, fine); brain(w, hurt); wolf.x = 34.5; wolf.y = 31.5; w.tick++; }
+  const run = [Math.hypot(fine.x - x0[0], 0), Math.hypot(hurt.x - x0[1], 0)];
+  return run[1] < run[0] * 0.85 || `раненый пробежал ${run[1].toFixed(1)} против ${run[0].toFixed(1)}`;
+});
+
+check('T103', 'волк ценит отставшего от стада выше, чем оленя в середине', () => {
+  const w = scene(); fixedRng(w);
+  const inside = deerAt(w, 40.5, 30.5, 1);
+  for (let k = 0; k < 5; k++) deerAt(w, 40 + (k % 3), 29.5 + (k % 2) * 2, 1);
+  const out = deerAt(w, 49.5, 30.5, 1);   // in the herd, but far from its middle
+  stepHerds(w);
+  if (herdOf(w, out) !== herdOf(w, inside)) return 'отставший не в том же стаде';
+  const wolf = put(w, 'wolf', 'predators', 45, 25); wolf.pack = wolf.id;
+  const P = SPECIES.get('wolf').predator;
+  const vIn = preyValue(w, wolf, P, inside, 1), vOut = preyValue(w, wolf, P, out, 1);
+  return vOut > vIn || `отставший ${vOut.toFixed(3)}, в середине ${vIn.toFixed(3)}`;
+});
+
+check('T104', 'лоси: смелый бык идёт на волка, напавшего на лосиху; робкая отходит', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 10 * HOUR;
+  const cow = put(w, 'elk', 'wild', 40.5, 30.5), bull = put(w, 'elk', 'wild', 43.5, 30.5), shy = put(w, 'elk', 'wild', 41.5, 32.5);
+  cow.nerve = 1; bull.nerve = 1.35; shy.nerve = 0.65;
+  stepHerds(w);
+  if (herdOf(w, bull) !== herdOf(w, cow)) return 'лоси не в одном стаде';
+  const wolf = put(w, 'wolf', 'predators', 39.5, 30.5); wolf.pack = wolf.id; wolf.task = {id: 'maul', target: cow};
+  stepHerds(w); brain(w, bull); brain(w, shy);
+  if (!(bull.task?.id === 'maul' && bull.task.target === wolf)) return `бык занят «${bull.task?.id}»`;
+  return ['drawOff', 'alert', 'graze', 'maul'].includes(shy.task?.id) && !(shy.task?.id === 'maul') || `робкая лосиха занята «${shy.task?.id}»`;
 });
 
 let bad = 0;

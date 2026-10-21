@@ -70,6 +70,7 @@ import {FURNITURE, FURNISH_MAX} from '../data/furniture.js';
 import {statusOf} from '../settlement/life.js';
 import {vacancyLines} from '../settlement/plan.js';
 import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
+import {herdOf, herdAlarm, stragglerOf} from '../agents/wildHerd.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -556,6 +557,8 @@ export class Panel {
     const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a)).toFixed(1);
     const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${this.where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
     if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+    const herd = herdOf(w, a);
+    if (herd) rows.push(`<dt>Стадо</dt><dd>${herd.n} ${herd.n > 1 ? sp.plural || sp.label : sp.label}${herdAlarm(w, herd) ? ', настороже' : ''}; ${a.nerve == null ? '' : a.nerve < 0.85 ? 'пугливый' : a.nerve > 1.15 ? 'невозмутимый' : 'спокойный'}${stragglerOf(w, a) ? ', отстаёт' : ''}</dd>`);
     const h = huntOf(w, a);
     if (h) { const prey = w.agents.find(o => o.id === h.prey); rows.push(`<dt>Охота</dt><dd>стаей на ${prey ? (SPECIES.get(prey.species).labelAcc || SPECIES.get(prey.species).label) : '—'}${prey?.name && prey.faction === 'colony' ? ` (${esc(prey.name)})` : ''}: ${ROLE_LABEL[h.roles[a.id]] || 'в погоне'}; ${h.members.length} в стае; ${w.tick - h.seen.t < 5 ? 'добыча на виду' : `из виду ${w.tick - h.seen.t} ${plural(w.tick - h.seen.t, 'тик', 'тика', 'тиков')}`}</dd>`); }
     if (a.task?.id === 'feed' && a.task.c != null) { const c = carcassById(w, a.task.c); if (c) rows.push(`<dt>Туша</dt><dd>${SPECIES.get(c.species).label}: осталось ${Math.round(c.food / c.food0 * 100)}%</dd>`); }

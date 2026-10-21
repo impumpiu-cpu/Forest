@@ -334,6 +334,8 @@ TASKS.registerAll([
   {id: 'nibble', label: () => 'грызёт припасы', step() {}},
   {id: 'rest', label: () => 'дремлет', step() {}},
   {id: 'bolt', label: () => 'убегает', step() {}},
+  {id: 'alert', label: () => 'насторожился', step() {}},
+  {id: 'drawOff', label: () => 'отходит от опасности', step() {}},
   {id: 'roam', label: () => 'рыщет', step() {}},
   {id: 'chase', label: () => 'гонит добычу', step() {}},
   {id: 'maul', label: t => (t.mule ? (t.charging ? 'несётся на обидчика' : 'лягается') : 'нападает'), step() {}},
