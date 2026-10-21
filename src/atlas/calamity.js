@@ -23,6 +23,7 @@ import {barrows} from './diplomacy.js';
 import {townLabel} from './towns.js';
 import {eraPlan} from './history.js';
 import {stepAlliance} from './alliance.js';
+import {epitaph} from './chronicle.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pick = (r, list) => list[(r() * list.length) | 0];
@@ -197,7 +198,7 @@ function fall(a, c, r, by, told = null) {
   // the grave where it fell
   barrows(a, c.i, Math.max(1, Math.round(CAL.grave.r * Math.min(a.w, a.h) / 192)), CAL.grave.v);
   const A = a.artifact;
-  (a.graves ||= []).push({calamity: c.id, i: c.i, year: a.hist.year, era: c.era, boss: bossName(c), kind: c.kind, by, epitaph: null});
+  (a.graves ||= []).push({calamity: c.id, i: c.i, year: a.hist.year, era: c.era, boss: bossName(c), kind: c.kind, by, epitaph: epitaph(a, c)});
   A.holder = {kind: 'grave', calamity: c.id}; A.i = c.i;
   A.trail.push({year: a.hist.year, era: a.hist.era, i: c.i, text: `пропал с гибелью ${c.boss.title[1].toLowerCase()} ${c.boss.name}`});
   tell(a, line, c);

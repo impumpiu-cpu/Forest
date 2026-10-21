@@ -13,6 +13,7 @@ import {LAIRS} from '../src/data/lairs.js';
 import {historyLength, eraPlan, epicYears} from '../src/atlas/history.js';
 import {newAtlas, runNextStage} from '../src/atlas/generate.js';
 import {SPECIES} from '../src/data/species.js';
+import {lineLevel, worldChronicleText, calamityChronicleText, eraSpans} from '../src/atlas/chronicle.js';
 import {EPIC_YEARS} from '../src/data/history.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
@@ -416,6 +417,15 @@ console.log('Эпический мир кампании:');
   const later = (e.calamities || []).filter(c => c.era !== 'wild');
   check('  эпос: против бедствий после дикой эры собираются союзы, шлют войска, союз распадается после мира', AL.length === later.length && AL.every(A => A.members.length && A.tries > 0 && A.sent.length) && AL.some(A => A.broken) && later.some(c => c.fell?.by === 'alliance'),
     AL.map(A => `союз ${A.members.length} держав, походов ${A.tries}, прислали войска ${A.sent.length}${A.broken ? ', распался' : ''}`).join('; ') + '; ' + later.map(c => `${c.kind} пал от ${c.fell?.by}`).join(', '));
+  // the chronicle as a text (atlas/chronicle.js): every level has lines; major ⊂ normal ⊂ all; by its eras, every era a
+  // block; the calamities apart — each calamity with its boss, its grave's epitaph, and the artifact's way
+  const lv = {major: 0, normal: 0, minor: 0}; for (const c of e.chronicle) lv[lineLevel(c)]++;
+  const tx = d => worldChronicleText(e, {detail: d, name: 'Проверка'}), [tMaj, tNorm, tAll] = ['major', 'normal', 'all'].map(tx), rows = t => t.split('\n').length;
+  const eras = eraSpans(e).every(sp => tAll.includes(`=== ${sp.label} · годы ${sp.from}–${sp.to}`)) && tAll.includes('=== Сотворение мира ===');
+  const cal = calamityChronicleText(e, {name: 'Проверка'}), graves = (e.graves || []).every(g => g.epitaph && cal.includes(g.epitaph));
+  check('  летопись текстом: три уровня подробности, по эпохам; летопись катаклизмов с боссами, надписями на могилах и путём артефакта',
+    lv.major && lv.normal && lv.minor && rows(tMaj) < rows(tNorm) && rows(tNorm) < rows(tAll) && eras && (cal.match(/=== Бедствие /g) || []).length === 3 && graves && cal.includes('Путь артефакта'),
+    `строк важных ${lv.major}, обычных ${lv.normal}, мелких ${lv.minor}; текст ${rows(tMaj)} / ${rows(tNorm)} / ${rows(tAll)} строк; катаклизмы ${rows(cal)} строк`);
   const plain = {seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0};
   check('  без эпоса эпохи прежние', eraPlan(newAtlas(plain)).map(e => e.seasons / 4).join() === '25,25,25');
 }

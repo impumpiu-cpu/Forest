@@ -5,7 +5,8 @@
 // screen. The map is the «Мир» screen's own drawing (ui/atlasView.js), with the fog, the caravan, its
 // way, its goal and its home on top. A fight or a stop the core played on the local map (campaign/camp.js)
 // is played again over the map when the playback reaches its day: the same setup gives the same camp.
-import {AtlasView} from './atlasView.js';
+import {AtlasView, segOf, loadDetail, saveDetail, exportChronicle} from './atlasView.js';
+import {DETAILS} from '../atlas/chronicle.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
 import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chronicleText} from '../campaign/index.js';
 import {readLines, lineLevel, dateOf} from '../campaign/chronicle.js';
@@ -78,6 +79,13 @@ export class CampaignView extends AtlasView {
     $('campWorlds').addEventListener('click', e => { const row = e.target.closest('.sv'); if (row) this.openFromLibrary(row.dataset.id, row.dataset.name); });
     $('campCaps').addEventListener('click', e => { const row = e.target.closest('.sv'); if (!row) return; this.capPick = +row.dataset.town; this.renderCaps(); this.draw(); });
     $('campGo').addEventListener('click', () => this.begin());
+    // the world's chronicle into a file: by its eras at the detail chosen, or the calamities only (atlas/chronicle.js)
+    this.detail = loadDetail();
+    segOf($('campDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); });
+    const file = what => { const a = this.atlas; if (a) exportChronicle(a, this.worldName, what); };
+    $('campWorldFile').addEventListener('click', () => file(this.detail));
+    $('campCalFile').addEventListener('click', () => file('calamity'));
+    $('campWorldFile2').addEventListener('click', () => file(this.detail));
     // a new epic world (cfg.epic: three eras of 75–150 years), made here and put into the library
     this.epicSize = 'medium';
     const es = $('campEpicSize');
@@ -138,11 +146,11 @@ export class CampaignView extends AtlasView {
     this.making = false; $('campEpicGo').textContent = 'Сотворить';
     const a = this.atlas;
     this.bitmapKey = ''; this.draw();
-    $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${a.hist.year} лет истории. Сохраняю в библиотеку…`;
+    $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${a.hist.year} ${plural(a.hist.year, 'год', 'года', 'лет')} истории. Сохраняю в библиотеку…`;
     try {
       const rec = await saveWorldToLibrary(a, this.worldName);
       this.worldId = rec.id; this.worldName = rec.name;
-      $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${a.hist.year} лет истории, ${(rec.bytes / 1e6).toFixed(1)} МБ в библиотеке. Выберите столицу.`;
+      $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${a.hist.year} ${plural(a.hist.year, 'год', 'года', 'лет')} истории, ${(rec.bytes / 1e6).toFixed(1)} МБ в библиотеке. Выберите столицу.`;
     } catch (e) { $('campEpicNote').textContent = `Мир сотворён, но не сохранён: ${e.message}. Поход начать можно.`; }
     this.setupMode(); this.refresh();
   }
@@ -204,6 +212,7 @@ export class CampaignView extends AtlasView {
     $('campLibField').hidden = epic; $('campEpicField').hidden = !epic;
     $('campTitle').textContent = this.atlas ? this.worldName : epic ? 'Эпическая кампания' : 'Кампания';
     $('campCapsField').hidden = !this.atlas;
+    $('campWorldChron').hidden = !this.atlas || !this.atlas.hist;
     const past = this.atlas?.campaignsDone || [];
     $('campPastField').hidden = !past.length;
     $('campPast').innerHTML = past.map((P, k) => `<div class="sv"><span class="t"><b>Поход из ${esc(P.from)}</b> · ${PHASE[P.phase] || P.phase}<br><small>${P.started?.year ?? '?'}–${P.ended?.year ?? '?'} год · ${P.crown ? esc(P.crown) : ''} · вернулись ${P.members.filter(m => m.core && !m.died).length} из ${P.members.filter(m => m.core).length}</small></span><button type="button" data-k="${k}">В файл</button></div>`).join('');

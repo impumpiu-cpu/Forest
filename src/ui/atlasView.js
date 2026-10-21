@@ -37,6 +37,8 @@ import {TOWN_BUILDINGS, EFFECTS} from '../data/townBuildings.js';
 import {townFx, room} from '../atlas/towns.js';
 import {seedNumber} from '../core/rng.js';
 import {esc} from '../core/util.js';
+import {offerText, latinTitle} from './store.js';
+import {lineLevel, keeps, DETAILS, worldChronicleText, calamityChronicleText} from '../atlas/chronicle.js';
 import {$} from './dom.js';
 import {Camera} from '../render/camera.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
@@ -95,6 +97,21 @@ const COMPASS = ['восточный', 'юго-восточный', 'южный'
 // where the wind blows from, in words (the map's y grows downwards: north is up)
 const windWord = (x, y) => COMPASS[(Math.round(Math.atan2(-y, -x) / (Math.PI / 4)) + 8) % 8];
 
+// the chronicle's detail, remembered in this browser (shared by the «Мир» and «Кампания» screens)
+export function loadDetail() { try { return localStorage.getItem('forest.chronDetail') || 'normal'; } catch (e) { return 'normal'; } }
+export function saveDetail(v) { try { localStorage.setItem('forest.chronDetail', v); } catch (e) { /* storage unavailable */ } }
+// a row of buttons for a choice; `on(value)` when one is pressed
+export function segOf(box, items, cur, on) {
+  box.innerHTML = items.map(d => `<button type="button" data-val="${d.id}" aria-pressed="${d.id === cur}">${d.label}</button>`).join('');
+  box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; box.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); on(b.dataset.val); });
+}
+// the world's chronicle into a text file: by its eras at `what` detail ('major' | 'normal' | 'all'), or 'calamity'
+export function exportChronicle(a, name, what) {
+  const title = name || `Мир ${a.cfg.seed}`;
+  const text = what === 'calamity' ? calamityChronicleText(a, {name: title}) : worldChronicleText(a, {detail: what, name: title});
+  return offerText(latinTitle(`${what === 'calamity' ? 'kataklizmy' : 'letopis-mira'}-${title}`), text);
+}
+
 export class AtlasView {
   constructor({onBack, onSettle}) {
     this.cfg = this.load(); this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.fauna = 'wolf'; this.timer = 0; this.paused = false;
@@ -134,6 +151,11 @@ export class AtlasView {
     });
     $('atlasBack').addEventListener('click', () => { this.stop(); this.onBack(); });
     this.buildLibrary();
+    // the chronicle: its detail (atlas/chronicle.js), the calamities only, into a file — remembered in this browser
+    this.detail = loadDetail();
+    segOf($('atlasDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); if (this.atlas) this.renderSide(); });
+    $('atlasCalOnly').addEventListener('click', () => { this.calOnly = !this.calOnly; $('atlasCalOnly').setAttribute('aria-pressed', String(this.calOnly)); if (this.atlas) this.renderSide(); });
+    $('atlasChronFile').addEventListener('click', () => { const a = this.atlas; if (a) exportChronicle(a, this.worldName, this.calOnly ? 'calamity' : this.detail); });
     $('atlasSettle').addEventListener('click', () => {
       const a = this.atlas; if (!a || this.pick < 0) return;
       this.stop();
@@ -757,14 +779,17 @@ export class AtlasView {
       }
       return html;
     })();
-    // the chronicle only grows: new lines are appended, the old ones stay in the page
+    // the chronicle only grows: new lines are appended, the old ones stay in the page; a change of the detail or of
+    // «Катаклизмы» lays it out again (atlas/chronicle.js levels)
     const box = $('atlasChron'), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
-    if (this.chronOf !== a || !a.chronicle.length) {
-      this.chronOf = a; this.chronShown = 0;
+    const view = `${this.detail}:${this.calOnly}`;
+    if (this.chronOf !== a || !a.chronicle.length || this.chronView !== view) {
+      this.chronOf = a; this.chronShown = 0; this.chronView = view;
       box.innerHTML = a.chronicle.length ? '' : '<small class="muted">Летопись начнётся с первым этапом.</small>';
     }
     if (a.chronicle.length > this.chronShown) {
-      box.insertAdjacentHTML('beforeend', a.chronicle.slice(this.chronShown).map(c => `<div><small>${c.season != null ? `год ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join(''));
+      const shown = a.chronicle.slice(this.chronShown).filter(c => (this.calOnly ? c.topic === 'calamity' : keeps(this.detail, lineLevel(c))));
+      box.insertAdjacentHTML('beforeend', shown.map(c => `<div class="lv-${lineLevel(c) === 'major' ? 'notice' : 'info'}${c.topic === 'calamity' ? ' lv-alert' : ''}"><small>${c.season != null ? `год ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${c.topic === 'calamity' ? `<b>${esc(c.text)}</b>` : esc(c.text)}</div>`).join(''));
       this.chronShown = a.chronicle.length;
     }
     if (atEnd) box.scrollTop = box.scrollHeight;
