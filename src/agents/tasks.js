@@ -126,6 +126,8 @@ TASKS.registerAll([
       return;
     }
     task.lost = null;
+    // a runaway caught by someone else is one of ours again: the chase is over, nobody hits it (settlement/escape.js)
+    if (t.captive && !t.fugitive && t.faction === a.faction && !task.reflex) { done(w, a); return; }
     // a runaway captive (settlement/escape.js) is not fought: whoever gets within reach grabs it
     if (t.fugitive) { if (Math.hypot(t.x - a.x, t.y - a.y) <= ESCAPE.catch.reach) { catchRunaway(w, a, t); done(w, a); } else if (approach(w, a, t.x, t.y, 1.2) === null) fail(w, a, 'беглеца не догнать', 'impossible'); return; }
     if (a.faction === 'colony') {

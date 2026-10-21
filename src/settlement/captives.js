@@ -143,7 +143,13 @@ export function bindCaptive(w, by, f) {
 }
 
 // a captive died: shackles come back to the stock (rope is cut and lost)
-export function captiveDied(w, a) {
+export function captiveDied(w, a, cause) {
+  // a runaway killed out there (settlement/escape.js): its bonds are lost with it; its death is still told
+  if (a.fugitive) {
+    const r = w.chronicle.people?.find(p => p.id === a.id); if (r) { r.died = w.tick; r.cause = g(a, `погиб в бегах (${cause})`, `погибла в бегах (${cause})`); }
+    const C = (w.chronicle.captives ||= {taken: 0, died: 0}); C.died++;
+    return;
+  }
   const B = BONDS.has(a.captive.bonds) ? BONDS.get(a.captive.bonds) : null;
   // (a caravan's captive dying in its camp: the campaign takes the shackles back itself, campaign/captives.js unbind)
   if (B?.back && !a.captive.member) w.stock[B.resource] = (w.stock[B.resource] || 0) + B.n;

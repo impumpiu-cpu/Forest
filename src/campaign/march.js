@@ -246,7 +246,7 @@ function wantVisit(a, K, seasonId) {
   if ((seasonId === 'winter' || (seasonId === 'autumn' && a.hist && K.day % 30 >= 20)) && freezing(a, K.i) && K.winterYear !== a.hist.year) return 'winter';
   if (K.day < (K.nextVisit ?? 0)) return '';   // just out of a town: on to the goal first
   if (K.food < need * C.foodDays) return 'food';
-  if (ms.some(m => m.hp < C.badly)) return 'heal';
+  if (free(K).some(m => m.hp < C.badly)) return 'heal';   // a captive's wounds turn no caravan aside (campaign/captives.js)
   if (K.gold >= VISIT.money && K.day - (K.lastVisit ?? -999) >= VISIT.every) return 'shop';
   return '';
 }
@@ -289,7 +289,7 @@ function enterTown(a, K, t) {
 function townEvening(a, K, seasonId) {
   const t = a.towns.find(x => x.id === K.inTown.id), st = standing(a, K, t), ms = alive(K);
   const stocked = K.food >= 0.9 * Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays);
-  const healed = ms.every(m => m.hp >= CAMPAIGN.camp.healed);
+  const healed = free(K).every(m => m.hp >= CAMPAIGN.camp.healed);   // (nobody waits in town for a captive to heal)
   const wintering = K.inTown.why === 'winter' && (seasonId === 'winter' || seasonId === 'autumn');
   if (st && (wintering || (K.day - K.inTown.since < VISIT.stay && !(stocked && healed)))) return;
   const parts = st ? trade(a, K, t, st) : [];
@@ -389,7 +389,7 @@ function evening(a, K) {
     const why = wantVisit(a, K, seasonId);
     // urgent — any way to the nearest: the winter, the badly wounded, hunger with the gold to end it
     const rich = K.gold >= VISIT.hungryGold * need * MARKET.ration;
-    const urgent = why === 'winter' || (why === 'heal' && ms.some(m => m.hp < CAMPAIGN.camp.badly)) || (why === 'food' && K.hungry > 0 && rich);
+    const urgent = why === 'winter' || (why === 'heal' && free(K).some(m => m.hp < CAMPAIGN.camp.badly)) || (why === 'food' && K.hungry > 0 && rich);
     const days = why === 'winter' ? VISIT.winterReach : why === 'food' ? Math.min(VISIT.reach, K.food / need + VISIT.foodSpare) : VISIT.reach;
     const found = why && findTown(a, K, urgent, K.hungry ? VISIT.hungryDetour : VISIT.detour, days);
     if (found) {
@@ -401,13 +401,14 @@ function evening(a, K) {
   }
   if (K.via != null && !(K.hungry && richness(a, K.i) >= CAMPAIGN.camp.foodLand)) return;
   // a camp: for food when it runs short and the land can feed them, for the wounded, to tame or to build
-  const rich = richness(a, K.i), core = ms.reduce((s, m) => s + m.hp, 0) / ms.length, C = CAMPAIGN.camp;
+  const fs = free(K).length ? free(K) : ms;   // the camp for the wounded is for the free, not for the captives
+  const rich = richness(a, K.i), core = fs.reduce((s, m) => s + m.hp, 0) / fs.length, C = CAMPAIGN.camp;
   const stock = Math.min(capacity(K) - cargoLoad(K), need * C.stock);
   if (K.camp > 0 && ((K.why === 'food' && K.food >= C.full * stock) || (K.why === 'heal' && core >= C.healed))) K.camp = 0;
   if (K.camp > 0) K.camp--;
   else {
     // a quiet place: the land's dangers low; to build or to tame they also wait till nothing hunts them near
-    const badly = ms.some(m => m.hp < C.badly), quiet = nightRisk(a, K.i) <= C.danger, calm = quiet && !huntersNear(a, K);
+    const badly = fs.some(m => m.hp < C.badly), quiet = nightRisk(a, K.i) <= C.danger, calm = quiet && !huntersNear(a, K);
     let why = K.food < need * C.foodDays && rich >= C.foodLand ? 'food' : core < C.hp || badly ? 'heal' : '';
     // a long camp where something hunts at night is death: they look for a quieter place, unless they already starve
     if (why && !K.hungry && !quiet && K.path && K.k < K.path.length) why = '';

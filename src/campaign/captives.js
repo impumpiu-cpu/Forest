@@ -14,6 +14,7 @@ import {plural} from '../core/util.js';
 import {makeMember} from './start.js';
 
 const C = CAPTIVE.campaign;
+const alive = K => K.members.filter(m => m.alive);
 export const free = K => K.members.filter(m => m.alive && !m.captive);
 export const held = K => K.members.filter(m => m.alive && m.captive);
 export const bondsSets = K => BONDS.all().reduce((n, b) => n + Math.floor((K.cargo[b.resource] || 0) / b.n), 0);
@@ -92,7 +93,7 @@ export function escaped(a, K, m, text, say) {
 // the evening (campaign/march.js people): the ration, the will, the rolls; a plot is played out the same night
 export function captivesEvening(a, K, r, say) {
   const hs = held(K); if (!hs.length) { K.captiveCut = false; return; }
-  const R = ESCAPE.ration, cut = K.food < mouths(K) * CAMPAIGN.ration * R.cutDays;
+  const R = ESCAPE.ration, cut = K.food < alive(K).length * CAMPAIGN.ration * R.cutDays;   // every mouth at a full ration: no flip-flop
   // told once in a while: the ration comes and goes with every stretch of short food
   if (cut && !K.captiveCut && K.day - (K.cutTold ?? -999) > 60) { K.cutTold = K.day; say('Еды мало: пленным урезали паёк.', 'people'); }
   K.captiveCut = cut;
