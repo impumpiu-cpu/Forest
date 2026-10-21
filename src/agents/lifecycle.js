@@ -15,6 +15,7 @@
 // around every step.
 import {releaseAll} from '../settlement/reserve.js';
 import {TASKS} from './tasks.js';
+import {wake} from './attention.js';
 
 export const OUTCOMES = {
   done:        {label: 'сделано', skip: 0},
@@ -58,7 +59,7 @@ function close(w, a, t, outcome, why) {
 // a task ends itself: done, blocked or impossible (with the reason for the card)
 export function endTask(w, a, outcome = 'done', why = null) {
   const t = a.task;
-  a.task = null; a.think = 0;
+  a.task = null; wake(a, outcome === 'done' ? 'дело сделано' : `не вышло: ${why || OUTCOMES[outcome].label}`, outcome === 'done' ? 'дело сделано' : 'дело не вышло');
   close(w, a, t, outcome, why);
 }
 

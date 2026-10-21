@@ -19,6 +19,7 @@ import {noteHuntDeath} from './carcass.js';
 import {log} from '../core/log.js';
 import {esc, g, weighted} from '../core/util.js';
 import {agentById} from './lookup.js';
+import {wake} from './attention.js';
 
 const luckOf = a => a.special?.L ?? NORM;
 const tally = w => (w.chronicle.falls ||= {down: 0, saved: 0, bled: 0, killed: 0, traumas: 0});
@@ -76,7 +77,7 @@ export function stabilize(w, helper, a) {
   if (d.trauma) a.wounds.push({id: d.trauma});
   refreshBody(a);
   a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + (helper?.skill?.medicine || 0)));
-  a.task = null; a.think = 0;
+  a.task = null; wake(a, 'очнулся после раны', 'очнулся');
   const f = tally(w); f.saved++; if (d.trauma) f.traumas++;
   think(w, a, 'survived', {name: helper?.name, gender: helper?.gender});
   if (d.trauma) think(w, a, 'trauma', {what: WOUNDS.get(d.trauma).label});

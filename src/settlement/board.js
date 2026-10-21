@@ -39,6 +39,7 @@ import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {clamp, esc, g, plural} from '../core/util.js';
 import {nightness, hourOf, dayOf, DAY, HOUR} from '../core/time.js';
+import {wake} from '../agents/attention.js';
 
 export const BOARD = {
   look: 5,           // a colonist looks round every this many ticks, in turn by id (as before the board)
@@ -172,7 +173,7 @@ function shout(w, from, f) {
 function learn(w, c, f, by) {
   if (f.known[c.id]) return;
   f.known[c.id] = true;
-  c.think = 0;   // the alarm clock: think again now
+  wake(c, by ? `крик: ${f.label} ${f.where}` : `${f.label} ${f.where}`, by ? 'услышал крик' : 'увидел врага');   // the alarm clock
   if (by && by !== c) think(w, c, 'heardAlarm', {who: by.name, gender: by.gender, what: f.label, where: f.where});
 }
 
@@ -200,7 +201,7 @@ export function stepBoard(w) {
         if (!seenBy.has(key)) seenBy.set(key, L);
         if (!f.known[L.id]) learn(w, L, f, null);
         // a foe this close: the one who sees it thinks again at once (not mid-fight or mid-flight)
-        if (d <= BOARD.near && L.task?.id !== 'fight' && L.task?.id !== 'runHome') L.think = 0;
+        if (d <= BOARD.near && L.task?.id !== 'fight' && L.task?.id !== 'runHome') wake(L, 'враг рядом', 'враг рядом');
       }
     }
   }
@@ -221,7 +222,7 @@ export function stepBoard(w) {
     f.fresh = false; f.grew = false;
     f.weight = urgencyOf(w, f, ms) * uncovered(w, f, ms);
     for (const c of answering(w, f)) f.answered[c.id] = true;
-    if (f.weight - f.wokeAt >= BOARD.wake) { for (const id of Object.keys(f.known)) { const c = liveById(w, id); if (c) c.think = 0; } }
+    if (f.weight - f.wokeAt >= BOARD.wake) { for (const id of Object.keys(f.known)) { const c = liveById(w, id); if (c) wake(c, `тревога тяжелее: ${f.label}`, 'тревога тяжелее'); } }
     if (f.weight - f.wokeAt >= BOARD.wake || f.weight < f.wokeAt) f.wokeAt = f.weight;
   }
 }

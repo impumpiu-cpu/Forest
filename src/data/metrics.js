@@ -92,6 +92,10 @@ METRICS.registerAll([
   {id: 'alarmUnanswered', label: 'Тревог без отклика', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.unanswered || 0},
   {id: 'alarmIgnored', label: 'Слышали тревогу и не пошли (раз)', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.ignored || 0},
   {id: 'alarmHeardAsleep', label: 'Спящих разбудил крик', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.heardAsleep || 0},
+  // thinking on events (agents/attention.js)
+  {id: 'thinksPerDay', label: 'Решений на человека в день', group: 'Поведение', fmt: 1, get: w => (w.behave?.ticks ? (w.behave.thinks?.n || 0) / (w.behave.ticks / 1200) : 0)},
+  {id: 'thinksKept', label: 'Решений «продолжить прежнее», %', group: 'Поведение', fmt: 0, get: w => (w.behave?.thinks?.n ? 100 * w.behave.thinks.kept / w.behave.thinks.n : 0)},
+  {id: 'thinksHeart', label: 'Решений без повода (по таймеру), %', group: 'Поведение', fmt: 0, get: w => (w.behave?.thinks?.n ? 100 * (w.behave.thinks.by['по привычке'] || 0) / w.behave.thinks.n : 0)},
   {id: 'vacFilled', label: 'Вакансий занято к полудню, %', group: 'Поведение', fmt: 0, get: w => (w.behave?.vacancies?.places ? 100 * w.behave.vacancies.held / w.behave.vacancies.places : 0)},
   {id: 'lootBack', label: 'Добычи отбито у налётчиков, ед.', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.lootBack || 0},
   {id: 'lootLost', label: 'Добычи унесено налётчиками, ед.', group: 'Поведение', fmt: 0, get: w => w.behave?.board?.lootLost || 0},

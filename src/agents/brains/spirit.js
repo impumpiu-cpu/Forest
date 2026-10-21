@@ -22,6 +22,7 @@ import {contest} from '../../data/special.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {tempAt} from '../../world/heat.js';
 import {liveById} from '../lookup.js';
+import {wake} from '../attention.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -85,7 +86,7 @@ function lure(w, a, sp, S) {
   const v = w.agents.find(o => !o.dead && o.task?.id === 'lured' && o.task.by === a.id);   // scan: spirits only
   if (v) {
     if (!lonely(w, v, 5)) {   // someone came close: the spell breaks
-      v.task = null; v.think = 0;
+      v.task = null; wake(v, 'чары спали', 'чары');
       log(w, `<b>${esc(v.name)}</b> ${g(v, 'очнулся', 'очнулась')} у самой воды: рядом оказались свои. ${sp.label[0].toUpperCase() + sp.label.slice(1)} скрылась.`, 'danger', 'notice');
       a.task = {id: 'lurk'};
       return true;

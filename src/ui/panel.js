@@ -543,6 +543,7 @@ export class Panel {
     const y = a.why, rows = [];
     const ago = t => { const m = w.tick - t; return m < HOUR ? `${Math.max(1, Math.round(m / HOUR * 60))} мин назад` : m < DAY ? `${Math.round(m / HOUR)} ч назад` : `${Math.floor(m / DAY)} дн. назад`; };
     if (y) {
+      if (y.woke) rows.push(`<dt>Задумался</dt><dd>${ago(y.t)}: ${esc(y.woke)}</dd>`);
       rows.push(`<dt>Выбор</dt><dd><b>${esc(y.task)}</b> (${y.score})${y.why ? ` — ${esc(y.why)}` : ''}${y.kept ? '; продолжает начатое' : ''}</dd>`);
       if (y.alt) rows.push(`<dt>Второе</dt><dd class="alt">${esc(y.alt)} (${y.altScore})${y.altWhy ? ` — ${esc(y.altWhy)}` : ''}</dd>`);
     }

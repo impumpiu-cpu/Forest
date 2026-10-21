@@ -7,7 +7,7 @@
 // T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies;
 // T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T92 the colony's
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
-// back, the chase, the night watch, stage 2). Each scene builds a flat, empty map, places a few agents by hand and
+// back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -59,6 +59,7 @@ import {JOBS, huntable} from '../src/data/jobs.js';
 import {canTame} from '../src/settlement/herd.js';
 import {heatTo} from '../src/world/heat.js';
 import {makePlan, vacancyPull, signUp} from '../src/settlement/plan.js';
+import {stepAttention, HEART} from '../src/agents/attention.js';
 import {stepBoard, flagOptions, watchOption, BOARD, WATCH} from '../src/settlement/board.js';
 import {raidAlarm} from '../src/settlement/query.js';
 import {dropLoad} from '../src/agents/jobRunners.js';
@@ -1345,6 +1346,54 @@ check('T97', 'дозорный, которого сморил сон, засып
   a.think = 0; brain(w, a);
   if (a.task?.id !== 'sleep') return `выбившийся из сил дозорный занят «${a.task?.id}»`;
   return w.logLines.some(l => /уснул[а]? на посту/.test(l.html)) || 'в журнале нет, что дозорный уснул';
+});
+
+check('T98', 'думает по событию: без событий не пересматривает решение, нужда за порогом будит сразу', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 10 * HOUR;   // day: no nightfall in the window
+  const a = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  a.needs.food = 0.9; a.needs.rest = 0.95; a.needs.warmth = 1;
+  // every job out of reach for a while (on the flat scene each would end blocked at once — an event):
+  // nothing to do but idle
+  a.skips = {}; for (const j of JOBS.all()) a.skips['job:' + j.id] = w.tick + 10 * DAY;
+  a.task = {id: 'idle'}; a.think = 0; brain(w, a);   // one think now
+  if (a.task?.id !== 'idle') return `вместо безделья «${a.task?.id}»`;
+  const t0 = a.why?.t;
+  // 40 ticks of nothing happening: the old timer (every 15) would have made it think again twice
+  for (let k = 0; k < 40; k++) { w.tick++; a.needs.food = 0.9; a.needs.rest = 0.95; a.needs.warmth = 1; brain(w, a); }
+  if (a.why?.t !== t0) return `думал без повода: ${a.why?.woke}`;
+  a.needs.food = 0.35;   // hungry past the 0.4 band
+  w.tick++; brain(w, a);
+  if (a.why?.t === t0) return 'проголодавшись, не задумался';
+  return /сытость/.test(a.why.woke) || `задумался по другой причине: ${a.why.woke}`;
+});
+
+check('T99', 'события поселения: стемнело и время совета будят всех, кто не спит', () => {
+  const w = scene(); fixedRng(w);
+  const a = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5), b = put(w, 'human', 'colony', w.camp.x + 1.5, w.camp.y + 0.5);
+  w.tick = 3 * DAY + 12 * HOUR; stepAttention(w);
+  for (const c of [a, b]) { c.think = 99; c.wakeWhy = null; }
+  // to the evening: the council
+  for (let h = 12; h < 19.5; h += 0.05) { w.tick = 3 * DAY + Math.round(h * HOUR); stepAttention(w); if (a.think === 0) break; }
+  if (a.think !== 0 || b.think !== 0) return 'вечером никто не проснулся к совету или к темноте';
+  const first = a.wakeWhy;
+  for (const c of [a, b]) { c.think = 99; c.wakeWhy = null; }
+  for (let h = 19.5; h < 24; h += 0.05) { w.tick = 3 * DAY + Math.round(h * HOUR); stepAttention(w); if (b.wakeWhy === 'стемнело' || b.wakeWhy === 'время совета') break; }
+  return ['стемнело', 'время совета'].includes(first) && ['стемнело', 'время совета'].includes(b.wakeWhy) || `причины: «${first}», «${b.wakeWhy}»`;
+});
+
+check('T100', 'свой в беде: упавший без сознания будит остальных, и они идут на помощь', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 10 * HOUR;
+  const v = put(w, 'human', 'colony', w.camp.x + 20.5, w.camp.y + 0.5), h = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  h.task = {id: 'idle'}; h.think = 0; brain(w, h);
+  stepAttention(w);
+  h.think = 999;
+  v.downed = {since: w.tick, by: null}; v.task = {id: 'downed'};
+  stepAttention(w);
+  if (h.think !== 0) return 'упавший никого не разбудил';
+  w.tick++; brain(w, h);
+  return h.task?.id === 'aid' || `разбуженный занят «${h.task?.id}»: ${h.why?.why}`;
 });
 
 let bad = 0;

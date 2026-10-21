@@ -30,10 +30,11 @@ import {canDoAction, jobAccess} from '../skills.js';
 import {BUILDINGS} from '../../data/buildings.js';
 import {tempAt} from '../../world/heat.js';
 import {ensurePlan, vacancyPull, signUp} from '../../settlement/plan.js';
+import {wake, noticeSelf, heartOf, noteThink} from '../attention.js';
 
 // keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
 // colony's vacancies is settlement/plan.js vacancyPull)
-const ROSTER = {keep: 0.2, committed: 0.25, think: 45, ponder: [8, 16]};
+const ROSTER = {keep: 0.2, committed: 0.25, ponder: [8, 16]};
 
 // the weight of answering an attack on oneself: more than any need can reach
 const ATTACKED = 2.6;
@@ -61,7 +62,7 @@ const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
 // work's ceiling: as it was up to 0.8, then bending under 1 instead of cut off at it
 const softCap = x => (x <= 0.8 ? x : 0.8 + 0.2 * (1 - Math.exp(-(x - 0.8) / 0.2)));
 
-function decide(w, a) {
+function decide(w, a, woke = 'дело кончилось') {
   const night = nightness(w), camp = w.camp.cells, g = w.grid;
   let campHot = 0; for (const c of camp) campHot = Math.max(campHot, tempAt(w, c) + g.fire[c] * 400);
   const campOk = campHot < 40 ? 1 : 0.1;   // a burning camp is no place to eat or sleep
@@ -164,7 +165,8 @@ function decide(w, a) {
   }
   // the choice explained for the colonist's card: what, why, the runner-up, and whether it was kept
   a.why = {t: w.tick, task: label(best), score: +bs.toFixed(2), why: bestWhy?.() || '', kept: key(best) === cur,
-    alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || ''};
+    alt: alt ? label(alt) : null, altScore: alt ? +as.toFixed(2) : null, altWhy: altWhy?.() || '', woke};
+  noteThink(w, a.wakeKind || woke, key(best) === cur);
   if (flags.length) noteChoice(w, a, best, flags);   // the diary: why it went to a cry, or why not
   noteWatch(w, a, best, a.task?.id);
   if (key(best) !== cur) {
@@ -191,6 +193,8 @@ function decide(w, a) {
     }
   }
   else if (best.id === 'fight') { a.task.target = best.target; a.task.flag = best.flag; }
+  // nothing to wake it: it looks round again after a while anyway (agents/attention.js)
+  a.think = heartOf(a); a.wakeWhy = null; a.wakeKind = null;
 }
 
 export const colonistBrain = {
@@ -198,6 +202,7 @@ export const colonistBrain = {
   step(w, a) {
     const T = stepBody(w, a);   // reads last tick's `sleeping`
     if (a.dead) return;
+    noticeSelf(w, a);   // a need past a band, a wound: think again (agents/attention.js)
     // fallen senseless after a deadly blow: lies and bleeds until helped or until time runs out
     if (a.downed) { if (a.task?.id !== 'downed') a.task = {id: 'downed'}; syncTask(w, a); stepDowned(w, a); return; }
     healWounds(w, a);
@@ -210,19 +215,19 @@ export const colonistBrain = {
     // being attacked can't wait for the next think
     const tid2 = a.task?.id;
     const attacked = !!attackerOf(w, a);
-    if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && attacked) a.think = 0;
+    if (tid2 !== 'fight' && tid2 !== 'runHome' && tid2 !== 'flee' && attacked) wake(a, 'на меня напали', 'нападение');
     // a foe within reach is noticed at once, not at the next think: the colony's lookouts see it and
     // wake whoever should think again (settlement/board.js)
+    // think again when something happened (agents/attention.js: the task ended, a need, a wound, the
+    // night, the council, the alarm, a cry, new work…) or, with nothing at all, after a long while
     if (a.task?.id !== 'flee' && --a.think <= 0) {
-      // at work a colonist thinks about work rarely: a task ends through the lifecycle and asks for a
-      // decision then (a.think = 0); meanwhile only the body and the threats are watched here
-      // (with beasts that hunt people about, everyone looks round more often: help may be needed)
-      a.think = a.task?.id === 'job' && outsideRisk(w) < TOGETHER.riskFrom && !raidAlarm(w) ? ROSTER.think : 15;
+      const woke = a.wakeWhy ?? 'давно не оглядывался';
+      if (a.wakeWhy == null) a.wakeKind = 'по привычке';
       // a delivery under way is finished first — unless something urgent comes up: an attack, a foe
       // close by, a body at its limit. The load stays in the hands whatever is chosen.
       const urgent = attacked || hpShare(a) < 0.35 || Object.values(a.needs).some(v => v < 0.12) || !!knownFoeWithin(w, a, BOARD.near);
       const busy = !urgent && a.task?.id === 'job' && a.task.hauling;
-      if (!busy) decide(w, a);
+      if (!busy) decide(w, a, woke); else a.think = heartOf(a);
     }
     if (!a.task) decide(w, a);
     // passing through the camp: swap gear with the store, top up arrows

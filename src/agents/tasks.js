@@ -28,6 +28,7 @@ import {heatTo, coolTo, tempAt} from '../world/heat.js';
 import {WARM_AT} from '../data/navmaps.js';
 import {liveById} from './lookup.js';
 import {flagLead, raidOnBoard} from '../settlement/board.js';
+import {wake} from './attention.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -187,7 +188,7 @@ TASKS.registerAll([
 
   // a moment's thought between two jobs: stands, then takes up what it had settled on
   {id: 'ponder', label: () => 'прикидывает, за что взяться', step(w, a, task) {
-    if (w.tick >= task.until) { a.task = task.next; a.think = 0; }
+    if (w.tick >= task.until) { a.task = task.next; wake(a, 'обдумал, за что взяться', 'обдумал'); }
   }},
   {id: 'idle', label: () => 'отдыхает', step(w, a, task) {
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 2.5);
