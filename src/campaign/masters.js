@@ -8,7 +8,7 @@ import {SKILLS} from '../data/skills.js';
 const skillOf = (m, id) => m.local?.skill?.[id] ?? 0;
 
 export function nameCaravanMasters(K, say) {
-  const free = K.members.filter(m => m.alive && !m.captive);
+  const free = K.members.filter(m => m.alive && !m.captive && !m.former);
   for (const M of MASTERS.all()) {
     if (free.some(m => m.master?.skill === M.id)) continue;
     let best = null;

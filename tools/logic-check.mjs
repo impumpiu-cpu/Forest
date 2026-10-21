@@ -9,7 +9,7 @@
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4; T134–T137 the trade in captives, stage 5). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4; T134–T137 the trade in captives, stage 5; T138–T140 fixes from the code review of 21.10, captives). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -2009,6 +2009,45 @@ check('T137', 'поселение покупает у торговца плен�
   const got = captives(w);
   if (got.length !== 1 || got[0].species !== 'orc' || got[0].captive.bonds !== 'iron' || w.stock.shacklesIron !== 0) return `куплено: ${got.length}, путы ${got[0]?.captive?.bonds}`;
   return (gold < 200 && !car.captive) || 'не заплатили или торговец не отдал';
+});
+
+
+// ── fixes from the code review of 21.10 (captives)
+check('T138', 'беглеца поймал один — второй преследователь бросает погоню и не бьёт пойманного', () => {
+  const w = scene(); fixedRng(w);
+  const [p, c] = captive(w, true);
+  startEscape(w, p, 'plot');
+  const b = put(w, 'human', 'colony', p.x + 0.8, p.y); outfit(w, b);
+  c.x = p.x - 0.8; c.y = p.y;
+  b.task = {id: 'fight', target: p}; c.task = {id: 'fight', target: p};
+  syncTask(w, c); TASKS.get('fight').step(w, c, c.task); syncTask(w, c);
+  if (p.faction !== 'colony') return 'первый не поймал';
+  const hp = p.hp;
+  for (let k = 0; k < 30; k++) { if (!b.task) break; syncTask(w, b); TASKS.get(b.task.id).step(w, b, b.task); syncTask(w, b); b.cd = 0; w.tick++; }
+  if (p.hp < hp) return `пойманного били: ${hp.toFixed(2)} → ${p.hp.toFixed(2)}`;
+  return b.task?.id !== 'fight' || 'второй всё ещё дерётся с пойманным';
+});
+
+check('T139', 'ученик уходит от мастера, бросившего ремесло, и не учится, пока мастер занят другим', () => {
+  const w = scene(); fixedRng(w);
+  const m = crafter(w, 30.5, 30.5, 'smithing', 0.7); m.master = {skill: 'smithing', since: 0}; atForge(w, m);
+  const l = crafter(w, 31.5, 30.5, 'smithing', 0.1);
+  l.task = assistOption(w, l)[0]; w.tick++;
+  m.task = {id: 'job', job: 'chop'}; m.master.workedAt = w.tick;   // working, but not at the forge
+  const s0 = l.skill.smithing; stepMasters(w);
+  if (l.skill.smithing !== s0) return 'ученик кузнеца учится, пока мастер рубит лес';
+  syncTask(w, l); TASKS.get('assist').step(w, l, l.task); syncTask(w, l);
+  return l.task?.id !== 'assist' || 'ученик ходит за мастером, бросившим ремесло';
+});
+
+check('T140', 'беглец погиб в бегах: путы пропали с ним, в летописи — причина', () => {
+  const w = scene(); fixedRng(w);
+  const [p] = captive(w, true); p.captive.bonds = 'iron'; w.stock.shacklesIron = 0;
+  startEscape(w, p, 'plot');
+  kill(w, p, 'ран');
+  if (w.stock.shacklesIron !== 0) return 'кандалы беглеца вернулись на склад';
+  const r = w.chronicle.people.find(x => x.id === p.id);
+  return (r?.cause && /в бегах/.test(r.cause)) || `в летописи: ${r?.cause}`;
 });
 
 let bad = 0;

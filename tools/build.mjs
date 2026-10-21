@@ -1,4 +1,5 @@
-// Bundles src/ into dist/forest.html: one self-contained file that opens without a server.
+// Bundles src/ into dist/forest.html: one self-contained file that opens without a server. A local build:
+// dist/ is not kept in git (.gitignore); the game is run through start.bat or tools/serve.mjs.
 // Usage: npm install && npm run build
 import {build} from 'esbuild';
 import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';

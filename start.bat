@@ -1,7 +1,6 @@
 @echo off
 rem Teplyi Brod launcher: starts a local server and opens the game in the browser.
-rem index.html uses ES modules, so it cannot be opened from disk; a server is needed.
-rem Falls back to dist\forest.html (the single-file build) if neither Node nor Python is installed.
+rem index.html uses ES modules, so it cannot be opened from disk; a server is needed: Node.js or Python.
 cd /d "%~dp0"
 title Teplyi Brod
 
@@ -25,7 +24,6 @@ if %errorlevel%==0 (
   goto :eof
 )
 
-echo Neither Node.js nor Python found. Opening the single-file build dist\forest.html instead.
-echo (It may be older than the sources: run build.bat after installing Node.js.)
-start "" "%~dp0dist\forest.html"
+echo Neither Node.js nor Python found.
+echo Install Node.js (https://nodejs.org) or Python (https://python.org) and run start.bat again.
 pause

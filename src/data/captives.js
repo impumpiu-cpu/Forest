@@ -79,6 +79,7 @@ export const ESCAPE = {
   catch: {reach: 1.3, campaign: 0.45, guide: 0.1},
   ration: {cutDays: 3, eat: 0.65, work: 0.85},
   tools: {dawn: 6},
+  lost: 1200,           // a runaway that has not reached the edge in this many ticks (a day) is lost in the wilds: gone
 };
 
 // Stage 4 (docs/CAPTIVES.md): from captive to former slave to member.

@@ -137,7 +137,7 @@ export function catchRunaway(w, by, a) {
 // ── the tool for the night: a captive in the camp hands it in to the store
 function handIn(w, a) {
   const hs = handItems(a); if (!hs.length) return;
-  for (const it of hs) w.armory.push(it);
+  for (const it of hs) { it.handedBy = a.id; w.armory.push(it); }   // the captive's own: not loot (campaign/camp.js)
   a.equip.left = a.equip.right = null;
   recalcGear(a);
   w.armoryVersion = (w.armoryVersion || 0) + 1;

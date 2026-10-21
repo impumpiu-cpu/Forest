@@ -82,11 +82,11 @@ export function assistOption(w, a) {
   const task = a.task?.id === 'assist' && a.task.master === best.id ? a.task : {id: 'assist', master: best.id, skill: M.id, since: w.tick};
   return [task, bs, () => why(best, M)];
 }
-export const assistStillOn = (w, a, task) => { const m = liveById(w, task.master); return m && m.master?.skill === task.skill && !m.dead ? m : null; };
+export const assistStillOn = (w, a, task) => { const m = liveById(w, task.master); return m && m.master?.skill === task.skill && !m.dead && atCraft(m) ? m : null; };   // the master left its craft: so does the learner
 
 // ── the council names the masters
 function nameMasters(w) {
-  const free = colonists(w).filter(a => !a.captive && !a.dead && !a.downed && a.skill);
+  const free = colonists(w).filter(a => !a.captive && !a.former && !a.dead && !a.downed && a.skill);   // the free: not a captive, not a former slave
   for (const M of MASTERS.all()) {
     if (masterOf(w, M.id)) continue;
     let best = null;
@@ -117,7 +117,7 @@ export function stepMasters(w) {
   const by = learners(w);
   for (const [id, ls] of Object.entries(by)) {
     const m = liveById(w, +id);
-    if (!m?.master || (m.master.workedAt ?? -1) < w.tick - 1) continue;   // the master is not at work this moment
+    if (!m?.master || (m.master.workedAt ?? -1) < w.tick - 1 || !atCraft(m)) continue;   // the master is not at its craft this moment
     ls.slice(0, MASTER.places).forEach(c => {
       if (dist(c, m) > MASTER.near) return;
       practice(c, m.master.skill, MASTER.learn);

@@ -119,7 +119,7 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   // rare trophies, decided now and once (agents/trophies.js): only for what the colony brought down
   const trophy = sp.trophies && by?.faction === 'colony' ? decideTrophies(w, a, by) : null;
   if (a.faction === 'colony') { noteDeath(w, a, cause, by); addCorpse(w, a); }
-  if (a.captive) captiveDied(w, a);   // shackles back to the stock (settlement/captives.js)
+  if (a.captive) captiveDied(w, a, cause);   // shackles back to the stock (settlement/captives.js)
   if (a.tame) { lostBeast(w, a, killer?.predator ? `задрали ${killer.plural || killer.label}` : by ? 'убили' : cause); return; }
   // the nechist comes back some time after it was killed (data/migrations.js `resident`)
   if (sp.resident) (w.residents ||= {})[sp.id] = w.tick;
