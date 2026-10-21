@@ -126,7 +126,7 @@ export function applyCamp(a, K, S, o, d, how) {
 }
 
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town
-function takeGear(K, items) {
+export function takeGear(K, items) {
   const ms = free(K).filter(m => !m.former), took = [];   // no arms or armour for a captive or a former slave
   const armor = id => ITEMS.get(id)?.armor ?? 0, dmg = m => Math.max(0, ...m.gear.hand.map(id => ITEMS.get(id)?.melee?.dmg ?? 0));
   for (const id of items) {

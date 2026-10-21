@@ -40,6 +40,7 @@ import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.js';
 import {nameCaravanMasters} from './masters.js';
+import {morningFind} from './finds.js';
 const SPECIES_LABEL = race => SPECIES.get(race).label;
 
 const SEASON_LIST = SEASONS.all();
@@ -457,7 +458,8 @@ function night(a, K) {
     // a quiet night: a little found in the morning while they packed
     const M = CAMPAIGN.morning;
     if (r() < M.food * Math.min(1.2, richness(a, K.i) + 0.2)) { const n = Math.round(between(r, M.foodN)); K.food += n; K.stats.finds++; if (r() < 0.25) say(a, K, `Утром подстрелили дичь: +${pieces(n, 'паёк', 'пайка', 'пайков')}.`, 'find'); }
-    if (r() < M.treasure) { const g = Math.round(between(r, M.gold)); K.gold += g; K.stats.finds++; say(a, K, `Утром у ручья нашли оброненный кошель: ${pieces(g, 'золотой', 'золотых', 'золотых')}.`, 'find'); }
+    const {r: rf, done: df} = draw(K, 'finds'), found = morningFind(a, K, rf); df();   // only where it has a reason to lie
+    if (found) say(a, K, `Утром: ${found[0].toLowerCase()}${found.slice(1)}`, 'treasure');
   }
   done();
 }

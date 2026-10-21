@@ -49,8 +49,9 @@ export const CAMPAIGN = {
   // (tools/campaign-balance.mjs)
   // captive: the weight of a captive among those the blows fall on (it keeps out of the fight)
   fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, captive: 0.4, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02},
-  // a morning after a quiet night: a little food is found with `food`, something of worth with `treasure`
-  morning: {food: 0.22, foodN: [1, 3], treasure: 0.012, gold: [3, 15]},
+  // a morning after a quiet night: a little food is found with `food`; something of worth only where it has a
+  // reason to lie (FINDS below)
+  morning: {food: 0.22, foodN: [1, 3]},
   // the goal of the walk (this stage: a point; later the clues, docs/CAMPAIGN.md): a land cell this share
   // of the world's diagonal away from the capital; when none can be walked to, the ring widens to `wide`
   goal: {near: 0.22, far: 0.4, wide: [0.06, 0.6]},
@@ -114,9 +115,30 @@ export const CHRONICLE = {
     death: ['death', 'alert'], hunger: ['death', 'notice'],
     people: ['people', 'notice'], leave: ['people', 'info'],
     town: ['town', 'notice'],
-    camp: ['camp', 'info'], stop: ['camp', 'info'], find: ['camp', 'info'],
+    camp: ['camp', 'info'], stop: ['camp', 'info'], find: ['camp', 'info'], treasure: ['camp', 'notice'],
     march: ['road', 'info'], land: ['road', 'info'], route: ['road', 'info'], lost: ['road', 'notice'],
     beast: ['baggage', 'info'], build: ['baggage', 'info'],
   },
   fold: ['stop', 'find', 'land', 'sight'],
 };
+
+// What a morning may find besides food (campaign/finds.js): never a purse out of thin air — always something it
+// came from. `where` — what of the land makes it possible, read as a share 0…1 of the cell (campaign/finds.js
+// WHERE): road — a road's traffic; beasts — a beasts' lair or wolves; ruin — a burnt town or a fallen lair near;
+// battle — the graves of a battle or a raid, an army's track. A quiet morning rolls each kind once, with
+// `chance` × that share; the first that comes is the find. In it: gold `gold` (always some: a find is never empty), `items` (data/items.js
+// ids, each with its chance: one goes to whoever it suits, the rest rides to be sold), `goods` (resources
+// with an amount); `text` — the line, one drawn: {gold}, {things} are filled in.
+export const FINDS = [
+  {id: 'corpse', where: 'road', chance: 0.007, gold: [2, 10], items: {bronzedagger: 0.3}, goods: {rope: [0.3, 2, 4]},
+    text: ['У дороги нашли тело путника — давно, видно, лежит: {things}.', 'В придорожной канаве — убитый торговец, разбойники его не обыскали: {things}.']},
+  {id: 'cart', where: 'road', chance: 0.005, gold: [1, 6], items: {bronzeaxe: 0.15}, goods: {rope: [0.5, 2, 4], leather: [0.5, 1, 3]},
+    text: ['На обочине — брошенная повозка со сломанной осью; в ней нашлось: {things}.', 'Нашли опрокинутую телегу без лошади, груз растащен не весь: {things}.']},
+  {id: 'den', where: 'beasts', chance: 0.006, gold: [1, 8], items: {bronzespear: 0.2, irondagger: 0.05}, goods: {hide: [0.4, 1, 2]},
+    text: ['Пещера зверя, вся в костях: кто-то из охотников не вернулся отсюда. Среди костей: {things}.', 'В логове зверя под костями — остатки чужого снаряжения: {things}.']},
+  {id: 'ash', where: 'ruin', chance: 0.02, gold: [3, 15], items: {bronzesword: 0.1, ironaxe: 0.1}, goods: {},
+    text: ['На пепелище, в обгоревшем подполе, отыскали: {things}.', 'Среди развалин под рухнувшей балкой — забытый тайник: {things}.']},
+  {id: 'field', where: 'battle', chance: 0.012, gold: [1, 6], items: {shield: 0.25, bronzespear: 0.15}, goods: {},
+    text: ['Старое поле боя: земля всё ещё отдаёт ржавое железо. Подобрали: {things}.', 'У курганов павших — брошенное оружие и кошель убитого: {things}.']},
+];
+

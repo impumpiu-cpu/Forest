@@ -47,7 +47,7 @@ const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLo
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const finite = K => [K.food, K.x, K.y, K.gold, ...K.members.map(m => m.hp)].every(Number.isFinite);
-const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0, captives: 0, bound: 0, escaped: 0, caught: 0, told: 0, resigned: 0, stayed: 0, extended: 0, deserted: 0, freed: 0, sold: 0, bought: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
+const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0, captives: 0, bound: 0, escaped: 0, caught: 0, told: 0, resigned: 0, stayed: 0, extended: 0, deserted: 0, freed: 0, sold: 0, bought: 0, finds: 0, thinAir: 0, hireEnds: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
 
 // the local map of a walk: every fight and stop was played on it, the kept camps played again come out the same
 function countLocal(K, label, bad) {
@@ -103,7 +103,7 @@ for (let s = 0; s < seeds; s++) {
     if (K.log.some(l => l.kind === 'route')) got.route++;
     if (K.log.some(l => l.kind === 'town' && /купили|продали/.test(l.text))) got.trade++;
     if (K.members.some(m => !isCore(m) && !m.captive)) got.joined++;
-    got.captives += K.members.filter(m => m.captive).length; got.escaped += K.stats.escaped || 0; got.caught += K.stats.caught || 0; got.told += K.stats.told || 0; got.resigned += K.log.filter(l => /смирил/.test(l.text)).length; got.stayed += K.stats.stayed || 0; got.extended += K.stats.extended || 0; got.deserted += K.stats.deserted || 0; got.freed += K.stats.freed || 0; got.sold += K.stats.sold || 0; got.bought += K.stats.bought || 0; if (K.log.some(l => /связали|В плен взяли/.test(l.text))) got.bound++;
+    got.captives += K.members.filter(m => m.captive).length; got.escaped += K.stats.escaped || 0; got.caught += K.stats.caught || 0; got.told += K.stats.told || 0; got.resigned += K.log.filter(l => /смирил/.test(l.text)).length; got.stayed += K.stats.stayed || 0; got.extended += K.stats.extended || 0; got.deserted += K.stats.deserted || 0; got.freed += K.stats.freed || 0; got.sold += K.stats.sold || 0; got.bought += K.stats.bought || 0; got.finds += K.log.filter(l => l.kind === 'treasure').length; got.thinAir += K.log.filter(l => /оброненный кошель/.test(l.text)).length; if (K.log.some(l => /связали|В плен взяли/.test(l.text))) got.bound++;
     if (K.log.some(l => l.kind === 'leave')) got.left++;
     countLocal(K, c.label, bad);
     if (K.stats.met) got.met++;
@@ -201,6 +201,21 @@ for (let s = 0; s < seeds; s++) {
       `полон ${full}, ждал ${waited}, освобождён ${freed}, предел ${capped}`);
   }
 
+  // hirelings at the end of the term (data/market.js CONTRACT): a good opinion stays for good, a middling one asks
+  // for another term (paid, when there is gold), a poor one goes — set up by hand, as hiring is rare in a walk
+  {
+    const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'});
+    K.gold = 200;
+    const hire = (name, opinion) => K.members.push({...K.members[0], id: 950 + K.members.length, name, core: false, role: 'sellsword', alive: true, hp: 1, loyalty: undefined,
+      gear: {hand: ['sword', 'shield'], body: 'lamellar'}, contract: {until: 1, wage: 0.5, opinion}});
+    hire('Остался', 0.95); hire('Продлил', 0.6); hire('Ушёл', 0.1);
+    stepCampaign(a);
+    const by = n => K.members.find(m => m.name === n);
+    const ends = [by('Остался').alive && !by('Остался').contract, by('Продлил').alive && by('Продлил').contract?.until > 1, !by('Ушёл').alive || !!by('Ушёл').left];
+    got.hireEnds += ends.filter(Boolean).length;
+    check(`сид ${seed}: конец срока наёмника — остался, продлил, ушёл`, ends.every(Boolean), ends.join(', '));
+  }
+
   // the local map: a stretch of a walk played in full — its fights and stops on the map
   if (!fullLocal) {
     const lbad = [], c = pick[0], a = fresh(), K = newCampaign(a, c.town);
@@ -224,7 +239,8 @@ check('квест: подсказки найдены, места взяты шт
 check('караваны торгуют в городах, к ним пристают и от них уходят', got.trade > 0 && got.joined > 0 && got.left > 0, `торговали ${got.trade}, с нанятыми или приставшими ${got.joined}, с ушедшими ${got.left}`);
 check('пленные: упавших врагов вяжут и ведут с караваном', got.captives > 0 && got.bound > 0, `пленных ${got.captives}, походов с пленными ${got.bound}`);
 check('пленные бегут и смиряются, беглецов ловят', got.escaped > 0 && got.resigned > 0 && got.caught > 0, `попыток побега ${got.escaped + got.caught}: ушли ${got.escaped}, пойманы ${got.caught}; смирились ${got.resigned}, доносов ${got.told}`);
-check('наёмники в конце срока остаются, продлевают или уходят', got.stayed + got.extended > 0, `остались ${got.stayed}, продлили ${got.extended}, сбежали ${got.deserted}; освобождено пленных ${got.freed}`);
+check('наёмники в конце срока остаются, продлевают или уходят', got.stayed + got.extended + got.hireEnds > 0, `остались ${got.stayed}, продлили ${got.extended}, сбежали ${got.deserted}; освобождено пленных ${got.freed}`);
+check('находки с причиной: тело у дороги, брошенная повозка, логово, пепелище, поле боя — и ни одного кошеля из воздуха', got.finds > 0 && !got.thinAir, `находок ${got.finds}`);
 check('пленных продают и покупают в городах, где это не запрещено', got.sold + got.bought > 0, `продали ${got.sold}, купили ${got.bought}`);
 check('пузырь: ночные бои от тех, кто дошёл до лагеря, засады на марше, обозы и стада на пути', got.met > 0 && got.ambush > 0 && got.road > 0, `с ночными встречами ${got.met}, с засадами ${got.ambush}, с обозами или стадами ${got.road}`);
 check('локальная карта: бои и стоянки сыграны на ней, повтор стоянки даёт то же', local.camps > 0 && local.stops > 0 && local.same === local.replays,
