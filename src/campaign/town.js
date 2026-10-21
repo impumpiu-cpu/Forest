@@ -20,6 +20,7 @@ import {route} from './path.js';
 import {ROUTE} from '../data/transport.js';
 import {makeMember} from './start.js';
 import {free, bondsSets, isBonds} from './captives.js';
+import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
 
 const alive = K => K.members.filter(m => m.alive);
@@ -99,6 +100,7 @@ export function trade(a, K, t, st) {
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
   if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + (ITEMS.get(id)?.value ?? 0), 0) * STANDING[st].sell * MARKET.spoils; got += p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   K.gold = gold(K.gold + got);
+  done.push(...tradeCaptives(a, K, t, st));   // captives sold and bought, by the town's law (campaign/slavery.js)
   // food: up to `foodDays` days, as far as the room and the gold go
   const need = alive(K).length * CAMPAIGN.ration, price = rationPrice(t, st);
   const room = Math.max(0, capacity(K) - load(K)), want = Math.max(0, Math.min(room, need * WANTS.foodDays - K.food));

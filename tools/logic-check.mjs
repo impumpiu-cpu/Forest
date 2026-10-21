@@ -9,7 +9,7 @@
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4; T134–T137 the trade in captives, stage 5). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -78,6 +78,9 @@ import {stepMasters, assistOption, apprenticeBonus, placeOf, masterOf} from '../
 import {MASTER} from '../src/data/masters.js';
 import {stepFreedom, formerAllows, freeCaptive} from '../src/settlement/freedom.js';
 import {FREEDOM} from '../src/data/captives.js';
+import {captivePrice, lawOf, SLAVE} from '../src/data/slavery.js';
+import {sellCaptives, buyCaptive, forSale} from '../src/settlement/slavery.js';
+import {tradeCaptives} from '../src/campaign/slavery.js';
 
 // a flat grass map with nobody on it; the camp stays where it was generated
 function scene(seed = 'logic') {
@@ -1942,6 +1945,70 @@ check('T133', 'бывший раб, бившийся в налёте, — на �
   for (const o of g) kill(w, o, 'ран'); w.agents = w.agents.filter(o => !o.dead);
   councilOver(w); stepFreedom(w);
   return (!p.former && !p.captive && p.faction === 'colony') || 'не принят в члены';
+});
+
+
+// ── stage 5: the trade in captives (data/slavery.js, settlement/slavery.js, campaign/slavery.js)
+check('T134', 'цена пленного: смирившийся дороже, буйный дешевле; здоровье, Сила и ремесло — дороже', () => {
+  const p = o => captivePrice({hp: 1, S: 5, will: 0.4, ...o});
+  if (!(p({resigned: true}) > p({}) && p({}) > p({will: 0.8}))) return `смирившийся ${p({resigned: true})}, обычный ${p({})}, буйный ${p({will: 0.8})}`;
+  if (!(p({hp: 1}) > p({hp: 0.3}))) return 'раненый не дешевле';
+  if (!(p({S: 8}) > p({S: 3}))) return 'сильный не дороже';
+  return p({skill: {smithing: 0.6}}) > p({}) || 'умелый не дороже';
+});
+
+check('T135', 'закон: у эльфов не торгуют, у гномов терпят — продажа портит отношения державы, у людей — свободно', () => {
+  if (lawOf('elves').law !== 'banned' || lawOf('dwarves').law !== 'frowned' || lawOf('humans').law !== 'legal') return 'законы не те';
+  const make = () => {
+    const m = {id: 1, name: 'Гнырк', gender: 'm', race: 'goblin', role: 'captive', alive: true, hp: 1, special: {S: 5}, gear: {hand: [], body: 'clothes'},
+      captive: {since: 0, bonds: 'rope', will: 0.9}};
+    const f = {id: 2, name: 'Любава', gender: 'f', race: 'human', role: 'former', alive: true, hp: 1, loyalty: 0.7, former: {since: 0}, gear: {hand: [], body: 'clothes'}};
+    const K = {members: [m, f], cargo: {}, food: 100, gold: 0, stats: {}, rng: {}, seed: 't', day: 10, realm: 1, beasts: [], vehicles: []};
+    const a = {hist: {year: 1}, rel: {'1:2': {att: 1}}};
+    return {K, a, m, f};
+  };
+  const e = make(); tradeCaptives(e.a, e.K, {people: 'elves', realm: 2}, 'friend');
+  if (!e.m.alive || e.K.gold) return 'у эльфов продали пленного';
+  const d = make(); tradeCaptives(d.a, d.K, {people: 'dwarves', realm: 2}, 'friend');
+  if (d.m.alive || !(d.K.gold > 0)) return 'у гномов буйного не продали';
+  if (!(d.a.rel['1:2'].att < 1)) return 'продажа у гномов не задела отношения державы';
+  if (!(d.f.loyalty < 0.7)) return 'бывший раб не огорчён продажей';
+  const h = make(); tradeCaptives(h.a, h.K, {people: 'humans', realm: 2}, 'friend');
+  return (!h.m.alive && h.a.rel['1:2'].att === 1) || 'у людей продажа задела отношения или не случилась';
+});
+
+check('T136', 'поселение продаёт торговцу буйного пленного, смирившегося — только в голод, отслужившего — никогда; остальным пленным страшнее', () => {
+  const w = scene(); fixedRng(w);
+  const [p1, c] = captive(w, true);
+  const [r2] = fallenRaider(w, w.camp.x + 2.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r2.id}; bindAll(w, c);
+  const [r3] = fallenRaider(w, w.camp.x - 1.5, w.camp.y + 2.5); w.stock.rope = 2; c.task = {id: 'bind', who: r3.id}; bindAll(w, c);
+  p1.captive.will = 0.9; r2.captive.will = 0.3; r2.captive.resigned = w.tick; r3.captive.will = 0.9; r3.captive.service = SLAVE.sell.service;
+  w.stock.berries = 300;
+  const sale = forSale(w);
+  if (!sale.includes(p1) || sale.includes(r2) || sale.includes(r3)) return `на продажу: ${sale.map(a => a.name)}`;
+  const car = {name: 'Гай', purse: 100}, deal = {sold: [], bought: [], earned: 0, spent: 0};
+  const will3 = r3.captive.will; r3.captive.will = 0.5;
+  sellCaptives(w, car, deal, (list, label, n, gold) => list.push([label, n, gold]));
+  if (!p1.gone || !p1.sold || !(w.stock.gold > 0) || !(car.purse < 100)) return 'буйного не продали';
+  if (!(r3.captive.will > 0.5)) return 'оставшимся пленным не страшнее';
+  for (const f of RESOURCES.filter(r => r.tags.includes('food'))) w.stock[f.id] = 0;
+  return (forSale(w).includes(r2) && !forSale(w).includes(r3)) || 'в голод смирившегося не продают или продают отслужившего';
+});
+
+check('T137', 'поселение покупает у торговца пленного, когда есть путы и золото; без пут — нет', () => {
+  const w = scene(); fixedRng(w);
+  put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  const deal = () => ({sold: [], bought: [], earned: 0, spent: 0}), note = (list, label, n, gold) => list.push([label, n, gold]);
+  let gold = 200; const cash = () => gold, spend = p => { if (gold < p) return false; gold -= p; return true; };
+  w.stock.rope = 0; w.stock.shacklesIron = 0; w.stock.shacklesBronze = 0;
+  const car = {name: 'Гай', purse: 50, captive: {race: 'orc'}};
+  buyCaptive(w, car, deal(), note, cash, spend, null);
+  if (captives(w).length || gold !== 200) return 'купили без пут';
+  w.stock.shacklesIron = 1;
+  buyCaptive(w, car, deal(), note, cash, spend, null);
+  const got = captives(w);
+  if (got.length !== 1 || got[0].species !== 'orc' || got[0].captive.bonds !== 'iron' || w.stock.shacklesIron !== 0) return `куплено: ${got.length}, путы ${got[0]?.captive?.bonds}`;
+  return (gold < 200 && !car.captive) || 'не заплатили или торговец не отдал';
 });
 
 let bad = 0;

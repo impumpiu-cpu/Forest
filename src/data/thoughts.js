@@ -33,6 +33,8 @@ THOUGHTS.registerAll([
   // masters (settlement/masters.js)
   {id: 'namedMaster', mood: 0.5, lasts: 3 * DAY, text: (a, c) => `Совет нарёк ${g(a, 'его', 'её')} при всех: ${c.title}. Честь!`},
   {id: 'masterNamed', mood: 0.03, lasts: DAY, once: DAY, text: (a, c) => `${c.name} теперь ${c.title}: будет у кого поучиться.`},
+  // the trade in captives (settlement/slavery.js)
+  {id: 'captiveSold', mood: -0.15, lasts: DAY, once: DAY, text: (a, c) => `${c.name} продали торговцу, как скотину. Тяжело на это смотреть.`},
   // former slaves (settlement/freedom.js)
   {id: 'freedFromBonds', mood: 0.6, lasts: 4 * DAY, text: (a, c) => `С ${g(a, 'него', 'неё')} сняли путы${c.name ? `: ${c.name} поручился` : ''}. Не свобода, но уже не плен.`},
   {id: 'madeMember', mood: 0.6, lasts: 4 * DAY, text: a => `Совет принял ${g(a, 'его', 'её')} в поселение как своего.`},
