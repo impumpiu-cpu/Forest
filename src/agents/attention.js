@@ -75,6 +75,8 @@ export function stepAttention(w) {
   if (S.armory !== w.armoryVersion) { if (S.armory != null) wakeAll(w, 'новое снаряжение на складе', a => !a.task || a.task.id === 'idle'); S.armory = w.armoryVersion; }
   // one of ours fallen, or badly hurt out in the woods: everyone may want to help
   const hurt = S.hurt ||= {};
+  const here = new Set(col.map(a => a.id));
+  for (const id of Object.keys(hurt)) if (!here.has(+id)) delete hurt[id];   // gone from the colony: forgotten
   for (const a of col) {
     if (a.dead) { delete hurt[a.id]; continue; }
     const now = a.downed ? 2 : hpShare(a) < TOGETHER.aidBelow && !agentInZone(w, a) ? 1 : 0;

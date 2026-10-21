@@ -45,7 +45,11 @@ function close(w, a, t, outcome, why) {
   def.exit?.(w, a, t, outcome);
   if (t.id === 'job') RUNNER_EXIT[def.runnerOf?.(t)]?.(w, a, t, outcome);
   const skip = OUTCOMES[outcome].skip;
-  if (skip && !REFLEX.has(t.id)) (a.skips ||= {})[taskKey(t)] = w.tick + skip;
+  if (skip && !REFLEX.has(t.id)) {
+    const sk = a.skips ||= {};
+    for (const k in sk) if (sk[k] <= w.tick) delete sk[k];   // spent pauses go (a fight or a cry per foe would pile up)
+    sk[taskKey(t)] = w.tick + skip;
+  }
   const b = w.behave;
   if (b && t.id === 'job') (b.outcomes ||= {})[outcome] = (b.outcomes[outcome] || 0) + 1;
   // the card shows refusals of any task, and interruptions of work (a council or a meal giving way to

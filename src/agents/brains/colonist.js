@@ -58,7 +58,8 @@ function jobWhy(w, a, job, ctx, goal, tasty, night, vac) {
 }
 
 
-const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id) : '');
+// a task's identity in the choice: a job by its job, a run to a cry by its flag (two cries are two choices)
+const key = t => (t ? (t.id === 'job' ? 'job:' + t.job : t.id === 'answer' ? 'answer:' + t.flag : t.id) : '');
 // work's ceiling: as it was up to 0.8, then bending under 1 instead of cut off at it
 const softCap = x => (x <= 0.8 ? x : 0.8 + 0.2 * (1 - Math.exp(-(x - 0.8) / 0.2)));
 
@@ -159,7 +160,7 @@ function decide(w, a, woke = 'дело кончилось') {
   // a task that just ended blocked or impossible stays out of the choice for a while (agents/lifecycle.js)
   for (const [t, s, why] of opts) {
     if (key(t) !== cur && !t.reflex && skipped(w, a, t)) continue;
-    const sc = s + (key(t) === cur && t.id !== 'reserve' ? keep : 0);   // the reserve is weighed afresh every time
+    const sc = s + (key(t) === cur && t.id !== 'reserve' && t.id !== 'answer' ? keep : 0);   // the reserve and a run to a cry are weighed afresh every time: a heavier cry wins
     if (sc > bs) { if (best && key(best) !== key(t)) { alt = best; as = bs; altWhy = bestWhy; } bs = sc; best = t; bestWhy = why; }
     else if (sc > as && key(t) !== key(best)) { alt = t; as = sc; altWhy = why; }
   }
@@ -178,6 +179,7 @@ function decide(w, a, woke = 'дело кончилось') {
       w.behave.switches++;
       a.task = {id: 'ponder', next: best, until: w.tick + lo + Math.floor(w.rngs.colony() * hi), why: a.why.why};
       signUp(w, a, best.job);   // decided: the place is taken now, the walk over comes after the thought
+      a.think = a.task.until - w.tick + 1; a.wakeWhy = null; a.wakeKind = null;   // nothing to weigh till the thought is over
       return;
     }
     // the task it drops is closed as interrupted by syncTask(), with this reason; eating, sleeping and

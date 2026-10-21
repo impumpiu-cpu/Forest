@@ -58,6 +58,9 @@ const ema = (old, v) => old * 0.95 + v * 0.05;
 
 export function step(w) {
   if (w.over) return;
+  // the tick's caches (core/util.js perTick) start empty: the panel may have filled them between two
+  // ticks from a state the tick itself then changes — a browser game must not drift from a headless one
+  w.scratch = {tick: w.tick};
   const t0 = performance.now();
   stepFields(w);
   stepWeather(w);

@@ -222,7 +222,7 @@ export function stepBoard(w) {
     f.fresh = false; f.grew = false;
     f.weight = urgencyOf(w, f, ms) * uncovered(w, f, ms);
     for (const c of answering(w, f)) f.answered[c.id] = true;
-    if (f.weight - f.wokeAt >= BOARD.wake) { for (const id of Object.keys(f.known)) { const c = liveById(w, id); if (c) wake(c, `тревога тяжелее: ${f.label}`, 'тревога тяжелее'); } }
+    if (f.weight - f.wokeAt >= BOARD.wake) { for (const id of Object.keys(f.known)) { const c = liveById(w, +id); if (c) wake(c, `тревога тяжелее: ${f.label}`, 'тревога тяжелее'); } }
     if (f.weight - f.wokeAt >= BOARD.wake || f.weight < f.wokeAt) f.wokeAt = f.weight;
   }
 }
@@ -272,6 +272,11 @@ export const watchOnPost = w => { const W = w.board?.watch; if (!W || W.by == nu
 
 function stepWatch(w, B) {
   const night = watchNight(w), W = B.watch;
+  // the watchman fell, died or left in the night: the place is free again for someone else
+  if (W && !W.done && W.by != null) {
+    const a = liveById(w, W.by);
+    if (!a || a.downed || a.faction !== 'colony') { W.by = null; W.name = null; W.slept = false; }
+  }
   if (night != null && (!W || W.night !== night)) {
     if (W && !W.done) endWatch(w, W);
     B.watch = {night, by: null, name: null, done: false};
