@@ -164,6 +164,24 @@ for (let s = 0; s < seeds; s++) {
       epi.slice(0, 2).join(' / '));
   }
 
+  // the ranks lean (data/campaign.js RETINUE.lean): over many rolls the fighters are stronger, tougher and quicker,
+  // the squires cleverer, more charming, sharper-eyed and luckier; nobody leaves the people's limits
+  {
+    const sum = {knight: {}, squire: {}}, n = {knight: 0, squire: 0};
+    let out = 0;
+    for (const c of pick) for (let k = 0; k < 20; k++) {
+      const a = fresh(), K = newCampaign(a, c.town, {seed: `lean:${k}:${c.town}`, mode: 'auto'});
+      for (const m of K.members) {
+        n[m.role]++;
+        for (const [id, v] of Object.entries(m.special)) { sum[m.role][id] = (sum[m.role][id] || 0) + v; if (v < 0) out++; }
+      }
+    }
+    const avg = (r, ids) => ids.reduce((t, id) => t + sum[r][id] / n[r], 0) / ids.length;
+    const fight = ['S', 'E', 'A'], craft = ['I', 'C', 'L'];
+    check(`сид ${seed}: бойцы сильнее в боевых характеристиках, сквайры — в остальных`, avg('knight', fight) > avg('squire', fight) + 0.4 && avg('squire', craft) > avg('knight', craft) + 0.4 && !out,
+      `S/E/A ${avg('knight', fight).toFixed(2)} против ${avg('squire', fight).toFixed(2)}, I/C/L ${avg('squire', craft).toFixed(2)} против ${avg('knight', craft).toFixed(2)}`);
+  }
+
   // a full company (docs/CAMPAIGN.md «Пополнение», campaign/company.js): with four joined nobody more joins, and a
   // captive who has earned its freedom waits in its bonds; with a place free it is freed
   {

@@ -84,6 +84,10 @@ export const RETINUE = {
   orcs:    {knight: ['рубака', 'рубаки', 'рубаки'], squire: ['прислужник', 'прислужники', 'прислужника'],
     knightGear: [['bronzeaxe'], ['bronzeaxe', 'shield'], ['bronzespear'], ['bronzeaxe']]},
   // shared by all
+  // the stats each rank leans to (agents/special.js rollCreature opts.lean: the better of two rolls, inside the
+  // people's limits): the fighters to Strength, Endurance, Agility (a bowman — Perception too); the squires to
+  // Intelligence (they learn the crafts), Charisma (taming, rumours, companions), Perception (hunting, scouting), Luck
+  lean: {knight: ['S', 'E', 'A'], bowman: ['P'], squire: ['I', 'C', 'P', 'L']},
   armour: ['jerkin', 'hardleather', 'jerkin', 'hardleather'],
   squireGear: [['axe'], ['maul'], ['rod'], ['pan']],
   squireBody: 'clothes',

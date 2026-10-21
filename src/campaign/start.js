@@ -9,6 +9,7 @@
 import {mulberry, seedNumber} from '../core/rng.js';
 import {rollCreature} from '../agents/special.js';
 import {SPECIES} from '../data/species.js';
+import {ITEMS} from '../data/items.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {CAMPAIGN, RETINUE} from '../data/campaign.js';
 import {realmOf, realmLabel, realmTowns} from '../atlas/realms.js';
@@ -37,10 +38,10 @@ export function capitals(a) {
 // someone who walks with the caravan: a creature of a race (and sub-race), rolled as the local map rolls
 // them, with a name nobody in the caravan has. `core` — one of the eight who set out (the campaign is lost
 // when none of them is left); the rest are hired (`contract`) or joined on the way (`loyalty`)
-export function makeMember(K, rnd, {race, sub = null, role, gear, core = false, ...more}) {
+export function makeMember(K, rnd, {race, sub = null, role, gear, core = false, lean = null, ...more}) {
   const sp = SPECIES.get(race), spOf = sub && sp.peoples ? {...sp, peoples: sp.peoples.filter(p => p.id === sub)} : sp;
   const m = {id: (K.nextMember = (K.nextMember || K.members.length) + 1), name: sp.label, gender: 'm', race, role, core, hp: 1, alive: true, joined: K.day, back: 1, ride: null, ...more};
-  rollCreature({rngs: {birth: rnd}}, m, spOf);
+  rollCreature({rngs: {birth: rnd}}, m, spOf, lean ? {lean} : {});
   const used = new Set(K.members.map(x => x.name)), names = (sp.names || []).filter(n => !used.has(n[0]));
   if (names.length) [m.name, m.gender] = names[(rnd() * names.length) | 0];
   m.gear = {hand: [...gear.hand], body: gear.body};
@@ -52,7 +53,10 @@ function member(K, a, rnd, role, k) {
   const r = realmOf(a, K.realm), R = RETINUE[K.people];
   const gear = role === 'knight' ? {hand: R.knightGear[k % R.knightGear.length], body: RETINUE.armour[k % RETINUE.armour.length]}
     : {hand: RETINUE.squireGear[k % RETINUE.squireGear.length], body: RETINUE.squireBody};
-  return makeMember(K, rnd, {race: WORLD_PEOPLES.get(K.people).race, sub: r.sub, role, gear, core: true});
+  // the rank's leaning: the fighters to the fighting stats (a bowman — also to Perception), the squires to the others
+  const L = RETINUE.lean, bow = gear.hand.some(id => ITEMS.get(id)?.ranged);
+  const lean = role === 'knight' ? [...L.knight, ...(bow ? L.bowman : [])] : L.squire;
+  return makeMember(K, rnd, {race: WORLD_PEOPLES.get(K.people).race, sub: r.sub, role, gear, core: true, lean});
 }
 
 // mode: 'local' — fights and stops are played on the local map (campaign/camp.js); 'auto' — settled at once (quick runs)

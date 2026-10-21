@@ -38,14 +38,18 @@ function mod(m, k, v) { m[k] = ADD.has(k) ? (m[k] ?? 0) + v : (m[k] ?? 1) * v; }
 
 // Rolls who the creature is: its people, SPECIAL inside the limits, world view and values. The body
 // (mods, health) is not touched here: refreshBody() builds it from these and the other sources.
-export function rollCreature(w, a, sp) {
+// opts.lean — stats (ids) the creature leans to: each is the better of two rolls, still inside the limits
+// (the campaign's knights lean to the fighting ones, its squires to the others: data/campaign.js RETINUE.lean).
+// Without it the draws are exactly as before.
+export function rollCreature(w, a, sp, opts = {}) {
   if (!sp.special) return;
   const rng = w.rngs.birth;
   if (sp.peoples) a.people = weighted(rng, sp.peoples.map(p => [p, p.weight ?? 1])).id;
   const people = peopleOf(sp, a), lim = limits(sp, people);
   // the middle of the range is the most common; the ends are rare
   a.special = {};
-  for (const [id, [lo, hi]] of Object.entries(lim)) a.special[id] = Math.round(lo + (hi - lo) * (rng() + rng()) / 2);
+  const lean = new Set(opts.lean || []), roll = (lo, hi) => Math.round(lo + (hi - lo) * (rng() + rng()) / 2);
+  for (const [id, [lo, hi]] of Object.entries(lim)) a.special[id] = lean.has(id) ? Math.max(roll(lo, hi), roll(lo, hi)) : roll(lo, hi);
   if (sp.align) {
     const s = sp.align.spread ?? 1, n = () => (rng() + rng() + rng() - 1.5) * s;
     a.align = {order: clamp(Math.round((sp.align.order + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX), mercy: clamp(Math.round((sp.align.mercy + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX)};
