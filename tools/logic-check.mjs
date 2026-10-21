@@ -8,7 +8,7 @@
 // T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T92 the colony's
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
-// T101–T104 wild herds, stage 5). Each scene builds a flat, empty map, places a few agents by hand and
+// T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -1461,6 +1461,52 @@ check('T104', 'лоси: смелый бык идёт на волка, напа�
   stepHerds(w); brain(w, bull); brain(w, shy);
   if (!(bull.task?.id === 'maul' && bull.task.target === wolf)) return `бык занят «${bull.task?.id}»`;
   return ['drawOff', 'alert', 'graze', 'maul'].includes(shy.task?.id) && !(shy.task?.id === 'maul') || `робкая лосиха занята «${shy.task?.id}»`;
+});
+
+// ── fixes from the code review of 21.10
+check('T105', 'бег на зов различает тревоги: со зова на жёлтую переключаются на более тяжёлую', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 10 * HOUR;
+  const a = put(w, 'human', 'colony', 30.5, 30.5), v = put(w, 'human', 'colony', 30.5, 48.5);
+  a.mods.bravery = 1.5; outfit(w, a);
+  a.skips = {}; for (const j of JOBS.all()) a.skips['job:' + j.id] = w.tick + 10 * DAY;   // nothing else to do
+  const y = put(w, 'wolf', 'predators', 30.5, 12.5); y.pack = y.id;   // a yellow flag, 18 away
+  const r = put(w, 'wolf', 'predators', 31.5, 48.5); r.pack = r.id;   // will be red: on v
+  lookRound(w);
+  a.task = {id: 'answer', flag: 'pack:' + y.pack}; syncTask(w, a);
+  r.task = {id: 'maul', target: v};
+  lookRound(w);
+  const red = w.board.flags['pack:' + r.pack];
+  if (!red?.red || !red.known[a.id]) return 'красная тревога не дошла';
+  a.think = 0; brain(w, a);
+  return (a.task?.flag === 'pack:' + r.pack || a.task?.target === r) || `остался на «${a.task?.id} ${a.task?.flag}»`;
+});
+
+check('T106', 'раздумье между работами длится, сколько задумано', () => {
+  const w = scene(); fixedRng(w);
+  w.tick = 3 * DAY + 10 * HOUR;
+  const a = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5);
+  w.stock.wood = 0; w.stock.clay = 50;   // the woods are wanted, the clay pit not
+  a.prefs = {chop: 1.6, clay: 0.5}; a.likes = 'chop'; a.dislikes = 'clay'; a.skips = {};
+  a.task = {id: 'job', job: 'clay'}; syncTask(w, a);
+  a.think = 0; brain(w, a);   // decides to go to the woods: a moment's thought first
+  if (a.task?.id !== 'ponder') return `вместо раздумья «${a.task?.id}/${a.task?.job}»`;
+  const left = a.task.until - w.tick;
+  for (let k = 0; k < left - 1; k++) { w.tick++; brain(w, a); if (a.task?.id !== 'ponder') return `раздумье оборвалось через ${k + 1} из ${left} тиков: «${a.task?.id}»`; }
+  return true;
+});
+
+check('T107', 'потяжелевшая тревога будит всех, кто о ней знает', () => {
+  const w = scene(); fixedRng(w);
+  const x = put(w, 'human', 'colony', 30.5, 30.5), y = put(w, 'human', 'colony', 31.5, 30.5);
+  const wolf = put(w, 'wolf', 'predators', 43.5, 30.5); wolf.pack = wolf.id;   // in sight, not close (> BOARD.near)
+  outfit(w, x); x.task = {id: 'fight', target: wolf};
+  lookRound(w);
+  y.think = 999; y.wakeWhy = null;
+  for (let k = 0; k < 3; k++) { const o = put(w, 'wolf', 'predators', 44.5 + k, 31.5); o.pack = wolf.pack; }   // the pack comes up
+  x.task = null;   // and the defender walks off
+  lookRound(w);
+  return (y.think === 0 && /тяжелее/.test(y.wakeWhy || '')) || `знавший о тревоге не проснулся, когда она потяжелела (${y.think}, ${y.wakeWhy})`;
 });
 
 let bad = 0;
