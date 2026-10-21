@@ -80,7 +80,7 @@ export const bindStillOn = (w, a, task) => { const f = liveById(w, task.who); re
 
 // what a captive may choose (the colonist brain's options): the body, work inside the zone, an answer to an
 // attack on itself (a reflex), getting back inside, keeping out of harm's way at the fire
-const ALLOWED = new Set(['eat', 'sleep', 'warm', 'idle', 'sulk', 'pray', 'treat', 'douse', 'flee', 'runHome', 'muster', 'reserve', 'ponder']);
+const ALLOWED = new Set(['eat', 'sleep', 'warm', 'idle', 'sulk', 'pray', 'douse', 'flee', 'runHome', 'muster', 'reserve', 'ponder']);
 export function captiveAllows(t) {
   if (t.id === 'job') return CAPTIVE.camp.includes(JOBS.get(t.job).runner);
   if (t.id === 'fight') return !!t.reflex;
