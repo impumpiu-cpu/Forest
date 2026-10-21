@@ -59,7 +59,7 @@ NAVMAPS.registerAll([
     prepare: w => new Set(openSites(w).flatMap(b => b.cells)),
     seed: (w, i, cells) => cells.has(i)},
   // the rock face where the ore the colony is short of can be dug
-  {id: 'ore', period: 240, active: w => has(w, 'mineshaft') && inUse(w).has('ore'),
+  {id: 'ore', period: 240, active: w => (has(w, 'mineshaft') || (w.light && w.campDig?.size > 0)) && inUse(w).has('ore'),
     prepare: w => wantedOre(w),
     seed: (w, i, codes) => codes.size > 0 && w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && oreBeside(w, i, codes) >= 0},
   // shore of lakes that still have fish

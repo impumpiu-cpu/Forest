@@ -27,13 +27,16 @@ export const favourites = w => perTick(w, 'favourites', () => {   // by fresh fo
 });
 
 export const popCap = w => 8 + w.mods.add.popCap;
-export const jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some(b => has(w, b));
+// a job with `open` needs no building in a camp of the campaign that came to dig (the outcrop is worked by hand)
+export const jobUnlocked = (w, job) => !job.requires || [].concat(job.requires).some(b => has(w, b)) || (!!job.open && w.light && w.campDig?.size > 0);
 
 // ore kinds (codes) the colony wants dug now: those whose stock is below the resource's `target`
 const ORE_RES = () => RESOURCES.filter(r => r.ore);
 // (only ores the rock face actually shows: a region without gold or mithril sends nobody digging for it)
+// In a camp of the campaign (w.light): only the ore its stop to dig was for, as much as there is (w.campDig)
 export const wantedOre = w => perTick(w, 'wantedOre', () => {
   const seen = exposedOre(w);
+  if (w.light) return new Set([...(w.campDig || [])].filter(c => seen[ORE_BY_CODE[c].id] > 0));
   return new Set(ORE_RES().filter(r => (w.stock[r.id] || 0) < r.target && seen[ORE_BY_CODE[r.ore].id] > 0).map(r => r.ore));
 });
 

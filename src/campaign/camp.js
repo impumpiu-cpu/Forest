@@ -37,6 +37,7 @@ import {RESOURCES} from '../data/resources.js';
 import {ITEMS} from '../data/items.js';
 import {SPECIES} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
+import {ORES} from '../data/ores.js';
 import {CAMP, CAMP_FOES, GAME_FLOW} from '../data/camp.js';
 import {FOES, GAME} from '../data/campaign.js';
 import {faunaLevel} from '../world/region.js';
@@ -77,6 +78,8 @@ export function campSetup(a, K, ev) {
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind, building: v.building || null})),
     food: K.food, cargo: {...K.cargo},
+    // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
+    dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
     foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null} : null,
   };
 }
@@ -96,6 +99,9 @@ export function openCamp(S) {
   const cfg = {...DEFAULT_CFG, name: 'Стоянка', seed: S.seed, size: 'small', dims: CAMP.size, colonists: 0, stock: 'poor', start: 'spring',
     raids: 'off', light: true, provider: 'camp', cell: {...plan, extra: {...plan.extra, startDay: S.startDay}}};
   const w = createWorld(cfg);
+  // an open-cut face is dug only on a stop to dig, and only for the ore it was for (settlement/query.js wantedOre)
+  w.campDig = S.dig && ORES.has(S.dig) ? new Set([ORES.get(S.dig).code]) : new Set();
+  w.scratch = null;   // what was counted for this tick before the camp knew what it digs
   w.nav = new Navigation(w); w.nav.buildAll();
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};
   const r = mulberry(seedNumber(S.seed + ':plan')), H = hours(S, r);
@@ -258,7 +264,7 @@ export function campOutcome(w) {
   const got = {};
   for (const [id, n] of Object.entries(w.stock)) { const d = n - (C.stock0[id] || 0); if (d >= 1) got[id] = Math.floor(d); }
   const cargo = {};
-  for (const id of new Set([...Object.keys(S.cargo || {}), 'hide'])) { const n = Math.floor((w.stock[id] || 0) + 1e-6); if (n > 0) cargo[id] = n; }
+  for (const id of new Set([...Object.keys(S.cargo || {}), ...CAMP.carry])) { const n = Math.floor((w.stock[id] || 0) + 1e-6); if (n > 0) cargo[id] = n; }
   // gear from the foes' dead (agents/agent.js kill: into the armory)
   const items = w.armory.filter(it => it.dur > 0 && !it.own && it.handedBy == null && ITEMS.has(it.type)).map(it => it.type);   // (a captive's tool handed in for the night is no loot)
   const killed = C.foeObjs.filter(o => o.dead).length, fled = C.foeObjs.filter(o => !o.dead && !o.captive && (o.gone || o.task?.id === 'leave')).length;

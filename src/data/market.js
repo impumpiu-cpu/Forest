@@ -109,8 +109,18 @@ export const COMPANY_MAX = 12, JOINED_MAX = 4;
 // After a town the
 // next one is not sought for `every` days (the winter excepted); a stay lasts at most `stay` days, or the winter —
 // wintered only where the winter is hard (its mean below `winterBelow`°: the land hardly feeds then)
-export const VISIT = {reach: 8, winterReach: 14, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, hungryGold: 5, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
+// For the smith (SMITH): with at least `smithOre` units of ore worth forging and `smithGold` gold, a town with a smith
+// on the way (a detour of `smithDetour`); none near — asked again after `smithRetry` days
+export const VISIT = {smithOre: 4, smithGold: 0, smithDetour: 0.5, smithRetry: 10, reach: 8, winterReach: 14, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, hungryGold: 5, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
 
 // earning on the way: hides from hunting in camp (× the land's game), gold panned from a river's sand by
 // the one with a pan (× the cell's gold sand level, data/regions.js placer)
 export const EARN = {hide: 0.3, pan: 0.4};
+
+// The smith of a friendly town forges from the caravan's own ore (campaign/town.js smithy): where one of `at`
+// stands and the caravan carries the ore of the item's metal by its recipe (data/recipes.js: bars × `bar[metal].n`
+// units of `bar[metal].ore` each), the item costs × `discount` (50–60% cheaper). What ore is left is sold.
+// `reserve` — days of food money the caravan keeps after paying the smith
+export const SMITH = {at: ['forge', 'smelter', 'foundry', 'armory'], discount: 0.45, reserve: 3,
+  bar: {bronze: {ore: 'bronzeOre', n: 2}, iron: {ore: 'ironore', n: 2}, mithril: {ore: 'mithrilOre', n: 2}}};
+
