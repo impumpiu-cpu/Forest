@@ -23,7 +23,11 @@ const outcomePerDay = (w, k) => (w.behave?.ticks ? (w.behave.outcomes?.[k] || 0)
 const avg = (xs, f) => (xs.length ? xs.reduce((s, x) => s + f(x), 0) / xs.length : 0);
 
 METRICS.registerAll([
-  {id: 'pop', label: 'Жители', group: 'Люди', fmt: 0, get: w => colonists(w).length},
+  {id: 'pop', label: 'Жители', group: 'Люди', fmt: 0, get: w => colonists(w).filter(a => !a.captive).length},
+  // captives (settlement/captives.js): held now, taken in all; foes who fell senseless instead of dying
+  {id: 'captives', label: 'Пленных сейчас', group: 'Люди', fmt: 0, get: w => colonists(w).filter(a => a.captive).length},
+  {id: 'captivesTaken', label: 'Взято в плен', group: 'Люди', fmt: 0, get: w => w.chronicle.captives?.taken || 0},
+  {id: 'foesDown', label: 'Врагов упало без сознания', group: 'Люди', fmt: 0, get: w => w.chronicle.foeFalls?.down || 0},
   {id: 'arrived', label: 'Пришло переселенцев', group: 'Люди', fmt: 0, get: w => w.chronicle.people.filter(p => !p.founder).length},
   {id: 'deaths', label: 'Смертей всего', group: 'Люди', fmt: 0, get: allDeaths},
   {id: 'deathsRaid', label: 'Убиты налётчиками', group: 'Люди', fmt: 0, get: w => deaths(w, 'налётчики')},

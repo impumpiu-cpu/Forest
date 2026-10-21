@@ -33,6 +33,8 @@ import {biomeAt} from '../src/atlas/biomes.js';
 import {baggageText} from '../src/campaign/march.js';
 import {WHEELS} from '../src/data/transport.js';
 import {COMPANY_MAX, JOINED_MAX} from '../src/data/market.js';
+import {CAPTIVE} from '../src/data/captives.js';
+import {memberMight} from '../src/campaign/march.js';
 import {core, isCore} from '../src/campaign/march.js';
 import {BUBBLE, THINGS} from '../src/data/bubble.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
@@ -42,7 +44,7 @@ const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLo
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const finite = K => [K.food, K.x, K.y, K.gold, ...K.members.map(m => m.hp)].every(Number.isFinite);
-const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
+const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0, captives: 0, bound: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
 
 // the local map of a walk: every fight and stop was played on it, the kept camps played again come out the same
 function countLocal(K, label, bad) {
@@ -84,8 +86,11 @@ for (let s = 0; s < seeds; s++) {
       if (wheeled(K) && K.path && K.path.slice(K.k).some(i => stepCost(a, i, K.people, true) === Infinity)) { bad.push(`${c.label}: колёса идут по бездорожью`); break; }
       if (!(K.gold >= 0)) { bad.push(`${c.label}: казна ${K.gold}`); break; }
       if (K.members.filter(isCore).length !== 8) { bad.push(`${c.label}: основной состав ${K.members.filter(isCore).length}`); break; }
-      const live = K.members.filter(m => m.alive);
+      const live = K.members.filter(m => m.alive && !m.captive), held = K.members.filter(m => m.alive && m.captive);
       if (live.length > COMPANY_MAX || live.filter(m => m.loyalty != null).length > JOINED_MAX) { bad.push(`${c.label}: в отряде ${live.length}`); break; }
+      // captives (docs/CAPTIVES.md): no more than the limit, no strength of the caravan, never the crown's carrier, no weapon
+      if (held.length > CAPTIVE.max || held.some(m => memberMight(m) !== 0 || m.loyalty != null || m.id === K.quest?.crown?.carrier || m.gear.hand.some(id => ITEMS.get(id)?.melee && !ITEMS.get(id)?.tool))) { bad.push(`${c.label}: пленные — ${held.length}, с силой, оружием или короной`); break; }
+      if (Object.values(K.cargo).some(n => !(n >= 0))) { bad.push(`${c.label}: груз ${JSON.stringify(K.cargo)}`); break; }
       const things = K.bubble?.things || [];
       if (things.filter(t => !t.pursuit).length > BUBBLE.max || things.some(t => !THINGS[t.kind] || Math.hypot(t.x - K.x, t.y - K.y) > (t.pursuit ? 2 : 1) * BUBBLE.gone * scaleOf(a) + 1e-6 || a.f.ocean[t.i])) { bad.push(`${c.label}: пузырь — ${things.length} вещей, есть за краем или в море`); break; }
     }
@@ -93,7 +98,8 @@ for (let s = 0; s < seeds; s++) {
     if (K.log.some(l => l.kind === 'build' && /тележк|повозк/.test(l.text))) got.cart++;
     if (K.log.some(l => l.kind === 'route')) got.route++;
     if (K.log.some(l => l.kind === 'town' && /купили|продали/.test(l.text))) got.trade++;
-    if (K.members.some(m => !isCore(m))) got.joined++;
+    if (K.members.some(m => !isCore(m) && !m.captive)) got.joined++;
+    got.captives += K.members.filter(m => m.captive).length; if (K.log.some(l => /связали|В плен взяли/.test(l.text))) got.bound++;
     if (K.log.some(l => l.kind === 'leave')) got.left++;
     countLocal(K, c.label, bad);
     if (K.stats.met) got.met++;
@@ -118,8 +124,8 @@ for (let s = 0; s < seeds; s++) {
     ending[K.phase] = (ending[K.phase] || 0) + 1; ending.lines += epi.length;
     if (a.chronicle.filter(l => /Эпоха молодых народов подошла к концу/.test(l.text)).length !== 1) bad.push(`${c.label}: конец эпохи сказан не один раз`);
     if (!a.chronicle.some(l => l.campaign)) bad.push(`${c.label}: в летописи мира нет похода`);
-    const dead = K.members.filter(m => isCore(m) && !m.alive).length, extra = K.members.filter(m => !isCore(m));
-    console.log(`     ${c.label.padEnd(24)} ${K.phase.padEnd(7)} ${(K.day / 120).toFixed(1).padStart(4)} лет, живы ${8 - dead}/8 (+${extra.filter(m => m.alive).length} из ${extra.length} приставших), в городах ${K.stats.towns || 0} раз, казна ${K.gold}, боёв ${K.stats.fights}, голодных дней ${K.stats.hungryDays}, мир ${y0}→${a.hist.year}; обоз: ${baggageText(K)}`);
+    const dead = K.members.filter(m => isCore(m) && !m.alive).length, extra = K.members.filter(m => !isCore(m) && !m.captive), caps = K.members.filter(m => m.captive);
+    console.log(`     ${c.label.padEnd(24)} ${K.phase.padEnd(7)} ${(K.day / 120).toFixed(1).padStart(4)} лет, живы ${8 - dead}/8 (+${extra.filter(m => m.alive).length} из ${extra.length} приставших, пленных ${caps.filter(m => m.alive).length} из ${caps.length}), в городах ${K.stats.towns || 0} раз, казна ${K.gold}, боёв ${K.stats.fights}, голодных дней ${K.stats.hungryDays}, мир ${y0}→${a.hist.year}; обоз: ${baggageText(K)}`);
   }
   check(`сид ${seed}: походы от столиц каждого народа`, !bad.length, bad.slice(0, 5).join('; '));
   // wheels: a road is passable, a swamp or a mountain without one is not
@@ -175,6 +181,7 @@ check('хотя бы один караван нашёл корону и верн
 check('конец: эпилог с судьбами, поход в архиве мира, летопись текстом', Object.keys(ending).length > 1, `${JSON.stringify(ending)}`);
 check('квест: подсказки найдены, места взяты штурмом, корону ищут и за ней гонятся', quest.clues > 0 && quest.crown > 0 && quest.storms > 0 && quest.pursuers > 0, `подсказок ${quest.clues}, корону нашли ${quest.crown} раз, штурмов ${quest.storms}, слухов ${quest.rumours}, погонь ${quest.pursuers}, корону отбивали ${quest.taken}`);
 check('караваны торгуют в городах, к ним пристают и от них уходят', got.trade > 0 && got.joined > 0 && got.left > 0, `торговали ${got.trade}, с нанятыми или приставшими ${got.joined}, с ушедшими ${got.left}`);
+check('пленные: упавших врагов вяжут и ведут с караваном', got.captives > 0 && got.bound > 0, `пленных ${got.captives}, походов с пленными ${got.bound}`);
 check('пузырь: ночные бои от тех, кто дошёл до лагеря, засады на марше, обозы и стада на пути', got.met > 0 && got.ambush > 0 && got.road > 0, `с ночными встречами ${got.met}, с засадами ${got.ambush}, с обозами или стадами ${got.road}`);
 check('локальная карта: бои и стоянки сыграны на ней, повтор стоянки даёт то же', local.camps > 0 && local.stops > 0 && local.same === local.replays,
   `сыграно ${local.camps} (дней стоянок ${local.stops}), в среднем ${Math.round(local.ticks / Math.max(1, local.camps))} тиков и ${Math.round(local.ms / Math.max(1, local.camps))} мс; повторов ${local.same} из ${local.replays}`);

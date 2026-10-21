@@ -14,6 +14,7 @@ import {maxHp, kill} from '../agent.js';
 import {squadOf, planFor} from '../squad.js';
 import {tempAt} from '../../world/heat.js';
 import {liveById} from '../lookup.js';
+import {stepDowned} from '../wounds.js';
 
 // the mindless dead go for whoever is this close; anyone further off they find by shambling to the camp
 // (the camp flow field always leads there; a long A* chase across the map would stall instead)
@@ -22,6 +23,8 @@ const HUNT_RADIUS = 16;
 export const raiderBrain = {
   id: 'raider',
   step(w, a) {
+    // fallen senseless (agents/wounds.js): lies and bleeds until bound (settlement/captives.js) or dead
+    if (a.downed) { a.task = {id: 'downed'}; stepDowned(w, a); return; }
     const T = tempAt(w, cellOf(w, a)), sp = SPECIES.get(a.species), mindless = sp.mindless || a.warBeast;   // goes for people, never for the stores
     // the dead burn twice as easily as the living
     let cause = null;

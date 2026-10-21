@@ -129,6 +129,9 @@ RESOURCES.registerAll([
   // ── keys: town-made tools the outpost cannot make and cannot do without for some crafts. They come
   // only with traders; a building that names one as its `key` (data/buildings.js) takes it into its cost,
   // the others work from the stock (`effects` while it is there, `with` a tame animal of that kind).
+  // bonds for captives (data/captives.js BONDS): cast at the furnace or forged, bought in towns; rope is the crafts' own
+  {id: 'shacklesBronze', label: 'бронзовые кандалы', short: 'бронз. кандалы', tags: ['bonds'], group: 'Инструменты', loot: 1, keep: 2, color: '#b98a4a'},
+  {id: 'shacklesIron',   label: 'железные кандалы', short: 'жел. кандалы', tags: ['bonds'], group: 'Инструменты', loot: 1, keep: 2, color: '#8e959b'},
   {id: 'pitsaw',     label: 'продольная пила', short: 'пила', tags: ['key'], group: 'Инструменты', loot: 1, sell: false, color: '#b9c2c8',
     opens: 'козлы для распила: тёс на избы'},
   {id: 'bellows',    label: 'кузнечные меха', short: 'меха', tags: ['key'], group: 'Инструменты', loot: 1, sell: false, color: '#8a6a48',

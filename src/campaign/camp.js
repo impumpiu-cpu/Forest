@@ -41,6 +41,8 @@ import {CAMP, CAMP_FOES, GAME_FLOW} from '../data/camp.js';
 import {FOES, GAME} from '../data/campaign.js';
 import {faunaLevel} from '../world/region.js';
 import {BEASTS} from '../data/transport.js';
+import {bindWaiting} from '../settlement/captives.js';
+import {allItems, def as itemOf} from '../agents/equipment.js';
 
 // the camp's border with the world: nobody comes by schedule — the campaign sends the foe itself
 PROVIDERS.register({id: 'camp', label: 'Стоянка каравана', flows: {}, distance: () => null, receive() {}});
@@ -69,7 +71,7 @@ export function campSetup(a, K, ev) {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
     members: alive(K).map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
-      align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null})),
+      align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null})),
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind, building: v.building || null})),
     food: K.food, cargo: {...K.cargo},
@@ -118,6 +120,8 @@ export function openCamp(S) {
       for (const id of m.gear.hand) if (CAMP.tools[id]) ag.skill[CAMP.tools[id]] = Math.max(ag.skill[CAMP.tools[id]] || 0, CAMP.toolSkill);
     }
     const rec = recordOf(w, ag); if (rec) rec.name = m.name;
+    // a captive of the caravan stays one on the map (settlement/captives.js)
+    if (m.captive) { ag.captive = {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true}; if (rec) rec.captive = true; }
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => ITEMS.has(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
@@ -190,7 +194,7 @@ function nearCell(w, d, r) {
   return null;
 }
 
-const foesLeft = w => w.agents.filter(o => w.campaign.foes.includes(o.id) && !o.dead && !o.gone && o.task?.id !== 'leave').length;
+const foesLeft = w => w.agents.filter(o => w.campaign.foes.includes(o.id) && !o.dead && !o.gone && !o.downed && !o.captive && o.task?.id !== 'leave').length;   // the fallen and the bound are out of it
 
 // a tick of the camp
 export function stepCamp(w) {
@@ -213,7 +217,8 @@ export function campDone(w) {
   if (w.over || !w.agents.some(a => a.faction === 'colony' && !a.dead)) return true;
   if (w.tick >= C.until) return true;
   // the foe is beaten or gone, and an hour passed quietly (the wounded tended, the fire made up)
-  return C.S.kind !== 'stop' && C.spawned && C.quiet != null && w.tick - C.quiet >= CAMP.quiet * HOUR && !w.agents.some(a => a.downed && !a.dead);
+  // (the camp waits for its own fallen to be helped, and for the fallen foes to be bound while there are bonds)
+  return C.S.kind !== 'stop' && C.spawned && C.quiet != null && w.tick - C.quiet >= CAMP.quiet * HOUR && !w.agents.some(a => a.downed && !a.dead && a.faction === 'colony') && !bindWaiting(w);
 }
 
 // play a camp through; → the world at its end
@@ -250,7 +255,13 @@ export function campOutcome(w) {
   for (const id of new Set([...Object.keys(S.cargo || {}), 'hide'])) { const n = Math.floor((w.stock[id] || 0) + 1e-6); if (n > 0) cargo[id] = n; }
   // gear from the foes' dead (agents/agent.js kill: into the armory)
   const items = w.armory.filter(it => it.dur > 0 && !it.own && ITEMS.has(it.type)).map(it => it.type);
-  const killed = C.foeObjs.filter(o => o.dead).length, fled = C.foeObjs.filter(o => !o.dead && (o.gone || o.task?.id === 'leave')).length;
+  const killed = C.foeObjs.filter(o => o.dead).length, fled = C.foeObjs.filter(o => !o.dead && !o.captive && (o.gone || o.task?.id === 'leave')).length;
+  // the fallen foes the caravan bound (settlement/captives.js): they walk on with it
+  const taken = w.agents.filter(o => o.captive && !o.captive.member && !o.dead).map(o => ({
+    name: o.name, gender: o.gender, race: o.species, people: o.people || null, special: {...o.special}, align: o.align ? {...o.align} : null, values: o.values ? [...o.values] : null,
+    hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, from: S.foe?.kind || null,
+    gear: {hand: [...new Set(allItems(o).filter(it => itemOf(it).slot === 'hand').map(it => it.type))].filter(id => ITEMS.has(id)), body: allItems(o).find(it => itemOf(it).slot === 'body')?.type || 'clothes'},
+    local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill}))}));
   const plundered = w.stats.lastSteal >= C.start;
   const lost = members.filter(m => !m.alive).length, stolen = beasts.filter(b => b.stolen).length;
   // the vehicles: a building that burnt is lost; a cart may be broken where the foe looted the stores
@@ -259,9 +270,10 @@ export function campOutcome(w) {
     return {k: v.k, wrecked: plundered && C.rnd() < CAMP.wreck, burnt: !!b && !w.buildings.some(x => x.id === b.id)};
   });
   const n = C.foeObjs.length;
-  const won = !n ? true : lost === 0 ? !plundered || killed > 0 : killed >= lost && !plundered;
-  return {kind: S.kind, day: S.day, won, members, beasts, food: round1(food), got, cargo, items, vehicles, plundered, stolen,
-    foes: {n, killed, fled, left: n - killed - fled}, ticks: w.tick - C.start, lines: campLines(w)};
+  const down = killed + taken.length;   // a foe bound counts as one beaten
+  const won = !n ? true : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered;
+  return {kind: S.kind, day: S.day, won, members, beasts, food: round1(food), got, cargo, items, vehicles, plundered, stolen, taken,
+    foes: {n, killed, taken: taken.length, fled, left: n - killed - fled - taken.length}, ticks: w.tick - C.start, lines: campLines(w)};
 }
 
 // a fingerprint of an outcome: the same setup must play out the same (the screen plays it again)

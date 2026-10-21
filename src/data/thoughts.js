@@ -30,6 +30,9 @@ THOUGHTS.registerAll([
   // the deadly wound (agents/wounds.js)
   {id: 'fell', mood: -0.5, lasts: DAY, text: a => `Упал${g(a, '', 'а')} без сознания. Последнее, что помнит, — удар.`},
   {id: 'survived', mood: 0.4, lasts: 2 * DAY, text: (a, c) => `${c.name ? `${c.name} ${c.gender === 'f' ? 'вытащила' : 'вытащил'}` : 'Вытащили'} с того света. Жив${g(a, '', 'а')}!`},
+  // captives (settlement/captives.js)
+  {id: 'captured', mood: -0.5, lasts: 3 * DAY, text: (a, c) => `Очнул${g(a, 'ся', 'ась')} связанн${g(a, 'ым', 'ой')} в чужом лагере${c.bonds ? ` — ${c.bonds}` : ''}. Жив${g(a, '', 'а')}, но в плену.`},
+  {id: 'tookCaptive', mood: 0.12, lasts: DAY, text: (a, c) => `Связал${g(a, '', 'а')} упавшего врага: ${c.name} теперь пленный.`},
   {id: 'trauma', mood: -0.4, lasts: 4 * DAY, text: (a, c) => `${c.what[0].toUpperCase() + c.what.slice(1)}: это теперь навсегда.`},
   {id: 'woundHealed', mood: 0.25, lasts: DAY, text: () => 'Тяжёлая рана наконец затянулась.'},
 

@@ -32,9 +32,10 @@ export const DEATHBLOW = {
   causes: ['ран'],          // which deaths luck may turn aside
 };
 
-// who may fall instead of dying: a thinking creature of the colony (raiders and beasts die as before;
-// the undead and things without a body to bleed never fall)
-export const CAN_FALL = (sp, a) => !!sp.sentient && !sp.undead && a.faction === 'colony';
+// who may fall instead of dying: a thinking creature of the colony, or a thinking raider — one that may be
+// bound and taken after the fight (settlement/captives.js). Beasts die as before; the undead and things
+// without a body to bleed never fall
+export const CAN_FALL = (sp, a) => !!sp.sentient && !sp.undead && (a.faction === 'colony' || a.faction === 'raiders');
 
 // a chance on Luck by one of the curves above
 export const luckChance = (c, L) => Math.max(0, Math.min(c.cap, c.base + c.span * L / (L + c.soft)));

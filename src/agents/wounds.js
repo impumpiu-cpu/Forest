@@ -20,9 +20,11 @@ import {log} from '../core/log.js';
 import {esc, g, weighted} from '../core/util.js';
 import {agentById} from './lookup.js';
 import {wake} from './attention.js';
+import {noteFallen} from './squad.js';
 
 const luckOf = a => a.special?.L ?? NORM;
-const tally = w => (w.chronicle.falls ||= {down: 0, saved: 0, bled: 0, killed: 0, traumas: 0});
+// the colony's own falls; a foe's are counted apart (they may be taken captive: settlement/captives.js)
+const tally = (w, a) => (a.faction === 'colony' ? (w.chronicle.falls ||= {down: 0, saved: 0, bled: 0, killed: 0, traumas: 0}) : (w.chronicle.foeFalls ||= {down: 0, bled: 0, killed: 0}));
 
 export const critChance = by => luckChance(CRIT, luckOf(by));
 
@@ -33,7 +35,7 @@ export const fallSpent = a => !!a.downed || (a.wounds || []).some(x => x.id === 
 export function lethal(w, t, cause, by) {
   if (t.dead) return false;
   const sp = SPECIES.get(t.species);
-  if (t.downed) tally(w).killed++;
+  if (t.downed) tally(w, t).killed++;
   if (fallSpent(t) || !CAN_FALL(sp, t) || !DEATHBLOW.causes.includes(cause) || t.hp < -DEATHBLOW.overkill * maxHp(t)) { kill(w, t, cause, by); return false; }
   const L = luckOf(t);
   if (w.rngs.combat() >= luckChance(DEATHBLOW.survive, L)) { kill(w, t, cause, by); return false; }
@@ -51,20 +53,22 @@ function fall(w, a, cause, by, trauma) {
   releaseAll(w, a);
   noteHuntDeath(w, a);
   for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;   // the one they came for is down
+  if (a.faction !== 'colony') noteFallen(w, a);   // a raider down is one lost to its band (agents/squad.js)
   a.downed = {since: w.tick, until: w.tick + bleedTicks(a.special?.E ?? NORM), cause, by: by?.id ?? null, trauma};
   a.hp = DEATHBLOW.hpLeft * maxHp(a);
   a.task = {id: 'downed'}; a.sleeping = false; a.stalking = false;
-  tally(w).down++;
+  tally(w, a).down++;
   think(w, a, 'fell');
-  log(w, `<b>${esc(a.name)}</b> ${g(a, 'упал', 'упала')} без сознания${by ? ` от удара (${SPECIES.get(by.species).label})` : ''}. Без помощи истечёт кровью.`, 'danger', 'notice');
+  if (a.faction === 'colony') log(w, `<b>${esc(a.name)}</b> ${g(a, 'упал', 'упала')} без сознания${by ? ` от удара (${SPECIES.get(by.species).label})` : ''}. Без помощи истечёт кровью.`, 'danger', 'notice');
+  else log(w, `${esc(a.name)} (${SPECIES.get(a.species).label}) ${g(a, 'упал', 'упала')} без сознания${by ? ` от удара <b>${esc(by.name)}</b>` : ''}. Можно связать и взять в плен.`, 'danger');
 }
 
 // once a tick for the fallen (agents/brains/colonist.js): help came too late
 export function stepDowned(w, a) {
   if (w.tick < a.downed.until) return;
   const by = agentById(w, a.downed.by);
-  tally(w).bled++;
-  log(w, `<b>${esc(a.name)}</b> ${g(a, 'истёк', 'истекла')} кровью: помощь не успела.`, 'death');
+  tally(w, a).bled++;
+  if (a.faction === 'colony') log(w, `<b>${esc(a.name)}</b> ${g(a, 'истёк', 'истекла')} кровью: помощь не успела.`, 'death');
   kill(w, a, a.downed.cause, by || undefined, {quiet: true});
 }
 
@@ -78,7 +82,7 @@ export function stabilize(w, helper, a) {
   refreshBody(a);
   a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + (helper?.skill?.medicine || 0)));
   a.task = null; wake(a, 'очнулся после раны', 'очнулся');
-  const f = tally(w); f.saved++; if (d.trauma) f.traumas++;
+  const f = tally(w, a); f.saved++; if (d.trauma) f.traumas++;
   think(w, a, 'survived', {name: helper?.name, gender: helper?.gender});
   if (d.trauma) think(w, a, 'trauma', {what: WOUNDS.get(d.trauma).label});
   log(w, `<b>${esc(helper?.name || 'Кто-то')}</b> ${g(helper || a, 'вытащил', 'вытащила')} <b>${esc(a.name)}</b> с того света.${d.trauma ? ` Но ${WOUNDS.get(d.trauma).label} останется на всю жизнь.` : ' Рана тяжёлая, но заживёт.'}`, 'people', 'notice');

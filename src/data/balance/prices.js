@@ -89,6 +89,9 @@ export const RESOURCES = {
   // Металл
   iron:         {price: 2, stack: 20},
   bronze:       {price: 1.5, stack: 20},
+  // Путы (data/captives.js)
+  shacklesBronze: {price: 4, stack: 10},
+  shacklesIron:   {price: 5, stack: 10},
   // Деньги
   goldDust:     {price: 0.7, stack: 50, money: 0.7},
   goldNugget:   {price: 9, stack: 50, money: 0.8},
