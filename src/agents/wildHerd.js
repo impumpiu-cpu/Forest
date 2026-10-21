@@ -56,6 +56,7 @@ export function threatsNear(w, a, radius, from) {
 }
 
 // herders holding out hay right now: a beast stops for them (the old check asked every beast every tick)
+// (cached once a tick: a herder may drop the bait later in the same tick, so readers check o.task?.tame)
 export const calmHerders = w => perTick(w, 'herd.calm', () => w.agents.filter(o => o.task?.tame != null && o.task.calm));   // scan: once a tick, not per beast
 
 // the herd's alarm, if fresh: {t, start, ids, threats}
