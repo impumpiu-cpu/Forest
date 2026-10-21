@@ -248,7 +248,7 @@ export function stepPeoples(a, rnd, say) {
   }
   // towns against the lairs that reach them
   for (const l of a.lairs) {
-    if (!l.alive) continue;
+    if (!l.alive || l.boss != null) continue;   // a calamity's boss is beyond one town (atlas/calamity.js; the alliances of atlas/alliance.js)
     const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k, owner = SPECIES.get(L.species), s = owner.special;
     for (const t of a.towns) {
       if (!t.alive || Math.hypot(t.x - l.x, t.y - l.y) > reach || rnd() > TOWN_WAR.chance) continue;

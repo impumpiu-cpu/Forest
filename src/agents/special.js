@@ -64,6 +64,15 @@ export function rollCreature(w, a, sp, opts = {}) {
   }
 }
 
+// A boss of a calamity (atlas/calamity.js, data/calamities.js CAL.boss): an ordinary creature of its kind, rolled as
+// any, then grown past its kind's limits — `add` on each of `stats` (at most `cap`). → {people, special, align, values}
+export function bossSpecial(sp, rnd, B) {
+  const a = {};
+  rollCreature({rngs: {birth: rnd}}, a, sp);
+  for (const id of B.stats) a.special[id] = Math.min(B.cap, a.special[id] + Math.round(B.add[0] + rnd() * (B.add[1] - B.add[0])));
+  return a;
+}
+
 // SPECIAL → mods and health. A beast (`relativeStats`) is measured against the typical one of its kind.
 function specialInto(m, a, sp) {
   const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;

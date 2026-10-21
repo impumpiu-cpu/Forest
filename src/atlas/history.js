@@ -21,6 +21,7 @@ import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
+import {startCalamities, stepCalamities} from './calamity.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -71,6 +72,7 @@ export function startHistory(a) {
     (parts.length ? `, чудовища заняли логова: ${parts.join(', ')}` : '') + (tribes.length ? `; дикие племена разбили станы: ${tribes.join(', ')}` : '') +
     (old ? `. ${old} ${plural(old, 'логово стоит', 'логова стоят', 'логов стоят')} с незапамятных времён.` : '.'));
   for (const i of a.ancientBarrows || []) say(a, `Курганы незапамятных времён стоят ${wherePhrase(a, i)}: кто в них лежит, не помнит никто.`);
+  startCalamities(a);   // the epic world: the sanctuary, the artifact, the three calamities (atlas/calamity.js)
 }
 
 // the new roads of a round, in one line: the first two pairs by name, the rest counted
@@ -126,6 +128,7 @@ export function stepHistory(a, onDay = null) {
   }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
+  stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);
   // the year's beaten raids of the tribes and the dead, in one line
   if (H.season === 3 && H.repelled) {

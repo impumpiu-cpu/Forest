@@ -486,6 +486,7 @@ export class AtlasView {
     if (a.f.road && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
     if (a.f.sea && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawLanes(a, px);
     if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawLairs(a, px);
+    if (a.artifact && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawEpic(a, px);
     if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
     if (a.sites && ['relief', 'biomes', 'peoples', 'soils'].includes(this.layer)) this.drawSites(a, px);
     if (a.parties && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawParties(a, px);
@@ -696,6 +697,30 @@ export class AtlasView {
     }
   }
 
+  // the epic world (atlas/calamity.js): the sanctuary — a gold star; a calamity's boss — a gold ring round its lair;
+  // the graves of the fallen bosses — a gold cross on a dark stone
+  drawEpic(a, px) {
+    const k = this.unit(a), sz = Math.max(2.2 / Math.pow(this.cam.zoom, 0.6), 3 * k), gold = 'rgba(255,214,90,0.95)', w = Math.max(this.minW, 0.5 * k);
+    if (a.sanctuary?.i >= 0) {
+      const x = a.sanctuary.i % a.w + 0.5, y = ((a.sanctuary.i / a.w) | 0) + 0.5;
+      px.fillStyle = gold; px.strokeStyle = 'rgba(20,14,8,0.9)'; px.lineWidth = w;
+      px.beginPath();
+      for (let n = 0; n < 10; n++) { const r = n % 2 ? sz * 0.45 : sz, ang = -Math.PI / 2 + n * Math.PI / 5; px.lineTo(x + Math.cos(ang) * r, y + Math.sin(ang) * r); }
+      px.closePath(); px.fill(); px.stroke();
+    }
+    for (const l of a.lairs || []) {
+      if (l.boss == null || !l.alive) continue;
+      px.strokeStyle = gold; px.lineWidth = Math.max(this.minW, 0.9 * k);
+      px.beginPath(); px.arc(l.x + 0.5, l.y + 0.5, sz * 1.6, 0, Math.PI * 2); px.stroke();
+    }
+    for (const g of a.graves || []) {
+      const x = g.i % a.w + 0.5, y = ((g.i / a.w) | 0) + 0.5;
+      px.fillStyle = 'rgba(30,24,20,0.9)'; px.beginPath(); px.arc(x, y, sz * 0.9, 0, Math.PI * 2); px.fill();
+      px.strokeStyle = gold; px.lineWidth = Math.max(this.minW, 0.7 * k);
+      px.beginPath(); px.moveTo(x, y - sz * 0.7); px.lineTo(x, y + sz * 0.7); px.moveTo(x - sz * 0.45, y - sz * 0.25); px.lineTo(x + sz * 0.45, y - sz * 0.25); px.stroke();
+    }
+  }
+
   // wind arrows every few cells, drawn on the map canvas in cell units
   arrows(a, px) {
     const step = Math.max(6, Math.round(Math.min(a.w, a.h) / 24));
@@ -746,6 +771,7 @@ export class AtlasView {
     $('atlasStats').innerHTML = `<dt>Клеток</dt><dd>${a.n.toLocaleString('ru-RU')}</dd><dt>Числовой сид</dt><dd>${seedNumber(a.cfg.seed)}</dd>` +
       `<dt>Этап</dt><dd>${Math.min(a.stage, all.length)} из ${all.length}</dd>` +
       (a.lairs ? `<dt>Логова чудовищ</dt><dd>${a.lairs.filter(l => l.alive).length}</dd>` : '') +
+      (a.artifact ? `<dt>${esc(a.artifact.name)}</dt><dd>${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса'}[a.artifact.holder.kind]}</dd><dt>Бедствия</dt><dd>${a.calamities.filter(c => c.phase === 'fallen').length} прошло, ${a.calamities.filter(c => c.phase === 'rise').length} идёт, из ${a.calamities.length}</dd>` : '') +
       (a.realms ? a.realms.map(r => { const m = a.towns.filter(t => t.alive && t.realm === r.id); return m.length ? `<dt>${realmLabel(a, r.id)}</dt><dd>${m.length} ${m.length === 1 ? 'город' : m.length < 5 ? 'города' : 'городов'}</dd>` : ''; }).join('') : '') +
       (a.ruins?.length ? `<dt>Пепелища</dt><dd>${a.ruins.length}</dd>` : '');
     // how the peoples that have met get on

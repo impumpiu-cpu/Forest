@@ -11,7 +11,8 @@ import {biomeAt, soilAt, cellBiomes, dryness} from '../src/atlas/biomes.js';
 import {BIOMES, KOPPEN} from '../src/data/biomes.js';
 import {LAIRS} from '../src/data/lairs.js';
 import {historyLength, eraPlan, epicYears} from '../src/atlas/history.js';
-import {newAtlas} from '../src/atlas/generate.js';
+import {newAtlas, runNextStage} from '../src/atlas/generate.js';
+import {SPECIES} from '../src/data/species.js';
 import {EPIC_YEARS} from '../src/data/history.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
@@ -396,6 +397,19 @@ console.log('Эпический мир кампании:');
   const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a))));
   check('  короткий эпический мир доживает историю, сохраняется и открывается тем же', a.hist.year >= 60 && a.hist.era === 'young' && plan.join() === '20,20,20' && atlasHash(b) === atlasHash(a) && eraPlan(b).map(e => e.seasons / 4).join() === '20,20,20',
     `${a.hist.year} лет, эпохи ${plan.join(' + ')}, городов ${a.towns.filter(t => t.alive).length}`);
+  // the calamities (atlas/calamity.js): three, one an era; each rose, its boss stronger than its kind allows, and fell;
+  // a grave for each; the artifact went from the sanctuary through the bosses to the last grave; the chronicle tells it
+  const C = a.calamities || [], allFell = C.length === 3 && C.every(c => c.phase === 'fallen' && c.boss && c.fell);
+  const beyond = C.some(c => c.boss?.special && Object.entries(c.boss.special).some(([id, v]) => v > (SPECIES.get(c.boss.species).special?.[id]?.[1] ?? 99)));
+  const lines = a.chronicle.filter(l => l.topic === 'calamity').length, bossesDead = C.every(c => !a.lairs.find(l => l.id === c.lair)?.alive);
+  check('  эпос: три бедствия по эпохам, босс сильнее своего вида, у каждого могила, артефакт прошёл через всех', allFell && beyond && bossesDead && a.graves?.length === 3 && a.artifact?.holder.kind === 'grave' && a.artifact.trail.length === 7 && lines >= 9,
+    C.map(c => `${c.era}: ${c.kind}, пал ${c.fell?.year} (${c.fell?.by})`).join('; ') + `; строк летописи бедствий ${lines}`);
+  // saved in the middle of a calamity, the epic world goes on exactly as the unbroken one
+  const mid = newAtlas(cfg); let steps = 0;
+  while (!(mid.calamities?.[1]?.phase === 'rise') && steps < 5000) { runNextStage(mid); steps++; }
+  const half = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(mid))));
+  while (runNextStage(mid)); while (runNextStage(half));
+  check('  эпос: мир, сохранённый посреди бедствия, идёт так же', atlasHash(mid) === atlasHash(half) && atlasHash(mid) === atlasHash(a), `${atlasHash(mid)} / ${atlasHash(half)}`);
   const plain = {seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0};
   check('  без эпоса эпохи прежние', eraPlan(newAtlas(plain)).map(e => e.seasons / 4).join() === '25,25,25');
 }

@@ -59,6 +59,8 @@ export function atlasHash(a) {
   for (const p of a.parties || []) mix(p.i * 31 + Math.round(p.x * 100) + Math.round(p.y * 100) * 7 + p.id);
   for (const l of a.net?.links.values() || []) mix(l.p.id * 131 + l.q.id * 7 + Math.round(l.c * 1000));
   for (const r of a.realms || []) { mix(r.capital * 31 + r.founded); for (let k = 0; k < r.name.length; k++) mix(r.name.charCodeAt(k)); }
+  for (const c of a.calamities || []) mix(c.id * 131 + Math.max(0, c.i) * 7 + (c.lair ?? 0) * 3 + ['waiting', 'omens', 'rise', 'fallen'].indexOf(c.phase));
+  if (a.artifact) mix(a.artifact.i * 31 + a.artifact.trail.length);
   for (const c of a.chronicle) for (let k = 0; k < c.text.length; k++) mix(c.text.charCodeAt(k));
   return (hsh >>> 0).toString(16);
 }
