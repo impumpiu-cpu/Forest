@@ -240,6 +240,21 @@ for (let s = 0; s < seeds; s++) {
     check(`сид ${seed}: добыча — на стоянке копают руду, кузнец перековывает её дешевле, остаток продают`, cell < 0 || (dug > 0 && forged && sold), `руды за 3 дня ${dug}, перековка ${forged}, остаток продан ${sold}`);
   }
 
+
+// worlds of the «Мир» screen and old saves (stage 11): a world without the epic story gives the quest of any world;
+// a campaign saved before the epic fields were there (no `hunting` on the bubble's things, no digging, no give-ups)
+// loads and goes on; in an epic world a second caravan goes after the same fourth while it lives, and after the
+// artifact has been brought home the quest is one of any world
+  {
+  const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'});
+  for (let k = 0; k < 6; k++) stepCampaign(a);
+  for (const t of K.bubble?.things || []) delete t.hunting;
+  for (const key of ['mined', 'nextMine', 'mineGot', 'mineDay', 'smithTried']) delete K[key];
+  for (const c of [...K.quest.clues, K.quest.crown]) { delete c.fails; delete c.rest; }
+  const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a)))), KB = b.campaign;
+  runCampaign(b);
+  check(`сид ${seed}: мир без эпоса — прежний квест; поход, сохранённый без новых полей, открывается и доходит до конца`, !K.quest.epic && finished(KB) && finite(KB) && ['won', 'lost', 'timeout'].includes(KB.phase), `${KB.phase}, день ${KB.day}`);
+  }
   // the local map: a stretch of a walk played in full — its fights and stops on the map
   if (!fullLocal) {
     const lbad = [], c = pick[0], a = fresh(), K = newCampaign(a, c.town);
@@ -295,6 +310,19 @@ check('караваны обзаводятся обозом и выбирают 
   for (let k = 0; k < 8 && stepCampaign(b); k++);
   check('эпос: в свой год четвёртое бедствие начинается в мире, логово стерегут злее', d4.phase === 'rise' && K2.quest.crown.guard.strength > g0 * 1.3 && b.chronicle.some(l => l.calamity === d4.id && /Началось новое бедствие/.test(l.text)),
     `${d4.phase}, стража ${g0.toFixed(2)} → ${K2.quest.crown.guard.strength.toFixed(2)}`);
+  // a second caravan in the same epic world: after the same fourth while it lives; the artifact home — any world's quest
+  {
+    const d = freshE(), K1 = newCampaign(d, capsE[0].town, {mode: 'auto'}), c41 = d.calamities.at(-1);
+    for (const m of K1.members.filter(x => x.core)) { m.alive = false; m.died = {day: K1.day, year: d.hist.year, why: 'пал в проверке'}; }
+    for (let k = 0; k < 10 && stepCampaign(d); k++);
+    const K2b = newCampaign(d, capsE[1 % capsE.length].town, {mode: 'auto'});
+    const same = K2b.quest.epic && K2b.quest.calamity === c41.id && d.calamities.filter(c => c.era === 'after').length === 1;
+    d.artifact.holder = {kind: 'caravan', calamity: c41.id};
+    for (const m of K2b.members.filter(x => x.core)) { m.alive = false; m.died = {day: K2b.day, year: d.hist.year, why: 'пал в проверке'}; }
+    for (let k = 0; k < 10 && stepCampaign(d); k++);
+    const K3b = newCampaign(d, capsE[0].town, {mode: 'auto'});
+    check('эпос: второй караван идёт на того же четвёртого, пока он жив; артефакт уже дома — квест как в любом мире', same && !K3b.quest.epic, `второй — бедствие ${K2b.quest.calamity}, третий — ${K3b.quest.epic ? 'эпический' : 'обычный'} квест`);
+  }
   // on the local map the boss stands among its servants, grown past its kind
   const c = freshE(), K3 = newCampaign(c, capsE[0].town), G = K3.quest.crown.guard;
   const S = campSetup(c, K3, {kind: 'guard', foe: G, dayIn: 0}), w = openCamp(S);

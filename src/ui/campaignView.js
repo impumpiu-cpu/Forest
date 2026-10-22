@@ -49,6 +49,8 @@ const LOCAL_KIND = {night: 'Ночь', ambush: 'Засада на марше', s
 const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples', 'Народы'], ['fauna', 'Звери']];
 const PHASE = {out: 'ищут корону', back: 'несут корону домой', won: 'вернулись с короной', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
+// a world whose quest is the epic one (campaign/quest.js makeQuest)
+const epicQuest = a => !!(a.cfg.epic && a.artifact && a.graves?.length && a.artifact.holder.kind !== 'caravan');
 // the epic world's sizes on this screen (the medium is the campaign's own)
 const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']];
 // where the making of an epic world is: the land, or the year of history and its era
@@ -220,6 +222,10 @@ export class CampaignView extends AtlasView {
   }
   renderCaps() {
     const a = this.atlas; if (!a) { $('campGo').disabled = true; return; }
+    // which quest this world gives (campaign/quest.js makeQuest): its own story in an epic world, else the crown and three clues
+    $('campQuestNote').textContent = epicQuest(a)
+      ? `Квест эпического мира: ${a.artifact.name} уйдёт к четвёртому боссу в дальнее логово; следы — могилы ${a.graves.length} боссов прошлых эпох. Через 25 лет начнётся новое бедствие.`
+      : 'Квест: корона там, где её потеряла история этого мира; три подсказки в его курганах, логовах, развалинах и городах.';
     const caps = capitals(a);
     $('campCaps').innerHTML = caps.length ? caps.map(c => `<div class="sv cap${c.town === this.capPick ? ' cur' : ''}" data-town="${c.town}"><span class="t"><i style="background:rgb(${WORLD_PEOPLES.get(c.people).color.join(',')})"></i><b>${esc(c.label)}</b> · ${esc(c.peopleLabel)}` +
       `<br><small>${esc(c.realmLabel)} · ${c.towns} ${plural(c.towns, 'город', 'города', 'городов')} · ${c.pop} жителей · ${RETINUE[c.people].knight[1]} и ${RETINUE[c.people].squire[1]}</small></span><button type="button">Выбрать</button></div>`).join('')
