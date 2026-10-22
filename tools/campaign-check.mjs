@@ -38,13 +38,25 @@ import {memberMight} from '../src/campaign/march.js';
 import {core, isCore} from '../src/campaign/march.js';
 import {BUBBLE, THINGS} from '../src/data/bubble.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
-import {runCamp, campOutcome, outcomeHash} from '../src/campaign/camp.js';
+import {runCamp, campOutcome, outcomeHash, campSetup, openCamp, stepCamp} from '../src/campaign/camp.js';
+import {room, freeOf, joinedOf} from '../src/campaign/company.js';
+import {playStop} from '../src/campaign/fight.js';
+import {cellRegion} from '../src/campaign/land.js';
+import {trade, standing} from '../src/campaign/town.js';
+import {SMITH, MARKET} from '../src/data/market.js';
+import {freedomEvening} from '../src/campaign/captives.js';
+import {FREEDOM} from '../src/data/captives.js';
+import {seats} from '../src/campaign/epic.js';
+import {EPIC} from '../src/data/calamities.js';
+import {QUEST} from '../src/data/quest.js';
+import {questTarget, askable} from '../src/campaign/quest.js';
+import {wantMine} from '../src/campaign/march.js';
 
 const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLocal = process.argv[4] === 'local';
 let ok = true;
 const check = (what, pass, info = '') => { ok &&= pass; if (!pass || info) console.log(`${pass ? 'ok  ' : 'FAIL'} ${what}${info ? ': ' + info : ''}`); return pass; };
 const finite = K => [K.food, K.x, K.y, K.gold, ...K.members.map(m => m.hp)].every(Number.isFinite);
-const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0, captives: 0, bound: 0, escaped: 0, caught: 0, told: 0, resigned: 0, stayed: 0, extended: 0, deserted: 0, freed: 0, sold: 0, bought: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
+const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0, trade: 0, joined: 0, left: 0, met: 0, ambush: 0, road: 0, captives: 0, bound: 0, escaped: 0, caught: 0, told: 0, resigned: 0, stayed: 0, extended: 0, deserted: 0, freed: 0, sold: 0, bought: 0, finds: 0, thinAir: 0, hireEnds: 0, mines: 0, dug: 0, noticed: 0, small: 0, wanderers: 0}, local = {camps: 0, ms: 0, ticks: 0, fights: 0, stops: 0, replays: 0, same: 0}, quest = {clues: 0, crown: 0, storms: 0, rumours: 0, pursuers: 0, taken: 0}, ending = {lines: 0};
 
 // the local map of a walk: every fight and stop was played on it, the kept camps played again come out the same
 function countLocal(K, label, bad) {
@@ -100,7 +112,7 @@ for (let s = 0; s < seeds; s++) {
     if (K.log.some(l => l.kind === 'route')) got.route++;
     if (K.log.some(l => l.kind === 'town' && /купили|продали/.test(l.text))) got.trade++;
     if (K.members.some(m => !isCore(m) && !m.captive)) got.joined++;
-    got.captives += K.members.filter(m => m.captive).length; got.escaped += K.stats.escaped || 0; got.caught += K.stats.caught || 0; got.told += K.stats.told || 0; got.resigned += K.log.filter(l => /смирил/.test(l.text)).length; got.stayed += K.stats.stayed || 0; got.extended += K.stats.extended || 0; got.deserted += K.stats.deserted || 0; got.freed += K.stats.freed || 0; got.sold += K.stats.sold || 0; got.bought += K.stats.bought || 0; if (K.log.some(l => /связали|В плен взяли/.test(l.text))) got.bound++;
+    got.captives += K.members.filter(m => m.captive).length; got.escaped += K.stats.escaped || 0; got.caught += K.stats.caught || 0; got.told += K.stats.told || 0; got.resigned += K.log.filter(l => /смирил/.test(l.text)).length; got.stayed += K.stats.stayed || 0; got.extended += K.stats.extended || 0; got.deserted += K.stats.deserted || 0; got.freed += K.stats.freed || 0; got.sold += K.stats.sold || 0; got.bought += K.stats.bought || 0; got.finds += K.log.filter(l => l.kind === 'treasure').length; got.noticed += K.stats.noticed || 0; got.small += K.stats.small || 0; got.mines += K.log.filter(l => /встать и добывать/.test(l.text)).length; got.dug += K.log.filter(l => /Стоянка у выработки окончена: добыли/.test(l.text)).length; got.thinAir += K.log.filter(l => /оброненный кошель/.test(l.text)).length; if (K.log.some(l => /связали|В плен взяли/.test(l.text))) got.bound++;
     if (K.log.some(l => l.kind === 'leave')) got.left++;
     countLocal(K, c.label, bad);
     if (K.stats.met) got.met++;
@@ -161,6 +173,93 @@ for (let s = 0; s < seeds; s++) {
       epi.slice(0, 2).join(' / '));
   }
 
+  // the ranks lean (data/campaign.js RETINUE.lean): over many rolls the fighters are stronger, tougher and quicker,
+  // the squires cleverer, more charming, sharper-eyed and luckier; nobody leaves the people's limits
+  {
+    const sum = {knight: {}, squire: {}}, n = {knight: 0, squire: 0};
+    let out = 0;
+    for (const c of pick) for (let k = 0; k < 20; k++) {
+      const a = fresh(), K = newCampaign(a, c.town, {seed: `lean:${k}:${c.town}`, mode: 'auto'});
+      for (const m of K.members) {
+        n[m.role]++;
+        for (const [id, v] of Object.entries(m.special)) { sum[m.role][id] = (sum[m.role][id] || 0) + v; if (v < 0) out++; }
+      }
+    }
+    const avg = (r, ids) => ids.reduce((t, id) => t + sum[r][id] / n[r], 0) / ids.length;
+    const fight = ['S', 'E', 'A'], craft = ['I', 'C', 'L'];
+    check(`сид ${seed}: бойцы сильнее в боевых характеристиках, сквайры — в остальных`, avg('knight', fight) > avg('squire', fight) + 0.4 && avg('squire', craft) > avg('knight', craft) + 0.4 && !out,
+      `S/E/A ${avg('knight', fight).toFixed(2)} против ${avg('squire', fight).toFixed(2)}, I/C/L ${avg('squire', craft).toFixed(2)} против ${avg('knight', craft).toFixed(2)}`);
+  }
+
+  // a full company (docs/CAMPAIGN.md «Пополнение», campaign/company.js): with four joined nobody more joins, and a
+  // captive who has earned its freedom waits in its bonds; with a place free it is freed
+  {
+    const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'}), say = () => {};
+    const add = (props) => K.members.push({...K.members[4], id: 900 + K.members.length, name: `Проверка ${K.members.length}`, core: false, alive: true, hp: 1, ...props});
+    for (let k = 0; k < JOINED_MAX; k++) add({role: 'companion', loyalty: 0.5});
+    K.members[0].master = {skill: 'smithing', day: 0};
+    add({role: 'captive', captive: {since: 0, bonds: 'rope', will: 0.1, resigned: 1, service: FREEDOM.free + 1}});
+    const full = !room(K, 'joined') && !room(K, 'former') && !room(K, 'stay') && !room(K, 'hire:guide') && room(K, 'captive');   // 8 + 4 = 12
+    freedomEvening(a, K, say);
+    const waited = K.members.at(-1).captive && joinedOf(K).length === JOINED_MAX;
+    K.members.find(m => m.role === 'companion').alive = false;
+    freedomEvening(a, K, say);
+    const freed = !K.members.at(-1).captive && K.members.at(-1).role === 'former' && joinedOf(K).length === JOINED_MAX;
+    const capped = freeOf(K).length === COMPANY_MAX && !room(K, 'hire:guide') && !room(K, 'joined');
+    check(`сид ${seed}: полный отряд — приставших не больше ${JOINED_MAX}, заслуживший свободу ждёт места, всех не больше ${COMPANY_MAX}`, full && waited && freed && capped,
+      `полон ${full}, ждал ${waited}, освобождён ${freed}, предел ${capped}`);
+  }
+
+  // hirelings at the end of the term (data/market.js CONTRACT): a good opinion stays for good, a middling one asks
+  // for another term (paid, when there is gold), a poor one goes — set up by hand, as hiring is rare in a walk
+  {
+    const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'});
+    K.gold = 200;
+    const hire = (name, opinion) => K.members.push({...K.members[0], id: 950 + K.members.length, name, core: false, role: 'sellsword', alive: true, hp: 1, loyalty: undefined,
+      gear: {hand: ['sword', 'shield'], body: 'lamellar'}, contract: {until: 1, wage: 0.5, opinion}});
+    hire('Остался', 0.95); hire('Продлил', 0.6); hire('Ушёл', 0.1);
+    stepCampaign(a);
+    const by = n => K.members.find(m => m.name === n);
+    const ends = [by('Остался').alive && !by('Остался').contract, by('Продлил').alive && by('Продлил').contract?.until > 1, !by('Ушёл').alive || !!by('Ушёл').left];
+    got.hireEnds += ends.filter(Boolean).length;
+    check(`сид ${seed}: конец срока наёмника — остался, продлил, ушёл`, ends.every(Boolean), ends.join(', '));
+  }
+
+  // digging (data/campaign.js MINE): on the local map the caravan works the outcrop of the ore it stopped for and
+  // carries it away; the smith of a town forges a piece from it cheaper, and the rest is sold
+  {
+    const a = fresh(), K = newCampaign(a, pick[0].town);
+    let cell = -1;
+    for (let i = 0; i < a.n && cell < 0; i++) if (a.f.land[i] && !a.f.ocean[i] && (cellRegion(a, i).ores?.iron ?? 0) >= 1) cell = i;
+    let dug = 0, forged = false, sold = false;
+    if (cell >= 0) {
+      K.i = cell; K.x = cell % a.w + 0.5; K.y = ((cell / a.w) | 0) + 0.5; K.why = 'mine:iron'; K.cargo = {};
+      for (let d = 0; d < 3; d++) { const got = playStop(a, K); dug += got.ironore || 0; }
+      const t = a.towns.find(x => x.alive && standing(a, K, x) && SMITH.at.some(id => x.built.includes(id)));
+      if (t) {
+        K.cargo.ironore = 40; K.gold = 200;
+        const lines = trade(a, K, t, standing(a, K, t));
+        forged = lines.some(l => /кузнец перековал/.test(l)); sold = !K.cargo.ironore;
+      }
+    }
+    check(`сид ${seed}: добыча — на стоянке копают руду, кузнец перековывает её дешевле, остаток продают`, cell < 0 || (dug > 0 && forged && sold), `руды за 3 дня ${dug}, перековка ${forged}, остаток продан ${sold}`);
+  }
+
+
+// worlds of the «Мир» screen and old saves (stage 11): a world without the epic story gives the quest of any world;
+// a campaign saved before the epic fields were there (no `hunting` on the bubble's things, no digging, no give-ups)
+// loads and goes on; in an epic world a second caravan goes after the same fourth while it lives, and after the
+// artifact has been brought home the quest is one of any world
+  {
+  const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'});
+  for (let k = 0; k < 6; k++) stepCampaign(a);
+  for (const t of K.bubble?.things || []) delete t.hunting;
+  for (const key of ['mined', 'nextMine', 'mineGot', 'mineDay', 'smithTried']) delete K[key];
+  for (const c of [...K.quest.clues, K.quest.crown]) { delete c.fails; delete c.rest; }
+  const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a)))), KB = b.campaign;
+  runCampaign(b);
+  check(`сид ${seed}: мир без эпоса — прежний квест; поход, сохранённый без новых полей, открывается и доходит до конца`, !K.quest.epic && finished(KB) && finite(KB) && ['won', 'lost', 'timeout'].includes(KB.phase), `${KB.phase}, день ${KB.day}`);
+  }
   // the local map: a stretch of a walk played in full — its fights and stops on the map
   if (!fullLocal) {
     const lbad = [], c = pick[0], a = fresh(), K = newCampaign(a, c.town);
@@ -184,10 +283,82 @@ check('квест: подсказки найдены, места взяты шт
 check('караваны торгуют в городах, к ним пристают и от них уходят', got.trade > 0 && got.joined > 0 && got.left > 0, `торговали ${got.trade}, с нанятыми или приставшими ${got.joined}, с ушедшими ${got.left}`);
 check('пленные: упавших врагов вяжут и ведут с караваном', got.captives > 0 && got.bound > 0, `пленных ${got.captives}, походов с пленными ${got.bound}`);
 check('пленные бегут и смиряются, беглецов ловят', got.escaped > 0 && got.resigned > 0 && got.caught > 0, `попыток побега ${got.escaped + got.caught}: ушли ${got.escaped}, пойманы ${got.caught}; смирились ${got.resigned}, доносов ${got.told}`);
-check('наёмники в конце срока остаются, продлевают или уходят', got.stayed + got.extended > 0, `остались ${got.stayed}, продлили ${got.extended}, сбежали ${got.deserted}; освобождено пленных ${got.freed}`);
+check('наёмники в конце срока остаются, продлевают или уходят', got.stayed + got.extended + got.hireEnds > 0, `остались ${got.stayed}, продлили ${got.extended}, сбежали ${got.deserted}; освобождено пленных ${got.freed}`);
+check('стоянки ради добычи: встают у руды выше своего металла или у серебра, самоцветов и золота, добытое везут с собой', got.mines > 0 && got.dug > 0, `стоянок ${got.mines}, с добычей ${got.dug}`);
+check('пузырь: бродячие отряды замечают караван только вблизи и тогда идут по следу, днём ходят малые отряды', got.noticed > 0 && got.small > 0, `заметили караван ${got.noticed} раз, малых отрядов ${got.small}`);
+check('находки с причиной: тело у дороги, брошенная повозка, логово, пепелище, поле боя — и ни одного кошеля из воздуха', got.finds > 0 && !got.thinAir, `находок ${got.finds}`);
 check('пленных продают и покупают в городах, где это не запрещено', got.sold + got.bought > 0, `продали ${got.sold}, купили ${got.bought}`);
 check('пузырь: ночные бои от тех, кто дошёл до лагеря, засады на марше, обозы и стада на пути', got.met > 0 && got.ambush > 0 && got.road > 0, `с ночными встречами ${got.met}, с засадами ${got.ambush}, с обозами или стадами ${got.road}`);
 check('локальная карта: бои и стоянки сыграны на ней, повтор стоянки даёт то же', local.camps > 0 && local.stops > 0 && local.same === local.replays,
   `сыграно ${local.camps} (дней стоянок ${local.stops}), в среднем ${Math.round(local.ticks / Math.max(1, local.camps))} тиков и ${Math.round(local.ms / Math.max(1, local.camps))} мс; повторов ${local.same} из ${local.replays}`);
 check('караваны обзаводятся обозом и выбирают между трактом и прямой дорогой', got.beast > 0 && got.cart > 0 && got.route > 0, `со зверями ${got.beast}, с тележкой или повозкой ${got.cart}, с выбором пути ${got.route}`);
+
+// the epic campaign (campaign/epic.js): in an epic world the clues are the graves of the bosses, read by their epitaphs;
+// the goal is the lair of the fourth, gathering with the artifact; the darkening goes on with the clues; the fourth rises
+// in the world in its years; a storm of a lair with a boss is won only with the boss dead; won — the artifact home
+{
+  const E = generateAtlas({seed: '7', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, epicYears: {wild: 40, elder: 40, young: 40}});
+  const frozenE = JSON.stringify(saveAtlas(E)), freshE = () => loadAtlas(JSON.parse(frozenE)), capsE = capitals(E);
+  const a = freshE(), K = newCampaign(a, capsE[0].town, {mode: 'auto'}), Q = K.quest, c4 = a.calamities.at(-1);
+  const laid = Q?.epic && Q.clues.length === 3 && Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + EPIC.doom &&
+    a.lairs.find(l => l.id === c4.lair)?.boss === c4.id && a.artifact.holder.kind === 'boss' && Q.crown.guard?.boss && Q.clues.filter(c => c.area).length === 1;
+  check(`эпос: следы — могилы боссов с надписями и стражами, цель — логово четвёртого, где собирается сила с артефактом; срок — ${EPIC.doom} лет`, laid,
+    Q?.epic ? `${Q.clues.map(c => c.label).join('; ')} → ${Q.crown.label}, ${c4.label}` : 'не эпический квест');
+  runCampaign(a);
+  const read = K.log.filter(l => /На могиле прочли надпись/.test(l.text)).length, dark = K.log.filter(l => /недобрые знаки|вышли охотники по следу|рыщут по всему краю/.test(l.text)).length;
+  const end = K.phase === 'won' ? c4.phase === 'fallen' && c4.fell.by === 'caravan' && a.artifact.holder.kind === 'caravan' && a.chronicle.some(l => l.topic === 'calamity' && /караван/.test(l.text)) : true;
+  check('эпос: могилы читают, мир мрачнеет с каждым следом, охота идёт; победа — босс пал от рук каравана, артефакт у него', read === Q.found && dark === Math.min(3, Q.found) && (Q.found < 2 || (K.stats.pursuers || 0) > 0) && end,
+    `${K.phase}, следов ${Q.found}, прочли ${read}, мрачнее ${dark} раз, погонь ${K.stats.pursuers || 0}, четвёртое ${c4.phase}${c4.fell ? ' — ' + c4.fell.by : ''}`);
+  // the doom: the fourth rises in the world in its year, and its lair is guarded harder
+  const b = freshE(), K2 = newCampaign(b, capsE[1 % capsE.length].town, {mode: 'auto'}), d4 = b.calamities.at(-1), g0 = K2.quest.crown.guard.strength;
+  d4.riseAt = b.hist.year + 1;
+  for (let k = 0; k < 8 && stepCampaign(b); k++);
+  check('эпос: в свой год четвёртое бедствие начинается в мире, логово стерегут злее', d4.phase === 'rise' && K2.quest.crown.guard.strength > g0 * 1.3 && b.chronicle.some(l => l.calamity === d4.id && /Началось новое бедствие/.test(l.text)),
+    `${d4.phase}, стража ${g0.toFixed(2)} → ${K2.quest.crown.guard.strength.toFixed(2)}`);
+  // a second caravan in the same epic world: after the same fourth while it lives; the artifact home — any world's quest
+  {
+    const d = freshE(), K1 = newCampaign(d, capsE[0].town, {mode: 'auto'}), c41 = d.calamities.at(-1);
+    for (const m of K1.members.filter(x => x.core)) { m.alive = false; m.died = {day: K1.day, year: d.hist.year, why: 'пал в проверке'}; }
+    for (let k = 0; k < 10 && stepCampaign(d); k++);
+    const K2b = newCampaign(d, capsE[1 % capsE.length].town, {mode: 'auto'});
+    const same = K2b.quest.epic && K2b.quest.calamity === c41.id && d.calamities.filter(c => c.era === 'after').length === 1;
+    d.artifact.holder = {kind: 'caravan', calamity: c41.id};
+    for (const m of K2b.members.filter(x => x.core)) { m.alive = false; m.died = {day: K2b.day, year: d.hist.year, why: 'пал в проверке'}; }
+    for (let k = 0; k < 10 && stepCampaign(d); k++);
+    const K3b = newCampaign(d, capsE[0].town, {mode: 'auto'});
+    check('эпос: второй караван идёт на того же четвёртого, пока он жив; артефакт уже дома — квест как в любом мире', same && !K3b.quest.epic, `второй — бедствие ${K2b.quest.calamity}, третий — ${K3b.quest.epic ? 'эпический' : 'обычный'} квест`);
+  }
+  // on the local map the boss stands among its servants, grown past its kind
+  const c = freshE(), K3 = newCampaign(c, capsE[0].town), G = K3.quest.crown.guard;
+  const S = campSetup(c, K3, {kind: 'guard', foe: G, dayIn: 0}), w = openCamp(S);
+  for (let t = 0; t < 600 && !w.campaign.spawned; t++) stepCamp(w);
+  const boss = w.campaign.boss;
+  // the balance's rules (stage 12): the lair's seats not in the frozen waste; a place sought too long is left for a while;
+  // the towns are asked of rumours only while a clue is unknown, not every day; no digging while the food runs low;
+  // a starving caravan is fed in a friendly town, and one too poor to stock up hires out there for board and pay
+  {
+    const d = freshE(), K4 = newCampaign(d, capsE[0].town, {mode: 'auto'}), Q4 = K4.quest, said = [];
+    const cold = seats(d).filter(i => d.f.temp[i] < EPIC.cold).length;
+    const g1 = questTarget(d, K4, Math.random, t => said.push(t)), key = Q4.chase?.key;
+    Q4.chase.since = K4.day - QUEST.stuck - 1;
+    questTarget(d, K4, Math.random, t => said.push(t));
+    const left = key != null && (key === 'crown' ? Q4.crown : Q4.clues.find(c => c.k === key)).rest > K4.day && said.some(t => /не даётся/.test(t));
+    Q4.askAt = K4.day + 5; const asked = askable(K4);
+    const food = K4.food; K4.food = 0; const dig = wantMine(d, K4); K4.food = food;
+    check('баланс: логово не во льдах; к месту, куда годами не пробиться, совет на время не идёт; слухи — не каждый день; не копают без еды', !cold && g1 != null && left && !asked && !dig,
+      `мест во льдах ${cold}, оставлено «${said[0] || '—'}», спрашивать ${asked}, копать ${dig ? 'да' : 'нет'}`);
+    const t = d.towns.find(x => x.id === K4.capital);
+    K4.gold = 0; K4.food = 0; K4.hungry = 3;
+    const parts = trade(d, K4, t, standing(d, K4, t)), fed = K4.food;
+    K4.hungry = 0; K4.food = 0; K4.inTown = {id: t.id, since: K4.day, why: 'food'};
+    const wage = {...MARKET.labour}; for (const k of Object.keys(MARKET.labour)) MARKET.labour[k] = 0.01;   // a town that pays little
+    stepCampaign(d);
+    Object.assign(MARKET.labour, wage);
+    const worked = K4.log.some(l => /нанялся .* в работу за харчи и плату/.test(l.text));
+    check('баланс: голодных в дружеском городе кормят даром, нищий караван нанимается в работу за харчи и плату', fed > 0 && parts.some(p => /даром/.test(p)) && worked && core(K4).length === 8,
+      `накормили на ${Math.round(fed)} пайков, работа ${worked ? 'была' : 'не было'}, живы ${core(K4).length} из 8, казна ${K4.gold}`);
+  }
+  check('эпос: на штурме логова босс стоит среди слуг, сильнее своего рода', !!boss && boss.name === G.boss.name && Object.entries(G.boss.add).every(([id, v]) => v > 0 && boss.special[id] >= v),
+    boss ? `${boss.name}: ${['S', 'E', 'A'].map(id => `${id} ${boss.special[id]}`).join(', ')}` : 'босса нет');
+}
 if (!ok) process.exit(1);

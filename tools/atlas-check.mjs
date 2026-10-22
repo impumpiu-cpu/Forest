@@ -10,7 +10,12 @@ import {latitude} from '../src/atlas/latitude.js';
 import {biomeAt, soilAt, cellBiomes, dryness} from '../src/atlas/biomes.js';
 import {BIOMES, KOPPEN} from '../src/data/biomes.js';
 import {LAIRS} from '../src/data/lairs.js';
-import {historyLength} from '../src/atlas/history.js';
+import {historyLength, eraPlan, epicYears} from '../src/atlas/history.js';
+import {newAtlas, runNextStage} from '../src/atlas/generate.js';
+import {SPECIES} from '../src/data/species.js';
+import {lineLevel, worldChronicleText, calamityChronicleText, eraSpans} from '../src/atlas/chronicle.js';
+import {EPIC_YEARS} from '../src/data/history.js';
+import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES, FUTURE_PEOPLES} from '../src/data/townBuildings.js';
@@ -380,4 +385,48 @@ console.log('Вода:');
 check('  озёра есть', lakesAll > 0, `${lakesAll} на ${worlds} миров, солёных ${saltAll}`);
 if (lakeRain.salt[1] && lakeRain.fresh[1]) check('  солёные озёра в сухом климате', mean(lakeRain.salt) < mean(lakeRain.fresh), `у солёных ${Math.round(mean(lakeRain.salt))} мм, у пресных ${Math.round(mean(lakeRain.fresh))} мм`);
 check('  золотой песок где-то есть', placerCells > 0, `${placerCells} клеток уровня «есть» и выше`);
+// the epic world of the campaign (cfg.epic): its eras' years are drawn from their own stream, inside EPIC_YEARS, and kept
+// in the world; a short one (the eras set by hand) lives its whole history and is saved and opened the same
+console.log('Эпический мир кампании:');
+{
+  const drawn = ['3', '11', '29'].map(seed => epicYears(newAtlas({seed, size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true})));
+  const inside = drawn.every(Y => Object.entries(EPIC_YEARS).every(([id, [lo, hi]]) => Y[id] >= lo && Y[id] <= hi));
+  const again = JSON.stringify(epicYears(newAtlas({seed: '3', size: 'small', epic: true}))) === JSON.stringify(drawn[0]);
+  check('  годы эпох — от 75 до 150, по сиду одни и те же', inside && again, drawn.map(Y => `${Y.wild}+${Y.elder}+${Y.young}`).join(', '));
+  const cfg = {seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, epicYears: {wild: 20, elder: 20, young: 20}};
+  const a = generateAtlas(cfg), plan = eraPlan(a).map(e => e.seasons / 4);
+  const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a))));
+  check('  короткий эпический мир доживает историю, сохраняется и открывается тем же', a.hist.year >= 60 && a.hist.era === 'young' && plan.join() === '20,20,20' && atlasHash(b) === atlasHash(a) && eraPlan(b).map(e => e.seasons / 4).join() === '20,20,20',
+    `${a.hist.year} лет, эпохи ${plan.join(' + ')}, городов ${a.towns.filter(t => t.alive).length}`);
+  // the calamities (atlas/calamity.js): three, one an era; each rose, its boss stronger than its kind allows, and fell;
+  // a grave for each; the artifact went from the sanctuary through the bosses to the last grave; the chronicle tells it
+  const C = a.calamities || [], allFell = C.length === 3 && C.every(c => c.phase === 'fallen' && c.boss && c.fell);
+  const beyond = C.some(c => c.boss?.special && Object.entries(c.boss.special).some(([id, v]) => v > (SPECIES.get(c.boss.species).special?.[id]?.[1] ?? 99)));
+  const lines = a.chronicle.filter(l => l.topic === 'calamity').length, bossesDead = C.every(c => !a.lairs.find(l => l.id === c.lair)?.alive);
+  check('  эпос: три бедствия по эпохам, босс сильнее своего вида, у каждого могила, артефакт прошёл через всех', allFell && beyond && bossesDead && a.graves?.length === 3 && a.artifact?.holder.kind === 'grave' && a.artifact.trail.length === 7 && lines >= 9,
+    C.map(c => `${c.era}: ${c.kind}, пал ${c.fell?.year} (${c.fell?.by})`).join('; ') + `; строк летописи бедствий ${lines}`);
+  // saved in the middle of a calamity, the epic world goes on exactly as the unbroken one
+  const mid = newAtlas(cfg); let steps = 0;
+  while (!(mid.calamities?.[1]?.phase === 'rise') && steps < 5000) { runNextStage(mid); steps++; }
+  const half = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(mid))));
+  while (runNextStage(mid)); while (runNextStage(half));
+  check('  эпос: мир, сохранённый посреди бедствия, идёт так же', atlasHash(mid) === atlasHash(half) && atlasHash(mid) === atlasHash(a), `${atlasHash(mid)} / ${atlasHash(half)}`);
+  // the alliances (atlas/alliance.js): after the wild era the realms in a boss's reach band together and send armies;
+  // a boss falls to them or to the heroes; an alliance whose boss is long gone falls apart. Eras of 40 years, seed 7
+  const e = generateAtlas({...cfg, seed: '7', epicYears: {wild: 40, elder: 40, young: 40}}), AL = e.alliances || [];
+  const later = (e.calamities || []).filter(c => c.era !== 'wild');
+  check('  эпос: против бедствий после дикой эры собираются союзы, шлют войска, союз распадается после мира', AL.length === later.length && AL.every(A => A.members.length && A.tries > 0 && A.sent.length) && AL.some(A => A.broken) && later.some(c => c.fell?.by === 'alliance'),
+    AL.map(A => `союз ${A.members.length} держав, походов ${A.tries}, прислали войска ${A.sent.length}${A.broken ? ', распался' : ''}`).join('; ') + '; ' + later.map(c => `${c.kind} пал от ${c.fell?.by}`).join(', '));
+  // the chronicle as a text (atlas/chronicle.js): every level has lines; major ⊂ normal ⊂ all; by its eras, every era a
+  // block; the calamities apart — each calamity with its boss, its grave's epitaph, and the artifact's way
+  const lv = {major: 0, normal: 0, minor: 0}; for (const c of e.chronicle) lv[lineLevel(c)]++;
+  const tx = d => worldChronicleText(e, {detail: d, name: 'Проверка'}), [tMaj, tNorm, tAll] = ['major', 'normal', 'all'].map(tx), rows = t => t.split('\n').length;
+  const eras = eraSpans(e).every(sp => tAll.includes(`=== ${sp.label} · годы ${sp.from}–${sp.to}`)) && tAll.includes('=== Сотворение мира ===');
+  const cal = calamityChronicleText(e, {name: 'Проверка'}), graves = (e.graves || []).every(g => g.epitaph && cal.includes(g.epitaph));
+  check('  летопись текстом: три уровня подробности, по эпохам; летопись катаклизмов с боссами, надписями на могилах и путём артефакта',
+    lv.major && lv.normal && lv.minor && rows(tMaj) < rows(tNorm) && rows(tNorm) < rows(tAll) && eras && (cal.match(/=== Бедствие /g) || []).length === 3 && graves && cal.includes('Путь артефакта'),
+    `строк важных ${lv.major}, обычных ${lv.normal}, мелких ${lv.minor}; текст ${rows(tMaj)} / ${rows(tNorm)} / ${rows(tAll)} строк; катаклизмы ${rows(cal)} строк`);
+  const plain = {seed: '5', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0};
+  check('  без эпоса эпохи прежние', eraPlan(newAtlas(plain)).map(e => e.seasons / 4).join() === '25,25,25');
+}
 if (!ok) process.exit(1);

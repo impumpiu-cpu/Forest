@@ -14,8 +14,15 @@ export const BUBBLE = {
   // at most this many things at once (the world's parties are not counted); a thing that is not hunting the
   // caravan wanders off back into the field after `life` days
   max: 10, life: 20,
-  // a thing that hunts notices the caravan within `sense` and goes for it; it reaches it within `contact`
-  sense: 6, contact: 0.7,
+  // a thing on the caravan's trail (a pursuit, one that has noticed it) goes for it within `sense`; one that only
+  // wanders about its own business notices the caravan only within `wanderSense` (half the bubble), and may miss
+  // it; once it notices, it hunts. It reaches the caravan within `contact`
+  sense: 6, wanderSense: 4, contact: 0.7,
+  // the further on the way, the darker: the hostile are born × (1 + `way` × the share of the way to the crown
+  // walked + `clue` × the clues found); small parties by day — of a cell's dangers, with `chance` × that, at
+  // `strength` × of the danger's own, wandering
+  grow: {way: 0.6, clue: 0.25},
+  small: {chance: 0.03, strength: [0.5, 0.8]},
   // a people that walks quietly is noticed only this near (× sense): the forest folk, frail in a fight, keep out of one
   quiet: {elves: 0.6},
   // the old field's chance of a night visitor nobody saw coming (a lone beast, a thief)

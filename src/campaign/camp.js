@@ -37,6 +37,7 @@ import {RESOURCES} from '../data/resources.js';
 import {ITEMS} from '../data/items.js';
 import {SPECIES} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
+import {ORES} from '../data/ores.js';
 import {CAMP, CAMP_FOES, GAME_FLOW} from '../data/camp.js';
 import {FOES, GAME} from '../data/campaign.js';
 import {faunaLevel} from '../world/region.js';
@@ -67,15 +68,19 @@ const round1 = v => Math.round(v * 10) / 10;
 export function campSetup(a, K, ev) {
   const race = WORLD_PEOPLES.get(K.people).race;
   const plan = cellPlan(a, K.i, {name: 'Стоянка', race});
+  // the second camp of a kind on the same day gets a seed of its own (the first keeps the old one)
+  const n = (K.camps || []).filter(c => c.day === K.day && c.kind === ev.kind).length;
   return {
-    day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}`, i: K.i,
+    day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}${n ? `:${n}` : ''}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
     members: alive(K).map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
       align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind, building: v.building || null})),
     food: K.food, cargo: {...K.cargo},
-    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null} : null,
+    // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
+    dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
+    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, boss: ev.foe.boss || null} : null,
   };
 }
 
@@ -94,6 +99,9 @@ export function openCamp(S) {
   const cfg = {...DEFAULT_CFG, name: 'Стоянка', seed: S.seed, size: 'small', dims: CAMP.size, colonists: 0, stock: 'poor', start: 'spring',
     raids: 'off', light: true, provider: 'camp', cell: {...plan, extra: {...plan.extra, startDay: S.startDay}}};
   const w = createWorld(cfg);
+  // an open-cut face is dug only on a stop to dig, and only for the ore it was for (settlement/query.js wantedOre)
+  w.campDig = S.dig && ORES.has(S.dig) ? new Set([ORES.get(S.dig).code]) : new Set();
+  w.scratch = null;   // what was counted for this tick before the camp knew what it digs
   w.nav = new Navigation(w); w.nav.buildAll();
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};
   const r = mulberry(seedNumber(S.seed + ':plan')), H = hours(S, r);
@@ -181,6 +189,18 @@ function spawnFoe(w) {
     const heads = Math.max(1, Math.round(FOES[F.kind].might * F.strength * CAMP.budget));
     group = spawnGroup(w, 'raiders', heads * raiderStrength(raidThreat(w)) * THREAT.share, {...opts, band: band || 'bandits'});
   }
+  // the guards of a place stormed (campaign/quest.js) defend it to the last: their band does not break and flee
+  if (S.kind === 'guard') for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
+    const sq = w.squads?.[id]; if (sq) { sq.kind = 'mindless'; sq.goal = 'slaughter'; }
+  }
+  // the beasts of the fourth's lair hold it to the last as well (agents/brains/predator.js); a grave's may be driven off
+  if (S.kind === 'guard' && F.boss?.mustDie) for (const g of group) if (SPECIES.get(g.species)?.predator) g.defend = true;
+  // a boss (campaign/epic.js): the strongest of them, grown past its kind — named, at full health
+  if (F.boss && group.length) {
+    const own = group.filter(g => g.species === F.boss.species), b = (own.length ? own : group).slice().sort((p, q) => maxHp(q) - maxHp(p))[0];   // its own kind, if it came
+    b.special = {...b.special}; for (const [id, v] of Object.entries(F.boss.add || {})) b.special[id] = (b.special[id] ?? 5) + v;
+    refreshBody(b); b.hp = maxHp(b); b.name = F.boss.name; b.boss = true; C.boss = b;
+  }
   C.foes = group.map(g => g.id); C.foeObjs = group; C.spawned = true;
 }
 
@@ -256,9 +276,11 @@ export function campOutcome(w) {
   const got = {};
   for (const [id, n] of Object.entries(w.stock)) { const d = n - (C.stock0[id] || 0); if (d >= 1) got[id] = Math.floor(d); }
   const cargo = {};
-  for (const id of new Set([...Object.keys(S.cargo || {}), 'hide'])) { const n = Math.floor((w.stock[id] || 0) + 1e-6); if (n > 0) cargo[id] = n; }
+  for (const id of new Set([...Object.keys(S.cargo || {}), ...CAMP.carry])) { const n = Math.floor((w.stock[id] || 0) + 1e-6); if (n > 0) cargo[id] = n; }
   // gear from the foes' dead (agents/agent.js kill: into the armory)
   const items = w.armory.filter(it => it.dur > 0 && !it.own && it.handedBy == null && ITEMS.has(it.type)).map(it => it.type);   // (a captive's tool handed in for the night is no loot)
+  // a boss that must die (the fourth, campaign/epic.js) — dead or bound; a miniboss driven off frees its grave as well
+  const bossDead = C.boss && S.foe?.boss?.mustDie ? !!C.boss.dead || !!C.boss.captive : null;
   const killed = C.foeObjs.filter(o => o.dead).length, fled = C.foeObjs.filter(o => !o.dead && !o.captive && (o.gone || o.task?.id === 'leave')).length;
   // the fallen foes the caravan bound (settlement/captives.js): they walk on with it
   const taken = w.agents.filter(o => o.captive && !o.captive.member && !o.dead && !o.fugitive).map(o => ({
@@ -274,9 +296,12 @@ export function campOutcome(w) {
     return {k: v.k, wrecked: plundered && C.rnd() < CAMP.wreck, burnt: !!b && !w.buildings.some(x => x.id === b.id)};
   });
   const n = C.foeObjs.length;
-  const down = killed + taken.length;   // a foe bound counts as one beaten
-  const won = !n ? true : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered;
-  return {kind: S.kind, day: S.day, won, members, beasts, food: round1(food), got, cargo, items, vehicles, plundered, stolen, taken,
+  const down = killed + taken.length + (S.kind === 'guard' ? fled : 0);   // a foe bound counts as one beaten; one that fled a stormed place, too
+  // a storm with a boss in it is won only when the boss is dead (or bound)
+  // (a storm is won only by beating its guards: standing unhurt before them is not taking the place; all of them beaten —
+  // taken, whatever it cost)
+  const won = (!n ? true : S.kind === 'guard' ? down >= n || (down > 0 && down >= lost && down * 2 >= n) : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered) && bossDead !== false;
+  return {kind: S.kind, day: S.day, won, bossDead, members, beasts, food: round1(food), got, cargo, items, vehicles, plundered, stolen, taken,
     foes: {n, killed, taken: taken.length, fled, left: n - killed - fled - taken.length}, ticks: w.tick - C.start, lines: campLines(w)};
 }
 

@@ -38,9 +38,9 @@ export const CAMPAIGN = {
   fog: {known: 8, partner: 3, sight: 3},
   // a member's might in a fight: role × weapon × armour × health × Strength
   might: {knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, former: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06},
-  // a night: the chance something finds the camp = base + the land's dangers (campaign/land.js), at most `max`;
-  // near a town of friends the chance is × `friendly`
-  night: {base: 0.02, max: 0.22, friendly: 0.3},
+  // a night: what finds the camp comes out of the bubble (campaign/bubble.js); a stray nobody saw coming is
+  // × `friendly` near a town of friends
+  night: {friendly: 0.3},
   // a fight: the foe's might × U(0.6, 1.4) against the caravan's; the caravan takes `hurt` × the foe's might
   // (more when it loses) in blows of `blow` health, the knights `shield` times as often as the squires;
   // the quick mode's fight (campaign/fight.js autoFight): in a fight they win one struck down is carried off at
@@ -49,8 +49,9 @@ export const CAMPAIGN = {
   // (tools/campaign-balance.mjs)
   // captive: the weight of a captive among those the blows fall on (it keeps out of the fight)
   fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, captive: 0.4, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02},
-  // a morning after a quiet night: a little food is found with `food`, something of worth with `treasure`
-  morning: {food: 0.22, foodN: [1, 3], treasure: 0.012, gold: [3, 15]},
+  // a morning after a quiet night: a little food is found with `food`; something of worth only where it has a
+  // reason to lie (FINDS below)
+  morning: {food: 0.22, foodN: [1, 3]},
   // the goal of the walk (this stage: a point; later the clues, docs/CAMPAIGN.md): a land cell this share
   // of the world's diagonal away from the capital; when none can be walked to, the ring widens to `wide`
   goal: {near: 0.22, far: 0.4, wide: [0.06, 0.6]},
@@ -84,6 +85,10 @@ export const RETINUE = {
   orcs:    {knight: ['рубака', 'рубаки', 'рубаки'], squire: ['прислужник', 'прислужники', 'прислужника'],
     knightGear: [['bronzeaxe'], ['bronzeaxe', 'shield'], ['bronzespear'], ['bronzeaxe']]},
   // shared by all
+  // the stats each rank leans to (agents/special.js rollCreature opts.lean: the better of two rolls, inside the
+  // people's limits): the fighters to Strength, Endurance, Agility (a bowman — Perception too); the squires to
+  // Intelligence (they learn the crafts), Charisma (taming, rumours, companions), Perception (hunting, scouting), Luck
+  lean: {knight: ['S', 'E', 'A'], bowman: ['P'], squire: ['I', 'C', 'P', 'L']},
   armour: ['jerkin', 'hardleather', 'jerkin', 'hardleather'],
   squireGear: [['axe'], ['maul'], ['rod'], ['pan']],
   squireBody: 'clothes',
@@ -110,9 +115,47 @@ export const CHRONICLE = {
     death: ['death', 'alert'], hunger: ['death', 'notice'],
     people: ['people', 'notice'], leave: ['people', 'info'],
     town: ['town', 'notice'],
-    camp: ['camp', 'info'], stop: ['camp', 'info'], find: ['camp', 'info'],
+    camp: ['camp', 'info'], stop: ['camp', 'info'], find: ['camp', 'info'], treasure: ['camp', 'notice'],
     march: ['road', 'info'], land: ['road', 'info'], route: ['road', 'info'], lost: ['road', 'notice'],
     beast: ['baggage', 'info'], build: ['baggage', 'info'],
   },
   fold: ['stop', 'find', 'land', 'sight'],
 };
+
+// What a morning may find besides food (campaign/finds.js): never a purse out of thin air — always something it
+// came from. `where` — what of the land makes it possible, read as a share 0…1 of the cell (campaign/finds.js
+// WHERE): road — a road's traffic; beasts — a beasts' lair or wolves; ruin — a burnt town or a fallen lair near;
+// battle — the graves of a battle or a raid, an army's track. A quiet morning rolls each kind once, with
+// `chance` × that share; the first that comes is the find. In it: gold `gold` (always some: a find is never empty), `items` (data/items.js
+// ids, each with its chance: one goes to whoever it suits, the rest rides to be sold), `goods` (resources
+// with an amount); `text` — the line, one drawn: {gold}, {things} are filled in.
+export const FINDS = [
+  {id: 'corpse', where: 'road', chance: 0.007, gold: [2, 10], items: {bronzedagger: 0.3}, goods: {rope: [0.3, 2, 4]},
+    text: ['У дороги нашли тело путника — давно, видно, лежит: {things}.', 'В придорожной канаве — убитый торговец, разбойники его не обыскали: {things}.']},
+  {id: 'cart', where: 'road', chance: 0.005, gold: [1, 6], items: {bronzeaxe: 0.15}, goods: {rope: [0.5, 2, 4], leather: [0.5, 1, 3]},
+    text: ['На обочине — брошенная повозка со сломанной осью; в ней нашлось: {things}.', 'Нашли опрокинутую телегу без лошади, груз растащен не весь: {things}.']},
+  {id: 'den', where: 'beasts', chance: 0.006, gold: [1, 8], items: {bronzespear: 0.2, irondagger: 0.05}, goods: {hide: [0.4, 1, 2]},
+    text: ['Пещера зверя, вся в костях: кто-то из охотников не вернулся отсюда. Среди костей: {things}.', 'В логове зверя под костями — остатки чужого снаряжения: {things}.']},
+  {id: 'ash', where: 'ruin', chance: 0.02, gold: [3, 15], items: {bronzesword: 0.1, ironaxe: 0.1}, goods: {},
+    text: ['На пепелище, в обгоревшем подполе, отыскали: {things}.', 'Среди развалин под рухнувшей балкой — забытый тайник: {things}.']},
+  {id: 'field', where: 'battle', chance: 0.012, gold: [1, 6], items: {shield: 0.25, bronzespear: 0.15}, goods: {},
+    text: ['Старое поле боя: земля всё ещё отдаёт ржавое железо. Подобрали: {things}.', 'У курганов павших — брошенное оружие и кошель убитого: {things}.']},
+];
+
+// A stop to dig (campaign/march.js, camp.js): the council looks at the cell it stands on (the world's geology,
+// seam/cell.js) for an ore worth stopping for. An ore of a metal (data/ores.js `tier`) is
+// worth it only when the caravan's best metal (campaign/baggage.js metalTier) is lower; silver and gems
+// (`money`) and the gold sand of a river (`placer`, with a pan) — while the treasury is below `rich`. Only the cell
+// the caravan stands on (it walks over dozens a season). Not more often than every
+// `every` days, never twice on the same cell, only with food for `food` days and room for `room` units more besides
+// the room that food would take; it stops after `maxDays`, or
+// when a day gave less than `quit` units (the face is worked out), or when the packs are full. On the local map
+// the caravan digs the outcrop itself (data/jobs.js 'dig' in a camp: no mine); in the quick mode a day gives
+// `auto[ore] × the cell's level × the diggers` units (a digger — one with Strength ≥ `strength`; gold sand —
+// the one with the pan)
+export const MINE = {every: 40, maxDays: 6, quit: 1, room: 6, food: 8, strength: 4, rich: 40,
+  ores: ['bronze', 'iron', 'silver', 'gems', 'mithril'],
+  // (tuned to what a day on the local map digs, seed 777: iron ~10 units a day on a level-0.5 cell, bronze ~1,
+  // gems ~1, silver hardly any, gold sand ~4 for the one panner on a level-1 river)
+  auto: {bronze: 0.3, iron: 2.5, silver: 0.1, gems: 0.35, mithril: 0.04, placer: 4}};
+

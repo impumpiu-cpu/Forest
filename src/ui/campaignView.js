@@ -5,18 +5,22 @@
 // screen. The map is the «Мир» screen's own drawing (ui/atlasView.js), with the fog, the caravan, its
 // way, its goal and its home on top. A fight or a stop the core played on the local map (campaign/camp.js)
 // is played again over the map when the playback reaches its day: the same setup gives the same camp.
-import {AtlasView} from './atlasView.js';
+import {AtlasView, segOf, loadDetail, saveDetail, exportChronicle} from './atlasView.js';
+import {DETAILS} from '../atlas/chronicle.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
 import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chronicleText} from '../campaign/index.js';
 import {readLines, lineLevel, dateOf} from '../campaign/chronicle.js';
 import {CHRONICLE} from '../data/campaign.js';
 import {offerText, latinTitle} from './store.js';
 import {CAMPAIGN, RETINUE} from '../data/campaign.js';
+import {EPIC} from '../data/calamities.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS} from '../data/seasons.js';
 import {raceLabel} from '../agents/special.js';
-import {atlasDone} from '../atlas/generate.js';
+import {atlasDone, newAtlas, runNextStage, landDone} from '../atlas/generate.js';
+import {eraPlan, historyLength} from '../atlas/history.js';
+import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$} from './dom.js';
 import {Camera} from '../render/camera.js';
@@ -46,6 +50,17 @@ const LOCAL_KIND = {night: 'Ночь', ambush: 'Засада на марше', s
 const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples', 'Народы'], ['fauna', 'Звери']];
 const PHASE = {out: 'ищут корону', back: 'несут корону домой', won: 'вернулись с короной', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
+// a world whose quest is the epic one (campaign/quest.js makeQuest)
+const epicQuest = a => !!(a.cfg.epic && a.artifact && a.graves?.length && a.artifact.holder.kind !== 'caravan');
+// the epic world's sizes on this screen (the medium is the campaign's own)
+const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']];
+// where the making of an epic world is: the land, or the year of history and its era
+function epicProgress(a, sec) {
+  if (!landDone(a) || !a.hist) return `Складывается земля… ${Math.round(sec)} с`;
+  const plan = eraPlan(a), years = plan.map(e => e.seasons / 4), all = historyLength(a);
+  const era = ERAS.has(a.hist.era) ? ERAS.get(a.hist.era).label : a.hist.era;
+  return `${era}: год ${a.hist.year} из ${years.reduce((s, y) => s + y, 0)} (эпохи ${years.join(' + ')} лет) · ${Math.round(a.hist.step / all * 100)}% · ${Math.round(sec)} с`;
+}
 
 // the hidden themes of the chronicle, remembered in this browser
 function loadHidden() { try { return new Set(JSON.parse(localStorage.getItem('forest.campTopics') || '[]')); } catch (e) { return new Set(); } }
@@ -73,6 +88,20 @@ export class CampaignView extends AtlasView {
       this.renderCaps(); this.draw();
     });
     $('campGo').addEventListener('click', () => this.begin());
+    // the world's chronicle into a file: by its eras at the detail chosen, or the calamities only (atlas/chronicle.js)
+    this.detail = loadDetail();
+    segOf($('campDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); });
+    const file = what => { const a = this.atlas; if (a) exportChronicle(a, this.worldName, what); };
+    $('campWorldFile').addEventListener('click', () => file(this.detail));
+    $('campCalFile').addEventListener('click', () => file('calamity'));
+    $('campWorldFile2').addEventListener('click', () => file(this.detail));
+    // a new epic world (cfg.epic: three eras of 75–150 years), made here and put into the library
+    this.epicSize = 'medium';
+    const es = $('campEpicSize');
+    es.innerHTML = EPIC_SIZES.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.epicSize}">${l}</button>`).join('');
+    es.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.epicSize = b.dataset.val; es.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+    $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6));
+    $('campEpicGo').addEventListener('click', () => (this.making ? this.stopEpic() : this.makeEpic()));
     $('campNew').addEventListener('click', () => { this.halt(); this.atlas = null; this.worldId = null; this.setupMode(); this.refresh(); });
     $('campSave').addEventListener('click', () => this.saveRun());
     $('campBack').addEventListener('click', () => { this.halt(); this.onBack(); });
@@ -96,6 +125,46 @@ export class CampaignView extends AtlasView {
     $('campAgain').addEventListener('click', () => { this.halt(); this.capPick = null; this.setupMode(); this.draw(); });
   }
 
+  // ── a new epic world: the land stage by stage, then the long history, as many steps as fit a frame; the map is
+  // drawn now and then. When it is done it goes into the library and the capitals can be chosen
+  makeEpic() {
+    this.halt();
+    const seed = $('campEpicSeed').value.trim() || String(Math.floor(Math.random() * 1e6));
+    const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true});
+    this.atlas = a; this.worldId = null; this.worldName = `Эпический мир ${seed}`; this.saveId = null; this.capPick = null;
+    this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0;
+    this.making = true; $('campEpicGo').textContent = 'Остановить';
+    $('campCapsField').hidden = true; $('campTitle').textContent = this.worldName;
+    const t0 = performance.now();
+    let drawn = 0;
+    const loop = () => {
+      if (!this.making) return;
+      const f0 = performance.now();
+      while (!atlasDone(a) && performance.now() - f0 < 30) runNextStage(a);
+      if (performance.now() - drawn > 600) { drawn = performance.now(); this.bitmapKey = ''; this.draw(); $('campEpicNote').textContent = epicProgress(a, (performance.now() - t0) / 1000); }
+      if (atlasDone(a)) { this.doneEpic((performance.now() - t0) / 1000); return; }
+      this.genRaf = requestAnimationFrame(loop);
+    };
+    this.genRaf = requestAnimationFrame(loop);
+  }
+  stopEpic() {
+    this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить';
+    this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; this.setupMode(); this.draw();
+  }
+  async doneEpic(sec) {
+    this.making = false; $('campEpicGo').textContent = 'Сотворить';
+    const a = this.atlas;
+    this.bitmapKey = ''; this.draw();
+    const yrs = a.hist.year - 1;   // (the year after the last season is the one history stands at)
+    $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${yrs} ${plural(yrs, 'год', 'года', 'лет')} истории. Сохраняю в библиотеку…`;
+    try {
+      const rec = await saveWorldToLibrary(a, this.worldName);
+      this.worldId = rec.id; this.worldName = rec.name;
+      $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${yrs} ${plural(yrs, 'год', 'года', 'лет')} истории, ${(rec.bytes / 1e6).toFixed(1)} МБ в библиотеке. Выберите столицу.`;
+    } catch (e) { $('campEpicNote').textContent = `Мир сотворён, но не сохранён: ${e.message}. Поход начать можно.`; }
+    this.setupMode(); this.refresh();
+  }
+
   dragged() { if (this.follow) { this.follow = false; this.syncFollow(); } }
   syncFollow() { $('campFollow').setAttribute('aria-pressed', String(this.follow)); }
   // a zoom that shows about three bubbles across
@@ -109,17 +178,24 @@ export class CampaignView extends AtlasView {
     super.draw();
   }
 
-  show() { this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode(); }
+  // mode: 'library' — a world from the library; 'epic' — a new epic world made here, then the walk. Coming in with the
+  // other mode, a world not under way is let go (one under way goes on: it is its own world either way)
+  show(mode = 'library') {
+    if (mode !== this.mode && this.atlas && !(this.atlas.campaign && !finished(this.atlas.campaign))) { this.atlas = null; this.worldId = null; this.capPick = null; }
+    this.mode = mode;
+    this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode();
+  }
   // leaving the screen: the walk halts between seasons and waits
-  halt() { this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true; this.syncRun(); }
+  // (a world left half-made is not walked: it is let go)
+  halt() { if (this.making) { this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить'; this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; } this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true; this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
     const box = $('campWorlds');
     let list;
     try { list = await listWorlds(); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }
-    if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров: сотворите мир на экране «Мир» и сохраните его.</small>'; return; }
-    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)} · ${r.year} лет` +
+    if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров: сотворите эпический мир ниже или мир на экране «Мир».</small>'; return; }
+    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : ''} · ${r.year} лет` +
       (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
       `</span><button type="button">${r.campaign && !['won', 'lost', 'timeout'].includes(r.campaign.phase) ? 'Продолжить' : 'Открыть'}</button></div>`).join('');
   }
@@ -142,9 +218,12 @@ export class CampaignView extends AtlasView {
 
   setupMode() {
     this.choosing = true;
+    const epic = this.mode === 'epic';
     $('campSetup').hidden = false; $('campRun').hidden = true;
-    $('campTitle').textContent = this.atlas ? this.worldName : 'Кампания';
+    $('campLibField').hidden = epic; $('campEpicField').hidden = !epic;
+    $('campTitle').textContent = this.atlas ? this.worldName : epic ? 'Эпическая кампания' : 'Кампания';
     $('campCapsField').hidden = !this.atlas;
+    $('campWorldChron').hidden = !this.atlas || !this.atlas.hist;
     const past = this.atlas?.campaignsDone || [];
     $('campPastField').hidden = !past.length;
     $('campPast').innerHTML = past.map((P, k) => `<div class="sv"><span class="t"><b>Поход из ${esc(P.from)}</b> · ${PHASE[P.phase] || P.phase}<br><small>${P.started?.year ?? '?'}–${P.ended?.year ?? '?'} год · ${P.crown ? esc(P.crown) : ''} · вернулись ${P.members.filter(m => m.core && !m.died).length} из ${P.members.filter(m => m.core).length}</small></span><button type="button" data-k="${k}">В файл</button></div>`).join('');
@@ -152,6 +231,10 @@ export class CampaignView extends AtlasView {
   }
   renderCaps() {
     const a = this.atlas; if (!a) { $('campGo').disabled = true; return; }
+    // which quest this world gives (campaign/quest.js makeQuest): its own story in an epic world, else the crown and three clues
+    $('campQuestNote').textContent = epicQuest(a)
+      ? `Квест эпического мира: ${a.artifact.name} уйдёт к четвёртому боссу в дальнее логово; следы — могилы ${a.graves.length} боссов прошлых эпох. Через ${EPIC.doom} ${plural(EPIC.doom, 'год', 'года', 'лет')} начнётся новое бедствие${EPIC.years > EPIC.doom ? `; на поход — ${EPIC.years} ${plural(EPIC.years, 'год', 'года', 'лет')}` : ''}.`
+      : 'Квест: корона там, где её потеряла история этого мира; три подсказки в его курганах, логовах, развалинах и городах.';
     const caps = capitals(a);
     $('campCaps').innerHTML = caps.length ? caps.map(c => `<div class="sv cap${c.town === this.capPick ? ' cur' : ''}" data-town="${c.town}"><span class="t"><i style="background:rgb(${WORLD_PEOPLES.get(c.people).color.join(',')})"></i><b>${esc(c.label)}</b> · ${esc(c.peopleLabel)}` +
       `<br><small>${esc(c.realmLabel)} · ${c.towns} ${plural(c.towns, 'город', 'города', 'городов')} · ${c.pop} жителей · ${RETINUE[c.people].knight[1]} и ${RETINUE[c.people].squire[1]}</small></span><button type="button" class="primary" title="Караван выходит из этой столицы">Выступить</button></div>`).join('')
@@ -362,7 +445,7 @@ export class CampaignView extends AtlasView {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
-        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ушёл${m.gender === 'f' ? 'а' : ''}, ${m.left?.year ?? ''}-й год`}</small></div>`;
+        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');
     this.renderLog();
   }

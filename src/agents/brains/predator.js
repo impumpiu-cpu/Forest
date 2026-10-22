@@ -100,6 +100,24 @@ function ignoreFor(w, a, id, ticks) {
   m.set(id, w.tick + ticks);
 }
 
+// the beasts of a lair the caravan storms (campaign/camp.js `defend`): they hold it to the last — at the nearest of
+// those who came, no fear of a crowd or of the fire, no leaving when hurt. → false when nobody is left to go at
+function defendLair(w, a, P) {
+  let v = a.task?.id === 'maul' ? a.task.target : null;
+  if (!v || v.dead || v.downed || !w.agents.includes(v)) {
+    v = nearest(w, a, P.victims, 80, o => o.faction === 'colony' && !o.downed);
+    if (!v) return false;
+    a.task = {id: 'maul', target: v};
+  }
+  if (dist(a, v) > 0.9 || behindRock(w, a, v)) {
+    if (approach(w, a, v.x, v.y, a.stamina > 0.2 ? sprintMul(a, P.sprint, P.stamina * 0.6) : 0.8) === null) a.task = {id: 'roam'};
+    else recover(a);
+    return true;
+  }
+  attack(w, a, v);
+  return true;
+}
+
 export const predatorBrain = {
   id: 'predator',
   step(w, a) {
@@ -107,6 +125,7 @@ export const predatorBrain = {
     stepBody(w, a);
     if (a.dead) return;
     if (a.cd > 0) a.cd--;
+    if (a.defend && defendLair(w, a, P)) return;
     if (shunsHeat(w, a, sp, T, 2.5)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.4); return; }
 
     const food = a.needs.food, b = boldness(a, P), night = nightness(w);

@@ -19,26 +19,31 @@ import {SEASONS, SEASON_DAYS} from '../data/seasons.js';
 import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
-import {CAMPAIGN, FOES, RETINUE} from '../data/campaign.js';
+import {CAMPAIGN, FOES, RETINUE, MINE} from '../data/campaign.js';
+import {ORES} from '../data/ores.js';
 import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE} from '../data/transport.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {plural} from '../core/util.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion} from './land.js';
 import {route, stepCost} from './path.js';
-import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, fieldBuildings, buildDays, handler} from './baggage.js';
+import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler} from './baggage.js';
 import {draw, makeMember} from './start.js';
 import {fight, playStop} from './fight.js';
-import {questArrive, questTarget, questSight, pursuit, crownHands, rumour} from './quest.js';
+import {questArrive, questTarget, questSight, pursuit, crownHands, rumour, askable} from './quest.js';
+import {epicDay} from './epic.js';
 import {CAMP} from '../data/camp.js';
-import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose} from './bubble.js';
+import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose, hunting} from './bubble.js';
 import {BUBBLE, THINGS, AMBUSH, TRAIN, HERD} from '../data/bubble.js';
 import {RESOURCES} from '../data/resources.js';
+import {QUEST} from '../data/quest.js';
 import {standing, townName, townLine, trade, labour, healHere, hire, companion, rationPrice} from './town.js';
-import {HIRES, ROLES, LOYALTY, FREED, COMPANIONS, COMPANY_MAX, JOINED_MAX, VISIT, EARN, WANTS, MARKET, CONTRACT} from '../data/market.js';
+import {HIRES, ROLES, LOYALTY, SMITH, VISIT, EARN, WANTS, MARKET, CONTRACT} from '../data/market.js';
+import {room} from './company.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.js';
 import {nameCaravanMasters} from './masters.js';
+import {morningFind} from './finds.js';
 const SPECIES_LABEL = race => SPECIES.get(race).label;
 
 const SEASON_LIST = SEASONS.all();
@@ -55,6 +60,8 @@ export const alive = K => K.members.filter(m => m.alive);
 export const isCore = m => m.core ?? ['knight', 'squire'].includes(m.role);
 export const core = K => K.members.filter(m => m.alive && isCore(m));
 const guided = K => alive(K).some(m => m.role === 'guide');
+// the years a campaign has: an epic one its own (data/calamities.js EPIC.years), any other CAMPAIGN.maxYears
+export const yearsOf = K => K.years ?? CAMPAIGN.maxYears;
 export const ended = K => ['won', 'lost', 'timeout'].includes(K.phase);
 // ended, and its epilogue told (campaign/ending.js)
 export const finished = K => ended(K) && (!K.epilogue || K.epilogue.done);
@@ -98,7 +105,7 @@ export function pace(a, K, seasonId) {
 
 export function die(a, K, m, why) {
   if (m.gender === 'f') why = why.replace(/^(умер|пал|погиб)(?=\s)/, w => ({умер: 'умерла', пал: 'пала', погиб: 'погибла'})[w]);
-  m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why};
+  m.alive = false; m.hp = 0; m.ride = null; m.died = {day: K.day, year: a.hist.year, why, ...(K.fightSrc ? {src: K.fightSrc} : {})};
   if (m.captive) unbind(K, m);   // shackles back to the baggage
   const left = core(K).length, n = K.members.filter(isCore).length;
   say(a, K, `${m.name}, ${rank(K, m)}, ${why}.${isCore(m) && left ? ` Из вышедших из столицы осталось ${left} из ${n}.` : ''}`, 'death', isCore(m) && !left, [m.id]);
@@ -195,6 +202,37 @@ function lacking(K, kind) {
   return have < 2 + wagon;
 }
 
+// ── a stop to dig (data/campaign.js MINE): the best ore worth stopping for on the cell the caravan stands on.
+// An ore of a metal only above the caravan's own; silver, gems, gold sand (with a pan) — while it is short of gold.
+// → {ore, level} or null
+// the room left to dig into: what food for MINE.food days would take is kept for it
+const digRoom = K => Math.max(0, capacity(K) - load(K) - Math.max(0, alive(K).length * CAMPAIGN.ration * MINE.food - K.food));
+export function wantMine(a, K) {
+  if (K.food < alive(K).length * CAMPAIGN.ration * MINE.food || digRoom(K) < MINE.room || (K.mined || []).includes(K.i)) return null;   // not while the food runs low
+  const tier = metalTier(K), poor = K.gold < MINE.rich, reg = cellRegion(a, K.i);
+  let best = null, bv = 0;
+  for (const id of MINE.ores) {
+    const O = ORES.get(id), lvl = reg.ores?.[id] ?? 0;
+    if (lvl <= 0 || (O.tier ? O.tier <= tier : !poor)) continue;
+    const v = lvl * (O.tier ? 1 + O.tier : 1);
+    if (v > bv) { bv = v; best = {ore: id, level: lvl}; }
+  }
+  if (poor && reg.placer > bv && free(K).some(m => m.gear.hand.includes('pan'))) best = {ore: 'placer', level: reg.placer};
+  return best;
+}
+const mineRes = ore => (ore === 'placer' ? 'goldDust' : ORES.get(ore).resource);
+const mineLabel = ore => (ore === 'placer' ? 'золотой песок' : ORES.get(ore).label);
+// a day of digging in the quick mode: the diggers (Strength enough; gold sand — the one with the pan) bring the
+// face's units, as far as the face and the room go
+function autoMine(a, K, r) {
+  const ore = K.why.slice(5), reg = cellRegion(a, K.i), lvl = ore === 'placer' ? reg.placer : reg.ores?.[ore] ?? 0, res = mineRes(ore);
+  const diggers = ore === 'placer' ? (free(K).some(m => m.gear.hand.includes('pan')) ? 1 : 0) : free(K).filter(m => (m.special?.S ?? NORM) >= MINE.strength && m.hp >= 0.5).length;
+  const room = Math.floor(digRoom(K) / (RESOURCES.get(res).bulk || 1));
+  const n = Math.min(room, Math.round(MINE.auto[ore] * lvl * diggers * (0.6 + 0.8 * r())));
+  if (n > 0) K.cargo[res] = (K.cargo[res] || 0) + n;
+  return n;
+}
+
 // the way to the goal: with the wheels along the roads, or straight on foot; the wheels are kept when
 // the road is not too much longer (data/transport.js ROUTE), otherwise left behind
 function plan(a, K) {
@@ -245,17 +283,22 @@ function wantVisit(a, K, seasonId) {
   const ms = alive(K), need = ms.length * CAMPAIGN.ration, C = CAMPAIGN.camp;
   if ((seasonId === 'winter' || (seasonId === 'autumn' && a.hist && K.day % 30 >= 20)) && freezing(a, K.i) && K.winterYear !== a.hist.year) return 'winter';
   if (K.day < (K.nextVisit ?? 0)) return '';   // just out of a town: on to the goal first
-  if (K.food < need * C.foodDays) return 'food';
+  if (K.food < need * Math.max(C.foodDays, VISIT.foodAt)) return 'food';   // (looked for while there is food to reach it)
   if (free(K).some(m => m.hp < C.badly)) return 'heal';   // a captive's wounds turn no caravan aside (campaign/captives.js)
+  // ore for the smith (data/market.js SMITH): enough for a piece; a town with a smith is looked for further than a shop
+  if (smithOre(K) >= VISIT.smithOre && K.gold >= VISIT.smithGold && !(K.smithTried > K.day)) return 'smith';
   if (K.gold >= VISIT.money && K.day - (K.lastVisit ?? -999) >= VISIT.every) return 'shop';
   return '';
 }
 // a friendly town that can be reached: one on the way to the goal — ahead of the caravan (nearer the goal
 // than it is) and not much of a detour; when `urgent` (the winter, the badly wounded) and there is none
 // ahead, the nearest one whichever way
-function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach) {
+// units of ore of a metal above the caravan's own (the smith makes it into a piece of that metal)
+const smithOre = K => { const tier = metalTier(K); return ORES.all().filter(o => o.tier > tier).reduce((n, o) => n + (K.cargo[o.resource] || 0), 0); };
+const smithAt = t => SMITH.at.some(id => t.built.includes(id));
+function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach, only = null) {
   const v = Math.max(0.05, pace(a, K, SEASON_LIST[a.hist.season].id)), R = days * v, x0 = K.i % a.w, y0 = (K.i / a.w) | 0, wh = wheeled(K);
-  const near = (a.towns || []).filter(t => t.alive && standing(a, K, t) && Math.hypot(t.x - x0, t.y - y0) <= R).sort((p, q) => Math.hypot(p.x - x0, p.y - y0) - Math.hypot(q.x - x0, q.y - y0)).slice(0, 4);
+  const near = (a.towns || []).filter(t => t.alive && standing(a, K, t) && (!only || only(t)) && Math.hypot(t.x - x0, t.y - y0) <= R).sort((p, q) => Math.hypot(p.x - x0, p.y - y0) - Math.hypot(q.x - x0, q.y - y0)).slice(0, 4);
   const direct = K.goal == null ? null : route(a, K.i, K.goal, K.people, wh);
   let fallback = null;
   for (const t of near) {
@@ -268,7 +311,7 @@ function findTown(a, K, urgent, detour = VISIT.detour, days = VISIT.reach) {
   }
   return urgent ? fallback : null;
 }
-const VISIT_WHY = {winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну', rumour: 'расспросить о следах'};
+const VISIT_WHY = {smith: 'отдать руду кузнецу', winter: 'перезимовать', food: 'купить еды', heal: 'подлечить раненых', shop: 'потратить казну', rumour: 'расспросить о следах'};
 
 // the caravan comes into a town: trade, hire, meet who would go along
 function enterTown(a, K, t) {
@@ -292,6 +335,12 @@ function townEvening(a, K, seasonId) {
   const healed = free(K).every(m => m.hp >= CAMPAIGN.camp.healed);   // (nobody waits in town for a captive to heal)
   const wintering = K.inTown.why === 'winter' && (seasonId === 'winter' || seasonId === 'autumn');
   if (st && (wintering || (K.day - K.inTown.since < VISIT.stay && !(stocked && healed)))) return;
+  // too poor to stock up for the way: they hire out for board and pay (the town feeds them, the pay is kept) a while
+  const short = Math.max(0, Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays) - K.food) * (st ? rationPrice(t, st) : Infinity);
+  if (st && !stocked && K.gold < short && K.day - K.inTown.since < VISIT.work) {
+    if (!K.inTown.work) { K.inTown.work = true; K.stats.worked = (K.stats.worked || 0) + 1; say(a, K, `Денег на припасы нет: караван нанялся в ${townLabel(t, 3)} ${t.name} в работу за харчи и плату.`, 'town'); }
+    return;
+  }
   const parts = st ? trade(a, K, t, st) : [];
   say(a, K, `Караван выходит из ${townLabel(t, 2)} ${t.name}${parts.length ? ': ' + parts.join('; ') : ''}. Казна: ${K.gold} зол.`, 'town');
   K.inTown = null; K.path = null; K.nextVisit = K.day + VISIT.every;
@@ -311,7 +360,7 @@ function people(a, K, r) {
     // a day with the caravan: hunger, a bad wound, the sight of captives on a cut ration — and the leader's word
     const d = LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0) + (m.hp < 0.5 ? LOYALTY.hurt : 0) + (K.captiveCut ? LOYALTY.cruel : 0) + charm;
     m.loyalty = Math.max(0, Math.min(1, m.loyalty + d));
-    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? `не вынес${m.gender === 'f' ? 'ла' : ''} голода и` : 'однажды утром'} ушёл${m.gender === 'f' ? 'а' : ''} своей дорогой`);
+    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? `не вынес${m.gender === 'f' ? 'ла' : ''} голода и` : 'однажды утром'} ${m.gender === 'f' ? 'ушла' : 'ушёл'} своей дорогой`);
     else if (m.loyalty >= 1) say(a, K, `${m.name} теперь свой${m.gender === 'f' ? '' : ''}: идёт с караваном до конца.`, 'people');
   }
 }
@@ -322,6 +371,11 @@ function contractDay(a, K, m, r) {
   c.opinion = Math.max(0, Math.min(1, (c.opinion ?? C.start) + C.daily + (K.hungry ? C.hungry : 0) + (m.hp < 0.5 ? C.hurt : 0)));
   if (K.day < c.until) {
     if (c.opinion < C.desert && r() < C.deserts) { K.stats.deserted = (K.stats.deserted || 0) + 1; leave(a, K, m, `${m.name}, ${rank(K, m)}, не дождал${f ? 'ась' : 'ся'} конца срока и сбежал${f ? 'а' : ''}: служба ${f ? 'ей' : 'ему'} опостылела`); }
+    return;
+  }
+  if (c.opinion >= C.stay && !room(K, 'stay')) {   // it would stay, but the joined are full: it goes with thanks
+    K.stats.stayFull = (K.stats.stayFull || 0) + 1;
+    leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и остал${f ? 'ась' : 'ся'} бы с караваном, но места в отряде нет: ${f ? 'ушла' : 'ушёл'} с благодарностью`);
     return;
   }
   if (c.opinion >= C.stay) {
@@ -335,7 +389,7 @@ function contractDay(a, K, m, r) {
     say(a, K, `${m.name}, ${rank(K, m)}, попросил${f ? 'а' : ''} продлить службу: ещё ${C.days} дней за ${cost} зол.`, 'people', false, [m.id]);
     return;
   }
-  leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и ушёл${f ? 'а' : ''}${c.opinion >= C.extend ? ': продлить было нечем' : ''}`);
+  leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и ${f ? 'ушла' : 'ушёл'}${c.opinion >= C.extend ? ': продлить было нечем' : ''}`);
 }
 function leave(a, K, m, text) {
   m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year};
@@ -349,7 +403,7 @@ export const shake = (K, d) => {
 
 function homecoming(a, K, ms) {
   const t = a.towns.find(x => x.id === K.capital), Q = K.quest;
-  say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}${Q ? ` с короной — ${Q.name} снова дома` : ''}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
+  say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}${Q ? (Q.epic ? ` — ${Q.name} отныне в столице, и сила бедствия сломлена` : ` с короной — ${Q.name} снова дома`) : ''}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
   K.phase = 'won';
 }
 
@@ -371,11 +425,12 @@ function evening(a, K) {
     const busy = !K.inTown && K.via == null && questArrive(a, K, r, d => fight(a, K, d, r, 'guard'), tell);
     const any = K.members.some(m => m.alive && isCore(m));
     if (any && K.phase === 'back' && K.i === K.home && K.quest.crown.state === 'carried') { done(); homecoming(a, K, ms); return; }
-    const g = any ? questTarget(a, K, r) : null;
+    const g = any ? questTarget(a, K, r, tell) : null;
     if (g !== K.goal) { K.goal = g; K.path = null; }
     // nothing known of where to look: the council goes to a town to ask
-    if (g == null && K.via == null && !K.inTown) {
+    if (g == null && K.via == null && !K.inTown && askable(K)) {
       const found = findTown(a, K, true, VISIT.detour, VISIT.winterReach);
+      K.quest.askAt = K.day + QUEST.rumour.again;
       if (found) { K.via = found.t.id; K.viaWhy = 'rumour'; K.path = found.way.path; K.k = 0; say(a, K, `Совет: где искать дальше, не знает никто — свернуть в ${townLabel(found.t, 1)} ${found.t.name} расспросить старожилов.`, 'town'); if (!K.path.length) enterTown(a, K, found.t); }
     }
     done();
@@ -385,26 +440,38 @@ function evening(a, K) {
     K.phase = 'back'; K.goal = K.home; K.path = null;
   } else if (K.phase === 'back' && K.i === K.home) { homecoming(a, K, ms); return; }
   // a town on the way: to buy food, to heal, to spend the treasury, to winter
-  if (K.via == null && K.camp === 0) {
+  // a long hunger where the land does not feed them, or that wears them down: back to a town, however far, a camp to
+  // forage broken for it
+  const worn = () => { const fs = free(K); return fs.reduce((s, m) => s + m.hp, 0) / Math.max(1, fs.length) < CAMPAIGN.camp.hp; };
+  const barren = K.hungry >= VISIT.retreat && (richness(a, K.i) * seasonFood(a, K.i, seasonId) < CAMPAIGN.camp.foodLand || worn());
+  if (K.via == null && (K.camp === 0 || (barren && K.why === 'food'))) {
     const why = wantVisit(a, K, seasonId);
     // urgent — any way to the nearest: the winter, the badly wounded, hunger with the gold to end it
-    const rich = K.gold >= VISIT.hungryGold * need * MARKET.ration;
-    const urgent = why === 'winter' || (why === 'heal' && free(K).some(m => m.hp < CAMPAIGN.camp.badly)) || (why === 'food' && K.hungry > 0 && rich);
-    const days = why === 'winter' ? VISIT.winterReach : why === 'food' ? Math.min(VISIT.reach, K.food / need + VISIT.foodSpare) : VISIT.reach;
-    const found = why && findTown(a, K, urgent, K.hungry ? VISIT.hungryDetour : VISIT.detour, days);
+    const urgent = why === 'winter' || (why === 'heal' && free(K).some(m => m.hp < CAMPAIGN.camp.badly)) || (why === 'food' && K.hungry > 0);   // (starving, any way: a friendly town feeds them even without gold — campaign/town.js)
+    // (starving, the food left gives no measure: a town within winterReach; on barren land after `retreat` days of it, within retreatReach)
+    const days = why === 'winter' || why === 'smith' ? VISIT.winterReach : why === 'food' ? (barren ? VISIT.retreatReach : K.hungry ? VISIT.winterReach : Math.min(VISIT.reach, K.food / need + VISIT.foodSpare)) : VISIT.reach;
+    const found = why && findTown(a, K, urgent, K.hungry ? VISIT.hungryDetour : why === 'smith' ? VISIT.smithDetour : VISIT.detour, days, why === 'smith' ? smithAt : null);
+    if (why === 'smith' && !found) K.smithTried = K.day + VISIT.smithRetry;   // no smith near: look again later (a shop may do now)
     if (found) {
-      K.via = found.t.id; K.viaWhy = why; K.path = found.way.path; K.k = 0;
+      K.via = found.t.id; K.viaWhy = why; K.path = found.way.path; K.k = 0; K.camp = 0; K.why = '';
       say(a, K, `Совет: свернуть в ${townLabel(found.t, 1)} ${found.t.name} — ${VISIT_WHY[why]}.`, 'town');
       if (!K.path.length) enterTown(a, K, found.t);
       return;
     }
   }
-  if (K.via != null && !(K.hungry && richness(a, K.i) >= CAMPAIGN.camp.foodLand)) return;
+  // on the way to a town: the camp breaks up (else it would stand here for good — the camp's days run below); a starving
+  // caravan on rich land still stops to hunt on the way
+  if (K.via != null && !(K.hungry && richness(a, K.i) >= CAMPAIGN.camp.foodLand)) { if (K.camp > 0) { K.camp = 0; K.why = ''; } return; }
   // a camp: for food when it runs short and the land can feed them, for the wounded, to tame or to build
   const fs = free(K).length ? free(K) : ms;   // the camp for the wounded is for the free, not for the captives
   const rich = richness(a, K.i), core = fs.reduce((s, m) => s + m.hp, 0) / fs.length, C = CAMPAIGN.camp;
   const stock = Math.min(capacity(K) - cargoLoad(K), need * C.stock);
   if (K.camp > 0 && ((K.why === 'food' && K.food >= C.full * stock) || (K.why === 'heal' && core >= C.healed))) K.camp = 0;
+  // a stop to dig ends when the face is worked out (a poor day) or the packs are full
+  if (K.camp > 0 && K.why.startsWith('mine:') && ((K.mineDay ?? 1) < MINE.quit || capacity(K) - load(K) < 1)) {
+    K.camp = 0; const ore = K.why.slice(5), got = K.mineGot || 0;
+    say(a, K, `Стоянка у выработки окончена: ${got ? `добыли ${mineLabel(ore)} — ${got}` : 'жила почти ничего не дала'}${capacity(K) - load(K) < 1 ? ', класть больше некуда' : ''}.`, 'camp');
+  }
   if (K.camp > 0) K.camp--;
   else {
     // a quiet place: the land's dangers low; to build or to tame they also wait till nothing hunts them near
@@ -420,13 +487,20 @@ function evening(a, K) {
       if (B) { K.build = B; why = 'build'; }
       else if (tame) { why = 'tame:' + tame; K.tamedAt = K.day; }
     }
+    // fed, whole and in a quiet place: an ore worth stopping for here (data/campaign.js MINE)
+    if (!why && !K.hungry && calm && K.food >= need * C.foodDays && K.day >= (K.nextMine ?? 0)) {
+      const m = wantMine(a, K);
+      if (m) why = 'mine:' + m.ore;
+    }
     if (why && K.why !== why) {
-      K.camp = why === 'build' ? K.build.days + 1 : C.maxDays; K.why = why; K.stats.camps++; K.stopPlayed = 0;
+      if (why.startsWith('mine:')) { (K.mined ||= []).push(K.i); K.nextMine = K.day + MINE.maxDays + MINE.every; K.mineGot = 0; K.mineDay = MINE.quit; }
+      K.camp = why === 'build' ? K.build.days + 1 : why.startsWith('mine:') ? MINE.maxDays : C.maxDays; K.why = why; K.stats.camps++; K.stopPlayed = 0;
       const left = Math.floor(K.food / need);
       const text = why === 'food' ? `${left > 0 ? `Еды осталось на ${pieces(left, 'день', 'дня', 'дней')}` : 'Еды не осталось'}: совет решил встать лагерем, охотиться и собирать.`
         : why === 'heal' ? 'Раненые еле идут: совет решил встать лагерем и отлежаться.'
           : why === 'build' ? `Совет решил встать в лесу и ${K.build.kind === 'building' ? `срубить «${BUILDINGS.get(K.build.id).name}» для повозки` : K.build.kind === 'cart' ? 'сколотить тележку' : 'сколотить повозку'}: ${pieces(K.build.days, 'день', 'дня', 'дней')} работы.`
-            : `Здесь пасутся дикие ${BEASTS[why.slice(5)].plural}: совет решил встать и приручить.`;
+            : why.startsWith('mine:') ? `Здесь ${why.slice(5) === 'placer' ? 'в речном песке блестит золото' : `выходит на поверхность ${mineLabel(why.slice(5))}`}: совет решил встать и добывать.`
+              : `Здесь пасутся дикие ${BEASTS[why.slice(5)].plural}: совет решил встать и приручить.`;
       say(a, K, text, 'camp');
     } else if (!why) K.why = '';
   }
@@ -451,20 +525,21 @@ function night(a, K) {
     // a quiet night: a little found in the morning while they packed
     const M = CAMPAIGN.morning;
     if (r() < M.food * Math.min(1.2, richness(a, K.i) + 0.2)) { const n = Math.round(between(r, M.foodN)); K.food += n; K.stats.finds++; if (r() < 0.25) say(a, K, `Утром подстрелили дичь: +${pieces(n, 'паёк', 'пайка', 'пайков')}.`, 'find'); }
-    if (r() < M.treasure) { const g = Math.round(between(r, M.gold)); K.gold += g; K.stats.finds++; say(a, K, `Утром у ручья нашли оброненный кошель: ${pieces(g, 'золотой', 'золотых', 'золотых')}.`, 'find'); }
+    const {r: rf, done: df} = draw(K, 'finds'), found = morningFind(a, K, rf); df();   // only where it has a reason to lie
+    if (found) say(a, K, `Утром: ${found[0].toLowerCase()}${found.slice(1)}`, 'treasure');
   }
   done();
 }
 
 // what a thing of the bubble brings to a fight: its foe, its strength, and who it is on the local map
-const foeOf = t => ({kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null});
+const foeOf = t => ({kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null, ...(t.pursuit ? {pursuit: t.src || 'hunt'} : {})});
 
 // ── meeting the bubble by day: an ambush on the march, a merchant's train on the road, a herd to hunt
 function dayMeetings(a, K, r, marched) {
   const met = stepBubble(a, K, 'day', r, guided(K));
   for (const t of met) {
     const T = THINGS[t.kind];
-    if (T.mood === 'hostile' && T.ambush && marched && core(K).length) {
+    if (T.mood === 'hostile' && T.ambush && marched && core(K).length && hunting(t)) {   // only one that saw them coming lies in wait
       const win = fight(a, K, foeOf(t), r, 'ambush');
       settle(K, t, win);
       break;   // one ambush a day is enough
@@ -516,16 +591,20 @@ export function caravanDay(a, K, day) {
   const rich = richness(a, K.i) * seasonFood(a, K.i, seasonId), Fo = CAMPAIGN.forage;
   const town = K.inTown ? a.towns.find(x => x.id === K.inTown.id) : null;
   const camping = !town && (K.camp > 0 || !K.path || K.k >= K.path.length);
-  if (town) {   // a day in town: work for hire, buy the day's food at the market
+  if (town) {   // a day in town: work for hire, buy the day's food at the market (hired out for board: the town feeds them)
     labour(K);
+    if (K.inTown.work) K.food += mouths(K) * CAMPAIGN.ration;
     const st = standing(a, K, town), price = st ? rationPrice(town, st) : Infinity, want = Math.max(0, ms.length * CAMPAIGN.ration * 2 - K.food);
     const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; }
   } else if (!camping) march(a, K, pace(a, K, seasonId));
   else campWork(a, K, r);
   // the first days of a stop to hunt and gather are played on the local map (campaign/fight.js playStop):
   // what the land gave there is the day's forage
-  const onMap = camping && K.why === 'food' && K.mode !== 'auto' && (K.stopPlayed ?? 0) < CAMP.stop.maxDays && core(K).length;
-  if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; playStop(a, K); }
+  // every stop for a purpose (food, the wounded, building, taming, digging) is played on the local map, at most
+  // CAMP.stop.maxDays of it (campaign/fight.js playStop): what the land gave there is the day's forage
+  const onMap = camping && K.why && K.mode !== 'auto' && (K.stopPlayed ?? 0) < CAMP.stop.maxDays && core(K).length;
+  if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; const got = playStop(a, K); if (K.why.startsWith('mine:')) { K.mineDay = got[mineRes(K.why.slice(5))] || 0; K.mineGot = (K.mineGot || 0) + K.mineDay; } }
+  else if (camping && K.why.startsWith('mine:')) { K.mineDay = autoMine(a, K, r); K.mineGot = (K.mineGot || 0) + K.mineDay; }
   if (!town && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
   const forage = ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   if (!town && !onMap) K.food += forage;
@@ -562,14 +641,14 @@ export function caravanDay(a, K, day) {
     K.phase = 'lost';
     say(a, K, 'Никого из тех, кто вышел из столицы, не осталось в живых. Караван не дойдёт.', 'end', true);
   }
-  if (!ended(K) && K.day >= CAMPAIGN.maxYears * 30 * SEASONS_PER_YEAR) { K.phase = 'timeout'; say(a, K, `Прошло ${CAMPAIGN.maxYears} лет: караван так и не вернулся.`, 'end', true); }
+  if (!ended(K) && K.day >= yearsOf(K) * 30 * SEASONS_PER_YEAR) { K.phase = 'timeout'; say(a, K, `Прошло ${yearsOf(K)} лет: караван так и не вернулся.`, 'end', true); }
   // what they can carry, again: the night's loot, the morning's finds, the town's buys, someone gone
   assign(K); overflow(K);
   reveal(a, K, K.i, CAMPAIGN.fog.sight * scaleOf(a) + (guided(K) ? HIRES.guide.sight * scaleOf(a) : 0));
   // the quest: what the scouts see of the places sought; with the crown, the world's pursuit
   if (K.quest && !ended(K)) {
     const tell = (text, kind, world, who) => say(a, K, text, kind, world, who), {r: rq, done: dq} = draw(K, 'pursuit');
-    questSight(a, K, tell); pursuit(a, K, rq, tell); dq();
+    questSight(a, K, tell); pursuit(a, K, rq, tell); epicDay(a, K, rq, tell); dq();
   }
   K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);
   const p = (a.parties || []).find(x => x.id === K.party);

@@ -8,7 +8,7 @@ import {mulberry, seedNumber} from '../core/rng.js';
 import {plural} from '../core/util.js';
 import {SEASONS} from '../data/seasons.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
-import {ERAS, WILD_YEARS, FAUNA} from '../data/history.js';
+import {ERAS, WILD_YEARS, EPIC_YEARS, FAUNA} from '../data/history.js';
 import {ELDER_YEARS, YOUNG_YEARS, WORLD_PEOPLES} from '../data/peoples.js';
 import {ROADS} from '../data/roads.js';
 import {arrive, stepPeoples, townLabel} from './peoples.js';
@@ -21,15 +21,28 @@ import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
+import {startCalamities, stepCalamities} from './calamity.js';
 
 const SEASON_LIST = SEASONS.all();
 
+// the epic world's years of each era (data/history.js EPIC_YEARS): drawn once from their own stream, kept in the world
+export function epicYears(a) {
+  if (!a.epicYears && a.cfg.epicYears) a.epicYears = {...a.cfg.epicYears};   // set by hand (tests: short eras)
+  if (!a.epicYears) {
+    const r = mulberry(seedNumber(`${a.cfg.seed}:atlas:epic`)), Y = EPIC_YEARS;
+    a.epicYears = Object.fromEntries(Object.entries(Y).map(([id, [lo, hi]]) => [id, Math.round(lo + r() * (hi - lo))]));
+  }
+  return a.epicYears;
+}
 // the eras with their length in seasons, in order
-export const eraPlan = a => [
-  {id: 'wild', seasons: WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR},
-  {id: 'elder', seasons: ELDER_YEARS[a.cfg.elder ?? 1].years * SEASONS_PER_YEAR},
-  {id: 'young', seasons: YOUNG_YEARS[a.cfg.young ?? 1].years * SEASONS_PER_YEAR},
-];
+export const eraPlan = a => {
+  if (a.cfg.epic) { const Y = epicYears(a); return ['wild', 'elder', 'young'].map(id => ({id, seasons: Y[id] * SEASONS_PER_YEAR})); }
+  return [
+    {id: 'wild', seasons: WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR},
+    {id: 'elder', seasons: ELDER_YEARS[a.cfg.elder ?? 1].years * SEASONS_PER_YEAR},
+    {id: 'young', seasons: YOUNG_YEARS[a.cfg.young ?? 1].years * SEASONS_PER_YEAR},
+  ];
+};
 export const historyLength = a => eraPlan(a).reduce((s, e) => s + e.seasons, 0);
 export const historyDone = a => !!a.hist && a.hist.step >= a.hist.end;
 export const seasonLabel = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
@@ -59,6 +72,7 @@ export function startHistory(a) {
     (parts.length ? `, чудовища заняли логова: ${parts.join(', ')}` : '') + (tribes.length ? `; дикие племена разбили станы: ${tribes.join(', ')}` : '') +
     (old ? `. ${old} ${plural(old, 'логово стоит', 'логова стоят', 'логов стоят')} с незапамятных времён.` : '.'));
   for (const i of a.ancientBarrows || []) say(a, `Курганы незапамятных времён стоят ${wherePhrase(a, i)}: кто в них лежит, не помнит никто.`);
+  startCalamities(a);   // the epic world: the sanctuary, the artifact, the three calamities (atlas/calamity.js)
 }
 
 // the new roads of a round, in one line: the first two pairs by name, the rest counted
@@ -114,6 +128,7 @@ export function stepHistory(a, onDay = null) {
   }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
+  stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);
   // the year's beaten raids of the tribes and the dead, in one line
   if (H.season === 3 && H.repelled) {

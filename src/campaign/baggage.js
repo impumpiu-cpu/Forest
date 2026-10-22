@@ -10,6 +10,7 @@
 import {SPECIES} from '../data/species.js';
 import {BONDS} from '../data/captives.js';
 import {ITEMS} from '../data/items.js';
+import {ORES} from '../data/ores.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {EFFECTS, NORM} from '../data/special.js';
@@ -19,6 +20,17 @@ import {clamp} from '../core/util.js';
 const alive = K => K.members.filter(m => m.alive);
 const bulk = id => (RESOURCES.has(id) ? RESOURCES.get(id).bulk ?? 1 : 1);
 const humanSpeed = () => SPECIES.get('human').speed;
+
+// ── metal: the best metal of the free members' gear — tools, arms and armour (data/items.js `tier`: 1 bronze,
+// 2 iron, 4 mithril; 0 — wood, bone, hide). A caravan in bronze wants no copper, but iron it does (data/campaign.js MINE)
+export function metalTier(K) {
+  let best = 0;
+  for (const m of alive(K)) {
+    if (m.captive) continue;
+    for (const id of [...m.gear.hand, m.gear.body]) { const d = ITEMS.has(id) ? ITEMS.get(id) : null; if (d && d.material !== 'silver') best = Math.max(best, d.tier || 0); }
+  }
+  return best;
+}
 
 // ── metal: the best tool among the members' gear (1 — bronze, 2 — iron; 0 — none that can build)
 export function toolTier(K) {
@@ -67,15 +79,21 @@ export const load = K => K.food + cargoLoad(K);
 // what does not fit is left behind: goods first, then food; returns what was left
 export function overflow(K) {
   let over = load(K) - capacity(K), left = 0;
-  // the goods first, then food; bonds for captives last: they weigh little and nothing else binds (data/captives.js)
+  // the goods first, then food, then the ore kept for the smith; bonds for captives last: they weigh little and nothing else binds (data/captives.js)
   const bonds = id => BONDS.all().some(b => b.resource === id);
   const drop = id => {
     const n = Math.min(K.cargo[id], Math.ceil(over / bulk(id)));
     K.cargo[id] -= n; over -= n * bulk(id); left += n * bulk(id);
     if (K.cargo[id] <= 0) delete K.cargo[id];
   };
-  for (const id of Object.keys(K.cargo).filter(id => !bonds(id)).sort()) { if (over <= 0) break; drop(id); }
-  if (over > 0) { const f = Math.min(K.food, over); K.food -= f; over -= f; left += f; }
+  // the cheapest for the room it takes first: gems and gold stay, ore and hides go
+  // (ore of a metal above the caravan's own is kept for the smith: data/market.js SMITH)
+  const tier = metalTier(K), keep = id => ORES.all().some(o => o.resource === id && o.tier > tier);
+  const worth = id => (keep(id) ? 100 : (RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0) / bulk(id));
+  const byWorth = ids => ids.sort((p, q) => worth(p) - worth(q) || (p < q ? -1 : 1));
+  for (const id of byWorth(Object.keys(K.cargo).filter(id => !bonds(id) && !keep(id)))) { if (over <= 0) break; drop(id); }
+  if (over > 0) { const f = Math.min(K.food, over); K.food -= f; over -= f; left += f; }   // what more was picked is left
+  for (const id of byWorth(Object.keys(K.cargo).filter(id => !bonds(id) && keep(id)))) { if (over <= 0) break; drop(id); }
   for (const id of Object.keys(K.cargo).filter(bonds).sort()) { if (over <= 0) break; drop(id); }
   return left;
 }

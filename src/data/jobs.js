@@ -104,7 +104,8 @@ JOBS.registerAll([
 
   // the mine: dig whichever ore the colony is short of (iron ore, coal, gems) from the rock face
   {id: 'dig', skill: 'mining', tier: 2, label: 'добывать руду', short: 'руда', verb: 'добывает руду', preferable: true,
-    runner: 'harvest', nav: 'ore', resource: 'ironore', carry: 2, time: 40, requires: 'mineshaft', memory: 'walkOre',
+    // open: in a camp of the campaign that stopped to dig, the outcrop is worked without a mine (settlement/query.js)
+    runner: 'harvest', nav: 'ore', resource: 'ironore', carry: 2, time: 40, requires: 'mineshaft', open: true, memory: 'walkOre',
     desire: (w) => (wantedOre(w).size ? 0.42 : -1),
     valid: (w, i) => w.grid.fire[i] === 0 && oreBeside(w, i, wantedOre(w)) >= 0,
     take: (w, i, a) => {

@@ -44,7 +44,10 @@ export const CAMP = {
   // a stop on the map (a deliberate camp to hunt and gather): played day by day, at most `maxDays`
   // of it on the map; the rest of the stop goes on as before, on the world map
   // they come to it fed (the day's meal is the campaign's), the land's game on the map: × its level
-  stop: {maxDays: 2, from: 7, until: 19.5, game: 2.2},
+  stop: {maxDays: 6, from: 7, until: 19.5, game: 2.2},
+  // what the stores send back to the campaign besides the food: the goods the caravan carries and sells (the
+  // rest — firewood, hay, stone — stays at the camp)
+  carry: ['hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
   // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
   spoils: 12,
   // how many played camps the campaign keeps to be watched again (ui/campaignView.js)

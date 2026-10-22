@@ -34,6 +34,11 @@
       <b>Кампания</b>
       <span>Караван из столицы идёт по живому миру: восемь человек, еда на спине, поручение. Мир берётся из библиотеки — сохраните его на экране «Мир».</span>
     </button>
+    <button type="button" class="launch-card" id="launchEpic">
+      <span class="tag">эпос</span>
+      <b>Эпическая кампания</b>
+      <span>Всё сразу: сотворить мир с долгой историей — три эпохи по 75–150 лет, — выбрать столицу и выступить в поход.</span>
+    </button>
     <button type="button" id="launchResume" class="primary" hidden>Вернуться к игре</button>
   </section>
 
@@ -103,7 +108,12 @@
     </div>
     <div class="card atlas-chron">
       <h2>Летопись мира</h2>
+      <div class="row chron-ctl">
+        <div class="seg" id="atlasDetail" title="Подробность летописи: на экране и в файле"></div>
+        <button type="button" id="atlasCalOnly" aria-pressed="false" title="Только летопись катаклизмов: знамения, боссы, союзы, могилы">Катаклизмы</button>
+      </div>
       <div class="log" id="atlasChron"></div>
+      <div class="row actions"><button type="button" id="atlasChronFile" title="Летопись текстом по эпохам, с выбранной подробностью; с «Катаклизмами» — летопись катаклизмов">Летопись в файл</button></div>
     </div>
   </section>
 
@@ -112,10 +122,22 @@
     <div class="menu-form atlas-form">
       <h2 id="campTitle" class="menu-title">Кампания</h2>
       <div id="campSetup">
-        <div class="field"><span class="lbl">Мир из библиотеки</span><div id="campWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
+        <div class="field" id="campLibField"><span class="lbl">Мир из библиотеки</span><div id="campWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
           <small id="campWorldNote" class="status" role="status"></small></div>
+        <div class="field" id="campEpicField" hidden><span class="lbl">Новый эпический мир</span>
+          <div class="row">
+            <input id="campEpicSeed" type="text" maxlength="24" autocomplete="off" aria-label="Сид эпического мира">
+            <div class="seg" id="campEpicSize"></div>
+            <button type="button" id="campEpicGo">Сотворить</button>
+          </div>
+          <small id="campEpicNote" class="status" role="status">Три эпохи по 75–150 лет: долгая история, в которой будет место бедствиям. На среднем мире — минута-другая.</small></div>
         <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
-          <small>Столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги. Щелчок по карточке показывает столицу на карте, «Выступить» — начинает поход.</small></div>
+          <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small>
+          <small id="campQuestNote" class="camp-quest"></small></div>
+        <div class="field" id="campWorldChron" hidden><span class="lbl">Летопись мира</span>
+          <div class="row"><div class="seg" id="campDetail" title="Подробность летописи мира в файле"></div>
+            <button type="button" id="campWorldFile">Летопись мира в файл</button><button type="button" id="campCalFile">Катаклизмы в файл</button></div>
+          <small>Текстом по эпохам: всё, что мир прожил до похода. Катаклизмы — отдельно: знамения, боссы, союзы, могилы.</small></div>
         <div class="field" id="campPastField" hidden><span class="lbl">Походы в этом мире</span><div id="campPast" class="savelist"></div>
           <small>Летописи окончённых походов хранятся вместе с миром.</small></div>
         <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
@@ -130,6 +152,7 @@
         <div id="campRoster" class="roster"></div>
         <div class="row actions">
           <button type="button" id="campSave" title="В библиотеку миров: мир вместе с походом">Сохранить мир с походом</button>
+          <button type="button" id="campWorldFile2" title="Летопись мира текстом по эпохам (подробность — как выбрано при выборе столицы)">Летопись мира в файл</button>
           <button type="button" id="campAgain" hidden title="Тот же мир, после этого похода: выбрать столицу и снарядить новый караван">Новый поход в этом мире</button>
           <button type="button" id="campNew" class="quiet">Другой мир</button>
         </div>

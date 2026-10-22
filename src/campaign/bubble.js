@@ -15,11 +15,28 @@ import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 import {BUBBLE, THINGS, TRAIN, HERD} from '../data/bubble.js';
+import {HIRES} from '../data/market.js';
+import {EPIC} from '../data/calamities.js';
 import {GAME} from '../data/campaign.js';
 import {dangers, cellRegion, lairFoe} from './land.js';
 import {REALM_BANDS} from '../data/seam.js';
 
 export const bubbleOf = K => (K.bubble ||= {next: 1, things: []});
+// a thing on the caravan's trail: a pursuit, or one that has noticed it (things of saves from before: all of them)
+export const hunting = t => !!t.pursuit || (t.hunting ?? true);
+
+// the darker the further on (data/bubble.js grow): the share of the way to the crown walked and the clues found
+export function grow(a, K) {
+  const Q = K.quest, G = BUBBLE.grow;
+  if (!Q) return 1;
+  let way = 1;
+  if (Q.crown.state !== 'carried') {
+    const [hx, hy] = [K.home % a.w, (K.home / a.w) | 0], [cx, cy] = [Q.crown.i % a.w, (Q.crown.i / a.w) | 0];
+    const all = Math.hypot(cx - hx, cy - hy) || 1, left = Math.hypot(cx - K.x, cy - K.y);
+    way = Math.max(0, Math.min(1, 1 - left / all));
+  }
+  return 1 + G.way * way + G.clue * (Q.found || 0);
+}
 const sc = (a, v) => v * scaleOf(a);
 const dist = (K, t) => Math.hypot(t.x - K.x, t.y - K.y);
 const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
@@ -40,17 +57,25 @@ function herdOf(a, i) {
 }
 
 // ── birth: a few cells of the ring a day; each cell's dangers, its road and its game may send a thing.
-// The roll of a cell is seeded by the cell and the day, so the same day in the same place sends the same
-function spawn(a, K) {
+// The roll of a cell is seeded by the cell and the day, so the same day in the same place sends the same.
+// A guide knows the land and keeps the caravan out of harm's way: the hostile are born × HIRES.guide.night
+function spawn(a, K, guided) {
   const B = bubbleOf(K), near = sc(a, BUBBLE.near), far = sc(a, BUBBLE.far);
-  const pick = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`));
+  const pick = mulberry(seedNumber(`${K.seed}:bubble:${K.day}`)), g = grow(a, K);
   for (let s = 0; s < BUBBLE.samples && B.things.length < BUBBLE.max; s++) {
     const ang = pick() * Math.PI * 2, d = near + pick() * (far - near), x = K.x + Math.cos(ang) * d, y = K.y + Math.sin(ang) * d;
     if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
     const i = cellAt(a, x, y); if (!land(a, i)) continue;
-    const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = friendlyNear(a, K, i) ? BUBBLE.friendly : 1;
-    const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, ...props}); };
-    for (const dg of dangers(a, i)) if (r() < dg.p * BUBBLE.spawn * k) add({kind: dg.kind, strength: dg.strength ?? 1, label: dg.label || THINGS[dg.kind].label, ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {})});
+    const r = mulberry(seedNumber(`${K.seed}:cell:${i}:${K.day}`)), k = (friendlyNear(a, K, i) ? BUBBLE.friendly : 1) * (guided ? HIRES.guide.night : 1) * g;
+    // the active hunt of an epic quest (campaign/epic.js): the hostile are born on the caravan's trail
+    const trail = (K.quest?.hunt ?? 0) >= 2 ? EPIC.hunt.trail : 0;
+    const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: trail > 0 && r() < trail, ...props}); };   // (no draw without a hunt: the stream stays as it was
+    const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${dg.label || THINGS[dg.kind].label}` : dg.label || THINGS[dg.kind].label, ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {})});
+    const ds = dangers(a, i);
+    for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(dg));
+    // a small party by day, about its own business
+    const S = BUBBLE.small, hostile = ds.filter(dg => THINGS[dg.kind]?.mood === 'hostile');
+    if (hostile.length && r() < S.chance * Math.min(1, hostile.reduce((v, dg) => v + dg.p, 0) * 4) * k) { add(thing(hostile[(r() * hostile.length) | 0], S.strength[0] + r() * (S.strength[1] - S.strength[0]), true)); K.stats.small = (K.stats.small || 0) + 1; }
     const road = roadAccess(a, i);
     if (road > 0.2 && r() < TRAIN.chance * road) add({kind: 'trader', strength: 0, label: THINGS.trader.label, goods: Math.round(TRAIN.food[0] + r() * (TRAIN.food[1] - TRAIN.food[0]))});
     const herd = herdOf(a, i);
@@ -62,11 +87,13 @@ function spawn(a, K) {
 // the roads); a thing left far behind melts away
 function move(a, K, r, guided) {
   // a quiet people (elves) is noticed from less far (data/bubble.js `quiet`)
-  const B = bubbleOf(K), sense = sc(a, BUBBLE.sense) * (BUBBLE.quiet[K.people] ?? 1), gone = sc(a, BUBBLE.gone);
+  const q = BUBBLE.quiet[K.people] ?? 1, B = bubbleOf(K), sense = sc(a, BUBBLE.sense) * q, notice = sc(a, BUBBLE.wanderSense) * q, gone = sc(a, BUBBLE.gone);
   for (const t of B.things) {
     const T = THINGS[t.kind], step = sc(a, T.speed) / 2, d = dist(K, t);
     let nx = t.x, ny = t.y;
-    if (T.hunts && t.sated < K.day && (d <= sense || t.pursuit) && !K.inTown) {
+    // one about its own business notices the caravan only near; then it is on its trail
+    if (T.hunts && !hunting(t) && t.sated < K.day && d <= notice && !K.inTown) { t.hunting = true; K.stats.noticed = (K.stats.noticed || 0) + 1; }
+    if (T.hunts && hunting(t) && t.sated < K.day && (d <= sense || t.pursuit) && !K.inTown) {
       if (guided && r() < BUBBLE.guideLoses / 2) t.sated = K.day + 2;   // the guide leads them off the trail
       else { const k = Math.min(1, step / Math.max(1e-6, d)); nx += (K.x - t.x) * k; ny += (K.y - t.y) * k; }
     } else {
@@ -82,7 +109,7 @@ function move(a, K, r, guided) {
     if (nx >= 0 && ny >= 0 && nx < a.w && ny < a.h && land(a, j)) { t.x = nx; t.y = ny; t.i = j; }
   }
   // a pursuit sent after the crown (campaign/quest.js) does not melt away: it follows from further off
-  B.things = B.things.filter(t => (t.pursuit ? dist(K, t) <= gone * 2 : dist(K, t) <= gone && (K.day - t.born <= BUBBLE.life || (THINGS[t.kind].hunts && t.sated < K.day && dist(K, t) <= sense))));
+  B.things = B.things.filter(t => (t.pursuit ? dist(K, t) <= gone * 2 : dist(K, t) <= gone && (K.day - t.born <= BUBBLE.life || (THINGS[t.kind].hunts && hunting(t) && t.sated < K.day && dist(K, t) <= sense))));
 }
 
 // the world's parties near the caravan, as things: a lair's raid or brood, an army that is no friend, a dragon
@@ -103,18 +130,18 @@ export function worldThings(a, K) {
 
 // a day's moving and the things that reach the caravan: `phase` 'day' — after the march, 'night' — at the camp
 export function stepBubble(a, K, phase, r, guided) {
-  if (phase === 'day') spawn(a, K);
+  if (phase === 'day') spawn(a, K, guided);
   move(a, K, r, guided);
   const contact = sc(a, BUBBLE.contact);
   return [...bubbleOf(K).things, ...worldThings(a, K)].filter(t => dist(K, t) <= contact && t.sated < K.day);
 }
 
 // the hunters on the caravan's trail within sight
-export const pursuers = (a, K, sight) => [...bubbleOf(K).things, ...worldThings(a, K)].filter(t => THINGS[t.kind].hunts && t.sated < K.day && dist(K, t) <= Math.min(sight, sc(a, BUBBLE.sense)));
+export const pursuers = (a, K, sight) => [...bubbleOf(K).things, ...worldThings(a, K)].filter(t => THINGS[t.kind].hunts && hunting(t) && t.sated < K.day && dist(K, t) <= Math.min(sight, sc(a, BUBBLE.sense)));
 export function lose(K, t, days) { if (t.party) (K.partySated ||= {})[t.party] = K.day + days; else t.sated = K.day + days; }
 
 // the hunters near enough that the council would not camp here
-export const huntersNear = (a, K) => [...bubbleOf(K).things, ...worldThings(a, K)].some(t => THINGS[t.kind].hunts && t.sated < K.day && dist(K, t) <= sc(a, BUBBLE.sense) * BUBBLE.wary);
+export const huntersNear = (a, K) => [...bubbleOf(K).things, ...worldThings(a, K)].some(t => THINGS[t.kind].hunts && hunting(t) && t.sated < K.day && dist(K, t) <= sc(a, BUBBLE.sense) * BUBBLE.wary);
 
 // what the scouts see within the fog's sight: the first time a strong thing shows, it is told
 export function sighted(a, K, sight) {

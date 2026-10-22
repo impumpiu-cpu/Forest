@@ -11,6 +11,7 @@
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
 import {LAIRS, NAME_ADJ, GENDER_INDEX, ANCIENT_YEARS, TRIBE_HOME, TRIBE_RAID, ROT} from '../data/lairs.js';
+import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves, ruinAt} from './diplomacy.js';
 import {RELATIONS} from '../data/relations.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -83,7 +84,7 @@ function lairName(L, rnd, used) {
   return `${L.label} ${used.size + 1}`;
 }
 
-function newLair(a, L, i, rnd, strength, born = a.hist.year) {
+export function newLair(a, L, i, rnd, strength, born = a.hist.year) {
   const H = a.hist, name = lairName(L, rnd, H.names);
   const lair = {id: H.nextLair++, kind: L.id, i, x: i % a.w, y: (i / a.w) | 0, name, born, strength, ancient: born <= H.year - ANCIENT_YEARS, alive: true};
   a.lairs.push(lair);
@@ -95,7 +96,7 @@ const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 
 // a free spot for a lair: fits the ground, not inside another lair's territory of the same kind,
 // as good as possible among a sample of candidates
-function findSpot(a, L, rnd, near, tries = 400) {
+export function findSpot(a, L, rnd, near, tries = 400) {
   let best = -1, bv = 0;
   for (let t = 0; t < tries; t++) {
     let i;
@@ -239,6 +240,8 @@ export function stepLairs(a, rnd, seasonId) {
       : Math.min(1.2, land / cells.length / 0.6) * (1 - 0.8 * Math.min(1, crowd / cells.length));
     const winter = seasonId === 'winter' ? 0.03 : 0;
     lair.strength = Math.max(0, Math.min(1, lair.strength + 0.08 * (fed - 0.45) - winter + 0.02 * (rnd() - 0.5)));
+    // a calamity's boss (atlas/calamity.js) keeps its lair up while it lives: it falls only with the boss
+    if (lair.boss != null) lair.strength = Math.max(lair.strength, CAL.boss.floor);
     // the lair keeps its species about: the density near it does not fall below its strength
     if (s) for (const j of cells) if (s.K[j] > 0) s.N[j] = Math.max(s.N[j], s.K[j] * lair.strength);
     if (host && host.alive && seasonId === 'autumn') { host.pop *= 1 - L.drinks * lair.strength; raidGraves(a, host); }
@@ -258,7 +261,7 @@ export function stepLairs(a, rnd, seasonId) {
       lines.push(`${cap1(L.label)} «${lair.name}» ${G[L.g].stands} уже ${age} лет: о ${G[L.g].about} слагают страшные сказки.`);
     }
     // a strong lair sends out a brood in spring
-    if (seasonId === 'spring' && lair.strength > 0.85 && age >= 3 && rnd() < L.breed && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * 1.5) {
+    if (seasonId === 'spring' && lair.strength > 0.85 && age >= 3 && rnd() < L.breed * (lair.boss != null ? CAL.boss.breed : 1) && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * (lair.boss != null ? 3 : 1.5)) {
       const i = findSpot(a, L, rnd, lair, 60);
       if (i >= 0 && sendParty(a, 'brood', lair.i, i, {owner: lair.id, lairKind: L.id, speed: L.flies ? 'flight' : L.riders ? 'rider' : 'foot', label: `выводок: ${SPECIES.get(L.species).plural}`, color: L.color})) lair.strength *= 0.75;
     }
@@ -268,7 +271,7 @@ export function stepLairs(a, rnd, seasonId) {
     if (!p.alive) continue;
     const Lp = LAIRS.get(p.kind);
     for (const q of a.lairs) {
-      if (!q.alive || q.id <= p.id || !Lp.rivals.includes(q.kind)) continue;
+      if (!q.alive || q.id <= p.id || !Lp.rivals.includes(q.kind) || p.boss != null || q.boss != null) continue;   // nobody fights a boss's lair
       const Lq = LAIRS.get(q.kind);
       if (dist(p, q) > R(a, Lp) + R(a, Lq) || rnd() > 0.08) continue;
       const sp = p.strength * power(Lp.species) * (0.7 + 0.6 * rnd()), sq = q.strength * power(Lq.species) * (0.7 + 0.6 * rnd());
@@ -294,7 +297,7 @@ function tribeRaid(a, lair, L, rnd) {
   let target = null, bd = T.reach * k;
   for (const t of a.towns) if (t.alive && dislikes(t)) { const d = dist(lair, t); if (d < bd) { bd = d; target = t; } }
   if (!target) return null;
-  const tribe = lair.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * rnd());
+  const tribe = lair.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * rnd()) * (lair.boss != null ? CAL.boss.might : 1);   // a boss leads its raids
   // a strong raid walks the map as a party and strikes when it gets there (data/parties.js threshold);
   // a weak one is settled where it stands, by chance, as the small bands always were
   if (tribe >= PARTIES.threshold) {

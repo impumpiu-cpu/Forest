@@ -12,10 +12,13 @@ import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
 import {BEASTS, VEHICLES} from '../data/transport.js';
-import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, COMPANY_MAX, JOINED_MAX} from '../data/market.js';
+import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH} from '../data/market.js';
+import {RECIPES} from '../data/recipes.js';
+import {room} from './company.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {plural} from '../core/util.js';
-import {capacity, load, assign, toolTier} from './baggage.js';
+import {capacity, load, assign, toolTier, metalTier} from './baggage.js';
+import {ORES} from '../data/ores.js';
 import {route} from './path.js';
 import {ROUTE} from '../data/transport.js';
 import {makeMember} from './start.js';
@@ -91,21 +94,57 @@ function equip(K, id) {
   return m;
 }
 
-// a visit's trade: sell the goods, buy food up to the stock wanted, then what is wanted while the gold lasts
+// the smith forges from the caravan's ore (data/market.js SMITH): what is wanted of a metal the caravan carries the
+// ore for is made from it at × discount; the ore goes into it. → the lines
+function smithy(a, K, t, st) {
+  const done = [];
+  if (!has(t, SMITH.at)) return done;
+  // the smith makes any item of the metal, whether the town sells it or not: what the caravan would buy anywhere
+  const anvil = {...t, built: [...new Set([...t.built, ...OFFERS.filter(o => o.kind === 'item').flatMap(o => o.at)])]};
+  for (const o of wants(a, K, anvil, st)) {
+    if (o.kind !== 'item') continue;
+    const d = ITEMS.get(o.id), B = SMITH.bar[d.material], R = RECIPES.all().find(r => r.makes?.item === o.id && !r.makes.silver);
+    if (!B || !R?.cost?.[d.material]) continue;
+    const need = R.cost[d.material] * B.n;
+    if ((K.cargo[B.ore] || 0) < need) continue;
+    const p = gold(offerPrice(o, st) * SMITH.discount);
+    if (K.gold - p < reserveFor(K, t, st, SMITH.reserve)) continue;
+    // still wanted after what the smith made before it
+    if (!wants(a, K, anvil, st).some(x => x.kind === 'item' && x.id === o.id)) continue;
+    K.cargo[B.ore] -= need; if (K.cargo[B.ore] <= 0) delete K.cargo[B.ore];
+    K.gold = gold(K.gold - p); K.stats.forged = (K.stats.forged || 0) + 1;
+    const m = equip(K, o.id);
+    done.push(`кузнец перековал руду каравана (${RESOURCES.get(B.ore).label}, ${need}) в ${d.label.toLowerCase()} для ${m.name} — всего за ${p} зол.`);
+    assign(K);
+  }
+  return done;
+}
+
+// a visit's trade: the smith forges from the ore, sell the goods, buy food up to the stock wanted, then what is
+// wanted while the gold lasts
 export function trade(a, K, t, st) {
   const done = [];
-  let got = 0;
-  for (const [id, n] of Object.entries(K.cargo)) { if (isBonds(id)) continue;   // bonds are kept for captives
-    const p = sellPrice(t, st, id) * n; if (p > 0) { got += p; delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); } }
+  // ore of a metal above the caravan's own goes to the smith first (what the smith leaves is sold after); in a town
+  // without one it is kept for the next
+  const tier = metalTier(K), ore = new Set(ORES.all().filter(o => o.tier > tier).map(o => o.resource)), smith = has(t, SMITH.at);
+  const sell = keep => {
+    let got = 0;
+    for (const [id, n] of Object.entries(K.cargo)) { if (isBonds(id) || keep(id)) continue;   // bonds are kept for captives
+      const p = sellPrice(t, st, id) * n; if (p > 0) { got += p; delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); } }
+    K.gold = gold(K.gold + got);
+  };
+  sell(id => ore.has(id));
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
-  if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + (ITEMS.get(id)?.value ?? 0), 0) * STANDING[st].sell * MARKET.spoils; got += p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
-  K.gold = gold(K.gold + got);
+  if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + (ITEMS.get(id)?.value ?? 0), 0) * STANDING[st].sell * MARKET.spoils; K.gold = gold(K.gold + p); done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
+  if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
   if (!K.inTown) done.push(...tradeCaptives(a, K, t, st));   // captives sold and bought, by the town's law, once a visit: on entering (campaign/slavery.js)
   // food: up to `foodDays` days, as far as the room and the gold go
   const need = alive(K).length * CAMPAIGN.ration, price = rationPrice(t, st);
   const room = Math.max(0, capacity(K) - load(K)), want = Math.max(0, Math.min(room, need * WANTS.foodDays - K.food));
   const n = Math.floor(Math.min(want, K.gold / price));
   if (n > 0) { K.food += n; K.gold = gold(K.gold - n * price); done.push(`купили ${pieces(n, 'паёк', 'пайка', 'пайков')} по ${gold(price)}`); }
+  const alms = Math.floor(Math.min(Math.max(0, capacity(K) - load(K)), need * WANTS.alms - K.food));
+  if (K.hungry > 0 && alms > 0) { K.food += alms; K.stats.alms = (K.stats.alms || 0) + 1; done.push(`голодных накормили даром — ${pieces(alms, 'паёк', 'пайка', 'пайков')} на дорогу`); }
   // the rest, in order of need
   for (const o of wants(a, K, t, st)) {
     const p = offerPrice(o, st);
@@ -144,10 +183,10 @@ export const healHere = t => (has(t, MARKET.healers) ? MARKET.heal.healer : MARK
 // ── people: hirelings for a term, companions who want to go along
 const hireAt = (t, H) => has(t, H.at) || t.tier >= H.tier;
 export function hire(a, K, t, st, r) {
-  const said = [], ms = free(K);   // captives take no place in the company (campaign/captives.js)
+  const said = [];   // captives take no place in the company (campaign/company.js)
   for (const [id, H] of Object.entries(HIRES)) {
     if (typeof H !== 'object' || !H.wage) continue;
-    if (ms.length >= COMPANY_MAX || K.members.filter(m => m.alive && m.role === id).length >= HIRES.max || !hireAt(t, H)) continue;
+    if (!room(K, `hire:${id}`) || !hireAt(t, H)) continue;
     const days = Math.round(H.days[0] + r() * (H.days[1] - H.days[0])), cost = gold(H.wage * days * STANDING[st].buy);
     if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve)) continue;
     K.gold = gold(K.gold - cost);
@@ -161,7 +200,7 @@ export function hire(a, K, t, st, r) {
 // who wants to go along from here: one at most a visit; for a fee, or for nothing to a good talker
 export function companion(a, K, t, st, r) {
   const C = COMPANIONS;
-  if (free(K).length >= COMPANY_MAX || free(K).filter(m => m.loyalty != null).length >= JOINED_MAX || r() >= C.chance[st] * (t.built.includes('inn') ? C.inn : 1)) return null;
+  if (!room(K, 'joined') || r() >= C.chance[st] * (t.built.includes('inn') ? C.inn : 1)) return null;
   const charm = Math.max(...free(K).map(m => m.special?.C ?? NORM)), gratis = charm >= C.freeAt;
   if (!gratis && K.gold - C.fee < reserveFor(K, t, st, WANTS.reserve)) return null;
   // of the town's people, or of a minor people living near (as their homes favour the land)

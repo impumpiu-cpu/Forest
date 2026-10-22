@@ -55,8 +55,9 @@ export const OFFERS = [
 ];
 
 // what the caravan buys first when it has the gold: a list in order; each is bought when the caravan
-// lacks it and can still keep `reserve` days of food money
-export const WANTS = {reserve: 6, foodDays: 20};
+// lacks it and can still keep `reserve` days of food money. Food — up to `foodDays` days; a starving caravan that cannot
+// pay for `alms` days of it is fed that much for nothing by a friendly town (once a visit)
+export const WANTS = {reserve: 6, foodDays: 20, alms: 5};
 
 // hirelings: who can be hired where (any of `at`, or any town of `tier` and up), for how much a day, for how
 // many days; what they bring. A guide knows the land: nights are quieter (× `night`), the fog lifts further
@@ -103,14 +104,29 @@ export const ROLES = {companion: 'спутник', freed: 'вызволенны�
 export const COMPANY_MAX = 12, JOINED_MAX = 4;
 
 // the council's reasons to turn to a town on the way: it must be friendly and within `reach` days of the
-// caravan's pace (`winterReach` for the winter; for food, no further than the food lasts plus `foodSpare` days). Any way only for the winter and for the badly wounded; otherwise (food, shopping) only a
+// caravan's pace (`winterReach` for the winter; for food — sought once it lasts less than `foodAt` days — no further
+// than the food lasts plus `foodSpare` days). Any way only for the winter and for the badly wounded; otherwise (food, shopping) only a
 // town on the way: going through it costs at most `detour` × the way to the goal plus `slack` more
-// (`hungryDetour` when they already starve); starving with gold enough for `hungryGold` days of food, any way.
+// (`hungryDetour` when they already starve); starving, any way (a friendly town feeds them: WANTS.alms), within
+// `winterReach` days; after `retreat` days of hunger where the land does not feed them (CAMPAIGN.camp.foodLand) or that wears them
+// down (their mean health below CAMPAIGN.camp.hp), within
+// `retreatReach` — back the way they came if need be.
 // After a town the
 // next one is not sought for `every` days (the winter excepted); a stay lasts at most `stay` days, or the winter —
-// wintered only where the winter is hard (its mean below `winterBelow`°: the land hardly feeds then)
-export const VISIT = {reach: 8, winterReach: 14, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, hungryGold: 5, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
+// wintered only where the winter is hard (its mean below `winterBelow`°: the land hardly feeds then). Too poor to stock
+// up for the way, they stay up to `work` days in all hired out for board and pay (the town feeds them, the pay is kept)
+// For the smith (SMITH): with at least `smithOre` units of ore worth forging and `smithGold` gold, a town with a smith
+// on the way (a detour of `smithDetour`); none near — asked again after `smithRetry` days
+export const VISIT = {foodAt: 1.5, smithOre: 4, smithGold: 0, smithDetour: 0.5, smithRetry: 10, reach: 8, winterReach: 14, retreat: 6, retreatReach: 120, work: 20, foodSpare: 2, detour: 0.3, hungryDetour: 0.6, slack: 3, every: 25, stay: 3, money: 20, winterBelow: -5};
 
 // earning on the way: hides from hunting in camp (× the land's game), gold panned from a river's sand by
 // the one with a pan (× the cell's gold sand level, data/regions.js placer)
 export const EARN = {hide: 0.3, pan: 0.4};
+
+// The smith of a friendly town forges from the caravan's own ore (campaign/town.js smithy): where one of `at`
+// stands and the caravan carries the ore of the item's metal by its recipe (data/recipes.js: bars × `bar[metal].n`
+// units of `bar[metal].ore` each), the item costs × `discount` (50–60% cheaper). What ore is left is sold.
+// `reserve` — days of food money the caravan keeps after paying the smith
+export const SMITH = {at: ['forge', 'smelter', 'foundry', 'armory'], discount: 0.45, reserve: 3,
+  bar: {bronze: {ore: 'bronzeOre', n: 2}, iron: {ore: 'ironore', n: 2}, mithril: {ore: 'mithrilOre', n: 2}}};
+

@@ -31,9 +31,13 @@ export const QUEST = {
   // world's diagonal (× crown for the crown's own); the council storms it when the company is this whole,
   // and after a lost storm waits `retry` days
   guard: {base: 0.7, perDiag: 1.8, crown: 1.25, max: 3}, storm: 0.75, retry: 12,
-  // rumours in a friendly town: a hint where an unknown clue lies, for `price` gold or free to a speaker
+  // after `giveUp` storms of one place beaten back the council leaves it for `giveUpRest` days (a clue is not a must);
+  // a place sought `stuck` days without reaching it (the ice, the crags, no food for the way there) — for `stuckRest`
+  giveUp: 4, giveUpRest: 240, stuck: 480, stuckRest: 1200,
+  // rumours in a friendly town: a hint where an unknown clue lies, for `price` gold or free to a speaker; the council
+  // turns to a town to ask only while a clue is unknown, and again only `again` days after
   // with Charisma `charm` and more; at most one a visit, with this chance
-  rumour: {chance: 0.6, price: CAMPAIGN.rumour, charm: 7},
+  rumour: {chance: 0.6, price: CAMPAIGN.rumour, charm: 7, again: 20},
   // the way home with the crown: the world sends its bands after the caravan — one every `every` days,
   // (no more than `at` on its trail at once), of strength base + per year carried, at most max; they hunt from
   // the edge of the bubble and go home after a fight, won or lost

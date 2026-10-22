@@ -11,7 +11,8 @@ import {ITEMS} from '../data/items.js';
 import {FOODS} from '../data/foods.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
-import {LOYALTY, FREED, COMPANIONS, COMPANY_MAX, JOINED_MAX} from '../data/market.js';
+import {LOYALTY, FREED, COMPANIONS} from '../data/market.js';
+import {room} from './company.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
@@ -31,7 +32,10 @@ export function fight(a, K, d, r, how = 'night') {
   if (how === 'ambush') K.stats.ambushes = (K.stats.ambushes || 0) + 1;
   K.stats.fights++;
   if (K.mode === 'auto') captivesInFight(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));   // (on the local map the camp plays it)
+  // who the fallen fell to, for the balance (campaign-balance): a grave's guards, the lair's, the hunt
+  K.fightSrc = d.boss?.mustDie ? 'lair' : d.boss ? 'grave' : d.pursuit || null;
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
+  delete K.fightSrc;
   if (!alive(K).length) return win;
   if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); formersFought(K); }
   else { K.stats.fled++; shake(K, LOYALTY.lost); K.camp = 0; K.why = ''; K.build = null; }
@@ -47,6 +51,7 @@ function localFight(a, K, d, how) {
   const S = campSetup(a, K, {kind: how, foe: d, dayIn: K.dayIn});
   const o = play(K, S, how, d.label || FOES[d.kind].label, d);
   applyCamp(a, K, S, o, d, how);
+  if (d.boss && o.bossDead === false && !o.won && o.foes.killed > 0) say(a, K, `${d.boss.name} ${d.boss.g === 'f' ? 'ушла живой' : 'ушёл живым'}: штурм придётся повторить.`, 'fight');
   return o.won;
 }
 
@@ -56,9 +61,13 @@ export function playStop(a, K) {
   const o = play(K, S, 'stop', 'стоянка');
   const food0 = K.food;
   applyCamp(a, K, S, o, null, 'stop');
+  const kept = new Set(CAMP.carry), dug = Object.entries(o.got).filter(([id]) => kept.has(id) && id !== 'hide' && id !== 'leather' && id !== 'rope');
   const got = Object.entries(o.got).filter(([id]) => FOODS.has(id) || id === 'hide').map(([id, n]) => `${RESOURCES.get(id).label} ${n}`);
   K.stats.stopDays = (K.stats.stopDays || 0) + 1;
-  say(a, K, `День стоянки: охотились, собирали и рыбачили — ${got.length ? `принесли ${names(got)} (+${pieces(Math.max(0, Math.round(K.food - food0)), 'паёк', 'пайка', 'пайков')})` : 'земля почти ничего не дала'}.`, 'stop');
+  for (const [id, n] of dug) K.stats.dug = (K.stats.dug || 0) + n;
+  const digging = dug.length ? `; добыли ${names(dug.map(([id, n]) => `${RESOURCES.get(id).label} ${n}`))}` : '';
+  say(a, K, `День стоянки: ${K.why?.startsWith('mine:') ? 'копали и мыли' : 'охотились, собирали и рыбачили'} — ${got.length ? `принесли ${names(got)} (+${pieces(Math.max(0, Math.round(K.food - food0)), 'паёк', 'пайка', 'пайков')})` : 'еды земля почти не дала'}${digging}.`, 'stop');
+  return o.got;
 }
 
 // play a camp through and keep it to be watched again (the setup is enough to play it the same way)
@@ -79,7 +88,7 @@ export function applyCamp(a, K, S, o, d, how) {
   for (const mo of o.members) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
     if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
-    if (!mo.alive) { fallen.push(m); continue; }
+    if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - 0.05) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local;
@@ -106,7 +115,7 @@ export function applyCamp(a, K, S, o, d, how) {
   const taken = takeFromCamp(a, K, o, (text, kind, who) => say(a, K, text, kind, false, who));   // the fallen foes the camp bound
   if (how === 'stop') {   // a quiet day: only what went wrong is told (a beast lost, someone fallen)
     if (lostB.length || stolenB.length) say(a, K, `На стоянке потеряли ${names([...stolenB, ...lostB].map(b => BEASTS[b.kind].acc))}.`, 'beast');
-    for (const m of fallen) die(a, K, m, `погиб${m.gender === 'f' ? 'ла' : ''} на стоянке`);
+    for (const m of fallen) { const why = m.fell; delete m.fell; die(a, K, m, stopDeath(m, why)); }
     return;
   }
   // the line: what happened, who fell, who is hurt, what is lost and won
@@ -121,11 +130,22 @@ export function applyCamp(a, K, S, o, d, how) {
   if (took.length) parts.push(`с убитых взяли ${names(took)}`);
   const verdict = o.won ? (how === 'guard' ? 'Взяли верх' : F.n ? 'Отбились' : 'Обошлось') : how === 'guard' ? 'Отступили' : 'Не устояли';
   say(a, K, `${opening(d, how)}. ${verdict} — бой на месте${parts.length ? `: ${parts.join('; ')}` : ''}.`, 'fight', false, [...fallen, ...hurt].map(m => m.id));
-  for (const m of fallen) die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`);
+  for (const m of fallen) { delete m.fell; die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`); }
+}
+
+// a death on the local map as the campaign tells it (settlement/chronicle.js noteDeath: «умер от холода», «погиб: волк»,
+// «погиб в бою с налётчиками»)
+function stopDeath(m, why) {
+  const fell = `погиб${m.gender === 'f' ? 'ла' : ''}`;
+  if (!why || /^погибл?а?$/.test(why)) return `${fell} на стоянке`;
+  const beast = why.match(/^погибл?а?: (.+)$/);
+  if (beast) return `${fell} на стоянке (${beast[1]})`;
+  if (/^погибл?а? /.test(why)) return why.replace(/^(погибл?а?) /, '$1 на стоянке ');
+  return `${why} на стоянке`;
 }
 
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town
-function takeGear(K, items) {
+export function takeGear(K, items) {
   const ms = free(K).filter(m => !m.former), took = [];   // no arms or armour for a captive or a former slave
   const armor = id => ITEMS.get(id)?.armor ?? 0, dmg = m => Math.max(0, ...m.gear.hand.map(id => ITEMS.get(id)?.melee?.dmg ?? 0));
   for (const id of items) {
@@ -148,12 +168,11 @@ function takeGear(K, items) {
 
 // ── after a won fight: captives set free, beasts the foe kept, now and then an iron tool
 function spoils(a, K, d, r) {
-  const joined = () => free(K).filter(m => m.loyalty != null).length;
   // the fallen foes bound and taken (campaign/captives.js): on the local map the camp does it itself
   if (K.mode === 'auto') takeAuto(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));
-  if (FREED.chance[d.kind] && free(K).length < COMPANY_MAX && joined() < JOINED_MAX && r() < FREED.chance[d.kind]) {
+  if (FREED.chance[d.kind] && room(K, 'joined') && r() < FREED.chance[d.kind]) {
     const n = 1 + (r() < 0.35 ? 1 : 0), got = [];
-    for (let q = 0; q < n && free(K).length < COMPANY_MAX && joined() < JOINED_MAX; q++) {
+    for (let q = 0; q < n && room(K, 'joined'); q++) {
       const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
       const race = minor ? COMPANIONS.minorRaces[(r() * COMPANIONS.minorRaces.length) | 0] : peoples[(r() * peoples.length) | 0].race;
       const m = makeMember(K, r, {race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});
