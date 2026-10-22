@@ -796,7 +796,7 @@ export class AtlasView {
     $('atlasStats').innerHTML = `<dt>Клеток</dt><dd>${a.n.toLocaleString('ru-RU')}</dd><dt>Числовой сид</dt><dd>${seedNumber(a.cfg.seed)}</dd>` +
       `<dt>Этап</dt><dd>${Math.min(a.stage, all.length)} из ${all.length}</dd>` +
       (a.lairs ? `<dt>Логова чудовищ</dt><dd>${a.lairs.filter(l => l.alive).length}</dd>` : '') +
-      (a.artifact ? `<dt>${esc(a.artifact.name)}</dt><dd>${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса'}[a.artifact.holder.kind]}</dd><dt>Бедствия</dt><dd>${a.calamities.filter(c => c.phase === 'fallen').length} прошло, ${a.calamities.filter(c => c.phase === 'rise').length} идёт, из ${a.calamities.length}</dd>` : '') +
+      (a.artifact ? `<dt>${esc(a.artifact.name)}</dt><dd>${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса', caravan: 'у каравана'}[a.artifact.holder.kind] || '—'}</dd><dt>Бедствия</dt><dd>${a.calamities.filter(c => c.phase === 'fallen').length} прошло, ${a.calamities.filter(c => c.phase === 'rise').length} идёт${a.calamities.some(c => c.phase === 'gathering') ? `, ${a.calamities.filter(c => c.phase === 'gathering').length} собирается` : ''}, из ${a.calamities.length}</dd>` : '') +
       (a.realms ? a.realms.map(r => { const m = a.towns.filter(t => t.alive && t.realm === r.id); return m.length ? `<dt>${realmLabel(a, r.id)}</dt><dd>${m.length} ${m.length === 1 ? 'город' : m.length < 5 ? 'города' : 'городов'}</dd>` : ''; }).join('') : '') +
       (a.ruins?.length ? `<dt>Пепелища</dt><dd>${a.ruins.length}</dd>` : '');
     // how the peoples that have met get on

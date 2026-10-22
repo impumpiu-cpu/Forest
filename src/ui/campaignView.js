@@ -149,11 +149,12 @@ export class CampaignView extends AtlasView {
     this.making = false; $('campEpicGo').textContent = 'Сотворить';
     const a = this.atlas;
     this.bitmapKey = ''; this.draw();
-    $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${a.hist.year} ${plural(a.hist.year, 'год', 'года', 'лет')} истории. Сохраняю в библиотеку…`;
+    const yrs = a.hist.year - 1;   // (the year after the last season is the one history stands at)
+    $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${yrs} ${plural(yrs, 'год', 'года', 'лет')} истории. Сохраняю в библиотеку…`;
     try {
       const rec = await saveWorldToLibrary(a, this.worldName);
       this.worldId = rec.id; this.worldName = rec.name;
-      $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${a.hist.year} ${plural(a.hist.year, 'год', 'года', 'лет')} истории, ${(rec.bytes / 1e6).toFixed(1)} МБ в библиотеке. Выберите столицу.`;
+      $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${yrs} ${plural(yrs, 'год', 'года', 'лет')} истории, ${(rec.bytes / 1e6).toFixed(1)} МБ в библиотеке. Выберите столицу.`;
     } catch (e) { $('campEpicNote').textContent = `Мир сотворён, но не сохранён: ${e.message}. Поход начать можно.`; }
     this.setupMode(); this.refresh();
   }
@@ -179,7 +180,8 @@ export class CampaignView extends AtlasView {
     this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode();
   }
   // leaving the screen: the walk halts between seasons and waits
-  halt() { if (this.making) { this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить'; } this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true; this.syncRun(); }
+  // (a world left half-made is not walked: it is let go)
+  halt() { if (this.making) { this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить'; this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; } this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true; this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
@@ -437,7 +439,7 @@ export class CampaignView extends AtlasView {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
       const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
-        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ушёл${m.gender === 'f' ? 'а' : ''}, ${m.left?.year ?? ''}-й год`}</small></div>`;
+        `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');
     this.renderLog();
   }

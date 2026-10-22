@@ -39,7 +39,7 @@ export function eraSpans(a) {
 const dateOf = c => (c.season != null ? `год ${c.year}, ${SEASON_LIST[c.season % SEASON_LIST.length].label.toLowerCase()}` : STAGE_ERAS[c.era] || c.era);
 
 function head(a, name, what) {
-  const S = ATLAS_SIZES[a.cfg.size], years = a.hist ? a.hist.year : 0;
+  const S = ATLAS_SIZES[a.cfg.size], years = a.hist ? Math.max(0, a.hist.year - 1) : 0;   // (the year history stands at is not yet lived)
   return [`${what} — «${name || `Мир ${a.cfg.seed}`}»`,
     `Сид ${a.cfg.seed} · ${S ? `${S.label.toLowerCase()} мир ${S.w}×${S.h}` : a.cfg.size} · ${years} ${plural(years, 'год', 'года', 'лет')} истории${a.cfg.epic ? ' · эпический мир' : ''}`,
     `Эпохи: ${eraSpans(a).map(e => `${e.label} — годы ${e.from}–${e.to}`).join('; ')}.`];
@@ -49,7 +49,7 @@ function head(a, name, what) {
 export function worldChronicleText(a, {detail = 'normal', name = null} = {}) {
   const lines = a.chronicle, kept = lines.filter(c => keeps(detail, lineLevel(c)));
   const out = [...head(a, name, 'Летопись мира'),
-    `Подробность: ${DETAILS.find(d => d.id === detail).label.toLowerCase()} — ${kept.length} строк из ${lines.length}.`, ''];
+    `Подробность: ${DETAILS.find(d => d.id === detail).label.toLowerCase()} — ${kept.length} ${plural(kept.length, 'строка', 'строки', 'строк')} из ${lines.length}.`, ''];
   const block = (title, list) => { if (!list.length) return; out.push(`=== ${title} ===`, ...list.map(c => `${dateOf(c)} — ${c.text}`), ''); };
   block('Сотворение мира', kept.filter(c => c.season == null));
   const spans = eraSpans(a), last = spans.at(-1);

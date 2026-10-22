@@ -338,7 +338,7 @@ function townEvening(a, K, seasonId) {
   // too poor to stock up for the way: they hire out for board and pay (the town feeds them, the pay is kept) a while
   const short = Math.max(0, Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays) - K.food) * (st ? rationPrice(t, st) : Infinity);
   if (st && !stocked && K.gold < short && K.day - K.inTown.since < VISIT.work) {
-    if (!K.inTown.work) { K.inTown.work = true; K.stats.worked = (K.stats.worked || 0) + 1; say(a, K, `Денег на припасы нет: караван нанялся в ${townLabel(t, 1)} ${t.name} в работу за харчи и плату.`, 'town'); }
+    if (!K.inTown.work) { K.inTown.work = true; K.stats.worked = (K.stats.worked || 0) + 1; say(a, K, `Денег на припасы нет: караван нанялся в ${townLabel(t, 3)} ${t.name} в работу за харчи и плату.`, 'town'); }
     return;
   }
   const parts = st ? trade(a, K, t, st) : [];
@@ -360,7 +360,7 @@ function people(a, K, r) {
     // a day with the caravan: hunger, a bad wound, the sight of captives on a cut ration — and the leader's word
     const d = LOYALTY.daily + (K.hungry ? LOYALTY.hungry : 0) + (m.hp < 0.5 ? LOYALTY.hurt : 0) + (K.captiveCut ? LOYALTY.cruel : 0) + charm;
     m.loyalty = Math.max(0, Math.min(1, m.loyalty + d));
-    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? `не вынес${m.gender === 'f' ? 'ла' : ''} голода и` : 'однажды утром'} ушёл${m.gender === 'f' ? 'а' : ''} своей дорогой`);
+    if (r() < LOYALTY.leave * (1 - m.loyalty) ** 2) leave(a, K, m, `${m.name}, ${rank(K, m)}, ${K.hungry ? `не вынес${m.gender === 'f' ? 'ла' : ''} голода и` : 'однажды утром'} ${m.gender === 'f' ? 'ушла' : 'ушёл'} своей дорогой`);
     else if (m.loyalty >= 1) say(a, K, `${m.name} теперь свой${m.gender === 'f' ? '' : ''}: идёт с караваном до конца.`, 'people');
   }
 }
@@ -375,7 +375,7 @@ function contractDay(a, K, m, r) {
   }
   if (c.opinion >= C.stay && !room(K, 'stay')) {   // it would stay, but the joined are full: it goes with thanks
     K.stats.stayFull = (K.stats.stayFull || 0) + 1;
-    leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и остал${f ? 'ась' : 'ся'} бы с караваном, но места в отряде нет: ушёл${f ? 'а' : ''} с благодарностью`);
+    leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и остал${f ? 'ась' : 'ся'} бы с караваном, но места в отряде нет: ${f ? 'ушла' : 'ушёл'} с благодарностью`);
     return;
   }
   if (c.opinion >= C.stay) {
@@ -389,7 +389,7 @@ function contractDay(a, K, m, r) {
     say(a, K, `${m.name}, ${rank(K, m)}, попросил${f ? 'а' : ''} продлить службу: ещё ${C.days} дней за ${cost} зол.`, 'people', false, [m.id]);
     return;
   }
-  leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и ушёл${f ? 'а' : ''}${c.opinion >= C.extend ? ': продлить было нечем' : ''}`);
+  leave(a, K, m, `${m.name}, ${rank(K, m)}, отслужил${f ? 'а' : ''} срок и ${f ? 'ушла' : 'ушёл'}${c.opinion >= C.extend ? ': продлить было нечем' : ''}`);
 }
 function leave(a, K, m, text) {
   m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year};

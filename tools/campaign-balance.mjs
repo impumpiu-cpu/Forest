@@ -163,7 +163,7 @@ export function report(label, s) {
   const mark = ok => (ok ? '✓' : '✗'), A = s.epic ? {...AIMS, ...EPIC_AIMS} : AIMS;
   return [
     `${label} — походов ${s.n}`,
-    `  ${mark(inside(s.won, A.won))} вернулись с короной ${pct(s.won)} (погибли ${pct(s.lost)}, 25 лет ${pct(s.timeout)}); корону нашли ${pct(s.crown)}, подсказок ${f1(s.clues)}`,
+    `  ${mark(inside(s.won, A.won))} вернулись с короной ${pct(s.won)} (погибли ${pct(s.lost)}, вышел срок ${pct(s.timeout)}); корону нашли ${pct(s.crown)}, подсказок ${f1(s.clues)}`,
     `  ${mark(inside(s.years.p50, AIMS.years))} лет в пути: в среднем ${f1(s.years.mean)}, медиана ${f1(s.years.p50)}, 10–90% ${f1(s.years.p10)}–${f1(s.years.p90)}`,
     `  ${mark(inside(s.coreDead, A.coreDead))} гибнет из восьми ${f1(s.coreDead)}; по годам ${s.deathsPerYear.slice(0, 12).map(v => v.toFixed(1)).join(' ')}; от чего: ${Object.entries(s.causes).sort((p, q) => q[1] - p[1]).map(([c, v]) => `${c} ${v}`).join(', ')}`,
     `  ${mark(s.firstMonth >= AIMS.firstMonth)} первый месяц без потерь ${pct(s.firstMonth)}; ${mark(s.hungry <= A.hungry)} голодных дней ${pct(s.hungry)}`,

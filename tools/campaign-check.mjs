@@ -302,7 +302,7 @@ check('караваны обзаводятся обозом и выбирают 
   const a = freshE(), K = newCampaign(a, capsE[0].town, {mode: 'auto'}), Q = K.quest, c4 = a.calamities.at(-1);
   const laid = Q?.epic && Q.clues.length === 3 && Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + EPIC.doom &&
     a.lairs.find(l => l.id === c4.lair)?.boss === c4.id && a.artifact.holder.kind === 'boss' && Q.crown.guard?.boss && Q.clues.filter(c => c.area).length === 1;
-  check('эпос: следы — могилы боссов с надписями и стражами, цель — логово четвёртого, где собирается сила с артефактом; срок — 25 лет', laid,
+  check(`эпос: следы — могилы боссов с надписями и стражами, цель — логово четвёртого, где собирается сила с артефактом; срок — ${EPIC.doom} лет`, laid,
     Q?.epic ? `${Q.clues.map(c => c.label).join('; ')} → ${Q.crown.label}, ${c4.label}` : 'не эпический квест');
   runCampaign(a);
   const read = K.log.filter(l => /На могиле прочли надпись/.test(l.text)).length, dark = K.log.filter(l => /недобрые знаки|вышли охотники по следу|рыщут по всему краю/.test(l.text)).length;

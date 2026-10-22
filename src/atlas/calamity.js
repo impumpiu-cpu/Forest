@@ -38,6 +38,8 @@ function draw(a) {
 }
 
 // a line of the chronicle of calamities (atlas/history.js say, with its topic)
+// a word by gender: masculine, feminine, neuter
+const G3 = (g, m, f, n) => (g === 'f' ? f : g === 'n' ? n : m);
 export function tell(a, text, c = null) {
   const H = a.hist;
   a.chronicle.push({era: H.era, year: H.year, season: H.season, text, topic: 'calamity', ...(c ? {calamity: c.id} : {})});
@@ -60,7 +62,7 @@ export function startCalamities(a) {
   if (i < 0) for (let j = 0; j < a.n && i < 0; j++) if (land(a, j)) i = j;
   const [name, acc, g] = pick(r, ARTIFACTS);
   a.sanctuary = {i, name: 'Святилище Творца'};
-  a.artifact = {name, acc, g, i, holder: {kind: 'sanctuary'}, trail: [{year: a.hist.year, era: a.hist.era, i, text: 'оставлен в святилище'}]};
+  a.artifact = {name, acc, g, i, holder: {kind: 'sanctuary'}, trail: [{year: a.hist.year, era: a.hist.era, i, text: `оставлен${G3(g, '', 'а', 'о')} в святилище`}]};
   const Y = eraYears(a);
   a.calamities = ['wild', 'elder', 'young'].map((era, k) => {
     const E = Y[era], kinds = CALAMITIES.filter(C => C.eras.includes(era)), C = pick(r, kinds);
@@ -174,7 +176,7 @@ function rise(a, c, r) {
   // the artifact has a new bearer
   const A = a.artifact;
   A.holder = {kind: 'boss', calamity: c.id}; A.i = place.i;
-  A.trail.push({year: a.hist.year, era: a.hist.era, i: place.i, text: `у ${c.boss.title[1].toLowerCase()} ${c.boss.name}`});
+  A.trail.push({year: a.hist.year, era: a.hist.era, i: place.i, text: `у ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`});
   tell(a, FALL.taken.replace('{artifact}', A.name).replace('{found}', A.g === 'f' ? 'ла' : A.g === 'n' ? 'ло' : 'ёл').replace('{boss}', bossName(c)), c);
 }
 
@@ -203,7 +205,7 @@ function fall(a, c, r, by, told = null) {
   const A = a.artifact;
   (a.graves ||= []).push({calamity: c.id, i: c.i, year: a.hist.year, era: c.era, boss: bossName(c), kind: c.kind, by, epitaph: epitaph(a, c)});
   A.holder = {kind: 'grave', calamity: c.id}; A.i = c.i;
-  A.trail.push({year: a.hist.year, era: a.hist.era, i: c.i, text: `пропал с гибелью ${c.boss.title[1].toLowerCase()} ${c.boss.name}`});
+  A.trail.push({year: a.hist.year, era: a.hist.era, i: c.i, text: `пропал${G3(A.g, '', 'а', 'о')} с гибелью ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`});
   tell(a, line, c);
   tell(a, words(FALL.artifact).replace('{artifact}', A.name), c);
   void r;
@@ -224,7 +226,7 @@ export function gatherFourth(a, i, years) {
   a.calamities.push(c);
   const A = a.artifact;
   A.holder = {kind: 'boss', calamity: c.id}; A.i = i;
-  A.trail.push({year: a.hist.year, era: a.hist.era, i, text: `у ${c.boss.title[1].toLowerCase()} ${c.boss.name}`});
+  A.trail.push({year: a.hist.year, era: a.hist.era, i, text: `у ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`});
   tell(a, `${A.name} покинул${A.g === 'f' ? 'а' : A.g === 'n' ? 'о' : ''} могилу: ${wherePhrase(a, i)}, в логове «${lair.name}», ${bossName(c)} собирает силы. До нового бедствия — ${years} лет.`, c);
   omen(a, c, r);
   done();
@@ -246,7 +248,7 @@ export function fallToCaravan(a, c, line) {
   if (c.phase === 'fallen') return;
   fall(a, c, null, 'caravan', line);
   const A = a.artifact; A.holder = {kind: 'caravan', calamity: c.id};
-  A.trail.at(-1).text = `взят караваном у ${c.boss.title[1].toLowerCase()} ${c.boss.name}`;
+  A.trail.at(-1).text = `взят${G3(A.g, '', 'а', 'о')} караваном у ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`;
   a.chronicle.at(-1).text = `${A.name} не пропал${A.g === 'f' ? 'а' : A.g === 'n' ? 'о' : ''}: ${A.g === 'f' ? 'её' : 'его'} унёс караван.`;
 }
 

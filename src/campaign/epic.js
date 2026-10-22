@@ -23,7 +23,11 @@ import {reachable, foot, circle} from './quest.js';
 import {lairFoe} from './land.js';
 import {bubbleOf} from './bubble.js';
 import {QUEST} from '../data/quest.js';
+import {plural} from '../core/util.js';
 
+// a word by gender: masculine, feminine, neuter
+const G3 = (g, m, f, n) => (g === 'f' ? f : g === 'n' ? n : m);
+const years = n => `${n} ${plural(n, 'год', 'года', 'лет')}`;
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
 const dist = (a, i, j) => { const [x, y] = xy(a, i), [p, q] = xy(a, j); return Math.hypot(x - p, y - q); };
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
@@ -88,7 +92,7 @@ export function makeEpicQuest(a, K, rnd) {
   const guard = {...guardFor(a, K, lair.kind, seat.at, EPIC.guard.seat), label: `логово «${lair.name}» — ${c4.boss.title[0]} ${c4.boss.name} и ${c4.boss.g === 'f' ? 'её' : 'его'} слуги`,
     boss: {name: `${c4.boss.title[0]} ${c4.boss.name}`, g: c4.boss.g, species: c4.boss.species, add: grown(rnd, EPIC.boss), mustDie: true}};
   const Q = {name: A.name, acc: A.acc, g: A.g, epic: true, calamity: c4.id, hunt: 0, nextHunt: null, started: K.day, base: guard.strength,
-    story: `${A.name} — дар бога, сотворившего мир. ${A.g === 'f' ? 'Она' : 'Он'} прош${A.g === 'f' ? 'ла' : 'ёл'} через три бедствия и лежал${A.g === 'f' ? 'а' : ''} в могиле последнего; теперь ${A.g === 'f' ? 'её' : 'его'} держит ${c4.boss.title[0]} ${c4.boss.name}, и ${c4.phase === 'rise' ? `новое бедствие — ${c4.label} — уже идёт` : `через ${Math.max(1, c4.riseAt - a.hist.year)} лет начнётся новое бедствие — ${c4.label}`}. Могилы старых боссов хранят, где искать.`,
+    story: `${A.name} — дар бога, сотворившего мир. ${G3(A.g, 'Он', 'Она', 'Оно')} прош${G3(A.g, 'ёл', 'ла', 'ло')} через три бедствия и лежал${G3(A.g, '', 'а', 'о')} в могиле последнего; теперь ${A.g === 'f' ? 'её' : 'его'} держит ${c4.boss.title[0]} ${c4.boss.name}, и ${c4.phase === 'rise' ? `новое бедствие — ${c4.label} — уже идёт` : `через ${years(Math.max(1, c4.riseAt - a.hist.year))} начнётся новое бедствие — ${c4.label}`}. Могилы старых боссов хранят, где искать.`,
     crown: {kind: 'seat', at: seat.at, i: seat.at, label: `логово «${lair.name}»`, guard, area: null, exact: false, seen: false, state: 'lost', carrier: null},
     clues, search: null, stormAt: 0, next: null, found: 0};
   if (clues.length) clues[0].area = circle(a, clues[0].i, QUEST.area, rnd);
@@ -104,10 +108,10 @@ export function epicDay(a, K, r, say) {
   const Q = K.quest; if (!Q?.epic) return;
   const c4 = a.calamities.find(c => c.id === Q.calamity), G = EPIC.guard, H = EPIC.hunt;
   // the lair's servants gather month by month; once the calamity has risen the boss is stronger
-  if (Q.crown.state !== 'carried' && Q.crown.guard) {
+  if (Q.crown.kind === 'seat' && Q.crown.state === 'lost' && Q.crown.guard) {   // (not the camp of a band that took it on the way home)
     const months = (K.day - Q.started) / 30, risen = c4?.phase === 'rise' ? G.risen : 1;
     Q.crown.guard.strength = Math.min(G.max * risen, Q.base * (1 + G.grow * months) * risen);
-    if (c4?.phase === 'rise' && !Q.risenTold) { Q.risenTold = true; Q.risenDay = K.day; say(`Пришла весть: ${c4.boss.title[0]} ${c4.boss.name} выступил${c4.boss.g === 'f' ? 'а' : ''} — началось новое бедствие. Его логово теперь стерегут вдвое злее.`, 'quest', false); }
+    if (c4?.phase === 'rise' && !Q.risenTold) { Q.risenTold = true; Q.risenDay = K.day; say(`Пришла весть: ${c4.boss.title[0]} ${c4.boss.name} выступил${c4.boss.g === 'f' ? 'а' : ''} — началось новое бедствие. ${c4.boss.g === 'f' ? 'Её' : 'Его'} логово теперь стерегут злее.`, 'quest', false); }
   }
   // the darkening by the clues found
   const want = Q.found >= 3 ? 3 : Q.found;
@@ -140,7 +144,7 @@ function send(a, K, r, kind, who, label, strength, say) {
     B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: true, strength: Math.min(EPIC.guard.max, strength), pursuit: true, kind, src: label.startsWith('слуги') ? 'mini' : 'hunt',
       label, ...(who.band ? {band: who.band} : {}), ...(who.beast ? {beast: who.beast} : {})});
     K.stats.pursuers = (K.stats.pursuers || 0) + 1;
-    if (r() < 0.4) say(`За караваном идут ${label.replace(/^погоня: |^слуги: /, '')}.`, 'sight');
+    if (r() < 0.4) say(`За караваном идут ${label.startsWith('слуги: ') ? `слуги — ${label.slice(7)}` : label.replace(/^погоня: /, '')}.`, 'sight');
     return;
   }
 }

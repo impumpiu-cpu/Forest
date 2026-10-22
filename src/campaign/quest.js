@@ -31,7 +31,9 @@ const DIRS = ['на востоке', 'на юго-востоке', 'на юге'
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
 const dist = (a, i, j) => { const [x, y] = xy(a, i), [p, q] = xy(a, j); return Math.hypot(x - p, y - q); };
 // a word by the gender of the crown's name (feminine for «корона», masculine for «венец»)
-const gx = (Q, f, m) => (Q.g === 'm' ? m : f);
+// (a neuter one — «Сердце Творца», «Око Мира» of the epic world — from the feminine form)
+const NEUT = {'её': 'его', 'Её': 'Его', 'она лежит': 'оно лежит', 'отбита': 'отбито', 'найдена': 'найдено', 'досталась': 'досталось'};
+const gx = (Q, f, m) => (Q.g === 'm' ? m : Q.g === 'n' ? NEUT[f] ?? m : f);
 const pick = (r, list) => list[(r() * list.length) | 0];
 function weighted(r, list) {   // [[item, weight]]
   const tot = list.reduce((s, e) => s + e[1], 0); let x = r() * tot;

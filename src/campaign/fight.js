@@ -115,7 +115,7 @@ export function applyCamp(a, K, S, o, d, how) {
   const taken = takeFromCamp(a, K, o, (text, kind, who) => say(a, K, text, kind, false, who));   // the fallen foes the camp bound
   if (how === 'stop') {   // a quiet day: only what went wrong is told (a beast lost, someone fallen)
     if (lostB.length || stolenB.length) say(a, K, `На стоянке потеряли ${names([...stolenB, ...lostB].map(b => BEASTS[b.kind].acc))}.`, 'beast');
-    for (const m of fallen) { const why = m.fell; delete m.fell; die(a, K, m, why && why !== 'погиб' ? `${why} на стоянке` : `погиб${m.gender === 'f' ? 'ла' : ''} на стоянке`); }
+    for (const m of fallen) { const why = m.fell; delete m.fell; die(a, K, m, stopDeath(m, why)); }
     return;
   }
   // the line: what happened, who fell, who is hurt, what is lost and won
@@ -131,6 +131,17 @@ export function applyCamp(a, K, S, o, d, how) {
   const verdict = o.won ? (how === 'guard' ? 'Взяли верх' : F.n ? 'Отбились' : 'Обошлось') : how === 'guard' ? 'Отступили' : 'Не устояли';
   say(a, K, `${opening(d, how)}. ${verdict} — бой на месте${parts.length ? `: ${parts.join('; ')}` : ''}.`, 'fight', false, [...fallen, ...hurt].map(m => m.id));
   for (const m of fallen) { delete m.fell; die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`); }
+}
+
+// a death on the local map as the campaign tells it (settlement/chronicle.js noteDeath: «умер от холода», «погиб: волк»,
+// «погиб в бою с налётчиками»)
+function stopDeath(m, why) {
+  const fell = `погиб${m.gender === 'f' ? 'ла' : ''}`;
+  if (!why || /^погибл?а?$/.test(why)) return `${fell} на стоянке`;
+  const beast = why.match(/^погибл?а?: (.+)$/);
+  if (beast) return `${fell} на стоянке (${beast[1]})`;
+  if (/^погибл?а? /.test(why)) return why.replace(/^(погибл?а?) /, '$1 на стоянке ');
+  return `${why} на стоянке`;
 }
 
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town

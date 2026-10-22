@@ -123,7 +123,7 @@ export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3
 //             from the lair every `every[0]` days, × `strength[0]`); after the 3rd — the active hunt (every `every[1]`,
 //             × `strength[1]`, the hostile of the bubble are born on the caravan's trail with `trail`), and the lair's
 //             servants burn the town nearest it (`burn` of its people)
-export const EPIC = {seats: 8, far: 0.45, cold: 0, doom: 25, years: 25,
+export const EPIC = {seats: 8, far: 0.45, cold: 0, doom: 15, years: 25,
   guard: {base: 0.7, perDiag: 1.8, seat: 1.3, grow: 0.015, max: 2.4, risen: 1.3},
   mini: {add: [3, 6], near: 20, every: 40},
   boss: {stats: ['S', 'E', 'A'], add: [6, 12], cap: 40},

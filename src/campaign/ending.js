@@ -30,10 +30,10 @@ function words(a, K, m, r) {
 // the crown, when it did not come home
 function crownFate(a, K) {
   const Q = K.quest; if (!Q) return null;
-  const C = Q.crown, f = Q.g !== 'm';
-  if (C.state === 'carried') return `${Q.name} ${f ? 'пропала' : 'пропал'} вместе с остатками каравана: где ${f ? 'она' : 'он'} теперь, не знает никто.`;
-  if (C.state === 'taken') return `${Q.name} ${f ? 'осталась' : 'остался'} у врагов: ${C.label}.`;
-  return `${Q.name} так и ${f ? 'лежит' : 'лежит'} там, где ${f ? 'лежала' : 'лежал'}: ${C.label}.`;
+  const C = Q.crown, g = (m, f, n) => (Q.g === 'm' ? m : Q.g === 'n' ? n : f);   // (a crown of an old save has no gender: feminine)
+  if (C.state === 'carried') return `${Q.name} ${g('пропал', 'пропала', 'пропало')} вместе с остатками каравана: где ${g('он', 'она', 'оно')} теперь, не знает никто.`;
+  if (C.state === 'taken') return `${Q.name} ${g('остался', 'осталась', 'осталось')} у врагов: ${C.label}.`;
+  return `${Q.name} так и лежит там, где ${g('лежал', 'лежала', 'лежало')}: ${C.label}.`;
 }
 
 // once, when the campaign has just ended: the world's consequences and the fates to tell
