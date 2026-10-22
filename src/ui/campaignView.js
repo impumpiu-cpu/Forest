@@ -80,7 +80,13 @@ export class CampaignView extends AtlasView {
     sp.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.speed = b.dataset.val; this.paused = false; this.syncRun(); this.run(); });
     $('campPause').addEventListener('click', () => { this.paused = !this.paused; this.syncRun(); if (!this.paused) this.run(); });
     $('campWorlds').addEventListener('click', e => { const row = e.target.closest('.sv'); if (row) this.openFromLibrary(row.dataset.id, row.dataset.name); });
-    $('campCaps').addEventListener('click', e => { const row = e.target.closest('.sv'); if (!row) return; this.capPick = +row.dataset.town; this.renderCaps(); this.draw(); });
+    // a capital: a click on its card marks it on the map, its button sets the caravan out from it at once
+    $('campCaps').addEventListener('click', e => {
+      const row = e.target.closest('.sv'); if (!row) return;
+      this.capPick = +row.dataset.town;
+      if (e.target.closest('button')) { this.begin(); return; }
+      this.renderCaps(); this.draw();
+    });
     $('campGo').addEventListener('click', () => this.begin());
     // the world's chronicle into a file: by its eras at the detail chosen, or the calamities only (atlas/chronicle.js)
     this.detail = loadDetail();
@@ -231,7 +237,7 @@ export class CampaignView extends AtlasView {
       : 'Квест: корона там, где её потеряла история этого мира; три подсказки в его курганах, логовах, развалинах и городах.';
     const caps = capitals(a);
     $('campCaps').innerHTML = caps.length ? caps.map(c => `<div class="sv cap${c.town === this.capPick ? ' cur' : ''}" data-town="${c.town}"><span class="t"><i style="background:rgb(${WORLD_PEOPLES.get(c.people).color.join(',')})"></i><b>${esc(c.label)}</b> · ${esc(c.peopleLabel)}` +
-      `<br><small>${esc(c.realmLabel)} · ${c.towns} ${plural(c.towns, 'город', 'города', 'городов')} · ${c.pop} жителей · ${RETINUE[c.people].knight[1]} и ${RETINUE[c.people].squire[1]}</small></span><button type="button">Выбрать</button></div>`).join('')
+      `<br><small>${esc(c.realmLabel)} · ${c.towns} ${plural(c.towns, 'город', 'города', 'городов')} · ${c.pop} жителей · ${RETINUE[c.people].knight[1]} и ${RETINUE[c.people].squire[1]}</small></span><button type="button" class="primary" title="Караван выходит из этой столицы">Выступить</button></div>`).join('')
       : '<small>В этом мире нет столиц людей, эльфов, гномов или орков.</small>';
     $('campGo').disabled = this.capPick == null;
   }
