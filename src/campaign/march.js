@@ -30,6 +30,7 @@ import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, t
 import {draw, makeMember} from './start.js';
 import {fight, playStop} from './fight.js';
 import {questArrive, questTarget, questSight, pursuit, crownHands, rumour} from './quest.js';
+import {epicDay} from './epic.js';
 import {CAMP} from '../data/camp.js';
 import {stepBubble, huntersNear, sighted, settle, removeThing, pursuers, lose, hunting} from './bubble.js';
 import {BUBBLE, THINGS, AMBUSH, TRAIN, HERD} from '../data/bubble.js';
@@ -391,7 +392,7 @@ export const shake = (K, d) => {
 
 function homecoming(a, K, ms) {
   const t = a.towns.find(x => x.id === K.capital), Q = K.quest;
-  say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}${Q ? ` с короной — ${Q.name} снова дома` : ''}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
+  say(a, K, `Караван вернулся в ${t ? `${townLabel(t, 1)} ${t.name}` : 'родные края'}${Q ? (Q.epic ? ` — ${Q.name} отныне в столице, и сила бедствия сломлена` : ` с короной — ${Q.name} снова дома`) : ''}: ${ms.length} из ${K.members.length}, ${Math.round(K.day / 120 * 10) / 10} лет в пути; в обозе ${baggageText(K)}.`, 'home', true);
   K.phase = 'won';
 }
 
@@ -442,7 +443,9 @@ function evening(a, K) {
       return;
     }
   }
-  if (K.via != null && !(K.hungry && richness(a, K.i) >= CAMPAIGN.camp.foodLand)) return;
+  // on the way to a town: the camp breaks up (else it would stand here for good — the camp's days run below); a starving
+  // caravan on rich land still stops to hunt on the way
+  if (K.via != null && !(K.hungry && richness(a, K.i) >= CAMPAIGN.camp.foodLand)) { if (K.camp > 0) { K.camp = 0; K.why = ''; } return; }
   // a camp: for food when it runs short and the land can feed them, for the wounded, to tame or to build
   const fs = free(K).length ? free(K) : ms;   // the camp for the wounded is for the free, not for the captives
   const rich = richness(a, K.i), core = fs.reduce((s, m) => s + m.hp, 0) / fs.length, C = CAMPAIGN.camp;
@@ -628,7 +631,7 @@ export function caravanDay(a, K, day) {
   // the quest: what the scouts see of the places sought; with the crown, the world's pursuit
   if (K.quest && !ended(K)) {
     const tell = (text, kind, world, who) => say(a, K, text, kind, world, who), {r: rq, done: dq} = draw(K, 'pursuit');
-    questSight(a, K, tell); pursuit(a, K, rq, tell); dq();
+    questSight(a, K, tell); pursuit(a, K, rq, tell); epicDay(a, K, rq, tell); dq();
   }
   K.track.push([Math.round(K.x * 100) / 100, Math.round(K.y * 100) / 100]);
   const p = (a.parties || []).find(x => x.id === K.party);

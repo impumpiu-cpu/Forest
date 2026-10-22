@@ -38,7 +38,7 @@ import {memberMight} from '../src/campaign/march.js';
 import {core, isCore} from '../src/campaign/march.js';
 import {BUBBLE, THINGS} from '../src/data/bubble.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
-import {runCamp, campOutcome, outcomeHash} from '../src/campaign/camp.js';
+import {runCamp, campOutcome, outcomeHash, campSetup, openCamp, stepCamp} from '../src/campaign/camp.js';
 import {room, freeOf, joinedOf} from '../src/campaign/company.js';
 import {playStop} from '../src/campaign/fight.js';
 import {cellRegion} from '../src/campaign/land.js';
@@ -272,4 +272,35 @@ check('пузырь: ночные бои от тех, кто дошёл до л�
 check('локальная карта: бои и стоянки сыграны на ней, повтор стоянки даёт то же', local.camps > 0 && local.stops > 0 && local.same === local.replays,
   `сыграно ${local.camps} (дней стоянок ${local.stops}), в среднем ${Math.round(local.ticks / Math.max(1, local.camps))} тиков и ${Math.round(local.ms / Math.max(1, local.camps))} мс; повторов ${local.same} из ${local.replays}`);
 check('караваны обзаводятся обозом и выбирают между трактом и прямой дорогой', got.beast > 0 && got.cart > 0 && got.route > 0, `со зверями ${got.beast}, с тележкой или повозкой ${got.cart}, с выбором пути ${got.route}`);
+
+// the epic campaign (campaign/epic.js): in an epic world the clues are the graves of the bosses, read by their epitaphs;
+// the goal is the lair of the fourth, gathering with the artifact; the darkening goes on with the clues; the fourth rises
+// in the world in its years; a storm of a lair with a boss is won only with the boss dead; won — the artifact home
+{
+  const E = generateAtlas({seed: '7', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, epicYears: {wild: 40, elder: 40, young: 40}});
+  const frozenE = JSON.stringify(saveAtlas(E)), freshE = () => loadAtlas(JSON.parse(frozenE)), capsE = capitals(E);
+  const a = freshE(), K = newCampaign(a, capsE[0].town, {mode: 'auto'}), Q = K.quest, c4 = a.calamities.at(-1);
+  const laid = Q?.epic && Q.clues.length === 3 && Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + 25 &&
+    a.lairs.find(l => l.id === c4.lair)?.boss === c4.id && a.artifact.holder.kind === 'boss' && Q.crown.guard?.boss && Q.clues.filter(c => c.area).length === 1;
+  check('эпос: следы — могилы боссов с надписями и стражами, цель — логово четвёртого, где собирается сила с артефактом; срок — 25 лет', laid,
+    Q?.epic ? `${Q.clues.map(c => c.label).join('; ')} → ${Q.crown.label}, ${c4.label}` : 'не эпический квест');
+  runCampaign(a);
+  const read = K.log.filter(l => /На могиле прочли надпись/.test(l.text)).length, dark = K.log.filter(l => /недобрые знаки|вышли охотники по следу|рыщут по всему краю/.test(l.text)).length;
+  const end = K.phase === 'won' ? c4.phase === 'fallen' && c4.fell.by === 'caravan' && a.artifact.holder.kind === 'caravan' && a.chronicle.some(l => l.topic === 'calamity' && /караван/.test(l.text)) : true;
+  check('эпос: могилы читают, мир мрачнеет с каждым следом, охота идёт; победа — босс пал от рук каравана, артефакт у него', read === Q.found && dark === Math.min(3, Q.found) && (Q.found < 2 || (K.stats.pursuers || 0) > 0) && end,
+    `${K.phase}, следов ${Q.found}, прочли ${read}, мрачнее ${dark} раз, погонь ${K.stats.pursuers || 0}, четвёртое ${c4.phase}${c4.fell ? ' — ' + c4.fell.by : ''}`);
+  // the doom: the fourth rises in the world in its year, and its lair is guarded harder
+  const b = freshE(), K2 = newCampaign(b, capsE[1 % capsE.length].town, {mode: 'auto'}), d4 = b.calamities.at(-1), g0 = K2.quest.crown.guard.strength;
+  d4.riseAt = b.hist.year + 1;
+  for (let k = 0; k < 8 && stepCampaign(b); k++);
+  check('эпос: в свой год четвёртое бедствие начинается в мире, логово стерегут злее', d4.phase === 'rise' && K2.quest.crown.guard.strength > g0 * 1.3 && b.chronicle.some(l => l.calamity === d4.id && /Началось новое бедствие/.test(l.text)),
+    `${d4.phase}, стража ${g0.toFixed(2)} → ${K2.quest.crown.guard.strength.toFixed(2)}`);
+  // on the local map the boss stands among its servants, grown past its kind
+  const c = freshE(), K3 = newCampaign(c, capsE[0].town), G = K3.quest.crown.guard;
+  const S = campSetup(c, K3, {kind: 'guard', foe: G, dayIn: 0}), w = openCamp(S);
+  for (let t = 0; t < 600 && !w.campaign.spawned; t++) stepCamp(w);
+  const boss = w.campaign.boss;
+  check('эпос: на штурме логова босс стоит среди слуг, сильнее своего рода', !!boss && boss.name === G.boss.name && Object.entries(G.boss.add).every(([id, v]) => v > 0 && boss.special[id] >= v),
+    boss ? `${boss.name}: ${['S', 'E', 'A'].map(id => `${id} ${boss.special[id]}`).join(', ')}` : 'босса нет');
+}
 if (!ok) process.exit(1);

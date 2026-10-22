@@ -17,7 +17,8 @@ import {realmLabel} from './realms.js';
 const SEASON_LIST = SEASONS.all();
 const STAGE_ERAS = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
-const BY = {dragon: 'от дракона', beasts: 'от собственных стай', heroes: 'запечатан героями', cleared: 'вместе с логовом', alliance: 'от союза держав', none: '—'};
+const ERA_OF = id => (id === 'after' ? 'Время похода' : ERAS.get(id).label);
+const BY = {dragon: 'от дракона', beasts: 'от собственных стай', heroes: 'запечатан героями', cleared: 'вместе с логовом', alliance: 'от союза держав', caravan: 'от рук каравана', none: '—'};
 
 // a line's level: 'major' | 'normal' | 'minor'
 export function lineLevel(c) {
@@ -68,7 +69,7 @@ export function calamityChronicleText(a, {name = null} = {}) {
   const L = a.chronicle.filter(c => c.topic === 'calamity');
   out.push(`=== Заря мира ===`, ...L.filter(c => c.calamity == null).map(c => `${dateOf(c)} — ${c.text}`), '');
   for (const [k, c] of a.calamities.entries()) {
-    const era = ERAS.get(c.era).label;
+    const era = ERA_OF(c.era);
     out.push(`=== Бедствие ${ROMAN[k] || k + 1} · ${era}: ${c.label} ===`);
     if (c.boss) out.push(...calamityFacts(a, c), '');
     out.push(...L.filter(x => x.calamity === c.id).map(x => `${dateOf(x)} — ${x.text}`), '');
@@ -95,7 +96,7 @@ function calamityFacts(a, c) {
 }
 
 // the epitaph of a grave: who lay there, with what, how long it raged and who ended it (the campaign's clues read it)
-const ENDED = {dragon: 'сразил дракон', beasts: 'разорвали собственные стаи', heroes: 'запечатали безымянные герои', cleared: 'сгинул вместе с логовом', alliance: 'сразили войска союза держав'};
+const ENDED = {dragon: 'сразил дракон', beasts: 'разорвали собственные стаи', heroes: 'запечатали безымянные герои', cleared: 'сгинул вместе с логовом', alliance: 'сразили войска союза держав', caravan: 'сразил караван, пришедший за артефактом'};
 export function epitaph(a, c) {
   const B = c.boss, A = a.artifact, f = B.g === 'f', him = f ? 'её' : 'его', end = ENDED[c.fell.by];
   return `Здесь лежит ${B.title[0]} ${B.name}. ${f ? 'Она' : 'Он'} восстал${f ? 'а' : ''} в ${c.riseAt} году и носил${f ? 'а' : ''} ${A.acc}, ` +

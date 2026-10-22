@@ -83,6 +83,9 @@ export function stepCalamities(a) {
     if (c.phase === 'waiting' && y >= c.omensAt) { c.phase = 'omens'; omen(a, c, r); }
     else if (c.phase === 'omens' && y < c.riseAt && r() < 0.6) omen(a, c, r);
     if (c.phase === 'omens' && y >= c.riseAt) rise(a, c, r);
+    // the fourth (campaign/epic.js): its lair stands from the start, its omens run while the caravan walks
+    if (c.phase === 'gathering' && y < c.riseAt && r() < 0.6) omen(a, c, r);
+    if (c.phase === 'gathering' && y >= c.riseAt) riseGathered(a, c, r);
     if (c.phase === 'rise') {
       const lair = a.lairs.find(l => l.id === c.lair);
       if (!lair || !lair.alive) fall(a, c, r, 'cleared');
@@ -90,7 +93,7 @@ export function stepCalamities(a) {
       else if (y >= c.heroesAt) fall(a, c, r, 'heroes');
     }
     // after the wild era the peoples band together against it, and fall apart after (atlas/alliance.js)
-    if (c.era !== 'wild' && (c.phase === 'rise' || c.phase === 'fallen')) stepAlliance(a, c, r, text => tell(a, text, c));
+    if (c.era !== 'wild' && c.era !== 'after' && (c.phase === 'rise' || c.phase === 'fallen')) stepAlliance(a, c, r, text => tell(a, text, c));   // the fourth is the caravan's
   }
   done();
 }
@@ -204,6 +207,47 @@ function fall(a, c, r, by, told = null) {
   tell(a, line, c);
   tell(a, words(FALL.artifact).replace('{artifact}', A.name), c);
   void r;
+}
+
+// ── the fourth calamity (campaign/epic.js): it gathers at a seat when a caravan sets out after the artifact; its
+// lair stands at once with the boss in it, the artifact goes there; it rises in the world `years` later
+export function gatherFourth(a, i, years) {
+  const {r, done} = draw(a);
+  const kinds = CALAMITIES.filter(C => !C.town), C = pick(r, kinds);
+  const L = LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
+  const lair = newLair(a, L, i, r, 1);
+  const c = {id: a.calamities.length + 1, era: 'after', kind: C.id, label: C.label, phase: 'gathering', omensAt: a.hist.year, riseAt: a.hist.year + years,
+    i, lair: lair.id, town: null, omens: OMENS.map((_, n) => n), fell: null,
+    boss: {species, name: pick(r, C.names), title: C.title, g: C.g, special: sp?.special ? bossSpecial(sp, r, CAL.boss).special : null}};
+  lair.boss = c.id;
+  if (L.undead) barrows(a, i, Math.max(2, Math.round(3 * Math.min(a.w, a.h) / 192)), 0.9);
+  a.calamities.push(c);
+  const A = a.artifact;
+  A.holder = {kind: 'boss', calamity: c.id}; A.i = i;
+  A.trail.push({year: a.hist.year, era: a.hist.era, i, text: `у ${c.boss.title[1].toLowerCase()} ${c.boss.name}`});
+  tell(a, `${A.name} покинул${A.g === 'f' ? 'а' : A.g === 'n' ? 'о' : ''} могилу: ${wherePhrase(a, i)}, в логове «${lair.name}», ${bossName(c)} собирает силы. До нового бедствия — ${years} лет.`, c);
+  omen(a, c, r);
+  done();
+  return c;
+}
+function riseGathered(a, c, r) {
+  const C = CALAMITIES.find(x => x.id === c.kind), lair = a.lairs.find(l => l.id === c.lair);
+  if (!lair || !lair.alive) { c.phase = 'fallen'; c.fell = {year: a.hist.year, by: 'cleared'}; return; }
+  c.phase = 'rise';
+  const kinds = C.retinue.length ? C.retinue : [lair.kind];
+  for (let q = 0, n = Math.round(between(r, CAL.retinue)); q < n; q++) { const j = around(a, c.i, r, CAL.near); if (j >= 0) newLair(a, LAIRS.get(kinds[q % kinds.length]), j, r, 0.6).retinue = c.id; }
+  const wild = LAIRS.filter(x => !x.undead && !x.dragon && !x.fiend), stir = Math.round(between(r, CAL.stir));
+  let woke = 0;
+  for (let q = 0; q < stir; q++) { const W = pick(r, wild), j = findSpot(a, W, r, null, 200); if (j >= 0) { newLair(a, W, j, r, 0.4); woke++; } }
+  tell(a, `Началось новое бедствие — ${c.label}: ${bossName(c)} выступил${fem(c) ? 'а' : ''} из логова «${lair.name}» ${wherePhrase(a, c.i)}.${woke ? ` По всему миру ожили логова чудовищ: ${woke}.` : ''}`, c);
+}
+// the fourth falls to the caravan's storm (campaign/epic.js): its grave, and the artifact in the caravan's hands
+export function fallToCaravan(a, c, line) {
+  if (c.phase === 'fallen') return;
+  fall(a, c, null, 'caravan', line);
+  const A = a.artifact; A.holder = {kind: 'caravan', calamity: c.id};
+  A.trail.at(-1).text = `взят караваном у ${c.boss.title[1].toLowerCase()} ${c.boss.name}`;
+  a.chronicle.at(-1).text = `${A.name} не пропал${A.g === 'f' ? 'а' : A.g === 'n' ? 'о' : ''}: ${A.g === 'f' ? 'её' : 'его'} унёс караван.`;
 }
 
 // the calamity whose boss holds a lair (for the screen: a boss's mark)

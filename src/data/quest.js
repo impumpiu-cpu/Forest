@@ -31,6 +31,8 @@ export const QUEST = {
   // world's diagonal (× crown for the crown's own); the council storms it when the company is this whole,
   // and after a lost storm waits `retry` days
   guard: {base: 0.7, perDiag: 1.8, crown: 1.25, max: 3}, storm: 0.75, retry: 12,
+  // after `giveUp` storms of one place beaten back the council leaves it for `giveUpRest` days (a clue is not a must)
+  giveUp: 4, giveUpRest: 240,
   // rumours in a friendly town: a hint where an unknown clue lies, for `price` gold or free to a speaker
   // with Charisma `charm` and more; at most one a visit, with this chance
   rumour: {chance: 0.6, price: CAMPAIGN.rumour, charm: 7},

@@ -48,6 +48,7 @@ function localFight(a, K, d, how) {
   const S = campSetup(a, K, {kind: how, foe: d, dayIn: K.dayIn});
   const o = play(K, S, how, d.label || FOES[d.kind].label, d);
   applyCamp(a, K, S, o, d, how);
+  if (d.boss && o.bossDead === false && !o.won && o.foes.killed > 0) say(a, K, `${d.boss.name} ушёл живым: штурм придётся повторить.`, 'fight');
   return o.won;
 }
 
