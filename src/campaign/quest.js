@@ -179,8 +179,23 @@ export const questIntro = (a, K) => {
 
 // ── the target: where the council sends the caravan now (K.goal)
 const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
-export function questTarget(a, K, rnd) {
+export function questTarget(a, K, rnd, say = null) {
   const Q = K.quest; if (!Q) return K.goal;
+  const g = target(a, K, rnd);
+  // sought too long without reaching it: left for a while (as after storms beaten back), another sought
+  const key = g == null || Q.crown.state === 'carried' ? null : Q.search && g === Q.search.i ? Q.search.key : g === Q.crown.i ? 'crown' : Q.clues.find(c => c.i === g)?.k ?? null;
+  if (key !== (Q.chase?.key ?? null)) Q.chase = key == null ? null : {key, since: K.day};
+  else if (key != null && K.day - Q.chase.since > QUEST.stuck) {
+    const place = key === 'crown' ? Q.crown : Q.clues.find(c => c.k === key);
+    place.rest = K.day + QUEST.stuckRest; place.restWhy = 'stuck'; Q.search = null; Q.chase = null;
+    if (place !== Q.crown) place.seen = false;
+    say?.(`Совет: ${place.label} не даётся — ${Math.round(QUEST.stuck / 120)} года пути впустую. Пока искать в другом месте.`, 'quest');
+    return target(a, K, rnd);
+  }
+  return g;
+}
+function target(a, K, rnd) {
+  const Q = K.quest;
   const C = Q.crown;
   if (C.state === 'carried') return K.home;
   if ((C.exact || C.seen) && !(C.rest > K.day)) return C.i;   // (a crown left for a while after storms beaten back: elsewhere meanwhile)
@@ -191,6 +206,12 @@ export function questTarget(a, K, rnd) {
   if (seen) return seen.i;
   const area = open.sort(near)[0] || (C.area && !(C.rest > K.day) ? C : null);
   if (area) return searchCell(a, K, area, rnd);
+  // every place known is left for a while, and none is unknown to be asked of: back to the one left the soonest
+  if (Q.clues.every(c => c.found || c.area)) {
+    // (not a place left after storms beaten back: meanwhile they heal where they are)
+    const back = [...Q.clues.filter(c => !c.found && c.rest > K.day), ...(C.rest > K.day && (C.exact || C.seen || C.area) ? [C] : [])].filter(p => p.restWhy !== 'storms').sort((p, q) => p.rest - q.rest)[0];
+    if (back) { back.rest = 0; return target(a, K, rnd); }
+  }
   return null;   // nothing known: the council looks for rumours in a town (campaign/march.js)
 }
 const distTo = (a, K, c) => Math.hypot(c.area ? c.area.x - K.x : xy(a, c.i)[0] - K.x, c.area ? c.area.y - K.y : xy(a, c.i)[1] - K.y);
@@ -199,14 +220,14 @@ function searchCell(a, K, place, rnd) {
   const Q = K.quest, key = place === Q.crown ? 'crown' : place.k;
   const mask = reachMask(a, K);
   if (Q.search?.key === key && K.i !== Q.search.i) return Q.search.i;
-  if (Q.search?.key === key && ++Q.search.tries >= QUEST.tries) { place.rest = K.day + QUEST.rest; Q.search = null; return questTarget(a, K, rnd); }
+  if (Q.search?.key === key && ++Q.search.tries >= QUEST.tries) { place.rest = K.day + QUEST.rest; place.restWhy = 'search'; Q.search = null; return target(a, K, rnd); }
   const A = place.area;
   let i = -1;
   for (let k = 0; k < 30 && i < 0; k++) {
     const first = Q.search?.key !== key && k === 0, ang = rnd() * Math.PI * 2, d = first ? 0 : Math.sqrt(rnd()) * A.r;
     i = foot(a, mask, cellAt(a, A.x + Math.cos(ang) * d, A.y + Math.sin(ang) * d), 2);
   }
-  if (i < 0) { place.rest = K.day + QUEST.rest; return null; }
+  if (i < 0) { place.rest = K.day + QUEST.rest; place.restWhy = 'search'; return null; }
   Q.search = {key, i, tries: Q.search?.key === key ? Q.search.tries : 0};
   return i;
 }
@@ -239,11 +260,12 @@ export function questArrive(a, K, rnd, fight, say) {
     const ms = K.members.filter(m => m.alive), hp = ms.reduce((s, m) => s + m.hp, 0) / Math.max(1, ms.length);
     if (K.day < Q.stormAt || hp < QUEST.storm) return false;   // first heal and gather strength (the camp of the evening)
     K.stats.storms = (K.stats.storms || 0) + 1;
+    const sk = here === C ? 'stormsLair' : here.kind === 'grave' ? 'stormsGrave' : null; if (sk) K.stats[sk] = (K.stats[sk] || 0) + 1;
     const win = fight(here.guard);
     if (!win) {
       Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1;
       if (here.fails >= QUEST.giveUp) {   // beaten back again and again: leave it for a while, look elsewhere
-        here.fails = 0; here.rest = K.day + QUEST.giveUpRest; here.seen = here === C ? here.seen : false; K.path = null; Q.search = null;
+        here.fails = 0; here.rest = K.day + QUEST.giveUpRest; here.restWhy = 'storms'; here.seen = here === C ? here.seen : false; K.path = null; Q.search = null;
         say(`${here.label[0].toUpperCase()}${here.label.slice(1)} не взять: ${QUEST.giveUp} штурма отбиты. Совет решил пока искать в другом месте.`, 'quest');
       }
       return true;
@@ -256,7 +278,7 @@ export function questArrive(a, K, rnd, fight, say) {
 
 function takeClue(a, K, c, rnd, say) {
   const Q = K.quest, C = Q.crown;
-  c.found = true; Q.found++;
+  c.found = true; c.day = K.day; Q.found++;
   const t = c.town != null ? a.towns.find(x => x.id === c.town) : null;
   const how = c.epitaph ? `${graveLine(c)} По ней и по старым летописям поняли` : t ? `В ${townLabel(t, 3)} ${t.name} летописец открыл старые свитки` : c.guard ? 'Среди добычи нашлась старая грамота' : 'Под камнями нашлась старая грамота';
   // the crown narrowed down
@@ -275,7 +297,7 @@ function takeCrown(a, K, say) {
   const again = C.state === 'taken';
   C.state = 'carried'; C.carrier = m?.id ?? null; C.seen = false; C.exact = false;
   K.phase = 'back'; K.goal = K.home; Q.next = K.day + 3; Q.carriedFrom = K.day;
-  if (Q.epic && !again) { epicTaken(a, K, m?.name || 'караван'); say(`${C.label[0].toUpperCase()}${C.label.slice(1)} взято штурмом: ${C.guard?.boss?.name || 'босс'} пал. ${Q.name} в руках каравана — ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой! Весть летит быстрее каравана, и враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null); return; }
+  if (Q.epic && !again) { epicTaken(a, K, m?.name || 'караван'); say(`${C.label[0].toUpperCase()}${C.label.slice(1)} взято штурмом: ${C.guard?.boss?.name || 'босс'} пал${(C.guard?.boss?.g ?? a.calamities?.find(c => c.id === Q.calamity)?.boss?.g) === 'f' ? 'а' : ''}. ${Q.name} в руках каравана — ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой! Весть летит быстрее каравана, и враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null); return; }
   say(again ? `${Q.name} ${gx(Q, 'отбита', 'отбит')} у врагов: теперь ${gx(Q, 'её', 'его')} несёт ${m?.name}. Домой!` : `${Q.name} ${gx(Q, 'найдена', 'найден')} — ${C.label}! ${gx(Q, 'Её', 'Его')} несёт ${m?.name}. Весть об этом летит быстрее каравана: враги не дадут донести ${gx(Q, 'её', 'его')} спокойно.`, 'crown', true, m ? [m.id] : null);
 }
 // who carries the crown: a knight first, the healthiest
@@ -314,6 +336,7 @@ export function crownHands(K, say) {
 }
 
 // ── rumours in a friendly town: where an unknown clue lies
+export const askable = K => K.quest && K.quest.clues.some(c => !c.found && !c.area) && K.day >= (K.quest.askAt ?? 0);
 export function rumour(a, K, t, rnd) {
   const Q = K.quest; if (!Q || Q.crown.state === 'carried' || Q.crown.exact) return null;
   const unknown = Q.clues.filter(c => !c.found && !c.area);

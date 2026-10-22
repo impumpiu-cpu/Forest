@@ -147,12 +147,13 @@ export const FINDS = [
 // worth it only when the caravan's best metal (campaign/baggage.js metalTier) is lower; silver and gems
 // (`money`) and the gold sand of a river (`placer`, with a pan) — while the treasury is below `rich`. Only the cell
 // the caravan stands on (it walks over dozens a season). Not more often than every
-// `every` days, never twice on the same cell, only with room for `room` units more; it stops after `maxDays`, or
+// `every` days, never twice on the same cell, only with food for `food` days and room for `room` units more besides
+// the room that food would take; it stops after `maxDays`, or
 // when a day gave less than `quit` units (the face is worked out), or when the packs are full. On the local map
 // the caravan digs the outcrop itself (data/jobs.js 'dig' in a camp: no mine); in the quick mode a day gives
 // `auto[ore] × the cell's level × the diggers` units (a digger — one with Strength ≥ `strength`; gold sand —
 // the one with the pan)
-export const MINE = {every: 40, maxDays: 6, quit: 1, room: 6, strength: 4, rich: 40,
+export const MINE = {every: 40, maxDays: 6, quit: 1, room: 6, food: 8, strength: 4, rich: 40,
   ores: ['bronze', 'iron', 'silver', 'gems', 'mithril'],
   // (tuned to what a day on the local map digs, seed 777: iron ~10 units a day on a level-0.5 cell, bronze ~1,
   // gems ~1, silver hardly any, gold sand ~4 for the one panner on a level-1 river)

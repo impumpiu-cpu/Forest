@@ -107,9 +107,12 @@ export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3
 // The epic campaign (campaign/epic.js; docs/CAMPAIGN.md «Доработка, этап 10»): the clues are the graves of the three
 // bosses, the goal is the lair of the fourth, where the artifact went and its servants gather; the omens of the fourth
 // calamity begin when the caravan sets out, and in `doom` years it rises in the world (atlas/calamity.js).
-//   seats:    places where the fourth may gather, prepared once for the world (seed:atlas:seats); the caravan's is the
+//   seats:    places where the fourth may gather, prepared once for the world (seed:atlas:seats), not where the year's
+//             mean is below `cold`° (the ice and the frozen waste: no food for the way there); the caravan's is the
 //             farthest it can walk to from its capital, at least `far` of the world's diagonal if any is
 //   doom:     years from the start to the fourth calamity's rising; the clues do not hasten it
+//   years:    the years the epic campaign has (any other: data/campaign.js CAMPAIGN.maxYears); past `doom` it goes on
+//             against a risen calamity
 //   guard:    the strength of a grave's guards and of the lair's: base + perDiag × the distance from home as a share of
 //             the diagonal (as data/quest.js), × `seat` at the lair; the lair's grows `grow` a month while the caravan
 //             walks, at most `max`; once the calamity has risen × `risen`
@@ -120,8 +123,8 @@ export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3
 //             from the lair every `every[0]` days, × `strength[0]`); after the 3rd — the active hunt (every `every[1]`,
 //             × `strength[1]`, the hostile of the bubble are born on the caravan's trail with `trail`), and the lair's
 //             servants burn the town nearest it (`burn` of its people)
-export const EPIC = {seats: 8, far: 0.45, doom: 25,
+export const EPIC = {seats: 8, far: 0.45, cold: 0, doom: 25, years: 25,
   guard: {base: 0.7, perDiag: 1.8, seat: 1.3, grow: 0.015, max: 2.4, risen: 1.3},
-  mini: {add: [3, 6], near: 20, every: 30},
+  mini: {add: [3, 6], near: 20, every: 40},
   boss: {stats: ['S', 'E', 'A'], add: [6, 12], cap: 40},
-  hunt: {every: [60, 30], strength: [0.8, 1.15], trail: 0.5, burn: 0.1}};
+  hunt: {every: [70, 35], strength: [0.8, 1.15], trail: 0.5, burn: 0.1}};

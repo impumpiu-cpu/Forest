@@ -43,9 +43,14 @@ import {room, freeOf, joinedOf} from '../src/campaign/company.js';
 import {playStop} from '../src/campaign/fight.js';
 import {cellRegion} from '../src/campaign/land.js';
 import {trade, standing} from '../src/campaign/town.js';
-import {SMITH} from '../src/data/market.js';
+import {SMITH, MARKET} from '../src/data/market.js';
 import {freedomEvening} from '../src/campaign/captives.js';
 import {FREEDOM} from '../src/data/captives.js';
+import {seats} from '../src/campaign/epic.js';
+import {EPIC} from '../src/data/calamities.js';
+import {QUEST} from '../src/data/quest.js';
+import {questTarget, askable} from '../src/campaign/quest.js';
+import {wantMine} from '../src/campaign/march.js';
 
 const seeds = +(process.argv[2] || 1), size = process.argv[3] || 'small', fullLocal = process.argv[4] === 'local';
 let ok = true;
@@ -295,7 +300,7 @@ check('караваны обзаводятся обозом и выбирают 
   const E = generateAtlas({seed: '7', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true, epicYears: {wild: 40, elder: 40, young: 40}});
   const frozenE = JSON.stringify(saveAtlas(E)), freshE = () => loadAtlas(JSON.parse(frozenE)), capsE = capitals(E);
   const a = freshE(), K = newCampaign(a, capsE[0].town, {mode: 'auto'}), Q = K.quest, c4 = a.calamities.at(-1);
-  const laid = Q?.epic && Q.clues.length === 3 && Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + 25 &&
+  const laid = Q?.epic && Q.clues.length === 3 && Q.clues.every(c => c.kind === 'grave' && c.epitaph && c.guard?.boss) && c4.phase === 'gathering' && c4.riseAt === a.hist.year + EPIC.doom &&
     a.lairs.find(l => l.id === c4.lair)?.boss === c4.id && a.artifact.holder.kind === 'boss' && Q.crown.guard?.boss && Q.clues.filter(c => c.area).length === 1;
   check('эпос: следы — могилы боссов с надписями и стражами, цель — логово четвёртого, где собирается сила с артефактом; срок — 25 лет', laid,
     Q?.epic ? `${Q.clues.map(c => c.label).join('; ')} → ${Q.crown.label}, ${c4.label}` : 'не эпический квест');
@@ -328,6 +333,31 @@ check('караваны обзаводятся обозом и выбирают 
   const S = campSetup(c, K3, {kind: 'guard', foe: G, dayIn: 0}), w = openCamp(S);
   for (let t = 0; t < 600 && !w.campaign.spawned; t++) stepCamp(w);
   const boss = w.campaign.boss;
+  // the balance's rules (stage 12): the lair's seats not in the frozen waste; a place sought too long is left for a while;
+  // the towns are asked of rumours only while a clue is unknown, not every day; no digging while the food runs low;
+  // a starving caravan is fed in a friendly town, and one too poor to stock up hires out there for board and pay
+  {
+    const d = freshE(), K4 = newCampaign(d, capsE[0].town, {mode: 'auto'}), Q4 = K4.quest, said = [];
+    const cold = seats(d).filter(i => d.f.temp[i] < EPIC.cold).length;
+    const g1 = questTarget(d, K4, Math.random, t => said.push(t)), key = Q4.chase?.key;
+    Q4.chase.since = K4.day - QUEST.stuck - 1;
+    questTarget(d, K4, Math.random, t => said.push(t));
+    const left = key != null && (key === 'crown' ? Q4.crown : Q4.clues.find(c => c.k === key)).rest > K4.day && said.some(t => /не даётся/.test(t));
+    Q4.askAt = K4.day + 5; const asked = askable(K4);
+    const food = K4.food; K4.food = 0; const dig = wantMine(d, K4); K4.food = food;
+    check('баланс: логово не во льдах; к месту, куда годами не пробиться, совет на время не идёт; слухи — не каждый день; не копают без еды', !cold && g1 != null && left && !asked && !dig,
+      `мест во льдах ${cold}, оставлено «${said[0] || '—'}», спрашивать ${asked}, копать ${dig ? 'да' : 'нет'}`);
+    const t = d.towns.find(x => x.id === K4.capital);
+    K4.gold = 0; K4.food = 0; K4.hungry = 3;
+    const parts = trade(d, K4, t, standing(d, K4, t)), fed = K4.food;
+    K4.hungry = 0; K4.food = 0; K4.inTown = {id: t.id, since: K4.day, why: 'food'};
+    const wage = {...MARKET.labour}; for (const k of Object.keys(MARKET.labour)) MARKET.labour[k] = 0.01;   // a town that pays little
+    stepCampaign(d);
+    Object.assign(MARKET.labour, wage);
+    const worked = K4.log.some(l => /нанялся .* в работу за харчи и плату/.test(l.text));
+    check('баланс: голодных в дружеском городе кормят даром, нищий караван нанимается в работу за харчи и плату', fed > 0 && parts.some(p => /даром/.test(p)) && worked && core(K4).length === 8,
+      `накормили на ${Math.round(fed)} пайков, работа ${worked ? 'была' : 'не было'}, живы ${core(K4).length} из 8, казна ${K4.gold}`);
+  }
   check('эпос: на штурме логова босс стоит среди слуг, сильнее своего рода', !!boss && boss.name === G.boss.name && Object.entries(G.boss.add).every(([id, v]) => v > 0 && boss.special[id] >= v),
     boss ? `${boss.name}: ${['S', 'E', 'A'].map(id => `${id} ${boss.special[id]}`).join(', ')}` : 'босса нет');
 }

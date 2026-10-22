@@ -32,7 +32,10 @@ export function fight(a, K, d, r, how = 'night') {
   if (how === 'ambush') K.stats.ambushes = (K.stats.ambushes || 0) + 1;
   K.stats.fights++;
   if (K.mode === 'auto') captivesInFight(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));   // (on the local map the camp plays it)
+  // who the fallen fell to, for the balance (campaign-balance): a grave's guards, the lair's, the hunt
+  K.fightSrc = d.boss?.mustDie ? 'lair' : d.boss ? 'grave' : d.pursuit || null;
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
+  delete K.fightSrc;
   if (!alive(K).length) return win;
   if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); formersFought(K); }
   else { K.stats.fled++; shake(K, LOYALTY.lost); K.camp = 0; K.why = ''; K.build = null; }
@@ -48,7 +51,7 @@ function localFight(a, K, d, how) {
   const S = campSetup(a, K, {kind: how, foe: d, dayIn: K.dayIn});
   const o = play(K, S, how, d.label || FOES[d.kind].label, d);
   applyCamp(a, K, S, o, d, how);
-  if (d.boss && o.bossDead === false && !o.won && o.foes.killed > 0) say(a, K, `${d.boss.name} ушёл живым: штурм придётся повторить.`, 'fight');
+  if (d.boss && o.bossDead === false && !o.won && o.foes.killed > 0) say(a, K, `${d.boss.name} ${d.boss.g === 'f' ? 'ушла живой' : 'ушёл живым'}: штурм придётся повторить.`, 'fight');
   return o.won;
 }
 
@@ -85,7 +88,7 @@ export function applyCamp(a, K, S, o, d, how) {
   for (const mo of o.members) {
     const m = K.members.find(x => x.id === mo.id); if (!m || !m.alive) continue;
     if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
-    if (!mo.alive) { fallen.push(m); continue; }
+    if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - 0.05) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local;
@@ -112,7 +115,7 @@ export function applyCamp(a, K, S, o, d, how) {
   const taken = takeFromCamp(a, K, o, (text, kind, who) => say(a, K, text, kind, false, who));   // the fallen foes the camp bound
   if (how === 'stop') {   // a quiet day: only what went wrong is told (a beast lost, someone fallen)
     if (lostB.length || stolenB.length) say(a, K, `На стоянке потеряли ${names([...stolenB, ...lostB].map(b => BEASTS[b.kind].acc))}.`, 'beast');
-    for (const m of fallen) die(a, K, m, `погиб${m.gender === 'f' ? 'ла' : ''} на стоянке`);
+    for (const m of fallen) { const why = m.fell; delete m.fell; die(a, K, m, why && why !== 'погиб' ? `${why} на стоянке` : `погиб${m.gender === 'f' ? 'ла' : ''} на стоянке`); }
     return;
   }
   // the line: what happened, who fell, who is hurt, what is lost and won
@@ -127,7 +130,7 @@ export function applyCamp(a, K, S, o, d, how) {
   if (took.length) parts.push(`с убитых взяли ${names(took)}`);
   const verdict = o.won ? (how === 'guard' ? 'Взяли верх' : F.n ? 'Отбились' : 'Обошлось') : how === 'guard' ? 'Отступили' : 'Не устояли';
   say(a, K, `${opening(d, how)}. ${verdict} — бой на месте${parts.length ? `: ${parts.join('; ')}` : ''}.`, 'fight', false, [...fallen, ...hurt].map(m => m.id));
-  for (const m of fallen) die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`);
+  for (const m of fallen) { delete m.fell; die(a, K, m, `пал${m.gender === 'f' ? 'а' : ''} в ${where} (${FOES[d.kind].label})`); }
 }
 
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town

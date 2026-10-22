@@ -18,6 +18,7 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {townLabel} from '../atlas/towns.js';
 import {landDone} from '../atlas/generate.js';
 import {say, reveal} from './march.js';
+import {EPIC} from '../data/calamities.js';
 import {capacity} from './baggage.js';
 import {makeQuest, questTarget, questIntro} from './quest.js';
 import {CAPTIVE} from '../data/captives.js';
@@ -79,6 +80,7 @@ export function newCampaign(a, townId, {seed = null, mode = 'local'} = {}) {
   // the quest (campaign/quest.js): the crown, the clues; the first target — where the capital says to look
   K.quest = makeQuest(a, K, r);
   K.goal = K.quest ? questTarget(a, K, r) : null;
+  if (K.quest?.epic) K.years = EPIC.years;
   done();
   // what they know: their realm's lands, the towns of those their realm trades with
   const k = scaleOf(a);

@@ -33,7 +33,7 @@ const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w 
 export function seats(a) {
   if (a.seats) return a.seats;
   const r = mulberry(seedNumber(`${a.cfg.seed}:atlas:seats`)), out = [], k = scaleOf(a);
-  const land = i => a.f.land[i] && !a.f.ocean[i], townNear = i => (a.towns || []).some(t => t.alive && dist(a, t.i, i) < 6 * k);
+  const land = i => a.f.land[i] && !a.f.ocean[i] && a.f.temp[i] >= EPIC.cold, townNear = i => (a.towns || []).some(t => t.alive && dist(a, t.i, i) < 6 * k);
   const cand = [];
   for (let n = 0; n < 1500; n++) { const i = (r() * a.n) | 0; if (land(i) && !townNear(i)) cand.push(i); }
   // farthest-point picks: each the farthest from those picked and from the graves
@@ -85,8 +85,8 @@ export function makeEpicQuest(a, K, rnd) {
   }
   // the order: the nearest to home first known
   clues.sort((p, q) => dist(a, K.home, p.i) - dist(a, K.home, q.i)).forEach((x, k) => { x.k = k; });
-  const guard = {...guardFor(a, K, lair.kind, seat.at, EPIC.guard.seat), label: `логово «${lair.name}» — ${c4.boss.title[0]} ${c4.boss.name} и его слуги`,
-    boss: {name: `${c4.boss.title[0]} ${c4.boss.name}`, species: c4.boss.species, add: grown(rnd, EPIC.boss), mustDie: true}};
+  const guard = {...guardFor(a, K, lair.kind, seat.at, EPIC.guard.seat), label: `логово «${lair.name}» — ${c4.boss.title[0]} ${c4.boss.name} и ${c4.boss.g === 'f' ? 'её' : 'его'} слуги`,
+    boss: {name: `${c4.boss.title[0]} ${c4.boss.name}`, g: c4.boss.g, species: c4.boss.species, add: grown(rnd, EPIC.boss), mustDie: true}};
   const Q = {name: A.name, acc: A.acc, g: A.g, epic: true, calamity: c4.id, hunt: 0, nextHunt: null, started: K.day, base: guard.strength,
     story: `${A.name} — дар бога, сотворившего мир. ${A.g === 'f' ? 'Она' : 'Он'} прош${A.g === 'f' ? 'ла' : 'ёл'} через три бедствия и лежал${A.g === 'f' ? 'а' : ''} в могиле последнего; теперь ${A.g === 'f' ? 'её' : 'его'} держит ${c4.boss.title[0]} ${c4.boss.name}, и ${c4.phase === 'rise' ? `новое бедствие — ${c4.label} — уже идёт` : `через ${Math.max(1, c4.riseAt - a.hist.year)} лет начнётся новое бедствие — ${c4.label}`}. Могилы старых боссов хранят, где искать.`,
     crown: {kind: 'seat', at: seat.at, i: seat.at, label: `логово «${lair.name}»`, guard, area: null, exact: false, seen: false, state: 'lost', carrier: null},
@@ -107,7 +107,7 @@ export function epicDay(a, K, r, say) {
   if (Q.crown.state !== 'carried' && Q.crown.guard) {
     const months = (K.day - Q.started) / 30, risen = c4?.phase === 'rise' ? G.risen : 1;
     Q.crown.guard.strength = Math.min(G.max * risen, Q.base * (1 + G.grow * months) * risen);
-    if (c4?.phase === 'rise' && !Q.risenTold) { Q.risenTold = true; say(`Пришла весть: ${c4.boss.title[0]} ${c4.boss.name} выступил${c4.boss.g === 'f' ? 'а' : ''} — началось новое бедствие. Его логово теперь стерегут вдвое злее.`, 'quest', false); }
+    if (c4?.phase === 'rise' && !Q.risenTold) { Q.risenTold = true; Q.risenDay = K.day; say(`Пришла весть: ${c4.boss.title[0]} ${c4.boss.name} выступил${c4.boss.g === 'f' ? 'а' : ''} — началось новое бедствие. Его логово теперь стерегут вдвое злее.`, 'quest', false); }
   }
   // the darkening by the clues found
   const want = Q.found >= 3 ? 3 : Q.found;
@@ -137,7 +137,7 @@ function send(a, K, r, kind, who, label, strength, say) {
     const ang = r() * Math.PI * 2, x = K.x + Math.cos(ang) * far, y = K.y + Math.sin(ang) * far;
     if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
     const i = cellAt(a, x, y); if (!a.f.land[i] || a.f.ocean[i]) continue;
-    B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: true, strength: Math.min(EPIC.guard.max, strength), pursuit: true, kind,
+    B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: true, strength: Math.min(EPIC.guard.max, strength), pursuit: true, kind, src: label.startsWith('слуги') ? 'mini' : 'hunt',
       label, ...(who.band ? {band: who.band} : {}), ...(who.beast ? {beast: who.beast} : {})});
     K.stats.pursuers = (K.stats.pursuers || 0) + 1;
     if (r() < 0.4) say(`За караваном идут ${label.replace(/^погоня: |^слуги: /, '')}.`, 'sight');

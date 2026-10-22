@@ -13,6 +13,7 @@ import {readLines, lineLevel, dateOf} from '../campaign/chronicle.js';
 import {CHRONICLE} from '../data/campaign.js';
 import {offerText, latinTitle} from './store.js';
 import {CAMPAIGN, RETINUE} from '../data/campaign.js';
+import {EPIC} from '../data/calamities.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS} from '../data/seasons.js';
@@ -224,7 +225,7 @@ export class CampaignView extends AtlasView {
     const a = this.atlas; if (!a) { $('campGo').disabled = true; return; }
     // which quest this world gives (campaign/quest.js makeQuest): its own story in an epic world, else the crown and three clues
     $('campQuestNote').textContent = epicQuest(a)
-      ? `Квест эпического мира: ${a.artifact.name} уйдёт к четвёртому боссу в дальнее логово; следы — могилы ${a.graves.length} боссов прошлых эпох. Через 25 лет начнётся новое бедствие.`
+      ? `Квест эпического мира: ${a.artifact.name} уйдёт к четвёртому боссу в дальнее логово; следы — могилы ${a.graves.length} боссов прошлых эпох. Через ${EPIC.doom} ${plural(EPIC.doom, 'год', 'года', 'лет')} начнётся новое бедствие${EPIC.years > EPIC.doom ? `; на поход — ${EPIC.years} ${plural(EPIC.years, 'год', 'года', 'лет')}` : ''}.`
       : 'Квест: корона там, где её потеряла история этого мира; три подсказки в его курганах, логовах, развалинах и городах.';
     const caps = capitals(a);
     $('campCaps').innerHTML = caps.length ? caps.map(c => `<div class="sv cap${c.town === this.capPick ? ' cur' : ''}" data-town="${c.town}"><span class="t"><i style="background:rgb(${WORLD_PEOPLES.get(c.people).color.join(',')})"></i><b>${esc(c.label)}</b> · ${esc(c.peopleLabel)}` +

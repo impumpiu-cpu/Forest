@@ -6,7 +6,8 @@ import {SEASONS} from '../data/seasons.js';
 import {SPECIES} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {CHRONICLE} from '../data/campaign.js';
-import {rank} from './march.js';
+import {rank, yearsOf} from './march.js';
+import {plural} from '../core/util.js';
 
 const SEASON_LIST = SEASONS.all();
 const season = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
@@ -39,7 +40,7 @@ export function chronicleText(a, K) {
   if (K.started) out.push(`Вышли: ${K.started.year}-й год, ${season(K.started.season)}.`);
   const crown = K.quest?.name || K.crown;
   if (crown) out.push(`Поручение: найти ${K.quest?.acc || crown}.${K.quest ? ` ${K.quest.story}` : ''}`);
-  const result = {won: 'вернулись с короной', lost: 'погибли все, кто вышел из столицы', timeout: 'за двадцать пять лет не вернулись', out: 'в пути', back: 'несут корону домой'}[K.phase] || K.phase;
+  const result = {won: 'вернулись с короной', lost: 'погибли все, кто вышел из столицы', timeout: `за ${yearsOf(K)} ${plural(yearsOf(K), 'год', 'года', 'лет')} не вернулись`, out: 'в пути', back: 'несут корону домой'}[K.phase] || K.phase;
   out.push(`Итог: ${result}; в пути ${Math.round(K.day ?? K.days ?? 0)} дней (${((K.day ?? K.days ?? 0) / 120).toFixed(1)} г.).`, '');
   out.push('Отряд:');
   for (const m of K.members) {

@@ -143,6 +143,8 @@ export function trade(a, K, t, st) {
   const room = Math.max(0, capacity(K) - load(K)), want = Math.max(0, Math.min(room, need * WANTS.foodDays - K.food));
   const n = Math.floor(Math.min(want, K.gold / price));
   if (n > 0) { K.food += n; K.gold = gold(K.gold - n * price); done.push(`купили ${pieces(n, 'паёк', 'пайка', 'пайков')} по ${gold(price)}`); }
+  const alms = Math.floor(Math.min(Math.max(0, capacity(K) - load(K)), need * WANTS.alms - K.food));
+  if (K.hungry > 0 && alms > 0) { K.food += alms; K.stats.alms = (K.stats.alms || 0) + 1; done.push(`голодных накормили даром — ${pieces(alms, 'паёк', 'пайка', 'пайков')} на дорогу`); }
   // the rest, in order of need
   for (const o of wants(a, K, t, st)) {
     const p = offerPrice(o, st);

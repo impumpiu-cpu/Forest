@@ -193,6 +193,8 @@ function spawnFoe(w) {
   if (S.kind === 'guard') for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
     const sq = w.squads?.[id]; if (sq) { sq.kind = 'mindless'; sq.goal = 'slaughter'; }
   }
+  // the beasts of the fourth's lair hold it to the last as well (agents/brains/predator.js); a grave's may be driven off
+  if (S.kind === 'guard' && F.boss?.mustDie) for (const g of group) if (SPECIES.get(g.species)?.predator) g.defend = true;
   // a boss (campaign/epic.js): the strongest of them, grown past its kind — named, at full health
   if (F.boss && group.length) {
     const own = group.filter(g => g.species === F.boss.species), b = (own.length ? own : group).slice().sort((p, q) => maxHp(q) - maxHp(p))[0];   // its own kind, if it came
@@ -296,8 +298,9 @@ export function campOutcome(w) {
   const n = C.foeObjs.length;
   const down = killed + taken.length + (S.kind === 'guard' ? fled : 0);   // a foe bound counts as one beaten; one that fled a stormed place, too
   // a storm with a boss in it is won only when the boss is dead (or bound)
-  // (a storm is won only by beating its guards: standing unhurt before them is not taking the place)
-  const won = (!n ? true : S.kind === 'guard' ? down > 0 && down >= lost && down * 2 >= n : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered) && bossDead !== false;
+  // (a storm is won only by beating its guards: standing unhurt before them is not taking the place; all of them beaten —
+  // taken, whatever it cost)
+  const won = (!n ? true : S.kind === 'guard' ? down >= n || (down > 0 && down >= lost && down * 2 >= n) : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered) && bossDead !== false;
   return {kind: S.kind, day: S.day, won, bossDead, members, beasts, food: round1(food), got, cargo, items, vehicles, plundered, stolen, taken,
     foes: {n, killed, taken: taken.length, fled, left: n - killed - fled - taken.length}, ticks: w.tick - C.start, lines: campLines(w)};
 }
