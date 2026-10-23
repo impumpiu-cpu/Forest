@@ -205,7 +205,7 @@ export const TABLES = [
     note: 'Что получается из формы × материала (data/items.js): итоговые числа и цена. Править — в «Формах» и «Материалах».',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('form', 'Форма', 'ref', {ref: 'forms'}), col('material', 'Материал', 'ref', {ref: 'materials'}),
-      col('tier', 'Ступень', 'int'), col('slot', 'Место', 'enum', {values: SLOTS}), col('blow', 'Тип удара', 'enum', {values: BLOWS}),
+      col('tier', 'Ступень', 'int'), col('slot', 'Место', 'enum', {values: SLOTS}), col('hands', 'Рук', 'int', {note: '1 — одноручное (вторая рука свободна: щит, вторая вещь), 2 — двуручное; у брони и плаща пусто'}), col('blow', 'Тип удара', 'enum', {values: BLOWS}),
       col('melee.dmg', 'Удар', 'num'), col('melee.cd', 'Пауза', 'int'), col('ranged.dmg', 'Выстрел', 'num'), col('ranged.range', 'Дальность', 'num'),
       col('armor', 'Броня', 'num'), col('block', 'Блок', 'num'), col('warmth', 'Тепло', 'num'), col('dur', 'Прочность', 'num', {infinite: true}), col('value', 'Цена', 'num'),
     ]},
