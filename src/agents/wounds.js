@@ -22,6 +22,7 @@ import {agentById} from './lookup.js';
 import {wake} from './attention.js';
 import {noteFallen} from './squad.js';
 import {HIT_LOCATIONS} from '../data/anatomy.js';
+import {degreeOf, passed, degreeValue} from '../data/checks.js';
 
 const luckOf = a => a.special?.L ?? NORM;
 // the colony's own falls; a foe's are counted apart (they may be taken captive: settlement/captives.js)
@@ -47,9 +48,12 @@ export function lethal(w, t, cause, by) {
   if (t.downed) tally(w, t).killed++;
   if (fallSpent(t) || !CAN_FALL(sp, t) || !DEATHBLOW.causes.includes(cause) || t.hp < -DEATHBLOW.overkill * maxHp(t)) { kill(w, t, cause, by); return false; }
   const L = luckOf(t);
-  if (w.rngs.combat() >= luckChance('survive', L)) { kill(w, t, cause, by); return false; }
+  // a check with four degrees (data/checks.js): a critical success may leave the wound clean, with no second check
+  const pSurvive = luckChance('survive', L), deg = degreeOf(w.rngs.combat(), pSurvive);
+  if (!passed(deg)) { kill(w, t, cause, by); return false; }
+  const sure = deg === 'critSuccess' && degreeValue('survive', 'critSuccess') >= 1;
   // the second check, made now and kept: what the wound will leave if the fallen is saved
-  const clean = w.rngs.combat() < luckChance('clean', L);
+  const clean = sure || w.rngs.combat() < luckChance('clean', L);
   const trauma = clean ? null : weighted(w.rngs.combat, traumasAt(t).map(x => [x.id, x.weight ?? 1]));
   fall(w, t, cause, by, trauma);
   return true;

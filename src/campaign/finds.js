@@ -11,6 +11,7 @@ import {LAIRS} from '../data/lairs.js';
 import {ITEMS} from '../data/items.js';
 import {RESOURCES} from '../data/resources.js';
 import {FINDS} from '../data/campaign.js';
+import {pickFirst} from '../data/chance.js';
 import {cellRegion} from './land.js';
 import {takeGear} from './fight.js';
 import {toolTier} from './baggage.js';
@@ -34,7 +35,7 @@ export const WHERE = {
 
 // a quiet morning: at most one find; → its line, or null. r — the campaign's stream of finds
 export function morningFind(a, K, r) {
-  const F = FINDS.find(f => r() < f.chance * WHERE[f.where](a, K.i));
+  const F = pickFirst(r, FINDS, f => f.chance * WHERE[f.where](a, K.i));   // the random table of finds (data/chance.js, mode first)
   if (!F) return null;
   const things = [];
   const g = Math.round(between(r, F.gold));

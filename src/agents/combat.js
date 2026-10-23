@@ -18,6 +18,8 @@ import {nearAgents} from './spatial.js';
 import {COMBAT, CAPS, DEFAULT_BLOW, ARMOR_VS_CAP, resistTo, traitOf} from '../data/balance/combat.js';
 import {drawPlace} from '../data/anatomy.js';
 import {CONDITIONS} from '../data/conditions.js';
+import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} from '../data/checks.js';
+import {NORM} from '../data/special.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
@@ -89,11 +91,23 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (mix) type = mix[0][0];
   else raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
   const block = blockAgainst(g, type, melee);
-  if (block > 0 && w.rngs.combat() < block) { wear(w, t, melee ? g.blockItem : g.coverItem); t.flash = 3; return 'blocked'; }
+  // the block is a check with four degrees (data/checks.js): a critical block wears the striker's weapon, a botched
+  // one lets the blow into the open (both 0 — as before)
+  let botched = 1;
+  if (block > 0) {
+    const deg = degreeOf(w.rngs.combat(), block);
+    if (passed(deg)) {
+      wear(w, t, melee ? g.blockItem : g.coverItem); t.flash = 3;
+      const v = deg === 'critSuccess' ? degreeValue('block', 'critSuccess') : 0;
+      if (v && melee && by.gear?.melee?.item) wear(w, by, by.gear.melee.item, v);
+      return 'blocked';
+    }
+    if (deg === 'critFail') botched = 1 + degreeValue('block', 'critFail');
+  }
   const crit = w.rngs.combat() < critChance(by);
   if (crit) { raw *= CRIT.mul + traitOf(q, 'vicious'); t.flash = 6; }
   const place = drawPlace(tsp, w.rngs.hits);
-  t.hitAt = place.id; raw *= place.dmg;
+  t.hitAt = place.id; raw *= place.dmg * botched;
   const pierce = 1 - traitOf(q, 'piercing');
   // a cut that bleeds, a blow that stuns (weapon qualities `bleed`, `stun`; data/conditions.js): a chance each, drawn
   // from the stream of places, and only for a weapon that has them — every other blow draws nothing more
@@ -157,7 +171,15 @@ export function attack(w, a, t) {
   if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
-  damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null});
+  // the blow as a check of Agility against a step of the ladder (data/checks.js): rolled only while one of its
+  // degrees does something — a full blow, or a miss that leaves the striker open
+  let full = 1;
+  if (degreesOn('melee')) {
+    const deg = degreeOf(w.rngs.combat(), checkChance(a.special?.A ?? NORM, DEGREE_CHECKS.melee.step));
+    if (deg === 'critSuccess') full = 1 + degreeValue('melee', 'critSuccess');
+    if (deg === 'critFail') a.cd += degreeValue('melee', 'critFail');
+  }
+  damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null});
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it
   if (g.melee.item) wear(w, a, g.melee.item);
   return true;
@@ -175,12 +197,15 @@ export function shoot(w, a, t) {
   if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
   wear(w, a, r.item);
   const skill = a.skill?.ranged ?? HIT.noSkill, moving = t.task?.id === 'bolt' || t.task?.id === 'chase' ? HIT.moving : 0;
-  const hit = w.rngs.combat() < HIT.base + HIT.skill * skill + (a.mods?.aim || 0) - (d / range) * HIT.far - moving;
+  // to hit is a check with four degrees (data/checks.js): success as always while the roll is under the chance
+  const deg = degreeOf(w.rngs.combat(), HIT.base + HIT.skill * skill + (a.mods?.aim || 0) - (d / range) * HIT.far - moving), hit = passed(deg);
+  if (deg === 'critFail') { const v = degreeValue('shot', 'critFail'); if (v) wear(w, a, r.item, v); }
   practice(a, 'ranged', LEARN.shot);   // a miss teaches too: the arrow did fly
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
-  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null), {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
+  const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
+  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
   return t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
 }
 

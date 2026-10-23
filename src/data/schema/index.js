@@ -71,6 +71,9 @@ import {RULES} from '../balance/rules.js';
 import {STRENGTH} from '../balance/creatures.js';
 import {JOBS} from '../jobs.js';
 import {RECIPES} from '../recipes.js';
+import {DIFFICULTY, DEGREES, DEGREE_NAMES, DEGREE_CHECKS, DEGREE_EFFECTS} from '../checks.js';
+import {CHANCE_MODES} from '../chance.js';
+import {FINDS} from '../campaign.js';
 import {NEEDS} from '../needs.js';
 import {THOUGHTS} from '../thoughts.js';
 import {TRAITS} from '../traits.js';
@@ -442,7 +445,7 @@ TABLES.push(
   autoTable({id: 'furniture', label: 'Мебель', group: 'Поселение', note: 'Мебель и её уют (data/furniture.js).', rows: () => FURNITURE.all()}),
   autoTable({id: 'luxury', label: 'Роскошь', group: 'Поселение', note: 'Украшения ювелира (data/luxury.js).', rows: () => LUXURY.all()}),
   autoTable({id: 'migrations', label: 'Приходы', group: 'Поселение', note: 'Кто и когда приходит на карту поселения (data/migrations.js).', rows: () => MIGRATIONS.all()}),
-  autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all()}),
+  autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all(), skip: ['chance']}),
   autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
     rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
   // Цены и бой
@@ -550,6 +553,34 @@ TABLES.push(
     note: 'Куда приходится удар (data/anatomy.js), как в Fallout 2d20: у каждого плана тела свои места — вес (как часто), × урона там, какие травмы оставляет смертельная рана там. Место бросается из своего потока случайностей и больше ничего в бою не сдвигает.',
     columns: [col('id', 'id'), col('plan', 'План тела', 'enum', {values: BODY_PLANS, edit: false}), col('label', 'Место'), col('weight', 'Вес', 'num', {min: 0}),
       col('dmg', 'Урон ×', 'num', {min: 0}), col('traumas', 'Травмы', 'ids', {ref: 'conditions'}), col('note', 'Описание')]},
+);
+
+// ── checks and chance (docs/NRI.md, этап 5): the ladder, the four degrees, and every random table in one place
+// the rows of all random tables, each with the object its numbers live in (`src`): a raid band's `chance`, a find, a trophy
+const randomRows = () => [
+  ...RAID_BANDS.all().map(b => ({key: `raids:${b.id}`, table: 'raids', mode: 'one', row: b.label, ctx: 'угроза, ночь', gives: `банда «${b.label}»`, src: b.chance, ...b.chance})),
+  ...FINDS.map(f => ({key: `finds:${f.id}`, table: 'finds', mode: 'first', row: f.id, ctx: `× место: ${f.where}`, gives: [f.gold ? `золото ${f.gold.join('–')}` : '', ...Object.keys(f.goods || {}), ...Object.keys(f.items || {})].filter(Boolean).join(', '), src: f, chance: f.chance})),
+  ...SPECIES.filter(sp => sp.trophies?.length).flatMap(sp => sp.trophies.map((e, k) => ({key: `trophies:${sp.id}:${k}`, table: 'trophies', mode: 'each', row: sp.label, ctx: '× удача добывших', gives: `${e.res} × ${e.n}${e.tier > 1 ? ` (тир ${e.tier})` : ''}`, src: e, chance: e.chance}))),
+];
+const RANDOM_TABLES = {raids: 'Кто приходит в набег (data/raids.js)', finds: 'Находки похода утром (data/campaign.js FINDS)', trophies: 'Редкие трофеи зверя (trophies вида)'};
+TABLES.push(
+  {id: 'difficulty', label: 'Лестница сложности', group: 'Словари', key: 'id', rows: () => DIFFICULTY.all(),
+    note: 'Ступени проверки, как DC в D&D (data/checks.js): буква против ступени — contest(буква, vs), ступень — как буква противника. При норме 5: пустяк 80%, легко 67%, средне 50%, трудно 33%, героически 20%.',
+    columns: [col('id', 'id'), col('label', 'Ступень'), col('vs', 'Как буква противника', 'num', {min: 0}), col('note', 'При норме 5')]},
+  {id: 'degreeRules', label: 'Степени успеха', group: 'Словари', ...grp({degrees: DEGREES}),
+    note: 'Четыре степени, как в Pathfinder 2 (data/checks.js): успех — пока бросок меньше шанса, как всегда; нижняя доля успехов (degrees.crit) — крит. успех, верхняя доля провалов (degrees.fumble) — крит. провал. Удар вблизи бросается против ступени «легко». Что дают крайние степени — «Последствия степеней».'},
+  {id: 'degreeEffects', label: 'Последствия степеней', group: 'Словари', key: 'id', rows: () => DEGREE_EFFECTS.all(),
+    note: 'Что добавляет крит. успех или крит. провал каждой проверки: выстрел, блок, удар вблизи, ремесло, смертельная рана. 0 — ничего (игра как раньше); число включает последствие.',
+    columns: [col('id', 'id'), col('check', 'Проверка', 'enum', {values: Object.fromEntries(Object.entries(DEGREE_CHECKS).map(([k, c]) => [k, c.label])), edit: false}),
+      col('degree', 'Степень', 'enum', {values: DEGREE_NAMES, edit: false}), col('effect', 'Что делает', 'text', {edit: false}), col('value', 'Значение', 'num', {min: 0}), col('note', 'Описание')]},
+  {id: 'randomTables', label: 'Таблицы случайностей', group: 'Словари', key: 'key', rows: randomRows,
+    // a raid band's numbers are its weight and conditions, a find's and a trophy's — its chance
+    target: (r, c) => ((r.table === 'raids' ? ['weight', 'threat', 'below', 'night', 'perNight'].includes(c.key) : c.key === 'chance') ? [r.src, c.key] : null),
+    note: 'Всё, что игра тянет из списка, в одном формате (data/chance.js): набеги — одна по весу (вес, с какой угрозы, ниже неё — below, только ночью глубже night, прибавка за ночь perNight); находки похода — первая, что выпала (шанс × место); трофеи зверя — каждая на свой шанс (× удача). Правка доходит до игры.',
+    columns: [col('key', 'Строка'), col('table', 'Таблица', 'enum', {values: RANDOM_TABLES, edit: false}), col('mode', 'Как тянут', 'enum', {values: CHANCE_MODES, edit: false}),
+      col('row', 'Что', 'text', {edit: false}), col('weight', 'Вес', 'num', {min: 0}), col('threat', 'С угрозы', 'num', {min: 0}), col('below', 'Ниже угрозы', 'num', {min: 0}),
+      col('night', 'Ночью глубже', 'num', {min: 0, max: 1}), col('perNight', 'За ночь +', 'num', {min: 0}), col('chance', 'Шанс', 'num', {min: 0, max: 1}),
+      col('ctx', 'От чего зависит', 'text', {edit: false}), col('gives', 'Что даёт', 'text', {edit: false})]},
 );
 
 export const tableById = id => TABLES.find(t => t.id === id);
