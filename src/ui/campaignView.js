@@ -12,7 +12,7 @@ import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chron
 import {readLines, lineLevel, dateOf} from '../campaign/chronicle.js';
 import {CHRONICLE} from '../data/campaign.js';
 import {offerText, latinTitle} from './store.js';
-import {CAMPAIGN, RETINUE} from '../data/campaign.js';
+import {CAMPAIGN, RETINUE, EPIC_SIZES} from '../data/campaign.js';
 import {EPIC} from '../data/calamities.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
@@ -52,8 +52,6 @@ const PHASE = {out: 'ищут корону', back: 'несут корону до
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 // a world whose quest is the epic one (campaign/quest.js makeQuest)
 const epicQuest = a => !!(a.cfg.epic && a.artifact && a.graves?.length && a.artifact.holder.kind !== 'caravan');
-// the epic world's sizes on this screen (the medium is the campaign's own)
-const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']];
 // where the making of an epic world is: the land, or the year of history and its era
 function epicProgress(a, sec) {
   if (!landDone(a) || !a.hist) return `Складывается земля… ${Math.round(sec)} с`;
@@ -101,6 +99,7 @@ export class CampaignView extends AtlasView {
     es.innerHTML = EPIC_SIZES.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.epicSize}">${l}</button>`).join('');
     es.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.epicSize = b.dataset.val; es.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
     $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6));
+    $('campEpicDice').addEventListener('click', () => { if (!this.making) $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6)); });
     $('campEpicGo').addEventListener('click', () => (this.making ? this.stopEpic() : this.makeEpic()));
     $('campNew').addEventListener('click', () => { this.halt(); this.atlas = null; this.worldId = null; this.setupMode(); this.refresh(); });
     $('campSave').addEventListener('click', () => this.saveRun());
@@ -184,6 +183,15 @@ export class CampaignView extends AtlasView {
     if (mode !== this.mode && this.atlas && !(this.atlas.campaign && !finished(this.atlas.campaign))) { this.atlas = null; this.worldId = null; this.capPick = null; }
     this.mode = mode;
     this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode();
+  }
+  // the quick start of the new menu (forest.html → index.html?go=epic): this seed and size, made at once
+  startEpic({seed, size} = {}) {
+    if (seed) $('campEpicSeed').value = String(seed).slice(0, 24);
+    if (size && EPIC_SIZES.some(([id]) => id === size)) {
+      this.epicSize = size;
+      $('campEpicSize').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === size)));
+    }
+    this.makeEpic();
   }
   // leaving the screen: the walk halts between seasons and waits
   // (a world left half-made is not walked: it is let go)

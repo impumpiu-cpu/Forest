@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тёплый Брод</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans+SC:wght@500;700&family=PT+Sans:wght@400;700&family=PT+Mono&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* the new menu (src/app/): what style.css does not have */
+  .app-screen[hidden]{display:none}
+  .app-screen{display:flex;flex-direction:column;gap:16px}
+  .launch-card.soon{opacity:.82}
+  .launch-card .soon-tag{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+  .app-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+  .app-head h2{font-family:var(--font-display);font-size:26px;letter-spacing:.04em;margin:0}
+  .app-plan{margin:0;padding-left:20px;color:var(--fg);display:flex;flex-direction:column;gap:4px}
+  .app-plan li::marker{color:var(--ember)}
+  .seed-row input{font:inherit;font-family:var(--font-mono);font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0}
+  #quickSize{align-self:flex-start}
+  .tables-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+  .tables-grid .lbl{font-family:var(--font-display);font-size:14px;letter-spacing:.05em;color:var(--muted)}
+  .tables-grid ul{margin:0;padding-left:18px;color:var(--muted)}
+  .tables-grid li b{color:var(--fg);font-weight:400}
+  .app-foot{color:var(--muted);font-size:12.5px}
+  .app-foot a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Тёплый Брод</h1>
+    <span class="build" id="buildTag"></span>
+    <p id="appInfo">Сотворите землю, заселите её и выведите караван за артефактом, пока не грянул катаклизм.</p>
+  </header>
+
+  <!-- ───────── the main menu ───────── -->
+  <section class="app-screen" id="home" aria-label="Главное меню">
+    <div class="launch">
+      <button type="button" class="launch-card soon" data-go="land">
+        <span class="tag">земля</span>
+        <b>Создать землю</b>
+        <span>Плиты, рельеф, моря, климат, реки и биомы — без народов и истории. Правка материка и климата, сохранение земли.</span>
+        <span class="soon-tag">в разработке · этап 8</span>
+      </button>
+      <button type="button" class="launch-card soon" data-go="settle">
+        <span class="tag">история</span>
+        <b>Заселение мира</b>
+        <span>Загрузить землю, высадить расы, монстров и логова, задать катаклизмы и мотать время на 5–100 лет.</span>
+        <span class="soon-tag">в разработке · этап 9</span>
+      </button>
+      <button type="button" class="launch-card" data-go="campaign">
+        <span class="tag">поход</span>
+        <b>Кампания</b>
+        <span>Караван из столицы идёт по живому миру из библиотеки за артефактом, который остановит грядущий катаклизм.</span>
+      </button>
+      <button type="button" class="launch-card" data-go="quick">
+        <span class="tag">всё сразу</span>
+        <b>Быстрый старт</b>
+        <span>Случайный мир с долгой историей, выбор столицы и поход — одной кнопкой.</span>
+      </button>
+    </div>
+    <div class="row">
+      <button type="button" data-go="settings">⚙ Настройки</button>
+      <a class="app-foot" href="index.html" title="Старые режимы для проверок">Технический полигон →</a>
+    </div>
+  </section>
+
+  <!-- ───────── quick start: the epic campaign of the old menu, with its seed in sight ───────── -->
+  <section class="app-screen" id="quick" hidden aria-labelledby="quickTitle">
+    <div class="app-head"><h2 id="quickTitle">Быстрый старт</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="menu-form">
+      <div class="field">
+        <span class="lbl">Сид мира</span>
+        <div class="row seed-row">
+          <input id="quickSeed" type="text" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Сид мира">
+          <button type="button" id="quickDice" title="Случайный сид" aria-label="Случайный сид">🎲</button>
+          <button type="button" id="quickCopy" title="Скопировать сид">Копировать</button>
+        </div>
+        <small id="quickSeedNote">Один и тот же сид даёт тот же мир и ту же историю: запишите его, если мир понравится.</small>
+      </div>
+      <div class="field"><span class="lbl">Размер</span><div class="seg" id="quickSize"></div></div>
+      <div class="field">
+        <small>Земля, затем три эпохи по 75–150 лет: дикая, древних народов и молодых. На среднем мире — минута-другая. Мир сам сохранится в библиотеку.</small>
+      </div>
+      <div class="row actions"><button type="button" id="quickGo" class="primary">Сотворить и выступить</button></div>
+    </div>
+  </section>
+
+  <!-- ───────── screens to come: what they will hold ───────── -->
+  <section class="app-screen" id="land" hidden aria-labelledby="landTitle">
+    <div class="app-head"><h2 id="landTitle">Создать землю</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card">
+      <span class="tag">в разработке · этап 8</span>
+      <ul class="app-plan">
+        <li>Генерация только земли: плиты, рельеф, уровень моря, температура, ветры, осадки, реки, биомы.</li>
+        <li>Терраморфинг: сдвинуть плиты, поднять или опустить плиту и участок.</li>
+        <li>Климат: температура полюсов и экватора.</li>
+        <li>После правки заново считаются руды, реки, озёра и биомы.</li>
+        <li>Сохранение земли — в библиотеку и файлом.</li>
+      </ul>
+      <div class="row"><button type="button" data-old="world">Пока — полигон «Мир» →</button></div>
+    </div>
+  </section>
+
+  <section class="app-screen" id="settle" hidden aria-labelledby="settleTitle">
+    <div class="app-head"><h2 id="settleTitle">Заселение мира</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card">
+      <span class="tag">в разработке · этап 9</span>
+      <ul class="app-plan">
+        <li>Загрузить сохранённую землю.</li>
+        <li>Расы: какие и где высадить. Монстры: кого и куда, ручное добавление логов. Катаклизмы: до трёх.</li>
+        <li>Промотка времени: +5 · +10 · +25 · +50 · +100 лет; между прогонами можно снова вмешаться. Эпох нет.</li>
+        <li>Летопись сбоку, сохранение мира с обитателями и летописью.</li>
+      </ul>
+      <div class="row"><button type="button" data-old="world">Пока — полигон «Мир» →</button></div>
+    </div>
+  </section>
+
+  <section class="app-screen" id="settings" hidden aria-labelledby="setTitle">
+    <div class="app-head"><h2 id="setTitle">Настройки</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card">
+      <span class="tag">таблицы · этап 2</span>
+      <p>Здесь будут все справочники игры — для изучения и правки ради экспериментов. Правки лягут слоем поверх исходных чисел, их можно сбросить или выгрузить файлом.</p>
+      <div class="tables-grid" id="tablesPlan"></div>
+    </div>
+  </section>
+
+  <p class="app-foot">Старые режимы (Мир, Карта, Кампания, Эпическая кампания) остаются в <a href="index.html">техническом полигоне</a> — <code>start.bat</code>.</p>
+</div>
+
+<script type="module" src="src/app/main.js"></script>
+</body>
+</html>

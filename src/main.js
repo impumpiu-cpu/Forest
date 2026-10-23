@@ -47,6 +47,9 @@ function buildResFilter() {
 }
 buildResFilter();
 let world = null, running = false;
+// opened from the new menu (forest.html): «← Главное меню» and Esc lead back there, not to the old launch screen
+const PARAMS = new URLSearchParams(location.search);
+const FROM_APP = PARAMS.get('from') === 'forest';
 
 const menu = new Menu({onStart: start, onResume: showGame, onPickCell: () => showAtlas(menu.cfg.cell?.ref || null)});
 // a cell picked on the world map becomes the land of a new settlement in the «Карта» menu (seam/cell.js)
@@ -59,6 +62,8 @@ function only(id) { screen = id; for (const s of SCREENS) $(s).hidden = s !== id
 
 // the main menu: the game loop stops (the world stays in memory), the world generation halts between frames
 function showLaunch() {
+  if (FROM_APP) { location.href = 'forest.html'; return; }
+  document.documentElement.classList.remove('deep');
   running = false; acc = 0;
   atlasView.stop(); campaignView.halt();
   hideEnd(); only('launch');
@@ -288,7 +293,12 @@ function runFrame(now) {
 }
 
 $('buildTag').textContent = `версия ${VERSION} · ${BUILD}`;
-showLaunch();
+// the new menu opens one of these screens straight away: ?go=epic&seed=…&size=… · ?go=campaign · ?go=world
+const GO = PARAMS.get('go');
+if (GO === 'epic') { showCampaign('epic'); campaignView.startEpic({seed: PARAMS.get('seed'), size: PARAMS.get('size')}); }
+else if (GO === 'campaign') showCampaign('library');
+else if (GO === 'world') showAtlas();
+else showLaunch();
 requestAnimationFrame(frame);
 
 // handle for headless tests and the browser console

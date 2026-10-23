@@ -10,11 +10,12 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<script>if (/[?&]go=/.test(location.search)) document.documentElement.classList.add("deep");</script>
 <div class="wrap">
   <header>
     <h1 id="colonyName">Тёплый Брод</h1>
     <span class="build" id="buildTag"></span>
-    <p id="worldInfo">Прототип локальной карты: поля температуры, огня и дыма считаются на сетке, поверх живут колонисты с потребностями и ходят по полям течения.</p>
+    <p id="worldInfo"></p>
   </header>
 
   <!-- ───────── launch: two polygons, the world and the local map; later they are stitched together ───────── -->
@@ -127,6 +128,7 @@
         <div class="field" id="campEpicField" hidden><span class="lbl">Новый эпический мир</span>
           <div class="row">
             <input id="campEpicSeed" type="text" maxlength="24" autocomplete="off" aria-label="Сид эпического мира">
+            <button type="button" id="campEpicDice" title="Случайный сид" aria-label="Случайный сид">🎲</button>
             <div class="seg" id="campEpicSize"></div>
             <button type="button" id="campEpicGo">Сотворить</button>
           </div>
@@ -380,7 +382,7 @@
     </aside>
   </div>
 
-  <section class="explain" id="explain">
+  <section class="explain" id="explain" hidden>
     <div class="card"><span class="tag">слой 1 · поля</span><h3>Тепло, огонь, дым</h3><p>Каждый тик температура расплывается к соседям (диффузия) и сносится ветром (полулагранжева адвекция, как в stable fluids). Горящая клетка греет соседей и поджигает их, когда те перегреваются. Лес горит охотно, трава — неохотно.</p></div>
     <div class="card"><span class="tag">слой 2 · навигация</span><h3>Поля течения</h3><p>Для лагеря, ягод, леса, пожара и края карты строится карта расстояний алгоритмом Дейкстры. Огонь, жар и дым делают клетки «дорогими», поэтому люди обходят пожар. Агент просто спускается по полю к цели.</p></div>
     <div class="card"><span class="tag">слой 3 · агенты</span><h3>Utility AI</h3><p>У колониста есть потребности, любимая работа и черты характера. Он оценивает дела (есть, спать, греться, собирать, рубить, тушить, драться) и берёт самое срочное. Тепло он получает из поля температуры, поэтому костёр работает через физику.</p></div>

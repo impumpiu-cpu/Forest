@@ -1,4 +1,4 @@
-// A static server with no dependencies: `node tools/serve.mjs [port]`.
+// A static server with no dependencies: `node tools/serve.mjs [port] [--page=forest.html] [--no-open]`.
 // Serves the project folder, picks the next free port if the one asked for is busy, and opens the browser.
 import {createServer} from 'node:http';
 import {createReadStream, statSync} from 'node:fs';
@@ -27,11 +27,12 @@ function open(url) {
   try { spawn(cmd[0], cmd[1], {detached: true, stdio: 'ignore'}).unref(); } catch (e) { /* no browser to open; the URL is printed */ }
 }
 
-let port = +(process.argv[2] || 8000);
+const PAGE = (process.argv.find(x => x.startsWith('--page=')) || '').slice(7).replace(/^\/+/, '');
+let port = +(process.argv.slice(2).find(x => /^\d+$/.test(x)) || 8000);
 const listen = () => server.listen(port, '127.0.0.1');
 server.on('error', e => { if (e.code === 'EADDRINUSE' && port < 8020) { port++; listen(); } else throw e; });
 server.on('listening', () => {
-  const url = `http://localhost:${port}/`;
+  const url = `http://localhost:${port}/${PAGE}`;
   console.log(`Тёплый Брод: ${url}  (закройте это окно, чтобы остановить сервер)`);
   if (!process.argv.includes('--no-open')) open(url);
 });

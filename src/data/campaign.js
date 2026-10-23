@@ -159,3 +159,6 @@ export const MINE = {every: 40, maxDays: 6, quit: 1, room: 6, food: 8, strength:
   // gems ~1, silver hardly any, gold sand ~4 for the one panner on a level-1 river)
   auto: {bronze: 0.3, iron: 2.5, silver: 0.1, gems: 0.35, mithril: 0.04, placer: 4}};
 
+
+// the epic world's sizes (the epic campaign of the old menu and the quick start of the new one; the medium is the campaign's own)
+export const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']];
