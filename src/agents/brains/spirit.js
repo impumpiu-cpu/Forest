@@ -23,6 +23,7 @@ import {agentInZone} from '../../settlement/zone.js';
 import {tempAt} from '../../world/heat.js';
 import {liveById} from '../lookup.js';
 import {wake} from '../attention.js';
+import {heatHarm} from '../body.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -124,8 +125,7 @@ export const spiritBrain = {
   id: 'spirit',
   step(w, a) {
     const sp = SPECIES.get(a.species), S = sp.spirit, i = cellOf(w, a), T = tempAt(w, i);
-    if (T > sp.heatHarm) {
-      a.hp -= Math.min(0.02, (T - sp.heatHarm) * 0.0002);
+    if (heatHarm(a, sp, T, 'spirit')) {
       if (a.hp <= 0) { kill(w, a, 'огня'); return; }
       escapeHeat(w, a, 1.2); return;
     }

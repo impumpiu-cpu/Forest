@@ -13,6 +13,7 @@ import {TASKS} from '../tasks.js';
 import {kill, maxHp} from '../agent.js';
 import {tempAt} from '../../world/heat.js';
 import {liveById} from '../lookup.js';
+import {heatHarm} from '../body.js';
 
 // how close to the camp fire the caravan sets up (cells along the camp flow field)
 const CAMP_AT = 6;
@@ -31,7 +32,7 @@ export const caravanBrain = {
   step(w, a) {
     const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a));
     if (a.cd > 0) a.cd--;
-    if (T > sp.heatHarm) { a.hp -= Math.min(0.006, (T - sp.heatHarm) * 0.00005); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
+    if (heatHarm(a, sp, T, 'caravan')) { if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (T > 50 || nearFire(w, a, 1.5)) { escapeHeat(w, a); return; }
     if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + 0.0002);
 

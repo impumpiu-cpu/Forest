@@ -23,6 +23,7 @@ import {tempAt} from '../../world/heat.js';
 import {liveById} from '../lookup.js';
 import {herdOf, herdAlarm, toPatch, nerveOf, calmHerders} from '../wildHerd.js';
 import {hpShare} from '../agent.js';
+import {heatHarm} from '../body.js';
 // a bull this bold (agents/wildHerd.js nerve) stands up for its herd
 const BULL = 1.15;
 
@@ -74,7 +75,7 @@ export const muleBrain = {
   step(w, a) {
     const sp = SPECIES.get(a.species), M = sp.mule, i = cellOf(w, a), T = tempAt(w, i);
     if (a.cd > 0) a.cd--;
-    if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
+    if (heatHarm(a, sp, T, 'beast')) { if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
 
     const H = herdOf(w, a);

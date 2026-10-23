@@ -84,6 +84,10 @@ export function makeItem(formId, matId) {
   if (form.tool) d.tool = Object.fromEntries(Object.entries(form.tool).map(([job, m]) => [job, +(1 + (m - 1) * r('work')).toFixed(3)]));
   if (form.carry) d.carry = form.carry;
   if (form.holds) d.holds = {...form.holds};
+  // weapon qualities (data/balance/combat.js WEAPON_QUALITIES): the form's and the material's, summed
+  const q = {};
+  for (const src of [form.qualities, mat.qualities]) for (const [k, v] of Object.entries(src || {})) q[k] = (q[k] || 0) + v;
+  if (Object.keys(q).length) d.qualities = q;
   d.dur = Number.isFinite(form.dur) ? Math.round(form.dur * r('dur') / 5) * 5 : form.dur;
   d.value = priceOf(form, mat, d);
   for (const [k, v] of Object.entries(mat.flags || {})) d[k] = v;

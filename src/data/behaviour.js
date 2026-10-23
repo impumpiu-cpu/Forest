@@ -90,6 +90,15 @@ export const GEAR = {
   second: 0.05, swap: 0.12,
 };
 
-// Heat that harms (agents/body.js): above a species' `heatHarm` a creature loses `perDegree` of health a tick for
-// every degree, at most `max`
-export const HEAT = {perDegree: 0.00004, max: 0.005};
+// Heat that harms (agents/body.js heatHarm, the one rule for every creature): above a species' `heatHarm` a creature
+// loses `perDegree` of health a tick for every degree, at most `max`, × its answer to fire (`resist.fire`, the table
+// «Урон по видам»). The profiles by who it is: a colonist (agents/body.js), a spirit, a beast (livestock, grazers,
+// mules), a raider and an undead raider, a trader of a caravan.
+export const HEAT = {
+  colonist: {perDegree: 0.00004, max: 0.005},
+  spirit: {perDegree: 0.0002, max: 0.02},
+  beast: {perDegree: 0.0001, max: 0.01},
+  raider: {perDegree: 0.00005, max: 0.006},
+  undead: {perDegree: 0.0001, max: 0.012},
+  caravan: {perDegree: 0.00005, max: 0.006},
+};

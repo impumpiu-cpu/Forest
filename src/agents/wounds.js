@@ -21,12 +21,21 @@ import {esc, g, weighted} from '../core/util.js';
 import {agentById} from './lookup.js';
 import {wake} from './attention.js';
 import {noteFallen} from './squad.js';
+import {HIT_LOCATIONS} from '../data/anatomy.js';
 
 const luckOf = a => a.special?.L ?? NORM;
 // the colony's own falls; a foe's are counted apart (they may be taken captive: settlement/captives.js)
 const tally = (w, a) => (a.faction === 'colony' ? (w.chronicle.falls ||= {down: 0, saved: 0, bled: 0, killed: 0, traumas: 0}) : (w.chronicle.foeFalls ||= {down: 0, bled: 0, killed: 0}));
 
 export const critChance = by => luckChance('crit', luckOf(by));
+
+// the traumas a deadly wound may leave where the last blow landed (data/anatomy.js `traumas` of the place); all of
+// them when the place is not known (a save from before places were drawn)
+export function traumasAt(t) {
+  const all = WOUNDS.filter(x => x.trauma), place = t.hitAt && HIT_LOCATIONS.has(t.hitAt) ? HIT_LOCATIONS.get(t.hitAt) : null;
+  const here = place ? all.filter(x => place.traumas.includes(x.id)) : [];
+  return here.length ? here : all;
+}
 
 // still healing the wound of an earlier fall: luck is spent until it closes
 export const fallSpent = a => !!a.downed || (a.wounds || []).some(x => x.id === 'grave');
@@ -41,7 +50,7 @@ export function lethal(w, t, cause, by) {
   if (w.rngs.combat() >= luckChance('survive', L)) { kill(w, t, cause, by); return false; }
   // the second check, made now and kept: what the wound will leave if the fallen is saved
   const clean = w.rngs.combat() < luckChance('clean', L);
-  const trauma = clean ? null : weighted(w.rngs.combat, WOUNDS.filter(x => x.trauma).map(x => [x.id, x.weight ?? 1]));
+  const trauma = clean ? null : weighted(w.rngs.combat, traumasAt(t).map(x => [x.id, x.weight ?? 1]));
   fall(w, t, cause, by, trauma);
   return true;
 }

@@ -16,7 +16,8 @@ import {STATS} from '../special.js';
 import {CURVES, CURVE_GROUPS, SHAPES, curveAt} from '../curves.js';
 import {BIOMES, BIOME_KINDS, RARITY} from '../biomes.js';
 import {MATERIALS, FORMS, PRICES} from '../balance/index.js';
-import {BLOWS} from '../balance/combat.js';
+import {BLOWS, DAMAGE_TYPES, DAMAGE_KINDS, DELIVERY, WEAPON_QUALITIES} from '../balance/combat.js';
+import {BODY_PLANS, HIT_LOCATIONS, planOf} from '../anatomy.js';
 import {MARKS, MARK} from '../balance/marks.js';
 import {QUALITY} from '../quality.js';
 import {ITEMS, rebuildItems} from '../items.js';
@@ -98,7 +99,6 @@ const SHEET_X = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 30, 50, 
 const keysOf = obj => ({has: k => Object.prototype.hasOwnProperty.call(obj, k)});
 const MINDS = {beast: 'зверь', semi: 'полуразумный', sentient: 'разумный'};
 const SLOTS = {hand: 'рука', body: 'тело', back: 'спина'};
-const RESIST = {pierce: 'колющий', slash: 'рубящий', blunt: 'дробящий', melee: 'вблизи', ranged: 'издали'};
 const labels = list => (list || []).map(x => x.label).join(', ');
 
 // the creature columns shared by races, monsters and beasts (data/balance/creatures.js)
@@ -169,7 +169,6 @@ export const TABLES = [
       col('brain', 'Поведение'),
       col('habitat', 'Биомы обитания', 'map', {ref: 'biomes', values: RARITY, note: 'как часто встречается: часто · обычно · редко · очень редко'}),
       ...body,
-      col('resist', 'Тело против ударов', 'map', {ref: keysOf(RESIST), min: 0, note: '× урона по типу и по способу'}),
       col('weakTo', 'Боится', 'ids'), col('relativeStats', 'Статы типичного зверя', 'bool'), col('nocturnal', 'Ночной', 'bool'), col('undead', 'Без жизни', 'bool'),
     ]},
   // ── names: one place for all of them (data/names.js); an edit puts the new list into what the game reads (`after`)
@@ -229,7 +228,7 @@ export const TABLES = [
       col('rarity', 'Редкость', 'enum', {values: PRICES.ITEMS.rarity}), col('tech', 'Технология', 'ref', {ref: 'techs', computed: true, note: 'кузнецы города работают металл, если держава её знает'}), col('resource', 'Ресурс', 'ref', {ref: RESOURCES}), col('amount', 'Ресурса на часть', 'num', {min: 0}),
       col('labour', 'Труд ×', 'num', {min: 0}), col('dmg', 'Урон ×', 'num', {min: 0}), col('swing', 'Пауза ×', 'num', {min: 0}), col('dur', 'Прочность ×', 'num', {min: 0}),
       col('work', 'Инструмент ×', 'num', {min: 0}), col('armor', 'Броня ×', 'num', {min: 0}), col('block', 'Блок ×', 'num', {min: 0}), col('warmth', 'Тепло ×', 'num', {min: 0}),
-      col('weight', 'Тяжесть ×', 'num', {min: 0}), col('color', 'Цвет', 'color'),
+      col('weight', 'Тяжесть ×', 'num', {min: 0}), col('color', 'Цвет', 'color'), col('qualities', 'Свойства оружия', 'map', {ref: 'weaponQualities', min: 0, note: 'пробивное, жестокое, длинное… (словарь «Свойства оружия»)'}),
     ]},
   {id: 'forms', label: 'Формы', group: 'Вещи', key: 'id', rows: () => Object.entries(FORMS).map(([id, f]) => ({id, ...f, title: f.names?.[f.ref]?.[0] ?? f.name?.(MATERIALS[f.ref])?.[0] ?? id})),
     target: (r, c) => [FORMS[r.id], c.key], after: rebuildItems,
@@ -246,7 +245,7 @@ export const TABLES = [
       col('warmth', 'Тепло', 'num', {min: 0}), col('speed', 'Скорость ×', 'num', {min: 0}), col('carry', 'Ноша +', 'num', {min: 0}),
       col('dur', 'Прочность', 'num', {min: 0, infinite: true}),
       col('parts', 'Части', 'map', {ref: {has: k => k === 'material' || RESOURCES.has(k)}, min: 0}), col('work', 'Труд', 'int', {min: 0}),
-      col('tradeOnly', 'Только у торговцев', 'bool'), col('name', 'Имя из материала', 'formula'),
+      col('tradeOnly', 'Только у торговцев', 'bool'), col('qualities', 'Свойства оружия', 'map', {ref: 'weaponQualities', min: 0, note: 'пробивное, жестокое, длинное… (словарь «Свойства оружия»)'}), col('name', 'Имя из материала', 'formula'),
     ]},
   // ── materials of a kind (data/kinds.js): what a family is made of, and what each race may do with each
   {id: 'woods', label: 'Породы деревьев', group: 'Вещи', key: 'id', rows: () => WOODS.all(),
@@ -289,6 +288,7 @@ export const TABLES = [
       col('tier', 'Ступень', 'int'), col('slot', 'Место', 'enum', {values: SLOTS}), col('hands', 'Рук', 'int', {note: '1 — одноручное (вторая рука свободна: щит, вторая вещь), 2 — двуручное; у брони и плаща пусто'}), col('blow', 'Тип удара', 'enum', {values: BLOWS}),
       col('melee.dmg', 'Удар', 'num'), col('melee.cd', 'Пауза', 'int'), col('ranged.dmg', 'Выстрел', 'num'), col('ranged.range', 'Дальность', 'num'),
       col('armor', 'Броня', 'num'), col('block', 'Блок', 'num'), col('warmth', 'Тепло', 'num'), col('dur', 'Прочность', 'num', {infinite: true}), col('value', 'Цена', 'num'),
+      col('qualities', 'Свойства оружия', 'map', {ref: 'weaponQualities', note: 'формы и материала вместе'}),
     ]},
 
   // ── Народы
@@ -523,6 +523,27 @@ TABLES.push(
   fix(autoTable({id: 'resources', label: 'Ресурсы', group: 'Поселение', rows: () => RESOURCES.all(), whole: {effects: EFFECTS_COL},
     note: 'Ресурсы склада (data/resources.js): теги (по «Тегам»), сытость, порча, сколько уносят, сколько держать, место в обозе, топливо, что даёт ключ на складе (effects). Цена и стопка — в «Ценах ресурсов».'}),
   {tags: {type: 'ids', ref: tagIds('resource')}, color: {edit: false}, mapColor: {edit: false}}),
+);
+
+// ── the fight (docs/NRI.md, этап 3): kinds of harm and how each body takes them, weapon qualities, where blows land
+const HARM = [...DAMAGE_TYPES.map(d => [d.id, d.label]), ...Object.entries(DELIVERY)];
+TABLES.push(
+  {id: 'damageTypes', label: 'Типы урона', group: 'Словари', key: 'id', rows: () => DAMAGE_TYPES,
+    note: 'Удары, стихии и погибели (data/balance/combat.js DAMAGE_TYPES): чем наносится каждый. Как каждое тело его держит — «Урон по видам».',
+    columns: [col('id', 'id'), col('kind', 'Вид', 'enum', {values: DAMAGE_KINDS, edit: false}), col('label', 'Название'), col('source', 'Чем наносится')]},
+  {id: 'damageMatrix', label: 'Урон по видам', group: 'Существа', key: 'id',
+    rows: () => SPECIES.all().map(sp => ({id: sp.id, label: sp.label, plan: planOf(sp), resist: sp.resist})),
+    target: (r, c) => [SPECIES.get(r.id), c.key],
+    note: 'Сколько урона каждого вида получает тело (× урона; пусто — 1): колющий, рубящий, дробящий, огонь, холод, яд, порча, серебро, святость, и отдельно вблизи и издали (resist, data/balance/creatures.js). Огонь — жар клетки, холод — мороз без тепла, яд — укус, серебро — посеребрённый клинок сверх страха серебра; у порчи и святости источника пока нет. План тела — по нему места попадания.',
+    columns: [col('id', 'id'), col('label', 'Кто', 'text', {edit: false}), col('plan', 'План тела', 'enum', {values: BODY_PLANS}),
+      ...HARM.map(([id, label]) => col(`resist.${id}`, label, 'num', {min: 0}))]},
+  {id: 'weaponQualities', label: 'Свойства оружия', group: 'Словари', key: 'id', rows: () => WEAPON_QUALITIES,
+    note: 'Свойства со значением, как в Fallout 2d20 (data/balance/combat.js WEAPON_QUALITIES): форма и материал дают их (столбец «Свойства оружия» в «Формах» и «Материалах»), вещь несёт сумму. «Работает» — игра читает его сейчас; кровопускающее и оглушающее ждут состояний (этап 4).',
+    columns: [col('id', 'id'), col('label', 'Название'), col('unit', 'Значение', 'text', {edit: false}), col('live', 'Работает', 'bool', {edit: false}), col('reads', 'Что делает'), col('note', 'Описание')]},
+  {id: 'hitLocations', label: 'Места попадания', group: 'Существа', key: 'id', rows: () => HIT_LOCATIONS.all(),
+    note: 'Куда приходится удар (data/anatomy.js), как в Fallout 2d20: у каждого плана тела свои места — вес (как часто), × урона там, какие травмы оставляет смертельная рана там. Место бросается из своего потока случайностей и больше ничего в бою не сдвигает.',
+    columns: [col('id', 'id'), col('plan', 'План тела', 'enum', {values: BODY_PLANS, edit: false}), col('label', 'Место'), col('weight', 'Вес', 'num', {min: 0}),
+      col('dmg', 'Урон ×', 'num', {min: 0}), col('traumas', 'Травмы', 'ids', {ref: 'wounds'}), col('note', 'Описание')]},
 );
 
 export const tableById = id => TABLES.find(t => t.id === id);

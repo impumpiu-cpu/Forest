@@ -12,6 +12,7 @@ import {tempAt} from '../../world/heat.js';
 import {nearAgents} from '../spatial.js';
 import {herdOf, herdAlarm, bolts, toPatch, threatsNear, calmHerders} from '../wildHerd.js';
 import {hpShare} from '../agent.js';
+import {heatHarm} from '../body.js';
 
 // a herder holding out hay close by: it stops and sniffs at it
 const hay = (w, a) => calmHerders(w).some(o => o.task?.tame === a.id && (o.x - a.x) ** 2 + (o.y - a.y) ** 2 < 9);
@@ -47,7 +48,7 @@ export const grazerBrain = {
   id: 'grazer',
   step(w, a) {
     const sp = SPECIES.get(a.species), i = cellOf(w, a), T = tempAt(w, i);
-    if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
+    if (heatHarm(a, sp, T, 'beast')) { if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, sp.flee.sprint); return; }
     const H = herdOf(w, a);
     if (H) { herdStep(w, a, sp, H, i); return; }

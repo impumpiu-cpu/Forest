@@ -15,7 +15,7 @@ import {esc} from '../core/util.js';
 import {think} from './mind.js';
 import {qualityOf} from '../data/quality.js';
 import {season} from '../data/seasons.js';
-import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS} from '../data/balance/combat.js';
+import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS, traitOf} from '../data/balance/combat.js';
 import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 import {MARKS, MARK, markable} from '../data/balance/marks.js';
 import {WOODS, mayUse, useOf, KIND_LAND} from '../data/kinds.js';
@@ -155,13 +155,16 @@ export function recalcGear(a) {
   if (!a.equip) { a.gear = g; return g; }
   for (const it of handItems(a)) {
     const d = def(it);
-    if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null};
-    if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it};
+    if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null, ...(d.qualities ? {q: d.qualities} : {})};
+    if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it, ...(d.qualities ? {q: d.qualities} : {})};
     if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs || null; }
     // a shot is caught only by what covers (a shield), with `cover` of its block (forms.js)
     if ((d.block || 0) * (d.cover || 0) > g.cover) { g.cover = d.block * d.cover; g.coverItem = it; g.coverVs = d.vs || null; }
     if (d.speed) g.speed *= d.speed;
   }
+  // a parrying weapon in hand adds to the block against blows (data/balance/combat.js WEAPON_QUALITIES)
+  const parry = handItems(a).reduce((s, it) => s + traitOf(def(it).qualities, 'parry'), 0);
+  if (parry) g.parry = parry;
   if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;
   const body = a.equip.body;
   if (body) { const d = def(body); g.armor = d.armor || 0; g.armorVs = d.vs || null; g.warmth = d.warmth || 0; if (d.speed) g.speed *= d.speed; }
@@ -181,7 +184,7 @@ function removeEverywhere(a, inst) {
 // wear an item down; when it breaks it is gone for good
 export function wear(w, a, inst, amount = 1) {
   if (!inst || !Number.isFinite(inst.dur)) return;
-  inst.dur -= amount * (a.faction === 'colony' ? w.mods.mul.wear : 1);
+  inst.dur -= amount * (a.faction === 'colony' ? w.mods.mul.wear : 1) * (1 + traitOf(def(inst).qualities, 'unreliable'));
   if (inst.dur > 0) return;
   removeEverywhere(a, inst);
   recalcGear(a);
