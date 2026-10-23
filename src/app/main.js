@@ -4,7 +4,7 @@
 // comes back here. docs/TABLE.md, «Новое меню».
 import {EPIC_SIZES} from '../data/campaign.js';
 import {VERSION} from '../version.js';
-import {TABLES_PLAN} from './tables.js';
+import {TablesView} from './tablesView.js';
 
 const $ = id => document.getElementById(id);
 const SCREENS = ['home', 'quick', 'land', 'settle', 'settings'];
@@ -18,6 +18,7 @@ let screen = 'home';
 function show(id) {
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
+  if (id === 'settings') tables.show();
   window.scrollTo(0, 0);
 }
 
@@ -61,8 +62,9 @@ $('quickGo').addEventListener('click', () => {
   old('epic', {seed: seedBox.value.trim(), size: quick.size});
 });
 
-// ── settings: the tables to come (stage 2 builds them from src/data/schema/)
-$('tablesPlan').innerHTML = TABLES_PLAN.map(g => `<div><span class="lbl">${g.group}</span><ul>${g.tables.map(t => `<li><b>${t}</b></li>`).join('')}</ul></div>`).join('');
+// ── settings: the tables of src/data/schema/, read only (stage 2)
+const tables = new TablesView();
 
 $('buildTag').textContent = `версия ${VERSION}`;
-show('home');
+// forest.html#settings and the like open that screen
+show(SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');

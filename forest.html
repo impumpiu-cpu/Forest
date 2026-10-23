@@ -20,10 +20,44 @@
   .app-plan li::marker{color:var(--ember)}
   .seed-row input{font:inherit;font-family:var(--font-mono);font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0}
   #quickSize{align-self:flex-start}
-  .tables-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-  .tables-grid .lbl{font-family:var(--font-display);font-size:14px;letter-spacing:.05em;color:var(--muted)}
-  .tables-grid ul{margin:0;padding-left:18px;color:var(--muted)}
-  .tables-grid li b{color:var(--fg);font-weight:400}
+  /* «Настройки → Таблицы» (src/app/tablesView.js) */
+  .tables-shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}
+  .tables-nav{display:flex;flex-direction:column;gap:10px;position:sticky;top:12px}
+  .tables-nav .grp{display:flex;flex-direction:column;gap:2px}
+  .tables-nav .grp > span{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted);padding:2px 8px}
+  .tables-nav button{text-align:left;border:0;background:transparent;padding:4px 8px;display:flex;justify-content:space-between;gap:8px}
+  .tables-nav button small{color:var(--muted);font-family:var(--font-mono);font-size:11px}
+  .tables-nav button[aria-current="true"]{background:var(--ember);color:#1b130a;font-weight:700}
+  .tables-nav button[aria-current="true"] small{color:#1b130a}
+  .tables-main{display:flex;flex-direction:column;gap:10px;min-width:0}
+  .tables-main h3{font-family:var(--font-display);font-size:20px;letter-spacing:.04em;margin:0}
+  .tables-main .note{color:var(--muted);margin:0;max-width:90ch}
+  .tbl-tools input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 10px;flex:1 1 200px;min-width:0}
+  .tbl-tools .count{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+  .tbl-scroll{overflow:auto;max-height:68vh;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+  table.tbl{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content;min-width:100%}
+  table.tbl th,table.tbl td{padding:4px 8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;text-align:left;max-width:320px}
+  table.tbl th{position:sticky;top:0;z-index:2;background:var(--panel);font-weight:700;cursor:pointer;white-space:nowrap;user-select:none}
+  table.tbl th .k{display:block;font-family:var(--font-mono);font-weight:400;font-size:10.5px;color:var(--muted)}
+  table.tbl th.calc{font-style:italic}
+  table.tbl th[aria-sort="ascending"]::after{content:" ▲";color:var(--ember)}
+  table.tbl th[aria-sort="descending"]::after{content:" ▼";color:var(--ember)}
+  table.tbl td:first-child,table.tbl th:first-child{position:sticky;left:0;background:var(--panel);z-index:1;font-family:var(--font-mono)}
+  table.tbl th:first-child{z-index:3}
+  table.tbl tr:hover td{background:#22261b}
+  table.tbl td.num{text-align:right;font-family:var(--font-mono);white-space:nowrap}
+  table.tbl td.calc{color:var(--muted);font-style:italic}
+  table.tbl .chips{display:flex;flex-wrap:wrap;gap:2px 8px}
+  table.tbl .chips span{white-space:nowrap}
+  table.tbl .chips b{font-weight:400;color:var(--muted);margin-right:3px}
+  table.tbl .sp{display:grid;grid-template-columns:repeat(7,auto);gap:0 8px;font-family:var(--font-mono);white-space:nowrap}
+  table.tbl .sp b{color:var(--muted);font-weight:400}
+  table.tbl code{font-family:var(--font-mono);font-size:11.5px;white-space:pre-wrap;color:#cfd8a8}
+  table.tbl .sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line);vertical-align:-2px;margin-right:5px}
+  .tbl-check{font-size:12.5px;color:var(--muted)}
+  .tbl-check.bad{color:#f0b0b2}
+  .tbl-check details{margin-top:4px}
+  @media (max-width:760px){.tables-shell{grid-template-columns:1fr}.tables-nav{position:static;flex-direction:row;flex-wrap:wrap}.tables-nav .grp{flex-direction:row;flex-wrap:wrap;align-items:center}}
   .app-foot{color:var(--muted);font-size:12.5px}
   .app-foot a{color:var(--muted)}
 </style>
@@ -121,10 +155,22 @@
 
   <section class="app-screen" id="settings" hidden aria-labelledby="setTitle">
     <div class="app-head"><h2 id="setTitle">Настройки</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
-    <div class="card">
-      <span class="tag">таблицы · этап 2</span>
-      <p>Здесь будут все справочники игры — для изучения и правки ради экспериментов. Правки лягут слоем поверх исходных чисел, их можно сбросить или выгрузить файлом.</p>
-      <div class="tables-grid" id="tablesPlan"></div>
+    <div class="tables-shell">
+      <nav class="tables-nav card" id="tablesNav" aria-label="Таблицы"></nav>
+      <div class="tables-main card">
+        <span class="tag">таблицы · только чтение</span>
+        <h3 id="tblTitle"></h3>
+        <p class="note" id="tblNote"></p>
+        <div class="row tbl-tools">
+          <input id="tblFilter" type="search" placeholder="Фильтр по строкам…" aria-label="Фильтр по строкам">
+          <span class="count" id="tblCount"></span>
+          <button type="button" id="tblCsv" title="Таблица в файл .csv (Excel, Google Таблицы)">CSV</button>
+          <button type="button" id="tblJson" title="Таблица в файл .json">JSON</button>
+        </div>
+        <div class="tbl-scroll"><table class="tbl" id="tbl"></table></div>
+        <div class="tbl-check" id="tblCheck" role="status"></div>
+        <small class="note">Щелчок по заголовку — сортировка. Курсив — вычисляемое: его считает игра, править его нельзя. Правка таблиц для экспериментов появится на этапе 3.</small>
+      </div>
     </div>
   </section>
 
