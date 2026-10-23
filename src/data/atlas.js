@@ -21,3 +21,16 @@ export const ATLAS_LAND = [
 export const SEASON_DAYS = 30, SEASONS_PER_YEAR = 4, YEAR_DAYS = SEASON_DAYS * SEASONS_PER_YEAR;
 
 export const DEFAULT_ATLAS_CFG = {seed: '1', size: 'medium', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1};
+
+// «Создать землю» (src/atlas/shape.js): what the hand may do to the land, and how far. Every change is a change of
+// the base the generator works from, not of its result; what lies below it in the chain is worked out again.
+export const SHAPE = {
+  // a plate raised or lowered as a whole (relief units, 0..1 of the full height), the step of one press
+  lift: {min: -0.3, max: 0.3, step: 0.05, soft: 6},          // `soft`: cells (of a 192-high world) over which a plate's edge blends
+  // a plate's motion: its speed as the generator draws it is 0.35..1; the hand may set 0..1.2
+  speed: {min: 0, max: 1.2, steps: [[0, 'стоит'], [0.4, 'медленно'], [0.75, 'средне'], [1.1, 'быстро']]},
+  // the brush: raises or lowers the ground by `dz` at its middle per dab, fading to the rim (a Gaussian of the radius)
+  brush: {dz: 0.035, radii: [[3, 'малая'], [7, 'средняя'], [14, 'большая']], max: 1500, spacing: 0.6},
+  // the climate: degrees added at the equator and at the poles (blended by latitude), and the rain's multiplier
+  climate: {equator: [-10, 10], pole: [-20, 20], wet: [0.5, 1.6]},
+};

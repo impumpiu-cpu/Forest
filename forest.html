@@ -73,6 +73,21 @@
   .tbl-check.bad{color:#f0b0b2}
   .tbl-check details{margin-top:4px}
   @media (max-width:760px){.tables-shell{grid-template-columns:1fr}.tables-nav{position:static;flex-direction:row;flex-wrap:wrap}.tables-nav .grp{flex-direction:row;flex-wrap:wrap;align-items:center}}
+  /* «Создать землю» (src/app/landView.js) */
+  #landMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+  #landMap.dragging{cursor:grabbing}
+  #landMap.brush{cursor:cell}
+  .land-tools{align-items:center;gap:8px}
+  .rng{display:grid;grid-template-columns:80px minmax(0,1fr) 56px;align-items:center;gap:8px;font-size:13px}
+  .rng output{font-family:var(--font-mono);font-size:12px;text-align:right}
+  .rng input{width:100%;accent-color:var(--ember)}
+  .compass{display:grid;grid-template-columns:repeat(3,36px);gap:3px}
+  .compass button{padding:3px 0}
+  .compass button[aria-pressed="true"]{background:var(--ember);color:#1b130a}
+  .plate-card{display:flex;flex-direction:column;gap:6px;border-color:var(--ember)}
+  .plate-card h3{margin:0;font-family:var(--font-display);font-size:18px}
+  .plate-card .row{align-items:center;gap:8px}
+  .muted{color:var(--muted)}
   .app-foot{color:var(--muted);font-size:12.5px}
   .app-foot a{color:var(--muted)}
 </style>
@@ -88,11 +103,10 @@
   <!-- ───────── the main menu ───────── -->
   <section class="app-screen" id="home" aria-label="Главное меню">
     <div class="launch">
-      <button type="button" class="launch-card soon" data-go="land">
+      <button type="button" class="launch-card" data-go="land">
         <span class="tag">земля</span>
         <b>Создать землю</b>
-        <span>Плиты, рельеф, моря, климат, реки и биомы — без народов и истории. Правка материка и климата, сохранение земли.</span>
-        <span class="soon-tag">в разработке · этап 8</span>
+        <span>Плиты, рельеф, моря, климат, реки и биомы — без народов и истории. Правка плит, рельефа и климата, сохранение земли.</span>
       </button>
       <button type="button" class="launch-card soon" data-go="settle">
         <span class="tag">история</span>
@@ -138,19 +152,85 @@
     </div>
   </section>
 
-  <!-- ───────── screens to come: what they will hold ───────── -->
+  <!-- ───────── «Создать землю» (src/app/landView.js): only the land and its climate, with the hand on the base ───────── -->
   <section class="app-screen" id="land" hidden aria-labelledby="landTitle">
-    <div class="app-head"><h2 id="landTitle">Создать землю</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
-    <div class="card">
-      <span class="tag">в разработке · этап 8</span>
-      <ul class="app-plan">
-        <li>Генерация только земли: плиты, рельеф, уровень моря, температура, ветры, осадки, реки, биомы.</li>
-        <li>Терраморфинг: сдвинуть плиты, поднять или опустить плиту и участок.</li>
-        <li>Климат: температура полюсов и экватора.</li>
-        <li>После правки заново считаются руды, реки, озёра и биомы.</li>
-        <li>Сохранение земли — в библиотеку и файлом.</li>
-      </ul>
-      <div class="row"><button type="button" data-old="world">Пока — полигон «Мир» →</button></div>
+    <div class="app-head"><h2 id="landTitle">Создать землю</h2><span class="muted" id="landName2"></span><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="atlas land">
+      <div class="menu-form atlas-form">
+        <div class="field">
+          <span class="lbl">Сид земли</span>
+          <div class="row seed-row">
+            <input id="landSeed" type="text" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Сид земли">
+            <button type="button" id="landDice" title="Случайный сид" aria-label="Случайный сид">🎲</button>
+          </div>
+        </div>
+        <div class="field"><span class="lbl">Размер</span><div class="seg wrapseg" data-lkey="size"></div><small id="landSizeNote"></small></div>
+        <div class="field"><span class="lbl">Суша</span><div class="seg" data-lkey="land"></div></div>
+        <div class="field"><span class="lbl">Плиты</span><div class="seg" data-lkey="plates"></div></div>
+        <div class="field"><span class="lbl">Широты</span><div class="seg wrapseg" data-lkey="hemisphere"></div><small id="landHemiNote"></small></div>
+        <div class="row actions"><button type="button" id="landGo" class="primary" title="Новая земля по сиду и настройкам; правки сбрасываются">Сотворить землю</button></div>
+
+        <div class="field">
+          <span class="lbl">Климат</span>
+          <label class="rng"><span>Экватор</span><input type="range" id="landEq"><output id="landEqV"></output></label>
+          <label class="rng"><span>Полюса</span><input type="range" id="landPole"><output id="landPoleV"></output></label>
+          <label class="rng"><span>Влажность</span><input type="range" id="landWet"><output id="landWetV"></output></label>
+          <small>Сдвиг к тому, что дала бы широта. Заново считаются температура, ветры, осадки, реки, биомы, почвы и леса.</small>
+        </div>
+        <div class="row"><span id="landEdits" class="muted">Правок нет</span><button type="button" id="landReset" class="quiet" disabled>Сбросить правки</button></div>
+
+        <div class="field saves">
+          <label for="landName">Сохранить землю</label>
+          <div class="row">
+            <input id="landName" type="text" maxlength="40" autocomplete="off" placeholder="Название земли">
+            <button type="button" id="landSave" title="В библиотеку этого браузера">Сохранить</button>
+            <button type="button" id="landFile" title="Скачать землю файлом">В файл</button>
+          </div>
+          <small class="status" id="landSaveStatus" role="status"></small>
+          <span class="lbl">Сохранённые земли</span>
+          <div id="landList" class="savelist"><small>Пока нет сохранённых земель.</small></div>
+          <label class="filebtn">Открыть файл земли…<input type="file" id="landLoadFile" accept=".gz,.json,.land,application/gzip,application/json"></label>
+        </div>
+      </div>
+
+      <div class="atlas-map">
+        <div class="atlas-tools">
+          <div class="seg wrapseg" data-lkey="layer"></div>
+          <div class="seg zoomseg" title="Колёсико — зум у курсора, перетаскивание — сдвиг (с кистью — правой кнопкой); клавиши + − 0">
+            <button type="button" id="landZoomIn" aria-label="Приблизить">+</button>
+            <button type="button" id="landZoomOut" aria-label="Отдалить">−</button>
+            <button type="button" id="landZoomFit" aria-label="Вся земля">⌂</button>
+          </div>
+        </div>
+        <div class="seg wrapseg" data-lkey="ore" id="landOre" hidden></div>
+        <div class="row land-tools">
+          <span class="lbl">Рука</span>
+          <div class="seg" id="landTool"></div>
+          <div class="seg" id="landRadius" title="Ширина кисти"></div>
+        </div>
+        <div class="preview-box"><canvas id="landMap" width="256" height="192" aria-label="Карта земли"></canvas></div>
+        <div class="legend atlas-legend" id="landLegend"></div>
+        <div class="readout" id="landReadout">Наведите на карту, чтобы увидеть клетку.</div>
+      </div>
+
+      <div class="menu-form atlas-chron">
+        <div class="card plate-card" id="landPlate" hidden>
+          <h3 id="landPlateTitle">Плита</h3>
+          <dl class="kv" id="landPlateInfo"></dl>
+          <span class="lbl">Куда движется</span>
+          <div class="compass" id="landDir"></div>
+          <span class="lbl">Как быстро</span>
+          <div class="seg wrapseg" id="landSpeed"></div>
+          <span class="lbl">Высота плиты</span>
+          <div class="row"><button type="button" id="landDown" title="Опустить плиту">▼ Опустить</button><b id="landLift">0</b><button type="button" id="landUp" title="Поднять плиту">▲ Поднять</button></div>
+          <div class="row"><button type="button" id="landPlateReset" class="quiet">Как дал сид</button><button type="button" id="landPlateClose" class="quiet">Закрыть</button></div>
+          <small class="muted">Сдвиг плиты меняет швы: где столкнутся материки — хребты, где разойдутся — рифты. Пересчитывается всё от границ плит.</small>
+        </div>
+        <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="landStages"></ol></div>
+        <dl class="kv" id="landStats"></dl>
+        <span class="lbl">Летопись земли</span>
+        <div class="log" id="landChron"></div>
+      </div>
     </div>
   </section>
 

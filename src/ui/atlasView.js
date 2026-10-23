@@ -177,11 +177,14 @@ export class AtlasView {
     const local = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     cv.addEventListener('pointerdown', e => {
       if (!this.cam) return;
+      // a tool that paints with the left button (app/landView.js: the brush) takes the press instead of the camera
+      if (e.button === 0 && this.paintStart?.(e)) { cv.setPointerCapture(e.pointerId); this.painting = e.pointerId; return; }
       this.grab = {id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, drag: e.button !== 0};
       cv.setPointerCapture(e.pointerId);
       if (e.button !== 0) e.preventDefault();
     });
     cv.addEventListener('pointermove', e => {
+      if (this.painting === e.pointerId) { this.paintMove(e); this.hover(e); return; }
       const g = this.grab;
       if (g && g.id === e.pointerId) {
         if (!g.drag && Math.hypot(e.clientX - g.x, e.clientY - g.y) > DRAG_PX) { g.drag = true; this.dragged?.(); }
@@ -191,8 +194,8 @@ export class AtlasView {
       this.hover(e);
     });
     const release = () => { this.grab = null; cv.classList.remove('dragging'); };
-    cv.addEventListener('pointerup', e => { const g = this.grab; if (g && g.id === e.pointerId && !g.drag && e.button === 0) this.clickAt(e); release(); });
-    cv.addEventListener('pointercancel', release);
+    cv.addEventListener('pointerup', e => { if (this.painting === e.pointerId) { this.painting = null; this.paintEnd(e); return; } const g = this.grab; if (g && g.id === e.pointerId && !g.drag && e.button === 0) this.clickAt(e); release(); });
+    cv.addEventListener('pointercancel', e => { if (this.painting === e.pointerId) { this.painting = null; this.paintEnd(e); } release(); });
     cv.addEventListener('pointerleave', () => { $(ids.readout).textContent = ids.hint; });
     cv.addEventListener('contextmenu', e => e.preventDefault());
     cv.addEventListener('wheel', e => {
@@ -268,7 +271,7 @@ export class AtlasView {
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
     else html = sw(FRESH, 'пресное озеро') + sw(SALT, 'солёное озеро') + `<span><i style="background:${RIVER};height:3px"></i>реки</span>` + sw(DEEP[0][1], 'глубокое море') + sw(DEEP[1][1], 'мелководье') + sw(LAND[0][1], 'низины') + sw(LAND[2][1], 'нагорья') + sw(LAND[4][1], 'вершины');
-    $('atlasLegend').innerHTML = html;
+    $(this.ids?.legend || 'atlasLegend').innerHTML = html;
   }
 
   generate() {
@@ -339,14 +342,14 @@ export class AtlasView {
     try { list = await listWorlds(); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна. Мир можно сохранить файлом.</small>'; return; }
     if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров.</small>'; return; }
     box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · сид ${esc(r.seed)} · ${esc(r.sizeLabel)}${r.tables ? ` · с правками таблиц (${r.tables})` : ''}` +
-      `<br><small>${r.done ? `${r.year} лет истории` : r.year ? `история на ${r.year}-м году` : 'только суша'} · городов ${r.towns} · держав ${r.realms} · ${new Date(r.savedAt).toLocaleString('ru-RU', {dateStyle: 'short', timeStyle: 'short'})}</small></span>` +
+      `<br><small>${r.type === 'land' ? `земля${r.shape ? `, правок: ${r.shape}` : ''} — «Дальше» начнёт историю` : r.done ? `${r.year} лет истории` : r.year ? `история на ${r.year}-м году` : 'только суша'} · городов ${r.towns} · держав ${r.realms} · ${new Date(r.savedAt).toLocaleString('ru-RU', {dateStyle: 'short', timeStyle: 'short'})}</small></span>` +
       `<button type="button" data-act="load">Открыть</button><button type="button" data-act="del" class="quiet" aria-label="Удалить мир">Удалить</button></div>`).join('');
   }
 
   // a saved world on the screen: its settings, a fresh camera and chronicle; unfinished history waits for «Дальше»
   showWorld(a, id, name) {
     clearTimeout(this.timer); this.timer = 0;
-    this.atlas = a; this.cfg = {...DEFAULT_ATLAS_CFG, ...a.cfg}; this.save();
+    this.atlas = a; this.cfg = {...DEFAULT_ATLAS_CFG, ...a.cfg}; delete this.cfg.shape; this.save();   // the hand's edits belong to that land, not to the next one
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.chronOf = null;
     this.paused = !atlasDone(a);
     this.bind(id, name); this.sync(); this.setPick(-1);
@@ -901,3 +904,4 @@ export class AtlasView {
     $(this.ids.readout).textContent = parts.join(' · ');
   }
 }
+export {OPTS as ATLAS_OPTS};

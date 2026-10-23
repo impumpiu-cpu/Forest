@@ -63,7 +63,7 @@ export function makePlates(a, rnd) {
 }
 
 // a box blur of radius r, twice (≈ Gaussian), in place
-function blur(a, c, r) {
+export function blur(a, c, r) {
   const {w, h} = a, t = new Float32Array(c.length);
   for (let pass = 0; pass < 2; pass++) {
     for (let y = 0; y < h; y++) {

@@ -16,6 +16,7 @@ import {latitude, towardEquator} from './latitude.js';
 import {scaleOf} from './tectonics.js';
 import {Heap, DIRS8} from './heap.js';
 import {WIND_BELTS, MOISTURE} from '../data/climate.js';
+import {climateShift, wetOf} from './shape.js';
 
 const smooth = t => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
@@ -61,7 +62,7 @@ export function temperature(a) {
   const {w, h, n} = a, f = a.f;
   const cont = continentality(a), temp = new Float32Array(n), range = new Float32Array(n);
   for (let y = 0; y < h; y++) {
-    const lat = Math.abs(latitude(a, y)), base = 28 - 46 * (lat / 90) ** 1.3;   // sea level, yearly mean
+    const lat = Math.abs(latitude(a, y)), base = 28 - 46 * (lat / 90) ** 1.3 + climateShift(a, lat);   // sea level, yearly mean
     for (let x = 0; x < w; x++) {
       const i = y * w + x, km = f.land[i] ? heightKm(a, f.elev[i]) : 0;
       // inland is a little hotter in the tropics and colder towards the poles than the coast
@@ -147,7 +148,7 @@ export function rain(a) {
     }
   }
   // back to full resolution, bilinear, in mm a year
-  const out = new Float32Array(a.n), scale = M.mm / (steps - from);
+  const out = new Float32Array(a.n), scale = M.mm / (steps - from) * wetOf(a);   // the hand's «влажность» (atlas/shape.js)
   for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
     const sx = Math.max(0, Math.min(W - 1.001, (x - 0.5) / 2)), sy = Math.max(0, Math.min(H - 1.001, (y - 0.5) / 2));
     const x0 = sx | 0, y0 = sy | 0, tx = sx - x0, ty = sy - y0, i0 = y0 * W + x0;

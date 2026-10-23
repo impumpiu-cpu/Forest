@@ -8,6 +8,7 @@ import {editCount} from '../data/schema/edits.js';
 import {EPIC_SIZES} from '../data/campaign.js';
 import {VERSION} from '../version.js';
 import {TablesView} from './tablesView.js';
+import {LandView} from './landView.js';
 
 const $ = id => document.getElementById(id);
 const SCREENS = ['home', 'quick', 'land', 'settle', 'settings'];
@@ -17,11 +18,12 @@ const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
 // the old screen this one hands over to, with the way back
 const old = (go, extra = {}) => { location.href = `index.html?${new URLSearchParams({go, ...extra, from: 'forest'})}`; };
 
-let screen = 'home';
+let screen = 'home', land = null;
 function show(id) {
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   if (id === 'settings') tables.show();
+  if (id === 'land') (land ||= new LandView()).show();
   window.scrollTo(0, 0);
 }
 

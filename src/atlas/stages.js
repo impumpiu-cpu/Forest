@@ -16,6 +16,7 @@ import {seaLevel, erode, rivers, placer} from './hydrology.js';
 import {EROSION} from '../data/hydrology.js';
 import {biomes, soils, vegetation} from './biomes.js';
 import {BIOMES} from '../data/biomes.js';
+import {plateMotion, shapeRelief} from './shape.js';
 
 export const ATLAS_STAGES = new Registry('atlasStage');
 
@@ -30,15 +31,18 @@ ATLAS_STAGES.registerAll([
   {id: 'tectonics', label: 'Границы плит', era: 'geology', note: 'столкновения, дуги, желоба, рифты, срединные хребты, сдвиги и горячие точки',
     run(a, rnd) {
       // the longest seams first, at most four of them
+      plateMotion(a);   // the hand's new motion of a plate (atlas/shape.js)
       const t = tectonics(a, rnd), parts = BOUNDARIES.filter(b => t[b.id]).sort((x, y) => t[y.id] - t[x.id]).slice(0, 4).map(b => b.chron);
       const hs = a.hotspots.length;
       return `Плиты пришли в движение: ${parts.join('; ')}. Из недр ${plural(hs, 'пробилась', 'пробились', 'пробились')} ${hs} ${plural(hs, 'горячая точка', 'горячие точки', 'горячих точек')}, за ${plural(hs, 'ней', 'ними', 'ними')} тянутся цепи потухших вулканов.`;
     }},
   {id: 'relief', label: 'Рельеф', era: 'geology', note: 'дно плиты + поднятие от границ + пологие волны и мелкие неровности',
-    run(a, rnd) { relief(a, rnd); return 'Поднялись хребты, легли равнины, разверзлись желоба.'; }},
+    run(a, rnd) { relief(a, rnd); shapeRelief(a); return 'Поднялись хребты, легли равнины, разверзлись желоба.'; }},
   {id: 'sea', label: 'Уровень моря', era: 'geology', note: 'океан — вода ниже уровня моря, связанная с краем мира; котловины внутри материков станут озёрами',
     run(a) {
-      seaLevel(a, ATLAS_LAND[a.cfg.land].share);
+      // under the hand's raised plates and brush strokes the sea stays where the untouched relief would have it
+      seaLevel(a, ATLAS_LAND[a.cfg.land].share, a.f.elev0);
+      delete a.f.elev0;
       let cnt = 0; for (let i = 0; i < a.n; i++) cnt += a.f.land[i];
       return `Воды отступили: суша заняла ${pct(cnt, a.n)} мира.`;
     }},
