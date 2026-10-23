@@ -160,3 +160,12 @@ for (const sp of SPECIES.filter(s => s.arrive)) {
     message: A.message ? (w, group) => `${cap1(A.message.replace('{n}', group.length))}.` : undefined,
   });
 }
+
+// How often the wild sends its beasts to the local map (outside/scripted.js), before the land decides how many stay:
+// the first after `first` days (hares and wolves: `every` ticks, again and again), then again after wait[0] + wait[1] ×
+// a roll days; each time with `chance` (× the season's for the grazers), n[0] + ⌊n[1] × a roll⌋ of them (wolves: n[2]
+// in place of n[1] where the preset's wolves are rare)
+export const ARRIVALS = {hares: {every: 240, n: [1, 3]}, wolves: {every: 1500, n: [2, 3, 2]},
+  deer: {first: 1, chance: 0.5, n: [2, 3], wait: [1, 1]}, foxes: {first: 2, chance: 0.4, n: [1], wait: [1.5, 1]},
+  boars: {first: 4, chance: 0.35, n: [1, 3], wait: [2.5, 2]}, rats: {first: 3, chance: 0.5, n: [1, 2], wait: [0.5, 1]},
+  mules: {first: 2, chance: 0.35, n: [1], wait: [1.5, 1]}, goats: {first: 3, chance: 0.45, n: [1, 3], wait: [2, 2]}};

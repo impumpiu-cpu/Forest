@@ -37,7 +37,7 @@ export const QUEST = {
   // rumours in a friendly town: a hint where an unknown clue lies, for `price` gold or free to a speaker; the council
   // turns to a town to ask only while a clue is unknown, and again only `again` days after
   // with Charisma `charm` and more; at most one a visit, with this chance
-  rumour: {chance: 0.6, price: CAMPAIGN.rumour, charm: 7, again: 20},
+  rumour: {chance: 0.6, get price() { return CAMPAIGN.rumour; }, charm: 7, again: 20},
   // the way home with the crown: the world sends its bands after the caravan — one every `every` days,
   // (no more than `at` on its trail at once), of strength base + per year carried, at most max; they hunt from
   // the edge of the bubble and go home after a fight, won or lost

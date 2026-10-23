@@ -90,7 +90,17 @@ export const CAL = {
   fromLeader: 0.5,
   grave: {r: 2, v: 0.8},
   // «Заселение мира» (atlas/settle.js): at most this many calamities set by hand that have not passed yet
-  free: {max: 3},
+  free: {max: 3, years: 10},
+  // the years between the latest rise and the heroes' seal; the sanctuary's place (a share of the world from its edge,
+  // and the span); the chance a year of another omen; no boss's lair this many cells by a town; a calamity after the
+  // wild era rises within `felt` of a raid's reach of the peoples' towns
+  riseBefore: 2, sanctuary: [0.2, 0.6], omenChance: 0.6, townGap: 3, felt: 0.7,
+  // the strength the lairs of a calamity start at: the boss's, its retinue's, the lairs it stirs up over the world
+  lairs: {boss: 1, retinue: 0.6, stirred: 0.4},
+  // the graves the dead of a calamity rise from: radius r × the world's scale (at least min), how thick
+  dead: {r: 3, min: 2, v: 0.9},
+  // a dragon that ends a calamity of the wild era: × its lair's strength, sleeps at least this many years
+  dragon: {wound: 0.5, sleep: 5},
 };
 
 // The alliances against a calamity (atlas/alliance.js; docs/CAMPAIGN.md «Доработка, этап 8»): after the wild era the
@@ -129,8 +139,12 @@ export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3
 //             from the lair every `every[0]` days, × `strength[0]`); after the 3rd — the active hunt (every `every[1]`,
 //             × `strength[1]`, the hostile of the bubble are born on the caravan's trail with `trail`), and the lair's
 //             servants burn the town nearest it (`burn` of its people)
-export const EPIC = {seats: 8, far: 0.45, cold: 0, doom: 15, years: 25,
+export const EPIC = {seats: 8, far: 0.45, cold: 0, doom: 15, years: 25, darkDays: 150, seatGap: 6, jitter: [0.7, 0.6], darkLair: 0.1,
   guard: {base: 0.7, perDiag: 1.8, seat: 1.3, grow: 0.015, max: 2.4, risen: 1.3},
-  mini: {add: [3, 6], near: 20, every: 40},
+  mini: {add: [3, 6], near: 20, every: 40, servants: 0.6},
   boss: {stats: ['S', 'E', 'A'], add: [6, 12], cap: 40},
-  hunt: {every: [70, 35], strength: [0.8, 1.15], trail: 0.5, burn: 0.1}};
+  hunt: {every: [70, 35], strength: [0.8, 1.15], trail: 0.5, burn: 0.1, from: [2, 3], most: 3, told: 0.4}};
+// (seatGap — no seat this many cells by a town; jitter — the waits of hunts and servants × jitter[0] + jitter[1] × a roll;
+//  darkLair — the lair's strength the first darkening adds; darkDays — a quest with no graves darkens a step this often;
+//  mini.servants — a miniboss's servants × its guard; hunt.from — the darkening steps a hunt starts and grows at;
+//  hunt.most — pursuers at once; hunt.told — the chance the chronicle tells of one)

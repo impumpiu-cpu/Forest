@@ -4,12 +4,12 @@
 // steps in again, runs on. The world is saved with its inhabitants and chronicle into the library of worlds.
 //
 // The core is atlas/settle.js; the map, its layers, the camera and the readout are the «Мир» polygon's (ui/atlasView.js).
-import {AtlasView, ATLAS_OPTS, loadDetail, saveDetail, segOf} from '../ui/atlasView.js';
+import {MapView, ATLAS_OPTS, loadDetail, saveDetail, segOf} from '../ui/atlasView.js';
 import {DEFAULT_ATLAS_CFG} from '../data/atlas.js';
 import {FREE} from '../data/history.js';
-import {runNextStage, atlasDone} from '../atlas/generate.js';
-import {seasonLabel} from '../atlas/history.js';
-import {startFree, isFree, PLACEABLE, landPeople, addLair, wildByLand, setCalamity, runYears, endRun} from '../atlas/settle.js';
+import {atlasDone} from '../atlas/generate.js';
+import {seasonLabel, yearsLived, endYear} from '../atlas/history.js';
+import {startFree, isFree, PLACEABLE, landPeople, addLair, wildByLand, wildDone, setCalamity, runYears, stepRun, canMarch} from '../atlas/settle.js';
 import {lineLevel, keeps, DETAILS} from '../atlas/chronicle.js';
 import {stateOf, stateLabel} from '../atlas/diplomacy.js';
 import {realmLabel} from '../atlas/realms.js';
@@ -31,20 +31,15 @@ const NOTES = {
   calamity: 'Щелчок по суше — где поднимется бедствие (вампир — в ближайшем городе), или «на волю мира». Не больше трёх, что ещё не прошли.',
 };
 
-export class SettleView extends AtlasView {
-  constructor() {
-    super({onBack: () => {}, onSettle: () => {}});
-  }
-
-  load() { return {...DEFAULT_ATLAS_CFG}; }
-  save() { /* the settings are the land's */ }
+export class SettleView extends MapView {
+  setup() { this.cfg = {...DEFAULT_ATLAS_CFG}; this.seq = 0; }
 
   build() {
     this.tool = 'look'; this.people = 'elves'; this.sub = ''; this.calIn = FREE.calIn[1]; this.layer = 'peoples';
     this.detail = loadDetail();
     document.querySelectorAll('#settle .seg[data-skey]').forEach(box => {
       const key = box.dataset.skey;
-      box.innerHTML = ATLAS_OPTS[key].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join('');
+      box.innerHTML = ATLAS_OPTS[key].map(([v, l]) => `<button type="button" data-val="${esc(String(v))}" aria-pressed="false">${esc(l)}</button>`).join('');
       box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this[key] = b.dataset.val; this.sync(); this.draw(); });
     });
     const seg = (id, items, on) => {
@@ -67,7 +62,7 @@ export class SettleView extends AtlasView {
     // the walk: the world is saved (over its own record) and opens on the campaign screen at its capitals (app/campView.js)
     $('setMarch').addEventListener('click', async () => {
       const a = this.atlas; if (!a || !atlasDone(a)) return;
-      if (!(a.towns || []).some(t => t.alive && t.capital)) { this.note('Нельзя: в мире нет ни одной столицы — высадите народ.', 'bad'); return; }
+      const why = canMarch(a); if (why) { this.note(`Нельзя: ${why}.`, 'bad'); return; }
       this.note('Сохраняю мир и открываю поход…', 'good');
       try { const rec = await saveWorldToLibrary(a, this.worldName || `Мир ${a.cfg.seed}`, this.worldId); this.bind(rec.id, rec.name); march(rec.id, rec.name); }
       catch (e) { this.note('Не удалось сохранить: ' + e.message, 'bad'); }
@@ -96,7 +91,7 @@ export class SettleView extends AtlasView {
     $('setPeopleRow').hidden = this.tool !== 'people'; $('setLairRow').hidden = this.tool !== 'lair'; $('setCalRow').hidden = this.tool !== 'calamity';
     $('setMap').classList.toggle('hand', this.tool !== 'look');
     const a = this.atlas, running = !!a && !atlasDone(a);
-    $('setWild').disabled = !a || running || !!a.hist?.wild;
+    $('setWild').disabled = !a || running || wildDone(a);
     $('setRun').querySelectorAll('button').forEach(b => { b.disabled = !a || running; });
     $('setSave').disabled = !a || running; $('setFile').disabled = !a || running; $('setMarch').disabled = !a || running;
     $('setMarch').title = a ? `Сохранить мир и выбрать столицу для похода; ${questText({quest: questHint(a)})}` : 'Сначала заселите землю';
@@ -106,7 +101,7 @@ export class SettleView extends AtlasView {
   syncRun() {
     const a = this.atlas, running = !!a && !atlasDone(a);
     $('setPause').hidden = !running; $('setPause').textContent = this.paused ? 'Дальше' : 'Пауза';
-    $('setYear').textContent = !a ? '' : running ? `год ${a.hist.year} → ${Math.floor(a.hist.end / 4) + 1}` : `год ${a.hist.year}, ${seasonLabel(a.hist.season)}`;
+    $('setYear').textContent = !a ? '' : running ? `год ${a.hist.year} → ${endYear(a)}` : `год ${a.hist.year}, ${seasonLabel(a.hist.season)}`;
   }
 
   // ── a world on the screen: a land made into a world with a clock, or a world of this screen saved before
@@ -158,8 +153,7 @@ export class SettleView extends AtlasView {
     const next = () => {
       if (a !== this.atlas || this.paused) return;
       const t0 = performance.now();
-      while (!atlasDone(a) && performance.now() - t0 < 40) runNextStage(a);
-      if (atlasDone(a)) { endRun(a); this.timer = 0; }
+      if (stepRun(a, () => performance.now() - t0 < 40)) this.timer = 0;
       this.tickAt = performance.now(); this.tickWait = 30;
       this.draw(); this.renderSide(); this.animate(); this.syncRun();
       if (!atlasDone(a)) this.timer = setTimeout(next, 30); else this.sync();
@@ -191,7 +185,7 @@ export class SettleView extends AtlasView {
     const cals = a.calamities || [];
     $('setCals').innerHTML = cals.length ? `<span class="lbl">Бедствия</span><div class="cal-list">${cals.map(c => `<div><b>${esc(c.label)}</b> — ${PHASE[c.phase] || c.phase}` +
       (c.phase === 'waiting' || c.phase === 'omens' ? `, поднимется в ${c.riseAt}-м году` : c.phase === 'rise' && c.boss ? `: ${esc(c.boss.title[0])} ${esc(c.boss.name)}, герои — к ${c.heroesAt}-му` : c.fell ? ` в ${c.fell.year}-м (${BY[c.fell.by] || c.fell.by})` : '') + '</div>').join('')}</div>` +
-      (a.artifact ? `<small class="muted">${esc(a.artifact.name)}: ${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса', caravan: 'у каравана'}[a.artifact.holder.kind] || '—'}</small>` : '') : '';
+      (a.artifact ? `<small class="muted">${esc(a.artifact.name)}: ${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса', caravan: 'у каравана', capital: 'в столице', lost: 'потерян в пути'}[a.artifact.holder.kind] || '—'}</small>` : '') : '';
     const rels = Object.entries(a.rel || {}).map(([key, r]) => { const [p, q] = key.split(':'), st = stateOf(a, p, q); return `<dt>${esc(realmLabel(a, p))} и ${esc(realmLabel(a, q))}</dt><dd class="rel-${st}">${stateLabel(st)}</dd>`; }).join('');
     $('setRels').innerHTML = rels ? `<dt class="relhead">Державы между собой</dt><dd></dd>${rels}` : '';
     // the chronicle only grows: new lines are appended
@@ -214,7 +208,7 @@ export class SettleView extends AtlasView {
       say('Сохраняю…');
       try {
         const rec = await saveWorldToLibrary(a, this.worldName || `Мир ${a.cfg.seed}`, this.worldId);
-        say(`${this.worldId ? 'Сохранено поверх' : 'Сохранено'}: «${rec.name}», ${rec.year - 1} лет истории, ${(rec.bytes / 1e6).toFixed(1)} МБ.`);
+        say(`${this.worldId ? 'Сохранено поверх' : 'Сохранено'}: «${rec.name}», ${rec.lived} лет истории, ${(rec.bytes / 1e6).toFixed(1)} МБ.`);
         this.bind(rec.id, rec.name); this.refresh();
       } catch (e) { say('Не удалось сохранить: ' + e.message); }
     });
@@ -225,8 +219,10 @@ export class SettleView extends AtlasView {
     });
     const open = async (id, name, type) => {
       say('Открываю…');
+      const seq = ++this.seq;   // the last world asked for is the one shown, whichever loads first
       try {
-        const a = await openWorld(id); warnEdits(a.tables);
+        const a = await openWorld(id); if (seq !== this.seq) return;
+        warnEdits(a.tables);
         if (type === 'land') { this.settle(a, name); say(`Земля «${name}» открыта для заселения. Сохранение ляжет новым миром, земля останется как была.`); }
         else { this.showWorld(a, id, name); say(`Открыт мир «${name}».`); }
       } catch (err) { say('Не удалось открыть: ' + err.message); }
@@ -245,7 +241,9 @@ export class SettleView extends AtlasView {
       const f = e.target.files[0]; e.target.value = ''; if (!f) return;
       say('Открываю файл…');
       try {
-        const {a, rec} = await importWorld(f); this.refresh(); warnEdits(a.tables);
+        const seq = ++this.seq;
+        const {a, rec} = await importWorld(f); this.refresh(); if (seq !== this.seq) return;
+        warnEdits(a.tables);
         if (rec.type === 'land') { this.settle(a, rec.name); say(`Земля «${rec.name}» добавлена в библиотеку и открыта для заселения.`); }
         else if (isFree(a)) { this.showWorld(a, rec.id, rec.name); say(`Мир «${rec.name}» открыт.`); }
         else say(`«${rec.name}» — мир с эпохами, он лёг в библиотеку миров (полигон «Мир», «Кампания»). Здесь заселяют землю.`);
@@ -261,6 +259,6 @@ export class SettleView extends AtlasView {
     const when = r => new Date(r.savedAt).toLocaleString('ru-RU', {dateStyle: 'short', timeStyle: 'short'});
     const lands = list.filter(r => r.type === 'land'), worlds = list.filter(r => r.type !== 'land' && r.free);
     $('setLands').innerHTML = lands.length ? lands.map(r => row(r, 'Заселить', `${r.shape ? `правок руки: ${r.shape}` : 'как дал сид'} · ${when(r)}`)).join('') : '<small>Пока нет сохранённых земель: сотворите её на экране «Создать землю».</small>';
-    $('setWorlds').innerHTML = worlds.length ? worlds.map(r => row(r, 'Открыть', `${Math.max(0, r.year - 1)} лет · городов ${r.towns} · держав ${r.realms} · ${when(r)}`)).join('') : '<small>Пока нет заселённых миров.</small>';
+    $('setWorlds').innerHTML = worlds.length ? worlds.map(r => row(r, 'Открыть', `${r.lived ?? Math.max(0, r.year - 1)} лет · городов ${r.towns} · держав ${r.realms} · ${when(r)}`)).join('') : '<small>Пока нет заселённых миров.</small>';
   }
 }

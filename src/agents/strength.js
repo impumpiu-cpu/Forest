@@ -20,6 +20,7 @@ import {dress, recalcGear, blowStat, mixGain} from './equipment.js';
 import {armorAgainst, blockAgainst, resistOf} from './combat.js';
 import {BLOWS} from '../data/balance/combat.js';
 import {refreshBody} from './special.js';
+import {onEdit} from '../data/schema/layer.js';
 
 const {blow: BLOW, shot: SHOT, hit: HIT} = COMBAT;
 
@@ -47,8 +48,10 @@ export function strengthParts(a, {now = false} = {}) {
   return {offence, staying, raw: offence * staying};
 }
 
-// the reference fighter, made once on a scratch world of its own (nothing in the game is touched)
+// the reference fighter, made once on a scratch world of its own (nothing in the game is touched); made again after
+// an edit of the tables (a creature, a race, a form, a material may have changed: data/schema/layer.js onEdit)
 let refRaw = null;
+onEdit(() => { refRaw = null; expected.clear(); });
 export function referenceRaw() {
   if (refRaw != null) return refRaw;
   const R = STRENGTH.ref, w = {rngs: {birth: mulberry(1)}, agents: [], nextId: 1, nameIdx: 0};

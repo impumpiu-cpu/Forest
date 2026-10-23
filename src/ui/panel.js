@@ -75,7 +75,8 @@ import {vacancyLines} from '../settlement/plan.js';
 import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
 import {herdOf, herdAlarm, stragglerOf} from '../agents/wildHerd.js';
 import {WOODS, STONES} from '../data/kinds.js';
-import {kindsOf} from '../settlement/kinds.js';
+import {peekKinds} from '../settlement/kinds.js';
+import {caravanChance} from '../outside/scripted.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -262,7 +263,7 @@ export class Panel {
   caravanWhen(w) {
     const at = w.outside.next.caravan;
     if (!Number.isFinite(at)) return 'не ожидается';
-    return `${this.waitText(w, at)}, если придёт (${Math.round(Math.min(0.95, TRADE.chance * region(w).road) * 100)}%)`;
+    return `${this.waitText(w, at)}, если придёт (${Math.round(caravanChance(w) * 100)}%)`;
   }
 
   // the stock, grouped: food, materials, fuel, ore, metal, luxury, ammunition
@@ -270,7 +271,7 @@ export class Panel {
     const groups = resourceGroups().map(gname => {
       const rs = RESOURCES.filter(r => (r.group || 'Прочее') === gname);
       if (!rs.length) return '';
-      const rows = rs.map(r => { const v = w.stock[r.id] || 0; const of = (r.id === 'wood' || r.id === 'stone') && v >= 0.5 ? Object.entries(kindsOf(w, r.id)).filter(([, n]) => n >= 0.5).sort((p, q) => q[1] - p[1]).map(([id, n]) => `${(WOODS.has(id) ? WOODS : STONES).get(id).label} ${Math.floor(n)}`).join(', ') : ''; return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label + (of ? ': ' + of : ''))}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`; }).join('');
+      const rows = rs.map(r => { const v = w.stock[r.id] || 0; const of = (r.id === 'wood' || r.id === 'stone') && v >= 0.5 ? Object.entries(peekKinds(w, r.id)).filter(([, n]) => n >= 0.5).sort((p, q) => q[1] - p[1]).map(([id, n]) => `${(WOODS.has(id) ? WOODS : STONES).get(id).label} ${Math.floor(n)}`).join(', ') : ''; return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label + (of ? ': ' + of : ''))}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`; }).join('');
       const tagged = t => rs.some(r => r.tags.includes(t));
       const extra = gname === 'Еда' ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>` : rs.every(r => r.tags.includes('fuel')) ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
       return `<div class="sgroup"><h3>${gname}</h3>${rows}${extra}</div>`;

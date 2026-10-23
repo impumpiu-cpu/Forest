@@ -10,7 +10,7 @@
 // The rot (data/lairs.js ROT): a field on the coarse grid fed by the graves; where it is thick the
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
-import {LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT} from '../data/lairs.js';
+import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves, ruinAt} from './diplomacy.js';
 import {RELATIONS} from '../data/relations.js';
@@ -86,6 +86,9 @@ function lairName(L, rnd, used) {
 
 export function newLair(a, L, i, rnd, strength, born = a.hist.year) {
   const H = a.hist, name = lairName(L, rnd, H.names);
+  // a tribe lives off its land: the field is made the first time a lair of its kind stands (a calamity's retinue in a
+  // world of «Заселение мира» may be the first; atlas/settle.js)
+  if (L.tribe) (a.tribeLand ||= {})[L.id] ||= homeField(a, L);
   const lair = {id: H.nextLair++, kind: L.id, i, x: i % a.w, y: (i / a.w) | 0, name, born, strength, ancient: born <= H.year - LAIR_AGE.ancient, alive: true};
   a.lairs.push(lair);
   return lair;
@@ -205,7 +208,7 @@ export function wildLairs(a, rnd) {
       const i = findSpot(a, L, rnd);
       if (i < 0) break;
       // the lairs of the wild were there long before the chronicle begins
-      newLair(a, L, i, rnd, L.dragon ? 0.9 : 0.4 + 0.5 * rnd(), 1 - Math.floor(rnd() * 2 * LAIR_AGE.ancient) - (L.dragon ? 10 * LAIR_AGE.ancient : 0));
+      newLair(a, L, i, rnd, L.dragon ? LL.dragonStart : LL.start[0] + LL.start[1] * rnd(), a.hist.year - Math.floor(rnd() * 2 * LAIR_AGE.ancient) - (L.dragon ? 10 * LAIR_AGE.ancient : 0));
       tally[L.id] = (tally[L.id] || 0) + 1;
     }
   }
@@ -233,23 +236,23 @@ export function stepLairs(a, rnd, seasonId) {
       const j = y * F.W + x; cells.push(j);
       if (s) for (const q of s.prey || []) { food += F.list[q].N[j]; cap += F.list[q].K[j]; }
       else if (L.undead) land = Math.max(land, a.rot[j]);   // the dead feed on the thickest rot they reach
-      else if (L.fiend || L.dragon) land = 0.55;
+      else if (L.fiend || L.dragon) land = LL.fiendFed;
       else { land += a.tribeLand[L.id][j]; for (const pe of a.peoples || []) crowd += pe.u[j] * pe.K[j]; }
     }
     const host = L.at === 'town' ? a.towns.find(t => t.id === lair.town) : null;
-    const fed = s ? (cap > 0 ? Math.min(1.2, food / cap) : 0.5)
+    const fed = s ? (cap > 0 ? Math.min(LL.fedMax, food / cap) : LL.fedNone)
       : L.fiend || L.dragon ? land
-      : host ? (host.alive ? Math.min(1.2, host.pop / 600) : 0)   // a vampire drinks its town
-      : L.undead ? Math.min(1.2, land / (L.rotAt * 1.2))
-      : Math.min(1.2, land / cells.length / 0.6) * (1 - 0.8 * Math.min(1, crowd / cells.length));
-    const winter = seasonId === 'winter' ? 0.03 : 0;
-    lair.strength = Math.max(0, Math.min(1, lair.strength + 0.08 * (fed - 0.45) - winter + 0.02 * (rnd() - 0.5)));
+      : host ? (host.alive ? Math.min(LL.fedMax, host.pop / LL.vampirePop) : 0)   // a vampire drinks its town
+      : L.undead ? Math.min(LL.fedMax, land / (L.rotAt * LL.rotFeed))
+      : Math.min(LL.fedMax, land / cells.length / LL.tribeFeed) * (1 - LL.crowd * Math.min(1, crowd / cells.length));
+    const winter = seasonId === 'winter' ? LL.winter : 0;
+    lair.strength = Math.max(0, Math.min(1, lair.strength + LL.grow * (fed - LL.need) - winter + LL.wobble * (rnd() - 0.5)));
     // a calamity's boss (atlas/calamity.js) keeps its lair up while it lives: it falls only with the boss
     if (lair.boss != null) lair.strength = Math.max(lair.strength, CAL.boss.floor);
     // the lair keeps its species about: the density near it does not fall below its strength
     if (s) for (const j of cells) if (s.K[j] > 0) s.N[j] = Math.max(s.N[j], s.K[j] * lair.strength);
     if (host && host.alive && seasonId === 'autumn') { host.pop *= 1 - L.drinks * lair.strength; raidGraves(a, host); }
-    if (lair.strength < 0.08) {
+    if (lair.strength < LL.dies) {
       lair.alive = false; lair.died = H.year;
       lines.push(L.at === 'town' ? `${G[L.g].emptied} ${L.label} «${lair.name}»: ${host ? `в ${townLabel(host, 3)} ${host.name} не осталось, кого пить` : 'город сгинул'}, и вампир ушёл.`
         : L.fiend ? `Закрылся ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: демоны ушли туда, откуда пришли.`
@@ -265,9 +268,9 @@ export function stepLairs(a, rnd, seasonId) {
       lines.push(`${cap1(L.label)} «${lair.name}» ${G[L.g].stands} уже ${age} лет: о ${G[L.g].about} слагают страшные сказки.`);
     }
     // a strong lair sends out a brood in spring
-    if (seasonId === 'spring' && !lair.leader && lair.strength > 0.85 && age >= 3 && rnd() < L.breed * (lair.boss != null ? CAL.boss.breed : 1) && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * (lair.boss != null ? 3 : 1.5)) {
-      const i = findSpot(a, L, rnd, lair, 60);
-      if (i >= 0 && sendParty(a, 'brood', lair.i, i, {owner: lair.id, lairKind: L.id, speed: L.flies ? 'flight' : L.riders ? 'rider' : 'foot', label: `выводок: ${SPECIES.get(L.species).plural}`, color: L.color})) lair.strength *= 0.75;
+    if (seasonId === 'spring' && !lair.leader && lair.strength > LL.breedAt && age >= LL.breedAge && rnd() < L.breed * (lair.boss != null ? CAL.boss.breed : 1) && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * (lair.boss != null ? LL.bossCrowd : LL.crowdMax)) {
+      const i = findSpot(a, L, rnd, lair, LL.broodTries);
+      if (i >= 0 && sendParty(a, 'brood', lair.i, i, {owner: lair.id, lairKind: L.id, speed: L.flies ? 'flight' : L.riders ? 'rider' : 'foot', label: `выводок: ${SPECIES.get(L.species).plural}`, color: L.color})) lair.strength *= LL.broodCost;
     }
   }
   // rivals whose territories touch fight now and then; the stronger and the fiercer wins
@@ -277,12 +280,12 @@ export function stepLairs(a, rnd, seasonId) {
     for (const q of a.lairs) {
       if (!q.alive || q.id <= p.id || !Lp.rivals.includes(q.kind) || p.boss != null || q.boss != null) continue;   // nobody fights a boss's lair
       const Lq = LAIRS.get(q.kind);
-      if (dist(p, q) > R(a, Lp) + R(a, Lq) || rnd() > 0.08) continue;
-      const sp = p.strength * power(Lp.species) * (0.7 + 0.6 * rnd()), sq = q.strength * power(Lq.species) * (0.7 + 0.6 * rnd());
+      if (dist(p, q) > R(a, Lp) + R(a, Lq) || rnd() > LL.rivals) continue;
+      const sp = p.strength * power(Lp.species) * (LL.luck[0] + LL.luck[1] * rnd()), sq = q.strength * power(Lq.species) * (LL.luck[0] + LL.luck[1] * rnd());
       const [win, lose, Lw, Ll] = sp >= sq ? [p, q, Lp, Lq] : [q, p, Lq, Lp];
-      lose.strength *= 0.4; win.strength *= 0.9;
+      lose.strength *= LL.loser; win.strength *= LL.winner;
       const who = SPECIES.get(Lw.species), whom = SPECIES.get(Ll.species);
-      if (lose.strength < 0.12) {
+      if (lose.strength < LL.routed) {
         lose.alive = false; lose.died = H.year;
         lines.push(`${cap1(who.plural)} ${Lw.from} «${win.name}» разорили ${acc(Ll)} «${lose.name}» ${wherePhrase(a, lose.i)}.`);
       } else lines.push(`${cap1(who.plural)} ${Lw.from} «${win.name}» схватились с ${whomInstr(whom)} ${Ll.from} «${lose.name}» и отогнали их.`);
@@ -432,7 +435,7 @@ function spawnLairs(a, rnd) {
       }
     }
     if (best < 0) continue;
-    const lair = newLair(a, L, best, rnd, L.fiend ? 0.55 : 0.35), where = wherePhrase(a, best);
+    const lair = newLair(a, L, best, rnd, L.fiend ? LL.fiendStart : LL.spawnStart), where = wherePhrase(a, best);
     if (town) { lair.town = town.id; a.hist.names.delete(lair.name); lair.name = `${L.nouns[(rnd() * L.nouns.length) | 0][0] === 'усадьба' ? 'Старая' : 'Тёмная'} усадьба`; }
     lines.push(L.id === 'necromancer' ? `Некромант поставил ${L.labelAcc} «${lair.name}» ${where}: по ночам там поднимают мертвецов.`
       : L.id === 'wights' ? `На курганах ${where} поднялись костяки: ${L.label} «${lair.name}».`

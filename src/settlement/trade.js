@@ -58,7 +58,9 @@ const stackOf = id => RESOURCES.get(id).stack || 1;
 export const goodsUnits = goods => goods.reduce((s, g) => s + (g.kind === 'res' ? Math.ceil(g.n / stackOf(g.id)) : 1), 0);
 // how many more units of a resource fit: the free places, and what is left in its last stack
 const roomFor = (c, id) => { const have = c.goods.find(g => g.kind === 'res' && g.id === id)?.n || 0, st = stackOf(id); return (c.capacity - goodsUnits(c.goods)) * st + (have % st ? st - have % st : 0); };
-export const unitPrice = g => (g.kind === 'res' ? RESOURCES.get(g.id).value || 0 : itemPrice(g.type, g.q, g.silver, g.mark));
+// a piece of goods as a piece in the armory: its quality, silver, mark and wood
+const goodsInst = g => ({...(g.q ? {q: g.q} : {}), ...(g.silver ? {silver: true} : {}), ...(g.mark ? {mark: g.mark} : {}), ...(g.of ? {of: g.of} : {}), ...(g.master ? {master: true} : {})});
+export const unitPrice = g => (g.kind === 'res' ? RESOURCES.get(g.id).value || 0 : itemPrice(g.type, g.q, g.silver, g.mark, g.of || null, !!g.master));
 export const goodsLabel = g => (g.kind === 'res' ? RESOURCES.get(g.id).label : itemOf(g).label.toLowerCase());
 // prices at the visit's terms: b (−haggle…+haggle) is the colony's gain from haggling, 0 without terms
 export const askPrice = (g, b = 0) => round1(unitPrice(g) * (TRADE.ask - b));
@@ -243,9 +245,9 @@ export function holdTrade(w) {
     if (itemDef(it.type, it.q).keep || itemOf(it).silver) continue;   // epic finds and silver blades are never sold
     const [role, score] = roleOf(itemOf(it));
     if (role && worn[role] && score > worn[role][0]) continue;
-    const k = it.type + ':' + (it.q || 0) + ':' + (it.mark || ''); (kinds.get(k) || kinds.set(k, []).get(k)).push(it);
+    const k = it.type + ':' + (it.q || 0) + ':' + (it.mark || '') + ':' + (it.of || '') + (it.master ? '!' : ''); (kinds.get(k) || kinds.set(k, []).get(k)).push(it);   // (a master's holywood bow is not a pine bow)
   }
-  for (const list of kinds.values()) for (const it of list.slice(1)) offers.push({g: {kind: 'item', type: it.type, q: it.q || 0, ...(it.mark ? {mark: it.mark} : {})}, n: 1, inst: it});
+  for (const list of kinds.values()) for (const it of list.slice(1)) offers.push({g: {kind: 'item', type: it.type, q: it.q || 0, ...(it.mark ? {mark: it.mark} : {}), ...(it.of ? {of: it.of} : {}), ...(it.master ? {master: true} : {})}, n: 1, inst: it});
   offers.sort((x, y) => bidPrice(y.g) - bidPrice(x.g));
   const isFood = g => g.kind === 'res' && RESOURCES.get(g.id).tags.includes('food');
   for (const o of offers) {
@@ -313,7 +315,7 @@ export function holdTrade(w) {
       const p = askPrice(g);
       if (p > cash() * (foes ? TRADE.maxShare : TRADE.silverSpare) || !spend(p)) continue;
       c.goods.splice(c.goods.indexOf(g), 1);
-      w.armory.push(newItem(g.type, {...(g.q ? {q: g.q} : {}), ...(g.silver ? {silver: true} : {}), ...(g.mark ? {mark: g.mark} : {})}));
+      w.armory.push(newItem(g.type, goodsInst(g)));
       w.armoryVersion = (w.armoryVersion || 0) + 1;
       deal.spent += p; note(deal.bought, goodsLabel(g), 1, p);
     }
@@ -334,7 +336,7 @@ export function holdTrade(w) {
     }
     if (!best || !spend(best.p)) break;
     c.goods.splice(c.goods.indexOf(best.g), 1);
-    w.armory.push(newItem(best.g.type, {...(best.g.q ? {q: best.g.q} : {}), ...(best.g.silver ? {silver: true} : {}), ...(best.g.mark ? {mark: best.g.mark} : {})}));
+    w.armory.push(newItem(best.g.type, goodsInst(best.g)));
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     needs[best.role][0] = best.score; needs[best.role].sort((x, y) => x - y);
     deal.spent += best.p; note(deal.bought, goodsLabel(best.g), 1, best.p);

@@ -176,7 +176,7 @@ const KIND_HINT = {grave: 'у могилы былого бедствия', seat:
 const clueHint = (a, K, c, from) => `${KIND_HINT[c.kind] || 'где-то'} ${whereFrom(a, K, from, c.area)}`;
 export const questIntro = (a, K) => {
   const Q = K.quest, c = Q.clues[0];
-  return `Их поручение — найти ${Q.acc || Q.name}. ${Q.story} Где ${gx(Q, 'она лежит', 'он лежит')}, не знает никто; в столице знают лишь, где искать первый след: ${c ? clueHint(a, K, c, K.home) : 'нигде'}.`;
+  return `Их поручение — найти ${Q.acc || Q.name}. ${Q.story} Где ${gx(Q, 'она лежит', 'он лежит')}, не знает никто; ` + (c ? `в столице знают лишь, где искать первый след: ${clueHint(a, K, c, K.home)}.` : Q.crown.area ? `беглецы указали, где искать: ${whereFrom(a, K, K.home, Q.crown.area)}.` : 'следов нет — искать придётся наугад.');
 };
 
 // ── the target: where the council sends the caravan now (K.goal)
@@ -371,7 +371,7 @@ export function pursuit(a, K, rnd, say) {
   for (let k = 0; k < 12; k++) {
     const ang = rnd() * Math.PI * 2, x = K.x + Math.cos(ang) * far, y = K.y + Math.sin(ang) * far;
     if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
-    const i = cellAt(a, x, y); if (!a.f.land || a.f.ocean[i]) continue;
+    const i = cellAt(a, x, y); if (!a.f.land?.[i] || a.f.ocean[i]) continue;
     B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, strength, pursuit: true, ...thing});
     K.stats.pursuers = (K.stats.pursuers || 0) + 1;
     if (K.stats.pursuers === 1 || rnd() < 0.3) say(`За караваном снарядили погоню: ${thing.label.replace('погоня: ', '')}.`, 'sight');

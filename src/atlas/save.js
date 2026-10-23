@@ -14,6 +14,7 @@ import {VERSION} from '../version.js';
 import {atlasHash, atlasDone, landDone} from './generate.js';
 import {ATLAS_SIZES} from '../data/atlas.js';
 import {shapeCount} from './shape.js';
+import {yearsLived} from './history.js';
 import {questHint} from './calamity.js';
 
 export const WORLD_KIND = 'forest-world';
@@ -41,7 +42,7 @@ export function worldMeta(a, name, kind = WORLD_KIND) {
   return {
     type: kind === LAND_KIND ? 'land' : 'world', shape: shapeCount(a.cfg.shape),
     name: name || (kind === LAND_KIND ? `Земля ${a.cfg.seed}` : `Мир ${a.cfg.seed}`), seed: a.cfg.seed, size: a.cfg.size, sizeLabel: ATLAS_SIZES[a.cfg.size]?.label || a.cfg.size,
-    year: a.hist?.year ?? 0, done: atlasDone(a), land: landDone(a), towns, realms: (a.realms || []).length,
+    year: a.hist?.year ?? 0, lived: yearsLived(a), done: atlasDone(a), land: landDone(a), towns, realms: (a.realms || []).length,
     lines: a.chronicle.length, hash: atlasHash(a), version: VERSION, epic: !!a.cfg.epic, free: !!a.cfg.free,
     // made under table edits (src/data/schema/layer.js): how many
     tables: a.tables?.n || 0,

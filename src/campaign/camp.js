@@ -17,7 +17,7 @@ import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
 import {refreshBody} from '../agents/special.js';
-import {dress, def, gearDef, gearToken} from '../agents/equipment.js';
+import {dress, def, gearDef, gearToken, gearType} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
 import {putUp} from '../settlement/buildings.js';
 import {raidThreat, THREAT} from '../settlement/threat.js';
@@ -125,7 +125,7 @@ export function openCamp(S) {
     if (L) Object.assign(ag, {likes: L.likes, dislikes: L.dislikes, prefs: {...L.prefs}, traits: [...L.traits], food: {...L.food}, own: {...L.own}, skill: {...L.skill}});
     else {
       for (const [id, v] of Object.entries(CAMP.skills[m.role] || {})) ag.skill[id] = Math.max(ag.skill[id] || 0, v);
-      for (const id of m.gear.hand) if (CAMP.tools[id]) ag.skill[CAMP.tools[id]] = Math.max(ag.skill[CAMP.tools[id]] || 0, CAMP.toolSkill);
+      for (const tok of m.gear.hand) { const id = gearType(tok); if (CAMP.tools[id]) ag.skill[CAMP.tools[id]] = Math.max(ag.skill[CAMP.tools[id]] || 0, CAMP.toolSkill); }   // (a bought or forged piece is a word with marks: «ironaxe@dwarf»)
     }
     const rec = recordOf(w, ag); if (rec) rec.name = m.name;
     if (m.master) ag.master = {skill: m.master.skill, since: w.tick, workedAt: -1};

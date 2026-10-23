@@ -26,6 +26,7 @@ import {mkdirSync, writeFileSync, readFileSync, existsSync, renameSync} from 'no
 import {availableParallelism} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {dirname, join, resolve} from 'node:path';
+import {CAMP_TIME} from '../src/campaign/fight.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const TABLES = {CAMPAIGN: '../src/data/campaign.js', CAMP: '../src/data/camp.js', QUEST: '../src/data/quest.js', BUBBLE: '../src/data/bubble.js',
@@ -116,7 +117,7 @@ async function worker() {
         variant: job.variant, world: job.world, capital: cap.name, people: cap.peopleLabel, phase: K.phase, years: +(K.day / 120).toFixed(2),
         coreDead: dead.length, deathDays: dead.map(m => m.died.day), causes, firstMonth: dead.filter(m => m.died.day < 30).length,
         hungry: +(K.stats.hungryDays / Math.max(1, K.day)).toFixed(3), fights: K.stats.fights, won: K.stats.won, ambushes: K.stats.ambushes || 0,
-        storms: K.stats.storms || 0, pursuers: K.stats.pursuers || 0, local: K.stats.local?.camps || 0, localMs: Math.round(K.stats.local?.ms || 0),
+        storms: K.stats.storms || 0, pursuers: K.stats.pursuers || 0, local: K.stats.local?.camps || 0, localMs: Math.round(CAMP_TIME.get(K) || 0),
         crown: K.log.some(l => l.kind === 'crown'), clues: Q?.found ?? 0, towns: K.stats.towns || 0, joined: K.members.filter(m => !isCore(m)).length,
         epic: !!Q?.epic, clueYears, crownYears: crownDay == null ? null : +(crownDay / 120).toFixed(2),
         risen: Q?.risenDay != null && (crownDay == null || Q.risenDay <= crownDay), stormsGrave: K.stats.stormsGrave || 0, stormsLair: K.stats.stormsLair || 0, srcs,

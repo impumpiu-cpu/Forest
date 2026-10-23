@@ -35,13 +35,12 @@ import {bindOption, captiveAllows, keepInside} from '../../settlement/captives.j
 import {assistOption} from '../../settlement/masters.js';
 import {formerAllows} from '../../settlement/freedom.js';
 import {mayExtract} from '../../settlement/kinds.js';
+import {ROSTER} from '../../data/behaviour.js';
 
 // keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
 // colony's vacancies is settlement/plan.js vacancyPull)
-const ROSTER = {keep: 0.2, committed: 0.25, ponder: [8, 16]};
 
 // the weight of answering an attack on oneself: more than any need can reach
-const ATTACKED = 2.6;
 
 const label = t => TASKS.get(t.id).label(t);
 
@@ -133,7 +132,7 @@ function decide(w, a, woke = 'дело кончилось') {
     // (running "home" from home ends at once and leaves the wounded standing under the blows)
     const stand = brave * hpShare(a) > 0.85 || agentInZone(w, a);
     // the answer to an attack is a reflex: no skip from an earlier fight with the same foe holds it back
-    opts.push(stand ? [{id: 'fight', target: hunter, reflex: true}, ATTACKED, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ATTACKED, () => `напал ${who}: бежать к своим`]);
+    opts.push(stand ? [{id: 'fight', target: hunter, reflex: true}, ROSTER.attacked, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ROSTER.attacked, () => `напал ${who}: бежать к своим`]);
   }
   // the night watch (settlement/board.js): the council's rule — one place, taken by whoever wants it
   const watch = watchOption(w, a); if (watch) opts.push(watch);

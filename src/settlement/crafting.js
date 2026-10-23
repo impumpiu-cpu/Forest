@@ -171,7 +171,9 @@ export function workAt(w, b, amount, a) {
     // the materials: a family (wood, stone) is taken the best first that the worker's race may work, and what it was
     // goes with the order (data/kinds.js, settlement/kinds.js); a named resource as it is
     const of = {};
-    for (const [res, v] of Object.entries(r.cost)) { if (FAMILY_RES[res]) of[FAMILY_RES[res]] = takeKind(w, FAMILY_RES[res], v, 'make', a?.species); else w.stock[res] -= v; }
+    // (a piece of the family takes its best; a recipe that only spends it — charcoal, a haft of any wood — its worst)
+    const ofFamily = fam => r.makes.item && MATERIALS[ITEMS.get(r.makes.item).material]?.resource === FAMILIES[fam].resource;
+    for (const [res, v] of Object.entries(r.cost)) { if (FAMILY_RES[res]) of[FAMILY_RES[res]] = takeKind(w, FAMILY_RES[res], v, ofFamily(FAMILY_RES[res]) ? 'make' : 'spend', a?.species); else w.stock[res] -= v; }
     if (fuel) { if (FAMILY_RES[fuel[0].id]) takeKind(w, FAMILY_RES[fuel[0].id], fuel[1], 'burn'); else w.stock[fuel[0].id] -= fuel[1]; }
     b.order = {recipe: r.id, progress: 0};
     if (Object.keys(of).length) b.order.of = of;
@@ -230,7 +232,7 @@ export function stepCrafting(w) {
     const r = RECIPES.get(b.order.recipe);
     if (anyoneCan(w, r) || !w.agents.some(a => a.faction === 'colony' && !a.dead)) continue;
     for (const [res, v] of Object.entries(r.cost)) { if (FAMILY_RES[res]) giveKind(w, FAMILY_RES[res], b.order.of?.[FAMILY_RES[res]], v); else w.stock[res] = (w.stock[res] || 0) + v; }
-    if (b.order.fuel) w.stock[b.order.fuel[0]] = (w.stock[b.order.fuel[0]] || 0) + b.order.fuel[1];
+    if (b.order.fuel) { const [res, n] = b.order.fuel; if (FAMILY_RES[res]) giveKind(w, FAMILY_RES[res], null, n); else w.stock[res] = (w.stock[res] || 0) + n; }
     b.order = null;
     if (w.scratch) { delete w.scratch.orders; delete w.scratch.craftCtx; }
     const what = r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short;

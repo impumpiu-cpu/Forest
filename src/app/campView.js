@@ -26,7 +26,7 @@ export class CampView {
     let list;
     try { list = (await listWorlds()).filter(r => r.type !== 'land' && r.done !== false); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }
     if (!list.length) { box.innerHTML = '<small>Пока нет живых миров: заселите землю («Заселение мира») или начните «Быстрый старт».</small>'; return; }
-    box.innerHTML = list.map(r => `<div class="sv" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)} · ${r.free ? 'заселённый' : r.epic ? 'эпический' : 'полигон'} · ${Math.max(0, r.year - 1)} лет · городов ${r.towns}` +
+    box.innerHTML = list.map(r => `<div class="sv" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)} · ${r.free ? 'заселённый' : r.epic ? 'эпический' : 'полигон'} · ${r.lived ?? Math.max(0, r.year - 1)} лет · городов ${r.towns}` +
       `<br><small>${esc(questText(r))}${r.campaign ? ` · поход из ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}` : ''}${r.tables ? ` · с правками таблиц (${r.tables})` : ''}</small></span>` +
       `<button type="button" class="primary">${r.campaign && !['won', 'lost', 'timeout'].includes(r.campaign.phase) ? 'Продолжить' : 'В поход'}</button></div>`).join('');
   }

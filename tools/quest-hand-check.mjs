@@ -42,7 +42,7 @@ const thaw = s => loadAtlas(JSON.parse(s));
     Q?.epic ? `${Q.crown.label}, поднимется в ${cb.riseAt}-м` : 'не тот квест');
   check('рассказ квеста — о бедствии руки', /начнётся бедствие|уже идёт/.test(Q.story), Q.story.slice(0, 90) + '…');
   runCampaign(b);
-  check('поход доходит до конца; победа — босс бедствия руки пал от каравана', finished(K) && (K.phase !== 'won' || (cb.phase === 'fallen' && cb.fell.by === 'caravan' && b.artifact.holder.kind === 'caravan')),
+  check('поход доходит до конца; победа — босс бедствия руки пал от каравана, артефакт в столице', finished(K) && (K.phase !== 'won' || (cb.phase === 'fallen' && cb.fell.by === 'caravan' && b.artifact.holder.kind === 'capital')),
     `${K.phase}, день ${K.day}, бедствие ${cb.phase}${cb.fell ? ' — ' + cb.fell.by : ''}`);
   const b2 = thaw(frozen), K2 = newCampaign(b2, capitals(b2)[0].town, {mode: 'auto'}); runCampaign(b2);
   check('тот же мир и та же столица — тот же поход', campaignHash(K2) === campaignHash(K));

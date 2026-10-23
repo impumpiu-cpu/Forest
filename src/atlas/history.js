@@ -38,7 +38,7 @@ export function epicYears(a) {
 }
 // the eras with their length in seasons, in order
 export const eraPlan = a => {
-  if (a.cfg.free) return [{id: 'free', seasons: a.hist?.end || 0}];   // «Заселение мира»: one stretch, as long as the hand has run it
+  if (a.cfg.free) return [{id: 'free', seasons: Math.ceil((a.hist?.end || 0) / SEASONS_PER_YEAR) * SEASONS_PER_YEAR}];   // «Заселение мира»: one stretch, as long as the hand has run it
   if (a.cfg.epic) { const Y = epicYears(a); return ['wild', 'elder', 'young'].map(id => ({id, seasons: Y[id] * SEASONS_PER_YEAR})); }
   return [
     {id: 'wild', seasons: WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR},
@@ -48,6 +48,9 @@ export const eraPlan = a => {
 };
 export const historyLength = a => eraPlan(a).reduce((s, e) => s + e.seasons, 0);
 export const historyDone = a => !!a.hist && a.hist.step >= a.hist.end;
+// the years history has lived (the year it stands at is not lived yet), and the year a run of it ends in
+export const yearsLived = a => (a.hist ? Math.max(0, a.hist.year - 1) : 0);
+export const endYear = a => (a.hist ? Math.floor(a.hist.end / SEASONS_PER_YEAR) + 1 : 0);
 export const seasonLabel = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 
 // the world cell in the middle of a coarse fauna cell (on land if there is any)

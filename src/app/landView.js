@@ -6,14 +6,16 @@
 // memory; a land opened from the library is made whole again on its first edit). A land is saved as a land
 // (atlas/save.js LAND_KIND) into the same library as the worlds, and «Заселение мира» will take it from there.
 //
-// The map, its layers, the camera and the readout are the «Мир» polygon's (ui/atlasView.js): this screen is that
-// view with its own controls.
-import {AtlasView, ATLAS_OPTS} from '../ui/atlasView.js';
+// The model — the land being made, its edits, the copies — is the core's (atlas/landMaker.js): this screen only shows it
+// and passes the hand on. The map, its layers, the camera and the readout are ui/atlasView.js MapView.
+import {MapView, ATLAS_OPTS} from '../ui/atlasView.js';
 import {ATLAS_SIZES, DEFAULT_ATLAS_CFG, SHAPE} from '../data/atlas.js';
 import {HEMISPHERES} from '../data/geology.js';
 import {ATLAS_STAGES} from '../atlas/stages.js';
-import {newAtlas, runNextStage, landDone} from '../atlas/generate.js';
-import {emptyShape, shapeEmpty, shapeCount, snapshot, resume, FROM, dab} from '../atlas/shape.js';
+import {landDone} from '../atlas/generate.js';
+import {shapeCount} from '../atlas/shape.js';
+import {LandMaker} from '../atlas/landMaker.js';
+import {scaleOf} from '../atlas/tectonics.js';
 import {LAND_KIND} from '../atlas/save.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadLand, importWorld} from '../ui/worlds.js';
 import {warnEdits} from '../ui/tableEdits.js';
@@ -23,12 +25,9 @@ import {esc, plural} from '../core/util.js';
 import {$} from '../ui/dom.js';
 
 const STORE = 'forest.land';
-const KEYS = ['size', 'land', 'plates', 'hemisphere'];
 const LAYERS = ATLAS_OPTS.layer.filter(([id]) => id !== 'fauna' && id !== 'peoples');
 const TOOLS = [['look', 'Смотреть'], ['plate', 'Плиты'], ['raise', 'Поднять'], ['lower', 'Опустить']];
 const ERA = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
-const SNAP = new Set(Object.values(FROM));
-const stageIndex = id => ATLAS_STAGES.all().findIndex(s => s.id === id);
 // the compass of the plate card: screen directions (y grows down the map)
 const DIRS = [['↖', -1, -1], ['↑', 0, -1], ['↗', 1, -1], ['←', -1, 0], ['·', 0, 0], ['→', 1, 0], ['↙', -1, 1], ['↓', 0, 1], ['↘', 1, 1]];
 const WORDS = ['на восток', 'на юго-восток', 'на юг', 'на юго-запад', 'на запад', 'на северо-запад', 'на север', 'на северо-восток'];
@@ -36,10 +35,8 @@ const wayOf = (vx, vy) => WORDS[(Math.round(Math.atan2(vy, vx) / (Math.PI / 4)) 
 const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
 const signed = v => (v > 0 ? `+${v}` : `${v}`);
 
-export class LandView extends AtlasView {
-  constructor() {
-    super({onBack: () => {}, onSettle: () => {}});
-  }
+export class LandView extends MapView {
+  setup() { this.cfg = this.load(); this.maker = null; }
 
   load() {
     try { const raw = localStorage.getItem(STORE); if (raw) { const c = {...DEFAULT_ATLAS_CFG, ...JSON.parse(raw)}; delete c.shape; return c; } } catch (e) { /* storage unavailable */ }
@@ -48,11 +45,11 @@ export class LandView extends AtlasView {
   save() { try { localStorage.setItem(STORE, JSON.stringify(this.cfg)); } catch (e) { /* storage unavailable */ } }
 
   build() {
-    this.shape = emptyShape(); this.snaps = {}; this.tool = 'look'; this.radius = SHAPE.brush.radii[1][0]; this.plateSel = -1;
+    this.tool = 'look'; this.radius = SHAPE.brush.radii[1][0]; this.plateSel = -1;
     const opts = {...ATLAS_OPTS, layer: LAYERS};
     document.querySelectorAll('#land .seg[data-lkey]').forEach(box => {
       const key = box.dataset.lkey;
-      box.innerHTML = opts[key].map(([v, l]) => `<button type="button" data-val="${v}" aria-pressed="false">${l}</button>`).join('');
+      box.innerHTML = opts[key].map(([v, l]) => `<button type="button" data-val="${esc(String(v))}" aria-pressed="false">${esc(l)}</button>`).join('');
       box.addEventListener('click', e => {
         const b = e.target.closest('button'); if (!b) return;
         if (key === 'layer' || key === 'ore') { this[key] = b.dataset.val; this.sync(); this.draw(); return; }
@@ -81,32 +78,16 @@ export class LandView extends AtlasView {
     $('landDir').innerHTML = DIRS.map(([l, x, y]) => `<button type="button" data-x="${x}" data-y="${y}" title="${x || y ? wayOf(x, y) : 'остановить'}">${l}</button>`).join('');
     $('landDir').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
-      const x = +b.dataset.x, y = +b.dataset.y, p = this.plate(); if (!p) return;
-      const sp = Math.hypot(p.vx, p.vy) || SHAPE.speed.steps[2][0], len = Math.hypot(x, y) || 1;
-      this.setMotion(x || y ? (x / len) * sp : 0, x || y ? (y / len) * sp : 0);
+      if (this.plate()) this.edited(this.maker.setDirection(this.plateSel, +b.dataset.x, +b.dataset.y));
     });
     $('landSpeed').innerHTML = SHAPE.speed.steps.map(([v, l]) => `<button type="button" data-val="${v}">${l}</button>`).join('');
     $('landSpeed').addEventListener('click', e => {
-      const b = e.target.closest('button'), p = this.plate(); if (!b || !p) return;
-      const v = +b.dataset.val, e0 = this.edit(p.id), sp = Math.hypot(p.vx, p.vy);
-      // a plate that stands still sets off the way the seed sent it
-      const ux = sp > 1e-6 ? p.vx / sp : e0.ox ?? 1, uy = sp > 1e-6 ? p.vy / sp : e0.oy ?? 0, ul = Math.hypot(ux, uy) || 1;
-      this.setMotion(ux / ul * v, uy / ul * v);
+      const b = e.target.closest('button'); if (!b || !this.plate()) return;
+      this.edited(this.maker.setSpeed(this.plateSel, +b.dataset.val));
     });
-    const lift = d => {
-      const p = this.plate(); if (!p) return;
-      const e0 = this.edit(p.id), L = SHAPE.lift, v = Math.round(Math.max(L.min, Math.min(L.max, (e0.lift || 0) + d)) * 100) / 100;
-      if (v) e0.lift = v; else delete e0.lift;
-      this.tidy(p.id); this.rebuild('lift');
-    };
-    $('landUp').addEventListener('click', () => lift(SHAPE.lift.step));
-    $('landDown').addEventListener('click', () => lift(-SHAPE.lift.step));
-    $('landPlateReset').addEventListener('click', () => {
-      const p = this.plate(); if (!p) return;
-      const e0 = this.shape.plates[p.id]; if (!e0) return;
-      const kind = e0.vx != null ? 'motion' : 'lift';
-      delete this.shape.plates[p.id]; this.rebuild(kind);
-    });
+    $('landUp').addEventListener('click', () => { if (this.plate()) this.edited(this.maker.lift(this.plateSel, +1)); });
+    $('landDown').addEventListener('click', () => { if (this.plate()) this.edited(this.maker.lift(this.plateSel, -1)); });
+    $('landPlateReset').addEventListener('click', () => { if (this.plate()) this.edited(this.maker.resetPlate(this.plateSel)); });
     $('landPlateClose').addEventListener('click', () => this.selectPlate(-1));
 
     // the climate
@@ -119,13 +100,12 @@ export class LandView extends AtlasView {
     };
     for (const id of ['landEq', 'landPole', 'landWet']) {
       $(id).addEventListener('input', show);
-      $(id).addEventListener('change', () => {
-        this.shape.climate = {equator: +$('landEq').value, pole: +$('landPole').value, wet: Math.round(+$('landWet').value * 100) / 100};
-        this.rebuild('climate');
-      });
+      $(id).addEventListener('change', () => { if (!this.maker) return; this.maker.setClimate({equator: +$('landEq').value, pole: +$('landPole').value, wet: +$('landWet').value}); this.edited(true); });
     }
     this.showClimate = show;
-    $('landReset').addEventListener('click', () => { this.shape = emptyShape(); this.rebuild('motion'); });
+    $('landReset').addEventListener('click', () => { if (!this.maker) return; this.maker.reset(); this.edited(true); });
+    // a stroke whose pointer is lost (a dialog, the window left) is still ended — and the land made again
+    $('landMap').addEventListener('lostpointercapture', () => { if (this.painting != null) { this.painting = null; this.paintEnd(); } });
 
     this.buildLandLibrary();
     this.wireCamera({map: 'landMap', readout: 'landReadout', zoomIn: 'landZoomIn', zoomOut: 'landZoomOut', zoomFit: 'landZoomFit', screen: 'land', legend: 'landLegend',
@@ -135,8 +115,11 @@ export class LandView extends AtlasView {
   // the screen is opened (app/main.js)
   show() {
     this.sync(); this.refreshLands();
-    if (!this.atlas) this.generate(); else this.draw();
+    if (!this.atlas) this.generate();
+    else { this.draw(); if (!landDone(this.atlas)) this.run(); }
   }
+  // leaving the screen (app/main.js): the making halts between frames and goes on when the screen is back
+  stop() { clearTimeout(this.timer); this.timer = 0; }
 
   sync() {
     $('landSeed').value = this.cfg.seed;
@@ -152,10 +135,10 @@ export class LandView extends AtlasView {
     $('landRadius').hidden = !brush;
     $('landRadius').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.val === this.radius)));
     $('landMap').classList.toggle('brush', brush);
-    const c = this.shape.climate;
+    const shape = this.maker?.shape || {climate: {equator: 0, pole: 0, wet: 1}, strokes: []}, c = shape.climate;
     $('landEq').value = c.equator; $('landPole').value = c.pole; $('landWet').value = c.wet; this.showClimate();
-    const n = shapeCount(this.shape);
-    $('landEdits').textContent = n ? `Правок: ${n}${this.shape.strokes.length ? ` (мазков кисти ${this.shape.strokes.length})` : ''}` : 'Правок нет';
+    const n = shapeCount(shape);
+    $('landEdits').textContent = n ? `Правок: ${n}${shape.strokes.length ? ` (мазков кисти ${shape.strokes.length})` : ''}` : 'Правок нет';
     $('landReset').disabled = !n;
     this.legend();
     this.syncPlate();
@@ -163,26 +146,21 @@ export class LandView extends AtlasView {
 
   // ── making the land: a stage a frame; the copies before the stages the edits enter at are kept
   generate() {
-    clearTimeout(this.timer);
-    this.shape = emptyShape(); this.snaps = {};
-    this.atlas = newAtlas(this.cfg);
+    clearTimeout(this.timer); this.seq = (this.seq || 0) + 1;
+    this.maker = new LandMaker(this.cfg); this.atlas = this.maker.atlas;
     this.cam = new Camera(this.atlas.w, this.atlas.h); this.bitmap = null; this.bitmapKey = '';
     this.bind(null, ''); this.selectPlate(-1); this.sync();
     this.renderSide(); this.run();
   }
 
   run() {
-    const a = this.atlas;
+    const m = this.maker, a = m.atlas;
     clearTimeout(this.timer);
     const next = () => {
       if (a !== this.atlas) return;
       // as many stages as fit in a frame's budget, so a small land is worked out again at once and a large one is seen growing
       const t0 = performance.now();
-      while (!landDone(a) && performance.now() - t0 < 45) {
-        const st = ATLAS_STAGES.all()[a.stage];
-        if (SNAP.has(st.id)) this.snaps[st.id] = snapshot(a);
-        runNextStage(a);
-      }
+      while (performance.now() - t0 < 45 && m.stepOne());
       this.bitmapKey = ''; this.draw(); this.renderSide();
       if (!landDone(a)) this.timer = setTimeout(next, 16);
       else { this.timer = 0; this.syncSave(); this.syncPlate(); }
@@ -190,15 +168,10 @@ export class LandView extends AtlasView {
     this.timer = setTimeout(next, 16);
   }
 
-  // an edit of the kind (atlas/shape.js FROM): the land from the latest copy at or before the stage it enters at;
-  // the copies after that stage hold the old edit and are dropped (the run takes them again)
-  rebuild(kind) {
-    const at = stageIndex(FROM[kind]);
-    let best = null;
-    for (const id of Object.keys(this.snaps)) { const k = stageIndex(id); if (k <= at && (!best || k > stageIndex(best))) best = id; }
-    for (const id of Object.keys(this.snaps)) if (stageIndex(id) > (best ? stageIndex(best) : -1)) delete this.snaps[id];
-    const shape = shapeEmpty(this.shape) ? null : this.shape;
-    this.atlas = best ? resume(this.snaps[best], shape) : newAtlas({...this.cfg, ...(shape ? {shape: structuredClone(shape)} : {})});
+  // the maker worked the land out again (atlas/landMaker.js): show the new one as it is made
+  edited(changed) {
+    if (!changed) return;
+    this.atlas = this.maker.atlas;
     if (!this.cam || this.cam.w !== this.atlas.w || this.cam.h !== this.atlas.h) this.cam = new Camera(this.atlas.w, this.atlas.h);
     this.bitmapKey = '';
     this.sync(); this.syncSave(); this.renderSide(); this.run();
@@ -206,25 +179,12 @@ export class LandView extends AtlasView {
 
   // ── plates
   plate() { return this.plateSel >= 0 ? this.atlas?.plates?.[this.plateSel] : null; }
-  edit(id) {
-    const e = (this.shape.plates[id] ||= {});
-    // the seed's own motion, kept the first time the plate is touched (the copy before the seams has it as it was)
-    if (e.ox == null) { const p0 = this.snaps.tectonics?.plates?.[id] || this.atlas.plates[id]; e.ox = p0.vx; e.oy = p0.vy; }
-    return e;
-  }
-  tidy(id) { const e = this.shape.plates[id]; if (e && e.vx == null && !e.lift) delete this.shape.plates[id]; }
-  setMotion(vx, vy) {
-    const p = this.plate(); if (!p) return;
-    const e = this.edit(p.id);
-    if (Math.abs(vx - e.ox) < 1e-6 && Math.abs(vy - e.oy) < 1e-6) { delete e.vx; delete e.vy; } else { e.vx = Math.round(vx * 1000) / 1000; e.vy = Math.round(vy * 1000) / 1000; }
-    this.tidy(p.id); this.rebuild('motion');
-  }
   selectPlate(id) { this.plateSel = id; this.syncPlate(); this.draw(); }
   syncPlate() {
     const p = this.plate(), box = $('landPlate');
     box.hidden = !p;
     if (!p) return;
-    const a = this.atlas, e = this.shape.plates[p.id] || {}, sp = Math.hypot(p.vx, p.vy);
+    const a = this.atlas, e = this.maker.shape.plates[p.id] || {}, sp = Math.hypot(p.vx, p.vy);
     $('landPlateTitle').textContent = `Плита ${p.id + 1}`;
     $('landPlateInfo').innerHTML = `<dt>Кора</dt><dd>${p.cont ? 'материковая' : 'океаническая'}</dd><dt>Площадь</dt><dd>${Math.round(p.area / a.n * 100)}% мира</dd>` +
       `<dt>Движение</dt><dd>${sp < 0.02 ? 'стоит' : `${wayOf(p.vx, p.vy)}, ${sp.toFixed(2)}`}${e.vx != null ? ' (правка)' : ''}</dd>` +
@@ -236,7 +196,7 @@ export class LandView extends AtlasView {
     $('landSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.val === near[0])));
     const busy = !landDone(a);
     for (const id of ['landUp', 'landDown', 'landPlateReset']) $(id).disabled = busy;
-    $('landPlateReset').disabled = busy || !this.shape.plates[p.id];
+    $('landPlateReset').disabled = busy || !this.maker.shape.plates[p.id];
   }
 
   cellAt(e) {
@@ -249,38 +209,32 @@ export class LandView extends AtlasView {
     const c = this.cellAt(e); if (!c) return;
     this.selectPlate(a.f.plate[Math.floor(c[1]) * a.w + Math.floor(c[0])]);
   }
-  setPick() { /* no settlement on a land */ }
-
-  // ── the brush: a stroke is shown at once on the relief, and the chain is worked out again when it ends
+  // ── the brush: the maker shows a stroke at once on the relief and works the chain out again when it ends
   paintStart(e) {
     if (this.tool !== 'raise' && this.tool !== 'lower') return false;
     const a = this.atlas; if (!a || !landDone(a)) return false;
-    if (this.shape.strokes.length >= SHAPE.brush.max) { $('landSaveStatus').textContent = `Мазков уже ${SHAPE.brush.max} — больше кисть не берёт. «Сбросить правки» или новая земля.`; return true; }
-    this.stroke = []; this.last = null; this.paintMove(e);
+    if (this.maker.strokesLeft <= 0) { $('landSaveStatus').textContent = `Мазков уже ${SHAPE.brush.max} — больше кисть не берёт. «Сбросить правки» или новая земля.`; return true; }
+    this.stroking = true; this.paintMove(e);
     return true;
   }
   paintMove(e) {
-    if (!this.stroke) return;
+    if (!this.stroking) return;
     const c = this.cellAt(e); if (!c) return;
-    const a = this.atlas, r = this.radius * Math.min(a.w, a.h) / 192, gap = r * SHAPE.brush.spacing;
-    if (this.last && Math.hypot(c[0] - this.last[0], c[1] - this.last[1]) < gap) return;
-    if (this.shape.strokes.length + this.stroke.length >= SHAPE.brush.max) return;
-    const st = {x: Math.round(c[0] * 10) / 10, y: Math.round(c[1] * 10) / 10, r: Math.round(r * 10) / 10, dz: this.tool === 'raise' ? SHAPE.brush.dz : -SHAPE.brush.dz};
-    this.stroke.push(st); this.last = c;
-    dab(a, a.f.elev, st);   // a look ahead; the land itself is made again from the copy
-    this.bitmapKey = ''; this.draw();
+    const st = this.maker.stroke(c[0], c[1], this.radius, this.tool === 'raise'); if (!st) return;
+    // only the dab's box is painted again
+    const R = Math.ceil(st.r * 2.2);
+    this.paintBox(this.atlas, st.x - R, st.y - R, st.x + R, st.y + R); this.draw();
   }
   paintEnd() {
-    const s = this.stroke; this.stroke = null;
-    if (!s || !s.length) return;
-    this.shape.strokes.push(...s);
-    this.rebuild('stroke');
+    if (!this.stroking) return;
+    this.stroking = false;
+    this.edited(this.maker.endStroke());
   }
 
   // over the map: the plates' motion as arrows (the picked plate in gold), the brush's rim under the cursor
   overlay(a, px, cam) {
     if (a.plates && a.f.plate && (this.layer === 'plates' || this.tool === 'plate')) {
-      const k = Math.min(a.w, a.h) / 192;
+      const k = scaleOf(a);
       for (const p of a.plates) {
         const sp = Math.hypot(p.vx, p.vy), sel = p.id === this.plateSel;
         px.strokeStyle = sel ? '#ffd36a' : 'rgba(255,255,255,0.85)'; px.fillStyle = px.strokeStyle;
@@ -295,14 +249,14 @@ export class LandView extends AtlasView {
       }
     }
     if (this.hoverAt && (this.tool === 'raise' || this.tool === 'lower')) {
-      const r = this.radius * Math.min(a.w, a.h) / 192;
+      const r = this.radius * scaleOf(a);
       px.strokeStyle = this.tool === 'raise' ? 'rgba(255,211,106,0.9)' : 'rgba(140,190,255,0.9)'; px.lineWidth = Math.max(this.minW * 1.5, 0.3);
       px.beginPath(); px.arc(this.hoverAt[0], this.hoverAt[1], r, 0, Math.PI * 2); px.stroke();
     }
   }
   hover(e) {
     super.hover(e);
-    if (this.tool === 'raise' || this.tool === 'lower') { this.hoverAt = this.atlas && this.cam ? this.cellAt(e) : null; if (!this.stroke) this.draw(); }
+    if (this.tool === 'raise' || this.tool === 'lower') { this.hoverAt = this.atlas && this.cam ? this.cellAt(e) : null; if (!this.stroking) this.draw(); }
   }
 
   renderSide() {
@@ -320,7 +274,7 @@ export class LandView extends AtlasView {
       (a.f.land ? `<dt>Суша</dt><dd>${Math.round(land / a.n * 100)}%</dd>` : '') +
       (a.lakes ? `<dt>Озёра</dt><dd>${a.lakes.length}</dd>` : '') +
       `<dt>Правки</dt><dd>${n ? `${n} ${plural(n, 'правка', 'правки', 'правок')}` : 'нет'}</dd>`;
-    $('landChron').innerHTML = a.chronicle.length ? a.chronicle.map(c => `<div class="lv-info"><small>${ERA[c.era] || c.era}</small> ${esc(c.text)}</div>`).join('') : '<small class="muted">Летопись начнётся с первым этапом.</small>';
+    $('landChron').innerHTML = a.chronicle.length ? a.chronicle.map(c => `<div class="lv-info"><small>${esc(ERA[c.era] || c.era)}</small> ${esc(c.text)}</div>`).join('') : '<small class="muted">Летопись начнётся с первым этапом.</small>';
   }
 
   // ── the library: only lands here (the worlds are the polygon's and the campaign's)
@@ -350,7 +304,8 @@ export class LandView extends AtlasView {
         this.refreshLands(); return;
       }
       say('Открываю…');
-      try { const a = await openWorld(id); this.showLand(a, id, row.dataset.name); say(`Открыта земля «${row.dataset.name}».`); warnEdits(a.tables); }
+      const seq = this.seq = (this.seq || 0) + 1;   // the last land asked for is the one shown
+      try { const a = await openWorld(id); if (seq !== this.seq) return; this.showLand(a, id, row.dataset.name); say(`Открыта земля «${row.dataset.name}».`); warnEdits(a.tables); }
       catch (err) { say('Не удалось открыть: ' + err.message); }
     });
     $('landLoadFile').addEventListener('change', async e => {
@@ -388,10 +343,8 @@ export class LandView extends AtlasView {
   // a saved land on the screen: its settings and its edits; the copies are made again on the first edit
   showLand(a, id, name) {
     clearTimeout(this.timer); this.timer = 0;
-    this.atlas = a; this.snaps = {};
+    this.maker = LandMaker.open(a); this.atlas = a;
     this.cfg = {...DEFAULT_ATLAS_CFG, ...a.cfg}; delete this.cfg.shape; this.save();
-    this.shape = a.cfg.shape ? structuredClone(a.cfg.shape) : emptyShape();
-    this.shape.climate = {...emptyShape().climate, ...this.shape.climate}; this.shape.plates ||= {}; this.shape.strokes ||= [];
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = '';
     this.bind(id, name); this.selectPlate(-1); this.sync();
     this.draw(); this.renderSide();

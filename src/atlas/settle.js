@@ -11,16 +11,15 @@ import {mulberry, seedNumber} from '../core/rng.js';
 import {plural} from '../core/util.js';
 import {FREE} from '../data/history.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
-import {LAIRS} from '../data/lairs.js';
+import {LAIRS, LAIR_LIFE} from '../data/lairs.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {CALAMITIES} from '../data/calamities.js';
-import {landDone} from './generate.js';
+import {landDone, runNextStage} from './generate.js';
 import {initFauna, faunaCell} from './fauna.js';
 import {seedRot, wildLairs, newLair, groundFits, homeField, wherePhrase, R as lairRadius} from './lairs.js';
 import {landBand, townAt} from './peoples.js';
-import {addCalamity} from './calamity.js';
-import {barrows} from './diplomacy.js';
+import {addCalamity, deadGraves} from './calamity.js';
 import {worldSubs} from './realms.js';
 
 function say(a, text) {
@@ -81,25 +80,43 @@ export function addLair(a, kindId, i) {
   const L = LAIRS.has(kindId) ? LAIRS.get(kindId) : null;
   if (!L || L.at === 'town') return {error: 'такое логово рукой не ставится'};
   if (a.f.ocean[i] || a.f.lake[i] >= 0) return {error: 'это вода'};
-  if (townAt(a, i)) return {error: 'здесь город'};
+  if (townAt(a, i) || a.siteAt?.[i]) return {error: 'здесь город или его угодья'};
   const p = {x: i % a.w, y: (i / a.w) | 0};
   if (a.lairs.some(o => o.alive && o.kind === L.id && Math.hypot(o.x - p.x, o.y - p.y) < lairRadius(a, L))) return {error: 'рядом уже стоит такое же логово'};
   if (L.ground === 'rot') {
-    barrows(a, i, Math.max(2, Math.round(3 * Math.min(a.w, a.h) / 192)), FREE.graves);
-    const j = faunaCell(a, i); a.rot[j] = Math.max(a.rot[j], (L.rotAt || 0.2) * 1.3);
+    deadGraves(a, i);
+    const j = faunaCell(a, i); a.rot[j] = Math.max(a.rot[j], (L.rotAt || FREE.rotAt) * FREE.rot);
   } else if (!groundFits(a, L, i)) return {error: `${L.label}: ${GROUND[L.ground] || 'не их место'}`};
   if (L.tribe) a.tribeLand[L.id] ||= homeField(a, L);
-  const lair = newLair(a, L, i, a.hist.rnd, L.dragon ? 0.9 : FREE.lair);
+  const lair = newLair(a, L, i, a.hist.rnd, L.dragon ? LAIR_LIFE.dragonStart : FREE.lair);
   lair.byHand = true;
   say(a, `${L.label[0].toUpperCase() + L.label.slice(1)} «${lair.name}» ${L.g === 'pl' ? 'легли' : L.g === 'f' ? 'встала' : L.g === 'n' ? 'встало' : 'встал'} ${wherePhrase(a, i)}${SPECIES.has(L.species) ? ` — ${SPECIES.get(L.species).plural}` : ''}.`);
   return lair;
 }
 
 // a calamity set by hand (atlas/calamity.js addCalamity): kind (null — drawn), place (−1 — as the world places it), years
-export function setCalamity(a, {kind = null, at = -1, years = 10} = {}) {
+export function setCalamity(a, {kind = null, at = -1, years = FREE.calIn[1]} = {}) {
   if (busy(a)) return {error: 'время идёт — дождитесь конца отрезка'};
   if (at >= 0 && (a.f.ocean[at] || a.f.lake[at] >= 0)) return {error: 'это вода'};
+  if (at >= 0 && (townAt(a, at) || a.siteAt?.[at])) return {error: 'здесь город или его угодья — бедствие встаёт в глуши (вампир найдёт город сам)'};
   return addCalamity(a, {kind, at, years});
+}
+
+// may a caravan set out from this world (app/campView.js «В поход»): null, or why not
+export function canMarch(a) {
+  if (!a?.hist) return 'в мире ещё нет истории';
+  if (busy(a)) return 'время идёт — дождитесь конца отрезка';
+  return (a.towns || []).some(t => t.alive && t.capital) ? null : 'в мире нет ни одной столицы — высадите народ';
+}
+export const wildDone = a => !!a.hist?.wild;
+
+// a stretch of the clock run on: seasons while `more()` says so (the screen gives a frame's budget); the line at its end
+// is told here, once, when the stretch is done → true when it is
+export function stepRun(a, more = () => true) {
+  while (busy(a) && more()) runNextStage(a);
+  if (busy(a)) return false;
+  endRun(a);
+  return true;
 }
 
 // the clock: the next `years` are to run (runNextStage steps them a season at a time, as any history)

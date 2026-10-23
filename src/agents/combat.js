@@ -45,8 +45,7 @@ export function nearestHostile(w, a, r) {
 }
 
 // how far a blow reaches: the species' own `attack.reach` (a toad's tongue), otherwise arm's length
-export const MELEE_REACH = COMBAT.reach;
-export const reachOf = a => SPECIES.get(a.species).attack?.reach ?? MELEE_REACH;
+export const reachOf = a => SPECIES.get(a.species).attack?.reach ?? COMBAT.reach;
 
 const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack || {power: 1}).power, cd: (SPECIES.get(a.species).attack || {cooldown: 12}).cooldown, type: SPECIES.get(a.species).attack?.type || DEFAULT_BLOW.melee}, armor: 0, block: 0};
 
@@ -106,7 +105,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null} = 
 
 // creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely
 export const SILVER = COMBAT.silver;
-const silverFactor = (t, item) => (SPECIES.get(t.species).weakTo?.includes('silver') ? (item && def(item).silver ? SILVER.bane : SILVER.plain) : 1);
+const silverFactor = (t, item) => (SPECIES.get(t.species).weakTo?.includes('silver') ? (item && def(item).silver ? COMBAT.silver.bane : COMBAT.silver.plain) : 1);
 
 // a drake's breath: the ground under the victim catches fire (only where there is something to burn)
 function scorch(w, t) {
@@ -124,9 +123,8 @@ function scorch(w, t) {
 export const behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
 
 // one melee blow; nothing happens (false) unless the target is alive, seen, within reach and not behind rock
-// The blow reads and trains the melee skill (data/skills.js): skill only adds (× 1 + MELEE_SKILL × skill),
+// The blow reads and trains the melee skill (data/skills.js): skill only adds (× 1 + COMBAT.meleeSkill × skill),
 // so a creature without it hits as before.
-export const MELEE_SKILL = COMBAT.meleeSkill;
 const BLOW = COMBAT.blow, SHOT = COMBAT.shot, HIT = COMBAT.hit;
 export function attack(w, a, t) {
   if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
@@ -135,7 +133,7 @@ export function attack(w, a, t) {
   if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
-  damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null});
+  damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null});
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it
   if (g.melee.item) wear(w, a, g.melee.item);
   return true;

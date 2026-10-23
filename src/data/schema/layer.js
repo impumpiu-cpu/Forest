@@ -5,6 +5,12 @@
 // under other edits is opened (stampWarning). docs/TABLE.md, этап 3.
 export const LAYER = {};
 
+// what derives from the tables and must hear of an edit: a cache made from them (agents/strength.js), a copy one data
+// file made of another at load (data/monsters.js). Each is called after any cell is written or reset (schema/edits.js).
+const LISTENERS = [];
+export const onEdit = fn => { LISTENERS.push(fn); };
+export const editMade = () => { for (const fn of LISTENERS) fn(); };
+
 const canon = v => (v === Infinity ? '∞' : v === -Infinity ? '-∞' : Array.isArray(v) ? v.map(canon)
   : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, canon(v[k])])) : v);
 export const canonical = v => JSON.stringify(canon(v));

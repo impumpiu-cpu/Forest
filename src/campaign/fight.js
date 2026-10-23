@@ -24,6 +24,9 @@ import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
 import {afterFight} from './quest.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
 
+// how long the local camps of a campaign took on this machine (not part of the campaign)
+export const CAMP_TIME = new WeakMap();
+
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pieces = (n, one, few, many) => `${n} ${plural(n, one, few, many)}`;
 const names = list => list.join(', ');
@@ -75,8 +78,10 @@ export function playStop(a, K) {
 function play(K, S, how, label, d = null) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
   const w = runCamp(S), o = campOutcome(w);
-  const L = (K.stats.local ||= {camps: 0, ticks: 0, ms: 0});
-  L.camps++; L.ticks += o.ticks; L.ms += (typeof performance !== 'undefined' ? performance.now() : 0) - t0;
+  const L = (K.stats.local ||= {camps: 0, ticks: 0});
+  L.camps++; L.ticks += o.ticks;
+  // the time it took is this machine's, not the campaign's: kept beside it, never saved (tools read it: localMs)
+  CAMP_TIME.set(K, (CAMP_TIME.get(K) || 0) + ((typeof performance !== 'undefined' ? performance.now() : 0) - t0));
   (K.camps ||= []).push({day: K.day, kind: how, label, setup: S, won: o.won, dead: o.members.filter(m => !m.alive).length, hash: outcomeHash(o)});
   if (K.camps.length > CAMP.keep) K.camps.shift();
   return o;

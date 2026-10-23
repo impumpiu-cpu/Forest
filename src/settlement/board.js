@@ -41,36 +41,11 @@ import {clamp, esc, g, plural} from '../core/util.js';
 import {nightness, hourOf, dayOf, DAY, HOUR} from '../core/time.js';
 import {wake} from '../agents/attention.js';
 import {liveMembers as groupMembers, inTurn, see, fade, seenMiddle} from '../agents/group.js';
+import {BOARD} from '../data/colony.js';
+import {WATCH} from '../data/colony.js';
 
-export const BOARD = {
-  look: 5,           // a colonist looks round every this many ticks, in turn by id (as before the board)
-  sight: 16,         // × mods.sight: how far a lookout sees a foe
-  near: 8,           // a foe this close wakes the one who sees it at once and is urgent
-  shout: 30,         // how far a cry carries
-  hearAsleep: 0.1,   // × Perception: the chance a sleeper hears a cry (P 5 — every other one)
-  reshout: 100,      // a threat still in view is cried again so that newcomers learn of it
-  forget: {red: 300, yellow: 100},   // a member unseen this long is struck off the flag
-  margin: 1.5,       // a yellow flag is covered at this × the threat's strength
-  far: 40,           // nobody answers a flag further away than this
-  // the weight of a flag (× the colonist's courage; a yellow one × its uncovered share): a raid, an
-  // attack on one of ours, the nechist about, a beast about
-  urgency: {raid: 1.35, attack: 1.1, nechist: 1.1, beast: 0.9, chase: 1.0, escape: 0.95},   // chase: raiders going off with our goods; escape: captives running away
-  reserve: 1.05,     // a red flag in sight, not fought: keep out of harm's way (the fire, the settlement)
-  wake: 0.25,        // a flag this much heavier wakes those who know it
-  hurt: 0.3,         // health share at or under which one does not go to a fight
-};
-
-// the night watch: the council's standing rule
-export const WATCH = {
-  from: 21, till: 6,  // hours of the night it covers
-  take: 1.2,          // the weight of taking it (× how willing one is, 0.1…1.2)
-  post: 1.6,          // the weight of staying on it once taken (a tired body may still win: asleep on watch)
-  offDuty: 1.5,       // the morning after: sleep it off, until the rest is back or noon
-  noon: 12,
-  fireLight: 6,       // the campfire lights this far: full sight by night
-  fuel: 0.75,         // a tended fire burns this share of the wood an untended one does
-};
-
+export {BOARD};   // (data/colony.js)
+export {WATCH};   // (data/colony.js)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const boardOf = w => (w.board ??= {flags: {}, seq: 0});
 // how far a colonist sees a foe: by night half as far, except by a burning campfire and on watch

@@ -131,7 +131,7 @@ export class CampaignView extends AtlasView {
   // ── a new epic world: the land stage by stage, then the long history, as many steps as fit a frame; the map is
   // drawn now and then. When it is done it goes into the library and the capitals can be chosen
   makeEpic() {
-    this.halt();
+    this.halt(); this.seq = (this.seq || 0) + 1;   // a library world still loading is not shown over this one
     const seed = $('campEpicSeed').value.trim() || String(Math.floor(Math.random() * 1e6));
     const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true});
     this.atlas = a; this.worldId = null; this.worldName = `Эпический мир ${seed}`; this.saveId = null; this.capPick = null;
@@ -141,11 +141,11 @@ export class CampaignView extends AtlasView {
     const t0 = performance.now();
     let drawn = 0;
     const loop = () => {
-      if (!this.making) return;
+      if (!this.making || a !== this.atlas) return;
       const f0 = performance.now();
       while (!atlasDone(a) && performance.now() - f0 < 30) runNextStage(a);
       if (performance.now() - drawn > 600) { drawn = performance.now(); this.bitmapKey = ''; this.draw(); $('campEpicNote').textContent = epicProgress(a, (performance.now() - t0) / 1000); }
-      if (atlasDone(a)) { this.doneEpic((performance.now() - t0) / 1000); return; }
+      if (atlasDone(a)) { this.doneEpic((performance.now() - t0) / 1000, a); return; }
       this.genRaf = requestAnimationFrame(loop);
     };
     this.genRaf = requestAnimationFrame(loop);
@@ -154,9 +154,8 @@ export class CampaignView extends AtlasView {
     this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить';
     this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; this.setupMode(); this.draw();
   }
-  async doneEpic(sec) {
+  async doneEpic(sec, a = this.atlas) {
     this.making = false; $('campEpicGo').textContent = 'Сотворить';
-    const a = this.atlas;
     this.bitmapKey = ''; this.draw();
     const yrs = a.hist.year - 1;   // (the year after the last season is the one history stands at)
     $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${yrs} ${plural(yrs, 'год', 'года', 'лет')} истории. Сохраняю в библиотеку…`;
@@ -215,8 +214,10 @@ export class CampaignView extends AtlasView {
   async openFromLibrary(id, name) {
     this.halt();
     $('campWorldNote').textContent = 'Открываю мир…';
+    const seq = this.seq = (this.seq || 0) + 1;   // the last world asked for is the one shown, whichever loads first
     try {
       const a = await openWorld(id);
+      if (seq !== this.seq) return;
       if (!atlasDone(a) && !a.campaign) { $('campWorldNote').textContent = 'История этого мира не дожита: доведите её до конца на экране «Мир».'; return; }
       this.atlas = a; this.worldId = id; this.worldName = name; this.saveId = a.campaign ? id : null;
       this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0; this.capPick = null;

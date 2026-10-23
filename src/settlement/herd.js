@@ -22,18 +22,9 @@ import {colonists, foodTotal, buildingById} from './query.js';
 import {createAgent} from '../agents/agent.js';
 import {recomputeMods} from './mods.js';
 import {think} from '../agents/mind.js';
+import {HERD} from '../data/colony.js';
 
-export const HERD = {
-  graze: {spring: 0.8, summer: 0.9, autumn: 0.5, winter: 0.4},   // share of the food the pen gives (in winter: twigs and bark)
-  winterMilk: 0.3,          // milk in winter, ×
-  milkCap: 4,               // milk a goat holds before it goes to waste
-  hungryDays: 3,            // days in a row with less than starveBelow of its food before it breaks out
-  starveBelow: 0.55,
-  reach: 75,                // how far from the camp the herder goes for a wild one
-  slaughterBelow: 1.5,      // food per colonist below which a goat is slaughtered…
-  keepGoats: 2,             // …as long as this many are left
-};
-
+export {HERD};   // (data/colony.js)
 const tameOf = a => SPECIES.get(a.species).tame;
 // the per-tick lists are out of date once an animal joins, leaves or dies
 const forget = w => { if (w.scratch) { delete w.scratch.herd; delete w.scratch.tameTargets; delete w.scratch.chores; } };

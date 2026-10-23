@@ -29,6 +29,7 @@ import {walkable, isCampArea} from '../world/grid.js';
 import {stripAll} from '../agents/equipment.js';
 import {SPECIES} from '../data/species.js';
 import {ofSpeciesList} from '../agents/lookup.js';
+import {LIFE} from '../data/colony.js';
 
 // races that live on brew (dwarves: `brew` in data/races.js) work slower without it
 const brewOf = a => SPECIES.get(a.species).brew;
@@ -37,18 +38,7 @@ export function brewFactor(w, a) {
   return a.drankAt != null && w.tick - a.drankAt < b.lasts * DAY ? b.drunk : b.sober;
 }
 
-export const LIFE = {
-  unburiedAfter: 0.6 * DAY,   // a body lying this long weighs on everyone
-  gloomBelow: -0.35,          // mood at dawn that counts as a gloomy day
-  sulkFrom: 2,                // gloomy days in a row before someone sulks…
-  sulkChance: 0.5,
-  leaveAfter: 5,              // …and before they may leave (if still below leaveBelow)
-  leaveBelow: -0.5, leaveChance: 0.35,
-  hangover: 0.15,             // chance a cup of braga costs a sore head
-  feastEvery: 6 * DAY,        // a feast for all at most this often
-  prayGap: DAY,               // one prayer a day is enough
-};
-
+export {LIFE};   // (data/colony.js)
 // ── furniture and standing
 const furnishable = w => w.buildings.filter(b => b.done && BUILDINGS.get(b.key).furnish);
 export const statusOf = b => (b?.furniture || []).reduce((s, id) => s + (FURNITURE.get(id)?.comfort || 0), 0);

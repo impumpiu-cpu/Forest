@@ -17,20 +17,9 @@ import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {esc, clamp, weighted} from '../core/util.js';
 import {DAY, HOUR} from '../core/time.js';
+import {REL} from '../data/colony.js';
 
-export const REL = {
-  dislike: -2,          // opinion at or below this weighs on the mood
-  friend: 2.5,          // at or above this cheers up
-  quarrelEvery: 2 * HOUR,
-  quarrelNear: 4,       // cells apart
-  quarrelBase: 0.05,    // chance per check and per point of mutual dislike past −2
-  quarrelMax: 0.35,
-  grudge: 0.6,          // a quarrel adds this much to the grudge on both sides
-  fade: 0.96,           // grudges shrink this much each day
-  fadeGood: 0.985,      // good memories, this much
-  settlerFloor: -1,     // a race the colony dislikes worse than this does not come
-};
-
+export {REL};   // (data/colony.js)
 // ── settlers: who comes next
 export function settlerSpecies(w, rng) {
   const col = colonists(w);

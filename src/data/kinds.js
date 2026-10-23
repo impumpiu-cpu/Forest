@@ -64,3 +64,14 @@ export const useOf = (race, member) => RACE_MATERIALS[race]?.[member] || 'yes';
 // a race may get or make things of it;  may wear or wield it
 export const mayMake = (race, member) => { const u = useOf(race, member); return u === 'yes' || u === 'master'; };
 export const mayUse = (race, member) => useOf(race, member) !== 'taboo';
+
+// what the land gives when its own data says nothing (settlement/kinds.js landMix): the wood of a land with no tree of
+// the table, the stone of a land whose cell has no rock, the rocks a polygon map draws one of by its seed; a tree weighs
+// in the land's mix only above `least`
+export const KIND_LAND = {wood: 'birch', stone: 'granite', rocks: ['granite', 'limestone', 'sandstone', 'basalt', 'gneiss'], least: 0.002};
+// the work that gets a family out of the land (agents/brains/colonist.js mayExtract), and the metal an ore becomes
+export const EXTRACTS = {chop: 'wood', mine: 'stone', dig: 'metal'};
+export const ORE_METAL = {ironore: 'iron'};
+// the town buildings where a people that is master of a special wood works it (campaign/town.js: a town's smiths make
+// pieces of it for sale)
+export const KIND_GROVES = {holywood: ['sacredgrove', 'grove'], ironwood: ['forestry']};

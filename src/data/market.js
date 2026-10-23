@@ -7,22 +7,23 @@ import {CAMPAIGN} from './balance/prices.js';
 
 // how a town stands to the caravan's realm: own — its own realm; friend — a realm it trades with and is
 // not at war with; anyone else does not let the caravan in. × on what the caravan pays and gets
+// (the numbers live in data/balance/prices.js CAMPAIGN: read through, so a table edit there reaches here)
 export const STANDING = {
-  own:    {...CAMPAIGN.standing.own, label: 'свои'},
-  friend: {...CAMPAIGN.standing.friend, label: 'друзья'},
+  get own() { return {...CAMPAIGN.standing.own, label: 'свои'}; },
+  get friend() { return {...CAMPAIGN.standing.friend, label: 'друзья'}; },
 };
 
 export const MARKET = {
   // a ration of road food (grain, dried meat and fish): its base price; a town that feeds itself well sells
   // it cheaper — × (food − feeds × the town's food effect, data/townBuildings.js), never below `floor`
-  ration: CAMPAIGN.ration, food: CAMPAIGN.food,
+  get ration() { return CAMPAIGN.ration; }, get food() { return CAMPAIGN.food; },
   // the spoils of fights (worn arms and armour): × their worth
-  spoils: CAMPAIGN.spoils,
+  get spoils() { return CAMPAIGN.spoils; },
   // what a town buys of the caravan's goods, × value; a tannery pays more for hides, a market for everything
-  sellBonus: CAMPAIGN.sellBonus,
+  get sellBonus() { return CAMPAIGN.sellBonus; },
   // work in town: gold a day for each member who works (a squire with a tool, a knight hiring out as a guard);
   // × (1 + `perTier` × the tool's metal)
-  labour: CAMPAIGN.wages,
+  get labour() { return CAMPAIGN.wages; },
   // healing in town: × on camp healing; more where a healer, a hospice or a temple stands
   heal: {base: 1.3, healer: 2},
   healers: ['healerhut', 'hospice', 'temple', 'bathhouse'],
@@ -78,7 +79,7 @@ export const HIRES = {
 // companions: in a town of its own realm or a friendly one a few want to go along: for `fee`, or for nothing
 // when the best talker's Charisma is at least `freeAt`. Of the town's people, or (with `minor`) of a minor
 // people that lives near (data/races.js); they start with `loyalty`
-export const COMPANIONS = {chance: {own: 0.2, friend: 0.08}, inn: 1.5, fee: CAMPAIGN.companionFee, freeAt: 7, loyalty: 0.6,
+export const COMPANIONS = {chance: {own: 0.2, friend: 0.08}, inn: 1.5, get fee() { return CAMPAIGN.companionFee; }, freeAt: 7, loyalty: 0.6,
   minor: 0.3, minorRaces: ['halfling', 'giant', 'gnoll'], gear: {hand: ['club'], body: 'clothes'}};
 
 // the freed: after a won fight with those who take captives, `chance` of one or two set free; they may

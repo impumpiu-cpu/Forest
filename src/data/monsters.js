@@ -17,8 +17,13 @@
 import {RACES} from './races.js';
 import {bodyFor} from './balance/creatures.js';
 import {personNames} from './names.js';
+import {onEdit} from './schema/layer.js';
 
 const human = RACES.find(r => r.id === 'human');
+// what the necromancer takes from a human as he is (not what he has of his own, nor his body's row): read again after
+// an edit of the tables, so an edit of the human race reaches him too (data/schema/layer.js onEdit)
+const OWN = new Set(['id', 'kind', 'label', 'labelAcc', 'plural', 'settle', 'mind', 'look', 'innate', 'align', 'values', 'needs', 'special', 'hp', 'speed', 'attack', 'resist', 'peoples', 'ks', 'names']);
+onEdit(() => { const n = MONSTERS.find(m => m.id === 'necromancer'); if (n) for (const k of Object.keys(human)) if (!OWN.has(k)) n[k] = human[k]; });
 
 export const MONSTERS = [
   // Demons are the one magic left in the world: they come through the rifts at live volcanoes and plate

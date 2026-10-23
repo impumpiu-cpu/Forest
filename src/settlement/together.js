@@ -32,31 +32,9 @@ import {stabilize} from '../agents/wounds.js';
 import {practice} from '../agents/skills.js';
 import {liveById} from '../agents/lookup.js';
 import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
+import {TOGETHER} from '../data/colony.js';
 
-export const TOGETHER = {
-  riskFrom: 0.3,       // a gatherer is worth escorting from this risk up…
-  riskTill: 0.15,      // …and the escort goes back to its own work below this
-  escortShare: 0.2,    // at most this share of the colony escorts at a time
-  keep: 2.2,           // the escort stays this close
-  guard: 8,            // and takes on anything hostile this close to its charge
-  aidBelow: 0.4,       // health share under which a colonist out in the woods needs help
-  aidEvery: 12 * HOUR, // once dressed, not again for this long
-  aidHeal: 0.2,        // of max health, more with the healer's skill
-  aidFallen: 1.7,      // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
-  aidPractice: 60,     // medicine practice for a life saved (units of agents/skills.js practice)
-  far: 40,             // nobody goes further than this to escort or help
-  mate: 0.05,          // a friend (or a foe) on the same job, ± per person…
-  mateCap: 0.1,        // …at most
-  yieldGap: 0.3,       // a patient gives the bed up to someone this much worse off…
-  yieldFrom: 0.5,      // …when itself is at least this healthy
-  bondEscort: 0.05,    // per hour side by side
-  bondDefend: 0.5,     // standing up for someone in a fight
-  bondAid: 1,          // a wound dressed in the woods
-  bondWork: 0.04,      // per hour on the same job close by
-  bondTrouble: 0.3,    // having fought the same raid
-  mendTrouble: 0.8,    // …more for two who could not stand each other
-};
-
+export {TOGETHER};   // (data/colony.js)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byId = liveById;
 const social = w => w.behave?.social;

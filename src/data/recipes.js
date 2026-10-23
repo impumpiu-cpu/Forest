@@ -136,7 +136,8 @@ RECIPES.registerAll([
     want: c => (short(c.owned('lamellar'), Math.ceil(c.pop / 2)) ? 2.1 : 0)},
 
   // ── the jeweller: a gem set into bone, wood, stone or iron (data/luxury.js); the scarcer piece goes first
-  ...LUXURY.all().map(l => ({id: l.id, tier: l.tier, at: 'jeweler', cost: {gems: l.gems, ...l.setting}, work: l.work, makes: {resource: l.id, n: 1},
+  // (its gems, setting and work are the piece's own, data/luxury.js: read through, so an edit of the table there reaches here)
+  ...LUXURY.all().map(l => ({id: l.id, get tier() { return l.tier; }, at: 'jeweler', get cost() { return {gems: l.gems, ...l.setting}; }, get work() { return l.work; }, makes: {resource: l.id, n: 1},
     want: c => Math.max(0, l.want - c.stock(l.id) * l.fade)})),
 
   // ── food for the lean months (data/foods.js). Fresh food beyond what the colony eats in a few
@@ -188,8 +189,10 @@ RECIPES.registerAll([
 
   // ── furniture (data/furniture.js): made while there is a free place for it in a solid building, and
   // only from what the colony has to spare (beyond what it keeps of each material); the finer piece first
-  ...FURNITURE.filter(f => f.recipe).map(f => ({id: 'furn_' + f.id, ...f.recipe, makes: {resource: f.id, n: 1},
-    want: c => (c.freeSlots > 0 && Object.entries(f.recipe.cost).every(([r, v]) => c.spare(r) >= v) ? 0.7 + f.comfort * 4 : 0)})),
+  // (where, of what and how long are the piece's own recipe, data/furniture.js: read through)
+  ...FURNITURE.filter(f => f.recipe).map(f => Object.defineProperties({id: 'furn_' + f.id, makes: {resource: f.id, n: 1},
+    want: c => (c.freeSlots > 0 && Object.entries(f.recipe.cost).every(([r, v]) => c.spare(r) >= v) ? 0.7 + f.comfort * 4 : 0)},
+    Object.fromEntries(Object.keys(f.recipe).map(k => [k, {get: () => f.recipe[k], enumerable: true}])))),
 
   // the dead ends of the woods put to use: fox fur lines a coat, wax becomes candles for the shrine
   {id: 'furlined', tier: 3, skill: 'leatherwork', at: 'crafthut', cost: {hide: 2, furs: 2, leather: 1}, work: 1300, makes: {item: 'furlined'},

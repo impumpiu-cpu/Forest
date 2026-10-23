@@ -130,6 +130,8 @@ export function setPath(obj, path, v) {
 export function paramRows(obj, prefix = '', root = obj, at = '') {
   const out = [];
   for (const [k, v] of Object.entries(obj)) {
+    // (a getter reads another table's value, which is where it is edited)
+    if (Object.getOwnPropertyDescriptor(obj, k)?.get) continue;
     const key = prefix ? `${prefix}.${k}` : k, path = at ? `${at}.${k}` : k;
     if (isNum(v) || typeof v === 'boolean' || typeof v === 'string' || (Array.isArray(v) && v.every(x => isNum(x) || typeof x === 'string'))) out.push({key, value: v, obj: root, path});
     else if (v && typeof v === 'object' && !Array.isArray(v)) out.push(...paramRows(v, key, root, path));

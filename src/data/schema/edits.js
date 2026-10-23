@@ -7,7 +7,7 @@
 // (src/ui/tableEdits.js) and applies it at start, before a game or a world is made.
 import {TABLES, tableById, get, editable, targetOf, valueErrors, resolver} from './index.js';
 import {setPath} from './columns.js';
-import {LAYER, sameValue} from './layer.js';
+import {LAYER, sameValue, editMade} from './layer.js';
 
 export {LAYER, editCount, editsSig, editsStamp, stampWarning} from './layer.js';
 
@@ -46,7 +46,7 @@ export function setCell(tableId, rowKey, colKey, value) {
   setPath(obj, path, copy(value));
   if (sameValue(value, originals.get(id).v)) { forget(tableId, rowKey, colKey); originals.delete(id); }
   else ((LAYER[tableId] ||= {})[rowKey] ||= {})[colKey] = copy(value);
-  t.after?.();
+  t.after?.(); editMade();
   return {ok: true};
 }
 
@@ -65,7 +65,7 @@ export function resetCell(tableId, rowKey, colKey) {
   const id = keyOf(tableId, rowKey, colKey), o = originals.get(id);
   if (o) { setPath(o.obj, o.path, copy(o.v)); originals.delete(id); }
   forget(tableId, rowKey, colKey);
-  tableById(tableId)?.after?.();
+  tableById(tableId)?.after?.(); editMade();
 }
 export function resetTable(tableId) {
   for (const [r, cols] of Object.entries(LAYER[tableId] || {})) for (const c of Object.keys(cols)) resetCell(tableId, r, c);

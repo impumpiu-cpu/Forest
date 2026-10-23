@@ -24,25 +24,9 @@ import {cellOf} from '../world/grid.js';
 import {nearestHostile, canSee} from './combat.js';
 import {agentById, liveById, firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
+import {SQUAD} from '../data/behaviour.js';
 
-export const SQUAD = {
-  think: 10,         // morale and the goal are checked this often
-  view: 14,          // colony fighters this close to a member count against the band
-  nerve: {living: 0.4, beasts: 0.3, mindless: -Infinity},
-  leaderLoss: 0.25,  // morale lost with the leader
-  lossWeight: 0.8,   // morale lost per share of the band fallen
-  odds: 0.2,         // morale per unit of the strength ratio, either way (capped)
-  hold: 40,          // a raider keeps its foe at least this long…
-  closer: 0.55,      // …unless another is at most this share of the distance away
-  scoutNear: 18,     // scouts stop this far from the camp (by the camp flow field)…
-  scoutWatch: 150,   // …and watch this long
-  burnNear: 1.6,     // a torch is put to a wall from this close
-  burnFor: 60,       // after the fire is lit, the band lingers this long and goes
-  rearHold: 150,     // the rear guard holds pursuers off this long
-  looters: 0.4,      // share of a looting band sent to the stores
-  grabNear: 10,      // a looter this close to the stores (camp flow field) still grabs on a retreat
-};
-
+export {SQUAD};   // (data/behaviour.js)
 export const GOALS = {
   loot:      {label: 'грабёж', aim: 'пришли за добычей', done: 'добыча взята, уходят'},
   kill:      {label: 'расправа', aim: t => `пришли по одну душу: ${t}`, done: 'расправа свершилась, уходят'},

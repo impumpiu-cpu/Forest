@@ -31,24 +31,9 @@ import {log} from '../core/log.js';
 import {esc} from '../core/util.js';
 import {outsideRisk, TOGETHER} from './together.js';
 import {perTick} from '../core/util.js';
+import {PLAN} from '../data/colony.js';
 
-export const PLAN = {
-  fuelDays: 3,        // keep this many days of firewood ahead…
-  fuelDaysCold: 5,    // …and this many when it freezes
-  foodDays: 6,        // days of food the colony likes to have ahead
-  foodDaysAutumn: 12, // …before winter (autumn): stock up
-  minWeight: 0.08,    // a job wanted less than this gets no place
-  // how a vacancy pulls a colonist's choice (vacancyPull): × and + on the job's own score
-  mine: [1.5, 0.3],   // a place this colonist holds today (as the roster's own job used to)
-  open: [0.6, 0.9, 0.3],   // a place free: × 0.6 + 0.9 × open share, + 0.3 × open share
-  wanted: [0.85, 0],  // a job the colony wants but whose places are all taken (or that got none): a fallback
-  none: [0.6, 0],     // a job the colony does not want tomorrow
-  // a colonist's own fitness for a place, added while some of it is open
-  skill: 0.15,        // × skill / 10
-  best: 0.15,         // the colony's best at the job's skill
-  habit: 0.12,        // the same job as yesterday
-};
-
+export {PLAN};   // (data/colony.js)
 // how much firewood the colony burns in a day: the campfire through the night, every hearth all day
 function dailyBurn(w) {
   let f = 0.004 * 600;   // the campfire, about half the day

@@ -76,7 +76,7 @@ export function laySite(w, key) {
   // wood and stone are taken the best first, and the building is of what it was built from (settlement/kinds.js):
   // a granite wall is the colour of granite and stands longer (data/kinds.js STONES `dur`)
   const of = {};
-  for (const [r, v] of Object.entries(d.cost)) { if (r === 'wood' || r === 'stone') of[r] = takeKind(w, r, v, 'make'); else w.stock[r] -= v; }
+  for (const [r, v] of Object.entries(d.cost)) { if (r === 'wood' || r === 'stone') of[r] = takeKind(w, r, v, 'build'); else w.stock[r] -= v; }
   if (d.key) recomputeMods(w);   // a tool left the stock
   const b = putLot(w, key, lot);
   if (b && of.stone) b.stone = of.stone;

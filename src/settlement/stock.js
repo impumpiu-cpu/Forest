@@ -4,6 +4,7 @@ import {yieldOf} from './mods.js';
 import {FOODS, tasteOf} from '../data/foods.js';
 import {season} from '../data/seasons.js';
 import {takeKind} from './kinds.js';
+import {FURNACE} from '../data/colony.js';
 
 const foods = () => RESOURCES.filter(r => r.tags.includes('food'));
 
@@ -52,12 +53,7 @@ export function burnCampFuel(w, amount) {
   return true;
 }
 
-// ── furnace fuel. A recipe asks for `fuel` units of heat at a `heat` level (data/recipes.js); each fuel
-// resource with a `furnace` block (data/resources.js) gives heat up to its `tier` and needs `per`
-// units of itself for one unit of heat: wood (tier 1, 3 logs a unit) melts copper, gold and silver;
-// iron needs coal (tier 2). Magma (tier 3) will burn nothing, later. Kузнечные меха in the stock
-// save a quarter of the fuel (FURNACE.bellows).
-export const FURNACE = {bellows: 0.75, bellowsWork: 1.25, bellowsFine: 0.05, coalSpare: 6};
+export {FURNACE};   // (data/colony.js)
 const furnaceFuels = () => sf || (sf = RESOURCES.filter(r => r.furnace).sort((x, y) => x.furnace.tier - y.furnace.tier));
 const fuelNeed = (w, units) => units * ((w.stock.bellows || 0) >= 1 ? FURNACE.bellows : 1);
 

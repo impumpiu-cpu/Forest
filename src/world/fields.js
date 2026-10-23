@@ -20,10 +20,9 @@ import {colonists} from '../settlement/query.js';
 import {season} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {watchOnPost, WATCH} from '../settlement/board.js';
+import {FIRE} from '../data/nature.js';
 
-// Fire model knobs. Wet ground (high fertility) is harder to ignite and puts fires out by itself.
-export const FIRE = {cap: 320, heat: 46, pF: 0.011, pG: 0.005, burn: 0.03, wetIgn: 80, outBase: 0.002, outWet: 0.012, ignForest: 80, ignGrass: 120};
-
+export {FIRE};   // (data/nature.js)
 // the set of chunks the pass must visit: the active ones and a ring of one chunk around them
 // (heat and smoke move one cell a tick, so nothing escapes the ring in one step)
 function planChunks(w) {

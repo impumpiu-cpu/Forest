@@ -26,28 +26,11 @@ import {createAgent} from './agent.js';
 import {inMap, walkable} from '../world/grid.js';
 import {agentById, liveById} from './lookup.js';
 import {liveMembers} from './group.js';
+import {CARCASS} from '../data/behaviour.js';
+import {PACK} from '../data/behaviour.js';
 
-export const CARCASS = {
-  life: 4 * DAY,       // rots away entirely after this
-  rotFrom: 2 * DAY,    // from this age on it feeds the rot…
-  upyr: 0.25,          // …and each night past that an upyr may rise from it with this chance,
-  upyrFrom: 0.4,       // if it is of a beast this big (species hp) and at least…
-  upyrLeft: 0.1,       // …this share of it is still uneaten
-  smell: 30,           // a hungry beast knows of a carcass this close
-  eatAt: 0.9,          // eats from this close
-  takeAt: 1.4,         // a hunter takes what is left from this close
-  scare: 4,            // feeders this close to a hunter either give way or turn on him
-};
-export const PACK = {
-  lost: 70,            // ticks without sight of the prey before the hunt is given up
-  flankOff: 3.5,       // a flanker aims this far to the side of the prey…
-  flankAhead: 2.5,     // …and this far ahead of where it runs
-  closeIn: 2.5,        // from this close everyone goes straight for it
-  winded: 0.25,        // stamina below which a member drops back to wait
-  rested: 0.6,         // …and from which it rejoins
-  roles: 15,           // roles are dealt again this often
-};
-
+export {CARCASS};   // (data/behaviour.js)
+export {PACK};   // (data/behaviour.js)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byId = liveById;
 const hunts = w => w.hunts || (w.hunts = {});

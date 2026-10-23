@@ -28,7 +28,7 @@ import {free, bondsSets, isBonds} from './captives.js';
 import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
 import {techAllowsMaterial} from '../atlas/tech.js';
-import {WOODS, useOf} from '../data/kinds.js';
+import {KIND_GROVES, WOODS, useOf} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 
 const alive = K => K.members.filter(m => m.alive);
@@ -76,7 +76,6 @@ function masterWoodOf(t) {
   return null;
 }
 // the town buildings that grow a special tree (data/kinds.js WOODS)
-const KIND_GROVES = {holywood: ['sacredgrove', 'grove'], ironwood: ['forestry']};
 // the quality a town's forge works at (data/balance/marks.js MARK.forge): no worse than +1, a city's better
 const forgeQ = t => (t.tier >= MARK.forge.cityTier ? MARK.forge.cityQ : MARK.forge.q);
 

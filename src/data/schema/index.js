@@ -32,6 +32,51 @@ import {WOODS, STONES, FAMILIES, RACE_MATERIALS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
 import {BASE_MODS} from '../traits.js';
+import {autoTable, objectTable} from './auto.js';
+import * as COLONY from '../colony.js';
+import * as BEHAVIOUR from '../behaviour.js';
+import * as NATURE from '../nature.js';
+import {LAIR_LIFE} from '../lairs.js';
+import {TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL} from '../peoples.js';
+import {TOWN_FX as TOWN_WORK, PLACE_AT} from '../townBuildings.js';
+import {CAL, ALLY, EPIC} from '../calamities.js';
+import {FAUNA, FREE, EPIC_YEARS} from '../history.js';
+import {ARMY, DRAGON, PARTIES} from '../parties.js';
+import {ROADS, SEA} from '../roads.js';
+import {NET, SITES} from '../sites.js';
+import {SEAM, FLORA, OUTLAWS} from '../seam.js';
+import {SHAPE} from '../atlas.js';
+import {EROSION, RIVERS} from '../hydrology.js';
+import {CAMPAIGN as CAMP_RULES, GAME, MINE, NIGHT} from '../campaign.js';
+import {QUEST} from '../quest.js';
+import {MARKET, VISIT, LOYALTY, CONTRACT, COMPANIONS, FREED, HIRES, SMITH, EARN} from '../market.js';
+import {BUBBLE, THINGS, AMBUSH, HERD as GAME_HERD, TRAIN} from '../bubble.js';
+import {CAMP, CAMP_FOES, GAME_FLOW} from '../camp.js';
+import {CAPTIVE, ESCAPE, FREEDOM} from '../captives.js';
+import {SLAVE} from '../slavery.js';
+import {GETTING, FODDER, ROUTE, WHEELS} from '../transport.js';
+import {TRADE as COLONY_TRADE} from '../trade.js';
+import {LEARN, SKILLS} from '../skills.js';
+import {MASTER, MASTERS} from '../masters.js';
+import {CRIT, DEATHBLOW, WOUNDS} from '../wounds.js';
+import {ARRIVALS, MIGRATIONS} from '../migrations.js';
+import {CAMPAIGN as PRICE_CAMPAIGN, SERVICES, TRADE as PRICE_TRADE, QUALITY as PRICE_QUALITY, RESOURCES as RESOURCE_PRICES} from '../balance/prices.js';
+import {COMBAT, CAPS, SCALE_MODS, DEFAULT_BLOW} from '../balance/combat.js';
+import {RULES} from '../balance/rules.js';
+import {STRENGTH} from '../balance/creatures.js';
+import {JOBS} from '../jobs.js';
+import {RECIPES} from '../recipes.js';
+import {NEEDS} from '../needs.js';
+import {THOUGHTS} from '../thoughts.js';
+import {TRAITS} from '../traits.js';
+import {FOODS} from '../foods.js';
+import {CROPS} from '../crops.js';
+import {PLANTS} from '../plants.js';
+import {FURNITURE} from '../furniture.js';
+import {LUXURY} from '../luxury.js';
+import {RAID_BANDS} from '../raids.js';
+import {SOILS} from '../soils.js';
+import {KIND_LAND, KIND_GROVES} from '../kinds.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
@@ -284,14 +329,17 @@ export const TABLES = [
       col('id', 'id'), col('label', 'Название'), col('species', 'Хозяин', 'ref', {ref: SPECIES}), col('flies', 'Летает', 'bool'), col('ground', 'Место'),
       col('radius', 'Владения', 'num', {min: 0}), col('density', 'Плотность', 'num', {min: 0}), col('max', 'Логов в мире', 'int', {min: 0}),
       col('breed', 'Плодится', 'num', {min: 0, max: 1}), col('rivals', 'Соперники', 'ids', {ref: 'lairs'}), col('color', 'Цвет', 'color'),
+      col('tribe', 'Племя', 'bool'), col('riders', 'Верхом на', 'ref', {ref: SPECIES, note: 'на ком ездят налётчики племени'}), col('rotAt', 'Гниль для жизни', 'num', {min: 0, max: 1, note: 'мёртвым: сколько гнили нужно, чтобы держаться'}),
+      col('spawn', 'Приходит сам', 'num', {min: 0, max: 1, note: 'шанс в год появиться в истории (мёртвые, разломы)'}), col('drinks', 'Пьёт город', 'num', {min: 0, max: 1, note: 'вампир: доля жителей за осень при полной силе'}), col('might', 'Сила набега', 'num', {min: 0}),
     ]},
   {id: 'lairRules', label: 'Правила логов', group: 'Мир', ...params(() => paramGroups({age: LAIR_AGE, leader: LEADER, tribeHome: TRIBE_HOME, tribeRaid: TRIBE_RAID, rot: ROT})),
     note: 'Возраст древнего логова (age.ancient), главари древних логов (leader.*: шанс, потолок 30, рост сверх вида, годы жизни, планы, сила, дань), набеги племён, гниль (data/lairs.js). «Дом племени» — постоянное число кода: видно, но не правится.'},
   {id: 'calamities', label: 'Катаклизмы', group: 'Мир', key: 'id', rows: () => CALAMITIES,
-    note: 'Бедствия эпического мира (data/calamities.js): босс, его логова, свита и эпохи.',
+    note: 'Бедствия эпического мира (data/calamities.js): босс, его логова, свита и эпохи. Имена боссов — в таблице «Имена боссов».',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('boss', 'Босс', 'ref', {ref: SPECIES}), col('lair', 'Логово босса', 'ref', {ref: 'lairs'}),
-      col('lairs', 'Логова', 'ids', {ref: 'lairs'}), col('retinue', 'Свита', 'ids'), col('eras', 'Эпохи', 'ids', {ref: ERAS}), col('names', 'Имена', 'ids'),
+      col('lairs', 'Логова', 'ids', {ref: 'lairs'}), col('retinue', 'Свита', 'ids'), col('eras', 'Эпохи', 'ids', {ref: ERAS}),
+      col('title', 'Титул (им., род.)', 'json'), col('g', 'Род', 'enum', {values: ['m', 'f', 'n']}), col('town', 'В городе', 'bool'), col('rise', 'Строка восхода', 'text'),
     ]},
 ];
 
@@ -305,6 +353,63 @@ function rebuildNames() {
   for (const c of CALS) if (BOSS[c.id]) c.names = BOSS[c.id];
 }
 void TITLE;
+
+
+// ── the rest of the data (docs/TABLE.md, «Ревизия: таблицы — единый источник»): every number the game runs on has a
+// table. Settings objects as parameter tables, lists of rows (registries) as tables made from the rows themselves.
+const grp = groups => params(() => paramGroups(groups));
+const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
+TABLES.push(
+  // Мир
+  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
+    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
+  {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
+    ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
+  {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',
+    ...grp({fauna: FAUNA, army: ARMY, dragon: DRAGON, parties: PARTIES, roads: ROADS, sea: SEA, net: NET, sites: SITES, seam: SEAM, flora: FLORA, outlaws: OUTLAWS})},
+  {id: 'landRules', label: 'Создание земли', group: 'Мир', note: 'Пределы руки на экране «Создать землю» (data/atlas.js SHAPE), эрозия и реки генератора (data/hydrology.js).',
+    ...grp({shape: SHAPE, erosion: EROSION, rivers: RIVERS})},
+  objectTable({id: 'soilsAuto', label: 'Почвы', group: 'Мир', note: 'Почвы карты мира (data/soils.js).', obj: () => Object.fromEntries(SOILS.all().map(x => [x.id, x]))}),
+  // Поход
+  {id: 'campaignRules', label: 'Правила похода', group: 'Караван', note: 'Поход каравана (data/campaign.js CAMPAIGN, GAME, MINE), ночные опасности (NIGHT), квест (data/quest.js QUEST).',
+    ...grp({campaign: CAMP_RULES, game: GAME, mine: MINE, night: NIGHT, quest: QUEST})},
+  {id: 'marketRules', label: 'Город и рынок', group: 'Караван', note: 'Город для каравана: рынок, визит, верность, найм, кузнец, заработок (data/market.js). Цены — в «Ценах».',
+    ...grp({market: MARKET, visit: VISIT, loyalty: LOYALTY, contract: CONTRACT, companions: COMPANIONS, freed: FREED, hires: HIRES, smith: SMITH, earn: EARN})},
+  {id: 'bubbleRules', label: 'Дорога и стоянки', group: 'Караван', note: 'Что встречает караван в пути (data/bubble.js), стоянки и бои на локальной карте (data/camp.js), пленники и рабство (data/captives.js, data/slavery.js), обоз (data/transport.js).',
+    ...grp({bubble: BUBBLE, things: THINGS, ambush: AMBUSH, herd: GAME_HERD, train: TRAIN, camp: CAMP, campFoes: CAMP_FOES, flow: GAME_FLOW, captive: CAPTIVE, escape: ESCAPE, freedom: FREEDOM, slave: SLAVE, getting: GETTING, fodder: FODDER, route: ROUTE, wheels: WHEELS})},
+  // Поселение
+  {id: 'colonyRules', label: 'Жизнь поселения', group: 'Поселение', note: 'Отношения, жизнь, лечение, стада, угроза, план дня, горн, доска работ и дозор, общие дела, золотые жилы (data/colony.js); караваны торговцев (data/trade.js TRADE).',
+    ...grp({...kindsOf(COLONY), trade: COLONY_TRADE})},
+  {id: 'behaviourRules', label: 'Повадки существ', group: 'Поселение', note: 'Отряды, туши и стаи, дикие стада, трофеи, вредители, распорядок поселенца (data/behaviour.js); приход зверей на карту (data/migrations.js ARRIVALS).',
+    ...grp({...kindsOf(BEHAVIOUR), arrivals: ARRIVALS})},
+  {id: 'natureRules', label: 'Природа карты', group: 'Поселение', note: 'Огонь, снег, рыбалка локальной карты (data/nature.js); что даёт земля из видов материалов (data/kinds.js KIND_LAND), где мастера работают особое дерево (KIND_GROVES).',
+    ...grp({...kindsOf(NATURE), kindLand: KIND_LAND, kindGroves: KIND_GROVES})},
+  {id: 'growthRules', label: 'Навыки, мастера, раны', group: 'Поселение', note: 'Как учатся навыки (data/skills.js LEARN), мастера (data/masters.js MASTER), крит и смертельный удар (data/wounds.js).',
+    ...grp({learn: LEARN, master: MASTER, crit: CRIT, deathblow: DEATHBLOW})},
+  autoTable({id: 'jobs', label: 'Работы', group: 'Поселение', note: 'Работы поселенцев (data/jobs.js): сколько несут, сколько длится, что дают.', rows: () => JOBS.all()}),
+  autoTable({id: 'recipes', label: 'Рецепты', group: 'Поселение', note: 'Ремесло (data/recipes.js): где делают, из чего, сколько работы, что выходит.', rows: () => RECIPES.all()}),
+  autoTable({id: 'needs', label: 'Нужды', group: 'Поселение', note: 'Нужды существ (data/needs.js).', rows: () => NEEDS.all()}),
+  autoTable({id: 'thoughts', label: 'Мысли', group: 'Поселение', note: 'Мысли поселенцев и их вес в настроении (data/thoughts.js).', rows: () => THOUGHTS.all()}),
+  autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all()}),
+  autoTable({id: 'skills', label: 'Навыки', group: 'Поселение', note: 'Навыки (data/skills.js).', rows: () => SKILLS.all()}),
+  autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),
+  autoTable({id: 'wounds', label: 'Раны', group: 'Поселение', note: 'Раны (data/wounds.js).', rows: () => WOUNDS.all()}),
+  autoTable({id: 'foods', label: 'Еда', group: 'Поселение', note: 'Еда и блюда (data/foods.js): сытость, порча.', rows: () => FOODS.all()}),
+  autoTable({id: 'crops', label: 'Посевы', group: 'Поселение', note: 'Посевы полей (data/crops.js).', rows: () => CROPS.all()}),
+  autoTable({id: 'plants', label: 'Растения', group: 'Поселение', note: 'Дикие растения карты (data/plants.js).', rows: () => PLANTS.all()}),
+  autoTable({id: 'furniture', label: 'Мебель', group: 'Поселение', note: 'Мебель и её уют (data/furniture.js).', rows: () => FURNITURE.all()}),
+  autoTable({id: 'luxury', label: 'Роскошь', group: 'Поселение', note: 'Украшения ювелира (data/luxury.js).', rows: () => LUXURY.all()}),
+  autoTable({id: 'migrations', label: 'Приходы', group: 'Поселение', note: 'Кто и когда приходит на карту поселения (data/migrations.js).', rows: () => MIGRATIONS.all()}),
+  autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all()}),
+  autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
+    rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
+  // Цены и бой
+  {id: 'priceRules', label: 'Цены: правила', group: 'Вещи', note: 'Цены похода, услуг, торговли и качества (data/balance/prices.js CAMPAIGN, SERVICES, TRADE, QUALITY). Цены ресурсов — в «Ценах ресурсов».',
+    ...grp({campaign: PRICE_CAMPAIGN, services: SERVICES, trade: PRICE_TRADE, quality: PRICE_QUALITY})},
+  objectTable({id: 'resourcePrices', label: 'Цены ресурсов', group: 'Вещи', note: 'Цена и размер стопки каждого ресурса (data/balance/prices.js RESOURCES).', obj: () => RESOURCE_PRICES}),
+  {id: 'combatRules', label: 'Бой и сила', group: 'Вещи', note: 'Числа боя (data/balance/combat.js COMBAT, CAPS, SCALE_MODS, DEFAULT_BLOW), правила баланса вещей (data/balance/rules.js RULES), рейтинг силы (data/balance/creatures.js STRENGTH).',
+    ...grp({combat: COMBAT, caps: CAPS, scaleMods: SCALE_MODS, defaultBlow: DEFAULT_BLOW, rules: RULES, strength: STRENGTH})},
+);
 
 export const tableById = id => TABLES.find(t => t.id === id);
 export const checkAll = () => checkTables(TABLES);

@@ -18,7 +18,7 @@ import {season} from '../data/seasons.js';
 import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS} from '../data/balance/combat.js';
 import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 import {MARKS, MARK, markable} from '../data/balance/marks.js';
-import {WOODS, mayUse, useOf} from '../data/kinds.js';
+import {WOODS, mayUse, useOf, KIND_LAND} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
@@ -71,7 +71,8 @@ function woodenDef(d, inst) {
 }
 const isWooden = d => !!MATERIALS[d.material]?.class.includes('wood');
 // what a piece is made of, as the races' rules know it (data/kinds.js): its wood, or its metal's resource
-export const memberOf = inst => { const d = ITEMS.has(inst.type) ? ITEMS.get(inst.type) : null; return inst.of || (d ? MATERIALS[d.material]?.resource : null) || null; };
+// (a wooden piece whose wood nobody wrote down — the first kit, a trader's — counts as the commonest wood, data/kinds.js KIND_LAND)
+export const memberOf = inst => { const d = ITEMS.has(inst.type) ? ITEMS.get(inst.type) : null; return inst.of || (d && isWooden(d) ? KIND_LAND.wood : d ? MATERIALS[d.material]?.resource : null) || null; };
 // a piece «dirty» to its bearer: of a material its race does not get or make (data/kinds.js 'nomake') — it was made by others
 export const dirtyFor = (a, inst) => useOf(a.species, memberOf(inst)) === 'nomake';
 
@@ -103,26 +104,27 @@ export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, .
 // The caravan keeps its gear as words, not objects (campaign/): a piece is 'ironsword', a finer or marked one
 // 'ironsword+1@orc' (+ its quality, @ its mark), a wooden one 'bow~holywood!' (~ its wood, ! made by its master).
 // These turn a word into the piece and back.
-export const gearToken = inst => inst.type + (inst.of ? `~${inst.of}${inst.master ? '!' : ''}` : '') + (inst.q ? `+${inst.q}` : '') + (inst.mark ? `@${inst.mark}` : '');
+// (`$` at the end: silvered)
+export const gearToken = inst => inst.type + (inst.of ? `~${inst.of}${inst.master ? '!' : ''}` : '') + (inst.q ? `+${inst.q}` : '') + (inst.mark ? `@${inst.mark}` : '') + (inst.silver ? '$' : '');
 export function gearSpec(token) {
-  const m = /^([^+@~]+)(?:~(\w+)(!)?)?(?:\+(\d+))?(?:@(\w+))?$/.exec(token || '');
+  const m = /^([^+@~$]+)(?:~(\w+)(!)?)?(?:\+(\d+))?(?:@(\w+))?(\$)?$/.exec(token || '');
   if (!m) return {type: token};
-  return {type: m[1], ...(m[2] ? {of: m[2]} : {}), ...(m[3] ? {master: true} : {}), ...(m[4] ? {q: +m[4]} : {}), ...(m[5] ? {mark: m[5]} : {})};
+  return {type: m[1], ...(m[2] ? {of: m[2]} : {}), ...(m[3] ? {master: true} : {}), ...(m[4] ? {q: +m[4]} : {}), ...(m[5] ? {mark: m[5]} : {}), ...(m[6] ? {silver: true} : {})};
 }
-export const gearType = token => (token || '').split(/[+@~]/)[0];
+export const gearType = token => (token || '').split(/[+@~$]/)[0];
 // the definition behind a word of the caravan's gear (null: not an item — a word nobody knows)
 export const gearDef = token => { const s = gearSpec(token); return ITEMS.has(s.type) ? def(s) : null; };
 // its price, with its quality and mark
-export const gearValue = token => { const s = gearSpec(token); return ITEMS.has(s.type) ? itemPrice(s.type, s.q || 0, false, s.mark || null) : 0; };
+export const gearValue = token => { const s = gearSpec(token); return ITEMS.has(s.type) ? itemPrice(s.type, s.q || 0, !!s.silver, s.mark || null, s.of || null, !!s.master) : 0; };
 
 // price of one piece in imperial gold: the plain piece plus the step up in quality
-// a silvered iron blade costs this much more than a plain one
-export const SILVERING = SERVICES.silvering;
-export function itemPrice(type, q = 0, silver = false, mark = null) {
+// (a wooden piece of a wood of its own, data/kinds.js WOODS `price`: a special wood only in a master's work, else plain)
+export function itemPrice(type, q = 0, silver = false, mark = null, of = null, master = false) {
   const base = ITEMS.get(type);
   const step = q ? QUALITY_PRICE[q][base.slot === 'body' || base.block ? 'armor' : 'weapon'] : 0;
   const markMul = mark && MARKS[mark] && markable(base) ? MARK.price : 1;
-  return Math.round(((base.value || 0) + step) * markMul) + (silver && !base.silver ? SILVERING : 0);
+  const W = of && WOODS.has(of) && isWooden(base) ? WOODS.get(of) : null, woodMul = W ? (W.special && !master ? WOODS.get(W.plain).price : W.price) : 1;
+  return Math.round(((base.value || 0) + step) * markMul * woodMul) + (silver && !base.silver ? SERVICES.silvering : 0);
 }
 
 // How much silver in the hand is worth: a lot while something that fears it is on the map, a little once
@@ -212,7 +214,7 @@ export function dress(a, types, ammo = 0) {
   const spill = [];
   for (const t of types) {
     const spec = typeof t === 'string' ? gearSpec(t) : t;
-    const inst = newItem(spec.type, {...(spec.q ? {q: spec.q} : {}), ...(spec.mark ? {mark: spec.mark} : {}), ...(spec.of ? {of: spec.of} : {}), ...(spec.master ? {master: true} : {})}), d = def(inst);
+    const inst = newItem(spec.type, {...(spec.q ? {q: spec.q} : {}), ...(spec.mark ? {mark: spec.mark} : {}), ...(spec.of ? {of: spec.of} : {}), ...(spec.master ? {master: true} : {}), ...(spec.silver ? {silver: true} : {})}), d = def(inst);
     if (d.holds) inst.ammo = ammo;
     if (d.slot === 'body') putOn(a, inst, 'body', spill);
     else if (d.slot === 'back') putOn(a, inst, 'back', spill);

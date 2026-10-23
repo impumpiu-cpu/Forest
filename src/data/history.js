@@ -50,5 +50,6 @@ export const FAUNA = {weather: 0.5, harshAt: -0.7, harsh: 0.35, townHarsh: 0.12,
 // «Заселение мира» (cfg.free, atlas/settle.js; docs/TABLE.md этап 9):
 //   runs:     the stretches of time the hand may run at once, in years
 //   calIn:    in how many years a calamity set by hand may rise
-//   lair:     the strength a lair set by hand starts at; ghosts and the dead get graves and rot about them to feed on
-export const FREE = {runs: [5, 10, 25, 50, 100], calIn: [5, 10, 25, 50], lair: 0.6, graves: 0.9};
+//   lair:     the strength a lair set by hand starts at; the dead get graves (data/calamities.js CAL.dead) and the rot
+//             about them at least `rot` × their kind's rotAt (rotAt for a kind with none)
+export const FREE = {runs: [5, 10, 25, 50, 100], calIn: [5, 10, 25, 50], lair: 0.6, rotAt: 0.2, rot: 1.3};

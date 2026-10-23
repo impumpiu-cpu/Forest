@@ -22,6 +22,8 @@ const old = (go, extra = {}) => { location.href = `index.html?${new URLSearchPar
 
 let screen = 'home', land = null, settle = null, camp = null;
 function show(id) {
+  // the screen left halts its clock between frames (it goes on when the screen is back)
+  if (screen !== id) { if (screen === 'land') land?.stop(); if (screen === 'settle') settle?.stop(); }
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   if (id === 'settings') tables.show();
