@@ -44,6 +44,10 @@ export const OFFERS = [
   {kind: 'item', id: 'hardleather', at: ['tannery']},
   {kind: 'item', id: 'lamellar', at: ['forge', 'armory']},
   {kind: 'item', id: 'chainmail', at: ['armory', 'foundry']},
+  // steel: where a foundry tempers it (and the realm knows how: data/tech.js 'steelmaking')
+  {kind: 'item', id: 'steelsword', at: ['foundry']},
+  {kind: 'item', id: 'steelspear', at: ['foundry']},
+  {kind: 'item', id: 'steellamellar', at: ['foundry']},
   {kind: 'item', id: 'furcoat', at: ['tannery', 'lodge']},
   // bonds for captives (data/captives.js): rope in any town, shackles where iron is worked
   {kind: 'goods', id: 'rope', n: 4, any: true, at: []},

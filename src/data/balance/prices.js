@@ -88,6 +88,7 @@ export const RESOURCES = {
   mithrilOre:   {price: 40, stack: 10},
   // Металл
   iron:         {price: 2, stack: 20},
+  steel:        {price: 5, stack: 20},
   bronze:       {price: 1.5, stack: 20},
   // Путы (data/captives.js)
   shacklesBronze: {price: 4, stack: 10},

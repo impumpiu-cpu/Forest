@@ -11,6 +11,7 @@ import {lakeBeside} from '../world/lakes.js';
 import {think} from '../agents/mind.js';
 import {ambientTemp, DAY, HOUR} from '../core/time.js';
 import {plowField} from './farming.js';
+import {takeKind} from './kinds.js';
 
 const ending = d => (d.gender === 'f' ? 'а' : d.gender === 'pl' ? 'ы' : d.gender === 'n' ? 'о' : '');
 
@@ -72,9 +73,14 @@ export function laySite(w, key) {
   if (!eligible(w, key) || !canAfford(w, d.cost)) return null;
   const lot = findLot(w, d);
   if (lot < 0) { log(w, 'Вокруг лагеря не осталось места под постройку.', 'build'); return null; }
-  for (const [r, v] of Object.entries(d.cost)) w.stock[r] -= v;
+  // wood and stone are taken the best first, and the building is of what it was built from (settlement/kinds.js):
+  // a granite wall is the colour of granite and stands longer (data/kinds.js STONES `dur`)
+  const of = {};
+  for (const [r, v] of Object.entries(d.cost)) { if (r === 'wood' || r === 'stone') of[r] = takeKind(w, r, v, 'make'); else w.stock[r] -= v; }
   if (d.key) recomputeMods(w);   // a tool left the stock
   const b = putLot(w, key, lot);
+  if (b && of.stone) b.stone = of.stone;
+  if (b && of.wood) b.wood = of.wood;
   log(w, `Заложен${ending(d)} ${d.name.toLowerCase()}. Нужно ${d.work} человеко-тиков работы.`, 'build');
   return b;
 }

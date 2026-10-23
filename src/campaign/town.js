@@ -28,6 +28,8 @@ import {free, bondsSets, isBonds} from './captives.js';
 import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
 import {techAllowsMaterial} from '../atlas/tech.js';
+import {WOODS, useOf} from '../data/kinds.js';
+import {MATERIALS} from '../data/balance/materials.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const has = (t, ids) => ids.some(id => t.built.includes(id));
@@ -61,9 +63,20 @@ export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);
-  if (!d || !markable(d) || (!mark && !q)) return o;
-  return {...o, id: gearToken({type: gearType(o.id), q, mark: mark && markable(d) ? mark : null})};
+  // a wooden piece of a town by a grove of the tree its people master (data/kinds.js 'master'): of that wood, by a master
+  // — the elves' bows and staves of the sacred tree
+  const tree = MATERIALS[d?.material]?.class.includes('wood') ? masterWoodOf(t) : null;
+  if (!d || !markable(d) || (!mark && !q && !tree)) return o;
+  return {...o, id: gearToken({type: gearType(o.id), q, mark: mark && markable(d) ? mark : null, ...(tree ? {of: tree, master: true} : {})})};
 };
+// the special wood a town's people master and grow near it (the elves' sacred tree by a sacred grove), or null
+function masterWoodOf(t) {
+  const race = WORLD_PEOPLES.get(t.people)?.race;
+  for (const T of WOODS.all()) if (T.special && useOf(race, T.id) === 'master' && t.built.some(b => KIND_GROVES[T.id]?.includes(b))) return T.id;
+  return null;
+}
+// the town buildings that grow a special tree (data/kinds.js WOODS)
+const KIND_GROVES = {holywood: ['sacredgrove', 'grove'], ironwood: ['forestry']};
 // the quality a town's forge works at (data/balance/marks.js MARK.forge): no worse than +1, a city's better
 const forgeQ = t => (t.tier >= MARK.forge.cityTier ? MARK.forge.cityQ : MARK.forge.q);
 

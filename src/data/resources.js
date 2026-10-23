@@ -104,6 +104,8 @@ RESOURCES.registerAll([
   // metal: bars from the furnace
   {id: 'iron',    label: 'железо',  short: 'железо',  tags: ['material', 'metal'], group: 'Металл', loot: 1, keep: 8, color: '#a9b0b6'},
   {id: 'bronze',  label: 'бронза',  short: 'бронза',  tags: ['material', 'metal'], group: 'Металл', loot: 1, keep: 8, color: '#c89048'},
+  // steel: the towns' foundries make it (data/tech.js 'steelmaking'); the outpost only buys it
+  {id: 'steel',   label: 'сталь',   short: 'сталь',   tags: ['material', 'metal'], group: 'Металл', loot: 1, keep: 8, color: '#c4ccd4'},
 
   // ── precious metals. Gold is washed from river sand (data/plants.js 'placer') and now and then dug
   // from a rare quartz vein; silver comes from its ore. Both melt on a wood fire. They are money too:

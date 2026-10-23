@@ -74,6 +74,8 @@ import {statusOf} from '../settlement/life.js';
 import {vacancyLines} from '../settlement/plan.js';
 import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
 import {herdOf, herdAlarm, stragglerOf} from '../agents/wildHerd.js';
+import {WOODS, STONES} from '../data/kinds.js';
+import {kindsOf} from '../settlement/kinds.js';
 
 const DIRS = ['восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный', 'северный', 'северо-восточный'];
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -268,7 +270,7 @@ export class Panel {
     const groups = resourceGroups().map(gname => {
       const rs = RESOURCES.filter(r => (r.group || 'Прочее') === gname);
       if (!rs.length) return '';
-      const rows = rs.map(r => { const v = w.stock[r.id] || 0; return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label)}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`; }).join('');
+      const rows = rs.map(r => { const v = w.stock[r.id] || 0; const of = (r.id === 'wood' || r.id === 'stone') && v >= 0.5 ? Object.entries(kindsOf(w, r.id)).filter(([, n]) => n >= 0.5).sort((p, q) => q[1] - p[1]).map(([id, n]) => `${(WOODS.has(id) ? WOODS : STONES).get(id).label} ${Math.floor(n)}`).join(', ') : ''; return `<div class="srow2${v < 0.05 ? ' zero' : ''}" title="${esc(r.label + (of ? ': ' + of : ''))}"><span><i class="dot" style="background:${r.color}"></i>${esc(r.short || r.label)}</span><b>${v < 10 ? v.toFixed(1) : Math.floor(v)}</b></div>`; }).join('');
       const tagged = t => rs.some(r => r.tags.includes(t));
       const extra = gname === 'Еда' ? `<div class="srow2"><span>всего</span><b>${Math.floor(foodTotal(w))}</b></div>` : rs.every(r => r.tags.includes('fuel')) ? `<div class="srow2"><span>костёр</span><b>${w.campLit ? 'горит' : campFuel(w) ? 'не нужен' : 'нечем топить'}</b></div>` : '';
       return `<div class="sgroup"><h3>${gname}</h3>${rows}${extra}</div>`;
@@ -470,6 +472,8 @@ export class Panel {
     const d = BUILDINGS.get(b.key), close = '<button type="button" class="pc-close" data-close aria-label="Закрыть">×</button>';
     const state = b.done ? 'построено' : `строится ${Math.floor(b.progress / d.work * 100)}%`;
     const rows = [`<dt>Состояние</dt><dd>${state}</dd>`, `<dt>Цена</dt><dd class="nb">${Object.entries(d.cost).map(([r, v]) => `${v} ${RESOURCES.get(r).label}`).join(', ')}</dd>`];
+    // what it was built of (data/kinds.js, settlement/kinds.js)
+    if (b.stone || b.wood) rows.push(`<dt>Из чего</dt><dd>${[b.stone && STONES.has(b.stone) ? `камень — ${STONES.get(b.stone).label} (прочность ×${STONES.get(b.stone).dur})` : '', b.wood && WOODS.has(b.wood) ? `дерево — ${WOODS.get(b.wood).label}` : ''].filter(Boolean).join(', ')}</dd>`);
     let extra = '';
     if (d.soil) {
       const f = lotFertility(w, b.x, b.y, b.w || 2, b.h || 2);

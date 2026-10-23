@@ -31,6 +31,8 @@ TECHS.registerAll([
     requires: ['bronze'], tier: 1, needsAny: ['smelter', 'market'], opens: {buildings: ['forge'], materials: ['iron']}},
   {id: 'casting', label: 'Литейное дело', note: 'большое литьё и стекло', races: ['humans', 'dwarves'],
     requires: ['iron'], tier: 2, needsAny: ['forge'], opens: {buildings: ['foundry', 'glassworks']}},
+  {id: 'steelmaking', label: 'Сталь', note: 'закалка железа в горнах литейни: стальное оружие и броня', races: ['humans', 'dwarves'],
+    requires: ['iron', 'casting'], tier: 2, needsAny: ['foundry', 'magmaforge'], chance: 0.15, opens: {materials: ['steel']}},
   {id: 'deepmining', label: 'Глубинные шахты', note: 'штольни под самые корни гор', races: ['dwarves'],
     requires: ['stonework'], tier: 2, needsAny: ['mineshaft'], opens: {buildings: ['deepmine']}},
   {id: 'magmaforge', label: 'Магмовая кузня', note: 'жар земных недр: в нём одном куётся мифрил', races: ['dwarves'],

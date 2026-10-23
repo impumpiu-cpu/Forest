@@ -34,6 +34,7 @@ import {wake, noticeSelf, heartOf, noteThink} from '../attention.js';
 import {bindOption, captiveAllows, keepInside} from '../../settlement/captives.js';
 import {assistOption} from '../../settlement/masters.js';
 import {formerAllows} from '../../settlement/freedom.js';
+import {mayExtract} from '../../settlement/kinds.js';
 
 // keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
 // colony's vacancies is settlement/plan.js vacancyPull)
@@ -88,7 +89,7 @@ function decide(w, a, woke = 'дело кончилось') {
   ensurePlan(w);
   for (const job of JOBS.all()) {
     // can I? (the job's tier, agents/skills.js) — then do I want to?
-    if (!jobUnlocked(w, job) || !jobAccess(a, job).ok || (job.canDo && !job.canDo(w, a))) continue;
+    if (!jobUnlocked(w, job) || !jobAccess(a, job).ok || (job.canDo && !job.canDo(w, a)) || !mayExtract(w, a.species, job.id)) continue;   // (data/kinds.js: what its race does not get out of the land)
     const base = job.desire(w, ctx, job);
     if (base < 0) continue;
     const res = job.resource;

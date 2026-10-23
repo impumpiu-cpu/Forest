@@ -69,6 +69,8 @@ export function cellRegion(a, i) {
   const reg = {
     id: 'world', label: cap1(b?.label || 'земля') + (river === 'great' ? ' у большой реки' : river === 'river' ? ' у реки' : ''),
     note: `клетка мира ${xy(a, i).join(', ')}`,
+    // the rock under it: the stone the colony quarries here (data/kinds.js STONES, settlement/kinds.js)
+    rock: geo.rock?.id || null,
     ores, placer: geo.placer ?? 0, goldVein: !!geo.flags.goldVein, magma: !!geo.flags.magma,
     road: r2(SEAM.road.base + SEAM.road.perAccess * acc), river: river === 'great' ? 1 : river === 'river' ? 0.6 : 0,
     biomes, flora, faunaShift, extra: {},

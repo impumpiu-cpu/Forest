@@ -28,6 +28,7 @@ import {DIPLOMACY} from '../diplomacy.js';
 import {ERAS} from '../history.js';
 import {TECHS, TECH_RULES, techOfBuilding, techOfMaterial} from '../tech.js';
 import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
+import {WOODS, STONES, FAMILIES, RACE_MATERIALS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
 import {BASE_MODS} from '../traits.js';
@@ -166,6 +167,24 @@ export const TABLES = [
       col('parts', 'Части', 'map', {ref: {has: k => k === 'material' || RESOURCES.has(k)}, min: 0}), col('work', 'Труд', 'int', {min: 0}),
       col('tradeOnly', 'Только у торговцев', 'bool'), col('name', 'Имя из материала', 'formula'),
     ]},
+  // ── materials of a kind (data/kinds.js): what a family is made of, and what each race may do with each
+  {id: 'woods', label: 'Породы деревьев', group: 'Вещи', key: 'id', rows: () => WOODS.all(),
+    note: 'Древесина на выбор (data/kinds.js): рецепт просит «древесину», склад помнит, какую; на растопку идёт худшая, на изделие — лучшая, какую может работать раса мастера. Множители — к деревянной вещи. Особое дерево даёт свои числа только своему мастеру («Материалы рас»), другим — как простое.',
+    columns: [
+      col('id', 'id'), col('label', 'Название'), col('biomes', 'Где растёт', 'map', {ref: 'biomes', min: 0}),
+      col('dmg', 'Удар ×', 'num', {min: 0}), col('dur', 'Прочность ×', 'num', {min: 0}), col('weight', 'Вес ×', 'num', {min: 0}),
+      col('fuel', 'Горит ×', 'num', {min: 0}), col('price', 'Цена ×', 'num', {min: 0}),
+      col('special', 'Особое', 'bool', {note: 'свои числа — только мастеру'}), col('plain', 'Для прочих как', 'ref', {ref: 'woods'}), col('color', 'Цвет', 'color'),
+    ]},
+  {id: 'stones', label: 'Камень', group: 'Вещи', key: 'id', rows: () => STONES.all(),
+    note: 'Камень на выбор — породы мира (data/geology.js, data/kinds.js): какую породу дала клетка, такой камень и ломают. Постройка помнит свой камень и его цвет; прочность ×  — для износа построек (начнёт действовать, когда он появится).',
+    columns: [col('id', 'id'), col('label', 'Порода'), col('rock', 'Вид породы'), col('dur', 'Прочность ×', 'num', {min: 0}), col('price', 'Цена ×', 'num', {min: 0}), col('color', 'Цвет', 'color')]},
+  {id: 'raceMaterials', label: 'Материалы рас', group: 'Вещи', key: 'id',
+    rows: () => SPECIES.filter(s => s.kind === 'race').map(s => ({id: s.id, label: s.plural, ...Object.fromEntries(Object.values(FAMILIES).flatMap(F => F.members()).map(m => [m, RACE_MATERIALS[s.id]?.[m] || 'yes']))})),
+    target: (r, c) => [(RACE_MATERIALS[r.id] ||= {}), c.key],
+    note: 'Что раса делает с каждым материалом (data/kinds.js): можно; не добывает и не делает, но берёт сделанное другими — вещь «грязная»; не касается вовсе; мастер — особый материал даёт ей свои числа. Пока всё всем можно, кроме святого дерева: его мастера — эльфы.',
+    columns: [col('id', 'id'), col('label', 'Раса', 'text', {edit: false}),
+      ...Object.values(FAMILIES).flatMap(F => F.members()).map(m => col(m, WOODS.has(m) ? WOODS.get(m).label : STONES.has(m) ? STONES.get(m).label : RESOURCES.has(m) ? RESOURCES.get(m).short : m, 'enum', {values: USES}))]},
   {id: 'quality', label: 'Качество', group: 'Вещи', key: 'id', rows: () => QUALITY.all(),
     note: 'Ступени выделки +0…+4 (data/quality.js): что даёт ступень и как часто мастер её добивается.',
     columns: [

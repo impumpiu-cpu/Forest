@@ -18,6 +18,8 @@ import {season} from '../data/seasons.js';
 import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS} from '../data/balance/combat.js';
 import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 import {MARKS, MARK, markable} from '../data/balance/marks.js';
+import {WOODS, mayUse, useOf} from '../data/kinds.js';
+import {MATERIALS} from '../data/balance/materials.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
 // made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
@@ -54,6 +56,25 @@ function markedDef(d, M) {
   if (d.armor || d.block) n.vs = {...(d.vs || {}), [M.blow]: (d.vs?.[M.blow] ?? 1) * (1 + MARK.guard)};
   return n;
 }
+// a wooden piece of a kind of wood (data/kinds.js WOODS; `inst.of`): its blow, its shot, its tool and its life by that
+// wood; a special wood (the sacred tree) gives its own numbers only to a piece its master made (`inst.master`), to any
+// other it is a fine plain wood
+function woodenDef(d, inst) {
+  const T0 = WOODS.get(inst.of), T = T0.special && !inst.master ? WOODS.get(T0.plain) : T0;
+  const n = {...d, of: inst.of, label: `${d.label} (${T0.label}${inst.master && T0.special ? ', работа мастера' : ''})`, short: `${d.short} (${T0.label.split(' ')[0].slice(0, 5)}.)`};
+  if (d.melee) n.melee = {...d.melee, dmg: d.melee.dmg * T.dmg};
+  if (d.ranged) n.ranged = {...d.ranged, dmg: d.ranged.dmg * T.dmg};
+  if (d.block) n.block = Math.min(CAPS.block, d.block * Math.sqrt(T.dur));
+  if (d.tool) n.tool = Object.fromEntries(Object.entries(d.tool).map(([j, m]) => [j, 1 + (m - 1) * T.dmg]));
+  if (Number.isFinite(d.dur)) n.dur = d.dur * T.dur;
+  return n;
+}
+const isWooden = d => !!MATERIALS[d.material]?.class.includes('wood');
+// what a piece is made of, as the races' rules know it (data/kinds.js): its wood, or its metal's resource
+export const memberOf = inst => { const d = ITEMS.has(inst.type) ? ITEMS.get(inst.type) : null; return inst.of || (d ? MATERIALS[d.material]?.resource : null) || null; };
+// a piece «dirty» to its bearer: of a material its race does not get or make (data/kinds.js 'nomake') — it was made by others
+export const dirtyFor = (a, inst) => useOf(a.species, memberOf(inst)) === 'nomake';
+
 // how much a mixed blow is worth on average against nothing (the strength rating: agents/strength.js)
 export const mixGain = attack => (attack?.mix ? attack.mix.reduce((s, [, k]) => s + k, 0) : 1);
 
@@ -64,11 +85,13 @@ const named = new Map();
 export function def(inst) {
   const d = itemDef(inst.type, inst.q);
   const M = inst.mark && MARKS[inst.mark] && markable(d) ? MARKS[inst.mark] : null;
-  if (!inst.name && !inst.silver && !M) return d;
-  const key = inst.type + ':' + inst.q + ':' + (inst.name || '') + ':' + (inst.silver ? 's' : '') + ':' + (M ? M.id : '');
+  const wood = inst.of && WOODS.has(inst.of) && isWooden(d);
+  if (!inst.name && !inst.silver && !M && !wood) return d;
+  const key = inst.type + ':' + inst.q + ':' + (inst.name || '') + ':' + (inst.silver ? 's' : '') + ':' + (M ? M.id : '') + ':' + (wood ? inst.of + (inst.master ? '!' : '') : '');
   let n = named.get(key);
   if (!n) {
-    n = M ? markedDef(d, M) : {...d};
+    const base = wood ? woodenDef(d, inst) : d;
+    n = M ? markedDef(base, M) : {...base};
     if (inst.silver) { n.silver = true; n.label = `${d.label} (посеребрённый)`; n.short = `${d.short} сер.`; n.dur = d.dur * 0.8; }
     if (inst.name) { n.label = `${inst.name} (${n.label})`; n.short = inst.name; }
     named.set(key, n);
@@ -78,14 +101,15 @@ export function def(inst) {
 export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, ...extra}).dur});
 
 // The caravan keeps its gear as words, not objects (campaign/): a piece is 'ironsword', a finer or marked one
-// 'ironsword+1@orc' (+ its quality, @ its mark). These turn a word into the piece and back.
-export const gearToken = inst => inst.type + (inst.q ? `+${inst.q}` : '') + (inst.mark ? `@${inst.mark}` : '');
+// 'ironsword+1@orc' (+ its quality, @ its mark), a wooden one 'bow~holywood!' (~ its wood, ! made by its master).
+// These turn a word into the piece and back.
+export const gearToken = inst => inst.type + (inst.of ? `~${inst.of}${inst.master ? '!' : ''}` : '') + (inst.q ? `+${inst.q}` : '') + (inst.mark ? `@${inst.mark}` : '');
 export function gearSpec(token) {
-  const m = /^([^+@]+)(?:\+(\d+))?(?:@(\w+))?$/.exec(token || '');
+  const m = /^([^+@~]+)(?:~(\w+)(!)?)?(?:\+(\d+))?(?:@(\w+))?$/.exec(token || '');
   if (!m) return {type: token};
-  return {type: m[1], ...(m[2] ? {q: +m[2]} : {}), ...(m[3] ? {mark: m[3]} : {})};
+  return {type: m[1], ...(m[2] ? {of: m[2]} : {}), ...(m[3] ? {master: true} : {}), ...(m[4] ? {q: +m[4]} : {}), ...(m[5] ? {mark: m[5]} : {})};
 }
-export const gearType = token => (token || '').split(/[+@]/)[0];
+export const gearType = token => (token || '').split(/[+@~]/)[0];
 // the definition behind a word of the caravan's gear (null: not an item — a word nobody knows)
 export const gearDef = token => { const s = gearSpec(token); return ITEMS.has(s.type) ? def(s) : null; };
 // its price, with its quality and mark
@@ -188,7 +212,7 @@ export function dress(a, types, ammo = 0) {
   const spill = [];
   for (const t of types) {
     const spec = typeof t === 'string' ? gearSpec(t) : t;
-    const inst = newItem(spec.type, {...(spec.q ? {q: spec.q} : {}), ...(spec.mark ? {mark: spec.mark} : {})}), d = def(inst);
+    const inst = newItem(spec.type, {...(spec.q ? {q: spec.q} : {}), ...(spec.mark ? {mark: spec.mark} : {}), ...(spec.of ? {of: spec.of} : {}), ...(spec.master ? {master: true} : {})}), d = def(inst);
     if (d.holds) inst.ammo = ammo;
     if (d.slot === 'body') putOn(a, inst, 'body', spill);
     else if (d.slot === 'back') putOn(a, inst, 'back', spill);
@@ -259,7 +283,7 @@ function handsValue(w, a, hands) {
 // best loadout from the agent's own gear plus the store; returns {hands, two, body, back, score}
 function bestLoadout(w, a, pool) {
   const byType = new Map();   // keep one instance per kind (type and quality, the most durable) to keep the search small
-  for (const it of pool) { const key = it.type + ':' + (it.q || 0) + (it.silver ? ':s' : '') + (it.mark ? ':' + it.mark : ''), k = byType.get(key); if (!k || it.dur > k.dur) byType.set(key, it); }
+  for (const it of pool) { const key = it.type + ':' + (it.q || 0) + (it.silver ? ':s' : '') + (it.mark ? ':' + it.mark : '') + (it.of ? ':' + it.of + (it.master ? '!' : '') : ''), k = byType.get(key); if (!k || it.dur > k.dur) byType.set(key, it); }
   const items = [...byType.values()];
   const hand = items.filter(it => def(it).slot === 'hand');
   const opts = [{hands: []}];
@@ -305,7 +329,8 @@ export function outfit(w, a) {
   // a captive: a tool and clothes only, and no tool from the council till dawn (settlement/escape.js)
   const night = a.captive && (hourOf(w.tick) >= COUNCIL_TO || hourOf(w.tick) < ESCAPE.tools.dawn);
   // (a former slave: a tool and clothes too, day and night — settlement/freedom.js)
-  const own = allItems(a), pool = a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory];
+  // what the race does not touch at all (data/kinds.js 'taboo') stays in the store
+  const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)));
   const best = bestLoadout(w, a, pool);
   if (best && best.score > currentScore(w, a) + 0.12) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
@@ -331,7 +356,7 @@ export function outfit(w, a) {
 
 export function gearText(a) {
   if (!a.equip) return '';
-  const hs = handItems(a).map(it => def(it).short);
+  const hs = handItems(a).map(it => def(it).short + (dirtyFor(a, it) ? ' (грязн.)' : ''));
   const parts = [hs.length ? hs.join(' + ') : 'безоружен'];
   if (a.equip.body) parts.push(def(a.equip.body).short);
   const b = a.equip.back;
