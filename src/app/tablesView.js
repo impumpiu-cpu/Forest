@@ -1,8 +1,12 @@
-// «Настройки → Таблицы»: every table of src/data/schema/ shown as it is — read only for now (docs/TABLE.md,
-// этап 2; the layer of experimental edits is этап 3). A list of tables by group, the table with sorting and a
-// filter, the schema's notes on hover, the table to a .csv or .json file, and the check of every value
-// against its column (the same as `npm run tables`).
-import {TABLES, GROUPS, get, checkAll} from '../data/schema/index.js';
+// «Настройки → Таблицы»: every table of src/data/schema/ (docs/TABLE.md, этапы 2–3). A list of tables by group,
+// the table with sorting and a filter, the schema's notes on hover, the table to a .csv or .json file, the check
+// of every value against its column (the same as `npm run tables`) — and edits for experiments: a click on a cell
+// in edit mode writes a new value over the code's (src/data/schema/edits.js); the layer is kept in this browser
+// and in files (src/ui/tableEdits.js), and goes into every new game and world.
+import {TABLES, GROUPS, get, checkAll, editable, tableById} from '../data/schema/index.js';
+import {setCell, resetCell, resetTable, resetAll, isEdited, originalOf, editList, editCount, LAYER} from '../data/schema/edits.js';
+import {storeEdits, editsJSON, loadEditsText, BOOT_PROBLEMS} from '../ui/tableEdits.js';
+import {STATS} from '../data/special.js';
 import {esc} from '../core/util.js';
 
 const $ = id => document.getElementById(id);
@@ -52,6 +56,51 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// ── editing: a value as the text in its editor, and the text back as a value (the same words the cell shows)
+function editText(c, v) {
+  if (v == null) return '';
+  switch (c.type) {
+    case 'map': return Object.entries(v).map(([k, x]) => `${k} ${x === Infinity ? '∞' : x}`).join(', ');
+    case 'special': return Object.entries(v).map(([k, [lo, hi]]) => `${k} ${lo}-${hi}`).join(', ');
+    case 'shift': return Object.entries(v).map(([k, x]) => `${k} ${x > 0 ? '+' : ''}${x}`).join(', ');
+    case 'ids': return v.join(', ');
+    case 'json': return typeof v === 'string' ? v : JSON.stringify(v);
+    default: return String(v);
+  }
+}
+const num = t => { const s = String(t).trim().replace(',', '.').replace('−', '-'); if (s === '∞' || /^infinity$/i.test(s)) return Infinity; const n = Number(s); if (s === '' || Number.isNaN(n)) throw new Error(`«${t}» — не число`); return n; };
+const parts = t => String(t).split(/[,;·\n]+/).map(x => x.trim()).filter(Boolean);
+function enumWord(values, w) {
+  if (Array.isArray(values)) return w;
+  if (Object.prototype.hasOwnProperty.call(values, w)) return w;
+  const hit = Object.entries(values).find(([, x]) => (x && typeof x === 'object' ? x.label : x) === w);
+  return hit ? hit[0] : w;
+}
+function parseText(c, text) {
+  const t = String(text).trim();
+  switch (c.type) {
+    case 'num': case 'int': return num(t);
+    case 'text': return t;
+    case 'ids': return parts(t);
+    case 'map': return Object.fromEntries(parts(t).map(p => { const m = p.match(/^(\S+)\s+(.+)$/); if (!m) throw new Error(`«${p}»: нужно «ключ значение»`); return [m[1], c.values ? enumWord(c.values, m[2].trim()) : num(m[2])]; }));
+    case 'special': return Object.fromEntries(parts(t).map(p => {
+      const m = p.match(/^([A-Za-z])\s*(-?[\d.]+)\s*(?:[-–…]+\s*(-?[\d.]+))?$/); if (!m) throw new Error(`«${p}»: нужно «S 1-10»`);
+      const k = m[1].toUpperCase(); if (!STATS.has(k)) throw new Error(`нет характеристики «${m[1]}»`);
+      return [k, [num(m[2]), num(m[3] ?? m[2])]];
+    }));
+    case 'shift': return Object.fromEntries(parts(t).map(p => {
+      const q = p.replace('−', '-');
+      let m = q.match(/^([A-Za-z])\s*([+-]?[\d.]+)$/), k, n;
+      if (m) [k, n] = [m[1], m[2]];
+      else { m = q.match(/^([+-]?[\d.]+)\s*([A-Za-z])$/); if (!m) throw new Error(`«${p}»: нужно «S +1»`); [n, k] = [m[1], m[2]]; }
+      if (!STATS.has(k.toUpperCase())) throw new Error(`нет характеристики «${k}»`);
+      return [k.toUpperCase(), num(n)];
+    }));
+    case 'json': { try { return JSON.parse(t); } catch (e) { const n = Number(t.replace(',', '.')); return t !== '' && !Number.isNaN(n) ? n : t; } }
+    default: return t;
+  }
+}
+
 export class TablesView {
   constructor() {
     this.id = (() => { try { return localStorage.getItem(STORE); } catch (e) { return null; } })();
@@ -71,6 +120,27 @@ export class TablesView {
     });
     $('tblCsv').addEventListener('click', () => this.file('csv'));
     $('tblJson').addEventListener('click', () => this.file('json'));
+    // ── edits
+    this.editing = false;
+    $('edMode').addEventListener('click', () => { this.editing = !this.editing; this.draw(); this.bar(); });
+    $('tbl').addEventListener('click', e => {
+      if (e.target.closest('th')) return;
+      const undo = e.target.closest('[data-undo]');
+      if (undo) { const td = undo.closest('td'); this.undo(td.dataset.r, this.table.columns[+td.dataset.c].key); return; }
+      const td = e.target.closest('td.ed'); if (td && !td.querySelector('.cell-ed')) this.edit(td);
+    });
+    $('edList').addEventListener('click', e => {
+      const b = e.target.closest('[data-undo-t]'); if (b) { resetCell(b.dataset.undoT, b.dataset.undoR, b.dataset.undoC); this.changed(); return; }
+      const go = e.target.closest('[data-go-t]'); if (go) this.open(go.dataset.goT);
+    });
+    $('edResetTable').addEventListener('click', () => { if (!LAYER[this.id]) return; if (confirm(`Сбросить правки таблицы «${this.table.label}»?`)) { resetTable(this.id); this.changed(`Правки таблицы «${this.table.label}» сброшены.`); } });
+    $('edResetAll').addEventListener('click', () => { if (!editCount()) return; if (confirm('Сбросить все правки таблиц? Игра вернётся к числам кода.')) { resetAll(); this.changed('Все правки сброшены.'); } });
+    $('edSave').addEventListener('click', () => { if (!editCount()) { this.say('Правок нет — выгружать нечего.'); return; } download('forest-tables.json', editsJSON(), 'application/json'); });
+    $('edLoad').addEventListener('change', async e => {
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+      try { const bad = loadEditsText(await f.text()); this.changed(bad.length ? `Загружено, но не всё (${bad.length}): ${bad.slice(0, 3).join('; ')}${bad.length > 3 ? '…' : ''}` : `Правки загружены: ${editCount()}.`); }
+      catch (err) { this.say(`Не удалось загрузить: ${err.message}`, true); }
+    });
     this.rendered = false;
   }
 
@@ -78,7 +148,78 @@ export class TablesView {
 
   // the first time the screen is shown: the table and the check (the check reads every table, so not at load)
   show() {
-    if (!this.rendered) { this.rendered = true; this.open(this.id); this.check(); }
+    if (!this.rendered) {
+      this.rendered = true; this.open(this.id); this.check(); this.bar();
+      if (BOOT_PROBLEMS.length) this.say(`Часть сохранённых правок не применилась (${BOOT_PROBLEMS.length}): ${BOOT_PROBLEMS.slice(0, 3).join('; ')}`, true);
+    }
+  }
+
+  say(text, bad = false) { const m = $('edMsg'); m.textContent = text; m.classList.toggle('bad', bad); }
+
+  // after any change of the layer: keep it, redraw, check again
+  changed(msg) { storeEdits(); this.draw(); this.bar(); this.check(); this.navMarks(); if (msg != null) this.say(msg); }
+
+  // the bar over the tables: how many edits, and their list
+  bar() {
+    const n = editCount();
+    $('edCount').textContent = n ? `Правок: ${n}` : 'Правок нет';
+    $('edMode').setAttribute('aria-pressed', String(this.editing));
+    $('edMode').textContent = this.editing ? 'Правка: вкл' : 'Правка: выкл';
+    $('edResetTable').disabled = !LAYER[this.id]; $('edResetAll').disabled = !n;
+    const list = editList();
+    $('edList').hidden = !n;
+    $('edList').innerHTML = n ? `<summary>Все правки (${n})</summary><ul>${list.map(e => {
+      const t = tableById(e.table), c = t?.columns.find(x => x.key === e.column);
+      const show = v => (c ? cell(c, v).text || '—' : JSON.stringify(v));
+      return `<li><button type="button" class="link" data-go-t="${esc(e.table)}">${esc(t?.label || e.table)}</button> · ${esc(e.row)} · ${esc(c?.label || e.column)}: <s>${esc(show(e.was))}</s> → <b>${esc(show(e.value))}</b> <button type="button" class="quiet mini" data-undo-t="${esc(e.table)}" data-undo-r="${esc(e.row)}" data-undo-c="${esc(e.column)}" title="Вернуть число кода">↺</button></li>`;
+    }).join('')}</ul>` : '';
+  }
+
+  // the tables with edits are marked in the list
+  navMarks() {
+    $('tablesNav').querySelectorAll('[data-t]').forEach(b => {
+      const n = Object.values(LAYER[b.dataset.t] || {}).reduce((m, cols) => m + Object.keys(cols).length, 0);
+      b.classList.toggle('has-ed', n > 0); b.title = n ? `правок: ${n}` : '';
+    });
+  }
+
+  undo(rowKey, colKey) { resetCell(this.id, rowKey, colKey); this.changed('Возвращено число кода.'); }
+
+  // the editor in a cell: a box for its kind of value; Enter or leaving it writes, Esc cancels
+  edit(td) {
+    const t = this.table, c = t.columns[+td.dataset.c], rowKey = td.dataset.r;
+    const row = t.rows().find(r => String(get(r, t.key)) === rowKey), v = get(row, c.key);
+    const commit = value => {
+      const res = setCell(this.id, rowKey, c.key, value);
+      if (res.error) { this.say(res.error, true); this.draw(); return; }
+      this.changed(isEdited(this.id, rowKey, c.key) ? `${t.label} · ${rowKey} · ${c.label}: записано.` : `${t.label} · ${rowKey} · ${c.label}: снова как в коде.`);
+    };
+    if (c.type === 'bool') { commit(!v); return; }
+    let box;
+    const refKeys = typeof c.ref === 'string' ? tableById(c.ref)?.rows().map(r => String(get(r, tableById(c.ref).key))) : null;
+    if (c.type === 'enum' || (c.type === 'ref' && refKeys)) {
+      const opts = c.type === 'enum' ? (Array.isArray(c.values) ? c.values.map(x => [x, x]) : Object.entries(c.values).map(([k, x]) => [k, x && typeof x === 'object' ? x.label ?? k : typeof x === 'string' ? x : k])) : refKeys.map(k => [k, k]);
+      box = document.createElement('select');
+      box.innerHTML = `<option value="">—</option>` + opts.map(([k, l]) => `<option value="${esc(k)}"${String(v) === k ? ' selected' : ''}>${esc(String(l))}${l !== k ? ` · ${esc(k)}` : ''}</option>`).join('');
+    } else {
+      box = document.createElement('input');
+      box.type = 'text'; box.inputMode = c.type === 'num' || c.type === 'int' ? 'decimal' : 'text';
+      box.value = editText(c, v);
+      box.placeholder = {map: 'ключ значение, ключ значение', special: 'S 1-10, P 3-11', shift: 'S +1, I -1', ids: 'id, id'}[c.type] || '';
+    }
+    box.className = 'cell-ed';
+    td.innerHTML = ''; td.append(box); box.focus(); if (box.select) box.select();
+    let done = false;
+    const finish = ok => {
+      if (done) return; done = true;
+      if (!ok) { this.draw(); return; }
+      if (box.tagName === 'SELECT') { commit(box.value === '' ? undefined : box.value); return; }
+      if (box.value.trim() === '' && v == null) { this.draw(); return; }
+      try { commit(box.value.trim() === '' ? undefined : parseText(c, box.value)); } catch (err) { this.say(`${c.label}: ${err.message}`, true); this.draw(); }
+    };
+    box.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); } });
+    box.addEventListener('blur', () => finish(true));
+    if (box.tagName === 'SELECT') box.addEventListener('change', () => finish(true));
   }
 
   open(id) {
@@ -87,6 +228,7 @@ export class TablesView {
     $('tablesNav').querySelectorAll('[data-t]').forEach(b => b.setAttribute('aria-current', String(b.dataset.t === id)));
     const t = this.table;
     $('tblTitle').textContent = t.label + (t.computed ? ' · вычисляется' : '');
+    if (this.rendered) this.bar();
     $('tblNote').textContent = t.note || '';
     this.draw();
   }
@@ -114,7 +256,15 @@ export class TablesView {
     const t = this.table, rows = this.view(), all = t.rows().length;
     const calc = c => t.computed || c.computed;
     const head = t.columns.map((c, k) => `<th data-c="${k}" class="${calc(c) ? 'calc' : ''}"${this.sort?.col === k ? ` aria-sort="${this.sort.dir > 0 ? 'ascending' : 'descending'}"` : ''} title="${esc([c.note, c.min != null || c.max != null ? `пределы ${c.min ?? '…'} … ${c.max ?? '…'}` : '', calc(c) ? 'вычисляется' : ''].filter(Boolean).join(' · '))}">${esc(c.label)}<span class="k">${esc(c.key)}</span></th>`).join('');
-    const body = rows.map(x => `<tr>${x.cells.map((v, k) => `<td class="${[v.cls, calc(t.columns[k]) ? 'calc' : ''].filter(Boolean).join(' ')}">${v.html}</td>`).join('')}</tr>`).join('');
+    const body = rows.map(x => {
+      const key = String(get(x.r, t.key));
+      return `<tr>${x.cells.map((v, k) => {
+        const c = t.columns[k], ed = this.editing && editable(t, c), changed = isEdited(t.id, key, c.key);
+        const cls = [v.cls, calc(c) ? 'calc' : '', ed ? 'ed' : '', changed ? 'changed' : ''].filter(Boolean).join(' ');
+        const was = changed ? ` title="${esc(`в коде: ${cell(c, originalOf(t.id, key, c.key)).text || '—'}`)}"` : '';
+        return `<td class="${cls}" data-r="${esc(key)}" data-c="${k}"${was}>${v.html}${changed ? '<button type="button" class="undo" data-undo title="Вернуть число кода">↺</button>' : ''}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
     $('tbl').innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
     $('tblCount').textContent = rows.length === all ? `${all} строк · ${t.columns.length} столбцов` : `${rows.length} из ${all} строк`;
   }

@@ -54,6 +54,21 @@
   table.tbl .sp b{color:var(--muted);font-weight:400}
   table.tbl code{font-family:var(--font-mono);font-size:11.5px;white-space:pre-wrap;color:#cfd8a8}
   table.tbl .sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line);vertical-align:-2px;margin-right:5px}
+  .edits-bar{gap:8px}
+  .edits-bar .note{color:var(--muted)}
+  .ed-msg{color:var(--ember);min-height:1.2em}
+  .ed-msg.bad{color:#f0b0b2}
+  .ed-list ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+  .ed-list s{color:var(--muted)}
+  button.link{border:0;background:none;padding:0;color:var(--ember);text-decoration:underline;font-size:inherit}
+  button.mini{padding:0 6px;font-size:12px}
+  .tables-nav button.has-ed span::after{content:" •";color:var(--ember)}
+  .tables-nav button[aria-current="true"].has-ed span::after{color:#1b130a}
+  table.tbl td.ed{cursor:text;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+  table.tbl td.ed:hover{outline:1px dashed var(--ember);outline-offset:-2px}
+  table.tbl td.changed{box-shadow:inset 0 0 0 2px var(--ember);position:relative;padding-right:24px}
+  table.tbl td .undo{position:absolute;right:2px;top:2px;border:0;background:transparent;color:var(--ember);padding:0 3px;font-size:12px;line-height:1.2}
+  table.tbl .cell-ed{font:inherit;font-family:var(--font-mono);font-size:12px;color:var(--fg);background:var(--bg);border:1px solid var(--ember);border-radius:4px;padding:2px 4px;width:100%;min-width:120px;box-sizing:border-box}
   .tbl-check{font-size:12.5px;color:var(--muted)}
   .tbl-check.bad{color:#f0b0b2}
   .tbl-check details{margin-top:4px}
@@ -155,10 +170,23 @@
 
   <section class="app-screen" id="settings" hidden aria-labelledby="setTitle">
     <div class="app-head"><h2 id="setTitle">Настройки</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card edits-bar">
+      <div class="row">
+        <button type="button" id="edMode" aria-pressed="false" title="Включить правку: щелчок по ячейке — новое значение">Правка: выкл</button>
+        <b id="edCount">Правок нет</b>
+        <button type="button" id="edSave" title="Все правки — в файл forest-tables.json">Выгрузить правки</button>
+        <label class="filebtn" title="Правки из файла заменят нынешние">Загрузить правки…<input type="file" id="edLoad" accept=".json,application/json"></label>
+        <button type="button" id="edResetTable" class="quiet">Сбросить таблицу</button>
+        <button type="button" id="edResetAll" class="danger">Сбросить всё</button>
+      </div>
+      <small class="note">Правки — для экспериментов: они лежат слоем поверх чисел кода в этом браузере и действуют в каждой <b>новой</b> игре и мире (и в старом меню). Мир запоминает, с какими правками сотворён; открытый с другими — предупредит. Сброс возвращает числа кода.</small>
+      <small class="ed-msg" id="edMsg" role="status"></small>
+      <details id="edList" class="ed-list" hidden></details>
+    </div>
     <div class="tables-shell">
       <nav class="tables-nav card" id="tablesNav" aria-label="Таблицы"></nav>
       <div class="tables-main card">
-        <span class="tag">таблицы · только чтение</span>
+        <span class="tag">таблицы</span>
         <h3 id="tblTitle"></h3>
         <p class="note" id="tblNote"></p>
         <div class="row tbl-tools">
@@ -169,7 +197,7 @@
         </div>
         <div class="tbl-scroll"><table class="tbl" id="tbl"></table></div>
         <div class="tbl-check" id="tblCheck" role="status"></div>
-        <small class="note">Щелчок по заголовку — сортировка. Курсив — вычисляемое: его считает игра, править его нельзя. Правка таблиц для экспериментов появится на этапе 3.</small>
+        <small class="note">Щелчок по заголовку — сортировка. Курсив — вычисляемое: его считает игра, править его нельзя. В режиме правки подчёркнуто то, что правится; правленое — в рамке, ↺ возвращает число кода. Наборы пишутся словами: «forest 1, meadow 0.5», пределы SPECIAL — «S 1-10, P 3-11».</small>
       </div>
     </div>
   </section>

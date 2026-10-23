@@ -1,4 +1,7 @@
 // Entry point: wires the menu, the simulation loop, the renderer and the panels together.
+// first: the table edits of this browser go into the tables before anything reads them (src/ui/tableEdits.js)
+import {warnEdits} from './ui/tableEdits.js';
+import {editCount} from './data/schema/edits.js';
 import {newGame, step} from './sim.js';
 import {Renderer} from './render/renderer.js';
 import {Menu} from './ui/menu.js';
@@ -119,6 +122,7 @@ function start(cfg) {
 // a loaded world replaces the running one
 function resume(w) {
   world = w;
+  warnEdits(w.tables, 'Поселение создано');
   renderer.setup(world);
   clearSelection(); fitCam();
   autoDay = dayOf(world.tick);
@@ -292,7 +296,7 @@ function runFrame(now) {
   if (now - panelT > 300) { panelT = now; panel.render(world, view); panel.renderSelection(world, view); }
 }
 
-$('buildTag').textContent = `версия ${VERSION} · ${BUILD}`;
+$('buildTag').textContent = `версия ${VERSION} · ${BUILD}${editCount() ? ` · правки таблиц: ${editCount()}` : ''}`;
 // the new menu opens one of these screens straight away: ?go=epic&seed=…&size=… · ?go=campaign · ?go=world
 const GO = PARAMS.get('go');
 if (GO === 'epic') { showCampaign('epic'); campaignView.startEpic({seed: PARAMS.get('seed'), size: PARAMS.get('size')}); }

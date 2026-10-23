@@ -2,6 +2,9 @@
 // It is a shell over the same core as the old one (index.html, start.bat — the technical polygon); screens that are
 // not built yet open the old ones: index.html?go=world|campaign|epic&from=forest, and «← Главное меню» there
 // comes back here. docs/TABLE.md, «Новое меню».
+// first: the table edits of this browser go into the tables before anything reads them
+import {BOOT_PROBLEMS} from '../ui/tableEdits.js';
+import {editCount} from '../data/schema/edits.js';
 import {EPIC_SIZES} from '../data/campaign.js';
 import {VERSION} from '../version.js';
 import {TablesView} from './tablesView.js';
@@ -65,6 +68,6 @@ $('quickGo').addEventListener('click', () => {
 // ── settings: the tables of src/data/schema/, read only (stage 2)
 const tables = new TablesView();
 
-$('buildTag').textContent = `версия ${VERSION}`;
+$('buildTag').textContent = `версия ${VERSION}${editCount() ? ` · правки таблиц: ${editCount()}` : ''}${BOOT_PROBLEMS.length ? ' · ⚠' : ''}`;
 // forest.html#settings and the like open that screen
 show(SCREENS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home');

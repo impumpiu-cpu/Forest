@@ -4,7 +4,10 @@
 // even when its numbers live in two files: a race is data/races.js + its row of data/balance/creatures.js + its
 // people on the world map (data/peoples.js).
 // A new table: one entry in TABLES below (or in a group's list); its column `ref`s make the checks.
-import {col, paramRows, paramColumns, checkTables} from './columns.js';
+// Editing (src/data/schema/edits.js): a cell is written into the row at its column's key, unless the table's
+// `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
+// made from the table at load (items from forms × materials).
+import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
 import {KINS, RELATIONS, OPINION} from '../relations.js';
@@ -14,7 +17,7 @@ import {BIOMES, BIOME_KINDS, RARITY} from '../biomes.js';
 import {MATERIALS, FORMS, PRICES} from '../balance/index.js';
 import {BLOWS} from '../balance/combat.js';
 import {QUALITY} from '../quality.js';
-import {ITEMS} from '../items.js';
+import {ITEMS, rebuildItems} from '../items.js';
 import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS} from '../townBuildings.js';
 import {BUILDINGS} from '../buildings.js';
 import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
@@ -25,7 +28,7 @@ import {ERAS} from '../history.js';
 import {RESOURCES} from '../resources.js';
 import {BASE_MODS} from '../traits.js';
 
-export {checkTables, get} from './columns.js';
+export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
 export const GROUPS = ['Существа', 'Отношения', 'Вещи', 'Народы', 'Караван', 'Мир'];
 
@@ -53,12 +56,12 @@ const raceRows = () => SPECIES.filter(s => s.kind === 'race').map(s => {
 
 export const TABLES = [
   // ── Существа
-  {id: 'races', label: 'Расы', group: 'Существа', key: 'id', rows: raceRows,
+  {id: 'races', label: 'Расы', group: 'Существа', key: 'id', rows: raceRows, target: (r, c) => [SPECIES.get(r.id), c.key],
     note: 'Разумные расы: data/races.js (облик, дом, мировоззрение, ценности) + data/balance/creatures.js (SPECIAL, тело, удар) + народ на карте мира (data/peoples.js).',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('plural', 'Мн. число'),
       col('rel', 'Строка отношений', 'ref', {ref: 'relations', note: 'чья строка в таблице «Расы ↔ расы»'}),
-      col('world', 'Народ на карте', 'ref', {ref: 'peoples'}), col('era', 'Эпоха прихода', 'ref', {ref: ERAS}),
+      col('world', 'Народ на карте', 'ref', {ref: 'peoples', edit: false}), col('era', 'Эпоха прихода', 'ref', {ref: ERAS, edit: false, note: 'правится в «Народах мира»'}),
       col('align.order', 'Закон ↔ хаос', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'ось порядка: + закон, − хаос (data/values.js)'}),
       col('align.mercy', 'Добро ↔ зло', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'ось милосердия: + добро, − зло'}),
       col('align.spread', 'Разброс взглядов', 'num', {min: 0, note: 'насколько пешки расходятся с точкой расы'}),
@@ -74,10 +77,11 @@ export const TABLES = [
       col('heatHarm', 'Жар вредит с', 'num'),
     ]},
   {id: 'subraces', label: 'Подрасы', group: 'Существа', key: 'key',
+    target: (r, c) => [SPECIES.get(r.race).peoples.find(p => p.id === r.id), c.key],
     note: 'Народы внутри расы (data/races.js `peoples`): сдвиг пределов SPECIAL — в data/balance/creatures.js.',
     rows: () => SPECIES.filter(s => s.kind === 'race' && s.peoples).flatMap(s => s.peoples.map(p => ({...p, key: `${s.id}.${p.id}`, race: s.id, world: p.world !== false}))),
     columns: [
-      col('key', 'id'), col('race', 'Раса', 'ref', {ref: 'races'}), col('label', 'Название'), col('plural', 'Мн. число'),
+      col('key', 'id'), col('race', 'Раса', 'ref', {ref: 'races', edit: false}), col('label', 'Название'), col('plural', 'Мн. число'),
       col('weight', 'Вес', 'num', {min: 0}), col('world', 'Держава на карте', 'bool'),
       col('shift', 'Сдвиг SPECIAL', 'shift'), col('home', 'Свои биомы', 'map', {ref: 'biomes', min: 0, max: 1}),
       col('taste', 'Вкус построек', 'map', {ref: keysOf(TOWN_FX), min: 0}), col('innate', 'Врождённое', 'list', {show: labels}),
@@ -106,31 +110,30 @@ export const TABLES = [
 
   // ── Отношения
   {id: 'relations', label: 'Расы ↔ расы', group: 'Отношения', key: 'id',
-    rows: () => KINS.all().map(k => ({...k, ...RELATIONS[k.id]})),
+    rows: () => KINS.all().map(k => ({...k, ...RELATIONS[k.id]})), target: (r, c) => [RELATIONS[r.id], c.key],
     note: 'Старая память народов, −3…+3 (data/relations.js): строка — кто относится, столбец — к кому. Несимметрична.',
-    columns: [col('id', 'id'), col('label', 'Кто'), ...KINS.all().map(k => col(k.id, k.label, 'num', {min: -3, max: 3}))]},
-  {id: 'opinion', label: 'Мнение внутри группы', group: 'Отношения', key: 'key', rows: () => paramRows(OPINION),
-    note: 'Веса мнения одного существа о другом (data/relations.js OPINION): общие ценности, разрыв во взглядах, личная история.',
-    columns: paramColumns},
-  {id: 'diplomacy', label: 'Державы ↔ державы', group: 'Отношения', key: 'key', rows: () => paramRows(DIPLOMACY),
-    note: 'Правила отношений держав на карте мира, −5…+5 (data/diplomacy.js): дрейф, торговля, набеги, война и мир. Сами отношения меняются по годам в мире.',
-    columns: paramColumns},
+    columns: [col('id', 'id'), col('label', 'Кто', 'text', {edit: false}), ...KINS.all().map(k => col(k.id, k.label, 'num', {min: -3, max: 3}))]},
+  {id: 'opinion', label: 'Мнение внутри группы', group: 'Отношения', ...params(() => paramRows(OPINION)),
+    note: 'Веса мнения одного существа о другом (data/relations.js OPINION): общие ценности, разрыв во взглядах, личная история.'},
+  {id: 'diplomacy', label: 'Державы ↔ державы', group: 'Отношения', ...params(() => paramRows(DIPLOMACY)),
+    note: 'Правила отношений держав на карте мира, −5…+5 (data/diplomacy.js): дрейф, торговля, набеги, война и мир. Сами отношения меняются по годам в мире.'},
 
   // ── Вещи
-  {id: 'materials', label: 'Материалы', group: 'Вещи', key: 'id', rows: () => Object.entries(MATERIALS).map(([id, m]) => ({id, ...m})),
+  {id: 'materials', label: 'Материалы', group: 'Вещи', key: 'id', rows: () => Object.entries(MATERIALS).map(([id, m]) => ({id, ...m})), target: (r, c) => [MATERIALS[r.id], c.key], after: rebuildItems,
     note: 'Из чего вещь (data/balance/materials.js): множители к тому, что даёт форма. Предмет = форма × материал × качество.',
     columns: [
-      col('id', 'id'), col('adj.m', 'Название'), col('class', 'Класс', 'ids'), col('tier', 'Ступень', 'int', {min: 0, max: 4}),
+      col('id', 'id'), col('adj.m', 'Название'), col('class', 'Класс', 'ids', {edit: false, note: 'какие формы из него делаются: меняет набор предметов, поэтому не правится'}), col('tier', 'Ступень', 'int', {min: 0, max: 4}),
       col('rarity', 'Редкость', 'enum', {values: PRICES.ITEMS.rarity}), col('resource', 'Ресурс', 'ref', {ref: RESOURCES}), col('amount', 'Ресурса на часть', 'num', {min: 0}),
       col('labour', 'Труд ×', 'num', {min: 0}), col('dmg', 'Урон ×', 'num', {min: 0}), col('swing', 'Пауза ×', 'num', {min: 0}), col('dur', 'Прочность ×', 'num', {min: 0}),
       col('work', 'Инструмент ×', 'num', {min: 0}), col('armor', 'Броня ×', 'num', {min: 0}), col('block', 'Блок ×', 'num', {min: 0}), col('warmth', 'Тепло ×', 'num', {min: 0}),
       col('weight', 'Тяжесть ×', 'num', {min: 0}), col('color', 'Цвет', 'color'),
     ]},
   {id: 'forms', label: 'Формы', group: 'Вещи', key: 'id', rows: () => Object.entries(FORMS).map(([id, f]) => ({id, ...f, title: f.names?.[f.ref]?.[0] ?? f.name?.(MATERIALS[f.ref])?.[0] ?? id})),
+    target: (r, c) => [FORMS[r.id], c.key], after: rebuildItems,
     note: 'Тип вещи (data/balance/forms.js): копьё, меч, кольчуга… Числа стоят при материале `ref`, остальные материалы их масштабируют.',
     columns: [
       col('id', 'id'), col('title', 'Название', 'text', {computed: true, note: 'имя при материале «Числа при»; у других материалов — по формуле «Имя»'}), col('slot', 'Место', 'enum', {values: SLOTS}), col('hands', 'Рук', 'int', {min: 1, max: 2}),
-      col('of', 'Из классов', 'ids'), col('ref', 'Числа при', 'ref', {ref: 'materials'}),
+      col('of', 'Из классов', 'ids', {edit: false, note: 'из каких материалов делается: меняет набор предметов, поэтому не правится'}), col('ref', 'Числа при', 'ref', {ref: 'materials'}),
       col('blow', 'Тип удара', 'enum', {values: BLOWS}), col('scale.S', 'Доля Силы', 'num', {min: 0, max: 1}), col('scale.A', 'Доля Ловкости', 'num', {min: 0, max: 1}),
       col('melee.dmg', 'Удар', 'num', {min: 0}), col('melee.cd', 'Пауза', 'int', {min: 1}),
       col('ranged.dmg', 'Выстрел', 'num', {min: 0}), col('ranged.range', 'Дальность', 'num', {min: 0}), col('ranged.cd', 'Пауза выстрела', 'int', {min: 1}),
@@ -179,11 +182,12 @@ export const TABLES = [
       col('pop', 'Жителей от', 'int', {min: 0}), col('capital', 'Только столица', 'bool'), col('unique', 'Одна на державу', 'bool'), col('max', 'Сколько', 'int', {min: 1}),
       col('needs', 'Нужно место', 'ids', {ref: keysOf(PLACE_NEEDS)}), col('needsAny', 'Нужно одно из', 'ids', {ref: keysOf(PLACE_NEEDS)}),
       col('requires', 'Нужны постройки', 'ids', {ref: 'townBuildings'}), col('requiresAny', 'Нужна одна из', 'ids', {ref: 'townBuildings'}),
-      col('fx', 'Даёт', 'map', {ref: keysOf(TOWN_FX)}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города'),
+      col('fx', 'Даёт', 'map', {ref: keysOf(TOWN_FX)}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летопись', 'bool'),
     ]},
 
   // ── Караван
   {id: 'caravanBuildings', label: 'Постройки обоза', group: 'Караван', key: 'id',
+    target: (r, c) => (c.key === 'fx' ? [CAMP_FX, r.id] : [BUILDINGS.get(r.id), c.key]),
     rows: () => BUILDINGS.filter(b => b.portable).map(b => ({id: b.id, name: b.name, cost: b.cost, work: b.work, fx: CAMP_FX[b.id] || {}, field: Object.keys(b.cost).every(r => r === 'wood')})),
     note: 'Что повозка везёт в разобранном виде (data/buildings.js `portable`, data/transport.js CAMP_FX). Караван ничего не изобретает: остальное покупается.',
     columns: [
@@ -192,10 +196,11 @@ export const TABLES = [
       col('field', 'Можно собрать в поле', 'bool', {computed: true, note: 'только из дерева'}),
     ]},
   {id: 'caravanTransport', label: 'Транспорт', group: 'Караван', key: 'id',
+    target: (r, c) => [BEASTS[r.id] || VEHICLES[r.id], c.key],
     rows: () => [...Object.entries(BEASTS).map(([id, b]) => ({id, what: 'зверь', ...b})), ...Object.entries(VEHICLES).map(([id, v]) => ({id, what: 'повозка', ...v}))],
     note: 'Вьючные и верховые звери, тележки и повозки каравана (data/transport.js).',
     columns: [
-      col('id', 'id'), col('what', 'Что'), col('label', 'Название'), col('use', 'Для чего'), col('cells', 'Мест', 'int', {min: 0}), col('boxes', 'Ящиков', 'int', {min: 0}),
+      col('id', 'id'), col('what', 'Что', 'text', {edit: false}), col('label', 'Название'), col('use', 'Для чего'), col('cells', 'Мест', 'int', {min: 0}), col('boxes', 'Ящиков', 'int', {min: 0}),
       col('pulls', 'Тянет', 'num', {min: 0}), col('tool', 'Нужен металл', 'int', {min: 0}), col('logs', 'Брёвен', 'int', {min: 0}), col('days', 'Дней на сборку', 'int', {min: 0}),
       col('pull', 'Кто тянет'), col('haul', 'Темп ×', 'num', {min: 0}), col('building', 'Везёт построек', 'int', {min: 0}),
     ]},
@@ -215,9 +220,8 @@ export const TABLES = [
       col('radius', 'Владения', 'num', {min: 0}), col('density', 'Плотность', 'num', {min: 0}), col('max', 'Логов в мире', 'int', {min: 0}),
       col('breed', 'Плодится', 'num', {min: 0, max: 1}), col('rivals', 'Соперники', 'ids', {ref: 'lairs'}), col('color', 'Цвет', 'color'),
     ]},
-  {id: 'lairRules', label: 'Правила логов', group: 'Мир', key: 'key',
-    rows: () => paramRows({ancientYears: ANCIENT_YEARS, tribeHome: TRIBE_HOME, tribeRaid: TRIBE_RAID, rot: ROT}),
-    note: 'Возраст древнего логова, набеги племён, гниль (data/lairs.js).', columns: paramColumns},
+  {id: 'lairRules', label: 'Правила логов', group: 'Мир', ...params(() => paramGroups({ancientYears: ANCIENT_YEARS, tribeHome: TRIBE_HOME, tribeRaid: TRIBE_RAID, rot: ROT})),
+    note: 'Возраст древнего логова, набеги племён, гниль (data/lairs.js). Возраст и «дом племени» — постоянные числа кода: видны, но не правятся.'},
   {id: 'calamities', label: 'Катаклизмы', group: 'Мир', key: 'id', rows: () => CALAMITIES,
     note: 'Бедствия эпического мира (data/calamities.js): босс, его логова, свита и эпохи.',
     columns: [

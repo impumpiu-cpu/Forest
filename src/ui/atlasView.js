@@ -40,6 +40,7 @@ import {esc} from '../core/util.js';
 import {offerText, latinTitle} from './store.js';
 import {lineLevel, keeps, DETAILS, worldChronicleText, calamityChronicleText} from '../atlas/chronicle.js';
 import {$} from './dom.js';
+import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
@@ -220,7 +221,7 @@ export class AtlasView {
     this.sync(); this.refreshWorlds();
     if (goto?.id && goto.id !== this.worldId) {
       $('atlasSaveStatus').textContent = 'Открываю мир…';
-      try { const list = await listWorlds(), rec = list.find(r => r.id === goto.id); if (rec) { this.showWorld(await openWorld(rec.id), rec.id, rec.name); $('atlasSaveStatus').textContent = `Открыт мир «${rec.name}».`; } else $('atlasSaveStatus').textContent = 'Мир этой клетки больше не лежит в библиотеке.'; }
+      try { const list = await listWorlds(), rec = list.find(r => r.id === goto.id); if (rec) { const a = await openWorld(rec.id); this.showWorld(a, rec.id, rec.name); $('atlasSaveStatus').textContent = `Открыт мир «${rec.name}».`; warnEdits(a.tables); } else $('atlasSaveStatus').textContent = 'Мир этой клетки больше не лежит в библиотеке.'; }
       catch (e) { $('atlasSaveStatus').textContent = 'Не удалось открыть: ' + e.message; }
     }
     if (!this.atlas) { this.generate(); return; }
@@ -307,13 +308,13 @@ export class AtlasView {
         this.refreshWorlds(); return;
       }
       say('Открываю…');
-      try { this.showWorld(await openWorld(id), id, row.dataset.name); say(`Открыт мир «${row.dataset.name}».`); }
+      try { const a = await openWorld(id); this.showWorld(a, id, row.dataset.name); say(`Открыт мир «${row.dataset.name}».`); warnEdits(a.tables); }
       catch (err) { say('Не удалось открыть: ' + err.message); }
     });
     $('atlasLoadFile').addEventListener('change', async e => {
       const f = e.target.files[0]; e.target.value = ''; if (!f) return;
       say('Открываю файл…');
-      try { const {a, rec} = await importWorld(f); this.showWorld(a, rec.id, rec.name); this.refreshWorlds(); say(`Мир «${rec.name}» открыт и добавлен в библиотеку.`); }
+      try { const {a, rec} = await importWorld(f); this.showWorld(a, rec.id, rec.name); this.refreshWorlds(); say(`Мир «${rec.name}» открыт и добавлен в библиотеку.`); warnEdits(a.tables); }
       catch (err) { say('Не удалось открыть: ' + err.message); }
     });
   }
@@ -336,7 +337,7 @@ export class AtlasView {
     let list;
     try { list = await listWorlds(); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна. Мир можно сохранить файлом.</small>'; return; }
     if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров.</small>'; return; }
-    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · сид ${esc(r.seed)} · ${esc(r.sizeLabel)}` +
+    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · сид ${esc(r.seed)} · ${esc(r.sizeLabel)}${r.tables ? ` · с правками таблиц (${r.tables})` : ''}` +
       `<br><small>${r.done ? `${r.year} лет истории` : r.year ? `история на ${r.year}-м году` : 'только суша'} · городов ${r.towns} · держав ${r.realms} · ${new Date(r.savedAt).toLocaleString('ru-RU', {dateStyle: 'short', timeStyle: 'short'})}</small></span>` +
       `<button type="button" data-act="load">Открыть</button><button type="button" data-act="del" class="quiet" aria-label="Удалить мир">Удалить</button></div>`).join('');
   }

@@ -9,10 +9,14 @@ import {mulberry, seedNumber} from '../core/rng.js';
 import {ATLAS_SIZES} from '../data/atlas.js';
 import {ATLAS_STAGES} from './stages.js';
 import {startHistory, stepHistory, historyDone} from './history.js';
+import {editsStamp} from '../data/schema/layer.js';
 
 export function newAtlas(cfg) {
   const {w, h} = ATLAS_SIZES[cfg.size];
-  return {cfg: {...cfg}, w, h, n: w * h, f: {}, sea: 0, year: 0, stage: 0, chronicle: [], ms: {}};
+  const a = {cfg: {...cfg}, w, h, n: w * h, f: {}, sea: 0, year: 0, stage: 0, chronicle: [], ms: {}};
+  // the table edits it is made under (src/data/schema/layer.js): saved with it, in its hash, warned of on opening
+  const tables = editsStamp(); if (tables) a.tables = tables;
+  return a;
 }
 
 export const landDone = a => a.stage >= ATLAS_STAGES.all().length;
@@ -48,6 +52,7 @@ export function generateAtlas(cfg) {
 export function atlasHash(a) {
   let hsh = 2166136261;
   const mix = v => { hsh ^= v; hsh = Math.imul(hsh, 16777619); };
+  if (a.tables) for (let k = 0; k < a.tables.sig.length; k++) mix(a.tables.sig.charCodeAt(k));
   for (const k of Object.keys(a.f).sort()) for (const v of a.f[k]) mix(Math.round(v * 1000) | 0);
   if (a.fauna) for (const s of a.fauna.list) for (const v of s.N) mix(Math.round(v * 1000) | 0);
   if (a.rot) for (const v of a.rot) mix(Math.round(v * 1000) | 0);

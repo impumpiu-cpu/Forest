@@ -23,6 +23,7 @@ import {eraPlan, historyLength} from '../atlas/history.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$} from './dom.js';
+import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -203,7 +204,7 @@ export class CampaignView extends AtlasView {
     let list;
     try { list = await listWorlds(); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }
     if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров: сотворите эпический мир ниже или мир на экране «Мир».</small>'; return; }
-    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : ''} · ${r.year} лет` +
+    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : ''}${r.tables ? ` · с правками таблиц (${r.tables})` : ''} · ${r.year} лет` +
       (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
       `</span><button type="button">${r.campaign && !['won', 'lost', 'timeout'].includes(r.campaign.phase) ? 'Продолжить' : 'Открыть'}</button></div>`).join('');
   }
@@ -217,7 +218,7 @@ export class CampaignView extends AtlasView {
       this.atlas = a; this.worldId = id; this.worldName = name; this.saveId = a.campaign ? id : null;
       this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0; this.capPick = null;
       this.cam = new Camera(a.w, a.h);
-      $('campWorldNote').textContent = '';
+      $('campWorldNote').textContent = warnEdits(a.tables) || '';
       if (a.campaign) { this.paused = true; this.runMode(); if (this.follow) this.closeUp(); }
       else this.setupMode();
       this.refresh(); this.draw();
