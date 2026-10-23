@@ -16,6 +16,7 @@
 //   kind      — 'undead' (data/species.js KINDS); the necromancer is a race, a human gone wrong
 import {RACES} from './races.js';
 import {bodyFor} from './balance/creatures.js';
+import {personNames} from './names.js';
 
 const human = RACES.find(r => r.id === 'human');
 
@@ -44,7 +45,7 @@ export const MONSTERS = [
   {id: 'vampire', kind: 'undead', label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true, sentient: true,
     needs: [], heatHarm: 55, inventory: true, look: {shape: 'person', size: 0.64, color: '#5a1f2a', skin: '#e8e2e8'},
     drinks: 0.6, sun: 0.0006, weakTo: ['silver'],
-    names: [['Граф Вельмор', 'm'], ['Госпожа Ильвира', 'f'], ['Барон Кастрель', 'm'], ['Морена', 'f']],
+    names: personNames('vampire'),
     killMessage: name => `Вампир осушил поселенца: <b>${name}</b>.`},
 
   // a necromancer is a human: he walks behind his dead and steers them; kill him and they stagger off

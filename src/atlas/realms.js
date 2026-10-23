@@ -19,6 +19,7 @@ import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 import {ALIGN_DRIFT, alignNear, shiftAlign, spreadOf} from '../data/values.js';
 import {mulberry, seedNumber} from '../core/rng.js';
+import {TECH_RULES} from '../data/tech.js';
 
 const lv = id => ORE_GENESIS.get(id).levels;
 const near = (a, i, test) => {
@@ -77,7 +78,9 @@ export function foundRealm(a, t, subId = null, from = null) {
   const shade = [1, 0.72, 1.25, 0.55, 1.45][nth % 5], color = P.color.map(v => Math.max(0, Math.min(255, Math.round(v * shade))));
   const id = `r${a.realms.length + 1}`;
   const align = alignNear(from?.align || SPECIES.get(P.race).align, spreadOf(SPECIES.get(P.race), 'realm'), mulberry(seedNumber(`${a.cfg.seed}:align:${id}`)));
-  const r = {id, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color, align, root: {...align}, seatSince: a.hist.year};
+  const r = {id, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color, align, root: {...align}, seatSince: a.hist.year,
+    // what it knows (data/tech.js, atlas/tech.js): a realm of a schism keeps what the old one knew
+    tech: from?.tech && TECH_RULES.inherit ? [...from.tech] : []};
   a.realms.push(r);
   t.realm = r.id; t.capital = true;
   return r;

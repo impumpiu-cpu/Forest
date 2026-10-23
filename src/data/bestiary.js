@@ -25,6 +25,7 @@
 //                 night, message: the journal line ({n} — how many). A resident (`resident: true`)
 //                 comes alone, at its home ground, and `respawn` days after it was killed
 import {bodyFor} from './balance/creatures.js';
+import {petNames} from './names.js';
 
 // a predator's defaults: the wolf's numbers (data/species.js), each beast changes what differs
 const hunts = over => ({
@@ -233,7 +234,7 @@ export const BESTIARY = [
     leaveChance: 0.0002,
     tame: {chance: 0.3, tier: 2, space: 2, bait: {hay: 2}, eats: 1.2, breed: 0.04, grownDays: 30, stack: 2, max: 3,
       effects: {jobSpeed: {hunt: 1.15, build: 1.1, farm: 1.15}},
-      names: ['Буланый', 'Воронок', 'Ласточка', 'Гнедая', 'Серко', 'Ветерок', 'Звёздочка', 'Рыжуха'],
+      names: petNames('horse'),
       effect: 'возит охотника и брёвна (охота +15%, стройка +10%), тянет соху (поле +15%)'}}),
 
   // Aurochs: the wild bull of the forest edge — a mountain of meat, and it charges
@@ -246,7 +247,7 @@ export const BESTIARY = [
     mule: stands({kickRange: 1.2, charge: 1.8, chargeHit: 1.8, grudge: 420, giveUp: 24, terrain: ['grass', 'forest'], leaveChance: 0.0002}),
     tame: {chance: 0.2, tier: 3, space: 3, bait: {hay: 3}, eats: 2, milk: 2.5, breed: 0.03, grownDays: 40, kicks: true, stack: 2, max: 3,
       effects: {jobSpeed: {farm: 1.3, dig: 1.1}},
-      names: ['Буря', 'Пеструха', 'Бурёнка', 'Крутой', 'Рогач', 'Зорька'],
+      names: petNames('aurochs'),
       effect: 'даёт много молока, тянет соху (поле +30%)'}}),
 
   // Saiga: the antelope of the dry steppe; herds that run at the first scent
@@ -287,7 +288,7 @@ export const BESTIARY = [
     mule: stands({grudge: 240, giveUp: 16, leaveChance: 0.0002}),
     tame: {chance: 0.25, tier: 2, space: 2, bait: {hay: 2}, eats: 0.8, milk: 1, wool: 2, woolDays: 60, breed: 0.03, grownDays: 40, kicks: true, stack: 2, max: 2,
       effects: {jobSpeed: {gather: 1.2}},
-      names: ['Горбун', 'Песчанка', 'Хан', 'Тихоня', 'Сухарь'],
+      names: petNames('camel'),
       effect: 'возит собранное (сбор +20%), даёт молоко и немного шерсти'}}),
 
   // Giant scorpion: hunts by night among the sands; its sting is venom
@@ -329,6 +330,6 @@ export const BESTIARY = [
     grazes: {terrain: ['grass'], eatsBerries: 0.001},
     leaveChance: 0.0001,
     tame: {chance: 0.5, tier: 1, space: 1, bait: {hay: 1}, eats: 0.5, milk: 0.6, wool: 5, woolDays: 35, breed: 0.07, grownDays: 20,
-      names: ['Кудряшка', 'Снежка', 'Бяша', 'Долли', 'Пышка', 'Белка', 'Ромашка', 'Зефирка'],
+      names: petNames('sheep'),
       effect: 'даёт много шерсти и немного молока, в тёплое время приносит ягнят'}}),
 ].map(bodyFor);

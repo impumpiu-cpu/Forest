@@ -160,9 +160,4 @@ export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'],
   subdue: {reach: 3, ratio: 1.3}, tribute: 0.04, fall: 0.25, young: 0.45, beat: 0.55, beastRaid: 0.35,
   // a caravan camping in a leader's lands (campaign/land.js dangers): × the chance its folk come at night, × their strength
   camp: {p: 1.6, strength: 1.3}};
-// what a leader is called: thinking kinds — a name of its race and an epithet; beasts and the rest — a title and an epithet
-export const LEADER_WORDS = {
-  title: {beast: ['Вожак', 'Вожака'], semi: ['Главарь', 'Главаря'], sentient: ['Главарь', 'Главаря'], undead: ['Владыка', 'Владыки'], fiend: ['Князь', 'Князя']},
-  epithets: ['Седой', 'Хромой', 'Кривой', 'Безухий', 'Чёрный Клык', 'Рваная Шкура', 'Одноглазый', 'Старый Шрам', 'Белая Грива', 'Тень', 'Злой', 'Ржавый',
-    'Костолом', 'Шатун', 'Ночной', 'Палёный', 'Тихий', 'Бурый', 'Длинная Тень', 'Каменный Лоб'],
-};
+// what a leader is called — its title and nickname — is in data/names.js (TITLE, NICK, PERSON[race].nick)

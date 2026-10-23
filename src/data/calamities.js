@@ -15,27 +15,29 @@
 //   omens:    the lines of the omens, one a year or so
 //   g:        the gender of the title, for the verbs;  rise: the line of its rising: {boss}, {lair} (its name), {where},
 //             {town} (a vampire's town, in the prepositional)
+import {BOSS} from './names.js';
+
 export const CALAMITIES = [
   {id: 'brood', label: 'пробуждение древнего выводка', lairs: ['varg', 'spider', 'drake'], title: ['Матка', 'Матки'], g: 'f', eras: ['wild', 'elder', 'young'],
-    names: ['Седая Мать', 'Пасть Глубин', 'Многоглазая', 'Старая Кровь', 'Мать Логов'], retinue: [],
+    names: BOSS.brood, retinue: [],
     rise: 'Проснулся древний выводок {where}: из логова «{lair}» вышла {boss}, и звери пошли по земле стаями без счёта.'},
   {id: 'necromancer', label: 'пришествие некроманта', lair: 'necromancer', boss: 'necromancer', title: ['Некромант', 'Некроманта'], g: 'm', eras: ['wild', 'elder', 'young'],
-    names: ['Морвен', 'Скелдар', 'Аш-Таур', 'Велемир Чёрный', 'Кэрр'], retinue: ['wights', 'ghouls'],
+    names: BOSS.necromancer, retinue: ['wights', 'ghouls'],
     rise: '{boss} поднял башню «{lair}» {where}: мёртвые встают из курганов и идут за ним.'},
   {id: 'lich', label: 'король-лич', lair: 'wights', boss: 'skeleton', title: ['Король-лич', 'Короля-лича'], g: 'm', eras: ['wild', 'elder', 'young'],
-    names: ['Ургал', 'Неупокоенный', 'Хладный', 'Безымянный'], retinue: ['wights', 'wights'],
+    names: BOSS.lich, retinue: ['wights', 'wights'],
     rise: 'В кургане «{lair}» {where} встал {boss}: древний король не лёг в могилу, и курганы вокруг открылись.'},
   {id: 'vampire', label: 'вампирский двор', lair: 'vampire', boss: 'vampire', title: ['Вампир-господин', 'Вампира-господина'], g: 'm', eras: ['elder', 'young'], town: true,
-    names: ['Ностр', 'Лаэль', 'Бледный Князь', 'Мирела'], retinue: ['ghouls', 'ghouls'],
+    names: BOSS.vampire, retinue: ['ghouls', 'ghouls'],
     rise: '{boss} поселился в {town}: город пьют по ночам, и упыри гнездятся в округе.'},
   {id: 'demon', label: 'открытие разлома', lair: 'rift', boss: 'demon', title: ['Демон-владыка', 'Демона-владыки'], g: 'm', eras: ['wild', 'elder', 'young'],
-    names: ['Азгарот', 'Пламя Без Дна', 'Тот-что-за-Гранью', 'Ксаал'], retinue: ['rift'],
+    names: BOSS.demon, retinue: ['rift'],
     rise: 'Земля разверзлась {where}: из разлома «{lair}» вышел {boss}, и за ним — демоны.'},
   {id: 'giantking', label: 'восстание великанов', lair: 'giants', boss: 'giant', title: ['Король великанов', 'Короля великанов'], g: 'm', eras: ['wild', 'elder', 'young'],
-    names: ['Гримнир', 'Тордун', 'Скалобой', 'Хельгрим'], retinue: ['ogres', 'giants'],
+    names: BOSS.giantking, retinue: ['ogres', 'giants'],
     rise: '{boss} поднял становища великанов {where} и встал станом «{lair}»: огры и великаны идут под его знаменем.'},
   {id: 'goblinking', label: 'орда гоблинского царя', lair: 'goblins', boss: 'goblin', title: ['Гоблинский царь', 'Гоблинского царя'], g: 'm', eras: ['wild', 'elder', 'young'],
-    names: ['Зиг-Нар', 'Гнилозуб', 'Шаграт', 'Мелкий Кхан'], retinue: ['goblins', 'goblins', 'ogres'],
+    names: BOSS.goblinking, retinue: ['goblins', 'goblins', 'ogres'],
     rise: '{boss} собрал норы {where} в одну орду — «{lair}»: гоблины сотнями выходят на поверхность.'},
 ];
 

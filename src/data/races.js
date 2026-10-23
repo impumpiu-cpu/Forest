@@ -21,8 +21,8 @@
 //   settle   — weight among the settlers who may come to the outpost (0: never comes on its own)
 // A race may also come with raiders (data/raids.js) — that does not need anything here.
 import {bodyFor} from './balance/creatures.js';
+import {personNames} from './names.js';
 
-const N = (m, f) => [...m.map(n => [n, 'm']), ...f.map(n => [n, 'f'])];
 
 const person = (size, skin) => ({shape: 'person', size, skin});
 const NEEDS = ['food', 'rest', 'warmth'];
@@ -35,8 +35,7 @@ export const RACES = [
     innate: [{label: 'приспособляемость', note: 'учится любому делу быстрее других', mods: {learn: 1.15}}],
     align: {order: 0, mercy: 0, spread: {order: 1.3, mercy: 1.3}},
     values: {work: 1, family: 1, faith: 1, gold: 1, freedom: 1, strength: 0.6, knowledge: 0.6, ancestors: 0.6, nature: 0.5},
-    names: N(['Ждан', 'Горислав', 'Тихон', 'Мирон', 'Ярослав', 'Ратибор', 'Боян', 'Светозар', 'Велимир', 'Добрыня', 'Радим'],
-      ['Милава', 'Веселина', 'Любава', 'Злата', 'Дарина', 'Снежана', 'Забава', 'Агния', 'Олеся', 'Василиса', 'Ведана'])},
+    names: personNames('human')},
 
   {id: 'halfling', kind: 'race', home: {meadow: 1, forest: 0.6, shrubland: 0.5, steppe: 0.3, foothills: 0.3, swamp: 0.1},
     label: 'полурослик', plural: 'полурослики', rel: 'halfling', settle: 1.6,
@@ -46,7 +45,7 @@ export const RACES = [
     innate: [{label: 'неприметный', note: 'мал ростом, ходит тихо, мало несёт'}],
     align: {order: 2, mercy: 3, spread: {order: 0.8, mercy: 0.7}},
     values: {family: 2, work: 1.4, faith: 0.6, gold: 0.6, nature: 0.8},
-    names: N(['Тобо', 'Хэмли', 'Мунго', 'Бодрик', 'Олдо', 'Фирмин'], ['Мелла', 'Розалина', 'Лютика', 'Тилли', 'Марга', 'Пеона'])},
+    names: personNames('halfling')},
 
   {id: 'giant', kind: 'race', home: {highlands: 1, foothills: 0.6, tundra: 0.6, taiga: 0.3, ice: 0.3},
     label: 'великан', plural: 'великаны', rel: 'giant', settle: 0.6,
@@ -56,7 +55,7 @@ export const RACES = [
     innate: [{label: 'исполин', note: '2,5 метра роста: ест за троих, мёрзнет меньше'}],
     align: {order: -2, mercy: 2, spread: {order: 1, mercy: 0.9}},
     values: {strength: 2, freedom: 1.6, family: 1, nature: 0.8},
-    names: N(['Грумбар', 'Ормунд', 'Тяжебор', 'Валуй', 'Скальд'], ['Хельга', 'Ингрид', 'Гудрун', 'Ассвейг'])},
+    names: personNames('giant')},
 
   {id: 'elf', kind: 'race', home: {forest: 1, jungle: 0.85, taiga: 0.7, meadow: 0.55, swamp: 0.25, shrubland: 0.3, savanna: 0.15, foothills: 0.2},
     label: 'лесной эльф', plural: 'лесные эльфы', rel: 'elf', settle: 1,
@@ -72,7 +71,7 @@ export const RACES = [
     ],
     align: {order: 2, mercy: 0, spread: {order: 0.8, mercy: 1}},
     values: {nature: 2.2, ancestors: 1.4, knowledge: 1, freedom: 0.8},
-    names: N(['Аэлдир', 'Илетан', 'Келориэн', 'Тандрил', 'Сильвар'], ['Элоэна', 'Ниэль', 'Лаириэль', 'Аэрин', 'Иримэ'])},
+    names: personNames('elf')},
 
   {id: 'darkelf', kind: 'race', home: {underground: 1, foothills: 0.3, jungle: 0.3, swamp: 0.3, forest: 0.2},
     label: 'тёмный эльф', plural: 'тёмные эльфы', rel: 'darkelf', settle: 0,
@@ -82,7 +81,7 @@ export const RACES = [
     innate: [{label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'светобоязнь', note: 'на дневном солнце щурится и слабеет'}, {label: 'привычка к ядам', note: 'яды и зелья берут его слабее'}],
     align: {order: 3, mercy: -3, spread: {order: 0.7, mercy: 1}},
     values: {knowledge: 2, strength: 1.6, gold: 1, ancestors: 0.8},
-    names: N(['Вельтрис', 'Зарейн', 'Дромир', 'Ксалет'], ['Илвара', 'Шейзра', 'Квилла', 'Вирна'])},
+    names: personNames('darkelf')},
 
   // Dwarves: long-lived, slow to breed, at home under the mountain. Their gut takes fermented
   // grain best of all: a sober dwarf works slower, a dwarf with a cup of braga works better.
@@ -106,7 +105,7 @@ export const RACES = [
     ],
     align: {order: 5, mercy: 0, spread: {order: 0.5, mercy: 0.9}},
     values: {ancestors: 2, work: 2, gold: 1.4, family: 0.8},
-    names: N(['Торгрим', 'Балдур', 'Хрольф', 'Брокк', 'Ульфгар', 'Кетиль'], ['Дагна', 'Хильда', 'Ингвара', 'Тордис', 'Бруна'])},
+    names: personNames('dwarf')},
 
   // The greenskins: orcs, goblins, ogres, trolls — kin, they may share a camp.
   {id: 'orc', kind: 'race', home: {steppe: 1, savanna: 0.9, taiga: 0.6, foothills: 0.6, meadow: 0.6, swamp: 0.6, tundra: 0.5, desert: 0.4, highlands: 0.3, shrubland: 0.5},
@@ -117,7 +116,7 @@ export const RACES = [
     innate: [{label: 'живучий', note: 'раны затягиваются быстро'}, {label: 'ярость', note: 'раненым дерётся злее'}],
     align: {order: -2, mercy: -2, spread: {order: 1.1, mercy: 1}},
     values: {strength: 2.2, ancestors: 1.2, faith: 0.8, family: 0.6},
-    names: N(['Угрук', 'Мазгаш', 'Зугрог', 'Брагот', 'Корх'], ['Ургха', 'Мокра', 'Зарга', 'Гхаша'])},
+    names: personNames('orc')},
 
   {id: 'goblin', kind: 'race', home: {foothills: 0.9, underground: 0.8, swamp: 0.5, forest: 0.5, taiga: 0.4, shrubland: 0.4, highlands: 0.4},
     label: 'гоблин', plural: 'гоблины', rel: 'greenskin', settle: 0,
@@ -127,7 +126,7 @@ export const RACES = [
     innate: [{label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'трус в одиночку', note: 'смел только в толпе своих'}],
     align: {order: -3, mercy: -2, spread: {order: 1.3, mercy: 1.1}},
     values: {gold: 2.2, knowledge: 1.2, freedom: 1},
-    names: N(['Сникль', 'Ризз', 'Гнырк', 'Кривоух'], ['Зизи', 'Шмыга', 'Пикша'])},
+    names: personNames('goblin')},
 
   {id: 'ogre', kind: 'race', home: {foothills: 0.8, forest: 0.7, taiga: 0.6, swamp: 0.5, shrubland: 0.4, meadow: 0.3},
     label: 'огр', plural: 'огры', rel: 'greenskin', settle: 0,
@@ -137,7 +136,7 @@ export const RACES = [
     innate: [{label: 'утроба', note: 'голод валит его быстрее других'}],
     align: {order: -3, mercy: -3, spread: {order: 1, mercy: 0.8}},
     values: {strength: 2.5, gold: 0.6},
-    names: N(['Мордоб', 'Брюхан', 'Грыз', 'Тяжак'], ['Хлоба'])},
+    names: personNames('ogre')},
 
   // Trolls regrow wounds unless fire or acid stops it.
   {id: 'troll', kind: 'race', home: {swamp: 0.9, forest: 0.8, tundra: 0.7, taiga: 0.7, ice: 0.5, foothills: 0.4},
@@ -153,7 +152,7 @@ export const RACES = [
     ],
     align: {order: -2, mercy: -2, spread: {order: 1.1, mercy: 1}},
     values: {nature: 1.6, faith: 1.6, strength: 1},
-    names: N(['Ракаш', 'Вуджин', 'Зекки', 'Тумбо'], ['Шанка', 'Мвира'])},
+    names: personNames('troll')},
 
   // Gnolls: hyena-folk, scavengers. Carrion does them no harm; the rot does not take them.
   {id: 'gnoll', kind: 'race', home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
@@ -164,5 +163,5 @@ export const RACES = [
     innate: [{label: 'нюх', note: 'чует добычу и нежить издалека'}, {label: 'падальщик', note: 'мертвечина и гниль ему не вредят'}],
     align: {order: -2, mercy: -5, spread: {order: 1, mercy: 0.6}},
     values: {strength: 2, faith: 1.4},
-    names: N(['Хракк', 'Гнарр', 'Ыхыр', 'Скорр'], ['Хиза', 'Ррака'])},
+    names: personNames('gnoll')},
 ].map(r => bodyFor({needs: NEEDS, sentient: true, inventory: true, mind: 'sentient', ...r}));

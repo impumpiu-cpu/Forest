@@ -20,6 +20,7 @@ import {LAIRS} from '../data/lairs.js';
 import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {stepLeaders} from './leaders.js';
+import {stepTech} from './tech.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
@@ -129,7 +130,8 @@ export function stepHistory(a, onDay = null) {
   }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
-  stepLeaders(a, t => say(a, t));   // the old lairs' leaders: their own stream, in spring (atlas/leaders.js)
+  stepLeaders(a, t => say(a, t));
+  stepTech(a, t => say(a, t));   // the realms' finds: their own stream, in spring (atlas/tech.js)   // the old lairs' leaders: their own stream, in spring (atlas/leaders.js)
   stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);
   // the year's beaten raids of the tribes and the dead, in one line

@@ -26,6 +26,9 @@ import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js'
 import {CALAMITIES} from '../calamities.js';
 import {DIPLOMACY} from '../diplomacy.js';
 import {ERAS} from '../history.js';
+import {TECHS, TECH_RULES, techOfBuilding, techOfMaterial} from '../tech.js';
+import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
+import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
 import {BASE_MODS} from '../traits.js';
 
@@ -99,6 +102,20 @@ export const TABLES = [
       col('resist', 'Тело против ударов', 'map', {ref: keysOf(RESIST), min: 0, note: '× урона по типу и по способу'}),
       col('weakTo', 'Боится', 'ids'), col('relativeStats', 'Статы типичного зверя', 'bool'), col('nocturnal', 'Ночной', 'bool'), col('undead', 'Без жизни', 'bool'),
     ]},
+  // ── names: one place for all of them (data/names.js); an edit puts the new list into what the game reads (`after`)
+  {id: 'names', label: 'Имена', group: 'Существа', key: 'id', rows: () => Object.entries(PERSON).filter(([id]) => id !== 'necromancer').map(([id, P]) => ({id, label: SPECIES.has(id) ? SPECIES.get(id).plural : id, ...P})),
+    target: (r, c) => [PERSON[r.id], c.key], after: rebuildNames,
+    note: 'Имена разумных (data/names.js): мужские, женские и прозвища своей расы. Из них собираются имена поселенцев, членов каравана, главарей логов («Хракк Тихий»). Списки — через запятую. Некроманты берут имена людей.',
+    columns: [col('id', 'id'), col('label', 'Кто', 'text', {edit: false}), col('m', 'Мужские', 'ids'), col('f', 'Женские', 'ids'), col('nick', 'Прозвища', 'ids')]},
+  {id: 'nicknames', label: 'Клички и прозвища', group: 'Существа', key: 'id',
+    rows: () => [{id: 'common', label: 'общие прозвища (вожаки зверей, все)', names: NICK.common}, ...Object.entries(PET).map(([id, names]) => ({id, label: `клички: ${SPECIES.has(id) ? SPECIES.get(id).plural : id}`, names}))],
+    target: (r, c) => (r.id === 'common' ? [NICK, 'common'] : [PET, r.id]), after: rebuildNames,
+    note: 'Клички приручённых зверей и общие прозвища (data/names.js). Титулы главарей: вожак (звери), главарь (полуразумные и разумные), владыка (нежить), князь (демоны).',
+    columns: [col('id', 'id'), col('label', 'Что', 'text', {edit: false}), col('names', 'Список', 'ids')]},
+  {id: 'bossNames', label: 'Имена боссов', group: 'Существа', key: 'id', rows: () => CALS.map(c => ({id: c.id, label: c.label, names: BOSS[c.id] || []})),
+    target: (r, c) => [BOSS, r.id], after: rebuildNames,
+    note: 'Имена боссов бедствий по их видам (data/names.js BOSS). Бедствие, поднявшееся на главаре логова, берёт его имя и титул.',
+    columns: [col('id', 'id'), col('label', 'Бедствие', 'text', {edit: false}), col('names', 'Имена', 'ids')]},
   {id: 'values', label: 'Ценности', group: 'Существа', key: 'id', rows: () => VALUES.all(),
     note: 'Что существо ценит (data/values.js): общие ценности сближают, конфликтующие разводят.',
     columns: [col('id', 'id'), col('label', 'Название'), col('clash', 'Конфликтует с', 'ids', {ref: 'values'})]},
@@ -123,11 +140,11 @@ export const TABLES = [
     note: 'Правила отношений держав на карте мира, −5…+5 (data/diplomacy.js): дрейф, торговля, набеги, война и мир. Сами отношения меняются по годам в мире.'},
 
   // ── Вещи
-  {id: 'materials', label: 'Материалы', group: 'Вещи', key: 'id', rows: () => Object.entries(MATERIALS).map(([id, m]) => ({id, ...m})), target: (r, c) => [MATERIALS[r.id], c.key], after: rebuildItems,
+  {id: 'materials', label: 'Материалы', group: 'Вещи', key: 'id', rows: () => Object.entries(MATERIALS).map(([id, m]) => ({id, ...m, tech: techOfMaterial(id)})), target: (r, c) => [MATERIALS[r.id], c.key], after: rebuildItems,
     note: 'Из чего вещь (data/balance/materials.js): множители к тому, что даёт форма. Предмет = форма × материал × качество.',
     columns: [
       col('id', 'id'), col('adj.m', 'Название'), col('class', 'Класс', 'ids', {edit: false, note: 'какие формы из него делаются: меняет набор предметов, поэтому не правится'}), col('tier', 'Ступень', 'int', {min: 0, max: 4}),
-      col('rarity', 'Редкость', 'enum', {values: PRICES.ITEMS.rarity}), col('resource', 'Ресурс', 'ref', {ref: RESOURCES}), col('amount', 'Ресурса на часть', 'num', {min: 0}),
+      col('rarity', 'Редкость', 'enum', {values: PRICES.ITEMS.rarity}), col('tech', 'Технология', 'ref', {ref: 'techs', computed: true, note: 'кузнецы города работают металл, если держава её знает'}), col('resource', 'Ресурс', 'ref', {ref: RESOURCES}), col('amount', 'Ресурса на часть', 'num', {min: 0}),
       col('labour', 'Труд ×', 'num', {min: 0}), col('dmg', 'Урон ×', 'num', {min: 0}), col('swing', 'Пауза ×', 'num', {min: 0}), col('dur', 'Прочность ×', 'num', {min: 0}),
       col('work', 'Инструмент ×', 'num', {min: 0}), col('armor', 'Броня ×', 'num', {min: 0}), col('block', 'Блок ×', 'num', {min: 0}), col('warmth', 'Тепло ×', 'num', {min: 0}),
       col('weight', 'Тяжесть ×', 'num', {min: 0}), col('color', 'Цвет', 'color'),
@@ -184,18 +201,35 @@ export const TABLES = [
       col('spacing', 'Между городами', 'int', {min: 0}), col('ores', 'Вес руд', 'num', {min: 0}),
       col('moves', 'Проходимость', 'map', {ref: 'biomes', min: 0}), col('movesElse', 'Прочие биомы', 'num', {min: 0}),
       col('site', 'Место города', 'map', {ref: keysOf({water: 1, coast: 1, fert: 1, trees: 1, ores: 1, steep: 1})}),
-      col('taste', 'Вкус построек', 'map', {ref: keysOf(TOWN_FX), min: 0}), col('color', 'Цвет', 'color'),
+      col('taste', 'Вкус построек', 'map', {ref: keysOf(TOWN_FX), min: 0}),
+      col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (гномы кучно, эльфы и орки вольготно); пока не действует'}),
+      col('color', 'Цвет', 'color'),
     ]},
-  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all(),
+  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, tech: techOfBuilding(b.id)})),
+    target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
     note: 'Постройки городов карты мира (data/townBuildings.js). Столбец «Кто строит» — основа расовых построек.',
     columns: [
       col('id', 'id'), col('name', 'Название'), col('cat', 'Категория', 'enum', {values: CATEGORIES}), col('tier', 'Ступень', 'int', {min: 0, max: 2}),
       col('peoples', 'Кто строит', 'ids', {ref: 'peoples', note: 'пусто — все'}),
+      col('tech', 'Технология', 'ref', {ref: 'techs', computed: true, note: 'держава должна её найти (таблица «Технологии»); пусто — знают все'}),
       col('pop', 'Жителей от', 'int', {min: 0}), col('capital', 'Только столица', 'bool'), col('unique', 'Одна на державу', 'bool'), col('max', 'Сколько', 'int', {min: 1}),
       col('needs', 'Нужно место', 'ids', {ref: keysOf(PLACE_NEEDS)}), col('needsAny', 'Нужно одно из', 'ids', {ref: keysOf(PLACE_NEEDS)}),
       col('requires', 'Нужны постройки', 'ids', {ref: 'townBuildings'}), col('requiresAny', 'Нужна одна из', 'ids', {ref: 'townBuildings'}),
       col('fx', 'Даёт', 'map', {ref: keysOf(TOWN_FX)}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летопись', 'bool'),
     ]},
+
+  {id: 'techs', label: 'Технологии', group: 'Народы', key: 'id', rows: () => TECHS.all(),
+    note: 'Список, не дерево (data/tech.js): что технология включает из уже существующего — постройки городов и металлы кузнецов. Доступность — за расой (народом), открытие — за державой: держава находит её, когда её города доросли и построили нужное. Чего нет ни в одной технологии, знают все.',
+    columns: [
+      col('id', 'id'), col('label', 'Название'), col('note', 'Что даёт'),
+      col('races', 'Кому доступна', 'ids', {ref: 'peoples', note: 'народы, которые вообще могут её знать; пусто — все'}),
+      col('era', 'С эпохи', 'ref', {ref: ERAS}), col('requires', 'Нужно знать', 'ids', {ref: 'techs'}),
+      col('tier', 'Ступень города', 'int', {min: 0, max: 2}), col('needsAny', 'Нужна постройка', 'ids', {ref: 'townBuildings', note: 'одна из них в каком-нибудь городе державы'}),
+      col('chance', 'Шанс в год', 'num', {min: 0, max: 1, note: 'когда условия выполнены; пусто — по «Правилам технологий»'}),
+      col('opens.buildings', 'Открывает постройки', 'ids', {ref: 'townBuildings'}), col('opens.materials', 'Открывает металлы', 'ids', {ref: 'materials'}),
+    ]},
+  {id: 'techRules', label: 'Правила технологий', group: 'Народы', ...params(() => paramRows(TECH_RULES)),
+    note: 'chance — шанс в год найти технологию, когда условия выполнены (если у неё нет своего); inherit — держава раскола сохраняет то, что знала старая.'},
 
   // ── Караван
   {id: 'caravanBuildings', label: 'Постройки обоза', group: 'Караван', key: 'id',
@@ -241,6 +275,17 @@ export const TABLES = [
       col('lairs', 'Логова', 'ids', {ref: 'lairs'}), col('retinue', 'Свита', 'ids'), col('eras', 'Эпохи', 'ids', {ref: ERAS}), col('names', 'Имена', 'ids'),
     ]},
 ];
+
+// the name lists are copied into what the game reads at load (a race's [name, gender] pairs, a beast's tame names, a
+// calamity's boss names): after an edit they are put there again, in place
+function rebuildNames() {
+  for (const sp of SPECIES.all()) {
+    if (sp.names && PERSON[sp.id]) { sp.names.length = 0; sp.names.push(...personNames(sp.id)); }
+    if (sp.tame?.names && PET[sp.id]) sp.tame.names = PET[sp.id];
+  }
+  for (const c of CALS) if (BOSS[c.id]) c.names = BOSS[c.id];
+}
+void TITLE;
 
 export const tableById = id => TABLES.find(t => t.id === id);
 export const checkAll = () => checkTables(TABLES);

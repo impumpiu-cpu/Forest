@@ -14,7 +14,8 @@
 //
 // lair.leader = {name, title, species, g, special, add, born, dies, deeds}; lair.lord — the id of the lair it pays tribute to
 import {mulberry, seedNumber} from '../core/rng.js';
-import {LAIRS, LEADER, LEADER_WORDS, TRIBE_RAID} from '../data/lairs.js';
+import {LAIRS, LEADER, TRIBE_RAID} from '../data/lairs.js';
+import {TITLE, makeName} from '../data/names.js';
 import {SPECIES} from '../data/species.js';
 import {RELATIONS} from '../data/relations.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -42,9 +43,9 @@ export const livingLeaders = a => (a.lairs || []).filter(l => l.alive && l.leade
 // a new leader for a lair
 function raise(a, l, r) {
   const L = LAIRS.get(l.kind), sp = SPECIES.get(L.species), mind = sp.kind === 'undead' ? 'undead' : sp.kind === 'fiend' ? 'fiend' : sp.mind || 'beast';
-  const title = LEADER_WORDS.title[mind] || LEADER_WORDS.title.beast;
-  const own = sp.names?.filter(([, g]) => g === 'm'), epithet = pick(r, LEADER_WORDS.epithets);
-  const name = own?.length && mind === 'sentient' ? `${pick(r, own)[0]} ${epithet}` : epithet;
+  // the name from data/names.js: a thinking one — a name of its race and a nickname («Хракк Тихий»), the rest — a nickname
+  const title = TITLE[mind] || TITLE.beast;
+  const name = makeName(mind === 'sentient' ? L.species : null, r, {nick: 'always'});
   const add = Object.fromEntries(LEADER.stats.map(id => [id, Math.round(between(r, LEADER.add))]));
   const roll = sp.special ? bossSpecial(sp, r, {stats: [], add: [0, 0], cap: LEADER.cap}) : {special: null};
   if (roll.special) for (const id of LEADER.stats) roll.special[id] = Math.min(LEADER.cap, roll.special[id] + add[id]);

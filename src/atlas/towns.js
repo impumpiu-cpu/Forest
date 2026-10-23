@@ -23,6 +23,7 @@ import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 import {siteCell} from './sites.js';
+import {techAllowsBuilding} from './tech.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -90,6 +91,7 @@ export function placeHas(a, i, need) {
 // can this town build this now: its people, its size, how many it has, the place, what it already has
 export function canBuild(a, t, b) {
   if (b.peoples && !b.peoples.includes(t.people)) return false;
+  if (!techAllowsBuilding(a, t, b.id)) return false;   // its realm has not found what opens it (atlas/tech.js)
   if (b.tier > t.tier) return false;
   if (b.pop && t.pop < b.pop) return false;
   if (b.capital && !t.capital) return false;

@@ -38,3 +38,19 @@ E.resetAll();
 expect(E.setCell('races', 'elf', 'align.order', order0).ok && E.editCount() === 0, 'правка, равная числу кода, считается правкой');
 if (fail.length) { console.log('Правка таблиц:\n  ' + fail.join('\n  ')); process.exit(1); }
 console.log('ok   правка таблиц: значения доходят до игры, проверяются, сбрасываются; мир помнит свои правки');
+
+// ── names (data/names.js): every race has male and female names, every tame beast its names; the constructor builds them
+{
+  const {PERSON, PET, makeName} = await import('../src/data/names.js');
+  const {SPECIES} = await import('../src/data/species.js');
+  const {mulberry} = await import('../src/core/rng.js');
+  const bad = [];
+  for (const sp of SPECIES.all()) {
+    if (sp.kind === 'race' && !(PERSON[sp.id]?.m?.length && PERSON[sp.id]?.f?.length)) bad.push(`${sp.id}: нет мужских или женских имён`);
+    if (sp.tame && !PET[sp.id]?.length) bad.push(`${sp.id}: приручается, но без кличек`);
+  }
+  const r = mulberry(5), leader = makeName('orc', r, {nick: 'always'}), beast = makeName('wolf', r, {nick: 'always'}), plain = makeName('elf', r, {gender: 'f'});
+  if (!/ /.test(leader) || !beast || /\s{2}/.test(beast) || !PERSON.elf.f.includes(plain)) bad.push(`конструктор: «${leader}», «${beast}», «${plain}»`);
+  if (bad.length) { console.log('Имена:\n  ' + bad.join('\n  ')); process.exit(1); }
+  console.log(`ok   имена: ${Object.keys(PERSON).length} видов с именами, ${Object.keys(PET).length} приручаемых; конструктор: «${leader}», «${beast}», «${plain}»`);
+}

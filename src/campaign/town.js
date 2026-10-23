@@ -27,6 +27,7 @@ import {makeMember} from './start.js';
 import {free, bondsSets, isBonds} from './captives.js';
 import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
+import {techAllowsMaterial} from '../atlas/tech.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const has = (t, ids) => ids.some(id => t.built.includes(id));
@@ -55,7 +56,8 @@ const sellPrice = (t, st, id) => {
 };
 const offerPrice = (o, st) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.id).value * o.n : gearDef(o.id) ? gearValue(o.id) : 10)) * STANDING[st].buy;
 // what a town sells; its arms and armour are its smiths' work: they bear the mark of its people (data/balance/marks.js)
-export const offers = t => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also))).map(o => townMade(o, t));
+// (with the world `a`: not the metals its realm has not learnt to work — data/tech.js, atlas/tech.js)
+export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || techAllowsMaterial(a, t, gearDef(o.id)?.material))).map(o => townMade(o, t));
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);
@@ -76,7 +78,7 @@ function wants(a, K, t, st) {
   const wheelsFit = () => { if (fits == null) { const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true); fits = !!(road && foot && road.cost <= ROUTE.keep * foot.cost); } return fits; };
   const count = kind => K.beasts.filter(b => b.kind === kind && b.hp > 0).length;
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
-  for (const o of offers(t)) {
+  for (const o of offers(t, a)) {
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && count(o.id) < 2) out.push([3, o]);
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) out.push([5, o]);
     if (o.kind === 'goods' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
@@ -115,7 +117,7 @@ function smithy(a, K, t, st) {
   for (const o of wants(a, K, anvil, st)) {
     if (o.kind !== 'item') continue;
     const type = gearType(o.id), d = gearDef(o.id), B = SMITH.bar[d.material], R = RECIPES.all().find(r => r.makes?.item === type && !r.makes.silver);
-    if (!B || !R?.cost?.[d.material]) continue;
+    if (!B || !R?.cost?.[d.material] || !techAllowsMaterial(a, t, d.material)) continue;   // a smith works only the metals his realm knows
     const need = R.cost[d.material] * B.n;
     if ((K.cargo[B.ore] || 0) < need) continue;
     // forged here: the town's quality and its people's mark (a human town: quality alone)
