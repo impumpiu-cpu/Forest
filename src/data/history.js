@@ -9,6 +9,8 @@ ERAS.registerAll([
   {id: 'wild', label: 'Дикая эра', note: 'мир без разумных народов: звери расселяются по своим биомам, хищники следуют за добычей, чудовища вьют логова и делят владения'},
   {id: 'elder', label: 'Эпоха древних народов', note: 'приходят эльфы и гномы: их народы расползаются фронтом по своим краям, основывают города, строятся, наезживают дороги и теснят чудовищ'},
   {id: 'young', label: 'Эпоха молодых народов', note: 'приходят люди и орки: народы теснят друг друга на общих землях, торгуют по дорогам, селятся в чужих городах, враждуют, воюют и мирятся'},
+  // «Заселение мира» (cfg.free, atlas/settle.js): no eras — the hand brings peoples, lairs and calamities, the clock runs by its years
+  {id: 'free', label: 'Вольная история', note: 'эпох нет: расы, логова и бедствия вносит рука, время идёт отрезками в 5–100 лет'},
 ]);
 
 // The epic world of the campaign (cfg.epic, docs/CAMPAIGN.md «Доработка, этап 6»): each era lasts this many years,
@@ -44,3 +46,9 @@ export const WILD_YEARS = [
 export const FAUNA = {weather: 0.5, harshAt: -0.7, harsh: 0.35, townHarsh: 0.12, plague: 0.012, crowd: 0.85, plagueKill: 0.6, plagueRadius: 5,
   cell: 4, diffuse: 0.1, growth: 0.45, season: {spring: 1.4, summer: 1, autumn: 0.35, winter: -0.3},
   predation: 0.35, half: 0.3, trophic: 0.12, starve: 0.25, floor: 0.01, boom: 1.25, bust: 0.6, cooldown: 12};
+
+// «Заселение мира» (cfg.free, atlas/settle.js; docs/TABLE.md этап 9):
+//   runs:     the stretches of time the hand may run at once, in years
+//   calIn:    in how many years a calamity set by hand may rise
+//   lair:     the strength a lair set by hand starts at; ghosts and the dead get graves and rot about them to feed on
+export const FREE = {runs: [5, 10, 25, 50, 100], calIn: [5, 10, 25, 50], lair: 0.6, graves: 0.9};

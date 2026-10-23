@@ -41,7 +41,7 @@ export function worldMeta(a, name, kind = WORLD_KIND) {
     type: kind === LAND_KIND ? 'land' : 'world', shape: shapeCount(a.cfg.shape),
     name: name || (kind === LAND_KIND ? `Земля ${a.cfg.seed}` : `Мир ${a.cfg.seed}`), seed: a.cfg.seed, size: a.cfg.size, sizeLabel: ATLAS_SIZES[a.cfg.size]?.label || a.cfg.size,
     year: a.hist?.year ?? 0, done: atlasDone(a), land: landDone(a), towns, realms: (a.realms || []).length,
-    lines: a.chronicle.length, hash: atlasHash(a), version: VERSION, epic: !!a.cfg.epic,
+    lines: a.chronicle.length, hash: atlasHash(a), version: VERSION, epic: !!a.cfg.epic, free: !!a.cfg.free,
     // made under table edits (src/data/schema/layer.js): how many
     tables: a.tables?.n || 0,
     // a campaign under way in this world (campaign/): where it is

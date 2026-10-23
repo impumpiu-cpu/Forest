@@ -117,7 +117,7 @@ export function findSpot(a, L, rnd, near, tries = 400) {
 }
 
 // the race's home over each coarse cell of the beasts' grid, 0..1: what a tribe's land feeds
-function homeField(a, L) {
+export function homeField(a, L) {
   const F = a.fauna, N = F.W * F.H, out = new Float32Array(N), cnt = new Float32Array(N);
   for (let i = 0; i < a.n; i++) { if (a.f.ocean[i]) continue; const j = faunaCell(a, i); out[j] += homeAt(a, L, i); cnt[j]++; }
   for (let j = 0; j < N; j++) out[j] = cnt[j] ? out[j] / cnt[j] : 0;
@@ -126,7 +126,7 @@ function homeField(a, L) {
 
 // the rot's field and the mean temperature of each coarse cell (frost and heat burn the rot out);
 // a few barrows older than the chronicle, so the dead have somewhere to rise from
-function seedRot(a, rnd) {
+export function seedRot(a, rnd) {
   const F = a.fauna, N = F.W * F.H, k = scaleOf(a);
   a.rot = new Float32Array(N);
   const temp = new Float32Array(N), cnt = new Float32Array(N);
@@ -189,11 +189,15 @@ export function stepRot(a) {
 
 export function placeLairs(a, rnd) {
   a.lairs = []; a.tribeLand = {};
-  const tally = {};
   a.ancientBarrows = seedRot(a, rnd);
+  return wildLairs(a, rnd);
+}
+// the lairs of the wild the land gives (each kind as many as its ground feeds); also «Заселение мира»'s «логова по сиду»
+export function wildLairs(a, rnd) {
+  const tally = {};
   for (const L of LAIRS.all()) {
     if (L.spawn) continue;   // the dead and the rifts come through history (spawnLairs)
-    if (L.tribe) a.tribeLand[L.id] = homeField(a, L);
+    if (L.tribe) a.tribeLand[L.id] ||= homeField(a, L);
     let fit = 0;
     for (let i = 0; i < a.n; i += 3) if (groundFits(a, L, i) && goodness(a, L, i) > 0.02) fit += 3;
     const want = Math.min(L.max, Math.round(fit / 10000 * L.density * (0.7 + 0.6 * rnd())));

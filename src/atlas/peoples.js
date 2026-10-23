@@ -36,10 +36,15 @@ const lv = id => ORE_GENESIS.get(id).levels;
 const oreWealth = (a, i) => Math.max(...['iron', 'bronze', 'silver', 'gold', 'gems'].map(id => a.f[`ore_${id}`][i] / lv(id)[2]));
 
 export function initPeoples(a, era) {
+  for (const P of WORLD_PEOPLES.filter(p => p.era === era)) initPeople(a, P);
+}
+// one people's fields (once: a people already in the world is left as it is)
+export function initPeople(a, P) {
   const F = a.fauna, N = F.W * F.H;
   a.peoples ||= []; a.towns ||= []; a.contacts ||= {}; a.realms ||= [];
   a.f.road ||= new Float32Array(a.n);
-  for (const P of WORLD_PEOPLES.filter(p => p.era === era)) {
+  if (a.peoples.some(pe => pe.id === P.id)) return a.peoples.find(pe => pe.id === P.id);
+  {
     const K = new Float32Array(N), mob = new Float32Array(N), cnt = new Float32Array(N);
     for (let i = 0; i < a.n; i++) {
       if (a.f.ocean[i]) continue;
@@ -51,7 +56,9 @@ export function initPeoples(a, era) {
     // how good each world cell is for a town of theirs: the land does not change, so once is enough
     const site = new Float32Array(a.n);
     for (let i = 0; i < a.n; i++) site[i] = siteScore(a, P, i);
-    a.peoples.push({id: P.id, P, K, mob, site, u: new Float32Array(N)});
+    const pe = {id: P.id, P, K, mob, site, u: new Float32Array(N)};
+    a.peoples.push(pe);
+    return pe;
   }
 }
 
@@ -153,6 +160,29 @@ export function arrive(a, era, rnd, say) {
     }
     if (!picks.length) say(`${cap1(P.label)} не нашли в этом мире земли себе по душе.`);
   }
+}
+
+// «Заселение мира» (atlas/settle.js): a band of a people landed by hand near a cell — its town at the best spot within
+// a coarse cell or two of it (as good as its land there lets, without the arrival's bar), its own realm of the sub-race
+// given (or the one that fits the land), the field of the people woken around it. → {town, realm} or {error}
+export function landBand(a, peopleId, i, subId, rnd, say) {
+  const P = WORLD_PEOPLES.get(peopleId), pe = initPeople(a, P), F = a.fauna, k = scaleOf(a);
+  const x0 = i % a.w, y0 = (i / a.w) | 0, Rr = 2 * F.c;
+  let best = -1, bv = -Infinity;
+  for (let y = Math.max(0, y0 - Rr); y <= Math.min(a.h - 1, y0 + Rr); y++) for (let x = Math.max(0, x0 - Rr); x <= Math.min(a.w - 1, x0 + Rr); x++) {
+    const j = y * a.w + x, v = pe.site[j] - 0.04 * Math.hypot(x - x0, y - y0) + 0.02 * rnd();
+    if (v > bv && pe.site[j] > -Infinity && farFromTowns(a, x, y, P.spacing * k * 0.6)) { bv = v; best = j; }
+  }
+  if (best < 0) return {error: a.towns.some(t => t.alive && Math.hypot(t.x - x0, t.y - y0) < P.spacing * k) ? 'слишком близко к другому городу' : 'здесь негде встать городу: вода, лёд или большая река'};
+  const jc = faunaCell(a, best);
+  for (const [dx, dy] of [[0, 0], ...DIRS8]) {
+    const x = jc % F.W + dx, y = ((jc / F.W) | 0) + dy;
+    if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = Math.max(pe.u[y * F.W + x], 0.6);
+  }
+  const t = foundTown(a, pe, best, rnd, 90 + 60 * rnd()), sub = subId ? worldSubs(P.race).find(s => s.id === subId) : null, r = foundRealm(a, t, sub?.id);
+  const S = sub || worldSubs(P.race).find(s => s.id === r.sub);
+  say?.(`${cap1(S?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, best)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
+  return {town: t, realm: r};
 }
 
 // a year of the peoples: their fields, their towns, their wars with the wild, their meetings

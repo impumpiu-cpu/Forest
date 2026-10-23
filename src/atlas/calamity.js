@@ -25,6 +25,7 @@ import {townLabel} from './towns.js';
 import {eraPlan} from './history.js';
 import {stepAlliance} from './alliance.js';
 import {epitaph} from './chronicle.js';
+import {plural} from '../core/util.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pick = (r, list) => list[(r() * list.length) | 0];
@@ -57,13 +58,7 @@ function eraYears(a) {
 export function startCalamities(a) {
   if (!a.cfg.epic || a.calamities) return;
   const {r, done} = draw(a);
-  // the sanctuary: a land cell well inside the world
-  let i = -1;
-  for (let k = 0; k < 400 && i < 0; k++) { const x = Math.round(a.w * (0.2 + 0.6 * r())), y = Math.round(a.h * (0.2 + 0.6 * r())), j = y * a.w + x; if (land(a, j)) i = j; }
-  if (i < 0) for (let j = 0; j < a.n && i < 0; j++) if (land(a, j)) i = j;
-  const [name, acc, g] = pick(r, ARTIFACTS);
-  a.sanctuary = {i, name: 'Святилище Творца'};
-  a.artifact = {name, acc, g, i, holder: {kind: 'sanctuary'}, trail: [{year: a.hist.year, era: a.hist.era, i, text: `оставлен${G3(g, '', 'а', 'о')} в святилище`}]};
+  dawn(a, r);
   const Y = eraYears(a);
   a.calamities = ['wild', 'elder', 'young'].map((era, k) => {
     const E = Y[era], kinds = CALAMITIES.filter(C => C.eras.includes(era)), C = pick(r, kinds);
@@ -75,12 +70,46 @@ export function startCalamities(a) {
       omens: OMENS.map((_, n) => n), fell: null};
   });
   done();
+}
+
+// the sanctuary and the artifact a god leaves in it (once a world)
+function dawn(a, r) {
+  // the sanctuary: a land cell well inside the world
+  let i = -1;
+  for (let k = 0; k < 400 && i < 0; k++) { const x = Math.round(a.w * (0.2 + 0.6 * r())), y = Math.round(a.h * (0.2 + 0.6 * r())), j = y * a.w + x; if (land(a, j)) i = j; }
+  if (i < 0) for (let j = 0; j < a.n && i < 0; j++) if (land(a, j)) i = j;
+  const [name, acc, g] = pick(r, ARTIFACTS);
+  a.sanctuary = {i, name: 'Святилище Творца'};
+  a.artifact = {name, acc, g, i, holder: {kind: 'sanctuary'}, trail: [{year: a.hist.year, era: a.hist.era, i, text: `оставлен${G3(g, '', 'а', 'о')} в святилище`}]};
   tell(a, DAWN.replace('{where}', wherePhrase(a, i)).replace('{artifact}', acc).replace('{in}', g === 'f' ? 'ней' : 'нём'));
+}
+
+// ── «Заселение мира» (cfg.free, atlas/settle.js): a calamity set by hand — its kind (or one drawn), its place (a cell, or
+// −1: as the epic world places it) and in how many years it rises; its omens come before that, and if nobody brings its
+// boss down, heroes seal it CAL.fall years after it rose. The first one also leaves the sanctuary and its artifact.
+// → the calamity, or {error}
+export function addCalamity(a, {kind = null, at = -1, years = 10} = {}) {
+  a.calamities ||= [];
+  const live = a.calamities.filter(c => c.phase !== 'fallen').length;
+  if (live >= CAL.free.max) return {error: `бедствий, что ещё не прошли, может быть не больше ${CAL.free.max}`};
+  if (kind && !CALAMITIES.some(C => C.id === kind)) return {error: 'нет такого бедствия'};
+  const {r, done} = draw(a), y = a.hist.year;
+  if (!a.artifact) dawn(a, r);
+  const C = kind ? CALAMITIES.find(x => x.id === kind) : pick(r, CALAMITIES);
+  const riseAt = y + Math.max(1, Math.round(years));
+  const omensAt = Math.max(y, riseAt - Math.round(between(r, CAL.omens)));
+  const heroesAt = riseAt + Math.round(between(r, CAL.fall));
+  const c = {id: a.calamities.length + 1, era: 'free', kind: C.id, label: C.label, phase: 'waiting', omensAt, riseAt, fallAt: heroesAt, heroesAt,
+    i: -1, at: at >= 0 ? at : -1, lair: null, town: null, boss: null, omens: OMENS.map((_, n) => n), fell: null, byHand: true};
+  a.calamities.push(c);
+  done();
+  tell(a, `Над миром сгущается беда: ${C.label}${at >= 0 ? ` ${wherePhrase(a, at)}` : ''}. Знамения придут через ${omensAt - y || 'считанные'} ${plural(omensAt - y, 'год', 'года', 'лет')}.`, c);
+  return c;
 }
 
 // ── a year of the calamities (in spring)
 export function stepCalamities(a) {
-  if (!a.cfg.epic || !a.calamities || a.hist.season !== 0) return;
+  if ((!a.cfg.epic && !a.cfg.free) || !a.calamities || a.hist.season !== 0) return;
   const {r, done} = draw(a), y = a.hist.year;
   for (const c of a.calamities) {
     if (c.phase === 'waiting' && y >= c.omensAt) { c.phase = 'omens'; omen(a, c, r); }
@@ -166,13 +195,23 @@ function hostLeader(a, c) {
   return best;
 }
 
+// the place the hand chose: the cell (a vampire — the nearest living town within a raid's reach of it)
+function placeAt(a, c, C) {
+  if (!C.town) return {i: c.at};
+  const reach = TRIBE_RAID.reach * Math.min(a.w, a.h) / 192;
+  const t = (a.towns || []).filter(t => t.alive && !(a.lairs || []).some(l => l.alive && l.town === t.id)).sort((p, q) => dist(a, p.i, c.at) - dist(a, q.i, c.at))[0];
+  return t && dist(a, t.i, c.at) <= reach ? {i: t.i, town: t} : null;
+}
+
 function rise(a, c, r) {
   let C = CALAMITIES.find(x => x.id === c.kind), place = null, host = null;
-  // half the time the calamity takes one of the living leaders of the old lairs for its boss (CAL.fromLeader)
-  if (r() < CAL.fromLeader) host = hostLeader(a, c);
+  // half the time the calamity takes one of the living leaders of the old lairs for its boss (CAL.fromLeader); not one
+  // whose place the hand chose (atlas/settle.js) — there it rises where it was set
+  if (c.at >= 0) place = placeAt(a, c, C);
+  else if (r() < CAL.fromLeader) host = hostLeader(a, c);
   if (host) { C = host.C; c.kind = C.id; c.label = C.label; place = {i: host.lair.i}; }
-  else place = placeOf(a, c, r);
-  if (!place && C.town) { C = CALAMITIES.find(x => x.id === 'necromancer'); c.kind = C.id; c.label = C.label; place = placeOf(a, c, r); }   // no towns to nest in
+  else if (!place) place = placeOf(a, c, r);
+  if (!place && C.town) { C = CALAMITIES.find(x => x.id === 'necromancer'); c.kind = C.id; c.label = C.label; place = c.at >= 0 ? {i: c.at} : placeOf(a, c, r); }   // no towns to nest in
   if (!place) { c.phase = 'fallen'; c.fell = {year: a.hist.year, by: 'none'}; return; }
   const L = host ? LAIRS.get(host.lair.kind) : LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
   const lair = host ? host.lair : newLair(a, L, place.i, r, 1);

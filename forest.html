@@ -88,6 +88,20 @@
   .plate-card h3{margin:0;font-family:var(--font-display);font-size:18px}
   .plate-card .row{align-items:center;gap:8px}
   .muted{color:var(--muted)}
+  /* «Заселение мира» (src/app/settleView.js) */
+  #setMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+  #setMap.dragging{cursor:grabbing}
+  #setMap.hand{cursor:copy}
+  .hand-card{display:flex;flex-direction:column;gap:6px;padding:8px 10px}
+  .hand-card .row,.time-row{align-items:center;gap:8px;flex-wrap:wrap}
+  .hand-card select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+  .hand-note{color:var(--muted)}
+  .hand-note.bad{color:#f0b0b2}
+  .hand-note.good{color:var(--ember)}
+  .cal-list{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+  .cal-list div{border-left:2px solid var(--raider);padding-left:6px;font-size:12.5px}
+  .cal-list b{color:var(--fg)}
+  .cal-list small{color:var(--muted)}
   .app-foot{color:var(--muted);font-size:12.5px}
   .app-foot a{color:var(--muted)}
 </style>
@@ -108,11 +122,10 @@
         <b>Создать землю</b>
         <span>Плиты, рельеф, моря, климат, реки и биомы — без народов и истории. Правка плит, рельефа и климата, сохранение земли.</span>
       </button>
-      <button type="button" class="launch-card soon" data-go="settle">
+      <button type="button" class="launch-card" data-go="settle">
         <span class="tag">история</span>
         <b>Заселение мира</b>
         <span>Загрузить землю, высадить расы, монстров и логова, задать катаклизмы и мотать время на 5–100 лет.</span>
-        <span class="soon-tag">в разработке · этап 9</span>
       </button>
       <button type="button" class="launch-card" data-go="campaign">
         <span class="tag">поход</span>
@@ -234,17 +247,69 @@
     </div>
   </section>
 
+  <!-- ───────── «Заселение мира» (src/app/settleView.js): history on a land, led by hand; no eras ───────── -->
   <section class="app-screen" id="settle" hidden aria-labelledby="settleTitle">
-    <div class="app-head"><h2 id="settleTitle">Заселение мира</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
-    <div class="card">
-      <span class="tag">в разработке · этап 9</span>
-      <ul class="app-plan">
-        <li>Загрузить сохранённую землю.</li>
-        <li>Расы: какие и где высадить. Монстры: кого и куда, ручное добавление логов. Катаклизмы: до трёх.</li>
-        <li>Промотка времени: +5 · +10 · +25 · +50 · +100 лет; между прогонами можно снова вмешаться. Эпох нет.</li>
-        <li>Летопись сбоку, сохранение мира с обитателями и летописью.</li>
-      </ul>
-      <div class="row"><button type="button" data-old="world">Пока — полигон «Мир» →</button></div>
+    <div class="app-head"><h2 id="settleTitle">Заселение мира</h2><span class="muted" id="setName2"></span><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="atlas settle">
+      <div class="menu-form atlas-form">
+        <div class="field">
+          <span class="lbl">Земля для заселения</span>
+          <div id="setLands" class="savelist"><small>Пока нет сохранённых земель: сотворите её на экране «Создать землю».</small></div>
+          <label class="filebtn">Открыть файл земли или мира…<input type="file" id="setLoadFile" accept=".gz,.json,.land,.world,application/gzip,application/json"></label>
+        </div>
+        <div class="field saves">
+          <label for="setName">Сохранить мир с обитателями и летописью</label>
+          <div class="row">
+            <input id="setName" type="text" maxlength="40" autocomplete="off" placeholder="Название мира">
+            <button type="button" id="setSave" title="В библиотеку этого браузера">Сохранить</button>
+            <button type="button" id="setFile" title="Скачать мир файлом">В файл</button>
+          </div>
+          <small class="status" id="setStatus" role="status"></small>
+          <span class="lbl">Заселённые миры</span>
+          <div id="setWorlds" class="savelist"><small>Пока нет заселённых миров.</small></div>
+        </div>
+      </div>
+
+      <div class="atlas-map">
+        <div class="atlas-tools">
+          <div class="seg wrapseg" data-skey="layer"></div>
+          <div class="seg zoomseg" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
+            <button type="button" id="setZoomIn" aria-label="Приблизить">+</button>
+            <button type="button" id="setZoomOut" aria-label="Отдалить">−</button>
+            <button type="button" id="setZoomFit" aria-label="Весь мир">⌂</button>
+          </div>
+        </div>
+        <div class="seg wrapseg" data-skey="ore" id="setOre" hidden></div>
+        <div class="seg wrapseg" data-skey="fauna" id="setFauna" hidden></div>
+        <div class="card hand-card" id="setHand">
+          <div class="row"><span class="lbl">Рука</span><div class="seg" id="setTool"></div><button type="button" id="setWild" title="Логова чудовищ, какие даёт земля, — один раз">Логова по земле</button></div>
+          <div class="row" id="setPeopleRow" hidden><div class="seg wrapseg" id="setPeople"></div><div class="seg wrapseg" id="setSub"></div></div>
+          <div class="row" id="setLairRow" hidden><select id="setLairKind" aria-label="Какое логово"></select><small class="muted">Щелчок по суше — поставить логово.</small></div>
+          <div class="row" id="setCalRow" hidden>
+            <select id="setCalKind" aria-label="Какое бедствие"></select>
+            <span class="lbl">через</span><div class="seg" id="setCalIn"></div>
+            <button type="button" id="setCalAny" title="Место выберет мир, как в эпическом мире">Место — на волю мира</button>
+          </div>
+          <small class="hand-note" id="setNote">Выберите землю слева, затем руку: народ, логово или бедствие — и щёлкните по карте.</small>
+        </div>
+        <div class="preview-box"><canvas id="setMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
+        <div class="row time-row">
+          <span class="lbl">Время</span>
+          <div class="seg" id="setRun"></div>
+          <button type="button" id="setPause" hidden>Пауза</button>
+          <b id="setYear" class="muted"></b>
+        </div>
+        <div class="legend atlas-legend" id="setLegend"></div>
+        <div class="readout" id="setReadout">Наведите на карту, чтобы увидеть клетку.</div>
+      </div>
+
+      <div class="menu-form atlas-chron">
+        <dl class="kv" id="setStats"></dl>
+        <div id="setCals"></div>
+        <dl class="kv" id="setRels"></dl>
+        <div class="row"><span class="lbl">Летопись</span><div class="seg" id="setDetail"></div></div>
+        <div class="log" id="setChron"></div>
+      </div>
     </div>
   </section>
 

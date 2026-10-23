@@ -5,7 +5,7 @@
   "description": "Тёплый Брод — симуляция поселения: поля, навигация, агенты",
   "scripts": {
     "build": "node tools/build.mjs",
-    "test": "node tools/check-layers.mjs && node tools/atlas-check.mjs 2 && node tools/atlas-save-check.mjs 1 && node tools/map-check.mjs 3 && node tools/seam-check.mjs 16 && node tools/campaign-check.mjs 1 && node tools/check-data.mjs && node tools/check-tables.mjs && node tools/align-check.mjs && node tools/leaders-check.mjs && node tools/tech-check.mjs && node tools/kinds-check.mjs && node tools/land-check.mjs && node tools/logic-check.mjs && node tools/determinism.mjs 2 && node tools/rng-check.mjs 3 && node tools/smoke.mjs 2",
+    "test": "node tools/check-layers.mjs && node tools/atlas-check.mjs 2 && node tools/atlas-save-check.mjs 1 && node tools/map-check.mjs 3 && node tools/seam-check.mjs 16 && node tools/campaign-check.mjs 1 && node tools/check-data.mjs && node tools/check-tables.mjs && node tools/align-check.mjs && node tools/leaders-check.mjs && node tools/tech-check.mjs && node tools/kinds-check.mjs && node tools/land-check.mjs && node tools/settle-check.mjs && node tools/logic-check.mjs && node tools/determinism.mjs 2 && node tools/rng-check.mjs 3 && node tools/smoke.mjs 2",
     "smoke": "node tools/smoke.mjs",
     "balance": "node tools/balance.mjs",
     "stress": "node tools/stress.mjs",
@@ -28,6 +28,7 @@
     "tech": "node tools/tech-check.mjs",
     "kinds": "node tools/kinds-check.mjs",
     "land": "node tools/land-check.mjs",
+    "settle": "node tools/settle-check.mjs",
     "bestiary": "node tools/bestiary-check.mjs",
     "logic": "node tools/logic-check.mjs",
     "atlas": "node tools/atlas-check.mjs",

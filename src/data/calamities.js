@@ -89,6 +89,8 @@ export const CAL = {
   // the chance a calamity takes a living leader of an old lair for its boss (atlas/leaders.js) rather than a new one
   fromLeader: 0.5,
   grave: {r: 2, v: 0.8},
+  // «Заселение мира» (atlas/settle.js): at most this many calamities set by hand that have not passed yet
+  free: {max: 3},
 };
 
 // The alliances against a calamity (atlas/alliance.js; docs/CAMPAIGN.md «Доработка, этап 8»): after the wild era the
