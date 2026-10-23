@@ -32,7 +32,9 @@ import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
-import {BASE_MODS} from '../traits.js';
+import {BASE_MODS, rebuildBaseMods} from '../traits.js';
+import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '../mods.js';
+import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
 import {autoTable, objectTable} from './auto.js';
 import * as COLONY from '../colony.js';
 import * as BEHAVIOUR from '../behaviour.js';
@@ -89,7 +91,7 @@ import {KIND_LAND, KIND_GROVES} from '../kinds.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
-export const GROUPS = ['Существа', 'Отношения', 'Вещи', 'Народы', 'Караван', 'Поселение', 'Мир'];
+export const GROUPS = ['Словари', 'Существа', 'Отношения', 'Вещи', 'Народы', 'Караван', 'Поселение', 'Мир'];
 
 // the letters the sheet «SPECIAL (итог)» shows: a human's range, the sturdy races', and the beasts' beyond
 const SHEET_X = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 30, 50, 80];
@@ -115,6 +117,17 @@ const raceRows = () => SPECIES.filter(s => s.kind === 'race').map(s => {
   return {...s, world: p?.id ?? null, era: p?.era ?? null, subraces: s.peoples || []};
 });
 
+// a `mods` set of a creature (a trait, a wound, a race): keys from «Модификаторы существа»
+const MODS_COL = {type: 'map', ref: 'creatureMods', label: 'Модификаторы'};
+// an `effects` set of the colony (a building, a tame animal, a key in the stock) against «Модификаторы поселения»
+const families = resolve => name => (name === 'resources' ? RESOURCES : name === 'jobs' ? JOBS : resolve?.(name) ?? null);
+const EFFECTS_COL = {type: 'json', label: 'Эффекты', note: 'add, mul, yield, jobSpeed, toolWear, best — ключи из «Модификаторов поселения»', check: (v, resolve) => effectErrors(v, families(resolve))};
+// who carries a tag, for the table «Теги»
+const carriers = t => {
+  const pool = t.on === 'resource' ? RESOURCES.all() : t.on === 'item' ? ITEMS.all() : SPECIES.all();
+  return pool.filter(x => hasTag(x, t.id)).map(x => x.id);
+};
+
 export const TABLES = [
   // ── Существа
   {id: 'races', label: 'Расы', group: 'Существа', key: 'id', rows: raceRows, target: (r, c) => [SPECIES.get(r.id), c.key],
@@ -132,7 +145,7 @@ export const TABLES = [
       ...body,
       col('body.adult', 'Взрослый, лет', 'int', {min: 0}), col('body.life', 'Жизнь, лет', 'int', {min: 0}),
       col('body.fertility', 'Плодовитость', 'num', {min: 0, max: 1}), col('body.diet', 'Пища'),
-      col('mods', 'Множители', 'map', {ref: keysOf(BASE_MODS), note: 'голод, холод, сон… (data/traits.js BASE_MODS)'}),
+      col('mods', 'Множители', 'map', {ref: 'creatureMods', note: 'голод, холод, сон… — ключи из «Модификаторов существа»'}),
       col('innate', 'Врождённое', 'list', {show: labels}),
       col('subraces', 'Подрасы', 'list', {show: labels}),
       col('settle', 'Вес переселенцев', 'num', {min: 0, note: '0 — сам в поселение не приходит'}),
@@ -413,10 +426,10 @@ TABLES.push(
   autoTable({id: 'recipes', label: 'Рецепты', group: 'Поселение', note: 'Ремесло (data/recipes.js): где делают, из чего, сколько работы, что выходит.', rows: () => RECIPES.all()}),
   autoTable({id: 'needs', label: 'Нужды', group: 'Поселение', note: 'Нужды существ (data/needs.js).', rows: () => NEEDS.all()}),
   autoTable({id: 'thoughts', label: 'Мысли', group: 'Поселение', note: 'Мысли поселенцев и их вес в настроении (data/thoughts.js).', rows: () => THOUGHTS.all()}),
-  autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all()}),
+  autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all(), whole: {mods: MODS_COL}}),
   autoTable({id: 'skills', label: 'Навыки', group: 'Поселение', note: 'Навыки (data/skills.js).', rows: () => SKILLS.all()}),
   autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),
-  autoTable({id: 'wounds', label: 'Раны', group: 'Поселение', note: 'Раны (data/wounds.js).', rows: () => WOUNDS.all()}),
+  autoTable({id: 'wounds', label: 'Раны', group: 'Поселение', note: 'Раны (data/wounds.js).', rows: () => WOUNDS.all(), whole: {mods: MODS_COL}}),
   autoTable({id: 'foods', label: 'Еда', group: 'Поселение', note: 'Еда и блюда (data/foods.js): сытость, порча.', rows: () => FOODS.all()}),
   autoTable({id: 'crops', label: 'Посевы', group: 'Поселение', note: 'Посевы полей (data/crops.js).', rows: () => CROPS.all()}),
   autoTable({id: 'plants', label: 'Растения', group: 'Поселение', note: 'Дикие растения карты (data/plants.js).', rows: () => PLANTS.all()}),
@@ -427,9 +440,9 @@ TABLES.push(
   autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
     rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
   // Цены и бой
-  {id: 'priceRules', label: 'Цены: правила', group: 'Вещи', note: 'Цены похода, услуг, торговли и качества (data/balance/prices.js CAMPAIGN, SERVICES, TRADE, QUALITY). Цены ресурсов — в «Ценах ресурсов».',
-    ...grp({campaign: PRICE_CAMPAIGN, services: SERVICES, trade: PRICE_TRADE, quality: PRICE_QUALITY})},
-  objectTable({id: 'resourcePrices', label: 'Цены ресурсов', group: 'Вещи', note: 'Цена и размер стопки каждого ресурса (data/balance/prices.js RESOURCES).', obj: () => RESOURCE_PRICES}),
+  {id: 'priceRules', label: 'Цены: правила', group: 'Вещи', note: 'Цены вещей (items: труд мастера, надбавка за защиту, редкость материала, округление), похода, услуг, торговли и качества (data/balance/prices.js ITEMS, CAMPAIGN, SERVICES, TRADE, QUALITY); правка пересобирает «Предметы (итог)». Цены ресурсов — в «Ценах ресурсов».',
+    ...grp({items: PRICES.ITEMS, campaign: PRICE_CAMPAIGN, services: SERVICES, trade: PRICE_TRADE, quality: PRICE_QUALITY}), after: rebuildItems},
+  {...objectTable({id: 'resourcePrices', label: 'Цены ресурсов', group: 'Вещи', note: 'Цена и размер стопки каждого ресурса (data/balance/prices.js RESOURCES).', obj: () => RESOURCE_PRICES}), after: rebuildItems},
   {id: 'combatRules', label: 'Бой и сила', group: 'Вещи', note: 'Числа боя (data/balance/combat.js COMBAT, CAPS, SCALE_MODS, DEFAULT_BLOW), правила баланса вещей (data/balance/rules.js RULES), рейтинг силы (data/balance/creatures.js STRENGTH).',
     ...grp({combat: COMBAT, caps: CAPS, scaleMods: SCALE_MODS, defaultBlow: DEFAULT_BLOW, rules: RULES, strength: STRENGTH})},
 );
@@ -485,6 +498,31 @@ TABLES.push(
     columns: [col('label', 'Пояс'), col('lat', 'Широта', 'num', {min: 0, max: 90}), col('east', 'На восток', 'num', {min: -1, max: 1}), col('eq', 'К экватору', 'num', {min: -1, max: 1}), col('rise', 'Подъём', 'num', {min: -1, max: 1})]},
   {id: 'climateRules', label: 'Влажность', group: 'Мир', ...grp({moisture: MOISTURE}),
     note: 'Модель влаги карты мира (data/climate.js MOISTURE): испарение с моря, круговорот, морось, подъём над горами, конденсация, скорость переноса, перевод в миллиметры.'},
+);
+
+// ── dictionaries (docs/NRI.md, этап 2): every key a `mods` or an `effects` may name, and every tag
+TABLES.push(
+  {id: 'creatureMods', label: 'Модификаторы существа', group: 'Словари', key: 'id', rows: () => CREATURE_MODS.all(), after: rebuildBaseMods,
+    note: 'Ключи agent.mods (data/mods.js): тело существа, которое собирается из вида, SPECIAL, народа, врождённого, характера и ран. Множитель умножается (нейтрально 1), прибавка прибавляется. Ключ с кривой берёт значение буквы SPECIAL («Кривые»). Ключ, которого здесь нет, в mods рас, черт и ран не принимается.',
+    columns: [col('id', 'Ключ'), col('label', 'Что'), col('how', 'Как складывается', 'enum', {values: MOD_HOWS, edit: false}),
+      col('base', 'Нейтрально', 'num', {note: 'с чего начинает каждое существо'}), col('curve', 'Кривая SPECIAL', 'ref', {ref: 'curves', edit: false}),
+      col('floor', 'Не меньше', 'num', {edit: false}), col('reads', 'Кто читает'), col('note', 'Описание')]},
+  {id: 'colonyMods', label: 'Модификаторы поселения', group: 'Словари', key: 'id', rows: () => COLONY_MODS.all(),
+    note: 'Ключи w.mods (data/mods.js): что даёт поселению всё построенное, приручённое и лежащее на складе. add — сумма, mul — произведение, best — лучшее из; семьи yield, jobSpeed, toolWear — по ресурсу или по работе. Ключ, которого здесь нет, в эффектах построек, зверей и ресурсов не принимается.',
+    columns: [col('id', 'Ключ'), col('kind', 'Вид', 'enum', {values: COLONY_KINDS, edit: false}), col('key', 'Имя', 'text', {edit: false}), col('keys', 'По строкам', 'text', {edit: false}),
+      col('label', 'Что'), col('base', 'Нейтрально', 'num'), col('reads', 'Кто читает'), col('note', 'Описание')]},
+  {id: 'tags', label: 'Теги', group: 'Словари', key: 'id', rows: () => TAGS.all().map(t => ({...t, who: carriers(t)})),
+    target: (r, c) => [TAGS.get(r.id), c.key],
+    note: 'Слова, которыми помечены виды, вещи и ресурсы (data/tags.js), как traits в Pathfinder 2: что значит, где лежит, кто читает, у кого есть. Флаг вида, страх (weakTo), тег ресурса и флаг вещи, которых здесь нет, — ошибка.',
+    columns: [col('id', 'Тег'), col('on', 'У кого', 'enum', {values: TAG_ON, edit: false}), col('field', 'Поле', 'text', {edit: false}),
+      col('label', 'Что'), col('reads', 'Кто читает'), col('note', 'Описание'),
+      col('who', 'Несут', 'ids', {computed: true, note: 'виды, вещи или ресурсы с этим тегом'})]},
+  fix(autoTable({id: 'buildings', label: 'Постройки поселения', group: 'Поселение', rows: () => BUILDINGS.all(), whole: {effects: EFFECTS_COL},
+    note: 'Постройки локальной карты (data/buildings.js): цена, труд, сколько можно, тепло, что дают поселению (effects — по «Модификаторам поселения»). Условия и действия при постройке — формулы кода.'}),
+  {cost: {type: 'map', ref: RESOURCES, min: 0}, work: {type: 'num', min: 0}, color: {edit: false}, mark: {edit: false}}),
+  fix(autoTable({id: 'resources', label: 'Ресурсы', group: 'Поселение', rows: () => RESOURCES.all(), whole: {effects: EFFECTS_COL},
+    note: 'Ресурсы склада (data/resources.js): теги (по «Тегам»), сытость, порча, сколько уносят, сколько держать, место в обозе, топливо, что даёт ключ на складе (effects). Цена и стопка — в «Ценах ресурсов».'}),
+  {tags: {type: 'ids', ref: tagIds('resource')}, color: {edit: false}, mapColor: {edit: false}}),
 );
 
 export const tableById = id => TABLES.find(t => t.id === id);

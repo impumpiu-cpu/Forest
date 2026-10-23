@@ -5,14 +5,10 @@
 import {BUILDINGS} from '../data/buildings.js';
 import {SPECIES} from '../data/species.js';
 import {RESOURCES} from '../data/resources.js';
+import {emptyColonyMods} from '../data/mods.js';
 
-export function emptyMods() {
-  return {
-    add: {beds: 0, popCap: 0, coolCamp: 0, huntRange: 0, bedWarmth: 0},
-    mul: {spoil: 1, defense: 1, loot: 1, douse: 1, wear: 1},
-    yield: {}, jobSpeed: {}, toolWear: {}, best: {},
-  };
-}
+// what a colony has before anything: every setting of data/mods.js COLONY_MODS at its neutral value
+export const emptyMods = emptyColonyMods;
 
 function merge(m, e) {
   for (const [k, v] of Object.entries(e.add || {})) m.add[k] = (m.add[k] || 0) + v;

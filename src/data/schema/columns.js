@@ -15,6 +15,7 @@
 //              color · formula (a function: shown as its code, never edited) · list (objects: shown by `show`) · json
 //   ref      — a table id (its keys), or anything with has(id) — a Registry, a Set
 //   computed — a value the game works out (a rating fitted by the arena): shown, never edited
+//   check    — check(v) → [error]: what the type cannot say (an `effects` object against its dictionary)
 import {STATS} from '../special.js';
 
 export const col = (key, label, type = 'text', more = {}) => ({key, label, type, ...more});
@@ -88,6 +89,7 @@ export function valueErrors(c, v, resolve, where) {
     case 'formula': if (typeof v !== 'function') errs.push(`${where}: не формула`); break;
     default: break;
   }
+  if (c.check && !errs.length) for (const e of c.check(v, resolve)) errs.push(`${where}: ${e}`);
   return errs;
 }
 

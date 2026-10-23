@@ -82,3 +82,60 @@ console.log('ok   правка таблиц: значения доходят д�
   if (bad.length) { console.log('Кривые:\n  ' + bad.join('\n  ')); process.exit(1); }
   console.log(`ok   кривые: ${CURVES.all().length}, конечны при буквах 0–100, множители при норме — 1; правка доходит до игры и сбрасывается`);
 }
+
+// ── dictionaries (data/mods.js, data/tags.js; docs/NRI.md этап 2): every key of a creature's `mods`, of the colony's
+// `effects`, every yes/no field of a species and an item, every fear and resource tag is in its dictionary; the
+// curves that set the body exist; an edit of a dictionary reaches the game, a wrong key is refused
+{
+  const {CREATURE_MODS, COLONY_MODS, effectErrors} = await import('../src/data/mods.js');
+  const {TAGS, tagIds} = await import('../src/data/tags.js');
+  const {CURVES} = await import('../src/data/curves.js');
+  const {SPECIES} = await import('../src/data/species.js');
+  const {WORLD_PEOPLES} = await import('../src/data/peoples.js');
+  const {TRAITS, BASE_MODS} = await import('../src/data/traits.js');
+  const {WOUNDS} = await import('../src/data/wounds.js');
+  const {BUILDINGS} = await import('../src/data/buildings.js');
+  const {RESOURCES} = await import('../src/data/resources.js');
+  const {JOBS} = await import('../src/data/jobs.js');
+  const {ITEMS} = await import('../src/data/items.js');
+  const E = await import('../src/data/schema/edits.js');
+  const bad = [];
+  const mods = (where, m) => { for (const k of Object.keys(m || {})) if (!CREATURE_MODS.has(k)) bad.push(`${where}: модификатора «${k}» нет в словаре`); };
+  for (const s of SPECIES.all()) {
+    mods(`вид ${s.id}`, s.mods);
+    for (const p of s.peoples || []) mods(`народ ${p.id}`, p.mods);
+    for (const t of s.innate || []) mods(`врождённое ${s.id} «${t.label}»`, t.mods);
+  }
+  for (const p of WORLD_PEOPLES.all()) mods(`народ мира ${p.id}`, p.mods);
+  for (const t of TRAITS.all()) mods(`черта ${t.id}`, t.mods);
+  for (const w of WOUNDS.all()) mods(`рана ${w.id}`, w.mods);
+  for (const m of CREATURE_MODS.all()) if (m.curve && !CURVES.has(m.curve)) bad.push(`модификатор ${m.id}: нет кривой «${m.curve}»`);
+  const setBy = new Set(CREATURE_MODS.filter(m => m.curve).map(m => m.curve));
+  // hp goes into health, charm into opinion (data/relations.js): every other curve of SPECIAL sets a key of the body
+  for (const c of CURVES.filter(c => c.group === 'special')) if (!setBy.has(c.id) && !['hp', 'charm'].includes(c.id)) bad.push(`кривая ${c.id}: её не берёт ни один модификатор`);
+  const fam = name => (name === 'resources' ? RESOURCES : name === 'jobs' ? JOBS : null);
+  for (const b of BUILDINGS.all()) for (const e of effectErrors(b.effects, fam)) bad.push(`постройка ${b.id}: ${e}`);
+  for (const s of SPECIES.all()) for (const e of effectErrors(s.tame?.effects, fam)) bad.push(`приручённый ${s.id}: ${e}`);
+  for (const r of RESOURCES.all()) for (const e of effectErrors(r.effects, fam)) bad.push(`ресурс ${r.id}: ${e}`);
+  for (const d of ITEMS.all()) if (d.ranged?.boost && !COLONY_MODS.has(`best.${d.ranged.boost}`)) bad.push(`вещь ${d.id}: усиления «${d.ranged.boost}» нет в «Модификаторах поселения»`);
+  const spTags = tagIds('species'), fears = tagIds('fear'), resTags = tagIds('resource'), itemTags = tagIds('item');
+  for (const s of SPECIES.all()) {
+    for (const [k, v] of Object.entries(s)) if (typeof v === 'boolean' && !spTags.has(k)) bad.push(`вид ${s.id}: флаг «${k}» — не тег`);
+    for (const f of s.weakTo || []) if (!fears.has(f)) bad.push(`вид ${s.id}: боится «${f}» — нет такого тега`);
+  }
+  for (const r of RESOURCES.all()) for (const t of r.tags || []) if (!resTags.has(t)) bad.push(`ресурс ${r.id}: тег «${t}» — нет в словаре`);
+  for (const d of ITEMS.all()) for (const [k, v] of Object.entries(d)) if (typeof v === 'boolean' && !itemTags.has(k)) bad.push(`вещь ${d.id}: флаг «${k}» — не тег`);
+  // edits: a neutral value reaches every new body; a wrong key in a trait, an effect, a resource tag is refused
+  E.setCell('creatureMods', 'hunger', 'base', 1.5);
+  if (BASE_MODS.hunger !== 1.5) bad.push('правка нейтрального модификатора не дошла до BASE_MODS');
+  E.resetAll();
+  if (BASE_MODS.hunger !== 1) bad.push('сброс не вернул BASE_MODS');
+  if (!E.setCell('traits', 'brave', 'mods', {bravry: 0.45}).error) bad.push('опечатка в mods черты принята');
+  if (!E.setCell('buildings', 'hut', 'effects', {add: {bedz: 4}}).error) bad.push('опечатка в effects постройки принята');
+  if (!E.setCell('buildings', 'hut', 'effects', {yield: {nothing: 1.2}}).error) bad.push('ресурс, которого нет, в effects принят');
+  if (!E.setCell('resources', 'wood', 'tags', ['fuel', 'wod']).error) bad.push('тег, которого нет, у ресурса принят');
+  if (!E.setCell('buildings', 'hut', 'effects', {add: {beds: 5, popCap: 4, bedWarmth: 2}}).ok) bad.push('верная правка effects не принята');
+  E.resetAll();
+  if (bad.length) { console.log('Словари:\n  ' + bad.join('\n  ')); process.exit(1); }
+  console.log(`ok   словари: модификаторов существа ${CREATURE_MODS.all().length}, поселения ${COLONY_MODS.all().length}, тегов ${TAGS.all().length} — все mods, effects, флаги и теги из словарей; опечатку правка не принимает`);
+}

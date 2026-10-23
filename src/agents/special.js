@@ -11,6 +11,7 @@ import {alignNear, spreadOf} from '../data/values.js';
 import {weighted} from '../core/util.js';
 import {SPECIES} from '../data/species.js';
 import {TRAITS, BASE_MODS} from '../data/traits.js';
+import {CREATURE_MODS, ADD_MODS} from '../data/mods.js';
 import {WOUNDS} from '../data/wounds.js';
 
 export const peopleOf = (sp, a) => (a.people && sp.peoples ? sp.peoples.find(p => p.id === a.people) : null);
@@ -32,7 +33,8 @@ export const innateOf = (sp, a) => [...(sp.innate || []), ...(peopleOf(sp, a)?.i
 export const raceLabel = (sp, a) => peopleOf(sp, a)?.label || sp.label;
 
 // keys that add up rather than multiply
-export const ADD = new Set(['aim', 'dodge', 'bravery']);
+// the keys that add rather than multiply (data/mods.js CREATURE_MODS `how`)
+export const ADD = ADD_MODS;
 
 function mod(m, k, v) { m[k] = ADD.has(k) ? (m[k] ?? 0) + v : (m[k] ?? 1) * v; }
 
@@ -75,9 +77,14 @@ export function bossSpecial(sp, rnd, B) {
 function specialInto(m, a, sp) {
   const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;
   const rel = (k) => (base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s));
-  for (const k of ['str', 'fin', 'speed', 'swing', 'learn', 'sight', 'cold']) mod(m, k, rel(k));
-  mod(m, 'aim', EFFECTS.aim(s) - (base ? EFFECTS.aim(base) : 0));
-  mod(m, 'dodge', Math.max(0, EFFECTS.dodge(s) - (base ? EFFECTS.dodge(base) : 0)));
+  // every key of the body that a SPECIAL curve sets (data/mods.js `curve`): a multiplier is the curve, an addition
+  // its difference from the typical one of the kind, no less than `floor`
+  for (const M of CREATURE_MODS.all()) {
+    if (!M.curve) continue;
+    if (M.how !== 'add') { mod(m, M.id, rel(M.curve)); continue; }
+    const v = EFFECTS[M.curve](s) - (base ? EFFECTS[M.curve](base) : 0);
+    mod(m, M.id, M.floor != null ? Math.max(M.floor, v) : v);
+  }
   return sp.hp * rel('hp');
 }
 

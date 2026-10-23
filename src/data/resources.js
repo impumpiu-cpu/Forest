@@ -30,7 +30,12 @@ import {RESOURCES as PRICE} from './balance/prices.js';
 function withPrice(r) {
   const p = PRICE[r.id];
   if (!p) throw new Error(`resource ${r.id}: no row in data/balance/prices.js`);
-  return {...r, value: p.price, stack: p.stack, ...(p.money ? {money: p.money} : {})};
+  // read through, not copied: an edit of «Цены ресурсов» is what the game reads (docs/NRI.md, этап 2)
+  const out = {...r};
+  Object.defineProperty(out, 'value', {get: () => p.price, enumerable: true});
+  Object.defineProperty(out, 'stack', {get: () => p.stack, enumerable: true});
+  if (p.money != null) Object.defineProperty(out, 'money', {get: () => p.money, enumerable: true});
+  return out;
 }
 
 export const RESOURCES = new Registry('resource');
