@@ -74,8 +74,12 @@ console.log('ok   правка таблиц: значения доходят д�
   }
   for (const id of Object.keys(EFFECTS)) if (CURVES.get(id).group !== 'special') bad.push(`${id}: действие SPECIAL не из группы special`);
   const hp0 = EFFECTS.hp({E: 10}), crit0 = curve('crit', 10), bleed0 = bleedTicks(5), pace0 = letterFactor(5);
-  E.setCell('curves', 'hp', 'per', 0.1); E.setCell('curves', 'crit', 'max', 0.05); E.setCell('curves', 'bleed', 'base', 3); E.setCell('curves', 'skillPace', 'shape', 'pow');
-  if (!(EFFECTS.hp({E: 10}) > hp0) || curve('crit', 10) !== 0.05 || !(bleedTicks(5) > bleed0) || letterFactor(5) === pace0) bad.push('правка кривой не дошла до игры');
+  E.setCell('curves', 'hp', 'per', 0.1); E.setCell('curves', 'crit', 'max', 0.05); E.setCell('curves', 'bleed', 'base', 3); E.setCell('curves', 'skillPace', 'per', 0.1);
+  // concrete values: 0.6 + 0.1 × 10, the cap, (3 + 0.25 × 5) hours, 0.6 + 0.1 × 5
+  if (Math.abs(EFFECTS.hp({E: 10}) - 1.6) > 1e-9 || curve('crit', 10) !== 0.05 || !(bleedTicks(5) > bleed0) || Math.abs(letterFactor(5) - 1.1) > 1e-9) bad.push('правка кривой не дошла до игры');
+  // a shape without its numbers, a division by zero: refused, and the curve stays as it was
+  if (!E.setCell('curves', 'str', 'shape', 'soft').error || !E.setCell('curves', 'skillCap', 'pivot', 0).error || !Number.isFinite(curve('str', 5))) bad.push('принята кривая, что даёт NaN или бесконечность');
+  if (!E.setCell('curves', 'hp', 'base', undefined).error || !E.setCell('curves', 'str', 'min', undefined).ok) bad.push('пустая ячейка: base должен быть отказан, min — принят (без границы)');
   if (!E.setCell('curves', 'hp', 'shape', 'square').error || !E.setCell('curves', 'hp', 'group', 'luck').error) bad.push('принята форма, которой нет, или смена группы');
   E.resetAll();
   if (EFFECTS.hp({E: 10}) !== hp0 || curve('crit', 10) !== crit0 || bleedTicks(5) !== bleed0 || letterFactor(5) !== pace0) bad.push('сброс не вернул кривые');
@@ -161,4 +165,27 @@ console.log('ok   правка таблиц: значения доходят д�
   if (bad.length) { console.log('Итоговые таблицы:\n  ' + bad.join('\n  ')); process.exit(1); }
   const loss = sheet('recipeSheet').filter(r => r.loss);
   console.log(`ok   итоговые таблицы: видов ${sheet('creatureSheet').length}, рецептов ${sheet('recipeSheet').length}, построек ${sheet('buildingSheet').length} — числа конечны, следуют за правками${loss.length ? `; в убыток: ${loss.map(r => `${r.id} ${r.margin}`).join(', ')}` : ''}`);
+}
+
+// ── what an edit may not do (the review of docs/NRI.md): empty a cell the game computes with, write a code stored in
+// saves, name what is not there, break a list read by position; two tables never write one object
+{
+  const E = await import('../src/data/schema/edits.js');
+  const {RESOURCES} = await import('../src/data/resources.js');
+  const refused = [
+    ['resourcePrices', 'wood', 'price', undefined], ['creatureMods', 'hunger', 'base', undefined], ['afflictions', 'fever', 'save', undefined],
+    ['factions', 'colony', 'hostile', undefined], ['senses', 'darkvision', 'species', undefined], ['paceRules', 'rules', 'pursued', undefined],
+    ['caravanBuildings', 'hut', 'cost', {wood: 7}], ['resources', 'ironore', 'ore', 3.7], ['buildings', 'hut', 'onFinish', 'plowFeld'],
+    ['buildings', 'hut', 'cost', {wood: -5}], ['recipes', 'clothes', 'makes.item', 'zzz'], ['offices', 'ruler', 'years', [40]],
+    ['ores', 'iron', 'vein.amount', ['a', 'b']], ['behaviourRules', 'GEAR.brave', 'value', [1]], ['afflictionRules', 'taint.stages', 'value', [1]],
+    ['hitLocations', 'humanoid.head', 'traumas', ['downed']], ['colonyMods', 'yield', 'base', 2],
+  ];
+  const bad = [];
+  for (const [t, r, c, v] of refused) { const res = E.setCell(t, r, c, v); if (!res.error) bad.push(`${t} · ${r} · ${c} = ${JSON.stringify(v)}: принято`); }
+  E.resetAll();
+  if (!E.setCell('resourcePrices', 'berries', 'money', 0.5).ok || RESOURCES.get('berries').money !== 0.5) bad.push('доля в оплате у ресурса без неё не доходит до игры');
+  E.resetAll();
+  if (RESOURCES.get('berries').money !== undefined) bad.push('сброс не убрал долю в оплате');
+  if (bad.length) { console.log('Защита правки:\n  ' + bad.join('\n  ')); process.exit(1); }
+  console.log(`ok   защита правки: ${refused.length} недопустимых правок отклонены (пустое там, где нужно число, коды сохранений, ссылки в никуда, списки не той формы, вторая точка правки одного объекта)`);
 }

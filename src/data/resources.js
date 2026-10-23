@@ -34,7 +34,8 @@ function withPrice(r) {
   const out = {...r};
   Object.defineProperty(out, 'value', {get: () => p.price, enumerable: true});
   Object.defineProperty(out, 'stack', {get: () => p.stack, enumerable: true});
-  if (p.money != null) Object.defineProperty(out, 'money', {get: () => p.money, enumerable: true});
+  // (money is read through too, also where the code has none: an edit that gives a resource money reaches the game)
+  Object.defineProperty(out, 'money', {get: () => p.money, enumerable: p.money != null});
   return out;
 }
 

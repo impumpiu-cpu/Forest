@@ -63,7 +63,7 @@ import {GETTING, FODDER, ROUTE, WHEELS} from '../transport.js';
 import {TRADE as COLONY_TRADE} from '../trade.js';
 import {LEARN, SKILLS, TIERS} from '../skills.js';
 import {MASTER, MASTERS} from '../masters.js';
-import {CRIT, DEATHBLOW} from '../wounds.js';
+import {CRIT, DEATHBLOW, WOUNDS} from '../wounds.js';
 import {CONDITIONS, CONDITION_KINDS, EXHAUSTION} from '../conditions.js';
 import {ARRIVALS, MIGRATIONS} from '../migrations.js';
 import {CAMPAIGN as PRICE_CAMPAIGN, SERVICES, TRADE as PRICE_TRADE, QUALITY as PRICE_QUALITY, RESOURCES as RESOURCE_PRICES} from '../balance/prices.js';
@@ -202,12 +202,14 @@ export const TABLES = [
     note: 'Семь характеристик (data/special.js). Норма человека — 5.',
     columns: [col('id', 'Буква'), col('label', 'Название'), col('short', 'Кратко'), col('note', 'Что даёт')]},
   {id: 'curves', label: 'Кривые', group: 'Существа', key: 'id', rows: () => CURVES.all(),
+    // a curve must give a finite number at every letter 0–100 (a shape without its numbers, pivot 0 for a division)
+    rowCheck: r => { for (let x = 0; x <= 100; x++) if (!Number.isFinite(curveAt(r, x))) return [`при букве ${x} кривая даёт ${curveAt(r, x)}: проверьте форму и её числа`]; return []; },
     note: 'Как буква SPECIAL становится числом игры (data/curves.js): действие SPECIAL (урон, здоровье, холод, меткость, обзор, скорость, пауза удара, учёба, уклонение, обаяние), удача (крит, пережить смертельную рану, уйти без увечья), кровотечение упавшего, темп и потолок навыка. Три формы: прямая base + per × (X − pivot), степень (X / pivot)^pow, насыщение base + per × X / (X + pivot); затем границы min…max (пусто — без границы). При 5 множитель — 1, прибавка — 0. Значения при каждой букве — в «SPECIAL (итог)».',
     columns: [
       col('id', 'id'), col('group', 'Группа', 'enum', {values: CURVE_GROUPS, edit: false}), col('label', 'Что'),
       col('stat', 'Буква', 'ref', {ref: STATS, note: 'чья буква; у навыков — буква самого навыка'}), col('shape', 'Форма', 'enum', {values: SHAPES}),
       col('base', 'base', 'num'), col('per', 'per', 'num'), col('pivot', 'pivot', 'num'), col('pow', 'pow', 'num'),
-      col('min', 'min', 'num', {note: 'пусто — без нижней границы'}), col('max', 'max', 'num', {note: 'пусто — без верхней'}),
+      col('min', 'min', 'num', {nullable: true, note: 'пусто — без нижней границы'}), col('max', 'max', 'num', {nullable: true, note: 'пусто — без верхней'}),
       col('unit', 'Единица', 'text', {edit: false}), col('note', 'Описание'),
     ]},
   {id: 'specialSheet', label: 'SPECIAL (итог)', group: 'Существа', key: 'x', computed: true,
@@ -347,7 +349,7 @@ export const TABLES = [
     rows: () => BUILDINGS.filter(b => b.portable).map(b => ({id: b.id, name: b.name, cost: b.cost, work: b.work, fx: CAMP_FX[b.id] || {}, field: Object.keys(b.cost).every(r => r === 'wood')})),
     note: 'Что повозка везёт в разобранном виде (data/buildings.js `portable`, data/transport.js CAMP_FX). Караван ничего не изобретает: остальное покупается.',
     columns: [
-      col('id', 'id'), col('name', 'Название'), col('cost', 'Цена', 'map', {ref: RESOURCES, min: 0}), col('work', 'Труд', 'int', {min: 0}),
+      col('id', 'id'), col('name', 'Название', 'text', {edit: false, note: 'правится в «Постройках поселения»'}), col('cost', 'Цена', 'map', {ref: RESOURCES, min: 0, edit: false, note: 'правится в «Постройках поселения»'}), col('work', 'Труд', 'int', {min: 0, edit: false, note: 'правится в «Постройках поселения»'}),
       col('fx', 'На стоянке', 'map', {ref: keysOf({heal: 1, forage: 1, shelter: 1, build: 1}), min: 0, note: 'лечение ×, пища ×, голод ×, постройка повозок ×'}),
       col('field', 'Можно собрать в поле', 'bool', {computed: true, note: 'только из дерева'}),
     ]},
@@ -433,7 +435,7 @@ TABLES.push(
   {id: 'growthRules', label: 'Навыки, мастера, раны', group: 'Поселение', note: 'Как учатся навыки (data/skills.js LEARN), мастера (data/masters.js MASTER), крит и смертельный удар (data/wounds.js).',
     ...grp({learn: LEARN, master: MASTER, crit: CRIT, deathblow: DEATHBLOW})},
   autoTable({id: 'jobs', label: 'Работы', group: 'Поселение', note: 'Работы поселенцев (data/jobs.js): сколько несут, сколько длится, что дают.', rows: () => JOBS.all()}),
-  autoTable({id: 'recipes', label: 'Рецепты', group: 'Поселение', note: 'Ремесло (data/recipes.js): где делают, из чего, сколько работы, что выходит.', rows: () => RECIPES.all()}),
+  fix(autoTable({id: 'recipes', label: 'Рецепты', group: 'Поселение', note: 'Ремесло (data/recipes.js): где делают, из чего, сколько работы, что выходит.', rows: () => RECIPES.all()}), {'makes.item': {type: 'ref', ref: ITEMS}, 'makes.resource': {type: 'ref', ref: RESOURCES}, at: {type: 'ref', ref: 'buildings'}, work: {type: 'num', min: 0}}),
   autoTable({id: 'needs', label: 'Нужды', group: 'Поселение', note: 'Нужды существ (data/needs.js).', rows: () => NEEDS.all()}),
   autoTable({id: 'thoughts', label: 'Мысли', group: 'Поселение', note: 'Мысли поселенцев и их вес в настроении (data/thoughts.js).', rows: () => THOUGHTS.all()}),
   autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all(), whole: {mods: MODS_COL}}),
@@ -471,7 +473,7 @@ const GENESIS_FIELDS = keysOf({coll: 1, arc: 1, basv: 1, volc: 1, oldv: 1, crato
 TABLES.push(
   // Поселение
   fix(autoTable({id: 'terrain', label: 'Рельеф', group: 'Поселение', after: rebuildTerrain, rows: () => TERRAIN.all(),
-    note: 'Почва клетки локальной карты (data/terrain.js): проходимость, цена шага и скорость, топливо для огня, кусты, лес и выпас, укрытие, сырость. Цвет — формула графики.'}),
+    note: 'Почва клетки локальной карты (data/terrain.js): проходимость, цена шага и скорость, топливо для огня, кусты, лес и выпас, укрытие, сырость. Цвет — формула графики. Правка — для новых карт: на идущей проходимость пересчитана сразу, а дороги и поля течения — по ходу их обновления.'}),
   {code: CODE, kind: {type: 'enum', values: ['ground', 'wood', 'rock', 'water']}, pathCost: {type: 'num', min: 0}, speed: {type: 'num', min: 0}, fuel: {type: 'num', min: 0},
     bush: {type: 'num', min: 0, max: 1}, wood: {type: 'num', min: 0, max: 1}, graze: {type: 'num', min: 0, max: 1}, wet: {type: 'num', min: 0, max: 1}}),
   fix(autoTable({id: 'seasons', label: 'Времена года', group: 'Поселение', rows: () => SEASONS.all(),
@@ -518,12 +520,13 @@ TABLES.push(
 // ── dictionaries (docs/NRI.md, этап 2): every key a `mods` or an `effects` may name, and every tag
 TABLES.push(
   {id: 'creatureMods', label: 'Модификаторы существа', group: 'Словари', key: 'id', rows: () => CREATURE_MODS.all(), after: rebuildBaseMods,
-    note: 'Ключи agent.mods (data/mods.js): тело существа, которое собирается из вида, SPECIAL, народа, врождённого, характера и ран. Множитель умножается (нейтрально 1), прибавка прибавляется. Ключ с кривой берёт значение буквы SPECIAL («Кривые»). Ключ, которого здесь нет, в mods рас, черт и ран не принимается.',
+    note: 'Ключи agent.mods (data/mods.js): тело существа, которое собирается из вида, SPECIAL, народа, врождённого, характера и ран. Множитель умножается (нейтрально 1), прибавка прибавляется. Ключ с кривой берёт значение буквы SPECIAL («Кривые»). Ключ, которого здесь нет, в mods рас, черт и ран не принимается. Правка доходит до каждого нового существа и до живых — при пересборке тела (рана, черта, состояние).',
     columns: [col('id', 'Ключ'), col('label', 'Что'), col('how', 'Как складывается', 'enum', {values: MOD_HOWS, edit: false}),
       col('base', 'Нейтрально', 'num', {note: 'с чего начинает каждое существо'}), col('curve', 'Кривая SPECIAL', 'ref', {ref: 'curves', edit: false}),
       col('floor', 'Не меньше', 'num', {edit: false}), col('reads', 'Кто читает'), col('note', 'Описание')]},
   {id: 'colonyMods', label: 'Модификаторы поселения', group: 'Словари', key: 'id', rows: () => COLONY_MODS.all(),
-    note: 'Ключи w.mods (data/mods.js): что даёт поселению всё построенное, приручённое и лежащее на складе. add — сумма, mul — произведение, best — лучшее из; семьи yield, jobSpeed, toolWear — по ресурсу или по работе. Ключ, которого здесь нет, в эффектах построек, зверей и ресурсов не принимается.',
+    target: (r, c) => (c.key === 'base' && r.kind !== 'add' && r.kind !== 'mul' ? null : [r, c.key]),
+    note: 'Ключи w.mods (data/mods.js): что даёт поселению всё построенное, приручённое и лежащее на складе. add — сумма, mul — произведение, best — лучшее из; семьи yield, jobSpeed, toolWear — по ресурсу или по работе. Ключ, которого здесь нет, в эффектах построек, зверей и ресурсов не принимается. Правка нейтрального значения доходит до поселения при следующем пересчёте (постройка, приручение, ключ на складе); у семей нейтрально всегда 1.',
     columns: [col('id', 'Ключ'), col('kind', 'Вид', 'enum', {values: COLONY_KINDS, edit: false}), col('key', 'Имя', 'text', {edit: false}), col('keys', 'По строкам', 'text', {edit: false}),
       col('label', 'Что'), col('base', 'Нейтрально', 'num'), col('reads', 'Кто читает'), col('note', 'Описание')]},
   {id: 'tags', label: 'Теги', group: 'Словари', key: 'id', rows: () => TAGS.all().map(t => ({...t, who: carriers(t)})),
@@ -532,12 +535,14 @@ TABLES.push(
     columns: [col('id', 'Тег'), col('on', 'У кого', 'enum', {values: TAG_ON, edit: false}), col('field', 'Поле', 'text', {edit: false}),
       col('label', 'Что'), col('reads', 'Кто читает'), col('note', 'Описание'),
       col('who', 'Несут', 'ids', {computed: true, note: 'виды, вещи или ресурсы с этим тегом'})]},
-  fix(autoTable({id: 'buildings', label: 'Постройки поселения', group: 'Поселение', rows: () => BUILDINGS.all(), whole: {effects: EFFECTS_COL},
+  fix(autoTable({id: 'buildings', label: 'Постройки поселения', group: 'Поселение', rows: () => BUILDINGS.all(), whole: {effects: EFFECTS_COL, cost: {type: 'map', ref: RESOURCES, min: 0, label: 'Цена'}},
     note: 'Постройки локальной карты (data/buildings.js): цена, труд, сколько можно, тепло, что дают поселению (effects — по «Модификаторам поселения»). Условия и действия при постройке — формулы кода.'}),
-  {cost: {type: 'map', ref: RESOURCES, min: 0}, work: {type: 'num', min: 0}, color: {edit: false}, mark: {edit: false}}),
+  {work: {type: 'num', min: 0}, color: {edit: false}, mark: {edit: false}, onFinish: CODE, key: {type: 'ref', ref: RESOURCES}, needs: {type: 'ref', ref: 'buildings'},
+    near: {edit: false}, max: {type: 'int', min: 0}, benches: {type: 'int', min: 0}, beds: {type: 'int', min: 0}, pen: {type: 'int', min: 0}, zone: {type: 'num', min: 0}}),
   fix(autoTable({id: 'resources', label: 'Ресурсы', group: 'Поселение', rows: () => RESOURCES.all(), whole: {effects: EFFECTS_COL},
     note: 'Ресурсы склада (data/resources.js): теги (по «Тегам»), сытость, порча, сколько уносят, сколько держать, место в обозе, топливо, что даёт ключ на складе (effects). Цена и стопка — в «Ценах ресурсов».'}),
-  {tags: {type: 'ids', ref: tagIds('resource')}, color: {edit: false}, mapColor: {edit: false}}),
+  {tags: {type: 'ids', ref: tagIds('resource')}, color: {edit: false}, mapColor: {edit: false}, ore: CODE, 'furnace.tier': {type: 'int', min: 0},
+    value: {edit: false, note: 'правится в «Ценах ресурсов»'}, stack: {edit: false, note: 'правится в «Ценах ресурсов»'}, money: {edit: false, note: 'правится в «Ценах ресурсов»'}}),
 );
 
 // ── the fight (docs/NRI.md, этап 3): kinds of harm and how each body takes them, weapon qualities, where blows land
@@ -558,7 +563,7 @@ TABLES.push(
   {id: 'hitLocations', label: 'Места попадания', group: 'Существа', key: 'id', rows: () => HIT_LOCATIONS.all(),
     note: 'Куда приходится удар (data/anatomy.js), как в Fallout 2d20: у каждого плана тела свои места — вес (как часто), × урона там, какие травмы оставляет смертельная рана там. Место бросается из своего потока случайностей и больше ничего в бою не сдвигает.',
     columns: [col('id', 'id'), col('plan', 'План тела', 'enum', {values: BODY_PLANS, edit: false}), col('label', 'Место'), col('weight', 'Вес', 'num', {min: 0}),
-      col('dmg', 'Урон ×', 'num', {min: 0}), col('traumas', 'Травмы', 'ids', {ref: 'conditions'}), col('note', 'Описание')]},
+      col('dmg', 'Урон ×', 'num', {min: 0}), col('traumas', 'Травмы', 'ids', {ref: {has: id => WOUNDS.has(id) && !!WOUNDS.get(id).trauma}, note: 'только травмы («Состояния», trauma)'}), col('note', 'Описание')]},
 );
 
 // ── checks and chance (docs/NRI.md, этап 5): the ladder, the four degrees, and every random table in one place
@@ -584,8 +589,8 @@ TABLES.push(
     target: (r, c) => ((r.table === 'raids' ? ['weight', 'threat', 'below', 'night', 'perNight'].includes(c.key) : c.key === 'chance') ? [r.src, c.key] : null),
     note: 'Всё, что игра тянет из списка, в одном формате (data/chance.js): набеги — одна по весу (вес, с какой угрозы, ниже неё — below, только ночью глубже night, прибавка за ночь perNight); находки похода — первая, что выпала (шанс × место); трофеи зверя — каждая на свой шанс (× удача). Правка доходит до игры.',
     columns: [col('key', 'Строка'), col('table', 'Таблица', 'enum', {values: RANDOM_TABLES, edit: false}), col('mode', 'Как тянут', 'enum', {values: CHANCE_MODES, edit: false}),
-      col('row', 'Что', 'text', {edit: false}), col('weight', 'Вес', 'num', {min: 0}), col('threat', 'С угрозы', 'num', {min: 0}), col('below', 'Ниже угрозы', 'num', {min: 0}),
-      col('night', 'Ночью глубже', 'num', {min: 0, max: 1}), col('perNight', 'За ночь +', 'num', {min: 0}), col('chance', 'Шанс', 'num', {min: 0, max: 1}),
+      col('row', 'Что', 'text', {edit: false}), col('weight', 'Вес', 'num', {min: 0}), col('threat', 'С угрозы', 'num', {min: 0, nullable: true}), col('below', 'Ниже угрозы', 'num', {min: 0, nullable: true}),
+      col('night', 'Ночью глубже', 'num', {min: 0, max: 1, nullable: true}), col('perNight', 'За ночь +', 'num', {min: 0, nullable: true}), col('chance', 'Шанс', 'num', {min: 0, max: 1}),
       col('ctx', 'От чего зависит', 'text', {edit: false}), col('gives', 'Что даёт', 'text', {edit: false})]},
 );
 
@@ -624,12 +629,12 @@ TABLES.push(
     columns: [col('id', 'id'), col('label', 'Должность'), col('adds', 'Занята', 'map', STAT_MAP), col('vacant', 'Пуста', 'map', STAT_MAP), col('years', 'Лет службы', 'json')]},
   {id: 'realmEvents', label: 'Держава: события', group: 'Народы', key: 'id', rows: () => REALM_EVENTS.all(),
     note: 'События года — таблица случайностей «одна по весу» (data/chance.js), тянется с шансом «правила» events.chance; условие — как у указов. adds — к показателям в этот год, ruin — к разрухе, text — строка летописи ({realm} — держава).',
-    columns: [col('id', 'id'), col('weight', 'Вес', 'num', {min: 0}), col('when', 'Условие', 'json', {check: whenErrors}), col('adds', 'Показатели', 'map', STAT_MAP), col('ruin', 'Разруха', 'map', RUIN_MAP), col('text', 'Строка летописи')]},
+    columns: [col('id', 'id'), col('weight', 'Вес', 'num', {min: 0}), col('when', 'Условие', 'json', {check: whenErrors, nullable: true}), col('adds', 'Показатели', 'map', STAT_MAP), col('ruin', 'Разруха', 'map', RUIN_MAP), col('text', 'Строка летописи')]},
   {id: 'kingdomRules', label: 'Держава: правила', group: 'Народы', ...grp({ruin: RUIN_RULES, upkeep: UPKEEP, court: COURT, events: EVENTS_RULE, feedback: FEEDBACK}),
     note: 'Разруха: ruin.fall — как показатель её гасит, ruin.penalty — сколько очко разрухи отнимает, ruin.max — потолок. upkeep — содержание постройки по категории (очки экономики в год). court.fill — шанс занять пустую должность. events.chance — шанс события в год. feedback — что держава делает с миром: 0 — ничего; schismByStrife, schismByLoyalty — шанс раскола × (1 + значение × раздоры) и × (1 + значение × нехватка лояльности).'},
   {id: 'marketTiers', label: 'Рынок по ступени города', group: 'Караван', key: 'id', rows: () => MARKET_TIERS.all(),
     note: 'Рынок города для каравана по его ступени, как base value и purchase limit поселения в Pathfinder (data/kingdom.js): maxPrice — самое дорогое, что здесь продают, purse — сколько золота город заплатит за товары каравана за визит. Пусто — без предела (как раньше).',
-    columns: [col('id', 'id'), col('label', 'Ступень'), col('tier', 'Ступень №', 'int', {edit: false}), col('maxPrice', 'Самое дорогое, зол.', 'num', {min: 0}), col('purse', 'Кошель города, зол.', 'num', {min: 0})]},
+    columns: [col('id', 'id'), col('label', 'Ступень'), col('tier', 'Ступень №', 'int', {edit: false}), col('maxPrice', 'Самое дорогое, зол.', 'num', {min: 0, nullable: true}), col('purse', 'Кошель города, зол.', 'num', {min: 0, nullable: true})]},
 );
 
 // ── the content of the world (docs/NRI.md, этап 8): illness, addiction, the rot; tongues and senses; the caravan's name

@@ -41,9 +41,22 @@ export function setCell(tableId, rowKey, colKey, value) {
   const errs = valueErrors(c, value, refs, `${t.label} · ${rowKey} · ${c.label}`);
   const before = originals.has(id) ? originals.get(id).v : get(obj, path);
   if (c.type === 'json' && before != null && (typeof before !== typeof value || Array.isArray(before) !== Array.isArray(value))) errs.push(`${t.label} · ${rowKey} · ${c.label}: нужен тот же вид значения, что был (${Array.isArray(before) ? 'список' : typeof before === 'number' ? 'число' : typeof before === 'boolean' ? 'да/нет' : 'текст'})`);
+  // an emptied cell where the code has a value: refused, unless the column may be empty (`nullable`: no bound, no limit)
+  if (value == null && before != null && !c.nullable) errs.push(`${t.label} · ${rowKey} · ${c.label}: пусто — здесь нужно значение`);
+  // a list of numbers keeps its length and stays numbers ([lo, hi], thresholds): the code reads it by position
+  if (Array.isArray(before) && before.length && before.every(x => typeof x === 'number') && value != null
+      && (!Array.isArray(value) || value.length !== before.length || !value.every(x => typeof x === 'number' && Number.isFinite(x)))) errs.push(`${t.label} · ${rowKey} · ${c.label}: нужен список из ${before.length} чисел`);
   if (errs.length) return {error: errs[0]};
   if (!originals.has(id)) originals.set(id, {obj, path, v: copy(get(obj, path))});
+  const current = copy(get(obj, path));
   setPath(obj, path, copy(value));
+  // a table may check the whole row after the write (a curve must stay finite): a refusal puts the value back
+  const rowErr = t.rowCheck?.(L.row, obj);
+  if (rowErr?.length) {
+    setPath(obj, path, current);
+    if (sameValue(current, originals.get(id).v)) originals.delete(id);
+    return {error: `${t.label} · ${rowKey}: ${rowErr[0]}`};
+  }
   if (sameValue(value, originals.get(id).v)) { forget(tableId, rowKey, colKey); originals.delete(id); }
   else ((LAYER[tableId] ||= {})[rowKey] ||= {})[colKey] = copy(value);
   t.after?.(); editMade();

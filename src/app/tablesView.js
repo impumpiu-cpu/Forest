@@ -284,7 +284,10 @@ export class TablesView {
   }
 
   check() {
-    const errs = checkAll(), box = $('tblCheck');
+    // a table that cannot even be worked out (a summary over a broken edit) is an error to show, not a broken screen
+    let errs;
+    try { errs = checkAll(); } catch (e) { errs = [`таблицы не считаются: ${e.message}`]; }
+    const box = $('tblCheck');
     box.classList.toggle('bad', errs.length > 0);
     box.innerHTML = errs.length
       ? `Проверка: ${errs.length} несоответствий.<details><summary>Показать</summary><ul>${errs.map(e => `<li>${esc(e)}</li>`).join('')}</ul></details>`

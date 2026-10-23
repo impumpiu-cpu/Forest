@@ -120,7 +120,7 @@ function woundsHtml(w, a) {
   for (const x of a.wounds || []) {
     const W = WOUNDS.get(x.id);
     const left = x.until != null ? `, заживёт через ${Math.max(1, Math.ceil((x.until - w.tick) / DAY))} дн.` : '';
-    out.push(`<span class="chip${W.trauma ? ' dislike' : ''}" title="${W.label}: ${W.note}${left}">${W.label}</span>`);
+    out.push(`<span class="chip${W.trauma ? ' dislike' : ''}" title="${esc(W.label)}: ${esc(W.note)}${left}">${esc(W.label)}</span>`);
   }
   // the passing states and exhaustion (data/conditions.js); the fall and the wounds are shown above
   for (const {row, ill} of conditionsOf(w, a)) {
@@ -168,11 +168,11 @@ export class Panel {
   // rebuilt for each world: the beasts listed are the ones that live in its land
   buildLegend(w) {
     const dot = (c, t) => `<span><i style="background:${c}"></i>${t}</span>`;
-    const ores = ORES.all().map(o => dot(`rgb(${o.tint.join(',')})`, o.label)).join('');
+    const ores = ORES.all().map(o => dot(`rgb(${o.tint.join(',')})`, esc(o.label))).join('');   // (labels may come from an edit of the tables: escaped)
     $('legend').innerHTML = dot('var(--colony)', 'колонисты') + dot('var(--raider)', 'налётчики') +
-      FACTIONS.filter(f => f.legend).map(f => dot(f.color, f.legend)).join('') +
+      FACTIONS.filter(f => f.legend).map(f => dot(f.color, esc(f.legend))).join('') +
       // only the beasts that live in this land (and those that come everywhere)
-      SPECIES.filter(s => s.look.color && !s.sentient && (!s.habitat || !w || faunaLevel(w, s.id) > 0) && !s.undead).map(s => dot(s.look.color, s.legend || s.label)).join('') +
+      SPECIES.filter(s => s.look.color && !s.sentient && (!s.habitat || !w || faunaLevel(w, s.id) > 0) && !s.undead).map(s => dot(s.look.color, esc(s.legend || s.label))).join('') +
       dot('var(--food)', 'ягоды') + ores + dot('var(--ember)', 'огонь и костёр') +
       '<span>пунктир — граница зоны поселения</span>' +
       `<span>обводка — броня: ${ITEMS.filter(d => d.slot === 'body' && d.color).map(d => d.short).join(', ')} (своим цветом)</span>`;
@@ -323,7 +323,7 @@ export class Panel {
       `<dt>Зайцы рядом</dt><dd>${hares} · добыто ${w.stats.hunted}</dd>` +
       (fishTotals(w)[1] ? `<dt>Рыба в озёрах</dt><dd>${Math.floor(fishTotals(w)[0])} из ${fishTotals(w)[1]}</dd>` : '<dt>Рыба в озёрах</dt><dd>нет больших озёр</dd>') +
       `<dt>Волки</dt><dd>${ofSpecies(w, 'wolf').length || 'нет'}</dd>` +
-      `<dt title="Сколько руды можно выкопать с открытого склона скал">Руда на склонах</dt><dd class="nb">${ORES.filter(o => ore[o.id] > 0).map(o => `${o.label} ${Math.round(ore[o.id])}`).join(' · ') || 'не видно'}</dd>`);
+      `<dt title="Сколько руды можно выкопать с открытого склона скал">Руда на склонах</dt><dd class="nb">${ORES.filter(o => ore[o.id] > 0).map(o => `${esc(o.label)} ${Math.round(ore[o.id])}`).join(' · ') || 'не видно'}</dd>`);
     $('pFlabel').textContent = `Поля (${w.n.toLocaleString('ru-RU')} клеток)`;
     $('pF').textContent = w.perf.fields.toFixed(2); $('pN').textContent = w.perf.nav.toFixed(2);
     $('pA').textContent = w.perf.agents.toFixed(2); $('pR').textContent = view.renderMs.toFixed(2);
@@ -538,7 +538,7 @@ export class Panel {
     const g = w.grid, x = i % w.w, y = (i / w.w) | 0, d = w.nav.get('camp')[i];
     const close = '<button type="button" class="pc-close" data-close aria-label="Закрыть">×</button>';
     const lake = g.lake?.[i] >= 0 ? w.lakes[g.lake[i]] : null;
-    const rows = [`<dt>Местность</dt><dd>${lake ? `озеро, ${lake.size} клеток` : BY_CODE[g.terr[i]].label}</dd>`];
+    const rows = [`<dt>Местность</dt><dd>${lake ? `озеро, ${lake.size} клеток` : esc(BY_CODE[g.terr[i]].label)}</dd>`];
     if (oreOf(w, i)) rows.push(`<dt>Руда</dt><dd>${oreOf(w, i).label}, ещё ${Math.ceil(g.oreLeft[i])}</dd>`);
     if (lake) rows.push(`<dt>Рыба</dt><dd>${lake.cap ? `${Math.floor(lake.fish)} из ${lake.cap}${lake.resting ? ', отдыхает' : ''}` : 'слишком мало для рыбы'}</dd>`);
     if (g.wood[i] > 0) rows.push(`<dt>Древесина</dt><dd>${g.wood[i].toFixed(2)}</dd>`);
