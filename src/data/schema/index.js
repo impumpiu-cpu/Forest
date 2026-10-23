@@ -73,6 +73,14 @@ import {FOODS} from '../foods.js';
 import {CROPS} from '../crops.js';
 import {PLANTS} from '../plants.js';
 import {FURNITURE} from '../furniture.js';
+import {SEASONS, SEASON_DAYS, THAW} from '../seasons.js';
+import {TERRAIN, rebuildTerrain} from '../terrain.js';
+import {ORES} from '../ores.js';
+import {PLATE_COUNTS, BOUNDARIES, ROCKS, ROCK_KINDS, ORE_GENESIS} from '../geology.js';
+import {WIND_BELTS, MOISTURE} from '../climate.js';
+import {REGIONS, REGION_SHIFT} from '../regions.js';
+import {FACTIONS} from '../factions.js';
+import {NEIGHBOURS} from '../neighbours.js';
 import {LUXURY} from '../luxury.js';
 import {RAID_BANDS} from '../raids.js';
 import {SOILS} from '../soils.js';
@@ -80,7 +88,7 @@ import {KIND_LAND, KIND_GROVES} from '../kinds.js';
 
 export {checkTables, get, editable, targetOf, valueErrors, resolver} from './columns.js';
 
-export const GROUPS = ['Существа', 'Отношения', 'Вещи', 'Народы', 'Караван', 'Мир'];
+export const GROUPS = ['Существа', 'Отношения', 'Вещи', 'Народы', 'Караван', 'Поселение', 'Мир'];
 
 const keysOf = obj => ({has: k => Object.prototype.hasOwnProperty.call(obj, k)});
 const MINDS = {beast: 'зверь', semi: 'полуразумный', sentient: 'разумный'};
@@ -380,9 +388,9 @@ TABLES.push(
   // Поселение
   {id: 'colonyRules', label: 'Жизнь поселения', group: 'Поселение', note: 'Отношения, жизнь, лечение, стада, угроза, план дня, горн, доска работ и дозор, общие дела, золотые жилы (data/colony.js); караваны торговцев (data/trade.js TRADE).',
     ...grp({...kindsOf(COLONY), trade: COLONY_TRADE})},
-  {id: 'behaviourRules', label: 'Повадки существ', group: 'Поселение', note: 'Отряды, туши и стаи, дикие стада, трофеи, вредители, распорядок поселенца (data/behaviour.js); приход зверей на карту (data/migrations.js ARRIVALS).',
+  {id: 'behaviourRules', label: 'Повадки существ', group: 'Поселение', note: 'Отряды, туши и стаи, дикие стада, трофеи, вредители, распорядок поселенца, сон и тепло у огня (REST), поджог и тушение (KINDLE), выбор снаряжения (GEAR), вред от жара (HEAT) (data/behaviour.js); приход зверей на карту (data/migrations.js ARRIVALS).',
     ...grp({...kindsOf(BEHAVIOUR), arrivals: ARRIVALS})},
-  {id: 'natureRules', label: 'Природа карты', group: 'Поселение', note: 'Огонь, снег, рыбалка локальной карты (data/nature.js); что даёт земля из видов материалов (data/kinds.js KIND_LAND), где мастера работают особое дерево (KIND_GROVES).',
+  {id: 'natureRules', label: 'Природа карты', group: 'Поселение', note: 'Огонь, снег, рыбалка, рост ягод, огородов, кустов и леса (GROWTH) локальной карты (data/nature.js); что даёт земля из видов материалов (data/kinds.js KIND_LAND), где мастера работают особое дерево (KIND_GROVES).',
     ...grp({...kindsOf(NATURE), kindLand: KIND_LAND, kindGroves: KIND_GROVES})},
   {id: 'growthRules', label: 'Навыки, мастера, раны', group: 'Поселение', note: 'Как учатся навыки (data/skills.js LEARN), мастера (data/masters.js MASTER), крит и смертельный удар (data/wounds.js).',
     ...grp({learn: LEARN, master: MASTER, crit: CRIT, deathblow: DEATHBLOW})},
@@ -409,6 +417,59 @@ TABLES.push(
   objectTable({id: 'resourcePrices', label: 'Цены ресурсов', group: 'Вещи', note: 'Цена и размер стопки каждого ресурса (data/balance/prices.js RESOURCES).', obj: () => RESOURCE_PRICES}),
   {id: 'combatRules', label: 'Бой и сила', group: 'Вещи', note: 'Числа боя (data/balance/combat.js COMBAT, CAPS, SCALE_MODS, DEFAULT_BLOW), правила баланса вещей (data/balance/rules.js RULES), рейтинг силы (data/balance/creatures.js STRENGTH).',
     ...grp({combat: COMBAT, caps: CAPS, scaleMods: SCALE_MODS, defaultBlow: DEFAULT_BLOW, rules: RULES, strength: STRENGTH})},
+);
+
+// ── the last of the data without a table (docs/NRI.md, этап 0): the local map's ground, seasons, ores and regions,
+// who is whose enemy and who lives beyond the edge; the world map's plates, rocks, ores and winds.
+// `fix` closes columns the code keys by (a code stored in the grid and in saves) and gives others their `ref`.
+const fix = (t, cols) => ({...t, columns: t.columns.map(c => (cols[c.key] ? {...c, ...cols[c.key]} : c))});
+const CODE = {edit: false, note: 'код в сетке и в сохранениях: не правится'};
+const GENESIS_FIELDS = keysOf({coll: 1, arc: 1, basv: 1, volc: 1, oldv: 1, craton: 1, low: 1, warm: 1});
+TABLES.push(
+  // Поселение
+  fix(autoTable({id: 'terrain', label: 'Рельеф', group: 'Поселение', after: rebuildTerrain, rows: () => TERRAIN.all(),
+    note: 'Почва клетки локальной карты (data/terrain.js): проходимость, цена шага и скорость, топливо для огня, кусты, лес и выпас, укрытие, сырость. Цвет — формула графики.'}),
+  {code: CODE, kind: {type: 'enum', values: ['ground', 'wood', 'rock', 'water']}, pathCost: {type: 'num', min: 0}, speed: {type: 'num', min: 0}, fuel: {type: 'num', min: 0},
+    bush: {type: 'num', min: 0, max: 1}, wood: {type: 'num', min: 0, max: 1}, graze: {type: 'num', min: 0, max: 1}, wet: {type: 'num', min: 0, max: 1}}),
+  fix(autoTable({id: 'seasons', label: 'Времена года', group: 'Поселение', rows: () => SEASONS.all(),
+    note: 'Что меняет время года (data/seasons.js): одежда (dress), рост ягод и огорода, увядание, скорость работ (jobs.*), зайцы, голод хищников, порча еды, дожди, порог возгорания, мороз. Оттепель и календарь — в «Календаре».'}),
+  {next: {edit: false}, tint: {edit: false, note: 'оттенок карты: графика'}}),
+  {id: 'calendarRules', label: 'Календарь и оттепель', group: 'Поселение', ...grp({thaw: THAW, seasonDays: SEASON_DAYS}),
+    note: 'Запаздывание тепла за солнцем (thaw.lag, дни), с какой температуры день морозный (thaw.frozen), с какой и за сколько градусов оживает рост (from, span), что тёплая зима оставляет от зимних правил. Длина сезона (seasonDays) — постоянная календаря, не правится.'},
+  fix(autoTable({id: 'ores', label: 'Жилы руды', group: 'Поселение', rows: () => ORES.all(),
+    note: 'Жилы локальной карты (data/ores.js): какой ресурс добывают, сколько в жиле, как далеко ищут, сколько её на карте. Цвета — графика.'}),
+  {code: CODE, resource: {type: 'ref', ref: RESOURCES}, tier: {type: 'int', min: 0, max: 4}, tint: {edit: false}, mapColor: {edit: false}}),
+  fix(autoTable({id: 'regions', label: 'Регионы', group: 'Поселение', rows: () => REGIONS.all(),
+    note: 'Земля под поселением (data/regions.js), как место высадки в Dwarf Fortress: руды (ores.*: 0 — нет, 0,5 — бедно, 1 — есть, 1,6 — богато), золотой песок, рудное золото, магма, тракт, река, биомы клетки, дикие угодья (flora.*). Сдвиг уровня соседних клеток — в «Регионы: правила».'}),
+  {weight: {type: 'num', min: 0}}),
+  {id: 'regionRules', label: 'Регионы: правила', group: 'Поселение', ...grp({regionShift: REGION_SHIFT}),
+    note: 'Насколько клетка мира сдвигает уровни своего региона (data/regions.js REGION_SHIFT) — постоянная, не правится.'},
+  {id: 'factions', label: 'Стороны', group: 'Поселение', key: 'id', rows: () => FACTIONS.all(),
+    note: 'Кто кому враг на локальной карте и чьим умом думают её члены (data/factions.js). Вражда несимметрична: строка — кто нападает.',
+    columns: [col('id', 'id'), col('label', 'Название'), col('brain', 'Ум', 'text', {edit: false, note: 'agents/brains: код'}),
+      col('hostile', 'Враждует с', 'ids', {ref: 'factions'}), col('color', 'Цвет', 'color'), col('legend', 'В легенде')]},
+  fix(autoTable({id: 'neighbours', label: 'Соседи за краем', group: 'Поселение', rows: () => NEIGHBOURS.all(),
+    note: 'Кто живёт за краем карты поселения (data/neighbours.js): в скольких днях пути и что оттуда приходит (flows). Пока у полигона нет мира, это заглушка.'}),
+  {dist: {type: 'num', min: 0}, kind: {edit: false}}),
+  // Мир
+  autoTable({id: 'plates', label: 'Число плит', group: 'Мир', key: 'label', rows: () => PLATE_COUNTS,
+    note: 'Сколько плит на выбор при создании земли (data/geology.js PLATE_COUNTS).'}),
+  fix(autoTable({id: 'boundaries', label: 'Границы плит', group: 'Мир', rows: () => BOUNDARIES.all(),
+    note: 'Виды границ плит (data/geology.js): что они строят и как о них пишет летопись. Цвет — графика.'}),
+  {code: CODE, color: {edit: false}}),
+  {id: 'rocks', label: 'Породы мира', group: 'Мир', key: 'id', rows: () => ROCKS.all(),
+    note: 'Породы геологии мира (data/geology.js ROCKS). Где порода ложится, решает генератор (atlas/geology.js); прочность и цена камня — в «Камне».',
+    columns: [col('id', 'id'), col('code', 'Код', 'int', CODE), col('kind', 'Вид', 'enum', {values: ROCK_KINDS}), col('label', 'Название'), col('color', 'Цвет', 'color'), col('note', 'Описание')]},
+  {id: 'oreGenesis', label: 'Рождение руд', group: 'Мир', key: 'id', rows: () => ORE_GENESIS.all(),
+    note: 'Где на карте мира ложатся руды (data/geology.js ORE_GENESIS): вес пород и условий тектоники, пороги уровней «бедно / есть / богато».',
+    columns: [col('id', 'id'), col('label', 'Название'), col('region', 'Уровень региона', 'text', {edit: false}), col('from', 'Откуда', 'text', {edit: false}),
+      col('rocks', 'Породы', 'map', {ref: ROCKS, min: 0}), col('settings', 'Условия', 'map', {ref: GENESIS_FIELDS, min: 0, note: 'coll — столкновение, arc — дуга, basv — базальт, volc — вулканы, oldv — древние вулканы, craton — щит, low — низина, warm — тепло'}),
+      col('levels', 'Пороги', 'json', {note: '[бедно, есть, богато]'}), col('color', 'Цвет', 'color')]},
+  {id: 'windBelts', label: 'Пояса ветров', group: 'Мир', key: 'label', rows: () => WIND_BELTS,
+    note: 'Ветра по широте (data/climate.js), три ячейки циркуляции, как на Земле: east — широтный ветер (+ на восток), eq — к экватору (+) или к полюсу (−), rise — воздух поднимается (дождливые пояса) или опускается (сухие).',
+    columns: [col('label', 'Пояс'), col('lat', 'Широта', 'num', {min: 0, max: 90}), col('east', 'На восток', 'num', {min: -1, max: 1}), col('eq', 'К экватору', 'num', {min: -1, max: 1}), col('rise', 'Подъём', 'num', {min: -1, max: 1})]},
+  {id: 'climateRules', label: 'Влажность', group: 'Мир', ...grp({moisture: MOISTURE}),
+    note: 'Модель влаги карты мира (data/climate.js MOISTURE): испарение с моря, круговорот, морось, подъём над горами, конденсация, скорость переноса, перевод в миллиметры.'},
 );
 
 export const tableById = id => TABLES.find(t => t.id === id);

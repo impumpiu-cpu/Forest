@@ -5,6 +5,7 @@ import {cellOf} from '../world/grid.js';
 import {kill, maxHp} from './agent.js';
 import {think} from './mind.js';
 import {tempAt} from '../world/heat.js';
+import {HEAT} from '../data/behaviour.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 
@@ -32,7 +33,7 @@ export function stepBody(w, a) {
     if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 0.004;
     if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
   }
-  if (T > sp.heatHarm) a.hp -= Math.min(0.005, (T - sp.heatHarm) * 0.00004);
+  if (T > sp.heatHarm) a.hp -= Math.min(HEAT.max, (T - sp.heatHarm) * HEAT.perDegree);
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
   // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
   const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;

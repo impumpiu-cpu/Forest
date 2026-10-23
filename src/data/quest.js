@@ -41,5 +41,5 @@ export const QUEST = {
   // the way home with the crown: the world sends its bands after the caravan — one every `every` days,
   // (no more than `at` on its trail at once), of strength base + per year carried, at most max; they hunt from
   // the edge of the bubble and go home after a fight, won or lost
-  pursuit: {every: 45, at: 2, base: 0.9, perYear: 0.3, max: 2.6},
+  pursuit: {every: 45, jitter: [0.7, 0.6], full: 3, army: 0.6, at: 2, base: 0.9, perYear: 0.3, max: 2.6},
 };

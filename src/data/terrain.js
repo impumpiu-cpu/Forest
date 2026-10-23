@@ -64,6 +64,11 @@ export const BY_CODE = [];
 for (const d of TERRAIN.all()) BY_CODE[d.code] = d;
 export const WALKABLE = Uint8Array.from(BY_CODE.map(d => (d.walkable ? 1 : 0)));
 export const OPEN = Uint8Array.from(BY_CODE.map(d => (d.open ? 1 : 0)));
+// after an edit of the table «Рельеф» (data/schema): the hot-loop copies are made again, in place
+export function rebuildTerrain() {
+  for (const d of TERRAIN.all()) { WALKABLE[d.code] = d.walkable ? 1 : 0; OPEN[d.code] = d.open ? 1 : 0; }
+  GRAZE_SETS.clear();
+}
 export const isWater = code => BY_CODE[code].kind === 'water';
 // where a grazer may feed: the terrains its species names plus every open meadow (graze ≥ 0.5 — grass,
 // steppe), so that a hare born on the steppe does not search the map for a patch of grass. One Set per list.

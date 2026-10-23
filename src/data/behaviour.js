@@ -64,3 +64,32 @@ export const VERMIN = {
 // a colonist's roster (agents/brains/colonist.js): keeping to a task, thinking again at work, a moment's thought before
 // switching jobs; `attacked` — the weight of answering an attack on oneself: more than any need can reach
 export const ROSTER = {keep: 0.2, committed: 0.25, ponder: [8, 16], attacked: 2.6};
+
+// Sleep and warming by the fire (agents/tasks.js). A sleeper rests `rate` a tick, × (1 + `beds` × the beds' share);
+// one by a fire warms `warm` × its warmth a tick, × `unlit` when the camp fire is out. A rested sleeper stays in bed
+// while the night is deeper than `nightFrom`; one who slept warmer than `houseWarm` remembers the house
+// (mood `houseMood` + `houseComfort` × its comfort); warming ends above `warmEnough`.
+export const REST = {rate: 0.004, beds: 0.6, warm: 0.0028, unlit: 0.5, nightFrom: 0.75, houseWarm: 0.6, houseMood: 0.22, houseComfort: 1.2, houseFine: 0.1, warmEnough: 0.92};
+
+// Fire put by a creature (agents/tasks.js, agents/combat.js): a raider's torch to a wall, a drake's breath on the
+// ground (only where the fuel is above `breath.fuel`), and how much one dousing takes off (× the colony's douse).
+export const KINDLE = {torch: {fire: 0.6, heat: 300, fuel: 0.9}, breath: {fuel: 0.05, fire: 0.5, heat: 260}, douse: 0.05};
+
+// How a colonist weighs gear (agents/equipment.js): courage `brave[0] + brave[1] × bravery`; a blow against a blow of 1
+// every `blowTicks`, × `melee` × courage + `meleeBase`; silver while a creature that fears it is here (`silverHere`) or
+// once met (`silverMet`); a shot × `ranged` × liking for the hunt + `rangedBase`, × `noAmmo` without arrows; block ×
+// `block` × courage; a tool's gain × `tool` × liking for the job (× `backTool` on the back); speed in the hand ×
+// `handSpeed`. On the body: armour × (`armorBrave[0]` + `armorBrave[1]` × bravery) × `armor`, warmth × `warmth` ×
+// the cold × the season's dress, a lost share of speed × `bodySpeed`. On the back: a quiver for the bow in hand
+// `quiver`, a basket `carryBase` + carry × `carry` × liking for gathering, a spare weapon `spareWeapon`; a second
+// one-hander adds `second`. The colonist swaps only for a loadout better by `swap`.
+export const GEAR = {
+  brave: [0.5, 0.5], blowTicks: 12, melee: 0.6, meleeBase: 0.15, silverHere: 1.6, silverMet: 0.35,
+  ranged: 0.55, rangedBase: 0.1, noAmmo: 0.3, block: 1.6, tool: 1.4, backTool: 1.3, handSpeed: 2,
+  armorBrave: [0.6, 0.4], armor: 2, warmth: 0.8, bodySpeed: 2, quiver: 3, carryBase: 0.25, carry: 0.15, spareWeapon: 0.05,
+  second: 0.05, swap: 0.12,
+};
+
+// Heat that harms (agents/body.js): above a species' `heatHarm` a creature loses `perDegree` of health a tick for
+// every degree, at most `max`
+export const HEAT = {perDegree: 0.00004, max: 0.005};

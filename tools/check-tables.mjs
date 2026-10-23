@@ -1,8 +1,11 @@
 // Checks every table of «Настройки → Таблицы» against its schema (src/data/schema/): numbers within their
 // bounds, ids that exist, words a column knows, unique keys. Part of `npm test`.
-import {TABLES, checkAll} from '../src/data/schema/index.js';
+import {TABLES, GROUPS, checkAll} from '../src/data/schema/index.js';
 
 const errs = checkAll();
+// a table whose group is not on the screen's list is not shown at all (docs/NRI.md, этап 0)
+for (const t of TABLES) if (!GROUPS.includes(t.group)) errs.push(`${t.label}: группы «${t.group}» нет в GROUPS — таблица не видна на экране`);
+for (const id of new Set(TABLES.map(t => t.id))) if (TABLES.filter(t => t.id === id).length > 1) errs.push(`таблица «${id}» объявлена дважды`);
 if (errs.length) { console.log(`Таблицы не сходятся со схемами (${errs.length}):\n  ` + errs.join('\n  ')); process.exit(1); }
 const rows = TABLES.reduce((n, t) => n + t.rows().length, 0), cols = TABLES.reduce((n, t) => n + t.columns.length, 0);
 console.log(`ok   таблицы: ${TABLES.length} таблиц, ${rows} строк, ${cols} столбцов — значения в пределах, ссылки сходятся`);

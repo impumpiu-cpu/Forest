@@ -63,7 +63,7 @@ export const GETTING = {
 
 // beasts graze for free where grass grows; where it does not (richness of the plants below `graze`, or
 // hard frost) each loses `starve` health a day and dies at none
-export const FODDER = {graze: 0.35, starve: 0.03};
+export const FODDER = {graze: 0.35, starve: 0.03, regain: 0.03};
 
 // the council keeps the wheels when the road takes at most `keep` × the straight way's days (more with a
 // packed building on board: `keepBuilding`); otherwise the vehicles are left and the caravan goes straight

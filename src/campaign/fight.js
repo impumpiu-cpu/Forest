@@ -177,7 +177,7 @@ function spoils(a, K, d, r) {
   // the fallen foes bound and taken (campaign/captives.js): on the local map the camp does it itself
   if (K.mode === 'auto') takeAuto(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));
   if (FREED.chance[d.kind] && room(K, 'joined') && r() < FREED.chance[d.kind]) {
-    const n = 1 + (r() < 0.35 ? 1 : 0), got = [];
+    const n = 1 + (r() < FREED.second ? 1 : 0), got = [];
     for (let q = 0; q < n && room(K, 'joined'); q++) {
       const minor = r() < COMPANIONS.minor, peoples = WORLD_PEOPLES.all();
       const race = minor ? COMPANIONS.minorRaces[(r() * COMPANIONS.minorRaces.length) | 0] : peoples[(r() * peoples.length) | 0].race;

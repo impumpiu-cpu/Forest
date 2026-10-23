@@ -649,7 +649,7 @@ export function caravanDay(a, K, day) {
   // the beasts graze where grass grows and starve where it does not
   const grass = pasture(a, K.i, seasonId);
   for (const b of [...K.beasts]) {
-    b.hp = grass ? Math.min(1, b.hp + 0.03) : b.hp - FODDER.starve * (0.5 + r());
+    b.hp = grass ? Math.min(1, b.hp + FODDER.regain) : b.hp - FODDER.starve * (0.5 + r());
     if (b.hp <= 0) loseBeast(a, K, b, 'Бескормица: пал');
   }
   done();
