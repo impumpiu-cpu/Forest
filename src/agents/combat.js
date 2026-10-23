@@ -18,6 +18,7 @@ import {nearAgents} from './spatial.js';
 import {COMBAT, CAPS, DEFAULT_BLOW, ARMOR_VS_CAP, resistTo, traitOf} from '../data/balance/combat.js';
 import {drawPlace} from '../data/anatomy.js';
 import {CONDITIONS} from '../data/conditions.js';
+import {taintBy} from './afflictions.js';
 import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} from '../data/checks.js';
 import {NORM} from '../data/special.js';
 
@@ -119,6 +120,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
   let dmg = mix ? raw * home * wall * mix.reduce((s, [ty, k]) => s + k * resistOf(tsp, ty, melee) * (1 - armorAgainst(g, ty) * pierce), 0)
     : raw * home * wall * (1 - armorAgainst(g, type) * pierce);
+  taintBy(w, t, by);   // an undead's blow leaves the rot (agents/afflictions.js; 0 a blow — nothing)
   noteHit(t, by);   // the colonists who fought it share in its rare trophies (agents/trophies.js)
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
   t.hp -= dmg;

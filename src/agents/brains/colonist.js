@@ -36,6 +36,7 @@ import {assistOption} from '../../settlement/masters.js';
 import {formerAllows} from '../../settlement/freedom.js';
 import {mayExtract} from '../../settlement/kinds.js';
 import {ROSTER} from '../../data/behaviour.js';
+import {nightSight} from '../../data/tongues.js';
 
 // keeping to a task, thinking again at work, a moment's thought before switching jobs (the pull of the
 // colony's vacancies is settlement/plan.js vacancyPull)
@@ -140,7 +141,8 @@ function decide(w, a, woke = 'дело кончилось') {
   // each weighed by the colonist itself: how much of it nobody covers yet, courage, distance
   const flags = flagOptions(w, a);
   for (const o of flags) opts.push(o);
-  const enemy = knownFoeWithin(w, a, BOARD.sight * (a.mods.sight ?? 1));
+  const seen = BOARD.sight * (a.mods.sight ?? 1) * nightSight(a.species, nightness(w));   // by night less, unless it sees in the dark (data/tongues.js)
+  const enemy = knownFoeWithin(w, a, seen);
   // alarm: while raiders are on the map everyone who has no foe in sight gathers inside the settlement
   // zone and meets them together; one who sees a foe weighs its flag instead; the wounded fall back
   const raid = raidAlarm(w);
@@ -148,7 +150,7 @@ function decide(w, a, woke = 'дело кончилось') {
   // a red alarm in sight (a raid, an attack on one of ours) cannot be ignored: who does not go to the
   // fight keeps out of harm's way — at the fire while raiders are about, else back to the settlement —
   // instead of going on with the work (settlement/board.js)
-  const red = redInSight(w, a, BOARD.sight * (a.mods.sight ?? 1));
+  const red = redInSight(w, a, seen);
   if (red && (raid || red.kind === 'raid')) opts.push([{id: 'reserve'}, BOARD.reserve, () => `тревога: ${red.label} ${red.where}, держится у огня`]);
   else if (red && !agentInZone(w, a)) opts.push([{id: 'runHome'}, BOARD.reserve, () => `тревога: ${red.label} ${red.where}, к своим`]);
   if (enemy && hpShare(a) <= BOARD.hurt && !agentInZone(w, a)) opts.push([{id: 'runHome'}, 1.6, () => 'тяжело ранен, а враг рядом']);

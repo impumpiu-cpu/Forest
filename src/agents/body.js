@@ -7,7 +7,10 @@ import {think} from './mind.js';
 import {tempAt} from '../world/heat.js';
 import {HEAT} from '../data/behaviour.js';
 import {resistTo} from '../data/balance/combat.js';
-import {exhaustionStage, exhaustionRow, conditionHasMods} from '../data/conditions.js';
+import {exhaustionStage, exhaustionRow, conditionHasMods, EXHAUSTION} from '../data/conditions.js';
+import {AFFLICTIONS} from '../data/afflictions.js';
+import {catchIll, stepIll, stepTaint, stepWithdrawal} from './afflictions.js';
+import {DAY} from '../core/time.js';
 import {refreshBody} from './special.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
@@ -30,6 +33,8 @@ export function stepEffects(w, a) {
     else a.bleeding = null;
   }
   if (a.stunned && w.tick >= a.stunned.until) a.stunned = null;
+  // an illness runs its course, the rot fades, a hooked one goes without (agents/afflictions.js)
+  stepIll(w, a); stepTaint(w, a); stepWithdrawal(w, a);
 }
 
 // The stage of exhaustion follows the needs (data/conditions.js EXHAUSTION); the body is rebuilt only when the stage
@@ -62,6 +67,9 @@ export function stepBody(w, a) {
   }
   heatHarm(a, sp, T, 'colonist');
   stepExhaustion(a);
+  // a chill caught in the cold (data/afflictions.js `catch` a day; 0 — never)
+  const CH = AFFLICTIONS.get('chill');
+  if (CH.catch > 0 && !a.ill && a.needs.warmth != null && a.needs.warmth <= EXHAUSTION.low && w.rngs.colony() < CH.catch / DAY) catchIll(w, a, 'chill');
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
   // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
   const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;

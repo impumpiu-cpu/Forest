@@ -52,6 +52,7 @@ import {boldness} from '../agents/brains/predator.js';
 import {STATS} from '../data/special.js';
 import {WOUNDS} from '../data/wounds.js';
 import {conditionsOf} from '../data/conditions.js';
+import {AFFLICTIONS} from '../data/afflictions.js';
 import {activeSkills, TIERS} from '../data/skills.js';
 import {skillTier, softCap, canMake, recipeNeed, reasonText, recipeAccess, jobAccess, actionAccess} from '../agents/skills.js';
 import {VALUES, axisWord, alignLabel} from '../data/values.js';
@@ -62,6 +63,7 @@ import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, raidStrength, colonyStrength} from '../settlement/threat.js';
+import {settlementStats} from '../settlement/stats.js';
 import {boardSummary, watchSummary} from '../settlement/board.js';
 import {strengthOf} from '../agents/strength.js';
 import {tempAt} from '../world/heat.js';
@@ -121,7 +123,11 @@ function woundsHtml(w, a) {
     out.push(`<span class="chip${W.trauma ? ' dislike' : ''}" title="${W.label}: ${W.note}${left}">${W.label}</span>`);
   }
   // the passing states and exhaustion (data/conditions.js); the fall and the wounds are shown above
-  for (const {row} of conditionsOf(w, a)) if (row.kind === 'state' && row.id !== 'downed' || row.kind === 'exhaustion') out.push(`<span class="chip dislike" title="${esc(row.label)}: ${esc(row.note)}">${esc(row.label)}</span>`);
+  for (const {row, ill} of conditionsOf(w, a)) {
+    if (!(row.kind === 'state' && row.id !== 'downed' || row.kind === 'exhaustion' || row.kind === 'taint')) continue;
+    const label = ill ? `${AFFLICTIONS.get(ill.id).label}: ${AFFLICTIONS.get(ill.id).stages[ill.stage - 1].label}` : row.label;
+    out.push(`<span class="chip dislike" title="${esc(label)}: ${esc(row.note)}">${esc(label)}</span>`);
+  }
   return out.length ? `<div class="chips">${out.join('')}</div>` : '';
 }
 
@@ -309,6 +315,7 @@ export class Panel {
     const ore = exposedOre(w);
     this.set('worldKv',
       `<dt>Жители</dt><dd>${col.length} из ${popCap(w)}${raiders ? ` · налётчиков ${raiders}` : ''}</dd>` +
+      `<dt title="Показатели поселения (data/colonyStats.js): значение против нормы; красное — ниже нормы">Показатели</dt><dd class="nb">${settlementStats(w).map(s => `<span title="${esc(s.low)}"${s.ok ? '' : ' style="color:var(--danger,#d9585e)"'}>${esc(s.label)} ${Number.isFinite(s.value) ? s.value.toFixed(s.id === 'mood' ? 2 : 1) : '∞'} / ${s.norm}</span>`).join('<br>')}</dd>` +
       `<dt>Местность</dt><dd class="nb">${this.regionText(w)}</dd>` +
       `<dt>Новый поселенец</dt><dd>${this.settlerText(w)}</dd>` +
       `<dt title="Сила следующей банды в коэффициенте силы (КС: обычный человек с костяным копьём — 100). Налётчики не видят лагерь: они знают о нём по слухам, которые обновляются раз в день">Угроза налёта</dt><dd>${raidStrength(w)} КС (уровень ${raidThreat(w).toFixed(1)}) · колония ${Math.round(col.reduce((s, a) => s + strengthOf(a), 0))} КС, по слухам ${Math.round(colonyStrength(w))}${raidOdds(w).dist ? ` · ${this.waitText(w, w.outside.next.raiders)}, если выйдут (${Math.round(raidOdds(w).chance * 100)}%)` : ''}</dd>` +

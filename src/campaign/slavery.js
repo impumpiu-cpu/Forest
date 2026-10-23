@@ -15,6 +15,7 @@ import {free, held, bondsSets, mouths} from './captives.js';
 import {makeMember, draw} from './start.js';
 import {bestBonds} from '../data/captives.js';
 import {assign} from './baggage.js';
+import {famed} from './road.js';
 
 const gold = v => Math.round(v * 10) / 10;
 const clamp01 = v => Math.max(0, Math.min(1, v));
@@ -47,7 +48,7 @@ function deal(a, K, t, st, L, r, parts) {
     if (!short && (m.captive.resigned || (m.captive.will ?? 0) < SLAVE.sell.will)) continue;   // an unruly one, or anyone when food runs short
     const p = gold(priceOf(m) * L.k * STANDING[st].sell);
     m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, sold: true};
-    K.gold = gold(K.gold + p); K.stats.sold = (K.stats.sold || 0) + 1;
+    K.gold = gold(K.gold + p); K.stats.sold = (K.stats.sold || 0) + 1; famed(a, K, 'slaveSale', t.realm);   // infamy with the town's realm (campaign/road.js)
     parts.push(`${gw(m, 'продали пленного', 'продали пленную')} ${m.name} (${SPECIES.get(m.race).label}) за ${p} зол.`);
     // where it is frowned on, the town's realm thinks less of the caravan's
     if (L.law === 'frowned' && t.realm && K.realm && t.realm !== K.realm) { const rel = relation(a, K.realm, t.realm); if (rel) rel.att = Math.max(-5, rel.att + L.att); }

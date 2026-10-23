@@ -5,7 +5,7 @@
   "description": "Тёплый Брод — симуляция поселения: поля, навигация, агенты",
   "scripts": {
     "build": "node tools/build.mjs",
-    "test": "node tools/check-layers.mjs && node tools/atlas-check.mjs 2 && node tools/atlas-save-check.mjs 1 && node tools/map-check.mjs 3 && node tools/seam-check.mjs 16 && node tools/campaign-check.mjs 1 && node tools/check-data.mjs && node tools/check-tables.mjs && node tools/align-check.mjs && node tools/leaders-check.mjs && node tools/tech-check.mjs && node tools/kinds-check.mjs && node tools/fight-check.mjs && node tools/conditions-check.mjs && node tools/checks-check.mjs && node tools/kingdom-check.mjs && node tools/land-check.mjs && node tools/settle-check.mjs && node tools/quest-hand-check.mjs && node tools/audit-check.mjs && node tools/logic-check.mjs && node tools/determinism.mjs 2 && node tools/rng-check.mjs 3 && node tools/smoke.mjs 2",
+    "test": "node tools/check-layers.mjs && node tools/atlas-check.mjs 2 && node tools/atlas-save-check.mjs 1 && node tools/map-check.mjs 3 && node tools/seam-check.mjs 16 && node tools/campaign-check.mjs 1 && node tools/check-data.mjs && node tools/check-tables.mjs && node tools/align-check.mjs && node tools/leaders-check.mjs && node tools/tech-check.mjs && node tools/kinds-check.mjs && node tools/fight-check.mjs && node tools/conditions-check.mjs && node tools/checks-check.mjs && node tools/kingdom-check.mjs && node tools/content-check.mjs && node tools/land-check.mjs && node tools/settle-check.mjs && node tools/quest-hand-check.mjs && node tools/audit-check.mjs && node tools/logic-check.mjs && node tools/determinism.mjs 2 && node tools/rng-check.mjs 3 && node tools/smoke.mjs 2",
     "smoke": "node tools/smoke.mjs",
     "balance": "node tools/balance.mjs",
     "stress": "node tools/stress.mjs",
@@ -31,6 +31,7 @@
     "conditions": "node tools/conditions-check.mjs",
     "checks": "node tools/checks-check.mjs",
     "kingdom": "node tools/kingdom-check.mjs",
+    "content": "node tools/content-check.mjs",
     "land": "node tools/land-check.mjs",
     "settle": "node tools/settle-check.mjs",
     "questhand": "node tools/quest-hand-check.mjs",

@@ -65,7 +65,7 @@ OFFICES.registerAll([
   {id: 'treasurer', label: 'казначей', adds: {economy: 0.1}, vacant: {economy: -0.1}, years: [8, 25]},
   {id: 'priest', label: 'первосвященник', adds: {culture: 0.05, loyalty: 0.05}, vacant: {loyalty: -0.05}, years: [10, 30]},
 ]);
-export const COURT = {fill: 0.7};   // the chance a spring fills an empty office
+export const COURT = {fill: 0.7, female: 0.5};   // the chance a spring fills an empty office; that its holder is a woman
 
 // The events of a realm's year: a random table (data/chance.js format, mode `one` by weight) drawn with `chance` a year.
 // `when` — as for edicts; `adds` — to the attributes for that year; `ruin` — to the ruin; `text` — the chronicle line

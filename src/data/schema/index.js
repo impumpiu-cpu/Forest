@@ -74,6 +74,10 @@ import {JOBS} from '../jobs.js';
 import {RECIPES} from '../recipes.js';
 import {DIFFICULTY, DEGREES, DEGREE_NAMES, DEGREE_CHECKS, DEGREE_EFFECTS} from '../checks.js';
 import {CHANCE_MODES} from '../chance.js';
+import {AFFLICTIONS, AFFLICTION_FROM, ADDICTION, TAINT, stagesErrors} from '../afflictions.js';
+import {LANGUAGES, SPEAKS, SENSES, TONGUE, NIGHT as NIGHT_SIGHT} from '../tongues.js';
+import {REPUTATION, PACES, PACE_RULES} from '../road.js';
+import {SETTLEMENT_STATS} from '../colonyStats.js';
 import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK, MARKET_TIERS, whenErrors, levelsErrors} from '../kingdom.js';
 import {FINDS} from '../campaign.js';
 import {NEEDS} from '../needs.js';
@@ -626,6 +630,41 @@ TABLES.push(
   {id: 'marketTiers', label: 'Рынок по ступени города', group: 'Караван', key: 'id', rows: () => MARKET_TIERS.all(),
     note: 'Рынок города для каравана по его ступени, как base value и purchase limit поселения в Pathfinder (data/kingdom.js): maxPrice — самое дорогое, что здесь продают, purse — сколько золота город заплатит за товары каравана за визит. Пусто — без предела (как раньше).',
     columns: [col('id', 'id'), col('label', 'Ступень'), col('tier', 'Ступень №', 'int', {edit: false}), col('maxPrice', 'Самое дорогое, зол.', 'num', {min: 0}), col('purse', 'Кошель города, зол.', 'num', {min: 0})]},
+);
+
+// ── the content of the world (docs/NRI.md, этап 8): illness, addiction, the rot; tongues and senses; the caravan's name
+// and pace; the settlement's vital signs
+TABLES.push(
+  {id: 'afflictions', label: 'Недуги', group: 'Существа', key: 'id', rows: () => AFFLICTIONS.all(),
+    note: 'Болезни со стадиями, как afflictions в Pathfinder 2 (data/afflictions.js): откуда (from) и с каким шансом (catch; 0 — никто не болеет), раз в every дней — проверка буквы stat против ступени save лестницы (с хижиной лекаря — на ступень легче): крит. успех — здоров, успех — стадия назад, провал — вперёд, крит. провал — на две; за последней — смерть, если deadly. Стадия делает с телом свои mods.',
+    columns: [col('id', 'id'), col('label', 'Недуг'), col('cause', 'Умер от'), col('from', 'Откуда', 'enum', {values: AFFLICTION_FROM, edit: false}), col('catch', 'Шанс', 'num', {min: 0, max: 1}),
+      col('stat', 'Буква', 'ref', {ref: STATS}), col('save', 'Ступень', 'ref', {ref: 'difficulty'}), col('every', 'Раз в дней', 'num', {min: 0.05}), col('deadly', 'Смертелен', 'bool'),
+      col('stages', 'Стадии', 'json', {check: (v, resolve) => stagesErrors(v, resolve)}), col('note', 'Описание')]},
+  {id: 'afflictionRules', label: 'Зависимость и порча', group: 'Существа', ...grp({addiction: ADDICTION, taint: TAINT}),
+    note: 'Зависимость (data/afflictions.js): кружка браги цепляет с шансом addiction.braga.hook (0 — никого), без кружки дольше days — «ломка» («Состояния»). Порча: удар нежити прибавляет taint.perHit × «Урон по видам» порча (0 — ничего), уходит по fade в день; на ступенях taint.stages — «порча I–III».'},
+  {id: 'languages', label: 'Языки', group: 'Народы', key: 'id', rows: () => LANGUAGES.all(),
+    note: 'Языки мира (data/tongues.js). Кто на каком говорит — «Языки рас». В походе город торгует на языке своего народа: если никто из каравана его не знает, цены хуже на «Языки и чувства: правила» tongue.barrier (0 — как раньше).',
+    columns: [col('id', 'id'), col('label', 'Язык'), col('note', 'Описание')]},
+  {id: 'speaks', label: 'Языки рас', group: 'Народы', key: 'id', rows: () => Object.entries(SPEAKS).map(([id, tongues]) => ({id, label: SPECIES.has(id) ? SPECIES.get(id).label : id, tongues})),
+    target: (r, c) => (c.key === 'tongues' ? [SPEAKS, r.id] : null),
+    note: 'На каких языках говорит раса, свой — первым (data/tongues.js SPEAKS).',
+    columns: [col('id', 'id'), col('label', 'Раса', 'text', {edit: false}), col('tongues', 'Языки', 'ids', {ref: 'languages'})]},
+  {id: 'senses', label: 'Чувства', group: 'Существа', key: 'id', rows: () => SENSES.all(),
+    note: 'Чем замечают (data/tongues.js SENSES): ночное зрение — ночью видит как днём, прочие видят ночью × (1 − night.loss × ночь; 0 — как раньше); чутьё пока только записано.',
+    columns: [col('id', 'id'), col('label', 'Чувство'), col('live', 'Работает', 'bool', {edit: false}), col('species', 'У кого', 'ids', {ref: SPECIES}), col('note', 'Описание')]},
+  {id: 'tongueRules', label: 'Языки и чувства: правила', group: 'Народы', ...grp({tongue: TONGUE, night: NIGHT_SIGHT}),
+    note: 'tongue.barrier — насколько хуже цены в городе, чей язык караван не знает (покупка × (1 + значение), продажа × (1 − значение)); night.loss — насколько ночь сужает обзор поселенца без ночного зрения.'},
+  {id: 'reputation', label: 'Слава каравана', group: 'Караван', ...grp({reputation: REPUTATION}),
+    note: 'Слава и дурная слава каравана у каждой державы, как в Fallout: New Vegas (data/road.js): победа у города (в near клетках) — win славы у его державы; проданный пленный — slaveSale дурной славы; не больше max. fameDiscount, infamyMarkup — как слава и дурная слава меняют цены (0 — как раньше).'},
+  {id: 'paces', label: 'Темп похода', group: 'Караван', key: 'id', rows: () => PACES.all(),
+    note: 'Темп, как в D&D (data/road.js): × дневного перехода, × добычи в пути, × того, как засада застаёт врасплох (сверх «Дорога и стоянки» ambush.surprise). Какой держит совет — «Темп похода: правила».',
+    columns: [col('id', 'id'), col('label', 'Темп'), col('speed', 'Переход ×', 'num', {min: 0}), col('forage', 'Добыча ×', 'num', {min: 0}), col('wary', 'Засада ×', 'num', {min: 0}), col('note', 'Описание')]},
+  {id: 'paceRules', label: 'Темп похода: правила', group: 'Караван', key: 'id', rows: () => [{id: 'rules', ...PACE_RULES}], target: (r, c) => [PACE_RULES, c.key],
+    note: 'Какой темп совет держит: когда за караваном погоня (pursued), когда опасность вокруг сильнее dangerAt (danger), иначе — обычный. Всё «обычный» — как раньше.',
+    columns: [col('id', 'id'), col('pursued', 'Под погоней', 'ref', {ref: 'paces'}), col('danger', 'В опасности', 'ref', {ref: 'paces'}), col('dangerAt', 'Опасность с', 'num', {min: 0})]},
+  {id: 'settlementStats', label: 'Показатели поселения', group: 'Поселение', key: 'id', rows: () => SETTLEMENT_STATS.all(),
+    note: 'Показатели поселения, как в Fallout 4 (data/colonyStats.js, settlement/stats.js): еда в днях, кровати и тёплые места на жителя, сила против следующего набега, настроение, занятость мест — против нормы. Сами ничего не меняют: их читают названные системы; карточка поселения показывает их, красное — ниже нормы.',
+    columns: [col('id', 'id'), col('label', 'Показатель'), col('norm', 'Норма', 'num'), col('above', 'Норма — не ниже', 'bool', {edit: false}), col('reads', 'Кто читает'), col('low', 'Если не хватает')]},
 );
 
 export const tableById = id => TABLES.find(t => t.id === id);

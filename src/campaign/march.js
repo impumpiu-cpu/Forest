@@ -48,6 +48,7 @@ import {morningFind} from './finds.js';
 import {leaderSlain, livingLeaders} from '../atlas/leaders.js';
 import {wherePhrase} from '../atlas/lairs.js';
 import {LEADER, TRIBE_RAID} from '../data/lairs.js';
+import {termsOf, choosePace, paceOf} from './road.js';
 const SPECIES_LABEL = race => SPECIES.get(race).label;
 
 const SEASON_LIST = SEASONS.all();
@@ -104,7 +105,7 @@ export function pace(a, K, seasonId) {
   let v = CAMPAIGN.speed * scaleOf(a) * slowest(K) * (guided(K) ? HIRES.guide.pace : 1);
   if (K.hungry > 0) v *= CAMPAIGN.hunger.slow;
   if (seasonId === 'winter' && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0) v *= CAMPAIGN.frost;
-  return v;
+  return v * paceOf(K).speed;   // the pace the council keeps (data/road.js PACES; normal — × 1)
 }
 
 export function die(a, K, m, why) {
@@ -617,9 +618,9 @@ export function caravanDay(a, K, day) {
   if (town) {   // a day in town: work for hire, buy the day's food at the market (hired out for board: the town feeds them)
     labour(K);
     if (K.inTown.work) K.food += mouths(K) * CAMPAIGN.ration;
-    const st = standing(a, K, town), price = st ? rationPrice(town, st) : Infinity, want = Math.max(0, ms.length * CAMPAIGN.ration * 2 - K.food);
+    const st = standing(a, K, town), price = st ? rationPrice(town, st, termsOf(a, K, town).buy) : Infinity, want = Math.max(0, ms.length * CAMPAIGN.ration * 2 - K.food);
     const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; }
-  } else if (!camping) march(a, K, pace(a, K, seasonId));
+  } else if (!camping) { const p = choosePace(a, K); if ((K.pace || 'normal') !== p) K.pace = p; march(a, K, pace(a, K, seasonId)); }
   else campWork(a, K, r);
   // the first days of a stop to hunt and gather are played on the local map (campaign/fight.js playStop):
   // what the land gave there is the day's forage
@@ -629,7 +630,7 @@ export function caravanDay(a, K, day) {
   if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; const got = playStop(a, K); if (K.why.startsWith('mine:')) { K.mineDay = got[mineRes(K.why.slice(5))] || 0; K.mineGot = (K.mineGot || 0) + K.mineDay; } }
   else if (camping && K.why.startsWith('mine:')) { K.mineDay = autoMine(a, K, r); K.mineGot = (K.mineGot || 0) + K.mineDay; }
   if (!town && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
-  const forage = ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+  const forage = ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march * paceOf(K).forage) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   if (!town && !onMap) K.food += forage;
   // the meal
   const need = mouths(K) * CAMPAIGN.ration, eat = Math.min(K.food, need), fed = eat / need;   // a captive on a cut ration eats less (campaign/captives.js)

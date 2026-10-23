@@ -23,6 +23,8 @@ import {wake} from './attention.js';
 import {noteFallen} from './squad.js';
 import {HIT_LOCATIONS} from '../data/anatomy.js';
 import {degreeOf, passed, degreeValue} from '../data/checks.js';
+import {AFFLICTIONS} from '../data/afflictions.js';
+import {catchIll} from './afflictions.js';
 
 const luckOf = a => a.special?.L ?? NORM;
 // the colony's own falls; a foe's are counted apart (they may be taken captive: settlement/captives.js)
@@ -94,6 +96,9 @@ export function stabilize(w, helper, a) {
   if (d.trauma) a.wounds.push({id: d.trauma});
   refreshBody(a);
   a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + (helper?.skill?.medicine || 0)));
+  // the dressed wound may fester (data/afflictions.js fever `catch`, less for a skilled healer; 0 — never)
+  const FV = AFFLICTIONS.get('fever');
+  if (FV.catch > 0 && w.rngs.colony() < FV.catch * (1 - (helper?.skill?.medicine || 0))) catchIll(w, a, 'fever');
   a.task = null; wake(a, 'очнулся после раны', 'очнулся');
   const f = tally(w, a); f.saved++; if (d.trauma) f.traumas++;
   think(w, a, 'survived', {name: helper?.name, gender: helper?.gender});

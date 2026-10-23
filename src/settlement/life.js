@@ -30,6 +30,7 @@ import {stripAll} from '../agents/equipment.js';
 import {SPECIES} from '../data/species.js';
 import {ofSpeciesList} from '../agents/lookup.js';
 import {LIFE} from '../data/colony.js';
+import {ADDICTION} from '../data/afflictions.js';
 
 // races that live on brew (dwarves: `brew` in data/races.js) work slower without it
 const brewOf = a => SPECIES.get(a.species).brew;
@@ -143,6 +144,8 @@ function evening(w) {
     if (a.task?.id === 'treat' || a.dead || a.downed) continue;
     w.stock.braga -= 1;
     a.drankAt = w.tick;
+    // a cup may hook (data/afflictions.js ADDICTION; 0 — never): without one for long, withdrawal (agents/afflictions.js)
+    if (ADDICTION.braga.hook > 0 && !a.addicted && w.rngs.colony() < ADDICTION.braga.hook) a.addicted = 'braga';
     const b = brewOf(a);
     if (b) a.needs.food = Math.min(1, (a.needs.food ?? 1) + b.food);
     think(w, a, feast ? 'feast' : b ? 'beerFed' : 'drank');

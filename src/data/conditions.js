@@ -11,8 +11,9 @@
 // Wounds, traumas and the stages of exhaustion work through the body's sources (agents/special.js refreshBody).
 // The states run in agents/body.js stepEffects. data/wounds.js WOUNDS is the wounds and traumas of this table.
 import {Registry} from '../core/registry.js';
+import {TAINT} from './afflictions.js';
 
-export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', state: 'состояние', exhaustion: 'истощение'};
+export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', state: 'состояние', exhaustion: 'истощение', taint: 'порча'};
 
 export const CONDITIONS = new Registry('condition');
 
@@ -33,6 +34,12 @@ CONDITIONS.registerAll([
   {id: 'stunned', kind: 'state', where: 'stunned', label: 'оглушён', ticks: 40, slow: 0.5,
     note: 'оглушающее оружие: шанс — значение свойства stun; ticks тиков не бьёт и не стреляет, шаг × slow'},
   {id: 'drunk', kind: 'state', where: 'drankAt', label: 'во хмелю', note: 'кружка браги на вечернем совете (settlement/life.js); у рас, что живут брагой, — работа (brew у расы)'},
+  // ── an illness, withdrawal, the rot (data/afflictions.js: how they are caught, the stages of an illness)
+  {id: 'ill', kind: 'state', where: 'ill', label: 'болен', note: 'недуг со стадиями («Недуги»): стадия — что делает с телом'},
+  {id: 'withdrawal', kind: 'state', where: 'withdrawal', label: 'ломка', mods: {}, note: 'привыкший к браге без кружки дольше, чем «Зависимости» days'},
+  {id: 'tainted1', kind: 'taint', stage: 1, label: 'порча I', mods: {}, note: 'удары нежити; проходит сама'},
+  {id: 'tainted2', kind: 'taint', stage: 2, label: 'порча II', mods: {}, note: 'порча въелась глубже'},
+  {id: 'tainted3', kind: 'taint', stage: 3, label: 'порча III', mods: {}, note: 'порча на грани: тело чернеет'},
   // ── exhaustion: neutral for now (empty mods), ready for the numbers
   {id: 'exhausted1', kind: 'exhaustion', stage: 1, label: 'истощение I', mods: {}, note: 'одна нужда на исходе'},
   {id: 'exhausted2', kind: 'exhaustion', stage: 2, label: 'истощение II', mods: {}, note: 'две нужды на исходе'},
@@ -42,6 +49,8 @@ CONDITIONS.registerAll([
 // a need at or below `low` counts towards exhaustion
 export const EXHAUSTION = {low: 0.15, needs: ['food', 'rest', 'warmth']};
 
+// the stage of the rot a creature carries (data/afflictions.js TAINT), as its row
+export const taintRow = a => { const n = TAINT.stages.filter(x => (a.taint || 0) >= x).length; return n ? CONDITIONS.filter(c => c.kind === 'taint').find(c => c.stage === n) ?? null : null; };
 export const exhaustionRow = stage => (stage > 0 ? CONDITIONS.filter(c => c.kind === 'exhaustion').find(c => c.stage === stage) ?? null : null);
 // the stage a creature's needs put it at now
 export function exhaustionStage(a) {
@@ -62,6 +71,9 @@ export function conditionsOf(w, a) {
   if (a.bleeding && now < a.bleeding.until) out.push({row: CONDITIONS.get('bleeding'), until: a.bleeding.until});
   if (a.stunned && now < a.stunned.until) out.push({row: CONDITIONS.get('stunned'), until: a.stunned.until});
   const ex = exhaustionRow(a.exhaust || 0); if (ex) out.push({row: ex});
+  if (a.ill) out.push({row: CONDITIONS.get('ill'), until: a.ill.next, ill: a.ill});
+  if (a.withdrawal) out.push({row: CONDITIONS.get('withdrawal')});
+  const tr = taintRow(a); if (tr) out.push({row: tr});
   return out;
 }
 export {hasMods as conditionHasMods};

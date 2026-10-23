@@ -50,7 +50,7 @@ export function needs(w) {
     orders: new Proxy({}, {get: (o, station) => col.some(a => stationHasWork(w, station, a))})};
   const out = {};
   const burn = dailyBurn(w), fuelDays = fuelStock(w) / Math.max(0.1, burn);
-  const S = season(w), foodDays = ctx.food / Math.max(0.5, pop * 0.9);
+  const S = season(w), foodDays = ctx.food / Math.max(PLAN.rationFloor, pop * PLAN.ration);
   const wantFoodDays = S.id === 'autumn' ? PLAN.foodDaysAutumn : PLAN.foodDays;
   for (const job of JOBS.all()) {
     if (!jobUnlocked(w, job)) continue;

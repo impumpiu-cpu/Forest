@@ -23,6 +23,7 @@ import {campSetup, runCamp, campOutcome, outcomeHash} from './camp.js';
 import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
 import {afterFight} from './quest.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
+import {famed, paceOf} from './road.js';
 
 // how long the local camps of a campaign took on this machine (not part of the campaign)
 export const CAMP_TIME = new WeakMap();
@@ -41,7 +42,7 @@ export function fight(a, K, d, r, how = 'night') {
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
   delete K.fightSrc;
   if (!alive(K).length) return win;
-  if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); formersFought(K); }
+  if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); formersFought(K); famed(a, K, 'win'); }   // fame with the realm about (campaign/road.js)
   else { K.stats.fled++; shake(K, LOYALTY.lost); K.camp = 0; K.why = ''; K.build = null; }
   afterFight(a, K, d, win, (text, kind, world) => say(a, K, text, kind, world));   // the crown's carrier fell? (campaign/quest.js)
   return win;
@@ -197,7 +198,7 @@ function spoils(a, K, d, r) {
 
 // ── at once (the quick mode): the foe's might against the caravan's
 function autoFight(a, K, d, r, how) {
-  const F = CAMPAIGN.fight, foe = FOES[d.kind], E = foe.might * (d.strength ?? 1) * between(r, [0.6, 1.4]), P = caravanMight(K) * (how === 'ambush' ? AMBUSH.surprise : 1);
+  const F = CAMPAIGN.fight, foe = FOES[d.kind], E = foe.might * (d.strength ?? 1) * between(r, [0.6, 1.4]), P = caravanMight(K) * (how === 'ambush' ? AMBUSH.surprise * paceOf(K).wary : 1);
   const share = P / (P + E), win = r() < share;
   // the blows: more when they lose, mostly on the knights, who shield the squires
   let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);

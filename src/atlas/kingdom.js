@@ -63,7 +63,7 @@ export function stepKingdom(a, say) {
       const h = K.court[O.id];
       if (h && year >= h.until) { K.court[O.id] = null; tell(`${O.label[0].toUpperCase() + O.label.slice(1)} ${name} ${h.name} оставил${h.f ? 'а' : ''} свой пост.`); }
       if (!K.court[O.id] && r() < COURT.fill) {
-        const f = r() < 0.5, nm = makeName(race, r, {gender: f ? 'f' : 'm'}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));
+        const f = r() < COURT.female, nm = makeName(race, r, {gender: f ? 'f' : 'm'}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));
         K.court[O.id] = {name: nm, f, since: year, until: year + years};
         tell(`Новый ${O.label} ${name} — ${nm}.`);
       }

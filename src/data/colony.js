@@ -65,6 +65,8 @@ export const PLAN = {
   fuelDays: 3,        // keep this many days of firewood ahead…
   fuelDaysCold: 5,    // …and this many when it freezes
   foodDays: 6,        // days of food the colony likes to have ahead
+  ration: 0.9,        // food a colonist eats a day, for counting the days ahead (settlement/plan.js, settlement/stats.js)…
+  rationFloor: 0.5,   // …and no less than this a day however few they are
   foodDaysAutumn: 12, // …before winter (autumn): stock up
   minWeight: 0.08,    // a job wanted less than this gets no place
   // how a vacancy pulls a colonist's choice (vacancyPull): × and + on the job's own score
