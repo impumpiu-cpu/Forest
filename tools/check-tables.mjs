@@ -139,3 +139,26 @@ console.log('ok   правка таблиц: значения доходят д�
   if (bad.length) { console.log('Словари:\n  ' + bad.join('\n  ')); process.exit(1); }
   console.log(`ok   словари: модификаторов существа ${CREATURE_MODS.all().length}, поселения ${COLONY_MODS.all().length}, тегов ${TAGS.all().length} — все mods, effects, флаги и теги из словарей; опечатку правка не принимает`);
 }
+
+// ── summaries (docs/NRI.md этап 6): every number of the sheets is finite, every species has a rating, and the sheets
+// follow an edit of what they are made of
+{
+  const {tableById} = await import('../src/data/schema/index.js');
+  const E = await import('../src/data/schema/edits.js');
+  const bad = [];
+  for (const id of ['creatureSheet', 'recipeSheet', 'buildingSheet']) {
+    const t = tableById(id);
+    for (const r of t.rows()) for (const c of t.columns) { const v = r[c.key]; if (typeof v === 'number' && !Number.isFinite(v)) bad.push(`${t.label} · ${r.id} · ${c.label}: ${v}`); }
+  }
+  const sheet = id => tableById(id).rows();
+  for (const r of sheet('creatureSheet')) if (!(r.rating > 0)) bad.push(`Существа (итог) · ${r.id}: КС ${r.rating}`);
+  const furcoat = () => sheet('recipeSheet').find(r => r.id === 'furcoat'), hut = () => sheet('buildingSheet').find(r => r.id === 'hut'), wolf = () => sheet('creatureSheet').find(r => r.id === 'wolf');
+  const m0 = furcoat().margin, g0 = hut().costGold, hp0 = wolf().hp, k0 = wolf().rating;
+  E.setCell('resourcePrices', 'hide', 'price', 5); E.setCell('resourcePrices', 'wood', 'price', 1); E.setCell('creatures', 'wolf', 'hp', 3);
+  if (furcoat().margin === m0 || !(hut().costGold > g0) || !(wolf().hp > hp0) || !(wolf().rating > k0)) bad.push('итоговые таблицы не следуют за правкой цен и существ');
+  E.resetAll();
+  if (furcoat().margin !== m0 || hut().costGold !== g0 || wolf().hp !== hp0 || wolf().rating !== k0) bad.push('итоговые таблицы не вернулись после сброса');
+  if (bad.length) { console.log('Итоговые таблицы:\n  ' + bad.join('\n  ')); process.exit(1); }
+  const loss = sheet('recipeSheet').filter(r => r.loss);
+  console.log(`ok   итоговые таблицы: видов ${sheet('creatureSheet').length}, рецептов ${sheet('recipeSheet').length}, построек ${sheet('buildingSheet').length} — числа конечны, следуют за правками${loss.length ? `; в убыток: ${loss.map(r => `${r.id} ${r.margin}`).join(', ')}` : ''}`);
+}

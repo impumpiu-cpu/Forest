@@ -37,6 +37,7 @@ import {BASE_MODS, rebuildBaseMods} from '../traits.js';
 import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '../mods.js';
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
 import {autoTable, objectTable} from './auto.js';
+import {creatureSheet, recipeSheet, buildingSheet} from './sheets.js';
 import * as COLONY from '../colony.js';
 import * as BEHAVIOUR from '../behaviour.js';
 import * as NATURE from '../nature.js';
@@ -581,6 +582,23 @@ TABLES.push(
       col('row', 'Что', 'text', {edit: false}), col('weight', 'Вес', 'num', {min: 0}), col('threat', 'С угрозы', 'num', {min: 0}), col('below', 'Ниже угрозы', 'num', {min: 0}),
       col('night', 'Ночью глубже', 'num', {min: 0, max: 1}), col('perNight', 'За ночь +', 'num', {min: 0}), col('chance', 'Шанс', 'num', {min: 0, max: 1}),
       col('ctx', 'От чего зависит', 'text', {edit: false}), col('gives', 'Что даёт', 'text', {edit: false})]},
+);
+
+// ── summaries (docs/NRI.md, этап 6): what the tables add up to, worked out from them (./sheets.js)
+TABLES.push(
+  {id: 'creatureSheet', label: 'Существа (итог)', group: 'Существа', key: 'id', computed: true, rows: creatureSheet,
+    note: 'Каждый вид как он есть (вычисляется из таблиц): типичное существо — середина пределов SPECIAL, полное здоровье, без оружия. Урон за 1000 тиков, стойкость (здоровье / доля ударов, что проходят и ранят), их произведение против эталонного бойца, и КС одного такого, как приходит (среднее по 16).',
+    columns: [col('id', 'id'), col('label', 'Кто'), col('kind', 'Вид', 'enum', {values: KINDS}), col('mind', 'Разум', 'enum', {values: MINDS}), col('plan', 'План тела', 'enum', {values: BODY_PLANS}),
+      col('hp', 'Здоровье', 'num'), col('speed', 'Скорость', 'num'), col('blow', 'Удар', 'num'), col('cd', 'Пауза', 'int'), col('type', 'Тип удара', 'enum', {values: BLOWS}),
+      col('offence', 'Урон / 1000 тиков', 'num'), col('staying', 'Стойкость', 'num'), col('raw', 'Сила / эталон', 'num'), col('rating', 'КС', 'int'), col('ks', 'КС-поправка', 'num')]},
+  {id: 'recipeSheet', label: 'Рецепты (итог)', group: 'Поселение', key: 'id', computed: true, rows: recipeSheet,
+    note: 'Экономика ремесла (вычисляется): что уходит и что выходит в имперском золоте по «Ценам ресурсов» и «Предметам (итог)», труд, маржа и золото за час работы мастера. «Убыток» — вещь дешевле того, из чего сделана.',
+    columns: [col('id', 'id'), col('at', 'Где'), col('tier', 'Тир', 'int'), col('input', 'Из чего'), col('inputGold', 'Вход, зол.', 'num'), col('work', 'Труд', 'int'),
+      col('makes', 'Что выходит'), col('outGold', 'Выход, зол.', 'num'), col('margin', 'Маржа', 'num'), col('perHour', 'Золото за час', 'num'), col('loss', 'Убыток', 'bool')]},
+  {id: 'buildingSheet', label: 'Постройки (итог)', group: 'Поселение', key: 'id', computed: true, rows: buildingSheet,
+    note: 'Постройки поселения как они есть (вычисляется): цена в золоте по «Ценам ресурсов», труд, сколько можно, станция ли, везёт ли обоз, и что дают поселению (effects по «Модификаторам поселения»).',
+    columns: [col('id', 'id'), col('name', 'Название'), col('cost', 'Из чего'), col('costGold', 'Цена, зол.', 'num'), col('work', 'Труд', 'int'), col('max', 'Сколько', 'int'),
+      col('station', 'Станция', 'bool'), col('portable', 'В обозе', 'bool'), col('effects', 'Эффекты'), col('effect', 'Описание')]},
 );
 
 export const tableById = id => TABLES.find(t => t.id === id);
