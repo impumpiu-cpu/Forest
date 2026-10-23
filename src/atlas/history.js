@@ -24,6 +24,7 @@ import {stepTech} from './tech.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
+import {stepKingdom} from './kingdom.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -63,7 +64,8 @@ function coarseToCell(a, j) {
 
 function say(a, text) {
   const H = a.hist;
-  a.chronicle.push({era: H.era, year: H.year, season: H.season, text});
+  // a line, or {text, topic} (the kingdom's lines are 'kingdom': minor in the chronicle, atlas/chronicle.js)
+  a.chronicle.push(typeof text === 'string' ? {era: H.era, year: H.year, season: H.season, text} : {era: H.era, year: H.year, season: H.season, ...text});
 }
 
 export function startHistory(a) {
@@ -135,6 +137,7 @@ export function stepHistory(a, onDay = null) {
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
+  stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
   stepTech(a, t => say(a, t));   // the realms' finds: their own stream, in spring (atlas/tech.js)   // the old lairs' leaders: their own stream, in spring (atlas/leaders.js)
   stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);

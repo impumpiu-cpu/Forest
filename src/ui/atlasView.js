@@ -32,6 +32,7 @@ import {faunaAt} from '../atlas/fauna.js';
 import {lairAt} from '../atlas/lairs.js';
 import {LAIRS} from '../data/lairs.js';
 import {TECHS} from '../data/tech.js';
+import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {WILD_YEARS, ERAS} from '../data/history.js';
 import {SPECIES} from '../data/species.js';
 import {TOWN_BUILDINGS, EFFECTS} from '../data/townBuildings.js';
@@ -631,6 +632,14 @@ export class MapView {
       parts.push(`${townLabel(town)} ${town.name} (${town.realm ? realmLabel(a, town.realm) : P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}, угодья в ${siteRadius(a, town)} клетках; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : '') + feed);
       const R = town.realm ? a.realms.find(r => r.id === town.realm) : null;
       if (R?.tech) parts.push(`держава знает: ${R.tech.length ? R.tech.map(id => TECHS.get(id).label.toLowerCase()).join(', ') : 'ничего сверх общего'}`);
+      // the realm as a kingdom (atlas/kingdom.js): its attributes, its ruin, its court
+      const Kd = R?.kingdom;
+      if (Kd) {
+        const st = REALM_STATS.all().map(x => `${x.label} ${Kd.stats[x.id].toFixed(1)}`).join(', ');
+        const ru = RUINS.all().filter(x => Kd.ruin[x.id] > 0.05).map(x => `${x.label} ${Kd.ruin[x.id].toFixed(1)}`).join(', ');
+        const court = OFFICES.all().map(o => `${o.label}: ${Kd.court[o.id]?.name || '—'}`).join(', ');
+        parts.push(`держава: ${st}${ru ? `; разруха: ${ru}` : ''}; двор — ${court}`);
+      }
     }
     const party = partyAt(a, i);
     if (party) {

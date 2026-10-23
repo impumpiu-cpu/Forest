@@ -20,6 +20,7 @@ import {DIRS8} from './heap.js';
 import {ALIGN_DRIFT, alignNear, shiftAlign, spreadOf} from '../data/values.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {TECH_RULES} from '../data/tech.js';
+import {schismFactor} from './kingdom.js';
 
 const lv = id => ORE_GENESIS.get(id).levels;
 const near = (a, i, test) => {
@@ -142,7 +143,7 @@ export function stepRealms(a, rnd, say) {
         if (t.contender === SCHISM.years) say(`${cap1(townLabel(t, 0))} ${t.name} не меньше ${townLabel(seat, 2)} ${seat.name} и стоит далеко от ${townGender(seat) === 'f' ? 'неё' : 'него'}: в державе «${realmLabel(a, r.id)}» зреет раскол.`);
         if (t.contender < SCHISM.years) continue;
         const shaken = atWar || (seat.raided != null && H.year - seat.raided < 6);
-        if (rnd() < SCHISM.chance * far * (shaken ? SCHISM.shaken : 1)) {
+        if (rnd() < SCHISM.chance * far * (shaken ? SCHISM.shaken : 1) * schismFactor(r)) {   // × the kingdom's strife and loyalty (atlas/kingdom.js; 1 while FEEDBACK is 0)
           t.contender = 0;
           breakAway(a, r, t, rnd, say, `Раскол:`);
           break;

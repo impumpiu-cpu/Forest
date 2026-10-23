@@ -15,6 +15,7 @@ import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
 import {BEASTS, VEHICLES} from '../data/transport.js';
 import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH} from '../data/market.js';
+import {marketTierOf} from '../data/kingdom.js';
 import {RECIPES} from '../data/recipes.js';
 import {room} from './company.js';
 import {CAMPAIGN} from '../data/campaign.js';
@@ -155,10 +156,13 @@ export function trade(a, K, t, st) {
   // ore of a metal above the caravan's own goes to the smith first (what the smith leaves is sold after); in a town
   // without one it is kept for the next
   const tier = metalTier(K), ore = new Set(ORES.all().filter(o => o.tier > tier).map(o => o.resource)), smith = has(t, SMITH.at);
+  // the town's market by its step (data/kingdom.js MARKET_TIERS): the gold it pays in a visit, the dearest it sells
+  const M = marketTierOf(t);
+  let purse = M.purse ?? Infinity;
   const sell = keep => {
     let got = 0;
     for (const [id, n] of Object.entries(K.cargo)) { if (isBonds(id) || keep(id)) continue;   // bonds are kept for captives
-      const p = sellPrice(t, st, id) * n; if (p > 0) { got += p; delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); } }
+      const p = sellPrice(t, st, id) * n; if (p > 0 && p <= purse) { got += p; purse -= p; delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); } }
     K.gold = gold(K.gold + got);
   };
   sell(id => ore.has(id));
@@ -176,6 +180,7 @@ export function trade(a, K, t, st) {
   // the rest, in order of need
   for (const o of wants(a, K, t, st)) {
     const p = offerPrice(o, st);
+    if (M.maxPrice != null && p > M.maxPrice) continue;   // too dear for a market of this step
     if (K.gold - p < reserveFor(K, t, st, WANTS.reserve)) continue;
     // still wanted after what was bought before it in this visit
     if (o.kind === 'building' && !K.vehicles.some(x => x.kind === 'wagon' && !x.building)) continue;

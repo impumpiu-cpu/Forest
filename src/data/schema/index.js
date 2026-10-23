@@ -74,6 +74,7 @@ import {JOBS} from '../jobs.js';
 import {RECIPES} from '../recipes.js';
 import {DIFFICULTY, DEGREES, DEGREE_NAMES, DEGREE_CHECKS, DEGREE_EFFECTS} from '../checks.js';
 import {CHANCE_MODES} from '../chance.js';
+import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK, MARKET_TIERS, whenErrors, levelsErrors} from '../kingdom.js';
 import {FINDS} from '../campaign.js';
 import {NEEDS} from '../needs.js';
 import {THOUGHTS} from '../thoughts.js';
@@ -599,6 +600,32 @@ TABLES.push(
     note: 'Постройки поселения как они есть (вычисляется): цена в золоте по «Ценам ресурсов», труд, сколько можно, станция ли, везёт ли обоз, и что дают поселению (effects по «Модификаторам поселения»).',
     columns: [col('id', 'id'), col('name', 'Название'), col('cost', 'Из чего'), col('costGold', 'Цена, зол.', 'num'), col('work', 'Труд', 'int'), col('max', 'Сколько', 'int'),
       col('station', 'Станция', 'bool'), col('portable', 'В обозе', 'bool'), col('effects', 'Эффекты'), col('effect', 'Описание')]},
+);
+
+// ── the realm as a kingdom (docs/NRI.md, этап 7; data/kingdom.js, atlas/kingdom.js)
+const STAT_MAP = {type: 'map', ref: 'realmStats'}, RUIN_MAP = {type: 'map', ref: 'ruins', min: 0};
+TABLES.push(
+  {id: 'realmStats', label: 'Держава: показатели', group: 'Народы', key: 'id', rows: () => REALM_STATS.all(),
+    note: 'Четыре показателя державы, как в Kingmaker PF2 (data/kingdom.js): из чего складывается каждый — эффекты построек её городов (в среднем на город) × вес, мировоззрение (±5) × вес; к ним — должности, указы, событие года, минус разруха. Считаются раз в год, весной (atlas/kingdom.js).',
+    columns: [col('id', 'id'), col('label', 'Показатель'), col('from', 'Из построек', 'map', {ref: keysOf(TOWN_FX)}), col('compass', 'Из мировоззрения', 'map', {ref: keysOf({order: 1, mercy: 1})}), col('note', 'Описание')]},
+  {id: 'ruins', label: 'Держава: разруха', group: 'Народы', key: 'id', rows: () => RUINS.all(),
+    note: 'Четыре вида разрухи: растёт каждый год от своих источников (towns — на город, pop — на 1000 жителей, upkeep — на очко содержания сверх экономики, wars — на войну, raided — на разорённый город), убывает от показателя, что её держит (× «правила» fall), и отнимает от показателя eats (× penalty на очко).',
+    columns: [col('id', 'id'), col('label', 'Разруха'), col('grows', 'Растёт от', 'map', {ref: keysOf({towns: 1, pop: 1, upkeep: 1, wars: 1, raided: 1}), min: 0}),
+      col('fall', 'Убывает от', 'ref', {ref: 'realmStats'}), col('eats', 'Отнимает', 'ref', {ref: 'realmStats'}), col('note', 'Описание')]},
+  {id: 'edicts', label: 'Держава: указы', group: 'Народы', key: 'id', rows: () => EDICTS.all(),
+    note: 'Что держава объявляет в этот год: первый уровень, чьё условие выполнено (последний — по умолчанию). Условие: war — на войне; below/above — показатель или разруха ниже/выше. adds — к показателям, ruin — к разрухе.',
+    columns: [col('id', 'id'), col('label', 'Указ'), col('levels', 'Уровни', 'json', {check: levelsErrors})]},
+  {id: 'offices', label: 'Держава: двор', group: 'Народы', key: 'id', rows: () => OFFICES.all(),
+    note: 'Должности при дворе: именной держатель (имя — по расе державы) прибавляет к показателям, пустая должность отнимает. Служит years лет, весной пустую должность занимают с шансом «правила» court.fill.',
+    columns: [col('id', 'id'), col('label', 'Должность'), col('adds', 'Занята', 'map', STAT_MAP), col('vacant', 'Пуста', 'map', STAT_MAP), col('years', 'Лет службы', 'json')]},
+  {id: 'realmEvents', label: 'Держава: события', group: 'Народы', key: 'id', rows: () => REALM_EVENTS.all(),
+    note: 'События года — таблица случайностей «одна по весу» (data/chance.js), тянется с шансом «правила» events.chance; условие — как у указов. adds — к показателям в этот год, ruin — к разрухе, text — строка летописи ({realm} — держава).',
+    columns: [col('id', 'id'), col('weight', 'Вес', 'num', {min: 0}), col('when', 'Условие', 'json', {check: whenErrors}), col('adds', 'Показатели', 'map', STAT_MAP), col('ruin', 'Разруха', 'map', RUIN_MAP), col('text', 'Строка летописи')]},
+  {id: 'kingdomRules', label: 'Держава: правила', group: 'Народы', ...grp({ruin: RUIN_RULES, upkeep: UPKEEP, court: COURT, events: EVENTS_RULE, feedback: FEEDBACK}),
+    note: 'Разруха: ruin.fall — как показатель её гасит, ruin.penalty — сколько очко разрухи отнимает, ruin.max — потолок. upkeep — содержание постройки по категории (очки экономики в год). court.fill — шанс занять пустую должность. events.chance — шанс события в год. feedback — что держава делает с миром: 0 — ничего; schismByStrife, schismByLoyalty — шанс раскола × (1 + значение × раздоры) и × (1 + значение × нехватка лояльности).'},
+  {id: 'marketTiers', label: 'Рынок по ступени города', group: 'Караван', key: 'id', rows: () => MARKET_TIERS.all(),
+    note: 'Рынок города для каравана по его ступени, как base value и purchase limit поселения в Pathfinder (data/kingdom.js): maxPrice — самое дорогое, что здесь продают, purse — сколько золота город заплатит за товары каравана за визит. Пусто — без предела (как раньше).',
+    columns: [col('id', 'id'), col('label', 'Ступень'), col('tier', 'Ступень №', 'int', {edit: false}), col('maxPrice', 'Самое дорогое, зол.', 'num', {min: 0}), col('purse', 'Кошель города, зол.', 'num', {min: 0})]},
 );
 
 export const tableById = id => TABLES.find(t => t.id === id);
