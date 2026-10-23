@@ -45,6 +45,9 @@ import {SPECIES} from '../data/species.js';
 import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.js';
 import {nameCaravanMasters} from './masters.js';
 import {morningFind} from './finds.js';
+import {leaderSlain, livingLeaders} from '../atlas/leaders.js';
+import {wherePhrase} from '../atlas/lairs.js';
+import {LEADER, TRIBE_RAID} from '../data/lairs.js';
 const SPECIES_LABEL = race => SPECIES.get(race).label;
 
 const SEASON_LIST = SEASONS.all();
@@ -323,6 +326,9 @@ function enterTown(a, K, t) {
   const parts = [...trade(a, K, t, st), ...hire(a, K, t, st, r)], c = companion(a, K, t, st, r), heard = rumour(a, K, t, r);
   if (c) parts.push(c);
   if (heard) parts.push(heard);
+  // rumours of a leader of an old lair near (atlas/leaders.js): the nearest not yet told, within its raids' reach
+  const ofLeader = leaderRumour(a, K, t);
+  if (ofLeader) parts.push(ofLeader);
   done();
   K.inTown = {id: t.id, since: K.day, why}; K.lastVisit = K.day; K.stats.towns = (K.stats.towns || 0) + 1;
   if (why === 'winter') K.winterYear = a.hist.year;
@@ -518,10 +524,10 @@ function night(a, K) {
   const foes = stepBubble(a, K, 'night', r, guided(K)).filter(t => THINGS[t.kind].mood === 'hostile').sort((p, q) => Math.hypot(p.x - K.x, p.y - K.y) - Math.hypot(q.x - K.x, q.y - K.y));
   if (foes.length) {
     const t = foes[0], win = fight(a, K, foeOf(t), r, 'night');
-    settle(K, t, win); K.stats.met = (K.stats.met || 0) + 1;
+    settle(K, t, win); K.stats.met = (K.stats.met || 0) + 1; leaderBeaten(a, K, t, win);
   } else if (r() < BUBBLE.stray * (friendly ? CAMPAIGN.night.friendly : 1)) {
     const ds = dangers(a, K.i), d = ds.length ? ds[(r() * ds.length) | 0] : {kind: 'wolves', strength: 0.7};
-    fight(a, K, d, r, 'night'); K.stats.strays = (K.stats.strays || 0) + 1;
+    const won = fight(a, K, d, r, 'night'); K.stats.strays = (K.stats.strays || 0) + 1; leaderBeaten(a, K, d, won);
   } else {
     // a quiet night: a little found in the morning while they packed
     const M = CAMPAIGN.morning;
@@ -533,7 +539,23 @@ function night(a, K) {
 }
 
 // what a thing of the bubble brings to a fight: its foe, its strength, and who it is on the local map
-const foeOf = t => ({kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null, ...(t.pursuit ? {pursuit: t.src || 'hunt'} : {})});
+const foeOf = t => ({kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null, ...(t.pursuit ? {pursuit: t.src || 'hunt'} : {}), ...(t.boss ? {boss: t.boss} : {})});
+// what a town tells of the leaders near it: the nearest living one within a leader's reach, once per leader
+function leaderRumour(a, K, t) {
+  const reach = TRIBE_RAID.reach * LEADER.reach * scaleOf(a), told = (K.leadersTold ||= []);
+  const near = livingLeaders(a).filter(l => !told.includes(l.id) && Math.hypot(l.x - t.x, l.y - t.y) <= reach).sort((p, q) => Math.hypot(p.x - t.x, p.y - t.y) - Math.hypot(q.x - t.x, q.y - t.y))[0];
+  if (!near) return null;
+  told.push(near.id);
+  return `говорят, ${wherePhrase(a, near.i)} хозяйничает ${near.leader.title[0].toLowerCase()} ${near.leader.name} из «${near.name}»`;
+}
+
+// a leader of an old lair beaten with its own: it lies dead, the world learns of it (atlas/leaders.js)
+function leaderBeaten(a, K, t, win) {
+  if (!win || t.leaderLair == null) return;
+  leaderSlain(a, t.leaderLair);
+  K.stats.leaders = (K.stats.leaders || 0) + 1;
+  say(a, K, `${t.boss.name} пал от рук каравана: его логово осталось без главаря.`, 'fight', true);
+}
 
 // ── meeting the bubble by day: an ambush on the march, a merchant's train on the road, a herd to hunt
 function dayMeetings(a, K, r, marched) {
@@ -542,7 +564,7 @@ function dayMeetings(a, K, r, marched) {
     const T = THINGS[t.kind];
     if (T.mood === 'hostile' && T.ambush && marched && core(K).length && hunting(t)) {   // only one that saw them coming lies in wait
       const win = fight(a, K, foeOf(t), r, 'ambush');
-      settle(K, t, win);
+      settle(K, t, win); leaderBeaten(a, K, t, win);
       break;   // one ambush a day is enough
     }
     if (T.mood === 'trade' && !t.met) { t.met = true; roadTrade(a, K, t); }

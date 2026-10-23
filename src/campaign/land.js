@@ -19,7 +19,7 @@ import {lairAt} from '../atlas/lairs.js';
 import {faunaCell} from '../atlas/fauna.js';
 import {roadAccess} from '../atlas/roads.js';
 import {BIOMES} from '../data/biomes.js';
-import {LAIRS} from '../data/lairs.js';
+import {LAIRS, LEADER} from '../data/lairs.js';
 import {LAIR_BANDS} from '../data/seam.js';
 import {SPECIES} from '../data/species.js';
 import {GAME, CAMPAIGN} from '../data/campaign.js';
@@ -68,7 +68,10 @@ export function dangers(a, i) {
   const lair = lairAt(a, i);
   if (lair) {
     const L = LAIRS.get(lair.kind), kind = L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair';
-    out.push({kind, p: 0.05 + 0.05 * Math.min(1.5, lair.strength), strength: 0.6 + 0.6 * Math.min(2, lair.strength), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind)});
+    // a lair with a leader (atlas/leaders.js) keeps its land better and comes harder, the leader at the head (LEADER.camp)
+    const ld = lair.leader, M = ld ? LEADER.camp : null;
+    out.push({kind, p: (0.05 + 0.05 * Math.min(1.5, lair.strength)) * (M ? M.p : 1), strength: (0.6 + 0.6 * Math.min(2, lair.strength)) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),
+      ...(ld ? {boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, leaderLair: lair.id} : {})});
   }
   const wolves = faunaLevel({region: cellRegion(a, i)}, 'wolf');
   if (wolves > 0) out.push({kind: 'wolves', p: 0.025 * Math.min(2, wolves), strength: 0.7 + 0.3 * Math.min(2, wolves)});

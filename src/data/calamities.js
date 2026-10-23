@@ -84,6 +84,8 @@ export const CAL = {
   start: [0.2, 0.45], omens: [3, 8], fall: [10, 25], heroesBefore: 3, apart: 0.35,
   stir: [3, 6], retinue: [2, 4], near: [6, 15],
   boss: {stats: ['S', 'E', 'A'], add: [6, 12], cap: 40, floor: 0.75, might: 3, breed: 4},
+  // the chance a calamity takes a living leader of an old lair for its boss (atlas/leaders.js) rather than a new one
+  fromLeader: 0.5,
   grave: {r: 2, v: 0.8},
 };
 

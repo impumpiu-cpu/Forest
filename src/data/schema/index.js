@@ -22,7 +22,7 @@ import {ITEMS, rebuildItems} from '../items.js';
 import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS} from '../townBuildings.js';
 import {BUILDINGS} from '../buildings.js';
 import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
-import {LAIRS, ANCIENT_YEARS, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
+import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
 import {CALAMITIES} from '../calamities.js';
 import {DIPLOMACY} from '../diplomacy.js';
 import {ERAS} from '../history.js';
@@ -232,8 +232,8 @@ export const TABLES = [
       col('radius', 'Владения', 'num', {min: 0}), col('density', 'Плотность', 'num', {min: 0}), col('max', 'Логов в мире', 'int', {min: 0}),
       col('breed', 'Плодится', 'num', {min: 0, max: 1}), col('rivals', 'Соперники', 'ids', {ref: 'lairs'}), col('color', 'Цвет', 'color'),
     ]},
-  {id: 'lairRules', label: 'Правила логов', group: 'Мир', ...params(() => paramGroups({ancientYears: ANCIENT_YEARS, tribeHome: TRIBE_HOME, tribeRaid: TRIBE_RAID, rot: ROT})),
-    note: 'Возраст древнего логова, набеги племён, гниль (data/lairs.js). Возраст и «дом племени» — постоянные числа кода: видны, но не правятся.'},
+  {id: 'lairRules', label: 'Правила логов', group: 'Мир', ...params(() => paramGroups({age: LAIR_AGE, leader: LEADER, tribeHome: TRIBE_HOME, tribeRaid: TRIBE_RAID, rot: ROT})),
+    note: 'Возраст древнего логова (age.ancient), главари древних логов (leader.*: шанс, потолок 30, рост сверх вида, годы жизни, планы, сила, дань), набеги племён, гниль (data/lairs.js). «Дом племени» — постоянное число кода: видно, но не правится.'},
   {id: 'calamities', label: 'Катаклизмы', group: 'Мир', key: 'id', rows: () => CALAMITIES,
     note: 'Бедствия эпического мира (data/calamities.js): босс, его логова, свита и эпохи.',
     columns: [

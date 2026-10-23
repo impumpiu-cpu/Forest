@@ -25,7 +25,7 @@ expect(E.setCell('relations', 'elf', 'dwarf', 3).ok && RELATIONS.elf.dwarf === 3
 expect(!!E.setCell('races', 'elf', 'align.order', 99).error, 'значение вне пределов принято');
 expect(!!E.setCell('races', 'elf', 'home', {nowhere: 1}).error, 'ссылка в никуда принята');
 expect(!!E.setCell('items', 'sword', 'value', 5).error, 'правка вычисляемой таблицы принята');
-expect(!!E.setCell('lairRules', 'ancientYears', 'value', 5).error, 'правка постоянного числа принята');
+expect(!!E.setCell('lairRules', 'tribeHome', 'value', 0.3).error, 'правка постоянного числа принята');
 expect(E.editCount() === 3, `правок ${E.editCount()}, а должно быть 3`);
 const edited = newAtlas({seed: 't', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1});
 expect(edited.tables?.n === 3 && atlasHash(edited) !== atlasHash(plain), 'мир с правками не несёт их или хеш не изменился');

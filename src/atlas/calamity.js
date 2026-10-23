@@ -19,6 +19,7 @@ import {SPECIES} from '../data/species.js';
 import {CALAMITIES, OMENS, FALL, ARTIFACTS, DAWN, CAL} from '../data/calamities.js';
 import {bossSpecial} from '../agents/special.js';
 import {newLair, findSpot, wherePhrase} from './lairs.js';
+import {leaderForCalamity, leaderFalls} from './leaders.js';
 import {barrows} from './diplomacy.js';
 import {townLabel} from './towns.js';
 import {eraPlan} from './history.js';
@@ -151,18 +152,42 @@ function around(a, i, r, [lo, hi]) {
 const bossName = c => `${c.boss.title[0]} ${c.boss.name}`;
 const fem = c => c.boss?.g === 'f';
 
+// a living leader of an old lair a calamity may rise on (atlas/leaders.js): of the kinds of calamity its era allows, the
+// strongest leader whose lair is of one of a kind's lairs → {C, lair} or null
+function hostLeader(a, c) {
+  let best = null;
+  // as placeOf: after the wild era a calamity rises where it is felt — within a raid's reach of the peoples' towns
+  const reach = TRIBE_RAID.reach * Math.min(a.w, a.h) / 192 * 0.7;
+  const felt = l => c.era === 'wild' || (a.towns || []).some(t => t.alive && Math.hypot(t.x - l.x, t.y - l.y) <= reach);
+  for (const C of CALAMITIES.filter(x => x.eras.includes(c.era) && !x.town)) {
+    const l = leaderForCalamity(a, C.lairs || [C.lair], felt);
+    if (l && (!best || l.strength > best.lair.strength)) best = {C, lair: l};
+  }
+  return best;
+}
+
 function rise(a, c, r) {
-  let C = CALAMITIES.find(x => x.id === c.kind), place = placeOf(a, c, r);
+  let C = CALAMITIES.find(x => x.id === c.kind), place = null, host = null;
+  // half the time the calamity takes one of the living leaders of the old lairs for its boss (CAL.fromLeader)
+  if (r() < CAL.fromLeader) host = hostLeader(a, c);
+  if (host) { C = host.C; c.kind = C.id; c.label = C.label; place = {i: host.lair.i}; }
+  else place = placeOf(a, c, r);
   if (!place && C.town) { C = CALAMITIES.find(x => x.id === 'necromancer'); c.kind = C.id; c.label = C.label; place = placeOf(a, c, r); }   // no towns to nest in
   if (!place) { c.phase = 'fallen'; c.fell = {year: a.hist.year, by: 'none'}; return; }
-  const L = LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
-  const lair = newLair(a, L, place.i, r, 1);
+  const L = host ? LAIRS.get(host.lair.kind) : LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
+  const lair = host ? host.lair : newLair(a, L, place.i, r, 1);
+  if (host) { lair.strength = 1; lair.lord = null; }
   lair.boss = c.id;
   if (place.town) lair.town = place.town.id;
   if (L.undead) barrows(a, place.i, Math.max(2, Math.round(3 * Math.min(a.w, a.h) / 192)), 0.9);   // the dead want graves to rise from
   const roll = sp?.special ? bossSpecial(sp, r, CAL.boss) : {special: null};
+  const was = host ? lair.leader : null;
+  // a leader become a boss keeps its name and grows on from what it was
+  if (was?.special && roll.special) for (const id of Object.keys(roll.special)) roll.special[id] = Math.max(roll.special[id], was.special[id] ?? 0);
   c.i = place.i; c.lair = lair.id; c.town = place.town?.id ?? null; c.phase = 'rise';
-  c.boss = {species, name: pick(r, C.names), title: C.title, g: C.g, special: roll.special};
+  // (a leader keeps its own title too: a pack's leader is not «the Mother» of a brood)
+  c.boss = {species, name: was ? was.name : pick(r, C.names), title: was ? was.title : C.title, g: was ? 'm' : C.g, special: roll.special, ...(was ? {wasLeader: `${was.title[0]} ${was.name}`} : {})};
+  if (host) { tell(a, `${was.title[0]} ${was.name} из «${lair.name}» ${wherePhrase(a, lair.i)} стал больше, чем главарём: на него пал выбор бедствия.`, c); leaderFalls(a, lair, 'boss'); }
   // the retinue around the boss, and lairs woken all over the world
   const kinds = C.retinue.length ? C.retinue : [L.id];
   const n = Math.round(between(r, CAL.retinue));

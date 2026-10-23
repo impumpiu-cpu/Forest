@@ -508,7 +508,7 @@ export class AtlasView {
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
     if (a.f.road && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
     if (a.f.sea && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawLanes(a, px);
-    if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawLairs(a, px);
+    if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
     if (a.artifact && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawEpic(a, px);
     if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
     if (a.sites && ['relief', 'biomes', 'peoples', 'soils'].includes(this.layer)) this.drawSites(a, px);
@@ -650,6 +650,8 @@ export class AtlasView {
       px.beginPath();
       if (p.kind === 'army') px.rect(x - r, y - r, 2 * r, 2 * r);
       else if (p.kind === 'dragon') { px.moveTo(x - 1.8 * r, y); px.lineTo(x, y - 0.9 * r); px.lineTo(x + 1.8 * r, y); px.lineTo(x, y + 0.5 * r); px.closePath(); }
+      // a leader of an old lair (atlas/leaders.js): a crown-like point — a star of five rays, as big as an army
+      else if (p.kind === 'leader') { for (let n = 0; n < 10; n++) { const rr = n % 2 ? r * 0.55 : r * 1.35, ang = -Math.PI / 2 + n * Math.PI / 5; px.lineTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr); } px.closePath(); }
       else px.arc(x, y, r * (p.kind === 'brood' ? 0.7 : 1), 0, Math.PI * 2);
       px.fill(); px.stroke();
     }
@@ -717,6 +719,21 @@ export class AtlasView {
       else if (L.undead) { const t = r * 0.35; px.moveTo(x - t, y - r); px.lineTo(x + t, y - r); px.lineTo(x + t, y - t); px.lineTo(x + r, y - t); px.lineTo(x + r, y + t); px.lineTo(x + t, y + t); px.lineTo(x + t, y + r); px.lineTo(x - t, y + r); px.lineTo(x - t, y + t); px.lineTo(x - r, y + t); px.lineTo(x - r, y - t); px.lineTo(x - t, y - t); }
       else { px.moveTo(x, y - r); px.lineTo(x + r, y); px.lineTo(x, y + r); px.lineTo(x - r, y); }
       px.closePath(); px.fill(); px.stroke();
+    }
+  }
+
+  // the leaders of the old lairs (atlas/leaders.js): a silver ring round the lair; a thin line to the lord of a vassal
+  drawLeaders(a, px) {
+    const k = this.unit(a), sz = Math.max(2.2 / Math.pow(this.cam.zoom, 0.6), 3 * k), silver = 'rgba(225,232,240,0.95)';
+    const byId = new Map(a.lairs.map(l => [l.id, l]));
+    px.strokeStyle = 'rgba(225,232,240,0.35)'; px.lineWidth = Math.max(this.minW, 0.3 * k);
+    px.beginPath();
+    for (const l of a.lairs) { const lord = l.alive && l.lord != null ? byId.get(l.lord) : null; if (lord?.alive && lord.leader) { px.moveTo(l.x + 0.5, l.y + 0.5); px.lineTo(lord.x + 0.5, lord.y + 0.5); } }
+    px.stroke();
+    px.strokeStyle = silver; px.lineWidth = Math.max(this.minW, 0.7 * k);
+    for (const l of a.lairs) {
+      if (!l.alive || !l.leader) continue;
+      px.beginPath(); px.arc(l.x + 0.5, l.y + 0.5, sz * 1.3, 0, Math.PI * 2); px.stroke();
     }
   }
 
@@ -797,6 +814,7 @@ export class AtlasView {
     $('atlasStats').innerHTML = `<dt>Клеток</dt><dd>${a.n.toLocaleString('ru-RU')}</dd><dt>Числовой сид</dt><dd>${seedNumber(a.cfg.seed)}</dd>` +
       `<dt>Этап</dt><dd>${Math.min(a.stage, all.length)} из ${all.length}</dd>` +
       (a.lairs ? `<dt>Логова чудовищ</dt><dd>${a.lairs.filter(l => l.alive).length}</dd>` : '') +
+      (a.lairs?.some(l => l.leader) || a.fallenLeaders?.length ? `<dt>Главари логов</dt><dd>${a.lairs.filter(l => l.alive && l.leader).length} живых, ${(a.fallenLeaders || []).length} сгинуло; данников ${a.lairs.filter(l => l.alive && l.lord != null).length}</dd>` : '') +
       (a.artifact ? `<dt>${esc(a.artifact.name)}</dt><dd>${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса', caravan: 'у каравана'}[a.artifact.holder.kind] || '—'}</dd><dt>Бедствия</dt><dd>${a.calamities.filter(c => c.phase === 'fallen').length} прошло, ${a.calamities.filter(c => c.phase === 'rise').length} идёт${a.calamities.some(c => c.phase === 'gathering') ? `, ${a.calamities.filter(c => c.phase === 'gathering').length} собирается` : ''}, из ${a.calamities.length}</dd>` : '') +
       (a.realms ? a.realms.map(r => { const m = a.towns.filter(t => t.alive && t.realm === r.id); return m.length ? `<dt>${realmLabel(a, r.id)}</dt><dd>${m.length} ${m.length === 1 ? 'город' : m.length < 5 ? 'города' : 'городов'}</dd>` : ''; }).join('') : '') +
       (a.ruins?.length ? `<dt>Пепелища</dt><dd>${a.ruins.length}</dd>` : '');
@@ -846,7 +864,7 @@ export class AtlasView {
     const party = partyAt(a, i);
     if (party) {
       const tgt = party.target != null ? a.towns.find(t => t.id === party.target) : null, lair = party.owner != null && party.kind !== 'army' ? a.lairs.find(l => l.id === party.owner) : null;
-      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
+      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? {raid: 'главарь в набеге', expand: 'главарь ведёт выводок', subdue: 'главарь идёт подчинять', rival: 'главарь идёт войной'}[party.plan] : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
     }
     const site = siteAt(a, i);
     if (site) { const b = TOWN_BUILDINGS.get(site.kind), t = a.towns.find(t => t.id === site.town); parts.push(`${b.name} (${CATEGORIES[b.cat]}) ${townLabel(t, 2)} ${t.name}, с года ${site.built}`); }
@@ -859,7 +877,10 @@ export class AtlasView {
     if (a.f.road && a.f.road[i] >= ROADS.levels[0].wear) parts.push(ROADS.levels[roadLevel(a.f.road[i])].label);
     if (a.f.sea && a.f.sea[i] >= SEA.levels[0].wear) parts.push(SEA.levels[seaLevelOf(a.f.sea[i])].label);
     const lair = lairAt(a, i);
-    if (lair) { const L = LAIRS.get(lair.kind); parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}`); }
+    if (lair) {
+      const L = LAIRS.get(lair.kind), lord = lair.lord != null ? a.lairs.find(l => l.id === lair.lord) : null;
+      parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}`);
+    }
     if (a.fauna && !f.ocean[i]) {
       const word = v => (v >= 0.8 ? 'много' : v >= 0.45 ? 'есть' : 'мало');
       const beasts = a.fauna.list.filter(s => s.role !== 'spirit').map(s => [s, faunaAt(a, i, s.id)]).filter(([, v]) => v > 0.15).sort((p, q) => q[1] - p[1]).slice(0, 4);

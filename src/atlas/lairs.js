@@ -10,7 +10,7 @@
 // The rot (data/lairs.js ROT): a field on the coarse grid fed by the graves; where it is thick the
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
-import {LAIRS, NAME_ADJ, GENDER_INDEX, ANCIENT_YEARS, TRIBE_HOME, TRIBE_RAID, ROT} from '../data/lairs.js';
+import {LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves, ruinAt} from './diplomacy.js';
 import {RELATIONS} from '../data/relations.js';
@@ -33,7 +33,7 @@ const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
 const homeAt = (a, L, i) => { const R = SPECIES.get(L.species), sub = L.sub ? R.peoples.find(p => p.id === L.sub) : null; return ((sub?.home) || R.home)[biomeAt(a, i).id] || 0; };
 
 // can this kind of lair stand on this cell
-function groundFits(a, L, i) {
+export function groundFits(a, L, i) {
   if (a.f.ocean[i] || a.f.lake[i] >= 0) return false;
   // not in a living town or on its works: a nest «founded» in the market square is nonsense (a vampire's
   // manor is the exception, placed by spawnLairs in a town on purpose, not through here)
@@ -86,12 +86,12 @@ function lairName(L, rnd, used) {
 
 export function newLair(a, L, i, rnd, strength, born = a.hist.year) {
   const H = a.hist, name = lairName(L, rnd, H.names);
-  const lair = {id: H.nextLair++, kind: L.id, i, x: i % a.w, y: (i / a.w) | 0, name, born, strength, ancient: born <= H.year - ANCIENT_YEARS, alive: true};
+  const lair = {id: H.nextLair++, kind: L.id, i, x: i % a.w, y: (i / a.w) | 0, name, born, strength, ancient: born <= H.year - LAIR_AGE.ancient, alive: true};
   a.lairs.push(lair);
   return lair;
 }
 
-const R = (a, L) => L.radius * scaleOf(a);
+export const R = (a, L) => L.radius * scaleOf(a);
 const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 
 // a free spot for a lair: fits the ground, not inside another lair's territory of the same kind,
@@ -201,14 +201,14 @@ export function placeLairs(a, rnd) {
       const i = findSpot(a, L, rnd);
       if (i < 0) break;
       // the lairs of the wild were there long before the chronicle begins
-      newLair(a, L, i, rnd, L.dragon ? 0.9 : 0.4 + 0.5 * rnd(), 1 - Math.floor(rnd() * 2 * ANCIENT_YEARS) - (L.dragon ? 10 * ANCIENT_YEARS : 0));
+      newLair(a, L, i, rnd, L.dragon ? 0.9 : 0.4 + 0.5 * rnd(), 1 - Math.floor(rnd() * 2 * LAIR_AGE.ancient) - (L.dragon ? 10 * LAIR_AGE.ancient : 0));
       tally[L.id] = (tally[L.id] || 0) + 1;
     }
   }
   return tally;
 }
 
-const power = sp => { const s = SPECIES.get(sp).special; return (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2; };
+export const power = sp => { const s = SPECIES.get(sp).special; return (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2; };
 
 // one season of every lair; returns lines for the chronicle
 export function stepLairs(a, rnd, seasonId) {
@@ -253,15 +253,15 @@ export function stepLairs(a, rnd, seasonId) {
         : `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: ${s ? 'добычи' : 'земли'} не стало, и ${SPECIES.get(L.species).plural} ушли.`);
       continue;
     }
-    if ((L.tribe || L.undead || L.fiend) && L.at !== 'town' && seasonId === 'autumn' && a.towns) { const line = tribeRaid(a, lair, L, rnd); if (line) lines.push(line); }
+    if ((L.tribe || L.undead || L.fiend) && L.at !== 'town' && seasonId === 'autumn' && a.towns && !lair.leader) { const line = tribeRaid(a, lair, L, rnd); if (line) lines.push(line); }
     if (L.dragon && seasonId === 'summer') { const line = dragonFlight(a, lair, L, rnd); if (line) lines.push(line); }
     const age = H.year - lair.born;
-    if (!lair.ancient && age >= ANCIENT_YEARS) {
+    if (!lair.ancient && age >= LAIR_AGE.ancient) {
       lair.ancient = true;
       lines.push(`${cap1(L.label)} «${lair.name}» ${G[L.g].stands} уже ${age} лет: о ${G[L.g].about} слагают страшные сказки.`);
     }
     // a strong lair sends out a brood in spring
-    if (seasonId === 'spring' && lair.strength > 0.85 && age >= 3 && rnd() < L.breed * (lair.boss != null ? CAL.boss.breed : 1) && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * (lair.boss != null ? 3 : 1.5)) {
+    if (seasonId === 'spring' && !lair.leader && lair.strength > 0.85 && age >= 3 && rnd() < L.breed * (lair.boss != null ? CAL.boss.breed : 1) && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * (lair.boss != null ? 3 : 1.5)) {
       const i = findSpot(a, L, rnd, lair, 60);
       if (i >= 0 && sendParty(a, 'brood', lair.i, i, {owner: lair.id, lairKind: L.id, speed: L.flies ? 'flight' : L.riders ? 'rider' : 'foot', label: `выводок: ${SPECIES.get(L.species).plural}`, color: L.color})) lair.strength *= 0.75;
     }
@@ -309,14 +309,14 @@ function tribeRaid(a, lair, L, rnd) {
 }
 
 // who comes: «Гноллы с гиенами», «Некромант повёл мертвецов»
-function raidWho(L) {
+export function raidWho(L) {
   const race = SPECIES.get(L.species), sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
   return L.leads ? L.leads : cap1(sub?.plural || race.plural) + (L.riders ? ` ${L.on}` : '');
 }
 
 // the raid strikes the town: the raiders' might against the town's; the loot feeds the camp (at once,
 // or when the party gets home), a beating thins it
-function strikeTown(a, lair, L, target, tribe, rnd, atOnce) {
+export function strikeTown(a, lair, L, target, tribe, rnd, atOnce) {
   const T = TRIBE_RAID, fx = townFx(target);
   const town = might(target, fx) * (0.6 + 0.8 * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);   // the tower's wards turn the dead
   target.raided = a.hist.year;
