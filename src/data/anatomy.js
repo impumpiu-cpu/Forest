@@ -35,8 +35,12 @@ export const planOf = sp => sp.plan ?? (WINGED.includes(sp.id) ? 'winged' : HUMA
 export const placesOf = plan => HIT_LOCATIONS.filter(l => l.plan === plan);
 
 // a place drawn for a blow that landed: [place, …] by weight with one number of `rnd`
+// (the places of a plan kept per plan: the rows are fixed, their weights are read as they are now)
+const byPlan = new Map();
+const placesKept = plan => byPlan.get(plan) || (byPlan.set(plan, placesOf(plan)), byPlan.get(plan));
 export function drawPlace(sp, rnd) {
-  const list = placesOf(planOf(sp)), total = list.reduce((s, l) => s + l.weight, 0);
+  const list = placesKept(planOf(sp));
+  let total = 0; for (const l of list) total += l.weight;
   let x = rnd() * total;
   for (const l of list) { x -= l.weight; if (x < 0) return l; }
   return list[list.length - 1];

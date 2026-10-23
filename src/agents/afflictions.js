@@ -37,6 +37,7 @@ const stepFor = (w, A) => {
 
 export function stepIll(w, a) {
   const d = a.ill;
+  if (d && !AFFLICTIONS.has(d.id)) { a.ill = null; return; }   // an illness this build does not know (a save from elsewhere)
   if (!d || w.tick < d.next || a.dead) return;
   const A = AFFLICTIONS.get(d.id), before = illStage(a);
   const deg = degreeOf(w.rngs.colony(), checkChance(a.special?.[A.stat] ?? NORM, stepFor(w, A)));
@@ -54,7 +55,7 @@ export function stepIll(w, a) {
 }
 
 export function taintBy(w, t, by) {
-  if (!(TAINT.perHit > 0) || !SPECIES.get(by.species).undead) return;
+  if (!(TAINT.perHit > 0) || !SPECIES.get(by.species).undead || SPECIES.get(t.species).undead) return;   // the dead are past the rot
   const before = taintRow(t);
   t.taint = (t.taint || 0) + TAINT.perHit * resistTo(SPECIES.get(t.species), 'rot');
   const after = taintRow(t);
@@ -71,6 +72,7 @@ export function stepTaint(w, a) {
 
 export function stepWithdrawal(w, a) {
   if (!a.addicted) return;
+  if (!ADDICTION[a.addicted]) { delete a.addicted; delete a.withdrawal; return; }
   const B = ADDICTION[a.addicted], now = a.drankAt == null || w.tick - a.drankAt > B.days * DAY;
   if (now === !!a.withdrawal) return;
   if (now) a.withdrawal = true; else delete a.withdrawal;

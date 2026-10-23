@@ -70,6 +70,7 @@ function fall(w, a, cause, by, trauma) {
   for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;   // the one they came for is down
   if (a.faction !== 'colony') noteFallen(w, a);   // a raider down is one lost to its band (agents/squad.js)
   a.downed = {since: w.tick, until: w.tick + bleedTicks(a.special?.E ?? NORM), cause, by: by?.id ?? null, trauma};
+  if (a.bleeding) a.bleeding = null; if (a.stunned) a.stunned = null;   // the fall is the wound now: it bleeds by its own clock (the curve 'bleed')
   a.hp = DEATHBLOW.hpLeft * maxHp(a);
   a.task = {id: 'downed'}; a.sleeping = false; a.stalking = false;
   tally(w, a).down++;
@@ -90,7 +91,7 @@ export function stepDowned(w, a) {
 // someone dressed the wound in time
 export function stabilize(w, helper, a) {
   const d = a.downed; if (!d) return;
-  a.downed = null;
+  a.downed = null; if (a.bleeding) a.bleeding = null;   // the dressing stops the bleeding too
   if (a.task?.id === 'downed') a.task.closed = 'done';   // the fall is over, not broken off
   a.wounds = [...(a.wounds || []), {id: 'grave', until: w.tick + GRAVE_TICKS('grave')}];
   if (d.trauma) a.wounds.push({id: d.trauma});

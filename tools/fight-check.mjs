@@ -122,6 +122,21 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   expect(!ITEMS.get('ironspear').qualities, 'сброс не снял свойства с вещи');
 }
 
+// ── the review: finer copies follow an edit; a material's qualities go to weapons only; parry never lowers a block
+{
+  const {itemDef} = await import('../src/agents/equipment.js');
+  void itemDef('ironspear', 1);   // made before the edit, kept in the cache
+  E.setCell('forms', 'spear', 'qualities', {piercing: 0.3});
+  expect(itemDef('ironspear', 1).qualities?.piercing === 0.3, 'копия +1 не видит свойства после правки');
+  E.resetAll();
+  E.setCell('materials', 'iron', 'qualities', {unreliable: 0.5});
+  const armour = ITEMS.all().find(d => d.material === 'iron' && !d.melee && !d.ranged), weapon = ITEMS.get('ironspear');
+  expect(weapon.qualities?.unreliable === 0.5 && (!armour || !armour.qualities), 'свойства материала легли не только на оружие');
+  E.resetAll();
+  const g = {block: 0.9, blockVs: null, cover: 0, coverVs: null};
+  expect(blockAgainst({...g, parry: 0.1}, 'slash') >= blockAgainst(g, 'slash'), 'парирующее снизило блок выше потолка');
+}
+
 // ── a trauma by the place of the last blow
 {
   const ids = place => traumasAt({hitAt: place}).map(x => x.id).sort().join(',');

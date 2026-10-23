@@ -12,6 +12,7 @@ import {AFFLICTIONS} from '../data/afflictions.js';
 import {catchIll, stepIll, stepTaint, stepWithdrawal} from './afflictions.js';
 import {DAY} from '../core/time.js';
 import {refreshBody} from './special.js';
+import {lethal} from './wounds.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 
@@ -29,7 +30,8 @@ export function stepEffects(w, a) {
   if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
   // a bleeding cut (a weapon with `bleed`, data/conditions.js): it hurts every tick until it stops
   if (a.bleeding) {
-    if (w.tick < a.bleeding.until) { a.hp -= a.bleeding.dmg; if (a.hp <= 0) kill(w, a, 'кровотечения'); }
+    // a cut that bleeds out is a wound like a blow's: luck may turn it into a fall (agents/wounds.js lethal)
+    if (w.tick < a.bleeding.until) { a.hp -= a.bleeding.dmg; if (a.hp <= 0) lethal(w, a, 'ран', null); }
     else a.bleeding = null;
   }
   if (a.stunned && w.tick >= a.stunned.until) a.stunned = null;
@@ -67,9 +69,9 @@ export function stepBody(w, a) {
   }
   heatHarm(a, sp, T, 'colonist');
   stepExhaustion(a);
-  // a chill caught in the cold (data/afflictions.js `catch` a day; 0 — never)
+  // a chill caught in the cold (data/afflictions.js `catch` a day; 0 — never): the colony's people only
   const CH = AFFLICTIONS.get('chill');
-  if (CH.catch > 0 && !a.ill && a.needs.warmth != null && a.needs.warmth <= EXHAUSTION.low && w.rngs.colony() < CH.catch / DAY) catchIll(w, a, 'chill');
+  if (CH.catch > 0 && a.faction === 'colony' && !a.ill && a.needs.warmth != null && a.needs.warmth <= EXHAUSTION.low && w.rngs.colony() < CH.catch / DAY) catchIll(w, a, 'chill');
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
   // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
   const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;

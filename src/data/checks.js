@@ -59,4 +59,10 @@ DEGREE_EFFECTS.registerAll([
 ]);
 export const degreeValue = (check, degree) => (DEGREE_EFFECTS.has(`${check}.${degree}`) ? DEGREE_EFFECTS.get(`${check}.${degree}`).value : 0);
 // is anything of this check turned on (a check that rolls only for its degrees rolls only then)
-export const degreesOn = check => DEGREE_EFFECTS.filter(e => e.check === check).some(e => e.value);
+const ofCheck = new Map();
+export const degreesOn = check => {
+  let list = ofCheck.get(check);
+  if (!list) ofCheck.set(check, list = DEGREE_EFFECTS.filter(e => e.check === check));
+  for (const e of list) if (e.value) return true;
+  return false;
+};

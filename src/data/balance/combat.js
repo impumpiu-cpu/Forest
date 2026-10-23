@@ -48,7 +48,8 @@ export const SCALE_MODS = {S: 'str', A: 'fin'};
 // ranged); an empty cell is 1. Where each one is dealt:
 //   blow    — every blow and shot (agents/combat.js damage), × the delivery too
 //   element — fire: the heat of a burning or hot cell (agents/body.js heatHarm); cold: the frost when warmth runs
-//             out (data/needs.js warmth `element`); poison: a venomous bite (agents/combat.js); rot: no source yet
+//             out (data/needs.js warmth `element`); poison: a venomous bite (agents/combat.js); rot: an undead's blow
+//             (agents/afflictions.js taintBy, the taint — 0 a blow by default)
 //   bane    — silver: a silvered blade, on top of the fear of silver (tag, data/tags.js); holy: no source yet
 export const DAMAGE_TYPES = [
   {id: 'pierce', kind: 'blow', label: 'колющий', source: 'копья, стрелы, кинжалы, клыки'},
@@ -57,7 +58,7 @@ export const DAMAGE_TYPES = [
   {id: 'fire', kind: 'element', label: 'огонь', source: 'жар горящей или раскалённой клетки, дыхание дракона (через огонь)'},
   {id: 'cold', kind: 'element', label: 'холод', source: 'мороз, когда тепло кончилось'},
   {id: 'poison', kind: 'element', label: 'яд', source: 'укус ядовитого (змеи, пауки, скорпионы)'},
-  {id: 'rot', kind: 'element', label: 'порча', source: 'пока нет (этап 5: порча как состояние)'},
+  {id: 'rot', kind: 'element', label: 'порча', source: 'удар нежити — порча на теле («Зависимость и порча» taint.perHit; по умолчанию 0)'},
   {id: 'silver', kind: 'bane', label: 'серебро', source: 'посеребрённый клинок — сверх страха серебра'},
   {id: 'holy', kind: 'bane', label: 'святость', source: 'пока нет'},
 ];

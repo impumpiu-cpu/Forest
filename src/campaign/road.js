@@ -4,14 +4,13 @@
 //   famed(a, K, kind, realm) — a fight won ('win', the realm of the nearest town) or a captive sold ('slaveSale')
 //   choosePace(a, K)        — the pace for the day (data/road.js PACE_RULES)
 // With every number of data/road.js and data/tongues.js at its default the terms are 1 and the pace normal.
-import {REPUTATION, PACES, PACE_RULES} from '../data/road.js';
+import {REPUTATION, PACES, PACE_RULES, TERMS} from '../data/road.js';
 import {TONGUE, shareTongue} from '../data/tongues.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {free} from './captives.js';
 import {dangers} from './land.js';
 import {scaleOf} from '../atlas/tectonics.js';
 
-const T_MAX = 0.9;   // no term moves a price by more than this share
 const fameOf = (K, realm) => K.fame?.[realm] || {fame: 0, infamy: 0};
 
 export function termsOf(a, K, t) {
@@ -19,7 +18,7 @@ export function termsOf(a, K, t) {
   const mute = race && !shareTongue(free(K).map(m => m.race), race) ? TONGUE.barrier : 0;
   const R = fameOf(K, t?.realm), rep = REPUTATION.fameDiscount * R.fame - REPUTATION.infamyMarkup * R.infamy;
   // clamped, so no number makes a town pay the caravan to buy, or refuse every sale (1 — as before)
-  const m = Math.min(T_MAX, Math.max(0, mute)), r = Math.min(T_MAX, Math.max(-T_MAX, rep));
+  const m = Math.min(TERMS.max, Math.max(0, mute)), r = Math.min(TERMS.max, Math.max(-TERMS.max, rep));
   return {buy: (1 + m) * (1 - r), sell: (1 - m) * (1 + r)};
 }
 

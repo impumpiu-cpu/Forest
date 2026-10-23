@@ -22,10 +22,11 @@ import {taintBy} from './afflictions.js';
 import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} from '../data/checks.js';
 import {NORM} from '../data/special.js';
 
-// a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
-const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
 import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
+
+// a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
+const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
@@ -65,7 +66,7 @@ const against = (value, vs, type) => (vs && type ? Math.min(ARMOR_VS_CAP, (value
 export const armorAgainst = (g, type) => against(g.armor, g.armorVs, type);
 // a shot meets only what covers: a shield, at `cover` of its block (forms.js); a sword or a staff parries no arrow.
 // A parrying weapon in hand (quality `parry`) adds to the block against blows, never past CAPS.block
-export const blockAgainst = (g, type, melee = true) => (melee ? (g.parry ? Math.min(CAPS.block, against(g.block, g.blockVs, type) + g.parry) : against(g.block, g.blockVs, type)) : against(g.cover, g.coverVs, type));
+export const blockAgainst = (g, type, melee = true) => (melee ? (g.parry ? Math.max(against(g.block, g.blockVs, type), Math.min(CAPS.block, against(g.block, g.blockVs, type) + g.parry)) : against(g.block, g.blockVs, type)) : against(g.cover, g.coverVs, type));
 // what the body does to a blow of this kind and delivery (creatures.js `resist`: pierce, slash, blunt, melee, ranged)
 export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1) * (sp.resist[melee ? 'melee' : 'ranged'] ?? 1) : 1);
 
@@ -113,7 +114,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   // a cut that bleeds, a blow that stuns (weapon qualities `bleed`, `stun`; data/conditions.js): a chance each, drawn
   // from the stream of places, and only for a weapon that has them — every other blow draws nothing more
   const bleed = traitOf(q, 'bleed'), stun = traitOf(q, 'stun');
-  if (bleed && !tsp.undead && w.rngs.hits() < bleed) { const C = CONDITIONS.get('bleeding'); t.bleeding = {dmg: C.dmg, until: w.tick + C.ticks}; }
+  if (bleed && !tsp.undead && tsp.kind !== 'spirit' && w.rngs.hits() < bleed) { const C = CONDITIONS.get('bleeding'); t.bleeding = {dmg: C.dmg, until: w.tick + C.ticks}; }
   if (stun && w.rngs.hits() < stun) t.stunned = {until: w.tick + CONDITIONS.get('stunned').ticks};
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;

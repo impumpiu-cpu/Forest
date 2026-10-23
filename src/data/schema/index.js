@@ -76,7 +76,7 @@ import {DIFFICULTY, DEGREES, DEGREE_NAMES, DEGREE_CHECKS, DEGREE_EFFECTS} from '
 import {CHANCE_MODES} from '../chance.js';
 import {AFFLICTIONS, AFFLICTION_FROM, ADDICTION, TAINT, stagesErrors} from '../afflictions.js';
 import {LANGUAGES, SPEAKS, SENSES, TONGUE, NIGHT as NIGHT_SIGHT} from '../tongues.js';
-import {REPUTATION, PACES, PACE_RULES} from '../road.js';
+import {REPUTATION, PACES, PACE_RULES, TERMS} from '../road.js';
 import {SETTLEMENT_STATS} from '../colonyStats.js';
 import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK, MARKET_TIERS, whenErrors, levelsErrors} from '../kingdom.js';
 import {FINDS} from '../campaign.js';
@@ -558,7 +558,7 @@ TABLES.push(
     columns: [col('id', 'id'), col('label', 'Кто', 'text', {edit: false}), col('plan', 'План тела', 'enum', {values: BODY_PLANS}),
       ...HARM.map(([id, label]) => col(`resist.${id}`, label, 'num', {min: 0}))]},
   {id: 'weaponQualities', label: 'Свойства оружия', group: 'Словари', key: 'id', rows: () => WEAPON_QUALITIES,
-    note: 'Свойства со значением, как в Fallout 2d20 (data/balance/combat.js WEAPON_QUALITIES): форма и материал дают их (столбец «Свойства оружия» в «Формах» и «Материалах»), вещь несёт сумму. «Работает» — игра читает его сейчас; кровопускающее и оглушающее ждут состояний (этап 4).',
+    note: 'Свойства со значением, как в Fallout 2d20 (data/balance/combat.js WEAPON_QUALITIES): форма и материал дают их (столбец «Свойства оружия» в «Формах» и «Материалах»), вещь несёт сумму. «Работает» — игра читает его сейчас (кровопускающее и оглушающее — через «Состояния»: кровотечение, оглушён); метательное ждёт своей механики. Свойства материала достаются только оружию.',
     columns: [col('id', 'id'), col('label', 'Название'), col('unit', 'Значение', 'text', {edit: false}), col('live', 'Работает', 'bool', {edit: false}), col('reads', 'Что делает'), col('note', 'Описание')]},
   {id: 'hitLocations', label: 'Места попадания', group: 'Существа', key: 'id', rows: () => HIT_LOCATIONS.all(),
     note: 'Куда приходится удар (data/anatomy.js), как в Fallout 2d20: у каждого плана тела свои места — вес (как часто), × урона там, какие травмы оставляет смертельная рана там. Место бросается из своего потока случайностей и больше ничего в бою не сдвигает.',
@@ -659,8 +659,8 @@ TABLES.push(
     columns: [col('id', 'id'), col('label', 'Чувство'), col('live', 'Работает', 'bool', {edit: false}), col('species', 'У кого', 'ids', {ref: SPECIES}), col('note', 'Описание')]},
   {id: 'tongueRules', label: 'Языки и чувства: правила', group: 'Народы', ...grp({tongue: TONGUE, night: NIGHT_SIGHT}),
     note: 'tongue.barrier — насколько хуже цены в городе, чей язык караван не знает (покупка × (1 + значение), продажа × (1 − значение)); night.loss — насколько ночь сужает обзор поселенца без ночного зрения.'},
-  {id: 'reputation', label: 'Слава каравана', group: 'Караван', ...grp({reputation: REPUTATION}),
-    note: 'Слава и дурная слава каравана у каждой державы, как в Fallout: New Vegas (data/road.js): победа у города (в near клетках) — win славы у его державы; проданный пленный — slaveSale дурной славы; не больше max. fameDiscount, infamyMarkup — как слава и дурная слава меняют цены (0 — как раньше).'},
+  {id: 'reputation', label: 'Слава каравана', group: 'Караван', ...grp({reputation: REPUTATION, terms: TERMS}),
+    note: 'Слава и дурная слава каравана у каждой державы, как в Fallout: New Vegas (data/road.js): победа у города (в near клетках) — win славы у его державы; проданный пленный — slaveSale дурной славы; не больше max. fameDiscount, infamyMarkup — как слава и дурная слава меняют цены (0 — как раньше); terms.max — больше какой доли язык и слава не двигают цену.'},
   {id: 'paces', label: 'Темп похода', group: 'Караван', key: 'id', rows: () => PACES.all(),
     note: 'Темп, как в D&D (data/road.js): × дневного перехода, × добычи в пути, × того, как засада застаёт врасплох (сверх «Дорога и стоянки» ambush.surprise). Какой держит совет — «Темп похода: правила».',
     columns: [col('id', 'id'), col('label', 'Темп'), col('speed', 'Переход ×', 'num', {min: 0}), col('forage', 'Добыча ×', 'num', {min: 0}), col('wary', 'Засада ×', 'num', {min: 0}), col('note', 'Описание')]},

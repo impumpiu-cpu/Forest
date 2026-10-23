@@ -10,6 +10,8 @@
 import {Registry} from '../core/registry.js';
 
 export const REPUTATION = {win: 1, slaveSale: 1, near: 12, max: 50, fameDiscount: 0, infamyMarkup: 0};
+// no term of a town's prices (tongue, fame) moves a price by more than this share either way
+export const TERMS = {max: 0.9};
 
 export const PACES = new Registry('pace');
 PACES.registerAll([

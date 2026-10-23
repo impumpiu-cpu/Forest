@@ -47,6 +47,18 @@ for (const c of CONDITIONS.all()) expect(c.label && c.note, `${c.id}: без н�
   expect(!p.bleeding, 'кровотечение без кровопускающего оружия');
 }
 
+// a bleeding colonist at the end of its blood falls by luck as from a blow; the fall and the dressing stop the bleeding
+{
+  const {lethal, stabilize} = await import('../src/agents/wounds.js');
+  const w = scene(), c = put(w, 'human', 'colony'), h = put(w, 'human', 'colony');
+  c.special.L = 10; rngs(w, 0); c.bleeding = {dmg: 1, until: w.tick + 600}; c.hp = 0.5;
+  stepEffects(w, c);
+  expect(c.downed && !c.dead && c.bleeding === null, `истёк кровью: ${c.dead ? 'мёртв' : c.downed ? 'упал' : 'стоит'}, кровотечение ${JSON.stringify(c.bleeding)}`);
+  c.bleeding = {dmg: 1, until: w.tick + 600}; stabilize(w, h, c);
+  expect(!c.downed && c.bleeding === null, 'перевязка не остановила кровотечения');
+  void lethal;
+}
+
 // a stunning blow
 {
   const w = scene(), by = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony');

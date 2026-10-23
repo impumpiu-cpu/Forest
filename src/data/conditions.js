@@ -56,8 +56,11 @@ export const exhaustionRow = stage => (stage > 0 ? CONDITIONS.filter(c => c.kind
 export function exhaustionStage(a) {
   let n = 0;
   for (const id of EXHAUSTION.needs) if (a.needs?.[id] != null && a.needs[id] <= EXHAUSTION.low) n++;
-  return Math.min(n, CONDITIONS.filter(c => c.kind === 'exhaustion').length);
+  return n && Math.min(n, exhaustionStages());
 }
+// how many stages of exhaustion there are (counted once: the rows are fixed, only their numbers are edited)
+let stages = 0;
+const exhaustionStages = () => stages || (stages = CONDITIONS.filter(c => c.kind === 'exhaustion').length);
 const hasMods = row => !!row && (Object.keys(row.mods || {}).length > 0 || row.hp != null);
 
 // what the creature is in now: [{row, until?}] — for the card and the checks

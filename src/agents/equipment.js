@@ -21,11 +21,14 @@ import {MARKS, MARK, markable} from '../data/balance/marks.js';
 import {WOODS, mayUse, useOf, KIND_LAND} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {GEAR} from '../data/behaviour.js';
+import {onEdit} from '../data/schema/layer.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
 // made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
 // longer life, a "+1" in its name. Everything else simply reads def(item) and needs no special case.
 const finer = new Map();
+// an edit of the tables (forms, materials, qualities…) makes the finer and named copies again
+onEdit(() => { finer.clear(); named.clear(); });
 export function itemDef(type, q = 0) {
   const base = ITEMS.get(type);
   if (!q || base.quality === false) return base;

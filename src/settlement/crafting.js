@@ -34,8 +34,6 @@ import {degreeOf, degreeValue} from '../data/checks.js';
 
 // stock resources that are a family's total (wood → 'wood', stone → 'stone')
 const FAMILY_RES = Object.fromEntries(Object.entries(FAMILIES).filter(([, F]) => F.resource).map(([f, F]) => [F.resource, f]));
-// may this worker make this recipe by its race's rules (data/kinds.js): a named metal it may not work, or a family of
-// which the stock holds too little that it may work, rules it out
 // how long a finished piece lasts by the degree of its quality roll (data/checks.js, check `craft`): × 1 unless a
 // critical degree has a number in «Последствия степеней»
 export function pieceLasts(u, skill, fine = 0) {
@@ -43,6 +41,8 @@ export function pieceLasts(u, skill, fine = 0) {
   return deg === 'critSuccess' ? 1 + degreeValue('craft', 'critSuccess') : deg === 'critFail' ? 1 - degreeValue('craft', 'critFail') : 1;
 }
 
+// may this worker make this recipe by its race's rules (data/kinds.js): a named metal it may not work, or a family of
+// which the stock holds too little that it may work, rules it out
 export function raceMayCraft(w, a, r) {
   for (const [res, v] of Object.entries(r.cost)) {
     if (FAMILY_RES[res]) { const ok = Object.entries(kindsOf(w, FAMILY_RES[res])).filter(([id]) => mayMake(a.species, id)).reduce((s, [, n]) => s + n, 0); if (ok + 1e-6 < v) return false; }
