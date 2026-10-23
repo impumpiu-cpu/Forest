@@ -399,6 +399,8 @@ check('T26', 'при опасности ссору откладывают', () =
   const w = scene(); fixedRng(w, 0);
   const a = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5), b = put(w, 'human', 'colony', w.camp.x + 1.5, w.camp.y + 0.5);
   a.grudge = {[b.id]: -4}; b.grudge = {[a.id]: -4};
+  // far apart on the compass, so the two would surely quarrel but for the wolf (not left to their rolled points)
+  a.align = {order: 0, mercy: 3}; b.align = {order: 0, mercy: -3};
   put(w, 'wolf', 'predators', w.camp.x + 6.5, w.camp.y + 0.5).pack = 1;
   w.tick = Math.ceil(w.tick / REL.quarrelEvery) * REL.quarrelEvery + 37;
   const q = w.chronicle.quarrels || 0;

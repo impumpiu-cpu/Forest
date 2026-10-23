@@ -11,7 +11,7 @@ import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
 import {SPECIES, KINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
 import {KINS, RELATIONS, OPINION} from '../relations.js';
-import {VALUES, AXIS_MAX} from '../values.js';
+import {VALUES, AXIS_MAX, ALIGN, ALIGN_DRIFT} from '../values.js';
 import {STATS, EFFECTS} from '../special.js';
 import {BIOMES, BIOME_KINDS, RARITY} from '../biomes.js';
 import {MATERIALS, FORMS, PRICES} from '../balance/index.js';
@@ -62,9 +62,8 @@ export const TABLES = [
       col('id', 'id'), col('label', 'Название'), col('plural', 'Мн. число'),
       col('rel', 'Строка отношений', 'ref', {ref: 'relations', note: 'чья строка в таблице «Расы ↔ расы»'}),
       col('world', 'Народ на карте', 'ref', {ref: 'peoples', edit: false}), col('era', 'Эпоха прихода', 'ref', {ref: ERAS, edit: false, note: 'правится в «Народах мира»'}),
-      col('align.order', 'Закон ↔ хаос', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'ось порядка: + закон, − хаос (data/values.js)'}),
-      col('align.mercy', 'Добро ↔ зло', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'ось милосердия: + добро, − зло'}),
-      col('align.spread', 'Разброс взглядов', 'num', {min: 0, note: 'насколько пешки расходятся с точкой расы'}),
+      col('align.order', 'Закон ↔ хаос', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'точка расы на компасе: + закон, − хаос (data/values.js); держава ±3 от неё, пешка ±3 от державы'}),
+      col('align.mercy', 'Добро ↔ зло', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'точка расы: + добро, − зло; держава ±3, пешка ±3 от державы'}),
       col('values', 'Ценности', 'map', {ref: VALUES, min: 0, note: 'вес ценности; каждое существо тянет 2–3'}),
       col('home', 'Биомы расселения', 'map', {ref: 'biomes', min: 0, max: 1, note: 'насколько биом подходит: 1 — родной, 0 — не живут'}),
       ...body,
@@ -115,6 +114,8 @@ export const TABLES = [
     columns: [col('id', 'id'), col('label', 'Кто', 'text', {edit: false}), ...KINS.all().map(k => col(k.id, k.label, 'num', {min: -3, max: 3}))]},
   {id: 'opinion', label: 'Мнение внутри группы', group: 'Отношения', ...params(() => paramRows(OPINION)),
     note: 'Веса мнения одного существа о другом (data/relations.js OPINION): общие ценности, разрыв во взглядах, личная история.'},
+  {id: 'compass', label: 'Мировоззрение', group: 'Отношения', ...params(() => paramGroups({align: ALIGN, drift: ALIGN_DRIFT})),
+    note: 'Компас ±5 (data/values.js): насколько держава отходит от точки расы и пешка — от державы, с какого значения на оси пишется ярлык, как близость взглядов меняет отношения держав, и как точка ползёт от войн, мира, спасения, продажи пленных, побега и совета.'},
   {id: 'diplomacy', label: 'Державы ↔ державы', group: 'Отношения', ...params(() => paramRows(DIPLOMACY)),
     note: 'Правила отношений держав на карте мира, −5…+5 (data/diplomacy.js): дрейф, торговля, набеги, война и мир. Сами отношения меняются по годам в мире.'},
 

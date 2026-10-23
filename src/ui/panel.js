@@ -53,7 +53,7 @@ import {STATS} from '../data/special.js';
 import {WOUNDS} from '../data/wounds.js';
 import {activeSkills, TIERS} from '../data/skills.js';
 import {skillTier, softCap, canMake, recipeNeed, reasonText, recipeAccess, jobAccess, actionAccess} from '../agents/skills.js';
-import {VALUES, axisWord} from '../data/values.js';
+import {VALUES, axisWord, alignLabel} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
 import {squadText} from '../agents/squad.js';
@@ -639,7 +639,7 @@ export class Panel {
           ${inn ? `<div class="chips">${inn}</div>` : ''}
           ${woundsHtml(w, a)}
           <h4>Мировоззрение</h4>
-          ${a.align ? `<p class="pc-small">${axisWord('order', a.align.order)} · ${axisWord('mercy', a.align.mercy)}</p>` : ''}
+          ${a.align ? `<p class="pc-small"><b>${alignLabel(a.align, a.gender === 'f' ? 'f' : 'm')}</b> · ${axisWord('order', a.align.order)} · ${axisWord('mercy', a.align.mercy)}</p>` : ''}
           ${vals ? `<div class="chips">${vals}</div>` : ''}
           <h4>Соседи</h4>${feelHtml}
         </section>

@@ -75,7 +75,9 @@ export function createAgent(w, speciesId, factionId, x, y) {
     task: null, think: (w.rngs.birth() * 15) | 0, cd: 0, carry: null, sleeping: false,
   };
   if (sp.names && factionId === 'colony') [a.name, a.gender] = freshName(w, sp.names);
-  rollCreature(w, a, sp);
+  // settlers of a world cell's realm (seam/cell.js `kin`) stand near its world view; elsewhere near their race's
+  const kin = w.cfg?.cell?.kin;
+  rollCreature(w, a, sp, kin?.align && kin.race === speciesId ? {align: kin.align} : {});
   a.stamina = 1;
   for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rngs.birth, n.start); }
   if (sp.sentient && factionId === 'colony') personality(w, a);

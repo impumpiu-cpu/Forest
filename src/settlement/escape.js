@@ -30,6 +30,7 @@ import {cellOf} from '../world/grid.js';
 import {log} from '../core/log.js';
 import {esc, g, clamp} from '../core/util.js';
 import {hourOf, dayOf, DAY} from '../core/time.js';
+import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 
 const E = w => (w.escape ??= {rolled: -1, dawn: -1, plot: null, alarm: null, cut: false});
 const C = w => (w.chronicle.captives ||= {taken: 0, died: 0});
@@ -110,6 +111,7 @@ export function startEscape(w, a, why) {
   const slow = holdsTool(a) ? 1 : B?.slow ?? 1;   // a tool kept for the night cuts the bonds
   releaseAll(w, a);
   a.fugitive = {since: w.tick, why, slow};
+  shiftAlign(a, 'order', ALIGN_DRIFT.pawn.fled);   // the bonds broken, the law with them
   a.faction = 'fugitives'; a.brain = 'fugitive'; a.task = {id: 'escape'}; a.sleeping = false; a.carry = null;
   if (w.scratch) delete w.scratch.colonists;
   C(w).ran = (C(w).ran || 0) + 1;

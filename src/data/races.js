@@ -14,7 +14,8 @@
 //              adult/life in years, fertility 0…1, diet
 //   mods     — multipliers on the agent (hunger, cold, sleep, regen… see data/traits.js BASE_MODS)
 //   innate   — racial traits nobody can learn or lose: {label, note, mods?}
-//   align    — default world view: order (−3 вольница … +3 порядок), mercy (−3 жестокость … +3 милосердие)
+//   align    — the race's point on the compass (data/values.js): order (−5 хаос … +5 закон), mercy (−5 зло … +5 добро);
+//              a realm stands within ±3 of it on each axis, a creature within ±3 of its realm (or of the race, with no world)
 //   values   — what the people holds dear (data/values.js) with a weight: each creature draws 2–3
 //   settle   — weight among the settlers who may come to the outpost (0: never comes on its own)
 // A race may also come with raiders (data/raids.js) — that does not need anything here.
@@ -31,7 +32,7 @@ export const RACES = [
     heatHarm: 70, look: person(0.62, '#e2b48c'),
     body: {adult: 16, life: 70, fertility: 0.5, diet: 'всеядный'},
     innate: [{label: 'приспособляемость', note: 'учится любому делу быстрее других', mods: {learn: 1.15}}],
-    align: {order: 0, mercy: 0, spread: 1.6},
+    align: {order: 0, mercy: 0},
     values: {work: 1, family: 1, faith: 1, gold: 1, freedom: 1, strength: 0.6, knowledge: 0.6, ancestors: 0.6, nature: 0.5},
     names: N(['Ждан', 'Горислав', 'Тихон', 'Мирон', 'Ярослав', 'Ратибор', 'Боян', 'Светозар', 'Велимир', 'Добрыня', 'Радим'],
       ['Милава', 'Веселина', 'Любава', 'Злата', 'Дарина', 'Снежана', 'Забава', 'Агния', 'Олеся', 'Василиса', 'Ведана'])},
@@ -42,7 +43,7 @@ export const RACES = [
     body: {adult: 20, life: 100, fertility: 0.5, diet: 'всеядный, ест часто'},
     mods: {hunger: 1.2, cold: 1.1},
     innate: [{label: 'неприметный', note: 'мал ростом, ходит тихо, мало несёт'}],
-    align: {order: 1, mercy: 2, spread: 1.2},
+    align: {order: 2, mercy: 3},
     values: {family: 2, work: 1.4, faith: 0.6, gold: 0.6, nature: 0.8},
     names: N(['Тобо', 'Хэмли', 'Мунго', 'Бодрик', 'Олдо', 'Фирмин'], ['Мелла', 'Розалина', 'Лютика', 'Тилли', 'Марга', 'Пеона'])},
 
@@ -52,7 +53,7 @@ export const RACES = [
     body: {adult: 25, life: 150, fertility: 0.25, diet: 'всеядный, ест за троих'},
     mods: {hunger: 2.2, cold: 0.7},
     innate: [{label: 'исполин', note: '2,5 метра роста: ест за троих, мёрзнет меньше'}],
-    align: {order: -1, mercy: 1, spread: 1.2},
+    align: {order: -2, mercy: 2},
     values: {strength: 2, freedom: 1.6, family: 1, nature: 0.8},
     names: N(['Грумбар', 'Ормунд', 'Тяжебор', 'Валуй', 'Скальд'], ['Хельга', 'Ингрид', 'Гудрун', 'Ассвейг'])},
 
@@ -68,7 +69,7 @@ export const RACES = [
         home: {meadow: 1, forest: 0.6, shrubland: 0.6, foothills: 0.45, savanna: 0.3, jungle: 0.3, taiga: 0.3},
         taste: {lore: 1.6, prestige: 1.3, trade: 1, defence: 0.8}, innate: [{label: 'старая кровь', note: 'помнит книги, которых другие не читали'}]},
     ],
-    align: {order: 1, mercy: 0, spread: 1},
+    align: {order: 2, mercy: 0},
     values: {nature: 2.2, ancestors: 1.4, knowledge: 1, freedom: 0.8},
     names: N(['Аэлдир', 'Илетан', 'Келориэн', 'Тандрил', 'Сильвар'], ['Элоэна', 'Ниэль', 'Лаириэль', 'Аэрин', 'Иримэ'])},
 
@@ -78,7 +79,7 @@ export const RACES = [
     body: {adult: 50, life: 500, fertility: 0.1, diet: 'всеядный'},
     mods: {hunger: 0.9, cold: 1.2, sleep: 0.5},
     innate: [{label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'светобоязнь', note: 'на дневном солнце щурится и слабеет'}, {label: 'привычка к ядам', note: 'яды и зелья берут его слабее'}],
-    align: {order: 2, mercy: -2, spread: 1},
+    align: {order: 3, mercy: -3},
     values: {knowledge: 2, strength: 1.6, gold: 1, ancestors: 0.8},
     names: N(['Вельтрис', 'Зарейн', 'Дромир', 'Ксалет'], ['Илвара', 'Шейзра', 'Квилла', 'Вирна'])},
 
@@ -102,7 +103,7 @@ export const RACES = [
       {id: 'deep', label: 'глубинный гном', plural: 'глубинные гномы', gen: 'глубинных гномов', weight: 1, world: false,
         mods: {cold: 0.85}, innate: [{label: 'дитя глубин', note: 'бледен, видит во мраке ещё лучше'}]},
     ],
-    align: {order: 3, mercy: 0, spread: 0.8},
+    align: {order: 5, mercy: 0},
     values: {ancestors: 2, work: 2, gold: 1.4, family: 0.8},
     names: N(['Торгрим', 'Балдур', 'Хрольф', 'Брокк', 'Ульфгар', 'Кетиль'], ['Дагна', 'Хильда', 'Ингвара', 'Тордис', 'Бруна'])},
 
@@ -113,7 +114,7 @@ export const RACES = [
     body: {adult: 12, life: 50, fertility: 0.75, diet: 'хищник-всеядный'},
     mods: {hunger: 1.4, cold: 0.85, regen: 1.6, bravery: 1.2},
     innate: [{label: 'живучий', note: 'раны затягиваются быстро'}, {label: 'ярость', note: 'раненым дерётся злее'}],
-    align: {order: 1, mercy: -1, spread: 1.2},
+    align: {order: -2, mercy: -2},
     values: {strength: 2.2, ancestors: 1.2, faith: 0.8, family: 0.6},
     names: N(['Угрук', 'Мазгаш', 'Зугрог', 'Брагот', 'Корх'], ['Ургха', 'Мокра', 'Зарга', 'Гхаша'])},
 
@@ -123,7 +124,7 @@ export const RACES = [
     body: {adult: 6, life: 30, fertility: 0.95, diet: 'ест что угодно'},
     mods: {hunger: 0.7, cold: 1.1, bravery: 0.7},
     innate: [{label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'трус в одиночку', note: 'смел только в толпе своих'}],
-    align: {order: -2, mercy: -1, spread: 1.2},
+    align: {order: -3, mercy: -2},
     values: {gold: 2.2, knowledge: 1.2, freedom: 1},
     names: N(['Сникль', 'Ризз', 'Гнырк', 'Кривоух'], ['Зизи', 'Шмыга', 'Пикша'])},
 
@@ -133,7 +134,7 @@ export const RACES = [
     body: {adult: 15, life: 60, fertility: 0.3, diet: 'ест что угодно, за четверых'},
     mods: {hunger: 3, cold: 0.7, bravery: 1.3},
     innate: [{label: 'утроба', note: 'голод валит его быстрее других'}],
-    align: {order: -2, mercy: -2, spread: 0.8},
+    align: {order: -3, mercy: -3},
     values: {strength: 2.5, gold: 0.6},
     names: N(['Мордоб', 'Брюхан', 'Грыз', 'Тяжак'], ['Хлоба'])},
 
@@ -149,7 +150,7 @@ export const RACES = [
       {id: 'swamp', label: 'болотный тролль', plural: 'болотные тролли', gen: 'болотных троллей', weight: 1, home: {swamp: 1, jungle: 0.5, forest: 0.3}},
       {id: 'ice', label: 'ледяной тролль', plural: 'ледяные тролли', gen: 'ледяных троллей', weight: 1, mods: {cold: 0.3}, home: {tundra: 0.9, ice: 0.7, highlands: 0.5, taiga: 0.3}},
     ],
-    align: {order: -1, mercy: -1, spread: 1},
+    align: {order: -2, mercy: -2},
     values: {nature: 1.6, faith: 1.6, strength: 1},
     names: N(['Ракаш', 'Вуджин', 'Зекки', 'Тумбо'], ['Шанка', 'Мвира'])},
 
@@ -160,7 +161,7 @@ export const RACES = [
     body: {adult: 8, life: 40, fertility: 0.75, diet: 'падальщик'},
     mods: {hunger: 1.2, cold: 0.9},
     innate: [{label: 'нюх', note: 'чует добычу и нежить издалека'}, {label: 'падальщик', note: 'мертвечина и гниль ему не вредят'}],
-    align: {order: -1, mercy: -3, spread: 0.8},
+    align: {order: -2, mercy: -5},
     values: {strength: 2, faith: 1.4},
     names: N(['Хракк', 'Гнарр', 'Ыхыр', 'Скорр'], ['Хиза', 'Ррака'])},
 ].map(r => bodyFor({needs: NEEDS, sentient: true, inventory: true, mind: 'sentient', ...r}));

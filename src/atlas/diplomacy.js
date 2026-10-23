@@ -12,6 +12,7 @@ import {WORLD_PEOPLES, TIERS} from '../data/peoples.js';
 import {ROADS} from '../data/roads.js';
 import {RELATIONS} from '../data/relations.js';
 import {SPECIES} from '../data/species.js';
+import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {scaleOf} from './tectonics.js';
 import {townFx, might, raidShare, townLabel} from './towns.js';
 import {raidSite, razeSites} from './sites.js';
@@ -31,8 +32,39 @@ export function feeling(p, q) {
   const a = SPECIES.get(WORLD_PEOPLES.get(p).race).rel, b = SPECIES.get(WORLD_PEOPLES.get(q).race).rel;
   return RELATIONS[a]?.[b] ?? 0;
 }
-// what two realms start from: the worse of their races' memories of each other
-export const memory = (a, p, q) => { const P = realmPeople(a, p), Q = realmPeople(a, q); return Math.min(feeling(P, Q), feeling(Q, P)); };
+// a realm's point on the compass (data/values.js); a world saved before realms had one goes by its race's
+export const realmAlign = (a, p) => { const r = realmOf(a, p); return r?.align || SPECIES.get(WORLD_PEOPLES.get(r.people).race).align || null; };
+// how their world views bring two realms together or apart: +ALIGN.near at one point of the compass, down to
+// ALIGN.far at ALIGN.span apart and beyond
+export function compassFeeling(A, B) {
+  if (!A || !B) return 0;
+  const d = Math.hypot(A.order - B.order, A.mercy - B.mercy);
+  return ALIGN.near + (ALIGN.far - ALIGN.near) * Math.min(1, d / ALIGN.span);
+}
+// what two realms start from and drift back to: the worse of their races' memories of each other, and how near
+// their world views are (two realms of one race may be far apart: the stern and the gentle dwarves)
+export const memory = (a, p, q) => {
+  const P = realmPeople(a, p), Q = realmPeople(a, q);
+  return Math.min(feeling(P, Q), feeling(Q, P)) + compassFeeling(realmAlign(a, p), realmAlign(a, q));
+};
+
+// once a year: the world view of each realm moves with what it lives through (data/values.js ALIGN_DRIFT) — wars
+// harden it, a trading peace softens it, a long rule under one seat settles it into law (a burnt seat: atlas/realms.js),
+// and it is pulled back towards the point it was founded at (`root`)
+function driftRealms(a) {
+  const R = ALIGN_DRIFT.realm, year = a.hist.year;
+  for (const r of a.realms || []) {
+    if (r.fallen != null || !r.align) continue;
+    let wars = 0, routes = 0;
+    for (const [kk, rel] of Object.entries(a.rel || {})) {
+      const [p, q] = kk.split(':'); if (p !== r.id && q !== r.id) continue;
+      if (rel.war) wars++; routes += rel.routes || 0;
+    }
+    const root = r.root || SPECIES.get(WORLD_PEOPLES.get(r.people).race).align;
+    shiftAlign(r, 'mercy', R.back * (root.mercy - r.align.mercy) + (wars ? R.war * wars : routes ? R.peace : 0));
+    shiftAlign(r, 'order', R.back * (root.order - r.align.order) + (year - (r.seatSince ?? r.founded) >= R.ruleFrom ? R.rule : 0));
+  }
+}
 
 const key = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
@@ -194,6 +226,7 @@ export function fadeScourge(a) { if (a.f.scourge) for (let i = 0; i < a.n; i++) 
 
 // a year of the peoples' dealings; `overlap(p, q)` is the share of their land they share
 export function stepDiplomacy(a, rnd, say, overlap) {
+  driftRealms(a);
   const k = scaleOf(a), H = a.hist, towns = a.towns.filter(t => t.alive);
   // the nearest towns of two peoples, and how far apart they are
   const nearest = (p, q) => {

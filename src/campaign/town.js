@@ -3,7 +3,7 @@
 // what it has built allows; there the caravan works for gold when it has none, heals faster, hires a
 // guide or a sellsword, and meets those who would go along. In winter it may stay till spring.
 import {townFx, townLabel} from '../atlas/towns.js';
-import {trades, atWar} from '../atlas/diplomacy.js';
+import {trades, atWar, realmAlign} from '../atlas/diplomacy.js';
 import {realmLabel} from '../atlas/realms.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
@@ -190,7 +190,7 @@ export function hire(a, K, t, st, r) {
     const days = Math.round(H.days[0] + r() * (H.days[1] - H.days[0])), cost = gold(H.wage * days * STANDING[st].buy);
     if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve)) continue;
     K.gold = gold(K.gold - cost);
-    const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}});
+    const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}, align: t.realm ? realmAlign(a, t.realm) : null});
     K.members.push(m);
     said.push(`наняли ${H.label}а ${m.name} на ${pieces(days, 'день', 'дня', 'дней')} за ${cost} зол.`);
   }
@@ -207,7 +207,7 @@ export function companion(a, K, t, st, r) {
   const minor = r() < C.minor ? C.minorRaces[(r() * C.minorRaces.length) | 0] : null;
   const race = minor || WORLD_PEOPLES.get(t.people).race;
   if (!gratis) K.gold = gold(K.gold - C.fee);
-  const m = makeMember(K, r, {race, role: 'companion', gear: C.gear, loyalty: C.loyalty});
+  const m = makeMember(K, r, {race, role: 'companion', gear: C.gear, loyalty: C.loyalty, align: !minor && t.realm ? realmAlign(a, t.realm) : null});
   K.members.push(m);
   const sp = SPECIES.get(race);
   return `к каравану ${gratis ? 'по доброй воле' : `за ${C.fee} зол.`} пристал${m.gender === 'f' ? 'а' : ''} ${m.name}${minor ? ` из народа ${sp.gen || sp.plural}` : ''}`;

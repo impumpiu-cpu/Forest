@@ -31,6 +31,7 @@ import {REL} from './relations.js';
 import {stabilize} from '../agents/wounds.js';
 import {practice} from '../agents/skills.js';
 import {liveById} from '../agents/lookup.js';
+import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 
 export const TOGETHER = {
   riskFrom: 0.3,       // a gatherer is worth escorting from this risk up…
@@ -167,7 +168,7 @@ export function aidOption(w, a) {
     const h = helper(w, b.id); if (h && h !== a) continue;
     const op = opinion(a, b);
     // the merciful help even those they cannot stand; a life at stake, anyone helps
-    if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
+    if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < ALIGN.help) continue;
     const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
     if (s > bs) { bs = s; best = b; }
   }
@@ -179,6 +180,7 @@ export function giveAid(w, a, b) {
   if (b.downed) {
     stabilize(w, a, b);
     bond(w, b, a, TOGETHER.bondAid * 2); bond(w, a, b, TOGETHER.bondAid * 0.5);
+    shiftAlign(b, 'mercy', ALIGN_DRIFT.pawn.saved * 2);   // pulled back from death: kinder for it
     const s = social(w); if (s) s.aid++;
     practice(a, 'medicine', TOGETHER.aidPractice);
     return;
@@ -186,6 +188,7 @@ export function giveAid(w, a, b) {
   const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
   b.hp += amt; b.aidedAt = w.tick;
   bond(w, b, a, TOGETHER.bondAid); bond(w, a, b, TOGETHER.bondAid * 0.3);
+  shiftAlign(b, 'mercy', ALIGN_DRIFT.pawn.saved);
   think(w, b, 'aided', {name: a.name, gender: a.gender}); think(w, a, 'gaveAid', {name: b.name});
   const s = social(w); if (s) s.aid++;
   log(w, `<b>${esc(a.name)}</b> ${g(a, 'перевязал', 'перевязала')} раны <b>${esc(b.name)}</b> прямо в лесу и ${g(a, 'повёл', 'повела')} к своим.`, 'people');
@@ -214,7 +217,7 @@ export function askForBed(w, a, end) {
     if (p === a || p.task?.id !== 'treat' || !p.task.bed) continue;
     const h = hpShare(p);
     if (h < TOGETHER.yieldFrom || h - mine < TOGETHER.yieldGap) continue;
-    if (opinion(p, a) <= REL.dislike && (p.align?.mercy ?? 0) < 2) continue;
+    if (opinion(p, a) <= REL.dislike && (p.align?.mercy ?? 0) < ALIGN.guard) continue;
     if (!best || h > hpShare(best)) best = p;
   }
   if (!best) return null;
