@@ -75,8 +75,8 @@ export const WEAPON_QUALITIES = [
   {id: 'reach', label: 'длинное', unit: 'клеток', live: true, reads: 'досягаемость удара + значение (agents/combat.js reachOf)', note: 'бьёт из-за плеча'},
   {id: 'parry', label: 'парирующее', unit: 'доля', live: true, reads: 'блок против ударов (не стрел) + значение; КС', note: 'отводит клинок'},
   {id: 'unreliable', label: 'ненадёжное', unit: 'доля', live: true, reads: 'износ × (1 + значение)', note: 'ломается скорее'},
-  {id: 'bleed', label: 'кровопускающее', unit: 'доля', live: false, reads: 'этап 4: шанс кровотечения', note: 'зазубренное лезвие'},
-  {id: 'stun', label: 'оглушающее', unit: 'доля', live: false, reads: 'этап 4: шанс оглушить', note: 'тяжёлый удар по голове'},
+  {id: 'bleed', label: 'кровопускающее', unit: 'шанс', live: true, reads: 'шанс оставить кровотечение (состояние «кровотечение», data/conditions.js)', note: 'зазубренное лезвие'},
+  {id: 'stun', label: 'оглушающее', unit: 'шанс', live: true, reads: 'шанс оглушить (состояние «оглушён»: не бьёт, медленнее ходит)', note: 'тяжёлый удар по голове'},
   {id: 'thrown', label: 'метательное', unit: 'клеток', live: false, reads: 'нет механики метания', note: 'дротик, топорик'},
 ];
 // the value of a quality on a weapon (an item definition, or the gear's melee/ranged entry), 0 without it

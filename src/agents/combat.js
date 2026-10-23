@@ -17,6 +17,10 @@ import {heatTo} from '../world/heat.js';
 import {nearAgents} from './spatial.js';
 import {COMBAT, CAPS, DEFAULT_BLOW, ARMOR_VS_CAP, resistTo, traitOf} from '../data/balance/combat.js';
 import {drawPlace} from '../data/anatomy.js';
+import {CONDITIONS} from '../data/conditions.js';
+
+// a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
+const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
 import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
 
@@ -91,6 +95,11 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const place = drawPlace(tsp, w.rngs.hits);
   t.hitAt = place.id; raw *= place.dmg;
   const pierce = 1 - traitOf(q, 'piercing');
+  // a cut that bleeds, a blow that stuns (weapon qualities `bleed`, `stun`; data/conditions.js): a chance each, drawn
+  // from the stream of places, and only for a weapon that has them — every other blow draws nothing more
+  const bleed = traitOf(q, 'bleed'), stun = traitOf(q, 'stun');
+  if (bleed && !tsp.undead && w.rngs.hits() < bleed) { const C = CONDITIONS.get('bleeding'); t.bleeding = {dmg: C.dmg, until: w.tick + C.ticks}; }
+  if (stun && w.rngs.hits() < stun) t.stunned = {until: w.tick + CONDITIONS.get('stunned').ticks};
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
@@ -142,7 +151,7 @@ export const behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
 // so a creature without it hits as before.
 const BLOW = COMBAT.blow, SHOT = COMBAT.shot, HIT = COMBAT.hit;
 export function attack(w, a, t) {
-  if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
+  if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   // rock stops a blow as it stops a shot (a line through the corner of two rocks included); water does not
   if (behindRock(w, a, t)) return false;
@@ -158,7 +167,7 @@ export function attack(w, a, t) {
 // The same shot for a hunt and for a fight: it reads and trains the shooting skill (`ranged`), and only
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
-  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed) return null;
+  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a)) return null;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;

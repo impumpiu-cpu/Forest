@@ -13,6 +13,7 @@ import {SPECIES} from '../data/species.js';
 import {TRAITS, BASE_MODS} from '../data/traits.js';
 import {CREATURE_MODS, ADD_MODS} from '../data/mods.js';
 import {WOUNDS} from '../data/wounds.js';
+import {exhaustionRow} from '../data/conditions.js';
 
 export const peopleOf = (sp, a) => (a.people && sp.peoples ? sp.peoples.find(p => p.id === a.people) : null);
 
@@ -109,6 +110,9 @@ export function refreshBody(a) {
   // wounds that heal and traumas for life (data/wounds.js)
   let hpMul = 1;
   for (const wd of a.wounds || []) { const W = WOUNDS.get(wd.id); for (const [k, v] of Object.entries(W.mods || {})) mod(m, k, v); hpMul *= W.hp ?? 1; }
+  // the stage of exhaustion (data/conditions.js): its mods, if it has any
+  const ex = exhaustionRow(a.exhaust || 0);
+  if (ex) { for (const [k, v] of Object.entries(ex.mods || {})) mod(m, k, v); hpMul *= ex.hp ?? 1; }
   const own = a.own || {};
   for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;
   for (const [k, v] of Object.entries(own.add || {})) m[k] = (m[k] ?? 0) + v;

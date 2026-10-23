@@ -51,6 +51,7 @@ import {councilWish} from '../settlement/council.js';
 import {boldness} from '../agents/brains/predator.js';
 import {STATS} from '../data/special.js';
 import {WOUNDS} from '../data/wounds.js';
+import {conditionsOf} from '../data/conditions.js';
 import {activeSkills, TIERS} from '../data/skills.js';
 import {skillTier, softCap, canMake, recipeNeed, reasonText, recipeAccess, jobAccess, actionAccess} from '../agents/skills.js';
 import {VALUES, axisWord, alignLabel} from '../data/values.js';
@@ -119,6 +120,8 @@ function woundsHtml(w, a) {
     const left = x.until != null ? `, заживёт через ${Math.max(1, Math.ceil((x.until - w.tick) / DAY))} дн.` : '';
     out.push(`<span class="chip${W.trauma ? ' dislike' : ''}" title="${W.label}: ${W.note}${left}">${W.label}</span>`);
   }
+  // the passing states and exhaustion (data/conditions.js); the fall and the wounds are shown above
+  for (const {row} of conditionsOf(w, a)) if (row.kind === 'state' && row.id !== 'downed' || row.kind === 'exhaustion') out.push(`<span class="chip dislike" title="${esc(row.label)}: ${esc(row.note)}">${esc(row.label)}</span>`);
   return out.length ? `<div class="chips">${out.join('')}</div>` : '';
 }
 

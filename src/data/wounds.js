@@ -19,6 +19,7 @@
 import {Registry} from '../core/registry.js';
 import {HOUR, DAY} from '../core/time.js';
 import {curve} from './curves.js';
+import {CONDITIONS} from './conditions.js';
 
 export const CRIT = {mul: 1.5};
 
@@ -40,16 +41,9 @@ export const luckChance = (id, L) => curve(id, L);
 // Wounds kept on agent.wounds as [{id, until?}]: `until` (a tick) for one that heals, none for a trauma.
 //   mods: multipliers for agent.mods (adds for aim, dodge, bravery, as everywhere); hp: × full health
 //   trauma: true — incurable, drawn when the second luck check fails (weight: how often)
+// The rows are the wounds and traumas of data/conditions.js (the table «Состояния»), the same objects.
 export const WOUNDS = new Registry('wound');
-
-WOUNDS.registerAll([
-  {id: 'grave', label: 'тяжёлая рана', note: 'заживает', days: 4, mods: {speed: 0.85, work: 0.75}},
-  {id: 'limp', label: 'хромота', note: 'на всю жизнь', trauma: true, weight: 3, mods: {speed: 0.85}},
-  {id: 'maimedHand', label: 'покалеченная рука', note: 'на всю жизнь', trauma: true, weight: 3, mods: {work: 0.85, str: 0.85, fin: 0.85}},
-  {id: 'chest', label: 'пробитая грудь', note: 'на всю жизнь', trauma: true, weight: 2, hp: 0.85, mods: {cold: 1.15}},
-  {id: 'eye', label: 'выбитый глаз', note: 'на всю жизнь', trauma: true, weight: 2, mods: {sight: 0.8, aim: -0.08}},
-  {id: 'dread', label: 'страх смерти', note: 'на всю жизнь', trauma: true, weight: 2, mods: {bravery: -0.3}},
-]);
+WOUNDS.registerAll(CONDITIONS.filter(c => c.kind === 'wound' || c.kind === 'trauma'));
 
 export const GRAVE_TICKS = id => WOUNDS.get(id).days * DAY;
 export const bleedTicks = E => Math.round(curve('bleed', E) * HOUR);

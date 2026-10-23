@@ -62,7 +62,8 @@ import {GETTING, FODDER, ROUTE, WHEELS} from '../transport.js';
 import {TRADE as COLONY_TRADE} from '../trade.js';
 import {LEARN, SKILLS, TIERS} from '../skills.js';
 import {MASTER, MASTERS} from '../masters.js';
-import {CRIT, DEATHBLOW, WOUNDS} from '../wounds.js';
+import {CRIT, DEATHBLOW} from '../wounds.js';
+import {CONDITIONS, CONDITION_KINDS, EXHAUSTION} from '../conditions.js';
 import {ARRIVALS, MIGRATIONS} from '../migrations.js';
 import {CAMPAIGN as PRICE_CAMPAIGN, SERVICES, TRADE as PRICE_TRADE, QUALITY as PRICE_QUALITY, RESOURCES as RESOURCE_PRICES} from '../balance/prices.js';
 import {COMBAT, CAPS, SCALE_MODS, DEFAULT_BLOW} from '../balance/combat.js';
@@ -429,7 +430,12 @@ TABLES.push(
   autoTable({id: 'traits', label: 'Черты', group: 'Поселение', note: 'Черты характера (data/traits.js).', rows: () => TRAITS.all(), whole: {mods: MODS_COL}}),
   autoTable({id: 'skills', label: 'Навыки', group: 'Поселение', note: 'Навыки (data/skills.js).', rows: () => SKILLS.all()}),
   autoTable({id: 'masters', label: 'Мастера', group: 'Поселение', note: 'Мастера ремёсел (data/masters.js).', rows: () => MASTERS.all()}),
-  autoTable({id: 'wounds', label: 'Раны', group: 'Поселение', note: 'Раны (data/wounds.js).', rows: () => WOUNDS.all(), whole: {mods: MODS_COL}}),
+  fix(autoTable({id: 'conditions', label: 'Состояния', group: 'Существа', rows: () => CONDITIONS.all(), whole: {mods: MODS_COL},
+    note: 'Всё, что с существом не так на время или навсегда (data/conditions.js), как состояния и истощение в D&D: тяжёлая рана и травмы (agent.wounds), без сознания, отравлен, в паутине, кровотечение, оглушён, во хмелю (поле существа), три ступени истощения (сколько нужд на исходе). mods — что делает с телом (ключи «Модификаторов существа»); у истощения пока пусто — готово под числа.'}),
+  {kind: {type: 'enum', values: CONDITION_KINDS, edit: false}, where: {edit: false}, stage: {edit: false}, days: {type: 'num', min: 0}, weight: {type: 'num', min: 0},
+    dmg: {type: 'num', min: 0}, ticks: {type: 'int', min: 0}, slow: {type: 'num', min: 0}, hp: {type: 'num', min: 0}}),
+  {id: 'conditionRules', label: 'Истощение: правила', group: 'Существа', ...grp({exhaustion: EXHAUSTION}),
+    note: 'Нужда на этом уровне или ниже (exhaustion.low) считается к истощению; какие нужды (needs).'},
   autoTable({id: 'foods', label: 'Еда', group: 'Поселение', note: 'Еда и блюда (data/foods.js): сытость, порча.', rows: () => FOODS.all()}),
   autoTable({id: 'crops', label: 'Посевы', group: 'Поселение', note: 'Посевы полей (data/crops.js).', rows: () => CROPS.all()}),
   autoTable({id: 'plants', label: 'Растения', group: 'Поселение', note: 'Дикие растения карты (data/plants.js).', rows: () => PLANTS.all()}),
@@ -450,7 +456,7 @@ TABLES.push(
 // ── the last of the data without a table (docs/NRI.md, этап 0): the local map's ground, seasons, ores and regions,
 // who is whose enemy and who lives beyond the edge; the world map's plates, rocks, ores and winds.
 // `fix` closes columns the code keys by (a code stored in the grid and in saves) and gives others their `ref`.
-const fix = (t, cols) => ({...t, columns: t.columns.map(c => (cols[c.key] ? {...c, ...cols[c.key]} : c))});
+function fix(t, cols) { return {...t, columns: t.columns.map(c => (cols[c.key] ? {...c, ...cols[c.key]} : c))}; }
 const CODE = {edit: false, note: 'код в сетке и в сохранениях: не правится'};
 const GENESIS_FIELDS = keysOf({coll: 1, arc: 1, basv: 1, volc: 1, oldv: 1, craton: 1, low: 1, warm: 1});
 TABLES.push(
@@ -543,7 +549,7 @@ TABLES.push(
   {id: 'hitLocations', label: 'Места попадания', group: 'Существа', key: 'id', rows: () => HIT_LOCATIONS.all(),
     note: 'Куда приходится удар (data/anatomy.js), как в Fallout 2d20: у каждого плана тела свои места — вес (как часто), × урона там, какие травмы оставляет смертельная рана там. Место бросается из своего потока случайностей и больше ничего в бою не сдвигает.',
     columns: [col('id', 'id'), col('plan', 'План тела', 'enum', {values: BODY_PLANS, edit: false}), col('label', 'Место'), col('weight', 'Вес', 'num', {min: 0}),
-      col('dmg', 'Урон ×', 'num', {min: 0}), col('traumas', 'Травмы', 'ids', {ref: 'wounds'}), col('note', 'Описание')]},
+      col('dmg', 'Урон ×', 'num', {min: 0}), col('traumas', 'Травмы', 'ids', {ref: 'conditions'}), col('note', 'Описание')]},
 );
 
 export const tableById = id => TABLES.find(t => t.id === id);

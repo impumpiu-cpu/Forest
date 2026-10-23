@@ -7,6 +7,8 @@ import {think} from './mind.js';
 import {tempAt} from '../world/heat.js';
 import {HEAT} from '../data/behaviour.js';
 import {resistTo} from '../data/balance/combat.js';
+import {exhaustionStage, exhaustionRow, conditionHasMods} from '../data/conditions.js';
+import {refreshBody} from './special.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 
@@ -22,6 +24,21 @@ export function stepEffects(w, a) {
     else a.poison = null;
   }
   if (a.webbed && w.tick >= a.webbed.until) a.webbed = null;
+  // a bleeding cut (a weapon with `bleed`, data/conditions.js): it hurts every tick until it stops
+  if (a.bleeding) {
+    if (w.tick < a.bleeding.until) { a.hp -= a.bleeding.dmg; if (a.hp <= 0) kill(w, a, 'кровотечения'); }
+    else a.bleeding = null;
+  }
+  if (a.stunned && w.tick >= a.stunned.until) a.stunned = null;
+}
+
+// The stage of exhaustion follows the needs (data/conditions.js EXHAUSTION); the body is rebuilt only when the stage
+// that ends or begins does something (its row has mods), so a stage without numbers changes nothing
+function stepExhaustion(a) {
+  const now = exhaustionStage(a), was = a.exhaust || 0;
+  if (now === was) return;
+  if (now) a.exhaust = now; else delete a.exhaust;
+  if (conditionHasMods(exhaustionRow(now)) || conditionHasMods(exhaustionRow(was))) refreshBody(a);
 }
 
 // Heat above what a species stands (`heatHarm`) burns: by the profile of who it is (data/behaviour.js HEAT), × the
@@ -44,6 +61,7 @@ export function stepBody(w, a) {
     if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
   }
   heatHarm(a, sp, T, 'colonist');
+  stepExhaustion(a);
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
   // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
   const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;
