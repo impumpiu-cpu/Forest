@@ -1,4 +1,5 @@
-// The realm as a kingdom (docs/NRI.md, этап 7; the numbers: data/kingdom.js). Once a year, in spring, on a random
+// The realm as a kingdom (docs/NRI.md, этап 7; the numbers: data/kingdom.js). Once a year, at its end (winter: so the
+// year's raids are all counted), on a random
 // stream of its own (a.kingdomRnd), every living realm takes stock: its four attributes from its towns and world
 // view, its offices filled or emptied, its edicts, the year's event, its upkeep and its four kinds of ruin.
 //
@@ -12,7 +13,10 @@ import {makeName} from '../data/names.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {pickOne} from '../data/chance.js';
 import {townFx} from './towns.js';
-import {realmTowns, realmLabelGen} from './realms.js';
+import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
+import {SEASONS_PER_YEAR} from '../data/atlas.js';
+
+const cap1 = s => s[0].toUpperCase() + s.slice(1);
 import {realmAlign} from './diplomacy.js';
 
 const r3 = v => Math.round(v * 1000) / 1000;
@@ -47,7 +51,7 @@ export function baseStats(a, realm, towns) {
 export const upkeepOf = towns => towns.reduce((s, t) => s + t.built.reduce((u, id) => u + (UPKEEP[TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id).cat : ''] || 0), 0), 0) / Math.max(1, towns.length);
 
 export function stepKingdom(a, say) {
-  if (!a.realms?.length || a.hist.season !== 0) return;
+  if (!a.realms?.length || a.hist.season !== SEASONS_PER_YEAR - 1) return;
   const r = mulberry(a.kingdomRnd ?? seedNumber(`${a.cfg.seed}:atlas:kingdom`)), year = a.hist.year;
   const tell = text => say({text, topic: 'kingdom'});
   for (const realm of a.realms) {
@@ -55,17 +59,21 @@ export function stepKingdom(a, say) {
     const towns = realmTowns(a, realm.id);
     if (!towns.length) continue;
     const K = realm.kingdom ||= {ruin: zero(RUINS), court: Object.fromEntries(OFFICES.all().map(o => [o.id, null])), edicts: {}, stats: zero(REALM_STATS)};
-    const name = realmLabelGen(a, realm.id), war = Object.entries(a.rel || {}).some(([k, x]) => x.war && k.split(':').includes(String(realm.id)));
+    const name = realmLabelGen(a, realm.id), Name = cap1(realmLabel(a, realm.id)), war = Object.entries(a.rel || {}).some(([k, x]) => x.war && k.split(':').includes(String(realm.id)));
     const stats = baseStats(a, realm, towns);
     // the court: a holder's years run out, an empty office is filled
     const race = WORLD_PEOPLES.get(realm.people).race;
     for (const O of OFFICES.all()) {
       const h = K.court[O.id];
-      if (h && year >= h.until) { K.court[O.id] = null; tell(`${O.label[0].toUpperCase() + O.label.slice(1)} ${name} ${h.name} оставил${h.f ? 'а' : ''} свой пост.`); }
+      if (h && year >= h.until) { K.court[O.id] = null; tell(`${cap1(h.f ? O.labelF : O.label)} ${name} ${h.name} оставил${h.f ? 'а' : ''} свой пост.`); }
       if (!K.court[O.id] && r() < COURT.fill) {
-        const f = r() < COURT.female, nm = makeName(race, r, {gender: f ? 'f' : 'm'}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));
-        K.court[O.id] = {name: nm, f, since: year, until: year + years};
-        tell(`Новый ${O.label} ${name} — ${nm}.`);
+        // a name nobody at this court has yet; a people without names leaves the office empty
+        const used = new Set(Object.values(K.court).filter(Boolean).map(x => x.name));
+        const f = r() < COURT.female, nm = makeName(race, r, {gender: f ? 'f' : 'm', used}), years = Math.round(O.years[0] + r() * (O.years[1] - O.years[0]));
+        if (nm) {
+          K.court[O.id] = {name: nm, f, since: year, until: year + years};
+          tell(`${f ? 'Новая' : 'Новый'} ${f ? O.labelF : O.label} ${name} — ${nm}.`);
+        }
       }
       addTo(stats, K.court[O.id] ? O.adds : O.vacant);
     }
@@ -73,7 +81,7 @@ export function stepKingdom(a, say) {
     const ctx = {stats, ruin: K.ruin, war};
     for (const E of EDICTS.all()) {
       const L = E.levels.find(l => holds(l.when, ctx)) || E.levels[E.levels.length - 1];
-      if (K.edicts[E.id] !== L.id && K.edicts[E.id] != null) tell(`${name[0].toUpperCase() + name.slice(1)}: ${E.label} — ${L.label}.`);
+      if (K.edicts[E.id] !== L.id && K.edicts[E.id] != null) tell(`${cap1(E.label)} ${name} — ${L.label}.`);
       K.edicts[E.id] = L.id;
       addTo(stats, L.adds); addTo(K.ruin, L.ruin);
     }
@@ -86,7 +94,7 @@ export function stepKingdom(a, say) {
       if (can.length) {
         const E = REALM_EVENTS.get(pickOne(r, can.map(e => [e.id, e.weight])));
         addTo(stats, E.adds); addTo(K.ruin, E.ruin); K.event = E.id;
-        tell(E.text.replace('{realm}', name));
+        tell(E.text.replace('{Realm}', Name).replace('{realm}', name));
       }
     }
     // ruin grows by its sources and falls by the attribute that holds it back

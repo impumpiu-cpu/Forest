@@ -344,7 +344,7 @@ function townEvening(a, K, seasonId) {
   const wintering = K.inTown.why === 'winter' && (seasonId === 'winter' || seasonId === 'autumn');
   if (st && (wintering || (K.day - K.inTown.since < VISIT.stay && !(stocked && healed)))) return;
   // too poor to stock up for the way: they hire out for board and pay (the town feeds them, the pay is kept) a while
-  const short = Math.max(0, Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays) - K.food) * (st ? rationPrice(t, st) : Infinity);
+  const short = Math.max(0, Math.min(capacity(K) - cargoLoad(K), ms.length * CAMPAIGN.ration * WANTS.foodDays) - K.food) * (st ? rationPrice(t, st, termsOf(a, K, t).buy) : Infinity);
   if (st && !stocked && K.gold < short && K.day - K.inTown.since < VISIT.work) {
     if (!K.inTown.work) { K.inTown.work = true; K.stats.worked = (K.stats.worked || 0) + 1; say(a, K, `Денег на припасы нет: караван нанялся в ${townLabel(t, 3)} ${t.name} в работу за харчи и плату.`, 'town'); }
     return;

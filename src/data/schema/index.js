@@ -615,7 +615,7 @@ TABLES.push(
 const STAT_MAP = {type: 'map', ref: 'realmStats'}, RUIN_MAP = {type: 'map', ref: 'ruins', min: 0};
 TABLES.push(
   {id: 'realmStats', label: 'Держава: показатели', group: 'Народы', key: 'id', rows: () => REALM_STATS.all(),
-    note: 'Четыре показателя державы, как в Kingmaker PF2 (data/kingdom.js): из чего складывается каждый — эффекты построек её городов (в среднем на город) × вес, мировоззрение (±5) × вес; к ним — должности, указы, событие года, минус разруха. Считаются раз в год, весной (atlas/kingdom.js).',
+    note: 'Четыре показателя державы, как в Kingmaker PF2 (data/kingdom.js): из чего складывается каждый — эффекты построек её городов (в среднем на город) × вес, мировоззрение (±5) × вес; к ним — должности, указы, событие года, минус разруха. Считаются раз в год, в конце года (atlas/kingdom.js).',
     columns: [col('id', 'id'), col('label', 'Показатель'), col('from', 'Из построек', 'map', {ref: keysOf(TOWN_FX)}), col('compass', 'Из мировоззрения', 'map', {ref: keysOf({order: 1, mercy: 1})}), col('note', 'Описание')]},
   {id: 'ruins', label: 'Держава: разруха', group: 'Народы', key: 'id', rows: () => RUINS.all(),
     note: 'Четыре вида разрухи: растёт каждый год от своих источников (towns — на город, pop — на 1000 жителей, upkeep — на очко содержания сверх экономики, wars — на войну, raided — на разорённый город), убывает от показателя, что её держит (× «правила» fall), и отнимает от показателя eats (× penalty на очко).',
@@ -625,8 +625,8 @@ TABLES.push(
     note: 'Что держава объявляет в этот год: первый уровень, чьё условие выполнено (последний — по умолчанию). Условие: war — на войне; below/above — показатель или разруха ниже/выше. adds — к показателям, ruin — к разрухе.',
     columns: [col('id', 'id'), col('label', 'Указ'), col('levels', 'Уровни', 'json', {check: levelsErrors})]},
   {id: 'offices', label: 'Держава: двор', group: 'Народы', key: 'id', rows: () => OFFICES.all(),
-    note: 'Должности при дворе: именной держатель (имя — по расе державы) прибавляет к показателям, пустая должность отнимает. Служит years лет, весной пустую должность занимают с шансом «правила» court.fill.',
-    columns: [col('id', 'id'), col('label', 'Должность'), col('adds', 'Занята', 'map', STAT_MAP), col('vacant', 'Пуста', 'map', STAT_MAP), col('years', 'Лет службы', 'json')]},
+    note: 'Должности при дворе: именной держатель (имя — по расе державы) прибавляет к показателям, пустая должность отнимает. Служит years лет (женщина — labelF), в конце года пустую должность занимают с шансом «правила» court.fill.',
+    columns: [col('id', 'id'), col('label', 'Должность'), col('labelF', 'Если женщина'), col('adds', 'Занята', 'map', STAT_MAP), col('vacant', 'Пуста', 'map', STAT_MAP), col('years', 'Лет службы', 'json')]},
   {id: 'realmEvents', label: 'Держава: события', group: 'Народы', key: 'id', rows: () => REALM_EVENTS.all(),
     note: 'События года — таблица случайностей «одна по весу» (data/chance.js), тянется с шансом «правила» events.chance; условие — как у указов. adds — к показателям в этот год, ruin — к разрухе, text — строка летописи ({realm} — держава).',
     columns: [col('id', 'id'), col('weight', 'Вес', 'num', {min: 0}), col('when', 'Условие', 'json', {check: whenErrors, nullable: true}), col('adds', 'Показатели', 'map', STAT_MAP), col('ruin', 'Разруха', 'map', RUIN_MAP), col('text', 'Строка летописи')]},

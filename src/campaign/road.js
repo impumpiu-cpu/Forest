@@ -9,19 +9,23 @@ import {TONGUE, shareTongue} from '../data/tongues.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {free} from './captives.js';
 import {dangers} from './land.js';
+import {scaleOf} from '../atlas/tectonics.js';
 
+const T_MAX = 0.9;   // no term moves a price by more than this share
 const fameOf = (K, realm) => K.fame?.[realm] || {fame: 0, infamy: 0};
 
 export function termsOf(a, K, t) {
   const race = t?.people && WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null;
   const mute = race && !shareTongue(free(K).map(m => m.race), race) ? TONGUE.barrier : 0;
   const R = fameOf(K, t?.realm), rep = REPUTATION.fameDiscount * R.fame - REPUTATION.infamyMarkup * R.infamy;
-  return {buy: (1 + mute) * (1 - rep), sell: (1 - mute) * (1 + rep)};
+  // clamped, so no number makes a town pay the caravan to buy, or refuse every sale (1 — as before)
+  const m = Math.min(T_MAX, Math.max(0, mute)), r = Math.min(T_MAX, Math.max(-T_MAX, rep));
+  return {buy: (1 + m) * (1 - r), sell: (1 - m) * (1 + r)};
 }
 
 // the realm of the nearest living town within REPUTATION.near cells, or null
 function realmNear(a, K) {
-  let best = null, bd = REPUTATION.near;
+  let best = null, bd = REPUTATION.near * scaleOf(a);   // cells of a 192-high world, as every campaign distance
   for (const t of a.towns || []) {
     if (!t.alive || !t.realm) continue;
     const d = Math.hypot(t.x - K.x, t.y - K.y);

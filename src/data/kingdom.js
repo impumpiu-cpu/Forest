@@ -1,6 +1,6 @@
 // The realm as a kingdom (docs/NRI.md, этап 7), after Kingmaker in Pathfinder 2: four attributes — culture, economy,
 // loyalty, stability — and four kinds of ruin — corruption, crime, decay, strife; buildings that cost upkeep, edicts,
-// the court's offices with named holders, and the events of a year. atlas/kingdom.js runs it once a year, in spring,
+// the court's offices with named holders, and the events of a year. atlas/kingdom.js runs it once a year, at its end,
 // on a random stream of its own, so the rest of the history draws as before.
 //
 // How an attribute is made (REALM_STATS): the realm's towns' effects (data/townBuildings.js fx: lore, faith, prestige,
@@ -56,24 +56,24 @@ EDICTS.registerAll([
 ]);
 
 // The court: offices a realm fills with named holders (names: data/names.js, of the realm's race). A filled office
-// adds to its attribute; an empty one takes off `vacant`. A holder serves `years` (from–to), then the office is filled
-// again the next spring.
+// adds to its attribute; an empty one takes off `vacant`. A holder serves `years` (from–to); the office is filled again
+// with `court.fill` a year, the same year it fell empty at the earliest. `labelF` — the office held by a woman.
 export const OFFICES = new Registry('office');
 OFFICES.registerAll([
-  {id: 'ruler', label: 'правитель', adds: {stability: 0.1, loyalty: 0.05}, vacant: {stability: -0.2}, years: [15, 40]},
-  {id: 'general', label: 'полководец', adds: {stability: 0.05}, vacant: {stability: -0.05}, years: [8, 25]},
-  {id: 'treasurer', label: 'казначей', adds: {economy: 0.1}, vacant: {economy: -0.1}, years: [8, 25]},
-  {id: 'priest', label: 'первосвященник', adds: {culture: 0.05, loyalty: 0.05}, vacant: {loyalty: -0.05}, years: [10, 30]},
+  {id: 'ruler', label: 'правитель', labelF: 'правительница', adds: {stability: 0.1, loyalty: 0.05}, vacant: {stability: -0.2}, years: [15, 40]},
+  {id: 'general', label: 'полководец', labelF: 'воительница', adds: {stability: 0.05}, vacant: {stability: -0.05}, years: [8, 25]},
+  {id: 'treasurer', label: 'казначей', labelF: 'казначея', adds: {economy: 0.1}, vacant: {economy: -0.1}, years: [8, 25]},
+  {id: 'priest', label: 'первосвященник', labelF: 'первосвященница', adds: {culture: 0.05, loyalty: 0.05}, vacant: {loyalty: -0.05}, years: [10, 30]},
 ]);
-export const COURT = {fill: 0.7, female: 0.5};   // the chance a spring fills an empty office; that its holder is a woman
+export const COURT = {fill: 0.7, female: 0.5};   // the chance a year fills an empty office; that its holder is a woman
 
 // The events of a realm's year: a random table (data/chance.js format, mode `one` by weight) drawn with `chance` a year.
 // `when` — as for edicts; `adds` — to the attributes for that year; `ruin` — to the ruin; `text` — the chronicle line
-// ({realm} — the realm's name).
+// ({Realm} — the realm's name as the subject, «Высокие эльфы Тёмного леса»; {realm} — of it, «высоких эльфов …»).
 export const REALM_EVENTS = new Registry('realmEvent');
 REALM_EVENTS.registerAll([
   {id: 'harvest', weight: 3, adds: {economy: 0.1, loyalty: 0.05}, text: 'У {realm} обильный урожай: амбары полны.'},
-  {id: 'feast', weight: 2, when: {above: {culture: 0.3}}, adds: {culture: 0.1}, text: '{realm} справили великий праздник.'},
+  {id: 'feast', weight: 2, when: {above: {culture: 0.3}}, adds: {culture: 0.1}, text: '{Realm} справили великий праздник.'},
   {id: 'scandal', weight: 2, when: {above: {corruption: 1}}, ruin: {corruption: 0.5}, adds: {loyalty: -0.05}, text: 'При дворе {realm} раскрылось казнокрадство.'},
   {id: 'bandits', weight: 2, when: {below: {stability: 0.3}}, ruin: {crime: 0.5}, text: 'На дорогах {realm} развелись разбойники.'},
   {id: 'unrest', weight: 1, when: {below: {loyalty: 0.1}}, ruin: {strife: 0.5}, adds: {stability: -0.1}, text: 'В городах {realm} неспокойно: подданные ропщут.'},
