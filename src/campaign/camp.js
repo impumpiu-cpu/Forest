@@ -17,7 +17,7 @@ import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
 import {refreshBody} from '../agents/special.js';
-import {dress, def} from '../agents/equipment.js';
+import {dress, def, gearDef, gearToken} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
 import {putUp} from '../settlement/buildings.js';
 import {raidThreat, THREAT} from '../settlement/threat.js';
@@ -133,7 +133,7 @@ export function openCamp(S) {
     // a captive of the caravan stays one on the map (settlement/captives.js)
     if (m.captive) { ag.captive = {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned ?? null, service: m.captive.service || 0}; if (rec) rec.captive = true; }
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
-    dress(ag, [...m.gear.hand, m.gear.body].filter(id => ITEMS.has(id)), CAMP.arrows);
+    dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
     for (const n of Object.keys(ag.needs)) ag.needs[n] = Math.max(ag.needs[n], 0.75);
     ag.needs.rest = CAMP.rest[S.kind] ?? 0.85;   // a day's march behind them
@@ -278,7 +278,7 @@ export function campOutcome(w) {
   const cargo = {};
   for (const id of new Set([...Object.keys(S.cargo || {}), ...CAMP.carry])) { const n = Math.floor((w.stock[id] || 0) + 1e-6); if (n > 0) cargo[id] = n; }
   // gear from the foes' dead (agents/agent.js kill: into the armory)
-  const items = w.armory.filter(it => it.dur > 0 && !it.own && it.handedBy == null && ITEMS.has(it.type)).map(it => it.type);   // (a captive's tool handed in for the night is no loot)
+  const items = w.armory.filter(it => it.dur > 0 && !it.own && it.handedBy == null && ITEMS.has(it.type)).map(gearToken);   // (a captive's tool handed in for the night is no loot)
   // a boss that must die (the fourth, campaign/epic.js) — dead or bound; a miniboss driven off frees its grave as well
   const bossDead = C.boss && S.foe?.boss?.mustDie ? !!C.boss.dead || !!C.boss.captive : null;
   const killed = C.foeObjs.filter(o => o.dead).length, fled = C.foeObjs.filter(o => !o.dead && !o.captive && (o.gone || o.task?.id === 'leave')).length;
@@ -286,7 +286,7 @@ export function campOutcome(w) {
   const taken = w.agents.filter(o => o.captive && !o.captive.member && !o.dead && !o.fugitive).map(o => ({
     name: o.name, gender: o.gender, race: o.species, people: o.people || null, special: {...o.special}, align: o.align ? {...o.align} : null, values: o.values ? [...o.values] : null,
     hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, from: S.foe?.kind || null, will: o.captive.will,
-    gear: {hand: [...new Set([...allItems(o), ...w.armory.filter(it => it.handedBy === o.id)].filter(it => itemOf(it).slot === 'hand').map(it => it.type))].filter(id => ITEMS.has(id)), body: allItems(o).find(it => itemOf(it).slot === 'body')?.type || 'clothes'},
+    gear: {hand: [...new Set([...allItems(o), ...w.armory.filter(it => it.handedBy === o.id)].filter(it => itemOf(it).slot === 'hand').map(gearToken))].filter(id => !!gearDef(id)), body: (b => (b ? gearToken(b) : 'clothes'))(allItems(o).find(it => itemOf(it).slot === 'body'))},
     local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill}))}));
   const plundered = w.stats.lastSteal >= C.start;
   const lost = members.filter(m => !m.alive).length, stolen = beasts.filter(b => b.stolen).length;

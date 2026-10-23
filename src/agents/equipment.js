@@ -17,6 +17,7 @@ import {qualityOf} from '../data/quality.js';
 import {season} from '../data/seasons.js';
 import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS} from '../data/balance/combat.js';
 import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
+import {MARKS, MARK, markable} from '../data/balance/marks.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
 // made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
@@ -43,16 +44,31 @@ export function itemDef(type, q = 0) {
   }
   return d;
 }
+// a smith's mark (data/balance/marks.js): its kind of blow strikes and guards better; a piece of another kind
+// takes a share of the mark's kind into its blow (`mix`: [[kind, weight], …], read by combat.js damage)
+function markedDef(d, M) {
+  const n = {...d, mark: M.id, label: `${d.label} ${M.label}`, short: `${d.short} (${M.short})`};
+  const mix = (own, dmg) => (own === M.blow ? {dmg: dmg * (1 + MARK.hit)} : {mix: [[own, 1 - MARK.share], [M.blow, MARK.share * (1 + MARK.hit)]]});
+  if (d.melee) n.melee = {...d.melee, ...mix(d.blow || DEFAULT_BLOW.melee, d.melee.dmg)};
+  if (d.ranged) n.ranged = {...d.ranged, ...mix(d.ranged.type || DEFAULT_BLOW.ranged, d.ranged.dmg)};
+  if (d.armor || d.block) n.vs = {...(d.vs || {}), [M.blow]: (d.vs?.[M.blow] ?? 1) * (1 + MARK.guard)};
+  return n;
+}
+// how much a mixed blow is worth on average against nothing (the strength rating: agents/strength.js)
+export const mixGain = attack => (attack?.mix ? attack.mix.reduce((s, [, k]) => s + k, 0) : 1);
+
 // a named piece (an epic find) wears its own name over the plain one; a silvered blade
-// (`silver: true`, settlement/crafting.js) is called so and bites what fears silver (combat.js)
+// (`silver: true`, settlement/crafting.js) is called so and bites what fears silver (combat.js);
+// a marked one (`mark`) is of a people's smiths
 const named = new Map();
 export function def(inst) {
   const d = itemDef(inst.type, inst.q);
-  if (!inst.name && !inst.silver) return d;
-  const key = inst.type + ':' + inst.q + ':' + (inst.name || '') + ':' + (inst.silver ? 's' : '');
+  const M = inst.mark && MARKS[inst.mark] && markable(d) ? MARKS[inst.mark] : null;
+  if (!inst.name && !inst.silver && !M) return d;
+  const key = inst.type + ':' + inst.q + ':' + (inst.name || '') + ':' + (inst.silver ? 's' : '') + ':' + (M ? M.id : '');
   let n = named.get(key);
   if (!n) {
-    n = {...d};
+    n = M ? markedDef(d, M) : {...d};
     if (inst.silver) { n.silver = true; n.label = `${d.label} (посеребрённый)`; n.short = `${d.short} сер.`; n.dur = d.dur * 0.8; }
     if (inst.name) { n.label = `${inst.name} (${n.label})`; n.short = inst.name; }
     named.set(key, n);
@@ -61,13 +77,28 @@ export function def(inst) {
 }
 export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, ...extra}).dur});
 
+// The caravan keeps its gear as words, not objects (campaign/): a piece is 'ironsword', a finer or marked one
+// 'ironsword+1@orc' (+ its quality, @ its mark). These turn a word into the piece and back.
+export const gearToken = inst => inst.type + (inst.q ? `+${inst.q}` : '') + (inst.mark ? `@${inst.mark}` : '');
+export function gearSpec(token) {
+  const m = /^([^+@]+)(?:\+(\d+))?(?:@(\w+))?$/.exec(token || '');
+  if (!m) return {type: token};
+  return {type: m[1], ...(m[2] ? {q: +m[2]} : {}), ...(m[3] ? {mark: m[3]} : {})};
+}
+export const gearType = token => (token || '').split(/[+@]/)[0];
+// the definition behind a word of the caravan's gear (null: not an item — a word nobody knows)
+export const gearDef = token => { const s = gearSpec(token); return ITEMS.has(s.type) ? def(s) : null; };
+// its price, with its quality and mark
+export const gearValue = token => { const s = gearSpec(token); return ITEMS.has(s.type) ? itemPrice(s.type, s.q || 0, false, s.mark || null) : 0; };
+
 // price of one piece in imperial gold: the plain piece plus the step up in quality
 // a silvered iron blade costs this much more than a plain one
 export const SILVERING = SERVICES.silvering;
-export function itemPrice(type, q = 0, silver = false) {
+export function itemPrice(type, q = 0, silver = false, mark = null) {
   const base = ITEMS.get(type);
   const step = q ? QUALITY_PRICE[q][base.slot === 'body' || base.block ? 'armor' : 'weapon'] : 0;
-  return (base.value || 0) + step + (silver && !base.silver ? SILVERING : 0);
+  const markMul = mark && MARKS[mark] && markable(base) ? MARK.price : 1;
+  return Math.round(((base.value || 0) + step) * markMul) + (silver && !base.silver ? SILVERING : 0);
 }
 
 // How much silver in the hand is worth: a lot while something that fears it is on the map, a little once
@@ -97,7 +128,7 @@ export function recalcGear(a) {
   if (!a.equip) { a.gear = g; return g; }
   for (const it of handItems(a)) {
     const d = def(it);
-    if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null};
+    if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null};
     if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it};
     if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs || null; }
     // a shot is caught only by what covers (a shield), with `cover` of its block (forms.js)
@@ -151,13 +182,13 @@ export function putOn(a, inst, slot, spill) {
   return d;
 }
 
-// give an agent a list of items (raider kits, starting gear, a guard's kit); each is a type id or
-// {type, q} for a finer piece; returns what did not fit
+// give an agent a list of items (raider kits, starting gear, a guard's kit); each is a type id, a caravan's word
+// ('ironsword+1@orc') or {type, q, mark}; returns what did not fit
 export function dress(a, types, ammo = 0) {
   const spill = [];
   for (const t of types) {
-    const spec = typeof t === 'string' ? {type: t} : t;
-    const inst = newItem(spec.type, spec.q ? {q: spec.q} : {}), d = def(inst);
+    const spec = typeof t === 'string' ? gearSpec(t) : t;
+    const inst = newItem(spec.type, {...(spec.q ? {q: spec.q} : {}), ...(spec.mark ? {mark: spec.mark} : {})}), d = def(inst);
     if (d.holds) inst.ammo = ammo;
     if (d.slot === 'body') putOn(a, inst, 'body', spill);
     else if (d.slot === 'back') putOn(a, inst, 'back', spill);
@@ -228,7 +259,7 @@ function handsValue(w, a, hands) {
 // best loadout from the agent's own gear plus the store; returns {hands, two, body, back, score}
 function bestLoadout(w, a, pool) {
   const byType = new Map();   // keep one instance per kind (type and quality, the most durable) to keep the search small
-  for (const it of pool) { const key = it.type + ':' + (it.q || 0) + (it.silver ? ':s' : ''), k = byType.get(key); if (!k || it.dur > k.dur) byType.set(key, it); }
+  for (const it of pool) { const key = it.type + ':' + (it.q || 0) + (it.silver ? ':s' : '') + (it.mark ? ':' + it.mark : ''), k = byType.get(key); if (!k || it.dur > k.dur) byType.set(key, it); }
   const items = [...byType.values()];
   const hand = items.filter(it => def(it).slot === 'hand');
   const opts = [{hands: []}];

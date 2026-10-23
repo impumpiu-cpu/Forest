@@ -1,6 +1,6 @@
 // The compass of world views (data/values.js, docs/TABLE.md «Мировоззрение»): labels, the three layers
 // (race → realm → creature, ±3 each, all within ±5), the realms' feeling for each other, the drift.
-import {AXIS_MAX, ALIGN, alignLabel, alignNear, shiftAlign} from '../src/data/values.js';
+import {AXIS_MAX, ALIGN, alignLabel, alignNear, shiftAlign, spreadOf} from '../src/data/values.js';
 import {SPECIES} from '../src/data/species.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {mulberry} from '../src/core/rng.js';
@@ -24,6 +24,11 @@ for (let k = 0; k < n; k++) {
   if (Math.abs(p.mercy - c.mercy) >= 2) far++;
 }
 check('пешка: в пределах ±3 от центра и ±5 по компасу, далеко отходят немногие', within && far > 0 && far < n * 0.25, `отошли на 2 и больше: ${(far / n * 100).toFixed(1)}%`);
+
+// the race's own spread (data/races.js align.spread): humans stray from their centre further than dwarves from theirs on law
+const sd = (race, axis) => { const sp = SPECIES.get(race), r2 = mulberry(7); let s = 0; for (let k = 0; k < 3000; k++) { const p = alignNear({order: 0, mercy: 0}, spreadOf(sp, 'pawn'), r2); s += p[axis] ** 2; } return Math.sqrt(s / 3000); };
+check('разброс расы по осям: люди шире, гномы держатся закона', sd('human', 'order') > sd('dwarf', 'order') * 2 && sd('dwarf', 'mercy') > sd('dwarf', 'order'),
+  `закон: люди ${sd('human', 'order').toFixed(2)}, гномы ${sd('dwarf', 'order').toFixed(2)}; добро у гномов ${sd('dwarf', 'mercy').toFixed(2)}`);
 
 const x = {align: {order: 4.9, mercy: 0}}; shiftAlign(x, 'order', 1); shiftAlign(x, 'mercy', -0.3);
 check('сдвиг точки держится в пределах компаса', x.align.order === AXIS_MAX && x.align.mercy === -0.3, JSON.stringify(x.align));

@@ -9,7 +9,7 @@
 // board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4; T134–T137 the trade in captives, stage 5; T138–T140 fixes from the code review of 21.10, captives). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4; T134–T137 the trade in captives, stage 5; T138–T140 fixes from the code review of 21.10, captives; T141–T143 the smith's mark, docs/TABLE.md stage 5). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -40,7 +40,8 @@ import {stepRelations, REL} from '../src/settlement/relations.js';
 import {startHunt, stepHunts, huntAim, dropCarcass, stepCarcasses, CARCASS, PACK} from '../src/agents/carcass.js';
 import {DAY, HOUR, nightness} from '../src/core/time.js';
 import {think} from '../src/agents/mind.js';
-import {newItem, outfit, recalcGear, allItems} from '../src/agents/equipment.js';
+import {newItem, outfit, recalcGear, allItems, itemPrice} from '../src/agents/equipment.js';
+import {strengthOf} from '../src/agents/strength.js';
 import {refreshBody, adoptBody} from '../src/agents/special.js';
 import {craftChance, qualityRoll} from '../src/data/quality.js';
 import {critChance, lethal, stabilize, stepDowned, healWounds} from '../src/agents/wounds.js';
@@ -2053,5 +2054,40 @@ check('T140', 'беглец погиб в бегах: путы пропали с
 });
 
 let bad = 0;
+// ── the smith's mark (data/balance/marks.js, docs/TABLE.md этап 5)
+const hitWith = (w, a, t, kit) => {
+  a.equip.right = kit.right ? newItem(kit.right.type, kit.right) : null; a.equip.body = null; recalcGear(a);
+  t.equip && (t.equip.body = kit.body ? newItem(kit.body.type, kit.body) : null); t.equip && recalcGear(t);
+  t.hp = 50; damage(w, a, t, 1, {type: a.gear.melee.type, mix: a.gear.melee.mix || null}); return 50 - t.hp;
+};
+check('T141', 'гномий меч рубит и дробит: скелету он страшнее простого меча; эльфийское копьё колет сильнее простого', () => {
+  const w = scene(); fixedRng(w, 0.99);
+  const a = put(w, 'human', 'colony', 30.5, 30.5), s = put(w, 'skeleton', 'raiders', 31.5, 30.5), h = put(w, 'human', 'raiders', 31.5, 31.5);
+  const plain = hitWith(w, a, s, {right: {type: 'sword'}}), dwarf = hitWith(w, a, s, {right: {type: 'sword', mark: 'dwarf'}});
+  if (!(dwarf > plain * 1.2)) return `скелету: простой меч ${plain.toFixed(3)}, гномий ${dwarf.toFixed(3)}`;
+  if (!a.gear.melee.mix || a.gear.melee.mix[0][0] !== 'slash') return 'гномий меч перестал быть рубящим';
+  // its own kind: the blow itself is stronger (the damage of a blow is weapon × the rest: combat.js attack)
+  a.equip.right = newItem('ironspear'); recalcGear(a); const sp = a.gear.melee.dmg;
+  a.equip.right = newItem('ironspear', {mark: 'elf'}); recalcGear(a); const el = a.gear.melee.dmg;
+  if (a.gear.melee.mix) return 'эльфийское копьё смешивает удар, хотя колет своим';
+  return Math.abs(el / sp - 1.25) < 1e-6 || `копьё: простое ${sp.toFixed(3)}, эльфийское ${el.toFixed(3)} (нужно ×1,25)`;
+});
+check('T142', 'орочья кольчуга держит рубящий удар лучше простой, против дробящего — как простая', () => {
+  const w = scene(); fixedRng(w, 0.99);
+  const a = put(w, 'human', 'raiders', 30.5, 30.5), t = put(w, 'human', 'colony', 31.5, 30.5);
+  const cut = hitWith(w, a, t, {right: {type: 'sword'}, body: {type: 'chainmail'}}), cutOrc = hitWith(w, a, t, {right: {type: 'sword'}, body: {type: 'chainmail', mark: 'orc'}});
+  const bash = hitWith(w, a, t, {right: {type: 'ironmace'}, body: {type: 'chainmail'}}), bashOrc = hitWith(w, a, t, {right: {type: 'ironmace'}, body: {type: 'chainmail', mark: 'orc'}});
+  if (!(cutOrc < cut)) return `рубящий: простая ${cut.toFixed(3)}, орочья ${cutOrc.toFixed(3)}`;
+  return Math.abs(bash - bashOrc) < 1e-9 || `дробящий: простая ${bash.toFixed(3)}, орочья ${bashOrc.toFixed(3)}`;
+});
+check('T143', 'клеймо входит в цену и в коэффициент силы', () => {
+  const w = scene(); fixedRng(w);
+  const a = put(w, 'human', 'colony', 30.5, 30.5);
+  a.equip.right = newItem('sword'); recalcGear(a); const s0 = strengthOf(a);
+  a.equip.right = newItem('sword', {mark: 'dwarf'}); recalcGear(a); const s1 = strengthOf(a);
+  if (!(s1 > s0)) return `КС: простой меч ${s0.toFixed(1)}, гномий ${s1.toFixed(1)}`;
+  return itemPrice('sword', 0, false, 'dwarf') > itemPrice('sword') || 'клеймо не дороже простого';
+});
+
 for (const [id, what, err] of results) { console.log(`${err ? 'FAIL' : 'ok  '} ${id} ${what}${err ? ' — ' + err : ''}`); if (err) bad++; }
 if (bad) process.exit(1);

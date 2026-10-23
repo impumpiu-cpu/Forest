@@ -4,6 +4,7 @@
 // stolen, broken, taken from the fallen foes. A campaign in the quick mode (K.mode 'auto': the balance
 // runs) settles it at once instead: the foe's might against the caravan's.
 import {CAMPAIGN, FOES} from '../data/campaign.js';
+import {gearDef, gearType, gearValue} from '../agents/equipment.js';
 import {CAMP} from '../data/camp.js';
 import {AMBUSH} from '../data/bubble.js';
 import {BEASTS, VEHICLES, GETTING} from '../data/transport.js';
@@ -147,20 +148,20 @@ function stopDeath(m, why) {
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town
 export function takeGear(K, items) {
   const ms = free(K).filter(m => !m.former), took = [];   // no arms or armour for a captive or a former slave
-  const armor = id => ITEMS.get(id)?.armor ?? 0, dmg = m => Math.max(0, ...m.gear.hand.map(id => ITEMS.get(id)?.melee?.dmg ?? 0));
+  const armor = id => gearDef(id)?.armor ?? 0, dmg = m => Math.max(0, ...m.gear.hand.map(id => gearDef(id)?.melee?.dmg ?? 0));
   for (const id of items) {
-    const it = ITEMS.get(id); if (!it) continue;
+    const it = gearDef(id); if (!it) continue;
     if (it.slot === 'body') {
       const m = ms.slice().sort((p, q) => armor(p.gear.body) - armor(q.gear.body))[0];
       if (m && armor(m.gear.body) < (it.armor ?? 0)) { K.spoils = [...(K.spoils || []), m.gear.body]; m.gear.body = id; took.push(`${it.short} (${m.name})`); continue; }
     } else if (it.melee && !it.tool && it.hands === 1 && !it.ranged) {
       const m = ms.filter(x => x.role === 'knight' || x.role === 'sellsword').sort((p, q) => dmg(p) - dmg(q))[0];
-      const k = m ? m.gear.hand.findIndex(x => ITEMS.get(x)?.melee && !ITEMS.get(x)?.ranged && x !== 'shield') : -1;
+      const k = m ? m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield') : -1;
       if (m && k >= 0 && dmg(m) < it.melee.dmg) { K.spoils = [...(K.spoils || []), m.gear.hand[k]]; m.gear.hand[k] = id; took.push(`${it.short} (${m.name})`); continue; }
     }
-    if ((it.value ?? 0) >= 1) K.spoils = [...(K.spoils || []), id];
+    if (gearValue(id) >= 1) K.spoils = [...(K.spoils || []), id];
   }
-  if (K.spoils?.length > CAMP.spoils) K.spoils = K.spoils.sort((p, q) => (ITEMS.get(q)?.value ?? 0) - (ITEMS.get(p)?.value ?? 0)).slice(0, CAMP.spoils);
+  if (K.spoils?.length > CAMP.spoils) K.spoils = K.spoils.sort((p, q) => gearValue(q) - gearValue(p)).slice(0, CAMP.spoils);
   const sold = (K.spoils || []).length;
   if (sold && !took.length && items.length) took.push(`трофеи на продажу (${pieces(sold, 'вещь', 'вещи', 'вещей')} в обозе)`);
   return took;
@@ -185,7 +186,7 @@ function spoils(a, K, d, r) {
   if (T[d.kind] && toolTier(K) < 2 && r() < T[d.kind]) {
     const m = free(K).find(x => x.role === 'squire') || free(K)[0], old = m.gear.hand[0];
     m.gear.hand[0] = T.item;
-    say(a, K, `Среди брошенного врагами нашёлся ${ITEMS.get(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${ITEMS.has(old) ? ITEMS.get(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
+    say(a, K, `Среди брошенного врагами нашёлся ${gearDef(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${!!gearDef(old) ? gearDef(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
   }
 }
 

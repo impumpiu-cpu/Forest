@@ -23,6 +23,7 @@ import {eraPlan, historyLength} from '../atlas/history.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$} from './dom.js';
+import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
 import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
@@ -36,7 +37,7 @@ import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
 import {openCamp, stepCamp, campDone} from '../campaign/camp.js';
 import {Renderer} from '../render/renderer.js';
-const itemShort = id => (ITEMS.has(id) ? ITEMS.get(id).short : id);
+const itemShort = id => gearDef(id)?.short ?? id;
 
 const SEASON_LIST = SEASONS.all();
 // the pace: ms a season is played back over (a day is a thirtieth of it); «сразу» — as many seasons as fit a frame

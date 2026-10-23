@@ -16,6 +16,7 @@ import {STATS, EFFECTS} from '../special.js';
 import {BIOMES, BIOME_KINDS, RARITY} from '../biomes.js';
 import {MATERIALS, FORMS, PRICES} from '../balance/index.js';
 import {BLOWS} from '../balance/combat.js';
+import {MARKS, MARK} from '../balance/marks.js';
 import {QUALITY} from '../quality.js';
 import {ITEMS, rebuildItems} from '../items.js';
 import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS} from '../townBuildings.js';
@@ -64,6 +65,8 @@ export const TABLES = [
       col('world', 'Народ на карте', 'ref', {ref: 'peoples', edit: false}), col('era', 'Эпоха прихода', 'ref', {ref: ERAS, edit: false, note: 'правится в «Народах мира»'}),
       col('align.order', 'Закон ↔ хаос', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'точка расы на компасе: + закон, − хаос (data/values.js); держава ±3 от неё, пешка ±3 от державы'}),
       col('align.mercy', 'Добро ↔ зло', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'точка расы: + добро, − зло; держава ±3, пешка ±3 от державы'}),
+      col('align.spread.order', 'Разброс: закон', 'num', {min: 0, max: 2, note: 'множитель к ±3: как далеко держава отходит от расы, а пешка — от державы по оси закона (люди 1,3, гномы 0,5)'}),
+      col('align.spread.mercy', 'Разброс: добро', 'num', {min: 0, max: 2, note: 'то же по оси добра'}),
       col('values', 'Ценности', 'map', {ref: VALUES, min: 0, note: 'вес ценности; каждое существо тянет 2–3'}),
       col('home', 'Биомы расселения', 'map', {ref: 'biomes', min: 0, max: 1, note: 'насколько биом подходит: 1 — родной, 0 — не живут'}),
       ...body,
@@ -154,6 +157,14 @@ export const TABLES = [
       col('sold', 'Продаётся', 'bool'), col('keep', 'Не продают', 'bool'),
       col('craftBase', 'Шанс: основа', 'num', {min: 0, max: 1}), col('craftSkill', 'Шанс: за навык', 'num', {min: 0, max: 1}),
     ]},
+  {id: 'marks', label: 'Клеймо кузнеца', group: 'Вещи', key: 'id', rows: () => Object.values(MARKS),
+    note: 'Что ставят только кузнецы городов своего народа (data/balance/marks.js): свой тип удара бьёт и держит лучше. У людей клейма нет. Числа бонуса — в «Правилах клейма».',
+    columns: [
+      col('id', 'id'), col('people', 'Народ', 'ref', {ref: 'peoples'}), col('blow', 'Свой тип удара', 'enum', {values: BLOWS}),
+      col('label', 'В имени вещи'), col('short', 'Кратко'),
+    ]},
+  {id: 'markRules', label: 'Правила клейма', group: 'Вещи', ...params(() => paramRows(MARK)),
+    note: 'hit — +к удару своего типа; guard — +к защите брони и щита от своего типа; share — доля своего типа в ударе «чужой» формы (гномий меч дробит на эту долю); price — × к цене; trader — доля клеймёных вещей у торговца из такого города; forge — с какого качества куёт городская кузня (город от ступени cityTier — cityQ).'},
   {id: 'items', label: 'Предметы (итог)', group: 'Вещи', key: 'id', rows: () => ITEMS.all(), computed: true,
     note: 'Что получается из формы × материала (data/items.js): итоговые числа и цена. Править — в «Формах» и «Материалах».',
     columns: [

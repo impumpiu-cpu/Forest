@@ -9,6 +9,7 @@
 //   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
 import {scaleOf} from '../atlas/tectonics.js';
+import {gearDef} from '../agents/equipment.js';
 import {townAt} from '../atlas/peoples.js';
 import {trades, atWar} from '../atlas/diplomacy.js';
 import {realmLabel} from '../atlas/realms.js';
@@ -85,7 +86,7 @@ export function reveal(a, K, i, r) {
 }
 
 // ── the members
-const itemDef = id => (ITEMS.has(id) ? ITEMS.get(id) : null);
+const itemDef = id => gearDef(id);
 export function memberMight(m) {
   if (m.captive) return 0;   // a captive fights for nobody but itself (campaign/captives.js)
   const M = CAMPAIGN.might, s = m.special || {};

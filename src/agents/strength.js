@@ -16,7 +16,7 @@ import {STATS} from '../data/special.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {critChance} from './wounds.js';
 import {createAgent, maxHp} from './agent.js';
-import {dress, recalcGear, blowStat} from './equipment.js';
+import {dress, recalcGear, blowStat, mixGain} from './equipment.js';
 import {armorAgainst, blockAgainst, resistOf} from './combat.js';
 import {BLOWS} from '../data/balance/combat.js';
 import {refreshBody} from './special.js';
@@ -28,12 +28,12 @@ export function strengthParts(a, {now = false} = {}) {
   const crit = 1 + critChance(a) * (CRIT.mul - 1);
   // offence: a blow per tick, and shots on top for one who carries a bow or a sling
   const cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (m.swing ?? 1)));
-  let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
+  let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * mixGain(g.melee) * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
   if (sp.venom) melee += sp.venom.dmg * Math.min(1, sp.venom.ticks / cd);
   let shot = 0;
   if (g.ranged) {
     const hit = Math.min(0.95, Math.max(0.05, HIT.base + HIT.skill * (a.skill?.ranged ?? HIT.noSkill) + (m.aim || 0) - HIT.far * 0.5));
-    shot = (SHOT.base + SHOT.spread / 2) * g.ranged.dmg * crit * hit / g.ranged.cd * STRENGTH.rangedWeight;
+    shot = (SHOT.base + SHOT.spread / 2) * g.ranged.dmg * mixGain(g.ranged) * crit * hit / g.ranged.cd * STRENGTH.rangedWeight;
   }
   // a shooter shoots while the foe comes or is held by others, and strikes with the bow once it is close
   const offence = melee + shot;

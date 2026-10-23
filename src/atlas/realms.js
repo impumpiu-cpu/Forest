@@ -17,7 +17,7 @@ import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
-import {ALIGN, ALIGN_DRIFT, alignNear, shiftAlign} from '../data/values.js';
+import {ALIGN_DRIFT, alignNear, shiftAlign, spreadOf} from '../data/values.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -76,7 +76,7 @@ export function foundRealm(a, t, subId = null, from = null) {
   // each realm of a race its own shade of the race's colour
   const shade = [1, 0.72, 1.25, 0.55, 1.45][nth % 5], color = P.color.map(v => Math.max(0, Math.min(255, Math.round(v * shade))));
   const id = `r${a.realms.length + 1}`;
-  const align = alignNear(from?.align || SPECIES.get(P.race).align, ALIGN.realm, mulberry(seedNumber(`${a.cfg.seed}:align:${id}`)));
+  const align = alignNear(from?.align || SPECIES.get(P.race).align, spreadOf(SPECIES.get(P.race), 'realm'), mulberry(seedNumber(`${a.cfg.seed}:align:${id}`)));
   const r = {id, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color, align, root: {...align}, seatSince: a.hist.year};
   a.realms.push(r);
   t.realm = r.id; t.capital = true;

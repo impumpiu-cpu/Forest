@@ -64,7 +64,9 @@ export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1)
 // A hit that lands (not dodged, not blocked) may be critical: one check on the attacker's Luck
 // (agents/wounds.js critChance), × CRIT.mul, before armour. A blow that takes the last health goes to
 // lethal(): death, or for a colonist with luck a fall (data/wounds.js). The fallen are not struck again.
-export function damage(w, by, t, raw, {melee = true, type = null} = {}) {
+// `mix` — a blow of several kinds at once ([[kind, weight], …]: a marked piece, data/balance/marks.js): the body and the
+// armour answer each part; a shield stops or lets through the whole blow by its first kind
+export function damage(w, by, t, raw, {melee = true, type = null, mix = null} = {}) {
   if (t.downed || t.dead) return 'downed';
   const g = ensureGear(t);
   // the victim remembers who hurt it and from how far (a mule charges whoever shot it)
@@ -74,7 +76,8 @@ export function damage(w, by, t, raw, {melee = true, type = null} = {}) {
   const tsp = SPECIES.get(t.species);
   // what kind of blow: the caller's word, else what the striker holds or strikes with
   type ||= melee ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged;
-  raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
+  if (mix) type = mix[0][0];
+  else raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
   const block = blockAgainst(g, type, melee);
   if (block > 0 && w.rngs.combat() < block) { wear(w, t, melee ? g.blockItem : g.coverItem); t.flash = 3; return 'blocked'; }
   const crit = w.rngs.combat() < critChance(by);
@@ -82,7 +85,8 @@ export function damage(w, by, t, raw, {melee = true, type = null} = {}) {
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
-  let dmg = raw * home * wall * (1 - armorAgainst(g, type));
+  let dmg = mix ? raw * home * wall * mix.reduce((s, [ty, k]) => s + k * resistOf(tsp, ty, melee) * (1 - armorAgainst(g, ty)), 0)
+    : raw * home * wall * (1 - armorAgainst(g, type));
   noteHit(t, by);   // the colonists who fought it share in its rare trophies (agents/trophies.js)
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
   t.hp -= dmg;
@@ -131,7 +135,7 @@ export function attack(w, a, t) {
   if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
-  damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type});
+  damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + MELEE_SKILL * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null});
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it
   if (g.melee.item) wear(w, a, g.melee.item);
   return true;
@@ -154,7 +158,7 @@ export function shoot(w, a, t) {
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
-  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null), {melee: false, type: r.type || DEFAULT_BLOW.ranged});
+  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null), {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null});
   return t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
 }
 

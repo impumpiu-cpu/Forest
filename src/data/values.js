@@ -24,6 +24,9 @@ export const AXIS_MAX = 5;
 //                 to (atlas/diplomacy.js memory): +near at one point, falling to `far` at `span` apart and beyond
 //   help, guard — a creature this merciful or more helps one it cannot stand (aid in the woods), shares its bed with
 //                 one it dislikes (settlement/together.js)
+// how far one of a race strays from its centre (a realm from the race, a creature from its realm): ALIGN.realm or
+// ALIGN.pawn × the race's own factor per axis (data/races.js `align.spread`: humans stray more, dwarves keep the law)
+export const spreadOf = (sp, layer) => ({order: ALIGN[layer] * (sp?.align?.spread?.order ?? 1), mercy: ALIGN[layer] * (sp?.align?.spread?.mercy ?? 1)});
 export const ALIGN = {realm: 3, pawn: 3, cell: 2, near: 0.5, far: -1, span: 10, help: 1.7, guard: 3.3};
 
 // How the point moves (per event, or per year for a realm); every shift is kept within ±AXIS_MAX.
@@ -48,10 +51,12 @@ export function shiftAlign(x, axis, d, upTo = null) {
   x.align[axis] = clampAxis(upTo == null ? v : d > 0 ? Math.min(v, Math.max(upTo, x.align[axis])) : Math.max(v, Math.min(upTo, x.align[axis])));
 }
 
-// a point near a centre: the centre + a bell within ±dev on each axis, kept on the compass; `rng` is drawn 6 times
+// a point near a centre: the centre + a bell within ±dev on each axis (a number, or {order, mercy}), kept on the
+// compass; `rng` is drawn 6 times
 export function alignNear(center, dev, rng) {
-  const n = () => (rng() + rng() + rng() - 1.5) / 1.5 * dev;
-  const o = n(), m = n();
+  const d = axis => (typeof dev === 'number' ? dev : dev?.[axis] ?? 0);
+  const n = k => (rng() + rng() + rng() - 1.5) / 1.5 * k;
+  const o = n(d('order')), m = n(d('mercy'));
   return {order: clampAxis(Math.round(((center?.order ?? 0) + o) * 2) / 2), mercy: clampAxis(Math.round(((center?.mercy ?? 0) + m) * 2) / 2)};
 }
 

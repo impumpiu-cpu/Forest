@@ -3,6 +3,7 @@
 // battlefield. What the land makes possible is read from the world: its roads, its lairs and wolves, its ruins
 // and fallen lairs, the graves of its battles and raids, the track of an army.
 import {roadAccess} from '../atlas/roads.js';
+import {gearDef} from '../agents/equipment.js';
 import {lairAt} from '../atlas/lairs.js';
 import {ruinAt} from '../atlas/diplomacy.js';
 import {faunaLevel} from '../world/region.js';
@@ -47,16 +48,16 @@ export function morningFind(a, K, r) {
   // a building tool better than the caravan's: a squire takes it in place of his own (as from a beaten foe)
   const tier = d => (d?.iron ? 2 : d?.bronze ? 1 : 0), builds = d => d?.tool && (d.tool.chop || d.tool.build);
   for (const id of [...items]) {
-    const d = ITEMS.get(id);
+    const d = gearDef(id);
     if (!builds(d) || tier(d) <= toolTier(K)) continue;
     const m = free(K).find(x => x.role === 'squire' && !x.former) || free(K).find(x => !x.former);
     if (!m) continue;
     const old = m.gear.hand[0]; m.gear.hand[0] = id; items.splice(items.indexOf(id), 1);
-    if (old && ITEMS.has(old)) K.spoils = [...(K.spoils || []), old];
+    if (old && !!gearDef(old)) K.spoils = [...(K.spoils || []), old];
     things.push(`${d.label.toLowerCase()} — ${m.name} взял${m.gender === 'f' ? 'а' : ''} его вместо своего`);
   }
   if (items.length) {
-    const names = items.map(id => ITEMS.get(id).label.toLowerCase()).join(', ');
+    const names = items.map(id => gearDef(id).label.toLowerCase()).join(', ');
     const took = takeGear(K, items).filter(t => !t.startsWith('трофеи'));   // the one it suits takes it, the rest is for sale
     things.push(took.length ? `${names} — взяли себе: ${took.join(', ')}` : `${names} — в обоз на продажу`);
   }

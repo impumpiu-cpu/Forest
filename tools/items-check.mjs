@@ -18,7 +18,8 @@ import {RESOURCES} from '../src/data/resources.js';
 import {STRENGTH} from '../src/data/balance/creatures.js';
 import {strengthOf} from '../src/agents/strength.js';
 import {createAgent, maxHp} from '../src/agents/agent.js';
-import {dress} from '../src/agents/equipment.js';
+import {dress, gearDef, itemPrice} from '../src/agents/equipment.js';
+import {MARKS} from '../src/data/balance/marks.js';
 import {refreshBody} from '../src/agents/special.js';
 import {STATS} from '../src/data/special.js';
 import {mulberry} from '../src/core/rng.js';
@@ -176,7 +177,7 @@ function ks(kit) {
   const a = createAgent(scratch, R.species, 'raiders', 0, 0);
   if (a.special) { for (const st of STATS.ids()) a.special[st] = R.special; refreshBody(a); a.hp = maxHp(a); }
   a.skill = {melee: R.skill, ranged: R.skill};
-  const quiver = kit.map(id => ITEMS.get(id).ranged?.ammo).filter(Boolean).map(ammo => ITEMS.all().find(d => d.holds?.ammo === ammo)?.id)[0];
+  const quiver = kit.map(id => gearDef(id).ranged?.ammo).filter(Boolean).map(ammo => ITEMS.all().find(d => d.holds?.ammo === ammo)?.id)[0];
   dress(a, quiver ? [...kit, quiver] : kit, quiver ? ITEMS.get(quiver).holds.max : 0);
   return strengthOf(a);
 }
@@ -203,6 +204,24 @@ for (const T of tiersAll) {
   for (const f of Object.keys(FORMS)) {
     const row = used.map(m => { const x = items.find(y => y.d.form === f && y.d.material === m); return lpad(x ? `${x.value} (${f1(x.worth).trim()})` : '', 13); });
     console.log(pad(f, 10) + row.join(''));
+  }
+}
+
+// ── the smith's marks (data/balance/marks.js): what each people's work does to a piece of each kind
+{
+  const ids = ['ironspear', 'sword', 'ironmace', 'ironwarhammer', 'bow', 'chainmail', 'lamellar', 'ironshield'].filter(id => ITEMS.has(id));
+  const M = Object.keys(MARKS), cloth = ITEMS.has('clothes') ? 'clothes' : null;
+  console.log(`\nКлеймо кузнеца (data/balance/marks.js): цена · КС (${R.species} + одежда; броня и щит — с железным копьём); у брони и щита — защита от своего типа удара, было → стало`);
+  console.log(pad('', 22) + ['простое', ...M.map(m => MARKS[m].short)].map(x => lpad(x, 22)).join(''));
+  for (const id of ids) {
+    const d = ITEMS.get(id), arms = !!(d.melee || d.ranged) && d.slot === 'hand';
+    const kit = tok => (d.slot === 'body' ? ['ironspear', tok] : !arms ? ['ironspear', tok, ...(cloth ? [cloth] : [])] : [tok, ...(cloth ? [cloth] : [])]);
+    const cellOf = mark => {
+      const tok = mark ? `${id}@${mark}` : id, g = gearDef(tok), price = itemPrice(id, 0, false, mark);
+      const vs = !arms && mark ? ` ${MARKS[mark].blow[0]}${(d.vs?.[MARKS[mark].blow] ?? 1).toFixed(2)}→${(g.vs?.[MARKS[mark].blow] ?? 1).toFixed(2)}` : '';
+      return lpad(`${price} · ${ks(kit(tok)).toFixed(0)}${vs}`, 22);
+    };
+    console.log(pad(d.short, 22) + [null, ...M].map(cellOf).join(''));
   }
 }
 

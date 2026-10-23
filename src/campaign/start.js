@@ -7,6 +7,7 @@
 //   food, gold, i, x, y, path, k, camp, why, hungry, seen (Uint8Array, 1 — known), log: [{day, year,
 //   season, i, text, kind}], track, stats, rng: {name → position}, party (id)}
 import {mulberry, seedNumber} from '../core/rng.js';
+import {gearDef} from '../agents/equipment.js';
 import {rollCreature} from '../agents/special.js';
 import {SPECIES} from '../data/species.js';
 import {ITEMS} from '../data/items.js';
@@ -56,7 +57,7 @@ function member(K, a, rnd, role, k) {
   const gear = role === 'knight' ? {hand: R.knightGear[k % R.knightGear.length], body: RETINUE.armour[k % RETINUE.armour.length]}
     : {hand: RETINUE.squireGear[k % RETINUE.squireGear.length], body: RETINUE.squireBody};
   // the rank's leaning: the fighters to the fighting stats (a bowman — also to Perception), the squires to the others
-  const L = RETINUE.lean, bow = gear.hand.some(id => ITEMS.get(id)?.ranged);
+  const L = RETINUE.lean, bow = gear.hand.some(id => gearDef(id)?.ranged);
   const lean = role === 'knight' ? [...L.knight, ...(bow ? L.bowman : [])] : L.squire;
   return makeMember(K, rnd, {race: WORLD_PEOPLES.get(K.people).race, sub: r.sub, role, gear, core: true, lean, align: realmAlign(a, K.realm)});
 }
