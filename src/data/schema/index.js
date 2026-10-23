@@ -12,7 +12,8 @@ import {SPECIES, KINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
 import {KINS, RELATIONS, OPINION} from '../relations.js';
 import {VALUES, AXIS_MAX, ALIGN, ALIGN_DRIFT} from '../values.js';
-import {STATS, EFFECTS} from '../special.js';
+import {STATS} from '../special.js';
+import {CURVES, CURVE_GROUPS, SHAPES, curveAt} from '../curves.js';
 import {BIOMES, BIOME_KINDS, RARITY} from '../biomes.js';
 import {MATERIALS, FORMS, PRICES} from '../balance/index.js';
 import {BLOWS} from '../balance/combat.js';
@@ -56,7 +57,7 @@ import {CAPTIVE, ESCAPE, FREEDOM} from '../captives.js';
 import {SLAVE} from '../slavery.js';
 import {GETTING, FODDER, ROUTE, WHEELS} from '../transport.js';
 import {TRADE as COLONY_TRADE} from '../trade.js';
-import {LEARN, SKILLS} from '../skills.js';
+import {LEARN, SKILLS, TIERS} from '../skills.js';
 import {MASTER, MASTERS} from '../masters.js';
 import {CRIT, DEATHBLOW, WOUNDS} from '../wounds.js';
 import {ARRIVALS, MIGRATIONS} from '../migrations.js';
@@ -90,6 +91,8 @@ export {checkTables, get, editable, targetOf, valueErrors, resolver} from './col
 
 export const GROUPS = ['Существа', 'Отношения', 'Вещи', 'Народы', 'Караван', 'Поселение', 'Мир'];
 
+// the letters the sheet «SPECIAL (итог)» shows: a human's range, the sturdy races', and the beasts' beyond
+const SHEET_X = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 30, 50, 80];
 const keysOf = obj => ({has: k => Object.prototype.hasOwnProperty.call(obj, k)});
 const MINDS = {beast: 'зверь', semi: 'полуразумный', sentient: 'разумный'};
 const SLOTS = {hand: 'рука', body: 'тело', back: 'спина'};
@@ -176,10 +179,22 @@ export const TABLES = [
   {id: 'stats', label: 'SPECIAL', group: 'Существа', key: 'id', rows: () => STATS.all(),
     note: 'Семь характеристик (data/special.js). Норма человека — 5.',
     columns: [col('id', 'Буква'), col('label', 'Название'), col('short', 'Кратко'), col('note', 'Что даёт')]},
-  {id: 'statEffects', label: 'Действие SPECIAL', group: 'Существа', key: 'id', computed: true,
-    rows: () => Object.entries(EFFECTS).map(([id, fn]) => ({id, fn})),
-    note: 'Формулы: как характеристики превращаются в множители (data/special.js EFFECTS). При 5 всё нейтрально.',
-    columns: [col('id', 'Эффект'), col('fn', 'Формула', 'formula')]},
+  {id: 'curves', label: 'Кривые', group: 'Существа', key: 'id', rows: () => CURVES.all(),
+    note: 'Как буква SPECIAL становится числом игры (data/curves.js): действие SPECIAL (урон, здоровье, холод, меткость, обзор, скорость, пауза удара, учёба, уклонение, обаяние), удача (крит, пережить смертельную рану, уйти без увечья), кровотечение упавшего, темп и потолок навыка. Три формы: прямая base + per × (X − pivot), степень (X / pivot)^pow, насыщение base + per × X / (X + pivot); затем границы min…max (пусто — без границы). При 5 множитель — 1, прибавка — 0. Значения при каждой букве — в «SPECIAL (итог)».',
+    columns: [
+      col('id', 'id'), col('group', 'Группа', 'enum', {values: CURVE_GROUPS, edit: false}), col('label', 'Что'),
+      col('stat', 'Буква', 'ref', {ref: STATS, note: 'чья буква; у навыков — буква самого навыка'}), col('shape', 'Форма', 'enum', {values: SHAPES}),
+      col('base', 'base', 'num'), col('per', 'per', 'num'), col('pivot', 'pivot', 'num'), col('pow', 'pow', 'num'),
+      col('min', 'min', 'num', {note: 'пусто — без нижней границы'}), col('max', 'max', 'num', {note: 'пусто — без верхней'}),
+      col('unit', 'Единица', 'text', {edit: false}), col('note', 'Описание'),
+    ]},
+  {id: 'specialSheet', label: 'SPECIAL (итог)', group: 'Существа', key: 'x', computed: true,
+    rows: () => SHEET_X.map(x => Object.fromEntries([['x', x], ...CURVES.all().map(c => [c.id, Math.round(curveAt(c, x) * 1000) / 1000])])),
+    note: 'Каждая кривая при каждой букве (вычисляется из «Кривых»): строка — значение буквы, столбец — кривая. Человек живёт в 1–10, крепкие расы доходят до 15, зверь — дальше (Сила дракона ~80).',
+    columns: [col('x', 'Буква', 'num'), ...CURVES.all().map(c => col(c.id, `${c.label}${c.stat ? ` (${c.stat})` : ''}`, 'num', {note: c.note}))]},
+  {id: 'tiers', label: 'Тиры действий', group: 'Существа', key: 'id', rows: () => TIERS,
+    note: 'С какой буквы навыка открыт тир действия (data/skills.js TIERS, docs/SPECIAL.md): T1 — всем, жёсткий запрет — только с T2.',
+    columns: [col('id', 'Тир', 'int'), col('label', 'Название'), col('min', 'Буква от', 'int', {min: 0})]},
 
   // ── Отношения
   {id: 'relations', label: 'Расы ↔ расы', group: 'Отношения', key: 'id',

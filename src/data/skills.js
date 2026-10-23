@@ -80,11 +80,10 @@ export const TIERS = [
 
 // How skill grows (agents/skills.js practice()):
 //   gain = rate × units × letterFactor × mods.learn × (above the ceiling ? overCap : 1), at most 1
-//   letterFactor = max(minFactor, base + perPoint × letter): 1 at the human norm 5, 1.4 at 10, 0.68 at 1
+//   letterFactor — the curve 'skillPace' of data/curves.js: 1 at the human norm 5, 1.4 at 10, 0.68 at 1
 // One unit is one tick of real work (the old rate); a shot that was really fired counts as `shot` units.
 export const LEARN = {
   rate: 0.0006,
-  base: 0.6, perPoint: 0.08, minFactor: 0.3,
   overCap: 0.1,      // above 10 × letter practice gives a tenth
   shot: 10,          // one fired shot ≈ the old per-tick gain over a bow's reload
   blow: 6,           // one melee blow struck (a blow comes about twice as often as a shot)

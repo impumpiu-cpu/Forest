@@ -46,6 +46,7 @@ import {refreshBody, adoptBody} from '../src/agents/special.js';
 import {craftChance, qualityRoll} from '../src/data/quality.js';
 import {critChance, lethal, stabilize, stepDowned, healWounds} from '../src/agents/wounds.js';
 import {CRIT} from '../src/data/wounds.js';
+import {CURVES} from '../src/data/curves.js';
 import {decideTrophies, luckBoost, TROPHY} from '../src/agents/trophies.js';
 import {damage, attack, nearestHostile} from '../src/agents/combat.js';
 import {giveAid} from '../src/settlement/together.js';
@@ -694,7 +695,7 @@ const seq = (w, xs) => { let k = 0; w.rngs.combat = Object.assign(() => xs[Math.
 const raider = (w, x = 31.5) => { const r = put(w, 'human', 'raiders', x, 30.5); r.mods.dodge = 0; return r; };
 
 check('T49', 'крит только у попавшего удара и только от удачи нападающего', () => {
-  if (![0, 1, 5, 10, 50, 1000].every(L => { const p = critChance({special: {L}}); return p >= 0 && p <= CRIT.cap; })) return 'шанс крита вне границ';
+  if (![0, 1, 5, 10, 50, 1000].every(L => { const p = critChance({special: {L}}); return p >= 0 && p <= CURVES.get('crit').max; })) return 'шанс крита вне границ';
   if (!(critChance({special: {L: 10}}) > critChance({special: {L: 1}}))) return 'удача не повышает крит';
   const w = scene(), a = human(w, {L: 10}), t = raider(w);
   t.mods.dodge = 0;

@@ -57,3 +57,28 @@ console.log('ok   правка таблиц: значения доходят д�
   if (bad.length) { console.log('Имена:\n  ' + bad.join('\n  ')); process.exit(1); }
   console.log(`ok   имена: ${Object.keys(PERSON).length} видов с именами, ${Object.keys(PET).length} приручаемых; конструктор: «${leader}», «${beast}», «${plain}»`);
 }
+
+// ── curves (data/curves.js, docs/NRI.md этап 1): every curve gives a finite number at every letter the sheet shows,
+// a multiplier is 1 at the human norm, an edit of a row reaches what the game reads and goes back on reset
+{
+  const {CURVES, curveAt, curve} = await import('../src/data/curves.js');
+  const {EFFECTS, NORM} = await import('../src/data/special.js');
+  const {bleedTicks} = await import('../src/data/wounds.js');
+  const {letterFactor} = await import('../src/agents/skills.js');
+  const E = await import('../src/data/schema/edits.js');
+  const bad = [];
+  for (const c of CURVES.all()) {
+    for (let x = 0; x <= 100; x++) if (!Number.isFinite(curveAt(c, x))) { bad.push(`${c.id}: при ${x} — ${curveAt(c, x)}`); break; }
+    if (c.unit === '×' && Math.abs(curveAt(c, NORM) - 1) > 1e-9) bad.push(`${c.id}: множитель при норме ${NORM} — ${curveAt(c, NORM)}, а не 1`);
+    if (c.min != null && c.max != null && c.min > c.max) bad.push(`${c.id}: min больше max`);
+  }
+  for (const id of Object.keys(EFFECTS)) if (CURVES.get(id).group !== 'special') bad.push(`${id}: действие SPECIAL не из группы special`);
+  const hp0 = EFFECTS.hp({E: 10}), crit0 = curve('crit', 10), bleed0 = bleedTicks(5), pace0 = letterFactor(5);
+  E.setCell('curves', 'hp', 'per', 0.1); E.setCell('curves', 'crit', 'max', 0.05); E.setCell('curves', 'bleed', 'base', 3); E.setCell('curves', 'skillPace', 'shape', 'pow');
+  if (!(EFFECTS.hp({E: 10}) > hp0) || curve('crit', 10) !== 0.05 || !(bleedTicks(5) > bleed0) || letterFactor(5) === pace0) bad.push('правка кривой не дошла до игры');
+  if (!E.setCell('curves', 'hp', 'shape', 'square').error || !E.setCell('curves', 'hp', 'group', 'luck').error) bad.push('принята форма, которой нет, или смена группы');
+  E.resetAll();
+  if (EFFECTS.hp({E: 10}) !== hp0 || curve('crit', 10) !== crit0 || bleedTicks(5) !== bleed0 || letterFactor(5) !== pace0) bad.push('сброс не вернул кривые');
+  if (bad.length) { console.log('Кривые:\n  ' + bad.join('\n  ')); process.exit(1); }
+  console.log(`ok   кривые: ${CURVES.all().length}, конечны при буквах 0–100, множители при норме — 1; правка доходит до игры и сбрасывается`);
+}
