@@ -10,22 +10,24 @@ import {VERSION} from '../version.js';
 import {TablesView} from './tablesView.js';
 import {LandView} from './landView.js';
 import {SettleView} from './settleView.js';
+import {CampView} from './campView.js';
 
 const $ = id => document.getElementById(id);
-const SCREENS = ['home', 'quick', 'land', 'settle', 'settings'];
+const SCREENS = ['home', 'quick', 'land', 'settle', 'camp', 'settings'];
 const STORE = 'forest.app.quick';
 const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
 
 // the old screen this one hands over to, with the way back
 const old = (go, extra = {}) => { location.href = `index.html?${new URLSearchParams({go, ...extra, from: 'forest'})}`; };
 
-let screen = 'home', land = null, settle = null;
+let screen = 'home', land = null, settle = null, camp = null;
 function show(id) {
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   if (id === 'settings') tables.show();
   if (id === 'land') (land ||= new LandView()).show();
   if (id === 'settle') (settle ||= new SettleView()).show();
+  if (id === 'camp') (camp ||= new CampView()).show();
   window.scrollTo(0, 0);
 }
 

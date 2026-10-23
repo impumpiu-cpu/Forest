@@ -300,7 +300,7 @@ $('buildTag').textContent = `версия ${VERSION} · ${BUILD}${editCount() ? 
 // the new menu opens one of these screens straight away: ?go=epic&seed=…&size=… · ?go=campaign · ?go=world
 const GO = PARAMS.get('go');
 if (GO === 'epic') { showCampaign('epic'); campaignView.startEpic({seed: PARAMS.get('seed'), size: PARAMS.get('size')}); }
-else if (GO === 'campaign') showCampaign('library');
+else if (GO === 'campaign') { showCampaign('library'); if (PARAMS.get('world')) campaignView.openFromLibrary(PARAMS.get('world'), PARAMS.get('name') || 'Мир'); }   // (the new menu's «Кампания», «В поход» of «Заселение мира»)
 else if (GO === 'world') showAtlas();
 else showLaunch();
 requestAnimationFrame(frame);

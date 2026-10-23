@@ -18,6 +18,8 @@ import {warnEdits} from '../ui/tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {esc, plural} from '../core/util.js';
 import {$} from '../ui/dom.js';
+import {march, questText} from './campView.js';
+import {questHint} from '../atlas/calamity.js';
 
 const TOOLS = [['look', 'Смотреть'], ['people', 'Народ'], ['lair', 'Логово'], ['calamity', 'Бедствие']];
 const PHASE = {waiting: 'ждёт', omens: 'знамения', rise: 'идёт', fallen: 'прошло', gathering: 'собирается'};
@@ -62,6 +64,14 @@ export class SettleView extends AtlasView {
     $('setCalAny').addEventListener('click', () => this.calamityAt(-1));
     $('setWild').addEventListener('click', () => { const a = this.atlas; if (!a) return; const r = wildByLand(a); this.after(r.error ? r : {ok: `Легло логов: ${r.n}.`}); });
     seg('setRun', FREE.runs.map(y => [y, `+${y}`]), v => this.runFor(+v));
+    // the walk: the world is saved (over its own record) and opens on the campaign screen at its capitals (app/campView.js)
+    $('setMarch').addEventListener('click', async () => {
+      const a = this.atlas; if (!a || !atlasDone(a)) return;
+      if (!(a.towns || []).some(t => t.alive && t.capital)) { this.note('Нельзя: в мире нет ни одной столицы — высадите народ.', 'bad'); return; }
+      this.note('Сохраняю мир и открываю поход…', 'good');
+      try { const rec = await saveWorldToLibrary(a, this.worldName || `Мир ${a.cfg.seed}`, this.worldId); this.bind(rec.id, rec.name); march(rec.id, rec.name); }
+      catch (e) { this.note('Не удалось сохранить: ' + e.message, 'bad'); }
+    });
     $('setPause').addEventListener('click', () => { this.paused = !this.paused; this.syncRun(); if (!this.paused) this.tick(); });
     segOf($('setDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); this.chronOf = null; if (this.atlas) this.renderSide(); });
     this.buildLibrary2();
@@ -88,7 +98,8 @@ export class SettleView extends AtlasView {
     const a = this.atlas, running = !!a && !atlasDone(a);
     $('setWild').disabled = !a || running || !!a.hist?.wild;
     $('setRun').querySelectorAll('button').forEach(b => { b.disabled = !a || running; });
-    $('setSave').disabled = !a || running; $('setFile').disabled = !a || running;
+    $('setSave').disabled = !a || running; $('setFile').disabled = !a || running; $('setMarch').disabled = !a || running;
+    $('setMarch').title = a ? `Сохранить мир и выбрать столицу для похода; ${questText({quest: questHint(a)})}` : 'Сначала заселите землю';
     this.legend();
     this.syncRun();
   }

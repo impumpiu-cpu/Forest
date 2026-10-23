@@ -125,7 +125,8 @@ export function stepCalamities(a) {
       else if (y >= c.heroesAt) fall(a, c, r, 'heroes');
     }
     // after the wild era the peoples band together against it, and fall apart after (atlas/alliance.js)
-    if (c.era !== 'wild' && c.era !== 'after' && (c.phase === 'rise' || c.phase === 'fallen')) stepAlliance(a, c, r, text => tell(a, text, c));   // the fourth is the caravan's
+    // (not against the calamity a caravan is after — campaign/epic.js: that boss is the caravan's)
+    if (c.era !== 'wild' && c.era !== 'after' && !c.quest && (c.phase === 'rise' || c.phase === 'fallen')) stepAlliance(a, c, r, text => tell(a, text, c));   // the fourth is the caravan's
   }
   done();
 }
@@ -296,6 +297,44 @@ export function gatherFourth(a, i, years) {
   done();
   return c;
 }
+// ── «Заселение мира» → the campaign (campaign/epic.js; docs/TABLE.md этап 10): a calamity set by hand becomes the quest.
+// One that has risen keeps going, only no heroes seal it and no alliance marches on it now — its boss is the caravan's.
+// One still waiting gathers at once at its place (the hand's cell, or the seat `i`): its lair stands with the boss and
+// the artifact in it, its omens run while the caravan walks, and it rises in the year the hand set.
+export function questCalamity(a, c, i) {
+  c.quest = true; c.heroesAt = 1e9; c.fallAt = 1e9;
+  if (c.phase === 'rise') return c;
+  const {r, done} = draw(a);
+  let C = CALAMITIES.find(x => x.id === c.kind), at = c.at >= 0 ? c.at : i, town = null;
+  if (C.town) {
+    town = (a.towns || []).filter(t => t.alive && !t.capital).sort((p, q) => dist(a, p.i, at) - dist(a, q.i, at))[0] || null;
+    if (town) at = town.i; else { C = CALAMITIES.find(x => x.id === 'necromancer'); c.kind = C.id; c.label = C.label; }
+  }
+  const L = LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
+  const lair = newLair(a, L, at, r, 1);
+  lair.boss = c.id; if (town) lair.town = town.id;
+  if (L.undead && !town) barrows(a, at, Math.max(2, Math.round(3 * Math.min(a.w, a.h) / 192)), 0.9);
+  c.phase = 'gathering'; c.i = at; c.lair = lair.id; c.town = town?.id ?? null;
+  c.boss = {species, name: pick(r, C.names), title: C.title, g: C.g, special: sp?.special ? bossSpecial(sp, r, CAL.boss).special : null};
+  const A = a.artifact, from = A.holder.kind === 'grave' ? 'могилу' : 'святилище';
+  A.holder = {kind: 'boss', calamity: c.id}; A.i = at;
+  A.trail.push({year: a.hist.year, era: a.hist.era, i: at, text: `у ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`});
+  tell(a, `${A.name} покинул${A.g === 'f' ? 'а' : A.g === 'n' ? 'о' : ''} ${from}: ${wherePhrase(a, at)}, в ${town ? `${townLabel(town, 3)} ${town.name}` : `логове «${lair.name}»`}, ${bossName(c)} собирает силы. До бедствия — ${c.label} — ${Math.max(1, c.riseAt - a.hist.year)} ${plural(Math.max(1, c.riseAt - a.hist.year), 'год', 'года', 'лет')}.`, c);
+  omen(a, c, r);
+  done();
+  return c;
+}
+
+// what quest the world gives a caravan (the screens, the library): 'hand' — a calamity of «Заселение мира» not passed
+// yet; 'epic' — the graves of the old bosses and a fourth to come; null — the crown of any world (campaign/quest.js)
+export function questHint(a) {
+  if (!a.artifact || a.artifact.holder.kind === 'caravan') return null;
+  const live = (a.calamities || []).filter(c => c.phase !== 'fallen' && (c.quest || (a.cfg.free && c.era === 'free'))).sort((p, q) => (q.phase === 'rise') - (p.phase === 'rise') || p.riseAt - q.riseAt)[0];
+  if (a.cfg.free && live) return {kind: 'hand', calamity: live.id, label: live.label, phase: live.phase, riseAt: live.riseAt, boss: live.boss ? `${live.boss.title[0]} ${live.boss.name}` : null, graves: (a.graves || []).length};
+  if ((a.cfg.epic || a.cfg.free) && a.graves?.length) return {kind: 'epic', graves: a.graves.length};
+  return null;
+}
+
 function riseGathered(a, c, r) {
   const C = CALAMITIES.find(x => x.id === c.kind), lair = a.lairs.find(l => l.id === c.lair);
   if (!lair || !lair.alive) { c.phase = 'fallen'; c.fell = {year: a.hist.year, by: 'cleared'}; return; }

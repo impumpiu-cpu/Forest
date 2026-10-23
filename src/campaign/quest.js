@@ -25,7 +25,7 @@ import {BUBBLE} from '../data/bubble.js';
 import {REALM_BANDS} from '../data/seam.js';
 import {lairFoe} from './land.js';
 import {bubbleOf} from './bubble.js';
-import {makeEpicQuest, graveLine, epicTaken} from './epic.js';
+import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
@@ -121,7 +121,7 @@ export function circle(a, i, r, rnd) {
 // ── the quest is laid out when the caravan sets out
 export function makeQuest(a, K, rnd) {
   // an epic world tells its own story: the graves of its bosses, the lair of the fourth (campaign/epic.js)
-  if (a.cfg.epic && a.artifact && a.graves?.length) { const E = makeEpicQuest(a, K, rnd); if (E) return E; }
+  if (epicWorld(a)) { const E = makeEpicQuest(a, K, rnd); if (E) return E; }   // (and a world of «Заселение мира», campaign/epic.js)
   const {mask, cells} = reachable(a, K);
   if (!cells.length) return null;
   const diag = Math.hypot(a.w, a.h), G = CAMPAIGN.goal, home = K.home, d = i => dist(a, home, i) / diag;

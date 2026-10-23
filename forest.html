@@ -127,7 +127,7 @@
         <b>Заселение мира</b>
         <span>Загрузить землю, высадить расы, монстров и логова, задать катаклизмы и мотать время на 5–100 лет.</span>
       </button>
-      <button type="button" class="launch-card" data-go="campaign">
+      <button type="button" class="launch-card" data-go="camp">
         <span class="tag">поход</span>
         <b>Кампания</b>
         <span>Караван из столицы идёт по живому миру из библиотеки за артефактом, который остановит грядущий катаклизм.</span>
@@ -294,6 +294,7 @@
         </div>
         <div class="preview-box"><canvas id="setMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
         <div class="row time-row">
+          <button type="button" id="setMarch" class="primary" title="Сохранить мир и выбрать столицу для похода">В поход →</button>
           <span class="lbl">Время</span>
           <div class="seg" id="setRun"></div>
           <button type="button" id="setPause" hidden>Пауза</button>
@@ -310,6 +311,17 @@
         <div class="row"><span class="lbl">Летопись</span><div class="seg" id="setDetail"></div></div>
         <div class="log" id="setChron"></div>
       </div>
+    </div>
+  </section>
+
+  <!-- ───────── «Кампания» (src/app/campView.js): a living world from the library, then the walk on the campaign screen ───────── -->
+  <section class="app-screen" id="camp" hidden aria-labelledby="campTitle2">
+    <div class="app-head"><h2 id="campTitle2">Кампания</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card">
+      <span class="tag">живые миры</span>
+      <p class="note">Мир из библиотеки — заселённый, эпический или из полигона. Квест зависит от мира: в заселённом — бедствие, которое вы задали; в эпическом — могилы боссов и четвёртое бедствие; в остальных — корона, потерянная историей. Столицу выбирают на экране похода.</p>
+      <div id="campList" class="savelist"><small>Открываю библиотеку…</small></div>
+      <small class="status" id="campStatus" role="status"></small>
     </div>
   </section>
 

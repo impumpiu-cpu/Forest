@@ -14,6 +14,7 @@ import {VERSION} from '../version.js';
 import {atlasHash, atlasDone, landDone} from './generate.js';
 import {ATLAS_SIZES} from '../data/atlas.js';
 import {shapeCount} from './shape.js';
+import {questHint} from './calamity.js';
 
 export const WORLD_KIND = 'forest-world';
 // a land («Создать землю»): the atlas made to the end of its land stages, with no peoples and no history yet, and
@@ -48,6 +49,8 @@ export function worldMeta(a, name, kind = WORLD_KIND) {
     campaign: a.campaign ? {phase: a.campaign.phase, day: a.campaign.day, from: a.campaign.capitalFrom || a.campaign.capitalName, crown: a.campaign.quest?.name || null} : null,
     // campaigns finished in this world (campaign/ending.js): their chronicles stay with it
     campaigns: (a.campaignsDone || []).length,
+    // what quest a caravan from this world goes on (atlas/calamity.js questHint): 'hand' | 'epic' | null — the crown
+    quest: kind === LAND_KIND ? null : questHint(a),
   };
 }
 

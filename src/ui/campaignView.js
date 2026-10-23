@@ -37,6 +37,7 @@ import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
 import {openCamp, stepCamp, campDone} from '../campaign/camp.js';
 import {Renderer} from '../render/renderer.js';
+import {questHint} from '../atlas/calamity.js';
 const itemShort = id => gearDef(id)?.short ?? id;
 
 const SEASON_LIST = SEASONS.all();
@@ -54,7 +55,7 @@ const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples'
 const PHASE = {out: 'ищут корону', back: 'несут корону домой', won: 'вернулись с короной', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 // a world whose quest is the epic one (campaign/quest.js makeQuest)
-const epicQuest = a => !!(a.cfg.epic && a.artifact && a.graves?.length && a.artifact.holder.kind !== 'caravan');
+const epicQuest = a => questHint(a);
 // where the making of an epic world is: the land, or the year of history and its era
 function epicProgress(a, sec) {
   if (!landDone(a) || !a.hist) return `Складывается земля… ${Math.round(sec)} с`;
@@ -204,9 +205,9 @@ export class CampaignView extends AtlasView {
   async refresh() {
     const box = $('campWorlds');
     let list;
-    try { list = (await listWorlds()).filter(r => r.type !== 'land' && !r.free); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }   // a land has no peoples to march from; a world of «Заселение мира» goes to the campaign in stage 10 (docs/TABLE.md)
+    try { list = (await listWorlds()).filter(r => r.type !== 'land'); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }   // a land has no peoples to march from
     if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров: сотворите эпический мир ниже или мир на экране «Мир».</small>'; return; }
-    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : ''}${r.tables ? ` · с правками таблиц (${r.tables})` : ''} · ${r.year} лет` +
+    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : r.free ? ' · заселённый' : ''}${r.tables ? ` · с правками таблиц (${r.tables})` : ''} · ${r.year} лет` +
       (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
       `</span><button type="button">${r.campaign && !['won', 'lost', 'timeout'].includes(r.campaign.phase) ? 'Продолжить' : 'Открыть'}</button></div>`).join('');
   }
@@ -243,7 +244,10 @@ export class CampaignView extends AtlasView {
   renderCaps() {
     const a = this.atlas; if (!a) { $('campGo').disabled = true; return; }
     // which quest this world gives (campaign/quest.js makeQuest): its own story in an epic world, else the crown and three clues
-    $('campQuestNote').textContent = epicQuest(a)
+    const hint = epicQuest(a);
+    $('campQuestNote').textContent = hint?.kind === 'hand'
+      ? `Квест заселённого мира: ${a.artifact.name} — у бедствия «${hint.label}»${hint.boss ? `: ${hint.boss}${hint.phase === 'rise' ? ', оно уже идёт' : ''}` : `, оно поднимется в ${hint.riseAt}-м году — с выходом каравана его логово встанет сразу`}. Логово — цель похода, босс должен пасть${hint.graves ? `; следы — могилы ${hint.graves} прежних боссов` : ''}.`
+      : hint
       ? `Квест эпического мира: ${a.artifact.name} уйдёт к четвёртому боссу в дальнее логово; следы — могилы ${a.graves.length} боссов прошлых эпох. Через ${EPIC.doom} ${plural(EPIC.doom, 'год', 'года', 'лет')} начнётся новое бедствие${EPIC.years > EPIC.doom ? `; на поход — ${EPIC.years} ${plural(EPIC.years, 'год', 'года', 'лет')}` : ''}.`
       : 'Квест: корона там, где её потеряла история этого мира; три подсказки в его курганах, логовах, развалинах и городах.';
     const caps = capitals(a);
