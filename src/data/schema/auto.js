@@ -36,7 +36,8 @@ export function autoColumns(rows, {key = 'id', skip = [], labels = {}, whole = {
 // a table of a registry or a list of rows: its columns found from the rows
 // (a cell under a getter — a value read through from another table — is not written here: that table is where)
 export function autoTable({id, label, group, note, rows, key = 'id', skip, labels, whole, after}) {
-  const target = (r, c) => (plain(r, c.key.split('.')[0]) ? [r, c.key] : null);
+  // a block the row does not have yet (a species given an `arrive` in the constructor) may be started by an edit
+  const target = (r, c) => { const k = c.key.split('.')[0]; return plain(r, k) || !(k in r) ? [r, c.key] : null; };
   return {id, label, group, key, rows, note, target, columns: autoColumns(rows(), {key, skip, labels, whole}), ...(after ? {after} : {})};
 }
 

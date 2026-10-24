@@ -176,8 +176,11 @@ export const TABLES = [
     rows: () => SPECIES.filter(s => s.kind !== 'race'),
     note: 'Звери (data/species.js, data/bestiary.js), нежить и демоны (data/monsters.js) + их строки data/balance/creatures.js.',
     columns: [
-      col('id', 'id'), col('label', 'Название'), col('kind', 'Вид', 'enum', {values: KINDS}), col('mind', 'Разум', 'enum', {values: MINDS}),
+      col('id', 'id'), col('kind', 'Вид', 'enum', {values: KINDS}), col('mind', 'Разум', 'enum', {values: MINDS}),
       col('behaviours', 'Поведения', 'ids', {ref: BEHAVIOURS, note: 'что умеет (agents/behaviours/, таблица «Поведения»): порядок — порядок выбора'}),
+      col('label', 'Название', 'text'), col('labelAcc', 'Кого (вин. п.)', 'text', {nullable: true}), col('plural', 'Мн. число', 'text', {nullable: true}), col('legend', 'В легенде', 'text', {nullable: true}),
+      col('look.shape', 'Облик', 'text', {note: 'рисовальщик render/looks.js: person, hare, wolf, deer, boar, bear… (конструктор существ показывает список)'}),
+      col('look.size', 'Размер облика', 'num', {min: 0.1, max: 2}), col('look.color', 'Цвет', 'color'), col('look.skin', 'Цвет кожи', 'color', {nullable: true}),
       col('heart', 'Думает раз в', 'int', {min: 1, note: 'тиков между раздумьями ума tabled; тревоги смотрит каждый тик (пусто — каждый тик)'}),
       col('habitat', 'Биомы обитания', 'map', {ref: 'biomes', values: RARITY, note: 'как часто встречается: часто · обычно · редко · очень редко'}),
       ...body,

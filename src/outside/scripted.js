@@ -21,7 +21,7 @@ import {HOUR, dayOf, nightness} from '../core/time.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, scoutedBand} from '../settlement/threat.js';
 import {weighted} from '../core/util.js';
-import {SPECIES, isPredator} from '../data/species.js';
+import {SPECIES, isPredator, onSpeciesChange, arrives} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 import {ARRIVALS as A} from '../data/migrations.js';
 
@@ -122,7 +122,7 @@ export const scripted = {
 // (world/region.js) × the start menu's wildlife or predators setting. The nechist is checked daily:
 // whether it may come back is the land's business (data/migrations.js `resident`).
 const evening = t => { let x = Math.floor(t / DAY) * DAY + 21.5 * HOUR; if (x < t) x += DAY; return x; };
-for (const sp of SPECIES.filter(s => s.arrive)) {
+function flowFor(sp) {
   const A = sp.arrive, when = (w, t) => (A.night ? evening(t) : t);
   // the polygon's «Чудища» scales the monsters on top of the wolves' or the game's setting; «Нечисть» turns the spirits off
   const monsters = w => (sp.kind === 'monster' ? MONSTERS[w.cfg.monsters ?? 'usual']?.k ?? 1 : 1);
@@ -137,3 +137,5 @@ for (const sp of SPECIES.filter(s => s.arrive)) {
     },
     next: (w, rng) => (sp.resident ? w.tick + DAY : when(w, w.tick + (A.every[0] + rng() * (A.every[1] - A.every[0])) * DAY))};
 }
+for (const sp of SPECIES.filter(s => s.arrive)) flowFor(sp);
+onSpeciesChange((what, sp) => { delete scripted.flows[sp.id]; if (what !== 'removed' && arrives(sp)) flowFor(sp); });   // (data/species.js cloneSpecies, arriveChanged)

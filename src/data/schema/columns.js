@@ -56,6 +56,11 @@ export function valueErrors(c, v, resolve, where) {
       break;
     case 'bool': if (typeof v !== 'boolean') errs.push(`${where}: не да/нет (${v})`); break;
     case 'text': if (typeof v !== 'string') errs.push(`${where}: не текст`); break;
+    case 'color': {   // a CSS colour, or [r, g, b] (data/peoples.js, the world map)
+      const okColor = typeof v === 'string' ? /^(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|\d{1,3},\s*\d{1,3},\s*\d{1,3})$/.test(v.trim()) : Array.isArray(v) && v.length === 3 && v.every(x => isNum(x) && x >= 0 && x <= 255);
+      if (!okColor) errs.push(`${where}: цвет пишется как #rrggbb, rgb(r,g,b) или [r, g, b] (${JSON.stringify(v)})`);
+      break;
+    }
     case 'enum': if (!enumHas(c.values, v)) errs.push(`${where}: «${v}» — нет такого значения`); break;
     case 'ref': if (!known(v)) errs.push(`${where}: «${v}» — нет такой строки`); break;
     case 'ids':
@@ -111,7 +116,7 @@ export function checkTables(tables) {
 // ── editing (src/data/schema/edits.js)
 // What can be edited: not a computed table or column, not the key, not a formula or a list shown by words,
 // and not a column the schema closed (`edit: false`) — a joined value that belongs to another table, say.
-const FIXED = new Set(['formula', 'list', 'color']);
+const FIXED = new Set(['formula', 'list']);
 export const editable = (t, c) => !t.computed && !c.computed && c.edit !== false && c.key !== t.key && !FIXED.has(c.type);
 
 // where a cell is written: [object, path]. By default the row itself at the column's key; a table whose rows

@@ -20,7 +20,7 @@ import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
 import {RAID_BANDS, banditKit, kitFor, raiderBody} from './raids.js';
 import {createSquad} from '../agents/squad.js';
-import {SPECIES, isPredator} from './species.js';
+import {SPECIES, isPredator, onSpeciesChange, arrives} from './species.js';
 import {raceLabel, refreshBody} from '../agents/special.js';
 import {settlerSpecies} from '../settlement/relations.js';
 import {ofSpeciesList} from '../agents/lookup.js';
@@ -141,7 +141,7 @@ export const factionOf = sp => (sp.resident ? 'nechist' : isPredator(sp) ? 'pred
 const onMap = (w, id) => ofSpeciesList(w, [id], o => !o.dead && !o.tame).length;
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
-for (const sp of SPECIES.filter(s => s.arrive)) {
+function arrivalFor(sp) {
   const A = sp.arrive;
   MIGRATIONS.register({
     id: sp.id, species: sp.id, faction: factionOf(sp), minDist: 30, topic: isPredator(sp) || sp.resident ? 'danger' : 'wildlife',
@@ -160,6 +160,12 @@ for (const sp of SPECIES.filter(s => s.arrive)) {
     message: A.message ? (w, group) => `${cap1(A.message.replace('{n}', group.length))}.` : undefined,
   });
 }
+for (const sp of SPECIES.filter(s => s.arrive)) arrivalFor(sp);
+// a species made in the constructor (data/species.js cloneSpecies) comes and goes as the one it was copied from
+onSpeciesChange((what, sp) => {
+  if (what !== 'added' && MIGRATIONS.has(sp.id)) MIGRATIONS.unregister(sp.id);
+  if (what !== 'removed' && arrives(sp)) arrivalFor(sp);
+});
 
 // How often the wild sends its beasts to the local map (outside/scripted.js), before the land decides how many stay:
 // the first after `first` days (hares and wolves: `every` ticks, again and again), then again after wait[0] + wait[1] ×

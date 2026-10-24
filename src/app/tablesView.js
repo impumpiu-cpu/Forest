@@ -4,10 +4,10 @@
 // in edit mode writes a new value over the code's (src/data/schema/edits.js); the layer is kept in this browser
 // and in files (src/ui/tableEdits.js), and goes into every new game and world.
 import {TABLES, GROUPS, get, checkAll, editable, tableById} from '../data/schema/index.js';
-import {setCell, resetCell, resetTable, resetAll, isEdited, originalOf, editList, editCount, LAYER} from '../data/schema/edits.js';
+import {setCell, resetCell, resetTable, resetAll, isEdited, originalOf, editList, editCount, LAYER, NEW_SPECIES, dropSpecies} from '../data/schema/edits.js';
 import {storeEdits, editsJSON, loadEditsText, BOOT_PROBLEMS} from '../ui/tableEdits.js';
-import {STATS} from '../data/special.js';
 import {esc} from '../core/util.js';
+import {editText, parseText} from '../ui/cellEdit.js';
 
 const $ = id => document.getElementById(id);
 const STORE = 'forest.app.table';
@@ -56,51 +56,6 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ── editing: a value as the text in its editor, and the text back as a value (the same words the cell shows)
-function editText(c, v) {
-  if (v == null) return '';
-  switch (c.type) {
-    case 'map': return Object.entries(v).map(([k, x]) => `${k} ${x === Infinity ? '∞' : x}`).join(', ');
-    case 'special': return Object.entries(v).map(([k, [lo, hi]]) => `${k} ${lo}-${hi}`).join(', ');
-    case 'shift': return Object.entries(v).map(([k, x]) => `${k} ${x > 0 ? '+' : ''}${x}`).join(', ');
-    case 'ids': return v.join(', ');
-    case 'json': return typeof v === 'string' ? v : JSON.stringify(v);
-    default: return String(v);
-  }
-}
-const num = t => { const s = String(t).trim().replace(',', '.').replace('−', '-'); if (s === '∞' || /^infinity$/i.test(s)) return Infinity; const n = Number(s); if (s === '' || Number.isNaN(n)) throw new Error(`«${t}» — не число`); return n; };
-const parts = t => String(t).split(/[,;·\n]+/).map(x => x.trim()).filter(Boolean);
-function enumWord(values, w) {
-  if (Array.isArray(values)) return w;
-  if (Object.prototype.hasOwnProperty.call(values, w)) return w;
-  const hit = Object.entries(values).find(([, x]) => (x && typeof x === 'object' ? x.label : x) === w);
-  return hit ? hit[0] : w;
-}
-function parseText(c, text) {
-  const t = String(text).trim();
-  switch (c.type) {
-    case 'num': case 'int': return num(t);
-    case 'text': return t;
-    case 'ids': return parts(t);
-    case 'map': return Object.fromEntries(parts(t).map(p => { const m = p.match(/^(\S+)\s+(.+)$/); if (!m) throw new Error(`«${p}»: нужно «ключ значение»`); return [m[1], c.values ? enumWord(c.values, m[2].trim()) : num(m[2])]; }));
-    case 'special': return Object.fromEntries(parts(t).map(p => {
-      const m = p.match(/^([A-Za-z])\s*(-?[\d.]+)\s*(?:[-–…]+\s*(-?[\d.]+))?$/); if (!m) throw new Error(`«${p}»: нужно «S 1-10»`);
-      const k = m[1].toUpperCase(); if (!STATS.has(k)) throw new Error(`нет характеристики «${m[1]}»`);
-      return [k, [num(m[2]), num(m[3] ?? m[2])]];
-    }));
-    case 'shift': return Object.fromEntries(parts(t).map(p => {
-      const q = p.replace('−', '-');
-      let m = q.match(/^([A-Za-z])\s*([+-]?[\d.]+)$/), k, n;
-      if (m) [k, n] = [m[1], m[2]];
-      else { m = q.match(/^([+-]?[\d.]+)\s*([A-Za-z])$/); if (!m) throw new Error(`«${p}»: нужно «S +1»`); [n, k] = [m[1], m[2]]; }
-      if (!STATS.has(k.toUpperCase())) throw new Error(`нет характеристики «${k}»`);
-      return [k.toUpperCase(), num(n)];
-    }));
-    case 'json': { try { return JSON.parse(t); } catch (e) { const n = Number(t.replace(',', '.')); return t !== '' && !Number.isNaN(n) ? n : t; } }
-    default: return t;
-  }
-}
-
 export class TablesView {
   constructor() {
     this.id = (() => { try { return localStorage.getItem(STORE); } catch (e) { return null; } })();
@@ -130,7 +85,7 @@ export class TablesView {
       const td = e.target.closest('td.ed'); if (td && !td.querySelector('.cell-ed')) this.edit(td);
     });
     $('edList').addEventListener('click', e => {
-      const b = e.target.closest('[data-undo-t]'); if (b) { resetCell(b.dataset.undoT, b.dataset.undoR, b.dataset.undoC); this.changed(); return; }
+      const b = e.target.closest('[data-undo-t]'); if (b) { if (b.dataset.undoT === NEW_SPECIES) { if (confirm(`Убрать вид «${b.dataset.undoR}» со всеми его правками?`)) { dropSpecies(b.dataset.undoR); this.changed(); } } else { resetCell(b.dataset.undoT, b.dataset.undoR, b.dataset.undoC); this.changed(); } return; }
       const go = e.target.closest('[data-go-t]'); if (go) this.open(go.dataset.goT);
     });
     $('edResetTable').addEventListener('click', () => { if (!LAYER[this.id]) return; if (confirm(`Сбросить правки таблицы «${this.table.label}»?`)) { resetTable(this.id); this.changed(`Правки таблицы «${this.table.label}» сброшены.`); } });
@@ -169,6 +124,8 @@ export class TablesView {
     const list = editList();
     $('edList').hidden = !n;
     $('edList').innerHTML = n ? `<summary>Все правки (${n})</summary><ul>${list.map(e => {
+      // a species made in the constructor (src/app/beastView.js): one line, its own «убрать»
+      if (e.table === NEW_SPECIES) return `<li><button type="button" class="link" data-go="bestiary">Конструктор существ</button> · новый вид <b>${esc(e.label || e.row)}</b> (${esc(e.row)}) из «${esc(e.value)}» <button type="button" class="quiet mini" data-undo-t="${NEW_SPECIES}" data-undo-r="${esc(e.row)}" data-undo-c="from" title="Убрать вид со всеми правками">✕</button></li>`;
       const t = tableById(e.table), c = t?.columns.find(x => x.key === e.column);
       const show = v => (c ? cell(c, v).text || '—' : JSON.stringify(v));
       return `<li><button type="button" class="link" data-go-t="${esc(e.table)}">${esc(t?.label || e.table)}</button> · ${esc(e.row)} · ${esc(c?.label || e.column)}: <s>${esc(show(e.was))}</s> → <b>${esc(show(e.value))}</b> <button type="button" class="quiet mini" data-undo-t="${esc(e.table)}" data-undo-r="${esc(e.row)}" data-undo-c="${esc(e.column)}" title="Вернуть число кода">↺</button></li>`;

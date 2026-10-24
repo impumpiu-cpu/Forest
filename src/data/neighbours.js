@@ -3,7 +3,7 @@
 // them — and their distances will really drive who comes and how often.
 //   dist — days of travel to the colony; `flows` — which arrivals come from there.
 import {Registry} from '../core/registry.js';
-import {SPECIES} from './species.js';
+import {SPECIES, onSpeciesChange, arrives} from './species.js';
 
 // the bestiary's beasts come from the wild woods, the nechist lives right here (data/bestiary.js `arrive`)
 const bestiary = resident => SPECIES.filter(s => s.arrive && !!s.resident === resident).map(s => s.id);
@@ -22,3 +22,8 @@ NEIGHBOURS.registerAll([
   {id: 'local', label: 'Здешние места', kind: 'local', dist: 0, flows: bestiary(true),
     note: 'леса и воды вокруг брода: здесь живёт своя нечисть; убитая, она возвращается через несколько дней'},
 ]);
+// a species made in the constructor (data/species.js cloneSpecies) comes from where the one it was copied from comes
+onSpeciesChange((what, sp) => {
+  for (const n of NEIGHBOURS.all()) n.flows = n.flows.filter(f => f !== sp.id);
+  if (what !== 'removed' && arrives(sp)) { const n = NEIGHBOURS.get(sp.resident ? 'local' : 'wilds'); n.flows = [...n.flows, sp.id]; }
+});

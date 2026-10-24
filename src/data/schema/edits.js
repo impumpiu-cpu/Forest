@@ -8,6 +8,10 @@
 import {TABLES, tableById, get, editable, targetOf, valueErrors, resolver} from './index.js';
 import {setPath} from './columns.js';
 import {LAYER, sameValue, editMade} from './layer.js';
+import {SPECIES, cloneSpecies, removeSpecies, arriveChanged} from '../species.js';
+
+// the pseudo-table of species made in the constructor (src/app/beastView.js): LAYER.newSpecies[id] = {from, label, labelAcc, plural}
+export const NEW_SPECIES = 'newSpecies';
 
 export {LAYER, editCount, editsSig, editsStamp, stampWarning} from './layer.js';
 
@@ -60,6 +64,7 @@ export function setCell(tableId, rowKey, colKey, value) {
   if (sameValue(value, originals.get(id).v)) { forget(tableId, rowKey, colKey); originals.delete(id); }
   else ((LAYER[tableId] ||= {})[rowKey] ||= {})[colKey] = copy(value);
   t.after?.(); editMade();
+  if (tableId === 'speciesWays' && colKey.startsWith('arrive.')) arriveChanged(rowKey);   // the flow from beyond the edge follows the block
   return {ok: true};
 }
 
@@ -79,20 +84,47 @@ export function resetCell(tableId, rowKey, colKey) {
   if (o) { setPath(o.obj, o.path, copy(o.v)); originals.delete(id); }
   forget(tableId, rowKey, colKey);
   tableById(tableId)?.after?.(); editMade();
+  if (tableId === 'speciesWays' && colKey.startsWith('arrive.')) arriveChanged(rowKey);
 }
 export function resetTable(tableId) {
   for (const [r, cols] of Object.entries(LAYER[tableId] || {})) for (const c of Object.keys(cols)) resetCell(tableId, r, c);
 }
-export function resetAll() { for (const t of Object.keys(LAYER)) resetTable(t); }
+export function resetAll() { for (const t of Object.keys(LAYER)) if (t !== NEW_SPECIES) resetTable(t); for (const id of Object.keys(LAYER[NEW_SPECIES] || {})) dropSpecies(id); }
+
+// ── species made in the constructor: a copy of one the code has, under a new id (data/species.js cloneSpecies); the
+// copy is remade from the layer at every start, before the cells edited on it
+export function addSpecies(from, id, names = {}) {
+  const r = cloneSpecies(from, id, names);
+  if (r.error) return r;
+  (LAYER[NEW_SPECIES] ||= {})[id] = {from, ...names};
+  resolve = null;   // the keys of the tables have one more row
+  editMade();
+  return {ok: true, species: r};
+}
+// gone with every cell edited on it
+export function dropSpecies(id) {
+  if (!LAYER[NEW_SPECIES]?.[id]) return false;
+  for (const [t, rows] of Object.entries(LAYER)) if (t !== NEW_SPECIES && rows[id]) for (const c of Object.keys(rows[id])) resetCell(t, id, c);
+  for (const k of [...originals.keys()]) if (k.split('\u0001')[1] === id) originals.delete(k);
+  removeSpecies(id);
+  delete LAYER[NEW_SPECIES][id]; if (!Object.keys(LAYER[NEW_SPECIES]).length) delete LAYER[NEW_SPECIES];
+  resolve = null; editMade();
+  return true;
+}
+export const isNewSpecies = id => !!LAYER[NEW_SPECIES]?.[id];
 
 // every edit as a list, for the screen: [{table, row, column, value, was}]
-export const editList = () => Object.entries(LAYER).flatMap(([t, rows]) => Object.entries(rows).flatMap(([r, cols]) => Object.entries(cols).map(([c, v]) => ({table: t, row: r, column: c, value: v, was: originalOf(t, r, c)}))));
+export const editList = () => Object.entries(LAYER).flatMap(([t, rows]) => (t === NEW_SPECIES ? Object.entries(rows).map(([r, v]) => ({table: t, row: r, column: 'from', value: v.from, was: undefined, label: v.label}))
+  : Object.entries(rows).flatMap(([r, cols]) => Object.entries(cols).map(([c, v]) => ({table: t, row: r, column: c, value: v, was: originalOf(t, r, c)})))));
 
 // Put a whole layer in place of the one there is (a file, the browser's store). → [error] for what could not be applied
 export function applyEdits(edits) {
   resetAll();
   const bad = [];
+  // the species made in the constructor first: the cells edited on them come after
+  for (const [id, v] of Object.entries(edits?.[NEW_SPECIES] || {})) { const res = addSpecies(v.from, id, {label: v.label, labelAcc: v.labelAcc, plural: v.plural}); if (res.error) bad.push(`новый вид «${id}»: ${res.error}`); }
   for (const [t, rows] of Object.entries(edits || {})) for (const [r, cols] of Object.entries(rows || {})) for (const [c, v] of Object.entries(cols || {})) {
+    if (t === NEW_SPECIES) continue;
     const res = setCell(t, r, c, v);
     if (res.error) bad.push(res.error);
   }

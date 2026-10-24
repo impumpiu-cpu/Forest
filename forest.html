@@ -68,6 +68,44 @@
   table.tbl td.ed:hover{outline:1px dashed var(--ember);outline-offset:-2px}
   table.tbl td.changed{box-shadow:inset 0 0 0 2px var(--ember);position:relative;padding-right:24px}
   table.tbl td .undo{position:absolute;right:2px;top:2px;border:0;background:transparent;color:var(--ember);padding:0 3px;font-size:12px;line-height:1.2}
+  /* the creature constructor (src/app/beastView.js) */
+  .bst-shell{grid-template-columns:260px minmax(0,1fr)}
+  .bst-nav{max-height:calc(100vh - 120px);overflow:auto}
+  .bst-nav input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 10px;min-width:0}
+  .bst-nav .new{font-style:normal;font-family:var(--font-mono);font-size:10px;color:var(--ember);margin-left:4px}
+  .bst-head{display:flex;gap:16px;align-items:flex-start}
+  .bst-head canvas{flex:none;border:1px solid var(--line);border-radius:50%;background:var(--bg)}
+  .bst-head h3{font-family:var(--font-display);font-size:24px;letter-spacing:.04em;margin:4px 0}
+  .bst-head h3 small{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-weight:400}
+  .bst-head .note{margin:0 0 6px}
+  .bst-sec h4{font-family:var(--font-display);font-size:16px;letter-spacing:.05em;color:var(--ember);margin:14px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+  .bst-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px 14px}
+  .bst-grid .field{gap:3px}
+  .bst-grid .field .lbl{font-size:13px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .bst-grid .field .lbl code{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);letter-spacing:0}
+  .bst-grid .field .lbl i{font-style:italic;color:var(--muted);font-size:11px}
+  .bst-grid .field input[type=text],.bst-grid .field select,.bst-grid .field textarea{font:inherit;font-size:13px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:4px 8px;min-width:0;width:100%}
+  .bst-grid .field textarea{font-family:var(--font-mono);font-size:12px;resize:vertical}
+  .bst-grid .field input:disabled,.bst-grid .field select:disabled{opacity:.6}
+  .bst-grid .field code.ro{font-family:var(--font-mono);font-size:11.5px;color:var(--muted);white-space:pre-wrap}
+  .bst-grid .field .chk{display:flex;align-items:center;gap:6px;color:var(--fg);font-size:13px}
+  .bst-grid .field input[type=color]{width:40px;height:26px;padding:0;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+  .bst-grid .field .row{align-items:center;gap:8px}
+  .bst-grid .field .row code{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+  .bst-grid .field.changed{box-shadow:inset 3px 0 0 var(--ember);padding-left:8px}
+  .bst-ways{grid-column:1/-1}
+  .bst-ways .lane{margin:6px 0}
+  .bst-ways .lane > span{font-family:var(--font-display);font-size:13px;letter-spacing:.05em;color:var(--muted)}
+  .bst-ways ul{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
+  .bst-ways li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:3px 8px;border:1px solid var(--line);border-radius:5px;font-size:12.5px}
+  .bst-ways li.on{border-color:var(--ember)}
+  .bst-ways li.lack:not(.on){opacity:.55}
+  .bst-ways li label{display:flex;gap:8px;align-items:baseline;min-width:0}
+  .bst-ways li label b{font-family:var(--font-mono);font-weight:400;color:var(--fg);flex:none}
+  .bst-ways li label span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bst-ways li small{grid-column:1/-1;color:var(--ember);font-size:11px}
+  .bst-ways .ord{font-family:var(--font-mono);font-size:12px;display:flex;align-items:center;gap:4px}
+  .bst-ways select{max-width:360px;font-size:12px}
   table.tbl .cell-ed{font:inherit;font-family:var(--font-mono);font-size:12px;color:var(--fg);background:var(--bg);border:1px solid var(--ember);border-radius:4px;padding:2px 4px;width:100%;min-width:120px;box-sizing:border-box}
   .tbl-check{font-size:12.5px;color:var(--muted)}
   .tbl-check.bad{color:#f0b0b2}
@@ -136,6 +174,11 @@
         <span class="tag">всё сразу</span>
         <b>Быстрый старт</b>
         <span>Случайный мир с долгой историей, выбор столицы и поход — одной кнопкой.</span>
+      </button>
+      <button type="button" class="launch-card" data-go="bestiary">
+        <span class="tag">бестиарий</span>
+        <b>Конструктор существ</b>
+        <span>Звери, чудовища и нечисть в одном окне: имя и облик, тело и SPECIAL, теги, список поведений, повадки, добыча. Правка существующего вида или новый на его основе.</span>
       </button>
     </div>
     <div class="row">
@@ -322,6 +365,23 @@
       <p class="note">Мир из библиотеки — заселённый, эпический или из полигона. Квест зависит от мира: в заселённом — бедствие, которое вы задали; в эпическом — могилы боссов и четвёртое бедствие; в остальных — корона, потерянная историей. Столицу выбирают на экране похода.</p>
       <div id="campList" class="savelist"><small>Открываю библиотеку…</small></div>
       <small class="status" id="campStatus" role="status"></small>
+    </div>
+  </section>
+
+  <!-- ───────── the creature constructor (src/app/beastView.js): one species as one form over the tables' edits ───────── -->
+  <section class="app-screen" id="bestiary" hidden aria-labelledby="bstTitle">
+    <div class="app-head"><h2 id="bstTitle">Конструктор существ</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button><button type="button" class="quiet" data-go="settings">Таблицы →</button></div>
+    <div class="tables-shell bst-shell">
+      <nav class="tables-nav card bst-nav" aria-label="Виды">
+        <input id="bstFilter" type="search" placeholder="Найти вид…" aria-label="Найти вид">
+        <button type="button" id="bstNew" title="Копия открытого вида под новым id: правьте, что хотите">+ Новый вид на основе открытого</button>
+        <div id="bstNav"></div>
+      </nav>
+      <div class="tables-main card">
+        <small class="ed-msg" id="bstMsg" role="status"></small>
+        <div id="bstForm" class="bst-form"></div>
+        <small class="note">Каждое поле — ячейка таблицы («Монстры и звери», «Повадки видов», «Клички»): запись идёт сразу, слоем поверх чисел кода в этом браузере, и действует в каждой новой игре и мире. ↺ возвращает число кода. Новый вид — копия существующего под новым id; он хранится в тех же правках (выгрузка и загрузка — в «Настройках»). Наборы пишутся словами: «forest usual, meadow rare», пределы SPECIAL — «S 1-10, P 3-11».</small>
+      </div>
     </div>
   </section>
 

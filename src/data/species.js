@@ -14,7 +14,7 @@ import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
 import {MONSTERS} from './monsters.js';
 import {BESTIARY} from './bestiary.js';
-import {bodyFor} from './balance/creatures.js';
+import {bodyFor, CREATURES} from './balance/creatures.js';
 import {petNames} from './names.js';
 import {WAYS} from './behaviour.js';
 
@@ -170,6 +170,42 @@ SPECIES.registerAll([
 SPECIES.registerAll(RACES);
 SPECIES.registerAll(MONSTERS);
 SPECIES.registerAll(BESTIARY);
+
+// ── species made in the constructor (src/app/beastView.js, docs/TABLES.md): a copy of one of the above under a new
+// id, kept in the layer of table edits (data/schema/edits.js `newSpecies`) and made again at every start. Whatever
+// derives a thing per species at load (an arrival: data/migrations.js; a flow from beyond the edge: outside/scripted.js;
+// a neighbour's list: data/neighbours.js) hears of it through onSpeciesChange and follows.
+const WATCHERS = [];
+export const onSpeciesChange = fn => { WATCHERS.push(fn); };
+const tell = (what, sp) => { for (const fn of WATCHERS) fn(what, sp); };
+const deep = v => (typeof v === 'function' ? v : structuredClone(v));
+
+// a new species as a copy of `from`: its row of data/balance/creatures.js too; → the species, or {error}
+export function cloneSpecies(from, id, {label, labelAcc, plural} = {}) {
+  if (!SPECIES.has(from)) return {error: `нет вида «${from}»`};
+  if (!/^[a-z][a-z0-9_]{1,23}$/.test(id || '')) return {error: 'id — латиница, цифры и _, от 2 до 24 знаков, с буквы'};
+  if (SPECIES.has(id)) return {error: `вид «${id}» уже есть`};
+  const base = SPECIES.get(from);
+  if (base.kind === 'race') return {error: 'расы делаются не здесь'};
+  const sp = {};
+  for (const k of Object.keys(base)) sp[k] = deep(base[k]);
+  Object.assign(sp, {id, label: label || base.label, labelAcc: labelAcc || label || base.labelAcc, plural: plural || base.plural, made: from});
+  if (sp.behaviours) sp.behaviours = [...sp.behaviours];
+  CREATURES[id] = structuredClone(CREATURES[from]);
+  SPECIES.register(sp);
+  tell('added', sp);
+  return sp;
+}
+// the `arrive` block of a species was edited (data/schema/edits.js): whoever built a flow from it builds it anew
+export const arrives = sp => !!(sp.arrive?.group && sp.arrive.every && sp.arrive.cap) || !!(sp.arrive && sp.resident);
+export const arriveChanged = id => { if (SPECIES.has(id)) tell('arrive', SPECIES.get(id)); };
+export function removeSpecies(id) {
+  if (!SPECIES.has(id) || !SPECIES.get(id).made) return false;
+  const sp = SPECIES.get(id);
+  SPECIES.unregister(id); delete CREATURES[id];
+  tell('removed', sp);
+  return true;
+}
 
 
 // Heat: `heatHarm` is where it starts to hurt; `fearHeat` is where the animal runs (45 °C by default,

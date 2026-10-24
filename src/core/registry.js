@@ -26,6 +26,9 @@ export class Registry {
     return d;
   }
 
+  // only for what was added after the load (a species made in the constructor): nothing holds a definition by reference then
+  unregister(id) { this.items.delete(id); this._all = null; }
+
   has(id) { return this.items.has(id); }
   // the list is rebuilt on the first call after a change and shared after that (hot loops call it every tick)
   all() { return this._all || (this._all = Object.freeze([...this.items.values()])); }

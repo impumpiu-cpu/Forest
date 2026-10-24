@@ -1,4 +1,4 @@
-// The new menu (forest.html, Forest.bat): Создать землю · Заселение мира · Кампания · Быстрый старт · Настройки.
+// The new menu (forest.html, Forest.bat): Создать землю · Заселение мира · Кампания · Быстрый старт · Конструктор существ · Настройки.
 // It is a shell over the same core as the inner screens (index.html, the technical polygon); screens that are
 // not built here open those: index.html?go=world|campaign|epic&from=forest, and «← Главное меню» there
 // comes back here. docs/GAME.md.
@@ -8,25 +8,27 @@ import {editCount} from '../data/schema/edits.js';
 import {EPIC_SIZES} from '../data/campaign.js';
 import {VERSION} from '../version.js';
 import {TablesView} from './tablesView.js';
+import {BeastView} from './beastView.js';
 import {LandView} from './landView.js';
 import {SettleView} from './settleView.js';
 import {CampView} from './campView.js';
 
 const $ = id => document.getElementById(id);
-const SCREENS = ['home', 'quick', 'land', 'settle', 'camp', 'settings'];
+const SCREENS = ['home', 'quick', 'land', 'settle', 'camp', 'settings', 'bestiary'];
 const STORE = 'forest.app.quick';
 const randomSeed = () => String(100000 + Math.floor(Math.random() * 899999));
 
 // the old screen this one hands over to, with the way back
 const old = (go, extra = {}) => { location.href = `index.html?${new URLSearchParams({go, ...extra, from: 'forest'})}`; };
 
-let screen = 'home', land = null, settle = null, camp = null;
+let screen = 'home', land = null, settle = null, camp = null, beasts = null;
 function show(id) {
   // the screen left halts its clock between frames (it goes on when the screen is back)
   if (screen !== id) { if (screen === 'land') land?.stop(); if (screen === 'settle') settle?.stop(); }
   screen = id;
   for (const s of SCREENS) $(s).hidden = s !== id;
   if (id === 'settings') tables.show();
+  if (id === 'bestiary') (beasts ||= new BeastView()).show();
   if (id === 'land') (land ||= new LandView()).show();
   if (id === 'settle') (settle ||= new SettleView()).show();
   if (id === 'camp') (camp ||= new CampView()).show();
