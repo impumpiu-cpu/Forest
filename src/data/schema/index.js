@@ -37,6 +37,7 @@ import {BASE_MODS, rebuildBaseMods} from '../traits.js';
 import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '../mods.js';
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
 import {autoTable, objectTable} from './auto.js';
+import {BEHAVIOURS, BAND_LABELS} from '../behaviours.js';
 import {creatureSheet, recipeSheet, buildingSheet} from './sheets.js';
 import * as COLONY from '../colony.js';
 import * as BEHAVIOUR from '../behaviour.js';
@@ -176,11 +177,17 @@ export const TABLES = [
     note: 'Звери (data/species.js, data/bestiary.js), нежить и демоны (data/monsters.js) + их строки data/balance/creatures.js.',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('kind', 'Вид', 'enum', {values: KINDS}), col('mind', 'Разум', 'enum', {values: MINDS}),
-      col('brain', 'Поведение'),
+      col('brain', 'Ум', 'text', {edit: false, note: 'agents/brains: tabled — думает по списку поведений, прочие — код'}),
+      col('behaviours', 'Поведения', 'ids', {ref: BEHAVIOURS, note: 'что умеет (agents/behaviours/, таблица «Поведения»): порядок — порядок выбора'}),
+      col('heart', 'Думает раз в', 'int', {min: 1, note: 'тиков между раздумьями ума tabled; тревоги смотрит каждый тик (пусто — каждый тик)'}),
       col('habitat', 'Биомы обитания', 'map', {ref: 'biomes', values: RARITY, note: 'как часто встречается: часто · обычно · редко · очень редко'}),
       ...body,
       col('weakTo', 'Боится', 'ids'), col('relativeStats', 'Статы типичного зверя', 'bool'), col('nocturnal', 'Ночной', 'bool'), col('undead', 'Без жизни', 'bool'),
     ]},
+  // the behaviours a species row may list (agents/behaviours/): code, shown for reference
+  {id: 'behaviours', label: 'Поведения', group: 'Существа', key: 'id', computed: true, rows: () => BEHAVIOURS.all(),
+    note: 'Что может делать существо с умом tabled (data/behaviours.js, код в agents/behaviours/, docs/BEHAVIOUR.md). Полоса: рефлекс > красная > жёлтая > очередь дел — первая, где есть что выбрать, прерывает остальные. «Читает» — поля строки вида, без которых поведение не записать.',
+    columns: [col('id', 'id'), col('band', 'Полоса', 'enum', {values: BAND_LABELS}), col('task', 'Своя задача', 'bool'), col('keep', 'Держится', 'num'), col('requires', 'Читает', 'ids'), col('note', 'Описание')]},
   // ── names: one place for all of them (data/names.js); an edit puts the new list into what the game reads (`after`)
   {id: 'names', label: 'Имена', group: 'Существа', key: 'id', rows: () => Object.entries(PERSON).filter(([id]) => id !== 'necromancer').map(([id, P]) => ({id, label: SPECIES.has(id) ? SPECIES.get(id).plural : id, ...P})),
     target: (r, c) => [PERSON[r.id], c.key], after: rebuildNames,
@@ -455,7 +462,7 @@ TABLES.push(
   autoTable({id: 'migrations', label: 'Приходы', group: 'Поселение', note: 'Кто и когда приходит на карту поселения (data/migrations.js).', rows: () => MIGRATIONS.all()}),
   autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all(), skip: ['chance']}),
   autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
-    rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
+    rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'behaviours', 'heart', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
   // Цены и бой
   {id: 'priceRules', label: 'Цены: правила', group: 'Вещи', note: 'Цены вещей (items: труд мастера, надбавка за защиту, редкость материала, округление), похода, услуг, торговли и качества (data/balance/prices.js ITEMS, CAMPAIGN, SERVICES, TRADE, QUALITY); правка пересобирает «Предметы (итог)». Цены ресурсов — в «Ценах ресурсов».',
     ...grp({items: PRICES.ITEMS, campaign: PRICE_CAMPAIGN, services: SERVICES, trade: PRICE_TRADE, quality: PRICE_QUALITY}), after: rebuildItems},

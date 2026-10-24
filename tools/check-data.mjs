@@ -15,6 +15,8 @@ import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {SPECIES, KINDS} from '../src/data/species.js';
+import {BEHAVIOURS} from '../src/data/behaviours.js';
+import '../src/agents/behaviours/index.js';   // the code behind every row, checked at load
 import {NAVMAPS} from '../src/data/navmaps.js';
 import {THOUGHTS} from '../src/data/thoughts.js';
 import {STOCKS} from '../src/data/presets.js';
@@ -234,6 +236,14 @@ for (const sp of SPECIES.all()) {
   if (sp.brain === 'mule' && !sp.mule) err(`${where}: мозг mule без блока mule`);
   if (sp.brain === 'predator' && !sp.predator) err(`${where}: мозг predator без блока predator`);
   if (sp.brain === 'spirit' && !sp.spirit) err(`${where}: мозг spirit без блока spirit`);
+  // the tabled brain: a list of behaviours, each with the fields it reads (agents/behaviours/index.js `requires`)
+  if (sp.brain === 'tabled' && !sp.behaviours?.length) err(`${where}: ум tabled без списка behaviours`);
+  if (sp.behaviours && sp.brain !== 'tabled') err(`${where}: behaviours при уме «${sp.brain}» — читает их только tabled`);
+  for (const id of sp.behaviours || []) {
+    if (!BEHAVIOURS.has(id)) { err(`${where}: нет поведения «${id}»`); continue; }
+    for (const f of BEHAVIOURS.get(id).requires) if (sp[f] == null) err(`${where}: поведение ${id} читает «${f}», а его нет`);
+  }
+  if (new Set(sp.behaviours || []).size !== (sp.behaviours || []).length) err(`${where}: поведение в списке дважды`);
 }
 for (const r of RESOURCES.filter(x => x.useWith)) if (!BUILDINGS.has(r.useWith)) err(`инструмент ${r.id}: useWith — нет постройки «${r.useWith}»`);
 

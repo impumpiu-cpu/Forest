@@ -6,7 +6,7 @@
 //   — keeps the herd's pasture (herd.spot): where the herd grazes now, moved on when the herd is there;
 //   — looks round through the lookouts: one or two members a tick, in turn, see what they flee from
 //     (the species' `flee.from` within its `flee.radius`); what they see is the herd's alarm.
-// Each beast (agents/brains/grazer.js, mule.js) decides by itself what to do with it:
+// Each beast (agents/behaviours/bolt.js, alert.js, graze.js; agents/brains/mule.js) decides by itself what to do with it:
 //   — a skittish one (a.nerve low) bolts at the first alarm; a calm one only when the threat comes within
 //     its own reach, or once those around it have run for a while;
 //   — a wounded one runs slower and falls behind — and wolves go for the straggler (predator.js

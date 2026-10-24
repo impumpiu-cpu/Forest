@@ -2,7 +2,8 @@
 // live in data/species.js). Every entry is a species and reuses one of the brains:
 //   predator (agents/brains/predator.js) — hunts prey, may go for a lone person; `predator` block
 //   mule     (agents/brains/mule.js)     — grazes, kicks whoever comes at it, charges whoever shot it
-//   grazer   (agents/brains/grazer.js)   — grazes and runs
+//   tabled   (agents/brains/tabled.js)   — thinks by the row's list of behaviours (data/behaviours.js): the
+//            grazers (`behaviours: [...WAYS.grazer]`, data/behaviour.js) — graze and run; docs/BEHAVIOUR.md
 //   vermin   (agents/brains/vermin.js)   — sneaks to the stores
 //   spirit   (agents/brains/spirit.js)   — the rot's forest and water folk: they live here for good
 // Fields beyond the usual ones (data/species.js):
@@ -25,6 +26,7 @@
 //                 night, message: the journal line ({n} — how many). A resident (`resident: true`)
 //                 comes alone, at its home ground, and `respawn` days after it was killed
 import {bodyFor} from './balance/creatures.js';
+import {WAYS} from './behaviour.js';
 import {petNames} from './names.js';
 
 // a predator's defaults: the wolf's numbers (data/species.js), each beast changes what differs
@@ -164,7 +166,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'rat'], boldPeople: 0.4, groupFear: 4, sight: 18, meal: 0.8})}),
 
   // Salamander: lives in the heat; fire does not hurt it. Shy, worth its gland
-  beast({id: 'salamander', kind: 'beast', label: 'саламандра', labelAcc: 'саламандру', plural: 'саламандры', brain: 'grazer', game: true, heatHarm: 500,
+  beast({id: 'salamander', kind: 'beast', label: 'саламандра', labelAcc: 'саламандру', plural: 'саламандры', brain: 'tabled', behaviours: [...WAYS.grazer], game: true, heatHarm: 500,
     arrive: {group: [1, 2], every: [2, 4], chance: 0.5, cap: 3, first: 2},
     fearHeat: 450,
     habitat: {volcano: 'usual', underground: 'rare'},
@@ -224,7 +226,7 @@ export const BESTIARY = [
   // ── beasts of the far lands: the steppe, the hot south, the ice. Few of them reach the first
   // colonies' regions (data/regions.js); they are here for the world map and the lands to come
   // Horse: a herd of the open steppe, fast and shy; tamed, it carries the hunter and the builder
-  beast({id: 'horse', kind: 'beast', label: 'лошадь', labelAcc: 'лошадь', plural: 'лошади', brain: 'grazer', big: true, game: true, legend: 'лошадь',
+  beast({id: 'horse', kind: 'beast', label: 'лошадь', labelAcc: 'лошадь', plural: 'лошади', brain: 'tabled', behaviours: [...WAYS.grazer], big: true, game: true, legend: 'лошадь',
     arrive: {group: [2, 5], every: [3, 5], chance: 0.5, cap: 6, first: 2, message: 'на луга вышел табун: {n}'},
     habitat: {steppe: 'common', meadow: 'common', savanna: 'usual', shrubland: 'rare', foothills: 'rare'},
     look: {shape: 'horse', size: 0.8, color: '#8c5a34'},
@@ -251,7 +253,7 @@ export const BESTIARY = [
       effect: 'даёт много молока, тянет соху (поле +30%)'}}),
 
   // Saiga: the antelope of the dry steppe; herds that run at the first scent
-  beast({id: 'saiga', kind: 'beast', label: 'сайгак', labelAcc: 'сайгака', plural: 'сайгаки', brain: 'grazer', game: true,
+  beast({id: 'saiga', kind: 'beast', label: 'сайгак', labelAcc: 'сайгака', plural: 'сайгаки', brain: 'tabled', behaviours: [...WAYS.grazer], game: true,
     arrive: {group: [3, 7], every: [2, 4], chance: 0.6, cap: 8, first: 2, message: 'по степи прошло стадо сайгаков: {n}'},
     habitat: {steppe: 'common', savanna: 'common', desert: 'usual', shrubland: 'rare'},
     look: {shape: 'deer', size: 0.56, color: '#c9b08a'},
@@ -311,7 +313,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['seal', 'deer', 'hare', 'fox'], weakPrey: ['elk'], boldPeople: 0.35, groupFear: 4, meal: 2.5, bigMeal: 4, sight: 20, sprint: 1.5})}),
 
   // Seal: hauls out on the ice by the water; slow on land, fat and hide for the north
-  beast({id: 'seal', kind: 'beast', label: 'тюлень', labelAcc: 'тюленя', plural: 'тюлени', brain: 'grazer', game: true,
+  beast({id: 'seal', kind: 'beast', label: 'тюлень', labelAcc: 'тюленя', plural: 'тюлени', brain: 'tabled', behaviours: [...WAYS.grazer], game: true,
     arrive: {group: [2, 5], every: [2, 4], chance: 0.5, cap: 6, first: 2, message: 'на лёд у воды вылезли тюлени: {n}'},
     habitat: {ice: 'common', tundra: 'usual', water: 'rare'},
     look: {shape: 'seal', size: 0.6, color: '#7c7a70'},
@@ -321,7 +323,7 @@ export const BESTIARY = [
     leaveChance: 0.0003}),
 
   // Sheep: the hills' flock; tamed for wool first of all
-  beast({id: 'sheep', kind: 'beast', label: 'овца', labelAcc: 'овцу', plural: 'овцы', brain: 'grazer', game: true, legend: 'овца',
+  beast({id: 'sheep', kind: 'beast', label: 'овца', labelAcc: 'овцу', plural: 'овцы', brain: 'tabled', behaviours: [...WAYS.grazer], game: true, legend: 'овца',
     arrive: {group: [3, 6], every: [2, 4], chance: 0.5, cap: 8, first: 2, message: 'по склонам разбрелись овцы: {n}'},
     habitat: {meadow: 'common', shrubland: 'common', foothills: 'usual', steppe: 'usual', highlands: 'rare'},
     look: {shape: 'sheep', size: 0.46, color: '#ece6d6'},

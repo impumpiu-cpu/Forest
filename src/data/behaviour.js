@@ -2,6 +2,15 @@
 // trophies, vermin. The logic files import these; the tables (data/schema/index.js) show and edit them.
 import {DAY} from '../core/time.js';
 
+// The behaviours of the tabled brain (agents/behaviours/, docs/BEHAVIOUR.md) as ready lists a species row
+// copies (`behaviours: [...WAYS.grazer]`): the order is the order of the choice. A beast of the meadows runs,
+// sniffs the herder's hay, wanders off now and then, sleeps at night and grazes; one that lives in a herd
+// (`herd`) also stands alert at the herd's alarm
+export const WAYS = {
+  grazer: ['bolt', 'sniffHay', 'leave', 'rest', 'graze'],
+  herdGrazer: ['bolt', 'alert', 'sniffHay', 'leave', 'rest', 'graze'],
+};
+
 export const SQUAD = {
   think: 10,         // morale and the goal are checked this often
   view: 14,          // colony fighters this close to a member count against the band
@@ -51,6 +60,22 @@ export const WILD_HERD = {
   nerve: [0.6, 1.4],  // how skittish, rolled once per beast: low — bolts first
   relay: 10,          // a calm beast follows the bolting ones after this × its nerve
 };
+
+// the beasts of the meadows (agents/behaviours/: bolt, rest, graze): how far they run, how they pick a patch
+export const GRAZE = {
+  fireNear: 2,        // fire this close sends a grazer running from the heat
+  hurtPace: 0.55,     // a wounded herd beast runs at this share of its sprint (+ the rest × its health)
+  restAt: 0.7,        // night deeper than this: it sits still (a species' `restAt` overrides)
+  newSpot: 0.01,      // a tick: chance to pick another patch while grazing…
+  farOff: 0.15,       // …and that the new one is on another meadow this far (else close by)
+  far: 30, near: 7,
+  tries: 12,          // candidate patches looked at; the lushest wins, less hard against the map edge
+  edge: 0.12, lush: 0.3,
+  pace: 0.35,         // walks to the patch at this share of its speed
+  berries: 0.05,      // a cell with more berries than this is nibbled on the way (grazes.eatsBerries a tick)
+};
+// what each offer of a grazer's behaviours is worth in its lane (a lane is never weighed against another)
+export const WANT = {fire: 2, threat: 1, alert: 1, hay: 1, leave: 0.5, rest: 0.4, graze: 0.3};
 
 export const TROPHY = {lucky: 0.5, soft: 5, practice: 40};
 

@@ -9,7 +9,7 @@ import {NEEDS} from '../data/needs.js';
 import {FOODS} from '../data/foods.js';
 import {cellOf} from '../world/grid.js';
 import {nightness} from '../core/time.js';
-import {follow, moveToward, escapeHeat, nearFire, approach} from './movement.js';
+import {follow, moveToward, escapeHeat, nearFire, approach, recover} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
 import {eatMeal, plunder, lootTotal, campFuel} from '../settlement/stock.js';
@@ -34,6 +34,8 @@ import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {catchRunaway} from '../settlement/escape.js';
 import {assistStillOn} from '../settlement/masters.js';
 import {REST, KINDLE} from '../data/behaviour.js';
+import {BEHAVIOURS} from '../data/behaviours.js';
+import {ACTS} from './behaviours/index.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -251,7 +253,9 @@ TASKS.registerAll([
     if (took > 0) a.loot = got;   // carried off on its back: whoever brings it down takes it back
     w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
   }},
+  // leaving the map for good: raiders with their loot, and any beast that wanders off (agents/behaviours/leave.js)
   {id: 'leave', label: () => 'уходит', step(w, a) {
+    recover(a);
     if (follow(w, a, 'edge') !== 'arrived') return;
     a.gone = true; noteHome(w, a);
     if (a.loot) { const b = w.behave?.board; if (b) b.lootLost = (b.lootLost || 0) + lootTotal(a.loot); a.loot = null; }   // gone for good
@@ -360,12 +364,9 @@ TASKS.registerAll([
   {id: 'penned', label: () => 'в загоне', step() {}},
   {id: 'toPen', label: () => 'идёт в загон', step() {}},
 
-  // animal states: the animal's brain moves it itself, these entries only name the state
-  {id: 'graze', label: () => 'пасётся', step() {}},
+  // animal states of the hand-written brains (agents/brains/): the brain moves the animal itself, these
+  // entries only name the state. graze, rest, bolt, alert are the behaviours' own (agents/behaviours/index.js)
   {id: 'nibble', label: () => 'грызёт припасы', step() {}},
-  {id: 'rest', label: () => 'дремлет', step() {}},
-  {id: 'bolt', label: () => 'убегает', step() {}},
-  {id: 'alert', label: () => 'насторожился', step() {}},
   {id: 'drawOff', label: () => 'отходит от опасности', step() {}},
   {id: 'roam', label: () => 'рыщет', step() {}},
   {id: 'chase', label: () => 'гонит добычу', step() {}},
@@ -390,6 +391,11 @@ TASKS.registerAll([
     if (!s || w.tick >= task.until) { done(w, a); return; }
     if (Math.hypot(s.x - a.x, s.y - a.y) > 0.8) approach(w, a, s.x, s.y, 0.7);
   }},
+
+  // the behaviours' own tasks (data/behaviours.js; the code in agents/behaviours/, reached when the task
+  // runs): run by the tabled brain, named for every brain
+  ...BEHAVIOURS.filter(d => d.task !== false).map(d => ({id: d.id, label: d.label,
+    step: (w, a, t) => ACTS[d.id].step(w, a, t), enter: (w, a, t) => ACTS[d.id].enter?.(w, a, t), exit: (w, a, t, o) => ACTS[d.id].exit?.(w, a, t, o)})),
 ]);
 
 export const taskLabel = a => (a.task ? TASKS.get(a.task.id).label(a.task) : 'думает');

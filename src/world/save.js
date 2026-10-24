@@ -37,7 +37,7 @@ import {BRAINS} from '../agents/brains/index.js';
 export const SAVE_FORMAT = 3;
 const FORMATS = [1, 2, 3];
 // brains that run their task through the TASKS registry: an id it does not know would stop the game
-const TASK_BRAINS = new Set(['colonist', 'raider']);
+const TASK_BRAINS = new Set(['colonist', 'raider', 'tabled']);
 
 // world keys that are rebuilt rather than saved
 const LIVE = new Set(['nav', 'rng', 'rngs', 'astar', 'perf', 'scratch', 'chunks']);
