@@ -1,7 +1,7 @@
 // The colony's livestock. A wild animal whose species has a `tame` block (data/species.js: goats,
 // mules) can be tamed by a herder with bait from the stock (agents/jobRunners.js, runner 'herd');
 // it then joins the faction 'herd', walks to a pen (data/buildings.js, `pen`) and lives there
-// (agents/brains/livestock.js).
+// (agents/behaviours/penned.js, fendOff.js: the brain `livestock`).
 //
 // Once a day, at dawn (stepHerd):
 //   - every animal eats: grass in the pen covers HERD.graze[season] of it, hay from the stock the

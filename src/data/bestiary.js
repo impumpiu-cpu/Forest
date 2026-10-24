@@ -1,11 +1,9 @@
 // The bestiary: beasts beyond the first eight (hares, deer, foxes, boars, wolves, goats, mules, rats
-// live in data/species.js). Every entry is a species and reuses one of the brains:
-//   mule     (agents/brains/mule.js)     — grazes, kicks whoever comes at it, charges whoever shot it
-//   tabled   (agents/brains/tabled.js)   — thinks by the row's list of behaviours (data/behaviours.js): the
-//            grazers (`behaviours: [...WAYS.grazer]`, data/behaviour.js) — graze and run; predators
-//            ([...WAYS.predator], the `predator` block) — hunt prey, may go for a lone person; docs/BEHAVIOUR.md
-//   vermin   (agents/brains/vermin.js)   — sneaks to the stores
-//   spirit   (agents/brains/spirit.js)   — the rot's forest and water folk: they live here for good
+// live in data/species.js). Every entry is a species that thinks by its row's list of behaviours (brain `tabled`,
+// data/behaviours.js, docs/BEHAVIOUR.md); the lists are WAYS of data/behaviour.js: grazer / herdGrazer (graze and
+// run; `flee`, `grazes`), predator (hunt prey, may go for a lone person; `predator`), stander / herdStander (graze
+// and kick back; `mule`, `grazes`), vermin (sneak to the stores; `vermin`), woodSpirit / waterSpirit (the rot's
+// forest and water folk: they live here for good; `spirit`)
 // Fields beyond the usual ones (data/species.js):
 //   kind        — beast | monster | spirit (data/species.js KINDS): how the world map takes it in
 //   habitat     — {biome: rarity} (data/biomes.js): where it lives and how common it is
@@ -76,7 +74,7 @@ export const BESTIARY = [
     look: {shape: 'deer', size: 0.84, color: '#5e4630'},
     yields: {meat: 12, hide: 3, bone: 3},
     killMessage: name => `Лось затоптал поселенца: <b>${name}</b>.`,
-    herd: {cap: 4, alert: 6},   // a small herd; a bold bull stands up for the others (agents/brains/mule.js)
+    herd: {cap: 4, alert: 6},   // a small herd; a bold bull stands up for the others (agents/behaviours/standGround.js)
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0003, mule: stands({})}),
 
   // Hyenas: scavengers of the barrow steppe, packs, bold by night; gnolls keep them
@@ -177,7 +175,7 @@ export const BESTIARY = [
 
   // ── nechist: the rot's folk of wood and water. They live here; killed, they come back after a while
   // Leshy: a mycelium the size of a wood; its spores lead woodcutters and hunters astray. Fire kills it
-  beast({id: 'leshy', kind: 'spirit', label: 'леший', labelAcc: 'лешего', plural: 'лешие', mind: 'semi', undead: true, brain: 'spirit', heatHarm: 40,
+  beast({id: 'leshy', kind: 'spirit', label: 'леший', labelAcc: 'лешего', plural: 'лешие', mind: 'semi', undead: true, brain: 'tabled', behaviours: [...WAYS.woodSpirit], heatHarm: 40,
     arrive: {first: 2, message: 'в чаще завёлся леший: лесорубы и охотники будут плутать'},
     resident: true, respawn: 8,
     habitat: {forest: 'usual', taiga: 'usual', jungle: 'rare'},
@@ -187,7 +185,7 @@ export const BESTIARY = [
     spirit: {home: 'forest', aura: 'astray', radius: 7, every: 120, veil: 4, regen: 4, keepOff: 16, crowd: 3}}),
 
   // Rusalka: a drowned body of the water strain; by night she lures a lone colonist into the lake
-  beast({id: 'rusalka', kind: 'spirit', label: 'русалка', labelAcc: 'русалку', plural: 'русалки', mind: 'semi', undead: true, brain: 'spirit', heatHarm: 45,
+  beast({id: 'rusalka', kind: 'spirit', label: 'русалка', labelAcc: 'русалку', plural: 'русалки', mind: 'semi', undead: true, brain: 'tabled', behaviours: [...WAYS.waterSpirit], heatHarm: 45,
     arrive: {first: 2, message: 'в омуте поселилась русалка. Ночью к воде — только вдвоём'},
     resident: true, respawn: 6,
     habitat: {water: 'usual', swamp: 'usual'},
@@ -196,14 +194,14 @@ export const BESTIARY = [
     spirit: {home: 'shore', aura: 'lure', radius: 11, night: true, veil: 0, keepOff: 8, dives: true}}),
 
   // Kikimora: a small marsh pest; by night she spoils the stores and frightens the stock
-  beast({id: 'kikimora', kind: 'spirit', label: 'кикимора', labelAcc: 'кикимору', plural: 'кикиморы', mind: 'semi', undead: true, brain: 'vermin', heatHarm: 50,
+  beast({id: 'kikimora', kind: 'spirit', label: 'кикимора', labelAcc: 'кикимору', plural: 'кикиморы', mind: 'semi', undead: true, brain: 'tabled', behaviours: [...WAYS.vermin], heatHarm: 50,
     arrive: {first: 2, message: 'на болоте завелась кикимора: по ночам портит припасы'},
     resident: true, respawn: 5,
     habitat: {swamp: 'usual'},
     look: {shape: 'spirit', size: 0.4, color: '#6e6a4e'},
     vermin: {eats: 0.004, flee: 3, caught: 0.03, spoils: true, veil: 2}}),
   // Vodyanoy: the old man of the deep water — the rusalka's strain grown heavy; drags the lone one down by night
-  beast({id: 'vodyanoy', kind: 'spirit', label: 'водяной', labelAcc: 'водяного', plural: 'водяные', mind: 'semi', undead: true, brain: 'spirit', heatHarm: 45,
+  beast({id: 'vodyanoy', kind: 'spirit', label: 'водяной', labelAcc: 'водяного', plural: 'водяные', mind: 'semi', undead: true, brain: 'tabled', behaviours: [...WAYS.waterSpirit], heatHarm: 45,
     arrive: {first: 3, message: 'в омуте заворочался водяной. К глубокой воде ночью — только вдвоём'},
     resident: true, respawn: 10,
     habitat: {water: 'usual', swamp: 'rare'},
@@ -213,7 +211,7 @@ export const BESTIARY = [
     spirit: {home: 'shore', aura: 'lure', radius: 9, night: true, veil: 0, keepOff: 10, dives: true, regen: 3}}),
 
   // Poludnitsa: the noon-wife of the open fields; whoever works the meadow under her gaze loses the way
-  beast({id: 'poludnitsa', kind: 'spirit', label: 'полуденница', labelAcc: 'полуденницу', plural: 'полуденницы', mind: 'semi', undead: true, brain: 'spirit', heatHarm: 60,
+  beast({id: 'poludnitsa', kind: 'spirit', label: 'полуденница', labelAcc: 'полуденницу', plural: 'полуденницы', mind: 'semi', undead: true, brain: 'tabled', behaviours: [...WAYS.woodSpirit], heatHarm: 60,
     arrive: {first: 3, message: 'над лугами в жару ходит полуденница: кто работает в полдень, теряет дорогу'},
     resident: true, respawn: 7,
     habitat: {meadow: 'usual', steppe: 'usual', savanna: 'rare'},

@@ -28,7 +28,7 @@ TAGS.registerAll([
   sp('big', 'крупный', 'хищники: как бьют добычу (agents/behaviours/chase.js, agents/hunting.js)', 'крупный зверь: кабан, лось, медведь…'),
   sp('snowfoot', 'снежная лапа', 'шаг по снегу (agents/movement.js)', 'не вязнет в снегу'),
   sp('nocturnal', 'ночной', 'когда выходит на охоту (agents/behaviours/leaveHurt.js)', 'днём спит, ночью охотится'),
-  sp('hibernates', 'зимняя спячка', 'уходит с карты зимой (agents/brains/mule.js, data/migrations.js)', 'спит зимой'),
+  sp('hibernates', 'зимняя спячка', 'уходит с карты зимой (agents/behaviours/leave.js, data/migrations.js)', 'спит зимой'),
   sp('inventory', 'носит вещи', 'снаряжение (agents/agent.js), налётчики (data/raids.js)', 'держит оружие, броню и ношу'),
   sp('relativeStats', 'статы типичного зверя', 'тело зверя (agents/special.js)', 'правило, а не свойство: строка вида описывает типичного зверя, SPECIAL двигает зверя против сородичей'),
   // ── what a species fears (weakTo)

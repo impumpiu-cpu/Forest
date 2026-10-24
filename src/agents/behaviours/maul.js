@@ -2,7 +2,7 @@
 // of night) has made the pack bold enough; a member joins the leader's attack. Help arriving or the victim
 // reaching the settlement makes the pack back off for a while, shorter when starving; a victim it cannot get at
 // is given up. A kill feeds the whole pack. In the `lair` mode (defendLair) nothing frightens it and it does not
-// let go; in the `kick` mode a big grazer kicks back (standGround). Reads: predator {victims, sight, loneRadius,
+// let go; in the `kick` mode a big grazer kicks back (standGround), in the `strike` mode the nechist hits whoever hurt it. Reads: predator {victims, sight, loneRadius,
 // boldPeople, calm, sprint, stamina, bigMeal}.
 import {SPECIES} from '../../data/species.js';
 import {approach, sprintMul, recover} from '../movement.js';
@@ -12,7 +12,7 @@ import {endTask} from '../lifecycle.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {think} from '../mind.js';
 import {dist, packOf, paramsOf, boldness, nearest, company, startMaul, toTheKill} from '../hunting.js';
-import {PROWL} from '../../data/behaviour.js';
+import {PROWL, NECHIST} from '../../data/behaviour.js';
 import {kickStep} from './standGround.js';
 
 const BUSY = new Set(['feed', 'chase', 'maul']);
@@ -42,6 +42,11 @@ export const maul = {
   },
   step(w, a, t) {
     if (t.mode === 'kick') { kickStep(w, a, t); return; }   // a big grazer kicking back (agents/behaviours/standGround.js)
+    if (t.mode === 'strike') {   // a plain blow with no fear and no pack: the nechist on whoever hurt it (fightBack, lure)
+      if (gone(w, t.target)) { endTask(w, a); return; }
+      if (dist(a, t.target) > NECHIST.strikeReach || behindRock(w, a, t.target)) approach(w, a, t.target.x, t.target.y, NECHIST.strikePace); else attack(w, a, t.target);
+      return;
+    }
     const P = paramsOf(a), M = PROWL.maul, v = t.target;
     if (t.mode === 'lair') { lair(w, a, t, P, v); return; }
     const b = boldness(a, P), pack = packOf(w, a);

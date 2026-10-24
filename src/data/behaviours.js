@@ -10,7 +10,8 @@
 //              takes the first lane that offers anything: a red option is never weighed against the queue,
 //              it interrupts it; when it is over, the queue goes on
 //   task     — false: the behaviour offers a task another one owns (sniffHay offers `graze` in the `hay`
-//              mode) and brings no task of its own; otherwise its task is registered under its id (`label`)
+//              mode) and brings no task of its own; a string: its task goes under that id (lure's `sing`);
+//              otherwise its task is registered under the behaviour's id (`label`)
 //   keep     — bonus the current task gets against a newcomer (0: scores alone decide)
 //   requires — the species fields it reads (['flee']): tools/check-data.mjs refuses a species that lists
 //              the behaviour without them
@@ -44,6 +45,31 @@ BEHAVIOURS.registerAll([
     note: 'вьючный мул (a.owner): идёт за своим купцом; купец пропал — уходит с карты'},
   {id: 'drawOff', label: () => 'отходит от опасности', band: 'yellow', requires: ['herd'], keep: 0,
     note: 'стадный зверь, который не бежит (лось): отступает от того, что подошло к стаду слишком близко'},
+  // ── vermin (the `vermin` block)
+  {id: 'scurry', task: false, band: 'red', requires: ['vermin'], keep: 0,
+    note: 'бежит от того, кто не спит и подошёл (vermin.flee); подошедший вплотную может прибить (vermin.caught); кикимору видно только вблизи (veil)'},
+  {id: 'hide', label: () => 'прячется', band: 'routine', requires: ['vermin'], keep: 0,
+    note: 'сидит в норе у лагеря, пока у припасов кто-то есть (пока не кончилось терпение) и после набега; нечисть — в режиме deep уходит на дальнюю свою землю'},
+  {id: 'nibble', label: () => 'грызёт припасы', band: 'routine', requires: ['vermin'], keep: 0,
+    note: 'когда у припасов тихо, крадётся к складу и ест открытую еду; кикимора прежде портит тушу в лесу'},
+  // ── the nechist (the `spirit` block; agents/nechist.js)
+  {id: 'vanish', task: false, band: 'red', requires: ['spirit'], keep: 0,
+    note: 'скрывшаяся нечисть (a.hiddenUntil) никому не видна и идёт на дальнюю свою землю (hide в режиме deep); всегда: раны затягиваются дома, завеса (veil)'},
+  {id: 'fightBack', task: false, band: 'red', requires: ['spirit'], keep: 0,
+    note: 'обидчику рядом — удар (maul в режиме strike); русалка от раны уходит под воду, леший от толпы — в чащу'},
+  {id: 'lure', label: () => 'поёт у воды', task: 'sing', band: 'routine', requires: ['spirit'], keep: 0,
+    note: 'аура русалки: ночью зовёт одинокого поселенца к воде и топит, если никто не подойдёт (всегда, независимо от задачи); задача sing — ходит по берегу или ждёт идущего'},
+  {id: 'astray', task: false, band: 'routine', requires: ['spirit'], keep: 0,
+    note: 'аура лешего: поселенцы рядом теряют дорогу на час-два (всегда, независимо от задачи); ничего не предлагает'},
+  {id: 'lurk', label: () => 'таится', band: 'routine', requires: ['spirit'], keep: 0,
+    note: 'держится своей земли (лес, луг, берег) подальше от поселения'},
+  // ── a tamed beast (the brain `livestock`, agents/brains/index.js) and one who left (`leaver`)
+  {id: 'fendOff', task: false, band: 'red', requires: [], keep: 0,
+    note: 'ручной зверь: хищник или налётчик рядом — мул лягает на месте (maul kick, stay), коза бежит (bolt)'},
+  {id: 'penned', label: t => (t.mode === 'camp' ? 'держится у лагеря' : t.mode === 'to' ? 'идёт в загон' : 'в загоне'), band: 'routine', requires: [], keep: 0,
+    note: 'ручной зверь: идёт в свой загон и ходит в нём с места на место; без загона держится у лагеря; раны заживают'},
+  {id: 'depart', task: false, band: 'routine', requires: [], keep: 0,
+    note: 'ушедший из поселения идёт к краю карты (общая задача leave)'},
   // ── a predator (agents/hunting.js; the numbers: the species' `predator` block and PROWL of data/behaviour.js)
   {id: 'defendLair', task: false, band: 'reflex', requires: ['predator'], keep: 0,
     note: 'страж логова (a.defend, campaign/camp.js): держит его до конца — maul в режиме lair, без страха и бегства'},
@@ -56,7 +82,7 @@ BEHAVIOURS.registerAll([
   {id: 'chase', label: () => 'гонит добычу', band: 'routine', requires: ['predator'], keep: 0,
     note: 'охота стаей на дичь: голодный смотрит далеко, сытый берёт что под носом; присоединяется к погоне вожака'},
   {id: 'maul', label: t => (t.mule ? (t.charging ? 'несётся на обидчика' : 'лягается') : 'нападает'), band: 'routine', requires: ['predator'], keep: 0,
-    note: 'нападение на одинокого человека, когда голод (и ночь) придали смелости; отступает при подмоге (задачу maul носит и мул, agents/brains/mule.js)'},
+    note: 'нападение на одинокого человека, когда голод (и ночь) придали смелости; отступает при подмоге (задачу maul носят и мул — режим kick, standGround — и нечисть — режим strike)'},
   {id: 'catchBreath', task: false, band: 'routine', requires: ['predator'], keep: 0,
     note: 'выдохся в погоне — отдыхает (rest в режиме winded), пока не отдышится'},
   {id: 'wanderOff', task: false, band: 'routine', requires: ['predator'], keep: 0,
@@ -71,8 +97,7 @@ for (const d of BEHAVIOURS.all()) {
 
 // a species' behaviours grouped by lane, in list order; cached per list (a table edit gives a new list)
 const grouped = new WeakMap();
-export function lanesOf(sp) {
-  const list = sp.behaviours;
+export function lanesOf(list) {
   let g = grouped.get(list);
   if (!g) {
     g = Object.fromEntries(BANDS.map(b => [b, []]));

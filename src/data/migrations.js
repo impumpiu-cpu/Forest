@@ -13,7 +13,7 @@ import {WILDLIFE} from './presets.js';
 import {T, BY_CODE} from './terrain.js';
 import {HOUR, DAY} from '../core/time.js';
 import {season} from './seasons.js';
-import {homeCell} from '../agents/brains/spirit.js';
+import {homeCell} from '../agents/nechist.js';
 import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
@@ -152,7 +152,7 @@ for (const sp of SPECIES.filter(s => s.arrive)) {
       if (sp.hibernates && season(w).id === 'winter') return 0;
       return Math.max(0, Math.min(n, A.cap - onMap(w, sp.id)));
     },
-    // the nechist appears at its home ground (agents/brains/spirit.js), not at the map edge
+    // the nechist appears at its home ground (agents/nechist.js), not at the map edge
     spawnAt: sp.spirit ? w => homeCell(w, sp.spirit.home, 18) : undefined,
     init: a => { a.name = cap1(sp.label); },
     // a pack: members share an id, the first one leads (agents/hunting.js)

@@ -37,7 +37,7 @@ import {BRAINS} from '../agents/brains/index.js';
 export const SAVE_FORMAT = 3;
 const FORMATS = [1, 2, 3];
 // brains that run their task through the TASKS registry: an id it does not know would stop the game
-const TASK_BRAINS = new Set(['colonist', 'raider', 'tabled']);
+const TASK_BRAINS = new Set(['colonist', 'raider', 'tabled', 'livestock', 'leaver']);
 
 // world keys that are rebuilt rather than saved
 const LIVE = new Set(['nav', 'rng', 'rngs', 'astar', 'perf', 'scratch', 'chunks']);
@@ -79,6 +79,7 @@ export function loadWorld(save) {
   w.behave.hunts ??= {started: 0};
   // feeding from before carcasses goes on by the old timer (agents/behaviours/feed.js); chases without a pack hunt end
   for (const a of w.agents) if (a.task?.id === 'chase' && a.hunt == null) a.task = {id: 'roam'};
+  for (const a of w.agents) if (a.task?.id === 'toPen') a.task = {id: 'penned', mode: 'to'};   // the pen's walk is a mode of `penned` now (agents/behaviours/penned.js)
   w.behave.social ??= {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0};
   // raiders from before squads (no w.squads, no a.squad) go on the old way: nearest foe, the stores, home
   // claims from before reservations (settlement/reserve.js) are simply dropped: the leases start empty

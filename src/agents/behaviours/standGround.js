@@ -67,6 +67,7 @@ export function kickStep(w, a, t) {
   if (!foe || foe.dead || !w.agents.includes(foe)) { endTask(w, a); return; }
   const d = dist(a, foe);
   if (d > M.kickRange) {
+    if (t.stay) { endTask(w, a); return; }   // a tame mule kicks where it stands and goes after nobody (fendOff)
     if (a.hurtBy?.far && d > M.chargeFrom && !t.charging) {
       t.charging = true;
       if (foe.faction === 'colony') log(w, `${sp.label[0].toUpperCase() + sp.label.slice(1)} несётся на <b>${esc(foe.name)}</b>: стрелять в него было ошибкой.`, 'danger', 'notice');

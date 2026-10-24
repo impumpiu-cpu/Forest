@@ -11,6 +11,8 @@
 // carries (its mode, its target); a new task is entered through the lifecycle, and the behaviour that
 // offered it hears of it (`pick`: a hunt begins, the pack is called).
 //
+// A behaviour may also act every tick whatever the task (`always`: an aura, a veil, a body's own healing).
+//
 // A creature thinks every tick unless its row says otherwise (`heart`: ticks between thoughts); the two
 // upper lanes are looked at every tick regardless, so a fire or a foe is never waited on. A task that ends
 // in its step makes room for the next one at once: the choice is made again and the new task steps in the
@@ -42,7 +44,7 @@ function offers(w, a, ctx, lanes, from) {
 }
 
 function decide(w, a, ctx, from) {
-  const found = offers(w, a, ctx, lanesOf(ctx.sp), from);
+  const found = offers(w, a, ctx, lanesOf(ctx.list), from);
   if (!found) return false;
   const [band, opts] = found, cur = a.task?.id ?? '';
   let best = null, bs = -Infinity, bestWhy = null, by = null;
@@ -66,26 +68,31 @@ function run(w, a) {
   syncTask(w, a);
 }
 
-export const tabledBrain = {
-  id: 'tabled',
-  step(w, a) {
-    const sp = SPECIES.get(a.species);
-    // the body: a creature with needs has the full one (hunger, cold, healing); one without only burns, and mends if its row says so (`mends`)
-    let T;
-    if (sp.needs.length) T = stepBody(w, a);
-    else {
-      T = tempAt(w, cellOf(w, a)); if (heatHarm(a, sp, T, 'beast') && a.hp <= 0) kill(w, a, 'огня');
-      if (sp.mends && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + sp.mends * maxHp(a));   // wounds close slowly (a mule, a bear)
-    }
-    if (a.dead) return;
-    const ctx = {sp, T, night: nightness(w)};
-    // the choice: every `heart` ticks in full, the alarms every tick
-    const heart = sp.heart ?? 1;
-    if (!a.task || heart === 1 || --a.think <= 0) { decide(w, a, ctx, BANDS); a.think = heart; }
-    else decide(w, a, ctx, ALARMS);
-    if (a.task) run(w, a);
-    // the task ended by itself: the next one steps in at once
-    if (!a.task && decide(w, a, ctx, BANDS)) run(w, a);
-    if (a.cd > 0) a.cd--;
-  },
-};
+// one step of a creature that thinks by a list of behaviours: the species' own, or the list a brain carries (a
+// tamed beast thinks as livestock whatever its species: agents/brains/index.js)
+export function tabledStep(w, a, list) {
+  const sp = SPECIES.get(a.species);
+  // the body: a creature with needs has the full one (hunger, cold, healing); one without only burns — as the
+  // nechist or as a beast (data/behaviour.js HEAT) — and mends if its row says so (`mends`)
+  let T;
+  if (sp.needs.length) T = stepBody(w, a);
+  else {
+    T = tempAt(w, cellOf(w, a)); if (heatHarm(a, sp, T, sp.kind === 'spirit' ? 'spirit' : 'beast') && a.hp <= 0) kill(w, a, 'огня');
+    if (sp.mends && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + sp.mends * maxHp(a));   // wounds close slowly (a mule, a bear)
+  }
+  if (a.dead) return;
+  const ctx = {sp, list, T, night: nightness(w)};
+  // what the behaviours do every tick whatever the task (an aura, a veil, a body's own healing)
+  for (const id of list) ACTS[id].always?.(w, a, ctx);
+  if (a.dead) return;
+  // the choice: every `heart` ticks in full, the alarms every tick
+  const heart = sp.heart ?? 1;
+  if (!a.task || heart === 1 || --a.think <= 0) { decide(w, a, ctx, BANDS); a.think = heart; }
+  else decide(w, a, ctx, ALARMS);
+  if (a.task) run(w, a);
+  // the task ended by itself: the next one steps in at once
+  if (!a.task && decide(w, a, ctx, BANDS)) run(w, a);
+  if (a.cd > 0) a.cd--;
+}
+
+export const tabledBrain = {id: 'tabled', step(w, a) { tabledStep(w, a, SPECIES.get(a.species).behaviours); }};

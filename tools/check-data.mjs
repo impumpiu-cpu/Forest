@@ -216,7 +216,7 @@ for (const sp of SPECIES.all()) {
   if (sp.kind !== 'race' && sp.home) err(`${where}: home только у разумных`);
   if (sp.kind === 'spirit' && !sp.resident) err(`${where}: нечисть без resident`);
   if (sp.resident && sp.kind !== 'spirit') err(`${where}: resident, а не нечисть`);
-  if ((sp.kind === 'beast' || sp.kind === 'monster') && !sp.habitat && sp.brain !== 'vermin') err(`${where}: зверь без habitat`);   // vermin lives everywhere
+  if ((sp.kind === 'beast' || sp.kind === 'monster') && !sp.habitat && !sp.vermin) err(`${where}: зверь без habitat`);   // vermin lives everywhere
   if (sp.kind === 'race' && sp.habitat) err(`${where}: habitat у разумного — на локальной карте он пришёл бы как зверь`);
   for (const [b, r] of Object.entries(sp.home || {})) {
     if (!BIOMES.has(b)) err(`${where}: нет биома «${b}» в home`);
@@ -233,7 +233,6 @@ for (const sp of SPECIES.all()) {
   for (const k of [...(sp.predator?.prey || []), ...(sp.predator?.weakPrey || []), ...(sp.flee?.from || [])]) if (k !== 'people' && !SPECIES.has(k)) err(`${where}: нет вида «${k}»`);
   for (const k of sp.tameWith || []) if (!SPECIES.get(k)?.rel) warn(`${where}: tameWith — «${k}» не раса`);
   for (const r of Object.keys(sp.yields || {})) res(where, r);
-  if (sp.brain === 'spirit' && !sp.spirit) err(`${where}: мозг spirit без блока spirit`);
   // the tabled brain: a list of behaviours, each with the fields it reads (agents/behaviours/index.js `requires`)
   if (sp.brain === 'tabled' && !sp.behaviours?.length) err(`${where}: ум tabled без списка behaviours`);
   if (sp.behaviours && sp.brain !== 'tabled') err(`${where}: behaviours при уме «${sp.brain}» — читает их только tabled`);

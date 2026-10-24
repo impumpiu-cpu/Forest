@@ -5,6 +5,8 @@
 import {newGame, step} from '../src/sim.js';
 import {DEFAULT_CFG} from '../src/data/presets.js';
 import {createAgent} from '../src/agents/agent.js';
+import {BRAINS} from '../src/agents/brains/index.js';
+import {TASKS} from '../src/agents/tasks.js';
 import {T} from '../src/data/terrain.js';
 import {DAY, HOUR} from '../src/core/time.js';
 import {herdOf} from '../src/agents/wildHerd.js';
@@ -15,6 +17,7 @@ import {BEHAVIOURS} from '../src/data/behaviours.js';
 import {ACTS} from '../src/agents/behaviours/index.js';
 import {SPECIES} from '../src/data/species.js';
 import {season} from '../src/data/seasons.js';
+import {makeTame} from '../src/settlement/herd.js';
 
 // a flat meadow with the camp in the middle, no colonists, nothing arriving from outside; `hour` sets the clock
 const put = (w, sp, fac, x, y) => createAgent(w, sp, fac, x, y);
@@ -32,8 +35,9 @@ function scene(seed = 'range', hour = 10) {
   still(put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5));
   return w;
 }
-// a creature that only stands where it is: a prop of the scene
-const still = a => { a.brain = 'caravan'; a.task = {id: 'camped'}; return a; };
+// a creature that only stands where it is: a prop of the scene (a brain of the range alone: it does nothing)
+BRAINS.register({id: 'prop', step(w, a) { if (a.task?.spell) TASKS.get(a.task.id).step(w, a, a.task); if (a.cd > 0) a.cd--; }});   // a spell on it still works
+const still = a => { a.brain = 'prop'; a.task ??= {id: 'camped'}; return a; };
 const pack = (w, n, x, y, food) => Array.from({length: n}, (_, k) => { const o = put(w, 'wolf', 'predators', x + k * 0.8, y); o.pack = o.id - k; o.stamina = 1; o.needs.food = food; return o; });
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const run = (w, n, until) => { for (let k = 0; k < n; k++) { step(w); if (until?.()) return k + 1; } return until ? false : n; };
@@ -160,6 +164,82 @@ scene_('B11', 'медведь зимой уходит в берлогу', () => 
   w.nav.buildAll();
   const bear = put(w, 'bear', 'wild', 30.5, 30.5);
   return run(w, 5, () => bear.task?.id === 'leave') || `зима, а медведь «${bear.task?.id}»`;
+});
+
+scene_('B12', 'крыса: днём при людях сидит в норе, ночью, когда все спят, грызёт припасы; подошедший гонит её', () => {
+  const w = scene();
+  w.stock.berries = 40;
+  const rat = put(w, 'rat', 'wild', w.camp.x + 4.5, w.camp.y + 0.5);
+  const ate0 = w.stats.ratsAte || 0;
+  // the settler by the fire is awake: the rat keeps to its hole
+  if (!run(w, 60, () => rat.task?.id === 'hide')) return `при бодрствующем у припасов не прячется: «${rat.task?.id}»`;
+  run(w, 300);
+  if ((w.stats.ratsAte || 0) > ate0) return 'грызёт припасы при бодрствующем рядом';
+  // night falls, the settler sleeps: the rat comes for the food
+  w.tick = 3 * DAY + 23 * HOUR; w.agents[0].sleeping = true;
+  const ate = run(w, 600, () => (w.stats.ratsAte || 0) > ate0);
+  if (!ate) return `за 600 ночных тиков ничего не съела: «${rat.task?.id}»`;
+  // someone wakes up right next to it
+  w.agents[0].sleeping = false; w.agents[0].x = rat.x + 1; w.agents[0].y = rat.y;
+  return run(w, 10, () => rat.dead || rat.task?.id === 'bolt') || `рядом проснулись, а крыса «${rat.task?.id}»`;
+});
+
+scene_('B13', 'ручная коза идёт в загон и ходит в нём, ночью дремлет; волк рядом — бежит; ручной мул без загона держится у лагеря', () => {
+  const w = scene();
+  const pen = {id: 900, key: 'pen', done: true, x: w.camp.x + 6, y: w.camp.y - 2, w: 4, h: 4, cells: [], progress: 1}; w.buildings.push(pen);
+  const goat = put(w, 'goat', 'wild', w.camp.x - 8.5, w.camp.y + 0.5); makeTame(w, goat, w.agents[0]);
+  if (goat.brain !== 'livestock') return 'приручённая коза не стала скотом';
+  const inside = a => a.x >= pen.x && a.y >= pen.y && a.x < pen.x + pen.w && a.y < pen.y + pen.h;
+  if (!run(w, 400, () => inside(goat))) return `за 400 тиков не дошла до загона: «${goat.task?.id}» (${goat.x.toFixed(1)}, ${goat.y.toFixed(1)})`;
+  run(w, 100);
+  if (!inside(goat) || goat.task?.id !== 'penned') return `в загоне, а занята «${goat.task?.id}:${goat.task?.mode}»`;
+  w.tick = 3 * DAY + 23 * HOUR;
+  if (!run(w, 5, () => goat.task?.id === 'rest')) return `ночью не дремлет: «${goat.task?.id}»`;
+  const wolf = still(put(w, 'wolf', 'predators', goat.x + 1.5, goat.y)); wolf.pack = wolf.id;
+  if (!run(w, 5, () => goat.task?.id === 'bolt')) return `волк рядом, а коза «${goat.task?.id}»`;
+  wolf.dead = true;
+  w.buildings.length = 0;
+  const mule = put(w, 'mule', 'wild', w.camp.x + 12.5, w.camp.y + 0.5); makeTame(w, mule, w.agents[0]);
+  const t = run(w, 300, () => mule.task?.id === 'penned' && mule.task.mode === 'camp' && w.nav.get('camp')[(mule.y | 0) * w.w + (mule.x | 0)] <= 5);
+  return t || `мул без загона: «${mule.task?.id}:${mule.task?.mode}», до лагеря ${w.nav.get('camp')[(mule.y | 0) * w.w + (mule.x | 0)]}`;
+});
+
+scene_('B14', 'леший держится леса и водит поселенца кругами; раненный одним бьёт в ответ, от толпы уходит в чащу', () => {
+  const w = scene();
+  // a wood for him: a square of forest well away from the camp
+  const F = T.FOREST; for (let y = 10; y < 26; y++) for (let x = 10; x < 26; x++) w.grid.terr[y * w.w + x] = F;
+  w.nav.buildAll();
+  const leshy = put(w, 'leshy', 'nechist', 18.5, 18.5);
+  run(w, 200);
+  if (w.grid.terr[(leshy.y | 0) * w.w + (leshy.x | 0)] !== F) return `ушёл из леса: (${leshy.x.toFixed(1)}, ${leshy.y.toFixed(1)}) «${leshy.task?.id}»`;
+  const man = still(put(w, 'human', 'colony', leshy.x + 2, leshy.y));
+  if (!run(w, 200, () => man.task?.id === 'astray')) return `поселенец рядом с лешим не заплутал: «${man.task?.id}»`;
+  // one man hurts him: he hits back
+  leshy.hurtBy = {id: man.id, tick: w.tick, far: false}; man.task = {id: 'camped'};
+  if (!run(w, 10, () => leshy.task?.id === 'maul' && leshy.task.target === man)) return `ранен одним, а «${leshy.task?.id}»`;
+  // a crowd closes in: he melts into the thicket
+  for (let k = 0; k < 3; k++) still(put(w, 'human', 'colony', leshy.x + 1 + k * 0.5, leshy.y + 1));
+  leshy.hurtBy = {id: man.id, tick: w.tick, far: false};
+  const hid = run(w, 10, () => leshy.hiddenUntil > w.tick && leshy.task?.id === 'hide');
+  return hid || `толпа рядом, а леший «${leshy.task?.id}»`;
+});
+
+scene_('B15', 'русалка ночью зовёт одинокого поселенца к воде; подошёл второй — чары спали', () => {
+  const w = scene('range', 23);   // night
+  // a pond with a shore
+  const W = T.WATER; for (let y = 14; y < 20; y++) for (let x = 14; x < 20; x++) w.grid.terr[y * w.w + x] = W;
+  w.nav.buildAll();
+  const rus = put(w, 'rusalka', 'nechist', 13.5, 17.5);
+  rus.special = {...rus.special, C: 15};   // a voice nobody resists
+  const man = still(put(w, 'human', 'colony', 13.5, 25.5));
+  man.special = {...man.special, P: 0, I: 0};   // no eye and no head: the song always takes
+  const sung = run(w, 300, () => man.task?.id === 'lured');
+  if (!sung) return `за 300 ночных тиков песни не было: русалка «${rus.task?.id}», поселенец «${man.task?.id}»`;
+  const d0 = Math.hypot(man.x - rus.x, man.y - rus.y);
+  run(w, 40);
+  if (!(Math.hypot(man.x - rus.x, man.y - rus.y) < d0)) return 'зачарованный не идёт к воде';
+  still(put(w, 'human', 'colony', man.x + 0.7, man.y));
+  return run(w, 10, () => man.task?.id !== 'lured') || 'второй подошёл, а чары держат';
 });
 
 scene_('B08', 'каталог: у каждого поведения есть код, у каждого вида с умом tabled — список, и он читает то, что есть у вида', () => {

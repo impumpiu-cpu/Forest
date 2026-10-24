@@ -4,6 +4,7 @@
 //           options (why: () → text for the card). A task is {id, mode?, …}; the same id as the current task
 //           keeps the task object (its spot, its progress), only `mode` is updated. ctx: {sp, T, night}
 //   pick  — (w, a, task): what happens the moment the offer is taken (a hunt begins, the pack is called)
+//   always — (w, a, ctx): every tick whatever the task (an aura, a veil, a body's own healing)
 //   step  — the task's step (a behaviour whose row says `task: false` has none);  enter, exit — its hooks
 // agents/tasks.js registers the tasks from the catalogue and reaches the steps here.
 import {BEHAVIOURS} from '../../data/behaviours.js';
@@ -25,8 +26,19 @@ import {shunFire} from './shunFire.js';
 import {standGround} from './standGround.js';
 import {pack} from './pack.js';
 import {drawOff} from './drawOff.js';
+import {scurry} from './scurry.js';
+import {hide} from './hide.js';
+import {nibble} from './nibble.js';
+import {vanish} from './vanish.js';
+import {fightBack} from './fightBack.js';
+import {lure} from './lure.js';
+import {astray} from './astray.js';
+import {lurk} from './lurk.js';
+import {fendOff} from './fendOff.js';
+import {penned} from './penned.js';
+import {depart} from './depart.js';
 
-export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff};
+export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff, scurry, hide, nibble, vanish, fightBack, lure, astray, lurk, fendOff, penned, depart};
 
 for (const d of BEHAVIOURS.all()) {
   const c = ACTS[d.id];

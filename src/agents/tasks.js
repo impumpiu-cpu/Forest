@@ -359,18 +359,10 @@ TASKS.registerAll([
   {id: 'stall', label: () => 'торгует', step() {}},
   {id: 'night', label: () => 'ночует у костра', step() {}},
   {id: 'escort', label: () => 'охраняет караван', step() {}},
-  // the pen: tame animals' states (agents/brains/livestock.js)
-  {id: 'penned', label: () => 'в загоне', step() {}},
-  {id: 'toPen', label: () => 'идёт в загон', step() {}},
+  // the beasts' and the nechist's own states (graze, bolt, roam, chase, maul, feed, hide, lurk, sing, penned…) come
+  // with their behaviours (data/behaviours.js), registered below
 
-  // animal states of the hand-written brains (agents/brains/): the brain moves the animal itself, these
-  // entries only name the state. graze, rest, bolt, alert, drawOff, roam, chase, maul, feed, pack are the behaviours' own (data/behaviours.js)
-  {id: 'nibble', label: () => 'грызёт припасы', step() {}},
-  {id: 'hide', label: () => 'прячется', step() {}},
-  {id: 'lurk', label: () => 'таится', step() {}},
-  {id: 'sing', label: () => 'поёт у воды', step() {}},
-
-  // spells of the nechist (agents/brains/spirit.js) on a colonist: they last until `until`
+  // spells of the nechist (agents/behaviours/astray.js, lure.js) on a colonist: they last until `until`
   // the leshy's spores: the colonist wanders in circles, then comes to
   {id: 'astray', label: () => 'плутает в лесу', step(w, a, task) {
     if (w.tick >= task.until) { think(w, a, 'foundWay'); done(w, a); return; }
@@ -379,7 +371,7 @@ TASKS.registerAll([
       task.spot = [a.x + Math.cos(ang) * 3, a.y + Math.sin(ang) * 3];
     }
   }},
-  // the rusalka's song: the colonist walks to the water; someone close by breaks the spell (spirit.js)
+  // the rusalka's song: the colonist walks to the water; someone close by breaks the spell (agents/behaviours/lure.js)
   {id: 'lured', label: () => 'идёт на голос у воды', step(w, a, task) {
     const s = liveById(w, task.by);
     if (!s || w.tick >= task.until) { done(w, a); return; }
@@ -388,7 +380,7 @@ TASKS.registerAll([
 
   // the behaviours' own tasks (data/behaviours.js; the code in agents/behaviours/, reached when the task
   // runs): run by the tabled brain, named for every brain
-  ...BEHAVIOURS.filter(d => d.task !== false).map(d => ({id: d.id, label: d.label,
+  ...BEHAVIOURS.filter(d => d.task !== false).map(d => ({id: typeof d.task === 'string' ? d.task : d.id, label: d.label,
     step: (w, a, t) => ACTS[d.id].step(w, a, t), enter: (w, a, t) => ACTS[d.id].enter?.(w, a, t), exit: (w, a, t, o) => ACTS[d.id].exit?.(w, a, t, o)})),
 ]);
 

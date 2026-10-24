@@ -107,8 +107,8 @@ SPECIES.registerAll([
 
   // Rats: they come for the stock when there is a lot of food and nothing to keep them out of it.
   // They nibble what lies in the open (pots and a granary protect it) and run from people;
-  // whoever catches one near the stores kills it (agents/brains/vermin.js).
-  {id: 'rat', kind: 'beast', label: 'крыса', labelAcc: 'крысу', plural: 'крысы', needs: [], brain: 'vermin',
+  // whoever catches one near the stores kills it (agents/behaviours/scurry.js).
+  {id: 'rat', kind: 'beast', label: 'крыса', labelAcc: 'крысу', plural: 'крысы', needs: [], brain: 'tabled', behaviours: [...WAYS.vermin],
     // no habitat: lives wherever there is food lying about
     heatHarm: 55, look: {shape: 'rat', size: 0.25, color: '#7c7468'},
     vermin: {eats: 0.0016, flee: 1.6, caught: 0.04}},

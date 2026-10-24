@@ -187,7 +187,7 @@ export const TABLES = [
   // the behaviours a species row may list (agents/behaviours/): code, shown for reference
   {id: 'behaviours', label: 'Поведения', group: 'Существа', key: 'id', computed: true, rows: () => BEHAVIOURS.all(),
     note: 'Что может делать существо с умом tabled (data/behaviours.js, код в agents/behaviours/, docs/BEHAVIOUR.md). Полоса: рефлекс > красная > жёлтая > очередь дел — первая, где есть что выбрать, прерывает остальные. «Читает» — поля строки вида, без которых поведение не записать.',
-    columns: [col('id', 'id'), col('band', 'Полоса', 'enum', {values: BAND_LABELS}), col('task', 'Своя задача', 'bool'), col('keep', 'Держится', 'num'), col('requires', 'Читает', 'ids'), col('note', 'Описание')]},
+    columns: [col('id', 'id'), col('band', 'Полоса', 'enum', {values: BAND_LABELS}), col('task', 'Своя задача', 'json', {note: 'пусто — задача под id поведения; false — предлагает чужую; слово — задача под этим id'}), col('keep', 'Держится', 'num'), col('requires', 'Читает', 'ids'), col('note', 'Описание')]},
   // ── names: one place for all of them (data/names.js); an edit puts the new list into what the game reads (`after`)
   {id: 'names', label: 'Имена', group: 'Существа', key: 'id', rows: () => Object.entries(PERSON).filter(([id]) => id !== 'necromancer').map(([id, P]) => ({id, label: SPECIES.has(id) ? SPECIES.get(id).plural : id, ...P})),
     target: (r, c) => [PERSON[r.id], c.key], after: rebuildNames,

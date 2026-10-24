@@ -19,6 +19,16 @@ export const WAYS = {
   // too close to the herd and stands alert at its alarm
   stander: ['shunFire', 'standGround', 'pack', 'sniffHay', 'leave', 'rest', 'graze'],
   herdStander: ['shunFire', 'standGround', 'pack', 'sniffHay', 'drawOff', 'alert', 'leave', 'rest', 'graze'],
+  // vermin (a rat, the kikimora): runs from whoever is awake and close, hides in its hole while the stores are watched,
+  // sneaks in to nibble the food when the camp is quiet
+  vermin: ['shunFire', 'scurry', 'hide', 'nibble'],
+  // the nechist of wood and water: hidden after a fight, fights back one on one, keeps to its home ground; the
+  // leshy and the poludnitsa lead the nearby astray, the rusalka and the vodyanoy sing by night
+  woodSpirit: ['shunFire', 'vanish', 'fightBack', 'astray', 'lurk'],
+  waterSpirit: ['shunFire', 'vanish', 'fightBack', 'lure', 'lurk'],
+  // not a species' list but a brain's (agents/brains/index.js): a tamed beast in its pen, someone who left the outpost
+  livestock: ['shunFire', 'fendOff', 'penned', 'rest'],
+  leaver: ['depart'],
 };
 
 export const SQUAD = {
@@ -87,9 +97,11 @@ export const GRAZE = {
 // what each offer of a grazer's behaviours is worth in its lane (a lane is never weighed against another)
 export const WANT = {fire: 2, threat: 1, alert: 1, hay: 1, leave: 0.5, rest: 0.4, graze: 0.3};
 
+// fire for whoever has no other fear (agents/behaviours/shunFire.js): this close sends it off, at this pace
+export const FIRE = {near: 2, pace: 1.3, want: 2};
+
 // a beast that stands its ground, beyond its species' `mule` block (agents/behaviours/standGround.js, pack.js, drawOff.js)
 export const STAND = {
-  fire: {near: 2, pace: 1.3},   // fire this close sends it off, at this pace
   foeNear: 3,          // whoever attacks it from this close is its foe
   bull: 1.15,          // a herd beast this bold (its nerve, agents/wildHerd.js) stands up for its herd…
   bullHp: 0.6,         // …while at least this healthy…
@@ -101,6 +113,35 @@ export const STAND = {
   pack: {angle: 2.4, step: 0.9, at: 1.6, off: 0.6, hurry: 4, hurryPace: 1.3, pace: 1, catchUp: 1.2},   // a pack mule: its place behind the trader (an angle per slot)
   drawOff: 0.8,        // steps away from what comes too close to the herd at this pace
   want: {fire: 2, limp: 1.5, foe: 1.4, pack: 1, hay: 1, drawOff: 1.1, alert: 1, leave: 0.5, rest: 0.4, graze: 0.3},
+};
+
+// a tamed beast in its pen (agents/behaviours/fendOff.js, penned.js; settlement/herd.js)
+export const PEN = {
+  foeNear: 3,          // a beast of prey or a raider this close: a mule kicks, a goat runs…
+  flee: 1.3,           // …at this pace
+  mends: 0.0003,       // wounds close this share of full health a tick in the pen
+  campNear: 5, campPace: 0.8, stroll: 0.02, strollR: 4, strollPace: 0.4,   // no pen yet: keeps by the camp
+  toPen: 0.9,          // walks to its pen at this pace
+  newSpot: 0.008, margin: 0.3, there: 0.2, pace: 0.3,   // inside: from spot to spot
+  want: {fire: 2, foe: 1.5, out: 0.5, rest: 0.4, in: 0.3},
+};
+
+// the nechist beyond its species' `spirit` block (agents/nechist.js; agents/behaviours/vanish.js, fightBack.js, lurk.js, lure.js, astray.js)
+export const NECHIST = {
+  homeTries: 600,      // cells looked at for a home cell to come back to
+  grudge: 200,         // remembers who hurt it this long…
+  giveUp: 12,          // …while they are this close
+  nightFrom: 0.5,      // a night spirit is awake past this
+  mends: 0.0003,       // at home its wounds close this share of full health a tick (× spirit.regen)
+  crowdNear: 5, crowd: 3,   // colonists this close make a crowd it melts away from (spirit.crowd overrides)
+  hidden: {dive: 2, melt: 1},   // hours under the water, in the thicket
+  hideFar: 1.5,        // hides at a home cell this × keepOff from the camp
+  hidePace: 1.2, strikeReach: 0.9, strikePace: 1.1,
+  wander: {near: 0.8, newSpot: 0.004, reach: 10, tries: 30, searchAgain: 120, pace: 0.6},
+  lure: {every: 30, oneSong: 12, holds: 2, lonely: 5, singVeil: 6, reach: 1.2},   // a song a night (hours), the spell holds (hours), who is alone
+  astray: {hours: [1, 1], logEvery: 0.5},   // lost for 1 + up to 1 hours; the log once in half a day
+  spell: {astray: 1.2, lure: 1.5},   // how hard a spell holds a colonist against its other wants (agents/brains/colonist.js)
+  want: {fire: 2, hidden: 1.5, strike: 1.4, dive: 1.6, drowning: 1, song: 0.3, lurk: 0.2},
 };
 
 // a predator beyond its species' `predator` block (agents/hunting.js, agents/behaviours/: scare, leaveHurt, feed,
@@ -144,6 +185,12 @@ export const VERMIN = {
   watch: 5,         // …and it waits while someone awake is this close to the stores,
   patience: 160,    // …but not longer than this: then it makes a dash for the food anyway
   grab: 100,        // a raid on the stores lasts this long, then it runs back to its hole
+  denTries: 40, denPace: 0.9, denAt: 0.6, flee: 1.3, caughtAt: 0.8, killLog: 0.3,   // the hole, the dash from a person, how close it is caught
+  hideAfter: 60,    // back in the hole, it waits at least this long
+  daylight: 0.4,    // the kikimora keeps to the marsh while the night is shallower than this
+  denLuck: 0.5,     // chance in the choice of a hole
+  spoil: {smell: 25, pace: 0.9, at: 0.9, food: 0.003, rot: 4, logEvery: 300},   // the kikimora at a carcass
+  want: {fire: 2, flee: 1.5, hide: 0.6, nibble: 0.5},
 };
 
 // a colonist's roster (agents/brains/colonist.js): keeping to a task, thinking again at work, a moment's thought before
