@@ -81,6 +81,7 @@ export function loadWorld(save) {
   // the caravan's people are two roles now (agents/brains/index.js), and the trader's states one task with a mode
   for (const a of w.agents) {
     if (a.brain === 'caravan') a.brain = a.role === 'guard' ? 'guard' : 'trader';
+    if (a.brain === 'colonist' && a.captive) a.brain = 'captive'; else if (a.brain === 'colonist' && a.former) a.brain = 'former';   // the roles of the colony's people (agents/brains/index.js)
     if (['camped', 'stall', 'night'].includes(a.task?.id)) a.task = {id: 'travel', mode: a.task.id === 'stall' ? 'trading' : a.task.id === 'camped' ? 'camp' : 'night'};
   }
   w.behave.social ??= {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0};

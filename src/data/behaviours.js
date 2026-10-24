@@ -18,6 +18,7 @@
 // The order in a species' list is the order of evaluation and the tie-breaker, and so part of the game's
 // determinism: a list edited in the tables changes the run, as any other row edit does.
 import {Registry} from '../core/registry.js';
+import {ROSTER} from './behaviour.js';
 
 export const BANDS = ['reflex', 'red', 'yellow', 'routine'];
 export const BAND_LABELS = {reflex: 'рефлекс', red: 'красная тревога', yellow: 'жёлтая тревога', routine: 'очередь дел'};
@@ -91,6 +92,31 @@ BEHAVIOURS.registerAll([
     note: 'охранник каравана бьёт того, кто идёт на караван: врага рядом, волка или мула на его людях и зверях (общая задача fight)'},
   {id: 'escort', label: () => 'охраняет караван', band: 'routine', requires: [], keep: 0,
     note: 'охранник держится своего места рядом с купцом'},
+  // ── the colony's people (agents/brains/colonist.js; the weights: data/behaviour.js COLONIST, ROSTER, BOARD): each offers a
+  // task of agents/tasks.js; the task under way is held with ROSTER.keep (work harder: agents/behaviours/work.js keep)
+  {id: 'defend', task: false, band: 'red', requires: [], keep: ROSTER.keep,
+    note: 'на меня напали: смелый и здоровый дерётся (fight, рефлекс), остальные бегут к своим (runHome); в зоне поселения стоит и дерётся'},
+  {id: 'needs', task: false, band: 'routine', requires: ['needs'], keep: ROSTER.keep,
+    note: 'тело: поесть, поспать, согреться — по потребностям вида (data/needs.js urge); выспавшийся досыпает до рассвета'},
+  {id: 'work', task: false, band: 'routine', requires: [], keep: ROSTER.keep,
+    note: 'работы по вакансиям (settlement/plan.js): могу ли, хочу ли, ночь; запись на место; прикидка перед сменой дела; начатое держится; у лагеря меняет снаряжение и сдаёт груз'},
+  {id: 'idle', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'больше нечем заняться: отдыхает у костра'},
+  {id: 'company', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'идёт в лес вместе с одиноким сборщиком, когда там опасно (settlement/together.js)'},
+  {id: 'aid', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'спешит к раненому в лесу или упавшему без сознания: перевязать и довести'},
+  {id: 'sulk', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'хандра держит своё (settlement/life.js)'},
+  {id: 'spellbound', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'чары нечисти (astray, lured) держат, пока не спадут'},
+  {id: 'pray', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'тяжело на душе — к святилищу (днём)'},
+  {id: 'council', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'время совета у костра'},
+  {id: 'treat', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'тяжело ранен, есть хижина лекаря и койка — лечь'},
+  {id: 'trade', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'торг с купцом: второй сход вечера'},
+  {id: 'douse', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'пожар у лагеря: смелый и здоровый тушит'},
+  {id: 'watch', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'ночная стража у огня: одно место, берёт кто хочет (settlement/board.js)'},
+  {id: 'flags', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'крики доски: бежит на зов или бьёт врага, которого видит; зов взвешивается заново каждый раз'},
+  {id: 'muster', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'тревога налёта: кто не видит врага, собирается у костра'},
+  {id: 'reserve', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'красная тревога в виду: кто не идёт в бой, держится у огня или бежит к своим; тяжело раненый при враге — к своим'},
+  {id: 'bind', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'после боя: связать упавшего врага и привести (settlement/captives.js)'},
+  {id: 'assist', task: false, band: 'routine', requires: [], keep: ROSTER.keep, note: 'ученик при мастере (settlement/masters.js)'},
+  {id: 'keepIn', task: false, band: 'routine', requires: [], keep: 0, note: 'пленному нельзя за периметр: всегда возвращает к огню; ничего не предлагает'},
   // ── a predator (agents/hunting.js; the numbers: the species' `predator` block and PROWL of data/behaviour.js)
   {id: 'defendLair', task: false, band: 'reflex', requires: ['predator'], keep: 0,
     note: 'страж логова (a.defend, campaign/camp.js): держит его до конца — maul в режиме lair, без страха и бегства'},

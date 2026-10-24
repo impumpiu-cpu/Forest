@@ -70,7 +70,7 @@ import {prune, nextLookouts, inTurn, see, fade, seenMiddle} from '../src/agents/
 import {stepBoard, flagOptions, watchOption, BOARD, WATCH} from '../src/settlement/board.js';
 import {raidAlarm} from '../src/settlement/query.js';
 import {dropLoad} from '../src/agents/jobRunners.js';
-import {bindOption, captiveAllows, captives, canBind} from '../src/settlement/captives.js';
+import {bindOption, captives, canBind} from '../src/settlement/captives.js';
 import {CAPTIVE} from '../src/data/captives.js';
 import {councilDue} from '../src/settlement/council.js';
 import {agentInZone} from '../src/settlement/zone.js';
@@ -78,7 +78,9 @@ import {stepEscape, startEscape, toolsAway} from '../src/settlement/escape.js';
 import {ESCAPE, BONDS, bestBonds} from '../src/data/captives.js';
 import {stepMasters, assistOption, apprenticeBonus, placeOf, masterOf} from '../src/settlement/masters.js';
 import {MASTER} from '../src/data/masters.js';
-import {stepFreedom, formerAllows, freeCaptive} from '../src/settlement/freedom.js';
+import {stepFreedom, freeCaptive} from '../src/settlement/freedom.js';
+import {WAYS} from '../src/data/behaviour.js';
+import {ACTS} from '../src/agents/behaviours/index.js';
 import {FREEDOM} from '../src/data/captives.js';
 import {captivePrice, lawOf, SLAVE} from '../src/data/slavery.js';
 import {sellCaptives, buyCaptive, forSale} from '../src/settlement/slavery.js';
@@ -1603,7 +1605,7 @@ check('T111', 'связанный жив и перевязан, пленный �
   if (r.captive.bonds !== 'iron' || w.stock.shacklesIron !== 0 || w.stock.rope !== 4) return `путы: ${r.captive.bonds}, кандалов ${w.stock.shacklesIron}, верёвки ${w.stock.rope}`;
   if (allItems(r).length) return `при пленном осталось: ${allItems(r).map(it => it.type)}`;
   if (!w.armory.some(it => it.type === 'sword') || !w.armory.some(it => it.type === 'lamellar')) return 'меч и ламеляр не на складе';
-  if (r.brain !== 'colonist' || r.squad != null || !r.prefs) return 'пленный не думает как поселенец';
+  if (r.brain !== 'captive' || r.squad != null || !r.prefs) return 'пленный не думает как пленный поселенец';
   // the second one is bound with rope
   const [r2] = fallenRaider(w, 41.5, 30.5);
   c.task = {id: 'bind', who: r2.id}; bindAll(w, c);
@@ -1624,10 +1626,13 @@ function captive(w, healed = false) {
 check('T112', 'пленный не идёт на совет, на флаги и в дозор, не берёт работу за периметром и оружие, но берёт инструмент', () => {
   const w = scene(); fixedRng(w);
   const [p] = captive(w);
-  for (const t of [{id: 'council'}, {id: 'trade'}, {id: 'watch'}, {id: 'answer', flag: 'x'}, {id: 'fight', target: null}, {id: 'aid', who: 1}, {id: 'company', who: 1}, {id: 'bind', who: 1}, {id: 'job', job: 'chop'}, {id: 'job', job: 'hunt'}, {id: 'job', job: 'gather'}])
-    if (captiveAllows(t)) return `пленному можно «${t.id}${t.job ? ':' + t.job : ''}»`;
-  for (const t of [{id: 'eat'}, {id: 'sleep'}, {id: 'job', job: 'build'}, {id: 'job', job: 'craft'}, {id: 'fight', reflex: true}, {id: 'reserve'}])
-    if (!captiveAllows(t)) return `пленному нельзя «${t.id}${t.job ? ':' + t.job : ''}»`;
+  // the captive's role is a shorter list (data/behaviour.js WAYS.captive): no council, trade, watch, cries, going along, helping, binding
+  if (p.brain !== 'captive') return `пленный думает как «${p.brain}»`;
+  for (const b of ['council', 'trade', 'watch', 'flags', 'company', 'aid', 'bind', 'treat']) if (WAYS.captive.includes(b)) return `пленному можно «${b}»`;
+  for (const b of ['needs', 'work', 'defend', 'reserve', 'muster', 'keepIn']) if (!WAYS.captive.includes(b)) return `пленному нельзя «${b}»`;
+  // of the work, only the camp's (agents/behaviours/work.js): no woods, no hunt, no berries
+  const jobs = ACTS.work.want(w, p).map(([t]) => t.job);
+  for (const j of ['chop', 'hunt', 'gather']) if (jobs.includes(j)) return `пленному предложена работа «${j}»`;
   // the council hour: the free colonist goes, the captive does not
   w.tick = Math.floor(w.tick / DAY) * DAY + 20 * HOUR;
   if (!councilDue(w)) return 'совет не идёт';
@@ -1919,8 +1924,9 @@ check('T130', 'совет снимает путы со смирившегося,
 check('T131', 'бывший раб ходит на работы за периметром, но без оружия и доспеха, без флагов, дозора и совета', () => {
   const w = scene(); fixedRng(w);
   const [p] = served(w); freeCaptive(w, p, null);
-  if (!formerAllows({id: 'job', job: 'chop'}) || !formerAllows({id: 'fight', reflex: true})) return 'бывшему рабу нельзя за лес или отбиться';
-  for (const t of [{id: 'council'}, {id: 'watch'}, {id: 'answer', flag: 'x'}, {id: 'fight', target: null}, {id: 'trade'}]) if (formerAllows(t)) return `бывшему рабу можно «${t.id}»`;
+  if (p.brain !== 'former') return `бывший раб думает как «${p.brain}»`;
+  if (!WAYS.former.includes('work') || !WAYS.former.includes('defend')) return 'бывшему рабу нельзя за лес или отбиться';
+  for (const b of ['council', 'watch', 'flags', 'trade']) if (WAYS.former.includes(b)) return `бывшему рабу можно «${b}»`;
   w.armory = [newItem('sword'), newItem('lamellar'), newItem('ironaxe')]; w.tick = Math.floor(w.tick / DAY) * DAY + 12 * HOUR;
   outfit(w, p);
   const has = allItems(p).map(it => it.type);

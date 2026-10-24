@@ -1,4 +1,5 @@
-// Tasks are what an agent is doing right now: {id, ...state}. Brains choose them, TASKS run them.
+// Tasks are what an agent is doing right now: {id, ...state}. Brains choose them, TASKS run them. `quiet`: a task that
+// winds down when something else is chosen (a meal giving way to sleep) — closed as done, not as dropped (agents/brains/tabled.js).
 // Shared by every brain, so a new creature can reuse 'fight', 'flee' or 'idle' as they are.
 import {endTask, skipped} from './lifecycle.js';
 import {maxHp} from './agent.js';
@@ -52,7 +53,7 @@ function mill(w, a, task, radius = 1.2) {
 }
 
 TASKS.registerAll([
-  {id: 'eat', label: () => 'ест', step(w, a) {
+  {id: 'eat', quiet: true, label: () => 'ест', step(w, a) {
     if (follow(w, a, 'camp') !== 'arrived') return;
     const {fed, res, mood} = eatMeal(w, a);
     if (fed) {
@@ -72,7 +73,7 @@ TASKS.registerAll([
     else a.task = {id: 'job', job: 'gather', eatNow: true};
   }},
 
-  {id: 'sleep', label: () => 'спит', step(w, a, task) {
+  {id: 'sleep', quiet: true, label: () => 'спит', step(w, a, task) {
     if (follow(w, a, 'camp') !== 'arrived') return;
     // beds make sleep faster; how warm a night is depends on what the beds are in: a drafty hut
     // (bedWarmth 1.2 per 4 beds) or a log house (4 per 4 beds), and on whether the fire burns
@@ -92,7 +93,7 @@ TASKS.registerAll([
     }
   }},
 
-  {id: 'warm', label: () => 'греется', step(w, a, task) {
+  {id: 'warm', quiet: true, label: () => 'греется', step(w, a, task) {
     // no fuel: there is no fire to warm at, neither at the camp nor in a hut — rather than stand freezing by
     // the cold ashes, go for logs (the chop job wants them most when the stock is empty)
     if (!campFuel(w)) { fail(w, a, 'костёр погас: топлива нет'); return; }
@@ -104,7 +105,7 @@ TASKS.registerAll([
     if (a.needs.warmth > REST.warmEnough) done(w, a);
   }},
 
-  {id: 'council', label: () => 'на совете у костра', step(w, a, task) {
+  {id: 'council', quiet: true, label: () => 'на совете у костра', step(w, a, task) {
     if (!councilDue(w)) { done(w, a); return; }
     if (follow(w, a, 'camp') !== 'arrived') return;
     task.seated = true;
@@ -194,7 +195,7 @@ TASKS.registerAll([
 
   // a learner beside a master (settlement/masters.js): keep close while the master works; the learning and the
   // master's speed are the master's work itself (agents/jobRunners.js workRate, settlement/masters.js stepMasters)
-  {id: 'assist', label: () => 'учится у мастера', step(w, a, task) {
+  {id: 'assist', quiet: true, label: () => 'учится у мастера', step(w, a, task) {
     const m = assistStillOn(w, a, task);
     if (!m) { done(w, a); return; }
     if (Math.hypot(m.x - a.x, m.y - a.y) > 1.6) { if (approach(w, a, m.x, m.y, 1.1) === null) fail(w, a, 'к мастеру не подойти', 'impossible'); }
@@ -216,15 +217,15 @@ TASKS.registerAll([
   {id: 'job', label: t => JOBS.get(t.job).verb, runnerOf: t => JOBS.get(t.job).runner, step(w, a, task) { RUNNERS[JOBS.get(task.job).runner](w, a, task); }},
 
   // a moment's thought between two jobs: stands, then takes up what it had settled on
-  {id: 'ponder', label: () => 'прикидывает, за что взяться', step(w, a, task) {
+  {id: 'ponder', quiet: true, label: () => 'прикидывает, за что взяться', step(w, a, task) {
     if (w.tick >= task.until) { a.task = task.next; wake(a, 'обдумал, за что взяться', 'обдумал'); }
   }},
-  {id: 'idle', label: () => 'отдыхает', step(w, a, task) {
+  {id: 'idle', quiet: true, label: () => 'отдыхает', step(w, a, task) {
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 4) mill(w, a, task, 2.5);
   }},
 
   // a gloomy spell: drifts about the camp instead of working (settlement/life.js)
-  {id: 'sulk', label: () => 'хандрит', step(w, a, task) {
+  {id: 'sulk', quiet: true, label: () => 'хандрит', step(w, a, task) {
     if (w.tick >= task.until) { done(w, a); return; }
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 5) mill(w, a, task, 4);
   }},
@@ -287,7 +288,7 @@ TASKS.registerAll([
   }},
 
   // gather by the fire when raiders come; done as soon as the alarm is over
-  {id: 'muster', label: () => 'собирается по тревоге', step(w, a, task) {
+  {id: 'muster', quiet: true, label: () => 'собирается по тревоге', step(w, a, task) {
     if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
     think(w, a, 'raidAlarm');
     if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
@@ -296,13 +297,13 @@ TASKS.registerAll([
   // a red alarm in sight that one does not go to fight (settlement/board.js): stand at the fire with the
   // others, out of harm's way, while the raid lasts. Not held on to (colonist.js gives it no keep), so
   // at every think it is weighed afresh against going to the fight
-  {id: 'reserve', label: () => 'держится у огня', step(w, a, task) {
+  {id: 'reserve', quiet: true, label: () => 'держится у огня', step(w, a, task) {
     if (!raidAlarm(w) && !raidOnBoard(w)) { done(w, a); return; }
     if (follow(w, a, 'camp', 1.2) === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
   }},
 
   // the night watch (settlement/board.js): by the fire all night, looking round for everyone; done at dawn
-  {id: 'watch', label: () => 'дежурит у огня', step(w, a, task) {
+  {id: 'watch', quiet: true, label: () => 'дежурит у огня', step(w, a, task) {
     if (task.over) { done(w, a); return; }
     if (follow(w, a, 'camp') === 'arrived' || w.nav.get('camp')[cellOf(w, a)] < 3) mill(w, a, task, 2.2);
   }},
@@ -336,7 +337,7 @@ TASKS.registerAll([
   }},
 
   // the evening trade with a caravan: gather round the trader's goods, a few steps from the fire
-  {id: 'trade', label: () => 'торгуется с купцом', step(w, a, task) {
+  {id: 'trade', quiet: true, label: () => 'торгуется с купцом', step(w, a, task) {
     if (!tradeOpen(w)) { done(w, a); return; }
     const spot = w.caravan.spot;
     if (!spot) { follow(w, a, 'camp'); return; }

@@ -41,6 +41,16 @@ export const WAYS = {
   trader: ['fleeFire', 'withCaravan', 'peddle'],
   // a caravan guard: answers whoever goes for the caravan, else keeps by the trader
   guard: ['fleeFire', 'withCaravan', 'defendCaravan', 'escort'],
+  // the colonist (agents/brains/colonist.js): fallen it lies, fire it flees, attacked it fights or runs home; then the
+  // utility AI — every behaviour offers with its weight: the body, the work, the council, the trade, the healer, a prayer,
+  // low spirits, a nechist's spell, a fire at the camp, the board's cries and alarms, the night watch, going along,
+  // helping, binding a fallen foe, learning beside a master, idling
+  colonist: ['downed', 'fleeFire', 'defend', 'needs', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'council', 'treat', 'trade', 'douse', 'watch', 'flags', 'muster', 'reserve', 'bind', 'assist'],
+  // a captive: the body, the camp's work, out of harm's way at the fire — no council, no flag, no watch, no trade, no
+  // healer, no going along; kept inside the zone (keepIn)
+  captive: ['downed', 'fleeFire', 'defend', 'keepIn', 'needs', 'work', 'idle', 'sulk', 'spellbound', 'pray', 'douse', 'muster', 'reserve', 'assist'],
+  // a former slave: everything a free colonist may, but no flag, watch, council or trade
+  former: ['downed', 'fleeFire', 'defend', 'needs', 'work', 'idle', 'company', 'aid', 'sulk', 'spellbound', 'pray', 'treat', 'douse', 'muster', 'reserve', 'bind', 'assist'],
 };
 
 export const SQUAD = {
@@ -229,7 +239,25 @@ export const VERMIN = {
 
 // a colonist's roster (agents/brains/colonist.js): keeping to a task, thinking again at work, a moment's thought before
 // switching jobs; `attacked` — the weight of answering an attack on oneself: more than any need can reach
-export const ROSTER = {keep: 0.2, committed: 0.25, ponder: [8, 16], attacked: 2.6};
+export const ROSTER = {keep: 0.2, committed: 0.25, ponder: [8, 16], ponderBelow: 1.2, attacked: 2.6};
+
+// the colonist's role beyond the roster (agents/brains/colonist.js; the behaviours needs, work, idle, council, trade, treat,
+// pray, sulk, spellbound, douse, defend, flags, watch, muster, reserve, escort, aid, bind, assist)
+export const COLONIST = {
+  fire: {heat: 55, near: 1.5, douseHeat: 58, douseHp: 0.6},   // runs from heat and fire this close; a firefighter holds out a little longer
+  urgent: {hp: 0.35, need: 0.12},   // a delivery under way is finished first — unless hurt or starving this badly
+  outfit: {near: 3, every: 300},    // passing the camp this close: swaps gear with the store, not more often than this
+  dropNear: 2,                       // a load left over from a broken-off job goes to the stores from this close
+  campHot: 40, campHotMul: 0.1,      // a burning camp is no place to eat or sleep
+  softCap: [0.8, 0.2],               // work's ceiling: as it was up to 0.8, then bending under 1
+  night: {build: 0.3, work: 0.2, outdoorFrom: 0.6, outdoorMul: 1.5, outdoorRisk: 0.5, pray: 0.5},   // work goes unwillingly by night, outdoor work waits for morning
+  tasty: 1.2,                        // a job that brings your favourite food is a little more tempting
+  standHp: 0.85,                     // brave × healthy above this: stands and fights when attacked, else runs home
+  memWolf: 0.05,                     // a wolf's attack is remembered this much (a.mem.wolf)
+  prayFrom: 0.1,                     // low spirits past this want a prayer
+  sleptFull: 0.995,                  // rested to this before dawn: sleeps on till first light
+  want: {idle: 0.08, sulk: 0.95, pray: [0.3, 1.2], council: 1.3, treat: [2, 0.25], trade: 1.1, douse: 0.8, douseHp: 0.6, douseBrave: 0.7, muster: 1.25, hurtEnemy: 1.6, sleepOn: 1.0},
+};
 
 // Sleep and warming by the fire (agents/tasks.js). A sleeper rests `rate` a tick, × (1 + `beds` × the beds' share);
 // one by a fire warms `warm` × its warmth a tick, × `unlit` when the camp fire is out. A rested sleeper stays in bed
