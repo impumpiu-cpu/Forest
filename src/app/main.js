@@ -1,7 +1,7 @@
 // The new menu (forest.html, Forest.bat): Создать землю · Заселение мира · Кампания · Быстрый старт · Настройки.
-// It is a shell over the same core as the old one (index.html, start.bat — the technical polygon); screens that are
-// not built yet open the old ones: index.html?go=world|campaign|epic&from=forest, and «← Главное меню» there
-// comes back here. docs/TABLE.md, «Новое меню».
+// It is a shell over the same core as the inner screens (index.html, the technical polygon); screens that are
+// not built here open those: index.html?go=world|campaign|epic&from=forest, and «← Главное меню» there
+// comes back here. docs/GAME.md.
 // first: the table edits of this browser go into the tables before anything reads them
 import {BOOT_PROBLEMS} from '../ui/tableEdits.js';
 import {editCount} from '../data/schema/edits.js';

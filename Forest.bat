@@ -1,6 +1,6 @@
 @echo off
-rem Teplyi Brod, the new menu: starts a local server and opens forest.html in the browser.
-rem The old menu (start.bat, index.html) stays as the technical polygon. A server is needed: Node.js or Python.
+rem Teplyi Brod launcher: starts a local server and opens the game (forest.html) in the browser.
+rem The game uses ES modules, so it cannot be opened from disk; a server is needed: Node.js or Python.
 cd /d "%~dp0"
 title Teplyi Brod
 
