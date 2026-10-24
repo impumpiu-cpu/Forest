@@ -56,7 +56,7 @@ for (const f of files) { try { execFileSync(process.execPath, ['--check', f], {s
 if (broken.length) { console.log('Файлы с синтаксической ошибкой:\n  ' + broken.join('\n  ')); process.exit(1); }
 console.log(`ok   все ${files.length} файлов разбираются`);
 
-// Numbers belong in src/data/ (docs/NRI.md, этап 0): every number a player might tune has a table there. The logic
+// Numbers belong in src/data/ (docs/TABLES.md): every number a player might tune has a table there. The logic
 // still holds many — geometry, the shape of the AI's wants, the generator's formulas — and they leave it bit by bit.
 // This is a ratchet, not a wall: tools/numbers-baseline.json keeps how many fractional numbers each logic file held;
 // a file that holds more now is reported (a warning: the test does not fail), one that holds fewer is told to lower its

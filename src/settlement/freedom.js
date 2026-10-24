@@ -1,4 +1,4 @@
-// From captive to former slave to member (docs/CAPTIVES.md, stage 4; numbers: data/captives.js FREEDOM).
+// From captive to former slave to member (docs/CAPTIVES.md; numbers: data/captives.js FREEDOM).
 //   - At the evening council (once it is over) a resigned captive with enough service — days at a master's side
 //     (settlement/masters.js), a plot told (settlement/escape.js) — is freed, when the master who taught it last
 //     vouches for it (its liking of the captive). The bonds come off (shackles back to the store): a former slave,

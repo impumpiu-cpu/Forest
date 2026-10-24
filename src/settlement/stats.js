@@ -1,4 +1,4 @@
-// The settlement's vital signs now (docs/NRI.md, этап 8; what each is and its norm: data/colonyStats.js). Pure: reads
+// The settlement's vital signs now (docs/SETTLEMENT.md; what each is and its norm: data/colonyStats.js). Pure: reads
 // the world, draws nothing, changes nothing. → [{id, label, value, norm, ok, low}]
 import {SETTLEMENT_STATS} from '../data/colonyStats.js';
 import {PLAN} from '../data/colony.js';

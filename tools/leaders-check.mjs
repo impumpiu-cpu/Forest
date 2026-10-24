@@ -1,4 +1,4 @@
-// The leaders of the old lairs (atlas/leaders.js, docs/TABLE.md «Главари логов»): who may lead, how strong, how many,
+// The leaders of the old lairs (atlas/leaders.js, docs/WORLD.md «Главари логов»): who may lead, how strong, how many,
 // how they leave, their vassals, a calamity taking one for its boss, a caravan meeting and killing one. Part of `npm test`.
 import {generateAtlas} from '../src/atlas/generate.js';
 import {LAIRS, LEADER} from '../src/data/lairs.js';

@@ -8,7 +8,7 @@
 //            [{res, n, chance, tier?}] — `tier`: a delicate organ only a skilled hand gets out whole (trophyExtraction, A)
 //   habitat: {biome: 'common' | 'usual' | 'rare' | 'scarce'} (data/biomes.js); none — lives everywhere
 //   kind:    what it is to the world (KINDS below): the world map lets each kind in through its own door
-//            (docs/WORLD.md, «Виды и их место в мире»); data/species.js and data/bestiary.js set it on
+//            (docs/WORLD.md); data/species.js and data/bestiary.js set it on
 //            the beasts, monsters and spirits, data/races.js on the races, data/monsters.js on the undead
 import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';

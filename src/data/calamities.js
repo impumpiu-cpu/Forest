@@ -1,4 +1,4 @@
-// The calamities of the epic world (cfg.epic; atlas/calamity.js; docs/CAMPAIGN.md «Доработка, этап 7»).
+// The calamities of the epic world (cfg.epic; atlas/calamity.js; docs/WORLD.md).
 //
 // At the dawn of the world a god who made it leaves an artifact in a sanctuary. In each of the three eras the
 // artifact finds a bearer — a boss, an ordinary monster made many times stronger by it (its SPECIAL grows past
@@ -103,7 +103,7 @@ export const CAL = {
   dragon: {wound: 0.5, sleep: 5},
 };
 
-// The alliances against a calamity (atlas/alliance.js; docs/CAMPAIGN.md «Доработка, этап 8»): after the wild era the
+// The alliances against a calamity (atlas/alliance.js; docs/WORLD.md): after the wild era the
 // peoples band together against a boss. Years unless said:
 //   after:    the alliance forms this long after the boss rose, [lo, hi] (first the raids, then the fear)
 //   reach:    the realms with a living town within this many cells of the boss (× the world's scale) are its
@@ -120,7 +120,7 @@ export const CAL = {
 export const ALLY = {after: [4, 10], reach: 45, nearest: 2, truce: -1, bond: 0.3, levy: 0.2, minMen: 30, wait: 60,
   boss: 8, retinue: 8, loss: {won: 0.25, beaten: 0.6}, retry: 5, peace: [5, 15], back: 0.7, shirk: 1};
 
-// The epic campaign (campaign/epic.js; docs/CAMPAIGN.md «Доработка, этап 10»): the clues are the graves of the three
+// The epic campaign (campaign/epic.js; docs/WORLD.md): the clues are the graves of the three
 // bosses, the goal is the lair of the fourth, where the artifact went and its servants gather; the omens of the fourth
 // calamity begin when the caravan sets out, and in `doom` years it rises in the world (atlas/calamity.js).
 //   seats:    places where the fourth may gather, prepared once for the world (seed:atlas:seats), not where the year's

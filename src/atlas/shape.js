@@ -1,4 +1,4 @@
-// The hand on the land («Создать землю», docs/TABLE.md, этап 8): edits of the base the generator works from, not of
+// The hand on the land («Создать землю», docs/WORLD.md): edits of the base the generator works from, not of
 // its result. They live in the world's settings (a.cfg.shape), so they are saved with the land and a land is the
 // same land when made again from its seed and its shape:
 //   plates  — {[plate id]: {vx, vy, lift}}: a new motion of the plate (the boundaries and the hot-spot trails follow it)

@@ -1,4 +1,4 @@
-// The smith's mark (docs/TABLE.md, «Клеймо кузнеца»): what only a smith of a people's town puts on a piece he forges.
+// The smith's mark (docs/BALANCE.md, «Клеймо кузнеца»): what only a smith of a people's town puts on a piece he forges.
 // Each people's smiths are masters of one kind of blow — the elves of the thrust, the orcs of the cut, the dwarves of
 // the crushing blow — and whatever they make strikes and guards better in that kind. Humans have no mark: they stand
 // in the middle, with no gift and no flaw.

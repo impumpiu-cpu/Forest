@@ -1,4 +1,4 @@
-// Tongues and senses (docs/NRI.md, этап 8).
+// Tongues and senses (docs/WORLD.md).
 //
 // LANGUAGES — who speaks what. A race speaks the tongues of SPEAKS (its own first). In the campaign a town trades
 // with the caravan in its people's tongue: when no free member of the caravan speaks any tongue of the town's race,

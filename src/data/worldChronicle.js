@@ -1,4 +1,4 @@
-// The world's chronicle as a text by its eras (atlas/chronicle.js; docs/CAMPAIGN.md «Доработка, этап 9»): how
+// The world's chronicle as a text by its eras (atlas/chronicle.js; docs/WORLD.md): how
 // important each line is, so that a reader can take the whole of it or only what matters.
 //   major  — what shapes the world: the eras, the calamities, wars and peace, realms rising and falling, towns burnt,
 //            the peoples' coming, the dragon, the caravans of the campaign

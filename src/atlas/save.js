@@ -20,7 +20,7 @@ import {questHint} from './calamity.js';
 export const WORLD_KIND = 'forest-world';
 // a land («Создать землю»): the atlas made to the end of its land stages, with no peoples and no history yet, and
 // the hand's edits in its settings (atlas/shape.js). The same codec; its own kind, so the library and the file
-// tell it from a world, and «Заселение мира» takes it to run history on (docs/TABLE.md, этап 8)
+// tell it from a world, and «Заселение мира» takes it to run history on (docs/WORLD.md)
 export const LAND_KIND = 'forest-land';
 export const WORLD_FORMAT = 1;
 const FORMATS = [1];

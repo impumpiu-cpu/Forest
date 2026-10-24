@@ -163,7 +163,7 @@ function dawn(w) {
     const m = moodOf(w, a);
     a.gloom = m < LIFE.gloomBelow ? (a.gloom || 0) + 1 : 0;
     if (a.downed) continue;   // lying senseless (agents/wounds.js): nobody walks away or sulks like that
-    if (a.captive) continue;   // a captive does not just walk away: that is an escape (docs/CAPTIVES.md, stage 2)
+    if (a.captive) continue;   // a captive does not just walk away: that is an escape (docs/CAPTIVES.md)
     if (a.gloom >= LIFE.leaveAfter && m < LIFE.leaveBelow && w.rngs.colony() < LIFE.leaveChance) { leave(w, a); continue; }
     if (a.gloom >= LIFE.sulkFrom && w.rngs.colony() < LIFE.sulkChance) {
       a.task = {id: 'sulk', until: w.tick + 3 * HOUR}; think(w, a, 'sulking'); w.chronicle.sulks = (w.chronicle.sulks || 0) + 1;

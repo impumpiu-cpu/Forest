@@ -1,4 +1,4 @@
-// Groups (docs/MIND.md stage 6): the colony, a wild herd, a wolf pack on a hunt, a raiding squad.
+// Groups (docs/SETTLEMENT.md): the colony, a wild herd, a wolf pack on a hunt, a raiding squad.
 // Four different minds over one skeleton — the group knows and announces, the member chooses:
 //   members   — by id, plain data on the world; who of them is still there (liveMembers / prune)
 //               and where their middle is (middleOf);

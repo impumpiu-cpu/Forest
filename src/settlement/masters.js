@@ -1,4 +1,4 @@
-// Masters and their learners (docs/CAPTIVES.md, stage 3; numbers and crafts: data/masters.js).
+// Masters and their learners (docs/CAPTIVES.md; numbers and crafts: data/masters.js).
 //   - At the evening council (once it is over, or nobody came) a craft without a master gets one: the free
 //     colonist best at it, once the skill reaches MASTER.min; the council names the master solemnly.
 //     A master is a.master = {skill, since, workedAt}. A captive is never named.

@@ -1,4 +1,4 @@
-// The epic campaign's quest (data/calamities.js EPIC; docs/CAMPAIGN.md «Доработка, этап 10»). In an epic world
+// The epic campaign's quest (data/calamities.js EPIC; docs/CAMPAIGN.md). In an epic world
 // (a.artifact) the quest is the world's own story: the artifact the god left at the dawn went through three bosses and
 // lay in the last one's grave; now a fourth gathers its servants at a far seat with the artifact, and in `doom` years its
 // calamity will rise. The three graves are the clues — each read tells where the lair is (the circle narrows as in the
@@ -63,7 +63,7 @@ function guardFor(a, K, lairKind, i, x = 1) {
 const grown = (r, M) => Object.fromEntries(['S', 'E', 'A'].map(id => [id, Math.round(between(r, M.add))]));
 
 // ── the quest is laid out when the caravan sets out
-// (a world of «Заселение мира», docs/TABLE.md этап 10: a calamity the hand set that has not passed yet is the quest
+// (a world of «Заселение мира», docs/CAMPAIGN.md: a calamity the hand set that has not passed yet is the quest
 // itself — atlas/calamity.js questCalamity; with none, the graves of its bosses and a fourth, as in an epic world)
 export const epicWorld = a => !!questHint(a);
 

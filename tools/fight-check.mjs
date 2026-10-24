@@ -1,4 +1,4 @@
-// The fight of docs/NRI.md, этап 3: kinds of harm and the table «Урон по видам», weapon qualities, places where blows
+// The fight of docs/RULES.md: kinds of harm and the table «Урон по видам», weapon qualities, places where blows
 // land. Each rule is checked where the game reads it: a blow through armour, a critical blow, a body's answer to
 // fire, frost, venom and silver, a long or parrying or brittle weapon, a trauma by the place of the last blow, the
 // strength rating. Part of `npm test`; `node tools/fight-check.mjs`.

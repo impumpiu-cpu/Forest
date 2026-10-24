@@ -1,4 +1,4 @@
-// The content of docs/NRI.md, этап 8: illness with stages, addiction and withdrawal, the rot from undead blows, tongues
+// The content of the world (docs/RULES.md, docs/WORLD.md): illness with stages, addiction and withdrawal, the rot from undead blows, tongues
 // in a town's market, night sight, the caravan's fame, the pace of the march, the settlement's vital signs. Every way
 // in is 0 by default (nobody falls ill, gets hooked or tainted, no price or pace changes); each is checked to work
 // once a number is set. Part of `npm test`.

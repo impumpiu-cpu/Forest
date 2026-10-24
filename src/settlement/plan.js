@@ -1,4 +1,4 @@
-// The day's vacancies (docs/MIND.md stage 3): what work the colony needs tomorrow and how many hands
+// The day's vacancies (docs/SETTLEMENT.md): what work the colony needs tomorrow and how many hands
 // each job wants — posted once at the evening council (and again when the colony changes) — and the
 // colonists take the places themselves, as in Dwarf Fortress. The council never names anyone.
 //

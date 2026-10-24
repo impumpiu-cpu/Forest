@@ -1,4 +1,4 @@
-// «Заселение мира» (forest.html #settle; docs/TABLE.md, этап 9): history on a land of «Создать землю», led by hand.
+// «Заселение мира» (forest.html #settle; docs/WORLD.md): history on a land of «Создать землю», led by hand.
 // No eras: the hand lands peoples (a founding town and realm where it points), sets lairs (or the wild's lairs as the
 // land gives them), up to three calamities (kind, place, in how many years), and runs the clock +5…+100 years; looks,
 // steps in again, runs on. The world is saved with its inhabitants and chronicle into the library of worlds.

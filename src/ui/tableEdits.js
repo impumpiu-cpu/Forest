@@ -1,4 +1,4 @@
-// The table edits of this browser (docs/TABLE.md, этап 3): the layer of src/data/schema/edits.js kept in
+// The table edits of this browser (docs/TABLES.md): the layer of src/data/schema/edits.js kept in
 // localStorage and in files. Imported first by both menus (src/main.js, src/app/main.js), so the edits are in
 // the tables before any game or world is made — and before the modules that read a table at load.
 import {applyEdits, LAYER, editCount, stampWarning} from '../data/schema/edits.js';

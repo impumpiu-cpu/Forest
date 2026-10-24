@@ -13,7 +13,7 @@ ERAS.registerAll([
   {id: 'free', label: 'Вольная история', note: 'эпох нет: расы, логова и бедствия вносит рука, время идёт отрезками в 5–100 лет'},
 ]);
 
-// The epic world of the campaign (cfg.epic, docs/CAMPAIGN.md «Доработка, этап 6»): each era lasts this many years,
+// The epic world of the campaign (cfg.epic, docs/WORLD.md): each era lasts this many years,
 // drawn once from the world's own stream (seed:atlas:epic), so that the history has room for its calamities
 export const EPIC_YEARS = {wild: [75, 150], elder: [75, 150], young: [75, 150]};
 
@@ -47,7 +47,7 @@ export const FAUNA = {weather: 0.5, harshChance: 0.5, harshRadius: 4, harshAt: -
   cell: 4, diffuse: 0.1, growth: 0.45, season: {spring: 1.4, summer: 1, autumn: 0.35, winter: -0.3},
   predation: 0.35, half: 0.3, trophic: 0.12, starve: 0.25, floor: 0.01, boom: 1.25, bust: 0.6, cooldown: 12};
 
-// «Заселение мира» (cfg.free, atlas/settle.js; docs/TABLE.md этап 9):
+// «Заселение мира» (cfg.free, atlas/settle.js; docs/WORLD.md):
 //   runs:     the stretches of time the hand may run at once, in years
 //   calIn:    in how many years a calamity set by hand may rise
 //   lair:     the strength a lair set by hand starts at; the dead get graves (data/calamities.js CAL.dead) and the rot

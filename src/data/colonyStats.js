@@ -1,4 +1,4 @@
-// The settlement's vital signs (docs/NRI.md, этап 8), as the food, water, beds, defence and happiness of a Fallout
+// The settlement's vital signs (docs/SETTLEMENT.md), as the food, water, beds, defence and happiness of a Fallout
 // settlement: each a number worked out from the colony as it is now (settlement/stats.js) against its norm. They
 // change nothing by themselves — the systems that read them are named in `reads`; the card shows them, and `low`
 // says what a shortfall leads to.

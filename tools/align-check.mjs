@@ -1,4 +1,4 @@
-// The compass of world views (data/values.js, docs/TABLE.md «Мировоззрение»): labels, the three layers
+// The compass of world views (data/values.js, docs/RULES.md «Мировоззрение»): labels, the three layers
 // (race → realm → creature, ±3 each, all within ±5), the realms' feeling for each other, the drift.
 import {AXIS_MAX, ALIGN, alignLabel, alignNear, shiftAlign, spreadOf} from '../src/data/values.js';
 import {SPECIES} from '../src/data/species.js';

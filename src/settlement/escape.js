@@ -1,4 +1,4 @@
-// The captives' will to run (docs/CAPTIVES.md, stage 2; numbers: data/captives.js ESCAPE). Once a tick
+// The captives' will to run (docs/CAPTIVES.md; numbers: data/captives.js ESCAPE). Once a tick
 // (sim.js, after the board) and cheap when there are no captives:
 //   - at dawn every captive's will moves: a cut ration, hunger, wounds and kin seen in a raid push it up,
 //     the days in captivity, a full belly and health bring it down;

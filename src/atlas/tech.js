@@ -1,4 +1,4 @@
-// Technologies of the realms (data/tech.js; docs/TABLE.md, этап 7). A realm knows a list of them (r.tech); each year
+// Technologies of the realms (data/tech.js; docs/WORLD.md). A realm knows a list of them (r.tech); each year
 // (spring) it may find one its race can know, whose demands its towns meet. What a technology opens, a town of a realm
 // without it cannot build (atlas/towns.js canBuild), and a town's smith and market do not work its metals
 // (campaign/town.js). A realm born of a schism keeps what the old one knew. A world saved before technologies (no

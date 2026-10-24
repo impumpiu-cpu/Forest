@@ -1,4 +1,4 @@
-// The world's chronicle as a reader takes it (docs/CAMPAIGN.md «Доработка, этап 9»): every line has a level of
+// The world's chronicle as a reader takes it (docs/WORLD.md): every line has a level of
 // importance (data/worldChronicle.js), the whole is written out as a text by its eras — the making of the land, then
 // the wild era, the elder peoples, the young peoples, and what came after — at the detail asked for; and the chronicle
 // of the calamities (atlas/calamity.js) apart: the artifact's dawn, then each calamity from its omens to its grave, with

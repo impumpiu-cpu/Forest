@@ -1,4 +1,4 @@
-// Checks (docs/NRI.md, этап 5): the ladder of difficulty, as the DC of D&D, and the four degrees of success, as in
+// Checks (docs/RULES.md): the ladder of difficulty, as the DC of D&D, and the four degrees of success, as in
 // Pathfinder 2 — one roll gives a critical failure, a failure, a success or a critical success.
 //
 // The ladder. Every contest in the game is a / (a + b) (data/special.js contest): a check of a letter against a step

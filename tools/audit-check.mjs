@@ -1,4 +1,4 @@
-// What the code review of 23.10.2026 found (docs/TABLE.md, «Ревизия»), checked so it does not come back:
+// What the code review of 23.10.2026 found (docs/TESTING.md), checked so it does not come back:
 // table edits that reach the game, no value copied out of a table at load, the stock's kinds, calamities set by hand,
 // the artifact's holder, the quest's reach, gear words that keep what a piece is.
 import fs from 'fs';

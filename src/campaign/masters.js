@@ -1,4 +1,4 @@
-// Masters in the campaign (docs/CAPTIVES.md, stage 3; data/masters.js). The caravan's evening council names a
+// Masters in the campaign (docs/CAPTIVES.md; data/masters.js). The caravan's evening council names a
 // master of a craft as the settlement's does: the free member best at it, once the skill its camps taught it
 // (m.local.skill) reaches MASTER.min. On the local map a master is a master (campaign/camp.js), and its
 // learners — the caravan's captives among them — work beside it there.

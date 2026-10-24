@@ -1,4 +1,4 @@
-// Who may still join the caravan (docs/CAMPAIGN.md, «Пополнение»; numbers: data/market.js, data/captives.js).
+// Who may still join the caravan (docs/CAMPAIGN.md, «Отряд: наём и пополнение»; numbers: data/market.js, data/captives.js).
 // One answer for every way in: a hireling for a term, a companion from a town, the freed from a foe's camp, a
 // captive freed into a former slave, a hireling who stays for good, a captive bound or bought.
 //   the free (everyone but the captives, the eight included) — at most COMPANY_MAX;

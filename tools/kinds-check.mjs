@@ -1,4 +1,4 @@
-// Materials of a kind and the races' rules (data/kinds.js, settlement/kinds.js; docs/TABLE.md раздел 7, этап 7а):
+// Materials of a kind and the races' rules (data/kinds.js, settlement/kinds.js; docs/BALANCE.md):
 // the stock remembers what its wood and stone are, burns the worst and makes the best, a wooden piece is of its wood,
 // the elves are the masters of the sacred tree, a race's «nomake» and «taboo» hold, steel is there. Part of `npm test`.
 import {newGame} from '../src/sim.js';

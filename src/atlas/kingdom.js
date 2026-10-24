@@ -1,4 +1,4 @@
-// The realm as a kingdom (docs/NRI.md, этап 7; the numbers: data/kingdom.js). Once a year, at its end (winter: so the
+// The realm as a kingdom (docs/WORLD.md; the numbers: data/kingdom.js). Once a year, at its end (winter: so the
 // year's raids are all counted), on a random
 // stream of its own (a.kingdomRnd), every living realm takes stock: its four attributes from its towns and world
 // view, its offices filled or emptied, its edicts, the year's event, its upkeep and its four kinds of ruin.

@@ -1,4 +1,4 @@
-// What the stock's wood and stone are made of (data/kinds.js; docs/TABLE.md, «Материалы на выбор»). The stock keeps
+// What the stock's wood and stone are made of (data/kinds.js; docs/BALANCE.md, «Материалы на выбор»). The stock keeps
 // a family's total where it always did (w.stock.wood, w.stock.stone), and beside it what the total is made of:
 // w.kinds = {wood: {pine: 12.5, oak: 3}, stone: {granite: 18}}. Every system that only counts wood goes on as before;
 // the few that care what wood it is — the fire, the crafts, the builders — take it member by member (takeKind).

@@ -1,4 +1,4 @@
-// Afflictions, addiction and taint (docs/NRI.md, этап 8). Every way in has a chance (`catch`, `hook`, `perHit`) that
+// Afflictions, addiction and taint (docs/RULES.md). Every way in has a chance (`catch`, `hook`, `perHit`) that
 // is 0 for now: the rules run, the tables show them, and nobody falls ill, gets hooked or tainted until a number is set.
 //
 // AFFLICTIONS — illnesses with stages, as afflictions in Pathfinder 2. One kept on the creature: agent.ill =

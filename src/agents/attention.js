@@ -1,4 +1,4 @@
-// When a colonist thinks again (docs/MIND.md stage 4): on events, not on a timer.
+// When a colonist thinks again (docs/SETTLEMENT.md): on events, not on a timer.
 //
 // A colonist used to weigh everything anew every 15–45 ticks and, four times out of five, went on with
 // what it was doing. Now it thinks when something happened that may change its choice:

@@ -1,4 +1,4 @@
-// Conditions (docs/NRI.md, этап 4), as conditions and exhaustion in D&D: everything that is wrong with a creature for a
+// Conditions (docs/RULES.md), as conditions and exhaustion in D&D: everything that is wrong with a creature for a
 // while or for life, in one table — what it is, where the game keeps it, what it does, how it ends.
 //
 //   kind  wound      — a grave wound that heals in `days` (agent.wounds, agents/wounds.js)

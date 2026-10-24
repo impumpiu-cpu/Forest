@@ -1,4 +1,4 @@
-// The settlement trades in captives with a visiting trader (docs/CAPTIVES.md, stage 5; numbers: data/slavery.js).
+// The settlement trades in captives with a visiting trader (docs/CAPTIVES.md; numbers: data/slavery.js).
 // At the deal after the evening council (settlement/trade.js holdTrade):
 //   - sell: an unruly captive (its will to run high, not resigned), or any when food is short — never one that
 //     has earned enough service to be close to freedom. The trader takes it away with the caravan;

@@ -1,4 +1,4 @@
-// «Настройки → Таблицы»: every table of src/data/schema/ (docs/TABLE.md, этапы 2–3). A list of tables by group,
+// «Настройки → Таблицы»: every table of src/data/schema/ (docs/TABLES.md). A list of tables by group,
 // the table with sorting and a filter, the schema's notes on hover, the table to a .csv or .json file, the check
 // of every value against its column (the same as `npm run tables`) — and edits for experiments: a click on a cell
 // in edit mode writes a new value over the code's (src/data/schema/edits.js); the layer is kept in this browser

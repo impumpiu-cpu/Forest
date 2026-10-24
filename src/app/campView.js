@@ -1,4 +1,4 @@
-// «Кампания» of the new menu (forest.html #camp; docs/TABLE.md, этап 10): the living worlds of the library — settled by
+// «Кампания» of the new menu (forest.html #camp; docs/CAMPAIGN.md): the living worlds of the library — settled by
 // hand, epic, or of the polygon — with the quest each gives (atlas/calamity.js questHint, kept in the library's index).
 // The walk itself is the campaign screen (ui/campaignView.js): a world chosen here opens there, at its capitals.
 import {listWorlds} from '../ui/worlds.js';

@@ -1,4 +1,4 @@
-// Curves: how a SPECIAL letter turns into a number the game reads (docs/NRI.md, этап 1). One shape of formula for
+// Curves: how a SPECIAL letter turns into a number the game reads (docs/RULES.md). One shape of formula for
 // every such rule, so each is a row of the table «Кривые» and is edited as numbers, not as code:
 //
 //   line  — base + per × (X − pivot), then clamped to [min, max]       (health, speed, aim, learning…)

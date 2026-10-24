@@ -1,4 +1,4 @@
-// «Создать землю» (forest.html #land; docs/TABLE.md, этап 8): only the land and its climate — plates, relief, sea,
+// «Создать землю» (forest.html #land; docs/WORLD.md): only the land and its climate — plates, relief, sea,
 // temperature, winds, rain, erosion, rivers, rocks, ores, biomes, soils, forests — with no peoples and no history.
 // The hand edits the base the generator works from, not its result (atlas/shape.js): a plate's motion and height,
 // the ground under a brush, the climate of the equator and the poles and the rain. Each edit enters the chain at its

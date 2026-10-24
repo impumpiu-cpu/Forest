@@ -1,4 +1,4 @@
-// The caravan's name among the realms, the tongue it trades in, and the pace it keeps (docs/NRI.md, этап 8; the
+// The caravan's name among the realms, the tongue it trades in, and the pace it keeps (docs/CAMPAIGN.md; the
 // numbers: data/road.js, data/tongues.js).
 //   termsOf(a, K, t)        — × the town's prices {buy, sell}: its tongue, the caravan's fame and infamy with its realm
 //   famed(a, K, kind, realm) — a fight won ('win', the realm of the nearest town) or a captive sold ('slaveSale')

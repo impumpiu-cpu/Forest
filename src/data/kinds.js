@@ -1,4 +1,4 @@
-// Materials of a kind (docs/TABLE.md, «Материалы на выбор и допуск рас»). A recipe or a building asks for a family —
+// Materials of a kind (docs/BALANCE.md, «Материалы на выбор и допуск рас»). A recipe or a building asks for a family —
 // «any wood», «any stone» — and the stock keeps, beside the family's total (w.stock.wood), what it is made of
 // (w.kinds.wood = {pine: 12, oak: 3}: settlement/kinds.js). What is taken decides what comes out: an oak club is harder
 // than a pine one, a granite wall stands longer than a sandstone one and is the colour of its rock.

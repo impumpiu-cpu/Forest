@@ -1,4 +1,4 @@
-// The caravan's road (docs/NRI.md, этап 8): its name among the realms, and the pace it keeps.
+// The caravan's road (docs/CAMPAIGN.md): its name among the realms, and the pace it keeps.
 //
 // REPUTATION — two numbers by realm, as fame and infamy in Fallout: New Vegas (K.fame[realm] = {fame, infamy}): a fight
 // won near a town (within `near` cells) — `win` fame with that town's realm; a captive sold in a town — `slaveSale`

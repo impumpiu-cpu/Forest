@@ -1,4 +1,4 @@
-// Edits of the tables for experiments (docs/TABLE.md, этап 3): a layer over the numbers of the code. An edit
+// Edits of the tables for experiments (docs/TABLES.md): a layer over the numbers of the code. An edit
 // writes its value straight into the definition the game reads (a species, a material, a row of the relations),
 // so every system sees it without knowing about edits; the value it replaced is kept, and a reset puts it back.
 // The source files are never touched: without the layer the game is as the code says.

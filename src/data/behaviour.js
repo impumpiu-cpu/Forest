@@ -1,4 +1,4 @@
-// Creature behaviour tuning moved out of the logic (docs/TABLE.md, «Ревизия»): squads, carcasses and packs, wild herds,
+// Creature behaviour tuning moved out of the logic (docs/SETTLEMENT.md): squads, carcasses and packs, wild herds,
 // trophies, vermin. The logic files import these; the tables (data/schema/index.js) show and edit them.
 import {DAY} from '../core/time.js';
 
