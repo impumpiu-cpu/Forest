@@ -15,7 +15,7 @@
 //
 //   koppen: the Köppen classes the biome stands for (for reference)
 //   where:  «in» the biome, for the chronicle;  color: on the world map;  trees: how much of the ground forest can cover there (0..1), used by
-//   the growth of forests (atlas/vegetation.js) and by the local map
+//   the growth of forests (atlas/biomes.js) and by the local map
 //
 // How the local map paints a biome (world/site.js):
 //   ground: the terrain of its bare ground (data/terrain.js);  fert: fertility ×;  rock: share of its cells that are rock;

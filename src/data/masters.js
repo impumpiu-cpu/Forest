@@ -1,4 +1,4 @@
-// Masters and their learners (docs/CAPTIVES.md, stage 3). A master is the colony's named best at a craft:
+// Masters and their learners (docs/CAPTIVES.md). A master is the colony's named best at a craft:
 // the evening council names one when somebody's skill reaches `MASTER.min` and the craft has no master yet.
 // A master has `MASTER.places` places for learners — «ученик мастера» (the word «подмастерье» is the
 // dwarves' squires', data/campaign.js RETINUE). A learner keeps close to the master while the master works:

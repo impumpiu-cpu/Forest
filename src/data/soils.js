@@ -1,6 +1,6 @@
 // Soils of the world map, after the zonal soil science of Dokuchaev: each natural zone has its soil,
 // river valleys and wetlands have their own, and the rock under the soil makes it richer or poorer.
-// The system is atlas/soils.js.
+// The system is atlas/biomes.js.
 //   biomes: the biomes this soil forms under (the first soil that fits wins; `rain` limits it by the
 //           yearly rain, mm, [min, max])
 //   fert:   how fertile it is, 0..1 — later the fertility of the local map

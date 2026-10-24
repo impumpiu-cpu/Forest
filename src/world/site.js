@@ -1,7 +1,7 @@
 // The site: what the generator is told about the land before it draws a single cell. It is a plain
 // object — biome shares, how much water, rock and forest, the region — that the local map builds
 // for itself today from the start menu and the rolled region, and that the world map will hand over
-// instead when the two are sewn together (docs/SEAM.md). The generator (makeTerrain) reads only the
+// instead when the two are sewn together (docs/WORLD.md). The generator (makeTerrain) reads only the
 // site, never the menu.
 //
 //   seed, w, h  — the map;  region — data/regions.js, rolled from the seed (world/region.js)

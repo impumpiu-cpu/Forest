@@ -1,4 +1,4 @@
-// Technologies (data/tech.js, atlas/tech.js; docs/TABLE.md этап 7): the list holds together, the realms find them by
+// Technologies (data/tech.js, atlas/tech.js; docs/WORLD.md): the list holds together, the realms find them by
 // their race and their towns, a town builds only what its realm knows, a town's smith and market work only its metals.
 import {TECHS, techOfBuilding} from '../src/data/tech.js';
 import {TOWN_BUILDINGS} from '../src/data/townBuildings.js';

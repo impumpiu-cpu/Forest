@@ -1,5 +1,5 @@
 // The campaign's balance: a batch of whole campaigns, from every capital of several small worlds, with the
-// numbers the design aims at (docs/CAMPAIGN.md, «Этап 10»): how long a campaign lasts, how many come home,
+// numbers the design aims at (docs/CAMPAIGN.md): how long a campaign lasts, how many come home,
 // how many of the eight die and when, the first month without baggage, hunger, fights, the local map.
 //
 //   npm run campaign:balance -- [options]
@@ -37,7 +37,7 @@ const worldFile = (size, seed) => join(WORLDS, `${size}-${seed}-epic.json`);
 
 // the design's aims: a campaign of 5–25 years; the first month without deaths; deaths felt, not certain
 export const AIMS = {years: [5, 25], firstMonth: 0.9, won: [0.6, 0.9], coreDead: [1, 3], hungry: 0.15};
-// the epic quest (docs/CAMPAIGN.md «Доработка, этап 12»): harder and longer — a medium world, three graves and a boss;
+// the epic quest (docs/CAMPAIGN.md): harder and longer — a medium world, three graves and a boss;
 // the lair taken in 5–20 years; the fourth calamity risen before it in at most `risen` of the campaigns
 export const EPIC_AIMS = {won: [0.55, 0.85], coreDead: [1.5, 4], hungry: 0.18, crown: [5, 20], risen: 0.3};
 

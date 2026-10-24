@@ -1,4 +1,4 @@
-// «Заселение мира» (docs/TABLE.md, этап 9): history on a land made in «Создать землю», led by hand. There are no eras
+// «Заселение мира» (docs/WORLD.md): history on a land made in «Создать землю», led by hand. There are no eras
 // (cfg.free; atlas/history.js runs one stretch 'free'): the hand brings the disturbances — peoples landed where it
 // points (their founding town and realm), lairs of monsters set where it points or the wild's lairs as the land gives
 // them, up to three calamities with their kind, place and year — and then runs the clock 5–100 years at a time; looks,

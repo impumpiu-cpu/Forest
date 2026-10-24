@@ -191,7 +191,7 @@ for (let s = 0; s < seeds; s++) {
       `S/E/A ${avg('knight', fight).toFixed(2)} против ${avg('squire', fight).toFixed(2)}, I/C/L ${avg('squire', craft).toFixed(2)} против ${avg('knight', craft).toFixed(2)}`);
   }
 
-  // a full company (docs/CAMPAIGN.md «Пополнение», campaign/company.js): with four joined nobody more joins, and a
+  // a full company (docs/CAMPAIGN.md «Отряд: наём и пополнение», campaign/company.js): with four joined nobody more joins, and a
   // captive who has earned its freedom waits in its bonds; with a place free it is freed
   {
     const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'}), say = () => {};

@@ -1,4 +1,4 @@
-// The alliances against a calamity (data/calamities.js ALLY; docs/CAMPAIGN.md «Доработка, этап 8») — the world's own
+// The alliances against a calamity (data/calamities.js ALLY; docs/WORLD.md) — the world's own
 // mind: after the wild era the peoples see a boss rise, forget their quarrels and band together. The realms within
 // its reach make a truce, each musters an army at its town nearest the boss and marches on its lair; at the lair the
 // armies wait for each other and storm it together. Won — the boss falls (atlas/calamity.js); beaten — they try

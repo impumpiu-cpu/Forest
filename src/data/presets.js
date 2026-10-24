@@ -6,7 +6,7 @@ export const SIZES = {
   huge:   {w: 256, h: 192, label: 'Огромный', note: '256 × 192, тяжелее для навигации'},
 };
 
-// The climate of a site, in numbers (the world map will hand these over per cell, docs/SEAM.md):
+// The climate of a site, in numbers (the world map will hand these over per cell, docs/WORLD.md):
 //   meanT: yearly mean air temperature, °C;  trange: yearly range (summer midday noon to winter, °C);
 //   rain: showers per day;  regrow: plant growth ×;  ign: ignition threshold offset;
 //   daylight: hours the day gains at the summer solstice and loses at the winter one (data/seasons.js daylight)

@@ -1,4 +1,4 @@
-// Summary sheets (docs/NRI.md, этап 6): what the tables add up to, worked out from them and shown, never edited —
+// Summary sheets (docs/TABLES.md): what the tables add up to, worked out from them and shown, never edited —
 // as the stat blocks and price lists at the back of a rule book. Each is made again after an edit of any table.
 //
 //   creatureSheet — every species: body, blow, the strength rating (КС) of one as it comes, unarmed, and what it

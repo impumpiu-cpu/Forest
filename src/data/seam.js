@@ -1,7 +1,7 @@
 // The seam: how a cell of the world map becomes the site of a local map (seam/cell.js). Every number
 // that turns a world quantity into a local one lives here, so the seam is tuned without touching code.
 // The world measures in cells and seasons, the local map in days and tiles; the conversions below are
-// design numbers, not geography (docs/SEAM.md).
+// design numbers, not geography (docs/WORLD.md).
 
 export const SEAM = {
   // how far around the cell the world is asked about neighbours, in world cells (× the world's scale)

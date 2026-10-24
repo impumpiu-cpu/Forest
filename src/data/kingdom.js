@@ -1,4 +1,4 @@
-// The realm as a kingdom (docs/NRI.md, этап 7), after Kingmaker in Pathfinder 2: four attributes — culture, economy,
+// The realm as a kingdom (docs/WORLD.md), after Kingmaker in Pathfinder 2: four attributes — culture, economy,
 // loyalty, stability — and four kinds of ruin — corruption, crime, decay, strife; buildings that cost upkeep, edicts,
 // the court's offices with named holders, and the events of a year. atlas/kingdom.js runs it once a year, at its end,
 // on a random stream of its own, so the rest of the history draws as before.

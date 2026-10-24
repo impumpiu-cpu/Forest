@@ -2,7 +2,7 @@
 // both sides: it reads the world (atlas/) and writes what the local map already takes (world/site.js
 // makeSite) — a region in the terms of data/regions.js, a climate in numbers, gates where the world's
 // roads and rivers cross the cell's edges, and the neighbours whose distances drive raids, caravans
-// and settlers (outside/scripted.js). The local map never imports the world (docs/SEAM.md).
+// and settlers (outside/scripted.js). The local map never imports the world (docs/WORLD.md).
 //
 //   cellPlan(a, i) → {seed, ref, region, extra} — plain data, independent of the local map's size,
 //   kept in the game's settings as `cfg.cell` and turned into a site by makeSite.

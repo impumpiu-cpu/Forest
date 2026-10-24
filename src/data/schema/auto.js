@@ -1,7 +1,7 @@
 // Tables made from the data as it is, for the many lists whose every row has the same simple shape (a registry of
 // jobs, recipes, thoughts…): the columns are the row's numbers, yes/no, words and lists of them, one level into an
 // object (`time`, `cost.wood`). A column whose values are of more than one kind is shown and edited as JSON. Functions
-// and deeper objects are the code's and are not shown. docs/TABLE.md, «Ревизия: таблицы — единый источник».
+// and deeper objects are the code's and are not shown. docs/TABLES.md.
 import {col} from './columns.js';
 
 const prim = v => typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string';

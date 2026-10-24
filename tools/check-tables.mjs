@@ -3,7 +3,7 @@
 import {TABLES, GROUPS, checkAll} from '../src/data/schema/index.js';
 
 const errs = checkAll();
-// a table whose group is not on the screen's list is not shown at all (docs/NRI.md, этап 0)
+// a table whose group is not on the screen's list is not shown at all (docs/TABLES.md)
 for (const t of TABLES) if (!GROUPS.includes(t.group)) errs.push(`${t.label}: группы «${t.group}» нет в GROUPS — таблица не видна на экране`);
 for (const id of new Set(TABLES.map(t => t.id))) if (TABLES.filter(t => t.id === id).length > 1) errs.push(`таблица «${id}» объявлена дважды`);
 if (errs.length) { console.log(`Таблицы не сходятся со схемами (${errs.length}):\n  ` + errs.join('\n  ')); process.exit(1); }
@@ -58,7 +58,7 @@ console.log('ok   правка таблиц: значения доходят д�
   console.log(`ok   имена: ${Object.keys(PERSON).length} видов с именами, ${Object.keys(PET).length} приручаемых; конструктор: «${leader}», «${beast}», «${plain}»`);
 }
 
-// ── curves (data/curves.js, docs/NRI.md этап 1): every curve gives a finite number at every letter the sheet shows,
+// ── curves (data/curves.js, docs/TABLES.md): every curve gives a finite number at every letter the sheet shows,
 // a multiplier is 1 at the human norm, an edit of a row reaches what the game reads and goes back on reset
 {
   const {CURVES, curveAt, curve} = await import('../src/data/curves.js');
@@ -87,7 +87,7 @@ console.log('ok   правка таблиц: значения доходят д�
   console.log(`ok   кривые: ${CURVES.all().length}, конечны при буквах 0–100, множители при норме — 1; правка доходит до игры и сбрасывается`);
 }
 
-// ── dictionaries (data/mods.js, data/tags.js; docs/NRI.md этап 2): every key of a creature's `mods`, of the colony's
+// ── dictionaries (data/mods.js, data/tags.js; docs/TABLES.md): every key of a creature's `mods`, of the colony's
 // `effects`, every yes/no field of a species and an item, every fear and resource tag is in its dictionary; the
 // curves that set the body exist; an edit of a dictionary reaches the game, a wrong key is refused
 {
@@ -144,7 +144,7 @@ console.log('ok   правка таблиц: значения доходят д�
   console.log(`ok   словари: модификаторов существа ${CREATURE_MODS.all().length}, поселения ${COLONY_MODS.all().length}, тегов ${TAGS.all().length} — все mods, effects, флаги и теги из словарей; опечатку правка не принимает`);
 }
 
-// ── summaries (docs/NRI.md этап 6): every number of the sheets is finite, every species has a rating, and the sheets
+// ── summaries (docs/TABLES.md): every number of the sheets is finite, every species has a rating, and the sheets
 // follow an edit of what they are made of
 {
   const {tableById} = await import('../src/data/schema/index.js');
@@ -167,7 +167,7 @@ console.log('ok   правка таблиц: значения доходят д�
   console.log(`ok   итоговые таблицы: видов ${sheet('creatureSheet').length}, рецептов ${sheet('recipeSheet').length}, построек ${sheet('buildingSheet').length} — числа конечны, следуют за правками${loss.length ? `; в убыток: ${loss.map(r => `${r.id} ${r.margin}`).join(', ')}` : ''}`);
 }
 
-// ── what an edit may not do (the review of docs/NRI.md): empty a cell the game computes with, write a code stored in
+// ── what an edit may not do (the review of docs/TABLES.md): empty a cell the game computes with, write a code stored in
 // saves, name what is not there, break a list read by position; two tables never write one object
 {
   const E = await import('../src/data/schema/edits.js');

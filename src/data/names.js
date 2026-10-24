@@ -1,4 +1,4 @@
-// Names of the named ones, in one place (docs/TABLE.md, «Имена»): the people of every race — male and female names and
+// Names of the named ones, in one place (docs/WORLD.md): the people of every race — male and female names and
 // their nicknames; the tame beasts — what the herders call them; the nicknames and titles of the leaders of the old
 // lairs; the names of the calamities' bosses. Everything that gives a name takes it from here: the races
 // (data/races.js `names`), the tame beasts (`tame.names`), the vampires, the leaders (atlas/leaders.js), the bosses

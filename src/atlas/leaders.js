@@ -1,4 +1,4 @@
-// Leaders of the old lairs (data/lairs.js LEADER; docs/TABLE.md «Главари логов»). A lair is a field of strength that
+// Leaders of the old lairs (data/lairs.js LEADER; docs/WORLD.md «Главари логов»). A lair is a field of strength that
 // feeds, breeds and raids by chance (atlas/lairs.js); an ancient one may raise a leader, and then it thinks. The leader
 // is a named creature of its kind grown past its kind's limits (as a calamity's boss, less so: agents/special.js
 // bossSpecial). Each spring it may set out on a plan, at the head of a party that walks the world map as an army does

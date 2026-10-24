@@ -1,5 +1,5 @@
 // World view. The classic compass of two axes, ±5 each, and a handful of values: the compass says who keeps
-// the law and who is kind, values say what two people will quarrel about (docs/TABLE.md, «Мировоззрение»).
+// the law and who is kind, values say what two people will quarrel about (docs/RULES.md, «Мировоззрение»).
 //   AXES   — order (−5 хаос … +5 закон) and mercy (−5 зло … +5 добро).
 //            Three layers: a race has its point (data/races.js `align`); a realm of the world map gets its own
 //            within ALIGN.realm of its race's on each axis (atlas/realms.js); a creature — within ALIGN.pawn of

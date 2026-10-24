@@ -1,6 +1,6 @@
 // The world map (atlas). A separate core from the local map (src/world/): no screen, no browser.
 // The two meet later through outside/ — the atlas becomes the provider behind the border and each of
-// its cells becomes the region of a local map (docs/WORLD.md, «Шов»).
+// its cells becomes the region of a local map (docs/WORLD.md).
 //
 // The atlas is made stage by stage (atlas/stages.js), then history runs a season a step
 // (atlas/history.js), so the screen can draw and write the chronicle as it goes; generateAtlas runs

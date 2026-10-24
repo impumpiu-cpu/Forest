@@ -1,4 +1,4 @@
-// The calamities of the epic world (cfg.epic; data/calamities.js; docs/CAMPAIGN.md «Доработка, этап 7»).
+// The calamities of the epic world (cfg.epic; data/calamities.js; docs/WORLD.md).
 //
 // At the dawn of the world a god leaves an artifact in a sanctuary. In each era it finds a bearer, a boss: an
 // ordinary monster of its kind grown past its kind's limits (agents/special.js bossSpecial). A calamity rises
@@ -330,7 +330,7 @@ export function gatherFourth(a, i, years) {
   done();
   return c;
 }
-// ── «Заселение мира» → the campaign (campaign/epic.js; docs/TABLE.md этап 10): a calamity set by hand becomes the quest.
+// ── «Заселение мира» → the campaign (campaign/epic.js; docs/WORLD.md): a calamity set by hand becomes the quest.
 // One that has risen keeps going, only no heroes seal it and no alliance marches on it now — its boss is the caravan's.
 // One still waiting gathers at once at its place (the hand's cell, or the seat `i`): its lair stands with the boss and
 // the artifact in it, its omens run while the caravan walks, and it rises in the year the hand set.

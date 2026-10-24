@@ -2,7 +2,7 @@
 // (which writes the edits into the tables) so that the world generator can stamp a new world with the edits it
 // was made under without importing every table: atlas/generate.js and sim.js put editsStamp() on a new world
 // (a.tables, w.tables), it is saved with it and goes into its hash, and the screen warns when a world made
-// under other edits is opened (stampWarning). docs/TABLE.md, этап 3.
+// under other edits is opened (stampWarning). docs/TABLES.md.
 export const LAYER = {};
 
 // what derives from the tables and must hear of an edit: a cache made from them (agents/strength.js), a copy one data

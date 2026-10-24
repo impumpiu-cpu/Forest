@@ -1,4 +1,4 @@
-// Tags (docs/NRI.md, этап 2), as traits are in Pathfinder 2: one dictionary of the words that mark a species, an item
+// Tags (docs/RULES.md), as traits are in Pathfinder 2: one dictionary of the words that mark a species, an item
 // or a resource, with what each means and who reads it. The data keeps them where they always were — a species'
 // yes/no field (`undead: true`), a list of what it fears (`weakTo: ['silver']`), a resource's `tags`, an item's
 // yes/no field — and this table names every one of them, so a word that is not here is a mistake

@@ -1,4 +1,4 @@
-// «Заселение мира» → «Кампания» (docs/TABLE.md этап 10): in a world settled by hand the calamity the hand set is the
+// «Заселение мира» → «Кампания» (docs/CAMPAIGN.md): in a world settled by hand the calamity the hand set is the
 // caravan's quest. One still waiting gathers at once where the hand put it, with the artifact and its boss in the lair;
 // one already risen is left to the caravan (no heroes, no alliance take it now); with none left the graves and a fourth,
 // as in an epic world; with no calamity at all, the crown of any world. The walk runs to its end; the same is the same.

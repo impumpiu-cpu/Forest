@@ -1,4 +1,4 @@
-// The caravan trades in captives in towns (docs/CAPTIVES.md, stage 5; numbers: data/slavery.js).
+// The caravan trades in captives in towns (docs/CAPTIVES.md; numbers: data/slavery.js).
 // The town's people decide the law: where it is banned, nobody buys or sells; where it is frowned on, a sale
 // costs the town's realm's goodwill to the caravan's realm; where it is legal, a town sometimes has a captive
 // to sell. The caravan sells an unruly captive, or any when its food runs short — never one that has earned

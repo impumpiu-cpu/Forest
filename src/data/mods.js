@@ -1,4 +1,4 @@
-// Dictionaries of modifiers (docs/NRI.md, этап 2): every key a `mods` or an `effects` may name, what it means, how it
+// Dictionaries of modifiers (docs/RULES.md): every key a `mods` or an `effects` may name, what it means, how it
 // stacks and who reads it. A key that is not here is a mistake, and `npm run tables` says where it is.
 //
 // CREATURE_MODS — agent.mods, the body of one creature (agents/special.js refreshBody). It is rebuilt from its

@@ -1,4 +1,4 @@
-// The trade in captives (docs/CAPTIVES.md, stage 5): what a captive is worth, where it may be sold, how the
+// The trade in captives (docs/CAPTIVES.md): what a captive is worth, where it may be sold, how the
 // company takes it. Used by the campaign's towns (campaign/slavery.js) and the settlement's trader
 // (settlement/slavery.js).
 //

@@ -1,5 +1,5 @@
 // Every table of the game as the screen «Настройки → Таблицы» shows it and `npm test` checks it
-// (src/data/schema/columns.js says what a schema and a column are; docs/TABLE.md, «Карта таблиц»).
+// (src/data/schema/columns.js says what a schema and a column are; docs/TABLES.md).
 // The data stays where it is: each schema only reads its source modules. One thing is one row on the screen,
 // even when its numbers live in two files: a race is data/races.js + its row of data/balance/creatures.js + its
 // people on the world map (data/peoples.js).
@@ -217,7 +217,7 @@ export const TABLES = [
     note: 'Каждая кривая при каждой букве (вычисляется из «Кривых»): строка — значение буквы, столбец — кривая. Человек живёт в 1–10, крепкие расы доходят до 15, зверь — дальше (Сила дракона ~80).',
     columns: [col('x', 'Буква', 'num'), ...CURVES.all().map(c => col(c.id, `${c.label}${c.stat ? ` (${c.stat})` : ''}`, 'num', {note: c.note}))]},
   {id: 'tiers', label: 'Тиры действий', group: 'Существа', key: 'id', rows: () => TIERS,
-    note: 'С какой буквы навыка открыт тир действия (data/skills.js TIERS, docs/SPECIAL.md): T1 — всем, жёсткий запрет — только с T2.',
+    note: 'С какой буквы навыка открыт тир действия (data/skills.js TIERS, docs/RULES.md): T1 — всем, жёсткий запрет — только с T2.',
     columns: [col('id', 'Тир', 'int'), col('label', 'Название'), col('min', 'Буква от', 'int', {min: 0})]},
 
   // ── Отношения
@@ -403,7 +403,7 @@ function rebuildNames() {
 void TITLE;
 
 
-// ── the rest of the data (docs/TABLE.md, «Ревизия: таблицы — единый источник»): every number the game runs on has a
+// ── the rest of the data (docs/TABLES.md): every number the game runs on has a
 // table. Settings objects as parameter tables, lists of rows (registries) as tables made from the rows themselves.
 const grp = groups => params(() => paramGroups(groups));
 const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
@@ -464,7 +464,7 @@ TABLES.push(
     ...grp({combat: COMBAT, caps: CAPS, scaleMods: SCALE_MODS, defaultBlow: DEFAULT_BLOW, rules: RULES, strength: STRENGTH})},
 );
 
-// ── the last of the data without a table (docs/NRI.md, этап 0): the local map's ground, seasons, ores and regions,
+// ── the last of the data without a table (docs/TABLES.md): the local map's ground, seasons, ores and regions,
 // who is whose enemy and who lives beyond the edge; the world map's plates, rocks, ores and winds.
 // `fix` closes columns the code keys by (a code stored in the grid and in saves) and gives others their `ref`.
 function fix(t, cols) { return {...t, columns: t.columns.map(c => (cols[c.key] ? {...c, ...cols[c.key]} : c))}; }
@@ -517,7 +517,7 @@ TABLES.push(
     note: 'Модель влаги карты мира (data/climate.js MOISTURE): испарение с моря, круговорот, морось, подъём над горами, конденсация, скорость переноса, перевод в миллиметры.'},
 );
 
-// ── dictionaries (docs/NRI.md, этап 2): every key a `mods` or an `effects` may name, and every tag
+// ── dictionaries (docs/TABLES.md): every key a `mods` or an `effects` may name, and every tag
 TABLES.push(
   {id: 'creatureMods', label: 'Модификаторы существа', group: 'Словари', key: 'id', rows: () => CREATURE_MODS.all(), after: rebuildBaseMods,
     note: 'Ключи agent.mods (data/mods.js): тело существа, которое собирается из вида, SPECIAL, народа, врождённого, характера и ран. Множитель умножается (нейтрально 1), прибавка прибавляется. Ключ с кривой берёт значение буквы SPECIAL («Кривые»). Ключ, которого здесь нет, в mods рас, черт и ран не принимается. Правка доходит до каждого нового существа и до живых — при пересборке тела (рана, черта, состояние).',
@@ -545,7 +545,7 @@ TABLES.push(
     value: {edit: false, note: 'правится в «Ценах ресурсов»'}, stack: {edit: false, note: 'правится в «Ценах ресурсов»'}, money: {edit: false, note: 'правится в «Ценах ресурсов»'}}),
 );
 
-// ── the fight (docs/NRI.md, этап 3): kinds of harm and how each body takes them, weapon qualities, where blows land
+// ── the fight (docs/TABLES.md): kinds of harm and how each body takes them, weapon qualities, where blows land
 const HARM = [...DAMAGE_TYPES.map(d => [d.id, d.label]), ...Object.entries(DELIVERY)];
 TABLES.push(
   {id: 'damageTypes', label: 'Типы урона', group: 'Словари', key: 'id', rows: () => DAMAGE_TYPES,
@@ -566,7 +566,7 @@ TABLES.push(
       col('dmg', 'Урон ×', 'num', {min: 0}), col('traumas', 'Травмы', 'ids', {ref: {has: id => WOUNDS.has(id) && !!WOUNDS.get(id).trauma}, note: 'только травмы («Состояния», trauma)'}), col('note', 'Описание')]},
 );
 
-// ── checks and chance (docs/NRI.md, этап 5): the ladder, the four degrees, and every random table in one place
+// ── checks and chance (docs/TABLES.md): the ladder, the four degrees, and every random table in one place
 // the rows of all random tables, each with the object its numbers live in (`src`): a raid band's `chance`, a find, a trophy
 const randomRows = () => [
   ...RAID_BANDS.all().map(b => ({key: `raids:${b.id}`, table: 'raids', mode: 'one', row: b.label, ctx: 'угроза, ночь', gives: `банда «${b.label}»`, src: b.chance, ...b.chance})),
@@ -594,7 +594,7 @@ TABLES.push(
       col('ctx', 'От чего зависит', 'text', {edit: false}), col('gives', 'Что даёт', 'text', {edit: false})]},
 );
 
-// ── summaries (docs/NRI.md, этап 6): what the tables add up to, worked out from them (./sheets.js)
+// ── summaries (docs/TABLES.md): what the tables add up to, worked out from them (./sheets.js)
 TABLES.push(
   {id: 'creatureSheet', label: 'Существа (итог)', group: 'Существа', key: 'id', computed: true, rows: creatureSheet,
     note: 'Каждый вид как он есть (вычисляется из таблиц): типичное существо — середина пределов SPECIAL, полное здоровье, без оружия. Урон за 1000 тиков, стойкость (здоровье / доля ударов, что проходят и ранят), их произведение против эталонного бойца, и КС одного такого, как приходит (среднее по 16).',
@@ -611,7 +611,7 @@ TABLES.push(
       col('station', 'Станция', 'bool'), col('portable', 'В обозе', 'bool'), col('effects', 'Эффекты'), col('effect', 'Описание')]},
 );
 
-// ── the realm as a kingdom (docs/NRI.md, этап 7; data/kingdom.js, atlas/kingdom.js)
+// ── the realm as a kingdom (docs/TABLES.md; data/kingdom.js, atlas/kingdom.js)
 const STAT_MAP = {type: 'map', ref: 'realmStats'}, RUIN_MAP = {type: 'map', ref: 'ruins', min: 0};
 TABLES.push(
   {id: 'realmStats', label: 'Держава: показатели', group: 'Народы', key: 'id', rows: () => REALM_STATS.all(),
@@ -637,7 +637,7 @@ TABLES.push(
     columns: [col('id', 'id'), col('label', 'Ступень'), col('tier', 'Ступень №', 'int', {edit: false}), col('maxPrice', 'Самое дорогое, зол.', 'num', {min: 0, nullable: true}), col('purse', 'Кошель города, зол.', 'num', {min: 0, nullable: true})]},
 );
 
-// ── the content of the world (docs/NRI.md, этап 8): illness, addiction, the rot; tongues and senses; the caravan's name
+// ── the content of the world (docs/TABLES.md): illness, addiction, the rot; tongues and senses; the caravan's name
 // and pace; the settlement's vital signs
 TABLES.push(
   {id: 'afflictions', label: 'Недуги', group: 'Существа', key: 'id', rows: () => AFFLICTIONS.all(),

@@ -1,4 +1,4 @@
-// Technologies (docs/TABLE.md, «Основа для асимметрии»): a list, not a tree yet. Each one only switches on what the
+// Technologies (docs/WORLD.md): a list, not a tree yet. Each one only switches on what the
 // game already has — town buildings of the world map, the metals the towns' smiths work — so that a realm comes to
 // them by its own way. Two layers:
 //   races     — which peoples can know it at all (data/peoples.js ids; none — any): availability belongs to the race

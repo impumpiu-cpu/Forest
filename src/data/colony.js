@@ -1,4 +1,4 @@
-// Settlement tuning moved out of the logic (docs/TABLE.md, «Ревизия»): the colony's relations, life, healing, herds,
+// Settlement tuning moved out of the logic (docs/SETTLEMENT.md): the colony's relations, life, healing, herds,
 // threat, the day's plan, the furnace, the job board and watch, doing things together, gold veins. The logic files
 // import these; the tables (data/schema/index.js, group «Поселение») show and edit them.
 import {DAY, HOUR} from '../core/time.js';

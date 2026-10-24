@@ -1,4 +1,4 @@
-// Checks and chance of docs/NRI.md, этап 5: the ladder of difficulty, the four degrees of success (never changing
+// Checks and chance of docs/RULES.md: the ladder of difficulty, the four degrees of success (never changing
 // whether a check passes; their effects at 0 change nothing, a number turns each on), and the random tables in one
 // format (raids by weight, finds by first, trophies each) drawing as the old code did. Part of `npm test`.
 import {newGame} from '../src/sim.js';

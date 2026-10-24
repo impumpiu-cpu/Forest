@@ -43,7 +43,7 @@ export const ARMOR_VS_CAP = 0.85;
 export const DEFAULT_SCALE = {S: 1};
 export const SCALE_MODS = {S: 'str', A: 'fin'};
 
-// ── Kinds of harm (docs/NRI.md, этап 3). The three blows above, the elements and the banes. A species' `resist`
+// ── Kinds of harm (docs/RULES.md). The three blows above, the elements and the banes. A species' `resist`
 // (creatures.js; the table «Урон по видам») holds × the damage for each id here and for the delivery (melee,
 // ranged); an empty cell is 1. Where each one is dealt:
 //   blow    — every blow and shot (agents/combat.js damage), × the delivery too
@@ -67,7 +67,7 @@ export const DELIVERY = {melee: 'вблизи', ranged: 'издали'};
 // × the damage of a kind (or a delivery) to a species: its `resist`, else 1
 export const resistTo = (sp, id) => sp.resist?.[id] ?? 1;
 
-// ── Weapon qualities (docs/NRI.md, этап 3), as damage effects and qualities in Fallout 2d20: a form or a material
+// ── Weapon qualities (docs/RULES.md), as damage effects and qualities in Fallout 2d20: a form or a material
 // gives them with a value ({piercing: 0.2}); an item has the sum of its form's and its material's. `live` — the
 // game reads it now; the others wait for their mechanic.
 export const WEAPON_QUALITIES = [

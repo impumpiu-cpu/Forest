@@ -1,4 +1,4 @@
-// Conditions of docs/NRI.md, этап 4 (data/conditions.js): wounds and traumas are rows of the table «Состояния», a
+// Conditions of docs/RULES.md (data/conditions.js): wounds and traumas are rows of the table «Состояния», a
 // bleeding cut and a stunning blow come from weapon qualities and run their course, exhaustion follows the needs and
 // does to the body what its stage says — and nothing while the stage is empty. Part of `npm test`.
 import {newGame} from '../src/sim.js';

@@ -1,4 +1,4 @@
-// The epic world of the campaign (cfg.epic, docs/CAMPAIGN.md «Доработка, этап 6»): three eras of 75–150 years.
+// The epic world of the campaign (cfg.epic, docs/WORLD.md): three eras of 75–150 years.
 // Generates it whole and prints how long each era took, what the world is like at the end of each (living towns
 // and lairs, realms, wars, burnt towns), how long its chronicle is and how big the save. Not part of `npm test`:
 // a medium world takes about a minute. Usage: node tools/atlas-epic.mjs [size=medium] [seed=7] [years]

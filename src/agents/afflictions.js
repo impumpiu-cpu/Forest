@@ -1,4 +1,4 @@
-// Illness, withdrawal and the rot on a creature (docs/NRI.md, этап 8; the numbers: data/afflictions.js).
+// Illness, withdrawal and the rot on a creature (docs/RULES.md; the numbers: data/afflictions.js).
 //   catchIll(w, a, id)  — falls ill with the first stage (one illness at a time)
 //   stepIll(w, a)       — every `every` days the body's check (data/checks.js): cured, better, worse, dead
 //   taintBy(w, t, by)   — a blow of an undead adds to the rot

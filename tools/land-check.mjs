@@ -1,4 +1,4 @@
-// «Создать землю» (atlas/shape.js; docs/TABLE.md этап 8): the hand's edits of the base — a plate's motion, a raised
+// «Создать землю» (atlas/shape.js; docs/WORLD.md): the hand's edits of the base — a plate's motion, a raised
 // plate, the brush, the climate — change what they should, the chain worked out again from a stage's copy is the
 // same land as one made whole with the same edits, and a land is saved as a land.
 import {newAtlas, runNextStage, landDone, atlasHash} from '../src/atlas/generate.js';

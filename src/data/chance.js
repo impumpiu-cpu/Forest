@@ -1,4 +1,4 @@
-// Random tables (docs/NRI.md, этап 5): one format and one engine for everything the game draws from a list.
+// Random tables (docs/RULES.md): one format and one engine for everything the game draws from a list.
 //
 // A row says how likely it is as data, not code:
 //   weight   — its weight (mode `one`) or its chance (modes `first`, `each`)

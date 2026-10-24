@@ -1,6 +1,5 @@
 // Table schemas: how a data table (src/data/*.js) is shown and checked as a table. A schema does not copy
-// the data — it reads it from the source modules and says what each column is (docs/TABLE.md, «Репозиторий
-// как база данных»). The screen «Настройки → Таблицы» (src/app/tablesView.js) is built from schemas, and
+// the data — it reads it from the source modules and says what each column is (docs/TABLES.md). The screen «Настройки → Таблицы» (src/app/tablesView.js) is built from schemas, and
 // `npm test` checks every value against its column (tools/check-tables.mjs).
 //
 // A schema: {id, label, group, note, key, rows() → [row], columns: [column]}

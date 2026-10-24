@@ -1,6 +1,6 @@
 // The peoples of the world map: who comes, when, where they feel at home, how they spread, what
 // they build and what they call their towns. The systems are in src/atlas/peoples.js (the peoples as
-// fields), atlas/settlements.js (towns as points) and atlas/roads.js (roads worn by traffic).
+// fields and the towns they found), atlas/towns.js (what towns build) and atlas/roads.js (roads worn by traffic).
 //
 //   race:     the race on the local map (data/races.js), whose people they are
 //   era:      the era they come in (data/history.js ERAS)
@@ -65,7 +65,7 @@ WORLD_PEOPLES.registerAll([
       last: ['-баш', 'гат', 'рук', 'мог', 'душ', 'заг', '-тар', 'нак']}},
 ]);
 
-// Town sizes: three steps, earned by what the town has built (docs/WORLD.md, «Ступени и столицы»).
+// Town sizes: three steps, earned by what the town has built (docs/WORLD.md).
 // A town is a step when it has at least `pop` people and any of the buildings in `needsAny`
 // (data/townBuildings.js); it falls a step when its people drop below TIER_FALL of that `pop`.
 // Within a step the size runs free: a town is a town at 400 and at 6000.

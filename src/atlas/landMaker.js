@@ -1,4 +1,4 @@
-// The making of a land with the hand on it («Создать землю», docs/TABLE.md этап 8) — the model behind the screen
+// The making of a land with the hand on it («Создать землю», docs/WORLD.md) — the model behind the screen
 // (app/landView.js), headless, so a tool can replay what a player did. It holds the land being made, the hand's edits
 // (atlas/shape.js) and the copies of the land taken before the stages the edits enter at; an edit works the chain out
 // again from the latest copy at or before its stage. The copies are in memory only: a land opened from the library is

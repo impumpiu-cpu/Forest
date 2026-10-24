@@ -1,4 +1,4 @@
-// Where a blow lands (docs/NRI.md, этап 3), as the hit locations of Fallout 2d20: every creature has a plan of its
+// Where a blow lands (docs/RULES.md), as the hit locations of Fallout 2d20: every creature has a plan of its
 // body, every plan its places with a weight (how often a blow lands there), × the damage there, and the traumas a
 // deadly wound there may leave (data/wounds.js, `trauma: true`). Each blow or shot that lands draws its place from
 // its own random stream (core/rng.js `hits`), so the place changes nothing else of the fight. The place of the last

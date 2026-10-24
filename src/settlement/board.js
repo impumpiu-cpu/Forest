@@ -1,4 +1,4 @@
-// The colony's board (docs/MIND.md): the overmind knows and announces, every colonist wants and chooses.
+// The colony's board (docs/SETTLEMENT.md): the overmind knows and announces, every colonist wants and chooses.
 //
 // Once a tick, before the creatures step, the board:
 //   1. looks round through the lookouts — the colonists whose turn it is ((tick + id) % LOOK), awake and
@@ -16,7 +16,7 @@
 //      the share of the threat nobody covers yet; every defender lowers it for the others, a newcomer
 //      foe or a fallen defender raises it again;
 //   5. wakes those who should think again — who just learned of a flag, or whose flag got heavier.
-// The board also holds the council's standing rule, the night watch (docs/MIND.md stage 2): one place,
+// The board also holds the council's standing rule, the night watch (docs/SETTLEMENT.md): one place,
 // posted every evening at WATCH.from; whoever takes it does so for reasons of their own (courage, a
 // rested body, sharp eyes, not having watched last night), keeps the fire and looks round for everyone
 // all night, and sleeps it off in the morning. By night everyone else sees half as far, except by the fire.

@@ -1,4 +1,4 @@
-// Wild herds (docs/MIND.md stage 5): deer, goats, elk. The herd knows and announces, the beast chooses.
+// Wild herds (docs/SETTLEMENT.md): deer, goats, elk. The herd knows and announces, the beast chooses.
 //
 // A herd is plain data (w.herds {id: herd}, members by id, saved with the world). Once a tick (sim.js)
 // stepHerds:

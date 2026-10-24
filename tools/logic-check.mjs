@@ -6,10 +6,10 @@
 // T47–T48 quality from the master; T49–T57 critical blows and the deadly wound;
 // T58–T62 tiers of the other jobs and the AI; T63–T65 trade through the negotiator; T66–T70 trophies;
 // T71–T73 fixes from the review; T74–T80 fixes from the code review of 16.10: F01–F06; T85–T92 the colony's
-// board: lookouts, the cry, red and yellow alarms, soft places, docs/MIND.md stage 1; T93–T97 the loot taken
+// board: lookouts, the cry, red and yellow alarms, soft places, docs/SETTLEMENT.md; T93–T97 the loot taken
 // back, the chase, the night watch, stage 2; T98–T100 thinking on events, stage 4;
 // T101–T104 wild herds, stage 5; T105–T107 fixes from the code review of 21.10;
-// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md stage 1; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4; T134–T137 the trade in captives, stage 5; T138–T140 fixes from the code review of 21.10, captives; T141–T143 the smith's mark, docs/TABLE.md stage 5). Each scene builds a flat, empty map, places a few agents by hand and
+// T108 the groups' common skeleton, stage 6; T109–T115 captives, docs/CAPTIVES.md; T116–T123 escape, resignation, the informer, stage 2; T124–T129 masters and their learners, stage 3; T130–T133 former slaves, stage 4; T134–T137 the trade in captives, stage 5; T138–T140 fixes from the code review of 21.10, captives; T141–T143 the smith's mark, docs/BALANCE.md). Each scene builds a flat, empty map, places a few agents by hand and
 // runs one brain or task, then checks what must hold: no blow from afar, no wood eaten, no fight with
 // what cannot be seen, no step through a rock corner… Part of `npm test`.
 // Usage: node tools/logic-check.mjs
@@ -1084,7 +1084,7 @@ check('T80', 'F06: отставший волк отдыхает, держит р
   return (h.roles[a.id] !== 'wait') || 'отдохнув, не вернулся';
 });
 
-// ── the vacancies (settlement/plan.js, docs/MIND.md stage 3): the council posts places, nobody is named;
+// ── the vacancies (settlement/plan.js, docs/SETTLEMENT.md): the council posts places, nobody is named;
 // the colonists take them by themselves — the best at a skill is drawn to it, a taken place pulls less,
 // one's own place holds, yesterday's job sticks
 check('T81', 'вакансии: мест столько, сколько рук, лекарь один, никто не назван; лучший дровосек сам берёт рубку, занятое место тянет слабее, своё держит, вчерашнее дело тянет', () => {
@@ -1162,7 +1162,7 @@ check('T84', 'выспавшийся до рассвета досыпает, а 
   return man.task?.id === 'sleep' || `ночью встал: «${man.task?.id}/${man.task?.job}»`;
 });
 
-// ── the colony's board (settlement/board.js, docs/MIND.md stage 1)
+// ── the colony's board (settlement/board.js, docs/SETTLEMENT.md)
 // every colonist looks round once in BOARD.look ticks: run the board that many ticks
 const lookRound = w => { for (let k = 0; k < BOARD.look; k++) { w.tick++; stepBoard(w); } };
 const flagOf = w => Object.values(w.board?.flags || {})[0];
@@ -1419,7 +1419,7 @@ check('T100', 'свой в беде: упавший без сознания бу
   return h.task?.id === 'aid' || `разбуженный занят «${h.task?.id}»: ${h.why?.why}`;
 });
 
-// ── wild herds (agents/wildHerd.js, docs/MIND.md stage 5)
+// ── wild herds (agents/wildHerd.js, docs/SETTLEMENT.md)
 const deerAt = (w, x, y, nerve) => { const d = put(w, 'deer', 'wild', x, y); d.nerve = nerve; return d; };
 check('T101', 'стадо: олени рядом — одно стадо; оглядываются по очереди; пугливый срывается первым, спокойный — позже', () => {
   const w = scene(); fixedRng(w);
@@ -1550,7 +1550,7 @@ check('T108', 'каркас групп: ушедшие выбывают, доз�
 });
 
 
-// ── captives (docs/CAPTIVES.md, stage 1)
+// ── captives (docs/CAPTIVES.md)
 // a raider brought down and left lying: the luck checks all come out «survive, clean»
 const fell = (w, r, by) => { const keep = w.rngs.combat; w.rngs.combat = Object.assign(() => 0, {state: 0}); r.hp = -0.01; lethal(w, r, 'ран', by); w.rngs.combat = keep; return r; };
 // a raider in sword and lamellar, fallen near a colonist
@@ -2055,7 +2055,7 @@ check('T140', 'беглец погиб в бегах: путы пропали с
 });
 
 let bad = 0;
-// ── the smith's mark (data/balance/marks.js, docs/TABLE.md этап 5)
+// ── the smith's mark (data/balance/marks.js, docs/TESTING.md)
 const hitWith = (w, a, t, kit) => {
   a.equip.right = kit.right ? newItem(kit.right.type, kit.right) : null; a.equip.body = null; recalcGear(a);
   t.equip && (t.equip.body = kit.body ? newItem(kit.body.type, kit.body) : null); t.equip && recalcGear(t);

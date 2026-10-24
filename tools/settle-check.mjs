@@ -1,4 +1,4 @@
-// «Заселение мира» (atlas/settle.js; docs/TABLE.md этап 9): a land made into a world with no eras; the hand lands
+// «Заселение мира» (atlas/settle.js; docs/WORLD.md): a land made into a world with no eras; the hand lands
 // peoples, sets lairs and calamities, runs the clock; the world lives on from them; the same acts give the same world,
 // and a world saved between stretches goes on as it would have.
 import {newAtlas, runNextStage, landDone, atlasDone, atlasHash} from '../src/atlas/generate.js';

@@ -1,4 +1,4 @@
-// The local map's nature tuning moved out of the logic (docs/TABLE.md, «Ревизия»): fire, snow, fishing.
+// The local map's nature tuning moved out of the logic (docs/SETTLEMENT.md): fire, snow, fishing.
 // The logic files import these; the tables (data/schema/index.js) show and edit them.
 
 // Fire model knobs. Wet ground (high fertility) is harder to ignite and puts fires out by itself.

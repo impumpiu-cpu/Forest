@@ -1,4 +1,4 @@
-// The realm as a kingdom of docs/NRI.md, этап 7 (data/kingdom.js, atlas/kingdom.js): every living realm keeps four
+// The realm as a kingdom of docs/WORLD.md (data/kingdom.js, atlas/kingdom.js): every living realm keeps four
 // attributes, four kinds of ruin, its edicts and court; the same seed gives the same kingdoms; their lines are minor
 // in the chronicle; feedback at 0 changes nothing and a number turns it on; a condition or a level that cannot be
 // read is refused; a town's market keeps to the limits of its step. Part of `npm test`.
