@@ -13,6 +13,12 @@ export const WAYS = {
   // wounded (or a night hunter at dawn) it leaves; eats its kill, chases game, goes for a lone person,
   // gets its breath back, moves on when the land is empty, else roams — hungry, on the scent of prey
   predator: ['defendLair', 'scare', 'leaveHurt', 'feed', 'chase', 'maul', 'catchBreath', 'wanderOff', 'roam'],
+  // a big grazer that stands its ground (a mule, a boar, a bear, an elk): fire sends it off; whoever comes at it is
+  // kicked, whoever shot it is charged, a bold bull stands up for its herd; a pack mule walks behind its trader;
+  // it sniffs the herder's hay, else leaves, sleeps, grazes; one of a herd (an elk) also draws off from what comes
+  // too close to the herd and stands alert at its alarm
+  stander: ['shunFire', 'standGround', 'pack', 'sniffHay', 'leave', 'rest', 'graze'],
+  herdStander: ['shunFire', 'standGround', 'pack', 'sniffHay', 'drawOff', 'alert', 'leave', 'rest', 'graze'],
 };
 
 export const SQUAD = {
@@ -80,6 +86,22 @@ export const GRAZE = {
 };
 // what each offer of a grazer's behaviours is worth in its lane (a lane is never weighed against another)
 export const WANT = {fire: 2, threat: 1, alert: 1, hay: 1, leave: 0.5, rest: 0.4, graze: 0.3};
+
+// a beast that stands its ground, beyond its species' `mule` block (agents/behaviours/standGround.js, pack.js, drawOff.js)
+export const STAND = {
+  fire: {near: 2, pace: 1.3},   // fire this close sends it off, at this pace
+  foeNear: 3,          // whoever attacks it from this close is its foe
+  bull: 1.15,          // a herd beast this bold (its nerve, agents/wildHerd.js) stands up for its herd…
+  bullHp: 0.6,         // …while at least this healthy…
+  bullNear: 12,        // …for a member this close
+  limpPace: 0.9,       // badly hurt (mule.fleeBelow) it limps off at this pace
+  closePace: 1.15,     // walks up to its foe at this pace…
+  chargeDrain: 0.004,  // …or charges (mule.charge), the sprint draining this much stamina a tick
+  kick: {least: 0.1, spread: 0.12},   // a kick: this share of the blow's power, plus up to this much more
+  pack: {angle: 2.4, step: 0.9, at: 1.6, off: 0.6, hurry: 4, hurryPace: 1.3, pace: 1, catchUp: 1.2},   // a pack mule: its place behind the trader (an angle per slot)
+  drawOff: 0.8,        // steps away from what comes too close to the herd at this pace
+  want: {fire: 2, limp: 1.5, foe: 1.4, pack: 1, hay: 1, drawOff: 1.1, alert: 1, leave: 0.5, rest: 0.4, graze: 0.3},
+};
 
 // a predator beyond its species' `predator` block (agents/hunting.js, agents/behaviours/: scare, leaveHurt, feed,
 // chase, maul, catchBreath, wanderOff, roam, defendLair)

@@ -359,15 +359,13 @@ TASKS.registerAll([
   {id: 'stall', label: () => 'торгует', step() {}},
   {id: 'night', label: () => 'ночует у костра', step() {}},
   {id: 'escort', label: () => 'охраняет караван', step() {}},
-  {id: 'pack', label: () => 'везёт поклажу', step() {}},
   // the pen: tame animals' states (agents/brains/livestock.js)
   {id: 'penned', label: () => 'в загоне', step() {}},
   {id: 'toPen', label: () => 'идёт в загон', step() {}},
 
   // animal states of the hand-written brains (agents/brains/): the brain moves the animal itself, these
-  // entries only name the state. graze, rest, bolt, alert, roam, chase, maul, feed are the behaviours' own (data/behaviours.js)
+  // entries only name the state. graze, rest, bolt, alert, drawOff, roam, chase, maul, feed, pack are the behaviours' own (data/behaviours.js)
   {id: 'nibble', label: () => 'грызёт припасы', step() {}},
-  {id: 'drawOff', label: () => 'отходит от опасности', step() {}},
   {id: 'hide', label: () => 'прячется', step() {}},
   {id: 'lurk', label: () => 'таится', step() {}},
   {id: 'sing', label: () => 'поёт у воды', step() {}},

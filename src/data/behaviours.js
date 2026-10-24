@@ -35,6 +35,15 @@ BEHAVIOURS.registerAll([
     note: 'ночью (restAt, обычно 0.7) сидит на месте'},
   {id: 'graze', label: () => 'пасётся', band: 'routine', requires: ['grazes'], keep: 0,
     note: 'щиплет траву на своём лугу (grazes.terrain); стадный — на пастбище стада'},
+  // ── a big grazer that stands its ground (the `mule` block)
+  {id: 'shunFire', task: false, band: 'red', requires: [], keep: 0,
+    note: 'бежит от огня (bolt в режиме fire) — для того, кто больше ничего не боится'},
+  {id: 'standGround', task: false, band: 'red', requires: ['mule'], keep: 0,
+    note: 'не бежит: лягает подошедшего (maul в режиме kick), несётся на стрелявшего, бык стада заступается; тяжело раненый хромает прочь (bolt)'},
+  {id: 'pack', label: () => 'везёт поклажу', band: 'yellow', requires: [], keep: 0,
+    note: 'вьючный мул (a.owner): идёт за своим купцом; купец пропал — уходит с карты'},
+  {id: 'drawOff', label: () => 'отходит от опасности', band: 'yellow', requires: ['herd'], keep: 0,
+    note: 'стадный зверь, который не бежит (лось): отступает от того, что подошло к стаду слишком близко'},
   // ── a predator (agents/hunting.js; the numbers: the species' `predator` block and PROWL of data/behaviour.js)
   {id: 'defendLair', task: false, band: 'reflex', requires: ['predator'], keep: 0,
     note: 'страж логова (a.defend, campaign/camp.js): держит его до конца — maul в режиме lair, без страха и бегства'},

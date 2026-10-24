@@ -2,7 +2,8 @@
 // of night) has made the pack bold enough; a member joins the leader's attack. Help arriving or the victim
 // reaching the settlement makes the pack back off for a while, shorter when starving; a victim it cannot get at
 // is given up. A kill feeds the whole pack. In the `lair` mode (defendLair) nothing frightens it and it does not
-// let go. Reads: predator {victims, sight, loneRadius, boldPeople, calm, sprint, stamina, bigMeal}.
+// let go; in the `kick` mode a big grazer kicks back (standGround). Reads: predator {victims, sight, loneRadius,
+// boldPeople, calm, sprint, stamina, bigMeal}.
 import {SPECIES} from '../../data/species.js';
 import {approach, sprintMul, recover} from '../movement.js';
 import {attack, behindRock} from '../combat.js';
@@ -12,6 +13,7 @@ import {agentInZone} from '../../settlement/zone.js';
 import {think} from '../mind.js';
 import {dist, packOf, paramsOf, boldness, nearest, company, startMaul, toTheKill} from '../hunting.js';
 import {PROWL} from '../../data/behaviour.js';
+import {kickStep} from './standGround.js';
 
 const BUSY = new Set(['feed', 'chase', 'maul']);
 const gone = (w, v) => !v || v.dead || v.downed || !w.agents.includes(v);
@@ -39,6 +41,7 @@ export const maul = {
     if (t.start) { delete t.start; t.hunt = startMaul(w, a, t.target, boldness(a, paramsOf(a))).id; }
   },
   step(w, a, t) {
+    if (t.mode === 'kick') { kickStep(w, a, t); return; }   // a big grazer kicking back (agents/behaviours/standGround.js)
     const P = paramsOf(a), M = PROWL.maul, v = t.target;
     if (t.mode === 'lair') { lair(w, a, t, P, v); return; }
     const b = boldness(a, P), pack = packOf(w, a);

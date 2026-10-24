@@ -1,7 +1,7 @@
 // Graze: nibble around the meadows. A lone beast hops to a nearby patch of its terrain (`grazes.terrain`),
 // now and then wanders off to another meadow, and eats the berries on its way (`grazes.eatsBerries`);
 // a herd beast grazes on its own patch of the herd's pasture (agents/wildHerd.js). In the `hay` mode
-// (sniffHay) it stands and sniffs instead, keeping its spot. Reads: grazes {terrain, eatsBerries}; herd.
+// (sniffHay) it stands and sniffs instead, keeping its spot. Reads: grazes {terrain, eatsBerries, shunZone?}; herd.
 import {SPECIES} from '../../data/species.js';
 import {grazeCodes} from '../../data/terrain.js';
 import {walkable, inMap, cellOf} from '../../world/grid.js';
@@ -27,7 +27,7 @@ export const graze = {
           const x = a.x + (w.rngs.wild() * 2 - 1) * reach, y = a.y + (w.rngs.wild() * 2 - 1) * reach;
           if (!inMap(w, x, y)) continue;
           const j = (y | 0) * w.w + (x | 0);
-          if (!walkable(w, j) || !ok.has(w.grid.terr[j]) || !sameLand(w, a, j)) continue;
+          if (!walkable(w, j) || !ok.has(w.grid.terr[j]) || !sameLand(w, a, j) || (sp.grazes.shunZone && w.zone[j])) continue;   // a mule keeps off the settlement
           const v = w.grid.fert[j] + Math.min(8, x, y, w.w - x, w.h - y) * GRAZE.edge + w.rngs.wild() * GRAZE.lush;
           if (v > bestV) { bestV = v; t.spot = [x, y]; }
         }

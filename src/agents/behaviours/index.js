@@ -21,8 +21,12 @@ import {maul, defendLair} from './maul.js';
 import {catchBreath} from './catchBreath.js';
 import {wanderOff} from './wanderOff.js';
 import {roam} from './roam.js';
+import {shunFire} from './shunFire.js';
+import {standGround} from './standGround.js';
+import {pack} from './pack.js';
+import {drawOff} from './drawOff.js';
 
-export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam};
+export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff};
 
 for (const d of BEHAVIOURS.all()) {
   const c = ACTS[d.id];

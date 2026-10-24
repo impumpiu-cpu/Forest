@@ -36,8 +36,7 @@ const hunts = over => ({
   feedTicks: 90, meal: 1.6, calm: 900, bigMeal: 3, wanderOff: 0.0012, weakPrey: [], weakBelow: 0.35, ...over,
 });
 // a beast that stands its ground: the mule's numbers
-const stands = over => ({kickRange: 1.1, charge: 2.0, chargeHit: 1.5, chargeFrom: 2.2, grudge: 360, giveUp: 22,
-  fleeBelow: 0.3, leaveChance: 0.0002, terrain: ['grass'], ...over});
+const stands = over => ({kickRange: 1.1, charge: 2.0, chargeHit: 1.5, chargeFrom: 2.2, grudge: 360, giveUp: 22, fleeBelow: 0.3, ...over});
 
 const beast = b => ({needs: [], mind: 'beast', relativeStats: true, heatHarm: 60, ...b});
 
@@ -53,13 +52,13 @@ export const BESTIARY = [
     predator: hunts({prey: ['deer', 'goat', 'boar', 'hare', 'elk'], weakPrey: ['mule'], boldPeople: 0.35, groupFear: 4, meal: 2, bigMeal: 4})}),
 
   // Bear: a loner that only fights when bothered; in winter it sleeps in its den
-  beast({id: 'bear', kind: 'beast', label: 'медведь', labelAcc: 'медведя', plural: 'медведи', brain: 'mule', big: true, hibernates: true,
+  beast({id: 'bear', kind: 'beast', label: 'медведь', labelAcc: 'медведя', plural: 'медведи', brain: 'tabled', behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025, big: true, hibernates: true,
     arrive: {group: [1, 1], every: [3, 5], chance: 0.5, cap: 1, first: 4, message: 'в лес пришёл медведь. Не трогай — и он не тронет'},
     habitat: {forest: 'usual', taiga: 'usual', tundra: 'rare', foothills: 'rare'},
     look: {shape: 'bear', size: 0.9, color: '#5a3d28'},
     yields: {meat: 12, hide: 3, bone: 3, bile: 1}, trophies: [{res: 'bile', n: 1, chance: 0.25, tier: 2}, {res: 'furs', n: 2, chance: 0.2}],
     killMessage: name => `Медведь задрал поселенца: <b>${name}</b>.`,
-    mule: stands({kickRange: 1.2, charge: 1.9, chargeHit: 1.7, grudge: 500, giveUp: 26, fleeBelow: 0.2, leaveChance: 0.00015, terrain: ['grass', 'forest']})}),
+    grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.00015, mule: stands({kickRange: 1.2, charge: 1.9, chargeHit: 1.7, grudge: 500, giveUp: 26, fleeBelow: 0.2})}),
 
   // Lynx: an ambush from the branches, mostly hares and foxes; a lone person only when starving
   beast({id: 'lynx', snowfoot: true, kind: 'beast', label: 'рысь', labelAcc: 'рысь', plural: 'рыси', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
@@ -71,14 +70,14 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.75, groupFear: 2, meal: 1.4, sight: 18})}),
 
   // Elk: the mule of the taiga — a lot of meat, and a bull that tramples hunters
-  beast({id: 'elk', kind: 'beast', label: 'лось', labelAcc: 'лося', plural: 'лоси', brain: 'mule', big: true, game: true,
+  beast({id: 'elk', kind: 'beast', label: 'лось', labelAcc: 'лося', plural: 'лоси', brain: 'tabled', behaviours: [...WAYS.herdStander], restAt: 0.75, mends: 0.00025, big: true, game: true,
     arrive: {group: [1, 3], every: [2, 4], chance: 0.5, cap: 4, first: 2, message: 'к лесу вышли лоси: {n}. Бык топчет охотников'},
     habitat: {taiga: 'usual', swamp: 'usual', tundra: 'rare', forest: 'rare'},
     look: {shape: 'deer', size: 0.84, color: '#5e4630'},
     yields: {meat: 12, hide: 3, bone: 3},
     killMessage: name => `Лось затоптал поселенца: <b>${name}</b>.`,
     herd: {cap: 4, alert: 6},   // a small herd; a bold bull stands up for the others (agents/brains/mule.js)
-    mule: stands({terrain: ['grass', 'forest'], leaveChance: 0.0003})}),
+    grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0003, mule: stands({})}),
 
   // Hyenas: scavengers of the barrow steppe, packs, bold by night; gnolls keep them
   beast({id: 'hyena', kind: 'beast', label: 'гиена', labelAcc: 'гиену', plural: 'гиены', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
@@ -90,13 +89,13 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'deer', 'goat'], boldPeople: 0.55, groupFear: 3})}),
 
   // Giant toad: sits in the marsh and snaps whoever comes within its tongue's reach
-  beast({id: 'toad', kind: 'beast', label: 'гигантская жаба', labelAcc: 'гигантскую жабу', plural: 'гигантские жабы', brain: 'mule',
+  beast({id: 'toad', kind: 'beast', label: 'гигантская жаба', labelAcc: 'гигантскую жабу', plural: 'гигантские жабы', brain: 'tabled', behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025,
     arrive: {group: [1, 2], every: [2, 3], chance: 0.6, cap: 3, first: 2},
     habitat: {swamp: 'common', jungle: 'usual', water: 'rare'},
     look: {shape: 'toad', size: 0.55, color: '#6b7a3a'},
     yields: {meat: 2, slime: 1}, trophies: [{res: 'slime', n: 1, chance: 0.3}],
     killMessage: name => `Жаба утянула поселенца в трясину: <b>${name}</b>.`,
-    mule: stands({kickRange: 2.4, charge: 1.2, chargeHit: 1.2, chargeFrom: 3, giveUp: 8, terrain: ['grass', 'forest'], leaveChance: 0.0001})}),
+    grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0001, mule: stands({kickRange: 2.4, charge: 1.2, chargeHit: 1.2, chargeFrom: 3, giveUp: 8})}),
 
   // ── monsters of the heights and the deep
   // Griffin: nests on the crags, carries off goats and mules, a lone person when hungry
@@ -149,13 +148,13 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.5, groupFear: 3, sight: 16})}),
 
   // Stone worm: digs through the rock, slow and nearly unkillable, leaves its shell
-  beast({id: 'stoneworm', kind: 'monster', label: 'каменный червь', labelAcc: 'каменного червя', plural: 'каменные черви', brain: 'mule', big: true,
+  beast({id: 'stoneworm', kind: 'monster', label: 'каменный червь', labelAcc: 'каменного червя', plural: 'каменные черви', brain: 'tabled', behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025, big: true,
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 5, message: 'из-под скал выполз каменный червь'},
     habitat: {underground: 'usual', desert: 'rare', foothills: 'rare'},
     look: {shape: 'worm', size: 0.9, color: '#7d6f5c'},
     yields: {meat: 8, hide: 4}, trophies: [{res: 'gems', n: 1, chance: 0.15}],
     killMessage: name => `Каменный червь раздавил поселенца: <b>${name}</b>.`,
-    mule: stands({kickRange: 1.4, charge: 1.3, chargeHit: 1.8, fleeBelow: 0.15, leaveChance: 0.0004})}),
+    grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0004, mule: stands({kickRange: 1.4, charge: 1.3, chargeHit: 1.8, fleeBelow: 0.15})}),
 
   // Blood bats: night flocks from caves and barrows; they drink, a little at a time
   beast({id: 'bat', kind: 'monster', label: 'летучая мышь-кровопийца', labelAcc: 'летучую мышь', plural: 'летучие мыши', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator], nocturnal: true,
@@ -240,13 +239,13 @@ export const BESTIARY = [
       effect: 'возит охотника и брёвна (охота +15%, стройка +10%), тянет соху (поле +15%)'}}),
 
   // Aurochs: the wild bull of the forest edge — a mountain of meat, and it charges
-  beast({id: 'aurochs', kind: 'beast', label: 'тур', labelAcc: 'тура', plural: 'туры', brain: 'mule', big: true, game: true, legend: 'тур',
+  beast({id: 'aurochs', kind: 'beast', label: 'тур', labelAcc: 'тура', plural: 'туры', brain: 'tabled', behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025, big: true, game: true, legend: 'тур',
     arrive: {group: [1, 3], every: [3, 5], chance: 0.45, cap: 3, first: 3, message: 'на опушку вышли туры: {n}. Бык поднимает на рога'},
     habitat: {meadow: 'common', forest: 'usual', steppe: 'usual', swamp: 'rare', taiga: 'rare'},
     look: {shape: 'bull', size: 0.92, color: '#3f2a1c'},
     yields: {meat: 14, hide: 4, bone: 4},
     killMessage: name => `Тур поднял на рога поселенца: <b>${name}</b>.`,
-    mule: stands({kickRange: 1.2, charge: 1.8, chargeHit: 1.8, grudge: 420, giveUp: 24, terrain: ['grass', 'forest'], leaveChance: 0.0002}),
+    grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0002, mule: stands({kickRange: 1.2, charge: 1.8, chargeHit: 1.8, grudge: 420, giveUp: 24}),
     tame: {chance: 0.2, tier: 3, space: 3, bait: {hay: 3}, eats: 2, milk: 2.5, breed: 0.03, grownDays: 40, kicks: true, stack: 2, max: 3,
       effects: {jobSpeed: {farm: 1.3, dig: 1.1}},
       names: petNames('aurochs'),
@@ -272,22 +271,22 @@ export const BESTIARY = [
     predator: hunts({prey: ['saiga', 'deer', 'goat', 'boar', 'hare'], weakPrey: ['aurochs', 'horse', 'camel'], boldPeople: 0.3, groupFear: 4, meal: 2.2, bigMeal: 4, sight: 24})}),
 
   // Crocodile: lies at the water's edge and takes whatever drinks there; slow on land, never far from it
-  beast({id: 'crocodile', kind: 'beast', label: 'крокодил', labelAcc: 'крокодила', plural: 'крокодилы', brain: 'mule', big: true,
+  beast({id: 'crocodile', kind: 'beast', label: 'крокодил', labelAcc: 'крокодила', plural: 'крокодилы', brain: 'tabled', behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025, big: true,
     arrive: {group: [1, 2], every: [4, 6], chance: 0.4, cap: 2, first: 3, message: 'у воды залёг крокодил. К берегу — с оглядкой'},
     habitat: {swamp: 'common', jungle: 'usual', water: 'usual', savanna: 'rare'},
     look: {shape: 'lizard', size: 1.0, color: '#4a5e36'},
     yields: {meat: 8, hide: 5, bone: 3}, trophies: [{res: 'scales', n: 2, chance: 0.2}],
     killMessage: name => `Крокодил утащил поселенца в воду: <b>${name}</b>.`,
-    mule: stands({kickRange: 1.3, charge: 1.6, chargeHit: 2.0, chargeFrom: 1.5, grudge: 200, giveUp: 10, fleeBelow: 0.15, terrain: ['water', 'grass'], leaveChance: 0.0001})}),
+    grazes: {terrain: ['water', 'grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0001, mule: stands({kickRange: 1.3, charge: 1.6, chargeHit: 2.0, chargeFrom: 1.5, grudge: 200, giveUp: 10, fleeBelow: 0.15})}),
 
   // Camel: the beast of the sand; tamed, it carries the gatherers' loads across the dry land
-  beast({id: 'camel', kind: 'beast', label: 'верблюд', labelAcc: 'верблюда', plural: 'верблюды', brain: 'mule', big: true, game: true, legend: 'верблюд', heatHarm: 70,
+  beast({id: 'camel', kind: 'beast', label: 'верблюд', labelAcc: 'верблюда', plural: 'верблюды', brain: 'tabled', behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025, big: true, game: true, legend: 'верблюд', heatHarm: 70,
     arrive: {group: [1, 3], every: [3, 5], chance: 0.45, cap: 3, first: 3, message: 'из-за барханов вышли верблюды: {n}'},
     habitat: {desert: 'common', savanna: 'rare', steppe: 'rare', shrubland: 'rare'},
     look: {shape: 'camel', size: 0.88, color: '#c8a874'},
     yields: {meat: 10, hide: 3, bone: 4, wool: 2},
     killMessage: name => `Верблюд затоптал поселенца: <b>${name}</b>.`,
-    mule: stands({grudge: 240, giveUp: 16, leaveChance: 0.0002}),
+    grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0002, mule: stands({grudge: 240, giveUp: 16}),
     tame: {chance: 0.25, tier: 2, space: 2, bait: {hay: 2}, eats: 0.8, milk: 1, wool: 2, woolDays: 60, breed: 0.03, grownDays: 40, kicks: true, stack: 2, max: 2,
       effects: {jobSpeed: {gather: 1.2}},
       names: petNames('camel'),

@@ -1478,6 +1478,7 @@ check('T104', 'лоси: смелый бык идёт на волка, напа�
   stepHerds(w);
   if (herdOf(w, bull) !== herdOf(w, cow)) return 'лоси не в одном стаде';
   const wolf = put(w, 'wolf', 'predators', 39.5, 30.5); wolf.pack = wolf.id; wolf.task = {id: 'maul', target: cow};
+  w.tick++;   // a new tick: the wolf is in the bins of who is near (agents/spatial.js)
   stepHerds(w); brain(w, bull); brain(w, shy);
   if (!(bull.task?.id === 'maul' && bull.task.target === wolf)) return `бык занят «${bull.task?.id}»`;
   return ['drawOff', 'alert', 'graze', 'maul'].includes(shy.task?.id) && !(shy.task?.id === 'maul') || `робкая лосиха занята «${shy.task?.id}»`;

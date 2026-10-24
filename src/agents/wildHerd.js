@@ -68,7 +68,7 @@ export function stragglerOf(w, a) {
 
 // pick a pasture around (x, y) for a herd: of a few candidate patches the lushest not hard against the edge
 function pasture(w, lead, sp, far) {
-  const ok = grazeCodes(sp.grazes?.terrain || sp.mule?.terrain || ['grass']), reach = far ? 30 : 8;
+  const ok = grazeCodes(sp.grazes?.terrain || ['grass']), reach = far ? 30 : 8;
   let best = null, bv = -Infinity;
   for (let k = 0; k < 12; k++) {
     const x = lead.x + (w.rngs.wild() * 2 - 1) * reach, y = lead.y + (w.rngs.wild() * 2 - 1) * reach;

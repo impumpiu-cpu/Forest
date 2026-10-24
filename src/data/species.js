@@ -97,12 +97,13 @@ SPECIES.registerAll([
 
   // Boar: fat and dangerous. Like the mule it does not run: it kicks back with its tusks and charges
   // whoever shot it. Hunters go for it only when there is no gentler game about.
-  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], brain: 'mule', big: true, game: true,
+  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], brain: 'tabled', behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025, big: true, game: true,
     habitat: {forest: 'common', shrubland: 'usual', swamp: 'rare', meadow: 'rare', taiga: 'rare', jungle: 'rare'},
     heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
     yields: {meat: 6, hide: 2, bone: 1}, trophies: [{res: 'hide', n: 1, chance: 0.2}],
     killMessage: name => `Кабан задрал поселенца: <b>${name}</b>.`,
-    mule: {kickRange: 1.0, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3, leaveChance: 0.0003}},
+    grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0003,
+    mule: {kickRange: 1.0, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3}},
 
   // Rats: they come for the stock when there is a lot of food and nothing to keep them out of it.
   // They nibble what lies in the open (pots and a granary protect it) and run from people;
@@ -116,7 +117,7 @@ SPECIES.registerAll([
   // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves
   // dare only a badly wounded one. Wild mules wander in now and then; traders bring pack mules.
   // big: hunters and wolves fight it rather than finish it with one bite or arrow.
-  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], brain: 'mule', big: true, legend: 'мул',
+  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], brain: 'tabled', behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025, big: true, legend: 'мул',
     habitat: {foothills: 'common', meadow: 'usual', shrubland: 'rare', highlands: 'rare'},
     heatHarm: 62, look: {shape: 'mule', size: 0.85, color: '#7a5232'},
     yields: {meat: 9, hide: 3, bone: 4},
@@ -129,8 +130,9 @@ SPECIES.registerAll([
       grudge: 360,               // how long it keeps after whoever hurt it
       giveUp: 22,                // …unless they get this far away
       fleeBelow: 0.3,            // badly hurt: it limps off instead
-      leaveChance: 0.0002,       // per tick, a wild mule wanders off the map
     },
+    grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true},   // what it grazes on; keeps off the settlement (agents/behaviours/graze.js)
+    leaveChance: 0.0002,       // per tick, a wild mule wanders off the map
     // tamed it hauls logs and stone and pulls the plough (see `tame` on the goat for the fields)
     tame: {chance: 0.22, tier: 3, space: 2, bait: {hay: 2}, eats: 1.2, kicks: true, stack: 2, max: 2,
       effects: {jobSpeed: {chop: 1.15, mine: 1.15, dig: 1.15, farm: 1.25}},

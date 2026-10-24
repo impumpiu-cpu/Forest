@@ -7,7 +7,6 @@
  "agents/brains/colonist.js": 39,
  "agents/brains/fugitive.js": 1,
  "agents/brains/livestock.js": 19,
- "agents/brains/mule.js": 24,
  "agents/brains/raider.js": 5,
  "agents/brains/spirit.js": 18,
  "agents/brains/vermin.js": 17,

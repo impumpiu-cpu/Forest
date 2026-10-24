@@ -24,7 +24,7 @@ import {TASKS} from '../tasks.js';
 import {BANDS, lanesOf} from '../../data/behaviours.js';
 import {ACTS} from '../behaviours/index.js';
 import {stepBody, heatHarm} from '../body.js';
-import {kill} from '../agent.js';
+import {kill, maxHp} from '../agent.js';
 import {syncTask, skipped} from '../lifecycle.js';
 
 const key = t => (t ? (t.mode ? `${t.id}:${t.mode}` : t.id) : '');
@@ -70,10 +70,13 @@ export const tabledBrain = {
   id: 'tabled',
   step(w, a) {
     const sp = SPECIES.get(a.species);
-    // the body: a creature with needs has the full one (hunger, cold, healing); one without only burns
+    // the body: a creature with needs has the full one (hunger, cold, healing); one without only burns, and mends if its row says so (`mends`)
     let T;
     if (sp.needs.length) T = stepBody(w, a);
-    else { T = tempAt(w, cellOf(w, a)); if (heatHarm(a, sp, T, 'beast') && a.hp <= 0) kill(w, a, 'огня'); }
+    else {
+      T = tempAt(w, cellOf(w, a)); if (heatHarm(a, sp, T, 'beast') && a.hp <= 0) kill(w, a, 'огня');
+      if (sp.mends && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + sp.mends * maxHp(a));   // wounds close slowly (a mule, a bear)
+    }
     if (a.dead) return;
     const ctx = {sp, T, night: nightness(w)};
     // the choice: every `heart` ticks in full, the alarms every tick

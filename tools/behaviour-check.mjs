@@ -14,6 +14,7 @@ import {agentInZone} from '../src/settlement/zone.js';
 import {BEHAVIOURS} from '../src/data/behaviours.js';
 import {ACTS} from '../src/agents/behaviours/index.js';
 import {SPECIES} from '../src/data/species.js';
+import {season} from '../src/data/seasons.js';
 
 // a flat meadow with the camp in the middle, no colonists, nothing arriving from outside; `hour` sets the clock
 const put = (w, sp, fac, x, y) => createAgent(w, sp, fac, x, y);
@@ -125,6 +126,40 @@ scene_('B07', 'тяжело раненый волк уходит с карты',
   const t = run(w, 5, () => wolf.task?.id === 'leave');
   if (!t) return `ранен, а не уходит: «${wolf.task?.id}»`;
   return run(w, 2000, () => !alive(wolf)) || 'за 2000 тиков не дошёл до края';
+});
+
+scene_('B09', 'мул не бежит: лягает того, кто на него напал; стрелявшего издали — догоняет с разбега', () => {
+  const w = scene();
+  const mule = put(w, 'mule', 'wild', 40.5, 30.5), man = still(put(w, 'human', 'colony', 41.3, 30.5));
+  man.task = {id: 'fight', target: mule};   // stands and strikes (the caravan brain moves nobody)
+  const hp = man.hp;
+  const t = run(w, 30, () => mule.task?.id === 'maul' && mule.task.mode === 'kick' && man.hp < hp);
+  if (!t) return `за 30 тиков не лягнул: «${mule.task?.id}», здоровье ${man.hp.toFixed(2)} из ${hp.toFixed(2)}`;
+  // a shot from afar: the archer is 5 cells off, the mule charges
+  man.task = {id: 'camped'}; man.x = 46.5; mule.hurtBy = {id: man.id, tick: w.tick, far: true};
+  const c = run(w, 40, () => mule.task?.id === 'maul' && mule.task.charging);
+  if (!c) return `не несётся на стрелявшего: «${mule.task?.id}»${mule.task?.mode ? ':' + mule.task.mode : ''}`;
+  return w.logLines.some(l => /несётся на/.test(l.html)) || 'в журнале нет строки о разбеге';
+});
+
+scene_('B10', 'лоси: смелый бык идёт на волка, напавшего на лосиху; робкая отходит или настороже', () => {
+  const w = scene();
+  const cow = put(w, 'elk', 'wild', 40.5, 30.5), bull = put(w, 'elk', 'wild', 43.5, 30.5), shy = put(w, 'elk', 'wild', 41.5, 32.5);
+  cow.nerve = 1; bull.nerve = 1.35; shy.nerve = 0.65;
+  run(w, 3);
+  if (herdOf(w, bull) !== herdOf(w, cow)) return 'лоси не в одном стаде';
+  const wolf = still(put(w, 'wolf', 'predators', 39.5, 30.5)); wolf.pack = wolf.id; wolf.task = {id: 'maul', target: cow};
+  const t = run(w, 10, () => bull.task?.id === 'maul' && bull.task.target === wolf);
+  if (!t) return `бык занят «${bull.task?.id}»`;
+  return ['drawOff', 'alert'].includes(shy.task?.id) || `робкая лосиха занята «${shy.task?.id}»`;
+});
+
+scene_('B11', 'медведь зимой уходит в берлогу', () => {
+  const w = scene();
+  while (season(w).id !== 'winter') w.tick += DAY;
+  w.nav.buildAll();
+  const bear = put(w, 'bear', 'wild', 30.5, 30.5);
+  return run(w, 5, () => bear.task?.id === 'leave') || `зима, а медведь «${bear.task?.id}»`;
 });
 
 scene_('B08', 'каталог: у каждого поведения есть код, у каждого вида с умом tabled — список, и он читает то, что есть у вида', () => {
