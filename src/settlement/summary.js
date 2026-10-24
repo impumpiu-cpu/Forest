@@ -101,6 +101,7 @@ export function summarize(w) {
   if ((w.graves || []).length) facts.push(`На погосте ${w.graves.length} ${plural(w.graves.length, 'могила', 'могилы', 'могил')}${w.graves.some(gr => gr.rite) ? ', у святилища хоронили с обрядом' : ''}.`);
   if (c.feasts || c.cups) facts.push(`Браги выпили ${c.cups || 0} ${plural(c.cups || 0, 'чарку', 'чарки', 'чарок')}${c.feasts ? `, пировали ${c.feasts} ${plural(c.feasts, 'раз', 'раза', 'раз')}` : ''}.`);
   if (c.left) facts.push(`Не выдержали и ушли из поселения: ${c.left}.`);
+  if (c.taken) facts.push(`Уведены налётчиками в плен: ${c.taken}.`);
   if (w.stats.burntCells) facts.push(`Огонь выжег ${w.stats.burntCells} ${plural(w.stats.burntCells, 'клетку', 'клетки', 'клеток')} леса и луга.`);
   const likes = {};
   for (const r of people) if (r.likes) likes[r.likes] = (likes[r.likes] || 0) + 1;

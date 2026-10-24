@@ -4,7 +4,7 @@
 import {Registry} from '../../core/registry.js';
 import {colonistRole} from './colonist.js';
 import {tabledBrain, tabledStep} from './tabled.js';
-import {WAYS} from '../../data/behaviour.js';
+import {WAYS, BEAT} from '../../data/behaviour.js';
 import {raidBody, roadBody} from '../people.js';
 
 export const BRAINS = new Registry('brain');
@@ -13,7 +13,7 @@ export const BRAINS = new Registry('brain');
 // by default), `heart` — how often it thinks
 const role = (id, behaviours, more = {}) => { const b = {id, behaviours, ...more}; b.step = (w, a) => tabledStep(w, a, b); return b; };
 BRAINS.registerAll([tabledBrain,
-  role('livestock', WAYS.livestock), role('leaver', WAYS.leaver), role('led', WAYS.led),
+  role('livestock', WAYS.livestock, {heart: BEAT.livestock}), role('leaver', WAYS.leaver), role('led', WAYS.led),
   role('raider', WAYS.raider, {body: raidBody}), role('fugitive', WAYS.fugitive, {body: roadBody}),
   role('trader', WAYS.trader, {body: roadBody}), role('guard', WAYS.guard, {body: roadBody}),
   role('colonist', WAYS.colonist, colonistRole), role('captive', WAYS.captive, colonistRole), role('former', WAYS.former, colonistRole)]);

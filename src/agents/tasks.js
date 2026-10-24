@@ -255,6 +255,7 @@ TASKS.registerAll([
     recover(a);
     if (follow(w, a, 'edge', t.pace ?? 1) !== 'arrived') return;
     a.gone = true; noteHome(w, a);
+    if (a.leads != null) { const l = liveById(w, a.leads); if (l?.ledBy === a.id) l.ledGone = true; }   // the one it leads (agents/behaviours/led.js) is gone with it, whatever the order of their steps
     if (a.loot) { const b = w.behave?.board; if (b) b.lootLost = (b.lootLost || 0) + lootTotal(a.loot); a.loot = null; }   // gone for good
   }},
   // a torch-bearer of a band that came to burn (agents/squad.js): to the camp, then to the building, and

@@ -14,6 +14,7 @@ import {jobSpeedOf} from '../settlement/mods.js';
 import {workAt, stationHasWork, stationPriority, freeBench} from '../settlement/crafting.js';
 import {carcassById, smellCarcass, butcher, share, CARCASS} from './carcass.js';
 import {boldness} from './hunting.js';
+import {wake} from './attention.js';
 import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
@@ -292,7 +293,7 @@ export const RUNNERS = {
             if (o.dead || o.task?.id !== 'feed' || o.task.c !== c.id || Math.hypot(o.x - a.x, o.y - a.y) > CARCASS.scare) continue;
             const P = SPECIES.get(o.species).predator;
             if (P && boldness(o, P) > 0.6) { o.task = {id: 'maul', target: a}; noteAttacker(w, o); }   // a starving beast will not give up its meal
-            else { o.task = {id: 'bolt'}; o.calmUntil = w.tick + 300; }
+            else { o.task = {id: 'bolt', mode: 'from', from: [a], sprint: P?.sprint ?? 1, drain: P?.stamina ?? 0}; o.calmUntil = w.tick + 300; wake(o, 'охотник у туши', 'охотник у туши'); }   // gives way: runs from the hunter (agents/behaviours/bolt.js)
             task.scared = true;
           }
         }
@@ -345,7 +346,7 @@ export const RUNNERS = {
       const near = ofSpeciesList(w, job.prey).some(o => !o.dead && Math.hypot(o.x - a.x, o.y - a.y) < 20);
       task.oneMore = a.carry.n < 8 && near; task.prey = null; task.age = 0;
     } else if (res === 'miss' || res === 'hit') {
-      prey.spooked = 40;   // the shot whistles past or wounds: the hare bolts
+      prey.spooked = 40; wake(prey, 'выстрел', 'выстрел');   // the shot whistles past or wounds: the hare bolts
       if (res === 'miss') a.mem.chase += 0.05;
     }
   },

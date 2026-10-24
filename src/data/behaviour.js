@@ -34,7 +34,7 @@ export const WAYS = {
   // ── people: a role is a list (agents/brains/index.js; the people's bodies: agents/people.js)
   // a raider: fallen senseless it lies; fire drives it; lost, burnt by the sun or badly hurt it leaves; else its band's
   // plan, the nearest foe, the stores (the mindless dead: the nearest living soul)
-  raider: ['downed', 'fleeFire', 'retreat', 'raid'],
+  raider: ['downed', 'fleeFire', 'retreat', 'capture', 'raid'],
   // a captive on the run: for the map's edge as fast as its bonds let it
   fugitive: ['downed', 'escape'],
   // a trader: with the caravan's phase — walks in, stands at the stall, sleeps by the fire, leaves; never fights
@@ -146,7 +146,10 @@ export const RAID = {
   rotsFrom: 12,        // the rot loses its hold above this temperature (°C)
   regen: 0.0003, regenCool: 30,   // orcs and trolls close their wounds on a raid, not by a fire
   fire: {heat: 50, near: 1.5},    // the living run from heat and from fire this close
-  want: {fallen: 3, fire: 2, leave: 1.5, plan: 1, fight: 0.9, go: 0.5},
+  // taking a prisoner (agents/behaviours/capture.js): a living raider binds a fallen foe this close when no foe stands
+  // within `calm`; the knots take `ticks` on the spot; a bound one is led off like a beast (led.js) at PEN.ledPace
+  capture: {near: 8, calm: 6, ticks: 40, hp: 0.4},
+  want: {fallen: 3, fire: 2, leave: 1.5, plan: 1, capture: 0.95, fight: 0.9, go: 0.5},
 };
 // people of a trade caravan (agents/behaviours/peddle.js, escort.js, defendCaravan.js; settlement/trade.js)
 export const CARAVAN = {
@@ -187,6 +190,11 @@ export const NECHIST = {
   spell: {astray: 1.2, lure: 1.5},   // how hard a spell holds a colonist against its other wants (agents/brains/colonist.js)
   want: {fire: 2, hidden: 1.5, strike: 1.4, dive: 1.6, drowning: 1, song: 0.3, lurk: 0.2},
 };
+
+// how often a beast thinks in full (ticks; the species' `heart`): the alarms — fire, a foe, the herd's cry, a blow — are
+// looked at every tick regardless (agents/brains/tabled.js), and a task that ends, a herd's alarm or a shot wake it
+// at once (agents/attention.js wake); in between it goes on with what it does. Lower = sharper and dearer.
+export const BEAT = {grazer: 8, stander: 8, predator: 4, vermin: 6, spirit: 10, livestock: 10};
 
 // a predator beyond its species' `predator` block (agents/hunting.js, agents/behaviours/: scare, leaveHurt, feed,
 // chase, maul, catchBreath, wanderOff, roam, defendLair)

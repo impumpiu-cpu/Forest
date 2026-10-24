@@ -20,6 +20,7 @@ import {sameLand} from './movement.js';
 import {nearAgents} from './spatial.js';
 import {liveById} from './lookup.js';
 import {perTick} from '../core/util.js';
+import {wake} from './attention.js';
 import {hpShare} from './agent.js';
 import {prune, middleOf, nextLookouts} from './group.js';
 import {WILD_HERD as HERD} from '../data/behaviour.js';
@@ -115,7 +116,9 @@ export function stepHerds(w) {
     for (const L of nextLookouts(H, ms, HERD.lookouts)) {
       const seen = threatsNear(w, L, r * (L.nerve ? 1.2 / L.nerve : 1), from);
       if (!seen.length) continue;
-      const al = H.alarm && w.tick - H.alarm.t <= HERD.alarmFor ? H.alarm : (H.alarm = {start: w.tick, t: w.tick, ids: []});
+      const fresh = !(H.alarm && w.tick - H.alarm.t <= HERD.alarmFor);
+      const al = fresh ? (H.alarm = {start: w.tick, t: w.tick, ids: []}) : H.alarm;
+      if (fresh) for (const m of ms) wake(m, 'тревога стада', 'тревога стада');   // the herd's cry: everyone thinks now (agents/brains/tabled.js)
       al.t = w.tick;
       for (const o of seen) if (!al.ids.includes(o.id)) al.ids.push(o.id);
       if (al.ids.length > 8) al.ids = al.ids.slice(-8);

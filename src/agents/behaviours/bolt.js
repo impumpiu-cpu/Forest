@@ -7,6 +7,7 @@ import {SPECIES} from '../../data/species.js';
 import {escapeHeat, bolt as run, sprintMul, shunsHeat} from '../movement.js';
 import {herdOf, herdAlarm, bolts, threatsNear} from '../wildHerd.js';
 import {hpShare} from '../agent.js';
+import {endTask} from '../lifecycle.js';
 import {GRAZE, WANT} from '../../data/behaviour.js';
 
 export const bolt = {
@@ -25,6 +26,7 @@ export const bolt = {
   enter(w, a, t) { if (t.mode !== 'fire') a.boltAt = w.tick; },
   step(w, a, t) {
     const F = SPECIES.get(a.species).flee;
+    if (!F && t.mode !== 'fire' && t.mode !== 'from') { endTask(w, a); return; }   // a bolt with nothing to run from (a beast that fears nothing in particular)
     if (t.mode === 'fire') { escapeHeat(w, a, t.pace ?? F.sprint); return; }
     // from what another behaviour named (scare): a crowd of people
     if (t.mode === 'from') { run(w, a, t.from.filter(o => !o.dead), sprintMul(a, t.sprint, t.drain)); return; }

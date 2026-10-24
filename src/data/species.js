@@ -16,7 +16,7 @@ import {MONSTERS} from './monsters.js';
 import {BESTIARY} from './bestiary.js';
 import {bodyFor, CREATURES} from './balance/creatures.js';
 import {petNames} from './names.js';
-import {WAYS} from './behaviour.js';
+import {WAYS, BEAT} from './behaviour.js';
 
 export const SPECIES = new Registry('species');
 
@@ -41,7 +41,7 @@ SPECIES.registerAll([
   // Hares graze, rest at night, bolt from people and fire. They never breed here:
   // their numbers change only through migration (see migrations.js).
   // game: shows up on the prey flow field that hunters and predators follow
-  {id: 'hare', snowfoot: true, kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', needs: [], behaviours: [...WAYS.grazer], game: true,
+  {id: 'hare', snowfoot: true, kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true,
     habitat: {meadow: 'common', steppe: 'common', forest: 'usual', taiga: 'usual', shrubland: 'usual', savanna: 'rare', tundra: 'rare', foothills: 'rare', barrows: 'usual'},
     heatHarm: 60, look: {shape: 'hare', size: 0.42, color: '#cdbb9a'},
     yields: {meat: 2, hide: 1, bone: 1},
@@ -52,7 +52,7 @@ SPECIES.registerAll([
   // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
   // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
   // or when the hares run out. Like everyone else they only arrive and depart by migration.
-  {id: 'wolf', kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator],
+  {id: 'wolf', kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
     habitat: {taiga: 'common', tundra: 'usual', steppe: 'usual', forest: 'usual', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
@@ -80,7 +80,7 @@ SPECIES.registerAll([
     }},
 
   // Deer: the main game of the woods — skittish, fast, a lot of meat and a good hide.
-  {id: 'deer', kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', needs: [], behaviours: [...WAYS.herdGrazer], game: true,
+  {id: 'deer', kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, game: true,
     habitat: {taiga: 'common', tundra: 'usual', forest: 'usual', meadow: 'usual', steppe: 'rare'},
     heatHarm: 60, look: {shape: 'deer', size: 0.62, color: '#a8794a'},
     yields: {meat: 5, hide: 2, bone: 2},
@@ -90,7 +90,7 @@ SPECIES.registerAll([
     leaveChance: 0.0003},
 
   // Fox: small and quick, hunted for its fur, which traders pay well for.
-  {id: 'fox', kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', needs: [], behaviours: [...WAYS.grazer], game: true,
+  {id: 'fox', kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true,
     habitat: {taiga: 'common', forest: 'usual', steppe: 'usual', tundra: 'usual', meadow: 'rare', desert: 'rare', barrows: 'rare'},
     heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
     yields: {meat: 1, furs: 1}, trophies: [{res: 'furs', n: 1, chance: 0.2}],
@@ -100,7 +100,7 @@ SPECIES.registerAll([
 
   // Boar: fat and dangerous. Like the mule it does not run: it kicks back with its tusks and charges
   // whoever shot it. Hunters go for it only when there is no gentler game about.
-  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], behaviours: [...WAYS.stander], restAt: 0.75, mends: 0.00025, big: true, game: true,
+  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, game: true,
     habitat: {forest: 'common', shrubland: 'usual', swamp: 'rare', meadow: 'rare', taiga: 'rare', jungle: 'rare'},
     heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
     yields: {meat: 6, hide: 2, bone: 1}, trophies: [{res: 'hide', n: 1, chance: 0.2}],
@@ -111,7 +111,7 @@ SPECIES.registerAll([
   // Rats: they come for the stock when there is a lot of food and nothing to keep them out of it.
   // They nibble what lies in the open (pots and a granary protect it) and run from people;
   // whoever catches one near the stores kills it (agents/behaviours/scurry.js).
-  {id: 'rat', kind: 'beast', label: 'крыса', labelAcc: 'крысу', plural: 'крысы', needs: [], behaviours: [...WAYS.vermin],
+  {id: 'rat', kind: 'beast', label: 'крыса', labelAcc: 'крысу', plural: 'крысы', needs: [], behaviours: [...WAYS.vermin], heart: BEAT.vermin,
     // no habitat: lives wherever there is food lying about
     heatHarm: 55, look: {shape: 'rat', size: 0.25, color: '#7c7468'},
     vermin: {eats: 0.0016, flee: 1.6, caught: 0.04}},
@@ -120,7 +120,7 @@ SPECIES.registerAll([
   // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves
   // dare only a badly wounded one. Wild mules wander in now and then; traders bring pack mules.
   // big: hunters and wolves fight it rather than finish it with one bite or arrow.
-  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], behaviours: [...WAYS.mule], restAt: 0.75, mends: 0.00025, big: true, legend: 'мул',
+  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], behaviours: [...WAYS.mule], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, legend: 'мул',
     habitat: {foothills: 'common', meadow: 'usual', shrubland: 'rare', highlands: 'rare'},
     heatHarm: 62, look: {shape: 'mule', size: 0.85, color: '#7a5232'},
     yields: {meat: 9, hide: 3, bone: 4},
@@ -144,7 +144,7 @@ SPECIES.registerAll([
 
   // Goat: a wild goat of the rocky meadows. Skittish like a deer, but a patient herder with an
   // armful of hay can tame it; in a pen it gives milk and wool and has kids in spring and summer.
-  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], game: true, legend: 'коза',
+  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, game: true, legend: 'коза',
     habitat: {foothills: 'common', highlands: 'common', shrubland: 'usual', meadow: 'rare'},
     heatHarm: 60, look: {shape: 'goat', size: 0.46, color: '#d6cdb6'},
     yields: {meat: 3, hide: 1, bone: 1},

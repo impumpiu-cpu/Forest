@@ -116,6 +116,7 @@ THOUGHTS.registerAll([
   {id: 'hangover', mood: -0.1, lasts: DAY, once: DAY, text: a => `Наутро голова тяжёлая: перебрал${g(a, '', 'а')} браги.`},
   {id: 'sulking', mood: -0.05, lasts: 6 * HOUR, once: DAY, text: () => 'Всё валится из рук. Ничего не хочется.'},
   {id: 'someoneLeft', mood: -0.15, lasts: DAY, text: (a, c) => `${c.name} ${c.f ? 'ушла' : 'ушёл'} из поселения. Неужто так плохо у нас?`},
+  {id: 'someoneTaken', mood: -0.3, lasts: 2 * DAY, text: (a, c) => `${c.name} ${c.f ? 'уведена' : 'уведён'} налётчиками. Не уберегли.`},
 
   // council
   {id: 'councilWon', mood: 0.12, lasts: DAY, text: (a, c) => `На совете ${g(a, 'говорил', 'говорила')} за ${c.choice} (${c.why}). Совет согласился.`},

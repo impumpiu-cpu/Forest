@@ -286,6 +286,33 @@ scene_('B18', 'беглый пленный бежит к краю карты и 
   return t || `за 2000 тиков не ушёл: «${p.task?.id}» (${p.x.toFixed(1)}, ${p.y.toFixed(1)})`;
 });
 
+scene_('B19', 'налётчик вяжет упавшего поселенца и уводит его в плен; налётчик пал — пленный свободен', () => {
+  const w = scene();
+  // a colonist lying senseless far from the camp, a lone raider a few cells off
+  const c = put(w, 'human', 'colony', 10.5, 60.5); c.name = 'Упавший';
+  c.downed = {since: w.tick, until: w.tick + 1500, cause: 'ран', by: null, trauma: null}; c.hp = 1; c.task = {id: 'downed'};
+  const r = put(w, 'human', 'raiders', 16.5, 60.5); r.band = 'bandits'; r.name = 'Налётчик';
+  if (r.brain !== 'raider') return `налётчик не получил роль raider: ${r.brain}`;
+  const went = run(w, 60, () => r.task?.id === 'capture');
+  if (!went) return `не пошёл вязать: «${r.task?.id}» (${r.why?.why})`;
+  const bound = run(w, 300, () => c.brain === 'led');
+  if (!bound) return `не связал за 300 тиков: «${r.task?.id}» (${r.task?.work}), поселенец ${c.downed ? 'лежит' : 'на ногах'}`;
+  if (c.downed || !r.looted || c.ledBy !== r.id) return `связан не так: downed ${!!c.downed}, looted ${r.looted}, ledBy ${c.ledBy}`;
+  const away = run(w, 200, () => r.task?.id === 'leave' && dist(c, r) < 3 && Math.hypot(c.x - 10.5, c.y - 60.5) > 2);
+  if (!away) return `не уводит: «${r.task?.id}», пленный в ${dist(c, r).toFixed(1)} от него`;
+  // the second raider: the first falls on the way — the captive is a colonist again, with the wound to show for it
+  r.dead = true;
+  run(w, 3);
+  if (c.brain !== 'colonist' || c.ledBy != null || c.gone) return `после смерти вора: мозг ${c.brain}, ledBy ${c.ledBy}, gone ${!!c.gone}`;
+  if (!c.wounds?.some(x => x.id === 'grave')) return 'после плена нет тяжёлой раны';
+  // and one led over the edge is taken: the chronicle knows
+  const r2 = put(w, 'human', 'raiders', c.x + 1, c.y); r2.band = 'bandits'; r2.name = 'Второй';
+  c.brain = 'led'; c.ledBy = r2.id; c.ledFrom = 'colonist'; c.task = null; r2.looted = true; r2.leads = c.id;
+  const gone = run(w, 2500, () => c.gone);
+  if (!gone) return `за краем не исчез: «${r2.task?.id}» (${r2.x.toFixed(1)}, ${r2.y.toFixed(1)}), пленный в ${dist(c, r2).toFixed(1)}`;
+  return (w.chronicle.taken === 1) || `летопись: taken ${w.chronicle.taken}`;
+});
+
 scene_('B08', 'каталог: у каждого поведения есть код, у каждого вида с умом tabled — список, и он читает то, что есть у вида', () => {
   for (const d of BEHAVIOURS.all()) if (!ACTS[d.id]?.want) return `нет кода у «${d.id}»`;
   for (const sp of SPECIES.all()) {

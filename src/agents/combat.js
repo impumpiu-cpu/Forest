@@ -46,7 +46,7 @@ export function canSee(w, a, t) {
 export function nearestHostile(w, a, r) {
   let best = null, bd = r * r;
   for (const o of nearAgents(w, a.x, a.y, r)) {
-    if (o === a || o.dead || o.downed || !(isHostile(a, o) || aggressor(a, o))) continue;   // the fallen are out of the fight
+    if (o === a || o.dead || o.downed || o.ledBy != null || !(isHostile(a, o) || aggressor(a, o))) continue;   // the fallen and the bound are out of the fight
     const d = (o.x - a.x) ** 2 + (o.y - a.y) ** 2;
     if (d >= bd || !canSee(w, a, o)) continue;
     bd = d; best = o;

@@ -132,8 +132,8 @@ export function enterEscort(w, a, task) {
 // ── aid
 const helper = (w, id) => colonists(w).find(o => o.task?.id === 'aid' && o.task.who === id);
 // the fallen (agents/wounds.js) need help wherever they lie, and before anyone else
-const needsAid = (w, b) => !!b.downed || (hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === 'treat' && b.task.lying) &&
-  !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery));
+const needsAid = (w, b) => b.ledBy == null && (!!b.downed || (hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === 'treat' && b.task.lying) &&
+  !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery)));   // (one led away in bonds is rescued by the sword, not the bandage)
 const aidScore = b => (b.downed ? TOGETHER.aidFallen : 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2);
 const aidWhy = b => (b.downed ? `${b.name} ${g(b, 'упал', 'упала')} без сознания и истекает кровью` : `${b.name} ${g(b, 'ранен', 'ранена')} в лесу: здоровье ${Math.round(hpShare(b) * 100)}%`);
 

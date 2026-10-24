@@ -1,6 +1,7 @@
 {
  "agents/agent.js": 6,
  "agents/attention.js": 8,
+ "agents/behaviours/capture.js": 2,
  "agents/behaviours/hide.js": 6,
  "agents/behaviours/lurk.js": 2,
  "agents/behaviours/roam.js": 3,

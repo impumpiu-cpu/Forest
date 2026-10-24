@@ -434,7 +434,7 @@ check('T28', 'прерванное кормление: голодный звер
   const w = scene(); fixedRng(w);
   const [a] = wolves(w, 1, 30.5, 30.5);
   const c = dropCarcass(w, {species: 'deer', x: 36.5, y: 30.5}, 1.6, a);
-  a.task = {id: 'roam'}; a.needs.food = 0.3;
+  a.task = {id: 'roam'}; a.needs.food = 0.3; a.think = 0;   // a beast thinks every few ticks (data/behaviour.js BEAT): now
   brain(w, a);
   return (a.task?.id === 'feed' && a.task.c === c.id) || `задача ${a.task?.id}`;
 });

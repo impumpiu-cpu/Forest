@@ -88,15 +88,22 @@ export function stepDowned(w, a) {
   kill(w, a, a.downed.cause, by || undefined, {quiet: true});
 }
 
-// someone dressed the wound in time
-export function stabilize(w, helper, a) {
-  const d = a.downed; if (!d) return;
+// the wound dressed: the fall is over, a grave wound (and the trauma, if any) in its place, the bleeding stopped,
+// some health back (more for a skilled healer; a raider's rough knots: none). Returns what it lay with
+export function dress(w, a, medicine = 0) {
+  const d = a.downed; if (!d) return null;
   a.downed = null; if (a.bleeding) a.bleeding = null;   // the dressing stops the bleeding too
   if (a.task?.id === 'downed') a.task.closed = 'done';   // the fall is over, not broken off
   a.wounds = [...(a.wounds || []), {id: 'grave', until: w.tick + GRAVE_TICKS('grave')}];
   if (d.trauma) a.wounds.push({id: d.trauma});
   refreshBody(a);
-  a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + (helper?.skill?.medicine || 0)));
+  a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + medicine));
+  return d;
+}
+
+// someone dressed the wound in time
+export function stabilize(w, helper, a) {
+  const d = dress(w, a, helper?.skill?.medicine || 0); if (!d) return;
   // the dressed wound may fester (data/afflictions.js fever `catch`, less for a skilled healer; 0 — never)
   const FV = AFFLICTIONS.get('fever');
   if (FV.catch > 0 && w.rngs.colony() < FV.catch * (1 - (helper?.skill?.medicine || 0))) catchIll(w, a, 'fever');
