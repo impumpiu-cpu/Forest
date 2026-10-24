@@ -4,19 +4,19 @@
 // order, a shot that left the bow), never from choosing a job, waiting for a reload or looking at a card.
 import {SKILLS, TIERS, LEARN, FROM_JOB, isActive, activeSkills, recipeSkill} from '../data/skills.js';
 import {NORM, STATS} from '../data/special.js';
+import {curve} from '../data/curves.js';
 
 const STAT_IDS = STATS.ids();
 
-const clamp01 = v => Math.max(0, Math.min(1, v));
 
 // the creature's letter for a skill (no SPECIAL: the human norm)
 export const statFor = (a, skillId) => a.special?.[SKILLS.get(skillId).stat] ?? NORM;
 
-// learning speed from the skill's own letter: 1 at 5, 1.4 at 10, 0.68 at 1, open upwards
-export const letterFactor = v => Math.max(LEARN.minFactor, LEARN.base + LEARN.perPoint * v);
+// learning speed from the skill's own letter: 1 at 5, 1.4 at 10, 0.68 at 1, open upwards (the curve 'skillPace')
+export const letterFactor = v => curve('skillPace', v);
 
-// the soft ceiling on the 0–1 scale: 10 × letter on the card's 0–100 scale
-export const softCap = (a, skillId) => clamp01(statFor(a, skillId) / 10);
+// the soft ceiling on the 0–1 scale: 10 × letter on the card's 0–100 scale (the curve 'skillCap')
+export const softCap = (a, skillId) => curve('skillCap', statFor(a, skillId));
 
 // the highest tier the letter opens (1–4)
 export const tierFor = stat => TIERS.filter(t => stat >= t.min).at(-1).id;

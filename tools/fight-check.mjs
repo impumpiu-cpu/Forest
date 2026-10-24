@@ -1,0 +1,148 @@
+// The fight of docs/NRI.md, этап 3: kinds of harm and the table «Урон по видам», weapon qualities, places where blows
+// land. Each rule is checked where the game reads it: a blow through armour, a critical blow, a body's answer to
+// fire, frost, venom and silver, a long or parrying or brittle weapon, a trauma by the place of the last blow, the
+// strength rating. Part of `npm test`; `node tools/fight-check.mjs`.
+import {newGame} from '../src/sim.js';
+import {DEFAULT_CFG} from '../src/data/presets.js';
+import {T} from '../src/data/terrain.js';
+import {SPECIES} from '../src/data/species.js';
+import {createAgent, maxHp} from '../src/agents/agent.js';
+import {damage, reachOf, blockAgainst} from '../src/agents/combat.js';
+import {recalcGear, wear} from '../src/agents/equipment.js';
+import {heatHarm, stepBody} from '../src/agents/body.js';
+import {traumasAt} from '../src/agents/wounds.js';
+import {strengthOf} from '../src/agents/strength.js';
+import {DAMAGE_TYPES, DELIVERY, WEAPON_QUALITIES, CAPS} from '../src/data/balance/combat.js';
+import {BODY_PLANS, HIT_LOCATIONS, planOf, placesOf, drawPlace} from '../src/data/anatomy.js';
+import {WOUNDS} from '../src/data/wounds.js';
+import {ITEMS} from '../src/data/items.js';
+import {mulberry} from '../src/core/rng.js';
+import * as E from '../src/data/schema/edits.js';
+
+const bad = [];
+const expect = (ok, what) => { if (!ok) bad.push(what); };
+const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps * Math.max(1, Math.abs(b));
+
+// a flat empty map, every random stream answering what the test says
+function scene() {
+  const w = newGame({...DEFAULT_CFG, seed: 'fight', size: 'small', colonists: 0, wildlife: 'none', predators: 'none', raids: 'off'});
+  w.agents = [];
+  for (let i = 0; i < w.w * w.h; i++) { w.grid.terr[i] = T.GRASS; w.grid.heat[i] = 0; w.grid.fire[i] = 0; }
+  return w;
+}
+const rngs = (w, v, hits = v) => { for (const k of Object.keys(w.rngs)) w.rngs[k] = Object.assign(() => v, {state: 0}); w.rngs.hits = Object.assign(() => hits, {state: 0}); };
+const put = (w, sp, fac) => { const a = createAgent(w, sp, fac, 20.5, 20.5); a.mods.dodge = 0; return a; };
+// the damage of one blow of `raw` by a human at a human in armour 0.5, with this random number and these qualities
+function blow(v, q = null, hits = 0.5) {
+  const w = scene(), by = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony');
+  t.gear = {...recalcGear(t), armor: 0.5, armorVs: null, block: 0, cover: 0};
+  rngs(w, v, hits);
+  t.hp = 100;
+  return damage(w, by, t, 1, {type: 'pierce', q});
+}
+
+// ── the dictionaries and the matrix
+const HARM = new Set([...DAMAGE_TYPES.map(d => d.id), ...Object.keys(DELIVERY)]);
+for (const sp of SPECIES.all()) {
+  for (const k of Object.keys(sp.resist || {})) expect(HARM.has(k), `${sp.id}: «${k}» — нет такого типа урона`);
+  expect(planOf(sp) in BODY_PLANS, `${sp.id}: план тела «${planOf(sp)}» — нет такого`);
+}
+for (const plan of Object.keys(BODY_PLANS)) {
+  const list = placesOf(plan);
+  expect(list.length > 0 && list.every(l => l.weight >= 0) && list.some(l => l.weight > 0), `план ${plan}: нет мест с весом`);
+  for (const l of list) for (const id of l.traumas) expect(WOUNDS.has(id) && WOUNDS.get(id).trauma, `${l.id}: «${id}» — не травма`);
+}
+for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l => l.traumas.includes(t.id)), `травма ${t.id} не выпадает ни в одном месте`);
+
+// ── places land by their weights, from their own stream
+{
+  const r = mulberry(7), n = 60000, seen = {}, list = placesOf('humanoid'), total = list.reduce((s, l) => s + l.weight, 0);
+  for (let k = 0; k < n; k++) { const l = drawPlace(SPECIES.get('human'), r); seen[l.id] = (seen[l.id] || 0) + 1; }
+  for (const l of list) expect(Math.abs(seen[l.id] / n - l.weight / total) < 0.01, `${l.id}: выпадает ${(seen[l.id] / n).toFixed(3)}, а вес ${(l.weight / total).toFixed(3)}`);
+}
+
+// ── qualities in a blow: piercing takes armour off, vicious makes a critical blow worse; the place × the damage
+{
+  const plain = blow(0.99), pierced = blow(0.99, {piercing: 0.5});
+  expect(near(pierced / plain, (1 - 0.5 * 0.5) / (1 - 0.5)), `пробивное 0,5: урон ×${(pierced / plain).toFixed(3)}, а должно ×1,5`);
+  const crit = blow(0), vicious = blow(0, {vicious: 0.5});
+  expect(near(vicious / crit, 2 / 1.5), `жестокое 0,5: крит ×${(vicious / crit).toFixed(3)}, а должно ×1,333`);
+  E.setCell('hitLocations', 'humanoid.head', 'dmg', 2);
+  expect(near(blow(0.99, null, 0) / plain, 2), 'урон × места не дошёл до удара в голову');
+  expect(near(blow(0.99, null, 0.99), plain), 'урон × головы задел удар в ноги');
+  const w = scene(), a = put(w, 'human', 'colony'), s0 = strengthOf(a);
+  E.resetAll();
+  const s1 = strengthOf(a);
+  expect(s0 < s1, `КС не видит, что удар в голову вдвое страшнее: ${s0.toFixed(1)} при ×2, ${s1.toFixed(1)} без`);
+}
+
+// ── a body's answer to fire, frost, venom and silver (the table «Урон по видам»)
+{
+  const w = scene(), a = put(w, 'human', 'colony'), sp = SPECIES.get('human');
+  a.hp = 1; heatHarm(a, sp, sp.heatHarm + 20, 'colonist'); const burnt = 1 - a.hp;
+  E.setCell('damageMatrix', 'human', 'resist.fire', 0);
+  a.hp = 1; heatHarm(a, sp, sp.heatHarm + 20, 'colonist');
+  expect(burnt > 0 && a.hp === 1, `огонь 0 у людей: жар всё равно жжёт (${1 - a.hp})`);
+  E.setCell('damageMatrix', 'human', 'resist.fire', 2);
+  a.hp = 1; heatHarm(a, sp, sp.heatHarm + 20, 'colonist');
+  expect(near(1 - a.hp, 2 * burnt), 'огонь 2 у людей: жар не вдвое сильнее');
+  E.resetAll();
+  // frost: warmth gone, deep cold
+  const frost = () => { const w2 = scene(), b = put(w2, 'human', 'colony'); for (let i = 0; i < w2.w * w2.h; i++) w2.grid.heat[i] = -400; b.needs.warmth = 0; b.hp = 1; stepBody(w2, b); return 1 - b.hp; };
+  const cold1 = frost();
+  E.setCell('damageMatrix', 'human', 'resist.cold', 0);
+  const cold0 = frost();
+  E.resetAll();
+  expect(cold1 > 0 && cold0 < cold1, `холод 0 у людей: мороз жжёт так же (${cold0} против ${cold1})`);
+  // venom: a spider's bite on a body that takes no poison leaves no poison
+  const w3 = scene(), spider = put(w3, 'spider', 'raiders'), v = put(w3, 'human', 'colony');
+  rngs(w3, 0.99); v.gear = {...recalcGear(v), block: 0, cover: 0};
+  damage(w3, spider, v, 0.01); const venom = v.poison?.dmg;
+  E.setCell('damageMatrix', 'human', 'resist.poison', 0);
+  v.poison = null; damage(w3, spider, v, 0.01);
+  E.resetAll();
+  expect(SPECIES.get('spider').venom ? venom > 0 && v.poison?.dmg === 0 : true, `яд 0 у людей: укус паука всё равно травит (${v.poison?.dmg})`);
+}
+
+// ── long, parrying and brittle weapons
+{
+  const w = scene(), a = put(w, 'human', 'colony');
+  a.gear = recalcGear(a); const r0 = reachOf(a);
+  a.gear.melee = {...a.gear.melee, q: {reach: 1}};
+  expect(near(reachOf(a), r0 + 1), 'длинное 1: досягаемость не +1');
+  const g = {block: 0.3, blockVs: null, cover: 0, coverVs: null};
+  expect(near(blockAgainst({...g, parry: 0.2}, 'slash'), 0.5) && blockAgainst({...g, parry: 0.2}, 'slash', false) === 0, 'парирующее 0,2: блок вблизи не +0,2 или ловит стрелы');
+  expect(blockAgainst({...g, block: 0.7, parry: 0.5}, 'slash') === CAPS.block, 'парирующее пробило потолок блока');
+  E.setCell('forms', 'spear', 'qualities', {unreliable: 1, piercing: 0.2});
+  const it = {type: 'ironspear', dur: 100}, d = ITEMS.get('ironspear');
+  expect(d.qualities?.unreliable === 1 && d.qualities?.piercing === 0.2, 'свойства формы не дошли до вещи');
+  a.faction = 'raiders'; wear(w, a, it, 1);
+  expect(it.dur === 98, `ненадёжное 1: износ ${100 - it.dur}, а должен быть 2`);
+  E.resetAll();
+  expect(!ITEMS.get('ironspear').qualities, 'сброс не снял свойства с вещи');
+}
+
+// ── the review: finer copies follow an edit; a material's qualities go to weapons only; parry never lowers a block
+{
+  const {itemDef} = await import('../src/agents/equipment.js');
+  void itemDef('ironspear', 1);   // made before the edit, kept in the cache
+  E.setCell('forms', 'spear', 'qualities', {piercing: 0.3});
+  expect(itemDef('ironspear', 1).qualities?.piercing === 0.3, 'копия +1 не видит свойства после правки');
+  E.resetAll();
+  E.setCell('materials', 'iron', 'qualities', {unreliable: 0.5});
+  const armour = ITEMS.all().find(d => d.material === 'iron' && !d.melee && !d.ranged), weapon = ITEMS.get('ironspear');
+  expect(weapon.qualities?.unreliable === 0.5 && (!armour || !armour.qualities), 'свойства материала легли не только на оружие');
+  E.resetAll();
+  const g = {block: 0.9, blockVs: null, cover: 0, coverVs: null};
+  expect(blockAgainst({...g, parry: 0.1}, 'slash') >= blockAgainst(g, 'slash'), 'парирующее снизило блок выше потолка');
+}
+
+// ── a trauma by the place of the last blow
+{
+  const ids = place => traumasAt({hitAt: place}).map(x => x.id).sort().join(',');
+  expect(ids('humanoid.legs') === 'limp' && ids('humanoid.head') === 'dread,eye' && ids('humanoid.arms') === 'maimedHand', `травмы по месту: ноги ${ids('humanoid.legs')}, голова ${ids('humanoid.head')}, руки ${ids('humanoid.arms')}`);
+  expect(traumasAt({}).length === WOUNDS.filter(x => x.trauma).length, 'без места травма берётся не из всех');
+}
+
+if (bad.length) { console.log('Бой (этап 3):\n  ' + bad.join('\n  ')); process.exit(1); }
+console.log(`ok   бой: типов урона ${DAMAGE_TYPES.length} + вблизи/издали, свойств оружия ${WEAPON_QUALITIES.length} (работают ${WEAPON_QUALITIES.filter(q => q.live).length}), мест попадания ${HIT_LOCATIONS.all().length} на ${Object.keys(BODY_PLANS).length} плана тела — каждое правило доходит до боя, жара, мороза, яда, травм и КС`);

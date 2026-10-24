@@ -33,6 +33,7 @@ import {bindStillOn, bindCaptive} from '../settlement/captives.js';
 import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {catchRunaway} from '../settlement/escape.js';
 import {assistStillOn} from '../settlement/masters.js';
+import {REST, KINDLE} from '../data/behaviour.js';
 
 export const TASKS = new Registry('task');
 // every task ends through the lifecycle (agents/lifecycle.js): done, or given up with a reason
@@ -76,14 +77,14 @@ TASKS.registerAll([
     const pop = Math.max(1, colonists(w).length);
     const beds = Math.min(1, w.mods.add.beds / pop), warm = Math.min(1, (w.mods.add.bedWarmth || 0) / pop);
     a.sleeping = true;
-    a.needs.rest = Math.min(1, a.needs.rest + 0.004 * (1 + 0.6 * beds));
-    if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + 0.0028 * warm * (w.campLit ? 1 : 0.5));
+    a.needs.rest = Math.min(1, a.needs.rest + REST.rate * (1 + REST.beds * beds));
+    if (warm > 0 && a.needs.warmth != null) a.needs.warmth = Math.min(1, a.needs.warmth + REST.warm * warm * (w.campLit ? 1 : REST.unlit));
     mill(w, a, task, 1.2);
     // rested before dawn: sleep on till first light rather than stand about in the dark (nobody goes to the
     // woods by night); a tired body or an alarm still wakes anyone
-    if (a.needs.rest >= 1 && nightness(w) > 0.75 && !raidAlarm(w)) return;
+    if (a.needs.rest >= 1 && nightness(w) > REST.nightFrom && !raidAlarm(w)) return;
     if (a.needs.rest >= 1) {
-      if (warm > 0.6) { const c = homeComfort(w); think(w, a, 'sleptHouse', {mood: 0.22 + c * 1.2, fine: c > 0.1}); }
+      if (warm > REST.houseWarm) { const c = homeComfort(w); think(w, a, 'sleptHouse', {mood: REST.houseMood + c * REST.houseComfort, fine: c > REST.houseFine}); }
       else think(w, a, beds > 0 ? 'sleptHut' : 'sleptOutside');
       done(w, a);
     }
@@ -98,7 +99,7 @@ TASKS.registerAll([
     if (!task.toFire && !w.camp.set.has(i) && w.nav.get('warm')[i] === 0 && tempAt(w, i) <= WARM_AT) { w.nav.dirty('warm'); task.toFire = true; }
     if (follow(w, a, task.toFire ? 'camp' : 'warm') !== 'arrived') return;
     if (w.camp.set.has(i)) mill(w, a, task, 1.2);
-    if (a.needs.warmth > 0.92) done(w, a);
+    if (a.needs.warmth > REST.warmEnough) done(w, a);
   }},
 
   {id: 'council', label: () => 'на совете у костра', step(w, a, task) {
@@ -206,7 +207,7 @@ TASKS.registerAll([
   {id: 'douse', label: () => 'тушит пожар', step(w, a) {
     if (w.stats.fireNearCamp === 0) { done(w, a); return; }
     if (!nearFire(w, a, 1.7)) { if (follow(w, a, 'fire') !== 'moving') { done(w, a); a.think = 10; } return; }
-    const g = w.grid, cx = a.x | 0, cy = a.y | 0, power = 0.05 * w.mods.mul.douse;
+    const g = w.grid, cx = a.x | 0, cy = a.y | 0, power = KINDLE.douse * w.mods.mul.douse;
     for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
       if (x < 0 || y < 0 || x >= w.w || y >= w.h || (x + 0.5 - a.x) ** 2 + (y + 0.5 - a.y) ** 2 > 2.9) continue;
       const j = y * w.w + x;
@@ -265,7 +266,7 @@ TASKS.registerAll([
     for (const c of b.cells) { const d = Math.hypot((c % w.w) + 0.5 - a.x, ((c / w.w) | 0) + 0.5 - a.y); if (d < bd) { bd = d; best = c; } }
     if (best == null) { done(w, a); return; }
     if (bd > SQUAD.burnNear) { if (approach(w, a, (best % w.w) + 0.5, ((best / w.w) | 0) + 0.5) === null) fail(w, a, 'к постройке не подойти', 'impossible'); return; }
-    w.grid.fire[best] = Math.max(w.grid.fire[best], 0.6); heatTo(w, best, 300); w.grid.fuel[best] = Math.max(w.grid.fuel[best], 0.9);
+    const K = KINDLE.torch; w.grid.fire[best] = Math.max(w.grid.fire[best], K.fire); heatTo(w, best, K.heat); w.grid.fuel[best] = Math.max(w.grid.fuel[best], K.fuel);
     w.nav.dirty('fire');
     sq.lit = w.tick;
     log(w, `${a.name} ${a.gender === 'f' ? 'подожгла' : 'поджёг'} ${BUILDINGS.get(b.key).name.toLowerCase()}! Тушите!`, 'danger', 'notice');

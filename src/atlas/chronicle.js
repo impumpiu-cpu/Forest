@@ -23,6 +23,7 @@ const BY = {dragon: 'от дракона', beasts: 'от собственных 
 // a line's level: 'major' | 'normal' | 'minor'
 export function lineLevel(c) {
   if (c.topic === 'calamity' || c.campaign || c.stage) return 'major';
+  if (c.topic === 'kingdom') return 'minor';   // the realms' courts, edicts and years (atlas/kingdom.js)
   for (const R of LEVEL_RULES) if (R.re.test(c.text)) return R.level;
   return 'normal';
 }

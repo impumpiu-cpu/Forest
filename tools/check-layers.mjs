@@ -55,3 +55,28 @@ const broken = [];
 for (const f of files) { try { execFileSync(process.execPath, ['--check', f], {stdio: 'pipe'}); } catch (e) { broken.push(`${relative(src, f)}: ${String(e.stderr).split('\n').find(l => /Error/.test(l)) || 'не разбирается'}`); } }
 if (broken.length) { console.log('Файлы с синтаксической ошибкой:\n  ' + broken.join('\n  ')); process.exit(1); }
 console.log(`ok   все ${files.length} файлов разбираются`);
+
+// Numbers belong in src/data/ (docs/NRI.md, этап 0): every number a player might tune has a table there. The logic
+// still holds many — geometry, the shape of the AI's wants, the generator's formulas — and they leave it bit by bit.
+// This is a ratchet, not a wall: tools/numbers-baseline.json keeps how many fractional numbers each logic file held;
+// a file that holds more now is reported (a warning: the test does not fail), one that holds fewer is told to lower its
+// line. `node tools/check-layers.mjs --numbers` writes the present counts as the new baseline.
+{
+  const {existsSync, writeFileSync} = await import('node:fs');
+  const LOGIC = ['agents', 'atlas', 'campaign', 'settlement', 'world', 'seam', 'nav', 'outside'];
+  const FRACTION = /(^|[^\w.$])\d*\.\d+/g;
+  const count = f => readFileSync(f, 'utf8').split('\n').reduce((n, line) => n + (line.replace(/\/\/.*$/, '').replace(/(['"`])(?:\\.|(?!\1).)*\1/g, '').match(FRACTION)?.length || 0), 0);
+  const now = {};
+  for (const f of files) { const rel = relative(src, f).split(/[\\/]/).join('/'); if (LOGIC.includes(rel.split('/')[0])) { const n = count(f); if (n) now[rel] = n; } }
+  const total = Object.values(now).reduce((a, b) => a + b, 0), file = join(root, 'tools', 'numbers-baseline.json');
+  if (process.argv.includes('--numbers') || !existsSync(file)) {
+    writeFileSync(file, JSON.stringify(Object.fromEntries(Object.entries(now).sort()), null, 1) + '\n');
+    console.log(`ok   чисел с точкой в логике: ${total} в ${Object.keys(now).length} файлах — записано линией (tools/numbers-baseline.json)`);
+  } else {
+    const base = JSON.parse(readFileSync(file, 'utf8'));
+    const more = Object.entries(now).filter(([f, n]) => n > (base[f] ?? 0)).map(([f, n]) => `${f}: ${n} (линия ${base[f] ?? 0})`);
+    const fewer = Object.entries(base).filter(([f, n]) => (now[f] ?? 0) < n).length;
+    if (more.length) console.log(`warn чисел в логике больше линии (место им — src/data/ и таблица; или обновить линию: node tools/check-layers.mjs --numbers):\n  ${more.join('\n  ')}`);
+    console.log(`ok   чисел с точкой в логике: ${total} в ${Object.keys(now).length} файлах${fewer ? ` (${fewer} файлов ниже линии — её можно опустить: --numbers)` : ''}`);
+  }
+}

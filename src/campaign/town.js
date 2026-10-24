@@ -15,6 +15,8 @@ import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
 import {BEASTS, VEHICLES} from '../data/transport.js';
 import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH} from '../data/market.js';
+import {marketTierOf} from '../data/kingdom.js';
+import {termsOf} from './road.js';
 import {RECIPES} from '../data/recipes.js';
 import {room} from './company.js';
 import {CAMPAIGN} from '../data/campaign.js';
@@ -46,9 +48,9 @@ export function standing(a, K, t) {
 export const townName = t => `${townLabel(t, 0)} ${t.name}`;
 
 // the price of a ration here: cheaper where the town feeds itself well
-export function rationPrice(t, st) {
+export function rationPrice(t, st, terms = 1) {
   const F = MARKET.food, fx = townFx(t);
-  return MARKET.ration * Math.max(F.floor, F.base - F.feeds * (fx.food || 0)) * STANDING[st].buy;
+  return MARKET.ration * Math.max(F.floor, F.base - F.feeds * (fx.food || 0)) * STANDING[st].buy * terms;
 }
 const sellPrice = (t, st, id) => {
   const v = RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0;
@@ -80,7 +82,8 @@ function masterWoodOf(t) {
 const forgeQ = t => (t.tier >= MARK.forge.cityTier ? MARK.forge.cityQ : MARK.forge.q);
 
 // the gold kept for food: `days` of rations for everyone, at this town's price
-const reserveFor = (K, t, st, days) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st);
+// (the reserve is counted at the town's terms for this caravan — its tongue and fame, campaign/road.js: 1 by default)
+const reserveFor = (K, t, st, days, a = null) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st, a ? termsOf(a, K, t).buy : 1);
 
 // ── buying: what the caravan wants, in order, while the gold lasts beyond the food reserve
 function wants(a, K, t, st) {
@@ -155,19 +158,29 @@ export function trade(a, K, t, st) {
   // ore of a metal above the caravan's own goes to the smith first (what the smith leaves is sold after); in a town
   // without one it is kept for the next
   const tier = metalTier(K), ore = new Set(ORES.all().filter(o => o.tier > tier).map(o => o.resource)), smith = has(t, SMITH.at);
+  // the town's market by its step (data/kingdom.js MARKET_TIERS): the gold it pays in a visit, the dearest it sells
+  const M = marketTierOf(t), T = termsOf(a, K, t);   // the town's market by its step; its tongue and the caravan's name (campaign/road.js)
+  // the town's purse lasts the whole visit (trade on entering and on leaving): kept on the caravan only while a purse is set
+  if (M.purse != null && (!K.inTown || K.townPurse?.id !== t.id)) K.townPurse = {id: t.id, left: M.purse};
+  const P = M.purse != null ? K.townPurse : {left: Infinity}, unsold = [];
   const sell = keep => {
     let got = 0;
     for (const [id, n] of Object.entries(K.cargo)) { if (isBonds(id) || keep(id)) continue;   // bonds are kept for captives
-      const p = sellPrice(t, st, id) * n; if (p > 0) { got += p; delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); } }
+      const p = sellPrice(t, st, id) * n * T.sell;
+      if (p > 0 && p <= P.left) { got += p; P.left -= p; delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); }
+      else if (p > P.left && !unsold.includes(id)) unsold.push(id);
+    }
     K.gold = gold(K.gold + got);
   };
   sell(id => ore.has(id));
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
-  if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils; K.gold = gold(K.gold + p); done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
+  if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > P.left) unsold.push('spoils');
+  else if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell; K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
+  if (unsold.length) done.push(`город не потянул: ${unsold.map(id => (id === 'spoils' ? 'трофеи' : RESOURCES.get(id).label)).join(', ')} — нет денег`);
   if (!K.inTown) done.push(...tradeCaptives(a, K, t, st));   // captives sold and bought, by the town's law, once a visit: on entering (campaign/slavery.js)
   // food: up to `foodDays` days, as far as the room and the gold go
-  const need = alive(K).length * CAMPAIGN.ration, price = rationPrice(t, st);
+  const need = alive(K).length * CAMPAIGN.ration, price = rationPrice(t, st, T.buy);
   const room = Math.max(0, capacity(K) - load(K)), want = Math.max(0, Math.min(room, need * WANTS.foodDays - K.food));
   const n = Math.floor(Math.min(want, K.gold / price));
   if (n > 0) { K.food += n; K.gold = gold(K.gold - n * price); done.push(`купили ${pieces(n, 'паёк', 'пайка', 'пайков')} по ${gold(price)}`); }
@@ -175,8 +188,9 @@ export function trade(a, K, t, st) {
   if (K.hungry > 0 && alms > 0) { K.food += alms; K.stats.alms = (K.stats.alms || 0) + 1; done.push(`голодных накормили даром — ${pieces(alms, 'паёк', 'пайка', 'пайков')} на дорогу`); }
   // the rest, in order of need
   for (const o of wants(a, K, t, st)) {
-    const p = offerPrice(o, st);
-    if (K.gold - p < reserveFor(K, t, st, WANTS.reserve)) continue;
+    const p = offerPrice(o, st) * T.buy;
+    if (M.maxPrice != null && p > M.maxPrice) continue;   // too dear for a market of this step
+    if (K.gold - p < reserveFor(K, t, st, WANTS.reserve, a)) continue;
     // still wanted after what was bought before it in this visit
     if (o.kind === 'building' && !K.vehicles.some(x => x.kind === 'wagon' && !x.building)) continue;
     if (o.kind === 'vehicle' && (o.id === 'cart' ? K.vehicles.length : K.vehicles.some(x => x.kind === 'wagon'))) continue;

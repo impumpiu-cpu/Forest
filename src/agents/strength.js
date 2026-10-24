@@ -18,7 +18,8 @@ import {critChance} from './wounds.js';
 import {createAgent, maxHp} from './agent.js';
 import {dress, recalcGear, blowStat, mixGain} from './equipment.js';
 import {armorAgainst, blockAgainst, resistOf} from './combat.js';
-import {BLOWS} from '../data/balance/combat.js';
+import {BLOWS, traitOf} from '../data/balance/combat.js';
+import {meanPlaceDamage} from '../data/anatomy.js';
 import {refreshBody} from './special.js';
 import {onEdit} from '../data/schema/layer.js';
 
@@ -26,7 +27,8 @@ const {blow: BLOW, shot: SHOT, hit: HIT} = COMBAT;
 
 export function strengthParts(a, {now = false} = {}) {
   const sp = SPECIES.get(a.species), g = a.gear || recalcGear(a), m = a.mods || {};
-  const crit = 1 + critChance(a) * (CRIT.mul - 1);
+  // a critical blow × CRIT.mul, more for a vicious weapon (data/balance/combat.js WEAPON_QUALITIES)
+  const pc = critChance(a), crit = 1 + pc * (CRIT.mul + traitOf(g.melee.q, 'vicious') - 1), critShot = 1 + pc * (CRIT.mul + traitOf(g.ranged?.q, 'vicious') - 1);
   // offence: a blow per tick, and shots on top for one who carries a bow or a sling
   const cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (m.swing ?? 1)));
   let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * mixGain(g.melee) * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
@@ -34,7 +36,7 @@ export function strengthParts(a, {now = false} = {}) {
   let shot = 0;
   if (g.ranged) {
     const hit = Math.min(0.95, Math.max(0.05, HIT.base + HIT.skill * (a.skill?.ranged ?? HIT.noSkill) + (m.aim || 0) - HIT.far * 0.5));
-    shot = (SHOT.base + SHOT.spread / 2) * g.ranged.dmg * mixGain(g.ranged) * crit * hit / g.ranged.cd * STRENGTH.rangedWeight;
+    shot = (SHOT.base + SHOT.spread / 2) * g.ranged.dmg * mixGain(g.ranged) * critShot * hit / g.ranged.cd * STRENGTH.rangedWeight;
   }
   // a shooter shoots while the foe comes or is held by others, and strikes with the bow once it is close
   const offence = melee + shot;
@@ -43,6 +45,7 @@ export function strengthParts(a, {now = false} = {}) {
   const kinds = Object.keys(BLOWS), mean = f => kinds.reduce((s, k) => s + f(k), 0) / kinds.length;
   let staying = (now ? Math.max(0, a.hp) : maxHp(a)) / ((1 - mean(k => armorAgainst(g, k))) * (1 - mean(k => (1 - STRENGTH.shotShare) * blockAgainst(g, k) + STRENGTH.shotShare * blockAgainst(g, k, false))) * (1 - (m.dodge || 0)));
   staying /= mean(k => resistOf(sp, k, true));
+  staying /= meanPlaceDamage(sp);   // where blows land on this body (data/anatomy.js): 1 while every place is at 1
   if (sp.weakTo?.includes('silver')) staying /= COMBAT.silver.plain;   // against plain weapons
   if (sp.drinks) staying /= 1 - sp.drinks * STRENGTH.drinksWeight;
   return {offence, staying, raw: offence * staying};

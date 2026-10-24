@@ -21,12 +21,24 @@ import {esc, g, weighted} from '../core/util.js';
 import {agentById} from './lookup.js';
 import {wake} from './attention.js';
 import {noteFallen} from './squad.js';
+import {HIT_LOCATIONS} from '../data/anatomy.js';
+import {degreeOf, passed, degreeValue} from '../data/checks.js';
+import {AFFLICTIONS} from '../data/afflictions.js';
+import {catchIll} from './afflictions.js';
 
 const luckOf = a => a.special?.L ?? NORM;
 // the colony's own falls; a foe's are counted apart (they may be taken captive: settlement/captives.js)
 const tally = (w, a) => (a.faction === 'colony' ? (w.chronicle.falls ||= {down: 0, saved: 0, bled: 0, killed: 0, traumas: 0}) : (w.chronicle.foeFalls ||= {down: 0, bled: 0, killed: 0}));
 
-export const critChance = by => luckChance(CRIT, luckOf(by));
+export const critChance = by => luckChance('crit', luckOf(by));
+
+// the traumas a deadly wound may leave where the last blow landed (data/anatomy.js `traumas` of the place); all of
+// them when the place is not known (a save from before places were drawn)
+export function traumasAt(t) {
+  const all = WOUNDS.filter(x => x.trauma), place = t.hitAt && HIT_LOCATIONS.has(t.hitAt) ? HIT_LOCATIONS.get(t.hitAt) : null;
+  const here = place ? all.filter(x => place.traumas.includes(x.id)) : [];
+  return here.length ? here : all;
+}
 
 // still healing the wound of an earlier fall: luck is spent until it closes
 export const fallSpent = a => !!a.downed || (a.wounds || []).some(x => x.id === 'grave');
@@ -38,10 +50,13 @@ export function lethal(w, t, cause, by) {
   if (t.downed) tally(w, t).killed++;
   if (fallSpent(t) || !CAN_FALL(sp, t) || !DEATHBLOW.causes.includes(cause) || t.hp < -DEATHBLOW.overkill * maxHp(t)) { kill(w, t, cause, by); return false; }
   const L = luckOf(t);
-  if (w.rngs.combat() >= luckChance(DEATHBLOW.survive, L)) { kill(w, t, cause, by); return false; }
+  // a check with four degrees (data/checks.js): a critical success may leave the wound clean, with no second check
+  const pSurvive = luckChance('survive', L), deg = degreeOf(w.rngs.combat(), pSurvive);
+  if (!passed(deg)) { kill(w, t, cause, by); return false; }
+  const sure = deg === 'critSuccess' && degreeValue('survive', 'critSuccess') >= 1;
   // the second check, made now and kept: what the wound will leave if the fallen is saved
-  const clean = w.rngs.combat() < luckChance(DEATHBLOW.clean, L);
-  const trauma = clean ? null : weighted(w.rngs.combat, WOUNDS.filter(x => x.trauma).map(x => [x.id, x.weight ?? 1]));
+  const clean = sure || w.rngs.combat() < luckChance('clean', L);
+  const trauma = clean ? null : weighted(w.rngs.combat, traumasAt(t).map(x => [x.id, x.weight ?? 1]));
   fall(w, t, cause, by, trauma);
   return true;
 }
@@ -55,6 +70,7 @@ function fall(w, a, cause, by, trauma) {
   for (const s of Object.values(w.squads || {})) if (s.target === a.id) s.targetDown = true;   // the one they came for is down
   if (a.faction !== 'colony') noteFallen(w, a);   // a raider down is one lost to its band (agents/squad.js)
   a.downed = {since: w.tick, until: w.tick + bleedTicks(a.special?.E ?? NORM), cause, by: by?.id ?? null, trauma};
+  if (a.bleeding) a.bleeding = null; if (a.stunned) a.stunned = null;   // the fall is the wound now: it bleeds by its own clock (the curve 'bleed')
   a.hp = DEATHBLOW.hpLeft * maxHp(a);
   a.task = {id: 'downed'}; a.sleeping = false; a.stalking = false;
   tally(w, a).down++;
@@ -75,12 +91,15 @@ export function stepDowned(w, a) {
 // someone dressed the wound in time
 export function stabilize(w, helper, a) {
   const d = a.downed; if (!d) return;
-  a.downed = null;
+  a.downed = null; if (a.bleeding) a.bleeding = null;   // the dressing stops the bleeding too
   if (a.task?.id === 'downed') a.task.closed = 'done';   // the fall is over, not broken off
   a.wounds = [...(a.wounds || []), {id: 'grave', until: w.tick + GRAVE_TICKS('grave')}];
   if (d.trauma) a.wounds.push({id: d.trauma});
   refreshBody(a);
   a.hp = Math.max(a.hp, DEATHBLOW.stableHp * maxHp(a) * (1 + (helper?.skill?.medicine || 0)));
+  // the dressed wound may fester (data/afflictions.js fever `catch`, less for a skilled healer; 0 — never)
+  const FV = AFFLICTIONS.get('fever');
+  if (FV.catch > 0 && w.rngs.colony() < FV.catch * (1 - (helper?.skill?.medicine || 0))) catchIll(w, a, 'fever');
   a.task = null; wake(a, 'очнулся после раны', 'очнулся');
   const f = tally(w, a); f.saved++; if (d.trauma) f.traumas++;
   think(w, a, 'survived', {name: helper?.name, gender: helper?.gender});

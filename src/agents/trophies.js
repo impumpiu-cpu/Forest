@@ -15,6 +15,7 @@ import {NORM} from '../data/special.js';
 import {canDoAction, practice} from './skills.js';
 import {liveById} from './lookup.js';
 import {TROPHY} from '../data/behaviour.js';
+import {passes} from '../data/chance.js';
 
 export {TROPHY};   // (data/behaviour.js)
 // who of the colony struck it, with their Luck at the blow (agents/combat.js damage)
@@ -38,7 +39,7 @@ export function decideTrophies(w, t, by) {
   const L = ids.reduce((s, id) => s + hit[id], 0) / ids.length;
   const crew = ids.map(id => liveById(w, +id)).filter(Boolean);
   for (const e of table) {
-    if (!(w.rngs.combat() < Math.min(1, e.chance * luckBoost(L)))) continue;
+    if (!passes(w.rngs.combat, Math.min(1, e.chance * luckBoost(L)))) continue;   // each on its own chance (data/chance.js)
     if ((e.tier || 1) > 1) {
       const hand = crew.filter(o => canDoAction(o, 'trophyExtraction', e.tier)).sort((x, y) => (y.skill?.trophyExtraction || 0) - (x.skill?.trophyExtraction || 0))[0];
       if (!hand) { out.spoiled.push(e.res); continue; }

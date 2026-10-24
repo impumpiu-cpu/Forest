@@ -2,7 +2,7 @@
 
 Симуляция поселения в духе RimWorld: физические поля на сетке, навигация по полям течения и агенты с потребностями, характерами и вечерним советом у костра. Работает в браузере без зависимостей во время выполнения.
 
-**Главная** · [Архитектура](docs/ARCHITECTURE.md) · [Как добавить новое](docs/ADDING.md) · [Механики](docs/MECHANICS.md) · [Справочник](docs/REFERENCE.md) · [Проверки и баланс](docs/TESTING.md) · [Баланс вещей](docs/BALANCE.md) · [Карта мира](docs/WORLD.md) · [Локальная карта](docs/MAP.md) · [Шов](docs/SEAM.md) · [Кампания](docs/CAMPAIGN.md) · [SPECIAL](docs/SPECIAL.md) · [Надмозг и пешки](docs/MIND.md) · [Плен и свита](docs/CAPTIVES.md) · [Отложено](docs/TODO.md) · [Таблицы](docs/TABLE.md)
+**Главная** · [Архитектура](docs/ARCHITECTURE.md) · [Как добавить новое](docs/ADDING.md) · [Механики](docs/MECHANICS.md) · [Справочник](docs/REFERENCE.md) · [Проверки и баланс](docs/TESTING.md) · [Баланс вещей](docs/BALANCE.md) · [Карта мира](docs/WORLD.md) · [Локальная карта](docs/MAP.md) · [Шов](docs/SEAM.md) · [Кампания](docs/CAMPAIGN.md) · [SPECIAL](docs/SPECIAL.md) · [Надмозг и пешки](docs/MIND.md) · [Плен и свита](docs/CAPTIVES.md) · [Отложено](docs/TODO.md) · [Таблицы](docs/TABLE.md) · [НРИ](docs/NRI.md)
 
 ## Запуск
 
@@ -58,6 +58,7 @@ npm run arena:calibrate  # то же для КС с записью поправ�
 | [SPECIAL](docs/SPECIAL.md) | Характеристики, навыки, действия и перки |
 | [Надмозг и пешки](docs/MIND.md) | Рабочий документ ветки `Mind`: что решает группа, а что каждый поселенец сам |
 | [Таблицы](docs/TABLE.md) | Рабочий документ ветки `Table`: справочники как таблицы, мировоззрение ±5, клеймо кузнеца, технологии, новое меню и `Forest.bat` |
+| [НРИ](docs/NRI.md) | Рабочий документ ветки `NRI`: сверка таблиц с D&D 5e, Pathfinder (Kingmaker) и Fallout 2d20 — кривые, словари, бой, состояния, случайности, держава |
 | [Плен и свита](docs/CAPTIVES.md) | Рабочий документ ветки `captives`: пленные, путы, побег, подмастерья, спутники и наёмники |
 | [Отложено](docs/TODO.md) | Что решили сделать позже: плен, упавшие враги и другое |
 

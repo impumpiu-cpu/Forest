@@ -24,6 +24,7 @@ import {stepTech} from './tech.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
+import {stepKingdom} from './kingdom.js';
 
 const SEASON_LIST = SEASONS.all();
 
@@ -63,7 +64,8 @@ function coarseToCell(a, j) {
 
 function say(a, text) {
   const H = a.hist;
-  a.chronicle.push({era: H.era, year: H.year, season: H.season, text});
+  // a line, or {text, topic} (the kingdom's lines are 'kingdom': minor in the chronicle, atlas/chronicle.js)
+  a.chronicle.push(typeof text === 'string' ? {era: H.era, year: H.year, season: H.season, text} : {era: H.era, year: H.year, season: H.season, ...text});
 }
 
 export function startHistory(a) {
@@ -99,11 +101,11 @@ export function stepHistory(a, onDay = null) {
   }
   // the worst weather of the year, if it is bad enough, is remembered and kills more: a harsh winter
   // where winters freeze, a drought in the dry season where they do not
-  if (season === 'winter' && rnd() < 0.5) {
+  if (season === 'winter' && rnd() < FAUNA.harshChance) {
     let worst = 0, wj = -1;
     for (let j = 0; j < F.weather.length; j++) if (F.weather[j] < worst && F.list.some(s => s.K[j] > 0.3)) { worst = F.weather[j]; wj = j; }
     if (worst < FAUNA.harshAt) {
-      const r = 4, bx = wj % F.W, by = (wj / F.W) | 0, cell = coarseToCell(a, wj);
+      const r = FAUNA.harshRadius, bx = wj % F.W, by = (wj / F.W) | 0, cell = coarseToCell(a, wj);
       for (const s of F.list) if (s.role !== 'spirit') for (let y = Math.max(0, by - r); y <= Math.min(F.H - 1, by + r); y++) for (let x = Math.max(0, bx - r); x <= Math.min(F.W - 1, bx + r); x++) s.N[y * F.W + x] *= 1 - FAUNA.harsh;
       const cold = a.f.temp[cell] - a.f.trange[cell] / 2 < 0;
       // the towns of the stricken country starve too: granaries and cellars soften it, healers save the weak
@@ -135,6 +137,7 @@ export function stepHistory(a, onDay = null) {
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
+  stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
   stepTech(a, t => say(a, t));   // the realms' finds: their own stream, in spring (atlas/tech.js)   // the old lairs' leaders: their own stream, in spring (atlas/leaders.js)
   stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);

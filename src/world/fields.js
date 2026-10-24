@@ -20,7 +20,7 @@ import {colonists} from '../settlement/query.js';
 import {season} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {watchOnPost, WATCH} from '../settlement/board.js';
-import {FIRE} from '../data/nature.js';
+import {FIRE, GROWTH} from '../data/nature.js';
 
 export {FIRE};   // (data/nature.js)
 // the set of chunks the pass must visit: the active ones and a ring of one chunk around them
@@ -199,33 +199,33 @@ function burnCell(w, g, i, rain, st, amb, ignF, ignG) {
 
 // planted garden bushes regrow fast; the well cools the camp area; wild plants regrow slowly
 function growth(w) {
-  const g = w.grid, S = season(w);
+  const g = w.grid, S = season(w), G = GROWTH;
   for (const c of w.gardenCells) if (S.garden > 0 && g.bush[c] && g.fire[c] === 0 && g.food[c] < 1) {
-    g.food[c] = Math.min(1, g.food[c] + 0.0035 * S.garden * (0.4 + 1.2 * g.fert[c]));   // good soil, more berries
-    if (g.food[c] > 0.35 && g.food[c] < 0.354) w.nav.dirty('berries');   // ripe enough: the berry field must know
+    g.food[c] = Math.min(1, g.food[c] + G.garden * S.garden * (G.gardenSoil[0] + G.gardenSoil[1] * g.fert[c]));   // good soil, more berries
+    if (g.food[c] > G.ripe && g.food[c] < G.ripeTo) w.nav.dirty('berries');   // ripe enough: the berry field must know
   }
   if (w.mods.add.coolCamp) {
-    const amb = airTemp(w), lim = 40 - amb;
-    for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) {
+    const amb = airTemp(w), lim = G.coolTo - amb, R = G.coolRadius;
+    for (let yy = -R; yy <= R; yy++) for (let xx = -R; xx <= R; xx++) {
       const x = w.camp.x + xx, y = w.camp.y + yy; if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
-      const j = y * w.w + x; if (g.heat[j] > lim) g.heat[j] -= (g.heat[j] - lim) * 0.08;
+      const j = y * w.w + x; if (g.heat[j] > lim) g.heat[j] -= (g.heat[j] - lim) * G.coolRate;
     }
   }
-  const samples = Math.round(160 * w.n / 12288 * w.climate.regrow);
+  const samples = Math.round(G.samples * w.n / G.samplesPer * w.climate.regrow);
   for (let k = 0; k < samples; k++) {
     const i = (w.rngs.fire() * w.n) | 0; if (g.fire[i] > 0 || g.bld[i] >= 0) continue;
     const t = g.terr[i], f = g.fert[i], d = BY_CODE[t];
-    if (t === T.BURNT) { if (w.rngs.fire() < 0.02) { g.terr[i] = g.under?.[i] || T.GRASS; g.fuel[i] = 0.1; } }
+    if (t === T.BURNT) { if (w.rngs.fire() < G.burnt) { g.terr[i] = g.under?.[i] || T.GRASS; g.fuel[i] = G.burntFuel; } }
     else if (d.kind === 'ground') {
-      if (g.fuel[i] < d.fuel) g.fuel[i] = Math.min(d.fuel, g.fuel[i] + 0.02);
+      if (g.fuel[i] < d.fuel) g.fuel[i] = Math.min(d.fuel, g.fuel[i] + G.fuel);
       if (g.bush[i]) {
         // in season the bush ripens; in winter what is left drops or freezes
-        if (S.grow > 0) { g.food[i] = Math.min(1, g.food[i] + 0.05 * f * S.grow); if (g.food[i] > 0.35) w.nav.dirty('berries'); }
-        else if (S.wither && g.food[i] > 0) { g.food[i] = Math.max(0, g.food[i] - S.wither * 4); if (g.food[i] < 0.35) w.nav.dirty('berries'); }
+        if (S.grow > 0) { g.food[i] = Math.min(1, g.food[i] + G.bush * f * S.grow); if (g.food[i] > G.ripe) w.nav.dirty('berries'); }
+        else if (S.wither && g.food[i] > 0) { g.food[i] = Math.max(0, g.food[i] - S.wither * G.wither); if (g.food[i] < G.ripe) w.nav.dirty('berries'); }
       }
-      else if (S.grow > 0 && d.bush > 0 && !isCampArea(w, i) && w.rngs.fire() < 0.0025 * f * d.bush) { g.bush[i] = 1; g.food[i] = 0.1; g.fuel[i] += 0.2; }
-      if (S.grow > 0 && d.wood > 0 && w.rngs.fire() < 0.0015 * f * d.wood && f > 0.55 && !isCampArea(w, i)) { g.terr[i] = T.FOREST; g.wood[i] = 0.3; g.fuel[i] = 1.5; g.bush[i] = 0; }
-    } else if (t === T.FOREST && g.wood[i] < 1) { g.wood[i] = Math.min(1, g.wood[i] + 0.03); g.fuel[i] = 1.2 + g.wood[i]; }
+      else if (S.grow > 0 && d.bush > 0 && !isCampArea(w, i) && w.rngs.fire() < G.newBush * f * d.bush) { g.bush[i] = 1; g.food[i] = G.newBushFood; g.fuel[i] += G.newBushFuel; }
+      if (S.grow > 0 && d.wood > 0 && w.rngs.fire() < G.newWood * f * d.wood && f > G.woodFert && !isCampArea(w, i)) { g.terr[i] = T.FOREST; g.wood[i] = G.newWoodWood; g.fuel[i] = G.newWoodFuel; g.bush[i] = 0; }
+    } else if (t === T.FOREST && g.wood[i] < 1) { g.wood[i] = Math.min(1, g.wood[i] + G.forest); g.fuel[i] = G.forestFuel + g.wood[i]; }
   }
 }
 

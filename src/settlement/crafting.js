@@ -23,16 +23,24 @@ import {FOODS} from '../data/foods.js';
 import {freeSlots} from './life.js';
 import {canMake, accessKey, recipeNeed, reasonText, skillOf} from '../agents/skills.js';
 import {recipeSkill} from '../data/skills.js';
-import {qualityRoll} from '../data/quality.js';
+import {qualityRoll, craftChance} from '../data/quality.js';
 import {esc} from '../core/util.js';
 import {HOUR} from '../core/time.js';
 import {liveById} from '../agents/lookup.js';
 import {takeKind, giveKind, kindsOf} from './kinds.js';
 import {FAMILIES, mayMake, useOf} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
+import {degreeOf, degreeValue} from '../data/checks.js';
 
 // stock resources that are a family's total (wood → 'wood', stone → 'stone')
 const FAMILY_RES = Object.fromEntries(Object.entries(FAMILIES).filter(([, F]) => F.resource).map(([f, F]) => [F.resource, f]));
+// how long a finished piece lasts by the degree of its quality roll (data/checks.js, check `craft`): × 1 unless a
+// critical degree has a number in «Последствия степеней»
+export function pieceLasts(u, skill, fine = 0) {
+  const deg = degreeOf(u, craftChance(1, skill, fine));
+  return deg === 'critSuccess' ? 1 + degreeValue('craft', 'critSuccess') : deg === 'critFail' ? 1 - degreeValue('craft', 'critFail') : 1;
+}
+
 // may this worker make this recipe by its race's rules (data/kinds.js): a named metal it may not work, or a family of
 // which the stock holds too little that it may work, rules it out
 export function raceMayCraft(w, a, r) {
@@ -202,9 +210,14 @@ export function workAt(w, b, amount, a) {
       const maker = master || a;
       if (maker && useOf(maker.species, of.wood) === 'master') extra.master = true;
     }
-    const q = ITEMS.get(r.makes.item).quality === false ? 0 : qualityRoll(w.rngs.colony(), skill, bellows ? FURNACE.bellowsFine : 0);
+    // the quality roll is the craft's check (data/checks.js): its chance — that of a fine piece; a critical degree makes
+    // the piece last longer or less (0 — as before)
+    const fine = bellows ? FURNACE.bellowsFine : 0, u = ITEMS.get(r.makes.item).quality === false ? null : w.rngs.colony();
+    const q = u == null ? 0 : qualityRoll(u, skill, fine);
     if (q) { extra.q = q; if (master) extra.maker = master.name; }
     const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
+    const lasts = u == null ? 1 : pieceLasts(u, skill, fine);
+    if (lasts !== 1 && Number.isFinite(it.dur)) it.dur *= lasts;
     w.armory.push(it);
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     if (q) { const f = w.chronicle.fine ||= {}; f[q] = (f[q] || 0) + 1; }

@@ -24,6 +24,13 @@ import {perTick} from '../core/util.js';
 
 export const SEASON_DAYS = 30;
 
+// The calendar and the thaw (season(), seasonalTemp(), snowy()). `lag` — days by which the year's warmth lags behind the
+// sun (the warmest day is in the middle of summer). A day colder than `frozen` °C is frozen: snow lies and the frost
+// rules of the season hold. A warmer day lets things grow by (T − `from`) / `span` (nothing at `from`, all at
+// `from + span`); in a winter that does not freeze the hares come back to at least `hares`, predators get hungry at
+// most `hunger`, and food spoils at least `spoil[1]`; a frozen day keeps it at most `spoil[0]`.
+export const THAW = {lag: 7.5, frozen: -1, from: -6, span: 10, hares: 0.8, hunger: 1.1, spoil: [0.25, 0.8]};
+
 export const SEASONS = new Registry('season');
 
 SEASONS.registerAll([
@@ -59,11 +66,11 @@ export const seasonRaw = (w, tick) => LIST[seasonIndex(w, tick)];
 //   wither, frost, the slow jobs (ice fishing), no drying, hungry predators, few hares, slow spoil — only when frozen.
 export function season(w) {
   return perTick(w, 'season', () => {
-    const S = seasonRaw(w), T = dayMeanTemp(w), frozen = T < -1, gf = frozen ? 0 : clamp01((T + 6) / 10);
+    const S = seasonRaw(w), T = dayMeanTemp(w), frozen = T < THAW.frozen, gf = frozen ? 0 : clamp01((T - THAW.from) / THAW.span);
     if (gf >= 1 && !frozen && !S.frost) return S;
     return {...S, grow: S.grow * gf, garden: S.garden * gf, wither: frozen ? S.wither : 0, frost: frozen ? S.frost : null,
-      jobs: frozen ? S.jobs : {}, drying: S.drying || !frozen, hares: frozen ? S.hares : Math.max(S.hares, 0.8),
-      hunger: frozen ? S.hunger : Math.min(S.hunger, 1.1), spoil: frozen ? Math.min(S.spoil, 0.25) : Math.max(S.spoil, 0.8)};
+      jobs: frozen ? S.jobs : {}, drying: S.drying || !frozen, hares: frozen ? S.hares : Math.max(S.hares, THAW.hares),
+      hunger: frozen ? S.hunger : Math.min(S.hunger, THAW.hunger), spoil: frozen ? Math.min(S.spoil, THAW.spoil[0]) : Math.max(S.spoil, THAW.spoil[1])};
   });
 }
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -76,9 +83,8 @@ export const seasonStarts = (w, tick) => Math.floor(calendarDay(w, tick)) % SEAS
 // the seasonal part of the air temperature: a sine over the year a week behind the sun (daylight
 // below): warmest a week after the summer solstice, coldest a week after the winter one, so the
 // first week of spring is still cold and the first snow comes a week into winter
-const LAG = 7.5;
 export function seasonalTemp(w, tick = w.tick) {
-  return (w.climate.trange / 2) * Math.sin(2 * Math.PI * (calendarDay(w, tick) - LAG) / YEAR_DAYS);
+  return (w.climate.trange / 2) * Math.sin(2 * Math.PI * (calendarDay(w, tick) - THAW.lag) / YEAR_DAYS);
 }
 // hours of daylight: 12 at the equinoxes (the first day of spring and of autumn), longest at the
 // summer solstice (the first day of summer), shortest at the winter one; the swing is the climate's
@@ -90,7 +96,7 @@ export function daylight(w, tick = w.tick) {
 // mean air temperature of the day (no hour): what decides snow and frost
 export const dayMeanTemp = (w, tick = w.tick) => w.climate.meanT + seasonalTemp(w, tick);
 // snow instead of rain, white ground: a cold season when the day's mean is below freezing
-export const snowy = (w, tick = w.tick) => dayMeanTemp(w, tick) < -1;
+export const snowy = (w, tick = w.tick) => dayMeanTemp(w, tick) < THAW.frozen;
 // snow on the ground paints everything white, whatever the season
 const SNOW_TINT = [236, 240, 246, 0.62];
 // snow on the ground paints by its depth (world/weather.js w.snow), over the season's own colour

@@ -20,6 +20,7 @@ NEEDS.registerAll([
   {id: 'warmth', label: 'тепло', color: 'var(--ember)', task: 'warm', memory: 'cold', start: [0.9, 0.9],
     // clothing keeps part of the cold out
     decay: (w, a, T) => (T < 14 ? (14 - T) * 0.00012 * a.mods.cold * (1 - (a.gear?.warmth || 0)) : T > 18 ? -0.003 : 0),
-    harm: 0.0007, harmBelow: 0.15, cause: 'холода',
+    // the frost that hurts once warmth runs out is the element `cold` (× the body's resist.cold, «Урон по видам»)
+    harm: 0.0007, harmBelow: 0.15, cause: 'холода', element: 'cold',
     urge: (w, a, v) => (1 - v) ** 2 * 2.0},
 ]);

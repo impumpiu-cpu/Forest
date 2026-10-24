@@ -16,3 +16,18 @@ export const FISHING = {
   trickle: 0.008,      // share of capacity that swims in per day even into an emptied lake
   reopenAt: 0.5,       // a fished-out lake is left alone until it is this full again
 };
+
+// How the local map grows back (world/fields.js). Garden bushes ripen `garden` a tick × the season × (`gardenSoil[0]`
+// + `gardenSoil[1]` × fertility); ripe from `ripe`. The well cools the camp within `coolRadius` cells to `coolTo`
+// degrees above the air, taking `coolRate` of the excess a tick. Wild ground: `samples` cells a tick per `samplesPer`
+// cells of map (× the climate's regrow); a burnt cell turns back with `burnt` (fuel `burntFuel`); fuel creeps back
+// `fuel`; a bush ripens `bush` × fertility × the season, withers × `wither` the season's; a new bush springs up with
+// `newBush` × fertility × the ground's bushes (food `newBushFood`, fuel `newBushFuel`); a wood seeds with `newWood`
+// × fertility × the ground's woods where fertility is above `woodFert` (wood `newWoodWood`, fuel `newWoodFuel`); a
+// forest thickens `forest` a tick (fuel `forestFuel` + its wood).
+export const GROWTH = {
+  garden: 0.0035, gardenSoil: [0.4, 1.2], ripe: 0.35, ripeTo: 0.354, coolRadius: 6, coolTo: 40, coolRate: 0.08,
+  samples: 160, samplesPer: 12288, burnt: 0.02, burntFuel: 0.1, fuel: 0.02, bush: 0.05, wither: 4,
+  newBush: 0.0025, newBushFood: 0.1, newBushFuel: 0.2, newWood: 0.0015, woodFert: 0.55, newWoodWood: 0.3, newWoodFuel: 1.5,
+  forest: 0.03, forestFuel: 1.2,
+};

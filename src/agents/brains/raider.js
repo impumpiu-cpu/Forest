@@ -15,6 +15,7 @@ import {squadOf, planFor} from '../squad.js';
 import {tempAt} from '../../world/heat.js';
 import {liveById} from '../lookup.js';
 import {stepDowned} from '../wounds.js';
+import {heatHarm} from '../body.js';
 
 // the mindless dead go for whoever is this close; anyone further off they find by shambling to the camp
 // (the camp flow field always leads there; a long A* chase across the map would stall instead)
@@ -28,7 +29,7 @@ export const raiderBrain = {
     const T = tempAt(w, cellOf(w, a)), sp = SPECIES.get(a.species), mindless = sp.mindless || a.warBeast;   // goes for people, never for the stores
     // the dead burn twice as easily as the living
     let cause = null;
-    if (T > sp.heatHarm) { a.hp -= Math.min(sp.undead ? 0.012 : 0.006, (T - sp.heatHarm) * (sp.undead ? 0.0001 : 0.00005)); cause = 'огня'; }
+    if (heatHarm(a, sp, T, sp.undead ? 'undead' : 'raider')) cause = 'огня';
     if (sp.rots && T > 12) { a.hp -= sp.rots * (T - 12); cause ??= 'тепла'; }
     const day = 1 - nightness(w);
     if (sp.sun && day > 0.5) { a.hp -= sp.sun * day; cause ??= 'солнца'; }

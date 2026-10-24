@@ -11,6 +11,7 @@ import {pens} from '../../settlement/herd.js';
 import {BUILDINGS} from '../../data/buildings.js';
 import {buildingById} from '../../settlement/query.js';
 import {tempAt} from '../../world/heat.js';
+import {heatHarm} from '../body.js';
 
 // the pen this animal belongs to: the one it had, or the first with room
 function penOf(w, a) {
@@ -31,7 +32,7 @@ export const livestockBrain = {
   id: 'livestock',
   step(w, a) {
     const sp = SPECIES.get(a.species), i = cellOf(w, a), T = tempAt(w, i);
-    if (T > sp.heatHarm) { a.hp -= Math.min(0.01, (T - sp.heatHarm) * 0.0001); if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
+    if (heatHarm(a, sp, T, 'beast')) { if (a.hp <= 0) { kill(w, a, 'огня'); return; } }
     if (shunsHeat(w, a, sp, T, 2)) { a.task = {id: 'bolt'}; escapeHeat(w, a, 1.3); return; }
     if (a.cd > 0) a.cd--;
     // a beast of prey or a raider right here (any of the bestiary's hunters, not only wolves):

@@ -15,8 +15,18 @@ import {CRIT} from '../data/wounds.js';
 import {noteHit} from './trophies.js';
 import {heatTo} from '../world/heat.js';
 import {nearAgents} from './spatial.js';
-import {COMBAT, DEFAULT_BLOW, ARMOR_VS_CAP} from '../data/balance/combat.js';
+import {COMBAT, CAPS, DEFAULT_BLOW, ARMOR_VS_CAP, resistTo, traitOf} from '../data/balance/combat.js';
+import {drawPlace} from '../data/anatomy.js';
+import {CONDITIONS} from '../data/conditions.js';
+import {taintBy} from './afflictions.js';
+import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} from '../data/checks.js';
+import {NORM} from '../data/special.js';
+
 import {firstAttacker} from './lookup.js';
+import {KINDLE} from '../data/behaviour.js';
+
+// a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
+const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
@@ -44,8 +54,9 @@ export function nearestHostile(w, a, r) {
   return best;
 }
 
-// how far a blow reaches: the species' own `attack.reach` (a toad's tongue), otherwise arm's length
-export const reachOf = a => SPECIES.get(a.species).attack?.reach ?? COMBAT.reach;
+// how far a blow reaches: the species' own `attack.reach` (a toad's tongue), otherwise arm's length; a long weapon
+// (quality `reach`, data/balance/combat.js WEAPON_QUALITIES) further
+export const reachOf = a => (SPECIES.get(a.species).attack?.reach ?? COMBAT.reach) + traitOf(a.gear?.melee?.q, 'reach');
 
 const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack || {power: 1}).power, cd: (SPECIES.get(a.species).attack || {cooldown: 12}).cooldown, type: SPECIES.get(a.species).attack?.type || DEFAULT_BLOW.melee}, armor: 0, block: 0};
 
@@ -53,8 +64,9 @@ const ensureGear = a => a.gear || {melee: {dmg: (SPECIES.get(a.species).attack |
 // (forms.js: mail turns a cut, a hide shield catches a spear point and gives under a club) — one rule for both
 const against = (value, vs, type) => (vs && type ? Math.min(ARMOR_VS_CAP, (value || 0) * (vs[type] ?? 1)) : value || 0);
 export const armorAgainst = (g, type) => against(g.armor, g.armorVs, type);
-// a shot meets only what covers: a shield, at `cover` of its block (forms.js); a sword or a staff parries no arrow
-export const blockAgainst = (g, type, melee = true) => (melee ? against(g.block, g.blockVs, type) : against(g.cover, g.coverVs, type));
+// a shot meets only what covers: a shield, at `cover` of its block (forms.js); a sword or a staff parries no arrow.
+// A parrying weapon in hand (quality `parry`) adds to the block against blows, never past CAPS.block
+export const blockAgainst = (g, type, melee = true) => (melee ? (g.parry ? Math.max(against(g.block, g.blockVs, type), Math.min(CAPS.block, against(g.block, g.blockVs, type) + g.parry)) : against(g.block, g.blockVs, type)) : against(g.cover, g.coverVs, type));
 // what the body does to a blow of this kind and delivery (creatures.js `resist`: pierce, slash, blunt, melee, ranged)
 export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1) * (sp.resist[melee ? 'melee' : 'ranged'] ?? 1) : 1);
 
@@ -65,7 +77,10 @@ export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1)
 // lethal(): death, or for a colonist with luck a fall (data/wounds.js). The fallen are not struck again.
 // `mix` — a blow of several kinds at once ([[kind, weight], …]: a marked piece, data/balance/marks.js): the body and the
 // armour answer each part; a shield stops or lets through the whole blow by its first kind
-export function damage(w, by, t, raw, {melee = true, type = null, mix = null} = {}) {
+// `q` — the qualities of the weapon that struck (data/balance/combat.js WEAPON_QUALITIES): piercing takes a share of the
+// armour off, vicious makes a critical blow worse. Every blow that lands draws its place on the body (data/anatomy.js)
+// from its own stream: × the damage there, and the place a fallen one's trauma comes from
+export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q = null} = {}) {
   if (t.downed || t.dead) return 'downed';
   const g = ensureGear(t);
   // the victim remembers who hurt it and from how far (a mule charges whoever shot it)
@@ -78,14 +93,35 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null} = 
   if (mix) type = mix[0][0];
   else raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
   const block = blockAgainst(g, type, melee);
-  if (block > 0 && w.rngs.combat() < block) { wear(w, t, melee ? g.blockItem : g.coverItem); t.flash = 3; return 'blocked'; }
+  // the block is a check with four degrees (data/checks.js): a critical block wears the striker's weapon, a botched
+  // one lets the blow into the open (both 0 — as before)
+  let botched = 1;
+  if (block > 0) {
+    const deg = degreeOf(w.rngs.combat(), block);
+    if (passed(deg)) {
+      wear(w, t, melee ? g.blockItem : g.coverItem); t.flash = 3;
+      const v = deg === 'critSuccess' ? degreeValue('block', 'critSuccess') : 0;
+      if (v && melee && by.gear?.melee?.item) wear(w, by, by.gear.melee.item, v);
+      return 'blocked';
+    }
+    if (deg === 'critFail') botched = 1 + degreeValue('block', 'critFail');
+  }
   const crit = w.rngs.combat() < critChance(by);
-  if (crit) { raw *= CRIT.mul; t.flash = 6; }
+  if (crit) { raw *= CRIT.mul + traitOf(q, 'vicious'); t.flash = 6; }
+  const place = drawPlace(tsp, w.rngs.hits);
+  t.hitAt = place.id; raw *= place.dmg * botched;
+  const pierce = 1 - traitOf(q, 'piercing');
+  // a cut that bleeds, a blow that stuns (weapon qualities `bleed`, `stun`; data/conditions.js): a chance each, drawn
+  // from the stream of places, and only for a weapon that has them — every other blow draws nothing more
+  const bleed = traitOf(q, 'bleed'), stun = traitOf(q, 'stun');
+  if (bleed && !tsp.undead && tsp.kind !== 'spirit' && w.rngs.hits() < bleed) { const C = CONDITIONS.get('bleeding'); t.bleeding = {dmg: C.dmg, until: w.tick + C.ticks}; }
+  if (stun && w.rngs.hits() < stun) t.stunned = {until: w.tick + CONDITIONS.get('stunned').ticks};
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
-  let dmg = mix ? raw * home * wall * mix.reduce((s, [ty, k]) => s + k * resistOf(tsp, ty, melee) * (1 - armorAgainst(g, ty)), 0)
-    : raw * home * wall * (1 - armorAgainst(g, type));
+  let dmg = mix ? raw * home * wall * mix.reduce((s, [ty, k]) => s + k * resistOf(tsp, ty, melee) * (1 - armorAgainst(g, ty) * pierce), 0)
+    : raw * home * wall * (1 - armorAgainst(g, type) * pierce);
+  taintBy(w, t, by);   // an undead's blow leaves the rot (agents/afflictions.js; 0 a blow — nothing)
   noteHit(t, by);   // the colonists who fought it share in its rare trophies (agents/trophies.js)
   if (g.armor && t.equip?.body) wear(w, t, t.equip.body);
   t.hp -= dmg;
@@ -93,7 +129,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null} = 
   const bsp = SPECIES.get(by.species);
   if (bsp.drinks && melee && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
   // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js), a drake's breath burns
-  if (melee && bsp.venom && !tsp.undead) { t.poison = {dmg: bsp.venom.dmg, until: w.tick + bsp.venom.ticks}; }
+  if (melee && bsp.venom && !tsp.undead) { t.poison = {dmg: bsp.venom.dmg * resistTo(tsp, 'poison'), until: w.tick + bsp.venom.ticks}; }
   if (melee && bsp.web) t.webbed = {slow: bsp.web.slow, until: w.tick + bsp.web.ticks};
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
@@ -103,9 +139,14 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null} = 
   return dmg;
 }
 
-// creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely
+// creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely;
+// a silvered blade × the body's own answer to silver too (`resist.silver`, the table «Урон по видам»)
 export const SILVER = COMBAT.silver;
-const silverFactor = (t, item) => (SPECIES.get(t.species).weakTo?.includes('silver') ? (item && def(item).silver ? COMBAT.silver.bane : COMBAT.silver.plain) : 1);
+const silverFactor = (t, item) => {
+  const sp = SPECIES.get(t.species), silvered = !!(item && def(item).silver);
+  const fear = sp.weakTo?.includes('silver') ? (silvered ? COMBAT.silver.bane : COMBAT.silver.plain) : 1;
+  return silvered ? fear * resistTo(sp, 'silver') : fear;
+};
 
 // a drake's breath: the ground under the victim catches fire (only where there is something to burn)
 function scorch(w, t) {
@@ -113,7 +154,7 @@ function scorch(w, t) {
   for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) {
     if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
     const i = y * w.w + x;
-    if (w.grid.fuel[i] > 0.05) { w.grid.fire[i] = Math.max(w.grid.fire[i], 0.5); heatTo(w, i, 260); }
+    const B = KINDLE.breath; if (w.grid.fuel[i] > B.fuel) { w.grid.fire[i] = Math.max(w.grid.fire[i], B.fire); heatTo(w, i, B.heat); }
   }
   w.nav.dirty('fire');
 }
@@ -127,13 +168,21 @@ export const behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
 // so a creature without it hits as before.
 const BLOW = COMBAT.blow, SHOT = COMBAT.shot, HIT = COMBAT.hit;
 export function attack(w, a, t) {
-  if (a.cd > 0 || !t || t.dead || t.downed || a.dead) return false;
+  if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   // rock stops a blow as it stops a shot (a line through the corner of two rocks included); water does not
   if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
-  damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null});
+  // the blow as a check of Agility against a step of the ladder (data/checks.js): rolled only while one of its
+  // degrees does something — a full blow, or a miss that leaves the striker open
+  let full = 1;
+  if (degreesOn('melee')) {
+    const deg = degreeOf(w.rngs.combat(), checkChance(a.special?.A ?? NORM, DEGREE_CHECKS.melee.step));
+    if (deg === 'critSuccess') full = 1 + degreeValue('melee', 'critSuccess');
+    if (deg === 'critFail') a.cd += degreeValue('melee', 'critFail');
+  }
+  damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null});
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it
   if (g.melee.item) wear(w, a, g.melee.item);
   return true;
@@ -143,7 +192,7 @@ export function attack(w, a, t) {
 // The same shot for a hunt and for a fight: it reads and trains the shooting skill (`ranged`), and only
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
-  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed) return null;
+  const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a)) return null;
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
@@ -151,12 +200,15 @@ export function shoot(w, a, t) {
   if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
   wear(w, a, r.item);
   const skill = a.skill?.ranged ?? HIT.noSkill, moving = t.task?.id === 'bolt' || t.task?.id === 'chase' ? HIT.moving : 0;
-  const hit = w.rngs.combat() < HIT.base + HIT.skill * skill + (a.mods?.aim || 0) - (d / range) * HIT.far - moving;
+  // to hit is a check with four degrees (data/checks.js): success as always while the roll is under the chance
+  const deg = degreeOf(w.rngs.combat(), HIT.base + HIT.skill * skill + (a.mods?.aim || 0) - (d / range) * HIT.far - moving), hit = passed(deg);
+  if (deg === 'critFail') { const v = degreeValue('shot', 'critFail'); if (v) wear(w, a, r.item, v); }
   practice(a, 'ranged', LEARN.shot);   // a miss teaches too: the arrow did fly
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
-  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null), {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null});
+  const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
+  const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});
   return t.dead ? 'kill' : res === 'blocked' || res === 'dodged' ? 'miss' : 'hit';
 }
 

@@ -15,16 +15,20 @@ import {esc} from '../core/util.js';
 import {think} from './mind.js';
 import {qualityOf} from '../data/quality.js';
 import {season} from '../data/seasons.js';
-import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS} from '../data/balance/combat.js';
+import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS, traitOf} from '../data/balance/combat.js';
 import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 import {MARKS, MARK, markable} from '../data/balance/marks.js';
 import {WOODS, mayUse, useOf, KIND_LAND} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
+import {GEAR} from '../data/behaviour.js';
+import {onEdit} from '../data/schema/layer.js';
 
 // The definition of an item instance. A finer piece ({type, q: 1…3}) gets a definition of its own,
 // made once from the plain one and data/quality.js: stronger blows, better guard, faster work,
 // longer life, a "+1" in its name. Everything else simply reads def(item) and needs no special case.
 const finer = new Map();
+// an edit of the tables (forms, materials, qualities…) makes the finer and named copies again
+onEdit(() => { finer.clear(); named.clear(); });
 export function itemDef(type, q = 0) {
   const base = ITEMS.get(type);
   if (!q || base.quality === false) return base;
@@ -130,7 +134,7 @@ export function itemPrice(type, q = 0, silver = false, mark = null, of = null, m
 // How much silver in the hand is worth: a lot while something that fears it is on the map, a little once
 // the colony has met such a creature (w.chronicle.silverFoes, settlement/migration.js), nothing before
 export const silverFoesHere = w => w.agents.some(o => !o.dead && o.faction !== 'colony' && SPECIES.get(o.species).weakTo?.includes('silver'));
-const silverWorth = w => (!w ? 0 : silverFoesHere(w) ? 1.6 : w.chronicle?.silverFoes ? 0.35 : 0);
+const silverWorth = w => (!w ? 0 : silverFoesHere(w) ? GEAR.silverHere : w.chronicle?.silverFoes ? GEAR.silverMet : 0);
 export const emptySlots = () => Object.fromEntries(SLOTS.map(s => [s.id, null]));
 
 export function handItems(a) {
@@ -154,13 +158,16 @@ export function recalcGear(a) {
   if (!a.equip) { a.gear = g; return g; }
   for (const it of handItems(a)) {
     const d = def(it);
-    if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null};
-    if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it};
+    if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null, ...(d.qualities ? {q: d.qualities} : {})};
+    if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it, ...(d.qualities ? {q: d.qualities} : {})};
     if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs || null; }
     // a shot is caught only by what covers (a shield), with `cover` of its block (forms.js)
     if ((d.block || 0) * (d.cover || 0) > g.cover) { g.cover = d.block * d.cover; g.coverItem = it; g.coverVs = d.vs || null; }
     if (d.speed) g.speed *= d.speed;
   }
+  // a parrying weapon in hand adds to the block against blows (data/balance/combat.js WEAPON_QUALITIES)
+  const parry = handItems(a).reduce((s, it) => s + traitOf(def(it).qualities, 'parry'), 0);
+  if (parry) g.parry = parry;
   if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;
   const body = a.equip.body;
   if (body) { const d = def(body); g.armor = d.armor || 0; g.armorVs = d.vs || null; g.warmth = d.warmth || 0; if (d.speed) g.speed *= d.speed; }
@@ -180,7 +187,7 @@ function removeEverywhere(a, inst) {
 // wear an item down; when it breaks it is gone for good
 export function wear(w, a, inst, amount = 1) {
   if (!inst || !Number.isFinite(inst.dur)) return;
-  inst.dur -= amount * (a.faction === 'colony' ? w.mods.mul.wear : 1);
+  inst.dur -= amount * (a.faction === 'colony' ? w.mods.mul.wear : 1) * (1 + traitOf(def(inst).qualities, 'unreliable'));
   if (inst.dur > 0) return;
   removeEverywhere(a, inst);
   recalcGear(a);
@@ -244,30 +251,30 @@ const toolUse = (a, job) => (JOBS.has(job) && !jobAccess(a, JOBS.get(job)).ok ? 
 // Value of an item for this colonist: fighting value grows with courage, tool value with how much
 // the colonist likes the job it speeds up, a bow is worth more to someone who likes hunting.
 function value(a, d, w) {
-  const brave = 0.5 + 0.5 * a.mods.bravery;
+  const brave = GEAR.brave[0] + GEAR.brave[1] * a.mods.bravery;
   let v = 0;
   // a blow as this colonist strikes it: the weapon's damage a tick (against a blow of 1 every 12 ticks) and the
   // letters it is struck with (an agile one is worth more with a dagger, a strong one with a maul)
-  if (d.melee) v += (d.melee.dmg * 12 / d.melee.cd * blowStat(a, d.scale) - 1) * 0.6 * brave + 0.15;
+  if (d.melee) v += (d.melee.dmg * GEAR.blowTicks / d.melee.cd * blowStat(a, d.scale) - 1) * GEAR.melee * brave + GEAR.meleeBase;
   if (d.silver && d.melee) v += silverWorth(w) * brave;
   if (d.ranged) {
     const boost = d.ranged.boost ? (w.mods.best[d.ranged.boost] || 1) : 1;
-    v += d.ranged.dmg * boost * 0.55 * (a.prefs.hunt ?? 1) + 0.1;
-    if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= 0.3;
+    v += d.ranged.dmg * boost * GEAR.ranged * (a.prefs.hunt ?? 1) + GEAR.rangedBase;
+    if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= GEAR.noAmmo;
   }
-  if (d.block) v += d.block * 1.6 * brave;
-  for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.4 * (a.prefs[job] ?? 1) * toolUse(a, job);
-  if (d.speed && d.slot === 'hand') v += (d.speed - 1) * 2;
+  if (d.block) v += d.block * GEAR.block * brave;
+  for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * GEAR.tool * (a.prefs[job] ?? 1) * toolUse(a, job);
+  if (d.speed && d.slot === 'hand') v += (d.speed - 1) * GEAR.handSpeed;
   return v;
 }
 // warm clothes count for more in the cold seasons (data/seasons.js `dress`)
-function bodyValue(a, d, w) { return (d.armor || 0) * (0.6 + 0.4 * a.mods.bravery) * 2 + (d.warmth || 0) * 0.8 * a.mods.cold * (w ? season(w).dress ?? 1 : 1) - (1 - (d.speed || 1)) * 2; }
+function bodyValue(a, d, w) { return (d.armor || 0) * (GEAR.armorBrave[0] + GEAR.armorBrave[1] * a.mods.bravery) * GEAR.armor + (d.warmth || 0) * GEAR.warmth * a.mods.cold * (w ? season(w).dress ?? 1 : 1) - (1 - (d.speed || 1)) * GEAR.bodySpeed; }
 function backValue(a, d, w, handsDefs) {
-  if (d.holds) return handsDefs.some(h => h.ranged?.ammo === d.holds.ammo) ? 3 : 0;
-  if (d.carry) return 0.25 + d.carry * 0.15 * Math.max(a.prefs.gather ?? 1, a.prefs.chop ?? 1);
+  if (d.holds) return handsDefs.some(h => h.ranged?.ammo === d.holds.ammo) ? GEAR.quiver : 0;
+  if (d.carry) return GEAR.carryBase + d.carry * GEAR.carry * Math.max(a.prefs.gather ?? 1, a.prefs.chop ?? 1);
   // a spare carried on the back: tools still help at work, weapons barely
-  let v = 0; for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * 1.3 * (a.prefs[job] ?? 1) * toolUse(a, job);
-  return v + (isWeapon(d) ? 0.05 : 0);
+  let v = 0; for (const [job, m] of Object.entries(d.tool || {})) v += (m - 1) * GEAR.backTool * (a.prefs[job] ?? 1) * toolUse(a, job);
+  return v + (isWeapon(d) ? GEAR.spareWeapon : 0);
 }
 
 // hands: the first item does the fighting; a second one-hander adds its block and tool value only
@@ -276,8 +283,8 @@ function handsValue(w, a, hands) {
   let v = value(a, def(hands[0]), w);
   if (hands[1] && hands[1] !== hands[0]) {
     const od = def(hands[1]);
-    v += (od.block || 0) * 1.6 * (0.5 + 0.5 * a.mods.bravery) + 0.05 +
-      Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * 1.4 * (a.prefs[j] ?? 1) * toolUse(a, j), 0);
+    v += (od.block || 0) * GEAR.block * (GEAR.brave[0] + GEAR.brave[1] * a.mods.bravery) + GEAR.second +
+      Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * GEAR.tool * (a.prefs[j] ?? 1) * toolUse(a, j), 0);
   }
   return v;
 }
@@ -334,7 +341,7 @@ export function outfit(w, a) {
   // what the race does not touch at all (data/kinds.js 'taboo') stays in the store
   const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)));
   const best = bestLoadout(w, a, pool);
-  if (best && best.score > currentScore(w, a) + 0.12) {
+  if (best && best.score > currentScore(w, a) + GEAR.swap) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
     const gained = [...keep].filter(it => !own.includes(it)).map(it => def(it).short);
     if (gained.length) think(w, a, 'newGear', {items: gained.join(', ')});
