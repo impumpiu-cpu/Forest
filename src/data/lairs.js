@@ -133,5 +133,49 @@ export const NAME_ADJ = [
 ];
 export const GENDER_INDEX = {m: 0, f: 1, n: 2, pl: 3};
 
-// lairs this old (years) become «ancient» — once, with a line in the chronicle
-export const ANCIENT_YEARS = 30;
+// lairs this old (years) become «ancient» — once, with a line in the chronicle; an ancient lair may raise a leader
+export const LAIR_AGE = {ancient: 30};
+export const ANCIENT_YEARS = LAIR_AGE.ancient;   // the number as the code says it; what the game reads is LAIR_AGE
+
+// Leaders of the old lairs (atlas/leaders.js, docs/TABLE.md «Главари логов»). An ancient lair (any kind but a dragon's,
+// a vampire's manor and a calamity's boss's) may raise a named leader: a creature of its kind grown past its kind's
+// limits, less than a calamity's boss. The leader turns the lair from a field into a thinker: it walks the world map as
+// a party, as an army does, and each year picks a plan — a raid on a town, a brood led out to found a daughter lair, a
+// weaker lair brought under its hand, a war on a rival lair. While it leads, the lair sends no raids or broods of its own.
+//   chance  — a year, for an ancient lair with no leader;  heir — the same, the year after a leader died of age
+//   max     — living leaders in the world at once
+//   stats, add, cap — grown past its kind: + add on each of `stats` (a calamity's boss: CAL.boss.add 6–12)
+//   life    — years it leads before age takes it, [lo, hi]
+//   think   — the chance a year that it sets out at all;  plans — the weights of the plans it may pick
+//   might   — its raids and fights: the lair's strength × its kind's power × this (a boss: CAL.boss.might 3)
+//   reach   — × the tribes' raid reach (TRIBE_RAID.reach): how far it goes
+//   subdue  — a lair this many of its territories away at most, and `ratio` — how much weaker it must be to be taken
+//   tribute — a year, the share of a vassal's strength its lord's lair takes (half of it lost to the vassal)
+//   fall    — the chance it dies when its raid or its fight is beaten
+//   young   — the strength of a daughter lair;  beat — what is left of a lair it beats (wiped out below 0,12)
+//   beastRaid — × the weight of a raid for a beast's leader (it hunts the woods more than the towns)
+//   camp    — a caravan in its lands: see below
+export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'], add: [2, 5], cap: 30, life: [20, 50],
+  think: 0.25, plans: {raid: 0.7, expand: 0.6, subdue: 0.8, rival: 0.6}, might: 1.6, reach: 1.5,
+  subdue: {reach: 3, ratio: 1.3}, tribute: 0.04, fall: 0.25, young: 0.45, beat: 0.55, beastRaid: 0.35,
+  // a caravan camping in a leader's lands (campaign/land.js dangers): × the chance its folk come at night, × their strength
+  camp: {p: 1.6, strength: 1.3}};
+// what a leader is called — its title and nickname — is in data/names.js (TITLE, NICK, PERSON[race].nick)
+
+// The life of a lair on the world map (atlas/lairs.js stepLairs), a season at a time:
+//   fed:      how well it ate: its prey against what the land could hold (at most fedMax; fedNone with no prey on the
+//             map), demons and dragons always fiendFed, a vampire its town's people over vampirePop, the dead the
+//             rot over rotAt × rotFeed, a tribe its land over tribeFeed — less `crowd` × the peoples crowding it
+//   strength: + grow × (fed − need), − winter in winter, ± wobble/2; it dies below `dies`
+//   brood:    in spring a lair stronger than breedAt and older than breedAge years may send a brood (its kind's `breed`
+//             chance) while there are fewer than its kind's max × crowdMax (a boss's: × bossCrowd); the brood looks for
+//             a spot in broodTries tries, and costs the lair × broodCost of its strength
+//   rivals:   touching rivals fight with this chance a season; each side's strength × its kind's power × (luck[0] +
+//             luck[1] × a roll); the loser × loser, the winner × winner; a loser below `routed` is gone
+//   start:    a wild lair's strength at the dawn: start[0] + start[1] × a roll (a dragon's dragonStart); a lair that
+//             comes through history (the dead, a rift) starts at spawnStart (a rift at fiendStart)
+export const LAIR_LIFE = {fedMax: 1.2, fedNone: 0.5, fiendFed: 0.55, vampirePop: 600, rotFeed: 1.2, tribeFeed: 0.6, crowd: 0.8,
+  grow: 0.08, need: 0.45, winter: 0.03, wobble: 0.02, dies: 0.08,
+  breedAt: 0.85, breedAge: 3, crowdMax: 1.5, bossCrowd: 3, broodTries: 60, broodCost: 0.75,
+  rivals: 0.08, luck: [0.7, 0.6], loser: 0.4, winner: 0.9, routed: 0.12,
+  start: [0.4, 0.5], dragonStart: 0.9, spawnStart: 0.35, fiendStart: 0.55};

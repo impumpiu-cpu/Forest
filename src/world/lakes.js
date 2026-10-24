@@ -3,16 +3,9 @@
 import {T} from '../data/terrain.js';
 import {DAY} from '../core/time.js';
 import {log} from '../core/log.js';
+import {FISHING} from '../data/nature.js';
 
-export const FISHING = {
-  minCells: 40,        // smaller ponds have no fish worth catching
-  perCell: 0.3,        // fish a lake can hold per cell of water…
-  maxStock: 90,        // …up to this many
-  growth: 0.25,        // logistic growth per day: fastest when the lake is half full, none when full
-  trickle: 0.008,      // share of capacity that swims in per day even into an emptied lake
-  reopenAt: 0.5,       // a fished-out lake is left alone until it is this full again
-};
-
+export {FISHING};   // (data/nature.js)
 // worth fishing: has fish and is not resting after being fished out
 export const fishable = l => l.cap > 0 && !l.resting && l.fish >= 1;
 

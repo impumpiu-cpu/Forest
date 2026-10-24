@@ -17,6 +17,7 @@ import {releaseAll} from './reserve.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {esc, g, clamp} from '../core/util.js';
+import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 
 const round1 = v => Math.round(v * 10) / 10;
 const tally = w => (w.chronicle.captives ||= {taken: 0, died: 0});
@@ -34,7 +35,10 @@ function upset(w, sold) {
   const U = SLAVE.upset;
   for (const f of formers(w)) { f.former.bond = clamp(f.former.bond + U.former, 0, 1); think(w, f, 'captiveSold', {name: sold.name}); }
   for (const c of captives(w)) if (c !== sold && !c.captive.resigned) c.captive.will = clamp((c.captive.will ?? 0.6) + U.fear, 0, 1);
-  for (const a of colonists(w)) if (!a.captive && !a.former && (a.align?.mercy ?? 0) > 0) think(w, a, 'captiveSold', {name: sold.name});
+  for (const a of colonists(w)) if (!a.captive && !a.former) {
+    if ((a.align?.mercy ?? 0) > 0) think(w, a, 'captiveSold', {name: sold.name});
+    else shiftAlign(a, 'mercy', ALIGN_DRIFT.pawn.sold);   // the hard grow harder: they get used to it
+  }
 }
 
 // 1. sell to the trader, as long as it has gold

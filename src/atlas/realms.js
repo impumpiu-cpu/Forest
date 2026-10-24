@@ -5,7 +5,8 @@
 // two realms of one race start from their race's memory of itself. The seat is the capital
 // (data/peoples.js CAPITAL): only it builds the throne hall, the palace and the mint.
 //
-// a.realms = [{id, people, name, capital: townId, founded, color}]
+// a.realms = [{id, people, name, capital: townId, founded, color, align: {order, mercy}, seatSince}]
+// align — the realm's world view (data/values.js), moved by its wars, peace and fallen seats (atlas/diplomacy.js)
 import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -16,6 +17,9 @@ import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
+import {ALIGN_DRIFT, alignNear, shiftAlign, spreadOf} from '../data/values.js';
+import {mulberry, seedNumber} from '../core/rng.js';
+import {TECH_RULES} from '../data/tech.js';
 
 const lv = id => ORE_GENESIS.get(id).levels;
 const near = (a, i, test) => {
@@ -61,8 +65,10 @@ export function subHomeField(a, race, sub) {
 }
 
 // a new realm: at the arrival each band brings its own sub-race (`subId`); a realm born of a schism
-// takes the sub-race that fits the land of its seat
-export function foundRealm(a, t, subId = null) {
+// takes the sub-race that fits the land of its seat. Its world view (data/values.js ALIGN): within ±ALIGN.realm of its
+// race's point — or, born of a schism, of the realm it broke from (`from`). Drawn from a stream of its own, so the
+// history's random numbers are not touched
+export function foundRealm(a, t, subId = null, from = null) {
   a.realms ||= [];
   const P = WORLD_PEOPLES.get(t.people), used = new Set(a.realms.filter(r => r.people === t.people).map(r => r.name));
   const sub = subId ? worldSubs(P.race).find(p => p.id === subId) : subFor(P.race, biomeAt(a, t.i)?.id);
@@ -70,7 +76,11 @@ export function foundRealm(a, t, subId = null) {
   const nth = a.realms.filter(r => r.people === t.people).length;
   // each realm of a race its own shade of the race's colour
   const shade = [1, 0.72, 1.25, 0.55, 1.45][nth % 5], color = P.color.map(v => Math.max(0, Math.min(255, Math.round(v * shade))));
-  const r = {id: `r${a.realms.length + 1}`, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color};
+  const id = `r${a.realms.length + 1}`;
+  const align = alignNear(from?.align || SPECIES.get(P.race).align, spreadOf(SPECIES.get(P.race), 'realm'), mulberry(seedNumber(`${a.cfg.seed}:align:${id}`)));
+  const r = {id, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color, align, root: {...align}, seatSince: a.hist.year,
+    // what it knows (data/tech.js, atlas/tech.js): a realm of a schism keeps what the old one knew
+    tech: from?.tech && TECH_RULES.inherit ? [...from.tech] : []};
   a.realms.push(r);
   t.realm = r.id; t.capital = true;
   return r;
@@ -106,7 +116,7 @@ function divide(a, oldId, newId, seatOld, seatNew) {
 
 // a town breaks away with the towns nearer to it: a new realm, wary of the old one, sometimes at war
 function breakAway(a, r, seat, rnd, say, why) {
-  const old = capitalOf(a, r.id), nr = foundRealm(a, seat), went = old ? divide(a, r.id, nr.id, old, seat) : 0;
+  const old = capitalOf(a, r.id), nr = foundRealm(a, seat, null, r), went = old ? divide(a, r.id, nr.id, old, seat) : 0;
   a.contacts[r.id < nr.id ? `${r.id}:${nr.id}` : `${nr.id}:${r.id}`] = {year: a.hist.year, feeling: SCHISM.attitude};
   const rel = meet(a, r.id, nr.id, a.hist.year);
   rel.att = SCHISM.attitude;
@@ -150,7 +160,8 @@ export function seatFallen(a, t, rnd, say) {
   const left = a.towns.filter(o => o.alive && o.realm === r.id).sort((p, q) => glory(q) - glory(p));
   if (!left.length) { r.fallen = a.hist.year; say(`Держава «${realmLabel(a, r.id)}» сгинула вместе со своей столицей.`); return; }
   const [first, second] = left;
-  r.capital = first.id; first.capital = true;
+  r.capital = first.id; first.capital = true; r.seatSince = a.hist.year;
+  shiftAlign(r, 'order', ALIGN_DRIFT.realm.seatLost);   // a burnt seat shakes the law
   say(`Столица державы «${realmLabel(a, r.id)}» перенесена в ${townLabel(first, 1)} ${first.name}.`);
   if (second && glory(second) >= SCHISM.rival * glory(first)) breakAway(a, r, second, rnd, say, `Власть не удержали:`);
 }

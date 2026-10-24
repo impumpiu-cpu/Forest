@@ -15,6 +15,7 @@ import {RACES} from './races.js';
 import {MONSTERS} from './monsters.js';
 import {BESTIARY} from './bestiary.js';
 import {bodyFor} from './balance/creatures.js';
+import {petNames} from './names.js';
 
 export const SPECIES = new Registry('species');
 
@@ -128,7 +129,7 @@ SPECIES.registerAll([
     // tamed it hauls logs and stone and pulls the plough (see `tame` on the goat for the fields)
     tame: {chance: 0.22, tier: 3, space: 2, bait: {hay: 2}, eats: 1.2, kicks: true, stack: 2, max: 2,
       effects: {jobSpeed: {chop: 1.15, mine: 1.15, dig: 1.15, farm: 1.25}},
-      names: ['Буян', 'Гнедко', 'Упрямец', 'Тяжеступ', 'Ворчун'],
+      names: petNames('mule'),
       effect: 'возит брёвна и камень (рубка, камень и руда +15%), тянет соху (поле +25%)'}},
 
   // Goat: a wild goat of the rocky meadows. Skittish like a deer, but a patient herder with an
@@ -152,7 +153,7 @@ SPECIES.registerAll([
 //   effects: work it does for the colony (settlement/mods.js),
     //   counted for up to `stack` animals;  names: what the herders call them
     tame: {chance: 0.45, tier: 1, space: 1, bait: {hay: 1}, eats: 0.6, milk: 1.2, wool: 3, woolDays: 40, breed: 0.06, grownDays: 20,
-      names: ['Белянка', 'Пеструшка', 'Зорька', 'Рогатка', 'Маруська', 'Бодуша', 'Сивка', 'Дереза', 'Звёздочка', 'Чернушка'],
+      names: petNames('goat'),
       effect: 'даёт молоко и шерсть, в тёплое время приносит козлят'}},
 ].map(sp => bodyFor({mind: 'beast', relativeStats: true, ...sp})));
 

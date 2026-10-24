@@ -15,15 +15,10 @@ import {log} from '../../core/log.js';
 import {nightness} from '../../core/time.js';
 import {esc, g} from '../../core/util.js';
 import {tempAt} from '../../world/heat.js';
+import {VERMIN} from '../../data/behaviour.js';
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-export const VERMIN = {
-  den: [7, 13],     // the hiding place is this many cells from the camp fire…
-  watch: 5,         // …and it waits while someone awake is this close to the stores,
-  patience: 160,    // …but not longer than this: then it makes a dash for the food anyway
-  grab: 100,        // a raid on the stores lasts this long, then it runs back to its hole
-};
-
+export {VERMIN};   // (data/behaviour.js)
 // a hiding place: brush or wood a little way off the camp, outside the settlement zone if it can
 function denOf(w, a) {
   if (a.den) return a.den;

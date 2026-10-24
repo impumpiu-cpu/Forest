@@ -179,3 +179,22 @@ TOWN_BUILDINGS.registerAll([
 
 // what a building gives, as one number for each effect (0 where it gives nothing)
 export const fxOf = (b, key) => b.fx[key] || 0;
+
+// How a town's buildings work (atlas/towns.js), on top of their effects:
+//   room:      the people its houses hold: room[0] + room[1] × housing
+//   might:     √people × (1 + defence + mightProd × production) — its strength against raids and armies
+//   raid:      the share of a raid's harm it takes: 1 − raidFaith × faith − raidHealth × health, never below raidFloor
+//   needs:     what it wants to build, 0 … ~1.5 an effect: housing and food fill as people reach full[0] of room or of
+//              what the land feeds, over full[1]; defence — the threat, + defence[1] while it was raided in the last
+//              `raided` years, at most defence[0], + defence[2]; the others — a base + a step a tier (trade + its road,
+//              + trade[2] from tier 2; lore only from tier 2, else lore[2]; health + health[2] after a raid)
+export const TOWN_FX = {room: [120, 100], mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5,
+  needs: {full: [0.55, 0.4], housing: [1.5], food: [1.3], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
+    faith: [0.25, 0.15], lore: [0.25, 0.1, 0.03], prestige: [0.15, 0.15], health: [0.25, 0.1, 0.3]}};
+
+// What a town's place must have for a building (atlas/towns.js placeHas): cells around to look, and the thresholds —
+// a lake, magma, gold sand, salt (a salt lake; or the coast where it is warmer than saltSea°), clay (alluvium), stone
+// (rough ground below stoneFlat of flatness or above stoneHigh of the land's height), fertile soil, a forest (tree
+// cover), steep and flat ground, graves (barrows), warm (°C), dry country; `near` — the cells around for the rest
+export const PLACE_AT = {near: 2, lake: 2, magma: 3, placer: 1, salt: 4, saltSea: 14, clay: 0.3, stoneFlat: 0.75, stoneHigh: 0.2, fertile: 0.5,
+  forest: 0.5, steep: 0.5, flat: 0.85, graves: 3, gravesAt: 0.2, warm: 12, dry: 3};

@@ -96,5 +96,15 @@ export function makeItem(formId, matId) {
 ITEMS.registerAll(Object.entries(FORMS).flatMap(([formId, form]) =>
   Object.entries(MATERIALS).filter(([, m]) => m.class.some(c => form.of.includes(c))).map(([matId]) => makeItem(formId, matId))));
 
+// the items made again from the forms and materials as they are now (an edit of «Формы» or «Материалы» on the
+// screen «Таблицы», src/data/schema/edits.js): each definition keeps its identity — saves and the stock refer to it
+export function rebuildItems() {
+  for (const d of ITEMS.all()) {
+    const fresh = makeItem(d.form, d.material);
+    for (const k of Object.keys(d)) if (k !== 'id') delete d[k];
+    Object.assign(d, fresh, {id: d.id});
+  }
+}
+
 export const isHandItem = def => def.slot === 'hand';
 export const isWeapon = def => !!(def.melee || def.ranged);

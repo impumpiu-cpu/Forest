@@ -40,7 +40,7 @@ import {BUBBLE, THINGS} from '../src/data/bubble.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
 import {runCamp, campOutcome, outcomeHash, campSetup, openCamp, stepCamp} from '../src/campaign/camp.js';
 import {room, freeOf, joinedOf} from '../src/campaign/company.js';
-import {playStop} from '../src/campaign/fight.js';
+import {playStop, CAMP_TIME} from '../src/campaign/fight.js';
 import {cellRegion} from '../src/campaign/land.js';
 import {trade, standing} from '../src/campaign/town.js';
 import {SMITH, MARKET} from '../src/data/market.js';
@@ -62,7 +62,7 @@ const tally = {won: 0, lost: 0, timeout: 0}, got = {beast: 0, cart: 0, route: 0,
 function countLocal(K, label, bad) {
   if (K.mode === 'auto') return;
   const L = K.stats.local || {camps: 0, ms: 0, ticks: 0};
-  local.camps += L.camps; local.ms += L.ms; local.ticks += L.ticks; local.stops += K.stats.stopDays || 0;
+  local.camps += L.camps; local.ms += CAMP_TIME.get(K) || 0; local.ticks += L.ticks; local.stops += K.stats.stopDays || 0;
   if (L.camps < K.stats.fights + (K.stats.stopDays || 0)) bad.push(`${label}: боёв и стоянок ${K.stats.fights + (K.stats.stopDays || 0)}, на карте сыграно ${L.camps}`);
   for (const cm of (K.camps || []).slice(-3)) { local.replays++; if (outcomeHash(campOutcome(runCamp(cm.setup))) === cm.hash) local.same++; else bad.push(`${label}: стоянка дня ${cm.day} сыграна заново иначе`); }
 }
@@ -306,7 +306,7 @@ check('караваны обзаводятся обозом и выбирают 
     Q?.epic ? `${Q.clues.map(c => c.label).join('; ')} → ${Q.crown.label}, ${c4.label}` : 'не эпический квест');
   runCampaign(a);
   const read = K.log.filter(l => /На могиле прочли надпись/.test(l.text)).length, dark = K.log.filter(l => /недобрые знаки|вышли охотники по следу|рыщут по всему краю/.test(l.text)).length;
-  const end = K.phase === 'won' ? c4.phase === 'fallen' && c4.fell.by === 'caravan' && a.artifact.holder.kind === 'caravan' && a.chronicle.some(l => l.topic === 'calamity' && /караван/.test(l.text)) : true;
+  const end = K.phase === 'won' ? c4.phase === 'fallen' && c4.fell.by === 'caravan' && a.artifact.holder.kind === 'capital' && a.chronicle.some(l => l.topic === 'calamity' && /караван/.test(l.text)) : true;
   check('эпос: могилы читают, мир мрачнеет с каждым следом, охота идёт; победа — босс пал от рук каравана, артефакт у него', read === Q.found && dark === Math.min(3, Q.found) && (Q.found < 2 || (K.stats.pursuers || 0) > 0) && end,
     `${K.phase}, следов ${Q.found}, прочли ${read}, мрачнее ${dark} раз, погонь ${K.stats.pursuers || 0}, четвёртое ${c4.phase}${c4.fell ? ' — ' + c4.fell.by : ''}`);
   // the doom: the fourth rises in the world in its year, and its lair is guarded harder
@@ -322,7 +322,7 @@ check('караваны обзаводятся обозом и выбирают 
     for (let k = 0; k < 10 && stepCampaign(d); k++);
     const K2b = newCampaign(d, capsE[1 % capsE.length].town, {mode: 'auto'});
     const same = K2b.quest.epic && K2b.quest.calamity === c41.id && d.calamities.filter(c => c.era === 'after').length === 1;
-    d.artifact.holder = {kind: 'caravan', calamity: c41.id};
+    d.artifact.holder = {kind: 'capital', town: capsE[0].town};   // (brought home before: atlas/calamity.js questHint)
     for (const m of K2b.members.filter(x => x.core)) { m.alive = false; m.died = {day: K2b.day, year: d.hist.year, why: 'пал в проверке'}; }
     for (let k = 0; k < 10 && stepCampaign(d); k++);
     const K3b = newCampaign(d, capsE[0].town, {mode: 'auto'});

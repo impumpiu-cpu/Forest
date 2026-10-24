@@ -14,9 +14,9 @@ import {SPECIES} from '../data/species.js';
 import {NORM} from '../data/special.js';
 import {canDoAction, practice} from './skills.js';
 import {liveById} from './lookup.js';
+import {TROPHY} from '../data/behaviour.js';
 
-export const TROPHY = {lucky: 0.5, soft: 5, practice: 40};
-
+export {TROPHY};   // (data/behaviour.js)
 // who of the colony struck it, with their Luck at the blow (agents/combat.js damage)
 export function noteHit(t, by) {
   if (by?.faction !== 'colony' || t.faction === 'colony' || !SPECIES.get(t.species).trophies) return;

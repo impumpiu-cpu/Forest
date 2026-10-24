@@ -36,9 +36,12 @@ import {think} from './agents/mind.js';
 import {STOCKS, START} from './data/presets.js';
 import {log} from './core/log.js';
 import {plural, esc} from './core/util.js';
+import {editsStamp} from './data/schema/layer.js';
 
 export function newGame(cfg) {
   const w = createWorld(cfg);
+  // the table edits it is made under (src/data/schema/layer.js): saved with it, warned of on loading
+  const tables = editsStamp(); if (tables) w.tables = tables;
   w.nav = new Navigation(w);
   w.nav.buildAll();
   w.perf = {fields: 0, nav: 0, agents: 0, render: 0};

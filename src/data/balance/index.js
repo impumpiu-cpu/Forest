@@ -10,3 +10,4 @@ export {PRICES} from './prices.js';
 export {COMBAT, CAPS} from './combat.js';
 export {RULES} from './rules.js';
 export {CREATURES, STRENGTH} from './creatures.js';
+export {MARKS, MARK} from './marks.js';

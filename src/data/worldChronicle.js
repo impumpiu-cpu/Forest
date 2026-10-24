@@ -38,5 +38,8 @@ export const LEVEL_RULES = [
   {level: 'minor', re: /живёт привозным хлебом/},
   {level: 'minor', re: /^(Год изобилия|Тяжёлые годы)/},
   {level: 'minor', re: /^На курганах /},
+  // the leaders of the old lairs (atlas/leaders.js): setting out is minor; what they do, the rest
+  {level: 'minor', re: /(выступил (в набег|подчинять соседей|войной на соперников)|вышел с выводком искать новое логово)/},
+  {level: 'minor', re: /платят ему данью|отбились от (главаря|вожака|владыки|князя)/},
   {level: 'minor', re: /встало у «.*»: ждёт войска союзников|осадило /},
 ];

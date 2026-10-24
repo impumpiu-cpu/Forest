@@ -31,31 +31,10 @@ import {REL} from './relations.js';
 import {stabilize} from '../agents/wounds.js';
 import {practice} from '../agents/skills.js';
 import {liveById} from '../agents/lookup.js';
+import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
+import {TOGETHER} from '../data/colony.js';
 
-export const TOGETHER = {
-  riskFrom: 0.3,       // a gatherer is worth escorting from this risk up…
-  riskTill: 0.15,      // …and the escort goes back to its own work below this
-  escortShare: 0.2,    // at most this share of the colony escorts at a time
-  keep: 2.2,           // the escort stays this close
-  guard: 8,            // and takes on anything hostile this close to its charge
-  aidBelow: 0.4,       // health share under which a colonist out in the woods needs help
-  aidEvery: 12 * HOUR, // once dressed, not again for this long
-  aidHeal: 0.2,        // of max health, more with the healer's skill
-  aidFallen: 1.7,      // how urgent a fallen colonist is: above fighting a foe close by (1.35 × bravery)
-  aidPractice: 60,     // medicine practice for a life saved (units of agents/skills.js practice)
-  far: 40,             // nobody goes further than this to escort or help
-  mate: 0.05,          // a friend (or a foe) on the same job, ± per person…
-  mateCap: 0.1,        // …at most
-  yieldGap: 0.3,       // a patient gives the bed up to someone this much worse off…
-  yieldFrom: 0.5,      // …when itself is at least this healthy
-  bondEscort: 0.05,    // per hour side by side
-  bondDefend: 0.5,     // standing up for someone in a fight
-  bondAid: 1,          // a wound dressed in the woods
-  bondWork: 0.04,      // per hour on the same job close by
-  bondTrouble: 0.3,    // having fought the same raid
-  mendTrouble: 0.8,    // …more for two who could not stand each other
-};
-
+export {TOGETHER};   // (data/colony.js)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byId = liveById;
 const social = w => w.behave?.social;
@@ -167,7 +146,7 @@ export function aidOption(w, a) {
     const h = helper(w, b.id); if (h && h !== a) continue;
     const op = opinion(a, b);
     // the merciful help even those they cannot stand; a life at stake, anyone helps
-    if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < 1) continue;
+    if (!b.downed && op <= REL.dislike && (a.align?.mercy ?? 0) < ALIGN.help) continue;
     const s = aidScore(b) + 0.05 * clamp(op, -2, 4);
     if (s > bs) { bs = s; best = b; }
   }
@@ -179,6 +158,7 @@ export function giveAid(w, a, b) {
   if (b.downed) {
     stabilize(w, a, b);
     bond(w, b, a, TOGETHER.bondAid * 2); bond(w, a, b, TOGETHER.bondAid * 0.5);
+    shiftAlign(b, 'mercy', ALIGN_DRIFT.pawn.saved * 2);   // pulled back from death: kinder for it
     const s = social(w); if (s) s.aid++;
     practice(a, 'medicine', TOGETHER.aidPractice);
     return;
@@ -186,6 +166,7 @@ export function giveAid(w, a, b) {
   const amt = Math.min(maxHp(b) - b.hp, TOGETHER.aidHeal * maxHp(b) * (1 + (a.skill?.medicine || 0)));
   b.hp += amt; b.aidedAt = w.tick;
   bond(w, b, a, TOGETHER.bondAid); bond(w, a, b, TOGETHER.bondAid * 0.3);
+  shiftAlign(b, 'mercy', ALIGN_DRIFT.pawn.saved);
   think(w, b, 'aided', {name: a.name, gender: a.gender}); think(w, a, 'gaveAid', {name: b.name});
   const s = social(w); if (s) s.aid++;
   log(w, `<b>${esc(a.name)}</b> ${g(a, 'перевязал', 'перевязала')} раны <b>${esc(b.name)}</b> прямо в лесу и ${g(a, 'повёл', 'повела')} к своим.`, 'people');
@@ -214,7 +195,7 @@ export function askForBed(w, a, end) {
     if (p === a || p.task?.id !== 'treat' || !p.task.bed) continue;
     const h = hpShare(p);
     if (h < TOGETHER.yieldFrom || h - mine < TOGETHER.yieldGap) continue;
-    if (opinion(p, a) <= REL.dislike && (p.align?.mercy ?? 0) < 2) continue;
+    if (opinion(p, a) <= REL.dislike && (p.align?.mercy ?? 0) < ALIGN.guard) continue;
     if (!best || h > hpShare(best)) best = p;
   }
   if (!best) return null;

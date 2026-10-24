@@ -374,3 +374,9 @@ dd.q4{color:#c58cff;font-weight:600}
 .atlas-legend b{font-weight:400;color:var(--fg);margin-left:6px}
 #atlasRels .relhead{color:var(--fg);font-family:var(--font-display);letter-spacing:.04em;margin-top:6px}
 #atlasRels .rel-war{color:var(--raider)} #atlasRels .rel-hostile{color:#e0a080} #atlasRels .rel-tense{color:var(--muted)} #atlasRels .rel-friends{color:var(--good)}
+
+/* opened from the new menu straight onto a screen (index.html?go=…): the old launch cards are never shown */
+.deep #launch{display:none}
+/* a world or a game opened under other table edits (src/ui/tableEdits.js) */
+.edits-banner{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:50;max-width:min(720px,calc(100vw - 32px));background:#3a2a16;color:#f6d7ae;border:1px solid var(--ember);border-radius:8px;padding:8px 14px;font-size:13px;box-shadow:0 6px 24px #0008;cursor:pointer}
+.edits-banner[hidden]{display:none}

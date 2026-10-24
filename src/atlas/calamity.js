@@ -19,11 +19,14 @@ import {SPECIES} from '../data/species.js';
 import {CALAMITIES, OMENS, FALL, ARTIFACTS, DAWN, CAL} from '../data/calamities.js';
 import {bossSpecial} from '../agents/special.js';
 import {newLair, findSpot, wherePhrase} from './lairs.js';
+import {leaderForCalamity, leaderFalls} from './leaders.js';
 import {barrows} from './diplomacy.js';
 import {townLabel} from './towns.js';
 import {eraPlan} from './history.js';
 import {stepAlliance} from './alliance.js';
 import {epitaph} from './chronicle.js';
+import {plural} from '../core/util.js';
+import {scaleOf} from './tectonics.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pick = (r, list) => list[(r() * list.length) | 0];
@@ -56,37 +59,68 @@ function eraYears(a) {
 export function startCalamities(a) {
   if (!a.cfg.epic || a.calamities) return;
   const {r, done} = draw(a);
-  // the sanctuary: a land cell well inside the world
-  let i = -1;
-  for (let k = 0; k < 400 && i < 0; k++) { const x = Math.round(a.w * (0.2 + 0.6 * r())), y = Math.round(a.h * (0.2 + 0.6 * r())), j = y * a.w + x; if (land(a, j)) i = j; }
-  if (i < 0) for (let j = 0; j < a.n && i < 0; j++) if (land(a, j)) i = j;
-  const [name, acc, g] = pick(r, ARTIFACTS);
-  a.sanctuary = {i, name: 'Святилище Творца'};
-  a.artifact = {name, acc, g, i, holder: {kind: 'sanctuary'}, trail: [{year: a.hist.year, era: a.hist.era, i, text: `оставлен${G3(g, '', 'а', 'о')} в святилище`}]};
+  dawn(a, r);
   const Y = eraYears(a);
   a.calamities = ['wild', 'elder', 'young'].map((era, k) => {
     const E = Y[era], kinds = CALAMITIES.filter(C => C.eras.includes(era)), C = pick(r, kinds);
     const heroesAt = E.to - CAL.heroesBefore;
     const omensAt = Math.round(E.from + E.len * between(r, CAL.start));
-    const riseAt = Math.min(heroesAt - 2, omensAt + Math.round(between(r, CAL.omens)));
+    const riseAt = Math.min(heroesAt - CAL.riseBefore, omensAt + Math.round(between(r, CAL.omens)));
     const fallAt = Math.min(heroesAt, riseAt + Math.round(between(r, CAL.fall)));
     return {id: k + 1, era, kind: C.id, label: C.label, phase: 'waiting', omensAt, riseAt, fallAt, heroesAt, i: -1, lair: null, town: null, boss: null,
       omens: OMENS.map((_, n) => n), fell: null};
   });
   done();
+}
+
+// the sanctuary and the artifact a god leaves in it (once a world)
+function dawn(a, r) {
+  // the sanctuary: a land cell well inside the world
+  let i = -1;
+  for (let k = 0; k < 400 && i < 0; k++) { const x = Math.round(a.w * (CAL.sanctuary[0] + CAL.sanctuary[1] * r())), y = Math.round(a.h * (CAL.sanctuary[0] + CAL.sanctuary[1] * r())), j = y * a.w + x; if (land(a, j)) i = j; }
+  if (i < 0) for (let j = 0; j < a.n && i < 0; j++) if (land(a, j)) i = j;
+  const [name, acc, g] = pick(r, ARTIFACTS);
+  a.sanctuary = {i, name: 'Святилище Творца'};
+  a.artifact = {name, acc, g, i, holder: {kind: 'sanctuary'}, trail: [{year: a.hist.year, era: a.hist.era, i, text: `оставлен${G3(g, '', 'а', 'о')} в святилище`}]};
   tell(a, DAWN.replace('{where}', wherePhrase(a, i)).replace('{artifact}', acc).replace('{in}', g === 'f' ? 'ней' : 'нём'));
 }
 
+// ── «Заселение мира» (cfg.free, atlas/settle.js): a calamity set by hand — its kind (or one drawn), its place (a cell, or
+// −1: as the epic world places it) and in how many years it rises; its omens come before that, and if nobody brings its
+// boss down, heroes seal it CAL.fall years after it rose. The first one also leaves the sanctuary and its artifact.
+// → the calamity, or {error}
+export function addCalamity(a, {kind = null, at = -1, years = CAL.free.years} = {}) {
+  a.calamities ||= [];
+  const live = a.calamities.filter(c => c.phase !== 'fallen').length;
+  if (live >= CAL.free.max) return {error: `бедствий, что ещё не прошли, может быть не больше ${CAL.free.max}`};
+  if (kind && !CALAMITIES.some(C => C.id === kind)) return {error: 'нет такого бедствия'};
+  const {r, done} = draw(a), y = a.hist.year;
+  if (!a.artifact) dawn(a, r);
+  const C = kind ? CALAMITIES.find(x => x.id === kind) : pick(r, CALAMITIES);
+  const riseAt = y + Math.max(1, Math.round(years));
+  const omensAt = Math.max(y, riseAt - Math.round(between(r, CAL.omens)));
+  const heroesAt = riseAt + Math.round(between(r, CAL.fall));
+  const c = {id: a.calamities.length + 1, era: 'free', kind: C.id, label: C.label, phase: 'waiting', omensAt, riseAt, fallAt: heroesAt, heroesAt,
+    i: -1, at: at >= 0 ? at : -1, lair: null, town: null, boss: null, omens: OMENS.map((_, n) => n), fell: null, byHand: true};
+  a.calamities.push(c);
+  done();
+  tell(a, `Над миром сгущается беда: ${C.label}${at >= 0 ? ` ${wherePhrase(a, at)}` : ''}. ${omensAt > y ? `Знамения придут через ${omensAt - y} ${plural(omensAt - y, 'год', 'года', 'лет')}` : 'Знамения вот-вот придут'}.`, c);
+  return c;
+}
+
+// the graves the dead of a calamity want to rise from (CAL.dead): barrows of their radius × the world's scale
+export const deadGraves = (a, i) => barrows(a, i, Math.max(CAL.dead.min, Math.round(CAL.dead.r * scaleOf(a))), CAL.dead.v);
+
 // ── a year of the calamities (in spring)
 export function stepCalamities(a) {
-  if (!a.cfg.epic || !a.calamities || a.hist.season !== 0) return;
+  if ((!a.cfg.epic && !a.cfg.free) || !a.calamities || a.hist.season !== 0) return;
   const {r, done} = draw(a), y = a.hist.year;
   for (const c of a.calamities) {
     if (c.phase === 'waiting' && y >= c.omensAt) { c.phase = 'omens'; omen(a, c, r); }
-    else if (c.phase === 'omens' && y < c.riseAt && r() < 0.6) omen(a, c, r);
+    else if (c.phase === 'omens' && y < c.riseAt && r() < CAL.omenChance) omen(a, c, r);
     if (c.phase === 'omens' && y >= c.riseAt) rise(a, c, r);
     // the fourth (campaign/epic.js): its lair stands from the start, its omens run while the caravan walks
-    if (c.phase === 'gathering' && y < c.riseAt && r() < 0.6) omen(a, c, r);
+    if (c.phase === 'gathering' && y < c.riseAt && r() < CAL.omenChance) omen(a, c, r);
     if (c.phase === 'gathering' && y >= c.riseAt) riseGathered(a, c, r);
     if (c.phase === 'rise') {
       const lair = a.lairs.find(l => l.id === c.lair);
@@ -95,7 +129,8 @@ export function stepCalamities(a) {
       else if (y >= c.heroesAt) fall(a, c, r, 'heroes');
     }
     // after the wild era the peoples band together against it, and fall apart after (atlas/alliance.js)
-    if (c.era !== 'wild' && c.era !== 'after' && (c.phase === 'rise' || c.phase === 'fallen')) stepAlliance(a, c, r, text => tell(a, text, c));   // the fourth is the caravan's
+    // (not against the calamity a caravan is after — campaign/epic.js: that boss is the caravan's)
+    if (c.era !== 'wild' && c.era !== 'after' && !c.quest && (c.phase === 'rise' || c.phase === 'fallen')) stepAlliance(a, c, r, text => tell(a, text, c));   // the fourth is the caravan's
   }
   done();
 }
@@ -119,7 +154,7 @@ function placeOf(a, c, r) {
     const t = ok.length ? pick(r, ok) : towns.reduce((b, t) => (far(t.i) > far(b.i) ? t : b));
     return {i: t.i, town: t};
   }
-  const nearTown = j => (a.towns || []).some(t => t.alive && Math.abs(t.x - j % a.w) <= 3 && Math.abs(t.y - ((j / a.w) | 0)) <= 3);
+  const nearTown = j => (a.towns || []).some(t => t.alive && Math.abs(t.x - j % a.w) <= CAL.townGap && Math.abs(t.y - ((j / a.w) | 0)) <= CAL.townGap);
   let best = -1, bd = -1;
   const ok = [];
   for (let n = 0; n < 800; n++) {
@@ -131,7 +166,7 @@ function placeOf(a, c, r) {
   }
   // after the wild era a calamity rises within a raid's reach of the peoples' towns: it is a calamity to someone
   const reach = TRIBE_RAID.reach * Math.min(a.w, a.h) / 192;
-  const felt = c.era === 'wild' ? [] : ok.filter(j => (a.towns || []).some(t => t.alive && Math.hypot(t.x - j % a.w, t.y - ((j / a.w) | 0)) <= reach * 0.7));
+  const felt = c.era === 'wild' ? [] : ok.filter(j => (a.towns || []).some(t => t.alive && Math.hypot(t.x - j % a.w, t.y - ((j / a.w) | 0)) <= reach * CAL.felt));
   const i = felt.length ? pick(r, felt) : ok.length ? pick(r, ok) : best;
   return i >= 0 ? {i} : null;
 }
@@ -151,34 +186,94 @@ function around(a, i, r, [lo, hi]) {
 const bossName = c => `${c.boss.title[0]} ${c.boss.name}`;
 const fem = c => c.boss?.g === 'f';
 
+// a living leader of an old lair a calamity may rise on (atlas/leaders.js): of the kinds of calamity its era allows, the
+// strongest leader whose lair is of one of a kind's lairs → {C, lair} or null
+function hostLeader(a, c) {
+  let best = null;
+  // as placeOf: after the wild era a calamity rises where it is felt — within a raid's reach of the peoples' towns
+  const reach = TRIBE_RAID.reach * Math.min(a.w, a.h) / 192 * CAL.felt;
+  const felt = l => c.era === 'wild' || (a.towns || []).some(t => t.alive && Math.hypot(t.x - l.x, t.y - l.y) <= reach);
+  // (a calamity of «Заселение мира» has no era of its own: any kind may take a leader)
+  for (const C of CALAMITIES.filter(x => (c.era === 'free' || x.eras.includes(c.era)) && !x.town)) {
+    const l = leaderForCalamity(a, C.lairs || [C.lair], felt);
+    if (l && (!best || l.strength > best.lair.strength)) best = {C, lair: l};
+  }
+  return best;
+}
+
+// the place the hand chose: the cell (a vampire — the nearest living town within a raid's reach of it)
+function placeAt(a, c, C) {
+  if (!C.town) return {i: clearOfTowns(a, c.at)};
+  const reach = TRIBE_RAID.reach * Math.min(a.w, a.h) / 192;
+  const t = hostTowns(a).sort((p, q) => dist(a, p.i, c.at) - dist(a, q.i, c.at))[0];
+  return t && dist(a, t.i, c.at) <= reach ? {i: t.i, town: t} : null;
+}
+// the towns a vampire may nest in: alive, not a capital, no vampire there yet (as placeOf)
+const hostTowns = a => (a.towns || []).filter(t => t.alive && !t.capital && !(a.lairs || []).some(l => l.alive && l.town === t.id));
+// a boss's lair never stands in a town or on its works: the nearest land cell clear of them (a town may have grown
+// up by the hand's cell in the years before the calamity rose)
+const nearTown = (a, j) => (a.towns || []).some(t => t.alive && Math.abs(t.x - j % a.w) <= CAL.townGap && Math.abs(t.y - ((j / a.w) | 0)) <= CAL.townGap) || !!a.siteAt?.[j];
+export function clearOfTowns(a, i) {
+  if (!nearTown(a, i)) return i;
+  const x0 = i % a.w, y0 = (i / a.w) | 0;
+  for (let r = 1; r < Math.max(a.w, a.h); r++) {
+    let best = -1, bd = Infinity;
+    for (let y = Math.max(0, y0 - r); y <= Math.min(a.h - 1, y0 + r); y++) for (let x = Math.max(0, x0 - r); x <= Math.min(a.w - 1, x0 + r); x++) {
+      if (Math.max(Math.abs(x - x0), Math.abs(y - y0)) !== r) continue;
+      const j = y * a.w + x, d = Math.hypot(x - x0, y - y0);
+      if (land(a, j) && a.f.lake[j] < 0 && !nearTown(a, j) && d < bd) { bd = d; best = j; }
+    }
+    if (best >= 0) return best;
+  }
+  return i;
+}
+
 function rise(a, c, r) {
-  let C = CALAMITIES.find(x => x.id === c.kind), place = placeOf(a, c, r);
-  if (!place && C.town) { C = CALAMITIES.find(x => x.id === 'necromancer'); c.kind = C.id; c.label = C.label; place = placeOf(a, c, r); }   // no towns to nest in
+  let C = CALAMITIES.find(x => x.id === c.kind), place = null, host = null;
+  // half the time the calamity takes one of the living leaders of the old lairs for its boss (CAL.fromLeader); not one
+  // whose place the hand chose (atlas/settle.js) — there it rises where it was set
+  if (c.at >= 0) place = placeAt(a, c, C);
+  else if (r() < CAL.fromLeader) host = hostLeader(a, c);
+  if (host) { C = host.C; c.kind = C.id; c.label = C.label; place = {i: host.lair.i}; }
+  else if (!place) place = placeOf(a, c, r);
+  if (!place && C.town) { C = CALAMITIES.find(x => x.id === 'necromancer'); c.kind = C.id; c.label = C.label; place = c.at >= 0 ? {i: c.at} : placeOf(a, c, r); }   // no towns to nest in
   if (!place) { c.phase = 'fallen'; c.fell = {year: a.hist.year, by: 'none'}; return; }
-  const L = LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
-  const lair = newLair(a, L, place.i, r, 1);
+  const L = host ? LAIRS.get(host.lair.kind) : LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
+  const lair = host ? host.lair : newLair(a, L, place.i, r, CAL.lairs.boss);
+  if (host) { lair.strength = 1; lair.lord = null; }
   lair.boss = c.id;
   if (place.town) lair.town = place.town.id;
-  if (L.undead) barrows(a, place.i, Math.max(2, Math.round(3 * Math.min(a.w, a.h) / 192)), 0.9);   // the dead want graves to rise from
+  if (L.undead) deadGraves(a, place.i);   // the dead want graves to rise from
   const roll = sp?.special ? bossSpecial(sp, r, CAL.boss) : {special: null};
+  const was = host ? lair.leader : null;
+  // a leader become a boss keeps its name and grows on from what it was
+  if (was?.special && roll.special) for (const id of Object.keys(roll.special)) roll.special[id] = Math.max(roll.special[id], was.special[id] ?? 0);
   c.i = place.i; c.lair = lair.id; c.town = place.town?.id ?? null; c.phase = 'rise';
-  c.boss = {species, name: pick(r, C.names), title: C.title, g: C.g, special: roll.special};
+  // (a leader keeps its own title too: a pack's leader is not «the Mother» of a brood)
+  c.boss = {species, name: was ? was.name : pick(r, C.names), title: was ? was.title : C.title, g: was ? 'm' : C.g, special: roll.special, ...(was ? {wasLeader: `${was.title[0]} ${was.name}`} : {})};
+  if (host) { tell(a, `${was.title[0]} ${was.name} из «${lair.name}» ${wherePhrase(a, lair.i)} стал больше, чем главарём: на него пал выбор бедствия.`, c); leaderFalls(a, lair, 'boss'); }
   // the retinue around the boss, and lairs woken all over the world
   const kinds = C.retinue.length ? C.retinue : [L.id];
   const n = Math.round(between(r, CAL.retinue));
-  for (let q = 0; q < n; q++) { const j = around(a, place.i, r, CAL.near); if (j >= 0) newLair(a, LAIRS.get(kinds[q % kinds.length]), j, r, 0.6).retinue = c.id; }
+  for (let q = 0; q < n; q++) { const j = around(a, place.i, r, CAL.near); if (j >= 0) newLair(a, LAIRS.get(kinds[q % kinds.length]), j, r, CAL.lairs.retinue).retinue = c.id; }
   const wild = LAIRS.filter(x => !x.undead && !x.dragon && !x.fiend), stir = Math.round(between(r, CAL.stir));
   let woke = 0;
-  for (let q = 0; q < stir; q++) { const W = pick(r, wild), j = findSpot(a, W, r, null, 200); if (j >= 0) { newLair(a, W, j, r, 0.4); woke++; } }
+  for (let q = 0; q < stir; q++) { const W = pick(r, wild), j = findSpot(a, W, r, null, 200); if (j >= 0) { newLair(a, W, j, r, CAL.lairs.stirred); woke++; } }
   const where = wherePhrase(a, place.i);
   tell(a, C.rise.replace('{boss}', bossName(c)).replace('{lair}', lair.name).replace('{where}', where)
     .replace('{town}', place.town ? `${townLabel(place.town, 3)} ${place.town.name}` : where) + (woke ? ` По всему миру ожили логова чудовищ: ${woke}.` : ''), c);
-  // the artifact has a new bearer
+  // the artifact has a new bearer — if it lies free (in the sanctuary, a grave, or where a caravan lost it): a boss of
+  // another calamity of «Заселение мира» that holds it, or a caravan that carries it, keeps it
   const A = a.artifact;
+  if (!free(A)) return;
   A.holder = {kind: 'boss', calamity: c.id}; A.i = place.i;
   A.trail.push({year: a.hist.year, era: a.hist.era, i: place.i, text: `у ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`});
   tell(a, FALL.taken.replace('{artifact}', A.name).replace('{found}', A.g === 'f' ? 'ла' : A.g === 'n' ? 'ло' : 'ёл').replace('{boss}', bossName(c)), c);
 }
+// where the artifact lies free for a boss to take
+const free = A => !!A && ['sanctuary', 'grave', 'lost'].includes(A.holder.kind);
+// does this calamity's boss hold the artifact
+export const holds = (a, c) => a.artifact?.holder.kind === 'boss' && a.artifact.holder.calamity === c.id;
 
 // the boss falls to an alliance (atlas/alliance.js): `line` tells how
 export const fallToAlliance = (a, c, line) => { if (c.phase === 'rise') fall(a, c, null, 'alliance', line); };
@@ -193,8 +288,8 @@ function fall(a, c, r, by, told = null) {
     const d = dragons.sort((p, q) => dist(a, p.i, c.i) - dist(a, q.i, c.i))[0];
     if (d) {
       const Y = eraYears(a);
-      d.strength *= 0.5;
-      d.sleep = Math.max(5, Math.round(Y.elder.from + Y.elder.len / 2 - a.hist.year));   // wounded: it wakes deep in the next era
+      d.strength *= CAL.dragon.wound;
+      d.sleep = Math.max(CAL.dragon.sleep, Math.round(Y.elder.from + Y.elder.len / 2 - a.hist.year));   // wounded: it wakes deep in the next era
       line = words(FALL.dragon).replace('{dragon}', d.name);
     } else { by = 'beasts'; line = words(FALL.beasts); }
   } else line = told || words(FALL[by]);
@@ -202,12 +297,15 @@ function fall(a, c, r, by, told = null) {
   c.phase = 'fallen'; c.fell = {year: a.hist.year, by};
   // the grave where it fell
   barrows(a, c.i, Math.max(1, Math.round(CAL.grave.r * Math.min(a.w, a.h) / 192)), CAL.grave.v);
-  const A = a.artifact;
+  const A = a.artifact, had = holds(a, c);
   (a.graves ||= []).push({calamity: c.id, i: c.i, year: a.hist.year, era: c.era, boss: bossName(c), kind: c.kind, by, epitaph: epitaph(a, c)});
-  A.holder = {kind: 'grave', calamity: c.id}; A.i = c.i;
-  A.trail.push({year: a.hist.year, era: a.hist.era, i: c.i, text: `пропал${G3(A.g, '', 'а', 'о')} с гибелью ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`});
   tell(a, line, c);
-  tell(a, words(FALL.artifact).replace('{artifact}', A.name), c);
+  // the artifact goes into the grave only with the boss that held it
+  if (had) {
+    A.holder = {kind: 'grave', calamity: c.id}; A.i = c.i;
+    A.trail.push({year: a.hist.year, era: a.hist.era, i: c.i, text: `пропал${G3(A.g, '', 'а', 'о')} с гибелью ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`});
+    tell(a, words(FALL.artifact).replace('{artifact}', A.name), c);
+  }
   void r;
 }
 
@@ -217,12 +315,12 @@ export function gatherFourth(a, i, years) {
   const {r, done} = draw(a);
   const kinds = CALAMITIES.filter(C => !C.town), C = pick(r, kinds);
   const L = LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
-  const lair = newLair(a, L, i, r, 1);
+  const lair = newLair(a, L, i, r, CAL.lairs.boss);
   const c = {id: a.calamities.length + 1, era: 'after', kind: C.id, label: C.label, phase: 'gathering', omensAt: a.hist.year, riseAt: a.hist.year + years,
     i, lair: lair.id, town: null, omens: OMENS.map((_, n) => n), fell: null,
     boss: {species, name: pick(r, C.names), title: C.title, g: C.g, special: sp?.special ? bossSpecial(sp, r, CAL.boss).special : null}};
   lair.boss = c.id;
-  if (L.undead) barrows(a, i, Math.max(2, Math.round(3 * Math.min(a.w, a.h) / 192)), 0.9);
+  if (L.undead) deadGraves(a, i);
   a.calamities.push(c);
   const A = a.artifact;
   A.holder = {kind: 'boss', calamity: c.id}; A.i = i;
@@ -232,15 +330,57 @@ export function gatherFourth(a, i, years) {
   done();
   return c;
 }
+// ── «Заселение мира» → the campaign (campaign/epic.js; docs/TABLE.md этап 10): a calamity set by hand becomes the quest.
+// One that has risen keeps going, only no heroes seal it and no alliance marches on it now — its boss is the caravan's.
+// One still waiting gathers at once at its place (the hand's cell, or the seat `i`): its lair stands with the boss and
+// the artifact in it, its omens run while the caravan walks, and it rises in the year the hand set.
+export function questCalamity(a, c, i) {
+  c.quest = true; c.heroesAt = 1e9; c.fallAt = 1e9;
+  if (c.phase === 'rise') return c;
+  const {r, done} = draw(a);
+  let C = CALAMITIES.find(x => x.id === c.kind), at = c.at >= 0 ? c.at : i, town = null;
+  if (C.town) {
+    town = hostTowns(a).sort((p, q) => dist(a, p.i, at) - dist(a, q.i, at))[0] || null;
+    if (town) at = town.i; else { C = CALAMITIES.find(x => x.id === 'necromancer'); c.kind = C.id; c.label = C.label; }
+  }
+  if (!town) at = clearOfTowns(a, at);
+  const L = LAIRS.get(C.lairs ? pick(r, C.lairs) : C.lair), species = C.boss || L.species, sp = SPECIES.get(species);
+  const lair = newLair(a, L, at, r, CAL.lairs.boss);
+  lair.boss = c.id; if (town) lair.town = town.id;
+  if (L.undead && !town) deadGraves(a, at);
+  c.phase = 'gathering'; c.i = at; c.lair = lair.id; c.town = town?.id ?? null;
+  c.boss = {species, name: pick(r, C.names), title: C.title, g: C.g, special: sp?.special ? bossSpecial(sp, r, CAL.boss).special : null};
+  const A = a.artifact, from = {grave: 'могилу', lost: 'место, где его потеряли', boss: 'прежнего хозяина'}[A.holder.kind] || 'святилище';
+  A.holder = {kind: 'boss', calamity: c.id}; A.i = at;
+  A.trail.push({year: a.hist.year, era: a.hist.era, i: at, text: `у ${c.boss.title[1].toLowerCase()} по имени ${c.boss.name}`});
+  tell(a, `${A.name} покинул${A.g === 'f' ? 'а' : A.g === 'n' ? 'о' : ''} ${from}: ${wherePhrase(a, at)}, в ${town ? `${townLabel(town, 3)} ${town.name}` : `логове «${lair.name}»`}, ${bossName(c)} собирает силы. До бедствия — ${c.label} — ${Math.max(1, c.riseAt - a.hist.year)} ${plural(Math.max(1, c.riseAt - a.hist.year), 'год', 'года', 'лет')}.`, c);
+  omen(a, c, r);
+  done();
+  return c;
+}
+
+// what quest the world gives a caravan (the screens, the library): 'hand' — a calamity of «Заселение мира» not passed
+// yet; 'epic' — the graves of the old bosses and a fourth to come; null — the crown of any world (campaign/quest.js)
+export function questHint(a) {
+  // (the artifact carried by a caravan or brought home: the world's story is told)
+  if (!a.artifact || ['caravan', 'capital'].includes(a.artifact.holder.kind)) return null;
+  // the calamity whose boss holds the artifact first, then one that has risen, then the soonest to rise
+  const live = (a.calamities || []).filter(c => c.phase !== 'fallen' && (c.quest || (a.cfg.free && c.era === 'free')))
+    .sort((p, q) => holds(a, q) - holds(a, p) || (q.phase === 'rise') - (p.phase === 'rise') || p.riseAt - q.riseAt)[0];
+  if (a.cfg.free && live) return {kind: 'hand', calamity: live.id, label: live.label, phase: live.phase, riseAt: live.riseAt, boss: live.boss ? `${live.boss.title[0]} ${live.boss.name}` : null, graves: (a.graves || []).length};
+  if ((a.cfg.epic || a.cfg.free) && a.graves?.length) return {kind: 'epic', graves: a.graves.length};
+  return null;
+}
+
 function riseGathered(a, c, r) {
   const C = CALAMITIES.find(x => x.id === c.kind), lair = a.lairs.find(l => l.id === c.lair);
   if (!lair || !lair.alive) { c.phase = 'fallen'; c.fell = {year: a.hist.year, by: 'cleared'}; return; }
   c.phase = 'rise';
   const kinds = C.retinue.length ? C.retinue : [lair.kind];
-  for (let q = 0, n = Math.round(between(r, CAL.retinue)); q < n; q++) { const j = around(a, c.i, r, CAL.near); if (j >= 0) newLair(a, LAIRS.get(kinds[q % kinds.length]), j, r, 0.6).retinue = c.id; }
+  for (let q = 0, n = Math.round(between(r, CAL.retinue)); q < n; q++) { const j = around(a, c.i, r, CAL.near); if (j >= 0) newLair(a, LAIRS.get(kinds[q % kinds.length]), j, r, CAL.lairs.retinue).retinue = c.id; }
   const wild = LAIRS.filter(x => !x.undead && !x.dragon && !x.fiend), stir = Math.round(between(r, CAL.stir));
   let woke = 0;
-  for (let q = 0; q < stir; q++) { const W = pick(r, wild), j = findSpot(a, W, r, null, 200); if (j >= 0) { newLair(a, W, j, r, 0.4); woke++; } }
+  for (let q = 0; q < stir; q++) { const W = pick(r, wild), j = findSpot(a, W, r, null, 200); if (j >= 0) { newLair(a, W, j, r, CAL.lairs.stirred); woke++; } }
   tell(a, `Началось новое бедствие — ${c.label}: ${bossName(c)} выступил${fem(c) ? 'а' : ''} из логова «${lair.name}» ${wherePhrase(a, c.i)}.${woke ? ` По всему миру ожили логова чудовищ: ${woke}.` : ''}`, c);
 }
 // the fourth falls to the caravan's storm (campaign/epic.js): its grave, and the artifact in the caravan's hands

@@ -34,8 +34,8 @@ export function oceanMask(a, z, level) {
 // the sea level that leaves `share` of the world outside the ocean (inland basins count as land).
 // The ocean share can jump as the level rises — a basin joins the sea all at once through a strait —
 // so the level on whichever side of the jump comes closer is taken.
-export function seaLevel(a, share) {
-  const z = a.f.elev, oceanShare = lv => { const oc = oceanMask(a, z, lv); let c = 0; for (let i = 0; i < a.n; i++) c += oc[i]; return c / a.n; };
+export function seaLevel(a, share, base = null) {
+  const z = base || a.f.elev, oceanShare = lv => { const oc = oceanMask(a, z, lv); let c = 0; for (let i = 0; i < a.n; i++) c += oc[i]; return c / a.n; };
   let lo = 0, hi = 1;
   for (let it = 0; it < 22; it++) {
     const mid = (lo + hi) / 2;
@@ -43,7 +43,7 @@ export function seaLevel(a, share) {
   }
   const level = Math.abs(oceanShare(lo) - (1 - share)) < Math.abs(oceanShare(hi) - (1 - share)) ? lo : hi;
   a.sea = level;
-  a.f.ocean = oceanMask(a, z, level);
+  a.f.ocean = oceanMask(a, a.f.elev, level);
   const land = new Uint8Array(a.n);
   for (let i = 0; i < a.n; i++) land[i] = a.f.ocean[i] ? 0 : 1;
   a.f.land = land;

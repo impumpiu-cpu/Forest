@@ -13,8 +13,15 @@ import {mulberry, seedNumber} from '../core/rng.js';
 import {VERSION} from '../version.js';
 import {atlasHash, atlasDone, landDone} from './generate.js';
 import {ATLAS_SIZES} from '../data/atlas.js';
+import {shapeCount} from './shape.js';
+import {yearsLived} from './history.js';
+import {questHint} from './calamity.js';
 
 export const WORLD_KIND = 'forest-world';
+// a land («Создать землю»): the atlas made to the end of its land stages, with no peoples and no history yet, and
+// the hand's edits in its settings (atlas/shape.js). The same codec; its own kind, so the library and the file
+// tell it from a world, and «Заселение мира» takes it to run history on (docs/TABLE.md, этап 8)
+export const LAND_KIND = 'forest-land';
 export const WORLD_FORMAT = 1;
 const FORMATS = [1];
 
@@ -30,31 +37,38 @@ function externals() {
 }
 
 // what a list of saved worlds shows without opening the world itself
-export function worldMeta(a, name) {
+export function worldMeta(a, name, kind = WORLD_KIND) {
   const towns = (a.towns || []).filter(t => t.alive).length;
   return {
-    name: name || `Мир ${a.cfg.seed}`, seed: a.cfg.seed, size: a.cfg.size, sizeLabel: ATLAS_SIZES[a.cfg.size]?.label || a.cfg.size,
-    year: a.hist?.year ?? 0, done: atlasDone(a), land: landDone(a), towns, realms: (a.realms || []).length,
-    lines: a.chronicle.length, hash: atlasHash(a), version: VERSION, epic: !!a.cfg.epic,
+    type: kind === LAND_KIND ? 'land' : 'world', shape: shapeCount(a.cfg.shape),
+    name: name || (kind === LAND_KIND ? `Земля ${a.cfg.seed}` : `Мир ${a.cfg.seed}`), seed: a.cfg.seed, size: a.cfg.size, sizeLabel: ATLAS_SIZES[a.cfg.size]?.label || a.cfg.size,
+    year: a.hist?.year ?? 0, lived: yearsLived(a), done: atlasDone(a), land: landDone(a), towns, realms: (a.realms || []).length,
+    lines: a.chronicle.length, hash: atlasHash(a), version: VERSION, epic: !!a.cfg.epic, free: !!a.cfg.free,
+    // made under table edits (src/data/schema/layer.js): how many
+    tables: a.tables?.n || 0,
     // a campaign under way in this world (campaign/): where it is
     campaign: a.campaign ? {phase: a.campaign.phase, day: a.campaign.day, from: a.campaign.capitalFrom || a.campaign.capitalName, crown: a.campaign.quest?.name || null} : null,
     // campaigns finished in this world (campaign/ending.js): their chronicles stay with it
     campaigns: (a.campaignsDone || []).length,
+    // what quest a caravan from this world goes on (atlas/calamity.js questHint): 'hand' | 'epic' | null — the crown
+    quest: kind === LAND_KIND ? null : questHint(a),
   };
 }
 
-export function saveAtlas(a, name) {
+export function saveAtlas(a, name, kind = WORLD_KIND) {
+  if (kind === LAND_KIND && (!landDone(a) || a.hist)) throw new Error('Землёй сохраняется только суша без истории.');
   const tree = encode(a, {
     externals: externals(),
     skip: (path, k) => (path === 'world' && SCRATCH.has(k)) || (path === 'world.hist' && HIST_LIVE.has(k)),
   });
-  return {kind: WORLD_KIND, format: WORLD_FORMAT, version: VERSION, savedAt: Date.now(), meta: worldMeta(a, name), histRnd: a.hist ? a.hist.rnd.state : null, tree};
+  return {kind, format: WORLD_FORMAT, version: VERSION, savedAt: Date.now(), meta: worldMeta(a, name, kind), histRnd: a.hist ? a.hist.rnd.state : null, tree};
 }
 
-export const isWorldSave = s => !!s && s.kind === WORLD_KIND;
+export const isWorldSave = s => !!s && (s.kind === WORLD_KIND || s.kind === LAND_KIND);
+export const isLandSave = s => !!s && s.kind === LAND_KIND;
 
 export function loadAtlas(save) {
-  if (!isWorldSave(save)) throw new Error('Это не сохранённый мир «Тёплого Брода».');
+  if (!isWorldSave(save)) throw new Error('Это не сохранённый мир или земля «Тёплого Брода».');
   if (!FORMATS.includes(save.format)) throw new Error('Мир сохранён в более новой версии игры.');
   const a = decode(save.tree, {externals: externals()});
   a.ms = {};

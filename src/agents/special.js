@@ -7,8 +7,8 @@
 // mods as before and never has to know about SPECIAL. refreshBody() rebuilds mods and health from all
 // their sources at once; it is safe to call again whenever SPECIAL, traits or the creature's extras change.
 import {STATS, EFFECTS, middle} from '../data/special.js';
-import {AXIS_MAX} from '../data/values.js';
-import {weighted, clamp} from '../core/util.js';
+import {alignNear, spreadOf} from '../data/values.js';
+import {weighted} from '../core/util.js';
 import {SPECIES} from '../data/species.js';
 import {TRAITS, BASE_MODS} from '../data/traits.js';
 import {WOUNDS} from '../data/wounds.js';
@@ -50,10 +50,8 @@ export function rollCreature(w, a, sp, opts = {}) {
   a.special = {};
   const lean = new Set(opts.lean || []), roll = (lo, hi) => Math.round(lo + (hi - lo) * (rng() + rng()) / 2);
   for (const [id, [lo, hi]] of Object.entries(lim)) a.special[id] = lean.has(id) ? Math.max(roll(lo, hi), roll(lo, hi)) : roll(lo, hi);
-  if (sp.align) {
-    const s = sp.align.spread ?? 1, n = () => (rng() + rng() + rng() - 1.5) * s;
-    a.align = {order: clamp(Math.round((sp.align.order + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX), mercy: clamp(Math.round((sp.align.mercy + n()) * 2) / 2, -AXIS_MAX, AXIS_MAX)};
-  }
+  // the world view: near the capital's point (opts.align) or, with no world behind, the race's (data/values.js)
+  if (sp.align) { a.align = alignNear(opts.align || sp.align, spreadOf(sp, 'pawn'), rng); a.alignRoot = {...a.align}; }
   if (sp.values) {
     const pool = Object.entries(sp.values).filter(([, v]) => v > 0), want = rng() < 0.45 ? 3 : 2;
     a.values = [];

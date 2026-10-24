@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тёплый Брод</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans+SC:wght@500;700&family=PT+Sans:wght@400;700&family=PT+Mono&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* the new menu (src/app/): what style.css does not have */
+  .app-screen[hidden]{display:none}
+  .app-screen{display:flex;flex-direction:column;gap:16px}
+  .launch-card.soon{opacity:.82}
+  .launch-card .soon-tag{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+  .app-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+  .app-head h2{font-family:var(--font-display);font-size:26px;letter-spacing:.04em;margin:0}
+  .app-plan{margin:0;padding-left:20px;color:var(--fg);display:flex;flex-direction:column;gap:4px}
+  .app-plan li::marker{color:var(--ember)}
+  .seed-row input{font:inherit;font-family:var(--font-mono);font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0}
+  #quickSize{align-self:flex-start}
+  /* «Настройки → Таблицы» (src/app/tablesView.js) */
+  .tables-shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}
+  .tables-nav{display:flex;flex-direction:column;gap:10px;position:sticky;top:12px}
+  .tables-nav .grp{display:flex;flex-direction:column;gap:2px}
+  .tables-nav .grp > span{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted);padding:2px 8px}
+  .tables-nav button{text-align:left;border:0;background:transparent;padding:4px 8px;display:flex;justify-content:space-between;gap:8px}
+  .tables-nav button small{color:var(--muted);font-family:var(--font-mono);font-size:11px}
+  .tables-nav button[aria-current="true"]{background:var(--ember);color:#1b130a;font-weight:700}
+  .tables-nav button[aria-current="true"] small{color:#1b130a}
+  .tables-main{display:flex;flex-direction:column;gap:10px;min-width:0}
+  .tables-main h3{font-family:var(--font-display);font-size:20px;letter-spacing:.04em;margin:0}
+  .tables-main .note{color:var(--muted);margin:0;max-width:90ch}
+  .tbl-tools input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 10px;flex:1 1 200px;min-width:0}
+  .tbl-tools .count{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+  .tbl-scroll{overflow:auto;max-height:68vh;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+  table.tbl{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content;min-width:100%}
+  table.tbl th,table.tbl td{padding:4px 8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;text-align:left;max-width:320px}
+  table.tbl th{position:sticky;top:0;z-index:2;background:var(--panel);font-weight:700;cursor:pointer;white-space:nowrap;user-select:none}
+  table.tbl th .k{display:block;font-family:var(--font-mono);font-weight:400;font-size:10.5px;color:var(--muted)}
+  table.tbl th.calc{font-style:italic}
+  table.tbl th[aria-sort="ascending"]::after{content:" ▲";color:var(--ember)}
+  table.tbl th[aria-sort="descending"]::after{content:" ▼";color:var(--ember)}
+  table.tbl td:first-child,table.tbl th:first-child{position:sticky;left:0;background:var(--panel);z-index:1;font-family:var(--font-mono)}
+  table.tbl th:first-child{z-index:3}
+  table.tbl tr:hover td{background:#22261b}
+  table.tbl td.num{text-align:right;font-family:var(--font-mono);white-space:nowrap}
+  table.tbl td.calc{color:var(--muted);font-style:italic}
+  table.tbl .chips{display:flex;flex-wrap:wrap;gap:2px 8px}
+  table.tbl .chips span{white-space:nowrap}
+  table.tbl .chips b{font-weight:400;color:var(--muted);margin-right:3px}
+  table.tbl .sp{display:grid;grid-template-columns:repeat(7,auto);gap:0 8px;font-family:var(--font-mono);white-space:nowrap}
+  table.tbl .sp b{color:var(--muted);font-weight:400}
+  table.tbl code{font-family:var(--font-mono);font-size:11.5px;white-space:pre-wrap;color:#cfd8a8}
+  table.tbl .sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line);vertical-align:-2px;margin-right:5px}
+  .edits-bar{gap:8px}
+  .edits-bar .note{color:var(--muted)}
+  .ed-msg{color:var(--ember);min-height:1.2em}
+  .ed-msg.bad{color:#f0b0b2}
+  .ed-list ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+  .ed-list s{color:var(--muted)}
+  button.link{border:0;background:none;padding:0;color:var(--ember);text-decoration:underline;font-size:inherit}
+  button.mini{padding:0 6px;font-size:12px}
+  .tables-nav button.has-ed span::after{content:" •";color:var(--ember)}
+  .tables-nav button[aria-current="true"].has-ed span::after{color:#1b130a}
+  table.tbl td.ed{cursor:text;text-decoration:underline dotted var(--muted);text-underline-offset:3px}
+  table.tbl td.ed:hover{outline:1px dashed var(--ember);outline-offset:-2px}
+  table.tbl td.changed{box-shadow:inset 0 0 0 2px var(--ember);position:relative;padding-right:24px}
+  table.tbl td .undo{position:absolute;right:2px;top:2px;border:0;background:transparent;color:var(--ember);padding:0 3px;font-size:12px;line-height:1.2}
+  table.tbl .cell-ed{font:inherit;font-family:var(--font-mono);font-size:12px;color:var(--fg);background:var(--bg);border:1px solid var(--ember);border-radius:4px;padding:2px 4px;width:100%;min-width:120px;box-sizing:border-box}
+  .tbl-check{font-size:12.5px;color:var(--muted)}
+  .tbl-check.bad{color:#f0b0b2}
+  .tbl-check details{margin-top:4px}
+  @media (max-width:760px){.tables-shell{grid-template-columns:1fr}.tables-nav{position:static;flex-direction:row;flex-wrap:wrap}.tables-nav .grp{flex-direction:row;flex-wrap:wrap;align-items:center}}
+  /* «Создать землю» (src/app/landView.js) */
+  #landMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+  #landMap.dragging{cursor:grabbing}
+  #landMap.brush{cursor:cell}
+  .land-tools{align-items:center;gap:8px}
+  .rng{display:grid;grid-template-columns:80px minmax(0,1fr) 56px;align-items:center;gap:8px;font-size:13px}
+  .rng output{font-family:var(--font-mono);font-size:12px;text-align:right}
+  .rng input{width:100%;accent-color:var(--ember)}
+  .compass{display:grid;grid-template-columns:repeat(3,36px);gap:3px}
+  .compass button{padding:3px 0}
+  .compass button[aria-pressed="true"]{background:var(--ember);color:#1b130a}
+  .plate-card{display:flex;flex-direction:column;gap:6px;border-color:var(--ember)}
+  .plate-card h3{margin:0;font-family:var(--font-display);font-size:18px}
+  .plate-card .row{align-items:center;gap:8px}
+  .muted{color:var(--muted)}
+  /* «Заселение мира» (src/app/settleView.js) */
+  #setMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
+  #setMap.dragging{cursor:grabbing}
+  #setMap.hand{cursor:copy}
+  .hand-card{display:flex;flex-direction:column;gap:6px;padding:8px 10px}
+  .hand-card .row,.time-row{align-items:center;gap:8px;flex-wrap:wrap}
+  .hand-card select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+  .hand-note{color:var(--muted)}
+  .hand-note.bad{color:#f0b0b2}
+  .hand-note.good{color:var(--ember)}
+  .cal-list{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+  .cal-list div{border-left:2px solid var(--raider);padding-left:6px;font-size:12.5px}
+  .cal-list b{color:var(--fg)}
+  .cal-list small{color:var(--muted)}
+  .app-foot{color:var(--muted);font-size:12.5px}
+  .app-foot a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Тёплый Брод</h1>
+    <span class="build" id="buildTag"></span>
+    <p id="appInfo">Сотворите землю, заселите её и выведите караван за артефактом, пока не грянул катаклизм.</p>
+  </header>
+
+  <!-- ───────── the main menu ───────── -->
+  <section class="app-screen" id="home" aria-label="Главное меню">
+    <div class="launch">
+      <button type="button" class="launch-card" data-go="land">
+        <span class="tag">земля</span>
+        <b>Создать землю</b>
+        <span>Плиты, рельеф, моря, климат, реки и биомы — без народов и истории. Правка плит, рельефа и климата, сохранение земли.</span>
+      </button>
+      <button type="button" class="launch-card" data-go="settle">
+        <span class="tag">история</span>
+        <b>Заселение мира</b>
+        <span>Загрузить землю, высадить расы, монстров и логова, задать катаклизмы и мотать время на 5–100 лет.</span>
+      </button>
+      <button type="button" class="launch-card" data-go="camp">
+        <span class="tag">поход</span>
+        <b>Кампания</b>
+        <span>Караван из столицы идёт по живому миру из библиотеки за артефактом, который остановит грядущий катаклизм.</span>
+      </button>
+      <button type="button" class="launch-card" data-go="quick">
+        <span class="tag">всё сразу</span>
+        <b>Быстрый старт</b>
+        <span>Случайный мир с долгой историей, выбор столицы и поход — одной кнопкой.</span>
+      </button>
+    </div>
+    <div class="row">
+      <button type="button" data-go="settings">⚙ Настройки</button>
+      <a class="app-foot" href="index.html" title="Старые режимы для проверок">Технический полигон →</a>
+    </div>
+  </section>
+
+  <!-- ───────── quick start: the epic campaign of the old menu, with its seed in sight ───────── -->
+  <section class="app-screen" id="quick" hidden aria-labelledby="quickTitle">
+    <div class="app-head"><h2 id="quickTitle">Быстрый старт</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="menu-form">
+      <div class="field">
+        <span class="lbl">Сид мира</span>
+        <div class="row seed-row">
+          <input id="quickSeed" type="text" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Сид мира">
+          <button type="button" id="quickDice" title="Случайный сид" aria-label="Случайный сид">🎲</button>
+          <button type="button" id="quickCopy" title="Скопировать сид">Копировать</button>
+        </div>
+        <small id="quickSeedNote">Один и тот же сид даёт тот же мир и ту же историю: запишите его, если мир понравится.</small>
+      </div>
+      <div class="field"><span class="lbl">Размер</span><div class="seg" id="quickSize"></div></div>
+      <div class="field">
+        <small>Земля, затем три эпохи по 75–150 лет: дикая, древних народов и молодых. На среднем мире — минута-другая. Мир сам сохранится в библиотеку.</small>
+      </div>
+      <div class="row actions"><button type="button" id="quickGo" class="primary">Сотворить и выступить</button></div>
+    </div>
+  </section>
+
+  <!-- ───────── «Создать землю» (src/app/landView.js): only the land and its climate, with the hand on the base ───────── -->
+  <section class="app-screen" id="land" hidden aria-labelledby="landTitle">
+    <div class="app-head"><h2 id="landTitle">Создать землю</h2><span class="muted" id="landName2"></span><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="atlas land">
+      <div class="menu-form atlas-form">
+        <div class="field">
+          <span class="lbl">Сид земли</span>
+          <div class="row seed-row">
+            <input id="landSeed" type="text" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Сид земли">
+            <button type="button" id="landDice" title="Случайный сид" aria-label="Случайный сид">🎲</button>
+          </div>
+        </div>
+        <div class="field"><span class="lbl">Размер</span><div class="seg wrapseg" data-lkey="size"></div><small id="landSizeNote"></small></div>
+        <div class="field"><span class="lbl">Суша</span><div class="seg" data-lkey="land"></div></div>
+        <div class="field"><span class="lbl">Плиты</span><div class="seg" data-lkey="plates"></div></div>
+        <div class="field"><span class="lbl">Широты</span><div class="seg wrapseg" data-lkey="hemisphere"></div><small id="landHemiNote"></small></div>
+        <div class="row actions"><button type="button" id="landGo" class="primary" title="Новая земля по сиду и настройкам; правки сбрасываются">Сотворить землю</button></div>
+
+        <div class="field">
+          <span class="lbl">Климат</span>
+          <label class="rng"><span>Экватор</span><input type="range" id="landEq"><output id="landEqV"></output></label>
+          <label class="rng"><span>Полюса</span><input type="range" id="landPole"><output id="landPoleV"></output></label>
+          <label class="rng"><span>Влажность</span><input type="range" id="landWet"><output id="landWetV"></output></label>
+          <small>Сдвиг к тому, что дала бы широта. Заново считаются температура, ветры, осадки, реки, биомы, почвы и леса.</small>
+        </div>
+        <div class="row"><span id="landEdits" class="muted">Правок нет</span><button type="button" id="landReset" class="quiet" disabled>Сбросить правки</button></div>
+
+        <div class="field saves">
+          <label for="landName">Сохранить землю</label>
+          <div class="row">
+            <input id="landName" type="text" maxlength="40" autocomplete="off" placeholder="Название земли">
+            <button type="button" id="landSave" title="В библиотеку этого браузера">Сохранить</button>
+            <button type="button" id="landFile" title="Скачать землю файлом">В файл</button>
+          </div>
+          <small class="status" id="landSaveStatus" role="status"></small>
+          <span class="lbl">Сохранённые земли</span>
+          <div id="landList" class="savelist"><small>Пока нет сохранённых земель.</small></div>
+          <label class="filebtn">Открыть файл земли…<input type="file" id="landLoadFile" accept=".gz,.json,.land,application/gzip,application/json"></label>
+        </div>
+      </div>
+
+      <div class="atlas-map">
+        <div class="atlas-tools">
+          <div class="seg wrapseg" data-lkey="layer"></div>
+          <div class="seg zoomseg" title="Колёсико — зум у курсора, перетаскивание — сдвиг (с кистью — правой кнопкой); клавиши + − 0">
+            <button type="button" id="landZoomIn" aria-label="Приблизить">+</button>
+            <button type="button" id="landZoomOut" aria-label="Отдалить">−</button>
+            <button type="button" id="landZoomFit" aria-label="Вся земля">⌂</button>
+          </div>
+        </div>
+        <div class="seg wrapseg" data-lkey="ore" id="landOre" hidden></div>
+        <div class="row land-tools">
+          <span class="lbl">Рука</span>
+          <div class="seg" id="landTool"></div>
+          <div class="seg" id="landRadius" title="Ширина кисти"></div>
+        </div>
+        <div class="preview-box"><canvas id="landMap" width="256" height="192" aria-label="Карта земли"></canvas></div>
+        <div class="legend atlas-legend" id="landLegend"></div>
+        <div class="readout" id="landReadout">Наведите на карту, чтобы увидеть клетку.</div>
+      </div>
+
+      <div class="menu-form atlas-chron">
+        <div class="card plate-card" id="landPlate" hidden>
+          <h3 id="landPlateTitle">Плита</h3>
+          <dl class="kv" id="landPlateInfo"></dl>
+          <span class="lbl">Куда движется</span>
+          <div class="compass" id="landDir"></div>
+          <span class="lbl">Как быстро</span>
+          <div class="seg wrapseg" id="landSpeed"></div>
+          <span class="lbl">Высота плиты</span>
+          <div class="row"><button type="button" id="landDown" title="Опустить плиту">▼ Опустить</button><b id="landLift">0</b><button type="button" id="landUp" title="Поднять плиту">▲ Поднять</button></div>
+          <div class="row"><button type="button" id="landPlateReset" class="quiet">Как дал сид</button><button type="button" id="landPlateClose" class="quiet">Закрыть</button></div>
+          <small class="muted">Сдвиг плиты меняет швы: где столкнутся материки — хребты, где разойдутся — рифты. Пересчитывается всё от границ плит.</small>
+        </div>
+        <div class="field"><span class="lbl">Этапы</span><ol class="stages" id="landStages"></ol></div>
+        <dl class="kv" id="landStats"></dl>
+        <span class="lbl">Летопись земли</span>
+        <div class="log" id="landChron"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────── «Заселение мира» (src/app/settleView.js): history on a land, led by hand; no eras ───────── -->
+  <section class="app-screen" id="settle" hidden aria-labelledby="settleTitle">
+    <div class="app-head"><h2 id="settleTitle">Заселение мира</h2><span class="muted" id="setName2"></span><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="atlas settle">
+      <div class="menu-form atlas-form">
+        <div class="field">
+          <span class="lbl">Земля для заселения</span>
+          <div id="setLands" class="savelist"><small>Пока нет сохранённых земель: сотворите её на экране «Создать землю».</small></div>
+          <label class="filebtn">Открыть файл земли или мира…<input type="file" id="setLoadFile" accept=".gz,.json,.land,.world,application/gzip,application/json"></label>
+        </div>
+        <div class="field saves">
+          <label for="setName">Сохранить мир с обитателями и летописью</label>
+          <div class="row">
+            <input id="setName" type="text" maxlength="40" autocomplete="off" placeholder="Название мира">
+            <button type="button" id="setSave" title="В библиотеку этого браузера">Сохранить</button>
+            <button type="button" id="setFile" title="Скачать мир файлом">В файл</button>
+          </div>
+          <small class="status" id="setStatus" role="status"></small>
+          <span class="lbl">Заселённые миры</span>
+          <div id="setWorlds" class="savelist"><small>Пока нет заселённых миров.</small></div>
+        </div>
+      </div>
+
+      <div class="atlas-map">
+        <div class="atlas-tools">
+          <div class="seg wrapseg" data-skey="layer"></div>
+          <div class="seg zoomseg" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
+            <button type="button" id="setZoomIn" aria-label="Приблизить">+</button>
+            <button type="button" id="setZoomOut" aria-label="Отдалить">−</button>
+            <button type="button" id="setZoomFit" aria-label="Весь мир">⌂</button>
+          </div>
+        </div>
+        <div class="seg wrapseg" data-skey="ore" id="setOre" hidden></div>
+        <div class="seg wrapseg" data-skey="fauna" id="setFauna" hidden></div>
+        <div class="card hand-card" id="setHand">
+          <div class="row"><span class="lbl">Рука</span><div class="seg" id="setTool"></div><button type="button" id="setWild" title="Логова чудовищ, какие даёт земля, — один раз">Логова по земле</button></div>
+          <div class="row" id="setPeopleRow" hidden><div class="seg wrapseg" id="setPeople"></div><div class="seg wrapseg" id="setSub"></div></div>
+          <div class="row" id="setLairRow" hidden><select id="setLairKind" aria-label="Какое логово"></select><small class="muted">Щелчок по суше — поставить логово.</small></div>
+          <div class="row" id="setCalRow" hidden>
+            <select id="setCalKind" aria-label="Какое бедствие"></select>
+            <span class="lbl">через</span><div class="seg" id="setCalIn"></div>
+            <button type="button" id="setCalAny" title="Место выберет мир, как в эпическом мире">Место — на волю мира</button>
+          </div>
+          <small class="hand-note" id="setNote">Выберите землю слева, затем руку: народ, логово или бедствие — и щёлкните по карте.</small>
+        </div>
+        <div class="preview-box"><canvas id="setMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
+        <div class="row time-row">
+          <button type="button" id="setMarch" class="primary" title="Сохранить мир и выбрать столицу для похода">В поход →</button>
+          <span class="lbl">Время</span>
+          <div class="seg" id="setRun"></div>
+          <button type="button" id="setPause" hidden>Пауза</button>
+          <b id="setYear" class="muted"></b>
+        </div>
+        <div class="legend atlas-legend" id="setLegend"></div>
+        <div class="readout" id="setReadout">Наведите на карту, чтобы увидеть клетку.</div>
+      </div>
+
+      <div class="menu-form atlas-chron">
+        <dl class="kv" id="setStats"></dl>
+        <div id="setCals"></div>
+        <dl class="kv" id="setRels"></dl>
+        <div class="row"><span class="lbl">Летопись</span><div class="seg" id="setDetail"></div></div>
+        <div class="log" id="setChron"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────── «Кампания» (src/app/campView.js): a living world from the library, then the walk on the campaign screen ───────── -->
+  <section class="app-screen" id="camp" hidden aria-labelledby="campTitle2">
+    <div class="app-head"><h2 id="campTitle2">Кампания</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card">
+      <span class="tag">живые миры</span>
+      <p class="note">Мир из библиотеки — заселённый, эпический или из полигона. Квест зависит от мира: в заселённом — бедствие, которое вы задали; в эпическом — могилы боссов и четвёртое бедствие; в остальных — корона, потерянная историей. Столицу выбирают на экране похода.</p>
+      <div id="campList" class="savelist"><small>Открываю библиотеку…</small></div>
+      <small class="status" id="campStatus" role="status"></small>
+    </div>
+  </section>
+
+  <section class="app-screen" id="settings" hidden aria-labelledby="setTitle">
+    <div class="app-head"><h2 id="setTitle">Настройки</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
+    <div class="card edits-bar">
+      <div class="row">
+        <button type="button" id="edMode" aria-pressed="false" title="Включить правку: щелчок по ячейке — новое значение">Правка: выкл</button>
+        <b id="edCount">Правок нет</b>
+        <button type="button" id="edSave" title="Все правки — в файл forest-tables.json">Выгрузить правки</button>
+        <label class="filebtn" title="Правки из файла заменят нынешние">Загрузить правки…<input type="file" id="edLoad" accept=".json,application/json"></label>
+        <button type="button" id="edResetTable" class="quiet">Сбросить таблицу</button>
+        <button type="button" id="edResetAll" class="danger">Сбросить всё</button>
+      </div>
+      <small class="note">Правки — для экспериментов: они лежат слоем поверх чисел кода в этом браузере и действуют в каждой <b>новой</b> игре и мире (и в старом меню). Мир запоминает, с какими правками сотворён; открытый с другими — предупредит. Сброс возвращает числа кода.</small>
+      <small class="ed-msg" id="edMsg" role="status"></small>
+      <details id="edList" class="ed-list" hidden></details>
+    </div>
+    <div class="tables-shell">
+      <nav class="tables-nav card" id="tablesNav" aria-label="Таблицы"></nav>
+      <div class="tables-main card">
+        <span class="tag">таблицы</span>
+        <h3 id="tblTitle"></h3>
+        <p class="note" id="tblNote"></p>
+        <div class="row tbl-tools">
+          <input id="tblFilter" type="search" placeholder="Фильтр по строкам…" aria-label="Фильтр по строкам">
+          <span class="count" id="tblCount"></span>
+          <button type="button" id="tblCsv" title="Таблица в файл .csv (Excel, Google Таблицы)">CSV</button>
+          <button type="button" id="tblJson" title="Таблица в файл .json">JSON</button>
+        </div>
+        <div class="tbl-scroll"><table class="tbl" id="tbl"></table></div>
+        <div class="tbl-check" id="tblCheck" role="status"></div>
+        <small class="note">Щелчок по заголовку — сортировка. Курсив — вычисляемое: его считает игра, править его нельзя. В режиме правки подчёркнуто то, что правится; правленое — в рамке, ↺ возвращает число кода. Наборы пишутся словами: «forest 1, meadow 0.5», пределы SPECIAL — «S 1-10, P 3-11».</small>
+      </div>
+    </div>
+  </section>
+
+  <p class="app-foot">Старые режимы (Мир, Карта, Кампания, Эпическая кампания) остаются в <a href="index.html">техническом полигоне</a> — <code>start.bat</code>.</p>
+</div>
+
+<script type="module" src="src/app/main.js"></script>
+</body>
+</html>

@@ -19,6 +19,8 @@ import {SEA} from '../data/roads.js';
 import {LAIRS} from '../data/lairs.js';
 import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
+import {stepLeaders} from './leaders.js';
+import {stepTech} from './tech.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
@@ -36,6 +38,7 @@ export function epicYears(a) {
 }
 // the eras with their length in seasons, in order
 export const eraPlan = a => {
+  if (a.cfg.free) return [{id: 'free', seasons: Math.ceil((a.hist?.end || 0) / SEASONS_PER_YEAR) * SEASONS_PER_YEAR}];   // «Заселение мира»: one stretch, as long as the hand has run it
   if (a.cfg.epic) { const Y = epicYears(a); return ['wild', 'elder', 'young'].map(id => ({id, seasons: Y[id] * SEASONS_PER_YEAR})); }
   return [
     {id: 'wild', seasons: WILD_YEARS[a.cfg.wild ?? 1].years * SEASONS_PER_YEAR},
@@ -45,6 +48,9 @@ export const eraPlan = a => {
 };
 export const historyLength = a => eraPlan(a).reduce((s, e) => s + e.seasons, 0);
 export const historyDone = a => !!a.hist && a.hist.step >= a.hist.end;
+// the years history has lived (the year it stands at is not lived yet), and the year a run of it ends in
+export const yearsLived = a => (a.hist ? Math.max(0, a.hist.year - 1) : 0);
+export const endYear = a => (a.hist ? Math.floor(a.hist.end / SEASONS_PER_YEAR) + 1 : 0);
 export const seasonLabel = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 
 // the world cell in the middle of a coarse fauna cell (on land if there is any)
@@ -112,8 +118,8 @@ export function stepHistory(a, onDay = null) {
     }
   }
   // the elder peoples: they come at the start of their era and live a year at a time from then on
-  const plan = eraPlan(a), wildEnd = plan[0].seasons, elderEnd = wildEnd + plan[1].seasons;
-  if (H.step === wildEnd || H.step === elderEnd) {
+  const free = !!a.cfg.free, plan = eraPlan(a), wildEnd = free ? 0 : plan[0].seasons, elderEnd = free ? -1 : wildEnd + plan[1].seasons;
+  if (!free && (H.step === wildEnd || H.step === elderEnd)) {
     H.era = H.step === wildEnd ? 'elder' : 'young';
     say(a, `Началась ${ERAS.get(H.era).label.toLowerCase()}.`);
     arrive(a, H.era, rnd, t => say(a, t));
@@ -128,6 +134,8 @@ export function stepHistory(a, onDay = null) {
   }
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
+  stepLeaders(a, t => say(a, t));
+  stepTech(a, t => say(a, t));   // the realms' finds: their own stream, in spring (atlas/tech.js)   // the old lairs' leaders: their own stream, in spring (atlas/leaders.js)
   stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);
   // the year's beaten raids of the tribes and the dead, in one line
@@ -155,12 +163,12 @@ export function stepHistory(a, onDay = null) {
   H.step++;
   H.season = (H.season + 1) % SEASON_LIST.length;
   if (H.season === 0) H.year++;
-  if (H.step === wildEnd) {
+  if (!free && H.step === wildEnd) {
     const alive = a.lairs.filter(l => l.alive).length, gone = a.lairs.length - alive;
     say(a, `Дикая эра подошла к концу: ${alive} ${plural(alive, 'логово', 'логова', 'логов')} чудовищ стоит, ${gone} ${plural(gone, 'опустело', 'опустели', 'опустели')}. Мир ждёт первых народов.`);
   }
   // the end of an era is told once: a campaign lets history run on past the planned end (campaign/)
-  if (H.step === elderEnd || (H.step === H.end && !H.endTold)) {
+  if (!free && (H.step === elderEnd || (H.step === H.end && !H.endTold))) {
     const towns = a.towns.filter(t => t.alive), parts = [];
     for (const pe of a.peoples) {
       const mine = towns.filter(t => t.people === pe.id), pop = Math.round(mine.reduce((x, t) => x + t.pop, 0));

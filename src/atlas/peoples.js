@@ -11,7 +11,7 @@
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
-import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, tierOf, crowned} from '../data/peoples.js';
+import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf, crowned} from '../data/peoples.js';
 import {TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {townFx, room, might, raidShare, chooseBuilding, townLabel} from './towns.js';
 import {LAIRS} from '../data/lairs.js';
@@ -36,22 +36,29 @@ const lv = id => ORE_GENESIS.get(id).levels;
 const oreWealth = (a, i) => Math.max(...['iron', 'bronze', 'silver', 'gold', 'gems'].map(id => a.f[`ore_${id}`][i] / lv(id)[2]));
 
 export function initPeoples(a, era) {
+  for (const P of WORLD_PEOPLES.filter(p => p.era === era)) initPeople(a, P);
+}
+// one people's fields (once: a people already in the world is left as it is)
+export function initPeople(a, P) {
   const F = a.fauna, N = F.W * F.H;
   a.peoples ||= []; a.towns ||= []; a.contacts ||= {}; a.realms ||= [];
   a.f.road ||= new Float32Array(a.n);
-  for (const P of WORLD_PEOPLES.filter(p => p.era === era)) {
+  if (a.peoples.some(pe => pe.id === P.id)) return a.peoples.find(pe => pe.id === P.id);
+  {
     const K = new Float32Array(N), mob = new Float32Array(N), cnt = new Float32Array(N);
     for (let i = 0; i < a.n; i++) {
       if (a.f.ocean[i]) continue;
       const j = faunaCell(a, i), b = biomeAt(a, i).id;
-      K[j] += (P.home[b] || 0) + (P.ores ? P.ores * Math.min(1, oreWealth(a, i)) * (P.home[b] ? 1 : 0.3) : 0);
+      K[j] += (P.home[b] || 0) + (P.ores ? P.ores * Math.min(1, oreWealth(a, i)) * (P.home[b] ? 1 : TL.oresAway) : 0);
       mob[j] += P.moves[b] ?? P.movesElse; cnt[j]++;
     }
     for (let j = 0; j < N; j++) { K[j] = cnt[j] ? clamp01(K[j] / (F.c * F.c)) : 0; mob[j] = cnt[j] ? mob[j] / cnt[j] : 0; }
     // how good each world cell is for a town of theirs: the land does not change, so once is enough
     const site = new Float32Array(a.n);
     for (let i = 0; i < a.n; i++) site[i] = siteScore(a, P, i);
-    a.peoples.push({id: P.id, P, K, mob, site, u: new Float32Array(N)});
+    const pe = {id: P.id, P, K, mob, site, u: new Float32Array(N)};
+    a.peoples.push(pe);
+    return pe;
   }
 }
 
@@ -103,7 +110,7 @@ function bestSite(a, pe, j, rnd) {
     const i = y * a.w + x, v = pe.site[i] + 0.05 * rnd();
     if (v > bv && farFromTowns(a, x, y, P.spacing * k)) { bv = v; best = i; }
   }
-  return bv > 0.4 ? best : -1;
+  return bv > TL.siteBar ? best : -1;
 }
 
 export {townLabel} from './towns.js';
@@ -144,9 +151,9 @@ export function arrive(a, era, rnd, say) {
         picks.push(j);
         for (const [dx, dy] of [[0, 0], ...DIRS8]) {
           const x = j % F.W + dx, y = ((j / F.W) | 0) + dy;
-          if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = 0.6;
+          if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = TL.band;
         }
-        const t = foundTown(a, pe, i, rnd, 90 + 60 * rnd()), r = foundRealm(a, t, sub?.id);
+        const t = foundTown(a, pe, i, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), r = foundRealm(a, t, sub?.id);
         say(`${cap1(sub?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, i)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
         break;
       }
@@ -155,11 +162,34 @@ export function arrive(a, era, rnd, say) {
   }
 }
 
+// «Заселение мира» (atlas/settle.js): a band of a people landed by hand near a cell — its town at the best spot within
+// a coarse cell or two of it (as good as its land there lets, without the arrival's bar), its own realm of the sub-race
+// given (or the one that fits the land), the field of the people woken around it. → {town, realm} or {error}
+export function landBand(a, peopleId, i, subId, rnd, say) {
+  const P = WORLD_PEOPLES.get(peopleId), pe = initPeople(a, P), F = a.fauna, k = scaleOf(a);
+  const x0 = i % a.w, y0 = (i / a.w) | 0, Rr = 2 * F.c;
+  let best = -1, bv = -Infinity;
+  for (let y = Math.max(0, y0 - Rr); y <= Math.min(a.h - 1, y0 + Rr); y++) for (let x = Math.max(0, x0 - Rr); x <= Math.min(a.w - 1, x0 + Rr); x++) {
+    const j = y * a.w + x, v = pe.site[j] - 0.04 * Math.hypot(x - x0, y - y0) + 0.02 * rnd();
+    if (v > bv && pe.site[j] > -Infinity && farFromTowns(a, x, y, P.spacing * k * 0.6)) { bv = v; best = j; }
+  }
+  if (best < 0) return {error: a.towns.some(t => t.alive && Math.hypot(t.x - x0, t.y - y0) < P.spacing * k) ? 'слишком близко к другому городу' : 'здесь негде встать городу: вода, лёд или большая река'};
+  const jc = faunaCell(a, best);
+  for (const [dx, dy] of [[0, 0], ...DIRS8]) {
+    const x = jc % F.W + dx, y = ((jc / F.W) | 0) + dy;
+    if (x >= 0 && y >= 0 && x < F.W && y < F.H && pe.K[y * F.W + x] > 0) pe.u[y * F.W + x] = Math.max(pe.u[y * F.W + x], TL.band);
+  }
+  const t = foundTown(a, pe, best, rnd, TL.bandPop[0] + TL.bandPop[1] * rnd()), sub = subId ? worldSubs(P.race).find(s => s.id === subId) : null, r = foundRealm(a, t, sub?.id);
+  const S = sub || worldSubs(P.race).find(s => s.id === r.sub);
+  say?.(`${cap1(S?.plural || P.label)} ${P.arrive.verb} ${P.arrive.where} — ${wherePhrase(a, best)} — и заложили ${townLabel(t, 1)} ${t.name}. Так началась держава «${realmLabel(a, r.id)}».`);
+  return {town: t, realm: r};
+}
+
 // a year of the peoples: their fields, their towns, their wars with the wild, their meetings
 export function stepPeoples(a, rnd, say) {
   const F = a.fauna, N = F.W * F.H, tmp = new Float32Array(N), k = scaleOf(a);
   // towns are the hearths the fields grow from
-  for (const pe of a.peoples) for (const t of a.towns) if (t.alive && t.people === pe.id) { const j = faunaCell(a, t.i); pe.u[j] = Math.max(pe.u[j], Math.min(1, 0.45 + 0.15 * t.tier + 0.2 * townFx(t).prestige)); }
+  for (const pe of a.peoples) for (const t of a.towns) if (t.alive && t.people === pe.id) { const j = faunaCell(a, t.i); pe.u[j] = Math.max(pe.u[j], Math.min(1, TL.hearth[0] + TL.hearth[1] * t.tier + TL.hearth[2] * townFx(t).prestige)); }
   // every people sees the others as they were at the start of the year, whatever the order
   const was = a.peoples.map(pe => Float32Array.from(pe.u));
   // how the races stand to each other this year (the worst of their realms' dealings), once per pair
@@ -185,18 +215,18 @@ export function stepPeoples(a, rnd, say) {
   const occ = new Float32Array(N);
   for (const pe of a.peoples) for (let j = 0; j < N; j++) occ[j] += pe.u[j] * pe.K[j];
   for (const s of F.list) if (s.role !== 'spirit') {
-    const hit = s.role === 'predator' ? 0.3 : 0.12;
+    const hit = s.role === 'predator' ? TL.hunt.predator : TL.hunt.other;
     for (let j = 0; j < N; j++) if (occ[j] > 0) s.N[j] *= 1 - hit * Math.min(1, occ[j]);
   }
   // new towns where the field is dense and no town is near
   for (const pe of a.peoples) {
-    const cand = [...pe.u.keys()].filter(j => pe.u[j] >= pe.P.found && pe.K[j] >= 0.25).sort((p, q) => pe.u[q] * pe.K[q] - pe.u[p] * pe.K[p]);
+    const cand = [...pe.u.keys()].filter(j => pe.u[j] >= pe.P.found && pe.K[j] >= TL.foundLand).sort((p, q) => pe.u[q] * pe.K[q] - pe.u[p] * pe.K[p]);
     let made = 0;
     for (const j of cand) {
-      if (made >= 2 || rnd() > 0.35) continue;
+      if (made >= TL.foundMax || rnd() > TL.foundChance) continue;
       const i = bestSite(a, pe, j, rnd);
       if (i < 0) continue;
-      const t = foundTown(a, pe, i, rnd, 40 + 40 * rnd());
+      const t = foundTown(a, pe, i, rnd, TL.newPop[0] + TL.newPop[1] * rnd());
       joinRealm(a, t); made++;
       say(`${cap1(realmLabel(a, t.realm))} основали ${townLabel(t, 1)} ${t.name} ${wherePhrase(a, i)}.`);
     }
@@ -211,7 +241,7 @@ export function stepPeoples(a, rnd, say) {
     let feed = 0, c = 0;
     for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
     const fx = townFx(t);
-    feedsOf.set(t.id, [1400 * (feed / c) * (0.6 + 0.4 * a.f.fert[t.i]) * (0.7 + 0.3 * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + 0.6 * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? 1.4 : 1) * (1 + fx.food - scourgedFood(a, t) + 0.3 * fx.trade), room(fx)]);
+    feedsOf.set(t.id, [TL.feeds * (feed / c) * (TL.fert[0] + TL.fert[1] * a.f.fert[t.i]) * (TL.home[0] + TL.home[1] * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + TL.road * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? TL.capital : 1) * (1 + fx.food - scourgedFood(a, t) + TL.trade * fx.trade), room(fx)]);
   }
   stepNet(a, feedsOf);
   for (const [t, o, by] of fedTowns(a)) say(`${cap1(townLabel(t, 0))} ${t.name} живёт привозным хлебом: ${Math.round(by * 100)}% еды везут из ${townLabel(o, 2)} ${o.name}.`);
@@ -223,11 +253,11 @@ export function stepPeoples(a, rnd, say) {
     const fx = townFx(t);
     const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
     const target = Math.min(feeds, room(fx));
-    t.pop = Math.max(10, t.pop + 0.14 * (1 + 0.6 * fx.prestige) * t.pop * (1 - t.pop / Math.max(60, target)) + 4 * rnd());
+    t.pop = Math.max(TL.minPop, t.pop + TL.growth * (1 + TL.prestige * fx.prestige) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);
     for (let q = 0; q < (t.tier >= 2 ? 2 : 1); q++) {
-      if (rnd() > 0.65) continue;
+      if (rnd() > TL.build) continue;
       const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i)}, rnd);
       if (!b) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
@@ -252,7 +282,7 @@ export function stepPeoples(a, rnd, say) {
     const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k, owner = SPECIES.get(L.species), s = owner.special;
     for (const t of a.towns) {
       if (!t.alive || Math.hypot(t.x - l.x, t.y - l.y) > reach || rnd() > TOWN_WAR.chance) continue;
-      const fx = townFx(t), town = might(t, fx) * TOWN_WAR.might * (0.6 + 0.8 * rnd()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (0.6 + 0.8 * rnd());
+      const fx = townFx(t), town = might(t, fx) * TOWN_WAR.might * (TOWN_WAR.luck[0] + TOWN_WAR.luck[1] * rnd()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (TOWN_WAR.luck[0] + TOWN_WAR.luck[1] * rnd());
       if (town > beast) {
         l.alive = false; l.died = a.hist.year; l.clearedBy = t.id;
         say(`${cap1(realmLabel(a, t.realm))} из ${townLabel(t, 2)} ${t.name} выжгли ${L.labelAcc || L.label} «${l.name}»: ${owner.plural} больше не тревожат их земли.`);
@@ -303,7 +333,7 @@ function markCrossing(a, i, v) {
 function threatAt(a, t) {
   const k = scaleOf(a);
   let v = 0;
-  for (const l of a.lairs) if (l.alive && Math.hypot(t.x - l.x, t.y - l.y) <= (LAIRS.get(l.kind).radius + TOWN_WAR.reach) * k) v += 0.5 * l.strength;
+  for (const l of a.lairs) if (l.alive && Math.hypot(t.x - l.x, t.y - l.y) <= (LAIRS.get(l.kind).radius + TOWN_WAR.reach) * k) v += TOWN_WAR.threat * l.strength;
   return Math.min(1.5, v);
 }
 

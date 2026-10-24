@@ -23,6 +23,8 @@ import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 import {siteCell} from './sites.js';
+import {techAllowsBuilding} from './tech.js';
+import {TOWN_FX as TF, PLACE_AT as PA} from '../data/townBuildings.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -38,9 +40,9 @@ export function townFx(t) {
   for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); for (const k of KEYS) out[k] += b.fx[k] || 0; }
   return out;
 }
-export const room = fx => 120 + 100 * fx.housing;
-export const might = (t, fx) => Math.sqrt(t.pop) * (1 + fx.defence + 0.3 * fx.prod);
-export const raidShare = fx => Math.max(0.4, 1 - 0.5 * fx.faith - 0.5 * fx.health);
+export const room = fx => TF.room[0] + TF.room[1] * fx.housing;
+export const might = (t, fx) => Math.sqrt(t.pop) * (1 + fx.defence + TF.mightProd * fx.prod);
+export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 
 // ── the place
 const around = (a, i, r, test) => {
@@ -62,27 +64,27 @@ export function placeHas(a, i, need) {
   switch (need) {
     case 'river': return f.flow[i] >= RIVERS.stream * k2 || nextTo(a, i, j => f.flow[j] >= RIVERS.river * k2 && f.lake[j] < 0);
     case 'coast': return nextTo(a, i, j => f.ocean[j]);
-    case 'lake': return around(a, i, 2, j => f.lake[j] >= 0);
+    case 'lake': return around(a, i, PA.lake, j => f.lake[j] >= 0);
     case 'water': return placeHas(a, i, 'river') || placeHas(a, i, 'coast') || placeHas(a, i, 'lake');
     case 'ore': return ['iron', 'bronze', 'silver'].some(id => f[`ore_${id}`][i] >= lv(id)[1]);
     case 'gems': return f.ore_gems[i] >= lv('gems')[1];
     case 'coal': return f.ore_coal[i] >= lv('coal')[1];
-    case 'magma': return around(a, i, 3, j => f.ore_magma[j] >= lv('magma')[1]);
+    case 'magma': return around(a, i, PA.magma, j => f.ore_magma[j] >= lv('magma')[1]);
     case 'precious': return f.ore_gold[i] >= lv('gold')[1] || f.ore_silver[i] >= lv('silver')[1] || f.ore_placer[i] >= lv('placer')[1];
-    case 'placer': return around(a, i, 1, j => f.ore_placer[j] >= lv('placer')[1]);
-    case 'salt': return around(a, i, 4, j => f.lake[j] >= 0 && a.lakes[f.lake[j]].salt) || (placeHas(a, i, 'coast') && f.temp[i] >= 14);
-    case 'clay': return f.alluvium[i] >= 0.3 || rock(i) === 'shale' || rock(i) === 'limestone';
-    case 'stone': return around(a, i, 2, j => !f.ocean[j] && (f.flat[j] < 0.75 || (f.elev[j] - a.sea) / (1 - a.sea) > 0.2));
-    case 'fertile': return f.fert[i] >= 0.5;
-    case 'forest': return around(a, i, 2, j => f.trees[j] >= 0.5);
-    case 'pasture': return around(a, i, 2, j => ['meadow', 'steppe', 'savanna'].includes(bio(j)));
-    case 'steep': return around(a, i, 1, j => f.flat[j] < 0.5);
-    case 'flat': return f.flat[i] > 0.85;
-    case 'caves': return around(a, i, 2, j => rock(j) === 'limestone' || rock(j) === 'basalt');
+    case 'placer': return around(a, i, PA.placer, j => f.ore_placer[j] >= lv('placer')[1]);
+    case 'salt': return around(a, i, PA.salt, j => f.lake[j] >= 0 && a.lakes[f.lake[j]].salt) || (placeHas(a, i, 'coast') && f.temp[i] >= PA.saltSea);
+    case 'clay': return f.alluvium[i] >= PA.clay || rock(i) === 'shale' || rock(i) === 'limestone';
+    case 'stone': return around(a, i, PA.near, j => !f.ocean[j] && (f.flat[j] < PA.stoneFlat || (f.elev[j] - a.sea) / (1 - a.sea) > PA.stoneHigh));
+    case 'fertile': return f.fert[i] >= PA.fertile;
+    case 'forest': return around(a, i, PA.near, j => f.trees[j] >= PA.forest);
+    case 'pasture': return around(a, i, PA.near, j => ['meadow', 'steppe', 'savanna'].includes(bio(j)));
+    case 'steep': return around(a, i, 1, j => f.flat[j] < PA.steep);
+    case 'flat': return f.flat[i] > PA.flat;
+    case 'caves': return around(a, i, PA.near, j => rock(j) === 'limestone' || rock(j) === 'basalt');
     case 'road': return around(a, i, 1, j => f.road[j] >= ROADS.levels[1].wear);
-    case 'graves': return around(a, i, 3, j => (f.barrows?.[j] || 0) >= 0.2);
-    case 'warm': return f.temp[i] >= 12;
-    case 'dry': return around(a, i, 3, j => ['steppe', 'desert', 'savanna'].includes(bio(j)));
+    case 'graves': return around(a, i, PA.graves, j => (f.barrows?.[j] || 0) >= PA.gravesAt);
+    case 'warm': return f.temp[i] >= PA.warm;
+    case 'dry': return around(a, i, PA.dry, j => ['steppe', 'desert', 'savanna'].includes(bio(j)));
   }
   throw new Error(`town building: unknown place need «${need}»`);
 }
@@ -90,6 +92,7 @@ export function placeHas(a, i, need) {
 // can this town build this now: its people, its size, how many it has, the place, what it already has
 export function canBuild(a, t, b) {
   if (b.peoples && !b.peoples.includes(t.people)) return false;
+  if (!techAllowsBuilding(a, t, b.id)) return false;   // its realm has not found what opens it (atlas/tech.js)
   if (b.tier > t.tier) return false;
   if (b.pop && t.pop < b.pop) return false;
   if (b.capital && !t.capital) return false;
@@ -107,16 +110,17 @@ export function canBuild(a, t, b) {
 
 // what the town needs now, 0 … ~1.5 for each effect
 export function townNeeds(a, t, fx, ctx) {
+  const N = TF.needs, raided = t.raided != null && a.hist.year - t.raided < N.raided;
   return {
-    housing: 1.5 * clamp01((t.pop / room(fx) - 0.55) / 0.4),
-    food: 1.3 * clamp01((t.pop / Math.max(1, ctx.feeds) - 0.55) / 0.4),
-    defence: Math.min(1.5, ctx.threat + (t.raided != null && a.hist.year - t.raided < 6 ? 0.8 : 0)) + 0.1,
-    trade: 0.15 + 0.6 * ctx.road + (t.tier >= 2 ? 0.3 : 0),
-    prod: 0.4 + 0.1 * t.tier,
-    faith: 0.25 + 0.15 * t.tier,
-    lore: t.tier >= 2 ? 0.25 + 0.1 * t.tier : 0.03,
-    prestige: 0.15 + 0.15 * t.tier,
-    health: 0.25 + 0.1 * t.tier + (t.raided != null && a.hist.year - t.raided < 6 ? 0.3 : 0),
+    housing: N.housing[0] * clamp01((t.pop / room(fx) - N.full[0]) / N.full[1]),
+    food: N.food[0] * clamp01((t.pop / Math.max(1, ctx.feeds) - N.full[0]) / N.full[1]),
+    defence: Math.min(N.defence[0], ctx.threat + (raided ? N.defence[1] : 0)) + N.defence[2],
+    trade: N.trade[0] + N.trade[1] * ctx.road + (t.tier >= 2 ? N.trade[2] : 0),
+    prod: N.prod[0] + N.prod[1] * t.tier,
+    faith: N.faith[0] + N.faith[1] * t.tier,
+    lore: t.tier >= 2 ? N.lore[0] + N.lore[1] * t.tier : N.lore[2],
+    prestige: N.prestige[0] + N.prestige[1] * t.tier,
+    health: N.health[0] + N.health[1] * t.tier + (raided ? N.health[2] : 0),
   };
 }
 

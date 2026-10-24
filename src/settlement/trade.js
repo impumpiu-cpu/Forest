@@ -16,6 +16,7 @@ import {FOODS} from '../data/foods.js';
 import {ITEMS} from '../data/items.js';
 import {RECIPES} from '../data/recipes.js';
 import {QUALITY} from '../data/quality.js';
+import {MARK, markOfPeople, markable} from '../data/balance/marks.js';
 import {DAY, HOUR, dayOf, hourOf} from '../core/time.js';
 import {log} from '../core/log.js';
 import {esc, plural} from '../core/util.js';
@@ -57,7 +58,9 @@ const stackOf = id => RESOURCES.get(id).stack || 1;
 export const goodsUnits = goods => goods.reduce((s, g) => s + (g.kind === 'res' ? Math.ceil(g.n / stackOf(g.id)) : 1), 0);
 // how many more units of a resource fit: the free places, and what is left in its last stack
 const roomFor = (c, id) => { const have = c.goods.find(g => g.kind === 'res' && g.id === id)?.n || 0, st = stackOf(id); return (c.capacity - goodsUnits(c.goods)) * st + (have % st ? st - have % st : 0); };
-export const unitPrice = g => (g.kind === 'res' ? RESOURCES.get(g.id).value || 0 : itemPrice(g.type, g.q, g.silver));
+// a piece of goods as a piece in the armory: its quality, silver, mark and wood
+const goodsInst = g => ({...(g.q ? {q: g.q} : {}), ...(g.silver ? {silver: true} : {}), ...(g.mark ? {mark: g.mark} : {}), ...(g.of ? {of: g.of} : {}), ...(g.master ? {master: true} : {})});
+export const unitPrice = g => (g.kind === 'res' ? RESOURCES.get(g.id).value || 0 : itemPrice(g.type, g.q, g.silver, g.mark, g.of || null, !!g.master));
 export const goodsLabel = g => (g.kind === 'res' ? RESOURCES.get(g.id).label : itemOf(g).label.toLowerCase());
 // prices at the visit's terms: b (−haggle…+haggle) is the colony's gain from haggling, 0 without terms
 export const askPrice = (g, b = 0) => round1(unitPrice(g) * (TRADE.ask - b));
@@ -99,6 +102,16 @@ function addGoods(goods, g) {
   goods.push(g);
 }
 
+// a trader from a town of a people with a mark (seam/cell.js `empire.people`, data/balance/marks.js) brings some of its
+// smiths' work: its own stream of numbers, so the border's stream stays as it was; none on the polygon
+function markGoods(w, goods) {
+  const mark = markOfPeople(w.cfg?.cell?.empire?.people);
+  if (!mark) return goods;
+  const r = mulberry(seedNumber(`${w.cfg.seed}:marks:${w.tick}`));
+  for (const g of goods) if (g.kind === 'item' && markable(ITEMS.get(g.type)) && r() < MARK.trader) g.mark = mark;
+  return goods;
+}
+
 // fill `units` places in the crates from TRADE.WARES
 export function makeGoods(rng, units) {
   const goods = [], total = TRADE.WARES.reduce((s, x) => s + x.w, 0);
@@ -137,7 +150,7 @@ export function startCaravan(w, group) {
   }
   for (const a of group) a.caravan = id;
   w.caravan = {id, phase: 'coming', traderId: trader.id, name: trader.name, gender: trader.gender, set: w.tick,
-    capacity: mules.length * cap, goods: makeGoods(rng, units),
+    capacity: mules.length * cap, goods: markGoods(w, makeGoods(rng, units)),
     purse: between(rng, TRADE.purse), arrived: null, traded: false, tradedAt: null, tradeEnd: null, spot: null, deal: null,
     // now and then a captive for sale (settlement/slavery.js): its own roll, so the border's stream (raids, arrivals) stays as it was
     captive: traderCaptive(mulberry(seedNumber(`${w.cfg?.seed ?? ''}:trader-captive:${w.trade.visits}`)))};
@@ -185,10 +198,10 @@ function gearNeeds(w, store = true) {
   const add = (role, score) => (slots[role] ||= []).push(score);
   for (const a of col) {
     const best = {};
-    for (const it of allItems(a)) { const [r, s] = roleOf(itemDef(it.type, it.q)); if (r) best[r] = Math.max(best[r] || 0, s); }
+    for (const it of allItems(a)) { const [r, s] = roleOf(itemOf(it)); if (r) best[r] = Math.max(best[r] || 0, s); }
     for (const [r, s] of Object.entries(best)) add(r, s);
   }
-  if (store) for (const it of w.armory) { const [r, s] = roleOf(itemDef(it.type, it.q)); if (r) add(r, s); }
+  if (store) for (const it of w.armory) { const [r, s] = roleOf(itemOf(it)); if (r) add(r, s); }
   const out = {};
   const roles = new Set([...Object.keys(slots), 'body', 'melee', 'shield', 'ranged']);
   for (const r of roles) {
@@ -230,11 +243,11 @@ export function holdTrade(w) {
   const worn = gearNeeds(w, false), kinds = new Map();
   for (const it of w.armory) {
     if (itemDef(it.type, it.q).keep || itemOf(it).silver) continue;   // epic finds and silver blades are never sold
-    const [role, score] = roleOf(itemDef(it.type, it.q));
+    const [role, score] = roleOf(itemOf(it));
     if (role && worn[role] && score > worn[role][0]) continue;
-    const k = it.type + ':' + (it.q || 0); (kinds.get(k) || kinds.set(k, []).get(k)).push(it);
+    const k = it.type + ':' + (it.q || 0) + ':' + (it.mark || '') + ':' + (it.of || '') + (it.master ? '!' : ''); (kinds.get(k) || kinds.set(k, []).get(k)).push(it);   // (a master's holywood bow is not a pine bow)
   }
-  for (const list of kinds.values()) for (const it of list.slice(1)) offers.push({g: {kind: 'item', type: it.type, q: it.q || 0}, n: 1, inst: it});
+  for (const list of kinds.values()) for (const it of list.slice(1)) offers.push({g: {kind: 'item', type: it.type, q: it.q || 0, ...(it.mark ? {mark: it.mark} : {}), ...(it.of ? {of: it.of} : {}), ...(it.master ? {master: true} : {})}, n: 1, inst: it});
   offers.sort((x, y) => bidPrice(y.g) - bidPrice(x.g));
   const isFood = g => g.kind === 'res' && RESOURCES.get(g.id).tags.includes('food');
   for (const o of offers) {
@@ -302,7 +315,7 @@ export function holdTrade(w) {
       const p = askPrice(g);
       if (p > cash() * (foes ? TRADE.maxShare : TRADE.silverSpare) || !spend(p)) continue;
       c.goods.splice(c.goods.indexOf(g), 1);
-      w.armory.push(newItem(g.type, {...(g.q ? {q: g.q} : {}), ...(g.silver ? {silver: true} : {})}));
+      w.armory.push(newItem(g.type, goodsInst(g)));
       w.armoryVersion = (w.armoryVersion || 0) + 1;
       deal.spent += p; note(deal.bought, goodsLabel(g), 1, p);
     }
@@ -314,7 +327,7 @@ export function holdTrade(w) {
     let best = null, bv = 0;
     for (const g of c.goods) {
       if (g.kind !== 'item') continue;
-      const [role, score] = roleOf(itemDef(g.type, g.q));
+      const [role, score] = roleOf(itemOf(g));
       if (!role || !needs[role]) continue;
       const gain = score - needs[role][0], p = askPrice(g);
       if (gain < TRADE.minGain || p > cash() * TRADE.maxShare) continue;
@@ -323,7 +336,7 @@ export function holdTrade(w) {
     }
     if (!best || !spend(best.p)) break;
     c.goods.splice(c.goods.indexOf(best.g), 1);
-    w.armory.push(newItem(best.g.type, {...(best.g.q ? {q: best.g.q} : {}), ...(best.g.silver ? {silver: true} : {})}));
+    w.armory.push(newItem(best.g.type, goodsInst(best.g)));
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     needs[best.role][0] = best.score; needs[best.role].sort((x, y) => x - y);
     deal.spent += best.p; note(deal.bought, goodsLabel(best.g), 1, best.p);

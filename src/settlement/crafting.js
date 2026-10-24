@@ -27,6 +27,21 @@ import {qualityRoll} from '../data/quality.js';
 import {esc} from '../core/util.js';
 import {HOUR} from '../core/time.js';
 import {liveById} from '../agents/lookup.js';
+import {takeKind, giveKind, kindsOf} from './kinds.js';
+import {FAMILIES, mayMake, useOf} from '../data/kinds.js';
+import {MATERIALS} from '../data/balance/materials.js';
+
+// stock resources that are a family's total (wood → 'wood', stone → 'stone')
+const FAMILY_RES = Object.fromEntries(Object.entries(FAMILIES).filter(([, F]) => F.resource).map(([f, F]) => [F.resource, f]));
+// may this worker make this recipe by its race's rules (data/kinds.js): a named metal it may not work, or a family of
+// which the stock holds too little that it may work, rules it out
+export function raceMayCraft(w, a, r) {
+  for (const [res, v] of Object.entries(r.cost)) {
+    if (FAMILY_RES[res]) { const ok = Object.entries(kindsOf(w, FAMILY_RES[res])).filter(([id]) => mayMake(a.species, id)).reduce((s, [, n]) => s + n, 0); if (ok + 1e-6 < v) return false; }
+    else if (!mayMake(a.species, res)) return false;
+  }
+  return true;
+}
 
 const PRESERVED = () => FOODS.filter(f => f.of);
 
@@ -105,7 +120,7 @@ export function pickRecipe(w, station, ctx = craftContext(w), a = null) {
   let best = null, bv = 0;
   for (const r of recipesAt(station)) {
     const v = r.want(ctx);
-    if (v > bv && (a ? canMake(a, r) : anyoneCan(w, r)) && canStart(w, r)) { bv = v; best = r; }
+    if (v > bv && (a ? canMake(a, r) && raceMayCraft(w, a, r) : anyoneCan(w, r)) && canStart(w, r)) { bv = v; best = r; }
   }
   return best;
 }
@@ -153,9 +168,15 @@ export function workAt(w, b, amount, a) {
     const fuel = r.fuel ? furnacePick(w, r.heat ?? 2, r.fuel, fuelReserve(w) + (r.cost.wood || 0)) : null;
     if (r.fuel && !fuel) return false;
     if (w.scratch) delete w.scratch.orders;   // materials are taken: other stations may not afford theirs now
-    for (const [res, v] of Object.entries(r.cost)) w.stock[res] -= v;
-    if (fuel) w.stock[fuel[0].id] -= fuel[1];
+    // the materials: a family (wood, stone) is taken the best first that the worker's race may work, and what it was
+    // goes with the order (data/kinds.js, settlement/kinds.js); a named resource as it is
+    const of = {};
+    // (a piece of the family takes its best; a recipe that only spends it — charcoal, a haft of any wood — its worst)
+    const ofFamily = fam => r.makes.item && MATERIALS[ITEMS.get(r.makes.item).material]?.resource === FAMILIES[fam].resource;
+    for (const [res, v] of Object.entries(r.cost)) { if (FAMILY_RES[res]) of[FAMILY_RES[res]] = takeKind(w, FAMILY_RES[res], v, ofFamily(FAMILY_RES[res]) ? 'make' : 'spend', a?.species); else w.stock[res] -= v; }
+    if (fuel) { if (FAMILY_RES[fuel[0].id]) takeKind(w, FAMILY_RES[fuel[0].id], fuel[1], 'burn'); else w.stock[fuel[0].id] -= fuel[1]; }
     b.order = {recipe: r.id, progress: 0};
+    if (Object.keys(of).length) b.order.of = of;
     if (fuel) b.order.fuel = [fuel[0].id, fuel[1]];   // given back if the order is ever called off
   }
   const r = RECIPES.get(b.order.recipe);
@@ -165,7 +186,7 @@ export function workAt(w, b, amount, a) {
   // who put how much work into it: the one with the most is the master whose skill sets the quality
   if (a) (b.order.by ||= {})[a.id] = (b.order.by?.[a.id] || 0) + labour;
   if (b.order.progress < r.work) return r;
-  const by = b.order.by;
+  const by = b.order.by, of = b.order.of || {};
   b.order = null;
   w.stats.crafted++;
   if (w.scratch) delete w.scratch.craftCtx;   // item counts changed
@@ -175,6 +196,12 @@ export function workAt(w, b, amount, a) {
     // keeps its maker's name: the quality says how good it is, the maker where it came from.
     const extra = {}, master = masterOf(w, by, a), skill = master ? skillOf(master, recipeSkill(r)) : 0;
     if (r.makes.silver) extra.silver = true;
+    // a wooden piece is of the wood it was made of; the maker's race may be its master (the elves' sacred tree)
+    if (MATERIALS[ITEMS.get(r.makes.item).material]?.class.includes('wood') && of.wood) {
+      extra.of = of.wood;
+      const maker = master || a;
+      if (maker && useOf(maker.species, of.wood) === 'master') extra.master = true;
+    }
     const q = ITEMS.get(r.makes.item).quality === false ? 0 : qualityRoll(w.rngs.colony(), skill, bellows ? FURNACE.bellowsFine : 0);
     if (q) { extra.q = q; if (master) extra.maker = master.name; }
     const it = newItem(r.makes.item, extra), name = def(it).label.toLowerCase();
@@ -204,8 +231,8 @@ export function stepCrafting(w) {
     if (!b.done || !b.order) continue;
     const r = RECIPES.get(b.order.recipe);
     if (anyoneCan(w, r) || !w.agents.some(a => a.faction === 'colony' && !a.dead)) continue;
-    for (const [res, v] of Object.entries(r.cost)) w.stock[res] = (w.stock[res] || 0) + v;
-    if (b.order.fuel) w.stock[b.order.fuel[0]] = (w.stock[b.order.fuel[0]] || 0) + b.order.fuel[1];
+    for (const [res, v] of Object.entries(r.cost)) { if (FAMILY_RES[res]) giveKind(w, FAMILY_RES[res], b.order.of?.[FAMILY_RES[res]], v); else w.stock[res] = (w.stock[res] || 0) + v; }
+    if (b.order.fuel) { const [res, n] = b.order.fuel; if (FAMILY_RES[res]) giveKind(w, FAMILY_RES[res], null, n); else w.stock[res] = (w.stock[res] || 0) + n; }
     b.order = null;
     if (w.scratch) { delete w.scratch.orders; delete w.scratch.craftCtx; }
     const what = r.makes.item ? ITEMS.get(r.makes.item).short : RESOURCES.get(r.makes.resource).short;

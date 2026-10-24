@@ -20,6 +20,7 @@ import {season} from '../data/seasons.js';
 import {moodOf} from '../agents/mind.js';
 import {penRoom, herd} from './herd.js';
 import {councilRoster} from './plan.js';
+import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 
 export const COUNCIL_FROM = 19, COUNCIL_TO = 21.5;
 
@@ -111,6 +112,7 @@ export function stepCouncil(w) {
 function hold(w, present, total) {
   const c = w.council;
   c.lastDay = dayOf(w.tick);
+  for (const a of present) shiftAlign(a, 'order', ALIGN_DRIFT.pawn.council, (a.alignRoot?.order ?? a.align?.order ?? 0) + ALIGN_DRIFT.pawn.councilCap);   // an evening of law: a little more of it in each
   const site = openSites(w)[0];
   const args = [];
   let decision;

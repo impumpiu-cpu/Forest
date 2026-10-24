@@ -22,17 +22,9 @@ import {liveById} from './lookup.js';
 import {perTick} from '../core/util.js';
 import {hpShare} from './agent.js';
 import {prune, middleOf, nextLookouts} from './group.js';
+import {WILD_HERD as HERD} from '../data/behaviour.js';
 
-export const HERD = {
-  join: 10,           // a beast joins a herd of its kind whose middle is this close…
-  lookouts: 2,        // …members looking round each tick, in turn
-  alarmFor: 40,       // the alarm holds this long after the threat was last seen
-  spread: 3.5,        // how far from the pasture each beast picks its own patch
-  straggler: 6,       // farther than this from the herd's middle: a straggler (wolves like it)
-  nerve: [0.6, 1.4],  // how skittish, rolled once per beast: low — bolts first
-  relay: 10,          // a calm beast follows the bolting ones after this × its nerve
-};
-
+export {HERD};   // (data/behaviour.js)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const herdOf = (w, a) => (a.herd != null ? w.herds?.[a.herd] || null : null);
 const isHerdBeast = a => !a.dead && !a.gone && !a.tame && a.owner == null && a.faction === 'wild' && !!SPECIES.get(a.species).herd;

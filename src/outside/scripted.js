@@ -23,6 +23,10 @@ import {raidThreat, scoutedBand} from '../settlement/threat.js';
 import {weighted} from '../core/util.js';
 import {SPECIES} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
+import {ARRIVALS as A} from '../data/migrations.js';
+
+// the chance a due caravan sets out: a road close by brings more caravans (data/trade.js; the panel shows it)
+export const caravanChance = w => Math.min(TRADE.chanceMax, TRADE.chance * region(w).road);
 
 // Who is beyond the edge: on a cell of the world map the site names its neighbours (seam/cell.js) —
 // how far the hostile are and which bands they send, where the kin and the market are; on the
@@ -60,43 +64,43 @@ export const scripted = {
       next: w => w.tick + settlerWaitDays(w.outside.seen.pop) * DAY},
     // hares drift in from the wild woods every few hours, a few at a time
     hares: {from: 'wilds',
-      first: w => w.tick + 240,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < season(w).hares ? 1 + Math.floor(rng() * 3) : 0),
-      next: w => w.tick + 240},
+      first: w => w.tick + A.hares.every,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < season(w).hares ? A.hares.n[0] + Math.floor(rng() * A.hares.n[1]) : 0),
+      next: w => w.tick + A.hares.every},
     // now and then a wolf pack roams by
     wolves: {from: 'wilds',
-      first: w => w.tick + 1500,
-      offer: (w, rng) => { const k = PREDATORS[w.cfg.predators].wolves; return k && rng() <= k ? 2 + Math.floor(rng() * (k >= 1 ? 3 : 2)) : 0; },
-      next: w => w.tick + 1500},
+      first: w => w.tick + A.wolves.every,
+      offer: (w, rng) => { const k = PREDATORS[w.cfg.predators].wolves; return k && rng() <= k ? A.wolves.n[0] + Math.floor(rng() * (k >= 1 ? A.wolves.n[1] : A.wolves.n[2])) : 0; },
+      next: w => w.tick + A.wolves.every},
     // game from the woods: deer in small herds, a fox now and then, a boar or a sounder of them;
     // fewer in lean seasons. How many stay is up to the land (data/migrations.js)
-    deer: {from: 'wilds', first: w => w.tick + DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.5 * season(w).hares ? 2 + Math.floor(rng() * 3) : 0),
-      next: (w, rng) => w.tick + (1 + rng()) * DAY},
-    foxes: {from: 'wilds', first: w => w.tick + 2 * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.4 * season(w).hares ? 1 : 0),
-      next: (w, rng) => w.tick + (1.5 + rng()) * DAY},
-    boars: {from: 'wilds', first: w => w.tick + 4 * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.35 ? 1 + Math.floor(rng() * 3) : 0),
-      next: (w, rng) => w.tick + (2.5 + rng() * 2) * DAY},
+    deer: {from: 'wilds', first: w => w.tick + A.deer.first * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.deer.chance * season(w).hares ? A.deer.n[0] + Math.floor(rng() * A.deer.n[1]) : 0),
+      next: (w, rng) => w.tick + (A.deer.wait[0] + rng() * A.deer.wait[1]) * DAY},
+    foxes: {from: 'wilds', first: w => w.tick + A.foxes.first * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.foxes.chance * season(w).hares ? A.foxes.n[0] : 0),
+      next: (w, rng) => w.tick + (A.foxes.wait[0] + rng() * A.foxes.wait[1]) * DAY},
+    boars: {from: 'wilds', first: w => w.tick + A.boars.first * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.boars.chance ? A.boars.n[0] + Math.floor(rng() * A.boars.n[1]) : 0),
+      next: (w, rng) => w.tick + (A.boars.wait[0] + rng() * A.boars.wait[1]) * DAY},
     // rats smell a full stock
-    rats: {from: 'wilds', first: w => w.tick + 3 * DAY,
-      offer: (w, rng) => (rng() < 0.5 ? 1 + Math.floor(rng() * 2) : 0),
-      next: (w, rng) => w.tick + (0.5 + rng()) * DAY},
+    rats: {from: 'wilds', first: w => w.tick + A.rats.first * DAY,
+      offer: (w, rng) => (rng() < A.rats.chance ? A.rats.n[0] + Math.floor(rng() * A.rats.n[1]) : 0),
+      next: (w, rng) => w.tick + (A.rats.wait[0] + rng() * A.rats.wait[1]) * DAY},
     // now and then a wild mule wanders in from the woods
     mules: {from: 'wilds',
-      first: w => w.tick + 2 * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.35 ? 1 : 0),
-      next: (w, rng) => w.tick + (1.5 + rng()) * DAY},
+      first: w => w.tick + A.mules.first * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.mules.chance ? A.mules.n[0] : 0),
+      next: (w, rng) => w.tick + (A.mules.wait[0] + rng() * A.mules.wait[1]) * DAY},
     // wild goats, a few at a time
-    goats: {from: 'wilds', first: w => w.tick + 3 * DAY,
-      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < 0.45 * season(w).hares ? 1 + Math.floor(rng() * 3) : 0),
-      next: (w, rng) => w.tick + (2 + rng() * 2) * DAY},
+    goats: {from: 'wilds', first: w => w.tick + A.goats.first * DAY,
+      offer: (w, rng) => (WILDLIFE[w.cfg.wildlife].hares && rng() < A.goats.chance * season(w).hares ? A.goats.n[0] + Math.floor(rng() * A.goats.n[1]) : 0),
+      next: (w, rng) => w.tick + (A.goats.wait[0] + rng() * A.goats.wait[1]) * DAY},
     // a caravan may come on day firstDay, then every everyDays: each time it sets out with `chance`,
     // in the morning, so that it reaches the camp before the evening council (data/trade.js)
     caravan: {from: 'empire',
       first: (w, rng) => caravanDay(w, TRADE.firstDay - 1, rng),
-      offer: (w, rng) => (rng() < Math.min(0.95, TRADE.chance * region(w).road) ? 1 : 0),   // a road close by brings more caravans
+      offer: (w, rng) => (rng() < caravanChance(w) ? 1 : 0),
       next: (w, rng) => caravanDay(w, dayOf(w.tick) + TRADE.everyDays, rng)},
     // every dist/2 days (a little sooner after each raid) a band may set out — with the preset's
     // chance — sized by the rumours; a check that comes to nothing gives the colony time to recover.

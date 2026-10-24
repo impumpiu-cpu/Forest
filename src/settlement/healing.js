@@ -9,15 +9,9 @@ import {cellOf} from '../world/grid.js';
 import {has, colonists} from './query.js';
 import {perTick} from '../core/util.js';
 import {freeSlot} from './reserve.js';
+import {HEAL} from '../data/colony.js';
 
-export const HEAL = {
-  seekBelow: 0.75,  // a colonist this hurt (share of health) goes to the healer's hut…
-  until: 0.97,      // …and stays until healed this far
-  rate: 0.0022,     // health per tick a patient gets from a healer working at speed 1
-  noHerbs: 0.4,     // without herbs the healer manages this share of it
-  perHerb: 0.35,    // health healed per herb used
-};
-
+export {HEAL};   // (data/colony.js)
 export const hurt = a => a.hp < maxHp(a) * HEAL.seekBelow;
 
 // The hut's beds are reservations 'bed:<hut id>:<k>' (settlement/reserve.js): a wounded colonist takes

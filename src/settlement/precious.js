@@ -19,14 +19,9 @@ import {esc, g} from '../core/util.js';
 import {colonists} from './query.js';
 import {think} from '../agents/mind.js';
 import {region} from '../world/region.js';
+import {PRECIOUS} from '../data/colony.js';
 
-export const PRECIOUS = {
-  veinChance: 0.02,     // per worked-out vein, in a region that allows a gold vein
-  veinCells: [2, 4],    // rock cells that turn into gold quartz
-  fameVein: 6,          // added to the raid threat by the rumour of gold…
-  fameMithril: 4,       // …and of mithril
-};
-
+export {PRECIOUS};   // (data/colony.js)
 export function maybeGoldVein(w, at, by) {
   if (!region(w).goldVein || w.goldVein || w.rngs.colony() >= PRECIOUS.veinChance) return;
   const o = ORES.get('goldvein'), g0 = w.grid, x0 = at % w.w, y0 = (at / w.w) | 0;

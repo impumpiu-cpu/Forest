@@ -57,6 +57,6 @@ export const THINGS = {
 export const AMBUSH = {surprise: 0.85};
 
 // the merchants' train on the road: how much it carries and its prices (× a town's: data/market.js)
-export const TRAIN = {chance: 0.12, food: [15, 40], ...CAMPAIGN.train};   // buy, sell: data/balance/prices.js
+export const TRAIN = {chance: 0.12, food: [15, 40], get buy() { return CAMPAIGN.train.buy; }, get sell() { return CAMPAIGN.train.sell; }};   // buy, sell: data/balance/prices.js
 // a herd: its chance where game lives (× the cell's game), and the food a hunt of it gives
 export const HERD = {chance: 0.08, food: [4, 10]};

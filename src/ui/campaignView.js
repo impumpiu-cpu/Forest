@@ -12,7 +12,7 @@ import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chron
 import {readLines, lineLevel, dateOf} from '../campaign/chronicle.js';
 import {CHRONICLE} from '../data/campaign.js';
 import {offerText, latinTitle} from './store.js';
-import {CAMPAIGN, RETINUE} from '../data/campaign.js';
+import {CAMPAIGN, RETINUE, EPIC_SIZES} from '../data/campaign.js';
 import {EPIC} from '../data/calamities.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
@@ -23,6 +23,9 @@ import {eraPlan, historyLength} from '../atlas/history.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$} from './dom.js';
+import {gearDef} from '../agents/equipment.js';
+import {alignLabel, axisWord} from '../data/values.js';
+import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -34,7 +37,8 @@ import {capacity, load, wheeled} from '../campaign/baggage.js';
 import {baggageText, rank, isCore} from '../campaign/march.js';
 import {openCamp, stepCamp, campDone} from '../campaign/camp.js';
 import {Renderer} from '../render/renderer.js';
-const itemShort = id => (ITEMS.has(id) ? ITEMS.get(id).short : id);
+import {questHint} from '../atlas/calamity.js';
+const itemShort = id => gearDef(id)?.short ?? id;
 
 const SEASON_LIST = SEASONS.all();
 // the pace: ms a season is played back over (a day is a thirtieth of it); «сразу» — as many seasons as fit a frame
@@ -51,9 +55,7 @@ const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples'
 const PHASE = {out: 'ищут корону', back: 'несут корону домой', won: 'вернулись с короной', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 // a world whose quest is the epic one (campaign/quest.js makeQuest)
-const epicQuest = a => !!(a.cfg.epic && a.artifact && a.graves?.length && a.artifact.holder.kind !== 'caravan');
-// the epic world's sizes on this screen (the medium is the campaign's own)
-const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']];
+const epicQuest = a => questHint(a);
 // where the making of an epic world is: the land, or the year of history and its era
 function epicProgress(a, sec) {
   if (!landDone(a) || !a.hist) return `Складывается земля… ${Math.round(sec)} с`;
@@ -101,6 +103,7 @@ export class CampaignView extends AtlasView {
     es.innerHTML = EPIC_SIZES.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.epicSize}">${l}</button>`).join('');
     es.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.epicSize = b.dataset.val; es.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
     $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6));
+    $('campEpicDice').addEventListener('click', () => { if (!this.making) $('campEpicSeed').value = String(Math.floor(Math.random() * 1e6)); });
     $('campEpicGo').addEventListener('click', () => (this.making ? this.stopEpic() : this.makeEpic()));
     $('campNew').addEventListener('click', () => { this.halt(); this.atlas = null; this.worldId = null; this.setupMode(); this.refresh(); });
     $('campSave').addEventListener('click', () => this.saveRun());
@@ -128,7 +131,7 @@ export class CampaignView extends AtlasView {
   // ── a new epic world: the land stage by stage, then the long history, as many steps as fit a frame; the map is
   // drawn now and then. When it is done it goes into the library and the capitals can be chosen
   makeEpic() {
-    this.halt();
+    this.halt(); this.seq = (this.seq || 0) + 1;   // a library world still loading is not shown over this one
     const seed = $('campEpicSeed').value.trim() || String(Math.floor(Math.random() * 1e6));
     const a = newAtlas({seed, size: this.epicSize, land: 1, plates: 1, hemisphere: 'north', wild: 1, elder: 1, young: 1, epic: true});
     this.atlas = a; this.worldId = null; this.worldName = `Эпический мир ${seed}`; this.saveId = null; this.capPick = null;
@@ -138,11 +141,11 @@ export class CampaignView extends AtlasView {
     const t0 = performance.now();
     let drawn = 0;
     const loop = () => {
-      if (!this.making) return;
+      if (!this.making || a !== this.atlas) return;
       const f0 = performance.now();
       while (!atlasDone(a) && performance.now() - f0 < 30) runNextStage(a);
       if (performance.now() - drawn > 600) { drawn = performance.now(); this.bitmapKey = ''; this.draw(); $('campEpicNote').textContent = epicProgress(a, (performance.now() - t0) / 1000); }
-      if (atlasDone(a)) { this.doneEpic((performance.now() - t0) / 1000); return; }
+      if (atlasDone(a)) { this.doneEpic((performance.now() - t0) / 1000, a); return; }
       this.genRaf = requestAnimationFrame(loop);
     };
     this.genRaf = requestAnimationFrame(loop);
@@ -151,9 +154,8 @@ export class CampaignView extends AtlasView {
     this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить';
     this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; this.setupMode(); this.draw();
   }
-  async doneEpic(sec) {
+  async doneEpic(sec, a = this.atlas) {
     this.making = false; $('campEpicGo').textContent = 'Сотворить';
-    const a = this.atlas;
     this.bitmapKey = ''; this.draw();
     const yrs = a.hist.year - 1;   // (the year after the last season is the one history stands at)
     $('campEpicNote').textContent = `Мир сотворён за ${Math.round(sec)} с: ${yrs} ${plural(yrs, 'год', 'года', 'лет')} истории. Сохраняю в библиотеку…`;
@@ -185,6 +187,15 @@ export class CampaignView extends AtlasView {
     this.mode = mode;
     this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode();
   }
+  // the quick start of the new menu (forest.html → index.html?go=epic): this seed and size, made at once
+  startEpic({seed, size} = {}) {
+    if (seed) $('campEpicSeed').value = String(seed).slice(0, 24);
+    if (size && EPIC_SIZES.some(([id]) => id === size)) {
+      this.epicSize = size;
+      $('campEpicSize').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === size)));
+    }
+    this.makeEpic();
+  }
   // leaving the screen: the walk halts between seasons and waits
   // (a world left half-made is not walked: it is let go)
   halt() { if (this.making) { this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить'; this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; } this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true; this.syncRun(); }
@@ -193,9 +204,9 @@ export class CampaignView extends AtlasView {
   async refresh() {
     const box = $('campWorlds');
     let list;
-    try { list = await listWorlds(); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }
+    try { list = (await listWorlds()).filter(r => r.type !== 'land'); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна.</small>'; return; }   // a land has no peoples to march from
     if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров: сотворите эпический мир ниже или мир на экране «Мир».</small>'; return; }
-    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : ''} · ${r.year} лет` +
+    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · ${esc(r.sizeLabel)}${r.epic ? ' · эпический' : r.free ? ' · заселённый' : ''}${r.tables ? ` · с правками таблиц (${r.tables})` : ''} · ${r.year} лет` +
       (r.campaign ? `<br><small>поход из ${esc(r.campaign.from)}: ${PHASE[r.campaign.phase] || r.campaign.phase}, ${Math.round(r.campaign.day / 12) / 10} лет в пути${r.campaigns ? ` · окончено походов: ${r.campaigns}` : ''}</small>` : `<br><small>городов ${r.towns} · держав ${r.realms}${r.done ? '' : ' · история не дожита'}</small>`) +
       `</span><button type="button">${r.campaign && !['won', 'lost', 'timeout'].includes(r.campaign.phase) ? 'Продолжить' : 'Открыть'}</button></div>`).join('');
   }
@@ -203,13 +214,15 @@ export class CampaignView extends AtlasView {
   async openFromLibrary(id, name) {
     this.halt();
     $('campWorldNote').textContent = 'Открываю мир…';
+    const seq = this.seq = (this.seq || 0) + 1;   // the last world asked for is the one shown, whichever loads first
     try {
       const a = await openWorld(id);
+      if (seq !== this.seq) return;
       if (!atlasDone(a) && !a.campaign) { $('campWorldNote').textContent = 'История этого мира не дожита: доведите её до конца на экране «Мир».'; return; }
       this.atlas = a; this.worldId = id; this.worldName = name; this.saveId = a.campaign ? id : null;
       this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0; this.capPick = null;
       this.cam = new Camera(a.w, a.h);
-      $('campWorldNote').textContent = '';
+      $('campWorldNote').textContent = warnEdits(a.tables) || '';
       if (a.campaign) { this.paused = true; this.runMode(); if (this.follow) this.closeUp(); }
       else this.setupMode();
       this.refresh(); this.draw();
@@ -232,12 +245,15 @@ export class CampaignView extends AtlasView {
   renderCaps() {
     const a = this.atlas; if (!a) { $('campGo').disabled = true; return; }
     // which quest this world gives (campaign/quest.js makeQuest): its own story in an epic world, else the crown and three clues
-    $('campQuestNote').textContent = epicQuest(a)
+    const hint = epicQuest(a);
+    $('campQuestNote').textContent = hint?.kind === 'hand'
+      ? `Квест заселённого мира: ${a.artifact.name} — у бедствия «${hint.label}»${hint.boss ? `: ${hint.boss}${hint.phase === 'rise' ? ', оно уже идёт' : ''}` : `, оно поднимется в ${hint.riseAt}-м году — с выходом каравана его логово встанет сразу`}. Логово — цель похода, босс должен пасть${hint.graves ? `; следы — могилы ${hint.graves} прежних боссов` : ''}.`
+      : hint
       ? `Квест эпического мира: ${a.artifact.name} уйдёт к четвёртому боссу в дальнее логово; следы — могилы ${a.graves.length} боссов прошлых эпох. Через ${EPIC.doom} ${plural(EPIC.doom, 'год', 'года', 'лет')} начнётся новое бедствие${EPIC.years > EPIC.doom ? `; на поход — ${EPIC.years} ${plural(EPIC.years, 'год', 'года', 'лет')}` : ''}.`
       : 'Квест: корона там, где её потеряла история этого мира; три подсказки в его курганах, логовах, развалинах и городах.';
     const caps = capitals(a);
     $('campCaps').innerHTML = caps.length ? caps.map(c => `<div class="sv cap${c.town === this.capPick ? ' cur' : ''}" data-town="${c.town}"><span class="t"><i style="background:rgb(${WORLD_PEOPLES.get(c.people).color.join(',')})"></i><b>${esc(c.label)}</b> · ${esc(c.peopleLabel)}` +
-      `<br><small>${esc(c.realmLabel)} · ${c.towns} ${plural(c.towns, 'город', 'города', 'городов')} · ${c.pop} жителей · ${RETINUE[c.people].knight[1]} и ${RETINUE[c.people].squire[1]}</small></span><button type="button" class="primary" title="Караван выходит из этой столицы">Выступить</button></div>`).join('')
+      `<br><small>${esc(c.realmLabel)}${c.align ? ` · <span title="${esc(`${axisWord('order', c.align.order)} · ${axisWord('mercy', c.align.mercy)}`)}">${esc(alignLabel(c.align, 'pl'))}</span>` : ''} · ${c.towns} ${plural(c.towns, 'город', 'города', 'городов')} · ${c.pop} жителей · ${RETINUE[c.people].knight[1]} и ${RETINUE[c.people].squire[1]}</small></span><button type="button" class="primary" title="Караван выходит из этой столицы">Выступить</button></div>`).join('')
       : '<small>В этом мире нет столиц людей, эльфов, гномов или орков.</small>';
     $('campGo').disabled = this.capPick == null;
   }

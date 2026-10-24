@@ -22,13 +22,14 @@
 import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
 
+// the race's own «Биомы расселения» (data/races.js), read each time: an edit of the races table reaches the peoples
 const raceHome = id => RACES.find(r => r.id === id).home;
 
 export const WORLD_PEOPLES = new Registry('worldPeople');
 WORLD_PEOPLES.registerAll([
   {id: 'elves', race: 'elf', label: 'эльфы', labelGen: 'эльфов', adj: 'эльфийский', era: 'elder', color: [120, 200, 120],
     arrive: {verb: 'пробудились', groups: 2, where: 'в самой древней чаще'},
-    home: raceHome('elf'),
+    get home() { return raceHome('elf'); },
     moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
     spread: 0.22, growth: 0.18, found: 0.32, spacing: 16,
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
@@ -37,7 +38,7 @@ WORLD_PEOPLES.registerAll([
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
   {id: 'dwarves', race: 'dwarf', label: 'гномы', labelGen: 'гномов', adj: 'гномий', era: 'elder', color: [220, 150, 70],
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
-    home: raceHome('dwarf'), ores: 0.4,
+    get home() { return raceHome('dwarf'); }, ores: 0.4,
     moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
     spread: 0.18, growth: 0.16, found: 0.3, spacing: 14,
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
@@ -46,7 +47,7 @@ WORLD_PEOPLES.registerAll([
       last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
   {id: 'humans', race: 'human', label: 'люди', labelGen: 'людей', adj: 'людской', era: 'young', color: [100, 150, 235],
     arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast'},
-    home: raceHome('human'),
+    get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
     spread: 0.26, growth: 0.24, found: 0.28, spacing: 12,
     site: {water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2},
@@ -55,7 +56,7 @@ WORLD_PEOPLES.registerAll([
       last: ['град', 'город', 'слав', 'поль', 'ск', 'мир', 'бор', 'ец', 'горск', 'дол']}},
   {id: 'orcs', race: 'orc', label: 'орки', labelGen: 'орков', adj: 'орочий', era: 'young', color: [210, 80, 60],
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
-    home: raceHome('orc'), ores: 0.3,
+    get home() { return raceHome('orc'); }, ores: 0.3,
     moves: {steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2}, movesElse: 0.5,
     spread: 0.3, growth: 0.26, found: 0.3, spacing: 13,
     site: {water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1},
@@ -138,7 +139,7 @@ export const SCHISM = {edge: 0.8, far: 0.35, harbor: 0.4, years: 3, chance: 0.08
 // Towns against the wild: a town fights the lairs whose territory reaches it; the town's might is
 // √pop × `might`, the lair's its strength × its owner's SPECIAL power. A beaten lair is cleared;
 // a town that loses is raided and loses `raidLoss` of its people.
-export const TOWN_WAR = {might: 0.9, chance: 0.08, raidLoss: 0.2, reach: 4};
+export const TOWN_WAR = {might: 0.9, chance: 0.08, raidLoss: 0.2, reach: 4, luck: [0.6, 0.8], threat: 0.5};
 
 // The young peoples' era (the start setting «Эпоха молодых»), in years.
 export const YOUNG_YEARS = [
@@ -153,3 +154,21 @@ export const ELDER_YEARS = [
   {years: 40, label: 'Обычная'},
   {years: 60, label: 'Долгая'},
 ];
+
+// The life of the peoples and their towns on the world map (atlas/peoples.js), a year at a time:
+//   band:      the field a founding band (or a band landed by hand) wakes around it; bandPop — its town's people,
+//              bandPop[0] + bandPop[1] × a roll;  siteBar — the least a spot is worth for a band to settle there
+//   oresAway:  how much the ores count off a people's home biomes (dwarves)
+//   hearth:    a town keeps its people's field up around it: hearth[0] + hearth[1] × its tier + hearth[2] × its fame
+//   hunt:      people thin the beasts where they live: predators and monsters, the others
+//   found:     a new town where the field is dense and the land at least foundLand; at most foundMax a year per people,
+//              each with foundChance; newPop — its first people, newPop[0] + newPop[1] × a roll
+//   feeds:     the people a town's land feeds: feeds × the land's share × (fert[0] + fert[1] × the soil) × (home[0] +
+//              home[1] × how its realm likes the biome) × (1 + road × the road or harbour) × capital for a capital ×
+//              (1 + its food − what armies took + trade × its trade)
+//   growth:    a year: + growth × (1 + prestige × fame) × pop × (1 − pop / the target, at least minTarget) + drift × a
+//              roll; never below minPop;  build — the chance a year a town builds what it needs most
+export const TOWN_LIFE = {band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
+  foundLand: 0.25, foundMax: 2, foundChance: 0.35, newPop: [40, 40],
+  feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
+  growth: 0.14, prestige: 0.6, minTarget: 60, minPop: 10, drift: 4, build: 0.65};

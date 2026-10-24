@@ -13,9 +13,10 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {EPIC} from '../data/calamities.js';
+import {SEASON_DAYS} from '../data/atlas.js';
 import {BUBBLE} from '../data/bubble.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {gatherFourth, tell as tellWorld, fallToCaravan} from '../atlas/calamity.js';
+import {gatherFourth, tell as tellWorld, fallToCaravan, questCalamity, questHint} from '../atlas/calamity.js';
 import {wherePhrase} from '../atlas/lairs.js';
 import {raidGraves} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
@@ -37,7 +38,7 @@ const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w 
 export function seats(a) {
   if (a.seats) return a.seats;
   const r = mulberry(seedNumber(`${a.cfg.seed}:atlas:seats`)), out = [], k = scaleOf(a);
-  const land = i => a.f.land[i] && !a.f.ocean[i] && a.f.temp[i] >= EPIC.cold, townNear = i => (a.towns || []).some(t => t.alive && dist(a, t.i, i) < 6 * k);
+  const land = i => a.f.land[i] && !a.f.ocean[i] && a.f.temp[i] >= EPIC.cold, townNear = i => (a.towns || []).some(t => t.alive && dist(a, t.i, i) < EPIC.seatGap * k);
   const cand = [];
   for (let n = 0; n < 1500; n++) { const i = (r() * a.n) | 0; if (land(i) && !townNear(i)) cand.push(i); }
   // farthest-point picks: each the farthest from those picked and from the graves
@@ -62,23 +63,38 @@ function guardFor(a, K, lairKind, i, x = 1) {
 const grown = (r, M) => Object.fromEntries(['S', 'E', 'A'].map(id => [id, Math.round(between(r, M.add))]));
 
 // ── the quest is laid out when the caravan sets out
+// (a world of «Заселение мира», docs/TABLE.md этап 10: a calamity the hand set that has not passed yet is the quest
+// itself — atlas/calamity.js questCalamity; with none, the graves of its bosses and a fourth, as in an epic world)
+export const epicWorld = a => !!questHint(a);
+
 export function makeEpicQuest(a, K, rnd) {
-  const {mask, cells} = reachable(a, K);
-  if (!cells.length || !a.graves?.length) return null;
-  // the artifact brought home by a caravan before: the world's story is told — a quest of any world (campaign/quest.js)
-  if (a.artifact.holder.kind === 'caravan') return null;
-  // a fourth still alive from a caravan before (lost, or out of its years): the new caravan goes after the same
-  const old = a.calamities.find(c => c.era === 'after' && c.phase !== 'fallen');
+  const {mask, cells} = reachable(a, K), hint = questHint(a);
+  // (the artifact brought home by a caravan before: the world's story is told — a quest of any world, campaign/quest.js)
+  if (!cells.length || !hint) return null;
+  // a fourth (or a calamity of the hand) still alive from a caravan before (lost, or out of its years): the new caravan goes after the same
+  let old = a.calamities.find(c => (c.era === 'after' || c.quest) && c.phase !== 'fallen');
   const diag = Math.hypot(a.w, a.h);
   // the seat: the farthest the caravan can walk to, at least EPIC.far of the diagonal if any is
   const S = seats(a).map(i => ({i, at: foot(a, mask, i, 4)})).filter(s => s.at >= 0).sort((p, q) => dist(a, K.home, q.at) - dist(a, K.home, p.at));
   const seat = S[0] || {i: cells.reduce((b, c) => (dist(a, K.home, c) > dist(a, K.home, b) ? c : b), K.home)};
   seat.at ??= seat.i;
-  if (old) { seat.at = old.i; seat.i = old.i; }
+  // a calamity of the hand: where it stands (risen) or will gather (the hand's cell) must be within the caravan's walk —
+  // one still waiting gathers at the far seat instead, one risen beyond reach leaves the quest to the crown of any world
+  if (!old && hint.kind === 'hand') {
+    const c = a.calamities.find(x => x.id === hint.calamity);
+    const place = c.phase === 'rise' ? c.i : c.at >= 0 ? c.at : seat.at;
+    if (foot(a, mask, place, 6) < 0) { if (c.phase === 'rise') return null; c.at = -1; }
+    old = questCalamity(a, c, seat.at);
+  }
+  if (old) {
+    const at = foot(a, mask, old.i, 6);
+    if (at < 0) return null;   // (a calamity of a caravan before, out of this capital's walk)
+    seat.i = old.i; seat.at = at;
+  }
   const c4 = old || gatherFourth(a, seat.at, EPIC.doom), lair = a.lairs.find(l => l.id === c4.lair), A = a.artifact;
   // the graves: each a clue, guarded by a miniboss of its boss's retinue
   const clues = [];
-  for (const g of a.graves) {
+  for (const g of a.graves || []) {
     const c = a.calamities.find(x => x.id === g.calamity), gl = a.lairs.find(l => l.id === c?.lair);
     const at = foot(a, mask, g.i, 6); if (at < 0 || at === seat.at || clues.some(x => x.i === at)) continue;
     const retinue = gl ? (LAIRS.get(gl.kind)?.species || c.boss.species) : c.boss.species, sp = SPECIES.get(retinue);
@@ -92,12 +108,20 @@ export function makeEpicQuest(a, K, rnd) {
   const guard = {...guardFor(a, K, lair.kind, seat.at, EPIC.guard.seat), label: `логово «${lair.name}» — ${c4.boss.title[0]} ${c4.boss.name} и ${c4.boss.g === 'f' ? 'её' : 'его'} слуги`,
     boss: {name: `${c4.boss.title[0]} ${c4.boss.name}`, g: c4.boss.g, species: c4.boss.species, add: grown(rnd, EPIC.boss), mustDie: true}};
   const Q = {name: A.name, acc: A.acc, g: A.g, epic: true, calamity: c4.id, hunt: 0, nextHunt: null, started: K.day, base: guard.strength,
-    story: `${A.name} — дар бога, сотворившего мир. ${G3(A.g, 'Он', 'Она', 'Оно')} прош${G3(A.g, 'ёл', 'ла', 'ло')} через три бедствия и лежал${G3(A.g, '', 'а', 'о')} в могиле последнего; теперь ${A.g === 'f' ? 'её' : 'его'} держит ${c4.boss.title[0]} ${c4.boss.name}, и ${c4.phase === 'rise' ? `новое бедствие — ${c4.label} — уже идёт` : `через ${years(Math.max(1, c4.riseAt - a.hist.year))} начнётся новое бедствие — ${c4.label}`}. Могилы старых боссов хранят, где искать.`,
+    story: c4.era !== 'after' ? handStory(a, c4, clues.length) : `${A.name} — дар бога, сотворившего мир. ${G3(A.g, 'Он', 'Она', 'Оно')} прош${G3(A.g, 'ёл', 'ла', 'ло')} через три бедствия и лежал${G3(A.g, '', 'а', 'о')} в могиле последнего; теперь ${A.g === 'f' ? 'её' : 'его'} держит ${c4.boss.title[0]} ${c4.boss.name}, и ${c4.phase === 'rise' ? `новое бедствие — ${c4.label} — уже идёт` : `через ${years(Math.max(1, c4.riseAt - a.hist.year))} начнётся новое бедствие — ${c4.label}`}. Могилы старых боссов хранят, где искать.`,
     crown: {kind: 'seat', at: seat.at, i: seat.at, label: `логово «${lair.name}»`, guard, area: null, exact: false, seen: false, state: 'lost', carrier: null},
     clues, search: null, stormAt: 0, next: null, found: 0};
   if (clues.length) clues[0].area = circle(a, clues[0].i, QUEST.area, rnd);
   else Q.crown.area = circle(a, seat.at, QUEST.narrow[0], rnd);
   return Q;
+}
+
+// the story of a quest after a calamity of «Заселение мира»
+function handStory(a, c, graves) {
+  const A = a.artifact, n = (a.graves || []).length, who = `${c.boss.title[0]} ${c.boss.name}`;
+  return `${A.name} — дар бога, сотворившего мир.${n ? ` ${G3(A.g, 'Он', 'Она', 'Оно')} прош${G3(A.g, 'ёл', 'ла', 'ло')} через ${n} ${plural(n, 'бедствие', 'бедствия', 'бедствий')}.` : ''} Теперь ${A.g === 'f' ? 'её' : 'его'} держит ${who}, и ` +
+    `${c.phase === 'rise' ? `бедствие — ${c.label} — уже идёт ${wherePhrase(a, c.i)}` : `через ${years(Math.max(1, c.riseAt - a.hist.year))} начнётся бедствие — ${c.label}`}. ` +
+    (graves ? 'Могилы старых боссов хранят, где искать.' : 'Где логово, расскажут беглецы и следы: круг поиска сужается в пути.');
 }
 
 // ── a clue read: the epitaph; the darkening goes a step on
@@ -109,18 +133,19 @@ export function epicDay(a, K, r, say) {
   const c4 = a.calamities.find(c => c.id === Q.calamity), G = EPIC.guard, H = EPIC.hunt;
   // the lair's servants gather month by month; once the calamity has risen the boss is stronger
   if (Q.crown.kind === 'seat' && Q.crown.state === 'lost' && Q.crown.guard) {   // (not the camp of a band that took it on the way home)
-    const months = (K.day - Q.started) / 30, risen = c4?.phase === 'rise' ? G.risen : 1;
+    const months = (K.day - Q.started) / SEASON_DAYS, risen = c4?.phase === 'rise' ? G.risen : 1;
     Q.crown.guard.strength = Math.min(G.max * risen, Q.base * (1 + G.grow * months) * risen);
     if (c4?.phase === 'rise' && !Q.risenTold) { Q.risenTold = true; Q.risenDay = K.day; say(`Пришла весть: ${c4.boss.title[0]} ${c4.boss.name} выступил${c4.boss.g === 'f' ? 'а' : ''} — началось новое бедствие. ${c4.boss.g === 'f' ? 'Её' : 'Его'} логово теперь стерегут злее.`, 'quest', false); }
   }
   // the darkening by the clues found
-  const want = Q.found >= 3 ? 3 : Q.found;
+  // (a quest with no graves to read — a calamity of «Заселение мира» with none before it — darkens with the months)
+  const want = Q.clues.length ? (Q.found >= 3 ? 3 : Q.found) : Math.min(3, Math.floor((K.day - Q.started) / EPIC.darkDays));
   while ((Q.dark || 0) < want) { Q.dark = (Q.dark || 0) + 1; darken(a, K, Q, c4, Q.dark, say); }
-  Q.hunt = Q.dark >= 3 ? 2 : Q.dark >= 2 ? 1 : 0;
+  Q.hunt = Q.dark >= H.from[1] ? 2 : Q.dark >= H.from[0] ? 1 : 0;
   if (K.inTown || Q.crown.state === 'carried') return;
   // the hunt from the lair
   if (Q.hunt && K.day >= (Q.nextHunt ?? 0)) {
-    Q.nextHunt = K.day + Math.round(H.every[Q.hunt - 1] * (0.7 + 0.6 * r()));
+    Q.nextHunt = K.day + Math.round(H.every[Q.hunt - 1] * (EPIC.jitter[0] + EPIC.jitter[1] * r()));
     const lair = a.lairs.find(l => l.id === c4?.lair);
     if (lair?.alive) send(a, K, r, Q.crown.guard.kind, Q.crown.guard, `погоня: слуги ${c4.boss.title[1].toLowerCase()} ${c4.boss.name}`, Q.base * H.strength[Q.hunt - 1], say);
   }
@@ -128,15 +153,15 @@ export function epicDay(a, K, r, say) {
   const near = EPIC.mini.near * scaleOf(a);
   for (const c of Q.clues) {
     if (c.found || !c.guard || K.day < c.nextServ || Math.hypot(xy(a, c.i)[0] - K.x, xy(a, c.i)[1] - K.y) > near) continue;
-    c.nextServ = K.day + Math.round(EPIC.mini.every * (0.7 + 0.6 * r()));
-    send(a, K, r, c.guard.kind, c.guard, `слуги: ${c.guard.boss.name.toLowerCase()}`, c.guard.strength * 0.6, say);
+    c.nextServ = K.day + Math.round(EPIC.mini.every * (EPIC.jitter[0] + EPIC.jitter[1] * r()));
+    send(a, K, r, c.guard.kind, c.guard, `слуги: ${c.guard.boss.name.toLowerCase()}`, c.guard.strength * EPIC.mini.servants, say);
   }
 }
 
 // a band on the caravan's trail, from the edge of the bubble
 function send(a, K, r, kind, who, label, strength, say) {
   const B = bubbleOf(K), far = BUBBLE.far * scaleOf(a);
-  if (B.things.filter(t => t.pursuit).length >= 3) return;
+  if (B.things.filter(t => t.pursuit).length >= EPIC.hunt.most) return;
   for (let k = 0; k < 12; k++) {
     const ang = r() * Math.PI * 2, x = K.x + Math.cos(ang) * far, y = K.y + Math.sin(ang) * far;
     if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
@@ -144,7 +169,7 @@ function send(a, K, r, kind, who, label, strength, say) {
     B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: true, strength: Math.min(EPIC.guard.max, strength), pursuit: true, kind, src: label.startsWith('слуги') ? 'mini' : 'hunt',
       label, ...(who.band ? {band: who.band} : {}), ...(who.beast ? {beast: who.beast} : {})});
     K.stats.pursuers = (K.stats.pursuers || 0) + 1;
-    if (r() < 0.4) say(`За караваном идут ${label.startsWith('слуги: ') ? `слуги — ${label.slice(7)}` : label.replace(/^погоня: /, '')}.`, 'sight');
+    if (r() < EPIC.hunt.told) say(`За караваном идут ${label.startsWith('слуги: ') ? `слуги — ${label.slice(7)}` : label.replace(/^погоня: /, '')}.`, 'sight');
     return;
   }
 }
@@ -156,7 +181,7 @@ function darken(a, K, Q, c4, step, say) {
   if (step === 1) {
     const t = `Над миром недобрые знаки: звери уходят из своих краёв, набеги чудовищ чаще, державы косятся друг на друга. Говорят, это ${who} собирает силы.`;
     say(t, 'quest', false); tellWorld(a, t, c4);
-    if (lair) lair.strength = Math.min(1, lair.strength + 0.1);
+    if (lair) lair.strength = Math.min(1, lair.strength + EPIC.darkLair);
   } else if (step === 2) {
     say(`${who} узнал${c4.boss.g === 'f' ? 'а' : ''}, что за артефактом идут: из логова «${lair?.name}» вышли охотники по следу каравана.`, 'quest', true);
   } else if (step === 3) {

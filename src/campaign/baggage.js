@@ -8,6 +8,7 @@
 // K.beasts = [{id, kind, hp, job: 'ride' | 'pack' | 'draft', rider}];  K.vehicles = [{kind, building}]
 // K.cargo = {resource id → units} besides the food;  member.back — cells on the member's back
 import {SPECIES} from '../data/species.js';
+import {gearDef} from '../agents/equipment.js';
 import {BONDS} from '../data/captives.js';
 import {ITEMS} from '../data/items.js';
 import {ORES} from '../data/ores.js';
@@ -27,7 +28,7 @@ export function metalTier(K) {
   let best = 0;
   for (const m of alive(K)) {
     if (m.captive) continue;
-    for (const id of [...m.gear.hand, m.gear.body]) { const d = ITEMS.has(id) ? ITEMS.get(id) : null; if (d && d.material !== 'silver') best = Math.max(best, d.tier || 0); }
+    for (const id of [...m.gear.hand, m.gear.body]) { const d = gearDef(id); if (d && d.material !== 'silver') best = Math.max(best, d.tier || 0); }
   }
   return best;
 }
@@ -36,7 +37,7 @@ export function metalTier(K) {
 export function toolTier(K) {
   let best = 0;
   for (const m of alive(K)) for (const id of m.gear.hand) {
-    const d = ITEMS.has(id) ? ITEMS.get(id) : null;
+    const d = gearDef(id);
     if (d?.tool && (d.tool.chop || d.tool.build)) best = Math.max(best, d.iron ? 2 : d.bronze ? 1 : 0);
   }
   return best;

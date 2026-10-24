@@ -1,4 +1,7 @@
 // Entry point: wires the menu, the simulation loop, the renderer and the panels together.
+// first: the table edits of this browser go into the tables before anything reads them (src/ui/tableEdits.js)
+import {warnEdits} from './ui/tableEdits.js';
+import {editCount} from './data/schema/edits.js';
 import {newGame, step} from './sim.js';
 import {Renderer} from './render/renderer.js';
 import {Menu} from './ui/menu.js';
@@ -47,6 +50,9 @@ function buildResFilter() {
 }
 buildResFilter();
 let world = null, running = false;
+// opened from the new menu (forest.html): «← Главное меню» and Esc lead back there, not to the old launch screen
+const PARAMS = new URLSearchParams(location.search);
+const FROM_APP = PARAMS.get('from') === 'forest';
 
 const menu = new Menu({onStart: start, onResume: showGame, onPickCell: () => showAtlas(menu.cfg.cell?.ref || null)});
 // a cell picked on the world map becomes the land of a new settlement in the «Карта» menu (seam/cell.js)
@@ -59,6 +65,8 @@ function only(id) { screen = id; for (const s of SCREENS) $(s).hidden = s !== id
 
 // the main menu: the game loop stops (the world stays in memory), the world generation halts between frames
 function showLaunch() {
+  if (FROM_APP) { location.href = 'forest.html'; return; }
+  document.documentElement.classList.remove('deep');
   running = false; acc = 0;
   atlasView.stop(); campaignView.halt();
   hideEnd(); only('launch');
@@ -114,6 +122,7 @@ function start(cfg) {
 // a loaded world replaces the running one
 function resume(w) {
   world = w;
+  warnEdits(w.tables, 'Поселение создано');
   renderer.setup(world);
   clearSelection(); fitCam();
   autoDay = dayOf(world.tick);
@@ -287,8 +296,13 @@ function runFrame(now) {
   if (now - panelT > 300) { panelT = now; panel.render(world, view); panel.renderSelection(world, view); }
 }
 
-$('buildTag').textContent = `версия ${VERSION} · ${BUILD}`;
-showLaunch();
+$('buildTag').textContent = `версия ${VERSION} · ${BUILD}${editCount() ? ` · правки таблиц: ${editCount()}` : ''}`;
+// the new menu opens one of these screens straight away: ?go=epic&seed=…&size=… · ?go=campaign · ?go=world
+const GO = PARAMS.get('go');
+if (GO === 'epic') { showCampaign('epic'); campaignView.startEpic({seed: PARAMS.get('seed'), size: PARAMS.get('size')}); }
+else if (GO === 'campaign') { showCampaign('library'); if (PARAMS.get('world')) campaignView.openFromLibrary(PARAMS.get('world'), PARAMS.get('name') || 'Мир'); }   // (the new menu's «Кампания», «В поход» of «Заселение мира»)
+else if (GO === 'world') showAtlas();
+else showLaunch();
 requestAnimationFrame(frame);
 
 // handle for headless tests and the browser console

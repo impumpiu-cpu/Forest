@@ -15,7 +15,7 @@ import {riverKind} from '../atlas/hydrology.js';
 import {latitude} from '../atlas/latitude.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {realmLabel} from '../atlas/realms.js';
-import {atWar, trades} from '../atlas/diplomacy.js';
+import {atWar, trades, realmAlign} from '../atlas/diplomacy.js';
 import {townLabel} from '../atlas/towns.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {clamp} from '../core/util.js';
@@ -69,6 +69,8 @@ export function cellRegion(a, i) {
   const reg = {
     id: 'world', label: cap1(b?.label || 'земля') + (river === 'great' ? ' у большой реки' : river === 'river' ? ' у реки' : ''),
     note: `клетка мира ${xy(a, i).join(', ')}`,
+    // the rock under it: the stone the colony quarries here (data/kinds.js STONES, settlement/kinds.js)
+    rock: geo.rock?.id || null,
     ores, placer: geo.placer ?? 0, goldVein: !!geo.flags.goldVein, magma: !!geo.flags.magma,
     road: r2(SEAM.road.base + SEAM.road.perAccess * acc), river: river === 'great' ? 1 : river === 'river' ? 0.6 : 0,
     biomes, flora, faunaShift, extra: {},
@@ -125,9 +127,11 @@ export function cellNeighbours(a, i, race = 'human') {
   const own = kin?.t.realm || null;
   const tLabel = t => `${cap1(townLabel(t, 0))} ${t.name}`;
   const out = {};
-  if (kin) out.kin = {label: tLabel(kin.t), town: kin.t.id, note: `${realmName(a, kin.t.realm)}: отсюда приходят переселенцы`, dist: daysFor(kin.d), people: kin.t.people, realm: own};
+  if (kin) out.kin = {label: tLabel(kin.t), town: kin.t.id, note: `${realmName(a, kin.t.realm)}: отсюда приходят переселенцы`, dist: daysFor(kin.d), people: kin.t.people, realm: own,
+    // the realm's world view: the settlers of its race stand near it (agents/agent.js createAgent)
+    race: peopleRace(kin.t.people), align: own && realmAlign(a, own) ? {...realmAlign(a, own)} : null};
   const market = towns.find(o => !own || !o.t.realm || trades(a, own, o.t.realm));
-  if (market) out.empire = {label: `Караваны из ${townLabel(market.t, 2)} ${market.t.name}`, town: market.t.id, note: `${realmName(a, market.t.realm)}: отсюда приходят караваны`, dist: daysFor(market.d)};
+  if (market) out.empire = {label: `Караваны из ${townLabel(market.t, 2)} ${market.t.name}`, town: market.t.id, note: `${realmName(a, market.t.realm)}: отсюда приходят караваны`, dist: daysFor(market.d), people: market.t.people};
 
   // who raids: tribes and the dead from their lairs, unfriendly realms, outlaws near towns of men, the rot of the land itself
   const sources = [];

@@ -19,17 +19,18 @@ import {lairAt} from '../atlas/lairs.js';
 import {faunaCell} from '../atlas/fauna.js';
 import {roadAccess} from '../atlas/roads.js';
 import {BIOMES} from '../data/biomes.js';
-import {LAIRS} from '../data/lairs.js';
+import {LAIRS, LEADER} from '../data/lairs.js';
 import {LAIR_BANDS} from '../data/seam.js';
 import {SPECIES} from '../data/species.js';
 import {GAME, CAMPAIGN} from '../data/campaign.js';
 import {FODDER} from '../data/transport.js';
 import {clamp} from '../core/util.js';
+import {NIGHT} from '../data/campaign.js';
 
 // how many people a day of hunting and gathering in a cell feeds, per person, before the season: 0 … ~1.5.
 // Game by the beasts that live there (as the local map would have them), plants by the soil and biomes
 export function richness(a, i) {
-  if (!a.f.land || a.f.ocean[i]) return 0;
+  if (!a.f.land?.[i] || a.f.ocean[i]) return 0;
   const reg = cellRegion(a, i), w = {region: reg};
   let game = 0;
   for (const [id, k] of Object.entries(GAME)) if (SPECIES.has(id)) game += faunaLevel(w, id) * k;
@@ -40,7 +41,7 @@ export function richness(a, i) {
 
 // whether beasts find grass in a cell: plants enough (soil and biomes) and no hard frost
 export function pasture(a, i, seasonId) {
-  if (!a.f.land || a.f.ocean[i]) return false;
+  if (!a.f.land?.[i] || a.f.ocean[i]) return false;
   const reg = cellRegion(a, i);
   const plants = Object.entries(reg.biomes).reduce((s, [b, v]) => s + v * (BIOMES.has(b) ? BIOMES.get(b).fert : 0.5), 0);
   const frost = seasonId === 'winter' && a.f.temp[i] - a.f.trange[i] / 2 < -5;
@@ -64,17 +65,20 @@ export function lairFoe(kind) {
 // what may come at night, each with how likely it makes a fight: [{kind, p, might, label}]
 export const nightRisk = (a, i) => dangers(a, i).reduce((s, d) => s + d.p, 0);
 export function dangers(a, i) {
-  const out = [];
+  const out = [], N = NIGHT;
   const lair = lairAt(a, i);
   if (lair) {
     const L = LAIRS.get(lair.kind), kind = L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair';
-    out.push({kind, p: 0.05 + 0.05 * Math.min(1.5, lair.strength), strength: 0.6 + 0.6 * Math.min(2, lair.strength), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind)});
+    // a lair with a leader (atlas/leaders.js) keeps its land better and comes harder, the leader at the head (LEADER.camp)
+    const ld = lair.leader, M = ld ? LEADER.camp : null;
+    out.push({kind, p: (N.lair.p[0] + N.lair.p[1] * Math.min(N.lair.pCap, lair.strength)) * (M ? M.p : 1), strength: (N.lair.s[0] + N.lair.s[1] * Math.min(N.lair.sCap, lair.strength)) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),
+      ...(ld ? {boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, leaderLair: lair.id} : {})});
   }
   const wolves = faunaLevel({region: cellRegion(a, i)}, 'wolf');
-  if (wolves > 0) out.push({kind: 'wolves', p: 0.025 * Math.min(2, wolves), strength: 0.7 + 0.3 * Math.min(2, wolves)});
-  if (a.f.scourge && a.f.scourge[i] > 0.3) out.push({kind: 'army', p: 0.2 * a.f.scourge[i], strength: 1});
-  if (a.rot && a.fauna && a.rot[faunaCell(a, i)] > 0.2) out.push({kind: 'undead', p: 0.06 * a.rot[faunaCell(a, i)], strength: 0.8 + a.rot[faunaCell(a, i)]});
+  if (wolves > 0) out.push({kind: 'wolves', p: N.wolves.p * Math.min(N.wolves.cap, wolves), strength: N.wolves.s[0] + N.wolves.s[1] * Math.min(N.wolves.cap, wolves)});
+  if (a.f.scourge && a.f.scourge[i] > N.army.at) out.push({kind: 'army', p: N.army.p * a.f.scourge[i], strength: N.army.s});
+  if (a.rot && a.fauna && a.rot[faunaCell(a, i)] > N.undead.at) out.push({kind: 'undead', p: N.undead.p * a.rot[faunaCell(a, i)], strength: N.undead.s + a.rot[faunaCell(a, i)]});
   const road = roadAccess(a, i);
-  if (road > 0.1) out.push({kind: 'bandits', p: 0.02 * road, strength: 1});
+  if (road > N.bandits.at) out.push({kind: 'bandits', p: N.bandits.p * road, strength: N.bandits.s});
   return out;
 }

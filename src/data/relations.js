@@ -3,9 +3,9 @@
 // Rows and columns are race lines (`rel` in data/races.js): the greenskins — orcs, goblins, ogres,
 // trolls — share one line. Undead and other monsters are not here: nobody makes peace with them.
 //
-// One creature's opinion of another (opinion() below) has two parts. The starting attitude, which does
-// not change: the old memory of the peoples, shared values (+), clashing values (−), a gulf in mercy or
-// order (−), the other's charisma. And the personal history, which does: what has happened between the
+// One creature's opinion of another (opinion() below) has two parts. The starting attitude: the old memory of
+// the peoples, shared values (+), clashing values (−), a gulf in mercy or order (−) or a near point on the compass
+// (+; the points move slowly, data/values.js ALIGN_DRIFT), the other's charisma. And the personal history, which does: what has happened between the
 // two of them (agent.grudge[id], ± grudgeCap) — quarrels (settlement/relations.js), and escorts, a
 // wound dressed, work and fights shared (settlement/together.js).
 import {Registry} from '../core/registry.js';
@@ -44,8 +44,12 @@ export const kinship = (fromSpecies, toSpecies) => {
 export const OPINION = {
   shared: 0.5,       // per value both hold dear
   clash: 0.75,       // per pair of values that clash
-  mercyGap: 3,       // this far apart on mercy → −1
-  orderGap: 4,       // this far apart on order → −0.5
+  mercyGap: 5,       // this far apart on mercy (of the ±5 compass, data/values.js) → −mercyCost
+  mercyCost: 1,
+  orderGap: 6.5,     // this far apart on order → −orderCost
+  orderCost: 0.5,
+  close: 1.5,        // this near on both axes → +closeBonus: kindred spirits
+  closeBonus: 0.5,
   grudgeCap: 4,      // personal history (good or bad) counts at most this much either way
 };
 
@@ -58,8 +62,10 @@ export function opinion(a, b) {
     for (const y of vb) if (VALUES.get(x).clash.includes(y)) v -= OPINION.clash;
   }
   if (a.align && b.align) {
-    if (Math.abs(a.align.mercy - b.align.mercy) >= OPINION.mercyGap) v -= 1;
-    if (Math.abs(a.align.order - b.align.order) >= OPINION.orderGap) v -= 0.5;
+    const dm = Math.abs(a.align.mercy - b.align.mercy), dor = Math.abs(a.align.order - b.align.order);
+    if (dm >= OPINION.mercyGap) v -= OPINION.mercyCost;
+    if (dor >= OPINION.orderGap) v -= OPINION.orderCost;
+    if (dm <= OPINION.close && dor <= OPINION.close) v += OPINION.closeBonus;
   }
   if (b.special) v += EFFECTS.charm(b.special);
   const g = a.grudge?.[b.id] || 0;

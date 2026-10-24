@@ -3,7 +3,9 @@
 // what it has built allows; there the caravan works for gold when it has none, heals faster, hires a
 // guide or a sellsword, and meets those who would go along. In winter it may stay till spring.
 import {townFx, townLabel} from '../atlas/towns.js';
-import {trades, atWar} from '../atlas/diplomacy.js';
+import {gearDef, gearType, gearValue, gearToken} from '../agents/equipment.js';
+import {MARK, markOfPeople, markable} from '../data/balance/marks.js';
+import {trades, atWar, realmAlign} from '../atlas/diplomacy.js';
 import {realmLabel} from '../atlas/realms.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
@@ -25,6 +27,9 @@ import {makeMember} from './start.js';
 import {free, bondsSets, isBonds} from './captives.js';
 import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
+import {techAllowsMaterial} from '../atlas/tech.js';
+import {KIND_GROVES, WOODS, useOf} from '../data/kinds.js';
+import {MATERIALS} from '../data/balance/materials.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const has = (t, ids) => ids.some(id => t.built.includes(id));
@@ -51,8 +56,28 @@ const sellPrice = (t, st, id) => {
   for (const [b, bonus] of Object.entries(MARKET.sellBonus)) if (t.built.includes(b)) k *= bonus[id] ?? bonus.all ?? 1;
   return v * k;
 };
-const offerPrice = (o, st) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.id).value * o.n : ITEMS.has(o.id) ? ITEMS.get(o.id).value : 10)) * STANDING[st].buy;
-export const offers = t => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)));
+const offerPrice = (o, st) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.id).value * o.n : gearDef(o.id) ? gearValue(o.id) : 10)) * STANDING[st].buy;
+// what a town sells; its arms and armour are its smiths' work: they bear the mark of its people (data/balance/marks.js)
+// (with the world `a`: not the metals its realm has not learnt to work — data/tech.js, atlas/tech.js)
+export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || techAllowsMaterial(a, t, gearDef(o.id)?.material))).map(o => townMade(o, t));
+const townMade = (o, t, q = 0) => {
+  if (o.kind !== 'item') return o;
+  const mark = markOfPeople(t.people), d = gearDef(o.id);
+  // a wooden piece of a town by a grove of the tree its people master (data/kinds.js 'master'): of that wood, by a master
+  // — the elves' bows and staves of the sacred tree
+  const tree = MATERIALS[d?.material]?.class.includes('wood') ? masterWoodOf(t) : null;
+  if (!d || !markable(d) || (!mark && !q && !tree)) return o;
+  return {...o, id: gearToken({type: gearType(o.id), q, mark: mark && markable(d) ? mark : null, ...(tree ? {of: tree, master: true} : {})})};
+};
+// the special wood a town's people master and grow near it (the elves' sacred tree by a sacred grove), or null
+function masterWoodOf(t) {
+  const race = WORLD_PEOPLES.get(t.people)?.race;
+  for (const T of WOODS.all()) if (T.special && useOf(race, T.id) === 'master' && t.built.some(b => KIND_GROVES[T.id]?.includes(b))) return T.id;
+  return null;
+}
+// the town buildings that grow a special tree (data/kinds.js WOODS)
+// the quality a town's forge works at (data/balance/marks.js MARK.forge): no worse than +1, a city's better
+const forgeQ = t => (t.tier >= MARK.forge.cityTier ? MARK.forge.cityQ : MARK.forge.q);
 
 // the gold kept for food: `days` of rations for everyone, at this town's price
 const reserveFor = (K, t, st, days) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st);
@@ -65,31 +90,31 @@ function wants(a, K, t, st) {
   const wheelsFit = () => { if (fits == null) { const foot = route(a, K.i, K.goal, K.people, false), road = route(a, K.i, K.goal, K.people, true); fits = !!(road && foot && road.cost <= ROUTE.keep * foot.cost); } return fits; };
   const count = kind => K.beasts.filter(b => b.kind === kind && b.hp > 0).length;
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
-  for (const o of offers(t)) {
+  for (const o of offers(t, a)) {
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && count(o.id) < 2) out.push([3, o]);
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) out.push([5, o]);
     if (o.kind === 'goods' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
     if (o.kind === 'vehicle' && o.id === 'cart' && !K.vehicles.length && K.goal != null && wheelsFit()) out.push([4, o]);
     if (o.kind === 'vehicle' && o.id === 'wagon' && !K.vehicles.some(v => v.kind === 'wagon') && K.beasts.some(b => BEASTS[b.kind].pulls >= 1) && K.goal != null && wheelsFit()) out.push([6, o]);
-    if (o.kind === 'item' && ITEMS.get(o.id).tool && tier < 2 && ITEMS.get(o.id).iron) out.push([2, o]);
-    if (o.kind === 'item' && ITEMS.get(o.id).slot === 'body' && ms.some(m => m.role === 'knight' && (ITEMS.get(m.gear.body)?.armor ?? 0) < ITEMS.get(o.id).armor)) out.push([7, o]);
-    if (o.kind === 'item' && ITEMS.get(o.id).melee && !ITEMS.get(o.id).tool && ms.some(m => m.role === 'knight' && bestDmg(m) < ITEMS.get(o.id).melee.dmg)) out.push([8, o]);
+    if (o.kind === 'item' && gearDef(o.id).tool && tier < 2 && gearDef(o.id).iron) out.push([2, o]);
+    if (o.kind === 'item' && gearDef(o.id).slot === 'body' && ms.some(m => m.role === 'knight' && (gearDef(m.gear.body)?.armor ?? 0) < gearDef(o.id).armor)) out.push([7, o]);
+    if (o.kind === 'item' && gearDef(o.id).melee && !gearDef(o.id).tool && ms.some(m => m.role === 'knight' && bestDmg(m) < gearDef(o.id).melee.dmg)) out.push([8, o]);
     if (o.kind === 'building' && K.vehicles.some(v => v.kind === 'wagon' && !v.building)) out.push([6.5, o]);
   }
   return out.sort((p, q) => p[0] - q[0]).map(e => e[1]);
 }
-const bestDmg = m => Math.max(0, ...m.gear.hand.map(id => ITEMS.get(id)?.melee?.dmg ?? 0));
+const bestDmg = m => Math.max(0, ...m.gear.hand.map(id => gearDef(id)?.melee?.dmg ?? 0));
 
 // a bought item goes to who gains most by it: armour and arms to the knights, a tool to a squire
 function equip(K, id) {
-  const d = ITEMS.get(id), ms = free(K).filter(m => !m.former);   // no arms for a former slave
+  const d = gearDef(id), ms = free(K).filter(m => !m.former);   // no arms for a former slave
   if (d.slot === 'body') {
-    const m = ms.filter(x => x.role === 'knight' || x.role === 'sellsword').sort((p, q) => (ITEMS.get(p.gear.body)?.armor ?? 0) - (ITEMS.get(q.gear.body)?.armor ?? 0))[0] || ms[0];
+    const m = ms.filter(x => x.role === 'knight' || x.role === 'sellsword').sort((p, q) => (gearDef(p.gear.body)?.armor ?? 0) - (gearDef(q.gear.body)?.armor ?? 0))[0] || ms[0];
     m.gear.body = id; return m;
   }
   if (d.tool) { const m = ms.find(x => x.role === 'squire') || ms[0]; m.gear.hand[0] = id; return m; }
   const m = ms.filter(x => x.role === 'knight').sort((p, q) => bestDmg(p) - bestDmg(q))[0] || ms[0];
-  const k = m.gear.hand.findIndex(x => ITEMS.get(x)?.melee && !ITEMS.get(x)?.ranged && x !== 'shield');
+  const k = m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield');
   if (k >= 0) m.gear.hand[k] = id; else m.gear.hand[0] = id;
   return m;
 }
@@ -103,18 +128,21 @@ function smithy(a, K, t, st) {
   const anvil = {...t, built: [...new Set([...t.built, ...OFFERS.filter(o => o.kind === 'item').flatMap(o => o.at)])]};
   for (const o of wants(a, K, anvil, st)) {
     if (o.kind !== 'item') continue;
-    const d = ITEMS.get(o.id), B = SMITH.bar[d.material], R = RECIPES.all().find(r => r.makes?.item === o.id && !r.makes.silver);
-    if (!B || !R?.cost?.[d.material]) continue;
+    const type = gearType(o.id), d = gearDef(o.id), B = SMITH.bar[d.material], R = RECIPES.all().find(r => r.makes?.item === type && !r.makes.silver);
+    if (!B || !R?.cost?.[d.material] || !techAllowsMaterial(a, t, d.material)) continue;   // a smith works only the metals his realm knows
     const need = R.cost[d.material] * B.n;
     if ((K.cargo[B.ore] || 0) < need) continue;
+    // forged here: the town's quality and its people's mark (a human town: quality alone)
+    const made = townMade({kind: 'item', id: type}, t, forgeQ(t)).id;
+    // the price is that of the town's plain piece: the better work of its forge is what draws the caravan to it
     const p = gold(offerPrice(o, st) * SMITH.discount);
     if (K.gold - p < reserveFor(K, t, st, SMITH.reserve)) continue;
     // still wanted after what the smith made before it
     if (!wants(a, K, anvil, st).some(x => x.kind === 'item' && x.id === o.id)) continue;
     K.cargo[B.ore] -= need; if (K.cargo[B.ore] <= 0) delete K.cargo[B.ore];
     K.gold = gold(K.gold - p); K.stats.forged = (K.stats.forged || 0) + 1;
-    const m = equip(K, o.id);
-    done.push(`кузнец перековал руду каравана (${RESOURCES.get(B.ore).label}, ${need}) в ${d.label.toLowerCase()} для ${m.name} — всего за ${p} зол.`);
+    const m = equip(K, made);
+    done.push(`кузнец перековал руду каравана (${RESOURCES.get(B.ore).label}, ${need}) в ${gearDef(made).label.toLowerCase()} для ${m.name} — всего за ${p} зол.`);
     assign(K);
   }
   return done;
@@ -135,7 +163,7 @@ export function trade(a, K, t, st) {
   };
   sell(id => ore.has(id));
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
-  if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + (ITEMS.get(id)?.value ?? 0), 0) * STANDING[st].sell * MARKET.spoils; K.gold = gold(K.gold + p); done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
+  if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils; K.gold = gold(K.gold + p); done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
   if (!K.inTown) done.push(...tradeCaptives(a, K, t, st));   // captives sold and bought, by the town's law, once a visit: on entering (campaign/slavery.js)
   // food: up to `foodDays` days, as far as the room and the gold go
@@ -160,7 +188,7 @@ export function trade(a, K, t, st) {
     else if (o.kind === 'vehicle') { K.vehicles.push({kind: o.id, building: null, pulled: false}); done.push(`${o.id === 'cart' ? 'тележку' : 'повозку'} за ${gold(p)}`); }
     else if (o.kind === 'goods') { K.cargo[o.id] = (K.cargo[o.id] || 0) + o.n; done.push(`${RESOURCES.get(o.id).label} (${o.n}) за ${gold(p)}`); }
     else if (o.kind === 'building') { const v = K.vehicles.find(x => x.kind === 'wagon' && !x.building); v.building = o.id; done.push(`разобранную «${BUILDINGS.get(o.id).name}» в повозку за ${gold(p)}`); }
-    else { const m = equip(K, o.id); done.push(`${ITEMS.get(o.id).label.toLowerCase()} для ${m.name} за ${gold(p)}`); }
+    else { const m = equip(K, o.id); done.push(`${gearDef(o.id).label.toLowerCase()} для ${m.name} за ${gold(p)}`); }
     assign(K); K.path = null;
   }
   return done;
@@ -171,7 +199,7 @@ export function labour(K) {
   const L = MARKET.labour, tier = toolTier(K);
   let g = 0;
   for (const m of alive(K)) {
-    if (m.role === 'squire' && m.gear.hand.some(id => ITEMS.get(id)?.tool)) g += L.squire * (1 + L.perTier * tier);
+    if (m.role === 'squire' && m.gear.hand.some(id => gearDef(id)?.tool)) g += L.squire * (1 + L.perTier * tier);
     else if (m.role === 'knight') g += L.knight;
     else g += L.other;
   }
@@ -190,7 +218,7 @@ export function hire(a, K, t, st, r) {
     const days = Math.round(H.days[0] + r() * (H.days[1] - H.days[0])), cost = gold(H.wage * days * STANDING[st].buy);
     if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve)) continue;
     K.gold = gold(K.gold - cost);
-    const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}});
+    const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}, align: t.realm ? realmAlign(a, t.realm) : null});
     K.members.push(m);
     said.push(`наняли ${H.label}а ${m.name} на ${pieces(days, 'день', 'дня', 'дней')} за ${cost} зол.`);
   }
@@ -207,7 +235,7 @@ export function companion(a, K, t, st, r) {
   const minor = r() < C.minor ? C.minorRaces[(r() * C.minorRaces.length) | 0] : null;
   const race = minor || WORLD_PEOPLES.get(t.people).race;
   if (!gratis) K.gold = gold(K.gold - C.fee);
-  const m = makeMember(K, r, {race, role: 'companion', gear: C.gear, loyalty: C.loyalty});
+  const m = makeMember(K, r, {race, role: 'companion', gear: C.gear, loyalty: C.loyalty, align: !minor && t.realm ? realmAlign(a, t.realm) : null});
   K.members.push(m);
   const sp = SPECIES.get(race);
   return `к каравану ${gratis ? 'по доброй воле' : `за ${C.fee} зол.`} пристал${m.gender === 'f' ? 'а' : ''} ${m.name}${minor ? ` из народа ${sp.gen || sp.plural}` : ''}`;
