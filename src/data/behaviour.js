@@ -31,6 +31,16 @@ export const WAYS = {
   livestock: ['shunFire', 'fendOff', 'penned', 'rest'],
   leaver: ['depart'],
   led: ['led'],   // a tame beast a raider leads away (campaign/camp.js)
+  // ── people: a role is a list (agents/brains/index.js; the people's bodies: agents/people.js)
+  // a raider: fallen senseless it lies; fire drives it; lost, burnt by the sun or badly hurt it leaves; else its band's
+  // plan, the nearest foe, the stores (the mindless dead: the nearest living soul)
+  raider: ['downed', 'fleeFire', 'retreat', 'raid'],
+  // a captive on the run: for the map's edge as fast as its bonds let it
+  fugitive: ['downed', 'escape'],
+  // a trader: with the caravan's phase — walks in, stands at the stall, sleeps by the fire, leaves; never fights
+  trader: ['fleeFire', 'withCaravan', 'peddle'],
+  // a caravan guard: answers whoever goes for the caravan, else keeps by the trader
+  guard: ['fleeFire', 'withCaravan', 'defendCaravan', 'escort'],
 };
 
 export const SQUAD = {
@@ -115,6 +125,27 @@ export const STAND = {
   pack: {angle: 2.4, step: 0.9, at: 1.6, off: 0.6, hurry: 4, hurryPace: 1.3, pace: 1, catchUp: 1.2},   // a pack mule: its place behind the trader (an angle per slot)
   drawOff: 0.8,        // steps away from what comes too close to the herd at this pace
   want: {fire: 2, limp: 1.5, foe: 1.4, pack: 1, hay: 1, drawOff: 1.1, alert: 1, leave: 0.5, rest: 0.4, graze: 0.3},
+};
+
+// people on a raid (agents/behaviours/raid.js, retreat.js; the band's plan: agents/squad.js)
+export const RAID = {
+  hunt: 16,            // the mindless dead go for whoever is this close; anyone further off they find by shambling to the camp
+  near: 10,            // a living raider answers a foe this close
+  hurtBelow: 0.3,      // health below this share: leaves (the mindless never do)
+  sunHurts: 0.5, sunLeaves: 0.6,   // the sun-shy (upyrs, vampires) wither when the day is brighter than the first, leave past the second
+  rotsFrom: 12,        // the rot loses its hold above this temperature (°C)
+  regen: 0.0003, regenCool: 30,   // orcs and trolls close their wounds on a raid, not by a fire
+  fire: {heat: 50, near: 1.5},    // the living run from heat and from fire this close
+  want: {fallen: 3, fire: 2, leave: 1.5, plan: 1, fight: 0.9, go: 0.5},
+};
+// people of a trade caravan (agents/behaviours/peddle.js, escort.js, defendCaravan.js; settlement/trade.js)
+export const CARAVAN = {
+  campAt: 6,           // how close to the camp fire the caravan sets up (cells along the camp flow field)
+  lateWait: 50, lateFar: 6,   // the trader waits this long for a straggler this far behind, then goes on without it
+  pace: 0.9, spotPace: 0.5,   // walking in; keeping to the spot
+  mends: 0.0002,       // wounds close this much a tick on the road
+  guard: {sight: 9, help: 12, at: 1.3, angle: 0.8, off: 0.5, hurry: 4, hurryPace: 1.25, pace: 1},   // a guard: whom it answers, its place by the trader (an angle per slot)
+  want: {fire: 2, leave: 1.5, fight: 1, stay: 0.5},
 };
 
 // a tamed beast in its pen (agents/behaviours/fendOff.js, penned.js; settlement/herd.js)

@@ -68,25 +68,31 @@ function run(w, a) {
   syncTask(w, a);
 }
 
-// one step of a creature that thinks by a list of behaviours: the species' own, or the list a brain carries (a
-// tamed beast thinks as livestock whatever its species: agents/brains/index.js)
-export function tabledStep(w, a, list) {
+// a beast's body: a creature with needs has the full one (hunger, cold, healing); one without only burns — as the
+// nechist or as a beast (data/behaviour.js HEAT) — and mends if its row says so (`mends`). → T
+function beastBody(w, a) {
   const sp = SPECIES.get(a.species);
-  // the body: a creature with needs has the full one (hunger, cold, healing); one without only burns — as the
-  // nechist or as a beast (data/behaviour.js HEAT) — and mends if its row says so (`mends`)
-  let T;
-  if (sp.needs.length) T = stepBody(w, a);
-  else {
-    T = tempAt(w, cellOf(w, a)); if (heatHarm(a, sp, T, sp.kind === 'spirit' ? 'spirit' : 'beast') && a.hp <= 0) kill(w, a, 'огня');
-    if (sp.mends && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + sp.mends * maxHp(a));   // wounds close slowly (a mule, a bear)
-  }
+  if (sp.needs.length) return stepBody(w, a);
+  const T = tempAt(w, cellOf(w, a));
+  if (heatHarm(a, sp, T, sp.kind === 'spirit' ? 'spirit' : 'beast') && a.hp <= 0) kill(w, a, 'огня');
+  if (sp.mends && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + sp.mends * maxHp(a));   // wounds close slowly (a mule, a bear)
+  return T;
+}
+
+// one step of a creature that thinks by a list of behaviours: the species' own, or the list a brain carries (a tamed
+// beast thinks as livestock whatever its species; a raider, a trader, a guard are roles of the people:
+// agents/brains/index.js). `brain` — {behaviours, body?, heart?}: its body (the beast's by default; the people have
+// their own, agents/people.js) and how often it thinks (ticks, or a function of the creature; the species' `heart`)
+export function tabledStep(w, a, brain) {
+  const sp = SPECIES.get(a.species), list = brain.behaviours;
+  const T = (brain.body || beastBody)(w, a);
   if (a.dead) return;
   const ctx = {sp, list, T, night: nightness(w)};
   // what the behaviours do every tick whatever the task (an aura, a veil, a body's own healing)
   for (const id of list) ACTS[id].always?.(w, a, ctx);
   if (a.dead) return;
   // the choice: every `heart` ticks in full, the alarms every tick
-  const heart = sp.heart ?? 1;
+  const heart = typeof brain.heart === 'function' ? brain.heart(a) : brain.heart ?? sp.heart ?? 1;
   if (!a.task || heart === 1 || --a.think <= 0) { decide(w, a, ctx, BANDS); a.think = heart; }
   else decide(w, a, ctx, ALARMS);
   if (a.task) run(w, a);
@@ -95,4 +101,4 @@ export function tabledStep(w, a, list) {
   if (a.cd > 0) a.cd--;
 }
 
-export const tabledBrain = {id: 'tabled', step(w, a) { tabledStep(w, a, SPECIES.get(a.species).behaviours); }};
+export const tabledBrain = {id: 'tabled', step(w, a) { tabledStep(w, a, SPECIES.get(a.species)); }};

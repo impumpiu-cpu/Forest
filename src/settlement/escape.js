@@ -118,7 +118,7 @@ export function startEscape(w, a, why) {
   log(w, `${name(a)}, ${g(a, 'пленный', 'пленная')} (${label(a)}), ${g(a, 'бежал', 'бежала')}${why === 'plot' ? ' ночью по сговору' : ' в суматохе тревоги'}${slow < 1 ? '' : ', перерезав путы'}.`, 'danger', 'alert');
 }
 
-// gone over the edge: got away, the bonds with it (agents/brains/fugitive.js)
+// gone over the edge: got away, the bonds with it (agents/behaviours/escape.js)
 export function gotAway(w, a) {
   a.gone = true;
   C(w).escaped = (C(w).escaped || 0) + 1;

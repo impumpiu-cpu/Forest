@@ -19,7 +19,7 @@ FACTIONS.registerAll([
   // captives running away (settlement/escape.js): at war with nobody; the colony chases them as a yellow flag
   {id: 'fugitives', label: 'беглецы', brain: 'fugitive', color: '#c79a5a', hostile: [], legend: 'беглый пленный'},
   // a trader's caravan: at war with nobody, but its guards answer anyone who goes for it
-  {id: 'traders', label: 'торговцы',      brain: 'caravan',  color: '#e3c14a', hostile: [], legend: 'торговый караван'},
+  {id: 'traders', label: 'торговцы',      brain: 'trader',  color: '#e3c14a', hostile: [], legend: 'торговый караван'},
 ]);
 
 export function isHostile(a, b) {

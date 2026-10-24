@@ -98,7 +98,7 @@ MIGRATIONS.registerAll([
       const pickName = list => list[Math.floor(rng() * list.length)];
       const out = [{species: 'human', init: a => { a.role = 'trader'; [a.name, a.gender] = pickName(TRADE.traderNames); }}];
       for (let k = 0; k < TRADE.guards; k++) out.push({species: 'human', kit: TRADE.guardKit,
-        init: a => { a.role = 'guard'; a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: 1.5}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: 0.5}; a.skillVer = 1; }});
+        init: a => { a.role = 'guard'; a.brain = 'guard'; a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: 1.5}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: 0.5}; a.skillVer = 1; }});
       const mules = TRADE.mules[0] + Math.floor(rng() * (TRADE.mules[1] - TRADE.mules[0] + 1));
       for (let k = 0; k < mules; k++) out.push({species: 'mule', init: a => { a.name = 'Вьючный мул'; }});
       return out;

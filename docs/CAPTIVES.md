@@ -24,7 +24,7 @@
 | Что | Поселение | Поход | Числа |
 |---|---|---|---|
 | Пленение, права пленного | `settlement/captives.js` | `campaign/captives.js` | `data/captives.js` `BONDS`, `CAPTIVE` |
-| Воля, побег, паёк | `settlement/escape.js`, мозг беглеца `agents/brains/fugitive.js` | `campaign/captives.js` | `ESCAPE` |
+| Воля, побег, паёк | `settlement/escape.js`, роль беглеца (`agents/behaviours/escape.js`, [Поведение](BEHAVIOUR.md)) | `campaign/captives.js` | `ESCAPE` |
 | Мастера и ученики | `settlement/masters.js` | `campaign/masters.js` | `data/masters.js` `MASTERS`, `MASTER` |
 | Освобождение | `settlement/freedom.js` | `campaign/captives.js` | `FREEDOM` |
 | Торговля пленными | `settlement/slavery.js` | `campaign/slavery.js` | `data/slavery.js` `SLAVE` |

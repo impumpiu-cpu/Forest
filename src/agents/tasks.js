@@ -200,11 +200,7 @@ TASKS.registerAll([
     if (Math.hypot(m.x - a.x, m.y - a.y) > 1.6) { if (approach(w, a, m.x, m.y, 1.1) === null) fail(w, a, 'к мастеру не подойти', 'impossible'); }
   }},
 
-  // a captive running away (settlement/escape.js, agents/brains/fugitive.js)
-  {id: 'escape', label: () => 'бежит из плена', step() {}},
 
-  // senseless on the ground after a deadly blow: nothing to do but bleed and wait for help (agents/wounds.js)
-  {id: 'downed', label: () => 'лежит без сознания', step() {}},
 
   {id: 'douse', label: () => 'тушит пожар', step(w, a) {
     if (w.stats.fireNearCamp === 0) { done(w, a); return; }
@@ -353,12 +349,6 @@ TASKS.registerAll([
     moveToward(w, a, task.spot[0], task.spot[1], 0.5);
   }},
 
-  // caravan states: the caravan brain moves them itself
-  {id: 'travel', label: () => 'идёт с караваном', step() {}},
-  {id: 'camped', label: () => 'стоит лагерем у костра', step() {}},
-  {id: 'stall', label: () => 'торгует', step() {}},
-  {id: 'night', label: () => 'ночует у костра', step() {}},
-  {id: 'escort', label: () => 'охраняет караван', step() {}},
   // the beasts' and the nechist's own states (graze, bolt, roam, chase, maul, feed, hide, lurk, sing, penned…) come
   // with their behaviours (data/behaviours.js), registered below
 

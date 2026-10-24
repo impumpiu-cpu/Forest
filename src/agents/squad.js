@@ -11,7 +11,7 @@
 //   state  — march (on the plan), withdraw (the goal is reached), retreat (morale broke). On the way
 //            out the rear holds off pursuers for a while.
 // Plain data in w.squads ({id: squad}), members by id, saved with the world. The raider brain
-// (agents/brains/raider.js) asks planFor() what to do; stepSquads() checks morale and the goal.
+// (agents/behaviours/raid.js) asks planFor() what to do; stepSquads() checks morale and the goal.
 // Every squad's start and end is in the journal with its reason, and in w.behave.squads.
 import {SPECIES} from '../data/species.js';
 import {RAID_BANDS} from '../data/raids.js';

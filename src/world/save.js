@@ -28,7 +28,7 @@ import {drawFoodPrefs} from '../data/foods.js';
 import {JOBS} from '../data/jobs.js';
 import {TASKS} from '../agents/tasks.js';
 import {ITEMS} from '../data/items.js';
-import {BRAINS} from '../agents/brains/index.js';
+import {BRAINS, TASK_BRAINS} from '../agents/brains/index.js';
 
 // 2: random streams by subsystem (core/rng.js). A format-1 save (one stream) still loads: its streams
 // are seeded from the game's seed and the saved position of the old stream, the same every time.
@@ -36,8 +36,6 @@ import {BRAINS} from '../agents/brains/index.js';
 // loading instead of crashing on the first tick; this build still reads 1 and 2.
 export const SAVE_FORMAT = 3;
 const FORMATS = [1, 2, 3];
-// brains that run their task through the TASKS registry: an id it does not know would stop the game
-const TASK_BRAINS = new Set(['colonist', 'raider', 'tabled', 'livestock', 'leaver', 'led']);
 
 // world keys that are rebuilt rather than saved
 const LIVE = new Set(['nav', 'rng', 'rngs', 'astar', 'perf', 'scratch', 'chunks']);
@@ -80,6 +78,11 @@ export function loadWorld(save) {
   // feeding from before carcasses goes on by the old timer (agents/behaviours/feed.js); chases without a pack hunt end
   for (const a of w.agents) if (a.task?.id === 'chase' && a.hunt == null) a.task = {id: 'roam'};
   for (const a of w.agents) if (a.task?.id === 'toPen') a.task = {id: 'penned', mode: 'to'};   // the pen's walk is a mode of `penned` now (agents/behaviours/penned.js)
+  // the caravan's people are two roles now (agents/brains/index.js), and the trader's states one task with a mode
+  for (const a of w.agents) {
+    if (a.brain === 'caravan') a.brain = a.role === 'guard' ? 'guard' : 'trader';
+    if (['camped', 'stall', 'night'].includes(a.task?.id)) a.task = {id: 'travel', mode: a.task.id === 'stall' ? 'trading' : a.task.id === 'camped' ? 'camp' : 'night'};
+  }
   w.behave.social ??= {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0};
   // raiders from before squads (no w.squads, no a.squad) go on the old way: nearest foe, the stores, home
   // claims from before reservations (settlement/reserve.js) are simply dropped: the leases start empty

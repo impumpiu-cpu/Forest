@@ -18,6 +18,8 @@ import {ACTS} from '../src/agents/behaviours/index.js';
 import {SPECIES} from '../src/data/species.js';
 import {season} from '../src/data/seasons.js';
 import {makeTame} from '../src/settlement/herd.js';
+import {createSquad} from '../src/agents/squad.js';
+import {startCaravan} from '../src/settlement/trade.js';
 
 // a flat meadow with the camp in the middle, no colonists, nothing arriving from outside; `hour` sets the clock
 const put = (w, sp, fac, x, y) => createAgent(w, sp, fac, x, y);
@@ -31,8 +33,9 @@ function scene(seed = 'range', hour = 10) {
   w.nav.buildAll();
   for (const k of Object.keys(w.outside.next)) w.outside.next[k] = Infinity;   // nobody comes from beyond the edge during a scene
   w.outside.soon = Infinity;
-  // one settler by the fire who never moves, so that the settlement stands (settlement/ending.js) and the zone is a zone
-  still(put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5));
+  // two settlers by the fire who never move, so that the settlement stands even with raiders about (settlement/ending.js)
+  // and the zone is a zone
+  still(put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 0.5)); still(put(w, 'human', 'colony', w.camp.x - 0.5, w.camp.y + 0.5));
   return w;
 }
 // a creature that only stands where it is: a prop of the scene (a brain of the range alone: it does nothing)
@@ -176,7 +179,7 @@ scene_('B12', 'крыса: днём при людях сидит в норе, н
   run(w, 300);
   if ((w.stats.ratsAte || 0) > ate0) return 'грызёт припасы при бодрствующем рядом';
   // night falls, the settler sleeps: the rat comes for the food
-  w.tick = 3 * DAY + 23 * HOUR; w.agents[0].sleeping = true;
+  w.tick = 3 * DAY + 23 * HOUR; w.agents[0].sleeping = w.agents[1].sleeping = true;
   const ate = run(w, 600, () => (w.stats.ratsAte || 0) > ate0);
   if (!ate) return `за 600 ночных тиков ничего не съела: «${rat.task?.id}»`;
   // someone wakes up right next to it
@@ -240,6 +243,47 @@ scene_('B15', 'русалка ночью зовёт одинокого посе�
   if (!(Math.hypot(man.x - rus.x, man.y - rus.y) < d0)) return 'зачарованный не идёт к воде';
   still(put(w, 'human', 'colony', man.x + 0.7, man.y));
   return run(w, 10, () => man.task?.id !== 'lured') || 'второй подошёл, а чары держат';
+});
+
+scene_('B16', 'налётчики: отряд идёт к лагерю, бьётся с тем, кто стоит на пути, грабит склад и уходит с добычей', () => {
+  const w = scene();
+  w.stock.berries = 60; w.stock.meat = 30; w.stats.raids = 9;   // not the first raid: no scouting party
+  const g = [];
+  for (let k = 0; k < 4; k++) { const r = put(w, 'human', 'raiders', 4.5 + k, 4.5); r.band = 'bandits'; r.name = 'Налётчик'; g.push(r); }
+  createSquad(w, g);
+  if (g.some(r => r.brain !== 'raider')) return 'налётчик не получил роль raider';
+  const food0 = w.stock.berries + w.stock.meat;
+  const came = run(w, 1500, () => g.some(r => r.task?.id === 'assault' || r.task?.id === 'fight'));
+  if (!came) return `за 1500 тиков никто не пошёл на склад: ${g.map(r => r.task?.id).join(', ')}`;
+  const looted = run(w, 2500, () => g.some(r => r.looted) || w.stock.berries + w.stock.meat < food0);
+  if (!looted) return `склад цел: ${g.map(r => `${r.task?.id}${r.dead ? '†' : ''}`).join(', ')}`;
+  return run(w, 3000, () => g.every(r => r.dead || r.gone || r.task?.id === 'leave')) || `не уходят: ${g.map(r => r.task?.id).join(', ')}`;
+});
+
+scene_('B17', 'караван: купец приходит и встаёт у костра, охранник бьёт волка, напавшего на мула; гостевание кончилось — все уходят', () => {
+  const w = scene();
+  const trader = put(w, 'human', 'traders', 3.5, 60.5); trader.role = 'trader';
+  const guards = [0, 1].map(k => { const o = put(w, 'human', 'traders', 4.5 + k, 60.5); o.role = 'guard'; o.brain = 'guard'; o.slot = k; return o; });
+  const mule = put(w, 'mule', 'traders', 5.5, 61.5);
+  startCaravan(w, [trader, ...guards, mule]);
+  if (trader.brain !== 'trader' || mule.brain !== 'tabled') return `роли: купец ${trader.brain}, мул ${mule.brain}`;
+  const arrived = run(w, 2500, () => w.caravan?.arrived != null);
+  if (!arrived) return `купец не дошёл за 2500 тиков: «${trader.task?.id}» (${trader.x.toFixed(1)}, ${trader.y.toFixed(1)}), охрана ${guards.map(o => o.task?.id).join(', ')}`;
+  if (!guards.every(o => o.task?.id === 'escort' && Math.hypot(o.x - trader.x, o.y - trader.y) < 4)) return `охрана не при купце: ${guards.map(o => o.task?.id).join(', ')}`;
+  const wolf = still(put(w, 'wolf', 'predators', mule.x + 1, mule.y)); wolf.pack = wolf.id; wolf.task = {id: 'maul', target: mule};
+  const fought = run(w, 30, () => guards.some(o => o.task?.id === 'fight' && o.task.target === wolf));
+  if (!fought) return `охрана не вступилась за мула: ${guards.map(o => o.task?.id).join(', ')}`;
+  wolf.dead = true;
+  w.caravan.phase = 'leaving';
+  return run(w, 3000, () => [trader, ...guards, mule].every(o => o.gone)) || `не ушли: ${[trader, ...guards, mule].map(o => `${o.task?.id}:${o.gone ? 'ушёл' : 'здесь'}`).join(', ')}`;
+});
+
+scene_('B18', 'беглый пленный бежит к краю карты и уходит за него', () => {
+  const w = scene();
+  const p = put(w, 'human', 'colony', w.camp.x + 0.5, w.camp.y + 3.5);
+  p.faction = 'fugitives'; p.brain = 'fugitive'; p.fugitive = {since: w.tick, slow: 1}; p.task = {id: 'escape'};
+  const t = run(w, 2000, () => p.gone);
+  return t || `за 2000 тиков не ушёл: «${p.task?.id}» (${p.x.toFixed(1)}, ${p.y.toFixed(1)})`;
 });
 
 scene_('B08', 'каталог: у каждого поведения есть код, у каждого вида с умом tabled — список, и он читает то, что есть у вида', () => {
