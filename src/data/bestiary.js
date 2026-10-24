@@ -1,9 +1,9 @@
 // The bestiary: beasts beyond the first eight (hares, deer, foxes, boars, wolves, goats, mules, rats
 // live in data/species.js). Every entry is a species and reuses one of the brains:
-//   predator (agents/brains/predator.js) — hunts prey, may go for a lone person; `predator` block
 //   mule     (agents/brains/mule.js)     — grazes, kicks whoever comes at it, charges whoever shot it
 //   tabled   (agents/brains/tabled.js)   — thinks by the row's list of behaviours (data/behaviours.js): the
-//            grazers (`behaviours: [...WAYS.grazer]`, data/behaviour.js) — graze and run; docs/BEHAVIOUR.md
+//            grazers (`behaviours: [...WAYS.grazer]`, data/behaviour.js) — graze and run; predators
+//            ([...WAYS.predator], the `predator` block) — hunt prey, may go for a lone person; docs/BEHAVIOUR.md
 //   vermin   (agents/brains/vermin.js)   — sneaks to the stores
 //   spirit   (agents/brains/spirit.js)   — the rot's forest and water folk: they live here for good
 // Fields beyond the usual ones (data/species.js):
@@ -44,7 +44,7 @@ const beast = b => ({needs: [], mind: 'beast', relativeStats: true, heatHarm: 60
 export const BESTIARY = [
   // ── beasts
   // Wargs: great wolves, half-witted; orcs and goblins ride them into raids (data/raids.js)
-  beast({id: 'varg', kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], brain: 'predator',
+  beast({id: 'varg', kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
     arrive: {group: [2, 4], every: [3, 5], chance: 0.5, cap: 4, first: 3, message: 'пришла стая варгов: {n}. Это не волки — они крупнее и злее'},
     habitat: {taiga: 'usual', tundra: 'rare', steppe: 'rare', foothills: 'rare', highlands: 'rare', barrows: 'rare'},
     look: {shape: 'wolf', size: 0.74, color: '#4b4b55'},
@@ -62,7 +62,7 @@ export const BESTIARY = [
     mule: stands({kickRange: 1.2, charge: 1.9, chargeHit: 1.7, grudge: 500, giveUp: 26, fleeBelow: 0.2, leaveChance: 0.00015, terrain: ['grass', 'forest']})}),
 
   // Lynx: an ambush from the branches, mostly hares and foxes; a lone person only when starving
-  beast({id: 'lynx', snowfoot: true, kind: 'beast', label: 'рысь', labelAcc: 'рысь', plural: 'рыси', needs: ['food'], brain: 'predator',
+  beast({id: 'lynx', snowfoot: true, kind: 'beast', label: 'рысь', labelAcc: 'рысь', plural: 'рыси', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
     arrive: {group: [1, 1], every: [3, 4], chance: 0.5, cap: 1, first: 3, message: 'в чаще поселилась рысь'},
     habitat: {taiga: 'usual', forest: 'rare'},
     look: {shape: 'fox', size: 0.5, color: '#9a8f7a'},
@@ -81,7 +81,7 @@ export const BESTIARY = [
     mule: stands({terrain: ['grass', 'forest'], leaveChance: 0.0003})}),
 
   // Hyenas: scavengers of the barrow steppe, packs, bold by night; gnolls keep them
-  beast({id: 'hyena', kind: 'beast', label: 'гиена', labelAcc: 'гиену', plural: 'гиены', needs: ['food'], brain: 'predator',
+  beast({id: 'hyena', kind: 'beast', label: 'гиена', labelAcc: 'гиену', plural: 'гиены', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
     arrive: {group: [2, 5], every: [2, 4], chance: 0.5, cap: 5, first: 2, message: 'пришли гиены: {n}. Ночью они смелеют'},
     habitat: {barrows: 'common', savanna: 'common', steppe: 'usual', desert: 'rare', shrubland: 'rare', meadow: 'rare'},
     look: {shape: 'wolf', size: 0.56, color: '#a8925e'},
@@ -100,7 +100,7 @@ export const BESTIARY = [
 
   // ── monsters of the heights and the deep
   // Griffin: nests on the crags, carries off goats and mules, a lone person when hungry
-  beast({id: 'griffin', kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], brain: 'predator',
+  beast({id: 'griffin', kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
     arrive: {group: [1, 1], every: [5, 8], chance: 0.4, cap: 1, first: 5, message: 'над скалами кружит грифон. Коз и мулов — под крышу'},
     habitat: {highlands: 'usual', foothills: 'rare', steppe: 'rare', desert: 'rare'},
     look: {shape: 'bird', size: 0.86, color: '#b88a44'},
@@ -109,7 +109,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['goat', 'deer', 'hare'], weakPrey: ['mule'], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4})}),
 
   // Wyvern: dragon-kin without a mind; its sting poisons
-  beast({id: 'wyvern', kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], brain: 'predator',
+  beast({id: 'wyvern', kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 6, message: 'с гор спустилась виверна. Её жало ядовито'},
     habitat: {highlands: 'usual', volcano: 'rare'},
     look: {shape: 'bird', size: 0.86, color: '#5d6b4b'}, venom: {dmg: 0.0009, ticks: 240},
@@ -121,7 +121,7 @@ export const BESTIARY = [
   // `dragon`). It never comes to the local map on its own (no `arrive`, no `habitat`): on the world map it
   // sleeps for years and flies out to burn a town's works and people (atlas/parties.js DRAGON). Its
   // habitat only says where its lair may be: the dragon is a lair, not a field of beasts
-  beast({id: 'dragon', kind: 'monster', label: 'дракон', labelAcc: 'дракона', plural: 'драконы', needs: ['food'], brain: 'predator', heatHarm: 800,
+  beast({id: 'dragon', kind: 'monster', label: 'дракон', labelAcc: 'дракона', plural: 'драконы', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator], heatHarm: 800,
     fearHeat: 800, habitat: {volcano: 'rare'},
     look: {shape: 'bird', size: 1.4, color: '#8a2418'}, breath: 0.5,
     yields: {meat: 20, scales: 12, gland: 3}, trophies: [{res: 'scales', n: 4, chance: 0.4, tier: 3}, {res: 'gland', n: 2, chance: 0.3, tier: 4}],
@@ -129,7 +129,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk', 'aurochs'], sight: 30, boldPeople: 0.6, groupFear: 10, meal: 6, bigMeal: 10})}),
 
   // Drake: a young dragon with no mind yet; its breath sets the grass on fire
-  beast({id: 'drake', kind: 'monster', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', needs: ['food'], brain: 'predator', heatHarm: 400,
+  beast({id: 'drake', kind: 'monster', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator], heatHarm: 400,
     arrive: {group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: 'с вулкана прилетел дрейк. Где он дышит, загорается трава'},
     fearHeat: 350,
     habitat: {volcano: 'usual', highlands: 'rare', desert: 'rare'},
@@ -139,7 +139,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk'], sight: 26, boldPeople: 0.35, groupFear: 5, meal: 3, bigMeal: 5})}),
 
   // Giant spider: webs tangle its prey; silk for bowstrings and cloth, venom for the alchemist
-  beast({id: 'spider', kind: 'monster', label: 'гигантский паук', labelAcc: 'гигантского паука', plural: 'гигантские пауки', needs: ['food'], brain: 'predator',
+  beast({id: 'spider', kind: 'monster', label: 'гигантский паук', labelAcc: 'гигантского паука', plural: 'гигантские пауки', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
     arrive: {group: [1, 3], every: [3, 5], chance: 0.5, cap: 3, first: 3, message: 'в лесу видели гигантских пауков: {n}. Паутина держит крепко'},
     habitat: {underground: 'common', jungle: 'common', forest: 'rare', swamp: 'rare'},
     look: {shape: 'spider', size: 0.62, color: '#3a3530'},
@@ -158,7 +158,7 @@ export const BESTIARY = [
     mule: stands({kickRange: 1.4, charge: 1.3, chargeHit: 1.8, fleeBelow: 0.15, leaveChance: 0.0004})}),
 
   // Blood bats: night flocks from caves and barrows; they drink, a little at a time
-  beast({id: 'bat', kind: 'monster', label: 'летучая мышь-кровопийца', labelAcc: 'летучую мышь', plural: 'летучие мыши', needs: ['food'], brain: 'predator', nocturnal: true,
+  beast({id: 'bat', kind: 'monster', label: 'летучая мышь-кровопийца', labelAcc: 'летучую мышь', plural: 'летучие мыши', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator], nocturnal: true,
     arrive: {group: [3, 6], every: [2, 3], chance: 0.6, cap: 6, first: 2, night: true},
     habitat: {underground: 'common', barrows: 'common', jungle: 'rare', swamp: 'rare'},
     look: {shape: 'bat', size: 0.34, color: '#3b3440'}, drinks: 0.6,
@@ -263,7 +263,7 @@ export const BESTIARY = [
     leaveChance: 0.0004}),
 
   // Lion: the pride of the savanna; takes saiga and cattle, and a lone man in the dry season
-  beast({id: 'lion', kind: 'beast', label: 'лев', labelAcc: 'льва', plural: 'львы', needs: ['food'], brain: 'predator', big: true,
+  beast({id: 'lion', kind: 'beast', label: 'лев', labelAcc: 'льва', plural: 'львы', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator], big: true,
     arrive: {group: [1, 3], every: [4, 6], chance: 0.4, cap: 3, first: 4, message: 'в высокой траве залегли львы: {n}'},
     habitat: {savanna: 'common', shrubland: 'usual', steppe: 'usual', desert: 'rare', barrows: 'rare'},
     look: {shape: 'lion', size: 0.78, color: '#c9a259'},
@@ -294,7 +294,7 @@ export const BESTIARY = [
       effect: 'возит собранное (сбор +20%), даёт молоко и немного шерсти'}}),
 
   // Giant scorpion: hunts by night among the sands; its sting is venom
-  beast({id: 'scorpion', kind: 'beast', label: 'гигантский скорпион', labelAcc: 'гигантского скорпиона', plural: 'гигантские скорпионы', needs: ['food'], brain: 'predator', nocturnal: true,
+  beast({id: 'scorpion', kind: 'beast', label: 'гигантский скорпион', labelAcc: 'гигантского скорпиона', plural: 'гигантские скорпионы', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator], nocturnal: true,
     arrive: {group: [1, 3], every: [3, 5], chance: 0.5, cap: 4, first: 3, night: true, message: 'ночью из песка выползли скорпионы: {n}'},
     habitat: {desert: 'common', shrubland: 'rare', savanna: 'rare', underground: 'rare'},
     look: {shape: 'spider', size: 0.5, color: '#b08a4a'},
@@ -304,7 +304,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'rat', 'fox'], weakPrey: ['saiga'], boldPeople: 0.5, groupFear: 2, sight: 14, meal: 1.2})}),
 
   // White bear: the lord of the ice; hunts seals, and anything else that walks the snow
-  beast({id: 'polarbear', snowfoot: true, kind: 'beast', label: 'белый медведь', labelAcc: 'белого медведя', plural: 'белые медведи', needs: ['food'], brain: 'predator', big: true, heatHarm: 55,
+  beast({id: 'polarbear', snowfoot: true, kind: 'beast', label: 'белый медведь', labelAcc: 'белого медведя', plural: 'белые медведи', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator], big: true, heatHarm: 55,
     arrive: {group: [1, 1], every: [4, 7], chance: 0.4, cap: 1, first: 4, message: 'по льду пришёл белый медведь'},
     habitat: {ice: 'common', tundra: 'usual'},
     look: {shape: 'bear', size: 0.95, color: '#e8e6dc'},

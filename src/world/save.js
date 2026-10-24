@@ -77,7 +77,7 @@ export function loadWorld(save) {
   w.behave.outcomes ??= {}; w.behave.company ??= 0;
   w.behave.squads ??= {started: 0, goal: 0, retreat: 0, wiped: 0};
   w.behave.hunts ??= {started: 0};
-  // feeding from before carcasses goes on by the old timer (agents/brains/predator.js); chases without a pack hunt end
+  // feeding from before carcasses goes on by the old timer (agents/behaviours/feed.js); chases without a pack hunt end
   for (const a of w.agents) if (a.task?.id === 'chase' && a.hunt == null) a.task = {id: 'roam'};
   w.behave.social ??= {escort: 0, aid: 0, yield: 0, calm: 0, bond: 0};
   // raiders from before squads (no w.squads, no a.squad) go on the old way: nearest foe, the stores, home

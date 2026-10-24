@@ -20,6 +20,9 @@ import {WAYS} from './behaviour.js';
 
 export const SPECIES = new Registry('species');
 
+// a hunter of the pack: has the `predator` block (data/behaviour.js WAYS.predator reads it)
+export const isPredator = sp => !!sp.predator;
+
 
 // What a species is to the world. On the world map (src/atlas/) each kind comes in its own way:
 //   beast    — the beasts: fields of density by biome, prey and predators (atlas/fauna.js)
@@ -46,7 +49,7 @@ SPECIES.registerAll([
   // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
   // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
   // or when the hares run out. Like everyone else they only arrive and depart by migration.
-  {id: 'wolf', kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], brain: 'predator',
+  {id: 'wolf', kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], brain: 'tabled', behaviours: [...WAYS.predator],
     habitat: {taiga: 'common', tundra: 'usual', steppe: 'usual', forest: 'usual', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},

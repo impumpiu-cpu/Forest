@@ -9,7 +9,7 @@
 // Each beast (agents/behaviours/bolt.js, alert.js, graze.js; agents/brains/mule.js) decides by itself what to do with it:
 //   — a skittish one (a.nerve low) bolts at the first alarm; a calm one only when the threat comes within
 //     its own reach, or once those around it have run for a while;
-//   — a wounded one runs slower and falls behind — and wolves go for the straggler (predator.js
+//   — a wounded one runs slower and falls behind — and wolves go for the straggler (agents/hunting.js
 //     preyValue: stragglerOf);
 //   — an elk does not run: a bold bull goes for whatever attacks one of its herd, the rest draw off.
 // A beast thinks of its own eyes only on its lookout turn; the rest of the time it trusts the herd.

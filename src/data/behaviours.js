@@ -35,6 +35,25 @@ BEHAVIOURS.registerAll([
     note: 'ночью (restAt, обычно 0.7) сидит на месте'},
   {id: 'graze', label: () => 'пасётся', band: 'routine', requires: ['grazes'], keep: 0,
     note: 'щиплет траву на своём лугу (grazes.terrain); стадный — на пастбище стада'},
+  // ── a predator (agents/hunting.js; the numbers: the species' `predator` block and PROWL of data/behaviour.js)
+  {id: 'defendLair', task: false, band: 'reflex', requires: ['predator'], keep: 0,
+    note: 'страж логова (a.defend, campaign/camp.js): держит его до конца — maul в режиме lair, без страха и бегства'},
+  {id: 'scare', task: false, band: 'red', requires: ['predator'], keep: 0,
+    note: 'что отгоняет хищника: огонь (bolt), толпа людей (bolt), зона поселения (roam в режиме shy)'},
+  {id: 'leaveHurt', task: false, band: 'red', requires: ['predator'], keep: 0,
+    note: 'тяжело раненый уходит с карты; ночной (nocturnal) — на рассвете'},
+  {id: 'feed', label: () => 'ест добычу', band: 'routine', requires: ['predator'], keep: 0,
+    note: 'ест тушу (agents/carcass.js): свою добычу или чужую, которую чует голодным'},
+  {id: 'chase', label: () => 'гонит добычу', band: 'routine', requires: ['predator'], keep: 0,
+    note: 'охота стаей на дичь: голодный смотрит далеко, сытый берёт что под носом; присоединяется к погоне вожака'},
+  {id: 'maul', label: t => (t.mule ? (t.charging ? 'несётся на обидчика' : 'лягается') : 'нападает'), band: 'routine', requires: ['predator'], keep: 0,
+    note: 'нападение на одинокого человека, когда голод (и ночь) придали смелости; отступает при подмоге (задачу maul носит и мул, agents/brains/mule.js)'},
+  {id: 'catchBreath', task: false, band: 'routine', requires: ['predator'], keep: 0,
+    note: 'выдохся в погоне — отдыхает (rest в режиме winded), пока не отдышится'},
+  {id: 'wanderOff', task: false, band: 'routine', requires: ['predator'], keep: 0,
+    note: 'голодная стая без добычи в виду уходит искать другие угодья (вожак решает за всех)'},
+  {id: 'roam', label: () => 'рыщет', band: 'routine', requires: ['predator'], keep: 0,
+    note: 'вожак выбирает, куда идти (голодный — по следу добычи), остальные держатся за ним'},
 ]);
 for (const d of BEHAVIOURS.all()) {
   if (!BANDS.includes(d.band)) throw new Error(`behaviour ${d.id}: no band «${d.band}»`);

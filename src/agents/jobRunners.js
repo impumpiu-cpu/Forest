@@ -13,7 +13,7 @@ import {buildingById} from '../settlement/query.js';
 import {jobSpeedOf} from '../settlement/mods.js';
 import {workAt, stationHasWork, stationPriority, freeBench} from '../settlement/crafting.js';
 import {carcassById, smellCarcass, butcher, share, CARCASS} from './carcass.js';
-import {boldness} from './brains/predator.js';
+import {boldness} from './hunting.js';
 import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';

@@ -3,7 +3,6 @@
 import {Registry} from '../../core/registry.js';
 import {colonistBrain} from './colonist.js';
 import {raiderBrain} from './raider.js';
-import {predatorBrain} from './predator.js';
 import {muleBrain} from './mule.js';
 import {caravanBrain} from './caravan.js';
 import {verminBrain} from './vermin.js';
@@ -13,4 +12,4 @@ import {fugitiveBrain} from './fugitive.js';
 import {tabledBrain} from './tabled.js';
 
 export const BRAINS = new Registry('brain');
-BRAINS.registerAll([tabledBrain, spiritBrain, colonistBrain, raiderBrain, predatorBrain, muleBrain, caravanBrain, verminBrain, livestockBrain, leaverBrain, fugitiveBrain]);
+BRAINS.registerAll([tabledBrain, spiritBrain, colonistBrain, raiderBrain, muleBrain, caravanBrain, verminBrain, livestockBrain, leaverBrain, fugitiveBrain]);

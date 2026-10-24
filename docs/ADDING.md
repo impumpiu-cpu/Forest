@@ -118,7 +118,7 @@
 
 ### Зверь бестиария
 
-Запись в `data/bestiary.js`: где живёт (`habitat`: биом → `common`, `usual`, `rare`, `scarce`), мозг: `tabled` со списком поведений `behaviours` (травоядные: `[...WAYS.grazer]` или `[...WAYS.herdGrazer]` из `data/behaviour.js`, см. [Поведение](BEHAVIOUR.md)) либо написанный вручную (`predator`, `mule`, `vermin`, `spirit`) с его блоком, внешний вид, добыча `yields` и блок `arrive`: размер группы, раз в сколько дней, шанс, сколько может быть на карте (`cap`), с какого дня (`first`), только ли ночью, строка журнала. Миграция, поток прихода в `outside/scripted.js`, список соседа и легенда соберутся сами.
+Запись в `data/bestiary.js`: где живёт (`habitat`: биом → `common`, `usual`, `rare`, `scarce`), мозг: `tabled` со списком поведений `behaviours` (травоядные: `[...WAYS.grazer]` или `[...WAYS.herdGrazer]`, хищники: `[...WAYS.predator]` с блоком `predator` — списки в `data/behaviour.js`, см. [Поведение](BEHAVIOUR.md)) либо написанный вручную (`mule`, `vermin`, `spirit`) с его блоком, внешний вид, добыча `yields` и блок `arrive`: размер группы, раз в сколько дней, шанс, сколько может быть на карте (`cap`), с какого дня (`first`), только ли ночью, строка журнала. Миграция, поток прихода в `outside/scripted.js`, список соседа и легенда соберутся сами.
 
 Особые свойства: `venom` (яд), `web` (паутина замедляет), `breath` (поджигает землю под жертвой), `drinks` (лечится кровью), `nocturnal` (ночной), `hibernates` (зимой уходит), `weakTo` (что его берёт). Нечисть — `resident: true` и `respawn`: живёт здесь, убитая возвращается через столько дней. Тело и SPECIAL — строка в `data/balance/creatures.js`, затем `npm run arena:calibrate`. Новой форме нужен рисовальщик в `render/looks.js`. Проверка — `npm run bestiary`.
 

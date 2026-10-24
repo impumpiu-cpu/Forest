@@ -5,7 +5,7 @@
 // memories fade slower than bad ones, settlement/relations.js).
 //   escort — when beasts that hunt people roam the woods, someone goes along with a lone gatherer,
 //            keeps close and takes on whatever comes for them. Two together are also less of a prey:
-//            predators shy away from company (agents/brains/predator.js).
+//            predators shy away from company (agents/behaviours/maul.js).
 //   aid    — a badly hurt colonist out in the woods: a friend (or anyone merciful enough) goes to
 //            dress the wounds and sees them home.
 //   mates  — a job someone you like is doing tempts a little more, one with someone you cannot stand

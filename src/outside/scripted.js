@@ -21,7 +21,7 @@ import {HOUR, dayOf, nightness} from '../core/time.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, scoutedBand} from '../settlement/threat.js';
 import {weighted} from '../core/util.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, isPredator} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 import {ARRIVALS as A} from '../data/migrations.js';
 
@@ -126,7 +126,7 @@ for (const sp of SPECIES.filter(s => s.arrive)) {
   const A = sp.arrive, when = (w, t) => (A.night ? evening(t) : t);
   // the polygon's «Чудища» scales the monsters on top of the wolves' or the game's setting; «Нечисть» turns the spirits off
   const monsters = w => (sp.kind === 'monster' ? MONSTERS[w.cfg.monsters ?? 'usual']?.k ?? 1 : 1);
-  const setting = w => (sp.resident ? (w.cfg.spirits === false ? 0 : 1) : (sp.brain === 'predator' ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0) * monsters(w));
+  const setting = w => (sp.resident ? (w.cfg.spirits === false ? 0 : 1) : (isPredator(sp) ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0) * monsters(w));
   scripted.flows[sp.id] = {from: sp.resident ? 'local' : 'wilds',
     first: (w, rng) => when(w, w.tick + (A.first + rng()) * DAY),
     offer: (w, rng) => {

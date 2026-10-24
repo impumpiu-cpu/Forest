@@ -1,7 +1,8 @@
 // Bolt: run from fire, or from what the species fears (`flee.from` within `flee.radius`); a shot that
 // whistled past keeps it running for a while (`spooked`, agents/jobRunners.js). A herd beast trusts
 // its herd's lookouts (agents/wildHerd.js): it runs at the herd's alarm by its own nerve and distance.
-// Reads: flee {radius, sprint, from, stamina}; herd (optional).
+// Other behaviours offer the task too (scare: a predator from fire or a crowd), with what to run from
+// and how fast in the task itself. Reads: flee {radius, sprint, from, stamina}; herd (optional).
 import {SPECIES} from '../../data/species.js';
 import {escapeHeat, bolt as run, sprintMul, shunsHeat} from '../movement.js';
 import {herdOf, herdAlarm, bolts, threatsNear} from '../wildHerd.js';
@@ -23,8 +24,10 @@ export const bolt = {
   // a herd beast remembers when it last ran (agents/wildHerd.js stragglers); fire is no alarm of the herd
   enter(w, a, t) { if (t.mode !== 'fire') a.boltAt = w.tick; },
   step(w, a, t) {
-    const sp = SPECIES.get(a.species), F = sp.flee;
-    if (t.mode === 'fire') { escapeHeat(w, a, F.sprint); return; }
+    const F = SPECIES.get(a.species).flee;
+    if (t.mode === 'fire') { escapeHeat(w, a, t.pace ?? F.sprint); return; }
+    // from what another behaviour named (scare): a crowd of people
+    if (t.mode === 'from') { run(w, a, t.from.filter(o => !o.dead), sprintMul(a, t.sprint, t.drain)); return; }
     a.spooked = Math.max(0, (a.spooked || 0) - 1);
     if (t.mode === 'herd') {
       const al = herdAlarm(w, herdOf(w, a));

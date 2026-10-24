@@ -193,7 +193,7 @@ function spawnFoe(w) {
   if (S.kind === 'guard') for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
     const sq = w.squads?.[id]; if (sq) { sq.kind = 'mindless'; sq.goal = 'slaughter'; }
   }
-  // the beasts of the fourth's lair hold it to the last as well (agents/brains/predator.js); a grave's may be driven off
+  // the beasts of the fourth's lair hold it to the last as well (agents/behaviours/maul.js defendLair); a grave's may be driven off
   if (S.kind === 'guard' && F.boss?.mustDie) for (const g of group) if (SPECIES.get(g.species)?.predator) g.defend = true;
   // a boss (campaign/epic.js): the strongest of them, grown past its kind — named, at full health
   if (F.boss && group.length) {

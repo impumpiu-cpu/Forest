@@ -48,7 +48,7 @@ import {orderText, craftContext} from '../settlement/crafting.js';
 import {fishTotals} from '../world/lakes.js';
 import {moodOf, moodLabel, wishes} from '../agents/mind.js';
 import {councilWish} from '../settlement/council.js';
-import {boldness} from '../agents/brains/predator.js';
+import {boldness} from '../agents/hunting.js';
 import {STATS} from '../data/special.js';
 import {WOUNDS} from '../data/wounds.js';
 import {conditionsOf} from '../data/conditions.js';

@@ -254,9 +254,9 @@ TASKS.registerAll([
     w.stats.lastSteal = w.tick; a.looted = true; a.task = {id: 'leave'};
   }},
   // leaving the map for good: raiders with their loot, and any beast that wanders off (agents/behaviours/leave.js)
-  {id: 'leave', label: () => 'уходит', step(w, a) {
+  {id: 'leave', label: () => 'уходит', step(w, a, t) {
     recover(a);
-    if (follow(w, a, 'edge') !== 'arrived') return;
+    if (follow(w, a, 'edge', t.pace ?? 1) !== 'arrived') return;
     a.gone = true; noteHome(w, a);
     if (a.loot) { const b = w.behave?.board; if (b) b.lootLost = (b.lootLost || 0) + lootTotal(a.loot); a.loot = null; }   // gone for good
   }},
@@ -365,13 +365,9 @@ TASKS.registerAll([
   {id: 'toPen', label: () => 'идёт в загон', step() {}},
 
   // animal states of the hand-written brains (agents/brains/): the brain moves the animal itself, these
-  // entries only name the state. graze, rest, bolt, alert are the behaviours' own (agents/behaviours/index.js)
+  // entries only name the state. graze, rest, bolt, alert, roam, chase, maul, feed are the behaviours' own (data/behaviours.js)
   {id: 'nibble', label: () => 'грызёт припасы', step() {}},
   {id: 'drawOff', label: () => 'отходит от опасности', step() {}},
-  {id: 'roam', label: () => 'рыщет', step() {}},
-  {id: 'chase', label: () => 'гонит добычу', step() {}},
-  {id: 'maul', label: t => (t.mule ? (t.charging ? 'несётся на обидчика' : 'лягается') : 'нападает'), step() {}},
-  {id: 'feed', label: () => 'ест добычу', step() {}},
   {id: 'hide', label: () => 'прячется', step() {}},
   {id: 'lurk', label: () => 'таится', step() {}},
   {id: 'sing', label: () => 'поёт у воды', step() {}},

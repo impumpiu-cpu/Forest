@@ -234,7 +234,6 @@ for (const sp of SPECIES.all()) {
   for (const k of sp.tameWith || []) if (!SPECIES.get(k)?.rel) warn(`${where}: tameWith — «${k}» не раса`);
   for (const r of Object.keys(sp.yields || {})) res(where, r);
   if (sp.brain === 'mule' && !sp.mule) err(`${where}: мозг mule без блока mule`);
-  if (sp.brain === 'predator' && !sp.predator) err(`${where}: мозг predator без блока predator`);
   if (sp.brain === 'spirit' && !sp.spirit) err(`${where}: мозг spirit без блока spirit`);
   // the tabled brain: a list of behaviours, each with the fields it reads (agents/behaviours/index.js `requires`)
   if (sp.brain === 'tabled' && !sp.behaviours?.length) err(`${where}: ум tabled без списка behaviours`);

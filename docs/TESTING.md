@@ -28,7 +28,7 @@
 check-layers · atlas-check 2 · atlas-save-check 1 · map-check 3 · seam-check 16 · campaign-check 1 ·
 check-data · check-tables · align-check · leaders-check · tech-check · kinds-check · fight-check ·
 conditions-check · checks-check · kingdom-check · content-check · land-check · settle-check ·
-quest-hand-check · audit-check · logic-check · determinism 2 · rng-check 3 · smoke 2
+quest-hand-check · audit-check · logic-check · behaviour-check · determinism 2 · rng-check 3 · smoke 2
 ```
 
 Строка `ok …` — проверка прошла, `warn …` — предупреждение (тест не падает), `FAIL …` или выход с ошибкой — тест упал.
@@ -78,6 +78,7 @@ quest-hand-check · audit-check · logic-check · determinism 2 · rng-check 3 �
 | `npm run questhand` | `quest-hand-check.mjs` | бедствие руки — квест похода: ждущее и поднявшееся, все прошли, бедствий нет; поход до конца |
 | `npm run audit` | `audit-check.mjs` | то, что нашёл разбор кода, не возвращается: правки доходят до игры, числа не копируются из таблиц при загрузке, склад по видам, бедствия руки, держатель артефакта, досягаемость квеста, слова вещей |
 | `npm run logic` | `logic-check.mjs` | сцены правил поведения ([ниже](#проверка-логики)) |
+| `npm run behaviour` | `behaviour-check.mjs` | полигон поведения: сцены целой симуляции на маленькой карте ([ниже](#полигон-поведения)) |
 
 У трёх скриптов из `npm test` своей команды нет — их запускают напрямую: `node tools/check-layers.mjs`, `node tools/check-data.mjs`, `node tools/rng-check.mjs`. Ещё два файла `tools/` — не команды, а модули отчётов: `report.mjs` (отчёт балансного прогона; `node tools/report.mjs runs/<папка>` пересобирает `report.html` из готового `summary.json`) и `arena-report.mjs` (анализ и отчёт арены, его вызывает `arena.mjs`). `tools/numbers-baseline.json` — линия чисел для `check-layers` ([ниже](#проверка-слоёв)).
 
@@ -198,6 +199,10 @@ node tools/stress.mjs --budget 6                     # выход 1, если mi
 - доска колонии: дозор, крик, тревоги, погоня, ночная стража, дикие стада;
 - плен: путы, побег, смирение, доносчик, мастера и ученики, бывшие рабы, торговля пленными;
 - клеймо кузнеца.
+
+## Полигон поведения
+
+`tools/behaviour-check.mjs` (в `npm test`; `node tools/behaviour-check.mjs B03` — одна сцена) — полигон для поведений ума `tabled` ([Поведение](BEHAVIOUR.md)). В отличие от сцен логики, здесь крутится вся симуляция (`sim.js step`) на ровной малой карте с одним неподвижным поселенцем у костра (чтобы поселение стояло), без прихода из-за края. Сцена ставит зверей руками и утверждает исход за N тиков: заяц бежит от человека и возвращается к траве (`B01`), стадо оленей тревожится от волка (`B02`), голодная стая начинает охоту, берёт добычу и ест тушу (`B03`), сытая стая не гонит дальнего зайца, но берёт ближнего (`B04`), голодная стая в сумерках нападает на одинокого поселенца и отступает от троих (`B05`), огонь и зона поселения отгоняют волка (`B06`), раненый уходит с карты (`B07`), каталог сходится с кодом и видами (`B08`). Новое поведение получает свою сцену; перенос мозга на поведения проверяется тем, что старые сцены проходят.
 
 ## Поведенческие метрики
 

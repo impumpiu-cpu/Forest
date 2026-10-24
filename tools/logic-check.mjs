@@ -65,7 +65,7 @@ import {heatTo} from '../src/world/heat.js';
 import {makePlan, vacancyPull, signUp, PLAN} from '../src/settlement/plan.js';
 import {stepAttention, HEART} from '../src/agents/attention.js';
 import {stepHerds, herdOf, herdAlarm, HERD} from '../src/agents/wildHerd.js';
-import {preyValue} from '../src/agents/brains/predator.js';
+import {preyValue} from '../src/agents/hunting.js';
 import {prune, nextLookouts, inTurn, see, fade, seenMiddle} from '../src/agents/group.js';
 import {stepBoard, flagOptions, watchOption, BOARD, WATCH} from '../src/settlement/board.js';
 import {raidAlarm} from '../src/settlement/query.js';

@@ -1,7 +1,7 @@
 // Livestock brain: a tamed goat or mule (settlement/herd.js). It keeps to its pen: walks there when
 // it is outside, grazes from spot to spot inside the fence, dozes at night. It shies from fire and
 // from wolves; a mule kicks a wolf that comes at it. Without a pen it stays by the camp.
-import {SPECIES} from '../../data/species.js';
+import {SPECIES, isPredator} from '../../data/species.js';
 import {nightness} from '../../core/time.js';
 import {cellOf} from '../../world/grid.js';
 import {approach, escapeHeat, nearFire, bolt, follow, recover, moveToward, shunsHeat} from '../movement.js';
@@ -37,7 +37,7 @@ export const livestockBrain = {
     if (a.cd > 0) a.cd--;
     // a beast of prey or a raider right here (any of the bestiary's hunters, not only wolves):
     // a mule turns and kicks, a goat runs
-    const wolf = w.agents.find(o => !o.dead && (o.brain === 'predator' || o.faction === 'raiders') && Math.hypot(o.x - a.x, o.y - a.y) < 3);   // scan: tame beasts only (a handful)
+    const wolf = w.agents.find(o => !o.dead && (isPredator(SPECIES.get(o.species)) || o.faction === 'raiders') && Math.hypot(o.x - a.x, o.y - a.y) < 3);   // scan: tame beasts only (a handful)
     if (wolf) {
       if (sp.mule && Math.hypot(wolf.x - a.x, wolf.y - a.y) < sp.mule.kickRange && a.cd <= 0) {
         a.cd = sp.attack.cooldown; a.flash = 4; damage(w, a, wolf, (0.1 + w.rngs.wild() * 0.12) * sp.attack.power);

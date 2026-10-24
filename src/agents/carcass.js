@@ -136,7 +136,7 @@ export function stepHunts(w) {
     const prey = agentById(w, h.prey);
     const ms = liveMembers(w, h, m => m.hunt === h.id);
     if (!ms.length) { endHunt(w, h, 'gave'); continue; }
-    // the pack's own kill ends the hunt at the bite (agents/brains/predator.js); dead otherwise: someone else got it
+    // the pack's own kill ends the hunt at the bite (agents/behaviours/chase.js); dead otherwise: someone else got it
     if (!prey || prey.dead) { endHunt(w, h, prey?.dead || h.preyDead ? 'taken' : 'escaped'); continue; }
     if (agentInZone(w, prey)) { endHunt(w, h, 'zone'); continue; }
     const P = SPECIES.get(ms[0].species).predator;

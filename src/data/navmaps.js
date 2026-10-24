@@ -67,7 +67,7 @@ NAVMAPS.registerAll([
     seed: (w, i) => w.grid.fire[i] === 0 && w.grid.bld[i] < 0 && !!lakeBeside(w, i)},
   // the game hunters are after right now (data/jobs.js huntable: their usual prey, else the risky
   // kind, else in hunger the last resort; never a wild goat kept for taming). Only while a hunter is out.
-  // Predators do not use it: each walks to a prey of its own kind (agents/brains/predator.js).
+  // Predators do not use it: each walks to a prey of its own kind (agents/behaviours/roam.js).
   {id: 'prey', period: 20, minGap: 10, active: w => w.agents.some(a => a.task?.job === 'hunt'),
     prepare: w => new Set(HUNTABLE(w, JOBS_REF.get('hunt')).map(a => cellOf(w, a))),
     seed: (w, i, cells) => cells.has(i)},

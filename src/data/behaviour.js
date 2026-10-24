@@ -9,6 +9,10 @@ import {DAY} from '../core/time.js';
 export const WAYS = {
   grazer: ['bolt', 'sniffHay', 'leave', 'rest', 'graze'],
   herdGrazer: ['bolt', 'alert', 'sniffHay', 'leave', 'rest', 'graze'],
+  // a hunter of the pack: holds a stormed lair to the last; fire, a crowd and the settlement zone drive it off;
+  // wounded (or a night hunter at dawn) it leaves; eats its kill, chases game, goes for a lone person,
+  // gets its breath back, moves on when the land is empty, else roams — hungry, on the scent of prey
+  predator: ['defendLair', 'scare', 'leaveHurt', 'feed', 'chase', 'maul', 'catchBreath', 'wanderOff', 'roam'],
 };
 
 export const SQUAD = {
@@ -76,6 +80,40 @@ export const GRAZE = {
 };
 // what each offer of a grazer's behaviours is worth in its lane (a lane is never weighed against another)
 export const WANT = {fire: 2, threat: 1, alert: 1, hay: 1, leave: 0.5, rest: 0.4, graze: 0.3};
+
+// a predator beyond its species' `predator` block (agents/hunting.js, agents/behaviours/: scare, leaveHurt, feed,
+// chase, maul, catchBreath, wanderOff, roam, defendLair)
+export const PROWL = {
+  // what each offer is worth in its lane: the red lane (fire > leaving > a crowd > the zone), then the queue, where a
+  // hunt under way gives way to a rest when out of breath, then joining the pack, the pack before a carcass, prey, people, moving on
+  want: {lair: 1, fire: 3, leave: 2.5, crowd: 2, zone: 1.5,
+    breath: 0.96, feedOn: 0.95, chaseOn: 0.94, maulOn: 0.93, joinChase: 0.7, joinMaul: 0.69, carcass: 0.6, prey: 0.55, people: 0.5, wander: 0.45, roam: 0.1},
+  value: {winded: 0.5, catchOdds: 0.8, straggler: 1.4, catchMin: 0.15, way: 0.5, bigRisk: 0.3, least: 0.05},   // preyValue: see agents/hunting.js
+  killCall: 10,        // pack members this close to the kill sit down to it
+  joinNear: 12,        // members this close join an attack on a person
+  calmBold: 0.5,       // the pause after a try at people is shorter by this × boldness
+  desperate: 0.8,      // boldness above which the pack goes for a pair («изголодавшиеся… бросаются»)
+  scent: 70,           // how far a hungry predator smells its prey (cells)…
+  scentAgain: 120,     // …and after how long it picks the trail anew
+  fire: {near: 2.5, pace: 1.4},   // fire this close sends it off, at this pace
+  peopleNear: 6,       // people this close count as a crowd
+  crowdBold: 2,        // a starving one needs this × boldness more people to be scared off
+  hurtBelow: 0.35,     // health below this share: leaves the woods…
+  leavePace: 1.2,      // …at this pace
+  dawn: 0.3,           // a night hunter leaves when the night falls below this
+  nightLit: 0.5,       // night deeper than this (or the lit camp) → the zone keeps it farther off (zoneShyNight)
+  boldZone: 0.6,       // the zone's hold shrinks by this × boldness
+  feed: {done: 0.98, least: 0.05, pace: 0.8},   // full at this, a carcass this small is left, the walk to it
+  chase: {winded: 0.05, stuck: 90, moved: 3, ignoreFor: 600, flankPace: 0.75, bigBite: 1.0, bite: 0.7},
+  maul: {stuck: 120, moved: 3, reset: 1.5, reach: 0.9, pace: 0.6, helpNear: 5, help: 2, helpBold: 2, calmStuck: 0.5, calmHelp: 0.7},
+  rested: 0.7,         // out of breath: rests until stamina is back to this
+  join: {near: 15, fresh: 0.6},   // a member this close and this fresh joins a new chase
+  smellBelow: 0.1,     // goes back to a carcass while food < sated − this
+  people: {night: 0.25, sightBase: 0.6, sightBold: 0.4},   // the cover of night adds to boldness; how far it looks for a victim
+  wanderBold: 0.85,    // starving past this with no prey in sight: the pack may leave for other grounds
+  roam: {follow: 2.5, followPace: 0.95, scentPace: 0.85, spotNear: 1.5, stuck: 120, tries: 20, margin: 6, nightPace: 0.85, dayPace: 0.7},
+  defend: {reach: 80, winded: 0.2, pace: 0.8, drain: 0.6},   // a lair's guard (campaign/camp.js)
+};
 
 export const TROPHY = {lucky: 0.5, soft: 5, practice: 40};
 
