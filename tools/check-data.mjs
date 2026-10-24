@@ -234,8 +234,9 @@ for (const sp of SPECIES.all()) {
   for (const k of sp.tameWith || []) if (!SPECIES.get(k)?.rel) warn(`${where}: tameWith — «${k}» не раса`);
   for (const r of Object.keys(sp.yields || {})) res(where, r);
   // the tabled brain: a list of behaviours, each with the fields it reads (agents/behaviours/index.js `requires`)
-  if (sp.brain === 'tabled' && !sp.behaviours?.length) err(`${where}: ум tabled без списка behaviours`);
-  if (sp.behaviours && sp.brain !== 'tabled') err(`${where}: behaviours при уме «${sp.brain}» — читает их только tabled`);
+  if (sp.brain) err(`${where}: свой мозг «${sp.brain}» — вид думает по списку behaviours, раса — умом своей стороны (data/factions.js)`);
+  if ((sp.kind === 'beast' || sp.kind === 'monster' || sp.kind === 'spirit') && !sp.behaviours?.length) err(`${where}: зверь без списка behaviours`);
+  if (sp.behaviours && !sp.behaviours.length) err(`${where}: пустой список behaviours`);
   for (const id of sp.behaviours || []) {
     if (!BEHAVIOURS.has(id)) { err(`${where}: нет поведения «${id}»`); continue; }
     for (const f of BEHAVIOURS.get(id).requires) if (sp[f] == null) err(`${where}: поведение ${id} читает «${f}», а его нет`);

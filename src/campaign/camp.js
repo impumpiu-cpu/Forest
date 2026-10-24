@@ -23,8 +23,6 @@ import {putUp} from '../settlement/buildings.js';
 import {raidThreat, THREAT} from '../settlement/threat.js';
 import {raiderStrength} from '../data/raids.js';
 import {recordOf} from '../settlement/chronicle.js';
-import {BRAINS} from '../agents/brains/index.js';
-import {approach} from '../agents/movement.js';
 import {walkable} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {cellPlan} from '../seam/cell.js';
@@ -47,18 +45,6 @@ import {allItems, def as itemOf} from '../agents/equipment.js';
 
 // the camp's border with the world: nobody comes by schedule — the campaign sends the foe itself
 PROVIDERS.register({id: 'camp', label: 'Стоянка каравана', flows: {}, distance: () => null, receive() {}});
-
-// a beast led away by a raider who looted the camp: it follows him, and is gone with him
-BRAINS.register({
-  id: 'led',
-  step(w, a) {
-    const r = w.agents.find(o => o.id === a.ledBy);
-    if (!r || r.dead) { a.brain = 'livestock'; a.ledBy = null; a.task = null; return; }   // the thief fell: the beast stays
-    if (r.gone) { a.gone = true; a.stolen = true; return; }
-    a.task = {id: 'led'};
-    if (Math.hypot(r.x - a.x, r.y - a.y) > 0.8) approach(w, a, r.x, r.y, 1.1);
-  },
-});
 
 const alive = K => K.members.filter(m => m.alive);
 const round1 = v => Math.round(v * 10) / 10;
@@ -227,7 +213,7 @@ export function stepCamp(w) {
   if (w.tick % 10 === 0) for (const o of w.agents) {
     if (o.faction !== 'raiders' || o.dead || !o.looted || o.task?.id !== 'leave' || o.leads) continue;
     const b = w.agents.find(x => x.tame && !x.dead && !x.ledBy && Math.hypot(x.x - o.x, x.y - o.y) < 2.5);
-    if (b) { b.ledBy = o.id; b.brain = 'led'; o.leads = b.id; }
+    if (b) { b.ledBy = o.id; b.brain = 'led'; o.leads = b.id; }   // the brain `led` (agents/behaviours/led.js): it follows him and is gone with him
   }
   if (C.spawned && C.foes.length) {
     if (foesLeft(w) === 0) C.quiet ??= w.tick; else C.quiet = null;

@@ -12,4 +12,4 @@ import {WAYS} from '../../data/behaviour.js';
 export const BRAINS = new Registry('brain');
 // a brain that is a list of behaviours of its own (data/behaviour.js WAYS), whatever the species: a tamed beast, one who left
 const listBrain = (id, behaviours) => ({id, behaviours, step(w, a) { tabledStep(w, a, behaviours); }});
-BRAINS.registerAll([tabledBrain, listBrain('livestock', WAYS.livestock), listBrain('leaver', WAYS.leaver), colonistBrain, raiderBrain, caravanBrain, fugitiveBrain]);
+BRAINS.registerAll([tabledBrain, listBrain('livestock', WAYS.livestock), listBrain('leaver', WAYS.leaver), listBrain('led', WAYS.led), colonistBrain, raiderBrain, caravanBrain, fugitiveBrain]);

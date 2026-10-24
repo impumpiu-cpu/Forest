@@ -12,7 +12,7 @@
 // Tame mules work for the colony: their `effects` join the colony's modifiers (settlement/mods.js).
 import {canDoAction} from '../agents/skills.js';
 import {isFree} from './reserve.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, brainOf} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {DAY, HOUR} from '../core/time.js';
 import {season, SEASON_DAYS, daysLeftInSeason} from '../data/seasons.js';
@@ -96,7 +96,7 @@ export function makeTame(w, beast, by, born = false) {
 // an animal that goes wild again (hunger)
 function breakOut(w, a, why) {
   const sp = SPECIES.get(a.species);
-  a.tame = false; a.faction = 'wild'; a.brain = sp.brain; a.task = {id: 'leave'};
+  a.tame = false; a.faction = 'wild'; a.brain = brainOf(sp); a.task = {id: 'leave'};
   forget(w);
   recomputeMods(w);
   const f = sp.id === 'goat';

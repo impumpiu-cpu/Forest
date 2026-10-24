@@ -119,7 +119,7 @@ MIGRATIONS.registerAll([
           a.band = band.id;
           if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);
           // a war beast (a warg with orcs, a hyena with gnolls) follows the band, not its own brain
-          if (SPECIES.get(m.species).brain) { a.brain = 'raider'; a.warBeast = true; }
+          if (SPECIES.get(m.species).behaviours) { a.brain = 'raider'; a.warBeast = true; }
         }}));
     },
     groupInit: (group, w) => {

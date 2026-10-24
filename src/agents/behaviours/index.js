@@ -37,8 +37,9 @@ import {lurk} from './lurk.js';
 import {fendOff} from './fendOff.js';
 import {penned} from './penned.js';
 import {depart} from './depart.js';
+import {led} from './led.js';
 
-export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff, scurry, hide, nibble, vanish, fightBack, lure, astray, lurk, fendOff, penned, depart};
+export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff, scurry, hide, nibble, vanish, fightBack, lure, astray, lurk, fendOff, penned, depart, led};
 
 for (const d of BEHAVIOURS.all()) {
   const c = ACTS[d.id];

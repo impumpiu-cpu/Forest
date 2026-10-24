@@ -177,7 +177,6 @@ export const TABLES = [
     note: 'Звери (data/species.js, data/bestiary.js), нежить и демоны (data/monsters.js) + их строки data/balance/creatures.js.',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('kind', 'Вид', 'enum', {values: KINDS}), col('mind', 'Разум', 'enum', {values: MINDS}),
-      col('brain', 'Ум', 'text', {edit: false, note: 'agents/brains: tabled — думает по списку поведений, прочие — код'}),
       col('behaviours', 'Поведения', 'ids', {ref: BEHAVIOURS, note: 'что умеет (agents/behaviours/, таблица «Поведения»): порядок — порядок выбора'}),
       col('heart', 'Думает раз в', 'int', {min: 1, note: 'тиков между раздумьями ума tabled; тревоги смотрит каждый тик (пусто — каждый тик)'}),
       col('habitat', 'Биомы обитания', 'map', {ref: 'biomes', values: RARITY, note: 'как часто встречается: часто · обычно · редко · очень редко'}),

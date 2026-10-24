@@ -14,11 +14,12 @@ export const WAYS = {
   // gets its breath back, moves on when the land is empty, else roams — hungry, on the scent of prey
   predator: ['defendLair', 'scare', 'leaveHurt', 'feed', 'chase', 'maul', 'catchBreath', 'wanderOff', 'roam'],
   // a big grazer that stands its ground (a mule, a boar, a bear, an elk): fire sends it off; whoever comes at it is
-  // kicked, whoever shot it is charged, a bold bull stands up for its herd; a pack mule walks behind its trader;
+  // kicked, whoever shot it is charged, a bold bull stands up for its herd; a pack mule walks behind its trader (`mule`);
   // it sniffs the herder's hay, else leaves, sleeps, grazes; one of a herd (an elk) also draws off from what comes
   // too close to the herd and stands alert at its alarm
-  stander: ['shunFire', 'standGround', 'pack', 'sniffHay', 'leave', 'rest', 'graze'],
-  herdStander: ['shunFire', 'standGround', 'pack', 'sniffHay', 'drawOff', 'alert', 'leave', 'rest', 'graze'],
+  stander: ['shunFire', 'standGround', 'sniffHay', 'leave', 'rest', 'graze'],
+  herdStander: ['shunFire', 'standGround', 'sniffHay', 'drawOff', 'alert', 'leave', 'rest', 'graze'],
+  mule: ['shunFire', 'standGround', 'pack', 'sniffHay', 'leave', 'rest', 'graze'],   // the mule alone carries a trader's crates
   // vermin (a rat, the kikimora): runs from whoever is awake and close, hides in its hole while the stores are watched,
   // sneaks in to nibble the food when the camp is quiet
   vermin: ['shunFire', 'scurry', 'hide', 'nibble'],
@@ -29,6 +30,7 @@ export const WAYS = {
   // not a species' list but a brain's (agents/brains/index.js): a tamed beast in its pen, someone who left the outpost
   livestock: ['shunFire', 'fendOff', 'penned', 'rest'],
   leaver: ['depart'],
+  led: ['led'],   // a tame beast a raider leads away (campaign/camp.js)
 };
 
 export const SQUAD = {
@@ -123,6 +125,7 @@ export const PEN = {
   campNear: 5, campPace: 0.8, stroll: 0.02, strollR: 4, strollPace: 0.4,   // no pen yet: keeps by the camp
   toPen: 0.9,          // walks to its pen at this pace
   newSpot: 0.008, margin: 0.3, there: 0.2, pace: 0.3,   // inside: from spot to spot
+  ledNear: 0.8, ledPace: 1.1,   // led away by a raider: keeps this close, at this pace (agents/behaviours/led.js)
   want: {fire: 2, foe: 1.5, out: 0.5, rest: 0.4, in: 0.3},
 };
 

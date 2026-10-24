@@ -181,7 +181,7 @@ node tools/stress.mjs --budget 6                     # выход 1, если mi
 
 `tools/check-layers.mjs` (первая в `npm test`):
 - ядро (всё, кроме `src/ui`, `src/render`, `src/app`, `src/main.js`) не импортирует оболочку и не трогает глобалы браузера (`document`, `window`, `localStorage`, `indexedDB`…);
-- код, который работает для каждого существа каждый тик (`agents/brains/`, `agents/tasks.js`, `jobRunners.js`, `combat.js`, `movement.js`, `data/jobs.js`), не перебирает `w.agents` целиком — нужен индекс `agents/lookup.js` или `agents/spatial.js`; дешёвый перебор помечается на строке `// scan: почему дёшево`;
+- код, который работает для каждого существа каждый тик (`agents/brains/`, `agents/behaviours/`, `agents/tasks.js`, `jobRunners.js`, `combat.js`, `movement.js`, `data/jobs.js`), не перебирает `w.agents` целиком — нужен индекс `agents/lookup.js` или `agents/spatial.js`; дешёвый перебор помечается на строке `// scan: почему дёшево`;
 - каждый файл `src/` разбирается (`node --check`);
 - **числа в логике:** считает дробные числа в файлах логики (`agents`, `atlas`, `campaign`, `settlement`, `world`, `seam`, `nav`, `outside`) и сравнивает с `tools/numbers-baseline.json`. Больше линии — предупреждение (тест не падает): числу место в `src/data/` и таблице. Меньше — линию можно опустить: `node tools/check-layers.mjs --numbers`.
 

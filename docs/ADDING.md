@@ -108,9 +108,9 @@
 
 ### Существо
 
-Запись в `data/species.js`: `kind`, потребности `needs`, внешний вид `look` (`shape`, размер, цвет), мозг `brain`, добыча `yields`, трофеи `trophies`. Тело и SPECIAL — строка в `data/balance/creatures.js` ([Баланс вещей](BALANCE.md)): `special`, `hp`, `speed`, `attack`, `resist`; у зверя — `around({...})`, типичный зверь и разброс. Без строки игра не загрузится. Затем `npm run arena:calibrate` подберёт виду поправку коэффициента силы `ks`.
+Запись в `data/species.js`: `kind`, потребности `needs`, внешний вид `look` (`shape`, размер, цвет), список поведений `behaviours` ([Поведение](BEHAVIOUR.md)), добыча `yields`, трофеи `trophies`. Тело и SPECIAL — строка в `data/balance/creatures.js` ([Баланс вещей](BALANCE.md)): `special`, `hp`, `speed`, `attack`, `resist`; у зверя — `around({...})`, типичный зверь и разброс. Без строки игра не загрузится. Затем `npm run arena:calibrate` подберёт виду поправку коэффициента силы `ks`.
 
-Новой форме нужен рисовальщик в `render/looks.js`. Новому поведению — мозг в `agents/brains/`, зарегистрированный в `agents/brains/index.js`. Пример — волки: запись `wolf` в `data/species.js` с блоком `predator`, мозг `predator`, фракция `predators`, рисовальщик `wolf` в `render/looks.js` и миграция `wolves` с потоком в `outside/scripted.js`. Остальные системы волков не знают.
+Новой форме нужен рисовальщик в `render/looks.js`. Новая повадка — строка каталога `data/behaviours.js` и файл `agents/behaviours/<id>.js` ([Поведение → Как добавить поведение](BEHAVIOUR.md#как-добавить-поведение)); мозгов у зверей больше нет. Пример — волки: запись `wolf` в `data/species.js` с блоком `predator` и списком `[...WAYS.predator]`, фракция `predators`, рисовальщик `wolf` в `render/looks.js` и миграция `wolves` с потоком в `outside/scripted.js`. Остальные системы волков не знают.
 
 ### Домашний зверь
 
@@ -118,7 +118,7 @@
 
 ### Зверь бестиария
 
-Запись в `data/bestiary.js`: где живёт (`habitat`: биом → `common`, `usual`, `rare`, `scarce`), мозг: `tabled` со списком поведений `behaviours` (травоядные: `[...WAYS.grazer]` или `[...WAYS.herdGrazer]`, хищники: `[...WAYS.predator]` с блоком `predator`, крупные травоядные, которые дают отпор: `[...WAYS.stander]` или `herdStander` с блоком `mule` и `grazes` , вредители: `[...WAYS.vermin]` с блоком `vermin`, нечисть: `[...WAYS.woodSpirit]` или `waterSpirit` с блоком `spirit` — списки в `data/behaviour.js`, см. [Поведение](BEHAVIOUR.md)), внешний вид, добыча `yields` и блок `arrive`: размер группы, раз в сколько дней, шанс, сколько может быть на карте (`cap`), с какого дня (`first`), только ли ночью, строка журнала. Миграция, поток прихода в `outside/scripted.js`, список соседа и легенда соберутся сами.
+Запись в `data/bestiary.js`: где живёт (`habitat`: биом → `common`, `usual`, `rare`, `scarce`), список поведений `behaviours` (травоядные: `[...WAYS.grazer]` или `[...WAYS.herdGrazer]`, хищники: `[...WAYS.predator]` с блоком `predator`, крупные травоядные, которые дают отпор: `[...WAYS.stander]` или `herdStander` с блоком `mule` и `grazes`, вредители: `[...WAYS.vermin]` с блоком `vermin`, нечисть: `[...WAYS.woodSpirit]` или `waterSpirit` с блоком `spirit` — списки в `data/behaviour.js`, см. [Поведение](BEHAVIOUR.md)), внешний вид, добыча `yields` и блок `arrive`: размер группы, раз в сколько дней, шанс, сколько может быть на карте (`cap`), с какого дня (`first`), только ли ночью, строка журнала. Миграция, поток прихода в `outside/scripted.js`, список соседа и легенда соберутся сами.
 
 Особые свойства: `venom` (яд), `web` (паутина замедляет), `breath` (поджигает землю под жертвой), `drinks` (лечится кровью), `nocturnal` (ночной), `hibernates` (зимой уходит), `weakTo` (что его берёт). Нечисть — `resident: true` и `respawn`: живёт здесь, убитая возвращается через столько дней. Тело и SPECIAL — строка в `data/balance/creatures.js`, затем `npm run arena:calibrate`. Новой форме нужен рисовальщик в `render/looks.js`. Проверка — `npm run bestiary`.
 

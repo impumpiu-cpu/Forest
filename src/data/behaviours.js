@@ -70,6 +70,8 @@ BEHAVIOURS.registerAll([
     note: 'ручной зверь: идёт в свой загон и ходит в нём с места на место; без загона держится у лагеря; раны заживают'},
   {id: 'depart', task: false, band: 'routine', requires: [], keep: 0,
     note: 'ушедший из поселения идёт к краю карты (общая задача leave)'},
+  {id: 'led', label: () => 'уводят', band: 'routine', requires: [], keep: 0,
+    note: 'ручной зверь, которого уводит ограбивший лагерь налётчик (a.ledBy, поход): идёт за ним и уходит с ним; вор пал — зверь остаётся скотом'},
   // ── a predator (agents/hunting.js; the numbers: the species' `predator` block and PROWL of data/behaviour.js)
   {id: 'defendLair', task: false, band: 'reflex', requires: ['predator'], keep: 0,
     note: 'страж логова (a.defend, campaign/camp.js): держит его до конца — maul в режиме lair, без страха и бегства'},
