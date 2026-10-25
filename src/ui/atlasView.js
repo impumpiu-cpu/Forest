@@ -6,6 +6,7 @@
 // top (rivers, roads, towns, lairs) is drawn in cell units over it. (Later the generation moves to
 // a Web Worker — docs/WORLD.md.)
 import {ATLAS_SIZES, ATLAS_LAND, DEFAULT_ATLAS_CFG} from '../data/atlas.js';
+import {DEEDS} from '../data/deeds.js';
 import {ATLAS_STAGES} from '../atlas/stages.js';
 import {cellGeology} from '../atlas/geology.js';
 import {riverKind} from '../atlas/hydrology.js';
@@ -644,7 +645,7 @@ export class MapView {
     const party = partyAt(a, i);
     if (party) {
       const tgt = party.target != null ? a.towns.find(t => t.id === party.target) : null, lair = party.owner != null && party.kind !== 'army' ? a.lairs.find(l => l.id === party.owner) : null;
-      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? {raid: 'главарь в набеге', expand: 'главарь ведёт выводок', subdue: 'главарь идёт подчинять', rival: 'главарь идёт войной'}[party.plan] : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
+      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? `главарь ${DEEDS.has(party.plan) ? DEEDS.get(party.plan).label : party.plan}` : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
     }
     const site = siteAt(a, i);
     if (site) { const b = TOWN_BUILDINGS.get(site.kind), t = a.towns.find(t => t.id === site.town); parts.push(`${b.name} (${CATEGORIES[b.cat]}) ${townLabel(t, 2)} ${t.name}, с года ${site.built}`); }
@@ -659,7 +660,7 @@ export class MapView {
     const lair = lairAt(a, i);
     if (lair) {
       const L = LAIRS.get(lair.kind), lord = lair.lord != null ? a.lairs.find(l => l.id === lair.lord) : null;
-      parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}`);
+      parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds}${lair.why ? `; ${lair.why.year} г. — ${DEEDS.get(lair.why.deed).label}: ${lair.why.why}` : ''})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}`);
     }
     if (a.fauna && !f.ocean[i]) {
       const word = v => (v >= 0.8 ? 'много' : v >= 0.45 ? 'есть' : 'мало');

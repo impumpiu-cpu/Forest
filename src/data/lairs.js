@@ -147,17 +147,21 @@ export const ANCIENT_YEARS = LAIR_AGE.ancient;   // the number as the code says 
 //   stats, add, cap — grown past its kind: + add on each of `stats` (a calamity's boss: CAL.boss.add 6–12)
 //   life    — years it leads before age takes it, [lo, hi]
 //   think   — the chance a year that it sets out at all;  plans — the weights of the plans it may pick
-//   might   — its raids and fights: the lair's strength × its kind's power × this (a boss: CAL.boss.might 3)
+//   might   — its raids and fights: the lair's strength × its kind's power × this (a boss: CAL.boss.might 3), with luck
+//             (luck[0] + luck[1] × a roll) on both sides
 //   reach   — × the tribes' raid reach (TRIBE_RAID.reach): how far it goes
 //   subdue  — a lair this many of its territories away at most, and `ratio` — how much weaker it must be to be taken
 //   tribute — a year, the share of a vassal's strength its lord's lair takes (half of it lost to the vassal)
 //   fall    — the chance it dies when its raid or its fight is beaten
-//   young   — the strength of a daughter lair;  beat — what is left of a lair it beats (wiped out below 0,12)
+//   young   — the strength of a daughter lair;  beat — what is left of a lair it beats (wiped out below `wiped`)
+//   expand  — a brood is led out from a lair stronger than `from` while its kind has fewer than max × `crowd` lairs; the
+//             mother lair keeps × `cost` of its strength;  beatenCost — what is left of its strength after a lost fight
 //   beastRaid — × the weight of a raid for a beast's leader (it hunts the woods more than the towns)
 //   camp    — a caravan in its lands: see below
 export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'], add: [2, 5], cap: 30, life: [20, 50],
-  think: 0.25, plans: {raid: 0.7, expand: 0.6, subdue: 0.8, rival: 0.6}, might: 1.6, reach: 1.5,
-  subdue: {reach: 3, ratio: 1.3}, tribute: 0.04, fall: 0.25, young: 0.45, beat: 0.55, beastRaid: 0.35,
+  think: 0.25, plans: {raid: 0.7, expand: 0.6, subdue: 0.8, rival: 0.6}, might: 1.6, luck: [0.6, 0.8], reach: 1.5,
+  subdue: {reach: 3, ratio: 1.3}, tribute: 0.04, fall: 0.25, young: 0.45, beat: 0.55, wiped: 0.12, beatenCost: 0.75, beastRaid: 0.35,
+  expand: {from: 0.6, crowd: 1.5, cost: 0.8},
   // a caravan camping in a leader's lands (campaign/land.js dangers): × the chance its folk come at night, × their strength
   camp: {p: 1.6, strength: 1.3}};
 // what a leader is called — its title and nickname — is in data/names.js (TITLE, NICK, PERSON[race].nick)

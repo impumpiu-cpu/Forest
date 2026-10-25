@@ -21,6 +21,7 @@
 //   settle   — weight among the settlers who may come to the outpost (0: never comes on its own)
 // A race may also come with raiders (data/raids.js) — that does not need anything here.
 import {bodyFor} from './balance/creatures.js';
+import {DEED_WAYS} from './deeds.js';
 import {personNames} from './names.js';
 
 
@@ -47,7 +48,7 @@ export const RACES = [
     values: {family: 2, work: 1.4, faith: 0.6, gold: 0.6, nature: 0.8},
     names: personNames('halfling')},
 
-  {id: 'giant', kind: 'race', home: {highlands: 1, foothills: 0.6, tundra: 0.6, taiga: 0.3, ice: 0.3},
+  {id: 'giant', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {highlands: 1, foothills: 0.6, tundra: 0.6, taiga: 0.3, ice: 0.3},
     label: 'великан', plural: 'великаны', rel: 'giant', settle: 0.6,
     heatHarm: 70, look: person(0.8, '#c9a27e'),
     body: {adult: 25, life: 150, fertility: 0.25, diet: 'всеядный, ест за троих'},
@@ -118,7 +119,7 @@ export const RACES = [
     values: {strength: 2.2, ancestors: 1.2, faith: 0.8, family: 0.6},
     names: personNames('orc')},
 
-  {id: 'goblin', kind: 'race', home: {foothills: 0.9, underground: 0.8, swamp: 0.5, forest: 0.5, taiga: 0.4, shrubland: 0.4, highlands: 0.4},
+  {id: 'goblin', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {foothills: 0.9, underground: 0.8, swamp: 0.5, forest: 0.5, taiga: 0.4, shrubland: 0.4, highlands: 0.4},
     label: 'гоблин', plural: 'гоблины', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.45, '#8fb04c'),
     body: {adult: 6, life: 30, fertility: 0.95, diet: 'ест что угодно'},
@@ -128,7 +129,7 @@ export const RACES = [
     values: {gold: 2.2, knowledge: 1.2, freedom: 1},
     names: personNames('goblin')},
 
-  {id: 'ogre', kind: 'race', home: {foothills: 0.8, forest: 0.7, taiga: 0.6, swamp: 0.5, shrubland: 0.4, meadow: 0.3},
+  {id: 'ogre', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {foothills: 0.8, forest: 0.7, taiga: 0.6, swamp: 0.5, shrubland: 0.4, meadow: 0.3},
     label: 'огр', plural: 'огры', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.86, '#9b8a6a'),
     body: {adult: 15, life: 60, fertility: 0.3, diet: 'ест что угодно, за четверых'},
@@ -139,7 +140,7 @@ export const RACES = [
     names: personNames('ogre')},
 
   // Trolls regrow wounds unless fire or acid stops it.
-  {id: 'troll', kind: 'race', home: {swamp: 0.9, forest: 0.8, tundra: 0.7, taiga: 0.7, ice: 0.5, foothills: 0.4},
+  {id: 'troll', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {swamp: 0.9, forest: 0.8, tundra: 0.7, taiga: 0.7, ice: 0.5, foothills: 0.4},
     label: 'тролль', plural: 'тролли', rel: 'greenskin', settle: 0,
     heatHarm: 62, look: person(0.76, '#4f8f86'),
     body: {adult: 14, life: 80, fertility: 0.5, diet: 'хищник'},
@@ -155,7 +156,7 @@ export const RACES = [
     names: personNames('troll')},
 
   // Gnolls: hyena-folk, scavengers. Carrion does them no harm; the rot does not take them.
-  {id: 'gnoll', kind: 'race', home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
+  {id: 'gnoll', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
     label: 'гнолл', plural: 'гноллы', rel: 'gnoll', settle: 0,
     heatHarm: 70, look: person(0.64, '#a98d5a'),
     body: {adult: 8, life: 40, fertility: 0.75, diet: 'падальщик'},

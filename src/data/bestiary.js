@@ -25,6 +25,7 @@
 //                 comes alone, at its home ground, and `respawn` days after it was killed
 import {bodyFor} from './balance/creatures.js';
 import {WAYS, BEAT} from './behaviour.js';
+import {DEED_WAYS} from './deeds.js';
 import {petNames} from './names.js';
 
 // a predator's defaults: the wolf's numbers (data/species.js), each beast changes what differs
@@ -41,7 +42,7 @@ const beast = b => ({needs: [], mind: 'beast', relativeStats: true, heatHarm: 60
 export const BESTIARY = [
   // ── beasts
   // Wargs: great wolves, half-witted; orcs and goblins ride them into raids (data/raids.js)
-  beast({id: 'varg', kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+  beast({id: 'varg', kind: 'monster', label: 'варг', labelAcc: 'варга', plural: 'варги', mind: 'semi', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [2, 4], every: [3, 5], chance: 0.5, cap: 4, first: 3, message: 'пришла стая варгов: {n}. Это не волки — они крупнее и злее'},
     habitat: {taiga: 'usual', tundra: 'rare', steppe: 'rare', foothills: 'rare', highlands: 'rare', barrows: 'rare'},
     look: {shape: 'wolf', size: 0.74, color: '#4b4b55'},
@@ -97,7 +98,7 @@ export const BESTIARY = [
 
   // ── monsters of the heights and the deep
   // Griffin: nests on the crags, carries off goats and mules, a lone person when hungry
-  beast({id: 'griffin', kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+  beast({id: 'griffin', kind: 'monster', label: 'грифон', labelAcc: 'грифона', plural: 'грифоны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [5, 8], chance: 0.4, cap: 1, first: 5, message: 'над скалами кружит грифон. Коз и мулов — под крышу'},
     habitat: {highlands: 'usual', foothills: 'rare', steppe: 'rare', desert: 'rare'},
     look: {shape: 'bird', size: 0.86, color: '#b88a44'},
@@ -106,7 +107,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['goat', 'deer', 'hare'], weakPrey: ['mule'], weakBelow: 0.7, sight: 30, sprint: 1.6, boldPeople: 0.5, groupFear: 3, meal: 2.5, bigMeal: 4})}),
 
   // Wyvern: dragon-kin without a mind; its sting poisons
-  beast({id: 'wyvern', kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+  beast({id: 'wyvern', kind: 'monster', label: 'виверна', labelAcc: 'виверну', plural: 'виверны', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 6, message: 'с гор спустилась виверна. Её жало ядовито'},
     habitat: {highlands: 'usual', volcano: 'rare'},
     look: {shape: 'bird', size: 0.86, color: '#5d6b4b'}, venom: {dmg: 0.0009, ticks: 240},
@@ -126,7 +127,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk', 'aurochs'], sight: 30, boldPeople: 0.6, groupFear: 10, meal: 6, bigMeal: 10})}),
 
   // Drake: a young dragon with no mind yet; its breath sets the grass on fire
-  beast({id: 'drake', kind: 'monster', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, heatHarm: 400,
+  beast({id: 'drake', kind: 'monster', label: 'дрейк', labelAcc: 'дрейка', plural: 'дрейки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, heatHarm: 400,
     arrive: {group: [1, 1], every: [8, 14], chance: 0.3, cap: 1, first: 8, message: 'с вулкана прилетел дрейк. Где он дышит, загорается трава'},
     fearHeat: 350,
     habitat: {volcano: 'usual', highlands: 'rare', desert: 'rare'},
@@ -136,7 +137,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['goat', 'deer', 'boar', 'mule', 'elk'], sight: 26, boldPeople: 0.35, groupFear: 5, meal: 3, bigMeal: 5})}),
 
   // Giant spider: webs tangle its prey; silk for bowstrings and cloth, venom for the alchemist
-  beast({id: 'spider', kind: 'monster', label: 'гигантский паук', labelAcc: 'гигантского паука', plural: 'гигантские пауки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+  beast({id: 'spider', kind: 'monster', label: 'гигантский паук', labelAcc: 'гигантского паука', plural: 'гигантские пауки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]},
     arrive: {group: [1, 3], every: [3, 5], chance: 0.5, cap: 3, first: 3, message: 'в лесу видели гигантских пауков: {n}. Паутина держит крепко'},
     habitat: {underground: 'common', jungle: 'common', forest: 'rare', swamp: 'rare'},
     look: {shape: 'spider', size: 0.62, color: '#3a3530'},
@@ -146,7 +147,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.5, groupFear: 3, sight: 16})}),
 
   // Stone worm: digs through the rock, slow and nearly unkillable, leaves its shell
-  beast({id: 'stoneworm', kind: 'monster', label: 'каменный червь', labelAcc: 'каменного червя', plural: 'каменные черви', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
+  beast({id: 'stoneworm', kind: 'monster', label: 'каменный червь', labelAcc: 'каменного червя', plural: 'каменные черви', behaviours: [...WAYS.stander], heart: BEAT.stander, deeds: {lair: [...DEED_WAYS.lair]}, restAt: 0.75, mends: 0.00025, big: true,
     arrive: {group: [1, 1], every: [6, 10], chance: 0.35, cap: 1, first: 5, message: 'из-под скал выполз каменный червь'},
     habitat: {underground: 'usual', desert: 'rare', foothills: 'rare'},
     look: {shape: 'worm', size: 0.9, color: '#7d6f5c'},
@@ -155,7 +156,7 @@ export const BESTIARY = [
     grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0004, mule: stands({kickRange: 1.4, charge: 1.3, chargeHit: 1.8, fleeBelow: 0.15})}),
 
   // Blood bats: night flocks from caves and barrows; they drink, a little at a time
-  beast({id: 'bat', kind: 'monster', label: 'летучая мышь-кровопийца', labelAcc: 'летучую мышь', plural: 'летучие мыши', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, nocturnal: true,
+  beast({id: 'bat', kind: 'monster', label: 'летучая мышь-кровопийца', labelAcc: 'летучую мышь', plural: 'летучие мыши', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.lair]}, nocturnal: true,
     arrive: {group: [3, 6], every: [2, 3], chance: 0.6, cap: 6, first: 2, night: true},
     habitat: {underground: 'common', barrows: 'common', jungle: 'rare', swamp: 'rare'},
     look: {shape: 'bat', size: 0.34, color: '#3b3440'}, drinks: 0.6,
