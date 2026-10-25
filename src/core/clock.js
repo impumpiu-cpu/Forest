@@ -37,8 +37,15 @@ export class SeasonClock {
   }
   // the day of the season the screen is at, 1 … SEASON_DAYS
   day() { return Math.min(SEASON_DAYS, 1 + Math.floor(this.phase() * SEASON_DAYS)); }
-  setPace(id) { this.pace = paceOf(id).id; if (this.timer) { this.stop(); this.start(); } }
+  // a new pace: a season under way is run again at it; one held (a camp watched) stays held — only the wait it will
+  // go on with is the new pace's
+  setPace(id) {
+    this.pace = paceOf(id).id;
+    if (this.held != null) { if (this.tickWait) this.tickWait = paceOf(id).season; return; }
+    if (this.timer) { this.stop(); this.start(); }
+  }
   start(delay = 0) {
+    if (this.held != null) return;   // a camp is watched: release() goes on with the season
     this.stop(); this.paused = false;
     const gen = ++this.gen;
     this.next = () => {
@@ -57,8 +64,10 @@ export class SeasonClock {
     this.timer = setTimeout(this.next, delay);
   }
   stop() { clearTimeout(this.timer); this.timer = 0; this.gen++; this.held = null; }
-  // the season's wait is held (a camp on the local map is being watched) and let go from where it stood
-  hold() { if (!this.timer || this.held != null) return; this.held = this.phase(); clearTimeout(this.timer); }
+  // the season's wait is held (a camp on the local map is being watched) and let go from where it stood. Held, the clock
+  // has no timer: nothing (a new pace, a stray start) runs the world on while the camp is watched
+  // `at` — the phase to hold at (the camp's own day: the frame that noticed it may be a little past it)
+  hold(at = null) { if (!this.timer || this.held != null) return; this.held = at ?? this.phase(); clearTimeout(this.timer); this.timer = 0; }
   release() {
     if (this.held == null) return;
     const frac = this.held, wait = this.tickWait; this.held = null;

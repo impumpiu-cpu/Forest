@@ -79,7 +79,12 @@ export class CampaignView extends AtlasView {
     lay.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.layer = b.dataset.val; lay.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); this.draw(); });
     this.ticks = new TickClock();   // the local map's clock while a camp is watched
     this.syncPaceBox = mountPace($('campSpeed'), this.clock, {pauseId: 'campPause', active: () => !$('campaign').hidden,
-      onPace: id => { this.clock.setPace(id); this.ticks.pace = id; if (this.clock.paused && !this.local) this.clock.resume(); this.syncRun(); },
+      onPace: id => {
+        this.clock.setPace(id); this.ticks.pace = id;
+        if (this.local && !WATCH[id]) this.endLocal();   // «Сразу»: the camps are not watched — the one on the map is left
+        if (this.clock.paused && !this.local) this.clock.resume();
+        this.syncRun();
+      },
       onPause: () => { const K = this.atlas?.campaign; if (!K || finished(K)) return; if (this.local) this.ticks.paused = !this.ticks.paused; else this.clock.toggle(); this.syncRun(); }});
     $('campWorlds').addEventListener('click', e => { const row = e.target.closest('.sv'); if (row) this.openFromLibrary(row.dataset.id, row.dataset.name); });
     // a capital: a click on its card marks it on the map, its button sets the caravan out from it at once
@@ -325,7 +330,7 @@ export class CampaignView extends AtlasView {
   startLocal(c) {
     let w;
     try { w = openCamp(c.setup); } catch (e) { console.warn('стоянка не открылась', e); return; }
-    this.clock.hold();   // the season waits while the camp is watched
+    this.clock.hold(c.at);   // the season waits while the camp is watched, at the camp's own day
     this.ticks.last = 0; this.ticks.acc = 0; this.ticks.paused = false; this.ticks.pace = this.clock.pace;
     this.local = {w, c, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
     $('campLocal').hidden = false; $('campLocalBar').hidden = false;
@@ -334,7 +339,7 @@ export class CampaignView extends AtlasView {
   }
   localText() {
     const L = this.local, c = L.c, w = L.w, last = w.logLines[0];
-    $('campLocalText').innerHTML = `<b>${LOCAL_KIND[c.kind] || 'Стоянка'}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день ${c.day + 1}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
+    $('campLocalText').innerHTML = `<b>${LOCAL_KIND[c.kind] || 'Стоянка'}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день похода ${c.day + 1}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
   }
   stepLocal() {
     const L = this.local, w = L.w, per = this.ticks.ticks(performance.now());
