@@ -79,6 +79,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 | `npm run audit` | `audit-check.mjs` | то, что нашёл разбор кода, не возвращается: правки доходят до игры, числа не копируются из таблиц при загрузке, склад по видам, бедствия руки, держатель артефакта, досягаемость квеста, слова вещей |
 | `npm run logic` | `logic-check.mjs` | сцены правил поведения ([ниже](#проверка-логики)) |
 | `npm run behaviour` | `behaviour-check.mjs` | полигон поведения: сцены целой симуляции на маленькой карте ([ниже](#полигон-поведения)) |
+| `node tools/campaign-stats.mjs [миров=2] [сезонов=40] [auto]` | `campaign-stats.mjs` | статистика боёв похода на локальной карте: по родам врага, сколько приходит, сила сторон, именные бои с судьбой босса ([Кампания](CAMPAIGN.md#статистика-боёв)); минуты |
 | `npm run world` | `world-check.mjs` | полигон дел мира: главарь на земле «Заселения мира» перед городом и соседями ([ниже](#полигон-дел-мира)) |
 
 У трёх скриптов из `npm test` своей команды нет — их запускают напрямую: `node tools/check-layers.mjs`, `node tools/check-data.mjs`, `node tools/rng-check.mjs`. Ещё два файла `tools/` — не команды, а модули отчётов: `report.mjs` (отчёт балансного прогона; `node tools/report.mjs runs/<папка>` пересобирает `report.html` из готового `summary.json`) и `arena-report.mjs` (анализ и отчёт арены, его вызывает `arena.mjs`). `tools/numbers-baseline.json` — линия чисел для `check-layers` ([ниже](#проверка-слоёв)).

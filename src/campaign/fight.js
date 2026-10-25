@@ -40,13 +40,33 @@ export function fight(a, K, d, r, how = 'night') {
   if (K.mode === 'auto') captivesInFight(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));   // (on the local map the camp plays it)
   // who the fallen fell to, for the balance (campaign-balance): a grave's guards, the lair's, the hunt
   K.fightSrc = d.boss?.mustDie ? 'lair' : d.boss ? 'grave' : d.pursuit || null;
+  const before = alive(K).map(m => [m.id, m.hp]);
   const win = K.mode === 'auto' ? autoFight(a, K, d, r, how) : localFight(a, K, d, how);
   delete K.fightSrc;
+  recordFight(a, K, d, how, win, before);
   if (!alive(K).length) return win;
   if (win) { K.stats.won++; shake(K, LOYALTY.won); spoils(a, K, d, r); formersFought(K); if (d.kind !== 'army') famed(a, K, 'win'); }   // fame with the realm about (campaign/road.js); not for beating that realm's own army
   else { K.stats.fled++; shake(K, LOYALTY.lost); K.camp = 0; K.why = ''; K.build = null; }
   afterFight(a, K, d, win, (text, kind, world) => say(a, K, text, kind, world));   // the crown's carrier fell? (campaign/quest.js)
   return win;
+}
+
+// the fight's record (campaign/stats.js; K.fights): who came and how many, the boss and its fate, the two sides' strength,
+// what it cost the caravan and who of it killed whom. The quick mode knows only the might it rolled with (K.lastAuto)
+function recordFight(a, K, d, how, win, before) {
+  const o = K.mode === 'auto' ? null : K.lastCamp, A = K.mode === 'auto' ? K.lastAuto : null;
+  delete K.lastCamp; delete K.lastAuto;
+  const ids = new Set(before.map(([id]) => id));
+  const fell = K.members.filter(m => ids.has(m.id) && !m.alive).map(m => m.name);
+  const hurt = K.members.filter(m => m.alive && ids.has(m.id) && m.hp < before.find(([id]) => id === m.id)[1] - CAMPAIGN.fight.wounded).map(m => m.name);
+  const F = o?.foes, B = F?.boss;
+  const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local',
+    fighters: before.filter(([id]) => !K.members.find(m => m.id === id)?.captive).length,
+    foes: F ? F.n : A?.heads ?? null, killed: F ? F.killed : null, fled: F ? F.fled : null, taken: F ? F.taken : null, species: F ? F.species : null,
+    ours: o ? o.ours.might : A?.P ?? null, theirs: F ? F.might : A?.E ?? null,
+    boss: d.boss ? {name: d.boss.name, species: d.boss.species, mustDie: !!d.boss.mustDie, came: !!B, fate: !B ? 'absent' : B.dead ? 'dead' : B.bound ? 'bound' : B.fled ? 'fled' : 'stood', hp: B?.hp ?? null} : null,
+    fell, hurt, kills: o ? Object.fromEntries(Object.entries(o.ours.kills).map(([id, n]) => [K.members.find(m => m.id === +id)?.name || id, n])) : {}};
+  (K.fights ||= []).push(rec);
 }
 
 const opening = (d, how) => (how === 'guard' ? `Караван пошёл на штурм: ${d.label || FOES[d.kind].label}` : `${how === 'ambush' ? 'На марше из засады ударили' : 'Ночью на лагерь напали'} ${FOES[d.kind].label}${d.label && d.label !== FOES[d.kind].label ? ` — ${d.label}` : ''}`);
@@ -56,6 +76,7 @@ const WHERE = {ambush: 'засаде', night: 'ночном бою', guard: 'ш�
 function localFight(a, K, d, how) {
   const S = campSetup(a, K, {kind: how, foe: d, dayIn: K.dayIn});
   const o = play(K, S, how, d.label || FOES[d.kind].label, d);
+  K.lastCamp = o;   // for the fight's record (recordFight)
   applyCamp(a, K, S, o, d, how);
   if (d.boss && o.bossDead === false && !o.won && o.foes.killed > 0) say(a, K, `${d.boss.name} ${d.boss.g === 'f' ? 'ушла живой' : 'ушёл живым'}: штурм придётся повторить.`, 'fight');
   return o.won;
@@ -98,7 +119,7 @@ export function applyCamp(a, K, S, o, d, how) {
     if (mo.escaped) { escaped(a, K, m, `На стоянке ${m.name}, ${m.gender === 'f' ? 'пленная, бежала' : 'пленный, бежал'}`, (text, kind, who) => say(a, K, text, kind, false, who)); continue; }
     if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
-    if (mo.hp < m.hp - 0.05) hurt.push(m);
+    if (mo.hp < m.hp - CAMPAIGN.fight.wounded) hurt.push(m);
     m.hp = mo.hp; m.local = mo.local;
   }
   // the beasts: killed, bolted into the dark, led off by the thieves
@@ -224,6 +245,7 @@ function spoilsRest(a, K, d, r) {
 function autoFight(a, K, d, r, how) {
   const F = CAMPAIGN.fight, foe = FOES[d.kind], E = foe.might * (d.strength ?? 1) * between(r, [0.6, 1.4]), P = caravanMight(K) * (how === 'ambush' ? AMBUSH.surprise * paceOf(K).wary : 1);
   const share = P / (P + E), win = r() < share;
+  K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.round(foe.might * (d.strength ?? 1) * CAMP.budget))};   // for the fight's record
   // the blows: more when they lose, mostly on the knights, who shield the squires
   let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);
   const hit = [];

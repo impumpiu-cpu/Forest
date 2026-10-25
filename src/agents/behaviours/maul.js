@@ -5,6 +5,7 @@
 // let go; in the `kick` mode a big grazer kicks back (standGround), in the `strike` mode the nechist hits whoever hurt it. Reads: predator {victims, sight, loneRadius,
 // boldPeople, calm, sprint, stamina, bigMeal}.
 import {SPECIES} from '../../data/species.js';
+import {holdsGround} from '../auras.js';
 import {approach, sprintMul, recover} from '../movement.js';
 import {attack, behindRock} from '../combat.js';
 import {huntOf, endHunt} from '../carcass.js';
@@ -85,7 +86,7 @@ function lair(w, a, t, P, v) {
 
 export const defendLair = {
   want(w, a, {sp}) {
-    if (!a.defend) return null;
+    if (!a.defend && !holdsGround(w, a)) return null;   // the lair's guards; a boss's side while it stands (agents/auras.js)
     let v = a.task?.id === 'maul' ? a.task.target : null;
     if (gone(w, v)) v = nearest(w, a, sp.predator.victims, PROWL.defend.reach, o => o.faction === 'colony' && !o.downed);
     return v ? [[{id: 'maul', mode: 'lair', target: v}, PROWL.want.lair, () => 'держит логово']] : null;

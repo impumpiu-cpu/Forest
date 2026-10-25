@@ -27,6 +27,7 @@ import {TickClock, dateText} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
 import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
+import {fightStats, fightReportText, groupText, FATES, HOWS} from '../campaign/stats.js';
 import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
 import {warnEdits} from './tableEdits.js';
@@ -464,7 +465,25 @@ export class CampaignView extends AtlasView {
     }
   }
 
+  // the fights of the walk (campaign/stats.js) in the dock: the totals, the years as bars, the named fights, the people
+  renderFights() {
+    const K = this.atlas?.campaign, box = $('campFights'); if (!box) return;
+    if (!K?.fights?.length) { box.innerHTML = '<p class="muted">Боёв ещё не было.</p>'; return; }
+    const S = fightStats(K), T = S.total, n = x => (x == null ? '—' : x), sp = id => (SPECIES.has(id) ? SPECIES.get(id).label : id);
+    const maxF = Math.max(1, ...S.byYear.map(y => y.fights));
+    const bars = S.byYear.map(y => `<div class="yb" title="год ${y.year}: боёв ${y.fights}, выиграно ${y.won}, врагов ${y.foes}, убито ${y.killed}, бежали ${y.fled}, наша/их сила ${y.ratio || '—'}, пали наши ${y.fell}, именных ${y.named}"><i style="height:${Math.round(y.fights / maxF * 56)}px"></i><i class="k" style="height:${Math.round(y.killed / Math.max(1, Math.max(...S.byYear.map(z => z.foes))) * 56)}px"></i><small>${y.year}</small></div>`).join('');
+    const named = S.named.length ? `<table><tr><th>День</th><th class="t">Кто</th><th>Свита</th><th class="t">Босс</th><th>Убито</th><th>Бежали</th><th>Сила</th><th class="t">Исход</th></tr>${S.named.map(f =>
+      `<tr><td>${f.day}</td><td class="t boss">${esc(f.boss.name)} (${esc(sp(f.boss.species))}${f.boss.mustDie ? ', четвёртый' : ''}) — ${HOWS[f.how] || f.how}</td><td>${n(f.guards)}<br><small>${esc(groupText(f.species))}</small></td><td class="t">${FATES[f.boss.fate]}${f.boss.hp != null && f.boss.fate !== 'dead' ? `, ${Math.round(f.boss.hp * 100)}%` : ''}</td><td>${n(f.killed)}</td><td>${n(f.fled)}</td><td>${f.ratio ? f.ratio.toFixed(1) : '—'}</td><td class="t ${f.won ? 'won' : 'lost'}">${f.won ? 'победа' : 'отбиты'}${f.fell.length ? `; пали ${esc(f.fell.join(', '))}` : ''}${f.hurt.length ? `; ранены ${esc(f.hurt.join(', '))}` : ''}</td></tr>`).join('')}</table>` : '<p class="muted">Именных боёв ещё не было: стражи могил, главари логов и четвёртый — впереди.</p>';
+    box.innerHTML = `<div><h4>Поход</h4><p>Боёв ${T.fights}, выиграно ${T.won}, засад ${T.ambushes}, штурмов ${T.storms}, именных ${T.named}. Врагов пришло ${T.foes} — в среднем ${T.foesAvg} на бой против ${T.fighters} наших; убито ${T.killed}, бежали ${T.fled}, в плен ${T.taken}. Наша сила к их силе — в среднем ${T.ratio}. Пали наши ${T.fell}, ранены ${T.hurt} раз.</p>
+      <h4>По родам врага</h4><table><tr><th class="t">Враг</th><th>Боёв</th><th>Выиграно</th><th>Их в бою</th><th>Убито</th><th>Бежали</th><th>Сила</th></tr>${S.byKind.map(k => `<tr><td class="t">${esc(k.label)}</td><td>${k.fights}</td><td>${k.won}</td><td>${k.foes}</td><td>${k.killed}</td><td>${k.fled}</td><td>${k.ratio || '—'}</td></tr>`).join('')}</table></div>
+      <div><h4>По годам похода</h4><div class="ybars">${bars}</div><small class="muted">оранжевое — боёв в год, зелёное — убито врагов; наведите на год</small>
+      <h4>По людям</h4><table><tr><th class="t">Кто</th><th>Боёв</th><th>Убил</th><th>Ранен</th></tr>${S.byMember.slice(0, 16).map(m => `<tr><td class="t">${esc(m.name)}${m.alive === false ? ' †' : ''}</td><td>${m.fights}</td><td>${m.kills}</td><td>${m.hurt}</td></tr>`).join('')}</table></div>
+      <div class="wide"><h4>Именные бои</h4>${named}<div class="row actions"><button type="button" class="quiet mini" id="campFightsFile">Бои в файл</button></div></div>`;
+    $('campFightsFile').addEventListener('click', () => offerText(latinTitle(`boi-${K.capitalName}-${K.started?.year ?? ''}`), fightReportText(this.atlas, K)));
+  }
+
   renderSide() {
+    this.renderFights();
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
     const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};

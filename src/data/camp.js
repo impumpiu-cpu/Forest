@@ -28,6 +28,11 @@ export const CAMP = {
   // × the thing's strength × `budget`; beasts come as a pack of `pack` × strength; the threat the band
   // carries its gear and aim by (settlement/threat.js) — × strength
   budget: 0.55, pack: [2, 4], threat: 6,
+  // a boss (a leader of an old lair, a grave's guard, the fourth: campaign/epic.js, campaign/land.js) never comes alone:
+  // a retinue worth at least this many bandits (data/raids.js raiderStrength) — so many of its own kind as that buys:
+  // vargs by the half-dozen, ogres by the pair — and the boss on top. It stands while it lives, and its side holds with
+  // it (agents/auras.js: the aura `lead`)
+  boss: {retinue: [3, 6]},
   // a building packed in the wagon is put up at the camp: it stands with this share of its work left
   // (the caravan finishes it with its own hands before the night)
   deploy: 0.25,

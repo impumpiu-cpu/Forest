@@ -191,6 +191,14 @@ export const NECHIST = {
   want: {fire: 2, hidden: 1.5, strike: 1.4, dive: 1.6, drowning: 1, song: 0.3, lurk: 0.2},
 };
 
+// Auras of the ones who lead (agents/auras.js): `lead` — the boss's: while the bearer lives nobody of its side runs and
+// its band's morale does not break; the bearer never runs. officerBelow — an officer (the band's leader under a boss)
+// stands until its health is below this share, aura or no aura
+export const AURAS = {
+  lead: {label: 'воля вожака', note: 'пока жив — свои не бегут и не отступают, отряд не ломается'},
+  officerBelow: 0.15,
+};
+
 // how often a beast thinks in full (ticks; the species' `heart`): the alarms — fire, a foe, the herd's cry, a blow — are
 // looked at every tick regardless (agents/brains/tabled.js), and a task that ends, a herd's alarm or a shot wake it
 // at once (agents/attention.js wake); in between it goes on with what it does. Lower = sharper and dearer.

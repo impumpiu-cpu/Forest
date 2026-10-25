@@ -114,7 +114,10 @@ MIGRATIONS.registerAll([
   {id: 'raiders', faction: 'raiders', minDist: 40, topic: 'danger',
     members: (w, rng, n, opts) => {
       const band = RAID_BANDS.get(opts.band || 'bandits'), t = raidThreat(w);
-      return band.members(w, rng, n, t).map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
+      const list = band.members(w, rng, n, t);
+      // a boss's retinue (campaign/camp.js): at least this many, made up with more of the band's most numerous kind
+      if (opts.atLeast) { const most = list.map(m => m.species).sort((p, q) => list.filter(x => x.species === q).length - list.filter(x => x.species === p).length)[0]; while (list.length < opts.atLeast) list.push({...list.find(m => m.species === most)}); }
+      return list.map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
         init: (a, w) => {
           a.band = band.id;
           if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);

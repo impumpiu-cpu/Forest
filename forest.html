@@ -167,6 +167,20 @@
   .relmat th.rw{text-align:left}
   .relmat td.rel-war{background:rgba(190,70,60,.35)} .relmat td.rel-hostile{background:rgba(190,110,70,.25)} .relmat td.rel-tense{background:rgba(160,150,90,.15)} .relmat td.rel-peace{background:rgba(110,160,90,.15)} .relmat td.rel-friends{background:rgba(110,190,110,.3)}
   .relwars{margin:6px 0 0;padding-left:1.2em;font-size:12.5px}
+  /* the fights of the campaign (campaign/stats.js) in the dock */
+  .fights{display:grid;grid-template-columns:minmax(260px,1fr) minmax(260px,1fr);gap:8px 18px;font-size:12.5px}
+  .fights h4{margin:0 0 4px;font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted)}
+  .fights .wide{grid-column:1/-1}
+  .fights table{border-collapse:collapse;width:100%}
+  .fights th,.fights td{border-bottom:1px solid var(--line);padding:2px 6px;text-align:right;white-space:nowrap}
+  .fights th{font-weight:400;color:var(--muted)} .fights th:first-child,.fights td:first-child{text-align:left}
+  .fights td.t{text-align:left;white-space:normal}
+  .fights .won{color:var(--good)} .fights .lost{color:var(--raider)} .fights .boss{font-weight:600}
+  .ybars{display:flex;align-items:flex-end;gap:3px;height:70px;margin:4px 0}
+  .ybars .yb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:1px;min-width:10px}
+  .ybars .yb i{display:block;width:100%;background:var(--ember);opacity:.85} .ybars .yb i.k{background:var(--good)}
+  .ybars .yb small{font-size:10px;color:var(--muted)}
+  .fights .row.actions{margin-top:4px}
   @media (max-width: 1100px){ .app-screen.obs{grid-template-columns:220px minmax(0,1fr) 280px} }
   .hand-card{display:flex;flex-direction:column;gap:6px;padding:8px 10px}
   .hand-card .row,.time-row{align-items:center;gap:8px;flex-wrap:wrap}
@@ -488,8 +502,9 @@
     </div>
 
     <div class="obs-dock" id="campDock">
-      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button></div>
+      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button></div>
       <div class="obs-pane" data-pane="object"><div class="inspect" id="campInspect"></div></div>
+      <div class="obs-pane" data-pane="fights" hidden><div class="fights" id="campFights"><p class="muted">Боёв ещё не было.</p></div></div>
     </div>
 
     <aside class="obs-chron">

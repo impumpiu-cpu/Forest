@@ -14,6 +14,7 @@
 // (agents/behaviours/raid.js) asks planFor() what to do; stepSquads() checks morale and the goal.
 // Every squad's start and end is in the journal with its reason, and in w.behave.squads.
 import {SPECIES} from '../data/species.js';
+import {leaderOf} from './auras.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {colonists} from '../settlement/query.js';
@@ -142,6 +143,7 @@ function defenders(w, ms) {
 
 export function moraleOf(w, sq, ms = membersOf(w, sq)) {
   if (sq.kind === 'mindless') return 1;
+  if (ms.some(m => leaderOf(w, m) || m.auras?.includes('lead'))) return 1;   // a boss's aura: the band holds while it stands (agents/auras.js)
   const leaderDown = !ms.some(m => m.id === sq.leader);
   const own = ms.reduce((s, a) => s + strength(a), 0), foes = defenders(w, ms);
   const odds = foes > 0 ? clamp((own / foes - 1) * SQUAD.odds, -SQUAD.odds * 1.5, SQUAD.odds) : 0;

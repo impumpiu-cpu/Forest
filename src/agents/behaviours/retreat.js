@@ -5,6 +5,7 @@
 import {nightness} from '../../core/time.js';
 import {maxHp} from '../agent.js';
 import {liveById} from '../lookup.js';
+import {holdsGround} from '../auras.js';
 import {RAID} from '../../data/behaviour.js';
 
 export const retreat = {
@@ -16,7 +17,7 @@ export const retreat = {
     if (a.task?.id === 'leave') return [[a.task, RAID.want.leave, () => 'уходит']];
     if (a.lost) return [[{id: 'leave'}, RAID.want.leave, () => 'некому вести']];
     if (sp.sun && 1 - night > RAID.sunLeaves) return [[{id: 'leave'}, RAID.want.leave, () => 'солнце встало']];
-    if (!sp.mindless && a.hp < RAID.hurtBelow * maxHp(a)) return [[{id: 'leave'}, RAID.want.leave, () => 'тяжело ранен']];
+    if (!sp.mindless && a.hp < RAID.hurtBelow * maxHp(a) && !holdsGround(w, a)) return [[{id: 'leave'}, RAID.want.leave, () => 'тяжело ранен']];   // (a boss's aura: agents/auras.js)
     return null;
   },
 };
