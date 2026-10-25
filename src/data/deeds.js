@@ -12,7 +12,8 @@
 // besiege. The ready lists are DEED_WAYS below.
 //   id, label:  the deed and what the chronicle calls the party («выступил в набег»)
 //   band:       the lane
-//   party:      the kind of party it sends (atlas/parties.js BEHAVIOURS), or null for a deed done on the spot
+//   party:      the kind of party it sends (atlas/parties.js BEHAVIOURS; by role, when the roles send different ones),
+//               or null for a deed done on the spot
 //   requires:   fields of the species row the deed reads
 import {Registry} from '../core/registry.js';
 
@@ -22,20 +23,25 @@ export const DEED_BAND_LABELS = {reflex: 'рефлекс', red: 'красная'
 export const DEEDS = new Registry('deed');
 DEEDS.registerAll([
   // ── the leader's plans (atlas/leaders.js; the numbers: data/lairs.js LEADER.plans)
-  {id: 'raid', label: 'выступил в набег', band: 'routine', party: 'leader', requires: [],
-    note: 'набег на город в досягаемости, который можно надеяться разбить: добыча кормит логово, разбитый набег может стоить главарю жизни; вожак зверей ходит на города реже (LEADER.beastRaid)'},
-  {id: 'expand', label: 'вышел с выводком искать новое логово', band: 'routine', party: 'leader', requires: [],
-    note: 'главарь уводит выводок из сильного логова и основывает дочернее — своего данника'},
+  // ── the lair's and its leader's (atlas/lairs.js, atlas/leaders.js; the numbers: data/lairs.js TRIBE_RAID, LAIR_LIFE, LEADER)
+  {id: 'raid', label: 'выступил в набег', band: 'routine', party: 'leader | raid', requires: [],
+    note: 'набег на ближайший город в досягаемости народа, которого раса не любит (мёртвые, демоны и звери — любой). Логово без главаря: осенью, с шансом TRIBE_RAID.chance, если сильно; звери без вожака на города не ходят; сильный набег идёт отрядом, слабый решается на месте. Главарь: отряд под его началом, добыча кормит логово, разбитый набег может стоить ему жизни; вожак зверей ходит на города реже (LEADER.beastRaid)'},
+  {id: 'expand', label: 'вышел с выводком искать новое логово', band: 'routine', party: 'leader | brood', requires: [],
+    note: 'выводок из сильного логова основывает новое. Без главаря: весной, с шансом рода (breed), пока своих меньше max × crowdMax; главарь ведёт выводок сам, и дочернее логово — его данник'},
   {id: 'subdue', label: 'выступил подчинять соседей', band: 'routine', party: 'leader', requires: [],
-    note: 'слабейшего соседа без главаря и господина — под руку: данник каждый год отдаёт долю силы'},
+    note: 'главарь: слабейшего соседа без главаря и господина — под руку: данник каждый год отдаёт долю силы'},
   {id: 'rival', label: 'выступил войной на соперников', band: 'routine', party: 'leader', requires: [],
-    note: 'война на логово-соперника (rivals рода логова): побеждённый слабеет или гибнет'},
+    note: 'главарь: война на логово-соперника (rivals рода логова): побеждённый слабеет или гибнет. (Драка соперников, чьи владения соприкасаются, — система логов, не дело: atlas/lairs.js)'},
+  {id: 'strike', label: 'вылетел жечь', band: 'routine', party: 'dragon', requires: [],
+    note: 'дракон: спит годами (DRAGON.sleep), летом летит на самый богатый город в досягаемости, жжёт угодья и жителей, если город его не отогнал, и летит домой спать'},
 ]);
 
-// the ready lists: the mores of a species' lairs (the leader's plans as they were for every lair kind — the lists part
-// ways as the deeds of the lairs without a leader and of the realms arrive)
+// the ready lists: the mores of a species' lairs — the same list serves the lair and its leader (the deed knows which
+// role asks, ctx.role); what a lair does without a leader is the deed's own rule (a beast's lair raids no town)
 export const DEED_WAYS = {
   lair: ['raid', 'expand', 'subdue', 'rival'],
+  dragon: ['expand', 'strike'],   // (a dragon's lair breeds with its kind's `breed` — 0 in data/lairs.js: the deed is there for the table to turn on)
+  vampire: ['expand'],
 };
 
 // the lanes of a list: band → the catalogue rows of the list in the list's order

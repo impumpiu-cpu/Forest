@@ -30,9 +30,9 @@ export function actorStep(a, actor, brain, ctx) {
   const found = offers(a, actor, ctx, deedLanes(brain.list), out ? ALARMS : DEED_BANDS);
   if (!found) return null;
   const [band, opts] = found;
-  // the world's choice: a draw by weight, in the list's order
-  let u = ctx.r() * opts.reduce((s, o) => s + o[1], 0), o = opts[0];
-  for (const x of opts) { u -= x[1]; if (u <= 0) { o = x; break; } }
+  // the world's choice: a draw by weight, in the list's order (a single offer draws nothing)
+  let o = opts[0];
+  if (opts.length > 1) { let u = ctx.r() * opts.reduce((s, x) => s + x[1], 0); for (const x of opts) { u -= x[1]; if (u <= 0) { o = x; break; } } }
   const alt = opts.filter(x => x !== o).sort((p, q) => q[1] - p[1])[0];
   actor.why = {year: a.hist.year, deed: o[3].id, weight: +o[1].toFixed(2), why: o[2]?.() || '', band, alt: alt ? alt[3].id : null, altWhy: alt?.[2]?.() || ''};
   if (out) goHome(a, out);   // an alarm answered: the party out is called back

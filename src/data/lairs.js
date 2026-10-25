@@ -173,13 +173,13 @@ export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'],
 //   strength: + grow × (fed − need), − winter in winter, ± wobble/2; it dies below `dies`
 //   brood:    in spring a lair stronger than breedAt and older than breedAge years may send a brood (its kind's `breed`
 //             chance) while there are fewer than its kind's max × crowdMax (a boss's: × bossCrowd); the brood looks for
-//             a spot in broodTries tries, and costs the lair × broodCost of its strength
+//             a spot in broodTries tries, costs the lair × broodCost of its strength and founds a lair of broodStart
 //   rivals:   touching rivals fight with this chance a season; each side's strength × its kind's power × (luck[0] +
 //             luck[1] × a roll); the loser × loser, the winner × winner; a loser below `routed` is gone
 //   start:    a wild lair's strength at the dawn: start[0] + start[1] × a roll (a dragon's dragonStart); a lair that
 //             comes through history (the dead, a rift) starts at spawnStart (a rift at fiendStart)
 export const LAIR_LIFE = {fedMax: 1.2, fedNone: 0.5, fiendFed: 0.55, vampirePop: 600, rotFeed: 1.2, tribeFeed: 0.6, crowd: 0.8,
   grow: 0.08, need: 0.45, winter: 0.03, wobble: 0.02, dies: 0.08,
-  breedAt: 0.85, breedAge: 3, crowdMax: 1.5, bossCrowd: 3, broodTries: 60, broodCost: 0.75,
+  breedAt: 0.85, breedAge: 3, crowdMax: 1.5, bossCrowd: 3, broodTries: 60, broodCost: 0.75, broodStart: 0.35,
   rivals: 0.08, luck: [0.7, 0.6], loser: 0.4, winner: 0.9, routed: 0.12,
   start: [0.4, 0.5], dragonStart: 0.9, spawnStart: 0.35, fiendStart: 0.55};

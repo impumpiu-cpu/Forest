@@ -37,7 +37,8 @@ function settle(a, p, l, L, rnd, say) {
 }
 
 export const subdue = {
-  want(a, l, {L}) {
+  want(a, l, {L, role}) {
+    if (role !== 'leader') return null;   // a lair without a leader takes no vassals
     const o = neighbours(a, l, L).meek[0];
     return o ? [[{plan: 'subdue', goal: o.i, target: o.id}, LEADER.plans.subdue, () => `слабый сосед: «${o.name}»`]] : null;
   },
@@ -45,7 +46,8 @@ export const subdue = {
 };
 
 export const rival = {
-  want(a, l, {L}) {
+  want(a, l, {L, role}) {
+    if (role !== 'leader') return null;   // without a leader the rivals' fights are the lairs' own system (atlas/lairs.js)
     const o = neighbours(a, l, L).rivals[0];
     return o ? [[{plan: 'rival', goal: o.i, target: o.id}, LEADER.plans.rival, () => `соперник рядом: «${o.name}»`]] : null;
   },

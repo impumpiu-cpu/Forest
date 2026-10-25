@@ -48,7 +48,7 @@ export const MONSTERS = [
     drinks: 0.5, sun: 0.0004,
     killMessage: name => `Упыри выпили кровь поселенца: <b>${name}</b>.`},
 
-  {id: 'vampire', kind: 'undead', label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true, sentient: true,
+  {id: 'vampire', kind: 'undead', deeds: {lair: [...DEED_WAYS.vampire]}, label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true, sentient: true,
     needs: [], heatHarm: 55, inventory: true, look: {shape: 'person', size: 0.64, color: '#5a1f2a', skin: '#e8e2e8'},
     drinks: 0.6, sun: 0.0006, weakTo: ['silver'],
     names: personNames('vampire'),

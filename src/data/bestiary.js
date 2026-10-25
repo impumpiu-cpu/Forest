@@ -119,7 +119,7 @@ export const BESTIARY = [
   // `dragon`). It never comes to the local map on its own (no `arrive`, no `habitat`): on the world map it
   // sleeps for years and flies out to burn a town's works and people (atlas/parties.js DRAGON). Its
   // habitat only says where its lair may be: the dragon is a lair, not a field of beasts
-  beast({id: 'dragon', kind: 'monster', label: 'дракон', labelAcc: 'дракона', plural: 'драконы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, heatHarm: 800,
+  beast({id: 'dragon', kind: 'monster', label: 'дракон', labelAcc: 'дракона', plural: 'драконы', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator, deeds: {lair: [...DEED_WAYS.dragon]}, heatHarm: 800,
     fearHeat: 800, habitat: {volcano: 'rare'},
     look: {shape: 'bird', size: 1.4, color: '#8a2418'}, breath: 0.5,
     yields: {meat: 20, scales: 12, gland: 3}, trophies: [{res: 'scales', n: 4, chance: 0.4, tier: 3}, {res: 'gland', n: 2, chance: 0.3, tier: 4}],

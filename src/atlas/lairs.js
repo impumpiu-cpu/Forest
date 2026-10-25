@@ -1,9 +1,11 @@
 // Lairs of the monsters (data/lairs.js): points with an owner species, a strength, an age and a
 // territory. At the start of the wild era they are placed on suitable ground, spaced by territory.
 // Each season a lair feeds on the prey of its territory (strength grows when fed, wanes when not),
-// holds the density of its species up around it, sends out broods that found new lairs when strong,
-// fights rival lairs whose territories touch, grows old, and dies out when it is starved or beaten.
-// Every one of these turns writes a line to the chronicle.
+// holds the density of its species up around it, fights rival lairs whose territories touch, grows old,
+// and dies out when it is starved or beaten — that is its body. What it does — a brood that founds a
+// new lair, a camp's raid, the dragon's flight — are the deeds of its species' row (data/deeds.js
+// `deeds.lair`, the code in atlas/deeds/), chosen by the actor's brain (atlas/actor.js, the role
+// `lair` below). Every one of these turns writes a line to the chronicle.
 // Tribes (data/lairs.js, `tribe`) are lairs whose owner is a thinking race: the camp lives off its
 // land (the race's `home` over the territory) rather than prey, thins out where the peoples settle,
 // and in autumn raids the towns of the peoples its race dislikes (data/relations.js).
@@ -13,7 +15,6 @@
 import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves, ruinAt} from './diplomacy.js';
-import {RELATIONS} from '../data/relations.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {townFx, might, raidShare, townLabel} from './towns.js';
 import {BIOMES} from '../data/biomes.js';
@@ -23,8 +24,9 @@ import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
 import {raidSite} from './sites.js';
-import {PARTIES, DRAGON} from '../data/parties.js';
-import {BEHAVIOURS, sendParty, goHome} from './parties.js';
+import {BEHAVIOURS, goHome} from './parties.js';
+import {actorStep} from './actor.js';
+import {DOES} from './deeds/index.js';
 import {BURNT, townAt} from './peoples.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
@@ -260,17 +262,14 @@ export function stepLairs(a, rnd, seasonId) {
         : `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: ${s ? 'добычи' : 'земли'} не стало, и ${SPECIES.get(L.species).plural} ушли.`);
       continue;
     }
-    if ((L.tribe || L.undead || L.fiend) && L.at !== 'town' && seasonId === 'autumn' && a.towns && !lair.leader) { const line = tribeRaid(a, lair, L, rnd); if (line) lines.push(line); }
-    if (L.dragon && seasonId === 'summer') { const line = dragonFlight(a, lair, L, rnd); if (line) lines.push(line); }
+    // what the lair does this season by the deeds of its species (data/deeds.js `deeds.lair`; atlas/deeds/): a camp's
+    // autumn raid, a spring brood, the dragon's summer flight — the lair's role of the actor's brain (atlas/actor.js);
+    // a lair with a leader leaves the deeds to it (atlas/leaders.js)
+    if (!lair.leader && SPECIES.has(L.species)) actorStep(a, lair, {...lairRole, list: SPECIES.get(L.species).deeds?.lair || []}, {L, sp: SPECIES.get(L.species), role: 'lair', season: seasonId, r: rnd, say: t => lines.push(t)});
     const age = H.year - lair.born;
     if (!lair.ancient && age >= LAIR_AGE.ancient) {
       lair.ancient = true;
       lines.push(`${cap1(L.label)} «${lair.name}» ${G[L.g].stands} уже ${age} лет: о ${G[L.g].about} слагают страшные сказки.`);
-    }
-    // a strong lair sends out a brood in spring
-    if (seasonId === 'spring' && !lair.leader && lair.strength > LL.breedAt && age >= LL.breedAge && rnd() < L.breed * (lair.boss != null ? CAL.boss.breed : 1) && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * (lair.boss != null ? LL.bossCrowd : LL.crowdMax)) {
-      const i = findSpot(a, L, rnd, lair, LL.broodTries);
-      if (i >= 0 && sendParty(a, 'brood', lair.i, i, {owner: lair.id, lairKind: L.id, speed: L.flies ? 'flight' : L.riders ? 'rider' : 'foot', label: `выводок: ${SPECIES.get(L.species).plural}`, color: L.color})) lair.strength *= LL.broodCost;
     }
   }
   // rivals whose territories touch fight now and then; the stronger and the fiercer wins
@@ -292,27 +291,6 @@ export function stepLairs(a, rnd, seasonId) {
     }
   }
   return lines;
-}
-
-// a tribe's autumn raid: the nearest town within reach of a people its race dislikes; the camp's
-// strength against the town's might; the loot feeds the camp, a beating thins it
-function tribeRaid(a, lair, L, rnd) {
-  const T = TRIBE_RAID, k = scaleOf(a);
-  if (lair.strength < T.from || rnd() > T.chance) return null;
-  // a tribe raids the peoples its race dislikes (data/relations.js); the dead and the demons raid anyone
-  const race = SPECIES.get(L.species), dislikes = t => L.undead || L.fiend || (RELATIONS[race.rel]?.[SPECIES.get(WORLD_PEOPLES.get(t.people).race).rel] ?? 0) < 0;
-  let target = null, bd = T.reach * k;
-  for (const t of a.towns) if (t.alive && dislikes(t)) { const d = dist(lair, t); if (d < bd) { bd = d; target = t; } }
-  if (!target) return null;
-  const tribe = lair.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * rnd()) * (lair.boss != null ? CAL.boss.might : 1);   // a boss leads its raids
-  // a strong raid walks the map as a party and strikes when it gets there (data/parties.js threshold);
-  // a weak one is settled where it stands, by chance, as the small bands always were
-  if (tribe >= PARTIES.threshold) {
-    const p = sendParty(a, 'raid', lair.i, target.i, {owner: lair.id, target: target.id, might: tribe, speed: L.riders ? 'rider' : 'foot', label: raidWho(L), color: L.color});
-    if (p) return `${raidWho(L)} ${L.from} «${lair.name}» ${L.leads ? 'на' : 'двинулись на'} ${townLabel(target, 1)} ${target.name}.`;
-    return null;   // no way there (the sea between): the raid does not happen, rather than strike across the water
-  }
-  return strikeTown(a, lair, L, target, tribe, rnd, true);
 }
 
 // who comes: «Гноллы с гиенами», «Некромант повёл мертвецов»
@@ -343,68 +321,27 @@ export function strikeTown(a, lair, L, target, tribe, rnd, atOnce) {
   return null;
 }
 
-// the dragon: it sleeps for years, then in summer flies out to the richest town in reach, burns its
-// works and its people, and flies home to sleep again (data/parties.js DRAGON)
-function dragonFlight(a, lair, L, rnd) {
-  const D = DRAGON, k = scaleOf(a);
-  if (lair.sleep == null) lair.sleep = D.sleep[0] + Math.floor(rnd() * (D.sleep[1] - D.sleep[0] + 1));
-  if (--lair.sleep > 0 || !a.towns.length) return null;
-  let target = null, bv = 0;
-  for (const t of a.towns) if (t.alive && dist(lair, t) <= D.reach * k) { const v = t.pop * (0.7 + 0.6 * rnd()); if (v > bv) { bv = v; target = t; } }
-  if (!target) { lair.sleep = 2; return null; }
-  const p = sendParty(a, 'dragon', lair.i, target.i, {owner: lair.id, target: target.id, might: D.might, speed: 'flight', label: 'дракон', color: L.color});
-  if (!p) return null;
-  return `Дракон ${L.from} «${lair.name}» проснулся и полетел на ${townLabel(target, 1)} ${target.name}.`;
-}
-BEHAVIOURS.dragon = {
-  arrive(a, p, rnd, say) {
-    const lair = a.lairs.find(l => l.id === p.owner), target = a.towns.find(t => t.id === p.target), D = DRAGON;
-    if (lair && target && target.alive) {
-      const fx = townFx(target), town = might(target, fx) * (0.6 + 0.8 * rnd());
-      if (town > p.might * (0.6 + 0.8 * rnd())) say(`${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отогнали дракона: стрелы и копья его не взяли, но и он не стал жечь.`);
-      else {
-        let burnt = 0;
-        const n = D.burns[0] + Math.floor(rnd() * (D.burns[1] - D.burns[0] + 1));
-        for (let q = 0; q < n; q++) if (raidSite(a, target, () => 0)) burnt++;
-        const loss = D.loss * raidShare(fx);
-        target.pop *= 1 - loss; target.raided = a.hist.year; raidGraves(a, target);
-        say(`Дракон ${LAIRS.get(lair.kind).from} «${lair.name}» выжег ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, сгорело угодий: ${burnt}` : ''}.`);
-      }
-    }
-    goHome(a, p);
-  },
-  home(a, p, rnd) {
-    const lair = a.lairs.find(l => l.id === p.owner);
-    if (lair) lair.sleep = DRAGON.sleep[0] + Math.floor(rnd() * (DRAGON.sleep[1] - DRAGON.sleep[0] + 1));
-  },
+// the lair's role for the actor's brain (atlas/actor.js): the deeds of its species' row; a lair is many wills and waits for
+// no party of its own (a raid out in autumn does not stop a brood in spring); the deed sets its party out or is done
+// where the lair stands (`act` → the chronicle line)
+const lairRole = {
+  list: [],
+  party: () => null,
+  setOut(a, l, [plan, , , d], ctx) { const line = DOES[d.id].act?.(a, l, plan, ctx); if (line) ctx.say(line); },
 };
-
-// the raid party: strikes when it arrives, carries the loot home
+// the parties a lair sends: the deed that sent them does the work when they arrive and when they are home
+const byOwner = (a, p) => a.lairs.find(l => l.id === p.owner) || null;
 BEHAVIOURS.raid = {
-  arrive(a, p, rnd, say) {
-    const lair = a.lairs.find(l => l.id === p.owner), target = a.towns.find(t => t.id === p.target);
-    if (lair && lair.alive && target && target.alive) {
-      const line = strikeTown(a, lair, LAIRS.get(lair.kind), target, p.might, rnd, false);
-      p.loot = /погибло/.test(line) ? TRIBE_RAID.loot : 0;
-      say(line);
-    }
-    goHome(a, p);
-  },
-  home(a, p) {
-    const lair = a.lairs.find(l => l.id === p.owner);
-    if (lair && lair.alive && p.loot) lair.strength = Math.min(1, lair.strength + p.loot);
-  },
+  arrive(a, p, rnd, say) { const l = byOwner(a, p); if (l?.alive) DOES.raid.arrive(a, p, l, LAIRS.get(l.kind), rnd, say); goHome(a, p); },
+  home(a, p) { const l = byOwner(a, p); if (l?.alive) DOES.raid.home(a, p, l); },
 };
-// the brood: founds the new lair where it arrives, if the spot is still free
+// the brood founds the new lair where it arrives (its parent may be gone by then) and is no more
 BEHAVIOURS.brood = {
-  arrive(a, p, rnd, say) {
-    const L = LAIRS.get(p.lairKind), parent = a.lairs.find(l => l.id === p.owner);
-    p.state = 'gone';
-    if (a.lairs.some(o => o.alive && o.kind === L.id && dist(o, {x: p.goal % a.w, y: (p.goal / a.w) | 0}) < 2 * R(a, L))) return;   // another brood got there first
-    if (!groundFits(a, L, p.goal)) return;   // a town or its works grew over the spot while the brood was on its way
-    const young = newLair(a, L, p.goal, rnd, 0.35);
-    say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${parent ? parent.name : '…'}» основали ${G[L.g].fresh} ${acc(L)} — «${young.name}» ${wherePhrase(a, p.goal)}.`);
-  },
+  arrive(a, p, rnd, say) { p.state = 'gone'; DOES.expand.arrive(a, p, byOwner(a, p), LAIRS.get(p.lairKind), rnd, say); },
+};
+BEHAVIOURS.dragon = {
+  arrive(a, p, rnd, say) { const l = byOwner(a, p); if (l) DOES.strike.arrive(a, p, l, LAIRS.get(l.kind), rnd, say); goHome(a, p); },
+  home(a, p, rnd) { const l = byOwner(a, p); if (l) DOES.strike.home(a, p, l, rnd); },
 };
 
 // spring: the lairs that come through history. The dead rise where the rot is thick enough (on the
@@ -448,9 +385,9 @@ function spawnLairs(a, rnd) {
 
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 // words that agree with the lair's noun
-const G = {n: {emptied: 'Опустело', fresh: 'новое', stands: 'стоит', about: 'нём'}, f: {emptied: 'Опустела', fresh: 'новую', stands: 'стоит', about: 'ней'},
+export const G = {n: {emptied: 'Опустело', fresh: 'новое', stands: 'стоит', about: 'нём'}, f: {emptied: 'Опустела', fresh: 'новую', stands: 'стоит', about: 'ней'},
   m: {emptied: 'Опустел', fresh: 'новый', stands: 'стоит', about: 'нём'}, pl: {emptied: 'Опустели', fresh: 'новые', stands: 'стоят', about: 'них'}};
-const acc = L => L.labelAcc || L.label;
+export const acc = L => L.labelAcc || L.label;
 // «with the griffins» — the instrumental plural for the few owners
 const INSTR = {griffin: 'грифонами', wyvern: 'вивернами', drake: 'дрейками', spider: 'пауками', stoneworm: 'червями', bat: 'кровопийцами', varg: 'варгами'};
 const whomInstr = sp => INSTR[sp.id] || sp.plural;

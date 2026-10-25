@@ -28,9 +28,13 @@ const spotNear = (a, kind, at, near, far = 3) => cellOf(a, i => { const d = dist
 // the hand raises a leader in a lair
 const lead = (a, l) => { l.ancient = true; raise(a, l, mulberry(7)); return l; };
 // the brain asked with a list of deeds and a stream: the choice [plan, weight, why, deed] or null
-function ask(a, l, list, r = () => 0) {
+function ask(a, l, list, r = () => 0, role = 'leader', season = 'spring') {
   const L = LAIRS.get(l.kind), lines = [];
-  const o = actorStep(a, l, {list, party: partyOf, setOut(a, l, [plan, , , d]) { lines.push(d.id); l.chosen = {plan, deed: d.id}; }}, {L, sp: SPECIES.get(L.species), r, say: t => lines.push(t)});
+  const ctx = {L, sp: SPECIES.get(L.species), role, season, r, say: t => lines.push(t)};
+  // the leader's role only records the choice; the lair's lets the deed set its party out or strike where it stands
+  const setOut = role === 'lair' ? (a, l, [plan, , , d], ctx) => { const line = DOES[d.id].act?.(a, l, plan, ctx); if (line) lines.push(line); } : (a, l, [plan, , , d]) => { l.chosen = {plan, deed: d.id}; };
+  const o = actorStep(a, l, {list, party: role === 'lair' ? () => null : partyOf, setOut}, ctx);
+  l.lines = lines;
   return o;
 }
 // the humans' town and a lair of the kind near it
@@ -142,11 +146,74 @@ scene_('W06', 'летопись и история: в живом мире гла
   return DEEDS.has(seen.plan) && SPECIES.get('goblin').deeds.lair.includes(seen.plan) || `отряд несёт дело «${seen.plan}», которого нет в списке гоблинов`;
 });
 
-scene_('W07', 'каталог: у каждого дела есть код; у хозяина каждого рода логов (кроме дракона и вампира) — список нравов из каталога', () => {
+scene_('W08', 'стан без главаря: осенью, если силён, идёт набегом на город людей — отрядом или ударом на месте; весной и летом — нет', () => {
+  const a = world(), {town, lair} = townAndLair(a, 'goblins');
+  if (!lair?.id) return 'стан не встал';
+  lair.strength = 0.9;
+  if (ask(a, lair, ['raid'], () => 0, 'lair', 'spring') !== null) return 'стан пошёл в набег весной';
+  if (ask(a, lair, ['raid'], () => 0, 'lair', 'summer') !== null) return 'стан пошёл в набег летом';
+  const pop0 = town.pop, o = ask(a, lair, ['raid'], () => 0, 'lair', 'autumn');
+  if (!o || o[0].target !== town.id) return `осенью предложено: ${o ? o[0].target : 'ничего'}`;
+  const party = (a.parties || []).find(p => p.kind === 'raid' && p.owner === lair.id);
+  if (!party && !(town.pop < pop0) && !lair.lines.some(t => /отбили/.test(t)) && !a.hist.repelled) return `набег не состоялся: ${lair.lines.join(' | ')}`;
+  lair.strength = 0.3;
+  return ask(a, lair, ['raid'], () => 0, 'lair', 'autumn') === null || 'слабый стан пошёл в набег';
+});
+
+scene_('W09', 'логово зверей без вожака на города не ходит; с вожаком — ходит', () => {
+  const a = world(), {lair} = townAndLair(a, 'varg', 12);
+  if (!lair?.id) return 'логово варгов не встало';
+  lair.strength = 0.9;
+  if (ask(a, lair, ['raid'], () => 0, 'lair', 'autumn') !== null) return 'варги без вожака пошли на город';
+  lead(a, lair);
+  return ask(a, lair, ['raid']) !== null || 'вожак варгов не пошёл на город';
+});
+
+scene_('W10', 'логово без главаря: весной сильное и старое шлёт выводок, который основывает новое логово', () => {
+  const a = world(), {lair} = townAndLair(a, 'goblins');
+  if (!lair?.id) return 'стан не встал';
+  lair.strength = 0.95; lair.born = a.hist.year - 10;
+  const m = mulberry(2); let first = true;
+  const o = ask(a, lair, ['expand'], () => (first ? (first = false, 0) : m()), 'lair', 'spring');   // the year's roll falls, the spot is drawn
+  if (!o) return 'выводок не предложен';
+  const p = (a.parties || []).find(x => x.kind === 'brood' && x.owner === lair.id);
+  if (!p) return 'выводок не вышел отрядом';
+  const n0 = a.lairs.length, lines = [];
+  p.i = p.goal; BEHAVIOURS.brood.arrive(a, p, mulberry(3), t => lines.push(t));
+  return (a.lairs.length === n0 + 1 && a.lairs.at(-1).kind === 'goblins' && a.lairs.at(-1).lord == null) || `выводок не осел: ${lines.join(' | ')}`;
+});
+
+scene_('W11', 'дракон: спит; проснувшись летом, летит на самый богатый город в досягаемости и жжёт его; потом спит снова', () => {
+  // a volcano with land for a town of men within the dragon's reach
+  const a = world(), homely = i => (SPECIES.get('human').home[biomeAt(a, i)?.id] || 0) >= 0.5;
+  let volc = -1, plain = -1;
+  for (let i = 0; i < a.n && plain < 0; i++) {
+    if (a.f.ocean[i] || !groundFits(a, LAIRS.get('dragon'), i)) continue;
+    volc = i; plain = cellOf(a, j => homely(j) && dist(xy(a, j), xy(a, i)) > 6 && dist(xy(a, j), xy(a, i)) < 30);
+  }
+  if (plain < 0) return 'нет вулкана с равниной под город рядом';
+  const lair = addLair(a, 'dragon', volc);
+  if (!lair?.id) return `логово дракона не встало: ${lair?.error}`;
+  const {town} = landPeople(a, 'humans', plain);
+  if (!town) return 'люди не высадились';
+  lair.sleep = 1;
+  if (ask(a, lair, ['strike'], () => 0, 'lair', 'spring') !== null) return 'дракон вылетел весной';
+  lair.sleep = 1;
+  const o = ask(a, lair, ['strike'], () => 0, 'lair', 'summer');
+  if (!o || o[0].target !== town.id) return `летом предложено: ${o ? o[0].target : 'ничего'} (${lair.lines.join(' | ')})`;
+  const p = (a.parties || []).find(x => x.kind === 'dragon' && x.owner === lair.id);
+  if (!p) return 'дракон не вылетел отрядом';
+  const pop0 = town.pop, lines = [];
+  p.might = 1e6; BEHAVIOURS.dragon.arrive(a, p, mulberry(3), t => lines.push(t));
+  if (!(town.pop < pop0)) return `не выжег: ${lines.join(' | ')}`;
+  BEHAVIOURS.dragon.home(a, p, mulberry(4));
+  return lair.sleep > 1 || `не уснул: sleep ${lair.sleep}`;
+});
+
+scene_('W07', 'каталог: у каждого дела есть код; у хозяина каждого рода логов — список нравов из каталога', () => {
   for (const d of DEEDS.all()) if (!DOES[d.id]?.want) return `нет кода у «${d.id}»`;
   for (const L of LAIRS.all()) {
     const sp = SPECIES.get(L.species);
-    if (L.dragon || L.at === 'town') continue;
     if (!sp.deeds?.lair?.length) return `${L.id}: у ${sp.id} нет нравов логова`;
     for (const id of sp.deeds.lair) if (!DEEDS.has(id)) return `${sp.id}: дело «${id}» не в каталоге`;
   }

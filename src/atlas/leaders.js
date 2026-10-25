@@ -110,7 +110,7 @@ export function stepLeaders(a, say) {
   for (const l of livingLeaders(a)) {
     if (partyOf(a, l) || r() >= LEADER.think) continue;
     const L = LAIRS.get(l.kind), sp = SPECIES.get(L.species);
-    actorStep(a, l, {...leaderRole, list: sp.deeds?.lair || []}, {L, sp, r, say});
+    actorStep(a, l, {...leaderRole, list: sp.deeds?.lair || []}, {L, sp, role: 'leader', season: 'spring', r, say});
   }
   done();
 }
