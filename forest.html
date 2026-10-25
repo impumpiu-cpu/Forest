@@ -176,6 +176,9 @@
   .fights th{font-weight:400;color:var(--muted)} .fights th:first-child,.fights td:first-child{text-align:left}
   .fights td.t{text-align:left;white-space:normal}
   .fights .won{color:var(--good)} .fights .lost{color:var(--raider)} .fights .boss{font-weight:600}
+  .fights.summary{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+  .fights dl.sum{display:grid;grid-template-columns:auto 1fr;gap:1px 10px;margin:0 0 6px}
+  .fights dl.sum dt{color:var(--muted)} .fights dl.sum dd{margin:0;text-align:right}
   .ybars{display:flex;align-items:flex-end;gap:3px;height:70px;margin:4px 0}
   .ybars .yb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:1px;min-width:10px}
   .ybars .yb i{display:block;width:100%;background:var(--ember);opacity:.85} .ybars .yb i.k{background:var(--good)}
@@ -502,9 +505,10 @@
     </div>
 
     <div class="obs-dock" id="campDock">
-      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button></div>
+      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="fights">Бои</button><button type="button" data-tab="summary">Итоги</button></div>
       <div class="obs-pane" data-pane="object"><div class="inspect" id="campInspect"></div></div>
       <div class="obs-pane" data-pane="fights" hidden><div class="fights" id="campFights"><p class="muted">Боёв ещё не было.</p></div></div>
+      <div class="obs-pane" data-pane="summary" hidden><div class="fights summary" id="campSummary"><p class="muted">Итоги начнут собираться, когда караван выступит.</p></div></div>
     </div>
 
     <aside class="obs-chron">

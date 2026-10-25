@@ -135,7 +135,7 @@ export function arrive(a, era, rnd, say) {
     const P = pe.P, picks = [];
     // where they may come: the best of their land, its best coast, or as far from every town as it lets them
     const coast = j => { const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c; for (let y = y0; y < Math.min(a.h, y0 + F.c); y++) for (let x = x0; x < Math.min(a.w, x0 + F.c); x++) if (a.f.ocean[y * a.w + x]) return true; return false; };
-    const far = j => { const x = (j % F.W + 0.5) * F.c, y = (((j / F.W) | 0) + 0.5) * F.c; let d = Infinity; for (const t of a.towns) if (t.alive) d = Math.min(d, Math.hypot(t.x - x, t.y - y)); return Math.min(1, d / (a.w / 3)); };
+    const far = j => { const x = (j % F.W) * F.c + F.c / 2, y = ((j / F.W) | 0) * F.c + F.c / 2; let d = Infinity; for (const t of a.towns) if (t.alive) d = Math.min(d, Math.hypot(t.x - x, t.y - y)); return Math.min(1, d / (a.w / 3)); };
     // each founding band is its own sub-race (data/races.js peoples) and looks for the land that suits it
     const subs = worldSubs(P.race), mode = P.arrive.mode;
     for (let g = 0; g < P.arrive.groups; g++) {
@@ -183,6 +183,19 @@ export function landBand(a, peopleId, i, subId, rnd, say) {
   return {town: t, realm: r};
 }
 
+// how firmly a people holds each coarse cell, 0 … 1: by the distance to its nearest living town (TOWN_LIFE.hold) — the
+// land a people has no town near any more (its towns burnt, its frontier pushed back) fades instead of living on
+function holdField(a, pe) {
+  const F = a.fauna, N = F.W * F.H, out = new Float32Array(N), sp = pe.P.spacing * scaleOf(a), H = TL.hold;
+  const near = H.near * sp, far = H.far * sp, mine = a.towns.filter(t => t.alive && t.people === pe.id);
+  for (let j = 0; j < N; j++) {
+    const x = (j % F.W) * F.c + F.c / 2, y = ((j / F.W) | 0) * F.c + F.c / 2;
+    let d = Infinity; for (const t of mine) { const e = Math.hypot(t.x - x, t.y - y); if (e < d) d = e; }
+    out[j] = d <= near ? 1 : d >= far ? 0 : (far - d) / (far - near);
+  }
+  return out;
+}
+
 // a year of the peoples: their fields, their towns, their wars with the wild, their meetings
 export function stepPeoples(a, rnd, say) {
   const F = a.fauna, N = F.W * F.H, tmp = new Float32Array(N), k = scaleOf(a);
@@ -193,7 +206,7 @@ export function stepPeoples(a, rnd, say) {
   // how the races stand to each other this year (the worst of their realms' dealings), once per pair
   const compete = a.peoples.map(pe => a.peoples.map(o => (o === pe ? 0 : DIPLOMACY.compete[raceState(a, pe.id, o.id)])));
   for (const [pi, pe] of a.peoples.entries()) {
-    const {P, K, u, mob} = pe;
+    const {P, K, u, mob} = pe, hold = holdField(a, pe);
     // Fisher–KPP: logistic growth where they live, spreading easiest through their own lands
     tmp.set(was[pi]);
     for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
@@ -206,7 +219,7 @@ export function stepPeoples(a, rnd, say) {
       // other peoples on the same land push this one out, the more the worse they get on
       let push = 0;
       for (const [oi, o] of a.peoples.entries()) if (o !== pe && was[oi][j] > 0) push += compete[pi][oi] * was[oi][j];
-      u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
+      u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j] - TL.hold.fade * (1 - hold[j]) * tmp[j]);
     }
   }
   // people hunt: beasts thin out where people live, predators and monsters most

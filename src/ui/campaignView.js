@@ -27,7 +27,7 @@ import {TickClock, dateText} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {openTab} from './tabs.js';
 import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
-import {fightStats, fightReportText, groupText, FATES, HOWS} from '../campaign/stats.js';
+import {fightStats, fightReportText, groupText, FATES, HOWS, walkStats, walkReportText} from '../campaign/stats.js';
 import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
 import {warnEdits} from './tableEdits.js';
@@ -304,7 +304,9 @@ export class CampaignView extends AtlasView {
   stepSeason() {
     const a = this.atlas; if (!a?.campaign || finished(a.campaign)) return false;
     const d0 = a.campaign.day;
+    const was = ended(a.campaign);
     stepCampaign(a);
+    if (!was && ended(a.campaign) && this.ids?.dock) openTab($(this.ids.dock), 'summary');   // the walk is over: its sums up front
     // the season's camps to watch, each at its day of the playback
     const W = WATCH[this.clock.pace], K = a.campaign, n = Math.max(1, K.track.length - 1);
     // (a named fight — a boss, a grave's guard, a leader — is shown at any pace, «Сразу» too: the walk is about these)
@@ -490,8 +492,17 @@ export class CampaignView extends AtlasView {
     $('campFightsFile').addEventListener('click', () => offerText(latinTitle(`boi-${K.capitalName}-${K.started?.year ?? ''}`), fightReportText(this.atlas, K)));
   }
 
+  // the walk summed up (campaign/stats.js walkStats) in the dock's «Итоги»: live while it goes, the whole of it at the end
+  renderSummary() {
+    const K = this.atlas?.campaign, box = $('campSummary'); if (!box) return;
+    if (!K) { box.innerHTML = '<p class="muted">Итоги начнут собираться, когда караван выступит.</p>'; return; }
+    box.innerHTML = walkStats(this.atlas, K).map(S => `<div><h4>${esc(S.title)}</h4><dl class="sum">${S.rows.map(([l, x]) => `<dt>${esc(l)}</dt><dd>${esc(String(x))}</dd>`).join('')}</dl></div>`).join('') +
+      `<div class="wide"><div class="row actions"><button type="button" class="quiet mini" id="campSummaryFile">Итоги в файл</button></div></div>`;
+    $('campSummaryFile').addEventListener('click', () => offerText(latinTitle(`itogi-${K.capitalName}-${K.started?.year ?? ''}`), walkReportText(this.atlas, K)));
+  }
+
   renderSide() {
-    this.renderFights();
+    this.renderFights(); this.renderSummary();
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
     const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};

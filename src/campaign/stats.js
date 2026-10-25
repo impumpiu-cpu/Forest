@@ -65,3 +65,62 @@ export function fightReportText(a, K) {
   if (!S.named.length) out.push('  не было');
   return out.join('\n');
 }
+
+// ── the walk summed up (docs/CAMPAIGN.md «Итоги похода»): every counter of K.stats, the company and the quest, in
+// sections of [label, value] — the dock's «Итоги» tab (live while the walk goes, opened by itself when it ends) and
+// «Итоги в файл». Counters a walk has not touched show as 0, so two walks read alike.
+const END = {won: 'вернулись с короной', lost: 'погибли все восемь', timeout: 'срок вышел — не вернулись'};
+const CROWN = {carried: 'несут', taken: 'у врагов', lost: 'пропала'};
+export function walkStats(a, K) {
+  const s = K.stats || {}, v = k => s[k] || 0, ms = K.members || [];
+  const core = ms.filter(m => m.core), years = r1(K.day / YEAR_DAYS);
+  const fell = ms.filter(m => m.died), left = ms.filter(m => !m.alive && !m.died && !m.left?.escaped && !m.captive);
+  const here = ms.filter(m => m.alive && !m.captive), captives = ms.filter(m => m.alive && m.captive);
+  const out = [];
+  out.push({title: 'Поход', rows: [
+    ['Итог', END[K.phase] || 'в пути'],
+    ['В пути', `${K.day} дн. (${years} г.)`],
+    ['Пройдено', `${Math.round(s.walked || 0)} клеток`],
+    ['Стоянок', `${v('camps')}, дней на стоянке ${v('stopDays')}`],
+    ['В городах', `${v('towns')} раз, нанимались на работу ${v('worked')}`],
+    ['Голодных дней', `${v('hungryDays')}, кормили даром ${v('alms')} раз`],
+    ['Бросили повозки', v('left')],
+  ]});
+  if (K.quest) {
+    const Q = K.quest, C = Q.crown;
+    out.push({title: 'Корона', rows: [
+      ['Корона', `${Q.name}: ${CROWN[C.state] || (C.exact || C.seen ? 'известно где' : C.area ? 'известен круг' : 'где — неизвестно')}`],
+      ['Следы', `найдено ${Q.found} из ${Q.clues.length}`],
+      ['Слухов', v('rumours')], ['Штурмов', v('storms')], ['Погонь', v('pursuers')],
+    ]});
+  }
+  out.push({title: 'Отряд', rows: [
+    ['Вышли', `${core.length}, в строю из них ${core.filter(m => m.alive).length}`],
+    ['Сейчас в отряде', `${here.length}${captives.length ? `, пленных ${captives.length}` : ''}`],
+    ['Пали', fell.length ? `${fell.length}: ${fell.map(m => m.name).join(', ')}` : 0],
+    ['Ушли', `${left.length}, из них дезертиров ${v('deserted')}`],
+    ['Наёмники', `остались без платы ${v('stayed')}, продлили ${v('extended')}, ушли — не было места ${v('stayFull')}`],
+    ['Бывшие пленные в отряде', v('formerMembers')],
+  ]});
+  out.push({title: 'Встречи и бои', rows: [
+    ['Боёв', `${v('fights')}, отбились ${v('won')}, отступили ${v('fled')}, засад ${v('ambushes')}`],
+    ['Главарей логов', v('leaders')],
+    ['Встречено угроз', `${v('met')} в пути, ${v('strays')} ночью, мелких ${v('small')}; заметили караван ${v('noticed')} раз`],
+    ['Ушли от угрозы', v('evaded')],
+    ['Торговых обозов', v('trains')],
+    ['Зелий', `сварено ${v('brewed')}, выпито ${v('potions')}`],
+  ]});
+  out.push({title: 'Добыча и хозяйство', rows: [
+    ['Находки', `${v('finds')}, кладов ${v('treasures')}`],
+    ['Стад добыто', v('herds')], ['Приручено', v('tamed')], ['Построено', v('built')],
+    ['Добыто на стоянках', v('dug')], ['Намыто золота', `${r1(v('panned'))} зол.`],
+    ['Сковано в кузнях', v('forged')], ['Казна', `${K.gold} зол.`],
+  ]});
+  out.push({title: 'Пленные', rows: [
+    ['Взято', v('captives')], ['Бежали', v('escaped')], ['Пойманы при побеге', v('caught')], ['Выдали сговор', v('told')],
+    ['Отпущены на волю', v('freed')], ['Продано', v('sold')], ['Куплено', v('bought')],
+  ]});
+  return out;
+}
+export const walkReportText = (a, K) => [`Итоги похода из ${K.capitalFrom || K.capitalName}`,
+  ...walkStats(a, K).flatMap(S => ['', `${S.title}:`, ...S.rows.map(([l, x]) => `  ${l}: ${x}`)])].join('\n');
