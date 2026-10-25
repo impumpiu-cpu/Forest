@@ -96,6 +96,8 @@ BEHAVIOURS.registerAll([
     note: 'охранник держится своего места рядом с купцом'},
   // ── the colony's people (agents/brains/colonist.js; the weights: data/behaviour.js COLONIST, ROSTER, BOARD): each offers a
   // task of agents/tasks.js; the task under way is held with ROSTER.keep (work harder: agents/behaviours/work.js keep)
+  {id: 'warband', task: false, band: 'red', requires: [], keep: 0,
+    note: 'дружина каравана на стоянке: пока поднята тревога лагеря, каждый боеспособный бьёт врага — того, кто бьёт его, иначе ближайшего; спящий спит до тревоги (campaign/camp.js)'},
   {id: 'defend', task: false, band: 'red', requires: [], keep: ROSTER.keep,
     note: 'на меня напали: смелый и здоровый дерётся (fight, рефлекс), остальные бегут к своим (runHome); в зоне поселения стоит и дерётся'},
   {id: 'needs', task: false, band: 'routine', requires: ['needs'], keep: ROSTER.keep,

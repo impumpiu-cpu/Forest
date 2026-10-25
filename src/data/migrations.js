@@ -136,7 +136,7 @@ MIGRATIONS.registerAll([
       createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)
     },
     ammo: 8,
-    message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)} — с ${side}.`},
+    message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)}${side ? ` — с ${side}` : ''}.`},   // (a camp's foe may come from close by, not from an edge: no side)
 ]);
 
 // ── the bestiary's beasts (data/bestiary.js `arrive`): one arrival each, built from the entry.

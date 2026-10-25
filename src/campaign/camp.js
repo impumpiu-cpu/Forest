@@ -17,6 +17,9 @@ import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
 import {refreshBody} from '../agents/special.js';
+import {attackerOf} from '../agents/combat.js';
+import {wake} from '../agents/attention.js';
+import {nightSight} from '../data/tongues.js';
 import {sideStrength, strengthOf, expectedStrength} from '../agents/strength.js';
 import {dress, def, gearDef, gearToken, gearType} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
@@ -27,7 +30,7 @@ import {walkable} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {cellPlan} from '../seam/cell.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, nightness} from '../core/time.js';
 import {SEASON_DAYS} from '../data/seasons.js';
 import {DEFAULT_CFG} from '../data/presets.js';
 import {FOODS} from '../data/foods.js';
@@ -238,9 +241,26 @@ export function stepCamp(w) {
     const b = w.agents.find(x => x.tame && !x.dead && !x.ledBy && Math.hypot(x.x - o.x, x.y - o.y) < 2.5);
     if (b) { b.ledBy = o.id; b.brain = 'led'; o.leads = b.id; }   // the brain `led` (agents/behaviours/led.js): it follows him and is gone with him
   }
+  if (C.spawned && !C.alarm) raiseAlarm(w);
   if (C.boss && !C.bossFell && (C.boss.dead || C.boss.captive)) C.bossFell = w.tick;   // the aura is gone with it: its band may break now (agents/squad.js)
   if (C.spawned && C.foes.length) {
     if (foesLeft(w) === 0) C.quiet ??= w.tick; else C.quiet = null;
+  }
+}
+
+// the camp's alarm (CAMP.band): one of the caravan awake sees a foe, or one of them is struck. Then the whole company
+// is up and goes for the foe (agents/behaviours/warband.js) — the sleepers too
+function raiseAlarm(w) {
+  const C = w.campaign, R = CAMP.band.sight, night = nightness(w), foes = C.foeObjs.filter(o => !o.dead && !o.gone);
+  for (const p of C.people.values()) {
+    if (p.dead || p.captive) continue;
+    const struck = !!attackerOf(w, p) || p.downed;
+    const awake = p.task?.id !== 'sleep' && !p.downed, r = R * nightSight(p.species, night);
+    if (struck || (awake && foes.some(o => Math.hypot(o.x - p.x, o.y - p.y) <= r))) {
+      C.alarm = w.tick;
+      for (const q of C.people.values()) if (!q.dead && !q.captive) wake(q, 'тревога в лагере', 'тревога');
+      return;
+    }
   }
 }
 

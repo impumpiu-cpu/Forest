@@ -47,12 +47,13 @@ import {capture} from './capture.js';
 import {withCaravan} from './withCaravan.js';
 import {peddle} from './peddle.js';
 import {defendCaravan} from './defendCaravan.js';
+import {warband} from './warband.js';
 import {escort} from './escort.js';
 import {needs} from './needs.js';
 import {work} from './work.js';
 import {idle, council, trade, treat, pray, sulk, spellbound, douse, defend, watch, flags, muster, reserve, company, aid, bind, assist, keepIn} from './colony.js';
 
-export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff, scurry, hide, nibble, vanish, fightBack, lure, astray, lurk, fendOff, penned, depart, led, downed, fleeFire, escape, retreat, capture, raid, withCaravan, peddle, defendCaravan, escort,
+export const ACTS = {bolt, alert, sniffHay, leave, rest, graze, defendLair, scare, leaveHurt, feed, chase, maul, catchBreath, wanderOff, roam, shunFire, standGround, pack, drawOff, scurry, hide, nibble, vanish, fightBack, lure, astray, lurk, fendOff, penned, depart, led, downed, fleeFire, escape, retreat, capture, raid, withCaravan, peddle, defendCaravan, warband, escort,
   needs, work, idle, council, trade, treat, pray, sulk, spellbound, douse, defend, watch, flags, muster, reserve, company, aid, bind, assist, keepIn};
 
 for (const d of BEHAVIOURS.all()) {

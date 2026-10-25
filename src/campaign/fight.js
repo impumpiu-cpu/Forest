@@ -62,7 +62,7 @@ function recordFight(a, K, d, how, win, before) {
   const F = o?.foes, B = F?.boss;
   const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local',
     fighters: before.filter(([id]) => !K.members.find(m => m.id === id)?.captive).length,
-    foes: F ? F.n : A?.heads ?? null, killed: F ? F.killed : null, fled: F ? F.fled : null, taken: F ? F.taken : null, species: F ? F.species : null,
+    plundered: o ? !!o.plundered : null, foes: F ? F.n : A?.heads ?? null, killed: F ? F.killed : null, fled: F ? F.fled : null, taken: F ? F.taken : null, species: F ? F.species : null,
     ours: o ? o.ours.might : A?.P ?? null, theirs: F ? F.might : A?.E ?? null, weight: F ? F.weight : A?.weight ?? null,
     boss: d.boss ? {name: d.boss.name, species: d.boss.species, mustDie: !!d.boss.mustDie, came: !!B, fate: !B ? 'absent' : B.dead ? 'dead' : B.bound ? 'bound' : B.fled ? 'fled' : 'stood', hp: B?.hp ?? null} : null,
     fell, hurt, kills: o ? Object.fromEntries(Object.entries(o.ours.kills).map(([id, n]) => [K.members.find(m => m.id === +id)?.name || id, n])) : {}};

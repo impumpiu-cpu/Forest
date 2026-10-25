@@ -22,6 +22,10 @@ export const CAMP = {
   // a storm of a guarded place of the quest (campaign/quest.js): in the morning, rested, the guards at hand
   guard: {from: 9, come: [9, 9.05], until: 18, near: 12},
   quiet: 1,
+  // the camp's alarm (campaign/camp.js stepCamp; agents/behaviours/warband.js): raised when one of the caravan who is not
+  // asleep sees a foe within `sight` cells (by day; at night × the eyes' night sight, data/tongues.js), or a blow is struck;
+  // then every able one goes for the foe with the weight `want`
+  band: {sight: 14, want: 3},
   // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
   far: 18,
   // the foe is bought by the caravan's strength, not by the thing's (agents/strength.js sideStrength of everyone

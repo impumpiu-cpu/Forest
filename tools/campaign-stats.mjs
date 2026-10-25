@@ -35,6 +35,11 @@ for (const k of kinds) {
   const xs = all.filter(f => f.kind === k), n = xs.filter(f => f.foes != null);
   console.log(`  ${k.padEnd(8)} ${String(xs.length).padStart(4)} · ${avg(n, f => f.foes).toFixed(1).padStart(5)} · ${avg(n, f => f.killed || 0).toFixed(1).padStart(5)} · ${avg(n, f => f.fled || 0).toFixed(1).padStart(5)} · ${avg(xs.filter(f => f.theirs > 0), f => f.ours / f.theirs).toFixed(2).padStart(5)} · ${pct(xs.filter(f => f.won).length, xs.length)}`);
 }
+console.log('\nпо роду и виду боя: род/вид · боёв · победы · пали наши в среднем · разграблен лагерь');
+for (const k of kinds) for (const how of ['night', 'ambush', 'guard']) {
+  const xs = all.filter(f => f.kind === k && f.how === how); if (!xs.length) continue;
+  console.log(`  ${(k + '/' + how).padEnd(16)} ${String(xs.length).padStart(4)} · ${pct(xs.filter(f => f.won).length, xs.length).padStart(4)} · ${avg(xs, f => f.fell.length).toFixed(2)} · ${pct(xs.filter(f => f.plundered).length, xs.length)}`);
+}
 const sizes = {}; for (const f of all) if (f.foes != null) sizes[f.foes] = (sizes[f.foes] || 0) + 1;
 console.log('\nсколько врагов приходит: ' + Object.entries(sizes).sort((p, q) => +p[0] - +q[0]).map(([n, c]) => `${n}: ${c}`).join(', '));
 const sp = {}; for (const f of all) for (const [id, n] of Object.entries(f.species || {})) sp[id] = (sp[id] || 0) + n;
