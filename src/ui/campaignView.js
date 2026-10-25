@@ -25,6 +25,8 @@ import {plural, esc} from '../core/util.js';
 import {$} from './dom.js';
 import {TickClock, dateText} from '../core/clock.js';
 import {mountPace} from './pace.js';
+import {openTab} from './tabs.js';
+import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
 import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
 import {warnEdits} from './tableEdits.js';
@@ -113,6 +115,8 @@ export class CampaignView extends AtlasView {
     $('campWatch').addEventListener('click', () => { this.watch = !this.watch; $('campWatch').setAttribute('aria-pressed', String(this.watch)); if (!this.watch) this.endLocal(); });
     $('campLocalSkip').addEventListener('click', () => this.endLocal());
     this.localR = new Renderer($('campLocal'));
+    // a click on the camp's map: the card of the creature there, else the building, else the cell (ui/cards.js)
+    $('campLocal').addEventListener('click', e => this.pickLocal(e));
     // the chronicle: themes to hide (remembered in this browser), one member's lines, the text into a file
     this.hidden = loadHidden(); this.who = null; this.logKey = '';
     const tp = $('campTopics');
@@ -340,10 +344,34 @@ export class CampaignView extends AtlasView {
     }
     this.localR.draw(w, L.view);
     if (w.logVersion !== L.logV) { L.logV = w.logVersion; this.localText(); }
+    if (L.view.selected && (L.frames = (L.frames || 0) + 1) % 15 === 0) this.localCard();   // the creature's card follows it
+  }
+  // the camp's map: what is under the click, shown in the dock («Объект») and followed while the camp runs
+  pickLocal(e) {
+    const L = this.local; if (!L) return;
+    const r = $('campLocal').getBoundingClientRect(), [fx, fy] = this.localR.toCell(e.clientX - r.left, e.clientY - r.top), w = L.w;
+    let best = null, bd = 0.9;
+    for (const a of w.agents) { if (a.dead) continue; const d = Math.hypot(a.x - fx, a.y - fy); if (d < bd) { bd = d; best = a; } }
+    const i = (fy | 0) * w.w + (fx | 0);
+    L.view.selected = best; L.view.selBld = null; L.view.selCell = null;
+    if (!best) { const b = w.buildings.find(b => b.cells?.includes(i)); if (b) L.view.selBld = b.id; else if (i >= 0 && i < w.w * w.h) L.view.selCell = i; }
+    this.localCard(true);
+    if (this.ids?.dock) openTab($(this.ids.dock), 'object');
+  }
+  localCard(force = false) {
+    const L = this.local, w = L?.w, box = $('campInspect');
+    if (!L) return;
+    const a = L.view.selected;
+    if (a && (a.dead || !w.agents.includes(a))) { L.view.selected = null; box.innerHTML = '<p class="muted">Его больше нет на карте.</p>'; return; }
+    if (!force && !a) return;   // a building or a cell does not change by the tick
+    if (a) box.innerHTML = `<div class="pc">${a.diary && a.likes ? personHtml(w, a) : creatureHtml(w, a)}</div>`;
+    else if (L.view.selBld != null) { const b = w.buildings.find(b => b.id === L.view.selBld); box.innerHTML = b ? `<div class="pc">${buildingHtml(w, b)}</div>` : ''; }
+    else if (L.view.selCell != null) box.innerHTML = `<div class="pc">${cellHtml(w, L.view.selCell)}</div>`;
   }
   endLocal() {
     const L = this.local; if (!L) return;
     this.local = null;
+    if (L.view.selected || L.view.selBld != null || L.view.selCell != null) this.renderInspect();   // the world's card again
     $('campLocal').hidden = true; $('campLocalBar').hidden = true;
     // the season's playback goes on from where it stopped
     this.clock.release(); this.syncRun();
