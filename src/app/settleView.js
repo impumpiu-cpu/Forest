@@ -75,7 +75,7 @@ export class SettleView extends MapView {
       onPause: () => { const a = this.atlas; if (!a || atlasDone(a)) return; this.clock.toggle(); this.syncRun(); }});
     segOf($('setDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); this.chronOf = null; if (this.atlas) this.renderSide(); });
     this.buildLibrary2();
-    this.wireCamera({map: 'setMap', readout: 'setReadout', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
+    this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
   }
 
   show() { this.sync(); this.refresh(); if (this.atlas) this.draw(); }
@@ -115,7 +115,7 @@ export class SettleView extends MapView {
     this.clock.stop(); this.clock.paused = false;
     this.atlas = a; this.chronOf = null;
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = '';
-    this.bind(id, name); this.sync(); this.draw(); this.renderSide();
+    this.bind(id, name); this.sync(); this.select(null); this.renderSide();
     if (!atlasDone(a)) this.clock.start();
   }
   settle(land, name) {
@@ -130,10 +130,9 @@ export class SettleView extends MapView {
 
   // ── the hand on the map
   clickAt(e) {
-    const a = this.atlas; if (!a || !this.cam || this.tool === 'look') return;
-    const cv = $(this.ids.map), r = cv.getBoundingClientRect(), [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top);
-    const x = Math.floor(fx), y = Math.floor(fy); if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
-    const i = y * a.w + x;
+    const a = this.atlas; if (!a || !this.cam) return;
+    if (this.tool === 'look') { this.selectAt(e); return; }   // the eye: the card of what is here (ui/inspect.js)
+    const i = this.cellAt(e); if (i < 0) return;
     if (this.tool === 'people') { const res = landPeople(a, this.people, i, this.sub || null); this.after(res.error ? res : {ok: `${res.town.name} заложен — держава «${realmLabel(a, res.realm.id)}».`}); }
     else if (this.tool === 'lair') { const res = addLair(a, $('setLairKind').value, i); this.after(res.error ? res : {ok: `«${res.name}» стоит.`}); }
     else if (this.tool === 'calamity') this.calamityAt(i);
@@ -158,7 +157,7 @@ export class SettleView extends MapView {
     let once = false;
     return !stepRun(a, () => !once && (once = true));   // one season; the line at the stretch's end is told by stepRun
   }
-  afterSeason() { this.draw(); this.renderSide(); this.animate(); this.syncRun(); }
+  afterSeason() { this.draw(); this.renderSide(); this.renderInspect(); this.animate(); this.syncRun(); }
   frame() { const a = this.atlas; if (a && !atlasDone(a)) $('setYear').textContent = `${dateText(a, this.clock, seasonLabel)} → ${endYear(a)}`; }
   afterRun() { this.sync(); }
   stop() { if (this.atlas && !atlasDone(this.atlas)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }

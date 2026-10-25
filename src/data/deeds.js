@@ -10,7 +10,7 @@
 // Which deeds a species' lairs and realms may do is in its row (`deeds: {lair: [...], realm: [...]}` — the species'
 // mores, beside its `behaviours`): the goblins raid for captives, the giants take tribute, the elves neither raid nor
 // besiege. The ready lists are DEED_WAYS below.
-//   id, label:  the deed and what the chronicle calls the party («выступил в набег»)
+//   id, label:  the deed and its name for the cards and the map's readout («набег»)
 //   band:       the lane
 //   party:      the kind of party it sends (atlas/parties.js BEHAVIOURS; by role, when the roles send different ones),
 //               or null for a deed done on the spot
@@ -24,28 +24,28 @@ export const DEEDS = new Registry('deed');
 DEEDS.registerAll([
   // ── the leader's plans (atlas/leaders.js; the numbers: data/lairs.js LEADER.plans)
   // ── the lair's and its leader's (atlas/lairs.js, atlas/leaders.js; the numbers: data/lairs.js TRIBE_RAID, LAIR_LIFE, LEADER)
-  {id: 'raid', label: 'выступил в набег', band: 'routine', party: 'leader | raid', requires: [],
+  {id: 'raid', label: 'набег', band: 'routine', party: 'leader | raid', requires: [],
     note: 'набег на ближайший город в досягаемости народа, которого раса не любит (мёртвые, демоны и звери — любой). Логово без главаря: осенью, с шансом TRIBE_RAID.chance, если сильно; звери без вожака на города не ходят; сильный набег идёт отрядом, слабый решается на месте. Главарь: отряд под его началом, добыча кормит логово, разбитый набег может стоить ему жизни; вожак зверей ходит на города реже (LEADER.beastRaid)'},
-  {id: 'expand', label: 'вышел с выводком искать новое логово', band: 'routine', party: 'leader | brood', requires: [],
+  {id: 'expand', label: 'выводок', band: 'routine', party: 'leader | brood', requires: [],
     note: 'выводок из сильного логова основывает новое. Без главаря: весной, с шансом рода (breed), пока своих меньше max × crowdMax; главарь ведёт выводок сам, и дочернее логово — его данник'},
-  {id: 'subdue', label: 'выступил подчинять соседей', band: 'routine', party: 'leader', requires: [],
+  {id: 'subdue', label: 'подчинение соседа', band: 'routine', party: 'leader', requires: [],
     note: 'главарь: слабейшего соседа без главаря и господина — под руку: данник каждый год отдаёт долю силы'},
-  {id: 'rival', label: 'выступил войной на соперников', band: 'routine', party: 'leader', requires: [],
+  {id: 'rival', label: 'война с соперником', band: 'routine', party: 'leader', requires: [],
     note: 'главарь: война на логово-соперника (rivals рода логова): побеждённый слабеет или гибнет. (Драка соперников, чьи владения соприкасаются, — система логов, не дело: atlas/lairs.js)'},
-  {id: 'strike', label: 'вылетел жечь', band: 'routine', party: 'dragon', requires: [],
+  {id: 'strike', label: 'вылет дракона', band: 'routine', party: 'dragon', requires: [],
     note: 'дракон: спит годами (DRAGON.sleep), летом летит на самый богатый город в досягаемости, жжёт угодья и жителей, если город его не отогнал, и летит домой спать'},
-  {id: 'captives', label: 'пошёл за пленными', band: 'routine', party: 'raid | null', requires: [],
+  {id: 'captives', label: 'набег за пленными', band: 'routine', party: 'raid | null', requires: [],
     note: 'набег за пленными (CAPTIVE_RAID): логово разумных — как набег, но город теряет жителей в полон, а не в могилы, и они живут при логове (lair.captives; караван, разбивший его людей, освобождает их); держава (орки) — набег города с воинами, пленные растят город'},
   // ── the realm's (atlas/court.js; the relations' body: atlas/diplomacy.js; the numbers: data/diplomacy.js DIPLOMACY, data/parties.js ARMY, data/peoples.js TOWN_WAR)
-  {id: 'makePeace', label: 'заключила мир', band: 'red', party: null, requires: [],
+  {id: 'makePeace', label: 'мир', band: 'red', party: null, requires: [],
     note: 'держава, уставшая от войны (отношение поднялось до peaceAt) или воюющая дольше longest лет, заключает мир прежде всех прочих дел; войска в пути поворачивают домой'},
-  {id: 'warOn', label: 'объявила войну', band: 'routine', party: null, requires: [],
+  {id: 'warOn', label: 'война', band: 'routine', party: null, requires: [],
     note: 'отношение с соседом упало до warAt при общей границе — война; первый ход за объявившим. Кого нет в списке (эльфы) — войну не начинает, но отвечает на неё'},
-  {id: 'march', label: 'собрала войско', band: 'routine', party: 'army', requires: [],
+  {id: 'march', label: 'войско в поход', band: 'routine', party: 'army', requires: [],
     note: 'в войне ход державы: войско из ближайшего к врагу города идёт осадой на его ближайший город (ARMY); одно войско на войну, не чаще everyYears'},
-  {id: 'raidTown', label: 'пошла набегом', band: 'routine', party: null, requires: [],
+  {id: 'raidTown', label: 'набег на город', band: 'routine', party: null, requires: [],
     note: 'набег города с воинами на ближайший город нелюбимой державы в raidReach (DIPLOMACY): добыча растит город, отбитый набег стоит дороже; не больше raidsPerYear в год на державу. У орков'},
-  {id: 'clearLair', label: 'выжгла логово', band: 'routine', party: null, requires: [],
+  {id: 'clearLair', label: 'выжечь логово', band: 'routine', party: null, requires: [],
     note: 'город идёт на логово, чьи владения до него достают (TOWN_WAR): проигравшее логово выжжено, проигравший город теряет жителей и угодье'},
 ]);
 

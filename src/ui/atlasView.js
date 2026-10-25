@@ -50,6 +50,7 @@ import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
+import {pickObject, inspectHtml, whereIs} from './inspect.js';
 import {CATEGORIES} from '../data/townBuildings.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from './worlds.js';
 import {cellPlan, settleable} from '../seam/cell.js';
@@ -126,11 +127,39 @@ export class MapView {
     this.clock = new SeasonClock({step: () => this.stepSeason(), after: () => this.afterSeason(), done: () => this.afterRun()});
     this.worldId = null; this.worldName = '';   // the library record this world is saved as, if any
     this.pick = -1;   // the cell picked (the polygon: for a settlement, seam/cell.js), -1 — none
+    this.sel = null; this.selCell = '';   // the object selected for the inspector (ui/inspect.js)
     this.setup(opts);
     this.build();
   }
   setup() {}
   build() {}
+  // ── the inspector (ui/inspect.js): a click selects a party, a town, a lair or the cell; its card is in `ids.inspect`
+  cellAt(e) {
+    const a = this.atlas; if (!a || !this.cam) return -1;
+    const cv = $(this.ids.map), r = cv.getBoundingClientRect(), [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top);
+    const x = Math.floor(fx), y = Math.floor(fy);
+    return x < 0 || y < 0 || x >= a.w || y >= a.h ? -1 : y * a.w + x;
+  }
+  selectAt(e) {
+    const i = this.cellAt(e); if (i < 0) return;
+    this.select(pickObject(this.atlas, i), this.cellText(i));
+  }
+  select(sel, cellText = '') {
+    this.sel = sel; this.selCell = cellText;
+    this.renderInspect(); this.draw();
+  }
+  renderInspect() {
+    const box = this.ids?.inspect ? $(this.ids.inspect) : null; if (!box) return;
+    box.innerHTML = this.atlas ? inspectHtml(this.atlas, this.sel, this.selCell) : '';
+  }
+  // the selection on the map: a ring that follows a party
+  drawSelection(a, px) {
+    const at = whereIs(a, this.sel, this.slide()); if (!at) return;
+    px.beginPath(); px.arc(at[0], at[1], 1.6, 0, Math.PI * 2);
+    px.lineWidth = Math.max(this.minW * 2, 0.25); px.strokeStyle = '#fff'; px.stroke();
+    px.lineWidth = Math.max(this.minW, 0.12); px.strokeStyle = '#000'; px.stroke();
+  }
+
   // the clock's step, what follows it and what follows the run — the screens' own
   stepSeason() { return false; }
   afterSeason() { this.draw(); this.animate(); }
@@ -345,6 +374,7 @@ export class MapView {
     if (a.ruins && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawRuins(a, px);
     if (a.towns && ['relief', 'biomes', 'peoples', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
+    if (this.sel) this.drawSelection(a, px);
     this.overlay(a, px, cam);
   }
 
@@ -600,12 +630,14 @@ export class MapView {
   }
 
   hover(e) {
-    const a = this.atlas; if (!a || !a.f.elev) return;
-    const cv = $(this.ids.map), r = cv.getBoundingClientRect();
-    if (!this.cam) return;
-    const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top), x = Math.floor(fx), y = Math.floor(fy);
-    if (x < 0 || y < 0 || x >= a.w || y >= a.h) { $(this.ids.readout).textContent = this.ids.hint; return; }
-    const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
+    const a = this.atlas; if (!a || !a.f.elev || !this.cam) return;
+    const i = this.cellAt(e);
+    $(this.ids.readout).textContent = i < 0 ? this.ids.hint : this.cellText(i);
+  }
+  // the cell in words: the land, the climate, the biome, what stands and lives here
+  cellText(i) {
+    const a = this.atlas, x = i % a.w, y = (i / a.w) | 0;
+    const f = a.f, parts = [`${x}, ${y}`];
     if (f.plate) parts.push(`плита ${f.plate[i] + 1}, кора ${f.crust[i] > 0.5 ? 'материковая' : 'океаническая'}`);
     if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
     if (f.land) parts.push(f.lake && f.lake[i] >= 0 ? (a.lakes[f.lake[i]].salt ? 'солёное озеро' : 'озеро') : f.land[i] ? 'суша' : 'море');
@@ -649,7 +681,7 @@ export class MapView {
     const party = partyAt(a, i);
     if (party) {
       const tgt = party.target != null ? a.towns.find(t => t.id === party.target) : null, lair = party.owner != null && party.kind !== 'army' ? a.lairs.find(l => l.id === party.owner) : null;
-      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? `главарь ${DEEDS.has(party.plan) ? DEEDS.get(party.plan).label : party.plan}` : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
+      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? `главарь: ${DEEDS.has(party.plan) ? DEEDS.get(party.plan).label : party.plan}` : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
     }
     const site = siteAt(a, i);
     if (site) { const b = TOWN_BUILDINGS.get(site.kind), t = a.towns.find(t => t.id === site.town); parts.push(`${b.name} (${CATEGORIES[b.cat]}) ${townLabel(t, 2)} ${t.name}, с года ${site.built}`); }
@@ -680,7 +712,7 @@ export class MapView {
       if (geo.flags.magma) ores.push('магма');
       if (ores.length) parts.push(ores.join(', '));
     }
-    $(this.ids.readout).textContent = parts.join(' · ');
+    return parts.join(' · ');
   }
 }
 
@@ -728,11 +760,11 @@ export class AtlasView extends MapView {
       this.onSettle(cellPlan(a, this.pick, {name: this.worldName || `Мир ${a.cfg.seed}`, id: this.worldId}));
     });
     $('atlasUnpick').addEventListener('click', () => this.setPick(-1));
-    this.wireCamera({map: 'atlasMap', readout: 'atlasReadout', zoomIn: 'atlasZoomIn', zoomOut: 'atlasZoomOut', zoomFit: 'atlasZoomFit', screen: 'atlas',
-      hint: 'Наведите на карту, чтобы увидеть клетку. Щелчок по суше — выбрать место для поселения.'});
+    this.wireCamera({map: 'atlasMap', readout: 'atlasReadout', inspect: 'atlasInspect', zoomIn: 'atlasZoomIn', zoomOut: 'atlasZoomOut', zoomFit: 'atlasZoomFit', screen: 'atlas',
+      hint: 'Наведите на карту, чтобы увидеть клетку. Щелчок — карточка города, логова или отряда; по суше — ещё и место для поселения.'});
   }
 
-  clickAt(e) { this.pickAt(e); }
+  clickAt(e) { this.pickAt(e); this.selectAt(e); }
 
   // `goto` — {id, x, y}: open that saved world (if it is not the one shown) and pick that cell
   async show(goto = null) {
@@ -860,7 +892,7 @@ export class AtlasView extends MapView {
     if (land && landDone(a)) { this.syncPause(); this.syncSave(); }   // the land is made: the pace, the pause and saving appear
     return atlasDone(a) ? false : land ? 'fast' : true;
   }
-  afterSeason() { this.draw(); this.renderSide(); this.animate(); }
+  afterSeason() { this.draw(); this.renderSide(); this.renderInspect(); this.animate(); }
   afterRun() { this.syncPause(); }
 
   syncPause() {

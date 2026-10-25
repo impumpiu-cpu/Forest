@@ -14,7 +14,7 @@ export const march = {
       if (!W || !r.front || W.turn !== realm.id || armyOut(a, kk)) continue;
       if (W.mustered != null && a.hist.year - W.mustered < ARMY.everyYears) continue;
       const [t, o] = r.front, mine = a.towns.find(x => x.id === t)?.realm === realm.id ? [t, o] : [o, t];
-      out.push([{kk, from: mine[0], target: mine[1], other: other.id}, 1, () => `война с ${realmLabel(a, other.id)}: наш ход`]);
+      out.push([{kk, from: mine[0], target: mine[1], other: other.id}, 1, () => `война: ${realmLabel(a, other.id)} — наш ход`]);
     }
     return out.length ? out : null;
   },

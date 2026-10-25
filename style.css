@@ -380,3 +380,26 @@ dd.q4{color:#c58cff;font-weight:600}
 /* a world or a game opened under other table edits (src/ui/tableEdits.js) */
 .edits-banner{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:50;max-width:min(720px,calc(100vw - 32px));background:#3a2a16;color:#f6d7ae;border:1px solid var(--ember);border-radius:8px;padding:8px 14px;font-size:13px;box-shadow:0 6px 24px #0008;cursor:pointer}
 .edits-banner[hidden]{display:none}
+
+/* ── the inspector of the world map (ui/inspect.js): the card of what a click selected */
+.inspect{font-size:13px;line-height:1.35;max-height:40vh;overflow:auto;margin-top:6px}
+.inspect:empty{display:none}
+.inspect .isec{border-top:1px solid var(--line);padding:6px 0 4px}
+.inspect .isec:first-child{border-top:0;padding-top:0}
+.inspect h5{margin:0 0 4px;font-family:var(--font-display);font-size:14px;letter-spacing:.04em;color:var(--fg)}
+.inspect .ir{display:grid;grid-template-columns:9em 1fr;gap:2px 8px;padding:1px 0}
+.inspect .ir span{color:var(--muted)}
+.inspect .ir b{font-weight:400}
+.inspect ul{margin:2px 0 4px;padding-left:1.2em}
+.inspect .rels li,.inspect .built li{margin:1px 0}
+.inspect .thoughts{margin:2px 0 4px;padding-left:1.4em}
+.inspect .thoughts li{margin:2px 0}
+.inspect .thoughts small{font-family:var(--font-mono);color:var(--muted)}
+.inspect .deeds{margin:2px 0 4px}
+.inspect .deed{display:inline-block;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin:1px 2px 1px 0;font-family:var(--font-mono);font-size:11px}
+.inspect .deed small{color:var(--muted)}
+.inspect .deed.lane-red{border-color:#b84a3a}
+.inspect .deed.lane-reflex{border-color:#d8c04a}
+.inspect .deed.lane-yellow{border-color:#c69a3c}
+.inspect .muted{color:var(--muted)}
+.inspect .rel-war{color:var(--raider)} .inspect .rel-hostile{color:#e0a080} .inspect .rel-friends{color:var(--good)}

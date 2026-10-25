@@ -14,7 +14,7 @@ export const makePeace = {
     for (const {kk, r, other} of relationsOf(a, realm)) {
       if (!r.war) continue;
       const years = a.hist.year - r.war.since;
-      if (r.att >= D.peaceAt || years >= D.longest) out.push([{kk, other: other.id}, 1, () => (years >= D.longest ? `война с ${realmLabel(a, other.id)} идёт ${years} ${yearsWord(years)}` : `устали от войны с ${realmLabel(a, other.id)}`)]);
+      if (r.att >= D.peaceAt || years >= D.longest) out.push([{kk, other: other.id}, 1, () => (years >= D.longest ? `война (${realmLabel(a, other.id)}) идёт ${years} ${yearsWord(years)}` : `устали от войны: ${realmLabel(a, other.id)}`)]);
     }
     return out.length ? out : null;
   },

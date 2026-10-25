@@ -12,6 +12,7 @@ import {DOES} from './deeds/index.js';
 import {goHome} from './parties.js';
 
 const ALARMS = DEED_BANDS.slice(0, 2);
+const THOUGHTS = 8;   // how many of an actor's last choices are kept for its card
 
 // the lanes on offer, first that has anything: [band, [[plan, weight, why, deed], …]]
 function offers(a, actor, ctx, lanes, from) {
@@ -34,8 +35,12 @@ export function actorStep(a, actor, brain, ctx) {
   let o = opts[0];
   if (opts.length > 1) { let u = ctx.r() * opts.reduce((s, x) => s + x[1], 0); for (const x of opts) { u -= x[1]; if (u <= 0) { o = x; break; } } }
   const alt = opts.filter(x => x !== o).sort((p, q) => q[1] - p[1])[0];
-  actor.why = {year: a.hist.year, deed: o[3].id, weight: +o[1].toFixed(2), why: o[2]?.() || '', band, alt: alt ? alt[3].id : null, altWhy: alt?.[2]?.() || ''};
+  actor.why = {year: a.hist.year, season: a.hist.season, deed: o[3].id, weight: +o[1].toFixed(2), why: o[2]?.() || '', band, alt: alt ? alt[3].id : null, altWhy: alt?.[2]?.() || ''};
+  // the trail of its thoughts, the last few, for the card (ui/inspect.js)
+  const T = actor.thoughts ||= []; T.push(actor.why); if (T.length > THOUGHTS) T.splice(0, T.length - THOUGHTS);
   if (out) goHome(a, out);   // an alarm answered: the party out is called back
+  const n0 = a.parties?.length || 0;
   brain.setOut(a, actor, o, ctx);
+  for (let k = n0; k < (a.parties?.length || 0); k++) a.parties[k].why = actor.why.why;   // the party carries why it was sent
   return o;
 }

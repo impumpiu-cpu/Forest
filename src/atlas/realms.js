@@ -81,7 +81,7 @@ export function foundRealm(a, t, subId = null, from = null) {
   const align = alignNear(from?.align || SPECIES.get(P.race).align, spreadOf(SPECIES.get(P.race), 'realm'), mulberry(seedNumber(`${a.cfg.seed}:align:${id}`)));
   const r = {id, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color, align, root: {...align}, seatSince: a.hist.year,
     // what it knows (data/tech.js, atlas/tech.js): a realm of a schism keeps what the old one knew
-    tech: from?.tech && TECH_RULES.inherit ? [...from.tech] : []};
+    tech: from?.tech && TECH_RULES.inherit ? [...from.tech] : [], from: from ? from.id : null};   // (from: the realm it broke away from, for the card)
   a.realms.push(r);
   t.realm = r.id; t.capital = true;
   return r;

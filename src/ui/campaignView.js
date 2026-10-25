@@ -69,7 +69,7 @@ export class CampaignView extends AtlasView {
   // the «Мир» screen's controls are not built here: only the campaign's
   build() {
     this.layer = 'peoples'; this.capPick = null; this.logShown = 0; this.fog = null; this.fogKey = '';
-    this.wireCamera({map: 'campMap', readout: 'campReadout', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', screen: 'campaign',
+    this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', screen: 'campaign',
       hint: 'Наведите на карту, чтобы увидеть клетку.'});
     const lay = $('campLayer');
     lay.innerHTML = LAYERS.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.layer}">${l}</button>`).join('');
@@ -283,6 +283,8 @@ export class CampaignView extends AtlasView {
     if (this.local) $('campPause').textContent = this.ticks.paused ? 'Дальше' : 'Пауза';
   }
 
+  clickAt(e) { this.selectAt(e); }   // a click on the world map: the card of what is here (ui/inspect.js)
+
   // the walk runs on the observer's clock (core/clock.js): a season a step; a camp watched on the local map holds the
   // season's playback until it is over
   run() { if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.start(); this.syncRun(); }
@@ -295,7 +297,7 @@ export class CampaignView extends AtlasView {
     this.queue = this.watch && W ? (K.camps || []).filter(c => c.day >= d0 && (c.kind !== 'stop' || W.stops)).map(c => ({...c, at: Math.min(1, (c.day - d0) / n)})) : [];
     return !finished(a.campaign);
   }
-  afterSeason() { this.renderSide(); this.draw(); this.animate(); }
+  afterSeason() { this.renderSide(); this.renderInspect(); this.draw(); this.animate(); }
   afterRun() { this.syncRun(); }
   // the season plays back: a frame loop while the caravan slides along its days, or a camp runs on the local map
   animate() {
