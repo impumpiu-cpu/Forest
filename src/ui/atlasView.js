@@ -633,6 +633,7 @@ export class MapView {
       parts.push(`${townLabel(town)} ${town.name} (${town.realm ? realmLabel(a, town.realm) : P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}, угодья в ${siteRadius(a, town)} клетках; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : '') + feed);
       const R = town.realm ? a.realms.find(r => r.id === town.realm) : null;
       if (R?.tech) parts.push(`держава знает: ${R.tech.length ? R.tech.map(id => TECHS.get(id).label.toLowerCase()).join(', ') : 'ничего сверх общего'}`);
+      if (R?.why) parts.push(`последнее дело державы (${R.why.year} г.): ${DEEDS.get(R.why.deed).label} — ${R.why.why}${R.why.alt ? `; иначе: ${DEEDS.get(R.why.alt).label}` : ''}`);
       // the realm as a kingdom (atlas/kingdom.js): its attributes, its ruin, its court
       const Kd = R?.kingdom;
       if (Kd) {

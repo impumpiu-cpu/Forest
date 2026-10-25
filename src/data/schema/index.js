@@ -148,6 +148,7 @@ export const TABLES = [
       col('id', 'id'), col('label', 'Название'), col('plural', 'Мн. число'),
       col('rel', 'Строка отношений', 'ref', {ref: 'relations', note: 'чья строка в таблице «Расы ↔ расы»'}),
       col('deeds.lair', 'Нравы: логово', 'ids', {ref: DEEDS, nullable: true, note: 'что делают станы и главари расы на карте мира (atlas/deeds/, таблица «Дела мира»); пусто — станов нет'}),
+      col('deeds.realm', 'Нравы: держава', 'ids', {ref: DEEDS, nullable: true, note: 'что делают державы расы на карте мира (atlas/court.js, atlas/deeds/): война, мир, войско, набег, выжигание логов; пусто — держав нет'}),
       col('world', 'Народ на карте', 'ref', {ref: 'peoples', edit: false}), col('era', 'Эпоха прихода', 'ref', {ref: ERAS, edit: false, note: 'правится в «Народах мира»'}),
       col('align.order', 'Закон ↔ хаос', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'точка расы на компасе: + закон, − хаос (data/values.js); держава ±3 от неё, пешка ±3 от державы'}),
       col('align.mercy', 'Добро ↔ зло', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'точка расы: + добро, − зло; держава ±3, пешка ±3 от державы'}),

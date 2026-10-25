@@ -20,6 +20,7 @@ import {LAIRS} from '../data/lairs.js';
 import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {stepLeaders} from './leaders.js';
+import {stepCourts} from './court.js';
 import {stepTech} from './tech.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
@@ -137,6 +138,7 @@ export function stepHistory(a, onDay = null) {
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
+  stepCourts(a, rnd, season, t => say(a, t));   // the realms' deeds: war, peace, armies, raids, lairs cleared (atlas/court.js)
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
   stepTech(a, t => say(a, t));   // the realms' finds: their own stream, in spring (atlas/tech.js)   // the old lairs' leaders: their own stream, in spring (atlas/leaders.js)
   stepCalamities(a);

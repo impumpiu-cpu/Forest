@@ -9,12 +9,19 @@ import {raise, partyOf, stepLeaders} from '../src/atlas/leaders.js';
 import {actorStep} from '../src/atlas/actor.js';
 import {BEHAVIOURS, stepParties} from '../src/atlas/parties.js';
 import {DOES} from '../src/atlas/deeds/index.js';
+import {meet, stepDiplomacy} from '../src/atlas/diplomacy.js';
+import {realmSpecies} from '../src/atlas/court.js';
 import {DEEDS} from '../src/data/deeds.js';
 import {LAIRS} from '../src/data/lairs.js';
 import {SPECIES} from '../src/data/species.js';
 import {biomeAt} from '../src/atlas/biomes.js';
 import {groundFits} from '../src/atlas/lairs.js';
+import {scaleOf} from '../src/atlas/tectonics.js';
 import {mulberry} from '../src/core/rng.js';
+import {WORLD_PEOPLES} from '../src/data/peoples.js';
+import {DIPLOMACY} from '../src/data/diplomacy.js';
+import {townFx} from '../src/atlas/towns.js';
+const townFxDefence = t => townFx(t).defence > 0;
 
 // one land, made once; every scene gets its own copy with the clock started
 function makeLand() { const a = newAtlas({...DEFAULT_ATLAS_CFG, seed: '11', size: 'small'}); while (!landDone(a)) runNextStage(a); return a; }
@@ -208,6 +215,98 @@ scene_('W11', 'дракон: спит; проснувшись летом, лет
   if (!(town.pop < pop0)) return `не выжег: ${lines.join(' | ')}`;
   BEHAVIOURS.dragon.home(a, p, mulberry(4));
   return lair.sleep > 1 || `не уснул: sleep ${lair.sleep}`;
+});
+
+// two peoples landed within the front of each other, their realms met with the attitude given → {A, B, rel}
+function neighbours(a, p1, p2, att) {
+  const homely = (pid, i) => (SPECIES.get(WORLD_PEOPLES.get(pid).race).home[biomeAt(a, i)?.id] || 0) >= 0.5;
+  const front = DIPLOMACY.front * scaleOf(a) - 2;
+  // a home cell of the first with a home cell of the second within the front
+  let c1 = -1, c2 = -1;
+  for (let i = 0; i < a.n && c2 < 0; i += 3) {
+    if (a.f.ocean[i] || a.f.lake[i] >= 0 || !homely(p1, i) || i % a.w < 4 || i % a.w > a.w - 4) continue;
+    c1 = i; c2 = cellOf(a, j => dist(xy(a, j), xy(a, i)) > 7 && dist(xy(a, j), xy(a, i)) < front && homely(p2, j));
+  }
+  if (c2 < 0) return null;
+  const t1 = landPeople(a, p1, c1).town;
+  if (!t1) return null;
+  const t2 = landPeople(a, p2, c2).town;
+  if (!t2) return null;
+  const A = a.realms.find(r => r.id === t1.realm), B = a.realms.find(r => r.id === t2.realm);
+  const rel = meet(a, A.id, B.id, a.hist.year); rel.att = att;
+  stepDiplomacy(a, mulberry(1), () => {}, () => 0);   // the body of the relation: the front and the border
+  rel.att = att;
+  return {A, B, rel, t1, t2};
+}
+// the court asked: the deeds of the realm's people unless given, a stream, a season
+function court(a, realm, list = null, r = () => 0, season = 'spring') {
+  const lines = [];
+  const o = actorStep(a, realm, {list: list || realmSpecies(a, realm).deeds.realm, party: () => null, setOut(a, realm, [plan, , , d], ctx) { const line = DOES[d.id].act?.(a, realm, plan, ctx); if (line) lines.push(line); }},
+    {sp: realmSpecies(a, realm), realm, role: 'realm', season, r, say: t => lines.push(t)});
+  realm.lines = lines;
+  return o;
+}
+
+scene_('W12', 'державы: при общей границе и вражде люди объявляют войну гномам; эльфы войну не начинают, но отвечают войском', () => {
+  const a = world(), n = neighbours(a, 'humans', 'dwarves', -4);
+  if (!n) return 'соседи не высадились';
+  if (!n.rel.border) return 'граница не легла';
+  const o = court(a, n.A);
+  if (o?.[3].id !== 'warOn' || !n.rel.war) return `люди: ${o ? o[3].id : 'ничего'}; война ${!!n.rel.war}`;
+  if (n.rel.war.turn !== n.A.id) return 'первый ход не за объявившим';
+  // the elves beside the dwarves: no war of their own, but the sword answered
+  const b = world(), m = neighbours(b, 'elves', 'dwarves', -4);
+  if (!m) return true;   // (this land gave the elves no forest by the dwarves: the half is not tried)
+  if (m.rel.border && court(b, m.A)?.[3].id === 'warOn') return 'эльфы объявили войну';
+  m.rel.war = {since: b.hist.year, battles: 0, razed: 0, turn: m.A.id, mustered: null};
+  m.t1.pop = 400;
+  const o2 = court(b, m.A);
+  return (o2?.[3].id === 'march') || `эльфы в войне: ${o2 ? o2[3].id : 'ничего'} (${m.rel.front ? 'фронт есть' : 'фронта нет'})`;
+});
+
+scene_('W13', 'держава в войне: ход её — войско из города у фронта идёт на город врага; ход переходит; второго войска в тот же год нет', () => {
+  const a = world(), n = neighbours(a, 'humans', 'dwarves', -4);
+  if (!n?.rel.border) return 'соседи не легли границей';
+  n.rel.war = {since: a.hist.year, battles: 0, razed: 0, turn: n.A.id, mustered: null}; n.t1.pop = 400;
+  const o = court(a, n.A, ['march']);
+  if (o?.[3].id !== 'march') return `предложено: ${o ? o[3].id : 'ничего'} (${n.rel.front ? 'фронт есть' : 'фронта нет'})`;
+  const army = (a.parties || []).find(p => p.kind === 'army' && p.owner === n.A.id);
+  if (!army || army.target !== n.t2.id) return `войско не вышло: ${n.A.lines.join(' | ')}`;
+  if (n.rel.war.turn !== n.B.id) return 'ход не перешёл';
+  if (court(a, n.A, ['march']) !== null) return 'второе войско в тот же год';
+  return court(a, n.B, ['march']) === null || 'гномы собрали войско, пока людское в пути';
+});
+
+scene_('W14', 'усталость от войны: мир — красная полоса, он прежде набега и войска', () => {
+  const a = world(), n = neighbours(a, 'orcs', 'humans', -1.5);
+  if (!n?.rel.border) return 'соседи не легли границей';
+  n.rel.war = {since: a.hist.year - 2, battles: 0, razed: 0, turn: n.A.id, mustered: null}; n.t1.pop = 400; n.t1.built.push('palisade');
+  const o = court(a, n.A);
+  return (o?.[3].id === 'makePeace' && o[3].band === 'red' && !n.rel.war) || `предложено: ${o ? `${o[3].id} (${o[3].band})` : 'ничего'}`;
+});
+
+scene_('W15', 'набег державы: орки с воинами грабят нелюбимый город рядом (не больше raidsPerYear в год); люди набегами не ходят', () => {
+  const a = world(), n = neighbours(a, 'orcs', 'humans', -3);
+  if (!n) return 'соседи не высадились';
+  n.t1.pop = 300; n.t1.built.push('palisade');
+  if (!townFxDefence(n.t1)) return 'у орков нет воинов и с частоколом';
+  const pop0 = n.t2.pop, o = court(a, n.A, ['raidTown']);
+  if (o?.[3].id !== 'raidTown') return `предложено: ${o ? o[3].id : 'ничего'}`;
+  if (!(n.t2.pop < pop0) && !n.A.lines.some(t => /отбили набег/.test(t))) return `набег не состоялся: ${n.A.lines.join(' | ')}`;
+  for (let k = 0; k < 6; k++) court(a, n.A, ['raidTown']);
+  if (n.A.raids.n > DIPLOMACY.raidsPerYear) return `набегов за год ${n.A.raids.n}`;
+  if (realmSpecies(a, n.B).deeds.realm.includes('raidTown')) return 'люди умеют ходить набегом';
+  return true;
+});
+
+scene_('W16', 'держава выжигает логово, чьи владения достают до её города', () => {
+  const a = world(), {town, lair} = townAndLair(a, 'varg', 6);
+  if (!lair?.id) return 'логово варгов не встало';
+  lair.strength = 0.2; town.pop = 400; town.built.push('palisade');
+  const realm = a.realms.find(r => r.id === town.realm);
+  const o = court(a, realm, ['clearLair']);
+  if (o?.[3].id !== 'clearLair') return `предложено: ${o ? o[3].id : 'ничего'}`;
+  return !lair.alive || `логово цело: ${realm.lines.join(' | ')}`;
 });
 
 scene_('W07', 'каталог: у каждого дела есть код; у хозяина каждого рода логов — список нравов из каталога', () => {

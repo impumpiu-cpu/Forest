@@ -34,12 +34,27 @@ DEEDS.registerAll([
     note: 'главарь: война на логово-соперника (rivals рода логова): побеждённый слабеет или гибнет. (Драка соперников, чьи владения соприкасаются, — система логов, не дело: atlas/lairs.js)'},
   {id: 'strike', label: 'вылетел жечь', band: 'routine', party: 'dragon', requires: [],
     note: 'дракон: спит годами (DRAGON.sleep), летом летит на самый богатый город в досягаемости, жжёт угодья и жителей, если город его не отогнал, и летит домой спать'},
+  // ── the realm's (atlas/court.js; the relations' body: atlas/diplomacy.js; the numbers: data/diplomacy.js DIPLOMACY, data/parties.js ARMY, data/peoples.js TOWN_WAR)
+  {id: 'makePeace', label: 'заключила мир', band: 'red', party: null, requires: [],
+    note: 'держава, уставшая от войны (отношение поднялось до peaceAt) или воюющая дольше longest лет, заключает мир прежде всех прочих дел; войска в пути поворачивают домой'},
+  {id: 'warOn', label: 'объявила войну', band: 'routine', party: null, requires: [],
+    note: 'отношение с соседом упало до warAt при общей границе — война; первый ход за объявившим. Кого нет в списке (эльфы) — войну не начинает, но отвечает на неё'},
+  {id: 'march', label: 'собрала войско', band: 'routine', party: 'army', requires: [],
+    note: 'в войне ход державы: войско из ближайшего к врагу города идёт осадой на его ближайший город (ARMY); одно войско на войну, не чаще everyYears'},
+  {id: 'raidTown', label: 'пошла набегом', band: 'routine', party: null, requires: [],
+    note: 'набег города с воинами на ближайший город нелюбимой державы в raidReach (DIPLOMACY): добыча растит город, отбитый набег стоит дороже; не больше raidsPerYear в год на державу. У орков'},
+  {id: 'clearLair', label: 'выжгла логово', band: 'routine', party: null, requires: [],
+    note: 'город идёт на логово, чьи владения до него достают (TOWN_WAR): проигравшее логово выжжено, проигравший город теряет жителей и угодье'},
 ]);
 
 // the ready lists: the mores of a species' lairs — the same list serves the lair and its leader (the deed knows which
 // role asks, ctx.role); what a lair does without a leader is the deed's own rule (a beast's lair raids no town)
 export const DEED_WAYS = {
   lair: ['raid', 'expand', 'subdue', 'rival'],
+  // realms: a people of the plough and the sword; the raiders (the orcs) raid too; the wardens (the elves) start no war
+  people: ['makePeace', 'warOn', 'march', 'clearLair'],
+  raiders: ['makePeace', 'warOn', 'march', 'raidTown', 'clearLair'],
+  wardens: ['makePeace', 'march', 'clearLair'],
   dragon: ['expand', 'strike'],   // (a dragon's lair breeds with its kind's `breed` — 0 in data/lairs.js: the deed is there for the table to turn on)
   vampire: ['expand'],
 };

@@ -29,7 +29,7 @@ const person = (size, skin) => ({shape: 'person', size, skin});
 const NEEDS = ['food', 'rest', 'warmth'];
 
 export const RACES = [
-  {id: 'human', kind: 'race', home: {meadow: 1, steppe: 0.8, shrubland: 0.8, forest: 0.6, savanna: 0.55, foothills: 0.4, taiga: 0.35, jungle: 0.3, swamp: 0.15, desert: 0.05},
+  {id: 'human', kind: 'race', deeds: {realm: [...DEED_WAYS.people]}, home: {meadow: 1, steppe: 0.8, shrubland: 0.8, forest: 0.6, savanna: 0.55, foothills: 0.4, taiga: 0.35, jungle: 0.3, swamp: 0.15, desert: 0.05},
     label: 'человек', plural: 'люди', rel: 'human', settle: 6,
     heatHarm: 70, look: person(0.62, '#e2b48c'),
     body: {adult: 16, life: 70, fertility: 0.5, diet: 'всеядный'},
@@ -58,7 +58,7 @@ export const RACES = [
     values: {strength: 2, freedom: 1.6, family: 1, nature: 0.8},
     names: personNames('giant')},
 
-  {id: 'elf', kind: 'race', home: {forest: 1, jungle: 0.85, taiga: 0.7, meadow: 0.55, swamp: 0.25, shrubland: 0.3, savanna: 0.15, foothills: 0.2},
+  {id: 'elf', kind: 'race', deeds: {realm: [...DEED_WAYS.wardens]}, home: {forest: 1, jungle: 0.85, taiga: 0.7, meadow: 0.55, swamp: 0.25, shrubland: 0.3, savanna: 0.15, foothills: 0.2},
     label: 'лесной эльф', plural: 'лесные эльфы', rel: 'elf', settle: 1,
     heatHarm: 70, look: person(0.6, '#f1dcc0'),
     body: {adult: 50, life: 600, fertility: 0.08, diet: 'почти травоядный'},
@@ -86,7 +86,7 @@ export const RACES = [
 
   // Dwarves: long-lived, slow to breed, at home under the mountain. Their gut takes fermented
   // grain best of all: a sober dwarf works slower, a dwarf with a cup of braga works better.
-  {id: 'dwarf', kind: 'race', home: {foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4},
+  {id: 'dwarf', kind: 'race', deeds: {realm: [...DEED_WAYS.people]}, home: {foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4},
     label: 'гном', plural: 'гномы', rel: 'dwarf', settle: 1.3,
     heatHarm: 82, look: person(0.55, '#d59a78'),
     body: {adult: 40, life: 300, fertility: 0.2, diet: 'всеядный, брага — тоже еда'},
@@ -109,7 +109,7 @@ export const RACES = [
     names: personNames('dwarf')},
 
   // The greenskins: orcs, goblins, ogres, trolls — kin, they may share a camp.
-  {id: 'orc', kind: 'race', home: {steppe: 1, savanna: 0.9, taiga: 0.6, foothills: 0.6, meadow: 0.6, swamp: 0.6, tundra: 0.5, desert: 0.4, highlands: 0.3, shrubland: 0.5},
+  {id: 'orc', kind: 'race', deeds: {realm: [...DEED_WAYS.raiders]}, home: {steppe: 1, savanna: 0.9, taiga: 0.6, foothills: 0.6, meadow: 0.6, swamp: 0.6, tundra: 0.5, desert: 0.4, highlands: 0.3, shrubland: 0.5},
     label: 'орк', plural: 'орки', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.66, '#6f9a4a'),
     body: {adult: 12, life: 50, fertility: 0.75, diet: 'хищник-всеядный'},

@@ -276,25 +276,7 @@ export function stepPeoples(a, rnd, say) {
       t.tier = tier;
     }
   }
-  // towns against the lairs that reach them
-  for (const l of a.lairs) {
-    if (!l.alive || l.boss != null) continue;   // a calamity's boss is beyond one town (atlas/calamity.js; the alliances of atlas/alliance.js)
-    const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k, owner = SPECIES.get(L.species), s = owner.special;
-    for (const t of a.towns) {
-      if (!t.alive || Math.hypot(t.x - l.x, t.y - l.y) > reach || rnd() > TOWN_WAR.chance) continue;
-      const fx = townFx(t), town = might(t, fx) * TOWN_WAR.might * (TOWN_WAR.luck[0] + TOWN_WAR.luck[1] * rnd()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (TOWN_WAR.luck[0] + TOWN_WAR.luck[1] * rnd());
-      if (town > beast) {
-        l.alive = false; l.died = a.hist.year; l.clearedBy = t.id;
-        say(`${cap1(realmLabel(a, t.realm))} из ${townLabel(t, 2)} ${t.name} выжгли ${L.labelAcc || L.label} «${l.name}»: ${owner.plural} больше не тревожат их земли.`);
-        break;
-      }
-      const loss = TOWN_WAR.raidLoss * raidShare(fx);
-      t.pop *= 1 - loss; t.raided = a.hist.year; raidGraves(a, t);
-      const burnt = raidSite(a, t, rnd);
-      say(`${cap1(owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`);
-      break;
-    }
-  }
+  // (the towns against the lairs that reach them — the realms' deed, atlas/deeds/clearLair.js)
   // first meetings of realms, told once: when their towns first stand within the front of each other
   for (const r of a.realms) for (const q of a.realms) {
     if (r.id >= q.id) continue;
