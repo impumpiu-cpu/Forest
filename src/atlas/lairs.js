@@ -14,7 +14,7 @@
 // thickest), live off it and raid any town in reach, leaving more graves.
 import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
-import {barrows, raidGraves, ruinAt} from './diplomacy.js';
+import {barrows, raidGraves} from './diplomacy.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {townFx, might, raidShare, townLabel} from './towns.js';
 import {BIOMES} from '../data/biomes.js';

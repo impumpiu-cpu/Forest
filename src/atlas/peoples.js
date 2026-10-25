@@ -11,12 +11,10 @@
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
-import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf, crowned} from '../data/peoples.js';
-import {TOWN_BUILDINGS} from '../data/townBuildings.js';
-import {townFx, room, might, raidShare, chooseBuilding, townLabel} from './towns.js';
+import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
+import {townFx, room, might, chooseBuilding, townLabel} from './towns.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
-import {SPECIES} from '../data/species.js';
 import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
@@ -24,11 +22,11 @@ import {faunaCell} from './fauna.js';
 import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
 import {seaAccess} from './sea.js';
-import {meet, raceState, stepDiplomacy, trades, raidGraves} from './diplomacy.js';
-import {foundRealm, joinRealm, realmLabel, realmTowns, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
+import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
+import {foundRealm, joinRealm, realmLabel, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
-import {placeSite, raidSite, stepNet, fedTowns, scourgedFood} from './sites.js';
+import {placeSite, stepNet, fedTowns, scourgedFood} from './sites.js';
 import {fadeScourge} from './diplomacy.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);

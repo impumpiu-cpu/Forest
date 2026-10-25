@@ -1,6 +1,6 @@
 // «Конструктор существ» (forest.html, docs/TABLES.md): every beast, monster and spirit of the game as one form —
 // its names and looks, the tags, the body (SPECIAL, health, speed, the blow), the list of behaviours it thinks by
-// (docs/BEHAVIOUR.md), the blocks its behaviours read (prey, flight, grazing, the kick, the spell), where it lives
+// (docs/BEHAVIOUR.md) and the deeds its lairs do on the world map (docs/WORLD.md «Нравы»), the blocks its behaviours read (prey, flight, grazing, the kick, the spell), where it lives
 // and how it comes, what it yields, what the herders call it. The form is the columns of the tables «Монстры и
 // звери», «Повадки видов» and «Клички» (src/data/schema/) gathered for one species: every field is a cell of a
 // table, written through the same layer of edits (src/data/schema/edits.js), kept in this browser and in files
@@ -9,6 +9,7 @@
 import {SPECIES, KINDS} from '../data/species.js';
 import {TAGS} from '../data/tags.js';
 import {BEHAVIOURS, BANDS, BAND_LABELS} from '../data/behaviours.js';
+import {DEEDS, DEED_BANDS, DEED_BAND_LABELS, DEED_WAYS} from '../data/deeds.js';
 import {WAYS} from '../data/behaviour.js';
 import {tableById, get, editable} from '../data/schema/index.js';
 import {setCell, resetCell, isEdited, originalOf, addSpecies, dropSpecies, isNewSpecies, editCount} from '../data/schema/edits.js';
@@ -28,12 +29,23 @@ const SECTIONS = [
   {id: 'tags', label: 'Теги', table: 'creatures', tags: true},
   {id: 'body', label: 'Тело (data/balance/creatures.js)', table: 'creatures', keys: ['special', 'hp', 'speed', 'attack.power', 'attack.cooldown', 'attack.type', 'ks', 'weakTo']},
   {id: 'where', label: 'Где живёт', table: 'creatures', keys: ['habitat']},
-  {id: 'ways', label: 'Поведение', table: 'creatures', keys: ['behaviours', 'heart'], behaviours: true},
+  {id: 'ways', label: 'Поведение', table: 'creatures', keys: ['behaviours', 'heart'], lists: true},
+  {id: 'mores', label: 'Нравы на карте мира (логово, главарь)', table: 'creatures', keys: ['deeds.lair'], lists: true},
   {id: 'needs', label: 'Потребности, жар и приход', table: 'speciesWays', keys: ['needs', 'heatHarm', 'fearHeat', 'arrive.', 'leaveChance', 'respawn', 'restAt', 'mends']},
   {id: 'blocks', label: 'Числа повадок', table: 'speciesWays', keys: ['flee.', 'grazes.', 'herd.', 'predator.', 'mule.', 'vermin.', 'spirit.', 'venom.', 'web.', 'breath', 'drinks', 'sun', 'rots']},
   {id: 'yields', label: 'Добыча и приручение', table: 'speciesWays', keys: ['yields.', 'trophies', 'tame.', 'tameWith']},
   {id: 'names', label: 'Клички', table: 'nicknames', keys: ['names']},
 ];
+
+// the list fields: the catalogue they draw from, its lanes, the ready lists, and what to say above
+const LIST_FIELDS = {
+  behaviours: {catalogue: BEHAVIOURS, bands: BANDS, labels: BAND_LABELS, presetsFrom: 'data/behaviour.js WAYS',
+    presets: Object.fromEntries(Object.entries(WAYS).filter(([k]) => !['livestock', 'leaver', 'led'].includes(k))),
+    note: 'Порядок — порядок выбора: первая полоса, где есть что выбрать, прерывает остальные; внутри полосы побеждает оценка, при равной — первый в списке. Серое — поведение читает блок, которого у вида нет.'},
+  'deeds.lair': {catalogue: DEEDS, bands: DEED_BANDS, labels: DEED_BAND_LABELS, presetsFrom: 'data/deeds.js DEED_WAYS',
+    presets: Object.fromEntries(Object.entries(DEED_WAYS).filter(([k]) => ['lair', 'captors', 'dragon'].includes(k))),
+    note: 'Что делают логова этого вида и их главари на карте мира (docs/WORLD.md «Нравы»): тот же выбор по полосам, внутри полосы — жребий по весам. Дело знает, кто спрашивает: без главаря subdue и rival не ходят, raid у зверей — только с вожаком. Род логова (где стоит, чем живёт) — таблица «Логова».'},
+};
 
 export class BeastView {
   constructor() {
@@ -44,12 +56,12 @@ export class BeastView {
     $('bstNew').addEventListener('click', () => this.create());
     $('bstForm').addEventListener('click', e => {
       const undo = e.target.closest('[data-undo-c]'); if (undo) { this.undo(undo.dataset.undoT, undo.dataset.undoC); return; }
-      const mv = e.target.closest('[data-mv]'); if (mv) { this.moveBehaviour(mv.dataset.mv, +mv.dataset.d); return; }
+      const mv = e.target.closest('[data-mv]'); if (mv) { this.moveBehaviour(mv.dataset.key, mv.dataset.mv, +mv.dataset.d); return; }
       const drop = e.target.closest('#bstDrop'); if (drop) { this.drop(); }
     });
     $('bstForm').addEventListener('change', e => {
       const el = e.target;
-      if (el.matches('[data-bh]')) { this.toggleBehaviour(el.dataset.bh, el.checked); return; }
+      if (el.matches('[data-bh]')) { this.toggleBehaviour(el.dataset.key, el.dataset.bh, el.checked); return; }
       if (el.matches('[data-t][data-c]')) this.commit(el);
     });
     $('bstForm').addEventListener('keydown', e => {
@@ -109,6 +121,7 @@ export class BeastView {
   summary(sp) {
     const parts = [];
     if (sp.behaviours) parts.push(`думает по списку: ${sp.behaviours.join(' → ')}`);
+    if (sp.deeds?.lair?.length) parts.push(`логова на карте мира: ${sp.deeds.lair.join(', ')}`);
     if (sp.needs?.length) parts.push(`потребности: ${sp.needs.join(', ')}`);
     if (sp.habitat) parts.push(`живёт: ${Object.keys(sp.habitat).length} биомов`);
     if (sp.arrive) parts.push(`приходит группами ${sp.arrive.group?.join('–')} раз в ${sp.arrive.every?.join('–')} дн.`);
@@ -132,7 +145,7 @@ export class BeastView {
     let cols = t.columns.filter(c => S.keys.some(k => (k.endsWith('.') ? c.key.startsWith(k) : c.key === k)) && c.key !== t.key);
     cols = cols.filter(c => get(row, c.key) !== undefined || isEdited(S.table, sp.id, c.key) || S.id === 'name' || S.id === 'where' || (S.id === 'ways' && c.key === 'heart'));
     if (!cols.length) return '';
-    const fields = cols.map(c => (S.behaviours && c.key === 'behaviours' ? this.behavioursField(S.table, sp, c) : this.field(S.table, sp.id, row, c))).join('');
+    const fields = cols.map(c => (S.lists && LIST_FIELDS[c.key] ? this.listField(S.table, sp, c) : this.field(S.table, sp.id, row, c))).join('');
     return `<section class="bst-sec"><h4>${esc(S.label)}</h4><div class="bst-grid">${fields}</div></section>`;
   }
 
@@ -160,24 +173,24 @@ export class BeastView {
     return `<div class="field ${ed ? 'changed' : ''}" title="${esc(c.note || '')}"><span class="lbl">${esc(c.label)} <code>${esc(c.key)}</code>${ed ? ` <button type="button" class="quiet mini" data-undo-t="${esc(tableId)}" data-undo-c="${esc(c.key)}" title="Вернуть число кода: ${esc(editText(c, was) || '—')}">↺</button>` : ''}${c.computed ? ' <i>вычисляется</i>' : ''}</span>${box}</div>`;
   }
 
-  // the list of behaviours: every one of the catalogue by lane, ticked if the species lists it, in the species' order
-  // with ▲▼; one whose fields the species lacks cannot be ticked, the lack is said
-  behavioursField(tableId, sp, c) {
-    const list = sp.behaviours || [], ed = isEdited(tableId, sp.id, c.key);
-    const lanes = BANDS.map(b => {
-      const rows = BEHAVIOURS.filter(d => d.band === b).map(d => {
+  // a list of the catalogue (the behaviours a creature thinks by; the deeds its lairs do): every row by lane, ticked if
+  // the species lists it, in the species' order with ▲▼; one whose fields the species lacks cannot be ticked, the lack is said
+  listField(tableId, sp, c) {
+    const F = LIST_FIELDS[c.key], list = get(sp, c.key) || [], ed = isEdited(tableId, sp.id, c.key);
+    const lanes = F.bands.map(b => {
+      const rows = F.catalogue.filter(d => d.band === b).map(d => {
         const k = list.indexOf(d.id), on = k >= 0, lack = d.requires.filter(f => sp[f] == null);
         return `<li class="${on ? 'on' : ''} ${lack.length ? 'lack' : ''}" title="${esc(d.note || '')}">
-          <label><input type="checkbox" data-bh="${d.id}" ${on ? 'checked' : ''} ${lack.length && !on ? 'disabled' : ''}> <b>${d.id}</b> <span>${esc(d.note || '')}</span></label>
-          ${on ? `<span class="ord"><button type="button" class="quiet mini" data-mv="${d.id}" data-d="-1" ${k === 0 ? 'disabled' : ''}>▲</button>${k + 1}<button type="button" class="quiet mini" data-mv="${d.id}" data-d="1" ${k === list.length - 1 ? 'disabled' : ''}>▼</button></span>` : ''}
+          <label><input type="checkbox" data-bh="${d.id}" data-key="${esc(c.key)}" ${on ? 'checked' : ''} ${lack.length && !on ? 'disabled' : ''}> <b>${d.id}</b> <span>${esc(d.note || '')}</span></label>
+          ${on ? `<span class="ord"><button type="button" class="quiet mini" data-mv="${d.id}" data-key="${esc(c.key)}" data-d="-1" ${k === 0 ? 'disabled' : ''}>▲</button>${k + 1}<button type="button" class="quiet mini" data-mv="${d.id}" data-key="${esc(c.key)}" data-d="1" ${k === list.length - 1 ? 'disabled' : ''}>▼</button></span>` : ''}
           ${lack.length ? `<small>нужно: ${lack.join(', ')}</small>` : ''}</li>`;
       }).join('');
-      return rows ? `<div class="lane"><span>${esc(BAND_LABELS[b])}</span><ul>${rows}</ul></div>` : '';
+      return rows ? `<div class="lane"><span>${esc(F.labels[b])}</span><ul>${rows}</ul></div>` : '';
     }).join('');
-    const presets = Object.entries(WAYS).filter(([k]) => !['livestock', 'leaver', 'led'].includes(k)).map(([k, v]) => `<option value="${k}">${k}: ${v.join(', ')}</option>`).join('');
-    return `<div class="field bst-ways ${ed ? 'changed' : ''}"><span class="lbl">${esc(c.label)} <code>behaviours</code>${ed ? ` <button type="button" class="quiet mini" data-undo-t="${esc(tableId)}" data-undo-c="behaviours" title="Вернуть список кода">↺</button>` : ''}
-      <select data-t="creatures" data-c="behaviours" data-preset="1" title="Готовый список (data/behaviour.js WAYS)"><option value="">готовый список…</option>${presets}</select></span>
-      <p class="note">Порядок — порядок выбора: первая полоса, где есть что выбрать, прерывает остальные; внутри полосы побеждает оценка, при равной — первый в списке. Серое — поведение читает блок, которого у вида нет.</p>${lanes}</div>`;
+    const presets = Object.entries(F.presets).map(([k, v]) => `<option value="${k}">${k}: ${v.join(', ')}</option>`).join('');
+    return `<div class="field bst-ways ${ed ? 'changed' : ''}"><span class="lbl">${esc(c.label)} <code>${esc(c.key)}</code>${ed ? ` <button type="button" class="quiet mini" data-undo-t="${esc(tableId)}" data-undo-c="${esc(c.key)}" title="Вернуть список кода">↺</button>` : ''}
+      <select data-t="creatures" data-c="${esc(c.key)}" data-preset="1" title="Готовый список (${esc(F.presetsFrom)})"><option value="">готовый список…</option>${presets}</select></span>
+      <p class="note">${F.note}</p>${lanes}</div>`;
   }
 
   // ── writing
@@ -186,7 +199,7 @@ export class BeastView {
     delete el.dataset.dirty;
     let value;
     try {
-      if (el.dataset.preset) { if (!el.value) return; value = [...WAYS[el.value]]; }
+      if (el.dataset.preset) { if (!el.value) return; value = [...LIST_FIELDS[key].presets[el.value]]; }
       else if (el.type === 'checkbox') value = el.checked;
       else if (el.tagName === 'SELECT') value = el.value === '' ? undefined : el.value;
       else if (el.type === 'color') value = el.value;
@@ -198,18 +211,18 @@ export class BeastView {
   }
   undo(tableId, key) { resetCell(tableId, this.id, key); this.changed('Возвращено число кода.'); }
 
-  toggleBehaviour(id, on) {
-    const sp = SPECIES.get(this.id), list = (sp.behaviours || []).filter(x => x !== id);
+  toggleBehaviour(key, id, on) {
+    const sp = SPECIES.get(this.id), list = (get(sp, key) || []).filter(x => x !== id);
     if (on) list.push(id);
-    const res = setCell('creatures', this.id, 'behaviours', list);
+    const res = setCell('creatures', this.id, key, list);
     if (res.error) { this.say(res.error, true); this.draw(); return; }
     this.changed(`${on ? 'добавлено' : 'убрано'}: ${id}.`);
   }
-  moveBehaviour(id, d) {
-    const list = [...(SPECIES.get(this.id).behaviours || [])], k = list.indexOf(id), j = k + d;
+  moveBehaviour(key, id, d) {
+    const list = [...(get(SPECIES.get(this.id), key) || [])], k = list.indexOf(id), j = k + d;
     if (k < 0 || j < 0 || j >= list.length) return;
     [list[k], list[j]] = [list[j], list[k]];
-    const res = setCell('creatures', this.id, 'behaviours', list);
+    const res = setCell('creatures', this.id, key, list);
     if (res.error) { this.say(res.error, true); return; }
     this.changed(null);
   }
