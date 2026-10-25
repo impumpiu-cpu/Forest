@@ -1,6 +1,6 @@
 // The «Мир» screen: the world-map polygon. Settings on the left, the map in the middle, the
-// chronicle on the right. The land runs a stage a frame; history runs at the chosen pace (SPEEDS:
-// seasons a frame), so the map is drawn and the chronicle written as the world is made. The map has
+// chronicle on the right. The land runs a stage a frame; history runs a season a step at the observer's pace
+// (core/clock.js), so the map is drawn and the chronicle written as the world is made. The map has
 // a camera (render/camera.js): the wheel zooms at the cursor, dragging pans, as on the local map.
 // The cells are painted once per change into an off-screen bitmap and drawn scaled; everything on
 // top (rivers, roads, towns, lairs) is drawn in cell units over it. (Later the generation moves to
@@ -44,6 +44,8 @@ import {esc} from '../core/util.js';
 import {offerText, latinTitle} from './store.js';
 import {lineLevel, keeps, DETAILS, worldChronicleText, calamityChronicleText} from '../atlas/chronicle.js';
 import {$} from './dom.js';
+import {SeasonClock} from '../core/clock.js';
+import {mountPace} from './pace.js';
 import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
@@ -70,12 +72,6 @@ const OPTS = {
 const VIEW_KEYS = new Set(['layer', 'ore', 'fauna']);
 // the pace of history: seasons a frame and the wait between frames; «сразу» runs as many seasons as
 // fit in a frame's budget. ×1 is a season a frame — 100 years in about 40 s, slow enough to read
-const SPEEDS = [
-  {id: 'x1', label: '×1', steps: 1, wait: 100},
-  {id: 'x4', label: '×4', steps: 4, wait: 100},
-  {id: 'x16', label: '×16', steps: 16, wait: 60},
-  {id: 'max', label: 'Сразу', steps: Infinity, wait: 30, budget: 30},
-];
 const DRAG_PX = 5;
 // the marks of the towns' works, by the building's category (data/townBuildings.js CATEGORIES)
 const SITE_COLORS = {food: [196, 182, 72], raw: [168, 150, 128], trade: [220, 190, 120]};   // a press that moves less than this is a click (a hover); further, it drags the map
@@ -124,8 +120,10 @@ export function exportChronicle(a, name, what) {
 // buttons, the screen, the legend — so nothing here reaches for an element of one page only.
 export class MapView {
   constructor(opts = {}) {
-    this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.fauna = 'wolf'; this.timer = 0; this.paused = false;
-    this.speed = 'x1'; this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.grab = null;
+    this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.fauna = 'wolf';
+    this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.grab = null;
+    // the observer's clock (core/clock.js): a season a step at the pace chosen; the screens give it their step
+    this.clock = new SeasonClock({step: () => this.stepSeason(), after: () => this.afterSeason(), done: () => this.afterRun()});
     this.worldId = null; this.worldName = '';   // the library record this world is saved as, if any
     this.pick = -1;   // the cell picked (the polygon: for a settlement, seam/cell.js), -1 — none
     this.setup(opts);
@@ -133,6 +131,11 @@ export class MapView {
   }
   setup() {}
   build() {}
+  // the clock's step, what follows it and what follows the run — the screens' own
+  stepSeason() { return false; }
+  afterSeason() { this.draw(); this.animate(); }
+  afterRun() {}
+  get paused() { return this.clock.paused; }
   // the readout of the cell under the cursor at most once a frame (a hover looks up a good deal)
   hoverSoon(e) {
     this.hoverEv = {clientX: e.clientX, clientY: e.clientY};
@@ -476,20 +479,18 @@ export class MapView {
     }
   }
 
-  // how far between the last tick and the next the screen is, 0 … 1: the parties slide by it
-  slide() {
-    if (!this.tickAt || this.paused || !this.tickWait) return 1;
-    return Math.min(1, (performance.now() - this.tickAt) / this.tickWait);
-  }
+  // how far between the last season and the next the screen is, 0 … 1: the parties slide by it (core/clock.js)
+  slide() { return this.clock.phase(); }
 
-  // between ticks the parties keep sliding: a frame loop while history runs and there is something to slide
+  // between seasons the parties keep sliding: a frame loop while the clock runs and there is something to slide
   animate() {
     if (this.raf) return;
     const loop = () => {
       this.raf = 0;
       const a = this.atlas;
-      if (!a || this.paused || atlasDone(a) || !a.parties?.length || !this.tickWait || this.tickWait < 50) return;
-      this.draw();
+      this.frame?.();   // what a screen shows between seasons (the day of the season)
+      if (!a || !this.clock.running || this.slide() >= 1) { this.draw(); return; }
+      if (a.parties?.length) this.draw();
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
@@ -711,13 +712,9 @@ export class AtlasView extends MapView {
     $('atlasSeed').addEventListener('input', e => { this.cfg.seed = e.target.value.trim() || '1'; this.save(); });
     $('atlasRandom').addEventListener('click', () => { this.cfg.seed = String(100000 + Math.floor(Math.random() * 899999)); this.save(); this.sync(); });
     $('atlasGo').addEventListener('click', () => this.generate());
-    $('atlasPause').addEventListener('click', () => { this.paused = !this.paused; this.syncPause(); if (!this.paused) this.run(); });
-    const sp = $('atlasSpeed');
-    sp.innerHTML = SPEEDS.map(S => `<button type="button" data-val="${S.id}" aria-pressed="false">${S.label}</button>`).join('');
-    sp.addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
-      this.speed = b.dataset.val; this.paused = false; this.syncPause(); this.run();
-    });
+    this.syncPaceBox = mountPace($('atlasSpeed'), this.clock, {pauseId: 'atlasPause', active: () => !$('atlas').hidden,
+      onPace: id => { this.clock.setPace(id); if (this.clock.paused) this.clock.resume(); this.syncPause(); },
+      onPause: () => { if (!this.atlas || atlasDone(this.atlas)) return; this.clock.toggle(); this.syncPause(); }});
     $('atlasBack').addEventListener('click', () => { this.stop(); this.onBack(); });
     this.buildLibrary();
     // the chronicle: its detail (atlas/chronicle.js), the calamities only, into a file — remembered in this browser
@@ -751,9 +748,8 @@ export class AtlasView extends MapView {
 
   // leaving the screen: the generation halts between frames; if it was not finished, it waits as paused and «Дальше» continues it
   stop() {
-    clearTimeout(this.timer); this.timer = 0;
     const a = this.atlas;
-    if (a && !atlasDone(a)) this.paused = true;
+    if (a && !atlasDone(a)) this.clock.pause(); else this.clock.stop();
     this.syncPause();
   }
 
@@ -770,18 +766,17 @@ export class AtlasView extends MapView {
     $('atlasWildNote').textContent = `${WILD_YEARS[this.cfg.wild].years} лет до прихода народов`;
     $('atlasElderNote').textContent = `${ELDER_YEARS[this.cfg.elder].years} лет эльфов и гномов`;
     $('atlasYoungNote').textContent = `${YOUNG_YEARS[this.cfg.young].years} лет людей и орков до высадки`;
-    $('atlasSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === this.speed)));
+    this.syncPaceBox?.();
     this.legend();
   }
 
   generate() {
-    clearTimeout(this.timer);
+    this.clock.stop();
     const a = this.atlas = newAtlas(this.cfg);
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = '';
-    this.paused = false; this.syncPause();
     this.bind(null, ''); this.setPick(-1);
     this.renderSide();
-    this.run();
+    this.clock.start(); this.syncPause();
   }
 
   // ── the library of worlds (ui/worlds.js): save, open, delete, files
@@ -849,37 +844,30 @@ export class AtlasView extends MapView {
 
   // a saved world on the screen: its settings, a fresh camera and chronicle; unfinished history waits for «Дальше»
   showWorld(a, id, name) {
-    clearTimeout(this.timer); this.timer = 0;
+    this.clock.stop();
     this.atlas = a; this.cfg = {...DEFAULT_ATLAS_CFG, ...a.cfg}; delete this.cfg.shape; this.save();   // the hand's edits belong to that land, not to the next one
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.chronOf = null;
-    this.paused = !atlasDone(a);
+    if (!atlasDone(a)) this.clock.paused = true;   // unfinished history waits for «Дальше»
     this.bind(id, name); this.sync(); this.setPick(-1);
     this.draw(); this.renderSide(); this.syncPause();
   }
 
-  // the land a stage a frame, then history at the chosen pace (SPEEDS); pausing stops between frames
-  run() {
-    const a = this.atlas;
-    clearTimeout(this.timer);
-    const next = () => {
-      if (a !== this.atlas || this.paused) return;
-      const sp = SPEEDS.find(S => S.id === this.speed) || SPEEDS[0], land = !landDone(a);
-      const steps = land ? 1 : sp.steps, t0 = Date.now();
-      for (let k = 0; k < steps && !atlasDone(a); k++) { runNextStage(a); if (sp.budget && Date.now() - t0 > sp.budget) break; }
-      this.tickAt = performance.now(); this.tickWait = land ? 0 : sp.wait;
-      this.draw(); this.renderSide(); this.animate();
-      if (land && landDone(a)) { this.syncPause(); this.syncSave(); }   // the land is made: the pace, the pause and saving appear
-      if (!atlasDone(a)) this.timer = setTimeout(next, land ? 30 : sp.wait); else this.syncPause();
-    };
-    this.timer = setTimeout(next, 30);
+  // the clock's step: the land a stage at once, then history a season at the pace (core/clock.js)
+  stepSeason() {
+    const a = this.atlas; if (!a) return false;
+    const land = !landDone(a);
+    runNextStage(a);
+    if (land && landDone(a)) { this.syncPause(); this.syncSave(); }   // the land is made: the pace, the pause and saving appear
+    return atlasDone(a) ? false : land ? 'fast' : true;
   }
+  afterSeason() { this.draw(); this.renderSide(); this.animate(); }
+  afterRun() { this.syncPause(); }
 
   syncPause() {
     const b = $('atlasPause'), a = this.atlas, busy = a && landDone(a) && !atlasDone(a);
-    b.hidden = !busy && !(this.paused && a && !atlasDone(a));
-    b.textContent = this.paused ? 'Дальше' : 'Пауза';
+    b.hidden = !busy;
     $('atlasSpeed').hidden = b.hidden;
-    $('atlasSpeed').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.val === this.speed)));
+    this.syncPaceBox?.();
   }
 
   // ── picking a cell for a settlement: land that is not a lake, once the land is made
