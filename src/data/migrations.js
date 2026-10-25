@@ -111,10 +111,11 @@ MIGRATIONS.registerAll([
 
   // A band from the hostile lands (data/raids.js): the provider says which one sets out and how strong it
   // is (n: a budget in strength rating, КС); toughness and aim grow with the threat level they have reached.
+  // A campaign's camp (campaign/camp.js) adds `fill` options: `up` — the heads rounded up, `max` — the caps lifted
   {id: 'raiders', faction: 'raiders', minDist: 40, topic: 'danger',
     members: (w, rng, n, opts) => {
       const band = RAID_BANDS.get(opts.band || 'bandits'), t = raidThreat(w);
-      const list = band.members(w, rng, n, t);
+      const list = band.members(w, rng, n, t, opts.fill || {});
       // a boss's retinue (campaign/camp.js): at least this many, made up with more of the band's most numerous kind
       if (opts.atLeast) { const most = list.map(m => m.species).sort((p, q) => list.filter(x => x.species === q).length - list.filter(x => x.species === p).length)[0]; while (list.length < opts.atLeast) list.push({...list.find(m => m.species === most)}); }
       return list.map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),

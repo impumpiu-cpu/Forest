@@ -24,15 +24,24 @@ export const CAMP = {
   quiet: 1,
   // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
   far: 18,
-  // the foe: a band's budget in «human raiders» (data/raids.js) from its might (data/campaign.js FOES)
-  // × the thing's strength × `budget`; beasts come as a pack of `pack` × strength; the threat the band
-  // carries its gear and aim by (settlement/threat.js) — × strength
-  budget: 0.55, pack: [2, 4], threat: 6,
+  // the foe is bought by the caravan's strength, not by the thing's (agents/strength.js sideStrength of everyone
+  // who stands in the fight, with all they wear — campaign/camp.js campSetup): the fight's budget is that strength
+  // × the fight's weight, ± `sway` of it at random; heads are always rounded up (data/raids.js fill `up`: when a
+  // giant and a half fit, two come). In the quick mode the same, in the caravan's own might (campaign/fight.js)
+  foe: {
+    skirmish: [0.7, 1],   // a chance meeting — a nameless band at night or in ambush: down to −30 %
+    force: 1,             // a realm's army, the guards of a place stormed
+    leader: 1.15, mini: 1.25, boss: 1.5,   // a leader of an old lair, a grave's guard, the fourth and its lair (campaign/epic.js)
+    sway: 0.25,
+    most: 18,             // no more heads than this, however weak each (a swarm of bats is a swarm, not a plague)
+  },
+  // the threat the band carries its gear and aim by (settlement/threat.js) — × the thing's strength; in the quick
+  // mode the heads of the record are counted at `quickHeads` a point of might
+  threat: 6, quickHeads: 0.55,
   // a boss (a leader of an old lair, a grave's guard, the fourth: campaign/epic.js, campaign/land.js) never comes alone:
-  // a retinue worth at least this many bandits (data/raids.js raiderStrength) — so many of its own kind as that buys:
-  // vargs by the half-dozen, ogres by the pair — and the boss on top. It stands while it lives, and its side holds with
-  // it (agents/auras.js: the aura `lead`)
-  boss: {retinue: [3, 6]},
+  // at least `atLeast` come; the strongest of its own kind is grown into it. It stands while it lives, and its side
+  // holds with it (agents/auras.js: the aura `lead`)
+  boss: {atLeast: 2},
   // a building packed in the wagon is put up at the camp: it stands with this share of its work left
   // (the caravan finishes it with its own hands before the night)
   deploy: 0.25,

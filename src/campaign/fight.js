@@ -20,7 +20,7 @@ import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {assign, toolTier} from './baggage.js';
 import {makeMember} from './start.js';
-import {campSetup, runCamp, campOutcome, outcomeHash} from './camp.js';
+import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
 import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
 import {afterFight} from './quest.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
@@ -63,7 +63,7 @@ function recordFight(a, K, d, how, win, before) {
   const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local',
     fighters: before.filter(([id]) => !K.members.find(m => m.id === id)?.captive).length,
     foes: F ? F.n : A?.heads ?? null, killed: F ? F.killed : null, fled: F ? F.fled : null, taken: F ? F.taken : null, species: F ? F.species : null,
-    ours: o ? o.ours.might : A?.P ?? null, theirs: F ? F.might : A?.E ?? null,
+    ours: o ? o.ours.might : A?.P ?? null, theirs: F ? F.might : A?.E ?? null, weight: F ? F.weight : A?.weight ?? null,
     boss: d.boss ? {name: d.boss.name, species: d.boss.species, mustDie: !!d.boss.mustDie, came: !!B, fate: !B ? 'absent' : B.dead ? 'dead' : B.bound ? 'bound' : B.fled ? 'fled' : 'stood', hp: B?.hp ?? null} : null,
     fell, hurt, kills: o ? Object.fromEntries(Object.entries(o.ours.kills).map(([id, n]) => [K.members.find(m => m.id === +id)?.name || id, n])) : {}};
   (K.fights ||= []).push(rec);
@@ -243,9 +243,10 @@ function spoilsRest(a, K, d, r) {
 
 // ── at once (the quick mode): the foe's might against the caravan's
 function autoFight(a, K, d, r, how) {
-  const F = CAMPAIGN.fight, foe = FOES[d.kind], E = foe.might * (d.strength ?? 1) * between(r, [0.6, 1.4]), P = caravanMight(K) * (how === 'ambush' ? AMBUSH.surprise * paceOf(K).wary : 1);
+  // the foe is bought by the caravan's might × the fight's weight (campaign/camp.js foeWeight, data/camp.js CAMP.foe), as on the local map
+  const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = might * (how === 'ambush' ? AMBUSH.surprise * paceOf(K).wary : 1);
   const share = P / (P + E), win = r() < share;
-  K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.round(foe.might * (d.strength ?? 1) * CAMP.budget))};   // for the fight's record
+  K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.ceil(E * CAMP.quickHeads)), weight: Math.round(weight * 100) / 100};   // for the fight's record
   // the blows: more when they lose, mostly on the knights, who shield the squires
   let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);
   const hit = [];
