@@ -72,6 +72,7 @@ export function dangers(a, i) {
     // a lair with a leader (atlas/leaders.js) keeps its land better and comes harder, the leader at the head (LEADER.camp)
     const ld = lair.leader, M = ld ? LEADER.camp : null;
     out.push({kind, p: (N.lair.p[0] + N.lair.p[1] * Math.min(N.lair.pCap, lair.strength)) * (M ? M.p : 1), strength: (N.lair.s[0] + N.lair.s[1] * Math.min(N.lair.sCap, lair.strength)) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),
+      lair: lair.id,   // (its captives, if it keeps any: a fight won frees them — campaign/fight.js)
       ...(ld ? {boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, leaderLair: lair.id} : {})});
   }
   const wolves = faunaLevel({region: cellRegion(a, i)}, 'wolf');

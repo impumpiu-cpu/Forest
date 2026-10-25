@@ -13,6 +13,7 @@ import {FOODS} from '../data/foods.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {LOYALTY, FREED, COMPANIONS} from '../data/market.js';
+import {CAPTIVE_RAID} from '../data/lairs.js';
 import {room} from './company.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
@@ -174,9 +175,28 @@ export function takeGear(K, items) {
 }
 
 // ── after a won fight: captives set free, beasts the foe kept, now and then an iron tool
+// the captives a lair keeps (atlas/deeds/captives.js, lair.captives by people): the caravan that beat its folk in its lands
+// frees up to CAPTIVE_RAID.freed.max of them, and they walk with it as the freed do
+export function freeLairCaptives(a, K, d, r, tell) {
+  const l = d.lair != null ? (a.lairs || []).find(x => x.id === d.lair) : null;
+  const held = l?.captives ? Object.entries(l.captives).filter(([, n]) => n > 0) : [];
+  if (!held.length || r() >= CAPTIVE_RAID.freed.chance) return [];
+  const got = [];
+  for (let q = 0; q < CAPTIVE_RAID.freed.max && held.length && room(K, 'joined'); q++) {
+    const [people] = held[(r() * held.length) | 0];
+    const m = makeMember(K, r, {race: WORLD_PEOPLES.get(people).race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});
+    K.members.push(m); got.push(`${m.name} (${SPECIES.get(m.race).label})`);
+    if (--l.captives[people] <= 0) { delete l.captives[people]; held.splice(held.findIndex(([p]) => p === people), 1); }
+  }
+  if (got.length) tell(`В «${l.name}» держали пленных: ${names(got)} освобожден${got.length > 1 ? 'ы' : ''} и пока ид${got.length > 1 ? 'ут' : 'ёт'} с караваном.`, 'people');
+  return got;
+}
+
 function spoils(a, K, d, r) {
   // the fallen foes bound and taken (campaign/captives.js): on the local map the camp does it itself
   if (K.mode === 'auto') takeAuto(a, K, d, r, (text, kind, who) => say(a, K, text, kind, false, who));
+  // the lair's own captives first; a stranger's camp may hold some by chance
+  if (freeLairCaptives(a, K, d, r, (text, kind) => say(a, K, text, kind)).length) return spoilsRest(a, K, d, r);
   if (FREED.chance[d.kind] && room(K, 'joined') && r() < FREED.chance[d.kind]) {
     const n = 1 + (r() < FREED.second ? 1 : 0), got = [];
     for (let q = 0; q < n && room(K, 'joined'); q++) {
@@ -187,6 +207,10 @@ function spoils(a, K, d, r) {
     }
     say(a, K, `В лагере врагов нашли пленников и освободили: ${names(got)}. ${n > 1 ? 'Пока идут с караваном' : 'Пока идёт с караваном'} — надолго ли, неизвестно.`, 'people');
   }
+  spoilsRest(a, K, d, r);
+}
+// the beasts and the tools the foe left
+function spoilsRest(a, K, d, r) {
   for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) { gainBeast(a, K, kind, 'У врагов отбили'); break; }
   const T = GETTING.spoilTool;
   if (T[d.kind] && toolTier(K) < 2 && r() < T[d.kind]) {

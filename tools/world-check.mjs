@@ -11,6 +11,10 @@ import {BEHAVIOURS, stepParties} from '../src/atlas/parties.js';
 import {DOES} from '../src/atlas/deeds/index.js';
 import {meet, stepDiplomacy} from '../src/atlas/diplomacy.js';
 import {realmSpecies} from '../src/atlas/court.js';
+import {stepLairs} from '../src/atlas/lairs.js';
+import {freeLairCaptives} from '../src/campaign/fight.js';
+import {CAPTIVE_RAID} from '../src/data/lairs.js';
+const stepLairsOnce = (a, season) => stepLairs(a, mulberry(9), season);
 import {DEEDS} from '../src/data/deeds.js';
 import {LAIRS} from '../src/data/lairs.js';
 import {SPECIES} from '../src/data/species.js';
@@ -307,6 +311,46 @@ scene_('W16', 'держава выжигает логово, чьи владен
   const o = court(a, realm, ['clearLair']);
   if (o?.[3].id !== 'clearLair') return `предложено: ${o ? o[3].id : 'ничего'}`;
   return !lair.alive || `логово цело: ${realm.lines.join(' | ')}`;
+});
+
+scene_('W17', 'стан гоблинов осенью идёт за пленными: город теряет жителей в полон, не в могилы; пленные живут при логове и тают', () => {
+  const a = world(), {town, lair} = townAndLair(a, 'goblins');
+  if (!lair?.id) return 'стан не встал';
+  lair.strength = 1; lair.boss = 1; town.pop = 60;   // a camp led by a calamity's boss: strong enough to walk as a party
+  const pop0 = town.pop, o = ask(a, lair, ['captives'], () => 0, 'lair', 'autumn');
+  if (!o || o[0].target !== town.id) return `предложено: ${o ? o[0].target : 'ничего'}`;
+  let party = (a.parties || []).find(p => p.kind === 'raid' && p.owner === lair.id && p.plan === 'captives');
+  if (party) { party.might = 1e6; BEHAVIOURS.raid.arrive(a, party, mulberry(3), () => {}); }
+  const n = lair.captives?.[town.people] || 0;
+  if (!(n > 0) || !(town.pop < pop0) || Math.round(pop0 - town.pop) !== n) return `полон не взят: ${n}, город ${pop0} → ${town.pop}; ${lair.lines.join(' | ')}`;
+  // the years: the captives waste
+  lair.captives[town.people] = 40;
+  a.hist.season = 0; stepLairsOnce(a, 'spring');
+  return lair.captives[town.people] < 40 || 'пленные не тают';
+});
+
+scene_('W18', 'держава орков с воинами уводит пленных из нелюбимого города рядом: город орков растёт; у людей такого дела нет', () => {
+  const a = world(), n = neighbours(a, 'orcs', 'humans', -3);
+  if (!n) return 'соседи не высадились';
+  n.t1.pop = 300; n.t1.built.push('palisade'); n.t2.pop = 300;
+  const p1 = n.t1.pop, p2 = n.t2.pop, o = court(a, n.A, ['captives']);
+  if (o?.[3].id !== 'captives') return `предложено: ${o ? o[3].id : 'ничего'}`;
+  const took = n.A.captives?.humans || 0;
+  if (took > 0 && !(n.t1.pop > p1 && n.t2.pop < p2)) return `полон взят, а города не изменились: ${p1} → ${n.t1.pop}, ${p2} → ${n.t2.pop}`;
+  if (!took && !n.A.lines.some(t => /отбили/.test(t))) return `ни полона, ни отпора: ${n.A.lines.join(' | ')}`;
+  return !realmSpecies(a, n.B).deeds.realm.includes('captives') || 'люди ходят за пленными';
+});
+
+scene_('W19', 'караван, разбивший людей логова в его землях, освобождает его пленных; они идут с караваном', () => {
+  const a = world(), {lair} = townAndLair(a, 'goblins');
+  if (!lair?.id) return 'стан не встал';
+  lair.captives = {humans: 3};
+  const K = {members: [{id: 1, name: 'Вожак', alive: true, role: 'leader', core: true}], day: 5, nextMember: 1, cargo: {}, stats: {}};
+  const lines = [];
+  const got = freeLairCaptives(a, K, {kind: 'tribe', lair: lair.id}, () => 0, t => lines.push(t));
+  if (got.length !== CAPTIVE_RAID.freed.max) return `освобождено ${got.length}: ${lines.join(' | ')}`;
+  if ((lair.captives.humans || 0) !== 3 - got.length) return `в логове осталось ${lair.captives.humans}`;
+  return K.members.filter(m => m.role === 'freed' && m.race === 'human').length === got.length || 'освобождённые не в караване';
 });
 
 scene_('W07', 'каталог: у каждого дела есть код; у хозяина каждого рода логов — список нравов из каталога', () => {

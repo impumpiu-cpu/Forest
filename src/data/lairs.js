@@ -121,6 +121,18 @@ export const TRIBE_HOME = 0.45;
 //             falls (× raidShare of its buildings);  loot: strength the camp gains on a win;
 //             beaten: what is left of the camp's strength after a failed raid
 export const TRIBE_RAID = {from: 0.6, chance: 0.1, reach: 30, might: 0.55, loss: 0.12, loot: 0.12, beaten: 0.7};
+// Raids for captives (the deed `captives`, atlas/deeds/captives.js; who goes: the species rows that list it — the goblins,
+// gnolls and ogres' camps, the necromancer's tower, the orcs' realms). A camp's raid for captives is a tribe's raid
+// (TRIBE_RAID: from, reach, might, beaten) that takes people instead of killing them:
+//   chance:     a year, per camp, as TRIBE_RAID.chance is for a raid;  loss: the share of the town taken into captivity
+//               (× raidShare of its buildings);  feed: strength the camp gains on a win (the captives' hands and flesh);
+//               graves: × ROT.raidGraves — a few fall on the way to the ropes
+//   keep:       the share of a lair's captives alive a year later (the rest die, are eaten, or are raised)
+//   realm:      a realm's raid for captives (the orcs): the town's chance a year (as DIPLOMACY.raidChance is for a raid), the
+//               share taken, and how much of it the raiding town grows by — slaves are people too; the rest are sold or die
+//   freed:      a caravan that beats a lair's folk in its lands (campaign/fight.js) frees its captives: this many at most at
+//               once, with this chance (the lair's captives are certain where a stranger's camp gives FREED.chance)
+export const CAPTIVE_RAID = {chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5}, freed: {max: 2, chance: 0.9}};
 
 // adjectives for lair names, by gender: m, f, n, pl
 export const NAME_ADJ = [

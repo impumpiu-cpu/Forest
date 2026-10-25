@@ -28,6 +28,7 @@ import {SEA} from '../data/roads.js';
 import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
 import {stateOf, stateLabel, attitude, ruinAt, relation} from '../atlas/diplomacy.js';
 import {realmOf, realmLabel} from '../atlas/realms.js';
+import {captiveCount} from '../atlas/lairs.js';
 import {ROADS} from '../data/roads.js';
 import {faunaAt} from '../atlas/fauna.js';
 import {lairAt} from '../atlas/lairs.js';
@@ -633,6 +634,7 @@ export class MapView {
       parts.push(`${townLabel(town)} ${town.name} (${town.realm ? realmLabel(a, town.realm) : P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}, угодья в ${siteRadius(a, town)} клетках; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : '') + feed);
       const R = town.realm ? a.realms.find(r => r.id === town.realm) : null;
       if (R?.tech) parts.push(`держава знает: ${R.tech.length ? R.tech.map(id => TECHS.get(id).label.toLowerCase()).join(', ') : 'ничего сверх общего'}`);
+      if (R?.captives && Object.values(R.captives).some(v => v > 0)) parts.push(`увели в полон за историю: ${captiveCount(R)}`);
       if (R?.why) parts.push(`последнее дело державы (${R.why.year} г.): ${DEEDS.get(R.why.deed).label} — ${R.why.why}${R.why.alt ? `; иначе: ${DEEDS.get(R.why.alt).label}` : ''}`);
       // the realm as a kingdom (atlas/kingdom.js): its attributes, its ruin, its court
       const Kd = R?.kingdom;
@@ -661,7 +663,7 @@ export class MapView {
     const lair = lairAt(a, i);
     if (lair) {
       const L = LAIRS.get(lair.kind), lord = lair.lord != null ? a.lairs.find(l => l.id === lair.lord) : null;
-      parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds}${lair.why ? `; ${lair.why.year} г. — ${DEEDS.get(lair.why.deed).label}: ${lair.why.why}` : ''})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}`);
+      parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds}${lair.why ? `; ${lair.why.year} г. — ${DEEDS.get(lair.why.deed).label}: ${lair.why.why}` : ''})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}${captiveCount(lair) ? `; в полоне: ${captiveCount(lair)}` : ''}`);
     }
     if (a.fauna && !f.ocean[i]) {
       const word = v => (v >= 0.8 ? 'много' : v >= 0.45 ? 'есть' : 'мало');

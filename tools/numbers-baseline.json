@@ -24,6 +24,7 @@
  "atlas/alliance.js": 6,
  "atlas/biomes.js": 25,
  "atlas/climate.js": 29,
+ "atlas/deeds/captives.js": 5,
  "atlas/deeds/raid.js": 2,
  "atlas/deeds/raidTown.js": 2,
  "atlas/deeds/strike.js": 6,

@@ -34,6 +34,8 @@ DEEDS.registerAll([
     note: 'главарь: война на логово-соперника (rivals рода логова): побеждённый слабеет или гибнет. (Драка соперников, чьи владения соприкасаются, — система логов, не дело: atlas/lairs.js)'},
   {id: 'strike', label: 'вылетел жечь', band: 'routine', party: 'dragon', requires: [],
     note: 'дракон: спит годами (DRAGON.sleep), летом летит на самый богатый город в досягаемости, жжёт угодья и жителей, если город его не отогнал, и летит домой спать'},
+  {id: 'captives', label: 'пошёл за пленными', band: 'routine', party: 'raid | null', requires: [],
+    note: 'набег за пленными (CAPTIVE_RAID): логово разумных — как набег, но город теряет жителей в полон, а не в могилы, и они живут при логове (lair.captives; караван, разбивший его людей, освобождает их); держава (орки) — набег города с воинами, пленные растят город'},
   // ── the realm's (atlas/court.js; the relations' body: atlas/diplomacy.js; the numbers: data/diplomacy.js DIPLOMACY, data/parties.js ARMY, data/peoples.js TOWN_WAR)
   {id: 'makePeace', label: 'заключила мир', band: 'red', party: null, requires: [],
     note: 'держава, уставшая от войны (отношение поднялось до peaceAt) или воюющая дольше longest лет, заключает мир прежде всех прочих дел; войска в пути поворачивают домой'},
@@ -51,9 +53,10 @@ DEEDS.registerAll([
 // role asks, ctx.role); what a lair does without a leader is the deed's own rule (a beast's lair raids no town)
 export const DEED_WAYS = {
   lair: ['raid', 'expand', 'subdue', 'rival'],
+  captors: ['raid', 'captives', 'expand', 'subdue', 'rival'],   // the camps that take people: goblins, gnolls, ogres; the necromancer's tower
   // realms: a people of the plough and the sword; the raiders (the orcs) raid too; the wardens (the elves) start no war
   people: ['makePeace', 'warOn', 'march', 'clearLair'],
-  raiders: ['makePeace', 'warOn', 'march', 'raidTown', 'clearLair'],
+  raiders: ['makePeace', 'warOn', 'march', 'raidTown', 'captives', 'clearLair'],
   wardens: ['makePeace', 'march', 'clearLair'],
   dragon: ['expand', 'strike'],   // (a dragon's lair breeds with its kind's `breed` — 0 in data/lairs.js: the deed is there for the table to turn on)
   vampire: ['expand'],

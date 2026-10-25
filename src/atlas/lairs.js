@@ -12,7 +12,7 @@
 // The rot (data/lairs.js ROT): a field on the coarse grid fed by the graves; where it is thick the
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
-import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT} from '../data/lairs.js';
+import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves, ruinAt} from './diplomacy.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -254,8 +254,11 @@ export function stepLairs(a, rnd, seasonId) {
     // the lair keeps its species about: the density near it does not fall below its strength
     if (s) for (const j of cells) if (s.K[j] > 0) s.N[j] = Math.max(s.N[j], s.K[j] * lair.strength);
     if (host && host.alive && seasonId === 'autumn') { host.pop *= 1 - L.drinks * lair.strength; raidGraves(a, host); }
+    // the captives at the lair waste away (CAPTIVE_RAID.keep a year): eaten, worked to death, raised
+    if (seasonId === 'spring' && lair.captives) for (const k of Object.keys(lair.captives)) { lair.captives[k] = Math.floor(lair.captives[k] * CAPTIVE_RAID.keep); if (!lair.captives[k]) delete lair.captives[k]; }
     if (lair.strength < LL.dies) {
       lair.alive = false; lair.died = H.year;
+      if (lair.captives && Object.values(lair.captives).some(v => v > 0)) { lines.push(`Пленные «${lair.name}» — ${captiveCount(lair)} — остались без хозяев и разбрелись по домам.`); lair.captives = null; }
       lines.push(L.at === 'town' ? `${G[L.g].emptied} ${L.label} «${lair.name}»: ${host ? `в ${townLabel(host, 3)} ${host.name} не осталось, кого пить` : 'город сгинул'}, и вампир ушёл.`
         : L.fiend ? `Закрылся ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: демоны ушли туда, откуда пришли.`
         : L.undead ? `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: гниль иссякла, и ${SPECIES.get(L.species).plural} ${L.species === 'necromancer' ? 'ушёл' : 'рассыпались в прах'}.`
@@ -331,9 +334,9 @@ const lairRole = {
 };
 // the parties a lair sends: the deed that sent them does the work when they arrive and when they are home
 const byOwner = (a, p) => a.lairs.find(l => l.id === p.owner) || null;
-BEHAVIOURS.raid = {
-  arrive(a, p, rnd, say) { const l = byOwner(a, p); if (l?.alive) DOES.raid.arrive(a, p, l, LAIRS.get(l.kind), rnd, say); goHome(a, p); },
-  home(a, p) { const l = byOwner(a, p); if (l?.alive) DOES.raid.home(a, p, l); },
+BEHAVIOURS.raid = {   // (a raid, or a raid for captives: the party carries the deed's id in `plan`)
+  arrive(a, p, rnd, say) { const l = byOwner(a, p); if (l?.alive) DOES[p.plan || 'raid'].arrive(a, p, l, LAIRS.get(l.kind), rnd, say); goHome(a, p); },
+  home(a, p) { const l = byOwner(a, p); if (l?.alive) DOES[p.plan || 'raid'].home(a, p, l); },
 };
 // the brood founds the new lair where it arrives (its parent may be gone by then) and is no more
 BEHAVIOURS.brood = {
@@ -388,6 +391,8 @@ const cap1 = s => s[0].toUpperCase() + s.slice(1);
 export const G = {n: {emptied: 'Опустело', fresh: 'новое', stands: 'стоит', about: 'нём'}, f: {emptied: 'Опустела', fresh: 'новую', stands: 'стоит', about: 'ней'},
   m: {emptied: 'Опустел', fresh: 'новый', stands: 'стоит', about: 'нём'}, pl: {emptied: 'Опустели', fresh: 'новые', stands: 'стоят', about: 'них'}};
 export const acc = L => L.labelAcc || L.label;
+// how many captives a lair holds, in words («люди 3, гномы 1») — for the chronicle and the readout
+export const captiveCount = l => Object.entries(l.captives || {}).filter(([, n]) => n > 0).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} ${n}`).join(', ');
 // «with the griffins» — the instrumental plural for the few owners
 const INSTR = {griffin: 'грифонами', wyvern: 'вивернами', drake: 'дрейками', spider: 'пауками', stoneworm: 'червями', bat: 'кровопийцами', varg: 'варгами'};
 const whomInstr = sp => INSTR[sp.id] || sp.plural;

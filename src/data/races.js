@@ -119,7 +119,7 @@ export const RACES = [
     values: {strength: 2.2, ancestors: 1.2, faith: 0.8, family: 0.6},
     names: personNames('orc')},
 
-  {id: 'goblin', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {foothills: 0.9, underground: 0.8, swamp: 0.5, forest: 0.5, taiga: 0.4, shrubland: 0.4, highlands: 0.4},
+  {id: 'goblin', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {foothills: 0.9, underground: 0.8, swamp: 0.5, forest: 0.5, taiga: 0.4, shrubland: 0.4, highlands: 0.4},
     label: 'гоблин', plural: 'гоблины', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.45, '#8fb04c'),
     body: {adult: 6, life: 30, fertility: 0.95, diet: 'ест что угодно'},
@@ -129,7 +129,7 @@ export const RACES = [
     values: {gold: 2.2, knowledge: 1.2, freedom: 1},
     names: personNames('goblin')},
 
-  {id: 'ogre', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {foothills: 0.8, forest: 0.7, taiga: 0.6, swamp: 0.5, shrubland: 0.4, meadow: 0.3},
+  {id: 'ogre', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {foothills: 0.8, forest: 0.7, taiga: 0.6, swamp: 0.5, shrubland: 0.4, meadow: 0.3},
     label: 'огр', plural: 'огры', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.86, '#9b8a6a'),
     body: {adult: 15, life: 60, fertility: 0.3, diet: 'ест что угодно, за четверых'},
@@ -156,7 +156,7 @@ export const RACES = [
     names: personNames('troll')},
 
   // Gnolls: hyena-folk, scavengers. Carrion does them no harm; the rot does not take them.
-  {id: 'gnoll', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
+  {id: 'gnoll', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
     label: 'гнолл', plural: 'гноллы', rel: 'gnoll', settle: 0,
     heatHarm: 70, look: person(0.64, '#a98d5a'),
     body: {adult: 8, life: 40, fertility: 0.75, diet: 'падальщик'},

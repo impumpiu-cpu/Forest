@@ -55,7 +55,7 @@ export const MONSTERS = [
     killMessage: name => `Вампир осушил поселенца: <b>${name}</b>.`},
 
   // a necromancer is a human: he walks behind his dead and steers them; kill him and they stagger off
-  {...human, id: 'necromancer', kind: 'race', deeds: {lair: [...DEED_WAYS.lair]}, label: 'некромант', labelAcc: 'некроманта', plural: 'некроманты', settle: 0, mind: 'sentient',
+  {...human, id: 'necromancer', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, label: 'некромант', labelAcc: 'некроманта', plural: 'некроманты', settle: 0, mind: 'sentient',
     look: {shape: 'person', size: 0.62, color: '#3d3550', skin: '#c8b8a0'},
     innate: [{label: 'гнильщик', note: 'растит гниль и водит мертвецов запахами и отварами'}],
     align: {order: 2, mercy: -5, spread: {order: 0.5, mercy: 0.5}}, values: {knowledge: 3, gold: 1}},
