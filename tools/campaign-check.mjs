@@ -255,7 +255,7 @@ for (let s = 0; s < seeds; s++) {
   for (let k = 0; k < 6; k++) stepCampaign(a);
   for (const t of K.bubble?.things || []) delete t.hunting;
   for (const key of ['mined', 'nextMine', 'mineGot', 'mineDay', 'smithTried']) delete K[key];
-  for (const c of [...K.quest.clues, K.quest.crown]) { delete c.fails; delete c.rest; }
+  for (const c of [...K.quest.clues, K.quest.crown]) { delete c.fails; delete c.rest; delete c.lost; }
   const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a)))), KB = b.campaign;
   runCampaign(b);
   check(`сид ${seed}: мир без эпоса — прежний квест; поход, сохранённый без новых полей, открывается и доходит до конца`, !K.quest.epic && finished(KB) && finite(KB) && ['won', 'lost', 'timeout'].includes(KB.phase), `${KB.phase}, день ${KB.day}`);
