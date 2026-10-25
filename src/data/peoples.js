@@ -134,6 +134,11 @@ export const EPITHETS = {
 //   war        chance that the split comes with a war for power at once
 // When a seat is burnt, the most glorious town takes the throne; if a second is at least `rival` of it,
 // the realm breaks in two instead.
+// The realm's land on the map (atlas/realms.js realmLand; the map's layer «Державы»): each living town holds the land it
+// reaches over the ground — the cost of a step is its length × (1 + steep × the slope), water stops it — within its
+// people's spacing × (reach + tier × its step + capital for the seat); where two towns reach, the nearer by that measure
+// (the cost over the town's own reach) holds it
+export const REALM_LAND = {reach: 1.4, tier: 0.25, capital: 0.4, steep: 1};
 export const SCHISM = {edge: 0.8, far: 0.35, harbor: 0.4, years: 3, chance: 0.08, shaken: 1.6, attitude: -1.5, war: 0.35, rival: 0.6};
 
 // Towns against the wild: a town fights the lairs whose territory reaches it; the town's might is

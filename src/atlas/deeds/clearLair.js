@@ -20,7 +20,7 @@ export const clearLair = {
   want(a, realm, {r}) {
     const out = [], k = scaleOf(a);
     for (const l of a.lairs || []) {
-      if (!l.alive || l.boss != null) continue;
+      if (!l.alive || l.boss != null || l.hidden) continue;   // a hidden lair must be found first (atlas/deeds/scout.js)
       const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k;
       for (const t of liveTowns(a, realm)) {
         if (Math.hypot(t.x - l.x, t.y - l.y) > reach || r() > TOWN_WAR.chance / SEASONS_PER_YEAR) continue;

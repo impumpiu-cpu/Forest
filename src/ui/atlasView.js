@@ -27,7 +27,7 @@ import {seaLevelOf} from '../atlas/sea.js';
 import {SEA} from '../data/roads.js';
 import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
 import {stateOf, stateLabel, attitude, ruinAt, relation} from '../atlas/diplomacy.js';
-import {realmOf, realmLabel} from '../atlas/realms.js';
+import {realmOf, realmLabel, realmLand} from '../atlas/realms.js';
 import {captiveCount} from '../atlas/lairs.js';
 import {ROADS} from '../data/roads.js';
 import {faunaAt} from '../atlas/fauna.js';
@@ -68,7 +68,7 @@ const OPTS = {
   elder: ELDER_YEARS.map((e, i) => [i, e.label]),
   young: YOUNG_YEARS.map((e, i) => [i, e.label]),
   fauna: SPECIES.filter(sp => sp.habitat).map(sp => [sp.id, sp.plural]),
-  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['peoples', 'Народы']],
+  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['peoples', 'Народы'], ['realms', 'Державы']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
 const VIEW_KEYS = new Set(['layer', 'ore', 'fauna']);
@@ -236,8 +236,11 @@ export class MapView {
     else if (this.layer === 'ores') { const o = ORE_GENESIS.get(this.ore); html = sw([70, 72, 66], 'нет') + sw(mix([70, 72, 66], o.color, 0.45), 'бедно') + sw(mix([70, 72, 66], o.color, 0.75), 'есть') + sw(o.color, 'богато'); }
     else if (this.layer === 'biomes') html = Object.entries(BIOME_KINDS).filter(([k]) => k !== 'feature').map(([k, l]) => `<b>${esc(l)}:</b> ` + BIOMES.filter(b => b.kind === k).map(b => sw(b.color, b.label)).join('')).join('') + '<b>леса</b> темнее, гари светлее';
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
-    else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + sw([110, 60, 130], 'гниль');
+    else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + '<span>пунктирный ромб — скрытое логово глуши</span>' + sw([110, 60, 130], 'гниль');
     else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; пунктир по воде — морские пути гаваней; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв') + '<b>угодья городов</b>: ' + sw(SITE_COLORS.food, 'пашни, выгоны, рощи (круг)') + sw(SITE_COLORS.raw, 'рудники, каменоломни, лесосеки (квадрат)') + '× пень — сожжено; тонкие тропы к городу; <b>жёлтые связи</b> между городами — по ним идёт хлеб, ярче — больше; <b>отряды</b>: круг с хвостом — набег или выводок, квадрат — войско, крылья — дракон (пунктир — путь вперёд); ' + sw([170, 70, 40], 'фуражиры войска');
+    else if (this.layer === 'realms') { const a = this.atlas, alive = a?.realms ? a.realms.filter(r => a.towns.some(t => t.alive && t.realm === r.id)) : [];
+      html = (alive.length ? alive.map(r => sw(r.color, `${realmLabel(a, r.id)} — ${a.towns.filter(t => t.alive && t.realm === r.id).length} гор.`)).join('') : '<span>держав ещё нет</span>') +
+        '<b>земля державы</b> — куда достают её города по суше (крупные города и столица — дальше); светлая кайма — граница; ничья земля — серая'; }
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
@@ -287,6 +290,13 @@ export class MapView {
         if (f.scourge && f.scourge[i] > 0.25) c = mix(c, [170, 70, 40], 0.5 * f.scourge[i]);   // an army's foragers
         return this.rotTint(a, i, c);
       }
+      case 'realms': {   // the realms' land (atlas/realms.js realmLand): its colour, a light rim where it meets another or no one's
+        const g = mix(base, [40, 40, 36], 0.6), own = realmLand(a); if (!own || f.ocean[i]) return g;
+        const o = own[i]; if (o < 0) return g;
+        const col = a.realms[o].color, x = i % a.w, y = (i / a.w) | 0;
+        const edge = (x > 0 && own[i - 1] !== o && !f.ocean[i - 1]) || (x < a.w - 1 && own[i + 1] !== o && !f.ocean[i + 1]) || (y > 0 && own[i - a.w] !== o && !f.ocean[i - a.w]) || (y < a.h - 1 && own[i + a.w] !== o && !f.ocean[i + a.w]);
+        return edge ? mix(col, [250, 245, 230], 0.45) : mix(g, col, 0.6);
+      }
       case 'rain': return f.rain ? (f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25)) : base;
       case 'wind': {
         if (!f.windX) return base;
@@ -322,8 +332,9 @@ export class MapView {
 
   // the cells, painted into an off-screen bitmap (one pixel a cell) when the world or the layer changed
   paint(a) {
-    const key = `${this.layer}:${this.ore}:${this.fauna}:${a.stage}:${a.hist ? a.hist.step : -1}`;
+    const key = `${this.layer}:${this.ore}:${this.fauna}:${a.stage}:${a.hist ? a.hist.step : -1}:${a.towns?.length || 0}`;
     if (this.bitmap && this.bitmapKey === key) return this.bitmap;
+    if (this.layer === 'realms') this.legend();   // the realms come and go with the history
     const off = this.bitmap || document.createElement('canvas');
     if (off.width !== a.w || off.height !== a.h) { off.width = a.w; off.height = a.h; }
     const px = off.getContext('2d'), img = px.createImageData(a.w, a.h), d = img.data;
@@ -366,15 +377,15 @@ export class MapView {
     px.translate(cam.ox, cam.oy); px.scale(cam.S, cam.S);
     this.minW = 0.7 / cam.S;
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
-    if (a.f.road && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
-    if (a.f.sea && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawLanes(a, px);
-    if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
-    if (a.artifact && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawEpic(a, px);
+    if (a.f.road && ['relief', 'biomes', 'peoples', 'realms', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
+    if (a.f.sea && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawLanes(a, px);
+    if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples', 'realms'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
+    if (a.artifact && ['relief', 'biomes', 'fauna', 'peoples', 'realms'].includes(this.layer)) this.drawEpic(a, px);
     if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
-    if (a.sites && ['relief', 'biomes', 'peoples', 'soils'].includes(this.layer)) this.drawSites(a, px);
-    if (a.parties && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawParties(a, px);
-    if (a.ruins && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawRuins(a, px);
-    if (a.towns && ['relief', 'biomes', 'peoples', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
+    if (a.sites && ['relief', 'biomes', 'peoples', 'realms', 'soils'].includes(this.layer)) this.drawSites(a, px);
+    if (a.parties && ['relief', 'biomes', 'peoples', 'realms', 'fauna'].includes(this.layer)) this.drawParties(a, px);
+    if (a.ruins && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawRuins(a, px);
+    if (a.towns && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
     if (this.sel) this.drawSelection(a, px);
     this.overlay(a, px, cam);
@@ -561,6 +572,13 @@ export class MapView {
         px.beginPath(); px.moveTo(x - sz * 0.6, y - sz * 0.6); px.lineTo(x + sz * 0.6, y + sz * 0.6); px.moveTo(x + sz * 0.6, y - sz * 0.6); px.lineTo(x - sz * 0.6, y + sz * 0.6); px.stroke();
         continue;
       }
+      // a hidden lair (atlas/lairs.js WILD): the realms know nothing of it — a faint dashed mark, no territory ring
+      if (l.hidden) {
+        const r = sz * (0.7 + 0.5 * l.strength);
+        px.strokeStyle = `rgba(${L.color.join(',')},0.7)`; px.lineWidth = Math.max(this.minW, 0.4 * k); px.setLineDash([0.5 * sz, 0.4 * sz]);
+        px.beginPath(); px.moveTo(x, y - r); px.lineTo(x + r, y); px.lineTo(x, y + r); px.lineTo(x - r, y); px.closePath(); px.stroke(); px.setLineDash([]);
+        continue;
+      }
       px.strokeStyle = `rgba(${L.color.join(',')},0.45)`; px.lineWidth = Math.max(this.minW, 0.4 * k);
       px.beginPath(); px.arc(x, y, L.radius * ring, 0, Math.PI * 2); px.stroke();
       px.fillStyle = `rgb(${L.color.join(',')})`; px.strokeStyle = 'rgba(10,10,10,0.85)'; px.lineWidth = Math.max(this.minW, 0.45 * k);
@@ -693,12 +711,14 @@ export class MapView {
     if (a.rot && !f.ocean[i] && a.rot[faunaCellOf(a, i)] > 0.08) parts.push(`гниль ${Math.round(a.rot[faunaCellOf(a, i)] * 100)}%`);
     const land = landOf(a, i);
     if (land) parts.push(`земли: ${land.people.label} ${Math.round(land.share * 100)}%`);
+    const own = realmLand(a)?.[i];
+    if (own != null && own >= 0) parts.push(`держава: ${realmLabel(a, a.realms[own].id)}`);
     if (a.f.road && a.f.road[i] >= ROADS.levels[0].wear) parts.push(ROADS.levels[roadLevel(a.f.road[i])].label);
     if (a.f.sea && a.f.sea[i] >= SEA.levels[0].wear) parts.push(SEA.levels[seaLevelOf(a.f.sea[i])].label);
     const lair = lairAt(a, i);
     if (lair) {
       const L = LAIRS.get(lair.kind), lord = lair.lord != null ? a.lairs.find(l => l.id === lair.lord) : null;
-      parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds}${lair.why ? `; ${lair.why.year} г. — ${DEEDS.get(lair.why.deed).label}: ${lair.why.why}` : ''})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}${captiveCount(lair) ? `; в полоне: ${captiveCount(lair)}` : ''}`);
+      parts.push(`владения: ${L.label} «${lair.name}»${lair.hidden ? ' (скрыто: державы о нём не знают)' : ''}, сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds}${lair.why ? `; ${lair.why.year} г. — ${DEEDS.get(lair.why.deed).label}: ${lair.why.why}` : ''})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}${captiveCount(lair) ? `; в полоне: ${captiveCount(lair)}` : ''}`);
     }
     if (a.fauna && !f.ocean[i]) {
       const word = v => (v >= 0.8 ? 'много' : v >= 0.45 ? 'есть' : 'мало');

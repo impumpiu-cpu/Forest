@@ -46,7 +46,9 @@ DEEDS.registerAll([
   {id: 'raidTown', label: 'набег на город', band: 'routine', party: null, requires: [],
     note: 'набег города с воинами на ближайший город нелюбимой державы в raidReach (DIPLOMACY): добыча растит город, отбитый набег стоит дороже; не больше raidsPerYear в год на державу. У орков'},
   {id: 'clearLair', label: 'выжечь логово', band: 'routine', party: null, requires: [],
-    note: 'город идёт на логово, чьи владения до него достают (TOWN_WAR): проигравшее логово выжжено, проигравший город теряет жителей и угодье'},
+    note: 'город идёт на логово, чьи владения до него достают (TOWN_WAR): проигравшее логово выжжено, проигравший город теряет жителей и угодье; скрытого логова не видит — его сперва надо найти'},
+  {id: 'scout', label: 'разведать глушь', band: 'routine', party: null, requires: [],
+    note: 'город шлёт следопытов к скрытому логову глуши в досягаемости (WILD.scout): чаще, если город недавно грабили; удача — по знанию и ступени города; найденное логово можно выжечь'},
 ]);
 
 // the ready lists: the mores of a species' lairs — the same list serves the lair and its leader (the deed knows which
@@ -55,9 +57,9 @@ export const DEED_WAYS = {
   lair: ['raid', 'expand', 'subdue', 'rival'],
   captors: ['raid', 'captives', 'expand', 'subdue', 'rival'],   // the camps that take people: goblins, gnolls, ogres; the necromancer's tower
   // realms: a people of the plough and the sword; the raiders (the orcs) raid too; the wardens (the elves) start no war
-  people: ['makePeace', 'warOn', 'march', 'clearLair'],
-  raiders: ['makePeace', 'warOn', 'march', 'raidTown', 'captives', 'clearLair'],
-  wardens: ['makePeace', 'march', 'clearLair'],
+  people: ['makePeace', 'warOn', 'march', 'clearLair', 'scout'],
+  raiders: ['makePeace', 'warOn', 'march', 'raidTown', 'captives', 'clearLair', 'scout'],
+  wardens: ['makePeace', 'march', 'clearLair', 'scout'],
   dragon: ['expand', 'strike'],   // (a dragon's lair breeds with its kind's `breed` — 0 in data/lairs.js: the deed is there for the table to turn on)
   vampire: ['expand'],
 };

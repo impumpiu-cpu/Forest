@@ -12,7 +12,7 @@
 // The rot (data/lairs.js ROT): a field on the coarse grid fed by the graves; where it is thick the
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
-import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID} from '../data/lairs.js';
+import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves} from './diplomacy.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -27,7 +27,7 @@ import {raidSite} from './sites.js';
 import {BEHAVIOURS, goHome} from './parties.js';
 import {actorStep} from './actor.js';
 import {DOES} from './deeds/index.js';
-import {BURNT, townAt} from './peoples.js';
+import {BURNT, townAt, landOf} from './peoples.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
 
@@ -101,7 +101,7 @@ const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 
 // a free spot for a lair: fits the ground, not inside another lair's territory of the same kind,
 // as good as possible among a sample of candidates
-export function findSpot(a, L, rnd, near, tries = 400) {
+export function findSpot(a, L, rnd, near, tries = 400, ok = null) {
   let best = -1, bv = 0;
   for (let t = 0; t < tries; t++) {
     let i;
@@ -111,7 +111,7 @@ export function findSpot(a, L, rnd, near, tries = 400) {
       if (x < 0 || y < 0 || x >= a.w || y >= a.h) continue;
       i = y * a.w + x;
     } else i = (rnd() * a.n) | 0;
-    if (!groundFits(a, L, i)) continue;
+    if (!groundFits(a, L, i) || (ok && !ok(i))) continue;
     const v = goodness(a, L, i) * (0.6 + 0.4 * rnd());
     if (v <= 0.02 || v <= bv) continue;
     const p = {x: i % a.w, y: (i / a.w) | 0};
@@ -224,7 +224,7 @@ export function stepLairs(a, rnd, seasonId) {
   const H = a.hist, F = a.fauna, lines = [];
   stepRot(a);
   if (a.ratsLines) { lines.push(...a.ratsLines); a.ratsLines = null; }
-  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd));
+  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd), ...spawnWild(a, rnd));
   for (const lair of a.lairs) {
     if (!lair.alive) continue;
     const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead || L.fiend || L.dragon ? null : F.list[F.idx[L.species]];
@@ -269,6 +269,10 @@ export function stepLairs(a, rnd, seasonId) {
     // autumn raid, a spring brood, the dragon's summer flight — the lair's role of the actor's brain (atlas/actor.js);
     // a lair with a leader leaves the deeds to it (atlas/leaders.js)
     if (!lair.leader && SPECIES.has(L.species)) actorStep(a, lair, {...lairRole, list: SPECIES.get(L.species).deeds?.lair || []}, {L, sp: SPECIES.get(L.species), role: 'lair', season: seasonId, r: rnd, say: t => lines.push(t)});
+    if (lair.hidden && seasonId === 'spring') {   // a town stands right by it: the settlers stumble on it
+      const t = (a.towns || []).find(t => t.alive && dist(t, lair) <= WILD.settle * scaleOf(a));
+      if (t) { revealLair(a, lair, t.name); lines.push(`Жители ${townLabel(t, 2)} ${t.name} наткнулись в округе на ${acc(L)} «${lair.name}»: теперь о ${G[L.g].about} знают.`); }
+    }
     const age = H.year - lair.born;
     if (!lair.ancient && age >= LAIR_AGE.ancient) {
       lair.ancient = true;
@@ -314,14 +318,15 @@ export function strikeTown(a, lair, L, target, tribe, rnd, atOnce) {
     if (atOnce) lair.strength = Math.min(1, lair.strength + T.loot);
     raidGraves(a, target);   // the dead of the raid lie unburied, and the rot takes them
     const burnt = raidSite(a, target, rnd);
-    return `${raidWho(L)} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
+    return `${raidWho(L)} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.` + traceRaid(a, lair, L, target, true, rnd);
   }
   lair.strength *= T.beaten;
-  if (!atOnce) return `${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отбили набег ${L.gen} ${L.from} «${lair.name}».`;
-  // a beaten raid is counted and told once a year (atlas/history.js), not one line each
+  const trace = traceRaid(a, lair, L, target, false, rnd);
+  if (!atOnce) return `${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отбили набег ${L.gen} ${L.from} «${lair.name}».` + trace;
+  // a beaten raid is counted and told once a year (atlas/history.js), not one line each — unless it showed the way back
   const rep = a.hist.repelled ||= {};
   rep[target.people] = (rep[target.people] || 0) + 1;
-  return null;
+  return trace ? trace.trim() : null;
 }
 
 // the lair's role for the actor's brain (atlas/actor.js): the deeds of its species' row; a lair is many wills and waits for
@@ -346,6 +351,41 @@ BEHAVIOURS.dragon = {
   arrive(a, p, rnd, say) { const l = byOwner(a, p); if (l) DOES.strike.arrive(a, p, l, LAIRS.get(l.kind), rnd, say); goHome(a, p); },
   home(a, p, rnd) { const l = byOwner(a, p); if (l) DOES.strike.home(a, p, l, rnd); },
 };
+
+// ── the hidden lairs of the wild (data/lairs.js WILD)
+// the wild: no people's land thick there and no living town near
+export function wildAt(a, i) {
+  if (a.f.ocean[i]) return false;
+  const L = landOf(a, i); if (L && L.share > WILD.land) return false;
+  const x = i % a.w, y = (i / a.w) | 0, gap = WILD.gap * scaleOf(a);
+  return !(a.towns || []).some(t => t.alive && Math.hypot(t.x - x, t.y - y) < gap);
+}
+// a lair born in the wild once the peoples are in the world is hidden
+export function hideIfWild(a, lair) { if (a.peoples?.length && wildAt(a, lair.i)) lair.hidden = true; return lair; }
+// the lair is found: no longer hidden; `by` — who found it, for its card
+export function revealLair(a, lair, by) { lair.hidden = false; lair.found = {year: a.hist.year, by}; }
+// a raid of a hidden lair on a town may show the way back to it → the line to add, or ''
+export function traceRaid(a, lair, L, town, won, rnd) {
+  if (!lair?.hidden || rnd() >= WILD.raid[won ? 1 : 0]) return '';
+  revealLair(a, lair, town.name);
+  return ` По следам набега из ${townLabel(town, 2)} ${town.name} нашли, откуда он пришёл: ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}.`;
+}
+// spring: the wild gives new lairs, hidden (once the peoples are here)
+function spawnWild(a, rnd) {
+  const lines = []; if (!a.peoples?.length) return lines;
+  const k = scaleOf(a), want = WILD.perYear * k * k, n = Math.floor(want) + (rnd() < want % 1 ? 1 : 0);
+  for (let q = 0; q < n; q++) {
+    const kinds = LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town' && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * LL.crowdMax);
+    while (kinds.length) {
+      const L = kinds.splice((rnd() * kinds.length) | 0, 1)[0], i = findSpot(a, L, rnd, null, WILD.tries, j => wildAt(a, j));
+      if (i < 0) continue;
+      const lair = newLair(a, L, i, rnd, WILD.start); lair.hidden = true;
+      lines.push(`В глуши ${wherePhrase(a, i)} завелись ${SPECIES.get(L.species).plural}: где их ${L.label.split(' ')[0]}, не знает ни одна держава.`);
+      break;
+    }
+  }
+  return lines;
+}
 
 // spring: the lairs that come through history. The dead rise where the rot is thick enough (on the
 // barrows, by the ruins, a vampire in a mixed town); a rift opens at a volcano or a seam. Each kind with

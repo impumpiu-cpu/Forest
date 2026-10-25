@@ -138,6 +138,7 @@ function lairHtml(a, l) {
   return sec(`${L.label.replace(/^./, c => c.toUpperCase())} «${l.name}»`,
     row('хозяева', `${esc(sp.plural)}${L.tribe ? ' (племя)' : L.undead ? ' (мёртвые)' : L.fiend ? ' (демоны)' : L.dragon ? '' : ' (чудовища)'}; мощь вида ${r1(power(L.species))}`) +
     row('сила', `${Math.round(l.strength * 100)}%${l.boss != null ? ', логово босса бедствия' : ''}`) +
+    row('известно', l.hidden ? 'скрыто: ни одна держава о нём не знает, выжечь его нельзя' : l.found ? `найдено в ${l.found.year} г. (${esc(l.found.by)})` : 'с давних пор') +
     row('возраст', `с ${l.born <= 0 ? 'незапамятных времён' : `${l.born} г.`}${l.ancient ? ', древнее' : ''}`) +
     row('владения', `${Math.round(L.radius * scaleOf(a))} клеток`) +
     row('господин', lord?.alive ? `«${esc(lord.name)}»${lord.leader ? ` (${esc(leaderName(lord))})` : ''}` : null) +

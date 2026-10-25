@@ -47,8 +47,8 @@ import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.
 import {nameCaravanMasters} from './masters.js';
 import {morningFind} from './finds.js';
 import {leaderSlain, livingLeaders} from '../atlas/leaders.js';
-import {wherePhrase} from '../atlas/lairs.js';
-import {LEADER, TRIBE_RAID} from '../data/lairs.js';
+import {wherePhrase, lairAt, revealLair} from '../atlas/lairs.js';
+import {LEADER, TRIBE_RAID, LAIRS} from '../data/lairs.js';
 import {termsOf, choosePace, paceOf} from './road.js';
 const SPECIES_LABEL = race => SPECIES.get(race).label;
 
@@ -156,6 +156,9 @@ function march(a, K, v) {
 // where the caravan is now, in words: for the log when it enters a realm or a land
 function entered(a, K, before) {
   const b = biomeAt(a, K.i), t = townAt(a, K.i);
+  // a hidden lair of the wild (atlas/lairs.js): the caravan walks into its land and the world learns of it
+  const hid = lairAt(a, K.i);
+  if (hid?.hidden) { const L = LAIRS.get(hid.kind); revealLair(a, hid, 'караван'); say(a, K, `Караван набрёл на ${L.labelAcc || L.label} «${hid.name}» ${wherePhrase(a, hid.i)}, о котором не знала ни одна держава.`, 'sight', true); }
   if (t && t.id !== before.town) say(a, K, `Караван пришёл в ${townLabel(t, 1)} ${t.name}${t.realm && t.realm !== K.realm ? ` (${realmLabel(a, t.realm)})` : ''}.`);
   else if (b && b.id !== before.biome && !t) say(a, K, `Караван идёт ${b.where}.`, 'land');
 }

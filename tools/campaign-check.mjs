@@ -372,7 +372,7 @@ check('караваны обзаводятся обозом и выбирают 
   for (let k = 0; k < 30; k++) {
     const d0 = K.day, f0 = (K.fights || []).length;
     if (!stepCampaign(base)) break;
-    const camps = (K.camps || []).filter(cp => cp.day >= d0 && cp.kind !== 'stop'), F = K.fights.slice(f0);
+    const camps = (K.camps || []).filter(cp => cp.day >= d0 && cp.kind !== 'stop'), F = (K.fights || []).slice(f0);
     fights += F.length; lost += Math.max(0, F.length - camps.length);
     overfull += K.members.filter(m => (m.potions || 0) > POTION.slot).length;
     for (const cp of (K.camps || []).filter(x => x.day >= d0 && x.kind === 'night' && (x.setup.buildings || []).length)) {

@@ -7,7 +7,7 @@
 import {LEADER, LAIR_LIFE as LL} from '../../data/lairs.js';
 import {CAL} from '../../data/calamities.js';
 import {SPECIES} from '../../data/species.js';
-import {newLair, findSpot, wherePhrase, groundFits, R, G, acc} from '../lairs.js';
+import {newLair, findSpot, wherePhrase, groundFits, hideIfWild, R, G, acc} from '../lairs.js';
 import {sendParty} from '../parties.js';
 import {leaderName} from '../leaders.js';
 import {dist} from './shared.js';
@@ -38,11 +38,12 @@ export const expand = {
   arrive(a, p, l, L, rnd, say) {
     if (!spotFree(a, L, p.goal)) return;   // another brood got there first, or a town grew over the spot
     if (p.kind !== 'leader') {
-      const young = newLair(a, L, p.goal, rnd, LL.broodStart);
+      const young = hideIfWild(a, newLair(a, L, p.goal, rnd, LL.broodStart));
+      if (young.hidden) { say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${l ? l.name : '…'}» ушли в глушь ${wherePhrase(a, p.goal)} и основали там ${G[L.g].fresh} ${acc(L)}: где — не знает ни одна держава.`); return; }
       say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${l ? l.name : '…'}» основали ${G[L.g].fresh} ${acc(L)} — «${young.name}» ${wherePhrase(a, p.goal)}.`);
       return;
     }
-    const young = newLair(a, L, p.goal, rnd, LEADER.young);
+    const young = hideIfWild(a, newLair(a, L, p.goal, rnd, LEADER.young));
     young.lord = l.id; l.strength *= LEADER.expand.cost; l.leader.deeds++;
     say(`${leaderName(l)} увёл молодых из «${l.name}» и основал «${young.name}» ${wherePhrase(a, p.goal)}: новое логово под его рукой.`);
   },

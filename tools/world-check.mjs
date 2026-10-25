@@ -313,6 +313,20 @@ scene_('W16', 'держава выжигает логово, чьи владен
   return !lair.alive || `логово цело: ${realm.lines.join(' | ')}`;
 });
 
+scene_('W16s', 'скрытое логово глуши: держава его не выжигает, пока следопыты не найдут; найденное — выжигает', () => {
+  const a = world(), {town, lair} = townAndLair(a, 'varg', 6);
+  if (!lair?.id) return 'логово варгов не встало';
+  lair.strength = 0.2; lair.hidden = true; town.pop = 400; town.built.push('palisade');
+  const realm = a.realms.find(r => r.id === town.realm);
+  const o1 = court(a, realm, ['clearLair']);
+  if (o1?.[3].id === 'clearLair' || !lair.alive) return 'скрытое логово выжгли';
+  const o2 = court(a, realm, ['scout']);
+  if (o2?.[3].id !== 'scout' || lair.hidden) return `разведка: ${o2 ? o2[3].id : 'ничего'}, скрыто ${lair.hidden}`;
+  if (!realm.lines.some(t => /выследили/.test(t))) return `нет строки: ${realm.lines.join(' | ')}`;
+  const o3 = court(a, realm, ['clearLair']);
+  return (o3?.[3].id === 'clearLair' && !lair.alive) || `найденное цело: ${realm.lines.join(' | ')}`;
+});
+
 scene_('W17', 'стан гоблинов осенью идёт за пленными: город теряет жителей в полон, не в могилы; пленные живут при логове и тают', () => {
   const a = world(), {town, lair} = townAndLair(a, 'goblins');
   if (!lair?.id) return 'стан не встал';

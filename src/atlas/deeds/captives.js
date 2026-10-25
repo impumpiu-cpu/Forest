@@ -15,7 +15,7 @@ import {PARTIES} from '../../data/parties.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 import {WORLD_PEOPLES} from '../../data/peoples.js';
 import {ROT} from '../../data/lairs.js';
-import {raidWho, power} from '../lairs.js';
+import {raidWho, power, traceRaid} from '../lairs.js';
 import {townFx, might, raidShare, townLabel} from '../towns.js';
 import {relation, attitude, meet, fight, barrows} from '../diplomacy.js';
 import {realmLabel, realmLabelGen} from '../realms.js';
@@ -40,13 +40,14 @@ export function takeCaptives(a, lair, L, target, tribe, rnd, atOnce) {
     (lair.captives ||= {})[target.people] = (lair.captives[target.people] || 0) + n;
     if (atOnce) lair.strength = Math.min(1, lair.strength + CR.feed);
     barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);   // a few fall on the way to the ropes
-    return `${raidWho(L)} ${L.from} «${lair.name}» увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}.`;
+    return `${raidWho(L)} ${L.from} «${lair.name}» увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}.` + traceRaid(a, lair, L, target, true, rnd);
   }
   lair.strength *= TRIBE_RAID.beaten;
-  if (!atOnce) return `${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отбили набег ${L.gen} ${L.from} «${lair.name}»: в полон никого не дали.`;
+  const trace = traceRaid(a, lair, L, target, false, rnd);
+  if (!atOnce) return `${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отбили набег ${L.gen} ${L.from} «${lair.name}»: в полон никого не дали.` + trace;
   const rep = a.hist.repelled ||= {};
   rep[target.people] = (rep[target.people] || 0) + 1;
-  return null;
+  return trace ? trace.trim() : null;
 }
 
 export const captives = {
