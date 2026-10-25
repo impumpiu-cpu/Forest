@@ -52,6 +52,7 @@ export const groupText = species => Object.entries(species || {}).map(([id, n]) 
 export function fightReportText(a, K) {
   const S = fightStats(K), T = S.total, out = [];
   out.push(`Бои похода из ${K.capitalFrom || K.capitalName}: ${T.fights} (выиграно ${T.won}, засад ${T.ambushes}, штурмов ${T.storms}), именных ${T.named}`);
+  out.push(`Зелий лечения выпито ${K.stats.potions || 0}, сварено ${K.stats.brewed || 0}.`);
   out.push(`Врагов пришло ${T.foes} (в среднем ${T.foesAvg} на бой против ${T.fighters} наших), убито ${T.killed}, бежали ${T.fled}, в плен ${T.taken}; наша сила к их силе в среднем ${T.ratio}; пали наши ${T.fell}, ранены ${T.hurt} раз.`);
   out.push('', 'По родам врага:');
   for (const k of S.byKind) out.push(`  ${k.label}: боёв ${k.fights}, выиграно ${k.won}, врагов в среднем ${k.foes}, убито ${k.killed}, бежали ${k.fled}, сила ${k.ratio}`);

@@ -80,8 +80,8 @@ export class CampaignView extends AtlasView {
     this.ticks = new TickClock();   // the local map's clock while a camp is watched
     this.syncPaceBox = mountPace($('campSpeed'), this.clock, {pauseId: 'campPause', active: () => !$('campaign').hidden,
       onPace: id => {
-        this.clock.setPace(id); this.ticks.pace = id;
-        if (this.local && !WATCH[id]) this.endLocal();   // «Сразу»: the camps are not watched — the one on the map is left
+        this.clock.setPace(id); this.ticks.pace = this.localPace(id);
+        if (this.local && !WATCH[id] && !this.local.c.boss) this.endLocal();   // «Сразу»: the camps are not watched — the one on the map is left (a named fight is)
         if (this.clock.paused && !this.local) this.clock.resume();
         this.syncRun();
       },
@@ -307,7 +307,8 @@ export class CampaignView extends AtlasView {
     stepCampaign(a);
     // the season's camps to watch, each at its day of the playback
     const W = WATCH[this.clock.pace], K = a.campaign, n = Math.max(1, K.track.length - 1);
-    this.queue = this.watch && W ? (K.camps || []).filter(c => c.day >= d0 && (c.kind !== 'stop' || W.stops)).map(c => ({...c, at: Math.min(1, (c.day - d0) / n)})) : [];
+    // (a named fight — a boss, a grave's guard, a leader — is shown at any pace, «Сразу» too: the walk is about these)
+    this.queue = this.watch ? (K.camps || []).filter(c => c.day >= d0 && (c.boss || (W && (c.kind !== 'stop' || W.stops)))).map(c => ({...c, at: Math.min(1, (c.day - d0) / n)})) : [];
     return !finished(a.campaign);
   }
   afterSeason() { this.renderSide(); this.renderInspect(); this.draw(); this.animate(); }
@@ -331,12 +332,14 @@ export class CampaignView extends AtlasView {
     let w;
     try { w = openCamp(c.setup); } catch (e) { console.warn('стоянка не открылась', e); return; }
     this.clock.hold(c.at);   // the season waits while the camp is watched, at the camp's own day
-    this.ticks.last = 0; this.ticks.acc = 0; this.ticks.paused = false; this.ticks.pace = this.clock.pace;
+    this.ticks.last = 0; this.ticks.acc = 0; this.ticks.paused = false; this.ticks.pace = this.localPace(this.clock.pace, c);
     this.local = {w, c, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
     $('campLocal').hidden = false; $('campLocalBar').hidden = false;
     this.localR.setup(w);
     this.localText();
   }
+  // the local map's pace: the clock's — but a named fight shown at «Сразу» is played at ×4, to be seen
+  localPace(id, c = this.local?.c) { return !WATCH[id] && c?.boss ? 'x4' : id; }
   localText() {
     const L = this.local, c = L.c, w = L.w, last = w.logLines[0];
     $('campLocalText').innerHTML = `<b>${LOCAL_KIND[c.kind] || 'Стоянка'}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день похода ${c.day + 1}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
@@ -512,7 +515,7 @@ export class CampaignView extends AtlasView {
       (() => { const T = K.bubble?.things || [], n = m => T.filter(t => THINGS[t.kind].mood === m).length; return `<dt>Рядом</dt><dd>${[n('hostile') ? `угроз ${n('hostile')}` : '', n('trade') ? `обозов ${n('trade')}` : '', n('game') ? `стад ${n('game')}` : ''].filter(Boolean).join(' · ') || 'тихо'}</dd>`; })();
     $('campRoster').innerHTML = [...K.members].sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
-      const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : ''].filter(Boolean).join(', ');
+      const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : '', m.potions ? `зелий ${m.potions}` : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
         `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');

@@ -25,6 +25,7 @@
 import {Registry} from '../core/registry.js';
 import {LUXURY} from './luxury.js';
 import {FURNITURE} from './furniture.js';
+import {POTION} from './potions.js';
 
 export const RECIPES = new Registry('recipe');
 
@@ -83,6 +84,11 @@ RECIPES.registerAll([
     want: c => (c.fishing && short(c.owned('rod'), Math.max(2, c.likes('fish') + c.fans('fish'))) ? 2.4 : 0)},
 
   // ── coal: logs smoulder under turf into coal; more when the furnace and the forge burn it
+  // the healing potion (data/potions.js): two herbs; brewed while herbs are spare beyond the treatment's and the stock
+  // (what is left after the slots are filled, settlement/potions.js) is short of one for every other colonist
+  {id: 'potion', at: 'healerhut', cost: {herbs: POTION.herbs}, work: 300, makes: {resource: 'potion', n: 1},
+    want: c => (c.stock('herbs') >= POTION.herbs + 2 && c.stock('potion') < Math.ceil(c.pop / 2) ? 0.6 : 0)},
+
   {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'coal', n: 3},
     want: c => (c.has('smelter') ? (c.fuel < 16 ? 1.8 : 0) : (c.stock('coal') < 6 ? 0.8 : 0))},
 

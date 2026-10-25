@@ -24,6 +24,7 @@ import {NORM} from '../data/special.js';
 
 import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
+import {quaff} from './potions.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
@@ -135,7 +136,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
-  if (t.hp <= 0) lethal(w, t, 'ран', by);
+  if (t.hp <= 0) lethal(w, t, 'ран', by); else if (t.potions) quaff(w, t);   // a potion at the edge (agents/potions.js)
   return dmg;
 }
 

@@ -2,8 +2,8 @@
 // Everything is measured in units of goods: a ration of food is one unit; heavy goods take more room
 // (data/resources.js `bulk`: a log takes 4, a lump of ore 2). Room is counted in cells (a back, a saddle
 // bag — `CELL` units) and boxes (`BOX` units): a person has one cell on the back, a basket adds two,
-// a riding beast four, a pack beast two boxes, a cart and a wagon four boxes each; a wagon also carries
-// one simple building, packed.
+// a riding beast four, a pack beast two boxes, a cart and a wagon four boxes each. The caravan's camp — its
+// buildings — goes with it whatever it rides in (K.buildings; CAMP_FX below).
 export const CELL = 6, BOX = 10;
 
 // beasts the caravan can have (data/species.js ids): what they are for, the room they give, how they
@@ -19,18 +19,19 @@ export const BEASTS = {
 // vehicles: room in boxes, what makes them, who pulls them.
 //   tool: the least metal of a tool that can build it (1 — bronze, 2 — iron; data/items.js `bronze` / `iron`);
 //   logs: wood felled on the spot (the camp must stand in wooded land); days: camp days to build;
-//   pull: 'people' — two members haul it (the caravan slows to `haul`), 'draft' — draft beasts (see BEASTS);
-//   building: a simple building rides in it packed.
+//   pull: 'people' — two members haul it (the caravan slows to `haul`), 'draft' — draft beasts (see BEASTS).
 // Wheels keep to the roads: off a road a step costs `offRoad` times more, and the biomes in `WHEEL_BLOCK`
 // cannot be crossed at all without a road.
 export const VEHICLES = {
   cart:  {label: 'тележка', boxes: 4, tool: 1, logs: 6, days: 3, pull: 'people', haul: 0.75},
-  wagon: {label: 'повозка', boxes: 4, tool: 2, logs: 10, days: 5, pull: 'draft', building: 1},
+  wagon: {label: 'повозка', boxes: 4, tool: 2, logs: 10, days: 5, pull: 'draft'},
 };
 export const WHEELS = {offRoad: 2, roadAt: 0.1, block: ['highlands', 'foothills', 'swamp', 'jungle', 'volcano', 'ice'], denseForest: 0.7};
 
-// simple buildings that a wagon can carry (data/buildings.js `portable`): built in the field when all they
-// cost is wood (a day per `woodPerDay` of it), otherwise only bought. In camp a packed building helps:
+// the caravan's camp (data/buildings.js `portable` — the buildings a caravan may have, one of each): built in the field
+// when all they cost is wood (a day per `woodPerDay` of it), otherwise only bought. Once had, a building goes with the
+// caravan everywhere and stands whole at every night's camp and stop (campaign/camp.js) till it is burnt — as a
+// party's camp in the old games. In camp it helps:
 //   heal × camp healing;  forage × camp food;  shelter — hunger wears them down × this;  build × camp days for vehicles
 export const CAMP_FX = {
   hut:       {heal: 1.4, shelter: 0.6},
@@ -58,13 +59,14 @@ export const GETTING = {
   // it goes to a squire, in place of a worse tool
   spoilTool: {item: 'ironaxe', bandits: 0.08, army: 0.15},
   // a lost fight: the chance each beast is driven off or killed, each vehicle broken
-  lose: {beast: 0.3, vehicle: 0.2},
+  // (the quick mode: a building of the camp burnt with `building`; on the local map it burns as it burns)
+  lose: {beast: 0.3, vehicle: 0.2, building: 0.1},
 };
 
 // beasts graze for free where grass grows; where it does not (richness of the plants below `graze`, or
 // hard frost) each loses `starve` health a day and dies at none
 export const FODDER = {graze: 0.35, starve: 0.03, regain: 0.03};
 
-// the council keeps the wheels when the road takes at most `keep` × the straight way's days (more with a
-// packed building on board: `keepBuilding`); otherwise the vehicles are left and the caravan goes straight
-export const ROUTE = {keep: 1.6, keepBuilding: 2.2};
+// the council keeps the wheels when the road takes at most `keep` × the straight way's days; otherwise the vehicles
+// are left and the caravan goes straight (the camp's buildings go with it either way)
+export const ROUTE = {keep: 1.6};

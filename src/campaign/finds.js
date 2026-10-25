@@ -11,6 +11,7 @@ import {LAIRS} from '../data/lairs.js';
 import {ITEMS} from '../data/items.js';
 import {RESOURCES} from '../data/resources.js';
 import {FINDS} from '../data/campaign.js';
+import {topUp} from './potions.js';
 import {pickFirst} from '../data/chance.js';
 import {cellRegion} from './land.js';
 import {takeGear} from './fight.js';
@@ -45,6 +46,7 @@ export function morningFind(a, K, r) {
     const n = Math.round(between(r, [lo, hi]));
     if (n > 0) { K.cargo[id] = (K.cargo[id] || 0) + n; things.push(`${RESOURCES.get(id).label} (${n})`); }
   }
+  topUp(K);   // a healing potion found goes into a slot (campaign/potions.js)
   const items = Object.entries(F.items || {}).filter(([, p]) => r() < p).map(([id]) => id);
   // a building tool better than the caravan's: a squire takes it in place of his own (as from a beaten foe)
   const tier = d => (d?.iron ? 2 : d?.bronze ? 1 : 0), builds = d => d?.tool && (d.tool.chop || d.tool.build);

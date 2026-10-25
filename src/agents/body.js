@@ -13,6 +13,7 @@ import {catchIll, stepIll, stepTaint, stepWithdrawal} from './afflictions.js';
 import {DAY} from '../core/time.js';
 import {refreshBody} from './special.js';
 import {lethal} from './wounds.js';
+import {quaff} from './potions.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 
@@ -37,6 +38,7 @@ export function stepEffects(w, a) {
   if (a.stunned && w.tick >= a.stunned.until) a.stunned = null;
   // an illness runs its course, the rot fades, a hooked one goes without (agents/afflictions.js)
   stepIll(w, a); stepTaint(w, a); stepWithdrawal(w, a);
+  if (a.potions && !a.dead) quaff(w, a);   // poison or a bleeding cut brought it to the edge (agents/potions.js)
 }
 
 // The stage of exhaustion follows the needs (data/conditions.js EXHAUSTION); the body is rebuilt only when the stage

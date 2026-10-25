@@ -2,6 +2,7 @@
 // building, a cell — what it is, what it has, and what it thinks (agents' `why`: the choice, the runner-up, what woke
 // it). Built once for the settlement screen of old, used by the camps of the campaign (ui/campaignView.js).
 import {hpShare} from '../agents/agent.js';
+import {POTION} from '../data/potions.js';
 import {captiveText} from '../settlement/captives.js';
 import {masterTitle} from '../settlement/masters.js';
 import {formerText} from '../settlement/freedom.js';
@@ -149,7 +150,7 @@ export function whyHtml(w, a) {
 
 export function creatureHtml(w, a) {
   const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a)).toFixed(1);
-  const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%</dd>`];
+  const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%${a.potions ? ` · зелий лечения ${a.potions}` : ''}</dd>`];
   if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
   const herd = herdOf(w, a);
   if (herd) rows.push(`<dt>Стадо</dt><dd>${herd.n} ${herd.n > 1 ? sp.plural || sp.label : sp.label}${herdAlarm(w, herd) ? ', настороже' : ''}; ${a.nerve == null ? '' : a.nerve < 0.85 ? 'пугливый' : a.nerve > 1.15 ? 'невозмутимый' : 'спокойный'}${stragglerOf(w, a) ? ', отстаёт' : ''}</dd>`);
@@ -188,7 +189,8 @@ export function personHtml(w, a) {
   const fresh = a.diary.filter(e => e.until > w.tick && e.mood !== 0).sort((x, y) => Math.abs(y.mood) - Math.abs(x.mood)).slice(0, 2);
   const moodPct = Math.round((mood + 1) * 50);
   const needs = sp.needs.map(id => { const n = NEEDS.get(id); return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`; }).join('') +
-    `<div class="pc-bar"><span>здоровье</span>${bar(hpShare(a), 'var(--good)')}<b>${Math.round(hpShare(a) * 100)}</b></div>`;
+    `<div class="pc-bar"><span>здоровье</span>${bar(hpShare(a), 'var(--good)')}<b>${Math.round(hpShare(a) * 100)}</b></div>` +
+    (a.potions ? `<div class="pc-bar"><span>зелья лечения</span>${bar(a.potions / POTION.slot, '#d8506a')}<b>${a.potions}</b></div>` : '');
   const inn = innateOf(sp, a).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
   const vals = (a.values || []).map(id => `<span class="chip">${VALUES.get(id).label}</span>`).join('');
   const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];

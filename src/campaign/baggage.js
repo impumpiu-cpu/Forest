@@ -5,7 +5,7 @@
 // first, then the knights), the rest carry packs. How fast the caravan goes is the slowest of those who
 // walk — members on foot, beasts under packs or in harness, the riders' mounts.
 //
-// K.beasts = [{id, kind, hp, job: 'ride' | 'pack' | 'draft', rider}];  K.vehicles = [{kind, building}]
+// K.beasts = [{id, kind, hp, job: 'ride' | 'pack' | 'draft', rider}];  K.vehicles = [{kind, pulled}];  K.buildings = [key] — the camp
 // K.cargo = {resource id → units} besides the food;  member.back — cells on the member's back
 import {SPECIES} from '../data/species.js';
 import {gearDef} from '../agents/equipment.js';
@@ -113,13 +113,20 @@ export function slowest(K) {
 }
 export const wheeled = K => K.vehicles.some(v => v.pulled);
 
-// ── a packed building's help in camp
+// ── the caravan's camp: its buildings, one of each kind it may have (data/buildings.js `portable`). A campaign saved
+// when a building rode packed in a wagon (v.building) has it moved into the camp
+export function campOf(K) {
+  if (!K.buildings) { K.buildings = []; for (const v of K.vehicles) if (v.building) { if (!K.buildings.includes(v.building)) K.buildings.push(v.building); delete v.building; } }
+  return K.buildings;
+}
+export const hasBuilding = (K, id) => campOf(K).includes(id);
+// the camp's help (data/transport.js CAMP_FX)
 export function campFx(K, key) {
   let k = 1;
-  for (const v of K.vehicles) if (v.building && CAMP_FX[v.building]?.[key]) k *= CAMP_FX[v.building][key];
+  for (const id of campOf(K)) if (CAMP_FX[id]?.[key]) k *= CAMP_FX[id][key];
   return k;
 }
-// the buildings a wagon may carry that can be made in the field: portable and made of wood alone
+// the buildings of the camp that can be made in the field: portable and made of wood alone
 export const fieldBuildings = () => BUILDINGS.filter(b => b.portable && Object.keys(b.cost).every(r => r === 'wood'));
 export const buildDays = b => Math.ceil(b.cost.wood / FIELD_BUILD.woodPerDay);
 

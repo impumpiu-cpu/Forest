@@ -46,9 +46,6 @@ export const CAMP = {
   // at least `atLeast` come; the strongest of its own kind is grown into it. It stands while it lives, and its side
   // holds with it (agents/auras.js: the aura `lead`)
   boss: {atLeast: 2},
-  // a building packed in the wagon is put up at the camp: it stands with this share of its work left
-  // (the caravan finishes it with its own hands before the night)
-  deploy: 0.25,
   // the skills the ranks bring (data/skills.js, 0 … 1): the knights fight, the squires work their tools
   skills: {knight: {melee: 0.35, ranged: 0.3}, squire: {}, sellsword: {melee: 0.4, ranged: 0.2}, guide: {hunting: 0.3, ranged: 0.2}},
   tools: {axe: 'woodcutting', ironaxe: 'woodcutting', maul: 'construction', rod: 'fishing', pan: 'gathering'},
@@ -65,10 +62,11 @@ export const CAMP = {
   stop: {maxDays: 6, from: 7, until: 19.5, game: 2.2},
   // what the stores send back to the campaign besides the food: the goods the caravan carries and sells (the
   // rest — firewood, hay, stone — stays at the camp)
-  carry: ['hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
+  carry: ['potion', 'herbs', 'hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
   // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
   spoils: 12,
-  // how many played camps the campaign keeps to be watched again (ui/campaignView.js)
+  // how many played camps of the seasons past the campaign keeps to be watched again (ui/campaignView.js; the season's own
+  // are all kept till the screen has played them)
   keep: 8,
 };
 

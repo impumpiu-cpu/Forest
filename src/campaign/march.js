@@ -27,9 +27,10 @@ import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {plural} from '../core/util.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion} from './land.js';
 import {route, stepCost} from './path.js';
-import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler} from './baggage.js';
+import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler, campOf, hasBuilding} from './baggage.js';
 import {draw, makeMember} from './start.js';
 import {fight, playStop} from './fight.js';
+import {brewDay} from './potions.js';
 import {questArrive, questTarget, questSight, pursuit, crownHands, rumour, askable} from './quest.js';
 import {epicDay} from './epic.js';
 import {CAMP} from '../data/camp.js';
@@ -131,8 +132,9 @@ function loseBeast(a, K, b, why) {
 export function baggageText(K) {
   const parts = [];
   for (const kind of Object.keys(BEASTS)) { const n = K.beasts.filter(b => b.kind === kind && b.hp > 0).length; if (n) parts.push(n === 1 ? BEASTS[kind].label : `${BEASTS[kind].plural} (${n})`); }
-  for (const v of K.vehicles) parts.push(VEHICLES[v.kind].label + (v.building ? ` с разобранным строением «${BUILDINGS.get(v.building).name}»` : ''));
-  return parts.join(', ') || 'только то, что на спинах';
+  for (const v of K.vehicles) parts.push(VEHICLES[v.kind].label);
+  const out = parts.join(', ') || 'только то, что на спинах', camp = campOf(K);
+  return camp.length ? `${out}; лагерь: ${camp.map(id => BUILDINGS.get(id).name).join(', ')}` : out;
 }
 
 // ── the day
@@ -158,9 +160,11 @@ function entered(a, K, before) {
   else if (b && b.id !== before.biome && !t) say(a, K, `Караван идёт ${b.where}.`, 'land');
 }
 
-// a day in camp: beasts tamed where they live, baskets woven, the building goes on
+// a day in camp: beasts tamed where they live, baskets woven, the building goes on, potions brewed in the healer's hut
 function campWork(a, K, r) {
   const b = biomeAt(a, K.i), reg = cellRegion(a, K.i), wooded = (b?.trees ?? 0) >= 0.3;
+  const brewed = brewDay(K, r, wooded);
+  if (brewed) { K.stats.brewed = (K.stats.brewed || 0) + brewed; if (!K.brewTold || K.day - K.brewTold > 60) { K.brewTold = K.day; say(a, K, `В хижине лекаря сварили зелье лечения${brewed > 1 ? ` (${brewed})` : ''}: зелий в поясах ${alive(K).reduce((s, m) => s + (m.potions || 0), 0)}.`, 'build'); } }
   for (const kind of Object.keys(BEASTS)) {
     const lvl = faunaLevel({region: reg}, kind);
     if (lvl > 0 && lacking(K, kind) && r() < GETTING.tame * Math.min(1.6, lvl) * handler(K)) gainBeast(a, K, kind, 'Приручили');
@@ -187,10 +191,9 @@ function campWork(a, K, r) {
     if (K.build.days <= 0) {
       const B = K.build; K.build = null; K.stats.built++;
       if (B.kind === 'building') {
-        const v = K.vehicles.find(x => x.kind === 'wagon' && !x.building);
-        if (v) { v.building = B.id; say(a, K, `Срубили и разобрали «${BUILDINGS.get(B.id).name}»: оно едет в повозке и встанет на любой стоянке.`, 'build'); }
+        if (!hasBuilding(K, B.id)) { campOf(K).push(B.id); { const d = BUILDINGS.get(B.id), it = d.gender === 'f' ? 'она' : d.gender === 'n' ? 'оно' : 'он'; say(a, K, `Срубили «${d.name}»: теперь ${it} с караваном и встаёт на каждой стоянке.`, 'build'); } }
       } else {
-        K.vehicles.push({kind: B.kind, building: null, pulled: false});
+        K.vehicles.push({kind: B.kind, pulled: false});
         say(a, K, `Сколотили ${VEHICLES[B.kind].label === 'тележка' ? 'тележку' : 'повозку'}: ${VEHICLES[B.kind].boxes} ящика груза. Теперь в обозе: ${baggageText(K)}.`, 'build');
         assign(K); K.path = null;
       }
@@ -244,7 +247,7 @@ function plan(a, K) {
   const foot = route(a, K.i, K.goal, K.people, false);
   let way = foot;
   if (wheeled(K)) {
-    const road = route(a, K.i, K.goal, K.people, true), keep = K.vehicles.some(v => v.building) ? ROUTE.keepBuilding : ROUTE.keep;
+    const road = route(a, K.i, K.goal, K.people, true), keep = ROUTE.keep;
     if (road && (!foot || road.cost <= keep * foot.cost)) {
       way = road;
       if (K.route !== 'road') say(a, K, `Совет: идти с обозом по дорогам${foot && road.cost > foot.cost * 1.05 ? ` — дольше на ${Math.round((road.cost / foot.cost - 1) * 100)}%, зато всё с собой` : ''}.`, 'route');
@@ -271,15 +274,12 @@ function wantBuild(a, K) {
     return road && foot && road.cost <= ROUTE.keep * foot.cost;
   };
   const days = d => Math.max(1, Math.round(d * campFx(K, 'build')));
-  if (has('wagon')) {
-    const w = K.vehicles.find(v => v.kind === 'wagon' && !v.building);
-    const b = w && fieldBuildings().find(x => !K.vehicles.some(v => v.building === x.id));
-    return b ? {kind: 'building', id: b.id, days: days(buildDays(b))} : null;
-  }
+  // the wheels first, when they can be had (room for the goods), then the camp: a building it lacks (it needs no wagon)
   const draft = K.beasts.some(b => BEASTS[b.kind].pulls >= 1) || K.beasts.filter(b => BEASTS[b.kind].pulls > 0).length >= 2;
-  if (tier >= VEHICLES.wagon.tool && draft && fit()) return {kind: 'wagon', days: days(VEHICLES.wagon.days)};
-  if (!has('cart') && tier >= VEHICLES.cart.tool && fit()) return {kind: 'cart', days: days(VEHICLES.cart.days)};
-  return null;
+  if (!has('wagon') && tier >= VEHICLES.wagon.tool && draft && fit()) return {kind: 'wagon', days: days(VEHICLES.wagon.days)};
+  if (!has('wagon') && !has('cart') && tier >= VEHICLES.cart.tool && fit()) return {kind: 'cart', days: days(VEHICLES.cart.days)};
+  const b = fieldBuildings().find(x => !hasBuilding(K, x.id));
+  return b ? {kind: 'building', id: b.id, days: days(buildDays(b))} : null;
 }
 
 // ── towns on the way (campaign/town.js): why the council would turn to one, and which one
@@ -506,7 +506,7 @@ function evening(a, K) {
       const left = Math.floor(K.food / need);
       const text = why === 'food' ? `${left > 0 ? `Еды осталось на ${pieces(left, 'день', 'дня', 'дней')}` : 'Еды не осталось'}: совет решил встать лагерем, охотиться и собирать.`
         : why === 'heal' ? 'Раненые еле идут: совет решил встать лагерем и отлежаться.'
-          : why === 'build' ? `Совет решил встать в лесу и ${K.build.kind === 'building' ? `срубить «${BUILDINGS.get(K.build.id).name}» для повозки` : K.build.kind === 'cart' ? 'сколотить тележку' : 'сколотить повозку'}: ${pieces(K.build.days, 'день', 'дня', 'дней')} работы.`
+          : why === 'build' ? `Совет решил встать в лесу и ${K.build.kind === 'building' ? `срубить «${BUILDINGS.get(K.build.id).name}» для лагеря` : K.build.kind === 'cart' ? 'сколотить тележку' : 'сколотить повозку'}: ${pieces(K.build.days, 'день', 'дня', 'дней')} работы.`
             : why.startsWith('mine:') ? `Здесь ${why.slice(5) === 'placer' ? 'в речном песке блестит золото' : `выходит на поверхность ${mineLabel(why.slice(5))}`}: совет решил встать и добывать.`
               : `Здесь пасутся дикие ${BEASTS[why.slice(5)].plural}: совет решил встать и приручить.`;
       say(a, K, text, 'camp');

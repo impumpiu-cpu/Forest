@@ -21,7 +21,9 @@ import {RECIPES} from '../data/recipes.js';
 import {room} from './company.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {plural} from '../core/util.js';
-import {capacity, load, assign, toolTier, metalTier} from './baggage.js';
+import {capacity, load, assign, toolTier, metalTier, campOf, hasBuilding} from './baggage.js';
+import {topUp, potionRoom} from './potions.js';
+import {POTION} from '../data/potions.js';
 import {ORES} from '../data/ores.js';
 import {route} from './path.js';
 import {ROUTE} from '../data/transport.js';
@@ -102,7 +104,9 @@ function wants(a, K, t, st) {
     if (o.kind === 'item' && gearDef(o.id).tool && tier < 2 && gearDef(o.id).iron) out.push([2, o]);
     if (o.kind === 'item' && gearDef(o.id).slot === 'body' && ms.some(m => m.role === 'knight' && (gearDef(m.gear.body)?.armor ?? 0) < gearDef(o.id).armor)) out.push([7, o]);
     if (o.kind === 'item' && gearDef(o.id).melee && !gearDef(o.id).tool && ms.some(m => m.role === 'knight' && bestDmg(m) < gearDef(o.id).melee.dmg)) out.push([8, o]);
-    if (o.kind === 'building' && K.vehicles.some(v => v.kind === 'wagon' && !v.building)) out.push([6.5, o]);
+    if (o.kind === 'building' && !hasBuilding(K, o.id)) out.push([6.5, o]);
+    // healing potions for the empty slots, after the arms and armour (campaign/potions.js)
+    if (o.kind === 'goods' && o.id === 'potion') for (let k = 0; k < Math.min(POTION.slot, potionRoom(K)); k++) out.push([8, o]);
   }
   return out.sort((p, q) => p[0] - q[0]).map(e => e[1]);
 }
@@ -192,16 +196,17 @@ export function trade(a, K, t, st) {
     if (M.maxPrice != null && p > M.maxPrice) continue;   // too dear for a market of this step
     if (K.gold - p < reserveFor(K, t, st, WANTS.reserve, a)) continue;
     // still wanted after what was bought before it in this visit
-    if (o.kind === 'building' && !K.vehicles.some(x => x.kind === 'wagon' && !x.building)) continue;
+    if (o.kind === 'building' && hasBuilding(K, o.id)) continue;
     if (o.kind === 'vehicle' && (o.id === 'cart' ? K.vehicles.length : K.vehicles.some(x => x.kind === 'wagon'))) continue;
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && K.beasts.filter(b => b.kind === o.id && b.hp > 0).length >= 2) continue;
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length >= free(K).length) continue;
-    if (o.kind === 'goods' && bondsSets(K) >= CAPTIVE.campaign.keep) continue;
+    if (o.kind === 'goods' && o.id !== 'potion' && bondsSets(K) >= CAPTIVE.campaign.keep) continue;
+    if (o.kind === 'goods' && o.id === 'potion' && potionRoom(K) <= 0) continue;
     K.gold = gold(K.gold - p);
     if (o.kind === 'beast') { K.beasts.push({id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null}); done.push(`${BEASTS[o.id].acc} за ${gold(p)}`); }
-    else if (o.kind === 'vehicle') { K.vehicles.push({kind: o.id, building: null, pulled: false}); done.push(`${o.id === 'cart' ? 'тележку' : 'повозку'} за ${gold(p)}`); }
-    else if (o.kind === 'goods') { K.cargo[o.id] = (K.cargo[o.id] || 0) + o.n; done.push(`${RESOURCES.get(o.id).label} (${o.n}) за ${gold(p)}`); }
-    else if (o.kind === 'building') { const v = K.vehicles.find(x => x.kind === 'wagon' && !x.building); v.building = o.id; done.push(`разобранную «${BUILDINGS.get(o.id).name}» в повозку за ${gold(p)}`); }
+    else if (o.kind === 'vehicle') { K.vehicles.push({kind: o.id, pulled: false}); done.push(`${o.id === 'cart' ? 'тележку' : 'повозку'} за ${gold(p)}`); }
+    else if (o.kind === 'goods') { K.cargo[o.id] = (K.cargo[o.id] || 0) + o.n; if (o.id === 'potion') topUp(K); done.push(`${o.id === 'potion' ? 'зелье лечения' : `${RESOURCES.get(o.id).label} (${o.n})`} за ${gold(p)}`); }
+    else if (o.kind === 'building') { campOf(K).push(o.id); done.push(`«${BUILDINGS.get(o.id).name}» для лагеря за ${gold(p)}`); }
     else { const m = equip(K, o.id); done.push(`${gearDef(o.id).label.toLowerCase()} для ${m.name} за ${gold(p)}`); }
     assign(K); K.path = null;
   }

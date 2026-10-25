@@ -78,6 +78,7 @@ export const RESOURCES = {
   seedFlax:     {price: 0.5, stack: 50},
   // Лекарства
   herbs:        {price: 1, stack: 20},
+  potion:       {price: 6, stack: 10},   // the healing potion (data/potions.js): dear — a few days' wages
   // Топливо
   coal:         {price: 0.3, stack: 20},
   // Руда

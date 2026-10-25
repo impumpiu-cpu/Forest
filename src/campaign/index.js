@@ -21,7 +21,7 @@ export function stepCampaign(a) {
   }
   if (!a.hist) startHistory(a);
   if (a.hist.step >= a.hist.end) a.hist.end = a.hist.step + 1;   // history goes on past its plan
-  K.track = [];
+  K.track = []; K.seasonFrom = K.day;   // (the camps of this season are all kept for the screen: campaign/fight.js play)
   stepHistory(a, () => caravanDay(a, K, K.day));
   if (ended(K)) finish(a, K);
   return !finished(K);

@@ -54,6 +54,8 @@ export const OFFERS = [
   {kind: 'goods', id: 'rope', n: 4, any: true, at: []},
   {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'smelter', 'foundry']},
   {kind: 'goods', id: 'shacklesSteel', n: 1, at: ['foundry']},
+  // the healing potion (data/potions.js), one at a time, where healers work
+  {kind: 'goods', id: 'potion', n: 1, at: ['healerhut', 'hospice', 'temple']},
   {kind: 'building', id: 'healerhut', at: ['healerhut', 'hospice'], price: CAMPAIGN.services.healerhut},
   {kind: 'building', id: 'forge', at: ['forge'], price: CAMPAIGN.services.forge},
   {kind: 'building', id: 'crafthut', at: ['crafthut'], price: CAMPAIGN.services.crafthut},

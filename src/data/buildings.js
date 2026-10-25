@@ -206,9 +206,10 @@ BUILDINGS.registerAll([
       [(a.prefs.cook - 1) * 1.4, 'любит стряпать']]},
 
   // the healer's hut: the wounded lie here and a healer tends them, many times faster than wounds
-  // close by themselves; herbs make the treatment work fully (settlement/healing.js)
-  {id: 'healerhut', portable: true, name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, furnish: true, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
-    effect: 'Раненые лежат здесь, а лекарь их выхаживает: раны затягиваются в несколько раз быстрее, с травами — ещё быстрее. Лекарь же собирает лечебные травы.',
+  // close by themselves; herbs make the treatment work fully (settlement/healing.js); a station too — the healing
+  // potion is brewed here (data/recipes.js `potion`)
+  {id: 'healerhut', portable: true, station: true, name: 'Хижина лекаря', gender: 'f', cost: {wood: 20}, furnish: true, work: 180, max: 1, wooden: true, color: '#8fcf86', mark: 'Лк',
+    effect: 'Раненые лежат здесь, а лекарь их выхаживает: раны затягиваются в несколько раз быстрее, с травами — ещё быстрее. Лекарь же собирает лечебные травы и варит из них зелья лечения.',
     effects: {}, beds: 3,
     wish: 'хочет, чтобы раненых было где лечить',
     motive: (a, c) => [[c.wounded * 1.6, 'раненые долго не встают'], [c.hurt(a) < 0.7 ? (1 - c.hurt(a)) * 1.4 : 0, a.gender === 'f' ? 'сама изранена' : 'сам изранен'],

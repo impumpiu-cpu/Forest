@@ -364,7 +364,7 @@ export const TABLES = [
   {id: 'caravanBuildings', label: 'Постройки обоза', group: 'Караван', key: 'id',
     target: (r, c) => (c.key === 'fx' ? [CAMP_FX, r.id] : [BUILDINGS.get(r.id), c.key]),
     rows: () => BUILDINGS.filter(b => b.portable).map(b => ({id: b.id, name: b.name, cost: b.cost, work: b.work, fx: CAMP_FX[b.id] || {}, field: Object.keys(b.cost).every(r => r === 'wood')})),
-    note: 'Что повозка везёт в разобранном виде (data/buildings.js `portable`, data/transport.js CAMP_FX). Караван ничего не изобретает: остальное покупается.',
+    note: 'Лагерь каравана: что ему разрешено (data/buildings.js `portable`, data/transport.js CAMP_FX) — по одной, всегда с ним, встаёт целым на каждой стоянке. Караван ничего не изобретает: остальное покупается.',
     columns: [
       col('id', 'id'), col('name', 'Название', 'text', {edit: false, note: 'правится в «Постройках поселения»'}), col('cost', 'Цена', 'map', {ref: RESOURCES, min: 0, edit: false, note: 'правится в «Постройках поселения»'}), col('work', 'Труд', 'int', {min: 0, edit: false, note: 'правится в «Постройках поселения»'}),
       col('fx', 'На стоянке', 'map', {ref: keysOf({heal: 1, forage: 1, shelter: 1, build: 1}), min: 0, note: 'лечение ×, пища ×, голод ×, постройка повозок ×'}),

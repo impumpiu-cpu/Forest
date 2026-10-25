@@ -7,6 +7,7 @@
 //   species/faction/init/kit/groupInit/message — the group itself;
 //   members(w, rng) — a mixed group instead: [{species, faction?, init(a, w)?, kit?}, …]
 import {Registry} from '../core/registry.js';
+import {POTION} from './potions.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
@@ -121,6 +122,7 @@ MIGRATIONS.registerAll([
       return list.map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
         init: (a, w) => {
           a.band = band.id;
+          if (SPECIES.get(m.species).inventory && w.rngs.outside() < POTION.foe) a.potions = 1;   // a healing potion, rarely (agents/potions.js)
           if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);
           // a war beast (a warg with orcs, a hyena with gnolls) follows the band, not its own brain
           if (SPECIES.get(m.species).behaviours) { a.brain = 'raider'; a.warBeast = true; }

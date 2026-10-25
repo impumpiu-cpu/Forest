@@ -18,11 +18,12 @@ import {room} from './company.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
-import {assign, toolTier} from './baggage.js';
+import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
 import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
 import {afterFight} from './quest.js';
+import {topUp, quaffMember} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
 import {famed, paceOf} from './road.js';
 
@@ -77,7 +78,7 @@ function localFight(a, K, d, how) {
   const S = campSetup(a, K, {kind: how, foe: d, dayIn: K.dayIn});
   const o = play(K, S, how, d.label || FOES[d.kind].label, d);
   K.lastCamp = o;   // for the fight's record (recordFight)
-  applyCamp(a, K, S, o, d, how);
+  applyCamp(a, K, S, o, d, how); topUp(K); if (o.potions) K.stats.potions = (K.stats.potions || 0) + o.potions;   // spare potions of the cargo into the slots
   if (d.boss && o.bossDead === false && !o.won && o.foes.killed > 0) say(a, K, `${d.boss.name} ${d.boss.g === 'f' ? 'ушла живой' : 'ушёл живым'}: штурм придётся повторить.`, 'fight');
   return o.won;
 }
@@ -87,7 +88,7 @@ export function playStop(a, K) {
   const S = campSetup(a, K, {kind: 'stop', dayIn: K.dayIn});
   const o = play(K, S, 'stop', 'стоянка');
   const food0 = K.food;
-  applyCamp(a, K, S, o, null, 'stop');
+  applyCamp(a, K, S, o, null, 'stop'); topUp(K); if (o.potions) K.stats.potions = (K.stats.potions || 0) + o.potions;
   const kept = new Set(CAMP.carry), dug = Object.entries(o.got).filter(([id]) => kept.has(id) && id !== 'hide' && id !== 'leather' && id !== 'rope');
   const got = Object.entries(o.got).filter(([id]) => FOODS.has(id) || id === 'hide').map(([id, n]) => `${RESOURCES.get(id).label} ${n}`);
   K.stats.stopDays = (K.stats.stopDays || 0) + 1;
@@ -105,8 +106,11 @@ function play(K, S, how, label, d = null) {
   L.camps++; L.ticks += o.ticks;
   // the time it took is this machine's, not the campaign's: kept beside it, never saved (tools read it: localMs)
   CAMP_TIME.set(K, (CAMP_TIME.get(K) || 0) + ((typeof performance !== 'undefined' ? performance.now() : 0) - t0));
-  (K.camps ||= []).push({day: K.day, kind: how, label, setup: S, won: o.won, dead: o.members.filter(m => !m.alive).length, hash: outcomeHash(o)});
-  if (K.camps.length > CAMP.keep) K.camps.shift();
+  (K.camps ||= []).push({day: K.day, kind: how, label, setup: S, won: o.won, dead: o.members.filter(m => !m.alive).length, hash: outcomeHash(o), ...(S.foe?.boss ? {boss: S.foe.boss.name} : {})});
+  // the screen plays the season's camps back after it is stepped (ui/campaignView.js): none of this season is let go —
+  // a season of days of stops would push its fights out before they were shown; of the older, `keep` are kept
+  const old = K.camps.filter(c => c.day < (K.seasonFrom ?? 0));
+  if (old.length > CAMP.keep) K.camps = K.camps.filter(c => c.day >= (K.seasonFrom ?? 0) || old.indexOf(c) >= old.length - CAMP.keep);
   return o;
 }
 
@@ -120,7 +124,7 @@ export function applyCamp(a, K, S, o, d, how) {
     if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - CAMPAIGN.fight.wounded) hurt.push(m);
-    m.hp = mo.hp; m.local = mo.local;
+    m.hp = mo.hp; m.local = mo.local; if (mo.potions != null) m.potions = mo.potions;
   }
   // the beasts: killed, bolted into the dark, led off by the thieves
   const lostB = [], stolenB = [];
@@ -132,11 +136,11 @@ export function applyCamp(a, K, S, o, d, how) {
   if (lostB.length || stolenB.length) { K.beasts = K.beasts.filter(b => !lostB.includes(b) && !stolenB.includes(b)); assign(K); K.path = null; }
   const food0 = K.food;
   K.food = o.food; K.cargo = o.cargo;
-  // the vehicles: a broken cart, a burnt building
+  // the camp: a building burnt is gone; the vehicles: a broken cart
   const broken = [];
+  for (const id of o.burnt || []) if (hasBuilding(K, id)) { broken.push(`«${BUILDINGS.get(id).name}» сгорело`); K.buildings = K.buildings.filter(x => x !== id); }
   for (const vo of o.vehicles) {
     const v = K.vehicles[vo.k]; if (!v) continue;
-    if (vo.burnt && v.building) { broken.push(`«${BUILDINGS.get(v.building).name}» сгорело`); v.building = null; }
     if (vo.wrecked) { broken.push(`разбили ${VEHICLES[v.kind].label === 'тележка' ? 'тележку' : 'повозку'}`); v.gone = true; }
   }
   if (K.vehicles.some(v => v.gone)) { K.vehicles = K.vehicles.filter(v => !v.gone); assign(K); K.path = null; }
@@ -255,6 +259,7 @@ function autoFight(a, K, d, r, how) {
     let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
     for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;
+    if (quaffMember(m)) K.stats.potions = (K.stats.potions || 0) + 1;   // at the edge, a healing potion (campaign/potions.js)
     if (!hit.includes(m)) hit.push(m);
     const mortal = r() < F.mortal;
     if (mortal || (m.hp <= 0 && !win)) die(a, K, m, `пал в ${WHERE[how] || 'бою'} (${foe.label})`);
@@ -276,7 +281,11 @@ function autoFight(a, K, d, r, how) {
   }
   for (const v of [...K.vehicles]) if (r() < GETTING.lose.vehicle) {
     K.vehicles = K.vehicles.filter(x => x !== v); assign(K); K.path = null;
-    say(a, K, `Враги разбили ${VEHICLES[v.kind].label === 'тележка' ? 'тележку' : 'повозку'}${v.building ? ` вместе с «${BUILDINGS.get(v.building).name}»` : ''}.`, 'beast');
+    say(a, K, `Враги разбили ${VEHICLES[v.kind].label === 'тележка' ? 'тележку' : 'повозку'}.`, 'beast');
+  }
+  if (how === 'night') for (const id of [...campOf(K)]) if (r() < GETTING.lose.building) {   // the camp stood only at night
+    K.buildings = K.buildings.filter(x => x !== id);
+    say(a, K, `Враги сожгли «${BUILDINGS.get(id).name}».`, 'beast');
   }
   return false;
 }

@@ -31,6 +31,7 @@ import {capacity, load, wheeled} from '../src/campaign/baggage.js';
 import {stepCost, onRoad} from '../src/campaign/path.js';
 import {biomeAt} from '../src/atlas/biomes.js';
 import {baggageText} from '../src/campaign/march.js';
+import {POTION} from '../src/data/potions.js';
 import {WHEELS} from '../src/data/transport.js';
 import {COMPANY_MAX, JOINED_MAX} from '../src/data/market.js';
 import {CAPTIVE} from '../src/data/captives.js';
@@ -361,4 +362,27 @@ check('караваны обзаводятся обозом и выбирают 
   check('эпос: на штурме логова босс стоит среди слуг, сильнее своего рода', !!boss && boss.name === G.boss.name && Object.entries(G.boss.add).every(([id, v]) => v > 0 && boss.special[id] >= v),
     boss ? `${boss.name}: ${['S', 'E', 'A'].map(id => `${id} ${boss.special[id]}`).join(', ')}` : 'босса нет');
 }
+// a walk on the local map, as the screen plays it: the fights of every season are all kept to be shown (a season of days of
+// stops does not push them out); the caravan's camp stands whole at its night's camps; a potion slot never holds more than
+// POTION.slot, and the potions brewed and bought are drunk on the map
+{
+  const base = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const c = capitals(base).find(x => x.people === 'humans'), K = newCampaign(base, c.town, {mode: 'local'});
+  let lost = 0, fights = 0, overfull = 0, campOk = 0, campSeen = 0;
+  for (let k = 0; k < 30; k++) {
+    const d0 = K.day, f0 = (K.fights || []).length;
+    if (!stepCampaign(base)) break;
+    const camps = (K.camps || []).filter(cp => cp.day >= d0 && cp.kind !== 'stop'), F = K.fights.slice(f0);
+    fights += F.length; lost += Math.max(0, F.length - camps.length);
+    overfull += K.members.filter(m => (m.potions || 0) > POTION.slot).length;
+    for (const cp of (K.camps || []).filter(x => x.day >= d0 && x.kind === 'night' && (x.setup.buildings || []).length)) {
+      campSeen++; const w = openCamp(cp.setup);
+      if (cp.setup.buildings.every(id => w.buildings.some(b => b.key === id && b.done))) campOk++;
+    }
+  }
+  check('показ: все бои сезона дожидаются экрана, сколько бы дней стоянок ни было', fights > 0 && lost === 0, `боёв ${fights}, вытеснено ${lost}`);
+  check('лагерь каравана: постройки встают целыми на каждой ночёвке', campSeen > 0 && campOk === campSeen, `ночёвок с лагерем ${campSeen}, целых ${campOk}; лагерь: ${(K.buildings || []).join(', ')}`);
+  check('зелья лечения: не больше трёх в поясе, сварены и выпиты', overfull === 0 && (K.stats.brewed || 0) > 0 && (K.stats.potions || 0) > 0, `сварено ${K.stats.brewed || 0}, выпито ${K.stats.potions || 0}`);
+}
+
 if (!ok) process.exit(1);
