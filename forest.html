@@ -127,9 +127,47 @@
   .plate-card .row{align-items:center;gap:8px}
   .muted{color:var(--muted)}
   /* «Заселение мира» (src/app/settleView.js) */
-  #setMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
   #setMap.dragging{cursor:grabbing}
   #setMap.hand{cursor:copy}
+  /* ── the observer's layout (docs/GAME.md «Наблюдатель»): the head with the clock, the switches on the left, the map
+     filling the middle, the dock with the card under it, the chronicle always on the right; the page does not scroll */
+  body.observer{height:100vh;height:100dvh;overflow:hidden;padding-block:8px}
+  body.observer .wrap{max-width:none;height:100%;gap:8px}
+  body.observer header p,body.observer header .build{display:none}
+  body.observer h1{font-size:18px}
+  .app-screen.obs{flex:1;min-height:0;display:grid;grid-template-columns:260px minmax(0,1fr) minmax(300px,360px);grid-template-rows:auto minmax(0,1fr) 230px;gap:8px 10px}
+  .app-screen.obs[hidden]{display:none}
+  .obs-head{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+  .obs-head h2{font-family:var(--font-display);font-size:22px;letter-spacing:.04em;margin:0}
+  .obs-clock{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .obs-clock b{font-family:var(--font-mono);font-size:13px;min-width:16ch}
+  .obs-head > .quiet{margin-left:0}
+  .obs-left{grid-column:1;grid-row:2/4;display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;padding-right:2px}
+  .obs-left .card{gap:6px;padding:8px 10px}
+  .obs-left .lbl{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted)}
+  .obs-lib summary{cursor:pointer;font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted)}
+  .obs-lib[open] summary{margin-bottom:6px}
+  .obs-map{grid-column:2;grid-row:2;display:flex;flex-direction:column;gap:4px;min-height:0;min-width:0}
+  .obs-canvas{position:relative;flex:1;min-height:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#0d0f0a}
+  .obs-canvas canvas{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+  .obs-canvas #campLocal{position:absolute;inset:0}
+  .obs-zoom{position:absolute;right:8px;top:8px;background:rgba(13,15,10,.82)}
+  .obs-map .readout{flex:none;max-height:3.2em;overflow:hidden}
+  .obs-dock{grid-column:2;grid-row:3;display:flex;flex-direction:column;gap:6px;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+  .obs-tabs{align-self:flex-start}
+  .obs-pane{flex:1;min-height:0;overflow:auto}
+  .obs-pane .inspect{max-height:none;margin-top:0}
+  .obs-chron{grid-column:3;grid-row:2/4;display:flex;flex-direction:column;gap:6px;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+  .obs-chron .log{flex:1;min-height:0;max-height:none;overflow-y:auto}
+  .obs-chron .lbl{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted)}
+  /* the realms among themselves: a matrix in the dock */
+  .relmat{border-collapse:collapse;font-size:12px}
+  .relmat th,.relmat td{border:1px solid var(--line);padding:2px 6px;text-align:center;white-space:nowrap}
+  .relmat th{font-weight:400;color:var(--muted)}
+  .relmat th.rw{text-align:left}
+  .relmat td.rel-war{background:rgba(190,70,60,.35)} .relmat td.rel-hostile{background:rgba(190,110,70,.25)} .relmat td.rel-tense{background:rgba(160,150,90,.15)} .relmat td.rel-peace{background:rgba(110,160,90,.15)} .relmat td.rel-friends{background:rgba(110,190,110,.3)}
+  .relwars{margin:6px 0 0;padding-left:1.2em;font-size:12.5px}
+  @media (max-width: 1100px){ .app-screen.obs{grid-template-columns:220px minmax(0,1fr) 280px} }
   .hand-card{display:flex;flex-direction:column;gap:6px;padding:8px 10px}
   .hand-card .row,.time-row{align-items:center;gap:8px;flex-wrap:wrap}
   .hand-card select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
@@ -183,7 +221,6 @@
     </div>
     <div class="row">
       <button type="button" data-go="settings">⚙ Настройки</button>
-      <a class="app-foot" href="index.html" title="Старые режимы для проверок">Технический полигон →</a>
     </div>
   </section>
 
@@ -291,10 +328,45 @@
   </section>
 
   <!-- ───────── «Заселение мира» (src/app/settleView.js): history on a land, led by hand; no eras ───────── -->
-  <section class="app-screen" id="settle" hidden aria-labelledby="settleTitle">
-    <div class="app-head"><h2 id="settleTitle">Заселение мира</h2><span class="muted" id="setName2"></span><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
-    <div class="atlas settle">
-      <div class="menu-form atlas-form">
+  <section class="app-screen obs" id="settle" hidden aria-labelledby="settleTitle">
+    <div class="obs-head">
+      <h2 id="settleTitle">Заселение мира</h2><span class="muted" id="setName2"></span>
+      <div class="obs-clock">
+        <b id="setYear" class="muted"></b>
+        <div class="seg" id="setPace" hidden title="Темп наблюдателя (пробел — пауза)"></div>
+        <button type="button" id="setPause" hidden>Пауза</button>
+      </div>
+      <button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button>
+    </div>
+
+    <aside class="obs-left">
+      <div class="card hand-card" id="setHand">
+        <div class="row"><span class="lbl">Рука</span><div class="seg" id="setTool"></div></div>
+        <div class="row" id="setPeopleRow" hidden><div class="seg wrapseg" id="setPeople"></div><div class="seg wrapseg" id="setSub"></div></div>
+        <div class="row" id="setLairRow" hidden><select id="setLairKind" aria-label="Какое логово"></select><small class="muted">Щелчок по суше — поставить логово.</small></div>
+        <div class="row" id="setCalRow" hidden>
+          <select id="setCalKind" aria-label="Какое бедствие"></select>
+          <span class="lbl">через</span><div class="seg" id="setCalIn"></div>
+          <button type="button" id="setCalAny" title="Место выберет мир, как в эпическом мире">Место — на волю мира</button>
+        </div>
+        <div class="row"><button type="button" id="setWild" title="Логова чудовищ, какие даёт земля, — один раз">Логова по земле</button></div>
+        <small class="hand-note" id="setNote">Выберите землю ниже, затем руку: народ, логово или бедствие — и щёлкните по карте.</small>
+      </div>
+      <div class="card">
+        <span class="lbl">Время</span>
+        <div class="seg wrapseg" id="setRun"></div>
+        <small class="muted">Отрезок идёт темпом наблюдателя; темп и пауза — в шапке.</small>
+        <button type="button" id="setMarch" class="primary" title="Сохранить мир и выбрать столицу для похода">В поход →</button>
+      </div>
+      <div class="card">
+        <span class="lbl">Слои</span>
+        <div class="seg wrapseg" data-skey="layer"></div>
+        <div class="seg wrapseg" data-skey="ore" id="setOre" hidden></div>
+        <div class="seg wrapseg" data-skey="fauna" id="setFauna" hidden></div>
+        <div class="legend atlas-legend" id="setLegend"></div>
+      </div>
+      <details class="card obs-lib" id="setLib">
+        <summary>Земли и миры</summary>
         <div class="field">
           <span class="lbl">Земля для заселения</span>
           <div id="setLands" class="savelist"><small>Пока нет сохранённых земель: сотворите её на экране «Создать землю».</small></div>
@@ -311,63 +383,121 @@
           <span class="lbl">Заселённые миры</span>
           <div id="setWorlds" class="savelist"><small>Пока нет заселённых миров.</small></div>
         </div>
-      </div>
+      </details>
+    </aside>
 
-      <div class="atlas-map">
-        <div class="atlas-tools">
-          <div class="seg wrapseg" data-skey="layer"></div>
-          <div class="seg zoomseg" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
-            <button type="button" id="setZoomIn" aria-label="Приблизить">+</button>
-            <button type="button" id="setZoomOut" aria-label="Отдалить">−</button>
-            <button type="button" id="setZoomFit" aria-label="Весь мир">⌂</button>
-          </div>
+    <div class="obs-map">
+      <div class="obs-canvas"><canvas id="setMap" aria-label="Карта мира"></canvas>
+        <div class="seg zoomseg obs-zoom" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
+          <button type="button" id="setZoomIn" aria-label="Приблизить">+</button>
+          <button type="button" id="setZoomOut" aria-label="Отдалить">−</button>
+          <button type="button" id="setZoomFit" aria-label="Весь мир">⌂</button>
         </div>
-        <div class="seg wrapseg" data-skey="ore" id="setOre" hidden></div>
-        <div class="seg wrapseg" data-skey="fauna" id="setFauna" hidden></div>
-        <div class="card hand-card" id="setHand">
-          <div class="row"><span class="lbl">Рука</span><div class="seg" id="setTool"></div><button type="button" id="setWild" title="Логова чудовищ, какие даёт земля, — один раз">Логова по земле</button></div>
-          <div class="row" id="setPeopleRow" hidden><div class="seg wrapseg" id="setPeople"></div><div class="seg wrapseg" id="setSub"></div></div>
-          <div class="row" id="setLairRow" hidden><select id="setLairKind" aria-label="Какое логово"></select><small class="muted">Щелчок по суше — поставить логово.</small></div>
-          <div class="row" id="setCalRow" hidden>
-            <select id="setCalKind" aria-label="Какое бедствие"></select>
-            <span class="lbl">через</span><div class="seg" id="setCalIn"></div>
-            <button type="button" id="setCalAny" title="Место выберет мир, как в эпическом мире">Место — на волю мира</button>
-          </div>
-          <small class="hand-note" id="setNote">Выберите землю слева, затем руку: народ, логово или бедствие — и щёлкните по карте.</small>
-        </div>
-        <div class="preview-box"><canvas id="setMap" width="256" height="192" aria-label="Карта мира"></canvas></div>
-        <div class="row time-row">
-          <button type="button" id="setMarch" class="primary" title="Сохранить мир и выбрать столицу для похода">В поход →</button>
-          <span class="lbl">Время</span>
-          <div class="seg" id="setRun"></div>
-          <div class="seg" id="setPace" hidden title="Темп наблюдателя (пробел — пауза)"></div>
-          <button type="button" id="setPause" hidden>Пауза</button>
-          <b id="setYear" class="muted"></b>
-        </div>
-        <div class="legend atlas-legend" id="setLegend"></div>
-        <div class="readout" id="setReadout">Наведите на карту, чтобы увидеть клетку.</div>
-        <div class="inspect" id="setInspect"></div>
       </div>
-
-      <div class="menu-form atlas-chron">
-        <dl class="kv" id="setStats"></dl>
-        <div id="setCals"></div>
-        <dl class="kv" id="setRels"></dl>
-        <div class="row"><span class="lbl">Летопись</span><div class="seg" id="setDetail"></div></div>
-        <div class="log" id="setChron"></div>
-      </div>
+      <div class="readout" id="setReadout">Наведите на карту, чтобы увидеть клетку.</div>
     </div>
+
+    <div class="obs-dock" id="setDock">
+      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button><button type="button" data-tab="realms">Державы</button><button type="button" data-tab="world">Мир</button></div>
+      <div class="obs-pane" data-pane="object"><div class="inspect" id="setInspect"></div></div>
+      <div class="obs-pane" data-pane="realms" hidden><div id="setRels"></div></div>
+      <div class="obs-pane" data-pane="world" hidden><dl class="kv" id="setStats"></dl><div id="setCals"></div></div>
+    </div>
+
+    <aside class="obs-chron">
+      <div class="row"><span class="lbl">Летопись</span><div class="seg" id="setDetail"></div></div>
+      <div class="log" id="setChron"></div>
+    </aside>
   </section>
 
-  <!-- ───────── «Кампания» (src/app/campView.js): a living world from the library, then the walk on the campaign screen ───────── -->
-  <section class="app-screen" id="camp" hidden aria-labelledby="campTitle2">
-    <div class="app-head"><h2 id="campTitle2">Кампания</h2><button type="button" class="quiet" data-go="home" title="Esc">← Главное меню</button></div>
-    <div class="card">
-      <span class="tag">живые миры</span>
-      <p class="note">Мир из библиотеки — заселённый, эпический или из полигона. Квест зависит от мира: в заселённом — бедствие, которое вы задали; в эпическом — могилы боссов и четвёртое бедствие; в остальных — корона, потерянная историей. Столицу выбирают на экране похода.</p>
-      <div id="campList" class="savelist"><small>Открываю библиотеку…</small></div>
-      <small class="status" id="campStatus" role="status"></small>
+  <!-- ───────── «Кампания» (src/ui/campaignView.js): a world from the library or a new epic one, a capital, the walk ───────── -->
+  <section class="app-screen obs" id="campaign" hidden aria-labelledby="campTitle">
+    <div class="obs-head">
+      <h2 id="campTitle">Кампания</h2><span class="muted" id="campName2"></span>
+      <div class="obs-clock" id="campRun" hidden>
+        <b id="campDay" class="muted"></b>
+        <div class="seg" id="campSpeed" title="Темп наблюдателя (пробел — пауза)"></div>
+        <button type="button" id="campPause">Пауза</button>
+      </div>
+      <button type="button" id="campBack" class="quiet" title="Esc">← Главное меню</button>
     </div>
+
+    <aside class="obs-left">
+      <div id="campSetup">
+        <div class="card">
+          <div class="field" id="campEpicField" hidden><span class="lbl">Новый эпический мир</span>
+            <div class="row">
+              <input id="campEpicSeed" type="text" maxlength="24" autocomplete="off" aria-label="Сид эпического мира">
+              <button type="button" id="campEpicDice" title="Случайный сид" aria-label="Случайный сид">🎲</button>
+              <div class="seg" id="campEpicSize"></div>
+              <button type="button" id="campEpicGo">Сотворить</button>
+            </div>
+            <small id="campEpicNote" class="status" role="status">Три эпохи по 75–150 лет: долгая история, в которой будет место бедствиям. На среднем мире — минута-другая.</small></div>
+          <div class="field" id="campCapsField" hidden><span class="lbl">Столица</span><div id="campCaps" class="savelist"></div>
+            <small>Выбранная столица решает, кто пойдёт в поход: её народ, звания, снаряжение, друзья и враги.</small>
+            <small id="campQuestNote" class="camp-quest"></small></div>
+          <div class="row actions"><button type="button" id="campGo" class="primary" disabled>Выступить</button></div>
+        </div>
+        <details class="card obs-lib" id="campLibField" open>
+          <summary>Мир из библиотеки</summary>
+          <p class="note">Заселённый, эпический или прожитый на полигоне. Квест зависит от мира: в заселённом — бедствие, которое вы задали; в эпическом — могилы боссов и четвёртое бедствие; в остальных — корона, потерянная историей.</p>
+          <div id="campWorlds" class="savelist"><small>Пока нет сохранённых миров.</small></div>
+          <small id="campWorldNote" class="status" role="status"></small>
+          <div class="field" id="campWorldChron" hidden><span class="lbl">Летопись мира</span>
+            <div class="row"><div class="seg" id="campDetail" title="Подробность летописи мира в файле"></div>
+              <button type="button" id="campWorldFile">Летопись мира в файл</button><button type="button" id="campCalFile">Катаклизмы в файл</button></div>
+            <small>Текстом по эпохам: всё, что мир прожил до похода. Катаклизмы — отдельно: знамения, боссы, союзы, могилы.</small></div>
+          <div class="field" id="campPastField" hidden><span class="lbl">Походы в этом мире</span><div id="campPast" class="savelist"></div>
+            <small>Летописи окончённых походов хранятся вместе с миром.</small></div>
+        </details>
+      </div>
+      <div id="campRunSide" hidden>
+        <div class="card"><dl class="kv" id="campStatus"></dl></div>
+        <div class="card">
+          <span class="lbl">Отряд</span>
+          <div id="campRoster" class="roster"></div>
+        </div>
+        <div class="card">
+          <button type="button" id="campSave" title="В библиотеку миров: мир вместе с походом">Сохранить мир с походом</button>
+          <button type="button" id="campWorldFile2" title="Летопись мира текстом по эпохам (подробность — как выбрано при выборе столицы)">Летопись мира в файл</button>
+          <button type="button" id="campAgain" hidden title="Тот же мир, после этого похода: выбрать столицу и снарядить новый караван">Новый поход в этом мире</button>
+          <button type="button" id="campNew" class="quiet">Другой мир</button>
+          <small class="status" id="campSaveStatus" role="status"></small>
+        </div>
+      </div>
+      <div class="card">
+        <span class="lbl">Слои</span>
+        <div class="seg wrapseg" id="campLayer"></div>
+        <div class="legend atlas-legend" id="campLegend"></div>
+      </div>
+    </aside>
+
+    <div class="obs-map">
+      <div class="obs-canvas camp-box"><canvas id="campMap" aria-label="Карта мира с караваном"></canvas>
+        <canvas id="campLocal" hidden aria-label="Стоянка каравана на локальной карте"></canvas>
+        <div id="campLocalBar" class="camp-local-bar" hidden><span id="campLocalText"></span><button type="button" id="campLocalSkip">Дальше по карте мира</button></div>
+        <div class="seg zoomseg obs-zoom" title="Колёсико — зум у курсора, перетаскивание — сдвиг; клавиши + − 0">
+          <button type="button" id="campZoomIn" aria-label="Приблизить">+</button>
+          <button type="button" id="campZoomOut" aria-label="Отдалить">−</button>
+          <button type="button" id="campZoomFit" aria-label="Весь мир">⌂</button>
+          <button type="button" id="campFollow" aria-pressed="true" title="Следить за караваном: он в середине, виден весь пузырь вокруг">◎</button>
+          <button type="button" id="campWatch" aria-pressed="true" title="Показывать бои и стоянки на локальной карте (кроме темпа «Сразу»)">⚔</button>
+        </div>
+      </div>
+      <div class="readout" id="campReadout">Наведите на карту, чтобы увидеть клетку.</div>
+    </div>
+
+    <div class="obs-dock" id="campDock">
+      <div class="seg obs-tabs"><button type="button" data-tab="object" aria-pressed="true">Объект</button></div>
+      <div class="obs-pane" data-pane="object"><div class="inspect" id="campInspect"></div></div>
+    </div>
+
+    <aside class="obs-chron">
+      <div class="row"><span class="lbl">Летопись похода</span><button type="button" id="campExport" class="quiet mini" title="Вся летопись похода текстом: отряд, поручение, итог, строки по дням, судьбы">В файл</button></div>
+      <div class="seg wrapseg camp-topics" id="campTopics" title="Темы летописи: нажмите, чтобы скрыть или показать"></div>
+      <small id="campWho" class="camp-who" hidden></small>
+      <div class="log" id="campLog"></div>
+    </aside>
   </section>
 
   <!-- ───────── the creature constructor (src/app/beastView.js): one species as one form over the tables' edits ───────── -->
@@ -421,7 +551,6 @@
     </div>
   </section>
 
-  <p class="app-foot">Старые режимы (Мир, Карта, Кампания, Эпическая кампания) остаются в <a href="index.html">техническом полигоне</a>.</p>
 </div>
 
 <script type="module" src="src/app/main.js"></script>

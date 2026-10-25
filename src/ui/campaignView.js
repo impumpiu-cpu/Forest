@@ -23,7 +23,7 @@ import {eraPlan, historyLength} from '../atlas/history.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$} from './dom.js';
-import {TickClock} from '../core/clock.js';
+import {TickClock, dateText} from '../core/clock.js';
 import {mountPace} from './pace.js';
 import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
@@ -69,7 +69,7 @@ export class CampaignView extends AtlasView {
   // the «Мир» screen's controls are not built here: only the campaign's
   build() {
     this.layer = 'peoples'; this.capPick = null; this.logShown = 0; this.fog = null; this.fogKey = '';
-    this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', screen: 'campaign',
+    this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', dock: 'campDock', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', screen: 'campaign',
       hint: 'Наведите на карту, чтобы увидеть клетку.'});
     const lay = $('campLayer');
     lay.innerHTML = LAYERS.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.layer}">${l}</button>`).join('');
@@ -184,7 +184,7 @@ export class CampaignView extends AtlasView {
     this.mode = mode;
     this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode();
   }
-  // the quick start of the new menu (forest.html → index.html?go=epic): this seed and size, made at once
+  // the quick start (forest.html «Быстрый старт»): this seed and size, made at once
   startEpic({seed, size} = {}) {
     if (seed) $('campEpicSeed').value = String(seed).slice(0, 24);
     if (size && EPIC_SIZES.some(([id]) => id === size)) {
@@ -229,8 +229,9 @@ export class CampaignView extends AtlasView {
   setupMode() {
     this.choosing = true;
     const epic = this.mode === 'epic';
-    $('campSetup').hidden = false; $('campRun').hidden = true;
+    $('campSetup').hidden = false; $('campRun').hidden = true; $('campRunSide').hidden = true;
     $('campLibField').hidden = epic; $('campEpicField').hidden = !epic;
+    $('campName2').textContent = '';
     $('campTitle').textContent = this.atlas ? this.worldName : epic ? 'Эпическая кампания' : 'Кампания';
     $('campCapsField').hidden = !this.atlas;
     $('campWorldChron').hidden = !this.atlas || !this.atlas.hist;
@@ -266,9 +267,9 @@ export class CampaignView extends AtlasView {
   // ── the walk
   runMode() {
     this.choosing = false;
-    $('campSetup').hidden = true; $('campRun').hidden = false;
+    $('campSetup').hidden = true; $('campRun').hidden = false; $('campRunSide').hidden = false;
     const K = this.atlas.campaign;
-    $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`;
+    $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`; $('campName2').textContent = this.worldName || '';
     this.syncRun(); this.renderSide();
     const sw = (c, l) => `<span><i style="background:${c}"></i>${l}</span>`;
     $('campLegend').innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(',')})`, 'караван (флажок)') + sw('rgba(255,215,110,0.8)', 'путь пешком (пунктир), дом (кольцо)') + sw('rgba(255,211,106,0.75)', 'где искать след (круг), найденный след (ромб: жёлтый — к нему идут, серый — взят)') + sw('rgba(240,110,80,0.8)', 'где-то здесь корона (круг), корона (зубцы; красная — у врагов)') + sw('rgba(240,160,90,0.9)', 'путь с колёсами — по дорогам (длинный штрих)') +
@@ -284,6 +285,8 @@ export class CampaignView extends AtlasView {
   }
 
   clickAt(e) { this.selectAt(e); }   // a click on the world map: the card of what is here (ui/inspect.js)
+  // the date in the head, with the day of the season the playback is at
+  frame() { const a = this.atlas; if (a?.hist) $('campDay').textContent = dateText(a, this.clock, seasonWord); }
 
   // the walk runs on the observer's clock (core/clock.js): a season a step; a camp watched on the local map holds the
   // season's playback until it is over
@@ -304,6 +307,7 @@ export class CampaignView extends AtlasView {
     if (this.raf) return;
     const loop = () => {
       this.raf = 0;
+      this.frame();
       if (this.local) { this.stepLocal(); this.raf = requestAnimationFrame(loop); return; }
       if (this.queue.length && this.atlas?.campaign && this.clock.running && this.slide() >= this.queue[0].at) { this.startLocal(this.queue.shift()); this.raf = requestAnimationFrame(loop); return; }
       if (!this.atlas?.campaign || !this.clock.running || this.slide() >= 1) { this.draw(); return; }
@@ -439,8 +443,8 @@ export class CampaignView extends AtlasView {
     const tameKind = K.why?.startsWith('tame:') ? BEASTS[K.why.slice(5)] : null;
     const townOf = id => a.towns.find(t => t.id === id), inTown = K.inTown && townOf(K.inTown.id), via = K.via != null && townOf(K.via);
     const plan = ended(K) ? PHASE[K.phase] : inTown ? `в ${townLabel(inTown, 3)} ${inTown.name}: ${K.inTown.why === 'winter' ? 'зимуют' : 'торгуют, работают, лечатся'}` : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : via ? `идут в ${townLabel(via, 1)} ${via.name}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : PHASE[K.phase];
-    $('campStatus').innerHTML = `<dt>Дата</dt><dd>год ${H.year}, ${seasonWord(H.season)}</dd>` +
-      `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
+    this.frame();
+    $('campStatus').innerHTML = `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
       (K.quest ? (() => { const Q = K.quest, C = Q.crown, st = C.state === 'carried' ? `несёт ${esc(K.members.find(m => m.id === C.carrier)?.name || '—')}` : C.state === 'taken' ? 'у врагов: отбить' : C.exact || C.seen ? `известно где: ${esc(C.label)}` : C.area ? `где-то в круге ${Math.round(C.area.r)} кл.` : 'где — неизвестно';
         return `<dt>Корона</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>Следы</dt><dd>найдено ${Q.found} из ${Q.clues.length}${K.stats.storms ? ` · штурмов ${K.stats.storms}` : ''}</dd>`; })() : '') +

@@ -11,8 +11,9 @@ import {atlasDone} from '../atlas/generate.js';
 import {seasonLabel, yearsLived, endYear} from '../atlas/history.js';
 import {startFree, isFree, PLACEABLE, landPeople, addLair, wildByLand, wildDone, setCalamity, runYears, stepRun, canMarch} from '../atlas/settle.js';
 import {lineLevel, keeps, DETAILS} from '../atlas/chronicle.js';
-import {stateOf, stateLabel} from '../atlas/diplomacy.js';
 import {realmLabel} from '../atlas/realms.js';
+import {relationsHtml} from '../ui/inspect.js';
+import {openTab} from '../ui/tabs.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from '../ui/worlds.js';
 import {warnEdits} from '../ui/tableEdits.js';
 import {Camera} from '../render/camera.js';
@@ -75,7 +76,7 @@ export class SettleView extends MapView {
       onPause: () => { const a = this.atlas; if (!a || atlasDone(a)) return; this.clock.toggle(); this.syncRun(); }});
     segOf($('setDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); this.chronOf = null; if (this.atlas) this.renderSide(); });
     this.buildLibrary2();
-    this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
+    this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', dock: 'setDock', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
   }
 
   show() { this.sync(); this.refresh(); if (this.atlas) this.draw(); }
@@ -186,8 +187,7 @@ export class SettleView extends MapView {
     $('setCals').innerHTML = cals.length ? `<span class="lbl">Бедствия</span><div class="cal-list">${cals.map(c => `<div><b>${esc(c.label)}</b> — ${PHASE[c.phase] || c.phase}` +
       (c.phase === 'waiting' || c.phase === 'omens' ? `, поднимется в ${c.riseAt}-м году` : c.phase === 'rise' && c.boss ? `: ${esc(c.boss.title[0])} ${esc(c.boss.name)}, герои — к ${c.heroesAt}-му` : c.fell ? ` в ${c.fell.year}-м (${BY[c.fell.by] || c.fell.by})` : '') + '</div>').join('')}</div>` +
       (a.artifact ? `<small class="muted">${esc(a.artifact.name)}: ${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса', caravan: 'у каравана', capital: 'в столице', lost: 'потерян в пути'}[a.artifact.holder.kind] || '—'}</small>` : '') : '';
-    const rels = Object.entries(a.rel || {}).map(([key, r]) => { const [p, q] = key.split(':'), st = stateOf(a, p, q); return `<dt>${esc(realmLabel(a, p))} и ${esc(realmLabel(a, q))}</dt><dd class="rel-${st}">${stateLabel(st)}</dd>`; }).join('');
-    $('setRels').innerHTML = rels ? `<dt class="relhead">Державы между собой</dt><dd></dd>${rels}` : '';
+    $('setRels').innerHTML = relationsHtml(a);
     // the chronicle only grows: new lines are appended
     const box = $('setChron'), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
     if (this.chronOf !== a) { this.chronOf = a; this.chronShown = 0; box.innerHTML = ''; }

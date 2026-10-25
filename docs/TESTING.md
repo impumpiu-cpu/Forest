@@ -39,7 +39,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 |---|---|---|
 | `npm test` | цепочка выше | всё, что должно быть зелёным перед слиянием |
 | `npm run serve` | `serve.mjs` | локальный сервер игры, открывает `forest.html` ([Как играть](GAME.md#запуск)) |
-| `npm run build` | `build.mjs` | `dist/forest.html` — полигон `index.html` одним файлом; нужен `npm install` (esbuild) |
+| `npm run build` | `build.mjs` | `dist/forest.html` — игра одним файлом; нужен `npm install` (esbuild) |
 | `npm run smoke` | `smoke.mjs` | колония на N дней: что происходило по дням, снаряжение, журнал, время тика |
 | `npm run determinism` | `determinism.mjs` | две игры с одним сидом совпадают; игра, сохранённая на середине, продолжается так же |
 | `npm run atlas` | `atlas-check.mjs` | карта мира: тот же сид — тот же мир; суша, море по краю, плиты, породы и руды, климатические пояса, дождевая тень, реки и озёра, биомы, почвы; дикая эра, эпоха древних, эпоха молодых; эпический мир и его бедствия |
@@ -181,7 +181,7 @@ node tools/stress.mjs --budget 6                     # выход 1, если mi
 ## Проверка слоёв
 
 `tools/check-layers.mjs` (первая в `npm test`):
-- ядро (всё, кроме `src/ui`, `src/render`, `src/app`, `src/main.js`) не импортирует оболочку и не трогает глобалы браузера (`document`, `window`, `localStorage`, `indexedDB`…);
+- ядро (всё, кроме `src/ui`, `src/render`, `src/app`) не импортирует оболочку и не трогает глобалы браузера (`document`, `window`, `localStorage`, `indexedDB`…);
 - код, который работает для каждого существа каждый тик (`agents/brains/`, `agents/behaviours/`, `agents/tasks.js`, `jobRunners.js`, `combat.js`, `movement.js`, `data/jobs.js`), не перебирает `w.agents` целиком — нужен индекс `agents/lookup.js` или `agents/spatial.js`; дешёвый перебор помечается на строке `// scan: почему дёшево`;
 - каждый файл `src/` разбирается (`node --check`);
 - **числа в логике:** считает дробные числа в файлах логики (`agents`, `atlas`, `campaign`, `settlement`, `world`, `seam`, `nav`, `outside`) и сравнивает с `tools/numbers-baseline.json`. Больше линии — предупреждение (тест не падает): числу место в `src/data/` и таблице. Меньше — линию можно опустить: `node tools/check-layers.mjs --numbers`.

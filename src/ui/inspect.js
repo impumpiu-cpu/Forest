@@ -178,6 +178,22 @@ export function inspectHtml(a, sel, cellText = '') {
   return sec('Клетка', `<p>${esc(cellText)}</p>`);
 }
 
+// the realms among themselves, as a matrix (the dock's «Державы»): the standing of each pair in colour, the wars below
+export function relationsHtml(a) {
+  const live = (a.realms || []).filter(r => realmTowns(a, r.id).length);
+  if (live.length < 2) return '<p class="muted">Державы ещё не встретились.</p>';
+  const short = r => { const l = realmLabel(a, r.id); return l.length > 26 ? l.slice(0, 24) + '…' : l; };
+  const head = `<tr><th></th>${live.map(r => `<th title="${esc(realmLabel(a, r.id))}">${esc(short(r))}</th>`).join('')}</tr>`;
+  const rows = live.map(p => `<tr><th class="rw" title="${esc(realmLabel(a, p.id))}">${esc(short(p))}</th>${live.map(q => {
+    if (p.id === q.id) return '<td>—</td>';
+    const r = relation(a, p.id, q.id); if (!r) return '<td title="не встречались"></td>';
+    const st = stateOf(a, p.id, q.id);
+    return `<td class="rel-${st}" title="${esc(realmLabel(a, p.id))} и ${esc(realmLabel(a, q.id))}: ${stateLabel(st)} (${r.att.toFixed(1)})${r.war ? `, война с ${r.war.since} г.` : ''}${r.routes ? `, торговых путей ${r.routes}` : ''}">${r.war ? '⚔' : r.att.toFixed(1)}</td>`;
+  }).join('')}</tr>`).join('');
+  const wars = Object.entries(a.rel || {}).filter(([, r]) => r.war).map(([k, r]) => { const [p, q] = k.split(':'); return `<li>${esc(realmLabel(a, p))} и ${esc(realmLabel(a, q))}: с ${r.war.since} г.${r.war.battles ? `, битв ${r.war.battles}` : ''}${r.war.razed ? `, сожжено городов ${r.war.razed}` : ''}</li>`; }).join('');
+  return `<table class="relmat">${head}${rows}</table>${wars ? `<ul class="relwars">${wars}</ul>` : ''}`;
+}
+
 // a short name of the selection for a title
 export function selTitle(a, sel) {
   const o = resolve(a, sel); if (!o) return '';

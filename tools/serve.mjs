@@ -12,7 +12,7 @@ const TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 const server = createServer((req, res) => {
   let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  if (path.endsWith('/')) path += 'index.html';
+  if (path.endsWith('/')) path += 'forest.html';
   const file = join(ROOT, normalize(path));
   if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
   let st;

@@ -51,6 +51,7 @@ import {Camera} from '../render/camera.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {pickObject, inspectHtml, whereIs} from './inspect.js';
+import {openTab} from './tabs.js';
 import {CATEGORIES} from '../data/townBuildings.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from './worlds.js';
 import {cellPlan, settleable} from '../seam/cell.js';
@@ -116,7 +117,7 @@ export function exportChronicle(a, name, what) {
 
 // The map on a screen: the cells of a world painted by layer, the camera over them, what is drawn on top (rivers,
 // roads, towns, lairs, parties), the readout of a cell under the cursor. No controls of its own: the polygon «Мир»
-// (AtlasView below, index.html), the campaign (ui/campaignView.js), «Создать землю» and «Заселение мира» (src/app/,
+// (AtlasView below, the base of the campaign screen), the campaign (ui/campaignView.js), «Создать землю» and «Заселение мира» (src/app/,
 // forest.html) are each this map with their own. `ids` (wireCamera) names the page's elements: map, readout, zoom
 // buttons, the screen, the legend — so nothing here reaches for an element of one page only.
 export class MapView {
@@ -147,6 +148,7 @@ export class MapView {
   select(sel, cellText = '') {
     this.sel = sel; this.selCell = cellText;
     this.renderInspect(); this.draw();
+    if (sel && this.ids?.dock) openTab($(this.ids.dock), 'object');   // the dock shows the card
   }
   renderInspect() {
     const box = this.ids?.inspect ? $(this.ids.inspect) : null; if (!box) return;
@@ -716,7 +718,8 @@ export class MapView {
   }
 }
 
-// The «Мир» polygon screen (index.html): the map with the settings, the library, the stages and the chronicle.
+// The world screen of old (its own controls are gone with the polygon; the campaign screen builds on it: the library,
+// a saved world shown, the clock's steps over history).
 export class AtlasView extends MapView {
   setup({onBack, onSettle} = {}) {
     this.cfg = this.load();
