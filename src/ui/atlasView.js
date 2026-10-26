@@ -69,9 +69,13 @@ const OPTS = {
   young: YOUNG_YEARS.map((e, i) => [i, e.label]),
   // the beasts with a habitat, and the tribes of the lairs (their fields: atlas/lairs.js lairFolk)
   fauna: [...SPECIES.filter(sp => sp.habitat), ...[...new Set(LAIRS.filter(L => L.tribe).map(L => L.species))].map(id => SPECIES.get(id))].map(sp => [sp.id, sp.plural]),
-  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['peoples', 'Народы'], ['realms', 'Державы']],
+  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['wild', 'Живность'], ['peoples', 'Народы'], ['realms', 'Державы']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
+// the layer «Живность»: each lair's owner in the colour of its first lair kind (data/lairs.js); a land that holds next to
+// none of a kind does not show it bright for the few that wandered in
+const WILD_COLORS = {}; for (const L of LAIRS.all()) if (L.species && !L.undead && !L.fiend && !WILD_COLORS[L.species]) WILD_COLORS[L.species] = L.color;
+const WILD_K = 0.05;
 const VIEW_KEYS = new Set(['layer', 'ore', 'fauna']);
 // the pace of history: seasons a frame and the wait between frames; «сразу» runs as many seasons as
 // fit in a frame's budget. ×1 is a season a frame — 100 years in about 40 s, slow enough to read
@@ -239,6 +243,7 @@ export class MapView {
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
     else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + '<span>пунктирный ромб — скрытое логово глуши</span>' + sw([110, 60, 130], 'гниль');
     else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; пунктир по воде — морские пути гаваней; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв') + '<b>угодья городов</b>: ' + sw(SITE_COLORS.food, 'пашни, выгоны, рощи (круг)') + sw(SITE_COLORS.raw, 'рудники, каменоломни, лесосеки (квадрат)') + '× пень — сожжено; тонкие тропы к городу; <b>жёлтые связи</b> между городами — по ним идёт хлеб, ярче — больше; <b>отряды</b>: круг с хвостом — набег или выводок, квадрат — войско, крылья — дракон (пунктир — путь вперёд); ' + sw([170, 70, 40], 'фуражиры войска');
+    else if (this.layer === 'wild') html = Object.entries(WILD_COLORS).map(([id, c]) => sw(c, SPECIES.get(id).plural)).join('') + '<b>живность логов</b> — где чей народ гуще всего, ярче — гуще; ореолы вокруг логов, выводки несут их дальше; пунктирный ромб — скрытое логово' + sw([110, 60, 130], 'гниль');
     else if (this.layer === 'realms') { const a = this.atlas, alive = a?.realms ? a.realms.filter(r => a.towns.some(t => t.alive && t.realm === r.id)) : [];
       html = (alive.length ? alive.map(r => sw(r.color, `${realmLabel(a, r.id)} — ${a.towns.filter(t => t.alive && t.realm === r.id).length} гор.`)).join('') : '<span>держав ещё нет</span>') +
         '<b>земля державы</b> — куда достают её города по суше (крупные города и столица — дальше); светлая кайма — граница; ничья земля — серая'; }
@@ -290,6 +295,12 @@ export class MapView {
         if (f.barrows && f.barrows[i] > 0) c = mix(c, [120, 90, 90], 0.5 * f.barrows[i]);   // old battlefields
         if (f.scourge && f.scourge[i] > 0.25) c = mix(c, [170, 70, 40], 0.5 * f.scourge[i]);   // an army's foragers
         return this.rotTint(a, i, c);
+      }
+      case 'wild': {   // the lairs' folk (atlas/lairs.js lairFolk): the kind that lives thickest here, as bright as it is thick
+        const g = mix(base, [40, 40, 36], 0.6); if (!a.fauna || f.ocean[i]) return g;
+        const F = a.fauna, j = faunaCellOf(a, i); let best = 0, col = null;
+        for (const s of F.list) { if (!s.lair || s.K[j] <= 0) continue; const v = Math.min(1, s.N[j] / Math.max(s.K[j], WILD_K)); if (v > best) { best = v; col = WILD_COLORS[s.id]; } }
+        return col ? this.rotTint(a, i, mix(g, col, 0.15 + 0.8 * best)) : this.rotTint(a, i, g);
       }
       case 'realms': {   // the realms' land (atlas/realms.js realmLand): its colour, a light rim where it meets another or no one's
         const g = mix(base, [40, 40, 36], 0.6), own = realmLand(a); if (!own || f.ocean[i]) return g;
@@ -378,15 +389,15 @@ export class MapView {
     px.translate(cam.ox, cam.oy); px.scale(cam.S, cam.S);
     this.minW = 0.7 / cam.S;
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
-    if (a.f.road && ['relief', 'biomes', 'peoples', 'realms', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
+    if (a.f.road && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild'].includes(this.layer)) this.drawRoads(a, px);
     if (a.f.sea && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawLanes(a, px);
-    if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples', 'realms'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
-    if (a.artifact && ['relief', 'biomes', 'fauna', 'peoples', 'realms'].includes(this.layer)) this.drawEpic(a, px);
+    if (a.lairs && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
+    if (a.artifact && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'].includes(this.layer)) this.drawEpic(a, px);
     if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
     if (a.sites && ['relief', 'biomes', 'peoples', 'realms', 'soils'].includes(this.layer)) this.drawSites(a, px);
-    if (a.parties && ['relief', 'biomes', 'peoples', 'realms', 'fauna'].includes(this.layer)) this.drawParties(a, px);
+    if (a.parties && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild'].includes(this.layer)) this.drawParties(a, px);
     if (a.ruins && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawRuins(a, px);
-    if (a.towns && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
+    if (a.towns && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
     if (this.sel) this.drawSelection(a, px);
     this.overlay(a, px, cam);

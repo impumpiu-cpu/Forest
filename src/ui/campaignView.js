@@ -51,7 +51,7 @@ const SEASON_LIST = SEASONS.all();
 // `max` none (a camp runs at `local` × the base pace: an hour in 2,5 s when watching)
 const WATCH = {watch: {stops: true}, x4: {}, x16: {}};
 const LOCAL_KIND = {night: 'Ночь', ambush: 'Засада на марше', stop: 'Стоянка', guard: 'Штурм'};
-const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples', 'Народы'], ['realms', 'Державы'], ['fauna', 'Звери']];
+const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples', 'Народы'], ['realms', 'Державы'], ['fauna', 'Звери'], ['wild', 'Живность']];
 const PHASE = {out: 'ищут корону', back: 'несут корону домой', won: 'вернулись с короной', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 // a world whose quest is the epic one (campaign/quest.js makeQuest)

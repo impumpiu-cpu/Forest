@@ -97,12 +97,14 @@ export function peopleFoes(a, i, K) {
   }
   return out;
 }
-// a foe that comes may bring a second kind of the same cell along (WILD_FOES.mix): beasts with beasts, bands with bands —
+// a foe that comes may bring a second kind of the same cell along (WILD_FOES.mix): beasts with beasts, a band with a band
+// or with beasts (its war beasts then) —
 // the pick weighed by how likely each comes. → the foe, with `with: {beast | band, label, share}` when it brings one
 const sideOf = d => (d.beast ? 'beast' : d.band && d.kind !== 'army' ? 'band' : null);
 export function withCompany(d, ds, r) {
   const side = sideOf(d), M = WILD_FOES.mix; if (!side || d.boss) return d;
-  const others = ds.filter(o => o !== d && sideOf(o) === side && (o.beast || o.band) !== (d.beast || d.band));
+  // (beasts join a band as its war beasts: one side on the local map; a band does not join beasts)
+  const others = ds.filter(o => o !== d && (sideOf(o) === side || (side === 'band' && sideOf(o) === 'beast')) && (o.beast || o.band) !== (d.beast || d.band));
   if (!others.length) return d;
   const tot = others.reduce((v, o) => v + o.p, 0);
   if (!(r() < M.chance * tot / (tot + d.p))) return d;

@@ -167,9 +167,11 @@ const foodNow = w => FOODS.all().reduce((s, f) => s + (w.stock[f.id] || 0) * f.n
 // the foe comes: a band of raiders (data/raids.js) or a pack of beasts, at the edge or close by
 // the weight of a fight on the caravan's strength (data/camp.js CAMP.foe): a chance meeting lighter, a named foe heavier,
 // and a sway at random on top. Shared with the quick mode (campaign/fight.js autoFight)
+const refOf = F => CAMP.foe.density.ref[F.kind] ?? CAMP.foe.density.ref.else;
 export function foeWeight(r, F, kind) {
-  const B = CAMP.foe, named = F.boss ? (F.boss.mustDie ? B.boss : F.leaderLair ? B.leader : B.mini) : null;
-  const base = named ?? (kind === 'guard' || F.kind === 'army' ? B.force : B.skirmish[0] + r() * (B.skirmish[1] - B.skirmish[0]));
+  const B = CAMP.foe, named = F.boss ? (F.boss.mustDie ? B.boss : F.leaderLair ? B.leader : B.mini) : null, D = B.density;
+  // a chance meeting: as many as the land holds (the thing's strength: its density), the named and the forces as they are
+  const base = named ?? (kind === 'guard' || F.kind === 'army' ? B.force : (B.skirmish[0] + r() * (B.skirmish[1] - B.skirmish[0])) * Math.max(D.lo, Math.min(D.hi, (F.strength ?? refOf(F)) / refOf(F))));
   return Math.max(0.1, base + (2 * r() - 1) * B.sway);
 }
 
@@ -198,8 +200,18 @@ function spawnFoe(w) {
     // the band counted out in strength rating (data/raids.js fill): the budget, rounded up by heads, the bands' caps lifted
     return spawnGroup(w, 'raiders', b, {...opts, band: who.band || 'bandits', fill: {up: true, max: {}}, atLeast: first && F.boss ? CAMP.boss.atLeast : 0});
   };
-  let group = part({beast, band}, main, true);
-  if (W) group = group.concat(part(W, budget - main, false));
+  // beasts that come with a band (campaign/land.js withCompany) are its war beasts: one side, one squad, the band's brain
+  const bandMain = !(beast && MIGRATIONS.has(beast)), joined = W && W.beast && bandMain ? W : null;
+  let group;
+  if (joined) {
+    const sp = MIGRATIONS.get(joined.beast).species, n = Math.min(CAMP.foe.most, Math.max(1, Math.ceil((budget - main) / expectedStrength(sp, {key: 'wild'}))));
+    const want = CAMP.threat * F.strength * (map.threat || 1);
+    w.fame = 0; w.fame = want - raidThreat(w);
+    group = spawnGroup(w, 'raiders', main, {...opts, band: band || 'bandits', fill: {up: true, max: {}}, beasts: {species: sp, n}, atLeast: F.boss ? CAMP.boss.atLeast : 0});
+  } else {
+    group = part({beast, band}, main, true);
+    if (W) group = group.concat(part(W, budget - main, false));
+  }
   // the guards of a place stormed (campaign/quest.js) defend it to the last: their band does not break and flee
   if (S.kind === 'guard') for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
     const sq = w.squads?.[id]; if (sq) { sq.kind = 'mindless'; sq.goal = 'slaughter'; }

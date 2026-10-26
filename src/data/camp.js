@@ -37,6 +37,10 @@ export const CAMP = {
     force: 1,             // a realm's army, the guards of a place stormed
     leader: 1.15, mini: 1.25, boss: 1.5,   // a leader of an old lair, a grave's guard, the fourth and its lair (campaign/epic.js)
     sway: 0.25,
+    // a chance meeting is as many as live there (campaign/land.js: the thing's strength grows with the density of who
+    // came): × its strength over `ref` of its kind (the mean of that kind in the wild; `else` for the rest), within
+    // [lo, hi] — a thick land sends more, a thin one fewer; a kind as a whole is as strong as before
+    density: {ref: {beasts: 0.8, tribe: 1.05, lair: 1.1, raiders: 1, undead: 1.3, bandits: 1, else: 1.2}, lo: 0.6, hi: 1.5},
     most: 18,             // no more heads than this, however weak each (a swarm of bats is a swarm, not a plague)
   },
   // the threat the band carries its gear and aim by (settlement/threat.js) — × the thing's strength; in the quick

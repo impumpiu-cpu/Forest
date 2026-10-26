@@ -18,6 +18,8 @@ import {meet, stepDiplomacy} from '../src/atlas/diplomacy.js';
 import {realmSpecies} from '../src/atlas/court.js';
 import {stepLairs} from '../src/atlas/lairs.js';
 import {freeLairCaptives} from '../src/campaign/fight.js';
+import {foeWeight} from '../src/campaign/camp.js';
+import {CAMP} from '../src/data/camp.js';
 import {CAPTIVE_RAID, WILD} from '../src/data/lairs.js';
 const stepLairsOnce = (a, season) => stepLairs(a, mulberry(9), season);
 import {DEEDS} from '../src/data/deeds.js';
@@ -442,13 +444,25 @@ scene_('W22', 'кто нападает — из полей: волки там, �
   const ds = dangers(a, spot), vs = ds.filter(d => d.species === 'varg');
   return (vs.length === 1 && vs[0].lair === lair.id) || `варги в пуле: ${JSON.stringify(vs.map(d => [d.kind, d.lair]))}`;
 });
-scene_('W23', 'второй вид — той же стороны: звери со зверями, банда с бандой; с боссом — никого; без удачи — один', () => {
+scene_('W23', 'второй вид — одной стороны: звери со зверями, банда с бандой или со зверями (её боевыми), звери банду не ведут; с боссом — никого; без удачи — один', () => {
   const ds = [{kind: 'beasts', beast: 'wolves', p: 0.1, label: 'волки'}, {kind: 'beasts', beast: 'lynx', p: 0.1, label: 'рыси'}, {kind: 'tribe', band: 'goblins', p: 0.1, label: 'гоблины'}];
   const two = withCompany(ds[0], ds, () => 0);
   if (two.with?.beast !== 'lynx' || two.label !== 'волки и рыси') return `звери: ${JSON.stringify(two)}`;
-  if (withCompany(ds[2], ds, () => 0).with) return 'банда привела зверей';
+  if (withCompany(ds[0], ds, seq(0, 0.99)).with?.band) return 'звери привели банду';
+  const gb = withCompany(ds[2], ds, () => 0);
+  if (!gb.with?.beast) return `банда без зверей: ${JSON.stringify(gb)}`;
   if (withCompany({...ds[0], boss: {name: 'Вожак'}}, ds, () => 0).with) return 'босс привёл чужих';
   if (withCompany(ds[0], ds, () => 0.99).with) return 'второй пришёл без удачи';
+  return true;
+});
+scene_('W23b', 'сколько пришло — по плотности: густая земля шлёт больше, редкая меньше; именных и войска это не касается', () => {
+  const D = CAMP.foe.density, w = F => foeWeight(() => 0.5, F, 'night');
+  const thin = w({kind: 'beasts', strength: 0.3}), mean = w({kind: 'beasts', strength: D.ref.beasts}), thick = w({kind: 'beasts', strength: 3});
+  if (!(thin < mean && mean < thick)) return `редкая ${thin}, средняя ${mean}, густая ${thick}`;
+  const B = CAMP.foe, mid = B.skirmish[0] + 0.5 * (B.skirmish[1] - B.skirmish[0]);
+  if (Math.abs(thin - mid * D.lo) > 1e-9 || Math.abs(thick - mid * D.hi) > 1e-9) return `пределы: ${thin} / ${thick}`;
+  if (w({kind: 'army', strength: 3}) !== w({kind: 'army', strength: 0.3})) return 'войско зависит от плотности';
+  if (w({kind: 'lair', strength: 3, boss: {name: 'Вожак'}, leaderLair: 1}) !== w({kind: 'lair', strength: 0.3, boss: {name: 'Вожак'}, leaderLair: 1})) return 'именной бой зависит от плотности';
   return true;
 });
 scene_('W24', 'набег логова: звери стана — только если живут рядом; второй вид его земли пристаёт и прибавляет силы', () => {

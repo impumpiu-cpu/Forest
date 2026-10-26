@@ -19,7 +19,8 @@ import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
-import {RAID_BANDS, banditKit, kitFor, raiderBody} from './raids.js';
+import {RAID_BANDS, BAND_BEASTS, banditKit, kitFor, raiderBody} from './raids.js';
+import {faunaLevel} from '../world/region.js';
 import {createSquad} from '../agents/squad.js';
 import {SPECIES, isPredator, onSpeciesChange, arrives} from './species.js';
 import {raceLabel, refreshBody} from '../agents/special.js';
@@ -116,7 +117,11 @@ MIGRATIONS.registerAll([
   {id: 'raiders', faction: 'raiders', minDist: 40, topic: 'danger',
     members: (w, rng, n, opts) => {
       const band = RAID_BANDS.get(opts.band || 'bandits'), t = raidThreat(w);
-      const list = band.members(w, rng, n, t, opts.fill || {});
+      // on a world cell the war beasts come as thick as they live there (data/raids.js BAND_BEASTS)
+      const here = w.site?.world ? Object.fromEntries(SPECIES.filter(sp => sp.behaviours && sp.habitat).map(sp => [sp.id, Math.min(1, faunaLevel(w, sp.id) / BAND_BEASTS.full)])) : null;
+      const list = band.members(w, rng, n, t, {...(opts.fill || {}), ...(here ? {here} : {})});
+      // beasts that joined the band on the way (campaign/camp.js: a camp's foe of two kinds) — its war beasts
+      if (opts.beasts) for (let k = 0; k < opts.beasts.n; k++) list.push({species: opts.beasts.species});
       // a boss's retinue (campaign/camp.js): at least this many, made up with more of the band's most numerous kind
       if (opts.atLeast) { const most = list.map(m => m.species).sort((p, q) => list.filter(x => x.species === q).length - list.filter(x => x.species === p).length)[0]; while (list.length < opts.atLeast) list.push({...list.find(m => m.species === most)}); }
       return list.map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),

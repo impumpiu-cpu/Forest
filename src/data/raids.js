@@ -47,8 +47,9 @@ const heads = (budget, t) => budget / raiderStrength(t);
 // rounded up: a campaign's foe, data/camp.js CAMP.foe); `max` caps a
 // species by head count ({ogre: 2}); `extra` — members who come anyway (a necromancer), paid from the budget
 // too. At least one member; no more than 18.
-function fill(rng, budget, mix, t, {extra = [], kit = 'raid', max = {}, up = false} = {}) {
+function fill(rng, budget, mix, t, {extra = [], kit = 'raid', max = {}, up = false, here = null} = {}) {
   const cost = sp => memberStrength(sp, t, kit);
+  if (here) mix = mix.map(([sp, wt]) => [sp, wt * (here[sp] ?? 1)]);   // the war beasts only as many as live about (data/raids.js BAND_BEASTS)
   const out = [...extra];
   let left = budget - extra.reduce((s, m) => s + memberStrength(m.species, t), 0);
   for (let guard = 0; guard < 40; guard++) {
@@ -61,6 +62,11 @@ function fill(rng, budget, mix, t, {extra = [], kit = 'raid', max = {}, up = fal
   if (!out.length) out.push({species: (mix.find(m => m[1] > 0) || mix[0])[0]});
   return out.slice(0, 18);
 }
+
+// On a cell of the world map (seam/cell.js: the game in a settlement, a caravan's camp) a band's war beasts — the wargs
+// of goblins and orcs, the spiders, the hyenas of gnolls — come only as thick as they live about (world/region.js
+// faunaLevel): × their level over `full` (at most 1); on the polygon, as the band's list says
+export const BAND_BEASTS = {full: 0.6};
 
 // early bands carry clubs and slings in rags, later ones spears, shields, bows and leather
 export function banditKit(rng, t) {
