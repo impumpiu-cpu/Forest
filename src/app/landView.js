@@ -25,7 +25,7 @@ import {esc, plural} from '../core/util.js';
 import {$} from '../ui/dom.js';
 
 const STORE = 'forest.land';
-const LAYERS = ATLAS_OPTS.layer.filter(([id]) => !['fauna', 'wild', 'peoples', 'realms'].includes(id));
+const LAYERS = ATLAS_OPTS.layer.filter(([id]) => !['fauna', 'wild', 'rot', 'peoples', 'realms'].includes(id));
 const TOOLS = [['look', 'Смотреть'], ['plate', 'Плиты'], ['raise', 'Поднять'], ['lower', 'Опустить']];
 const ERA = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
 // the compass of the plate card: screen directions (y grows down the map)

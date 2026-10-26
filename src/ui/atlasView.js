@@ -69,7 +69,7 @@ const OPTS = {
   young: YOUNG_YEARS.map((e, i) => [i, e.label]),
   // the beasts with a habitat, and the tribes of the lairs (their fields: atlas/lairs.js lairFolk)
   fauna: [...SPECIES.filter(sp => sp.habitat), ...[...new Set(LAIRS.filter(L => L.tribe).map(L => L.species))].map(id => SPECIES.get(id))].map(sp => [sp.id, sp.plural]),
-  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['wild', 'Живность'], ['peoples', 'Народы'], ['realms', 'Державы']],
+  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['wild', 'Живность'], ['rot', 'Гниль'], ['peoples', 'Народы'], ['realms', 'Державы']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
 // the layer «Живность»: each lair's owner in the colour of its first lair kind (data/lairs.js); a land that holds next to
@@ -97,6 +97,10 @@ function ramp(stops, t) {
 const FRESH = [58, 104, 150], SALT = [150, 176, 168], RIVER = 'rgba(70,130,190,0.95)';
 const DEEP = [[0, [12, 24, 52]], [1, [46, 92, 130]]];
 const LAND = [[0, [96, 128, 70]], [0.35, [130, 140, 78]], [0.65, [128, 104, 74]], [0.85, [110, 100, 96]], [1, [236, 236, 230]]];
+// the layer «Гниль» (atlas/lairs.js stepRot): the rot of the dead from faint to thick; the steps at which the dead rise
+// (data/lairs.js: a vampire in a mixed town, ghouls by the ruins, wights on the barrows, a necromancer's tower)
+const ROT_RAMP = [[0, [64, 62, 58]], [0.12, [96, 74, 104]], [0.25, [130, 72, 150]], [0.5, [176, 70, 186]], [1, [236, 120, 230]]];
+const ROT_FROM = 0.03;   // below this the land is clean
 const HEAT = [[0, [70, 110, 200]], [0.4, [190, 220, 230]], [0.6, [236, 214, 120]], [1, [200, 70, 50]]];
 // yearly rain, mm: desert sand → steppe → green → deep wet blue-green
 const WET = [[0, [214, 184, 120]], [250, [196, 186, 110]], [600, [120, 160, 80]], [1200, [50, 130, 90]], [2500, [30, 90, 120]]];
@@ -244,6 +248,7 @@ export class MapView {
     else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + '<span>пунктирный ромб — скрытое логово глуши</span>' + sw([110, 60, 130], 'гниль');
     else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; пунктир по воде — морские пути гаваней; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв') + '<b>угодья городов</b>: ' + sw(SITE_COLORS.food, 'пашни, выгоны, рощи (круг)') + sw(SITE_COLORS.raw, 'рудники, каменоломни, лесосеки (квадрат)') + '× пень — сожжено; тонкие тропы к городу; <b>жёлтые связи</b> между городами — по ним идёт хлеб, ярче — больше; <b>отряды</b>: круг с хвостом — набег или выводок, квадрат — войско, крылья — дракон (пунктир — путь вперёд); ' + sw([170, 70, 40], 'фуражиры войска');
     else if (this.layer === 'wild') html = Object.entries(WILD_COLORS).map(([id, c]) => sw(c, SPECIES.get(id).plural)).join('') + '<b>живность логов</b> — где чей народ гуще всего, ярче — гуще; ореолы вокруг логов, выводки несут их дальше; пунктирный ромб — скрытое логово' + sw([110, 60, 130], 'гниль');
+    else if (this.layer === 'rot') html = sw(ROT_RAMP[0][1], 'чисто') + sw(ROT_RAMP[1][1], '12% — вампир заводится в смешанном городе') + sw(mix(ROT_RAMP[1][1], ROT_RAMP[2][1], 0.6), '20% — упыри у пепелищ') + sw(ROT_RAMP[2][1], '25% — курганники на курганах') + sw(ROT_RAMP[3][1], '50% — башня некроманта') + sw(ROT_RAMP[4][1], 'гуще некуда') + sw([150, 110, 80], 'курганы и могилы — гниль сочится из них') + '<b>гниль</b> растёт от могил (битвы, набеги, пепелища), ползёт по округе и с обозами крыс по дорогам; тает в мороз и зной, быстрее у башен магов и храмов';
     else if (this.layer === 'realms') { const a = this.atlas, alive = a?.realms ? a.realms.filter(r => a.towns.some(t => t.alive && t.realm === r.id)) : [];
       html = (alive.length ? alive.map(r => sw(r.color, `${realmLabel(a, r.id)} — ${a.towns.filter(t => t.alive && t.realm === r.id).length} гор.`)).join('') : '<span>держав ещё нет</span>') +
         '<b>земля державы</b> — куда достают её города по суше (крупные города и столица — дальше); светлая кайма — граница; ничья земля — серая'; }
@@ -301,6 +306,13 @@ export class MapView {
         const F = a.fauna, j = faunaCellOf(a, i); let best = 0, col = null;
         for (const s of F.list) { if (!s.lair || s.K[j] <= 0) continue; const v = Math.min(1, s.N[j] / Math.max(s.K[j], WILD_K)); if (v > best) { best = v; col = WILD_COLORS[s.id]; } }
         return col ? this.rotTint(a, i, mix(g, col, 0.15 + 0.8 * best)) : this.rotTint(a, i, g);
+      }
+      case 'rot': {   // the rot (atlas/lairs.js): its ramp over the land, the barrows and graves under it
+        const g = mix(base, [40, 40, 36], 0.65); if (!a.rot || !a.fauna || f.ocean[i]) return g;
+        const v = a.rot[faunaCellOf(a, i)];
+        let c = v < ROT_FROM ? g : mix(g, ramp(ROT_RAMP, v), Math.min(1, 0.45 + v));
+        if (f.barrows && f.barrows[i] > 0.15) c = mix(c, [150, 110, 80], 0.35 + 0.4 * Math.min(1, f.barrows[i]));   // barrows and graves: the rot's seed
+        return c;
       }
       case 'realms': {   // the realms' land (atlas/realms.js realmLand): its colour, a light rim where it meets another or no one's
         const g = mix(base, [40, 40, 36], 0.6), own = realmLand(a); if (!own || f.ocean[i]) return g;
@@ -389,15 +401,15 @@ export class MapView {
     px.translate(cam.ox, cam.oy); px.scale(cam.S, cam.S);
     this.minW = 0.7 / cam.S;
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
-    if (a.f.road && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild'].includes(this.layer)) this.drawRoads(a, px);
+    if (a.f.road && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rot'].includes(this.layer)) this.drawRoads(a, px);
     if (a.f.sea && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawLanes(a, px);
-    if (a.lairs && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
+    if (a.lairs && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms', 'rot'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
     if (a.artifact && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'].includes(this.layer)) this.drawEpic(a, px);
     if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
     if (a.sites && ['relief', 'biomes', 'peoples', 'realms', 'soils'].includes(this.layer)) this.drawSites(a, px);
     if (a.parties && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild'].includes(this.layer)) this.drawParties(a, px);
-    if (a.ruins && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawRuins(a, px);
-    if (a.towns && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
+    if (a.ruins && ['relief', 'biomes', 'peoples', 'realms', 'rot'].includes(this.layer)) this.drawRuins(a, px);
+    if (a.towns && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rain', 'soils', 'rot'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
     if (this.sel) this.drawSelection(a, px);
     this.overlay(a, px, cam);
