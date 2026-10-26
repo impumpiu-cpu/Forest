@@ -134,6 +134,9 @@ RECIPES.registerAll([
     want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
+  // a crossbow: a wooden stock, an iron lock, a cord; for every fourth, where arrows are made anyway
+  {id: 'crossbow', tier: 3, at: 'forge', cost: {wood: 3, iron: 1, rope: 1}, fuel: 1, work: 1100, makes: {item: 'crossbow'},
+    want: c => (c.bows >= 1 && short(c.owned('crossbow'), Math.ceil(c.pop / 4)) ? 1.2 : 0)},
   // a dagger for the other hand and the back of a foe; javelins and hatchets with iron heads
   {id: 'irondagger', tier: 2, at: 'forge', cost: {iron: 1, leather: 1}, fuel: 1, work: 400, makes: {item: 'irondagger'},
     want: c => (short(c.owned('irondagger'), Math.ceil(c.pop / 3)) ? 1.3 : 0)},

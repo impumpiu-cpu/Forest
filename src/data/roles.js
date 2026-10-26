@@ -19,6 +19,7 @@ import {Registry} from '../core/registry.js';
 import {ITEMS} from './items.js';
 import {weighted, clamp} from '../core/util.js';
 import {onEdit} from './schema/layer.js';
+import {mayWield} from './kinds.js';
 
 export const COMBAT_ROLES = new Registry('combat role');
 
@@ -30,7 +31,7 @@ COMBAT_ROLES.registerAll([
     hands: [[['maul'], 2], [['warhammer'], 1], [['axe'], 2], [['sword'], 1], [['spear'], 1]],
     body: 'light', back: [], potions: 0, squad: 'front', place: 'front'},
   {id: 'archer', label: 'стрелок', note: 'лук за спиной щитоносцев',
-    hands: [[['bow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
+    hands: [[['bow'], 3], [['crossbow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
   {id: 'skirmisher', label: 'застрельщик', note: 'праща, без брони: подвижный, с фланга',
     hands: [[['sling'], 3], [['bow'], 1]], body: 'none', back: ['quiver'], potions: 0, squad: 'shooter', place: 'mid'},
   {id: 'healer', label: 'знахарь', note: 'посох и зелья: держится сзади, перевязывает своих',
@@ -113,7 +114,7 @@ export function roleKit(species, role, rng, t) {
   if (!R) return [];
   const best = mix.best ?? 4, out = [];
   // the weapons of one metal; a set with a form not made so low (a mace, a sword before bronze) drops out
-  const hand = tierFor(rng, t, best), sets = R.hands.filter(([fs]) => fs.every(f => !forms()[f] || hasBelow(f, hand)));
+  const hand = tierFor(rng, t, best), sets = R.hands.filter(([fs]) => fs.every(f => !forms()[f] || hasBelow(f, hand) && mayWield(species, f)));   // nor one its race will not touch
   for (const f of weighted(rng, sets.length ? sets : R.hands) || []) { const id = pieceOf(f, hand); if (id) out.push(id); }
   const tier = tierFor(rng, t, best), body = (ARMOUR[R.body] || []).filter(([f]) => hasBelow(f, tier));
   if (body.length) { const id = pieceOf(weighted(rng, body), tier); if (id) out.push(id); }

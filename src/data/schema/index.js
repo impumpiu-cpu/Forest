@@ -30,7 +30,7 @@ import {DIPLOMACY} from '../diplomacy.js';
 import {ERAS} from '../history.js';
 import {TECHS, TECH_RULES, techOfBuilding, techOfMaterial} from '../tech.js';
 import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
-import {WOODS, STONES, FAMILIES, RACE_MATERIALS, USES} from '../kinds.js';
+import {WOODS, STONES, FAMILIES, RACE_MATERIALS, RACE_FORMS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
 import {rebuildBaseMods} from '../traits.js';
@@ -296,6 +296,11 @@ export const TABLES = [
     note: 'Что раса делает с каждым материалом (data/kinds.js): можно; не добывает и не делает, но берёт сделанное другими — вещь «грязная»; не касается вовсе; мастер — особый материал даёт ей свои числа. Пока всё всем можно, кроме святого дерева: его мастера — эльфы.',
     columns: [col('id', 'id'), col('label', 'Раса', 'text', {edit: false}),
       ...Object.values(FAMILIES).flatMap(F => F.members()).map(m => col(m, WOODS.has(m) ? WOODS.get(m).label : STONES.has(m) ? STONES.get(m).label : RESOURCES.has(m) ? RESOURCES.get(m).short : m, 'enum', {values: USES}))]},
+  {id: 'raceForms', label: 'Формы рас', group: 'Вещи', key: 'id',
+    rows: () => SPECIES.filter(s => s.kind === 'race').map(s => ({id: s.id, label: s.plural, ...Object.fromEntries(Object.keys(FORMS).map(f => [f, RACE_FORMS[s.id]?.[f] || 'yes']))})),
+    target: (r, c) => [(RACE_FORMS[r.id] ||= {}), c.key],
+    note: 'Чего раса не берёт в руки, из чего бы оно ни было (data/kinds.js RACE_FORMS): «не касается вовсе» — не делает, не носит, её города не продают, её бойцам не достаётся в банде. Эльфы не терпят арбалета.',
+    columns: [col('id', 'id'), col('label', 'Раса', 'text', {edit: false}), ...Object.keys(FORMS).map(f => col(f, f, 'enum', {values: {yes: USES.yes, taboo: USES.taboo}}))]},
   {id: 'quality', label: 'Качество', group: 'Вещи', key: 'id', rows: () => QUALITY.all(),
     note: 'Ступени выделки +0…+4 (data/quality.js): что даёт ступень и как часто мастер её добивается.',
     columns: [

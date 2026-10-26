@@ -61,6 +61,13 @@ export const RACE_MATERIALS = {
   elf: {holywood: 'master'},
 };
 export const useOf = (race, member) => RACE_MATERIALS[race]?.[member] || 'yes';
+// What a race will not take in its hands, whatever it is made of (data/balance/forms.js): the elves and the crossbow —
+// a coward's bow to them. 'taboo' — neither makes, wears nor sells it (agents/equipment.js outfit, settlement/crafting.js,
+// campaign/town.js, data/roles.js); anything not said is 'yes'
+export const RACE_FORMS = {
+  elf: {crossbow: 'taboo'},
+};
+export const mayWield = (race, form) => (RACE_FORMS[race]?.[form] || 'yes') !== 'taboo';
 // a race may get or make things of it;  may wear or wield it
 export const mayMake = (race, member) => { const u = useOf(race, member); return u === 'yes' || u === 'master'; };
 export const mayUse = (race, member) => useOf(race, member) !== 'taboo';

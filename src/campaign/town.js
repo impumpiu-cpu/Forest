@@ -31,7 +31,7 @@ import {free, bondsSets, isBonds} from './captives.js';
 import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
 import {techAllowsMaterial} from '../atlas/tech.js';
-import {KIND_GROVES, WOODS, useOf} from '../data/kinds.js';
+import {KIND_GROVES, WOODS, useOf, mayWield} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 
 const alive = K => K.members.filter(m => m.alive);
@@ -62,7 +62,8 @@ const sellPrice = (t, st, id) => {
 const offerPrice = (o, st) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.id).value * o.n : gearDef(o.id) ? gearValue(o.id) : 10)) * STANDING[st].buy;
 // what a town sells; its arms and armour are its smiths' work: they bear the mark of its people (data/balance/marks.js)
 // (with the world `a`: not the metals its realm has not learnt to work — data/tech.js, atlas/tech.js)
-export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || techAllowsMaterial(a, t, gearDef(o.id)?.material))).map(o => townMade(o, t));
+// (nor a form its people will not touch: no crossbow in an elven town — data/kinds.js RACE_FORMS)
+export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || techAllowsMaterial(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.get(t.people)?.race, gearDef(o.id)?.form))).map(o => townMade(o, t));
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);

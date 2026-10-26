@@ -72,6 +72,11 @@ export const FORMS = {
   // bows and slings lose a duel to a club on purpose: they shoot from afar while others hold the line
   bow:      {blow: 'blunt', slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', melee: {dmg: 0.6, cd: 14}, ranged: {dmg: 1.7, range: 7, cd: 22, ammo: 'arrows', type: 'pierce'}, dur: 90,
     parts: {material: 3, leather: 1, rope: 1}, work: 800, ids: {wood: 'bow'}, names: {wood: ['Лук', 'лук']}, name: m => [`${cap(m.adj.m)} лук`, `${m.short} лук`], glyph: 'bow'},
+  // a bow on a stock: slow to span, but it strikes hard and goes through armour (quality `piercing`); iron in the lock,
+  // so a tier above its wood. The elves will not touch it (data/kinds.js RACE_FORMS)
+  crossbow: {blow: 'blunt', slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', tier: 1, melee: {dmg: 0.6, cd: 15},
+    ranged: {dmg: 2.0, range: 7.5, cd: 40, ammo: 'arrows', type: 'pierce'}, qualities: {piercing: 0.35}, dur: 110,
+    parts: {material: 3, iron: 1, rope: 1}, work: 1100, ids: {wood: 'crossbow'}, names: {wood: ['Арбалет', 'арбалет']}, name: m => [`${cap(m.adj.m)} арбалет`, `${m.short} арбалет`], glyph: 'crossbow'},
   // stones lie everywhere: no ammo, but the sling is far weaker and shorter; a quarry gives better stones
   sling:    {blow: 'blunt', slot: 'hand', hands: 2, of: ['hide'], ref: 'hide', melee: {dmg: 0.5, cd: 14}, ranged: {dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: 'slingStones', type: 'blunt'}, dur: 60,
     parts: {material: 1}, work: 600, ids: {hide: 'sling'}, names: {hide: ['Праща', 'праща']}, name: m => [`${cap(m.adj.f)} праща`, `${m.short} праща`], glyph: 'sling'},

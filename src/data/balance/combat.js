@@ -28,6 +28,9 @@ export const COMBAT = {
   back: {dmg: 1.4, aware: 60},
   // a thrown weapon (quality `thrown`): the rating (КС) counts its throws against this many shots in a fight
   thrown: {shots: 6},
+  // the armour a blow or a shot meets on the average foe: what the rating (КС) lets a piercing weapon (quality `piercing`)
+  // get through
+  armourSeen: 0.3,
 };
 
 // how far finer work (data/quality.js) may push a piece; a quality's own `cap` adds to these

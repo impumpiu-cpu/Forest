@@ -18,7 +18,7 @@ import {season} from '../data/seasons.js';
 import {CAPS, COMBAT, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS, traitOf} from '../data/balance/combat.js';
 import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 import {MARKS, MARK, markable} from '../data/balance/marks.js';
-import {WOODS, mayUse, useOf, KIND_LAND} from '../data/kinds.js';
+import {WOODS, mayUse, mayWield, useOf, KIND_LAND} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {GEAR} from '../data/behaviour.js';
 import {onEdit} from '../data/schema/layer.js';
@@ -352,7 +352,7 @@ export function outfit(w, a) {
   const night = a.captive && (hourOf(w.tick) >= COUNCIL_TO || hourOf(w.tick) < ESCAPE.tools.dawn);
   // (a former slave: a tool and clothes too, day and night — settlement/freedom.js)
   // what the race does not touch at all (data/kinds.js 'taboo') stays in the store
-  const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)));
+  const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)) && mayWield(a.species, def(it).form));
   const best = bestLoadout(w, a, pool);
   if (best && best.score > currentScore(w, a) + GEAR.swap) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));

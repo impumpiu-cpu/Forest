@@ -175,6 +175,19 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   expect(strengthOf(b) > strengthOf(s) * 0.85 && strengthOf(b) < strengthOf(s) * 1.15, 'КС дротиков со щитом далеко от копья со щитом');
 }
 
+// ── the crossbow goes through armour; the elves will not touch it — not wear it, not make it, not bring it in a band
+{
+  const {roleKit} = await import('../src/data/roles.js'), {raceMayCraft} = await import('../src/settlement/crafting.js'), {RECIPES} = await import('../src/data/recipes.js');
+  const {mulberry} = await import('../src/core/rng.js'), {mayWield} = await import('../src/data/kinds.js');
+  expect(ITEMS.get('crossbow').qualities?.piercing > 0 && ITEMS.get('crossbow').ranged.cd > ITEMS.get('bow').ranged.cd, 'арбалет не пробивает или не медленнее лука');
+  expect(!mayWield('elf', 'crossbow') && mayWield('human', 'crossbow'), 'эльф берёт арбалет или человек не берёт');
+  const w = scene(), elf = put(w, 'elf', 'colony');
+  expect(!raceMayCraft(w, elf, RECIPES.get('crossbow')), 'эльф делает арбалет');
+  const rng = mulberry(7); let elves = 0, humans = 0;
+  for (let i = 0; i < 200; i++) { if (roleKit('elf', 'archer', rng, 30).includes('crossbow')) elves++; if (roleKit('human', 'archer', rng, 30).includes('crossbow')) humans++; }
+  expect(elves === 0 && humans > 0, `арбалеты у стрелков: эльфам ${elves}, людям ${humans} из 200`);
+}
+
 // ── the review: finer copies follow an edit; a material's qualities go to weapons only; parry never lowers a block
 {
   const {itemDef} = await import('../src/agents/equipment.js');
