@@ -92,6 +92,7 @@ const KITS = {
 // what a member of a band carries; species without hands carry nothing
 export const kitFor = (species, rng, t) => (SPECIES.get(species).inventory && KITS[species] ? KITS[species](rng, t) : []);
 
+const cap1 = x => x[0].toUpperCase() + x.slice(1);
 const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.toUpperCase()); };
 
 RAID_BANDS.registerAll([
@@ -154,6 +155,23 @@ RAID_BANDS.registerAll([
     },
     groupInit: group => { const nec = group.find(a => a.role === 'necromancer'); if (nec) for (const a of group) if (a !== nec) a.master = nec.id; },
     message: (n, group) => `Из курганов поднялись мертвецы: ${n}${group.some(a => a.role === 'necromancer') ? '. За ними идёт некромант — без него они разбредутся' : ''}`},
+
+  // a necromancer's cult (atlas/necro.js): any of the living about and the dead with them — each head drawn by itself
+  // from the cell's pool (o.pool: [[species, weight]] by density, campaign/land.js; on a settlement's cell its
+  // neighbours' `cultPool`, seam/cell.js), no cap on how many kinds: a troll, two orcs, an elf and a few of the dead
+  // in one band. `world` — only where the world map knows a necromancer (never on the polygon)
+  {id: 'cultists', label: 'культисты некроманта', kind: 'sentient', world: true,
+    goals: (w, g) => [['kill', 2], ['loot', 1], ['burn', torches(w)]], nerve: -0.1,
+    chance: {weight: 1, perNight: 1},
+    members: (w, rng, budget, t, o) => {
+      const pool = o?.pool?.length ? o.pool : w?.site?.neighbours?.hostile?.cultPool?.length ? w.site.neighbours.hostile.cultPool : [['human', 2], ['zombie', 2], ['skeleton', 1]];
+      return fill(rng, budget, pool, t, {...(o || {}), pool: undefined}).map(m => {
+        const sp = SPECIES.get(m.species), living = sp.kind === 'race' || sp.mind === 'sentient' && sp.kind !== 'undead';
+        return {...m, ...(living && !KITS[m.species] && sp.inventory ? {kit: 'bandit'} : {}),
+          init: a => { a.cultist = true; a.name = cap1(living ? `${sp.label.split(' ').pop()}-культист` : sp.label); }};
+      });
+    },
+    message: (n, group) => `Набег! Культисты некроманта: ${n} — ${[...new Set(group.map(a => (SPECIES.get(a.species).plural || a.species)))].slice(0, 5).join(', ')}`},
 
   // upyrs come only by night and run from the sun
   {id: 'upyrs', label: 'упыри', kind: 'monster',

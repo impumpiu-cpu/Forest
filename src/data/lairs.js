@@ -28,6 +28,8 @@
 //                   leads a horde);  raidVerb — what they did to a town;  leads — who leads the raid;
 //                   at 'town' — the lair sits in a mixed town and `drinks` that share of its people a year
 //   fiend lairs:    ground 'rift' (a live volcano or a plate seam), no food: the rift stands as it is
+//   domain:         a necromancer's tower (atlas/necro.js, NECRO below): born of the rot by itself, a pump of the dead and
+//                   a seat with vassals and a cult
 import {Registry} from '../core/registry.js';
 
 export const LAIRS = new Registry('lair');
@@ -77,7 +79,7 @@ LAIRS.registerAll([
   {id: 'ghouls', undead: true, gen: 'упырей', species: 'upyr', from: 'из гнезда', label: 'гнездо упырей', g: 'n', color: [150, 90, 120], radius: 6, ground: 'rot', rotAt: 0.2, at: 'ruins',
     spawn: 0.35, max: 8, breed: 0.05, rivals: [], might: 1.8, raidVerb: 'обескровили',
     nouns: [['гнездо', 'n'], ['пепелище', 'n'], ['подвал', 'm'], ['развалины', 'pl']]},
-  {id: 'necromancer', undead: true, gen: 'мертвецов', species: 'necromancer', from: 'из башни', label: 'башня некроманта', labelAcc: 'башню некроманта', g: 'f', color: [120, 60, 160], radius: 10, ground: 'rot', rotAt: 0.5,
+  {id: 'necromancer', undead: true, domain: true, gen: 'мертвецов', species: 'necromancer', from: 'из башни', label: 'башня некроманта', labelAcc: 'башню некроманта', g: 'f', color: [120, 60, 160], radius: 10, ground: 'rot', rotAt: 0.5,
     spawn: 0.1, max: 3, breed: 0, rivals: [], might: 2.5, raidVerb: 'опустошили', leads: 'Некромант повёл мертвецов',
     nouns: [['башня', 'f'], ['склеп', 'm'], ['цитадель', 'f'], ['обитель', 'f']]},
   // a vampire settles in a mixed town — where strangers come and go, nobody counts the missing; the lair is the
@@ -213,6 +215,31 @@ export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'],
 //           the kinds whose ground fits the spot, each with the chance of how thick its owners live there (a thinner kind
 //           may take it too: the wild keeps its variety) — the wild's newcomers' own kind weighing `own` more
 export const LAIR_FIELD = {source: 0.12, cap: 1, fade: 0.06, pulse: 0.7, brood: 0.5, birth: 0.7, births: 1.5, landMin: 0.05, jitter: 0.1, own: 0.6};
+
+// The necromancer (atlas/necro.js; docs/WORLD.md «Некромант»): a tower the rot gives birth to, a pump of the dead, a
+// little realm of the dead and their cult.
+//   births:  in spring, where the rot is past its kind's rotAt, a tower rises with the chance births × how far past it
+//            (over 1 − rotAt), at most `most` a year (× the world's scale²); its kind's max holds; one tower keeps two
+//            territories from another; it starts at `start`; against a town that goes to burn it, it stands × its kind's
+//            might × (1 + guard × the dead about it, at most 1)
+//   race:    who the necromancer was: drawn among the thinking peoples and tribes living there, by their density × their
+//            world view — align.base + align.mercy × (5 − mercy) / 10 (data/races.js align: the merciless are likelier,
+//            but many elves outweigh one orc)
+//   reveal:  a hidden tower (born in the wild) with a leader in it is a seat, not a lair: a season's chance it is found
+//   take:    a season, the tower takes this share of the rot within its territory (× 1 − d/r): the dead it raises; the rot
+//            falls by it, the field of the dead (`dead`) grows by take × raise (never above deadCap); the tower is fed by
+//            the mean rot it reaches over `feed`; deadFade — the risen without a master fall apart a season
+//   zone:    its reach as a seat: zone[0] + zone[1] × its strength, cells (of a 192-cell-high world); a lair of the dead
+//            (wights, ghouls, a vampire) within it bends the knee — the tower's vassal (atlas/leaders.js tribute)
+//   recruit: its cult takes the living of its zone, a season × (1 − d/zone): land — of the peoples' and tribes' density,
+//            town — of a town's people; cultMight — a tower's raid stronger × the living about it (at most 1)
+//   cult:    its cultists about (campaign/land.js): within the zone a chance p × its strength (`out` × beyond, to roam ×
+//            the zone), strength s[0] + s[1] × its strength
+//   dead:    who the risen are, by weight (the bands' undead: data/raids.js)
+export const NECRO = {births: 0.6, most: 0.5, start: 0.6, guard: 1, align: {base: 0.4, mercy: 0.12}, reveal: 0.3,
+  take: 0.03, raise: 1.5, deadCap: 1.5, deadFade: 0.05, deadSpeed: 0.5, feed: 0.25, zone: [10, 14],
+  recruit: {land: 0.004, town: 0.003}, cultMight: 0.5,
+  cult: {p: 0.05, out: 0.35, roam: 1.6, s: [0.8, 0.8]}, dead: [['zombie', 3], ['skeleton', 2], ['upyr', 1]]};
 
 // The wild keeps its dangers (atlas/lairs.js spawnWild, docs/WORLD.md «Скрытые логова»). Once the peoples are in the
 // world, each spring the wild gives new lairs — `perYear` on average a year (× the world's scale²) — of a kind below its max ×

@@ -154,7 +154,7 @@ export function stepHistory(a, onDay = null) {
   if (H.season === 3) {
     const news = [];
     for (const [k, s] of a.fauna.list.entries()) {
-      if (s.role === 'spirit' || s.role === 'folk' || s.usual <= 0) continue;   // (the tribes are folk, not beasts)
+      if (s.role === 'spirit' || s.role === 'folk' || s.role === 'dead' || s.usual <= 0) continue;   // (the tribes are folk, not beasts)
       const t = totals[k], avg = s.avg;
       s.avg = avg == null ? t : avg * 0.8 + t * 0.2;
       if (t === 0 && avg > 0) { news.push([9, `В мире не осталось ни одного зверя: ${s.sp.plural} вымерли.`]); continue; }

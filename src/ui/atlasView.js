@@ -32,6 +32,7 @@ import {captiveCount} from '../atlas/lairs.js';
 import {ROADS} from '../data/roads.js';
 import {faunaAt} from '../atlas/fauna.js';
 import {lairAt} from '../atlas/lairs.js';
+import {towerAt, necroLabel, zoneOf} from '../atlas/necro.js';
 import {LAIRS} from '../data/lairs.js';
 import {TECHS} from '../data/tech.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
@@ -251,7 +252,7 @@ export class MapView {
     else if (this.layer === 'rot') html = sw(ROT_RAMP[0][1], 'чисто') + sw(ROT_RAMP[1][1], '12% — вампир заводится в смешанном городе') + sw(mix(ROT_RAMP[1][1], ROT_RAMP[2][1], 0.6), '20% — упыри у пепелищ') + sw(ROT_RAMP[2][1], '25% — курганники на курганах') + sw(ROT_RAMP[3][1], '50% — башня некроманта') + sw(ROT_RAMP[4][1], 'гуще некуда') + sw([150, 110, 80], 'курганы и могилы — гниль сочится из них') + '<b>гниль</b> растёт от могил (битвы, набеги, пепелища), ползёт по округе и с обозами крыс по дорогам; тает в мороз и зной, быстрее у башен магов и храмов';
     else if (this.layer === 'realms') { const a = this.atlas, alive = a?.realms ? a.realms.filter(r => a.towns.some(t => t.alive && t.realm === r.id)) : [];
       html = (alive.length ? alive.map(r => sw(r.color, `${realmLabel(a, r.id)} — ${a.towns.filter(t => t.alive && t.realm === r.id).length} гор.`)).join('') : '<span>держав ещё нет</span>') +
-        '<b>земля державы</b> — куда достают её города по суше (крупные города и столица — дальше); светлая кайма — граница; ничья земля — серая'; }
+        '<b>земля державы</b> — куда достают её города по суше (крупные города и столица — дальше); светлая кайма — граница; ничья земля — серая' + sw(LAIRS.get('necromancer').color, 'владения некроманта: его башня, данники-нежить, культ') ; }
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
@@ -315,8 +316,13 @@ export class MapView {
         return c;
       }
       case 'realms': {   // the realms' land (atlas/realms.js realmLand): its colour, a light rim where it meets another or no one's
-        const g = mix(base, [40, 40, 36], 0.6), own = realmLand(a); if (!own || f.ocean[i]) return g;
-        const o = own[i]; if (o < 0) return g;
+        const g = mix(base, [40, 40, 36], 0.6), own = realmLand(a); if (f.ocean[i]) return g;
+        const o = own ? own[i] : -1;
+        if (o < 0) {   // no realm's: a necromancer's seat (atlas/necro.js), a dark land with a rim of its own
+          const x = i % a.w, y = (i / a.w) | 0, t = towerAt(a, x, y); if (!t) return g;
+          const col = LAIRS.get(t.kind).color, rim = ![[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dy]) => towerAt(a, x + dx, y + dy) === t);
+          return rim ? mix(col, [230, 200, 240], 0.4) : mix(g, col, 0.5);
+        }
         const col = a.realms[o].color, x = i % a.w, y = (i / a.w) | 0;
         const edge = (x > 0 && own[i - 1] !== o && !f.ocean[i - 1]) || (x < a.w - 1 && own[i + 1] !== o && !f.ocean[i + 1]) || (y > 0 && own[i - a.w] !== o && !f.ocean[i - a.w]) || (y < a.h - 1 && own[i + a.w] !== o && !f.ocean[i + a.w]);
         return edge ? mix(col, [250, 245, 230], 0.45) : mix(g, col, 0.6);

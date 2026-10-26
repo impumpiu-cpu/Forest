@@ -20,6 +20,7 @@ import {townLabel} from '../atlas/towns.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {clamp} from '../core/util.js';
 import {LAIRS} from '../data/lairs.js';
+import {cultPool} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {REGIONS, LEVELS} from '../data/regions.js';
 import {SPECIES} from '../data/species.js';
@@ -162,6 +163,17 @@ export function cellNeighbours(a, i, race = 'human') {
       if (best) sources.push({band, d: best.d, wt: FOLK_RAIDS.weight * best.v, label: `${s.sp.plural} в округе`});
     }
   }
+  // the risen of a necromancer about (atlas/necro.js): where they are thickest for the way
+  if (a.fauna?.idx?.dead != null) {
+    const F = a.fauna, s = F.list[F.idx.dead], R0 = Math.ceil(reach / F.c), cx = (x0 / F.c) | 0, cy = (y0 / F.c) | 0;
+    let best = null;
+    for (let y = Math.max(0, cy - R0); y <= Math.min(F.H - 1, cy + R0); y++) for (let x = Math.max(0, cx - R0); x <= Math.min(F.W - 1, cx + R0); x++) {
+      const v = s.N[y * F.W + x]; if (!(v >= FOLK_RAIDS.at)) continue;
+      const d = dist((x + 1 / 2) * F.c, (y + 1 / 2) * F.c); if (d * k > reach) continue;
+      const score = v / (1 + d); if (!best || score > best.score) best = {score, v, d};
+    }
+    if (best) sources.push({band: 'undead', d: best.d, wt: FOLK_RAIDS.weight * best.v, label: 'мертвецы некроманта в округе'});
+  }
   const men = towns.find(o => o.t.people === 'humans');
   if (men) sources.push({band: OUTLAWS.band, d: men.d, wt: OUTLAWS.weight, label: 'лихие люди на дорогах'});
   if (a.rot && a.rot[faunaCell(a, i)] > SEAM.rotUndead) sources.push({band: 'undead', d: SEAM.rotCells, wt: a.rot[faunaCell(a, i)], label: 'гниль в здешней земле'});
@@ -172,7 +184,7 @@ export function cellNeighbours(a, i, race = 'human') {
     const top = Math.max(...Object.values(bands));
     for (const b of Object.keys(bands)) bands[b] = r2(Math.max(0.05, bands[b] / top));
     out.hostile = {label: near.length === 1 ? cap1(near[0].label) : 'Враждебные соседи', note: near.slice(0, 4).map(s => `${s.label} — ${s.days} дн.`).join('; '),
-      dist: near[0].days, chance: SEAM.raidChance, bands};
+      dist: near[0].days, chance: SEAM.raidChance, bands, ...(bands.cultists ? {cultPool: cultPool(a, i)} : {})};   // (who a necromancer's cult is here: atlas/necro.js)
   }
   return out;
 }

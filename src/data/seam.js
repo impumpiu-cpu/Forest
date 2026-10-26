@@ -33,7 +33,7 @@ export const SEAM = {
 // which raid band (data/raids.js) a world lair sends, by the lair's kind (data/lairs.js)
 export const LAIR_BANDS = {
   goblins: 'goblins', gnolls: 'gnolls', ogres: 'ogres', trolls: 'troll', swamptrolls: 'troll', icetrolls: 'troll', giants: 'giants',
-  wights: 'undead', necromancer: 'undead', ghouls: 'upyrs', vampire: 'vampire',
+  wights: 'undead', necromancer: 'cultists', ghouls: 'upyrs', vampire: 'vampire',
 };
 // which raid band an unfriendly realm sends, by its people (data/peoples.js); elves and dwarves do not raid
 export const REALM_BANDS = {orcs: 'orcs', humans: 'bandits'};

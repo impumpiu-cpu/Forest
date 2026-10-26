@@ -38,6 +38,7 @@ const NB_ID = {kin: 'kin', empire: 'empire', hostile: 'hostile'};
 export function bandAllowed(w, id) {
   const nb = worldNb(w);
   if (nb) return nb.hostile?.bands?.[id] || 0;
+  if (RAID_BANDS.get(id).world) return 0;   // (a necromancer's cult comes only where the world map has one)
   return !w.cfg.bands || w.cfg.bands.includes(id) ? 1 : 0;
 }
 // which band sets out: each weighs itself by the threat it sees and the hour, and by whether it lives near

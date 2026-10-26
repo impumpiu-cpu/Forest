@@ -73,6 +73,7 @@ export const FOES = {
   army:    {label: 'фуражиры чужого войска', might: 6},
   bandits: {label: 'разбойники с большой дороги', might: 3},
   raiders: {label: 'налётчики', might: 5},
+  cultists: {label: 'культисты некроманта', might: 5},
 };
 
 // the core of each people: ranks (one, many, «four of») and the gear they set out in (data/items.js ids).
@@ -171,6 +172,7 @@ export const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']
 //   beasts: a beast of prey that hunts people;  lair: a lair's monster;  tribe: the folk of a tribe (its raid band,
 //           data/seam.js LAIR_BANDS) — each a chance p × the density (at most cap), strength s[0] + s[1] × it.
 //           Inside a lair's land its own kind is the lair's (NIGHT.lair), not counted twice.
+//   dead:    the risen of a necromancer (atlas/necro.js: the field of the dead), as the band of the dead
 //   raiders: a people that raids (data/seam.js REALM_BANDS: the orcs' warbands, men turned outlaw) by its field there
 //           (atlas/peoples.js: density × the land it holds), when it is the caravan's foe — its race dislikes the
 //           caravan's (data/relations.js), or a realm of it is at war with the caravan's realm
@@ -179,6 +181,7 @@ export const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']
 //           with (data/camp.js), [lo, hi]
 export const WILD_FOES = {at: 0.04, beasts: {p: 0.025, cap: 1.5, s: [0.6, 0.4]}, lair: {p: 0.03, cap: 1.5, s: [0.7, 0.5]}, tribe: {p: 0.03, cap: 1.5, s: [0.8, 0.5]},
   raiders: {p: 0.02, cap: 1, s: [0.8, 0.5]},
+  dead: {p: 0.03, cap: 1.5, s: [0.8, 0.5]},
   mix: {chance: 0.6, share: [0.25, 0.45]}};
 
 // What may come at the caravan's camp at night (campaign/land.js dangers): each a chance of a fight `p` and its strength.

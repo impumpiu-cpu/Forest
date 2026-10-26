@@ -24,6 +24,8 @@ import {LAIR_BANDS, REALM_BANDS} from '../data/seam.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {RELATIONS} from '../data/relations.js';
 import {atWar} from '../atlas/diplomacy.js';
+import {cultPool, towerAt, necroLabel} from '../atlas/necro.js';
+import {NECRO} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {GAME, CAMPAIGN} from '../data/campaign.js';
 import {FODDER} from '../data/transport.js';
@@ -74,10 +76,11 @@ export function wildFoes(a, i, lair = lairAt(a, i)) {
     if (s.role === 'spirit' || s.id === own) continue;
     const v = s.N[j]; if (!(v >= W.at)) continue;
     let kind, who;
-    if (s.role === 'folk') { if (!FOLK_BAND[s.id]) continue; kind = 'tribe'; who = {band: FOLK_BAND[s.id]}; }
+    if (s.role === 'dead') { kind = 'undead'; who = {band: 'undead'}; }   // the risen of a necromancer (atlas/necro.js)
+    else if (s.role === 'folk') { if (!FOLK_BAND[s.id]) continue; kind = 'tribe'; who = {band: FOLK_BAND[s.id]}; }
     else { const m = hunterOf(s.id); if (!m) continue; kind = s.lair ? 'lair' : 'beasts'; who = {beast: m}; }
-    const x = Math.min(W[kind].cap, v);
-    out.push({kind, p: W[kind].p * x, strength: W[kind].s[0] + W[kind].s[1] * x, label: s.sp.plural, species: s.id, ...who});
+    const P = W[kind === 'undead' ? 'dead' : kind], x = Math.min(P.cap, v);
+    out.push({kind, p: P.p * x, strength: P.s[0] + P.s[1] * x, label: s.sp.plural, species: s.id, ...who});
   }
   return out;
 }
@@ -97,10 +100,16 @@ export function peopleFoes(a, i, K) {
   }
   return out;
 }
+// a necromancer's cultists about (data/lairs.js NECRO.cult): within his seat, and roaming out to `roam` × it
+export function cultFoes(a, i) {
+  const x = i % a.w, y = (i / a.w) | 0, C = NECRO.cult, t = towerAt(a, x, y, C.roam); if (!t) return [];
+  const inside = towerAt(a, x, y) === t;
+  return [{kind: 'cultists', p: C.p * t.strength * (inside ? 1 : C.out), strength: C.s[0] + C.s[1] * t.strength, label: `${necroLabel(t.race)} «${t.name}»`, band: 'cultists', pool: cultPool(a, i), tower: t.id}];
+}
 // a foe that comes may bring a second kind of the same cell along (WILD_FOES.mix): beasts with beasts, a band with a band
 // or with beasts (its war beasts then) —
 // the pick weighed by how likely each comes. → the foe, with `with: {beast | band, label, share}` when it brings one
-const sideOf = d => (d.beast ? 'beast' : d.band && d.kind !== 'army' ? 'band' : null);
+const sideOf = d => (d.beast ? 'beast' : d.band && d.kind !== 'army' && d.band !== 'cultists' ? 'band' : null);   // (a cult is its own mix)
 export function withCompany(d, ds, r) {
   const side = sideOf(d), M = WILD_FOES.mix; if (!side || d.boss) return d;
   // (beasts join a band as its war beasts: one side on the local map; a band does not join beasts)
@@ -134,7 +143,9 @@ export function dangers(a, i, K = null) {
       lair: lair.id, species: L.species,   // (its captives, if it keeps any: a fight won frees them — campaign/fight.js)
       ...(ld ? {boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, leaderLair: lair.id} : {})});
   }
-  out.push(...wildFoes(a, i, lair), ...peopleFoes(a, i, K));
+  out.push(...wildFoes(a, i, lair), ...peopleFoes(a, i, K), ...cultFoes(a, i));
+  // a necromancer's band is his cult: who it is, by the cell (atlas/necro.js cultPool)
+  for (const d of out) if (d.band === 'cultists' && !d.pool) d.pool = cultPool(a, i);
   if (a.f.scourge && a.f.scourge[i] > N.army.at) out.push({kind: 'army', p: N.army.p * a.f.scourge[i], strength: N.army.s});
   if (a.rot && a.fauna && a.rot[faunaCell(a, i)] > N.undead.at) out.push({kind: 'undead', p: N.undead.p * a.rot[faunaCell(a, i)], strength: N.undead.s + a.rot[faunaCell(a, i)]});
   const road = roadAccess(a, i);

@@ -52,6 +52,7 @@ export const THINGS = {
   undead:  {foe: 'undead', hunts: true, speed: 0.4, mood: 'hostile'},
   bandits: {foe: 'bandits', hunts: true, ambush: true, speed: 0.7, road: true, mood: 'hostile'},
   raiders: {foe: 'raiders', hunts: true, ambush: true, speed: 0.8, mood: 'hostile'},
+  cultists: {foe: 'cultists', hunts: true, ambush: true, speed: 0.7, mood: 'hostile'},
   army:    {foe: 'army', hunts: true, ambush: true, speed: 0.7, mood: 'hostile'},
   trader:  {speed: 0.6, road: true, mood: 'trade', label: 'торговый обоз'},
   herd:    {speed: 0.5, mood: 'game', label: 'стадо'},

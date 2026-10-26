@@ -13,6 +13,7 @@
 // lair.leader = {name, title, species, g, special, add, born, dies, deeds}; lair.lord — the id of the lair it pays tribute to
 import {mulberry, seedNumber} from '../core/rng.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
+import {necroLabel} from './necro.js';
 import {TITLE, makeName} from '../data/names.js';
 import {SPECIES} from '../data/species.js';
 import {bossSpecial} from '../agents/special.js';
@@ -39,14 +40,15 @@ export function raise(a, l, r) {
   const L = LAIRS.get(l.kind), sp = SPECIES.get(L.species), mind = sp.kind === 'undead' ? 'undead' : sp.kind === 'fiend' ? 'fiend' : sp.mind || 'beast';
   // the name from data/names.js: a thinking one — a name of its race and a nickname («Хракк Тихий»), the rest — a nickname
   const title = TITLE[mind] || TITLE.beast;
-  const name = makeName(mind === 'sentient' ? L.species : null, r, {nick: 'always'});
+  // a necromancer was one of the living about (atlas/necro.js): his name is of his race
+  const name = makeName(mind === 'sentient' ? (l.race && SPECIES.has(l.race) ? l.race : L.species) : null, r, {nick: 'always'});
   const add = Object.fromEntries(LEADER.stats.map(id => [id, Math.round(between(r, LEADER.add))]));
   const roll = sp.special ? bossSpecial(sp, r, {stats: [], add: [0, 0], cap: LEADER.cap}) : {special: null};
   if (roll.special) for (const id of LEADER.stats) roll.special[id] = Math.min(LEADER.cap, roll.special[id] + add[id]);
   const y = a.hist.year;
-  l.leader = {name, title, species: L.species, g: 'm', special: roll.special, add, born: y, dies: y + Math.round(between(r, LEADER.life)), deeds: 0};
+  l.leader = {name, title, species: L.species, ...(l.race ? {race: l.race} : {}), g: 'm', special: roll.special, add, born: y, dies: y + Math.round(between(r, LEADER.life)), deeds: 0};
   l.heirAt = null;
-  return `${cap1(L.label)} «${l.name}» ${wherePhrase(a, l.i)}: поднялся ${title[0].toLowerCase()} — ${name}, ${sp.label} сильнее всех своих. Теперь ${sp.plural} оттуда не бродят, а ходят за ним.`;
+  return `${cap1(L.label)} «${l.name}» ${wherePhrase(a, l.i)}: поднялся ${title[0].toLowerCase()} — ${name}, ${l.race ? necroLabel(l.race) : sp.label} сильнее всех своих. Теперь ${sp.plural} оттуда не бродят, а ходят за ним.`;
 }
 
 // the leader is gone: its lair is a field again; the vassals go free when their lord's lair has no leader
@@ -93,7 +95,7 @@ export function stepLeaders(a, say) {
   for (const v of a.lairs) {
     if (!v.alive || v.lord == null) continue;
     const lord = a.lairs.find(o => o.id === v.lord);
-    if (!lord?.alive || !lord.leader) { v.lord = null; continue; }
+    if (!lord?.alive || (!lord.leader && !LAIRS.get(lord.kind).domain)) { v.lord = null; continue; }   // (a necromancer's tower is a seat with a leader or without)
     const t = LEADER.tribute * v.strength;
     lord.strength = Math.min(1, lord.strength + t); v.strength = Math.max(0, v.strength - t / 2);
   }

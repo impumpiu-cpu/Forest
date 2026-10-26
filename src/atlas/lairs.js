@@ -12,7 +12,7 @@
 // The rot (data/lairs.js ROT): a field on the coarse grid fed by the graves; where it is thick the
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
-import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD, LAIR_FIELD as LF, RAID_MIX} from '../data/lairs.js';
+import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD, LAIR_FIELD as LF, RAID_MIX, NECRO} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves} from './diplomacy.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -27,6 +27,7 @@ import {raidSite} from './sites.js';
 import {BEHAVIOURS, goHome} from './parties.js';
 import {actorStep} from './actor.js';
 import {DOES} from './deeds/index.js';
+import {towerBirth, stepTower, deadField, bend, necroLabel, livingAt} from './necro.js';
 import {BURNT, townAt, landOf} from './peoples.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
@@ -123,6 +124,7 @@ export function lairFolk(a) {
     s.lair = true;
     if (empty) s.N.fill(0);
   }
+  deadField(a);   // the field of the dead the necromancers raise (atlas/necro.js)
   F.buf = null; F.folk = true;
 }
 // how near a coarse cell's middle is to a point, 1 at it … 0 one cell past `rr` (coarse cells)
@@ -313,7 +315,7 @@ export function stepLairs(a, rnd, seasonId) {
   lairFolk(a);   // (a world saved before the lairs' folk had fields)
   stepRot(a);
   if (a.ratsLines) { lines.push(...a.ratsLines); a.ratsLines = null; }
-  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd), ...spawnWild(a, rnd), ...bornOfDensity(a, rnd));
+  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd), ...spawnWild(a, rnd), ...bornOfDensity(a, rnd), ...towerBirth(a, rnd, newLair, hideIfWild, wherePhrase, R));
   for (const lair of a.lairs) {
     if (!lair.alive) continue;
     const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead || L.fiend || L.dragon ? null : F.list[F.idx[L.species]];
@@ -331,11 +333,13 @@ export function stepLairs(a, rnd, seasonId) {
       else { land += a.tribeLand[L.id][j]; for (const pe of a.peoples || []) crowd += pe.u[j] * pe.K[j]; }
     }
     const host = L.at === 'town' ? a.towns.find(t => t.id === lair.town) : null;
-    const fed = s ? (cap > 0 ? Math.min(LL.fedMax, food / cap) : LL.fedNone)
+    let fed = s ? (cap > 0 ? Math.min(LL.fedMax, food / cap) : LL.fedNone)
       : L.fiend || L.dragon ? land
       : host ? (host.alive ? Math.min(LL.fedMax, host.pop / LL.vampirePop) : 0)   // a vampire drinks its town
       : L.undead ? Math.min(LL.fedMax, land / (L.rotAt * LL.rotFeed))
       : Math.min(LL.fedMax, land / cells.length / LL.tribeFeed) * (1 - LL.crowd * Math.min(1, crowd / cells.length));
+    // a necromancer's tower (atlas/necro.js): fed by the mean rot it reaches, and it takes that rot into its dead
+    if (L.domain) fed = Math.min(LL.fedMax, stepTower(a, lair, L, rnd, lines, revealLair) / NECRO.feed);
     const winter = seasonId === 'winter' ? LL.winter : 0;
     lair.strength = Math.max(0, Math.min(1, lair.strength + LL.grow * (fed - LL.need) - winter + LL.wobble * (rnd() - 0.5)));
     // a calamity's boss (atlas/calamity.js) keeps its lair up while it lives: it falls only with the boss
@@ -355,7 +359,7 @@ export function stepLairs(a, rnd, seasonId) {
       if (lair.captives && Object.values(lair.captives).some(v => v > 0)) { lines.push(`Пленные «${lair.name}» — ${captiveCount(lair)} — остались без хозяев и разбрелись по домам.`); lair.captives = null; }
       lines.push(L.at === 'town' ? `${G[L.g].emptied} ${L.label} «${lair.name}»: ${host ? `в ${townLabel(host, 3)} ${host.name} не осталось, кого пить` : 'город сгинул'}, и вампир ушёл.`
         : L.fiend ? `Закрылся ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: демоны ушли туда, откуда пришли.`
-        : L.undead ? `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: гниль иссякла, и ${SPECIES.get(L.species).plural} ${L.species === 'necromancer' ? 'ушёл' : 'рассыпались в прах'}.`
+        : L.undead ? `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: гниль иссякла, и ${L.domain ? `${necroLabel(lair.race)} ушёл` : `${SPECIES.get(L.species).plural} рассыпались в прах`}.`
         : `${G[L.g].emptied} ${L.label} «${lair.name}» ${wherePhrase(a, lair.i)}: ${s ? 'добычи' : 'земли'} не стало, и ${SPECIES.get(L.species).plural} ушли.`);
       continue;
     }
@@ -404,6 +408,11 @@ export function raidWho(L) {
 // and maybe a second kind of its land → {who, k: × the raid's might, riders}
 export function raidBand(a, lair, L, rnd) {
   const F = a.fauna, M = RAID_MIX, race = SPECIES.get(L.species), sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
+  // a necromancer leads his dead and his cult: stronger with the living about him (data/lairs.js NECRO.cultMight)
+  if (L.domain && F) {
+    const j = faunaCell(a, lair.i), living = Math.min(1, livingAt(a, j).reduce((v, [, x]) => v + x, 0));
+    return {who: `${cap1(necroLabel(lair.race))} повёл мертвецов и культистов`, k: 1 + NECRO.cultMight * living, riders: false};
+  }
   if (L.leads || !F) return {who: raidWho(L), k: 1, riders: false};
   const j = faunaCell(a, lair.i), at = id => { const s = F.list[F.idx[id]]; return s ? s.N[j] : 0; };
   let who = cap1(sub?.plural || race.plural), k = 1;
@@ -506,7 +515,7 @@ function spawnWild(a, rnd) {
 // a chance a year, on the ground it asks for, apart from its own kind.
 function spawnLairs(a, rnd) {
   const F = a.fauna, lines = [];
-  for (const L of LAIRS.filter(L => L.spawn)) {
+  for (const L of LAIRS.filter(L => L.spawn && !L.domain)) {   // (the necromancer's tower is born of the rot by itself: atlas/necro.js)
     if (rnd() > L.spawn || a.lairs.filter(o => o.alive && o.kind === L.id).length >= L.max) continue;
     let best = -1, bv = 0, town = null;
     if (L.at === 'town') {
@@ -530,12 +539,14 @@ function spawnLairs(a, rnd) {
     }
     if (best < 0) continue;
     const lair = newLair(a, L, best, rnd, L.fiend ? LL.fiendStart : LL.spawnStart), where = wherePhrase(a, best);
+    const bent = bend(a, lair);   // within a necromancer's seat: his vassal
     if (town) { lair.town = town.id; a.hist.names.delete(lair.name); lair.name = `${L.nouns[(rnd() * L.nouns.length) | 0][0] === 'усадьба' ? 'Старая' : 'Тёмная'} усадьба`; }
     lines.push(L.id === 'necromancer' ? `Некромант поставил ${L.labelAcc} «${lair.name}» ${where}: по ночам там поднимают мертвецов.`
       : L.id === 'wights' ? `На курганах ${where} поднялись костяки: ${L.label} «${lair.name}».`
       : L.id === 'vampire' ? `В ${townLabel(town, 3)} ${town.name} поселился вампир: в усадьбе на окраине по ночам горит свет, а на улицах пропадают люди.`
       : L.id === 'rift' ? `Земля треснула ${where}: из разлома «${lair.name}» лезут демоны.`
       : `На пепелище ${where} завелись упыри: ${L.label} «${lair.name}».`);
+    if (bent) lines.push(bent);
   }
   return lines;
 }

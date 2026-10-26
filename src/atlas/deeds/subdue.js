@@ -11,7 +11,7 @@ const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
 // the lairs a leader may go to, nearest first, split into rivals and the meek
 function neighbours(a, l, L) {
-  const sub = (a.lairs || []).filter(o => o.alive && o !== l && o.boss == null && !o.leader && o.lord == null && !LAIRS.get(o.kind).dragon && LAIRS.get(o.kind).at !== 'town'
+  const sub = (a.lairs || []).filter(o => o.alive && o !== l && o.boss == null && !o.leader && o.lord == null && !LAIRS.get(o.kind).dragon && !LAIRS.get(o.kind).domain && LAIRS.get(o.kind).at !== 'town'
     && dist(o, l) <= LEADER.subdue.reach * (R(a, L) + R(a, LAIRS.get(o.kind))));
   const near = (p, q) => dist(p, l) - dist(q, l);
   return {rivals: sub.filter(o => L.rivals.includes(o.kind)).sort(near), meek: sub.filter(o => !L.rivals.includes(o.kind)).sort(near)};

@@ -40,7 +40,7 @@ export const CAMP = {
     // a chance meeting is as many as live there (campaign/land.js: the thing's strength grows with the density of who
     // came): × its strength over `ref` of its kind (the mean of that kind in the wild; `else` for the rest), within
     // [lo, hi] — a thick land sends more, a thin one fewer; a kind as a whole is as strong as before
-    density: {ref: {beasts: 0.8, tribe: 1.05, lair: 1.1, raiders: 1, undead: 1.3, bandits: 1, else: 1.2}, lo: 0.6, hi: 1.5},
+    density: {ref: {beasts: 0.8, tribe: 1.05, lair: 1.1, raiders: 1, undead: 1.3, bandits: 1, cultists: 1.4, else: 1.2}, lo: 0.6, hi: 1.5},
     most: 18,             // no more heads than this, however weak each (a swarm of bats is a swarm, not a plague)
   },
   // the threat the band carries its gear and aim by (settlement/threat.js) — × the thing's strength; in the quick
@@ -82,6 +82,7 @@ export const GAME_FLOW = {deer: 'deer', boar: 'boars', goat: 'goats', hare: 'har
 export const CAMP_FOES = {
   bandits: {band: 'bandits'},
   raiders: {band: 'orcs'},
+  cultists: {band: 'cultists'},
   army:    {band: 'bandits', threat: 1.6},
   tribe:   {band: 'goblins'},
   undead:  {band: 'undead'},

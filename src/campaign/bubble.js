@@ -19,6 +19,7 @@ import {HIRES} from '../data/market.js';
 import {EPIC} from '../data/calamities.js';
 import {GAME, FOES} from '../data/campaign.js';
 import {dangers, cellRegion, lairFoe, withCompany} from './land.js';
+import {cultPool} from '../atlas/necro.js';
 import {REALM_BANDS} from '../data/seam.js';
 
 export const bubbleOf = K => (K.bubble ||= {next: 1, things: []});
@@ -71,7 +72,7 @@ function spawn(a, K, guided) {
     const trail = (K.quest?.hunt ?? 0) >= 2 ? EPIC.hunt.trail : 0;
     const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: trail > 0 && r() < trail, ...props}); };   // (no draw without a hunt: the stream stays as it was
     const named = dg => dg.label || THINGS[dg.kind].label || FOES[dg.kind]?.label || dg.kind;   // (a road's bandits, an army, the risen dead have no name of their own: the foe's)
-    const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${named(dg)}` : named(dg), ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {}), ...(dg.with && !small ? {with: dg.with} : {})});
+    const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${named(dg)}` : named(dg), ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {}), ...(dg.with && !small ? {with: dg.with} : {}), ...(dg.pool ? {pool: dg.pool} : {})});
     const ds = dangers(a, i, K);
     for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(withCompany(dg, ds, r)));   // one or two kinds of who lives here (campaign/land.js)
     // a small party by day, about its own business
@@ -120,7 +121,7 @@ export function worldThings(a, K) {
     if (p.kind === 'caravan' || p.state === 'gone' || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
     let kind = null, who = {};
     if (p.kind === 'army') { kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? 'army' : null; who = {band: REALM_BANDS[p.people] || 'bandits'}; }
-    else if (p.kind === 'raid') { const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind); kind = L?.undead ? 'undead' : 'tribe'; who = l ? lairFoe(l.kind) : {}; }
+    else if (p.kind === 'raid') { const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind); kind = L?.domain ? 'cultists' : L?.undead ? 'undead' : 'tribe'; who = l ? lairFoe(l.kind) : {}; if (who.band === 'cultists') who.pool = cultPool(a, p.i); }
     else if (p.kind === 'brood' || p.kind === 'dragon') { kind = 'lair'; const l = (a.lairs || []).find(x => x.id === p.owner); who = l ? lairFoe(l.kind) : {}; }
     // a leader of an old lair at the head of its own (atlas/leaders.js): on the local map it is the named one among them
     else if (p.kind === 'leader') {

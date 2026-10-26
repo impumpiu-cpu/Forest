@@ -9,6 +9,11 @@ import {atlasDone} from '../src/atlas/generate.js';
 import {dangers, withCompany, peopleFoes} from '../src/campaign/land.js';
 import {raidBand, felt, R as lairR} from '../src/atlas/lairs.js';
 import {cellNeighbours} from '../src/seam/cell.js';
+import {livingAt, darkness, raceAt, stepTower, bend, cultPool, zoneOf, deadField, towers} from '../src/atlas/necro.js';
+import {cultFoes} from '../src/campaign/land.js';
+import {RAID_BANDS, raiderStrength} from '../src/data/raids.js';
+import {bandAllowed} from '../src/outside/scripted.js';
+import {revealLair} from '../src/atlas/lairs.js';
 import {faunaCell} from '../src/atlas/fauna.js';
 import {raise, partyOf, stepLeaders} from '../src/atlas/leaders.js';
 import {actorStep} from '../src/atlas/actor.js';
@@ -20,7 +25,7 @@ import {stepLairs} from '../src/atlas/lairs.js';
 import {freeLairCaptives} from '../src/campaign/fight.js';
 import {foeWeight} from '../src/campaign/camp.js';
 import {CAMP} from '../src/data/camp.js';
-import {CAPTIVE_RAID, WILD} from '../src/data/lairs.js';
+import {CAPTIVE_RAID, WILD, NECRO} from '../src/data/lairs.js';
 const stepLairsOnce = (a, season) => stepLairs(a, mulberry(9), season);
 import {DEEDS} from '../src/data/deeds.js';
 import {LAIRS} from '../src/data/lairs.js';
@@ -519,6 +524,78 @@ scene_('W27', 'поселение на клетке: племя в досяга�
   const j = faunaCell(a, i); s.N[j] = 1;
   const nb = cellNeighbours(a, i);
   return (nb.hostile?.bands?.goblins > 0) || `банды: ${JSON.stringify(nb.hostile?.bands)}`;
+});
+
+// ── the necromancer (atlas/necro.js; data/lairs.js NECRO)
+// a tower set by hand on the rot near the humans' town, the field of the dead made
+function towerWorld() {
+  const a = world(), {town} = townAndLair(a, 'varg', 6);
+  const at = cellOf(a, i => { const p = xy(a, i); return dist(p, town) > 8 && dist(p, town) < 14 && !a.f.ocean[i]; });
+  const tw = addLair(a, 'necromancer', at); if (!tw?.id) return {error: `башня не встала: ${tw?.error}`};
+  tw.race = 'human'; deadField(a);
+  return {a, town, tw, L: LAIRS.get('necromancer')};
+}
+scene_('W28', 'раса некроманта — жребий по плотности × мировоззрению: много эльфов перевесят одного орка; при равной плотности орк вероятнее', () => {
+  if (!(darkness('orc') > darkness('elf'))) return `мировоззрение: орк ${darkness('orc')}, эльф ${darkness('elf')}`;
+  const a = world(), F = a.fauna;
+  const forest = cellOf(a, i => ['forest', 'taiga'].includes(biomeAt(a, i)?.id) && i % a.w > a.w * 0.3);
+  const e = landPeople(a, 'elves', forest); if (e.error) return 'эльфы не высадились';
+  const steppe = cellOf(a, i => ['steppe', 'meadow', 'savanna'].includes(biomeAt(a, i)?.id) && dist(xy(a, i), e.town) > 30);
+  const o = landPeople(a, 'orcs', steppe); if (o.error) return 'орки не высадились';
+  const pe = id => a.peoples.find(p => p.id === id), i = cellOf(a, k => pe('elves').K[faunaCell(a, k)] > 0.3 && pe('orcs').K[faunaCell(a, k)] > 0.05), j = faunaCell(a, i);
+  if (i < 0) return 'нет земли обоих';
+  for (const s of F.list) if (s.role === 'folk') s.N[j] = 0;
+  const set = (ue, uo) => { pe('elves').u[j] = ue / pe('elves').K[j]; pe('orcs').u[j] = uo / pe('orcs').K[j]; };
+  const odds = () => { let el = 0, n = 400; for (let k = 0; k < n; k++) if (raceAt(a, i, () => (k + 0.5) / n) === 'elf') el++; return el / n; };
+  set(0.3, 0.01); const many = odds();
+  set(0.1, 0.1); const even = odds();
+  return (many > 0.8 && even < 0.5) || `эльфов много — ${many}, поровну — ${even}`;
+});
+scene_('W29', 'башня — насос: забирает гниль вокруг, поле мертвецов растёт; вербует — округа и город слабо хиреют', () => {
+  const S = towerWorld(); if (S.error) return S.error;
+  const {a, tw, L, town} = S, j = faunaCell(a, tw.i), dead = a.fauna.list[a.fauna.idx.dead];
+  a.rot[j] = 0.8; const r0 = a.rot[j], d0 = dead.N[j], pop0 = town.pop, lines = [];
+  stepTower(a, tw, L, () => 0.99, lines, revealLair);
+  if (!(a.rot[j] < r0) || !(dead.N[j] > d0)) return `гниль ${r0} → ${a.rot[j]}, мертвецы ${d0} → ${dead.N[j]}`;
+  if (dist(town, tw) < zoneOf(a, tw) && !(town.pop < pop0 && town.pop > pop0 * 0.98)) return `город ${pop0} → ${town.pop}`;
+  return true;
+});
+scene_('W30', 'зона башни: логово мёртвых в ней — данник некроманта, вне её — нет; дань идёт башне и без главаря', () => {
+  const S = towerWorld(); if (S.error) return S.error;
+  const {a, tw} = S, z = zoneOf(a, tw);
+  const near = addLair(a, 'wights', cellOf(a, i => { const p = xy(a, i); return dist(p, tw) > 3 && dist(p, tw) < z - 1 && !a.towns.some(t => dist(t, p) < 4); }));
+  const far = addLair(a, 'wights', cellOf(a, i => { const p = xy(a, i); return dist(p, tw) > z + 3 && !a.towns.some(t => dist(t, p) < 4); }));
+  if (!near?.id || !far?.id) return `курганы не встали: ${near?.error || ''} ${far?.error || ''}`;
+  bend(a, near); bend(a, far);
+  if (near.lord !== tw.id || far.lord != null) return `ближний — ${near.lord}, дальний — ${far.lord}`;
+  a.hist.season = 0; near.strength = 0.6; const s0 = tw.strength; tw.strength = 0.5;
+  stepLeaders(a, () => {});
+  return (near.lord === tw.id && tw.strength > 0.5) || `дань не пришла: ${tw.strength}, данник ${near.lord}`;
+});
+scene_('W31', 'скрытая башня: пока нет главаря — прячется; с главарём — молва раскрывает её и без разведки', () => {
+  const S = towerWorld(); if (S.error) return S.error;
+  const {a, tw, L} = S; tw.hidden = true;
+  stepTower(a, tw, L, () => 0, [], revealLair);
+  if (!tw.hidden) return 'раскрыта без главаря';
+  lead(a, tw); const lines = [];
+  stepTower(a, tw, L, () => 0, lines, revealLair);
+  return (!tw.hidden && lines.some(t => /Молва/.test(t))) || `не раскрыта: ${lines.join(' | ')}`;
+});
+scene_('W32', 'культисты: каждый боец — свой жребий из живых и мёртвых округи, без предела видов; на полигоне их нет', () => {
+  const S = towerWorld(); if (S.error) return S.error;
+  const {a, tw} = S, j = faunaCell(a, tw.i), F = a.fauna;
+  F.list[F.idx.dead].N[j] = 1; F.list[F.idx.goblin].N[j] = 0.5; F.list[F.idx.troll].N[j] = 0.5;
+  const pool = cultPool(a, tw.i), ids = pool.map(([id]) => id);
+  if (!['zombie', 'goblin', 'troll'].every(id => ids.includes(id))) return `пул: ${JSON.stringify(pool)}`;
+  const B = RAID_BANDS.get('cultists'), got = B.members({site: null}, mulberry(3), 12 * raiderStrength(6), 6, {up: true, max: {}, pool});
+  const kinds = new Set(got.map(m => m.species));
+  if (kinds.size < 3) return `вышло видов ${kinds.size}: ${[...kinds].join(', ')}`;
+  if (bandAllowed({cfg: {}}, 'cultists') !== 0) return 'культисты на полигоне';
+  // about the tower its cultists come; far from it, none
+  const at = cultFoes(a, tw.i)[0];
+  if (!at || at.band !== 'cultists' || !at.pool?.length) return `у башни: ${JSON.stringify(at)}`;
+  const far = cellOf(a, i => dist(xy(a, i), tw) > zoneOf(a, tw) * NECRO.cult.roam + 2);
+  return !cultFoes(a, far).length || 'культисты вдали от башни';
 });
 
 const only = process.argv[2];

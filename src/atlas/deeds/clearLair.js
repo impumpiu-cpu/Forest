@@ -2,7 +2,8 @@
 // radius + `reach`, with the year's chance spread over the seasons) — a calamity's boss's lair is beyond one town
 // (atlas/alliance.js). The town's might × TOWN_WAR.might against the lair's strength × its owner's body, with luck on
 // both sides: the lair is burnt out, or the town pays `raidLoss` of its people and a work.
-import {LAIRS} from '../../data/lairs.js';
+import {LAIRS, NECRO} from '../../data/lairs.js';
+import {deadAt} from '../necro.js';
 import {TOWN_WAR} from '../../data/peoples.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 import {SPECIES} from '../../data/species.js';
@@ -34,7 +35,9 @@ export const clearLair = {
     const l = a.lairs.find(x => x.id === plan.lair), t = a.towns.find(x => x.id === plan.town);
     if (!l?.alive || !t?.alive) return null;
     const L = LAIRS.get(l.kind), owner = SPECIES.get(L.species), s = owner.special, W = TOWN_WAR;
-    const fx = townFx(t), town = might(t, fx) * W.might * (W.luck[0] + W.luck[1] * r()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (W.luck[0] + W.luck[1] * r());
+    // a necromancer's tower stands behind its dead (atlas/necro.js): × its kind's might × (1 + guard × the dead about it)
+    const guard = L.domain ? (L.might || 1) * (1 + NECRO.guard * Math.min(1, deadAt(a, l.i))) : 1;
+    const fx = townFx(t), town = might(t, fx) * W.might * (W.luck[0] + W.luck[1] * r()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * guard * (W.luck[0] + W.luck[1] * r());
     if (town > beast) {
       l.alive = false; l.died = a.hist.year; l.clearedBy = t.id;
       return `${cap1(realmLabel(a, realm.id))} из ${townLabel(t, 2)} ${t.name} выжгли ${L.labelAcc || L.label} «${l.name}»: ${owner.plural} больше не тревожат их земли.`;

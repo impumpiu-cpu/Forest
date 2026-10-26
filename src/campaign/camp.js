@@ -71,7 +71,7 @@ export function campSetup(a, K, ev) {
     food: K.food, cargo: {...K.cargo},
     // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
-    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, boss: ev.foe.boss || null, leaderLair: ev.foe.leaderLair || null} : null,
+    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, leaderLair: ev.foe.leaderLair || null} : null,
   };
 }
 
@@ -198,7 +198,7 @@ function spawnFoe(w) {
     const want = CAMP.threat * F.strength * (map.threat || 1);
     w.fame = 0; w.fame = want - raidThreat(w);
     // the band counted out in strength rating (data/raids.js fill): the budget, rounded up by heads, the bands' caps lifted
-    return spawnGroup(w, 'raiders', b, {...opts, band: who.band || 'bandits', fill: {up: true, max: {}}, atLeast: first && F.boss ? CAMP.boss.atLeast : 0});
+    return spawnGroup(w, 'raiders', b, {...opts, band: who.band || 'bandits', fill: {up: true, max: {}, ...(F.pool && who.band === 'cultists' ? {pool: F.pool} : {})}, atLeast: first && F.boss ? CAMP.boss.atLeast : 0});
   };
   // beasts that come with a band (campaign/land.js withCompany) are its war beasts: one side, one squad, the band's brain
   const bandMain = !(beast && MIGRATIONS.has(beast)), joined = W && W.beast && bandMain ? W : null;
@@ -207,7 +207,7 @@ function spawnFoe(w) {
     const sp = MIGRATIONS.get(joined.beast).species, n = Math.min(CAMP.foe.most, Math.max(1, Math.ceil((budget - main) / expectedStrength(sp, {key: 'wild'}))));
     const want = CAMP.threat * F.strength * (map.threat || 1);
     w.fame = 0; w.fame = want - raidThreat(w);
-    group = spawnGroup(w, 'raiders', main, {...opts, band: band || 'bandits', fill: {up: true, max: {}}, beasts: {species: sp, n}, atLeast: F.boss ? CAMP.boss.atLeast : 0});
+    group = spawnGroup(w, 'raiders', main, {...opts, band: band || 'bandits', fill: {up: true, max: {}, ...(F.pool && band === 'cultists' ? {pool: F.pool} : {})}, beasts: {species: sp, n}, atLeast: F.boss ? CAMP.boss.atLeast : 0});
   } else {
     group = part({beast, band}, main, true);
     if (W) group = group.concat(part(W, budget - main, false));

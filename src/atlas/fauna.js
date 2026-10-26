@@ -10,7 +10,7 @@
 import {SPECIES} from '../data/species.js';
 import {RARITY} from '../data/biomes.js';
 import {FAUNA} from '../data/history.js';
-import {LAIR_FIELD} from '../data/lairs.js';
+import {LAIR_FIELD, NECRO} from '../data/lairs.js';
 import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
@@ -125,6 +125,7 @@ export function stepFauna(a, seasonId) {
       // together cannot take more than there is
       s.N[j] = K > 0 ? Math.max(0, N0 + P.growth * g * N0 * (g > 0 ? 1 - N0 / K : 1) - Math.min(eaten[k][j], N0)) : N0 * 0.5;
     }
+    else if (s.role === 'dead') for (let j = 0; j < n; j++) s.N[j] *= s.K[j] > 0 ? 1 - NECRO.deadFade : 0;   // the risen fall apart without a master (atlas/necro.js)
     else if (s.role === 'folk' || (s.lair && (s.role !== 'predator' || !s.prey.length))) for (let j = 0; j < n; j++) s.N[j] *= s.K[j] > 0 ? 1 - LAIR_FIELD.fade : 0;   // (none where the land holds none)
     diffuse(F, s.N, s.K, P.diffuse * s.speed, tmp);
     for (let j = 0; j < n; j++) if (s.N[j] < P.floor * Math.max(s.K[j], 0.05)) s.N[j] = 0;
