@@ -35,6 +35,7 @@ import {faunaFrom} from '../src/world/region.js';
 import {VALUES} from '../src/data/values.js';
 import {RELATIONS, KINS} from '../src/data/relations.js';
 import {RAID_BANDS, memberStrength, kitFor} from '../src/data/raids.js';
+import {COMBAT_ROLES, ROLE_MIX, ARMOUR, mixOf, rolesOf} from '../src/data/roles.js';
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
@@ -180,7 +181,29 @@ for (const v of VALUES.all()) for (const c of v.clash) if (!VALUES.has(c)) err(`
   for (const b of RAID_BANDS.all()) for (const t of [2, 12, 25]) for (const m of b.members({}, rng, 600, t)) {
     if (!SPECIES.has(m.species)) { err(`банда ${b.id}: нет вида «${m.species}»`); continue; }
     if (!(memberStrength(m.species, t) > 0)) err(`банда ${b.id}: у «${m.species}» нет коэффициента силы`);
-    for (const it of kitFor(m.species, rng, t)) item(`банда ${b.id}`, typeof it === 'string' ? it : it.type);
+    if (m.role && !COMBAT_ROLES.has(m.role)) err(`банда ${b.id}: нет роли «${m.role}»`);
+    if (SPECIES.get(m.species).inventory && !m.role && !mixOf(m.species).fixed && rolesOf(m.species).length) err(`банда ${b.id}: «${m.species}» пришёл без роли`);
+    for (const it of kitFor(m.species, rng, t, m.role)) item(`банда ${b.id}`, typeof it === 'string' ? it : it.type);
+  }
+  for (const b of RAID_BANDS.all()) for (const r of [...Object.keys(b.roles || {}), ...Object.keys(b.least || {})]) if (!COMBAT_ROLES.has(r)) err(`банда ${b.id}: нет роли «${r}»`);
+}
+// fighting roles (data/roles.js): their forms and items exist, the matrix names species that carry things and roles that are
+{
+  const FORM_IDS = new Set(ITEMS.all().map(d => d.form).filter(Boolean));
+  const piece = (where, f) => { if (!FORM_IDS.has(f) && !ITEMS.has(f)) err(`${where}: нет формы или предмета «${f}»`); };
+  for (const R of COMBAT_ROLES.all()) {
+    if (!R.label) err(`роль ${R.id}: без названия`);
+    if (!R.hands?.length) err(`роль ${R.id}: пустые руки`);
+    for (const [fs] of R.hands || []) fs.forEach(f => piece(`роль ${R.id}`, f));
+    (R.back || []).forEach(f => piece(`роль ${R.id}`, f));
+    if (!ARMOUR[R.body]) err(`роль ${R.id}: нет класса брони «${R.body}»`);
+  }
+  for (const [k, list] of Object.entries(ARMOUR)) list.forEach(([f]) => piece(`броня ${k}`, f));
+  for (const [sp, row] of Object.entries(ROLE_MIX)) {
+    if (!SPECIES.has(sp)) { err(`роли видов: нет вида «${sp}»`); continue; }
+    if (!SPECIES.get(sp).inventory) err(`роли видов: «${sp}» не носит вещей (тег inventory)`);
+    for (const k of Object.keys(row)) if (!['best', 'fixed'].includes(k) && !COMBAT_ROLES.has(k)) err(`роли видов, ${sp}: нет роли «${k}»`);
+    (row.fixed || []).forEach(i => item(`роли видов, ${sp}`, i));
   }
 }
 

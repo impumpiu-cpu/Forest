@@ -11,6 +11,9 @@ import {stepEffects, stepBody} from '../src/agents/body.js';
 import {speedOf} from '../src/agents/movement.js';
 import {CONDITIONS, EXHAUSTION, conditionsOf, exhaustionStage} from '../src/data/conditions.js';
 import {WOUNDS} from '../src/data/wounds.js';
+import {refreshBody} from '../src/agents/special.js';
+import {holdsGround} from '../src/agents/auras.js';
+import {maxHp} from '../src/agents/agent.js';
 import * as E from '../src/data/schema/edits.js';
 
 const bad = [];
@@ -90,5 +93,20 @@ for (const c of CONDITIONS.all()) expect(c.label && c.note, `${c.id}: без н�
   E.resetAll();
 }
 
+// a mark for life: a trained war beast is stronger and sturdier than a wild one, and stands its ground until near death
+{
+  const w = scene(), wild = put(w, 'varg', 'raiders'), tr = put(w, 'varg', 'raiders'), C = CONDITIONS.get('trained');
+  tr.special = {...wild.special}; tr.marks = ['trained']; refreshBody(tr); tr.hp = maxHp(tr); wild.hp = maxHp(wild);
+  expect(maxHp(tr) > maxHp(wild) && tr.mods.str > wild.mods.str, `выученный варг не сильнее дикого: здоровье ${maxHp(tr)} против ${maxHp(wild)}`);
+  expect(conditionsOf(w, tr).some(x => x.row.id === 'trained'), 'карточка не видит выучки');
+  tr.hp = wild.hp = maxHp(tr) * (C.holdBelow + 0.05);
+  expect(holdsGround(w, tr) && !holdsGround(w, wild), 'выученный раненый зверь не стоит, а дикий стоит');
+  tr.hp = maxHp(tr) * C.holdBelow * 0.5;
+  expect(!holdsGround(w, tr), 'выученный зверь при смерти всё ещё стоит');
+  const ok = E.setCell('conditions', 'trained', 'special.S', 3); expect(ok?.ok !== false, 'правка выучки отклонена: ' + JSON.stringify(ok)); refreshBody(tr);
+  const str3 = tr.mods.str; E.resetAll(); refreshBody(tr);
+  expect(str3 > tr.mods.str, 'правка выучки не дошла до тела');
+}
+
 if (bad.length) { console.log('Состояния (этап 4):\n  ' + bad.join('\n  ')); process.exit(1); }
-console.log(`ok   состояния: ${CONDITIONS.all().length} (ран ${WOUNDS.filter(x => !x.trauma).length}, травм ${WOUNDS.filter(x => x.trauma).length}, состояний ${CONDITIONS.filter(c => c.kind === 'state').length}, ступеней истощения ${CONDITIONS.filter(c => c.kind === 'exhaustion').length}) — кровотечение и оглушение от оружия идут и проходят, истощение меняет тело только своими числами`);
+console.log(`ok   состояния: ${CONDITIONS.all().length} (ран ${WOUNDS.filter(x => !x.trauma).length}, травм ${WOUNDS.filter(x => x.trauma).length}, состояний ${CONDITIONS.filter(c => c.kind === 'state').length}, ступеней истощения ${CONDITIONS.filter(c => c.kind === 'exhaustion').length}, меток ${CONDITIONS.filter(c => c.kind === 'mark').length}) — выучка делает зверя сильнее и держит его на поле, кровотечение и оглушение от оружия идут и проходят, истощение меняет тело только своими числами`);

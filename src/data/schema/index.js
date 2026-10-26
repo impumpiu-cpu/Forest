@@ -99,6 +99,7 @@ import {FACTIONS} from '../factions.js';
 import {NEIGHBOURS} from '../neighbours.js';
 import {LUXURY} from '../luxury.js';
 import {RAID_BANDS} from '../raids.js';
+import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS} from '../roles.js';
 import {SOILS} from '../soils.js';
 import {KIND_LAND, KIND_GROVES} from '../kinds.js';
 
@@ -470,6 +471,17 @@ TABLES.push(
   autoTable({id: 'furniture', label: 'Мебель', group: 'Поселение', note: 'Мебель и её уют (data/furniture.js).', rows: () => FURNITURE.all()}),
   autoTable({id: 'luxury', label: 'Роскошь', group: 'Поселение', note: 'Украшения ювелира (data/luxury.js).', rows: () => LUXURY.all()}),
   autoTable({id: 'migrations', label: 'Приходы', group: 'Поселение', note: 'Кто и когда приходит на карту поселения (data/migrations.js).', rows: () => MIGRATIONS.all()}),
+  fix(autoTable({id: 'combatRoles', label: 'Боевые роли', group: 'Существа', rows: () => COMBAT_ROLES.all(),
+    note: 'Роли бойцов отряда (data/roles.js): что держит в руках (наборы форм с весами: форма становится вещью той ступени металла, что даёт уровень банды; не форма — id вещи), класс брони («Классы брони»), что за спиной (колчан — только к луку), зелья в поясе, кем он в отряде (shooter — держится сзади и стреляет, front — идёт в бой) и где стоит в строю. Кому какие роли — «Роли видов».'}),
+    {hands: {type: 'json', label: 'Руки'}, body: {type: 'enum', values: Object.fromEntries(Object.keys(ARMOUR).map(k => [k, k])), label: 'Броня'}, back: {type: 'list', label: 'Спина'},
+      potions: {type: 'int', min: 0, label: 'Зелья'}, squad: {type: 'enum', values: {front: 'в бой', shooter: 'стрелок'}, label: 'В отряде'}, place: {type: 'enum', values: {front: 'впереди', mid: 'в середине', back: 'сзади'}, label: 'В строю'}}),
+  {id: 'roleMix', label: 'Роли видов', group: 'Существа', key: '_id',
+    note: 'Матрица «вид × роль» (data/roles.js ROLE_MIX): вес каждой роли, которую вид может взять в банде; пусто — не может (у тёмных эльфов нет щитоносцев). Лучший металл — высшая ступень, которую приносит его народ (0 кость и дерево, 1 бронза, 2 железо, 3 сталь, 4 мифрил). Свой набор — вещи вместо ролей (вампир, некромант). Вид, который носит вещи (тег inventory) и не имеет строки, берёт строку человека; строка без весов не приносит ничего (тролль).',
+    rows: () => Object.entries(ROLE_MIX).map(([k, v]) => ({_id: k, ...v})), target: (r, c) => [ROLE_MIX[r._id], c.key],
+    columns: [col('_id', 'Вид', 'ref', {ref: SPECIES}), ...COMBAT_ROLES.all().map(R => col(R.id, R.label, 'num', {min: 0, nullable: true, note: R.note})),
+      col('best', 'Лучший металл', 'int', {min: 0, max: 4}), col('fixed', 'Свой набор', 'ids', {ref: ITEMS, nullable: true})]},
+  {id: 'roleRules', label: 'Роли: броня и металл', group: 'Существа', ...grp({armour: ARMOUR, tiers: ROLE_TIERS}),
+    note: 'Классы брони — формы с весами (форма, которой нет на этой ступени, выпадает: чешуя и кольчуга начинаются с бронзы). Металл: ступень k открыта с уровня банды from[k], каждая вещь берёт её с шансом ramp на уровень сверх него, не больше share; не выше «Лучшего металла» вида.'},
   autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all(), skip: ['chance']}),
   autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
     rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'behaviours', 'heart', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),

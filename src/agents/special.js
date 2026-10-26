@@ -13,7 +13,7 @@ import {SPECIES} from '../data/species.js';
 import {TRAITS, BASE_MODS} from '../data/traits.js';
 import {CREATURE_MODS, ADD_MODS} from '../data/mods.js';
 import {WOUNDS} from '../data/wounds.js';
-import {exhaustionRow, taintRow, CONDITIONS} from '../data/conditions.js';
+import {exhaustionRow, taintRow, marksOf, CONDITIONS} from '../data/conditions.js';
 import {illStage} from '../data/afflictions.js';
 
 export const peopleOf = (sp, a) => (a.people && sp.peoples ? sp.peoples.find(p => p.id === a.people) : null);
@@ -77,7 +77,11 @@ export function bossSpecial(sp, rnd, B) {
 
 // SPECIAL → mods and health. A beast (`relativeStats`) is measured against the typical one of its kind.
 function specialInto(m, a, sp) {
-  const s = a.special, base = sp.relativeStats ? middle(sp.special) : null;
+  // the marks shift its letters (a war beast's training: data/conditions.js); the creature's own roll is kept as it is
+  const marks = marksOf(a);
+  let s = a.special;
+  if (marks.some(r => r.special)) { s = {...s}; for (const r of marks) for (const [k, v] of Object.entries(r.special || {})) if (k in s) s[k] += v; }
+  const base = sp.relativeStats ? middle(sp.special) : null;
   const rel = (k) => (base ? EFFECTS[k](s) / EFFECTS[k](base) : EFFECTS[k](s));
   // every key of the body that a SPECIAL curve sets (data/mods.js `curve`): a multiplier is the curve, an addition
   // its difference from the typical one of the kind, no less than `floor`
@@ -115,7 +119,7 @@ export function refreshBody(a) {
   const ex = exhaustionRow(a.exhaust || 0);
   if (ex) { for (const [k, v] of Object.entries(ex.mods || {})) mod(m, k, v); hpMul *= ex.hp ?? 1; }
   // an illness by its stage, withdrawal, the rot (data/afflictions.js, data/conditions.js)
-  for (const row of [illStage(a), a.withdrawal ? CONDITIONS.get('withdrawal') : null, taintRow(a)]) if (row) { for (const [k, v] of Object.entries(row.mods || {})) mod(m, k, v); hpMul *= row.hp ?? 1; }
+  for (const row of [illStage(a), a.withdrawal ? CONDITIONS.get('withdrawal') : null, taintRow(a), ...marksOf(a)]) if (row) { for (const [k, v] of Object.entries(row.mods || {})) mod(m, k, v); hpMul *= row.hp ?? 1; }
   const own = a.own || {};
   for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;
   for (const [k, v] of Object.entries(own.add || {})) m[k] = (m[k] ?? 0) + v;

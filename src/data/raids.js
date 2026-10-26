@@ -10,6 +10,8 @@
 //   goals(w, group) — what they come for, [[goal, weight], …] (agents/squad.js GOALS): loot, kill, burn,
 //         scout. A band that lost many to the colony comes for blood more often; scouts only come small
 //         and only before the band has raided. The mindless dead always go for anything alive.
+//   roles — the band's leaning in its fighters' roles ({role: ×} over the species' weights, data/roles.js ROLE_MIX);
+//   least — the share of heads a role must have at least ({shield: 0.2}: one shield-bearer in five)
 //   nerve — added to the squad's retreat threshold (agents/squad.js SQUAD.nerve): trolls and the
 //         bloodthirsty hold on longer (< 0), goblins break sooner (> 0).
 import {Registry} from '../core/registry.js';
@@ -17,6 +19,8 @@ import {pick, plural} from '../core/util.js';
 import {SPECIES} from './species.js';
 import {expectedStrength} from '../agents/strength.js';
 import {chanceWeight} from './chance.js';
+import {roleKit, drawRole} from './roles.js';
+import {refreshBody} from '../agents/special.js';
 
 // a band that has lost many to the colony comes for the one who killed them; scouts come first, few
 const feud = w => Math.min(2, (w.chronicle.raidersKilled || 0) / 6);
@@ -29,15 +33,18 @@ export const RAID_BANDS = new Registry('raid band');
 // (data/migrations.js puts this on every member as the band arrives)
 export const raiderBody = t => ({hp: Math.min(1.1, 0.75 + t * 0.012), ranged: Math.min(0.7, 0.1 + t * 0.025)});
 
-// what one member of a band of level t is worth (КС), on average: kit 'bandit' — the bandits' gear, 'raid' —
-// what its kind carries (KITS below), as it will be given out on arrival
-export function memberStrength(species, t, kit = 'raid') {
+// what one member of a band of level t is worth (КС), on average: in its fighting role (data/roles.js), or over the roles
+// its species takes (`role` null), with the gear a band of that level brings, as it will be given out on arrival
+export function memberStrength(species, t, role = null) {
   const L = Math.max(0, Math.floor(t)), body = raiderBody(L);
-  return expectedStrength(species, {key: `${kit}|${L}`, kit: kit === 'bandit' ? rng => banditKit(rng, L) : rng => kitFor(species, rng, L),
-    prepare: a => { a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged}; }});
+  return expectedStrength(species, {key: `role:${role || '*'}|${L}`, kit: rng => kitFor(species, rng, L, role ?? drawRole(rng, species)),
+    prepare: a => {
+      if (SPECIES.get(species).behaviours) { a.marks = ['trained']; refreshBody(a); }   // a band's beast is trained (data/migrations.js)
+      a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged};
+    }});
 }
-// one bandit of level t: the yardstick of a raid's size (settlement/threat.js) — what «a band of five» means
-export const raiderStrength = t => memberStrength('human', t, 'bandit');
+// one human raider of level t: the yardstick of a raid's size (settlement/threat.js) — what «a band of five» means
+export const raiderStrength = t => memberStrength('human', t);
 // a budget counted in such bandits, for the bands that change their make-up with size
 const heads = (budget, t) => budget / raiderStrength(t);
 
@@ -47,8 +54,8 @@ const heads = (budget, t) => budget / raiderStrength(t);
 // rounded up: a campaign's foe, data/camp.js CAMP.foe); `max` caps a
 // species by head count ({ogre: 2}); `extra` — members who come anyway (a necromancer), paid from the budget
 // too. At least one member; no more than 18.
-function fill(rng, budget, mix, t, {extra = [], kit = 'raid', max = {}, up = false, here = null} = {}) {
-  const cost = sp => memberStrength(sp, t, kit);
+function fill(rng, budget, mix, t, {extra = [], max = {}, up = false, here = null, roles = null, least = null} = {}) {
+  const cost = (sp, role = null) => memberStrength(sp, t, role);
   if (here) mix = mix.map(([sp, wt]) => [sp, wt * (here[sp] ?? 1)]);   // the war beasts only as many as live about (data/raids.js BAND_BEASTS)
   const out = [...extra];
   let left = budget - extra.reduce((s, m) => s + memberStrength(m.species, t), 0);
@@ -57,9 +64,11 @@ function fill(rng, budget, mix, t, {extra = [], kit = 'raid', max = {}, up = fal
     if (!fits.length) break;
     let r = rng() * fits.reduce((s, m) => s + m[1], 0), sp = fits[0][0];
     for (const [s, wt] of fits) { r -= wt; if (r <= 0) { sp = s; break; } }
-    out.push({species: sp}); left -= cost(sp);
+    // its fighting role (data/roles.js): what the band still lacks first, then by the species' weights
+    const role = SPECIES.get(sp).inventory ? drawRole(rng, sp, {bias: roles, least, have: out.filter(m => m.species === sp).map(m => m.role)}) : null;
+    out.push({species: sp, ...(role ? {role} : {})}); left -= cost(sp, role);
   }
-  if (!out.length) out.push({species: (mix.find(m => m[1] > 0) || mix[0])[0]});
+  if (!out.length) { const sp = (mix.find(m => m[1] > 0) || mix[0])[0], role = SPECIES.get(sp).inventory ? drawRole(rng, sp, {bias: roles, least}) : null; out.push({species: sp, ...(role ? {role} : {})}); }
   return out.slice(0, 18);
 }
 
@@ -68,29 +77,8 @@ function fill(rng, budget, mix, t, {extra = [], kit = 'raid', max = {}, up = fal
 // faunaLevel): × their level over `full` (at most 1); on the polygon, as the band's list says
 export const BAND_BEASTS = {full: 0.6};
 
-// early bands carry clubs and slings in rags, later ones spears, shields, bows and leather
-export function banditKit(rng, t) {
-  const early = [['club'], ['club'], ['spear'], ['sling'], ['staff']];
-  const late = [['spear', 'shield'], ['club', 'shield'], ['maul'], ['bow', 'quiver'], ['spear'], ['sling']];
-  const set = pick(rng, rng() < Math.min(0.9, t * 0.04) ? late : early);
-  const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
-  return [...set, ...(r < plates ? ['hardleather'] : r < plates + leather ? ['jerkin'] : r < plates + leather + 0.4 ? ['clothes'] : [])];
-}
-
-const KITS = {
-  orc: (rng, t) => [...pick(rng, [['maul'], ['axe', 'shield'], ['club', 'shield'], ['spear'], t > 10 ? ['bronzeaxe', 'shield'] : ['axe']]), ...(rng() < 0.5 ? ['jerkin'] : [])],
-  goblin: rng => pick(rng, [['sling'], ['sling'], ['bow', 'quiver'], ['club'], ['spear']]),
-  ogre: rng => pick(rng, [['maul'], ['club']]),
-  giant: rng => pick(rng, [['maul'], ['club'], ['club']]),
-  gnoll: (rng, t) => [...pick(rng, [['spear'], ['spear', 'shield'], ['bow', 'quiver'], ['axe']]), ...(rng() < 0.3 ? ['jerkin'] : [])],
-  darkelf: (rng, t) => [...pick(rng, [['bow', 'quiver'], ['bow', 'quiver'], ['sword'], ['spear', 'shield']]), rng() < 0.6 ? 'hardleather' : 'jerkin'],
-  skeleton: rng => pick(rng, [['club'], ['spear'], ['axe'], ['club', 'shield']]),
-  vampire: () => ['sword', 'clothes'],
-  necromancer: () => ['staff', 'clothes'],
-};
-
-// what a member of a band carries; species without hands carry nothing
-export const kitFor = (species, rng, t) => (SPECIES.get(species).inventory && KITS[species] ? KITS[species](rng, t) : []);
+// what a member of a band carries: the kit of its fighting role (data/roles.js); species without hands carry nothing
+export const kitFor = (species, rng, t, role = null) => (SPECIES.get(species).inventory ? roleKit(species, role, rng, t) : []);
 
 const cap1 = x => x[0].toUpperCase() + x.slice(1);
 const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.toUpperCase()); };
@@ -98,12 +86,14 @@ const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.t
 RAID_BANDS.registerAll([
   {id: 'bandits', label: 'разбойники «Серых волков»', kind: 'sentient',
     goals: (w, g) => [['loot', 3], ['kill', feud(w)], ['burn', 0.6 * torches(w)], ['scout', scouting(w, g)]],
+    least: {shield: 0.2},
     chance: {weight: 3},
-    members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, {kit: 'bandit', ...o}).map(m => ({...m, init: a => { a.name = 'Налётчик'; }, kit: 'bandit'})),
+    members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = 'Налётчик'; }})),
     message: n => `Набег! ${n} ${plural(n, 'разбойник', 'разбойника', 'разбойников')} из «Серых волков»`},
 
   {id: 'orcs', label: 'орочья ватага', kind: 'sentient',
     goals: (w, g) => [['loot', 2], ['burn', 1.5 * torches(w)], ['kill', 0.5 + feud(w)], ['scout', scouting(w, g)]], nerve: -0.05,
+    least: {shield: 0.2},
     chance: {weight: 2, threat: 4, below: 0.5},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['orc', 3], ['goblin', 2], ['varg', heads(budget, t) >= 5 ? 1 : 0], ['ogre', heads(budget, t) >= 10 ? 0.6 : 0]], t, o),
     message: (n, group) => `Набег! Орочья ватага с гоблинами${group.some(a => a.species === 'varg') ? ' и боевыми варгами' : ''}`},
@@ -123,6 +113,7 @@ RAID_BANDS.registerAll([
 
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',
     goals: (w, g) => [['kill', 2], ['loot', 1], ['scout', scouting(w, g)]],
+    least: {archer: 0.3},
     chance: {weight: 0.6, perNight: 1, threat: 8},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['darkelf', 1]], t, o),
     message: () => 'Набег! Тёмные эльфы вышли из-под земли за рабами и добычей'},
@@ -167,7 +158,7 @@ RAID_BANDS.registerAll([
       const pool = o?.pool?.length ? o.pool : w?.site?.neighbours?.hostile?.cultPool?.length ? w.site.neighbours.hostile.cultPool : [['human', 2], ['zombie', 2], ['skeleton', 1]];
       return fill(rng, budget, pool, t, {...(o || {}), pool: undefined}).map(m => {
         const sp = SPECIES.get(m.species), living = sp.kind === 'race' || sp.mind === 'sentient' && sp.kind !== 'undead';
-        return {...m, ...(living && !KITS[m.species] && sp.inventory ? {kit: 'bandit'} : {}),
+        return {...m,
           init: a => { a.cultist = true; a.name = cap1(living ? `${sp.label.split(' ').pop()}-культист` : sp.label); }};
       });
     },
@@ -186,6 +177,8 @@ RAID_BANDS.registerAll([
     members: (w, rng, budget, t, o) => fill(rng, budget, [['upyr', 1]], t, {extra: [{species: 'vampire', init: (a, w) => { [a.name, a.gender] = pick(w.rngs.outside, SPECIES.get('vampire').names); }}], ...o}),
     message: (n, group) => `${group.find(a => a.species === 'vampire')?.name || 'Вампир'} пришёл со свитой упырей. Простое железо его почти не берёт, нужно серебро`},
 ]);
+// the band's roles go into its fill (read at the call: an edit of the table counts)
+for (const b of RAID_BANDS.all()) { const own = b.members; b.members = (w, rng, budget, t, o) => own(w, rng, budget, t, {roles: b.roles || null, least: b.least || null, ...(o || {})}); }
 // the weight of a band now, from its row of the random table (data/chance.js)
 for (const b of RAID_BANDS.all()) b.weight = (w, t, night) => chanceWeight(b.chance, {threat: t, night});
 

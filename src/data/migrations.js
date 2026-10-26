@@ -19,7 +19,8 @@ import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
-import {RAID_BANDS, BAND_BEASTS, banditKit, kitFor, raiderBody} from './raids.js';
+import {RAID_BANDS, BAND_BEASTS, kitFor, raiderBody} from './raids.js';
+import {COMBAT_ROLES} from './roles.js';
 import {faunaLevel} from '../world/region.js';
 import {createSquad} from '../agents/squad.js';
 import {SPECIES, isPredator, onSpeciesChange, arrives} from './species.js';
@@ -124,13 +125,16 @@ MIGRATIONS.registerAll([
       if (opts.beasts) for (let k = 0; k < opts.beasts.n; k++) list.push({species: opts.beasts.species});
       // a boss's retinue (campaign/camp.js): at least this many, made up with more of the band's most numerous kind
       if (opts.atLeast) { const most = list.map(m => m.species).sort((p, q) => list.filter(x => x.species === q).length - list.filter(x => x.species === p).length)[0]; while (list.length < opts.atLeast) list.push({...list.find(m => m.species === most)}); }
-      return list.map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
+      return list.map(m => ({...m, kit: m.kit || kitFor(m.species, rng, t, m.role),
         init: (a, w) => {
           a.band = band.id;
+          if (m.role) a.fightRole = m.role;   // its fighting role (data/roles.js): what it carries, where it stands in the band
           if (SPECIES.get(m.species).inventory && w.rngs.outside() < POTION.foe) a.potions = 1;   // a healing potion, rarely (agents/potions.js)
+          const belt = m.role ? COMBAT_ROLES.get(m.role).potions || 0 : 0; if (belt > (a.potions || 0)) a.potions = belt;   // a healer's belt
           if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);
           // a war beast (a warg with orcs, a hyena with gnolls) follows the band, not its own brain
-          if (SPECIES.get(m.species).behaviours) { a.brain = 'raider'; a.warBeast = true; }
+          // — trained (data/conditions.js «выученный»): stronger than a wild one, it does not run while it lives
+          if (SPECIES.get(m.species).behaviours) { a.brain = 'raider'; a.warBeast = true; a.marks = [...(a.marks || []), 'trained']; refreshBody(a); }
         }}));
     },
     groupInit: (group, w) => {

@@ -3,7 +3,8 @@
 //   goal   — why they came: loot (the stores), kill (one chosen colonist), burn (a wooden building),
 //            scout (look the camp over and bring word back), slaughter (the mindless dead: anyone alive).
 //            Drawn from the band's `goals` (data/raids.js) when it arrives.
-//   roles  — front (meets the defenders), shooter (bows and slings), looter (goes for the stores while
+//   roles  — the task in the band (its fighting role — shield-bearer, archer… — came with it: data/roles.js):
+//            front (meets the defenders), shooter (bows and slings), looter (goes for the stores while
 //            the others hold the defenders off), torch (sets the fire), rear (covers the retreat),
 //            beast (a war beast at its masters' side), scout.
 //   morale — 1 at the start; losses, a fallen leader and the defenders' strength nearby bring it down.
@@ -26,6 +27,7 @@ import {nearestHostile, canSee} from './combat.js';
 import {agentById, liveById, firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
 import {SQUAD} from '../data/behaviour.js';
+import {COMBAT_ROLES} from '../data/roles.js';
 
 export {SQUAD};   // (data/behaviour.js)
 export const GOALS = {
@@ -91,7 +93,7 @@ export function createSquad(w, group) {
     if (a.warBeast) a.sqRole = 'beast';
     else if (goal === 'scout') a.sqRole = 'scout';
     else if (kind === 'mindless') a.sqRole = 'front';
-    else if (a.gear?.rangedReady) a.sqRole = 'shooter';
+    else if (a.fightRole ? COMBAT_ROLES.get(a.fightRole).squad === 'shooter' && a.gear?.ranged : a.gear?.rangedReady) a.sqRole = 'shooter';   // by its role (data/roles.js), a stray by what it holds
     else rest.push(a);
   }
   rest.sort((x, y) => strength(x) - strength(y));   // weakest first: they loot and carry the torches
@@ -254,5 +256,6 @@ export function squadText(w, a) {
   const goal = GOALS[sq.goal].label + (sq.goal === 'kill' ? `: ${agentById(w, sq.target)?.name || '—'}` : '');
   const state = sq.state === 'march' ? `боевой дух ${Math.round(clamp(sq.morale, 0, 1.5) * 100)}%` : sq.state === 'retreat' ? `отступают (${sq.reason})` : `уходят (${sq.reason})`;
   const left = membersOf(w, sq).length;
-  return `${ROLES[a.sqRole] || '—'}${a.id === sq.leader && a.sqRole !== 'leader' ? ', вожак' : ''}; цель — ${goal}; ${state}; в строю ${left} из ${sq.size}`;
+  const fr = a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).label : null;
+  return `${fr ? fr + ', ' : ''}${ROLES[a.sqRole] || '—'}${a.id === sq.leader && a.sqRole !== 'leader' ? ', вожак' : ''}; цель — ${goal}; ${state}; в строю ${left} из ${sq.size}`;
 }

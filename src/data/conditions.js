@@ -6,14 +6,17 @@
 //                      says at which place of the body)
 //         state      — a passing state kept on the creature itself (`where`: its field)
 //         exhaustion — a stage of exhaustion: how many of `EXHAUSTION.needs` are at or below `EXHAUSTION.low`
-//   mods  — what it does to the body (keys of «Модификаторы существа»); hp — × full health
+//         mark       — what a creature is for life, not what is wrong with it (a.marks): a war beast's training
+//   mods  — what it does to the body (keys of «Модификаторы существа»); hp — × full health; special — a shift of its
+//           SPECIAL ({S: +1}); holdBelow — it stands its ground until its health falls below this share
+//           (agents/auras.js holdsGround); stay — ticks it fights on once nobody of its band is left to follow
 //
 // Wounds, traumas and the stages of exhaustion work through the body's sources (agents/special.js refreshBody).
 // The states run in agents/body.js stepEffects. data/wounds.js WOUNDS is the wounds and traumas of this table.
 import {Registry} from '../core/registry.js';
 import {TAINT} from './afflictions.js';
 
-export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', state: 'состояние', exhaustion: 'истощение', taint: 'порча'};
+export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', state: 'состояние', exhaustion: 'истощение', taint: 'порча', mark: 'метка'};
 
 export const CONDITIONS = new Registry('condition');
 
@@ -40,6 +43,10 @@ CONDITIONS.registerAll([
   {id: 'tainted1', kind: 'taint', stage: 1, label: 'порча I', mods: {}, note: 'удары нежити; проходит сама'},
   {id: 'tainted2', kind: 'taint', stage: 2, label: 'порча II', mods: {}, note: 'порча въелась глубже'},
   {id: 'tainted3', kind: 'taint', stage: 3, label: 'порча III', mods: {}, note: 'порча на грани: тело чернеет'},
+  // ── marks for life (a.marks)
+  {id: 'trained', kind: 'mark', where: 'marks', label: 'выученный',
+    note: 'боевой зверь банды (варг орков, гиена гноллов, паук гоблинов): вырос при людях — сильнее и крепче дикого, не бежит от толпы и раны, пока жив; оставшись без хозяев, ещё дерётся, потом уходит',
+    special: {S: 1, E: 1}, mods: {}, holdBelow: 0.15, stay: 200},
   // ── exhaustion: neutral for now (empty mods), ready for the numbers
   {id: 'exhausted1', kind: 'exhaustion', stage: 1, label: 'истощение I', mods: {}, note: 'одна нужда на исходе'},
   {id: 'exhausted2', kind: 'exhaustion', stage: 2, label: 'истощение II', mods: {}, note: 'две нужды на исходе'},
@@ -77,6 +84,11 @@ export function conditionsOf(w, a) {
   if (a.ill) out.push({row: CONDITIONS.get('ill'), until: a.ill.next, ill: a.ill});
   if (a.withdrawal) out.push({row: CONDITIONS.get('withdrawal')});
   const tr = taintRow(a); if (tr) out.push({row: tr});
+  for (const id of a.marks || []) if (CONDITIONS.has(id)) out.push({row: CONDITIONS.get(id)});
   return out;
 }
 export {hasMods as conditionHasMods};
+
+// the marks a creature bears, as rows (a.marks: data/conditions.js kind 'mark')
+export const marksOf = a => (a.marks?.length ? a.marks.filter(id => CONDITIONS.has(id)).map(id => CONDITIONS.get(id)) : []);
+export const hasMark = (a, id) => !!a.marks?.includes(id);
