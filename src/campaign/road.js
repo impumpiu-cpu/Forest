@@ -43,7 +43,7 @@ export function famed(a, K, kind, realm = null) {
 export function choosePace(a, K) {
   if (PACE_RULES.pursued === 'normal' && PACE_RULES.danger === 'normal') return 'normal';
   if ((K.bubble?.things || []).some(x => x.pursuit)) return PACE_RULES.pursued;   // a band on the crown's trail (campaign/quest.js)
-  const ds = dangers(a, K.i), worst = ds.reduce((m, d) => Math.max(m, d.strength ?? 0), 0);
+  const ds = dangers(a, K.i, K), worst = ds.reduce((m, d) => Math.max(m, d.strength ?? 0), 0);
   return worst > PACE_RULES.dangerAt ? PACE_RULES.danger : 'normal';
 }
 export const paceOf = K => PACES.get(K.pace || 'normal');

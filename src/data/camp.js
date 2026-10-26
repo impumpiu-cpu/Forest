@@ -77,6 +77,7 @@ export const GAME_FLOW = {deer: 'deer', boar: 'boars', goat: 'goats', hare: 'har
 // (data/migrations.js); a lair's thing names its own band or beast (campaign/land.js dangers)
 export const CAMP_FOES = {
   bandits: {band: 'bandits'},
+  raiders: {band: 'orcs'},
   army:    {band: 'bandits', threat: 1.6},
   tribe:   {band: 'goblins'},
   undead:  {band: 'undead'},

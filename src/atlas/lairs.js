@@ -138,6 +138,8 @@ function pour(a, lair, L, amount, add) {
   }
 }
 export const pourBrood = (a, at, L) => pour(a, {x: at % a.w, y: (at / a.w) | 0}, L, LF.brood, true);
+// how thick a lair's folk live about it (their density at its coarse cell: the halo the trackers follow)
+export const felt = (a, lair) => { const F = a.fauna, s = F && F.list[F.idx[LAIRS.get(lair.kind).species]]; return s ? s.N[faunaCell(a, lair.i)] : 0; };
 // how thick the owners of a lair kind live about a cell, against what the land holds (0 — none)
 const thick = (a, L, i) => { const F = a.fauna, s = F && F.list[F.idx[L.species]], j = F ? faunaCell(a, i) : 0; return s && s.K[j] > 0 ? s.N[j] / s.K[j] : 0; };
 const wildKinds = a => LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town' && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * LL.crowdMax);

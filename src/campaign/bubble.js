@@ -72,7 +72,7 @@ function spawn(a, K, guided) {
     const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: trail > 0 && r() < trail, ...props}); };   // (no draw without a hunt: the stream stays as it was
     const named = dg => dg.label || THINGS[dg.kind].label || FOES[dg.kind]?.label || dg.kind;   // (a road's bandits, an army, the risen dead have no name of their own: the foe's)
     const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${named(dg)}` : named(dg), ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {}), ...(dg.with && !small ? {with: dg.with} : {})});
-    const ds = dangers(a, i);
+    const ds = dangers(a, i, K);
     for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(withCompany(dg, ds, r)));   // one or two kinds of who lives here (campaign/land.js)
     // a small party by day, about its own business
     const S = BUBBLE.small, hostile = ds.filter(dg => THINGS[dg.kind]?.mood === 'hostile');

@@ -20,7 +20,10 @@ import {faunaCell} from '../atlas/fauna.js';
 import {roadAccess} from '../atlas/roads.js';
 import {BIOMES} from '../data/biomes.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
-import {LAIR_BANDS} from '../data/seam.js';
+import {LAIR_BANDS, REALM_BANDS} from '../data/seam.js';
+import {WORLD_PEOPLES} from '../data/peoples.js';
+import {RELATIONS} from '../data/relations.js';
+import {atWar} from '../atlas/diplomacy.js';
 import {SPECIES} from '../data/species.js';
 import {GAME, CAMPAIGN} from '../data/campaign.js';
 import {FODDER} from '../data/transport.js';
@@ -78,6 +81,22 @@ export function wildFoes(a, i, lair = lairAt(a, i)) {
   }
   return out;
 }
+// the peoples that raid (REALM_BANDS), by their fields, where they are the caravan's foe (WILD_FOES.raiders)
+const relOf = people => SPECIES.get(WORLD_PEOPLES.get(people).race).rel;
+export function peopleFoes(a, i, K) {
+  const out = [], W = WILD_FOES.raiders; if (!K || !a.peoples || !a.fauna || a.f.ocean[i]) return out;
+  const j = faunaCell(a, i);
+  for (const pe of a.peoples) {
+    const band = REALM_BANDS[pe.id]; if (!band || pe.id === K.people) continue;
+    const v = pe.u[j] * pe.K[j]; if (!(v >= WILD_FOES.at)) continue;
+    const dislike = (RELATIONS[relOf(K.people)]?.[relOf(pe.id)] ?? 0) < 0;
+    const war = !!K.realm && (a.realms || []).some(r => r.people === pe.id && atWar(a, K.realm, r.id));
+    if (!dislike && !war) continue;
+    const x = Math.min(W.cap, v);
+    out.push({kind: 'raiders', p: W.p * x, strength: W.s[0] + W.s[1] * x, label: `${WORLD_PEOPLES.get(pe.id).label}-налётчики`, band, people: pe.id});
+  }
+  return out;
+}
 // a foe that comes may bring a second kind of the same cell along (WILD_FOES.mix): beasts with beasts, bands with bands —
 // the pick weighed by how likely each comes. → the foe, with `with: {beast | band, label, share}` when it brings one
 const sideOf = d => (d.beast ? 'beast' : d.band && d.kind !== 'army' ? 'band' : null);
@@ -100,8 +119,9 @@ export function lairFoe(kind) {
 }
 
 // what may come at night, each with how likely it makes a fight: [{kind, p, strength, label, beast | band, species?}]
-export const nightRisk = (a, i) => dangers(a, i).reduce((s, d) => s + d.p, 0);
-export function dangers(a, i) {
+// (`K` — the caravan: who is its foe among the peoples; without it the peoples are left out)
+export const nightRisk = (a, i, K = null) => dangers(a, i, K).reduce((s, d) => s + d.p, 0);
+export function dangers(a, i, K = null) {
   const out = [], N = NIGHT;
   const lair = lairAt(a, i);
   if (lair) {
@@ -112,7 +132,7 @@ export function dangers(a, i) {
       lair: lair.id, species: L.species,   // (its captives, if it keeps any: a fight won frees them — campaign/fight.js)
       ...(ld ? {boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, leaderLair: lair.id} : {})});
   }
-  out.push(...wildFoes(a, i, lair));
+  out.push(...wildFoes(a, i, lair), ...peopleFoes(a, i, K));
   if (a.f.scourge && a.f.scourge[i] > N.army.at) out.push({kind: 'army', p: N.army.p * a.f.scourge[i], strength: N.army.s});
   if (a.rot && a.fauna && a.rot[faunaCell(a, i)] > N.undead.at) out.push({kind: 'undead', p: N.undead.p * a.rot[faunaCell(a, i)], strength: N.undead.s + a.rot[faunaCell(a, i)]});
   const road = roadAccess(a, i);

@@ -47,8 +47,8 @@ import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.
 import {nameCaravanMasters} from './masters.js';
 import {morningFind} from './finds.js';
 import {leaderSlain, livingLeaders} from '../atlas/leaders.js';
-import {wherePhrase, lairAt, revealLair} from '../atlas/lairs.js';
-import {LEADER, TRIBE_RAID, LAIRS} from '../data/lairs.js';
+import {wherePhrase, lairAt, revealLair, felt, R as lairR} from '../atlas/lairs.js';
+import {LEADER, TRIBE_RAID, LAIRS, WILD} from '../data/lairs.js';
 import {termsOf, choosePace, paceOf} from './road.js';
 const SPECIES_LABEL = race => SPECIES.get(race).label;
 
@@ -154,11 +154,20 @@ function march(a, K, v) {
 }
 
 // where the caravan is now, in words: for the log when it enters a realm or a land
+const WHICH = {m: 'котором', n: 'котором', f: 'которой', pl: 'которых'};   // «о котором / которой / которых» by the lair's noun
 function entered(a, K, before) {
   const b = biomeAt(a, K.i), t = townAt(a, K.i);
   // a hidden lair of the wild (atlas/lairs.js): the caravan walks into its land and the world learns of it
+  // (or comes near where its folk live thick: their trail leads to it)
   const hid = lairAt(a, K.i);
-  if (hid?.hidden) { const L = LAIRS.get(hid.kind); revealLair(a, hid, 'караван'); say(a, K, `Караван набрёл на ${L.labelAcc || L.label} «${hid.name}» ${wherePhrase(a, hid.i)}, о котором не знала ни одна держава.`, 'sight', true); }
+  if (hid?.hidden) { const L = LAIRS.get(hid.kind); revealLair(a, hid, 'караван'); say(a, K, `Караван набрёл на ${L.labelAcc || L.label} «${hid.name}» ${wherePhrase(a, hid.i)}, о ${WHICH[L.g]} не знала ни одна держава.`, 'sight', true); }
+  for (const l of a.lairs || []) {
+    if (!l.alive || !l.hidden) continue;
+    const L = LAIRS.get(l.kind);
+    if (Math.hypot(l.x - K.x, l.y - K.y) > 2 * lairR(a, L) || felt(a, l) < WILD.trail) continue;
+    revealLair(a, l, 'караван');
+    say(a, K, `Караван шёл по следам — ${SPECIES.get(L.species).plural} — и вышел на ${L.labelAcc || L.label} «${l.name}» ${wherePhrase(a, l.i)}, о ${WHICH[L.g]} не знала ни одна держава.`, 'sight', true);
+  }
   if (t && t.id !== before.town) say(a, K, `Караван пришёл в ${townLabel(t, 1)} ${t.name}${t.realm && t.realm !== K.realm ? ` (${realmLabel(a, t.realm)})` : ''}.`);
   else if (b && b.id !== before.biome && !t) say(a, K, `Караван идёт ${b.where}.`, 'land');
 }
@@ -486,7 +495,7 @@ function evening(a, K) {
   if (K.camp > 0) K.camp--;
   else {
     // a quiet place: the land's dangers low; to build or to tame they also wait till nothing hunts them near
-    const badly = fs.some(m => m.hp < C.badly), quiet = nightRisk(a, K.i) <= C.danger, calm = quiet && !huntersNear(a, K);
+    const badly = fs.some(m => m.hp < C.badly), quiet = nightRisk(a, K.i, K) <= C.danger, calm = quiet && !huntersNear(a, K);
     let why = K.food < need * C.foodDays && rich >= C.foodLand ? 'food' : core < C.hp || badly ? 'heal' : '';
     // a long camp where something hunts at night is death: they look for a quieter place, unless they already starve
     if (why && !K.hungry && !quiet && K.path && K.k < K.path.length) why = '';
@@ -530,7 +539,7 @@ function night(a, K) {
     const t = foes[0], win = fight(a, K, foeOf(t), r, 'night');
     settle(K, t, win); K.stats.met = (K.stats.met || 0) + 1; leaderBeaten(a, K, t, win);
   } else if (r() < BUBBLE.stray * (friendly ? CAMPAIGN.night.friendly : 1)) {
-    const ds = dangers(a, K.i), d = ds.length ? withCompany(ds[(r() * ds.length) | 0], ds, r) : {kind: 'beasts', strength: 0.7, beast: 'wolves', label: 'волки'};
+    const ds = dangers(a, K.i, K), d = ds.length ? withCompany(ds[(r() * ds.length) | 0], ds, r) : {kind: 'beasts', strength: 0.7, beast: 'wolves', label: 'волки'};
     const won = fight(a, K, d, r, 'night'); K.stats.strays = (K.stats.strays || 0) + 1; leaderBeaten(a, K, d, won);
   } else {
     // a quiet night: a little found in the morning while they packed

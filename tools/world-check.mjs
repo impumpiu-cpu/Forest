@@ -6,6 +6,10 @@ import {newAtlas, runNextStage, landDone} from '../src/atlas/generate.js';
 import {DEFAULT_ATLAS_CFG} from '../src/data/atlas.js';
 import {startFree, landPeople, addLair, setCalamity, runYears, endRun} from '../src/atlas/settle.js';
 import {atlasDone} from '../src/atlas/generate.js';
+import {dangers, withCompany, peopleFoes} from '../src/campaign/land.js';
+import {raidBand, felt, R as lairR} from '../src/atlas/lairs.js';
+import {cellNeighbours} from '../src/seam/cell.js';
+import {faunaCell} from '../src/atlas/fauna.js';
 import {raise, partyOf, stepLeaders} from '../src/atlas/leaders.js';
 import {actorStep} from '../src/atlas/actor.js';
 import {BEHAVIOURS, stepParties} from '../src/atlas/parties.js';
@@ -14,7 +18,7 @@ import {meet, stepDiplomacy} from '../src/atlas/diplomacy.js';
 import {realmSpecies} from '../src/atlas/court.js';
 import {stepLairs} from '../src/atlas/lairs.js';
 import {freeLairCaptives} from '../src/campaign/fight.js';
-import {CAPTIVE_RAID} from '../src/data/lairs.js';
+import {CAPTIVE_RAID, WILD} from '../src/data/lairs.js';
 const stepLairsOnce = (a, season) => stepLairs(a, mulberry(9), season);
 import {DEEDS} from '../src/data/deeds.js';
 import {LAIRS} from '../src/data/lairs.js';
@@ -416,6 +420,91 @@ scene_('W21', 'союз против бедствия: слабые войска
   if (S.cal().phase !== 'rise' || S.A().nextTry == null) return `штурм не отбит: ${S.cal().phase}, следующая попытка ${S.A().nextTry}`;
   for (let y = 0; y < 12 && S.A().tries === tries; y++) S.run(1);
   return S.A().tries > tries || `новой попытки не было: походов ${S.A().tries}`;
+});
+
+// ── the foes from the fields (campaign/land.js; docs/CAMPAIGN.md «Кто нападает»; data/campaign.js WILD_FOES)
+// a stream that gives these numbers in turn, then the last for good
+const seq = (...v) => { let k = 0; return () => v[Math.min(k++, v.length - 1)]; };
+// the world cell at the middle of a coarse cell where a species can live, away from towns and lairs
+const fieldCell = (a, id, min = 0.2) => { const F = a.fauna, s = F.list[F.idx[id]]; return cellOf(a, i => { const j = faunaCell(a, i); return s.K[j] >= min && !a.towns.some(t => dist(t, xy(a, i)) < 8) && !a.lairs.some(l => l.alive && dist(l, xy(a, i)) < 16); }); };
+const setN = (a, id, i, v) => { const F = a.fauna, s = F.list[F.idx[id]]; s.N[faunaCell(a, i)] = v; };
+scene_('W22', 'кто нападает — из полей: волки там, где живут, и нет их — нет; в землях логова его вид — от логова, не второй раз из поля', () => {
+  const a = world(), i = fieldCell(a, 'wolf');
+  if (i < 0) return 'нет волчьих краёв';
+  setN(a, 'wolf', i, 0);
+  if (dangers(a, i).some(d => d.species === 'wolf')) return 'волки без волков';
+  setN(a, 'wolf', i, 1);
+  const w = dangers(a, i).find(d => d.species === 'wolf');
+  if (!w || w.kind !== 'beasts' || w.beast !== 'wolves' || !(w.p > 0)) return `волков нет в пуле: ${JSON.stringify(w)}`;
+  const spot = spotNear(a, 'varg', i, 30, 0); if (spot < 0) return 'нет места логову варгов';
+  const lair = addLair(a, 'varg', spot); if (!lair?.id) return `логово не встало: ${lair?.error}`;
+  setN(a, 'varg', spot, 1);
+  const ds = dangers(a, spot), vs = ds.filter(d => d.species === 'varg');
+  return (vs.length === 1 && vs[0].lair === lair.id) || `варги в пуле: ${JSON.stringify(vs.map(d => [d.kind, d.lair]))}`;
+});
+scene_('W23', 'второй вид — той же стороны: звери со зверями, банда с бандой; с боссом — никого; без удачи — один', () => {
+  const ds = [{kind: 'beasts', beast: 'wolves', p: 0.1, label: 'волки'}, {kind: 'beasts', beast: 'lynx', p: 0.1, label: 'рыси'}, {kind: 'tribe', band: 'goblins', p: 0.1, label: 'гоблины'}];
+  const two = withCompany(ds[0], ds, () => 0);
+  if (two.with?.beast !== 'lynx' || two.label !== 'волки и рыси') return `звери: ${JSON.stringify(two)}`;
+  if (withCompany(ds[2], ds, () => 0).with) return 'банда привела зверей';
+  if (withCompany({...ds[0], boss: {name: 'Вожак'}}, ds, () => 0).with) return 'босс привёл чужих';
+  if (withCompany(ds[0], ds, () => 0.99).with) return 'второй пришёл без удачи';
+  return true;
+});
+scene_('W24', 'набег логова: звери стана — только если живут рядом; второй вид его земли пристаёт и прибавляет силы', () => {
+  const a = world(), {lair} = townAndLair(a, 'goblins', 20);
+  if (!lair?.id) return 'стан не встал';
+  const L = LAIRS.get('goblins'), F = a.fauna, j = faunaCell(a, lair.i);
+  for (const s of F.list) if (s.id !== 'goblin') s.N[j] = 0;
+  const bare = raidBand(a, lair, L, () => 0.99);
+  if (bare.riders || /варг/.test(bare.who) || bare.k !== 1) return `без варгов: ${JSON.stringify(bare)}`;
+  F.list[F.idx.varg].N[j] = 1;
+  const rid = raidBand(a, lair, L, () => 0.99);
+  if (!rid.riders || !/на варгах/.test(rid.who) || !(rid.k > 1)) return `с варгами: ${JSON.stringify(rid)}`;
+  F.list[F.idx.ogre].N[j] = 1;
+  const mix = raidBand(a, lair, L, () => 0);
+  return (/с ними огры/.test(mix.who) && mix.k > rid.k) || `второй вид: ${JSON.stringify(mix)}`;
+});
+scene_('W25', 'следопыты: чем гуще живность вокруг скрытого логова, тем вернее его находят; идут к тому, чьи следы гуще', () => {
+  const a = world(), {town, lair} = townAndLair(a, 'varg', 12);
+  if (!lair?.id) return 'логово варгов не встало';
+  lair.hidden = true;
+  const realm = a.realms.find(r => r.id === town.realm), j = faunaCell(a, lair.i), s = a.fauna.list[a.fauna.idx.varg];
+  s.N[j] = 0;
+  court(a, realm, ['scout'], seq(0, 0.3));   // the season's chance taken; the roll 0.3: above what a bare town finds by
+  if (!lair.hidden) return `нашли без следов: ${realm.lines.join(' | ')}`;
+  s.N[j] = 1;
+  court(a, realm, ['scout'], seq(0, 0.3));
+  if (lair.hidden) return `густые следы не помогли: варги ${felt(a, lair)}`;
+  // two hidden lairs: the trackers go after the one whose folk are thicker, the nearer or not
+  const reach = WILD.scout.reach * scaleOf(a), far = cellOf(a, k => { const p = xy(a, k), d = dist(p, town); return d <= reach - 1 && dist(p, lair) >= 2 * lairR(a, LAIRS.get('varg')) && faunaCell(a, k) !== j && groundFits(a, LAIRS.get('varg'), k) && !a.towns.some(t => dist(t, p) < 3); });
+  if (far < 0) return 'нет места второму логову';
+  const l2 = addLair(a, 'varg', far); if (!l2?.id) return `второе не встало: ${l2?.error}`;
+  lair.hidden = true; l2.hidden = true; s.N[j] = 0.05; s.N[faunaCell(a, l2.i)] = 1;
+  const o = court(a, realm, ['scout'], seq(0, 0.99));
+  return o?.[0].lair === l2.id || `пошли к ${o?.[0].lair}, а гуще у ${l2.id}`;
+});
+scene_('W26', 'налётчики народов — из их поля, когда они враги каравану: людям орки — да, оркам свои — нет', () => {
+  const a = world(), {town} = townAndLair(a, 'varg', 6);
+  const steppe = cellOf(a, i => ['steppe', 'savanna', 'meadow'].includes(biomeAt(a, i)?.id) && dist(xy(a, i), town) > 30);
+  const o = landPeople(a, 'orcs', steppe); if (o.error) return `орки не высадились: ${o.error}`;
+  const pe = a.peoples.find(p => p.id === 'orcs'), i = cellOf(a, k => pe.K[faunaCell(a, k)] >= 0.3);
+  if (i < 0) return 'нет орочьей земли';
+  pe.u[faunaCell(a, i)] = 1;
+  const men = peopleFoes(a, i, {people: 'humans', realm: town.realm}).find(d => d.people === 'orcs');
+  if (!men || men.kind !== 'raiders' || men.band !== 'orcs' || !(men.p > 0)) return `людям: ${JSON.stringify(men)}`;
+  if (peopleFoes(a, i, {people: 'orcs', realm: o.realm.id}).length) return 'оркам свои — налётчики';
+  if (dangers(a, i).some(d => d.kind === 'raiders')) return 'налётчики без каравана';
+  return true;
+});
+scene_('W27', 'поселение на клетке: племя в досягаемости шлёт свою банду и без логова рядом', () => {
+  const a = world(), {town} = townAndLair(a, 'varg', 6), i = town.i;
+  const F = a.fauna, s = F.list[F.idx.goblin];
+  s.N.fill(0);
+  if (cellNeighbours(a, i).hostile?.bands?.goblins) return 'гоблины без гоблинов';
+  const j = faunaCell(a, i); s.N[j] = 1;
+  const nb = cellNeighbours(a, i);
+  return (nb.hostile?.bands?.goblins > 0) || `банды: ${JSON.stringify(nb.hostile?.bands)}`;
 });
 
 const only = process.argv[2];

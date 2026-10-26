@@ -222,11 +222,14 @@ export const LAIR_FIELD = {source: 0.12, cap: 1, fade: 0.06, pulse: 0.7, brood: 
 //   raid:   a raid of it on a town shows the way back — beaten, with `raid[0]`, won, with `raid[1]`
 //   settle: a living town stands within `settle` cells of it: the settlers stumble on it
 //   scout:  the deed of the realms (atlas/deeds/scout.js): a season's `chance` (× `raided` for a realm whose town was
-//           raided in the last `recent` years), a town of the realm sends trackers to a hidden lair within `reach` cells;
-//           they find it with find[0] + find[1] × the town's lore (data/townBuildings.js) + find[2] × its step (tier)
-//   the caravan of a campaign walking into its territory (campaign/march.js)
+//           raided in the last `recent` years), a town of the realm sends trackers after a hidden lair within `reach`
+//           cells — the one whose folk are felt thickest for the way (their density about the lair over 1 + the distance
+//           in tens of cells); they find it with find[0] + find[1] × the town's lore (data/townBuildings.js) + find[2] ×
+//           its step (tier) + find[3] × that density (at most 1): the thicker the wild, the plainer its trail
+//   the caravan of a campaign walking into its territory, or within two territories of it where its folk live at least
+//           `trail` thick (campaign/march.js)
 export const WILD = {perYear: 1.2, land: 0.7, gap: 10, start: 0.4, tries: 600, settle: 5,
-  raid: [0.5, 0.25], scout: {chance: 0.15, raided: 2.5, recent: 3, reach: 40, find: [0.15, 0.5, 0.05]}};
+  raid: [0.5, 0.25], scout: {chance: 0.15, raided: 2.5, recent: 3, reach: 40, find: [0.1, 0.5, 0.05, 0.4]}, trail: 0.4};
 
 export const LAIR_LIFE = {fedMax: 1.2, fedNone: 0.5, fiendFed: 0.55, vampirePop: 600, rotFeed: 1.2, tribeFeed: 0.6, crowd: 0.8,
   grow: 0.08, need: 0.45, winter: 0.03, wobble: 0.02, dies: 0.08,
