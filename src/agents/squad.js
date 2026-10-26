@@ -28,6 +28,7 @@ import {agentById, liveById, firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
 import {SQUAD} from '../data/behaviour.js';
 import {COMBAT_ROLES} from '../data/roles.js';
+import {roleTactic} from './tactics.js';
 import {RANK_RULES} from '../data/ranks.js';
 import {hasMark} from '../data/conditions.js';
 
@@ -254,6 +255,9 @@ export function planFor(w, a, sq, radius) {
     const v = [liveById(w, sq.target)].find(o => o && !o.downed);
     if (v && canSee(w, a, v) && dist(a, v) < 30 && !close) return fight(w, a, v);
   }
+  // the fighting role's own way (agents/tactics.js): whom to go for, keeping back, healing; else the nearest foe
+  const t = roleTactic(w, a, sq, radius);
+  if (t) return t.id === 'fight' ? fight(w, a, holdFoe(w, a, t.target)) : t;   // its pick, but not a new one every look
   const e = holdFoe(w, a, nearestHostile(w, a, radius));
   if (e) return fight(w, a, e);
   // nobody to fight: a band that came for someone (or to cover the torches) waits at the camp

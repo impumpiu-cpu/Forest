@@ -71,6 +71,15 @@ export const SQUAD = {
   grabNear: 10,      // a looter this close to the stores (camp flow field) still grabs on a retreat
 };
 
+// How the fighting roles fight (agents/tactics.js, data/roles.js): distances in cells
+//   kite        — a shooter or a healer steps back from a blade closer than this that comes at it
+//   guard       — a shield-bearer turns on one at its shooters, a spearman or a cleaver joins on one held, this close
+//   wounded     — below this share of health a foe counts as wounded (the cutthroat's and the sentient archer's pick)
+//   sneakUntil  — a cutthroat creeps while no foe is nearer than this (agents/combat.js COMBAT.sneak)
+//   mend        — the healer: goes to a fallen one of its band within `near`, works `ticks` on it; a sentient one gives
+//                 a potion to one below `potionBelow` of its health; gives it up after `chase` ticks
+export const TACTICS = {kite: 2.5, guard: 5, wounded: 0.5, sneakUntil: 2.5, mend: {near: 12, ticks: 60, potionBelow: 0.35, chase: 240}, kiteFor: 30};
+
 export const CARCASS = {
   life: 4 * DAY,       // rots away entirely after this
   rotFrom: 2 * DAY,    // from this age on it feeds the rot…

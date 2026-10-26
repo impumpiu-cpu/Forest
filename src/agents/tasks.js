@@ -35,7 +35,9 @@ import {bindStillOn, bindCaptive} from '../settlement/captives.js';
 import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {catchRunaway} from '../settlement/escape.js';
 import {assistStillOn} from '../settlement/masters.js';
-import {REST, KINDLE} from '../data/behaviour.js';
+import {REST, KINDLE, TACTICS} from '../data/behaviour.js';
+import {dress as dressWound} from './wounds.js';
+import {POTION} from '../data/potions.js';
 import {BEHAVIOURS} from '../data/behaviours.js';
 import {ACTS} from './behaviours/index.js';
 
@@ -276,6 +278,28 @@ TASKS.registerAll([
     sq.lit = w.tick;
     log(w, `${a.name} ${a.gender === 'f' ? 'подожгла' : 'поджёг'} ${BUILDINGS.get(b.key).name.toLowerCase()}! Тушите!`, 'danger', 'notice');
     a.task = {id: 'leave'};
+  }},
+  // a shooter or a healer of a band steps back from a blade coming at it (agents/tactics.js); a short while, then the
+  // band's plan says again
+  {id: 'kite', label: () => 'отходит, держит дистанцию', step(w, a, task) {
+    const f = liveById(w, task.from);
+    task.since ??= w.tick;
+    if (!f || f.downed || w.tick - task.since > TACTICS.kiteFor || Math.hypot(f.x - a.x, f.y - a.y) > TACTICS.kite * 1.6) { done(w, a); return; }
+    const dx = a.x - f.x, dy = a.y - f.y, L = Math.hypot(dx, dy) || 1;
+    if (moveToward(w, a, a.x + dx / L * 2, a.y + dy / L * 2) === null) done(w, a);   // a wall at its back: stand and fight
+  }},
+  // a band's healer (agents/tactics.js): to the fallen one, dress the wound (agents/wounds.js) — or a potion for one
+  // badly hurt
+  {id: 'mend', label: t => (t.potion ? 'несёт зелье раненому' : 'перевязывает своего'), step(w, a, task) {
+    const b = liveById(w, task.who);
+    task.since ??= w.tick;
+    // gone, up again, already going home, or too long after it: the healer gives it up
+    if (!b || b.gone || b.task?.id === 'leave' || w.tick - task.since > TACTICS.mend.chase || (task.potion ? !(a.potions > 0) || b.downed : !b.downed)) { done(w, a); return; }
+    if (Math.hypot(b.x - a.x, b.y - a.y) > 1.3) { task.work = 0; if (approach(w, a, b.x, b.y, 1.1) === null) fail(w, a, 'к своему не подойти', 'impossible'); return; }
+    if ((task.work = (task.work || 0) + 1) < (task.potion ? 10 : TACTICS.mend.ticks)) return;
+    if (task.potion) { a.potions--; b.hp = Math.min(maxHp(b), b.hp + POTION.heal); b.flash = 4; }
+    else { dressWound(w, b, a.skill?.medicine || 0); b.task = null; log(w, `${a.name} ${a.gender === 'f' ? 'перевязала' : 'перевязал'} упавшего: ${b.name} снова на ногах.`, 'danger'); }
+    done(w, a);
   }},
   // scouts: come within sight of the camp, look it over, and take the news home
   {id: 'scout', label: () => 'высматривает лагерь', step(w, a, task) {

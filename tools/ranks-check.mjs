@@ -63,5 +63,44 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
   expect(moraleOf(w, sq) < m0 - RANK_RULES.loss * 0.1, `павший офицер не пошатнул дух: ${m0.toFixed(2)} → ${moraleOf(w, sq).toFixed(2)}`);
 }
 
+// the roles' own ways (agents/tactics.js), each on a scene of its own: a band of bandits, a few colonists about
+{
+  const {roleTactic} = await import('../src/agents/tactics.js'), {createAgent} = await import('../src/agents/agent.js');
+  const {dress} = await import('../src/agents/equipment.js'), {TASKS} = await import('../src/agents/tasks.js');
+  const scene = () => {
+    const w = game('tactics'); w.agents = w.agents.filter(a => a.faction !== 'colony');
+    const g = spawnGroup(w, 'raiders', raiderStrength(5) * 6, {band: 'bandits'}), sq = squadOf(w, g[0]);
+    let x = 30;
+    for (const a of g) { a.x = x; a.y = 30; x += 0.7; a.task = null; }
+    return {w, g, sq};
+  };
+  const as = (a, role, kit) => { a.fightRole = role; a.equip = {left: null, right: null, body: null, back: null}; dress(a, kit, 15); a.sqRole = COMBAT_ROLES.get(role).squad === 'shooter' ? 'shooter' : 'front'; };
+  const foe = (w, x, y, kit = ['ironspear']) => { const c = createAgent(w, 'human', 'colony', x, y); dress(c, kit); return c; };
+  // an archer steps back from a blade coming at it; a mindless one would not
+  { const {w, g, sq} = scene(), a = g[0]; as(a, 'archer', ['bow', 'quiver']);
+    const c = foe(w, a.x + 1.5, a.y); c.task = {id: 'fight', target: a};
+    expect(roleTactic(w, a, sq, 14)?.id === 'kite', 'стрелок не отходит от клинка'); }
+  // a sentient shield-bearer turns on whoever is on its archer
+  { const {w, g, sq} = scene(), s = g[0], arc = g[1]; as(s, 'shield', ['ironspear', 'ironshield']); as(arc, 'archer', ['bow', 'quiver']);
+    const near = foe(w, s.x - 1.5, s.y), on = foe(w, arc.x + 1, arc.y + 1); on.task = {id: 'fight', target: arc};
+    expect(roleTactic(w, s, sq, 14)?.target === on, 'щитоносец не прикрыл стрелка'); void near; }
+  // a spearman joins on the one a shield-bearer of its band holds
+  { const {w, g, sq} = scene(), s = g[0], sp = g[1]; as(s, 'shield', ['ironspear', 'ironshield']); as(sp, 'spearman', ['ironspear']);
+    const free = foe(w, sp.x - 1, sp.y), held = foe(w, s.x + 1, s.y + 0.5); held.task = {id: 'fight', target: s};
+    expect(roleTactic(w, sp, sq, 14)?.target === held, 'копейщик не бьёт того, кого держит щитоносец'); void free; }
+  // a cutthroat creeps and goes for the archer, not the nearest
+  { const {w, g, sq} = scene(), a = g[0]; as(a, 'cutthroat', ['irondagger', 'irondagger']);
+    const near = foe(w, a.x + 3, a.y), bow = foe(w, a.x + 6, a.y, ['bow', 'quiver']);
+    const t = roleTactic(w, a, sq, 14);
+    expect(a.sneaking && t?.target === bow, `головорез: крадётся ${a.sneaking}, цель ${t?.target === bow ? 'стрелок' : t?.target === near ? 'ближний' : '—'}`); }
+  // a healer goes to the fallen one of its band and puts it back on its feet
+  { const {w, g, sq} = scene(), h = g[0], f = g[2]; as(h, 'healer', ['staff']); foe(w, h.x + 12, h.y);
+    f.downed = {until: w.tick + 9999}; f.hp = 0.01;
+    const t = roleTactic(w, h, sq, 14);
+    expect(t?.id === 'mend' && t.who === f.id, 'знахарь не идёт к упавшему');
+    h.task = t; for (let k = 0; k < 200 && f.downed; k++) { w.tick++; TASKS.get('mend').step(w, h, h.task); if (!h.task) break; }
+    expect(!f.downed, 'знахарь не поднял упавшего'); }
+}
+
 if (bad.length) { console.log('Роли и ранги:\n  ' + bad.join('\n  ')); process.exit(1); }
-console.log(`ok   роли и ранги: бойцы в ролях своей матрицы и с их вещами, звери выучены; звенья под офицерами держат строй, павший офицер шатает дух; в набегах на поселение рангов нет`);
+console.log(`ok   роли и ранги: бойцы в ролях своей матрицы и с их вещами, звери выучены; звенья под офицерами держат строй, павший офицер шатает дух; в набегах на поселение рангов нет; стрелок отходит от клинка, щитоносец прикрывает стрелка, копейщик бьёт удержанного, головорез крадётся к стрелку, знахарь поднимает упавшего`);
