@@ -36,7 +36,7 @@ export const led = {
   step(w, a) {
     const r = agentById(w, a.ledBy);
     if (r?.gone || (!r && a.ledGone)) { taken(w, a); return; }   // (a thief over the edge may be off the list before its captive's step: tasks.js leave marks it)
-    if (!r || r.dead) { freed(w, a); return; }
+    if (!r || r.dead || r.downed || r.captive || r.leads !== a.id) { freed(w, a); return; }   // (the raider downed or bound by the colony: the prisoner is free)
     if (Math.hypot(r.x - a.x, r.y - a.y) > PEN.ledNear) approach(w, a, r.x, r.y, PEN.ledPace);
   },
 };

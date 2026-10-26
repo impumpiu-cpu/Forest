@@ -7,7 +7,7 @@
 // A sale is taken ill: former slaves' tie to the colony weakens, the captives left behind grow readier to run,
 // a merciful colonist is troubled.
 import {SLAVE, captivePrice} from '../data/slavery.js';
-import {CAPTIVE, BONDS, bestBonds} from '../data/captives.js';
+import {CAPTIVE, bestBonds} from '../data/captives.js';
 import {SPECIES} from '../data/species.js';
 import {captives} from './captives.js';
 import {formers} from './freedom.js';

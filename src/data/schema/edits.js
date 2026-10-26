@@ -8,7 +8,7 @@
 import {TABLES, tableById, get, editable, targetOf, valueErrors, resolver} from './index.js';
 import {setPath} from './columns.js';
 import {LAYER, sameValue, editMade} from './layer.js';
-import {SPECIES, cloneSpecies, removeSpecies, arriveChanged} from '../species.js';
+import {cloneSpecies, removeSpecies, arriveChanged} from '../species.js';
 
 // the pseudo-table of species made in the constructor (src/app/beastView.js): LAYER.newSpecies[id] = {from, label, labelAcc, plural}
 export const NEW_SPECIES = 'newSpecies';

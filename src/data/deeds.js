@@ -51,6 +51,9 @@ DEEDS.registerAll([
     note: 'город шлёт следопытов к скрытому логову глуши в досягаемости (WILD.scout): чаще, если город недавно грабили; удача — по знанию и ступени города; найденное логово можно выжечь'},
 ]);
 
+// a deed's name for the cards; an id an old save keeps, or one gone from the tables, as it is (never a throw)
+export const deedLabel = (id, fallback = id) => (id != null && DEEDS.has(id) ? DEEDS.get(id).label : fallback ?? '');
+
 // the ready lists: the mores of a species' lairs — the same list serves the lair and its leader (the deed knows which
 // role asks, ctx.role); what a lair does without a leader is the deed's own rule (a beast's lair raids no town)
 export const DEED_WAYS = {

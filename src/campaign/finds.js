@@ -8,7 +8,6 @@ import {lairAt} from '../atlas/lairs.js';
 import {ruinAt} from '../atlas/diplomacy.js';
 import {faunaLevel} from '../world/region.js';
 import {LAIRS} from '../data/lairs.js';
-import {ITEMS} from '../data/items.js';
 import {RESOURCES} from '../data/resources.js';
 import {FINDS} from '../data/campaign.js';
 import {topUp} from './potions.js';

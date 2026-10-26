@@ -12,7 +12,6 @@
 import {SPECIES} from '../data/species.js';
 import {BONDS, CAPTIVE, ESCAPE, bestBonds} from '../data/captives.js';
 import {CAN_FALL, WOUNDS, GRAVE_TICKS, DEATHBLOW} from '../data/wounds.js';
-import {JOBS} from '../data/jobs.js';
 import {isHostile} from '../data/factions.js';
 import {RESOURCES} from '../data/resources.js';
 import {maxHp, hpShare, personality, freshName} from '../agents/agent.js';

@@ -2,7 +2,6 @@
 // a war beast (a warg, a hyena) goes home once no rider or handler of its band is left — when the sun is up for the
 // sun-shy, or when badly hurt (the mindless never leave hurt); once going, it goes. The shared `leave` task.
 // Reads: nothing of its own (a.master, a.warBeast, a.band).
-import {nightness} from '../../core/time.js';
 import {maxHp} from '../agent.js';
 import {liveById} from '../lookup.js';
 import {holdsGround} from '../auras.js';

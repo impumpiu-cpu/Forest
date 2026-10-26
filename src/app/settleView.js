@@ -8,12 +8,11 @@ import {MapView, ATLAS_OPTS, loadDetail, saveDetail, segOf} from '../ui/atlasVie
 import {DEFAULT_ATLAS_CFG} from '../data/atlas.js';
 import {FREE} from '../data/history.js';
 import {atlasDone} from '../atlas/generate.js';
-import {seasonLabel, yearsLived, endYear} from '../atlas/history.js';
+import {seasonLabel, endYear} from '../atlas/history.js';
 import {startFree, isFree, PLACEABLE, landPeople, addLair, wildByLand, wildDone, setCalamity, runYears, stepRun, canMarch} from '../atlas/settle.js';
 import {lineLevel, keeps, DETAILS} from '../atlas/chronicle.js';
 import {realmLabel} from '../atlas/realms.js';
 import {relationsHtml} from '../ui/inspect.js';
-import {openTab} from '../ui/tabs.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from '../ui/worlds.js';
 import {warnEdits} from '../ui/tableEdits.js';
 import {Camera} from '../render/camera.js';

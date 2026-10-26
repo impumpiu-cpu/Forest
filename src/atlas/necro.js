@@ -53,10 +53,23 @@ export const necroLabel = race => (race && SPECIES.has(race) ? `некроман
 
 // ── the seat: how far it reaches, and the tower whose seat a cell is in
 export const zoneOf = (a, l) => (NECRO.zone[0] + NECRO.zone[1] * l.strength) * scaleOf(a);
-export function towerAt(a, x, y, k = 1) {
+export function towerAt(a, x, y, k = 1, list = towers(a)) {   // (`list`: the towers, made once by a caller asking cell by cell)
   let best = null, bd = Infinity;
-  for (const l of towers(a)) { const d = Math.hypot(l.x - x, l.y - y); if (d <= zoneOf(a, l) * k && d < bd) { bd = d; best = l; } }
+  for (const l of list) { const d = Math.hypot(l.x - x, l.y - y); if (d <= zoneOf(a, l) * k && d < bd) { bd = d; best = l; } }
   return best;
+}
+// the seats on the map at once: for each cell the index in `list` of the tower whose seat it is (the nearest), or −1 —
+// for a map painted cell by cell (ui/atlasView.js «Державы»)
+export function seatMap(a, list = towers(a)) {
+  const out = new Int32Array(a.n).fill(-1); if (!list.length) return out;
+  const best = new Float32Array(a.n).fill(Infinity);
+  list.forEach((l, n) => {
+    const z = zoneOf(a, l), R0 = Math.ceil(z);
+    for (let y = Math.max(0, l.y - R0); y <= Math.min(a.h - 1, l.y + R0); y++) for (let x = Math.max(0, l.x - R0); x <= Math.min(a.w - 1, l.x + R0); x++) {
+      const d = Math.hypot(l.x - x, l.y - y), i = y * a.w + x; if (d <= z && d < best[i]) { best[i] = d; out[i] = n; }
+    }
+  });
+  return out;
 }
 // a lair of the dead (not a tower) within a tower's seat bends the knee: its vassal → the line, or null
 export function bend(a, lair, say) {
@@ -68,19 +81,22 @@ export function bend(a, lair, say) {
 }
 
 // ── the birth: in spring, where the rot is past the tower's rotAt, by the chance of how far past it
-export function towerBirth(a, rnd, newLair, hideIfWild, wherePhrase, R) {
+export function towerBirth(a, rnd, {newLair, hideIfWild, wherePhrase, R, groundFits}) {
   const lines = [], F = a.fauna; if (!a.rot || !F) return lines;
   const L = LAIRS.filter(x => x.domain)[0]; if (!L) return lines;
   if (towers(a).filter(l => l.kind === L.id).length >= L.max) return lines;
   const k = scaleOf(a), want = NECRO.most * k * k, n = Math.floor(want) + (rnd() < want % 1 ? 1 : 0);
+  // the cells past rotAt that pass their roll, in a random order (not the map's: the north-west would always win)
+  const cand = [];
+  for (let j = 0; j < a.rot.length; j++) { const v = a.rot[j]; if (v >= L.rotAt && rnd() < NECRO.births * (v - L.rotAt) / (1 - L.rotAt)) cand.push(j); }
+  for (let q = cand.length - 1; q > 0; q--) { const k2 = (rnd() * (q + 1)) | 0; [cand[q], cand[k2]] = [cand[k2], cand[q]]; }
   let made = 0;
-  for (let j = 0; j < a.rot.length && made < n; j++) {
-    const v = a.rot[j]; if (v < L.rotAt || rnd() >= NECRO.births * (v - L.rotAt) / (1 - L.rotAt)) continue;
-    // a spot in the cell: dry land, apart from another tower
+  for (const j of cand) {
+    if (made >= n) break;
     const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c;
     for (let t = 0; t < 8; t++) {
       const i = Math.min(a.h - 1, y0 + ((rnd() * F.c) | 0)) * a.w + Math.min(a.w - 1, x0 + ((rnd() * F.c) | 0));
-      if (a.f.ocean[i] || a.f.lake[i] >= 0 || (a.towns || []).some(o => o.alive && Math.abs(o.x - i % a.w) <= 1 && Math.abs(o.y - ((i / a.w) | 0)) <= 1)) continue;
+      if (!groundFits(a, L, i)) continue;   // as any lair's spot: dry land, the rot, no town or its works
       const p = {x: i % a.w, y: (i / a.w) | 0};
       if (towers(a).some(o => dist(o, p) < 2 * R(a, L))) continue;
       const race = raceAt(a, i, rnd);

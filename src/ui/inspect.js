@@ -1,7 +1,7 @@
 // The inspector of the world map (docs/GAME.md «Наблюдатель»): what a click on the map selects — a party, a town (and
 // its realm), a lair, a ruin or the cell — and its card: what it is, what it has, what it thinks and plans. The card is
 // a view of the live objects (the selection keeps ids and is resolved anew each season), so it changes as the world does.
-import {DEEDS, DEED_BAND_LABELS} from '../data/deeds.js';
+import {DEEDS, DEED_BAND_LABELS, deedLabel} from '../data/deeds.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -70,7 +70,7 @@ const when = t => `${t.year}, ${seasonWord(t.season ?? 0)}`;
 function thoughtsHtml(actor) {
   const T = actor.thoughts || (actor.why ? [actor.why] : []);
   if (!T.length) return '<p class="muted">пока ничего не предпринимало</p>';
-  return `<ol class="thoughts">${[...T].reverse().map(t => `<li><small>${esc(when(t))}</small> <b>${esc(DEEDS.has(t.deed) ? DEEDS.get(t.deed).label : t.deed)}</b>${t.why ? ` — ${esc(t.why)}` : ''}${t.alt ? `<br><small class="muted">иначе: ${esc(DEEDS.get(t.alt).label)}${t.altWhy ? ` — ${esc(t.altWhy)}` : ''}</small>` : ''}</li>`).join('')}</ol>`;
+  return `<ol class="thoughts">${[...T].reverse().map(t => `<li><small>${esc(when(t))}</small> <b>${esc(DEEDS.has(t.deed) ? DEEDS.get(t.deed).label : t.deed)}</b>${t.why ? ` — ${esc(t.why)}` : ''}${t.alt ? `<br><small class="muted">иначе: ${esc(deedLabel(t.alt))}${t.altWhy ? ` — ${esc(t.altWhy)}` : ''}</small>` : ''}</li>`).join('')}</ol>`;
 }
 // the deeds an actor may do, by lane
 function deedsHtml(list) {
@@ -134,8 +134,8 @@ function lairHtml(a, l) {
   const leader = ld ? sec(`${ld.title[0]} ${ld.name}`,
     row('кто', `${esc(sp.label)} сильнее своих: ${esc(special)}${ld.add ? ` (+${Object.values(ld.add).join('/')})` : ''}`) +
     row('правит', `с ${ld.born} г., до ~${ld.dies} г.; дел на счету ${ld.deeds}`) +
-    row('отряд', (() => { const p = (a.parties || []).find(x => x.kind === 'leader' && x.owner === l.id && x.state !== 'gone'); return p ? `${esc(DEEDS.get(p.plan)?.label || p.plan)}, ${STATE[p.state]}, ${p.days} дн.` : 'дома'; })())) : '';
-  const parties = (a.parties || []).filter(p => p.owner === l.id && p.kind !== 'leader' && p.state !== 'gone').map(p => `${KIND[p.kind] || p.kind} (${esc(DEEDS.get(p.plan)?.label || p.plan || '')}), ${STATE[p.state]}, ${p.days} дн.`).join('; ');
+    row('отряд', (() => { const p = (a.parties || []).find(x => x.kind === 'leader' && x.owner === l.id && x.state !== 'gone'); return p ? `${esc(deedLabel(p.plan, p.plan))}, ${STATE[p.state]}, ${p.days} дн.` : 'дома'; })())) : '';
+  const parties = (a.parties || []).filter(p => p.owner === l.id && p.kind !== 'leader' && p.state !== 'gone').map(p => `${KIND[p.kind] || p.kind} (${esc(deedLabel(p.plan, p.plan || ''))}), ${STATE[p.state]}, ${p.days} дн.`).join('; ');
   return sec(`${L.label.replace(/^./, c => c.toUpperCase())} «${l.name}»`,
     row('хозяева', `${esc(sp.plural)}${L.tribe ? ' (племя)' : L.undead ? ' (мёртвые)' : L.fiend ? ' (демоны)' : L.dragon ? '' : ' (чудовища)'}; мощь вида ${r1(power(L.species))}`) +
     row('сила', `${Math.round(l.strength * 100)}%${l.boss != null ? ', логово босса бедствия' : ''}`) +

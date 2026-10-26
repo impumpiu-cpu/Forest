@@ -10,7 +10,7 @@
 // blow, and their outcome is kept on the creature, so a save and a load never roll again.
 import {SPECIES} from '../data/species.js';
 import {NORM} from '../data/special.js';
-import {CRIT, DEATHBLOW, CAN_FALL, WOUNDS, luckChance, GRAVE_TICKS, bleedTicks} from '../data/wounds.js';
+import {DEATHBLOW, CAN_FALL, WOUNDS, luckChance, GRAVE_TICKS, bleedTicks} from '../data/wounds.js';
 import {kill, maxHp} from './agent.js';
 import {refreshBody} from './special.js';
 import {think} from './mind.js';

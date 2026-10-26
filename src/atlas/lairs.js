@@ -148,11 +148,10 @@ const wildKinds = a => LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town
 // the kind of a lair that rises by itself (born of the density, or come into the wild — not a brood: a brood founds its
 // own kind): drawn among the kinds whose ground fits, each with the chance of how thick its owners live there (so a
 // thinner kind may settle too, and the wild keeps its variety) — the newcomers' kind (`own`) weighing LAIR_FIELD.own
-// more; `species` — only that owner's kinds; a kind with a lair of its own within two territories is left out → the
-// kind, or null
-export function kindAt(a, i, rnd, own = null, species = null) {
+// more; a kind with a lair of its own within two territories is left out → the kind, or null
+export function kindAt(a, i, rnd, own = null) {
   const p = {x: i % a.w, y: (i / a.w) | 0}, room = L => !a.lairs.some(o => o.alive && o.kind === L.id && dist(o, p) < 2 * R(a, L));   // (one kind's lairs keep apart)
-  const C = wildKinds(a).filter(L => (!species || L.species === species) && groundFits(a, L, i) && room(L)).map(L => [L, thick(a, L, i) + (L.id === own ? LF.own : 0)]).filter(([, w]) => w > 0);
+  const C = wildKinds(a).filter(L => groundFits(a, L, i) && room(L)).map(L => [L, thick(a, L, i) + (L.id === own ? LF.own : 0)]).filter(([, w]) => w > 0);
   if (!C.length) return null;
   let t = rnd() * C.reduce((v, [, w]) => v + w, 0);
   for (const [L, w] of C) if ((t -= w) <= 0) return L;
@@ -177,7 +176,7 @@ function bornOfDensity(a, rnd) {
       const p = {x: i % a.w, y: (i / a.w) | 0};
       if (a.lairs.some(o => o.alive && dist(o, p) < Math.max(R(a, L), R(a, LAIRS.get(o.kind))))) continue;
       const lair = hideIfWild(a, newLair(a, L, i, rnd, LL.broodStart)), who = SPECIES.get(L.species).plural;
-      lines.push(lair.hidden ? `В глуши ${wherePhrase(a, i)} осели бродячие ${who}: где их ${L.label.split(' ')[0]}, не знает ни одна держава.`
+      lines.push(lair.hidden ? `В глуши ${wherePhrase(a, i)} осели бродячие ${who}: где их ${L.nouns[0][0]}, не знает ни одна держава.`
         : `Бродячие ${who} осели ${wherePhrase(a, i)}: ${G[L.g].fresh} ${acc(L)} — «${lair.name}».`);
       made++; break;
     }
@@ -315,7 +314,7 @@ export function stepLairs(a, rnd, seasonId) {
   lairFolk(a);   // (a world saved before the lairs' folk had fields)
   stepRot(a);
   if (a.ratsLines) { lines.push(...a.ratsLines); a.ratsLines = null; }
-  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd), ...spawnWild(a, rnd), ...bornOfDensity(a, rnd), ...towerBirth(a, rnd, newLair, hideIfWild, wherePhrase, R));
+  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd), ...spawnWild(a, rnd), ...bornOfDensity(a, rnd), ...towerBirth(a, rnd, {newLair, hideIfWild, wherePhrase, R, groundFits}));
   for (const lair of a.lairs) {
     if (!lair.alive) continue;
     const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead || L.fiend || L.dragon ? null : F.list[F.idx[L.species]];
@@ -411,7 +410,7 @@ export function raidBand(a, lair, L, rnd) {
   // a necromancer leads his dead and his cult: stronger with the living about him (data/lairs.js NECRO.cultMight)
   if (L.domain && F) {
     const j = faunaCell(a, lair.i), living = Math.min(1, livingAt(a, j).reduce((v, [, x]) => v + x, 0));
-    return {who: `${cap1(necroLabel(lair.race))} повёл мертвецов и культистов`, k: 1 + NECRO.cultMight * living, riders: false};
+    return {who: 'Мертвецы и культисты', k: 1 + NECRO.cultMight * living, riders: false};   // (the subject of «… из башни «X» опустошили …»)
   }
   if (L.leads || !F) return {who: raidWho(L), k: 1, riders: false};
   const j = faunaCell(a, lair.i), at = id => { const s = F.list[F.idx[id]]; return s ? s.N[j] : 0; };
@@ -497,13 +496,13 @@ function spawnWild(a, rnd) {
   const lines = []; if (!a.peoples?.length) return lines;
   const k = scaleOf(a), want = WILD.perYear * k * k, n = Math.floor(want) + (rnd() < want % 1 ? 1 : 0);
   for (let q = 0; q < n; q++) {
-    const kinds = LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town' && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * LL.crowdMax);
+    const kinds = wildKinds(a);
     while (kinds.length) {
       const L0 = kinds.splice((rnd() * kinds.length) | 0, 1)[0], i = findSpot(a, L0, rnd, null, WILD.tries, j => wildAt(a, j));
       if (i < 0) continue;
       const L = kindAt(a, i, rnd, L0.id) || L0;   // the land's own monsters take in the newcomers
       const lair = newLair(a, L, i, rnd, WILD.start); lair.hidden = true;
-      lines.push(`В глуши ${wherePhrase(a, i)} завелись ${SPECIES.get(L.species).plural}: где их ${L.label.split(' ')[0]}, не знает ни одна держава.`);
+      lines.push(`В глуши ${wherePhrase(a, i)} завелись ${SPECIES.get(L.species).plural}: где их ${L.nouns[0][0]}, не знает ни одна держава.`);
       break;
     }
   }
@@ -541,8 +540,7 @@ function spawnLairs(a, rnd) {
     const lair = newLair(a, L, best, rnd, L.fiend ? LL.fiendStart : LL.spawnStart), where = wherePhrase(a, best);
     const bent = bend(a, lair);   // within a necromancer's seat: his vassal
     if (town) { lair.town = town.id; a.hist.names.delete(lair.name); lair.name = `${L.nouns[(rnd() * L.nouns.length) | 0][0] === 'усадьба' ? 'Старая' : 'Тёмная'} усадьба`; }
-    lines.push(L.id === 'necromancer' ? `Некромант поставил ${L.labelAcc} «${lair.name}» ${where}: по ночам там поднимают мертвецов.`
-      : L.id === 'wights' ? `На курганах ${where} поднялись костяки: ${L.label} «${lair.name}».`
+    lines.push(L.id === 'wights' ? `На курганах ${where} поднялись костяки: ${L.label} «${lair.name}».`
       : L.id === 'vampire' ? `В ${townLabel(town, 3)} ${town.name} поселился вампир: в усадьбе на окраине по ночам горит свет, а на улицах пропадают люди.`
       : L.id === 'rift' ? `Земля треснула ${where}: из разлома «${lair.name}» лезут демоны.`
       : `На пепелище ${where} завелись упыри: ${L.label} «${lair.name}».`);
@@ -553,8 +551,8 @@ function spawnLairs(a, rnd) {
 
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 // words that agree with the lair's noun
-export const G = {n: {emptied: 'Опустело', fresh: 'новое', stands: 'стоит', about: 'нём'}, f: {emptied: 'Опустела', fresh: 'новую', stands: 'стоит', about: 'ней'},
-  m: {emptied: 'Опустел', fresh: 'новый', stands: 'стоит', about: 'нём'}, pl: {emptied: 'Опустели', fresh: 'новые', stands: 'стоят', about: 'них'}};
+export const G = {n: {emptied: 'Опустело', fresh: 'новое', stands: 'стоит', about: 'нём', it: 'его'}, f: {emptied: 'Опустела', fresh: 'новую', stands: 'стоит', about: 'ней', it: 'её'},
+  m: {emptied: 'Опустел', fresh: 'новый', stands: 'стоит', about: 'нём', it: 'его'}, pl: {emptied: 'Опустели', fresh: 'новые', stands: 'стоят', about: 'них', it: 'их'}};
 export const acc = L => L.labelAcc || L.label;
 // how many captives a lair holds, in words («люди 3, гномы 1») — for the chronicle and the readout
 export const captiveCount = l => Object.entries(l.captives || {}).filter(([, n]) => n > 0).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} ${n}`).join(', ');

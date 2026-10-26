@@ -120,9 +120,10 @@ export function openCamp(S) {
     }
     const rec = recordOf(w, ag); if (rec) rec.name = m.name;
     if (m.master) ag.master = {skill: m.master.skill, since: w.tick, workedAt: -1};
-    if (m.former) ag.former = {since: w.tick, bond: m.loyalty ?? 0.6, fought: false};   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
+    if (m.former) { ag.former = {since: w.tick, bond: m.loyalty ?? 0.6, fought: false}; ag.brain = 'former'; }   // (the role's shorter list: data/behaviour.js WAYS.former)   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
     // a captive of the caravan stays one on the map (settlement/captives.js)
     if (m.captive) { ag.captive = {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned ?? null, service: m.captive.service || 0}; if (rec) rec.captive = true; }
+    if (m.captive) ag.brain = 'captive';   // (no council, flag, watch or trade; kept in: data/behaviour.js WAYS.captive)
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
@@ -179,8 +180,8 @@ function spawnFoe(w) {
   const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
   const close = S.kind === 'ambush' || S.kind === 'guard', at = close ? nearCell(w, CAMP[S.kind].near, r) : null;
   const opts = {minDist: close ? CAMP[S.kind].near : CAMP.far, ...(at != null ? {at} : {})};
-  // a beast with no arrival on the local map (a demon of a rift) comes as its foe kind's own (data/camp.js CAMP_FOES)
-  const beast = F.beast && MIGRATIONS.has(F.beast) ? F.beast : F.band ? null : map.beast, band = F.band || map.band;
+  // (a beast with no arrival on the local map — a rift's demon — still comes as a band, as before: docs/TODO.md)
+  const beast = F.beast || map.beast, band = F.band || map.band;
   // the foe is bought by the caravan's strength (campSetup: C.ourMight — everyone who stands in the fight, with all
   // they wear) × the fight's weight (foeWeight), never by the thing's own strength: a caravan in copper is not sent
   // against a boss bought for a caravan in steel. The heads are rounded up (data/raids.js fill `up`)

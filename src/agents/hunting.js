@@ -95,3 +95,12 @@ export function startMaul(w, a, v, b) {
     : `${who[0].toUpperCase() + who.slice(1)} ${many ? 'нападают' : 'нападает'}! <b>${esc(v.name)}</b> далеко от лагеря и без помощи.`, 'danger');
   return h;
 }
+
+// a chance given «a tick», rolled when the behaviour is asked (a full thought every few ticks): the chance over all the
+// ticks since this one was last rolled — 1 − (1 − p)^Δ — so a beast thinking every 8 ticks leaves as often as one thinking
+// every tick (a.rolled keeps the tick of each roll by key)
+export function perTick(w, a, key, p) {
+  const R = (a.rolled ||= {}), dt = Math.max(0, w.tick - (R[key] ?? w.tick - 1));
+  R[key] = w.tick;
+  return dt <= 1 ? (dt ? p : 0) : 1 - Math.pow(1 - p, dt);
+}

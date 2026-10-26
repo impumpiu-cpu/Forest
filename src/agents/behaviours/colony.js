@@ -59,10 +59,11 @@ export const douse = {want(w, a) {
 export const defend = {want(w, a) {
   const hunter = attackerOf(w, a);
   if (!hunter) return null;
-  if (hunter.species === 'wolf') a.mem.wolf += COLONIST.memWolf;
   const who = SPECIES.get(hunter.species).label, brave = a.mods.bravery;
   const stand = brave * hpShare(a) > COLONIST.standHp || agentInZone(w, a);
   return [stand ? [{id: 'fight', target: hunter, reflex: true}, ROSTER.attacked, () => `напал ${who}: смелости хватает дать отпор`] : [{id: 'runHome'}, ROSTER.attacked, () => `напал ${who}: бежать к своим`]];
+}, pick(w, a, t) {   // (taken up: a wolf's attack remembered once — the palisade and the watchtower read it, data/buildings.js)
+  const hunter = attackerOf(w, a); if (hunter?.species === 'wolf') a.mem.wolf += COLONIST.memWolf;
 }};
 
 // the night watch (settlement/board.js): the council's rule — one place, taken by whoever wants it

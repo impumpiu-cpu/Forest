@@ -5,7 +5,7 @@
 import {generateAtlas} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, stepCampaign} from '../src/campaign/index.js';
-import {fightStats, fightReportText} from '../src/campaign/stats.js';
+import {fightReportText} from '../src/campaign/stats.js';
 import {CAMPAIGN} from '../src/data/campaign.js';
 
 const worlds = +(process.argv[2] || 2), seasons = +(process.argv[3] || 40), mode = process.argv[4] === 'auto' ? 'auto' : 'local';

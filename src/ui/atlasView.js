@@ -6,7 +6,7 @@
 // top (rivers, roads, towns, lairs) is drawn in cell units over it. (Later the generation moves to
 // a Web Worker — docs/WORLD.md.)
 import {ATLAS_SIZES, ATLAS_LAND, DEFAULT_ATLAS_CFG} from '../data/atlas.js';
-import {DEEDS} from '../data/deeds.js';
+import {DEEDS, deedLabel} from '../data/deeds.js';
 import {ATLAS_STAGES} from '../atlas/stages.js';
 import {cellGeology} from '../atlas/geology.js';
 import {riverKind} from '../atlas/hydrology.js';
@@ -20,19 +20,19 @@ import {PLATE_COUNTS, HEMISPHERES, BOUNDARIES, BOUNDARY_BY_CODE, ROCKS, ROCK_BY_
 import {LEVEL_WORDS} from '../data/regions.js';
 import {RAIN_WORDS} from '../data/climate.js';
 import {newAtlas, runNextStage, atlasDone, landDone} from '../atlas/generate.js';
-import {historyLength, seasonLabel, eraPlan} from '../atlas/history.js';
+import {seasonLabel, eraPlan} from '../atlas/history.js';
 import {townAt, landOf, townLabel} from '../atlas/peoples.js';
 import {roadLevel} from '../atlas/roads.js';
 import {seaLevelOf} from '../atlas/sea.js';
 import {SEA} from '../data/roads.js';
 import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
-import {stateOf, stateLabel, attitude, ruinAt, relation} from '../atlas/diplomacy.js';
+import {stateOf, stateLabel, ruinAt} from '../atlas/diplomacy.js';
 import {realmOf, realmLabel, realmLand} from '../atlas/realms.js';
 import {captiveCount} from '../atlas/lairs.js';
 import {ROADS} from '../data/roads.js';
 import {faunaAt} from '../atlas/fauna.js';
 import {lairAt} from '../atlas/lairs.js';
-import {towerAt, necroLabel, zoneOf} from '../atlas/necro.js';
+import {towers, seatMap} from '../atlas/necro.js';
 import {LAIRS} from '../data/lairs.js';
 import {TECHS} from '../data/tech.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
@@ -257,7 +257,7 @@ export class MapView {
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
     else html = sw(FRESH, 'пресное озеро') + sw(SALT, 'солёное озеро') + `<span><i style="background:${RIVER};height:3px"></i>реки</span>` + sw(DEEP[0][1], 'глубокое море') + sw(DEEP[1][1], 'мелководье') + sw(LAND[0][1], 'низины') + sw(LAND[2][1], 'нагорья') + sw(LAND[4][1], 'вершины');
-    $(this.ids?.legend || 'atlasLegend').innerHTML = html;
+    const box = $(this.ids?.legend || 'atlasLegend'); if (box) box.innerHTML = html;   // (the campaign's map has its own legend: none here)
   }
 
   // the colour of one cell on the chosen layer; a field that is not made yet shows as the dark sea
@@ -316,11 +316,12 @@ export class MapView {
         return c;
       }
       case 'realms': {   // the realms' land (atlas/realms.js realmLand): its colour, a light rim where it meets another or no one's
-        const g = mix(base, [40, 40, 36], 0.6), own = realmLand(a); if (f.ocean[i]) return g;
+        const g = mix(base, [40, 40, 36], 0.6), own = this.realmOwn; if (f.ocean[i]) return g;   // (made once a repaint: paint())
         const o = own ? own[i] : -1;
         if (o < 0) {   // no realm's: a necromancer's seat (atlas/necro.js), a dark land with a rim of its own
-          const x = i % a.w, y = (i / a.w) | 0, t = towerAt(a, x, y); if (!t) return g;
-          const col = LAIRS.get(t.kind).color, rim = ![[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dy]) => towerAt(a, x + dx, y + dy) === t);
+          const S = this.seats, n = S ? S[i] : -1; if (n < 0) return g;
+          const x = i % a.w, y = (i / a.w) | 0, col = LAIRS.get(this.towerList[n].kind).color;
+          const rim = (x > 0 && S[i - 1] !== n) || (x < a.w - 1 && S[i + 1] !== n) || (y > 0 && S[i - a.w] !== n) || (y < a.h - 1 && S[i + a.w] !== n);
           return rim ? mix(col, [230, 200, 240], 0.4) : mix(g, col, 0.5);
         }
         const col = a.realms[o].color, x = i % a.w, y = (i / a.w) | 0;
@@ -365,6 +366,8 @@ export class MapView {
     const key = `${this.layer}:${this.ore}:${this.fauna}:${a.stage}:${a.hist ? a.hist.step : -1}:${a.towns?.length || 0}`;
     if (this.bitmap && this.bitmapKey === key) return this.bitmap;
     if (this.layer === 'realms') this.legend();   // the realms come and go with the history
+    // what «Державы» reads cell by cell, made once a repaint: the realms' land, the necromancers' seats
+    if (this.layer === 'realms') { this.realmOwn = realmLand(a); this.towerList = towers(a); this.seats = seatMap(a, this.towerList); }
     const off = this.bitmap || document.createElement('canvas');
     if (off.width !== a.w || off.height !== a.h) { off.width = a.w; off.height = a.h; }
     const px = off.getContext('2d'), img = px.createImageData(a.w, a.h), d = img.data;
@@ -718,7 +721,7 @@ export class MapView {
       const R = town.realm ? a.realms.find(r => r.id === town.realm) : null;
       if (R?.tech) parts.push(`держава знает: ${R.tech.length ? R.tech.map(id => TECHS.get(id).label.toLowerCase()).join(', ') : 'ничего сверх общего'}`);
       if (R?.captives && Object.values(R.captives).some(v => v > 0)) parts.push(`увели в полон за историю: ${captiveCount(R)}`);
-      if (R?.why) parts.push(`последнее дело державы (${R.why.year} г.): ${DEEDS.get(R.why.deed).label} — ${R.why.why}${R.why.alt ? `; иначе: ${DEEDS.get(R.why.alt).label}` : ''}`);
+      if (R?.why) parts.push(`последнее дело державы (${R.why.year} г.): ${deedLabel(R.why.deed)} — ${R.why.why}${R.why.alt ? `; иначе: ${deedLabel(R.why.alt)}` : ''}`);
       // the realm as a kingdom (atlas/kingdom.js): its attributes, its ruin, its court
       const Kd = R?.kingdom;
       if (Kd) {
@@ -731,7 +734,7 @@ export class MapView {
     const party = partyAt(a, i);
     if (party) {
       const tgt = party.target != null ? a.towns.find(t => t.id === party.target) : null, lair = party.owner != null && party.kind !== 'army' ? a.lairs.find(l => l.id === party.owner) : null;
-      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? `главарь: ${DEEDS.has(party.plan) ? DEEDS.get(party.plan).label : party.plan}` : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
+      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? `главарь: ${DEEDS.has(party.plan) ? deedLabel(party.plan) : party.plan}` : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
     }
     const site = siteAt(a, i);
     if (site) { const b = TOWN_BUILDINGS.get(site.kind), t = a.towns.find(t => t.id === site.town); parts.push(`${b.name} (${CATEGORIES[b.cat]}) ${townLabel(t, 2)} ${t.name}, с года ${site.built}`); }
@@ -748,7 +751,7 @@ export class MapView {
     const lair = lairAt(a, i);
     if (lair) {
       const L = LAIRS.get(lair.kind), lord = lair.lord != null ? a.lairs.find(l => l.id === lair.lord) : null;
-      parts.push(`владения: ${L.label} «${lair.name}»${lair.hidden ? ' (скрыто: державы о нём не знают)' : ''}, сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds}${lair.why ? `; ${lair.why.year} г. — ${DEEDS.get(lair.why.deed).label}: ${lair.why.why}` : ''})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}${captiveCount(lair) ? `; в полоне: ${captiveCount(lair)}` : ''}`);
+      parts.push(`владения: ${L.label} «${lair.name}»${lair.hidden ? ' (скрыто: державы о нём не знают)' : ''}, сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds}${lair.why ? `; ${lair.why.year} г. — ${deedLabel(lair.why.deed)}: ${lair.why.why}` : ''})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}${captiveCount(lair) ? `; в полоне: ${captiveCount(lair)}` : ''}`);
     }
     if (a.fauna && !f.ocean[i]) {
       const word = v => (v >= 0.8 ? 'много' : v >= 0.45 ? 'есть' : 'мало');

@@ -21,7 +21,6 @@ import {BUILDINGS} from '../src/data/buildings.js';
 import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES, FUTURE_PEOPLES} from '../src/data/townBuildings.js';
 import {placeHas, townFx, room} from '../src/atlas/towns.js';
 import {ROADS, SEA} from '../src/data/roads.js';
-import {RIVERS} from '../src/data/hydrology.js';
 import {DIPLOMACY} from '../src/data/diplomacy.js';
 import {scaleOf} from '../src/atlas/tectonics.js';
 import {siteRadius} from '../src/atlas/sites.js';

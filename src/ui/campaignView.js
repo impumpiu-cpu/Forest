@@ -32,7 +32,6 @@ import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
 import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
-import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {BEASTS} from '../data/transport.js';
 import {BUBBLE, THINGS} from '../data/bubble.js';

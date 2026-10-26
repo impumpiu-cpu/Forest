@@ -33,7 +33,7 @@ import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
-import {BASE_MODS, rebuildBaseMods} from '../traits.js';
+import {rebuildBaseMods} from '../traits.js';
 import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '../mods.js';
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
 import {autoTable, objectTable} from './auto.js';

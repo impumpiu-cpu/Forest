@@ -6,7 +6,7 @@ import {newGame} from '../src/sim.js';
 import {DEFAULT_CFG} from '../src/data/presets.js';
 import {T} from '../src/data/terrain.js';
 import {SPECIES} from '../src/data/species.js';
-import {createAgent, maxHp} from '../src/agents/agent.js';
+import {createAgent} from '../src/agents/agent.js';
 import {damage, reachOf, blockAgainst} from '../src/agents/combat.js';
 import {recalcGear, wear} from '../src/agents/equipment.js';
 import {heatHarm, stepBody} from '../src/agents/body.js';

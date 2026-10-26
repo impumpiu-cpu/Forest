@@ -7,7 +7,6 @@ import {Registry} from '../core/registry.js';
 import {T} from './terrain.js';
 import {has, openSites} from '../settlement/query.js';
 import {nextToRock} from '../world/grid.js';
-import {SPECIES} from './species.js';
 import {cellOf} from '../world/grid.js';
 import {BUILDINGS} from './buildings.js';
 import {inZone} from '../settlement/zone.js';

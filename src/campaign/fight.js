@@ -8,7 +8,6 @@ import {gearDef, gearType, gearValue} from '../agents/equipment.js';
 import {CAMP} from '../data/camp.js';
 import {AMBUSH} from '../data/bubble.js';
 import {BEASTS, VEHICLES, GETTING} from '../data/transport.js';
-import {ITEMS} from '../data/items.js';
 import {FOODS} from '../data/foods.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';

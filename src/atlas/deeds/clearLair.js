@@ -45,6 +45,6 @@ export const clearLair = {
     const loss = W.raidLoss * raidShare(fx);
     t.pop *= 1 - loss; t.raided = a.hist.year; raidGraves(a, t);
     const burnt = raidSite(a, t, r);
-    return `${cap1(owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
+    return `${cap1(L.domain ? 'мертвецы' : owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
   },
 };

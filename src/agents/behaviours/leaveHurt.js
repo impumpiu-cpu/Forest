@@ -6,6 +6,7 @@ import {holdsGround} from '../auras.js';
 import {log} from '../../core/log.js';
 import {packOf} from '../hunting.js';
 import {PROWL} from '../../data/behaviour.js';
+import {SPECIES} from '../../data/species.js';
 
 export const leaveHurt = {
   want(w, a, {sp, night}) {
@@ -13,9 +14,10 @@ export const leaveHurt = {
     if (sp.nocturnal && night < PROWL.dawn) return [[{id: 'leave', pace: PROWL.leavePace}, PROWL.want.leave, () => 'рассвело: ночному охотнику пора']];
     if (going) return [[a.task, PROWL.want.leave, () => 'уходит']];
     if (a.hp < maxHp(a) * PROWL.hurtBelow && !holdsGround(w, a)) {   // (a boss's aura: agents/auras.js)
-      if (packOf(w, a)[0] === a) log(w, `Раненые ${sp.plural || sp.label} уходят из леса.`, 'wildlife');
-      return [[{id: 'leave', pace: PROWL.leavePace}, PROWL.want.leave, () => 'тяжело ранен']];
+      return [[{id: 'leave', pace: PROWL.leavePace, hurt: true}, PROWL.want.leave, () => 'тяжело ранен']];
     }
     return null;
   },
+  // taken: the pack's leader tells it once (not each tick the offer is weighed)
+  pick(w, a, t) { if (t?.hurt && packOf(w, a)[0] === a) { const sp = SPECIES.get(a.species); log(w, `Раненые ${sp.plural || sp.label} уходят из леса.`, 'wildlife'); } },
 };

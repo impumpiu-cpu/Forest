@@ -3,8 +3,6 @@
 // Intelligence against her Charisma × 2 — and she drowns them unless someone comes close and breaks the spell. One
 // song a night. The song is the `always` hook (an aura works whatever she is doing); the task `sing` walks her home
 // ground like lurk, or stands still (`wait` mode) while a victim is on its way. Reads: spirit {aura: 'lure', radius, night?}.
-import {SPECIES} from '../../data/species.js';
-import {attack} from '../combat.js';
 import {think} from '../mind.js';
 import {wake} from '../attention.js';
 import {log} from '../../core/log.js';

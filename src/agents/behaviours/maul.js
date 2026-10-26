@@ -49,6 +49,7 @@ export const maul = {
       return;
     }
     const P = paramsOf(a), M = PROWL.maul, v = t.target;
+    if (!P) { endTask(w, a); return; }   // (a task of an old save from a brain that had no hunt: a mule, a spirit)
     if (t.mode === 'lair') { lair(w, a, t, P, v); return; }
     const b = boldness(a, P), pack = packOf(w, a);
     // help arrived or the victim reached the settlement: back off for a while (shorter when starving)

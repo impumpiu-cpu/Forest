@@ -11,7 +11,7 @@ import {POTION} from './potions.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
-import {T, BY_CODE} from './terrain.js';
+import {BY_CODE} from './terrain.js';
 import {HOUR, DAY} from '../core/time.js';
 import {season} from './seasons.js';
 import {homeCell} from '../agents/nechist.js';

@@ -15,7 +15,7 @@ import {heatTo} from '../src/world/heat.js';
 import {agentInZone} from '../src/settlement/zone.js';
 import {BEHAVIOURS} from '../src/data/behaviours.js';
 import {ACTS} from '../src/agents/behaviours/index.js';
-import {SPECIES} from '../src/data/species.js';
+import {SPECIES, brainOf} from '../src/data/species.js';
 import {season} from '../src/data/seasons.js';
 import {makeTame} from '../src/settlement/herd.js';
 import {createSquad} from '../src/agents/squad.js';
@@ -316,7 +316,7 @@ scene_('B19', 'налётчик вяжет упавшего поселенца �
 scene_('B08', 'каталог: у каждого поведения есть код, у каждого вида с умом tabled — список, и он читает то, что есть у вида', () => {
   for (const d of BEHAVIOURS.all()) if (!ACTS[d.id]?.want) return `нет кода у «${d.id}»`;
   for (const sp of SPECIES.all()) {
-    if (sp.brain !== 'tabled') continue;
+    if (brainOf(sp) !== 'tabled') continue;   // (a species thinks by the table when it has behaviours: data/species.js brainOf)
     if (!sp.behaviours?.length) return `${sp.id}: ум tabled без поведений`;
     for (const id of sp.behaviours) for (const f of BEHAVIOURS.get(id).requires) if (sp[f] == null) return `${sp.id}: ${id} читает «${f}», а его нет`;
   }

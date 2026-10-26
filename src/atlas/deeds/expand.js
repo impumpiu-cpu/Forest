@@ -18,6 +18,7 @@ const spotFree = (a, L, i) => !a.lairs.some(o => o.alive && o.kind === L.id && d
 
 export const expand = {
   want(a, l, {L, role, season, r}) {
+    if (L.domain) return null;   // a necromancer's tower is born of the rot only (atlas/necro.js), never of a brood
     if (role === 'lair') {
       if (season !== 'spring' || l.leader || l.strength <= LL.breedAt || a.hist.year - l.born < LL.breedAge) return null;
       const boss = l.boss != null;

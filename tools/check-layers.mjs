@@ -1,5 +1,5 @@
-// Keeps the core free of the screen: the simulation (everything except src/ui, src/render, src/app and
-// src/main.js) must not import those folders or touch browser-only globals. Any other front end —
+// Keeps the core free of the screen: the simulation (everything except src/ui, src/render and src/app)
+// must not import those folders or touch browser-only globals. Any other front end —
 // a different renderer, the balance runner, a server — can then drive the same core.
 import {readdirSync, readFileSync, statSync} from 'node:fs';
 import {join, relative, dirname, resolve} from 'node:path';

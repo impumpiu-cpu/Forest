@@ -4,7 +4,6 @@
 // and from then on the bound one follows it like a stolen beast (led.js: a.ledBy, a.ledFrom — what it was) and is
 // gone with it; the raider counts itself paid (a.looted) and heads home. The band's plan comes first (RAID.want: plan
 // above capture): a band on the run stops for no one, though knots begun are finished (keep). Reads: nothing of its own.
-import {SPECIES} from '../../data/species.js';
 import {isHostile} from '../../data/factions.js';
 import {nearAgents} from '../spatial.js';
 import {nearestHostile} from '../combat.js';

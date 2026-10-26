@@ -366,23 +366,30 @@ check('караваны обзаводятся обозом и выбирают 
 // stops does not push them out); the caravan's camp stands whole at its night's camps; a potion slot never holds more than
 // POTION.slot, and the potions brewed and bought are drunk on the map
 {
+  // a walk is a chain of chances: a caravan wiped out early has brewed nothing — then the next capital walks too, and the
+  // walks are counted together (at most one walk per people)
   const base = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
-  const c = capitals(base).find(x => x.people === 'humans'), K = newCampaign(base, c.town, {mode: 'local'});
-  let lost = 0, fights = 0, overfull = 0, campOk = 0, campSeen = 0;
-  for (let k = 0; k < 30; k++) {
-    const d0 = K.day, f0 = (K.fights || []).length;
-    if (!stepCampaign(base)) break;
-    const camps = (K.camps || []).filter(cp => cp.day >= d0 && cp.kind !== 'stop'), F = (K.fights || []).slice(f0);
-    fights += F.length; lost += Math.max(0, F.length - camps.length);
-    overfull += K.members.filter(m => (m.potions || 0) > POTION.slot).length;
-    for (const cp of (K.camps || []).filter(x => x.day >= d0 && x.kind === 'night' && (x.setup.buildings || []).length)) {
-      campSeen++; const w = openCamp(cp.setup);
-      if (cp.setup.buildings.every(id => w.buildings.some(b => b.key === id && b.done))) campOk++;
+  const frozen = JSON.stringify(saveAtlas(base));
+  let lost = 0, fights = 0, overfull = 0, campOk = 0, campSeen = 0, brewed = 0, drunk = 0, walks = 0;
+  for (const c of CAMPAIGN.peoples.map(p => capitals(base).find(x => x.people === p)).filter(Boolean)) {
+    const a = loadAtlas(JSON.parse(frozen)), K = newCampaign(a, c.town, {mode: 'local'}); walks++;
+    for (let k = 0; k < 30; k++) {
+      const d0 = K.day, f0 = (K.fights || []).length;
+      if (!stepCampaign(a)) break;
+      const camps = (K.camps || []).filter(cp => cp.day >= d0 && cp.kind !== 'stop'), F = (K.fights || []).slice(f0);
+      fights += F.length; lost += Math.max(0, F.length - camps.length);
+      overfull += K.members.filter(m => (m.potions || 0) > POTION.slot).length;
+      for (const cp of (K.camps || []).filter(x => x.day >= d0 && x.kind === 'night' && (x.setup.buildings || []).length)) {
+        campSeen++; const w = openCamp(cp.setup);
+        if (cp.setup.buildings.every(id => w.buildings.some(b => b.key === id && b.done))) campOk++;
+      }
     }
+    brewed += K.stats.brewed || 0; drunk += K.stats.potions || 0;
+    if (brewed > 0 && drunk > 0 && campSeen > 0) break;
   }
-  check('показ: все бои сезона дожидаются экрана, сколько бы дней стоянок ни было', fights > 0 && lost === 0, `боёв ${fights}, вытеснено ${lost}`);
-  check('лагерь каравана: постройки встают целыми на каждой ночёвке', campSeen > 0 && campOk === campSeen, `ночёвок с лагерем ${campSeen}, целых ${campOk}; лагерь: ${(K.buildings || []).join(', ')}`);
-  check('зелья лечения: не больше трёх в поясе, сварены и выпиты', overfull === 0 && (K.stats.brewed || 0) > 0 && (K.stats.potions || 0) > 0, `сварено ${K.stats.brewed || 0}, выпито ${K.stats.potions || 0}`);
+  check('показ: все бои сезона дожидаются экрана, сколько бы дней стоянок ни было', fights > 0 && lost === 0, `боёв ${fights}, вытеснено ${lost}, походов ${walks}`);
+  check('лагерь каравана: постройки встают целыми на каждой ночёвке', campSeen > 0 && campOk === campSeen, `ночёвок с лагерем ${campSeen}, целых ${campOk}`);
+  check('зелья лечения: не больше трёх в поясе, сварены и выпиты', overfull === 0 && brewed > 0 && drunk > 0, `сварено ${brewed}, выпито ${drunk}, походов ${walks}`);
 }
 
 if (!ok) process.exit(1);

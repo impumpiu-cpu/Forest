@@ -6,7 +6,7 @@ import {brewFactor} from '../settlement/life.js';
 import {JOBS, huntable} from '../data/jobs.js';
 import {SPECIES} from '../data/species.js';
 import {cellOf} from '../world/grid.js';
-import {follow, moveToward, approach} from './movement.js';
+import {follow, approach} from './movement.js';
 import {deposit} from '../settlement/stock.js';
 import {addLabour} from '../settlement/buildings.js';
 import {buildingById} from '../settlement/query.js';
@@ -15,7 +15,7 @@ import {workAt, stationHasWork, stationPriority, freeBench} from '../settlement/
 import {carcassById, smellCarcass, butcher, share, CARCASS} from './carcass.js';
 import {boldness} from './hunting.js';
 import {wake} from './attention.js';
-import {reserve, release, isFree, freeSlot} from '../settlement/reserve.js';
+import {reserve, release} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
 import {shoot} from './combat.js';
 import {lineOfFire} from '../nav/astar.js';

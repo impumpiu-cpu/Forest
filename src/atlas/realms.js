@@ -11,7 +11,7 @@ import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS, REALM_LAND} from '../data/people
 import {SPECIES} from '../data/species.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {townFx, townLabel, townGender} from './towns.js';
-import {meet, relation} from './diplomacy.js';
+import {meet} from './diplomacy.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';

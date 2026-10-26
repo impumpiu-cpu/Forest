@@ -10,7 +10,6 @@
 import {SPECIES} from '../data/species.js';
 import {gearDef} from '../agents/equipment.js';
 import {BONDS} from '../data/captives.js';
-import {ITEMS} from '../data/items.js';
 import {ORES} from '../data/ores.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';

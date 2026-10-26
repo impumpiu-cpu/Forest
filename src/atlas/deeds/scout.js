@@ -6,7 +6,8 @@ import {LAIRS, WILD} from '../../data/lairs.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 import {townFx, townLabel} from '../towns.js';
 import {realmLabelGen} from '../realms.js';
-import {revealLair, wherePhrase, felt} from '../lairs.js';
+import {revealLair, wherePhrase, felt, G} from '../lairs.js';
+import {scaleOf as sc} from '../tectonics.js';
 import {SPECIES} from '../../data/species.js';
 import {scaleOf} from '../tectonics.js';
 import {liveTowns} from './realm.js';
@@ -20,7 +21,7 @@ export const scout = {
     const reach = S.reach * scaleOf(a);
     // the one whose folk are felt thickest for the way
     let best = null, bv = -1;
-    for (const l of hidden) { const v = felt(a, l); for (const t of towns) { const d = Math.hypot(t.x - l.x, t.y - l.y), w = v / (1 + d / 10); if (d <= reach && w > bv) { bv = w; best = [t, l]; } } }
+    for (const l of hidden) { const v = felt(a, l); for (const t of towns) { const d = Math.hypot(t.x - l.x, t.y - l.y), w = v / (1 + d / (S.way * sc(a))); if (d <= reach && w > bv) { bv = w; best = [t, l]; } } }
     return best ? [[{town: best[0].id, lair: best[1].id}, 1, () => `в глуши у ${best[0].name} неспокойно: всюду следы — ${SPECIES.get(LAIRS.get(best[1].kind).species).plural}`]] : null;
   },
   act(a, realm, plan, {r}) {
@@ -29,6 +30,6 @@ export const scout = {
     if (r() >= F[0] + F[1] * townFx(t).lore + F[2] * t.tier + F[3] * Math.min(1, felt(a, l))) return null;   // they came back with nothing: not worth a line
     revealLair(a, l, t.name);
     const L = LAIRS.get(l.kind);
-    return `Следопыты ${realmLabelGen(a, realm.id)} из ${townLabel(t, 2)} ${t.name} выследили ${L.labelAcc || L.label} «${l.name}» ${wherePhrase(a, l.i)}: теперь его можно выжечь.`;
+    return `Следопыты ${realmLabelGen(a, realm.id)} из ${townLabel(t, 2)} ${t.name} выследили ${L.labelAcc || L.label} «${l.name}» ${wherePhrase(a, l.i)}: теперь ${G[L.g].it} можно выжечь.`;
   },
 };

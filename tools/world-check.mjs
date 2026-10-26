@@ -9,7 +9,7 @@ import {atlasDone} from '../src/atlas/generate.js';
 import {dangers, withCompany, peopleFoes} from '../src/campaign/land.js';
 import {raidBand, felt, R as lairR} from '../src/atlas/lairs.js';
 import {cellNeighbours} from '../src/seam/cell.js';
-import {livingAt, darkness, raceAt, stepTower, bend, cultPool, zoneOf, deadField, towers} from '../src/atlas/necro.js';
+import {darkness, raceAt, stepTower, bend, cultPool, zoneOf, deadField} from '../src/atlas/necro.js';
 import {cultFoes} from '../src/campaign/land.js';
 import {RAID_BANDS, raiderStrength} from '../src/data/raids.js';
 import {bandAllowed} from '../src/outside/scripted.js';

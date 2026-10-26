@@ -40,7 +40,7 @@ const ALARMS = BANDS.slice(0, 2);
 function offers(w, a, ctx, lanes, from) {
   for (const band of from) {
     let opts = null;
-    for (const d of lanes[band]) { const o = ACTS[d.id].want(w, a, ctx); if (o) for (const x of o) (opts ||= []).push([x[0], x[1], x[2], d, x[3]]); }   // [task, score, why, behaviour, what else the offer carried]
+    for (const d of lanes[band]) { const o = ACTS[d.id].want(w, a, ctx); if (a.dead) return null; if (o) for (const x of o) (opts ||= []).push([x[0], x[1], x[2], d, x[3]]); }   // (killed while asked — a rat caught at the stores: nothing more)   // [task, score, why, behaviour, what else the offer carried]
     if (opts) return [band, opts];
   }
   return null;
@@ -119,10 +119,10 @@ export function tabledStep(w, a, brain) {
     if (a.task && brain.hold?.(w, a)) { beat(); if (decide(w, a, ctx, ALARMS) === 'thought') beat(); }
     else { decide(w, a, ctx, BANDS); beat(); }
   } else if (decide(w, a, ctx, ALARMS) === 'thought') beat();   // an alarm answered counts as a thought: the heartbeat starts anew
-  if (a.task) run(w, a);
+  if (a.task && !a.dead) run(w, a);
   // the task ended by itself: the next one steps in at once — unless the role takes a breath between two things
   // (a colonist: its task's end is an event it thinks about at its next step)
-  if (!a.task && !brain.breath && decide(w, a, ctx, BANDS)) run(w, a);
+  if (!a.task && !a.dead && !brain.breath && decide(w, a, ctx, BANDS)) run(w, a);
   if (a.cd > 0) a.cd--;
 }
 
