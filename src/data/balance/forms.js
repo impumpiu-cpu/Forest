@@ -50,6 +50,16 @@ export const FORMS = {
   // the metal answer to armour: what a cut slides off, a blow of a mace or a hammer goes through
   mace:     {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.85, cd: 12}, dur: 150,
     parts: {material: 3, wood: 1}, work: 800, name: m => [`${cap(m.adj.f)} булава`, `${m.short} булава`], glyph: 'club'},
+  // thrown first, then a short spear in the hand: a bundle of three (quality `thrown`: throws before it is down to one)
+  javelin:  {blow: 'pierce', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 1, of: ['bone', 'metal'], ref: 'bone', melee: {dmg: 1.15, cd: 12},
+    ranged: {dmg: 1.5, range: 5, cd: 16, ammo: null, type: 'pierce'}, qualities: {thrown: 3}, dur: 50,
+    parts: {material: 2, wood: 3}, work: 700, ids: {bone: 'javelin'}, names: {bone: ['Дротики с костяными наконечниками', 'дротики']},
+    name: m => [`Дротики ${/^с[^аеёиоуыэюя]/.test(m.adj.ins) ? 'со' : 'с'} ${m.adj.ins} наконечником`, `${m.short} дротики`], glyph: 'javelin'},
+  // a small axe for the belt: thrown twice, then cut with; light enough for the other hand
+  hatchet:  {blow: 'slash', scale: {S: 0.6, A: 0.4}, slot: 'hand', hands: 1, of: ['bone', 'metal'], ref: 'bone', melee: {dmg: 1.3, cd: 11},
+    ranged: {dmg: 1.4, range: 4, cd: 14, ammo: null, type: 'slash'}, qualities: {thrown: 2, paired: 0.5}, tool: {chop: 1.2}, dur: 70,
+    parts: {material: 2, wood: 1}, work: 600, ids: {bone: 'hatchet'}, names: {bone: ['Метательный топорик с костяным клином', 'топорик']},
+    name: m => [`${cap(m.adj.m)} метательный топорик`, `${m.short} топорик`], glyph: 'axe'},
   shield:   {vs: {pierce: 1.1, slash: 1.05, blunt: 0.8}, slot: 'hand', hands: 1, of: ['wood', 'metal'], ref: 'wood', block: 0.32, cover: 0.5, dur: 35,
     parts: {material: 3, hide: 2}, work: 700, ids: {wood: 'shield'}, names: {wood: ['Щит из жердей и шкуры', 'щит']}, name: m => [`${cap(m.adj.m)} щит`, `${m.short} щит`], glyph: 'shield'},
   // ── two-handed: each makes up for the shield it leaves no hand for

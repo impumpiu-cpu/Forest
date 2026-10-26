@@ -56,6 +56,11 @@ RECIPES.registerAll([
     want: c => (short(c.melee(), c.pop) ? 1.9 : 0)},
   {id: 'club', at: 'crafthut', cost: {wood: 3}, work: 600, makes: {item: 'club'},
     want: c => (short(c.melee(), c.pop) ? 1.5 : 0)},
+  // thrown weapons (quality `thrown`): a bundle of javelins for every third, a hatchet for every fourth
+  {id: 'javelin', at: 'crafthut', cost: {wood: 3, bone: 2}, work: 700, makes: {item: 'javelin'},
+    want: c => (short(c.owned('javelin') + c.owned('ironjavelin'), Math.ceil(c.pop / 3)) ? 1.2 : 0)},
+  {id: 'hatchet', at: 'crafthut', cost: {wood: 1, bone: 2}, work: 600, makes: {item: 'hatchet'},
+    want: c => (short(c.owned('hatchet') + c.owned('ironhatchet'), Math.ceil(c.pop / 4)) ? 1.0 : 0)},
   {id: 'shield', at: 'crafthut', cost: {wood: 3, hide: 2}, work: 700, makes: {item: 'shield'},
     want: c => (short(c.owned('shield'), Math.ceil(c.pop / 3)) ? 1.3 : 0)},
   {id: 'staff', at: 'crafthut', cost: {wood: 2}, work: 600, makes: {item: 'staff'},
@@ -129,6 +134,13 @@ RECIPES.registerAll([
     want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
+  // a dagger for the other hand and the back of a foe; javelins and hatchets with iron heads
+  {id: 'irondagger', tier: 2, at: 'forge', cost: {iron: 1, leather: 1}, fuel: 1, work: 400, makes: {item: 'irondagger'},
+    want: c => (short(c.owned('irondagger'), Math.ceil(c.pop / 3)) ? 1.3 : 0)},
+  {id: 'ironjavelin', tier: 2, at: 'forge', cost: {iron: 2, wood: 3}, fuel: 1, work: 700, makes: {item: 'ironjavelin'},
+    want: c => (short(c.owned('ironjavelin'), Math.ceil(c.pop / 3)) ? 1.4 : 0)},
+  {id: 'ironhatchet', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 600, makes: {item: 'ironhatchet'},
+    want: c => (short(c.owned('ironhatchet'), Math.ceil(c.pop / 4)) ? 1.2 : 0)},
   {id: 'shacklesIron', at: 'forge', cost: {iron: 2}, fuel: 1, work: 500, makes: {resource: 'shacklesIron', n: 1},
     want: c => (c.stock('shacklesIron') < 2 && c.spare('iron') >= 2 ? 0.55 : 0)},
   // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare

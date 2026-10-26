@@ -15,7 +15,7 @@ import {esc} from '../core/util.js';
 import {think} from './mind.js';
 import {qualityOf} from '../data/quality.js';
 import {season} from '../data/seasons.js';
-import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS, traitOf} from '../data/balance/combat.js';
+import {CAPS, COMBAT, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS, traitOf} from '../data/balance/combat.js';
 import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 import {MARKS, MARK, markable} from '../data/balance/marks.js';
 import {WOODS, mayUse, useOf, KIND_LAND} from '../data/kinds.js';
@@ -103,7 +103,9 @@ export function def(inst) {
   }
   return n;
 }
-export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, ...extra}).dur});
+// a thrown weapon comes as a full bundle (quality `thrown`: its throws are its `ammo`)
+export const throwsOf = d => traitOf(d.qualities, 'thrown');
+export const newItem = (type, extra = {}) => { const d = def({type, ...extra}), n = throwsOf(d); return {type, ...(n ? {ammo: n} : {}), ...extra, dur: d.dur}; };
 
 // The caravan keeps its gear as words, not objects (campaign/): a piece is 'ironsword', a finer or marked one
 // 'ironsword+1@orc' (+ its quality, @ its mark), a wooden one 'bow~holywood!' (~ its wood, ! made by its master).
@@ -175,7 +177,8 @@ export function recalcGear(a) {
   // a parrying weapon in hand adds to the block against blows (data/balance/combat.js WEAPON_QUALITIES)
   const parry = handItems(a).reduce((s, it) => s + traitOf(def(it).qualities, 'parry'), 0);
   if (parry) g.parry = parry;
-  if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;
+  // a thrown weapon is ready while throws are left in its bundle, a bow while arrows are in the quiver
+  if (g.ranged) g.rangedReady = (throwsOf(def(g.ranged.item)) ? g.ranged.item.ammo || 0 : rangedAmmo(a, def(g.ranged.item))) > 0;
   const body = a.equip.body;
   if (body) { const d = def(body); g.armor = d.armor || 0; g.armorVs = d.vs || null; g.warmth = d.warmth || 0; if (d.speed) g.speed *= d.speed; }
   // tools work from the hands or from the back (the worker swaps them in)
@@ -265,8 +268,8 @@ function value(a, d, w) {
   if (d.melee) v += (d.melee.dmg * GEAR.blowTicks / d.melee.cd * blowStat(a, d.scale) - 1) * GEAR.melee * brave + GEAR.meleeBase;
   if (d.silver && d.melee) v += silverWorth(w) * brave;
   if (d.ranged) {
-    const boost = d.ranged.boost ? (w.mods.best[d.ranged.boost] || 1) : 1;
-    v += d.ranged.dmg * boost * GEAR.ranged * (a.prefs.hunt ?? 1) + GEAR.rangedBase;
+    const boost = d.ranged.boost ? (w.mods.best[d.ranged.boost] || 1) : 1, throws = throwsOf(d);   // a bundle of throws, not a quiverful
+    v += d.ranged.dmg * boost * GEAR.ranged * (a.prefs.hunt ?? 1) * (throws ? Math.min(1, throws / COMBAT.thrown.shots) : 1) + GEAR.rangedBase;
     if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= GEAR.noAmmo;
   }
   if (d.block) v += d.block * GEAR.block * brave;
@@ -364,6 +367,8 @@ export function outfit(w, a) {
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     changed = true;
   }
+  // thrown weapons picked up again (or made good) at the camp: the bundle full
+  for (const it of handItems(a)) { const n = throwsOf(def(it)); if (n && (it.ammo ?? 0) < n) { it.ammo = n; changed = true; } }
   const back = a.equip.back;
   if (back && def(back).holds) {
     const {ammo, max} = def(back).holds, take = Math.min(max - (back.ammo || 0), Math.floor(w.stock[ammo] || 0));
@@ -375,7 +380,7 @@ export function outfit(w, a) {
 
 export function gearText(a) {
   if (!a.equip) return '';
-  const hs = handItems(a).map(it => def(it).short + (dirtyFor(a, it) ? ' (грязн.)' : ''));
+  const hs = handItems(a).map(it => def(it).short + (throwsOf(def(it)) ? ` ${it.ammo || 0}` : '') + (dirtyFor(a, it) ? ' (грязн.)' : ''));
   const parts = [hs.length ? hs.join(' + ') : 'безоружен'];
   if (a.equip.body) parts.push(def(a.equip.body).short);
   const b = a.equip.back;

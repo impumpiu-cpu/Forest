@@ -220,14 +220,16 @@ export function shoot(w, a, t) {
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
   a.cd = r.cd;
-  if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
+  const thrown = traitOf(r.q, 'thrown') > 0;   // a javelin, a hatchet: one of the bundle flies, the last stays in the hand
+  if (thrown) { r.item.ammo = (r.item.ammo || 0) - 1; if (r.item.ammo <= 0) g.rangedReady = false; }
+  else if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
   wear(w, a, r.item);
   const skill = a.skill?.ranged ?? HIT.noSkill, moving = t.task?.id === 'bolt' || t.task?.id === 'chase' ? HIT.moving : 0;
   // to hit is a check with four degrees (data/checks.js): success as always while the roll is under the chance
   const deg = degreeOf(w.rngs.combat(), HIT.base + HIT.skill * skill + (a.mods?.aim || 0) - (d / range) * HIT.far - moving), hit = passed(deg);
   if (deg === 'critFail') { const v = degreeValue('shot', 'critFail'); if (v) wear(w, a, r.item, v); }
   practice(a, 'ranged', LEARN.shot);   // a miss teaches too: the arrow did fly
-  w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo ? 'arrow' : 'stone'});
+  w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo || thrown ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;

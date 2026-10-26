@@ -43,6 +43,7 @@ export function strengthParts(a, {now = false} = {}) {
   if (g.ranged) {
     const hit = Math.min(0.95, Math.max(0.05, HIT.base + HIT.skill * (a.skill?.ranged ?? HIT.noSkill) + (m.aim || 0) - HIT.far * 0.5));
     shot = (SHOT.base + SHOT.spread / 2) * g.ranged.dmg * mixGain(g.ranged) * critShot * hit / g.ranged.cd * STRENGTH.rangedWeight;
+    const throws = traitOf(g.ranged.q, 'thrown'); if (throws) shot *= Math.min(1, throws / COMBAT.thrown.shots);   // a bundle, not a quiverful
   }
   // a shooter shoots while the foe comes or is held by others, and strikes with the bow once it is close
   const offence = melee + shot;

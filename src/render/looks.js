@@ -7,6 +7,7 @@ import {SPECIES} from '../data/species.js';
 export const GLYPHS = {
   club(ctx, x, y, r) { line(ctx, x, y + r * 0.6, x + r * 0.5, y - r * 0.8, '#8a6a3c', Math.max(1.5, r * 0.35)); },
   spear(ctx, x, y, r) { line(ctx, x, y + r, x + r * 0.2, y - r * 1.4, '#a5794a', 1.2); dot(ctx, x + r * 0.22, y - r * 1.45, Math.max(1, r * 0.22), '#ece6d2'); },
+  javelin(ctx, x, y, r) { line(ctx, x - r * 0.15, y + r * 0.7, x + r * 0.05, y - r * 1.2, '#a5794a', 1); line(ctx, x + r * 0.15, y + r * 0.7, x + r * 0.35, y - r * 1.2, '#a5794a', 1); dot(ctx, x + r * 0.35, y - r * 1.25, Math.max(0.9, r * 0.18), '#ece6d2'); },
   axe(ctx, x, y, r) { line(ctx, x, y + r * 0.8, x + r * 0.2, y - r * 0.8, '#8a6a3c', 1.2); dot(ctx, x + r * 0.45, y - r * 0.7, Math.max(1.2, r * 0.3), '#ece6d2'); },
   ironspear(ctx, x, y, r) { line(ctx, x, y + r, x + r * 0.2, y - r * 1.4, '#a5794a', 1.2); line(ctx, x + r * 0.18, y - r * 1.25, x + r * 0.26, y - r * 1.85, '#cfd6dc', Math.max(1.2, r * 0.3)); },
   ironaxe(ctx, x, y, r) { line(ctx, x, y + r * 0.8, x + r * 0.2, y - r * 0.8, '#8a6a3c', 1.2); ctx.fillStyle = '#cfd6dc'; ctx.beginPath(); ctx.moveTo(x + r * 0.2, y - r * 0.95); ctx.lineTo(x + r * 0.85, y - r * 1.1); ctx.lineTo(x + r * 0.85, y - r * 0.3); ctx.lineTo(x + r * 0.2, y - r * 0.5); ctx.fill(); },

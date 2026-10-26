@@ -158,6 +158,23 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   expect(b0 > t.hp, 'удар в спину остановил щит');
 }
 
+// ── thrown weapons: a bundle of javelins flies one by one, the last stays in the hand to stab with; КС counts the bundle
+{
+  const {dress, recalcGear: rg} = await import('../src/agents/equipment.js'), {shoot} = await import('../src/agents/combat.js'), {strengthOf} = await import('../src/agents/strength.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony');
+  dress(a, ['ironjavelin', 'ironshield']); t.x = a.x + 3; t.hp = 100;
+  const n = ITEMS.get('ironjavelin').qualities.thrown, it = a.equip.right.type === 'ironjavelin' ? a.equip.right : a.equip.left;
+  expect(it.ammo === n && a.gear.rangedReady, `связка дротиков: ${it.ammo} из ${n}, готов ${a.gear.rangedReady}`);
+  rngs(w, 0.1); let k = 0;
+  for (; k < n + 2; k++) { a.cd = 0; if (shoot(w, a, t) === null) break; }
+  expect(k === n && it.ammo === 0 && !a.gear.rangedReady && a.gear.melee.item === it, `бросков ${k} из ${n}; дротик в руке для ближнего боя: ${a.gear.melee.item === it}`);
+  rg(a);
+  expect(!a.gear.rangedReady, 'пустая связка снова готова к броску после пересчёта');
+  const b = put(w, 'human', 'raiders'), s = put(w, 'human', 'raiders'); b.special = {...a.special}; s.special = {...a.special};
+  dress(b, ['ironjavelin', 'ironshield']); dress(s, ['ironspear', 'ironshield']);
+  expect(strengthOf(b) > strengthOf(s) * 0.85 && strengthOf(b) < strengthOf(s) * 1.15, 'КС дротиков со щитом далеко от копья со щитом');
+}
+
 // ── the review: finer copies follow an edit; a material's qualities go to weapons only; parry never lowers a block
 {
   const {itemDef} = await import('../src/agents/equipment.js');

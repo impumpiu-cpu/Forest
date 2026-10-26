@@ -26,6 +26,8 @@ export const COMBAT = {
   // from the flank
   flank: {block: 0.5, dmg: 1.2, share: 0.25},
   back: {dmg: 1.4, aware: 60},
+  // a thrown weapon (quality `thrown`): the rating (КС) counts its throws against this many shots in a fight
+  thrown: {shots: 6},
 };
 
 // how far finer work (data/quality.js) may push a piece; a quality's own `cap` adds to these
@@ -87,7 +89,7 @@ export const WEAPON_QUALITIES = [
   {id: 'stun', label: 'оглушающее', unit: 'шанс', live: true, reads: 'шанс оглушить (состояние «оглушён»: не бьёт, медленнее ходит)', note: 'тяжёлый удар по голове'},
   {id: 'backstab', label: 'коварное', unit: '×', live: true, reads: 'удар с фланга и в спину (COMBAT.flank, back): прибавка урона × (1 + значение); КС', note: 'кинжал: туда, где не ждут'},
   {id: 'paired', label: 'парное', unit: 'доля', live: true, reads: 'вторая рука: вслед за ударом главного оружия бьёт и это, урон × значение (agents/combat.js attack); выбор вещей, КС', note: 'кинжал, топорик, меч во второй руке'},
-  {id: 'thrown', label: 'метательное', unit: 'клеток', live: false, reads: 'нет механики метания', note: 'дротик, топорик'},
+  {id: 'thrown', label: 'метательное', unit: 'бросков', live: true, reads: 'бросается своим `ranged` (agents/combat.js shoot): столько бросков в связке, последнее остаётся в руке; поселенец собирает их у лагеря (agents/equipment.js outfit); КС — доля от COMBAT.thrown.shots', note: 'дротики, метательный топорик'},
 ];
 // the value of a quality on a weapon (an item definition, or the gear's melee/ranged entry), 0 without it
 export const traitOf = (q, id) => q?.[id] || 0;
