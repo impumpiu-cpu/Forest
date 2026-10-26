@@ -46,7 +46,7 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
   expect(!g.some(a => hasMark(a, 'officer')), 'набег на поселение пришёл с офицерами, хотя ранги выключены');
   const {sideStrength} = await import('../src/agents/strength.js');
   const w2 = game('ranks-off'), g2 = spawnGroup(w2, 'raiders', raiderStrength(5) * 12, {band: 'bandits'});
-  expect(g2.some(a => hasMark(a, 'officer')) && sideStrength(g2, {now: true}) < sideStrength(g, {now: true}) * 1.15, `с офицерами банда сильнее купленного: ${Math.round(sideStrength(g2, {now: true}))} против ${Math.round(sideStrength(g, {now: true}))}`);
+  expect(g2.some(a => hasMark(a, 'officer')) && sideStrength(g2, {now: true}) < sideStrength(g, {now: true}) * (RANK_RULES.pay.settlement + 0.15), `с офицерами банда сильнее купленного: ${Math.round(sideStrength(g2, {now: true}))} против ${Math.round(sideStrength(g, {now: true}))}`);
 }
 
 // the dead under wights: the strongest bones of each link; its link follows it, the necromancer above; it falls — they go
@@ -64,14 +64,12 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
   expect(nec ? link.every(a => a.master === nec.id && !a.lost) : link.every(a => a.lost), 'павшее умертвие: звено не перешло к некроманту');
   if (nec) { nec.dead = true; for (const a of link) retreatMod.retreat.always(w, a); expect(link.every(a => a.lost), 'без умертвия и некроманта мертвецы не разбрелись'); }
   void formUndeadLinks;
-  RANK_RULES.settlement = false;   // as the table has it
+  RANK_RULES.settlement = true;   // as the table has it
 }
 
 // ranks where they are given: links, officers, the small aura, the fall of an officer
 {
-  RANK_RULES.settlement = true;
   const w = game('ranks-on'), g = spawnGroup(w, 'raiders', raiderStrength(5) * 12, {band: 'bandits'});
-  RANK_RULES.settlement = false;
   const officers = g.filter(a => hasMark(a, 'officer')), sq = squadOf(w, g[0]);
   // the band came in links (data/roles.js LINKS): one officer to a link (a link of one joins the one before), the members
   // of a link under its officer, the link's kind on each
