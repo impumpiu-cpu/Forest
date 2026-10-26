@@ -124,6 +124,21 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   expect(!ITEMS.get('ironspear').qualities, 'сброс не снял свойства с вещи');
 }
 
+// ── paired weapons: a second dagger strikes after the first, a shield in the other hand does not; КС sees it
+{
+  const {dress} = await import('../src/agents/equipment.js'), {strengthOf} = await import('../src/agents/strength.js'), {attack} = await import('../src/agents/combat.js');
+  const w = scene(), two = put(w, 'human', 'raiders'), one = put(w, 'human', 'raiders'), sh = put(w, 'human', 'raiders');
+  const {refreshBody} = await import('../src/agents/special.js'), {maxHp} = await import('../src/agents/agent.js');
+  for (const x of [one, sh]) { x.special = {...two.special}; refreshBody(x); x.hp = maxHp(x); x.mods.dodge = 0; }   // the same hands
+  dress(two, ['irondagger', 'irondagger']); dress(one, ['irondagger']); dress(sh, ['irondagger', 'ironshield']);
+  expect(two.gear.offhand?.share === ITEMS.get('irondagger').qualities.paired && !one.gear.offhand && !sh.gear.offhand, 'вторая рука: парный кинжал не взят или щит взят за оружие');
+  expect(strengthOf(two) > strengthOf(one), 'КС не видит второго кинжала');
+  const t = put(w, 'human', 'colony'); t.gear = {...recalcGear(t), block: 0, cover: 0}; t.mods.dodge = 0; t.hp = 100;
+  rngs(w, 0.5); two.cd = 0; const h0 = t.hp; attack(w, two, t); const d2 = h0 - t.hp;
+  rngs(w, 0.5); one.cd = 0; const h1 = t.hp; attack(w, one, t); const d1 = h1 - t.hp;
+  expect(near(d2 / d1, 1 + two.gear.offhand.share), `два кинжала: урон ×${(d2 / d1).toFixed(2)}, а должно ×${1 + two.gear.offhand.share}`);
+}
+
 // ── the review: finer copies follow an edit; a material's qualities go to weapons only; parry never lowers a block
 {
   const {itemDef} = await import('../src/agents/equipment.js');

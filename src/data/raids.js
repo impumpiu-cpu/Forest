@@ -38,7 +38,7 @@ export const raiderBody = t => ({hp: Math.min(1.1, 0.75 + t * 0.012), ranged: Ma
 // its species takes (`role` null), with the gear a band of that level brings, as it will be given out on arrival
 export function memberStrength(species, t, role = null) {
   const L = Math.max(0, Math.floor(t)), body = raiderBody(L);
-  return expectedStrength(species, {key: `role:${role || '*'}|${L}`, kit: rng => kitFor(species, rng, L, role ?? drawRole(rng, species)),
+  return expectedStrength(species, {key: `role:${role || '*'}|${L}`, kit: rng => kitFor(species, rng, L, role),
     prepare: a => {
       if (SPECIES.get(species).behaviours) { a.marks = ['trained']; refreshBody(a); }   // a band's beast is trained (data/migrations.js)
       a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged};
@@ -79,7 +79,8 @@ function fill(rng, budget, mix, t, {extra = [], max = {}, up = false, here = nul
 export const BAND_BEASTS = {full: 0.6};
 
 // what a member of a band carries: the kit of its fighting role (data/roles.js); species without hands carry nothing
-export const kitFor = (species, rng, t, role = null) => (SPECIES.get(species).inventory ? roleKit(species, role, rng, t) : []);
+// (with no role given, one is drawn from the species' row: a creature that comes outside a band, the arena)
+export const kitFor = (species, rng, t, role = null) => (SPECIES.get(species).inventory ? roleKit(species, role ?? drawRole(rng, species), rng, t) : []);
 
 const cap1 = x => x[0].toUpperCase() + x.slice(1);
 const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.toUpperCase()); };

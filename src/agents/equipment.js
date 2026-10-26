@@ -165,6 +165,13 @@ export function recalcGear(a) {
     if ((d.block || 0) * (d.cover || 0) > g.cover) { g.cover = d.block * d.cover; g.coverItem = it; g.coverVs = d.vs || null; }
     if (d.speed) g.speed *= d.speed;
   }
+  // the other hand: a one-handed weapon light enough for it (quality `paired`) strikes after the main one (agents/combat.js attack)
+  for (const it of handItems(a)) {
+    if (it === g.melee.item) continue;
+    const d = def(it), share = traitOf(d.qualities, 'paired');
+    if (!d.melee || d.hands === 2 || !share) continue;
+    if (!g.offhand || d.melee.dmg * share > g.offhand.dmg * g.offhand.share) g.offhand = {dmg: d.melee.dmg, share, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null, ...(d.qualities ? {q: d.qualities} : {})};
+  }
   // a parrying weapon in hand adds to the block against blows (data/balance/combat.js WEAPON_QUALITIES)
   const parry = handItems(a).reduce((s, it) => s + traitOf(def(it).qualities, 'parry'), 0);
   if (parry) g.parry = parry;
@@ -277,12 +284,15 @@ function backValue(a, d, w, handsDefs) {
   return v + (isWeapon(d) ? GEAR.spareWeapon : 0);
 }
 
-// hands: the first item does the fighting; a second one-hander adds its block and tool value only
+// hands: the first item does the fighting; a second one-hander adds its block and tool value, and its blow if it is paired
 function handsValue(w, a, hands) {
   if (!hands.length) return 0;
   let v = value(a, def(hands[0]), w);
   if (hands[1] && hands[1] !== hands[0]) {
     const od = def(hands[1]);
+    // a weapon for the other hand (quality `paired`) adds its blow at its share
+    const paired = od.melee && od.hands !== 2 ? traitOf(od.qualities, 'paired') : 0, cd = def(hands[0]).melee?.cd;
+    if (paired && cd) v += od.melee.dmg * GEAR.blowTicks / cd * paired * blowStat(a, od.scale) * GEAR.melee * (GEAR.brave[0] + GEAR.brave[1] * a.mods.bravery);
     v += (od.block || 0) * GEAR.block * (GEAR.brave[0] + GEAR.brave[1] * a.mods.bravery) + GEAR.second +
       Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * GEAR.tool * (a.prefs[j] ?? 1) * toolUse(a, j), 0);
   }

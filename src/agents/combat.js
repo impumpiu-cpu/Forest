@@ -184,6 +184,13 @@ export function attack(w, a, t) {
     if (deg === 'critFail') a.cd += degreeValue('melee', 'critFail');
   }
   damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null});
+  // the other hand follows (quality `paired`: a second dagger, a hatchet): a blow of its own at its share, met by
+  // the target's dodge, block and armour as any
+  const off = g.offhand;
+  if (off && !t.dead && !t.downed) {
+    damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item), {type: off.type, mix: off.mix || null, q: off.q || null});
+    wear(w, a, off.item);
+  }
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it
   if (g.melee.item) wear(w, a, g.melee.item);
   return true;

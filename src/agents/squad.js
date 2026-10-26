@@ -261,6 +261,16 @@ export function planFor(w, a, sq, radius) {
   return null;
 }
 
+// a member's title in the fight: what it is, its fighting role, its task in the band — «гоблин-стрелок-грабитель»;
+// the task is left out where it only repeats the role (a shooter shooting, a front fighter in front)
+const TASK_WORD = {looter: 'грабитель', torch: 'поджигатель', rear: 'замыкающий', scout: 'разведчик', leader: 'вожак'};
+export function fighterLabel(w, a, base) {
+  const sq = squadOf(w, a); if (!sq || a.warBeast) return base;
+  const role = a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).label : null;
+  const task = TASK_WORD[a.sqRole] || null;
+  return [base, role, task].filter(Boolean).join('-');
+}
+
 // for the card
 export function squadText(w, a) {
   const sq = squadOf(w, a); if (!sq) return null;

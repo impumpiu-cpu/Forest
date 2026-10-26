@@ -27,6 +27,8 @@
 //     --armor tier|any|none body armour: of the fight's tier (or the nearest lower one that has any; default),
 //                           any of the tier or below, or none
 //     --shield 0.5          chance that a one-hander comes with a shield
+//     --pair 0.3            chance that a weapon for two hands (quality `paired`: dagger, axe, sword) comes with a
+//                           second of its kind instead (the form shows as «dagger×2»)
 //     --quality 0|mix       plain pieces only (default), or a mix of +0…+3 as trade and luck give
 //     --cross 0.2           share of duels where the second fighter has the next tier's gear
 //     --foes skeleton,wolf  duels with these creatures too (species ids, or 'monsters'); --foe-share 0.3 of them
@@ -48,7 +50,7 @@ import {dirname, join, resolve} from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
-  const o = {part: 'all', write: false, fights: 10000, battles: 4000, perCreature: 250, monsters: 'all', team: 10, horde: 40, tiers: null, races: 'all', stats: 'rolled', skill: 'random', armor: 'tier', shield: 0.5, quality: '0',
+  const o = {part: 'all', write: false, fights: 10000, battles: 4000, perCreature: 250, monsters: 'all', team: 10, horde: 40, tiers: null, races: 'all', stats: 'rolled', skill: 'random', armor: 'tier', shield: 0.5, pair: 0.3, quality: '0',
     cross: 0.2, foes: [], foeShare: 0.3, distance: 8, maxTicks: 3000, seed: 'arena', jobs: availableParallelism(), out: null, fair: false};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = () => argv[++i];
@@ -66,6 +68,7 @@ function parseArgs(argv) {
     else if (a === '--skill') o.skill = v();
     else if (a === '--armor') o.armor = v();
     else if (a === '--shield') o.shield = +v();
+    else if (a === '--pair') o.pair = +v();
     else if (a === '--quality') o.quality = v();
     else if (a === '--cross') o.cross = +v();
     else if (a === '--foes') o.foes = v().split(',');
@@ -89,6 +92,7 @@ function parseArgs(argv) {
 
 // Everything a duel needs from the game, loaded once per worker
 export async function engine() {
+  await import('../src/sim.js');   // the game's own entry first: a module loaded alone in the middle of the graph meets its cycles half-built
   const [{newGame}, {DEFAULT_CFG}, {createAgent, maxHp}, {TASKS}, {T}, {dress}, {refreshBody}, {ITEMS}, {SPECIES}, {RACES}, {MONSTERS}, {newStreams, mulberry, seedNumber}, {STATS}] = await Promise.all([
     import('../src/sim.js'), import('../src/data/presets.js'), import('../src/agents/agent.js'), import('../src/agents/tasks.js'),
     import('../src/data/terrain.js'), import('../src/agents/equipment.js'), import('../src/agents/special.js'), import('../src/data/items.js'),
@@ -127,7 +131,8 @@ function kitFor(P, opt, rng, T) {
   const weapon = pick(rng, P.weapons.filter(d => d.tier === T));
   const q = () => (opt.quality === 'mix' ? rollQ(rng) : 0);
   const kit = {weapon: weapon.id, wq: q(), shield: null, sq: 0, body: null, bq: 0};
-  if (weapon.hands === 1 && rng() < opt.shield) {
+  if (weapon.hands === 1 && weapon.qualities?.paired && rng() < opt.pair) { kit.off = weapon.id; kit.oq = q(); }
+  else if (weapon.hands === 1 && rng() < opt.shield) {
     const sh = P.shields.filter(d => d.tier <= T).sort((a, b) => b.tier - a.tier)[0];
     if (sh) { kit.shield = sh.id; kit.sq = q(); }
   }
@@ -146,6 +151,7 @@ function spawn(E, w, opt, rng, who, x, y) {
     const s = opt.skill === 'random' ? rng() : +opt.skill;
     a.skill = {melee: s, ranged: s};
     const k = who.kit, list = [{type: k.weapon, q: k.wq}];
+    if (k.off) list.push({type: k.off, q: k.oq});
     if (k.shield) list.push({type: k.shield, q: k.sq});
     if (k.body) list.push({type: k.body, q: k.bq});
     const ammo = E.ITEMS.get(k.weapon).ranged?.ammo;
@@ -164,7 +170,7 @@ function card(E, a, who) {
   if (k) {
     const ref = E.ITEMS.get(E.RULES.ref), wd = E.itemDef(k.weapon, k.wq);
     c.ranged = wd.ranged ? 1 : 0;
-    c.blow = wd.blow || 'blunt'; c.form = wd.form; c.armorForm = k.body ? E.ITEMS.get(k.body).form : 'none';
+    c.blow = wd.blow || 'blunt'; c.form = wd.form + (k.off ? '×2' : ''); c.armorForm = k.body ? E.ITEMS.get(k.body).form : 'none';
     c.atk = +(E.power.attackPL(wd, ref) ?? 0).toFixed(3);
     c.def = +(E.power.defencePL(wd) + (k.shield ? E.power.defencePL(E.itemDef(k.shield, k.sq)) : 0) + (k.body ? E.power.defencePL(E.itemDef(k.body, k.bq)) : 0)).toFixed(3);
   }

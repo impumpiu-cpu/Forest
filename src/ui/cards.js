@@ -43,7 +43,7 @@ import {skillTier, softCap, canMake, recipeNeed, reasonText, recipeAccess, jobAc
 import {VALUES, axisWord, alignLabel} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
-import {squadText} from '../agents/squad.js';
+import {squadText, fighterLabel} from '../agents/squad.js';
 import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
@@ -179,7 +179,8 @@ export function creatureHtml(w, a) {
   if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
   rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
   const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : raceOf(a);
-  const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${who}` : who[0].toUpperCase() + who.slice(1);
+  const whoFull = fighterLabel(w, a, who);   // in a band: «гоблин-стрелок-грабитель»
+  const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${esc(whoFull)}` : whoFull[0].toUpperCase() + esc(whoFull.slice(1));
   return `<div class="pc-head"><h3>${title}</h3></div><dl class="kv">${rows.join('')}</dl>${whyHtml(w, a)}`;   // the beast's choice too (agents/brains/tabled.js a.why)
 }
 

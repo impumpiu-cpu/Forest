@@ -23,6 +23,8 @@
 //                     material row, with its `adj` and `short`)
 //   glyph           — the picture in the hand: a string, or {material or class: glyph, default}
 //   colors          — {material: colour} of armour where it differs from the material's
+//   qualities       — the weapon's qualities (data/balance/combat.js WEAPON_QUALITIES: paired — strikes from the other
+//                     hand too), summed with the material's
 //   tier            — added to the material's tier (rare); tradeOnly — the outpost never makes it;
 //   quality: false  — nothing finer work could improve
 const cap = s => s[0].toUpperCase() + s.slice(1);
@@ -35,13 +37,14 @@ export const FORMS = {
     parts: {material: 2, wood: 2}, work: 700, ids: {bone: 'spear', bronze: 'bronzespear', iron: 'ironspear'},
     names: {bone: ['Копьё с костяным наконечником', 'копьё']}, name: m => [`Копьё с ${m.adj.ins} наконечником`, `${m.short} копьё`], glyph: {bone: 'spear', default: 'ironspear'}},
   // an axe is a tool first: in a fight it falls a little short of a spear of its tier
-  axe:      {blow: 'slash', scale: {S: 1}, slot: 'hand', hands: 1, of: ['bone', 'metal'], ref: 'bone', melee: {dmg: 1.45, cd: 13}, tool: {chop: 1.6, build: 1.04}, dur: 80,
+  axe:      {blow: 'slash', scale: {S: 1}, slot: 'hand', hands: 1, of: ['bone', 'metal'], ref: 'bone', melee: {dmg: 1.45, cd: 13}, tool: {chop: 1.6, build: 1.04}, qualities: {paired: 0.4}, dur: 80,
     parts: {material: 2, wood: 1}, work: 700, ids: {bone: 'axe', bronze: 'bronzeaxe', iron: 'ironaxe'},
     names: {bone: ['Топор с костяным клином', 'топор']}, name: m => [`${cap(m.adj.m)} топор`, `${m.short} топор`], glyph: {bone: 'axe', default: 'ironaxe'}},
   // quick, but short: a dagger of a tier falls short of its spear; a silver one is soft and only for what fears silver
-  dagger:   {blow: 'pierce', scale: {A: 1}, slot: 'hand', hands: 1, of: ['metal', 'silver'], ref: 'iron', melee: {dmg: 1.3, cd: 9}, dur: 115,
+  // light enough for the other hand: a second dagger strikes after the first (quality `paired`)
+  dagger:   {blow: 'pierce', scale: {A: 1}, slot: 'hand', hands: 1, of: ['metal', 'silver'], ref: 'iron', melee: {dmg: 1.3, cd: 9}, qualities: {paired: 0.75}, dur: 115,
     parts: {material: 1, leather: 1}, work: 400, ids: {silver: 'silverknife'}, name: m => [`${cap(m.adj.m)} кинжал`, `${m.short} кинжал`], glyph: 'dagger'},
-  sword:    {vs: {pierce: 0.9, slash: 1.15, blunt: 0.8}, blow: 'slash', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.95, cd: 11}, block: 0.1, dur: 150,
+  sword:    {vs: {pierce: 0.9, slash: 1.15, blunt: 0.8}, blow: 'slash', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.95, cd: 11}, block: 0.1, qualities: {paired: 0.3}, dur: 150,
     parts: {material: 3, leather: 1}, work: 900, ids: {iron: 'sword'}, names: {iron: ['Железный меч', 'меч']}, name: m => [`${cap(m.adj.m)} меч`, `${m.short} меч`], glyph: 'sword'},
   // the metal answer to armour: what a cut slides off, a blow of a mace or a hammer goes through
   mace:     {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.85, cd: 12}, dur: 150,

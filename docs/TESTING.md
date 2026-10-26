@@ -156,7 +156,7 @@ node tools/balance.mjs --seeds 10 --days 30 --vary raids=off,rare,often --set pr
 - `--fights 10000`, `--battles 4000`, `--per-creature 250` — объём каждой части;
 - `--monsters all|id,id`, `--team 10`, `--horde 40` — кто и сколько на сторону;
 - `--tiers 0,1,2`, `--races all|id,id`, `--stats rolled|norm`, `--skill random|0.5`;
-- `--armor tier|any|none`, `--shield 0.5`, `--quality 0|mix`, `--cross 0.2`;
+- `--armor tier|any|none`, `--shield 0.5`, `--pair 0.3` (одноручное парное приходит со вторым таким же вместо щита), `--quality 0|mix`, `--cross 0.2`;
 - `--foes id,id|monsters`, `--foe-share 0.3`, `--distance 8`, `--max-ticks 3000`;
 - `--fair` — только вещи (люди, SPECIAL 5, навык 0,5, без межтировых боёв и существ, только `weapons`);
 - `--seed arena`, `--jobs N`, `--out папка` (по умолчанию `runs/arena-<дата-время>/`).
