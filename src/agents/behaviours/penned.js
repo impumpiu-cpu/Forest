@@ -34,7 +34,9 @@ export const penned = {
   },
   step(w, a, t) {
     recover(a);
-    if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + PEN.mends * maxHp(a));
+    // the pen's rest: up to PEN.mends a tick together with the body's own (a mule mends by itself: agents/brains/tabled.js beastBody)
+    const more = PEN.mends - (SPECIES.get(a.species).mends || 0);
+    if (more > 0 && a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + more * maxHp(a));
     const i = cellOf(w, a);
     if (t.mode === 'camp') {
       if (w.nav.get('camp')[i] > PEN.campNear) follow(w, a, 'camp', PEN.campPace);

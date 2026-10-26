@@ -21,6 +21,7 @@ import {GAME, FOES} from '../data/campaign.js';
 import {dangers, cellRegion, lairFoe, withCompany} from './land.js';
 import {cultPool} from '../atlas/necro.js';
 import {REALM_BANDS} from '../data/seam.js';
+import {dist} from '../core/util.js';
 
 export const bubbleOf = K => (K.bubble ||= {next: 1, things: []});
 // a thing on the caravan's trail: a pursuit, or one that has noticed it (things of saves from before: all of them)
@@ -39,7 +40,6 @@ export function grow(a, K) {
   return 1 + G.way * way + G.clue * (Q.found || 0);
 }
 const sc = (a, v) => v * scaleOf(a);
-const dist = (K, t) => Math.hypot(t.x - K.x, t.y - K.y);
 const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
 const land = (a, i) => !!a.f.land && !a.f.ocean[i];
 

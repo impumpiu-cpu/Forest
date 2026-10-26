@@ -5,7 +5,7 @@
 // screen. The map is the «Мир» screen's own drawing (ui/atlasView.js), with the fog, the caravan, its
 // way, its goal and its home on top. A fight or a stop the core played on the local map (campaign/camp.js)
 // is played again over the map when the playback reaches its day: the same setup gives the same camp.
-import {AtlasView, segOf, loadDetail, saveDetail, exportChronicle} from './atlasView.js';
+import {segOf, loadDetail, saveDetail, exportChronicle, MapView} from './atlasView.js';
 import {DETAILS} from '../atlas/chronicle.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
 import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chronicleText} from '../campaign/index.js';
@@ -67,7 +67,8 @@ function epicProgress(a, sec) {
 function loadHidden() { try { return new Set(JSON.parse(localStorage.getItem('forest.campTopics') || '[]')); } catch (e) { return new Set(); } }
 function saveHidden(set) { try { localStorage.setItem('forest.campTopics', JSON.stringify([...set])); } catch (e) { /* storage unavailable */ } }
 
-export class CampaignView extends AtlasView {
+export class CampaignView extends MapView {
+  setup({onBack} = {}) { this.onBack = onBack; }   // («← Главное меню»: app/main.js)
   // the «Мир» screen's controls are not built here: only the campaign's
   build() {
     this.layer = 'peoples'; this.capPick = null; this.logShown = 0; this.fog = null; this.fogKey = '';

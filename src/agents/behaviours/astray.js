@@ -12,7 +12,7 @@ import {NECHIST} from '../../data/behaviour.js';
 export const astray = {
   always(w, a, {sp}) {
     const S = sp.spirit, A = NECHIST.astray;
-    if (S.aura !== 'astray' || a.hiddenUntil > w.tick || (w.tick + a.id) % S.every) return;
+    if (S.aura !== 'astray' || a.hiddenUntil > w.tick || a.task?.id === 'maul' || (w.tick + a.id) % S.every) return;   // (while it fights back: no spell)
     const lost = w.agents.filter(o => o.faction === 'colony' && !o.dead && dist(o, a) < S.radius && !agentInZone(w, o) && !spellbound(o));   // scan: spirits only
     for (const v of lost) { v.task = {id: 'astray', until: w.tick + HOUR * (A.hours[0] + A.hours[1] * w.rngs.nechist()), spell: NECHIST.spell.astray}; think(w, v, 'leshyLost'); }
     if (lost.length && w.tick - (w.lastAstray || -1e9) > DAY * A.logEvery) {

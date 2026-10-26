@@ -20,10 +20,9 @@ import {hpShare} from '../agents/agent.js';
 import {liveById} from '../agents/lookup.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
-import {esc, g, perTick} from '../core/util.js';
+import {esc, g, perTick, dist} from '../core/util.js';
 import {hourOf, dayOf} from '../core/time.js';
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const masters = w => perTick(w, 'masters', () => colonists(w).filter(a => a.master && !a.dead && !a.captive));
 export const masterOf = (w, skill) => masters(w).find(a => a.master.skill === skill) || null;
 export const masterTitle = a => (a.master ? `мастер-${MASTERS.get(a.master.skill).title}` : '');

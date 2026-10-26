@@ -27,8 +27,10 @@ import {raidSite} from './sites.js';
 import {BEHAVIOURS, goHome} from './parties.js';
 import {actorStep} from './actor.js';
 import {DOES} from './deeds/index.js';
-import {towerBirth, stepTower, deadField, bend, necroLabel, livingAt} from './necro.js';
-import {BURNT, townAt, landOf} from './peoples.js';
+import {towerBirth, stepTower, deadField, bend, necroLabel, livingAt, darkness} from './necro.js';
+import {BURNT, townAt} from './peoples.js';
+import {realmLand} from './realms.js';
+import {dist} from '../core/util.js';
 
 const rel = (a, i) => (a.f.elev[i] - a.sea) / (1 - a.sea);
 
@@ -185,7 +187,6 @@ function bornOfDensity(a, rnd) {
 }
 
 export const R = (a, L) => L.radius * scaleOf(a);
-const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 
 // a free spot for a lair: fits the ground, not inside another lair's territory of the same kind,
 // as good as possible among a sample of candidates
@@ -409,7 +410,7 @@ export function raidBand(a, lair, L, rnd) {
   const F = a.fauna, M = RAID_MIX, race = SPECIES.get(L.species), sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
   // a necromancer leads his dead and his cult: stronger with the living about him (data/lairs.js NECRO.cultMight)
   if (L.domain && F) {
-    const j = faunaCell(a, lair.i), living = Math.min(1, livingAt(a, j).reduce((v, [, x]) => v + x, 0));
+    const j = faunaCell(a, lair.i), living = Math.min(1, livingAt(a, j).reduce((v, [r, x]) => v + x * darkness(r), 0));   // (the cult weighs the living as its pool does: atlas/necro.js)
     return {who: 'Мертвецы и культисты', k: 1 + NECRO.cultMight * living, riders: false};   // (the subject of «… из башни «X» опустошили …»)
   }
   if (L.leads || !F) return {who: raidWho(L), k: 1, riders: false};
@@ -427,27 +428,35 @@ export function raidBand(a, lair, L, rnd) {
   return {who, k, riders};
 }
 
-// the raid strikes the town: the raiders' might against the town's; the loot feeds the camp (at once,
-// or when the party gets home), a beating thins it
-export function strikeTown(a, lair, L, target, tribe, rnd, atOnce, who = raidWho(L)) {
-  const T = TRIBE_RAID, fx = townFx(target);
-  const town = might(target, fx) * (0.6 + 0.8 * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);   // the tower's wards turn the dead
+// ── a raid at a town (the deeds raid and captives: atlas/deeds/). The town stands with its might × luck (a mage tower's
+// wards turn the dead); the camp comes with its strength × its kind's power × its might × the raid's company × luck
+export const townStands = (target, L, rnd) => might(target, townFx(target)) * (TRIBE_RAID.luck[0] + TRIBE_RAID.luck[1] * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);
+export const campMight = (lair, L, k, rnd) => lair.strength * power(L.species) * (L.might || 1) * TRIBE_RAID.might * k * (TRIBE_RAID.luck[0] + TRIBE_RAID.luck[1] * rnd()) * (lair.boss != null ? CAL.boss.might : 1);
+// the raid strikes: won — `win(fx)` does what the raid came for and says it; beaten — the camp thins, the town tells
+// of it (a raid struck where the camp stands is counted once a year instead, atlas/history.js); either way a hidden
+// lair's trail may show (traceRaid) → {line, won} (line null: counted, not told)
+export function hitTown(a, lair, L, target, tribe, rnd, atOnce, win, tail = '') {
+  const town = townStands(target, L, rnd);
   target.raided = a.hist.year;
-  if (tribe > town) {
+  if (tribe > town) return {line: win(townFx(target)) + traceRaid(a, lair, L, target, true, rnd), won: true};
+  lair.strength *= TRIBE_RAID.beaten;
+  const trace = traceRaid(a, lair, L, target, false, rnd);
+  if (!atOnce) return {line: `${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отбили набег ${L.gen} ${L.from} «${lair.name}»${tail}.` + trace, won: false};
+  const rep = a.hist.repelled ||= {};
+  rep[target.people] = (rep[target.people] || 0) + 1;
+  return {line: trace ? trace.trim() : null, won: false};
+}
+// the raid for loot: the town loses people and a work, the camp grows (at once, or when the party gets home)
+export function strikeTown(a, lair, L, target, tribe, rnd, atOnce, who = raidWho(L)) {
+  const T = TRIBE_RAID;
+  return hitTown(a, lair, L, target, tribe, rnd, atOnce, fx => {
     const loss = T.loss * raidShare(fx);
     target.pop *= 1 - loss;
     if (atOnce) lair.strength = Math.min(1, lair.strength + T.loot);
     raidGraves(a, target);   // the dead of the raid lie unburied, and the rot takes them
     const burnt = raidSite(a, target, rnd);
-    return `${who} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.` + traceRaid(a, lair, L, target, true, rnd);
-  }
-  lair.strength *= T.beaten;
-  const trace = traceRaid(a, lair, L, target, false, rnd);
-  if (!atOnce) return `${cap1(WORLD_PEOPLES.get(target.people).label)} ${townLabel(target, 2)} ${target.name} отбили набег ${L.gen} ${L.from} «${lair.name}».` + trace;
-  // a beaten raid is counted and told once a year (atlas/history.js), not one line each — unless it showed the way back
-  const rep = a.hist.repelled ||= {};
-  rep[target.people] = (rep[target.people] || 0) + 1;
-  return trace ? trace.trim() : null;
+    return `${who} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
+  });
 }
 
 // the lair's role for the actor's brain (atlas/actor.js): the deeds of its species' row; a lair is many wills and waits for
@@ -474,12 +483,11 @@ BEHAVIOURS.dragon = {
 };
 
 // ── the hidden lairs of the wild (data/lairs.js WILD)
-// the wild: no people's land thick there and no living town near
+// the wild: no realm holds the land (atlas/realms.js realmLand — the same land the map's «Державы» shows)
 export function wildAt(a, i) {
   if (a.f.ocean[i]) return false;
-  const L = landOf(a, i); if (L && L.share > WILD.land) return false;
-  const x = i % a.w, y = (i / a.w) | 0, gap = WILD.gap * scaleOf(a);
-  return !(a.towns || []).some(t => t.alive && Math.hypot(t.x - x, t.y - y) < gap);
+  const own = realmLand(a);
+  return !own || own[i] < 0;
 }
 // a lair born in the wild once the peoples are in the world is hidden
 export function hideIfWild(a, lair) { if (a.peoples?.length && wildAt(a, lair.i)) lair.hidden = true; return lair; }

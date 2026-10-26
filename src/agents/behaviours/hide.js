@@ -8,8 +8,8 @@ import {approach, sameLand} from '../movement.js';
 import {nearAgents} from '../spatial.js';
 import {VERMIN} from '../../data/behaviour.js';
 import {deepHideStep} from './vanish.js';
+import {dist} from '../../core/util.js';
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 // a hiding place: brush or wood a little way off the camp, outside the settlement zone if it can
 function denOf(w, a) {

@@ -197,12 +197,3 @@ export function relationsHtml(a) {
   return `<table class="relmat">${head}${rows}</table>${wars ? `<ul class="relwars">${wars}</ul>` : ''}`;
 }
 
-// a short name of the selection for a title
-export function selTitle(a, sel) {
-  const o = resolve(a, sel); if (!o) return '';
-  if (sel.kind === 'party') return o.label;
-  if (sel.kind === 'town') return `${townLabel(o)} ${o.name}`;
-  if (sel.kind === 'lair') return `«${o.name}»`;
-  if (sel.kind === 'realm') return realmLabel(a, o.id);
-  return '';
-}

@@ -8,8 +8,8 @@ import {nibble as eat} from '../../settlement/stock.js';
 import {smellCarcass} from '../carcass.js';
 import {log} from '../../core/log.js';
 import {VERMIN} from '../../data/behaviour.js';
+import {dist} from '../../core/util.js';
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export const nibble = {
   want(w, a) { return [[a.task?.id === 'nibble' ? a.task : {id: 'nibble'}, VERMIN.want.nibble, () => 'у припасов тихо']]; },

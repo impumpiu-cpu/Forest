@@ -26,10 +26,11 @@ import {REALM_BANDS} from '../data/seam.js';
 import {lairFoe} from './land.js';
 import {bubbleOf} from './bubble.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
+import {cellDist} from '../core/util.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
-const dist = (a, i, j) => { const [x, y] = xy(a, i), [p, q] = xy(a, j); return Math.hypot(x - p, y - q); };
+const dist = cellDist;   // (core/util.js)
 // a word by the gender of the crown's name (feminine for «корона», masculine for «венец»)
 // (a neuter one — «Сердце Творца», «Око Мира» of the epic world — from the feminine form)
 const NEUT = {'её': 'его', 'Её': 'Его', 'она лежит': 'оно лежит', 'отбита': 'отбито', 'найдена': 'найдено', 'досталась': 'досталось'};

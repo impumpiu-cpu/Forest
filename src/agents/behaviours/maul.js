@@ -12,18 +12,17 @@ import {huntOf, endHunt} from '../carcass.js';
 import {endTask} from '../lifecycle.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {think} from '../mind.js';
-import {dist, packOf, paramsOf, boldness, nearest, company, startMaul, toTheKill} from '../hunting.js';
+import {dist, packOf, paramsOf, boldness, nearest, company, startMaul, toTheKill, busyHunting} from '../hunting.js';
 import {PROWL, NECHIST} from '../../data/behaviour.js';
 import {kickStep} from './standGround.js';
 
-const BUSY = new Set(['feed', 'chase', 'maul']);
 const gone = (w, v) => !v || v.dead || v.downed || !w.agents.includes(v);
 
 export const maul = {
   want(w, a, {sp, night}) {
     const P = sp.predator, W = PROWL.want;
     if (a.task?.id === 'maul') return [[a.task, W.maulOn, () => 'нападает']];
-    if (BUSY.has(a.task?.id) || (a.task?.id === 'rest' && a.stamina < PROWL.rested)) return null;
+    if (busyHunting(a, PROWL.rested)) return null;
     const pack = packOf(w, a), leader = pack[0];
     const lh = leader !== a ? huntOf(w, leader) : null;
     if (lh && leader.task?.id === 'maul') return [[{id: 'maul', target: leader.task.target, join: lh.id}, W.joinMaul, () => 'стая напала']];

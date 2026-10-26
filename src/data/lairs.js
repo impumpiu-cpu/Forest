@@ -121,8 +121,8 @@ export const TRIBE_HOME = 0.45;
 //             192-cell-high world) to the town;  might: the camp's strength × its race's SPECIAL power ×
 //             this, against the town's might (atlas/towns.js);  loss: the town's share lost when it
 //             falls (× raidShare of its buildings);  loot: strength the camp gains on a win;
-//             beaten: what is left of the camp's strength after a failed raid
-export const TRIBE_RAID = {from: 0.6, chance: 0.1, reach: 30, might: 0.55, loss: 0.12, loot: 0.12, beaten: 0.7};
+//             beaten: what is left of the camp's strength after a failed raid;  luck: both sides × luck[0] + luck[1] × a roll
+export const TRIBE_RAID = {from: 0.6, chance: 0.1, reach: 30, might: 0.55, loss: 0.12, loot: 0.12, beaten: 0.7, luck: [0.6, 0.8]};
 // Who goes on a lair's raid (atlas/lairs.js raidBand; docs/WORLD.md «Живность»): read from the fields about the lair
 // (data/lairs.js LAIR_FIELD), not from the kind alone —
 //   riders:  the tribe's beasts (`riders` of its kind: wargs, hyenas) ride with it where they live about the lair at least
@@ -232,7 +232,8 @@ export const LAIR_FIELD = {source: 0.12, cap: 1, fade: 0.06, pulse: 0.7, brood: 
 //   zone:    its reach as a seat: zone[0] + zone[1] × its strength, cells (of a 192-cell-high world); a lair of the dead
 //            (wights, ghouls, a vampire) within it bends the knee — the tower's vassal (atlas/leaders.js tribute)
 //   recruit: its cult takes the living of its zone, a season × (1 − d/zone): land — of the peoples' and tribes' density,
-//            town — of a town's people; cultMight — a tower's raid stronger × the living about it (at most 1)
+//            town — of a town's people; cultMight — a tower's raid stronger × the living about it, weighed by their
+//            world view as its cult is (at most 1)
 //   cult:    its cultists about (campaign/land.js): within the zone a chance p × its strength (`out` × beyond, to roam ×
 //            the zone), strength s[0] + s[1] × its strength
 //   dead:    who the risen are, by weight (the bands' undead: data/raids.js); deadSpeed — how fast the risen wander off
@@ -243,8 +244,9 @@ export const NECRO = {births: 0.6, most: 0.5, start: 0.6, guard: 1, align: {base
 
 // The wild keeps its dangers (atlas/lairs.js spawnWild, docs/WORLD.md «Скрытые логова»). Once the peoples are in the
 // world, each spring the wild gives new lairs — `perYear` on average a year (× the world's scale²) — of a kind below its max ×
-// LAIR_LIFE.crowdMax (the kinds tried in a random order until one finds ground), on its ground, in the wild only — the backwoods between the towns: no people's land thicker than `land` and no
-// living town within `gap` cells (of a 192-cell-high world; a settled world is people's land almost everywhere). They start at `start`. A lair born in the wild — these, and a brood that settles there — is
+// LAIR_LIFE.crowdMax (the kinds tried in a random order until one finds ground), on its ground, in the wild only — the
+// land no realm holds (atlas/realms.js realmLand, as the map's «Державы» shows it). They start at `start`. A lair born
+// in the wild — these, a brood that settles there, a necromancer's tower — is
 // HIDDEN: it lives, feeds, breeds and raids, but no realm can go against it (atlas/deeds/clearLair.js) until it is found:
 //   raid:   a raid of it on a town shows the way back — beaten, with `raid[0]`, won, with `raid[1]`
 //   settle: a living town stands within `settle` cells of it: the settlers stumble on it
@@ -255,7 +257,7 @@ export const NECRO = {births: 0.6, most: 0.5, start: 0.6, guard: 1, align: {base
 //           its step (tier) + find[3] × that density (at most 1): the thicker the wild, the plainer its trail
 //   the caravan of a campaign walking into its territory, or within two territories of it where its folk live at least
 //           `trail` thick (campaign/march.js)
-export const WILD = {perYear: 1.2, land: 0.7, gap: 10, start: 0.4, tries: 600, settle: 5,
+export const WILD = {perYear: 1.2, start: 0.4, tries: 600, settle: 5,
   raid: [0.5, 0.25], scout: {chance: 0.15, raided: 2.5, recent: 3, reach: 40, way: 10, find: [0.1, 0.5, 0.05, 0.4]}, trail: 0.4};
 
 export const LAIR_LIFE = {fedMax: 1.2, fedNone: 0.5, fiendFed: 0.55, vampirePop: 600, rotFeed: 1.2, tribeFeed: 0.6, crowd: 0.8,

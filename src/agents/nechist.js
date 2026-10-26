@@ -8,8 +8,9 @@ import {walkable, inBounds} from '../world/grid.js';
 import {agentInZone} from '../settlement/zone.js';
 import {liveById} from './lookup.js';
 import {NECHIST} from '../data/behaviour.js';
+import {dist} from '../core/util.js';
 
-export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+export {dist} from '../core/util.js';   // (one for all: core/util.js)
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const code = id => TERRAIN.get(id).code;
 

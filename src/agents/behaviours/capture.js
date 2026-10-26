@@ -14,10 +14,9 @@ import {liveById} from '../lookup.js';
 import {dress} from '../wounds.js';
 import {releaseAll} from '../../settlement/reserve.js';
 import {log} from '../../core/log.js';
-import {esc, g} from '../../core/util.js';
+import {esc, g, dist} from '../../core/util.js';
 import {RAID} from '../../data/behaviour.js';
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 // the fallen foe to take: the nearest one lying within reach that nobody leads yet
 function fallenNear(w, a) {

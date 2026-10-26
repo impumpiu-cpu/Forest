@@ -19,7 +19,7 @@ import {RAID_BANDS} from '../data/raids.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {colonists} from '../settlement/query.js';
 import {log} from '../core/log.js';
-import {esc, clamp, weighted} from '../core/util.js';
+import {esc, clamp, weighted, dist} from '../core/util.js';
 import {hpShare} from './agent.js';
 import {cellOf} from '../world/grid.js';
 import {nearestHostile, canSee} from './combat.js';
@@ -43,7 +43,6 @@ const Label = sq => { const l = RAID_BANDS.get(sq.band).label; return l[0].toUpp
 export const squadOf = (w, a) => (a.squad != null ? w.squads?.[a.squad] || null : null);
 const byId = (w, id) => { const o = liveById(w, id); return o && !o.gone ? o : null; };
 const membersOf = (w, sq) => liveMembers(w, sq, o => !o.gone && !o.downed && o.squad === sq.id);   // the fallen and the taken are out of it
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 // a fighter's weight in the odds: health × the hardest blow it can strike
 export function strength(a) {

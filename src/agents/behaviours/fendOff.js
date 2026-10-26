@@ -4,8 +4,8 @@
 import {SPECIES, isPredator} from '../../data/species.js';
 import {nearAgents} from '../spatial.js';
 import {PEN} from '../../data/behaviour.js';
+import {dist} from '../../core/util.js';
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export const fendOff = {
   want(w, a, {sp}) {

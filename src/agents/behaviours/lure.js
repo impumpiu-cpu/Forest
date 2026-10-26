@@ -19,9 +19,10 @@ const victimOf = (w, a) => w.agents.find(o => !o.dead && o.task?.id === 'lured' 
 export const lure = {
   always(w, a, {sp, night}) {
     const S = sp.spirit, L = NECHIST.lure;
-    if (S.aura !== 'lure' || !awake(S, night) || a.hiddenUntil > w.tick || victimOf(w, a)) return;
-    // one song a night: after a try (kept, broken or resisted) she waits for the next night
-    if ((w.tick + a.id) % L.every || w.tick < (a.lureAt ?? -1e9) + L.oneSong * HOUR) return;
+    if (S.aura !== 'lure' || !awake(S, night) || a.hiddenUntil > w.tick) return;
+    // one song a night: after a try (kept, broken or resisted) she waits for the next night (the cheap gates first:
+    // victimOf scans the map)
+    if ((w.tick + a.id) % L.every || w.tick < (a.lureAt ?? -1e9) + L.oneSong * HOUR || victimOf(w, a)) return;
     let best = null, bd = S.radius;
     for (const o of w.agents) {   // scan: spirits only
       if (o.faction !== 'colony' || o.dead || o.downed || spellbound(o) || agentInZone(w, o) || !lonely(w, o, L.lonely)) continue;

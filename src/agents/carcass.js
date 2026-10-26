@@ -28,10 +28,10 @@ import {agentById, liveById} from './lookup.js';
 import {liveMembers} from './group.js';
 import {CARCASS} from '../data/behaviour.js';
 import {PACK} from '../data/behaviour.js';
+import {dist} from '../core/util.js';
 
 export {CARCASS};   // (data/behaviour.js)
 export {PACK};   // (data/behaviour.js)
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byId = liveById;
 const hunts = w => w.hunts || (w.hunts = {});
 

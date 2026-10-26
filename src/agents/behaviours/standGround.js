@@ -13,11 +13,10 @@ import {liveById} from '../lookup.js';
 import {herdOf, nerveOf} from '../wildHerd.js';
 import {hpShare} from '../agent.js';
 import {log} from '../../core/log.js';
-import {esc} from '../../core/util.js';
+import {esc, dist} from '../../core/util.js';
 import {endTask} from '../lifecycle.js';
 import {STAND} from '../../data/behaviour.js';
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const AT = new Set(['maul', 'chase', 'fight']);
 
 // who it is angry with: someone attacking it right now from close by, or whoever hurt it lately and is still near

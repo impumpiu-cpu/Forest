@@ -8,14 +8,17 @@ import {nearAgents} from './spatial.js';
 import {packMembers, noteAttacker} from './lookup.js';
 import {agentInZone} from '../settlement/zone.js';
 import {maxHp} from './agent.js';
-import {clamp, esc} from '../core/util.js';
+import {clamp, esc, dist} from '../core/util.js';
 import {log} from '../core/log.js';
 import {think} from './mind.js';
 import {dropCarcass, startHunt} from './carcass.js';
 import {stragglerOf} from './wildHerd.js';
 import {PROWL} from '../data/behaviour.js';
 
-export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+export {dist} from '../core/util.js';   // (one for all: core/util.js)
+// a hunter already at it — eating, chasing, mauling — or still winded from it does not start another (chase, maul)
+const HUNTING = new Set(['feed', 'chase', 'maul']);
+export const busyHunting = (a, rested) => HUNTING.has(a.task?.id) || (a.task?.id === 'rest' && a.stamina < rested);
 export const packOf = (w, a) => packMembers(w, a.pack);
 export const paramsOf = a => SPECIES.get(a.species).predator;
 
@@ -37,7 +40,7 @@ export const company = (w, v, r) => nearAgents(w, v.x, v.y, r).filter(o => o !==
 
 // big game (a mule) is prey only once it is badly hurt
 const weakEnough = (o, P) => !(P.weakPrey || []).includes(o.species) || o.hp < maxHp(o) * P.weakBelow;
-export const preyKinds = P => [...P.prey, ...(P.weakPrey || [])];
+const preyKinds = P => [...P.prey, ...(P.weakPrey || [])];
 
 // what a chase is worth: food per head × the chance to catch it, less for the way there and the risk
 // (big game kicks back). The hungrier, the less it takes to set off.

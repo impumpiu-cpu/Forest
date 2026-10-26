@@ -10,16 +10,15 @@ import {kill} from '../agent.js';
 import {huntOf, huntAim, startHunt, endHunt} from '../carcass.js';
 import {endTask} from '../lifecycle.js';
 import {liveById} from '../lookup.js';
-import {dist, packOf, paramsOf, bestPrey, ignoreFor, toTheKill} from '../hunting.js';
+import {dist, packOf, paramsOf, bestPrey, ignoreFor, toTheKill, busyHunting} from '../hunting.js';
 import {PROWL} from '../../data/behaviour.js';
 
-const BUSY = new Set(['feed', 'chase', 'maul']);
 
 export const chase = {
   want(w, a, {sp}) {
     const P = sp.predator, W = PROWL.want, food = a.needs.food;
     if (a.task?.id === 'chase') return [[a.task, W.chaseOn, () => 'гонит добычу']];
-    if (BUSY.has(a.task?.id) || (a.task?.id === 'rest' && a.stamina < PROWL.rested)) return null;
+    if (busyHunting(a, PROWL.rested)) return null;
     const pack = packOf(w, a), leader = pack[0];
     // the pack hunts together: join the leader's chase
     const lh = leader !== a ? huntOf(w, leader) : null;

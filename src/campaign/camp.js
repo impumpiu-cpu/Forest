@@ -233,6 +233,7 @@ function spawnFoe(w) {
     }
     // the boss's aura (agents/auras.js): its side stands while it stands; its band's leader is an officer who holds to the end
     b.auras = [...(b.auras || []), 'lead'];
+    for (const g of group) if (g !== b) g.side = b.id;   // its side: those who came with it, and only they
     for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) { sq.goal = 'slaughter'; const l = group.find(g => g.id === sq.leader); if (l && l !== b) l.officer = true; } }
   }
   C.foes = group.map(g => g.id); C.foeObjs = group; C.spawned = true;

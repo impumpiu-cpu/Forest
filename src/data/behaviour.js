@@ -134,7 +134,7 @@ export const STAND = {
   kick: {least: 0.1, spread: 0.12},   // a kick: this share of the blow's power, plus up to this much more
   pack: {angle: 2.4, step: 0.9, at: 1.6, off: 0.6, hurry: 4, hurryPace: 1.3, pace: 1, catchUp: 1.2},   // a pack mule: its place behind the trader (an angle per slot)
   drawOff: 0.8,        // steps away from what comes too close to the herd at this pace
-  want: {fire: 2, limp: 1.5, foe: 1.4, pack: 1, hay: 1, drawOff: 1.1, alert: 1, leave: 0.5, rest: 0.4, graze: 0.3},
+  want: {limp: 1.5, foe: 1.4, pack: 1, drawOff: 1.1},   // (fire, hay, alert, leave, rest, graze: WANT above, as every beast's)
 };
 
 // people on a raid (agents/behaviours/raid.js, retreat.js; the band's plan: agents/squad.js)
@@ -158,7 +158,7 @@ export const CARAVAN = {
   pace: 0.9, spotPace: 0.5,   // walking in; keeping to the spot
   mends: 0.0002,       // wounds close this much a tick on the road
   guard: {sight: 9, help: 12, at: 1.3, angle: 0.8, off: 0.5, hurry: 4, hurryPace: 1.25, pace: 1},   // a guard: whom it answers, its place by the trader (an angle per slot)
-  want: {fire: 2, leave: 1.5, fight: 1, stay: 0.5},
+  want: {leave: 1.5, fight: 1, stay: 0.5},   // (fire: RAID.want.fire, as every traveller's)
 };
 
 // a tamed beast in its pen (agents/behaviours/fendOff.js, penned.js; settlement/herd.js)
@@ -170,7 +170,7 @@ export const PEN = {
   toPen: 0.9,          // walks to its pen at this pace
   newSpot: 0.008, margin: 0.3, there: 0.2, pace: 0.3,   // inside: from spot to spot
   ledNear: 0.8, ledPace: 1.1,   // led away by a raider: keeps this close, at this pace (agents/behaviours/led.js)
-  want: {fire: 2, foe: 1.5, out: 0.5, rest: 0.4, in: 0.3},
+  want: {foe: 1.5, out: 0.5, in: 0.3},
 };
 
 // the nechist beyond its species' `spirit` block (agents/nechist.js; agents/behaviours/vanish.js, fightBack.js, lurk.js, lure.js, astray.js)
@@ -188,7 +188,7 @@ export const NECHIST = {
   lure: {every: 30, oneSong: 12, holds: 2, lonely: 5, singVeil: 6, reach: 1.2},   // a song a night (hours), the spell holds (hours), who is alone
   astray: {hours: [1, 1], logEvery: 0.5},   // lost for 1 + up to 1 hours; the log once in half a day
   spell: {astray: 1.2, lure: 1.5},   // how hard a spell holds a colonist against its other wants (agents/brains/colonist.js)
-  want: {fire: 2, hidden: 1.5, strike: 1.4, dive: 1.6, drowning: 1, song: 0.3, lurk: 0.2},
+  want: {hidden: 1.5, strike: 1.4, dive: 1.6, drowning: 1, song: 0.3, lurk: 0.2},
 };
 
 // Auras of the ones who lead (agents/auras.js): `lead` — the boss's: while the bearer lives nobody of its side runs and
@@ -250,7 +250,7 @@ export const VERMIN = {
   daylight: 0.4,    // the kikimora keeps to the marsh while the night is shallower than this
   denLuck: 0.5,     // chance in the choice of a hole
   spoil: {smell: 25, pace: 0.9, at: 0.9, food: 0.003, rot: 4, logEvery: 300},   // the kikimora at a carcass
-  want: {fire: 2, flee: 1.5, hide: 0.6, nibble: 0.5},
+  want: {flee: 1.5, hide: 0.6, nibble: 0.5},
 };
 
 // a colonist's roster (agents/brains/colonist.js): keeping to a task, thinking again at work, a moment's thought before

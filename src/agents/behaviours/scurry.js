@@ -3,11 +3,10 @@
 // (`vermin.veil`, agents/combat.js): colonists do not chase her across the map. Reads: vermin {flee, caught, veil?}.
 import {kill} from '../agent.js';
 import {log} from '../../core/log.js';
-import {esc, g} from '../../core/util.js';
+import {esc, g, dist} from '../../core/util.js';
 import {nearAgents} from '../spatial.js';
 import {VERMIN} from '../../data/behaviour.js';
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export const scurry = {
   always(w, a, {sp}) { if (sp.vermin.veil != null) a.veil = sp.vermin.veil; },

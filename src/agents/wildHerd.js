@@ -19,14 +19,13 @@ import {walkable, inMap} from '../world/grid.js';
 import {sameLand} from './movement.js';
 import {nearAgents} from './spatial.js';
 import {liveById} from './lookup.js';
-import {perTick} from '../core/util.js';
+import {perTick, dist} from '../core/util.js';
 import {wake} from './attention.js';
 import {hpShare} from './agent.js';
 import {prune, middleOf, nextLookouts} from './group.js';
 import {WILD_HERD as HERD} from '../data/behaviour.js';
 
 export {HERD};   // (data/behaviour.js)
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const herdOf = (w, a) => (a.herd != null ? w.herds?.[a.herd] || null : null);
 const isHerdBeast = a => !a.dead && !a.gone && !a.tame && a.owner == null && a.faction === 'wild' && !!SPECIES.get(a.species).herd;
 

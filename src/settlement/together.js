@@ -19,7 +19,7 @@ import {JOBS} from '../data/jobs.js';
 import {opinion, OPINION} from '../data/relations.js';
 import {colonists} from './query.js';
 import {agentInZone} from './zone.js';
-import {perTick, clamp, esc, g} from '../core/util.js';
+import {perTick, clamp, esc, g, dist} from '../core/util.js';
 import {HOUR, nightness} from '../core/time.js';
 import {maxHp, hpShare} from '../agents/agent.js';
 import {strength} from '../agents/squad.js';
@@ -35,7 +35,6 @@ import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {TOGETHER} from '../data/colony.js';
 
 export {TOGETHER};   // (data/colony.js)
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byId = liveById;
 const social = w => w.behave?.social;
 
