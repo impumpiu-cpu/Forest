@@ -64,11 +64,14 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
   expect(nec ? link.every(a => a.master === nec.id && !a.lost) : link.every(a => a.lost), 'павшее умертвие: звено не перешло к некроманту');
   if (nec) { nec.dead = true; for (const a of link) retreatMod.retreat.always(w, a); expect(link.every(a => a.lost), 'без умертвия и некроманта мертвецы не разбрелись'); }
   void formUndeadLinks;
+  RANK_RULES.settlement = false;   // as the table has it
 }
 
 // ranks where they are given: links, officers, the small aura, the fall of an officer
 {
+  RANK_RULES.settlement = true;
   const w = game('ranks-on'), g = spawnGroup(w, 'raiders', raiderStrength(5) * 12, {band: 'bandits'});
+  RANK_RULES.settlement = false;
   const officers = g.filter(a => hasMark(a, 'officer')), sq = squadOf(w, g[0]);
   // the band came in links (data/roles.js LINKS): one officer to a link (a link of one joins the one before), the members
   // of a link under its officer, the link's kind on each

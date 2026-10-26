@@ -17,7 +17,7 @@ export const RANK_RULES = {
   size: 5, least: 4,
   quality: 1,
   hurt: 0.2, rally: 0.25, loss: 0.3,
-  camp: true, settlement: true,
+  camp: true, settlement: false,   // on a settlement they cost it too dear: the officers' spirit is no part of КС (docs/BEHAVIOUR.md)
 };
 
 export const RANK_LABELS = {pawn: 'пешка', officer: 'офицер', boss: 'босс'};
