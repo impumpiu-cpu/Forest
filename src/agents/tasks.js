@@ -12,6 +12,7 @@ import {cellOf} from '../world/grid.js';
 import {nightness} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach, recover} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
+import {COMBAT} from '../data/balance/combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
 import {eatMeal, plunder, lootTotal, campFuel} from '../settlement/stock.js';
 import {councilDue} from '../settlement/council.js';
@@ -149,7 +150,9 @@ TASKS.registerAll([
       return;
     }
     task.shooting = false;
-    if (d > Math.min(0.9, reachOf(a)) || behindRock(w, a, t)) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
+    // a long weapon (quality `reach`) strikes from where it reaches and lets the foe come on; anyone else closes in
+    const R = reachOf(a), stand = R > COMBAT.reach ? R - 0.15 : Math.min(0.9, R);
+    if (d > stand || behindRock(w, a, t)) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
     else attack(w, a, t);
   }},
 

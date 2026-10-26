@@ -33,7 +33,8 @@ export const FORMS = {
   // ── one-handed
   club:     {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['wood'], ref: 'wood', melee: {dmg: 1.3, cd: 12}, dur: 70,
     parts: {material: 3}, work: 600, ids: {wood: 'club'}, names: {wood: ['Дубина', 'дубина']}, name: m => [`${cap(m.adj.f)} палица`, `${m.short} палица`], glyph: 'club'},
-  spear:    {blow: 'pierce', scale: {S: 0.5, A: 0.3}, slot: 'hand', hands: 1, of: ['bone', 'metal'], ref: 'bone', melee: {dmg: 1.55, cd: 13}, dur: 60,
+  // long: it strikes from behind a shield-bearer's shoulder and meets the foe before the foe meets it (quality `reach`)
+  spear:    {blow: 'pierce', scale: {S: 0.5, A: 0.3}, slot: 'hand', hands: 1, of: ['bone', 'metal'], ref: 'bone', melee: {dmg: 1.55, cd: 13}, qualities: {reach: 0.6}, dur: 60,
     parts: {material: 2, wood: 2}, work: 700, ids: {bone: 'spear', bronze: 'bronzespear', iron: 'ironspear'},
     names: {bone: ['Копьё с костяным наконечником', 'копьё']}, name: m => [`Копьё с ${m.adj.ins} наконечником`, `${m.short} копьё`], glyph: {bone: 'spear', default: 'ironspear'}},
   // an axe is a tool first: in a fight it falls a little short of a spear of its tier
@@ -77,6 +78,11 @@ export const FORMS = {
   crossbow: {blow: 'blunt', slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', tier: 1, melee: {dmg: 0.6, cd: 15},
     ranged: {dmg: 2.0, range: 7.5, cd: 40, ammo: 'arrows', type: 'pierce'}, qualities: {piercing: 0.35}, dur: 110,
     parts: {material: 3, iron: 1, rope: 1}, work: 1100, ids: {wood: 'crossbow'}, names: {wood: ['Арбалет', 'арбалет']}, name: m => [`${cap(m.adj.m)} арбалет`, `${m.short} арбалет`], glyph: 'crossbow'},
+  // a weighted net, thrown: whom it falls on is tangled and cannot strike for a while (quality `ensnare`); twice, then
+  // gathered up again. It hurts nobody: the club in the other hand does that
+  net:      {slot: 'hand', hands: 1, of: ['cloth'], ref: 'linen', ranged: {dmg: 0.1, range: 3.5, cd: 30, ammo: null, type: 'blunt'},
+    qualities: {thrown: 2, ensnare: 0.8}, dur: 60, parts: {material: 4}, work: 700, ids: {linen: 'net', bast: 'bastnet', wool: 'woolnet'},
+    names: {linen: ['Ловчая сеть', 'сеть'], bast: ['Лыковая ловчая сеть', 'сеть']}, name: m => [`${cap(m.adj.f)} ловчая сеть`, `${m.short} сеть`], glyph: 'net'},
   // stones lie everywhere: no ammo, but the sling is far weaker and shorter; a quarry gives better stones
   sling:    {blow: 'blunt', slot: 'hand', hands: 2, of: ['hide'], ref: 'hide', melee: {dmg: 0.5, cd: 14}, ranged: {dmg: 0.6, range: 4.5, cd: 20, ammo: null, boost: 'slingStones', type: 'blunt'}, dur: 60,
     parts: {material: 1}, work: 600, ids: {hide: 'sling'}, names: {hide: ['Праща', 'праща']}, name: m => [`${cap(m.adj.f)} праща`, `${m.short} праща`], glyph: 'sling'},

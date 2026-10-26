@@ -19,7 +19,7 @@ import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
 import {refreshBody} from '../agents/special.js';
-import {attackerOf} from '../agents/combat.js';
+import {attackerOf, sneakSeen} from '../agents/combat.js';
 import {wake} from '../agents/attention.js';
 import {nightSight} from '../data/tongues.js';
 import {sideStrength, strengthOf, expectedStrength} from '../agents/strength.js';
@@ -300,7 +300,7 @@ function raiseAlarm(w) {
     if (p.dead || p.captive) continue;
     const struck = !!attackerOf(w, p) || p.downed;
     const awake = p.task?.id !== 'sleep' && !p.downed, r = R * nightSight(p.species, night);
-    if (struck || (awake && foes.some(o => Math.hypot(o.x - p.x, o.y - p.y) <= r))) {
+    if (struck || (awake && foes.some(o => Math.hypot(o.x - p.x, o.y - p.y) <= (o.sneaking ? Math.min(r, sneakSeen(o)) : r)))) {   // one who creeps is seen only close (agents/combat.js)
       C.alarm = w.tick;
       for (const q of C.people.values()) if (!q.dead && !q.captive) wake(q, 'тревога в лагере', 'тревога');
       return;

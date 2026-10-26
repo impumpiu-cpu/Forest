@@ -38,8 +38,11 @@ export const attackerOf = (w, a) => firstAttacker(w, a);
 // Can `a` see `t` right now? The nechist is seen only up close (`veil` cells: a leshy among the trees)
 // or not at all while it hides (`hiddenUntil`: a rusalka under the water) — unless it is attacking.
 // Finding a foe, keeping after one and striking one all go by this.
+// how close one who creeps is seen (COMBAT.sneak): heavier armour is heard further
+export const sneakSeen = t => COMBAT.sneak.seen + COMBAT.sneak.armour * (t.gear?.armor || 0);
 export function canSee(w, a, t) {
   if (t.hiddenUntil > w.tick) return false;
+  if (t.sneaking && !aggressor(a, t) && Math.hypot(t.x - a.x, t.y - a.y) > sneakSeen(t)) return false;
   if (t.veil == null || aggressor(a, t)) return true;
   return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
 }
@@ -118,6 +121,9 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const bleed = traitOf(q, 'bleed'), stun = traitOf(q, 'stun');
   if (bleed && !tsp.undead && tsp.kind !== 'spirit' && w.rngs.hits() < bleed) { const C = CONDITIONS.get('bleeding'); t.bleeding = {dmg: C.dmg, until: w.tick + C.ticks}; }
   if (stun && w.rngs.hits() < stun) t.stunned = {until: w.tick + CONDITIONS.get('stunned').ticks};
+  // a net (quality `ensnare`): tangled — slow, and no blow until it is shaken off (COMBAT.net)
+  const snare = traitOf(q, 'ensnare');
+  if (snare && w.rngs.hits() < snare) { const N = COMBAT.net; t.webbed = {slow: N.slow, until: w.tick + N.ticks}; t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + N.hold)}; t.netted = w.tick; }
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
@@ -189,6 +195,7 @@ export function attack(w, a, t) {
   if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);
   a.cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (a.mods?.swing ?? 1))); a.flash = 4;
+  a.sneaking = false;   // the first blow gives it away
   // the blow as a check of Agility against a step of the ladder (data/checks.js): rolled only while one of its
   // degrees does something — a full blow, or a miss that leaves the striker open
   let full = 1;
@@ -211,6 +218,21 @@ export function attack(w, a, t) {
   return true;
 }
 
+// the one who stands between a shooter and its target with a shield up: of the target's side, near it, nearer the
+// shooter, close to the line of the shot (COMBAT.cover); the nearest such, or null
+function coverFor(w, a, t) {
+  const C = COMBAT.cover, dx = t.x - a.x, dy = t.y - a.y, L = Math.hypot(dx, dy) || 1;
+  let best = null, bd = Infinity;
+  for (const o of nearAgents(w, t.x, t.y, C.near)) {
+    if (o === t || o.dead || o.downed || o.faction !== t.faction || !(o.gear?.cover > 0)) continue;
+    const along = ((o.x - a.x) * dx + (o.y - a.y) * dy) / L, off = Math.abs((o.x - a.x) * dy - (o.y - a.y) * dx) / L;
+    if (along <= 0 || along >= L || off > C.side) continue;   // not between them, or off the line
+    const d = Math.hypot(o.x - t.x, o.y - t.y);
+    if (d <= C.near && d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
+
 // one shot at a target within range; returns 'kill' | 'hit' | 'miss' | null (cannot shoot).
 // The same shot for a hunt and for a fight: it reads and trains the shooting skill (`ranged`), and only
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
@@ -219,7 +241,7 @@ export function shoot(w, a, t) {
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
-  a.cd = r.cd;
+  a.cd = r.cd; a.sneaking = false;
   const thrown = traitOf(r.q, 'thrown') > 0;   // a javelin, a hatchet: one of the bundle flies, the last stays in the hand
   if (thrown) { r.item.ammo = (r.item.ammo || 0) - 1; if (r.item.ammo <= 0) g.rangedReady = false; }
   else if (r.ammo) { a.equip.back.ammo--; if (a.equip.back.ammo <= 0) g.rangedReady = false; }
@@ -231,6 +253,9 @@ export function shoot(w, a, t) {
   practice(a, 'ranged', LEARN.shot);   // a miss teaches too: the arrow did fly
   w.fx.push({x1: a.x, y1: a.y, x2: hit ? t.x : t.x + (w.rngs.combat() - 0.5) * 2, y2: hit ? t.y : t.y + (w.rngs.combat() - 0.5) * 2, t: 8, kind: r.ammo || thrown ? 'arrow' : 'stone'});
   if (!hit) return 'miss';
+  // a shield-bearer between the shooter and the target catches the shot for it (COMBAT.cover)
+  const guard = coverFor(w, a, t);
+  if (guard && w.rngs.combat() < guard.gear.cover * COMBAT.cover.share) { wear(w, guard, guard.gear.coverItem); guard.flash = 3; return 'miss'; }
   const boost = r.boost && a.faction === 'colony' ? (w.mods.best[r.boost] || 1) : 1;
   const sure = deg === 'critSuccess' ? 1 + degreeValue('shot', 'critSuccess') : 1;
   const res = damage(w, a, t, (SHOT.base + w.rngs.combat() * SHOT.spread) * r.dmg * boost * silverFactor(t, null) * sure, {melee: false, type: r.type || DEFAULT_BLOW.ranged, mix: r.mix || null, q: r.q || null});

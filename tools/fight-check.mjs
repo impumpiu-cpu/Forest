@@ -121,7 +121,7 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   a.faction = 'raiders'; wear(w, a, it, 1);
   expect(it.dur === 98, `ненадёжное 1: износ ${100 - it.dur}, а должен быть 2`);
   E.resetAll();
-  expect(!ITEMS.get('ironspear').qualities, 'сброс не снял свойства с вещи');
+  expect(!ITEMS.get('ironspear').qualities?.unreliable && !ITEMS.get('ironspear').qualities?.piercing, 'сброс не снял свойства с вещи');
 }
 
 // ── paired weapons: a second dagger strikes after the first, a shield in the other hand does not; КС sees it
@@ -186,6 +186,44 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   const rng = mulberry(7); let elves = 0, humans = 0;
   for (let i = 0; i < 200; i++) { if (roleKit('elf', 'archer', rng, 30).includes('crossbow')) elves++; if (roleKit('human', 'archer', rng, 30).includes('crossbow')) humans++; }
   expect(elves === 0 && humans > 0, `арбалеты у стрелков: эльфам ${elves}, людям ${humans} из 200`);
+}
+
+// ── a spear reaches past a shoulder; a shield-bearer between a shooter and its target catches the shot
+{
+  const {dress} = await import('../src/agents/equipment.js'), {shoot} = await import('../src/agents/combat.js');
+  const w = scene(), sp = put(w, 'human', 'raiders'); dress(sp, ['ironspear']);
+  expect(reachOf(sp) > COMBAT.reach + 0.5, `копьё бьёт не дальше руки: ${reachOf(sp)}`);
+  const archer = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony'), g = put(w, 'human', 'colony');
+  dress(archer, ['bow', 'quiver'], 15); dress(g, ['spear', 'ironshield']);
+  archer.x = 10.5; archer.y = 20.5; t.x = 16.5; t.y = 20.5; g.x = 15.5; g.y = 20.5; t.hp = 100;
+  rngs(w, 0.01); archer.cd = 0; const d0 = g.equip.left?.dur ?? g.equip.right?.dur, res = shoot(w, archer, t);
+  expect(res === 'miss' && t.hp === 100, `щитоносец перед целью не закрыл её от стрелы: ${res}`);
+  g.y = 24.5; archer.cd = 0; const res2 = shoot(w, archer, t);
+  expect(res2 !== 'miss' || t.hp < 100, 'щитоносец в стороне всё равно закрыл');
+  void d0;
+}
+
+// ── a net tangles whom it falls on: slow, and no blow for a while
+{
+  const {dress} = await import('../src/agents/equipment.js'), {shoot, attack} = await import('../src/agents/combat.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony'); dress(a, ['net', 'club']); dress(t, ['club']);
+  t.x = a.x + 2.5; t.gear = {...t.gear, block: 0, cover: 0}; t.mods.dodge = 0;
+  rngs(w, 0.01); a.cd = 0; shoot(w, a, t);
+  expect(t.webbed?.slow === COMBAT.net.slow && t.stunned?.until >= w.tick + COMBAT.net.hold - 1, 'сеть не опутала');
+  t.x = a.x + 1; t.cd = 0; expect(!attack(w, t, a), 'опутанный бьёт');
+  expect(a.gear.melee.item?.type === 'club', 'с сетью в руке ловчий не бьёт дубиной');
+}
+
+// ── one who creeps is seen only close, heavier armour further; its first blow gives it away
+{
+  const {dress} = await import('../src/agents/equipment.js'), {canSee, attack, sneakSeen} = await import('../src/agents/combat.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony'); dress(a, ['irondagger', 'irondagger']);
+  a.sneaking = true; t.x = a.x + COMBAT.sneak.seen + 1;
+  expect(!canSee(w, t, a) && canSee(w, a, t), 'крадущегося видно издали или он сам не видит');
+  dress(a, ['chainmail']);
+  expect(sneakSeen(a) > COMBAT.sneak.seen + 2 && canSee(w, t, a), 'кольчугу у крадущегося не слышно');
+  t.x = a.x + 1; a.cd = 0; attack(w, a, t);
+  expect(!a.sneaking, 'после удара крадущийся всё ещё невидим');
 }
 
 // ── the review: finer copies follow an edit; a material's qualities go to weapons only; parry never lowers a block

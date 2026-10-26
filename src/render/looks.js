@@ -18,6 +18,7 @@ export const GLYPHS = {
   maul(ctx, x, y, r) { line(ctx, x, y + r, x + r * 0.2, y - r * 0.8, '#8a6a3c', 1.3); ctx.fillStyle = '#6b4f2c'; ctx.fillRect(x - r * 0.25, y - r * 1.1, r * 0.9, r * 0.5); },
   bow(ctx, x, y, r) { ctx.strokeStyle = '#a5794a'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(x - r * 0.4, y, r * 1.1, -1.1, 1.1); ctx.stroke(); line(ctx, x + r * 0.1, y - r, x + r * 0.1, y + r, '#e8e2cf', 0.7); },
   crossbow(ctx, x, y, r) { line(ctx, x - r * 0.1, y + r * 0.9, x + r * 0.1, y - r * 0.8, '#8a6a3c', Math.max(1.3, r * 0.3)); ctx.strokeStyle = '#cfd6dc'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(x + r * 0.1, y - r * 0.2, r * 0.8, -2.6, -0.5); ctx.stroke(); },
+  net(ctx, x, y, r) { ctx.strokeStyle = '#d8cfb4'; ctx.lineWidth = 0.7; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x - r * 0.6, y + k * r * 0.4); ctx.lineTo(x + r * 0.6, y + k * r * 0.4); ctx.moveTo(x + k * r * 0.4, y - r * 0.6); ctx.lineTo(x + k * r * 0.4, y + r * 0.6); ctx.stroke(); } },
   rod(ctx, x, y, r) { line(ctx, x, y + r, x + r * 0.9, y - r * 1.6, '#a5794a', 1.1); ctx.strokeStyle = 'rgba(232,226,207,0.7)'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(x + r * 0.9, y - r * 1.6); ctx.lineTo(x + r * 1.3, y + r * 0.6); ctx.stroke(); },
   sling(ctx, x, y, r) { ctx.strokeStyle = '#9b7650'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + r * 0.6); ctx.quadraticCurveTo(x + r, y, x + r * 0.2, y - r * 0.6); ctx.stroke(); dot(ctx, x + r * 0.2, y - r * 0.6, Math.max(1, r * 0.2), '#b9b4a6'); },
 };

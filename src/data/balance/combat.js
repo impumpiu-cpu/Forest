@@ -31,6 +31,14 @@ export const COMBAT = {
   // the armour a blow or a shot meets on the average foe: what the rating (КС) lets a piercing weapon (quality `piercing`)
   // get through
   armourSeen: 0.3,
+  // a shield-bearer covers a neighbour from shots: one of the target's side within `near` cells, closer to the shooter
+  // than the target and off the line by no more than `side` cells, catches the shot with its shield's cover × `share`
+  cover: {near: 1.6, side: 0.9, share: 0.6},
+  // a net that falls on someone (quality `ensnare`): its step × slow for `ticks`, and it cannot strike for `hold`
+  net: {slow: 0.25, ticks: 240, hold: 90},
+  // one who creeps (a.sneaking: a cutthroat, a scout) is seen only this close: `seen` cells + `armour` × its armour (mail
+  // clinks); its first blow or shot gives it away
+  sneak: {seen: 3, armour: 6},
 };
 
 // how far finer work (data/quality.js) may push a piece; a quality's own `cap` adds to these
@@ -91,6 +99,7 @@ export const WEAPON_QUALITIES = [
   {id: 'bleed', label: 'кровопускающее', unit: 'шанс', live: true, reads: 'шанс оставить кровотечение (состояние «кровотечение», data/conditions.js)', note: 'зазубренное лезвие'},
   {id: 'stun', label: 'оглушающее', unit: 'шанс', live: true, reads: 'шанс оглушить (состояние «оглушён»: не бьёт, медленнее ходит)', note: 'тяжёлый удар по голове'},
   {id: 'backstab', label: 'коварное', unit: '×', live: true, reads: 'удар с фланга и в спину (COMBAT.flank, back): прибавка урона × (1 + значение); КС', note: 'кинжал: туда, где не ждут'},
+  {id: 'ensnare', label: 'ловчее', unit: 'шанс', live: true, reads: 'попавший опутывает: состояния «в паутине» (шаг × COMBAT.net.slow) и «оглушён» (не бьёт COMBAT.net.hold тиков)', note: 'ловчая сеть'},
   {id: 'paired', label: 'парное', unit: 'доля', live: true, reads: 'вторая рука: вслед за ударом главного оружия бьёт и это, урон × значение (agents/combat.js attack); выбор вещей, КС', note: 'кинжал, топорик, меч во второй руке'},
   {id: 'thrown', label: 'метательное', unit: 'бросков', live: true, reads: 'бросается своим `ranged` (agents/combat.js shoot): столько бросков в связке, последнее остаётся в руке; поселенец собирает их у лагеря (agents/equipment.js outfit); КС — доля от COMBAT.thrown.shots', note: 'дротики, метательный топорик'},
 ];

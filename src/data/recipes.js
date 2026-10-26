@@ -134,6 +134,9 @@ RECIPES.registerAll([
     want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
+  // a net for taking alive (quality `ensnare`): one or two, for the colony's hunters and its catchers of runaways
+  {id: 'net', at: 'crafthut', cost: {rope: 3}, work: 700, makes: {item: 'net'},
+    want: c => (short(c.owned('net'), Math.min(2, Math.ceil(c.pop / 5))) ? 0.6 : 0)},
   // a crossbow: a wooden stock, an iron lock, a cord; for every fourth, where arrows are made anyway
   {id: 'crossbow', tier: 3, at: 'forge', cost: {wood: 3, iron: 1, rope: 1}, fuel: 1, work: 1100, makes: {item: 'crossbow'},
     want: c => (c.bows >= 1 && short(c.owned('crossbow'), Math.ceil(c.pop / 4)) ? 1.2 : 0)},
