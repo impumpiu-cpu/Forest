@@ -1,5 +1,5 @@
 // Trade with passing caravans. The numbers live in data/trade.js; this file runs a visit:
-//   coming   — the caravan walks in from the map edge (agents/brains/caravan.js moves it);
+//   coming   — the caravan walks in from the map edge (agents/behaviours/peddle.js moves the trader, escort.js the guards);
 //   camp     — it has set up by the camp and waits for the evening council to end;
 //   trading  — right after the council the colony sells and buys (holdTrade), people gather round;
 //   night    — it sleeps by the camp;

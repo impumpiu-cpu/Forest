@@ -1,5 +1,5 @@
-// Keeps the core free of the screen: the simulation (everything except src/ui, src/render, src/app and
-// src/main.js) must not import those folders or touch browser-only globals. Any other front end —
+// Keeps the core free of the screen: the simulation (everything except src/ui, src/render and src/app)
+// must not import those folders or touch browser-only globals. Any other front end —
 // a different renderer, the balance runner, a server — can then drive the same core.
 import {readdirSync, readFileSync, statSync} from 'node:fs';
 import {join, relative, dirname, resolve} from 'node:path';
@@ -33,7 +33,7 @@ console.log(`ok   ядро (${files.filter(f => !SHELL.includes(relative(src, f)
 // their number (tools/stress.mjs). Ask an index instead — agents/lookup.js (by id, pack, species, who
 // attacks whom) or agents/spatial.js (who is near). A walk that stays cheap because only a few creatures
 // ever make it (a spirit, a caravan guard) is marked on its line: `// scan: why it is cheap`.
-const PER_AGENT = /^(agents[\\/]brains[\\/]|agents[\\/](tasks|jobRunners|combat|movement)\.js$|data[\\/]jobs\.js$)/;
+const PER_AGENT = /^(agents[\\/](brains|behaviours)[\\/]|agents[\\/](tasks|jobRunners|combat|movement)\.js$|data[\\/]jobs\.js$)/;
 const SCAN = /\bw\.agents\.(find|filter|some|every|reduce|forEach|map)\(|\bof w\.agents\b/;
 const scans = [];
 for (const f of files) {

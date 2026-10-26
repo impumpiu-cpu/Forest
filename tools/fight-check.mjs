@@ -6,12 +6,12 @@ import {newGame} from '../src/sim.js';
 import {DEFAULT_CFG} from '../src/data/presets.js';
 import {T} from '../src/data/terrain.js';
 import {SPECIES} from '../src/data/species.js';
-import {createAgent, maxHp} from '../src/agents/agent.js';
+import {createAgent} from '../src/agents/agent.js';
 import {damage, reachOf, blockAgainst} from '../src/agents/combat.js';
 import {recalcGear, wear} from '../src/agents/equipment.js';
 import {heatHarm, stepBody} from '../src/agents/body.js';
 import {traumasAt} from '../src/agents/wounds.js';
-import {strengthOf} from '../src/agents/strength.js';
+import {strengthParts} from '../src/agents/strength.js';
 import {DAMAGE_TYPES, DELIVERY, WEAPON_QUALITIES, CAPS} from '../src/data/balance/combat.js';
 import {BODY_PLANS, HIT_LOCATIONS, planOf, placesOf, drawPlace} from '../src/data/anatomy.js';
 import {WOUNDS} from '../src/data/wounds.js';
@@ -70,10 +70,12 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   E.setCell('hitLocations', 'humanoid.head', 'dmg', 2);
   expect(near(blow(0.99, null, 0) / plain, 2), 'урон × места не дошёл до удара в голову');
   expect(near(blow(0.99, null, 0.99), plain), 'урон × головы задел удар в ноги');
-  const w = scene(), a = put(w, 'human', 'colony'), s0 = strengthOf(a);
+  // (the rating is relative to the reference human, whom the edit strikes alike: the human's own rating stays; what sees
+  // the head is the raw strength the rating is made of — a human's falls, a beast's rating with another plan does not)
+  const w = scene(), a = put(w, 'human', 'colony'), s0 = strengthParts(a).raw;
   E.resetAll();
-  const s1 = strengthOf(a);
-  expect(s0 < s1, `КС не видит, что удар в голову вдвое страшнее: ${s0.toFixed(1)} при ×2, ${s1.toFixed(1)} без`);
+  const s1 = strengthParts(a).raw;
+  expect(s0 < s1, `КС не видит, что удар в голову вдвое страшнее: ${s0.toFixed(5)} при ×2, ${s1.toFixed(5)} без`);
 }
 
 // ── a body's answer to fire, frost, venom and silver (the table «Урон по видам»)

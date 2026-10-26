@@ -138,6 +138,10 @@ JOBS.registerAll([
   {id: 'craft', skill: 'carpentry', label: 'мастерить', short: 'ремесло', verb: 'мастерит', preferable: true,
     runner: 'craft', stations: ['crafthut'], desire: atStations(0.55)},
 
+  // the healing potion (data/recipes.js `potion`): brewed in the healer's hut while there are herbs to spare
+  {id: 'brew', skill: 'medicine', label: 'варить зелья', short: 'зелья', verb: 'варит зелья', preferable: true,
+    runner: 'craft', stations: ['healerhut'], desire: atStations(0.5)},
+
   {id: 'charcoal', skill: 'metallurgy', label: 'жечь уголь', short: 'уголь', verb: 'жжёт уголь', preferable: true,
     runner: 'craft', stations: ['charpit'], desire: atStations(0.45)},
 

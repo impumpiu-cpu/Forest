@@ -17,9 +17,11 @@ import {faunaLevel} from '../world/region.js';
 import {BUBBLE, THINGS, TRAIN, HERD} from '../data/bubble.js';
 import {HIRES} from '../data/market.js';
 import {EPIC} from '../data/calamities.js';
-import {GAME} from '../data/campaign.js';
-import {dangers, cellRegion, lairFoe} from './land.js';
+import {GAME, FOES} from '../data/campaign.js';
+import {dangers, cellRegion, lairFoe, withCompany} from './land.js';
+import {cultPool} from '../atlas/necro.js';
 import {REALM_BANDS} from '../data/seam.js';
+import {dist} from '../core/util.js';
 
 export const bubbleOf = K => (K.bubble ||= {next: 1, things: []});
 // a thing on the caravan's trail: a pursuit, or one that has noticed it (things of saves from before: all of them)
@@ -38,7 +40,6 @@ export function grow(a, K) {
   return 1 + G.way * way + G.clue * (Q.found || 0);
 }
 const sc = (a, v) => v * scaleOf(a);
-const dist = (K, t) => Math.hypot(t.x - K.x, t.y - K.y);
 const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
 const land = (a, i) => !!a.f.land && !a.f.ocean[i];
 
@@ -70,9 +71,11 @@ function spawn(a, K, guided) {
     // the active hunt of an epic quest (campaign/epic.js): the hostile are born on the caravan's trail
     const trail = (K.quest?.hunt ?? 0) >= 2 ? EPIC.hunt.trail : 0;
     const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: trail > 0 && r() < trail, ...props}); };   // (no draw without a hunt: the stream stays as it was
-    const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${dg.label || THINGS[dg.kind].label}` : dg.label || THINGS[dg.kind].label, ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {})});
-    const ds = dangers(a, i);
-    for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(dg));
+    const named = dg => dg.label || THINGS[dg.kind].label || FOES[dg.kind]?.label || dg.kind;   // (a road's bandits, an army, the risen dead have no name of their own: the foe's)
+    const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${named(dg)}` : named(dg), ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {}), ...(dg.with && !small ? {with: dg.with} : {}), ...(dg.pool ? {pool: dg.pool} : {}),
+      ...(!small && dg.lair != null ? {lair: dg.lair} : {}), ...(!small && dg.boss ? {boss: dg.boss, leaderLair: dg.leaderLair} : {})});   // (a lair's: its captives freed by a win; its leader at the head)
+    const ds = dangers(a, i, K);
+    for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(withCompany(dg, ds, r)));   // one or two kinds of who lives here (campaign/land.js)
     // a small party by day, about its own business
     const S = BUBBLE.small, hostile = ds.filter(dg => THINGS[dg.kind]?.mood === 'hostile');
     if (hostile.length && r() < S.chance * Math.min(1, hostile.reduce((v, dg) => v + dg.p, 0) * 4) * k) { add(thing(hostile[(r() * hostile.length) | 0], S.strength[0] + r() * (S.strength[1] - S.strength[0]), true)); K.stats.small = (K.stats.small || 0) + 1; }
@@ -119,12 +122,12 @@ export function worldThings(a, K) {
     if (p.kind === 'caravan' || p.state === 'gone' || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
     let kind = null, who = {};
     if (p.kind === 'army') { kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? 'army' : null; who = {band: REALM_BANDS[p.people] || 'bandits'}; }
-    else if (p.kind === 'raid') { const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind); kind = L?.undead ? 'undead' : 'tribe'; who = l ? lairFoe(l.kind) : {}; }
+    else if (p.kind === 'raid') { const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind); kind = L?.domain ? 'cultists' : L?.undead ? 'undead' : 'tribe'; who = l ? lairFoe(l.kind) : {}; if (who.band === 'cultists') who.pool = cultPool(a, p.i); }
     else if (p.kind === 'brood' || p.kind === 'dragon') { kind = 'lair'; const l = (a.lairs || []).find(x => x.id === p.owner); who = l ? lairFoe(l.kind) : {}; }
     // a leader of an old lair at the head of its own (atlas/leaders.js): on the local map it is the named one among them
     else if (p.kind === 'leader') {
       const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind);
-      if (l?.leader) { kind = L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair'; who = {...lairFoe(l.kind), boss: {name: `${l.leader.title[0]} ${l.leader.name}`, g: 'm', species: l.leader.species, add: l.leader.add}, leaderLair: l.id}; }
+      if (l?.leader) { kind = L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair'; who = {...lairFoe(l.kind), boss: {name: `${l.leader.title[0]} ${l.leader.name}`, g: 'm', species: l.leader.species, add: l.leader.add}, leaderLair: l.id}; }
     }
     if (!kind) continue;
     out.push({id: `p${p.id}`, party: p.id, kind, ...who, x: p.x, y: p.y, i: p.i, label: p.label || THINGS[kind].label, sated: (K.partySated || {})[p.id] ?? -1,
@@ -152,7 +155,7 @@ export const huntersNear = (a, K) => [...bubbleOf(K).things, ...worldThings(a, K
 export function sighted(a, K, sight) {
   const out = [];
   for (const t of [...bubbleOf(K).things, ...worldThings(a, K)]) {
-    if (t.seen || dist(K, t) > sight || THINGS[t.kind].mood !== 'hostile' || t.kind === 'wolves') continue;
+    if (t.seen || dist(K, t) > sight || THINGS[t.kind].mood !== 'hostile' || t.kind === 'wolves' || t.kind === 'beasts') continue;
     if (t.party) { (K.partySeen ||= {}); if (K.partySeen[t.party]) continue; K.partySeen[t.party] = K.day; }
     else t.seen = true;
     out.push(t);

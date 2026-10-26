@@ -1,6 +1,6 @@
 // Agent creation and death. An agent is a plain object:
 //   species / faction / brain ids, position, hp, needs, personality (colonists), memory, current task.
-import {SPECIES} from '../data/species.js';
+import {SPECIES, brainOf} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
@@ -69,7 +69,7 @@ export function freshName(w, names) {
 export function createAgent(w, speciesId, factionId, x, y) {
   const sp = SPECIES.get(speciesId), fa = FACTIONS.get(factionId);
   const a = {
-    id: w.nextId++, species: speciesId, faction: factionId, brain: sp.brain || fa.brain,
+    id: w.nextId++, species: speciesId, faction: factionId, brain: brainOf(sp, fa),
     name: sp.label, gender: 'm',
     x, y, hp: sp.hp, mods: {...BASE_MODS}, needs: {}, mem: newMemory(), bodyVer: BODY_VER,
     task: null, think: (w.rngs.birth() * 15) | 0, cd: 0, carry: null, sleeping: false,

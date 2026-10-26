@@ -1,7 +1,7 @@
 // The colony's livestock. A wild animal whose species has a `tame` block (data/species.js: goats,
 // mules) can be tamed by a herder with bait from the stock (agents/jobRunners.js, runner 'herd');
 // it then joins the faction 'herd', walks to a pen (data/buildings.js, `pen`) and lives there
-// (agents/brains/livestock.js).
+// (agents/behaviours/penned.js, fendOff.js: the brain `livestock`).
 //
 // Once a day, at dawn (stepHerd):
 //   - every animal eats: grass in the pen covers HERD.graze[season] of it, hay from the stock the
@@ -12,7 +12,7 @@
 // Tame mules work for the colony: their `effects` join the colony's modifiers (settlement/mods.js).
 import {canDoAction} from '../agents/skills.js';
 import {isFree} from './reserve.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, brainOf} from '../data/species.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {DAY, HOUR} from '../core/time.js';
 import {season, SEASON_DAYS, daysLeftInSeason} from '../data/seasons.js';
@@ -96,7 +96,7 @@ export function makeTame(w, beast, by, born = false) {
 // an animal that goes wild again (hunger)
 function breakOut(w, a, why) {
   const sp = SPECIES.get(a.species);
-  a.tame = false; a.faction = 'wild'; a.brain = sp.brain; a.task = {id: 'leave'};
+  a.tame = false; a.faction = 'wild'; a.brain = brainOf(sp); a.task = {id: 'leave'};
   forget(w);
   recomputeMods(w);
   const f = sp.id === 'goat';

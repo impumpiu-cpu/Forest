@@ -5,7 +5,7 @@
 // memories fade slower than bad ones, settlement/relations.js).
 //   escort — when beasts that hunt people roam the woods, someone goes along with a lone gatherer,
 //            keeps close and takes on whatever comes for them. Two together are also less of a prey:
-//            predators shy away from company (agents/brains/predator.js).
+//            predators shy away from company (agents/behaviours/maul.js).
 //   aid    — a badly hurt colonist out in the woods: a friend (or anyone merciful enough) goes to
 //            dress the wounds and sees them home.
 //   mates  — a job someone you like is doing tempts a little more, one with someone you cannot stand
@@ -19,7 +19,7 @@ import {JOBS} from '../data/jobs.js';
 import {opinion, OPINION} from '../data/relations.js';
 import {colonists} from './query.js';
 import {agentInZone} from './zone.js';
-import {perTick, clamp, esc, g} from '../core/util.js';
+import {perTick, clamp, esc, g, dist} from '../core/util.js';
 import {HOUR, nightness} from '../core/time.js';
 import {maxHp, hpShare} from '../agents/agent.js';
 import {strength} from '../agents/squad.js';
@@ -35,7 +35,6 @@ import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {TOGETHER} from '../data/colony.js';
 
 export {TOGETHER};   // (data/colony.js)
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const byId = liveById;
 const social = w => w.behave?.social;
 
@@ -132,8 +131,8 @@ export function enterEscort(w, a, task) {
 // ── aid
 const helper = (w, id) => colonists(w).find(o => o.task?.id === 'aid' && o.task.who === id);
 // the fallen (agents/wounds.js) need help wherever they lie, and before anyone else
-const needsAid = (w, b) => !!b.downed || (hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === 'treat' && b.task.lying) &&
-  !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery));
+const needsAid = (w, b) => b.ledBy == null && (!!b.downed || (hpShare(b) < TOGETHER.aidBelow && !agentInZone(w, b) && !(b.task?.id === 'treat' && b.task.lying) &&
+  !(w.tick - (b.aidedAt ?? -Infinity) < TOGETHER.aidEvery)));   // (one led away in bonds is rescued by the sword, not the bandage)
 const aidScore = b => (b.downed ? TOGETHER.aidFallen : 0.5 + (TOGETHER.aidBelow - hpShare(b)) * 2);
 const aidWhy = b => (b.downed ? `${b.name} ${g(b, 'упал', 'упала')} без сознания и истекает кровью` : `${b.name} ${g(b, 'ранен', 'ранена')} в лесу: здоровье ${Math.round(hpShare(b) * 100)}%`);
 

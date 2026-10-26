@@ -8,16 +8,18 @@ import {MapView, ATLAS_OPTS, loadDetail, saveDetail, segOf} from '../ui/atlasVie
 import {DEFAULT_ATLAS_CFG} from '../data/atlas.js';
 import {FREE} from '../data/history.js';
 import {atlasDone} from '../atlas/generate.js';
-import {seasonLabel, yearsLived, endYear} from '../atlas/history.js';
+import {seasonLabel, endYear} from '../atlas/history.js';
 import {startFree, isFree, PLACEABLE, landPeople, addLair, wildByLand, wildDone, setCalamity, runYears, stepRun, canMarch} from '../atlas/settle.js';
 import {lineLevel, keeps, DETAILS} from '../atlas/chronicle.js';
-import {stateOf, stateLabel} from '../atlas/diplomacy.js';
 import {realmLabel} from '../atlas/realms.js';
+import {relationsHtml} from '../ui/inspect.js';
 import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from '../ui/worlds.js';
 import {warnEdits} from '../ui/tableEdits.js';
 import {Camera} from '../render/camera.js';
 import {esc, plural} from '../core/util.js';
 import {$} from '../ui/dom.js';
+import {dateText} from '../core/clock.js';
+import {mountPace} from '../ui/pace.js';
 import {march, questText} from './campView.js';
 import {questHint} from '../atlas/calamity.js';
 
@@ -67,10 +69,13 @@ export class SettleView extends MapView {
       try { const rec = await saveWorldToLibrary(a, this.worldName || `Мир ${a.cfg.seed}`, this.worldId); this.bind(rec.id, rec.name); march(rec.id, rec.name); }
       catch (e) { this.note('Не удалось сохранить: ' + e.message, 'bad'); }
     });
-    $('setPause').addEventListener('click', () => { this.paused = !this.paused; this.syncRun(); if (!this.paused) this.tick(); });
+    // the observer's clock (core/clock.js): a season a step at the pace; the stretch («+N лет») is what it has to run
+    this.syncPaceBox = mountPace($('setPace'), this.clock, {pauseId: 'setPause', active: () => !$('settle').hidden,
+      onPace: id => { this.clock.setPace(id); if (this.clock.paused) this.clock.resume(); this.syncRun(); },
+      onPause: () => { const a = this.atlas; if (!a || atlasDone(a)) return; this.clock.toggle(); this.syncRun(); }});
     segOf($('setDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); this.chronOf = null; if (this.atlas) this.renderSide(); });
     this.buildLibrary2();
-    this.wireCamera({map: 'setMap', readout: 'setReadout', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
+    this.wireCamera({map: 'setMap', readout: 'setReadout', inspect: 'setInspect', dock: 'setDock', zoomIn: 'setZoomIn', zoomOut: 'setZoomOut', zoomFit: 'setZoomFit', screen: 'settle', legend: 'setLegend', hint: NOTES.look});
   }
 
   show() { this.sync(); this.refresh(); if (this.atlas) this.draw(); }
@@ -100,17 +105,18 @@ export class SettleView extends MapView {
   }
   syncRun() {
     const a = this.atlas, running = !!a && !atlasDone(a);
-    $('setPause').hidden = !running; $('setPause').textContent = this.paused ? 'Дальше' : 'Пауза';
-    $('setYear').textContent = !a ? '' : running ? `год ${a.hist.year} → ${endYear(a)}` : `год ${a.hist.year}, ${seasonLabel(a.hist.season)}`;
+    $('setPause').hidden = !running; $('setPace').hidden = !a;
+    this.syncPaceBox?.();
+    $('setYear').textContent = !a ? '' : `${dateText(a, this.clock, seasonLabel)}${running ? ` → ${endYear(a)}` : ''}`;
   }
 
   // ── a world on the screen: a land made into a world with a clock, or a world of this screen saved before
   showWorld(a, id, name) {
-    clearTimeout(this.timer); this.timer = 0; this.paused = false;
+    this.clock.stop(); this.clock.paused = false;
     this.atlas = a; this.chronOf = null;
     this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = '';
-    this.bind(id, name); this.sync(); this.draw(); this.renderSide();
-    if (!atlasDone(a)) this.tick();
+    this.bind(id, name); this.sync(); this.select(null); this.renderSide();
+    if (!atlasDone(a)) this.clock.start();
   }
   settle(land, name) {
     startFree(land);
@@ -124,10 +130,9 @@ export class SettleView extends MapView {
 
   // ── the hand on the map
   clickAt(e) {
-    const a = this.atlas; if (!a || !this.cam || this.tool === 'look') return;
-    const cv = $(this.ids.map), r = cv.getBoundingClientRect(), [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top);
-    const x = Math.floor(fx), y = Math.floor(fy); if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
-    const i = y * a.w + x;
+    const a = this.atlas; if (!a || !this.cam) return;
+    if (this.tool === 'look') { this.selectAt(e); return; }   // the eye: the card of what is here (ui/inspect.js)
+    const i = this.cellAt(e); if (i < 0) return;
     if (this.tool === 'people') { const res = landPeople(a, this.people, i, this.sub || null); this.after(res.error ? res : {ok: `${res.town.name} заложен — держава «${realmLabel(a, res.realm.id)}».`}); }
     else if (this.tool === 'lair') { const res = addLair(a, $('setLairKind').value, i); this.after(res.error ? res : {ok: `«${res.name}» стоит.`}); }
     else if (this.tool === 'calamity') this.calamityAt(i);
@@ -142,25 +147,20 @@ export class SettleView extends MapView {
     this.bitmapKey = ''; this.draw(); this.renderSide(); this.sync();
   }
 
-  // ── the clock: as many seasons a frame as fit in its budget
+  // ── the clock: a stretch of years, a season a step at the observer's pace (core/clock.js)
   runFor(years) {
     const a = this.atlas; if (!a || !atlasDone(a)) return;
-    runYears(a, years); this.paused = false; this.sync(); this.tick();
+    runYears(a, years); this.sync(); this.clock.start(); this.syncRun();
   }
-  tick() {
-    const a = this.atlas;
-    clearTimeout(this.timer);
-    const next = () => {
-      if (a !== this.atlas || this.paused) return;
-      const t0 = performance.now();
-      if (stepRun(a, () => performance.now() - t0 < 40)) this.timer = 0;
-      this.tickAt = performance.now(); this.tickWait = 30;
-      this.draw(); this.renderSide(); this.animate(); this.syncRun();
-      if (!atlasDone(a)) this.timer = setTimeout(next, 30); else this.sync();
-    };
-    this.timer = setTimeout(next, 30);
+  stepSeason() {
+    const a = this.atlas; if (!a) return false;
+    let once = false;
+    return !stepRun(a, () => !once && (once = true));   // one season; the line at the stretch's end is told by stepRun
   }
-  stop() { clearTimeout(this.timer); this.timer = 0; if (this.atlas && !atlasDone(this.atlas)) this.paused = true; this.syncRun(); }
+  afterSeason() { this.draw(); this.renderSide(); this.renderInspect(); this.animate(); this.syncRun(); }
+  frame() { const a = this.atlas; if (a && !atlasDone(a)) $('setYear').textContent = `${dateText(a, this.clock, seasonLabel)} → ${endYear(a)}`; }
+  afterRun() { this.sync(); }
+  stop() { if (this.atlas && !atlasDone(this.atlas)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
 
   // over the map: where the calamities set by hand will rise
   overlay(a, px, cam) {
@@ -186,8 +186,7 @@ export class SettleView extends MapView {
     $('setCals').innerHTML = cals.length ? `<span class="lbl">Бедствия</span><div class="cal-list">${cals.map(c => `<div><b>${esc(c.label)}</b> — ${PHASE[c.phase] || c.phase}` +
       (c.phase === 'waiting' || c.phase === 'omens' ? `, поднимется в ${c.riseAt}-м году` : c.phase === 'rise' && c.boss ? `: ${esc(c.boss.title[0])} ${esc(c.boss.name)}, герои — к ${c.heroesAt}-му` : c.fell ? ` в ${c.fell.year}-м (${BY[c.fell.by] || c.fell.by})` : '') + '</div>').join('')}</div>` +
       (a.artifact ? `<small class="muted">${esc(a.artifact.name)}: ${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса', caravan: 'у каравана', capital: 'в столице', lost: 'потерян в пути'}[a.artifact.holder.kind] || '—'}</small>` : '') : '';
-    const rels = Object.entries(a.rel || {}).map(([key, r]) => { const [p, q] = key.split(':'), st = stateOf(a, p, q); return `<dt>${esc(realmLabel(a, p))} и ${esc(realmLabel(a, q))}</dt><dd class="rel-${st}">${stateLabel(st)}</dd>`; }).join('');
-    $('setRels').innerHTML = rels ? `<dt class="relhead">Державы между собой</dt><dd></dd>${rels}` : '';
+    $('setRels').innerHTML = relationsHtml(a);
     // the chronicle only grows: new lines are appended
     const box = $('setChron'), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
     if (this.chronOf !== a) { this.chronOf = a; this.chronShown = 0; box.innerHTML = ''; }

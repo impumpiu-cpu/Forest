@@ -26,10 +26,11 @@ import {REALM_BANDS} from '../data/seam.js';
 import {lairFoe} from './land.js';
 import {bubbleOf} from './bubble.js';
 import {makeEpicQuest, graveLine, epicTaken, epicWorld} from './epic.js';
+import {cellDist} from '../core/util.js';
 
 const DIRS = ['на востоке', 'на юго-востоке', 'на юге', 'на юго-западе', 'на западе', 'на северо-западе', 'на севере', 'на северо-востоке'];
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
-const dist = (a, i, j) => { const [x, y] = xy(a, i), [p, q] = xy(a, j); return Math.hypot(x - p, y - q); };
+const dist = cellDist;   // (core/util.js)
 // a word by the gender of the crown's name (feminine for «корона», masculine for «венец»)
 // (a neuter one — «Сердце Творца», «Око Мира» of the epic world — from the feminine form)
 const NEUT = {'её': 'его', 'Её': 'Его', 'она лежит': 'оно лежит', 'отбита': 'отбито', 'найдена': 'найдено', 'досталась': 'досталось'};
@@ -253,29 +254,42 @@ export function questSight(a, K, say) {
 }
 
 // ── at the place: take the clue (a sage tells it, or it is won from the guards), or the crown
-// fight(d) — the storm (campaign/fight.js): true when won. → true when the evening was spent on it
-export function questArrive(a, K, rnd, fight, say) {
+// fight(d) — the storm (campaign/fight.js): true when won; might — the company's strength now (campaign/march.js
+// caravanMight). → true when the evening was spent on it
+export function questArrive(a, K, rnd, fight, say, might = 0) {
   const Q = K.quest; if (!Q) return false;
   const C = Q.crown, here = [...Q.clues.filter(c => !c.found && c.seen), ...(C.state !== 'carried' && (C.seen || C.exact) ? [C] : [])].find(p => p.i === K.i && !(p.rest > K.day));   // (a place left for a while is not stormed meanwhile)
   if (!here) return false;
   if (here.guard) {
     const ms = K.members.filter(m => m.alive), hp = ms.reduce((s, m) => s + m.hp, 0) / Math.max(1, ms.length);
     if (K.day < Q.stormAt || hp < QUEST.storm) return false;   // first heal and gather strength (the camp of the evening)
+    if (ms.filter(m => !m.captive).length < QUEST.hands) { leaveFor(K, here, say, 'слишком мало рук для штурма'); return false; }   // too few left: for people first
+    // beaten back once, the council does not send the same company against the same guards: it comes back stronger
+    // than the one that lost (QUEST.stronger) — or, not grown so in time, leaves the place for a while
+    if (here.lost && might < here.lost.might * QUEST.stronger) {
+      if (K.day - here.lost.day >= QUEST.grow) leaveFor(K, here, say, `сил не прибавилось, а стража не ослабла`);
+      return false;
+    }
     K.stats.storms = (K.stats.storms || 0) + 1;
     const sk = here === C ? 'stormsLair' : here.kind === 'grave' ? 'stormsGrave' : null; if (sk) K.stats[sk] = (K.stats[sk] || 0) + 1;
     const win = fight(here.guard);
     if (!win) {
-      Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1;
-      if (here.fails >= QUEST.giveUp) {   // beaten back again and again: leave it for a while, look elsewhere
-        here.fails = 0; here.rest = K.day + QUEST.giveUpRest; here.restWhy = 'storms'; here.seen = here === C ? here.seen : false; K.path = null; Q.search = null;
-        say(`${here.label[0].toUpperCase()}${here.label.slice(1)} не взять: ${QUEST.giveUp} штурма отбиты. Совет решил пока искать в другом месте.`, 'quest');
-      }
+      Q.stormAt = K.day + QUEST.retry; here.fails = (here.fails || 0) + 1; here.lost = {might, day: K.day};
+      if (here.fails >= QUEST.giveUp) leaveFor(K, here, say, `${QUEST.giveUp} штурма отбиты`);   // beaten back again and again: leave it for a while, look elsewhere
       return true;
     }
+    delete here.lost;
   }
   if (here === C) takeCrown(a, K, say); else takeClue(a, K, here, rnd, say);
   K.path = null; Q.search = null;
   return true;
+}
+
+// a guarded place left for a while (QUEST.giveUpRest): the council looks elsewhere meanwhile
+function leaveFor(K, here, say, why) {
+  const Q = K.quest, C = Q.crown;
+  here.fails = 0; delete here.lost; here.rest = K.day + QUEST.giveUpRest; here.restWhy = 'storms'; here.seen = here === C ? here.seen : false; K.path = null; Q.search = null;
+  say(`${here.label[0].toUpperCase()}${here.label.slice(1)} не взять: ${why}. Совет решил пока искать в другом месте.`, 'quest');
 }
 
 function takeClue(a, K, c, rnd, say) {

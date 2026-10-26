@@ -15,8 +15,8 @@ export const PARTIES = {
   giveUp: 200,     // days a party may be on the way before it turns back
 };
 
-// Raids of the lairs as parties: atlas/lairs.js tribeRaid picks the target and the might as before; the
-// party strikes when it arrives and carries the loot home — the camp grows on its return.
+// Raids of the lairs as parties: the deed atlas/deeds/raid.js picks the target and the might; the party strikes
+// when it arrives and carries the loot home — the camp grows on its return.
 
 // Armies of realms at war (atlas/diplomacy.js → atlas/parties.js). Each year of a war the realm whose
 // turn it is musters an army at its town nearest the enemy: `levy` of the town's people march, with

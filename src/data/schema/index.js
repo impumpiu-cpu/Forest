@@ -33,10 +33,12 @@ import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
-import {BASE_MODS, rebuildBaseMods} from '../traits.js';
+import {rebuildBaseMods} from '../traits.js';
 import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '../mods.js';
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
 import {autoTable, objectTable} from './auto.js';
+import {BEHAVIOURS, BAND_LABELS} from '../behaviours.js';
+import {DEEDS, DEED_BAND_LABELS} from '../deeds.js';
 import {creatureSheet, recipeSheet, buildingSheet} from './sheets.js';
 import * as COLONY from '../colony.js';
 import * as BEHAVIOUR from '../behaviour.js';
@@ -145,6 +147,8 @@ export const TABLES = [
     columns: [
       col('id', 'id'), col('label', 'Название'), col('plural', 'Мн. число'),
       col('rel', 'Строка отношений', 'ref', {ref: 'relations', note: 'чья строка в таблице «Расы ↔ расы»'}),
+      col('deeds.lair', 'Нравы: логово', 'ids', {ref: DEEDS, nullable: true, note: 'что делают станы и главари расы на карте мира (atlas/deeds/, таблица «Дела мира»); пусто — станов нет'}),
+      col('deeds.realm', 'Нравы: держава', 'ids', {ref: DEEDS, nullable: true, note: 'что делают державы расы на карте мира (atlas/court.js, atlas/deeds/): война, мир, войско, набег, выжигание логов; пусто — держав нет'}),
       col('world', 'Народ на карте', 'ref', {ref: 'peoples', edit: false}), col('era', 'Эпоха прихода', 'ref', {ref: ERAS, edit: false, note: 'правится в «Народах мира»'}),
       col('align.order', 'Закон ↔ хаос', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'точка расы на компасе: + закон, − хаос (data/values.js); держава ±3 от неё, пешка ±3 от державы'}),
       col('align.mercy', 'Добро ↔ зло', 'num', {min: -AXIS_MAX, max: AXIS_MAX, note: 'точка расы: + добро, − зло; держава ±3, пешка ±3 от державы'}),
@@ -175,12 +179,25 @@ export const TABLES = [
     rows: () => SPECIES.filter(s => s.kind !== 'race'),
     note: 'Звери (data/species.js, data/bestiary.js), нежить и демоны (data/monsters.js) + их строки data/balance/creatures.js.',
     columns: [
-      col('id', 'id'), col('label', 'Название'), col('kind', 'Вид', 'enum', {values: KINDS}), col('mind', 'Разум', 'enum', {values: MINDS}),
-      col('brain', 'Поведение'),
+      col('id', 'id'), col('kind', 'Вид', 'enum', {values: KINDS}), col('mind', 'Разум', 'enum', {values: MINDS}),
+      col('behaviours', 'Поведения', 'ids', {ref: BEHAVIOURS, note: 'что умеет (agents/behaviours/, таблица «Поведения»): порядок — порядок выбора'}),
+      col('deeds.lair', 'Нравы: логово', 'ids', {ref: DEEDS, nullable: true, note: 'что делают его логова и главари на карте мира (atlas/deeds/, таблица «Дела мира»); пусто — логов нет'}),
+      col('label', 'Название', 'text'), col('labelAcc', 'Кого (вин. п.)', 'text', {nullable: true}), col('plural', 'Мн. число', 'text', {nullable: true}), col('legend', 'В легенде', 'text', {nullable: true}),
+      col('look.shape', 'Облик', 'text', {note: 'рисовальщик render/looks.js: person, hare, wolf, deer, boar, bear… (конструктор существ показывает список)'}),
+      col('look.size', 'Размер облика', 'num', {min: 0.1, max: 2}), col('look.color', 'Цвет', 'color'), col('look.skin', 'Цвет кожи', 'color', {nullable: true}),
+      col('heart', 'Думает раз в', 'int', {min: 1, note: 'тиков между раздумьями ума tabled; тревоги смотрит каждый тик (пусто — каждый тик)'}),
       col('habitat', 'Биомы обитания', 'map', {ref: 'biomes', values: RARITY, note: 'как часто встречается: часто · обычно · редко · очень редко'}),
       ...body,
       col('weakTo', 'Боится', 'ids'), col('relativeStats', 'Статы типичного зверя', 'bool'), col('nocturnal', 'Ночной', 'bool'), col('undead', 'Без жизни', 'bool'),
     ]},
+  // the behaviours a species row may list (agents/behaviours/): code, shown for reference
+  {id: 'behaviours', label: 'Поведения', group: 'Существа', key: 'id', computed: true, rows: () => BEHAVIOURS.all(),
+    note: 'Что может делать существо с умом tabled (data/behaviours.js, код в agents/behaviours/, docs/BEHAVIOUR.md). Полоса: рефлекс > красная > жёлтая > очередь дел — первая, где есть что выбрать, прерывает остальные. «Читает» — поля строки вида, без которых поведение не записать.',
+    columns: [col('id', 'id'), col('band', 'Полоса', 'enum', {values: BAND_LABELS}), col('task', 'Своя задача', 'json', {note: 'пусто — задача под id поведения; false — предлагает чужую; слово — задача под этим id'}), col('keep', 'Держится', 'num'), col('requires', 'Читает', 'ids'), col('note', 'Описание')]},
+  // the deeds of the world map a species' lairs and realms may list (atlas/deeds/): code, shown for reference
+  {id: 'deeds', label: 'Дела мира', group: 'Существа', key: 'id', computed: true, rows: () => DEEDS.all(),
+    note: 'Что может делать логово, его главарь или держава на карте мира (data/deeds.js, код в atlas/deeds/, docs/WORLD.md «Нравы»). Полоса — как у поведений; «Отряд» — какой отряд несёт дело по карте.',
+    columns: [col('id', 'id'), col('label', 'В летописи'), col('band', 'Полоса', 'enum', {values: DEED_BAND_LABELS}), col('party', 'Отряд', 'text', {nullable: true}), col('requires', 'Читает', 'ids'), col('note', 'Описание')]},
   // ── names: one place for all of them (data/names.js); an edit puts the new list into what the game reads (`after`)
   {id: 'names', label: 'Имена', group: 'Существа', key: 'id', rows: () => Object.entries(PERSON).filter(([id]) => id !== 'necromancer').map(([id, P]) => ({id, label: SPECIES.has(id) ? SPECIES.get(id).plural : id, ...P})),
     target: (r, c) => [PERSON[r.id], c.key], after: rebuildNames,
@@ -347,7 +364,7 @@ export const TABLES = [
   {id: 'caravanBuildings', label: 'Постройки обоза', group: 'Караван', key: 'id',
     target: (r, c) => (c.key === 'fx' ? [CAMP_FX, r.id] : [BUILDINGS.get(r.id), c.key]),
     rows: () => BUILDINGS.filter(b => b.portable).map(b => ({id: b.id, name: b.name, cost: b.cost, work: b.work, fx: CAMP_FX[b.id] || {}, field: Object.keys(b.cost).every(r => r === 'wood')})),
-    note: 'Что повозка везёт в разобранном виде (data/buildings.js `portable`, data/transport.js CAMP_FX). Караван ничего не изобретает: остальное покупается.',
+    note: 'Лагерь каравана: что ему разрешено (data/buildings.js `portable`, data/transport.js CAMP_FX) — по одной, всегда с ним, встаёт целым на каждой стоянке. Караван ничего не изобретает: остальное покупается.',
     columns: [
       col('id', 'id'), col('name', 'Название', 'text', {edit: false, note: 'правится в «Постройках поселения»'}), col('cost', 'Цена', 'map', {ref: RESOURCES, min: 0, edit: false, note: 'правится в «Постройках поселения»'}), col('work', 'Труд', 'int', {min: 0, edit: false, note: 'правится в «Постройках поселения»'}),
       col('fx', 'На стоянке', 'map', {ref: keysOf({heal: 1, forage: 1, shelter: 1, build: 1}), min: 0, note: 'лечение ×, пища ×, голод ×, постройка повозок ×'}),
@@ -455,7 +472,7 @@ TABLES.push(
   autoTable({id: 'migrations', label: 'Приходы', group: 'Поселение', note: 'Кто и когда приходит на карту поселения (data/migrations.js).', rows: () => MIGRATIONS.all()}),
   autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all(), skip: ['chance']}),
   autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
-    rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
+    rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'behaviours', 'heart', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),
   // Цены и бой
   {id: 'priceRules', label: 'Цены: правила', group: 'Вещи', note: 'Цены вещей (items: труд мастера, надбавка за защиту, редкость материала, округление), похода, услуг, торговли и качества (data/balance/prices.js ITEMS, CAMPAIGN, SERVICES, TRADE, QUALITY); правка пересобирает «Предметы (итог)». Цены ресурсов — в «Ценах ресурсов».',
     ...grp({items: PRICES.ITEMS, campaign: PRICE_CAMPAIGN, services: SERVICES, trade: PRICE_TRADE, quality: PRICE_QUALITY}), after: rebuildItems},

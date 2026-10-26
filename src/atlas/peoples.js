@@ -11,12 +11,10 @@
 // people hunt the beasts around them, and when two peoples first meet the chronicle says how.
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
-import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf, crowned} from '../data/peoples.js';
-import {TOWN_BUILDINGS} from '../data/townBuildings.js';
-import {townFx, room, might, raidShare, chooseBuilding, townLabel} from './towns.js';
+import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
+import {townFx, room, might, chooseBuilding, townLabel} from './towns.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
-import {SPECIES} from '../data/species.js';
 import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
@@ -24,11 +22,11 @@ import {faunaCell} from './fauna.js';
 import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
 import {seaAccess} from './sea.js';
-import {meet, raceState, stepDiplomacy, trades, raidGraves} from './diplomacy.js';
-import {foundRealm, joinRealm, realmLabel, realmTowns, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
+import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
+import {foundRealm, joinRealm, realmLabel, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {DIRS8} from './heap.js';
-import {placeSite, raidSite, stepNet, fedTowns, scourgedFood} from './sites.js';
+import {placeSite, stepNet, fedTowns, scourgedFood} from './sites.js';
 import {fadeScourge} from './diplomacy.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -137,7 +135,7 @@ export function arrive(a, era, rnd, say) {
     const P = pe.P, picks = [];
     // where they may come: the best of their land, its best coast, or as far from every town as it lets them
     const coast = j => { const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c; for (let y = y0; y < Math.min(a.h, y0 + F.c); y++) for (let x = x0; x < Math.min(a.w, x0 + F.c); x++) if (a.f.ocean[y * a.w + x]) return true; return false; };
-    const far = j => { const x = (j % F.W + 0.5) * F.c, y = (((j / F.W) | 0) + 0.5) * F.c; let d = Infinity; for (const t of a.towns) if (t.alive) d = Math.min(d, Math.hypot(t.x - x, t.y - y)); return Math.min(1, d / (a.w / 3)); };
+    const far = j => { const x = (j % F.W) * F.c + F.c / 2, y = ((j / F.W) | 0) * F.c + F.c / 2; let d = Infinity; for (const t of a.towns) if (t.alive) d = Math.min(d, Math.hypot(t.x - x, t.y - y)); return Math.min(1, d / (a.w / 3)); };
     // each founding band is its own sub-race (data/races.js peoples) and looks for the land that suits it
     const subs = worldSubs(P.race), mode = P.arrive.mode;
     for (let g = 0; g < P.arrive.groups; g++) {
@@ -185,6 +183,19 @@ export function landBand(a, peopleId, i, subId, rnd, say) {
   return {town: t, realm: r};
 }
 
+// how firmly a people holds each coarse cell, 0 … 1: by the distance to its nearest living town (TOWN_LIFE.hold) — the
+// land a people has no town near any more (its towns burnt, its frontier pushed back) fades instead of living on
+function holdField(a, pe) {
+  const F = a.fauna, N = F.W * F.H, out = new Float32Array(N), sp = pe.P.spacing * scaleOf(a), H = TL.hold;
+  const near = H.near * sp, far = H.far * sp, mine = a.towns.filter(t => t.alive && t.people === pe.id);
+  for (let j = 0; j < N; j++) {
+    const x = (j % F.W) * F.c + F.c / 2, y = ((j / F.W) | 0) * F.c + F.c / 2;
+    let d = Infinity; for (const t of mine) { const e = Math.hypot(t.x - x, t.y - y); if (e < d) d = e; }
+    out[j] = d <= near ? 1 : d >= far ? 0 : (far - d) / (far - near);
+  }
+  return out;
+}
+
 // a year of the peoples: their fields, their towns, their wars with the wild, their meetings
 export function stepPeoples(a, rnd, say) {
   const F = a.fauna, N = F.W * F.H, tmp = new Float32Array(N), k = scaleOf(a);
@@ -195,7 +206,7 @@ export function stepPeoples(a, rnd, say) {
   // how the races stand to each other this year (the worst of their realms' dealings), once per pair
   const compete = a.peoples.map(pe => a.peoples.map(o => (o === pe ? 0 : DIPLOMACY.compete[raceState(a, pe.id, o.id)])));
   for (const [pi, pe] of a.peoples.entries()) {
-    const {P, K, u, mob} = pe;
+    const {P, K, u, mob} = pe, hold = holdField(a, pe);
     // Fisher–KPP: logistic growth where they live, spreading easiest through their own lands
     tmp.set(was[pi]);
     for (let y = 0; y < F.H; y++) for (let x = 0; x < F.W; x++) {
@@ -208,7 +219,7 @@ export function stepPeoples(a, rnd, say) {
       // other peoples on the same land push this one out, the more the worse they get on
       let push = 0;
       for (const [oi, o] of a.peoples.entries()) if (o !== pe && was[oi][j] > 0) push += compete[pi][oi] * was[oi][j];
-      u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j]);
+      u[j] = clamp01(tmp[j] + P.growth * tmp[j] * (1 - tmp[j]) * K[j] + P.spread * flux / 4 - push * tmp[j] - TL.hold.fade * (1 - hold[j]) * tmp[j]);
     }
   }
   // people hunt: beasts thin out where people live, predators and monsters most
@@ -276,25 +287,7 @@ export function stepPeoples(a, rnd, say) {
       t.tier = tier;
     }
   }
-  // towns against the lairs that reach them
-  for (const l of a.lairs) {
-    if (!l.alive || l.boss != null) continue;   // a calamity's boss is beyond one town (atlas/calamity.js; the alliances of atlas/alliance.js)
-    const L = LAIRS.get(l.kind), reach = (L.radius + TOWN_WAR.reach) * k, owner = SPECIES.get(L.species), s = owner.special;
-    for (const t of a.towns) {
-      if (!t.alive || Math.hypot(t.x - l.x, t.y - l.y) > reach || rnd() > TOWN_WAR.chance) continue;
-      const fx = townFx(t), town = might(t, fx) * TOWN_WAR.might * (TOWN_WAR.luck[0] + TOWN_WAR.luck[1] * rnd()), beast = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (TOWN_WAR.luck[0] + TOWN_WAR.luck[1] * rnd());
-      if (town > beast) {
-        l.alive = false; l.died = a.hist.year; l.clearedBy = t.id;
-        say(`${cap1(realmLabel(a, t.realm))} из ${townLabel(t, 2)} ${t.name} выжгли ${L.labelAcc || L.label} «${l.name}»: ${owner.plural} больше не тревожат их земли.`);
-        break;
-      }
-      const loss = TOWN_WAR.raidLoss * raidShare(fx);
-      t.pop *= 1 - loss; t.raided = a.hist.year; raidGraves(a, t);
-      const burnt = raidSite(a, t, rnd);
-      say(`${cap1(owner.plural)} ${L.from} «${l.name}» напали на ${townLabel(t, 1)} ${t.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.`);
-      break;
-    }
-  }
+  // (the towns against the lairs that reach them — the realms' deed, atlas/deeds/clearLair.js)
   // first meetings of realms, told once: when their towns first stand within the front of each other
   for (const r of a.realms) for (const q of a.realms) {
     if (r.id >= q.id) continue;

@@ -54,6 +54,8 @@ export const OFFERS = [
   {kind: 'goods', id: 'rope', n: 4, any: true, at: []},
   {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'smelter', 'foundry']},
   {kind: 'goods', id: 'shacklesSteel', n: 1, at: ['foundry']},
+  // the healing potion (data/potions.js), one at a time, where healers work
+  {kind: 'goods', id: 'potion', n: 1, at: ['healerhut', 'hospice', 'temple']},
   {kind: 'building', id: 'healerhut', at: ['healerhut', 'hospice'], price: CAMPAIGN.services.healerhut},
   {kind: 'building', id: 'forge', at: ['forge'], price: CAMPAIGN.services.forge},
   {kind: 'building', id: 'crafthut', at: ['crafthut'], price: CAMPAIGN.services.crafthut},
@@ -84,7 +86,7 @@ export const COMPANIONS = {chance: {own: 0.2, friend: 0.08}, inn: 1.5, get fee()
 
 // the freed: after a won fight with those who take captives, `chance` of one or two set free; they may
 // stay (loyalty starts at `loyalty`)
-export const FREED = {chance: {tribe: 0.12, bandits: 0.08, army: 0.06, undead: 0.05}, second: 0.35, loyalty: 0.25, gear: {hand: [], body: 'clothes'}};
+export const FREED = {chance: {tribe: 0.12, bandits: 0.08, raiders: 0.1, army: 0.06, undead: 0.05, cultists: 0.1}, second: 0.35, loyalty: 0.25, gear: {hand: [], body: 'clothes'}};
 
 // loyalty of those who joined on the way (not the core, not the hired): every day `daily` more, less when
 // hungry (`hungry`) or after a lost fight (`lost`), more after a won one (`won`); every day one may leave

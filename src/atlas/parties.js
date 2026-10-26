@@ -24,7 +24,7 @@ const scratchOf = a => (a.roadScratch ||= {g: new Float64Array(a.n).fill(Infinit
 // a party sets out from a cell towards a goal cell; null when there is no way
 export function sendParty(a, kind, from, goal, props) {
   const p = {id: (a.hist.nextParty = (a.hist.nextParty || 0) + 1), kind, i: from, x: from % a.w + 0.5, y: ((from / a.w) | 0) + 0.5, home: from,
-    state: 'go', days: 0, stay: 0, speed: 'foot', people: null, might: 0, men: 0, label: '', color: [220, 220, 220], ...props};
+    state: 'go', sent: a.hist.step, days: 0, stay: 0, speed: 'foot', people: null, might: 0, men: 0, label: '', color: [220, 220, 220], ...props};
   p.px = p.x; p.py = p.y;
   if (!aim(a, p, goal)) return null;
   (a.parties ||= []).push(p);

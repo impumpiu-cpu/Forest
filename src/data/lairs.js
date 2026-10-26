@@ -28,6 +28,8 @@
 //                   leads a horde);  raidVerb — what they did to a town;  leads — who leads the raid;
 //                   at 'town' — the lair sits in a mixed town and `drinks` that share of its people a year
 //   fiend lairs:    ground 'rift' (a live volcano or a plate seam), no food: the rift stands as it is
+//   domain:         a necromancer's tower (atlas/necro.js, NECRO below): born of the rot by itself, a pump of the dead and
+//                   a seat with vassals and a cult
 import {Registry} from '../core/registry.js';
 
 export const LAIRS = new Registry('lair');
@@ -77,7 +79,7 @@ LAIRS.registerAll([
   {id: 'ghouls', undead: true, gen: 'упырей', species: 'upyr', from: 'из гнезда', label: 'гнездо упырей', g: 'n', color: [150, 90, 120], radius: 6, ground: 'rot', rotAt: 0.2, at: 'ruins',
     spawn: 0.35, max: 8, breed: 0.05, rivals: [], might: 1.8, raidVerb: 'обескровили',
     nouns: [['гнездо', 'n'], ['пепелище', 'n'], ['подвал', 'm'], ['развалины', 'pl']]},
-  {id: 'necromancer', undead: true, gen: 'мертвецов', species: 'necromancer', from: 'из башни', label: 'башня некроманта', labelAcc: 'башню некроманта', g: 'f', color: [120, 60, 160], radius: 10, ground: 'rot', rotAt: 0.5,
+  {id: 'necromancer', undead: true, domain: true, gen: 'мертвецов', species: 'necromancer', from: 'из башни', label: 'башня некроманта', labelAcc: 'башню некроманта', g: 'f', color: [120, 60, 160], radius: 10, ground: 'rot', rotAt: 0.5,
     spawn: 0.1, max: 3, breed: 0, rivals: [], might: 2.5, raidVerb: 'опустошили', leads: 'Некромант повёл мертвецов',
     nouns: [['башня', 'f'], ['склеп', 'm'], ['цитадель', 'f'], ['обитель', 'f']]},
   // a vampire settles in a mixed town — where strangers come and go, nobody counts the missing; the lair is the
@@ -119,8 +121,27 @@ export const TRIBE_HOME = 0.45;
 //             192-cell-high world) to the town;  might: the camp's strength × its race's SPECIAL power ×
 //             this, against the town's might (atlas/towns.js);  loss: the town's share lost when it
 //             falls (× raidShare of its buildings);  loot: strength the camp gains on a win;
-//             beaten: what is left of the camp's strength after a failed raid
-export const TRIBE_RAID = {from: 0.6, chance: 0.1, reach: 30, might: 0.55, loss: 0.12, loot: 0.12, beaten: 0.7};
+//             beaten: what is left of the camp's strength after a failed raid;  luck: both sides × luck[0] + luck[1] × a roll
+export const TRIBE_RAID = {from: 0.6, chance: 0.1, reach: 30, might: 0.55, loss: 0.12, loot: 0.12, beaten: 0.7, luck: [0.6, 0.8]};
+// Who goes on a lair's raid (atlas/lairs.js raidBand; docs/WORLD.md «Живность»): read from the fields about the lair
+// (data/lairs.js LAIR_FIELD), not from the kind alone —
+//   riders:  the tribe's beasts (`riders` of its kind: wargs, hyenas) ride with it where they live about the lair at least
+//            this thick; they add ridersMight to its might
+//   chance:  a second kind of the lair's land (another lair's monsters or tribe, a beast of prey) joins with this chance ×
+//            its share of the density there (at least `at`); it adds might × its density (at most 1)
+export const RAID_MIX = {at: 0.05, riders: 0.05, ridersMight: 0.25, chance: 0.5, might: 0.4};
+// Raids for captives (the deed `captives`, atlas/deeds/captives.js; who goes: the species rows that list it — the goblins,
+// gnolls and ogres' camps, the necromancer's tower, the orcs' realms). A camp's raid for captives is a tribe's raid
+// (TRIBE_RAID: from, reach, might, beaten) that takes people instead of killing them:
+//   chance:     a year, per camp, as TRIBE_RAID.chance is for a raid;  loss: the share of the town taken into captivity
+//               (× raidShare of its buildings);  feed: strength the camp gains on a win (the captives' hands and flesh);
+//               graves: × ROT.raidGraves — a few fall on the way to the ropes
+//   keep:       the share of a lair's captives alive a year later (the rest die, are eaten, or are raised)
+//   realm:      a realm's raid for captives (the orcs): the town's chance a year (as DIPLOMACY.raidChance is for a raid), the
+//               share taken, and how much of it the raiding town grows by — slaves are people too; the rest are sold or die
+//   freed:      a caravan that beats a lair's folk in its lands (campaign/fight.js) frees its captives: this many at most at
+//               once, with this chance (the lair's captives are certain where a stranger's camp gives FREED.chance)
+export const CAPTIVE_RAID = {chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5}, freed: {max: 2, chance: 0.9}};
 
 // adjectives for lair names, by gender: m, f, n, pl
 export const NAME_ADJ = [
@@ -147,17 +168,21 @@ export const ANCIENT_YEARS = LAIR_AGE.ancient;   // the number as the code says 
 //   stats, add, cap — grown past its kind: + add on each of `stats` (a calamity's boss: CAL.boss.add 6–12)
 //   life    — years it leads before age takes it, [lo, hi]
 //   think   — the chance a year that it sets out at all;  plans — the weights of the plans it may pick
-//   might   — its raids and fights: the lair's strength × its kind's power × this (a boss: CAL.boss.might 3)
+//   might   — its raids and fights: the lair's strength × its kind's power × this (a boss: CAL.boss.might 3), with luck
+//             (luck[0] + luck[1] × a roll) on both sides
 //   reach   — × the tribes' raid reach (TRIBE_RAID.reach): how far it goes
 //   subdue  — a lair this many of its territories away at most, and `ratio` — how much weaker it must be to be taken
 //   tribute — a year, the share of a vassal's strength its lord's lair takes (half of it lost to the vassal)
 //   fall    — the chance it dies when its raid or its fight is beaten
-//   young   — the strength of a daughter lair;  beat — what is left of a lair it beats (wiped out below 0,12)
+//   young   — the strength of a daughter lair;  beat — what is left of a lair it beats (wiped out below `wiped`)
+//   expand  — a brood is led out from a lair stronger than `from` while its kind has fewer than max × `crowd` lairs; the
+//             mother lair keeps × `cost` of its strength;  beatenCost — what is left of its strength after a lost fight
 //   beastRaid — × the weight of a raid for a beast's leader (it hunts the woods more than the towns)
 //   camp    — a caravan in its lands: see below
 export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'], add: [2, 5], cap: 30, life: [20, 50],
-  think: 0.25, plans: {raid: 0.7, expand: 0.6, subdue: 0.8, rival: 0.6}, might: 1.6, reach: 1.5,
-  subdue: {reach: 3, ratio: 1.3}, tribute: 0.04, fall: 0.25, young: 0.45, beat: 0.55, beastRaid: 0.35,
+  think: 0.25, plans: {raid: 0.7, expand: 0.6, subdue: 0.8, rival: 0.6}, might: 1.6, luck: [0.6, 0.8], reach: 1.5,
+  subdue: {reach: 3, ratio: 1.3}, tribute: 0.04, fall: 0.25, young: 0.45, beat: 0.55, wiped: 0.12, beatenCost: 0.75, beastRaid: 0.35,
+  expand: {from: 0.6, crowd: 1.5, cost: 0.8},
   // a caravan camping in a leader's lands (campaign/land.js dangers): × the chance its folk come at night, × their strength
   camp: {p: 1.6, strength: 1.3}};
 // what a leader is called — its title and nickname — is in data/names.js (TITLE, NICK, PERSON[race].nick)
@@ -169,13 +194,74 @@ export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'],
 //   strength: + grow × (fed − need), − winter in winter, ± wobble/2; it dies below `dies`
 //   brood:    in spring a lair stronger than breedAt and older than breedAge years may send a brood (its kind's `breed`
 //             chance) while there are fewer than its kind's max × crowdMax (a boss's: × bossCrowd); the brood looks for
-//             a spot in broodTries tries, and costs the lair × broodCost of its strength
+//             a spot in broodTries tries, costs the lair × broodCost of its strength and founds a lair of broodStart
 //   rivals:   touching rivals fight with this chance a season; each side's strength × its kind's power × (luck[0] +
 //             luck[1] × a roll); the loser × loser, the winner × winner; a loser below `routed` is gone
 //   start:    a wild lair's strength at the dawn: start[0] + start[1] × a roll (a dragon's dragonStart); a lair that
 //             comes through history (the dead, a rift) starts at spawnStart (a rift at fiendStart)
+// The lairs' folk as fields (atlas/lairs.js; docs/WORLD.md «Живность»): the owners of the lairs — beasts with a habitat
+// (wargs, griffins, spiders…) and the tribes (goblins, ogres, gnolls, trolls, giants: their K is their race's home over
+// the land) — live as densities on the beasts' grid, like any beast; but a monster does not breed away from a lair. A lair
+// is their source; away from the lairs they wander off (the beasts' diffusion) and dwindle:
+//   source: a season, every living lair adds source × its strength × K × (1 − d/r) to its owners' density within its
+//           territory r (never above cap × K by it)
+//   fade:   a season, a lair's kind away from the lairs loses this share (no breeding without a lair)
+//   pulse:  a new lair brings its own: the density about it is at least pulse × its strength × K × (1 − d/r)
+//   brood:  a brood is a migration: where it settles it pours brood × K × (1 − d/r) of its kind
+//   birth:  in spring, where the owners of a lair kind are this dense against K and no living lair stands within its
+//           territory, they settle: a lair is born — at most `births` a year (× the world's scale²); only where the land
+//           holds at least `landMin`, the densest first (± `jitter`)
+//   own:    a brood founds a lair of its own kind; one born of the density or come into the wild (WILD) is drawn among
+//           the kinds whose ground fits the spot, each with the chance of how thick its owners live there (a thinner kind
+//           may take it too: the wild keeps its variety) — the wild's newcomers' own kind weighing `own` more
+export const LAIR_FIELD = {source: 0.12, cap: 1, fade: 0.06, pulse: 0.7, brood: 0.5, birth: 0.7, births: 1.5, landMin: 0.05, jitter: 0.1, own: 0.6};
+
+// The necromancer (atlas/necro.js; docs/WORLD.md «Некромант»): a tower the rot gives birth to, a pump of the dead, a
+// little realm of the dead and their cult.
+//   births:  in spring, where the rot is past its kind's rotAt, a tower rises with the chance births × how far past it
+//            (over 1 − rotAt), at most `most` a year (× the world's scale²); its kind's max holds; one tower keeps two
+//            territories from another; it starts at `start`; against a town that goes to burn it, it stands × its kind's
+//            might × (1 + guard × the dead about it, at most 1)
+//   race:    who the necromancer was: drawn among the thinking peoples and tribes living there, by their density × their
+//            world view — align.base + align.mercy × (5 − mercy) / 10 (data/races.js align: the merciless are likelier,
+//            but many elves outweigh one orc)
+//   reveal:  a hidden tower (born in the wild) with a leader in it is a seat, not a lair: a season's chance it is found
+//   take:    a season, the tower takes this share of the rot within its territory (× 1 − d/r): the dead it raises; the rot
+//            falls by it, the field of the dead (`dead`) grows by take × raise (never above deadCap); the tower is fed by
+//            the mean rot it reaches over `feed`; deadFade — the risen without a master fall apart a season
+//   zone:    its reach as a seat: zone[0] + zone[1] × its strength, cells (of a 192-cell-high world); a lair of the dead
+//            (wights, ghouls, a vampire) within it bends the knee — the tower's vassal (atlas/leaders.js tribute)
+//   recruit: its cult takes the living of its zone, a season × (1 − d/zone): land — of the peoples' and tribes' density,
+//            town — of a town's people; cultMight — a tower's raid stronger × the living about it, weighed by their
+//            world view as its cult is (at most 1)
+//   cult:    its cultists about (campaign/land.js): within the zone a chance p × its strength (`out` × beyond, to roam ×
+//            the zone), strength s[0] + s[1] × its strength
+//   dead:    who the risen are, by weight (the bands' undead: data/raids.js); deadSpeed — how fast the risen wander off
+export const NECRO = {births: 0.6, most: 0.5, start: 0.6, guard: 1, align: {base: 0.4, mercy: 0.12}, reveal: 0.3,
+  take: 0.03, raise: 1.5, deadCap: 1.5, deadFade: 0.05, deadSpeed: 0.5, feed: 0.25, zone: [10, 14],
+  recruit: {land: 0.004, town: 0.003}, cultMight: 0.5,
+  cult: {p: 0.05, out: 0.35, roam: 1.6, s: [0.8, 0.8]}, dead: [['zombie', 3], ['skeleton', 2], ['upyr', 1]]};
+
+// The wild keeps its dangers (atlas/lairs.js spawnWild, docs/WORLD.md «Скрытые логова»). Once the peoples are in the
+// world, each spring the wild gives new lairs — `perYear` on average a year (× the world's scale²) — of a kind below its max ×
+// LAIR_LIFE.crowdMax (the kinds tried in a random order until one finds ground), on its ground, in the wild only — the
+// land no realm holds (atlas/realms.js realmLand, as the map's «Державы» shows it). They start at `start`. A lair born
+// in the wild — these, a brood that settles there, a necromancer's tower — is
+// HIDDEN: it lives, feeds, breeds and raids, but no realm can go against it (atlas/deeds/clearLair.js) until it is found:
+//   raid:   a raid of it on a town shows the way back — beaten, with `raid[0]`, won, with `raid[1]`
+//   settle: a living town stands within `settle` cells of it: the settlers stumble on it
+//   scout:  the deed of the realms (atlas/deeds/scout.js): a season's `chance` (× `raided` for a realm whose town was
+//           raided in the last `recent` years), a town of the realm sends trackers after a hidden lair within `reach`
+//           cells — the one whose folk are felt thickest for the way (their density about the lair over 1 + the distance
+//           in `way`s of cells); they find it with find[0] + find[1] × the town's lore (data/townBuildings.js) + find[2] ×
+//           its step (tier) + find[3] × that density (at most 1): the thicker the wild, the plainer its trail
+//   the caravan of a campaign walking into its territory, or within two territories of it where its folk live at least
+//           `trail` thick (campaign/march.js)
+export const WILD = {perYear: 1.2, start: 0.4, tries: 600, settle: 5,
+  raid: [0.5, 0.25], scout: {chance: 0.15, raided: 2.5, recent: 3, reach: 40, way: 10, find: [0.1, 0.5, 0.05, 0.4]}, trail: 0.4};
+
 export const LAIR_LIFE = {fedMax: 1.2, fedNone: 0.5, fiendFed: 0.55, vampirePop: 600, rotFeed: 1.2, tribeFeed: 0.6, crowd: 0.8,
   grow: 0.08, need: 0.45, winter: 0.03, wobble: 0.02, dies: 0.08,
-  breedAt: 0.85, breedAge: 3, crowdMax: 1.5, bossCrowd: 3, broodTries: 60, broodCost: 0.75,
+  breedAt: 0.85, breedAge: 3, crowdMax: 1.5, bossCrowd: 3, broodTries: 60, broodCost: 0.75, broodStart: 0.35,
   rivals: 0.08, luck: [0.7, 0.6], loser: 0.4, winner: 0.9, routed: 0.12,
   start: [0.4, 0.5], dragonStart: 0.9, spawnStart: 0.35, fiendStart: 0.55};

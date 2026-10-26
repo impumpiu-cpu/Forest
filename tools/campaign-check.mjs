@@ -31,6 +31,7 @@ import {capacity, load, wheeled} from '../src/campaign/baggage.js';
 import {stepCost, onRoad} from '../src/campaign/path.js';
 import {biomeAt} from '../src/atlas/biomes.js';
 import {baggageText} from '../src/campaign/march.js';
+import {POTION} from '../src/data/potions.js';
 import {WHEELS} from '../src/data/transport.js';
 import {COMPANY_MAX, JOINED_MAX} from '../src/data/market.js';
 import {CAPTIVE} from '../src/data/captives.js';
@@ -165,7 +166,7 @@ for (let s = 0; s < seeds; s++) {
   {
     const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'});
     stepCampaign(a);
-    K.members.push({...K.members[0], id: 999, name: 'Пристав', core: false, role: 'freed', loyalty: 0.5, alive: true, hp: 1});
+    K.members.push({...K.members[0], id: 999, name: 'Пристав', core: false, role: 'freed', loyalty: 1, alive: true, hp: 1});
     for (const m of K.members.filter(x => x.core)) { m.alive = false; m.died = {day: K.day, year: a.hist.year, why: 'пал в проверке'}; }
     for (let k = 0; k < 10 && stepCampaign(a); k++);
     const epi = K.log.filter(l => l.kind === 'epilogue').map(l => l.text);
@@ -255,7 +256,7 @@ for (let s = 0; s < seeds; s++) {
   for (let k = 0; k < 6; k++) stepCampaign(a);
   for (const t of K.bubble?.things || []) delete t.hunting;
   for (const key of ['mined', 'nextMine', 'mineGot', 'mineDay', 'smithTried']) delete K[key];
-  for (const c of [...K.quest.clues, K.quest.crown]) { delete c.fails; delete c.rest; }
+  for (const c of [...K.quest.clues, K.quest.crown]) { delete c.fails; delete c.rest; delete c.lost; }
   const b = loadAtlas(JSON.parse(JSON.stringify(saveAtlas(a)))), KB = b.campaign;
   runCampaign(b);
   check(`сид ${seed}: мир без эпоса — прежний квест; поход, сохранённый без новых полей, открывается и доходит до конца`, !K.quest.epic && finished(KB) && finite(KB) && ['won', 'lost', 'timeout'].includes(KB.phase), `${KB.phase}, день ${KB.day}`);
@@ -361,4 +362,34 @@ check('караваны обзаводятся обозом и выбирают 
   check('эпос: на штурме логова босс стоит среди слуг, сильнее своего рода', !!boss && boss.name === G.boss.name && Object.entries(G.boss.add).every(([id, v]) => v > 0 && boss.special[id] >= v),
     boss ? `${boss.name}: ${['S', 'E', 'A'].map(id => `${id} ${boss.special[id]}`).join(', ')}` : 'босса нет');
 }
+// a walk on the local map, as the screen plays it: the fights of every season are all kept to be shown (a season of days of
+// stops does not push them out); the caravan's camp stands whole at its night's camps; a potion slot never holds more than
+// POTION.slot, and the potions brewed and bought are drunk on the map
+{
+  // a walk is a chain of chances: a caravan wiped out early has brewed nothing — then the next capital walks too, and the
+  // walks are counted together (at most one walk per people)
+  const base = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const frozen = JSON.stringify(saveAtlas(base));
+  let lost = 0, fights = 0, overfull = 0, campOk = 0, campSeen = 0, brewed = 0, drunk = 0, walks = 0;
+  for (const c of CAMPAIGN.peoples.map(p => capitals(base).find(x => x.people === p)).filter(Boolean)) {
+    const a = loadAtlas(JSON.parse(frozen)), K = newCampaign(a, c.town, {mode: 'local'}); walks++;
+    for (let k = 0; k < 30; k++) {
+      const d0 = K.day, f0 = (K.fights || []).length;
+      if (!stepCampaign(a)) break;
+      const camps = (K.camps || []).filter(cp => cp.day >= d0 && cp.kind !== 'stop'), F = (K.fights || []).slice(f0);
+      fights += F.length; lost += Math.max(0, F.length - camps.length);
+      overfull += K.members.filter(m => (m.potions || 0) > POTION.slot).length;
+      for (const cp of (K.camps || []).filter(x => x.day >= d0 && x.kind === 'night' && (x.setup.buildings || []).length)) {
+        campSeen++; const w = openCamp(cp.setup);
+        if (cp.setup.buildings.every(id => w.buildings.some(b => b.key === id && b.done))) campOk++;
+      }
+    }
+    brewed += K.stats.brewed || 0; drunk += K.stats.potions || 0;
+    if (brewed > 0 && drunk > 0 && campSeen > 0) break;
+  }
+  check('показ: все бои сезона дожидаются экрана, сколько бы дней стоянок ни было', fights > 0 && lost === 0, `боёв ${fights}, вытеснено ${lost}, походов ${walks}`);
+  check('лагерь каравана: постройки встают целыми на каждой ночёвке', campSeen > 0 && campOk === campSeen, `ночёвок с лагерем ${campSeen}, целых ${campOk}`);
+  check('зелья лечения: не больше трёх в поясе, сварены и выпиты', overfull === 0 && brewed > 0 && drunk > 0, `сварено ${brewed}, выпито ${drunk}, походов ${walks}`);
+}
+
 if (!ok) process.exit(1);

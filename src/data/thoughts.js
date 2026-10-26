@@ -82,7 +82,7 @@ THOUGHTS.registerAll([
   {id: 'sharedTrouble', mood: 0.1, lasts: DAY, once: DAY, text: (a, c) => `Плечом к плечу с ${c.name} отбивались от налётчиков. Что там было между нами — уже не важно.`},
   {id: 'sober', mood: -0.12, lasts: 12 * HOUR, once: DAY, text: a => `Без браги ${g(a, 'сам', 'сама')} не ${g(a, 'свой', 'своя')}: руки не слушаются.`},
   {id: 'beerFed', mood: 0.2, lasts: 12 * HOUR, once: 12 * HOUR, text: a => `Кружка браги — и сыт${g(a, '', 'а')}, и весел${g(a, '', 'а')}. Как дома под горой.`},
-  // the nechist (agents/brains/spirit.js)
+  // the nechist (agents/behaviours/astray.js, lure.js)
   {id: 'leshyLost', mood: -0.15, lasts: 12 * HOUR, once: 6 * HOUR, text: a => `${g(a, 'Заплутал', 'Заплутала')} в трёх соснах: тропа водила по кругу. Леший шалит.`},
   {id: 'foundWay', mood: 0.05, lasts: 4 * HOUR, once: 6 * HOUR, text: a => `${g(a, 'Выбрался', 'Выбралась')} к знакомой тропе.`},
   {id: 'lured', mood: -0.3, lasts: DAY, once: 12 * HOUR, text: a => `Ночью у воды кто-то звал по имени. Ноги сами ${g(a, 'пошли', 'пошли')}…`},
@@ -116,6 +116,7 @@ THOUGHTS.registerAll([
   {id: 'hangover', mood: -0.1, lasts: DAY, once: DAY, text: a => `Наутро голова тяжёлая: перебрал${g(a, '', 'а')} браги.`},
   {id: 'sulking', mood: -0.05, lasts: 6 * HOUR, once: DAY, text: () => 'Всё валится из рук. Ничего не хочется.'},
   {id: 'someoneLeft', mood: -0.15, lasts: DAY, text: (a, c) => `${c.name} ${c.f ? 'ушла' : 'ушёл'} из поселения. Неужто так плохо у нас?`},
+  {id: 'someoneTaken', mood: -0.3, lasts: 2 * DAY, text: (a, c) => `${c.name} ${c.f ? 'уведена' : 'уведён'} налётчиками. Не уберегли.`},
 
   // council
   {id: 'councilWon', mood: 0.12, lasts: DAY, text: (a, c) => `На совете ${g(a, 'говорил', 'говорила')} за ${c.choice} (${c.why}). Совет согласился.`},

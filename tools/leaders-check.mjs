@@ -27,7 +27,8 @@ const vassals = a.lairs.filter(l => l.alive && l.lord != null);
 check('данники: у каждого есть живое логово-господин', vassals.length > 0 && vassals.every(v => a.lairs.find(o => o.id === v.lord)?.alive), `данников ${vassals.length}`);
 const deeds = a.chronicle.filter(c => /Вёл их|подчинил|основал «|разорил «|разбил /.test(c.text)).length;
 check('главари действуют: набеги, выводки, подчинение, войны логов', deeds > 20, `строк о делах главарей: ${deeds}`);
-const noRaids = live.every(l => !(a.parties || []).some(p => p.owner === l.id && (p.kind === 'raid' || p.kind === 'brood')));
+// (a party the lair sent before its leader rose may still be on its way: only those sent after count)
+const noRaids = live.every(l => !(a.parties || []).some(p => p.owner === l.id && (p.kind === 'raid' || p.kind === 'brood') && (p.sent ?? 0) >= (l.leader.since ?? 0)));
 check('логово с главарём не шлёт набегов и выводков само', noRaids);
 const took = worlds.flatMap(w => (w.calamities || []).filter(c => c.boss?.wasLeader).map(c => `${c.boss.wasLeader} → ${c.label}`));
 check('бедствие берёт боссом живого главаря', took.length > 0, took.join('; '));

@@ -33,11 +33,11 @@ import {canSee} from '../agents/combat.js';
 import {strength, squadOf} from '../agents/squad.js';
 import {liveById} from '../agents/lookup.js';
 import {hpShare} from '../agents/agent.js';
-import {perTick} from '../core/util.js';
+import {perTick, dist} from '../core/util.js';
 import {nearAgents} from '../agents/spatial.js';
 import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
-import {clamp, esc, g, plural} from '../core/util.js';
+import {clamp, esc, g} from '../core/util.js';
 import {nightness, hourOf, dayOf, DAY, HOUR} from '../core/time.js';
 import {wake} from '../agents/attention.js';
 import {liveMembers as groupMembers, inTurn, see, fade, seenMiddle} from '../agents/group.js';
@@ -46,7 +46,6 @@ import {WATCH} from '../data/colony.js';
 
 export {BOARD};   // (data/colony.js)
 export {WATCH};   // (data/colony.js)
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const boardOf = w => (w.board ??= {flags: {}, seq: 0});
 // how far a colonist sees a foe: by night half as far, except by a burning campfire and on watch
 function sightOf(w, a) {

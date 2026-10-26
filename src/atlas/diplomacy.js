@@ -4,7 +4,7 @@
 // left as barrows; orc raids; peace when the war has worn both out. Two realms of one race deal with
 // each other like any two, starting from their race's memory of itself (data/relations.js).
 //
-// a.rel = {'rA:rB': {att, war: {since, battles, razed} | null, wars, routes, met}};  a.ruins = [{...}]
+// a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {ROT} from '../data/lairs.js';
@@ -16,7 +16,6 @@ import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {scaleOf} from './tectonics.js';
 import {townFx, might, raidShare, townLabel} from './towns.js';
 import {raidSite, razeSites} from './sites.js';
-import {BURNT} from './peoples.js';
 import {realmOf, realmPeople, realmLabel, realmLabelGen, seatFallen, stepRealms} from './realms.js';
 import {laneBetween} from './sea.js';
 import {ARMY} from '../data/parties.js';
@@ -137,7 +136,7 @@ function battlefield(a, lose, win) {
   return best;
 }
 
-const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
+export const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
 
 // ── armies (data/parties.js ARMY). A realm at war musters an army at its town nearest the enemy:
 // a levy of the town's people with the town's arms; it marches to the enemy's town and lays siege.
@@ -145,7 +144,7 @@ const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
 // starved or the siege has gone on long enough the army assaults. The foragers of a marching or
 // besieging army scourge the land around it (a.f.scourge): the works there yield nothing.
 const armyMight = (men, fx) => Math.sqrt(men) * (1 + 0.3 * fx.prod + 0.5 * fx.defence);
-function muster(a, t, target, war, rnd, say) {
+export function muster(a, t, target, war, rnd, say) {
   const A = ARMY, men = Math.round(A.levy * t.pop);
   if (men < A.minMen || !target.alive) return;
   const fx = townFx(t), R = realmOf(a, t.realm);
@@ -224,7 +223,9 @@ BEHAVIOURS.army = {
 // the scourge of the foragers fades
 export function fadeScourge(a) { if (a.f.scourge) for (let i = 0; i < a.n; i++) a.f.scourge[i] *= ARMY.scourgeFade; }
 
-// a year of the peoples' dealings; `overlap(p, q)` is the share of their land they share
+// a year of the peoples' dealings — the body of their relations: trade routes and mingling, the attitude's drift, the
+// front; the deeds (war, peace, the armies, the orcs' raids) are the realms' own, atlas/deeds/. `overlap(p, q)` is the
+// share of their land they share
 export function stepDiplomacy(a, rnd, say, overlap) {
   driftRealms(a);
   const k = scaleOf(a), H = a.hist, towns = a.towns.filter(t => t.alive);
@@ -257,53 +258,13 @@ export function stepDiplomacy(a, rnd, say, overlap) {
       r.routes = routes;
     }
     // shared land sours two races; two realms of one race share their own land freely
-    const sh = kin ? 0 : overlap(P, Q), [pair, gap] = nearest(p, q), border = sh > 0 || gap <= D.front * k;
+    const sh = kin ? 0 : overlap(P, Q), [pair, gap] = nearest(p, q);
     r.att += D.drift * Math.sign(old - r.att) * Math.min(1, Math.abs(old - r.att)) - D.pressure * sh + (r.att < old + D.tradeCeil ? Math.min(D.tradeMax, D.trade * routes) : 0);
-    if (r.war) {
-      r.att += D.weariness;
-      const years = H.year - r.war.since;
-      // the front: the nearest pair of towns of the two; the realms take turns to muster an army
-      // there and march on the other's town (atlas/parties.js); one army of a war at a time
-      // peace comes first: no army sets out in the year the war ends, and one already on the march
-      // turns home when the news reaches it (army.day)
-      if (r.att >= D.peaceAt || years >= D.longest) {
-        say(`${cap1(realmLabel(a, p))} и ${realmLabel(a, q)} заключили мир после ${years} ${years % 10 === 1 && years % 100 !== 11 ? 'года' : 'лет'} войны.`);
-        r.war = null; r.att = D.afterPeace;
-      } else {
-        const armyOut = (a.parties || []).some(x => x.kind === 'army' && x.war === kk && x.state !== 'gone');
-        if (gap <= D.front * k && !armyOut) {
-          const [t, o] = pair, mine = r.war.turn === q ? [o, t] : [t, o];
-          r.war.turn = mine[0].realm === p ? q : p;
-          muster(a, mine[0], mine[1], kk, rnd, say);
-        }
-      }
-    } else if (r.att <= D.warAt && border) {
-      r.war = {since: H.year, battles: 0, razed: 0}; r.wars++;
-      say(`${cap1(realmLabel(a, p))} и ${realmLabel(a, q)} не поделили ${kin ? 'власть' : 'земли'}: началась война.`);
-    }
+    // the front, for the realms' deeds (atlas/deeds/warOn.js, march.js): whether the two border — shared land or towns
+    // within the front — and the nearest pair of their towns
+    r.border = sh > 0 || gap <= D.front * k; r.front = pair && gap <= D.front * k ? [pair[0].id, pair[1].id] : null; r.kin = kin;
+    if (r.war) r.att += D.weariness;   // a war wears both out; who ends it, and who marches, is the realms' choice (atlas/deeds/)
     r.att = Math.max(-5, Math.min(5, r.att));
-  }
-  // orcs raid the nearest town of a people they do not like, a few raids a year
-  const raids = {};
-  for (const t of towns) {
-    if (!D.raiders.includes(t.people) || !t.alive || rnd() > D.raidChance || (raids[t.people] || 0) >= D.raidsPerYear) continue;
-    if (!townFx(t).defence) continue;   // only a camp with warriors goes raiding
-    let target = null, bd = D.raidReach * k;
-    for (const o of towns) if (o.alive && o.realm !== t.realm && relation(a, t.realm, o.realm) && attitude(a, t.realm, o.realm) < 0) {
-      const d = Math.hypot(t.x - o.x, t.y - o.y); if (d < bd) { bd = d; target = o; }
-    }
-    if (!target) continue;
-    const r = meet(a, t.realm, target.realm, H.year);
-    r.att = Math.max(-5, r.att - D.raid); raids[t.people] = (raids[t.people] || 0) + 1;
-    if (fight(t, rnd) > fight(target, rnd)) {
-      const loss = D.raidLoss * raidShare(townFx(target));
-      target.pop *= 1 - loss; t.pop += target.pop * loss * 0.3; raidGraves(a, target);
-      const burnt = raidSite(a, target, rnd);
-      say(`${cap1(realmLabel(a, t.realm))} из ${townLabel(t, 2)} ${t.name} разграбили ${townLabel(target, 1)} ${target.name}${burnt ? `: ${BURNT[burnt.g]} ${burnt.name}` : ''}.`);
-    } else {
-      t.pop *= 0.9;
-      say(`${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, t.realm)} на ${townLabel(target, 1)} ${target.name}.`);
-    }
   }
   stepRealms(a, rnd, say);
 }

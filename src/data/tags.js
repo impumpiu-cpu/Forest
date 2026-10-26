@@ -25,10 +25,10 @@ TAGS.registerAll([
   sp('fiend', 'демон', 'разломы карты мира (atlas/lairs.js)', 'приходит через разломы у вулканов и швов плит'),
   sp('resident', 'здешний', 'приход нечисти (data/neighbours.js, atlas/fauna.js)', 'дух места: живёт здесь, убитый возвращается'),
   sp('game', 'дичь', 'пока никто: кого бьют охотники, задаёт работа (data/jobs.js prey), кого — хищник, его prey', 'метка описания; системы её не читают'),
-  sp('big', 'крупный', 'хищники: на кого нападать (agents/brains/predator.js)', 'крупный зверь: кабан, лось, медведь…'),
+  sp('big', 'крупный', 'хищники: как бьют добычу (agents/behaviours/chase.js, agents/hunting.js)', 'крупный зверь: кабан, лось, медведь…'),
   sp('snowfoot', 'снежная лапа', 'шаг по снегу (agents/movement.js)', 'не вязнет в снегу'),
-  sp('nocturnal', 'ночной', 'когда выходит на охоту (agents/brains/predator.js)', 'днём спит, ночью охотится'),
-  sp('hibernates', 'зимняя спячка', 'уходит с карты зимой (agents/brains/mule.js, data/migrations.js)', 'спит зимой'),
+  sp('nocturnal', 'ночной', 'когда выходит на охоту (agents/behaviours/leaveHurt.js)', 'днём спит, ночью охотится'),
+  sp('hibernates', 'зимняя спячка', 'уходит с карты зимой (agents/behaviours/leave.js, data/migrations.js)', 'спит зимой'),
   sp('inventory', 'носит вещи', 'снаряжение (agents/agent.js), налётчики (data/raids.js)', 'держит оружие, броню и ношу'),
   sp('relativeStats', 'статы типичного зверя', 'тело зверя (agents/special.js)', 'правило, а не свойство: строка вида описывает типичного зверя, SPECIAL двигает зверя против сородичей'),
   // ── what a species fears (weakTo)

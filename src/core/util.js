@@ -40,3 +40,7 @@ export function perTick(w, key, make) {
   if (s.tick !== w.tick) { for (const k of Object.keys(s)) delete s[k]; s.tick = w.tick; }
   return key in s ? s[key] : (s[key] = make());
 }
+
+// the distance between two things with x, y (agents, towns, lairs); between two cells of a grid of width a.w by index
+export const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+export const cellDist = (a, i, j) => Math.hypot(i % a.w - j % a.w, ((i / a.w) | 0) - ((j / a.w) | 0));

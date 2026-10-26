@@ -9,6 +9,7 @@ import {stepHerd} from './settlement/herd.js';
 import {stepLife} from './settlement/life.js';
 import {stepCrafting} from './settlement/crafting.js';
 import {stepEffects} from './agents/body.js';
+import {stepPotions} from './settlement/potions.js';
 import {sampleBehaviour} from './settlement/behaviour.js';
 import {sweepReserve} from './settlement/reserve.js';
 import {stepRelations} from './settlement/relations.js';
@@ -76,6 +77,7 @@ export function step(w) {
   stepHerd(w);
   stepLife(w);
   stepCrafting(w);
+  stepPotions(w);   // the stock's healing potions into the people's slots (settlement/potions.js)
   stepRelations(w);
   stepBoard(w);   // the colony's lookouts, the cry, the flags (settlement/board.js)
   stepEscape(w);   // the captives' will to run: the council's rolls, the plot, the red alarm (settlement/escape.js)

@@ -5,7 +5,7 @@
 // screen. The map is the «Мир» screen's own drawing (ui/atlasView.js), with the fog, the caravan, its
 // way, its goal and its home on top. A fight or a stop the core played on the local map (campaign/camp.js)
 // is played again over the map when the playback reaches its day: the same setup gives the same camp.
-import {AtlasView, segOf, loadDetail, saveDetail, exportChronicle} from './atlasView.js';
+import {segOf, loadDetail, saveDetail, exportChronicle, MapView} from './atlasView.js';
 import {DETAILS} from '../atlas/chronicle.js';
 import {listWorlds, openWorld, saveWorldToLibrary} from './worlds.js';
 import {capitals, newCampaign, stepCampaign, ended, finished, alive, pace, chronicleText} from '../campaign/index.js';
@@ -23,11 +23,15 @@ import {eraPlan, historyLength} from '../atlas/history.js';
 import {ERAS} from '../data/history.js';
 import {plural, esc} from '../core/util.js';
 import {$} from './dom.js';
+import {TickClock, dateText} from '../core/clock.js';
+import {mountPace} from './pace.js';
+import {openTab} from './tabs.js';
+import {personHtml, creatureHtml, buildingHtml, cellHtml} from './cards.js';
+import {fightStats, fightReportText, groupText, FATES, HOWS, walkStats, walkReportText} from '../campaign/stats.js';
 import {gearDef} from '../agents/equipment.js';
 import {alignLabel, axisWord} from '../data/values.js';
 import {warnEdits} from './tableEdits.js';
 import {Camera} from '../render/camera.js';
-import {ITEMS} from '../data/items.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {BEASTS} from '../data/transport.js';
 import {BUBBLE, THINGS} from '../data/bubble.js';
@@ -42,16 +46,11 @@ const itemShort = id => gearDef(id)?.short ?? id;
 
 const SEASON_LIST = SEASONS.all();
 // the pace: ms a season is played back over (a day is a thirtieth of it); «сразу» — as many seasons as fit a frame
-const SPEEDS = [
-  {id: 'x1', label: '×1', wait: 3000},
-  {id: 'x4', label: '×4', wait: 750},
-  {id: 'x16', label: '×16', wait: 190},
-  {id: 'max', label: 'Сразу', wait: 30, budget: 30},
-];
-// the local map's pace, ticks a frame, by the season's pace; a stop is shown only at the slowest
-const LOCAL = {x1: {ticks: 2, stops: true}, x4: {ticks: 5}};
+// the camps watched on the local map by the pace (core/clock.js PACE): at the observer's pace the day stops too, at
+// `max` none (a camp runs at `local` × the base pace: an hour in 2,5 s when watching)
+const WATCH = {watch: {stops: true}, x4: {}, x16: {}};
 const LOCAL_KIND = {night: 'Ночь', ambush: 'Засада на марше', stop: 'Стоянка', guard: 'Штурм'};
-const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples', 'Народы'], ['fauna', 'Звери']];
+const LAYERS = [['relief', 'Рельеф'], ['biomes', 'Биомы'], ['peoples', 'Народы'], ['realms', 'Державы'], ['fauna', 'Звери'], ['wild', 'Живность'], ['rot', 'Гниль']];
 const PHASE = {out: 'ищут корону', back: 'несут корону домой', won: 'вернулись с короной', lost: 'погибли', timeout: 'не вернулись'};
 const seasonWord = s => SEASON_LIST[s % SEASON_LIST.length].label.toLowerCase();
 // a world whose quest is the epic one (campaign/quest.js makeQuest)
@@ -68,19 +67,25 @@ function epicProgress(a, sec) {
 function loadHidden() { try { return new Set(JSON.parse(localStorage.getItem('forest.campTopics') || '[]')); } catch (e) { return new Set(); } }
 function saveHidden(set) { try { localStorage.setItem('forest.campTopics', JSON.stringify([...set])); } catch (e) { /* storage unavailable */ } }
 
-export class CampaignView extends AtlasView {
+export class CampaignView extends MapView {
+  setup({onBack} = {}) { this.onBack = onBack; }   // («← Главное меню»: app/main.js)
   // the «Мир» screen's controls are not built here: only the campaign's
   build() {
     this.layer = 'peoples'; this.capPick = null; this.logShown = 0; this.fog = null; this.fogKey = '';
-    this.wireCamera({map: 'campMap', readout: 'campReadout', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', screen: 'campaign',
+    this.wireCamera({map: 'campMap', readout: 'campReadout', inspect: 'campInspect', dock: 'campDock', zoomIn: 'campZoomIn', zoomOut: 'campZoomOut', zoomFit: 'campZoomFit', screen: 'campaign',
       hint: 'Наведите на карту, чтобы увидеть клетку.'});
     const lay = $('campLayer');
     lay.innerHTML = LAYERS.map(([id, l]) => `<button type="button" data-val="${id}" aria-pressed="${id === this.layer}">${l}</button>`).join('');
     lay.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.layer = b.dataset.val; lay.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); this.draw(); });
-    const sp = $('campSpeed');
-    sp.innerHTML = SPEEDS.map(S => `<button type="button" data-val="${S.id}" aria-pressed="${S.id === this.speed}">${S.label}</button>`).join('');
-    sp.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; this.speed = b.dataset.val; this.paused = false; this.syncRun(); this.run(); });
-    $('campPause').addEventListener('click', () => { this.paused = !this.paused; this.syncRun(); if (!this.paused) this.run(); });
+    this.ticks = new TickClock();   // the local map's clock while a camp is watched
+    this.syncPaceBox = mountPace($('campSpeed'), this.clock, {pauseId: 'campPause', active: () => !$('campaign').hidden,
+      onPace: id => {
+        this.clock.setPace(id); this.ticks.pace = this.localPace(id);
+        if (this.local && !WATCH[id] && !this.local.c.boss) this.endLocal();   // «Сразу»: the camps are not watched — the one on the map is left (a named fight is)
+        if (this.clock.paused && !this.local) this.clock.resume();
+        this.syncRun();
+      },
+      onPause: () => { const K = this.atlas?.campaign; if (!K || finished(K)) return; if (this.local) this.ticks.paused = !this.ticks.paused; else this.clock.toggle(); this.syncRun(); }});
     $('campWorlds').addEventListener('click', e => { const row = e.target.closest('.sv'); if (row) this.openFromLibrary(row.dataset.id, row.dataset.name); });
     // a capital: a click on its card marks it on the map, its button sets the caravan out from it at once
     $('campCaps').addEventListener('click', e => {
@@ -116,6 +121,8 @@ export class CampaignView extends AtlasView {
     $('campWatch').addEventListener('click', () => { this.watch = !this.watch; $('campWatch').setAttribute('aria-pressed', String(this.watch)); if (!this.watch) this.endLocal(); });
     $('campLocalSkip').addEventListener('click', () => this.endLocal());
     this.localR = new Renderer($('campLocal'));
+    // a click on the camp's map: the card of the creature there, else the building, else the cell (ui/cards.js)
+    $('campLocal').addEventListener('click', e => this.pickLocal(e));
     // the chronicle: themes to hide (remembered in this browser), one member's lines, the text into a file
     this.hidden = loadHidden(); this.who = null; this.logKey = '';
     const tp = $('campTopics');
@@ -187,7 +194,7 @@ export class CampaignView extends AtlasView {
     this.mode = mode;
     this.refresh(); if (this.atlas?.campaign) { this.runMode(); this.draw(); } else this.setupMode();
   }
-  // the quick start of the new menu (forest.html → index.html?go=epic): this seed and size, made at once
+  // the quick start (forest.html «Быстрый старт»): this seed and size, made at once
   startEpic({seed, size} = {}) {
     if (seed) $('campEpicSeed').value = String(seed).slice(0, 24);
     if (size && EPIC_SIZES.some(([id]) => id === size)) {
@@ -198,7 +205,7 @@ export class CampaignView extends AtlasView {
   }
   // leaving the screen: the walk halts between seasons and waits
   // (a world left half-made is not walked: it is let go)
-  halt() { if (this.making) { this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить'; this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; } this.endLocal(); this.queue = []; clearTimeout(this.timer); this.timer = 0; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.paused = true; this.syncRun(); }
+  halt() { if (this.making) { this.making = false; cancelAnimationFrame(this.genRaf); $('campEpicGo').textContent = 'Сотворить'; this.atlas = null; $('campEpicNote').textContent = 'Остановлено: мир не сохранён.'; } this.endLocal(); this.queue = []; if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.pause(); else this.clock.stop(); this.syncRun(); }
 
   // ── setup: a world, a capital
   async refresh() {
@@ -223,7 +230,7 @@ export class CampaignView extends AtlasView {
       this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.fogKey = ''; this.logShown = 0; this.capPick = null;
       this.cam = new Camera(a.w, a.h);
       $('campWorldNote').textContent = warnEdits(a.tables) || '';
-      if (a.campaign) { this.paused = true; this.runMode(); if (this.follow) this.closeUp(); }
+      if (a.campaign) { this.clock.paused = true; this.runMode(); if (this.follow) this.closeUp(); }
       else this.setupMode();
       this.refresh(); this.draw();
     } catch (e) { $('campWorldNote').textContent = 'Не удалось открыть: ' + e.message; }
@@ -232,8 +239,9 @@ export class CampaignView extends AtlasView {
   setupMode() {
     this.choosing = true;
     const epic = this.mode === 'epic';
-    $('campSetup').hidden = false; $('campRun').hidden = true;
+    $('campSetup').hidden = false; $('campRun').hidden = true; $('campRunSide').hidden = true;
     $('campLibField').hidden = epic; $('campEpicField').hidden = !epic;
+    $('campName2').textContent = '';
     $('campTitle').textContent = this.atlas ? this.worldName : epic ? 'Эпическая кампания' : 'Кампания';
     $('campCapsField').hidden = !this.atlas;
     $('campWorldChron').hidden = !this.atlas || !this.atlas.hist;
@@ -262,16 +270,16 @@ export class CampaignView extends AtlasView {
     const a = this.atlas; if (!a || this.capPick == null) return;
     newCampaign(a, this.capPick);
     if (this.follow) this.closeUp();
-    this.saveId = null; this.logShown = 0; this.logKey = ''; this.who = null; this.paused = false;
+    this.saveId = null; this.logShown = 0; this.logKey = ''; this.who = null;
     this.runMode(); this.run();
   }
 
   // ── the walk
   runMode() {
     this.choosing = false;
-    $('campSetup').hidden = true; $('campRun').hidden = false;
+    $('campSetup').hidden = true; $('campRun').hidden = false; $('campRunSide').hidden = false;
     const K = this.atlas.campaign;
-    $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`;
+    $('campTitle').textContent = `Поход из ${K.capitalFrom || K.capitalName}`; $('campName2').textContent = this.worldName || '';
     this.syncRun(); this.renderSide();
     const sw = (c, l) => `<span><i style="background:${c}"></i>${l}</span>`;
     $('campLegend').innerHTML = sw(`rgb(${WORLD_PEOPLES.get(K.people).color.join(',')})`, 'караван (флажок)') + sw('rgba(255,215,110,0.8)', 'путь пешком (пунктир), дом (кольцо)') + sw('rgba(255,211,106,0.75)', 'где искать след (круг), найденный след (ромб: жёлтый — к нему идут, серый — взят)') + sw('rgba(240,110,80,0.8)', 'где-то здесь корона (круг), корона (зубцы; красная — у врагов)') + sw('rgba(240,160,90,0.9)', 'путь с колёсами — по дорогам (длинный штрих)') +
@@ -282,35 +290,40 @@ export class CampaignView extends AtlasView {
     const K = this.atlas?.campaign, done = !K || finished(K);
     $('campAgain').hidden = !done || !K;
     $('campPause').hidden = done; $('campSpeed').hidden = done;
-    $('campPause').textContent = this.paused ? 'Дальше' : 'Пауза';
-    $('campSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === this.speed)));
+    this.syncPaceBox?.();
+    if (this.local) $('campPause').textContent = this.ticks.paused ? 'Дальше' : 'Пауза';
   }
 
-  run() {
-    const a = this.atlas; clearTimeout(this.timer);
-    const next = () => {
-      if (a !== this.atlas || this.paused || !a.campaign || finished(a.campaign)) { this.syncRun(); return; }
-      // a camp on the local map is being watched: the next season waits for it
-      if (this.local) { this.timer = setTimeout(next, 200); return; }
-      const sp = SPEEDS.find(S => S.id === this.speed) || SPEEDS[0], t0 = Date.now(), d0 = a.campaign.day;
-      do { stepCampaign(a); } while (sp.budget && !finished(a.campaign) && Date.now() - t0 < sp.budget);
-      this.tickAt = performance.now(); this.tickWait = sp.budget ? 0 : sp.wait;
-      // the season's camps to watch, each at its day of the playback
-      const L = LOCAL[this.speed], K = a.campaign, n = Math.max(1, K.track.length - 1);
-      this.queue = this.watch && L ? (K.camps || []).filter(c => c.day >= d0 && (c.kind !== 'stop' || L.stops)).map(c => ({...c, at: Math.min(1, (c.day - d0) / n)})) : [];
-      this.renderSide(); this.draw(); this.animate();
-      if (!finished(a.campaign)) this.timer = setTimeout(next, sp.wait); else this.syncRun();
-    };
-    this.timer = setTimeout(next, 30);
+  clickAt(e) { this.selectAt(e); }   // a click on the world map: the card of what is here (ui/inspect.js)
+  // the date in the head, with the day of the season the playback is at
+  frame() { const a = this.atlas; if (a?.hist) $('campDay').textContent = dateText(a, this.clock, seasonWord); }
+
+  // the walk runs on the observer's clock (core/clock.js): a season a step; a camp watched on the local map holds the
+  // season's playback until it is over
+  run() { if (this.atlas?.campaign && !finished(this.atlas.campaign)) this.clock.start(); this.syncRun(); }
+  stepSeason() {
+    const a = this.atlas; if (!a?.campaign || finished(a.campaign)) return false;
+    const d0 = a.campaign.day;
+    const was = ended(a.campaign);
+    stepCampaign(a);
+    if (!was && ended(a.campaign) && this.ids?.dock) openTab($(this.ids.dock), 'summary');   // the walk is over: its sums up front
+    // the season's camps to watch, each at its day of the playback
+    const W = WATCH[this.clock.pace], K = a.campaign, n = Math.max(1, K.track.length - 1);
+    // (a named fight — a boss, a grave's guard, a leader — is shown at any pace, «Сразу» too: the walk is about these)
+    this.queue = this.watch ? (K.camps || []).filter(c => c.day >= d0 && (c.boss || (W && (c.kind !== 'stop' || W.stops)))).map(c => ({...c, at: Math.min(1, (c.day - d0) / n)})) : [];
+    return !finished(a.campaign);
   }
-  // the season plays back: a frame loop while the caravan slides along its days
+  afterSeason() { this.renderSide(); this.renderInspect(); this.draw(); this.animate(); }
+  afterRun() { this.syncRun(); }
+  // the season plays back: a frame loop while the caravan slides along its days, or a camp runs on the local map
   animate() {
     if (this.raf) return;
     const loop = () => {
       this.raf = 0;
+      this.frame();
       if (this.local) { this.stepLocal(); this.raf = requestAnimationFrame(loop); return; }
-      if (this.queue.length && this.atlas?.campaign && !this.paused && this.slide() >= this.queue[0].at) { this.startLocal(this.queue.shift()); this.raf = requestAnimationFrame(loop); return; }
-      if (!this.atlas?.campaign || this.paused || !this.tickWait || this.slide() >= 1) { this.draw(); return; }
+      if (this.queue.length && this.atlas?.campaign && this.clock.running && this.slide() >= this.queue[0].at) { this.startLocal(this.queue.shift()); this.raf = requestAnimationFrame(loop); return; }
+      if (!this.atlas?.campaign || !this.clock.running || this.slide() >= 1) { this.draw(); return; }
       this.draw(); this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
@@ -320,32 +333,59 @@ export class CampaignView extends AtlasView {
   startLocal(c) {
     let w;
     try { w = openCamp(c.setup); } catch (e) { console.warn('стоянка не открылась', e); return; }
-    const frac = this.slide();
-    this.local = {w, c, frac, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
+    this.clock.hold(c.at);   // the season waits while the camp is watched, at the camp's own day
+    this.ticks.last = 0; this.ticks.acc = 0; this.ticks.paused = false; this.ticks.pace = this.localPace(this.clock.pace, c);
+    this.local = {w, c, view: {cam: {zoom: 1.6, cx: w.camp.x + 0.5, cy: w.camp.y + 0.5}, layer: 'world', resHidden: new Set(), selected: null, selBld: null, selCell: null}, done: 0};
     $('campLocal').hidden = false; $('campLocalBar').hidden = false;
     this.localR.setup(w);
     this.localText();
   }
+  // the local map's pace: the clock's — but a named fight shown at «Сразу» is played at ×4, to be seen
+  localPace(id, c = this.local?.c) { return !WATCH[id] && c?.boss ? 'x4' : id; }
   localText() {
     const L = this.local, c = L.c, w = L.w, last = w.logLines[0];
-    $('campLocalText').innerHTML = `<b>${LOCAL_KIND[c.kind] || 'Стоянка'}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день ${c.day + 1}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
+    $('campLocalText').innerHTML = `<b>${LOCAL_KIND[c.kind] || 'Стоянка'}</b>${c.kind !== 'stop' ? ` — ${esc(c.label)}` : ''}, день похода ${c.day + 1}${last ? ` · <small>${esc(last.when.replace(/^День \d+, /, ''))} ${last.html.replace(/<[^>]+>/g, '')}</small>` : ''}`;
   }
   stepLocal() {
-    const L = this.local, w = L.w, per = (LOCAL[this.speed] || LOCAL.x4).ticks;
-    if (!this.paused) {
+    const L = this.local, w = L.w, per = this.ticks.ticks(performance.now());
+    if (!this.ticks.paused) {
       if (!campDone(w)) { for (let k = 0; k < per && !campDone(w); k++) stepCamp(w); }
       else if (!L.done) L.done = performance.now();
       else if (performance.now() - L.done > 1500) { this.endLocal(); return; }
     }
     this.localR.draw(w, L.view);
     if (w.logVersion !== L.logV) { L.logV = w.logVersion; this.localText(); }
+    if (L.view.selected && (L.frames = (L.frames || 0) + 1) % 15 === 0) this.localCard();   // the creature's card follows it
+  }
+  // the camp's map: what is under the click, shown in the dock («Объект») and followed while the camp runs
+  pickLocal(e) {
+    const L = this.local; if (!L) return;
+    const r = $('campLocal').getBoundingClientRect(), [fx, fy] = this.localR.toCell(e.clientX - r.left, e.clientY - r.top), w = L.w;
+    let best = null, bd = 0.9;
+    for (const a of w.agents) { if (a.dead) continue; const d = Math.hypot(a.x - fx, a.y - fy); if (d < bd) { bd = d; best = a; } }
+    const i = (fy | 0) * w.w + (fx | 0);
+    L.view.selected = best; L.view.selBld = null; L.view.selCell = null;
+    if (!best) { const b = w.buildings.find(b => b.cells?.includes(i)); if (b) L.view.selBld = b.id; else if (i >= 0 && i < w.w * w.h) L.view.selCell = i; }
+    this.localCard(true);
+    if (this.ids?.dock) openTab($(this.ids.dock), 'object');
+  }
+  localCard(force = false) {
+    const L = this.local, w = L?.w, box = $('campInspect');
+    if (!L) return;
+    const a = L.view.selected;
+    if (a && (a.dead || !w.agents.includes(a))) { L.view.selected = null; box.innerHTML = '<p class="muted">Его больше нет на карте.</p>'; return; }
+    if (!force && !a) return;   // a building or a cell does not change by the tick
+    if (a) box.innerHTML = `<div class="pc">${a.diary && a.likes ? personHtml(w, a) : creatureHtml(w, a)}</div>`;
+    else if (L.view.selBld != null) { const b = w.buildings.find(b => b.id === L.view.selBld); box.innerHTML = b ? `<div class="pc">${buildingHtml(w, b)}</div>` : ''; }
+    else if (L.view.selCell != null) box.innerHTML = `<div class="pc">${cellHtml(w, L.view.selCell)}</div>`;
   }
   endLocal() {
     const L = this.local; if (!L) return;
     this.local = null;
+    if (L.view.selected || L.view.selBld != null || L.view.selCell != null) this.renderInspect();   // the world's card again
     $('campLocal').hidden = true; $('campLocalBar').hidden = true;
     // the season's playback goes on from where it stopped
-    if (this.tickWait) this.tickAt = performance.now() - L.frac * this.tickWait;
+    this.clock.release(); this.syncRun();
     this.animate();
   }
 
@@ -435,15 +475,42 @@ export class CampaignView extends AtlasView {
     }
   }
 
+  // the fights of the walk (campaign/stats.js) in the dock: the totals, the years as bars, the named fights, the people
+  renderFights() {
+    const K = this.atlas?.campaign, box = $('campFights'); if (!box) return;
+    if (!K?.fights?.length) { box.innerHTML = '<p class="muted">Боёв ещё не было.</p>'; return; }
+    const S = fightStats(K), T = S.total, n = x => (x == null ? '—' : x), sp = id => (SPECIES.has(id) ? SPECIES.get(id).label : id);
+    const maxF = Math.max(1, ...S.byYear.map(y => y.fights));
+    const bars = S.byYear.map(y => `<div class="yb" title="год ${y.year}: боёв ${y.fights}, выиграно ${y.won}, врагов ${y.foes}, убито ${y.killed}, бежали ${y.fled}, наша/их сила ${y.ratio || '—'}, пали наши ${y.fell}, именных ${y.named}"><i style="height:${Math.round(y.fights / maxF * 56)}px"></i><i class="k" style="height:${Math.round(y.killed / Math.max(1, Math.max(...S.byYear.map(z => z.foes))) * 56)}px"></i><small>${y.year}</small></div>`).join('');
+    const named = S.named.length ? `<table><tr><th>День</th><th class="t">Кто</th><th>Свита</th><th class="t">Босс</th><th>Убито</th><th>Бежали</th><th>Сила</th><th class="t">Исход</th></tr>${S.named.map(f =>
+      `<tr><td>${f.day}</td><td class="t boss">${esc(f.boss.name)} (${esc(sp(f.boss.species))}${f.boss.mustDie ? ', четвёртый' : ''}) — ${HOWS[f.how] || f.how}</td><td>${n(f.guards)}<br><small>${esc(groupText(f.species))}</small></td><td class="t">${FATES[f.boss.fate]}${f.boss.hp != null && f.boss.fate !== 'dead' ? `, ${Math.round(f.boss.hp * 100)}%` : ''}</td><td>${n(f.killed)}</td><td>${n(f.fled)}</td><td>${f.ratio ? f.ratio.toFixed(1) : '—'}</td><td class="t ${f.won ? 'won' : 'lost'}">${f.won ? 'победа' : 'отбиты'}${f.fell.length ? `; пали ${esc(f.fell.join(', '))}` : ''}${f.hurt.length ? `; ранены ${esc(f.hurt.join(', '))}` : ''}</td></tr>`).join('')}</table>` : '<p class="muted">Именных боёв ещё не было: стражи могил, главари логов и четвёртый — впереди.</p>';
+    box.innerHTML = `<div><h4>Поход</h4><p>Боёв ${T.fights}, выиграно ${T.won}, засад ${T.ambushes}, штурмов ${T.storms}, именных ${T.named}. Врагов пришло ${T.foes} — в среднем ${T.foesAvg} на бой против ${T.fighters} наших; убито ${T.killed}, бежали ${T.fled}, в плен ${T.taken}. Наша сила к их силе — в среднем ${T.ratio}. Пали наши ${T.fell}, ранены ${T.hurt} раз.</p>
+      <h4>По родам врага</h4><table><tr><th class="t">Враг</th><th>Боёв</th><th>Выиграно</th><th>Их в бою</th><th>Убито</th><th>Бежали</th><th>Сила</th></tr>${S.byKind.map(k => `<tr><td class="t">${esc(k.label)}</td><td>${k.fights}</td><td>${k.won}</td><td>${k.foes}</td><td>${k.killed}</td><td>${k.fled}</td><td>${k.ratio || '—'}</td></tr>`).join('')}</table></div>
+      <div><h4>По годам похода</h4><div class="ybars">${bars}</div><small class="muted">оранжевое — боёв в год, зелёное — убито врагов; наведите на год</small>
+      <h4>По людям</h4><table><tr><th class="t">Кто</th><th>Боёв</th><th>Убил</th><th>Ранен</th></tr>${S.byMember.slice(0, 16).map(m => `<tr><td class="t">${esc(m.name)}${m.alive === false ? ' †' : ''}</td><td>${m.fights}</td><td>${m.kills}</td><td>${m.hurt}</td></tr>`).join('')}</table></div>
+      <div class="wide"><h4>Именные бои</h4>${named}<div class="row actions"><button type="button" class="quiet mini" id="campFightsFile">Бои в файл</button></div></div>`;
+    $('campFightsFile').addEventListener('click', () => offerText(latinTitle(`boi-${K.capitalName}-${K.started?.year ?? ''}`), fightReportText(this.atlas, K)));
+  }
+
+  // the walk summed up (campaign/stats.js walkStats) in the dock's «Итоги»: live while it goes, the whole of it at the end
+  renderSummary() {
+    const K = this.atlas?.campaign, box = $('campSummary'); if (!box) return;
+    if (!K) { box.innerHTML = '<p class="muted">Итоги начнут собираться, когда караван выступит.</p>'; return; }
+    box.innerHTML = walkStats(this.atlas, K).map(S => `<div><h4>${esc(S.title)}</h4><dl class="sum">${S.rows.map(([l, x]) => `<dt>${esc(l)}</dt><dd>${esc(String(x))}</dd>`).join('')}</dl></div>`).join('') +
+      `<div class="wide"><div class="row actions"><button type="button" class="quiet mini" id="campSummaryFile">Итоги в файл</button></div></div>`;
+    $('campSummaryFile').addEventListener('click', () => offerText(latinTitle(`itogi-${K.capitalName}-${K.started?.year ?? ''}`), walkReportText(this.atlas, K)));
+  }
+
   renderSide() {
+    this.renderFights(); this.renderSummary();
     const a = this.atlas, K = a.campaign; if (!K) return;
     const ms = alive(K), need = ms.length * CAMPAIGN.ration, H = a.hist;
     const doing = {heal: 'лагерь: раненые отлёживаются', food: 'лагерь: охотятся и собирают', build: K.build ? `лагерь: ${K.build.kind === 'building' ? `рубят «${BUILDINGS.get(K.build.id).name}»` : K.build.kind === 'cart' ? 'сколачивают тележку' : 'сколачивают повозку'}, ещё ${K.build.days} дн.` : 'лагерь: строят'};
     const tameKind = K.why?.startsWith('tame:') ? BEASTS[K.why.slice(5)] : null;
     const townOf = id => a.towns.find(t => t.id === id), inTown = K.inTown && townOf(K.inTown.id), via = K.via != null && townOf(K.via);
     const plan = ended(K) ? PHASE[K.phase] : inTown ? `в ${townLabel(inTown, 3)} ${inTown.name}: ${K.inTown.why === 'winter' ? 'зимуют' : 'торгуют, работают, лечатся'}` : K.hungry ? `голодают ${K.hungry} ${plural(K.hungry, 'день', 'дня', 'дней')}` : via ? `идут в ${townLabel(via, 1)} ${via.name}` : K.camp > 0 ? (tameKind ? `лагерь: приручают — ${tameKind.plural}` : doing[K.why] || 'лагерь') : PHASE[K.phase];
-    $('campStatus').innerHTML = `<dt>Дата</dt><dd>год ${H.year}, ${seasonWord(H.season)}</dd>` +
-      `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
+    this.frame();
+    $('campStatus').innerHTML = `<dt>В пути</dt><dd>${K.day} ${plural(K.day, 'день', 'дня', 'дней')} (${(K.day / 120).toFixed(1)} г.)</dd>` +
       `<dt>Что делают</dt><dd>${plan}</dd>` +
       (K.quest ? (() => { const Q = K.quest, C = Q.crown, st = C.state === 'carried' ? `несёт ${esc(K.members.find(m => m.id === C.carrier)?.name || '—')}` : C.state === 'taken' ? 'у врагов: отбить' : C.exact || C.seen ? `известно где: ${esc(C.label)}` : C.area ? `где-то в круге ${Math.round(C.area.r)} кл.` : 'где — неизвестно';
         return `<dt>Корона</dt><dd class="nb">${esc(Q.name)}: ${st}</dd><dt>Следы</dt><dd>найдено ${Q.found} из ${Q.clues.length}${K.stats.storms ? ` · штурмов ${K.stats.storms}` : ''}</dd>`; })() : '') +
@@ -459,7 +526,7 @@ export class CampaignView extends AtlasView {
       (() => { const T = K.bubble?.things || [], n = m => T.filter(t => THINGS[t.kind].mood === m).length; return `<dt>Рядом</dt><dd>${[n('hostile') ? `угроз ${n('hostile')}` : '', n('trade') ? `обозов ${n('trade')}` : '', n('game') ? `стад ${n('game')}` : ''].filter(Boolean).join(' · ') || 'тихо'}</dd>`; })();
     $('campRoster').innerHTML = [...K.members].sort((p, q) => (q.alive - p.alive) || (isCore(q) - isCore(p))).map(m => {
       const sp = SPECIES.get(m.race), rk = rank(K, m);
-      const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : ''].filter(Boolean).join(', ');
+      const mount = m.ride ? K.beasts.find(b => b.id === m.ride) : null, extra = [mount ? `верхом: ${BEASTS[mount.kind].label}` : '', (m.back ?? 1) > 1 ? 'с коробом' : '', m.potions ? `зелий ${m.potions}` : ''].filter(Boolean).join(', ');
       return `<div class="rm${m.alive ? '' : ' dead'}${this.who === m.id ? ' pick' : ''}" data-id="${m.id}" title="Строки летописи о ${esc(m.name)}"><span><b>${esc(m.name)}</b> · ${rk}${m.alive && extra ? ` <small style="display:inline;color:var(--muted)">(${extra})</small>` : ''}</span><span class="hp"><i class="${m.hp < 0.4 ? 'low' : ''}" style="width:${Math.round(Math.max(0, m.hp) * 100)}%"></i></span>` +
         `<small>${esc(raceLabel(sp, m))} · ${m.gear.hand.map(itemShort).join(', ')} · ${itemShort(m.gear.body)}${m.fate ? ` · ${esc(m.fate)}` : m.alive ? (m.contract ? ` · по найму до ${m.contract.until + 1}-го дня` : m.loyalty != null ? ` · верность ${Math.round(m.loyalty * 100)}%` : '') : m.died ? ` · ${esc(m.died.why)}, ${m.died.year}-й год` : ` · ${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left?.year ?? ''}-й год`}</small></div>`;
     }).join('');

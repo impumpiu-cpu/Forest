@@ -21,7 +21,7 @@ import {HOUR, dayOf, nightness} from '../core/time.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {raidThreat, scoutedBand} from '../settlement/threat.js';
 import {weighted} from '../core/util.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, isPredator, onSpeciesChange, arrives} from '../data/species.js';
 import {faunaLevel} from '../world/region.js';
 import {ARRIVALS as A} from '../data/migrations.js';
 
@@ -38,10 +38,17 @@ const NB_ID = {kin: 'kin', empire: 'empire', hostile: 'hostile'};
 export function bandAllowed(w, id) {
   const nb = worldNb(w);
   if (nb) return nb.hostile?.bands?.[id] || 0;
+  if (RAID_BANDS.get(id).world) return 0;   // (a necromancer's cult comes only where the world map has one)
   return !w.cfg.bands || w.cfg.bands.includes(id) ? 1 : 0;
 }
 // which band sets out: each weighs itself by the threat it sees and the hour, and by whether it lives near
-export const pickBand = (w, rng) => { const sc = scoutedBand(w); return weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1) * bandAllowed(w, b.id)])); };
+// (when every band that may come weighs nothing this hour, the draw is among those that may come — never a band from
+// nowhere: the weighted draw would fall to the list's last)
+export const pickBand = (w, rng) => {
+  const sc = scoutedBand(w), all = RAID_BANDS.all();
+  const items = all.map(b => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1) * bandAllowed(w, b.id)]).filter(([, v]) => v > 0);
+  return weighted(rng, items.length ? items : all.map(b => [b.id, bandAllowed(w, b.id)]).filter(([, v]) => v > 0));
+};
 const anyBand = w => RAID_BANDS.all().some(b => bandAllowed(w, b.id) > 0);
 
 const raidDist = w => { const nb = worldNb(w); return nb ? (nb.hostile && anyBand(w) ? nb.hostile.dist : null) : anyBand(w) ? RAIDS[w.cfg.raids].dist : null; };
@@ -122,11 +129,11 @@ export const scripted = {
 // (world/region.js) × the start menu's wildlife or predators setting. The nechist is checked daily:
 // whether it may come back is the land's business (data/migrations.js `resident`).
 const evening = t => { let x = Math.floor(t / DAY) * DAY + 21.5 * HOUR; if (x < t) x += DAY; return x; };
-for (const sp of SPECIES.filter(s => s.arrive)) {
+function flowFor(sp) {
   const A = sp.arrive, when = (w, t) => (A.night ? evening(t) : t);
   // the polygon's «Чудища» scales the monsters on top of the wolves' or the game's setting; «Нечисть» turns the spirits off
   const monsters = w => (sp.kind === 'monster' ? MONSTERS[w.cfg.monsters ?? 'usual']?.k ?? 1 : 1);
-  const setting = w => (sp.resident ? (w.cfg.spirits === false ? 0 : 1) : (sp.brain === 'predator' ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0) * monsters(w));
+  const setting = w => (sp.resident ? (w.cfg.spirits === false ? 0 : 1) : (isPredator(sp) ? PREDATORS[w.cfg.predators].wolves : WILDLIFE[w.cfg.wildlife].hares ? 1 : 0) * monsters(w));
   scripted.flows[sp.id] = {from: sp.resident ? 'local' : 'wilds',
     first: (w, rng) => when(w, w.tick + (A.first + rng()) * DAY),
     offer: (w, rng) => {
@@ -137,3 +144,5 @@ for (const sp of SPECIES.filter(s => s.arrive)) {
     },
     next: (w, rng) => (sp.resident ? w.tick + DAY : when(w, w.tick + (A.every[0] + rng() * (A.every[1] - A.every[0])) * DAY))};
 }
+for (const sp of SPECIES.filter(s => s.arrive)) flowFor(sp);
+onSpeciesChange((what, sp) => { delete scripted.flows[sp.id]; if (what !== 'removed' && arrives(sp)) flowFor(sp); });   // (data/species.js cloneSpecies, arriveChanged)

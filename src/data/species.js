@@ -1,5 +1,5 @@
 // Creatures. A species sets body stats, which needs it has, how it looks and, for animals,
-// its own brain and what hunting it yields. Animals live here; thinking races in data/races.js,
+// its behaviours (the list `behaviours`: docs/BEHAVIOUR.md; a race has none and thinks by its faction) and what hunting it yields. Animals live here; thinking races in data/races.js,
 // the rot's undead and other raid monsters in data/monsters.js. All of them end up in SPECIES.
 //   mind: 'beast' | 'semi' | 'sentient' — only the sentient can be hired or bargained with
 //   special, hp, speed, attack: in data/balance/creatures.js, one row per species (bodyFor merges it);
@@ -14,10 +14,18 @@ import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
 import {MONSTERS} from './monsters.js';
 import {BESTIARY} from './bestiary.js';
-import {bodyFor} from './balance/creatures.js';
+import {bodyFor, CREATURES} from './balance/creatures.js';
 import {petNames} from './names.js';
+import {WAYS, BEAT} from './behaviour.js';
 
 export const SPECIES = new Registry('species');
+
+// a hunter of the pack: has the `predator` block (data/behaviour.js WAYS.predator reads it)
+export const isPredator = sp => !!sp.predator;
+// the brain a creature of this species is born with: its own (a race names none: the faction's — colonist, raider, caravan),
+// or the tabled one for every row that lists its behaviours (agents/brains/tabled.js, docs/BEHAVIOUR.md)
+export const brainOf = (sp, fa) => sp.brain || (sp.behaviours ? 'tabled' : fa?.brain);
+
 
 // What a species is to the world. On the world map (src/atlas/) each kind comes in its own way:
 //   beast    — the beasts: fields of density by biome, prey and predators (atlas/fauna.js)
@@ -33,7 +41,7 @@ SPECIES.registerAll([
   // Hares graze, rest at night, bolt from people and fire. They never breed here:
   // their numbers change only through migration (see migrations.js).
   // game: shows up on the prey flow field that hunters and predators follow
-  {id: 'hare', snowfoot: true, kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', needs: [], brain: 'grazer', game: true,
+  {id: 'hare', snowfoot: true, kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true,
     habitat: {meadow: 'common', steppe: 'common', forest: 'usual', taiga: 'usual', shrubland: 'usual', savanna: 'rare', tundra: 'rare', foothills: 'rare', barrows: 'usual'},
     heatHarm: 60, look: {shape: 'hare', size: 0.42, color: '#cdbb9a'},
     yields: {meat: 2, hide: 1, bone: 1},
@@ -44,7 +52,7 @@ SPECIES.registerAll([
   // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
   // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
   // or when the hares run out. Like everyone else they only arrive and depart by migration.
-  {id: 'wolf', kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], brain: 'predator',
+  {id: 'wolf', kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
     habitat: {taiga: 'common', tundra: 'usual', steppe: 'usual', forest: 'usual', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
@@ -72,7 +80,7 @@ SPECIES.registerAll([
     }},
 
   // Deer: the main game of the woods — skittish, fast, a lot of meat and a good hide.
-  {id: 'deer', kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', needs: [], brain: 'grazer', game: true,
+  {id: 'deer', kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, game: true,
     habitat: {taiga: 'common', tundra: 'usual', forest: 'usual', meadow: 'usual', steppe: 'rare'},
     heatHarm: 60, look: {shape: 'deer', size: 0.62, color: '#a8794a'},
     yields: {meat: 5, hide: 2, bone: 2},
@@ -82,7 +90,7 @@ SPECIES.registerAll([
     leaveChance: 0.0003},
 
   // Fox: small and quick, hunted for its fur, which traders pay well for.
-  {id: 'fox', kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', needs: [], brain: 'grazer', game: true,
+  {id: 'fox', kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true,
     habitat: {taiga: 'common', forest: 'usual', steppe: 'usual', tundra: 'usual', meadow: 'rare', desert: 'rare', barrows: 'rare'},
     heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
     yields: {meat: 1, furs: 1}, trophies: [{res: 'furs', n: 1, chance: 0.2}],
@@ -92,17 +100,18 @@ SPECIES.registerAll([
 
   // Boar: fat and dangerous. Like the mule it does not run: it kicks back with its tusks and charges
   // whoever shot it. Hunters go for it only when there is no gentler game about.
-  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], brain: 'mule', big: true, game: true,
+  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, game: true,
     habitat: {forest: 'common', shrubland: 'usual', swamp: 'rare', meadow: 'rare', taiga: 'rare', jungle: 'rare'},
     heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
     yields: {meat: 6, hide: 2, bone: 1}, trophies: [{res: 'hide', n: 1, chance: 0.2}],
     killMessage: name => `Кабан задрал поселенца: <b>${name}</b>.`,
-    mule: {kickRange: 1.0, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3, leaveChance: 0.0003}},
+    grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0003,
+    mule: {kickRange: 1.0, charge: 2.1, chargeHit: 1.6, chargeFrom: 1.8, grudge: 300, giveUp: 18, fleeBelow: 0.3}},
 
   // Rats: they come for the stock when there is a lot of food and nothing to keep them out of it.
   // They nibble what lies in the open (pots and a granary protect it) and run from people;
-  // whoever catches one near the stores kills it (agents/brains/vermin.js).
-  {id: 'rat', kind: 'beast', label: 'крыса', labelAcc: 'крысу', plural: 'крысы', needs: [], brain: 'vermin',
+  // whoever catches one near the stores kills it (agents/behaviours/scurry.js).
+  {id: 'rat', kind: 'beast', label: 'крыса', labelAcc: 'крысу', plural: 'крысы', needs: [], behaviours: [...WAYS.vermin], heart: BEAT.vermin,
     // no habitat: lives wherever there is food lying about
     heatHarm: 55, look: {shape: 'rat', size: 0.25, color: '#7c7468'},
     vermin: {eats: 0.0016, flee: 1.6, caught: 0.04}},
@@ -111,7 +120,7 @@ SPECIES.registerAll([
   // whoever comes at it, and someone who shoots it from afar gets charged and trampled. Wolves
   // dare only a badly wounded one. Wild mules wander in now and then; traders bring pack mules.
   // big: hunters and wolves fight it rather than finish it with one bite or arrow.
-  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], brain: 'mule', big: true, legend: 'мул',
+  {id: 'mule', kind: 'beast', label: 'мул', labelAcc: 'мула', plural: 'мулы', needs: [], behaviours: [...WAYS.mule], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, legend: 'мул',
     habitat: {foothills: 'common', meadow: 'usual', shrubland: 'rare', highlands: 'rare'},
     heatHarm: 62, look: {shape: 'mule', size: 0.85, color: '#7a5232'},
     yields: {meat: 9, hide: 3, bone: 4},
@@ -124,8 +133,9 @@ SPECIES.registerAll([
       grudge: 360,               // how long it keeps after whoever hurt it
       giveUp: 22,                // …unless they get this far away
       fleeBelow: 0.3,            // badly hurt: it limps off instead
-      leaveChance: 0.0002,       // per tick, a wild mule wanders off the map
     },
+    grazes: {terrain: ['grass'], eatsBerries: 0, shunZone: true},   // what it grazes on; keeps off the settlement (agents/behaviours/graze.js)
+    leaveChance: 0.0002,       // per tick, a wild mule wanders off the map
     // tamed it hauls logs and stone and pulls the plough (see `tame` on the goat for the fields)
     tame: {chance: 0.22, tier: 3, space: 2, bait: {hay: 2}, eats: 1.2, kicks: true, stack: 2, max: 2,
       effects: {jobSpeed: {chop: 1.15, mine: 1.15, dig: 1.15, farm: 1.25}},
@@ -134,7 +144,7 @@ SPECIES.registerAll([
 
   // Goat: a wild goat of the rocky meadows. Skittish like a deer, but a patient herder with an
   // armful of hay can tame it; in a pen it gives milk and wool and has kids in spring and summer.
-  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', needs: [], brain: 'grazer', game: true, legend: 'коза',
+  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, game: true, legend: 'коза',
     habitat: {foothills: 'common', highlands: 'common', shrubland: 'usual', meadow: 'rare'},
     heatHarm: 60, look: {shape: 'goat', size: 0.46, color: '#d6cdb6'},
     yields: {meat: 3, hide: 1, bone: 1},
@@ -160,6 +170,42 @@ SPECIES.registerAll([
 SPECIES.registerAll(RACES);
 SPECIES.registerAll(MONSTERS);
 SPECIES.registerAll(BESTIARY);
+
+// ── species made in the constructor (src/app/beastView.js, docs/TABLES.md): a copy of one of the above under a new
+// id, kept in the layer of table edits (data/schema/edits.js `newSpecies`) and made again at every start. Whatever
+// derives a thing per species at load (an arrival: data/migrations.js; a flow from beyond the edge: outside/scripted.js;
+// a neighbour's list: data/neighbours.js) hears of it through onSpeciesChange and follows.
+const WATCHERS = [];
+export const onSpeciesChange = fn => { WATCHERS.push(fn); };
+const tell = (what, sp) => { for (const fn of WATCHERS) fn(what, sp); };
+const deep = v => (typeof v === 'function' ? v : structuredClone(v));
+
+// a new species as a copy of `from`: its row of data/balance/creatures.js too; → the species, or {error}
+export function cloneSpecies(from, id, {label, labelAcc, plural} = {}) {
+  if (!SPECIES.has(from)) return {error: `нет вида «${from}»`};
+  if (!/^[a-z][a-z0-9_]{1,23}$/.test(id || '')) return {error: 'id — латиница, цифры и _, от 2 до 24 знаков, с буквы'};
+  if (SPECIES.has(id)) return {error: `вид «${id}» уже есть`};
+  const base = SPECIES.get(from);
+  if (base.kind === 'race') return {error: 'расы делаются не здесь'};
+  const sp = {};
+  for (const k of Object.keys(base)) sp[k] = deep(base[k]);
+  Object.assign(sp, {id, label: label || base.label, labelAcc: labelAcc || label || base.labelAcc, plural: plural || base.plural, made: from});
+  if (sp.behaviours) sp.behaviours = [...sp.behaviours];
+  CREATURES[id] = structuredClone(CREATURES[from]);
+  SPECIES.register(sp);
+  tell('added', sp);
+  return sp;
+}
+// the `arrive` block of a species was edited (data/schema/edits.js): whoever built a flow from it builds it anew
+export const arrives = sp => !!(sp.arrive?.group && sp.arrive.every && sp.arrive.cap) || !!(sp.arrive && sp.resident);
+export const arriveChanged = id => { if (SPECIES.has(id)) tell('arrive', SPECIES.get(id)); };
+export function removeSpecies(id) {
+  if (!SPECIES.has(id) || !SPECIES.get(id).made) return false;
+  const sp = SPECIES.get(id);
+  SPECIES.unregister(id); delete CREATURES[id];
+  tell('removed', sp);
+  return true;
+}
 
 
 // Heat: `heatHarm` is where it starts to hurt; `fearHeat` is where the animal runs (45 °C by default,

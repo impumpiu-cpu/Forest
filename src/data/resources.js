@@ -89,6 +89,9 @@ RESOURCES.registerAll([
 
   // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
   {id: 'herbs', label: 'лечебные травы', short: 'травы', tags: ['medicine'], group: 'Лекарства', loot: 1, keep: 10, target: 10, color: '#e8d25c'},
+  // the healing potion, brewed from herbs in the healer's hut (data/recipes.js `potion`, data/potions.js): the stock fills
+  // its people's slots (settlement/potions.js), at most three each; drunk by itself at the edge of death (agents/potions.js)
+  {id: 'potion', label: 'зелья лечения', short: 'зелья', tags: ['medicine'], group: 'Лекарства', loot: 2, keep: 6, color: '#d8506a'},
 
   // fuel: coal — burnt from logs in the pit or dug from a seam, it is all the same coal. In a furnace
   // (`furnace`) fuel gives heat up to its `tier`: wood (tier 1) melts copper, bronze, gold and silver,

@@ -7,20 +7,22 @@
 //   species/faction/init/kit/groupInit/message — the group itself;
 //   members(w, rng) — a mixed group instead: [{species, faction?, init(a, w)?, kit?}, …]
 import {Registry} from '../core/registry.js';
+import {POTION} from './potions.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
-import {T, BY_CODE} from './terrain.js';
+import {BY_CODE} from './terrain.js';
 import {HOUR, DAY} from '../core/time.js';
 import {season} from './seasons.js';
-import {homeCell} from '../agents/brains/spirit.js';
+import {homeCell} from '../agents/nechist.js';
 import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
-import {RAID_BANDS, banditKit, kitFor, raiderBody} from './raids.js';
+import {RAID_BANDS, BAND_BEASTS, banditKit, kitFor, raiderBody} from './raids.js';
+import {faunaLevel} from '../world/region.js';
 import {createSquad} from '../agents/squad.js';
-import {SPECIES} from './species.js';
+import {SPECIES, isPredator, onSpeciesChange, arrives} from './species.js';
 import {raceLabel, refreshBody} from '../agents/special.js';
 import {settlerSpecies} from '../settlement/relations.js';
 import {ofSpeciesList} from '../agents/lookup.js';
@@ -98,7 +100,7 @@ MIGRATIONS.registerAll([
       const pickName = list => list[Math.floor(rng() * list.length)];
       const out = [{species: 'human', init: a => { a.role = 'trader'; [a.name, a.gender] = pickName(TRADE.traderNames); }}];
       for (let k = 0; k < TRADE.guards; k++) out.push({species: 'human', kit: TRADE.guardKit,
-        init: a => { a.role = 'guard'; a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: 1.5}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: 0.5}; a.skillVer = 1; }});
+        init: a => { a.role = 'guard'; a.brain = 'guard'; a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: 1.5}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: 0.5}; a.skillVer = 1; }});
       const mules = TRADE.mules[0] + Math.floor(rng() * (TRADE.mules[1] - TRADE.mules[0] + 1));
       for (let k = 0; k < mules; k++) out.push({species: 'mule', init: a => { a.name = 'Вьючный мул'; }});
       return out;
@@ -111,15 +113,24 @@ MIGRATIONS.registerAll([
 
   // A band from the hostile lands (data/raids.js): the provider says which one sets out and how strong it
   // is (n: a budget in strength rating, КС); toughness and aim grow with the threat level they have reached.
+  // A campaign's camp (campaign/camp.js) adds `fill` options: `up` — the heads rounded up, `max` — the caps lifted
   {id: 'raiders', faction: 'raiders', minDist: 40, topic: 'danger',
     members: (w, rng, n, opts) => {
       const band = RAID_BANDS.get(opts.band || 'bandits'), t = raidThreat(w);
-      return band.members(w, rng, n, t).map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
+      // on a world cell the war beasts come as thick as they live there (data/raids.js BAND_BEASTS)
+      const here = w.site?.world ? Object.fromEntries(SPECIES.filter(sp => sp.behaviours && sp.habitat).map(sp => [sp.id, Math.min(1, faunaLevel(w, sp.id) / BAND_BEASTS.full)])) : null;
+      const list = band.members(w, rng, n, t, {...(opts.fill || {}), ...(here ? {here} : {})});
+      // beasts that joined the band on the way (campaign/camp.js: a camp's foe of two kinds) — its war beasts
+      if (opts.beasts) for (let k = 0; k < opts.beasts.n; k++) list.push({species: opts.beasts.species});
+      // a boss's retinue (campaign/camp.js): at least this many, made up with more of the band's most numerous kind
+      if (opts.atLeast) { const most = list.map(m => m.species).sort((p, q) => list.filter(x => x.species === q).length - list.filter(x => x.species === p).length)[0]; while (list.length < opts.atLeast) list.push({...list.find(m => m.species === most)}); }
+      return list.map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
         init: (a, w) => {
           a.band = band.id;
+          if (SPECIES.get(m.species).inventory && w.rngs.outside() < POTION.foe) a.potions = 1;   // a healing potion, rarely (agents/potions.js)
           if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);
           // a war beast (a warg with orcs, a hyena with gnolls) follows the band, not its own brain
-          if (SPECIES.get(m.species).brain) { a.brain = 'raider'; a.warBeast = true; }
+          if (SPECIES.get(m.species).behaviours) { a.brain = 'raider'; a.warBeast = true; }
         }}));
     },
     groupInit: (group, w) => {
@@ -132,34 +143,40 @@ MIGRATIONS.registerAll([
       createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)
     },
     ammo: 8,
-    message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)} — с ${side}.`},
+    message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)}${side ? ` — с ${side}` : ''}.`},   // (a camp's foe may come from close by, not from an edge: no side)
 ]);
 
 // ── the bestiary's beasts (data/bestiary.js `arrive`): one arrival each, built from the entry.
 // Beasts that hunt people come as predators, the nechist as nechist, the rest as wild game.
-export const factionOf = sp => (sp.resident ? 'nechist' : sp.brain === 'predator' ? 'predators' : 'wild');
+export const factionOf = sp => (sp.resident ? 'nechist' : isPredator(sp) ? 'predators' : 'wild');
 const onMap = (w, id) => ofSpeciesList(w, [id], o => !o.dead && !o.tame).length;
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 
-for (const sp of SPECIES.filter(s => s.arrive)) {
+function arrivalFor(sp) {
   const A = sp.arrive;
   MIGRATIONS.register({
-    id: sp.id, species: sp.id, faction: factionOf(sp), minDist: 30, topic: sp.brain === 'predator' || sp.resident ? 'danger' : 'wildlife',
-    level: sp.brain === 'predator' || sp.resident ? 'notice' : undefined,
+    id: sp.id, species: sp.id, faction: factionOf(sp), minDist: 30, topic: isPredator(sp) || sp.resident ? 'danger' : 'wildlife',
+    level: isPredator(sp) || sp.resident ? 'notice' : undefined,
     // a resident is one of a kind and returns `respawn` days after it was killed; others stay under `cap`
     accept: (w, n) => {
       if (sp.resident) return onMap(w, sp.id) || w.tick - (w.residents?.[sp.id] ?? -1e9) < sp.respawn * DAY ? 0 : 1;
       if (sp.hibernates && season(w).id === 'winter') return 0;
       return Math.max(0, Math.min(n, A.cap - onMap(w, sp.id)));
     },
-    // the nechist appears at its home ground (agents/brains/spirit.js), not at the map edge
+    // the nechist appears at its home ground (agents/nechist.js), not at the map edge
     spawnAt: sp.spirit ? w => homeCell(w, sp.spirit.home, 18) : undefined,
     init: a => { a.name = cap1(sp.label); },
-    // a pack: members share an id, the first one leads (agents/brains/predator.js)
-    groupInit: sp.brain === 'predator' ? group => { const pack = group[0].id; for (const a of group) a.pack = pack; } : undefined,
+    // a pack: members share an id, the first one leads (agents/hunting.js)
+    groupInit: isPredator(sp) ? group => { const pack = group[0].id; for (const a of group) a.pack = pack; } : undefined,
     message: A.message ? (w, group) => `${cap1(A.message.replace('{n}', group.length))}.` : undefined,
   });
 }
+for (const sp of SPECIES.filter(s => s.arrive)) arrivalFor(sp);
+// a species made in the constructor (data/species.js cloneSpecies) comes and goes as the one it was copied from
+onSpeciesChange((what, sp) => {
+  if (what !== 'added' && MIGRATIONS.has(sp.id)) MIGRATIONS.unregister(sp.id);
+  if (what !== 'removed' && arrives(sp)) arrivalFor(sp);
+});
 
 // How often the wild sends its beasts to the local map (outside/scripted.js), before the land decides how many stay:
 // the first after `first` days (hares and wolves: `every` ticks, again and again), then again after wait[0] + wait[1] ×

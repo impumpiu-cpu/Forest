@@ -11,14 +11,15 @@
 //   state  — march (on the plan), withdraw (the goal is reached), retreat (morale broke). On the way
 //            out the rear holds off pursuers for a while.
 // Plain data in w.squads ({id: squad}), members by id, saved with the world. The raider brain
-// (agents/brains/raider.js) asks planFor() what to do; stepSquads() checks morale and the goal.
+// (agents/behaviours/raid.js) asks planFor() what to do; stepSquads() checks morale and the goal.
 // Every squad's start and end is in the journal with its reason, and in w.behave.squads.
 import {SPECIES} from '../data/species.js';
+import {leaderOf} from './auras.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {colonists} from '../settlement/query.js';
 import {log} from '../core/log.js';
-import {esc, clamp, weighted} from '../core/util.js';
+import {esc, clamp, weighted, dist} from '../core/util.js';
 import {hpShare} from './agent.js';
 import {cellOf} from '../world/grid.js';
 import {nearestHostile, canSee} from './combat.js';
@@ -42,7 +43,6 @@ const Label = sq => { const l = RAID_BANDS.get(sq.band).label; return l[0].toUpp
 export const squadOf = (w, a) => (a.squad != null ? w.squads?.[a.squad] || null : null);
 const byId = (w, id) => { const o = liveById(w, id); return o && !o.gone ? o : null; };
 const membersOf = (w, sq) => liveMembers(w, sq, o => !o.gone && !o.downed && o.squad === sq.id);   // the fallen and the taken are out of it
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 // a fighter's weight in the odds: health × the hardest blow it can strike
 export function strength(a) {
@@ -142,6 +142,7 @@ function defenders(w, ms) {
 
 export function moraleOf(w, sq, ms = membersOf(w, sq)) {
   if (sq.kind === 'mindless') return 1;
+  if (ms.some(m => leaderOf(w, m) || m.auras?.includes('lead'))) return 1;   // a boss's aura: the band holds while it stands (agents/auras.js)
   const leaderDown = !ms.some(m => m.id === sq.leader);
   const own = ms.reduce((s, a) => s + strength(a), 0), foes = defenders(w, ms);
   const odds = foes > 0 ? clamp((own / foes - 1) * SQUAD.odds, -SQUAD.odds * 1.5, SQUAD.odds) : 0;

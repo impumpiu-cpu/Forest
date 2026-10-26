@@ -22,15 +22,34 @@ export const CAMP = {
   // a storm of a guarded place of the quest (campaign/quest.js): in the morning, rested, the guards at hand
   guard: {from: 9, come: [9, 9.05], until: 18, near: 12},
   quiet: 1,
+  // the camp's alarm (campaign/camp.js stepCamp; agents/behaviours/warband.js): raised when one of the caravan who is not
+  // asleep sees a foe within `sight` cells (by day; at night × the eyes' night sight, data/tongues.js), or a blow is struck;
+  // then every able one goes for the foe with the weight `want`
+  band: {sight: 14, want: 3},
   // how far the foe comes from: an edge at least this far from the camp (cells of the local map)
   far: 18,
-  // the foe: a band's budget in «human raiders» (data/raids.js) from its might (data/campaign.js FOES)
-  // × the thing's strength × `budget`; beasts come as a pack of `pack` × strength; the threat the band
-  // carries its gear and aim by (settlement/threat.js) — × strength
-  budget: 0.55, pack: [2, 4], threat: 6,
-  // a building packed in the wagon is put up at the camp: it stands with this share of its work left
-  // (the caravan finishes it with its own hands before the night)
-  deploy: 0.25,
+  // the foe is bought by the caravan's strength, not by the thing's (agents/strength.js sideStrength of everyone
+  // who stands in the fight, with all they wear — campaign/camp.js campSetup): the fight's budget is that strength
+  // × the fight's weight, ± `sway` of it at random; heads are always rounded up (data/raids.js fill `up`: when a
+  // giant and a half fit, two come). In the quick mode the same, in the caravan's own might (campaign/fight.js)
+  foe: {
+    skirmish: [0.7, 1],   // a chance meeting — a nameless band at night or in ambush: down to −30 %
+    force: 1,             // a realm's army, the guards of a place stormed
+    leader: 1.15, mini: 1.25, boss: 1.5,   // a leader of an old lair, a grave's guard, the fourth and its lair (campaign/epic.js)
+    sway: 0.25, floor: 0.1,   // (never lighter than `floor` of the caravan, however the sway falls)
+    // a chance meeting is as many as live there (campaign/land.js: the thing's strength grows with the density of who
+    // came): × its strength over `ref` of its kind (the mean of that kind in the wild; `else` for the rest), within
+    // [lo, hi] — a thick land sends more, a thin one fewer; a kind as a whole is as strong as before
+    density: {ref: {beasts: 0.8, wolves: 0.8, tribe: 1.05, lair: 1.1, raiders: 1, undead: 1.3, bandits: 1, cultists: 1.4, else: 1.2}, lo: 0.6, hi: 1.5},
+    most: 18,             // no more heads than this, however weak each (a swarm of bats is a swarm, not a plague)
+  },
+  // the threat the band carries its gear and aim by (settlement/threat.js) — × the thing's strength; in the quick
+  // mode the heads of the record are counted at `quickHeads` a point of might
+  threat: 6, quickHeads: 0.55,
+  // a boss (a leader of an old lair, a grave's guard, the fourth: campaign/epic.js, campaign/land.js) never comes alone:
+  // at least `atLeast` come; the strongest of its own kind is grown into it. It stands while it lives, and its side
+  // holds with it (agents/auras.js: the aura `lead`)
+  boss: {atLeast: 2},
   // the skills the ranks bring (data/skills.js, 0 … 1): the knights fight, the squires work their tools
   skills: {knight: {melee: 0.35, ranged: 0.3}, squire: {}, sellsword: {melee: 0.4, ranged: 0.2}, guide: {hunting: 0.3, ranged: 0.2}},
   tools: {axe: 'woodcutting', ironaxe: 'woodcutting', maul: 'construction', rod: 'fishing', pan: 'gathering'},
@@ -47,10 +66,11 @@ export const CAMP = {
   stop: {maxDays: 6, from: 7, until: 19.5, game: 2.2},
   // what the stores send back to the campaign besides the food: the goods the caravan carries and sells (the
   // rest — firewood, hay, stone — stays at the camp)
-  carry: ['hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
+  carry: ['potion', 'herbs', 'hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
   // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
   spoils: 12,
-  // how many played camps the campaign keeps to be watched again (ui/campaignView.js)
+  // how many played camps of the seasons past the campaign keeps to be watched again (ui/campaignView.js; the season's own
+  // are all kept till the screen has played them)
   keep: 8,
 };
 
@@ -61,9 +81,12 @@ export const GAME_FLOW = {deer: 'deer', boar: 'boars', goat: 'goats', hare: 'har
 // (data/migrations.js); a lair's thing names its own band or beast (campaign/land.js dangers)
 export const CAMP_FOES = {
   bandits: {band: 'bandits'},
+  raiders: {band: 'orcs'},
+  cultists: {band: 'cultists'},
   army:    {band: 'bandits', threat: 1.6},
   tribe:   {band: 'goblins'},
   undead:  {band: 'undead'},
   lair:    {beast: 'varg'},
+  beasts:  {beast: 'wolves'},
   wolves:  {beast: 'wolves'},
 };

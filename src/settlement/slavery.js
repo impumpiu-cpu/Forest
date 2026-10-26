@@ -7,7 +7,7 @@
 // A sale is taken ill: former slaves' tie to the colony weakens, the captives left behind grow readier to run,
 // a merciful colonist is troubled.
 import {SLAVE, captivePrice} from '../data/slavery.js';
-import {CAPTIVE, BONDS, bestBonds} from '../data/captives.js';
+import {CAPTIVE, bestBonds} from '../data/captives.js';
 import {SPECIES} from '../data/species.js';
 import {captives} from './captives.js';
 import {formers} from './freedom.js';
@@ -76,7 +76,7 @@ export function buyCaptive(w, c, deal, note, cash, spend, trader) {
   const at = trader || {x: w.camp.x + 0.5, y: w.camp.y + 0.5};
   const a = createAgent(w, o.race, 'colony', at.x, at.y);
   w.stock[B.resource] -= B.n;
-  a.captive = {since: w.tick, bonds: B.id, by: null, band: null, people: null, was: 'bought', will: SLAVE.buy.will};
+  a.captive = {since: w.tick, bonds: B.id, by: null, band: null, people: null, was: 'bought', will: SLAVE.buy.will}; a.brain = 'captive';
   const r = w.chronicle.people?.find(x => x.id === a.id); if (r) r.captive = true;
   tally(w).bought = (tally(w).bought || 0) + 1;
   deal.spent += p; note(deal.bought, `пленный (${SPECIES.get(o.race).label})`, 1, p);

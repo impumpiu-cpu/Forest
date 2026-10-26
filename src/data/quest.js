@@ -29,8 +29,13 @@ export const QUEST = {
   sight: 1.5, tries: 6, rest: 30,
   // a guarded place: the guards' strength — base + perDiag × the distance from home as a share of the
   // world's diagonal (× crown for the crown's own); the council storms it when the company is this whole,
-  // and after a lost storm waits `retry` days
-  guard: {base: 0.7, perDiag: 1.8, crown: 1.25, max: 3}, storm: 0.75, retry: 12,
+  // and after a lost storm waits `retry` days — and comes back only `stronger` than the company that lost was
+  // (campaign/march.js caravanMight: hired, healed, better armed; the guards are bought by the caravan's strength,
+  // data/camp.js CAMP.foe, so the same company meets the same guards); not grown so in `grow` days, it leaves the
+  // place as after `giveUp` storms
+  guard: {base: 0.7, perDiag: 1.8, crown: 1.25, max: 3}, storm: 0.75, retry: 12, stronger: 1.2, grow: 60,
+  // and never with fewer than `hands` on their feet: one or two left do not storm, they go for people
+  hands: 3,
   // after `giveUp` storms of one place beaten back the council leaves it for `giveUpRest` days (a clue is not a must);
   // a place sought `stuck` days without reaching it (the ice, the crags, no food for the way there) — for `stuckRest`
   giveUp: 4, giveUpRest: 240, stuck: 480, stuckRest: 1200,

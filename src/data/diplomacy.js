@@ -17,15 +17,17 @@
 // 192-cell-high world): the loser loses `battleLoss` of its people, and a hamlet beaten that hard is
 // burnt (`raze` people, or `razeShare` of its step's threshold — a bled town of any size): a ruin stays, and the
 // battlefield is left with barrows.
-// Orcs (`raiders`) raid the nearest town of a people they dislike within `raidReach` cells, at most
-// `raidsPerYear` raids a year for the whole people: the loot grows the orc town, the victim loses `raidLoss`.
+// A people of raiders (the deed `raidTown` in its row, data/deeds.js — the orcs) raids the nearest town of a people
+// it dislikes within `raidReach` cells, at most `raidsPerYear` raids a year for the realm: the loot grows the raiding
+// town, the victim loses `raidLoss`. War, peace and the armies' marches are the realms' deeds too (atlas/court.js,
+// atlas/deeds/): this file keeps their numbers, atlas/diplomacy.js the body of the relations.
 // Peoples meet when their lands touch or their towns stand within `front` cells of each other; a war
 // needs the same: a border.
 export const DIPLOMACY = {
   drift: 0.2, pressure: 1.2, trade: 0.1, tradeMax: 0.35, tradeCeil: 2.5, raid: 0.8, warAt: -3.2, weariness: 0.5, peaceAt: -1.8, longest: 12, afterPeace: -1.2,
   compete: {war: 0.35, hostile: 0.25, tense: 0.12, peace: 0.06, friends: 0.02},
   mingle: 0.012, mingleMax: 0.3, front: 40, battleLoss: [0.12, 0.3], raze: 70, razeShare: 0.3,
-  raiders: ['orcs'], raidReach: 45, raidChance: 0.15, raidsPerYear: 2, raidLoss: 0.15, barrows: 3,
+  raidReach: 45, raidChance: 0.15, raidsPerYear: 2, raidLoss: 0.15, barrows: 3,
   states: [
     {id: 'friends', from: 2, label: 'дружба'},
     {id: 'peace', from: -0.5, label: 'мир'},

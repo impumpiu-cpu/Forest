@@ -1,12 +1,12 @@
 // The «Мир» screen: the world-map polygon. Settings on the left, the map in the middle, the
-// chronicle on the right. The land runs a stage a frame; history runs at the chosen pace (SPEEDS:
-// seasons a frame), so the map is drawn and the chronicle written as the world is made. The map has
+// chronicle on the right. The land runs a stage a frame; history runs a season a step at the observer's pace
+// (core/clock.js), so the map is drawn and the chronicle written as the world is made. The map has
 // a camera (render/camera.js): the wheel zooms at the cursor, dragging pans, as on the local map.
 // The cells are painted once per change into an off-screen bitmap and drawn scaled; everything on
 // top (rivers, roads, towns, lairs) is drawn in cell units over it. (Later the generation moves to
 // a Web Worker — docs/WORLD.md.)
-import {ATLAS_SIZES, ATLAS_LAND, DEFAULT_ATLAS_CFG} from '../data/atlas.js';
-import {ATLAS_STAGES} from '../atlas/stages.js';
+import {ATLAS_SIZES, ATLAS_LAND} from '../data/atlas.js';
+import {DEEDS, deedLabel} from '../data/deeds.js';
 import {cellGeology} from '../atlas/geology.js';
 import {riverKind} from '../atlas/hydrology.js';
 import {biomeAt, soilAt, cellBiomes} from '../atlas/biomes.js';
@@ -18,41 +18,36 @@ import {scaleOf} from '../atlas/tectonics.js';
 import {PLATE_COUNTS, HEMISPHERES, BOUNDARIES, BOUNDARY_BY_CODE, ROCKS, ROCK_BY_CODE, ROCK_KINDS, ORE_GENESIS} from '../data/geology.js';
 import {LEVEL_WORDS} from '../data/regions.js';
 import {RAIN_WORDS} from '../data/climate.js';
-import {newAtlas, runNextStage, atlasDone, landDone} from '../atlas/generate.js';
-import {historyLength, seasonLabel, eraPlan} from '../atlas/history.js';
 import {townAt, landOf, townLabel} from '../atlas/peoples.js';
 import {roadLevel} from '../atlas/roads.js';
 import {seaLevelOf} from '../atlas/sea.js';
 import {SEA} from '../data/roads.js';
 import {WORLD_PEOPLES, ELDER_YEARS, YOUNG_YEARS} from '../data/peoples.js';
-import {stateOf, stateLabel, attitude, ruinAt, relation} from '../atlas/diplomacy.js';
-import {realmOf, realmLabel} from '../atlas/realms.js';
+import {ruinAt} from '../atlas/diplomacy.js';
+import {realmOf, realmLabel, realmLand} from '../atlas/realms.js';
+import {captiveCount} from '../atlas/lairs.js';
 import {ROADS} from '../data/roads.js';
 import {faunaAt} from '../atlas/fauna.js';
 import {lairAt} from '../atlas/lairs.js';
+import {towers, seatMap} from '../atlas/necro.js';
 import {LAIRS} from '../data/lairs.js';
 import {TECHS} from '../data/tech.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
-import {WILD_YEARS, ERAS} from '../data/history.js';
+import {WILD_YEARS} from '../data/history.js';
 import {SPECIES} from '../data/species.js';
 import {TOWN_BUILDINGS, EFFECTS} from '../data/townBuildings.js';
 import {townFx, room} from '../atlas/towns.js';
-import {seedNumber} from '../core/rng.js';
 import {esc} from '../core/util.js';
 import {offerText, latinTitle} from './store.js';
-import {lineLevel, keeps, DETAILS, worldChronicleText, calamityChronicleText} from '../atlas/chronicle.js';
+import {worldChronicleText, calamityChronicleText} from '../atlas/chronicle.js';
 import {$} from './dom.js';
-import {warnEdits} from './tableEdits.js';
-import {Camera} from '../render/camera.js';
+import {SeasonClock} from '../core/clock.js';
 import {siteAt, siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
+import {pickObject, inspectHtml, whereIs} from './inspect.js';
+import {openTab} from './tabs.js';
 import {CATEGORIES} from '../data/townBuildings.js';
-import {saveWorldToLibrary, listWorlds, openWorld, deleteWorld, downloadWorld, importWorld} from './worlds.js';
-import {cellPlan, settleable} from '../seam/cell.js';
-import {cellSummary} from './cellText.js';
 
-const STORE = 'forest.atlas';
-const ERA = {geology: 'Геология', climate: 'Климат', water: 'Вода', life: 'Жизнь'};
 const OPTS = {
   size: Object.entries(ATLAS_SIZES).map(([k, v]) => [k, v.label]),
   land: ATLAS_LAND.map((l, i) => [i, l.label]),
@@ -61,19 +56,18 @@ const OPTS = {
   wild: WILD_YEARS.map((e, i) => [i, e.label]),
   elder: ELDER_YEARS.map((e, i) => [i, e.label]),
   young: YOUNG_YEARS.map((e, i) => [i, e.label]),
-  fauna: SPECIES.filter(sp => sp.habitat).map(sp => [sp.id, sp.plural]),
-  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['peoples', 'Народы']],
+  // the beasts with a habitat, and the tribes of the lairs (their fields: atlas/lairs.js lairFolk)
+  fauna: [...SPECIES.filter(sp => sp.habitat), ...[...new Set(LAIRS.filter(L => L.tribe).map(L => L.species))].map(id => SPECIES.get(id))].map(sp => [sp.id, sp.plural]),
+  layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['wild', 'Живность'], ['rot', 'Гниль'], ['peoples', 'Народы'], ['realms', 'Державы']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
+// the layer «Живность»: each lair's owner in the colour of its first lair kind (data/lairs.js); a land that holds next to
+// none of a kind does not show it bright for the few that wandered in
+const WILD_COLORS = {}; for (const L of LAIRS.all()) if (L.species && !L.undead && !L.fiend && !WILD_COLORS[L.species]) WILD_COLORS[L.species] = L.color;
+const WILD_K = 0.05;
 const VIEW_KEYS = new Set(['layer', 'ore', 'fauna']);
 // the pace of history: seasons a frame and the wait between frames; «сразу» runs as many seasons as
 // fit in a frame's budget. ×1 is a season a frame — 100 years in about 40 s, slow enough to read
-const SPEEDS = [
-  {id: 'x1', label: '×1', steps: 1, wait: 100},
-  {id: 'x4', label: '×4', steps: 4, wait: 100},
-  {id: 'x16', label: '×16', steps: 16, wait: 60},
-  {id: 'max', label: 'Сразу', steps: Infinity, wait: 30, budget: 30},
-];
 const DRAG_PX = 5;
 // the marks of the towns' works, by the building's category (data/townBuildings.js CATEGORIES)
 const SITE_COLORS = {food: [196, 182, 72], raw: [168, 150, 128], trade: [220, 190, 120]};   // a press that moves less than this is a click (a hover); further, it drags the map
@@ -92,6 +86,10 @@ function ramp(stops, t) {
 const FRESH = [58, 104, 150], SALT = [150, 176, 168], RIVER = 'rgba(70,130,190,0.95)';
 const DEEP = [[0, [12, 24, 52]], [1, [46, 92, 130]]];
 const LAND = [[0, [96, 128, 70]], [0.35, [130, 140, 78]], [0.65, [128, 104, 74]], [0.85, [110, 100, 96]], [1, [236, 236, 230]]];
+// the layer «Гниль» (atlas/lairs.js stepRot): the rot of the dead from faint to thick; the steps at which the dead rise
+// (data/lairs.js: a vampire in a mixed town, ghouls by the ruins, wights on the barrows, a necromancer's tower)
+const ROT_RAMP = [[0, [64, 62, 58]], [0.12, [96, 74, 104]], [0.25, [130, 72, 150]], [0.5, [176, 70, 186]], [1, [236, 120, 230]]];
+const ROT_FROM = 0.03;   // below this the land is clean
 const HEAT = [[0, [70, 110, 200]], [0.4, [190, 220, 230]], [0.6, [236, 214, 120]], [1, [200, 70, 50]]];
 // yearly rain, mm: desert sand → steppe → green → deep wet blue-green
 const WET = [[0, [214, 184, 120]], [250, [196, 186, 110]], [600, [120, 160, 80]], [1200, [50, 130, 90]], [2500, [30, 90, 120]]];
@@ -117,20 +115,56 @@ export function exportChronicle(a, name, what) {
 
 // The map on a screen: the cells of a world painted by layer, the camera over them, what is drawn on top (rivers,
 // roads, towns, lairs, parties), the readout of a cell under the cursor. No controls of its own: the polygon «Мир»
-// (AtlasView below, index.html), the campaign (ui/campaignView.js), «Создать землю» and «Заселение мира» (src/app/,
+// (AtlasView below, the base of the campaign screen), the campaign (ui/campaignView.js), «Создать землю» and «Заселение мира» (src/app/,
 // forest.html) are each this map with their own. `ids` (wireCamera) names the page's elements: map, readout, zoom
 // buttons, the screen, the legend — so nothing here reaches for an element of one page only.
 export class MapView {
   constructor(opts = {}) {
-    this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.fauna = 'wolf'; this.timer = 0; this.paused = false;
-    this.speed = 'x1'; this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.grab = null;
+    this.atlas = null; this.layer = 'relief'; this.ore = 'iron'; this.fauna = 'wolf';
+    this.cam = null; this.bitmap = null; this.bitmapKey = ''; this.grab = null;
+    // the observer's clock (core/clock.js): a season a step at the pace chosen; the screens give it their step
+    this.clock = new SeasonClock({step: () => this.stepSeason(), after: () => this.afterSeason(), done: () => this.afterRun()});
     this.worldId = null; this.worldName = '';   // the library record this world is saved as, if any
     this.pick = -1;   // the cell picked (the polygon: for a settlement, seam/cell.js), -1 — none
+    this.sel = null; this.selCell = '';   // the object selected for the inspector (ui/inspect.js)
     this.setup(opts);
     this.build();
   }
   setup() {}
   build() {}
+  // ── the inspector (ui/inspect.js): a click selects a party, a town, a lair or the cell; its card is in `ids.inspect`
+  cellAt(e) {
+    const a = this.atlas; if (!a || !this.cam) return -1;
+    const cv = $(this.ids.map), r = cv.getBoundingClientRect(), [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top);
+    const x = Math.floor(fx), y = Math.floor(fy);
+    return x < 0 || y < 0 || x >= a.w || y >= a.h ? -1 : y * a.w + x;
+  }
+  selectAt(e) {
+    const i = this.cellAt(e); if (i < 0) return;
+    this.select(pickObject(this.atlas, i), this.cellText(i));
+  }
+  select(sel, cellText = '') {
+    this.sel = sel; this.selCell = cellText;
+    this.renderInspect(); this.draw();
+    if (sel && this.ids?.dock) openTab($(this.ids.dock), 'object');   // the dock shows the card
+  }
+  renderInspect() {
+    const box = this.ids?.inspect ? $(this.ids.inspect) : null; if (!box) return;
+    box.innerHTML = this.atlas ? inspectHtml(this.atlas, this.sel, this.selCell) : '';
+  }
+  // the selection on the map: a ring that follows a party
+  drawSelection(a, px) {
+    const at = whereIs(a, this.sel, this.slide()); if (!at) return;
+    px.beginPath(); px.arc(at[0], at[1], 1.6, 0, Math.PI * 2);
+    px.lineWidth = Math.max(this.minW * 2, 0.25); px.strokeStyle = '#fff'; px.stroke();
+    px.lineWidth = Math.max(this.minW, 0.12); px.strokeStyle = '#000'; px.stroke();
+  }
+
+  // the clock's step, what follows it and what follows the run — the screens' own
+  stepSeason() { return false; }
+  afterSeason() { this.draw(); this.animate(); }
+  afterRun() {}
+  get paused() { return this.clock.paused; }
   // the readout of the cell under the cursor at most once a frame (a hover looks up a good deal)
   hoverSoon(e) {
     this.hoverEv = {clientX: e.clientX, clientY: e.clientY};
@@ -200,13 +234,18 @@ export class MapView {
     else if (this.layer === 'ores') { const o = ORE_GENESIS.get(this.ore); html = sw([70, 72, 66], 'нет') + sw(mix([70, 72, 66], o.color, 0.45), 'бедно') + sw(mix([70, 72, 66], o.color, 0.75), 'есть') + sw(o.color, 'богато'); }
     else if (this.layer === 'biomes') html = Object.entries(BIOME_KINDS).filter(([k]) => k !== 'feature').map(([k, l]) => `<b>${esc(l)}:</b> ` + BIOMES.filter(b => b.kind === k).map(b => sw(b.color, b.label)).join('')).join('') + '<b>леса</b> темнее, гари светлее';
     else if (this.layer === 'soils') html = SOILS.filter(s => s.id !== 'none').map(s => sw(s.color, s.label)).join('') + '<b>ярче</b> — плодороднее';
-    else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + sw([110, 60, 130], 'гниль');
+    else if (this.layer === 'fauna') html = sw([70, 70, 64], 'не их края') + sw([120, 116, 100], 'могут жить, но нет') + sw(SPECIES.get(this.fauna).look?.color ? hexRgb(SPECIES.get(this.fauna).look.color) : [220, 120, 60], 'столько, сколько край прокормит') + '<b>логова</b> (ромб): ' + LAIRS.filter(L => !L.tribe && !L.undead).map(L => sw(L.color, L.label)).join('') + '<b>станы племён</b> (шатёр): ' + LAIRS.filter(L => L.tribe).map(L => sw(L.color, L.label)).join('') + '<b>мёртвые</b> (крест): ' + LAIRS.filter(L => L.undead).map(L => sw(L.color, L.label)).join('') + sw([60, 40, 40], '× опустевшее') + '<span>пунктирный ромб — скрытое логово глуши</span>' + sw([110, 60, 130], 'гниль');
     else if (this.layer === 'peoples') html = WORLD_PEOPLES.all().map(P => sw(P.color, `земли: ${P.label}`)).join('') + '<b>города</b> — квадраты в цвете державы (оттенок цвета народа), крупнее с ростом; кольцо — столица державы; ' + ROADS.levels.map(L => L.label).join(', ') + '; пунктир по воде — морские пути гаваней; × в кольце — сожжённый город; ' + sw([120, 90, 90], 'курганы былых битв') + '<b>угодья городов</b>: ' + sw(SITE_COLORS.food, 'пашни, выгоны, рощи (круг)') + sw(SITE_COLORS.raw, 'рудники, каменоломни, лесосеки (квадрат)') + '× пень — сожжено; тонкие тропы к городу; <b>жёлтые связи</b> между городами — по ним идёт хлеб, ярче — больше; <b>отряды</b>: круг с хвостом — набег или выводок, квадрат — войско, крылья — дракон (пунктир — путь вперёд); ' + sw([170, 70, 40], 'фуражиры войска');
+    else if (this.layer === 'wild') html = Object.entries(WILD_COLORS).map(([id, c]) => sw(c, SPECIES.get(id).plural)).join('') + '<b>живность логов</b> — где чей народ гуще всего, ярче — гуще; ореолы вокруг логов, выводки несут их дальше; пунктирный ромб — скрытое логово' + sw([110, 60, 130], 'гниль');
+    else if (this.layer === 'rot') html = sw(ROT_RAMP[0][1], 'чисто') + sw(ROT_RAMP[1][1], '12% — вампир заводится в смешанном городе') + sw(mix(ROT_RAMP[1][1], ROT_RAMP[2][1], 0.6), '20% — упыри у пепелищ') + sw(ROT_RAMP[2][1], '25% — курганники на курганах') + sw(ROT_RAMP[3][1], '50% — башня некроманта') + sw(ROT_RAMP[4][1], 'гуще некуда') + sw([150, 110, 80], 'курганы и могилы — гниль сочится из них') + '<b>гниль</b> растёт от могил (битвы, набеги, пепелища), ползёт по округе и с обозами крыс по дорогам; тает в мороз и зной, быстрее у башен магов и храмов';
+    else if (this.layer === 'realms') { const a = this.atlas, alive = a?.realms ? a.realms.filter(r => a.towns.some(t => t.alive && t.realm === r.id)) : [];
+      html = (alive.length ? alive.map(r => sw(r.color, `${realmLabel(a, r.id)} — ${a.towns.filter(t => t.alive && t.realm === r.id).length} гор.`)).join('') : '<span>держав ещё нет</span>') +
+        '<b>земля державы</b> — куда достают её города по суше (крупные города и столица — дальше); светлая кайма — граница; ничья земля — серая' + sw(LAIRS.get('necromancer').color, 'владения некроманта: его башня, данники-нежить, культ') ; }
     else if (this.layer === 'rain') html = [[100, 'пустыня'], [400, 'сухо'], [800, 'умеренно'], [1500, 'влажно'], [2500, 'очень влажно']].map(([v, l]) => sw(rainColor(v), `${l} (${v} мм)`)).join('');
     else if (this.layer === 'wind') html = sw([240, 240, 230], 'стрелки — куда дует ветер') + sw([90, 110, 150], 'тише') + sw([200, 210, 240], 'сильнее');
     else if (this.layer === 'temp') html = sw(HEAT[0][1], '−30°') + sw(HEAT[1][1], '−4°') + sw(HEAT[2][1], '+9°') + sw(HEAT[3][1], '+35°');
     else html = sw(FRESH, 'пресное озеро') + sw(SALT, 'солёное озеро') + `<span><i style="background:${RIVER};height:3px"></i>реки</span>` + sw(DEEP[0][1], 'глубокое море') + sw(DEEP[1][1], 'мелководье') + sw(LAND[0][1], 'низины') + sw(LAND[2][1], 'нагорья') + sw(LAND[4][1], 'вершины');
-    $(this.ids?.legend || 'atlasLegend').innerHTML = html;
+    const box = $(this.ids?.legend || 'atlasLegend'); if (box) box.innerHTML = html;   // (the campaign's map has its own legend: none here)
   }
 
   // the colour of one cell on the chosen layer; a field that is not made yet shows as the dark sea
@@ -238,7 +277,7 @@ export class MapView {
         return mix([60, 60, 56], s.color, 0.6 + 0.4 * f.fert[i]);
       }
       case 'fauna': {
-        if (!a.fauna || f.ocean[i]) return mix(base, [8, 12, 20], 0.4);
+        if (!a.fauna || f.ocean[i] || !(this.fauna in a.fauna.idx)) return mix(base, [8, 12, 20], 0.4);
         const v = faunaAt(a, i, this.fauna), sp = SPECIES.get(this.fauna), K = a.fauna.list[a.fauna.idx[this.fauna]].K[faunaCellOf(a, i)];
         if (K <= 0) return mix(base, [40, 40, 36], 0.75);
         const col = sp.look?.color ? hexRgb(sp.look.color) : [220, 120, 60];
@@ -250,6 +289,32 @@ export class MapView {
         if (f.barrows && f.barrows[i] > 0) c = mix(c, [120, 90, 90], 0.5 * f.barrows[i]);   // old battlefields
         if (f.scourge && f.scourge[i] > 0.25) c = mix(c, [170, 70, 40], 0.5 * f.scourge[i]);   // an army's foragers
         return this.rotTint(a, i, c);
+      }
+      case 'wild': {   // the lairs' folk (atlas/lairs.js lairFolk): the kind that lives thickest here, as bright as it is thick
+        const g = mix(base, [40, 40, 36], 0.6); if (!a.fauna || f.ocean[i]) return g;
+        const F = a.fauna, j = faunaCellOf(a, i); let best = 0, col = null;
+        for (const s of F.list) { if (!s.lair || s.K[j] <= 0) continue; const v = Math.min(1, s.N[j] / Math.max(s.K[j], WILD_K)); if (v > best) { best = v; col = WILD_COLORS[s.id]; } }
+        return col ? this.rotTint(a, i, mix(g, col, 0.15 + 0.8 * best)) : this.rotTint(a, i, g);
+      }
+      case 'rot': {   // the rot (atlas/lairs.js): its ramp over the land, the barrows and graves under it
+        const g = mix(base, [40, 40, 36], 0.65); if (!a.rot || !a.fauna || f.ocean[i]) return g;
+        const v = a.rot[faunaCellOf(a, i)];
+        let c = v < ROT_FROM ? g : mix(g, ramp(ROT_RAMP, v), Math.min(1, 0.45 + v));
+        if (f.barrows && f.barrows[i] > 0.15) c = mix(c, [150, 110, 80], 0.35 + 0.4 * Math.min(1, f.barrows[i]));   // barrows and graves: the rot's seed
+        return c;
+      }
+      case 'realms': {   // the realms' land (atlas/realms.js realmLand): its colour, a light rim where it meets another or no one's
+        const g = mix(base, [40, 40, 36], 0.6), own = this.realmOwn; if (f.ocean[i]) return g;   // (made once a repaint: paint())
+        const o = own ? own[i] : -1;
+        if (o < 0) {   // no realm's: a necromancer's seat (atlas/necro.js), a dark land with a rim of its own
+          const S = this.seats, n = S ? S[i] : -1; if (n < 0) return g;
+          const x = i % a.w, y = (i / a.w) | 0, col = LAIRS.get(this.towerList[n].kind).color;
+          const rim = (x > 0 && S[i - 1] !== n) || (x < a.w - 1 && S[i + 1] !== n) || (y > 0 && S[i - a.w] !== n) || (y < a.h - 1 && S[i + a.w] !== n);
+          return rim ? mix(col, [230, 200, 240], 0.4) : mix(g, col, 0.5);
+        }
+        const col = a.realms[o].color, x = i % a.w, y = (i / a.w) | 0;
+        const edge = (x > 0 && own[i - 1] !== o && !f.ocean[i - 1]) || (x < a.w - 1 && own[i + 1] !== o && !f.ocean[i + 1]) || (y > 0 && own[i - a.w] !== o && !f.ocean[i - a.w]) || (y < a.h - 1 && own[i + a.w] !== o && !f.ocean[i + a.w]);
+        return edge ? mix(col, [250, 245, 230], 0.45) : mix(g, col, 0.6);
       }
       case 'rain': return f.rain ? (f.land[i] ? rainColor(f.rain[i]) : mix(base, rainColor(f.rain[i]), 0.25)) : base;
       case 'wind': {
@@ -286,8 +351,11 @@ export class MapView {
 
   // the cells, painted into an off-screen bitmap (one pixel a cell) when the world or the layer changed
   paint(a) {
-    const key = `${this.layer}:${this.ore}:${this.fauna}:${a.stage}:${a.hist ? a.hist.step : -1}`;
+    const key = `${this.layer}:${this.ore}:${this.fauna}:${a.stage}:${a.hist ? a.hist.step : -1}:${a.towns?.length || 0}`;
     if (this.bitmap && this.bitmapKey === key) return this.bitmap;
+    if (this.layer === 'realms') this.legend();   // the realms come and go with the history
+    // what «Державы» reads cell by cell, made once a repaint: the realms' land, the necromancers' seats
+    if (this.layer === 'realms') { this.realmOwn = realmLand(a); this.towerList = towers(a); this.seats = seatMap(a, this.towerList); }
     const off = this.bitmap || document.createElement('canvas');
     if (off.width !== a.w || off.height !== a.h) { off.width = a.w; off.height = a.h; }
     const px = off.getContext('2d'), img = px.createImageData(a.w, a.h), d = img.data;
@@ -330,16 +398,17 @@ export class MapView {
     px.translate(cam.ox, cam.oy); px.scale(cam.S, cam.S);
     this.minW = 0.7 / cam.S;
     if (this.layer === 'wind' && a.f.windX) this.arrows(a, px);
-    if (a.f.road && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawRoads(a, px);
-    if (a.f.sea && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawLanes(a, px);
-    if (a.lairs && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
-    if (a.artifact && ['relief', 'biomes', 'fauna', 'peoples'].includes(this.layer)) this.drawEpic(a, px);
+    if (a.f.road && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rot'].includes(this.layer)) this.drawRoads(a, px);
+    if (a.f.sea && ['relief', 'biomes', 'peoples', 'realms'].includes(this.layer)) this.drawLanes(a, px);
+    if (a.lairs && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms', 'rot'].includes(this.layer)) { this.drawLairs(a, px); this.drawLeaders(a, px); }
+    if (a.artifact && ['relief', 'biomes', 'fauna', 'wild', 'peoples', 'realms'].includes(this.layer)) this.drawEpic(a, px);
     if (a.net && this.layer === 'peoples') this.drawLinks(a, px);
-    if (a.sites && ['relief', 'biomes', 'peoples', 'soils'].includes(this.layer)) this.drawSites(a, px);
-    if (a.parties && ['relief', 'biomes', 'peoples', 'fauna'].includes(this.layer)) this.drawParties(a, px);
-    if (a.ruins && ['relief', 'biomes', 'peoples'].includes(this.layer)) this.drawRuins(a, px);
-    if (a.towns && ['relief', 'biomes', 'peoples', 'fauna', 'rain', 'soils'].includes(this.layer)) this.drawTowns(a, px);
+    if (a.sites && ['relief', 'biomes', 'peoples', 'realms', 'soils'].includes(this.layer)) this.drawSites(a, px);
+    if (a.parties && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild'].includes(this.layer)) this.drawParties(a, px);
+    if (a.ruins && ['relief', 'biomes', 'peoples', 'realms', 'rot'].includes(this.layer)) this.drawRuins(a, px);
+    if (a.towns && ['relief', 'biomes', 'peoples', 'realms', 'fauna', 'wild', 'rain', 'soils', 'rot'].includes(this.layer)) this.drawTowns(a, px);
     if (a.f.flow && ['relief', 'rain', 'rocks', 'temp', 'biomes', 'soils'].includes(this.layer)) this.rivers(a, px);
+    if (this.sel) this.drawSelection(a, px);
     this.overlay(a, px, cam);
   }
 
@@ -474,20 +543,18 @@ export class MapView {
     }
   }
 
-  // how far between the last tick and the next the screen is, 0 … 1: the parties slide by it
-  slide() {
-    if (!this.tickAt || this.paused || !this.tickWait) return 1;
-    return Math.min(1, (performance.now() - this.tickAt) / this.tickWait);
-  }
+  // how far between the last season and the next the screen is, 0 … 1: the parties slide by it (core/clock.js)
+  slide() { return this.clock.phase(); }
 
-  // between ticks the parties keep sliding: a frame loop while history runs and there is something to slide
+  // between seasons the parties keep sliding: a frame loop while the clock runs and there is something to slide
   animate() {
     if (this.raf) return;
     const loop = () => {
       this.raf = 0;
       const a = this.atlas;
-      if (!a || this.paused || atlasDone(a) || !a.parties?.length || !this.tickWait || this.tickWait < 50) return;
-      this.draw();
+      this.frame?.();   // what a screen shows between seasons (the day of the season)
+      if (!a || !this.clock.running || this.slide() >= 1) { this.draw(); return; }
+      if (a.parties?.length) this.draw();
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
@@ -524,6 +591,13 @@ export class MapView {
       if (!l.alive) {
         px.strokeStyle = 'rgba(30,20,20,0.6)'; px.lineWidth = Math.max(this.minW, 0.5 * k);
         px.beginPath(); px.moveTo(x - sz * 0.6, y - sz * 0.6); px.lineTo(x + sz * 0.6, y + sz * 0.6); px.moveTo(x + sz * 0.6, y - sz * 0.6); px.lineTo(x - sz * 0.6, y + sz * 0.6); px.stroke();
+        continue;
+      }
+      // a hidden lair (atlas/lairs.js WILD): the realms know nothing of it — a faint dashed mark, no territory ring
+      if (l.hidden) {
+        const r = sz * (0.7 + 0.5 * l.strength);
+        px.strokeStyle = `rgba(${L.color.join(',')},0.7)`; px.lineWidth = Math.max(this.minW, 0.4 * k); px.setLineDash([0.5 * sz, 0.4 * sz]);
+        px.beginPath(); px.moveTo(x, y - r); px.lineTo(x + r, y); px.lineTo(x, y + r); px.lineTo(x - r, y); px.closePath(); px.stroke(); px.setLineDash([]);
         continue;
       }
       px.strokeStyle = `rgba(${L.color.join(',')},0.45)`; px.lineWidth = Math.max(this.minW, 0.4 * k);
@@ -597,12 +671,14 @@ export class MapView {
   }
 
   hover(e) {
-    const a = this.atlas; if (!a || !a.f.elev) return;
-    const cv = $(this.ids.map), r = cv.getBoundingClientRect();
-    if (!this.cam) return;
-    const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top), x = Math.floor(fx), y = Math.floor(fy);
-    if (x < 0 || y < 0 || x >= a.w || y >= a.h) { $(this.ids.readout).textContent = this.ids.hint; return; }
-    const i = y * a.w + x, f = a.f, parts = [`${x}, ${y}`];
+    const a = this.atlas; if (!a || !a.f.elev || !this.cam) return;
+    const i = this.cellAt(e);
+    $(this.ids.readout).textContent = i < 0 ? this.ids.hint : this.cellText(i);
+  }
+  // the cell in words: the land, the climate, the biome, what stands and lives here
+  cellText(i) {
+    const a = this.atlas, x = i % a.w, y = (i / a.w) | 0;
+    const f = a.f, parts = [`${x}, ${y}`];
     if (f.plate) parts.push(`плита ${f.plate[i] + 1}, кора ${f.crust[i] > 0.5 ? 'материковая' : 'океаническая'}`);
     if (f.bnd && f.bnd[i]) parts.push(BOUNDARY_BY_CODE[f.bnd[i]].label);
     if (f.land) parts.push(f.lake && f.lake[i] >= 0 ? (a.lakes[f.lake[i]].salt ? 'солёное озеро' : 'озеро') : f.land[i] ? 'суша' : 'море');
@@ -632,6 +708,8 @@ export class MapView {
       parts.push(`${townLabel(town)} ${town.name} (${town.realm ? realmLabel(a, town.realm) : P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}, угодья в ${siteRadius(a, town)} клетках; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : '') + feed);
       const R = town.realm ? a.realms.find(r => r.id === town.realm) : null;
       if (R?.tech) parts.push(`держава знает: ${R.tech.length ? R.tech.map(id => TECHS.get(id).label.toLowerCase()).join(', ') : 'ничего сверх общего'}`);
+      if (R?.captives && Object.values(R.captives).some(v => v > 0)) parts.push(`увели в полон за историю: ${captiveCount(R)}`);
+      if (R?.why) parts.push(`последнее дело державы (${R.why.year} г.): ${deedLabel(R.why.deed)} — ${R.why.why}${R.why.alt ? `; иначе: ${deedLabel(R.why.alt)}` : ''}`);
       // the realm as a kingdom (atlas/kingdom.js): its attributes, its ruin, its court
       const Kd = R?.kingdom;
       if (Kd) {
@@ -644,7 +722,7 @@ export class MapView {
     const party = partyAt(a, i);
     if (party) {
       const tgt = party.target != null ? a.towns.find(t => t.id === party.target) : null, lair = party.owner != null && party.kind !== 'army' ? a.lairs.find(l => l.id === party.owner) : null;
-      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? {raid: 'главарь в набеге', expand: 'главарь ведёт выводок', subdue: 'главарь идёт подчинять', rival: 'главарь идёт войной'}[party.plan] : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
+      parts.push(`${party.kind === 'raid' ? 'набег' : party.kind === 'brood' ? 'выводок' : party.kind === 'army' ? 'войско' : party.kind === 'leader' ? `главарь: ${DEEDS.has(party.plan) ? deedLabel(party.plan) : party.plan}` : 'дракон'}: ${party.label}${lair ? ` ${LAIRS.get(lair.kind).from} «${lair.name}»` : ''}${party.state === 'home' ? ', идут домой' : tgt ? ` на ${townLabel(tgt, 1)} ${tgt.name}` : ''}${party.might ? `, сила ${party.might.toFixed(1)}` : ''}, в пути ${party.days} дн.`);
     }
     const site = siteAt(a, i);
     if (site) { const b = TOWN_BUILDINGS.get(site.kind), t = a.towns.find(t => t.id === site.town); parts.push(`${b.name} (${CATEGORIES[b.cat]}) ${townLabel(t, 2)} ${t.name}, с года ${site.built}`); }
@@ -654,17 +732,19 @@ export class MapView {
     if (a.rot && !f.ocean[i] && a.rot[faunaCellOf(a, i)] > 0.08) parts.push(`гниль ${Math.round(a.rot[faunaCellOf(a, i)] * 100)}%`);
     const land = landOf(a, i);
     if (land) parts.push(`земли: ${land.people.label} ${Math.round(land.share * 100)}%`);
+    const own = realmLand(a)?.[i];
+    if (own != null && own >= 0) parts.push(`держава: ${realmLabel(a, a.realms[own].id)}`);
     if (a.f.road && a.f.road[i] >= ROADS.levels[0].wear) parts.push(ROADS.levels[roadLevel(a.f.road[i])].label);
     if (a.f.sea && a.f.sea[i] >= SEA.levels[0].wear) parts.push(SEA.levels[seaLevelOf(a.f.sea[i])].label);
     const lair = lairAt(a, i);
     if (lair) {
       const L = LAIRS.get(lair.kind), lord = lair.lord != null ? a.lairs.find(l => l.id === lair.lord) : null;
-      parts.push(`владения: ${L.label} «${lair.name}», сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}`);
+      parts.push(`владения: ${L.label} «${lair.name}»${lair.hidden ? ' (скрыто: державы о нём не знают)' : ''}, сила ${Math.round(lair.strength * 100)}%${lair.ancient ? ', древнее' : ''}${lair.leader ? `, ${lair.leader.title[0].toLowerCase()} — ${lair.leader.name} (с ${lair.leader.born} г., дел: ${lair.leader.deeds}${lair.why ? `; ${lair.why.year} г. — ${deedLabel(lair.why.deed)}: ${lair.why.why}` : ''})` : ''}${lord?.leader ? `, платит дань «${lord.name}»` : ''}${captiveCount(lair) ? `; в полоне: ${captiveCount(lair)}` : ''}`);
     }
     if (a.fauna && !f.ocean[i]) {
       const word = v => (v >= 0.8 ? 'много' : v >= 0.45 ? 'есть' : 'мало');
       const beasts = a.fauna.list.filter(s => s.role !== 'spirit').map(s => [s, faunaAt(a, i, s.id)]).filter(([, v]) => v > 0.15).sort((p, q) => q[1] - p[1]).slice(0, 4);
-      if (beasts.length) parts.push('звери: ' + beasts.map(([s, v]) => `${s.sp.plural} ${word(v)}`).join(', '));
+      if (beasts.length) parts.push('живность: ' + beasts.map(([s, v]) => `${s.sp.plural} ${word(v)}`).join(', '));
     }
     const geo = cellGeology(a, i);
     if (geo.rock) parts.push(geo.rock.label);
@@ -675,286 +755,10 @@ export class MapView {
       if (geo.flags.magma) ores.push('магма');
       if (ores.length) parts.push(ores.join(', '));
     }
-    $(this.ids.readout).textContent = parts.join(' · ');
+    return parts.join(' · ');
   }
 }
 
-// The «Мир» polygon screen (index.html): the map with the settings, the library, the stages and the chronicle.
-export class AtlasView extends MapView {
-  setup({onBack, onSettle} = {}) {
-    this.cfg = this.load();
-    this.onBack = onBack; this.onSettle = onSettle;
-  }
-
-  load() {
-    try { const raw = localStorage.getItem(STORE); if (raw) return {...DEFAULT_ATLAS_CFG, ...JSON.parse(raw)}; } catch (e) { /* storage unavailable */ }
-    return {...DEFAULT_ATLAS_CFG};
-  }
-
-  save() { try { localStorage.setItem(STORE, JSON.stringify(this.cfg)); } catch (e) { /* storage unavailable */ } }
-
-  build() {
-    document.querySelectorAll('#atlas .seg[data-akey]').forEach(box => {
-      const key = box.dataset.akey;
-      box.innerHTML = OPTS[key].map(([v, l]) => `<button type="button" data-val="${esc(String(v))}" aria-pressed="false">${esc(l)}</button>`).join('');
-      box.addEventListener('click', e => {
-        const b = e.target.closest('button'); if (!b) return;
-        if (VIEW_KEYS.has(key)) { this[key] = b.dataset.val; this.sync(); this.draw(); return; }
-        this.cfg[key] = typeof DEFAULT_ATLAS_CFG[key] === 'number' ? +b.dataset.val : b.dataset.val;
-        this.save(); this.sync();
-      });
-    });
-    $('atlasSeed').addEventListener('input', e => { this.cfg.seed = e.target.value.trim() || '1'; this.save(); });
-    $('atlasRandom').addEventListener('click', () => { this.cfg.seed = String(100000 + Math.floor(Math.random() * 899999)); this.save(); this.sync(); });
-    $('atlasGo').addEventListener('click', () => this.generate());
-    $('atlasPause').addEventListener('click', () => { this.paused = !this.paused; this.syncPause(); if (!this.paused) this.run(); });
-    const sp = $('atlasSpeed');
-    sp.innerHTML = SPEEDS.map(S => `<button type="button" data-val="${S.id}" aria-pressed="false">${S.label}</button>`).join('');
-    sp.addEventListener('click', e => {
-      const b = e.target.closest('button'); if (!b) return;
-      this.speed = b.dataset.val; this.paused = false; this.syncPause(); this.run();
-    });
-    $('atlasBack').addEventListener('click', () => { this.stop(); this.onBack(); });
-    this.buildLibrary();
-    // the chronicle: its detail (atlas/chronicle.js), the calamities only, into a file — remembered in this browser
-    this.detail = loadDetail();
-    segOf($('atlasDetail'), DETAILS, this.detail, v => { this.detail = v; saveDetail(v); if (this.atlas) this.renderSide(); });
-    $('atlasCalOnly').addEventListener('click', () => { this.calOnly = !this.calOnly; $('atlasCalOnly').setAttribute('aria-pressed', String(this.calOnly)); if (this.atlas) this.renderSide(); });
-    $('atlasChronFile').addEventListener('click', () => { const a = this.atlas; if (a) exportChronicle(a, this.worldName, this.calOnly ? 'calamity' : this.detail); });
-    $('atlasSettle').addEventListener('click', () => {
-      const a = this.atlas; if (!a || this.pick < 0) return;
-      this.stop();
-      this.onSettle(cellPlan(a, this.pick, {name: this.worldName || `Мир ${a.cfg.seed}`, id: this.worldId}));
-    });
-    $('atlasUnpick').addEventListener('click', () => this.setPick(-1));
-    this.wireCamera({map: 'atlasMap', readout: 'atlasReadout', zoomIn: 'atlasZoomIn', zoomOut: 'atlasZoomOut', zoomFit: 'atlasZoomFit', screen: 'atlas',
-      hint: 'Наведите на карту, чтобы увидеть клетку. Щелчок по суше — выбрать место для поселения.'});
-  }
-
-  clickAt(e) { this.pickAt(e); }
-
-  // `goto` — {id, x, y}: open that saved world (if it is not the one shown) and pick that cell
-  async show(goto = null) {
-    this.sync(); this.refreshWorlds();
-    if (goto?.id && goto.id !== this.worldId) {
-      $('atlasSaveStatus').textContent = 'Открываю мир…';
-      try { const list = await listWorlds(), rec = list.find(r => r.id === goto.id); if (rec) { const a = await openWorld(rec.id); this.showWorld(a, rec.id, rec.name); $('atlasSaveStatus').textContent = `Открыт мир «${rec.name}».`; warnEdits(a.tables); } else $('atlasSaveStatus').textContent = 'Мир этой клетки больше не лежит в библиотеке.'; }
-      catch (e) { $('atlasSaveStatus').textContent = 'Не удалось открыть: ' + e.message; }
-    }
-    if (!this.atlas) { this.generate(); return; }
-    if (goto && goto.id === this.worldId && goto.x < this.atlas.w && goto.y < this.atlas.h) this.setPick(goto.y * this.atlas.w + goto.x);
-  }
-
-  // leaving the screen: the generation halts between frames; if it was not finished, it waits as paused and «Дальше» continues it
-  stop() {
-    clearTimeout(this.timer); this.timer = 0;
-    const a = this.atlas;
-    if (a && !atlasDone(a)) this.paused = true;
-    this.syncPause();
-  }
-
-  sync() {
-    $('atlasSeed').value = this.cfg.seed;
-    const val = {...this.cfg, layer: this.layer, ore: this.ore, fauna: this.fauna};
-    document.querySelectorAll('#atlas .seg[data-akey]').forEach(box => {
-      box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === String(val[box.dataset.akey]))));
-    });
-    $('atlasSizeNote').textContent = ATLAS_SIZES[this.cfg.size].note;
-    $('atlasHemiNote').textContent = HEMISPHERES[this.cfg.hemisphere].note;
-    $('atlasOre').hidden = this.layer !== 'ores';
-    $('atlasFauna').hidden = this.layer !== 'fauna';
-    $('atlasWildNote').textContent = `${WILD_YEARS[this.cfg.wild].years} лет до прихода народов`;
-    $('atlasElderNote').textContent = `${ELDER_YEARS[this.cfg.elder].years} лет эльфов и гномов`;
-    $('atlasYoungNote').textContent = `${YOUNG_YEARS[this.cfg.young].years} лет людей и орков до высадки`;
-    $('atlasSpeed').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.val === this.speed)));
-    this.legend();
-  }
-
-  generate() {
-    clearTimeout(this.timer);
-    const a = this.atlas = newAtlas(this.cfg);
-    this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = '';
-    this.paused = false; this.syncPause();
-    this.bind(null, ''); this.setPick(-1);
-    this.renderSide();
-    this.run();
-  }
-
-  // ── the library of worlds (ui/worlds.js): save, open, delete, files
-  buildLibrary() {
-    const say = t => { $('atlasSaveStatus').textContent = t; };
-    $('atlasName').addEventListener('input', e => { this.worldName = e.target.value.trim(); });
-    $('atlasSave').addEventListener('click', async () => {
-      const a = this.atlas; if (!a || !landDone(a)) return;
-      const name = this.worldName || `Мир ${a.cfg.seed}`;
-      say('Сохраняю…');
-      try {
-        const rec = await saveWorldToLibrary(a, name, this.worldId);
-        say(`${this.worldId ? 'Сохранено поверх' : 'Сохранено'}: «${rec.name}», ${rec.year} лет истории, ${(rec.bytes / 1e6).toFixed(1)} МБ.`);
-        this.bind(rec.id, rec.name); this.refreshWorlds();
-      } catch (e) { say('Не удалось сохранить: ' + e.message); }
-    });
-    $('atlasFile').addEventListener('click', async () => {
-      const a = this.atlas; if (!a || !landDone(a)) return;
-      try { const r = await downloadWorld(a, this.worldName || `Мир ${a.cfg.seed}`); say(r === 'declined' ? 'Файл не сохранён.' : 'Файл мира готов.'); }
-      catch (e) { say('Не удалось: ' + e.message); }
-    });
-    $('atlasWorlds').addEventListener('click', async e => {
-      const b = e.target.closest('button'), row = e.target.closest('.sv'); if (!b || !row) return;
-      const id = row.dataset.id;
-      if (b.dataset.act === 'del') {
-        if (!confirm(`Удалить мир «${row.dataset.name}» из библиотеки? Это не отменить.`)) return;
-        await deleteWorld(id); if (this.worldId === id) this.bind(null, this.worldName);
-        this.refreshWorlds(); return;
-      }
-      say('Открываю…');
-      try { const a = await openWorld(id); this.showWorld(a, id, row.dataset.name); say(`Открыт мир «${row.dataset.name}».`); warnEdits(a.tables); }
-      catch (err) { say('Не удалось открыть: ' + err.message); }
-    });
-    $('atlasLoadFile').addEventListener('change', async e => {
-      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-      say('Открываю файл…');
-      try { const {a, rec} = await importWorld(f); this.showWorld(a, rec.id, rec.name); this.refreshWorlds(); say(`Мир «${rec.name}» открыт и добавлен в библиотеку.`); warnEdits(a.tables); }
-      catch (err) { say('Не удалось открыть: ' + err.message); }
-    });
-  }
-
-  // which library record the shown world is: saving again writes over it
-  bind(id, name) {
-    this.worldId = id; this.worldName = name;
-    $('atlasName').value = name;
-    $('atlasTitle').textContent = name || 'Новый мир';
-    this.syncSave();
-  }
-
-  syncSave() {
-    const ready = !!this.atlas && landDone(this.atlas);
-    $('atlasSave').disabled = !ready; $('atlasFile').disabled = !ready;
-    $('atlasSave').textContent = this.worldId ? 'Сохранить поверх' : 'Сохранить';
-  }
-
-  async refreshWorlds() {
-    const box = $('atlasWorlds');
-    let list;
-    try { list = await listWorlds(); } catch (e) { box.innerHTML = '<small>Библиотека в этом браузере недоступна. Мир можно сохранить файлом.</small>'; return; }
-    if (!list.length) { box.innerHTML = '<small>Пока нет сохранённых миров.</small>'; return; }
-    box.innerHTML = list.map(r => `<div class="sv${r.id === this.worldId ? ' cur' : ''}" data-id="${esc(r.id)}" data-name="${esc(r.name)}"><span class="t"><b>${esc(r.name)}</b> · сид ${esc(r.seed)} · ${esc(r.sizeLabel)}${r.tables ? ` · с правками таблиц (${r.tables})` : ''}` +
-      `<br><small>${r.type === 'land' ? `земля${r.shape ? `, правок: ${r.shape}` : ''} — «Дальше» начнёт историю` : r.done ? `${r.year} лет истории` : r.year ? `история на ${r.year}-м году` : 'только суша'} · городов ${r.towns} · держав ${r.realms} · ${new Date(r.savedAt).toLocaleString('ru-RU', {dateStyle: 'short', timeStyle: 'short'})}</small></span>` +
-      `<button type="button" data-act="load">Открыть</button><button type="button" data-act="del" class="quiet" aria-label="Удалить мир">Удалить</button></div>`).join('');
-  }
-
-  // a saved world on the screen: its settings, a fresh camera and chronicle; unfinished history waits for «Дальше»
-  showWorld(a, id, name) {
-    clearTimeout(this.timer); this.timer = 0;
-    this.atlas = a; this.cfg = {...DEFAULT_ATLAS_CFG, ...a.cfg}; delete this.cfg.shape; this.save();   // the hand's edits belong to that land, not to the next one
-    this.cam = new Camera(a.w, a.h); this.bitmap = null; this.bitmapKey = ''; this.chronOf = null;
-    this.paused = !atlasDone(a);
-    this.bind(id, name); this.sync(); this.setPick(-1);
-    this.draw(); this.renderSide(); this.syncPause();
-  }
-
-  // the land a stage a frame, then history at the chosen pace (SPEEDS); pausing stops between frames
-  run() {
-    const a = this.atlas;
-    clearTimeout(this.timer);
-    const next = () => {
-      if (a !== this.atlas || this.paused) return;
-      const sp = SPEEDS.find(S => S.id === this.speed) || SPEEDS[0], land = !landDone(a);
-      const steps = land ? 1 : sp.steps, t0 = Date.now();
-      for (let k = 0; k < steps && !atlasDone(a); k++) { runNextStage(a); if (sp.budget && Date.now() - t0 > sp.budget) break; }
-      this.tickAt = performance.now(); this.tickWait = land ? 0 : sp.wait;
-      this.draw(); this.renderSide(); this.animate();
-      if (land && landDone(a)) { this.syncPause(); this.syncSave(); }   // the land is made: the pace, the pause and saving appear
-      if (!atlasDone(a)) this.timer = setTimeout(next, land ? 30 : sp.wait); else this.syncPause();
-    };
-    this.timer = setTimeout(next, 30);
-  }
-
-  syncPause() {
-    const b = $('atlasPause'), a = this.atlas, busy = a && landDone(a) && !atlasDone(a);
-    b.hidden = !busy && !(this.paused && a && !atlasDone(a));
-    b.textContent = this.paused ? 'Дальше' : 'Пауза';
-    $('atlasSpeed').hidden = b.hidden;
-    $('atlasSpeed').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.val === this.speed)));
-  }
-
-  // ── picking a cell for a settlement: land that is not a lake, once the land is made
-  pickAt(e) {
-    const a = this.atlas; if (!a || !this.cam || !landDone(a)) return;
-    const cv = $(this.ids.map), r = cv.getBoundingClientRect();
-    const [fx, fy] = this.cam.toCell(e.clientX - r.left, e.clientY - r.top), x = Math.floor(fx), y = Math.floor(fy);
-    if (x < 0 || y < 0 || x >= a.w || y >= a.h) return;
-    const i = y * a.w + x;
-    if (!settleable(a, i)) { $('atlasCellNote').textContent = 'Здесь вода: выберите клетку суши.'; return; }
-    this.setPick(i);
-  }
-
-  setPick(i) {
-    this.pick = i;
-    const a = this.atlas, box = $('atlasCell');
-    box.hidden = i < 0 || !a;
-    if (i >= 0 && a) {
-      $('atlasCellInfo').innerHTML = cellSummary(cellPlan(a, i, {name: this.worldName || `Мир ${a.cfg.seed}`, id: this.worldId}));
-      $('atlasCellNote').textContent = !atlasDone(a) ? 'История ещё идёт: поселение увидит мир таким, каким он стал к этому году.' : this.worldId ? '' : 'Мир не сохранён: поселение запомнит место, но вернуться к этому миру можно, только сохранив его.';
-    }
-    this.draw();
-  }
-
-  // what is drawn over the map in cell units: on the «Мир» screen the picked cell
-  overlay(a, px, cam) {
-    if (this.pick >= 0) {
-      const x = this.pick % a.w, y = (this.pick / a.w) | 0, m = Math.max(0.6, 3 / cam.S);
-      px.lineWidth = Math.max(this.minW * 2, 0.12); px.strokeStyle = '#ffd36a';
-      px.strokeRect(x - m, y - m, 1 + 2 * m, 1 + 2 * m);
-      px.strokeStyle = 'rgba(0,0,0,0.6)'; px.lineWidth = this.minW; px.strokeRect(x, y, 1, 1);
-    }
-  }
-
-  renderSide() {
-    const a = this.atlas, all = ATLAS_STAGES.all();
-    $('atlasStages').innerHTML = all.map((s, k) => {
-      const st = k < a.stage ? 'done' : k === a.stage ? 'now' : '';
-      const ms = a.ms[s.id] != null ? `${a.ms[s.id]} мс` : k === a.stage ? '…' : '';
-      return `<li class="${st}" title="${esc(s.note)}"><span>${esc(s.label)}</span><small>${ms}</small></li>`;
-    }).join('') + (() => {
-      // one row per era: from which year to which, done, running or waiting
-      let from = 0, html = '';
-      const step = a.hist ? a.hist.step : 0;
-      for (const e of eraPlan(a)) {
-        const to = from + e.seasons, st = !landDone(a) || step < from || (step === 0 && !a.hist) ? '' : step >= to ? 'done' : 'now';
-        const yr = st === 'now' ? `год ${a.hist.year} из ${to / 4}` : `годы ${from / 4 + 1}–${to / 4}`;
-        html += `<li class="${st}" title="${esc(ERAS.get(e.id).note)}"><span>${ERAS.get(e.id).label}</span><small>${yr}</small></li>`;
-        from = to;
-      }
-      return html;
-    })();
-    // the chronicle only grows: new lines are appended, the old ones stay in the page; a change of the detail or of
-    // «Катаклизмы» lays it out again (atlas/chronicle.js levels)
-    const box = $('atlasChron'), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 12;
-    const view = `${this.detail}:${this.calOnly}`;
-    if (this.chronOf !== a || !a.chronicle.length || this.chronView !== view) {
-      this.chronOf = a; this.chronShown = 0; this.chronView = view;
-      box.innerHTML = a.chronicle.length ? '' : '<small class="muted">Летопись начнётся с первым этапом.</small>';
-    }
-    if (a.chronicle.length > this.chronShown) {
-      const shown = a.chronicle.slice(this.chronShown).filter(c => (this.calOnly ? c.topic === 'calamity' : keeps(this.detail, lineLevel(c))));
-      box.insertAdjacentHTML('beforeend', shown.map(c => `<div class="lv-${lineLevel(c) === 'major' ? 'notice' : 'info'}${c.topic === 'calamity' ? ' lv-alert' : ''}"><small>${c.season != null ? `год ${c.year}, ${seasonLabel(c.season)}` : ERA[c.era] || c.era}</small> ${c.topic === 'calamity' ? `<b>${esc(c.text)}</b>` : esc(c.text)}</div>`).join(''));
-      this.chronShown = a.chronicle.length;
-    }
-    if (atEnd) box.scrollTop = box.scrollHeight;
-    $('atlasStats').innerHTML = `<dt>Клеток</dt><dd>${a.n.toLocaleString('ru-RU')}</dd><dt>Числовой сид</dt><dd>${seedNumber(a.cfg.seed)}</dd>` +
-      `<dt>Этап</dt><dd>${Math.min(a.stage, all.length)} из ${all.length}</dd>` +
-      (a.lairs ? `<dt>Логова чудовищ</dt><dd>${a.lairs.filter(l => l.alive).length}</dd>` : '') +
-      (a.lairs?.some(l => l.leader) || a.fallenLeaders?.length ? `<dt>Главари логов</dt><dd>${a.lairs.filter(l => l.alive && l.leader).length} живых, ${(a.fallenLeaders || []).length} сгинуло; данников ${a.lairs.filter(l => l.alive && l.lord != null).length}</dd>` : '') +
-      (a.artifact ? `<dt>${esc(a.artifact.name)}</dt><dd>${{sanctuary: 'в святилище', boss: 'у босса бедствия', grave: 'в могиле босса', caravan: 'у каравана', capital: 'в столице', lost: 'потерян в пути'}[a.artifact.holder.kind] || '—'}</dd><dt>Бедствия</dt><dd>${a.calamities.filter(c => c.phase === 'fallen').length} прошло, ${a.calamities.filter(c => c.phase === 'rise').length} идёт${a.calamities.some(c => c.phase === 'gathering') ? `, ${a.calamities.filter(c => c.phase === 'gathering').length} собирается` : ''}, из ${a.calamities.length}</dd>` : '') +
-      (a.realms ? a.realms.map(r => { const m = a.towns.filter(t => t.alive && t.realm === r.id); return m.length ? `<dt>${esc(realmLabel(a, r.id))}</dt><dd>${m.length} ${m.length === 1 ? 'город' : m.length < 5 ? 'города' : 'городов'}</dd>` : ''; }).join('') : '') +
-      (a.ruins?.length ? `<dt>Пепелища</dt><dd>${a.ruins.length}</dd>` : '');
-    // how the peoples that have met get on
-    const rels = Object.entries(a.rel || {}).map(([key, r]) => {
-      const [p, q] = key.split(':'), st = stateOf(a, p, q);
-      return `<dt>${esc(realmLabel(a, p))} и ${esc(realmLabel(a, q))}</dt><dd class="rel-${st}" title="отношение ${r.att.toFixed(1)}, войн ${r.wars}, торговых путей ${r.routes}">${stateLabel(st)}</dd>`;
-    }).join('');
-    $('atlasRels').innerHTML = rels ? `<dt class="relhead">Державы между собой</dt><dd></dd>${rels}` : '';
-  }
-}
+// The world screen of old (its own controls are gone with the polygon; the campaign screen builds on it: the library,
+// a saved world shown, the clock's steps over history).
 export {OPTS as ATLAS_OPTS};

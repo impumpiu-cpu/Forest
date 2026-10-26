@@ -8,12 +8,10 @@
 //   - out of the zone it is turned back to the fire at once.
 //   bindOption(w, a)      — the colonist's choice: a fallen foe to bind (agents/brains/colonist.js)
 //   bindCaptive(w, by, f) — the knots are tied (agents/tasks.js 'bind')
-//   captiveAllows(t)      — what a captive may choose (agents/brains/colonist.js)
 //   captiveItem(it)       — what a captive may hold (agents/equipment.js outfit)
 import {SPECIES} from '../data/species.js';
 import {BONDS, CAPTIVE, ESCAPE, bestBonds} from '../data/captives.js';
 import {CAN_FALL, WOUNDS, GRAVE_TICKS, DEATHBLOW} from '../data/wounds.js';
-import {JOBS} from '../data/jobs.js';
 import {isHostile} from '../data/factions.js';
 import {RESOURCES} from '../data/resources.js';
 import {maxHp, hpShare, personality, freshName} from '../agents/agent.js';
@@ -78,16 +76,6 @@ export function bindOption(w, a) {
 }
 export const bindStillOn = (w, a, task) => { const f = liveById(w, task.who); return f && takeable(w, f) && canBind(w) ? f : null; };
 
-// what a captive may choose (the colonist brain's options): the body, work inside the zone, an answer to an
-// attack on itself (a reflex), getting back inside, keeping out of harm's way at the fire
-const ALLOWED = new Set(['eat', 'sleep', 'warm', 'idle', 'sulk', 'pray', 'douse', 'flee', 'runHome', 'muster', 'reserve', 'ponder', 'assist']);
-export function captiveAllows(t) {
-  if (t.id === 'job') return CAPTIVE.camp.includes(JOBS.get(t.job).runner);
-  if (t.id === 'fight') return !!t.reflex;
-  if (t.spell) return true;   // a nechist's spell holds anyone
-  return ALLOWED.has(t.id);
-}
-
 // ── the knots are tied: the wound dressed, the foe one of ours, with the lot of a captive
 export function bindCaptive(w, by, f) {
   const B = bestBonds(w.stock);
@@ -120,7 +108,7 @@ export function bindCaptive(w, by, f) {
   // (a runaway brought down is bound again: it stays the captive it was — will, years, service)
   f.captive = f.captive ? {...f.captive, bonds: B.id} : {since: w.tick, bonds: B.id, by: by.id, band: f.band || null, people: f.people || null, was: f.faction, will: ESCAPE.will.start};
   f.fugitive = null;
-  f.faction = 'colony'; f.brain = 'colonist';
+  f.faction = 'colony'; f.brain = 'captive';   // the role of a captive (agents/brains/index.js)
   f.squad = null; f.band = null; f.role = null; f.looted = false; f.lost = false; f.leads = null; f.master = null;
   if (!f.prefs) personality(w, f);
   if (sp.names && (!f.name || f.name === sp.label || /^налётчик/i.test(f.name))) [f.name, f.gender] = freshName(w, sp.names);

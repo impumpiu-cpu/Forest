@@ -7,16 +7,16 @@
 //
 // a.realms = [{id, people, name, capital: townId, founded, color, align: {order, mercy}, seatSince}]
 // align — the realm's world view (data/values.js), moved by its wars, peace and fallen seats (atlas/diplomacy.js)
-import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS} from '../data/peoples.js';
+import {WORLD_PEOPLES, EPITHETS, SCHISM, TIERS, REALM_LAND} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {townFx, townLabel, townGender} from './towns.js';
-import {meet, relation} from './diplomacy.js';
+import {meet} from './diplomacy.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
-import {DIRS8} from './heap.js';
+import {DIRS8, Heap} from './heap.js';
 import {ALIGN_DRIFT, alignNear, shiftAlign, spreadOf} from '../data/values.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {TECH_RULES} from '../data/tech.js';
@@ -81,7 +81,7 @@ export function foundRealm(a, t, subId = null, from = null) {
   const align = alignNear(from?.align || SPECIES.get(P.race).align, spreadOf(SPECIES.get(P.race), 'realm'), mulberry(seedNumber(`${a.cfg.seed}:align:${id}`)));
   const r = {id, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color, align, root: {...align}, seatSince: a.hist.year,
     // what it knows (data/tech.js, atlas/tech.js): a realm of a schism keeps what the old one knew
-    tech: from?.tech && TECH_RULES.inherit ? [...from.tech] : []};
+    tech: from?.tech && TECH_RULES.inherit ? [...from.tech] : [], from: from ? from.id : null};   // (from: the realm it broke away from, for the card)
   a.realms.push(r);
   t.realm = r.id; t.capital = true;
   return r;
@@ -93,6 +93,35 @@ export const realmLabelGen = (a, id) => { const r = realmOf(a, id), sub = subOf(
 export const realmPeople = (a, id) => realmOf(a, id).people;
 export const capitalOf = (a, id) => a.towns.find(t => t.id === realmOf(a, id).capital) || null;
 export const realmTowns = (a, id) => a.towns.filter(t => t.alive && t.realm === id);
+
+// the realms' land (data/peoples.js REALM_LAND): for each cell the index in a.realms of the realm that holds it, or −1.
+// Grown from every living town at once over the ground (a Dijkstra in the units of each town's own reach); worked out
+// again only when the history has stepped or the towns changed — it is the map's, never saved
+const LAND_CACHE = new WeakMap();
+export function realmLand(a) {
+  if (!a.realms?.length || !a.towns) return null;
+  const towns = a.towns.filter(t => t.alive && t.realm), key = `${a.hist?.step}:${towns.map(t => `${t.id}${t.realm}${t.tier}`).join(',')}`;
+  const c = LAND_CACHE.get(a); if (c?.key === key) return c.own;
+  const R = REALM_LAND, k = scaleOf(a), idx = new Map(a.realms.map((r, n) => [r.id, n]));
+  const own = new Int32Array(a.n).fill(-1), best = new Float64Array(a.n).fill(Infinity), src = new Int32Array(a.n).fill(-1);
+  const reach = towns.map(t => WORLD_PEOPLES.get(t.people).spacing * k * (R.reach + R.tier * t.tier + (t.capital ? R.capital : 0)));
+  const heap = new Heap(a.n >> 2);
+  towns.forEach((t, n) => { best[t.i] = 0; src[t.i] = n; heap.push(0, t.i); });
+  const wet = i => a.f.ocean[i] || a.f.lake?.[i] >= 0;
+  while (heap.size) {
+    const i = heap.pop(), d = heap.top; if (d > best[i]) continue;
+    const n = src[i]; own[i] = idx.get(towns[n].realm) ?? -1;
+    const x = i % a.w, y = (i / a.w) | 0;
+    for (const [dx, dy, len] of DIRS8) {
+      const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= a.w || ny >= a.h) continue;
+      const j = ny * a.w + nx; if (wet(j)) continue;
+      const nd = d + len * (1 + R.steep * (1 - (a.f.flat?.[j] ?? 1))) / reach[n];
+      if (nd <= 1 && nd < best[j]) { best[j] = nd; src[j] = n; heap.push(nd, j); }
+    }
+  }
+  LAND_CACHE.set(a, {key, own});
+  return own;
+}
 
 // a new town holds to the realm of the nearest town of its people
 export function joinRealm(a, t) {

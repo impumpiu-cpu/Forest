@@ -28,18 +28,13 @@ const name = a => `<b>${esc(a.name)}</b>`;
 export const formers = w => colonists(w).filter(a => a.former && !a.dead);
 const tally = w => (w.chronicle.captives ||= {taken: 0, died: 0});
 
-// what a former slave may choose: everything a free colonist may, but no flag, watch, council or trade, and no
-// fight but for its life
-const BARRED = new Set(['council', 'trade', 'watch', 'answer']);
-export const formerAllows = t => !BARRED.has(t.id) && (t.id !== 'fight' || !!t.reflex);
-
 // the bonds come off
 export function freeCaptive(w, a, by) {
   const B = BONDS.has(a.captive.bonds) ? BONDS.get(a.captive.bonds) : null;
   if (B?.back) w.stock[B.resource] = (w.stock[B.resource] || 0) + B.n;
   const mul = a.own?.mul; if (mul) { delete mul.hunger; delete mul.work; }   // the captives' ration is over
   a.former = {since: w.tick, bond: F.bond.start, fought: false, was: a.captive.was || null, service: a.captive.service || 0};
-  a.captive = null;
+  a.captive = null; a.brain = 'former';   // the role of a former slave (agents/brains/index.js)
   refreshBody(a);
   if (w.scratch) delete w.scratch.colonists;
   tally(w).freed = (tally(w).freed || 0) + 1;
@@ -50,7 +45,7 @@ export function freeCaptive(w, a, by) {
 
 // a former slave made a full member
 function makeMember(w, a) {
-  a.former = null;
+  a.former = null; a.brain = 'colonist';   // a member now: the full role
   if (w.scratch) delete w.scratch.colonists;
   tally(w).members = (tally(w).members || 0) + 1;
   const r = w.chronicle.people?.find(p => p.id === a.id); if (r) r.former = false;

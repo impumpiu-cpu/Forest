@@ -3,6 +3,8 @@
 // campaign/*.js only reads it. Numbers are first guesses for the balance run (tools/campaign-check.mjs).
 
 export const CAMPAIGN = {
+  // a night with nothing in the cell's pool still sends a stray (campaign/march.js): wolves of this strength
+  stray: {kind: 'beasts', strength: 0.7, beast: 'wolves', label: 'волки'},
   // the peoples whose capitals can send a caravan (the major ones; the minor join on the way, later)
   peoples: ['humans', 'elves', 'dwarves', 'orcs'],
   // the core: those who set out; when all of them are dead the campaign is lost
@@ -48,7 +50,7 @@ export const CAMPAIGN = {
   // of the food. `mortal` is tuned so that the quick mode loses as many of the eight as the local map
   // (tools/campaign-balance.mjs)
   // captive: the weight of a captive among those the blows fall on (it keeps out of the fight)
-  fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, captive: 0.4, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02},
+  fight: {hurt: [0.05, 0.25], blow: [0.1, 0.35], shield: 3, captive: 0.4, lostHurt: 1.3, saved: 0.05, lost: 0.35, loot: [1, 4], mortal: 0.02, wounded: 0.05},   // wounded: health lost in a fight that counts as a wound in its record (campaign/stats.js)
   // a morning after a quiet night: a little food is found with `food`; something of worth only where it has a
   // reason to lie (FINDS below)
   morning: {food: 0.22, foodN: [1, 3]},
@@ -68,9 +70,12 @@ export const FOES = {
   lair:    {label: 'чудища из логова', might: 4},
   tribe:   {label: 'дикари', might: 5},
   undead:  {label: 'мертвецы', might: 4},
-  wolves:  {label: 'волчья стая', might: 2.5},
+  beasts:  {label: 'хищные звери', might: 2.5},
+  wolves:  {label: 'волчья стая', might: 2.5},   // (a caravan saved before the beasts of every kind)
   army:    {label: 'фуражиры чужого войска', might: 6},
   bandits: {label: 'разбойники с большой дороги', might: 3},
+  raiders: {label: 'налётчики', might: 5},
+  cultists: {label: 'культисты некроманта', might: 5},
 };
 
 // the core of each people: ranks (one, many, «four of») and the gear they set out in (data/items.js ids).
@@ -130,15 +135,15 @@ export const CHRONICLE = {
 // ids, each with its chance: one goes to whoever it suits, the rest rides to be sold), `goods` (resources
 // with an amount); `text` — the line, one drawn: {gold}, {things} are filled in.
 export const FINDS = [
-  {id: 'corpse', where: 'road', chance: 0.007, gold: [2, 10], items: {bronzedagger: 0.3}, goods: {rope: [0.3, 2, 4]},
+  {id: 'corpse', where: 'road', chance: 0.007, gold: [2, 10], items: {bronzedagger: 0.3}, goods: {rope: [0.3, 2, 4], potion: [0.15, 1, 1]},
     text: ['У дороги нашли тело путника — давно, видно, лежит: {things}.', 'В придорожной канаве — убитый торговец, разбойники его не обыскали: {things}.']},
   {id: 'cart', where: 'road', chance: 0.005, gold: [1, 6], items: {bronzeaxe: 0.15}, goods: {rope: [0.5, 2, 4], leather: [0.5, 1, 3]},
     text: ['На обочине — брошенная повозка со сломанной осью; в ней нашлось: {things}.', 'Нашли опрокинутую телегу без лошади, груз растащен не весь: {things}.']},
   {id: 'den', where: 'beasts', chance: 0.006, gold: [1, 8], items: {bronzespear: 0.2, irondagger: 0.05}, goods: {hide: [0.4, 1, 2]},
     text: ['Пещера зверя, вся в костях: кто-то из охотников не вернулся отсюда. Среди костей: {things}.', 'В логове зверя под костями — остатки чужого снаряжения: {things}.']},
-  {id: 'ash', where: 'ruin', chance: 0.02, gold: [3, 15], items: {bronzesword: 0.1, ironaxe: 0.1}, goods: {},
+  {id: 'ash', where: 'ruin', chance: 0.02, gold: [3, 15], items: {bronzesword: 0.1, ironaxe: 0.1}, goods: {potion: [0.2, 1, 2]},
     text: ['На пепелище, в обгоревшем подполе, отыскали: {things}.', 'Среди развалин под рухнувшей балкой — забытый тайник: {things}.']},
-  {id: 'field', where: 'battle', chance: 0.012, gold: [1, 6], items: {shield: 0.25, bronzespear: 0.15}, goods: {},
+  {id: 'field', where: 'battle', chance: 0.012, gold: [1, 6], items: {shield: 0.25, bronzespear: 0.15}, goods: {potion: [0.1, 1, 1]},
     text: ['Старое поле боя: земля всё ещё отдаёт ржавое железо. Подобрали: {things}.', 'У курганов павших — брошенное оружие и кошель убитого: {things}.']},
 ];
 
@@ -163,10 +168,27 @@ export const MINE = {every: 40, maxDays: 6, quit: 1, room: 6, food: 8, strength:
 // the epic world's sizes (the epic campaign of the old menu and the quick start of the new one; the medium is the campaign's own)
 export const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']];
 
+// The wild as foes (campaign/land.js dangers; docs/CAMPAIGN.md «Кто нападает»): who lives in a cell is read from the
+// fields of the world (atlas/fauna.js — the beasts, the lairs' monsters and the tribes, data/lairs.js LAIR_FIELD), each
+// species that can come at people a foe of its own, by its density there (N, at least `at`):
+//   beasts: a beast of prey that hunts people;  lair: a lair's monster;  tribe: the folk of a tribe (its raid band,
+//           data/seam.js LAIR_BANDS) — each a chance p × the density (at most cap), strength s[0] + s[1] × it.
+//           Inside a lair's land its own kind is the lair's (NIGHT.lair), not counted twice.
+//   dead:    the risen of a necromancer (atlas/necro.js: the field of the dead), as the band of the dead
+//   raiders: a people that raids (data/seam.js REALM_BANDS: the orcs' warbands, men turned outlaw) by its field there
+//           (atlas/peoples.js: density × the land it holds), when it is the caravan's foe — its race dislikes the
+//           caravan's (data/relations.js), or a realm of it is at war with the caravan's realm
+//   mix:    a foe that comes brings a second kind of the same cell along with the chance chance × the second's share of
+//           the two (beasts with beasts, bands with bands); the second makes `share` of the strength the fight is bought
+//           with (data/camp.js), [lo, hi]
+export const WILD_FOES = {at: 0.04, beasts: {p: 0.025, cap: 1.5, s: [0.6, 0.4]}, lair: {p: 0.03, cap: 1.5, s: [0.7, 0.5]}, tribe: {p: 0.03, cap: 1.5, s: [0.8, 0.5]},
+  raiders: {p: 0.02, cap: 1, s: [0.8, 0.5]},
+  dead: {p: 0.03, cap: 1.5, s: [0.8, 0.5]},
+  mix: {chance: 0.6, share: [0.25, 0.45]}};
+
 // What may come at the caravan's camp at night (campaign/land.js dangers): each a chance of a fight `p` and its strength.
 //   lair:    in a lair's land: p[0] + p[1] × its strength (at most pCap), strength s[0] + s[1] × its strength (at most sCap)
-//   wolves:  where wolves live: p × their density (at most cap), strength s[0] + s[1] × it
 //   army:    where an army's foragers stripped the land above `at`: p × how badly;  undead: where the rot is above `at`:
 //            p × it, strength s + it;  bandits: by a road above `at` of the way: p × the road
-export const NIGHT = {lair: {p: [0.05, 0.05], pCap: 1.5, s: [0.6, 0.6], sCap: 2}, wolves: {p: 0.025, cap: 2, s: [0.7, 0.3]},
+export const NIGHT = {lair: {p: [0.05, 0.05], pCap: 1.5, s: [0.6, 0.6], sCap: 2},
   army: {at: 0.3, p: 0.2, s: 1}, undead: {at: 0.2, p: 0.06, s: 0.8}, bandits: {at: 0.1, p: 0.02, s: 1}};

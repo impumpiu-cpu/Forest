@@ -80,6 +80,7 @@ export const ESCAPE = {
   ration: {cutDays: 3, eat: 0.65, work: 0.85},
   tools: {dawn: 6},
   lost: 1200,           // a runaway that has not reached the edge in this many ticks (a day) is lost in the wilds: gone
+  runPace: 1.15,        // runs for the edge at this pace (× the bonds' `slow`)
 };
 
 // Stage 4 (docs/CAPTIVES.md): from captive to former slave to member.

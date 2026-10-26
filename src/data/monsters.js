@@ -18,6 +18,7 @@ import {RACES} from './races.js';
 import {bodyFor} from './balance/creatures.js';
 import {personNames} from './names.js';
 import {onEdit} from './schema/layer.js';
+import {DEED_WAYS} from './deeds.js';
 
 const human = RACES.find(r => r.id === 'human');
 // what the necromancer takes from a human as he is (not what he has of his own, nor his body's row): read again after
@@ -28,7 +29,7 @@ onEdit(() => { const n = MONSTERS.find(m => m.id === 'necromancer'); if (n) for 
 export const MONSTERS = [
   // Demons are the one magic left in the world: they come through the rifts at live volcanoes and plate
   // seams (atlas/lairs.js `rift`), few and far from the colony. Fire-born: no fire frightens or burns one.
-  {id: 'demon', kind: 'fiend', label: 'демон', labelAcc: 'демона', plural: 'демоны', mind: 'semi', fiend: true,
+  {id: 'demon', kind: 'fiend', deeds: {lair: [...DEED_WAYS.lair]}, label: 'демон', labelAcc: 'демона', plural: 'демоны', mind: 'semi', fiend: true,
     needs: [], heatHarm: 900, fearHeat: 900, look: {shape: 'spirit', size: 0.9, color: '#c8321e'},
     weakTo: ['silver'],
     killMessage: name => `Демон разорвал поселенца: <b>${name}</b>.`},
@@ -38,23 +39,23 @@ export const MONSTERS = [
     rots: 0.000012,
     killMessage: name => `Мертвецы растерзали поселенца: <b>${name}</b>.`},
 
-  {id: 'skeleton', kind: 'undead', label: 'костяк', labelAcc: 'костяка', plural: 'костяки', mind: 'beast', undead: true, mindless: true,
+  {id: 'skeleton', kind: 'undead', deeds: {lair: [...DEED_WAYS.lair]}, label: 'костяк', labelAcc: 'костяка', plural: 'костяки', mind: 'beast', undead: true, mindless: true,
     needs: [], heatHarm: 55, inventory: true, look: {shape: 'person', size: 0.58, color: '#d8d2bd', skin: '#8f8a78'},
     killMessage: name => `Костяки зарубили поселенца: <b>${name}</b>.`},
 
-  {id: 'upyr', kind: 'undead', label: 'упырь', labelAcc: 'упыря', plural: 'упыри', mind: 'semi', undead: true,
+  {id: 'upyr', kind: 'undead', deeds: {lair: [...DEED_WAYS.lair]}, label: 'упырь', labelAcc: 'упыря', plural: 'упыри', mind: 'semi', undead: true,
     needs: [], heatHarm: 50, look: {shape: 'person', size: 0.6, color: '#9a6f78', skin: '#c9b8b8'},
     drinks: 0.5, sun: 0.0004,
     killMessage: name => `Упыри выпили кровь поселенца: <b>${name}</b>.`},
 
-  {id: 'vampire', kind: 'undead', label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true, sentient: true,
+  {id: 'vampire', kind: 'undead', deeds: {lair: [...DEED_WAYS.vampire]}, label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true, sentient: true,
     needs: [], heatHarm: 55, inventory: true, look: {shape: 'person', size: 0.64, color: '#5a1f2a', skin: '#e8e2e8'},
     drinks: 0.6, sun: 0.0006, weakTo: ['silver'],
     names: personNames('vampire'),
     killMessage: name => `Вампир осушил поселенца: <b>${name}</b>.`},
 
   // a necromancer is a human: he walks behind his dead and steers them; kill him and they stagger off
-  {...human, id: 'necromancer', kind: 'race', label: 'некромант', labelAcc: 'некроманта', plural: 'некроманты', settle: 0, mind: 'sentient',
+  {...human, id: 'necromancer', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, label: 'некромант', labelAcc: 'некроманта', plural: 'некроманты', settle: 0, mind: 'sentient',
     look: {shape: 'person', size: 0.62, color: '#3d3550', skin: '#c8b8a0'},
     innate: [{label: 'гнильщик', note: 'растит гниль и водит мертвецов запахами и отварами'}],
     align: {order: 2, mercy: -5, spread: {order: 0.5, mercy: 0.5}}, values: {knowledge: 3, gold: 1}},

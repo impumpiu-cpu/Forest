@@ -15,6 +15,8 @@ import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {SPECIES, KINDS} from '../src/data/species.js';
+import {BEHAVIOURS} from '../src/data/behaviours.js';
+import '../src/agents/behaviours/index.js';   // the code behind every row, checked at load
 import {NAVMAPS} from '../src/data/navmaps.js';
 import {THOUGHTS} from '../src/data/thoughts.js';
 import {STOCKS} from '../src/data/presets.js';
@@ -214,7 +216,7 @@ for (const sp of SPECIES.all()) {
   if (sp.kind !== 'race' && sp.home) err(`${where}: home только у разумных`);
   if (sp.kind === 'spirit' && !sp.resident) err(`${where}: нечисть без resident`);
   if (sp.resident && sp.kind !== 'spirit') err(`${where}: resident, а не нечисть`);
-  if ((sp.kind === 'beast' || sp.kind === 'monster') && !sp.habitat && sp.brain !== 'vermin') err(`${where}: зверь без habitat`);   // vermin lives everywhere
+  if ((sp.kind === 'beast' || sp.kind === 'monster') && !sp.habitat && !sp.vermin) err(`${where}: зверь без habitat`);   // vermin lives everywhere
   if (sp.kind === 'race' && sp.habitat) err(`${where}: habitat у разумного — на локальной карте он пришёл бы как зверь`);
   for (const [b, r] of Object.entries(sp.home || {})) {
     if (!BIOMES.has(b)) err(`${where}: нет биома «${b}» в home`);
@@ -231,9 +233,15 @@ for (const sp of SPECIES.all()) {
   for (const k of [...(sp.predator?.prey || []), ...(sp.predator?.weakPrey || []), ...(sp.flee?.from || [])]) if (k !== 'people' && !SPECIES.has(k)) err(`${where}: нет вида «${k}»`);
   for (const k of sp.tameWith || []) if (!SPECIES.get(k)?.rel) warn(`${where}: tameWith — «${k}» не раса`);
   for (const r of Object.keys(sp.yields || {})) res(where, r);
-  if (sp.brain === 'mule' && !sp.mule) err(`${where}: мозг mule без блока mule`);
-  if (sp.brain === 'predator' && !sp.predator) err(`${where}: мозг predator без блока predator`);
-  if (sp.brain === 'spirit' && !sp.spirit) err(`${where}: мозг spirit без блока spirit`);
+  // the tabled brain: a list of behaviours, each with the fields it reads (agents/behaviours/index.js `requires`)
+  if (sp.brain) err(`${where}: свой мозг «${sp.brain}» — вид думает по списку behaviours, раса — умом своей стороны (data/factions.js)`);
+  if ((sp.kind === 'beast' || sp.kind === 'monster' || sp.kind === 'spirit') && !sp.behaviours?.length) err(`${where}: зверь без списка behaviours`);
+  if (sp.behaviours && !sp.behaviours.length) err(`${where}: пустой список behaviours`);
+  for (const id of sp.behaviours || []) {
+    if (!BEHAVIOURS.has(id)) { err(`${where}: нет поведения «${id}»`); continue; }
+    for (const f of BEHAVIOURS.get(id).requires) if (sp[f] == null) err(`${where}: поведение ${id} читает «${f}», а его нет`);
+  }
+  if (new Set(sp.behaviours || []).size !== (sp.behaviours || []).length) err(`${where}: поведение в списке дважды`);
 }
 for (const r of RESOURCES.filter(x => x.useWith)) if (!BUILDINGS.has(r.useWith)) err(`инструмент ${r.id}: useWith — нет постройки «${r.useWith}»`);
 

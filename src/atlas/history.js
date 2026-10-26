@@ -20,6 +20,7 @@ import {LAIRS} from '../data/lairs.js';
 import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
 import {stepLeaders} from './leaders.js';
+import {stepCourts} from './court.js';
 import {stepTech} from './tech.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
@@ -137,6 +138,7 @@ export function stepHistory(a, onDay = null) {
   const totals = stepFauna(a, season);
   for (const line of stepLairs(a, rnd, season)) say(a, line);
   stepLeaders(a, t => say(a, t));
+  stepCourts(a, rnd, season, t => say(a, t));   // the realms' deeds: war, peace, armies, raids, lairs cleared (atlas/court.js)
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
   stepTech(a, t => say(a, t));   // the realms' finds: their own stream, in spring (atlas/tech.js)   // the old lairs' leaders: their own stream, in spring (atlas/leaders.js)
   stepCalamities(a);
@@ -152,7 +154,7 @@ export function stepHistory(a, onDay = null) {
   if (H.season === 3) {
     const news = [];
     for (const [k, s] of a.fauna.list.entries()) {
-      if (s.role === 'spirit' || s.usual <= 0) continue;
+      if (s.role === 'spirit' || s.role === 'folk' || s.role === 'dead' || s.usual <= 0) continue;   // (the tribes are folk, not beasts)
       const t = totals[k], avg = s.avg;
       s.avg = avg == null ? t : avg * 0.8 + t * 0.2;
       if (t === 0 && avg > 0) { news.push([9, `В мире не осталось ни одного зверя: ${s.sp.plural} вымерли.`]); continue; }

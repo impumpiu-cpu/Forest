@@ -11,7 +11,7 @@
 //     --seeds 777,790       the worlds' seeds instead of --worlds
 //     --caps 8              capitals of a world at most
 //     --set NAME.key=value  change a number of a data table for every run (repeatable), e.g.
-//                           --set CAMP.budget=0.6 --set CAMPAIGN.heal.camp=0.12
+//                           --set CAMP.foe.sway=0.3 --set CAMPAIGN.heal.camp=0.12
 //     --vary NAME.key=a,b   compare values (repeatable: variants multiply); an array as [a,b]: --vary EPIC.hunt.every=[60,30],[90,50]
 //     --jobs N              parallel workers (default: CPU cores)
 //     --out dir             where to write (default runs/campaign-<date-time>)

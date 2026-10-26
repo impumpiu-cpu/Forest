@@ -25,13 +25,13 @@ import {townLabel} from './towns.js';
 import {eraPlan} from './history.js';
 import {stepAlliance} from './alliance.js';
 import {epitaph} from './chronicle.js';
-import {plural} from '../core/util.js';
+import {plural, cellDist} from '../core/util.js';
 import {scaleOf} from './tectonics.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const pick = (r, list) => list[(r() * list.length) | 0];
 const xy = (a, i) => [i % a.w, (i / a.w) | 0];
-const dist = (a, i, j) => { const [x, y] = xy(a, i), [p, q] = xy(a, j); return Math.hypot(x - p, y - q); };
+const dist = cellDist;   // (core/util.js)
 const land = (a, i) => !!a.f.land?.[i] && !a.f.ocean[i];
 
 // the calamities' stream, kept by its position in the world

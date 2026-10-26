@@ -17,19 +17,22 @@ import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
 import {refreshBody} from '../agents/special.js';
+import {attackerOf} from '../agents/combat.js';
+import {wake} from '../agents/attention.js';
+import {nightSight} from '../data/tongues.js';
+import {sideStrength, strengthOf, expectedStrength} from '../agents/strength.js';
 import {dress, def, gearDef, gearToken, gearType} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
 import {putUp} from '../settlement/buildings.js';
-import {raidThreat, THREAT} from '../settlement/threat.js';
-import {raiderStrength} from '../data/raids.js';
+import {campOf} from './baggage.js';
+import {POTION} from '../data/potions.js';
+import {raidThreat} from '../settlement/threat.js';
 import {recordOf} from '../settlement/chronicle.js';
-import {BRAINS} from '../agents/brains/index.js';
-import {approach} from '../agents/movement.js';
 import {walkable} from '../world/grid.js';
 import {FAR} from '../nav/navigation.js';
 import {cellPlan} from '../seam/cell.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {DAY, HOUR} from '../core/time.js';
+import {DAY, HOUR, nightness} from '../core/time.js';
 import {SEASON_DAYS} from '../data/seasons.js';
 import {DEFAULT_CFG} from '../data/presets.js';
 import {FOODS} from '../data/foods.js';
@@ -48,18 +51,6 @@ import {allItems, def as itemOf} from '../agents/equipment.js';
 // the camp's border with the world: nobody comes by schedule — the campaign sends the foe itself
 PROVIDERS.register({id: 'camp', label: 'Стоянка каравана', flows: {}, distance: () => null, receive() {}});
 
-// a beast led away by a raider who looted the camp: it follows him, and is gone with him
-BRAINS.register({
-  id: 'led',
-  step(w, a) {
-    const r = w.agents.find(o => o.id === a.ledBy);
-    if (!r || r.dead) { a.brain = 'livestock'; a.ledBy = null; a.task = null; return; }   // the thief fell: the beast stays
-    if (r.gone) { a.gone = true; a.stolen = true; return; }
-    a.task = {id: 'led'};
-    if (Math.hypot(r.x - a.x, r.y - a.y) > 0.8) approach(w, a, r.x, r.y, 1.1);
-  },
-});
-
 const alive = K => K.members.filter(m => m.alive);
 const round1 = v => Math.round(v * 10) / 10;
 
@@ -73,14 +64,14 @@ export function campSetup(a, K, ev) {
   return {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}${n ? `:${n}` : ''}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
-    members: alive(K).map(m => ({id: m.id, name: m.name, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
+    members: alive(K).map(m => ({id: m.id, name: m.name, potions: m.potions || 0, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
       align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
-    vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind, building: v.building || null})),
+    vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
     food: K.food, cargo: {...K.cargo},
     // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
-    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, boss: ev.foe.boss || null} : null,
+    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, leaderLair: ev.foe.leaderLair || null} : null,
   };
 }
 
@@ -129,12 +120,14 @@ export function openCamp(S) {
     }
     const rec = recordOf(w, ag); if (rec) rec.name = m.name;
     if (m.master) ag.master = {skill: m.master.skill, since: w.tick, workedAt: -1};
-    if (m.former) ag.former = {since: w.tick, bond: m.loyalty ?? 0.6, fought: false};   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
+    if (m.former) { ag.former = {since: w.tick, bond: m.loyalty ?? 0.6, fought: false}; ag.brain = 'former'; }   // (the role's shorter list: data/behaviour.js WAYS.former)   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
     // a captive of the caravan stays one on the map (settlement/captives.js)
     if (m.captive) { ag.captive = {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned ?? null, service: m.captive.service || 0}; if (rec) rec.captive = true; }
+    if (m.captive) ag.brain = 'captive';   // (no council, flag, watch or trade; kept in: data/behaviour.js WAYS.captive)
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
+    if (!m.captive && !m.former && m.potions) ag.potions = Math.min(POTION.slot, m.potions);   // the healing potions in the slot (agents/potions.js)
     for (const n of Object.keys(ag.needs)) ag.needs[n] = Math.max(ag.needs[n], 0.75);
     ag.needs.rest = CAMP.rest[S.kind] ?? 0.85;   // a day's march behind them
     if (S.kind === 'stop') ag.needs.food = 1;   // the day's meal is the campaign's: on the map they hunt and gather
@@ -149,12 +142,14 @@ export function openCamp(S) {
     ag.hp = maxHp(ag) * Math.max(0.1, Math.min(1, b.hp));
   });
   // a packed building put up by the fire
-  const packed = S.vehicles.filter(v => v.building);
+  const camp = S.buildings || S.vehicles.filter(v => v.building).map(v => v.building);   // (a camp kept to be watched again from before the camp went with the caravan)
   // a stop: the land's game comes out onto the meadows
   if (S.kind === 'stop') stockGame(w, r);
   w.campaign.food0 = foodNow(w); w.campaign.stock0 = {...w.stock};
+  w.campaign.ourMight = sideStrength([...w.campaign.people.values()].filter(ag => !ag.captive), {now: true});   // the caravan's fighting strength as it stands, wounds and all (the foe's budget, the fight's record: campaign/stats.js)
   // (on the march, after an ambush, the building stays packed)
-  if (S.kind === 'night' || S.kind === 'stop') for (const v of packed) { const b = putUp(w, v.building, CAMP.deploy); if (b) w.campaign.built.push({k: v.k, id: b.id}); }
+  // the caravan's camp stands whole at a night's camp and a stop (data/transport.js CAMP_FX); on the march it is packed
+  if (S.kind === 'night' || S.kind === 'stop') for (const id of camp) { const b = putUp(w, id, 0); if (b) w.campaign.built.push({key: id, id: b.id}); }
   w.logLines = [];
   return w;
 }
@@ -171,37 +166,78 @@ function stockGame(w, r) {
 const foodNow = w => FOODS.all().reduce((s, f) => s + (w.stock[f.id] || 0) * f.nutrition, 0);
 
 // the foe comes: a band of raiders (data/raids.js) or a pack of beasts, at the edge or close by
+// the weight of a fight on the caravan's strength (data/camp.js CAMP.foe): a chance meeting lighter, a named foe heavier,
+// and a sway at random on top. Shared with the quick mode (campaign/fight.js autoFight)
+const refOf = F => CAMP.foe.density.ref[F.kind] ?? CAMP.foe.density.ref.else;
+export function foeWeight(r, F, kind) {
+  const B = CAMP.foe, named = F.boss ? (F.boss.mustDie ? B.boss : F.leaderLair ? B.leader : B.mini) : null, D = B.density;
+  // a chance meeting: as many as the land holds (the thing's strength: its density), the named and the forces as they are
+  const base = named ?? (kind === 'guard' || F.kind === 'army' ? B.force : (B.skirmish[0] + r() * (B.skirmish[1] - B.skirmish[0])) * Math.max(D.lo, Math.min(D.hi, (F.strength ?? refOf(F)) / refOf(F))));
+  return Math.max(B.floor, base + (2 * r() - 1) * B.sway);
+}
+
 function spawnFoe(w) {
   const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
   const close = S.kind === 'ambush' || S.kind === 'guard', at = close ? nearCell(w, CAMP[S.kind].near, r) : null;
   const opts = {minDist: close ? CAMP[S.kind].near : CAMP.far, ...(at != null ? {at} : {})};
+  // (a beast with no arrival on the local map — a rift's demon — still comes as a band, as before: docs/TODO.md)
   const beast = F.beast || map.beast, band = F.band || map.band;
-  let group = [];
-  if (beast && MIGRATIONS.has(beast)) {
-    const n = Math.max(1, Math.round((CAMP.pack[0] + r() * (CAMP.pack[1] - CAMP.pack[0])) * Math.min(2, F.strength) * (beast === 'wolves' ? 1 : 0.5)));
-    group = spawnGroup(w, beast, n, opts);
-    for (const g of group) { g.needs.food = Math.min(g.needs.food ?? 1, 0.2); g.hunger = true; }   // they came for a meal
-  } else {
+  // the foe is bought by the caravan's strength (campSetup: C.ourMight — everyone who stands in the fight, with all
+  // they wear) × the fight's weight (foeWeight), never by the thing's own strength: a caravan in copper is not sent
+  // against a boss bought for a caravan in steel. The heads are rounded up (data/raids.js fill `up`)
+  const t = raidThreat(w), budget = C.ourMight * foeWeight(r, F, S.kind);
+  C.weight = Math.round(budget / Math.max(1e-6, C.ourMight) * 100) / 100;   // for the fight's record
+  // one kind, or two (campaign/land.js withCompany): the second takes its share of the budget
+  const W = F.with && (F.with.beast ? MIGRATIONS.has(F.with.beast) : F.with.band) ? F.with : null, main = budget * (W ? 1 - W.share : 1);   // (a second kind with no arrival stays home)
+  const part = (who, b, first) => {
+    if (who.beast && MIGRATIONS.has(who.beast)) {
+      const n = Math.min(CAMP.foe.most, Math.max(1, first && F.boss ? CAMP.boss.atLeast : 1, Math.ceil(b / expectedStrength(MIGRATIONS.get(who.beast).species, {key: 'wild'}))));   // a wild beast comes as it is, no band's body or kit
+      const g = spawnGroup(w, who.beast, n, opts);
+      for (const x of g) { x.needs.food = Math.min(x.needs.food ?? 1, 0.2); x.hunger = true; }   // they came for a meal
+      return g;
+    }
     // the threat the band carries its gear by: × the thing's strength (settlement/threat.js reads w.fame on top)
     const want = CAMP.threat * F.strength * (map.threat || 1);
     w.fame = 0; w.fame = want - raidThreat(w);
-    // the band in bandits of its level, counted out in strength rating (data/raids.js fill)
-    const heads = Math.max(1, Math.round(FOES[F.kind].might * F.strength * CAMP.budget));
-    group = spawnGroup(w, 'raiders', heads * raiderStrength(raidThreat(w)) * THREAT.share, {...opts, band: band || 'bandits'});
+    // the band counted out in strength rating (data/raids.js fill): the budget, rounded up by heads, the bands' caps lifted
+    return spawnGroup(w, 'raiders', b, {...opts, band: who.band || 'bandits', fill: {up: true, max: {}, ...(F.pool && who.band === 'cultists' ? {pool: F.pool} : {})}, atLeast: first && F.boss ? CAMP.boss.atLeast : 0});
+  };
+  // beasts that come with a band (campaign/land.js withCompany) are its war beasts: one side, one squad, the band's brain
+  const bandMain = !(beast && MIGRATIONS.has(beast)), joined = W && W.beast && bandMain ? W : null;
+  let group;
+  if (joined) {
+    const sp = MIGRATIONS.get(joined.beast).species, n = Math.min(CAMP.foe.most, Math.max(1, Math.ceil((budget - main) / expectedStrength(sp, {key: 'wild'}))));
+    const want = CAMP.threat * F.strength * (map.threat || 1);
+    w.fame = 0; w.fame = want - raidThreat(w);
+    group = spawnGroup(w, 'raiders', main, {...opts, band: band || 'bandits', fill: {up: true, max: {}, ...(F.pool && band === 'cultists' ? {pool: F.pool} : {})}, beasts: {species: sp, n}, atLeast: F.boss ? CAMP.boss.atLeast : 0});
+  } else {
+    group = part({beast, band}, main, true);
+    if (W) group = group.concat(part(W, budget - main, false));
   }
   // the guards of a place stormed (campaign/quest.js) defend it to the last: their band does not break and flee
   if (S.kind === 'guard') for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
     const sq = w.squads?.[id]; if (sq) { sq.kind = 'mindless'; sq.goal = 'slaughter'; }
   }
-  // the beasts of the fourth's lair hold it to the last as well (agents/brains/predator.js); a grave's may be driven off
+  // the beasts of the fourth's lair hold it to the last as well (agents/behaviours/maul.js defendLair); a grave's may be driven off
   if (S.kind === 'guard' && F.boss?.mustDie) for (const g of group) if (SPECIES.get(g.species)?.predator) g.defend = true;
   // a boss (campaign/epic.js): the strongest of them, grown past its kind — named, at full health
   if (F.boss && group.length) {
     const own = group.filter(g => g.species === F.boss.species), b = (own.length ? own : group).slice().sort((p, q) => maxHp(q) - maxHp(p))[0];   // its own kind, if it came
     b.special = {...b.special}; for (const [id, v] of Object.entries(F.boss.add || {})) b.special[id] = (b.special[id] ?? 5) + v;
     refreshBody(b); b.hp = maxHp(b); b.name = F.boss.name; b.boss = true; C.boss = b;
+    // grown, it is worth more than the budget bought: the weakest of its retinue go, while what is left still covers the budget
+    for (;;) {
+      const rest = group.filter(g => g !== b).sort((p, q) => strengthOf(p, {now: true}) - strengthOf(q, {now: true}));
+      if (group.length <= CAMP.boss.atLeast || !rest.length || sideStrength(group, {now: true}) - strengthOf(rest[0], {now: true}) < budget) break;
+      rest[0].gone = true; group.splice(group.indexOf(rest[0]), 1);   // never came (the map drops the gone)
+    }
+    // the boss's aura (agents/auras.js): its side stands while it stands; its band's leader is an officer who holds to the end
+    b.auras = [...(b.auras || []), 'lead'];
+    for (const g of group) if (g !== b) g.side = b.id;   // its side: those who came with it, and only they
+    for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) { sq.goal = 'slaughter'; const l = group.find(g => g.id === sq.leader); if (l && l !== b) l.officer = true; } }
   }
   C.foes = group.map(g => g.id); C.foeObjs = group; C.spawned = true;
+  C.foeMight = sideStrength(group, {now: true});   // the foe's strength as it came (the fight's record)
 }
 
 // a cell this far from the camp that can be walked to from it
@@ -227,10 +263,28 @@ export function stepCamp(w) {
   if (w.tick % 10 === 0) for (const o of w.agents) {
     if (o.faction !== 'raiders' || o.dead || !o.looted || o.task?.id !== 'leave' || o.leads) continue;
     const b = w.agents.find(x => x.tame && !x.dead && !x.ledBy && Math.hypot(x.x - o.x, x.y - o.y) < 2.5);
-    if (b) { b.ledBy = o.id; b.brain = 'led'; o.leads = b.id; }
+    if (b) { b.ledBy = o.id; b.brain = 'led'; o.leads = b.id; }   // the brain `led` (agents/behaviours/led.js): it follows him and is gone with him
   }
+  if (C.spawned && !C.alarm) raiseAlarm(w);
+  if (C.boss && !C.bossFell && (C.boss.dead || C.boss.captive)) C.bossFell = w.tick;   // the aura is gone with it: its band may break now (agents/squad.js)
   if (C.spawned && C.foes.length) {
     if (foesLeft(w) === 0) C.quiet ??= w.tick; else C.quiet = null;
+  }
+}
+
+// the camp's alarm (CAMP.band): one of the caravan awake sees a foe, or one of them is struck. Then the whole company
+// is up and goes for the foe (agents/behaviours/warband.js) — the sleepers too
+function raiseAlarm(w) {
+  const C = w.campaign, R = CAMP.band.sight, night = nightness(w), foes = C.foeObjs.filter(o => !o.dead && !o.gone);
+  for (const p of C.people.values()) {
+    if (p.dead || p.captive) continue;
+    const struck = !!attackerOf(w, p) || p.downed;
+    const awake = p.task?.id !== 'sleep' && !p.downed, r = R * nightSight(p.species, night);
+    if (struck || (awake && foes.some(o => Math.hypot(o.x - p.x, o.y - p.y) <= r))) {
+      C.alarm = w.tick;
+      for (const q of C.people.values()) if (!q.dead && !q.captive) wake(q, 'тревога в лагере', 'тревога');
+      return;
+    }
   }
 }
 
@@ -260,7 +314,7 @@ export function campOutcome(w) {
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill};
     // a fallen one still bleeding when the camp ends: the others bind the wound — barely alive
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
-    return {id: m.id, alive: true, hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
+    return {id: m.id, alive: true, potions: ag.potions || 0, hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);
@@ -290,19 +344,21 @@ export function campOutcome(w) {
     local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill}))}));
   const plundered = w.stats.lastSteal >= C.start;
   const lost = members.filter(m => !m.alive).length, stolen = beasts.filter(b => b.stolen).length;
-  // the vehicles: a building that burnt is lost; a cart may be broken where the foe looted the stores
-  const vehicles = S.vehicles.map(v => {
-    const b = C.built.find(x => x.k === v.k);
-    return {k: v.k, wrecked: plundered && C.rnd() < CAMP.wreck, burnt: !!b && !w.buildings.some(x => x.id === b.id)};
-  });
+  // the camp: a building that burnt is lost; the vehicles: a cart may be broken where the foe looted the stores
+  const burnt = C.built.filter(b => !w.buildings.some(x => x.id === b.id)).map(b => b.key);
+  const vehicles = S.vehicles.map(v => ({k: v.k, wrecked: plundered && C.rnd() < CAMP.wreck}));
   const n = C.foeObjs.length;
+  // for the fight's record (campaign/stats.js): who came, the boss's fate, who of the caravan killed whom
+  const species = {}; for (const o of C.foeObjs) species[o.species] = (species[o.species] || 0) + 1;
+  const B = C.boss, boss = B ? {name: B.name, species: B.species, dead: !!B.dead, bound: !!B.captive, fled: !B.dead && !B.captive && (!!B.gone || B.task?.id === 'leave'), hp: B.dead ? 0 : Math.round(B.hp / maxHp(B) * 100) / 100} : null;
+  const kills = {}; for (const m of S.members) { const ag = C.people.get(m.id); const k = (ag?.stats?.raiders || 0) + (ag?.stats?.wolves || 0); if (k) kills[m.id] = k; }
   const down = killed + taken.length + (S.kind === 'guard' ? fled : 0);   // a foe bound counts as one beaten; one that fled a stormed place, too
   // a storm with a boss in it is won only when the boss is dead (or bound)
   // (a storm is won only by beating its guards: standing unhurt before them is not taking the place; all of them beaten —
   // taken, whatever it cost)
   const won = (!n ? true : S.kind === 'guard' ? down >= n || (down > 0 && down >= lost && down * 2 >= n) : lost === 0 ? !plundered || down > 0 : down >= lost && !plundered) && bossDead !== false;
-  return {kind: S.kind, day: S.day, won, bossDead, members, beasts, food: round1(food), got, cargo, items, vehicles, plundered, stolen, taken,
-    foes: {n, killed, taken: taken.length, fled, left: n - killed - fled - taken.length}, ticks: w.tick - C.start, lines: campLines(w)};
+  return {kind: S.kind, day: S.day, won, bossDead, members, beasts, food: round1(food), got, cargo, items, vehicles, burnt, potions: w.chronicle.potions?.ours || 0, plundered, stolen, taken,
+    foes: {n, killed, taken: taken.length, fled, left: n - killed - fled - taken.length, species, boss, might: C.foeMight || 0, weight: C.weight ?? null}, ours: {might: C.ourMight || 0, kills}, ticks: w.tick - C.start, lines: campLines(w)};
 }
 
 // a fingerprint of an outcome: the same setup must play out the same (the screen plays it again)

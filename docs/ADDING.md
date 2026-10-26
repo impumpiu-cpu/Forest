@@ -108,9 +108,9 @@
 
 ### Существо
 
-Запись в `data/species.js`: `kind`, потребности `needs`, внешний вид `look` (`shape`, размер, цвет), мозг `brain`, добыча `yields`, трофеи `trophies`. Тело и SPECIAL — строка в `data/balance/creatures.js` ([Баланс вещей](BALANCE.md)): `special`, `hp`, `speed`, `attack`, `resist`; у зверя — `around({...})`, типичный зверь и разброс. Без строки игра не загрузится. Затем `npm run arena:calibrate` подберёт виду поправку коэффициента силы `ks`.
+Запись в `data/species.js`: `kind`, потребности `needs`, внешний вид `look` (`shape`, размер, цвет), список поведений `behaviours` ([Поведение](BEHAVIOUR.md)), добыча `yields`, трофеи `trophies`. Тело и SPECIAL — строка в `data/balance/creatures.js` ([Баланс вещей](BALANCE.md)): `special`, `hp`, `speed`, `attack`, `resist`; у зверя — `around({...})`, типичный зверь и разброс. Без строки игра не загрузится. Затем `npm run arena:calibrate` подберёт виду поправку коэффициента силы `ks`.
 
-Новой форме нужен рисовальщик в `render/looks.js`. Новому поведению — мозг в `agents/brains/`, зарегистрированный в `agents/brains/index.js`. Пример — волки: запись `wolf` в `data/species.js` с блоком `predator`, мозг `predator`, фракция `predators`, рисовальщик `wolf` в `render/looks.js` и миграция `wolves` с потоком в `outside/scripted.js`. Остальные системы волков не знают.
+Новой форме нужен рисовальщик в `render/looks.js`. Новая повадка — строка каталога `data/behaviours.js` и файл `agents/behaviours/<id>.js` ([Поведение → Как добавить поведение](BEHAVIOUR.md#как-добавить-поведение)); мозгов у зверей больше нет. Пример — волки: запись `wolf` в `data/species.js` с блоком `predator` и списком `[...WAYS.predator]`, фракция `predators`, рисовальщик `wolf` в `render/looks.js` и миграция `wolves` с потоком в `outside/scripted.js`. Остальные системы волков не знают.
 
 ### Домашний зверь
 
@@ -118,7 +118,7 @@
 
 ### Зверь бестиария
 
-Запись в `data/bestiary.js`: где живёт (`habitat`: биом → `common`, `usual`, `rare`, `scarce`), мозг (`predator`, `mule`, `grazer`, `vermin`, `spirit`) с его блоком, внешний вид, добыча `yields` и блок `arrive`: размер группы, раз в сколько дней, шанс, сколько может быть на карте (`cap`), с какого дня (`first`), только ли ночью, строка журнала. Миграция, поток прихода в `outside/scripted.js`, список соседа и легенда соберутся сами.
+Запись в `data/bestiary.js`: где живёт (`habitat`: биом → `common`, `usual`, `rare`, `scarce`), список поведений `behaviours` (травоядные: `[...WAYS.grazer]` или `[...WAYS.herdGrazer]`, хищники: `[...WAYS.predator]` с блоком `predator`, крупные травоядные, которые дают отпор: `[...WAYS.stander]` или `herdStander` с блоком `mule` и `grazes`, вредители: `[...WAYS.vermin]` с блоком `vermin`, нечисть: `[...WAYS.woodSpirit]` или `waterSpirit` с блоком `spirit` — списки в `data/behaviour.js`, см. [Поведение](BEHAVIOUR.md)), внешний вид, добыча `yields` и блок `arrive`: размер группы, раз в сколько дней, шанс, сколько может быть на карте (`cap`), с какого дня (`first`), только ли ночью, строка журнала. Миграция, поток прихода в `outside/scripted.js`, список соседа и легенда соберутся сами.
 
 Особые свойства: `venom` (яд), `web` (паутина замедляет), `breath` (поджигает землю под жертвой), `drinks` (лечится кровью), `nocturnal` (ночной), `hibernates` (зимой уходит), `weakTo` (что его берёт). Нечисть — `resident: true` и `respawn`: живёт здесь, убитая возвращается через столько дней. Тело и SPECIAL — строка в `data/balance/creatures.js`, затем `npm run arena:calibrate`. Новой форме нужен рисовальщик в `render/looks.js`. Проверка — `npm run bestiary`.
 
@@ -136,11 +136,16 @@
 - новая линия `rel` — запись в `KINS`, столбец в `COLS` и строка в `ROWS` (`data/relations.js`);
 - языки — строка в `SPEAKS` (`data/tongues.js`);
 - чтобы раса ходила в набеги — место в составе банды в `data/raids.js` (цена члена — его КС, вручную не задаётся);
-- чтобы раса была народом на карте мира — запись в `data/peoples.js` с `race`.
+- чтобы раса была народом на карте мира — запись в `data/peoples.js` с `race`, и нравы её держав — `deeds: {realm: [...DEED_WAYS.people]}` в строке расы (орки — `raiders`, эльфы — `wardens`; [Мир → Нравы](WORLD.md#нравы-дела-логов-и-держав));
+- чтобы раса жила станами на карте мира — род логова в `data/lairs.js` (`tribe: true`, `species`) и нравы станов — `deeds: {lair: [...DEED_WAYS.lair]}` (или `captors`, если станы берут пленных) в строке расы.
+
+### Дело карты мира
+
+Что логово, его главарь или держава может сделать на карте мира ([Мир → Нравы](WORLD.md#нравы-дела-логов-и-держав)) — как поведение пешки, но для субъектов мира. Строка каталога `data/deeds.js` (`id`, `label` для летописи, `band` — полоса, `party` — какой отряд несёт дело, `requires`, `note`) и файл `atlas/deeds/<id>.js` с `want(a, actor, ctx)` → `[[plan, weight, why], …]` или `null` (`ctx.role`: `lair`, `leader`, `realm` — дело знает, кто спрашивает, и может отвечать не всем), `act(a, actor, plan, ctx)` → строка летописи или `null` (дело на месте или `sendParty`), `told` (строка при выходе отряда главаря), `arrive`/`home` для отряда (`atlas/parties.js BEHAVIOURS` отдаёт прибытие делу по `p.plan`). Экспорт в `DOES` (`atlas/deeds/index.js`) — проверка сходимости с каталогом при загрузке. Числа — в блок своей системы (`data/lairs.js`, `data/diplomacy.js`, `data/parties.js`). Дело попадает в игру через списки видов: `deeds.lair` / `deeds.realm` в строке вида или готовый список `DEED_WAYS`; сцена на полигоне мира — `tools/world-check.mjs`.
 
 ### Банда налёта
 
-Запись в `RAID_BANDS` (`data/raids.js`): `label`, `kind`, шанс `chance` (строка таблицы случайностей: `weight`, `threat`, `below`, `night`, `perNight`), состав `members(w, rng, бюджет, угроза)` через `fill`, цели `goals(w, group)` (веса грабежа, расправы, поджога, разведки), стойкость `nerve`, сообщение `message`. Бюджет — угроза в КС: `fill` добавляет членов, пока их ожидаемый КС (с оружием и закалкой уровня, `memberStrength`) не дойдёт до него; `max` ограничивает вид числом голов. Оружие по виду — `KITS`. На клетке мира банду шлют соседи: какой лог или народ какую банду шлёт — `LAIR_BANDS` и `REALM_BANDS` в `data/seam.js`. Проверка — `npm run races`.
+Запись в `RAID_BANDS` (`data/raids.js`): `label`, `kind`, шанс `chance` (строка таблицы случайностей: `weight`, `threat`, `below`, `night`, `perNight`), состав `members(w, rng, бюджет, угроза, o)` через `fill` (пятый аргумент — опции `fill` от вызвавшего: поход даёт `up` и снимает `max`), цели `goals(w, group)` (веса грабежа, расправы, поджога, разведки), стойкость `nerve`, сообщение `message`. Бюджет — угроза в КС: `fill` добавляет членов, пока их ожидаемый КС (с оружием и закалкой уровня, `memberStrength`) не дойдёт до него; `max` ограничивает вид числом голов. Оружие по виду — `KITS`. На клетке мира банду шлют соседи: какой лог или народ какую банду шлёт — `LAIR_BANDS` и `REALM_BANDS` в `data/seam.js`. Проверка — `npm run races`.
 
 ### Фракция
 
@@ -236,4 +241,4 @@
 
 ### Действие игрока
 
-Функция в `COMMANDS` (`src/commands.js`), а в оболочке — кнопка, которая её вызывает. Новый инструмент щелчка по карте — запись в `TOOLS` (`src/ui/tools.js`) и кнопка с `data-tool="<id>"` в `index.html`. Оболочка не меняет мир сама: только через `COMMANDS`.
+Функция в `COMMANDS` (`src/commands.js`), а в оболочке — кнопка, которая её вызывает (на стоянке похода — в `ui/campaignView.js`). Оболочка не меняет мир сама: только через `COMMANDS`.

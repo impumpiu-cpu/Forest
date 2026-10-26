@@ -134,6 +134,11 @@ export const EPITHETS = {
 //   war        chance that the split comes with a war for power at once
 // When a seat is burnt, the most glorious town takes the throne; if a second is at least `rival` of it,
 // the realm breaks in two instead.
+// The realm's land on the map (atlas/realms.js realmLand; the map's layer «Державы»): each living town holds the land it
+// reaches over the ground — the cost of a step is its length × (1 + steep × the slope), water stops it — within its
+// people's spacing × (reach + tier × its step + capital for the seat); where two towns reach, the nearer by that measure
+// (the cost over the town's own reach) holds it
+export const REALM_LAND = {reach: 1.4, tier: 0.25, capital: 0.4, steep: 1};
 export const SCHISM = {edge: 0.8, far: 0.35, harbor: 0.4, years: 3, chance: 0.08, shaken: 1.6, attitude: -1.5, war: 0.35, rival: 0.6};
 
 // Towns against the wild: a town fights the lairs whose territory reaches it; the town's might is
@@ -166,9 +171,12 @@ export const ELDER_YEARS = [
 //   feeds:     the people a town's land feeds: feeds × the land's share × (fert[0] + fert[1] × the soil) × (home[0] +
 //              home[1] × how its realm likes the biome) × (1 + road × the road or harbour) × capital for a capital ×
 //              (1 + its food − what armies took + trade × its trade)
+//   hold:      a people holds its land only near its living towns: within near × its spacing the field lives as it
+//              will, past far × spacing it fades by `fade` of itself a year (between — in part); a burnt people's land
+//              goes with its towns
 //   growth:    a year: + growth × (1 + prestige × fame) × pop × (1 − pop / the target, at least minTarget) + drift × a
 //              roll; never below minPop;  build — the chance a year a town builds what it needs most
-export const TOWN_LIFE = {band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
+export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
   foundLand: 0.25, foundMax: 2, foundChance: 0.35, newPop: [40, 40],
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
   growth: 0.14, prestige: 0.6, minTarget: 60, minPop: 10, drift: 4, build: 0.65};

@@ -24,13 +24,13 @@ import {reachable, foot, circle} from './quest.js';
 import {lairFoe} from './land.js';
 import {bubbleOf} from './bubble.js';
 import {QUEST} from '../data/quest.js';
-import {plural} from '../core/util.js';
+import {plural, cellDist} from '../core/util.js';
 
 // a word by gender: masculine, feminine, neuter
 const G3 = (g, m, f, n) => (g === 'f' ? f : g === 'n' ? n : m);
 const years = n => `${n} ${plural(n, 'год', 'года', 'лет')}`;
 const xy = (a, i) => [i % a.w + 0.5, ((i / a.w) | 0) + 0.5];
-const dist = (a, i, j) => { const [x, y] = xy(a, i), [p, q] = xy(a, j); return Math.hypot(x - p, y - q); };
+const dist = cellDist;   // (core/util.js)
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const cellAt = (a, x, y) => Math.min(a.h - 1, Math.max(0, Math.floor(y))) * a.w + Math.min(a.w - 1, Math.max(0, Math.floor(x)));
 

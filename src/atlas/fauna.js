@@ -2,15 +2,21 @@
 // Every species with a habitat gets a carrying capacity K from the biomes of each coarse cell and a
 // density N. Each season herbivores grow logistically, predators eat their prey (Holling type II) and
 // grow or starve, everyone wanders a little to the neighbours, and spirits stay bound to their places.
-// Lairs (atlas/lairs.js) hold the density of their owners up around them.
+// The owners of the lairs (`lair`: monsters with a habitat, and the tribes — role 'folk', their field made by
+// atlas/lairs.js lairFolk) breed only at a lair (its source, atlas/lairs.js stepLairs): away from it they eat, wander and
+// dwindle (data/lairs.js LAIR_FIELD.fade).
 //
-// a.fauna = {c, W, H, list: [{id, sp, role: 'prey'|'predator'|'spirit', K, N, prey: [indices], usual}]}
+// a.fauna = {c, W, H, list: [{id, sp, role: 'prey'|'predator'|'spirit'|'folk', lair?, K, N, prey: [indices], usual}], folk}
 import {SPECIES} from '../data/species.js';
 import {RARITY} from '../data/biomes.js';
 import {FAUNA} from '../data/history.js';
+import {LAIR_FIELD, NECRO} from '../data/lairs.js';
 import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
+
+// how fast a species wanders on the grid, against the common pace (0.15 a tick), at most twice as fast
+export const faunaSpeed = sp => Math.min(2, (sp.speed || 0.15) / 0.15);
 
 export function initFauna(a, rnd) {
   const c = Math.max(2, Math.round(FAUNA.cell * scaleOf(a))), W = Math.ceil(a.w / c), H = Math.ceil(a.h / c), N = W * H;
@@ -35,7 +41,7 @@ export function initFauna(a, rnd) {
     const role = sp.resident ? 'spirit' : sp.predator ? 'predator' : 'prey';
     const Nf = new Float32Array(N);
     for (let j = 0; j < N; j++) Nf[j] = role === 'spirit' ? K[j] : K[j] * (0.3 + 0.6 * rnd());
-    return {id: sp.id, sp, role, K, N: Nf, speed: Math.min(2, (sp.speed || 0.15) / 0.15), usual: 0, flagged: -99};
+    return {id: sp.id, sp, role, K, N: Nf, speed: faunaSpeed(sp), usual: 0, flagged: -99};
   });
   const idx = Object.fromEntries(list.map((s, k) => [s.id, k]));
   for (const s of list) if (s.role === 'predator') s.prey = [...(s.sp.predator.prey || []), ...(s.sp.predator.weakPrey || [])].filter(id => id in idx).map(id => idx[id]);
@@ -88,6 +94,7 @@ export function plague(a, rnd) {
 export function stepFauna(a, seasonId) {
   const F = a.fauna, P = FAUNA, n = F.W * F.H, g0 = P.season[seasonId] ?? 1;
   // the season's buffers live on the fauna, so a season makes no garbage
+  if (F.buf && F.buf.eaten.length !== F.list.length) F.buf = null;   // (the lairs' folk joined the list)
   const B = F.buf ||= {tmp: new Float32Array(n), zero: new Float32Array(n), eaten: F.list.map(() => new Float32Array(n))};
   const tmp = B.tmp, wx = F.weather || B.zero, eaten = B.eaten;
   for (const e of eaten) e.fill(0);
@@ -105,18 +112,22 @@ export function stepFauna(a, seasonId) {
       // fed predators breed in the good seasons; hungry ones die off; never past their habitat
       const Kp = Math.max(s.K[j], 1e-4);
       const g = gAt(j);
-      s.N[j] += pr * (P.growth * Math.max(0, g) * sat * (1 - pr / Kp) - P.starve * (1 - sat) - (g < 0 ? -g * 0.3 : 0));
+      // (a lair's monsters breed at the lair, not here: they only dwindle — atlas/lairs.js is their source)
+      s.N[j] += pr * ((s.lair ? -LAIR_FIELD.fade : P.growth * Math.max(0, g) * sat * (1 - pr / Kp)) - P.starve * (1 - sat) - (g < 0 ? -g * 0.3 : 0));
     }
   }
   for (const [k, s] of F.list.entries()) {
     if (s.role === 'spirit') continue;
-    if (s.role === 'prey') for (let j = 0; j < n; j++) {
+    if (s.role === 'prey' && !s.lair) for (let j = 0; j < n; j++) {
       const N0 = s.N[j], K = s.K[j];
       const g = gAt(j);
       // logistic growth; a hard winter thins even a herd below its capacity; several predators
       // together cannot take more than there is
       s.N[j] = K > 0 ? Math.max(0, N0 + P.growth * g * N0 * (g > 0 ? 1 - N0 / K : 1) - Math.min(eaten[k][j], N0)) : N0 * 0.5;
     }
+    else if (s.role === 'dead') for (let j = 0; j < n; j++) s.N[j] *= s.K[j] > 0 ? 1 - NECRO.deadFade : 0;   // the risen fall apart without a master (atlas/necro.js)
+    else if (s.role === 'folk' || (s.lair && (s.role !== 'predator' || !s.prey.length))) for   // (a lair's prey kind — the stone worms — too)
+      (let j = 0; j < n; j++) s.N[j] *= s.K[j] > 0 ? 1 - LAIR_FIELD.fade : 0;   // (none where the land holds none)
     diffuse(F, s.N, s.K, P.diffuse * s.speed, tmp);
     for (let j = 0; j < n; j++) if (s.N[j] < P.floor * Math.max(s.K[j], 0.05)) s.N[j] = 0;
   }

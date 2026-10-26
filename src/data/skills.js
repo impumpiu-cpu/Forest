@@ -94,7 +94,7 @@ export const LEARN = {
 export const STATION_SKILL = {
   crafthut: 'carpentry', sawmill: 'carpentry',
   loom: 'tailoring', tannery: 'leatherwork', potter: 'pottery', jeweler: 'jewelry',
-  charpit: 'metallurgy', smelter: 'metallurgy', forge: 'smithing',
+  charpit: 'metallurgy', smelter: 'metallurgy', forge: 'smithing', healerhut: 'medicine',
   quern: 'cooking', hearth: 'cooking', dryrack: 'cooking',
 };
 export const recipeSkill = r => r.skill || STATION_SKILL[r.at];
@@ -107,7 +107,7 @@ export const FROM_JOB = {
   chop: ['woodcutting'], mine: ['mining'], dig: ['mining'], clay: ['mining'],
   fish: ['fishing'], hunt: ['hunting', 'ranged'],
   craft: ['carpentry', 'tailoring', 'leatherwork'], saw: ['carpentry'],
-  charcoal: ['metallurgy'], smith: ['smithing', 'metallurgy'], jewel: ['jewelry'],
+  brew: ['medicine'], charcoal: ['metallurgy'], smith: ['smithing', 'metallurgy'], jewel: ['jewelry'],
   farm: ['farming'], mow: ['farming'],
   mill: ['cooking'], preserve: ['cooking'], cook: ['cooking'],
   weave: ['tailoring'], pottery: ['pottery'], tan: ['leatherwork'],

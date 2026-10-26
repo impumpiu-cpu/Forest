@@ -6,10 +6,10 @@
 //   — keeps the herd's pasture (herd.spot): where the herd grazes now, moved on when the herd is there;
 //   — looks round through the lookouts: one or two members a tick, in turn, see what they flee from
 //     (the species' `flee.from` within its `flee.radius`); what they see is the herd's alarm.
-// Each beast (agents/brains/grazer.js, mule.js) decides by itself what to do with it:
+// Each beast (agents/behaviours/bolt.js, alert.js, graze.js; agents/behaviours/standGround.js, drawOff.js) decides by itself what to do with it:
 //   — a skittish one (a.nerve low) bolts at the first alarm; a calm one only when the threat comes within
 //     its own reach, or once those around it have run for a while;
-//   — a wounded one runs slower and falls behind — and wolves go for the straggler (predator.js
+//   — a wounded one runs slower and falls behind — and wolves go for the straggler (agents/hunting.js
 //     preyValue: stragglerOf);
 //   — an elk does not run: a bold bull goes for whatever attacks one of its herd, the rest draw off.
 // A beast thinks of its own eyes only on its lookout turn; the rest of the time it trusts the herd.
@@ -19,13 +19,13 @@ import {walkable, inMap} from '../world/grid.js';
 import {sameLand} from './movement.js';
 import {nearAgents} from './spatial.js';
 import {liveById} from './lookup.js';
-import {perTick} from '../core/util.js';
+import {perTick, dist} from '../core/util.js';
+import {wake} from './attention.js';
 import {hpShare} from './agent.js';
 import {prune, middleOf, nextLookouts} from './group.js';
 import {WILD_HERD as HERD} from '../data/behaviour.js';
 
 export {HERD};   // (data/behaviour.js)
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export const herdOf = (w, a) => (a.herd != null ? w.herds?.[a.herd] || null : null);
 const isHerdBeast = a => !a.dead && !a.gone && !a.tame && a.owner == null && a.faction === 'wild' && !!SPECIES.get(a.species).herd;
 
@@ -68,7 +68,7 @@ export function stragglerOf(w, a) {
 
 // pick a pasture around (x, y) for a herd: of a few candidate patches the lushest not hard against the edge
 function pasture(w, lead, sp, far) {
-  const ok = grazeCodes(sp.grazes?.terrain || sp.mule?.terrain || ['grass']), reach = far ? 30 : 8;
+  const ok = grazeCodes(sp.grazes?.terrain || ['grass']), reach = far ? 30 : 8;
   let best = null, bv = -Infinity;
   for (let k = 0; k < 12; k++) {
     const x = lead.x + (w.rngs.wild() * 2 - 1) * reach, y = lead.y + (w.rngs.wild() * 2 - 1) * reach;
@@ -115,7 +115,9 @@ export function stepHerds(w) {
     for (const L of nextLookouts(H, ms, HERD.lookouts)) {
       const seen = threatsNear(w, L, r * (L.nerve ? 1.2 / L.nerve : 1), from);
       if (!seen.length) continue;
-      const al = H.alarm && w.tick - H.alarm.t <= HERD.alarmFor ? H.alarm : (H.alarm = {start: w.tick, t: w.tick, ids: []});
+      const fresh = !(H.alarm && w.tick - H.alarm.t <= HERD.alarmFor);
+      const al = fresh ? (H.alarm = {start: w.tick, t: w.tick, ids: []}) : H.alarm;
+      if (fresh) for (const m of ms) wake(m, 'тревога стада', 'тревога стада');   // the herd's cry: everyone thinks now (agents/brains/tabled.js)
       al.t = w.tick;
       for (const o of seen) if (!al.ids.includes(o.id)) al.ids.push(o.id);
       if (al.ids.length > 8) al.ids = al.ids.slice(-8);
