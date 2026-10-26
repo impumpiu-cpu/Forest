@@ -7,7 +7,7 @@
 import {LEADER, LAIR_LIFE as LL} from '../../data/lairs.js';
 import {CAL} from '../../data/calamities.js';
 import {SPECIES} from '../../data/species.js';
-import {newLair, findSpot, wherePhrase, groundFits, hideIfWild, kindAt, pourBrood, R, G, acc} from '../lairs.js';
+import {newLair, findSpot, wherePhrase, groundFits, hideIfWild, pourBrood, R, G, acc} from '../lairs.js';
 import {sendParty} from '../parties.js';
 import {leaderName} from '../leaders.js';
 import {dist} from './shared.js';
@@ -38,13 +38,9 @@ export const expand = {
   arrive(a, p, l, L, rnd, say) {
     if (!spotFree(a, L, p.goal)) return;   // another brood got there first, or a town grew over the spot
     if (p.kind !== 'leader') {
-      // a brood is a migration (data/lairs.js LAIR_FIELD): the kind of the lair is drawn by who already lived there, then
-      // the newcomers pour out over the land
-      const K2 = kindAt(a, p.goal, rnd, L.id) || L, at = wherePhrase(a, p.goal);
-      if (K2 !== L && !spotFree(a, K2, p.goal)) { pourBrood(a, p.goal, L); return; }
-      const young = hideIfWild(a, newLair(a, K2, p.goal, rnd, LL.broodStart));
+      // a brood is a migration (data/lairs.js LAIR_FIELD): its own kind's lair, and its folk poured out over the land
+      const at = wherePhrase(a, p.goal), young = hideIfWild(a, newLair(a, L, p.goal, rnd, LL.broodStart));
       pourBrood(a, p.goal, L);
-      if (K2 !== L) { say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${l ? l.name : '…'}» ушли ${at}, но там хозяйничали ${SPECIES.get(K2.species).plural}: ${young.hidden ? `теперь там ${K2.label}, но где — не знает ни одна держава` : `теперь там ${K2.label} «${young.name}»`}.`); return; }
       if (young.hidden) { say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${l ? l.name : '…'}» ушли в глушь ${at} и основали там ${G[L.g].fresh} ${acc(L)}: где — не знает ни одна держава.`); return; }
       say(`Молодые ${SPECIES.get(L.species).plural} ${L.from} «${l ? l.name : '…'}» основали ${G[L.g].fresh} ${acc(L)} — «${young.name}» ${wherePhrase(a, p.goal)}.`);
       return;

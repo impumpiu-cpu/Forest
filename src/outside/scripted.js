@@ -41,7 +41,13 @@ export function bandAllowed(w, id) {
   return !w.cfg.bands || w.cfg.bands.includes(id) ? 1 : 0;
 }
 // which band sets out: each weighs itself by the threat it sees and the hour, and by whether it lives near
-export const pickBand = (w, rng) => { const sc = scoutedBand(w); return weighted(rng, RAID_BANDS.all().map(b => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1) * bandAllowed(w, b.id)])); };
+// (when every band that may come weighs nothing this hour, the draw is among those that may come — never a band from
+// nowhere: the weighted draw would fall to the list's last)
+export const pickBand = (w, rng) => {
+  const sc = scoutedBand(w), all = RAID_BANDS.all();
+  const items = all.map(b => [b.id, b.weight(w, raidThreat(w), nightness(w)) * (b.id === sc ? 4 : 1) * bandAllowed(w, b.id)]).filter(([, v]) => v > 0);
+  return weighted(rng, items.length ? items : all.map(b => [b.id, bandAllowed(w, b.id)]).filter(([, v]) => v > 0));
+};
 const anyBand = w => RAID_BANDS.all().some(b => bandAllowed(w, b.id) > 0);
 
 const raidDist = w => { const nb = worldNb(w); return nb ? (nb.hostile && anyBand(w) ? nb.hostile.dist : null) : anyBand(w) ? RAIDS[w.cfg.raids].dist : null; };

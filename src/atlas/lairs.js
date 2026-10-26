@@ -22,7 +22,7 @@ import {SPECIES} from '../data/species.js';
 import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
-import {faunaCell} from './fauna.js';
+import {faunaCell, faunaSpeed} from './fauna.js';
 import {raidSite} from './sites.js';
 import {BEHAVIOURS, goHome} from './parties.js';
 import {actorStep} from './actor.js';
@@ -117,7 +117,7 @@ export function lairFolk(a) {
         K[j] += v; cnt[j]++;
       }
       let usual = 0; for (let j = 0; j < N; j++) { K[j] = cnt[j] ? K[j] / cnt[j] : 0; usual += K[j]; }
-      s = {id, sp, role: 'folk', K, N: new Float32Array(N), speed: Math.min(2, (sp.speed || 0.15) / 0.15), usual, flagged: -99};
+      s = {id, sp, role: 'folk', K, N: new Float32Array(N), speed: faunaSpeed(sp), usual, flagged: -99};
       F.idx[id] = F.list.length; F.list.push(s);
     }
     s.lair = true;
@@ -125,13 +125,15 @@ export function lairFolk(a) {
   }
   F.buf = null; F.folk = true;
 }
+// how near a coarse cell's middle is to a point, 1 at it … 0 one cell past `rr` (coarse cells)
+const closeness = (x, y, cx, cy, rr) => 1 - Math.hypot(x + 1 / 2 - cx, y + 1 / 2 - cy) / (rr + 1);
 // the owners of a lair poured about it, falling off to its edge: `add` — on top of what lives there (a brood's
 // migration), else at least so many (a new lair)
 function pour(a, lair, L, amount, add) {
   const F = a.fauna, s = F && F.list[F.idx[L.species]]; if (!s || amount <= 0) return;
   const c = F.c, rr = R(a, L) / c, cx = lair.x / c, cy = lair.y / c, R0 = Math.ceil(rr);
   for (let y = Math.max(0, (cy | 0) - R0); y <= Math.min(F.H - 1, (cy | 0) + R0); y++) for (let x = Math.max(0, (cx | 0) - R0); x <= Math.min(F.W - 1, (cx | 0) + R0); x++) {
-    const j = y * F.W + x, w = 1 - Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / (rr + 1); if (w <= 0 || s.K[j] <= 0) continue;
+    const j = y * F.W + x, w = closeness(x, y, cx, cy, rr); if (w <= 0 || s.K[j] <= 0) continue;
     const v = s.K[j] * amount * w; s.N[j] = add ? s.N[j] + v : Math.max(s.N[j], v);
   }
 }
@@ -139,22 +141,25 @@ export const pourBrood = (a, at, L) => pour(a, {x: at % a.w, y: (at / a.w) | 0},
 // how thick the owners of a lair kind live about a cell, against what the land holds (0 — none)
 const thick = (a, L, i) => { const F = a.fauna, s = F && F.list[F.idx[L.species]], j = F ? faunaCell(a, i) : 0; return s && s.K[j] > 0 ? s.N[j] / s.K[j] : 0; };
 const wildKinds = a => LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town' && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * LL.crowdMax);
-// the kind of a new lair at a cell: drawn among the kinds whose ground fits by how thick their owners live there, the
-// newcomers' own kind (`own`) weighing LAIR_FIELD.own more; a kind with a lair of its own within two territories is
-// left out → the kind, or null
-export function kindAt(a, i, rnd, own = null) {
+// the kind of a lair that rises by itself (born of the density, or come into the wild — not a brood: a brood founds its
+// own kind): drawn among the kinds whose ground fits, each with the chance of how thick its owners live there (so a
+// thinner kind may settle too, and the wild keeps its variety) — the newcomers' kind (`own`) weighing LAIR_FIELD.own
+// more; `species` — only that owner's kinds; a kind with a lair of its own within two territories is left out → the
+// kind, or null
+export function kindAt(a, i, rnd, own = null, species = null) {
   const p = {x: i % a.w, y: (i / a.w) | 0}, room = L => !a.lairs.some(o => o.alive && o.kind === L.id && dist(o, p) < 2 * R(a, L));   // (one kind's lairs keep apart)
-  const C = wildKinds(a).filter(L => groundFits(a, L, i) && room(L)).map(L => [L, thick(a, L, i) + (L.id === own ? LF.own : 0)]).filter(([, w]) => w > 0);
+  const C = wildKinds(a).filter(L => (!species || L.species === species) && groundFits(a, L, i) && room(L)).map(L => [L, thick(a, L, i) + (L.id === own ? LF.own : 0)]).filter(([, w]) => w > 0);
   if (!C.length) return null;
   let t = rnd() * C.reduce((v, [, w]) => v + w, 0);
   for (const [L, w] of C) if ((t -= w) <= 0) return L;
   return C[C.length - 1][0];
 }
-// spring: where the owners of a lair kind live thick and no lair stands, they settle — a lair is born of the density
+// spring: where the owners of a lair kind live thick and no lair stands, a lair is born of the density — whose, a draw
+// by the densities of all the kinds about (atlas/lairs.js kindAt)
 function bornOfDensity(a, rnd) {
   const F = a.fauna, lines = []; if (!F) return lines;
   const cand = [];
-  for (const s of F.list) if (s.lair) for (let j = 0; j < s.N.length; j++) if (s.K[j] > 0.05 && s.N[j] >= LF.birth * s.K[j]) cand.push([s.N[j] / s.K[j] + 0.1 * rnd(), j]);
+  for (const s of F.list) if (s.lair) for (let j = 0; j < s.N.length; j++) if (s.K[j] > LF.landMin && s.N[j] >= LF.birth * s.K[j]) cand.push([s.N[j] / s.K[j] + LF.jitter * rnd(), j]);
   if (!cand.length) return lines;
   cand.sort((p, q) => q[0] - p[0]);
   const k = scaleOf(a), want = LF.births * k * k, n = Math.floor(want) + (rnd() < want % 1 ? 1 : 0);
@@ -164,7 +169,7 @@ function bornOfDensity(a, rnd) {
     const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c;
     for (let t = 0; t < 12; t++) {
       const i = Math.min(a.n - 1, Math.min(a.h - 1, y0 + ((rnd() * F.c) | 0)) * a.w + Math.min(a.w - 1, x0 + ((rnd() * F.c) | 0)));
-      const L = kindAt(a, i, rnd); if (!L) continue;
+      const L = kindAt(a, i, rnd); if (!L) continue;   // whose lair: a draw by how thick each kind's owners live here
       const p = {x: i % a.w, y: (i / a.w) | 0};
       if (a.lairs.some(o => o.alive && dist(o, p) < Math.max(R(a, L), R(a, LAIRS.get(o.kind))))) continue;
       const lair = hideIfWild(a, newLair(a, L, i, rnd, LL.broodStart)), who = SPECIES.get(L.species).plural;
@@ -337,7 +342,7 @@ export function stepLairs(a, rnd, seasonId) {
     const own = F.list[F.idx[L.species]];
     if (own) for (const j of cells) {
       const K = own.K[j]; if (K <= 0) continue;
-      const w = 1 - Math.hypot(j % F.W + 0.5 - lair.x / c, ((j / F.W) | 0) + 0.5 - lair.y / c) / (r / c + 1); if (w <= 0) continue;
+      const w = closeness(j % F.W, (j / F.W) | 0, lair.x / c, lair.y / c, r / c); if (w <= 0) continue;
       if (own.N[j] < LF.cap * K) own.N[j] = Math.min(LF.cap * K, own.N[j] + LF.source * lair.strength * K * w);
     }
     if (host && host.alive && seasonId === 'autumn') { host.pop *= 1 - L.drinks * lair.strength; raidGraves(a, host); }

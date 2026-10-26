@@ -4,7 +4,8 @@
 // the way to it. Usage: node tools/world-check.mjs [scene id]
 import {newAtlas, runNextStage, landDone} from '../src/atlas/generate.js';
 import {DEFAULT_ATLAS_CFG} from '../src/data/atlas.js';
-import {startFree, landPeople, addLair} from '../src/atlas/settle.js';
+import {startFree, landPeople, addLair, setCalamity, runYears, endRun} from '../src/atlas/settle.js';
+import {atlasDone} from '../src/atlas/generate.js';
 import {raise, partyOf, stepLeaders} from '../src/atlas/leaders.js';
 import {actorStep} from '../src/atlas/actor.js';
 import {BEHAVIOURS, stepParties} from '../src/atlas/parties.js';
@@ -375,6 +376,46 @@ scene_('W07', 'каталог: у каждого дела есть код; у х
     for (const id of sp.deeds.lair) if (!DEEDS.has(id)) return `${sp.id}: дело «${id}» не в каталоге`;
   }
   return true;
+});
+
+// an alliance against a calamity (atlas/alliance.js): two peoples landed, a calamity set between them by hand; no heroes
+// to take the boss first. The armies' might is set by the scene, so the storm goes one way or the other whatever the world
+function allianceWorld() {
+  const a = world();
+  const forest = cellOf(a, i => ['forest', 'taiga'].includes(biomeAt(a, i)?.id) && i % a.w > a.w * 0.3);
+  const plain = cellOf(a, i => ['meadow', 'steppe', 'forest'].includes(biomeAt(a, i)?.id) && i % a.w > a.w * 0.55);
+  const e = landPeople(a, 'elves', forest), h = landPeople(a, 'humans', plain);
+  if (e.error || h.error) return {error: 'народы не высадились'};
+  const mid = cellOf(a, i => { const p = xy(a, i); return Math.abs(p.x - (e.town.x + h.town.x) / 2) <= 3 && Math.abs(p.y - (e.town.y + h.town.y) / 2) <= 3 && !a.towns.some(t => dist(t, p) < 6); });
+  const c = setCalamity(a, {kind: 'necromancer', at: mid, years: 1});
+  if (c.error) return {error: c.error};
+  const run = y => { runYears(a, y); while (!atlasDone(a)) runNextStage(a); endRun(a); };
+  const cal = () => a.calamities.find(x => x.id === c.id), A = () => (a.alliances || []).find(x => x.calamity === c.id);
+  for (let y = 0; y < 6 && cal().phase !== 'rise'; y++) run(1);
+  if (cal().phase !== 'rise') return {error: `бедствие не поднялось: ${cal().phase}`};
+  cal().heroesAt = 1e9; cal().allyAfter = 0;
+  // until the alliance marches; then the scene sets its armies' might
+  for (let q = 0; q < 48 && !A()?.armies.length; q++) run(0.25);   // a season at a time: the armies are caught on their way
+  if (!A()?.armies.length) return {error: `союз не выступил: ${A() ? `походов ${A().tries}` : 'союза нет'}`};
+  const armies = () => A().armies.map(id => a.parties.find(p => p.id === id)).filter(Boolean);
+  return {a, run, cal, A, armies};
+}
+scene_('W20', 'союз против бедствия: державы рядом заключают союз, шлют войска, сильные войска берут логово — босс пал от союза; после лет мира союз распадается', () => {
+  const S = allianceWorld(); if (S.error) return S.error;
+  for (const p of S.armies()) p.might = 1e6;
+  for (let y = 0; y < 6 && S.cal().phase === 'rise'; y++) S.run(1);
+  if (S.cal().fell?.by !== 'alliance') return `босс пал не от союза: ${S.cal().phase}, ${S.cal().fell?.by}; ${S.a.chronicle.filter(l => /оюз|войск/i.test(l.text)).slice(-6).map(l => l.year + ' ' + l.text).join(' | ')}; ${S.armies().map(p => p.state + p.might).join(',')}`;
+  for (let y = 0; y < 20 && !S.A().broken; y++) S.run(1);
+  return S.A().broken || `союз не распался: мир до ${S.A().peaceUntil}, год ${S.a.hist.year}`;
+});
+scene_('W21', 'союз против бедствия: слабые войска разбиты у логова — босс устоял, союз пробует снова позже', () => {
+  const S = allianceWorld(); if (S.error) return S.error;
+  for (const p of S.armies()) p.might = 0;
+  const tries = S.A().tries;
+  for (let y = 0; y < 6 && S.A().nextTry == null; y++) S.run(1);
+  if (S.cal().phase !== 'rise' || S.A().nextTry == null) return `штурм не отбит: ${S.cal().phase}, следующая попытка ${S.A().nextTry}`;
+  for (let y = 0; y < 12 && S.A().tries === tries; y++) S.run(1);
+  return S.A().tries > tries || `новой попытки не было: походов ${S.A().tries}`;
 });
 
 const only = process.argv[2];

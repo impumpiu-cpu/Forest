@@ -15,6 +15,9 @@ import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 
+// how fast a species wanders on the grid, against the common pace (0.15 a tick), at most twice as fast
+export const faunaSpeed = sp => Math.min(2, (sp.speed || 0.15) / 0.15);
+
 export function initFauna(a, rnd) {
   const c = Math.max(2, Math.round(FAUNA.cell * scaleOf(a))), W = Math.ceil(a.w / c), H = Math.ceil(a.h / c), N = W * H;
   const species = SPECIES.filter(s => s.habitat);
@@ -38,7 +41,7 @@ export function initFauna(a, rnd) {
     const role = sp.resident ? 'spirit' : sp.predator ? 'predator' : 'prey';
     const Nf = new Float32Array(N);
     for (let j = 0; j < N; j++) Nf[j] = role === 'spirit' ? K[j] : K[j] * (0.3 + 0.6 * rnd());
-    return {id: sp.id, sp, role, K, N: Nf, speed: Math.min(2, (sp.speed || 0.15) / 0.15), usual: 0, flagged: -99};
+    return {id: sp.id, sp, role, K, N: Nf, speed: faunaSpeed(sp), usual: 0, flagged: -99};
   });
   const idx = Object.fromEntries(list.map((s, k) => [s.id, k]));
   for (const s of list) if (s.role === 'predator') s.prey = [...(s.sp.predator.prey || []), ...(s.sp.predator.weakPrey || [])].filter(id => id in idx).map(id => idx[id]);
@@ -122,7 +125,7 @@ export function stepFauna(a, seasonId) {
       // together cannot take more than there is
       s.N[j] = K > 0 ? Math.max(0, N0 + P.growth * g * N0 * (g > 0 ? 1 - N0 / K : 1) - Math.min(eaten[k][j], N0)) : N0 * 0.5;
     }
-    else if (s.role === 'folk' || (s.lair && (s.role !== 'predator' || !s.prey.length))) for (let j = 0; j < n; j++) s.N[j] *= s.K[j] > 0 ? 1 - LAIR_FIELD.fade : 0.5;
+    else if (s.role === 'folk' || (s.lair && (s.role !== 'predator' || !s.prey.length))) for (let j = 0; j < n; j++) s.N[j] *= s.K[j] > 0 ? 1 - LAIR_FIELD.fade : 0;   // (none where the land holds none)
     diffuse(F, s.N, s.K, P.diffuse * s.speed, tmp);
     for (let j = 0; j < n; j++) if (s.N[j] < P.floor * Math.max(s.K[j], 0.05)) s.N[j] = 0;
   }
