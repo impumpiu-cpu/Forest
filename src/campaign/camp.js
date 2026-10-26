@@ -14,6 +14,7 @@ import {Navigation} from '../nav/navigation.js';
 import {step} from '../sim.js';
 import {PROVIDERS} from '../outside/index.js';
 import {formLinks, formUndeadLinks, promote, trimBand} from '../agents/ranks.js';
+import {RANK_RULES} from '../data/ranks.js';
 import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
@@ -245,7 +246,7 @@ function spawnFoe(w) {
     const l = own.find(g => g.id === sq.leader);
     if (F.boss && l && !l.boss && !officers.includes(l) && !SPECIES.get(l.species).mindless && !l.warBeast) { promote(l, l.band, true); l.link = l.id; ranked = true; }
   }
-  if (ranked) trimBand(w, group, budget, F.boss ? CAMP.boss.atLeast : 1);
+  if (ranked) trimBand(w, group, budget * RANK_RULES.pay.camp, F.boss ? CAMP.boss.atLeast : 1);
   C.foes = group.map(g => g.id); C.foeObjs = group; C.spawned = true;
   C.foeMight = sideStrength(group, {now: true});   // the foe's strength as it came (the fight's record)
 }

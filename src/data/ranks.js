@@ -18,6 +18,9 @@ export const RANK_RULES = {
   quality: 1,
   hurt: 0.2, rally: 0.25, loss: 0.3,
   camp: true, settlement: false,   // on a settlement they cost it too dear: the officers' spirit is no part of КС (docs/BEHAVIOUR.md)
+  // what share of the strength it was bought with a band keeps once its officers are made (its weakest pawns stay home
+  // for the rest): above 1 never; below 1 — the officers' spirit paid for too, which КС does not see
+  pay: {camp: 1, settlement: 1},
 };
 
 export const RANK_LABELS = {pawn: 'пешка', officer: 'офицер', boss: 'босс'};

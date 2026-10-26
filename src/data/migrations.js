@@ -21,6 +21,7 @@ import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
 import {RAID_BANDS, BAND_BEASTS, kitFor, raiderBody} from './raids.js';
 import {formLinks, formUndeadLinks, trimBand} from '../agents/ranks.js';
+import {RANK_RULES} from './ranks.js';
 import {sideStrength} from '../agents/strength.js';
 import {COMBAT_ROLES} from './roles.js';
 import {faunaLevel} from '../world/region.js';
@@ -153,7 +154,7 @@ MIGRATIONS.registerAll([
       if (!w.campaign) {
         const bought = sideStrength(group, {now: true});
         const made = formLinks(w, group, 'settlement', sq.leader).length + formUndeadLinks(w, group, 'settlement').length;
-        if (made) trimBand(w, group, bought);
+        if (made) trimBand(w, group, bought * RANK_RULES.pay.settlement);
       }
     },
     ammo: 8,
