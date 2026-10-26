@@ -130,6 +130,7 @@ MIGRATIONS.registerAll([
         init: (a, w) => {
           a.band = band.id;
           if (m.role) a.fightRole = m.role;   // its fighting role (data/roles.js): what it carries, where it stands in the band
+          if (m.linkNo != null) { a.linkNo = m.linkNo; a.linkKind = m.link; }   // the link of the band it came in (data/roles.js LINKS)
           if (SPECIES.get(m.species).inventory && w.rngs.outside() < POTION.foe) a.potions = 1;   // a healing potion, rarely (agents/potions.js)
           const belt = m.role ? COMBAT_ROLES.get(m.role).potions || 0 : 0; if (belt > (a.potions || 0)) a.potions = belt;   // a healer's belt
           if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);

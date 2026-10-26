@@ -49,7 +49,11 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
   const w = game('ranks-on'), g = spawnGroup(w, 'raiders', raiderStrength(5) * 12, {band: 'bandits'});
   RANK_RULES.settlement = false;
   const officers = g.filter(a => hasMark(a, 'officer')), sq = squadOf(w, g[0]);
-  expect(officers.length === Math.ceil(g.length / RANK_RULES.size), `офицеров ${officers.length} на ${g.length} голов`);
+  // the band came in links (data/roles.js LINKS): one officer to a link (a link of one joins the one before), the members
+  // of a link under its officer, the link's kind on each
+  const nos = [...new Set(g.map(a => a.linkNo))], whole = nos.filter(no => g.filter(a => a.linkNo === no).length >= 2 || no === nos[0]).length;
+  expect(g.every(a => a.linkNo != null && a.linkKind) && officers.length === whole, `звенья: ${nos.length} (полных ${whole}), офицеров ${officers.length}`);
+  expect(nos.every(no => new Set(g.filter(a => a.linkNo === no).map(a => a.link)).size === 1), 'бойцы одного звена под разными офицерами');
   expect(officers.some(o => o.id === sq.leader), 'вожак банды — не офицер');
   expect(g.every(a => a.link != null && officers.some(o => o.id === a.link)), 'не у всех есть звено');
   expect(officers.every(o => o.name !== 'Налётчик'), 'офицер без звания');

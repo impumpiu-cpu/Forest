@@ -52,6 +52,22 @@ COMBAT_ROLES.registerAll([
     hands: [[['staff'], 1]], body: 'light', back: [], potions: 2, squad: 'front', place: 'back'},
 ]);
 
+// LINKS — the links a band is made of (data/raids.js `links`): the roles of one link in order, one fighter each. The
+// band draws a link by its weight, fills its places one by one with a species of its own that may take the role (its
+// weight in the band × its weight in «Роли видов»), and the next link after it while the budget lasts; the last may
+// come short. The strongest of a link is its officer (agents/ranks.js).
+export const LINKS = new Registry('link');
+LINKS.registerAll([
+  {id: 'wall',    label: 'стена щитов',  note: 'щиты впереди, копьё из-за плеча, луки сзади', roles: ['shield', 'shield', 'spearman', 'archer', 'archer']},
+  {id: 'line',    label: 'строй',        note: 'всего понемногу: держат, колют, стреляют, режут', roles: ['shield', 'spearman', 'archer', 'cutthroat', 'skirmisher']},
+  {id: 'raid',    label: 'налётчики',    note: 'быстрые: рубят, режут, метают, со знахарем', roles: ['cleaver', 'cutthroat', 'skirmisher', 'archer', 'healer']},
+  {id: 'warband', label: 'ватага',       note: 'щит и тяжёлое оружие, дротики вслед', roles: ['shield', 'cleaver', 'cleaver', 'spearman', 'skirmisher']},
+  {id: 'swarm',   label: 'рой',          note: 'праща, дротики, ножи: много и мелко', roles: ['skirmisher', 'skirmisher', 'cutthroat', 'cutthroat', 'archer']},
+  {id: 'pack',    label: 'стая',         note: 'копья вперёд, рубака и сеть', roles: ['spearman', 'spearman', 'cleaver', 'skirmisher', 'catcher']},
+  {id: 'slavers', label: 'ловцы рабов',  note: 'сети и ножи, луки прикрывают', roles: ['catcher', 'catcher', 'cutthroat', 'archer', 'archer']},
+  {id: 'volley',  label: 'стрелки',      note: 'луки, а впереди один щит', roles: ['archer', 'archer', 'archer', 'shield', 'skirmisher']},
+]);
+
 // the forms of each class of armour, by weight; a form the band's tier has no piece of drops out (scale and mail begin at
 // bronze: at tier 0 the heavy class is bone lamellar)
 export const ARMOUR = {

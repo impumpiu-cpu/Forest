@@ -35,7 +35,7 @@ import {faunaFrom} from '../src/world/region.js';
 import {VALUES} from '../src/data/values.js';
 import {RELATIONS, KINS} from '../src/data/relations.js';
 import {RAID_BANDS, memberStrength, kitFor} from '../src/data/raids.js';
-import {COMBAT_ROLES, ROLE_MIX, ARMOUR, mixOf, rolesOf} from '../src/data/roles.js';
+import {COMBAT_ROLES, ROLE_MIX, ARMOUR, LINKS, mixOf, rolesOf} from '../src/data/roles.js';
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
@@ -186,6 +186,8 @@ for (const v of VALUES.all()) for (const c of v.clash) if (!VALUES.has(c)) err(`
     for (const it of kitFor(m.species, rng, t, m.role)) item(`банда ${b.id}`, typeof it === 'string' ? it : it.type);
   }
   for (const b of RAID_BANDS.all()) for (const r of [...Object.keys(b.roles || {}), ...Object.keys(b.least || {})]) if (!COMBAT_ROLES.has(r)) err(`банда ${b.id}: нет роли «${r}»`);
+  for (const b of RAID_BANDS.all()) for (const [l] of b.links || []) if (!LINKS.has(l)) err(`банда ${b.id}: нет звена «${l}»`);
+  for (const L of LINKS.all()) { if (!L.roles?.length) err(`звено ${L.id}: без мест`); for (const r of L.roles || []) if (!COMBAT_ROLES.has(r)) err(`звено ${L.id}: нет роли «${r}»`); }
 }
 // fighting roles (data/roles.js): their forms and items exist, the matrix names species that carry things and roles that are
 {

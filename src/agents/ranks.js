@@ -43,6 +43,21 @@ export function formLinks(w, group, where, leaderId = null) {
   if (!R[where]) return [];
   const people = group.filter(mayRank);
   if (people.length < R.least) return [];
+  // a band that came in links (data/roles.js LINKS) keeps them: the strongest of each is its officer (a link of one joins
+  // the one before it); the leader heads its own
+  const nos = [...new Set(people.map(a => a.linkNo).filter(x => x != null))];
+  if (nos.length && people.every(a => a.linkNo != null)) {
+    const groups = [];
+    for (const no of nos) { const g = people.filter(a => a.linkNo === no); if (g.length < 2 && groups.length) groups[groups.length - 1].push(...g); else groups.push(g); }
+    const officers = [];
+    for (const g of groups) {
+      const o = g.find(a => a.id === leaderId) || g.slice().sort((p, q) => strengthOf(q) - strengthOf(p))[0];
+      promote(o, o.band, o.id === leaderId); officers.push(o);
+      for (const a of g) a.link = o.id;
+    }
+    if (w.behave) w.behave.officers = (w.behave.officers || 0) + officers.length;
+    return officers;
+  }
   const n = Math.ceil(people.length / R.size);
   // the officers: the leader, then the strongest of the rest
   const byStrength = people.slice().sort((p, q) => strengthOf(q) - strengthOf(p));

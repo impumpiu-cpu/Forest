@@ -99,7 +99,7 @@ import {FACTIONS} from '../factions.js';
 import {NEIGHBOURS} from '../neighbours.js';
 import {LUXURY} from '../luxury.js';
 import {RAID_BANDS} from '../raids.js';
-import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS} from '../roles.js';
+import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS, LINKS} from '../roles.js';
 import {RANK_RULES} from '../ranks.js';
 import {SOILS} from '../soils.js';
 import {KIND_LAND, KIND_GROVES} from '../kinds.js';
@@ -481,6 +481,9 @@ TABLES.push(
     note: 'Роли бойцов отряда (data/roles.js), по группам: линия (щитоносец, копейщик, рубака, громила), подвижные (головорез, застрельщик, ловчий), дальний бой (стрелок), поддержка (знахарь). Что держит в руках (наборы форм с весами: форма становится вещью той ступени металла, что даёт уровень банды; не форма — id вещи), класс брони («Классы брони»), что за спиной (колчан — только к луку), зелья в поясе, кем он в отряде (shooter — держится сзади и стреляет, front — идёт в бой) и где стоит в строю. Кому какие роли — «Роли видов».'}),
     {hands: {type: 'json', label: 'Руки'}, body: {type: 'enum', values: Object.fromEntries(Object.keys(ARMOUR).map(k => [k, k])), label: 'Броня'}, back: {type: 'list', label: 'Спина'},
       potions: {type: 'int', min: 0, label: 'Зелья'}, squad: {type: 'enum', values: {front: 'в бой', shooter: 'стрелок'}, label: 'В отряде'}, place: {type: 'enum', values: {front: 'первый ряд', mid: 'второй ряд', flank: 'с фланга', back: 'сзади'}, label: 'В строю'}, group: {edit: false, label: 'Группа'}}),
+  fix(autoTable({id: 'links', label: 'Звенья', group: 'Существа', rows: () => LINKS.all(),
+    note: 'Звенья, из которых банда собирается (data/roles.js LINKS): роли по местам, по одному бойцу на место. Банда тянет звено по своему весу («Отряды налётчиков», links), каждое место занимает её вид, которому роль разрешена (вес вида в банде × вес в «Роли видов»), затем следующее звено, пока хватает бюджета; последнее может прийти неполным. Сильнейший в звене — его офицер.'}),
+    {roles: {type: 'ids', ref: COMBAT_ROLES, label: 'Места'}}),
   {id: 'roleMix', label: 'Роли видов', group: 'Существа', key: '_id',
     note: 'Матрица «вид × роль» (data/roles.js ROLE_MIX): вес каждой роли, которую вид может взять в банде; пусто — не может (у тёмных эльфов нет щитоносцев). Лучший металл — высшая ступень, которую приносит его народ (0 кость и дерево, 1 бронза, 2 железо, 3 сталь, 4 мифрил). Свой набор — вещи вместо ролей (вампир, некромант). Вид, который носит вещи (тег inventory) и не имеет строки, берёт строку человека; строка без весов не приносит ничего (тролль).',
     rows: () => Object.entries(ROLE_MIX).map(([k, v]) => ({_id: k, ...v})), target: (r, c) => [ROLE_MIX[r._id], c.key],

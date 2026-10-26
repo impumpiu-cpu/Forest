@@ -27,7 +27,7 @@ import {nearestHostile, canSee} from './combat.js';
 import {agentById, liveById, firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
 import {SQUAD} from '../data/behaviour.js';
-import {COMBAT_ROLES} from '../data/roles.js';
+import {COMBAT_ROLES, LINKS} from '../data/roles.js';
 import {roleTactic} from './tactics.js';
 import {RANK_RULES} from '../data/ranks.js';
 import {hasMark} from '../data/conditions.js';
@@ -117,7 +117,9 @@ function announce(w, sq) {
   const b = sq.goal === 'burn' ? w.buildings.find(x => x.id === sq.target) : null;
   const what = b ? ` (${BUILDINGS.get(b.key).name.toLowerCase()})` : '';
   const leader = agentById(w, sq.leader);
-  log(w, `${Label(sq)}: ${aim}${what}.${sq.kind === 'living' && sq.size > 1 && leader ? ` Ведёт ${esc(leader.name)}.` : ''}${tipped ? ' Дорогу им показали разведчики.' : ''}`, 'danger');
+  // the links it came in (data/roles.js LINKS): «стена щитов, налётчики»
+  const kinds = [...new Set(liveMembers(w, sq).map(m => m.linkKind).filter(k => k && LINKS.has(k)))].map(k => LINKS.get(k).label);
+  log(w, `${Label(sq)}: ${aim}${what}.${sq.kind === 'living' && sq.size > 1 && leader ? ` Ведёт ${esc(leader.name)}.` : ''}${kinds.length ? ` Звенья: ${kinds.join(', ')}.` : ''}${tipped ? ' Дорогу им показали разведчики.' : ''}`, 'danger');
 }
 
 // a member died (agents/agent.js kill)
@@ -283,6 +285,7 @@ export function squadText(w, a) {
   const left = membersOf(w, sq).length;
   const fr = a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).label : null;
   const lead = a.link != null && a.link !== a.id ? agentById(w, a.link) : null;
-  const rank = hasMark(a, 'officer') ? `офицер звена из ${membersOf(w, sq).filter(o => o.link === a.id).length}; ` : lead ? `в звене ${lead.name}${lead.dead || lead.downed ? ' (пал)' : ''}; ` : '';
+  const kind = a.linkKind && LINKS.has(a.linkKind) ? ` «${LINKS.get(a.linkKind).label}»` : '';
+  const rank = hasMark(a, 'officer') ? `офицер звена${kind} из ${membersOf(w, sq).filter(o => o.link === a.id).length}; ` : lead ? `в звене${kind} ${lead.name}${lead.dead || lead.downed ? ' (пал)' : ''}; ` : kind ? `звено${kind}; ` : '';
   return `${rank}${fr ? fr + ', ' : ''}${ROLES[a.sqRole] || '—'}${a.id === sq.leader && a.sqRole !== 'leader' ? ', вожак' : ''}; цель — ${goal}; ${state}; в строю ${left} из ${sq.size}`;
 }
