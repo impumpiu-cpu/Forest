@@ -8,7 +8,9 @@
 //   back   — what it carries on its back (a quiver for a bow), forms or items as in `hands`
 //   potions — healing potions in its belt (agents/potions.js)
 //   squad  — what its band (agents/squad.js) makes of it: shooter — keeps back and shoots; front — goes in
-//   place  — where it stands in the band's order: front · mid · back (the formation, later)
+//   place  — where it stands in the band's order: front (the first rank) · mid (behind it: a spear over a shoulder) ·
+//            flank (round the side) · back (behind them all)
+//   group  — линия · подвижные · дальний бой · поддержка (for the table)
 // The behaviours of a role and how a mind changes them (sentient · mindless) come with the next step.
 //
 // ROLE_MIX — the matrix «species × role»: the weight of each role a species may take (none — it may not), `best` — the
@@ -24,20 +26,30 @@ import {mayWield} from './kinds.js';
 export const COMBAT_ROLES = new Registry('combat role');
 
 COMBAT_ROLES.registerAll([
-  {id: 'shield', label: 'щитоносец', note: 'идёт первым и держит удар',
+  // ── the line
+  {id: 'shield', group: 'линия', label: 'щитоносец', note: 'идёт первым, держит удар, закрывает щитом соседа от стрел',
     hands: [[['spear', 'shield'], 3], [['axe', 'shield'], 2], [['club', 'shield'], 1], [['mace', 'shield'], 1], [['sword', 'shield'], 1]],
     body: 'heavy', back: [], potions: 0, squad: 'front', place: 'front'},
-  {id: 'cleaver', label: 'рубака', note: 'тяжёлое оружие, мало брони: ищет слабых',
-    hands: [[['maul'], 2], [['warhammer'], 1], [['axe'], 2], [['sword'], 1], [['spear'], 1]],
+  {id: 'spearman', group: 'линия', label: 'копейщик', note: 'длинное копьё из второго ряда, из-за плеча щитоносца',
+    hands: [[['spear'], 3], [['spear', 'shield'], 1]], body: 'medium', back: [], potions: 0, squad: 'front', place: 'mid'},
+  {id: 'cleaver', group: 'линия', label: 'рубака', note: 'двуручное оружие, мало брони: врезается, оглушает, проламывает строй',
+    hands: [[['maul'], 2], [['warhammer'], 2], [['axe'], 1], [['sword'], 1]],
     body: 'light', back: [], potions: 0, squad: 'front', place: 'front'},
-  {id: 'archer', label: 'стрелок', note: 'лук за спиной щитоносцев',
-    hands: [[['bow'], 3], [['crossbow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
-  {id: 'skirmisher', label: 'застрельщик', note: 'праща, без брони: подвижный, с фланга',
-    hands: [[['sling'], 3], [['bow'], 1]], body: 'none', back: ['quiver'], potions: 0, squad: 'shooter', place: 'mid'},
-  {id: 'healer', label: 'знахарь', note: 'посох и зелья: держится сзади, перевязывает своих',
-    hands: [[['staff'], 1]], body: 'light', back: [], potions: 2, squad: 'front', place: 'back'},
-  {id: 'brute', label: 'громила', note: 'дубина в рост человека: огры, великаны',
+  {id: 'brute', group: 'линия', label: 'громила', note: 'дубина в рост человека: огры, великаны',
     hands: [[['maul'], 1], [['club'], 2]], body: 'none', back: [], potions: 0, squad: 'front', place: 'front'},
+  // ── the quick ones
+  {id: 'cutthroat', group: 'подвижные', label: 'головорез', note: 'два кинжала или кинжал с топориком: крадётся, заходит с фланга и в спину, режет стрелков, знахарей, раненых',
+    hands: [[['dagger', 'dagger'], 3], [['dagger', 'hatchet'], 2], [['hatchet', 'hatchet'], 1]], body: 'light', back: [], potions: 0, squad: 'front', place: 'flank'},
+  {id: 'skirmisher', group: 'подвижные', label: 'застрельщик', note: 'дротики со щитом или праща: бьёт издали и отходит, метает вблизи',
+    hands: [[['javelin', 'shield'], 3], [['sling'], 2], [['javelin', 'hatchet'], 1]], body: 'light', back: [], potions: 0, squad: 'shooter', place: 'mid'},
+  {id: 'catcher', group: 'подвижные', label: 'ловчий', note: 'ловчая сеть и дубина: опутывает и вяжет живым — работорговцы',
+    hands: [[['net', 'club'], 3], [['net', 'spear'], 1]], body: 'light', back: [], potions: 0, squad: 'front', place: 'mid'},
+  // ── from afar
+  {id: 'archer', group: 'дальний бой', label: 'стрелок', note: 'лук или арбалет за спиной щитоносцев',
+    hands: [[['bow'], 3], [['crossbow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
+  // ── support
+  {id: 'healer', group: 'поддержка', label: 'знахарь', note: 'посох и зелья: держится сзади, перевязывает своих',
+    hands: [[['staff'], 1]], body: 'light', back: [], potions: 2, squad: 'front', place: 'back'},
 ]);
 
 // the forms of each class of armour, by weight; a form the band's tier has no piece of drops out (scale and mail begin at
@@ -55,12 +67,12 @@ export const ARMOUR = {
 export const ROLE_TIERS = {from: [0, 8, 16, 26, 40], ramp: 0.06, share: 0.7};
 
 export const ROLE_MIX = {
-  human:       {shield: 2, cleaver: 2, archer: 1.2, skirmisher: 1.2, healer: 0.3, best: 3},
-  orc:         {shield: 2, cleaver: 3, archer: 0.5, healer: 0.3, best: 2},
-  goblin:      {shield: 0.4, cleaver: 1, archer: 2, skirmisher: 3, healer: 0.3, best: 1},
-  darkelf:     {cleaver: 1, archer: 3, skirmisher: 2, healer: 0.4, best: 3},
-  gnoll:       {shield: 1, cleaver: 2, archer: 1, skirmisher: 1, best: 1},
-  skeleton:    {shield: 2, cleaver: 1, archer: 1.5, best: 1},
+  human:       {shield: 2, spearman: 1.5, cleaver: 1.5, cutthroat: 1, skirmisher: 1, catcher: 0.3, archer: 1.2, healer: 0.3, best: 3},
+  orc:         {shield: 2, spearman: 1, cleaver: 3, skirmisher: 0.7, catcher: 0.3, archer: 0.3, healer: 0.3, best: 2},
+  goblin:      {shield: 0.3, spearman: 1, cutthroat: 2.5, skirmisher: 3, catcher: 0.5, archer: 2, healer: 0.3, best: 1},
+  darkelf:     {spearman: 1, cutthroat: 2, catcher: 1.5, skirmisher: 1, archer: 3, healer: 0.4, best: 3},
+  gnoll:       {shield: 0.7, spearman: 2, cleaver: 1.5, skirmisher: 1.5, catcher: 0.7, archer: 0.7, best: 1},
+  skeleton:    {shield: 2, spearman: 2, cleaver: 1, archer: 1.5, best: 1},
   ogre:        {brute: 1, best: 0},
   giant:       {brute: 1, best: 0},
   troll:       {best: 0},

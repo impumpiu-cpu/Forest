@@ -115,7 +115,7 @@ RAID_BANDS.registerAll([
 
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',
     goals: (w, g) => [['kill', 2], ['loot', 1], ['scout', scouting(w, g)]],
-    least: {archer: 0.3}, ranks: {officer: 'страж', boss: 'матрона'},
+    least: {archer: 0.3, catcher: 0.15}, ranks: {officer: 'страж', boss: 'матрона'},
     chance: {weight: 0.6, perNight: 1, threat: 8},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['darkelf', 1]], t, o),
     message: () => 'Набег! Тёмные эльфы вышли из-под земли за рабами и добычей'},

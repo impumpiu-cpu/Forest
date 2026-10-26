@@ -27,7 +27,9 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
       const may = rolesOf(a.species).map(([r]) => r);
       expect(a.fightRole && may.includes(a.fightRole), `${band}: ${a.species} в роли «${a.fightRole}», а может ${may.join(', ')}`);
       const R = COMBAT_ROLES.get(a.fightRole), ranged = !!a.gear?.ranged;
-      expect(ranged === (R.squad === 'shooter'), `${band}: ${a.fightRole} ${ranged ? 'со стрелковым' : 'без стрелкового'} оружием`);
+      if (R.squad === 'shooter') expect(ranged, `${band}: ${a.fightRole} без стрелкового оружия`);
+      if (a.fightRole === 'cutthroat') expect(!!a.gear?.offhand || allItems(a).filter(it => /dagger|hatchet/.test(it.type)).length >= 1, `${band}: головорез без кинжала или топорика`);
+      if (a.fightRole === 'catcher') expect(allItems(a).some(it => /net$/.test(it.type)), `${band}: ловчий без сети`);
       if (a.fightRole === 'shield') expect(allItems(a).some(it => it.type.endsWith('shield')), `${band}: щитоносец без щита`);
     }
     expect(!g.filter(x => !x.warBeast).some(a => a.species === 'darkelf' && a.fightRole === 'shield'), 'тёмный эльф со щитом');
