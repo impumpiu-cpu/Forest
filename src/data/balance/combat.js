@@ -19,6 +19,13 @@ export const COMBAT = {
   home: 1.25,
   // creatures that fear silver: a silvered blade bites them × bane, anything else × plain
   silver: {bane: 2.5, plain: 0.5},
+  // where an armed blow comes from (agents/combat.js stanceOf; beasts' bites do not count it): from the flank — the target
+  // fights someone else: its block × block, the blow × dmg; in the back — the target does not know (asleep, or not in a
+  // fight and not hurt for `aware` ticks): no block, the blow × dmg. A sly weapon (quality `backstab`) adds its value
+  // to the share over 1 (a dagger: × 1 + 0.2 × 2). `share` — how many of a fighter's blows the rating (КС) counts as
+  // from the flank
+  flank: {block: 0.5, dmg: 1.2, share: 0.25},
+  back: {dmg: 1.4, aware: 60},
 };
 
 // how far finer work (data/quality.js) may push a piece; a quality's own `cap` adds to these
@@ -78,6 +85,7 @@ export const WEAPON_QUALITIES = [
   {id: 'unreliable', label: 'ненадёжное', unit: 'доля', live: true, reads: 'износ × (1 + значение)', note: 'ломается скорее'},
   {id: 'bleed', label: 'кровопускающее', unit: 'шанс', live: true, reads: 'шанс оставить кровотечение (состояние «кровотечение», data/conditions.js)', note: 'зазубренное лезвие'},
   {id: 'stun', label: 'оглушающее', unit: 'шанс', live: true, reads: 'шанс оглушить (состояние «оглушён»: не бьёт, медленнее ходит)', note: 'тяжёлый удар по голове'},
+  {id: 'backstab', label: 'коварное', unit: '×', live: true, reads: 'удар с фланга и в спину (COMBAT.flank, back): прибавка урона × (1 + значение); КС', note: 'кинжал: туда, где не ждут'},
   {id: 'paired', label: 'парное', unit: 'доля', live: true, reads: 'вторая рука: вслед за ударом главного оружия бьёт и это, урон × значение (agents/combat.js attack); выбор вещей, КС', note: 'кинжал, топорик, меч во второй руке'},
   {id: 'thrown', label: 'метательное', unit: 'клеток', live: false, reads: 'нет механики метания', note: 'дротик, топорик'},
 ];

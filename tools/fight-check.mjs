@@ -12,7 +12,7 @@ import {recalcGear, wear} from '../src/agents/equipment.js';
 import {heatHarm, stepBody} from '../src/agents/body.js';
 import {traumasAt} from '../src/agents/wounds.js';
 import {strengthParts} from '../src/agents/strength.js';
-import {DAMAGE_TYPES, DELIVERY, WEAPON_QUALITIES, CAPS} from '../src/data/balance/combat.js';
+import {DAMAGE_TYPES, DELIVERY, WEAPON_QUALITIES, CAPS, COMBAT} from '../src/data/balance/combat.js';
 import {BODY_PLANS, HIT_LOCATIONS, planOf, placesOf, drawPlace} from '../src/data/anatomy.js';
 import {WOUNDS} from '../src/data/wounds.js';
 import {ITEMS} from '../src/data/items.js';
@@ -134,9 +134,28 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   expect(two.gear.offhand?.share === ITEMS.get('irondagger').qualities.paired && !one.gear.offhand && !sh.gear.offhand, 'вторая рука: парный кинжал не взят или щит взят за оружие');
   expect(strengthOf(two) > strengthOf(one), 'КС не видит второго кинжала');
   const t = put(w, 'human', 'colony'); t.gear = {...recalcGear(t), block: 0, cover: 0}; t.mods.dodge = 0; t.hp = 100;
-  rngs(w, 0.5); two.cd = 0; const h0 = t.hp; attack(w, two, t); const d2 = h0 - t.hp;
-  rngs(w, 0.5); one.cd = 0; const h1 = t.hp; attack(w, one, t); const d1 = h1 - t.hp;
+  t.hurtBy = null; rngs(w, 0.5); two.cd = 0; const h0 = t.hp; attack(w, two, t); const d2 = h0 - t.hp;
+  t.hurtBy = null; rngs(w, 0.5); one.cd = 0; const h1 = t.hp; attack(w, one, t); const d1 = h1 - t.hp;
   expect(near(d2 / d1, 1 + two.gear.offhand.share), `два кинжала: урон ×${(d2 / d1).toFixed(2)}, а должно ×${1 + two.gear.offhand.share}`);
+}
+
+// ── where the blow comes from: front, flank (the target fights another), back (it does not know); a dagger is sly
+{
+  const {attack, stanceOf, stanceGain} = await import('../src/agents/combat.js'), {dress} = await import('../src/agents/equipment.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), other = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony');
+  dress(a, ['ironspear']);
+  t.task = {id: 'fight', target: a}; expect(stanceOf(w, a, t) === 'front', 'лицом к лицу — не спереди');
+  t.task = {id: 'fight', target: other}; expect(stanceOf(w, a, t) === 'flank', 'цель бьётся с другим — не фланг');
+  t.task = {id: 'work'}; t.hurtBy = null; expect(stanceOf(w, a, t) === 'back', 'цель не знает — не в спину');
+  t.hurtBy = {id: other.id, tick: w.tick}; expect(stanceOf(w, a, t) === 'front', 'раненая только что цель всё ещё не знает');
+  const wolf = put(w, 'wolf', 'raiders'); t.hurtBy = null; expect(stanceOf(w, wolf, t) === 'front', 'зверь бьёт в спину');
+  expect(near(stanceGain('back', null), COMBAT.back.dmg) && near(stanceGain('flank', {backstab: 1}), 1 + 2 * (COMBAT.flank.dmg - 1)), 'прибавка с фланга и в спину не по числам');
+  // the shield turns half a blow from the flank, none in the back
+  t.gear = {...recalcGear(t), block: 0.9, blockVs: null}; t.hp = 100; t.mods.dodge = 0;
+  rngs(w, 0.5); t.task = {id: 'fight', target: a}; a.cd = 0; const f0 = t.hp; attack(w, a, t);
+  expect(f0 === t.hp, 'щит 0,9 не остановил удар спереди при броске 0,5');
+  rngs(w, 0.5); t.task = {id: 'work'}; t.hurtBy = null; a.cd = 0; const b0 = t.hp; attack(w, a, t);
+  expect(b0 > t.hp, 'удар в спину остановил щит');
 }
 
 // ── the review: finer copies follow an edit; a material's qualities go to weapons only; parry never lowers a block

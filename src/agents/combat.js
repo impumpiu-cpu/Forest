@@ -81,7 +81,7 @@ export const resistOf = (sp, type, melee) => (sp.resist ? (sp.resist[type] ?? 1)
 // `q` — the qualities of the weapon that struck (data/balance/combat.js WEAPON_QUALITIES): piercing takes a share of the
 // armour off, vicious makes a critical blow worse. Every blow that lands draws its place on the body (data/anatomy.js)
 // from its own stream: × the damage there, and the place a fallen one's trauma comes from
-export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q = null} = {}) {
+export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q = null, stance = null} = {}) {
   if (t.downed || t.dead) return 'downed';
   const g = ensureGear(t);
   // the victim remembers who hurt it and from how far (a mule charges whoever shot it)
@@ -93,7 +93,8 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   type ||= melee ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged;
   if (mix) type = mix[0][0];
   else raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
-  const block = blockAgainst(g, type, melee);
+  // a blow from the flank meets half a shield, one in the back none (stanceOf)
+  const block = blockAgainst(g, type, melee) * (stance === 'back' ? 0 : stance === 'flank' ? COMBAT.flank.block : 1);
   // the block is a check with four degrees (data/checks.js): a critical block wears the striker's weapon, a botched
   // one lets the blow into the open (both 0 — as before)
   let botched = 1;
@@ -168,6 +169,19 @@ export const behindRock = (w, a, t) => !lineOfFire(w, a.x, a.y, t.x, t.y);
 // The blow reads and trains the melee skill (data/skills.js): skill only adds (× 1 + COMBAT.meleeSkill × skill),
 // so a creature without it hits as before.
 const BLOW = COMBAT.blow, SHOT = COMBAT.shot, HIT = COMBAT.hit;
+// Where an armed blow comes from (COMBAT.flank, back): 'back' — the target does not know of the striker (asleep, or out
+// of any fight and not hurt lately), 'flank' — it is fighting someone else, otherwise 'front'. A beast's bite is
+// always 'front' (a pack's tactics are its own: agents/carcass.js)
+const busy = t => (t.task?.id === 'fight' || t.task?.id === 'maul') && t.task.target;
+export function stanceOf(w, a, t) {
+  if (!a.gear?.melee?.item) return 'front';
+  const fighting = busy(t);
+  if (fighting) return t.task.target === a ? 'front' : 'flank';
+  if (t.sleeping || !(t.hurtBy && w.tick - t.hurtBy.tick < COMBAT.back.aware)) return 'back';
+  return 'front';
+}
+// × the blow from there: the stance's own, its share over 1 × (1 + the weapon's `backstab`)
+export const stanceGain = (stance, q) => (stance === 'front' ? 1 : 1 + ((stance === 'back' ? COMBAT.back.dmg : COMBAT.flank.dmg) - 1) * (1 + traitOf(q, 'backstab')));
 export function attack(w, a, t) {
   if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
@@ -183,12 +197,13 @@ export function attack(w, a, t) {
     if (deg === 'critSuccess') full = 1 + degreeValue('melee', 'critSuccess');
     if (deg === 'critFail') a.cd += degreeValue('melee', 'critFail');
   }
-  damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null});
+  const stance = stanceOf(w, a, t);   // read before the blow: a hurt target knows of it after
+  damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item) * stanceGain(stance, g.melee.q), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null, stance});
   // the other hand follows (quality `paired`: a second dagger, a hatchet): a blow of its own at its share, met by
   // the target's dodge, block and armour as any
   const off = g.offhand;
   if (off && !t.dead && !t.downed) {
-    damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item), {type: off.type, mix: off.mix || null, q: off.q || null});
+    damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item) * stanceGain(stance, off.q), {type: off.type, mix: off.mix || null, q: off.q || null, stance});
     wear(w, a, off.item);
   }
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it

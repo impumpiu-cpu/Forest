@@ -33,9 +33,12 @@ export function strengthParts(a, {now = false} = {}) {
   const cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (m.swing ?? 1)));
   let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * mixGain(g.melee) * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
   if (sp.venom) melee += sp.venom.dmg * Math.min(1, sp.venom.ticks / cd);
+  // a sly weapon (quality `backstab`): the share of blows from the flank strikes deeper (COMBAT.flank)
+  const sly = q => 1 + COMBAT.flank.share * (COMBAT.flank.dmg - 1) * traitOf(q, 'backstab');
+  melee *= sly(g.melee.q);
   // the other hand strikes after the main blow (quality `paired`, agents/combat.js attack)
   const off = g.offhand;
-  if (off) melee += (BLOW.base + BLOW.spread / 2) * off.dmg * off.share * mixGain(off) * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * (1 + pc * (CRIT.mul + traitOf(off.q, 'vicious') - 1)) / cd;
+  if (off) melee += (BLOW.base + BLOW.spread / 2) * off.dmg * off.share * mixGain(off) * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * (1 + pc * (CRIT.mul + traitOf(off.q, 'vicious') - 1)) * sly(off.q) / cd;
   let shot = 0;
   if (g.ranged) {
     const hit = Math.min(0.95, Math.max(0.05, HIT.base + HIT.skill * (a.skill?.ranged ?? HIT.noSkill) + (m.aim || 0) - HIT.far * 0.5));

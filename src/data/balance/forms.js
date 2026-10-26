@@ -41,8 +41,9 @@ export const FORMS = {
     parts: {material: 2, wood: 1}, work: 700, ids: {bone: 'axe', bronze: 'bronzeaxe', iron: 'ironaxe'},
     names: {bone: ['Топор с костяным клином', 'топор']}, name: m => [`${cap(m.adj.m)} топор`, `${m.short} топор`], glyph: {bone: 'axe', default: 'ironaxe'}},
   // quick, but short: a dagger of a tier falls short of its spear; a silver one is soft and only for what fears silver
-  // light enough for the other hand: a second dagger strikes after the first (quality `paired`)
-  dagger:   {blow: 'pierce', scale: {A: 1}, slot: 'hand', hands: 1, of: ['metal', 'silver'], ref: 'iron', melee: {dmg: 1.3, cd: 9}, qualities: {paired: 0.75}, dur: 115,
+  // light enough for the other hand: a second dagger strikes after the first (quality `paired`); sly — from the flank and
+  // in the back it cuts twice as deep over a plain blow (quality `backstab`)
+  dagger:   {blow: 'pierce', scale: {A: 1}, slot: 'hand', hands: 1, of: ['metal', 'silver'], ref: 'iron', melee: {dmg: 1.3, cd: 9}, qualities: {paired: 0.75, backstab: 1}, dur: 115,
     parts: {material: 1, leather: 1}, work: 400, ids: {silver: 'silverknife'}, name: m => [`${cap(m.adj.m)} кинжал`, `${m.short} кинжал`], glyph: 'dagger'},
   sword:    {vs: {pierce: 0.9, slash: 1.15, blunt: 0.8}, blow: 'slash', scale: {S: 0.5, A: 0.5}, slot: 'hand', hands: 1, of: ['metal'], ref: 'iron', melee: {dmg: 1.95, cd: 11}, block: 0.1, qualities: {paired: 0.3}, dur: 150,
     parts: {material: 3, leather: 1}, work: 900, ids: {iron: 'sword'}, names: {iron: ['Железный меч', 'меч']}, name: m => [`${cap(m.adj.m)} меч`, `${m.short} меч`], glyph: 'sword'},
