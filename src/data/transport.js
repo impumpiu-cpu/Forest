@@ -54,10 +54,10 @@ export const GETTING = {
   // a basket woven in camp from bast and willow (a day's work, wooded or grassy land): +2 cells on its maker's back
   basket: {cells: 2, days: 1},
   // after a won fight with those who keep beasts: the chance a beast is taken from them
-  spoil: {bandits: {mule: 0.3, horse: 0.15}, army: {horse: 0.3, mule: 0.2}, tribe: {mule: 0.15}},
+  spoil: {bandits: {mule: 0.3, horse: 0.15}, raiders: {mule: 0.25, horse: 0.15}, army: {horse: 0.3, mule: 0.2}, tribe: {mule: 0.15}, cultists: {mule: 0.1}},
   // …and the chance an iron tool is taken (the only way to an iron tool before the towns trade, stage 5):
   // it goes to a squire, in place of a worse tool
-  spoilTool: {item: 'ironaxe', bandits: 0.08, army: 0.15},
+  spoilTool: {item: 'ironaxe', bandits: 0.08, raiders: 0.08, army: 0.15, cultists: 0.05},
   // a lost fight: the chance each beast is driven off or killed, each vehicle broken
   // (the quick mode: a building of the camp burnt with `building`; on the local map it burns as it burns)
   lose: {beast: 0.3, vehicle: 0.2, building: 0.1},

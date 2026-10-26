@@ -24,6 +24,7 @@ import {realmSpecies} from '../src/atlas/court.js';
 import {stepLairs} from '../src/atlas/lairs.js';
 import {freeLairCaptives} from '../src/campaign/fight.js';
 import {foeWeight} from '../src/campaign/camp.js';
+import {foeOf} from '../src/campaign/march.js';
 import {CAMP} from '../src/data/camp.js';
 import {CAPTIVE_RAID, WILD, NECRO} from '../src/data/lairs.js';
 const stepLairsOnce = (a, season) => stepLairs(a, mulberry(9), season);
@@ -469,6 +470,11 @@ scene_('W23b', 'сколько пришло — по плотности: гус�
   if (w({kind: 'army', strength: 3}) !== w({kind: 'army', strength: 0.3})) return 'войско зависит от плотности';
   if (w({kind: 'lair', strength: 3, boss: {name: 'Вожак'}, leaderLair: 1}) !== w({kind: 'lair', strength: 0.3, boss: {name: 'Вожак'}, leaderLair: 1})) return 'именной бой зависит от плотности';
   return true;
+});
+scene_('W23c', 'что пришло в пузыре, то и в бою: второй вид, пул культа, логово (его пленные), главарь — не теряются по дороге', () => {
+  const t = {kind: 'tribe', strength: 1, label: 'гоблины и волки', band: 'goblins', with: {beast: 'wolves', label: 'волки', share: 0.3}, pool: [['goblin', 1]], lair: 7, leaderLair: 7, boss: {name: 'Вожак'}, species: 'goblin'};
+  const f = foeOf(t);
+  return (f.with?.beast === 'wolves' && f.pool?.length === 1 && f.lair === 7 && f.leaderLair === 7 && f.boss?.name === 'Вожак' && f.species === 'goblin') || `потеряно: ${JSON.stringify(f)}`;
 });
 scene_('W24', 'набег логова: звери стана — только если живут рядом; второй вид его земли пристаёт и прибавляет силы', () => {
   const a = world(), {lair} = townAndLair(a, 'goblins', 20);

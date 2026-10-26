@@ -26,7 +26,7 @@ import {RELATIONS} from '../data/relations.js';
 import {atWar} from '../atlas/diplomacy.js';
 import {cultPool, towerAt, necroLabel} from '../atlas/necro.js';
 import {NECRO} from '../data/lairs.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, onSpeciesChange} from '../data/species.js';
 import {GAME, CAMPAIGN} from '../data/campaign.js';
 import {FODDER} from '../data/transport.js';
 import {clamp} from '../core/util.js';
@@ -67,6 +67,7 @@ export function seasonFood(a, i, seasonId) {
 // kind itself (above)
 const FOLK_BAND = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]]));
 const MIG = new Map();
+onSpeciesChange(() => MIG.clear());   // (a species made or removed in the constructor: data/species.js)
 // the beasts' arrival on the local map that brings a species as a hunter of people (data/migrations.js), or null
 const hunterOf = id => { if (!MIG.has(id)) MIG.set(id, MIGRATIONS.all().find(m => m.species === id && m.faction === 'predators')?.id || null); return MIG.get(id); };
 export function wildFoes(a, i, lair = lairAt(a, i)) {
@@ -136,14 +137,14 @@ export function dangers(a, i, K = null) {
   const out = [], N = NIGHT;
   const lair = lairAt(a, i);
   if (lair) {
-    const L = LAIRS.get(lair.kind), kind = L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair';
+    const L = LAIRS.get(lair.kind), kind = L.domain ? 'cultists' : L.undead ? 'undead' : L.tribe ? 'tribe' : 'lair';
     // a lair with a leader (atlas/leaders.js) keeps its land better and comes harder, the leader at the head (LEADER.camp)
     const ld = lair.leader, M = ld ? LEADER.camp : null;
     out.push({kind, p: (N.lair.p[0] + N.lair.p[1] * Math.min(N.lair.pCap, lair.strength)) * (M ? M.p : 1), strength: (N.lair.s[0] + N.lair.s[1] * Math.min(N.lair.sCap, lair.strength)) * (M ? M.strength : 1), label: `${L.label} «${lair.name}»`, ...lairFoe(lair.kind),
       lair: lair.id, species: L.species,   // (its captives, if it keeps any: a fight won frees them — campaign/fight.js)
       ...(ld ? {boss: {name: `${ld.title[0]} ${ld.name}`, g: 'm', species: ld.species, add: ld.add}, leaderLair: lair.id} : {})});
   }
-  out.push(...wildFoes(a, i, lair), ...peopleFoes(a, i, K), ...cultFoes(a, i));
+  out.push(...wildFoes(a, i, lair), ...peopleFoes(a, i, K), ...cultFoes(a, i).filter(c => c.tower !== lair?.id));   // (in a tower's own land its cult is the lair's, above)
   // a necromancer's band is his cult: who it is, by the cell (atlas/necro.js cultPool)
   for (const d of out) if (d.band === 'cultists' && !d.pool) d.pool = cultPool(a, i);
   if (a.f.scourge && a.f.scourge[i] > N.army.at) out.push({kind: 'army', p: N.army.p * a.f.scourge[i], strength: N.army.s});

@@ -3,6 +3,8 @@
 // campaign/*.js only reads it. Numbers are first guesses for the balance run (tools/campaign-check.mjs).
 
 export const CAMPAIGN = {
+  // a night with nothing in the cell's pool still sends a stray (campaign/march.js): wolves of this strength
+  stray: {kind: 'beasts', strength: 0.7, beast: 'wolves', label: 'волки'},
   // the peoples whose capitals can send a caravan (the major ones; the minor join on the way, later)
   peoples: ['humans', 'elves', 'dwarves', 'orcs'],
   // the core: those who set out; when all of them are dead the campaign is lost

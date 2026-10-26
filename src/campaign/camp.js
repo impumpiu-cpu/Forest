@@ -172,21 +172,22 @@ export function foeWeight(r, F, kind) {
   const B = CAMP.foe, named = F.boss ? (F.boss.mustDie ? B.boss : F.leaderLair ? B.leader : B.mini) : null, D = B.density;
   // a chance meeting: as many as the land holds (the thing's strength: its density), the named and the forces as they are
   const base = named ?? (kind === 'guard' || F.kind === 'army' ? B.force : (B.skirmish[0] + r() * (B.skirmish[1] - B.skirmish[0])) * Math.max(D.lo, Math.min(D.hi, (F.strength ?? refOf(F)) / refOf(F))));
-  return Math.max(0.1, base + (2 * r() - 1) * B.sway);
+  return Math.max(B.floor, base + (2 * r() - 1) * B.sway);
 }
 
 function spawnFoe(w) {
   const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
   const close = S.kind === 'ambush' || S.kind === 'guard', at = close ? nearCell(w, CAMP[S.kind].near, r) : null;
   const opts = {minDist: close ? CAMP[S.kind].near : CAMP.far, ...(at != null ? {at} : {})};
-  const beast = F.beast || map.beast, band = F.band || map.band;
+  // a beast with no arrival on the local map (a demon of a rift) comes as its foe kind's own (data/camp.js CAMP_FOES)
+  const beast = F.beast && MIGRATIONS.has(F.beast) ? F.beast : F.band ? null : map.beast, band = F.band || map.band;
   // the foe is bought by the caravan's strength (campSetup: C.ourMight — everyone who stands in the fight, with all
   // they wear) × the fight's weight (foeWeight), never by the thing's own strength: a caravan in copper is not sent
   // against a boss bought for a caravan in steel. The heads are rounded up (data/raids.js fill `up`)
   const t = raidThreat(w), budget = C.ourMight * foeWeight(r, F, S.kind);
   C.weight = Math.round(budget / Math.max(1e-6, C.ourMight) * 100) / 100;   // for the fight's record
   // one kind, or two (campaign/land.js withCompany): the second takes its share of the budget
-  const W = F.with && (F.with.beast ? MIGRATIONS.has(F.with.beast) : F.with.band) ? F.with : null, main = budget * (W ? 1 - W.share : 1);
+  const W = F.with && (F.with.beast ? MIGRATIONS.has(F.with.beast) : F.with.band) ? F.with : null, main = budget * (W ? 1 - W.share : 1);   // (a second kind with no arrival stays home)
   const part = (who, b, first) => {
     if (who.beast && MIGRATIONS.has(who.beast)) {
       const n = Math.min(CAMP.foe.most, Math.max(1, first && F.boss ? CAMP.boss.atLeast : 1, Math.ceil(b / expectedStrength(MIGRATIONS.get(who.beast).species, {key: 'wild'}))));   // a wild beast comes as it is, no band's body or kit

@@ -539,7 +539,7 @@ function night(a, K) {
     const t = foes[0], win = fight(a, K, foeOf(t), r, 'night');
     settle(K, t, win); K.stats.met = (K.stats.met || 0) + 1; leaderBeaten(a, K, t, win);
   } else if (r() < BUBBLE.stray * (friendly ? CAMPAIGN.night.friendly : 1)) {
-    const ds = dangers(a, K.i, K), d = ds.length ? withCompany(ds[(r() * ds.length) | 0], ds, r) : {kind: 'beasts', strength: 0.7, beast: 'wolves', label: 'волки'};
+    const ds = dangers(a, K.i, K), d = ds.length ? withCompany(ds[(r() * ds.length) | 0], ds, r) : {...CAMPAIGN.stray};
     const won = fight(a, K, d, r, 'night'); K.stats.strays = (K.stats.strays || 0) + 1; leaderBeaten(a, K, d, won);
   } else {
     // a quiet night: a little found in the morning while they packed
@@ -552,7 +552,9 @@ function night(a, K) {
 }
 
 // what a thing of the bubble brings to a fight: its foe, its strength, and who it is on the local map
-const foeOf = t => ({kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null, ...(t.pursuit ? {pursuit: t.src || 'hunt'} : {}), ...(t.boss ? {boss: t.boss} : {})});
+// (all a thing carries into the fight: its second kind, a cult's pool, the lair whose captives a win frees, a leader)
+export const foeOf = t => ({kind: THINGS[t.kind].foe, strength: t.strength, label: t.label, band: t.band || null, beast: t.beast || null, ...(t.pursuit ? {pursuit: t.src || 'hunt'} : {}), ...(t.boss ? {boss: t.boss} : {}),
+  ...(t.with ? {with: t.with} : {}), ...(t.pool ? {pool: t.pool} : {}), ...(t.leaderLair != null ? {leaderLair: t.leaderLair} : {}), ...(t.lair != null ? {lair: t.lair} : {}), ...(t.species ? {species: t.species} : {})});
 // what a town tells of the leaders near it: the nearest living one within a leader's reach, once per leader
 function leaderRumour(a, K, t) {
   const reach = TRIBE_RAID.reach * LEADER.reach * scaleOf(a), told = (K.leadersTold ||= []);

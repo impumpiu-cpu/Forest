@@ -39,7 +39,7 @@ export function fightStats(K) {
     for (const name of f.fell) at(name).fell = true;
   }
   // how many fights each one stood in: everyone alive and free at the time (the record keeps the count, not the names)
-  for (const m of K.members) { const mm = at(m.name); mm.role = m.role; mm.race = m.race; mm.alive = m.alive; mm.fights = F.filter(f => f.day >= (m.joined || 0) && (m.alive || !m.died || f.day <= m.died.day)).length; }
+  for (const m of K.members) { const mm = at(m.name), gone = m.died?.day ?? m.left?.day; mm.role = m.role; mm.race = m.race; mm.alive = m.alive; mm.fights = F.filter(f => f.day >= (m.joined || 0) && (gone == null || f.day <= gone)).length; }   // (to the day one fell or left: deserted, sold, ran)
   const byMember = Object.values(members).sort((p, q) => q.kills - p.kills || q.fights - p.fights);
   const named = F.filter(f => f.boss).map(f => ({...f, ratio: ratio(f), guards: f.foes != null ? Math.max(0, f.foes - (f.boss.came ? 1 : 0)) : null}));
   return {total, byKind, byYear, byMember, named};

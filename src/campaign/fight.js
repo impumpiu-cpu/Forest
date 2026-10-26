@@ -58,7 +58,7 @@ function recordFight(a, K, d, how, win, before) {
   const o = K.mode === 'auto' ? null : K.lastCamp, A = K.mode === 'auto' ? K.lastAuto : null;
   delete K.lastCamp; delete K.lastAuto;
   const ids = new Set(before.map(([id]) => id));
-  const fell = K.members.filter(m => ids.has(m.id) && !m.alive).map(m => m.name);
+  const fell = K.members.filter(m => ids.has(m.id) && !m.alive && !m.left?.escaped).map(m => m.name);   // (a captive who ran is gone, not fallen)
   const hurt = K.members.filter(m => m.alive && ids.has(m.id) && m.hp < before.find(([id]) => id === m.id)[1] - CAMPAIGN.fight.wounded).map(m => m.name);
   const F = o?.foes, B = F?.boss;
   const rec = {day: K.day, how, kind: d.kind, label: d.label || FOES[d.kind].label, won: !!win, mode: K.mode === 'auto' ? 'auto' : 'local',
@@ -206,14 +206,14 @@ export function freeLairCaptives(a, K, d, r, tell) {
   const l = d.lair != null ? (a.lairs || []).find(x => x.id === d.lair) : null;
   const held = l?.captives ? Object.entries(l.captives).filter(([, n]) => n > 0) : [];
   if (!held.length || r() >= CAPTIVE_RAID.freed.chance) return [];
-  const got = [];
+  const got = [], who = [];
   for (let q = 0; q < CAPTIVE_RAID.freed.max && held.length && room(K, 'joined'); q++) {
     const [people] = held[(r() * held.length) | 0];
     const m = makeMember(K, r, {race: WORLD_PEOPLES.get(people).race, role: 'freed', gear: FREED.gear, loyalty: FREED.loyalty});
-    K.members.push(m); got.push(`${m.name} (${SPECIES.get(m.race).label})`);
+    K.members.push(m); who.push(m); got.push(`${m.name} (${SPECIES.get(m.race).label})`);
     if (--l.captives[people] <= 0) { delete l.captives[people]; held.splice(held.findIndex(([p]) => p === people), 1); }
   }
-  if (got.length) tell(`В «${l.name}» держали пленных: ${names(got)} освобожден${got.length > 1 ? 'ы' : ''} и пока ид${got.length > 1 ? 'ут' : 'ёт'} с караваном.`, 'people');
+  if (got.length) tell(`В «${l.name}» держали пленных: ${names(got)} освобожден${got.length > 1 ? 'ы' : who[0].gender === 'f' ? 'а' : ''} и пока ид${got.length > 1 ? 'ут' : 'ёт'} с караваном.`, 'people');
   return got;
 }
 
