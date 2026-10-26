@@ -46,8 +46,21 @@ export function memberStrength(species, t, role = null) {
       a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged};
     }});
 }
-// one human raider of level t: the yardstick of a raid's size (settlement/threat.js) — what «a band of five» means
-export const raiderStrength = t => memberStrength('human', t);
+// The yardstick of a raid's size (settlement/threat.js): what «a band of five» means is five raiders of the old days,
+// whatever the bands bring now — clubs and slings in rags early, spears, shields, bows and leather later. A band of
+// roles buys its fighters with this budget: fewer heads, each better armed, the same strength (КС) in all
+export function yardstickKit(rng, t) {
+  const early = [['club'], ['club'], ['spear'], ['sling'], ['staff']];
+  const late = [['spear', 'shield'], ['club', 'shield'], ['maul'], ['bow', 'quiver'], ['spear'], ['sling']];
+  const set = pick(rng, rng() < Math.min(0.9, t * 0.04) ? late : early);
+  const r = rng(), leather = Math.min(0.6, t * 0.025), plates = t > 12 ? Math.min(0.3, (t - 12) * 0.025) : 0;
+  return [...set, ...(r < plates ? ['hardleather'] : r < plates + leather ? ['jerkin'] : r < plates + leather + 0.4 ? ['clothes'] : [])];
+}
+// one raider of level t by that yardstick
+export function raiderStrength(t) {
+  const L = Math.max(0, Math.floor(t)), body = raiderBody(L);
+  return expectedStrength('human', {key: `yardstick|${L}`, kit: rng => yardstickKit(rng, L), prepare: a => { a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged}; }});
+}
 // A band of links (data/roles.js LINKS): a link drawn by the band's weights, its places filled in order — each with one of
 // the band's species that may take the role (its weight in the band × in «Роли видов», `max` as for fill) — then the
 // next link, while the budget lasts by the same rule as fill. The beasts of the mix (no hands, no roles) come in among
