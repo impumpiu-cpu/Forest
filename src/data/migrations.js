@@ -20,7 +20,8 @@ import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
 import {RAID_BANDS, BAND_BEASTS, kitFor, raiderBody} from './raids.js';
-import {formLinks} from '../agents/ranks.js';
+import {formLinks, formUndeadLinks, trimBand} from '../agents/ranks.js';
+import {sideStrength} from '../agents/strength.js';
 import {COMBAT_ROLES} from './roles.js';
 import {faunaLevel} from '../world/region.js';
 import {createSquad} from '../agents/squad.js';
@@ -147,8 +148,13 @@ MIGRATIONS.registerAll([
       for (const a of group) { a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged}; a.skillVer = 1; }
       RAID_BANDS.get(group[0].band).groupInit?.(group, w);
       const sq = createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)
-      // ranks on a settlement's raids (agents/ranks.js): only where data/ranks.js says so (a campaign's camp ranks its foe itself)
-      if (!w.campaign) formLinks(w, group, 'settlement', sq.leader);
+      // ranks on a settlement's raids (agents/ranks.js): only where data/ranks.js says so (a campaign's camp ranks its foe
+      // itself); officers and wights are worth more than the band was bought for — its weakest pawns stay home
+      if (!w.campaign) {
+        const bought = sideStrength(group, {now: true});
+        const made = formLinks(w, group, 'settlement', sq.leader).length + formUndeadLinks(w, group, 'settlement').length;
+        if (made) trimBand(w, group, bought);
+      }
     },
     ammo: 8,
     message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)}${side ? ` — с ${side}` : ''}.`},   // (a camp's foe may come from close by, not from an edge: no side)

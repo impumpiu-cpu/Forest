@@ -12,7 +12,7 @@ import {ITEMS} from '../data/items.js';
 import {refreshBody} from './special.js';
 import {maxHp} from './agent.js';
 import {recalcGear, allItems} from './equipment.js';
-import {strengthOf} from './strength.js';
+import {strengthOf, sideStrength} from './strength.js';
 
 const cap = s => s[0].toUpperCase() + s.slice(1);
 // the officer's rank name in its band
@@ -69,6 +69,50 @@ export function formLinks(w, group, where, leaderId = null) {
   const rest = byStrength.filter(a => !officers.includes(a));
   rest.forEach((a, k) => { a.link = officers[k % n].id; });
   return officers;
+}
+
+// The dead of a band (mindless: no officer of their own) in links under a wight — the strongest bones of each link
+// (data/ranks.js): the mark «умертвие», a grade finer gear, its name; its link follows it (a.master = its id), the one
+// they followed before stays above it (a.masterUp: the necromancer). The beasts without hands (zombies) go by turns
+// to the links. Returns the wights.
+export function formUndeadLinks(w, group, where) {
+  const R = RANK_RULES;
+  if (!R[where]) return [];
+  const dead = group.filter(a => SPECIES.get(a.species).mindless && !a.gone && !a.boss && a.role !== 'necromancer');
+  const bones = dead.filter(a => SPECIES.get(a.species).inventory);
+  if (dead.length < R.least || !bones.length) return [];
+  const nos = [...new Set(bones.map(a => a.linkNo).filter(x => x != null))];
+  const groups = nos.length ? nos.map(no => bones.filter(a => a.linkNo === no)) : [];
+  if (!groups.length) for (let k = 0; k < Math.ceil(bones.length / R.size); k++) groups.push(bones.filter((_, i) => i % Math.ceil(bones.length / R.size) === k));
+  const wights = [];
+  for (const g of groups) {
+    const o = g.slice().sort((p, q) => strengthOf(q) - strengthOf(p))[0];
+    o.marks = [...(o.marks || []).filter(m => m !== 'wight'), 'wight'];
+    for (const it of allItems(o)) { const d = ITEMS.get(it.type); if (d.quality !== false) it.q = Math.min(3, (it.q || 0) + R.quality); }
+    recalcGear(o); refreshBody(o); o.hp = maxHp(o);
+    o.name = cap(officerName(o.band)); o.link = o.id; o.master = null;   // a will of its own
+    wights.push(o);
+  }
+  // the rest of the dead: their link's wight; the zombies by turns
+  const rest = dead.filter(a => !wights.includes(a)); let k = 0;
+  for (const a of rest) {
+    const i = a.linkNo != null ? nos.indexOf(a.linkNo) : -1, o = wights[i >= 0 ? i : k++ % wights.length];
+    a.masterUp = a.master ?? null; a.master = o.id; a.link = o.id;
+  }
+  return wights;
+}
+
+// the side came out worth more than it was bought for (officers and wights made finer, a boss grown): its weakest
+// pawns go — never the boss, an officer or a wight — while what is left still covers `target`, and no fewer than
+// `atLeast` stay; the band's squad forgets them (agents/squad.js)
+export function trimBand(w, group, target, atLeast = 1) {
+  for (;;) {
+    const rest = group.filter(g => !g.boss && !hasMark(g, 'officer') && !hasMark(g, 'wight')).sort((p, q) => strengthOf(p, {now: true}) - strengthOf(q, {now: true}));
+    if (group.length <= atLeast || !rest.length || sideStrength(group, {now: true}) - strengthOf(rest[0], {now: true}) < target) break;
+    const x = rest[0]; x.gone = true; group.splice(group.indexOf(x), 1);   // never came (the map drops the gone)
+    const sq = x.squad != null ? w.squads?.[x.squad] : null;
+    if (sq) { sq.members = sq.members.filter(id => id !== x.id); sq.size = Math.max(1, sq.size - 1); }
+  }
 }
 
 // is this creature an officer (the mark)

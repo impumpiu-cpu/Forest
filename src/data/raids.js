@@ -171,7 +171,7 @@ RAID_BANDS.registerAll([
     message: n => (n === 1 ? 'Из чащи вышел тролль. Раны на нём затягиваются, пока рядом нет огня' : 'Из чащи вышли тролли. Раны на них затягиваются, пока рядом нет огня')},
 
   // the rot's host: by night three times as likely; past a threat of 10 a necromancer walks behind it
-  {id: 'undead', label: 'мертвецы', kind: 'monster',
+  {id: 'undead', label: 'мертвецы', kind: 'monster', links: [['bones', 1]], ranks: {officer: 'умертвие', boss: 'лич'},
     chance: {weight: 0.8, perNight: 2, threat: 3},
     members: (w, rng, budget, t, o) => {
       const lead = t >= 10 ? [{species: 'necromancer', init: a => { a.role = 'necromancer'; a.name = 'Некромант'; }}] : [];

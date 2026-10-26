@@ -37,17 +37,38 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
   }
 }
 
-// a settlement's raid: no ranks by default
+// ranks can be switched off for a settlement's raids (the table «Ранги и звенья»); officers are paid by the band's own
+// weakest: the band comes no stronger than it was bought
 {
+  RANK_RULES.settlement = false;
   const w = game('ranks-off'), g = spawnGroup(w, 'raiders', raiderStrength(5) * 12, {band: 'bandits'});
-  expect(RANK_RULES.settlement === false && !g.some(a => hasMark(a, 'officer')), 'набег на поселение пришёл с офицерами');
+  RANK_RULES.settlement = true;
+  expect(!g.some(a => hasMark(a, 'officer')), 'набег на поселение пришёл с офицерами, хотя ранги выключены');
+  const {sideStrength} = await import('../src/agents/strength.js');
+  const w2 = game('ranks-off'), g2 = spawnGroup(w2, 'raiders', raiderStrength(5) * 12, {band: 'bandits'});
+  expect(g2.some(a => hasMark(a, 'officer')) && sideStrength(g2, {now: true}) < sideStrength(g, {now: true}) * 1.15, `с офицерами банда сильнее купленного: ${Math.round(sideStrength(g2, {now: true}))} против ${Math.round(sideStrength(g, {now: true}))}`);
+}
+
+// the dead under wights: the strongest bones of each link; its link follows it, the necromancer above; it falls — they go
+// to the necromancer; he is gone too — they lose their way
+{
+  const {formUndeadLinks} = await import('../src/agents/ranks.js'), retreatMod = await import('../src/agents/behaviours/retreat.js');
+  const w = game('wights'); w.fame = 14;
+  const g = spawnGroup(w, 'raiders', raiderStrength(14) * 10, {band: 'undead'});
+  const wights = g.filter(a => hasMark(a, 'wight')), nec = g.find(a => a.role === 'necromancer');
+  expect(wights.length >= 1 && wights.every(o => o.species === 'skeleton' && o.name === 'Умертвие'), `умертвий ${wights.length}`);
+  const o = wights[0], link = g.filter(a => a.master === o.id);
+  expect(link.length >= 2 && link.every(a => a.masterUp === (nec ? nec.id : null)), 'звено мертвецов не идёт за умертвием или забыло некроманта');
+  o.dead = true;
+  for (const a of link) retreatMod.retreat.always(w, a);
+  expect(nec ? link.every(a => a.master === nec.id && !a.lost) : link.every(a => a.lost), 'павшее умертвие: звено не перешло к некроманту');
+  if (nec) { nec.dead = true; for (const a of link) retreatMod.retreat.always(w, a); expect(link.every(a => a.lost), 'без умертвия и некроманта мертвецы не разбрелись'); }
+  void formUndeadLinks;
 }
 
 // ranks where they are given: links, officers, the small aura, the fall of an officer
 {
-  RANK_RULES.settlement = true;
   const w = game('ranks-on'), g = spawnGroup(w, 'raiders', raiderStrength(5) * 12, {band: 'bandits'});
-  RANK_RULES.settlement = false;
   const officers = g.filter(a => hasMark(a, 'officer')), sq = squadOf(w, g[0]);
   // the band came in links (data/roles.js LINKS): one officer to a link (a link of one joins the one before), the members
   // of a link under its officer, the link's kind on each
@@ -107,4 +128,4 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
 }
 
 if (bad.length) { console.log('Роли и ранги:\n  ' + bad.join('\n  ')); process.exit(1); }
-console.log(`ok   роли и ранги: бойцы в ролях своей матрицы и с их вещами, звери выучены; звенья под офицерами держат строй, павший офицер шатает дух; в набегах на поселение рангов нет; стрелок отходит от клинка, щитоносец прикрывает стрелка, копейщик бьёт удержанного, головорез крадётся к стрелку, знахарь поднимает упавшего`);
+console.log(`ok   роли и ранги: бойцы в ролях своей матрицы и с их вещами, звери выучены; звенья под офицерами держат строй, павший офицер шатает дух; ранги в набегах на поселение выключаются таблицей, офицеров оплачивают слабейшие; умертвия ведут мертвецов, павшее передаёт их некроманту; стрелок отходит от клинка, щитоносец прикрывает стрелка, копейщик бьёт удержанного, головорез крадётся к стрелку, знахарь поднимает упавшего`);

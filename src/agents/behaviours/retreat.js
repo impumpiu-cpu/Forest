@@ -13,7 +13,12 @@ const stayOf = a => Math.max(0, ...marksOf(a).map(r => r.stay || 0));
 
 export const retreat = {
   always(w, a) {
-    if (a.master != null && !liveById(w, a.master)) { a.master = null; a.lost = true; }
+    // its master fell: the one above it, if it stands (a wight's link to the necromancer), else it loses its way
+    if (a.master != null && !liveById(w, a.master)) {
+      const up = a.masterUp != null ? liveById(w, a.masterUp) : null;
+      a.masterUp = null;
+      if (up && !up.gone) a.master = up.id; else { a.master = null; a.lost = true; }
+    }
     if (a.warBeast && !a.lost && !w.agents.some(o => o.band === a.band && !o.warBeast && !o.dead && !o.gone && o.task?.id !== 'leave')) {   // scan: war beasts only, a few per band
       a.orphanAt ??= w.tick;
       if (w.tick - a.orphanAt >= stayOf(a)) a.lost = true;   // a trained one fights on a while

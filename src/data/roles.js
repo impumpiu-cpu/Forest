@@ -65,6 +65,7 @@ LINKS.registerAll([
   {id: 'swarm',   label: 'рой',          note: 'праща, дротики, ножи: много и мелко', roles: ['skirmisher', 'skirmisher', 'cutthroat', 'cutthroat', 'archer']},
   {id: 'pack',    label: 'стая',         note: 'копья вперёд, рубака и сеть', roles: ['spearman', 'spearman', 'cleaver', 'skirmisher', 'catcher']},
   {id: 'slavers', label: 'ловцы рабов',  note: 'сети и ножи, луки прикрывают', roles: ['catcher', 'catcher', 'cutthroat', 'archer', 'archer']},
+  {id: 'bones',   label: 'костяной строй', note: 'мертвецы: щиты и копья, лук позади; мертвяки без рук идут между ними', roles: ['shield', 'spearman', 'spearman', 'shield', 'archer']},
   {id: 'volley',  label: 'стрелки',      note: 'луки, а впереди один щит', roles: ['archer', 'archer', 'archer', 'shield', 'skirmisher']},
 ]);
 

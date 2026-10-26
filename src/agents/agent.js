@@ -147,6 +147,11 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
   }
   // the necromancer falls: his dead lose their way
   if (a.role === 'necromancer' && w.agents.some(o => o.master === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');
+  // a wight falls (data/ranks.js): its link goes to the necromancer if he stands, else it wanders off
+  if (a.marks?.includes('wight') && w.agents.some(o => o.master === a.id && !o.dead)) {   // scan: once, at a wight's death
+    const up = w.agents.find(o => o.master === a.id && o.masterUp != null && !o.dead);
+    log(w, `Пало ${a.name.toLowerCase()}: ${up && w.agents.some(n => n.id === up.masterUp && !n.dead) ? 'его мертвецы идут за некромантом' : 'его мертвецы теряют направление и разбредаются'}.`, 'danger', 'notice');
+  }
   if (a.faction === 'colony' && !a.captive) for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) { think(w, o, 'grief', {name: a.name, f: a.gender === 'f'}); o.mem.grief += 0.5; }
   if (by?.faction === 'colony') { if (sp.predator || sp.resident) think(w, by, 'killedWolf', {beast: sp.labelAcc || sp.label}); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }
   // a fallen colonist's gear goes back to the store
