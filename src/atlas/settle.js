@@ -17,7 +17,7 @@ import {SPECIES} from '../data/species.js';
 import {CALAMITIES} from '../data/calamities.js';
 import {landDone, runNextStage} from './generate.js';
 import {initFauna, faunaCell} from './fauna.js';
-import {seedRot, wildLairs, newLair, groundFits, homeField, wherePhrase, R as lairRadius} from './lairs.js';
+import {seedRot, wildLairs, newLair, groundFits, homeField, wherePhrase, lairFolk, R as lairRadius} from './lairs.js';
 import {landBand, townAt} from './peoples.js';
 import {addCalamity, deadGraves} from './calamity.js';
 import {worldSubs} from './realms.js';
@@ -37,6 +37,7 @@ export function startFree(a) {
   a.f.road ||= new Float32Array(a.n); a.towns ||= []; a.peoples ||= []; a.realms ||= []; a.contacts ||= {};
   initFauna(a, rnd);
   a.lairs = []; a.tribeLand = {};
+  lairFolk(a);   // the lairs' folk: fields, empty until a lair pours them out
   a.ancientBarrows = seedRot(a, rnd);
   say(a, 'Мир ждёт руки: звери уже расходятся по своим краям, но ни городов, ни логов ещё нет.');
   for (const i of a.ancientBarrows) say(a, `Курганы незапамятных времён стоят ${wherePhrase(a, i)}: кто в них лежит, не помнит никто.`);

@@ -166,7 +166,7 @@ for (let s = 0; s < seeds; s++) {
   {
     const a = fresh(), K = newCampaign(a, pick[0].town, {mode: 'auto'});
     stepCampaign(a);
-    K.members.push({...K.members[0], id: 999, name: 'Пристав', core: false, role: 'freed', loyalty: 0.5, alive: true, hp: 1});
+    K.members.push({...K.members[0], id: 999, name: 'Пристав', core: false, role: 'freed', loyalty: 1, alive: true, hp: 1});
     for (const m of K.members.filter(x => x.core)) { m.alive = false; m.died = {day: K.day, year: a.hist.year, why: 'пал в проверке'}; }
     for (let k = 0; k < 10 && stepCampaign(a); k++);
     const epi = K.log.filter(l => l.kind === 'epilogue').map(l => l.text);

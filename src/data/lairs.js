@@ -190,6 +190,21 @@ export const LEADER = {chance: 0.08, heir: 0.5, max: 30, stats: ['S', 'E', 'A'],
 //             luck[1] × a roll); the loser × loser, the winner × winner; a loser below `routed` is gone
 //   start:    a wild lair's strength at the dawn: start[0] + start[1] × a roll (a dragon's dragonStart); a lair that
 //             comes through history (the dead, a rift) starts at spawnStart (a rift at fiendStart)
+// The lairs' folk as fields (atlas/lairs.js; docs/WORLD.md «Живность»): the owners of the lairs — beasts with a habitat
+// (wargs, griffins, spiders…) and the tribes (goblins, ogres, gnolls, trolls, giants: their K is their race's home over
+// the land) — live as densities on the beasts' grid, like any beast; but a monster does not breed away from a lair. A lair
+// is their source; away from the lairs they wander off (the beasts' diffusion) and dwindle:
+//   source: a season, every living lair adds source × its strength × K × (1 − d/r) to its owners' density within its
+//           territory r (never above cap × K by it)
+//   fade:   a season, a lair's kind away from the lairs loses this share (no breeding without a lair)
+//   pulse:  a new lair brings its own: the density about it is at least pulse × its strength × K × (1 − d/r)
+//   brood:  a brood is a migration: where it settles it pours brood × K × (1 − d/r) of its kind
+//   birth:  in spring, where the owners of a lair kind are this dense against K and no living lair stands within its
+//           territory, they settle: a lair is born — at most `births` a year (× the world's scale²)
+//   own:    the kind of a new lair (a brood's, the wild's, one born of the density) is drawn among the kinds whose ground
+//           fits the spot by how thick their owners already live there; the newcomers' own kind weighs `own` more
+export const LAIR_FIELD = {source: 0.12, cap: 1, fade: 0.06, pulse: 0.7, brood: 0.5, birth: 0.7, births: 1.5, own: 0.6};
+
 // The wild keeps its dangers (atlas/lairs.js spawnWild, docs/WORLD.md «Скрытые логова»). Once the peoples are in the
 // world, each spring the wild gives new lairs — `perYear` on average a year (× the world's scale²) — of a kind below its max ×
 // LAIR_LIFE.crowdMax (the kinds tried in a random order until one finds ground), on its ground, in the wild only — the backwoods between the towns: no people's land thicker than `land` and no

@@ -2,12 +2,15 @@
 // Every species with a habitat gets a carrying capacity K from the biomes of each coarse cell and a
 // density N. Each season herbivores grow logistically, predators eat their prey (Holling type II) and
 // grow or starve, everyone wanders a little to the neighbours, and spirits stay bound to their places.
-// Lairs (atlas/lairs.js) hold the density of their owners up around them.
+// The owners of the lairs (`lair`: monsters with a habitat, and the tribes — role 'folk', their field made by
+// atlas/lairs.js lairFolk) breed only at a lair (its source, atlas/lairs.js stepLairs): away from it they eat, wander and
+// dwindle (data/lairs.js LAIR_FIELD.fade).
 //
-// a.fauna = {c, W, H, list: [{id, sp, role: 'prey'|'predator'|'spirit', K, N, prey: [indices], usual}]}
+// a.fauna = {c, W, H, list: [{id, sp, role: 'prey'|'predator'|'spirit'|'folk', lair?, K, N, prey: [indices], usual}], folk}
 import {SPECIES} from '../data/species.js';
 import {RARITY} from '../data/biomes.js';
 import {FAUNA} from '../data/history.js';
+import {LAIR_FIELD} from '../data/lairs.js';
 import {ROCK_BY_CODE} from '../data/geology.js';
 import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
@@ -88,6 +91,7 @@ export function plague(a, rnd) {
 export function stepFauna(a, seasonId) {
   const F = a.fauna, P = FAUNA, n = F.W * F.H, g0 = P.season[seasonId] ?? 1;
   // the season's buffers live on the fauna, so a season makes no garbage
+  if (F.buf && F.buf.eaten.length !== F.list.length) F.buf = null;   // (the lairs' folk joined the list)
   const B = F.buf ||= {tmp: new Float32Array(n), zero: new Float32Array(n), eaten: F.list.map(() => new Float32Array(n))};
   const tmp = B.tmp, wx = F.weather || B.zero, eaten = B.eaten;
   for (const e of eaten) e.fill(0);
@@ -105,7 +109,8 @@ export function stepFauna(a, seasonId) {
       // fed predators breed in the good seasons; hungry ones die off; never past their habitat
       const Kp = Math.max(s.K[j], 1e-4);
       const g = gAt(j);
-      s.N[j] += pr * (P.growth * Math.max(0, g) * sat * (1 - pr / Kp) - P.starve * (1 - sat) - (g < 0 ? -g * 0.3 : 0));
+      // (a lair's monsters breed at the lair, not here: they only dwindle — atlas/lairs.js is their source)
+      s.N[j] += pr * ((s.lair ? -LAIR_FIELD.fade : P.growth * Math.max(0, g) * sat * (1 - pr / Kp)) - P.starve * (1 - sat) - (g < 0 ? -g * 0.3 : 0));
     }
   }
   for (const [k, s] of F.list.entries()) {
@@ -117,6 +122,7 @@ export function stepFauna(a, seasonId) {
       // together cannot take more than there is
       s.N[j] = K > 0 ? Math.max(0, N0 + P.growth * g * N0 * (g > 0 ? 1 - N0 / K : 1) - Math.min(eaten[k][j], N0)) : N0 * 0.5;
     }
+    else if (s.role === 'folk' || (s.lair && (s.role !== 'predator' || !s.prey.length))) for (let j = 0; j < n; j++) s.N[j] *= s.K[j] > 0 ? 1 - LAIR_FIELD.fade : 0.5;
     diffuse(F, s.N, s.K, P.diffuse * s.speed, tmp);
     for (let j = 0; j < n; j++) if (s.N[j] < P.floor * Math.max(s.K[j], 0.05)) s.N[j] = 0;
   }

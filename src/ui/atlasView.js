@@ -67,7 +67,8 @@ const OPTS = {
   wild: WILD_YEARS.map((e, i) => [i, e.label]),
   elder: ELDER_YEARS.map((e, i) => [i, e.label]),
   young: YOUNG_YEARS.map((e, i) => [i, e.label]),
-  fauna: SPECIES.filter(sp => sp.habitat).map(sp => [sp.id, sp.plural]),
+  // the beasts with a habitat, and the tribes of the lairs (their fields: atlas/lairs.js lairFolk)
+  fauna: [...SPECIES.filter(sp => sp.habitat), ...[...new Set(LAIRS.filter(L => L.tribe).map(L => L.species))].map(id => SPECIES.get(id))].map(sp => [sp.id, sp.plural]),
   layer: [['relief', 'Рельеф'], ['plates', 'Плиты'], ['rocks', 'Породы'], ['ores', 'Руды'], ['temp', 'Температура'], ['wind', 'Ветры'], ['rain', 'Осадки'], ['biomes', 'Биомы'], ['soils', 'Почвы'], ['fauna', 'Звери'], ['peoples', 'Народы'], ['realms', 'Державы']],
   ore: ORE_GENESIS.all().map(o => [o.id, o.label]),
 };
@@ -277,7 +278,7 @@ export class MapView {
         return mix([60, 60, 56], s.color, 0.6 + 0.4 * f.fert[i]);
       }
       case 'fauna': {
-        if (!a.fauna || f.ocean[i]) return mix(base, [8, 12, 20], 0.4);
+        if (!a.fauna || f.ocean[i] || !(this.fauna in a.fauna.idx)) return mix(base, [8, 12, 20], 0.4);
         const v = faunaAt(a, i, this.fauna), sp = SPECIES.get(this.fauna), K = a.fauna.list[a.fauna.idx[this.fauna]].K[faunaCellOf(a, i)];
         if (K <= 0) return mix(base, [40, 40, 36], 0.75);
         const col = sp.look?.color ? hexRgb(sp.look.color) : [220, 120, 60];
@@ -723,7 +724,7 @@ export class MapView {
     if (a.fauna && !f.ocean[i]) {
       const word = v => (v >= 0.8 ? 'много' : v >= 0.45 ? 'есть' : 'мало');
       const beasts = a.fauna.list.filter(s => s.role !== 'spirit').map(s => [s, faunaAt(a, i, s.id)]).filter(([, v]) => v > 0.15).sort((p, q) => q[1] - p[1]).slice(0, 4);
-      if (beasts.length) parts.push('звери: ' + beasts.map(([s, v]) => `${s.sp.plural} ${word(v)}`).join(', '));
+      if (beasts.length) parts.push('живность: ' + beasts.map(([s, v]) => `${s.sp.plural} ${word(v)}`).join(', '));
     }
     const geo = cellGeology(a, i);
     if (geo.rock) parts.push(geo.rock.label);

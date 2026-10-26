@@ -12,7 +12,7 @@
 // The rot (data/lairs.js ROT): a field on the coarse grid fed by the graves; where it is thick the
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
-import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD} from '../data/lairs.js';
+import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD, LAIR_FIELD as LF} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves} from './diplomacy.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -93,7 +93,87 @@ export function newLair(a, L, i, rnd, strength, born = a.hist.year) {
   if (L.tribe) (a.tribeLand ||= {})[L.id] ||= homeField(a, L);
   const lair = {id: H.nextLair++, kind: L.id, i, x: i % a.w, y: (i / a.w) | 0, name, born, strength, ancient: born <= H.year - LAIR_AGE.ancient, alive: true};
   a.lairs.push(lair);
+  pour(a, lair, L, LF.pulse * strength, false);   // a new lair brings its own about it
   return lair;
+}
+
+// ── the lairs' folk as fields (data/lairs.js LAIR_FIELD): the owners of the lairs on the beasts' grid
+// once a world: the tribes get a field of their own (K — their race's home over the land), every lair kind's owners are
+// marked `lair` (they breed only at a lair: atlas/fauna.js stepFauna); in a world with no lair yet their density starts
+// empty — the lairs pour it out about them
+export function lairFolk(a) {
+  const F = a.fauna; if (!F || F.folk) return;
+  const bySp = new Map();
+  for (const L of LAIRS.all()) if (L.species && !L.undead && !L.fiend && SPECIES.has(L.species)) bySp.set(L.species, [...(bySp.get(L.species) || []), L]);
+  const empty = !(a.lairs || []).length, N = F.W * F.H;
+  for (const [id, Ls] of bySp) {
+    let s = F.list[F.idx[id]];
+    if (!s) {
+      const K = new Float32Array(N), cnt = new Float32Array(N), sp = SPECIES.get(id);
+      for (let i = 0; i < a.n; i++) {
+        if (a.f.ocean[i]) continue;
+        const j = faunaCell(a, i); let v = 0;
+        for (const L of Ls) { const h = homeAt(a, L, i); if (h >= TRIBE_HOME && h > v) v = h; }
+        K[j] += v; cnt[j]++;
+      }
+      let usual = 0; for (let j = 0; j < N; j++) { K[j] = cnt[j] ? K[j] / cnt[j] : 0; usual += K[j]; }
+      s = {id, sp, role: 'folk', K, N: new Float32Array(N), speed: Math.min(2, (sp.speed || 0.15) / 0.15), usual, flagged: -99};
+      F.idx[id] = F.list.length; F.list.push(s);
+    }
+    s.lair = true;
+    if (empty) s.N.fill(0);
+  }
+  F.buf = null; F.folk = true;
+}
+// the owners of a lair poured about it, falling off to its edge: `add` — on top of what lives there (a brood's
+// migration), else at least so many (a new lair)
+function pour(a, lair, L, amount, add) {
+  const F = a.fauna, s = F && F.list[F.idx[L.species]]; if (!s || amount <= 0) return;
+  const c = F.c, rr = R(a, L) / c, cx = lair.x / c, cy = lair.y / c, R0 = Math.ceil(rr);
+  for (let y = Math.max(0, (cy | 0) - R0); y <= Math.min(F.H - 1, (cy | 0) + R0); y++) for (let x = Math.max(0, (cx | 0) - R0); x <= Math.min(F.W - 1, (cx | 0) + R0); x++) {
+    const j = y * F.W + x, w = 1 - Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / (rr + 1); if (w <= 0 || s.K[j] <= 0) continue;
+    const v = s.K[j] * amount * w; s.N[j] = add ? s.N[j] + v : Math.max(s.N[j], v);
+  }
+}
+export const pourBrood = (a, at, L) => pour(a, {x: at % a.w, y: (at / a.w) | 0}, L, LF.brood, true);
+// how thick the owners of a lair kind live about a cell, against what the land holds (0 — none)
+const thick = (a, L, i) => { const F = a.fauna, s = F && F.list[F.idx[L.species]], j = F ? faunaCell(a, i) : 0; return s && s.K[j] > 0 ? s.N[j] / s.K[j] : 0; };
+const wildKinds = a => LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town' && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * LL.crowdMax);
+// the kind of a new lair at a cell: drawn among the kinds whose ground fits by how thick their owners live there, the
+// newcomers' own kind (`own`) weighing LAIR_FIELD.own more; a kind with a lair of its own within two territories is
+// left out → the kind, or null
+export function kindAt(a, i, rnd, own = null) {
+  const p = {x: i % a.w, y: (i / a.w) | 0}, room = L => !a.lairs.some(o => o.alive && o.kind === L.id && dist(o, p) < 2 * R(a, L));   // (one kind's lairs keep apart)
+  const C = wildKinds(a).filter(L => groundFits(a, L, i) && room(L)).map(L => [L, thick(a, L, i) + (L.id === own ? LF.own : 0)]).filter(([, w]) => w > 0);
+  if (!C.length) return null;
+  let t = rnd() * C.reduce((v, [, w]) => v + w, 0);
+  for (const [L, w] of C) if ((t -= w) <= 0) return L;
+  return C[C.length - 1][0];
+}
+// spring: where the owners of a lair kind live thick and no lair stands, they settle — a lair is born of the density
+function bornOfDensity(a, rnd) {
+  const F = a.fauna, lines = []; if (!F) return lines;
+  const cand = [];
+  for (const s of F.list) if (s.lair) for (let j = 0; j < s.N.length; j++) if (s.K[j] > 0.05 && s.N[j] >= LF.birth * s.K[j]) cand.push([s.N[j] / s.K[j] + 0.1 * rnd(), j]);
+  if (!cand.length) return lines;
+  cand.sort((p, q) => q[0] - p[0]);
+  const k = scaleOf(a), want = LF.births * k * k, n = Math.floor(want) + (rnd() < want % 1 ? 1 : 0);
+  let made = 0;
+  for (const [, j] of cand) {
+    if (made >= n) break;
+    const x0 = (j % F.W) * F.c, y0 = ((j / F.W) | 0) * F.c;
+    for (let t = 0; t < 12; t++) {
+      const i = Math.min(a.n - 1, Math.min(a.h - 1, y0 + ((rnd() * F.c) | 0)) * a.w + Math.min(a.w - 1, x0 + ((rnd() * F.c) | 0)));
+      const L = kindAt(a, i, rnd); if (!L) continue;
+      const p = {x: i % a.w, y: (i / a.w) | 0};
+      if (a.lairs.some(o => o.alive && dist(o, p) < Math.max(R(a, L), R(a, LAIRS.get(o.kind))))) continue;
+      const lair = hideIfWild(a, newLair(a, L, i, rnd, LL.broodStart)), who = SPECIES.get(L.species).plural;
+      lines.push(lair.hidden ? `В глуши ${wherePhrase(a, i)} осели бродячие ${who}: где их ${L.label.split(' ')[0]}, не знает ни одна держава.`
+        : `Бродячие ${who} осели ${wherePhrase(a, i)}: ${G[L.g].fresh} ${acc(L)} — «${lair.name}».`);
+      made++; break;
+    }
+  }
+  return lines;
 }
 
 export const R = (a, L) => L.radius * scaleOf(a);
@@ -194,6 +274,7 @@ export function stepRot(a) {
 
 export function placeLairs(a, rnd) {
   a.lairs = []; a.tribeLand = {};
+  lairFolk(a);
   a.ancientBarrows = seedRot(a, rnd);
   return wildLairs(a, rnd);
 }
@@ -222,9 +303,10 @@ export const power = sp => { const s = SPECIES.get(sp).special; return (s.S[0] +
 // one season of every lair; returns lines for the chronicle
 export function stepLairs(a, rnd, seasonId) {
   const H = a.hist, F = a.fauna, lines = [];
+  lairFolk(a);   // (a world saved before the lairs' folk had fields)
   stepRot(a);
   if (a.ratsLines) { lines.push(...a.ratsLines); a.ratsLines = null; }
-  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd), ...spawnWild(a, rnd));
+  if (seasonId === 'spring') lines.push(...spawnLairs(a, rnd), ...spawnWild(a, rnd), ...bornOfDensity(a, rnd));
   for (const lair of a.lairs) {
     if (!lair.alive) continue;
     const L = LAIRS.get(lair.kind), r = R(a, L), s = L.tribe || L.undead || L.fiend || L.dragon ? null : F.list[F.idx[L.species]];
@@ -251,8 +333,13 @@ export function stepLairs(a, rnd, seasonId) {
     lair.strength = Math.max(0, Math.min(1, lair.strength + LL.grow * (fed - LL.need) - winter + LL.wobble * (rnd() - 0.5)));
     // a calamity's boss (atlas/calamity.js) keeps its lair up while it lives: it falls only with the boss
     if (lair.boss != null) lair.strength = Math.max(lair.strength, CAL.boss.floor);
-    // the lair keeps its species about: the density near it does not fall below its strength
-    if (s) for (const j of cells) if (s.K[j] > 0) s.N[j] = Math.max(s.N[j], s.K[j] * lair.strength);
+    // the lair is its owners' source: they breed here and spread out about it (data/lairs.js LAIR_FIELD)
+    const own = F.list[F.idx[L.species]];
+    if (own) for (const j of cells) {
+      const K = own.K[j]; if (K <= 0) continue;
+      const w = 1 - Math.hypot(j % F.W + 0.5 - lair.x / c, ((j / F.W) | 0) + 0.5 - lair.y / c) / (r / c + 1); if (w <= 0) continue;
+      if (own.N[j] < LF.cap * K) own.N[j] = Math.min(LF.cap * K, own.N[j] + LF.source * lair.strength * K * w);
+    }
     if (host && host.alive && seasonId === 'autumn') { host.pop *= 1 - L.drinks * lair.strength; raidGraves(a, host); }
     // the captives at the lair waste away (CAPTIVE_RAID.keep a year): eaten, worked to death, raised
     if (seasonId === 'spring' && lair.captives) for (const k of Object.keys(lair.captives)) { lair.captives[k] = Math.floor(lair.captives[k] * CAPTIVE_RAID.keep); if (!lair.captives[k]) delete lair.captives[k]; }
@@ -377,8 +464,9 @@ function spawnWild(a, rnd) {
   for (let q = 0; q < n; q++) {
     const kinds = LAIRS.filter(L => !L.spawn && !L.dragon && L.at !== 'town' && a.lairs.filter(o => o.alive && o.kind === L.id).length < L.max * LL.crowdMax);
     while (kinds.length) {
-      const L = kinds.splice((rnd() * kinds.length) | 0, 1)[0], i = findSpot(a, L, rnd, null, WILD.tries, j => wildAt(a, j));
+      const L0 = kinds.splice((rnd() * kinds.length) | 0, 1)[0], i = findSpot(a, L0, rnd, null, WILD.tries, j => wildAt(a, j));
       if (i < 0) continue;
+      const L = kindAt(a, i, rnd, L0.id) || L0;   // the land's own monsters take in the newcomers
       const lair = newLair(a, L, i, rnd, WILD.start); lair.hidden = true;
       lines.push(`В глуши ${wherePhrase(a, i)} завелись ${SPECIES.get(L.species).plural}: где их ${L.label.split(' ')[0]}, не знает ни одна держава.`);
       break;
