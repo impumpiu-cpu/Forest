@@ -10,7 +10,7 @@
 //             take no rank.
 //   where   — camp: on the local map of a campaign's camp (the fights of the march); settlement: raids on a settlement.
 //   the dead — mindless, they take no officer: the strongest bones of each link become its wight (the mark «умертвие»):
-//             its link follows it (a.master), and when it falls, the necromancer above it if he stands (a.masterUp),
+//             its link hangs on it (a.master), and when it falls, the necromancer above it if he stands (a.masterUp),
 //             otherwise they lose their way and wander off (agents/behaviours/retreat.js)
 // The names of the ranks are the band's own (data/raids.js `ranks`: «десятник» of the bandits, «атаман» over them).
 export const RANK_RULES = {
@@ -24,6 +24,5 @@ export const RANK_RULES = {
   pay: {camp: 1, settlement: 0.85},
 };
 
-export const RANK_LABELS = {pawn: 'пешка', officer: 'офицер', boss: 'босс'};
 // the officer's rank name when its band has none of its own
 export const OFFICER_DEFAULT = 'старший';

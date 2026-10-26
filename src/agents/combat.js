@@ -42,7 +42,7 @@ export const attackerOf = (w, a) => firstAttacker(w, a);
 export const sneakSeen = t => COMBAT.sneak.seen + COMBAT.sneak.armour * (t.gear?.armor || 0);
 export function canSee(w, a, t) {
   if (t.hiddenUntil > w.tick) return false;
-  if (t.sneaking && !aggressor(a, t) && Math.hypot(t.x - a.x, t.y - a.y) > sneakSeen(t)) return false;
+  if (t.sneaking && !t.downed && !t.captive && !aggressor(a, t) && Math.hypot(t.x - a.x, t.y - a.y) > sneakSeen(t)) return false;   // the fallen and the bound creep no more
   if (t.veil == null || aggressor(a, t)) return true;
   return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
 }
@@ -123,7 +123,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (stun && w.rngs.hits() < stun) t.stunned = {until: w.tick + CONDITIONS.get('stunned').ticks};
   // a net (quality `ensnare`): tangled — slow, and no blow until it is shaken off (COMBAT.net)
   const snare = traitOf(q, 'ensnare');
-  if (snare && w.rngs.hits() < snare) { const N = COMBAT.net; t.webbed = {slow: N.slow, until: w.tick + N.ticks}; t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + N.hold)}; t.netted = w.tick; }
+  if (snare && w.rngs.hits() < snare) { const N = COMBAT.net; t.webbed = {slow: N.slow, until: w.tick + N.ticks}; t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + N.hold)}; }
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;

@@ -92,7 +92,7 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
 // the roles' own ways (agents/tactics.js), each on a scene of its own: a band of bandits, a few colonists about
 {
   const {roleTactic} = await import('../src/agents/tactics.js'), {createAgent} = await import('../src/agents/agent.js');
-  const {dress} = await import('../src/agents/equipment.js'), {TASKS} = await import('../src/agents/tasks.js');
+  const {dress} = await import('../src/agents/equipment.js'), {TASKS} = await import('../src/agents/tasks.js'), {TACTICS} = await import('../src/data/behaviour.js'), {canSee} = await import('../src/agents/combat.js'), {maxHp} = await import('../src/agents/agent.js');
   const scene = () => {
     const w = game('tactics'); w.agents = w.agents.filter(a => a.faction !== 'colony');
     const g = spawnGroup(w, 'raiders', raiderStrength(5) * 6, {band: 'bandits'}), sq = squadOf(w, g[0]);
@@ -125,7 +125,33 @@ const game = seed => newGame({...DEFAULT_CFG, seed, size: 'small', raids: 'off'}
     const t = roleTactic(w, h, sq, 14);
     expect(t?.id === 'mend' && t.who === f.id, 'знахарь не идёт к упавшему');
     h.task = t; for (let k = 0; k < 200 && f.downed; k++) { w.tick++; TASKS.get('mend').step(w, h, h.task); if (!h.task) break; }
-    expect(!f.downed, 'знахарь не поднял упавшего'); }
+    expect(!f.downed, 'знахарь не поднял упавшего');
+    expect(f.hp >= TACTICS.mend.standUp * maxHp(f) - 1e-9 && !f.fellNoted, 'поднятый знахарем не встал на бой или числится павшим'); }
+  // an archer steps back once, then stands and shoots a while before it steps back again
+  { const {w, g, sq} = scene(), a = g[0]; as(a, 'archer', ['bow', 'quiver']);
+    const c = foe(w, a.x + 1.5, a.y); c.task = {id: 'fight', target: a};
+    a.task = roleTactic(w, a, sq, 14); for (let k = 0; k < TACTICS.kiteFor + 5 && a.task; k++) { w.tick++; TASKS.get('kite').step(w, a, a.task); }
+    c.x = a.x + 1.5; c.y = a.y;
+    expect(roleTactic(w, a, sq, 14)?.id !== 'kite', 'стрелок отходит без передышки'); }
+  // a cutthroat that fell or was bound creeps no more
+  { const {w, g, sq} = scene(), a = g[0]; as(a, 'cutthroat', ['irondagger', 'irondagger']);
+    const c = foe(w, a.x + 6, a.y); roleTactic(w, a, sq, 14);
+    const crept = a.sneaking; a.downed = {until: w.tick + 999};
+    expect(crept && canSee(w, c, a), 'упавшего головореза не видно'); }
+}
+
+// the band's plan survives the ranks: a band that came to loot keeps its looters when its weakest stay home; the orcs bring
+// their ogres again (a role no link has a place for comes in among the links)
+{
+  let looted = 0, bands = 0, ogres = 0;
+  for (let i = 0; i < 12; i++) {
+    const w = game('plan' + i), g = spawnGroup(w, 'raiders', raiderStrength(8) * 8, {band: 'bandits'}), sq = squadOf(w, g[0]);
+    if (sq?.goal === 'loot') { bands++; if (g.some(a => a.sqRole === 'looter' && !a.gone)) looted++; }
+  }
+  const {RAID_BANDS} = await import('../src/data/raids.js'), {mulberry} = await import('../src/core/rng.js'), r = mulberry(5);
+  for (let i = 0; i < 40; i++) ogres += RAID_BANDS.get('orcs').members({}, r, raiderStrength(15) * 14, 15).filter(m => m.species === 'ogre').length;
+  expect(looted === bands, `банды за добычей без грабителей: ${bands - looted} из ${bands}`);
+  expect(ogres > 0, 'огры не приходят с орками');
 }
 
 if (bad.length) { console.log('Роли и ранги:\n  ' + bad.join('\n  ')); process.exit(1); }

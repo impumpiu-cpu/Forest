@@ -40,13 +40,14 @@ export function strengthParts(a, {now = false} = {}) {
   melee *= sly(g.melee.q) * pierceGain(g.melee.q);
   // the other hand strikes after the main blow (quality `paired`, agents/combat.js attack)
   const off = g.offhand;
-  if (off) melee += (BLOW.base + BLOW.spread / 2) * off.dmg * off.share * mixGain(off) * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * (1 + pc * (CRIT.mul + traitOf(off.q, 'vicious') - 1)) * sly(off.q) / cd;
+  if (off) melee += (BLOW.base + BLOW.spread / 2) * off.dmg * off.share * mixGain(off) * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * (1 + pc * (CRIT.mul + traitOf(off.q, 'vicious') - 1)) * sly(off.q) * pierceGain(off.q) / cd;
   let shot = 0;
   if (g.ranged) {
     const hit = Math.min(0.95, Math.max(0.05, HIT.base + HIT.skill * (a.skill?.ranged ?? HIT.noSkill) + (m.aim || 0) - HIT.far * 0.5));
     shot = (SHOT.base + SHOT.spread / 2) * g.ranged.dmg * mixGain(g.ranged) * critShot * hit / g.ranged.cd * STRENGTH.rangedWeight;
     shot *= pierceGain(g.ranged.q);   // through the armour of the average foe
-    const throws = traitOf(g.ranged.q, 'thrown'); if (throws) shot *= Math.min(1, throws / COMBAT.thrown.shots);   // a bundle, not a quiverful
+    // a bundle, not a quiverful; as it is now — what is left of it
+    const throws = traitOf(g.ranged.q, 'thrown'); if (throws) shot *= Math.min(1, (now ? g.ranged.item?.ammo ?? throws : throws) / COMBAT.thrown.shots);
   }
   // a shooter shoots while the foe comes or is held by others, and strikes with the bow once it is close
   const offence = melee + shot;

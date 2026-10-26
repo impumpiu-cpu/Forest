@@ -63,7 +63,7 @@ const offerPrice = (o, st) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.
 // what a town sells; its arms and armour are its smiths' work: they bear the mark of its people (data/balance/marks.js)
 // (with the world `a`: not the metals its realm has not learnt to work — data/tech.js, atlas/tech.js)
 // (nor a form its people will not touch: no crossbow in an elven town — data/kinds.js RACE_FORMS)
-export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || techAllowsMaterial(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.get(t.people)?.race, gearDef(o.id)?.form))).map(o => townMade(o, t));
+export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || techAllowsMaterial(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);

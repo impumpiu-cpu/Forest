@@ -104,6 +104,7 @@ export const rolesOf = (species, bias = null) => COMBAT_ROLES.all().map(r => [r.
 
 // the role a member of a band takes: one the band still lacks by its `least` ({role: share of heads}) first, then by weight.
 // `have` — the roles already in the band
+// (`least` counts within `have`: the caller gives the roles of the same species)
 export function drawRole(rng, species, {bias = null, least = null, have = []} = {}) {
   const may = rolesOf(species, bias); if (!may.length) return null;
   const heads = have.length + 1;
@@ -144,7 +145,7 @@ export function roleKit(species, role, rng, t) {
   const best = mix.best ?? 4, out = [];
   // the weapons of one metal; a set with a form not made so low (a mace, a sword before bronze) drops out
   const hand = tierFor(rng, t, best), sets = R.hands.filter(([fs]) => fs.every(f => !forms()[f] || hasBelow(f, hand) && mayWield(species, f)));   // nor one its race will not touch
-  for (const f of weighted(rng, sets.length ? sets : R.hands) || []) { const id = pieceOf(f, hand); if (id) out.push(id); }
+  for (const f of weighted(rng, sets.length ? sets : R.hands) || []) { const id = mayWield(species, f) ? pieceOf(f, hand) : null; if (id) out.push(id); }   // (a set of no tier: still never a form its race will not touch)
   const tier = tierFor(rng, t, best), body = (ARMOUR[R.body] || []).filter(([f]) => hasBelow(f, tier));
   if (body.length) { const id = pieceOf(weighted(rng, body), tier); if (id) out.push(id); }
   for (const f of R.back || []) { const id = pieceOf(f, 0); if (id && (f !== 'quiver' || out.some(x => ITEMS.get(x).ranged?.ammo))) out.push(id); }   // a quiver only for what shoots from one

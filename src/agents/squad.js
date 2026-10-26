@@ -96,7 +96,7 @@ export function createSquad(w, group) {
     if (a.warBeast) a.sqRole = 'beast';
     else if (goal === 'scout') a.sqRole = 'scout';
     else if (kind === 'mindless') a.sqRole = 'front';
-    else if (a.fightRole ? COMBAT_ROLES.get(a.fightRole).squad === 'shooter' && a.gear?.ranged : a.gear?.rangedReady) a.sqRole = 'shooter';   // by its role (data/roles.js), a stray by what it holds
+    else if (a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).squad === 'shooter' && a.gear?.ranged : a.gear?.rangedReady) a.sqRole = 'shooter';   // by its role (data/roles.js), a stray by what it holds
     else rest.push(a);
   }
   rest.sort((x, y) => strength(x) - strength(y));   // weakest first: they loot and carry the torches
@@ -129,10 +129,10 @@ export function noteFallen(w, a) {
   a.fellNoted = true;   // fallen senseless first, killed after: one loss (agents/wounds.js)
   sq.fallen++;
   // an officer fallen: its link's share of the band is shaken at once (data/ranks.js loss)
-  if (hasMark(a, 'officer')) {
+  if (hasMark(a, 'officer') && a.id !== sq.leader) {   // (the leader's own fall: SQUAD.leaderLoss)
     const link = membersOf(w, sq).filter(o => o.link === a.id && o !== a).length + 1;
     sq.shaken = (sq.shaken || 0) + RANK_RULES.loss * link / sq.size;
-    if (a.id !== sq.leader && link > 1) log(w, `Пал ${esc(a.name)}: его звено дрогнуло.`, 'danger');
+    if (link > 1) log(w, `Пал ${esc(a.name)}: его звено дрогнуло.`, 'danger');
   }
   if (a.id === sq.leader && sq.kind === 'living' && membersOf(w, sq).some(o => o !== a)) log(w, `Пал вожак: ${esc(a.name)}.`, 'danger', 'notice');
 }
@@ -224,6 +224,7 @@ const fight = (w, a, e) => (a.task?.id === 'fight' && a.task.target === e ? a.ta
 
 // what a member of a squad does now; null when the plan has nothing to say (the brain's own default)
 export function planFor(w, a, sq, radius) {
+  a.sneaking = false;   // only a cutthroat's tactic creeps, each think anew (agents/tactics.js)
   // on the way out: the rear guard turns on pursuers for a while, everyone else goes
   // a looter already at the stores grabs what it can on the way out, whatever the band does
   if (a.sqRole === 'looter' && !a.looted && sq.state === 'retreat' && w.nav.get('camp')[cellOf(w, a)] <= SQUAD.grabNear) return a.task?.id === 'assault' ? a.task : {id: 'assault'};

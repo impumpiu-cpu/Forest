@@ -36,7 +36,8 @@ const fighting = o => (o.task?.id === 'fight' || o.task?.id === 'maul') && o.tas
 const soft = o => !!o.gear?.ranged || o.task?.id === 'aid' || o.task?.id === 'treat' || o.task?.id === 'bind' || hpShare(o) < TACTICS.wounded;
 
 // a blade at it: a foe close by, coming at this one, with no bow of its own
-const pressing = (a, foes) => foes.find(o => dist(a, o) < TACTICS.kite && o.task?.target === a && !o.gear?.rangedReady) || null;
+// (none while it rests from the last time it stepped back: TACTICS.kiteRest)
+const pressing = (w, a, foes) => (w.tick - (a.kitedAt ?? -Infinity) < TACTICS.kiteRest ? null : foes.find(o => dist(a, o) < TACTICS.kite && o.task?.target === a && !o.gear?.rangedReady) || null);
 const fightTask = (w, a, e) => (a.task?.id === 'fight' && a.task.target === e ? a.task : {id: 'fight', target: e, since: w.tick});
 const kite = (w, a, e) => (a.task?.id === 'kite' && a.task.from === e.id ? a.task : {id: 'kite', from: e.id});
 const members = (w, sq) => liveMembers(w, sq, o => !o.gone && !o.downed && o.squad === sq.id);
@@ -51,7 +52,7 @@ export function roleTactic(w, a, sq, radius) {
 
   // shooters (archer, skirmisher): keep the distance while there is something to shoot; the mindless stand and shoot
   if (R.squad === 'shooter') {
-    const press = pressing(a, foes);
+    const press = pressing(w, a, foes);
     if (mind !== 'mindless' && a.gear?.rangedReady && press) return kite(w, a, press);   // a blade coming at it: step back and shoot again
     if (mind === 'sentient' && a.gear?.rangedReady) {
       const pick = foes.find(o => dist(a, o) <= (a.gear.ranged.range || 0) && (o.gear?.ranged || hpShare(o) < T.wounded));
@@ -110,7 +111,7 @@ export function roleTactic(w, a, sq, radius) {
         if (hurt) return {id: 'mend', who: hurt.id, potion: true};
       }
       // a blade at it: behind its own, if any of the band stands near to take the blow; alone, it fights with the staff
-      const press = pressing(a, foes), cover = press && members(w, sq).some(m => m !== a && m.fightRole !== 'healer' && dist(a, m) < T.guard);
+      const press = pressing(w, a, foes), cover = press && members(w, sq).some(m => m !== a && m.fightRole !== 'healer' && dist(a, m) < T.guard);
       if (cover) return kite(w, a, press);
       return null;
     }

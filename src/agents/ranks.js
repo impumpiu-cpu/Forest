@@ -26,10 +26,14 @@ const mayRank = a => {
 };
 
 // make a member an officer: the mark, a finer grade of everything it carries, full health, its rank's name
-export function promote(a, band, leader) {
-  a.marks = [...(a.marks || []).filter(m => m !== 'officer'), 'officer'];
+// a mark of rank and everything it carries a grade finer (RANK_RULES.quality), at full health
+function raise(a, mark) {
+  a.marks = [...(a.marks || []).filter(m => m !== mark), mark];
   for (const it of allItems(a)) { const d = ITEMS.get(it.type); if (d.quality !== false) it.q = Math.min(3, (it.q || 0) + RANK_RULES.quality); }
   recalcGear(a); refreshBody(a); a.hp = maxHp(a);
+}
+export function promote(a, band, leader) {
+  raise(a, 'officer');
   // the band's leader keeps its title (Атаман, Орк-вожак); another officer is named by its rank
   if (!leader) {
     const rank = officerName(band), kind = SPECIES.get(a.species).label;
@@ -44,11 +48,12 @@ export function formLinks(w, group, where, leaderId = null) {
   const people = group.filter(mayRank);
   if (people.length < R.least) return [];
   // a band that came in links (data/roles.js LINKS) keeps them: the strongest of each is its officer (a link of one joins
-  // the one before it); the leader heads its own
+  // the one before it); the leader heads its own. Those who came in no link (an ogre with the orcs) join them by turns
   const nos = [...new Set(people.map(a => a.linkNo).filter(x => x != null))];
-  if (nos.length && people.every(a => a.linkNo != null)) {
+  if (nos.length) {
     const groups = [];
     for (const no of nos) { const g = people.filter(a => a.linkNo === no); if (g.length < 2 && groups.length) groups[groups.length - 1].push(...g); else groups.push(g); }
+    people.filter(a => a.linkNo == null).forEach((a, k) => groups[k % groups.length].push(a));
     const officers = [];
     for (const g of groups) {
       const o = g.find(a => a.id === leaderId) || g.slice().sort((p, q) => strengthOf(q) - strengthOf(p))[0];
@@ -72,8 +77,9 @@ export function formLinks(w, group, where, leaderId = null) {
 }
 
 // The dead of a band (mindless: no officer of their own) in links under a wight — the strongest bones of each link
-// (data/ranks.js): the mark «умертвие», a grade finer gear, its name; its link follows it (a.master = its id), the one
-// they followed before stays above it (a.masterUp: the necromancer). The beasts without hands (zombies) go by turns
+// (data/ranks.js): the mark «умертвие», a grade finer gear, its name; its link hangs on it (a.master = its id: while it
+// stands they stand, agents/behaviours/retreat.js), the one they hung on before stays above it (a.masterUp: the
+// necromancer). The beasts without hands (zombies) go by turns
 // to the links. Returns the wights.
 export function formUndeadLinks(w, group, where) {
   const R = RANK_RULES;
@@ -87,10 +93,8 @@ export function formUndeadLinks(w, group, where) {
   const wights = [];
   for (const g of groups) {
     const o = g.slice().sort((p, q) => strengthOf(q) - strengthOf(p))[0];
-    o.marks = [...(o.marks || []).filter(m => m !== 'wight'), 'wight'];
-    for (const it of allItems(o)) { const d = ITEMS.get(it.type); if (d.quality !== false) it.q = Math.min(3, (it.q || 0) + R.quality); }
-    recalcGear(o); refreshBody(o); o.hp = maxHp(o);
-    o.name = cap(officerName(o.band)); o.link = o.id; o.master = null;   // a will of its own
+    raise(o, 'wight');
+    o.name = 'Умертвие'; o.link = o.id; o.master = null;   // a will of its own (in a cultists' band too: «жрец» is a living one)
     wights.push(o);
   }
   // the rest of the dead: their link's wight; the zombies by turns
@@ -103,11 +107,13 @@ export function formUndeadLinks(w, group, where) {
 }
 
 // the side came out worth more than it was bought for (officers and wights made finer, a boss grown): its weakest
-// pawns go — never the boss, an officer or a wight — while what is left still covers `target`, and no fewer than
-// `atLeast` stay; the band's squad forgets them (agents/squad.js)
+// pawns go — never the boss, an officer or a wight, nor one the band's plan rests on (a looter, a torch, a scout: the
+// weakest get those tasks, agents/squad.js createSquad) — while what is left still covers `target`, and no fewer than
+// `atLeast` stay; the band's squad forgets them
+const KEEP_TASKS = new Set(['looter', 'torch', 'scout', 'leader']);
 export function trimBand(w, group, target, atLeast = 1) {
   for (;;) {
-    const rest = group.filter(g => !g.boss && !hasMark(g, 'officer') && !hasMark(g, 'wight')).sort((p, q) => strengthOf(p, {now: true}) - strengthOf(q, {now: true}));
+    const rest = group.filter(g => !g.boss && !hasMark(g, 'officer') && !hasMark(g, 'wight') && !KEEP_TASKS.has(g.sqRole)).sort((p, q) => strengthOf(p, {now: true}) - strengthOf(q, {now: true}));
     if (group.length <= atLeast || !rest.length || sideStrength(group, {now: true}) - strengthOf(rest[0], {now: true}) < target) break;
     const x = rest[0]; x.gone = true; group.splice(group.indexOf(x), 1);   // never came (the map drops the gone)
     const sq = x.squad != null ? w.squads?.[x.squad] : null;
@@ -115,5 +121,3 @@ export function trimBand(w, group, target, atLeast = 1) {
   }
 }
 
-// is this creature an officer (the mark)
-export const isOfficer = a => hasMark(a, 'officer');

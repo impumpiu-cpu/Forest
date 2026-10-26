@@ -15,6 +15,7 @@ import {step} from '../sim.js';
 import {PROVIDERS} from '../outside/index.js';
 import {formLinks, formUndeadLinks, promote, trimBand} from '../agents/ranks.js';
 import {RANK_RULES} from '../data/ranks.js';
+import {memberStrength} from '../data/raids.js';
 import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
@@ -22,7 +23,7 @@ import {refreshBody} from '../agents/special.js';
 import {attackerOf, sneakSeen} from '../agents/combat.js';
 import {wake} from '../agents/attention.js';
 import {nightSight} from '../data/tongues.js';
-import {sideStrength, strengthOf, expectedStrength} from '../agents/strength.js';
+import {sideStrength, expectedStrength} from '../agents/strength.js';
 import {dress, def, gearDef, gearToken, gearType} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
 import {putUp} from '../settlement/buildings.js';
@@ -208,7 +209,8 @@ function spawnFoe(w) {
   const bandMain = !(beast && MIGRATIONS.has(beast)), joined = W && W.beast && bandMain ? W : null;
   let group;
   if (joined) {
-    const sp = MIGRATIONS.get(joined.beast).species, n = Math.min(CAMP.foe.most, Math.max(1, Math.ceil((budget - main) / expectedStrength(sp, {key: 'wild'}))));
+    // they come as the band's war beasts, trained (data/conditions.js): bought at that price, not at a wild one's
+    const sp = MIGRATIONS.get(joined.beast).species, n = Math.min(CAMP.foe.most, Math.max(1, Math.ceil((budget - main) / memberStrength(sp, t))));
     const want = CAMP.threat * F.strength * (map.threat || 1);
     w.fame = 0; w.fame = want - raidThreat(w);
     group = spawnGroup(w, 'raiders', main, {...opts, band: band || 'bandits', fill: {up: true, max: {}, ...(F.pool && band === 'cultists' ? {pool: F.pool} : {})}, beasts: {species: sp, n}, atLeast: F.boss ? CAMP.boss.atLeast : 0});

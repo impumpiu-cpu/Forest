@@ -11,7 +11,8 @@
 //         scout. A band that lost many to the colony comes for blood more often; scouts only come small
 //         and only before the band has raided. The mindless dead always go for anything alive.
 //   roles — the band's leaning in its fighters' roles ({role: ×} over the species' weights, data/roles.js ROLE_MIX);
-//   least — the share of heads a role must have at least ({shield: 0.2}: one shield-bearer in five)
+//   least — the share of heads of one species a role must have at least ({shield: 0.2}: one shield-bearer in five)
+//           (`roles` and `least` are for a band without links; none of the bands uses them now)
 //   links — the links it comes in ([[link, weight], …]: data/roles.js LINKS): a band of links fills them place by place;
 //           without — its species drawn one by one, each in a role of its own (`roles`, `least` then apply)
 //   ranks — the band's names for its ranks ({officer: 'десятник'}: data/ranks.js)
@@ -63,10 +64,13 @@ export function raiderStrength(t) {
 }
 // A band of links (data/roles.js LINKS): a link drawn by the band's weights, its places filled in order — each with one of
 // the band's species that may take the role (its weight in the band × in «Роли видов», `max` as for fill) — then the
-// next link, while the budget lasts by the same rule as fill. The beasts of the mix (no hands, no roles) come in among
-// them by their share of its weight. Every member knows its link (`linkNo`, `link`: its id).
+// next link, while the budget lasts by the same rule as fill. The rest of the mix comes in among them by its share of
+// its weight: the beasts (no hands, no roles) and those whose roles none of the band's links has a place for (an ogre
+// with the orcs: a brute, drawn its role of its own). Every member of a link knows it (`linkNo`, `linkKind`).
 function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
-  const out = [...extra], people = mix.filter(([sp, wt]) => wt > 0 && SPECIES.get(sp).inventory), beasts = mix.filter(([sp, wt]) => wt > 0 && !SPECIES.get(sp).inventory);
+  const places = new Set(links.flatMap(([id]) => (LINKS.has(id) ? LINKS.get(id).roles : [])));
+  const linked = sp => SPECIES.get(sp).inventory && Object.keys(mixOf(sp)).some(r => places.has(r) && mixOf(sp)[r] > 0);
+  const out = [...extra], people = mix.filter(([sp, wt]) => wt > 0 && linked(sp)), beasts = mix.filter(([sp, wt]) => wt > 0 && !linked(sp));
   const P = people.reduce((s, m) => s + m[1], 0), B = beasts.reduce((s, m) => s + m[1], 0);
   let left = budget - extra.reduce((s, m) => s + memberStrength(m.species, t), 0), no = 0, kind = null, slot = 0;
   const fits = c => (up ? left > 0 : c / 2 <= left);
@@ -76,7 +80,8 @@ function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
     if (B > 0 && rng() < B / (P + B)) {
       const sp = weighted(rng, beasts.filter(([s]) => under(s) && fits(cost(s))));
       if (!sp) { if (!P) break; continue; }
-      out.push({species: sp}); left -= cost(sp); continue;
+      const role = SPECIES.get(sp).inventory ? drawRole(rng, sp) : null;   // an ogre: a brute of its own, in no link
+      out.push({species: sp, ...(role ? {role} : {})}); left -= cost(sp, role); continue;
     }
     if (!P) continue;
     if (!kind || slot >= LINKS.get(kind).roles.length) { kind = weighted(rng, links.filter(([id]) => LINKS.has(id))); no++; slot = 0; }
@@ -84,7 +89,7 @@ function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
     const sp = weighted(rng, people.map(([s, wt]) => [s, wt * (mixOf(s)[role] || 0)]).filter(([s, wt]) => wt > 0 && under(s)));
     if (!sp) continue;   // nobody of this band takes the role: the place stays empty
     if (!fits(cost(sp, role))) { if (fits(cost(sp))) continue; break; }   // too dear: the cheaper places may still fit
-    out.push({species: sp, role, linkNo: no, link: kind}); left -= cost(sp, role);
+    out.push({species: sp, role, linkNo: no, linkKind: kind}); left -= cost(sp, role);
   }
   if (!out.length) { const sp = (people[0] || mix[0])[0], role = SPECIES.get(sp).inventory ? drawRole(rng, sp) : null; out.push({species: sp, ...(role ? {role} : {})}); }
   return out.slice(0, 18);
