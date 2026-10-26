@@ -28,6 +28,8 @@ import {agentById, liveById, firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
 import {SQUAD} from '../data/behaviour.js';
 import {COMBAT_ROLES} from '../data/roles.js';
+import {RANK_RULES} from '../data/ranks.js';
+import {hasMark} from '../data/conditions.js';
 
 export {SQUAD};   // (data/behaviour.js)
 export const GOALS = {
@@ -123,6 +125,12 @@ export function noteFallen(w, a) {
   const sq = squadOf(w, a); if (!sq || a.fellNoted) return;
   a.fellNoted = true;   // fallen senseless first, killed after: one loss (agents/wounds.js)
   sq.fallen++;
+  // an officer fallen: its link's share of the band is shaken at once (data/ranks.js loss)
+  if (hasMark(a, 'officer')) {
+    const link = membersOf(w, sq).filter(o => o.link === a.id && o !== a).length + 1;
+    sq.shaken = (sq.shaken || 0) + RANK_RULES.loss * link / sq.size;
+    if (a.id !== sq.leader && link > 1) log(w, `Пал ${esc(a.name)}: его звено дрогнуло.`, 'danger');
+  }
   if (a.id === sq.leader && sq.kind === 'living' && membersOf(w, sq).some(o => o !== a)) log(w, `Пал вожак: ${esc(a.name)}.`, 'danger', 'notice');
 }
 // a member left the map alive (tasks.js leave)
@@ -148,7 +156,10 @@ export function moraleOf(w, sq, ms = membersOf(w, sq)) {
   const leaderDown = !ms.some(m => m.id === sq.leader);
   const own = ms.reduce((s, a) => s + strength(a), 0), foes = defenders(w, ms);
   const odds = foes > 0 ? clamp((own / foes - 1) * SQUAD.odds, -SQUAD.odds * 1.5, SQUAD.odds) : 0;
-  return 1 - SQUAD.lossWeight * sq.fallen / sq.size - (leaderDown ? SQUAD.leaderLoss : 0) + odds;
+  // the links whose officer stands hold the band together; a fallen officer shook it (data/ranks.js)
+  const officers = new Set(ms.filter(m => hasMark(m, 'officer')).map(m => m.id));
+  const linked = officers.size ? ms.filter(m => m.link != null && officers.has(m.link)).length / sq.size : 0;
+  return 1 - SQUAD.lossWeight * sq.fallen / sq.size - (leaderDown ? SQUAD.leaderLoss : 0) + odds + RANK_RULES.rally * linked - (sq.shaken || 0);
 }
 
 function finish(w, sq) {
@@ -257,5 +268,7 @@ export function squadText(w, a) {
   const state = sq.state === 'march' ? `боевой дух ${Math.round(clamp(sq.morale, 0, 1.5) * 100)}%` : sq.state === 'retreat' ? `отступают (${sq.reason})` : `уходят (${sq.reason})`;
   const left = membersOf(w, sq).length;
   const fr = a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).label : null;
-  return `${fr ? fr + ', ' : ''}${ROLES[a.sqRole] || '—'}${a.id === sq.leader && a.sqRole !== 'leader' ? ', вожак' : ''}; цель — ${goal}; ${state}; в строю ${left} из ${sq.size}`;
+  const lead = a.link != null && a.link !== a.id ? agentById(w, a.link) : null;
+  const rank = hasMark(a, 'officer') ? `офицер звена из ${membersOf(w, sq).filter(o => o.link === a.id).length}; ` : lead ? `в звене ${lead.name}${lead.dead || lead.downed ? ' (пал)' : ''}; ` : '';
+  return `${rank}${fr ? fr + ', ' : ''}${ROLES[a.sqRole] || '—'}${a.id === sq.leader && a.sqRole !== 'leader' ? ', вожак' : ''}; цель — ${goal}; ${state}; в строю ${left} из ${sq.size}`;
 }

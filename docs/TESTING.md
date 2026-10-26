@@ -27,7 +27,7 @@
 ```text
 check-layers · atlas-check 2 · atlas-save-check 1 · map-check 3 · seam-check 16 · campaign-check 2 ·
 check-data · check-tables · align-check · leaders-check · tech-check · kinds-check · fight-check ·
-conditions-check · checks-check · clock-check · kingdom-check · content-check · land-check · settle-check ·
+conditions-check · ranks-check · checks-check · clock-check · kingdom-check · content-check · land-check · settle-check ·
 quest-hand-check · audit-check · logic-check · behaviour-check · world-check · determinism 2 · rng-check 3 · smoke 2
 ```
 
@@ -71,6 +71,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 | `npm run fight` | `fight-check.mjs` | бой: типы урона и «Урон по видам», свойства оружия, места попадания, травма по месту, КС видит это |
 | `npm run conditions` | `conditions-check.mjs` | состояния: раны и травмы — строки таблицы, кровотечение и оглушение идут и проходят, истощение |
 | — | `clock-check.mjs` | часы наблюдателя: стоянка держит мир при смене темпа, старте и паузе и отпускает с её дня (поддельные таймеры, без браузера) |
+| `npm run ranks` | `ranks-check.mjs` | роли и ранги банды: бойцы в ролях своей матрицы и с их вещами, звери выучены; звенья под офицерами, малая аура, павший офицер шатает дух; в набегах на поселение рангов нет |
 | `npm run checks` | `checks-check.mjs` | лестница сложности, степени успеха (не меняют исход), таблицы случайностей тянут как прежде |
 | `npm run kingdom` | `kingdom-check.mjs` | держава: четыре показателя, разруха, указы, двор; тот же сид — те же державы; рынок по ступени города |
 | `npm run content` | `content-check.mjs` | недуги, зависимость, порча, языки, ночное зрение, слава каравана, темп похода, показатели поселения: при нуле ничего, с числами работают |

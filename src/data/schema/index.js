@@ -100,6 +100,7 @@ import {NEIGHBOURS} from '../neighbours.js';
 import {LUXURY} from '../luxury.js';
 import {RAID_BANDS} from '../raids.js';
 import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS} from '../roles.js';
+import {RANK_RULES} from '../ranks.js';
 import {SOILS} from '../soils.js';
 import {KIND_LAND, KIND_GROVES} from '../kinds.js';
 
@@ -482,6 +483,8 @@ TABLES.push(
       col('best', 'Лучший металл', 'int', {min: 0, max: 4}), col('fixed', 'Свой набор', 'ids', {ref: ITEMS, nullable: true})]},
   {id: 'roleRules', label: 'Роли: броня и металл', group: 'Существа', ...grp({armour: ARMOUR, tiers: ROLE_TIERS}),
     note: 'Классы брони — формы с весами (форма, которой нет на этой ступени, выпадает: чешуя и кольчуга начинаются с бронзы). Металл: ступень k открыта с уровня банды from[k], каждая вещь берёт её с шансом ramp на уровень сверх него, не больше share; не выше «Лучшего металла» вида.'},
+  {id: 'rankRules', label: 'Ранги и звенья', group: 'Существа', ...grp({ranks: RANK_RULES}),
+    note: 'Пешка → офицер → босс (data/ranks.js). Банда из least и больше разумных бойцов с вещами делится на звенья по size голов; сильнейший в звене — офицер: метка «офицер» в «Состояниях» (здоровье, стоит до смерти), вещи на quality ступеней качества лучше. Пока офицер стоит, его звено не бежит, пока здоровье выше hurt, и держит дух банды (rally × доля звеньев с офицером); павший офицер сразу отнимает loss × долю своего звена. camp — в бою на стоянке похода, settlement — в набегах на поселение. Названия рангов — у банды («Отряды налётчиков», ranks).'},
   autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all(), skip: ['chance']}),
   autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
     rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'behaviours', 'heart', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),

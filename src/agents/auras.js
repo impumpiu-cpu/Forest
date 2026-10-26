@@ -2,15 +2,18 @@
 // spawnFoe: a leader of an old lair at the head of its own, a grave's guard with its servants, the fourth in its lair)
 // bears the aura `lead` (a.auras): while the bearer stands in the fight, nobody of its side — those who came with it, `a.side`
 // set by spawnFoe — runs — not from a crowd, not from a wound,
-// and its band's morale does not break (agents/squad.js). The bearer itself never runs. An `officer` (a.officer: the
-// band's leader under a boss) stands until near death (AURAS.officerBelow) even when the aura is gone. The behaviours
+// and its band's morale does not break (agents/squad.js). The bearer itself never runs. An officer (the mark «офицер»,
+// data/ranks.js: the head of a link) stands until near death even when the aura is gone, and while it stands, its link
+// does not run either until near death itself (the small aura). The behaviours
 // that would take a creature off the field ask holdsGround() first (a trained war beast holds too: its mark,
 // data/conditions.js): scare, leaveHurt, retreat; defendLair holds a
 // retinue of beasts to the ground as a lair's guards. Nothing else changes: the aura forbids flight, it does not fight.
 import {perTick} from '../core/util.js';
 import {maxHp} from './agent.js';
 import {AURAS} from '../data/behaviour.js';
-import {marksOf} from '../data/conditions.js';
+import {marksOf, hasMark} from '../data/conditions.js';
+import {RANK_RULES} from '../data/ranks.js';
+import {liveById} from './lookup.js';
 
 // the live bearers of an aura on the map (a few, once a tick)
 const bearers = (w, id) => perTick(w, 'auras:' + id, () => w.agents.filter(o => !o.dead && !o.gone && !o.captive && !o.downed && o.auras?.includes(id)));   // scan: a handful of bosses
@@ -19,6 +22,12 @@ const bearers = (w, id) => perTick(w, 'auras:' + id, () => w.agents.filter(o => 
 export const leaderOf = (w, a) => (a.side == null ? null : bearers(w, 'lead').find(b => b !== a && b.id === a.side) || null);
 // a mark that holds it to the ground (a war beast's training, data/conditions.js holdBelow): until its health falls so low
 const markHolds = a => marksOf(a).some(r => r.holdBelow != null && a.hp > r.holdBelow * maxHp(a));
+// an officer's small aura (data/ranks.js): a member of its link holds while the officer stands and it is not near death
+const linkHolds = (w, a) => {
+  if (a.link == null || a.link === a.id || a.hp <= RANK_RULES.hurt * maxHp(a)) return false;
+  const o = liveById(w, a.link);
+  return !!o && !o.gone && !o.downed && !o.captive && hasMark(o, 'officer');
+};
 // whether this creature stands its ground: a bearer of `lead` always, its side while the bearer stands, an officer until
-// near death, a trained beast likewise
-export const holdsGround = (w, a) => !!a.auras?.includes('lead') || !!leaderOf(w, a) || (!!a.officer && a.hp > AURAS.officerBelow * maxHp(a)) || (!!a.marks && markHolds(a));
+// near death (its mark; a.officer — saves from before ranks), a trained beast likewise, a link while its officer stands
+export const holdsGround = (w, a) => !!a.auras?.includes('lead') || !!leaderOf(w, a) || (!!a.officer && a.hp > AURAS.officerBelow * maxHp(a)) || (!!a.marks && markHolds(a)) || linkHolds(w, a);

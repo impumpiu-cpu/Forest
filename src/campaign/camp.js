@@ -13,6 +13,8 @@ import {createWorld} from '../world/generate.js';
 import {Navigation} from '../nav/navigation.js';
 import {step} from '../sim.js';
 import {PROVIDERS} from '../outside/index.js';
+import {formLinks, promote} from '../agents/ranks.js';
+import {hasMark} from '../data/conditions.js';
 import {spawnGroup} from '../settlement/migration.js';
 import {MIGRATIONS} from '../data/migrations.js';
 import {createAgent, maxHp} from '../agents/agent.js';
@@ -176,6 +178,16 @@ export function foeWeight(r, F, kind) {
   return Math.max(B.floor, base + (2 * r() - 1) * B.sway);
 }
 
+// the side came out worth more than the budget bought (a boss grown, officers made finer): its weakest pawns go — never
+// the boss, never an officer — while what is left still covers the budget, and no fewer than `atLeast` stay
+function trimTo(group, budget, atLeast) {
+  for (;;) {
+    const rest = group.filter(g => !g.boss && !hasMark(g, 'officer')).sort((p, q) => strengthOf(p, {now: true}) - strengthOf(q, {now: true}));
+    if (group.length <= atLeast || !rest.length || sideStrength(group, {now: true}) - strengthOf(rest[0], {now: true}) < budget) break;
+    rest[0].gone = true; group.splice(group.indexOf(rest[0]), 1);   // never came (the map drops the gone)
+  }
+}
+
 function spawnFoe(w) {
   const C = w.campaign, S = C.S, F = S.foe, map = CAMP_FOES[F.kind] || {}, r = C.rnd;
   const close = S.kind === 'ambush' || S.kind === 'guard', at = close ? nearCell(w, CAMP[S.kind].near, r) : null;
@@ -226,16 +238,24 @@ function spawnFoe(w) {
     b.special = {...b.special}; for (const [id, v] of Object.entries(F.boss.add || {})) b.special[id] = (b.special[id] ?? 5) + v;
     refreshBody(b); b.hp = maxHp(b); b.name = F.boss.name; b.boss = true; C.boss = b;
     // grown, it is worth more than the budget bought: the weakest of its retinue go, while what is left still covers the budget
-    for (;;) {
-      const rest = group.filter(g => g !== b).sort((p, q) => strengthOf(p, {now: true}) - strengthOf(q, {now: true}));
-      if (group.length <= CAMP.boss.atLeast || !rest.length || sideStrength(group, {now: true}) - strengthOf(rest[0], {now: true}) < budget) break;
-      rest[0].gone = true; group.splice(group.indexOf(rest[0]), 1);   // never came (the map drops the gone)
-    }
+    trimTo(group, budget, CAMP.boss.atLeast);
     // the boss's aura (agents/auras.js): its side stands while it stands; its band's leader is an officer who holds to the end
     b.auras = [...(b.auras || []), 'lead'];
     for (const g of group) if (g !== b) g.side = b.id;   // its side: those who came with it, and only they
-    for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) { sq.goal = 'slaughter'; const l = group.find(g => g.id === sq.leader); if (l && l !== b) l.officer = true; } }
+    for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) { const sq = w.squads?.[id]; if (sq) sq.goal = 'slaughter'; }
   }
+  // ranks (agents/ranks.js, data/ranks.js): each band big enough splits into links under officers, its leader first;
+  // under a boss the leader is an officer whatever the size. Officers are worth more than the budget bought: the
+  // weakest pawns go, as for a boss
+  let ranked = false;
+  for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
+    const sq = w.squads?.[id]; if (!sq) continue;
+    const own = group.filter(g => g.squad === id), officers = formLinks(w, own, 'camp', sq.leader);
+    if (officers.length) ranked = true;
+    const l = own.find(g => g.id === sq.leader);
+    if (F.boss && l && !l.boss && !officers.includes(l) && !SPECIES.get(l.species).mindless && !l.warBeast) { promote(l, l.band, true); l.link = l.id; ranked = true; }
+  }
+  if (ranked) trimTo(group, budget, F.boss ? CAMP.boss.atLeast : 1);
   C.foes = group.map(g => g.id); C.foeObjs = group; C.spawned = true;
   C.foeMight = sideStrength(group, {now: true});   // the foe's strength as it came (the fight's record)
 }

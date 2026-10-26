@@ -12,6 +12,7 @@
 //         and only before the band has raided. The mindless dead always go for anything alive.
 //   roles — the band's leaning in its fighters' roles ({role: ×} over the species' weights, data/roles.js ROLE_MIX);
 //   least — the share of heads a role must have at least ({shield: 0.2}: one shield-bearer in five)
+//   ranks — the band's names for its ranks ({officer: 'десятник'}: data/ranks.js)
 //   nerve — added to the squad's retreat threshold (agents/squad.js SQUAD.nerve): trolls and the
 //         bloodthirsty hold on longer (< 0), goblins break sooner (> 0).
 import {Registry} from '../core/registry.js';
@@ -86,34 +87,34 @@ const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.t
 RAID_BANDS.registerAll([
   {id: 'bandits', label: 'разбойники «Серых волков»', kind: 'sentient',
     goals: (w, g) => [['loot', 3], ['kill', feud(w)], ['burn', 0.6 * torches(w)], ['scout', scouting(w, g)]],
-    least: {shield: 0.2},
+    least: {shield: 0.2}, ranks: {officer: 'десятник', boss: 'атаман'},
     chance: {weight: 3},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = 'Налётчик'; }})),
     message: n => `Набег! ${n} ${plural(n, 'разбойник', 'разбойника', 'разбойников')} из «Серых волков»`},
 
   {id: 'orcs', label: 'орочья ватага', kind: 'sentient',
     goals: (w, g) => [['loot', 2], ['burn', 1.5 * torches(w)], ['kill', 0.5 + feud(w)], ['scout', scouting(w, g)]], nerve: -0.05,
-    least: {shield: 0.2},
+    least: {shield: 0.2}, ranks: {officer: 'сотник', boss: 'вождь'},
     chance: {weight: 2, threat: 4, below: 0.5},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['orc', 3], ['goblin', 2], ['varg', heads(budget, t) >= 5 ? 1 : 0], ['ogre', heads(budget, t) >= 10 ? 0.6 : 0]], t, o),
     message: (n, group) => `Набег! Орочья ватага с гоблинами${group.some(a => a.species === 'varg') ? ' и боевыми варгами' : ''}`},
 
   {id: 'goblins', label: 'гоблинская шайка', kind: 'sentient',
-    goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1,
+    goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1, ranks: {officer: 'заводила', boss: 'главарь'},
     chance: {weight: 1.5},
     // a big band rides: wargs out of the hills, giant spiders out of the deep wood (the tribes' beasts, data/lairs.js)
     members: (w, rng, budget, t, o) => fill(rng, budget, [['goblin', 1], ['varg', heads(budget, t) >= 4 ? 0.3 : 0], ['spider', heads(budget, t) >= 6 ? 0.2 : 0]], t, o),
     message: (n, group) => `Набег! Гоблинская шайка: мелкие, юркие, тащат всё, что плохо лежит${group.some(a => a.species === 'varg') ? '; верхом на варгах' : ''}${group.some(a => a.species === 'spider') ? '; с ними гигантские пауки' : ''}`},
 
   {id: 'gnolls', label: 'стая гноллов', kind: 'sentient',
-    goals: (w, g) => [['loot', 3], ['kill', 0.6 + feud(w)]],
+    goals: (w, g) => [['loot', 3], ['kill', 0.6 + feud(w)]], ranks: {officer: 'клык', boss: 'вожак стаи'},
     chance: {weight: 1.5, threat: 3, below: 0.4},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['gnoll', 3], ['hyena', 1.5]], t, o),
     message: () => 'Набег! Гноллы-падальщики идут на запах лагеря'},
 
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',
     goals: (w, g) => [['kill', 2], ['loot', 1], ['scout', scouting(w, g)]],
-    least: {archer: 0.3},
+    least: {archer: 0.3}, ranks: {officer: 'страж', boss: 'матрона'},
     chance: {weight: 0.6, perNight: 1, threat: 8},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['darkelf', 1]], t, o),
     message: () => 'Набег! Тёмные эльфы вышли из-под земли за рабами и добычей'},
@@ -152,7 +153,7 @@ RAID_BANDS.registerAll([
   // neighbours' `cultPool`, seam/cell.js), no cap on how many kinds: a troll, two orcs, an elf and a few of the dead
   // in one band. `world` — only where the world map knows a necromancer (never on the polygon)
   {id: 'cultists', label: 'культисты некроманта', kind: 'sentient', world: true,
-    goals: (w, g) => [['kill', 2], ['loot', 1], ['burn', torches(w)]], nerve: -0.1,
+    goals: (w, g) => [['kill', 2], ['loot', 1], ['burn', torches(w)]], nerve: -0.1, ranks: {officer: 'жрец', boss: 'некромант'},
     chance: {weight: 1, perNight: 1},
     members: (w, rng, budget, t, o) => {
       const pool = o?.pool?.length ? o.pool : w?.site?.neighbours?.hostile?.cultPool?.length ? w.site.neighbours.hostile.cultPool : [['human', 2], ['zombie', 2], ['skeleton', 1]];

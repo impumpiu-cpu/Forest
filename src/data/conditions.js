@@ -6,7 +6,8 @@
 //                      says at which place of the body)
 //         state      — a passing state kept on the creature itself (`where`: its field)
 //         exhaustion — a stage of exhaustion: how many of `EXHAUSTION.needs` are at or below `EXHAUSTION.low`
-//         mark       — what a creature is for life, not what is wrong with it (a.marks): a war beast's training
+//         mark       — what a creature is for life, not what is wrong with it (a.marks): a war beast's training, an
+//                      officer's rank
 //   mods  — what it does to the body (keys of «Модификаторы существа»); hp — × full health; special — a shift of its
 //           SPECIAL ({S: +1}); holdBelow — it stands its ground until its health falls below this share
 //           (agents/auras.js holdsGround); stay — ticks it fights on once nobody of its band is left to follow
@@ -47,6 +48,9 @@ CONDITIONS.registerAll([
   {id: 'trained', kind: 'mark', where: 'marks', label: 'выученный',
     note: 'боевой зверь банды (варг орков, гиена гноллов, паук гоблинов): вырос при людях — сильнее и крепче дикого, не бежит от толпы и раны, пока жив; оставшись без хозяев, ещё дерётся, потом уходит',
     special: {S: 1, E: 1}, mods: {}, holdBelow: 0.15, stay: 200},
+  {id: 'officer', kind: 'mark', where: 'marks', label: 'офицер',
+    note: 'голова звена в банде (data/ranks.js): крепче пешки, стоит до смерти; пока стоит, его звено не бежит',
+    hp: 1.3, mods: {}, holdBelow: 0.15},
   // ── exhaustion: neutral for now (empty mods), ready for the numbers
   {id: 'exhausted1', kind: 'exhaustion', stage: 1, label: 'истощение I', mods: {}, note: 'одна нужда на исходе'},
   {id: 'exhausted2', kind: 'exhaustion', stage: 2, label: 'истощение II', mods: {}, note: 'две нужды на исходе'},
