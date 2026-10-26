@@ -12,7 +12,7 @@
 // The rot (data/lairs.js ROT): a field on the coarse grid fed by the graves; where it is thick the
 // undead lairs spawn (wights on the barrows, ghouls by the ruins, a necromancer's tower where it is
 // thickest), live off it and raid any town in reach, leaving more graves.
-import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD, LAIR_FIELD as LF} from '../data/lairs.js';
+import {LAIR_LIFE as LL, LAIRS, NAME_ADJ, GENDER_INDEX, LAIR_AGE, TRIBE_HOME, TRIBE_RAID, ROT, CAPTIVE_RAID, WILD, LAIR_FIELD as LF, RAID_MIX} from '../data/lairs.js';
 import {CAL} from '../data/calamities.js';
 import {barrows, raidGraves} from './diplomacy.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -392,15 +392,34 @@ export function stepLairs(a, rnd, seasonId) {
   return lines;
 }
 
-// who comes: «Гноллы с гиенами», «Некромант повёл мертвецов»
+// who comes: «Гноллы с гиенами», «Некромант повёл мертвецов» (by the kind alone; a raid that sets out reads its company
+// from the land: raidBand)
 export function raidWho(L) {
   const race = SPECIES.get(L.species), sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
   return L.leads ? L.leads : cap1(sub?.plural || race.plural) + (L.riders ? ` ${L.on}` : '');
 }
+// who goes on this lair's raid, by the fields about it (data/lairs.js RAID_MIX): its own, its riders if they live there,
+// and maybe a second kind of its land → {who, k: × the raid's might, riders}
+export function raidBand(a, lair, L, rnd) {
+  const F = a.fauna, M = RAID_MIX, race = SPECIES.get(L.species), sub = L.sub ? race.peoples.find(p => p.id === L.sub) : null;
+  if (L.leads || !F) return {who: raidWho(L), k: 1, riders: false};
+  const j = faunaCell(a, lair.i), at = id => { const s = F.list[F.idx[id]]; return s ? s.N[j] : 0; };
+  let who = cap1(sub?.plural || race.plural), k = 1;
+  const riders = !!L.riders && at(L.riders) >= M.riders;
+  if (riders) { who += ` ${L.on}`; k += M.ridersMight; }
+  const C = F.list.filter(s => s.id !== L.species && s.id !== L.riders && s.role !== 'spirit' && (s.lair || s.role === 'folk' || s.role === 'predator') && s.N[j] >= M.at);
+  const tot = C.reduce((v, s) => v + s.N[j], 0), own = at(L.species);
+  if (C.length && rnd() < M.chance * tot / (tot + own)) {
+    let t = rnd() * tot, o = C[C.length - 1];
+    for (const s of C) if ((t -= s.N[j]) <= 0) { o = s; break; }
+    who += `, с ними ${o.sp.plural}`; k += M.might * Math.min(1, o.N[j]);
+  }
+  return {who, k, riders};
+}
 
 // the raid strikes the town: the raiders' might against the town's; the loot feeds the camp (at once,
 // or when the party gets home), a beating thins it
-export function strikeTown(a, lair, L, target, tribe, rnd, atOnce) {
+export function strikeTown(a, lair, L, target, tribe, rnd, atOnce, who = raidWho(L)) {
   const T = TRIBE_RAID, fx = townFx(target);
   const town = might(target, fx) * (0.6 + 0.8 * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);   // the tower's wards turn the dead
   target.raided = a.hist.year;
@@ -410,7 +429,7 @@ export function strikeTown(a, lair, L, target, tribe, rnd, atOnce) {
     if (atOnce) lair.strength = Math.min(1, lair.strength + T.loot);
     raidGraves(a, target);   // the dead of the raid lie unburied, and the rot takes them
     const burnt = raidSite(a, target, rnd);
-    return `${raidWho(L)} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.` + traceRaid(a, lair, L, target, true, rnd);
+    return `${who} ${L.from} «${lair.name}» ${L.raidVerb || 'разграбили'} ${townLabel(target, 1)} ${target.name}: погибло ${Math.round(loss * 100)}% жителей${burnt ? `, ${BURNT[burnt.g]} ${burnt.name}` : ''}.` + traceRaid(a, lair, L, target, true, rnd);
   }
   lair.strength *= T.beaten;
   const trace = traceRaid(a, lair, L, target, false, rnd);

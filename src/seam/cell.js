@@ -25,7 +25,9 @@ import {REGIONS, LEVELS} from '../data/regions.js';
 import {SPECIES} from '../data/species.js';
 import {BIOMES} from '../data/biomes.js';
 import {faunaLevel} from '../world/region.js';
-import {SEAM, LAIR_BANDS, REALM_BANDS, OUTLAWS, FLORA, FLORA_STEPS} from '../data/seam.js';
+import {SEAM, LAIR_BANDS, REALM_BANDS, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEPS} from '../data/seam.js';
+// the raid band of a tribe's folk (by the lair kinds of its species)
+const FOLK_BAND = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]]));
 
 const ORE_KEYS = Object.keys(REGIONS.all()[0].ores);
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
@@ -144,6 +146,21 @@ export function cellNeighbours(a, i, race = 'human') {
     const band = REALM_BANDS[t.people];
     if (band && (own && t.realm ? (t.realm !== own && (atWar(a, own, t.realm) || !trades(a, own, t.realm))) : t.people === 'orcs'))
       sources.push({band, d, wt: Math.sqrt(t.pop) / 10, label: `${tLabel(t)} (${realmName(a, t.realm)})`});
+  }
+  // the tribes' folk about (atlas/lairs.js lairFolk), a lair of theirs near or not: where they are thickest for the way
+  if (a.fauna) {
+    const F = a.fauna, R0 = Math.ceil(reach / F.c);
+    for (const s of F.list) {
+      const band = s.role === 'folk' ? FOLK_BAND[s.id] : null; if (!band) continue;
+      const cx = (x0 / F.c) | 0, cy = (y0 / F.c) | 0;
+      let best = null;
+      for (let y = Math.max(0, cy - R0); y <= Math.min(F.H - 1, cy + R0); y++) for (let x = Math.max(0, cx - R0); x <= Math.min(F.W - 1, cx + R0); x++) {
+        const v = s.N[y * F.W + x]; if (!(v >= FOLK_RAIDS.at)) continue;
+        const d = dist((x + 1 / 2) * F.c, (y + 1 / 2) * F.c); if (d * k > reach) continue;
+        const score = v / (1 + d); if (!best || score > best.score) best = {score, v, d};
+      }
+      if (best) sources.push({band, d: best.d, wt: FOLK_RAIDS.weight * best.v, label: `${s.sp.plural} в округе`});
+    }
   }
   const men = towns.find(o => o.t.people === 'humans');
   if (men) sources.push({band: OUTLAWS.band, d: men.d, wt: OUTLAWS.weight, label: 'лихие люди на дорогах'});

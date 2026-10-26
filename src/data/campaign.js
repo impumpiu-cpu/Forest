@@ -68,7 +68,8 @@ export const FOES = {
   lair:    {label: 'чудища из логова', might: 4},
   tribe:   {label: 'дикари', might: 5},
   undead:  {label: 'мертвецы', might: 4},
-  wolves:  {label: 'волчья стая', might: 2.5},
+  beasts:  {label: 'хищные звери', might: 2.5},
+  wolves:  {label: 'волчья стая', might: 2.5},   // (a caravan saved before the beasts of every kind)
   army:    {label: 'фуражиры чужого войска', might: 6},
   bandits: {label: 'разбойники с большой дороги', might: 3},
 };
@@ -163,10 +164,21 @@ export const MINE = {every: 40, maxDays: 6, quit: 1, room: 6, food: 8, strength:
 // the epic world's sizes (the epic campaign of the old menu and the quick start of the new one; the medium is the campaign's own)
 export const EPIC_SIZES = [['small', 'Малый'], ['medium', 'Средний']];
 
+// The wild as foes (campaign/land.js dangers; docs/CAMPAIGN.md «Кто нападает»): who lives in a cell is read from the
+// fields of the world (atlas/fauna.js — the beasts, the lairs' monsters and the tribes, data/lairs.js LAIR_FIELD), each
+// species that can come at people a foe of its own, by its density there (N, at least `at`):
+//   beasts: a beast of prey that hunts people;  lair: a lair's monster;  tribe: the folk of a tribe (its raid band,
+//           data/seam.js LAIR_BANDS) — each a chance p × the density (at most cap), strength s[0] + s[1] × it.
+//           Inside a lair's land its own kind is the lair's (NIGHT.lair), not counted twice.
+//   mix:    a foe that comes brings a second kind of the same cell along with the chance chance × the second's share of
+//           the two (beasts with beasts, bands with bands); the second makes `share` of the strength the fight is bought
+//           with (data/camp.js), [lo, hi]
+export const WILD_FOES = {at: 0.04, beasts: {p: 0.025, cap: 1.5, s: [0.6, 0.4]}, lair: {p: 0.03, cap: 1.5, s: [0.7, 0.5]}, tribe: {p: 0.03, cap: 1.5, s: [0.8, 0.5]},
+  mix: {chance: 0.6, share: [0.25, 0.45]}};
+
 // What may come at the caravan's camp at night (campaign/land.js dangers): each a chance of a fight `p` and its strength.
 //   lair:    in a lair's land: p[0] + p[1] × its strength (at most pCap), strength s[0] + s[1] × its strength (at most sCap)
-//   wolves:  where wolves live: p × their density (at most cap), strength s[0] + s[1] × it
 //   army:    where an army's foragers stripped the land above `at`: p × how badly;  undead: where the rot is above `at`:
 //            p × it, strength s + it;  bandits: by a road above `at` of the way: p × the road
-export const NIGHT = {lair: {p: [0.05, 0.05], pCap: 1.5, s: [0.6, 0.6], sCap: 2}, wolves: {p: 0.025, cap: 2, s: [0.7, 0.3]},
+export const NIGHT = {lair: {p: [0.05, 0.05], pCap: 1.5, s: [0.6, 0.6], sCap: 2},
   army: {at: 0.3, p: 0.2, s: 1}, undead: {at: 0.2, p: 0.06, s: 0.8}, bandits: {at: 0.1, p: 0.02, s: 1}};

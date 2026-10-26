@@ -25,7 +25,7 @@ import {ORES} from '../data/ores.js';
 import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE} from '../data/transport.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {plural} from '../core/util.js';
-import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion} from './land.js';
+import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion, withCompany} from './land.js';
 import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler, campOf, hasBuilding} from './baggage.js';
 import {draw, makeMember} from './start.js';
@@ -530,7 +530,7 @@ function night(a, K) {
     const t = foes[0], win = fight(a, K, foeOf(t), r, 'night');
     settle(K, t, win); K.stats.met = (K.stats.met || 0) + 1; leaderBeaten(a, K, t, win);
   } else if (r() < BUBBLE.stray * (friendly ? CAMPAIGN.night.friendly : 1)) {
-    const ds = dangers(a, K.i), d = ds.length ? ds[(r() * ds.length) | 0] : {kind: 'wolves', strength: 0.7};
+    const ds = dangers(a, K.i), d = ds.length ? withCompany(ds[(r() * ds.length) | 0], ds, r) : {kind: 'beasts', strength: 0.7, beast: 'wolves', label: 'волки'};
     const won = fight(a, K, d, r, 'night'); K.stats.strays = (K.stats.strays || 0) + 1; leaderBeaten(a, K, d, won);
   } else {
     // a quiet night: a little found in the morning while they packed

@@ -81,5 +81,6 @@ export const CAMP_FOES = {
   tribe:   {band: 'goblins'},
   undead:  {band: 'undead'},
   lair:    {beast: 'varg'},
+  beasts:  {beast: 'wolves'},
   wolves:  {beast: 'wolves'},
 };

@@ -15,7 +15,7 @@ import {PARTIES} from '../../data/parties.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 import {WORLD_PEOPLES} from '../../data/peoples.js';
 import {ROT} from '../../data/lairs.js';
-import {raidWho, power, traceRaid} from '../lairs.js';
+import {raidWho, raidBand, power, traceRaid} from '../lairs.js';
 import {townFx, might, raidShare, townLabel} from '../towns.js';
 import {relation, attitude, meet, fight, barrows} from '../diplomacy.js';
 import {realmLabel, realmLabelGen} from '../realms.js';
@@ -30,7 +30,7 @@ const plural = (n, one, few, many) => { const m10 = n % 10, m100 = n % 100; retu
 const heads = n => `${n} ${plural(n, 'жителя', 'жителей', 'жителей')}`;
 
 // the raid at the town: the raiders' might against the town's; the captives, or a beating. → the chronicle line
-export function takeCaptives(a, lair, L, target, tribe, rnd, atOnce) {
+export function takeCaptives(a, lair, L, target, tribe, rnd, atOnce, who = raidWho(L)) {
   const fx = townFx(target);
   const town = might(target, fx) * (0.6 + 0.8 * rnd()) * (L.undead && target.built.includes('magetower') ? ROT.wardMight : 1);
   target.raided = a.hist.year;
@@ -40,7 +40,7 @@ export function takeCaptives(a, lair, L, target, tribe, rnd, atOnce) {
     (lair.captives ||= {})[target.people] = (lair.captives[target.people] || 0) + n;
     if (atOnce) lair.strength = Math.min(1, lair.strength + CR.feed);
     barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);   // a few fall on the way to the ropes
-    return `${raidWho(L)} ${L.from} «${lair.name}» увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}.` + traceRaid(a, lair, L, target, true, rnd);
+    return `${who} ${L.from} «${lair.name}» увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}.` + traceRaid(a, lair, L, target, true, rnd);
   }
   lair.strength *= TRIBE_RAID.beaten;
   const trace = traceRaid(a, lair, L, target, false, rnd);
@@ -75,13 +75,13 @@ export const captives = {
   },
   act(a, actor, plan, {L, role, r}) {
     if (role === 'lair') {
-      const target = a.towns.find(t => t.id === plan.target);
-      const tribe = actor.strength * power(L.species) * (L.might || 1) * TRIBE_RAID.might * (0.6 + 0.8 * r()) * (actor.boss != null ? CAL.boss.might : 1);
+      const target = a.towns.find(t => t.id === plan.target), B = raidBand(a, actor, L, r);   // who goes: the land about the lair says
+      const tribe = actor.strength * power(L.species) * (L.might || 1) * TRIBE_RAID.might * B.k * (0.6 + 0.8 * r()) * (actor.boss != null ? CAL.boss.might : 1);
       if (tribe >= PARTIES.threshold) {
-        const p = sendParty(a, 'raid', actor.i, target.i, {owner: actor.id, plan: 'captives', target: target.id, might: tribe, speed: L.riders ? 'rider' : 'foot', label: raidWho(L), color: L.color});
-        return p ? `${raidWho(L)} ${L.from} «${actor.name}» ${L.leads ? 'за пленными на' : 'двинулись за пленными на'} ${townLabel(target, 1)} ${target.name}.` : null;
+        const p = sendParty(a, 'raid', actor.i, target.i, {owner: actor.id, plan: 'captives', target: target.id, might: tribe, speed: B.riders ? 'rider' : 'foot', label: B.who, color: L.color});
+        return p ? `${B.who} ${L.from} «${actor.name}» ${L.leads ? 'за пленными на' : 'двинулись за пленными на'} ${townLabel(target, 1)} ${target.name}.` : null;
       }
-      return takeCaptives(a, actor, L, target, tribe, r, true);
+      return takeCaptives(a, actor, L, target, tribe, r, true, B.who);
     }
     // the realm's
     const t = a.towns.find(x => x.id === plan.from), target = a.towns.find(x => x.id === plan.target);
@@ -104,7 +104,7 @@ export const captives = {
   arrive(a, p, l, L, rnd, say) {
     const t = a.towns.find(x => x.id === p.target);
     if (!t?.alive) return;
-    const line = takeCaptives(a, l, L, t, p.might, rnd, false);
+    const line = takeCaptives(a, l, L, t, p.might, rnd, false, p.label || raidWho(L));
     p.loot = /в полон/.test(line) && !/никого/.test(line) ? CR.feed : 0;
     say(line);
   },

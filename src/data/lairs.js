@@ -121,6 +121,13 @@ export const TRIBE_HOME = 0.45;
 //             falls (× raidShare of its buildings);  loot: strength the camp gains on a win;
 //             beaten: what is left of the camp's strength after a failed raid
 export const TRIBE_RAID = {from: 0.6, chance: 0.1, reach: 30, might: 0.55, loss: 0.12, loot: 0.12, beaten: 0.7};
+// Who goes on a lair's raid (atlas/lairs.js raidBand; docs/WORLD.md «Живность»): read from the fields about the lair
+// (data/lairs.js LAIR_FIELD), not from the kind alone —
+//   riders:  the tribe's beasts (`riders` of its kind: wargs, hyenas) ride with it where they live about the lair at least
+//            this thick; they add ridersMight to its might
+//   chance:  a second kind of the lair's land (another lair's monsters or tribe, a beast of prey) joins with this chance ×
+//            its share of the density there (at least `at`); it adds might × its density (at most 1)
+export const RAID_MIX = {at: 0.05, riders: 0.05, ridersMight: 0.25, chance: 0.5, might: 0.4};
 // Raids for captives (the deed `captives`, atlas/deeds/captives.js; who goes: the species rows that list it — the goblins,
 // gnolls and ogres' camps, the necromancer's tower, the orcs' realms). A camp's raid for captives is a tribe's raid
 // (TRIBE_RAID: from, reach, might, beaten) that takes people instead of killing them:

@@ -14,7 +14,7 @@ import {PARTIES} from '../../data/parties.js';
 import {SPECIES} from '../../data/species.js';
 import {RELATIONS} from '../../data/relations.js';
 import {WORLD_PEOPLES} from '../../data/peoples.js';
-import {strikeTown, raidWho, power} from '../lairs.js';
+import {strikeTown, raidWho, raidBand, power} from '../lairs.js';
 import {townLabel} from '../towns.js';
 import {sendParty} from '../parties.js';
 import {leaderFalls, leaderName} from '../leaders.js';
@@ -51,14 +51,14 @@ export const raid = {
   },
   // the lair without a leader: the raid sets out, or strikes where it stands → the chronicle line or null
   act(a, l, plan, {L, r}) {
-    const T = TRIBE_RAID, target = a.towns.find(t => t.id === plan.target);
-    const tribe = l.strength * power(L.species) * (L.might || 1) * T.might * (0.6 + 0.8 * r()) * (l.boss != null ? CAL.boss.might : 1);
+    const T = TRIBE_RAID, target = a.towns.find(t => t.id === plan.target), B = raidBand(a, l, L, r);   // who goes: the land about the lair says
+    const tribe = l.strength * power(L.species) * (L.might || 1) * T.might * B.k * (0.6 + 0.8 * r()) * (l.boss != null ? CAL.boss.might : 1);
     if (tribe >= PARTIES.threshold) {
-      const p = sendParty(a, 'raid', l.i, target.i, {owner: l.id, plan: 'raid', target: target.id, might: tribe, speed: L.riders ? 'rider' : 'foot', label: raidWho(L), color: L.color});
-      if (p) return `${raidWho(L)} ${L.from} «${l.name}» ${L.leads ? 'на' : 'двинулись на'} ${townLabel(target, 1)} ${target.name}.`;
+      const p = sendParty(a, 'raid', l.i, target.i, {owner: l.id, plan: 'raid', target: target.id, might: tribe, speed: B.riders ? 'rider' : 'foot', label: B.who, color: L.color});
+      if (p) return `${B.who} ${L.from} «${l.name}» ${L.leads ? 'на' : 'двинулись на'} ${townLabel(target, 1)} ${target.name}.`;
       return null;   // no way there (the sea between): the raid does not happen, rather than strike across the water
     }
-    return strikeTown(a, l, L, target, tribe, r, true);
+    return strikeTown(a, l, L, target, tribe, r, true, B.who);
   },
   // the leader's: told as it sets out (the towns see it coming)
   told(a, l, o) { const t = a.towns.find(x => x.id === o.target); return t ? `${leaderName(l)} из «${l.name}» выступил в набег: на ${townLabel(t, 1)} ${t.name}.` : null; },
@@ -66,7 +66,7 @@ export const raid = {
   arrive(a, p, l, L, rnd, say) {
     const t = a.towns.find(x => x.id === p.target);
     if (!t?.alive) return;
-    const line = strikeTown(a, l, L, t, p.might, rnd, false);
+    const line = strikeTown(a, l, L, t, p.might, rnd, false, p.kind === 'leader' ? raidWho(L) : p.label || raidWho(L));
     p.loot = /погибло/.test(line) ? TRIBE_RAID.loot : 0;
     if (p.kind !== 'leader') { say(line); return; }
     say(`${line} Вёл их ${leaderName(l)}.`);

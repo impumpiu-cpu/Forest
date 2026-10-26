@@ -18,7 +18,7 @@ import {BUBBLE, THINGS, TRAIN, HERD} from '../data/bubble.js';
 import {HIRES} from '../data/market.js';
 import {EPIC} from '../data/calamities.js';
 import {GAME, FOES} from '../data/campaign.js';
-import {dangers, cellRegion, lairFoe} from './land.js';
+import {dangers, cellRegion, lairFoe, withCompany} from './land.js';
 import {REALM_BANDS} from '../data/seam.js';
 
 export const bubbleOf = K => (K.bubble ||= {next: 1, things: []});
@@ -71,9 +71,9 @@ function spawn(a, K, guided) {
     const trail = (K.quest?.hunt ?? 0) >= 2 ? EPIC.hunt.trail : 0;
     const add = props => { if (B.things.length < BUBBLE.max) B.things.push({id: B.next++, x, y, i, born: K.day, sated: -1, seen: false, hunting: trail > 0 && r() < trail, ...props}); };   // (no draw without a hunt: the stream stays as it was
     const named = dg => dg.label || THINGS[dg.kind].label || FOES[dg.kind]?.label || dg.kind;   // (a road's bandits, an army, the risen dead have no name of their own: the foe's)
-    const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${named(dg)}` : named(dg), ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {})});
+    const thing = (dg, f = 1, small = false) => ({kind: dg.kind, strength: (dg.strength ?? 1) * f, label: small ? `малый отряд: ${named(dg)}` : named(dg), ...(dg.band ? {band: dg.band} : {}), ...(dg.beast ? {beast: dg.beast} : {}), ...(dg.with && !small ? {with: dg.with} : {})});
     const ds = dangers(a, i);
-    for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(dg));
+    for (const dg of ds) if (r() < dg.p * BUBBLE.spawn * k) add(thing(withCompany(dg, ds, r)));   // one or two kinds of who lives here (campaign/land.js)
     // a small party by day, about its own business
     const S = BUBBLE.small, hostile = ds.filter(dg => THINGS[dg.kind]?.mood === 'hostile');
     if (hostile.length && r() < S.chance * Math.min(1, hostile.reduce((v, dg) => v + dg.p, 0) * 4) * k) { add(thing(hostile[(r() * hostile.length) | 0], S.strength[0] + r() * (S.strength[1] - S.strength[0]), true)); K.stats.small = (K.stats.small || 0) + 1; }
@@ -153,7 +153,7 @@ export const huntersNear = (a, K) => [...bubbleOf(K).things, ...worldThings(a, K
 export function sighted(a, K, sight) {
   const out = [];
   for (const t of [...bubbleOf(K).things, ...worldThings(a, K)]) {
-    if (t.seen || dist(K, t) > sight || THINGS[t.kind].mood !== 'hostile' || t.kind === 'wolves') continue;
+    if (t.seen || dist(K, t) > sight || THINGS[t.kind].mood !== 'hostile' || t.kind === 'wolves' || t.kind === 'beasts') continue;
     if (t.party) { (K.partySeen ||= {}); if (K.partySeen[t.party]) continue; K.partySeen[t.party] = K.day; }
     else t.seen = true;
     out.push(t);

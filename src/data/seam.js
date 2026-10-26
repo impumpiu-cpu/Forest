@@ -39,6 +39,10 @@ export const LAIR_BANDS = {
 export const REALM_BANDS = {orcs: 'orcs', humans: 'bandits'};
 // outlaws live wherever people do: a little banditry near any town of men
 export const OUTLAWS = {band: 'bandits', weight: 0.4};
+// the tribes as fields (data/lairs.js LAIR_FIELD): a tribe's folk living within the reach send their band too, without a
+// lair of theirs near — from the coarse cell where they are thickest for the distance; weight × their density there
+// (at least `at`)
+export const FOLK_RAIDS = {at: 0.05, weight: 1.2};
 
 // wild beds of the region (data/plants.js, data/regions.js `flora`) from the cell's biomes: Σ share × weight,
 // then rounded to a level (data/regions.js LEVELS) at these steps

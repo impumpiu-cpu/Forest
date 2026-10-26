@@ -45,7 +45,8 @@ export const BUBBLE = {
 // notices it; ambush — strikes on the march, by day (the caravan is caught × `surprise` of its might);
 // speed — cells a day; mood — 'hostile' | 'trade' | 'game'; road — keeps to the roads
 export const THINGS = {
-  wolves:  {foe: 'wolves', hunts: true, speed: 0.9, label: 'волчья стая', mood: 'hostile'},
+  beasts:  {foe: 'beasts', hunts: true, speed: 0.9, label: 'хищные звери', mood: 'hostile'},
+  wolves:  {foe: 'wolves', hunts: true, speed: 0.9, label: 'волчья стая', mood: 'hostile'},   // (a caravan saved before the beasts of every kind)
   lair:    {foe: 'lair', hunts: true, ambush: true, speed: 0.8, mood: 'hostile'},
   tribe:   {foe: 'tribe', hunts: true, ambush: true, speed: 0.7, mood: 'hostile'},
   undead:  {foe: 'undead', hunts: true, speed: 0.4, mood: 'hostile'},

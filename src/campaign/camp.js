@@ -71,7 +71,7 @@ export function campSetup(a, K, ev) {
     food: K.food, cargo: {...K.cargo},
     // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
-    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, boss: ev.foe.boss || null, leaderLair: ev.foe.leaderLair || null} : null,
+    foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, boss: ev.foe.boss || null, leaderLair: ev.foe.leaderLair || null} : null,
   };
 }
 
@@ -183,18 +183,23 @@ function spawnFoe(w) {
   // against a boss bought for a caravan in steel. The heads are rounded up (data/raids.js fill `up`)
   const t = raidThreat(w), budget = C.ourMight * foeWeight(r, F, S.kind);
   C.weight = Math.round(budget / Math.max(1e-6, C.ourMight) * 100) / 100;   // for the fight's record
-  let group = [];
-  if (beast && MIGRATIONS.has(beast)) {
-    const n = Math.min(CAMP.foe.most, Math.max(1, F.boss ? CAMP.boss.atLeast : 1, Math.ceil(budget / expectedStrength(MIGRATIONS.get(beast).species, {key: 'wild'}))));   // a wild beast comes as it is, no band's body or kit
-    group = spawnGroup(w, beast, n, opts);
-    for (const g of group) { g.needs.food = Math.min(g.needs.food ?? 1, 0.2); g.hunger = true; }   // they came for a meal
-  } else {
+  // one kind, or two (campaign/land.js withCompany): the second takes its share of the budget
+  const W = F.with && (F.with.beast ? MIGRATIONS.has(F.with.beast) : F.with.band) ? F.with : null, main = budget * (W ? 1 - W.share : 1);
+  const part = (who, b, first) => {
+    if (who.beast && MIGRATIONS.has(who.beast)) {
+      const n = Math.min(CAMP.foe.most, Math.max(1, first && F.boss ? CAMP.boss.atLeast : 1, Math.ceil(b / expectedStrength(MIGRATIONS.get(who.beast).species, {key: 'wild'}))));   // a wild beast comes as it is, no band's body or kit
+      const g = spawnGroup(w, who.beast, n, opts);
+      for (const x of g) { x.needs.food = Math.min(x.needs.food ?? 1, 0.2); x.hunger = true; }   // they came for a meal
+      return g;
+    }
     // the threat the band carries its gear by: × the thing's strength (settlement/threat.js reads w.fame on top)
     const want = CAMP.threat * F.strength * (map.threat || 1);
     w.fame = 0; w.fame = want - raidThreat(w);
     // the band counted out in strength rating (data/raids.js fill): the budget, rounded up by heads, the bands' caps lifted
-    group = spawnGroup(w, 'raiders', budget, {...opts, band: band || 'bandits', fill: {up: true, max: {}}, atLeast: F.boss ? CAMP.boss.atLeast : 0});
-  }
+    return spawnGroup(w, 'raiders', b, {...opts, band: who.band || 'bandits', fill: {up: true, max: {}}, atLeast: first && F.boss ? CAMP.boss.atLeast : 0});
+  };
+  let group = part({beast, band}, main, true);
+  if (W) group = group.concat(part(W, budget - main, false));
   // the guards of a place stormed (campaign/quest.js) defend it to the last: their band does not break and flee
   if (S.kind === 'guard') for (const id of new Set(group.map(g => g.squad).filter(x => x != null))) {
     const sq = w.squads?.[id]; if (sq) { sq.kind = 'mindless'; sq.goal = 'slaughter'; }
