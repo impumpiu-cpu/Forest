@@ -120,7 +120,7 @@ export function sleepDose(stock, drop = false) {
 
 // the use of the potion whose drink gave this effect (for the effects at work)
 let effectUse = null;
-const useOfEffect = id => (effectUse ||= new Map(POTION_RES.map(res => [potionOf(res).grade.effect, potionOf(res).potion.use]))).get(id) || null;
+export const useOfEffect = id => (effectUse ||= new Map(POTION_RES.map(res => [potionOf(res).grade.effect, potionOf(res).potion.use]))).get(id) || null;
 
 // the potions at work run out (agents/body.js stepEffects, once a tick): the body is rebuilt when one with mods ends
 export function stepPotionEffects(w, a) {

@@ -130,7 +130,7 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
   w.tick = POTION.hand * 10; stepPotions(w);
   expect(w.stock.warmBrew === 1 && a.needs.warmth > 0.1 && a.mods.cold < cold, 'согревающий отвар не выпит или не согрел');
   expect(w.stock.vigorBrew === 1 && a.needs.rest > 0.1, 'бодрящий отвар на посту не выпит');
-  expect(w.stock.mendBrew === 1 && a.wounds[0].until < w.tick + 4000 * 0.8 && a.mods.regen > 1, `укрепляющий отвар: рана ${a.wounds[0].until - w.tick}, заживление ${a.mods.regen}`);
+  expect(w.stock.mendBrew === 1 && a.wounds[0].until < w.tick + 4000 * 0.8 && a.mods.mend > 1, `укрепляющий отвар: рана ${a.wounds[0].until - w.tick}, заживление ${a.mods.mend}`);
   expect(!a.belt?.length, 'отвар попал в пояс');
   a.needs.warmth = 0.1; w.tick += POTION.hand; stepPotions(w);
   expect(w.stock.warmBrew === 1, 'второй согревающий выпит, пока первый действует');
@@ -151,9 +151,38 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
     cargo: {wort: 4, herbs: 4, bone: 2, sleepgrass: 2, pots: 10}, buildings: ['healerhut'], vehicles: [], beasts: []};
   const n = brewDay(K, () => 1, false);
   expect(n >= 2 && K.cargo.warmBrew >= 1 && K.cargo.mendBrew >= 1 && !K.cargo.sleepBrew, `хижина каравана сварила отваров ${n}: ${JSON.stringify(K.cargo)}`);
-  expect(homeRoom(K, POTIONS.get('warm')) <= 0 && K.members.every(m => m.belt.length === 2 && !m.belt.some(r => /Brew$/.test(r) && r !== 'bearBrew')), 'отвары в поясе или сверх запаса');
+  expect(homeRoom(K, POTIONS.get('mend')) <= 0 && K.members.every(m => m.belt.length === 2 && !m.belt.some(r => /Brew$/.test(r) && r !== 'bearBrew')), 'отвары в поясе или сверх запаса');
   const hp = K.members[0].hp; mendDay(K);
   expect(K.members[0].hp > hp && K.members[1].hp === 1, 'укрепляющий в походе не выпит раненым');
+}
+
+// a brew of the day on the world map: everyone drinks or nobody; it works a day (the strong two) and goes onto the
+// local map and back
+{
+  const {brewTheDay, wearOff, effectsOut, effectsIn, workingOn} = await import('../src/campaign/potions.js');
+  const K = {day: 10, members: [{alive: true, id: 1}, {alive: true, id: 2}], cargo: {warmBrew: 1}, stats: {}, buildings: [], vehicles: [], beasts: []};
+  expect(!brewTheDay(K, 'cold', K.members) && K.cargo.warmBrew === 1, 'согревающий выпит, когда его не хватает на всех');
+  K.cargo.warmBrewStrong = 1;
+  expect(brewTheDay(K, 'cold', K.members) && !K.cargo.warmBrew && !K.cargo.warmBrewStrong, 'согревающий не выпит, когда хватает на всех');
+  const out = effectsOut(K, K.members[0]);
+  expect(out.length === 1 && out[0].ticks === CONDITIONS.get(out[0].id).ticks, `отвар на локальную карту: ${JSON.stringify(out)}`);
+  expect(effectsIn(K, [{id: 'potWarm', ticks: 300}])[0].day === K.day, 'остаток отвара с локальной карты: не до конца дня');
+  K.day++; wearOff(K);
+  expect(K.members.filter(m => workingOn(K, m, 'cold')).length === 1, 'простой согревающий не кончился за день или усиленный кончился');
+}
+
+// modifiers do not pile up: of those pushing one key the same way the strongest works (agents/special.js refreshBody)
+{
+  const {refreshBody} = await import('../src/agents/special.js');
+  const w = scene(), a = put(w, 'human', 'colony');
+  a.traits = []; a.effects = null; refreshBody(a); const c0 = a.mods.cold;
+  a.traits = ['hardy']; refreshBody(a); const c1 = a.mods.cold;
+  a.effects = [{id: 'potWarm', until: w.tick + 999}]; refreshBody(a); const c2 = a.mods.cold;
+  expect(Math.abs(c1 - c0 * 0.6) < 1e-9 && Math.abs(c2 - c0 * CONDITIONS.get('potWarm').mods.cold) < 1e-9, `холод не по сильнейшему: ${c0} → ${c1} → ${c2}`);
+  a.traits = ['hardy', 'chilly']; a.effects = null; refreshBody(a);
+  expect(Math.abs(a.mods.cold - c0 * 0.6 * 1.5) < 1e-9, 'прибавка и убыль в разные стороны не сложились');
+  const tr = put(w, 'troll', 'raiders'); tr.effects = [{id: 'potMend', until: w.tick + 999}]; refreshBody(tr);
+  expect(tr.mods.regen > 1 && tr.mods.mend === CONDITIONS.get('potMend').mods.mend, `тролль: заживление ${tr.mods.regen}, отвар ${tr.mods.mend}`);
 }
 
 if (bad.length) { console.log('Зелья:\n  ' + bad.join('\n  ')); process.exit(1); }

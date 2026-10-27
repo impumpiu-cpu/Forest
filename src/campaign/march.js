@@ -29,7 +29,8 @@ import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler, campOf, hasBuilding} from './baggage.js';
 import {draw} from './start.js';
 import {fight, playStop} from './fight.js';
-import {brewDay, mendDay} from './potions.js';
+import {brewDay, mendDay, brewTheDay, wearOff} from './potions.js';
+import {PACE_RULES} from '../data/road.js';
 import {questArrive, questTarget, questSight, pursuit, crownHands, rumour, askable} from './quest.js';
 import {epicDay} from './epic.js';
 import {CAMP} from '../data/camp.js';
@@ -99,11 +100,12 @@ export function memberMight(m) {
 }
 export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0);
 
+export const frosty = (a, K, seasonId) => seasonId === 'winter' && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0;
 // cells a day: as the slowest who walks (campaign/baggage.js), slower hungry and in frost
 export function pace(a, K, seasonId) {
   let v = CAMPAIGN.speed * scaleOf(a) * slowest(K) * (guided(K) ? HIRES.guide.pace : 1);
   if (K.hungry > 0) v *= CAMPAIGN.hunger.slow;
-  if (seasonId === 'winter' && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0) v *= CAMPAIGN.frost;
+  if (frosty(a, K, seasonId) && K.warm !== K.day) v *= CAMPAIGN.frost;   // (a warming brew for everyone: no slower — caravanDay)
   return v * paceOf(K).speed;   // the pace the council keeps (data/road.js PACES; normal — × 1)
 }
 
@@ -622,6 +624,7 @@ export function caravanDay(a, K, day) {
   const seasonId = SEASON_LIST[a.hist.season].id, before = {town: townAt(a, K.i)?.id, biome: biomeAt(a, K.i)?.id};
   assign(K);
   K.dayIn = day % SEASON_DAYS;   // the day of the season: a camp on the local map begins on it (campaign/camp.js)
+  wearOff(K);
   const ms = alive(K), {r, done} = draw(K, 'day');
   // the day: a camp or the march; food from the land either way
   const rich = richness(a, K.i) * seasonFood(a, K.i, seasonId), Fo = CAMPAIGN.forage;
@@ -632,7 +635,14 @@ export function caravanDay(a, K, day) {
     if (K.inTown.work) K.food += mouths(K) * CAMPAIGN.ration;
     const st = standing(a, K, town), price = st ? rationPrice(town, st, termsOf(a, K, town).buy) : Infinity, want = Math.max(0, ms.length * CAMPAIGN.ration * 2 - K.food);
     const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; }
-  } else if (!camping) { const p = choosePace(a, K); if ((K.pace || 'normal') !== p) K.pace = p; march(a, K, pace(a, K, seasonId)); }
+  } else if (!camping) {
+    const p = choosePace(a, K); if ((K.pace || 'normal') !== p) K.pace = p;
+    // the brews of the day (campaign/potions.js): in frost everyone drinks a warming one — then the frost does not slow
+    // them; with danger about the fighters drink an invigorating one — then an ambush does not catch them napping
+    if (frosty(a, K, seasonId) && brewTheDay(K, 'cold', ms)) K.warm = K.day;
+    if (dangers(a, K.i, K).some(d => (d.strength ?? 0) > PACE_RULES.dangerAt) && brewTheDay(K, 'tired', ms.filter(m => !m.captive && !m.former))) K.alert = K.day;
+    march(a, K, pace(a, K, seasonId));
+  }
   else campWork(a, K, r);
   // the first days of a stop to hunt and gather are played on the local map (campaign/fight.js playStop):
   // what the land gave there is the day's forage

@@ -74,12 +74,12 @@ CONDITIONS.registerAll([
   // the brews of the stock (data/potions.js home): needs — a need filled at once (+ share); mend — the time a grave
   // wound has left to heal × this; march — health a day on the campaign's world map; sleeps — a captive sleeps the night
   // through, calm — and its will to run falls by this much
-  {id: 'potWarm', kind: 'potion', label: 'согревающий отвар', note: 'тепло сразу + needs; холод × cold на ticks тиков', needs: {warmth: 0.3}, ticks: 600, mods: {cold: 0.5}},
-  {id: 'potWarmStrong', kind: 'potion', label: 'согревающий отвар (усиленный)', note: 'тепло сразу + needs; холод × cold на ticks тиков', needs: {warmth: 0.6}, ticks: 1200, mods: {cold: 0.25}},
-  {id: 'potVigor', kind: 'potion', label: 'бодрящий отвар', note: 'бодрость сразу + needs; усталость × sleep на ticks тиков', needs: {rest: 0.3}, ticks: 600, mods: {sleep: 0.5}},
-  {id: 'potVigorStrong', kind: 'potion', label: 'бодрящий отвар (усиленный)', note: 'бодрость + needs, усталость × sleep, зоркость × sight на ticks тиков (глаза рыси)', needs: {rest: 0.5}, ticks: 900, mods: {sleep: 0.3, sight: 1.15}},
-  {id: 'potMend', kind: 'potion', label: 'укрепляющий отвар', note: 'заживление × regen на ticks тиков; тяжёлой ране остаётся × mend срока; в походе + march здоровья', ticks: 1200, mods: {regen: 2}, mend: 0.75, march: 0.08},
-  {id: 'potMendStrong', kind: 'potion', label: 'укрепляющий отвар (усиленный)', note: 'сразу + heal; заживление × regen; тяжёлой ране × mend срока; в походе + march', heal: 0.2, ticks: 1200, mods: {regen: 3}, mend: 0.5, march: 0.15},
+  {id: 'potWarm', kind: 'potion', label: 'согревающий отвар', note: 'тепло сразу + needs; холод × cold на ticks тиков (сутки, на любой карте; на карте мира — мороз не замедляет)', needs: {warmth: 0.3}, ticks: 1200, mods: {cold: 0.5}},
+  {id: 'potWarmStrong', kind: 'potion', label: 'согревающий отвар (усиленный)', note: 'тепло сразу + needs; холод × cold на ticks тиков', needs: {warmth: 0.6}, ticks: 2400, mods: {cold: 0.25}},
+  {id: 'potVigor', kind: 'potion', label: 'бодрящий отвар', note: 'бодрость сразу + needs; усталость × sleep на ticks тиков (сутки, на любой карте; на карте мира — засада не застаёт врасплох)', needs: {rest: 0.3}, ticks: 1200, mods: {sleep: 0.5}},
+  {id: 'potVigorStrong', kind: 'potion', label: 'бодрящий отвар (усиленный)', note: 'бодрость + needs, усталость × sleep, зоркость × sight на ticks тиков (глаза рыси)', needs: {rest: 0.5}, ticks: 2400, mods: {sleep: 0.3, sight: 1.15}},
+  {id: 'potMend', kind: 'potion', label: 'укрепляющий отвар', note: 'заживление × mod mend на ticks тиков (огонь не гасит); тяжёлой ране остаётся × mend срока; в походе + march здоровья', ticks: 1200, mods: {mend: 2}, mend: 0.75, march: 0.08},
+  {id: 'potMendStrong', kind: 'potion', label: 'укрепляющий отвар (усиленный)', note: 'сразу + heal; заживление × mod mend; тяжёлой ране × mend срока; в походе + march', heal: 0.2, ticks: 1200, mods: {mend: 3}, mend: 0.5, march: 0.15},
   {id: 'potSleep', kind: 'potion', label: 'сонный отвар', note: 'пленный спит всю ночь: не бежит', sleeps: true},
   {id: 'potSleepStrong', kind: 'potion', label: 'сонный отвар (усиленный)', note: 'пленный спит всю ночь, воля к побегу − calm', sleeps: true, calm: 0.1},
   // ── exhaustion: neutral for now (empty mods), ready for the numbers

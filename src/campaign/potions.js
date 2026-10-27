@@ -13,6 +13,8 @@ import {alive} from './march.js';
 import {hasBuilding} from './baggage.js';
 import {gearDef} from '../agents/equipment.js';
 import {CONDITIONS} from '../data/conditions.js';
+import {useOfEffect} from '../agents/potions.js';
+import {DAY} from '../core/time.js';
 
 const carriers = K => alive(K).filter(m => !m.captive && !m.former);
 const take = (K, id, n = 1) => { K.cargo[id] -= n; if (K.cargo[id] <= 0) delete K.cargo[id]; };
@@ -44,7 +46,7 @@ export const beltRoom = K => carriers(K).reduce((s, m) => s + POTION.belt - (m.b
 // at least one while there is anyone, less what the cargo carries of it
 export function homeRoom(K, potion) {
   const S = potion.stock, heads = S.of === 'captives' ? alive(K).filter(m => m.captive).length : carriers(K).length;
-  return heads ? Math.ceil(heads * S.share) - potion.grades.reduce((s, g) => s + (K.cargo[g.res] || 0), 0) : 0;
+  return heads ? Math.ceil(heads * (S.march ?? S.share)) - potion.grades.reduce((s, g) => s + (K.cargo[g.res] || 0), 0) : 0;
 }
 // room for this potion: the slots (the plain healing one), the belts, or the brew's own
 export const roomFor = (K, potion) => (potion.home ? homeRoom(K, potion) : potion.id === 'heal' ? potionRoom(K) : beltRoom(K));
@@ -77,6 +79,29 @@ export function mendDay(K) {
   }
   return n;
 }
+// ── the brews at work on the world map: a member's m.effects — [{id, day}]: the row of «Состояний», the last day it works
+// (a brew of `ticks` lasts ⌈ticks / DAY⌉ days). They go with it onto the local map and back (campaign/camp.js).
+const daysOf = id => Math.max(1, Math.ceil((CONDITIONS.get(id).ticks || DAY) / DAY));
+export const workingOn = (K, m, use) => (m.effects || []).some(e => e.day >= K.day && useOfEffect(e.id) === use);
+// the morning: what ran out is gone
+export function wearOff(K) { for (const m of alive(K)) if (m.effects) { m.effects = m.effects.filter(e => e.day >= K.day); if (!m.effects.length) m.effects = null; } }
+// everyone of `ms` without a brew of this use at work drinks one from the cargo (the strong first) — only when there is
+// enough for them all: one left out holds the whole caravan back as before. → true when all of them have one at work
+export function brewTheDay(K, use, ms) {
+  const need = ms.filter(m => !workingOn(K, m, use)), grades = HOME_BY_USE[use] || [];
+  if (!need.length) return true;
+  if (grades.reduce((s, r) => s + (K.cargo[r] || 0), 0) < need.length) return false;
+  for (const m of need) {
+    const res = grades.find(r => (K.cargo[r] || 0) >= 1), id = potionOf(res).grade.effect; take(K, res);
+    (m.effects ||= []).push({id, day: K.day + daysOf(id) - 1});
+  }
+  (K.stats.brews ||= {})[use] = (K.stats.brews[use] || 0) + need.length;
+  return true;
+}
+// onto the local map: [{id, ticks}] — what is left of each, no more than its own length; and back: [{id, day}]
+export const effectsOut = (K, m) => (m.effects || []).filter(e => e.day >= K.day).map(e => ({id: e.id, ticks: Math.min(CONDITIONS.get(e.id).ticks || DAY, (e.day - K.day + 1) * DAY)}));
+export const effectsIn = (K, list) => (list?.length ? list.map(e => ({id: e.id, day: K.day + Math.max(1, Math.ceil(e.ticks / DAY)) - 1})) : null);
+
 // what a potion gives a member as a share of its health (m.hp is a share: a potion heals its `heal` — «Состояния» potHeal —
 // of a standard body, whatever the race's)
 export const potionShare = m => CONDITIONS.get('potHeal').heal / (SPECIES.get(m.race)?.hp || 1);

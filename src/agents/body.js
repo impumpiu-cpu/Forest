@@ -79,8 +79,9 @@ export function stepBody(w, a) {
   const CH = AFFLICTIONS.get('chill');
   if (CH.catch > 0 && a.faction === 'colony' && !a.ill && a.needs.warmth != null && a.needs.warmth <= EXHAUSTION.low && w.rngs.colony() < CH.catch / DAY) catchIll(w, a, 'chill');
   const comfy = sp.needs.every(id => a.needs[id] > 0.4);
-  // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's
-  const regen = a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1;
+  // wounds close faster in some races (orcs, trolls: mods.regen); fire close by stops a troll's — not a strengthening
+  // brew's (mods.mend): the greater of the two works
+  const regen = Math.max(a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1, a.mods.mend ?? 1);
   // the fallen do not mend by themselves: only a dressed wound stops the bleeding (agents/wounds.js)
   if (comfy && T < 45 && !a.downed) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a) * regen);
   if (a.hp <= 0) kill(w, a, starving || (T > 60 ? 'пожара' : 'ран'));

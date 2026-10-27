@@ -22,7 +22,7 @@ import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
 import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
 import {afterFight} from './quest.js';
-import {topUp, quaffMember} from './potions.js';
+import {topUp, quaffMember, effectsIn} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
 import {famed, paceOf} from './road.js';
 
@@ -123,7 +123,7 @@ export function applyCamp(a, K, S, o, d, how) {
     if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - CAMPAIGN.fight.wounded) hurt.push(m);
-    m.hp = mo.hp; m.local = mo.local; if (mo.potions != null) m.potions = mo.potions; if (mo.belt) m.belt = mo.belt.length ? mo.belt : null;
+    m.hp = mo.hp; m.local = mo.local; if (mo.potions != null) m.potions = mo.potions; if (mo.belt) m.belt = mo.belt.length ? mo.belt : null; if (mo.effects) m.effects = effectsIn(K, mo.effects);
   }
   // the beasts: killed, bolted into the dark, led off by the thieves
   const lostB = [], stolenB = [];
@@ -247,7 +247,7 @@ function spoilsRest(a, K, d, r) {
 // ── at once (the quick mode): the foe's might against the caravan's
 function autoFight(a, K, d, r, how) {
   // the foe is bought by the caravan's might × the fight's weight (campaign/camp.js foeWeight, data/camp.js CAMP.foe), as on the local map
-  const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = might * (how === 'ambush' ? AMBUSH.surprise * paceOf(K).wary : 1);
+  const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = might * (how === 'ambush' ? (K.alert === K.day ? 1 : AMBUSH.surprise) * paceOf(K).wary : 1);   // (an invigorating brew of the day: not caught napping)
   const share = P / (P + E), win = r() < share;
   K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.ceil(E * CAMP.quickHeads)), weight: Math.round(weight * 100) / 100};   // for the fight's record
   // the blows: more when they lose, mostly on the knights, who shield the squires

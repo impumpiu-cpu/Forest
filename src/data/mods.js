@@ -33,6 +33,7 @@ CREATURE_MODS.registerAll([
   {id: 'sight', label: 'Обзор', how: 'mul', base: 1, curve: 'sight', reads: 'как далеко замечают врага, дозор', note: 'выбитый глаз 0,8'},
   {id: 'aim', label: 'Меткость', how: 'add', base: 0, curve: 'aim', reads: 'шанс попасть выстрелом (agents/combat.js)', note: 'выбитый глаз −0,08'},
   {id: 'dodge', label: 'Уклонение', how: 'add', base: 0, curve: 'dodge', floor: 0, reads: 'шанс, что удар пройдёт мимо (agents/combat.js)', note: 'не меньше 0 относительно типичного зверя'},
+  {id: 'mend', label: 'Заживление отваром', how: 'mul', base: 1, reads: 'заживление ран (agents/body.js)', note: 'укрепляющий отвар; огонь его не гасит: работает большее из него и заживления'},
 ]);
 
 export const MOD_HOWS = {mul: 'множитель (×), нейтрально 1', add: 'прибавка (+)', best: 'лучшее из (max), нейтрально 1'};

@@ -40,6 +40,25 @@ export const ADD = ADD_MODS;
 
 function mod(m, k, v) { m[k] = ADD.has(k) ? (m[k] ?? 0) + v : (m[k] ?? 1) * v; }
 
+// The modifiers of a body do not pile up (docs/RULES.md «Модификаторы»): of all that push one key the same way only the
+// strongest works — the highest of those above neutral, the lowest of those below; one of each way, together. A
+// troll's regeneration and a strengthening brew, a dwarf's thick hide and the trait «hardy» — the better one, not both.
+// `pool` gathers them: {key: {up, down}} — a multiplier as it is, an addition as its sum with the neutral.
+function pool() {
+  const P = {};
+  return {
+    put(k, v) {
+      const add = ADD.has(k), n = add ? 0 : 1;
+      if (!Number.isFinite(v) || v === n) return;
+      const e = P[k] ||= {up: n, down: n};
+      if (v > n) e.up = Math.max(e.up, v); else e.down = Math.min(e.down, v);
+    },
+    // the species' own mods multiply the neutral body, whatever the key (an addition: base × (v − 1))
+    putSpecies(k, v) { this.put(k, ADD.has(k) ? (BASE_MODS[k] ?? 0) * (v - 1) : v); },
+    into(m) { for (const [k, e] of Object.entries(P)) { if (ADD.has(k)) m[k] = (m[k] ?? 0) + e.up + e.down; else m[k] = (m[k] ?? 1) * e.up * e.down; } },
+  };
+}
+
 // Rolls who the creature is: its people, SPECIAL inside the limits, world view and values. The body
 // (mods, health) is not touched here: refreshBody() builds it from these and the other sources.
 // opts.lean — stats (ids) the creature leans to: each is the better of two rolls, still inside the limits
@@ -95,32 +114,33 @@ function specialInto(m, a, sp) {
 }
 
 // The body, rebuilt from its sources every time, never on top of the last result, so calling it twice
-// changes nothing. Sources, in order:
-//   species mods → SPECIAL → the people's mods → racial innate traits → character traits (a.traits)
-//   → wounds and traumas (a.wounds, data/wounds.js)
-//   → the creature's own extras (a.own: {mul: {k: ×}, add: {k: +}, set: {k: value}, hp: full health})
+// changes nothing. SPECIAL is the ground (its curves); on it the modifiers, by the rule of the strongest (pool):
+//   species mods, the people's mods, racial innate traits, character traits (a.traits), wounds and traumas
+//   (a.wounds, data/wounds.js), exhaustion, illness, withdrawal, the rot, the marks, the potions at work
+//   → then the creature's own extras (a.own: {mul: {k: ×}, add: {k: +}, set: {k: value}, hp: full health}), as they are
 // Health keeps its share of the maximum: a wounded colonist stays as wounded after the rebuild.
 // Called when the creature is made, and whenever one of the sources changes.
 export function refreshBody(a) {
-  const sp = SPECIES.get(a.species), m = {...BASE_MODS};
-  for (const [k, v] of Object.entries(sp.mods || {})) m[k] *= v;
+  const sp = SPECIES.get(a.species), m = {...BASE_MODS}, P = pool();
+  for (const [k, v] of Object.entries(sp.mods || {})) P.putSpecies(k, v);
   let full = null;
   if (a.special && sp.special) {
     full = specialInto(m, a, sp);
     const people = peopleOf(sp, a);
-    for (const [k, v] of Object.entries(people?.mods || {})) mod(m, k, v);
-    for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) mod(m, k, v);
+    for (const [k, v] of Object.entries(people?.mods || {})) P.put(k, v);
+    for (const t of innateOf(sp, a)) for (const [k, v] of Object.entries(t.mods || {})) P.put(k, v);
   }
-  for (const id of a.traits || []) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) mod(m, k, v);
+  for (const id of a.traits || []) for (const [k, v] of Object.entries(TRAITS.get(id).mods)) P.put(k, v);
   // wounds that heal and traumas for life (data/wounds.js)
   let hpMul = 1;
-  for (const wd of a.wounds || []) { const W = WOUNDS.get(wd.id); for (const [k, v] of Object.entries(W.mods || {})) mod(m, k, v); hpMul *= W.hp ?? 1; }
+  for (const wd of a.wounds || []) { const W = WOUNDS.get(wd.id); for (const [k, v] of Object.entries(W.mods || {})) P.put(k, v); hpMul *= W.hp ?? 1; }
   // the stage of exhaustion (data/conditions.js): its mods, if it has any
   const ex = exhaustionRow(a.exhaust || 0);
-  if (ex) { for (const [k, v] of Object.entries(ex.mods || {})) mod(m, k, v); hpMul *= ex.hp ?? 1; }
+  if (ex) { for (const [k, v] of Object.entries(ex.mods || {})) P.put(k, v); hpMul *= ex.hp ?? 1; }
   // an illness by its stage, withdrawal, the rot (data/afflictions.js, data/conditions.js)
   // … and the potions at work (a.effects: their time is kept by agents/potions.js stepPotionEffects)
-  for (const row of [illStage(a), a.withdrawal ? CONDITIONS.get('withdrawal') : null, taintRow(a), ...marksOf(a), ...effectsOf(null, a)]) if (row) { for (const [k, v] of Object.entries(row.mods || {})) mod(m, k, v); hpMul *= row.hp ?? 1; }
+  for (const row of [illStage(a), a.withdrawal ? CONDITIONS.get('withdrawal') : null, taintRow(a), ...marksOf(a), ...effectsOf(null, a)]) if (row) { for (const [k, v] of Object.entries(row.mods || {})) P.put(k, v); hpMul *= row.hp ?? 1; }
+  P.into(m);
   const own = a.own || {};
   for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;
   for (const [k, v] of Object.entries(own.add || {})) m[k] = (m[k] ?? 0) + v;
