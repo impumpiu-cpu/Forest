@@ -21,7 +21,7 @@ import {room} from './company.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {plural} from '../core/util.js';
 import {capacity, load, assign, toolTier, metalTier, campOf, hasBuilding} from './baggage.js';
-import {topUp, potionRoom, beltRoom, homeRoom, roomFor, potionKeep, beltWanted} from './potions.js';
+import {topUp, potionRoom, homeRoom, roomFor, kindRoom, potionKeep} from './potions.js';
 import {POTION, POTIONS, potionOf, isPotion} from '../data/potions.js';
 import {ORES} from '../data/ores.js';
 import {route} from './path.js';
@@ -100,7 +100,7 @@ function wants(a, K, t, st) {
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) out.push([5, o]);
     if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
     if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) < ALCHEMY.pots && hasBuilding(K, 'healerhut')) out.push([3, o]);   // pots for the camp's healer's hut: cheap, and every potion takes one
-    if (o.kind === 'goods' && o.need === 'belt' && beltWanted(K, o.id)) for (let k = 0; k < Math.min(POTION.belt, beltRoom(K)); k++) out.push([8, o]);   // potions for the belts (data/market.js: the strong first)
+    if (o.kind === 'goods' && o.need === 'belt') for (let k = 0; k < kindRoom(K, potionOf(o.id).potion, o.id); k++) out.push([8, o]);   // as many as would be worn of its kind   // potions for the belts (data/market.js: the strong first)
     if (o.kind === 'goods' && o.need === 'home') for (let k = 0; k < homeRoom(K, potionOf(o.id).potion); k++) out.push([8, o]);   // the brews of the cargo (after the belts: the market lists them later)
     if (o.kind === 'vehicle' && o.id === 'cart' && !K.vehicles.length && K.goal != null && wheelsFit()) out.push([4, o]);
     if (o.kind === 'vehicle' && o.id === 'wagon' && !K.vehicles.some(v => v.kind === 'wagon') && K.beasts.some(b => BEASTS[b.kind].pulls >= 1) && K.goal != null && wheelsFit()) out.push([6, o]);
@@ -224,7 +224,7 @@ export function trade(a, K, t, st) {
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length >= free(K).length) continue;
     if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) >= CAPTIVE.campaign.keep) continue;
     if (o.kind === 'goods' && o.need === 'heal' && potionRoom(K) <= 0) continue;
-    if (o.kind === 'goods' && o.need === 'belt' && (beltRoom(K) <= 0 || !beltWanted(K, o.id))) continue;
+    if (o.kind === 'goods' && o.need === 'belt' && kindRoom(K, potionOf(o.id).potion, o.id) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'home' && homeRoom(K, potionOf(o.id).potion) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) >= ALCHEMY.pots) continue;
     K.gold = gold(K.gold - p);

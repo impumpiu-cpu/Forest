@@ -74,9 +74,16 @@ export function homeRoom(K, potion) {
   const S = potion.stock, heads = S.of === 'captives' ? alive(K).filter(m => m.captive).length : carriers(K).length;
   return heads ? Math.ceil(heads * (S.march ?? S.share)) - potion.grades.reduce((s, g) => s + (K.cargo[g.res] || 0), 0) : 0;
 }
-// room for this grade of a potion (`res`): the slot (the plain healing one), the brew's own, or the belts — for what
-// someone would wear (the strong healing one too: it goes into a belt)
-export const roomFor = (K, potion, res) => (potion.home ? homeRoom(K, potion) : res === 'potion' ? potionRoom(K) : beltWanted(K, res) ? beltRoom(K) : 0);
+// belt room for a kind of potion (a belt takes one of a kind): the members who would wear it (it fits them, it is
+// wanted against the foes expected), have a place free and none of its kind yet, less what the cargo carries of it
+// (the plain healing one aside: it goes into the slots)
+export function kindRoom(K, potion, res, threat = threatOf(foesOf(K))) {
+  const wear = carriers(K).filter(m => (m.belt?.length || 0) < POTION.belt && !(m.belt || []).some(b => sameKind(b, res)) && fitsBelt(m, res) && beltNeed(res, threat, m.race) > 0).length;
+  return wear - potion.grades.reduce((s, g) => s + (g.res === 'potion' ? 0 : K.cargo[g.res] || 0), 0);
+}
+// room for this grade of a potion (`res`): the slot (the plain healing one), the brew's own, or a belt place for its
+// kind (the strong healing one too: it goes into a belt)
+export const roomFor = (K, potion, res) => (potion.home ? homeRoom(K, potion) : res === 'potion' ? potionRoom(K) : kindRoom(K, potion, res));
 // the makings are in the cargo
 const has = (K, cost) => Object.entries(cost).every(([r, n]) => (K.cargo[r] || 0) >= n);
 

@@ -262,12 +262,17 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
 // the strong healing one goes into a belt (its room is the belts'); the quick mode drinks it from the belt
 {
   const {potionKeep} = await import('../src/data/potions.js');
-  const {beltRoom, beltWanted, roomFor, quaffMember} = await import('../src/campaign/potions.js');
+  const {beltRoom, beltWanted, roomFor, kindRoom, quaffMember, brewDay} = await import('../src/campaign/potions.js');
   expect(potionKeep('potion', 9) === 9 && potionKeep('bone', 40) === POTION.keepMakings && potionKeep('hide', 5) === 0, 'караван держит не то: зелья, кости, шкуры');
   const K = {members: [{alive: true, race: 'human', potions: 3, gear: {hand: ['ironaxe']}}, {alive: true, race: 'human', potions: 3, gear: {hand: ['ironaxe']}}],
     cargo: {silverOilStrong: 3}, fights: [{species: {human: 4}}], buildings: [], vehicles: [], beasts: [], stats: {}};
   expect(!beltWanted(K, 'silverOilStrong') && beltRoom(K) === 2 * POTION.belt, `масло без боящихся серебра заняло место: ${beltRoom(K)}`);
-  expect(roomFor(K, POTIONS.get('heal'), 'potionStrong') === beltRoom(K) && roomFor(K, POTIONS.get('heal'), 'potion') <= 0, 'место усиленного лечения не по поясу');
+  expect(roomFor(K, POTIONS.get('heal'), 'potionStrong') === kindRoom(K, POTIONS.get('heal'), 'potionStrong') && roomFor(K, POTIONS.get('heal'), 'potion') <= 0, 'место усиленного лечения не по поясу');
+  // a belt takes one of a kind: a second antidote brewed for nobody does not keep a bear's brew from the other place
+  const K2 = {members: [{alive: true, race: 'human', potions: 3, gear: {hand: ['ironaxe']}}], cargo: {herbs: 2, slime: 2, bile: 1, braga: 1, pots: 6},
+    buildings: ['healerhut'], vehicles: [], beasts: [], stats: {}};
+  brewDay(K2, () => 1, false);
+  expect(K2.members[0].belt?.length === 2 && K2.members[0].belt.includes('antidote') && K2.members[0].belt.includes('bearBrew') && !K2.cargo.antidote, `пояс одного рода: ${K2.members[0].belt} / груз ${JSON.stringify(K2.cargo)}`);
   const m = {alive: true, race: 'human', hp: 0.1, potions: 0, belt: ['potionStrong']};
   expect(quaffMember(m) && m.hp > 0.1 && !m.belt, 'в быстром бою усиленное лечение из пояса не выпито');
 }
