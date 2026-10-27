@@ -25,6 +25,8 @@ import {onEdit} from '../data/schema/layer.js';
 
 const {blow: BLOW, shot: SHOT, hit: HIT} = COMBAT;
 
+// a piercing weapon (quality `piercing`) against the armour of the average foe (COMBAT.armourSeen): × what more of it goes through
+const pierceGain = q => { const p = traitOf(q, 'piercing'), A = COMBAT.armourSeen; return p ? (1 - A * (1 - p)) / (1 - A) : 1; };
 export function strengthParts(a, {now = false} = {}) {
   const sp = SPECIES.get(a.species), g = a.gear || recalcGear(a), m = a.mods || {};
   // a critical blow × CRIT.mul, more for a vicious weapon (data/balance/combat.js WEAPON_QUALITIES)
@@ -33,10 +35,19 @@ export function strengthParts(a, {now = false} = {}) {
   const cd = Math.max(COMBAT.minCooldown, Math.round(g.melee.cd * (m.swing ?? 1)));
   let melee = (BLOW.base + BLOW.spread / 2) * g.melee.dmg * mixGain(g.melee) * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * crit / cd;
   if (sp.venom) melee += sp.venom.dmg * Math.min(1, sp.venom.ticks / cd);
+  // a sly weapon (quality `backstab`): the share of blows from the flank strikes deeper (COMBAT.flank)
+  const sly = q => 1 + COMBAT.flank.share * (COMBAT.flank.dmg - 1) * traitOf(q, 'backstab');
+  melee *= sly(g.melee.q) * pierceGain(g.melee.q);
+  // the other hand strikes after the main blow (quality `paired`, agents/combat.js attack)
+  const off = g.offhand;
+  if (off) melee += (BLOW.base + BLOW.spread / 2) * off.dmg * off.share * mixGain(off) * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * (1 + pc * (CRIT.mul + traitOf(off.q, 'vicious') - 1)) * sly(off.q) * pierceGain(off.q) / cd;
   let shot = 0;
   if (g.ranged) {
     const hit = Math.min(0.95, Math.max(0.05, HIT.base + HIT.skill * (a.skill?.ranged ?? HIT.noSkill) + (m.aim || 0) - HIT.far * 0.5));
     shot = (SHOT.base + SHOT.spread / 2) * g.ranged.dmg * mixGain(g.ranged) * critShot * hit / g.ranged.cd * STRENGTH.rangedWeight;
+    shot *= pierceGain(g.ranged.q);   // through the armour of the average foe
+    // a bundle, not a quiverful; as it is now — what is left of it
+    const throws = traitOf(g.ranged.q, 'thrown'); if (throws) shot *= Math.min(1, (now ? g.ranged.item?.ammo ?? throws : throws) / COMBAT.thrown.shots);
   }
   // a shooter shoots while the foe comes or is held by others, and strikes with the bow once it is close
   const offence = melee + shot;

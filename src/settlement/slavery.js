@@ -18,6 +18,7 @@ import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {esc, g, clamp} from '../core/util.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
+import {setStanding} from '../agents/standing.js';
 
 const round1 = v => Math.round(v * 10) / 10;
 const tally = w => (w.chronicle.captives ||= {taken: 0, died: 0});
@@ -76,7 +77,7 @@ export function buyCaptive(w, c, deal, note, cash, spend, trader) {
   const at = trader || {x: w.camp.x + 0.5, y: w.camp.y + 0.5};
   const a = createAgent(w, o.race, 'colony', at.x, at.y);
   w.stock[B.resource] -= B.n;
-  a.captive = {since: w.tick, bonds: B.id, by: null, band: null, people: null, was: 'bought', will: SLAVE.buy.will}; a.brain = 'captive';
+  setStanding(a, 'captive', {since: w.tick, bonds: B.id, by: null, band: null, people: null, was: 'bought', will: SLAVE.buy.will});
   const r = w.chronicle.people?.find(x => x.id === a.id); if (r) r.captive = true;
   tally(w).bought = (tally(w).bought || 0) + 1;
   deal.spent += p; note(deal.bought, `пленный (${SPECIES.get(o.race).label})`, 1, p);

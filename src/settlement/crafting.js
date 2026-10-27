@@ -28,7 +28,7 @@ import {esc} from '../core/util.js';
 import {HOUR} from '../core/time.js';
 import {liveById} from '../agents/lookup.js';
 import {takeKind, giveKind, kindsOf} from './kinds.js';
-import {FAMILIES, mayMake, useOf} from '../data/kinds.js';
+import {FAMILIES, mayMake, mayWield, useOf} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {degreeOf, degreeValue} from '../data/checks.js';
 
@@ -44,6 +44,7 @@ export function pieceLasts(u, skill, fine = 0) {
 // may this worker make this recipe by its race's rules (data/kinds.js): a named metal it may not work, or a family of
 // which the stock holds too little that it may work, rules it out
 export function raceMayCraft(w, a, r) {
+  if (r.makes?.item && ITEMS.has(r.makes.item) && !mayWield(a.species, ITEMS.get(r.makes.item).form)) return false;   // a form its race will not touch
   for (const [res, v] of Object.entries(r.cost)) {
     if (FAMILY_RES[res]) { const ok = Object.entries(kindsOf(w, FAMILY_RES[res])).filter(([id]) => mayMake(a.species, id)).reduce((s, [, n]) => s + n, 0); if (ok + 1e-6 < v) return false; }
     else if (!mayMake(a.species, res)) return false;
@@ -87,6 +88,7 @@ function makeCraftContext(w) {
   for (const it of w.armory) if (def(it).silver) silvered++;
   return {
     pop: col.length, owned,
+    captives: col.filter(a => a.captive).length,
     likes: job => col.filter(a => a.likes === job).length,
     timid: col.filter(a => a.mods.bravery < 0.8).length,
     stock: res => w.stock[res] || 0,
@@ -127,6 +129,7 @@ export const anyoneCan = (w, r) => !recipeNeed(r) || w.agents.some(a => a.factio
 export function pickRecipe(w, station, ctx = craftContext(w), a = null) {
   let best = null, bv = 0;
   for (const r of recipesAt(station)) {
+    if (r.makes?.item && ITEMS.has(r.makes.item) && ITEMS.get(r.makes.item).tradeOnly) continue;   // only bought (tag «только у торговцев»)
     const v = r.want(ctx);
     if (v > bv && (a ? canMake(a, r) && raceMayCraft(w, a, r) : anyoneCan(w, r)) && canStart(w, r)) { bv = v; best = r; }
   }

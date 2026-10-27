@@ -113,6 +113,7 @@ export const WATCH = {
   offDuty: 1.5,       // the morning after: sleep it off, until the rest is back or noon
   noon: 12,
   fireLight: 6,       // the campfire lights this far: full sight by night
+  torch: 0.5,         // the watchman's torch takes back this share of what the night takes of his sight
   fuel: 0.75,         // a tended fire burns this share of the wood an untended one does
 };
 

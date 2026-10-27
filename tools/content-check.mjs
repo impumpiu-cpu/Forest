@@ -91,9 +91,9 @@ expect(AFFLICTIONS.all().every(A => A.catch === 0) && ADDICTION.braga.hook === 0
   E.setCell('tongueRules', 'tongue.barrier', 'value', 0.5);
   expect(near(termsOf(null, K, orcs).buy, 1.5) && near(termsOf(null, K, orcs).sell, 0.5) && termsOf(null, K, dwarves).buy === 1, 'чужой язык: орки без толмача дороже, с гномами есть общий');
   E.resetAll();
-  expect(nightSight('human', 1) === 1, 'ночь сужает обзор при нуле');
-  E.setCell('tongueRules', 'night.loss', 'value', 0.5);
   expect(nightSight('human', 1) === 0.5 && nightSight('dwarf', 1) === 1, 'ночное зрение: человек и гном');
+  E.setCell('tongueRules', 'night.loss', 'value', 0);
+  expect(nightSight('human', 1) === 1, 'ночь сужает обзор при нуле');
   E.resetAll();
   famed(null, K, 'slaveSale', 'r1'); famed(null, K, 'slaveSale', 'r1');
   E.setCell('reputation', 'reputation.infamyMarkup', 'value', 0.1);
@@ -116,6 +116,24 @@ expect(AFFLICTIONS.all().every(A => A.catch === 0) && ADDICTION.braga.hook === 0
   expect(s.length === 6 && s.every(x => Number.isFinite(x.value) || x.id === 'defence'), `показатели поселения: ${s.map(x => `${x.id} ${x.value}`).join(', ')}`);
   const beds = s.find(x => x.id === 'beds');
   expect(near(beds.value, (w.mods.add.beds || 0) / w.agents.filter(a => a.faction === 'colony').length), 'кровати на жителя посчитаны не так');
+}
+
+// the tag «только у торговцев» (item tradeOnly): the outpost does not take up a recipe for such a thing, a trader
+// does not bring it as «what the outpost could make»
+{
+  const {newGame} = await import('../src/sim.js');
+  const {DEFAULT_CFG} = await import('../src/data/presets.js');
+  const {pickRecipe, craftContext} = await import('../src/settlement/crafting.js');
+  const {ITEMS} = await import('../src/data/items.js');
+  const w = newGame({...DEFAULT_CFG, seed: 'tradeonly', size: 'small'});
+  w.stock.wood = 99; w.stock.bone = 99;
+  const ctx = {...craftContext(w), owned: () => 0}, picks = () => { const r = pickRecipe(w, 'crafthut', ctx); return r?.makes?.item; };
+  const was = picks();
+  if (was) {
+    const d = ITEMS.get(was); d.tradeOnly = true;
+    expect(picks() !== was, `рецепт вещи «только у торговцев» взят: ${was}`);
+    delete d.tradeOnly;
+  } else bad.push('проверка tradeOnly: хижина ремесленника ничего не выбрала');
 }
 
 if (bad.length) { console.log('Содержание мира (этап 8):\n  ' + bad.join('\n  ')); process.exit(1); }

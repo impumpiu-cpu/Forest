@@ -15,6 +15,16 @@ export const heldOf = K => living(K).filter(m => m.captive);
 const core = m => m.core ?? ['knight', 'squire'].includes(m.role);   // saves from before the joiners
 export const joinedOf = K => freeOf(K).filter(m => !core(m) && !m.contract && m.loyalty != null);
 
+// A member's place in the company (docs/BEHAVIOUR.md «Словарь»: место в дружине) and its record go together: a captive
+// has its bonds (m.captive), a former slave the time since they came off (m.former). setPlace() changes both at once,
+// so the place and the record cannot disagree; any other place clears both records.
+export function setPlace(m, place, record = null) {
+  m.role = place;
+  m.captive = place === 'captive' ? record : null;
+  m.former = place === 'former' ? record : null;
+  if ((place === 'captive' || place === 'former') && !record) throw new Error(`place: a ${place} without its record`);
+}
+
 // is there room for one more of this kind?
 //   kind: 'hire:<role>' (a hireling), 'joined' (a companion, the freed), 'former' (a captive freed — already
 //   among the members, so it takes a free place and a joined one), 'stay' (a hireling who stays for good — already

@@ -89,11 +89,11 @@ export function termsOf(w, c = w.caravan) {
 }
 const round2 = v => Math.round(v * 100) / 100;
 
-// items a ware line can be: 'plain' — what the outpost could make itself (it has a recipe), short of iron;
+// items a ware line can be: 'plain' — what the outpost could make itself (it has a recipe, not «только у торговцев»), short of iron;
 // 'any' — anything finer work improves and a trader may carry (not of a rare material)
 function itemPool(spec) {
   if (Array.isArray(spec)) return spec;
-  if (spec === 'plain') return ITEMS.filter(d => !d.iron && RECIPES.all().some(r => r.makes?.item === d.id)).map(d => d.id);
+  if (spec === 'plain') return ITEMS.filter(d => !d.iron && !d.tradeOnly && RECIPES.all().some(r => r.makes?.item === d.id)).map(d => d.id);
   return ITEMS.filter(d => d.quality !== false && d.sold !== false).map(d => d.id);
 }
 
@@ -140,7 +140,7 @@ export const traderOf = (w, c = w.caravan) => (c ? liveById(w, c.traderId) : nul
 // called by the migration when the group reaches the map edge (data/migrations.js 'caravan')
 export function startCaravan(w, group) {
   const rng = w.rngs.outside, id = w.tick;
-  const trader = group.find(a => a.role === 'trader'), mules = group.filter(a => a.species === 'mule');
+  const trader = group.find(a => a.brain === 'trader'), mules = group.filter(a => a.species === 'mule');
   const cap = TRADE.crates * TRADE.crate;
   let units = 0;
   for (const [k, m] of mules.entries()) {

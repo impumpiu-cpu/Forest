@@ -59,6 +59,8 @@ export function spawnGroup(w, id, n, opts = {}) {
   if (def.groupInit) def.groupInit(group, w);
   // once the colony has seen what fears silver, it wants silver blades (recipes, trade, gear)
   if (group.some(a => SPECIES.get(a.species).weakTo?.includes('silver'))) w.chronicle.silverFoes = (w.chronicle.silverFoes || 0) + 1;
+  // who comes against the colony: the belts are filled against them (settlement/potions.js expectedFoes)
+  if (def.faction === 'raiders' || def.faction === 'predators') { const M = w.chronicle.met ||= {}; for (const a of group) M[a.species] = (M[a.species] || 0) + 1; }
   for (const a of group) think(w, a, 'arrived');
   const msg = def.message?.(w, group, side);
   if (msg) log(w, msg, def.topic || 'people', def.level);

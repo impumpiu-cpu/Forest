@@ -3,7 +3,8 @@
 //   goal   — why they came: loot (the stores), kill (one chosen colonist), burn (a wooden building),
 //            scout (look the camp over and bring word back), slaughter (the mindless dead: anyone alive).
 //            Drawn from the band's `goals` (data/raids.js) when it arrives.
-//   roles  — front (meets the defenders), shooter (bows and slings), looter (goes for the stores while
+//   roles  — the task in the band (its fighting role — shield-bearer, archer… — came with it: data/roles.js):
+//            front (meets the defenders), shooter (bows and slings), looter (goes for the stores while
 //            the others hold the defenders off), torch (sets the fire), rear (covers the retreat),
 //            beast (a war beast at its masters' side), scout.
 //   morale — 1 at the start; losses, a fallen leader and the defenders' strength nearby bring it down.
@@ -13,7 +14,7 @@
 // Plain data in w.squads ({id: squad}), members by id, saved with the world. The raider brain
 // (agents/behaviours/raid.js) asks planFor() what to do; stepSquads() checks morale and the goal.
 // Every squad's start and end is in the journal with its reason, and in w.behave.squads.
-import {SPECIES} from '../data/species.js';
+import {SPECIES, isMindless} from '../data/species.js';
 import {leaderOf} from './auras.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {BUILDINGS} from '../data/buildings.js';
@@ -26,6 +27,10 @@ import {nearestHostile, canSee} from './combat.js';
 import {agentById, liveById, firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
 import {SQUAD} from '../data/behaviour.js';
+import {COMBAT_ROLES, LINKS} from '../data/roles.js';
+import {roleTactic, bandSide, holdFoe, fightTask} from './tactics.js';
+import {RANK_RULES} from '../data/ranks.js';
+import {hasMark} from '../data/conditions.js';
 
 export {SQUAD};   // (data/behaviour.js)
 export const GOALS = {
@@ -66,7 +71,7 @@ export function createSquad(w, group) {
   const band = RAID_BANDS.get(group[0].band), sqs = table(w);
   const id = w.nextSquad = (w.nextSquad || 0) + 1;
   // the dead (even with their necromancer behind) have no plan but the living and no morale to break
-  const dead = group.filter(a => SPECIES.get(a.species).mindless).length;
+  const dead = group.filter(a => isMindless(SPECIES.get(a.species))).length;
   const kind = dead * 2 > group.length ? 'mindless' : 'living';
   let goal = kind === 'mindless' ? 'slaughter' : weighted(w.rngs.outside, (band.goals ? band.goals(w, group) : [['loot', 1]]).filter(([, v]) => v > 0)) || 'loot';
   let target = null, why = null;
@@ -76,10 +81,10 @@ export function createSquad(w, group) {
   if (goal === 'burn') { const bs = wooden(w); if (bs.length) target = bs[Math.floor(w.rngs.outside() * bs.length)].id; else goal = 'loot'; }
   // the leader: the necromancer or the vampire if there is one, otherwise the strongest who is no beast
   const people = group.filter(a => !a.warBeast);
-  const leader = group.find(a => a.role === 'necromancer' || a.species === 'vampire') || people.sort((x, y) => strength(y) - strength(x))[0] || group[0];
+  const leader = group.find(a => a.species === 'necromancer' || a.species === 'vampire') || people.sort((x, y) => strength(y) - strength(x))[0] || group[0];
   // an unnamed leader gets a title
   if (leader.name === 'Налётчик') leader.name = 'Атаман';
-  else if (kind === 'living' && group.length > 1 && !leader.role && !leader.warBeast && leader.name === SPECIES.get(leader.species).label.replace(/^./, c => c.toUpperCase())) leader.name += '-вожак';
+  else if (kind === 'living' && group.length > 1 && leader.species !== 'necromancer' && !leader.warBeast && leader.name === SPECIES.get(leader.species).label.replace(/^./, c => c.toUpperCase())) leader.name += '-вожак';
   const sq = sqs[id] = {id, band: band.id, kind, goal, target, why, members: group.map(a => a.id), leader: leader.id, size: group.length,
     fallen: 0, home: 0, morale: 1, state: 'march', reason: null, started: w.tick, lit: null, watched: null, rearUntil: null,
     power0: group.reduce((s, a) => s + strength(a), 0)};
@@ -91,11 +96,15 @@ export function createSquad(w, group) {
     if (a.warBeast) a.sqRole = 'beast';
     else if (goal === 'scout') a.sqRole = 'scout';
     else if (kind === 'mindless') a.sqRole = 'front';
-    else if (a.gear?.rangedReady) a.sqRole = 'shooter';
+    else if (a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).squad === 'shooter' && a.gear?.ranged : a.gear?.rangedReady) a.sqRole = 'shooter';   // by its role (data/roles.js), a stray by what it holds
     else rest.push(a);
   }
-  rest.sort((x, y) => strength(x) - strength(y));   // weakest first: they loot and carry the torches
-  const special = goal === 'loot' ? Math.max(1, Math.round(rest.length * SQUAD.looters)) : goal === 'burn' ? Math.min(2, rest.length) : 0;
+  // weakest first: they loot and carry the torches — never one whose role keeps it from the band's chores (a healer,
+  // data/roles.js `noChores`: it tends the fallen), while anyone else is there to do them
+  const chores = a => !(a.fightRole && COMBAT_ROLES.has(a.fightRole) && COMBAT_ROLES.get(a.fightRole).noChores);
+  rest.sort((x, y) => (chores(y) - chores(x)) || strength(x) - strength(y));
+  const able = rest.filter(chores).length || rest.length;
+  const special = Math.min(able, goal === 'loot' ? Math.max(1, Math.round(rest.length * SQUAD.looters)) : goal === 'burn' ? Math.min(2, rest.length) : 0);
   rest.forEach((a, k) => { a.sqRole = k < special ? (goal === 'loot' ? 'looter' : 'torch') : 'front'; });
   const fronts = group.filter(a => a.sqRole === 'front' && a.id !== leader.id);
   if (kind === 'living' && fronts.length >= 2) fronts.sort((x, y) => strength(y) - strength(x))[0].sqRole = 'rear';
@@ -112,7 +121,9 @@ function announce(w, sq) {
   const b = sq.goal === 'burn' ? w.buildings.find(x => x.id === sq.target) : null;
   const what = b ? ` (${BUILDINGS.get(b.key).name.toLowerCase()})` : '';
   const leader = agentById(w, sq.leader);
-  log(w, `${Label(sq)}: ${aim}${what}.${sq.kind === 'living' && sq.size > 1 && leader ? ` Ведёт ${esc(leader.name)}.` : ''}${tipped ? ' Дорогу им показали разведчики.' : ''}`, 'danger');
+  // the links it came in (data/roles.js LINKS): «стена щитов, налётчики»
+  const kinds = [...new Set(liveMembers(w, sq).map(m => m.linkKind).filter(k => k && LINKS.has(k)))].map(k => LINKS.get(k).label);
+  log(w, `${Label(sq)}: ${aim}${what}.${sq.kind === 'living' && sq.size > 1 && leader ? ` Ведёт ${esc(leader.name)}.` : ''}${kinds.length ? ` Звенья: ${kinds.join(', ')}.` : ''}${tipped ? ' Дорогу им показали разведчики.' : ''}`, 'danger');
 }
 
 // a member died (agents/agent.js kill)
@@ -121,6 +132,13 @@ export function noteFallen(w, a) {
   const sq = squadOf(w, a); if (!sq || a.fellNoted) return;
   a.fellNoted = true;   // fallen senseless first, killed after: one loss (agents/wounds.js)
   sq.fallen++;
+  // an officer fallen: its link's share of the band is shaken at once (data/ranks.js loss)
+  if (hasMark(a, 'officer') && a.id !== sq.leader && !(sq.shook ||= []).includes(a.id)) {   // (the leader's own fall: SQUAD.leaderLoss; once an officer — a healer may raise it)
+    sq.shook.push(a.id);
+    const link = membersOf(w, sq).filter(o => o.link === a.id && o !== a).length + 1;
+    sq.shaken = (sq.shaken || 0) + RANK_RULES.loss * link / sq.size;
+    if (link > 1) log(w, `Пал ${esc(a.name)}: его звено дрогнуло.`, 'danger');
+  }
   if (a.id === sq.leader && sq.kind === 'living' && membersOf(w, sq).some(o => o !== a)) log(w, `Пал вожак: ${esc(a.name)}.`, 'danger', 'notice');
 }
 // a member left the map alive (tasks.js leave)
@@ -146,7 +164,10 @@ export function moraleOf(w, sq, ms = membersOf(w, sq)) {
   const leaderDown = !ms.some(m => m.id === sq.leader);
   const own = ms.reduce((s, a) => s + strength(a), 0), foes = defenders(w, ms);
   const odds = foes > 0 ? clamp((own / foes - 1) * SQUAD.odds, -SQUAD.odds * 1.5, SQUAD.odds) : 0;
-  return 1 - SQUAD.lossWeight * sq.fallen / sq.size - (leaderDown ? SQUAD.leaderLoss : 0) + odds;
+  // the links whose officer stands hold the band together; a fallen officer shook it (data/ranks.js)
+  const officers = new Set(ms.filter(m => hasMark(m, 'officer')).map(m => m.id));
+  const linked = officers.size ? ms.filter(m => m.link != null && officers.has(m.link)).length / sq.size : 0;
+  return 1 - SQUAD.lossWeight * sq.fallen / sq.size - (leaderDown ? SQUAD.leaderLoss : 0) + odds + RANK_RULES.rally * linked - (sq.shaken || 0);
 }
 
 function finish(w, sq) {
@@ -196,18 +217,11 @@ export function stepSquads(w) {
   }
 }
 
-// the foe to fight, holding on to the current one unless another is much closer
-function holdFoe(w, a, fresh) {
-  const t = a.task?.id === 'fight' ? a.task.target : null;
-  if (!t || t.dead || t.downed || !w.agents.includes(t) || !canSee(w, a, t)) return fresh;
-  if (!fresh || fresh === t) return t;
-  const held = w.tick - (a.task.since ?? w.tick);
-  return held > SQUAD.hold || dist(a, fresh) < dist(a, t) * SQUAD.closer ? fresh : t;
-}
-const fight = (w, a, e) => (a.task?.id === 'fight' && a.task.target === e ? a.task : {id: 'fight', target: e, since: w.tick});
+const fight = (w, a, e) => fightTask(w, a, e);   // (agents/tactics.js; called, not copied at load: the two import each other)
 
 // what a member of a squad does now; null when the plan has nothing to say (the brain's own default)
 export function planFor(w, a, sq, radius) {
+  a.sneaking = false;   // only a cutthroat's tactic creeps, each think anew (agents/tactics.js)
   // on the way out: the rear guard turns on pursuers for a while, everyone else goes
   // a looter already at the stores grabs what it can on the way out, whatever the band does
   if (a.sqRole === 'looter' && !a.looted && sq.state === 'retreat' && w.nav.get('camp')[cellOf(w, a)] <= SQUAD.grabNear) return a.task?.id === 'assault' ? a.task : {id: 'assault'};
@@ -241,11 +255,26 @@ export function planFor(w, a, sq, radius) {
     const v = [liveById(w, sq.target)].find(o => o && !o.downed);
     if (v && canSee(w, a, v) && dist(a, v) < 30 && !close) return fight(w, a, v);
   }
+  // the fighting role's own way (agents/tactics.js): whom to go for, keeping back, healing; else the nearest foe
+  const t = roleTactic(w, a, bandSide(w, sq), radius);
+  if (t) return t.id === 'fight' ? fight(w, a, holdFoe(w, a, t.target)) : t;   // its pick, but not a new one every look
   const e = holdFoe(w, a, nearestHostile(w, a, radius));
   if (e) return fight(w, a, e);
   // nobody to fight: a band that came for someone (or to cover the torches) waits at the camp
   if (sq.goal === 'kill' || sq.goal === 'burn') return a.task?.id === 'haunt' ? a.task : {id: 'haunt'};
   return null;
+}
+
+// a member's title in the fight: what it is, its fighting role, its task in the band — «гоблин-стрелок-грабитель»;
+// the task is left out where it only repeats the role (a shooter shooting, a front fighter in front)
+const TASK_WORD = {looter: 'грабитель', torch: 'поджигатель', rear: 'замыкающий', scout: 'разведчик', leader: 'вожак'};
+export function fighterLabel(w, a, base) {
+  const sq = squadOf(w, a);
+  if (a.warBeast) return base;
+  if (!sq) return a.fightRole && COMBAT_ROLES.has(a.fightRole) ? `${base}-${COMBAT_ROLES.get(a.fightRole).label}` : base;   // the caravan's own: its role only
+  const role = a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).label : null;
+  const task = TASK_WORD[a.sqRole] || null;
+  return [base, role, task].filter(Boolean).join('-');
 }
 
 // for the card
@@ -254,5 +283,9 @@ export function squadText(w, a) {
   const goal = GOALS[sq.goal].label + (sq.goal === 'kill' ? `: ${agentById(w, sq.target)?.name || '—'}` : '');
   const state = sq.state === 'march' ? `боевой дух ${Math.round(clamp(sq.morale, 0, 1.5) * 100)}%` : sq.state === 'retreat' ? `отступают (${sq.reason})` : `уходят (${sq.reason})`;
   const left = membersOf(w, sq).length;
-  return `${ROLES[a.sqRole] || '—'}${a.id === sq.leader && a.sqRole !== 'leader' ? ', вожак' : ''}; цель — ${goal}; ${state}; в строю ${left} из ${sq.size}`;
+  const fr = a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).label : null;
+  const lead = a.link != null && a.link !== a.id ? agentById(w, a.link) : null;
+  const kind = a.linkKind && LINKS.has(a.linkKind) ? ` «${LINKS.get(a.linkKind).label}»` : '';
+  const rank = hasMark(a, 'officer') ? `офицер звена${kind} из ${membersOf(w, sq).filter(o => o.link === a.id).length}; ` : lead ? `в звене${kind} ${lead.name}${lead.dead || lead.downed ? ' (пал)' : ''}; ` : kind ? `звено${kind}; ` : '';
+  return `${rank}${fr ? fr + ', ' : ''}${ROLES[a.sqRole] || '—'}${a.id === sq.leader && a.sqRole !== 'leader' ? ', вожак' : ''}; цель — ${goal}; ${state}; в строю ${left} из ${sq.size}`;
 }

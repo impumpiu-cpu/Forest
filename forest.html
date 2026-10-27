@@ -24,7 +24,16 @@
   .tables-shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}
   .tables-nav{display:flex;flex-direction:column;gap:10px;position:sticky;top:12px}
   .tables-nav .grp{display:flex;flex-direction:column;gap:2px}
-  .tables-nav .grp > span{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted);padding:2px 8px}
+  .tables-nav .grp-head{font-family:var(--font-display);font-size:13px;letter-spacing:.06em;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--line)}
+  .tables-nav .grp-head span::before{content:"▾ ";display:inline-block;width:1.1em}
+  .tables-nav .grp.closed .grp-head span::before{content:"▸ "}
+  .tables-nav .grp.closed > button[data-t]{display:none}
+  .tables-nav.finding .grp.closed > button[data-t]:not([hidden]){display:flex}
+  .tables-nav .grp-head.has-ed span::after{content:" •";color:var(--ember)}
+  .tables-nav [hidden]{display:none !important}
+  .tables-nav .nav-tools{display:flex;gap:6px;align-items:center}
+  .tables-nav .nav-tools input{flex:1;min-width:0;font:inherit;font-size:13px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+  .tables-nav{max-height:calc(100vh - 24px);overflow-y:auto}
   .tables-nav button{text-align:left;border:0;background:transparent;padding:4px 8px;display:flex;justify-content:space-between;gap:8px}
   .tables-nav button small{color:var(--muted);font-family:var(--font-mono);font-size:11px}
   .tables-nav button[aria-current="true"]{background:var(--ember);color:#1b130a;font-weight:700}
@@ -110,7 +119,7 @@
   .tbl-check{font-size:12.5px;color:var(--muted)}
   .tbl-check.bad{color:#f0b0b2}
   .tbl-check details{margin-top:4px}
-  @media (max-width:760px){.tables-shell{grid-template-columns:1fr}.tables-nav{position:static;flex-direction:row;flex-wrap:wrap}.tables-nav .grp{flex-direction:row;flex-wrap:wrap;align-items:center}}
+  @media (max-width:760px){.tables-shell{grid-template-columns:1fr}.tables-nav{position:static;flex-direction:row;flex-wrap:wrap;max-height:none;overflow:visible}.tables-nav .grp{flex-direction:row;flex-wrap:wrap;align-items:center}}
   /* «Создать землю» (src/app/landView.js) */
   #landMap{display:block;width:100%;height:auto;aspect-ratio:4/3;cursor:crosshair;touch-action:none}
   #landMap.dragging{cursor:grabbing}

@@ -165,4 +165,4 @@ export const RACES = [
     align: {order: -2, mercy: -5, spread: {order: 1, mercy: 0.6}},
     values: {strength: 2, faith: 1.4},
     names: personNames('gnoll')},
-].map(r => bodyFor({needs: NEEDS, sentient: true, inventory: true, mind: 'sentient', ...r}));
+].map(r => bodyFor({needs: NEEDS, inventory: true, mind: 'sentient', ...r}));

@@ -102,7 +102,7 @@ export const recipeSkill = r => r.skill || STATION_SKILL[r.at];
 // Old saves kept skill under job ids. Each skill starts from the best of the jobs that trained it
 // (a smith's skill becomes both smithing and metallurgy; nothing is lost, nothing is given twice).
 export const FROM_JOB = {
-  gather: ['gathering'], fiber: ['gathering'], reeds: ['gathering'], honey: ['gathering'], flaxseed: ['gathering'],
+  gather: ['gathering'], fiber: ['gathering'], reeds: ['gathering'], honey: ['gathering'], flaxseed: ['gathering'], sleepgrass: ['gathering'], wort: ['gathering'],
   salt: ['gathering'], pan: ['gathering'],
   chop: ['woodcutting'], mine: ['mining'], dig: ['mining'], clay: ['mining'],
   fish: ['fishing'], hunt: ['hunting', 'ranged'],

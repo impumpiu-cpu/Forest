@@ -1,6 +1,7 @@
 // Generic routines that carry out JOBS. A job picks one with its `runner` field,
 // so a new job usually needs only a data entry.
-import {endTask, RUNNER_EXIT} from './lifecycle.js';
+import {endTask} from './lifecycle.js';
+import {RUNNER_EXIT} from './runnerExit.js';
 import {FOODS} from '../data/foods.js';
 import {brewFactor} from '../settlement/life.js';
 import {JOBS, huntable} from '../data/jobs.js';
@@ -17,7 +18,7 @@ import {boldness} from './hunting.js';
 import {wake} from './attention.js';
 import {reserve, release} from '../settlement/reserve.js';
 import {wear} from './equipment.js';
-import {shoot} from './combat.js';
+import {shoot, darkness} from './combat.js';
 import {lineOfFire} from '../nav/astar.js';
 import {kill, trophyText} from './agent.js';
 import {practice, skillOf, canDoAction} from './skills.js';
@@ -320,7 +321,7 @@ export const RUNNERS = {
       if (!prey) { fail(w, a, 'дичи не видно'); a.think = 30; a.stalking = false; return; }
     }
     if (task.age > 900) { a.mem.chase += 0.2; a.stalking = false; fail(w, a, 'дичь ушла, устал гоняться'); return; }
-    const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = a.gear.ranged.range + w.mods.add.huntRange;
+    const d = Math.hypot(prey.x - a.x, prey.y - a.y), range = (a.gear.ranged.range + w.mods.add.huntRange) * darkness(w, a);   // (by night a shot reaches as far as one sees: agents/combat.js shoot)
     a.stalking = d < 10;
     // in range but a rock in the way: no shot from here, find a spot to shoot from (approach goes around)
     const open = d <= range * 0.85 && lineOfFire(w, a.x, a.y, prey.x, prey.y);

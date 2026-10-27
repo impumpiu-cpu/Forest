@@ -15,10 +15,34 @@ export const COMBAT = {
   minCooldown: 4,
   // arm's length (a species may have its own `attack.reach`)
   reach: 1.25,
+  // a long weapon stands this much inside its reach (agents/tasks.js fight): the blow lands while the foe comes on
+  reachStand: 0.15,
   // colonists inside the settlement zone strike this much harder
   home: 1.25,
   // creatures that fear silver: a silvered blade bites them × bane, anything else × plain
   silver: {bane: 2.5, plain: 0.5},
+  // where an armed blow comes from (agents/combat.js stanceOf; beasts' bites do not count it): from the flank — the target
+  // fights someone else: its block × block, the blow × dmg; in the back — the target does not know (asleep, or not in a
+  // fight and not hurt for `aware` ticks): no block, the blow × dmg. A sly weapon (quality `backstab`) adds its value
+  // to the share over 1 (a dagger: × 1 + 0.2 × 2). `share` — how many of a fighter's blows the rating (КС) counts as
+  // from the flank
+  flank: {block: 0.5, dmg: 1.2, share: 0.25},
+  back: {dmg: 1.4, aware: 60},
+  // a thrown weapon (quality `thrown`): the rating (КС) counts its throws against this many shots in a fight
+  thrown: {shots: 6},
+  // the armour a blow or a shot meets on the average foe: what the rating (КС) lets a piercing weapon (quality `piercing`)
+  // get through
+  armourSeen: 0.3,
+  // a potion drunk or rubbed on the blade before the first blow takes this many ticks of the fight (agents/combat.js attack)
+  drink: 12,
+  // a shield-bearer covers a neighbour from shots: one of the target's side within `near` cells, closer to the shooter
+  // than the target and off the line by no more than `side` cells, catches the shot with its shield's cover × `share`
+  cover: {near: 1.6, side: 0.9, share: 0.6},
+  // a net that falls on someone (quality `ensnare`): its step × slow for `ticks`, and it cannot strike for `hold`
+  net: {slow: 0.25, ticks: 240, hold: 90},
+  // one who creeps (a.sneaking: a cutthroat, a scout) is seen only this close: `seen` cells + `armour` × its armour (mail
+  // clinks); its first blow or shot gives it away
+  sneak: {seen: 3, armour: 6},
 };
 
 // how far finer work (data/quality.js) may push a piece; a quality's own `cap` adds to these
@@ -78,7 +102,11 @@ export const WEAPON_QUALITIES = [
   {id: 'unreliable', label: 'ненадёжное', unit: 'доля', live: true, reads: 'износ × (1 + значение)', note: 'ломается скорее'},
   {id: 'bleed', label: 'кровопускающее', unit: 'шанс', live: true, reads: 'шанс оставить кровотечение (состояние «кровотечение», data/conditions.js)', note: 'зазубренное лезвие'},
   {id: 'stun', label: 'оглушающее', unit: 'шанс', live: true, reads: 'шанс оглушить (состояние «оглушён»: не бьёт, медленнее ходит)', note: 'тяжёлый удар по голове'},
-  {id: 'thrown', label: 'метательное', unit: 'клеток', live: false, reads: 'нет механики метания', note: 'дротик, топорик'},
+  {id: 'backstab', label: 'коварное', unit: '×', live: true, reads: 'удар с фланга и в спину (COMBAT.flank, back): прибавка урона × (1 + значение); КС', note: 'кинжал: туда, где не ждут'},
+  {id: 'ensnare', label: 'ловчее', unit: 'шанс', live: true, reads: 'попавший опутывает: состояния «в паутине» (шаг × COMBAT.net.slow) и «оглушён» (не бьёт COMBAT.net.hold тиков)', note: 'ловчая сеть'},
+  {id: 'paired', label: 'парное', unit: 'доля', live: true, reads: 'вторая рука: вслед за ударом главного оружия бьёт и это, урон × значение (agents/combat.js attack); выбор вещей, КС', note: 'кинжал, топорик, меч во второй руке'},
+  {id: 'burn', label: 'горение', unit: 'шанс', live: true, reads: 'удар, что дошёл до тела, с этим шансом поджигает землю и постройку под целью (agents/combat.js damage, KINDLE.torch)', note: 'факел'},
+  {id: 'thrown', label: 'метательное', unit: 'бросков', live: true, reads: 'бросается своим `ranged` (agents/combat.js shoot): столько бросков в связке, последнее остаётся в руке; поселенец собирает их у лагеря (agents/equipment.js outfit); КС — доля от COMBAT.thrown.shots', note: 'дротики, метательный топорик'},
 ];
 // the value of a quality on a weapon (an item definition, or the gear's melee/ranged entry), 0 without it
 export const traitOf = (q, id) => q?.[id] || 0;

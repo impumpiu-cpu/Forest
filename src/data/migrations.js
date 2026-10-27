@@ -7,7 +7,7 @@
 //   species/faction/init/kit/groupInit/message — the group itself;
 //   members(w, rng) — a mixed group instead: [{species, faction?, init(a, w)?, kit?}, …]
 import {Registry} from '../core/registry.js';
-import {POTION} from './potions.js';
+import {POTION, FOE_BELTS} from './potions.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
@@ -19,13 +19,18 @@ import {raidThreat} from '../settlement/threat.js';
 import {TRADE} from './trade.js';
 import {startCaravan} from '../settlement/trade.js';
 import {exposedShare} from '../settlement/stock.js';
-import {RAID_BANDS, BAND_BEASTS, banditKit, kitFor, raiderBody} from './raids.js';
+import {RAID_BANDS, BAND_BEASTS, kitFor, raiderBody} from './raids.js';
+import {formLinks, formUndeadLinks, trimBand} from '../agents/ranks.js';
+import {RANK_RULES} from './ranks.js';
+import {sideStrength} from '../agents/strength.js';
+import {COMBAT_ROLES} from './roles.js';
 import {faunaLevel} from '../world/region.js';
 import {createSquad} from '../agents/squad.js';
 import {SPECIES, isPredator, onSpeciesChange, arrives} from './species.js';
 import {raceLabel, refreshBody} from '../agents/special.js';
 import {settlerSpecies} from '../settlement/relations.js';
 import {ofSpeciesList} from '../agents/lookup.js';
+import {setStanding} from '../agents/standing.js';
 
 export const MIGRATIONS = new Registry('migration');
 
@@ -98,9 +103,9 @@ MIGRATIONS.registerAll([
     accept: (w, n) => (w.caravan || !colonists(w).length ? 0 : n),
     members: (w, rng) => {
       const pickName = list => list[Math.floor(rng() * list.length)];
-      const out = [{species: 'human', init: a => { a.role = 'trader'; [a.name, a.gender] = pickName(TRADE.traderNames); }}];
+      const out = [{species: 'human', init: a => { setStanding(a, 'trader'); [a.name, a.gender] = pickName(TRADE.traderNames); }}];
       for (let k = 0; k < TRADE.guards; k++) out.push({species: 'human', kit: TRADE.guardKit,
-        init: a => { a.role = 'guard'; a.brain = 'guard'; a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: 1.5}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: 0.5}; a.skillVer = 1; }});
+        init: a => { setStanding(a, 'guard'); a.slot = k; a.name = pickName(TRADE.guardNames)[0]; a.own = {set: {bravery: 1.5}, hp: TRADE.guardHp}; refreshBody(a); a.skill = {ranged: 0.5}; a.skillVer = 1; }});
       const mules = TRADE.mules[0] + Math.floor(rng() * (TRADE.mules[1] - TRADE.mules[0] + 1));
       for (let k = 0; k < mules; k++) out.push({species: 'mule', init: a => { a.name = 'Вьючный мул'; }});
       return out;
@@ -124,13 +129,18 @@ MIGRATIONS.registerAll([
       if (opts.beasts) for (let k = 0; k < opts.beasts.n; k++) list.push({species: opts.beasts.species});
       // a boss's retinue (campaign/camp.js): at least this many, made up with more of the band's most numerous kind
       if (opts.atLeast) { const most = list.map(m => m.species).sort((p, q) => list.filter(x => x.species === q).length - list.filter(x => x.species === p).length)[0]; while (list.length < opts.atLeast) list.push({...list.find(m => m.species === most)}); }
-      return list.map(m => ({...m, kit: m.kit === 'bandit' ? banditKit(rng, t) : m.kit || kitFor(m.species, rng, t),
+      return list.map(m => ({...m, kit: m.kit || kitFor(m.species, rng, t, m.role),
         init: (a, w) => {
           a.band = band.id;
+          if (m.role) a.fightRole = m.role;   // its fighting role (data/roles.js): what it carries, where it stands in the band
+          if (m.linkNo != null) { a.linkNo = m.linkNo; a.linkKind = m.linkKind; }   // the link of the band it came in (data/roles.js LINKS)
           if (SPECIES.get(m.species).inventory && w.rngs.outside() < POTION.foe) a.potions = 1;   // a healing potion, rarely (agents/potions.js)
+          const belt = m.role ? COMBAT_ROLES.get(m.role).potions || 0 : 0; if (belt > (a.potions || 0)) a.potions = belt;   // a healer's belt
+          if (SPECIES.get(m.species).inventory) for (const [res, p] of Object.entries(FOE_BELTS[m.species] || {})) if ((a.belt?.length || 0) < POTION.belt && w.rngs.outside() < p) (a.belt ||= []).push(res);   // its people's potions (data/potions.js FOE_BELTS)
           if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);
           // a war beast (a warg with orcs, a hyena with gnolls) follows the band, not its own brain
-          if (SPECIES.get(m.species).behaviours) { a.brain = 'raider'; a.warBeast = true; }
+          // — trained (data/conditions.js «выученный»): stronger than a wild one, it does not run while it lives
+          if (SPECIES.get(m.species).behaviours) { a.brain = 'raider'; a.warBeast = true; a.marks = [...(a.marks || []), 'trained']; refreshBody(a); }
         }}));
     },
     groupInit: (group, w) => {
@@ -140,7 +150,14 @@ MIGRATIONS.registerAll([
       const body = raiderBody(t);
       for (const a of group) { a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged}; a.skillVer = 1; }
       RAID_BANDS.get(group[0].band).groupInit?.(group, w);
-      createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)
+      const sq = createSquad(w, group);   // one plan for the band: goal, roles, morale (agents/squad.js)
+      // ranks on a settlement's raids (agents/ranks.js): only where data/ranks.js says so (a campaign's camp ranks its foe
+      // itself); officers and wights are worth more than the band was bought for — its weakest pawns stay home
+      if (!w.campaign) {
+        const bought = sideStrength(group, {now: true});
+        const made = formLinks(w, group, 'settlement', sq.leader).length + formUndeadLinks(w, group, 'settlement').length;
+        if (made) trimBand(w, group, bought * RANK_RULES.pay.settlement);
+      }
     },
     ammo: 8,
     message: (w, group, side) => `${RAID_BANDS.get(group[0].band).message(group.length, group)}${side ? ` — с ${side}` : ''}.`},   // (a camp's foe may come from close by, not from an edge: no side)

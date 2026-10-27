@@ -25,7 +25,9 @@
 import {Registry} from '../core/registry.js';
 import {LUXURY} from './luxury.js';
 import {FURNITURE} from './furniture.js';
-import {POTION} from './potions.js';
+import {POTION, hutGrades} from './potions.js';
+
+// how keen the healer's hut is on each potion: up to `share` of the people, with this weight
 
 export const RECIPES = new Registry('recipe');
 
@@ -56,6 +58,11 @@ RECIPES.registerAll([
     want: c => (short(c.melee(), c.pop) ? 1.9 : 0)},
   {id: 'club', at: 'crafthut', cost: {wood: 3}, work: 600, makes: {item: 'club'},
     want: c => (short(c.melee(), c.pop) ? 1.5 : 0)},
+  // thrown weapons (quality `thrown`): a bundle of javelins for every third, a hatchet for every fourth
+  {id: 'javelin', at: 'crafthut', cost: {wood: 3, bone: 2}, work: 700, makes: {item: 'javelin'},
+    want: c => (short(c.owned('javelin') + c.owned('ironjavelin'), Math.ceil(c.pop / 3)) ? 1.2 : 0)},
+  {id: 'hatchet', at: 'crafthut', cost: {wood: 1, bone: 2}, work: 600, makes: {item: 'hatchet'},
+    want: c => (short(c.owned('hatchet') + c.owned('ironhatchet'), Math.ceil(c.pop / 4)) ? 1.0 : 0)},
   {id: 'shield', at: 'crafthut', cost: {wood: 3, hide: 2}, work: 700, makes: {item: 'shield'},
     want: c => (short(c.owned('shield'), Math.ceil(c.pop / 3)) ? 1.3 : 0)},
   {id: 'staff', at: 'crafthut', cost: {wood: 2}, work: 600, makes: {item: 'staff'},
@@ -86,8 +93,16 @@ RECIPES.registerAll([
   // ── coal: logs smoulder under turf into coal; more when the furnace and the forge burn it
   // the healing potion (data/potions.js): two herbs; brewed while herbs are spare beyond the treatment's and the stock
   // (what is left after the slots are filled, settlement/potions.js) is short of one for every other colonist
-  {id: 'potion', at: 'healerhut', cost: {herbs: POTION.herbs}, work: 300, makes: {resource: 'potion', n: 1},
-    want: c => (c.stock('herbs') >= POTION.herbs + 2 && c.stock('potion') < Math.ceil(c.pop / 2) ? 0.6 : 0)},
+  // the potions a healer's hut brews (data/potions.js hutGrades: the plain grades of tier ≤ POTION.hutTier), each poured
+  // into a pot, while the stock has fewer than its `stock.share` of the people (of the captives: the sleeping brew) and
+  // the makings are there to spare
+  ...hutGrades().map(({potion, grade}) => ({id: grade.res, tier: grade.tier, at: 'healerhut', get cost() { return {...grade.cost}; }, work: 300, makes: {resource: grade.res, n: 1},
+    want: c => {
+      const S = potion.stock, heads = S.of === 'captives' ? c.captives : c.pop;
+      if (!heads) return 0;
+      const enough = Object.entries(grade.cost).every(([r, n]) => c.stock(r) >= n + (r === 'herbs' ? 2 : 0));
+      return enough && c.stock(grade.res) < Math.ceil(heads * S.share) ? S.want : 0;
+    }})),
 
   {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'coal', n: 3},
     want: c => (c.has('smelter') ? (c.fuel < 16 ? 1.8 : 0) : (c.stock('coal') < 6 ? 0.8 : 0))},
@@ -129,6 +144,19 @@ RECIPES.registerAll([
     want: c => (short(c.owned('sword') + c.owned('ironspear'), c.pop) ? 2.3 : 0)},
   {id: 'ironaxe', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 700, makes: {item: 'ironaxe'},
     want: c => (short(c.owned('ironaxe'), Math.min(Math.ceil(c.pop / 2), 1 + c.likes('chop'))) ? 2.0 : 0)},
+  // a net for taking alive (quality `ensnare`): one or two, for the colony's hunters and its catchers of runaways
+  {id: 'net', at: 'crafthut', cost: {rope: 3}, work: 700, makes: {item: 'net'},
+    want: c => (short(c.owned('net'), Math.min(2, Math.ceil(c.pop / 5))) ? 0.6 : 0)},
+  // a crossbow: a wooden stock, an iron lock, a cord; for every fourth, where arrows are made anyway
+  {id: 'crossbow', tier: 3, at: 'forge', cost: {wood: 3, iron: 1, rope: 1}, fuel: 1, work: 1100, makes: {item: 'crossbow'},
+    want: c => (c.bows >= 1 && short(c.owned('crossbow'), Math.ceil(c.pop / 4)) ? 1.2 : 0)},
+  // a dagger for the other hand and the back of a foe; javelins and hatchets with iron heads
+  {id: 'irondagger', tier: 2, at: 'forge', cost: {iron: 1, leather: 1}, fuel: 1, work: 400, makes: {item: 'irondagger'},
+    want: c => (short(c.owned('irondagger'), Math.ceil(c.pop / 3)) ? 1.3 : 0)},
+  {id: 'ironjavelin', tier: 2, at: 'forge', cost: {iron: 2, wood: 3}, fuel: 1, work: 700, makes: {item: 'ironjavelin'},
+    want: c => (short(c.owned('ironjavelin'), Math.ceil(c.pop / 3)) ? 1.4 : 0)},
+  {id: 'ironhatchet', at: 'forge', cost: {iron: 2, wood: 1}, fuel: 1, work: 600, makes: {item: 'ironhatchet'},
+    want: c => (short(c.owned('ironhatchet'), Math.ceil(c.pop / 4)) ? 1.2 : 0)},
   {id: 'shacklesIron', at: 'forge', cost: {iron: 2}, fuel: 1, work: 500, makes: {resource: 'shacklesIron', n: 1},
     want: c => (c.stock('shacklesIron') < 2 && c.spare('iron') >= 2 ? 0.55 : 0)},
   // silvered blades for what fears silver (agents/combat.js): a few, while there is silver to spare
@@ -173,7 +201,8 @@ RECIPES.registerAll([
   {id: 'linen', tier: 2, skill: 'tailoring', at: 'crafthut', cost: {cloth: 2}, work: 900, makes: {item: 'linen'},
     want: c => (short(c.owned('linen') + c.owned('furcoat') + c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 2.2 : 0)},
   {id: 'pots', at: 'potter', cost: {clay: 2, wood: 1}, work: 300, makes: {resource: 'pots', n: 3},
-    want: c => (c.stock('pots') < Math.min(30, c.food / 5) ? 1.6 : 0)},
+    // (and a few for the healer's hut: every potion is poured into a pot — data/potions.js POTION.pot)
+    want: c => (c.stock('pots') < Math.max(Math.min(30, c.food / 5), c.has('healerhut') ? POTION.hutPots : 0) ? 1.6 : 0)},
   {id: 'planks', at: 'sawmill', cost: {wood: 3}, work: 260, makes: {resource: 'planks', n: 2},
     want: c => (c.stock('planks') < 24 ? 1.6 : 0)},
 

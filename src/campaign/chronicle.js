@@ -45,7 +45,7 @@ export function chronicleText(a, K) {
   out.push('Отряд:');
   for (const m of K.members) {
     const core = m.core ?? ['knight', 'squire'].includes(m.role);
-    const end = m.fate || (m.died ? `${m.died.why}, ${m.died.year}-й год` : m.left ? `${m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left.year}-й год` : m.alive ? 'жив' + (m.gender === 'f' ? 'а' : '') : '');
+    const end = m.fate || (m.died ? `${m.died.why}, ${m.died.year}-й год` : m.left ? `${m.left.taken ? (m.gender === 'f' ? 'уведена в плен' : 'уведён в плен') : m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left.year}-й год` : m.alive ? 'жив' + (m.gender === 'f' ? 'а' : '') : '');
     out.push(`  ${m.name} — ${rankOf(m)}${core ? '' : ' (пристал в пути)'}, ${SPECIES.get(m.race)?.label || m.race}${end ? `: ${end}` : ''}`);
   }
   out.push('', 'Летопись:');

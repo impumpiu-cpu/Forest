@@ -8,7 +8,7 @@
 // `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
 // made from the table at load (items from forms × materials).
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
-import {SPECIES, KINDS} from '../species.js';
+import {SPECIES, KINDS, MINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
 import {KINS, RELATIONS, OPINION} from '../relations.js';
 import {VALUES, AXIS_MAX, ALIGN, ALIGN_DRIFT} from '../values.js';
@@ -30,9 +30,10 @@ import {DIPLOMACY} from '../diplomacy.js';
 import {ERAS} from '../history.js';
 import {TECHS, TECH_RULES, techOfBuilding, techOfMaterial} from '../tech.js';
 import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
-import {WOODS, STONES, FAMILIES, RACE_MATERIALS, USES} from '../kinds.js';
+import {WOODS, STONES, FAMILIES, RACE_MATERIALS, RACE_FORMS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
+import {POTION, POTIONS, FOE_BELTS, potionOf} from '../potions.js';
 import {rebuildBaseMods} from '../traits.js';
 import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '../mods.js';
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
@@ -99,6 +100,8 @@ import {FACTIONS} from '../factions.js';
 import {NEIGHBOURS} from '../neighbours.js';
 import {LUXURY} from '../luxury.js';
 import {RAID_BANDS} from '../raids.js';
+import {COMBAT_ROLES, ROLE_MIX, ARMOUR, ROLE_TIERS, LINKS} from '../roles.js';
+import {RANK_RULES} from '../ranks.js';
 import {SOILS} from '../soils.js';
 import {KIND_LAND, KIND_GROVES} from '../kinds.js';
 
@@ -109,7 +112,7 @@ export const GROUPS = ['Словари', 'Существа', 'Отношения
 // the letters the sheet «SPECIAL (итог)» shows: a human's range, the sturdy races', and the beasts' beyond
 const SHEET_X = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 30, 50, 80];
 const keysOf = obj => ({has: k => Object.prototype.hasOwnProperty.call(obj, k)});
-const MINDS = {beast: 'зверь', semi: 'полуразумный', sentient: 'разумный'};
+// (MINDS: data/species.js — the one field of how a creature thinks)
 const SLOTS = {hand: 'рука', body: 'тело', back: 'спина'};
 const labels = list => (list || []).map(x => x.label).join(', ');
 
@@ -294,6 +297,11 @@ export const TABLES = [
     note: 'Что раса делает с каждым материалом (data/kinds.js): можно; не добывает и не делает, но берёт сделанное другими — вещь «грязная»; не касается вовсе; мастер — особый материал даёт ей свои числа. Пока всё всем можно, кроме святого дерева: его мастера — эльфы.',
     columns: [col('id', 'id'), col('label', 'Раса', 'text', {edit: false}),
       ...Object.values(FAMILIES).flatMap(F => F.members()).map(m => col(m, WOODS.has(m) ? WOODS.get(m).label : STONES.has(m) ? STONES.get(m).label : RESOURCES.has(m) ? RESOURCES.get(m).short : m, 'enum', {values: USES}))]},
+  {id: 'raceForms', label: 'Формы рас', group: 'Вещи', key: 'id',
+    rows: () => SPECIES.filter(s => s.kind === 'race').map(s => ({id: s.id, label: s.plural, ...Object.fromEntries(Object.keys(FORMS).map(f => [f, RACE_FORMS[s.id]?.[f] || 'yes']))})),
+    target: (r, c) => [(RACE_FORMS[r.id] ||= {}), c.key],
+    note: 'Чего раса не берёт в руки, из чего бы оно ни было (data/kinds.js RACE_FORMS): «не касается вовсе» — не делает, не носит, её города не продают, её бойцам не достаётся в банде. Эльфы не терпят арбалета.',
+    columns: [col('id', 'id'), col('label', 'Раса', 'text', {edit: false}), ...Object.keys(FORMS).map(f => col(f, f, 'enum', {values: {yes: USES.yes, taboo: USES.taboo}}))]},
   {id: 'quality', label: 'Качество', group: 'Вещи', key: 'id', rows: () => QUALITY.all(),
     note: 'Ступени выделки +0…+4 (data/quality.js): что даёт ступень и как часто мастер её добивается.',
     columns: [
@@ -462,6 +470,18 @@ TABLES.push(
     note: 'Всё, что с существом не так на время или навсегда (data/conditions.js), как состояния и истощение в D&D: тяжёлая рана и травмы (agent.wounds), без сознания, отравлен, в паутине, кровотечение, оглушён, во хмелю (поле существа), три ступени истощения (сколько нужд на исходе). mods — что делает с телом (ключи «Модификаторов существа»); у истощения пока пусто — готово под числа.'}),
   {kind: {type: 'enum', values: CONDITION_KINDS, edit: false}, where: {edit: false}, stage: {edit: false}, days: {type: 'num', min: 0}, weight: {type: 'num', min: 0},
     dmg: {type: 'num', min: 0}, ticks: {type: 'int', min: 0}, slow: {type: 'num', min: 0}, hp: {type: 'num', min: 0}}),
+  {id: 'potions', label: 'Зелья', group: 'Вещи', key: 'res',
+    note: 'Зелья (data/potions.js): по строке на ступень — простое варит хижина лекаря (в поселении и в походе: только ступени до «Правил зелий» hutTier), усиленное — лаборатория алхимика в городе (из запасов каравана, за плату). Что делает — строка «Состояний» вида «зелье» (действие). Когда пьют сами: wounded — у края смерти, poisoned — яд в крови, fight — перед первым ударом боя, blade — натирают клинок. Отвары (cold, tired, mending, captive) в пояс не идут: их пьют из запасов поселения или каравана («Правила зелий» home), сонный дают пленному, что задумал бежать. Всегда нужен горшок. Лечение — своё гнездо в поясе (до slot), прочие — belt мест.',
+    rows: () => POTIONS.all().flatMap(p => p.grades.map((g, k) => ({res: g.res, potion: p.id, label: k ? `${p.label} (усиленное)` : p.label, use: p.use, need: p.need || null, grade: k ? 'усиленное' : 'простое', tier: g.tier, at: g.at, cost: g.cost, effect: g.effect}))),
+    target: (r, c) => { const g = potionOf(r.res).grade; return c.key === 'use' || c.key === 'need' ? [potionOf(r.res).potion, c.key] : [g, c.key]; },
+    columns: [col('res', 'Ресурс'), col('label', 'Зелье', 'text', {edit: false}), col('grade', 'Ступень', 'text', {edit: false}),
+      col('use', 'Когда пьют', 'enum', {values: {wounded: 'у края смерти', poisoned: 'яд в крови', fight: 'перед боем', blade: 'на клинок', cold: 'зябнет (из запасов)', tired: 'с ног валится на посту (из запасов)', mending: 'ранен (из запасов)', captive: 'пленному перед побегом', fire: 'жжёт огонь, бой с огнедышащим', dark: 'ночью: на посту и перед боем', throw: 'бросают во врага', mark: 'метка навсегда (из запасов)'}}),
+      col('tier', 'Сложность', 'int', {min: 1, max: 4, note: 'ступень навыка (T1–T4); хижина лекаря варит до hutTier'}),
+      col('at', 'Где варят', 'enum', {values: {healerhut: 'хижина лекаря', alchemist: 'лаборатория алхимика'}}),
+      col('cost', 'Состав', 'map', {ref: RESOURCES, min: 0}), col('effect', 'Действие', 'ref', {ref: CONDITIONS}),
+      col('need', 'Нужда в поясе', 'json', {note: 'base + вес × доля таких врагов: venom — ядовитые, silver — боятся серебра, breath — огнедышащие, undead — нежить, living — прочие живые; dark — тому, кого ночь слепит'})]},
+  {id: 'potionRules', label: 'Правила зелий', group: 'Вещи', ...grp({potion: POTION, foeBelts: FOE_BELTS}),
+    note: 'Лечение (heal — сколько лечит простое: строка «Состояний» potHeal — своё число), пьют ниже below здоровья; гнездо лечения slot, мест под прочие belt; горшков на зелье pot; хижина лекаря варит до ступени hutTier, гончар держит для неё hutPots горшков; раздача из запасов каждые hand тиков; у врага зелье с шансом foe; в походе стоянка с хижиной находит каждую траву с шансом camp.find (× wooded в лесу); отвары из запасов: согревающий — тепло ниже home.cold, бодрящий — бодрость ниже home.tired на посту или в тревогу, укрепляющий — здоровье ниже home.hurt или тяжёлая рана, сонный — пленному с волей к побегу от home.will.'},
   {id: 'conditionRules', label: 'Истощение: правила', group: 'Существа', ...grp({exhaustion: EXHAUSTION}),
     note: 'Нужда на этом уровне или ниже (exhaustion.low) считается к истощению; какие нужды (needs).'},
   autoTable({id: 'foods', label: 'Еда', group: 'Поселение', note: 'Еда и блюда (data/foods.js): сытость, порча.', rows: () => FOODS.all()}),
@@ -470,6 +490,22 @@ TABLES.push(
   autoTable({id: 'furniture', label: 'Мебель', group: 'Поселение', note: 'Мебель и её уют (data/furniture.js).', rows: () => FURNITURE.all()}),
   autoTable({id: 'luxury', label: 'Роскошь', group: 'Поселение', note: 'Украшения ювелира (data/luxury.js).', rows: () => LUXURY.all()}),
   autoTable({id: 'migrations', label: 'Приходы', group: 'Поселение', note: 'Кто и когда приходит на карту поселения (data/migrations.js).', rows: () => MIGRATIONS.all()}),
+  fix(autoTable({id: 'combatRoles', label: 'Боевые роли', group: 'Существа', rows: () => COMBAT_ROLES.all(),
+    note: 'Роли бойцов отряда (data/roles.js), по группам: линия (щитоносец, копейщик, рубака, громила), подвижные (головорез, застрельщик, ловчий), дальний бой (стрелок), поддержка (знахарь). Что держит в руках (наборы форм с весами: форма становится вещью той ступени металла, что даёт уровень банды; не форма — id вещи), класс брони («Классы брони»), что за спиной (колчан — только к луку), зелья в поясе, кем он в отряде (shooter — держится сзади и стреляет, front — идёт в бой) и где стоит в строю. Кому какие роли — «Роли видов».'}),
+    {hands: {type: 'json', label: 'Руки'}, body: {type: 'enum', values: Object.fromEntries(Object.keys(ARMOUR).map(k => [k, k])), label: 'Броня'}, back: {type: 'list', label: 'Спина'},
+      potions: {type: 'int', min: 0, label: 'Зелья'}, squad: {type: 'enum', values: {front: 'в бой', shooter: 'стрелок'}, label: 'В отряде'}, place: {type: 'enum', values: {front: 'первый ряд', mid: 'второй ряд', flank: 'с фланга', back: 'сзади'}, label: 'В строю'}, noChores: {type: 'bool', label: 'Не грабит и не поджигает'}, group: {edit: false, label: 'Группа'}}),
+  fix(autoTable({id: 'links', label: 'Звенья', group: 'Существа', rows: () => LINKS.all(),
+    note: 'Звенья, из которых банда собирается (data/roles.js LINKS): роли по местам, по одному бойцу на место. Банда тянет звено по своему весу («Отряды налётчиков», links), каждое место занимает её вид, которому роль разрешена (вес вида в банде × вес в «Роли видов»), затем следующее звено, пока хватает бюджета; последнее может прийти неполным. Сильнейший в звене — его офицер.'}),
+    {roles: {type: 'ids', ref: COMBAT_ROLES, label: 'Места'}}),
+  {id: 'roleMix', label: 'Роли видов', group: 'Существа', key: '_id',
+    note: 'Матрица «вид × роль» (data/roles.js ROLE_MIX): вес каждой роли, которую вид может взять в банде; пусто — не может (у тёмных эльфов нет щитоносцев). Лучший металл — высшая ступень, которую приносит его народ (0 кость и дерево, 1 бронза, 2 железо, 3 сталь, 4 мифрил). Свой набор — вещи вместо ролей (вампир, некромант). Вид, который носит вещи (тег inventory) и не имеет строки, берёт строку человека; строка без весов не приносит ничего (тролль).',
+    rows: () => Object.entries(ROLE_MIX).map(([k, v]) => ({_id: k, ...v})), target: (r, c) => [ROLE_MIX[r._id], c.key],
+    columns: [col('_id', 'Вид', 'ref', {ref: SPECIES}), ...COMBAT_ROLES.all().map(R => col(R.id, R.label, 'num', {min: 0, nullable: true, note: R.note})),
+      col('best', 'Лучший металл', 'int', {min: 0, max: 4}), col('fixed', 'Свой набор', 'ids', {ref: ITEMS, nullable: true})]},
+  {id: 'roleRules', label: 'Роли: броня и металл', group: 'Существа', ...grp({armour: ARMOUR, tiers: ROLE_TIERS}),
+    note: 'Классы брони — формы с весами (форма, которой нет на этой ступени, выпадает: чешуя и кольчуга начинаются с бронзы). Металл: ступень k открыта с уровня банды from[k], каждая вещь берёт её с шансом ramp на уровень сверх него, не больше share; не выше «Лучшего металла» вида.'},
+  {id: 'rankRules', label: 'Ранги и звенья', group: 'Существа', ...grp({ranks: RANK_RULES}),
+    note: 'Пешка → офицер → босс (data/ranks.js). Банда из least и больше разумных бойцов с вещами делится на звенья по size голов; сильнейший в звене — офицер: метка «офицер» в «Состояниях» (здоровье, стоит до смерти), вещи на quality ступеней качества лучше. Пока офицер стоит, его звено не бежит, пока здоровье выше hurt, и держит дух банды (rally × доля звеньев с офицером); павший офицер сразу отнимает loss × долю своего звена. camp — в бою на стоянке похода, settlement — в набегах на поселение. Названия рангов — у банды («Отряды налётчиков», ranks).'},
   autoTable({id: 'raidBands', label: 'Отряды налётчиков', group: 'Поселение', note: 'Налётчики на поселение (data/raids.js).', rows: () => RAID_BANDS.all(), skip: ['chance']}),
   autoTable({id: 'speciesWays', label: 'Повадки видов', group: 'Существа', note: 'Всё прочее о видах (data/species.js, data/bestiary.js, data/races.js): охота хищников, приручение, вьюк, бегство, приход, добыча с туши, яд, паутина… Тело, статы и биомы — в «Существах» и «Расах».',
     rows: () => SPECIES.all(), skip: ['label', 'kind', 'mind', 'brain', 'behaviours', 'heart', 'habitat', 'resist', 'weakTo', 'relativeStats', 'nocturnal', 'undead', 'special', 'hp', 'speed', 'attack', 'look', 'names', 'peoples', 'home', 'align', 'values', 'mods', 'perks', 'innate', 'plural', 'labelAcc', 'killMessage', 'ks']}),

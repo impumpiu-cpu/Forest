@@ -5,12 +5,32 @@
 // agents/tasks.js: fight, assault, haunt, torch, scout, leave. Reads: nothing of its own.
 import {nearestHostile} from '../combat.js';
 import {squadOf, planFor} from '../squad.js';
-import {RAID} from '../../data/behaviour.js';
+import {RAID, TORCH} from '../../data/behaviour.js';
+import {isMindless} from '../../data/species.js';
+import {BUILDINGS} from '../../data/buildings.js';
+import {throwTorch} from '../equipment.js';
+import {distToCell} from '../../world/grid.js';
+
+// a cell of a wooden building within `r` of the raider, the nearest (the buildings, not the creatures, are walked)
+function woodenWithin(w, a, r) {
+  let best = null, bd = r;
+  for (const b of w.buildings) {
+    if (!b.done || !BUILDINGS.get(b.key).wooden || b.plots) continue;   // (a field is no wall)
+    for (const c of b.cells) { const d = distToCell(w, a, c); if (d <= bd) { bd = d; best = c; } }
+  }
+  return best;
+}
 
 export const raid = {
   want(w, a, {sp}) {
-    const mindless = sp.mindless || a.warBeast, W = RAID.want;
-    const radius = sp.mindless ? RAID.hunt : mindless ? RAID.hunt : RAID.near;
+    const mindless = isMindless(sp) || a.warBeast, W = RAID.want;
+    const radius = isMindless(sp) ? RAID.hunt : mindless ? RAID.hunt : RAID.near;
+    // a torch in hand: now and then it flies at a wooden building close by, while no foe is near (data/behaviour.js TORCH)
+    const T = !mindless && a.task?.id !== 'hurlTorch' ? throwTorch(a) : null;
+    if (T && w.rngs.outside() < TORCH.casual && !nearestHostile(w, a, TORCH.clear)) {
+      const cell = woodenWithin(w, a, T.range);
+      if (cell != null) return [[{id: 'hurlTorch', cell}, W.plan, () => 'факел — в деревянную постройку']];
+    }
     const sq = squadOf(w, a), plan = sq ? planFor(w, a, sq, radius) : null;
     if (plan) return [[plan, W.plan, () => `план отряда: ${plan.id}`]];
     const e = nearestHostile(w, a, radius);

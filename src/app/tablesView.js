@@ -11,6 +11,7 @@ import {editText, parseText} from '../ui/cellEdit.js';
 
 const $ = id => document.getElementById(id);
 const STORE = 'forest.app.table';
+const GROUPS_STORE = 'forest.app.tableGroups';   // the groups of the list left open
 
 // ── how a value reads in a cell
 const fmtNum = v => (v === Infinity ? '∞' : v === -Infinity ? '−∞' : Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000)).replace('-', '−');
@@ -61,11 +62,20 @@ export class TablesView {
     this.id = (() => { try { return localStorage.getItem(STORE); } catch (e) { return null; } })();
     if (!TABLES.some(t => t.id === this.id)) this.id = TABLES[0].id;
     this.sort = null; this.query = '';
-    $('tablesNav').innerHTML = GROUPS.map(g => {
+    // the list of tables: a group folds and unfolds by its heading (the open ones are remembered); the box above finds
+    // a table by its name across all of them
+    this.openGroups = (() => { try { return new Set(JSON.parse(localStorage.getItem(GROUPS_STORE) || '[]')); } catch (e) { return new Set(); } })();
+    const cur = TABLES.find(t => t.id === this.id); if (cur) this.openGroups.add(cur.group);
+    $('tablesNav').innerHTML = `<div class="nav-tools"><input type="search" id="tblNavFind" placeholder="найти таблицу" aria-label="Найти таблицу"><button type="button" class="quiet mini" data-fold="all" title="Свернуть все группы">свернуть</button></div>` + GROUPS.map(g => {
       const list = TABLES.filter(t => t.group === g); if (!list.length) return '';
-      return `<div class="grp"><span>${esc(g)}</span>${list.map(t => `<button type="button" data-t="${t.id}"><span>${esc(t.label)}</span><small>${t.rows().length}</small></button>`).join('')}</div>`;
+      return `<div class="grp${this.openGroups.has(g) ? '' : ' closed'}" data-g="${esc(g)}"><button type="button" class="grp-head" data-fold="${esc(g)}" aria-expanded="${this.openGroups.has(g)}"><span>${esc(g)}</span><small>${list.length}</small></button>${list.map(t => `<button type="button" data-t="${t.id}"><span>${esc(t.label)}</span><small>${t.rows().length}</small></button>`).join('')}</div>`;
     }).join('');
-    $('tablesNav').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) this.open(b.dataset.t); });
+    $('tablesNav').addEventListener('click', e => {
+      const f = e.target.closest('[data-fold]');
+      if (f) { if (f.dataset.fold === 'all') this.foldAll(); else this.fold(f.dataset.fold); return; }
+      const b = e.target.closest('[data-t]'); if (b) this.open(b.dataset.t);
+    });
+    $('tblNavFind').addEventListener('input', e => this.findTable(e.target.value));
     $('tblFilter').addEventListener('input', e => { this.query = e.target.value.trim().toLocaleLowerCase('ru'); this.draw(); });
     $('tbl').addEventListener('click', e => {
       const th = e.target.closest('th[data-c]'); if (!th) return;
@@ -132,11 +142,34 @@ export class TablesView {
     }).join('')}</ul>` : '';
   }
 
-  // the tables with edits are marked in the list
+  // the tables with edits are marked in the list, and so are the folded groups that hold them
   navMarks() {
     $('tablesNav').querySelectorAll('[data-t]').forEach(b => {
       const n = Object.values(LAYER[b.dataset.t] || {}).reduce((m, cols) => m + Object.keys(cols).length, 0);
       b.classList.toggle('has-ed', n > 0); b.title = n ? `правок: ${n}` : '';
+    });
+    $('tablesNav').querySelectorAll('.grp').forEach(g => g.querySelector('.grp-head')?.classList.toggle('has-ed', !!g.querySelector('[data-t].has-ed')));
+  }
+
+  // a group of the list folds or unfolds (open — force it open); the open ones are kept for the next visit
+  fold(g, open = null) {
+    const el = $('tablesNav').querySelector(`.grp[data-g="${CSS.escape(g)}"]`); if (!el) return;
+    const now = open ?? el.classList.contains('closed');
+    el.classList.toggle('closed', !now); el.querySelector('.grp-head').setAttribute('aria-expanded', String(now));
+    if (now) this.openGroups.add(g); else this.openGroups.delete(g);
+    try { localStorage.setItem(GROUPS_STORE, JSON.stringify([...this.openGroups])); } catch (e) { /* storage unavailable */ }
+  }
+  foldAll() { for (const g of [...this.openGroups]) if (g !== this.table?.group) this.fold(g, false); }
+
+  // the box above the list: only the tables whose name has these letters, their groups open while it is not empty
+  findTable(text) {
+    const q = text.trim().toLocaleLowerCase('ru'), nav = $('tablesNav');
+    nav.classList.toggle('finding', !!q);
+    nav.querySelectorAll('.grp').forEach(g => {
+      let any = false;
+      g.querySelectorAll('[data-t]').forEach(b => { const hit = !q || b.querySelector('span').textContent.toLocaleLowerCase('ru').includes(q);   // (the name, not the count of rows)
+       b.hidden = !hit; any ||= hit; });
+      g.hidden = !!q && !any;
     });
   }
 
@@ -184,6 +217,7 @@ export class TablesView {
     try { localStorage.setItem(STORE, id); } catch (e) { /* storage unavailable */ }
     $('tablesNav').querySelectorAll('[data-t]').forEach(b => b.setAttribute('aria-current', String(b.dataset.t === id)));
     const t = this.table;
+    if (t) this.fold(t.group, true);   // (its group open: one opened from the list of edits or a link is seen where it is)
     $('tblTitle').textContent = t.label + (t.computed ? ' · вычисляется' : '');
     if (this.rendered) this.bar();
     $('tblNote').textContent = t.note || '';

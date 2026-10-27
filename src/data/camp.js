@@ -1,3 +1,4 @@
+import {POTION_RES} from './potions.js';
 // The caravan's camp on a local map (campaign/camp.js): the numbers of the light mode. A night that did not
 // go quietly, an ambush on the march, a stop for a purpose — each is played on a small map of the cell the
 // caravan stands on, with the caravan on it as it is: the people, their gear and wounds, the beasts, the
@@ -66,7 +67,8 @@ export const CAMP = {
   stop: {maxDays: 6, from: 7, until: 19.5, game: 2.2},
   // what the stores send back to the campaign besides the food: the goods the caravan carries and sells (the
   // rest — firewood, hay, stone — stays at the camp)
-  carry: ['potion', 'herbs', 'hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
+  // (every potion and its makings: data/potions.js — the alchemy goes on in the cargo)
+  carry: [...POTION_RES, 'herbs', 'sleepgrass', 'wort', 'pots', 'slime', 'bile', 'venom', 'wax', 'lynxEyes', 'bone', 'gland', 'feathers', 'silverBar', 'hide', 'leather', 'rope', 'ironore', 'bronzeOre', 'silverOre', 'silverNative', 'gems', 'mithrilOre', 'goldDust', 'goldNugget'],
   // the spoils carried to be sold in a town (data/items.js ids): at most this many, the dearest kept
   spoils: 12,
   // how many played camps of the seasons past the campaign keeps to be watched again (ui/campaignView.js; the season's own

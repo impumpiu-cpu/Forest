@@ -15,10 +15,10 @@ import {esc} from '../core/util.js';
 import {think} from './mind.js';
 import {qualityOf} from '../data/quality.js';
 import {season} from '../data/seasons.js';
-import {CAPS, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS, traitOf} from '../data/balance/combat.js';
+import {CAPS, COMBAT, DEFAULT_BLOW, DEFAULT_SCALE, SCALE_MODS, traitOf} from '../data/balance/combat.js';
 import {QUALITY as QUALITY_PRICE, SERVICES} from '../data/balance/prices.js';
 import {MARKS, MARK, markable} from '../data/balance/marks.js';
-import {WOODS, mayUse, useOf, KIND_LAND} from '../data/kinds.js';
+import {WOODS, mayUse, mayWield, useOf, KIND_LAND} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 import {GEAR} from '../data/behaviour.js';
 import {onEdit} from '../data/schema/layer.js';
@@ -103,7 +103,25 @@ export function def(inst) {
   }
   return n;
 }
-export const newItem = (type, extra = {}) => ({type, ...extra, dur: def({type, ...extra}).dur});
+// a thrown weapon comes as a full bundle (quality `thrown`: its throws are its `ammo`)
+export const throwsOf = d => traitOf(d.qualities, 'thrown');
+// a burning thing to throw, in hand or behind the back (a torch: qualities `burn` and `thrown`, throws left) → {item, range}, or null
+export function throwTorch(a) {
+  for (const it of a.equip ? [...handItems(a), a.equip.back].filter(Boolean) : []) {
+    const d = def(it);
+    if (traitOf(d.qualities, 'burn') > 0 && throwsOf(d) && (it.ammo || 0) > 0 && d.ranged) return {item: it, range: d.ranged.range};
+  }
+  return null;
+}
+// a torch carried, in hand or behind the back: its light (agents/combat.js darkness)
+export const carriesTorch = a => !!a.equip && [...handItems(a), a.equip.back].some(it => it && traitOf(def(it).qualities, 'burn') > 0);
+// one throw of it gone; the last throw takes the thing out of the hand
+export function spendThrow(a, T) {
+  T.item.ammo = (T.item.ammo || 0) - 1;
+  if (T.item.ammo <= 0) { for (const s of SLOTS) if (a.equip[s.id] === T.item) a.equip[s.id] = null; }
+  recalcGear(a);
+}
+export const newItem = (type, extra = {}) => { const d = def({type, ...extra}), n = throwsOf(d); return {type, ...(n ? {ammo: n} : {}), ...extra, dur: d.dur}; };
 
 // The caravan keeps its gear as words, not objects (campaign/): a piece is 'ironsword', a finer or marked one
 // 'ironsword+1@orc' (+ its quality, @ its mark), a wooden one 'bow~holywood!' (~ its wood, ! made by its master).
@@ -159,16 +177,24 @@ export function recalcGear(a) {
   for (const it of handItems(a)) {
     const d = def(it);
     if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null, ...(d.qualities ? {q: d.qualities} : {})};
-    if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it, ...(d.qualities ? {q: d.qualities} : {})};
+    if (d.ranged && d.ranged.dmg > 0 && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it, ...(d.qualities ? {q: d.qualities} : {})};   // (a torch, thrown at a wall, is no shot: throwTorch)
     if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs || null; }
     // a shot is caught only by what covers (a shield), with `cover` of its block (forms.js)
     if ((d.block || 0) * (d.cover || 0) > g.cover) { g.cover = d.block * d.cover; g.coverItem = it; g.coverVs = d.vs || null; }
     if (d.speed) g.speed *= d.speed;
   }
+  // the other hand: a one-handed weapon light enough for it (quality `paired`) strikes after the main one (agents/combat.js attack)
+  for (const it of handItems(a)) {
+    if (it === g.melee.item) continue;
+    const d = def(it), share = traitOf(d.qualities, 'paired');
+    if (!d.melee || d.hands === 2 || !share) continue;
+    if (!g.offhand || d.melee.dmg * share > g.offhand.dmg * g.offhand.share) g.offhand = {dmg: d.melee.dmg, share, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null, ...(d.qualities ? {q: d.qualities} : {})};
+  }
   // a parrying weapon in hand adds to the block against blows (data/balance/combat.js WEAPON_QUALITIES)
   const parry = handItems(a).reduce((s, it) => s + traitOf(def(it).qualities, 'parry'), 0);
   if (parry) g.parry = parry;
-  if (g.ranged) g.rangedReady = rangedAmmo(a, def(g.ranged.item)) > 0;
+  // a thrown weapon is ready while throws are left in its bundle, a bow while arrows are in the quiver
+  if (g.ranged) g.rangedReady = (throwsOf(def(g.ranged.item)) ? g.ranged.item.ammo || 0 : rangedAmmo(a, def(g.ranged.item))) > 0;
   const body = a.equip.body;
   if (body) { const d = def(body); g.armor = d.armor || 0; g.armorVs = d.vs || null; g.warmth = d.warmth || 0; if (d.speed) g.speed *= d.speed; }
   // tools work from the hands or from the back (the worker swaps them in)
@@ -226,6 +252,8 @@ export function dress(a, types, ammo = 0) {
     if (d.slot === 'body') putOn(a, inst, 'body', spill);
     else if (d.slot === 'back') putOn(a, inst, 'back', spill);
     else if (d.hands === 2) putOn(a, inst, 'hands2', spill);
+    // a torch (quality `burn`) with both hands taken goes behind the back, if the back is free: thrown from there
+    else if (traitOf(d.qualities, 'burn') > 0 && a.equip.right && a.equip.left && !a.equip.back) putOn(a, inst, 'back', spill);
     else putOn(a, inst, a.equip.right ? 'left' : 'right', spill);
   }
   return spill;
@@ -257,9 +285,9 @@ function value(a, d, w) {
   // letters it is struck with (an agile one is worth more with a dagger, a strong one with a maul)
   if (d.melee) v += (d.melee.dmg * GEAR.blowTicks / d.melee.cd * blowStat(a, d.scale) - 1) * GEAR.melee * brave + GEAR.meleeBase;
   if (d.silver && d.melee) v += silverWorth(w) * brave;
-  if (d.ranged) {
-    const boost = d.ranged.boost ? (w.mods.best[d.ranged.boost] || 1) : 1;
-    v += d.ranged.dmg * boost * GEAR.ranged * (a.prefs.hunt ?? 1) + GEAR.rangedBase;
+  if (d.ranged?.dmg > 0) {   // (a torch is thrown at a wall, not shot: no worth as a shot)
+    const boost = d.ranged.boost ? (w.mods.best[d.ranged.boost] || 1) : 1, throws = throwsOf(d);   // a bundle of throws, not a quiverful
+    v += d.ranged.dmg * boost * GEAR.ranged * (a.prefs.hunt ?? 1) * (throws ? Math.min(1, throws / COMBAT.thrown.shots) : 1) + GEAR.rangedBase;
     if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= GEAR.noAmmo;
   }
   if (d.block) v += d.block * GEAR.block * brave;
@@ -277,12 +305,15 @@ function backValue(a, d, w, handsDefs) {
   return v + (isWeapon(d) ? GEAR.spareWeapon : 0);
 }
 
-// hands: the first item does the fighting; a second one-hander adds its block and tool value only
+// hands: the first item does the fighting; a second one-hander adds its block and tool value, and its blow if it is paired
 function handsValue(w, a, hands) {
   if (!hands.length) return 0;
   let v = value(a, def(hands[0]), w);
   if (hands[1] && hands[1] !== hands[0]) {
     const od = def(hands[1]);
+    // a weapon for the other hand (quality `paired`) adds its blow at its share
+    const paired = od.melee && od.hands !== 2 ? traitOf(od.qualities, 'paired') : 0, cd = def(hands[0]).melee?.cd;
+    if (paired && cd) v += od.melee.dmg * GEAR.blowTicks / cd * paired * blowStat(a, od.scale) * GEAR.melee * (GEAR.brave[0] + GEAR.brave[1] * a.mods.bravery);
     v += (od.block || 0) * GEAR.block * (GEAR.brave[0] + GEAR.brave[1] * a.mods.bravery) + GEAR.second +
       Object.entries(od.tool || {}).reduce((t, [j, m]) => t + (m - 1) * GEAR.tool * (a.prefs[j] ?? 1) * toolUse(a, j), 0);
   }
@@ -339,7 +370,7 @@ export function outfit(w, a) {
   const night = a.captive && (hourOf(w.tick) >= COUNCIL_TO || hourOf(w.tick) < ESCAPE.tools.dawn);
   // (a former slave: a tool and clothes too, day and night — settlement/freedom.js)
   // what the race does not touch at all (data/kinds.js 'taboo') stays in the store
-  const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)));
+  const own = allItems(a), pool = (a.captive || a.former ? [...own, ...w.armory].filter(it => captiveItem(it) && !(night && def(it).slot === 'hand')) : [...own, ...w.armory]).filter(it => mayUse(a.species, memberOf(it)) && mayWield(a.species, def(it).form));
   const best = bestLoadout(w, a, pool);
   if (best && best.score > currentScore(w, a) + GEAR.swap) {
     const keep = new Set([...best.hands, best.body, best.back].filter(Boolean));
@@ -354,6 +385,8 @@ export function outfit(w, a) {
     w.armoryVersion = (w.armoryVersion || 0) + 1;
     changed = true;
   }
+  // thrown weapons picked up again (or made good) at the camp: the bundle full
+  for (const it of handItems(a)) { const n = throwsOf(def(it)); if (n && (it.ammo ?? 0) < n) { it.ammo = n; changed = true; } }
   const back = a.equip.back;
   if (back && def(back).holds) {
     const {ammo, max} = def(back).holds, take = Math.min(max - (back.ammo || 0), Math.floor(w.stock[ammo] || 0));
@@ -365,7 +398,7 @@ export function outfit(w, a) {
 
 export function gearText(a) {
   if (!a.equip) return '';
-  const hs = handItems(a).map(it => def(it).short + (dirtyFor(a, it) ? ' (грязн.)' : ''));
+  const hs = handItems(a).map(it => def(it).short + (throwsOf(def(it)) ? ` ${it.ammo || 0}` : '') + (dirtyFor(a, it) ? ' (грязн.)' : ''));
   const parts = [hs.length ? hs.join(' + ') : 'безоружен'];
   if (a.equip.body) parts.push(def(a.equip.body).short);
   const b = a.equip.back;

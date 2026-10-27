@@ -12,7 +12,10 @@ import {assign} from './baggage.js';
 import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {makeMember} from './start.js';
-import {room} from './company.js';
+import {room, setPlace} from './company.js';
+import {DAY} from '../core/time.js';
+import {sleepDose} from '../agents/potions.js';
+import {POTION} from '../data/potions.js';
 
 const C = CAPTIVE.campaign;
 const alive = K => K.members.filter(m => m.alive);
@@ -57,6 +60,8 @@ export function takeFromCamp(a, K, o, say) {
     const m = {id: (K.nextMember = (K.nextMember || K.members.length) + 1), name: t.name, gender: t.gender, race: t.race, people: t.people || null,
       role: 'captive', core: false, hp: t.hp, alive: true, joined: K.day, back: 1, ride: null, special: t.special, align: t.align || null, values: t.values || null,
       gear: {hand: [...(t.gear?.hand || [])], body: t.gear?.body || C.gear.body}, local: t.local || null,
+      // its wounds and traumas, as a member's (campaign/potions.js woundsIn: the last day a wound is borne, null — for life)
+      wounds: t.wounds?.length ? t.wounds.map(x => ({id: x.id, day: x.ticks == null ? null : K.day + Math.max(1, Math.ceil(x.ticks / DAY)) - 1})) : null,
       captive: {since: K.day, bonds: t.bonds, from: t.from || null, will: t.will ?? ESCAPE.will.start}};
     K.members.push(m); got.push(m);
   }
@@ -98,6 +103,7 @@ export function captivesEvening(a, K, r, say) {
   if (cut && !K.captiveCut && K.day - (K.cutTold ?? -999) > 60) { K.cutTold = K.day; say('Еды мало: пленным урезали паёк.', 'people'); }
   K.captiveCut = cut;
   const W = ESCAPE.will.day, want = [];
+  let slept = 0;
   for (const m of hs) {
     let d = W.time;
     if (cut) d += W.cut;
@@ -106,6 +112,9 @@ export function captivesEvening(a, K, r, say) {
     if (!cut && !K.hungry && m.hp > 0.8) d += W.content;
     m.captive.will = clamp01(willOf(m) + d);
     if (m.captive.resigned) continue;
+    // one set on running is given the sleeping brew from the cargo (data/potions.js sleep): it sleeps the night through
+    const dose = m.captive.will >= POTION.home.will ? sleepDose(K.cargo, true) : null;
+    if (dose) { m.captive.slept = K.day; slept++; if (dose.calm) m.captive.will = clamp01(m.captive.will - dose.calm); continue; }
     if (r() < ESCAPE.escape.base * m.captive.will * holdOf(m)) { want.push(m); continue; }
     const Rs = ESCAPE.resign, days = K.day - (m.captive.since ?? K.day);
     if (r() < Rs.base * (1 - m.captive.will) * days / (days + Rs.settle)) {
@@ -113,8 +122,9 @@ export function captivesEvening(a, K, r, say) {
       say(`${m.name}, ${gw(m, 'пленный', 'пленная')} (${SPECIES.get(m.race).label}), ${gw(m, 'смирился', 'смирилась')}: бежать больше не думает.`, 'people', [m.id]);
     }
   }
+  if (slept) { K.stats.sleepBrews = (K.stats.sleepBrews || 0) + slept; if (K.day - (K.sleepTold ?? -999) > 30) { K.sleepTold = K.day; say(`Пленным, что задумали бежать, дали сонный отвар: проспят до утра.`, 'people'); } }
   if (!want.length) return;
-  const by = want[0], plotters = hs.filter(m => !m.captive.resigned);
+  const by = want[0], plotters = hs.filter(m => !m.captive.resigned && m.captive.slept !== K.day);
   for (const s of hs.filter(m => m.captive.resigned)) {
     if (r() >= ESCAPE.inform.base) continue;
     by.captive.will = clamp01(willOf(by) + ESCAPE.will.betrayed);
@@ -157,14 +167,13 @@ export function freedomEvening(a, K, say) {
       continue;
     }
     unbind(K, m);
-    m.former = {since: K.day, fought: false, service: m.captive.service || 0};
-    m.captive = null; m.role = 'former'; m.loyalty = FREEDOM.bond.start;
+    setPlace(m, 'former', {since: K.day, fought: false, service: m.captive.service || 0}); m.loyalty = FREEDOM.bond.start;
     K.stats.freed = (K.stats.freed || 0) + 1;
     say(`С ${m.name} сняли путы: за ${gw(m, 'него', 'неё')} поручился ${vouch.name}. Теперь ${gw(m, 'бывший раб', 'бывшая рабыня')} — без оружия, но не в путах.`, 'people', [m.id, vouch.id]);
   }
   for (const m of K.members.filter(x => x.alive && x.former)) {
     if (!m.former.fought) continue;
-    m.former = null; m.role = 'companion'; m.loyalty = 1;
+    setPlace(m, 'companion'); m.loyalty = 1;
     K.stats.formerMembers = (K.stats.formerMembers || 0) + 1;
     say(`${m.name} ${gw(m, 'бился', 'билась')} за караван: теперь ${gw(m, 'он', 'она')} свой и идёт до конца.`, 'people', [m.id]);
   }

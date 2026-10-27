@@ -24,13 +24,25 @@ import {SPECIES} from './species.js';
 // hay the tame animals eat in a winter of 30 days (settlement/herd.js keeps the herd to it)
 const winterHay = w => w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.eats : 0), 0) * 30 * 0.7;
 
+// the herbs of the brews are picked only for a healer's hut to brew them: n while there is one
+const hutKeep = (w, n) => (w.buildings?.some(b => b.key === 'healerhut' && b.done) ? n : 0);
+
 export const PLANTS = new Registry('plant');
 
 PLANTS.registerAll([
-  // healing herbs: yarrow, plantain, St John's wort — a few patches in damp meadows and glades.
+  // healing herbs: yarrow, plantain, coltsfoot — a few patches in damp meadows and glades.
   // Picked by the healer (data/jobs.js 'heal'), so no job of its own.
   {id: 'herbs', resource: 'herbs', label: 'лечебные травы', terrain: ['grass', 'forest', 'swamp'], fertMin: 0.5, chance: 0.006,
     start: [0.4, 1], regrow: 0.0006, ripe: 0.45, take: 0.5, tint: [236, 214, 92], mapColor: [255, 236, 96]},
+
+  // the herbs of the brews (data/potions.js home), picked while the colony has a healer's hut to brew them: sleep-grass
+  // on dry glades and the steppe, in spring and early summer; St John's wort on sunny meadows, in summer and autumn
+  {id: 'sleepgrass', resource: 'sleepgrass', label: 'сон-трава', terrain: ['grass', 'forest', 'steppe'], fertMin: 0.3, chance: 0.004, seasons: ['spring', 'summer'],
+    start: [0.4, 1], regrow: 0.0005, ripe: 0.5, take: 0.5, tint: [150, 112, 200], mapColor: [184, 140, 240],
+    job: {id: 'sleepgrass', label: 'собирать сон-траву', short: 'сон-трава', verb: 'собирает сон-траву', time: 30, carry: 2, keep: w => hutKeep(w, 4)}},
+  {id: 'wort', resource: 'wort', label: 'зверобой', terrain: ['grass', 'forest'], fertMin: 0.4, chance: 0.006, seasons: ['summer', 'autumn'],
+    start: [0.4, 1], regrow: 0.0006, ripe: 0.5, take: 0.5, tint: [232, 182, 60], mapColor: [255, 196, 40],
+    job: {id: 'wort', label: 'собирать зверобой', short: 'зверобой', verb: 'собирает зверобой', time: 28, carry: 2, keep: w => hutKeep(w, 6)}},
 
   // nettle and wild flax: the bast fibre the outpost spins into rope and weaves into rough cloth
   {id: 'nettle', resource: 'fiber', label: 'крапива', terrain: ['grass', 'forest'], fertMin: 0.55, chance: 0.03,

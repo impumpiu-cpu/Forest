@@ -16,6 +16,7 @@
 import {releaseAll} from '../settlement/reserve.js';
 import {TASKS} from './tasks.js';
 import {wake} from './attention.js';
+import {RUNNER_EXIT} from './runnerExit.js';
 
 export const OUTCOMES = {
   done:        {label: 'сделано', skip: 0},
@@ -26,16 +27,16 @@ export const OUTCOMES = {
 
 // a task's key for skipping: a job by its job id, anything else by its task id. A fight and help are
 // keyed by whom: «the foe slipped away» or «could not reach the wounded» keeps one from that one, not
-// from the next foe or the next wounded; a cry answered in vain keeps one from that cry, not from the next;
+// from the next foe or the next wounded (a band's healer too: agents/tasks.js mend); a cry answered in vain keeps one from that cry, not from the next;
 // a carcass a beast cannot reach keeps it from that carcass, a victim it cannot get at from that victim (agents/behaviours/feed.js, maul.js)
-export const taskKey = t => (t.id === 'job' ? 'job:' + t.job : t.id === 'fight' ? 'fight:' + (t.target?.id ?? '') : t.id === 'aid' ? 'aid:' + t.who : t.id === 'answer' ? 'answer:' + t.flag : t.id === 'feed' ? 'feed:' + t.c : t.id === 'maul' ? 'maul:' + (t.target?.id ?? '') : t.id);
+export const taskKey = t => (t.id === 'job' ? 'job:' + t.job : t.id === 'fight' ? 'fight:' + (t.target?.id ?? '') : t.id === 'aid' ? 'aid:' + t.who : t.id === 'mend' ? 'mend:' + t.who : t.id === 'answer' ? 'answer:' + t.flag : t.id === 'feed' ? 'feed:' + t.c : t.id === 'maul' ? 'maul:' + (t.target?.id ?? '') : t.id);
 // the reflexes are never skipped: running from fire or home, the alarm, the firefighting
 const REFLEX = new Set(['runHome', 'flee', 'muster', 'reserve', 'douse']);
 export const skipped = (w, a, t) => !REFLEX.has(t.id) && (a.skips?.[taskKey(t)] ?? -1) > w.tick;
 const label = t => TASKS.get(t.id).label(t);
 
-// exit hooks for job runners (agents/jobRunners.js registers them): (w, a, task, outcome)
-export const RUNNER_EXIT = {};
+// the exit hooks of the job runners (agents/runnerExit.js: registered by agents/jobRunners.js)
+export {RUNNER_EXIT};
 
 function close(w, a, t, outcome, why) {
   if (!t || t.closed) return;

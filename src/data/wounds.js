@@ -20,6 +20,7 @@ import {Registry} from '../core/registry.js';
 import {HOUR, DAY} from '../core/time.js';
 import {curve} from './curves.js';
 import {CONDITIONS} from './conditions.js';
+import {isSentient} from './species.js';
 
 export const CRIT = {mul: 1.5};
 
@@ -33,7 +34,7 @@ export const DEATHBLOW = {
 // who may fall instead of dying: a thinking creature of the colony, or a thinking raider — one that may be
 // bound and taken after the fight (settlement/captives.js). Beasts die as before; the undead and things
 // without a body to bleed never fall
-export const CAN_FALL = (sp, a) => !!sp.sentient && !sp.undead && (a.faction === 'colony' || a.faction === 'raiders');
+export const CAN_FALL = (sp, a) => isSentient(sp) && !sp.undead && (a.faction === 'colony' || a.faction === 'raiders');
 
 // a chance on Luck by one of the luck curves: 'crit', 'survive', 'clean' (data/curves.js)
 export const luckChance = (id, L) => curve(id, L);

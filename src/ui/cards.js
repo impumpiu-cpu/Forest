@@ -43,7 +43,7 @@ import {skillTier, softCap, canMake, recipeNeed, reasonText, recipeAccess, jobAc
 import {VALUES, axisWord, alignLabel} from '../data/values.js';
 import {opinionWord} from '../data/relations.js';
 import {feelings, history} from '../settlement/relations.js';
-import {squadText} from '../agents/squad.js';
+import {squadText, fighterLabel} from '../agents/squad.js';
 import {huntOf, carcassById, ROLE_LABEL} from '../agents/carcass.js';
 import {raceLabel, innateOf, limits, peopleOf} from '../agents/special.js';
 import {RAID_BANDS} from '../data/raids.js';
@@ -54,6 +54,7 @@ import {statusOf} from '../settlement/life.js';
 import {herd, beastText, penRoom, penSpace, isTameable} from '../settlement/herd.js';
 import {herdOf, herdAlarm, stragglerOf} from '../agents/wildHerd.js';
 import {WOODS, STONES} from '../data/kinds.js';
+import {STANDINGS} from '../agents/standing.js';
 
 const soilWord = f => (f < 0.3 ? 'тощая' : f < 0.5 ? 'средняя' : f < 0.7 ? 'добрая' : 'жирная');
 const bar = (v, c) => `<div class="bar"><i style="width:${(clamp(v, 0, 1) * 100).toFixed(0)}%;background:${c}"></i></div>`;
@@ -150,8 +151,8 @@ export function whyHtml(w, a) {
 
 export function creatureHtml(w, a) {
   const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a)).toFixed(1);
-  const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%${a.potions ? ` · зелий лечения ${a.potions}` : ''}</dd>`];
-  if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
+  const rows = [`<dt>Сейчас</dt><dd>${taskLabel(a)}, ${where(w, a)}</dd>`, `<dt>Здоровье</dt><dd>${Math.round(hpShare(a) * 100)}%${a.potions ? ` · зелий лечения ${a.potions}` : ''}${a.belt?.length ? ` · в поясе: ${a.belt.map(r => RESOURCES.get(r).label).join(', ')}` : ''}</dd>`];
+  if (a.band) rows.push(`<dt>Кто</dt><dd>${RAID_BANDS.get(a.band).label}; ${{mindless: 'безмозглый', beast: 'неразумен', semi: 'полуразумен', sentient: 'разумен'}[sp.mind]}</dd>`);
   const herd = herdOf(w, a);
   if (herd) rows.push(`<dt>Стадо</dt><dd>${herd.n} ${herd.n > 1 ? sp.plural || sp.label : sp.label}${herdAlarm(w, herd) ? ', настороже' : ''}; ${a.nerve == null ? '' : a.nerve < 0.85 ? 'пугливый' : a.nerve > 1.15 ? 'невозмутимый' : 'спокойный'}${stragglerOf(w, a) ? ', отстаёт' : ''}</dd>`);
   const h = huntOf(w, a);
@@ -162,7 +163,7 @@ export function creatureHtml(w, a) {
   if (a.special) rows.push(`<dt>Тело</dt><dd>${specialHtml(a)}</dd>`);
   const inn = innateOf(sp, a);
   if (inn.length) rows.push(`<dt>Особое</dt><dd>${inn.map(t => `<span class="chip" title="${esc(t.note)}">${t.label}</span>`).join(' ')}</dd>`);
-  if (a.role === 'trader' && w.caravan?.traderId === a.id) {
+  if (a.brain === 'trader' && w.caravan?.traderId === a.id) {
     const c = w.caravan;
     rows.push(`<dt>Караван</dt><dd>${goodsUnits(c.goods)} мест груза, ${Math.floor(c.purse)} зол. в кошельке</dd>`);
   }
@@ -178,8 +179,9 @@ export function creatureHtml(w, a) {
   if (a.equip) rows.push(`<dt>Снаряжение</dt><dd>${gearText(a)}</dd>`);
   if (a.route && w.tick - a.route.t < 30) rows.push(`<dt>Путь</dt><dd>${esc(a.route.how)}</dd>`);
   rows.push(`<dt>Под ногами</dt><dd>${T} °C</dd>`);
-  const who = a.role === 'trader' ? 'купец' : a.role === 'guard' ? 'охранник каравана' : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : raceOf(a);
-  const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${who}` : who[0].toUpperCase() + who.slice(1);
+  const who = a.brain === 'trader' || a.brain === 'guard' ? STANDINGS[a.brain].label : a.tame ? `${sp.label}, ${sp.id === 'goat' ? 'своя' : 'свой'}` : raceOf(a);
+  const whoFull = fighterLabel(w, a, who);   // in a band: «гоблин-стрелок-грабитель»
+  const title = a.name.toLowerCase() !== who ? `${esc(a.name)}, ${esc(whoFull)}` : whoFull[0].toUpperCase() + esc(whoFull.slice(1));
   return `<div class="pc-head"><h3>${title}</h3></div><dl class="kv">${rows.join('')}</dl>${whyHtml(w, a)}`;   // the beast's choice too (agents/brains/tabled.js a.why)
 }
 
@@ -190,7 +192,8 @@ export function personHtml(w, a) {
   const moodPct = Math.round((mood + 1) * 50);
   const needs = sp.needs.map(id => { const n = NEEDS.get(id); return `<div class="pc-bar"><span>${n.label}</span>${bar(a.needs[id], n.color)}<b>${Math.round(a.needs[id] * 100)}</b></div>`; }).join('') +
     `<div class="pc-bar"><span>здоровье</span>${bar(hpShare(a), 'var(--good)')}<b>${Math.round(hpShare(a) * 100)}</b></div>` +
-    (a.potions ? `<div class="pc-bar"><span>зелья лечения</span>${bar(a.potions / POTION.slot, '#d8506a')}<b>${a.potions}</b></div>` : '');
+    (a.potions ? `<div class="pc-bar"><span>зелья лечения</span>${bar(a.potions / POTION.slot, '#d8506a')}<b>${a.potions}</b></div>` : '') +
+    (a.belt?.length ? `<div class="pc-bar"><span>в поясе</span><b>${a.belt.map(r => esc(RESOURCES.get(r).label)).join(', ')}</b></div>` : '');
   const inn = innateOf(sp, a).map(t => `<span class="chip race" title="${esc(t.note)}">${t.label}</span>`).join('');
   const vals = (a.values || []).map(id => `<span class="chip">${VALUES.get(id).label}</span>`).join('');
   const feel = feelings(w, a), strong = [...feel.filter(([, v]) => v <= -1.5).slice(0, 3), ...feel.filter(([, v]) => v >= 1.5).slice(-3).reverse()];

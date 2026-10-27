@@ -53,6 +53,7 @@ export const RESOURCES = {
   // Реагенты
   venom:        {price: 3, stack: 10},
   bile:         {price: 3, stack: 10},
+  lynxEyes:     {price: 4, stack: 10},
   slime:        {price: 1.5, stack: 10},
   gland:        {price: 6, stack: 10},
   // Ремесло
@@ -79,6 +80,36 @@ export const RESOURCES = {
   // Лекарства
   herbs:        {price: 1, stack: 20},
   potion:       {price: 6, stack: 10},   // the healing potion (data/potions.js): dear — a few days' wages
+  // the other potions (data/potions.js): their makings and the hand that brews them; the strong ones at an alchemist's
+  potionStrong: {price: 15, stack: 10},
+  antidote:     {price: 5, stack: 10},
+  antidoteStrong: {price: 11, stack: 10},
+  bearBrew:     {price: 8, stack: 10},
+  bearBrewStrong: {price: 17, stack: 10},
+  bladeVenom:   {price: 9, stack: 10},
+  bladeVenomStrong: {price: 19, stack: 10},
+  silverOil:    {price: 9, stack: 10},
+  silverOilStrong: {price: 18, stack: 10},
+  firewardBrew: {price: 6, stack: 10},
+  firewardBrewStrong: {price: 14, stack: 10},
+  lightStep:    {price: 6, stack: 10},
+  lightStepStrong: {price: 14, stack: 10},
+  catEye:       {price: 7, stack: 10},
+  catEyeStrong: {price: 15, stack: 10},
+  fireFlask:    {price: 6, stack: 10},
+  fireFlaskStrong: {price: 13, stack: 10},
+  temperElixir: {price: 40, stack: 10},
+  // the brews (drunk out of the stock) and their herbs
+  sleepgrass:   {price: 1.5, stack: 20},
+  wort:         {price: 1, stack: 20},
+  warmBrew:     {price: 3, stack: 10},
+  warmBrewStrong: {price: 7, stack: 10},
+  vigorBrew:    {price: 3, stack: 10},
+  vigorBrewStrong: {price: 9, stack: 10},
+  mendBrew:     {price: 4, stack: 10},
+  mendBrewStrong: {price: 10, stack: 10},
+  sleepBrew:    {price: 3, stack: 10},
+  sleepBrewStrong: {price: 8, stack: 10},
   // Топливо
   coal:         {price: 0.3, stack: 20},
   // Руда

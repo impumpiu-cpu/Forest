@@ -6,7 +6,7 @@
 //   upyr     — the rot in a still living body: hungry for blood, half-witted, hates the sun;
 //   vampire  — the same strain in lasting balance: the mind is kept, centuries of life, silver burns it.
 // Fields beyond a species' usual ones:
-//   mind      — 'beast' | 'semi' | 'sentient' (only the sentient can be hired or bargained with)
+//   mind      — 'mindless' | 'beast' | 'semi' | 'sentient' (data/species.js MINDS)
 //   mindless  — walks into fire, never flees, goes straight for the living instead of the stores
 //   rots      — health lost per tick in warmth (above 12 °C); `sun` — extra loss in daylight
 //   drinks    — share of the damage it deals that heals it (blood)
@@ -34,12 +34,12 @@ export const MONSTERS = [
     weakTo: ['silver'],
     killMessage: name => `Демон разорвал поселенца: <b>${name}</b>.`},
 
-  {id: 'zombie', kind: 'undead', label: 'мертвяк', labelAcc: 'мертвяка', plural: 'мертвяки', mind: 'beast', undead: true, mindless: true,
+  {id: 'zombie', kind: 'undead', label: 'мертвяк', labelAcc: 'мертвяка', plural: 'мертвяки', mind: 'mindless', undead: true,
     needs: [], heatHarm: 45, look: {shape: 'person', size: 0.6, color: '#7f9a78', skin: '#55684f'},
     rots: 0.000012,
     killMessage: name => `Мертвецы растерзали поселенца: <b>${name}</b>.`},
 
-  {id: 'skeleton', kind: 'undead', deeds: {lair: [...DEED_WAYS.lair]}, label: 'костяк', labelAcc: 'костяка', plural: 'костяки', mind: 'beast', undead: true, mindless: true,
+  {id: 'skeleton', kind: 'undead', deeds: {lair: [...DEED_WAYS.lair]}, label: 'костяк', labelAcc: 'костяка', plural: 'костяки', mind: 'mindless', undead: true,
     needs: [], heatHarm: 55, inventory: true, look: {shape: 'person', size: 0.58, color: '#d8d2bd', skin: '#8f8a78'},
     killMessage: name => `Костяки зарубили поселенца: <b>${name}</b>.`},
 
@@ -48,7 +48,7 @@ export const MONSTERS = [
     drinks: 0.5, sun: 0.0004,
     killMessage: name => `Упыри выпили кровь поселенца: <b>${name}</b>.`},
 
-  {id: 'vampire', kind: 'undead', deeds: {lair: [...DEED_WAYS.vampire]}, label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true, sentient: true,
+  {id: 'vampire', kind: 'undead', deeds: {lair: [...DEED_WAYS.vampire]}, label: 'вампир', labelAcc: 'вампира', plural: 'вампиры', mind: 'sentient', undead: true,
     needs: [], heatHarm: 55, inventory: true, look: {shape: 'person', size: 0.64, color: '#5a1f2a', skin: '#e8e2e8'},
     drinks: 0.6, sun: 0.0006, weakTo: ['silver'],
     names: personNames('vampire'),

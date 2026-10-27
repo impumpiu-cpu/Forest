@@ -6,6 +6,9 @@ export const inBounds = (w, x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
 // a point (fractional coordinates) on the map; inBounds(w, x | 0, y | 0) would let −0.3 through, since −0.3 | 0 is 0
 export const inMap = (w, x, y) => x >= 0 && y >= 0 && x < w.w && y < w.h;
 export const walkable = (w, i) => WALKABLE[w.grid.terr[i]] === 1;
+// how far `a` is from the middle of cell i
+const MID = 1 / 2;
+export const distToCell = (w, a, i) => Math.hypot((i % w.w) + MID - a.x, ((i / w.w) | 0) + MID - a.y);
 export const cellOf = (w, a) => clamp(a.y | 0, 0, w.h - 1) * w.w + clamp(a.x | 0, 0, w.w - 1);
 export const isCampArea = (w, i) => Math.abs((i % w.w) - w.camp.x) <= 3 && Math.abs(((i / w.w) | 0) - w.camp.y) <= 3;
 export const distToCamp2 = (w, i) => ((i % w.w) - w.camp.x) ** 2 + (((i / w.w) | 0) - w.camp.y) ** 2;

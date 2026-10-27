@@ -29,8 +29,11 @@ import {wake} from '../agents/attention.js';
 import {cellOf} from '../world/grid.js';
 import {log} from '../core/log.js';
 import {esc, g, clamp} from '../core/util.js';
-import {hourOf, dayOf, DAY} from '../core/time.js';
+import {hourOf, dayOf, DAY, HOUR} from '../core/time.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
+import {setStanding} from '../agents/standing.js';
+import {sleepDose} from '../agents/potions.js';
+import {POTION} from '../data/potions.js';
 
 const E = w => (w.escape ??= {rolled: -1, dawn: -1, plot: null, alarm: null, cut: false});
 const C = w => (w.chronicle.captives ||= {taken: 0, died: 0});
@@ -78,9 +81,14 @@ function council(w, S, rng) {
   for (const a of caps) if (!!a.captive.cut !== cut) applyRation(a, cut);
   // the rolls of every captive not resigned
   const want = [];
+  let slept = 0;
   for (const a of caps) {
     if (a.captive.resigned || a.downed) continue;
     const will = willOf(a);
+    // one set on running is given the sleeping brew, if the stock has one (data/potions.js sleep): it sleeps the night
+    // through; a strong one calms it too
+    const dose = will >= POTION.home.will ? sleepDose(w.stock) : null;
+    if (dose) { slept++; a.captive.sleepsUntil = (dayOf(w.tick) + 1) * DAY + ESCAPE.tools.dawn * HOUR; if (dose.calm) a.captive.will = clamp(will - dose.calm, 0, 1); continue; }
     if (rng() < ESCAPE.escape.base * will * holdOf(a)) want.push(a);
     const R = ESCAPE.resign;
     if (!want.includes(a) && rng() < R.base * (1 - will) * days(w, a) / (days(w, a) + R.settle)) {
@@ -88,8 +96,9 @@ function council(w, S, rng) {
       log(w, `${name(a)}, ${g(a, 'пленный', 'пленная')} (${label(a)}), ${g(a, 'смирился', 'смирилась')}: бежать больше не думает.`, 'people');
     }
   }
+  if (slept) log(w, `Совет велел напоить сонным отваром ${slept === 1 ? 'пленного, что задумал бежать' : `пленных, что задумали бежать (${slept})`}: проспят до утра.`, 'council');
   if (!want.length) return;
-  const by = want[0], plotters = caps.filter(a => !a.captive.resigned && !a.downed);
+  const by = want[0], plotters = caps.filter(a => !a.captive.resigned && !a.downed && !(w.tick < (a.captive.sleepsUntil ?? -1)));   // (one given the sleeping brew sleeps till dawn)
   // a resigned one may tell: the more it likes the free, the readier
   const fr = free(w);
   for (const s of caps.filter(a => a.captive.resigned && !a.downed)) {
@@ -112,7 +121,7 @@ export function startEscape(w, a, why) {
   releaseAll(w, a);
   a.fugitive = {since: w.tick, why, slow};
   shiftAlign(a, 'order', ALIGN_DRIFT.pawn.fled);   // the bonds broken, the law with them
-  a.faction = 'fugitives'; a.brain = 'fugitive'; a.task = {id: 'escape'}; a.sleeping = false; a.carry = null;
+  setStanding(a, 'fugitive', a.fugitive); a.task = {id: 'escape'}; a.sleeping = false; a.carry = null;
   if (w.scratch) delete w.scratch.colonists;
   C(w).ran = (C(w).ran || 0) + 1;
   log(w, `${name(a)}, ${g(a, 'пленный', 'пленная')} (${label(a)}), ${g(a, 'бежал', 'бежала')}${why === 'plot' ? ' ночью по сговору' : ' в суматохе тревоги'}${slow < 1 ? '' : ', перерезав путы'}.`, 'danger', 'alert');
@@ -128,7 +137,7 @@ export function gotAway(w, a) {
 
 // grabbed by one who got within reach: back to the captives, and readier to run next time
 export function catchRunaway(w, by, a) {
-  a.fugitive = null; a.faction = 'colony'; a.brain = 'captive';
+  setStanding(a, 'captive');
   a.captive.will = clamp(willOf(a) + ESCAPE.will.caught, 0, 1);
   a.task = {id: 'runHome'}; a.think = 0; wake(a, 'пойман', 'пойман');
   if (w.scratch) delete w.scratch.colonists;
@@ -167,7 +176,7 @@ export function stepEscape(w) {
   else {
     S.alarm ??= w.tick;
     for (const a of caps) {
-      if (a.downed || a.captive.resigned || a.captive.redAt === S.alarm || a.task?.id === 'fight') continue;
+      if (a.downed || a.captive.resigned || a.captive.redAt === S.alarm || a.task?.id === 'fight' || w.tick < (a.captive.sleepsUntil ?? -1)) continue;   // (one given the sleeping brew sleeps till dawn, alarm or none)
       a.captive.redAt = S.alarm;
       const kin = w.agents.some(o => o.species === a.species && marching(w, o) && !o.dead && !o.downed);   // scan: once a captive per alarm
       if (kin) a.captive.kinSeen = true;

@@ -12,7 +12,7 @@ import {recalcGear, wear} from '../src/agents/equipment.js';
 import {heatHarm, stepBody} from '../src/agents/body.js';
 import {traumasAt} from '../src/agents/wounds.js';
 import {strengthParts} from '../src/agents/strength.js';
-import {DAMAGE_TYPES, DELIVERY, WEAPON_QUALITIES, CAPS} from '../src/data/balance/combat.js';
+import {DAMAGE_TYPES, DELIVERY, WEAPON_QUALITIES, CAPS, COMBAT} from '../src/data/balance/combat.js';
 import {BODY_PLANS, HIT_LOCATIONS, planOf, placesOf, drawPlace} from '../src/data/anatomy.js';
 import {WOUNDS} from '../src/data/wounds.js';
 import {ITEMS} from '../src/data/items.js';
@@ -121,7 +121,109 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   a.faction = 'raiders'; wear(w, a, it, 1);
   expect(it.dur === 98, `ненадёжное 1: износ ${100 - it.dur}, а должен быть 2`);
   E.resetAll();
-  expect(!ITEMS.get('ironspear').qualities, 'сброс не снял свойства с вещи');
+  expect(!ITEMS.get('ironspear').qualities?.unreliable && !ITEMS.get('ironspear').qualities?.piercing, 'сброс не снял свойства с вещи');
+}
+
+// ── paired weapons: a second dagger strikes after the first, a shield in the other hand does not; КС sees it
+{
+  const {dress} = await import('../src/agents/equipment.js'), {strengthOf} = await import('../src/agents/strength.js'), {attack} = await import('../src/agents/combat.js');
+  const w = scene(), two = put(w, 'human', 'raiders'), one = put(w, 'human', 'raiders'), sh = put(w, 'human', 'raiders');
+  const {refreshBody} = await import('../src/agents/special.js'), {maxHp} = await import('../src/agents/agent.js');
+  for (const x of [one, sh]) { x.special = {...two.special}; refreshBody(x); x.hp = maxHp(x); x.mods.dodge = 0; }   // the same hands
+  dress(two, ['irondagger', 'irondagger']); dress(one, ['irondagger']); dress(sh, ['irondagger', 'ironshield']);
+  expect(two.gear.offhand?.share === ITEMS.get('irondagger').qualities.paired && !one.gear.offhand && !sh.gear.offhand, 'вторая рука: парный кинжал не взят или щит взят за оружие');
+  expect(strengthOf(two) > strengthOf(one), 'КС не видит второго кинжала');
+  const t = put(w, 'human', 'colony'); t.gear = {...recalcGear(t), block: 0, cover: 0}; t.mods.dodge = 0; t.hp = 100;
+  t.hurtBy = null; rngs(w, 0.5); two.cd = 0; const h0 = t.hp; attack(w, two, t); const d2 = h0 - t.hp;
+  t.hurtBy = null; rngs(w, 0.5); one.cd = 0; const h1 = t.hp; attack(w, one, t); const d1 = h1 - t.hp;
+  expect(near(d2 / d1, 1 + two.gear.offhand.share), `два кинжала: урон ×${(d2 / d1).toFixed(2)}, а должно ×${1 + two.gear.offhand.share}`);
+}
+
+// ── where the blow comes from: front, flank (the target fights another), back (it does not know); a dagger is sly
+{
+  const {attack, stanceOf, stanceGain} = await import('../src/agents/combat.js'), {dress} = await import('../src/agents/equipment.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), other = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony');
+  dress(a, ['ironspear']);
+  t.task = {id: 'fight', target: a}; expect(stanceOf(w, a, t) === 'front', 'лицом к лицу — не спереди');
+  t.task = {id: 'fight', target: other}; expect(stanceOf(w, a, t) === 'flank', 'цель бьётся с другим — не фланг');
+  t.task = {id: 'work'}; t.hurtBy = null; expect(stanceOf(w, a, t) === 'back', 'цель не знает — не в спину');
+  t.hurtBy = {id: other.id, tick: w.tick}; expect(stanceOf(w, a, t) === 'front', 'раненая только что цель всё ещё не знает');
+  const wolf = put(w, 'wolf', 'raiders'); t.hurtBy = null; expect(stanceOf(w, wolf, t) === 'front', 'зверь бьёт в спину');
+  expect(near(stanceGain('back', null), COMBAT.back.dmg) && near(stanceGain('flank', {backstab: 1}), 1 + 2 * (COMBAT.flank.dmg - 1)), 'прибавка с фланга и в спину не по числам');
+  // the shield turns half a blow from the flank, none in the back
+  t.gear = {...recalcGear(t), block: 0.9, blockVs: null}; t.hp = 100; t.mods.dodge = 0;
+  rngs(w, 0.5); t.task = {id: 'fight', target: a}; a.cd = 0; const f0 = t.hp; attack(w, a, t);
+  expect(f0 === t.hp, 'щит 0,9 не остановил удар спереди при броске 0,5');
+  rngs(w, 0.5); t.task = {id: 'work'}; t.hurtBy = null; a.cd = 0; const b0 = t.hp; attack(w, a, t);
+  expect(b0 > t.hp, 'удар в спину остановил щит');
+}
+
+// ── thrown weapons: a bundle of javelins flies one by one, the last stays in the hand to stab with; КС counts the bundle
+{
+  const {dress, recalcGear: rg} = await import('../src/agents/equipment.js'), {shoot} = await import('../src/agents/combat.js'), {strengthOf} = await import('../src/agents/strength.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony');
+  dress(a, ['ironjavelin', 'ironshield']); t.x = a.x + 3; t.hp = 100;
+  const n = ITEMS.get('ironjavelin').qualities.thrown, it = a.equip.right.type === 'ironjavelin' ? a.equip.right : a.equip.left;
+  expect(it.ammo === n && a.gear.rangedReady, `связка дротиков: ${it.ammo} из ${n}, готов ${a.gear.rangedReady}`);
+  rngs(w, 0.1); let k = 0;
+  for (; k < n + 2; k++) { a.cd = 0; if (shoot(w, a, t) === null) break; }
+  expect(k === n && it.ammo === 0 && !a.gear.rangedReady && a.gear.melee.item === it, `бросков ${k} из ${n}; дротик в руке для ближнего боя: ${a.gear.melee.item === it}`);
+  rg(a);
+  expect(!a.gear.rangedReady, 'пустая связка снова готова к броску после пересчёта');
+  const b = put(w, 'human', 'raiders'), s = put(w, 'human', 'raiders'); b.special = {...a.special}; s.special = {...a.special};
+  dress(b, ['ironjavelin', 'ironshield']); dress(s, ['ironspear', 'ironshield']);
+  expect(strengthOf(b) > strengthOf(s) * 0.85 && strengthOf(b) < strengthOf(s) * 1.15, 'КС дротиков со щитом далеко от копья со щитом');
+}
+
+// ── the crossbow goes through armour; the elves will not touch it — not wear it, not make it, not bring it in a band
+{
+  const {roleKit} = await import('../src/data/roles.js'), {raceMayCraft} = await import('../src/settlement/crafting.js'), {RECIPES} = await import('../src/data/recipes.js');
+  const {mulberry} = await import('../src/core/rng.js'), {mayWield} = await import('../src/data/kinds.js');
+  expect(ITEMS.get('crossbow').qualities?.piercing > 0 && ITEMS.get('crossbow').ranged.cd > ITEMS.get('bow').ranged.cd, 'арбалет не пробивает или не медленнее лука');
+  expect(!mayWield('elf', 'crossbow') && mayWield('human', 'crossbow'), 'эльф берёт арбалет или человек не берёт');
+  const w = scene(), elf = put(w, 'elf', 'colony');
+  expect(!raceMayCraft(w, elf, RECIPES.get('crossbow')), 'эльф делает арбалет');
+  const rng = mulberry(7); let elves = 0, humans = 0;
+  for (let i = 0; i < 200; i++) { if (roleKit('elf', 'archer', rng, 30).includes('crossbow')) elves++; if (roleKit('human', 'archer', rng, 30).includes('crossbow')) humans++; }
+  expect(elves === 0 && humans > 0, `арбалеты у стрелков: эльфам ${elves}, людям ${humans} из 200`);
+}
+
+// ── a spear reaches past a shoulder; a shield-bearer between a shooter and its target catches the shot
+{
+  const {dress} = await import('../src/agents/equipment.js'), {shoot} = await import('../src/agents/combat.js');
+  const w = scene(), sp = put(w, 'human', 'raiders'); dress(sp, ['ironspear']);
+  expect(reachOf(sp) > COMBAT.reach + 0.5, `копьё бьёт не дальше руки: ${reachOf(sp)}`);
+  const archer = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony'), g = put(w, 'human', 'colony');
+  dress(archer, ['bow', 'quiver'], 15); dress(g, ['spear', 'ironshield']);
+  archer.x = 10.5; archer.y = 20.5; t.x = 16.5; t.y = 20.5; g.x = 15.5; g.y = 20.5; t.hp = 100;
+  rngs(w, 0.01); archer.cd = 0; const d0 = g.equip.left?.dur ?? g.equip.right?.dur, res = shoot(w, archer, t);
+  expect(res === 'miss' && t.hp === 100, `щитоносец перед целью не закрыл её от стрелы: ${res}`);
+  g.y = 24.5; archer.cd = 0; const res2 = shoot(w, archer, t);
+  expect(res2 !== 'miss' || t.hp < 100, 'щитоносец в стороне всё равно закрыл');
+  void d0;
+}
+
+// ── a net tangles whom it falls on: slow, and no blow for a while
+{
+  const {dress} = await import('../src/agents/equipment.js'), {shoot, attack} = await import('../src/agents/combat.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony'); dress(a, ['net', 'club']); dress(t, ['club']);
+  t.x = a.x + 2.5; t.gear = {...t.gear, block: 0, cover: 0}; t.mods.dodge = 0;
+  rngs(w, 0.01); a.cd = 0; shoot(w, a, t);
+  expect(t.webbed?.slow === COMBAT.net.slow && t.stunned?.until >= w.tick + COMBAT.net.hold - 1, 'сеть не опутала');
+  t.x = a.x + 1; t.cd = 0; expect(!attack(w, t, a), 'опутанный бьёт');
+  expect(a.gear.melee.item?.type === 'club', 'с сетью в руке ловчий не бьёт дубиной');
+}
+
+// ── one who creeps is seen only close, heavier armour further; its first blow gives it away
+{
+  const {dress} = await import('../src/agents/equipment.js'), {canSee, attack, sneakSeen} = await import('../src/agents/combat.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony'); dress(a, ['irondagger', 'irondagger']);
+  a.sneaking = true; t.x = a.x + COMBAT.sneak.seen + 1;
+  expect(!canSee(w, t, a) && canSee(w, a, t), 'крадущегося видно издали или он сам не видит');
+  dress(a, ['chainmail']);
+  expect(sneakSeen(a) > COMBAT.sneak.seen + 2 && canSee(w, t, a), 'кольчугу у крадущегося не слышно');
+  t.x = a.x + 1; a.cd = 0; attack(w, a, t);
+  expect(!a.sneaking, 'после удара крадущийся всё ещё невидим');
 }
 
 // ── the review: finer copies follow an edit; a material's qualities go to weapons only; parry never lowers a block
@@ -144,6 +246,35 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   const ids = place => traumasAt({hitAt: place}).map(x => x.id).sort().join(',');
   expect(ids('humanoid.legs') === 'limp' && ids('humanoid.head') === 'dread,eye' && ids('humanoid.arms') === 'maimedHand', `травмы по месту: ноги ${ids('humanoid.legs')}, голова ${ids('humanoid.head')}, руки ${ids('humanoid.arms')}`);
   expect(traumasAt({}).length === WOUNDS.filter(x => x.trauma).length, 'без места травма берётся не из всех');
+}
+
+// a torch (data/balance/forms.js torch): its light halves what the night takes, its blow sets alight what the struck
+// one stands on, thrown it sets a wooden wall alight and is gone; a wooden building holds fuel as a wood does
+{
+  const {dress, throwTorch} = await import('../src/agents/equipment.js');
+  const {darkness} = await import('../src/agents/combat.js');
+  const {TASKS} = await import('../src/agents/tasks.js');
+  const {DAY} = await import('../src/core/time.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony');
+  dress(a, ['torch']); recalcGear(a);
+  const T = throwTorch(a);
+  expect(T && T.range > 1, 'факел не бросается');
+  w.tick = Math.round(DAY * 0.02); const lit = darkness(w, a), bare = put(w, 'human', 'raiders'), dark = darkness(w, bare);
+  expect(dark < 1 && near(1 - lit, (1 - dark) / 2), `свет факела: без него ${dark}, с ним ${lit}`);
+  t.x = a.x + 1; t.hp = 50; t.gear = {...recalcGear(t), block: 0, cover: 0}; rngs(w, 0.5, 0);
+  const ti = (t.y | 0) * w.w + (t.x | 0); w.grid.fuel[ti] = 0;
+  damage(w, a, t, 0.1, {type: 'blunt', q: a.gear.melee.q});
+  expect(w.grid.fire[ti] > 0, 'удар факелом не поджёг землю под целью');
+  const cell = (a.y | 0) * w.w + (a.x | 0) + 3;
+  w.buildings.push({id: 991, key: 'hut', done: true, cells: [cell]}); w.grid.bld[cell] = 991;
+  const task = {id: 'hurlTorch', cell}; a.task = task;
+  TASKS.get('hurlTorch').step(w, a, task);
+  expect(w.grid.fire[cell] > 0 && !throwTorch(a) && !a.equip.right && !a.equip.left, 'брошенный факел не поджёг постройку или остался в руке');
+  const {FIRE} = await import('../src/data/nature.js');
+  w.grid.fuel[cell] = 0; w.grid.fire[cell] = 0; w.tick = FIRE.woodEvery * 10;
+  const {stepFields} = await import('../src/world/fields.js');
+  stepFields(w);
+  expect(w.grid.fuel[cell] >= FIRE.wooden, `деревянная постройка не держит топлива: ${w.grid.fuel[cell]}`);
 }
 
 if (bad.length) { console.log('Бой (этап 3):\n  ' + bad.join('\n  ')); process.exit(1); }

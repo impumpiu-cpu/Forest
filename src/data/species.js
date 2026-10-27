@@ -1,7 +1,9 @@
 // Creatures. A species sets body stats, which needs it has, how it looks and, for animals,
 // its behaviours (the list `behaviours`: docs/BEHAVIOUR.md; a race has none and thinks by its faction) and what hunting it yields. Animals live here; thinking races in data/races.js,
 // the rot's undead and other raid monsters in data/monsters.js. All of them end up in SPECIES.
-//   mind: 'beast' | 'semi' | 'sentient' — only the sentient can be hired or bargained with
+//   mind: how it thinks — one field (MINDS below): 'mindless' (the risen dead: no fear, no cunning) · 'beast' · 'semi'
+//         (a warg, a spirit, an upyr) · 'sentient' (the races: hired, bargained with, taken captive). The fighting roles
+//         read it as the depth of their tactics (agents/tactics.js)
 //   special, hp, speed, attack: in data/balance/creatures.js, one row per species (bodyFor merges it);
 //            for beasts `relativeStats`: the row is the typical animal
 //   trophies: rare extras on top of `yields`, decided once when the colony kills it (agents/trophies.js):
@@ -17,6 +19,11 @@ import {BESTIARY} from './bestiary.js';
 import {bodyFor, CREATURES} from './balance/creatures.js';
 import {petNames} from './names.js';
 import {WAYS, BEAT} from './behaviour.js';
+
+// how a creature thinks (`mind`): the words, in order from none to full
+export const MINDS = {mindless: 'безмозглый', beast: 'зверь', semi: 'полуразумный', sentient: 'разумный'};
+export const isSentient = sp => sp?.mind === 'sentient';
+export const isMindless = sp => sp?.mind === 'mindless';
 
 export const SPECIES = new Registry('species');
 
@@ -41,7 +48,7 @@ SPECIES.registerAll([
   // Hares graze, rest at night, bolt from people and fire. They never breed here:
   // their numbers change only through migration (see migrations.js).
   // game: shows up on the prey flow field that hunters and predators follow
-  {id: 'hare', snowfoot: true, kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true,
+  {id: 'hare', snowfoot: true, kind: 'beast', label: 'заяц', labelAcc: 'зайца', plural: 'зайцы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer,
     habitat: {meadow: 'common', steppe: 'common', forest: 'usual', taiga: 'usual', shrubland: 'usual', savanna: 'rare', tundra: 'rare', foothills: 'rare', barrows: 'usual'},
     heatHarm: 60, look: {shape: 'hare', size: 0.42, color: '#cdbb9a'},
     yields: {meat: 2, hide: 1, bone: 1},
@@ -80,7 +87,7 @@ SPECIES.registerAll([
     }},
 
   // Deer: the main game of the woods — skittish, fast, a lot of meat and a good hide.
-  {id: 'deer', kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, game: true,
+  {id: 'deer', kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer,
     habitat: {taiga: 'common', tundra: 'usual', forest: 'usual', meadow: 'usual', steppe: 'rare'},
     heatHarm: 60, look: {shape: 'deer', size: 0.62, color: '#a8794a'},
     yields: {meat: 5, hide: 2, bone: 2},
@@ -90,7 +97,7 @@ SPECIES.registerAll([
     leaveChance: 0.0003},
 
   // Fox: small and quick, hunted for its fur, which traders pay well for.
-  {id: 'fox', kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true,
+  {id: 'fox', kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer,
     habitat: {taiga: 'common', forest: 'usual', steppe: 'usual', tundra: 'usual', meadow: 'rare', desert: 'rare', barrows: 'rare'},
     heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
     yields: {meat: 1, furs: 1}, trophies: [{res: 'furs', n: 1, chance: 0.2}],
@@ -100,7 +107,7 @@ SPECIES.registerAll([
 
   // Boar: fat and dangerous. Like the mule it does not run: it kicks back with its tusks and charges
   // whoever shot it. Hunters go for it only when there is no gentler game about.
-  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, game: true,
+  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
     habitat: {forest: 'common', shrubland: 'usual', swamp: 'rare', meadow: 'rare', taiga: 'rare', jungle: 'rare'},
     heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
     yields: {meat: 6, hide: 2, bone: 1}, trophies: [{res: 'hide', n: 1, chance: 0.2}],
@@ -144,7 +151,7 @@ SPECIES.registerAll([
 
   // Goat: a wild goat of the rocky meadows. Skittish like a deer, but a patient herder with an
   // armful of hay can tame it; in a pen it gives milk and wool and has kids in spring and summer.
-  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, game: true, legend: 'коза',
+  {id: 'goat', kind: 'beast', label: 'коза', labelAcc: 'козу', plural: 'козы', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer, legend: 'коза',
     habitat: {foothills: 'common', highlands: 'common', shrubland: 'usual', meadow: 'rare'},
     heatHarm: 60, look: {shape: 'goat', size: 0.46, color: '#d6cdb6'},
     yields: {meat: 3, hide: 1, bone: 1},

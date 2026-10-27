@@ -14,7 +14,7 @@ import {STRENGTH, CREATURES} from '../src/data/balance/creatures.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
-import {SPECIES, KINDS} from '../src/data/species.js';
+import {SPECIES, KINDS, MINDS} from '../src/data/species.js';
 import {BEHAVIOURS} from '../src/data/behaviours.js';
 import '../src/agents/behaviours/index.js';   // the code behind every row, checked at load
 import {NAVMAPS} from '../src/data/navmaps.js';
@@ -35,6 +35,9 @@ import {faunaFrom} from '../src/world/region.js';
 import {VALUES} from '../src/data/values.js';
 import {RELATIONS, KINS} from '../src/data/relations.js';
 import {RAID_BANDS, memberStrength, kitFor} from '../src/data/raids.js';
+import {COMBAT_ROLES, ROLE_MIX, ARMOUR, LINKS, mixOf, rolesOf} from '../src/data/roles.js';
+import {POTIONS} from '../src/data/potions.js';
+import {CONDITIONS} from '../src/data/conditions.js';
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
@@ -162,7 +165,7 @@ for (const m of MIGRATIONS.all()) if (m.species && !SPECIES.has(m.species)) err(
 // races and monsters: SPECIAL limits, peoples, values, relations, names
 for (const sp of SPECIES.all()) {
   const where = `вид ${sp.id}`;
-  if (!['beast', 'semi', 'sentient'].includes(sp.mind)) err(`${where}: mind должен быть beast, semi или sentient`);
+  if (!(sp.mind in MINDS)) err(`${where}: mind должен быть одним из ${Object.keys(MINDS).join(', ')}`);
   if (sp.special) for (const st of STATS.ids()) {
     const r = sp.special[st];
     if (!Array.isArray(r) || r.length !== 2 || r[0] > r[1] || r[0] < 0) err(`${where}: предел ${st} должен быть [мин, макс]`);
@@ -180,8 +183,41 @@ for (const v of VALUES.all()) for (const c of v.clash) if (!VALUES.has(c)) err(`
   for (const b of RAID_BANDS.all()) for (const t of [2, 12, 25]) for (const m of b.members({}, rng, 600, t)) {
     if (!SPECIES.has(m.species)) { err(`банда ${b.id}: нет вида «${m.species}»`); continue; }
     if (!(memberStrength(m.species, t) > 0)) err(`банда ${b.id}: у «${m.species}» нет коэффициента силы`);
-    for (const it of kitFor(m.species, rng, t)) item(`банда ${b.id}`, typeof it === 'string' ? it : it.type);
+    if (m.role && !COMBAT_ROLES.has(m.role)) err(`банда ${b.id}: нет роли «${m.role}»`);
+    if (SPECIES.get(m.species).inventory && !m.role && !mixOf(m.species).fixed && rolesOf(m.species).length) err(`банда ${b.id}: «${m.species}» пришёл без роли`);
+    for (const it of kitFor(m.species, rng, t, m.role)) item(`банда ${b.id}`, typeof it === 'string' ? it : it.type);
   }
+  for (const b of RAID_BANDS.all()) for (const r of [...Object.keys(b.roles || {}), ...Object.keys(b.least || {})]) if (!COMBAT_ROLES.has(r)) err(`банда ${b.id}: нет роли «${r}»`);
+  for (const b of RAID_BANDS.all()) for (const [l] of b.links || []) if (!LINKS.has(l)) err(`банда ${b.id}: нет звена «${l}»`);
+  for (const L of LINKS.all()) { if (!L.roles?.length) err(`звено ${L.id}: без мест`); for (const r of L.roles || []) if (!COMBAT_ROLES.has(r)) err(`звено ${L.id}: нет роли «${r}»`); }
+}
+// fighting roles (data/roles.js): their forms and items exist, the matrix names species that carry things and roles that are
+{
+  const FORM_IDS = new Set(ITEMS.all().map(d => d.form).filter(Boolean));
+  const piece = (where, f) => { if (!FORM_IDS.has(f) && !ITEMS.has(f)) err(`${where}: нет формы или предмета «${f}»`); };
+  for (const R of COMBAT_ROLES.all()) {
+    if (!R.label) err(`роль ${R.id}: без названия`);
+    if (!R.hands?.length) err(`роль ${R.id}: пустые руки`);
+    for (const [fs] of R.hands || []) fs.forEach(f => piece(`роль ${R.id}`, f));
+    (R.back || []).forEach(f => piece(`роль ${R.id}`, f));
+    if (!ARMOUR[R.body]) err(`роль ${R.id}: нет класса брони «${R.body}»`);
+  }
+  for (const [k, list] of Object.entries(ARMOUR)) list.forEach(([f]) => piece(`броня ${k}`, f));
+  for (const [sp, row] of Object.entries(ROLE_MIX)) {
+    if (!SPECIES.has(sp)) { err(`роли видов: нет вида «${sp}»`); continue; }
+    if (!SPECIES.get(sp).inventory) err(`роли видов: «${sp}» не носит вещей (тег inventory)`);
+    for (const k of Object.keys(row)) if (!['best', 'fixed'].includes(k) && !COMBAT_ROLES.has(k)) err(`роли видов, ${sp}: нет роли «${k}»`);
+    (row.fixed || []).forEach(i => item(`роли видов, ${sp}`, i));
+  }
+}
+
+// potions (data/potions.js): each grade a resource, its makings resources, its effect a row of «Состояния» of kind potion
+for (const p of POTIONS.all()) for (const g of p.grades) {
+  if (!RESOURCES.has(g.res)) err(`зелье ${p.id}: нет ресурса «${g.res}»`);
+  for (const r of Object.keys(g.cost)) if (!RESOURCES.has(r)) err(`зелье ${p.id}: в составе нет ресурса «${r}»`);
+  if (!(g.cost.pots >= 1)) err(`зелье ${p.id}: без горшка`);
+  if (!CONDITIONS.has(g.effect) || CONDITIONS.get(g.effect).kind !== 'potion') err(`зелье ${p.id}: действие «${g.effect}» — не строка «Состояний» вида зелье`);
+  if (!['healerhut', 'alchemist'].includes(g.at)) err(`зелье ${p.id}: варят в неизвестном «${g.at}»`);
 }
 
 // every resource should come from somewhere
@@ -190,11 +226,14 @@ const sources = new Set(['gold',   // gold comes from trade
   ...PLANTS.all().flatMap(p => [p.resource, ...Object.keys(p.also || {})]), ...CROPS.all().flatMap(c => Object.keys(c.yields)),
 ...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource), ...ORES.all().flatMap(o => Object.keys(o.also || {})),
   ...SPECIES.all().flatMap(s => Object.keys(s.yields || {})),
+  ...SPECIES.all().flatMap(s => (s.trophies || []).map(t => t.res)),   // rare trophies of a kill (agents/trophies.js)
   ...RESOURCES.filter(r => r.tags.includes('key')).map(r => r.id),   // town-made tools: always with traders
-  ...SPECIES.all().flatMap(s => (s.tame ? [s.tame.milk && 'milk', s.tame.wool && 'wool'].filter(Boolean) : []))]);   // from the pen
+  ...SPECIES.all().flatMap(s => (s.tame ? [s.tame.milk && 'milk', s.tame.wool && 'wool'].filter(Boolean) : [])),   // from the pen
+  ...POTIONS.all().flatMap(p => p.grades.filter(g => g.at === 'alchemist').map(g => g.res))]);   // brewed in a town's laboratory (campaign/town.js)
 
 // furnaces, tools, regions
 for (const r of RECIPES.all()) {
+  if (r.makes?.item && ITEMS.get(r.makes.item)?.tradeOnly) warn(`рецепт ${r.id}: вещь «${r.makes.item}» — только у торговцев, поселение её не сделает`);
   if (r.fuel && ![1, 2, 3, undefined].includes(r.heat)) err(`рецепт ${r.id}: heat должен быть 1, 2 или 3`);
   if (r.tool && !RESOURCES.get(r.tool)?.tags.includes('key')) err(`рецепт ${r.id}: tool «${r.tool}» — не инструмент`);
 }

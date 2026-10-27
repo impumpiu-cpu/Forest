@@ -37,7 +37,7 @@ export const livingLeaders = a => (a.lairs || []).filter(l => l.alive && l.leade
 
 // a new leader for a lair
 export function raise(a, l, r) {
-  const L = LAIRS.get(l.kind), sp = SPECIES.get(L.species), mind = sp.kind === 'undead' ? 'undead' : sp.kind === 'fiend' ? 'fiend' : sp.mind || 'beast';
+  const L = LAIRS.get(l.kind), sp = SPECIES.get(L.species), mind = sp.kind === 'undead' ? 'undead' : sp.kind === 'fiend' ? 'fiend' : sp.mind === 'mindless' ? 'beast' : sp.mind || 'beast';
   // the name from data/names.js: a thinking one — a name of its race and a nickname («Хракк Тихий»), the rest — a nickname
   const title = TITLE[mind] || TITLE.beast;
   // a necromancer was one of the living about (atlas/necro.js): his name is of his race
