@@ -105,9 +105,9 @@ export function def(inst) {
 }
 // a thrown weapon comes as a full bundle (quality `thrown`: its throws are its `ammo`)
 export const throwsOf = d => traitOf(d.qualities, 'thrown');
-// a burning thing to throw in hand (a torch: qualities `burn` and `thrown`, throws left) → {item, range}, or null
+// a burning thing to throw, in hand or behind the back (a torch: qualities `burn` and `thrown`, throws left) → {item, range}, or null
 export function throwTorch(a) {
-  for (const it of a.equip ? handItems(a) : []) {
+  for (const it of a.equip ? [...handItems(a), a.equip.back].filter(Boolean) : []) {
     const d = def(it);
     if (traitOf(d.qualities, 'burn') > 0 && throwsOf(d) && (it.ammo || 0) > 0 && d.ranged) return {item: it, range: d.ranged.range};
   }
@@ -250,6 +250,8 @@ export function dress(a, types, ammo = 0) {
     if (d.slot === 'body') putOn(a, inst, 'body', spill);
     else if (d.slot === 'back') putOn(a, inst, 'back', spill);
     else if (d.hands === 2) putOn(a, inst, 'hands2', spill);
+    // a torch (quality `burn`) with both hands taken goes behind the back, if the back is free: thrown from there
+    else if (traitOf(d.qualities, 'burn') > 0 && a.equip.right && a.equip.left && !a.equip.back) putOn(a, inst, 'back', spill);
     else putOn(a, inst, a.equip.right ? 'left' : 'right', spill);
   }
   return spill;

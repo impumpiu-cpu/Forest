@@ -133,12 +133,13 @@ export const BAND_BEASTS = {full: 0.6};
 // what a member of a band carries: the kit of its fighting role (data/roles.js); species without hands carry nothing
 // (with no role given, one is drawn from the species' row: a creature that comes outside a band, the arena)
 export const kitFor = (species, rng, t, role = null) => (SPECIES.get(species).inventory ? withTorch(species, roleKit(species, role ?? drawRole(rng, species), rng, t)) : []);
-// one who does not see in the dark carries a torch in a free hand (data/balance/forms.js torch): its light, its fire
+// one who does not see in the dark carries a torch (data/balance/forms.js torch): in a free hand, else behind the back
 export const TORCH_ITEM = 'torch';
 function withTorch(species, kit) {
   if (hasSense(species, 'darkvision') || isMindless(SPECIES.get(species))) return kit;
-  const hands = kit.reduce((s, tok) => { const d = ITEMS.has(String(tok).split(/[~+@$!]/)[0]) ? ITEMS.get(String(tok).split(/[~+@$!]/)[0]) : null; return s + (d?.slot === 'hand' ? d.hands || 1 : 0); }, 0);
-  return hands < 2 ? [...kit, TORCH_ITEM] : kit;
+  const defs = kit.map(tok => { const id = String(tok).split(/[~+@$!]/)[0]; return ITEMS.has(id) ? ITEMS.get(id) : null; });
+  const hands = defs.reduce((s, d) => s + (d?.slot === 'hand' ? d.hands || 1 : 0), 0), back = defs.some(d => d?.slot === 'back');
+  return hands < 2 || !back ? [...kit, TORCH_ITEM] : kit;   // (both hands taken: behind the back — agents/equipment.js dress)
 }
 
 const cap1 = x => x[0].toUpperCase() + x.slice(1);
