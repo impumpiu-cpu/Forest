@@ -105,6 +105,7 @@ export const WEAPON_QUALITIES = [
   {id: 'backstab', label: 'коварное', unit: '×', live: true, reads: 'удар с фланга и в спину (COMBAT.flank, back): прибавка урона × (1 + значение); КС', note: 'кинжал: туда, где не ждут'},
   {id: 'ensnare', label: 'ловчее', unit: 'шанс', live: true, reads: 'попавший опутывает: состояния «в паутине» (шаг × COMBAT.net.slow) и «оглушён» (не бьёт COMBAT.net.hold тиков)', note: 'ловчая сеть'},
   {id: 'paired', label: 'парное', unit: 'доля', live: true, reads: 'вторая рука: вслед за ударом главного оружия бьёт и это, урон × значение (agents/combat.js attack); выбор вещей, КС', note: 'кинжал, топорик, меч во второй руке'},
+  {id: 'burn', label: 'горение', unit: 'шанс', live: true, reads: 'удар, что дошёл до тела, с этим шансом поджигает землю и постройку под целью (agents/combat.js damage, KINDLE.torch)', note: 'факел'},
   {id: 'thrown', label: 'метательное', unit: 'бросков', live: true, reads: 'бросается своим `ranged` (agents/combat.js shoot): столько бросков в связке, последнее остаётся в руке; поселенец собирает их у лагеря (agents/equipment.js outfit); КС — доля от COMBAT.thrown.shots', note: 'дротики, метательный топорик'},
 ];
 // the value of a quality on a weapon (an item definition, or the gear's melee/ranged entry), 0 without it

@@ -11,7 +11,8 @@ import {FOODS} from '../data/foods.js';
 import {cellOf} from '../world/grid.js';
 import {nightness} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach, recover} from './movement.js';
-import {attack, shoot, canSee, reachOf, behindRock, hurl} from './combat.js';
+import {attack, shoot, canSee, reachOf, behindRock, hurl, kindle} from './combat.js';
+import {throwTorch, spendThrow} from './equipment.js';
 import {COMBAT} from '../data/balance/combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
 import {eatMeal, plunder, lootTotal, campFuel} from '../settlement/stock.js';
@@ -273,12 +274,24 @@ TASKS.registerAll([
     let best = null, bd = Infinity;
     for (const c of b.cells) { const d = Math.hypot((c % w.w) + 0.5 - a.x, ((c / w.w) | 0) + 0.5 - a.y); if (d < bd) { bd = d; best = c; } }
     if (best == null) { done(w, a); return; }
-    if (bd > SQUAD.burnNear) { if (approach(w, a, (best % w.w) + 0.5, ((best / w.w) | 0) + 0.5) === null) fail(w, a, 'к постройке не подойти', 'impossible'); return; }
-    const K = KINDLE.torch; w.grid.fire[best] = Math.max(w.grid.fire[best], K.fire); heatTo(w, best, K.heat); w.grid.fuel[best] = Math.max(w.grid.fuel[best], K.fuel);
-    w.nav.dirty('fire');
+    // a torch in hand flies from as far as it is thrown (quality `thrown`); without one the fire is put to the wall
+    const T = throwTorch(a), far = T ? T.range : SQUAD.burnNear;
+    if (bd > far) { if (approach(w, a, (best % w.w) + 0.5, ((best / w.w) | 0) + 0.5) === null) fail(w, a, 'к постройке не подойти', 'impossible'); return; }
+    if (T) spendThrow(a, T);
+    kindle(w, best);
     sq.lit = w.tick;
-    log(w, `${a.name} ${a.gender === 'f' ? 'подожгла' : 'поджёг'} ${BUILDINGS.get(b.key).name.toLowerCase()}! Тушите!`, 'danger', 'notice');
+    log(w, `${a.name} ${T ? (a.gender === 'f' ? 'метнула факел и подожгла' : 'метнул факел и поджёг') : a.gender === 'f' ? 'подожгла' : 'поджёг'} ${BUILDINGS.get(b.key).name.toLowerCase()}! Тушите!`, 'danger', 'notice');
     a.task = {id: 'leave'};
+  }},
+  // a torch thrown on the way (agents/behaviours/raid.js): at the wall of a wooden building close by, then the band's plan again
+  {id: 'hurlTorch', label: () => 'бросает факел', step(w, a, task) {
+    const T = throwTorch(a), i = task.cell;
+    if (!T || i == null || !w.buildings.some(b => b.done && b.cells.includes(i))) { done(w, a); return; }
+    if (Math.hypot((i % w.w) + 0.5 - a.x, ((i / w.w) | 0) + 0.5 - a.y) > T.range) { done(w, a); return; }
+    spendThrow(a, T); kindle(w, i);
+    const b = w.buildings.find(x => x.cells.includes(i));
+    log(w, `${a.name} ${a.gender === 'f' ? 'метнула' : 'метнул'} факел в ${BUILDINGS.get(b.key).name.toLowerCase()}! Тушите!`, 'danger', 'notice');
+    done(w, a);
   }},
   // a shooter or a healer of a band steps back from a blade coming at it (agents/tactics.js); a short while, then the
   // band's plan says again

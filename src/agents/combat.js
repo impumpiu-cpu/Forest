@@ -53,12 +53,14 @@ export function canSee(w, a, t) {
 }
 
 // × how far `a` sees now (data/tongues.js NIGHT): by day, by a lit campfire (WATCH.fireLight), with darkvision or a
-// cat's eye — 1; otherwise less the deeper the night
+// cat's eye — 1; otherwise less the deeper the night; a raider of a band that came with torches (a.torchlit) loses
+// only WATCH.torch of it
 export function darkness(w, a) {
   const night = nightness(w);
   if (!(night > 0) || !(NIGHT.loss > 0)) return 1;
   if (w.campLit && w.camp && Math.hypot(a.x - w.camp.x, a.y - w.camp.y) <= WATCH.fireLight) return 1;
-  return nightSight(a.species, night, a);
+  const k = nightSight(a.species, night, a);
+  return a.torchlit && k < 1 ? 1 - (1 - k) * (1 - WATCH.torch) : k;   // (a band's torches: half of what the night takes, as the watchman's)
 }
 
 export function nearestHostile(w, a, r) {
@@ -156,6 +158,9 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   // a poison rubbed on the blade (agents/potions.js): the blow that struck home carries it in
   if (melee && by.coat && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), !!tsp.undead);
   if (melee && bsp.web) t.webbed = {slow: bsp.web.slow, until: w.tick + bsp.web.ticks};
+  // a burning weapon (quality `burn`: a torch) sets alight what the struck one stands on — the ground, a wall
+  const burn = melee ? traitOf(q, 'burn') : 0;
+  if (burn && dmg > 0 && w.rngs.hits() < burn) kindle(w, Math.min(w.h - 1, Math.max(0, t.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, t.x | 0)));
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
@@ -172,6 +177,12 @@ const silverFactor = (t, item, by = null) => {
   const fear = sp.weakTo?.includes('silver') ? (silvered ? COMBAT.silver.bane : COMBAT.silver.plain) : 1;
   return silvered ? fear * resistTo(sp, 'silver') : fear;
 };
+
+// a torch put to a cell (KINDLE.torch): it catches, whatever it held — a wall, the grass
+export function kindle(w, i) {
+  const K = KINDLE.torch; w.grid.fire[i] = Math.max(w.grid.fire[i], K.fire); heatTo(w, i, K.heat); w.grid.fuel[i] = Math.max(w.grid.fuel[i], K.fuel);
+  w.nav.dirty('fire');
+}
 
 // a drake's breath: the ground under the victim catches fire (only where there is something to burn)
 function scorch(w, t) {
@@ -290,6 +301,7 @@ export function shoot(w, a, t) {
   const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
+  if (!(r.dmg > 0)) return null;   // a torch is thrown at a wall, not at a body (agents/tasks.js torch)
   a.cd = r.cd; a.sneaking = false;
   const thrown = traitOf(r.q, 'thrown') > 0;   // a javelin, a hatchet: one of the bundle flies, the last stays in the hand
   if (thrown) { r.item.ammo = (r.item.ammo || 0) - 1; if (r.item.ammo <= 0) g.rangedReady = false; }

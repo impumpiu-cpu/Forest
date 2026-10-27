@@ -296,6 +296,9 @@ export const REST = {rate: 0.004, beds: 0.6, warm: 0.0028, unlit: 0.5, nightFrom
 // Fire put by a creature (agents/tasks.js, agents/combat.js): a raider's torch to a wall, a drake's breath on the
 // ground (only where the fuel is above `breath.fuel`), and how much one dousing takes off (× the colony's douse).
 export const KINDLE = {torch: {fire: 0.6, heat: 300, fuel: 0.9}, breath: {fuel: 0.05, fire: 0.5, heat: 260}, douse: 0.05};
+// a raider with a torch in hand (agents/behaviours/raid.js): at a think, with chance `casual`, it throws it at a wooden
+// building within the torch's reach — while no foe is within `clear`
+export const TORCH = {casual: 0.06, clear: 3};
 
 // How a colonist weighs gear (agents/equipment.js): courage `brave[0] + brave[1] × bravery`; a blow against a blow of 1
 // every `blowTicks`, × `melee` × courage + `meleeBase`; silver while a creature that fears it is here (`silverHere`) or

@@ -20,7 +20,9 @@
 //         bloodthirsty hold on longer (< 0), goblins break sooner (> 0).
 import {Registry} from '../core/registry.js';
 import {pick, plural, weighted} from '../core/util.js';
-import {SPECIES} from './species.js';
+import {SPECIES, isMindless} from './species.js';
+import {ITEMS} from './items.js';
+import {hasSense} from './tongues.js';
 import {expectedStrength} from '../agents/strength.js';
 import {chanceWeight} from './chance.js';
 import {roleKit, drawRole, mixOf, LINKS} from './roles.js';
@@ -130,7 +132,14 @@ export const BAND_BEASTS = {full: 0.6};
 
 // what a member of a band carries: the kit of its fighting role (data/roles.js); species without hands carry nothing
 // (with no role given, one is drawn from the species' row: a creature that comes outside a band, the arena)
-export const kitFor = (species, rng, t, role = null) => (SPECIES.get(species).inventory ? roleKit(species, role ?? drawRole(rng, species), rng, t) : []);
+export const kitFor = (species, rng, t, role = null) => (SPECIES.get(species).inventory ? withTorch(species, roleKit(species, role ?? drawRole(rng, species), rng, t)) : []);
+// one who does not see in the dark carries a torch in a free hand (data/balance/forms.js torch): its light, its fire
+export const TORCH_ITEM = 'torch';
+function withTorch(species, kit) {
+  if (hasSense(species, 'darkvision') || isMindless(SPECIES.get(species))) return kit;
+  const hands = kit.reduce((s, tok) => { const d = ITEMS.has(String(tok).split(/[~+@$!]/)[0]) ? ITEMS.get(String(tok).split(/[~+@$!]/)[0]) : null; return s + (d?.slot === 'hand' ? d.hands || 1 : 0); }, 0);
+  return hands < 2 ? [...kit, TORCH_ITEM] : kit;
+}
 
 const cap1 = x => x[0].toUpperCase() + x.slice(1);
 const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.toUpperCase()); };

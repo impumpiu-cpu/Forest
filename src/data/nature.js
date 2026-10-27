@@ -2,7 +2,8 @@
 // The logic files import these; the tables (data/schema/index.js) show and edit them.
 
 // Fire model knobs. Wet ground (high fertility) is harder to ignite and puts fires out by itself.
-export const FIRE = {cap: 320, heat: 46, pF: 0.011, pG: 0.005, burn: 0.03, wetIgn: 80, outBase: 0.002, outWet: 0.012, ignForest: 80, ignGrass: 120};
+// wooden — the fuel a wooden building's cells hold (above 1: it catches and burns as a wood), kept every woodEvery ticks
+export const FIRE = {cap: 320, heat: 46, pF: 0.011, pG: 0.005, burn: 0.03, wetIgn: 80, outBase: 0.002, outWet: 0.012, ignForest: 80, ignGrass: 120, wooden: 1.2, woodEvery: 300};
 
 // Snow cover, 0 (bare) … 1 (deep): it builds while the days are freezing (faster when it snows) and
 // melts when they are not. One depth for the whole map: what matters is that it lies, and how deep

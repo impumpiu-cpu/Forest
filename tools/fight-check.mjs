@@ -248,5 +248,34 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   expect(traumasAt({}).length === WOUNDS.filter(x => x.trauma).length, 'без места травма берётся не из всех');
 }
 
+// a torch (data/balance/forms.js torch): its light halves what the night takes, its blow sets alight what the struck
+// one stands on, thrown it sets a wooden wall alight and is gone; a wooden building holds fuel as a wood does
+{
+  const {dress, throwTorch} = await import('../src/agents/equipment.js');
+  const {darkness} = await import('../src/agents/combat.js');
+  const {TASKS} = await import('../src/agents/tasks.js');
+  const {DAY} = await import('../src/core/time.js');
+  const w = scene(), a = put(w, 'human', 'raiders'), t = put(w, 'human', 'colony');
+  dress(a, ['torch']); recalcGear(a);
+  const T = throwTorch(a);
+  expect(T && T.range > 1, 'факел не бросается');
+  w.tick = Math.round(DAY * 0.02); const dark = darkness(w, a); a.torchlit = true; const lit = darkness(w, a);
+  expect(dark < 1 && near(1 - lit, (1 - dark) / 2), `свет факела: без него ${dark}, с ним ${lit}`);
+  t.x = a.x + 1; t.hp = 50; t.gear = {...recalcGear(t), block: 0, cover: 0}; rngs(w, 0.5, 0);
+  const ti = (t.y | 0) * w.w + (t.x | 0); w.grid.fuel[ti] = 0;
+  damage(w, a, t, 0.1, {type: 'blunt', q: a.gear.melee.q});
+  expect(w.grid.fire[ti] > 0, 'удар факелом не поджёг землю под целью');
+  const cell = (a.y | 0) * w.w + (a.x | 0) + 3;
+  w.buildings.push({id: 991, key: 'hut', done: true, cells: [cell]}); w.grid.bld[cell] = 991;
+  const task = {id: 'hurlTorch', cell}; a.task = task;
+  TASKS.get('hurlTorch').step(w, a, task);
+  expect(w.grid.fire[cell] > 0 && !throwTorch(a) && !a.equip.right && !a.equip.left, 'брошенный факел не поджёг постройку или остался в руке');
+  const {FIRE} = await import('../src/data/nature.js');
+  w.grid.fuel[cell] = 0; w.grid.fire[cell] = 0; w.tick = FIRE.woodEvery * 10;
+  const {stepFields} = await import('../src/world/fields.js');
+  stepFields(w);
+  expect(w.grid.fuel[cell] >= FIRE.wooden, `деревянная постройка не держит топлива: ${w.grid.fuel[cell]}`);
+}
+
 if (bad.length) { console.log('Бой (этап 3):\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log(`ok   бой: типов урона ${DAMAGE_TYPES.length} + вблизи/издали, свойств оружия ${WEAPON_QUALITIES.length} (работают ${WEAPON_QUALITIES.filter(q => q.live).length}), мест попадания ${HIT_LOCATIONS.all().length} на ${Object.keys(BODY_PLANS).length} плана тела — каждое правило доходит до боя, жара, мороза, яда, травм и КС`);

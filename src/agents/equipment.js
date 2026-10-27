@@ -105,6 +105,20 @@ export function def(inst) {
 }
 // a thrown weapon comes as a full bundle (quality `thrown`: its throws are its `ammo`)
 export const throwsOf = d => traitOf(d.qualities, 'thrown');
+// a burning thing to throw in hand (a torch: qualities `burn` and `thrown`, throws left) → {item, range}, or null
+export function throwTorch(a) {
+  for (const it of a.equip ? handItems(a) : []) {
+    const d = def(it);
+    if (traitOf(d.qualities, 'burn') > 0 && throwsOf(d) && (it.ammo || 0) > 0 && d.ranged) return {item: it, range: d.ranged.range};
+  }
+  return null;
+}
+// one throw of it gone; the last throw takes the thing out of the hand
+export function spendThrow(a, T) {
+  T.item.ammo = (T.item.ammo || 0) - 1;
+  if (T.item.ammo <= 0) { for (const s of SLOTS) if (a.equip[s.id] === T.item) a.equip[s.id] = null; }
+  recalcGear(a);
+}
 export const newItem = (type, extra = {}) => { const d = def({type, ...extra}), n = throwsOf(d); return {type, ...(n ? {ammo: n} : {}), ...extra, dur: d.dur}; };
 
 // The caravan keeps its gear as words, not objects (campaign/): a piece is 'ironsword', a finer or marked one

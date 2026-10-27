@@ -150,7 +150,15 @@ function campfire(w) {
   }
 }
 
+// a wooden building is fuel (data/buildings.js `wooden`): its cells hold at least FIRE.wooden of it, as a wood does —
+// it catches as readily and burns as long; kept up every FIRE.woodEvery ticks (a new building, a mended one)
+function woodFuel(w) {
+  const g = w.grid;
+  for (const b of w.buildings) if (b.done && BUILDINGS.get(b.key).wooden) for (const c of b.cells) if (g.fuel[c] < FIRE.wooden && !(g.fire[c] > 0)) g.fuel[c] = FIRE.wooden;
+}
+
 function burn(w) {
+  if (w.tick % FIRE.woodEvery === 0) woodFuel(w);
   const g = w.grid, rain = w.weather.rain, st = w.stats, c = chunks(w), W = w.w, H = w.h, amb = airTemp(w);
   const sig = season(w).ignite, ignF = FIRE.ignForest + w.climate.ign + sig, ignG = FIRE.ignGrass + w.climate.ign + sig;
   st.fireCount = 0; st.fireNearCamp = 0;
