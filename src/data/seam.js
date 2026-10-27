@@ -49,6 +49,8 @@ export const FOLK_RAIDS = {at: 0.05, weight: 1.2};
 export const FLORA = {
   hive:     {forest: 1.2, meadow: 1.1, taiga: 0.6, shrubland: 0.8, jungle: 0.8, savanna: 0.5, foothills: 0.5, swamp: 0.3},
   herbs:    {forest: 1, meadow: 1, swamp: 1.6, taiga: 1, jungle: 1.4, foothills: 0.6, tundra: 0.4, shrubland: 0.6},
+  sleepgrass: {steppe: 1.2, forest: 0.8, meadow: 0.8, taiga: 0.8, foothills: 0.8, shrubland: 0.6},
+  wort:     {meadow: 1.3, forest: 0.9, steppe: 0.7, foothills: 0.7, shrubland: 0.8, taiga: 0.5},
   saltlick: {steppe: 1.2, desert: 1.4, foothills: 1, highlands: 1, barrows: 1, savanna: 0.8, volcano: 0.8},
   wildflax: {meadow: 1.1, swamp: 1, forest: 0.6, steppe: 0.5, taiga: 0.4},
 };

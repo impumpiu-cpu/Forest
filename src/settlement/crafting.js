@@ -88,6 +88,7 @@ function makeCraftContext(w) {
   for (const it of w.armory) if (def(it).silver) silvered++;
   return {
     pop: col.length, owned,
+    captives: col.filter(a => a.captive).length,
     likes: job => col.filter(a => a.likes === job).length,
     timid: col.filter(a => a.mods.bravery < 0.8).length,
     stock: res => w.stock[res] || 0,

@@ -64,7 +64,7 @@ export const BESTIARY = [
     arrive: {group: [1, 1], every: [3, 4], chance: 0.5, cap: 1, first: 3, message: 'в чаще поселилась рысь'},
     habitat: {taiga: 'usual', forest: 'rare'},
     look: {shape: 'fox', size: 0.5, color: '#9a8f7a'},
-    yields: {furs: 2, meat: 1}, trophies: [{res: 'furs', n: 1, chance: 0.3}],
+    yields: {furs: 2, meat: 1}, trophies: [{res: 'furs', n: 1, chance: 0.3}, {res: 'lynxEyes', n: 2, chance: 0.4, tier: 2}],
     killMessage: name => `Рысь бросилась с ветки на поселенца: <b>${name}</b>.`,
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.75, groupFear: 2, meal: 1.4, sight: 18})}),
 

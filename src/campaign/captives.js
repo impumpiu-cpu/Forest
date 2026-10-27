@@ -13,6 +13,8 @@ import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {makeMember} from './start.js';
 import {room, setPlace} from './company.js';
+import {sleepDose} from '../agents/potions.js';
+import {POTION} from '../data/potions.js';
 
 const C = CAPTIVE.campaign;
 const alive = K => K.members.filter(m => m.alive);
@@ -98,6 +100,7 @@ export function captivesEvening(a, K, r, say) {
   if (cut && !K.captiveCut && K.day - (K.cutTold ?? -999) > 60) { K.cutTold = K.day; say('Еды мало: пленным урезали паёк.', 'people'); }
   K.captiveCut = cut;
   const W = ESCAPE.will.day, want = [];
+  let slept = 0;
   for (const m of hs) {
     let d = W.time;
     if (cut) d += W.cut;
@@ -106,6 +109,9 @@ export function captivesEvening(a, K, r, say) {
     if (!cut && !K.hungry && m.hp > 0.8) d += W.content;
     m.captive.will = clamp01(willOf(m) + d);
     if (m.captive.resigned) continue;
+    // one set on running is given the sleeping brew from the cargo (data/potions.js sleep): it sleeps the night through
+    const dose = m.captive.will >= POTION.home.will ? sleepDose(K.cargo, true) : null;
+    if (dose) { m.captive.slept = K.day; slept++; if (dose.calm) m.captive.will = clamp01(m.captive.will - dose.calm); continue; }
     if (r() < ESCAPE.escape.base * m.captive.will * holdOf(m)) { want.push(m); continue; }
     const Rs = ESCAPE.resign, days = K.day - (m.captive.since ?? K.day);
     if (r() < Rs.base * (1 - m.captive.will) * days / (days + Rs.settle)) {
@@ -113,8 +119,9 @@ export function captivesEvening(a, K, r, say) {
       say(`${m.name}, ${gw(m, 'пленный', 'пленная')} (${SPECIES.get(m.race).label}), ${gw(m, 'смирился', 'смирилась')}: бежать больше не думает.`, 'people', [m.id]);
     }
   }
+  if (slept) { K.stats.sleepBrews = (K.stats.sleepBrews || 0) + slept; if (K.day - (K.sleepTold ?? -999) > 30) { K.sleepTold = K.day; say(`Пленным, что задумали бежать, дали сонный отвар: проспят до утра.`, 'people'); } }
   if (!want.length) return;
-  const by = want[0], plotters = hs.filter(m => !m.captive.resigned);
+  const by = want[0], plotters = hs.filter(m => !m.captive.resigned && m.captive.slept !== K.day);
   for (const s of hs.filter(m => m.captive.resigned)) {
     if (r() >= ESCAPE.inform.base) continue;
     by.captive.will = clamp01(willOf(by) + ESCAPE.will.betrayed);

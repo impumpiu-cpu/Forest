@@ -28,7 +28,6 @@ import {FURNITURE} from './furniture.js';
 import {POTION, hutGrades} from './potions.js';
 
 // how keen the healer's hut is on each potion: up to `share` of the people, with this weight
-const HUT_WANT = {heal: {share: 0.5, want: 0.6}, antidote: {share: 0.34, want: 0.45}, bear: {share: 0.34, want: 0.4}, venom: {share: 0.25, want: 0.35}};
 
 export const RECIPES = new Registry('recipe');
 
@@ -95,12 +94,14 @@ RECIPES.registerAll([
   // the healing potion (data/potions.js): two herbs; brewed while herbs are spare beyond the treatment's and the stock
   // (what is left after the slots are filled, settlement/potions.js) is short of one for every other colonist
   // the potions a healer's hut brews (data/potions.js hutGrades: the plain grades of tier ≤ POTION.hutTier), each poured
-  // into a pot: the healing one while the stock has fewer than one for every second, the rest while fewer than
-  // `share` of the people have one and the makings are there to spare
+  // into a pot, while the stock has fewer than its `stock.share` of the people (of the captives: the sleeping brew) and
+  // the makings are there to spare
   ...hutGrades().map(({potion, grade}) => ({id: grade.res, tier: grade.tier, at: 'healerhut', get cost() { return {...grade.cost}; }, work: 300, makes: {resource: grade.res, n: 1},
     want: c => {
+      const S = potion.stock, heads = S.of === 'captives' ? c.captives : c.pop;
+      if (!heads) return 0;
       const enough = Object.entries(grade.cost).every(([r, n]) => c.stock(r) >= n + (r === 'herbs' ? 2 : 0));
-      return enough && c.stock(grade.res) < Math.ceil(c.pop * (HUT_WANT[potion.id]?.share ?? 0.3)) ? HUT_WANT[potion.id]?.want ?? 0.4 : 0;
+      return enough && c.stock(grade.res) < Math.ceil(heads * S.share) ? S.want : 0;
     }})),
 
   {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'coal', n: 3},

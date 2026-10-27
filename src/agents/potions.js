@@ -8,9 +8,11 @@
 // What it does: heal at once, cure states, last a while (a.effects: [{id, until}] — their mods are a source of the body,
 // agents/special.js refreshBody; a resistance; holding the ground), or sit on the blade (a.coat: {id, hits}). A potion
 // that leaves a mark for life is not drunk by one who bears it. The fallen, the dead and the bound drink nothing.
+// A brew (data/potions.js `home`) is drunk out of a stock instead — the settlement's or the camp's (settlement/potions.js
+// brewFor): it fills a need at once, mends a grave wound sooner; the sleeping one is given to a captive (sleepDose).
 import {maxHp} from './agent.js';
 import {log} from '../core/log.js';
-import {POTION, POTION_RES, potionOf} from '../data/potions.js';
+import {POTION, POTION_RES, HOME_BY_USE, potionOf} from '../data/potions.js';
 import {CONDITIONS, hasMark} from '../data/conditions.js';
 import {refreshBody} from './special.js';
 import {def} from './equipment.js';
@@ -23,6 +25,9 @@ const he = (a, m, f) => (a.gender === 'f' ? f : m);
 // what a drink of a potion does to this creature (the effect's row of «Состояния»)
 function apply(w, a, row) {
   if (row.heal) a.hp = Math.min(maxHp(a), a.hp + row.heal);
+  for (const [k, v] of Object.entries(row.needs || {})) if (a.needs?.[k] != null) a.needs[k] = Math.min(1, a.needs[k] + v);
+  // a grave wound heals sooner: the time it has left × mend (a trauma never heals)
+  if (row.mend != null) for (const x of a.wounds || []) if (x.until != null && x.until > w.tick) x.until = w.tick + Math.round((x.until - w.tick) * row.mend);
   for (const id of row.cures || []) {
     if (id === 'poisoned') a.poison = null;
     else if (id === 'bleeding') a.bleeding = null;
@@ -50,16 +55,18 @@ function fits(a, res) {
   return true;
 }
 
-// drink a potion out of the slot or the belt (`res`: its resource) → true when it was drunk
-export function drink(w, a, res) {
+// drink a potion out of the slot or the belt (`res`: its resource), or out of a `stock` ({res: n}: a brew) → true when
+// it was drunk
+export function drink(w, a, res, stock = null) {
   if (!able(a)) return false;
   const P = potionOf(res); if (!P || !fits(a, res)) return false;
-  if (res === 'potion' && a.potions > 0) a.potions--;
+  if (stock) { if (!(stock[res] >= 1)) return false; stock[res]--; }
+  else if (res === 'potion' && a.potions > 0) a.potions--;
   else { const k = (a.belt || []).indexOf(res); if (k < 0) return false; a.belt.splice(k, 1); }
   apply(w, a, CONDITIONS.get(P.grade.effect));
   const st = w.chronicle.potions ||= {drunk: 0, ours: 0}; st.drunk++; if (a.faction === 'colony') st.ours++;
   (st.by ||= {})[P.potion.id] = (st.by[P.potion.id] || 0) + 1;
-  if (a.faction === 'colony' && a.name) {
+  if (a.faction === 'colony' && a.name && !P.potion.home) {   // (a brew of the stock is everyday: no line)
     const what = P.potion.use === 'blade' ? `${he(a, 'натёр', 'натёрла')} клинок: ${P.potion.label}` : `${he(a, 'выпил', 'выпила')} ${P.k ? `${P.potion.label} (усиленное)` : P.potion.label}`;
     log(w, `${a.name} ${what}${res === 'potion' && a.potions ? ` (осталось ${a.potions})` : ''}.`, 'people');
   }
@@ -92,6 +99,25 @@ export function drinkFor(w, a, use) {
   const res = forUse(a, use);
   return res ? drink(w, a, res) : false;
 }
+// a brew of the stock for this moment (a home `use`: cold, tired, mending): the strong grade first, none while one of
+// its kind is at work → true when it drank
+export function brewFor(w, a, use, stock) {
+  const grades = HOME_BY_USE[use];
+  if (!grades || !able(a) || (a.effects || []).some(e => useOfEffect(e.id) === use && w.tick < e.until)) return false;
+  const res = grades.find(r => stock[r] >= 1);
+  return res ? drink(w, a, res, stock) : false;
+}
+
+// the sleeping brew for a captive set on running (settlement/escape.js, campaign/captives.js): one taken out of the
+// stock, the strong first → its row of «Состояний» (sleeps; calm — how much the will falls), or null when there is none
+// (`drop`: a cargo, which forgets what it has none of)
+export function sleepDose(stock, drop = false) {
+  const res = (HOME_BY_USE.captive || []).find(r => stock[r] >= 1);
+  if (!res) return null;
+  if (--stock[res] <= 0 && drop) delete stock[res];
+  return CONDITIONS.get(potionOf(res).grade.effect);
+}
+
 // the use of the potion whose drink gave this effect (for the effects at work)
 let effectUse = null;
 const useOfEffect = id => (effectUse ||= new Map(POTION_RES.map(res => [potionOf(res).grade.effect, potionOf(res).potion.use]))).get(id) || null;

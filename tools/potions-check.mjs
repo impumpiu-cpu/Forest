@@ -119,5 +119,42 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
   } else bad.push('проверка похода: хижина лекаря не найдена в лагере каравана (K.buildings)');
 }
 
+// the brews of the stock: a freezing one drinks a warming one, a hurt one a strengthening one (its grave wound heals
+// sooner), one worn out on the watch an invigorating one; none goes into a belt; one of a kind at a time
+{
+  const w = scene(), a = put(w, 'human', 'colony');
+  a.diary = []; a.needs.warmth = 0.1; a.needs.rest = 0.1; a.task = {id: 'watch'};
+  a.hp = maxHp(a) * 0.4; a.wounds = [{id: 'grave', until: w.tick + 4000}];
+  w.stock.warmBrew = 2; w.stock.mendBrew = 2; w.stock.vigorBrew = 2;
+  const cold = a.mods.cold;
+  w.tick = POTION.hand * 10; stepPotions(w);
+  expect(w.stock.warmBrew === 1 && a.needs.warmth > 0.1 && a.mods.cold < cold, 'согревающий отвар не выпит или не согрел');
+  expect(w.stock.vigorBrew === 1 && a.needs.rest > 0.1, 'бодрящий отвар на посту не выпит');
+  expect(w.stock.mendBrew === 1 && a.wounds[0].until < w.tick + 4000 * 0.8 && a.mods.regen > 1, `укрепляющий отвар: рана ${a.wounds[0].until - w.tick}, заживление ${a.mods.regen}`);
+  expect(!a.belt?.length, 'отвар попал в пояс');
+  a.needs.warmth = 0.1; w.tick += POTION.hand; stepPotions(w);
+  expect(w.stock.warmBrew === 1, 'второй согревающий выпит, пока первый действует');
+}
+
+// the sleeping brew: a captive set on running sleeps the night through instead of plotting
+{
+  const {sleepDose} = await import('../src/agents/potions.js');
+  const st = {sleepBrewStrong: 1, sleepBrew: 1};
+  const d1 = sleepDose(st), d2 = sleepDose(st), d3 = sleepDose(st);
+  expect(d1?.calm > 0 && d2?.sleeps && !d2.calm && d3 === null, 'сонный отвар: не усиленный первым или выдан из пустого');
+}
+
+// the caravan: brews have their own room in the cargo, never in a belt; the hut brews them from the new herbs
+{
+  const {brewDay, homeRoom, mendDay} = await import('../src/campaign/potions.js');
+  const K = {members: [{alive: true, potions: 3, belt: ['antidote', 'bearBrew'], gear: {hand: ['ironaxe']}, hp: 0.3}, {alive: true, potions: 3, belt: ['antidote', 'bearBrew'], gear: {hand: ['bow']}, hp: 1}],
+    cargo: {wort: 4, herbs: 4, bone: 2, sleepgrass: 2, pots: 10}, buildings: ['healerhut'], vehicles: [], beasts: []};
+  const n = brewDay(K, () => 1, false);
+  expect(n >= 2 && K.cargo.warmBrew >= 1 && K.cargo.mendBrew >= 1 && !K.cargo.sleepBrew, `хижина каравана сварила отваров ${n}: ${JSON.stringify(K.cargo)}`);
+  expect(homeRoom(K, POTIONS.get('warm')) <= 0 && K.members.every(m => m.belt.length === 2 && !m.belt.some(r => /Brew$/.test(r) && r !== 'bearBrew')), 'отвары в поясе или сверх запаса');
+  const hp = K.members[0].hp; mendDay(K);
+  expect(K.members[0].hp > hp && K.members[1].hp === 1, 'укрепляющий в походе не выпит раненым');
+}
+
 if (bad.length) { console.log('Зелья:\n  ' + bad.join('\n  ')); process.exit(1); }
-console.log(`ok   зелья: ${POTIONS.all().length} (ступеней ${POTIONS.all().reduce((s, p) => s + p.grades.length, 0)}) — лечение из гнезда и пояса, противоядие при яде, медвежья сила и яд на клинке перед первым ударом, усиленное держит на поле, метка не дважды; горшок в каждом; запасы наполняют пояса; хижина каравана варит простое`);
+console.log(`ok   зелья: ${POTIONS.all().length} (ступеней ${POTIONS.all().reduce((s, p) => s + p.grades.length, 0)}) — лечение из гнезда и пояса, противоядие при яде, медвежья сила и яд на клинке перед первым ударом, усиленное держит на поле, метка не дважды; горшок в каждом; запасы наполняют пояса; хижина каравана варит простое; отвары из запасов — согревающий, бодрящий, укрепляющий, сонный пленному`);

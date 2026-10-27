@@ -53,6 +53,7 @@ export const RESOURCES = {
   // Реагенты
   venom:        {price: 3, stack: 10},
   bile:         {price: 3, stack: 10},
+  lynxEyes:     {price: 4, stack: 10},
   slime:        {price: 1.5, stack: 10},
   gland:        {price: 6, stack: 10},
   // Ремесло
@@ -87,6 +88,17 @@ export const RESOURCES = {
   bearBrewStrong: {price: 17, stack: 10},
   bladeVenom:   {price: 9, stack: 10},
   bladeVenomStrong: {price: 19, stack: 10},
+  // the brews (drunk out of the stock) and their herbs
+  sleepgrass:   {price: 1.5, stack: 20},
+  wort:         {price: 1, stack: 20},
+  warmBrew:     {price: 3, stack: 10},
+  warmBrewStrong: {price: 7, stack: 10},
+  vigorBrew:    {price: 3, stack: 10},
+  vigorBrewStrong: {price: 9, stack: 10},
+  mendBrew:     {price: 4, stack: 10},
+  mendBrewStrong: {price: 10, stack: 10},
+  sleepBrew:    {price: 3, stack: 10},
+  sleepBrewStrong: {price: 8, stack: 10},
   // Топливо
   coal:         {price: 0.3, stack: 20},
   // Руда

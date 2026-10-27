@@ -27,7 +27,7 @@ import {RESOURCES as PRICE} from './balance/prices.js';
 import {POTIONS} from './potions.js';
 
 // the colour of a potion on the resource layer and in the stock
-const POTION_COLORS = {heal: '#d8506a', antidote: '#7fc48a', bear: '#b07a3a', venom: '#6aa84f'};
+const POTION_COLORS = {heal: '#d8506a', antidote: '#7fc48a', bear: '#b07a3a', venom: '#6aa84f', warm: '#e0894a', vigor: '#d8c84a', mend: '#c87a9a', sleep: '#8a7ac8'};
 
 // price, stack and money share live in data/balance/prices.js, one row per resource; a resource with no row
 // is an error at load time, a row with no resource is caught by tools/check-data.mjs
@@ -66,6 +66,7 @@ RESOURCES.registerAll([
   {id: 'venom',    label: 'яд', short: 'яд', tags: ['reagent'], group: 'Реагенты', loot: 1, keep: 2, color: '#7bbf4a'},
   {id: 'bile',     label: 'медвежья желчь', short: 'желчь', tags: ['reagent'], group: 'Реагенты', loot: 1, keep: 2, color: '#a8a042'},
   {id: 'slime',    label: 'жабья слизь', short: 'слизь', tags: ['reagent'], group: 'Реагенты', loot: 1, keep: 2, color: '#8fae6a'},
+  {id: 'lynxEyes', label: 'глаза рыси', short: 'гл. рыси', tags: ['reagent'], group: 'Реагенты', loot: 1, keep: 2, color: '#c8b04a'},
   {id: 'gland',    label: 'огненная железа', short: 'огн. железа', tags: ['reagent'], group: 'Реагенты', loot: 1, keep: 1, color: '#e0703a'},
 
   // ── the outpost's own crafts: from the meadow and the lake shore to rope, cloth, pots and boards
@@ -93,6 +94,9 @@ RESOURCES.registerAll([
 
   // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
   {id: 'herbs', label: 'лечебные травы', short: 'травы', tags: ['medicine'], group: 'Лекарства', loot: 1, keep: 10, target: 10, color: '#e8d25c'},
+  // the herbs of the brews (data/plants.js): the sleep-grass of the spring glades, St John's wort of the summer meadows
+  {id: 'sleepgrass', label: 'сон-трава', short: 'сон-трава', tags: ['medicine'], group: 'Лекарства', loot: 1, keep: 4, color: '#a88ad8'},
+  {id: 'wort', label: 'зверобой', short: 'зверобой', tags: ['medicine'], group: 'Лекарства', loot: 1, keep: 4, color: '#f0b030'},
   // the potions (data/potions.js): one resource for each grade of each — the plain healing one is `potion`; brewed in the
   // healer's hut (data/recipes.js, plain grades) or a town's laboratory (strong ones: campaign/town.js); the stock fills
   // its people's slot and belt (settlement/potions.js); drunk by itself when its moment comes (agents/potions.js)

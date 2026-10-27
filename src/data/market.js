@@ -65,6 +65,9 @@ export const OFFERS = [
   // (campaign/town.js alchemy, ALCHEMY below); pots for the healer's hut of the camp in any town
   {kind: 'goods', id: 'antidote', n: 1, at: ['healerhut', 'hospice', 'temple'], need: 'belt'},
   ...['potionStrong', 'antidoteStrong', 'bearBrewStrong', 'bladeVenomStrong', 'antidote', 'bearBrew', 'bladeVenom'].map(id => ({kind: 'goods', id, n: 1, at: ['alchemist'], need: 'belt'})),
+  // the brews (drunk out of the cargo): the warming and the strengthening ones where healers work, all at an alchemist's
+  ...['warmBrew', 'mendBrew'].map(id => ({kind: 'goods', id, n: 1, at: ['healerhut', 'hospice', 'temple'], need: 'home'})),
+  ...['warmBrewStrong', 'vigorBrewStrong', 'mendBrewStrong', 'sleepBrewStrong', 'warmBrew', 'vigorBrew', 'mendBrew', 'sleepBrew'].map(id => ({kind: 'goods', id, n: 1, at: ['alchemist'], need: 'home'})),
   {kind: 'goods', id: 'pots', n: 4, any: true, at: [], need: 'pots'},
   {kind: 'building', id: 'healerhut', at: ['healerhut', 'hospice'], price: CAMPAIGN.services.healerhut},
   {kind: 'building', id: 'forge', at: ['forge'], price: CAMPAIGN.services.forge},

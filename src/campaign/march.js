@@ -29,7 +29,7 @@ import {route, stepCost} from './path.js';
 import {assign, capacity, cargoLoad, load, overflow, slowest, wheeled, campFx, toolTier, metalTier, fieldBuildings, buildDays, handler, campOf, hasBuilding} from './baggage.js';
 import {draw} from './start.js';
 import {fight, playStop} from './fight.js';
-import {brewDay} from './potions.js';
+import {brewDay, mendDay} from './potions.js';
 import {questArrive, questTarget, questSight, pursuit, crownHands, rumour, askable} from './quest.js';
 import {epicDay} from './epic.js';
 import {CAMP} from '../data/camp.js';
@@ -657,6 +657,7 @@ export function caravanDay(a, K, day) {
     if (K.hungry > CAMPAIGN.hunger.wasteAfter) { m.hp -= CAMPAIGN.hunger.waste * (0.5 + r()) * (camping ? campFx(K, 'shelter') : 1); if (m.hp <= 0) { die(a, K, m, 'умер от голода'); continue; } }
     else if (!K.hungry) m.hp = Math.min(1, m.hp + (town ? CAMPAIGN.heal.camp * healHere(town) : camping ? CAMPAIGN.heal.camp * campFx(K, 'heal') : CAMPAIGN.heal.march * (m.ride ? 1.5 : 1)));
   }
+  if (!K.hungry) { const n = mendDay(K); if (n) K.stats.mendBrews = (K.stats.mendBrews || 0) + n; }   // the badly hurt drink a strengthening brew (campaign/potions.js)
   people(a, K, r);
   crownHands(K, (text, kind) => say(a, K, text, kind));
   // the beasts graze where grass grows and starve where it does not

@@ -32,6 +32,8 @@ import {esc, g, clamp} from '../core/util.js';
 import {hourOf, dayOf, DAY} from '../core/time.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {setStanding} from '../agents/standing.js';
+import {sleepDose} from '../agents/potions.js';
+import {POTION} from '../data/potions.js';
 
 const E = w => (w.escape ??= {rolled: -1, dawn: -1, plot: null, alarm: null, cut: false});
 const C = w => (w.chronicle.captives ||= {taken: 0, died: 0});
@@ -79,9 +81,14 @@ function council(w, S, rng) {
   for (const a of caps) if (!!a.captive.cut !== cut) applyRation(a, cut);
   // the rolls of every captive not resigned
   const want = [];
+  let slept = 0;
   for (const a of caps) {
     if (a.captive.resigned || a.downed) continue;
     const will = willOf(a);
+    // one set on running is given the sleeping brew, if the stock has one (data/potions.js sleep): it sleeps the night
+    // through; a strong one calms it too
+    const dose = will >= POTION.home.will ? sleepDose(w.stock) : null;
+    if (dose) { slept++; a.captive.slept = dayOf(w.tick); if (dose.calm) a.captive.will = clamp(will - dose.calm, 0, 1); continue; }
     if (rng() < ESCAPE.escape.base * will * holdOf(a)) want.push(a);
     const R = ESCAPE.resign;
     if (!want.includes(a) && rng() < R.base * (1 - will) * days(w, a) / (days(w, a) + R.settle)) {
@@ -89,8 +96,9 @@ function council(w, S, rng) {
       log(w, `${name(a)}, ${g(a, 'пленный', 'пленная')} (${label(a)}), ${g(a, 'смирился', 'смирилась')}: бежать больше не думает.`, 'people');
     }
   }
+  if (slept) log(w, `Совет велел напоить сонным отваром ${slept === 1 ? 'пленного, что задумал бежать' : `пленных, что задумали бежать (${slept})`}: проспят до утра.`, 'council');
   if (!want.length) return;
-  const by = want[0], plotters = caps.filter(a => !a.captive.resigned && !a.downed);
+  const by = want[0], plotters = caps.filter(a => !a.captive.resigned && !a.downed && a.captive.slept !== dayOf(w.tick));   // (one given the sleeping brew sleeps)
   // a resigned one may tell: the more it likes the free, the readier
   const fr = free(w);
   for (const s of caps.filter(a => a.captive.resigned && !a.downed)) {

@@ -9,7 +9,9 @@
 //         potion     — what a potion does (data/potions.js): heal — × full health at once; cures — the states it ends
 //                      ('ill' — any illness); ticks — how long it lasts (a.effects); mods, resist ({poison: ×}: what
 //                      reaches it of such harm), holdBelow as a mark's; blade — on the weapon: {hits, dmg, ticks} — so
-//                      many blows that strike poison what they strike (a.coat); mark — a mark for life (never twice)
+//                      many blows that strike poison what they strike (a.coat); mark — a mark for life (never twice);
+//                      the brews: needs ({warmth: +}) at once, mend (× the time a grave wound has left), march (health
+//                      a day on the world map), sleeps and calm (a captive: asleep the night, its will less)
 //         mark       — what a creature is for life, not what is wrong with it (a.marks): a war beast's training, an
 //                      officer's rank
 //   mods  — what it does to the body (keys of «Модификаторы существа»); hp — × full health; special — a shift of its
@@ -69,6 +71,17 @@ CONDITIONS.registerAll([
   {id: 'potBearStrong', kind: 'potion', label: 'медвежья сила (усиленная)', note: 'сила и смелость на ticks тиков; стоит, пока здоровье выше holdBelow', ticks: 600, mods: {str: 1.35, bravery: 0.3}, holdBelow: 0.2},
   {id: 'potVenom', kind: 'potion', label: 'яд на клинке', note: 'hits ударов, что дошли до тела, травят: dmg здоровья в тик ticks тиков (нежить не травится)', blade: {hits: 3, dmg: 0.0005, ticks: 200}},
   {id: 'potVenomStrong', kind: 'potion', label: 'яд на клинке (усиленный)', note: 'hits ударов травят сильнее и дольше', blade: {hits: 6, dmg: 0.0008, ticks: 240}},
+  // the brews of the stock (data/potions.js home): needs — a need filled at once (+ share); mend — the time a grave
+  // wound has left to heal × this; march — health a day on the campaign's world map; sleeps — a captive sleeps the night
+  // through, calm — and its will to run falls by this much
+  {id: 'potWarm', kind: 'potion', label: 'согревающий отвар', note: 'тепло сразу + needs; холод × cold на ticks тиков', needs: {warmth: 0.3}, ticks: 600, mods: {cold: 0.5}},
+  {id: 'potWarmStrong', kind: 'potion', label: 'согревающий отвар (усиленный)', note: 'тепло сразу + needs; холод × cold на ticks тиков', needs: {warmth: 0.6}, ticks: 1200, mods: {cold: 0.25}},
+  {id: 'potVigor', kind: 'potion', label: 'бодрящий отвар', note: 'бодрость сразу + needs; усталость × sleep на ticks тиков', needs: {rest: 0.3}, ticks: 600, mods: {sleep: 0.5}},
+  {id: 'potVigorStrong', kind: 'potion', label: 'бодрящий отвар (усиленный)', note: 'бодрость + needs, усталость × sleep, зоркость × sight на ticks тиков (глаза рыси)', needs: {rest: 0.5}, ticks: 900, mods: {sleep: 0.3, sight: 1.15}},
+  {id: 'potMend', kind: 'potion', label: 'укрепляющий отвар', note: 'заживление × regen на ticks тиков; тяжёлой ране остаётся × mend срока; в походе + march здоровья', ticks: 1200, mods: {regen: 2}, mend: 0.75, march: 0.08},
+  {id: 'potMendStrong', kind: 'potion', label: 'укрепляющий отвар (усиленный)', note: 'сразу + heal; заживление × regen; тяжёлой ране × mend срока; в походе + march', heal: 0.2, ticks: 1200, mods: {regen: 3}, mend: 0.5, march: 0.15},
+  {id: 'potSleep', kind: 'potion', label: 'сонный отвар', note: 'пленный спит всю ночь: не бежит', sleeps: true},
+  {id: 'potSleepStrong', kind: 'potion', label: 'сонный отвар (усиленный)', note: 'пленный спит всю ночь, воля к побегу − calm', sleeps: true, calm: 0.1},
   // ── exhaustion: neutral for now (empty mods), ready for the numbers
   {id: 'exhausted1', kind: 'exhaustion', stage: 1, label: 'истощение I', mods: {}, note: 'одна нужда на исходе'},
   {id: 'exhausted2', kind: 'exhaustion', stage: 2, label: 'истощение II', mods: {}, note: 'две нужды на исходе'},

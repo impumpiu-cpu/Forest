@@ -226,6 +226,7 @@ const sources = new Set(['gold',   // gold comes from trade
   ...PLANTS.all().flatMap(p => [p.resource, ...Object.keys(p.also || {})]), ...CROPS.all().flatMap(c => Object.keys(c.yields)),
 ...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource), ...ORES.all().flatMap(o => Object.keys(o.also || {})),
   ...SPECIES.all().flatMap(s => Object.keys(s.yields || {})),
+  ...SPECIES.all().flatMap(s => (s.trophies || []).map(t => t.res)),   // rare trophies of a kill (agents/trophies.js)
   ...RESOURCES.filter(r => r.tags.includes('key')).map(r => r.id),   // town-made tools: always with traders
   ...SPECIES.all().flatMap(s => (s.tame ? [s.tame.milk && 'milk', s.tame.wool && 'wool'].filter(Boolean) : [])),   // from the pen
   ...POTIONS.all().flatMap(p => p.grades.filter(g => g.at === 'alchemist').map(g => g.res))]);   // brewed in a town's laboratory (campaign/town.js)
