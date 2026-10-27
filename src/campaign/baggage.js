@@ -82,20 +82,22 @@ export function overflow(K) {
   let over = load(K) - capacity(K), left = 0;
   // the goods first, then food, then the ore kept for the smith; bonds for captives last: they weigh little and nothing else binds (data/captives.js)
   const bonds = id => BONDS.all().some(b => b.resource === id);
-  const drop = id => {
-    const n = Math.min(K.cargo[id], Math.ceil(over / bulk(id)));
+  const drop = (id, keepN = 0) => {
+    const n = Math.min(K.cargo[id] - keepN, Math.ceil(over / bulk(id))); if (n <= 0) return;
     K.cargo[id] -= n; over -= n * bulk(id); left += n * bulk(id);
     if (K.cargo[id] <= 0) delete K.cargo[id];
   };
   // the cheapest for the room it takes first: gems and gold stay, ore and hides go
   // (ore of a metal above the caravan's own is kept for the smith: data/market.js SMITH)
-  // (and the potions, with a few of each of their makings: data/potions.js potionKeep — after any other goods)
-  const tier = metalTier(K), keep = id => ORES.all().some(o => o.resource === id && o.tier > tier) || (potionKeep(id, K.cargo[id]) >= K.cargo[id] && potionKeep(id, 1) > 0);
-  const worth = id => (keep(id) ? 100 : (RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0) / bulk(id));
+  // (and the potions, with a few of each of their makings: data/potions.js potionKeep — the kept ones after any other
+  // goods and the food; what is beyond them goes with the goods)
+  const tier = metalTier(K), smithOre = id => ORES.all().some(o => o.resource === id && o.tier > tier);
+  const kept = id => (smithOre(id) ? K.cargo[id] : potionKeep(id, K.cargo[id]));
+  const worth = id => (RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0) / bulk(id);
   const byWorth = ids => ids.sort((p, q) => worth(p) - worth(q) || (p < q ? -1 : 1));
-  for (const id of byWorth(Object.keys(K.cargo).filter(id => !bonds(id) && !keep(id)))) { if (over <= 0) break; drop(id); }
+  for (const id of byWorth(Object.keys(K.cargo).filter(id => !bonds(id) && kept(id) < K.cargo[id]))) { if (over <= 0) break; drop(id, kept(id)); }
   if (over > 0) { const f = Math.min(K.food, over); K.food -= f; over -= f; left += f; }   // what more was picked is left
-  for (const id of byWorth(Object.keys(K.cargo).filter(id => !bonds(id) && keep(id)))) { if (over <= 0) break; drop(id); }
+  for (const id of Object.keys(K.cargo).filter(id => !bonds(id) && K.cargo[id] > 0).sort()) { if (over <= 0) break; drop(id); }   // (the kept ones: as they come, none cheaper than another — a pot is worth the potion it makes)
   for (const id of Object.keys(K.cargo).filter(bonds).sort()) { if (over <= 0) break; drop(id); }
   return left;
 }

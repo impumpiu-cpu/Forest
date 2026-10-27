@@ -43,6 +43,7 @@ export const POTION = {
   herbs: 2,        // healing herbs a healing potion takes (the recipe)
   pot: 1,          // pots every potion is poured into (data/resources.js pots: the potter's work)
   keepMakings: 6,  // the caravan keeps this many of each making of a potion; the rest is goods to sell or leave
+  keep: {pots: 12, herbs: 10},   // … and of these this many (every potion takes a pot: data/market.js ALCHEMY.pots)
   hutTier: 2,      // the highest step a healer's hut brews: what is harder is the alchemist's
   hutPots: 4,      // the potter keeps this many pots for a settlement's healer's hut
   // the settlement's stock fills its people's slots and belts (settlement/potions.js): every `hand` ticks
@@ -132,6 +133,6 @@ export const sameKind = (a, b) => potionOf(a)?.potion === potionOf(b)?.potion;
 // what a caravan keeps, neither sells nor leaves behind before other goods (campaign/town.js, campaign/baggage.js): every
 // potion, and of what any of them is made of no more than POTION.keepMakings (bones, honey, wax are goods beyond that)
 export const POTION_MAKINGS = new Set(POTIONS.all().flatMap(p => p.grades.flatMap(g => Object.keys(g.cost))).filter(r => !byRes.has(r)));
-export const potionKeep = (id, n) => (byRes.has(id) ? n : POTION_MAKINGS.has(id) ? Math.min(n, POTION.keepMakings) : 0);
+export const potionKeep = (id, n) => (byRes.has(id) ? n : POTION_MAKINGS.has(id) ? Math.min(n, POTION.keep[id] ?? POTION.keepMakings) : 0);
 // the grades a healer's hut brews (in the settlement and the caravan's camp)
 export const hutGrades = () => POTIONS.all().flatMap(p => p.grades.filter(g => g.at === 'healerhut' && g.tier <= POTION.hutTier).map(g => ({potion: p, grade: g})));
