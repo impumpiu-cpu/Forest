@@ -129,6 +129,7 @@ export const anyoneCan = (w, r) => !recipeNeed(r) || w.agents.some(a => a.factio
 export function pickRecipe(w, station, ctx = craftContext(w), a = null) {
   let best = null, bv = 0;
   for (const r of recipesAt(station)) {
+    if (r.makes?.item && ITEMS.has(r.makes.item) && ITEMS.get(r.makes.item).tradeOnly) continue;   // only bought (tag «только у торговцев»)
     const v = r.want(ctx);
     if (v > bv && (a ? canMake(a, r) && raceMayCraft(w, a, r) : anyoneCan(w, r)) && canStart(w, r)) { bv = v; best = r; }
   }

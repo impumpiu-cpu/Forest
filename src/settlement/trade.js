@@ -89,11 +89,11 @@ export function termsOf(w, c = w.caravan) {
 }
 const round2 = v => Math.round(v * 100) / 100;
 
-// items a ware line can be: 'plain' — what the outpost could make itself (it has a recipe), short of iron;
+// items a ware line can be: 'plain' — what the outpost could make itself (it has a recipe, not «только у торговцев»), short of iron;
 // 'any' — anything finer work improves and a trader may carry (not of a rare material)
 function itemPool(spec) {
   if (Array.isArray(spec)) return spec;
-  if (spec === 'plain') return ITEMS.filter(d => !d.iron && RECIPES.all().some(r => r.makes?.item === d.id)).map(d => d.id);
+  if (spec === 'plain') return ITEMS.filter(d => !d.iron && !d.tradeOnly && RECIPES.all().some(r => r.makes?.item === d.id)).map(d => d.id);
   return ITEMS.filter(d => d.quality !== false && d.sold !== false).map(d => d.id);
 }
 

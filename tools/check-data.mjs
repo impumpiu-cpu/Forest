@@ -233,6 +233,7 @@ const sources = new Set(['gold',   // gold comes from trade
 
 // furnaces, tools, regions
 for (const r of RECIPES.all()) {
+  if (r.makes?.item && ITEMS.get(r.makes.item)?.tradeOnly) warn(`рецепт ${r.id}: вещь «${r.makes.item}» — только у торговцев, поселение её не сделает`);
   if (r.fuel && ![1, 2, 3, undefined].includes(r.heat)) err(`рецепт ${r.id}: heat должен быть 1, 2 или 3`);
   if (r.tool && !RESOURCES.get(r.tool)?.tags.includes('key')) err(`рецепт ${r.id}: tool «${r.tool}» — не инструмент`);
 }

@@ -69,7 +69,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.75, groupFear: 2, meal: 1.4, sight: 18})}),
 
   // Elk: the mule of the taiga — a lot of meat, and a bull that tramples hunters
-  beast({id: 'elk', kind: 'beast', label: 'лось', labelAcc: 'лося', plural: 'лоси', behaviours: [...WAYS.herdStander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, game: true,
+  beast({id: 'elk', kind: 'beast', label: 'лось', labelAcc: 'лося', plural: 'лоси', behaviours: [...WAYS.herdStander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
     arrive: {group: [1, 3], every: [2, 4], chance: 0.5, cap: 4, first: 2, message: 'к лесу вышли лоси: {n}. Бык топчет охотников'},
     habitat: {taiga: 'usual', swamp: 'usual', tundra: 'rare', forest: 'rare'},
     look: {shape: 'deer', size: 0.84, color: '#5e4630'},
@@ -164,7 +164,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'rat'], boldPeople: 0.4, groupFear: 4, sight: 18, meal: 0.8})}),
 
   // Salamander: lives in the heat; fire does not hurt it. Shy, worth its gland
-  beast({id: 'salamander', kind: 'beast', label: 'саламандра', labelAcc: 'саламандру', plural: 'саламандры', behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true, heatHarm: 500,
+  beast({id: 'salamander', kind: 'beast', label: 'саламандра', labelAcc: 'саламандру', plural: 'саламандры', behaviours: [...WAYS.grazer], heart: BEAT.grazer, heatHarm: 500,
     arrive: {group: [1, 2], every: [2, 4], chance: 0.5, cap: 3, first: 2},
     fearHeat: 450,
     habitat: {volcano: 'usual', underground: 'rare'},
@@ -224,7 +224,7 @@ export const BESTIARY = [
   // ── beasts of the far lands: the steppe, the hot south, the ice. Few of them reach the first
   // colonies' regions (data/regions.js); they are here for the world map and the lands to come
   // Horse: a herd of the open steppe, fast and shy; tamed, it carries the hunter and the builder
-  beast({id: 'horse', kind: 'beast', label: 'лошадь', labelAcc: 'лошадь', plural: 'лошади', behaviours: [...WAYS.grazer], heart: BEAT.grazer, big: true, game: true, legend: 'лошадь',
+  beast({id: 'horse', kind: 'beast', label: 'лошадь', labelAcc: 'лошадь', plural: 'лошади', behaviours: [...WAYS.grazer], heart: BEAT.grazer, big: true, legend: 'лошадь',
     arrive: {group: [2, 5], every: [3, 5], chance: 0.5, cap: 6, first: 2, message: 'на луга вышел табун: {n}'},
     habitat: {steppe: 'common', meadow: 'common', savanna: 'usual', shrubland: 'rare', foothills: 'rare'},
     look: {shape: 'horse', size: 0.8, color: '#8c5a34'},
@@ -238,7 +238,7 @@ export const BESTIARY = [
       effect: 'возит охотника и брёвна (охота +15%, стройка +10%), тянет соху (поле +15%)'}}),
 
   // Aurochs: the wild bull of the forest edge — a mountain of meat, and it charges
-  beast({id: 'aurochs', kind: 'beast', label: 'тур', labelAcc: 'тура', plural: 'туры', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, game: true, legend: 'тур',
+  beast({id: 'aurochs', kind: 'beast', label: 'тур', labelAcc: 'тура', plural: 'туры', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, legend: 'тур',
     arrive: {group: [1, 3], every: [3, 5], chance: 0.45, cap: 3, first: 3, message: 'на опушку вышли туры: {n}. Бык поднимает на рога'},
     habitat: {meadow: 'common', forest: 'usual', steppe: 'usual', swamp: 'rare', taiga: 'rare'},
     look: {shape: 'bull', size: 0.92, color: '#3f2a1c'},
@@ -251,7 +251,7 @@ export const BESTIARY = [
       effect: 'даёт много молока, тянет соху (поле +30%)'}}),
 
   // Saiga: the antelope of the dry steppe; herds that run at the first scent
-  beast({id: 'saiga', kind: 'beast', label: 'сайгак', labelAcc: 'сайгака', plural: 'сайгаки', behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true,
+  beast({id: 'saiga', kind: 'beast', label: 'сайгак', labelAcc: 'сайгака', plural: 'сайгаки', behaviours: [...WAYS.grazer], heart: BEAT.grazer,
     arrive: {group: [3, 7], every: [2, 4], chance: 0.6, cap: 8, first: 2, message: 'по степи прошло стадо сайгаков: {n}'},
     habitat: {steppe: 'common', savanna: 'common', desert: 'usual', shrubland: 'rare'},
     look: {shape: 'deer', size: 0.56, color: '#c9b08a'},
@@ -279,7 +279,7 @@ export const BESTIARY = [
     grazes: {terrain: ['water', 'grass'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0001, mule: stands({kickRange: 1.3, charge: 1.6, chargeHit: 2.0, chargeFrom: 1.5, grudge: 200, giveUp: 10, fleeBelow: 0.15})}),
 
   // Camel: the beast of the sand; tamed, it carries the gatherers' loads across the dry land
-  beast({id: 'camel', kind: 'beast', label: 'верблюд', labelAcc: 'верблюда', plural: 'верблюды', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, game: true, legend: 'верблюд', heatHarm: 70,
+  beast({id: 'camel', kind: 'beast', label: 'верблюд', labelAcc: 'верблюда', plural: 'верблюды', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, legend: 'верблюд', heatHarm: 70,
     arrive: {group: [1, 3], every: [3, 5], chance: 0.45, cap: 3, first: 3, message: 'из-за барханов вышли верблюды: {n}'},
     habitat: {desert: 'common', savanna: 'rare', steppe: 'rare', shrubland: 'rare'},
     look: {shape: 'camel', size: 0.88, color: '#c8a874'},
@@ -311,7 +311,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['seal', 'deer', 'hare', 'fox'], weakPrey: ['elk'], boldPeople: 0.35, groupFear: 4, meal: 2.5, bigMeal: 4, sight: 20, sprint: 1.5})}),
 
   // Seal: hauls out on the ice by the water; slow on land, fat and hide for the north
-  beast({id: 'seal', kind: 'beast', label: 'тюлень', labelAcc: 'тюленя', plural: 'тюлени', behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true,
+  beast({id: 'seal', kind: 'beast', label: 'тюлень', labelAcc: 'тюленя', plural: 'тюлени', behaviours: [...WAYS.grazer], heart: BEAT.grazer,
     arrive: {group: [2, 5], every: [2, 4], chance: 0.5, cap: 6, first: 2, message: 'на лёд у воды вылезли тюлени: {n}'},
     habitat: {ice: 'common', tundra: 'usual', water: 'rare'},
     look: {shape: 'seal', size: 0.6, color: '#7c7a70'},
@@ -321,7 +321,7 @@ export const BESTIARY = [
     leaveChance: 0.0003}),
 
   // Sheep: the hills' flock; tamed for wool first of all
-  beast({id: 'sheep', kind: 'beast', label: 'овца', labelAcc: 'овцу', plural: 'овцы', behaviours: [...WAYS.grazer], heart: BEAT.grazer, game: true, legend: 'овца',
+  beast({id: 'sheep', kind: 'beast', label: 'овца', labelAcc: 'овцу', plural: 'овцы', behaviours: [...WAYS.grazer], heart: BEAT.grazer, legend: 'овца',
     arrive: {group: [3, 6], every: [2, 4], chance: 0.5, cap: 8, first: 2, message: 'по склонам разбрелись овцы: {n}'},
     habitat: {meadow: 'common', shrubland: 'common', foothills: 'usual', steppe: 'usual', highlands: 'rare'},
     look: {shape: 'sheep', size: 0.46, color: '#ece6d6'},

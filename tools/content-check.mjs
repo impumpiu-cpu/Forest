@@ -118,5 +118,23 @@ expect(AFFLICTIONS.all().every(A => A.catch === 0) && ADDICTION.braga.hook === 0
   expect(near(beds.value, (w.mods.add.beds || 0) / w.agents.filter(a => a.faction === 'colony').length), 'кровати на жителя посчитаны не так');
 }
 
+// the tag «только у торговцев» (item tradeOnly): the outpost does not take up a recipe for such a thing, a trader
+// does not bring it as «what the outpost could make»
+{
+  const {newGame} = await import('../src/sim.js');
+  const {DEFAULT_CFG} = await import('../src/data/presets.js');
+  const {pickRecipe, craftContext} = await import('../src/settlement/crafting.js');
+  const {ITEMS} = await import('../src/data/items.js');
+  const w = newGame({...DEFAULT_CFG, seed: 'tradeonly', size: 'small'});
+  w.stock.wood = 99; w.stock.bone = 99;
+  const ctx = {...craftContext(w), owned: () => 0}, picks = () => { const r = pickRecipe(w, 'crafthut', ctx); return r?.makes?.item; };
+  const was = picks();
+  if (was) {
+    const d = ITEMS.get(was); d.tradeOnly = true;
+    expect(picks() !== was, `рецепт вещи «только у торговцев» взят: ${was}`);
+    delete d.tradeOnly;
+  } else bad.push('проверка tradeOnly: хижина ремесленника ничего не выбрала');
+}
+
 if (bad.length) { console.log('Содержание мира (этап 8):\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log(`ok   содержание: недуги ${AFFLICTIONS.all().length} со стадиями, зависимость и ломка, порча от нежити, языки в торге, ночное зрение, слава каравана, темп похода, показатели поселения — по умолчанию закрыты, с числами работают`);
