@@ -13,7 +13,10 @@
 import {maxHp} from './agent.js';
 import {log} from '../core/log.js';
 import {POTION, POTION_RES, HOME_BY_USE, potionOf} from '../data/potions.js';
-import {CONDITIONS, hasMark} from '../data/conditions.js';
+import {CONDITIONS, hasMark, effectsOf} from '../data/conditions.js';
+import {SPECIES} from '../data/species.js';
+import {nightness} from '../core/time.js';
+import {nightSight} from '../data/tongues.js';
 import {refreshBody} from './special.js';
 import {def} from './equipment.js';
 
@@ -73,30 +76,41 @@ export function drink(w, a, res, stock = null) {
   return true;
 }
 
-// the first potion in the belt for this moment (a `use` of data/potions.js), or null
-const forUse = (a, use) => (a.belt || []).find(res => potionOf(res)?.potion.use === use && fits(a, res)) || null;
+// the first potion in the belt for this moment (a `use` of data/potions.js), or null; none whose own effect is at work
+const atWork = (w, a, res) => (a.effects || []).some(e => e.id === potionOf(res).grade.effect && w.tick < e.until);
+const forUse = (w, a, use) => (a.belt || []).find(res => potionOf(res)?.potion.use === use && fits(a, res) && !atWork(w, a, res)) || null;
+// what goes on the blade against this foe: a silver oil against what fears silver, a poison against the living rest
+function forBlade(a, t) {
+  const sp = t ? SPECIES.get(t.species) : null, fears = !!sp?.weakTo?.includes('silver');
+  return (a.belt || []).find(res => {
+    const P = potionOf(res); if (P?.potion.use !== 'blade' || !fits(a, res)) return false;
+    const row = CONDITIONS.get(P.grade.effect);
+    return row.blade.silver ? fears : !sp?.undead && !fears;
+  }) || null;
+}
 
 // at the edge of death: the slot's healing potion, else a strong one from the belt → true when it drank
 export function quaff(w, a) {
   if (!able(a) || a.hp >= POTION.below * maxHp(a)) return false;
   if (a.potions > 0) return drink(w, a, 'potion');
-  const res = forUse(a, 'wounded');
+  const res = forUse(w, a, 'wounded');
   return res ? drink(w, a, res) : false;
 }
 
-// the moment for a potion of this use has come (poisoned; fight — at the first blow, which brings `blade` too)
-export function drinkFor(w, a, use) {
+// the moment for a potion of this use has come (poisoned, fire, dark; fight — at the first blow against `t`, which
+// brings the blade's, the dark's at night and the fire's against a fire-breather too). One whose effect is at work is
+// not drunk again
+export function drinkFor(w, a, use, t = null) {
   if (!able(a) || !a.belt?.length) return false;
   if (use === 'fight') {
     let any = false;
-    for (const u of ['fight', 'blade']) {
-      if (u === 'fight' && (a.effects || []).some(e => useOfEffect(e.id) === 'fight' && w.tick < e.until)) continue;   // one at work already
-      if (u === 'blade' && a.coat) continue;
-      const res = forUse(a, u); if (res && drink(w, a, res)) any = true;
-    }
+    for (let res; (res = forUse(w, a, 'fight')) && drink(w, a, res);) any = true;
+    if (!a.coat) { const res = forBlade(a, t); if (res && drink(w, a, res)) any = true; }
+    if (nightness(w) > POTION.dark && nightSight(a.species, nightness(w), a) < 1 && drinkFor(w, a, 'dark')) any = true;   // (no use where the night hides nothing)
+    if (t && SPECIES.get(t.species).breath && drinkFor(w, a, 'fire')) any = true;
     return any;
   }
-  const res = forUse(a, use);
+  const res = forUse(w, a, use);
   return res ? drink(w, a, res) : false;
 }
 // a brew of the stock for this moment (a home `use`: cold, tired, mending): the strong grade first, none while one of
@@ -132,11 +146,14 @@ export function stepPotionEffects(w, a) {
   if (ended.some(e => CONDITIONS.has(e.id) && (Object.keys(CONDITIONS.get(e.id).mods || {}).length || CONDITIONS.get(e.id).hp != null))) refreshBody(a);
 }
 
-// a blow of a coated weapon struck home (agents/combat.js damage): the poison passes to `t`, the coat wears thinner
-export function bladeHit(w, a, t, poisonResist) {
+// a blow of a coated weapon struck home (agents/combat.js damage): a poison passes to `t` (not into the dead), the coat
+// wears thinner; a silver oil only wears (its bite is the blow's own: agents/combat.js silverFactor)
+export function bladeHit(w, a, t, poisonResist, undead) {
   const row = a.coat && CONDITIONS.has(a.coat.id) ? CONDITIONS.get(a.coat.id) : null;
   if (!row?.blade) { a.coat = null; return; }
   const B = row.blade;
-  t.poison = {dmg: B.dmg * poisonResist, until: w.tick + B.ticks};
+  if (!B.silver) { if (undead) return; t.poison = {dmg: B.dmg * poisonResist, until: w.tick + B.ticks}; }
   if (--a.coat.hits <= 0) a.coat = null;
 }
+// the blade bears silver now (a silver oil on it)
+export const silverCoat = a => !!(a?.coat && CONDITIONS.has(a.coat.id) && CONDITIONS.get(a.coat.id).blade?.silver);

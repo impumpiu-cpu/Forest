@@ -14,7 +14,7 @@ import {RAID, CARAVAN} from '../data/behaviour.js';
 export function raidBody(w, a) {
   const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a));
   let cause = null;
-  if (heatHarm(a, sp, T, sp.undead ? 'undead' : 'raider')) cause = 'огня';
+  if (heatHarm(a, sp, T, sp.undead ? 'undead' : 'raider', w)) cause = 'огня';
   if (sp.rots && T > RAID.rotsFrom) { a.hp -= sp.rots * (T - RAID.rotsFrom); cause ??= 'тепла'; }
   const day = 1 - nightness(w);
   if (sp.sun && day > RAID.sunHurts) { a.hp -= sp.sun * day; cause ??= 'солнца'; }
@@ -26,7 +26,7 @@ export function raidBody(w, a) {
 // a traveller's body: burns, mends a little
 export function roadBody(w, a) {
   const sp = SPECIES.get(a.species), T = tempAt(w, cellOf(w, a));
-  if (heatHarm(a, sp, T, 'caravan') && a.hp <= 0) { kill(w, a, 'огня'); return T; }
+  if (heatHarm(a, sp, T, 'caravan', w) && a.hp <= 0) { kill(w, a, 'огня'); return T; }
   if (a.hp < maxHp(a)) a.hp = Math.min(maxHp(a), a.hp + CARAVAN.mends);
   return T;
 }

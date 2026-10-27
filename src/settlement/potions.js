@@ -8,7 +8,9 @@
 // (POTION.home); one of a kind at a time.
 import {colonists, raidAlarm} from './query.js';
 import {POTION, BELT_ORDER, HOME_RES, potionOf, sameKind} from '../data/potions.js';
-import {holdsBlade, brewFor} from '../agents/potions.js';
+import {holdsBlade, brewFor, drinkFor} from '../agents/potions.js';
+import {nightness} from '../core/time.js';
+import {nightSight} from '../data/tongues.js';
 import {maxHp} from '../agents/agent.js';
 
 // may this one carry this potion in its belt (a poison for the blade — one who holds a blade)
@@ -34,6 +36,8 @@ export function stepPotions(w) {
     }
   }
   if (HOME_RES.some(res => w.stock[res] >= 1)) homeBrews(w, ppl);
+  // the cat's eye: the night watch drinks it from its belt once the night is deep
+  if (nightness(w) > POTION.dark) for (const a of ppl) if (a.task?.id === 'watch' && a.belt?.length && nightSight(a.species, nightness(w), a) < 1) drinkFor(w, a, 'dark');
 }
 
 // the brews of the stock, to whoever's moment has come
@@ -43,5 +47,6 @@ function homeBrews(w, ppl) {
     if (a.needs?.warmth != null && a.needs.warmth < H.cold) brewFor(w, a, 'cold', w.stock);
     if (a.needs?.rest != null && a.needs.rest < H.tired && !a.sleeping && (a.task?.id === 'watch' || raidAlarm(w))) brewFor(w, a, 'tired', w.stock);
     if (a.hp < H.hurt * maxHp(a) || (a.wounds || []).some(x => x.until != null && x.until > w.tick)) brewFor(w, a, 'mending', w.stock);
+    brewFor(w, a, 'mark', w.stock);   // an elixir: whoever lacks its mark (agents/potions.js: never twice)
   }
 }

@@ -11,7 +11,7 @@ import {FOODS} from '../data/foods.js';
 import {cellOf} from '../world/grid.js';
 import {nightness} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach, recover} from './movement.js';
-import {attack, shoot, canSee, reachOf, behindRock} from './combat.js';
+import {attack, shoot, canSee, reachOf, behindRock, hurl} from './combat.js';
 import {COMBAT} from '../data/balance/combat.js';
 import {RUNNERS, carriedFood, eatCarried} from './jobRunners.js';
 import {eatMeal, plunder, lootTotal, campFuel} from '../settlement/stock.js';
@@ -144,6 +144,7 @@ TASKS.registerAll([
       if (v && v !== a && v.faction === 'colony' && task.stoodFor !== v.id && (t.task.id === 'maul' || t.task.id === 'fight')) { task.stoodFor = v.id; bond(w, v, a, TOGETHER.bondDefend * 0.6); }
     }
     const d = Math.hypot(t.x - a.x, t.y - a.y), g = a.gear;
+    if (a.belt?.length && hurl(w, a, t, d)) return;   // a fire flask first, while the foe is still off (agents/combat.js)
     if (g?.rangedReady && d > 1.4) {
       const range = g.ranged.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
       task.shooting = true;

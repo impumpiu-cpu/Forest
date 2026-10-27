@@ -8,7 +8,7 @@
 // the camp's map out of its stock (settlement/potions.js), the strengthening one by the wounded on the world map
 // (mendDay), the sleeping one given to a captive set on running (campaign/captives.js).
 import {SPECIES} from '../data/species.js';
-import {POTION, POTION_RES, BELT_ORDER, HOME_BY_USE, hutGrades, potionOf, sameKind} from '../data/potions.js';
+import {POTION, POTIONS, POTION_RES, BELT_ORDER, HOME_BY_USE, hutGrades, potionOf, sameKind} from '../data/potions.js';
 import {alive} from './march.js';
 import {hasBuilding} from './baggage.js';
 import {gearDef} from '../agents/equipment.js';
@@ -37,6 +37,19 @@ export function topUp(K) {
       (m.belt ||= []).push(res); take(K, res);
     }
   }
+  marksUp(K);
+}
+// an elixir in the cargo (a home potion of use `mark`): drunk at once by a free member that lacks its mark — the knights
+// first (m.marks; they go onto the local map with it, campaign/camp.js)
+function marksUp(K) {
+  for (const p of POTIONS.all().filter(x => x.use === 'mark')) for (const g of p.grades) {
+    const mark = CONDITIONS.get(g.effect).mark;
+    for (const m of carriers(K).sort((x, y) => (y.role === 'knight') - (x.role === 'knight'))) {
+      if (!((K.cargo[g.res] || 0) >= 1)) break;
+      if (m.marks?.includes(mark)) continue;
+      (m.marks ||= []).push(mark); take(K, g.res); K.stats.elixirs = (K.stats.elixirs || 0) + 1;
+    }
+  }
 }
 // slots still empty, the spare in the cargo counted
 export const potionRoom = K => carriers(K).reduce((s, m) => s + POTION.slot - (m.potions || 0), 0) - (K.cargo.potion || 0);
@@ -45,6 +58,8 @@ export const beltRoom = K => carriers(K).reduce((s, m) => s + POTION.belt - (m.b
 // room for a brew of the stock (data/potions.js `stock`): as many as its share of the free people (of the captives),
 // at least one while there is anyone, less what the cargo carries of it
 export function homeRoom(K, potion) {
+  // an elixir: one for each free member still without its mark
+  if (potion.use === 'mark') { const mark = CONDITIONS.get(potion.grades[0].effect).mark; return carriers(K).filter(m => !m.marks?.includes(mark)).length - potion.grades.reduce((s, g) => s + (K.cargo[g.res] || 0), 0); }
   const S = potion.stock, heads = S.of === 'captives' ? alive(K).filter(m => m.captive).length : carriers(K).length;
   return heads ? Math.ceil(heads * (S.march ?? S.share)) - potion.grades.reduce((s, g) => s + (K.cargo[g.res] || 0), 0) : 0;
 }

@@ -6,6 +6,7 @@
 // SENSES — what a body notices by. `darkvision`: sees by night as by day; everyone else's sight × (1 − `NIGHT.loss` ×
 // the night) (agents/brains/colonist.js, the colonists' watch; 0 — as before). `scent`: noted, not yet read.
 import {Registry} from '../core/registry.js';
+import {CONDITIONS} from './conditions.js';
 
 export const LANGUAGES = new Registry('language');
 LANGUAGES.registerAll([
@@ -40,4 +41,5 @@ SENSES.registerAll([
 export const NIGHT = {loss: 0};
 export const hasSense = (species, id) => SENSES.get(id).species.includes(species);
 // × how far a creature sees now: 1 by day, or for one with darkvision
-export const nightSight = (species, night) => (hasSense(species, 'darkvision') ? 1 : 1 - NIGHT.loss * night);
+// (`a` — the creature: a cat's eye at work sees as darkvision does, agents/potions.js)
+export const nightSight = (species, night, a = null) => (hasSense(species, 'darkvision') || (a?.effects && a.effects.some(e => CONDITIONS.has(e.id) && CONDITIONS.get(e.id).senses?.includes('darkvision'))) ? 1 : 1 - NIGHT.loss * night);

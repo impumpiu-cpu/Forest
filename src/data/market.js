@@ -64,7 +64,8 @@ export const OFFERS = [
   // `letters`, a town of 800) sells them all, the strong grades only there — and brews them from the caravan's makings
   // (campaign/town.js alchemy, ALCHEMY below); pots for the healer's hut of the camp in any town
   {kind: 'goods', id: 'antidote', n: 1, at: ['healerhut', 'hospice', 'temple'], need: 'belt'},
-  ...['potionStrong', 'antidoteStrong', 'bearBrewStrong', 'bladeVenomStrong', 'antidote', 'bearBrew', 'bladeVenom'].map(id => ({kind: 'goods', id, n: 1, at: ['alchemist'], need: 'belt'})),
+  ...['potionStrong', 'antidoteStrong', 'bearBrewStrong', 'bladeVenomStrong', 'silverOilStrong', 'firewardBrewStrong', 'lightStepStrong', 'catEyeStrong', 'fireFlaskStrong', 'antidote', 'bearBrew', 'bladeVenom', 'silverOil', 'firewardBrew', 'lightStep', 'catEye', 'fireFlask'].map(id => ({kind: 'goods', id, n: 1, at: ['alchemist'], need: 'belt'})),
+  {kind: 'goods', id: 'temperElixir', n: 1, at: ['alchemist'], need: 'home'},
   // the brews (drunk out of the cargo): the warming and the strengthening ones where healers work, all at an alchemist's
   ...['warmBrew', 'mendBrew'].map(id => ({kind: 'goods', id, n: 1, at: ['healerhut', 'hospice', 'temple'], need: 'home'})),
   ...['warmBrewStrong', 'vigorBrewStrong', 'mendBrewStrong', 'sleepBrewStrong', 'warmBrew', 'vigorBrew', 'mendBrew', 'sleepBrew'].map(id => ({kind: 'goods', id, n: 1, at: ['alchemist'], need: 'home'})),

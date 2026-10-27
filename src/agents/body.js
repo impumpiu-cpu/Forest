@@ -7,7 +7,7 @@ import {think} from './mind.js';
 import {tempAt} from '../world/heat.js';
 import {HEAT} from '../data/behaviour.js';
 import {resistTo} from '../data/balance/combat.js';
-import {exhaustionStage, exhaustionRow, conditionHasMods, EXHAUSTION} from '../data/conditions.js';
+import {exhaustionStage, exhaustionRow, conditionHasMods, EXHAUSTION, effectResist} from '../data/conditions.js';
 import {AFFLICTIONS} from '../data/afflictions.js';
 import {catchIll, stepIll, stepTaint, stepWithdrawal} from './afflictions.js';
 import {DAY} from '../core/time.js';
@@ -55,11 +55,13 @@ function stepExhaustion(a) {
 }
 
 // Heat above what a species stands (`heatHarm`) burns: by the profile of who it is (data/behaviour.js HEAT), × the
-// body's answer to fire (data/balance/combat.js resistTo). → true if it burnt
-export function heatHarm(a, sp, T, who) {
+// body's answer to fire (data/balance/combat.js resistTo) × a fire-ward potion at work; one burning with such a potion
+// in its belt drinks it (`w` given). → true if it burnt
+export function heatHarm(a, sp, T, who, w = null) {
   if (!(T > sp.heatHarm)) return false;
   const P = HEAT[who];
-  a.hp -= Math.min(P.max, (T - sp.heatHarm) * P.perDegree) * resistTo(sp, 'fire');
+  if (w && a.belt?.length) drinkFor(w, a, 'fire');
+  a.hp -= Math.min(P.max, (T - sp.heatHarm) * P.perDegree) * resistTo(sp, 'fire') * (a.effects ? effectResist(null, a, 'fire') : 1);
   return true;
 }
 
@@ -73,7 +75,7 @@ export function stepBody(w, a) {
     if (n.memory && a.needs[id] < (REMEMBER_BELOW[id] ?? 0.3)) a.mem[n.memory] += 0.004;
     if (a.diary && a.needs[id] < 0.15) think(w, a, NEED_THOUGHT[id]);
   }
-  heatHarm(a, sp, T, 'colonist');
+  heatHarm(a, sp, T, 'colonist', w);
   stepExhaustion(a);
   // a chill caught in the cold (data/afflictions.js `catch` a day; 0 — never): the colony's people only
   const CH = AFFLICTIONS.get('chill');

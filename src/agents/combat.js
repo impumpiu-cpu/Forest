@@ -24,7 +24,9 @@ import {NORM} from '../data/special.js';
 
 import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
-import {quaff, drinkFor, bladeHit} from './potions.js';
+import {quaff, drinkFor, bladeHit, silverCoat} from './potions.js';
+import {potionOf} from '../data/potions.js';
+import {log} from '../core/log.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
@@ -139,7 +141,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js), a drake's breath burns
   if (melee && bsp.venom && !tsp.undead) { t.poison = {dmg: bsp.venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + bsp.venom.ticks}; }
   // a poison rubbed on the blade (agents/potions.js): the blow that struck home carries it in
-  if (melee && by.coat && !tsp.undead && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'));
+  if (melee && by.coat && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), !!tsp.undead);
   if (melee && bsp.web) t.webbed = {slow: bsp.web.slow, until: w.tick + bsp.web.ticks};
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
@@ -152,8 +154,8 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
 // creatures that fear silver (species `weakTo: ['silver']`): a silvered blade bites them hard, anything else barely;
 // a silvered blade × the body's own answer to silver too (`resist.silver`, the table «Урон по видам»)
 export const SILVER = COMBAT.silver;
-const silverFactor = (t, item) => {
-  const sp = SPECIES.get(t.species), silvered = !!(item && def(item).silver);
+const silverFactor = (t, item, by = null) => {
+  const sp = SPECIES.get(t.species), silvered = !!(item && def(item).silver) || (!!item && silverCoat(by));   // (a silver oil on the blade: agents/potions.js)
   const fear = sp.weakTo?.includes('silver') ? (silvered ? COMBAT.silver.bane : COMBAT.silver.plain) : 1;
   return silvered ? fear * resistTo(sp, 'silver') : fear;
 };
@@ -167,6 +169,36 @@ function scorch(w, t) {
     const B = KINDLE.breath; if (w.grid.fuel[i] > B.fuel) { w.grid.fire[i] = Math.max(w.grid.fire[i], B.fire); heatTo(w, i, B.heat); }
   }
   w.nav.dirty('fire');
+}
+
+// a fire flask hurled from the belt (data/potions.js flask; its row of «Состояний» `flask`): at a foe from `min` to
+// `range` cells off, the way clear and none of the thrower's own within reach of the burst — fire on everyone within
+// `radius` (× their answer to fire, × a fire-ward at work), the ground there catches where there is something to burn.
+// → true when it flew
+export function hurl(w, a, t, d) {
+  if (a.cd > 0 || a.dead || a.downed || a.captive || !t || t.dead || stunnedNow(w, a)) return false;
+  const res = a.belt?.find(r => potionOf(r)?.potion.use === 'throw'); if (!res) return false;
+  const F = CONDITIONS.get(potionOf(res).grade.effect).flask;
+  if (d < F.min || d > F.range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return false;
+  const caught = nearAgents(w, t.x, t.y, F.radius + 1);
+  if (caught.some(o => o !== a && !o.dead && o.faction === a.faction)) return false;   // not into one's own
+  a.belt.splice(a.belt.indexOf(res), 1); a.cd = F.cd;
+  const st = w.chronicle.potions ||= {drunk: 0, ours: 0}; (st.by ||= {}).flask = (st.by.flask || 0) + 1;
+  w.fx.push({x1: a.x, y1: a.y, x2: t.x, y2: t.y, t: 8, kind: 'stone'});
+  for (const o of caught) {
+    if (o.dead || Math.hypot(o.x - t.x, o.y - t.y) > F.radius) continue;
+    o.hp -= F.dmg * resistTo(SPECIES.get(o.species), 'fire') * effectResist(w, o, 'fire'); o.flash = 6; noteHit(o, a);
+    if (o.hp <= 0) lethal(w, o, 'огня', a);
+  }
+  const cx = t.x | 0, cy = t.y | 0, R = Math.ceil(F.radius);
+  for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
+    if (x < 0 || y < 0 || x >= w.w || y >= w.h || Math.hypot(x - cx, y - cy) > R) continue;
+    const i = y * w.w + x;
+    if (w.grid.fuel[i] > KINDLE.breath.fuel) { w.grid.fire[i] = Math.max(w.grid.fire[i], F.fire); heatTo(w, i, F.heat); }
+  }
+  w.nav.dirty('fire');
+  if (a.faction === 'colony' && a.name) log(w, `${a.name} ${a.gender === 'f' ? 'метнула' : 'метнул'} зажигательную склянку.`, 'people');
+  return true;
 }
 
 // rock between the two: no blow and no bite across it. Whoever is that close should step around instead
@@ -194,7 +226,7 @@ export function attack(w, a, t) {
   if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
   // the first blow of a fight: a brew for it drunk, a poison rubbed on the blade (agents/potions.js) — the blow waits
-  if (a.belt?.length && drinkFor(w, a, 'fight')) { a.cd = COMBAT.drink; return true; }
+  if (a.belt?.length && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return true; }
   // rock stops a blow as it stops a shot (a line through the corner of two rocks included); water does not
   if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);
@@ -209,7 +241,7 @@ export function attack(w, a, t) {
     if (deg === 'critFail') a.cd += degreeValue('melee', 'critFail');
   }
   const stance = stanceOf(w, a, t);   // read before the blow: a hurt target knows of it after
-  damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item) * stanceGain(stance, g.melee.q), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null, stance});
+  damage(w, a, t, full * (BLOW.base + w.rngs.combat() * BLOW.spread) * g.melee.dmg * blowStat(a, g.melee.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, g.melee.item, a) * stanceGain(stance, g.melee.q), {type: g.melee.type, mix: g.melee.mix || null, q: g.melee.q || null, stance});
   // the other hand follows (quality `paired`: a second dagger, a hatchet): a blow of its own at its share, met by
   // the target's dodge, block and armour as any
   const off = g.offhand;

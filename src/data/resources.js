@@ -27,7 +27,7 @@ import {RESOURCES as PRICE} from './balance/prices.js';
 import {POTIONS} from './potions.js';
 
 // the colour of a potion on the resource layer and in the stock
-const POTION_COLORS = {heal: '#d8506a', antidote: '#7fc48a', bear: '#b07a3a', venom: '#6aa84f', warm: '#e0894a', vigor: '#d8c84a', mend: '#c87a9a', sleep: '#8a7ac8'};
+const POTION_COLORS = {heal: '#d8506a', antidote: '#7fc48a', bear: '#b07a3a', venom: '#6aa84f', warm: '#e0894a', vigor: '#d8c84a', mend: '#c87a9a', sleep: '#8a7ac8', silver: '#c8d0dc', fireward: '#e0603a', light: '#9ad8e0', cateye: '#c8b04a', flask: '#f08030', temper: '#a04ad8'};
 
 // price, stack and money share live in data/balance/prices.js, one row per resource; a resource with no row
 // is an error at load time, a row with no resource is caught by tools/check-data.mjs

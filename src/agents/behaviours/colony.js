@@ -75,7 +75,7 @@ export const watch = {want(w, a) { const o = watchOption(w, a); return o ? [o] :
 export const flags = {want(w, a) { const o = flagOptions(w, a); return o.length ? o : null; }, keep: (w, a, t) => (t.id === 'answer' ? 0 : ROSTER.keep)};
 
 // how far this one sees: by night less, unless it sees in the dark (data/tongues.js)
-const seenBy = (w, a) => BOARD.sight * (a.mods.sight ?? 1) * nightSight(a.species, nightness(w));
+const seenBy = (w, a) => BOARD.sight * (a.mods.sight ?? 1) * nightSight(a.species, nightness(w), a);
 
 // alarm: while raiders are on the map everyone who has no foe in sight gathers inside the settlement zone and meets
 // them together; one who sees a foe weighs its flag instead

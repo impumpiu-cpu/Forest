@@ -133,7 +133,7 @@ function equip(K, id) {
 // is the potion's × ALCHEMY.fee, the makings and a pot go into it, while there is room for it (the belts, the brews' own). → the lines
 function alchemy(a, K, t, st) {
   const done = [];
-  for (const p of POTIONS.all()) for (const g of p.grades.slice(1)) {   // the strong grades
+  for (const p of POTIONS.all()) for (const g of p.grades.filter(x => x.at === 'alchemist')) {   // the strong grades, and what only an alchemist brews
     while (roomFor(K, p) > 0 && Object.entries(g.cost).every(([r, n]) => (K.cargo[r] || 0) >= n)) {
       const price = gold(RESOURCES.get(g.res).value * ALCHEMY.fee * STANDING[st].buy);
       if (K.gold - price < reserveFor(K, t, st, ALCHEMY.reserve)) break;

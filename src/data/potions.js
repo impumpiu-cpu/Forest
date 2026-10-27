@@ -7,7 +7,11 @@
 //            a venom is in the blood; fight — at the first blow of a fight; blade — rubbed on the weapon at the first blow.
 //            A brew (`home`) is drunk out of the stock, not the belt (settlement/potions.js, POTION.home): cold — one
 //            freezing; tired — one worn out on the night watch or in an alarm; mending — one hurt or with a grave wound;
-//            captive — given to a captive set on running, at the evening council (it sleeps the night through)
+//            captive — given to a captive set on running, at the evening council (it sleeps the night through); mark —
+//            whoever does not bear its mark yet drinks it (an elixir: for life).
+//            In the belt besides: fire — burnt by fire, or at the first blow against a fire-breather; dark — at night,
+//            on the watch or at the first blow; throw — hurled at a foe from afar (agents/potions.js hurl). A poison and
+//            a silver oil both go on the blade: the oil against what fears silver, the poison against the rest
 //   home   — a brew of the stock (the settlement's, the caravan's cargo), never carried in a belt
 //   stock  — how many the hut keeps brewing / the caravan keeps: {share, of: people | captives, want, march?} — while the
 //            stock has fewer than share × that many (at least one), with the recipe's weight `want` (data/recipes.js);
@@ -44,7 +48,13 @@ export const POTION = {
   // to a captive whose will to run is at least `will`. On the world map a brew the caravan drinks at once is brewed in a
   // kettle: one serves `kettle` heads for the day (campaign/potions.js brewTheDay)
   home: {cold: 0.3, tired: 0.25, hurt: 0.6, will: 0.4, kettle: 4},
+  // the cat's eye is drunk once the night is this deep (core/time.js nightness): on the watch, at the first blow
+  dark: 0.5,
 };
+
+// what the foes' peoples carry in their belts (data/migrations.js raiders): by species, each potion with its chance per
+// fighter with hands — the dark elves' poison for the blade, the orcs' bear's brew, the goblins' fire flasks
+export const FOE_BELTS = {darkelf: {bladeVenom: 0.5}, orc: {bearBrew: 0.3}, goblin: {fireFlask: 0.12}};
 
 export const POTIONS = new Registry('potion');
 const P = POTION.pot;
@@ -61,6 +71,22 @@ POTIONS.registerAll([
   {id: 'venom', label: 'яд для клинка', use: 'blade', note: 'клинок натирают перед первым ударом боя', stock: {share: 0.25, of: 'people', want: 0.35},
     grades: [{res: 'bladeVenom', tier: 2, at: 'healerhut', cost: {venom: 1, wax: 1, pots: P}, effect: 'potVenom'},
              {res: 'bladeVenomStrong', tier: 3, at: 'alchemist', cost: {venom: 2, wax: 1, pots: P}, effect: 'potVenomStrong'}]},
+  // silver oil: the blade bites what fears silver as a silvered one — the alchemist's only (silver is worked in a town)
+  {id: 'silver', label: 'серебряное масло', use: 'blade', note: 'клинок натирают перед первым ударом по тому, кто боится серебра', stock: {share: 0.25, of: 'people', want: 0.3},
+    grades: [{res: 'silverOil', tier: 2, at: 'alchemist', cost: {silverBar: 1, wax: 1, pots: P}, effect: 'potSilver'},
+             {res: 'silverOilStrong', tier: 3, at: 'alchemist', cost: {silverBar: 2, wax: 1, pots: P}, effect: 'potSilverStrong'}]},
+  {id: 'fireward', label: 'огнестойкость', use: 'fire', note: 'пьётся, когда жжёт огонь, и перед боем с огнедышащим', stock: {share: 0.2, of: 'people', want: 0.3},
+    grades: [{res: 'firewardBrew', tier: 2, at: 'healerhut', cost: {slime: 2, herbs: 1, pots: P}, effect: 'potFireward'},
+             {res: 'firewardBrewStrong', tier: 3, at: 'alchemist', cost: {gland: 1, slime: 1, pots: P}, effect: 'potFirewardStrong'}]},
+  {id: 'light', label: 'лёгкий шаг', use: 'fight', note: 'пьётся перед первым ударом боя: шаг быстрее', stock: {share: 0.2, of: 'people', want: 0.3},
+    grades: [{res: 'lightStep', tier: 2, at: 'healerhut', cost: {herbs: 2, wort: 1, pots: P}, effect: 'potLight'},
+             {res: 'lightStepStrong', tier: 3, at: 'alchemist', cost: {herbs: 2, feathers: 1, pots: P}, effect: 'potLightStrong'}]},
+  {id: 'cateye', label: 'кошачий глаз', use: 'dark', note: 'пьётся ночью: на посту и перед боем в темноте — видит во мраке', stock: {share: 0.2, of: 'people', want: 0.3},
+    grades: [{res: 'catEye', tier: 2, at: 'healerhut', cost: {lynxEyes: 1, herbs: 1, pots: P}, effect: 'potCatEye'},
+             {res: 'catEyeStrong', tier: 3, at: 'alchemist', cost: {lynxEyes: 2, wort: 1, pots: P}, effect: 'potCatEyeStrong'}]},
+  {id: 'flask', label: 'зажигательная склянка', use: 'throw', note: 'бросают во врага издали: огонь по нему и рядом', stock: {share: 0.2, of: 'people', want: 0.25},
+    grades: [{res: 'fireFlask', tier: 2, at: 'healerhut', cost: {braga: 1, wax: 1, pots: P}, effect: 'potFlask'},
+             {res: 'fireFlaskStrong', tier: 3, at: 'alchemist', cost: {braga: 1, gland: 1, pots: P}, effect: 'potFlaskStrong'}]},
   // the brews: drunk out of the stock
   {id: 'warm', label: 'согревающий отвар', use: 'cold', home: true, note: 'пьют из запасов, когда зябнут', stock: {share: 0.34, of: 'people', want: 0.4, march: 1},
     grades: [{res: 'warmBrew', tier: 1, at: 'healerhut', cost: {wort: 2, pots: P}, effect: 'potWarm'},
@@ -74,6 +100,9 @@ POTIONS.registerAll([
   {id: 'sleep', label: 'сонный отвар', use: 'captive', home: true, note: 'дают пленному, что задумал бежать: спит всю ночь', stock: {share: 1, of: 'captives', want: 0.5},
     grades: [{res: 'sleepBrew', tier: 1, at: 'healerhut', cost: {sleepgrass: 1, pots: P}, effect: 'potSleep'},
              {res: 'sleepBrewStrong', tier: 2, at: 'alchemist', cost: {sleepgrass: 2, herbs: 1, pots: P}, effect: 'potSleepStrong'}]},
+  // the elixir of tempering: a mark for life (never twice) — the alchemist's only, of one grade
+  {id: 'temper', label: 'эликсир закалки', use: 'mark', home: true, note: 'пьют из запасов те, у кого нет метки «закалка»: навсегда', stock: {share: 0.25, of: 'people', want: 0.2},
+    grades: [{res: 'temperElixir', tier: 3, at: 'alchemist', cost: {gland: 1, bile: 1, lynxEyes: 1, pots: P}, effect: 'potTemper'}]},
 ]);
 
 // a potion's grade by its resource: {potion, grade, k} (k — 0 plain, 1 strong), or null

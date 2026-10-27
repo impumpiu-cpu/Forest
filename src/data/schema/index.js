@@ -33,7 +33,7 @@ import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, RACE_FORMS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
 import {RESOURCES} from '../resources.js';
-import {POTION, POTIONS, potionOf} from '../potions.js';
+import {POTION, POTIONS, FOE_BELTS, potionOf} from '../potions.js';
 import {rebuildBaseMods} from '../traits.js';
 import {CREATURE_MODS, COLONY_MODS, MOD_HOWS, COLONY_KINDS, effectErrors} from '../mods.js';
 import {TAGS, TAG_ON, hasTag, tagIds} from '../tags.js';
@@ -475,11 +475,11 @@ TABLES.push(
     rows: () => POTIONS.all().flatMap(p => p.grades.map((g, k) => ({res: g.res, potion: p.id, label: k ? `${p.label} (усиленное)` : p.label, use: p.use, grade: k ? 'усиленное' : 'простое', tier: g.tier, at: g.at, cost: g.cost, effect: g.effect}))),
     target: (r, c) => { const g = potionOf(r.res).grade; return c.key === 'use' ? [potionOf(r.res).potion, 'use'] : [g, c.key]; },
     columns: [col('res', 'Ресурс'), col('label', 'Зелье', 'text', {edit: false}), col('grade', 'Ступень', 'text', {edit: false}),
-      col('use', 'Когда пьют', 'enum', {values: {wounded: 'у края смерти', poisoned: 'яд в крови', fight: 'перед боем', blade: 'на клинок', cold: 'зябнет (из запасов)', tired: 'с ног валится на посту (из запасов)', mending: 'ранен (из запасов)', captive: 'пленному перед побегом'}}),
+      col('use', 'Когда пьют', 'enum', {values: {wounded: 'у края смерти', poisoned: 'яд в крови', fight: 'перед боем', blade: 'на клинок', cold: 'зябнет (из запасов)', tired: 'с ног валится на посту (из запасов)', mending: 'ранен (из запасов)', captive: 'пленному перед побегом', fire: 'жжёт огонь, бой с огнедышащим', dark: 'ночью: на посту и перед боем', throw: 'бросают во врага', mark: 'метка навсегда (из запасов)'}}),
       col('tier', 'Сложность', 'int', {min: 1, max: 4, note: 'ступень навыка (T1–T4); хижина лекаря варит до hutTier'}),
       col('at', 'Где варят', 'enum', {values: {healerhut: 'хижина лекаря', alchemist: 'лаборатория алхимика'}}),
       col('cost', 'Состав', 'map', {ref: RESOURCES, min: 0}), col('effect', 'Действие', 'ref', {ref: CONDITIONS})]},
-  {id: 'potionRules', label: 'Правила зелий', group: 'Вещи', ...grp({potion: POTION}),
+  {id: 'potionRules', label: 'Правила зелий', group: 'Вещи', ...grp({potion: POTION, foeBelts: FOE_BELTS}),
     note: 'Лечение (heal — сколько лечит простое: строка «Состояний» potHeal — своё число), пьют ниже below здоровья; гнездо лечения slot, мест под прочие belt; горшков на зелье pot; хижина лекаря варит до ступени hutTier, гончар держит для неё hutPots горшков; раздача из запасов каждые hand тиков; у врага зелье с шансом foe; в походе стоянка с хижиной находит каждую траву с шансом camp.find (× wooded в лесу); отвары из запасов: согревающий — тепло ниже home.cold, бодрящий — бодрость ниже home.tired на посту или в тревогу, укрепляющий — здоровье ниже home.hurt или тяжёлая рана, сонный — пленному с волей к побегу от home.will.'},
   {id: 'conditionRules', label: 'Истощение: правила', group: 'Существа', ...grp({exhaustion: EXHAUSTION}),
     note: 'Нужда на этом уровне или ниже (exhaustion.low) считается к истощению; какие нужды (needs).'},

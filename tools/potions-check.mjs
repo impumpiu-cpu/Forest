@@ -185,5 +185,54 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
   expect(tr.mods.regen > 1 && tr.mods.mend === CONDITIONS.get('potMend').mods.mend, `тролль: заживление ${tr.mods.regen}, отвар ${tr.mods.mend}`);
 }
 
+// silver oil goes on the blade against what fears silver (a poison against the living), and bites it as silver
+{
+  const w = scene(), a = put(w, 'human', 'colony', ['ironaxe']), v = put(w, 'vampire', 'raiders'), h = put(w, 'human', 'raiders');
+  a.belt = ['bladeVenom', 'silverOil']; v.x = a.x + 1; v.hp = 99; rngs(w, 0.5);
+  a.cd = 0; attack(w, a, v);
+  expect(a.coat?.id === 'potSilver' && a.belt.includes('bladeVenom'), `против вампира на клинок не масло: ${a.coat?.id}`);
+  const hp0 = v.hp; a.cd = 0; attack(w, a, v); const withOil = hp0 - v.hp;
+  a.coat = null; v.hp = 99; a.cd = 0; attack(w, a, v);   // (the venom is not for it: nothing goes on)
+  const hp1 = v.hp; a.coat = null; a.cd = 0; attack(w, a, v); const bare = hp1 - v.hp;
+  expect(withOil > bare * 2, `масло не бьёт как серебро: ${withOil} против ${bare}`);
+  const b = put(w, 'human', 'colony', ['ironaxe']); b.belt = ['bladeVenom', 'silverOil']; b.x = 40; h.x = 41; b.cd = 0; attack(w, b, h);
+  expect(b.coat?.id === 'potVenom', 'против живого на клинок не яд');
+}
+
+// fire: a fire-ward drunk when the fire burns, it holds the fire off; a flask hurled burns the foe and not one's own
+{
+  const {heatHarm} = await import('../src/agents/body.js');
+  const {SPECIES} = await import('../src/data/species.js');
+  const w = scene(), a = put(w, 'human', 'colony'), sp = SPECIES.get('human'), tick = () => { w.tick++; if (w.scratch) w.scratch = {}; };
+  const hp = a.hp; heatHarm(a, sp, sp.heatHarm + 20, 'colonist'); const bare = hp - a.hp;
+  a.hp = hp; a.belt = ['firewardBrew']; heatHarm(a, sp, sp.heatHarm + 20, 'colonist', w); const warded = hp - a.hp;
+  expect(!a.belt.length && Math.abs(warded - bare * CONDITIONS.get('potFireward').resist.fire) < 1e-9, `огнестойкость: ${warded} против ${bare}`);
+  const {hurl} = await import('../src/agents/combat.js');
+  const t = put(w, 'human', 'raiders'), c = put(w, 'human', 'colony'); t.x = a.x + 4; c.x = 60; t.hp = 5;
+  a.belt = ['fireFlask']; a.cd = 0;
+  expect(hurl(w, a, t, 4) && t.hp < 5 && !a.belt.length, 'склянка не брошена или не обожгла');
+  a.belt = ['fireFlask']; a.cd = 0; c.x = t.x + 0.5; c.y = t.y; tick();
+  expect(!hurl(w, a, t, 4) && a.belt.length === 1, 'склянку бросили рядом со своим');
+  a.cd = 0; c.x = 60;
+  expect(!hurl(w, a, t, 1) && a.belt.length === 1, 'склянку бросили вплотную');
+}
+
+// light step, cat's eye at the first blow at night, the elixir of tempering: a mark for life, never twice
+{
+  const {nightSight, NIGHT} = await import('../src/data/tongues.js');
+  const loss = NIGHT.loss; NIGHT.loss = 0.5;   // (the night hides nothing by default: the eye would have nothing to do)
+  const w = scene(), a = put(w, 'human', 'colony', ['ironaxe']), t = put(w, 'human', 'raiders');
+  t.x = a.x + 1; t.hp = 50; a.belt = ['lightStep', 'catEye']; const speed = a.mods.speed;
+  a.cd = 0; attack(w, a, t);
+  expect(a.mods.speed > speed && a.belt.includes('catEye'), 'лёгкий шаг не выпит перед боем или кошачий глаз выпит днём');
+  expect(nightSight('human', 1, a) < 1, 'без кошачьего глаза видит ночью как днём');
+  drink(w, a, 'catEye');
+  expect(nightSight('human', 1, a) === 1, 'кошачий глаз не дал видеть во мраке');
+  NIGHT.loss = loss;
+  a.diary = []; w.stock.temperElixir = 2; const hpMax = maxHp(a);
+  w.tick = POTION.hand * 50; stepPotions(w); w.tick += POTION.hand; stepPotions(w);
+  expect(a.marks?.includes('tempered') && w.stock.temperElixir === 1 && maxHp(a) > hpMax, `эликсир закалки: метки ${a.marks}, осталось ${w.stock.temperElixir}`);
+}
+
 if (bad.length) { console.log('Зелья:\n  ' + bad.join('\n  ')); process.exit(1); }
-console.log(`ok   зелья: ${POTIONS.all().length} (ступеней ${POTIONS.all().reduce((s, p) => s + p.grades.length, 0)}) — лечение из гнезда и пояса, противоядие при яде, медвежья сила и яд на клинке перед первым ударом, усиленное держит на поле, метка не дважды; горшок в каждом; запасы наполняют пояса; хижина каравана варит простое; отвары из запасов — согревающий, бодрящий, укрепляющий, сонный пленному`);
+console.log(`ok   зелья: ${POTIONS.all().length} (ступеней ${POTIONS.all().reduce((s, p) => s + p.grades.length, 0)}) — лечение из гнезда и пояса, противоядие при яде, медвежья сила и яд на клинке перед первым ударом, усиленное держит на поле, метка не дважды; горшок в каждом; запасы наполняют пояса; хижина каравана варит простое; отвары из запасов — согревающий, бодрящий, укрепляющий, сонный пленному; масло против боящихся серебра, огнестойкость, склянка мимо своих, лёгкий шаг, кошачий глаз, закалка навсегда`);

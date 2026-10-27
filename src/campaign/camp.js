@@ -69,7 +69,7 @@ export function campSetup(a, K, ev) {
   return {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}${n ? `:${n}` : ''}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
-    members: alive(K).map(m => ({id: m.id, name: m.name, potions: m.potions || 0, belt: [...(m.belt || [])], effects: effectsOut(K, m), gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
+    members: alive(K).map(m => ({id: m.id, name: m.name, potions: m.potions || 0, belt: [...(m.belt || [])], effects: effectsOut(K, m), marks: m.marks ? [...m.marks] : null, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
       align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
@@ -128,7 +128,8 @@ export function openCamp(S) {
     if (m.former) setStanding(ag, 'former', {since: w.tick, bond: m.loyalty ?? 0.6, fought: false});   // (the role's shorter list: data/behaviour.js WAYS.former)   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
     // a captive of the caravan stays one on the map (settlement/captives.js)
     if (m.captive) { setStanding(ag, 'captive', {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned ?? null, service: m.captive.service || 0}); if (rec) rec.captive = true; }   // (no council, flag, watch or trade; kept in: data/behaviour.js WAYS.captive)
-    if (m.effects?.length) ag.effects = m.effects.map(e => ({id: e.id, until: w.tick + e.ticks}));   // the brews at work go on (campaign/potions.js)
+    if (m.effects?.length) ag.effects = m.effects.map(e => ({id: e.id, until: w.tick + e.ticks}));
+    if (m.marks?.length) ag.marks = [...new Set([...(ag.marks || []), ...m.marks])];   // an elixir's mark for life (campaign/potions.js)   // the brews at work go on (campaign/potions.js)
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
@@ -295,7 +296,7 @@ function raiseAlarm(w) {
   for (const p of C.people.values()) {
     if (p.dead || p.captive) continue;
     const struck = !!attackerOf(w, p) || p.downed;
-    const awake = p.task?.id !== 'sleep' && !p.downed, r = R * nightSight(p.species, night);
+    const awake = p.task?.id !== 'sleep' && !p.downed, r = R * nightSight(p.species, night, p);
     if (struck || (awake && foes.some(o => Math.hypot(o.x - p.x, o.y - p.y) <= (o.sneaking ? Math.min(r, sneakSeen(o)) : r)))) {   // one who creeps is seen only close (agents/combat.js)
       C.alarm = w.tick;
       for (const q of C.people.values()) if (!q.dead && !q.captive) wake(q, 'тревога в лагере', 'тревога');

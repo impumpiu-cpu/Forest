@@ -59,6 +59,7 @@ CONDITIONS.registerAll([
   {id: 'wight', kind: 'mark', where: 'marks', label: 'умертвие',
     note: 'голова звена мертвецов (data/ranks.js): костяк, в котором воля осталась, — крепче и сильнее прочих; его звено идёт за ним, а падёт он — за некромантом, если тот жив, иначе разбредается',
     hp: 1.5, special: {S: 1, E: 1}, mods: {}},
+  {id: 'tempered', kind: 'mark', where: 'marks', label: 'закалка', note: 'эликсир закалки: здоровье × hp, Выносливость + special, холод × cold — на всю жизнь', hp: 1.1, special: {E: 1}, mods: {cold: 0.85}},
   {id: 'officer', kind: 'mark', where: 'marks', label: 'офицер',
     note: 'голова звена в банде (data/ranks.js): крепче пешки, стоит до смерти; пока стоит, его звено не бежит',
     hp: 1.3, mods: {}, holdBelow: 0.15},
@@ -71,6 +72,21 @@ CONDITIONS.registerAll([
   {id: 'potBearStrong', kind: 'potion', label: 'медвежья сила (усиленная)', note: 'сила и смелость на ticks тиков; стоит, пока здоровье выше holdBelow', ticks: 600, mods: {str: 1.35, bravery: 0.3}, holdBelow: 0.2},
   {id: 'potVenom', kind: 'potion', label: 'яд на клинке', note: 'hits ударов, что дошли до тела, травят: dmg здоровья в тик ticks тиков (нежить не травится)', blade: {hits: 3, dmg: 0.0005, ticks: 200}},
   {id: 'potVenomStrong', kind: 'potion', label: 'яд на клинке (усиленный)', note: 'hits ударов травят сильнее и дольше', blade: {hits: 6, dmg: 0.0008, ticks: 240}},
+  // silver on the blade: hits blows strike as a silvered blade (agents/combat.js silverFactor)
+  {id: 'potSilver', kind: 'potion', label: 'серебряное масло', note: 'hits ударов бьют как посеребрённый клинок', blade: {hits: 4, silver: true}},
+  {id: 'potSilverStrong', kind: 'potion', label: 'серебряное масло (усиленное)', note: 'hits ударов бьют как посеребрённый клинок', blade: {hits: 8, silver: true}},
+  {id: 'potFireward', kind: 'potion', label: 'огнестойкость', note: 'огонь и жар × resist на ticks тиков', ticks: 600, resist: {fire: 0.4}, mods: {}},
+  {id: 'potFirewardStrong', kind: 'potion', label: 'огнестойкость (усиленная)', note: 'огонь и жар × resist на ticks тиков', ticks: 1200, resist: {fire: 0.15}, mods: {}},
+  {id: 'potLight', kind: 'potion', label: 'лёгкий шаг', note: 'шаг × speed на ticks тиков', ticks: 400, mods: {speed: 1.2}},
+  {id: 'potLightStrong', kind: 'potion', label: 'лёгкий шаг (усиленный)', note: 'шаг × speed, уклонение + dodge на ticks тиков', ticks: 600, mods: {speed: 1.3, dodge: 0.05}},
+  // senses — what the body notices by while it works (data/tongues.js SENSES: darkvision — sees by night as by day)
+  {id: 'potCatEye', kind: 'potion', label: 'кошачий глаз', note: 'видит во мраке (senses) ticks тиков — ночь', ticks: 1200, senses: ['darkvision'], mods: {}},
+  {id: 'potCatEyeStrong', kind: 'potion', label: 'кошачий глаз (усиленный)', note: 'видит во мраке, обзор × sight на ticks тиков', ticks: 2400, senses: ['darkvision'], mods: {sight: 1.15}},
+  // a flask hurled (agents/potions.js hurl): dmg of fire to whoever is within radius of where it bursts (× their
+  // answer to fire), the ground there catches fire where there is something to burn; from min to range cells away
+  {id: 'potFlask', kind: 'potion', label: 'зажигательная склянка', note: 'бросок на min…range клеток: огонь dmg по всем в radius, земля загорается', flask: {dmg: 0.35, radius: 1.2, min: 2, range: 6, fire: 0.6, heat: 60, cd: 24}},
+  {id: 'potFlaskStrong', kind: 'potion', label: 'зажигательная склянка (усиленная)', note: 'бросок: огонь dmg по всем в radius, земля загорается', flask: {dmg: 0.6, radius: 1.6, min: 2, range: 7, fire: 0.8, heat: 80, cd: 24}},
+  {id: 'potTemper', kind: 'potion', label: 'эликсир закалки', note: 'метка «закалка» навсегда (второй раз не пьётся)', mark: 'tempered'},
   // the brews of the stock (data/potions.js home): needs — a need filled at once (+ share); mend — the time a grave
   // wound has left to heal × this; march — health a day on the campaign's world map; sleeps — a captive sleeps the night
   // through, calm — and its will to run falls by this much

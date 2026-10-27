@@ -7,7 +7,7 @@
 //   species/faction/init/kit/groupInit/message — the group itself;
 //   members(w, rng) — a mixed group instead: [{species, faction?, init(a, w)?, kit?}, …]
 import {Registry} from '../core/registry.js';
-import {POTION} from './potions.js';
+import {POTION, FOE_BELTS} from './potions.js';
 import {colonists, foodTotal, popCap, ofSpecies} from '../settlement/query.js';
 import {plural} from '../core/util.js';
 import {WILDLIFE} from './presets.js';
@@ -136,6 +136,7 @@ MIGRATIONS.registerAll([
           if (m.linkNo != null) { a.linkNo = m.linkNo; a.linkKind = m.linkKind; }   // the link of the band it came in (data/roles.js LINKS)
           if (SPECIES.get(m.species).inventory && w.rngs.outside() < POTION.foe) a.potions = 1;   // a healing potion, rarely (agents/potions.js)
           const belt = m.role ? COMBAT_ROLES.get(m.role).potions || 0 : 0; if (belt > (a.potions || 0)) a.potions = belt;   // a healer's belt
+          if (SPECIES.get(m.species).inventory) for (const [res, p] of Object.entries(FOE_BELTS[m.species] || {})) if ((a.belt?.length || 0) < POTION.belt && w.rngs.outside() < p) (a.belt ||= []).push(res);   // its people's potions (data/potions.js FOE_BELTS)
           if (!m.init) a.name = SPECIES.get(m.species).label.replace(/^./, c => c.toUpperCase()); else m.init(a, w);
           // a war beast (a warg with orcs, a hyena with gnolls) follows the band, not its own brain
           // — trained (data/conditions.js «выученный»): stronger than a wild one, it does not run while it lives
