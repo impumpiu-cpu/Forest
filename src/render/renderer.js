@@ -4,7 +4,7 @@ import {CARCASS} from '../agents/carcass.js';
 import {hpShare} from '../agents/agent.js';
 import {BY_CODE, T, WALKABLE, isWater} from '../data/terrain.js';
 import {airTemp} from '../world/heat.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, isSentient} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {RESOURCES} from '../data/resources.js';
@@ -383,7 +383,7 @@ export class Renderer {
       LOOKS[look.shape](ctx, a, px, py, r, color, S);
       if (a.flash) { ctx.strokeStyle = '#fff3c4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, r + 2, 0, Math.PI * 2); ctx.stroke(); }
       if (a.carry?.n > 0) { ctx.fillStyle = RESOURCES.get(Object.keys(a.carry.res)[0]).color; ctx.fillRect(px + r * 0.4, py - r * 1.1, Math.max(3, S * 0.55), Math.max(3, S * 0.55)); }
-      if (hpShare(a) < 0.999 && sp.sentient) {
+      if (hpShare(a) < 0.999 && isSentient(sp)) {
         ctx.fillStyle = '#2a1414'; ctx.fillRect(px - S, py + r + 2, S * 2, 2);
         ctx.fillStyle = hpShare(a) > 0.5 ? '#8fbf5a' : '#e0b040'; ctx.fillRect(px - S, py + r + 2, S * 2 * clamp(hpShare(a), 0, 1), 2);
       }

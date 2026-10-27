@@ -22,6 +22,7 @@ import {think} from '../agents/mind.js';
 import {log} from '../core/log.js';
 import {esc, g, clamp} from '../core/util.js';
 import {hourOf, dayOf} from '../core/time.js';
+import {setStanding} from '../agents/standing.js';
 
 const F = FREEDOM;
 const name = a => `<b>${esc(a.name)}</b>`;
@@ -33,8 +34,7 @@ export function freeCaptive(w, a, by) {
   const B = BONDS.has(a.captive.bonds) ? BONDS.get(a.captive.bonds) : null;
   if (B?.back) w.stock[B.resource] = (w.stock[B.resource] || 0) + B.n;
   const mul = a.own?.mul; if (mul) { delete mul.hunger; delete mul.work; }   // the captives' ration is over
-  a.former = {since: w.tick, bond: F.bond.start, fought: false, was: a.captive.was || null, service: a.captive.service || 0};
-  a.captive = null; a.brain = 'former';   // the role of a former slave (agents/brains/index.js)
+  setStanding(a, 'former', {since: w.tick, bond: F.bond.start, fought: false, was: a.captive.was || null, service: a.captive.service || 0});
   refreshBody(a);
   if (w.scratch) delete w.scratch.colonists;
   tally(w).freed = (tally(w).freed || 0) + 1;
@@ -45,7 +45,7 @@ export function freeCaptive(w, a, by) {
 
 // a former slave made a full member
 function makeMember(w, a) {
-  a.former = null; a.brain = 'colonist';   // a member now: the full role
+  setStanding(a, 'colonist');   // a member now: the full standing
   if (w.scratch) delete w.scratch.colonists;
   tally(w).members = (tally(w).members || 0) + 1;
   const r = w.chronicle.people?.find(p => p.id === a.id); if (r) r.former = false;

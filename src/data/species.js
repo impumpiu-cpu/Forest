@@ -1,7 +1,9 @@
 // Creatures. A species sets body stats, which needs it has, how it looks and, for animals,
 // its behaviours (the list `behaviours`: docs/BEHAVIOUR.md; a race has none and thinks by its faction) and what hunting it yields. Animals live here; thinking races in data/races.js,
 // the rot's undead and other raid monsters in data/monsters.js. All of them end up in SPECIES.
-//   mind: 'beast' | 'semi' | 'sentient' — only the sentient can be hired or bargained with
+//   mind: how it thinks — one field (MINDS below): 'mindless' (the risen dead: no fear, no cunning) · 'beast' · 'semi'
+//         (a warg, a spirit, an upyr) · 'sentient' (the races: hired, bargained with, taken captive). The fighting roles
+//         read it as the depth of their tactics (agents/tactics.js)
 //   special, hp, speed, attack: in data/balance/creatures.js, one row per species (bodyFor merges it);
 //            for beasts `relativeStats`: the row is the typical animal
 //   trophies: rare extras on top of `yields`, decided once when the colony kills it (agents/trophies.js):
@@ -17,6 +19,11 @@ import {BESTIARY} from './bestiary.js';
 import {bodyFor, CREATURES} from './balance/creatures.js';
 import {petNames} from './names.js';
 import {WAYS, BEAT} from './behaviour.js';
+
+// how a creature thinks (`mind`): the words, in order from none to full
+export const MINDS = {mindless: 'безмозглый', beast: 'зверь', semi: 'полуразумный', sentient: 'разумный'};
+export const isSentient = sp => sp?.mind === 'sentient';
+export const isMindless = sp => sp?.mind === 'mindless';
 
 export const SPECIES = new Registry('species');
 

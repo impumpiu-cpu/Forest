@@ -81,6 +81,11 @@ export function loadWorld(save) {
   // the caravan's people are two roles now (agents/brains/index.js), and the trader's states one task with a mode
   for (const a of w.agents) {
     if (a.brain === 'caravan') a.brain = a.role === 'guard' ? 'guard' : 'trader';
+    // the trader's and the guard's `role` is their standing (agents/standing.js), the necromancer is known by his kind;
+    // the dead obeyed `master` before they `obey` (a.master is a colonist's craft now and only that)
+    if (a.role) delete a.role;
+    if (typeof a.master === 'number') { a.obeys = a.master; a.master = null; }
+    if (a.masterUp != null) { a.obeysUp = a.masterUp; delete a.masterUp; }
     if (a.brain === 'colonist' && a.captive) a.brain = 'captive'; else if (a.brain === 'colonist' && a.former) a.brain = 'former';   // the roles of the colony's people (agents/brains/index.js)
     if (['camped', 'stall', 'night'].includes(a.task?.id)) a.task = {id: 'travel', mode: a.task.id === 'stall' ? 'trading' : a.task.id === 'camped' ? 'camp' : 'night'};
   }

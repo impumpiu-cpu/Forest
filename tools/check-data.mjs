@@ -14,7 +14,7 @@ import {STRENGTH, CREATURES} from '../src/data/balance/creatures.js';
 import {RECIPES} from '../src/data/recipes.js';
 import {JOBS} from '../src/data/jobs.js';
 import {BUILDINGS} from '../src/data/buildings.js';
-import {SPECIES, KINDS} from '../src/data/species.js';
+import {SPECIES, KINDS, MINDS} from '../src/data/species.js';
 import {BEHAVIOURS} from '../src/data/behaviours.js';
 import '../src/agents/behaviours/index.js';   // the code behind every row, checked at load
 import {NAVMAPS} from '../src/data/navmaps.js';
@@ -163,7 +163,7 @@ for (const m of MIGRATIONS.all()) if (m.species && !SPECIES.has(m.species)) err(
 // races and monsters: SPECIAL limits, peoples, values, relations, names
 for (const sp of SPECIES.all()) {
   const where = `вид ${sp.id}`;
-  if (!['beast', 'semi', 'sentient'].includes(sp.mind)) err(`${where}: mind должен быть beast, semi или sentient`);
+  if (!(sp.mind in MINDS)) err(`${where}: mind должен быть одним из ${Object.keys(MINDS).join(', ')}`);
   if (sp.special) for (const st of STATS.ids()) {
     const r = sp.special[st];
     if (!Array.isArray(r) || r.length !== 2 || r[0] > r[1] || r[0] < 0) err(`${where}: предел ${st} должен быть [мин, макс]`);

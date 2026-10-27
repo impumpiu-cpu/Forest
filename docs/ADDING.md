@@ -124,7 +124,7 @@
 
 ### Чудовище
 
-Запись в `data/monsters.js`: ступень разума `mind`, `kind`, `undead` (без потребностей и страха), `mindless` (идёт на живых, не грабит, не боится огня), `rots` и `sun` (гниль слабеет в тепле и на солнце), `drinks`, `weakTo: ['silver']`. Тело, SPECIAL и `resist` (`{ranged: 0.45}` — стрелы почти не берут) — строка в `data/balance/creatures.js`, затем `npm run arena:calibrate`. Чтобы чудовище приходило, добавьте его в состав банды в `data/raids.js`. Нежить идёт за некромантом, если банда при сборе назначает ей `a.master` (`groupInit` банды мертвецов), и разбредается, когда он гибнет.
+Запись в `data/monsters.js`: ступень разума `mind` (`mindless` — идёт на живых, не грабит, не боится огня; `beast`, `semi`, `sentient`: `data/species.js MINDS`), `kind`, `undead` (без потребностей и страха), `rots` и `sun` (гниль слабеет в тепле и на солнце), `drinks`, `weakTo: ['silver']`. Тело, SPECIAL и `resist` (`{ranged: 0.45}` — стрелы почти не берут) — строка в `data/balance/creatures.js`, затем `npm run arena:calibrate`. Чтобы чудовище приходило, добавьте его в состав банды в `data/raids.js`. Нежить идёт за некромантом, если банда при сборе назначает ей `a.master` (`groupInit` банды мертвецов), и разбредается, когда он гибнет.
 
 ### Разумная раса
 

@@ -192,12 +192,12 @@ RAID_BANDS.registerAll([
   {id: 'undead', label: 'мертвецы', kind: 'monster', links: [['bones', 1]], ranks: {officer: 'умертвие', boss: 'лич'},
     chance: {weight: 0.8, perNight: 2, threat: 3},
     members: (w, rng, budget, t, o) => {
-      const lead = t >= 10 ? [{species: 'necromancer', init: a => { a.role = 'necromancer'; a.name = 'Некромант'; }}] : [];
+      const lead = t >= 10 ? [{species: 'necromancer', init: a => { a.name = 'Некромант'; }}] : [];
       // the dead are slow: a host of them comes a fifth bigger than its rating says it needs to be
       return fill(rng, budget * 1.2, [['zombie', 3], ['skeleton', t >= 6 ? 2 : 0]], t, {extra: lead, ...o});
     },
-    groupInit: group => { const nec = group.find(a => a.role === 'necromancer'); if (nec) for (const a of group) if (a !== nec) a.master = nec.id; },
-    message: (n, group) => `Из курганов поднялись мертвецы: ${n}${group.some(a => a.role === 'necromancer') ? '. За ними идёт некромант — без него они разбредутся' : ''}`},
+    groupInit: group => { const nec = group.find(a => a.species === 'necromancer'); if (nec) for (const a of group) if (a !== nec) a.obeys = nec.id; },
+    message: (n, group) => `Из курганов поднялись мертвецы: ${n}${group.some(a => a.species === 'necromancer') ? '. За ними идёт некромант — без него они разбредутся' : ''}`},
 
   // a necromancer's cult (atlas/necro.js): any of the living about and the dead with them — each head drawn by itself
   // from the cell's pool (o.pool: [[species, weight]] by density, campaign/land.js; on a settlement's cell its

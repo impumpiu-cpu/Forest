@@ -8,7 +8,7 @@
 // `target(row, column)` says where the value really lives (rows that are copies); `after()` rebuilds what is
 // made from the table at load (items from forms × materials).
 import {col, paramRows, paramGroups, params, checkTables} from './columns.js';
-import {SPECIES, KINDS} from '../species.js';
+import {SPECIES, KINDS, MINDS} from '../species.js';
 import {WORLD_PEOPLES} from '../peoples.js';
 import {KINS, RELATIONS, OPINION} from '../relations.js';
 import {VALUES, AXIS_MAX, ALIGN, ALIGN_DRIFT} from '../values.js';
@@ -111,7 +111,7 @@ export const GROUPS = ['Словари', 'Существа', 'Отношения
 // the letters the sheet «SPECIAL (итог)» shows: a human's range, the sturdy races', and the beasts' beyond
 const SHEET_X = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, 30, 50, 80];
 const keysOf = obj => ({has: k => Object.prototype.hasOwnProperty.call(obj, k)});
-const MINDS = {beast: 'зверь', semi: 'полуразумный', sentient: 'разумный'};
+// (MINDS: data/species.js — the one field of how a creature thinks)
 const SLOTS = {hand: 'рука', body: 'тело', back: 'спина'};
 const labels = list => (list || []).map(x => x.label).join(', ');
 

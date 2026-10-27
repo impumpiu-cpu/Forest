@@ -36,7 +36,7 @@ import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {catchRunaway} from '../settlement/escape.js';
 import {assistStillOn} from '../settlement/masters.js';
 import {REST, KINDLE, TACTICS} from '../data/behaviour.js';
-import {dress as dressWound} from './wounds.js';
+import {dress as dressWound, stabilize} from './wounds.js';
 import {POTION} from '../data/potions.js';
 import {BEHAVIOURS} from '../data/behaviours.js';
 import {ACTS} from './behaviours/index.js';
@@ -299,6 +299,7 @@ TASKS.registerAll([
     if ((task.work = (task.work || 0) + 1) < (task.potion ? TACTICS.mend.potionTicks : TACTICS.mend.ticks)) return;
     if (task.potion) { a.potions--; b.hp = Math.min(maxHp(b), b.hp + POTION.heal); b.flash = 4; }
     else {
+      if (b.faction === 'colony') { stabilize(w, a, b); done(w, a); return; }   // one of ours: the colony's own dressing (thoughts, the chronicle)
       dressWound(w, b, a.skill?.medicine || 0); b.task = null;
       b.hp = Math.max(b.hp, TACTICS.mend.standUp * maxHp(b));   // on its feet enough to fight on, not to be sent home at once
       const sq = squadOf(w, b); if (sq && b.fellNoted) { b.fellNoted = false; sq.fallen = Math.max(0, sq.fallen - 1); }   // not a loss of the band any more

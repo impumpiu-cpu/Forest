@@ -12,7 +12,7 @@ import {assign} from './baggage.js';
 import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {makeMember} from './start.js';
-import {room} from './company.js';
+import {room, setPlace} from './company.js';
 
 const C = CAPTIVE.campaign;
 const alive = K => K.members.filter(m => m.alive);
@@ -157,14 +157,13 @@ export function freedomEvening(a, K, say) {
       continue;
     }
     unbind(K, m);
-    m.former = {since: K.day, fought: false, service: m.captive.service || 0};
-    m.captive = null; m.role = 'former'; m.loyalty = FREEDOM.bond.start;
+    setPlace(m, 'former', {since: K.day, fought: false, service: m.captive.service || 0}); m.loyalty = FREEDOM.bond.start;
     K.stats.freed = (K.stats.freed || 0) + 1;
     say(`С ${m.name} сняли путы: за ${gw(m, 'него', 'неё')} поручился ${vouch.name}. Теперь ${gw(m, 'бывший раб', 'бывшая рабыня')} — без оружия, но не в путах.`, 'people', [m.id, vouch.id]);
   }
   for (const m of K.members.filter(x => x.alive && x.former)) {
     if (!m.former.fought) continue;
-    m.former = null; m.role = 'companion'; m.loyalty = 1;
+    setPlace(m, 'companion'); m.loyalty = 1;
     K.stats.formerMembers = (K.stats.formerMembers || 0) + 1;
     say(`${m.name} ${gw(m, 'бился', 'билась')} за караван: теперь ${gw(m, 'он', 'она')} свой и идёт до конца.`, 'people', [m.id]);
   }

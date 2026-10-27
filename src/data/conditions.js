@@ -16,6 +16,8 @@
 // The states run in agents/body.js stepEffects. data/wounds.js WOUNDS is the wounds and traumas of this table.
 import {Registry} from '../core/registry.js';
 import {TAINT} from './afflictions.js';
+import {SPECIES} from './species.js';
+import {DAY} from '../core/time.js';
 
 export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', state: 'состояние', exhaustion: 'истощение', taint: 'порча', mark: 'метка'};
 
@@ -37,7 +39,7 @@ CONDITIONS.registerAll([
     note: 'кровопускающее оружие: шанс — значение свойства bleed; dmg здоровья в тик ticks тиков; нежить не кровит'},
   {id: 'stunned', kind: 'state', where: 'stunned', label: 'оглушён', ticks: 40, slow: 0.5,
     note: 'оглушающее оружие: шанс — значение свойства stun; ticks тиков не бьёт и не стреляет, шаг × slow'},
-  {id: 'drunk', kind: 'state', where: 'drankAt', label: 'во хмелю', note: 'кружка браги на вечернем совете (settlement/life.js); у рас, что живут брагой, — работа (brew у расы)'},
+  {id: 'drunk', kind: 'state', where: 'drankAt', label: 'во хмелю', ticks: 300, note: 'кружка браги на вечернем совете (settlement/life.js): ticks тиков; у рас, что живут брагой, — их работа и срок (brew у расы)'},
   // ── an illness, withdrawal, the rot (data/afflictions.js: how they are caught, the stages of an illness)
   {id: 'ill', kind: 'state', where: 'ill', label: 'болен', note: 'недуг со стадиями («Недуги»): стадия — что делает с телом'},
   {id: 'withdrawal', kind: 'state', where: 'withdrawal', label: 'ломка', mods: {}, note: 'привыкший к браге без кружки дольше, чем «Зависимости» days'},
@@ -89,6 +91,10 @@ export function conditionsOf(w, a) {
   if (a.stunned && now < a.stunned.until) out.push({row: CONDITIONS.get('stunned'), until: a.stunned.until});
   const ex = exhaustionRow(a.exhaust || 0); if (ex) out.push({row: ex});
   if (a.ill) out.push({row: CONDITIONS.get('ill'), until: a.ill.next, ill: a.ill});
+  if (a.drankAt != null) {   // a mug at the council: the evening, or as long as a race that lives on brew feels it
+    const B = SPECIES.has(a.species) ? SPECIES.get(a.species).brew : null, until = a.drankAt + (B ? B.lasts * DAY : CONDITIONS.get('drunk').ticks);
+    if (now < until) out.push({row: CONDITIONS.get('drunk'), until});
+  }
   if (a.withdrawal) out.push({row: CONDITIONS.get('withdrawal')});
   const tr = taintRow(a); if (tr) out.push({row: tr});
   for (const id of a.marks || []) if (CONDITIONS.has(id)) out.push({row: CONDITIONS.get(id)});

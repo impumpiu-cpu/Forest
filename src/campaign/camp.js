@@ -41,7 +41,7 @@ import {DEFAULT_CFG} from '../data/presets.js';
 import {FOODS} from '../data/foods.js';
 import {RESOURCES} from '../data/resources.js';
 import {ITEMS} from '../data/items.js';
-import {SPECIES} from '../data/species.js';
+import {SPECIES, isMindless} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {ORES} from '../data/ores.js';
 import {CAMP, CAMP_FOES, GAME_FLOW} from '../data/camp.js';
@@ -50,6 +50,8 @@ import {faunaLevel} from '../world/region.js';
 import {BEASTS} from '../data/transport.js';
 import {bindWaiting} from '../settlement/captives.js';
 import {allItems, def as itemOf} from '../agents/equipment.js';
+import {setStanding} from '../agents/standing.js';
+import {kitRole} from '../agents/tactics.js';
 
 // the camp's border with the world: nobody comes by schedule — the campaign sends the foe itself
 PROVIDERS.register({id: 'camp', label: 'Стоянка каравана', flows: {}, distance: () => null, receive() {}});
@@ -113,7 +115,7 @@ export function openCamp(S) {
   S.members.forEach((m, k) => {
     const [x, y] = ring(k, S.members.length, 2);
     const ag = createAgent(w, m.race, 'colony', x, y);
-    ag.member = m.id; w.campaign.people.set(m.id, ag); ag.name = m.name; ag.gender = m.gender; ag.people = m.people;
+    ag.member = m.id; ag.place = m.role; w.campaign.people.set(m.id, ag); ag.name = m.name;   // its place in the company (docs/BEHAVIOUR.md «Словарь») ag.gender = m.gender; ag.people = m.people;
     ag.special = {...m.special}; if (m.align) ag.align = {...m.align}; if (m.values) ag.values = [...m.values];
     const L = m.local;
     if (L) Object.assign(ag, {likes: L.likes, dislikes: L.dislikes, prefs: {...L.prefs}, traits: [...L.traits], food: {...L.food}, own: {...L.own}, skill: {...L.skill}});
@@ -123,10 +125,9 @@ export function openCamp(S) {
     }
     const rec = recordOf(w, ag); if (rec) rec.name = m.name;
     if (m.master) ag.master = {skill: m.master.skill, since: w.tick, workedAt: -1};
-    if (m.former) { ag.former = {since: w.tick, bond: m.loyalty ?? 0.6, fought: false}; ag.brain = 'former'; }   // (the role's shorter list: data/behaviour.js WAYS.former)   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
+    if (m.former) setStanding(ag, 'former', {since: w.tick, bond: m.loyalty ?? 0.6, fought: false});   // (the role's shorter list: data/behaviour.js WAYS.former)   // a former slave: no arms (settlement/freedom.js)   // a master of the caravan (campaign/masters.js)
     // a captive of the caravan stays one on the map (settlement/captives.js)
-    if (m.captive) { ag.captive = {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned ?? null, service: m.captive.service || 0}; if (rec) rec.captive = true; }
-    if (m.captive) ag.brain = 'captive';   // (no council, flag, watch or trade; kept in: data/behaviour.js WAYS.captive)
+    if (m.captive) { setStanding(ag, 'captive', {since: w.tick, bonds: m.captive.bonds, by: null, band: null, people: m.people || null, was: 'raiders', member: true, will: m.captive.will, resigned: m.captive.resigned ?? null, service: m.captive.service || 0}); if (rec) rec.captive = true; }   // (no council, flag, watch or trade; kept in: data/behaviour.js WAYS.captive)
     refreshBody(ag); ag.hp = maxHp(ag) * Math.max(0.05, Math.min(1, m.hp));
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
@@ -246,7 +247,7 @@ function spawnFoe(w) {
     if (officers.length) ranked = true;
     if (formUndeadLinks(w, own, 'camp').length) ranked = true;   // the dead under wights
     const l = own.find(g => g.id === sq.leader);
-    if (F.boss && l && !l.boss && !officers.includes(l) && !SPECIES.get(l.species).mindless && !l.warBeast) { promote(l, l.band, true); l.link = l.id; ranked = true; }
+    if (F.boss && l && !l.boss && !officers.includes(l) && !isMindless(SPECIES.get(l.species)) && !l.warBeast) { promote(l, l.band, true); l.link = l.id; ranked = true; }
   }
   if (ranked) trimBand(w, group, budget * RANK_RULES.pay.camp, F.boss ? CAMP.boss.atLeast : 1);
   C.foes = group.map(g => g.id); C.foeObjs = group; C.spawned = true;
@@ -295,7 +296,8 @@ function raiseAlarm(w) {
     const awake = p.task?.id !== 'sleep' && !p.downed, r = R * nightSight(p.species, night);
     if (struck || (awake && foes.some(o => Math.hypot(o.x - p.x, o.y - p.y) <= (o.sneaking ? Math.min(r, sneakSeen(o)) : r)))) {   // one who creeps is seen only close (agents/combat.js)
       C.alarm = w.tick;
-      for (const q of C.people.values()) if (!q.dead && !q.captive) wake(q, 'тревога в лагере', 'тревога');
+      // every one up, each in the fighting role its place and its gear give it (agents/tactics.js kitRole)
+      for (const q of C.people.values()) if (!q.dead && !q.captive) { q.fightRole = kitRole(q); wake(q, 'тревога в лагере', 'тревога'); }
       return;
     }
   }

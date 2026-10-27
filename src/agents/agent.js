@@ -1,6 +1,6 @@
 // Agent creation and death. An agent is a plain object:
 //   species / faction / brain ids, position, hp, needs, personality (colonists), memory, current task.
-import {SPECIES, brainOf} from '../data/species.js';
+import {SPECIES, brainOf, isSentient} from '../data/species.js';
 import {FACTIONS} from '../data/factions.js';
 import {NEEDS} from '../data/needs.js';
 import {JOBS} from '../data/jobs.js';
@@ -80,7 +80,7 @@ export function createAgent(w, speciesId, factionId, x, y) {
   rollCreature(w, a, sp, kin?.align && kin.race === speciesId ? {align: kin.align} : {});
   a.stamina = 1;
   for (const id of sp.needs) { const n = NEEDS.get(id); a.needs[id] = between(w.rngs.birth, n.start); }
-  if (sp.sentient && factionId === 'colony') personality(w, a);
+  if (isSentient(sp) && factionId === 'colony') personality(w, a);
   // the body from all its sources at once (species, SPECIAL, people, innate, traits, own extras), at full health
   refreshBody(a); a.hp = maxHp(a);
   if (a.prefs) { a.diary = []; enrol(w, a, w.founding); }
@@ -146,11 +146,11 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
     log(w, `${who} ${verb}, ${g(by, 'его сразил', 'его сразила').replace('его', a.gender === 'f' ? 'её' : 'его')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }
   // the necromancer falls: his dead lose their way
-  if (a.role === 'necromancer' && w.agents.some(o => o.master === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');
+  if (a.species === 'necromancer' && w.agents.some(o => o.obeys === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');
   // a wight falls (data/ranks.js): its link goes to the necromancer if he stands, else it wanders off
-  if (a.marks?.includes('wight') && w.agents.some(o => o.master === a.id && !o.dead)) {   // scan: once, at a wight's death
-    const up = w.agents.find(o => o.master === a.id && o.masterUp != null && !o.dead);
-    log(w, `Пало ${a.name.toLowerCase()}: ${up && w.agents.some(n => n.id === up.masterUp && !n.dead) ? 'его мертвецы идут за некромантом' : 'его мертвецы теряют направление и разбредаются'}.`, 'danger', 'notice');
+  if (a.marks?.includes('wight') && w.agents.some(o => o.obeys === a.id && !o.dead)) {   // scan: once, at a wight's death
+    const up = w.agents.find(o => o.obeys === a.id && o.obeysUp != null && !o.dead);
+    log(w, `Пало ${a.name.toLowerCase()}: ${up && w.agents.some(n => n.id === up.obeysUp && !n.dead) ? 'его мертвецы идут за некромантом' : 'его мертвецы теряют направление и разбредаются'}.`, 'danger', 'notice');
   }
   if (a.faction === 'colony' && !a.captive) for (const o of w.agents) if (o !== a && o.faction === 'colony' && !o.dead) { think(w, o, 'grief', {name: a.name, f: a.gender === 'f'}); o.mem.grief += 0.5; }
   if (by?.faction === 'colony') { if (sp.predator || sp.resident) think(w, by, 'killedWolf', {beast: sp.labelAcc || sp.label}); else if (a.faction === 'raiders') think(w, by, 'killedRaider'); }

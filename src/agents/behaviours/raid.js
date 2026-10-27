@@ -6,11 +6,12 @@
 import {nearestHostile} from '../combat.js';
 import {squadOf, planFor} from '../squad.js';
 import {RAID} from '../../data/behaviour.js';
+import {isMindless} from '../../data/species.js';
 
 export const raid = {
   want(w, a, {sp}) {
-    const mindless = sp.mindless || a.warBeast, W = RAID.want;
-    const radius = sp.mindless ? RAID.hunt : mindless ? RAID.hunt : RAID.near;
+    const mindless = isMindless(sp) || a.warBeast, W = RAID.want;
+    const radius = isMindless(sp) ? RAID.hunt : mindless ? RAID.hunt : RAID.near;
     const sq = squadOf(w, a), plan = sq ? planFor(w, a, sq, radius) : null;
     if (plan) return [[plan, W.plan, () => `план отряда: ${plan.id}`]];
     const e = nearestHostile(w, a, radius);

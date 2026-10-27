@@ -197,7 +197,7 @@ check('T08', 'караван без пути к лагерю не считает
   const group = arrive(w, 'caravan', 1);
   if (!group.length) return 'караван не пришёл';
   w.nav.get('camp').fill(FAR);
-  const trader = group.find(a => a.role === 'trader');
+  const trader = group.find(a => a.brain === 'trader');
   for (const o of group) { o.x = trader.x; o.y = trader.y; }
   brain(w, trader);
   return w.caravan.arrived == null || 'arrived выставлен';

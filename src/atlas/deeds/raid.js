@@ -46,7 +46,7 @@ export const raid = {
     }
     const town = nearestTown(a, l, L, reachOf(a));
     if (!town) return null;
-    const beast = (sp.mind || 'beast') === 'beast';
+    const beast = ['beast', 'mindless'].includes(sp.mind || 'beast');   // a beast's or the dead's lair: it raids no town
     return [[{goal: town.i, target: town.id}, LEADER.plans.raid * (beast ? LEADER.beastRaid : 1), () => `город в досягаемости: ${town.name}`]];
   },
   // the lair without a leader: the raid sets out, or strikes where it stands → the chronicle line or null

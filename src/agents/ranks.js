@@ -4,7 +4,7 @@
 // stands (agents/auras.js holdsGround); the band's spirit counts the links that stand (agents/squad.js moraleOf).
 //   formLinks(w, group, where) — called once a band has its squad: where 'camp' (campaign/camp.js) or 'settlement'
 //   (data/migrations.js); RANK_RULES says where ranks are given.
-import {SPECIES} from '../data/species.js';
+import {SPECIES, isMindless} from '../data/species.js';
 import {RAID_BANDS} from '../data/raids.js';
 import {RANK_RULES, OFFICER_DEFAULT} from '../data/ranks.js';
 import {hasMark} from '../data/conditions.js';
@@ -22,7 +22,7 @@ export const officerName = band => (band && RAID_BANDS.has(band) ? RAID_BANDS.ge
 // (they lead their own)
 const mayRank = a => {
   const sp = SPECIES.get(a.species);
-  return sp.inventory && !sp.mindless && !a.warBeast && !a.boss && a.role !== 'necromancer' && a.species !== 'vampire' && !a.gone;
+  return sp.inventory && !isMindless(sp) && !a.warBeast && !a.boss && a.species !== 'necromancer' && a.species !== 'vampire' && !a.gone;
 };
 
 // make a member an officer: the mark, a finer grade of everything it carries, full health, its rank's name
@@ -77,14 +77,14 @@ export function formLinks(w, group, where, leaderId = null) {
 }
 
 // The dead of a band (mindless: no officer of their own) in links under a wight — the strongest bones of each link
-// (data/ranks.js): the mark «умертвие», a grade finer gear, its name; its link hangs on it (a.master = its id: while it
-// stands they stand, agents/behaviours/retreat.js), the one they hung on before stays above it (a.masterUp: the
+// (data/ranks.js): the mark «умертвие», a grade finer gear, its name; its link hangs on it (a.obeys = its id: while it
+// stands they stand, agents/behaviours/retreat.js), the one they hung on before stays above it (a.obeysUp: the
 // necromancer). The beasts without hands (zombies) go by turns
 // to the links. Returns the wights.
 export function formUndeadLinks(w, group, where) {
   const R = RANK_RULES;
   if (!R[where]) return [];
-  const dead = group.filter(a => SPECIES.get(a.species).mindless && !a.gone && !a.boss && a.role !== 'necromancer');
+  const dead = group.filter(a => isMindless(SPECIES.get(a.species)) && !a.gone && !a.boss && a.species !== 'necromancer');
   const bones = dead.filter(a => SPECIES.get(a.species).inventory);
   if (dead.length < R.least || !bones.length) return [];
   const nos = [...new Set(bones.map(a => a.linkNo).filter(x => x != null))];
@@ -94,14 +94,14 @@ export function formUndeadLinks(w, group, where) {
   for (const g of groups) {
     const o = g.slice().sort((p, q) => strengthOf(q) - strengthOf(p))[0];
     raise(o, 'wight');
-    o.name = 'Умертвие'; o.link = o.id; o.master = null;   // a will of its own (in a cultists' band too: «жрец» is a living one)
+    o.name = 'Умертвие'; o.link = o.id; o.obeys = null;   // a will of its own (in a cultists' band too: «жрец» is a living one)
     wights.push(o);
   }
   // the rest of the dead: their link's wight; the zombies by turns
   const rest = dead.filter(a => !wights.includes(a)); let k = 0;
   for (const a of rest) {
     const i = a.linkNo != null ? nos.indexOf(a.linkNo) : -1, o = wights[i >= 0 ? i : k++ % wights.length];
-    a.masterUp = a.master ?? null; a.master = o.id; a.link = o.id;
+    a.obeysUp = a.obeys ?? null; a.obeys = o.id; a.link = o.id;
   }
   return wights;
 }

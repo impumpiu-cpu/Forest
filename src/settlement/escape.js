@@ -31,6 +31,7 @@ import {log} from '../core/log.js';
 import {esc, g, clamp} from '../core/util.js';
 import {hourOf, dayOf, DAY} from '../core/time.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
+import {setStanding} from '../agents/standing.js';
 
 const E = w => (w.escape ??= {rolled: -1, dawn: -1, plot: null, alarm: null, cut: false});
 const C = w => (w.chronicle.captives ||= {taken: 0, died: 0});
@@ -112,7 +113,7 @@ export function startEscape(w, a, why) {
   releaseAll(w, a);
   a.fugitive = {since: w.tick, why, slow};
   shiftAlign(a, 'order', ALIGN_DRIFT.pawn.fled);   // the bonds broken, the law with them
-  a.faction = 'fugitives'; a.brain = 'fugitive'; a.task = {id: 'escape'}; a.sleeping = false; a.carry = null;
+  setStanding(a, 'fugitive', a.fugitive); a.task = {id: 'escape'}; a.sleeping = false; a.carry = null;
   if (w.scratch) delete w.scratch.colonists;
   C(w).ran = (C(w).ran || 0) + 1;
   log(w, `${name(a)}, ${g(a, 'пленный', 'пленная')} (${label(a)}), ${g(a, 'бежал', 'бежала')}${why === 'plot' ? ' ночью по сговору' : ' в суматохе тревоги'}${slow < 1 ? '' : ', перерезав путы'}.`, 'danger', 'alert');
@@ -128,7 +129,7 @@ export function gotAway(w, a) {
 
 // grabbed by one who got within reach: back to the captives, and readier to run next time
 export function catchRunaway(w, by, a) {
-  a.fugitive = null; a.faction = 'colony'; a.brain = 'captive';
+  setStanding(a, 'captive');
   a.captive.will = clamp(willOf(a) + ESCAPE.will.caught, 0, 1);
   a.task = {id: 'runHome'}; a.think = 0; wake(a, 'пойман', 'пойман');
   if (w.scratch) delete w.scratch.colonists;

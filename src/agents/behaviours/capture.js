@@ -16,6 +16,7 @@ import {releaseAll} from '../../settlement/reserve.js';
 import {log} from '../../core/log.js';
 import {esc, g, dist} from '../../core/util.js';
 import {RAID} from '../../data/behaviour.js';
+import {isMindless} from '../../data/species.js';
 
 
 // the fallen foe to take: the nearest one lying within reach that nobody leads yet
@@ -41,7 +42,7 @@ function take(w, a, f) {
 
 export const capture = {
   want(w, a, {sp}) {
-    if (sp.mindless || a.warBeast || a.leads || hpShare(a) < RAID.capture.hp) return null;
+    if (isMindless(sp) || a.warBeast || a.leads || hpShare(a) < RAID.capture.hp) return null;
     const cur = a.task?.id === 'capture' ? a.task : null;
     const f = (cur && liveById(w, cur.who)) || fallenNear(w, a);
     if (!f || f.dead || !f.downed || (f.ledBy != null && f.ledBy !== a.id)) return null;

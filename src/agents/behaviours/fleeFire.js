@@ -5,10 +5,11 @@ import {nearFire} from '../movement.js';
 import {hpShare} from '../agent.js';
 import {think} from '../mind.js';
 import {RAID} from '../../data/behaviour.js';
+import {isMindless} from '../../data/species.js';
 
 export const fleeFire = {
   want(w, a, {sp, T, brain}) {
-    if (sp.mindless) return null;
+    if (isMindless(sp)) return null;
     const F = brain.fire || RAID.fire, fleeing = a.task?.id === 'flee';
     const hot = a.task?.id === 'douse' ? T > F.douseHeat || hpShare(a) < F.douseHp : T > F.heat || nearFire(w, a, F.near);
     if (!hot) return null;
