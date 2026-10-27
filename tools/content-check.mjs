@@ -91,9 +91,9 @@ expect(AFFLICTIONS.all().every(A => A.catch === 0) && ADDICTION.braga.hook === 0
   E.setCell('tongueRules', 'tongue.barrier', 'value', 0.5);
   expect(near(termsOf(null, K, orcs).buy, 1.5) && near(termsOf(null, K, orcs).sell, 0.5) && termsOf(null, K, dwarves).buy === 1, 'чужой язык: орки без толмача дороже, с гномами есть общий');
   E.resetAll();
-  expect(nightSight('human', 1) === 1, 'ночь сужает обзор при нуле');
-  E.setCell('tongueRules', 'night.loss', 'value', 0.5);
   expect(nightSight('human', 1) === 0.5 && nightSight('dwarf', 1) === 1, 'ночное зрение: человек и гном');
+  E.setCell('tongueRules', 'night.loss', 'value', 0);
+  expect(nightSight('human', 1) === 1, 'ночь сужает обзор при нуле');
   E.resetAll();
   famed(null, K, 'slaveSale', 'r1'); famed(null, K, 'slaveSale', 'r1');
   E.setCell('reputation', 'reputation.infamyMarkup', 'value', 0.1);
