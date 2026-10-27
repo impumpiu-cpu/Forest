@@ -20,7 +20,6 @@ import {canSee, aggressor, darkness} from './combat.js';
 import {hpShare} from './agent.js';
 import {firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
-import {skipped} from './lifecycle.js';
 import {handItems, def} from './equipment.js';
 import {traitOf} from '../data/balance/combat.js';
 import {dist} from '../core/util.js';
@@ -138,8 +137,9 @@ export function roleTactic(w, a, side, radius) {
     case 'healer': {
       if (mind === 'mindless') return null;
       if (a.task?.id === 'mend' && a.task.who != null) return a.task;
-      // (one it could not reach is on a pause of its own: agents/lifecycle.js — the next is tended meanwhile)
-      const open = o => !skipped(w, a, {id: 'mend', who: o.id});
+      // (one it could not reach is on a pause of its own — agents/lifecycle.js taskKey 'mend:<who>', read here as it is
+      // kept, not through lifecycle.js, which this module may not import: the next is tended meanwhile)
+      const open = o => !((a.skips?.['mend:' + o.id] ?? -1) > w.tick);
       const fallen = side.fallen().filter(o => o !== a && dist(a, o) < T.mend.near && open(o)).sort((p, q) => dist(a, p) - dist(a, q))[0];
       if (fallen) return {id: 'mend', who: fallen.id};
       if (mind === 'sentient' && a.potions > 0) {
