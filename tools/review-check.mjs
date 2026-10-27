@@ -115,5 +115,22 @@ const put = (w, sp, fac, x, kit = []) => { const a = createAgent(w, sp, fac, x, 
   } catch (e) { bad.push(`отряд не собрался для проверки знахаря: ${e.message}`); }
 }
 
+// a healer passes over a fallen one it could not reach for the next (Codex on PR #25: tactics.js healer)
+{
+  const {roleTactic} = await import('../src/agents/tactics.js');
+  const w = scene(), h = put(w, 'human', 'raiders', 20.5, ['staff']), f1 = put(w, 'human', 'raiders', 21.5), f2 = put(w, 'human', 'raiders', 23.5);
+  h.fightRole = 'healer'; f1.downed = {until: 9999}; f2.downed = {until: 9999};
+  const side = {fallen: () => [f1, f2], all: () => [h], has: () => false};
+  w.tick = 100; (h.skips ||= {})[taskKey({id: 'mend', who: f1.id})] = 700;
+  const t = roleTactic(w, h, side, 8);
+  expect(t?.id === 'mend' && t.who === f2.id, `знахарь не перешёл ко второму раненому: ${JSON.stringify(t)}`);
+}
+
+// the sleeping brew holds a captive through a red alarm till dawn (Codex on PR #25: escape.js)
+{
+  const src = (await import('node:fs')).readFileSync(new URL('../src/settlement/escape.js', import.meta.url), 'utf8');
+  expect(/sleepsUntil/.test(src.slice(src.indexOf('a red alarm'))), 'тревога не смотрит, что пленный спит после сонного отвара');
+}
+
 if (bad.length) { console.log('Ревизия Role:\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log('ok   ревизия Role: уведённый уходит, раны и травмы идут со стоянки на стоянку, склянка — по точному кругу, недоступный раненый не закрывает других, стрелок пьёт перед первым выстрелом (не по дичи), усиленное заменяет простое, путь по дороге как у Дейкстры, знахарь не грабит');

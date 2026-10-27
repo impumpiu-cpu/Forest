@@ -29,7 +29,7 @@ import {wake} from '../agents/attention.js';
 import {cellOf} from '../world/grid.js';
 import {log} from '../core/log.js';
 import {esc, g, clamp} from '../core/util.js';
-import {hourOf, dayOf, DAY} from '../core/time.js';
+import {hourOf, dayOf, DAY, HOUR} from '../core/time.js';
 import {ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {setStanding} from '../agents/standing.js';
 import {sleepDose} from '../agents/potions.js';
@@ -88,7 +88,7 @@ function council(w, S, rng) {
     // one set on running is given the sleeping brew, if the stock has one (data/potions.js sleep): it sleeps the night
     // through; a strong one calms it too
     const dose = will >= POTION.home.will ? sleepDose(w.stock) : null;
-    if (dose) { slept++; a.captive.slept = dayOf(w.tick); if (dose.calm) a.captive.will = clamp(will - dose.calm, 0, 1); continue; }
+    if (dose) { slept++; a.captive.sleepsUntil = (dayOf(w.tick) + 1) * DAY + ESCAPE.tools.dawn * HOUR; if (dose.calm) a.captive.will = clamp(will - dose.calm, 0, 1); continue; }
     if (rng() < ESCAPE.escape.base * will * holdOf(a)) want.push(a);
     const R = ESCAPE.resign;
     if (!want.includes(a) && rng() < R.base * (1 - will) * days(w, a) / (days(w, a) + R.settle)) {
@@ -98,7 +98,7 @@ function council(w, S, rng) {
   }
   if (slept) log(w, `Совет велел напоить сонным отваром ${slept === 1 ? 'пленного, что задумал бежать' : `пленных, что задумали бежать (${slept})`}: проспят до утра.`, 'council');
   if (!want.length) return;
-  const by = want[0], plotters = caps.filter(a => !a.captive.resigned && !a.downed && a.captive.slept !== dayOf(w.tick));   // (one given the sleeping brew sleeps)
+  const by = want[0], plotters = caps.filter(a => !a.captive.resigned && !a.downed && !(w.tick < (a.captive.sleepsUntil ?? -1)));   // (one given the sleeping brew sleeps till dawn)
   // a resigned one may tell: the more it likes the free, the readier
   const fr = free(w);
   for (const s of caps.filter(a => a.captive.resigned && !a.downed)) {
@@ -176,7 +176,7 @@ export function stepEscape(w) {
   else {
     S.alarm ??= w.tick;
     for (const a of caps) {
-      if (a.downed || a.captive.resigned || a.captive.redAt === S.alarm || a.task?.id === 'fight') continue;
+      if (a.downed || a.captive.resigned || a.captive.redAt === S.alarm || a.task?.id === 'fight' || w.tick < (a.captive.sleepsUntil ?? -1)) continue;   // (one given the sleeping brew sleeps till dawn, alarm or none)
       a.captive.redAt = S.alarm;
       const kin = w.agents.some(o => o.species === a.species && marching(w, o) && !o.dead && !o.downed);   // scan: once a captive per alarm
       if (kin) a.captive.kinSeen = true;

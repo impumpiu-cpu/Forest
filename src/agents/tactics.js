@@ -20,6 +20,7 @@ import {canSee, aggressor, darkness} from './combat.js';
 import {hpShare} from './agent.js';
 import {firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
+import {skipped} from './lifecycle.js';
 import {handItems, def} from './equipment.js';
 import {traitOf} from '../data/balance/combat.js';
 import {dist} from '../core/util.js';
@@ -137,10 +138,12 @@ export function roleTactic(w, a, side, radius) {
     case 'healer': {
       if (mind === 'mindless') return null;
       if (a.task?.id === 'mend' && a.task.who != null) return a.task;
-      const fallen = side.fallen().filter(o => o !== a && dist(a, o) < T.mend.near).sort((p, q) => dist(a, p) - dist(a, q))[0];
+      // (one it could not reach is on a pause of its own: agents/lifecycle.js — the next is tended meanwhile)
+      const open = o => !skipped(w, a, {id: 'mend', who: o.id});
+      const fallen = side.fallen().filter(o => o !== a && dist(a, o) < T.mend.near && open(o)).sort((p, q) => dist(a, p) - dist(a, q))[0];
       if (fallen) return {id: 'mend', who: fallen.id};
       if (mind === 'sentient' && a.potions > 0) {
-        const hurt = side.all().filter(o => o !== a && o.task?.id !== 'leave' && hpShare(o) < T.mend.potionBelow && dist(a, o) < T.mend.near).sort((p, q) => hpShare(p) - hpShare(q))[0];
+        const hurt = side.all().filter(o => o !== a && o.task?.id !== 'leave' && hpShare(o) < T.mend.potionBelow && dist(a, o) < T.mend.near && open(o)).sort((p, q) => hpShare(p) - hpShare(q))[0];
         if (hurt) return {id: 'mend', who: hurt.id, potion: true};
       }
       // a blade at it: behind its own, if any of the side stands near to take the blow; alone, it fights with the staff
