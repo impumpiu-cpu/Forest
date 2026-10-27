@@ -51,7 +51,6 @@ import {BEASTS} from '../data/transport.js';
 import {bindWaiting} from '../settlement/captives.js';
 import {allItems, def as itemOf} from '../agents/equipment.js';
 import {setStanding} from '../agents/standing.js';
-import {kitRole} from '../agents/tactics.js';
 
 // the camp's border with the world: nobody comes by schedule — the campaign sends the foe itself
 PROVIDERS.register({id: 'camp', label: 'Стоянка каравана', flows: {}, distance: () => null, receive() {}});
@@ -296,8 +295,7 @@ function raiseAlarm(w) {
     const awake = p.task?.id !== 'sleep' && !p.downed, r = R * nightSight(p.species, night);
     if (struck || (awake && foes.some(o => Math.hypot(o.x - p.x, o.y - p.y) <= (o.sneaking ? Math.min(r, sneakSeen(o)) : r)))) {   // one who creeps is seen only close (agents/combat.js)
       C.alarm = w.tick;
-      // every one up, each in the fighting role its place and its gear give it (agents/tactics.js kitRole)
-      for (const q of C.people.values()) if (!q.dead && !q.captive) { q.fightRole = kitRole(q); wake(q, 'тревога в лагере', 'тревога'); }
+      for (const q of C.people.values()) if (!q.dead && !q.captive) wake(q, 'тревога в лагере', 'тревога');
       return;
     }
   }
