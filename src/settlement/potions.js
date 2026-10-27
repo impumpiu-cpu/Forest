@@ -1,11 +1,31 @@
-// The healing potions of the stock go into its people's slots (data/potions.js POTION): every POTION.hand ticks one each
-// to those who carry fewest, up to POTION.slot; what is left waits in the stock (the caravan carries it on: campaign/camp.js).
-// Captives and former slaves carry none — they keep out of the fighting.
+// The potions of the stock go to its people (data/potions.js POTION): every POTION.hand ticks the healing ones into the
+// slots (one each to those who carry fewest, up to POTION.slot), the others into the belts (POTION.belt places): to each
+// in turn the first potion of the stock of a kind it does not carry yet, in the table's order — a strong healing one, an
+// antidote, a bear's brew, a poison for the blade (only to one with a blade in hand), each kind its strong grade first. What is left waits in the
+// stock (the caravan carries it on: campaign/camp.js). Captives and former slaves carry none — they keep out of the fighting.
 import {colonists} from './query.js';
-import {POTION} from '../data/potions.js';
+import {POTION, BELT_ORDER, potionOf, sameKind} from '../data/potions.js';
+import {holdsBlade} from '../agents/potions.js';
+
+// may this one carry this potion in its belt (a poison for the blade — one who holds a blade)
+export const beltFits = (a, res) => potionOf(res)?.potion.use !== 'blade' || holdsBlade(a);
+
+// what to put into one's belt from what there is (`have(res)` — how many are left): → the resource, or null
+export function nextForBelt(a, have) {
+  if ((a.belt?.length || 0) >= POTION.belt) return null;
+  return BELT_ORDER.find(res => have(res) >= 1 && !(a.belt || []).some(b => sameKind(b, res)) && beltFits(a, res)) || null;
+}
 
 export function stepPotions(w) {
-  if (w.tick % POTION.hand || !(w.stock.potion >= 1)) return;
-  const ppl = colonists(w).filter(a => !a.dead && a.diary && !a.captive && !a.former && (a.potions || 0) < POTION.slot).sort((p, q) => (p.potions || 0) - (q.potions || 0));
-  for (const a of ppl) { if (!(w.stock.potion >= 1)) break; a.potions = (a.potions || 0) + 1; w.stock.potion--; }
+  if (w.tick % POTION.hand) return;
+  const ppl = colonists(w).filter(a => !a.dead && a.diary && !a.captive && !a.former);
+  if (w.stock.potion >= 1) {
+    const slots = ppl.filter(a => (a.potions || 0) < POTION.slot).sort((p, q) => (p.potions || 0) - (q.potions || 0));
+    for (const a of slots) { if (!(w.stock.potion >= 1)) break; a.potions = (a.potions || 0) + 1; w.stock.potion--; }
+  }
+  if (!BELT_ORDER.some(res => w.stock[res] >= 1)) return;
+  for (const a of ppl.slice().sort((p, q) => (p.belt?.length || 0) - (q.belt?.length || 0))) {
+    const res = nextForBelt(a, r => w.stock[r] || 0);
+    if (res) { (a.belt ||= []).push(res); w.stock[res]--; }
+  }
 }

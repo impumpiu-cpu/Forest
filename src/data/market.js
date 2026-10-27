@@ -55,11 +55,17 @@ export const OFFERS = [
   {kind: 'item', id: 'steellamellar', at: ['foundry']},
   {kind: 'item', id: 'furcoat', at: ['tannery', 'lodge']},
   // bonds for captives (data/captives.js): rope in any town, shackles where iron is worked
-  {kind: 'goods', id: 'rope', n: 4, any: true, at: []},
-  {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'smelter', 'foundry']},
-  {kind: 'goods', id: 'shacklesSteel', n: 1, at: ['foundry']},
+  {kind: 'goods', id: 'rope', n: 4, any: true, at: [], need: 'bonds'},
+  {kind: 'goods', id: 'shacklesIron', n: 1, at: ['forge', 'smelter', 'foundry'], need: 'bonds'},
+  {kind: 'goods', id: 'shacklesSteel', n: 1, at: ['foundry'], need: 'bonds'},
   // the healing potion (data/potions.js), one at a time, where healers work
-  {kind: 'goods', id: 'potion', n: 1, at: ['healerhut', 'hospice', 'temple']},
+  {kind: 'goods', id: 'potion', n: 1, at: ['healerhut', 'hospice', 'temple'], need: 'heal'},
+  // the other potions (data/potions.js): an antidote where healers work; a town's laboratory (the alchemist: the world's
+  // `letters`, a town of 800) sells them all, the strong grades only there — and brews them from the caravan's makings
+  // (campaign/town.js alchemy, ALCHEMY below); pots for the healer's hut of the camp in any town
+  {kind: 'goods', id: 'antidote', n: 1, at: ['healerhut', 'hospice', 'temple'], need: 'belt'},
+  ...['potionStrong', 'antidoteStrong', 'bearBrewStrong', 'bladeVenomStrong', 'antidote', 'bearBrew', 'bladeVenom'].map(id => ({kind: 'goods', id, n: 1, at: ['alchemist'], need: 'belt'})),
+  {kind: 'goods', id: 'pots', n: 4, any: true, at: [], need: 'pots'},
   {kind: 'building', id: 'healerhut', at: ['healerhut', 'hospice'], price: CAMPAIGN.services.healerhut},
   {kind: 'building', id: 'forge', at: ['forge'], price: CAMPAIGN.services.forge},
   {kind: 'building', id: 'crafthut', at: ['crafthut'], price: CAMPAIGN.services.crafthut},
@@ -138,6 +144,10 @@ export const EARN = {hide: 0.3, pan: 0.4};
 // stands and the caravan carries the ore of the item's metal by its recipe (data/recipes.js: bars × `bar[metal].n`
 // units of `bar[metal].ore` each), the item costs × `discount` (50–60% cheaper). What ore is left is sold.
 // `reserve` — days of food money the caravan keeps after paying the smith
+// a town's laboratory (data/townBuildings.js alchemist) brews the strong potions from the caravan's makings: the
+// potion's price × `fee` for the work; the caravan keeps `pots` pots for its own healer's hut (it sets out with as many)
+export const ALCHEMY = {at: ['alchemist'], fee: 0.35, reserve: 3, pots: 12};
+
 export const SMITH = {at: ['forge', 'smelter', 'foundry', 'armory'], discount: 0.45, reserve: 3,
   bar: {bronze: {ore: 'bronzeOre', n: 2}, iron: {ore: 'ironore', n: 2}, mithril: {ore: 'mithrilOre', n: 2}}};
 

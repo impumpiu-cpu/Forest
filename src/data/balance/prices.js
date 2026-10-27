@@ -79,6 +79,14 @@ export const RESOURCES = {
   // Лекарства
   herbs:        {price: 1, stack: 20},
   potion:       {price: 6, stack: 10},   // the healing potion (data/potions.js): dear — a few days' wages
+  // the other potions (data/potions.js): their makings and the hand that brews them; the strong ones at an alchemist's
+  potionStrong: {price: 15, stack: 10},
+  antidote:     {price: 5, stack: 10},
+  antidoteStrong: {price: 11, stack: 10},
+  bearBrew:     {price: 8, stack: 10},
+  bearBrewStrong: {price: 17, stack: 10},
+  bladeVenom:   {price: 9, stack: 10},
+  bladeVenomStrong: {price: 19, stack: 10},
   // Топливо
   coal:         {price: 0.3, stack: 20},
   // Руда

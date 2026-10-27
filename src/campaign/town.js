@@ -13,7 +13,7 @@ import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
 import {BEASTS} from '../data/transport.js';
-import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH} from '../data/market.js';
+import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
 import {termsOf} from './road.js';
 import {RECIPES} from '../data/recipes.js';
@@ -21,8 +21,8 @@ import {room} from './company.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {plural} from '../core/util.js';
 import {capacity, load, assign, toolTier, metalTier, campOf, hasBuilding} from './baggage.js';
-import {topUp, potionRoom} from './potions.js';
-import {POTION} from '../data/potions.js';
+import {topUp, potionRoom, beltRoom, ALCHEMY_KEEP} from './potions.js';
+import {POTION, POTIONS, potionOf, isPotion} from '../data/potions.js';
 import {ORES} from '../data/ores.js';
 import {route} from './path.js';
 import {ROUTE} from '../data/transport.js';
@@ -98,7 +98,9 @@ function wants(a, K, t, st) {
   for (const o of offers(t, a)) {
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && count(o.id) < 2) out.push([3, o]);
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) out.push([5, o]);
-    if (o.kind === 'goods' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
+    if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
+    if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) < ALCHEMY.pots && hasBuilding(K, 'healerhut')) out.push([3, o]);   // pots for the camp's healer's hut: cheap, and every potion takes one
+    if (o.kind === 'goods' && o.need === 'belt') for (let k = 0; k < Math.min(POTION.belt, beltRoom(K)); k++) out.push([8, o]);   // potions for the belts (data/market.js: the strong first)
     if (o.kind === 'vehicle' && o.id === 'cart' && !K.vehicles.length && K.goal != null && wheelsFit()) out.push([4, o]);
     if (o.kind === 'vehicle' && o.id === 'wagon' && !K.vehicles.some(v => v.kind === 'wagon') && K.beasts.some(b => BEASTS[b.kind].pulls >= 1) && K.goal != null && wheelsFit()) out.push([6, o]);
     if (o.kind === 'item' && gearDef(o.id).tool && tier < 2 && gearDef(o.id).iron) out.push([2, o]);
@@ -106,7 +108,7 @@ function wants(a, K, t, st) {
     if (o.kind === 'item' && gearDef(o.id).melee && !gearDef(o.id).tool && ms.some(m => m.role === 'knight' && bestDmg(m) < gearDef(o.id).melee.dmg)) out.push([8, o]);
     if (o.kind === 'building' && !hasBuilding(K, o.id)) out.push([6.5, o]);
     // healing potions for the empty slots, after the arms and armour (campaign/potions.js)
-    if (o.kind === 'goods' && o.id === 'potion') for (let k = 0; k < Math.min(POTION.slot, potionRoom(K)); k++) out.push([8, o]);
+    if (o.kind === 'goods' && o.need === 'heal') for (let k = 0; k < Math.min(POTION.slot, potionRoom(K)); k++) out.push([8, o]);
   }
   return out.sort((p, q) => p[0] - q[0]).map(e => e[1]);
 }
@@ -124,6 +126,23 @@ function equip(K, id) {
   const k = m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield');
   if (k >= 0) m.gear.hand[k] = id; else m.gear.hand[0] = id;
   return m;
+}
+
+// a town's laboratory brews the strong potions from the caravan's makings (data/market.js ALCHEMY): the price of its work
+// is the potion's × ALCHEMY.fee, the makings and a pot go into it, while the belts have room. → the lines
+function alchemy(a, K, t, st) {
+  const done = [];
+  for (const p of POTIONS.all()) for (const g of p.grades.slice(1)) {   // the strong grades
+    while (beltRoom(K) > 0 && Object.entries(g.cost).every(([r, n]) => (K.cargo[r] || 0) >= n)) {
+      const price = gold(RESOURCES.get(g.res).value * ALCHEMY.fee * STANDING[st].buy);
+      if (K.gold - price < reserveFor(K, t, st, ALCHEMY.reserve)) break;
+      for (const [r, n] of Object.entries(g.cost)) { K.cargo[r] -= n; if (K.cargo[r] <= 0) delete K.cargo[r]; }
+      K.cargo[g.res] = (K.cargo[g.res] || 0) + 1; K.gold = gold(K.gold - price); K.stats.alchemy = (K.stats.alchemy || 0) + 1;
+      done.push(`алхимик сварил из запасов каравана ${RESOURCES.get(g.res).label} — за работу ${price} зол.`);
+    }
+  }
+  if (done.length) topUp(K);
+  return done;
 }
 
 // the smith forges from the caravan's ore (data/market.js SMITH): what is wanted of a metal the caravan carries the
@@ -176,11 +195,12 @@ export function trade(a, K, t, st) {
     }
     K.gold = gold(K.gold + got);
   };
-  sell(id => ore.has(id));
+  sell(id => ore.has(id) || ALCHEMY_KEEP.has(id));   // the ore for the smith, the potions and their makings kept
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
   if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > P.left) unsold.push('spoils');
   else if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell; K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
-  if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
+  if (smith) { done.push(...smithy(a, K, t, st)); sell(id => ALCHEMY_KEEP.has(id)); }
+  if (has(t, ALCHEMY.at)) done.push(...alchemy(a, K, t, st));
   if (unsold.length) done.push(`город не потянул: ${unsold.map(id => (id === 'spoils' ? 'трофеи' : RESOURCES.get(id).label)).join(', ')} — нет денег`);
   if (!K.inTown) done.push(...tradeCaptives(a, K, t, st));   // captives sold and bought, by the town's law, once a visit: on entering (campaign/slavery.js)
   // food: up to `foodDays` days, as far as the room and the gold go
@@ -200,12 +220,14 @@ export function trade(a, K, t, st) {
     if (o.kind === 'vehicle' && (o.id === 'cart' ? K.vehicles.length : K.vehicles.some(x => x.kind === 'wagon'))) continue;
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && K.beasts.filter(b => b.kind === o.id && b.hp > 0).length >= 2) continue;
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length >= free(K).length) continue;
-    if (o.kind === 'goods' && o.id !== 'potion' && bondsSets(K) >= CAPTIVE.campaign.keep) continue;
-    if (o.kind === 'goods' && o.id === 'potion' && potionRoom(K) <= 0) continue;
+    if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) >= CAPTIVE.campaign.keep) continue;
+    if (o.kind === 'goods' && o.need === 'heal' && potionRoom(K) <= 0) continue;
+    if (o.kind === 'goods' && o.need === 'belt' && beltRoom(K) <= 0) continue;
+    if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) >= ALCHEMY.pots) continue;
     K.gold = gold(K.gold - p);
     if (o.kind === 'beast') { K.beasts.push({id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null}); done.push(`${BEASTS[o.id].acc} за ${gold(p)}`); }
     else if (o.kind === 'vehicle') { K.vehicles.push({kind: o.id, pulled: false}); done.push(`${o.id === 'cart' ? 'тележку' : 'повозку'} за ${gold(p)}`); }
-    else if (o.kind === 'goods') { K.cargo[o.id] = (K.cargo[o.id] || 0) + o.n; if (o.id === 'potion') topUp(K); done.push(`${o.id === 'potion' ? 'зелье лечения' : `${RESOURCES.get(o.id).label} (${o.n})`} за ${gold(p)}`); }
+    else if (o.kind === 'goods') { K.cargo[o.id] = (K.cargo[o.id] || 0) + o.n; if (isPotion(o.id)) topUp(K); done.push(`${isPotion(o.id) ? RESOURCES.get(o.id).label : `${RESOURCES.get(o.id).label} (${o.n})`} за ${gold(p)}`); }
     else if (o.kind === 'building') { campOf(K).push(o.id); done.push(`«${BUILDINGS.get(o.id).name}» для лагеря за ${gold(p)}`); }
     else { const m = equip(K, o.id); done.push(`${gearDef(o.id).label.toLowerCase()} для ${m.name} за ${gold(p)}`); }
     assign(K); K.path = null;

@@ -36,6 +36,8 @@ import {VALUES} from '../src/data/values.js';
 import {RELATIONS, KINS} from '../src/data/relations.js';
 import {RAID_BANDS, memberStrength, kitFor} from '../src/data/raids.js';
 import {COMBAT_ROLES, ROLE_MIX, ARMOUR, LINKS, mixOf, rolesOf} from '../src/data/roles.js';
+import {POTIONS} from '../src/data/potions.js';
+import {CONDITIONS} from '../src/data/conditions.js';
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
@@ -209,6 +211,15 @@ for (const v of VALUES.all()) for (const c of v.clash) if (!VALUES.has(c)) err(`
   }
 }
 
+// potions (data/potions.js): each grade a resource, its makings resources, its effect a row of «Состояния» of kind potion
+for (const p of POTIONS.all()) for (const g of p.grades) {
+  if (!RESOURCES.has(g.res)) err(`зелье ${p.id}: нет ресурса «${g.res}»`);
+  for (const r of Object.keys(g.cost)) if (!RESOURCES.has(r)) err(`зелье ${p.id}: в составе нет ресурса «${r}»`);
+  if (!(g.cost.pots >= 1)) err(`зелье ${p.id}: без горшка`);
+  if (!CONDITIONS.has(g.effect) || CONDITIONS.get(g.effect).kind !== 'potion') err(`зелье ${p.id}: действие «${g.effect}» — не строка «Состояний» вида зелье`);
+  if (!['healerhut', 'alchemist'].includes(g.at)) err(`зелье ${p.id}: варят в неизвестном «${g.at}»`);
+}
+
 // every resource should come from somewhere
 const sources = new Set(['gold',   // gold comes from trade
   ...TRADE.WARES.flatMap(x => x.resource || []),   // bought from traders
@@ -216,7 +227,8 @@ const sources = new Set(['gold',   // gold comes from trade
 ...JOBS.all().map(j => j.resource), ...RECIPES.all().map(r => r.makes?.resource), ...ORES.all().map(o => o.resource), ...ORES.all().flatMap(o => Object.keys(o.also || {})),
   ...SPECIES.all().flatMap(s => Object.keys(s.yields || {})),
   ...RESOURCES.filter(r => r.tags.includes('key')).map(r => r.id),   // town-made tools: always with traders
-  ...SPECIES.all().flatMap(s => (s.tame ? [s.tame.milk && 'milk', s.tame.wool && 'wool'].filter(Boolean) : []))]);   // from the pen
+  ...SPECIES.all().flatMap(s => (s.tame ? [s.tame.milk && 'milk', s.tame.wool && 'wool'].filter(Boolean) : [])),   // from the pen
+  ...POTIONS.all().flatMap(p => p.grades.filter(g => g.at === 'alchemist').map(g => g.res))]);   // brewed in a town's laboratory (campaign/town.js)
 
 // furnaces, tools, regions
 for (const r of RECIPES.all()) {

@@ -123,7 +123,7 @@ export function applyCamp(a, K, S, o, d, how) {
     if (!mo.alive) { fallen.push(m); m.fell = mo.cause; continue; }
     if (mo.captive && m.captive) Object.assign(m.captive, mo.captive);
     if (mo.hp < m.hp - CAMPAIGN.fight.wounded) hurt.push(m);
-    m.hp = mo.hp; m.local = mo.local; if (mo.potions != null) m.potions = mo.potions;
+    m.hp = mo.hp; m.local = mo.local; if (mo.potions != null) m.potions = mo.potions; if (mo.belt) m.belt = mo.belt.length ? mo.belt : null;
   }
   // the beasts: killed, bolted into the dark, led off by the thieves
   const lostB = [], stolenB = [];

@@ -68,7 +68,7 @@ export function campSetup(a, K, ev) {
   return {
     day: K.day, year: a.hist.year, kind: ev.kind, seed: `${K.seed}:camp:${K.day}:${ev.kind}${n ? `:${n}` : ''}`, i: K.i,
     startDay: a.hist.season * SEASON_DAYS + (ev.dayIn ?? 0), plan, people: K.people,
-    members: alive(K).map(m => ({id: m.id, name: m.name, potions: m.potions || 0, gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
+    members: alive(K).map(m => ({id: m.id, name: m.name, potions: m.potions || 0, belt: [...(m.belt || [])], gender: m.gender, race: m.race, people: m.people, role: m.role, special: m.special,
       align: m.align, values: m.values, hp: m.hp, gear: {hand: [...m.gear.hand], body: m.gear.body}, local: m.local || null, captive: m.captive ? {...m.captive} : null, master: m.master ? {...m.master} : null, former: m.former ? {...m.former} : null, loyalty: m.loyalty ?? null})),
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
@@ -131,6 +131,7 @@ export function openCamp(S) {
     dress(ag, [...m.gear.hand, m.gear.body].filter(id => !!gearDef(id)), CAMP.arrows);
     for (const it of Object.values(ag.equip)) if (it) it.own = m.id;   // the caravan's own: not loot when a fallen one's gear is stripped
     if (!m.captive && !m.former && m.potions) ag.potions = Math.min(POTION.slot, m.potions);   // the healing potions in the slot (agents/potions.js)
+    if (!m.captive && !m.former && m.belt?.length) ag.belt = m.belt.slice(0, POTION.belt);   // and the others in the belt
     for (const n of Object.keys(ag.needs)) ag.needs[n] = Math.max(ag.needs[n], 0.75);
     ag.needs.rest = CAMP.rest[S.kind] ?? 0.85;   // a day's march behind them
     if (S.kind === 'stop') ag.needs.food = 1;   // the day's meal is the campaign's: on the map they hunt and gather
@@ -327,7 +328,7 @@ export function campOutcome(w) {
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill};
     // a fallen one still bleeding when the camp ends: the others bind the wound — barely alive
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
-    return {id: m.id, alive: true, potions: ag.potions || 0, hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
+    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);

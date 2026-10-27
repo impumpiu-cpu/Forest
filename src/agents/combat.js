@@ -17,14 +17,14 @@ import {heatTo} from '../world/heat.js';
 import {nearAgents} from './spatial.js';
 import {COMBAT, CAPS, DEFAULT_BLOW, ARMOR_VS_CAP, resistTo, traitOf} from '../data/balance/combat.js';
 import {drawPlace} from '../data/anatomy.js';
-import {CONDITIONS} from '../data/conditions.js';
+import {CONDITIONS, effectResist} from '../data/conditions.js';
 import {taintBy} from './afflictions.js';
 import {degreeOf, passed, degreeValue, degreesOn, checkChance, DEGREE_CHECKS} from '../data/checks.js';
 import {NORM} from '../data/special.js';
 
 import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
-import {quaff} from './potions.js';
+import {quaff, drinkFor, bladeHit} from './potions.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
@@ -137,13 +137,15 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const bsp = SPECIES.get(by.species);
   if (bsp.drinks && melee && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
   // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js), a drake's breath burns
-  if (melee && bsp.venom && !tsp.undead) { t.poison = {dmg: bsp.venom.dmg * resistTo(tsp, 'poison'), until: w.tick + bsp.venom.ticks}; }
+  if (melee && bsp.venom && !tsp.undead) { t.poison = {dmg: bsp.venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + bsp.venom.ticks}; }
+  // a poison rubbed on the blade (agents/potions.js): the blow that struck home carries it in
+  if (melee && by.coat && !tsp.undead && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'));
   if (melee && bsp.web) t.webbed = {slow: bsp.web.slow, until: w.tick + bsp.web.ticks};
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
-  if (t.hp <= 0) lethal(w, t, 'ран', by); else if (t.potions) quaff(w, t);   // a potion at the edge (agents/potions.js)
+  if (t.hp <= 0) lethal(w, t, 'ран', by); else if (t.potions || t.belt?.length) quaff(w, t);   // a potion at the edge (agents/potions.js)
   return dmg;
 }
 
@@ -191,6 +193,8 @@ export const stanceGain = (stance, q) => (stance === 'front' ? 1 : 1 + ((stance 
 export function attack(w, a, t) {
   if (a.cd > 0 || !t || t.dead || t.downed || a.dead || stunnedNow(w, a)) return false;
   if (Math.hypot(t.x - a.x, t.y - a.y) > reachOf(a) || !canSee(w, a, t)) return false;
+  // the first blow of a fight: a brew for it drunk, a poison rubbed on the blade (agents/potions.js) — the blow waits
+  if (a.belt?.length && drinkFor(w, a, 'fight')) { a.cd = COMBAT.drink; return true; }
   // rock stops a blow as it stops a shot (a line through the corner of two rocks included); water does not
   if (behindRock(w, a, t)) return false;
   const g = ensureGear(a);

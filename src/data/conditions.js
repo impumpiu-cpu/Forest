@@ -6,6 +6,10 @@
 //                      says at which place of the body)
 //         state      — a passing state kept on the creature itself (`where`: its field)
 //         exhaustion — a stage of exhaustion: how many of `EXHAUSTION.needs` are at or below `EXHAUSTION.low`
+//         potion     — what a potion does (data/potions.js): heal — × full health at once; cures — the states it ends
+//                      ('ill' — any illness); ticks — how long it lasts (a.effects); mods, resist ({poison: ×}: what
+//                      reaches it of such harm), holdBelow as a mark's; blade — on the weapon: {hits, dmg, ticks} — so
+//                      many blows that strike poison what they strike (a.coat); mark — a mark for life (never twice)
 //         mark       — what a creature is for life, not what is wrong with it (a.marks): a war beast's training, an
 //                      officer's rank
 //   mods  — what it does to the body (keys of «Модификаторы существа»); hp — × full health; special — a shift of its
@@ -19,7 +23,7 @@ import {TAINT} from './afflictions.js';
 import {SPECIES} from './species.js';
 import {DAY} from '../core/time.js';
 
-export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', state: 'состояние', exhaustion: 'истощение', taint: 'порча', mark: 'метка'};
+export const CONDITION_KINDS = {wound: 'рана', trauma: 'травма', state: 'состояние', exhaustion: 'истощение', taint: 'порча', mark: 'метка', potion: 'зелье'};
 
 export const CONDITIONS = new Registry('condition');
 
@@ -56,6 +60,15 @@ CONDITIONS.registerAll([
   {id: 'officer', kind: 'mark', where: 'marks', label: 'офицер',
     note: 'голова звена в банде (data/ranks.js): крепче пешки, стоит до смерти; пока стоит, его звено не бежит',
     hp: 1.3, mods: {}, holdBelow: 0.15},
+  // ── what potions do (data/potions.js): at once, for a while, on the blade
+  {id: 'potHeal', kind: 'potion', label: 'зелье лечения', note: 'сразу: здоровье + heal от полного', heal: 0.6},
+  {id: 'potHealStrong', kind: 'potion', label: 'зелье лечения (усиленное)', note: 'сразу: здоровье + heal, кровотечение останавливается', heal: 1, cures: ['bleeding']},
+  {id: 'potAntidote', kind: 'potion', label: 'противоядие', note: 'яд из крови вон; новый яд × resist на ticks тиков', cures: ['poisoned'], ticks: 100, resist: {poison: 0.5}, mods: {}},
+  {id: 'potAntidoteStrong', kind: 'potion', label: 'противоядие (усиленное)', note: 'яд и недуг вон; новый яд × resist на ticks тиков', cures: ['poisoned', 'ill'], ticks: 600, resist: {poison: 0.2}, mods: {}},
+  {id: 'potBear', kind: 'potion', label: 'медвежья сила', note: 'сила и смелость на ticks тиков', ticks: 400, mods: {str: 1.2, bravery: 0.3}},
+  {id: 'potBearStrong', kind: 'potion', label: 'медвежья сила (усиленная)', note: 'сила и смелость на ticks тиков; стоит, пока здоровье выше holdBelow', ticks: 600, mods: {str: 1.35, bravery: 0.3}, holdBelow: 0.2},
+  {id: 'potVenom', kind: 'potion', label: 'яд на клинке', note: 'hits ударов, что дошли до тела, травят: dmg здоровья в тик ticks тиков (нежить не травится)', blade: {hits: 3, dmg: 0.0005, ticks: 200}},
+  {id: 'potVenomStrong', kind: 'potion', label: 'яд на клинке (усиленный)', note: 'hits ударов травят сильнее и дольше', blade: {hits: 6, dmg: 0.0008, ticks: 240}},
   // ── exhaustion: neutral for now (empty mods), ready for the numbers
   {id: 'exhausted1', kind: 'exhaustion', stage: 1, label: 'истощение I', mods: {}, note: 'одна нужда на исходе'},
   {id: 'exhausted2', kind: 'exhaustion', stage: 2, label: 'истощение II', mods: {}, note: 'две нужды на исходе'},
@@ -98,6 +111,8 @@ export function conditionsOf(w, a) {
   if (a.withdrawal) out.push({row: CONDITIONS.get('withdrawal')});
   const tr = taintRow(a); if (tr) out.push({row: tr});
   for (const id of a.marks || []) if (CONDITIONS.has(id)) out.push({row: CONDITIONS.get(id)});
+  for (const e of a.effects || []) if (CONDITIONS.has(e.id) && now < e.until) out.push({row: CONDITIONS.get(e.id), until: e.until});   // a potion at work
+  if (a.coat && CONDITIONS.has(a.coat.id)) out.push({row: CONDITIONS.get(a.coat.id), hits: a.coat.hits});   // poison on the blade
   return out;
 }
 export {hasMods as conditionHasMods};
@@ -105,3 +120,7 @@ export {hasMods as conditionHasMods};
 // the marks a creature bears, as rows (a.marks: data/conditions.js kind 'mark')
 export const marksOf = a => (a.marks?.length ? a.marks.filter(id => CONDITIONS.has(id)).map(id => CONDITIONS.get(id)) : []);
 export const hasMark = (a, id) => !!a.marks?.includes(id);
+// the potions at work on a creature (a.effects: [{id, until}]), as rows
+export const effectsOf = (w, a) => (a.effects?.length ? a.effects.filter(e => CONDITIONS.has(e.id) && (!w || w.tick < e.until)).map(e => CONDITIONS.get(e.id)) : []);
+// what reaches a creature of a harm (poison…) through the potions at work: × (1 when none)
+export const effectResist = (w, a, kind) => effectsOf(w, a).reduce((m, r) => m * (r.resist?.[kind] ?? 1), 1);

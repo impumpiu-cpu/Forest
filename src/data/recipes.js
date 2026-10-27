@@ -25,7 +25,10 @@
 import {Registry} from '../core/registry.js';
 import {LUXURY} from './luxury.js';
 import {FURNITURE} from './furniture.js';
-import {POTION} from './potions.js';
+import {POTION, hutGrades} from './potions.js';
+
+// how keen the healer's hut is on each potion: up to `share` of the people, with this weight
+const HUT_WANT = {heal: {share: 0.5, want: 0.6}, antidote: {share: 0.34, want: 0.45}, bear: {share: 0.34, want: 0.4}, venom: {share: 0.25, want: 0.35}};
 
 export const RECIPES = new Registry('recipe');
 
@@ -91,8 +94,14 @@ RECIPES.registerAll([
   // ── coal: logs smoulder under turf into coal; more when the furnace and the forge burn it
   // the healing potion (data/potions.js): two herbs; brewed while herbs are spare beyond the treatment's and the stock
   // (what is left after the slots are filled, settlement/potions.js) is short of one for every other colonist
-  {id: 'potion', at: 'healerhut', cost: {herbs: POTION.herbs}, work: 300, makes: {resource: 'potion', n: 1},
-    want: c => (c.stock('herbs') >= POTION.herbs + 2 && c.stock('potion') < Math.ceil(c.pop / 2) ? 0.6 : 0)},
+  // the potions a healer's hut brews (data/potions.js hutGrades: the plain grades of tier ≤ POTION.hutTier), each poured
+  // into a pot: the healing one while the stock has fewer than one for every second, the rest while fewer than
+  // `share` of the people have one and the makings are there to spare
+  ...hutGrades().map(({potion, grade}) => ({id: grade.res, tier: grade.tier, at: 'healerhut', get cost() { return {...grade.cost}; }, work: 300, makes: {resource: grade.res, n: 1},
+    want: c => {
+      const enough = Object.entries(grade.cost).every(([r, n]) => c.stock(r) >= n + (r === 'herbs' ? 2 : 0));
+      return enough && c.stock(grade.res) < Math.ceil(c.pop * (HUT_WANT[potion.id]?.share ?? 0.3)) ? HUT_WANT[potion.id]?.want ?? 0.4 : 0;
+    }})),
 
   {id: 'charcoal', at: 'charpit', cost: {wood: 4}, work: 260, makes: {resource: 'coal', n: 3},
     want: c => (c.has('smelter') ? (c.fuel < 16 ? 1.8 : 0) : (c.stock('coal') < 6 ? 0.8 : 0))},
@@ -191,7 +200,8 @@ RECIPES.registerAll([
   {id: 'linen', tier: 2, skill: 'tailoring', at: 'crafthut', cost: {cloth: 2}, work: 900, makes: {item: 'linen'},
     want: c => (short(c.owned('linen') + c.owned('furcoat') + c.owned('jerkin') + c.owned('hardleather'), c.pop) ? 2.2 : 0)},
   {id: 'pots', at: 'potter', cost: {clay: 2, wood: 1}, work: 300, makes: {resource: 'pots', n: 3},
-    want: c => (c.stock('pots') < Math.min(30, c.food / 5) ? 1.6 : 0)},
+    // (and a few for the healer's hut: every potion is poured into a pot — data/potions.js POTION.pot)
+    want: c => (c.stock('pots') < Math.max(Math.min(30, c.food / 5), c.has('healerhut') ? POTION.hutPots : 0) ? 1.6 : 0)},
   {id: 'planks', at: 'sawmill', cost: {wood: 3}, work: 260, makes: {resource: 'planks', n: 2},
     want: c => (c.stock('planks') < 24 ? 1.6 : 0)},
 

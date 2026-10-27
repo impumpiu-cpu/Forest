@@ -73,14 +73,15 @@ export const SQUAD = {
 
 // How the fighting roles fight (agents/tactics.js, data/roles.js): distances in cells
 //   kite        — a shooter or a healer steps back from a blade closer than this that comes at it, for `kiteFor` ticks at
-//                 most; then it stands and fights `kiteRest` ticks before it steps back again (no endless retreat)
+//                 most, till the blade is `kiteOut` × that far, `kiteStep` cells at a time; then it stands and fights
+//                 `kiteRest` ticks before it steps back again (no endless retreat); mendReach — a healer works this close
 //   guard       — a shield-bearer turns on one at its shooters, a spearman or a cleaver joins on one held, this close
 //   wounded     — below this share of health a foe counts as wounded (the cutthroat's and the sentient archer's pick)
 //   sneakUntil  — a cutthroat creeps while no foe is nearer than this (agents/combat.js COMBAT.sneak)
 //   mend        — the healer: goes to a fallen one of its band within `near`, works `ticks` on it; a sentient one gives
 //                 a potion to one below `potionBelow` of its health (`potionTicks` to give it); gives it up after `chase`
 //                 ticks; the one it dressed stands up with `standUp` of its health and fights on
-export const TACTICS = {kite: 2.5, kiteFor: 30, kiteRest: 60, guard: 5, wounded: 0.5, sneakUntil: 2.5, mend: {near: 12, ticks: 60, potionTicks: 10, potionBelow: 0.35, chase: 240, standUp: 0.35}};
+export const TACTICS = {kite: 2.5, kiteFor: 30, kiteRest: 60, kiteOut: 1.6, kiteStep: 2, mendReach: 1.3, guard: 5, wounded: 0.5, sneakUntil: 2.5, mend: {near: 12, ticks: 60, potionTicks: 10, potionBelow: 0.35, chase: 240, standUp: 0.35}};
 
 export const CARCASS = {
   life: 4 * DAY,       // rots away entirely after this

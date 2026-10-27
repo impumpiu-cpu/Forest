@@ -15,6 +15,8 @@ export const COMBAT = {
   minCooldown: 4,
   // arm's length (a species may have its own `attack.reach`)
   reach: 1.25,
+  // a long weapon stands this much inside its reach (agents/tasks.js fight): the blow lands while the foe comes on
+  reachStand: 0.15,
   // colonists inside the settlement zone strike this much harder
   home: 1.25,
   // creatures that fear silver: a silvered blade bites them × bane, anything else × plain
@@ -31,6 +33,8 @@ export const COMBAT = {
   // the armour a blow or a shot meets on the average foe: what the rating (КС) lets a piercing weapon (quality `piercing`)
   // get through
   armourSeen: 0.3,
+  // a potion drunk or rubbed on the blade before the first blow takes this many ticks of the fight (agents/combat.js attack)
+  drink: 12,
   // a shield-bearer covers a neighbour from shots: one of the target's side within `near` cells, closer to the shooter
   // than the target and off the line by no more than `side` cells, catches the shot with its shield's cover × `share`
   cover: {near: 1.6, side: 0.9, share: 0.6},

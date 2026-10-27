@@ -11,7 +11,7 @@
 import {perTick} from '../core/util.js';
 import {maxHp} from './agent.js';
 import {AURAS} from '../data/behaviour.js';
-import {marksOf, hasMark} from '../data/conditions.js';
+import {marksOf, effectsOf, hasMark} from '../data/conditions.js';
 import {RANK_RULES} from '../data/ranks.js';
 import {liveById} from './lookup.js';
 
@@ -21,7 +21,8 @@ const bearers = (w, id) => perTick(w, 'auras:' + id, () => w.agents.filter(o => 
 // wolves wandering in, a band of the colony's own raiders hold nothing from a boss across the map)
 export const leaderOf = (w, a) => (a.side == null ? null : bearers(w, 'lead').find(b => b !== a && b.id === a.side) || null);
 // a mark that holds it to the ground (a war beast's training, data/conditions.js holdBelow): until its health falls so low
-const markHolds = a => marksOf(a).some(r => r.holdBelow != null && a.hp > r.holdBelow * maxHp(a));
+// (a potion at work holds as a mark does: a strong bear's brew)
+const markHolds = (w, a) => [...marksOf(a), ...effectsOf(w, a)].some(r => r.holdBelow != null && a.hp > r.holdBelow * maxHp(a));
 // an officer's small aura (data/ranks.js): a member of its link holds while the officer stands and it is not near death
 const linkHolds = (w, a) => {
   if (a.link == null || a.link === a.id || a.hp <= RANK_RULES.hurt * maxHp(a)) return false;
@@ -30,4 +31,4 @@ const linkHolds = (w, a) => {
 };
 // whether this creature stands its ground: a bearer of `lead` always, its side while the bearer stands, an officer until
 // near death (its mark; a.officer — saves from before ranks), a trained beast likewise, a link while its officer stands
-export const holdsGround = (w, a) => !!a.auras?.includes('lead') || !!leaderOf(w, a) || (!!a.officer && a.hp > AURAS.officerBelow * maxHp(a)) || (!!a.marks && markHolds(a)) || linkHolds(w, a);
+export const holdsGround = (w, a) => !!a.auras?.includes('lead') || !!leaderOf(w, a) || (!!a.officer && a.hp > AURAS.officerBelow * maxHp(a)) || ((!!a.marks || !!a.effects) && markHolds(w, a)) || linkHolds(w, a);

@@ -24,6 +24,10 @@ import {PLANTS, plantLayer} from './plants.js';
 import {oreAt} from '../world/ores.js';
 import {FURNITURE} from './furniture.js';
 import {RESOURCES as PRICE} from './balance/prices.js';
+import {POTIONS} from './potions.js';
+
+// the colour of a potion on the resource layer and in the stock
+const POTION_COLORS = {heal: '#d8506a', antidote: '#7fc48a', bear: '#b07a3a', venom: '#6aa84f'};
 
 // price, stack and money share live in data/balance/prices.js, one row per resource; a resource with no row
 // is an error at load time, a row with no resource is caught by tools/check-data.mjs
@@ -89,9 +93,11 @@ RESOURCES.registerAll([
 
   // healing herbs, picked from rare wild beds (data/plants.js); the healer treats wounds with them
   {id: 'herbs', label: 'лечебные травы', short: 'травы', tags: ['medicine'], group: 'Лекарства', loot: 1, keep: 10, target: 10, color: '#e8d25c'},
-  // the healing potion, brewed from herbs in the healer's hut (data/recipes.js `potion`, data/potions.js): the stock fills
-  // its people's slots (settlement/potions.js), at most three each; drunk by itself at the edge of death (agents/potions.js)
-  {id: 'potion', label: 'зелья лечения', short: 'зелья', tags: ['medicine'], group: 'Лекарства', loot: 2, keep: 6, color: '#d8506a'},
+  // the potions (data/potions.js): one resource for each grade of each — the plain healing one is `potion`; brewed in the
+  // healer's hut (data/recipes.js, plain grades) or a town's laboratory (strong ones: campaign/town.js); the stock fills
+  // its people's slot and belt (settlement/potions.js); drunk by itself when its moment comes (agents/potions.js)
+  ...POTIONS.all().flatMap(p => p.grades.map((g, k) => ({id: g.res, label: k ? `${p.label} (усиленное)` : p.label, short: k ? `${p.label.split(' ')[0]}+` : p.label.split(' ')[0],
+    tags: ['medicine'], group: 'Лекарства', loot: 2, keep: k ? 0 : g.res === 'potion' ? 6 : 2, color: POTION_COLORS[p.id] || '#d8506a'}))),
 
   // fuel: coal — burnt from logs in the pit or dug from a seam, it is all the same coal. In a furnace
   // (`furnace`) fuel gives heat up to its `tier`: wood (tier 1) melts copper, bronze, gold and silver,

@@ -37,7 +37,7 @@ import {catchRunaway} from '../settlement/escape.js';
 import {assistStillOn} from '../settlement/masters.js';
 import {REST, KINDLE, TACTICS} from '../data/behaviour.js';
 import {dress as dressWound, stabilize} from './wounds.js';
-import {POTION} from '../data/potions.js';
+import {CONDITIONS} from '../data/conditions.js';
 import {BEHAVIOURS} from '../data/behaviours.js';
 import {ACTS} from './behaviours/index.js';
 
@@ -153,7 +153,7 @@ TASKS.registerAll([
     }
     task.shooting = false;
     // a long weapon (quality `reach`) strikes from where it reaches and lets the foe come on; anyone else closes in
-    const R = reachOf(a), stand = R > COMBAT.reach ? R - 0.15 : Math.min(0.9, R);
+    const R = reachOf(a), stand = R > COMBAT.reach ? R - COMBAT.reachStand : Math.min(0.9, R);
     if (d > stand || behindRock(w, a, t)) { if (approach(w, a, t.x, t.y, 1.1) === null) fail(w, a, 'к врагу не подойти', 'impossible'); }   // unreachable: pick something else
     else attack(w, a, t);
   }},
@@ -284,9 +284,9 @@ TASKS.registerAll([
   {id: 'kite', label: () => 'отходит, держит дистанцию', step(w, a, task) {
     const f = liveById(w, task.from);
     task.since ??= w.tick;
-    if (!f || f.downed || w.tick - task.since > TACTICS.kiteFor || Math.hypot(f.x - a.x, f.y - a.y) > TACTICS.kite * 1.6) { a.kitedAt = w.tick; done(w, a); return; }
+    if (!f || f.downed || w.tick - task.since > TACTICS.kiteFor || Math.hypot(f.x - a.x, f.y - a.y) > TACTICS.kite * TACTICS.kiteOut) { a.kitedAt = w.tick; done(w, a); return; }
     const dx = a.x - f.x, dy = a.y - f.y, L = Math.hypot(dx, dy) || 1;
-    if (moveToward(w, a, a.x + dx / L * 2, a.y + dy / L * 2) === null) { a.kitedAt = w.tick; done(w, a); }   // a wall at its back: stand and fight (TACTICS.kiteRest)
+    if (moveToward(w, a, a.x + dx / L * TACTICS.kiteStep, a.y + dy / L * TACTICS.kiteStep) === null) { a.kitedAt = w.tick; done(w, a); }   // a wall at its back: stand and fight (TACTICS.kiteRest)
   }},
   // a band's healer (agents/tactics.js): to the fallen one, dress the wound (agents/wounds.js) — or a potion for one
   // badly hurt
@@ -295,9 +295,9 @@ TASKS.registerAll([
     task.since ??= w.tick;
     // gone, up again, already going home, or too long after it: the healer gives it up
     if (!b || b.gone || b.task?.id === 'leave' || w.tick - task.since > TACTICS.mend.chase || (task.potion ? !(a.potions > 0) || b.downed : !b.downed)) { done(w, a); return; }
-    if (Math.hypot(b.x - a.x, b.y - a.y) > 1.3) { task.work = 0; if (approach(w, a, b.x, b.y, 1.1) === null) fail(w, a, 'к своему не подойти', 'impossible'); return; }
+    if (Math.hypot(b.x - a.x, b.y - a.y) > TACTICS.mendReach) { task.work = 0; if (approach(w, a, b.x, b.y) === null) fail(w, a, 'к своему не подойти', 'impossible'); return; }
     if ((task.work = (task.work || 0) + 1) < (task.potion ? TACTICS.mend.potionTicks : TACTICS.mend.ticks)) return;
-    if (task.potion) { a.potions--; b.hp = Math.min(maxHp(b), b.hp + POTION.heal); b.flash = 4; }
+    if (task.potion) { a.potions--; b.hp = Math.min(maxHp(b), b.hp + CONDITIONS.get('potHeal').heal); b.flash = 4; }   // the healing potion of its slot
     else {
       if (b.faction === 'colony') { stabilize(w, a, b); done(w, a); return; }   // one of ours: the colony's own dressing (thoughts, the chronicle)
       dressWound(w, b, a.skill?.medicine || 0); b.task = null;

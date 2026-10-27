@@ -13,7 +13,7 @@ import {SPECIES} from '../data/species.js';
 import {TRAITS, BASE_MODS} from '../data/traits.js';
 import {CREATURE_MODS, ADD_MODS} from '../data/mods.js';
 import {WOUNDS} from '../data/wounds.js';
-import {exhaustionRow, taintRow, marksOf, CONDITIONS} from '../data/conditions.js';
+import {exhaustionRow, taintRow, marksOf, effectsOf, CONDITIONS} from '../data/conditions.js';
 import {illStage} from '../data/afflictions.js';
 
 export const peopleOf = (sp, a) => (a.people && sp.peoples ? sp.peoples.find(p => p.id === a.people) : null);
@@ -119,7 +119,8 @@ export function refreshBody(a) {
   const ex = exhaustionRow(a.exhaust || 0);
   if (ex) { for (const [k, v] of Object.entries(ex.mods || {})) mod(m, k, v); hpMul *= ex.hp ?? 1; }
   // an illness by its stage, withdrawal, the rot (data/afflictions.js, data/conditions.js)
-  for (const row of [illStage(a), a.withdrawal ? CONDITIONS.get('withdrawal') : null, taintRow(a), ...marksOf(a)]) if (row) { for (const [k, v] of Object.entries(row.mods || {})) mod(m, k, v); hpMul *= row.hp ?? 1; }
+  // … and the potions at work (a.effects: their time is kept by agents/potions.js stepPotionEffects)
+  for (const row of [illStage(a), a.withdrawal ? CONDITIONS.get('withdrawal') : null, taintRow(a), ...marksOf(a), ...effectsOf(null, a)]) if (row) { for (const [k, v] of Object.entries(row.mods || {})) mod(m, k, v); hpMul *= row.hp ?? 1; }
   const own = a.own || {};
   for (const [k, v] of Object.entries(own.mul || {})) m[k] = (m[k] ?? 1) * v;
   for (const [k, v] of Object.entries(own.add || {})) m[k] = (m[k] ?? 0) + v;
