@@ -43,7 +43,7 @@ function offers(w, a, ctx, lanes, from) {
   const cur = key(a.task);
   let alarmed = false;
   for (const band of from) {
-    if (alarmed && !ALARMS.includes(band)) return null;
+    if (alarmed && !ALARMS.includes(band)) return 'held';   // (decide: the work is dropped, the one keeps by the fire)
     let opts = null, any = false;
     for (const d of lanes[band]) {
       const o = ACTS[d.id].want(w, a, ctx); if (a.dead) return null;   // (killed while asked — a rat caught at the stores: nothing more)
@@ -55,10 +55,21 @@ function offers(w, a, ctx, lanes, from) {
   return null;
 }
 
+// an alarm whose every answer is on a pause (the foe out of reach): one of the colony drops its work and keeps by the
+// fire (the task «reserve», agents/tasks.js: over by itself once the alarm is) — it neither works on nor stands lost;
+// another brain keeps what it does
+function holdUnderAlarm(w, a) {
+  if (a.faction !== 'colony' || a.task?.id === 'reserve') return false;
+  a.switchWhy = 'тревога: к врагу не подойти';   // (the work under way is closed as interrupted: lifecycle.js syncTask)
+  a.task = {id: 'reserve'}; syncTask(w, a);
+  return true;
+}
+
 const keepOf = (w, a, d, t) => { const k = ACTS[d.id].keep; return typeof k === 'function' ? k(w, a, t) : d.keep || 0; };
 
 function decide(w, a, ctx, from) {
   const found = offers(w, a, ctx, lanesOf(ctx.list), from);
+  if (found === 'held') return holdUnderAlarm(w, a);
   if (!found) return false;
   const [band, opts] = found, cur = key(a.task);
   let best = null, bs = -Infinity, bestWhy = null, by = null, alt = null, as = -Infinity, altWhy = null;

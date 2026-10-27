@@ -77,10 +77,13 @@ export function homeRoom(K, potion) {
 // belt room for a kind of potion (a belt takes one of a kind): the members who would wear it (it fits them, it is
 // wanted against the foes expected), have a place free and none of its kind yet, less what the cargo carries of it
 // (the plain healing one aside: it goes into the slots)
-// (a strong grade: those who carry the plain one of its kind would take it too, one for one — agents/potions.js rebelt)
+// (a full belt counts when it would trade its worst for this one; a strong grade: those who carry the plain one of its
+// kind would take it too, one for one — agents/potions.js rebelt)
 export function kindRoom(K, potion, res, threat = threatOf(foesOf(K))) {
   const fits = m => fitsBelt(m, res) && beltNeed(res, threat, m.race) > 0, ms = carriers(K);
-  const wear = ms.filter(m => fits(m) && (m.belt?.length || 0) < POTION.belt && !(m.belt || []).some(b => sameKind(b, res))).length;
+  // a place free, or one it would trade for this (agents/potions.js rebelt: better than the worst it carries by beltSwap)
+  const place = m => (m.belt?.length || 0) < POTION.belt || beltNeed(res, threat, m.race) >= Math.min(...m.belt.map(b => beltNeed(b, threat, m.race))) + POTION.beltSwap;
+  const wear = ms.filter(m => fits(m) && !(m.belt || []).some(b => sameKind(b, res)) && place(m)).length;
   const k = potionOf(res)?.k || 0;
   const upgrade = k ? ms.filter(m => fits(m) && (m.belt || []).some(b => sameKind(b, res) && (potionOf(b)?.k || 0) < k)).length : 0;
   const carried = potion.grades.reduce((s, g, i) => s + (g.res === 'potion' || (upgrade && i < k) ? 0 : K.cargo[g.res] || 0), 0);

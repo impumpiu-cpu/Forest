@@ -51,6 +51,7 @@ import {bindWaiting} from '../settlement/captives.js';
 import {allItems, def as itemOf} from '../agents/equipment.js';
 import {setStanding} from '../agents/standing.js';
 import {effectsOut, woundsOut, foesOf} from './potions.js';
+import {dress as bindFallen} from '../agents/wounds.js';
 
 // the camp's border with the world: nobody comes by schedule — the campaign sends the foe itself
 PROVIDERS.register({id: 'camp', label: 'Стоянка каравана', flows: {}, distance: () => null, receive() {}});
@@ -331,10 +332,12 @@ export function campOutcome(w) {
     if (ag?.fugitive && !ag.dead) return {id: m.id, alive: false, escaped: true};   // a captive got away (settlement/escape.js)
     if (ag?.gone && !ag.dead && !ag.fugitive) return {id: m.id, alive: false, taken: true};   // led off over the edge by a raider (agents/behaviours/led.js): alive, but no more with the caravan
     if (!ag || ag.dead) return {id: m.id, alive: false, cause: (ag && w.chronicle.people.find(p => p.id === ag.id)?.cause) || 'погиб'};
+    // a fallen one still senseless when the camp ends: the others bind the wound (agents/wounds.js dress) — a grave wound
+    // and the trauma it fell with, barely alive
+    const wasDown = !!ag.downed; if (wasDown) bindFallen(w, ag);
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill};
-    // a fallen one still bleeding when the camp ends: the others bind the wound — barely alive
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
-    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
+    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], wounds: (ag.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (wasDown ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);
@@ -359,7 +362,7 @@ export function campOutcome(w) {
   // the fallen foes the caravan bound (settlement/captives.js): they walk on with it
   const taken = w.agents.filter(o => o.captive && !o.captive.member && !o.dead && !o.fugitive).map(o => ({
     name: o.name, gender: o.gender, race: o.species, people: o.people || null, special: {...o.special}, align: o.align ? {...o.align} : null, values: o.values ? [...o.values] : null,
-    hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, from: S.foe?.kind || null, will: o.captive.will,
+    hp: Math.max(0.05, Math.min(1, o.hp / maxHp(o))), bonds: o.captive.bonds, wounds: (o.wounds || []).filter(x => x.until == null || x.until > w.tick).map(x => ({id: x.id, ticks: x.until == null ? null : x.until - w.tick})), from: S.foe?.kind || null, will: o.captive.will,
     gear: {hand: [...new Set([...allItems(o), ...w.armory.filter(it => it.handedBy === o.id)].filter(it => itemOf(it).slot === 'hand').map(gearToken))].filter(id => !!gearDef(id)), body: (b => (b ? gearToken(b) : 'clothes'))(allItems(o).find(it => itemOf(it).slot === 'body'))},
     local: JSON.parse(JSON.stringify({likes: o.likes, dislikes: o.dislikes, prefs: o.prefs, traits: o.traits, food: o.food, own: o.own, skill: o.skill}))}));
   const plundered = w.stats.lastSteal >= C.start;

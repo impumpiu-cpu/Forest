@@ -13,6 +13,7 @@ import {SPECIES} from '../data/species.js';
 import {plural} from '../core/util.js';
 import {makeMember} from './start.js';
 import {room, setPlace} from './company.js';
+import {DAY} from '../core/time.js';
 import {sleepDose} from '../agents/potions.js';
 import {POTION} from '../data/potions.js';
 
@@ -59,6 +60,8 @@ export function takeFromCamp(a, K, o, say) {
     const m = {id: (K.nextMember = (K.nextMember || K.members.length) + 1), name: t.name, gender: t.gender, race: t.race, people: t.people || null,
       role: 'captive', core: false, hp: t.hp, alive: true, joined: K.day, back: 1, ride: null, special: t.special, align: t.align || null, values: t.values || null,
       gear: {hand: [...(t.gear?.hand || [])], body: t.gear?.body || C.gear.body}, local: t.local || null,
+      // its wounds and traumas, as a member's (campaign/potions.js woundsIn: the last day a wound is borne, null — for life)
+      wounds: t.wounds?.length ? t.wounds.map(x => ({id: x.id, day: x.ticks == null ? null : K.day + Math.max(1, Math.ceil(x.ticks / DAY)) - 1})) : null,
       captive: {since: K.day, bonds: t.bonds, from: t.from || null, will: t.will ?? ESCAPE.will.start}};
     K.members.push(m); got.push(m);
   }

@@ -217,7 +217,7 @@ export function stepSquads(w) {
   }
 }
 
-const fight = fightTask;   // (agents/tactics.js)
+const fight = (w, a, e) => fightTask(w, a, e);   // (agents/tactics.js; called, not copied at load: the two import each other)
 
 // what a member of a squad does now; null when the plan has nothing to say (the brain's own default)
 export function planFor(w, a, sq, radius) {

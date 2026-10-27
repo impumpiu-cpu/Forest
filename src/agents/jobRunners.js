@@ -1,6 +1,7 @@
 // Generic routines that carry out JOBS. A job picks one with its `runner` field,
 // so a new job usually needs only a data entry.
-import {endTask, RUNNER_EXIT} from './lifecycle.js';
+import {endTask} from './lifecycle.js';
+import {RUNNER_EXIT} from './runnerExit.js';
 import {FOODS} from '../data/foods.js';
 import {brewFactor} from '../settlement/life.js';
 import {JOBS, huntable} from '../data/jobs.js';

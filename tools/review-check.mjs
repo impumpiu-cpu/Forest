@@ -132,5 +132,51 @@ const put = (w, sp, fac, x, kit = []) => { const a = createAgent(w, sp, fac, x, 
   expect(/sleepsUntil/.test(src.slice(src.indexOf('a red alarm'))), 'тревога не смотрит, что пленный спит после сонного отвара');
 }
 
+// the recheck (R02a, R02b): a new captive's wounds go with it; a member still senseless at the camp's end is bound — a
+// grave wound and its trauma (campaign/camp.js campOutcome, campaign/captives.js takeFromCamp)
+{
+  const {campSetup, openCamp, campOutcome} = await import('../src/campaign/camp.js');
+  const {takeFromCamp} = await import('../src/campaign/captives.js');
+  const {generateAtlas} = await import('../src/atlas/generate.js');
+  const {capitals, newCampaign} = await import('../src/campaign/index.js');
+  const a = generateAtlas({seed: '777', size: 'small', land: 1, plates: 1, hemisphere: 'north', wild: 0, elder: 0, young: 0});
+  const K = newCampaign(a, capitals(a)[0].town, {mode: 'local'});
+  const w = openCamp(campSetup(a, K, {kind: 'stop', dayIn: 0}));
+  const ag = w.campaign.people.get(K.members[0].id);
+  ag.downed = {until: w.tick + 999, cause: 'ран', trauma: 'limp'};
+  const o = campOutcome(w), m0 = o.members.find(m => m.id === K.members[0].id);
+  expect(m0.alive && m0.wounds?.some(x => x.id === 'grave') && m0.wounds.some(x => x.id === 'limp' && x.ticks == null), `упавший к концу стоянки встал без раны: ${JSON.stringify(m0.wounds)}`);
+  const room = K.members.length;
+  o.taken = [{name: 'Пленник', gender: 'm', race: 'human', special: {...K.members[0].special}, hp: 0.5, bonds: 'rope', will: 0.5, gear: {hand: [], body: 'clothes'}, wounds: [{id: 'limp', ticks: null}, {id: 'grave', ticks: 2 * DAY}]}];
+  const got = takeFromCamp(a, K, o, () => {});
+  if (got.length) expect(got[0].wounds?.some(x => x.id === 'limp' && x.day == null) && got[0].wounds.some(x => x.id === 'grave' && x.day > K.day), `травма нового пленного потерялась: ${JSON.stringify(got[0].wounds)}`);
+  else bad.push(`пленного не взяли для проверки ран (в отряде ${room})`);
+}
+
+// a belt place is counted where a full belt would trade its worst for the new potion (Codex on PR #25)
+{
+  const {kindRoom} = await import('../src/campaign/potions.js');
+  const {POTIONS} = await import('../src/data/potions.js');
+  const K = {members: [{alive: true, race: 'human', potions: 3, belt: ['bladeVenom', 'lightStep'], gear: {hand: ['ironaxe']}}], cargo: {}, fights: [{species: {vampire: 3}}], buildings: [], vehicles: [], beasts: [], stats: {}};
+  expect(kindRoom(K, POTIONS.get('silver'), 'silverOil') === 1, `под серебряное масло нет места в полном поясе против вампиров: ${kindRoom(K, POTIONS.get('silver'), 'silverOil')}`);
+}
+
+// the entry points load first, each in a fresh process (the recheck's N01: a cycle of imports broke the tables and the
+// page): the tools' and the game's own; the page (src/app/main.js) gets as far as the browser it needs
+{
+  const {execFile} = await import('node:child_process');
+  const root = new URL('../src/', import.meta.url).pathname;
+  const ENTRIES = ['sim.js', 'data/schema/index.js', 'campaign/index.js', 'atlas/generate.js', 'world/save.js', 'outside/index.js', 'app/main.js',
+    'agents/tactics.js', 'agents/lifecycle.js', 'agents/tasks.js', 'agents/jobRunners.js', 'agents/combat.js', 'agents/potions.js', 'agents/squad.js',
+    'settlement/potions.js', 'settlement/escape.js', 'campaign/potions.js', 'campaign/camp.js', 'campaign/captives.js', 'data/potions.js', 'data/raids.js'];
+  const BROWSER = /(document|window|localStorage|requestAnimationFrame|HTMLElement) is not defined/;
+  const run = f => new Promise(res => execFile(process.execPath, ['-e', `import(${JSON.stringify(root + f)}).then(() => {}, e => { console.error(e.message); process.exit(1); })`], (err, out, errOut) => {
+    const msg = (errOut || '').trim().split('\n').find(l => /Error|not defined|before initialization/.test(l)) || (errOut || '').trim().split('\n')[0];
+    res(err && !BROWSER.test(errOut || '') ? `${f}: ${msg}` : null);
+  }));
+  const fails = (await Promise.all(ENTRIES.map(run))).filter(Boolean);
+  expect(!fails.length, `не грузятся первыми: ${fails.join('; ')}`);
+}
+
 if (bad.length) { console.log('Ревизия Role:\n  ' + bad.join('\n  ')); process.exit(1); }
-console.log('ok   ревизия Role: уведённый уходит, раны и травмы идут со стоянки на стоянку, склянка — по точному кругу, недоступный раненый не закрывает других, стрелок пьёт перед первым выстрелом (не по дичи), усиленное заменяет простое, путь по дороге как у Дейкстры, знахарь не грабит');
+console.log('ok   ревизия Role: повторная проверка — раны нового пленного и упавшего к концу стоянки, место под замену в поясе, точки входа грузятся первыми; уведённый уходит, раны и травмы идут со стоянки на стоянку, склянка — по точному кругу, недоступный раненый не закрывает других, стрелок пьёт перед первым выстрелом (не по дичи), усиленное заменяет простое, путь по дороге как у Дейкстры, знахарь не грабит');
