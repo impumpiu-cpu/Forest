@@ -57,7 +57,7 @@ const has = (K, cost) => Object.entries(cost).every(([r, n]) => (K.cargo[r] || 0
 // hut can brew are brewed from the cargo while there is room for them — the healing ones first. → the potions brewed
 export function brewDay(K, r, wooded) {
   if (!hasBuilding(K, 'healerhut')) return 0;
-  for (const [res, p] of Object.entries(POTION.camp.find)) if (r() < p * (wooded ? POTION.camp.wooded : 1)) K.cargo[res] = (K.cargo[res] || 0) + 1;
+  for (const [res, p] of Object.entries(POTION.camp.find)) if (r() < p * (wooded ? POTION.camp.wooded : 1) && (K.cargo[res] || 0) < POTION.camp.keep) K.cargo[res] = (K.cargo[res] || 0) + 1;
   let n = 0;
   for (const {potion, grade} of hutGrades()) {
     while (has(K, grade.cost) && roomFor(K, potion) > 0) {
@@ -85,17 +85,19 @@ const daysOf = id => Math.max(1, Math.ceil((CONDITIONS.get(id).ticks || DAY) / D
 export const workingOn = (K, m, use) => (m.effects || []).some(e => e.day >= K.day && useOfEffect(e.id) === use);
 // the morning: what ran out is gone
 export function wearOff(K) { for (const m of alive(K)) if (m.effects) { m.effects = m.effects.filter(e => e.day >= K.day); if (!m.effects.length) m.effects = null; } }
-// everyone of `ms` without a brew of this use at work drinks one from the cargo (the strong first) — only when there is
-// enough for them all: one left out holds the whole caravan back as before. → true when all of them have one at work
+// everyone of `ms` without a brew of this use at work drinks of it: a kettle from the cargo (the strong first) serves
+// POTION.home.kettle of them — only when there are kettles enough for them all: one left out holds the whole caravan
+// back as before. → true when all of them have one at work
 export function brewTheDay(K, use, ms) {
-  const need = ms.filter(m => !workingOn(K, m, use)), grades = HOME_BY_USE[use] || [];
+  const need = ms.filter(m => !workingOn(K, m, use)), grades = HOME_BY_USE[use] || [], per = POTION.home.kettle;
   if (!need.length) return true;
-  if (grades.reduce((s, r) => s + (K.cargo[r] || 0), 0) < need.length) return false;
-  for (const m of need) {
+  const kettles = Math.ceil(need.length / per);
+  if (grades.reduce((s, r) => s + (K.cargo[r] || 0), 0) < kettles) return false;
+  for (let k = 0; k < kettles; k++) {
     const res = grades.find(r => (K.cargo[r] || 0) >= 1), id = potionOf(res).grade.effect; take(K, res);
-    (m.effects ||= []).push({id, day: K.day + daysOf(id) - 1});
+    for (const m of need.slice(k * per, (k + 1) * per)) (m.effects ||= []).push({id, day: K.day + daysOf(id) - 1});
   }
-  (K.stats.brews ||= {})[use] = (K.stats.brews[use] || 0) + need.length;
+  (K.stats.brews ||= {})[use] = (K.stats.brews[use] || 0) + kettles;
   return true;
 }
 // onto the local map: [{id, ticks}] — what is left of each, no more than its own length; and back: [{id, day}]

@@ -639,7 +639,7 @@ export function caravanDay(a, K, day) {
     const p = choosePace(a, K); if ((K.pace || 'normal') !== p) K.pace = p;
     // the brews of the day (campaign/potions.js): in frost everyone drinks a warming one — then the frost does not slow
     // them; with danger about the fighters drink an invigorating one — then an ambush does not catch them napping
-    if (frosty(a, K, seasonId) && brewTheDay(K, 'cold', ms)) K.warm = K.day;
+    if (frosty(a, K, seasonId)) { K.stats.frostDays = (K.stats.frostDays || 0) + 1; if (brewTheDay(K, 'cold', ms)) K.warm = K.day; }
     if (dangers(a, K.i, K).some(d => (d.strength ?? 0) > PACE_RULES.dangerAt) && brewTheDay(K, 'tired', ms.filter(m => !m.captive && !m.former))) K.alert = K.day;
     march(a, K, pace(a, K, seasonId));
   }

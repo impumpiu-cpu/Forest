@@ -37,11 +37,13 @@ export const POTION = {
   foe: 0.03,
   // the caravan (campaign/march.js): a day of camp with the healer's hut in the camp gathers each herb with its chance
   // (× wooded in wooded land); they are brewed at once into potions while there is room for them
-  camp: {find: {herbs: 0.35, wort: 0.2, sleepgrass: 0.12}, wooded: 2},
+  camp: {find: {herbs: 0.35, wort: 0.2, sleepgrass: 0.12}, wooded: 2, keep: 10},   // (no more of a herb is gathered while the cargo has `keep`)
   // the brews of the stock (settlement/potions.js): drunk when the warmth need falls below `cold`, the rest need below
   // `tired` (on the night watch or in an alarm), health below `hurt` of the whole or with a grave wound (mending); given
   // to a captive whose will to run is at least `will`
-  home: {cold: 0.3, tired: 0.25, hurt: 0.6, will: 0.4},
+  // to a captive whose will to run is at least `will`. On the world map a brew the caravan drinks at once is brewed in a
+  // kettle: one serves `kettle` heads for the day (campaign/potions.js brewTheDay)
+  home: {cold: 0.3, tired: 0.25, hurt: 0.6, will: 0.4, kettle: 4},
 };
 
 export const POTIONS = new Registry('potion');
@@ -60,10 +62,10 @@ POTIONS.registerAll([
     grades: [{res: 'bladeVenom', tier: 2, at: 'healerhut', cost: {venom: 1, wax: 1, pots: P}, effect: 'potVenom'},
              {res: 'bladeVenomStrong', tier: 3, at: 'alchemist', cost: {venom: 2, wax: 1, pots: P}, effect: 'potVenomStrong'}]},
   // the brews: drunk out of the stock
-  {id: 'warm', label: 'согревающий отвар', use: 'cold', home: true, note: 'пьют из запасов, когда зябнут', stock: {share: 0.34, of: 'people', want: 0.4, march: 2},
+  {id: 'warm', label: 'согревающий отвар', use: 'cold', home: true, note: 'пьют из запасов, когда зябнут', stock: {share: 0.34, of: 'people', want: 0.4, march: 1},
     grades: [{res: 'warmBrew', tier: 1, at: 'healerhut', cost: {wort: 2, pots: P}, effect: 'potWarm'},
              {res: 'warmBrewStrong', tier: 2, at: 'alchemist', cost: {wort: 3, herbs: 1, pots: P}, effect: 'potWarmStrong'}]},
-  {id: 'vigor', label: 'бодрящий отвар', use: 'tired', home: true, note: 'пьют из запасов, когда валятся с ног на посту или в тревогу', stock: {share: 0.25, of: 'people', want: 0.3, march: 1},
+  {id: 'vigor', label: 'бодрящий отвар', use: 'tired', home: true, note: 'пьют из запасов, когда валятся с ног на посту или в тревогу', stock: {share: 0.25, of: 'people', want: 0.3, march: 0.5},
     grades: [{res: 'vigorBrew', tier: 1, at: 'healerhut', cost: {wort: 1, herbs: 1, pots: P}, effect: 'potVigor'},
              {res: 'vigorBrewStrong', tier: 2, at: 'alchemist', cost: {wort: 1, herbs: 1, lynxEyes: 1, pots: P}, effect: 'potVigorStrong'}]},
   {id: 'mend', label: 'укрепляющий отвар', use: 'mending', home: true, note: 'пьют из запасов раненые: раны заживают быстрее', stock: {share: 0.25, of: 'people', want: 0.45},

@@ -160,15 +160,15 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
 // local map and back
 {
   const {brewTheDay, wearOff, effectsOut, effectsIn, workingOn} = await import('../src/campaign/potions.js');
-  const K = {day: 10, members: [{alive: true, id: 1}, {alive: true, id: 2}], cargo: {warmBrew: 1}, stats: {}, buildings: [], vehicles: [], beasts: []};
-  expect(!brewTheDay(K, 'cold', K.members) && K.cargo.warmBrew === 1, 'согревающий выпит, когда его не хватает на всех');
+  const K = {day: 10, members: [1, 2, 3, 4, 5].map(id => ({alive: true, id})), cargo: {warmBrew: 1}, stats: {}, buildings: [], vehicles: [], beasts: []};
+  expect(!brewTheDay(K, 'cold', K.members) && K.cargo.warmBrew === 1, 'согревающий выпит, когда котлов не хватает на всех');
   K.cargo.warmBrewStrong = 1;
-  expect(brewTheDay(K, 'cold', K.members) && !K.cargo.warmBrew && !K.cargo.warmBrewStrong, 'согревающий не выпит, когда хватает на всех');
+  expect(brewTheDay(K, 'cold', K.members) && !K.cargo.warmBrew && !K.cargo.warmBrewStrong, 'два котла на пятерых не выпиты');
   const out = effectsOut(K, K.members[0]);
   expect(out.length === 1 && out[0].ticks === CONDITIONS.get(out[0].id).ticks, `отвар на локальную карту: ${JSON.stringify(out)}`);
   expect(effectsIn(K, [{id: 'potWarm', ticks: 300}])[0].day === K.day, 'остаток отвара с локальной карты: не до конца дня');
   K.day++; wearOff(K);
-  expect(K.members.filter(m => workingOn(K, m, 'cold')).length === 1, 'простой согревающий не кончился за день или усиленный кончился');
+  expect(K.members.filter(m => workingOn(K, m, 'cold')).length === POTION.home.kettle, 'простой согревающий не кончился за день или усиленный кончился');
 }
 
 // modifiers do not pile up: of those pushing one key the same way the strongest works (agents/special.js refreshBody)
