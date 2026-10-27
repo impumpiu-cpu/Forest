@@ -77,9 +77,14 @@ export function homeRoom(K, potion) {
 // belt room for a kind of potion (a belt takes one of a kind): the members who would wear it (it fits them, it is
 // wanted against the foes expected), have a place free and none of its kind yet, less what the cargo carries of it
 // (the plain healing one aside: it goes into the slots)
+// (a strong grade: those who carry the plain one of its kind would take it too, one for one — agents/potions.js rebelt)
 export function kindRoom(K, potion, res, threat = threatOf(foesOf(K))) {
-  const wear = carriers(K).filter(m => (m.belt?.length || 0) < POTION.belt && !(m.belt || []).some(b => sameKind(b, res)) && fitsBelt(m, res) && beltNeed(res, threat, m.race) > 0).length;
-  return wear - potion.grades.reduce((s, g) => s + (g.res === 'potion' ? 0 : K.cargo[g.res] || 0), 0);
+  const fits = m => fitsBelt(m, res) && beltNeed(res, threat, m.race) > 0, ms = carriers(K);
+  const wear = ms.filter(m => fits(m) && (m.belt?.length || 0) < POTION.belt && !(m.belt || []).some(b => sameKind(b, res))).length;
+  const k = potionOf(res)?.k || 0;
+  const upgrade = k ? ms.filter(m => fits(m) && (m.belt || []).some(b => sameKind(b, res) && (potionOf(b)?.k || 0) < k)).length : 0;
+  const carried = potion.grades.reduce((s, g, i) => s + (g.res === 'potion' || (upgrade && i < k) ? 0 : K.cargo[g.res] || 0), 0);
+  return wear + upgrade - carried;
 }
 // room for this grade of a potion (`res`): the slot (the plain healing one), the brew's own, or a belt place for its
 // kind (the strong healing one too: it goes into a belt)
@@ -118,7 +123,12 @@ export function mendDay(K) {
 const daysOf = id => Math.max(1, Math.ceil((CONDITIONS.get(id).ticks || DAY) / DAY));
 export const workingOn = (K, m, use) => (m.effects || []).some(e => e.day >= K.day && useOfEffect(e.id) === use);
 // the morning: what ran out is gone
-export function wearOff(K) { for (const m of alive(K)) if (m.effects) { m.effects = m.effects.filter(e => e.day >= K.day); if (!m.effects.length) m.effects = null; } }
+export function wearOff(K) {
+  for (const m of alive(K)) {
+    if (m.effects) { m.effects = m.effects.filter(e => e.day >= K.day); if (!m.effects.length) m.effects = null; }
+    if (m.wounds) { m.wounds = m.wounds.filter(x => x.day == null || x.day >= K.day); if (!m.wounds.length) m.wounds = null; }   // a grave wound healed by its time
+  }
+}
 // everyone of `ms` without a brew of this use at work drinks of it: a kettle from the cargo (the strong first) serves
 // POTION.home.kettle of them — only when there are kettles enough for them all: one left out holds the whole caravan
 // back as before. → true when all of them have one at work
@@ -134,6 +144,10 @@ export function brewTheDay(K, use, ms) {
   (K.stats.brews ||= {})[use] = (K.stats.brews[use] || 0) + kettles;
   return true;
 }
+// the wounds go the same way (agents/wounds.js: a grave wound heals by its time, a trauma never): on the world map
+// m.wounds [{id, day}] — the last day it is borne (null — for life); onto the local map [{id, ticks}] (null — for life)
+export const woundsOut = (K, m) => (m.wounds || []).filter(x => x.day == null || x.day >= K.day).map(x => ({id: x.id, ticks: x.day == null ? null : (x.day - K.day + 1) * DAY}));
+export const woundsIn = (K, list) => (list?.length ? list.map(x => ({id: x.id, day: x.ticks == null ? null : K.day + Math.max(1, Math.ceil(x.ticks / DAY)) - 1})) : null);
 // onto the local map: [{id, ticks}] — what is left of each, no more than its own length; and back: [{id, day}]
 export const effectsOut = (K, m) => (m.effects || []).filter(e => e.day >= K.day).map(e => ({id: e.id, ticks: Math.min(CONDITIONS.get(e.id).ticks || DAY, (e.day - K.day + 1) * DAY)}));
 export const effectsIn = (K, list) => (list?.length ? list.map(e => ({id: e.id, day: K.day + Math.max(1, Math.ceil(e.ticks / DAY)) - 1})) : null);

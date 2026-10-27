@@ -99,8 +99,12 @@ export function createSquad(w, group) {
     else if (a.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole).squad === 'shooter' && a.gear?.ranged : a.gear?.rangedReady) a.sqRole = 'shooter';   // by its role (data/roles.js), a stray by what it holds
     else rest.push(a);
   }
-  rest.sort((x, y) => strength(x) - strength(y));   // weakest first: they loot and carry the torches
-  const special = goal === 'loot' ? Math.max(1, Math.round(rest.length * SQUAD.looters)) : goal === 'burn' ? Math.min(2, rest.length) : 0;
+  // weakest first: they loot and carry the torches — never one whose role keeps it from the band's chores (a healer,
+  // data/roles.js `noChores`: it tends the fallen), while anyone else is there to do them
+  const chores = a => !(a.fightRole && COMBAT_ROLES.has(a.fightRole) && COMBAT_ROLES.get(a.fightRole).noChores);
+  rest.sort((x, y) => (chores(y) - chores(x)) || strength(x) - strength(y));
+  const able = rest.filter(chores).length || rest.length;
+  const special = Math.min(able, goal === 'loot' ? Math.max(1, Math.round(rest.length * SQUAD.looters)) : goal === 'burn' ? Math.min(2, rest.length) : 0);
   rest.forEach((a, k) => { a.sqRole = k < special ? (goal === 'loot' ? 'looter' : 'torch') : 'front'; });
   const fronts = group.filter(a => a.sqRole === 'front' && a.id !== leader.id);
   if (kind === 'living' && fronts.length >= 2) fronts.sort((x, y) => strength(y) - strength(x))[0].sqRole = 'rear';

@@ -45,6 +45,13 @@ export const clearLine = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i =>
 // a shot's line: only rock stops an arrow or a stone (water, grass and wood do not)
 export const lineOfFire = (w, x0, y0, x1, y1) => walkLine(w, x0, y0, x1, y1, i => w.grid.terr[i] !== ROCK);
 
+// the cheapest step of any walkable ground (the table «Местность» may change it): the scale of the estimate
+function cheapestStep() {
+  let m = Infinity;
+  for (const t of Object.values(BY_CODE)) if (t && t.walkable && t.pathCost > 0 && t.pathCost < m) m = t.pathCost;
+  return Number.isFinite(m) ? Math.min(1, m) : 1;
+}
+
 // cells from start to goal (excluding start), or null when the goal cannot be reached within `budget` expansions
 export function findPath(w, sx, sy, gx, gy, budget = 6000) {
   const W = w.w, H = w.h, terr = w.grid.terr, b = buffers(w);
@@ -58,7 +65,9 @@ export function findPath(w, sx, sy, gx, gy, budget = 6000) {
   if (start === goal) return [];
   const stamp = ++b.stamp, {g, seen, closed, parent, heapI, heapF} = b;
   const gxC = goal % W, gyC = (goal / W) | 0;
-  const h = i => { const dx = Math.abs((i % W) - gxC), dy = Math.abs(((i / W) | 0) - gyC); return (dx + dy) + (SQRT2 - 2) * Math.min(dx, dy); };
+  // the octile distance × the cheapest step of any walkable ground (a road's): it never overstates what is left, so the
+  // first pop of the goal is the cheapest way (docs/RULES.md; a road away from the straight line is found)
+  const cheap = cheapestStep(), h = i => { const dx = Math.abs((i % W) - gxC), dy = Math.abs(((i / W) | 0) - gyC); return ((dx + dy) + (SQRT2 - 2) * Math.min(dx, dy)) * cheap; };
   let hn = 0;
   const push = (i, f) => { let k = hn++; while (k > 0) { const p = (k - 1) >> 1; if (heapF[p] <= f) break; heapI[k] = heapI[p]; heapF[k] = heapF[p]; k = p; } heapI[k] = i; heapF[k] = f; };
   seen[start] = stamp; g[start] = 0; parent[start] = -1; push(start, h(start));
@@ -69,7 +78,7 @@ export function findPath(w, sx, sy, gx, gy, budget = 6000) {
     for (;;) { let c = 2 * k + 1; if (c >= hn) break; if (c + 1 < hn && heapF[c + 1] < heapF[c]) c++; if (heapF[c] >= lf) break; heapI[k] = heapI[c]; heapF[k] = heapF[c]; k = c; }
     heapI[k] = li; heapF[k] = lf;
     // a cell is expanded once: stale copies left in the heap by a later, cheaper visit are skipped
-    // (the octile estimate never overstates a step here, so the first pop is the cheapest). Without
+    // (the estimate never overstates a step — h above — so the first pop is the cheapest). Without
     // this the search re-expanded the same cells over and over and gave up on long but open routes.
     if (closed[i] === stamp) continue;
     closed[i] = stamp;

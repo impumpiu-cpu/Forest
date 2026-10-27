@@ -166,11 +166,18 @@ export function pickBelt(have, fitsIt, threat, species) {
   }
   return [...best.values()].sort((p, q) => q.v - p.v).slice(0, POTION.belt).map(e => e.res);
 }
-// fill and trade a belt by need: empty places take the most wanted of the stock; a carried potion goes back (`give`)
-// for one of the stock better by POTION.beltSwap (`take`). → true when it changed
+// fill and trade a belt by need: a carried potion takes the strong grade of its kind when the stock has it (one for
+// one); empty places take the most wanted of the stock; a carried potion goes back (`give`) for one of the stock better
+// by POTION.beltSwap (`take`). → true when it changed
 export function rebelt(a, species, have, take, give, fitsIt, threat) {
   const belt = a.belt || [];
   let changed = false;
+  // a better grade of a kind it carries: one for one, no place needed (the plain one back to the stock)
+  for (let k = 0; k < belt.length; k++) {
+    const P = potionOf(belt[k]); if (!P || P.k) continue;
+    const up = P.potion.grades.slice(P.k + 1).map(g => g.res).find(r => have(r) >= 1 && fitsIt(r));
+    if (up) { give(belt[k]); belt[k] = up; take(up); changed = true; }
+  }
   for (let guard = 0; guard < POTION.belt + 1; guard++) {
     const kinds = new Set(belt.map(r => potionOf(r).potion.id));
     // what the stock offers that the belt has not of its kind

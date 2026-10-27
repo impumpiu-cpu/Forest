@@ -36,12 +36,21 @@ const key = t => (t ? taskKey(t) : '');
 const label = t => TASKS.get(t.id).label(t);
 const ALARMS = BANDS.slice(0, 2);
 
-// the lanes on offer, first that has anything; `from` — only these lanes (the upper two, between thoughts)
+// the lanes on offer, first that has anything it may take up; `from` — only these lanes (the upper two, between
+// thoughts). A lane whose every offer is on a pause (lifecycle.js skipped; not the task under way, not a reflex) is
+// passed for the next — but never from an alarm lane into the plain ones: under an alarm nobody goes back to work
 function offers(w, a, ctx, lanes, from) {
+  const cur = key(a.task);
+  let alarmed = false;
   for (const band of from) {
-    let opts = null;
-    for (const d of lanes[band]) { const o = ACTS[d.id].want(w, a, ctx); if (a.dead) return null; if (o) for (const x of o) (opts ||= []).push([x[0], x[1], x[2], d, x[3]]); }   // (killed while asked — a rat caught at the stores: nothing more)   // [task, score, why, behaviour, what else the offer carried]
+    if (alarmed && !ALARMS.includes(band)) return null;
+    let opts = null, any = false;
+    for (const d of lanes[band]) {
+      const o = ACTS[d.id].want(w, a, ctx); if (a.dead) return null;   // (killed while asked — a rat caught at the stores: nothing more)
+      if (o) for (const x of o) { any = true; if (key(x[0]) !== cur && !x[0].reflex && skipped(w, a, x[0])) continue; (opts ||= []).push([x[0], x[1], x[2], d, x[3]]); }   // [task, score, why, behaviour, what else the offer carried]
+    }
     if (opts) return [band, opts];
+    if (any && ALARMS.includes(band)) alarmed = true;
   }
   return null;
 }

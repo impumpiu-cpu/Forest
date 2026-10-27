@@ -207,7 +207,7 @@ export function hurl(w, a, t, d) {
   const F = CONDITIONS.get(potionOf(res).grade.effect).flask;
   if (d < F.min || d > F.range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return false;
   const caught = nearAgents(w, t.x, t.y, F.radius + 1);
-  if (caught.some(o => o !== a && !o.dead && o.faction === a.faction)) return false;   // not into one's own
+  if (caught.some(o => o !== a && !o.dead && o.faction === a.faction && Math.hypot(o.x - t.x, o.y - t.y) <= F.radius + 1)) return false;   // not into one's own (nearAgents is the cells about: the distance is told here)
   a.belt.splice(a.belt.indexOf(res), 1); a.cd = F.cd;
   const st = w.chronicle.potions ||= {drunk: 0, ours: 0}; (st.by ||= {}).flask = (st.by.flask || 0) + 1;
   w.fx.push({x1: a.x, y1: a.y, x2: t.x, y2: t.y, t: 8, kind: 'stone'});
@@ -304,6 +304,9 @@ export function shoot(w, a, t) {
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
   if (!(r.dmg > 0)) return null;   // a torch is thrown at a wall, not at a body (agents/tasks.js torch)
+  // the first shot of a fight, as the first blow: a brew for it (a light step; a cat's eye at night; a fire-ward against
+  // a fire-breather) — the shot waits; no oil goes on a bow (agents/potions.js fits)
+  if (a.belt?.length && (isHostile(a, t) || aggressor(a, t)) && drinkFor(w, a, 'fight', t)) { a.cd = COMBAT.drink; return 'drink'; }   // (not at game: a hunter keeps its brews)
   a.cd = r.cd; a.sneaking = false;
   const thrown = traitOf(r.q, 'thrown') > 0;   // a javelin, a hatchet: one of the bundle flies, the last stays in the hand
   if (thrown) { r.item.ammo = (r.item.ammo || 0) - 1; if (r.item.ammo <= 0) g.rangedReady = false; }

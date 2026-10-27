@@ -7,6 +7,7 @@
 //   body   — the class of its armour, ARMOUR below (none · light · medium · heavy)
 //   back   — what it carries on its back (a quiver for a bow), forms or items as in `hands`
 //   potions — healing potions in its belt (agents/potions.js)
+//   noChores — never one of the band's looters or torch-bearers while another can be (agents/squad.js): a healer
 //   squad  — what its band (agents/squad.js) makes of it: shooter — keeps back and shoots; front — goes in
 //   place  — where it stands in the band's order: front (the first rank) · mid (behind it: a spear over a shoulder) ·
 //            flank (round the side) · back (behind them all)
@@ -49,7 +50,7 @@ COMBAT_ROLES.registerAll([
     hands: [[['bow'], 3], [['crossbow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
   // ── support
   {id: 'healer', group: 'поддержка', label: 'знахарь', note: 'посох и зелья: держится сзади, перевязывает своих',
-    hands: [[['staff'], 1]], body: 'light', back: [], potions: 2, squad: 'front', place: 'back'},
+    hands: [[['staff'], 1]], body: 'light', back: [], potions: 2, squad: 'front', place: 'back', noChores: true},
 ]);
 
 // LINKS — the links a band is made of (data/raids.js `links`): the roles of one link in order, one fighter each. The
