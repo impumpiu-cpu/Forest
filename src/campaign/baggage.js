@@ -16,7 +16,7 @@ import {BUILDINGS} from '../data/buildings.js';
 import {EFFECTS, NORM} from '../data/special.js';
 import {CELL, BOX, BEASTS, VEHICLES, CAMP_FX, FIELD_BUILD} from '../data/transport.js';
 import {clamp} from '../core/util.js';
-import {POTION_KEEP} from '../data/potions.js';
+import {potionKeep} from '../data/potions.js';
 
 const alive = K => K.members.filter(m => m.alive);
 const bulk = id => (RESOURCES.has(id) ? RESOURCES.get(id).bulk ?? 1 : 1);
@@ -89,8 +89,8 @@ export function overflow(K) {
   };
   // the cheapest for the room it takes first: gems and gold stay, ore and hides go
   // (ore of a metal above the caravan's own is kept for the smith: data/market.js SMITH)
-  // (and the potions with what they are made of: data/potions.js POTION_KEEP — after any other goods)
-  const tier = metalTier(K), keep = id => ORES.all().some(o => o.resource === id && o.tier > tier) || POTION_KEEP.has(id);
+  // (and the potions, with a few of each of their makings: data/potions.js potionKeep — after any other goods)
+  const tier = metalTier(K), keep = id => ORES.all().some(o => o.resource === id && o.tier > tier) || (potionKeep(id, K.cargo[id]) >= K.cargo[id] && potionKeep(id, 1) > 0);
   const worth = id => (keep(id) ? 100 : (RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0) / bulk(id));
   const byWorth = ids => ids.sort((p, q) => worth(p) - worth(q) || (p < q ? -1 : 1));
   for (const id of byWorth(Object.keys(K.cargo).filter(id => !bonds(id) && !keep(id)))) { if (over <= 0) break; drop(id); }

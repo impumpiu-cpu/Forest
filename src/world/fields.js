@@ -151,10 +151,11 @@ function campfire(w) {
 }
 
 // a wooden building is fuel (data/buildings.js `wooden`): its cells hold at least FIRE.wooden of it, as a wood does —
-// it catches as readily and burns as long; kept up every FIRE.woodEvery ticks (a new building, a mended one)
+// it catches as readily and burns as long; kept up every FIRE.woodEvery ticks (a new building, a mended one). A field
+// (its plots) is no timber: its own fuel is what the plough leaves (settlement/farming.js)
 function woodFuel(w) {
   const g = w.grid;
-  for (const b of w.buildings) if (b.done && BUILDINGS.get(b.key).wooden) for (const c of b.cells) if (g.fuel[c] < FIRE.wooden && !(g.fire[c] > 0)) g.fuel[c] = FIRE.wooden;
+  for (const b of w.buildings) if (b.done && BUILDINGS.get(b.key).wooden && !b.plots) for (const c of b.cells) if (g.fuel[c] < FIRE.wooden && !(g.fire[c] > 0)) g.fuel[c] = FIRE.wooden;
 }
 
 function burn(w) {

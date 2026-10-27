@@ -9,13 +9,14 @@ import {RAID, TORCH} from '../../data/behaviour.js';
 import {isMindless} from '../../data/species.js';
 import {BUILDINGS} from '../../data/buildings.js';
 import {throwTorch} from '../equipment.js';
+import {distToCell} from '../../world/grid.js';
 
 // a cell of a wooden building within `r` of the raider, the nearest (the buildings, not the creatures, are walked)
 function woodenWithin(w, a, r) {
   let best = null, bd = r;
   for (const b of w.buildings) {
-    if (!b.done || !BUILDINGS.get(b.key).wooden) continue;
-    for (const c of b.cells) { const d = Math.hypot((c % w.w) + 0.5 - a.x, ((c / w.w) | 0) + 0.5 - a.y); if (d <= bd) { bd = d; best = c; } }
+    if (!b.done || !BUILDINGS.get(b.key).wooden || b.plots) continue;   // (a field is no wall)
+    for (const c of b.cells) { const d = distToCell(w, a, c); if (d <= bd) { bd = d; best = c; } }
   }
   return best;
 }

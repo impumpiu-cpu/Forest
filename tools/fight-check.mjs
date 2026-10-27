@@ -259,7 +259,7 @@ for (const t of WOUNDS.filter(x => x.trauma)) expect(HIT_LOCATIONS.all().some(l 
   dress(a, ['torch']); recalcGear(a);
   const T = throwTorch(a);
   expect(T && T.range > 1, 'факел не бросается');
-  w.tick = Math.round(DAY * 0.02); const dark = darkness(w, a); a.torchlit = true; const lit = darkness(w, a);
+  w.tick = Math.round(DAY * 0.02); const lit = darkness(w, a), bare = put(w, 'human', 'raiders'), dark = darkness(w, bare);
   expect(dark < 1 && near(1 - lit, (1 - dark) / 2), `свет факела: без него ${dark}, с ним ${lit}`);
   t.x = a.x + 1; t.hp = 50; t.gear = {...recalcGear(t), block: 0, cover: 0}; rngs(w, 0.5, 0);
   const ti = (t.y | 0) * w.w + (t.x | 0); w.grid.fuel[ti] = 0;

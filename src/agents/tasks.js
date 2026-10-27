@@ -8,7 +8,7 @@ import {JOBS} from '../data/jobs.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NEEDS} from '../data/needs.js';
 import {FOODS} from '../data/foods.js';
-import {cellOf} from '../world/grid.js';
+import {cellOf, distToCell} from '../world/grid.js';
 import {nightness} from '../core/time.js';
 import {follow, moveToward, escapeHeat, nearFire, approach, recover} from './movement.js';
 import {attack, shoot, canSee, reachOf, behindRock, hurl, kindle} from './combat.js';
@@ -287,7 +287,7 @@ TASKS.registerAll([
   {id: 'hurlTorch', label: () => 'бросает факел', step(w, a, task) {
     const T = throwTorch(a), i = task.cell;
     if (!T || i == null || !w.buildings.some(b => b.done && b.cells.includes(i))) { done(w, a); return; }
-    if (Math.hypot((i % w.w) + 0.5 - a.x, ((i / w.w) | 0) + 0.5 - a.y) > T.range) { done(w, a); return; }
+    if (distToCell(w, a, i) > T.range) { done(w, a); return; }
     spendThrow(a, T); kindle(w, i);
     const b = w.buildings.find(x => x.cells.includes(i));
     log(w, `${a.name} ${a.gender === 'f' ? 'метнула' : 'метнул'} факел в ${BUILDINGS.get(b.key).name.toLowerCase()}! Тушите!`, 'danger', 'notice');

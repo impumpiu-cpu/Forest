@@ -4,7 +4,7 @@
 import {isHostile} from '../data/factions.js';
 import {SPECIES} from '../data/species.js';
 import {maxHp} from './agent.js';
-import {wear, def, blowStat} from './equipment.js';
+import {wear, def, blowStat, carriesTorch} from './equipment.js';
 import {agentInZone} from '../settlement/zone.js';
 import {think} from './mind.js';
 import {lineOfFire} from '../nav/astar.js';
@@ -24,6 +24,7 @@ import {NORM} from '../data/special.js';
 
 import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
+import {T} from '../data/terrain.js';
 import {quaff, drinkFor, bladeHit, silverCoat} from './potions.js';
 import {potionOf} from '../data/potions.js';
 import {NIGHT, nightSight} from '../data/tongues.js';
@@ -53,14 +54,14 @@ export function canSee(w, a, t) {
 }
 
 // × how far `a` sees now (data/tongues.js NIGHT): by day, by a lit campfire (WATCH.fireLight), with darkvision or a
-// cat's eye — 1; otherwise less the deeper the night; a raider of a band that came with torches (a.torchlit) loses
+// cat's eye — 1; otherwise less the deeper the night; one carrying a torch (in hand or behind the back) loses
 // only WATCH.torch of it
 export function darkness(w, a) {
   const night = nightness(w);
   if (!(night > 0) || !(NIGHT.loss > 0)) return 1;
   if (w.campLit && w.camp && Math.hypot(a.x - w.camp.x, a.y - w.camp.y) <= WATCH.fireLight) return 1;
   const k = nightSight(a.species, night, a);
-  return a.torchlit && k < 1 ? 1 - (1 - k) * (1 - WATCH.torch) : k;   // (a band's torches: half of what the night takes, as the watchman's)
+  return k < 1 && carriesTorch(a) ? 1 - (1 - k) * (1 - WATCH.torch) : k;   // (a torch: half of what the night takes, as the watchman's)
 }
 
 export function nearestHostile(w, a, r) {
@@ -180,6 +181,7 @@ const silverFactor = (t, item, by = null) => {
 
 // a torch put to a cell (KINDLE.torch): it catches, whatever it held — a wall, the grass
 export function kindle(w, i) {
+  if (w.grid.terr[i] === T.WATER || w.grid.terr[i] === T.ROCK) return;   // nothing there to catch
   const K = KINDLE.torch; w.grid.fire[i] = Math.max(w.grid.fire[i], K.fire); heatTo(w, i, K.heat); w.grid.fuel[i] = Math.max(w.grid.fuel[i], K.fuel);
   w.nav.dirty('fire');
 }
@@ -210,7 +212,7 @@ export function hurl(w, a, t, d) {
   const st = w.chronicle.potions ||= {drunk: 0, ours: 0}; (st.by ||= {}).flask = (st.by.flask || 0) + 1;
   w.fx.push({x1: a.x, y1: a.y, x2: t.x, y2: t.y, t: 8, kind: 'stone'});
   for (const o of caught) {
-    if (o.dead || Math.hypot(o.x - t.x, o.y - t.y) > F.radius) continue;
+    if (o.dead || o.downed || Math.hypot(o.x - t.x, o.y - t.y) > F.radius) continue;   // (the fallen lie low under it)
     o.hp -= F.dmg * resistTo(SPECIES.get(o.species), 'fire') * effectResist(w, o, 'fire'); o.flash = 6; noteHit(o, a);
     if (o.hp <= 0) lethal(w, o, 'огня', a);
   }
@@ -270,7 +272,7 @@ export function attack(w, a, t) {
   // the target's dodge, block and armour as any
   const off = g.offhand;
   if (off && !t.dead && !t.downed) {
-    damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item) * stanceGain(stance, off.q), {type: off.type, mix: off.mix || null, q: off.q || null, stance});
+    damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item, a) * stanceGain(stance, off.q), {type: off.type, mix: off.mix || null, q: off.q || null, stance});
     wear(w, a, off.item);
   }
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it

@@ -167,7 +167,8 @@ export class TablesView {
     nav.classList.toggle('finding', !!q);
     nav.querySelectorAll('.grp').forEach(g => {
       let any = false;
-      g.querySelectorAll('[data-t]').forEach(b => { const hit = !q || b.textContent.toLocaleLowerCase('ru').includes(q); b.hidden = !hit; any ||= hit; });
+      g.querySelectorAll('[data-t]').forEach(b => { const hit = !q || b.querySelector('span').textContent.toLocaleLowerCase('ru').includes(q);   // (the name, not the count of rows)
+       b.hidden = !hit; any ||= hit; });
       g.hidden = !!q && !any;
     });
   }

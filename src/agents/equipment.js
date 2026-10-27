@@ -113,6 +113,8 @@ export function throwTorch(a) {
   }
   return null;
 }
+// a torch carried, in hand or behind the back: its light (agents/combat.js darkness)
+export const carriesTorch = a => !!a.equip && [...handItems(a), a.equip.back].some(it => it && traitOf(def(it).qualities, 'burn') > 0);
 // one throw of it gone; the last throw takes the thing out of the hand
 export function spendThrow(a, T) {
   T.item.ammo = (T.item.ammo || 0) - 1;
@@ -175,7 +177,7 @@ export function recalcGear(a) {
   for (const it of handItems(a)) {
     const d = def(it);
     if (d.melee && d.melee.dmg > (g.melee.item ? def(g.melee.item).melee.dmg : 0)) g.melee = {dmg: d.melee.dmg, cd: d.melee.cd, item: it, type: d.blow || DEFAULT_BLOW.melee, scale: d.scale || null, mix: d.melee.mix || null, ...(d.qualities ? {q: d.qualities} : {})};
-    if (d.ranged && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it, ...(d.qualities ? {q: d.qualities} : {})};
+    if (d.ranged && d.ranged.dmg > 0 && (!g.ranged || d.ranged.dmg > g.ranged.dmg)) g.ranged = {...d.ranged, item: it, ...(d.qualities ? {q: d.qualities} : {})};   // (a torch, thrown at a wall, is no shot: throwTorch)
     if ((d.block || 0) > g.block) { g.block = d.block; g.blockItem = it; g.blockVs = d.vs || null; }
     // a shot is caught only by what covers (a shield), with `cover` of its block (forms.js)
     if ((d.block || 0) * (d.cover || 0) > g.cover) { g.cover = d.block * d.cover; g.coverItem = it; g.coverVs = d.vs || null; }
@@ -283,7 +285,7 @@ function value(a, d, w) {
   // letters it is struck with (an agile one is worth more with a dagger, a strong one with a maul)
   if (d.melee) v += (d.melee.dmg * GEAR.blowTicks / d.melee.cd * blowStat(a, d.scale) - 1) * GEAR.melee * brave + GEAR.meleeBase;
   if (d.silver && d.melee) v += silverWorth(w) * brave;
-  if (d.ranged) {
+  if (d.ranged?.dmg > 0) {   // (a torch is thrown at a wall, not shot: no worth as a shot)
     const boost = d.ranged.boost ? (w.mods.best[d.ranged.boost] || 1) : 1, throws = throwsOf(d);   // a bundle of throws, not a quiverful
     v += d.ranged.dmg * boost * GEAR.ranged * (a.prefs.hunt ?? 1) * (throws ? Math.min(1, throws / COMBAT.thrown.shots) : 1) + GEAR.rangedBase;
     if (d.ranged.ammo && !(w.stock[d.ranged.ammo] >= 1) && !a.equip.back?.ammo) v *= GEAR.noAmmo;

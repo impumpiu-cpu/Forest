@@ -258,5 +258,19 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
   expect(night < 1 && day === 1 && darkness(w, d) === 1, `ночь: человек ${night}, днём ${day}, гном ${darkness(w, d)}`);
 }
 
+// the caravan's economy: a few of each making kept, the rest is goods; a belt potion nobody would wear takes no room;
+// the strong healing one goes into a belt (its room is the belts'); the quick mode drinks it from the belt
+{
+  const {potionKeep} = await import('../src/data/potions.js');
+  const {beltRoom, beltWanted, roomFor, quaffMember} = await import('../src/campaign/potions.js');
+  expect(potionKeep('potion', 9) === 9 && potionKeep('bone', 40) === POTION.keepMakings && potionKeep('hide', 5) === 0, 'караван держит не то: зелья, кости, шкуры');
+  const K = {members: [{alive: true, race: 'human', potions: 3, gear: {hand: ['ironaxe']}}, {alive: true, race: 'human', potions: 3, gear: {hand: ['ironaxe']}}],
+    cargo: {silverOilStrong: 3}, fights: [{species: {human: 4}}], buildings: [], vehicles: [], beasts: [], stats: {}};
+  expect(!beltWanted(K, 'silverOilStrong') && beltRoom(K) === 2 * POTION.belt, `масло без боящихся серебра заняло место: ${beltRoom(K)}`);
+  expect(roomFor(K, POTIONS.get('heal'), 'potionStrong') === beltRoom(K) && roomFor(K, POTIONS.get('heal'), 'potion') <= 0, 'место усиленного лечения не по поясу');
+  const m = {alive: true, race: 'human', hp: 0.1, potions: 0, belt: ['potionStrong']};
+  expect(quaffMember(m) && m.hp > 0.1 && !m.belt, 'в быстром бою усиленное лечение из пояса не выпито');
+}
+
 if (bad.length) { console.log('Зелья:\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log(`ok   зелья: ${POTIONS.all().length} (ступеней ${POTIONS.all().reduce((s, p) => s + p.grades.length, 0)}) — лечение из гнезда и пояса, противоядие при яде, медвежья сила и яд на клинке перед первым ударом, усиленное держит на поле, метка не дважды; горшок в каждом; запасы наполняют пояса; хижина каравана варит простое; отвары из запасов — согревающий, бодрящий, укрепляющий, сонный пленному; масло против боящихся серебра, огнестойкость, склянка мимо своих, лёгкий шаг, кошачий глаз, закалка навсегда`);

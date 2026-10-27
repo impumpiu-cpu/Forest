@@ -13,7 +13,7 @@ import {alive} from './march.js';
 import {hasBuilding} from './baggage.js';
 import {gearDef} from '../agents/equipment.js';
 import {CONDITIONS} from '../data/conditions.js';
-import {useOfEffect, threatOf, rebelt} from '../agents/potions.js';
+import {useOfEffect, threatOf, rebelt, beltNeed} from '../agents/potions.js';
 import {DAY} from '../core/time.js';
 
 const carriers = K => alive(K).filter(m => !m.captive && !m.former);
@@ -23,7 +23,7 @@ const bladeIn = m => (m.gear?.hand || []).some(tok => !!gearDef(tok)?.melee && !
 const fitsBelt = (m, res) => potionOf(res)?.potion.use !== 'blade' || bladeIn(m);
 
 // the foes the caravan expects: those of its last POTION.beltFights fights ({species: n})
-function foesOf(K) {
+export function foesOf(K) {
   const out = {};
   for (const f of (K.fights || []).slice(-POTION.beltFights)) for (const [id, n] of Object.entries(f.species || {})) out[id] = (out[id] || 0) + n;
   return out;
@@ -56,8 +56,16 @@ function marksUp(K) {
 }
 // slots still empty, the spare in the cargo counted
 export const potionRoom = K => carriers(K).reduce((s, m) => s + POTION.slot - (m.potions || 0), 0) - (K.cargo.potion || 0);
-// belt places still empty, the spare of the cargo counted
-export const beltRoom = K => carriers(K).reduce((s, m) => s + POTION.belt - (m.belt?.length || 0), 0) - BELT_ORDER.reduce((s, r) => s + (K.cargo[r] || 0), 0);
+// would anyone of the caravan put this potion in its belt against the foes it expects (agents/potions.js beltNeed)
+export function beltWanted(K, res, threat = threatOf(foesOf(K))) {
+  return carriers(K).some(m => fitsBelt(m, res) && beltNeed(res, threat, m.race) > 0);
+}
+// belt places still empty, the spare of the cargo counted — only what someone would wear (a silver oil with no foe that
+// fears silver takes no place)
+export function beltRoom(K) {
+  const threat = threatOf(foesOf(K));
+  return carriers(K).reduce((s, m) => s + POTION.belt - (m.belt?.length || 0), 0) - BELT_ORDER.reduce((s, r) => s + ((K.cargo[r] || 0) && beltWanted(K, r, threat) ? K.cargo[r] : 0), 0);
+}
 // room for a brew of the stock (data/potions.js `stock`): as many as its share of the free people (of the captives),
 // at least one while there is anyone, less what the cargo carries of it
 export function homeRoom(K, potion) {
@@ -66,8 +74,9 @@ export function homeRoom(K, potion) {
   const S = potion.stock, heads = S.of === 'captives' ? alive(K).filter(m => m.captive).length : carriers(K).length;
   return heads ? Math.ceil(heads * (S.march ?? S.share)) - potion.grades.reduce((s, g) => s + (K.cargo[g.res] || 0), 0) : 0;
 }
-// room for this potion: the slots (the plain healing one), the belts, or the brew's own
-export const roomFor = (K, potion) => (potion.home ? homeRoom(K, potion) : potion.id === 'heal' ? potionRoom(K) : beltRoom(K));
+// room for this grade of a potion (`res`): the slot (the plain healing one), the brew's own, or the belts — for what
+// someone would wear (the strong healing one too: it goes into a belt)
+export const roomFor = (K, potion, res) => (potion.home ? homeRoom(K, potion) : res === 'potion' ? potionRoom(K) : beltWanted(K, res) ? beltRoom(K) : 0);
 // the makings are in the cargo
 const has = (K, cost) => Object.entries(cost).every(([r, n]) => (K.cargo[r] || 0) >= n);
 
@@ -78,7 +87,7 @@ export function brewDay(K, r, wooded) {
   for (const [res, p] of Object.entries(POTION.camp.find)) if (r() < p * (wooded ? POTION.camp.wooded : 1) && (K.cargo[res] || 0) < POTION.camp.keep) K.cargo[res] = (K.cargo[res] || 0) + 1;
   let n = 0;
   for (const {potion, grade} of hutGrades()) {
-    while (has(K, grade.cost) && roomFor(K, potion) > 0) {
+    while (has(K, grade.cost) && roomFor(K, potion, grade.res) > 0) {
       for (const [res, k] of Object.entries(grade.cost)) take(K, res, k);
       K.cargo[grade.res] = (K.cargo[grade.res] || 0) + 1; n++;
     }
@@ -127,9 +136,13 @@ export const effectsIn = (K, list) => (list?.length ? list.map(e => ({id: e.id, 
 export const potionShare = m => CONDITIONS.get('potHeal').heal / (SPECIES.get(m.race)?.hp || 1);
 // the quick mode: one hurt to the edge drinks — → true when it did
 export function quaffMember(m) {
-  if (!(m.potions > 0) || m.captive || m.hp <= 0 || m.hp >= POTION.below) return false;
-  m.potions--; m.hp = Math.min(1, m.hp + potionShare(m));
+  if (m.captive || m.hp <= 0 || m.hp >= POTION.below) return false;
+  if (m.potions > 0) { m.potions--; m.hp = Math.min(1, m.hp + potionShare(m)); return true; }
+  // a strong one from the belt (the quick mode reads nothing else of it)
+  const res = (m.belt || []).find(r => potionOf(r)?.potion.use === 'wounded'); if (!res) return false;
+  m.belt.splice(m.belt.indexOf(res), 1); if (!m.belt.length) m.belt = null;
+  m.hp = Math.min(1, m.hp + CONDITIONS.get(potionOf(res).grade.effect).heal / (SPECIES.get(m.race)?.hp || 1));
   return true;
 }
-// the potions and their makings a caravan keeps, not sells (campaign/town.js): data/potions.js POTION_KEEP
-export {POTION_KEEP as ALCHEMY_KEEP} from '../data/potions.js';
+// how many of a resource the caravan keeps, not sells (campaign/town.js): data/potions.js potionKeep
+export {potionKeep} from '../data/potions.js';

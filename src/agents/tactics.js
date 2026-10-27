@@ -16,7 +16,7 @@ import {COMBAT_ROLES} from '../data/roles.js';
 import {TACTICS, SQUAD} from '../data/behaviour.js';
 import {isHostile} from '../data/factions.js';
 import {nearAgents} from './spatial.js';
-import {canSee, aggressor} from './combat.js';
+import {canSee, aggressor, darkness} from './combat.js';
 import {hpShare} from './agent.js';
 import {firstAttacker} from './lookup.js';
 import {liveMembers} from './group.js';
@@ -46,6 +46,7 @@ export const caravanSide = w => {
 
 // the foes this one can see within r, nearest first (the fallen and the bound are out of it)
 export function foesNear(w, a, r) {
+  r *= darkness(w, a);   // (the night hides what is further off, as for the plain search: agents/combat.js nearestHostile)
   const out = [];
   for (const o of nearAgents(w, a.x, a.y, r)) {
     if (o === a || o.dead || o.downed || o.ledBy != null || !(isHostile(a, o) || aggressor(a, o))) continue;

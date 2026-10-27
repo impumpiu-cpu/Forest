@@ -146,7 +146,7 @@ export function kill(w, a, cause, by, {quiet = false} = {}) {
     log(w, `${who} ${verb}, ${g(by, 'его сразил', 'его сразила').replace('его', a.gender === 'f' ? 'её' : 'его')} <b>${esc(by.name)}</b>.${loot.length ? ' Трофеи: ' + loot.map(it => def(it).short).join(', ') + '.' : ''}`, 'danger', 'notice');
   }
   // the necromancer falls: his dead lose their way
-  if (a.species === 'necromancer' && w.agents.some(o => o.obeys === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');
+  if (a.species === 'necromancer' && w.agents.some(o => o.obeys === a.id && !o.dead)) log(w, 'Некромант пал. Мертвецы теряют направление и разбредаются.', 'danger', 'notice');   // scan: once, at a necromancer's death
   // a wight falls (data/ranks.js): its link goes to the necromancer if he stands, else it wanders off
   if (a.marks?.includes('wight') && w.agents.some(o => o.obeys === a.id && !o.dead)) {   // scan: once, at a wight's death
     const up = w.agents.find(o => o.obeys === a.id && o.obeysUp != null && !o.dead);

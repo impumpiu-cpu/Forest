@@ -129,7 +129,8 @@ export function noteFallen(w, a) {
   a.fellNoted = true;   // fallen senseless first, killed after: one loss (agents/wounds.js)
   sq.fallen++;
   // an officer fallen: its link's share of the band is shaken at once (data/ranks.js loss)
-  if (hasMark(a, 'officer') && a.id !== sq.leader) {   // (the leader's own fall: SQUAD.leaderLoss)
+  if (hasMark(a, 'officer') && a.id !== sq.leader && !(sq.shook ||= []).includes(a.id)) {   // (the leader's own fall: SQUAD.leaderLoss; once an officer — a healer may raise it)
+    sq.shook.push(a.id);
     const link = membersOf(w, sq).filter(o => o.link === a.id && o !== a).length + 1;
     sq.shaken = (sq.shaken || 0) + RANK_RULES.loss * link / sq.size;
     if (link > 1) log(w, `Пал ${esc(a.name)}: его звено дрогнуло.`, 'danger');

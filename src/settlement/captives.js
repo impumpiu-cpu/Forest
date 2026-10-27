@@ -110,8 +110,10 @@ export function bindCaptive(w, by, f) {
   setStanding(f, 'captive', f.captive ? {...f.captive, bonds: B.id} : {since: w.tick, bonds: B.id, by: by.id, band: f.band || null, people: f.people || null, was: f.faction, will: ESCAPE.will.start});
   f.squad = null; f.band = null; f.looted = false; f.lost = false; f.leads = null; f.obeys = null; f.obeysUp = null; f.sneaking = false;
   f.fightRole = null; f.sqRole = null; f.link = null; f.linkNo = null; f.linkKind = null;   // its band's role and link are over
+  const ranked = !!f.marks?.some(m => m === 'officer' || m === 'wight');
+  if (f.marks) { f.marks = f.marks.filter(m => m !== 'officer' && m !== 'wight'); if (!f.marks.length) delete f.marks; }   // nor its band's rank (agents/ranks.js)
   if (!f.prefs) personality(w, f);
-  if (sp.names && (!f.name || f.name === sp.label || /^налётчик/i.test(f.name))) [f.name, f.gender] = freshName(w, sp.names);
+  if (sp.names && (!f.name || ranked || f.name === sp.label || /^налётчик/i.test(f.name))) [f.name, f.gender] = freshName(w, sp.names);   // (a rank is no name)
   f.diary ||= [];
   if (!recordOf(w, f)) { enrol(w, f, false); const r = recordOf(w, f); if (r) r.captive = true; }
   refreshBody(f);

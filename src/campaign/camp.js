@@ -50,7 +50,7 @@ import {BEASTS} from '../data/transport.js';
 import {bindWaiting} from '../settlement/captives.js';
 import {allItems, def as itemOf} from '../agents/equipment.js';
 import {setStanding} from '../agents/standing.js';
-import {effectsOut} from './potions.js';
+import {effectsOut, foesOf} from './potions.js';
 
 // the camp's border with the world: nobody comes by schedule — the campaign sends the foe itself
 PROVIDERS.register({id: 'camp', label: 'Стоянка каравана', flows: {}, distance: () => null, receive() {}});
@@ -73,6 +73,7 @@ export function campSetup(a, K, ev) {
     beasts: K.beasts.filter(b => b.hp > 0).map(b => ({id: b.id, kind: b.kind, hp: b.hp})),
     vehicles: K.vehicles.map((v, k) => ({k, kind: v.kind})), buildings: [...campOf(K)],
     food: K.food, cargo: {...K.cargo},
+    met: foesOf(K),   // the foes of the last fights: the belts are filled against them on the map (settlement/potions.js)
     // a stop to dig: the ore the council stopped for (campaign/march.js wantMine); only it is dug on the map
     dig: K.why?.startsWith('mine:') && K.why.slice(5) !== 'placer' ? K.why.slice(5) : null,
     foe: ev.foe ? {kind: ev.foe.kind, strength: ev.foe.strength ?? 1, label: ev.foe.label || FOES[ev.foe.kind].label, band: ev.foe.band || null, beast: ev.foe.beast || null, with: ev.foe.with || null, pool: ev.foe.pool || null, boss: ev.foe.boss || null, leaderLair: ev.foe.leaderLair || null} : null,
@@ -102,6 +103,7 @@ export function openCamp(S) {
   const r = mulberry(seedNumber(S.seed + ':plan')), H = hours(S, r);
   w.tick = H.t0;
   w.campaign = {S, foeAt: H.come, until: H.until, spawned: !S.foe, foes: [], foeObjs: [], people: new Map(), herd: new Map(), quiet: null, built: [], start: H.t0, rnd: r};
+  w.chronicle.met = {...(S.met || {})};   // (what the caravan has met: its belts are not traded away before the foe comes)
   // the stores: the food as jerky, the goods, firewood for the night, hay for the beasts
   for (const k of Object.keys(w.stock)) w.stock[k] = 0;
   w.stock[CAMP.food] = S.food * CAMP.perRation / FOODS.get(CAMP.food).nutrition;
@@ -114,7 +116,7 @@ export function openCamp(S) {
   S.members.forEach((m, k) => {
     const [x, y] = ring(k, S.members.length, 2);
     const ag = createAgent(w, m.race, 'colony', x, y);
-    ag.member = m.id; ag.place = m.role; w.campaign.people.set(m.id, ag); ag.name = m.name;   // its place in the company (docs/BEHAVIOUR.md «Словарь») ag.gender = m.gender; ag.people = m.people;
+    ag.member = m.id; ag.place = m.role; w.campaign.people.set(m.id, ag); ag.name = m.name; ag.gender = m.gender; ag.people = m.people;   // (ag.place: its place in the company, docs/BEHAVIOUR.md «Словарь»)
     ag.special = {...m.special}; if (m.align) ag.align = {...m.align}; if (m.values) ag.values = [...m.values];
     const L = m.local;
     if (L) Object.assign(ag, {likes: L.likes, dislikes: L.dislikes, prefs: {...L.prefs}, traits: [...L.traits], food: {...L.food}, own: {...L.own}, skill: {...L.skill}});
@@ -330,7 +332,7 @@ export function campOutcome(w) {
     const local = {likes: ag.likes, dislikes: ag.dislikes, prefs: ag.prefs, traits: ag.traits, food: ag.food, own: ag.own, skill: ag.skill};
     // a fallen one still bleeding when the camp ends: the others bind the wound — barely alive
     const cap = ag.captive ? {will: ag.captive.will, resigned: ag.captive.resigned ?? null, service: ag.captive.service || 0} : null;
-    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
+    return {id: m.id, alive: true, potions: ag.potions || 0, belt: [...(ag.belt || [])], marks: ag.marks?.length ? ag.marks.filter(id => id !== 'officer' && id !== 'wight') : null, effects: (ag.effects || []).filter(e => e.until > w.tick).map(e => ({id: e.id, ticks: e.until - w.tick})), hp: Math.max(0.05, Math.min(1, ag.hp / maxHp(ag))) * (ag.downed ? 0.5 : 1), local: JSON.parse(JSON.stringify(local)), ...(cap ? {captive: cap} : {})};
   });
   const beasts = S.beasts.map(b => {
     const ag = C.herd.get(b.id);
