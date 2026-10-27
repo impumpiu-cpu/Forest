@@ -26,6 +26,9 @@ import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
 import {quaff, drinkFor, bladeHit, silverCoat} from './potions.js';
 import {potionOf} from '../data/potions.js';
+import {NIGHT, nightSight} from '../data/tongues.js';
+import {WATCH} from '../data/colony.js';
+import {nightness} from '../core/time.js';
 import {log} from '../core/log.js';
 
 // a stunned creature neither strikes nor shoots until it comes to (data/conditions.js 'stunned')
@@ -49,7 +52,17 @@ export function canSee(w, a, t) {
   return Math.hypot(t.x - a.x, t.y - a.y) <= t.veil;
 }
 
+// × how far `a` sees now (data/tongues.js NIGHT): by day, by a lit campfire (WATCH.fireLight), with darkvision or a
+// cat's eye — 1; otherwise less the deeper the night
+export function darkness(w, a) {
+  const night = nightness(w);
+  if (!(night > 0) || !(NIGHT.loss > 0)) return 1;
+  if (w.campLit && w.camp && Math.hypot(a.x - w.camp.x, a.y - w.camp.y) <= WATCH.fireLight) return 1;
+  return nightSight(a.species, night, a);
+}
+
 export function nearestHostile(w, a, r) {
+  r *= darkness(w, a);   // (the night hides what is further off)
   let best = null, bd = r * r;
   for (const o of nearAgents(w, a.x, a.y, r)) {
     if (o === a || o.dead || o.downed || o.ledBy != null || !(isHostile(a, o) || aggressor(a, o))) continue;   // the fallen and the bound are out of the fight
@@ -274,7 +287,7 @@ function coverFor(w, a, t) {
 // a shot that really left the bow teaches anything (a reload or a target out of sight teaches nothing).
 export function shoot(w, a, t) {
   const g = a.gear; if (!g?.ranged || !g.rangedReady || a.cd > 0 || t.downed || stunnedNow(w, a)) return null;
-  const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0);
+  const r = g.ranged, d = Math.hypot(t.x - a.x, t.y - a.y), range = (r.range + (a.faction === 'colony' ? w.mods.add.huntRange : 0)) * darkness(w, a);   // (in the dark one shoots only as far as one sees)
   // out of range, unseen, or a rock in the way: no shot
   if (d > range || !canSee(w, a, t) || !lineOfFire(w, a.x, a.y, t.x, t.y)) return null;
   a.cd = r.cd; a.sneaking = false;

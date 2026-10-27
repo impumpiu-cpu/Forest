@@ -11,13 +11,12 @@ import {hurt, HEAL, freeBed} from '../../settlement/healing.js';
 import {has, raidAlarm} from '../../settlement/query.js';
 import {wantsPrayer} from '../../settlement/life.js';
 import {maxHp, hpShare} from '../agent.js';
-import {attackerOf} from '../combat.js';
+import {attackerOf, darkness} from '../combat.js';
 import {agentInZone} from '../../settlement/zone.js';
 import {escortOption, aidOption} from '../../settlement/together.js';
 import {flagOptions, knownFoeWithin, redInSight, watchOption, BOARD} from '../../settlement/board.js';
 import {bindOption, keepInside} from '../../settlement/captives.js';
 import {assistOption} from '../../settlement/masters.js';
-import {nightSight} from '../../data/tongues.js';
 import {ROSTER, COLONIST} from '../../data/behaviour.js';
 
 const on = (a, id) => a.task?.id === id;
@@ -75,7 +74,7 @@ export const watch = {want(w, a) { const o = watchOption(w, a); return o ? [o] :
 export const flags = {want(w, a) { const o = flagOptions(w, a); return o.length ? o : null; }, keep: (w, a, t) => (t.id === 'answer' ? 0 : ROSTER.keep)};
 
 // how far this one sees: by night less, unless it sees in the dark (data/tongues.js)
-const seenBy = (w, a) => BOARD.sight * (a.mods.sight ?? 1) * nightSight(a.species, nightness(w), a);
+const seenBy = (w, a) => BOARD.sight * (a.mods.sight ?? 1) * darkness(w, a);
 
 // alarm: while raiders are on the map everyone who has no foe in sight gathers inside the settlement zone and meets
 // them together; one who sees a foe weighs its flag instead

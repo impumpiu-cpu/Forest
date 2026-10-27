@@ -16,6 +16,7 @@ import {stepPotions} from '../src/settlement/potions.js';
 import {CONDITIONS, effectResist} from '../src/data/conditions.js';
 import {POTION, POTIONS} from '../src/data/potions.js';
 import {RECIPES} from '../src/data/recipes.js';
+import {DAY} from '../src/core/time.js';
 
 const bad = [];
 const expect = (ok, what) => { if (!ok) bad.push(what); };
@@ -232,6 +233,29 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
   a.diary = []; w.stock.temperElixir = 2; const hpMax = maxHp(a);
   w.tick = POTION.hand * 50; stepPotions(w); w.tick += POTION.hand; stepPotions(w);
   expect(a.marks?.includes('tempered') && w.stock.temperElixir === 1 && maxHp(a) > hpMax, `эликсир закалки: метки ${a.marks}, осталось ${w.stock.temperElixir}`);
+}
+
+// the belt by need: against what is expected — silver oil against vampires, an antidote against spiders, no cat's eye
+// for one who sees in the dark; a carried potion traded when the foes change; the night hides what is far off
+{
+  const {threatOf, pickBelt, rebelt} = await import('../src/agents/potions.js');
+  const all = r => (/^(antidote|bearBrew|bladeVenom|silverOil|lightStep|catEye|fireFlask|firewardBrew)$/.test(r) ? 3 : 0), any = () => true;
+  const vamp = pickBelt(all, any, threatOf({vampire: 2}), 'human');
+  expect(vamp[0] === 'silverOil', `против вампиров пояс: ${vamp}`);
+  const spid = pickBelt(all, any, threatOf({spider: 4}), 'human');
+  expect(spid[0] === 'antidote', `против пауков пояс: ${spid}`);
+  const drake = pickBelt(all, any, threatOf({drake: 1}), 'human');
+  expect(drake.includes('firewardBrew'), `против огнедышащего пояс: ${drake}`);
+  const human = pickBelt(all, any, threatOf({}), 'human'), dwarf = pickBelt(r => (r === 'catEye' || r === 'lightStep' ? 3 : 0), any, threatOf({}), 'dwarf');
+  expect(!dwarf.includes('catEye') && human.length === POTION.belt, `гному кошачий глаз: ${dwarf}; человеку: ${human}`);
+  const a = {belt: ['bearBrew', 'lightStep']}, S = {silverOil: 1};
+  rebelt(a, 'human', r => S[r] || 0, r => { S[r]--; }, r => { S[r] = (S[r] || 0) + 1; }, any, threatOf({vampire: 2}));
+  expect(a.belt.includes('silverOil') && a.belt.includes('bearBrew') && S.lightStep === 1, `пояс не сменился под вампиров: ${a.belt}`);
+  const {darkness} = await import('../src/agents/combat.js');
+  const w = scene(), h = put(w, 'human', 'colony'), d = put(w, 'dwarf', 'colony');
+  w.tick = Math.round(DAY * 0.02); const night = darkness(w, h); w.tick = Math.round(DAY / 2); const day = darkness(w, h);
+  w.tick = Math.round(DAY * 0.02);
+  expect(night < 1 && day === 1 && darkness(w, d) === 1, `ночь: человек ${night}, днём ${day}, гном ${darkness(w, d)}`);
 }
 
 if (bad.length) { console.log('Зелья:\n  ' + bad.join('\n  ')); process.exit(1); }

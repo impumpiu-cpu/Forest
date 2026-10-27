@@ -29,7 +29,7 @@
 import {colonists} from './query.js';
 import {isHostile} from '../data/factions.js';
 import {SPECIES} from '../data/species.js';
-import {canSee} from '../agents/combat.js';
+import {canSee, darkness} from '../agents/combat.js';
 import {strength, squadOf} from '../agents/squad.js';
 import {liveById} from '../agents/lookup.js';
 import {hpShare} from '../agents/agent.js';
@@ -47,11 +47,11 @@ import {WATCH} from '../data/colony.js';
 export {BOARD};   // (data/colony.js)
 export {WATCH};   // (data/colony.js)
 export const boardOf = w => (w.board ??= {flags: {}, seq: 0});
-// how far a colonist sees a foe: by night half as far, except by a burning campfire and on watch
+// how far a colonist sees a foe: less by night (agents/combat.js darkness: not by a burning campfire, not with
+// darkvision or a cat's eye); the watchman's torch takes back WATCH.torch of what the night took
 function sightOf(w, a) {
-  const base = BOARD.sight * (a.mods.sight ?? 1);
-  if (isWatchman(w, a) || (w.campLit && Math.hypot(a.x - w.camp.x, a.y - w.camp.y) <= WATCH.fireLight)) return base;
-  return base * (1 - 0.5 * nightness(w));
+  const base = BOARD.sight * (a.mods.sight ?? 1), k = darkness(w, a);
+  return base * (isWatchman(w, a) ? 1 - (1 - k) * (1 - WATCH.torch) : k);
 }
 
 // attacking one of ours right now: a beast that mauls, a raider that fights

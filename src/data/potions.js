@@ -12,6 +12,11 @@
 //            In the belt besides: fire — burnt by fire, or at the first blow against a fire-breather; dark — at night,
 //            on the watch or at the first blow; throw — hurled at a foe from afar (agents/potions.js hurl). A poison and
 //            a silver oil both go on the blade: the oil against what fears silver, the poison against the rest
+//   need   — how much a belt wants it (agents/potions.js pickBelt): base + Σ weight × the share of such foes among
+//            those expected (venom — venomous, silver — what fears silver, breath — fire-breathers, undead, living — the
+//            living that fear no silver); dark × 1 for a holder the night blinds (no darkvision). The strong grade
+//            + POTION.beltStrong; a belt takes the POTION.belt best (one of a kind) and trades a carried one for one of the
+//            stock that is better by POTION.beltSwap
 //   home   — a brew of the stock (the settlement's, the caravan's cargo), never carried in a belt
 //   stock  — how many the hut keeps brewing / the caravan keeps: {share, of: people | captives, want, march?} — while the
 //            stock has fewer than share × that many (at least one), with the recipe's weight `want` (data/recipes.js);
@@ -31,6 +36,10 @@ export const POTION = {
   below: 0.15,     // drunk when health falls below this share of the whole, while still on one's feet
   slot: 3,         // healing potions carried at most
   belt: 2,         // places for the other potions
+  beltStrong: 0.5, // a strong grade wants a belt place this much more than its plain one
+  beltSwap: 0.75,  // a carried potion goes back to the stock for one this much more wanted
+  beltNow: 3,      // a foe on the map counts this many times one that came before (settlement/potions.js expectedFoes)
+  beltFights: 12,  // the caravan expects the foes of its last this many fights (campaign/potions.js)
   herbs: 2,        // healing herbs a healing potion takes (the recipe)
   pot: 1,          // pots every potion is poured into (data/resources.js pots: the potter's work)
   hutTier: 2,      // the highest step a healer's hut brews: what is harder is the alchemist's
@@ -59,32 +68,32 @@ export const FOE_BELTS = {darkelf: {bladeVenom: 0.5}, orc: {bearBrew: 0.3}, gobl
 export const POTIONS = new Registry('potion');
 const P = POTION.pot;
 POTIONS.registerAll([
-  {id: 'heal', label: 'зелье лечения', use: 'wounded', note: 'пьётся само у края смерти', stock: {share: 0.5, of: 'people', want: 0.6},
+  {id: 'heal', label: 'зелье лечения', use: 'wounded', note: 'пьётся само у края смерти', need: {base: 2}, stock: {share: 0.5, of: 'people', want: 0.6},
     grades: [{res: 'potion', tier: 1, at: 'healerhut', cost: {herbs: POTION.herbs, pots: P}, effect: 'potHeal'},
              {res: 'potionStrong', tier: 2, at: 'alchemist', cost: {herbs: 3, honey: 1, pots: P}, effect: 'potHealStrong'}]},
-  {id: 'antidote', label: 'противоядие', use: 'poisoned', note: 'пьётся, когда яд в крови', stock: {share: 0.34, of: 'people', want: 0.45},
+  {id: 'antidote', label: 'противоядие', use: 'poisoned', note: 'пьётся, когда яд в крови', need: {base: 0.5, venom: 4}, stock: {share: 0.34, of: 'people', want: 0.45},
     grades: [{res: 'antidote', tier: 1, at: 'healerhut', cost: {herbs: 1, slime: 1, pots: P}, effect: 'potAntidote'},
              {res: 'antidoteStrong', tier: 2, at: 'alchemist', cost: {herbs: 2, slime: 2, pots: P}, effect: 'potAntidoteStrong'}]},
-  {id: 'bear', label: 'медвежья сила', use: 'fight', note: 'пьётся перед первым ударом боя', stock: {share: 0.34, of: 'people', want: 0.4},
+  {id: 'bear', label: 'медвежья сила', use: 'fight', note: 'пьётся перед первым ударом боя', need: {base: 1.5}, stock: {share: 0.34, of: 'people', want: 0.4},
     grades: [{res: 'bearBrew', tier: 2, at: 'healerhut', cost: {bile: 1, braga: 1, pots: P}, effect: 'potBear'},
              {res: 'bearBrewStrong', tier: 3, at: 'alchemist', cost: {bile: 2, braga: 1, honey: 1, pots: P}, effect: 'potBearStrong'}]},
-  {id: 'venom', label: 'яд для клинка', use: 'blade', note: 'клинок натирают перед первым ударом боя', stock: {share: 0.25, of: 'people', want: 0.35},
+  {id: 'venom', label: 'яд для клинка', use: 'blade', note: 'клинок натирают перед первым ударом боя', need: {base: 0, living: 2}, stock: {share: 0.25, of: 'people', want: 0.35},
     grades: [{res: 'bladeVenom', tier: 2, at: 'healerhut', cost: {venom: 1, wax: 1, pots: P}, effect: 'potVenom'},
              {res: 'bladeVenomStrong', tier: 3, at: 'alchemist', cost: {venom: 2, wax: 1, pots: P}, effect: 'potVenomStrong'}]},
   // silver oil: the blade bites what fears silver as a silvered one — the alchemist's only (silver is worked in a town)
-  {id: 'silver', label: 'серебряное масло', use: 'blade', note: 'клинок натирают перед первым ударом по тому, кто боится серебра', stock: {share: 0.25, of: 'people', want: 0.3},
+  {id: 'silver', label: 'серебряное масло', use: 'blade', note: 'клинок натирают перед первым ударом по тому, кто боится серебра', need: {base: 0, silver: 5}, stock: {share: 0.25, of: 'people', want: 0.3},
     grades: [{res: 'silverOil', tier: 2, at: 'alchemist', cost: {silverBar: 1, wax: 1, pots: P}, effect: 'potSilver'},
              {res: 'silverOilStrong', tier: 3, at: 'alchemist', cost: {silverBar: 2, wax: 1, pots: P}, effect: 'potSilverStrong'}]},
-  {id: 'fireward', label: 'огнестойкость', use: 'fire', note: 'пьётся, когда жжёт огонь, и перед боем с огнедышащим', stock: {share: 0.2, of: 'people', want: 0.3},
+  {id: 'fireward', label: 'огнестойкость', use: 'fire', note: 'пьётся, когда жжёт огонь, и перед боем с огнедышащим', need: {base: 0.2, breath: 4}, stock: {share: 0.2, of: 'people', want: 0.3},
     grades: [{res: 'firewardBrew', tier: 2, at: 'healerhut', cost: {slime: 2, herbs: 1, pots: P}, effect: 'potFireward'},
              {res: 'firewardBrewStrong', tier: 3, at: 'alchemist', cost: {gland: 1, slime: 1, pots: P}, effect: 'potFirewardStrong'}]},
-  {id: 'light', label: 'лёгкий шаг', use: 'fight', note: 'пьётся перед первым ударом боя: шаг быстрее', stock: {share: 0.2, of: 'people', want: 0.3},
+  {id: 'light', label: 'лёгкий шаг', use: 'fight', note: 'пьётся перед первым ударом боя: шаг быстрее', need: {base: 0.8}, stock: {share: 0.2, of: 'people', want: 0.3},
     grades: [{res: 'lightStep', tier: 2, at: 'healerhut', cost: {herbs: 2, wort: 1, pots: P}, effect: 'potLight'},
              {res: 'lightStepStrong', tier: 3, at: 'alchemist', cost: {herbs: 2, feathers: 1, pots: P}, effect: 'potLightStrong'}]},
-  {id: 'cateye', label: 'кошачий глаз', use: 'dark', note: 'пьётся ночью: на посту и перед боем в темноте — видит во мраке', stock: {share: 0.2, of: 'people', want: 0.3},
+  {id: 'cateye', label: 'кошачий глаз', use: 'dark', note: 'пьётся ночью: на посту и перед боем в темноте — видит во мраке', need: {base: 0, dark: 1}, stock: {share: 0.2, of: 'people', want: 0.3},
     grades: [{res: 'catEye', tier: 2, at: 'healerhut', cost: {lynxEyes: 1, herbs: 1, pots: P}, effect: 'potCatEye'},
              {res: 'catEyeStrong', tier: 3, at: 'alchemist', cost: {lynxEyes: 2, wort: 1, pots: P}, effect: 'potCatEyeStrong'}]},
-  {id: 'flask', label: 'зажигательная склянка', use: 'throw', note: 'бросают во врага издали: огонь по нему и рядом', stock: {share: 0.2, of: 'people', want: 0.25},
+  {id: 'flask', label: 'зажигательная склянка', use: 'throw', note: 'бросают во врага издали: огонь по нему и рядом', need: {base: 1}, stock: {share: 0.2, of: 'people', want: 0.25},
     grades: [{res: 'fireFlask', tier: 2, at: 'healerhut', cost: {braga: 1, wax: 1, pots: P}, effect: 'potFlask'},
              {res: 'fireFlaskStrong', tier: 3, at: 'alchemist', cost: {braga: 1, gland: 1, pots: P}, effect: 'potFlaskStrong'}]},
   // the brews: drunk out of the stock

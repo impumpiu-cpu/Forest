@@ -12,11 +12,12 @@
 // brewFor): it fills a need at once, mends a grave wound sooner; the sleeping one is given to a captive (sleepDose).
 import {maxHp} from './agent.js';
 import {log} from '../core/log.js';
-import {POTION, POTION_RES, HOME_BY_USE, potionOf} from '../data/potions.js';
+import {POTION, POTION_RES, HOME_BY_USE, BELT_ORDER, potionOf} from '../data/potions.js';
+import {NIGHT, hasSense} from '../data/tongues.js';
 import {CONDITIONS, hasMark, effectsOf} from '../data/conditions.js';
 import {SPECIES} from '../data/species.js';
 import {nightness} from '../core/time.js';
-import {nightSight} from '../data/tongues.js';
+import {darkness} from './combat.js';
 import {refreshBody} from './special.js';
 import {def} from './equipment.js';
 
@@ -106,7 +107,7 @@ export function drinkFor(w, a, use, t = null) {
     let any = false;
     for (let res; (res = forUse(w, a, 'fight')) && drink(w, a, res);) any = true;
     if (!a.coat) { const res = forBlade(a, t); if (res && drink(w, a, res)) any = true; }
-    if (nightness(w) > POTION.dark && nightSight(a.species, nightness(w), a) < 1 && drinkFor(w, a, 'dark')) any = true;   // (no use where the night hides nothing)
+    if (nightness(w) > POTION.dark && darkness(w, a) < 1 && drinkFor(w, a, 'dark')) any = true;   // (no use where the night hides nothing)
     if (t && SPECIES.get(t.species).breath && drinkFor(w, a, 'fire')) any = true;
     return any;
   }
@@ -130,6 +131,59 @@ export function sleepDose(stock, drop = false) {
   if (!res) return null;
   if (--stock[res] <= 0 && drop) delete stock[res];
   return CONDITIONS.get(potionOf(res).grade.effect);
+}
+
+// ── the belt by need. The foes expected (counts by species) as shares: venomous, fearing silver, fire-breathing,
+// undead, and the living rest
+export function threatOf(counts) {
+  let n = 0; const T = {venom: 0, silver: 0, breath: 0, undead: 0, living: 0};
+  for (const [id, k] of Object.entries(counts || {})) {
+    if (!SPECIES.has(id) || !(k > 0)) continue;
+    const sp = SPECIES.get(id), silver = !!sp.weakTo?.includes('silver'); n += k;
+    if (sp.venom) T.venom += k; if (silver) T.silver += k; if (sp.breath) T.breath += k; if (sp.undead) T.undead += k;
+    if (!sp.undead && !silver) T.living += k;
+  }
+  if (!n) return {...T, living: 1};   // nobody known: the living, as most are
+  for (const k of Object.keys(T)) T[k] /= n;
+  return T;
+}
+// how much `holder` (its species: `race` of a caravan's member) wants this potion in its belt against this threat
+export function beltNeed(res, threat, species) {
+  const P = potionOf(res), N = P?.potion.need; if (!N) return 0;
+  let v = N.base || 0;
+  for (const k of ['venom', 'silver', 'breath', 'undead', 'living']) v += (N[k] || 0) * threat[k];
+  if (N.dark && NIGHT.loss > 0 && !hasSense(species, 'darkvision')) v += N.dark;
+  return v > 0 ? v + (P.k ? POTION.beltStrong : 0) : 0;
+}
+// what a belt should hold of what there is (`have(res)` — how many; `fitsIt(res)` — this holder may carry it): the
+// POTION.belt most wanted, one of a kind, each wanted at all → [res…], the most wanted first
+export function pickBelt(have, fitsIt, threat, species) {
+  const best = new Map();
+  for (const res of BELT_ORDER) {
+    if (!(have(res) >= 1) || !fitsIt(res)) continue;
+    const v = beltNeed(res, threat, species), kind = potionOf(res).potion.id;
+    if (v > 0 && (!best.has(kind) || v > best.get(kind).v)) best.set(kind, {res, v});
+  }
+  return [...best.values()].sort((p, q) => q.v - p.v).slice(0, POTION.belt).map(e => e.res);
+}
+// fill and trade a belt by need: empty places take the most wanted of the stock; a carried potion goes back (`give`)
+// for one of the stock better by POTION.beltSwap (`take`). → true when it changed
+export function rebelt(a, species, have, take, give, fitsIt, threat) {
+  const belt = a.belt || [];
+  let changed = false;
+  for (let guard = 0; guard < POTION.belt + 1; guard++) {
+    const kinds = new Set(belt.map(r => potionOf(r).potion.id));
+    // what the stock offers that the belt has not of its kind
+    const offer = pickBelt(r => (kinds.has(potionOf(r).potion.id) ? 0 : have(r)), fitsIt, threat, species)[0];
+    if (!offer) break;
+    const v = beltNeed(offer, threat, species);
+    if (belt.length < POTION.belt) { belt.push(offer); take(offer); changed = true; continue; }
+    const worst = belt.reduce((m, r) => (beltNeed(r, threat, species) < beltNeed(m, threat, species) ? r : m), belt[0]);
+    if (v < beltNeed(worst, threat, species) + POTION.beltSwap) break;
+    belt.splice(belt.indexOf(worst), 1); give(worst); belt.push(offer); take(offer); changed = true;
+  }
+  if (belt.length) a.belt = belt;
+  return changed;
 }
 
 // the use of the potion whose drink gave this effect (for the effects at work)

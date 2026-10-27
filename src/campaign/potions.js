@@ -13,7 +13,7 @@ import {alive} from './march.js';
 import {hasBuilding} from './baggage.js';
 import {gearDef} from '../agents/equipment.js';
 import {CONDITIONS} from '../data/conditions.js';
-import {useOfEffect} from '../agents/potions.js';
+import {useOfEffect, threatOf, rebelt} from '../agents/potions.js';
 import {DAY} from '../core/time.js';
 
 const carriers = K => alive(K).filter(m => !m.captive && !m.former);
@@ -22,6 +22,12 @@ const take = (K, id, n = 1) => { K.cargo[id] -= n; if (K.cargo[id] <= 0) delete 
 const bladeIn = m => (m.gear?.hand || []).some(tok => !!gearDef(tok)?.melee && !gearDef(tok)?.ranged);
 const fitsBelt = (m, res) => potionOf(res)?.potion.use !== 'blade' || bladeIn(m);
 
+// the foes the caravan expects: those of its last POTION.beltFights fights ({species: n})
+function foesOf(K) {
+  const out = {};
+  for (const f of (K.fights || []).slice(-POTION.beltFights)) for (const [id, n] of Object.entries(f.species || {})) out[id] = (out[id] || 0) + n;
+  return out;
+}
 // the spare potions of the cargo into the slots and the belts, to whoever carries fewest
 export function topUp(K) {
   for (;;) {
@@ -30,13 +36,10 @@ export function topUp(K) {
     if (!m) break;
     m.potions = (m.potions || 0) + 1; take(K, 'potion');
   }
-  for (const m of carriers(K).sort((p, q) => (p.belt?.length || 0) - (q.belt?.length || 0))) {
-    while ((m.belt?.length || 0) < POTION.belt) {
-      const res = BELT_ORDER.find(r => (K.cargo[r] || 0) >= 1 && !(m.belt || []).some(b => sameKind(b, r)) && fitsBelt(m, r));
-      if (!res) break;
-      (m.belt ||= []).push(res); take(K, res);
-    }
-  }
+  // the belts by need against the foes of the last fights (agents/potions.js rebelt), traded when they change
+  const threat = threatOf(foesOf(K));
+  for (const m of carriers(K).sort((p, q) => (p.belt?.length || 0) - (q.belt?.length || 0)))
+    rebelt(m, m.race, r => K.cargo[r] || 0, r => take(K, r), r => { K.cargo[r] = (K.cargo[r] || 0) + 1; }, r => fitsBelt(m, r), threat);
   marksUp(K);
 }
 // an elixir in the cargo (a home potion of use `mark`): drunk at once by a free member that lacks its mark — the knights

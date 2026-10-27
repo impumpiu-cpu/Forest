@@ -4,7 +4,8 @@
 // with the caravan in its people's tongue: when no free member of the caravan speaks any tongue of the town's race,
 // the town sells dearer and buys cheaper by `TONGUE.barrier` (0 — as before). campaign/town.js termsOf reads it.
 // SENSES — what a body notices by. `darkvision`: sees by night as by day; everyone else's sight × (1 − `NIGHT.loss` ×
-// the night) (agents/brains/colonist.js, the colonists' watch; 0 — as before). `scent`: noted, not yet read.
+// the night) — by the campfire as by day (agents/combat.js darkness: the search for a foe, a shot's reach, the
+// watch, the camp's sentries). `scent`: noted, not yet read.
 import {Registry} from '../core/registry.js';
 import {CONDITIONS} from './conditions.js';
 
@@ -38,7 +39,8 @@ SENSES.registerAll([
     note: 'видит ночью как днём'},
   {id: 'scent', label: 'чутьё', live: false, species: ['wolf', 'varg', 'bear', 'hyena', 'fox', 'boar'], note: 'чует добычу и врага (пока звери ищут по своим повадкам)'},
 ]);
-export const NIGHT = {loss: 0};
+// how much of its sight the night takes at its deepest (× nightness); a campfire lights WATCH.fireLight around it
+export const NIGHT = {loss: 0.5};
 export const hasSense = (species, id) => SENSES.get(id).species.includes(species);
 // × how far a creature sees now: 1 by day, or for one with darkvision
 // (`a` — the creature: a cat's eye at work sees as darkvision does, agents/potions.js)
