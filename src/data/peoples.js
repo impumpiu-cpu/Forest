@@ -19,6 +19,9 @@
 //             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
 //   flows:    × on what its buildings give of a good (data/townBuildings.js TOWN_GOODS, `out`): the elves' gardens
 //             yield more, their humane quarries less; none — ×1
+//   hands:    the share of its people who work (the rest are children, the old, those who keep house): the hands its
+//             town's buildings share out (atlas/economy.js); elves have few children and many elders, orcs put everyone to work
+//   eat:      food a year of one of its people, in people-years (data/townBuildings.js TOWN_GOODS food): an orc eats more
 //   swaps:    a good its buildings never take, and what they take instead: {metal: {to: 'wood', k: 3}} — an elven
 //             jeweller sets gems in ironwood and the sacred tree, three of wood for one of metal
 //   names:    syllables of town names: first + middle (may be empty) + last
@@ -32,6 +35,7 @@ const raceHome = id => RACES.find(r => r.id === id).home;
 export const WORLD_PEOPLES = new Registry('worldPeople');
 WORLD_PEOPLES.registerAll([
   {id: 'elves', race: 'elf', label: 'эльфы', labelGen: 'эльфов', adj: 'эльфийский', era: 'elder', color: [120, 200, 120],
+    hands: 0.4, eat: 0.85,
     arrive: {verb: 'пробудились', groups: 2, where: 'в самой древней чаще'},
     get home() { return raceHome('elf'); },
     moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
@@ -45,6 +49,7 @@ WORLD_PEOPLES.registerAll([
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
   {id: 'dwarves', race: 'dwarf', label: 'гномы', labelGen: 'гномов', adj: 'гномий', era: 'elder', color: [220, 150, 70],
+    hands: 0.55, eat: 1.15,
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
     get home() { return raceHome('dwarf'); }, ores: 0.4,
     moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
@@ -54,6 +59,7 @@ WORLD_PEOPLES.registerAll([
     names: {first: ['Кхаз', 'Бар', 'Дур', 'Гра', 'Тор', 'Ка', 'Бо', 'Гим', 'Дол', 'Мор', 'Ун', 'Зир'], mid: ['', 'ак', 'ин', 'ум', 'ар', 'ек', 'од'],
       last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
   {id: 'humans', race: 'human', label: 'люди', labelGen: 'людей', adj: 'людской', era: 'young', color: [100, 150, 235],
+    hands: 0.5, eat: 1,
     arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast'},
     get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
@@ -63,6 +69,7 @@ WORLD_PEOPLES.registerAll([
     names: {first: ['Бел', 'Яр', 'Вел', 'Свят', 'Мир', 'Глад', 'Рад', 'Ост', 'Лю', 'Звени', 'Добр', 'Влад'], mid: ['', 'о', 'е', 'ино'],
       last: ['град', 'город', 'слав', 'поль', 'ск', 'мир', 'бор', 'ец', 'горск', 'дол']}},
   {id: 'orcs', race: 'orc', label: 'орки', labelGen: 'орков', adj: 'орочий', era: 'young', color: [210, 80, 60],
+    hands: 0.6, eat: 1.25,
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
     get home() { return raceHome('orc'); }, ores: 0.3,
     moves: {steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2}, movesElse: 0.5,

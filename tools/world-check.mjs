@@ -356,14 +356,14 @@ scene_('W17', 'стан гоблинов осенью идёт за пленны
   return lair.captives[town.people] < 40 || 'пленные не тают';
 });
 
-scene_('W18', 'держава орков с воинами уводит пленных из нелюбимого города рядом: город орков растёт; у людей такого дела нет', () => {
+scene_('W18', 'держава орков с воинами уводит пленных из нелюбимого города рядом: у города орков прибавляется рабов; у людей такого дела нет', () => {
   const a = world(), n = neighbours(a, 'orcs', 'humans', -3);
   if (!n) return 'соседи не высадились';
   n.t1.pop = 300; n.t1.built.push('palisade'); n.t2.pop = 300;
-  const p1 = n.t1.pop, p2 = n.t2.pop, o = court(a, n.A, ['captives']);
+  const s1 = n.t1.slaves || 0, p2 = n.t2.pop, o = court(a, n.A, ['captives']);
   if (o?.[3].id !== 'captives') return `предложено: ${o ? o[3].id : 'ничего'}`;
   const took = n.A.captives?.humans || 0;
-  if (took > 0 && !(n.t1.pop > p1 && n.t2.pop < p2)) return `полон взят, а города не изменились: ${p1} → ${n.t1.pop}, ${p2} → ${n.t2.pop}`;
+  if (took > 0 && !((n.t1.slaves || 0) > s1 && n.t2.pop < p2)) return `полон взят, а города не изменились: рабов ${s1} → ${n.t1.slaves || 0}, ${p2} → ${n.t2.pop}`;   // they become its slaves (atlas/economy.js)
   if (!took && !n.A.lines.some(t => /отбили/.test(t))) return `ни полона, ни отпора: ${n.A.lines.join(' | ')}`;
   return !realmSpecies(a, n.B).deeds.realm.includes('captives') || 'люди ходят за пленными';
 });

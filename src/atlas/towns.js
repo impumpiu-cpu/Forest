@@ -39,7 +39,9 @@ export const townGender = t => (crowned(t) ? CAPITAL.gender[t.people] : TIERS[t.
 
 export function townFx(t) {
   const out = Object.fromEntries(KEYS.map(k => [k, 0]));
-  for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); for (const k of KEYS) out[k] += fxOf(b, k); }
+  // effects by kind (twelve fields feed more, not twelve times as famously: atlas/economy.js), the room by every house
+  for (const id of new Set(t.built)) { const b = TOWN_BUILDINGS.get(id); for (const k of KEYS) if (k !== 'housing') out[k] += fxOf(b, k); }
+  for (const id of t.built) out.housing += fxOf(TOWN_BUILDINGS.get(id), 'housing');
   return out;
 }
 export const room = fx => TF.room[0] + TF.room[1] * fx.housing;
@@ -60,6 +62,8 @@ export function roughShare(t) {
   for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); if (!b.house) continue; all += b.house; if (b.tier === 0) rough += b.house; }
   return rough / all;
 }
+// how many of a building a town may have: its `max`, or one for every `per` of its people (a unit of work)
+export const unitsMax = (t, b) => Math.max(b.max, b.per ? Math.ceil(t.pop / b.per) : 0);
 // housing built in place of an older one (data/townBuildings.js `upgrades`): the id of what gives way, or null
 export const upgradeOf = (t, b) => (b.upgrades || []).find(id => t.built.includes(id)) || null;
 // the room it adds: its own less what gives way to it
@@ -135,7 +139,7 @@ export function canBuild(a, t, b, inRealm = null) {
   if (b.pop && t.pop < b.pop) return false;
   if (b.capital && !t.capital) return false;
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
-  if (t.built.filter(id => id === b.id).length >= b.max) return false;
+  if (t.built.filter(id => id === b.id).length >= unitsMax(t, b)) return false;
   if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
   const pk = t.place ||= {};
   const has = need => (need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change; roads and graves do
@@ -168,7 +172,16 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   for (const b of TOWN_BUILDINGS.all()) {
     if (!canBuild(a, t, b, inRealm)) continue;
     let v = 0;
-    for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : fxOf(b, k)) * need[k] * (P.taste[k] ?? 1);
+    const have = t.built.includes(b.id);   // a second field adds its work, not a second fame
+    for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : have ? 0 : fxOf(b, k)) * need[k] * (P.taste[k] ?? 1);
+    // the flows (atlas/economy.js): what the town's buildings lack of a good, a building that gives it fills; food short
+    // of the people — a building that gives food; and no hands to work it — little use
+    const E = ctx.econ;
+    if (E) {
+      for (const g of Object.keys(b.out || {})) v += (E.short[g] || 0) * TF.flow.short;
+      if ((b.out?.food || b.out?.grain) && need.food > 0) v += need.food * TF.flow.food;
+      if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) v *= TF.flow.idle;
+    }
     v *= 0.85 + 0.3 * rnd();
     if (v > bv) { bv = v; best = b; }
   }

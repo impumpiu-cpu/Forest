@@ -48,7 +48,8 @@ export function baseStats(a, realm, towns) {
   return out;
 }
 // the upkeep of a realm's buildings: the average over its towns
-export const upkeepOf = towns => towns.reduce((s, t) => s + t.built.reduce((u, id) => u + (UPKEEP[TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id).cat : ''] || 0), 0), 0) / Math.max(1, towns.length);
+// (by kind, as the effects: twelve fields are one farmland to keep — atlas/towns.js townFx)
+export const upkeepOf = towns => towns.reduce((s, t) => s + [...new Set(t.built)].reduce((u, id) => u + (UPKEEP[TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id).cat : ''] || 0), 0), 0) / Math.max(1, towns.length);
 
 export function stepKingdom(a, say) {
   if (!a.realms?.length || a.hist.season !== SEASONS_PER_YEAR - 1) return;

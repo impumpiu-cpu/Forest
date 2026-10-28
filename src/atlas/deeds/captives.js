@@ -7,7 +7,8 @@
 //     thins the camp as a raid's does. The captives waste at CAPTIVE_RAID.keep a year (atlas/lairs.js), and a caravan that
 //     beats the lair's folk in its lands frees them (campaign/fight.js).
 //   the realm (ctx.role 'realm'): a town with warriors raids the nearest disliked town in DIPLOMACY.raidReach (raidTown.js);
-//     a win takes `realm.loss` of its people — the raiding town grows by `grow` of them, the realm counts them (realm.captives).
+//     a win takes `realm.loss` of its people — `grow` of them become the raiding town's slaves (t.slaves: they work in its
+//     buildings, atlas/economy.js), the realm counts them (realm.captives).
 import {TRIBE_RAID, CAPTIVE_RAID as CR} from '../../data/lairs.js';
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
 import {PARTIES} from '../../data/parties.js';
@@ -81,7 +82,7 @@ export const captives = {
     rel.att = Math.max(-5, rel.att - D.raid);
     if (fight(t, r) > fight(target, r)) {
       const n = Math.max(1, Math.round(target.pop * CR.realm.loss * raidShare(townFx(target))));
-      target.pop = Math.max(0, target.pop - n); t.pop += n * CR.realm.grow;
+      target.pop = Math.max(0, target.pop - n); t.slaves = (t.slaves || 0) + n * CR.realm.grow;   // they work in its buildings as slaves (atlas/economy.js)
       (actor.captives ||= {})[target.people] = (actor.captives[target.people] || 0) + n;
       barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);
       return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}.`;

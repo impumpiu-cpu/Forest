@@ -6,7 +6,7 @@ import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {TOWN_BUILDINGS, EFFECTS, CATEGORIES} from '../data/townBuildings.js';
+import {TOWN_GOODS, TOWN_BUILDINGS, EFFECTS, CATEGORIES} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {ARMY} from '../data/parties.js';
 import {seasonLabel} from '../atlas/history.js';
@@ -116,6 +116,9 @@ function townHtml(a, t) {
   const sieged = (a.parties || []).find(p => p.kind === 'army' && p.state === 'stay' && p.target === t.id);
   const head = sec(`${townLabel(t).replace(/^./, c => c.toUpperCase())} ${t.name}`,
     row('народ', `${esc(P.label)}${folk ? `, среди них ${esc(folk)}` : ''}`) +
+    // the town's economy by its buildings' flows (atlas/economy.js: worked out each season, not saved)
+    (t.econ ? row('хозяйство', `руки ${Math.round(Math.min(t.econ.jobs, t.econ.hands))} из ${Math.round(t.econ.hands)}${t.slaves ? ` (рабов ${Math.round(t.slaves)})` : ''}; постройки кормят ${Math.round(t.econ.feeds)} жителей`
+      + (Object.keys(t.econ.short).length ? `; не хватает: ${esc(Object.entries(t.econ.short).sort((p, q) => q[1] - p[1]).slice(0, 4).map(([g, v]) => `${TOWN_GOODS.get(g).label} ${Math.round(v * 100)}%`).join(', '))}` : '')) : '') +
     row('жители', `${Math.round(t.pop)}, дома на ${room(fx)}`) +
     row('основан', `${t.founded} г.${t.capital ? ', столица' : ''}`) +
     row('угодья', `в ${siteRadius(a, t)} клетках; ${feed || ''}`) +

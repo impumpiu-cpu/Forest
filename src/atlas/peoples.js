@@ -13,6 +13,9 @@
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
+import {townEconomy} from './economy.js';
+import {SEASONS_PER_YEAR} from '../data/atlas.js';
+import {TOWN_FLOW} from '../data/townBuildings.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -252,7 +255,11 @@ export function stepPeoples(a, rnd, say) {
     let feed = 0, c = 0;
     for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
     const fx = townFx(t);
-    feedsOf.set(t.id, [TL.feeds * (feed / c) * (TL.fert[0] + TL.fert[1] * a.f.fert[t.i]) * (TL.home[0] + TL.home[1] * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + TL.road * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? TL.capital : 1) * (1 + fx.food - scourgedFood(a, t) + TL.trade * fx.trade), room(fx)]);
+    // the town's economy by its buildings' flows (atlas/economy.js): its hands, its goods, the food its works give;
+    // its slaves wear away (the orcs' raids keep them coming)
+    if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
+    Object.defineProperty(t, 'econ', {value: townEconomy(a, t), writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
+    feedsOf.set(t.id, [TL.feeds * (feed / c) * (TL.fert[0] + TL.fert[1] * a.f.fert[t.i]) * (TL.home[0] + TL.home[1] * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + TL.road * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? TL.capital : 1) * (1 - scourgedFood(a, t) + TL.trade * fx.trade) + t.econ.feeds - (t.slaves || 0), room(fx)]);   // the land feeds, and the town's works (flows) feed more; its slaves eat too
   }
   stepNet(a, feedsOf);
   for (const [t, o, by] of fedTowns(a)) say(`${cap1(townLabel(t, 0))} ${t.name} живёт привозным хлебом: ${Math.round(by * 100)}% еды везут из ${townLabel(o, 2)} ${o.name}.`);
@@ -265,14 +272,16 @@ export function stepPeoples(a, rnd, say) {
     const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
     const target = Math.min(feeds, room(fx));
     t.pop = Math.max(TL.minPop, t.pop + TL.growth * (1 + TL.prestige * fx.prestige) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
+    t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);
-    for (let q = 0; q < (t.tier >= 2 ? 2 : 1); q++) {
+    for (let q = 0; q < (t.tier >= 2 ? 2 : 1) + Math.floor(t.pop / TOWN_FLOW.build); q++) {   // a big town builds more a year
       if (rnd() > TL.build) continue;
-      const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i)}, rnd);
+      const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i), econ: t.econ}, rnd);
       if (!b) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
-      if (b.site && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js)
+      const sited = (t.sites || []).some(id => a.sites[id - 1]?.alive && a.sites[id - 1].kind === b.id);
+      if (b.site && !sited && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js); more of it widen it
       const old = upgradeOf(t, b);   // housing built in place of an older one
       if (old) t.built.splice(t.built.indexOf(old), 1);
       t.built.push(b.id);

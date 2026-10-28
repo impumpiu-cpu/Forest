@@ -87,12 +87,17 @@ export function placeSite(a, t, b, rnd) {
   return s;
 }
 
-// a site burns: the town loses the building and wants it again; the stump stays a while
+// a site burns: the town loses one unit of the building (atlas/economy.js: twelve fields are one farmland) and wants it
+// again; while units of it are left the site stands, the last one gone leaves a stump a while
 export function razeSite(a, s, year) {
   if (!s.alive) return;
-  s.alive = false; s.died = year; a.siteAt[s.i] = 0;
   const t = a.towns.find(t => t.id === s.town);
-  if (t) { const k = t.built.indexOf(s.kind); if (k >= 0) t.built.splice(k, 1); t.sites = (t.sites || []).filter(id => id !== s.id); }
+  if (t) {
+    const k = t.built.indexOf(s.kind); if (k >= 0) t.built.splice(k, 1);
+    if (t.alive !== false && t.built.includes(s.kind)) return;   // the rest of the farmland stands
+    t.sites = (t.sites || []).filter(id => id !== s.id);
+  }
+  s.alive = false; s.died = year; a.siteAt[s.i] = 0;
 }
 // a raid on a town burns one of its works, sometimes; returns the building burnt or null
 export function raidSite(a, t, rnd) {

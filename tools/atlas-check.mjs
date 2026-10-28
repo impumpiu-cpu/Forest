@@ -68,7 +68,9 @@ function townsCheck(a, tag) {
       const b = TOWN_BUILDINGS.get(id);
       seen[id] = (seen[id] || 0) + 1;
       if (b.peoples && !b.peoples.includes(t.people)) misbuilt ||= `${t.name}: ${b.name} — не их постройка`;
-      if (seen[id] > b.max) misbuilt ||= `${t.name}: ${b.name} больше ${b.max}`;
+      const most = Math.max(b.max, b.per ? Math.ceil(Math.max(t.peak || 0, t.pop) / b.per) : 0);   // units of work: one more for every `per` people it ever had
+      if (seen[id] > most) misbuilt ||= `${t.name}: ${b.name} больше ${most}`;
+      if (b.site && seen[id] > 1) continue;   // more units of an outlying work widen its one cell
       const at = b.site ? (a.sites.find(s => s.alive && s.town === t.id && s.kind === id && !seenSites.has(s.id)) || null) : null;
       if (at) seenSites.add(at.id);
       const where = b.site ? at?.i : t.i;   // an outlying work has its place in its own cell
