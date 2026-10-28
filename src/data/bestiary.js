@@ -78,6 +78,17 @@ export const BESTIARY = [
     herd: {cap: 4, alert: 6},   // a small herd; a bold bull stands up for the others (agents/behaviours/standGround.js)
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.0003, mule: stands({})}),
 
+  // Treant: an old tree that has come off its roots — slow, all but proof against arrows and blades, heavy with its boughs,
+  // and it burns. It harms no one who leaves the wood alone, and answers whoever strikes it (standGround). Tag «Лесной»:
+  // an elven caller of beasts may call it (agents/summon.js)
+  beast({id: 'treant', sylvan: true, kind: 'beast', label: 'древень', labelAcc: 'древня', plural: 'древни', mind: 'semi', behaviours: ['shunFire', 'standGround', 'leave', 'rest'], heart: BEAT.stander, restAt: 0.5, mends: 0.0004, big: true,
+    arrive: {group: [1, 1], every: [6, 10], chance: 0.3, cap: 1, first: 5, message: 'в чаще шевельнулся древень: старое дерево сошло с корней. Его не трогают — и он не тронет'},
+    habitat: {forest: 'rare', jungle: 'rare', taiga: 'scarce'},
+    look: {shape: 'treant', size: 1.15, color: '#5b4a32'},
+    yields: {wood: 20, herbs: 2},
+    killMessage: name => `Древень раздавил поселенца ветвями: <b>${name}</b>.`,
+    leaveChance: 0.0002, mule: stands({kickRange: 1.5, charge: 0, chargeHit: 1, chargeFrom: 99, grudge: 600, giveUp: 30, fleeBelow: 0.12})}),
+
   // Hyenas: scavengers of the barrow steppe, packs, bold by night; gnolls keep them
   beast({id: 'hyena', kind: 'beast', label: 'гиена', labelAcc: 'гиену', plural: 'гиены', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
     arrive: {group: [2, 5], every: [2, 4], chance: 0.5, cap: 5, first: 2, message: 'пришли гиены: {n}. Ночью они смелеют'},

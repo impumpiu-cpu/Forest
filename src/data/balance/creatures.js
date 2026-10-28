@@ -77,6 +77,7 @@ export const CREATURES = {
   varg:        {special: around({S: 10, P: 10, E: 9, C: 2, I: 4, A: 9, L: 4}), hp: 1.5, speed: 0.15, attack: {power: 1.35, cooldown: 13, type: 'pierce'}, ks: 1.06},
   bear:        {special: around({S: 14, P: 6, E: 13, C: 2, I: 3, A: 5, L: 4}), hp: 3.6, speed: 0.12, attack: {power: 2.4, cooldown: 16, type: 'slash'}, ks: 0.94},
   lynx:        {special: around({S: 5, P: 11, E: 5, C: 2, I: 3, A: 12, L: 5}), hp: 0.6, speed: 0.16, attack: {power: 1, cooldown: 11, type: 'slash'}, ks: 1},
+  treant:      {special: around({S: 16, P: 5, E: 16, C: 2, I: 4, A: 2, L: 5}), hp: 5, speed: 0.06, attack: {power: 2.6, cooldown: 20, type: 'blunt'}, resist: {pierce: 0.35, slash: 0.7, fire: 2}, ks: 1.05},
   elk:         {special: around({S: 11, P: 6, E: 12, C: 2, I: 2, A: 6, L: 4}), hp: 3.4, speed: 0.13, attack: {power: 2, cooldown: 16}, ks: 1.09},
   hyena:       {special: around({S: 6, P: 10, E: 8, C: 1, I: 3, A: 9, L: 5}), hp: 0.7, speed: 0.15, attack: {power: 0.9, cooldown: 12, type: 'pierce'}, ks: 1.06},
   toad:        {special: around({S: 7, P: 6, E: 9, C: 1, I: 1, A: 4, L: 4}), hp: 1, speed: 0.06, attack: {power: 1.2, cooldown: 20}, ks: 0.98},

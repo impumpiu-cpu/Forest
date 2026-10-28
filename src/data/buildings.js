@@ -204,7 +204,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[c.stock('iron') * 0.12, 'железо лежит без дела'], [c.unarmed * 0.6 + (a.mem.wolf + a.mem.raid) * 0.6, 'деревом и костью не отбиться'],
       [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна']]},
 
-  {id: 'jeweler', name: 'Верстак резчика', gender: 'm', cost: {wood: 14, stone: 12, gemtools: 1}, key: 'gemtools', furnish: true, work: 200, max: 1, wooden: true, color: '#58b3a8', mark: 'Ю', station: true, benches: 1, needs: 'mineshaft',
+  {id: 'jeweler', name: 'Верстак резчика', gender: 'm', cost: {wood: 14, stone: 12, gemtools: 1}, key: 'gemtools', furnish: true, work: 200, max: 1, wooden: true, color: '#58b3a8', mark: 'Ю', station: true, benches: 1,   // no mine needed: gems come from a mine, a trader or the wood's gifts (the elves)
     effect: 'Покупными резцами и лучковым сверлом самоцветы оправляют в кость, дерево, камень и железо; режут ларцы. Украшения копятся для торговли.',
     effects: {},
     wish: 'хочет делать красивые вещи',
