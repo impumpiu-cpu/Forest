@@ -414,7 +414,8 @@ function allianceWorld() {
 }
 scene_('W20', 'союз против бедствия: державы рядом заключают союз, шлют войска, сильные войска берут логово — босс пал от союза; после лет мира союз распадается', () => {
   const S = allianceWorld(); if (S.error) return S.error;
-  for (const p of S.armies()) p.might = 1e6;
+  // Strength is derived from survivors now: scale its multiplier, not only its cached rating.
+  for (const p of S.armies()) { p.force *= 1e6 / p.might; p.might = 1e6; }
   for (let y = 0; y < 6 && S.cal().phase === 'rise'; y++) S.run(1);
   if (S.cal().fell?.by !== 'alliance') return `босс пал не от союза: ${S.cal().phase}, ${S.cal().fell?.by}; ${S.a.chronicle.filter(l => /оюз|войск/i.test(l.text)).slice(-6).map(l => l.year + ' ' + l.text).join(' | ')}; ${S.armies().map(p => p.state + p.might).join(',')}`;
   for (let y = 0; y < 20 && !S.A().broken; y++) S.run(1);
@@ -422,7 +423,7 @@ scene_('W20', 'союз против бедствия: державы рядом
 });
 scene_('W21', 'союз против бедствия: слабые войска разбиты у логова — босс устоял, союз пробует снова позже', () => {
   const S = allianceWorld(); if (S.error) return S.error;
-  for (const p of S.armies()) p.might = 0;
+  for (const p of S.armies()) { p.force = 0; p.might = 0; }
   const tries = S.A().tries;
   for (let y = 0; y < 6 && S.A().nextTry == null; y++) S.run(1);
   if (S.cal().phase !== 'rise' || S.A().nextTry == null) return `штурм не отбит: ${S.cal().phase}, следующая попытка ${S.A().nextTry}`;
