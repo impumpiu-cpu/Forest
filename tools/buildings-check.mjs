@@ -46,6 +46,35 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
   check('что народу разрешено, он может построить: нужное в державе ему тоже разрешено', !bad.length, bad.length ? bad.slice(0, 6).join('; ') : '');
 }
 
+// the peoples' flows: multipliers and swaps name real goods; an upgrade is housing over housing
+{
+  const bad = [];
+  for (const P of WORLD_PEOPLES.all()) {
+    for (const [g, k] of Object.entries(P.flows || {})) if (!TOWN_GOODS.has(g) || !(k > 0)) bad.push(`${P.id}: потоки ${g} ×${k}`);
+    for (const [g, w] of Object.entries(P.swaps || {})) if (!TOWN_GOODS.has(g) || !TOWN_GOODS.has(w?.to) || !(w.k > 0)) bad.push(`${P.id}: замена ${g} → ${w?.to}`);
+  }
+  for (const b of all) for (const id of b.upgrades || []) {
+    const o = TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id) : null;
+    if (!o) bad.push(`${b.id}: улучшает неизвестное ${id}`);
+    else if (o.cat !== 'housing' || b.cat !== 'housing' || !(b.house > o.house)) bad.push(`${b.id}: улучшает ${id}, но это не жильё больше прежнего`);
+  }
+  check('множители и замены благ у народов, улучшение жилья — только жильём побольше', !bad.length, bad.length ? bad.join('; ') : '');
+}
+
+// a people that has gone through the asymmetry (docs/WORLD.md «Асимметрия»): every good its buildings take (after its
+// swaps) one of its own buildings gives — no chain of theirs hangs on what they may not build
+const DONE = ['elves'];
+for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
+  const mine = all.filter(b => !b.peoples || b.peoples.includes(P.id)), made = new Set(mine.flatMap(b => Object.keys(b.out || {})));
+  const taken = new Map();
+  for (const b of mine) {
+    for (const g of Object.keys(b.in || {})) { const to = P.swaps?.[g]?.to || g; (taken.get(to) || taken.set(to, []).get(to)).push(b.id); }
+    if (b.heat) (taken.get('wood') || taken.set('wood', []).get('wood')).push(b.id);
+  }
+  const gaps = [...taken].filter(([g]) => !made.has(g)).map(([g, by]) => `${g} (${by.join(', ')})`);
+  check(`${P.label}: всё, что их постройки тратят, их же постройки и дают`, !gaps.length, gaps.length ? gaps.join('; ') : `${mine.length} построек, благ ${made.size}`);
+}
+
 // the metals: every metal of the game is opened by a building, and only by a real material
 {
   const bad = [];

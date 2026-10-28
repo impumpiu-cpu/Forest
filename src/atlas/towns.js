@@ -53,6 +53,18 @@ export function realmBuilt(a, t) {
   for (const id of t.built) out.add(id);
   return out;
 }
+// the share of a town's room that is rough: the first shelter (TOWN_FX.room[0]) and housing of step 0 — shacks and
+// tents; the more of its people live so, the more of what it owes sticks to hands (data/kingdom.js corruption `rough`)
+export function roughShare(t) {
+  let rough = TF.room[0], all = TF.room[0];
+  for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); if (!b.house) continue; all += b.house; if (b.tier === 0) rough += b.house; }
+  return rough / all;
+}
+// housing built in place of an older one (data/townBuildings.js `upgrades`): the id of what gives way, or null
+export const upgradeOf = (t, b) => (b.upgrades || []).find(id => t.built.includes(id)) || null;
+// the room it adds: its own less what gives way to it
+export const houseGain = (t, b) => { const old = upgradeOf(t, b); return (b.house || 0) - (old ? TOWN_BUILDINGS.get(old).house || 0 : 0); };
+
 // whether the realm of a town works this metal (a material id): one of the buildings that open it stands in the realm
 export function realmWorks(a, t, material) {
   const by = material ? metalBuildings(material) : [];
@@ -156,7 +168,7 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   for (const b of TOWN_BUILDINGS.all()) {
     if (!canBuild(a, t, b, inRealm)) continue;
     let v = 0;
-    for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
+    for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : fxOf(b, k)) * need[k] * (P.taste[k] ?? 1);
     v *= 0.85 + 0.3 * rnd();
     if (v > bv) { bv = v; best = b; }
   }

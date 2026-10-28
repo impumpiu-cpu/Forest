@@ -17,6 +17,10 @@
 //   site:     what makes a good spot for a town, beyond the biome: water, coast, fertility, ores, steep
 //   taste:    how much the people care for each kind of effect when a town chooses what to build
 //             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
+//   flows:    × on what its buildings give of a good (data/townBuildings.js TOWN_GOODS, `out`): the elves' gardens
+//             yield more, their humane quarries less; none — ×1
+//   swaps:    a good its buildings never take, and what they take instead: {metal: {to: 'wood', k: 3}} — an elven
+//             jeweller sets gems in ironwood and the sacred tree, three of wood for one of metal
 //   names:    syllables of town names: first + middle (may be empty) + last
 //   color:    on the world map
 import {Registry} from '../core/registry.js';
@@ -34,6 +38,10 @@ WORLD_PEOPLES.registerAll([
     spread: 0.22, growth: 0.18, found: 0.32, spacing: 16,
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
+    // children of the wood: the land feeds them better, herbs and honey are theirs, stone and clay they take humanely;
+    // metal they do not touch — the ironwood and the sacred tree stand for it
+    flows: {food: 1.25, grain: 1.25, herbs: 1.5, honey: 1.5, potions: 1.5, stone: 0.5, clay: 0.5},
+    swaps: {metal: {to: 'wood', k: 3}},
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
   {id: 'dwarves', race: 'dwarf', label: 'гномы', labelGen: 'гномов', adj: 'гномий', era: 'elder', color: [220, 150, 70],

@@ -12,7 +12,7 @@ import {WORLD_PEOPLES} from '../data/peoples.js';
 import {makeName} from '../data/names.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {pickOne} from '../data/chance.js';
-import {townFx} from './towns.js';
+import {townFx, roughShare} from './towns.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 
@@ -100,7 +100,7 @@ export function stepKingdom(a, say) {
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
-    const src = {towns: towns.length, pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
+    const src = {towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
     for (const R of RUINS.all()) {
       let v = K.ruin[R.id] || 0;
       for (const [k, w] of Object.entries(R.grows)) v += (src[k] || 0) * w;

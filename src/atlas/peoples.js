@@ -12,7 +12,7 @@
 //
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
-import {townFx, room, might, chooseBuilding, townLabel} from './towns.js';
+import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -273,6 +273,8 @@ export function stepPeoples(a, rnd, say) {
       if (!b) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
       if (b.site && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js)
+      const old = upgradeOf(t, b);   // housing built in place of an older one
+      if (old) t.built.splice(t.built.indexOf(old), 1);
       t.built.push(b.id);
       if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
       if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
