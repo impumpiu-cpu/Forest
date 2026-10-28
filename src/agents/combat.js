@@ -28,6 +28,8 @@ import {T, BY_CODE} from '../data/terrain.js';
 import {cellOf} from '../world/grid.js';
 import {quaff, drinkFor, bladeHit, silverCoat, rage} from './potions.js';
 import {roleRow} from '../data/roles.js';
+import {blowOnMount, mountBite, loose} from './mount.js';
+import {breakToWar} from '../settlement/warbeasts.js';
 import {potionOf} from '../data/potions.js';
 import {NIGHT, nightSight} from '../data/tongues.js';
 import {WATCH} from '../data/colony.js';
@@ -117,9 +119,11 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const tsp = SPECIES.get(t.species);
   // what kind of blow: the caller's word, else what the striker holds or strikes with
   type ||= melee ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged;
+  raw *= (roleRow(by)?.blows?.[type] ?? 1) * (roleRow(by)?.versus?.[tsp.kind] ?? 1);   // a role strikes some blows, or some creatures, harder (the dwarven hammer-smith, the greenskins' beast-driver: data/roles.js)
+  // a rider: the blow may fall on its mount (agents/mount.js)
+  { const m = blowOnMount(w, t, raw, type, melee, resistOf); if (m != null) return m; }
   if (mix) type = mix[0][0];
-  else raw *= resistOf(tsp, type, melee);
-  raw *= roleRow(by)?.blows?.[type] ?? 1;   // a role strikes some blows harder (the dwarven hammer-smith: data/roles.js)   // a spear point in a skeleton, an axe in a mycelium do little
+  else raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
   // a blow from the flank meets half a shield, one in the back none (stanceOf)
   const block = blockAgainst(g, type, melee) * (stance === 'back' ? 0 : stance === 'flank' ? COMBAT.flank.block : 1);
   // the block is a check with four degrees (data/checks.js): a critical block wears the striker's weapon, a botched
@@ -174,6 +178,8 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
   if (t.hp > 0 && dmg > 0 && roleRow(t)?.frenzy) rage(w, t);   // a berserker's wound (data/roles.js FRENZY)
+  if (t.hp <= 0) loose(w, t);   // a rider falls: its mount fights on (agents/mount.js)
+  if (t.hp <= 0 && breakToWar(w, by, t)) return dmg;   // the greenskins' pits: a beaten beast broken to war (settlement/warbeasts.js)
   if (t.hp <= 0) lethal(w, t, 'ран', by); else if (t.potions || t.belt?.length) quaff(w, t);   // a potion at the edge (agents/potions.js)
   return dmg;
 }
@@ -283,6 +289,9 @@ export function attack(w, a, t) {
     damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * off.dmg * off.share * blowStat(a, off.scale) * (1 + COMBAT.meleeSkill * (a.skill?.melee || 0)) * silverFactor(t, off.item, a) * stanceGain(stance, off.q), {type: off.type, mix: off.mix || null, q: off.q || null, stance});
     wear(w, a, off.item);
   }
+  // a rider's mount bites at its rider's blow (agents/mount.js)
+  const bite = mountBite(a, g.melee.cd);
+  if (bite && !t.dead && !t.downed) damage(w, a, t, (BLOW.base + w.rngs.combat() * BLOW.spread) * bite[0], {type: bite[1]});
   practice(a, 'melee', LEARN.blow);   // the blow was struck: it teaches, whatever came of it
   if (g.melee.item) wear(w, a, g.melee.item);
   return true;

@@ -13,7 +13,7 @@
 import {canDoAction} from '../agents/skills.js';
 import {isFree} from './reserve.js';
 import {SPECIES, brainOf} from '../data/species.js';
-import {BUILDINGS} from '../data/buildings.js';
+import {BUILDINGS, penK} from '../data/buildings.js';
 import {DAY, HOUR} from '../core/time.js';
 import {season, SEASON_DAYS, daysLeftInSeason} from '../data/seasons.js';
 import {log} from '../core/log.js';
@@ -30,7 +30,7 @@ const tameOf = a => SPECIES.get(a.species).tame;
 const forget = w => { if (w.scratch) { delete w.scratch.herd; delete w.scratch.tameTargets; delete w.scratch.chores; } };
 export const herd = w => perTick(w, 'herd', () => w.agents.filter(a => a.tame && !a.dead));
 export const pens = w => w.buildings.filter(b => b.done && b.key === 'pen');
-export const penSpace = w => pens(w).reduce((s, b) => s + BUILDINGS.get(b.key).pen, 0);
+export const penSpace = w => pens(w).reduce((s, b) => s + BUILDINGS.get(b.key).pen, 0) * penK(w);   // (the greenskins keep twice the herd: data/buildings.js PEN_K)
 export const penUsed = w => herd(w).reduce((s, a) => s + tameOf(a).space, 0);
 export const penRoom = w => penSpace(w) - penUsed(w);
 export const isTameable = o => !o.dead && !o.tame && o.faction === 'wild' && o.owner == null && !!SPECIES.get(o.species).tame;

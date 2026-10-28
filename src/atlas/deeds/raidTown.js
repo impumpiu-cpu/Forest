@@ -2,6 +2,8 @@
 // has met and dislikes within DIPLOMACY.raidReach — a few times a year for the realm (raidsPerYear), each town with the
 // year's chance spread over the seasons. The loot grows the raiders' town, the beaten town loses `raidLoss`; either way
 // the standing between the two sinks by `raid`.
+import {WORLD_PEOPLES as WP_CULT} from '../../data/peoples.js';
+const cultOf = realm => WP_CULT.get(realm.people)?.warCult || null;   // (data/peoples.js warCult: the greenskins raid anyone, kin too)
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 import {relation, attitude, meet, fight, raidGraves} from '../diplomacy.js';
@@ -22,7 +24,7 @@ export const raidTown = {
     for (const t of liveTowns(a, realm)) {
       if (!townFx(t).defence || r() > D.raidChance / SEASONS_PER_YEAR) continue;   // only a camp with warriors goes raiding
       let target = null, bd = D.raidReach * k;
-      for (const o of towns) if (o.realm !== realm.id && relation(a, realm.id, o.realm) && attitude(a, realm.id, o.realm) < 0) {
+      for (const o of towns) if (o.realm !== realm.id && relation(a, realm.id, o.realm) && (cultOf(realm) || attitude(a, realm.id, o.realm) < 0)) {
         const d = Math.hypot(t.x - o.x, t.y - o.y); if (d < bd) { bd = d; target = o; }
       }
       if (target) out.push([{from: t.id, target: target.id}, 1, () => `${t.name}: ${target.name} в досягаемости, ${realmLabel(a, target.realm)} нам не любы`]);
@@ -35,7 +37,7 @@ export const raidTown = {
     const y = a.hist.year;
     realm.raids = realm.raids?.year === y ? {year: y, n: realm.raids.n + 1} : {year: y, n: 1};
     const rel = meet(a, realm.id, target.realm, y);
-    rel.att = Math.max(-5, rel.att - D.raid);
+    rel.att = Math.max(-5, rel.att - D.raid * (cultOf(realm)?.raid ?? 1));
     if (fight(t, r) > fight(target, r)) {
       const loss = D.raidLoss * raidShare(townFx(target));
       target.pop *= 1 - loss; t.pop += target.pop * loss * 0.3; raidGraves(a, target);

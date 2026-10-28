@@ -15,6 +15,8 @@ import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from
 import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
 import {townEconomy} from './economy.js';
 import {stepGolems} from './golems.js';
+import {stepWarBeasts} from './beasts.js';
+import {SPECIES} from '../data/species.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {TOWN_FLOW, TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {LAIRS} from '../data/lairs.js';
@@ -261,6 +263,7 @@ export function stepPeoples(a, rnd, say) {
     if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
     if (t.slavesOf) for (const p of Object.keys(t.slavesOf)) t.slavesOf[p] = Math.min(t.slaves || 0, t.slavesOf[p] * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
     { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
+    { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
     Object.defineProperty(t, 'econ', {value: townEconomy(a, t), writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
     feedsOf.set(t.id, [TL.feeds * (feed / c) * (TL.fert[0] + TL.fert[1] * a.f.fert[t.i]) * (TL.home[0] + TL.home[1] * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + TL.road * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? TL.capital : 1) * (1 - scourgedFood(a, t) + TL.trade * fx.trade) + t.econ.feeds - (t.slaves || 0), room(fx)]);   // the land feeds, and the town's works (flows) feed more; its slaves eat too
   }

@@ -179,7 +179,7 @@ export function stepHistory(a, onDay = null) {
       const realms = (a.realms || []).filter(r => r.people === pe.id && mine.some(t => t.realm === r.id)).length;
       parts.push(`${pe.P.label} — ${realms} ${plural(realms, 'держава', 'державы', 'держав')}, ${mine.length} ${plural(mine.length, 'город', 'города', 'городов')}, ${pop} ${plural(pop, 'житель', 'жителя', 'жителей')}`);
     }
-    if (H.step === elderEnd && H.step < H.end) say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и орки.`);
+    if (H.step === elderEnd && H.step < H.end) say(a, `Эпоха древних народов подошла к концу: ${parts.join('; ')}. Скоро придут люди и зеленокожие.`);
     else {
       const wars = Object.values(a.rel || {}).reduce((x, r) => x + r.wars, 0), ruins = (a.ruins || []).length;
       H.endTold = true;

@@ -166,7 +166,7 @@ export const RACES = [
 
   // Gnolls: hyena-folk, scavengers. Carrion does them no harm; the rot does not take them.
   {id: 'gnoll', kind: 'race', deeds: {lair: [...DEED_WAYS.captors]}, home: {savanna: 1, barrows: 0.9, steppe: 0.8, desert: 0.5, shrubland: 0.5, meadow: 0.3},
-    label: 'гнолл', plural: 'гноллы', rel: 'gnoll', settle: 0,
+    label: 'гнолл', plural: 'гноллы', rel: 'greenskin', settle: 0,
     heatHarm: 70, look: person(0.64, '#a98d5a'),
     body: {adult: 8, life: 40, fertility: 0.75, diet: 'падальщик'},
     mods: {hunger: 1.2, cold: 0.9},

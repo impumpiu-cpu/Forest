@@ -141,7 +141,7 @@ export const RAID_MIX = {at: 0.05, riders: 0.05, ridersMight: 0.25, chance: 0.5,
 //               share taken, and how much of it the raiding town grows by — slaves are people too; the rest are sold or die
 //   freed:      a caravan that beats a lair's folk in its lands (campaign/fight.js) frees its captives: this many at most at
 //               once, with this chance (the lair's captives are certain where a stranger's camp gives FREED.chance)
-export const CAPTIVE_RAID = {chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5}, freed: {max: 2, chance: 0.9}};
+export const CAPTIVE_RAID = {chance: 0.08, loss: 0.08, feed: 0.1, graves: 0.5, keep: 0.75, realm: {chance: 0.1, loss: 0.08, grow: 0.5, tribe: {heads: 20, hit: 0.15}}, freed: {max: 2, chance: 0.9}};
 
 // adjectives for lair names, by gender: m, f, n, pl
 export const NAME_ADJ = [

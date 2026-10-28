@@ -14,6 +14,10 @@
 //   group  — линия · подвижные · дальний бой · поддержка (for the table)
 //   blows  — × its blows of a kind ({blunt: 1.3}: the dwarven hammer-smith, agents/combat.js damage)
 //   fireproof — fire and heat do not harm it (the forge-master: agents/body.js heatHarm)
+//   mount  — the beast it rides (agents/mount.js; RIDE below): one fighter of two bodies
+//   versus — × its blows on a kind of creature ({beast: 1.3, monster: 1.3}: the greenskins' beast-driver)
+//   lead   — the war beasts of the land it brings into its band, [from, to] (data/raids.js: the beast-driver)
+//   maxTier — the best metal its kit takes, whatever the band's level (0: bone, wood, hide — the beast-driver wears no iron)
 //   frenzy — a wound throws it into a frenzy (FRENZY below: the berserker, agents/combat.js)
 // The behaviours of a role and how a mind changes them (sentient · mindless) come with the next step.
 //
@@ -43,6 +47,15 @@ COMBAT_ROLES.registerAll([
   // the dwarves' hammer-smith: a two-handed hammer and a smith's arm — its blunt blows land harder; the first rank
   {id: 'smith', group: 'линия', label: 'мастер-кузнец', note: 'молотобоец: двуручный молот, дробящий удар сильнее на треть, стоит в первом ряду',
     hands: [[['warhammer'], 3], [['maul'], 1]], body: 'heavy', back: [], potions: 0, squad: 'front', place: 'front', blows: {blunt: 1.3}},
+  // the greenskins' riders: a warg under an orc, a giant spider under a goblin — one fighter of two bodies (RIDE)
+  {id: 'wargrider', group: 'подвижные', label: 'наездник на варге', note: 'орк верхом на боевом варге: бьют оба сразу; убит варг — бьётся пешим, убит всадник — варг дерётся сам',
+    hands: [[['spear', 'shield'], 2], [['axe', 'shield'], 1], [['javelin', 'shield'], 1]], body: 'medium', back: [], potions: 0, squad: 'front', place: 'flank', mount: 'varg'},
+  {id: 'spiderrider', group: 'подвижные', label: 'наездник на пауке', note: 'гоблин верхом на гигантском пауке: бьют оба сразу; паук путает паутиной',
+    hands: [[['spear'], 2], [['javelin'], 2], [['bow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'front', place: 'flank', mount: 'spider'},
+  // the beast-driver of the fighting pits: a net and javelins, bone and hide; its blows bite beasts and monsters harder,
+  // and it brings the war beasts of the land along
+  {id: 'beastmaster', group: 'подвижные', label: 'загонщик', note: 'сеть и дротики, кость и кожа, железа не носит; бьёт зверей и чудовищ сильнее; водит с собой боевых зверей',
+    hands: [[['net', 'javelin'], 3], [['net', 'spear'], 1]], body: 'light', back: [], potions: 0, squad: 'front', place: 'mid', versus: {beast: 1.3, monster: 1.3}, lead: [1, 2], maxTier: 0},
   // two weapons, no armour; a wound throws it into a frenzy, then it is spent (FRENZY)
   {id: 'berserker', group: 'линия', label: 'берсерк', note: 'два оружия, без брони; раненый впадает в бешенство: бьёт сильнее, быстрее, увёртливее, а после устаёт',
     hands: [[['axe', 'axe'], 3], [['hatchet', 'hatchet'], 1], [['sword', 'axe'], 1]], body: 'none', back: [], potions: 0, squad: 'front', place: 'front', frenzy: true},
@@ -86,6 +99,7 @@ LINKS.registerAll([
   {id: 'bones',   label: 'костяной строй', note: 'мертвецы: щиты и копья, лук позади; мертвяки без рук идут между ними', roles: ['shield', 'spearman', 'spearman', 'shield', 'archer']},
   {id: 'anvil',   label: 'наковальня',   note: 'дварфы: щит и два молотобойца впереди, мастер горна за ними, арбалет сзади', roles: ['shield', 'smith', 'smith', 'forgemaster', 'archer']},
   {id: 'berserks', label: 'бешеные',     note: 'дварфы: берсерки врезаются, молотобоец и щит следом', roles: ['berserker', 'berserker', 'smith', 'shield', 'archer']},
+  {id: 'riders',  label: 'всадники',     note: 'зеленокожие: наездники на варгах и пауках, загонщик со зверями, берсерк', roles: ['wargrider', 'wargrider', 'spiderrider', 'beastmaster', 'berserker']},
   {id: 'volley',  label: 'стрелки',      note: 'луки, а впереди один щит', roles: ['archer', 'archer', 'archer', 'shield', 'skirmisher']},
 ]);
 
@@ -105,12 +119,12 @@ export const ROLE_TIERS = {from: [0, 8, 16, 26, 40], ramp: 0.06, share: 0.7};
 
 export const ROLE_MIX = {
   human:       {shield: 2, spearman: 1.5, cleaver: 1.5, cutthroat: 1, skirmisher: 1, catcher: 0.3, archer: 1.2, healer: 0.3, best: 3},
-  orc:         {shield: 2, spearman: 1, cleaver: 3, skirmisher: 0.7, catcher: 0.3, archer: 0.3, healer: 0.3, best: 2},
-  goblin:      {shield: 0.3, spearman: 1, cutthroat: 2.5, skirmisher: 3, catcher: 0.5, archer: 2, healer: 0.3, best: 1},
+  orc:         {shield: 2, spearman: 1, cleaver: 3, skirmisher: 0.7, catcher: 0.3, archer: 0.3, healer: 0.3, berserker: 0.8, wargrider: 0.8, beastmaster: 0.5, best: 2},
+  goblin:      {shield: 0.3, spearman: 1, cutthroat: 2.5, skirmisher: 3, catcher: 0.5, archer: 2, healer: 0.3, spiderrider: 0.8, wargrider: 0.4, beastmaster: 0.4, best: 1},
   dwarf:       {shield: 2, spearman: 1, smith: 2, berserker: 0.8, forgemaster: 0.5, cleaver: 1, archer: 0.8, healer: 0.3, best: 4},
   elf:         {shield: 0.5, spearman: 1, skirmisher: 1, archer: 3, healer: 0.4, summoner: 0.4, best: 4},
   darkelf:     {spearman: 1, cutthroat: 2, catcher: 1.5, skirmisher: 1, archer: 3, healer: 0.4, best: 3},
-  gnoll:       {shield: 0.7, spearman: 2, cleaver: 1.5, skirmisher: 1.5, catcher: 0.7, archer: 0.7, best: 1},
+  gnoll:       {shield: 0.7, spearman: 2, cleaver: 1.5, skirmisher: 1.5, catcher: 0.7, archer: 0.7, berserker: 0.5, beastmaster: 0.6, best: 1},
   skeleton:    {shield: 2, spearman: 2, cleaver: 1, archer: 1.5, best: 1},
   ogre:        {brute: 1, best: 0},
   giant:       {brute: 1, best: 0},
@@ -169,7 +183,7 @@ export function roleKit(species, role, rng, t) {
   if (mix.fixed) return [...mix.fixed];
   const R = role && COMBAT_ROLES.has(role) ? COMBAT_ROLES.get(role) : null;
   if (!R) return [];
-  const best = mix.best ?? 4, out = [];
+  const best = Math.min(mix.best ?? 4, R.maxTier ?? 4), out = [];
   // the weapons of one metal; a set with a form not made so low (a mace, a sword before bronze) drops out
   const hand = tierFor(rng, t, best), sets = R.hands.filter(([fs]) => fs.every(f => !forms()[f] || hasBelow(f, hand, species) && mayWield(species, f)));   // nor one its race will not touch
   for (const f of weighted(rng, sets.length ? sets : R.hands) || []) { const id = mayWield(species, f) ? pieceOf(f, hand, species) : null; if (id) out.push(id); }   // (a set of no tier: still never a form its race will not touch)
@@ -191,6 +205,11 @@ export function roleKit(species, role, rng, t) {
 export const FRENZY = {rage: 'frenzy', spent: 'spent'};   // (how long each: their rows' `ticks`)
 // the row of a creature's fighting role, null for none
 export const roleRow = a => (a?.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole) : null);
+
+// the riders (role `mount`, agents/mount.js): a blow at a mounted one falls on the mount with `hitMount` (the beast is the
+// bigger mark, the rider half behind it); the mount bites at every blow of its rider; thrown off when its mount falls, the
+// rider lies `fall` ticks stunned
+export const RIDE = {hitMount: 0.6, fall: 30, aside: 0.3, least: 0.05};   // (the loosed mount stands `aside` cells off, with at least `least` health)
 
 export const SUMMON = {share: 0.25, reach: 20, max: 4, cooldown: 1200, ring: 3, sight: 14, quiet: 240, levels: {common: 1, usual: 0.6, rare: 0.25}};
 

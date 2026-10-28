@@ -31,10 +31,13 @@ import {T as TERR} from './terrain.js';
 const ROCK = TERR.ROCK;
 
 // free places in the pens (settlement/herd.js has the same; this table cannot import it)
-const penRoom = w => w.buildings.reduce((s, b) => s + (b.done && b.key === 'pen' ? 6 : 0), 0)
+const penRoom = w => w.buildings.reduce((s, b) => s + (b.done && b.key === 'pen' ? 6 * penK(w) : 0), 0)
   - w.agents.reduce((s, a) => s + (a.tame && !a.dead ? SPECIES.get(a.species).tame.space : 0), 0);
 
 export const BUILDINGS = new Registry('building');
+// a race line that keeps big herds (data/relations.js `rel`): its colony's pen holds × this (the greenskins' pens)
+export const PEN_K = {greenskin: 2};
+export const penK = w => { const r = colonyRace(w); return (r && PEN_K[SPECIES.get(r).rel]) || 1; };
 
 export const ZONE = {camp: 8, building: 5};
 // the colony's people: the race most of its people are of (a building of a people's own, or one it will not raise)
@@ -56,6 +59,14 @@ export const rockNear = w => { if (!rockSeen.has(w)) rockSeen.set(w, (() => {
   return false;
 })()); return rockSeen.get(w); };
 const dwarven = w => colonyRace(w) === 'dwarf';
+// a colony of greenskins, and whether it has a kind of them among its people (the warg den wants orcs, the spider den goblins)
+const greenskin = w => { const r = colonyRace(w); return !!r && SPECIES.get(r).rel === 'greenskin'; };
+const hasKin = (w, sp) => w.agents.some(a => a.faction === 'colony' && !a.dead && !a.captive && a.species === sp);
+// The greenskins' dens and pits on the local map (settlement/warbeasts.js): at the start of each season a den raises a war
+// beast of its kind (`beast`), fed `food` of meat, while the colony has fewer war beasts than 1 + one per `per` of its
+// people; the spider den spins `silk` rope a day; the pits break a beast or monster beaten by the colony near them to war
+// instead of killing it (one with less than `below` of its health, within `reach` cells), within the same limit
+export const WAR_DENS = {wargden: {beast: 'varg', food: 10}, spiderden: {beast: 'spider', food: 6, silk: 1}, per: 4, below: 0.2, reach: 16};
 
 BUILDINGS.registerAll([
   // the shelter of the first season: poles and bark from what lies around. Drafty: in a hard
@@ -326,6 +337,20 @@ BUILDINGS.registerAll([
     effects: {jobSpeed: {mine: 1.25, dig: 1.25, smith: 1.25}},
     wish: 'хочет своих големов',
     motive: (a, c) => [[c.stock('iron') * 0.05 + c.stock('steel') * 0.08, 'металл лежит без дела'], [(a.mem.raid + a.mem.wolf) * 0.8, 'нужна стража'], [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна']]},
+
+  // the greenskins' war beasts (WAR_DENS, settlement/warbeasts.js)
+  {id: 'wargden', name: 'Логово варгов', gender: 'n', cost: {wood: 30, hide: 6}, work: 260, max: 1, wooden: true, color: '#6a5a44', mark: 'Вг',
+    available: w => greenskin(w) && hasKin(w, 'orc'),
+    effect: 'Каждый сезон растит боевого варга (10 мяса): он стоит на страже лагеря. Варгов у колонии не больше 1 + 1 на 4 жителей.',
+    effects: {}, wish: 'хочет своих варгов', motive: (a) => [[(a.mem.raid + a.mem.wolf) * 0.8, 'нужна стая'], [0.3, 'орку нужен варг']]},
+  {id: 'spiderden', name: 'Логово пауков', gender: 'n', cost: {wood: 20, rope: 2}, work: 220, max: 1, wooden: true, color: '#4a4a3a', mark: 'Пк',
+    available: w => greenskin(w) && hasKin(w, 'goblin'),
+    effect: 'Каждый сезон растит боевого паука (6 мяса), а пауки прядут паутину: верёвка каждый день.',
+    effects: {}, wish: 'хочет своих пауков', motive: (a, c) => [[0.3, 'гоблину нужен паук'], [c.stock('rope') < 4 ? 0.3 : 0, 'нет верёвок']]},
+  {id: 'fightpits', name: 'Бойцовские ямы', gender: 'pl', cost: {wood: 25, stone: 10}, work: 260, max: 1, wooden: true, color: '#7a4a30', mark: 'Бя',
+    available: w => greenskin(w),
+    effect: 'Зверя или чудовище, побитых у лагеря до последней пятой части здоровья, не добивают, а ломают в боевого: он бьётся за колонию.',
+    effects: {}, wish: 'хочет бойцовских ям', motive: (a) => [[(a.mem.wolf + a.mem.raid) * 0.6, 'звери ходят у лагеря'], [0.25, 'хочет зрелищ']]},
 
   {id: 'watchtower', name: 'Сторожевая вышка', gender: 'f', cost: {wood: 30, bone: 4}, work: 220, max: 2, wooden: true, color: '#9c8b6e', mark: 'Вш', zone: 11,
     effect: 'Расширяет зону поселения на 11 клеток вокруг себя: здесь защитники сильнее, а волки не охотятся.',

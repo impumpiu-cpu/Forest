@@ -20,7 +20,8 @@ export function speedOf(w, a) {
   // snow underfoot: deep snow halves the pace on open ground, less in the woods (a species that lives in it, `snowfoot`, is not slowed)
   const snow = w.snow > 0 && d.kind !== 'water' && !SPECIES.get(a.species).snowfoot ? 1 - SNOW.slow * w.snow * (d.kind === 'wood' ? 0.6 : 1) : 1;
   const thorns = thornedBy(w, a) ? THORNS.slow : 1;   // in the elves' thorn hedge
-  return SPECIES.get(a.species).speed * a.mods.speed * (a.gear?.speed || 1) * web * daze * d.speed * snow * thorns;
+  return (a.mount?.hp > 0 ? SPECIES.get(a.mount.species).speed : SPECIES.get(a.species).speed) * a.mods.speed   // (a rider at its mount's pace: agents/mount.js)
+     * (a.gear?.speed || 1) * web * daze * d.speed * snow * thorns;
 }
 
 // returns true when arrived, false while moving, null when the step is blocked

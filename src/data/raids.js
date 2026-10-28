@@ -13,6 +13,7 @@
 //   roles — the band's leaning in its fighters' roles ({role: ×} over the species' weights, data/roles.js ROLE_MIX);
 //   least — the share of heads of one species a role must have at least ({shield: 0.2}: one shield-bearer in five)
 //           (`roles` and `least` are for a band without links; none of the bands uses them now)
+//   champion — its strongest fighter grows into a champion (data/conditions.js mark `champion`, data/migrations.js): one a band
 //   links — the links it comes in ([[link, weight], …]: data/roles.js LINKS): a band of links fills them place by place;
 //           without — its species drawn one by one, each in a role of its own (`roles`, `least` then apply)
 //   ranks — the band's names for its ranks ({officer: 'десятник'}: data/ranks.js)
@@ -25,7 +26,8 @@ import {ITEMS} from './items.js';
 import {hasSense} from './tongues.js';
 import {expectedStrength} from '../agents/strength.js';
 import {chanceWeight} from './chance.js';
-import {roleKit, drawRole, mixOf, LINKS, ROLE_TIERS} from './roles.js';
+import {roleKit, drawRole, mixOf, LINKS, ROLE_TIERS, COMBAT_ROLES} from './roles.js';
+import {mountUp} from '../agents/mount.js';
 import {golemOf, GOLEM_METALS} from './constructs.js';
 import {refreshBody} from '../agents/special.js';
 
@@ -47,6 +49,7 @@ export function memberStrength(species, t, role = null) {
   return expectedStrength(species, {key: `role:${role || '*'}|${L}`, kit: rng => kitFor(species, rng, L, role),
     prepare: a => {
       if (SPECIES.get(species).behaviours) { a.marks = ['trained']; refreshBody(a); }   // a band's beast is trained (data/migrations.js)
+      if (role && COMBAT_ROLES.get(role)?.mount) mountUp(a, COMBAT_ROLES.get(role).mount);   // a rider and its beast (agents/mount.js)
       a.hp = (a.maxHp || 1) * body.hp; a.skill = {ranged: body.ranged};
     }});
 }
@@ -96,6 +99,21 @@ function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
   }
   if (!out.length) { const sp = (people[0] || mix[0])[0], role = SPECIES.get(sp).inventory ? drawRole(rng, sp) : null; out.push({species: sp, ...(role ? {role} : {})}); }
   return out.slice(0, 18);
+}
+
+// the war beasts a beast-driver brings (role `lead`, data/roles.js): of the land's beasts and monsters, as thick as they
+// live there (o.here, a world cell) or the band's own `led` kinds on the polygon
+export const LED = ['wolf', 'boar', 'varg', 'bear'];
+function withLed(rng, list, o) {
+  const here = o?.here ? Object.entries(o.here).filter(([id, v]) => v > 0 && ['beast', 'monster'].includes(SPECIES.get(id).kind) && SPECIES.get(id).mind !== 'sentient') : LED.map(id => [id, 1]);
+  if (!here.length) return list;
+  const out = [...list];
+  for (const m of list) {
+    const L = m.role && COMBAT_ROLES.get(m.role)?.lead; if (!L) continue;
+    const n = L[0] + Math.floor(rng() * (L[1] - L[0] + 1));
+    for (let k = 0; k < n && out.length < 18; k++) out.push({species: weighted(rng, here)});
+  }
+  return out;
 }
 
 // a budget counted in such bandits, for the bands that change their make-up with size
@@ -156,12 +174,13 @@ RAID_BANDS.registerAll([
     members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = 'Налётчик'; }})),
     message: n => `Набег! ${n} ${plural(n, 'разбойник', 'разбойника', 'разбойников')} из «Серых волков»`},
 
-  {id: 'orcs', label: 'орочья ватага', kind: 'sentient',
+  {id: 'orcs', label: 'ватага зеленокожих', kind: 'sentient',
     goals: (w, g) => [['loot', 2], ['burn', 1.5 * torches(w)], ['kill', 0.5 + feud(w)], ['scout', scouting(w, g)]], nerve: -0.05,
-    links: [['warband', 3], ['swarm', 1]], ranks: {officer: 'сотник', boss: 'вождь'},
+    links: [['warband', 3], ['swarm', 1], ['riders', 1]], ranks: {officer: 'сотник', boss: 'вождь'}, champion: true,
     chance: {weight: 2, threat: 4, below: 0.5},
-    members: (w, rng, budget, t, o) => fill(rng, budget, [['orc', 3], ['goblin', 2], ['varg', heads(budget, t) >= 5 ? 1 : 0], ['ogre', heads(budget, t) >= 10 ? 0.6 : 0]], t, o),
-    message: (n, group) => `Набег! Орочья ватага с гоблинами${group.some(a => a.species === 'varg') ? ' и боевыми варгами' : ''}`},
+    // all the greenskin kinds in one band (data/peoples.js orcs `kin`); a beast-driver brings the war beasts of the land
+    members: (w, rng, budget, t, o) => withLed(rng, fill(rng, budget, [['orc', 3], ['goblin', 2], ['gnoll', 1], ['varg', heads(budget, t) >= 5 ? 1 : 0], ['ogre', heads(budget, t) >= 10 ? 0.6 : 0], ['troll', heads(budget, t) >= 12 ? 0.3 : 0]], t, o), o),
+    message: (n, group) => `Набег! Ватага зеленокожих: ${[...new Set(group.filter(a => !a.warBeast).map(a => SPECIES.get(a.species).plural))].join(', ')}${group.some(a => a.mount) ? ', с наездниками' : ''}${group.some(a => a.warBeast) ? ' и боевыми зверями' : ''}`},
 
   {id: 'goblins', label: 'гоблинская шайка', kind: 'sentient',
     goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1, links: [['swarm', 3], ['line', 1]], ranks: {officer: 'заводила', boss: 'главарь'},

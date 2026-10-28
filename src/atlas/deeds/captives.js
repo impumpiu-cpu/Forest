@@ -9,7 +9,11 @@
 //   the realm (ctx.role 'realm'): a town with warriors raids the nearest disliked town in DIPLOMACY.raidReach (raidTown.js);
 //     a win takes `realm.loss` of its people — `grow` of them become the raiding town's slaves (t.slaves: they work in its
 //     buildings, atlas/economy.js), the realm counts them (realm.captives).
-import {TRIBE_RAID, CAPTIVE_RAID as CR} from '../../data/lairs.js';
+import {WORLD_PEOPLES as WP_CULT} from '../../data/peoples.js';
+const cultOf = realm => WP_CULT.get(realm.people)?.warCult || null;   // (data/peoples.js warCult: the greenskins raid anyone, kin too)
+import {TRIBE_RAID, CAPTIVE_RAID as CR, LAIRS} from '../../data/lairs.js';
+import {TOWN_WAR} from '../../data/peoples.js';
+import {SPECIES} from '../../data/species.js';
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
 import {PARTIES} from '../../data/parties.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
@@ -56,10 +60,16 @@ export const captives = {
     for (const t of liveTowns(a, actor)) {
       if (!townFx(t).defence || r() > CR.realm.chance / SEASONS_PER_YEAR) continue;
       let target = null, bd = D.raidReach * k;
-      for (const o of towns) if (o.realm !== actor.id && o.pop >= 20 && relation(a, actor.id, o.realm) && attitude(a, actor.id, o.realm) < 0) {
+      for (const o of towns) if (o.realm !== actor.id && o.pop >= 20 && relation(a, actor.id, o.realm) && (cultOf(actor) || attitude(a, actor.id, o.realm) < 0)) {
         const d = Math.hypot(t.x - o.x, t.y - o.y); if (d < bd) { bd = d; target = o; }
       }
       if (target) out.push([{from: t.id, target: target.id}, 1, () => `${t.name}: в ${target.name} есть кого взять, ${realmLabel(a, target.realm)} нам не любы`]);
+      // the greenskins raid the wild tribes for slaves too (data/peoples.js warCult)
+      else if (cultOf(actor)) {
+        let lair = null, ld = D.raidReach * k;
+        for (const l of a.lairs || []) { const L2 = LAIRS.get(l.kind); if (!l.alive || !L2.tribe || l.hidden) continue; const d = Math.hypot(t.x - l.x, t.y - l.y); if (d < ld) { ld = d; lair = l; } }
+        if (lair) out.push([{from: t.id, lair: lair.id}, 1, () => `${t.name}: в «${lair.name}» есть кого взять`]);
+      }
     }
     return out.length ? out : null;
   },
@@ -73,13 +83,25 @@ export const captives = {
       }
       return takeCaptives(a, actor, L, target, tribe, r, true, B.who).line;
     }
-    // the realm's
+    // the realm's: on a tribe's camp
+    if (plan.lair != null) {
+      const t = a.towns.find(x => x.id === plan.from), l = (a.lairs || []).find(x => x.id === plan.lair); if (!t?.alive || !l?.alive) return null;
+      const L2 = LAIRS.get(l.kind), sp = SPECIES.get(L2.species), s = sp.special, TW = TOWN_WAR, CT = CR.realm.tribe;
+      const town = might(t, townFx(t)) * TW.might * (TW.luck[0] + TW.luck[1] * r()), camp = l.strength * ((s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2) * (TW.luck[0] + TW.luck[1] * r());
+      if (town > camp) {
+        const n = Math.max(1, Math.round(CT.heads * l.strength)) * CR.realm.grow;
+        l.strength = Math.max(0, l.strength - CT.hit); t.slaves = (t.slaves || 0) + n; (t.slavesOf ||= {})[L2.species] = (t.slavesOf[L2.species] || 0) + n;
+        return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} разорили ${L2.labelAcc || L2.label} «${l.name}» и увели ${sp.plural} в рабство.`;
+      }
+      t.pop *= 1 - TW.raidLoss * raidShare(townFx(t));
+      return `${cap1(sp.plural)} ${L2.from} «${l.name}» отбили набег ${realmLabelGen(a, actor.id)} за рабами.`;
+    }
     const t = a.towns.find(x => x.id === plan.from), target = a.towns.find(x => x.id === plan.target);
     if (!t?.alive || !target?.alive) return null;
     const y = a.hist.year;
     actor.raids = actor.raids?.year === y ? {year: y, n: actor.raids.n + 1} : {year: y, n: 1};
     const rel = meet(a, actor.id, target.realm, y);
-    rel.att = Math.max(-5, rel.att - D.raid);
+    rel.att = Math.max(-5, rel.att - D.raid * (cultOf(actor)?.raid ?? 1));
     if (fight(t, r) > fight(target, r)) {
       const n = Math.max(1, Math.round(target.pop * CR.realm.loss * raidShare(townFx(target))));
       target.pop = Math.max(0, target.pop - n); t.slaves = (t.slaves || 0) + n * CR.realm.grow;   // they work in its buildings as slaves (atlas/economy.js)

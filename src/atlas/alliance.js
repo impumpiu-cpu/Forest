@@ -91,7 +91,7 @@ function muster(a, A, c, tell) {
     const men = Math.round(ALLY.levy * t.pop);
     if (men < ALLY.minMen) continue;
     const R = realmOf(a, realm);
-    const p = sendParty(a, 'army', t.i, lair.i, {owner: realm, from: t.id, target: null, lair: lair.id, ally: A.id, war: null, men, might: armyMight(men + golemMen(t), townFx(t)),
+    const p = sendParty(a, 'army', t.i, lair.i, {owner: realm, from: t.id, target: null, lair: lair.id, ally: A.id, war: null, men, might: armyMight(men + (golemMen(t) + (t.warBeasts?.men || 0)), townFx(t)),
       supplies: ARMY.supplies * 2, people: t.people, speed: 'foot', label: `войско ${realmLabelGen(a, realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color, burnt: 0});
     if (!p) continue;
     t.pop -= men; A.armies.push(p.id); if (!A.sent.includes(realm)) A.sent.push(realm);

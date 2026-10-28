@@ -41,6 +41,8 @@
 //   off (atlas/lairs.js).
 //   site          stands outside the town, in a cell of its own within the town's reach (data/sites.js,
 //                 atlas/sites.js): fields, pastures, mines, quarries; its place needs hold at that cell
+//   kin           the kind of a people of many kinds it is the own building of (data/peoples.js `kin`: the warg den — the
+//                 orcs'): the town must hold that kind at KIN.least of its people (atlas/towns.js canBuild)
 //   local         the building of the local map it stands for (data/buildings.js id), if there is one;
 //                 the rest exist only on the world map for now
 //   notable       the chronicle tells when it is built (also everything from tier 2 up)
@@ -120,7 +122,9 @@ export const TOWN_BUILDINGS = new Registry('townBuilding');
 TOWN_BUILDINGS.registerAll([
   // ── housing
   B('hut', 'шалаши', 'pl', 'housing', 0, ALL, {}, {max: 2, local: 'hut', house: 100, heat: 250, in: {wood: 30}}),
-  B('yurts', 'шатры', 'pl', 'housing', 0, O, {}, {max: 8, house: 150, heat: 150, in: {hide: 20}}),
+  B('yurts', 'шатры', 'pl', 'housing', 0, O, {}, {max: 8, house: 200, heat: 150, in: {hide: 20}}),   // (× the greenskins' house 0.75: 150)
+  // the greenskins' horde camp: tents and wagons round a war-chief's hall on step 2, in place of the tents (× 0.75: 300)
+  B('hordecamp', 'стан орды', 'm', 'housing', 2, O, {defence: 0.1, prestige: 0.05}, {max: 8, upgrades: ['yurts'], house: 400, heat: 120, in: {hide: 25, wood: 20}}),
   B('house', 'избы', 'pl', 'housing', 1, [...H], {}, {max: 6, needsAny: ['forest', 'clay'], local: 'house', upgrades: ['hut'], house: 200, heat: 120, in: {planks: 15}}),
   B('longhouse', 'длинный дом', 'm', 'housing', 1, [...H, ...O], {prestige: 0.03}, {max: 4, needs: ['forest'], upgrades: ['yurts', 'hut'], house: 250, heat: 150, in: {wood: 30}}),
   B('treehouse', 'дома на деревьях', 'pl', 'housing', 1, E, {}, {max: 8, needs: ['forest'], house: 300, heat: 60, in: {wood: 10}, out: {wood: 15}, upgrades: ['hut']}),
@@ -136,7 +140,13 @@ TOWN_BUILDINGS.registerAll([
   B('field', 'пашни', 'pl', 'food', 0, [...H, ...E, ...O], {food: 0.3}, {per: 150, max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {grain: 110, fiber: 100}}),
   B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {food: 0.3}, {per: 150, max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, out: {food: 45, wood: 20, herbs: 7, fiber: 30}}),
   B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {food: 0.3}, {per: 150, max: 4, needsAny: ['caves', 'steep'], local: 'mushcave', site: true, jobs: 15, out: {food: 50, grain: 20}}),   // and mushroom malt: the mill, the quern and the brewery live on it
-  B('pen', 'загоны', 'pl', 'food', 0, [...H, ...D, ...O], {food: 0.15}, {per: 300, max: 2, needs: ['pasture'], local: 'pen', site: true, jobs: 8, out: {food: 20, fiber: 120, hide: 30, beasts: 4}}),
+  B('pen', 'загоны', 'pl', 'food', 0, [...H, ...D], {food: 0.15}, {per: 300, max: 2, needs: ['pasture'], local: 'pen', site: true, jobs: 8, out: {food: 20, fiber: 120, hide: 30, beasts: 4}}),
+  // the greenskins' pens: big herds for meat and for war — more room, more food (on the local map their pen holds twice as
+  // many: data/buildings.js penRoom)
+  B('grpens', 'загоны зеленокожих', 'pl', 'food', 0, O, {food: 0.25}, {per: 200, max: 4, needs: ['pasture'], local: 'pen', site: true, jobs: 10, out: {food: 40, fiber: 100, hide: 50, bone: 30, beasts: 8}}),
+  // the kinds' own (data/peoples.js `kin`: each wants its kind in the town): the gnolls' hyena dens, the ogres' meat pots
+  B('hyenadens', 'гиеньи норы', 'pl', 'food', 0, O, {food: 0.1, defence: 0.1}, {kin: 'gnoll', per: 600, max: 2, jobs: 4, out: {food: 15, bone: 40, beasts: 2}}),
+  B('meatpots', 'мясные котлы', 'pl', 'food', 1, O, {food: 0.2}, {kin: 'ogre', per: 800, requiresAny: ['lodge', 'grpens', 'pasture'], jobs: 3, in: {wood: 30}, out: {food: 40, bone: 20}}),
   B('pasture', 'выгоны и стада', 'pl', 'food', 1, [...H, ...O], {food: 0.25, prod: 0.05}, {per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, out: {food: 40, fiber: 200, hide: 60, beasts: 8}}),
   B('lodge', 'охотничий навес', 'm', 'food', 0, ALL, {food: 0.1}, {per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2}, out: {food: 25, hide: 80, bone: 80}}),
   B('fishhut', 'рыбацкие хижины', 'pl', 'food', 0, ALL, {food: 0.15}, {per: 300, max: 2, needs: ['water'], local: 'fishhut', site: true, jobs: 10, in: {fiber: 20}, out: {food: 30}}),
@@ -157,7 +167,7 @@ TOWN_BUILDINGS.registerAll([
   // elves do not fell the wood: they take what it gives — honey, wax, resin, dyes
   B('forestry', 'лесной промысел', 'm', 'raw', 0, E, {prod: 0.15, trade: 0.05}, {per: 300, needs: ['forest'], site: true, jobs: 8, out: {wood: 200, planks: 60, fiber: 60, hide: 20, herbs: 40, honey: 20, gems: 1}}),
   B('sawmill', 'лесопилка', 'f', 'raw', 1, [...H, ...D, ...E], {prod: 0.15}, {per: 600, needs: ['forest'], local: 'sawmill', site: true, jobs: 4, in: {wood: 160, tools: 1}, out: {planks: 100}}),
-  B('quarry', 'каменоломня', 'f', 'raw', 0, [...H, ...D, ...E], {prod: 0.1}, {per: 600, needs: ['stone'], local: 'quarry', site: true, jobs: 8, in: {tools: 3}, out: {stone: 500}}),
+  B('quarry', 'каменоломня', 'f', 'raw', 0, [...H, ...D, ...E, ...O], {prod: 0.1}, {per: 600, needs: ['stone'], local: 'quarry', site: true, jobs: 8, in: {tools: 3}, out: {stone: 500}}),
   B('claypit', 'глиняный карьер', 'm', 'raw', 0, [...H, ...D, ...E], {prod: 0.05}, {per: 800, needs: ['clay'], site: true, jobs: 4, out: {clay: 300}}),
   B('mineshaft', 'рудник', 'm', 'raw', 0, [...H, ...D, ...O], {prod: 0.25, trade: 0.1}, {per: 600, needs: ['ore'], local: 'mineshaft', notable: true, site: true, jobs: 12, in: {tools: 6, wood: 40}, out: {ore: 240, gems: 4}}),
   B('deepmine', 'глубокие шахты', 'pl', 'raw', 2, D, {prod: 0.3, trade: 0.15}, {per: 1000, needsAny: ['ore', 'gems', 'precious'], requires: ['mineshaft'], site: true, jobs: 20, in: {tools: 10, wood: 60}, out: {ore: 500, gems: 15}}),
@@ -204,6 +214,12 @@ TOWN_BUILDINGS.registerAll([
   B('thornhedge', 'колючая изгородь', 'f', 'defence', 1, E, {defence: 0.3}, {local: 'thornhedge', jobs: 1, in: {wood: 10}}),
   B('watchtower', 'сторожевая вышка', 'f', 'defence', 1, ALL, {defence: 0.15}, {local: 'watchtower', jobs: 2, in: {wood: 5}}),
   B('hiddenpaths', 'тайные тропы', 'pl', 'defence', 1, E, {defence: 0.35}, {needs: ['forest'], jobs: 3}),
+  // the orcs' warg den: riders on wargs (data/raids.js wargrider); the goblins' spider den: riders on spiders, and silk;
+  // the fighting pits: wild beasts and monsters of the land about broken to war (atlas/beasts.js), the beast-drivers
+  B('wargden', 'логово варгов', 'n', 'defence', 1, O, {defence: 0.15, prestige: 0.05}, {kin: 'orc', requiresAny: ['grpens', 'pasture'], local: 'wargden', notable: true, jobs: 4, in: {food: 30}, out: {beasts: 4}}),
+  B('spiderden', 'логово пауков', 'n', 'defence', 1, O, {defence: 0.1, prod: 0.05}, {kin: 'goblin', needsAny: ['forest', 'caves', 'steep'], local: 'spiderden', notable: true, jobs: 3, in: {food: 15}, out: {cloth: 30, fiber: 40}}),
+  B('fightpits', 'бойцовские ямы', 'pl', 'defence', 1, O, {defence: 0.15, prestige: 0.1}, {local: 'fightpits', notable: true, jobs: 6, in: {food: 20, arms: 2}}),
+  B('trollgate', 'топь-застава', 'f', 'trade', 1, O, {trade: 0.2, defence: 0.05}, {kin: 'troll', needs: ['road'], jobs: 4, out: {lux: 4}}),   // the trolls' toll on a road through the marsh
   B('warcamp', 'боевой стан', 'm', 'defence', 1, O, {defence: 0.3, prestige: 0.1}, {jobs: 30, in: {arms: 4, armor: 1}}),
   B('earthwall', 'земляной вал', 'm', 'defence', 1, O, {defence: 0.3}, {requires: ['warcamp']}),
   B('stonewall', 'каменные стены', 'pl', 'defence', 1, [...H, ...D], {defence: 0.5}, {needs: ['stone'], requires: ['quarry'], local: 'stonewall', in: {stone: 30}}),

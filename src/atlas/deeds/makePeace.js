@@ -14,6 +14,7 @@ export const makePeace = {
     for (const {kk, r, other} of relationsOf(a, realm)) {
       if (!r.war) continue;
       const years = a.hist.year - r.war.since;
+      if (r.war.cult) { if (a.hist.year >= r.war.cult.until) out.push([{kk, other: other.id}, 1, () => 'подрались — пора и подлечиться']); continue; }   // a war of the greenskins' cult ends when it ends
       if (r.att >= D.peaceAt || years >= D.longest) out.push([{kk, other: other.id}, 1, () => (years >= D.longest ? `война (${realmLabel(a, other.id)}) идёт ${years} ${yearsWord(years)}` : `устали от войны: ${realmLabel(a, other.id)}`)]);
     }
     return out.length ? out : null;
@@ -22,7 +23,9 @@ export const makePeace = {
     const r = a.rel[plan.kk];
     if (!r?.war) return null;
     const years = a.hist.year - r.war.since;
-    r.war = null; r.att = D.afterPeace;
+    const cult = r.war.cult;
+    r.war = null; r.att = cult ? cult.att : D.afterPeace; r.peaceAt = a.hist.year;   // (a war for its own sake leaves no grudge)
+    if (cult) return `${cap1(realmLabel(a, realm.id))} и ${realmLabel(a, plan.other)} разошлись после ${years} ${yearsWord(years)} драки — без обид.`;
     return `${cap1(realmLabel(a, realm.id))} и ${realmLabel(a, plan.other)} заключили мир после ${years} ${yearsWord(years)} войны.`;
   },
 };

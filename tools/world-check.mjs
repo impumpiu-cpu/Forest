@@ -90,7 +90,7 @@ scene_('W01', 'главарь гоблинов: город людей в дос�
   return lair.strength > s0 || `добыча не дошла до логова: ${s0} → ${lair.strength}`;
 });
 
-scene_('W02', 'главарь не идёт на город народа, который его раса терпит: гоблины и орки — одна память зеленокожих', () => {
+scene_('W02', 'культ войны: главарь гоблинов идёт и на город зеленокожих — своя родня тоже враг', () => {
   const a = world();
   const plain = cellOf(a, i => ['steppe', 'savanna', 'meadow'].includes(biomeAt(a, i)?.id) && i % a.w > a.w * 0.3 && i % a.w < a.w * 0.7);
   const {town} = landPeople(a, 'orcs', plain);
@@ -99,7 +99,7 @@ scene_('W02', 'главарь не идёт на город народа, кот
   if (spot < 0) return 'нет места для стана';
   const lair = lead(a, addLair(a, 'goblins', spot));
   const o = ask(a, lair, ['raid']);
-  return o === null || `гоблины пошли на орков: ${o[3].id} → ${o[0].target}`;
+  return (o !== null && o[0].target === town.id) || `гоблины не пошли на зеленокожих: ${o ? `${o[3].id} → ${o[0].target}` : 'ничего'}`;
 });
 
 scene_('W03', 'главарь подчиняет слабого соседа: данник платит; соперника — бьёт', () => {

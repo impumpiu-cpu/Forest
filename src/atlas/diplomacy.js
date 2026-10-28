@@ -149,7 +149,7 @@ export function muster(a, t, target, war, rnd, say) {
   const A = ARMY, men = Math.round(A.levy * t.pop);
   if (men < A.minMen || !target.alive) return;
   const fx = townFx(t), R = realmOf(a, t.realm);
-  const p = sendParty(a, 'army', t.i, target.i, {owner: t.realm, from: t.id, target: target.id, war, men, might: armyMight(men + golemMen(t), fx) * A.might,
+  const p = sendParty(a, 'army', t.i, target.i, {owner: t.realm, from: t.id, target: target.id, war, men, might: armyMight(men + (golemMen(t) + (t.warBeasts?.men || 0)), fx) * A.might,
     supplies: A.supplies, people: t.people, speed: 'foot', label: `войско ${realmLabelGen(a, t.realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color, burnt: 0});
   if (!p) return;
   t.pop -= men;

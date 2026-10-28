@@ -25,6 +25,7 @@ import {dist, reachOf} from './shared.js';
 export const raider = (L, t) => {
   const race = SPECIES.get(L.species);
   if (L.undead || L.fiend || !race.rel) return true;
+  if (WORLD_PEOPLES.get(t.people).warCult && race.rel === SPECIES.get(WORLD_PEOPLES.get(t.people).race).rel) return true;   // the greenskins fight their own kin as well (data/peoples.js warCult)
   return (RELATIONS[race.rel]?.[SPECIES.get(WORLD_PEOPLES.get(t.people).race).rel] ?? 0) < 0;
 };
 

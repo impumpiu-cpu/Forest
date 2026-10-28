@@ -74,8 +74,31 @@ WORLD_PEOPLES.registerAll([
     taste: {housing: 1, food: 1.2, prod: 1, trade: 1.3, defence: 1, faith: 1, lore: 0.9, prestige: 1.1, health: 1},
     names: {first: ['Бел', 'Яр', 'Вел', 'Свят', 'Мир', 'Глад', 'Рад', 'Ост', 'Лю', 'Звени', 'Добр', 'Влад'], mid: ['', 'о', 'е', 'ино'],
       last: ['град', 'город', 'слав', 'поль', 'ск', 'мир', 'бор', 'ец', 'горск', 'дол']}},
-  {id: 'orcs', race: 'orc', label: 'орки', labelGen: 'орков', adj: 'орочий', era: 'young', color: [210, 80, 60],
+  {id: 'orcs', race: 'orc', label: 'зеленокожие', labelGen: 'зеленокожих', adj: 'зеленокожий', era: 'young', color: [210, 80, 60],
     hands: 0.6, eat: 1.25,
+    // a people of many kinds (atlas/towns.js townKin): every town holds them all, each × (base + its biome's weight); the
+    // greatest share is the town's leading kind. A building of a kind's own (data/townBuildings.js `kin`) wants its share
+    // at KIN.least or more
+    kin: {
+      orc:    {base: 1, home: {steppe: 2, meadow: 1.5, savanna: 1, tundra: 1, shrubland: 1}},
+      goblin: {base: 0.6, home: {foothills: 2, highlands: 1.5, forest: 1.2, taiga: 1, swamp: 0.8}},
+      gnoll:  {base: 0.2, home: {savanna: 2.5, desert: 2, barrows: 2, steppe: 0.6, shrubland: 0.8}},
+      troll:  {base: 0.05, home: {swamp: 1.2, taiga: 0.8, tundra: 0.6, forest: 0.6, ice: 0.8}},
+      ogre:   {base: 0.15, home: {foothills: 0.4, forest: 0.3, taiga: 0.3}},
+    },
+    // the cult of war (atlas/deeds/warOn.js, makePeace.js): `chance` a year to start a war with any neighbour it borders,
+    // whatever they think of each other (another realm of greenskins too), `rest` years at least after the last peace; a war
+    // lasts `years` [from, to] and ends by itself, the attitude back where it was before it; a raid of theirs sours the
+    // other only × `raid`. Their might in a fight × `might` (atlas/towns.js might)
+    // they will not crowd: every house of theirs holds × `house` of its people (atlas/towns.js townFx); shacks and tents are
+    // their homes, no rough housing to breed corruption (`roughHome`: atlas/towns.js roughShare)
+    house: 0.75, roughHome: true,
+    // what they do without: brew poured to the spirits for honey and wax, meat smoked on the fire for salt, skulls and horns
+    // for pots, rough logs for boards (atlas/economy.js swaps)
+    swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'bone', k: 1}, planks: {to: 'wood', k: 1.5}},
+    // open land is theirs: by the steppe and the pasture their herds and hunts give more (atlas/economy.js placeFlows)
+    placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, beasts: 1.25, hide: 1.25}},
+    warCult: {chance: 0.3, rest: 2, years: [2, 5], raid: 0.5, might: 1.15},
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
     get home() { return raceHome('orc'); }, ores: 0.3,
     moves: {steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2}, movesElse: 0.5,
@@ -85,6 +108,9 @@ WORLD_PEOPLES.registerAll([
     names: {first: ['Гор', 'Груш', 'Мор', 'Ург', 'Зог', 'Крах', 'Шаг', 'Буг', 'Гра', 'Ног'], mid: ['', 'ак', 'ук', 'аг', 'ор'],
       last: ['-баш', 'гат', 'рук', 'мог', 'душ', 'заг', '-тар', 'нак']}},
 ]);
+
+// a kind's share a town must hold for a building of that kind's own (data/townBuildings.js `kin`)
+export const KIN = {least: 0.08};
 
 // Town sizes: three steps, earned by what the town has built (docs/WORLD.md).
 // A town is a step when it has at least `pop` people and any of the buildings in `needsAny`
@@ -201,3 +227,9 @@ export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandP
   foundLand: 0.25, foundMax: 2, foundChance: 0.35, newPop: [40, 40],
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
   growth: 0.14, prestige: 0.6, minTarget: 60, minPop: 10, drift: 4, build: 0.65};
+
+// The greenskins' fighting pits (data/townBuildings.js fightpits, atlas/beasts.js): each season a town with pits catches a
+// beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's
+// worth: health × blow) — and breaks it to war, while it holds fewer than one for every `per` of its people; a war beast
+// counts as its worth × `men` of the town's people in its might and its armies. Never a thinking kind (a troll is a greenskin)
+export const WAR_BEASTS = {per: 200, men: 2, least: 0.002};

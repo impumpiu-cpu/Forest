@@ -44,6 +44,11 @@ export const ROLES = {front: 'передний боец', shooter: 'стрело
   beast: 'боевой зверь', scout: 'разведчик', leader: 'вожак'};
 
 const table = w => w.squads || (w.squads = {});
+// one more of a band joins its squad in the fight (a mount its rider fell from: agents/mount.js)
+export function joinSquad(w, of, b) {
+  const sq = of.squad != null ? table(w)[of.squad] : null; if (!sq) return;
+  b.squad = sq.id; b.sqRole = 'beast'; if (!sq.members.includes(b.id)) sq.members.push(b.id);
+}
 const Label = sq => { const l = RAID_BANDS.get(sq.band).label; return l[0].toUpperCase() + l.slice(1); };
 export const squadOf = (w, a) => (a.squad != null ? w.squads?.[a.squad] || null : null);
 const byId = (w, id) => { const o = liveById(w, id); return o && !o.gone ? o : null; };
