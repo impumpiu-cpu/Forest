@@ -13,7 +13,7 @@
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
-import {townEconomy} from './economy.js';
+import {townEconomy, tradeGoods, keepWork} from './economy.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
 import {SPECIES} from '../data/species.js';
@@ -27,7 +27,7 @@ import {scaleOf} from './tectonics.js';
 import {faunaCell} from './fauna.js';
 import {wherePhrase} from './lairs.js';
 import {roadAccess} from './roads.js';
-import {seaAccess} from './sea.js';
+import {seaAccess, seaFeed} from './sea.js';
 import {meet, raceState, stepDiplomacy, trades} from './diplomacy.js';
 import {foundRealm, joinRealm, realmLabel, realmHome, realmTaste, worldSubs, subHomeField} from './realms.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
@@ -252,12 +252,9 @@ export function stepPeoples(a, rnd, say) {
   // flows to the towns it is linked with that lack (atlas/sites.js)
   fadeScourge(a);
   const feedsOf = new Map();
+  // the towns' economies first (atlas/economy.js), then what the towns of a realm send each other down the net
   for (const t of a.towns) {
     if (!t.alive) continue;
-    const pe = a.peoples.find(p => p.id === t.people), j = faunaCell(a, t.i);
-    let feed = 0, c = 0;
-    for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
-    const fx = townFx(t);
     // the town's economy by its buildings' flows (atlas/economy.js): its hands, its goods, the food its works give;
     // its slaves wear away (the orcs' raids keep them coming)
     if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
@@ -265,6 +262,16 @@ export function stepPeoples(a, rnd, say) {
     { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
     { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
     Object.defineProperty(t, 'econ', {value: townEconomy(a, t), writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
+  }
+  tradeGoods(a, a.towns.filter(t => t.alive));
+  for (const t of a.towns) if (t.alive) keepWork(t);
+  for (const t of a.towns) {
+    if (!t.alive) continue;
+    const pe = a.peoples.find(p => p.id === t.people), j = faunaCell(a, t.i);
+    let feed = 0, c = 0;
+    for (let y = Math.max(0, ((j / F.W) | 0) - 1); y <= Math.min(F.H - 1, ((j / F.W) | 0) + 1); y++) for (let x = Math.max(0, j % F.W - 1); x <= Math.min(F.W - 1, j % F.W + 1); x++) { feed += pe.K[y * F.W + x]; c++; }
+    feed += seaFeed(a, t) * c;   // the sea around feeds as land does, where the town has fishers (and the more with boats)
+    const fx = townFx(t);
     feedsOf.set(t.id, [TL.feeds * (feed / c) * (TL.fert[0] + TL.fert[1] * a.f.fert[t.i]) * (TL.home[0] + TL.home[1] * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + TL.road * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? TL.capital : 1) * (1 - scourgedFood(a, t) + TL.trade * fx.trade) + t.econ.feeds - (t.slaves || 0), room(fx)]);   // the land feeds, and the town's works (flows) feed more; its slaves eat too
   }
   stepNet(a, feedsOf);

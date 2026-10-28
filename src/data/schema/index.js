@@ -352,6 +352,7 @@ export const TABLES = [
       col('peoples', 'Расы', 'ids', {ref: 'peoples', note: 'народы, которые её строят; пусто — все'}),
       col('requires', 'Нужно в державе', 'ids', {ref: 'townBuildings', note: 'все эти постройки стоят в каком-нибудь городе державы'}),
       col('requiresAny', 'Одна из в державе', 'ids', {ref: 'townBuildings', note: 'хотя бы одна из них стоит в каком-нибудь городе державы'}),
+      col('here', 'Нужно в самом городе', 'ids', {ref: 'townBuildings', note: 'хотя бы одна из них стоит в этом городе (гавани — своя пристань)'}),
       col('upgrades', 'Улучшает', 'ids', {ref: 'townBuildings', note: 'жильё строится на месте одной из этих: место города растёт на разницу'}),
       col('tier', 'Ступень', 'int', {min: 0, max: 2}), col('pop', 'Жителей от', 'int', {min: 0}), col('capital', 'Только столица', 'bool'), col('unique', 'Одна на державу', 'bool'), col('max', 'Сколько', 'int', {min: 1}),
       col('needs', 'Нужно место', 'ids', {ref: keysOf(PLACE_NEEDS)}), col('needsAny', 'Нужно одно из', 'ids', {ref: keysOf(PLACE_NEEDS)}),

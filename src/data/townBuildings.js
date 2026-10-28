@@ -14,6 +14,7 @@
 //   peoples       races: the peoples that build it (data/peoples.js ids); none — anyone
 //   requires      in the realm: buildings that must stand in some town of the town's realm, all of them;
 //                 requiresAny — at least one of them. Each town builds for itself; what it may build, its realm decides
+//   here          in the town itself: at least one of these stands in it (a harbour wants its own pier)
 //   tier          from which town step it can be built (data/peoples.js TIERS: 0 hamlet, 1 village, 2 town);
 //                 the buildings that earn a step (TIERS needsAny) are built one step earlier
 //   pop           and at least this many people (the great works of a big town)
@@ -150,10 +151,10 @@ TOWN_BUILDINGS.registerAll([
   B('pasture', 'выгоны и стада', 'pl', 'food', 1, [...H, ...O], {food: 0.25, prod: 0.05}, {per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, out: {food: 40, fiber: 200, hide: 60, beasts: 8}}),
   B('lodge', 'охотничий навес', 'm', 'food', 0, ALL, {food: 0.1}, {per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2}, out: {food: 25, hide: 80, bone: 80}}),
   B('fishhut', 'рыбацкие хижины', 'pl', 'food', 0, ALL, {food: 0.15}, {per: 300, max: 2, needs: ['water'], local: 'fishhut', site: true, jobs: 10, in: {fiber: 20}, out: {food: 30}}),
-  B('pier', 'рыбная пристань', 'f', 'food', 1, [...H, ...E], {food: 0.25, trade: 0.05}, {per: 600, needsAny: ['coast', 'lake'], site: true, jobs: 20, in: {planks: 15, fiber: 30}, out: {food: 70}}),
+  B('pier', 'рыбная пристань', 'f', 'food', 1, ALL, {food: 0.25, trade: 0.05}, {per: 600, needsAny: ['coast', 'lake'], site: true, jobs: 20, in: {planks: 15, fiber: 30}, out: {food: 70}}),
   B('quern', 'ручные жернова', 'pl', 'food', 0, ALL, {food: 0.05}, {per: 600, local: 'quern', jobs: 2, in: {grain: 12}, out: {food: 14}}),
   B('watermill', 'водяная мельница', 'f', 'food', 2, [...H, ...D], {food: 0.2, prod: 0.1}, {per: 1500, needs: ['river'], requiresAny: ['field', 'garden', 'mushrooms'], site: true, jobs: 4, in: {grain: 60}, out: {food: 72}}),
-  B('windmill', 'ветряная мельница', 'f', 'food', 2, H, {food: 0.15}, {per: 1500, needs: ['flat'], requires: ['field'], site: true, jobs: 4, in: {grain: 40}, out: {food: 48}}),
+  B('windmill', 'ветряная мельница', 'f', 'food', 1, H, {food: 0.15}, {per: 1500, needs: ['flat'], requires: ['field'], site: true, jobs: 4, in: {grain: 40}, out: {food: 48}}),
   B('bakery', 'пекарня', 'f', 'food', 2, [...H, ...D], {food: 0.1, health: 0.05}, {per: 1000, requiresAny: ['watermill', 'windmill'], jobs: 4, in: {food: 60, wood: 80}, out: {food: 75}}),
   B('smokehouse', 'коптильня', 'f', 'food', 1, ALL, {food: 0.1}, {per: 800, requiresAny: ['lodge', 'fishhut', 'pen'], local: 'smokehouse', jobs: 3, in: {food: 20, wood: 40}, out: {stores: 28}}),
   B('dryrack', 'вешала и бочки', 'pl', 'food', 0, ALL, {food: 0.05}, {per: 600, local: 'dryrack', jobs: 2, in: {food: 12, salt: 6}, out: {stores: 12}}),
@@ -201,8 +202,8 @@ TOWN_BUILDINGS.registerAll([
   // the humans' own (docs/WORLD.md «Асимметрия народов»): the tilt-yard raises knights (data/raids.js host: the knight, the
   // champion), the hippodrome horse-knights, the den cutthroats; the trading post doubles a trade route's worth (atlas/diplomacy.js)
   B('tiltyard', 'ристалище', 'n', 'defence', 1, H, {defence: 0.15, prestige: 0.15}, {requiresAny: ['forge', 'armory'], local: 'tiltyard', notable: true, jobs: 6, in: {arms: 2, armor: 3, food: 10}}),
-  B('hippodrome', 'ипподром', 'm', 'defence', 2, H, {defence: 0.15, prestige: 0.1}, {requires: ['tiltyard'], requiresAny: ['pen', 'pasture'], needs: ['flat'], notable: true, jobs: 8, in: {food: 20, grain: 20}, out: {beasts: 3}}),
-  B('den', 'притон', 'm', 'trade', 1, H, {trade: 0.05}, {needs: ['road'], local: 'den', jobs: 2, in: {drink: 60}, out: {gold: 30}}),
+  B('hippodrome', 'ипподром', 'm', 'defence', 2, H, {defence: 0.15, prestige: 0.1}, {requires: ['tiltyard'], needsAny: ['flat', 'pasture'], notable: true, jobs: 8, in: {food: 20, fiber: 40}, out: {beasts: 3}}),
+  B('den', 'притон', 'm', 'trade', 1, H, {trade: 0.15}, {needs: ['road'], local: 'den', jobs: 2, in: {drink: 60}, out: {gold: 30}}),
   B('tradepost', 'торговый пост', 'm', 'trade', 1, H, {trade: 0.35}, {needs: ['road'], local: 'tradepost', notable: true, jobs: 3, in: {food: 5}, out: {gold: 40}}),
   B('inn', 'постоялый двор', 'm', 'trade', 1, [...H, ...D], {trade: 0.15}, {needs: ['road'], jobs: 3, in: {food: 4, wood: 30, drink: 100}, out: {gold: 60}}),
   B('toll', 'дорожная застава', 'f', 'trade', 1, [...H, ...D, ...O], {trade: 0.05, defence: 0.05}, {needs: ['road'], jobs: 3, out: {gold: 40}}),
@@ -210,8 +211,8 @@ TOWN_BUILDINGS.registerAll([
   B('warehouse', 'торговые склады', 'pl', 'trade', 2, [...H, ...D], {trade: 0.15}, {requires: ['market'], jobs: 2}),
   B('caravanserai', 'караван-сарай', 'm', 'trade', 2, [...H, ...O], {trade: 0.25}, {needs: ['road', 'dry'], jobs: 4, in: {food: 6, grain: 6}, out: {gold: 80}}),
   // the harbour opens the sea lanes (atlas/sea.js): traffic to other harbours, faster than any road
-  B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E], {trade: 0.35}, {needs: ['coast'], requiresAny: ['pier', 'shipyard'], notable: true, jobs: 10, in: {planks: 20}, out: {gold: 120}}),
-  B('lighthouse', 'маяк', 'm', 'trade', 1, [...H, ...E], {trade: 0.1, defence: 0.05}, {needs: ['coast'], requiresAny: ['pier', 'fishhut'], jobs: 1, in: {wood: 40}}),
+  B('harbor', 'гавань', 'f', 'trade', 2, [...H, ...E], {trade: 0.35}, {needs: ['coast'], here: ['pier'], notable: true, jobs: 10, in: {planks: 20}, out: {gold: 120, food: 60}}),
+  B('lighthouse', 'маяк', 'm', 'trade', 1, [...H, ...E], {trade: 0.1, defence: 0.05}, {needs: ['coast'], here: ['pier', 'fishhut'], jobs: 1, in: {wood: 40}}),
   B('riverpier', 'речная пристань', 'f', 'trade', 1, [...H, ...E, ...O], {trade: 0.1, food: 0.05}, {needs: ['river'], requiresAny: ['ferry', 'fishhut'], jobs: 4, in: {planks: 6}, out: {food: 5, gold: 20}}),
   B('mint', 'монетный двор', 'm', 'trade', 2, [...H, ...D], {trade: 0.2, prestige: 0.15}, {needs: ['precious'], requires: ['market'], pop: 800, capital: true, jobs: 4, in: {gold: 100}, out: {gold: 160}}),
   // ── defence
@@ -262,7 +263,7 @@ TOWN_BUILDINGS.registerAll([
   B('healerhut', 'хижина лекаря', 'f', 'life', 1, ALL, {health: 0.15}, {per: 800, local: 'healerhut', jobs: 2, in: {herbs: 20, pots: 10}, out: {potions: 10}}),
   B('hospice', 'лечебница', 'f', 'life', 2, [...H, ...E], {health: 0.25}, {requires: ['healerhut'], jobs: 6, in: {herbs: 40, cloth: 10}}),
   B('bathhouse', 'баня', 'f', 'life', 2, [...H, ...D], {health: 0.15}, {needs: ['water'], jobs: 3, in: {wood: 120}}),
-  B('aqueduct', 'акведук', 'm', 'life', 2, H, {health: 0.2}, {needs: ['stone'], requires: ['well'], pop: 800, house: 100, jobs: 2, in: {stone: 20}}),
+  B('aqueduct', 'акведук', 'm', 'life', 2, H, {health: 0.2}, {needs: ['stone'], pop: 800, house: 100, jobs: 2, in: {stone: 20}}),
 ]);
 
 // what a building gives, as one number for each effect (0 where it gives nothing)
@@ -290,7 +291,9 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 //               each year `waste` of them are gone (dead, run off, freed)
 //   build     — a town builds one more thing a year for every `build` of its people (beyond the step's one or two)
 //   heat      — the climate's weight on the wood a town burns to keep warm (atlas/economy.js heatFactor)
-export const TOWN_FLOW = {order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
+export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pier', 'harbor', 'riverpier']},
+  sea: {fishhut: 0.3, pier: 0.5, harbor: 0.7}, trade: {give: 0.8, keep: 0.1},
+  order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
   rounds: 8, soft: 0.5, captured: 0.5, grain: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, build: 400, hands: 0.5, shortAt: 0.01,
   heat: {cold: -2, warm: 14, k: [1.6, 0.4]}};   // heat × k[0] at or below `cold` °C, × k[1] at or above `warm` (a year's mean), between in a line
 
@@ -317,10 +320,10 @@ export const GOLEMS = {
 //              `raided` years, at most defence[0], + defence[2]; the others — a base + a step a tier (trade + its road,
 //              + trade[2] from tier 2; lore only from tier 2, else lore[2]; health + health[2] after a raid)
 // flow: a town's choice by its economy (atlas/towns.js chooseBuilding) — `short` × the share of a good its buildings lack, for a
-//   building that gives it; `food` × the food need, for one that gives food; a building that wants `hands` × its jobs and finds
+//   building that gives it; `spare` × the share of a good it makes and nothing takes, for a building that takes it; `food` × the food need, for one that gives food; a building that wants `hands` × its jobs and finds
 //   fewer free is worth `idle` of itself
-export const TOWN_FX = {room: [120, 100], mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, flow: {short: 0.6, food: 0.4, hands: 0.5, idle: 0.3},
-  needs: {full: [0.55, 0.4], housing: [1.5], food: [1.3], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
+export const TOWN_FX = {room: [120, 100], work: 0.5, mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, flow: {short: 0.6, spare: 0.3, food: 0.4, hands: 0.5, idle: 0.3},
+  needs: {full: [0.55, 0.4], housing: [1.5], food: [1.3, 0.1], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
     faith: [0.25, 0.15], lore: [0.25, 0.1, 0.03], prestige: [0.15, 0.15], health: [0.25, 0.1, 0.3]}};
 
 // What a town's place must have for a building (atlas/towns.js placeHas): cells around to look, and the thresholds —
@@ -328,4 +331,4 @@ export const TOWN_FX = {room: [120, 100], mightProd: 0.3, raidFloor: 0.4, raidFa
 // (rough ground below stoneFlat of flatness or above stoneHigh of the land's height), fertile soil, a forest (tree
 // cover), steep and flat ground, graves (barrows), warm (°C), dry country; `near` — the cells around for the rest
 export const PLACE_AT = {near: 2, lake: 2, magma: 3, placer: 1, salt: 4, saltSea: 14, clay: 0.3, stoneFlat: 0.75, stoneHigh: 0.2, fertile: 0.5,
-  forest: 0.5, steep: 0.5, flat: 0.85, graves: 3, gravesAt: 0.2, warm: 12, dry: 3};
+  forest: 0.5, steep: 0.5, flat: 0.7, graves: 3, gravesAt: 0.2, warm: 12, dry: 3};

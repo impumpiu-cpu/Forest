@@ -25,7 +25,7 @@ export function heatFactor(a, t) {
   return H.k[0] + (H.k[1] - H.k[0]) * x;
 }
 
-export function townEconomy(a, t, heatK = heatFactor(a, t)) {
+export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   const P = WORLD_PEOPLES.get(t.people), flows = P.flows || {}, swaps = P.swaps || {};
   // its place: more where it stands so (the dwarves under the mountain) — the world's place of the town (atlas/towns.js placeHas)
   const PF = P.placeFlows, here = PF && a?.f && PF.needsAny.some(n => (t.place ||= {})[n] ??= placeHas(a, t.i, n)) ? PF.flows : {};
@@ -59,12 +59,15 @@ export function townEconomy(a, t, heatK = heatFactor(a, t)) {
     r.own = !r.b.peoples || r.b.peoples.includes(t.people) ? 1 : F.captured;
     r.eff = r.staff * r.own;
   }
-  // the goods shared out, a few rounds: each building's strength by what it got of what it takes
+  // the boats of a shipyard (TOWN_FLOW.boats): its fishers catch more, as the yard works
+  const yard = rows.find(r => r.b.id === F.boats.by), boat = r => (yard && F.boats.fish.includes(r.b.id) ? 1 + (F.boats.k - 1) * yard.eff : 1);
+  // the goods shared out, a few rounds: each building's strength by what it got of what it takes; what the realm's other
+  // towns sent (imports: atlas/economy.js tradeGoods) adds to what the town has
   let sup = {}, dem = {};
   for (let k = 0; k < F.rounds; k++) {
-    sup = {}; dem = {};
+    sup = {...(imports || {})}; dem = {};
     for (const r of rows) {
-      for (const [g, v] of Object.entries(r.out)) sup[g] = (sup[g] || 0) + v * r.eff;
+      for (const [g, v] of Object.entries(r.out)) sup[g] = (sup[g] || 0) + v * r.eff * boat(r);
       for (const [g, v] of Object.entries(r.in)) dem[g] = (dem[g] || 0) + v * r.staff * r.own;
     }
     const got = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : 1);
@@ -77,13 +80,55 @@ export function townEconomy(a, t, heatK = heatFactor(a, t)) {
   }
   const made = {}, used = {};
   for (const r of rows) {
-    for (const [g, v] of Object.entries(r.out)) made[g] = (made[g] || 0) + v * r.eff;
+    for (const [g, v] of Object.entries(r.out)) made[g] = (made[g] || 0) + v * r.eff * boat(r);
     for (const [g, v] of Object.entries(r.in)) used[g] = (used[g] || 0) + v * r.staff * r.own * Math.min(1, dem[g] ? (sup[g] || 0) / dem[g] : 1);
   }
   // short: the share of what the buildings asked for and did not get, by good
   const short = {};
   for (const [g, d] of Object.entries(dem)) { const s = 1 - Math.min(1, (sup[g] || 0) / d); if (s > F.shortAt) short[g] = s; }
+  // spare: the share of what the town makes of a good that nothing of it takes (a building that would take it is worth more)
+  const spare = {};
+  for (const [g, v] of Object.entries(made)) { const s = v > 0 ? 1 - Math.min(1, (used[g] || 0) / v) : 0; if (s > F.shortAt) spare[g] = s; }
   const food = Math.max(0, (made.food || 0) - (used.food || 0)) + Math.max(0, (made.grain || 0) - (used.grain || 0)) * F.grain + Math.max(0, (made.stores || 0) - (used.stores || 0));
-  return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, food,
+  return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, food, dem, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
     feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, rows: rows.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems}))};
+}
+
+// ── trade within a realm (TOWN_FLOW.trade): down the links of the net (atlas/sites.js, last year's) between towns of one
+// realm, what one town makes of a good and does not use goes to a linked town whose buildings lack it — `give` of the
+// surplus, split by the links' conductance, the giver keeping `keep` of what it made. Food goes by the net as people-years
+// already (atlas/sites.js stepNet): here only the other goods. Then the takers' economies are worked out anew with what
+// came. Sets t.econ of every living town; t.econ.imports — what came, t.econ.exports — what went.
+const FOODS = new Set(['food', 'grain', 'stores']);
+export function tradeGoods(a, towns) {
+  const links = [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && l.p.realm != null && l.p.realm === l.q.realm);
+  if (!links.length) return;
+  const T = F.trade, left = new Map(), lack = new Map(), outC = new Map(), got = new Map(), sent = new Map();
+  for (const t of towns) {
+    const e = t.econ, sur = {}, need = {};
+    for (const [g, v] of Object.entries(e.made)) if (!FOODS.has(g)) { const s = v - (e.used[g] || 0) - T.keep * v; if (s > 0) sur[g] = s * T.give; }
+    for (const [g, d] of Object.entries(e.dem)) if (!FOODS.has(g)) { const s = d - Math.min(d, e.made[g] || 0); if (s > 0) need[g] = s; }
+    left.set(t.id, sur); lack.set(t.id, need);
+  }
+  for (const l of links) for (const t of [l.p, l.q]) outC.set(t.id, (outC.get(t.id) || 0) + l.c);
+  const send = (from, to, l) => {
+    const s = left.get(from.id), d = lack.get(to.id); if (!s || !d) return;
+    for (const g of Object.keys(s)) {
+      if (!(d[g] > 0)) continue;
+      const f = Math.min(s[g] * l.c / (outC.get(from.id) || 1), d[g]); if (f <= 0) continue;
+      s[g] -= f; d[g] -= f;
+      const G = got.get(to.id) || {}; G[g] = (G[g] || 0) + f; got.set(to.id, G);
+      const S = sent.get(from.id) || {}; S[g] = (S[g] || 0) + f; sent.set(from.id, S);
+    }
+  };
+  for (const l of links) { send(l.p, l.q, l); send(l.q, l.p, l); }
+  for (const t of towns) {
+    const G = got.get(t.id);
+    if (G) Object.defineProperty(t, 'econ', {value: townEconomy(a, t, heatFactor(a, t), G), writable: true, configurable: true, enumerable: false});
+    t.econ.exports = sent.get(t.id) || {};
+  }
+}
+// how each building of a town works this year (saved: its effects follow it, atlas/towns.js townFx)
+export function keepWork(t) {
+  t.work = Object.fromEntries(t.econ.rows.map(r => [r.id, Math.round(Math.min(1, r.eff) * 1000) / 1000]));
 }
