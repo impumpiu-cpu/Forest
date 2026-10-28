@@ -63,7 +63,7 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
 
 // a people that has gone through the asymmetry (docs/WORLD.md «Асимметрия»): every good its buildings take (after its
 // swaps) one of its own buildings gives — no chain of theirs hangs on what they may not build
-const DONE = ['elves'];
+const DONE = ['elves', 'dwarves'];
 for (const P of DONE.map(id => WORLD_PEOPLES.get(id))) {
   const mine = all.filter(b => !b.peoples || b.peoples.includes(P.id)), made = new Set(mine.flatMap(b => Object.keys(b.out || {})));
   const taken = new Map();

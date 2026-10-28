@@ -8,7 +8,7 @@
 //   peoples  — sub-races: their shift of the limits is in data/balance/creatures.js, `mods` and `innate` add
 //              to the species'; on the world
 //              map a realm takes the sub-race that fits the land of its seat best (`home` over the race's,
-//              atlas/realms.js): `plural` / `gen` name it in the chronicle («горные гномы Медной горы»),
+//              atlas/realms.js): `plural` / `gen` name it in the chronicle («горные дварфы Медной горы»),
 //              `taste` leans its towns' building (data/peoples.js taste); `world: false` — never a realm
 //   body     — physiology for the card and, later, for the world map (growth of a node):
 //              adult/life in years, fertility 0…1, diet
@@ -94,7 +94,7 @@ export const RACES = [
   // Dwarves: long-lived, slow to breed, at home under the mountain. Their gut takes fermented
   // grain best of all: a sober dwarf works slower, a dwarf with a cup of braga works better.
   {id: 'dwarf', kind: 'race', deeds: {realm: [...DEED_WAYS.people]}, home: {foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4},
-    label: 'гном', plural: 'гномы', rel: 'dwarf', settle: 1.3,
+    label: 'дварф', plural: 'дварфы', rel: 'dwarf', settle: 1.3,
     heatHarm: 82, look: person(0.55, '#d59a78'),
     body: {adult: 40, life: 300, fertility: 0.2, diet: 'всеядный, брага — тоже еда'},
     mods: {cold: 0.7},
@@ -103,12 +103,12 @@ export const RACES = [
     innate: [{label: 'хмельная кровь', note: 'брага кормит и бодрит; без неё по утрам хмурится'},
       {label: 'тёмное зрение', note: 'видит во мраке'}, {label: 'жаростойкий', note: 'не боится жара горна'}],
     peoples: [
-      {id: 'mountain', label: 'горный гном', plural: 'горные гномы', gen: 'горных гномов', weight: 3,
+      {id: 'mountain', label: 'горный дварф', plural: 'горные дварфы', gen: 'горных дварфов', weight: 3,
         home: {foothills: 1, highlands: 0.9, volcano: 0.5, taiga: 0.15, tundra: 0.15}, taste: {prod: 1.5, defence: 1.3, trade: 0.9}},
-      {id: 'hill', label: 'холмовой гном', plural: 'холмовые гномы', gen: 'холмовых гномов', weight: 2,
+      {id: 'hill', label: 'холмовой дварф', plural: 'холмовые дварфы', gen: 'холмовых дварфов', weight: 2,
         home: {foothills: 0.8, meadow: 0.6, forest: 0.45, steppe: 0.4, shrubland: 0.4}, taste: {trade: 1.4, food: 1.2, prod: 1.2, defence: 1},
         innate: [{label: 'торговая жилка', note: 'знает цену всему, что лежит на прилавке'}]},
-      {id: 'deep', label: 'глубинный гном', plural: 'глубинные гномы', gen: 'глубинных гномов', weight: 1, world: false,
+      {id: 'deep', label: 'глубинный дварф', plural: 'глубинные дварфы', gen: 'глубинных дварфов', weight: 1, world: false,
         mods: {cold: 0.85}, innate: [{label: 'дитя глубин', note: 'бледен, видит во мраке ещё лучше'}]},
     ],
     align: {order: 5, mercy: 0, spread: {order: 0.5, mercy: 0.9}},

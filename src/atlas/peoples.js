@@ -14,8 +14,9 @@
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
 import {townEconomy} from './economy.js';
+import {stepGolems} from './golems.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
-import {TOWN_FLOW} from '../data/townBuildings.js';
+import {TOWN_FLOW, TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -258,6 +259,7 @@ export function stepPeoples(a, rnd, say) {
     // the town's economy by its buildings' flows (atlas/economy.js): its hands, its goods, the food its works give;
     // its slaves wear away (the orcs' raids keep them coming)
     if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
+    { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
     Object.defineProperty(t, 'econ', {value: townEconomy(a, t), writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
     feedsOf.set(t.id, [TL.feeds * (feed / c) * (TL.fert[0] + TL.fert[1] * a.f.fert[t.i]) * (TL.home[0] + TL.home[1] * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + TL.road * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? TL.capital : 1) * (1 - scourgedFood(a, t) + TL.trade * fx.trade) + t.econ.feeds - (t.slaves || 0), room(fx)]);   // the land feeds, and the town's works (flows) feed more; its slaves eat too
   }
@@ -353,4 +355,12 @@ export function landOf(a, i) {
   let best = null, bv = 0.1;
   for (const pe of a.peoples) if (pe.u[j] > bv) { bv = pe.u[j]; best = pe; }
   return best ? {people: best.P, share: bv} : null;
+}
+
+// a golem made, remade or set on guard: told when it is the first of its kind in the town
+const GOLEM_WORDS = {bronze: 'бронзовый', iron: 'железный', steel: 'стальной', mithril: 'мифриловый'};
+function golemLine(a, t, g, say) {
+  const w = GOLEM_WORDS[g.metal], where = `${townLabel(t, 3)} ${t.name}`;
+  if (g.kind === 'auto' && (t.golems.auto[g.id] || []).length === 1) say(`В ${where} ${w} голем встал к работе: ${TOWN_BUILDINGS.get(g.id).name}.`);
+  else if (g.kind === 'guard' && t.golems.guard.length === 1) say(`В ${where} ${w} голем встал на стражу.`);
 }

@@ -16,7 +16,7 @@ import {EFFECTS} from './special.js';
 export const KINS = new Registry('kin');
 KINS.registerAll([
   {id: 'human', label: 'люди'}, {id: 'halfling', label: 'полурослики'}, {id: 'giant', label: 'великаны'},
-  {id: 'elf', label: 'лесные эльфы'}, {id: 'darkelf', label: 'тёмные эльфы'}, {id: 'dwarf', label: 'гномы'},
+  {id: 'elf', label: 'лесные эльфы'}, {id: 'darkelf', label: 'тёмные эльфы'}, {id: 'dwarf', label: 'дварфы'},
   {id: 'greenskin', label: 'зеленокожие'}, {id: 'gnoll', label: 'гноллы'},
 ]);
 

@@ -28,7 +28,7 @@ export const SLAVE = {
   law: {
     orcs:    {law: 'legal', k: 1.2},
     humans:  {law: 'legal', k: 1},
-    dwarves: {law: 'frowned', k: 0.85, att: -0.4},
+    dwarves: {law: 'banned'},   // they hate it: no slaves bought, sold or kept (docs/WORLD.md «Асимметрия народов»)
     elves:   {law: 'banned'},
   },
   trader: {law: 'legal', k: 0.9},

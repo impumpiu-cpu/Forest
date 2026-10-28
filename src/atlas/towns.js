@@ -16,7 +16,7 @@
 // score Σ need × taste × effect, where the needs come from the town's state (a full town needs room,
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
-import {TOWN_BUILDINGS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS} from '../data/townBuildings.js';
 import {TIERS, CAPITAL, crowned} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -78,7 +78,8 @@ export function realmWorks(a, t, material) {
 }
 // the words of the metals the realm of a town works, of those some building opens (for the cards)
 export const realmMetalWords = (a, t) => { const built = realmBuilt(a, t); return gatedMetals().filter(m => metalBuildings(m).some(id => built.has(id))).map(m => METAL_WORDS[m] || m); };
-export const might = (t, fx) => Math.sqrt(t.pop) * (1 + fx.defence + TF.mightProd * fx.prod);
+// (a dwarven town's guard golems count as people: atlas/golems.js golemMen)
+export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0)) * (1 + fx.defence + TF.mightProd * fx.prod);
 export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 
 // ── the place

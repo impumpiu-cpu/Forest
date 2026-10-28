@@ -27,8 +27,8 @@ check('пешка: в пределах ±3 от центра и ±5 по ком�
 
 // the race's own spread (data/races.js align.spread): humans stray from their centre further than dwarves from theirs on law
 const sd = (race, axis) => { const sp = SPECIES.get(race), r2 = mulberry(7); let s = 0; for (let k = 0; k < 3000; k++) { const p = alignNear({order: 0, mercy: 0}, spreadOf(sp, 'pawn'), r2); s += p[axis] ** 2; } return Math.sqrt(s / 3000); };
-check('разброс расы по осям: люди шире, гномы держатся закона', sd('human', 'order') > sd('dwarf', 'order') * 2 && sd('dwarf', 'mercy') > sd('dwarf', 'order'),
-  `закон: люди ${sd('human', 'order').toFixed(2)}, гномы ${sd('dwarf', 'order').toFixed(2)}; добро у гномов ${sd('dwarf', 'mercy').toFixed(2)}`);
+check('разброс расы по осям: люди шире, дварфы держатся закона', sd('human', 'order') > sd('dwarf', 'order') * 2 && sd('dwarf', 'mercy') > sd('dwarf', 'order'),
+  `закон: люди ${sd('human', 'order').toFixed(2)}, дварфы ${sd('dwarf', 'order').toFixed(2)}; добро у дварфов ${sd('dwarf', 'mercy').toFixed(2)}`);
 
 const x = {align: {order: 4.9, mercy: 0}}; shiftAlign(x, 'order', 1); shiftAlign(x, 'mercy', -0.3);
 check('сдвиг точки держится в пределах компаса', x.align.order === AXIS_MAX && x.align.mercy === -0.3, JSON.stringify(x.align));

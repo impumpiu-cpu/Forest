@@ -6,6 +6,7 @@
 //
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
+import {golemMen} from './golems.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {ROT} from '../data/lairs.js';
 import {WORLD_PEOPLES, TIERS} from '../data/peoples.js';
@@ -148,7 +149,7 @@ export function muster(a, t, target, war, rnd, say) {
   const A = ARMY, men = Math.round(A.levy * t.pop);
   if (men < A.minMen || !target.alive) return;
   const fx = townFx(t), R = realmOf(a, t.realm);
-  const p = sendParty(a, 'army', t.i, target.i, {owner: t.realm, from: t.id, target: target.id, war, men, might: armyMight(men, fx) * A.might,
+  const p = sendParty(a, 'army', t.i, target.i, {owner: t.realm, from: t.id, target: target.id, war, men, might: armyMight(men + golemMen(t), fx) * A.might,
     supplies: A.supplies, people: t.people, speed: 'foot', label: `войско ${realmLabelGen(a, t.realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color, burnt: 0});
   if (!p) return;
   t.pop -= men;

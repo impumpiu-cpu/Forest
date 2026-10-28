@@ -126,14 +126,16 @@ TOWN_BUILDINGS.registerAll([
   B('treehouse', 'дома на деревьях', 'pl', 'housing', 1, E, {}, {max: 8, needs: ['forest'], house: 300, heat: 60, in: {wood: 10}, out: {wood: 15}, upgrades: ['hut']}),
   // the elves' hall in the crowns of the old trees: the tree-houses of a big town grown together; the wood still gives
   B('elfhall', 'древесный чертог', 'm', 'housing', 2, E, {prestige: 0.05}, {max: 8, needs: ['forest'], house: 450, heat: 50, in: {wood: 15}, out: {wood: 20}, upgrades: ['treehouse']}),
-  B('hallhomes', 'подгорные жилища', 'pl', 'housing', 1, D, {defence: 0.05}, {max: 8, needsAny: ['steep', 'caves'], upgrades: ['hut'], house: 400, heat: 80, in: {stone: 10}}),
+  B('hallhomes', 'подгорные жилища', 'pl', 'housing', 1, D, {defence: 0.05}, {max: 8, needsAny: ['steep', 'caves'], upgrades: ['hut'], house: 400, heat: 40, in: {stone: 10}}),   // the mountain keeps the warmth: little wood to heat
+  // the dwarves' deep hall: their homes under the mountain grown into one — the densest housing of the world
+  B('deephall', 'подгорный чертог', 'm', 'housing', 2, D, {defence: 0.08, prestige: 0.05}, {max: 8, needsAny: ['steep', 'caves'], upgrades: ['hallhomes'], house: 700, heat: 30, in: {stone: 15}}),
   B('stonehouse', 'каменные дома', 'pl', 'housing', 2, [...H, ...D], {defence: 0.03}, {max: 8, needs: ['stone'], requires: ['quarry'], upgrades: ['house', 'hut'], house: 400, heat: 150, in: {stone: 15}}),
   B('barracks', 'казармы', 'pl', 'housing', 2, [...H, ...D, ...O], {defence: 0.25}, {requiresAny: ['armory', 'warcamp'], house: 100, jobs: 30, heat: 60, in: {arms: 3, armor: 1}}),
   // ── food
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {food: 0.15}, {per: 250, max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, out: {food: 35, herbs: 10}}),
   B('field', 'пашни', 'pl', 'food', 0, [...H, ...E, ...O], {food: 0.3}, {per: 150, max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {grain: 110, fiber: 100}}),
   B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {food: 0.3}, {per: 150, max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, out: {food: 45, wood: 20, herbs: 7, fiber: 30}}),
-  B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {food: 0.3}, {per: 150, max: 4, needsAny: ['caves', 'steep'], site: true, jobs: 15, out: {food: 50}}),
+  B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {food: 0.3}, {per: 150, max: 4, needsAny: ['caves', 'steep'], site: true, jobs: 15, out: {food: 50, grain: 20}}),   // and mushroom malt: the mill, the quern and the brewery live on it
   B('pen', 'загоны', 'pl', 'food', 0, [...H, ...D, ...O], {food: 0.15}, {per: 300, max: 2, needs: ['pasture'], local: 'pen', site: true, jobs: 8, out: {food: 20, fiber: 120, hide: 30, beasts: 4}}),
   B('pasture', 'выгоны и стада', 'pl', 'food', 1, [...H, ...O], {food: 0.25, prod: 0.05}, {per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, out: {food: 40, fiber: 200, hide: 60, beasts: 8}}),
   B('lodge', 'охотничий навес', 'm', 'food', 0, ALL, {food: 0.1}, {per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2}, out: {food: 25, hide: 80, bone: 80}}),
@@ -172,6 +174,8 @@ TOWN_BUILDINGS.registerAll([
   B('forge', 'кузня', 'f', 'craft', 1, [...H, ...D, ...O], {prod: 0.2, defence: 0.1}, {per: 800, requires: ['smelter'], local: 'forge', notable: true, jobs: 4, in: {metal: 50, coal: 25, leather: 10}, out: {tools: 15, arms: 10, armor: 2}, metals: ['iron']}),
   B('foundry', 'литейня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, {per: 2000, requires: ['forge'], pop: 800, jobs: 10, in: {metal: 120, coal: 100}, out: {tools: 30, arms: 10, armor: 6}, metals: ['steel']}),
   B('magmaforge', 'магмовая кузня', 'f', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, {needs: ['magma'], requires: ['forge'], local: 'magmaforge', pop: 800, jobs: 6, in: {metal: 60}, out: {arms: 15, armor: 5, lux: 3}, metals: ['mithril', 'steel']}),
+  // the dwarves' golem forge: a golem a season — it takes over a work of the town, or stands guard (atlas/golems.js, GOLEMS)
+  B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {requires: ['forge'], notable: true, jobs: 6, in: {metal: 40, coal: 20}}),
   B('jeweler', 'ювелирная мастерская', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {per: 1500, needs: ['gems'], local: 'jeweler', jobs: 3, in: {gems: 8, metal: 4}, out: {lux: 10}, metals: ['silver']}),
   B('armory', 'оружейная', 'f', 'craft', 2, ALL, {defence: 0.2}, {requiresAny: ['crafthut', 'forge'], local: 'armory', jobs: 2}),
   B('bowyer', 'мастерская луков', 'f', 'craft', 1, [...E, ...H], {defence: 0.15}, {per: 600, needs: ['forest'], jobs: 3, in: {wood: 30, fiber: 16}, out: {arms: 20}}),
@@ -265,8 +269,22 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 //   build     — a town builds one more thing a year for every `build` of its people (beyond the step's one or two)
 //   heat      — the climate's weight on the wood a town burns to keep warm (atlas/economy.js heatFactor)
 export const TOWN_FLOW = {order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
-  rounds: 8, soft: 0.5, captured: 0.5, grain: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, build: 400,
+  rounds: 8, soft: 0.5, captured: 0.5, grain: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, build: 400, hands: 0.5, shortAt: 0.01,
   heat: {cold: -2, warm: 14, k: [1.6, 0.4]}};   // heat × k[0] at or below `cold` °C, × k[1] at or above `warm` (a year's mean), between in a line
+
+// The golems of a golem forge (atlas/golems.js): a season after the forge stands, a golem each season — of the best metal
+// its realm works (`tiers`, data/townBuildings.js `metals`). First it takes over a unit of work (`order`: the mine first),
+// one for every `per` people (at least one): the unit needs `jobs` of its hands and gives `bonus` more by the golem's metal;
+// then it remakes the takers in a better metal, once the realm works one; then it stands guard — one for every `per` people,
+// each worth `men` of the town's people in its might and its army (atlas/towns.js might, atlas/diplomacy.js muster).
+export const GOLEMS = {
+  order: ['mineshaft', 'deepmine', 'quarry', 'smelter', 'forge', 'foundry', 'coalpit', 'charpit', 'sawmill', 'woodcut', 'claypit', 'saltworks',
+    'crafthut', 'tannery', 'loom', 'potter', 'jeweler', 'glassworks', 'mushrooms', 'watermill', 'bakery', 'brewery'],
+  tiers: ['bronze', 'iron', 'steel', 'mithril'],
+  per: 400, jobs: 0.5,
+  bonus: {bronze: 0.25, iron: 0.35, steel: 0.45, mithril: 0.6},
+  men: {bronze: 4, iron: 6, steel: 8, mithril: 12},
+};
 
 // How a town's buildings work (atlas/towns.js), on top of their effects:
 //   room:      the people its houses hold: room[0] + Σ house (room[1] — people a point of the `housing` need stands for)

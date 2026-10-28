@@ -11,8 +11,9 @@
 //   food      — what the buildings give of food, grain (× TOWN_FLOW.grain) and stores, less what the buildings take of it,
 //               in people-years: the town's people and slaves eat it at their people's `eat`
 // The result is kept in t.econ (not saved — worked out anew each season) for the town's growth, its choices and its card.
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS} from '../data/townBuildings.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
+import {placeHas} from './towns.js';
 
 const soft = g => !!TOWN_GOODS.get(g).soft;
 
@@ -26,7 +27,9 @@ export function heatFactor(a, t) {
 
 export function townEconomy(a, t, heatK = heatFactor(a, t)) {
   const P = WORLD_PEOPLES.get(t.people), flows = P.flows || {}, swaps = P.swaps || {};
-  const free0 = t.pop * (P.hands ?? 0.5), slaves0 = (t.slaves || 0);
+  // its place: more where it stands so (the dwarves under the mountain) — the world's place of the town (atlas/towns.js placeHas)
+  const PF = P.placeFlows, here = PF && a?.f && PF.needsAny.some(n => (t.place ||= {})[n] ??= placeHas(a, t.i, n)) ? PF.flows : {};
+  const free0 = t.pop * (P.hands ?? F.hands), slaves0 = (t.slaves || 0);
   let free = free0, slaves = slaves0;
   // the buildings, a row each with its count, in the order the hands go
   const count = {};
@@ -34,9 +37,11 @@ export function townEconomy(a, t, heatK = heatFactor(a, t)) {
   const rows = Object.entries(count).map(([id, n]) => ({b: TOWN_BUILDINGS.get(id), n}))
     .sort((p, q) => F.order.indexOf(p.b.cat) - F.order.indexOf(q.b.cat));
   // hands: slaves first, in at most `share` of the places; free ones for the rest
+  // the dwarves' golems (atlas/golems.js): a unit a golem took over needs fewer hands and gives more by its metal
+  for (const r of rows) { const l = (t.golems?.auto?.[r.b.id] || []).slice(0, r.n); r.golems = l.length; r.golemBonus = l.reduce((s, m) => s + (GOLEMS.bonus[m] || 0), 0) / r.n; }
   let jobs = 0;
   for (const r of rows) {
-    const need = (r.b.jobs || 0) * r.n; jobs += need;
+    const need = (r.b.jobs || 0) * (r.n - r.golems * (1 - GOLEMS.jobs)); jobs += need;
     if (!need) { r.staff = 1; continue; }
     const bySlaves = Math.min(slaves * F.slaves.work, need * F.slaves.share);
     slaves -= bySlaves / F.slaves.work;
@@ -50,7 +55,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t)) {
     r.in = {};
     for (const [g, v] of Object.entries(r.b.in || {})) { const s = swaps[g], to = s ? s.to : g; r.in[to] = (r.in[to] || 0) + v * (s ? s.k : 1) * r.n; }
     if (r.b.heat) r.in.wood = (r.in.wood || 0) + r.b.heat * heatK * r.n;
-    r.out = Object.fromEntries(Object.entries(r.b.out || {}).map(([g, v]) => [g, v * (flows[g] ?? 1) * r.n]));
+    r.out = Object.fromEntries(Object.entries(r.b.out || {}).map(([g, v]) => [g, v * (flows[g] ?? 1) * (here[g] ?? 1) * r.n * (1 + r.golemBonus)]));
     r.own = !r.b.peoples || r.b.peoples.includes(t.people) ? 1 : F.captured;
     r.eff = r.staff * r.own;
   }
@@ -77,8 +82,8 @@ export function townEconomy(a, t, heatK = heatFactor(a, t)) {
   }
   // short: the share of what the buildings asked for and did not get, by good
   const short = {};
-  for (const [g, d] of Object.entries(dem)) { const s = 1 - Math.min(1, (sup[g] || 0) / d); if (s > 0.01) short[g] = s; }
+  for (const [g, d] of Object.entries(dem)) { const s = 1 - Math.min(1, (sup[g] || 0) / d); if (s > F.shortAt) short[g] = s; }
   const food = Math.max(0, (made.food || 0) - (used.food || 0)) + Math.max(0, (made.grain || 0) - (used.grain || 0)) * F.grain + Math.max(0, (made.stores || 0) - (used.stores || 0));
   return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, food,
-    feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, rows: rows.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0}))};
+    feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, rows: rows.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems}))};
 }
