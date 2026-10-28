@@ -26,6 +26,7 @@
 import {Registry} from '../core/registry.js';
 import {oreSeen} from '../world/ores.js';
 import {SPECIES} from './species.js';
+import {localPeoples} from './townBuildings.js';
 
 // free places in the pens (settlement/herd.js has the same; this table cannot import it)
 const penRoom = w => w.buildings.reduce((s, b) => s + (b.done && b.key === 'pen' ? 6 : 0), 0)
@@ -262,3 +263,7 @@ BUILDINGS.registerAll([
     wish: 'хочет видеть опасность издалека',
     motive: (a) => [[a.mem.wolf * 1.2 + a.mem.raid * 0.8, 'хочет видеть опасность издалека']]},
 ]);
+
+// the races that build each one: read from the town building that stands for it (data/townBuildings.js `local`,
+// `peoples`), the one place they are edited; a getter, so the table «Постройки поселения» shows it and saves never hold it
+for (const b of BUILDINGS.all()) Object.defineProperty(b, 'races', {get: () => localPeoples(b.id), enumerable: false, configurable: true});

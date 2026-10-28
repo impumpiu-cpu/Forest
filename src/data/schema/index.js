@@ -21,14 +21,13 @@ import {BODY_PLANS, HIT_LOCATIONS, planOf} from '../anatomy.js';
 import {MARKS, MARK} from '../balance/marks.js';
 import {QUALITY} from '../quality.js';
 import {ITEMS, rebuildItems} from '../items.js';
-import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS} from '../townBuildings.js';
+import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings} from '../townBuildings.js';
 import {BUILDINGS} from '../buildings.js';
 import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
 import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
 import {CALAMITIES} from '../calamities.js';
 import {DIPLOMACY} from '../diplomacy.js';
 import {ERAS} from '../history.js';
-import {TECHS, TECH_RULES, techOfBuilding, techOfMaterial} from '../tech.js';
 import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, RACE_FORMS, USES} from '../kinds.js';
 import {CALAMITIES as CALS} from '../calamities.js';
@@ -253,11 +252,11 @@ export const TABLES = [
     note: 'Правила отношений держав на карте мира, −5…+5 (data/diplomacy.js): дрейф, торговля, набеги, война и мир. Сами отношения меняются по годам в мире.'},
 
   // ── Вещи
-  {id: 'materials', label: 'Материалы', group: 'Вещи', key: 'id', rows: () => Object.entries(MATERIALS).map(([id, m]) => ({id, ...m, tech: techOfMaterial(id)})), target: (r, c) => [MATERIALS[r.id], c.key], after: rebuildItems,
+  {id: 'materials', label: 'Материалы', group: 'Вещи', key: 'id', rows: () => Object.entries(MATERIALS).map(([id, m]) => ({id, ...m, opened: metalBuildings(id)})), target: (r, c) => [MATERIALS[r.id], c.key], after: rebuildItems,
     note: 'Из чего вещь (data/balance/materials.js): множители к тому, что даёт форма. Предмет = форма × материал × качество.',
     columns: [
       col('id', 'id'), col('adj.m', 'Название'), col('class', 'Класс', 'ids', {edit: false, note: 'какие формы из него делаются: меняет набор предметов, поэтому не правится'}), col('tier', 'Ступень', 'int', {min: 0, max: 4}),
-      col('rarity', 'Редкость', 'enum', {values: PRICES.ITEMS.rarity}), col('tech', 'Технология', 'ref', {ref: 'techs', computed: true, note: 'кузнецы города работают металл, если держава её знает'}), col('resource', 'Ресурс', 'ref', {ref: RESOURCES}), col('amount', 'Ресурса на часть', 'num', {min: 0}),
+      col('rarity', 'Редкость', 'enum', {values: PRICES.ITEMS.rarity}), col('opened', 'Открывает постройка', 'ids', {ref: 'townBuildings', computed: true, note: 'кузнецы и рынок города работают металл, если одна из них стоит в державе (столбец «Металлы» в «Постройках городов»); пусто — все'}), col('resource', 'Ресурс', 'ref', {ref: RESOURCES}), col('amount', 'Ресурса на часть', 'num', {min: 0}),
       col('labour', 'Труд ×', 'num', {min: 0}), col('dmg', 'Урон ×', 'num', {min: 0}), col('swing', 'Пауза ×', 'num', {min: 0}), col('dur', 'Прочность ×', 'num', {min: 0}),
       col('work', 'Инструмент ×', 'num', {min: 0}), col('armor', 'Броня ×', 'num', {min: 0}), col('block', 'Блок ×', 'num', {min: 0}), col('warmth', 'Тепло ×', 'num', {min: 0}),
       col('weight', 'Тяжесть ×', 'num', {min: 0}), col('color', 'Цвет', 'color'), col('qualities', 'Свойства оружия', 'map', {ref: 'weaponQualities', min: 0, note: 'пробивное, жестокое, длинное… (словарь «Свойства оружия»)'}),
@@ -342,31 +341,31 @@ export const TABLES = [
       col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (гномы кучно, эльфы и орки вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
     ]},
-  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all().map(b => ({...b, tech: techOfBuilding(b.id)})),
+  {id: 'townBuildings', label: 'Постройки городов', group: 'Народы', key: 'id', rows: () => TOWN_BUILDINGS.all(),
     target: (r, c) => [TOWN_BUILDINGS.get(r.id), c.key],
-    note: 'Постройки городов карты мира (data/townBuildings.js). Столбец «Кто строит» — основа расовых построек.',
+    note: 'Одна истина о постройке мира (data/townBuildings.js): кто строит, что нужно в державе, место, сколько жителей вмещает, сколько рук берёт, что тратит и даёт за год. «Постройки поселения» берут расы отсюда, кузнецы и рынки каравана — металлы. Потоки (руки, топливо, тратит, даёт) пока черновые и городом не считаются.',
     columns: [
-      col('id', 'id'), col('name', 'Название'), col('cat', 'Категория', 'enum', {values: CATEGORIES}), col('tier', 'Ступень', 'int', {min: 0, max: 2}),
-      col('peoples', 'Кто строит', 'ids', {ref: 'peoples', note: 'пусто — все'}),
-      col('tech', 'Технология', 'ref', {ref: 'techs', computed: true, note: 'держава должна её найти (таблица «Технологии»); пусто — знают все'}),
-      col('pop', 'Жителей от', 'int', {min: 0}), col('capital', 'Только столица', 'bool'), col('unique', 'Одна на державу', 'bool'), col('max', 'Сколько', 'int', {min: 1}),
+      col('id', 'id'), col('name', 'Название'), col('cat', 'Категория', 'enum', {values: CATEGORIES}),
+      col('peoples', 'Расы', 'ids', {ref: 'peoples', note: 'народы, которые её строят; пусто — все'}),
+      col('requires', 'Нужно в державе', 'ids', {ref: 'townBuildings', note: 'все эти постройки стоят в каком-нибудь городе державы'}),
+      col('requiresAny', 'Одна из в державе', 'ids', {ref: 'townBuildings', note: 'хотя бы одна из них стоит в каком-нибудь городе державы'}),
+      col('tier', 'Ступень', 'int', {min: 0, max: 2}), col('pop', 'Жителей от', 'int', {min: 0}), col('capital', 'Только столица', 'bool'), col('unique', 'Одна на державу', 'bool'), col('max', 'Сколько', 'int', {min: 1}),
       col('needs', 'Нужно место', 'ids', {ref: keysOf(PLACE_NEEDS)}), col('needsAny', 'Нужно одно из', 'ids', {ref: keysOf(PLACE_NEEDS)}),
-      col('requires', 'Нужны постройки', 'ids', {ref: 'townBuildings'}), col('requiresAny', 'Нужна одна из', 'ids', {ref: 'townBuildings'}),
-      col('fx', 'Даёт', 'map', {ref: keysOf(TOWN_FX)}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летопись', 'bool'),
+      col('house', 'Жильё', 'int', {min: 0, note: 'сколько жителей вмещает; место города = 120 + сумма'}),
+      col('jobs', 'Рабочих', 'int', {min: 0, note: 'сколько рук берёт у города при полной работе (черновик)'}),
+      col('heat', 'Топливо', 'int', {min: 0, note: 'брёвен в год на тепло, × климат: холодный 1,6, умеренный 1, тёплый 0,4 (черновик)'}),
+      col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
+      col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
+      col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
+      col('fx', 'Даёт (эффекты)', 'map', {ref: keysOf(TOWN_FX), note: 'жильё здесь не задаётся: оно из «Жилья»'}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летописи', 'bool'),
     ]},
-
-  {id: 'techs', label: 'Технологии', group: 'Народы', key: 'id', rows: () => TECHS.all(),
-    note: 'Список, не дерево (data/tech.js): что технология включает из уже существующего — постройки городов и металлы кузнецов. Доступность — за расой (народом), открытие — за державой: держава находит её, когда её города доросли и построили нужное. Чего нет ни в одной технологии, знают все.',
+  {id: 'townGoods', label: 'Блага городов', group: 'Народы', key: 'id', rows: () => TOWN_GOODS.all().map(g => ({...g, value: goodPrice(g.id)})),
+    target: (r, c) => [TOWN_GOODS.get(r.id), c.key],
+    note: 'Что постройки городов тратят и дают (data/townBuildings.js TOWN_GOODS): единица и цена. Цена — от ресурса склада (balance/prices.js) или своя. Еда и зерно — в человеко-годах: прокорм одного жителя на год.',
     columns: [
-      col('id', 'id'), col('label', 'Название'), col('note', 'Что даёт'),
-      col('races', 'Кому доступна', 'ids', {ref: 'peoples', note: 'народы, которые вообще могут её знать; пусто — все'}),
-      col('era', 'С эпохи', 'ref', {ref: ERAS}), col('requires', 'Нужно знать', 'ids', {ref: 'techs'}),
-      col('tier', 'Ступень города', 'int', {min: 0, max: 2}), col('needsAny', 'Нужна постройка', 'ids', {ref: 'townBuildings', note: 'одна из них в каком-нибудь городе державы'}),
-      col('chance', 'Шанс в год', 'num', {min: 0, max: 1, note: 'когда условия выполнены; пусто — по «Правилам технологий»'}),
-      col('opens.buildings', 'Открывает постройки', 'ids', {ref: 'townBuildings'}), col('opens.materials', 'Открывает металлы', 'ids', {ref: 'materials'}),
+      col('id', 'id'), col('label', 'Название'), col('unit', 'Единица'), col('res', 'Ресурс склада', 'ref', {ref: RESOURCES, note: 'по чьей цене считается'}),
+      col('price', 'Своя цена', 'num', {min: 0}), col('value', 'Цена, зол.', 'num', {computed: true}), col('note', 'Заметка'),
     ]},
-  {id: 'techRules', label: 'Правила технологий', group: 'Народы', ...params(() => paramRows(TECH_RULES)),
-    note: 'chance — шанс в год найти технологию, когда условия выполнены (если у неё нет своего); inherit — держава раскола сохраняет то, что знала старая.'},
 
   // ── Караван
   {id: 'caravanBuildings', label: 'Постройки обоза', group: 'Караван', key: 'id',
@@ -521,6 +520,8 @@ TABLES.push(
 // who is whose enemy and who lives beyond the edge; the world map's plates, rocks, ores and winds.
 // `fix` closes columns the code keys by (a code stored in the grid and in saves) and gives others their `ref`.
 function fix(t, cols) { return {...t, columns: t.columns.map(c => (cols[c.key] ? {...c, ...cols[c.key]} : c))}; }
+// a table with columns of its own after the found ones (a value read through a getter: data/buildings.js `races`)
+const plus = (t, ...cols) => ({...t, columns: [...t.columns, ...cols]});
 const CODE = {edit: false, note: 'код в сетке и в сохранениях: не правится'};
 const GENESIS_FIELDS = keysOf({coll: 1, arc: 1, basv: 1, volc: 1, oldv: 1, craton: 1, low: 1, warm: 1});
 TABLES.push(
@@ -588,10 +589,11 @@ TABLES.push(
     columns: [col('id', 'Тег'), col('on', 'У кого', 'enum', {values: TAG_ON, edit: false}), col('field', 'Поле', 'text', {edit: false}),
       col('label', 'Что'), col('reads', 'Кто читает'), col('note', 'Описание'),
       col('who', 'Несут', 'ids', {computed: true, note: 'виды, вещи или ресурсы с этим тегом'})]},
-  fix(autoTable({id: 'buildings', label: 'Постройки поселения', group: 'Поселение', rows: () => BUILDINGS.all(), whole: {effects: EFFECTS_COL, cost: {type: 'map', ref: RESOURCES, min: 0, label: 'Цена'}},
+  plus(fix(autoTable({id: 'buildings', label: 'Постройки поселения', group: 'Поселение', rows: () => BUILDINGS.all(), whole: {effects: EFFECTS_COL, cost: {type: 'map', ref: RESOURCES, min: 0, label: 'Цена'}},
     note: 'Постройки локальной карты (data/buildings.js): цена, труд, сколько можно, тепло, что дают поселению (effects — по «Модификаторам поселения»). Условия и действия при постройке — формулы кода.'}),
   {work: {type: 'num', min: 0}, color: {edit: false}, mark: {edit: false}, onFinish: CODE, key: {type: 'ref', ref: RESOURCES}, needs: {type: 'ref', ref: 'buildings'},
     near: {edit: false}, max: {type: 'int', min: 0}, benches: {type: 'int', min: 0}, beds: {type: 'int', min: 0}, pen: {type: 'int', min: 0}, zone: {type: 'num', min: 0}}),
+    col('races', 'Расы', 'ids', {ref: 'peoples', computed: true, note: 'из «Построек городов» (столбец «Расы» той, что стоит за ней в «На локальной карте»); на локальной карте пока не запрещает'})),
   fix(autoTable({id: 'resources', label: 'Ресурсы', group: 'Поселение', rows: () => RESOURCES.all(), whole: {effects: EFFECTS_COL},
     note: 'Ресурсы склада (data/resources.js): теги (по «Тегам»), сытость, порча, сколько уносят, сколько держать, место в обозе, топливо, что даёт ключ на складе (effects). Цена и стопка — в «Ценах ресурсов».'}),
   {tags: {type: 'ids', ref: tagIds('resource')}, color: {edit: false}, mapColor: {edit: false}, ore: CODE, 'furnace.tier': {type: 'int', min: 0},

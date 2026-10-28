@@ -82,6 +82,17 @@ const leaderRole = {
   },
 };
 
+// a vassal whose lord's lair is gone or has no leader goes free — every season, so that no vassal outlives its lord
+// till the next spring (a necromancer's tower is a seat with a leader or without)
+export function freeVassals(a) {
+  if (!a.lairs) return;
+  for (const v of a.lairs) {
+    if (!v.alive || v.lord == null) continue;
+    const lord = a.lairs.find(o => o.id === v.lord);
+    if (!lord?.alive || (!lord.leader && !LAIRS.get(lord.kind).domain)) v.lord = null;
+  }
+}
+
 // ── a year of the leaders (spring): age, new leaders, tribute, plans
 export function stepLeaders(a, say) {
   if (!a.lairs || a.hist.season !== 0) return;
@@ -91,11 +102,11 @@ export function stepLeaders(a, say) {
     if (!l.alive) { leaderFalls(a, l, 'lair', say); continue; }
     if (y >= l.leader.dies) leaderFalls(a, l, 'age', say);
   }
-  // vassals pay their lords; a lord's lair gone or without a leader frees them
+  // vassals pay their lords (the leaders that fell just now free theirs)
+  freeVassals(a);
   for (const v of a.lairs) {
     if (!v.alive || v.lord == null) continue;
     const lord = a.lairs.find(o => o.id === v.lord);
-    if (!lord?.alive || (!lord.leader && !LAIRS.get(lord.kind).domain)) { v.lord = null; continue; }   // (a necromancer's tower is a seat with a leader or without)
     const t = LEADER.tribute * v.strength;
     lord.strength = Math.min(1, lord.strength + t); v.strength = Math.max(0, v.strength - t / 2);
   }

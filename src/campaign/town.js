@@ -2,7 +2,7 @@
 // caravan's goods and sells food, beasts, vehicles, iron, arms and armour, packed buildings, as far as
 // what it has built allows; there the caravan works for gold when it has none, heals faster, hires a
 // guide or a sellsword, and meets those who would go along. In winter it may stay till spring.
-import {townFx, townLabel} from '../atlas/towns.js';
+import {townFx, townLabel, realmWorks} from '../atlas/towns.js';
 import {gearDef, gearType, gearValue, gearToken} from '../agents/equipment.js';
 import {MARK, markOfPeople, markable} from '../data/balance/marks.js';
 import {trades, atWar, realmAlign} from '../atlas/diplomacy.js';
@@ -30,7 +30,6 @@ import {makeMember} from './start.js';
 import {free, bondsSets, isBonds} from './captives.js';
 import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
-import {techAllowsMaterial} from '../atlas/tech.js';
 import {KIND_GROVES, WOODS, useOf, mayWield} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
 
@@ -61,9 +60,10 @@ const sellPrice = (t, st, id) => {
 };
 const offerPrice = (o, st) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.id).value * o.n : gearDef(o.id) ? gearValue(o.id) : 10)) * STANDING[st].buy;
 // what a town sells; its arms and armour are its smiths' work: they bear the mark of its people (data/balance/marks.js)
-// (with the world `a`: not the metals its realm has not learnt to work — data/tech.js, atlas/tech.js)
+// (with the world `a`: only the metals its realm works — a building that opens them stands in one of its towns,
+// data/townBuildings.js `metals`)
 // (nor a form its people will not touch: no crossbow in an elven town — data/kinds.js RACE_FORMS)
-export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || techAllowsMaterial(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
+export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);
@@ -156,7 +156,7 @@ function smithy(a, K, t, st) {
   for (const o of wants(a, K, anvil, st)) {
     if (o.kind !== 'item') continue;
     const type = gearType(o.id), d = gearDef(o.id), B = SMITH.bar[d.material], R = RECIPES.all().find(r => r.makes?.item === type && !r.makes.silver);
-    if (!B || !R?.cost?.[d.material] || !techAllowsMaterial(a, t, d.material)) continue;   // a smith works only the metals his realm knows
+    if (!B || !R?.cost?.[d.material] || !realmWorks(a, t, d.material)) continue;   // a smith works only the metals his realm works
     const need = R.cost[d.material] * B.n;
     if ((K.cargo[B.ore] || 0) < need) continue;
     // forged here: the town's quality and its people's mark (a human town: quality alone)

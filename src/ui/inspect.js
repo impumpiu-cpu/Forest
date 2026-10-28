@@ -6,14 +6,13 @@ import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {TECHS} from '../data/tech.js';
 import {TOWN_BUILDINGS, EFFECTS, CATEGORIES} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {ARMY} from '../data/parties.js';
 import {seasonLabel} from '../atlas/history.js';
 import {alignLabel} from '../data/values.js';
 import {townAt, townLabel} from '../atlas/peoples.js';
-import {townFx, room} from '../atlas/towns.js';
+import {townFx, room, realmMetalWords} from '../atlas/towns.js';
 import {siteRadius} from '../atlas/sites.js';
 import {partyAt} from '../atlas/parties.js';
 import {captiveCount, power} from '../atlas/lairs.js';
@@ -96,7 +95,7 @@ function realmHtml(a, R) {
     row('столица', cap ? `${townLabel(cap)} ${esc(cap.name)}${R.seatSince ? ` (с ${R.seatSince} г.)` : ''}` : '—') +
     row('города', `${towns.length}, жителей ${pop}: ${esc(towns.map(t => t.name).join(', '))}`) +
     row('основана', R.founded != null ? `${R.founded} г.${R.from != null ? `, расколом от «${esc(realmOf(a, R.from)?.name || '…')}»` : ''}` : null) +
-    row('знает', R.tech ? (R.tech.length ? R.tech.map(id => TECHS.get(id).label.toLowerCase()).join(', ') : 'ничего сверх общего') : null) +
+    row('металлы', cap ? (realmMetalWords(a, cap).join(', ') || 'только кость, дерево и камень') : null) +
     row('войска', armies || null) +
     row('в полоне увели', R.captives && Object.values(R.captives).some(v => v > 0) ? captiveCount(R) : null) +
     kingdom +

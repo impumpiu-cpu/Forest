@@ -19,6 +19,7 @@
 // The full walks run in the quick mode (fights settled at once); the local map is checked on a stretch of
 // one walk played in full. `local` as the third argument plays every walk in full (slow: minutes).
 // Usage: node tools/campaign-check.mjs [seeds=1] [size=small] [local]
+import {realmWorks} from '../src/atlas/towns.js';
 import {generateAtlas, atlasHash} from '../src/atlas/generate.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {capitals, newCampaign, stepCampaign, runCampaign, campaignHash, alive, finished, chronicleText} from '../src/campaign/index.js';
@@ -236,7 +237,8 @@ for (let s = 0; s < seeds; s++) {
     if (cell >= 0) {
       K.i = cell; K.x = cell % a.w + 0.5; K.y = ((cell / a.w) | 0) + 0.5; K.why = 'mine:iron'; K.cargo = {};
       for (let d = 0; d < 3; d++) { const got = playStop(a, K); dug += got.ironore || 0; }
-      const t = a.towns.find(x => x.alive && standing(a, K, x) && SMITH.at.some(id => x.built.includes(id)));
+      // a smith whose realm works iron: a forge stands in one of its towns (data/townBuildings.js `metals`)
+      const t = a.towns.find(x => x.alive && standing(a, K, x) && SMITH.at.some(id => x.built.includes(id)) && realmWorks(a, x, 'iron'));
       if (t) {
         K.cargo.ironore = 40; K.gold = 200;
         const lines = trade(a, K, t, standing(a, K, t));

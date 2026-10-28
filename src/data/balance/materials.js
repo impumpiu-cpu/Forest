@@ -42,7 +42,7 @@ export const MATERIALS = {
   // tier 2: forged iron
   iron:    {class: ['metal'], tier: 2, rarity: 'common', resource: 'iron', labour: 1.5, flags: {iron: true}, adj: adj('железный', 'железная', 'железное', 'железным'), short: 'жел.', color: '#9aa0a6',
     dmg: 1.27, swing: 0.93, dur: 2, work: 2, armor: 1.43, block: 1.25, warmth: 1, weight: 1.4},
-  // tier 3: steel — the towns' foundries temper it (data/tech.js 'steelmaking'); the outpost cannot, only buy it
+  // tier 3: steel — the towns' foundries temper it (data/townBuildings.js foundry `metals`); the outpost cannot, only buy it
   steel:   {class: ['metal'], tier: 3, rarity: 'uncommon', resource: 'steel', labour: 2, flags: {iron: true}, adj: adj('стальной', 'стальная', 'стальное', 'стальным'), short: 'стал.', color: '#c4ccd4',
     dmg: 1.45, swing: 0.9, dur: 2.6, work: 2.4, armor: 1.6, block: 1.32, warmth: 1, weight: 1.3},
   // tier 4: the outpost cannot work it (it needs a magma forge): only found, taken or bought far away

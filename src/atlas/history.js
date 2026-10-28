@@ -19,9 +19,8 @@ import {SEA} from '../data/roads.js';
 import {LAIRS} from '../data/lairs.js';
 import {initFauna, stepFauna, rollWeather, plague} from './fauna.js';
 import {placeLairs, stepLairs, wherePhrase} from './lairs.js';
-import {stepLeaders} from './leaders.js';
+import {stepLeaders, freeVassals} from './leaders.js';
 import {stepCourts} from './court.js';
-import {stepTech} from './tech.js';
 import {forgetSites} from './sites.js';
 import {stepParties} from './parties.js';
 import {startCalamities, stepCalamities} from './calamity.js';
@@ -140,9 +139,9 @@ export function stepHistory(a, onDay = null) {
   stepLeaders(a, t => say(a, t));
   stepCourts(a, rnd, season, t => say(a, t));   // the realms' deeds: war, peace, armies, raids, lairs cleared (atlas/court.js)
   stepKingdom(a, t => say(a, t));   // the realms as kingdoms: their own stream, in spring (atlas/kingdom.js)
-  stepTech(a, t => say(a, t));   // the realms' finds: their own stream, in spring (atlas/tech.js)   // the old lairs' leaders: their own stream, in spring (atlas/leaders.js)
   stepCalamities(a);
   stepParties(a, rnd, t => say(a, t), onDay);
+  freeVassals(a);   // the lairs that fell this season, by any hand, free their vassals (atlas/leaders.js)
   // the year's beaten raids of the tribes and the dead, in one line
   if (H.season === 3 && H.repelled) {
     const parts = Object.entries(H.repelled).map(([p, n]) => `${WORLD_PEOPLES.get(p).label} — ${n}`);

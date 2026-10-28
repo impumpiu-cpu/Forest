@@ -18,7 +18,7 @@ import {EPIC_YEARS} from '../src/data/history.js';
 import {saveAtlas, loadAtlas} from '../src/atlas/save.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {BUILDINGS} from '../src/data/buildings.js';
-import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES, FUTURE_PEOPLES} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, PLACE_NEEDS, EFFECTS, CATEGORIES} from '../src/data/townBuildings.js';
 import {placeHas, townFx, room} from '../src/atlas/towns.js';
 import {ROADS, SEA} from '../src/data/roads.js';
 import {DIPLOMACY} from '../src/data/diplomacy.js';
@@ -44,12 +44,12 @@ const hist = {lanes: 0, harbors: 0, schisms: 0, moved: 0, realms: 0, kinWars: 0,
     if (b.local && !BUILDINGS.has(b.local)) bad.push(`${b.id}: нет постройки локальной карты ${b.local}`);
     for (const id of [...(b.requires || []), ...(b.requiresAny || [])]) if (!TOWN_BUILDINGS.has(id)) bad.push(`${b.id}: требует неизвестное ${id}`);
     for (const nd of [...(b.needs || []), ...(b.needsAny || [])]) if (!(nd in PLACE_NEEDS)) bad.push(`${b.id}: неизвестное условие места ${nd}`);
-    for (const p of b.peoples || []) if (!WORLD_PEOPLES.has(p) && !FUTURE_PEOPLES.includes(p)) bad.push(`${b.id}: неизвестный народ ${p}`);
+    for (const p of b.peoples || []) if (!WORLD_PEOPLES.has(p)) bad.push(`${b.id}: неизвестный народ ${p}`);
     for (const k of Object.keys(b.fx)) if (!(k in EFFECTS)) bad.push(`${b.id}: неизвестный эффект ${k}`);
     if (!(b.cat in CATEGORIES)) bad.push(`${b.id}: неизвестная категория ${b.cat}`);
     for (const id of [...(b.requires || []), ...(b.requiresAny || [])]) if (TOWN_BUILDINGS.has(id) && TOWN_BUILDINGS.get(id).tier > b.tier && !(b.requiresAny || []).includes(id)) bad.push(`${b.id}: требует ${id}, который строится позже`);
   }
-  for (const P of [...WORLD_PEOPLES.ids(), ...FUTURE_PEOPLES]) for (const cat of ['housing', 'food'])
+  for (const P of WORLD_PEOPLES.ids()) for (const cat of ['housing', 'food'])
     if (!TOWN_BUILDINGS.all().some(b => b.tier === 0 && b.cat === cat && (!b.peoples || b.peoples.includes(P)) && !b.needs && !b.requires && !b.requiresAny))
       bad.push(`${P}: в приюте нечего строить (${CATEGORIES[cat]}) без условий`);
   check('каталог построек мира сходится', !bad.length, bad.length ? bad.slice(0, 4).join('; ') : `построек: ${TOWN_BUILDINGS.all().length}, из них на локальной карте: ${TOWN_BUILDINGS.filter(b => b.local).length}`);
@@ -75,11 +75,11 @@ function townsCheck(a, tag) {
       if (b.site && at == null && t.alive) misbuilt ||= `${t.name}: ${b.name} без своей клетки`;
       if (where != null && b.needs && !b.needs.every(nd => nd === 'road' || placeHas(a, where, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
       if (where != null && b.needsAny && !b.needsAny.some(nd => nd === 'road' || placeHas(a, where, nd))) misbuilt ||= `${t.name}: ${b.name} не на своём месте`;
-      // what it needed had to stand first; an outlying work that burnt and was built anew is later in the
-      // list now, so for those it is enough that the town ever had one
-      const before = t.built.slice(0, t.built.indexOf(id)), had = r => before.includes(r) || (TOWN_BUILDINGS.get(r).site && (a.sites || []).some(s => s.town === t.id && s.kind === r));
-      if (b.requires && !b.requires.every(had)) misbuilt ||= `${t.name}: ${b.name} раньше, чем ${b.requires.join(', ')}`;
-      if (b.requiresAny && !b.requiresAny.some(had)) misbuilt ||= `${t.name}: ${b.name} без ${b.requiresAny.join(' / ')}`;
+      // what it needed had to stand in its realm (atlas/towns.js canBuild): realms break and towns burn, so it is
+      // enough that a town of the same people has or had it (a burnt outlying work: that it ever stood)
+      const had = r => a.towns.some(o => o.people === t.people && o.built.includes(r)) || (TOWN_BUILDINGS.get(r).site && (a.sites || []).some(s => s.kind === r && a.towns.find(o => o.id === s.town)?.people === t.people));
+      if (b.requires && !b.requires.every(had)) misbuilt ||= `${t.name}: ${b.name} без ${b.requires.join(', ')} в державе`;
+      if (b.requiresAny && !b.requiresAny.some(had)) misbuilt ||= `${t.name}: ${b.name} без ${b.requiresAny.join(' / ')} в державе`;
     }
     if (t.alive && t.pop > Math.max(170, 1.1 * room(townFx(t)))) misbuilt ||= `${t.name}: ${Math.round(t.pop)} жителей в домах на ${room(townFx(t))}`;
     for (const id of t.built) hist.built[TOWN_BUILDINGS.get(id).cat] = (hist.built[TOWN_BUILDINGS.get(id).cat] || 0) + 1;

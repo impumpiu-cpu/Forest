@@ -123,7 +123,7 @@ RESOURCES.registerAll([
   // metal: bars from the furnace
   {id: 'iron',    label: 'железо',  short: 'железо',  group: 'Металл', loot: 1, keep: 8, color: '#a9b0b6'},
   {id: 'bronze',  label: 'бронза',  short: 'бронза',  group: 'Металл', loot: 1, keep: 8, color: '#c89048'},
-  // steel: the towns' foundries make it (data/tech.js 'steelmaking'); the outpost only buys it
+  // steel: the towns' foundries make it (data/townBuildings.js foundry `metals`); the outpost only buys it
   {id: 'steel',   label: 'сталь',   short: 'сталь',   group: 'Металл', loot: 1, keep: 8, color: '#c4ccd4'},
 
   // ── precious metals. Gold is washed from river sand (data/plants.js 'placer') and now and then dug

@@ -49,7 +49,7 @@ export const OFFERS = [
   {kind: 'item', id: 'hardleather', at: ['tannery']},
   {kind: 'item', id: 'lamellar', at: ['forge', 'armory']},
   {kind: 'item', id: 'chainmail', at: ['armory', 'foundry']},
-  // steel: where a foundry tempers it (and the realm knows how: data/tech.js 'steelmaking')
+  // steel: where a foundry tempers it (its realm works steel: data/townBuildings.js `metals`)
   {kind: 'item', id: 'steelsword', at: ['foundry']},
   {kind: 'item', id: 'steelspear', at: ['foundry']},
   {kind: 'item', id: 'steellamellar', at: ['foundry']},

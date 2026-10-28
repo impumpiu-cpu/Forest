@@ -2,18 +2,21 @@
 // what to build next.
 //
 // Evaluation — the sum of the effects of everything built (townFx):
-//   room       = 120 + 100 × housing: the town does not grow past it
+//   room       = 120 + Σ house of its buildings: the town does not grow past it
 //   feeds      = what the land around feeds × (1 + food), and a trading town a little more (+0.3 × trade)
 //   growth     = 14% a year × (1 + 0.6 × prestige)
 //   might      = √people × (1 + defence + 0.3 × prod): against monsters and raids
 //   raid loss  = the usual loss × (1 − ½ faith − ½ health), never below 40% of it
 //   traffic    = the town's traffic down the roads × (1 + trade)
 //   reach      = how dense the people's land is around it: + 0.2 × prestige
+// What a town may build: its people among the building's races (`peoples`), what the building asks for standing in
+// some town of its realm (`requires`, `requiresAny`), the town's step and size, the place. Each town builds for itself.
+// What metals a realm works: those of the buildings that stand in its towns (data/townBuildings.js `metals`).
 // Choosing — like the colonists' council: every building the town may build here and now gets a
 // score Σ need × taste × effect, where the needs come from the town's state (a full town needs room,
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
-import {TOWN_BUILDINGS, EFFECTS} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf} from '../data/townBuildings.js';
 import {TIERS, CAPITAL, crowned} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -23,7 +26,6 @@ import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 import {siteCell} from './sites.js';
-import {techAllowsBuilding} from './tech.js';
 import {TOWN_FX as TF, PLACE_AT as PA} from '../data/townBuildings.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -37,10 +39,29 @@ export const townGender = t => (crowned(t) ? CAPITAL.gender[t.people] : TIERS[t.
 
 export function townFx(t) {
   const out = Object.fromEntries(KEYS.map(k => [k, 0]));
-  for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); for (const k of KEYS) out[k] += b.fx[k] || 0; }
+  for (const id of t.built) { const b = TOWN_BUILDINGS.get(id); for (const k of KEYS) out[k] += fxOf(b, k); }
   return out;
 }
 export const room = fx => TF.room[0] + TF.room[1] * fx.housing;
+
+// ── the realm: what stands in its towns decides what each of them may build and what metals its smiths work.
+// A town of no realm (an old save, a hamlet just founded) looks at itself.
+export function realmBuilt(a, t) {
+  if (t.realm == null || !a?.towns) return new Set(t.built);
+  const out = new Set();
+  for (const o of a.towns) if (o.alive && o.realm === t.realm) for (const id of o.built) out.add(id);
+  for (const id of t.built) out.add(id);
+  return out;
+}
+// whether the realm of a town works this metal (a material id): one of the buildings that open it stands in the realm
+export function realmWorks(a, t, material) {
+  const by = material ? metalBuildings(material) : [];
+  if (!by.length) return true;
+  const built = realmBuilt(a, t);
+  return by.some(id => built.has(id));
+}
+// the words of the metals the realm of a town works, of those some building opens (for the cards)
+export const realmMetalWords = (a, t) => { const built = realmBuilt(a, t); return gatedMetals().filter(m => metalBuildings(m).some(id => built.has(id))).map(m => METAL_WORDS[m] || m); };
 export const might = (t, fx) => Math.sqrt(t.pop) * (1 + fx.defence + TF.mightProd * fx.prod);
 export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 
@@ -89,17 +110,20 @@ export function placeHas(a, i, need) {
   throw new Error(`town building: unknown place need «${need}»`);
 }
 
-// can this town build this now: its people, its size, how many it has, the place, what it already has
-export function canBuild(a, t, b) {
+// can this town build this now: its people, what its realm has, its size, how many it has, the place
+// (`inRealm` — realmBuilt(a, t), passed in when many buildings are asked about at once)
+export function canBuild(a, t, b, inRealm = null) {
   if (b.peoples && !b.peoples.includes(t.people)) return false;
-  if (!techAllowsBuilding(a, t, b.id)) return false;   // its realm has not found what opens it (atlas/tech.js)
+  if (b.requires || b.requiresAny) {
+    const has = inRealm || realmBuilt(a, t);
+    if (b.requires && !b.requires.every(id => has.has(id))) return false;
+    if (b.requiresAny && !b.requiresAny.some(id => has.has(id))) return false;
+  }
   if (b.tier > t.tier) return false;
   if (b.pop && t.pop < b.pop) return false;
   if (b.capital && !t.capital) return false;
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
   if (t.built.filter(id => id === b.id).length >= b.max) return false;
-  if (b.requires && !b.requires.every(id => t.built.includes(id))) return false;
-  if (b.requiresAny && !b.requiresAny.some(id => t.built.includes(id))) return false;
   if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
   const pk = t.place ||= {};
   const has = need => (need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change; roads and graves do
@@ -128,10 +152,11 @@ export function townNeeds(a, t, fx, ctx) {
 export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   const need = townNeeds(a, t, fx, ctx);
   let best = null, bv = 0.02;
+  const inRealm = realmBuilt(a, t);
   for (const b of TOWN_BUILDINGS.all()) {
-    if (!canBuild(a, t, b)) continue;
+    if (!canBuild(a, t, b, inRealm)) continue;
     let v = 0;
-    for (const k of KEYS) v += (b.fx[k] || 0) * need[k] * (P.taste[k] ?? 1);
+    for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
     v *= 0.85 + 0.3 * rnd();
     if (v > bv) { bv = v; best = b; }
   }
