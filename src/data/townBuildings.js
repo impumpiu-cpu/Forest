@@ -274,7 +274,8 @@ export const fxOf = (b, key) => (key === 'housing' ? (b.house || 0) / TOWN_FX.ro
 export const metalBuildings = m => TOWN_BUILDINGS.filter(b => b.metals?.includes(m)).map(b => b.id);
 // the races of a local building (data/buildings.js id): the peoples of the town building that stands for it (`local`);
 // null — anyone (or no town building stands for it). One truth: they are edited here, in «Постройки городов»
-export const localPeoples = localId => TOWN_BUILDINGS.all().find(b => b.local === localId)?.peoples || null;
+// (several town buildings may stand for one local building — the pens of the humans and of the greenskins: the peoples of all of them)
+export const localPeoples = localId => { const l = TOWN_BUILDINGS.all().filter(b => b.local === localId); if (!l.length || l.some(b => !b.peoples)) return null; return [...new Set(l.flatMap(b => b.peoples))]; };
 // whether a people (data/peoples.js id) builds this local building — not enforced on the local map yet (docs/TODO.md)
 export const peopleBuildsLocal = (people, localId) => { const p = localPeoples(localId); return !p || p.includes(people); };
 // every metal some building opens, and its word for the cards
@@ -319,6 +320,7 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //   build     — what a building takes: the materials by its kind (out of the store, or bought in the linked towns) and the people's
 //               work by its step (step 0 — the hamlet's own hands, free); a town that cannot pay the best one tries `tries` others
 //               (atlas/treasury.js planBuild); wood and stone not to be had the people gather by hand at × `gather.k` of their price
+//               (that gold goes to nobody: their hours), taking `gather.hands` free hands a unit for the season
 //   store     — a good's room in the store: × a year of what the town makes and takes of it (at least `least`); food is not
 //               stored here (it goes by the net, atlas/sites.js) — the granary of the ration's price is the town's surplus
 //   keep      — the seasons of what its works take a town keeps for them; safety — the seasons of its people's basic needs it
@@ -345,7 +347,7 @@ export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0
     comfort: {lux: 0.001, honey: 0.004, potions: 0.002, cloth: 0.01, drink: 0.02, herbs: 0.004}, rich: 1, grow: [0.95, 0.05], comfortGrow: 0.1, unmet: 0.1},
   makers: {wage: 0.15, tax: 0.15}, people: {tax: 0.1}, link: 2,
   plunder: {raid: 0.15, storm: 0.4, cult: 2, chief: 0.3, dare: 1.5},
-  build: {labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3}, mats: {housing: {wood: 20, planks: 10}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
+  build: {labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3, hands: 0.5}, mats: {housing: {wood: 20, planks: 10}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
   upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, man: 3, build: 400, hoard: 3}, tax: {keep: 0.02, rate: {high: 0.3, usual: 0.15, light: 0.05}},
   price: {short: 0.6, need: 0.4, plenty: 0.4, lo: 0.6, hi: 1.8, food: 0.4}};
 
@@ -353,12 +355,13 @@ export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0
 // its realm works (`tiers`, data/townBuildings.js `metals`). First it takes over a unit of work (`order`: the mine first),
 // one for every `per` people (at least one): the unit needs `jobs` of its hands and gives `bonus` more by the golem's metal;
 // then it remakes the takers in a better metal, once the realm works one; then it stands guard — one for every `per` people,
-// each worth `men` of the town's people in its might and its army (atlas/towns.js might, atlas/diplomacy.js muster).
+// each worth `men` of the town's people in its might and its army (atlas/towns.js might, atlas/diplomacy.js muster). A golem is made
+// only while the forge works at least `make.work` and of `make.metal` of the store's metal.
 export const GOLEMS = {
   order: ['mineshaft', 'deepmine', 'quarry', 'smelter', 'forge', 'foundry', 'coalpit', 'charpit', 'sawmill', 'woodcut', 'claypit', 'saltworks',
     'crafthut', 'tannery', 'loom', 'potter', 'jeweler', 'glassworks', 'mushrooms', 'watermill', 'bakery', 'brewery'],
   tiers: ['bronze', 'iron', 'steel', 'mithril'],
-  per: 400, jobs: 0.5,
+  per: 400, jobs: 0.5, make: {work: 0.5, metal: 20},
   bonus: {bronze: 0.25, iron: 0.35, steel: 0.45, mithril: 0.6},
   men: {bronze: 4, iron: 6, steel: 8, mithril: 12},
 };

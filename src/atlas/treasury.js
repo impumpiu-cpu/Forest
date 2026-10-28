@@ -46,6 +46,7 @@ const setEcon = (t, e) => Object.defineProperty(t, 'econ', {value: e, writable: 
 const stored = g => !FOODS.has(g) && g !== 'gold';
 const add = (o, k, v) => { o[k] = r2((o[k] || 0) + v); };
 const KINDS = ['basic', 'comfort'];
+const peopleOf = id => (WORLD_PEOPLES.has(id) ? WORLD_PEOPLES.get(id) : null);
 
 // what the store and the treasury lend the buildings this season, as a year's rate (the mint coins from the treasury)
 const fromStore = t => { const o = {}; for (const [g, v] of Object.entries(t.stock || {})) o[g] = v * S; if (t.gold > 0) o.gold = t.gold * S; return o; };
@@ -70,19 +71,24 @@ function open(t) {
   if (t.makersGold == null) t.makersGold = r2(t.pop * M.start.makers);
 }
 // the people's wants this season, by good: the basic ones, and the comfort ones × how rich they are (gold a head against `rich`)
+// (× its people's `needs`: a horde wants less; a good its people do without is swapped as its buildings do — data/peoples.js)
 function wants(t) {
-  const N = M.needs, rich = Math.min(1, Math.max(0, t.peopleGold) / Math.max(1, t.pop * N.rich)), o = {basic: {}, comfort: {}};
-  for (const [g, v] of Object.entries(N.basic)) o.basic[g] = v * t.pop;
-  for (const [g, v] of Object.entries(N.comfort)) o.comfort[g] = v * t.pop * rich;
+  const N = M.needs, P = peopleOf(t.people), k = P?.needs ?? 1, rich = Math.min(1, Math.max(0, t.peopleGold) / Math.max(1, t.pop * N.rich)), o = {basic: {}, comfort: {}};
+  const put = (to, g, v) => { const [h, x] = swapOf(P, g); to[h] = (to[h] || 0) + v * x; };
+  for (const [g, v] of Object.entries(N.basic)) put(o.basic, g, v * t.pop * k);
+  for (const [g, v] of Object.entries(N.comfort)) put(o.comfort, g, v * t.pop * rich * k);
   return o;
 }
+// a good as a people takes it: [the good, × how much] (data/peoples.js swaps: the greenskins' bone for pots, wood for salt)
+const swapOf = (P, g) => { const s = P?.swaps?.[g]; return s ? [s.to, s.k] : [g, 1]; };
 // the towns a town is linked with, and how well: [other, link]
 const linksOf = (a, t) => [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && (l.p === t || l.q === t)).map(l => [l.p === t ? l.q : l.p, l]);
 // × the price between two towns: of one realm 1, of a realm that trades with it `foreign`, else 0 (no dealing)
 const dealOf = (a, b, s) => (b.realm == null || s.realm == null ? 0 : b.realm === s.realm ? 1 : trades(a, b.realm, s.realm) ? M.foreign : 0);
 
 export function seasonMoney(a, towns) {
-  for (const t of towns) { open(t); t.trade = {}; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }
+  // (what was earned and dealt by building since the last season — atlas/peoples.js, after it — is the season's too: t.carry)
+  for (const t of towns) { open(t); t.trade = {...(t.carry || {})}; delete t.carry; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }
   const links = [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && l.p.realm != null && l.q.realm != null);
   const deal = (b, s) => dealOf(a, b, s);
   const earn = (t, who, v) => add(t.trade, who === 'makers' ? 'makersIn' : 'peopleIn', v);   // the season's earnings, taxed at its end
@@ -190,17 +196,17 @@ export function seasonMoney(a, towns) {
     const bill = hands * M.makers.wage, wage = Math.min(bill, Math.max(0, t.makersGold));
     t.makersGold = r2(t.makersGold - wage); t.peopleGold = r2(t.peopleGold + wage); earn(t, 'people', wage);
     add(t.trade, 'wages', wage); if (bill > wage) add(t.trade, 'owed', bill - wage);
-    // the upkeep: from the treasury (and the realm's) to the people who keep the buildings
+    // the taxes: of what the makers and the people earned this season (before the upkeep: the treasury pays with them)
+    const tm = Math.min(Math.max(0, t.makersGold), (t.trade.makersIn || 0) * M.makers.tax), tp = Math.min(Math.max(0, t.peopleGold), (t.trade.peopleIn || 0) * M.people.tax);
+    t.makersGold = r2(t.makersGold - tm); t.peopleGold = r2(t.peopleGold - tp); t.gold = r2(t.gold + tm + tp); add(t.trade, 'tax', tm + tp);
+    // the upkeep: from the treasury (and the realm's) to the people who keep the buildings (their pay is taxed next season)
     const cost = upkeepYear(t) / S;
     let owe = cost;
     const pay = Math.min(owe, Math.max(0, t.gold)); t.gold = r2(t.gold - pay); owe -= pay;
     if (owe > 0 && R && R.gold > 0) { const p = Math.min(owe, R.gold); R.gold = r2(R.gold - p); owe -= p; t.trade.aid = r2(p); }
-    t.peopleGold = r2(t.peopleGold + cost - owe); earn(t, 'people', cost - owe);
+    t.peopleGold = r2(t.peopleGold + cost - owe); add(t.carry ||= {}, 'peopleIn', cost - owe);
     t.trade.upkeep = r2(cost);
     t.unpaid = cost > 0 ? Math.round(owe / cost * 1000) / 1000 : 0;
-    // the taxes: of what the makers and the people earned this season
-    const tm = Math.min(Math.max(0, t.makersGold), (t.trade.makersIn || 0) * M.makers.tax), tp = Math.min(Math.max(0, t.peopleGold), (t.trade.peopleIn || 0) * M.people.tax);
-    t.makersGold = r2(t.makersGold - tm); t.peopleGold = r2(t.peopleGold - tp); t.gold = r2(t.gold + tm + tp); add(t.trade, 'tax', tm + tp);
     // the season's prices of its market (saved): a good its works or its people lack dearer, one it has in plenty cheaper
     const P = M.price, mk = {};
     for (const g of new Set([...Object.keys(e.short), ...Object.keys(t.stock), ...Object.keys(t.needs.lack)])) {
@@ -217,9 +223,10 @@ export function planBuild(a, t, b) {
   open(t);
   const B = M.build, step = Math.min(b.tier, B.labor.length - 1);
   if (step === 0) return {t, cost: 0, own: [], bought: [], labor: 0};   // a hamlet's work: the people's own hands, of what they find
-  const own = [], bought = [];
-  let mats = 0, gather = 0;
-  for (const [g, n] of Object.entries(B.mats[b.cat] || B.mats.default)) {
+  const own = [], bought = [], P = peopleOf(t.people);
+  let mats = 0, gather = 0, hands = 0;
+  for (const [g0, n0] of Object.entries(B.mats[b.cat] || B.mats.default)) {
+    const [g, x] = swapOf(P, g0), n = n0 * x;   // its people's own materials (the greenskins' rough logs for boards)
     let need = n;
     const k = Math.min(need, t.stock[g] || 0);
     if (k > 0) { own.push([g, k, k * priceAt(t, g)]); mats += k * priceAt(t, g); need -= k; }
@@ -229,22 +236,26 @@ export function planBuild(a, t, b) {
       const v = q * priceAt(s, g) * d; bought.push([s, g, q, v, l]); mats += v; need -= q;
       if (need < M.dust) break;
     }
-    if (need >= M.dust && B.gather.goods.includes(g)) { gather += need * goodPrice(g) * B.gather.k; need = 0; }   // the people fetch it by hand, dearly
+    if (need >= M.dust && B.gather.goods.includes(g)) { gather += need * goodPrice(g) * B.gather.k; hands += need * B.gather.hands; need = 0; }   // the people fetch it by hand, dearly
     if (need >= M.dust) return null;   // the materials are not to be had
   }
-  const labor = B.labor[step] + gather, cost = mats + labor, payer = B.payer[b.cat] || B.payer.default;
+  const labor = B.labor[step], cost = mats + labor + gather, payer = B.payer[b.cat] || B.payer.default;
   if ((t.grant || 0) + Math.max(0, t[payer]) < cost) return null;
-  return {t, cost, own, bought, labor, payer};
+  if (hands && t.econ && t.econ.freeHands < hands) return null;   // nobody free to fetch it
+  return {t, cost, own, bought, labor, gather, hands, payer};
 }
 export function doBuild(P) {
-  const {t, cost, own, bought, labor, payer} = P;
+  const {t, cost, own, bought, labor, hands, payer} = P;
   if (!cost) return;
+  // the gathering by hand costs what it costs (its gold goes to nobody: the hours of those who fetched it), and takes hands
+  if (hands && t.econ) t.econ.freeHands -= hands;
+  const carry = t.carry ||= {};
   const fromGrant = Math.min(t.grant || 0, cost);
   t.grant = r2((t.grant || 0) - fromGrant); t[payer] = r2(t[payer] - (cost - fromGrant));
   const used = t.econ ? (t.econ.build ||= {}) : {};   // what building took this year, by good (for the reports)
-  for (const [g, k, v] of own) { t.stock[g] = r2(t.stock[g] - k); if (t.stock[g] < M.dust) delete t.stock[g]; t.makersGold = r2(t.makersGold + v); used[g] = (used[g] || 0) + k; }
-  for (const [s, g, q, v, l] of bought) { s.stock[g] = r2(s.stock[g] - q); if (s.stock[g] < M.dust) delete s.stock[g]; s.makersGold = r2(s.makersGold + v); l.goods = (l.goods || 0) + v; used[g] = (used[g] || 0) + q; }
-  t.peopleGold = r2(t.peopleGold + labor);
+  for (const [g, k, v] of own) { t.stock[g] = r2(t.stock[g] - k); if (t.stock[g] < M.dust) delete t.stock[g]; t.makersGold = r2(t.makersGold + v); add(carry, 'makersIn', v); used[g] = (used[g] || 0) + k; }
+  for (const [s, g, q, v, l] of bought) { s.stock[g] = r2(s.stock[g] - q); if (s.stock[g] < M.dust) delete s.stock[g]; s.makersGold = r2(s.makersGold + v); l.goods = (l.goods || 0) + v; used[g] = (used[g] || 0) + q; const sc = s.carry ||= {}; add(sc, 'makersIn', v); add(sc, 'sold', v); add(carry, 'bought', v); }
+  t.peopleGold = r2(t.peopleGold + labor); add(carry, 'peopleIn', labor);
   t.builtCost = r2((t.builtCost || 0) + cost);   // what its building cost (for the cards)
 }
 
@@ -254,7 +265,7 @@ export function doBuild(P) {
 export function plunder(raider, target, share) {
   if (!raider || !target) return null;
   open(raider); open(target);
-  const k = Math.min(1, share * (WORLD_PEOPLES.get(raider.people)?.warCult ? M.plunder.cult : 1));
+  const k = Math.min(1, share * (peopleOf(raider.people)?.warCult ? M.plunder.cult : 1));
   let gold = 0, worth = 0;
   for (const key of ['gold', 'peopleGold', 'makersGold']) { const v = Math.max(0, target[key]) * k; target[key] = r2(target[key] - v); gold += v; }
   for (const [g, n] of Object.entries(target.stock)) {
@@ -295,7 +306,7 @@ export function realmSpend(realm, towns, war) {
   for (const t of towns) {
     const share = t.pop / pop;
     open(t);
-    t.garrison = r2(men * share); t.peopleGold = r2(t.peopleGold + army * share);
+    t.garrison = r2(men * share); t.peopleGold = r2(t.peopleGold + army * share); add(t.carry ||= {}, 'peopleIn', army * share);
     const room = Math.max(0, R.build * R.hoard - (t.grant || 0)), g = Math.min(room, (budget - army) * share);
     if (g > 0) { t.grant = r2((t.grant || 0) + g); build += g; }
   }

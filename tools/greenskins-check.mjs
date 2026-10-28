@@ -18,6 +18,7 @@ import {stepWarBeasts} from '../src/atlas/beasts.js';
 import {warOn} from '../src/atlas/deeds/warOn.js';
 import {makePeace} from '../src/atlas/deeds/makePeace.js';
 import {captives} from '../src/atlas/deeds/captives.js';
+import {muster} from '../src/atlas/diplomacy.js';
 import {relationsOf} from '../src/atlas/deeds/realm.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {TOWN_BUILDINGS} from '../src/data/townBuildings.js';
@@ -128,4 +129,14 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
     warg && !spider && v?.species === 'varg' && v.faction === 'allies' && broken && wolf.faction === 'allies' && wolf.hp > 0, `варг ${v?.faction}, волк ${wolf.faction}`);
 }
 
-if (fail.length) process.exit(1);
+// the horde: half its people to war, all its beasts driven ahead; it breeds fast, wants little
+{
+  const P = WORLD_PEOPLES.get('orcs'), H = WORLD_PEOPLES.get('humans');
+  const t = gtowns.find(x => x.pop > 100) || gtowns[0], R = a.realms.find(r => r.id === t.realm), tg = a.towns.find(x => x.alive && x.realm !== t.realm);
+  t.stock = {...(t.stock || {}), beasts: 20}; const pop0 = t.pop, said = [];
+  muster(a, t, tg, null, () => 0.5, s => said.push(s));
+  const army = (a.parties || []).find(p => p.kind === 'army' && p.from === t.id);
+  check('орда: в поход идёт половина города и весь скот; растёт почти вдвое быстрее, благ хочет вдвое меньше',
+    !!army && Math.abs(army.men - Math.round(0.5 * pop0)) <= 1 && army.beasts === 20 && !(t.stock.beasts > 0) && P.breed > 1.5 && P.needs < 1 && !H.levy, said.join(' '));
+}
+

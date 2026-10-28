@@ -88,7 +88,7 @@ function muster(a, A, c, tell) {
   for (const realm of A.members) {
     const t = (a.towns || []).filter(o => o.alive && o.realm === realm).sort((p, q) => Math.hypot(p.x - x, p.y - y) - Math.hypot(q.x - x, q.y - y))[0];
     if (!t) continue;
-    const men = Math.round(ALLY.levy * t.pop);
+    const men = Math.round(ALLY.levy * (WORLD_PEOPLES.get(t.people)?.levy ?? 1) * t.pop);
     if (men < ALLY.minMen) continue;
     const R = realmOf(a, realm);
     const p = sendParty(a, 'army', t.i, lair.i, {owner: realm, from: t.id, target: null, lair: lair.id, ally: A.id, war: null, men, might: armyMight(men + (golemMen(t) + (t.warBeasts?.men || 0)), townFx(t)),

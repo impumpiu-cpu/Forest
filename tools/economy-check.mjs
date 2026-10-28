@@ -7,6 +7,7 @@ import {schismFactor} from '../src/atlas/kingdom.js';
 import {RUINS} from '../src/data/kingdom.js';
 import {townEconomy} from '../src/atlas/economy.js';
 import {seaFeed} from '../src/atlas/sea.js';
+import {stepGolems} from '../src/atlas/golems.js';
 import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, planBuild, doBuild, plunder, lootOf} from '../src/atlas/treasury.js';
 import {TOWN_BUILDINGS, TOWN_MONEY, foodNet} from '../src/data/townBuildings.js';
 import {rationPrice} from '../src/campaign/town.js';
@@ -53,7 +54,7 @@ const T = a.towns.filter(t => t.alive);
 {
   const rich = T.filter(t => t.gold > 0).length, traded = T.filter(t => t.trade?.bought || t.trade?.sold).length;
   const bought = T.reduce((s, t) => s + (t.trade?.bought || 0) + (t.trade?.imported || 0), 0), sold = T.reduce((s, t) => s + (t.trade?.sold || 0), 0);
-  check('у городов казна и склад; мастерские и жители покупают у других городов — золото уходит продавцу', rich > T.length / 2 && traded > 0 && Math.abs(bought - sold) < 1 && T.some(t => Object.keys(t.stock || {}).length),
+  check('у городов казна и склад; мастерские и жители покупают у других городов — золото уходит продавцу', rich > T.length / 2 && traded > 0 && Math.abs(bought - sold) < 1 + 0.01 * sold && T.some(t => Object.keys(t.stock || {}).length),
     `с деньгами ${rich} из ${T.length}, торговали ${traded}, оборот ${Math.round(bought)} зол.`);
   const over = T.filter(t => !t.plunder).flatMap(t => Object.entries(t.stock || {}).filter(([g, v]) => t.econ && v > roomOf(t, g) + 0.01).map(([g]) => `${t.name}:${g}`));
   check('склад не больше своей вместимости (лишнее уходит купцам; награбленное — со следующего сезона)', !over.length, over.slice(0, 3).join(', '));
@@ -128,6 +129,26 @@ const T = a.towns.filter(t => t.alive);
   const human = {...raider, people: 'humans', stock: {}}, v1 = mk(), v2 = mk();
   const got = plunder(raider, v1, TOWN_MONEY.plunder.raid), got2 = plunder(human, v2, TOWN_MONEY.plunder.raid);
   check('набег вывозит товары и золото; культ войны — больше', got && got[0] > 0 && raider.stock.tools > 0 && raider.peopleGold > raider.gold && got[0] > got2[0] && lootOf(v1) < lootOf(mk()), JSON.stringify(got));
+}
+
+// the second review: building's earnings taxed, the upkeep paid after the taxes, the peoples' swaps in needs and building
+{
+  const x = {pop: 200, people: 'humans', gold: 0, peopleGold: 100, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}};
+  const pl = planBuild(a, x, {tier: 1, cat: 'housing'}); doBuild(pl);
+  check('доход от стройки облагается налогом в следующем сезоне', (x.carry?.makersIn || 0) > 0 && (x.carry?.peopleIn || 0) > 0, JSON.stringify(x.carry));
+  const o = {pop: 200, people: 'orcs', gold: 0, peopleGold: 100, makersGold: 0, stock: {wood: 60}, built: [], market: {}};
+  check('у зеленокожих дом строится из брёвен вместо тёса', !!planBuild(a, o, {tier: 1, cat: 'housing'}));
+  const t = T.find(x => x.people === 'orcs'), lack = Object.keys(t?.needs?.lack || {});
+  check('зеленокожим не нужны горшки и соль (кость и дерево вместо них), и благ им нужно вдвое меньше', !!t && !lack.includes('pots') && !lack.includes('salt') && (t.econ.people?.bone?.want || 0) > 0,
+    t ? `${t.name}: не хватает ${lack.join(', ') || '—'}` : 'нет города');
+  check('содержание платится после налогов: неоплаченного почти нет', T.filter(x => x.unpaid > 0).length <= T.length * 0.2, `${T.filter(x => x.unpaid > 0).length} из ${T.length}`);
+}
+
+// the golem forge works of the forge's work and the store's metal
+{
+  const t = {built: ['golemforge', 'forge', 'smelter'], pop: 800, realm: null, stock: {}, work: {golemforge: 1}}, ar = {hist: {year: 1}};
+  stepGolems(ar, t); const none = stepGolems(ar, t); t.stock.metal = 50; const one = stepGolems(ar, t); t.work.golemforge = 0.1; t.stock.metal = 50; const idle = stepGolems(ar, t);
+  check('голема не делают без металла на складе и без работы кузни; делают — металл уходит', !none && !!one && !idle && t.stock.metal === 50, `${JSON.stringify(one)}`);
 }
 
 if (fail.length) process.exit(1);

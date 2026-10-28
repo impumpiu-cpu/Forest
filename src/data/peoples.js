@@ -24,7 +24,10 @@
 //   eat:      food a year of one of its people, in people-years (data/townBuildings.js TOWN_GOODS food): an orc eats more
 //   placeFlows: more × where its town stands on such a place (data/townBuildings.js PLACE_NEEDS, any of `needsAny`)
 //   swaps:    a good its buildings never take, and what they take instead: {metal: {to: 'wood', k: 3}} — an elven
-//             jeweller sets gems in ironwood and the sacred tree, three of wood for one of metal
+//             jeweller sets gems in ironwood and the sacred tree, three of wood for one of metal; its people's needs and the
+//             materials of its building swap the same way (atlas/treasury.js)
+//   levy:     × the share of a town's people its army takes (data/parties.js ARMY.levy); breed — × how fast its towns grow;
+//             needs — × the goods its people want a head (atlas/treasury.js); none — ×1
 //   names:    syllables of town names: first + middle (may be empty) + last
 //   color:    on the world map
 import {Registry} from '../core/registry.js';
@@ -101,6 +104,9 @@ WORLD_PEOPLES.registerAll([
     // they will not crowd: every house of theirs holds × `house` of its people (atlas/towns.js townFx); shacks and tents are
     // their homes, no rough housing to breed corruption (`roughHome`: atlas/towns.js roughShare)
     house: 0.75, roughHome: true,
+    // a horde: half its people go to war (× ARMY.levy), it breeds fast (its towns grow × `breed`: many children, not all live),
+    // it wants half the goods of the others to live content (× its people's needs, atlas/treasury.js)
+    levy: 5, breed: 1.8, needs: 0.5, beastLevy: 1,   // and it drives all its herds and war beasts into the fight (data/parties.js ARMY.beasts)
     // what they do without: brew poured to the spirits for honey and wax, meat smoked on the fire for salt, skulls and horns
     // for pots, rough logs for boards (atlas/economy.js swaps)
     swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'bone', k: 1}, planks: {to: 'wood', k: 1.5}},
