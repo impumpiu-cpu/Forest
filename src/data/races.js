@@ -93,11 +93,13 @@ export const RACES = [
 
   // Dwarves: long-lived, slow to breed, at home under the mountain. Their gut takes fermented
   // grain best of all: a sober dwarf works slower, a dwarf with a cup of braga works better.
-  {id: 'dwarf', kind: 'race', deeds: {realm: [...DEED_WAYS.people]}, home: {foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4},
+  {id: 'dwarf', kind: 'race', deeds: {realm: [...DEED_WAYS.liberators]}, home: {foothills: 1, highlands: 0.75, taiga: 0.15, tundra: 0.15, forest: 0.1, steppe: 0.1, volcano: 0.4},
     label: 'дварф', plural: 'дварфы', rel: 'dwarf', settle: 1.3,
     heatHarm: 82, look: person(0.55, '#d59a78'),
     body: {adult: 40, life: 300, fertility: 0.2, diet: 'всеядный, брага — тоже еда'},
     mods: {cold: 0.7},
+    // the pace of a job (agents/jobRunners.js workRate): the rock and the forge are theirs
+    jobPace: {mine: 1.25, dig: 1.25, smith: 1.2},
     // brew: a cup of braga feeds (`food`), work goes at `drunk` for a day and a half after it, at `sober` otherwise
     brew: {food: 0.3, drunk: 1.1, sober: 0.85, lasts: 1.5},
     innate: [{label: 'хмельная кровь', note: 'брага кормит и бодрит; без неё по утрам хмурится'},

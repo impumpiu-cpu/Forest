@@ -12,6 +12,9 @@
 //   place  — where it stands in the band's order: front (the first rank) · mid (behind it: a spear over a shoulder) ·
 //            flank (round the side) · back (behind them all)
 //   group  — линия · подвижные · дальний бой · поддержка (for the table)
+//   blows  — × its blows of a kind ({blunt: 1.3}: the dwarven hammer-smith, agents/combat.js damage)
+//   fireproof — fire and heat do not harm it (the forge-master: agents/body.js heatHarm)
+//   frenzy — a wound throws it into a frenzy (FRENZY below: the berserker, agents/combat.js)
 // The behaviours of a role and how a mind changes them (sentient · mindless) come with the next step.
 //
 // ROLE_MIX — the matrix «species × role»: the weight of each role a species may take (none — it may not), `best` — the
@@ -37,6 +40,12 @@ COMBAT_ROLES.registerAll([
   {id: 'cleaver', group: 'линия', label: 'рубака', note: 'двуручное оружие, мало брони: врезается, оглушает, проламывает строй',
     hands: [[['maul'], 2], [['warhammer'], 2], [['axe'], 1], [['sword'], 1]],
     body: 'light', back: [], potions: 0, squad: 'front', place: 'front'},
+  // the dwarves' hammer-smith: a two-handed hammer and a smith's arm — its blunt blows land harder; the first rank
+  {id: 'smith', group: 'линия', label: 'мастер-кузнец', note: 'молотобоец: двуручный молот, дробящий удар сильнее на треть, стоит в первом ряду',
+    hands: [[['warhammer'], 3], [['maul'], 1]], body: 'heavy', back: [], potions: 0, squad: 'front', place: 'front', blows: {blunt: 1.3}},
+  // two weapons, no armour; a wound throws it into a frenzy, then it is spent (FRENZY)
+  {id: 'berserker', group: 'линия', label: 'берсерк', note: 'два оружия, без брони; раненый впадает в бешенство: бьёт сильнее, быстрее, увёртливее, а после устаёт',
+    hands: [[['axe', 'axe'], 3], [['hatchet', 'hatchet'], 1], [['sword', 'axe'], 1]], body: 'none', back: [], potions: 0, squad: 'front', place: 'front', frenzy: true},
   {id: 'brute', group: 'линия', label: 'громила', note: 'дубина в рост человека: огры, великаны',
     hands: [[['maul'], 1], [['club'], 2]], body: 'none', back: [], potions: 0, squad: 'front', place: 'front'},
   // ── the quick ones
@@ -49,6 +58,10 @@ COMBAT_ROLES.registerAll([
   // ── from afar
   {id: 'archer', group: 'дальний бой', label: 'стрелок', note: 'лук или арбалет за спиной щитоносцев',
     hands: [[['bow'], 3], [['crossbow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
+  // the dwarves' forge-master: no weapon and no armour; breathes the forge's fire at a javelin's reach, and fire does not
+  // take him
+  {id: 'forgemaster', group: 'дальний бой', label: 'мастер горна', note: 'без оружия и брони: плюёт огнём на дальность метания, поджигает цель и землю под ней; огонь его не берёт',
+    hands: [[['spitfire'], 1]], body: 'none', back: [], potions: 0, squad: 'shooter', place: 'mid', fireproof: true},
   // ── support
   // the elves' caller of beasts: keeps back with a staff; once in a fight calls the forest beasts (agents/summon.js)
   {id: 'summoner', group: 'поддержка', label: 'призыватель зверей', note: 'посох; раз за бой зовёт лесных зверей на подмогу',
@@ -71,6 +84,8 @@ LINKS.registerAll([
   {id: 'pack',    label: 'стая',         note: 'копья вперёд, рубака и сеть', roles: ['spearman', 'spearman', 'cleaver', 'skirmisher', 'catcher']},
   {id: 'slavers', label: 'ловцы рабов',  note: 'сети и ножи, луки прикрывают', roles: ['catcher', 'catcher', 'cutthroat', 'archer', 'archer']},
   {id: 'bones',   label: 'костяной строй', note: 'мертвецы: щиты и копья, лук позади; мертвяки без рук идут между ними', roles: ['shield', 'spearman', 'spearman', 'shield', 'archer']},
+  {id: 'anvil',   label: 'наковальня',   note: 'дварфы: щит и два молотобойца впереди, мастер горна за ними, арбалет сзади', roles: ['shield', 'smith', 'smith', 'forgemaster', 'archer']},
+  {id: 'berserks', label: 'бешеные',     note: 'дварфы: берсерки врезаются, молотобоец и щит следом', roles: ['berserker', 'berserker', 'smith', 'shield', 'archer']},
   {id: 'volley',  label: 'стрелки',      note: 'луки, а впереди один щит', roles: ['archer', 'archer', 'archer', 'shield', 'skirmisher']},
 ]);
 
@@ -92,6 +107,7 @@ export const ROLE_MIX = {
   human:       {shield: 2, spearman: 1.5, cleaver: 1.5, cutthroat: 1, skirmisher: 1, catcher: 0.3, archer: 1.2, healer: 0.3, best: 3},
   orc:         {shield: 2, spearman: 1, cleaver: 3, skirmisher: 0.7, catcher: 0.3, archer: 0.3, healer: 0.3, best: 2},
   goblin:      {shield: 0.3, spearman: 1, cutthroat: 2.5, skirmisher: 3, catcher: 0.5, archer: 2, healer: 0.3, best: 1},
+  dwarf:       {shield: 2, spearman: 1, smith: 2, berserker: 0.8, forgemaster: 0.5, cleaver: 1, archer: 0.8, healer: 0.3, best: 4},
   elf:         {shield: 0.5, spearman: 1, skirmisher: 1, archer: 3, healer: 0.4, summoner: 0.4, best: 4},
   darkelf:     {spearman: 1, cutthroat: 2, catcher: 1.5, skirmisher: 1, archer: 3, healer: 0.4, best: 3},
   gnoll:       {shield: 0.7, spearman: 2, cleaver: 1.5, skirmisher: 1.5, catcher: 0.7, archer: 0.7, best: 1},
@@ -169,5 +185,12 @@ export function roleKit(species, role, rng, t) {
 //              biomes, × `levels`), at most `max`
 //   cooldown — ticks before it calls again (one fight); `ring` — they come out of the wood this far from it
 //   sight    — a called beast goes for a foe of its caller this close; `quiet` ticks with no foe — it goes back to the wood
+// the berserker's frenzy (role `berserker`): a wound that lands throws it into `frenzy` (data/conditions.js: blows
+// stronger, faster, harder to hit) for its `ticks`; then it is `spent` (slower: the row the frenzy names as `then`). Not twice in a row: no frenzy while
+// raging or spent, and the next one needs a fresh wound after the weariness is over
+export const FRENZY = {rage: 'frenzy', spent: 'spent'};   // (how long each: their rows' `ticks`)
+// the row of a creature's fighting role, null for none
+export const roleRow = a => (a?.fightRole && COMBAT_ROLES.has(a.fightRole) ? COMBAT_ROLES.get(a.fightRole) : null);
+
 export const SUMMON = {share: 0.25, reach: 20, max: 4, cooldown: 1200, ring: 3, sight: 14, quiet: 240, levels: {common: 1, usual: 0.6, rare: 0.25}};
 

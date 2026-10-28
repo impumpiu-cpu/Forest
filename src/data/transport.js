@@ -14,7 +14,15 @@ export const BEASTS = {
   horse: {use: 'ride', cells: 4, pulls: 0.5, label: 'лошадь', plural: 'лошади', acc: 'лошадь'},
   camel: {use: 'ride', cells: 4, pulls: 0.5, label: 'верблюд', plural: 'верблюды', acc: 'верблюда'},
   mule:  {use: 'pack', boxes: 2, pulls: 1, label: 'мул', plural: 'мулы', acc: 'мула'},
+  // the dwarves' golems (data/constructs.js), bought in a dwarven town with a golem forge (data/market.js): they carry two
+  // boxes and pull a wagon, eat nothing, stand guard over the camp (agents/behaviours/golem.js) and are mended only in a
+  // town with a forge or by the camp's own forge (GOLEM_REPAIR.day); `golem` — the caravan has at most `max` of them
+  bronzegolem:  {use: 'pack', boxes: 2, pulls: 1, golem: true, label: 'бронзовый голем', plural: 'бронзовые големы', acc: 'бронзового голема'},
+  irongolem:    {use: 'pack', boxes: 2, pulls: 1, golem: true, label: 'железный голем', plural: 'железные големы', acc: 'железного голема'},
+  steelgolem:   {use: 'pack', boxes: 2, pulls: 1, golem: true, label: 'стальной голем', plural: 'стальные големы', acc: 'стального голема'},
+  mithrilgolem: {use: 'pack', boxes: 2, pulls: 1, golem: true, label: 'мифриловый голем', plural: 'мифриловые големы', acc: 'мифрилового голема'},
 };
+export const CARAVAN_GOLEMS = {max: 1};
 
 // vehicles: room in boxes, what makes them, who pulls them.
 //   tool: the least metal of a tool that can build it (1 — bronze, 2 — iron; data/items.js `bronze` / `iron`);

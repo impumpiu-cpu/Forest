@@ -126,7 +126,7 @@ TOWN_BUILDINGS.registerAll([
   B('treehouse', 'дома на деревьях', 'pl', 'housing', 1, E, {}, {max: 8, needs: ['forest'], house: 300, heat: 60, in: {wood: 10}, out: {wood: 15}, upgrades: ['hut']}),
   // the elves' hall in the crowns of the old trees: the tree-houses of a big town grown together; the wood still gives
   B('elfhall', 'древесный чертог', 'm', 'housing', 2, E, {prestige: 0.05}, {max: 8, needs: ['forest'], house: 450, heat: 50, in: {wood: 15}, out: {wood: 20}, upgrades: ['treehouse']}),
-  B('hallhomes', 'подгорные жилища', 'pl', 'housing', 1, D, {defence: 0.05}, {max: 8, needsAny: ['steep', 'caves'], upgrades: ['hut'], house: 400, heat: 40, in: {stone: 10}}),   // the mountain keeps the warmth: little wood to heat
+  B('hallhomes', 'подгорные жилища', 'pl', 'housing', 1, D, {defence: 0.05}, {max: 8, needsAny: ['steep', 'caves'], local: 'hallhome', upgrades: ['hut'], house: 400, heat: 40, in: {stone: 10}}),   // the mountain keeps the warmth: little wood to heat
   // the dwarves' deep hall: their homes under the mountain grown into one — the densest housing of the world
   B('deephall', 'подгорный чертог', 'm', 'housing', 2, D, {defence: 0.08, prestige: 0.05}, {max: 8, needsAny: ['steep', 'caves'], upgrades: ['hallhomes'], house: 700, heat: 30, in: {stone: 15}}),
   B('stonehouse', 'каменные дома', 'pl', 'housing', 2, [...H, ...D], {defence: 0.03}, {max: 8, needs: ['stone'], requires: ['quarry'], upgrades: ['house', 'hut'], house: 400, heat: 150, in: {stone: 15}}),
@@ -135,7 +135,7 @@ TOWN_BUILDINGS.registerAll([
   B('garden', 'огороды', 'pl', 'food', 0, ALL, {food: 0.15}, {per: 250, max: 3, needs: ['fertile'], local: 'garden', site: true, jobs: 15, out: {food: 35, herbs: 10}}),
   B('field', 'пашни', 'pl', 'food', 0, [...H, ...E, ...O], {food: 0.3}, {per: 150, max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {grain: 110, fiber: 100}}),
   B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {food: 0.3}, {per: 150, max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, out: {food: 45, wood: 20, herbs: 7, fiber: 30}}),
-  B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {food: 0.3}, {per: 150, max: 4, needsAny: ['caves', 'steep'], site: true, jobs: 15, out: {food: 50, grain: 20}}),   // and mushroom malt: the mill, the quern and the brewery live on it
+  B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {food: 0.3}, {per: 150, max: 4, needsAny: ['caves', 'steep'], local: 'mushcave', site: true, jobs: 15, out: {food: 50, grain: 20}}),   // and mushroom malt: the mill, the quern and the brewery live on it
   B('pen', 'загоны', 'pl', 'food', 0, [...H, ...D, ...O], {food: 0.15}, {per: 300, max: 2, needs: ['pasture'], local: 'pen', site: true, jobs: 8, out: {food: 20, fiber: 120, hide: 30, beasts: 4}}),
   B('pasture', 'выгоны и стада', 'pl', 'food', 1, [...H, ...O], {food: 0.25, prod: 0.05}, {per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, out: {food: 40, fiber: 200, hide: 60, beasts: 8}}),
   B('lodge', 'охотничий навес', 'm', 'food', 0, ALL, {food: 0.1}, {per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2}, out: {food: 25, hide: 80, bone: 80}}),
@@ -175,7 +175,7 @@ TOWN_BUILDINGS.registerAll([
   B('foundry', 'литейня', 'f', 'craft', 2, [...H, ...D], {prod: 0.25, trade: 0.1}, {per: 2000, requires: ['forge'], pop: 800, jobs: 10, in: {metal: 120, coal: 100}, out: {tools: 30, arms: 10, armor: 6}, metals: ['steel']}),
   B('magmaforge', 'магмовая кузня', 'f', 'craft', 2, D, {prod: 0.35, prestige: 0.2, defence: 0.1}, {needs: ['magma'], requires: ['forge'], local: 'magmaforge', pop: 800, jobs: 6, in: {metal: 60}, out: {arms: 15, armor: 5, lux: 3}, metals: ['mithril', 'steel']}),
   // the dwarves' golem forge: a golem a season — it takes over a work of the town, or stands guard (atlas/golems.js, GOLEMS)
-  B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {requires: ['forge'], notable: true, jobs: 6, in: {metal: 40, coal: 20}}),
+  B('golemforge', 'кузня големов', 'f', 'craft', 2, D, {prod: 0.2, defence: 0.1}, {requires: ['forge'], local: 'golemforge', notable: true, jobs: 6, in: {metal: 40, coal: 20}}),
   B('jeweler', 'ювелирная мастерская', 'f', 'craft', 2, [...H, ...D, ...E], {prod: 0.1, trade: 0.2, prestige: 0.1}, {per: 1500, needs: ['gems'], local: 'jeweler', jobs: 3, in: {gems: 8, metal: 4}, out: {lux: 10}, metals: ['silver']}),
   B('armory', 'оружейная', 'f', 'craft', 2, ALL, {defence: 0.2}, {requiresAny: ['crafthut', 'forge'], local: 'armory', jobs: 2}),
   B('bowyer', 'мастерская луков', 'f', 'craft', 1, [...E, ...H], {defence: 0.15}, {per: 600, needs: ['forest'], jobs: 3, in: {wood: 30, fiber: 16}, out: {arms: 20}}),
@@ -206,7 +206,7 @@ TOWN_BUILDINGS.registerAll([
   B('hiddenpaths', 'тайные тропы', 'pl', 'defence', 1, E, {defence: 0.35}, {needs: ['forest'], jobs: 3}),
   B('warcamp', 'боевой стан', 'm', 'defence', 1, O, {defence: 0.3, prestige: 0.1}, {jobs: 30, in: {arms: 4, armor: 1}}),
   B('earthwall', 'земляной вал', 'm', 'defence', 1, O, {defence: 0.3}, {requires: ['warcamp']}),
-  B('stonewall', 'каменные стены', 'pl', 'defence', 1, [...H, ...D], {defence: 0.5}, {needs: ['stone'], requires: ['quarry'], in: {stone: 30}}),
+  B('stonewall', 'каменные стены', 'pl', 'defence', 1, [...H, ...D], {defence: 0.5}, {needs: ['stone'], requires: ['quarry'], local: 'stonewall', in: {stone: 30}}),
   B('tunnels', 'подземные ходы', 'pl', 'defence', 1, D, {defence: 0.2, trade: 0.1}, {needsAny: ['steep', 'caves'], jobs: 2, in: {wood: 10}}),
   B('tower', 'крепостные башни', 'pl', 'defence', 2, [...H, ...D], {defence: 0.3}, {requires: ['stonewall'], jobs: 10, in: {stone: 15, arms: 2}}),
   B('citadel', 'цитадель', 'f', 'defence', 2, [...H, ...D], {defence: 0.6, prestige: 0.2}, {requires: ['tower'], pop: 800, jobs: 40, in: {stone: 40, arms: 6, armor: 3}}),

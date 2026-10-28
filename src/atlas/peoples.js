@@ -259,6 +259,7 @@ export function stepPeoples(a, rnd, say) {
     // the town's economy by its buildings' flows (atlas/economy.js): its hands, its goods, the food its works give;
     // its slaves wear away (the orcs' raids keep them coming)
     if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
+    if (t.slavesOf) for (const p of Object.keys(t.slavesOf)) t.slavesOf[p] = Math.min(t.slaves || 0, t.slavesOf[p] * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
     { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
     Object.defineProperty(t, 'econ', {value: townEconomy(a, t), writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
     feedsOf.set(t.id, [TL.feeds * (feed / c) * (TL.fert[0] + TL.fert[1] * a.f.fert[t.i]) * (TL.home[0] + TL.home[1] * realmHome(a, t.realm, biomeAt(a, t.i)?.id)) * (1 + TL.road * Math.max(roadAccess(a, t.i), seaAccess(a, t))) * (t.capital ? TL.capital : 1) * (1 - scourgedFood(a, t) + TL.trade * fx.trade) + t.econ.feeds - (t.slaves || 0), room(fx)]);   // the land feeds, and the town's works (flows) feed more; its slaves eat too

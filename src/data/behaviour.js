@@ -37,6 +37,8 @@ export const WAYS = {
   raider: ['downed', 'fleeFire', 'retreat', 'capture', 'raid'],
   // a forest beast called into a fight (agents/summon.js): it goes for the caller's foes, then back to the wood
   summoned: ['fleeFire', 'summoned'],
+  // a golem of our side (agents/golem.js): no fire drives it (tag «Механизм»); it guards its post
+  golem: ['golem'],
   // a captive on the run: for the map's edge as fast as its bonds let it
   fugitive: ['downed', 'escape'],
   // a trader: with the caravan's phase — walks in, stands at the stall, sleeps by the fire, leaves; never fights

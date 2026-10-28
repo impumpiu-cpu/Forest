@@ -83,6 +83,7 @@ export const captives = {
     if (fight(t, r) > fight(target, r)) {
       const n = Math.max(1, Math.round(target.pop * CR.realm.loss * raidShare(townFx(target))));
       target.pop = Math.max(0, target.pop - n); t.slaves = (t.slaves || 0) + n * CR.realm.grow;   // they work in its buildings as slaves (atlas/economy.js)
+      (t.slavesOf ||= {})[target.people] = (t.slavesOf[target.people] || 0) + n * CR.realm.grow;   // whose kin they are (the dwarves free theirs: atlas/deeds/liberate.js)
       (actor.captives ||= {})[target.people] = (actor.captives[target.people] || 0) + n;
       barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);
       return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}.`;

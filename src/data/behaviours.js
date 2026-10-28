@@ -92,6 +92,8 @@ BEHAVIOURS.registerAll([
     note: 'купец: идёт к лагерю, ждёт отставших мулов, встаёт в нескольких клетках от костра и держится места всё гостевание (settlement/trade.js)'},
   {id: 'summoned', task: false, band: 'red', requires: [], keep: 0,
     note: 'призванный лесной зверь (agents/summon.js): бьёт врагов призвавшего (общая задача fight); когда врагов нет долго — уходит с карты (задача leave)'},
+  {id: 'golem', label: () => 'стоит на посту', band: 'routine', requires: [], keep: 0,
+    note: 'голем своей стороны (agents/golem.js): бьёт врага, что подошёл или напал на своих (общая задача fight), иначе возвращается на пост; у кузни его чинят'},
   {id: 'defendCaravan', task: false, band: 'routine', requires: [], keep: 0,
     note: 'охранник каравана бьёт того, кто идёт на караван: врага рядом, волка или мула на его людях и зверях (общая задача fight)'},
   {id: 'escort', label: () => 'охраняет караван', band: 'routine', requires: [], keep: 0,

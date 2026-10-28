@@ -26,7 +26,8 @@ import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
 import {T, BY_CODE} from '../data/terrain.js';
 import {cellOf} from '../world/grid.js';
-import {quaff, drinkFor, bladeHit, silverCoat} from './potions.js';
+import {quaff, drinkFor, bladeHit, silverCoat, rage} from './potions.js';
+import {roleRow} from '../data/roles.js';
 import {potionOf} from '../data/potions.js';
 import {NIGHT, nightSight} from '../data/tongues.js';
 import {WATCH} from '../data/colony.js';
@@ -117,7 +118,8 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   // what kind of blow: the caller's word, else what the striker holds or strikes with
   type ||= melee ? by.gear?.melee?.type || SPECIES.get(by.species).attack?.type || DEFAULT_BLOW.melee : DEFAULT_BLOW.ranged;
   if (mix) type = mix[0][0];
-  else raw *= resistOf(tsp, type, melee);   // a spear point in a skeleton, an axe in a mycelium do little
+  else raw *= resistOf(tsp, type, melee);
+  raw *= roleRow(by)?.blows?.[type] ?? 1;   // a role strikes some blows harder (the dwarven hammer-smith: data/roles.js)   // a spear point in a skeleton, an axe in a mycelium do little
   // a blow from the flank meets half a shield, one in the back none (stanceOf)
   const block = blockAgainst(g, type, melee) * (stance === 'back' ? 0 : stance === 'flank' ? COMBAT.flank.block : 1);
   // the block is a check with four degrees (data/checks.js): a critical block wears the striker's weapon, a botched
@@ -141,11 +143,11 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   // a cut that bleeds, a blow that stuns (weapon qualities `bleed`, `stun`; data/conditions.js): a chance each, drawn
   // from the stream of places, and only for a weapon that has them — every other blow draws nothing more
   const bleed = traitOf(q, 'bleed'), stun = traitOf(q, 'stun');
-  if (bleed && !tsp.undead && tsp.kind !== 'spirit' && w.rngs.hits() < bleed) { const C = CONDITIONS.get('bleeding'); t.bleeding = {dmg: C.dmg, until: w.tick + C.ticks}; }
-  if (stun && w.rngs.hits() < stun) t.stunned = {until: w.tick + CONDITIONS.get('stunned').ticks};
+  if (bleed && !tsp.undead && !tsp.mechanism && tsp.kind !== 'spirit' && w.rngs.hits() < bleed) { const C = CONDITIONS.get('bleeding'); t.bleeding = {dmg: C.dmg, until: w.tick + C.ticks}; }
+  if (stun && !tsp.mechanism && w.rngs.hits() < stun) t.stunned = {until: w.tick + CONDITIONS.get('stunned').ticks};
   // a net (quality `ensnare`): tangled — slow, and no blow until it is shaken off (COMBAT.net)
   const snare = traitOf(q, 'ensnare');
-  if (snare && w.rngs.hits() < snare) { const N = COMBAT.net; t.webbed = {slow: N.slow, until: w.tick + N.ticks}; t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + N.hold)}; }
+  if (snare && w.rngs.hits() < snare) { const N = COMBAT.net; t.webbed = {slow: N.slow, until: w.tick + N.ticks}; if (!tsp.mechanism) t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + N.hold)}; }
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
   const wall = (t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1) * forestGuard(w, t);
@@ -159,17 +161,19 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   const bsp = SPECIES.get(by.species);
   if (bsp.drinks && melee && !by.dead) by.hp = Math.min(maxHp(by), by.hp + dmg * bsp.drinks);
   // a venomous bite keeps hurting (agents/body.js), a web slows (agents/movement.js), a drake's breath burns
-  if (melee && bsp.venom && !tsp.undead) { t.poison = {dmg: bsp.venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + bsp.venom.ticks}; }
+  if (melee && bsp.venom && !tsp.undead && !tsp.mechanism) { t.poison = {dmg: bsp.venom.dmg * resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), until: w.tick + bsp.venom.ticks}; }
   // a poison rubbed on the blade (agents/potions.js): the blow that struck home carries it in
-  if (melee && by.coat && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), !!tsp.undead);
+  if (melee && by.coat && dmg > 0) bladeHit(w, by, t, resistTo(tsp, 'poison') * effectResist(w, t, 'poison'), !!tsp.undead || !!tsp.mechanism);
   if (melee && bsp.web) t.webbed = {slow: bsp.web.slow, until: w.tick + bsp.web.ticks};
-  // a burning weapon (quality `burn`: a torch) sets alight what the struck one stands on — the ground, a wall
-  const burn = melee ? traitOf(q, 'burn') : 0;
+  // a burning weapon (quality `burn`: a torch) sets alight what the struck one stands on — the ground, a wall; so does a
+  // burning throw that struck home (the forge-master's fire: data/balance/forms.js spitfire)
+  const burn = melee || traitOf(q, 'thrown') ? traitOf(q, 'burn') : 0;
   if (burn && dmg > 0 && w.rngs.hits() < burn) kindle(w, Math.min(w.h - 1, Math.max(0, t.y | 0)) * w.w + Math.min(w.w - 1, Math.max(0, t.x | 0)));
   if (melee && bsp.breath && w.rngs.combat() < bsp.breath) scorch(w, t);
   if (t.diary && t.hp < 0.45 && t.hp > 0) { if (!t.diary.some(e => e.id === 'wounded' && w.tick - e.t < 360)) t.stats.wounds++; think(w, t, 'wounded'); }
   const memKey = by.species === 'wolf' || t.species === 'wolf' ? 'wolf' : by.species === 'mule' || t.species === 'mule' ? 'mule' : 'raid';
   if (t.faction === 'colony' && t.mem) t.mem[memKey] += 0.25; else if (by.faction === 'colony' && by.mem) by.mem[memKey] += 0.1;
+  if (t.hp > 0 && dmg > 0 && roleRow(t)?.frenzy) rage(w, t);   // a berserker's wound (data/roles.js FRENZY)
   if (t.hp <= 0) lethal(w, t, 'ран', by); else if (t.potions || t.belt?.length) quaff(w, t);   // a potion at the edge (agents/potions.js)
   return dmg;
 }

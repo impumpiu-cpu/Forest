@@ -27,6 +27,8 @@ import {Registry} from '../core/registry.js';
 import {oreSeen} from '../world/ores.js';
 import {SPECIES} from './species.js';
 import {localPeoples} from './townBuildings.js';
+import {T as TERR} from './terrain.js';
+const ROCK = TERR.ROCK;
 
 // free places in the pens (settlement/herd.js has the same; this table cannot import it)
 const penRoom = w => w.buildings.reduce((s, b) => s + (b.done && b.key === 'pen' ? 6 : 0), 0)
@@ -44,6 +46,16 @@ export const colonyRace = w => {
 // the elves' thorn hedge (`thorns`): whoever is not of the colony goes at `slow` of his pace inside its zone and loses `dmg`
 // of health a tick there (not much — it wears him down while the archers shoot)
 export const THORNS = {slow: 0.6, dmg: 0.0003};
+// rock near the camp (the dwarves dig their homes and mushroom caves into it): a cell of rock within `reach` of the camp,
+// kept once found (rock does not come and go)
+export const ROCK_NEAR = {reach: 14};
+const rockSeen = new WeakMap();
+export const rockNear = w => { if (!rockSeen.has(w)) rockSeen.set(w, (() => {
+  const R = ROCK_NEAR.reach, c = w.camp; if (!c || !w.grid) return false;
+  for (let y = Math.max(0, c.y - R); y < Math.min(w.h, c.y + R); y++) for (let x = Math.max(0, c.x - R); x < Math.min(w.w, c.x + R); x++) if (w.grid.terr[y * w.w + x] === ROCK) return true;
+  return false;
+})()); return rockSeen.get(w); };
+const dwarven = w => colonyRace(w) === 'dwarf';
 
 BUILDINGS.registerAll([
   // the shelter of the first season: poles and bark from what lies around. Drafty: in a hard
@@ -59,11 +71,32 @@ BUILDINGS.registerAll([
   // the log house: hewn boards, a reed-thatched roof, clay-daubed walls. Warm on little wood.
   {id: 'house', name: 'Изба', gender: 'f', cost: {planks: 16, reeds: 8, clay: 6, rope: 2}, work: 320, max: 6, wooden: true, color: '#a0703a', mark: 'И', needs: 'sawmill',
     heat: {to: 26, add: 4.5, fuel: 0.0004}, furnish: true,
+    available: w => !dwarven(w) || !rockNear(w),   // the dwarves dig a home into the rock instead, where there is rock
     effect: 'Тёплый дом из тёса под камышовой кровлей, стены обмазаны глиной: 4 места, зимой тепло на малых дровах. Лагерь примет на 4 жителей больше.',
     effects: {add: {beds: 4, popCap: 4, bedWarmth: 4}},
     wish: 'хочет тёплый дом',
     motive: (a, c) => [[a.mem.cold * 1.6, 'мёрзнет в шалаше'], [c.season === 'autumn' ? 0.8 : c.season === 'winter' ? 0.6 : 0.15, 'зимовать в шалаше нельзя'],
       [c.crowded ? 0.7 : 0, 'в лагере тесно'], [c.count('hut') ? 0.2 : 0, 'хочет жить по-людски']]},
+
+  // the dwarves' home under the rock: dug into a slope by the camp, stone inside — warm on almost no wood. Instead of the
+  // log house (where there is rock about)
+  {id: 'hallhome', name: 'Подгорное жилище', gender: 'n', cost: {stone: 30, wood: 6}, work: 340, max: 6, wooden: false, color: '#7d7468', mark: 'Пж', needs: 'quarry', near: 'rock',
+    heat: {to: 26, add: 4.5, fuel: 0.0002}, furnish: true,
+    available: w => dwarven(w) && rockNear(w),
+    effect: 'Дом, вырубленный в склоне: 4 места, камень держит тепло — зимой почти без дров. Лагерь примет на 4 жителей больше.',
+    effects: {add: {beds: 4, popCap: 4, bedWarmth: 5}},
+    wish: 'хочет дом под камнем',
+    motive: (a, c) => [[a.mem.cold * 1.6, 'мёрзнет в шалаше'], [c.season === 'autumn' ? 0.8 : c.season === 'winter' ? 0.6 : 0.15, 'зимовать в шалаше нельзя'],
+      [c.crowded ? 0.7 : 0, 'в лагере тесно'], [c.count('hut') ? 0.3 : 0, 'дварфу место под горой']]},
+
+  // the dwarves' mushroom cave: beds of mushrooms in the dark by the rock — food with no field; picked as berries are
+  {id: 'mushcave', name: 'Грибная пещера', gender: 'f', cost: {stone: 12, wood: 10}, work: 200, max: 2, wooden: false, color: '#8a7a6a', mark: 'Гр', near: 'rock',
+    lot: [3, 3], onFinish: 'plantGarden',
+    available: w => dwarven(w) && rockNear(w),
+    effect: 'Грибные грядки в тени скалы: 9 грядок, урожай собирают как ягоды — еда без пашни и семян.',
+    effects: {},
+    wish: 'хочет грибных грядок',
+    motive: (a) => [[a.mem.hunger * 1.2, 'голодает'], [a.mem.walkFood, 'далеко ходить за едой'], [0.3, 'под горой растут грибы']]},
 
   {id: 'granary', name: 'Амбар', gender: 'm', cost: {wood: 25}, work: 200, max: 1, wooden: true, color: '#c9a24a', mark: 'А', furnish: true,
     effect: 'Еда на складе портится в 6 раз медленнее.',
@@ -145,7 +178,15 @@ BUILDINGS.registerAll([
   {id: 'palisade', name: 'Частокол', gender: 'm', cost: {wood: 45, stone: 10}, work: 300, max: 1, wooden: true, color: '#6f5a3c', mark: 'Ч', needs: 'quarry',
     effect: 'В лагере защитники получают на 40% меньше урона, налётчики уносят вдвое меньше.',
     effects: {mul: {defense: 0.6, loot: 0.5}},
-    available: w => colonyRace(w) !== 'elf',   // the elves grow a thorn hedge instead
+    available: w => colonyRace(w) !== 'elf' && !dwarven(w),   // the elves grow a thorn hedge instead, the dwarves raise a stone wall
+    wish: 'хочет защиты от чужаков',
+    motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
+
+  // the dwarves' stone wall instead of a palisade: stone on stone, nothing to burn
+  {id: 'stonewall', name: 'Каменная стена', gender: 'f', cost: {stone: 70}, work: 420, max: 1, wooden: false, color: '#8c8a84', mark: 'Кс', needs: 'quarry',
+    effect: 'Стена из камня вместо частокола: защитники в лагере получают вдвое меньше урона, налётчики уносят вдвое меньше; гореть нечему.',
+    effects: {mul: {defense: 0.5, loot: 0.5}},
+    available: w => dwarven(w),
     wish: 'хочет защиты от чужаков',
     motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
@@ -270,11 +311,21 @@ BUILDINGS.registerAll([
     wish: 'хочет хлеба',
     motive: (a, c) => [[c.stock('barley') * 0.04, 'ячмень лежит, а хлеба нет'], [(a.prefs.cook - 1) * 0.8, 'любит стряпать']]},
 
-  // the magma forge: only in a region with magma, and the outpost can never build one itself — it may be
-  // captured later, on the global map. Here so that the rest of the game can name it.
-  {id: 'magmaforge', name: 'Магмовая кузня', gender: 'f', cost: {stone: 999}, work: 9999, max: 1, wooden: false, color: '#d0502a', mark: 'Мг', captureOnly: true,
-    effect: 'Кузня на живом жару магмы: только в ней куют мифрил. Форпосту её не построить — её можно лишь захватить.',
+  // the magma forge: only in a region with magma. Dwarves build one there by their forge; any other outpost can only
+  // capture one (later, on the global map)
+  {id: 'magmaforge', name: 'Магмовая кузня', gender: 'f', cost: {stone: 60, iron: 10}, work: 600, max: 1, wooden: false, color: '#d0502a', mark: 'Мг', needs: 'forge',
+    captureOnly: w => !dwarven(w) || !(w.region?.magma > 0),
+    effect: 'Кузня на живом жару магмы: только в ней куют мифрил. Дварфы ставят её у магмы, прочим её не построить — лишь захватить.',
     effects: {}, wish: '', motive: () => []},
+
+  // the dwarves' golem forge: a golem each season while there is metal (settlement/golems.js); the golems lend a hand at
+  // the rock and the forge
+  {id: 'golemforge', name: 'Кузня големов', gender: 'f', cost: {stone: 40, iron: 15, coal: 10}, work: 500, max: 1, wooden: false, color: '#9a6a3a', mark: 'Гл', needs: 'forge',
+    available: w => dwarven(w),
+    effect: 'Каждый сезон выпускает голема из лучшего металла на складе (сталь, железо, бронза — 10 и 5 угля): он стоит на страже, и его чинят у горна. Големы помогают в работе: камень, руда и ковка на четверть быстрее.',
+    effects: {jobSpeed: {mine: 1.25, dig: 1.25, smith: 1.25}},
+    wish: 'хочет своих големов',
+    motive: (a, c) => [[c.stock('iron') * 0.05 + c.stock('steel') * 0.08, 'металл лежит без дела'], [(a.mem.raid + a.mem.wolf) * 0.8, 'нужна стража'], [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна']]},
 
   {id: 'watchtower', name: 'Сторожевая вышка', gender: 'f', cost: {wood: 30, bone: 4}, work: 220, max: 2, wooden: true, color: '#9c8b6e', mark: 'Вш', zone: 11,
     effect: 'Расширяет зону поселения на 11 клеток вокруг себя: здесь защитники сильнее, а волки не охотятся.',

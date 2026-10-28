@@ -70,6 +70,17 @@ export const LOOKS = {
     ctx.fillStyle = '#e8d27a'; ctx.beginPath(); ctx.arc(px - r * 0.14, py - r * 0.15, r * 0.07, 0, Math.PI * 2); ctx.arc(px + r * 0.14, py - r * 0.15, r * 0.07, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   },
+  // golem (data/constructs.js): a squat block of plates on thick legs, heavy fists, a slit of coal-light for eyes
+  golem(ctx, a, px, py, r, color) {
+    ctx.save(); ctx.strokeStyle = '#0e100b'; ctx.lineWidth = 1; ctx.fillStyle = color;
+    ctx.fillRect(px - r * 0.55, py + r * 0.45, r * 0.4, r * 0.6); ctx.strokeRect(px - r * 0.55, py + r * 0.45, r * 0.4, r * 0.6);
+    ctx.fillRect(px + r * 0.15, py + r * 0.45, r * 0.4, r * 0.6); ctx.strokeRect(px + r * 0.15, py + r * 0.45, r * 0.4, r * 0.6);
+    ctx.fillRect(px - r * 0.7, py - r * 0.6, r * 1.4, r * 1.1); ctx.strokeRect(px - r * 0.7, py - r * 0.6, r * 1.4, r * 1.1);
+    ctx.beginPath(); ctx.arc(px - r * 0.95, py + r * 0.2, r * 0.3, 0, Math.PI * 2); ctx.arc(px + r * 0.95, py + r * 0.2, r * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillRect(px - r * 0.35, py - r * 1.05, r * 0.7, r * 0.5); ctx.strokeRect(px - r * 0.35, py - r * 1.05, r * 0.7, r * 0.5);
+    ctx.fillStyle = a.hp > 0 ? '#ff8a2a' : '#3a2a1a'; ctx.fillRect(px - r * 0.25, py - r * 0.85, r * 0.5, r * 0.1);
+    ctx.restore();
+  },
   // deer: a long tan body with a pale rump and branching antlers
   deer(ctx, a, px, py, r, color) {
     const dir = a.faceX ?? 1;

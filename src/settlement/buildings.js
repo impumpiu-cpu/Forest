@@ -29,7 +29,7 @@ export function missing(w, cost) {
 // can the colony consider this building at all (ignoring cost)?
 export function eligible(w, key) {
   const d = BUILDINGS.get(key);
-  return !d.captureOnly && count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w))
+  return !(typeof d.captureOnly === 'function' ? d.captureOnly(w) : d.captureOnly) && count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w))
     && (!d.key || (w.stock[d.key] || 0) >= 1);   // a town-made tool it cannot be built without
 }
 
@@ -48,7 +48,8 @@ export function lotFertility(w, x, y, lw, lh) {
 // (up to 24 cells) for a lot on the shore of a lake with fish.
 function findLot(w, d, near = d.near) {
   if (near === 'fish') { const lot = findLot(w, d, 'fish-shore'); if (lot >= 0) return lot; }
-  const shore = near === 'fish-shore', [lw, lh] = lotSize(d), R = shore ? 24 : d.soil ? 20 : 14;
+  if (near === 'rock') { const lot = findLot(w, d, 'rock-side'); if (lot >= 0) return lot; }
+  const shore = near === 'fish-shore', rock = near === 'rock-side', [lw, lh] = lotSize(d), R = shore || rock ? 24 : d.soil ? 20 : 14;
   const g = w.grid; let best = -1, bs = Infinity;
   for (let y = w.camp.y - R; y <= w.camp.y + R - 1; y++) for (let x = w.camp.x - R; x <= w.camp.x + R - 1; x++) {
     if (x < 1 || y < 1 || x + lw >= w.w || y + lh >= w.h) continue;
@@ -61,11 +62,21 @@ function findLot(w, d, near = d.near) {
     }
     if (!ok) continue;
     if (shore && ![0, 1, w.w, w.w + 1].some(o => lakeBeside(w, y * w.w + x + o, 0))) continue;
+    if (rock && !rockBeside(w, x, y, lw, lh)) continue;   // the dwarves dig in by the rock (data/buildings.js near: 'rock')
     // soil: every 0.1 of fertility is worth walking 3 cells further
     const score = d.soil ? Math.sqrt(d2) - 30 * lotFertility(w, x, y, lw, lh) : d2;
     if (score < bs) { bs = score; best = y * w.w + x; }
   }
   return best;
+}
+
+// a lot with rock in the ring round it
+function rockBeside(w, x, y, lw, lh) {
+  for (let yy = -1; yy <= lh; yy++) for (let xx = -1; xx <= lw; xx++) {
+    if (yy >= 0 && yy < lh && xx >= 0 && xx < lw) continue;
+    const X = x + xx, Y = y + yy; if (X >= 0 && Y >= 0 && X < w.w && Y < w.h && w.grid.terr[Y * w.w + X] === T.ROCK) return true;
+  }
+  return false;
 }
 
 export function laySite(w, key) {

@@ -16,6 +16,7 @@ import {Registry} from '../core/registry.js';
 import {RACES} from './races.js';
 import {MONSTERS} from './monsters.js';
 import {BESTIARY} from './bestiary.js';
+import {CONSTRUCTS} from './constructs.js';
 import {bodyFor, CREATURES} from './balance/creatures.js';
 import {petNames} from './names.js';
 import {WAYS, BEAT} from './behaviour.js';
@@ -43,7 +44,8 @@ export const brainOf = (sp, fa) => sp.brain || (sp.behaviours ? 'tabled' : fa?.b
 //   undead   — the rot's dead: from the barrows of old battles, burnt towns and necromancers (to come)
 //   fiend    — demons: magic is rare in this world; they come through the rifts at live volcanoes
 //              and plate seams (atlas/lairs.js `rift`), few and far from the colony
-export const KINDS = {beast: 'звери', monster: 'чудовища', spirit: 'нечисть', race: 'разумные', undead: 'нежить', fiend: 'демоны'};
+//   construct — the dwarves' golems (data/constructs.js): made at a golem forge, never born or wild
+export const KINDS = {beast: 'звери', monster: 'чудовища', spirit: 'нечисть', race: 'разумные', undead: 'нежить', fiend: 'демоны', construct: 'механизмы'};
 SPECIES.registerAll([
   // Hares graze, rest at night, bolt from people and fire. They never breed here:
   // their numbers change only through migration (see migrations.js).
@@ -177,6 +179,7 @@ SPECIES.registerAll([
 SPECIES.registerAll(RACES);
 SPECIES.registerAll(MONSTERS);
 SPECIES.registerAll(BESTIARY);
+SPECIES.registerAll(CONSTRUCTS);
 
 // ── species made in the constructor (src/app/beastView.js, docs/TABLES.md): a copy of one of the above under a new
 // id, kept in the layer of table edits (data/schema/edits.js `newSpecies`) and made again at every start. Whatever

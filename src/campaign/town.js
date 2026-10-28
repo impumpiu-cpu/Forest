@@ -12,7 +12,10 @@ import {SPECIES} from '../data/species.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
-import {BEASTS} from '../data/transport.js';
+import {BEASTS, CARAVAN_GOLEMS} from '../data/transport.js';
+import {golemMetal} from '../atlas/golems.js';
+import {golemOf} from '../data/constructs.js';
+import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
 import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
 import {termsOf} from './road.js';
@@ -63,7 +66,16 @@ const offerPrice = (o, st) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.
 // (with the world `a`: only the metals its realm works — a building that opens them stands in one of its towns,
 // data/townBuildings.js `metals`)
 // (nor a form its people will not touch: no crossbow in an elven town — data/kinds.js RACE_FORMS)
-export const offers = (t, a = null) => OFFERS.filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
+// the golem a town with a golem forge sells: the best of its guard golems (one of them goes), else one of its realm's best
+// metal (atlas/golems.js); null — none
+const GOLEM_RANK = ['bronze', 'iron', 'steel', 'mithril'];
+export const townGolem = (a, t) => {
+  const guard = t.golems?.guard || [];
+  const m = guard.length ? guard.reduce((b, x) => (GOLEM_RANK.indexOf(x) > GOLEM_RANK.indexOf(b) ? x : b)) : a ? golemMetal(a, t) : null;
+  return m && BEASTS[golemOf(m)] ? m : null;
+};
+const golemOffer = (o, t, a) => { if (!o.golem) return o; if (!has(t, o.at)) return null; const m = townGolem(a, t); return m ? {...o, id: golemOf(m), metal: m, price: PRICES.beasts[golemOf(m)]} : null; };
+export const offers = (t, a = null) => OFFERS.map(o => golemOffer(o, t, a)).filter(o => o).filter(o => (o.any || has(t, o.at)) && (!o.also || has(t, o.also)) && (!a || o.kind !== 'item' || realmWorks(a, t, gearDef(o.id)?.material)) && (o.kind !== 'item' || mayWield(WORLD_PEOPLES.has(t.people) ? WORLD_PEOPLES.get(t.people).race : null, gearDef(o.id)?.form))).map(o => townMade(o, t));
 const townMade = (o, t, q = 0) => {
   if (o.kind !== 'item') return o;
   const mark = markOfPeople(t.people), d = gearDef(o.id);
@@ -87,6 +99,8 @@ const forgeQ = t => (t.tier >= MARK.forge.cityTier ? MARK.forge.cityQ : MARK.for
 // (the reserve is counted at the town's terms for this caravan — its tongue and fame, campaign/road.js: 1 by default)
 const reserveFor = (K, t, st, days, a = null) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st, a ? termsOf(a, K, t).buy : 1);
 
+const golems = K => K.beasts.filter(b => BEASTS[b.kind]?.golem && b.hp > 0).length;
+
 // ── buying: what the caravan wants, in order, while the gold lasts beyond the food reserve
 function wants(a, K, t, st) {
   const out = [], ms = alive(K), tier = toolTier(K);
@@ -97,6 +111,7 @@ function wants(a, K, t, st) {
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
   for (const o of offers(t, a)) {
     if (o.kind === 'item' && !free(K).some(m => !m.former && mayTake(m.race, o.id))) continue;   // nobody free of the caravan would carry it (the elves and iron): the same as equip() gives to
+    if (o.kind === 'beast' && BEASTS[o.id].golem) { if (golems(K) < CARAVAN_GOLEMS.max) out.push([6, o]); continue; }   // a golem: one guard of the caravan, after the arms
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && count(o.id) < 2) out.push([3, o]);
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) out.push([5, o]);
     if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
@@ -221,6 +236,7 @@ export function trade(a, K, t, st) {
     // still wanted after what was bought before it in this visit
     if (o.kind === 'building' && hasBuilding(K, o.id)) continue;
     if (o.kind === 'vehicle' && (o.id === 'cart' ? K.vehicles.length : K.vehicles.some(x => x.kind === 'wagon'))) continue;
+    if (o.kind === 'beast' && BEASTS[o.id].golem && golems(K) >= CARAVAN_GOLEMS.max) continue;
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && K.beasts.filter(b => b.kind === o.id && b.hp > 0).length >= 2) continue;
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length >= free(K).length) continue;
     if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) >= CAPTIVE.campaign.keep) continue;
@@ -229,7 +245,11 @@ export function trade(a, K, t, st) {
     if (o.kind === 'goods' && o.need === 'home' && homeRoom(K, potionOf(o.id).potion) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) >= ALCHEMY.pots) continue;
     K.gold = gold(K.gold - p);
-    if (o.kind === 'beast') { K.beasts.push({id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null}); done.push(`${BEASTS[o.id].acc} за ${gold(p)}`); }
+    if (o.kind === 'beast') {
+      K.beasts.push({id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null}); done.push(`${BEASTS[o.id].acc} за ${gold(p)}`);
+      // the town spends what it chose: one of its guard golems goes with the caravan (atlas/golems.js)
+      if (o.metal && t.golems?.guard?.includes(o.metal)) t.golems.guard.splice(t.golems.guard.indexOf(o.metal), 1);
+    }
     else if (o.kind === 'vehicle') { K.vehicles.push({kind: o.id, pulled: false}); done.push(`${o.id === 'cart' ? 'тележку' : 'повозку'} за ${gold(p)}`); }
     else if (o.kind === 'goods') { K.cargo[o.id] = (K.cargo[o.id] || 0) + o.n; if (isPotion(o.id)) topUp(K); done.push(`${isPotion(o.id) ? RESOURCES.get(o.id).label : `${RESOURCES.get(o.id).label} (${o.n})`} за ${gold(p)}`); }
     else if (o.kind === 'building') { campOf(K).push(o.id); done.push(`«${BUILDINGS.get(o.id).name}» для лагеря за ${gold(p)}`); }

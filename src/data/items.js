@@ -93,6 +93,7 @@ export function makeItem(formId, matId) {
   for (const [k, v] of Object.entries(mat.flags || {})) d[k] = v;
   if (form.tradeOnly) d.tradeOnly = true;
   if (form.quality === false) d.quality = false;
+  if (form.sold === false) d.sold = false;
   if (mat.rarity !== 'common' && mat.rarity !== 'uncommon') d.sold = false;
   return d;
 }

@@ -35,6 +35,9 @@ export const OFFERS = [
   {kind: 'beast', id: 'horse', at: ['pasture', 'pen', 'caravanserai'], price: CAMPAIGN.beasts.horse},
   {kind: 'beast', id: 'mule', at: ['pasture', 'pen', 'caravanserai', 'market'], price: CAMPAIGN.beasts.mule},
   {kind: 'beast', id: 'camel', at: ['caravanserai'], price: CAMPAIGN.beasts.camel},
+  // a golem of the town's golem forge (data/constructs.js): of the metal the town chooses — one of its guard golems
+  // (atlas/golems.js), else its realm's best (campaign/town.js offers)
+  {kind: 'beast', id: 'golem', golem: true, at: ['golemforge']},
   {kind: 'vehicle', id: 'cart', at: ['crafthut', 'sawmill', 'woodcut'], price: CAMPAIGN.vehicles.cart},
   {kind: 'vehicle', id: 'wagon', at: ['sawmill', 'crafthut'], also: ['forge', 'smelter'], price: CAMPAIGN.vehicles.wagon},
   {kind: 'item', id: 'ironaxe', at: ['forge', 'smelter', 'foundry']},

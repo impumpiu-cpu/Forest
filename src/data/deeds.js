@@ -47,6 +47,8 @@ DEEDS.registerAll([
     note: 'набег города с воинами на ближайший город нелюбимой державы в raidReach (DIPLOMACY): добыча растит город, отбитый набег стоит дороже; не больше raidsPerYear в год на державу. У орков'},
   {id: 'clearLair', label: 'выжечь логово', band: 'routine', party: null, requires: [],
     note: 'город идёт на логово, чьи владения до него достают (TOWN_WAR): проигравшее логово выжжено, проигравший город теряет жителей и угодье; скрытого логова не видит — его сперва надо найти'},
+  {id: 'liberate', label: 'освобождение', band: 'routine', party: null, requires: [],
+    note: 'дварфы: город идёт освобождать своих — город или логово, где дварфы в рабстве или в полону (SLAVE.liberate, data/slavery.js); против державы это война. Победа — освобождённые приходят в город свободными; до рабов иных народов им дела нет'},
   {id: 'scout', label: 'разведать глушь', band: 'routine', party: null, requires: [],
     note: 'город шлёт следопытов к скрытому логову глуши в досягаемости (WILD.scout): чаще, если город недавно грабили; удача — по знанию и ступени города; найденное логово можно выжечь'},
 ]);
@@ -63,6 +65,8 @@ export const DEED_WAYS = {
   people: ['makePeace', 'warOn', 'march', 'clearLair', 'scout'],
   raiders: ['makePeace', 'warOn', 'march', 'raidTown', 'captives', 'clearLair', 'scout'],
   wardens: ['makePeace', 'march', 'clearLair', 'scout'],
+  // the dwarves: a people of the plough and the sword who free their kin from bondage
+  liberators: ['makePeace', 'warOn', 'march', 'clearLair', 'liberate', 'scout'],
   dragon: ['expand', 'strike'],   // (a dragon's lair breeds with its kind's `breed` — 0 in data/lairs.js: the deed is there for the table to turn on)
   vampire: ['expand'],
 };

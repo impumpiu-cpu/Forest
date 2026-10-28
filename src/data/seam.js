@@ -35,8 +35,11 @@ export const LAIR_BANDS = {
   goblins: 'goblins', gnolls: 'gnolls', ogres: 'ogres', trolls: 'troll', swamptrolls: 'troll', icetrolls: 'troll', giants: 'giants',
   wights: 'undead', necromancer: 'cultists', ghouls: 'upyrs', vampire: 'vampire',
 };
-// which raid band an unfriendly realm sends, by its people (data/peoples.js); elves and dwarves do not raid
-export const REALM_BANDS = {orcs: 'orcs', humans: 'bandits'};
+// which raid band an unfriendly realm sends, by its people (data/peoples.js); elves do not raid; the dwarves send a war
+// party only to a realm they are at war with (seam/cell.js, campaign/land.js)
+export const REALM_BANDS = {orcs: 'orcs', humans: 'bandits', dwarves: 'dwarves'};
+// the peoples whose bands come only in a war (not for mere dislike): the dwarves do not raid
+export const WAR_ONLY_BANDS = ['dwarves'];
 // outlaws live wherever people do: a little banditry near any town of men
 export const OUTLAWS = {band: 'bandits', weight: 0.4};
 // the tribes as fields (data/lairs.js LAIR_FIELD): a tribe's folk living within the reach send their band too, without a

@@ -39,7 +39,8 @@ export const CAMPAIGN = {
   // and `partner` around the towns of the realms it trades with; on the way: `sight` cells around it
   fog: {known: 8, partner: 3, sight: 3},
   // a member's might in a fight: role × weapon × armour × health × Strength
-  might: {knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, former: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06},
+  might: {knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, former: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06,
+    golem: {bronze: 2, iron: 2.8, steel: 3.6, mithril: 5}},   // a golem of the caravan (data/transport.js), as so many knights, × its health
   // a night: what finds the camp comes out of the bubble (campaign/bubble.js); a stray nobody saw coming is
   // × `friendly` near a town of friends
   night: {friendly: 0.3},

@@ -42,6 +42,7 @@ import {standing, townName, townLine, trade, labour, healHere, hire, companion, 
 import {HIRES, ROLES, LOYALTY, SMITH, VISIT, EARN, WANTS, MARKET, CONTRACT} from '../data/market.js';
 import {room} from './company.js';
 import {SPECIES} from '../data/species.js';
+import {GOLEM_REPAIR} from '../data/constructs.js';
 import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.js';
 import {nameCaravanMasters} from './masters.js';
 import {morningFind} from './finds.js';
@@ -96,9 +97,12 @@ export function memberMight(m) {
   const M = CAMPAIGN.might, s = m.special || {};
   const dmg = Math.max(0, ...m.gear.hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(m.gear.hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
   const armor = itemDef(m.gear.body)?.armor ?? 0;
-  return M[m.role] * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * (0.3 + 0.7 * m.hp);
+  return M[m.role] * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp);
 }
-export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0);
+// the share of its might a fighter keeps with this much health
+const hurtMight = hp => 0.3 + 0.7 * hp;
+export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0)
+  + K.beasts.reduce((s, b) => s + (BEASTS[b.kind]?.golem && b.hp > 0 ? (CAMPAIGN.might.golem[SPECIES.get(b.kind).metal] || 0) * hurtMight(b.hp) : 0), 0);   // its golems stand in a fight too
 
 export const frosty = (a, K, seasonId) => seasonId === 'winter' && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0;
 // cells a day: as the slowest who walks (campaign/baggage.js), slower hungry and in frost
@@ -178,6 +182,7 @@ function campWork(a, K, r) {
   const brewed = brewDay(K, r, wooded);
   if (brewed) { K.stats.brewed = (K.stats.brewed || 0) + brewed; if (!K.brewTold || K.day - K.brewTold > 60) { K.brewTold = K.day; say(a, K, `В хижине лекаря сварили зелье лечения${brewed > 1 ? ` (${brewed})` : ''}: зелий в поясах ${alive(K).reduce((s, m) => s + (m.potions || 0), 0)}.`, 'build'); } }
   for (const kind of Object.keys(BEASTS)) {
+    if (BEASTS[kind].golem) continue;   // a golem is bought, never tamed
     const lvl = faunaLevel({region: reg}, kind);
     if (lvl > 0 && lacking(K, kind) && r() < GETTING.tame * Math.min(1.6, lvl) * handler(K)) gainBeast(a, K, kind, 'Приручили');
   }
@@ -503,7 +508,7 @@ function evening(a, K) {
     if (!why && !K.hungry && calm && K.food >= need * C.foodDays && K.day >= (K.nextThink ?? 0)) {
       K.nextThink = K.day + C.think;
       const B = wantBuild(a, K), reg = cellRegion(a, K.i);
-      const tame = K.day - (K.tamedAt ?? -999) >= GETTING.tameEvery && Object.keys(BEASTS).find(kind => lacking(K, kind) && faunaLevel({region: reg}, kind) >= GETTING.tameLand);
+      const tame = K.day - (K.tamedAt ?? -999) >= GETTING.tameEvery && Object.keys(BEASTS).find(kind => !BEASTS[kind].golem && lacking(K, kind) && faunaLevel({region: reg}, kind) >= GETTING.tameLand);
       if (B) { K.build = B; why = 'build'; }
       else if (tame) { why = 'tame:' + tame; K.tamedAt = K.day; }
     }
@@ -673,6 +678,8 @@ export function caravanDay(a, K, day) {
   // the beasts graze where grass grows and starve where it does not
   const grass = pasture(a, K.i, seasonId);
   for (const b of [...K.beasts]) {
+    // a golem eats nothing and mends only at a forge: a town's, or the camp's own (data/constructs.js GOLEM_REPAIR)
+    if (BEASTS[b.kind]?.golem) { if ((town && town.built.includes('forge')) || (camping && hasBuilding(K, 'forge'))) b.hp = Math.min(1, b.hp + GOLEM_REPAIR.day); continue; }
     b.hp = grass ? Math.min(1, b.hp + FODDER.regain) : b.hp - FODDER.starve * (0.5 + r());
     if (b.hp <= 0) loseBeast(a, K, b, 'Бескормица: пал');
   }

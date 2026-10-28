@@ -20,7 +20,7 @@ import {faunaCell} from '../atlas/fauna.js';
 import {roadAccess} from '../atlas/roads.js';
 import {BIOMES} from '../data/biomes.js';
 import {LAIRS, LEADER} from '../data/lairs.js';
-import {LAIR_BANDS, REALM_BANDS} from '../data/seam.js';
+import {LAIR_BANDS, REALM_BANDS, WAR_ONLY_BANDS} from '../data/seam.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {RELATIONS} from '../data/relations.js';
 import {atWar} from '../atlas/diplomacy.js';
@@ -95,7 +95,7 @@ export function peopleFoes(a, i, K) {
     const v = pe.u[j] * pe.K[j]; if (!(v >= WILD_FOES.at)) continue;
     const dislike = (RELATIONS[relOf(K.people)]?.[relOf(pe.id)] ?? 0) < 0;
     const war = !!K.realm && (a.realms || []).some(r => r.people === pe.id && atWar(a, K.realm, r.id));
-    if (!dislike && !war) continue;
+    if (!war && (!dislike || WAR_ONLY_BANDS.includes(pe.id))) continue;
     const x = Math.min(W.cap, v);
     out.push({kind: 'raiders', p: W.p * x, strength: W.s[0] + W.s[1] * x, label: `${WORLD_PEOPLES.get(pe.id).label}-налётчики`, band, people: pe.id});
   }

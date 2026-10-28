@@ -12,7 +12,7 @@
 // Every answer is one of the shared tasks (fight, kite, mend) or null — the side's default (the nearest foe).
 //   kitRole(a) — the fighting role a caravan's member fights in: by its place in the company and what it holds
 import {SPECIES} from '../data/species.js';
-import {COMBAT_ROLES} from '../data/roles.js';
+import {COMBAT_ROLES, mixOf} from '../data/roles.js';
 import {TACTICS, SQUAD} from '../data/behaviour.js';
 import {isHostile} from '../data/factions.js';
 import {nearAgents} from './spatial.js';
@@ -113,7 +113,8 @@ export function roleTactic(w, a, side, radius) {
       const held = foes.find(o => heldByUs(o) && o.task.target.fightRole === 'shield') || (mind === 'sentient' ? foes.find(heldByUs) : null);
       return held && dist(a, held) < T.guard ? fightTask(w, a, held) : null;
     }
-    // the cleaver: breaks into whoever is held by another of the side (sentient), else the nearest
+    // the cleaver (and the dwarven hammer-smith): breaks into whoever is held by another of the side (sentient), else the nearest
+    case 'smith':
     case 'cleaver': {
       if (mind !== 'sentient') return null;
       const held = foes.find(heldByUs);
@@ -143,7 +144,7 @@ export function roleTactic(w, a, side, radius) {
       const fallen = side.fallen().filter(o => o !== a && dist(a, o) < T.mend.near && open(o)).sort((p, q) => dist(a, p) - dist(a, q))[0];
       if (fallen) return {id: 'mend', who: fallen.id};
       if (mind === 'sentient' && a.potions > 0) {
-        const hurt = side.all().filter(o => o !== a && o.task?.id !== 'leave' && hpShare(o) < T.mend.potionBelow && dist(a, o) < T.mend.near && open(o)).sort((p, q) => hpShare(p) - hpShare(q))[0];
+        const hurt = side.all().filter(o => o !== a && o.task?.id !== 'leave' && !SPECIES.get(o.species).mechanism && hpShare(o) < T.mend.potionBelow && dist(a, o) < T.mend.near && open(o)).sort((p, q) => hpShare(p) - hpShare(q))[0];
         if (hurt) return {id: 'mend', who: hurt.id, potion: true};
       }
       // a blade at it: behind its own, if any of the side stands near to take the blow; alone, it fights with the staff
@@ -158,7 +159,8 @@ export function roleTactic(w, a, side, radius) {
 // The fighting role of a caravan's member (docs/BEHAVIOUR.md «Словарь»): its place in the company (a.place — knight,
 // squire, a hireling…; a master of medicine heals) and what it holds, in this order: a master of medicine — the healer;
 // a net — the catcher; a bow or a crossbow — the archer; a sling or javelins — the skirmisher; a shield — the
-// shield-bearer; a paired weapon in the other hand — the cutthroat; a spear — the spearman; any other weapon — the
+// shield-bearer (a race's own roles before it: the dwarves' forge-master by its fire, hammer-smith by a two-handed hammer,
+// berserker by two weapons and no armour); a paired weapon in the other hand — the cutthroat; a spear — the spearman; any other weapon — the
 // cleaver (a knight with it too: a knight never creeps). A captive or a former slave fights in no role.
 export function kitRole(a) {
   if (a.captive || a.former || !a.equip) return null;
@@ -167,6 +169,11 @@ export function kitRole(a) {
   if (hs.some(d => traitOf(d.qualities, 'ensnare'))) return 'catcher';
   if (form('bow') || form('crossbow')) return 'archer';
   if (form('sling') || form('javelin')) return 'skirmisher';   // (a hatchet is thrown too, but it is a cutthroat's)
+  // the roles of a race's own (data/roles.js ROLE_MIX: the dwarves' forge-master, hammer-smith and berserker)
+  const own = r => (mixOf(a.species)[r] || 0) > 0;
+  if (form('spitfire') && own('forgemaster')) return 'forgemaster';
+  if ((form('warhammer') || form('maul')) && own('smith')) return 'smith';
+  if (a.gear?.offhand && !(a.gear.armor > 0) && own('berserker')) return 'berserker';
   if (form('shield')) return 'shield';
   if (a.gear?.offhand && a.place !== 'knight') return 'cutthroat';
   if (form('spear')) return 'spearman';

@@ -25,7 +25,8 @@ import {ITEMS} from './items.js';
 import {hasSense} from './tongues.js';
 import {expectedStrength} from '../agents/strength.js';
 import {chanceWeight} from './chance.js';
-import {roleKit, drawRole, mixOf, LINKS} from './roles.js';
+import {roleKit, drawRole, mixOf, LINKS, ROLE_TIERS} from './roles.js';
+import {golemOf, GOLEM_METALS} from './constructs.js';
 import {refreshBody} from '../agents/special.js';
 
 // a band that has lost many to the colony comes for the one who killed them; scouts come first, few
@@ -142,6 +143,8 @@ function withTorch(species, kit) {
   return hands < 2 || !back ? [...kit, TORCH_ITEM] : kit;   // (both hands taken: behind the back — agents/equipment.js dress)
 }
 
+// the golem a dwarven band of level t brings: of the best metal its level opens (data/roles.js ROLE_TIERS), none below bronze
+const golemFor = t => { const k = ROLE_TIERS.from.reduce((b, f, i) => (t >= f ? i : b), 0); return k > 0 ? golemOf(GOLEM_METALS[Math.min(k, GOLEM_METALS.length) - 1]) : null; };
 const cap1 = x => x[0].toUpperCase() + x.slice(1);
 const named = sp => a => { a.name = SPECIES.get(sp).label.replace(/^./, c => c.toUpperCase()); };
 
@@ -172,6 +175,19 @@ RAID_BANDS.registerAll([
     chance: {weight: 1.5, threat: 3, below: 0.4},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['gnoll', 3], ['hyena', 1.5]], t, o),
     message: () => 'Набег! Гноллы-падальщики идут на запах лагеря'},
+
+  // a dwarven war party (data/seam.js REALM_BANDS): only a dwarven realm at war sends it (`world`); it takes no captives
+  // and burns nothing. Past a level its forges send golems along (data/constructs.js) — of the best metal its level opens
+  // (data/roles.js ROLE_TIERS), more of them with the hammer-smiths and the forge-masters
+  {id: 'dwarves', label: 'дварфийская дружина', kind: 'sentient', world: true, noCaptives: true,
+    goals: () => [['kill', 2], ['loot', 1]], nerve: -0.15,
+    links: [['anvil', 3], ['berserks', 1]], ranks: {officer: 'хирдман', boss: 'тан'},
+    chance: {weight: 0},
+    members: (w, rng, budget, t, o) => {
+      const g = golemFor(t), n = heads(budget, t);
+      return fill(rng, budget, [['dwarf', 3], ...(g && n >= 5 ? [[g, n >= 10 ? 0.6 : 0.3]] : [])], t, o);
+    },
+    message: (n, group) => `Дварфийская дружина: ${n}${group.some(a => SPECIES.get(a.species).mechanism) ? ', с ними големы' : ''}. Пленных дварфы не берут`},
 
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',
     goals: (w, g) => [['kill', 2], ['loot', 1], ['scout', scouting(w, g)]],

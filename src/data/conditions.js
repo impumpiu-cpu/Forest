@@ -45,6 +45,10 @@ CONDITIONS.registerAll([
     note: 'кровопускающее оружие: шанс — значение свойства bleed; dmg здоровья в тик ticks тиков; нежить не кровит'},
   {id: 'stunned', kind: 'state', where: 'stunned', label: 'оглушён', ticks: 40, slow: 0.5,
     note: 'оглушающее оружие: шанс — значение свойства stun; ticks тиков не бьёт и не стреляет, шаг × slow'},
+  {id: 'frenzy', kind: 'state', where: 'effects', label: 'бешенство', ticks: 120, then: 'spent', mods: {str: 1.3, speed: 1.2, dodge: 0.15},
+    note: 'берсерк после раны (data/roles.js FRENZY): удар сильнее, шаг быстрее, увёртливее; потом — усталость'},
+  {id: 'spent', kind: 'state', where: 'effects', label: 'усталость после бешенства', ticks: 120, mods: {speed: 0.8},
+    note: 'столько же, сколько длилось бешенство: шаг медленнее; пока не пройдёт, бешенства нет'},
   {id: 'drunk', kind: 'state', where: 'drankAt', label: 'во хмелю', ticks: 300, note: 'кружка браги на вечернем совете (settlement/life.js): ticks тиков; у рас, что живут брагой, — их работа и срок (brew у расы)'},
   // ── an illness, withdrawal, the rot (data/afflictions.js: how they are caught, the stages of an illness)
   {id: 'ill', kind: 'state', where: 'ill', label: 'болен', note: 'недуг со стадиями («Недуги»): стадия — что делает с телом'},
