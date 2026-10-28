@@ -54,29 +54,30 @@ export function seasonMoney(a, towns) {
       if (n < M.dust) continue;
       L[g] -= n; P[g] -= n; b.gold = r2(b.gold - n * price); s.gold = r2(s.gold + n * price);
       add(sold, s.id, g, n); add(got, b.id, g, n);
-      b.trade = b.trade || {}; b.trade.bought = r2((b.trade.bought || 0) + n * price); s.trade = s.trade || {}; s.trade.sold = r2((s.trade.sold || 0) + n * price);
+      b.trade.bought = r2((b.trade.bought || 0) + n * price); s.trade.sold = r2((s.trade.sold || 0) + n * price);
     }
   };
-  for (const t of towns) t.trade = null;
+  for (const t of towns) t.trade = {};   // the season's money: bought, sold (between towns), works (the gold its buildings gave), merchants, upkeep, aid (the realm paid)
   for (const l of a.net?.links.values() || []) if (l.p.alive && l.q.alive) { buy(l.p, l.q, l); buy(l.q, l.p, l); }
   // the buyers work with what came
   for (const t of towns) { const G = got.get(t.id); if (!G) continue; for (const [g, n] of Object.entries(G)) t.stock[g] = (t.stock[g] || 0) + n; setEcon(t, townEconomy(a, t, heatFactor(a, t), fromStore(t))); }
   // the season settled: the store, the treasury, the merchants, the upkeep
   for (const t of towns) {
     const e = t.econ, out = sold.get(t.id) || {};
-    t.gold = r2(t.gold + ((e.made.gold || 0) - (e.used.gold || 0)) / S);
+    const works = ((e.made.gold || 0) - (e.used.gold || 0)) / S; t.gold = r2(t.gold + works); t.trade.works = r2(works);
     const fair = M.merchants.at.some(id => t.built.includes(id)) ? M.merchants.fair : M.merchants.cheap;
     for (const g of new Set([...Object.keys(e.made), ...Object.keys(e.used), ...Object.keys(t.stock)])) {
       if (!stored(g)) continue;
       let v = Math.max(0, (t.stock[g] || 0) + ((e.made[g] || 0) - (e.used[g] || 0)) / S - (out[g] || 0));
       const room = roomOf(t, g);
-      if (v > room) { t.gold = r2(t.gold + (v - room) * goodPrice(g) * fair); v = room; }
+      if (v > room) { const m = (v - room) * goodPrice(g) * fair; t.gold = r2(t.gold + m); t.trade.merchants = r2((t.trade.merchants || 0) + m); v = room; }
       if (v >= M.dust) t.stock[g] = r2(v); else delete t.stock[g];
     }
     const cost = upkeepOf([t]) * M.upkeep.gold / S, R = realmOf(a, t.realm);
     let owe = cost;
     const pay = Math.min(owe, Math.max(0, t.gold)); t.gold = r2(t.gold - pay); owe -= pay;
-    if (owe > 0 && R && R.gold > 0) { const p = Math.min(owe, R.gold); R.gold = r2(R.gold - p); owe -= p; }
+    if (owe > 0 && R && R.gold > 0) { const p = Math.min(owe, R.gold); R.gold = r2(R.gold - p); owe -= p; t.trade.aid = r2(p); }
+    t.trade.upkeep = r2(cost);
     t.unpaid = cost > 0 ? Math.round(owe / cost * 1000) / 1000 : 0;
     // the season's prices of its market (campaign/town.js; saved): a good it lacks dearer, one it has in plenty cheaper
     const P = M.price, mk = {};

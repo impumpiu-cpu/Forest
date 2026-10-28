@@ -51,7 +51,7 @@ const T = a.towns.filter(t => t.alive);
 }
 // the money
 {
-  const rich = T.filter(t => t.gold > 0).length, traded = T.filter(t => t.trade).length;
+  const rich = T.filter(t => t.gold > 0).length, traded = T.filter(t => t.trade?.bought || t.trade?.sold).length;
   const bought = T.reduce((s, t) => s + (t.trade?.bought || 0), 0), sold = T.reduce((s, t) => s + (t.trade?.sold || 0), 0);
   check('у городов казна и склад; города покупают друг у друга — золото уходит продавцу', rich > T.length / 2 && traded > 0 && Math.abs(bought - sold) < 1 && T.some(t => Object.keys(t.stock || {}).length),
     `с деньгами ${rich} из ${T.length}, торговали ${traded}, оборот ${Math.round(bought)} зол.`);
