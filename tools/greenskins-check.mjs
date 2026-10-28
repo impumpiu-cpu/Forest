@@ -73,7 +73,7 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   const realm = a.realms.find(r => r.people === 'orcs');
   const plans = captives.want(a, realm, {role: 'realm', season: 'autumn', r: () => 0}) || [];
   check('набеги за рабами — на любого, своих и дикие племена тоже', plans.length > 0, plans.map(p => p[0].lair != null ? 'логово' : 'город').join(', '));
-  const t = gtowns.find(x => a.fauna) || gtowns[0]; t.built.push('fightpits'); const m0 = might(t, townFx(t));
+  const t = gtowns.find(x => a.fauna) || gtowns[0]; t.built = t.built.filter(x => x !== 'fightpits'); t.warBeasts = null; t.built.push('fightpits'); const m0 = might(t, townFx(t));   // (pits of its own, fresh: its history may have filled them)
   let got = []; for (let k = 0; k < 4; k++) { const s = stepWarBeasts(a, t); if (s) got.push(s); }
   check('бойцовские ямы: ловят зверей и чудовищ своей земли, никогда разумных; сила города растёт',
     got.length > 0 && got.every(id => SPECIES.get(id).mind !== 'sentient' && SPECIES.get(id).kind !== 'race') && might(t, townFx(t)) > m0, got.join(', '));

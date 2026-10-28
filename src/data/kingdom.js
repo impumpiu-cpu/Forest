@@ -28,7 +28,7 @@ export const RUINS = new Registry('ruin');
 RUINS.registerAll([
   {id: 'corruption', label: 'коррупция', grows: {rough: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше городов и чем больше в них живут в шалашах и шатрах, тем больше рук, что берут; добротное жильё её сдерживает'},
   {id: 'crime', label: 'преступность', grows: {pop: 0.02, folk: 0.3}, fall: 'stability', eats: 'loyalty', note: 'людные города, пёстрая толпа чужих народов, слабая стража'},
-  {id: 'decay', label: 'упадок', grows: {upkeep: 0.5, unpaid: 1}, fall: 'economy', eats: 'stability', note: 'содержание построек сверх того, что даёт экономика, и неоплаченное содержание (atlas/treasury.js)'},
+  {id: 'decay', label: 'упадок', grows: {upkeep: 0.5, unpaid: 1, broke: 0.5}, fall: 'economy', eats: 'stability', note: 'содержание построек сверх того, что даёт экономика, и неоплаченное содержание (atlas/treasury.js)'},
   {id: 'strife', label: 'раздоры', grows: {wars: 0.3, raided: 0.15}, fall: 'loyalty', eats: 'culture', note: 'войны и набеги ссорят знать'},
 ]);
 export const RUIN_RULES = {fall: 0.1, penalty: 0.05, max: 20};
@@ -84,9 +84,11 @@ REALM_EVENTS.registerAll([
 ]);
 export const EVENTS_RULE = {chance: 0.35};
 
-// What the kingdom does back to the world (0 — nothing yet). schismByStrife: a contender's chance to break away
-// × (1 + value × strife); schismByLoyalty: × (1 + value × (1 − loyalty)) while loyalty is under 1
-export const FEEDBACK = {schismByStrife: 0, schismByLoyalty: 0};
+// What the kingdom does back to the world (atlas/kingdom.js; the numbers to be tuned with the balance). schismByStrife: a
+// contender's chance to break away × (1 + value × strife); schismByLoyalty: × (1 + value × (1 − loyalty)) while loyalty is under 1;
+// growthByEconomy: its towns grow × (1 + value × economy); mightByStability: its towns' might × (1 + value × stability) —
+// each × within `range` (kept on each town a year: t.realmFx)
+export const FEEDBACK = {schismByStrife: 0.03, schismByLoyalty: 0.5, growthByEconomy: 0.1, mightByStability: 0.1, range: [0.7, 1.3]};
 
 // The market of a town by its step (campaign/town.js), as the base value and purchase limit of a Pathfinder settlement:
 // `maxPrice` — the dearest thing it sells, `purse` — the gold it pays for the caravan's goods in one visit. Empty — no

@@ -15,7 +15,7 @@
 // a.sites = [{id, town, kind, i, x, y, built, alive, died, path}];  a.siteAt = Int32Array (site index + 1, 0 free)
 // a.net = {links: Map(key → {p, q, c, flow}), year};  per town: t.sites (ids), t.supply = {own, got, gave}
 import {SITES, NET} from '../data/sites.js';
-import {TOWN_BUILDINGS} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_FX, foodNet} from '../data/townBuildings.js';
 import {placeHas} from './towns.js';
 import {findPath, tradeLinks} from './roads.js';
 import {ARMY} from '../data/parties.js';
@@ -195,13 +195,13 @@ export function fedTowns(a) {
 export function scourgedFood(a, t) {
   if (!a.f.scourge) return 0;
   let v = 0;
-  for (const s of townSites(a, t)) if (a.f.scourge[s.i] > ARMY.scourged) v += TOWN_BUILDINGS.get(s.kind).fx.food || 0;
+  for (const s of townSites(a, t)) if (a.f.scourge[s.i] > ARMY.scourged) v += Math.max(0, foodNet(TOWN_BUILDINGS.get(s.kind))) / TOWN_FX.flow.foodRef * TOWN_FX.flow.scourged;
   return v;
 }
 
 // what a town's works yield, for the panel: {food, raw} as shares of its land's feed and of its craft
 export function siteYields(a, t) {
   const out = {food: 0, raw: 0};
-  for (const s of townSites(a, t)) { const b = TOWN_BUILDINGS.get(s.kind); out.food += b.fx.food || 0; out.raw += (b.fx.prod || 0) + (b.fx.trade || 0); }
+  for (const s of townSites(a, t)) { const b = TOWN_BUILDINGS.get(s.kind); out.food += Math.max(0, foodNet(b)) / TOWN_FX.flow.foodRef * TOWN_FX.flow.scourged; out.raw += (b.fx.prod || 0) + (b.fx.trade || 0); }
   return out;
 }

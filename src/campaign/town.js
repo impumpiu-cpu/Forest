@@ -244,6 +244,7 @@ export function trade(a, K, t, st) {
   for (const o of wants(a, K, t, st)) {
     const p = offerPrice(o, st, t) * T.buy;
     if (M.maxPrice != null && p > M.maxPrice) continue;   // too dear for a market of this step
+    if (o.kind === 'beast' && !BEASTS[o.id].golem && t.stock && (t.stock.beasts || 0) < 1) continue;   // the town's pens and stables have none to sell (atlas/treasury.js)
     if (K.gold - p < reserveFor(K, t, st, WANTS.reserve, a)) continue;
     // still wanted after what was bought before it in this visit
     if (o.kind === 'building' && hasBuilding(K, o.id)) continue;

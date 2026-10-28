@@ -284,7 +284,7 @@ export function stepPeoples(a, rnd, say) {
     const fx = townFx(t);
     const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
     const target = Math.min(feeds, room(fx));
-    t.pop = Math.max(TL.minPop, t.pop + TL.growth * (1 + TL.prestige * fx.prestige) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
+    t.pop = Math.max(TL.minPop, t.pop + TL.growth * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
     t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);

@@ -2,11 +2,13 @@
 // they work, the stores and the treasuries, the buying between towns, the upkeep and the tax, the caravan at a town's market.
 // `npm run economy`.
 import {generateAtlas} from '../src/atlas/generate.js';
-import {townFx, canBuild, townNeeds} from '../src/atlas/towns.js';
+import {townFx, canBuild, townNeeds, might} from '../src/atlas/towns.js';
+import {schismFactor} from '../src/atlas/kingdom.js';
+import {RUINS} from '../src/data/kingdom.js';
 import {townEconomy} from '../src/atlas/economy.js';
 import {seaFeed} from '../src/atlas/sea.js';
 import {roomOf, taxYear, marketK, toTown, fromTown} from '../src/atlas/treasury.js';
-import {TOWN_BUILDINGS, TOWN_MONEY} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_MONEY, foodNet} from '../src/data/townBuildings.js';
 import {rationPrice} from '../src/campaign/town.js';
 
 const fail = [];
@@ -69,6 +71,18 @@ const T = a.towns.filter(t => t.alive);
   const fed = {...t, supply: {own: 3 * t.pop, got: 0, gave: 0}}, hungry = {...t, supply: {own: 0.5 * t.pop, got: 0, gave: 0}};
   check('паёк дешевле, где у города излишек еды', rationPrice(fed, 'own') < rationPrice(hungry, 'own'), `${rationPrice(fed, 'own').toFixed(3)} против ${rationPrice(hungry, 'own').toFixed(3)}`);
   check('цены в пределах', T.every(x => Object.values(x.market || {}).every(k => k >= TOWN_MONEY.price.lo && k <= TOWN_MONEY.price.hi)));
+}
+
+// the stores, the realm back to the world, the beasts
+{
+  const fed = TOWN_BUILDINGS.all().filter(b => b.fx.food).map(b => b.id), field = foodNet(TOWN_BUILDINGS.get('field'));
+  check('эффект «запасы» — только у амбара, погреба, коптильни, вешал, солеварни; пашня кормит своим зерном', fed.every(id => ['granary', 'cellar', 'smokehouse', 'dryrack', 'saltworks'].includes(id)) && field > 0, `${fed.join(', ')}; пашня ${field}`);
+  const R = a.realms.find(r => r.kingdom && r.fallen == null), t = T.find(x => x.realm === R.id);
+  check('показатели державы правят миром: рост городов от экономики, сила — от стабильности, расколы — от лояльности и раздоров',
+    t.realmFx && t.realmFx.grow > 0 && t.realmFx.might > 0 && schismFactor({kingdom: {stats: {loyalty: 0}, ruin: {strife: 5}}}) > 1, JSON.stringify(t.realmFx));
+  const k0 = might(t, townFx(t)), keep = t.stock; t.stock = {...keep, beasts: (keep?.beasts || 0) + 50}; const k1 = might(t, townFx(t)); t.stock = keep;
+  check('скот на складе — конница и боевые звери: сила города растёт', k1 > k0, `${k0.toFixed(1)} → ${k1.toFixed(1)}`);
+  check('упадок растёт и от пустой казны державы', RUINS.get('decay').grows.broke > 0);
 }
 
 if (fail.length) process.exit(1);

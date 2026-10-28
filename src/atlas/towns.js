@@ -19,7 +19,11 @@
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
 import {REALM_BANDS, HOST_BANDS} from '../data/seam.js';
-import {TOWN_BUILDINGS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS, foodNet} from '../data/townBuildings.js';
+
+// the buildings that make a good (once)
+const MAKERS = new Map();
+const makersOf = g => { if (!MAKERS.has(g)) MAKERS.set(g, TOWN_BUILDINGS.all().filter(b => b.out?.[g]).map(b => b.id)); return MAKERS.get(g); };
 import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -97,10 +101,10 @@ export function realmWorks(a, t, material) {
 // the words of the metals the realm of a town works, of those some building opens (for the cards)
 export const realmMetalWords = (a, t) => { const built = realmBuilt(a, t); return gatedMetals().filter(m => metalBuildings(m).some(id => built.has(id))).map(m => METAL_WORDS[m] || m); };
 // (a dwarven town's guard golems count as people: atlas/golems.js golemMen)
-// a town's might: its people (with its guard golems and its war beasts as so many men: atlas/golems.js, atlas/beasts.js) × its
+// a town's might: its people (with its guard golems, its war beasts and the beasts of its store — horses, war beasts: TOWN_FX.beastMen — as so many men: atlas/golems.js, atlas/beasts.js) × its
 // defence and craft, × a people's own fierceness (data/peoples.js warCult: the greenskins)
-export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0)) * (1 + fx.defence + TF.mightProd * fx.prod)
-  * (WORLD_PEOPLES.get(t.people)?.warCult?.might ?? 1);
+export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.stock?.beasts || 0) * TF.beastMen) * (1 + fx.defence + TF.mightProd * fx.prod)
+  * (WORLD_PEOPLES.get(t.people)?.warCult?.might ?? 1) * (t.realmFx?.might ?? 1);   // and its realm's stability (atlas/kingdom.js)
 export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 
 // ── the place
@@ -215,8 +219,10 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
     if (E) {
       for (const g of Object.keys(b.out || {})) v += (E.short[g] || 0) * TF.flow.short;
       for (const g of Object.keys(b.in || {})) v += (E.spare?.[g] || 0) * TF.flow.spare;   // it takes what lies unused: the mill — spare grain
-      if ((b.out?.food || b.out?.grain) && need.food > 0) v += need.food * TF.flow.food;
+      const fed = foodNet(b); if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);   // as much as it feeds
       if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) v *= TF.flow.idle;
+      // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore)
+      if (Object.keys(b.in || {}).some(g => !TOWN_GOODS.get(g).soft && !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => inRealm.has(id)))) v *= TF.flow.idle;
     }
     v *= 0.85 + 0.3 * rnd();
     if (v > bv) { bv = v; best = b; }
