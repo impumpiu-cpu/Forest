@@ -35,15 +35,15 @@ export const LAIR_BANDS = {
   goblins: 'goblins', gnolls: 'gnolls', ogres: 'ogres', trolls: 'troll', swamptrolls: 'troll', icetrolls: 'troll', giants: 'giants',
   wights: 'undead', necromancer: 'cultists', ghouls: 'upyrs', vampire: 'vampire',
 };
-// which raid band an unfriendly realm sends, by its people (data/peoples.js); elves do not raid; the dwarves send a war
-// party only to a realm they are at war with (seam/cell.js, campaign/land.js)
-export const REALM_BANDS = {orcs: 'orcs', humans: 'bandits', dwarves: 'dwarves'};
+// which raid band an unfriendly realm sends, by its people (data/peoples.js); the dwarves and the elves send a war party
+// only to a realm they are at war with (seam/cell.js, campaign/land.js); the humans' host is made by their buildings (HOST_BANDS)
+export const REALM_BANDS = {orcs: 'orcs', dwarves: 'dwarves', elves: 'elves'};   // (the humans: HOST_BANDS below)
 // a people whose band is made by what its realm has built (atlas/towns.js realmBand): the humans' host — `base`, and
 // `base:<letters>` for the buildings of `by` its realm has (data/raids.js host: the tilt-yard's knights, the hippodrome's
 // horse, the den's cutthroats)
 export const HOST_BANDS = {humans: {base: 'host', by: {tiltyard: 'k', hippodrome: 'h', den: 'd'}}};
 // the peoples whose bands come only in a war (not for mere dislike): the dwarves do not raid
-export const WAR_ONLY_BANDS = ['dwarves'];
+export const WAR_ONLY_BANDS = ['dwarves', 'elves'];
 // outlaws live wherever people do: a little banditry near any town of men
 export const OUTLAWS = {band: 'bandits', weight: 0.4};
 // the tribes as fields (data/lairs.js LAIR_FIELD): a tribe's folk living within the reach send their band too, without a

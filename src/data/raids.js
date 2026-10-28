@@ -104,8 +104,8 @@ function fillLinks(rng, budget, mix, t, links, {extra, max, up, cost}) {
 // the war beasts a beast-driver brings (role `lead`, data/roles.js): of the land's beasts and monsters, as thick as they
 // live there (o.here, a world cell) or the band's own `led` kinds on the polygon
 export const LED = ['wolf', 'boar', 'varg', 'bear'];
-function withLed(rng, list, o) {
-  const here = o?.here ? Object.entries(o.here).filter(([id, v]) => v > 0 && ['beast', 'monster'].includes(SPECIES.get(id).kind) && SPECIES.get(id).mind !== 'sentient') : LED.map(id => [id, 1]);
+function withLed(rng, list, o, led = LED) {
+  const here = o?.here ? Object.entries(o.here).filter(([id, v]) => v > 0 && ['beast', 'monster'].includes(SPECIES.get(id).kind) && SPECIES.get(id).mind !== 'sentient') : led.map(id => [id, 1]);
   if (!here.length) return list;
   const out = [...list];
   for (const m of list) {
@@ -176,23 +176,23 @@ RAID_BANDS.registerAll([
 
   {id: 'orcs', label: 'ватага зеленокожих', kind: 'sentient',
     goals: (w, g) => [['loot', 2], ['burn', 1.5 * torches(w)], ['kill', 0.5 + feud(w)], ['scout', scouting(w, g)]], nerve: -0.05,
-    links: [['warband', 3], ['swarm', 1], ['riders', 1]], ranks: {officer: 'сотник', boss: 'вождь'}, champion: true,
+    links: [['warband', 3], ['swarm', 1], ['riders', 1], ['takers', 1]], ranks: {officer: 'сотник', boss: 'вождь'}, champion: true,
     chance: {weight: 2, threat: 4, below: 0.5},
     // all the greenskin kinds in one band (data/peoples.js orcs `kin`); a beast-driver brings the war beasts of the land
     members: (w, rng, budget, t, o) => withLed(rng, fill(rng, budget, [['orc', 3], ['goblin', 2], ['gnoll', 1], ['varg', heads(budget, t) >= 5 ? 1 : 0], ['ogre', heads(budget, t) >= 10 ? 0.6 : 0], ['troll', heads(budget, t) >= 12 ? 0.3 : 0]], t, o), o),
     message: (n, group) => `Набег! Ватага зеленокожих: ${[...new Set(group.filter(a => !a.warBeast).map(a => SPECIES.get(a.species).plural))].join(', ')}${group.some(a => a.mount) ? ', с наездниками' : ''}${group.some(a => a.warBeast) ? ' и боевыми зверями' : ''}`},
 
   {id: 'goblins', label: 'гоблинская шайка', kind: 'sentient',
-    goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1, links: [['swarm', 3], ['line', 1]], ranks: {officer: 'заводила', boss: 'главарь'},
+    goals: (w, g) => [['loot', 4], ['burn', 0.8 * torches(w)], ['scout', scouting(w, g)]], nerve: 0.1, links: [['swarm', 3], ['line', 1], ['spiders', 1]], ranks: {officer: 'заводила', boss: 'главарь'},
     chance: {weight: 1.5},
     // a big band rides: wargs out of the hills, giant spiders out of the deep wood (the tribes' beasts, data/lairs.js)
     members: (w, rng, budget, t, o) => fill(rng, budget, [['goblin', 1], ['varg', heads(budget, t) >= 4 ? 0.3 : 0], ['spider', heads(budget, t) >= 6 ? 0.2 : 0]], t, o),
     message: (n, group) => `Набег! Гоблинская шайка: мелкие, юркие, тащат всё, что плохо лежит${group.some(a => a.species === 'varg') ? '; верхом на варгах' : ''}${group.some(a => a.species === 'spider') ? '; с ними гигантские пауки' : ''}`},
 
   {id: 'gnolls', label: 'стая гноллов', kind: 'sentient',
-    goals: (w, g) => [['loot', 3], ['kill', 0.6 + feud(w)]], links: [['pack', 2], ['line', 1]], ranks: {officer: 'клык', boss: 'вожак стаи'},
+    goals: (w, g) => [['loot', 3], ['kill', 0.6 + feud(w)]], links: [['pack', 2], ['line', 1], ['hyenas', 1]], ranks: {officer: 'клык', boss: 'вожак стаи'},
     chance: {weight: 1.5, threat: 3, below: 0.4},
-    members: (w, rng, budget, t, o) => fill(rng, budget, [['gnoll', 3], ['hyena', 1.5]], t, o),
+    members: (w, rng, budget, t, o) => withLed(rng, fill(rng, budget, [['gnoll', 3], ['hyena', 1.5]], t, o), o, ['hyena']),   // (a beast-driver of theirs brings hyenas)
     message: () => 'Набег! Гноллы-падальщики идут на запах лагеря'},
 
   // a dwarven war party (data/seam.js REALM_BANDS): only a dwarven realm at war sends it (`world`); it takes no captives
@@ -219,6 +219,15 @@ RAID_BANDS.registerAll([
     chance: {weight: 0},
     members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = m.role === 'knight' || m.role === 'horseknight' ? 'Рыцарь' : 'Ратник'; }})),
     message: (n, group) => `Дружина людей: ${n}${group.some(a => a.fightRole === 'knight' || a.fightRole === 'horseknight') ? ', с рыцарями' : ''}${group.some(a => a.mount) ? ' и конницей' : ''}`})),
+
+  // an elven war party (data/seam.js REALM_BANDS): only an elven realm at war sends it (`world`, WAR_ONLY_BANDS); it takes no
+  // captives and burns nothing: bows from the trees, the caller of beasts behind them
+  {id: 'elves', label: 'отряд эльфов', kind: 'sentient', world: true, noCaptives: true,
+    goals: () => [['kill', 2], ['loot', 0.5]], nerve: 0.05,
+    links: [['grove', 2], ['wardens', 1], ['volley', 1]], ranks: {officer: 'страж', boss: 'владыка леса'},
+    chance: {weight: 0},
+    members: (w, rng, budget, t, o) => fill(rng, budget, [['elf', 1]], t, o),
+    message: (n, group) => `Отряд эльфов: ${n}${group.some(a => a.fightRole === 'summoner') ? ', с призывателем' : ''}. Пленных эльфы не берут`},
 
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',
     goals: (w, g) => [['kill', 2], ['loot', 1], ['scout', scouting(w, g)]],

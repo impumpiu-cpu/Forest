@@ -110,6 +110,13 @@ LINKS.registerAll([
   {id: 'levy',    label: 'ополчение',    note: 'люди: щит, копья, лучник, застрельщик', roles: ['shield', 'spearman', 'spearman', 'archer', 'skirmisher']},
   {id: 'knights', label: 'рыцари',       note: 'люди (ристалище): рыцари держат строй, копьё из-за плеча, лучник', roles: ['knight', 'knight', 'spearman', 'archer', 'shield']},
   {id: 'cavalry', label: 'конница',      note: 'люди (ипподром): конные рыцари с флангов', roles: ['horseknight', 'horseknight', 'horseknight', 'knight', 'archer']},
+  // the races' own links: the elves' grove (the caller of beasts behind the bows), the goblins' spider hundred, the gnolls'
+  // hyena pack (the beast-driver and the berserker), the greenskins' slave-takers (nets in front)
+  {id: 'grove',   label: 'роща',         note: 'эльфы: копьё и луки, призыватель зовёт лесных зверей, застрельщик на фланге', roles: ['spearman', 'archer', 'summoner', 'archer', 'skirmisher']},
+  {id: 'wardens', label: 'стражи леса',  note: 'эльфы: щит и копьё держат, двое лучников, знахарь позади', roles: ['shield', 'spearman', 'archer', 'archer', 'healer']},
+  {id: 'spiders', label: 'паучья сотня', note: 'гоблины: наездники на пауках, застрельщик, головорез, лучник', roles: ['spiderrider', 'spiderrider', 'skirmisher', 'cutthroat', 'archer']},
+  {id: 'hyenas',  label: 'гиенья стая',  note: 'гноллы: загонщик со зверями, берсерк, копья, застрельщик', roles: ['beastmaster', 'berserker', 'spearman', 'spearman', 'skirmisher']},
+  {id: 'takers',  label: 'ловцы',        note: 'зеленокожие: сети впереди, рубака и громила следом, застрельщик', roles: ['catcher', 'catcher', 'cleaver', 'brute', 'skirmisher']},
   {id: 'riders',  label: 'всадники',     note: 'зеленокожие: наездники на варгах и пауках, загонщик со зверями, берсерк', roles: ['wargrider', 'wargrider', 'spiderrider', 'beastmaster', 'berserker']},
   {id: 'volley',  label: 'стрелки',      note: 'луки, а впереди один щит', roles: ['archer', 'archer', 'archer', 'shield', 'skirmisher']},
 ]);
@@ -129,7 +136,7 @@ export const ARMOUR = {
 export const ROLE_TIERS = {from: [0, 8, 16, 26, 40], ramp: 0.06, share: 0.7};
 
 export const ROLE_MIX = {
-  human:       {shield: 2, spearman: 1.5, cleaver: 1.5, cutthroat: 1, skirmisher: 1, catcher: 0.3, archer: 1.2, healer: 0.3, knight: 1.5, horseknight: 1.5, best: 3},
+  human:       {shield: 2, spearman: 1.5, cleaver: 1.5, cutthroat: 1, skirmisher: 1, archer: 1.2, healer: 0.3, knight: 1.5, horseknight: 1.5, best: 3},
   orc:         {shield: 2, spearman: 1, cleaver: 3, skirmisher: 0.7, catcher: 0.3, archer: 0.3, healer: 0.3, berserker: 0.8, wargrider: 0.8, beastmaster: 0.5, best: 2},
   goblin:      {shield: 0.3, spearman: 1, cutthroat: 2.5, skirmisher: 3, catcher: 0.5, archer: 2, healer: 0.3, spiderrider: 0.8, wargrider: 0.4, beastmaster: 0.4, best: 1},
   dwarf:       {shield: 2, spearman: 1, smith: 2, berserker: 0.8, forgemaster: 0.5, cleaver: 1, archer: 0.8, healer: 0.3, best: 4},
@@ -139,7 +146,7 @@ export const ROLE_MIX = {
   skeleton:    {shield: 2, spearman: 2, cleaver: 1, archer: 1.5, best: 1},
   ogre:        {brute: 1, best: 0},
   giant:       {brute: 1, best: 0},
-  troll:       {best: 0},
+  troll:       {brute: 1, best: 0},   // (a club or a maul torn from a tree: the brute)
   vampire:     {fixed: ['sword', 'clothes'], best: 2},
   necromancer: {fixed: ['staff', 'clothes'], best: 0},
 };
