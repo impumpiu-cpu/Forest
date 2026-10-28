@@ -12,7 +12,7 @@
 // Every answer is one of the shared tasks (fight, kite, mend) or null — the side's default (the nearest foe).
 //   kitRole(a) — the fighting role a caravan's member fights in: by its place in the company and what it holds
 import {SPECIES} from '../data/species.js';
-import {COMBAT_ROLES, mixOf} from '../data/roles.js';
+import {COMBAT_ROLES, mixOf, ARMOUR} from '../data/roles.js';
 import {TACTICS, SQUAD} from '../data/behaviour.js';
 import {isHostile} from '../data/factions.js';
 import {nearAgents} from './spatial.js';
@@ -97,6 +97,7 @@ export function roleTactic(w, a, side, radius) {
 
   switch (R.id) {
     // the shield-bearer: whoever is on the side's shooters and healers first (sentient), else the nearest
+    case 'knight':   // (the knight holds the line as the shield-bearer does)
     case 'shield': {
       if (mind === 'sentient') {
         for (const m of side.all()) {
@@ -172,6 +173,9 @@ export function kitRole(a) {
   // the roles of a race's own (data/roles.js ROLE_MIX: the dwarves' forge-master, hammer-smith and berserker)
   const own = r => (mixOf(a.species)[r] || 0) > 0;
   if (form('spitfire') && own('forgemaster')) return 'forgemaster';
+  // a knight of the caravan in heavy armour with a shield is a knight of the line (the humans: data/roles.js knight)
+  const body = a.equip.body ? def(a.equip.body) : null;
+  if (a.place === 'knight' && form('shield') && body && ARMOUR.heavy.some(([f]) => f === body.form) && own('knight')) return 'knight';
   if ((form('warhammer') || form('maul')) && own('smith')) return 'smith';
   if (a.gear?.offhand && !(a.gear.armor > 0) && own('berserker')) return 'berserker';
   if (form('shield')) return 'shield';

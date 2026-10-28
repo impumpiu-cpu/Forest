@@ -21,12 +21,13 @@ REALM_STATS.registerAll([
 // Ruin grows by its sources every year and falls by the attribute that holds it back (× `fall`); never below 0.
 //   towns — per town of the realm;  rough — per town, × the share of its room in rough housing (shacks, tents: data/
 //   townBuildings.js housing of step 0; atlas/towns.js roughShare);  pop — per 1000 people;  upkeep — per point of upkeep over the economy;
+//   folk — per town, × the share of its people of other peoples (the crowd of many peoples: the humans' towns most);
 //   wars — per war the realm is in;  raided — per town of it raided this year
 // `eats` — the attribute each point of this ruin takes off (× `penalty`)
 export const RUINS = new Registry('ruin');
 RUINS.registerAll([
   {id: 'corruption', label: 'коррупция', grows: {rough: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше городов и чем больше в них живут в шалашах и шатрах, тем больше рук, что берут; добротное жильё её сдерживает'},
-  {id: 'crime', label: 'преступность', grows: {pop: 0.02}, fall: 'stability', eats: 'loyalty', note: 'людные города, слабая стража'},
+  {id: 'crime', label: 'преступность', grows: {pop: 0.02, folk: 0.3}, fall: 'stability', eats: 'loyalty', note: 'людные города, пёстрая толпа чужих народов, слабая стража'},
   {id: 'decay', label: 'упадок', grows: {upkeep: 0.5}, fall: 'economy', eats: 'stability', note: 'содержание построек сверх того, что даёт экономика'},
   {id: 'strife', label: 'раздоры', grows: {wars: 0.3, raided: 0.15}, fall: 'loyalty', eats: 'culture', note: 'войны и набеги ссорят знать'},
 ]);

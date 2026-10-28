@@ -208,6 +208,18 @@ RAID_BANDS.registerAll([
     },
     message: (n, group) => `Дварфийская дружина: ${n}${group.some(a => SPECIES.get(a.species).mechanism) ? ', с ними големы' : ''}. Пленных дварфы не берут`},
 
+  // the humans' host (data/seam.js REALM_BANDS, atlas/towns.js realmBand): a realm's men at war — the levy and a wall of
+  // shields; the knights and a champion when the realm has a tilt-yard (`k`), the horse-knights with a hippodrome (`h`), the
+  // cutthroats with a den (`d`): one band for each of what the realm has built (`host`, `host:k`, `host:kh`, …). Only from
+  // the world map (`world`)
+  ...['', 'k', 'h', 'kh', 'd', 'kd', 'hd', 'khd'].filter(s => !s.includes('h') || s.includes('k')).map(s => ({id: s ? `host:${s}` : 'host', label: 'дружина людей', kind: 'sentient', world: true,
+    goals: (w, g) => [['loot', 2], ['kill', 1 + feud(w)], ['burn', 0.4 * torches(w)], ['scout', scouting(w, g)]],
+    links: [['levy', 2], ['wall', 1], ...(s.includes('k') ? [['knights', 2]] : []), ...(s.includes('h') ? [['cavalry', 1]] : []), ...(s.includes('d') ? [['raid', 1]] : [])],
+    ranks: {officer: 'сотник', boss: 'воевода'}, champion: s.includes('k'),
+    chance: {weight: 0},
+    members: (w, rng, budget, t, o) => fill(rng, budget, [['human', 1]], t, o).map(m => ({...m, init: a => { a.name = m.role === 'knight' || m.role === 'horseknight' ? 'Рыцарь' : 'Ратник'; }})),
+    message: (n, group) => `Дружина людей: ${n}${group.some(a => a.fightRole === 'knight' || a.fightRole === 'horseknight') ? ', с рыцарями' : ''}${group.some(a => a.mount) ? ' и конницей' : ''}`})),
+
   {id: 'darkelves', label: 'отряд тёмных эльфов', kind: 'sentient',
     goals: (w, g) => [['kill', 2], ['loot', 1], ['scout', scouting(w, g)]],
     links: [['slavers', 2], ['volley', 1]], ranks: {officer: 'страж', boss: 'матрона'},

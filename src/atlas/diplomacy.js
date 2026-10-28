@@ -230,6 +230,15 @@ export function fadeScourge(a) { if (a.f.scourge) for (let i = 0; i < a.n; i++) 
 export function stepDiplomacy(a, rnd, say, overlap) {
   driftRealms(a);
   const k = scaleOf(a), H = a.hist, towns = a.towns.filter(t => t.alive);
+  // a people that will not have strangers (data/peoples.js folk.expel: the dwarves) pushes them out of its towns
+  for (const t of towns) {
+    const ex = WORLD_PEOPLES.get(t.people)?.folk?.expel; if (!ex || !t.folk) continue;
+    for (const [y, v] of Object.entries(t.folk)) {
+      const now = Math.max(0, v - ex);
+      if (v >= D.folkSeen && now < D.folkSeen && t.tier >= 1) say(`Из ${townLabel(t, 2)} ${t.name} выжили чужаков: ${WORLD_PEOPLES.get(y).label} уходят.`);
+      if (now > 0) t.folk[y] = now; else delete t.folk[y];
+    }
+  }
   // the nearest towns of two peoples, and how far apart they are
   const nearest = (p, q) => {
     let best = null, bd = Infinity;
@@ -246,12 +255,12 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     if (trades(a, p, q)) {
       for (const t of towns) if (t.realm === p) for (const o of towns) if (o.realm === q && ((Math.hypot(t.x - o.x, t.y - o.y) <= ROADS.reach * k &&
         a.f.road[t.i] >= ROADS.levels[0].wear && a.f.road[o.i] >= ROADS.levels[0].wear) || laneBetween(a, t, o))) {
-        routes += t.built.includes('mint') || o.built.includes('mint') ? 2 : 1;   // coin carries further than barter
+        routes += t.built.includes('mint') || o.built.includes('mint') || t.built.includes('tradepost') || o.built.includes('tradepost') ? 2 : 1;   // coin and a trading post carry further than barter
         // folk of each settle in the other's town (of another race; kin need no settling)
         if (!kin) for (const [x, y] of [[t, o.people], [o, t.people]]) {
           x.folk ||= {};
-          const was = x.folk[y] || 0;
-          x.folk[y] = Math.min(D.mingleMax, was + D.mingle);
+          const was = x.folk[y] || 0, take = WORLD_PEOPLES.get(x.people)?.folk?.take ?? 1;   // (the dwarves take few, the humans many: data/peoples.js folk)
+          x.folk[y] = Math.min(D.mingleMax, was + D.mingle * take);
           if (was < 0.1 && x.folk[y] >= 0.1 && x.tier >= 1) say(`В ${townLabel(x, 3)} ${x.name} осели ${label(y)}: каждый десятый там теперь из них.`);
         }
       }
@@ -260,7 +269,8 @@ export function stepDiplomacy(a, rnd, say, overlap) {
     }
     // shared land sours two races; two realms of one race share their own land freely
     const sh = kin ? 0 : overlap(P, Q), [pair, gap] = nearest(p, q);
-    r.att += D.drift * Math.sign(old - r.att) * Math.min(1, Math.abs(old - r.att)) - D.pressure * sh + (r.att < old + D.tradeCeil ? Math.min(D.tradeMax, D.trade * routes) : 0);
+    const tw = Math.max(WORLD_PEOPLES.get(P)?.trade ?? 1, WORLD_PEOPLES.get(Q)?.trade ?? 1);   // a trading people warms faster (data/peoples.js trade: the humans)
+    r.att += D.drift * Math.sign(old - r.att) * Math.min(1, Math.abs(old - r.att)) - D.pressure * sh + (r.att < old + D.tradeCeil ? Math.min(D.tradeMax * tw, D.trade * tw * routes) : 0);
     // the front, for the realms' deeds (atlas/deeds/warOn.js, march.js): whether the two border — shared land or towns
     // within the front — and the nearest pair of their towns
     r.border = sh > 0 || gap <= D.front * k; r.front = pair && gap <= D.front * k ? [pair[0].id, pair[1].id] : null; r.kin = kin;

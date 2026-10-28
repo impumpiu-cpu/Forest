@@ -16,6 +16,7 @@
 // score Σ need × taste × effect, where the needs come from the town's state (a full town needs room,
 // a hungry one food, one beset by lairs or raided lately defence, one on a road trade; faith, lore and
 // fame grow with size) and the taste is its people's (data/peoples.js). The best one is built.
+import {REALM_BANDS, HOST_BANDS} from '../data/seam.js';
 import {TOWN_BUILDINGS, EFFECTS, metalBuildings, gatedMetals, METAL_WORDS, fxOf, GOLEMS} from '../data/townBuildings.js';
 import {TIERS, CAPITAL, crowned, WORLD_PEOPLES, KIN} from '../data/peoples.js';
 import {ORE_GENESIS} from '../data/geology.js';
@@ -49,6 +50,15 @@ export const room = fx => TF.room[0] + TF.room[1] * fx.housing;
 
 // ── the realm: what stands in its towns decides what each of them may build and what metals its smiths work.
 // A town of no realm (an old save, a hamlet just founded) looks at itself.
+// the raid band a realm sends (data/seam.js REALM_BANDS; HOST_BANDS — by what it has built: the humans' host); a realm
+// gone or none — its people's band
+export function realmBand(a, realmId, people) {
+  const H = HOST_BANDS[people]; if (!H) return REALM_BANDS[people] || null;
+  const t = a?.towns?.find(o => o.alive && o.realm === realmId); if (!t) return H.base;
+  const built = realmBuilt(a, t), s = Object.entries(H.by).filter(([id]) => built.has(id)).map(([, l]) => l).join('');
+  return s ? `${H.base}:${s}` : H.base;
+}
+
 export function realmBuilt(a, t) {
   if (t.realm == null || !a?.towns) return new Set(t.built);
   const out = new Set();

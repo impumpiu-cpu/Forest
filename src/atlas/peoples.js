@@ -210,7 +210,7 @@ export function stepPeoples(a, rnd, say) {
   // every people sees the others as they were at the start of the year, whatever the order
   const was = a.peoples.map(pe => Float32Array.from(pe.u));
   // how the races stand to each other this year (the worst of their realms' dealings), once per pair
-  const compete = a.peoples.map(pe => a.peoples.map(o => (o === pe ? 0 : DIPLOMACY.compete[raceState(a, pe.id, o.id)])));
+  const compete = a.peoples.map(pe => a.peoples.map(o => (o === pe ? 0 : DIPLOMACY.compete[raceState(a, pe.id, o.id)] * (WORLD_PEOPLES.get(o.id).folk?.push ?? 1))));   // (the dwarves press strangers off their land harder: data/peoples.js folk.push)
   for (const [pi, pe] of a.peoples.entries()) {
     const {P, K, u, mob} = pe, hold = holdField(a, pe);
     // Fisher–KPP: logistic growth where they live, spreading easiest through their own lands

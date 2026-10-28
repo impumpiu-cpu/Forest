@@ -38,6 +38,10 @@ export const LAIR_BANDS = {
 // which raid band an unfriendly realm sends, by its people (data/peoples.js); elves do not raid; the dwarves send a war
 // party only to a realm they are at war with (seam/cell.js, campaign/land.js)
 export const REALM_BANDS = {orcs: 'orcs', humans: 'bandits', dwarves: 'dwarves'};
+// a people whose band is made by what its realm has built (atlas/towns.js realmBand): the humans' host — `base`, and
+// `base:<letters>` for the buildings of `by` its realm has (data/raids.js host: the tilt-yard's knights, the hippodrome's
+// horse, the den's cutthroats)
+export const HOST_BANDS = {humans: {base: 'host', by: {tiltyard: 'k', hippodrome: 'h', den: 'd'}}};
 // the peoples whose bands come only in a war (not for mere dislike): the dwarves do not raid
 export const WAR_ONLY_BANDS = ['dwarves'];
 // outlaws live wherever people do: a little banditry near any town of men

@@ -59,6 +59,7 @@ export const rockNear = w => { if (!rockSeen.has(w)) rockSeen.set(w, (() => {
   return false;
 })()); return rockSeen.get(w); };
 const dwarven = w => colonyRace(w) === 'dwarf';
+const human = w => colonyRace(w) === 'human';
 // a colony of greenskins, and whether it has a kind of them among its people (the warg den wants orcs, the spider den goblins)
 const greenskin = w => { const r = colonyRace(w); return !!r && SPECIES.get(r).rel === 'greenskin'; };
 const hasKin = (w, sp) => w.agents.some(a => a.faction === 'colony' && !a.dead && !a.captive && a.species === sp);
@@ -351,6 +352,20 @@ BUILDINGS.registerAll([
     available: w => greenskin(w),
     effect: 'Зверя или чудовище, побитых у лагеря до последней пятой части здоровья, не добивают, а ломают в боевого: он бьётся за колонию.',
     effects: {}, wish: 'хочет бойцовских ям', motive: (a) => [[(a.mem.wolf + a.mem.raid) * 0.6, 'звери ходят у лагеря'], [0.25, 'хочет зрелищ']]},
+
+  // the humans' own: the tilt-yard (knights' drill), the den (the cutthroats know the thieves), the trading post
+  {id: 'tiltyard', name: 'Ристалище', gender: 'n', cost: {wood: 40, stone: 10}, work: 280, max: 1, wooden: true, color: '#b8863a', mark: 'Рс', needs: 'forge',
+    available: w => human(w),
+    effect: 'Рыцарская выучка: в лагере защитники получают на 10% меньше урона.',
+    effects: {mul: {defense: 0.9}}, wish: 'хочет ристалища', motive: (a) => [[a.mem.raid * 1.2, 'нужно учиться драться'], [(a.prefs.hunt - 1) * 0.3, 'любит поединки']]},
+  {id: 'den', name: 'Притон', gender: 'm', cost: {wood: 25}, work: 160, max: 1, wooden: true, color: '#6a4a5a', mark: 'Пр',
+    available: w => human(w),
+    effect: 'Свои головорезы знают чужих воров: налётчики уносят на пятую часть меньше.',
+    effects: {mul: {loot: 0.8}}, wish: 'хочет притона', motive: () => [[0.15, 'негде отвести душу']]},
+  {id: 'tradepost', name: 'Торговый пост', gender: 'm', cost: {wood: 30, rope: 2}, work: 200, max: 1, wooden: true, color: '#c8a050', mark: 'ТП',
+    available: w => human(w),
+    effect: 'Караваны торговцев приходят в полтора раза чаще.',
+    effects: {mul: {caravans: 1.5}}, wish: 'хочет торговать чаще', motive: (a, c) => [[0.3, 'караваны ходят редко'], [c.stock('gold') > 20 ? 0.3 : 0, 'есть что потратить']]},
 
   {id: 'watchtower', name: 'Сторожевая вышка', gender: 'f', cost: {wood: 30, bone: 4}, work: 220, max: 2, wooden: true, color: '#9c8b6e', mark: 'Вш', zone: 11,
     effect: 'Расширяет зону поселения на 11 клеток вокруг себя: здесь защитники сильнее, а волки не охотятся.',

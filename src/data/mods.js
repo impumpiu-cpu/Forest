@@ -54,6 +54,7 @@ COLONY_MODS.registerAll([
   {id: 'mul.defense', kind: 'mul', key: 'defense', label: 'Урон по своим в зоне', base: 1, reads: 'бой у стен (agents/combat.js)', note: 'частокол — меньше'},
   {id: 'add.thorns', kind: 'add', key: 'thorns', label: 'Колючки', base: 0, reads: 'шаг и раны чужих в зоне поселения (agents/movement.js, agents/body.js)', note: 'колючая изгородь эльфов: чужой в зоне идёт медленнее и ранится (числа — data/buildings.js THORNS)'},
   {id: 'mul.loot', kind: 'mul', key: 'loot', label: 'Что уносят налётчики', base: 1, reads: 'грабёж склада (settlement/stock.js)'},
+  {id: 'mul.caravans', kind: 'mul', key: 'caravans', label: 'Чаще караваны', base: 1, reads: 'шанс каравана торговцев (outside/scripted.js caravanChance)', note: 'торговый пост людей'},
   {id: 'mul.douse', kind: 'mul', key: 'douse', label: 'Тушение', base: 1, reads: 'тушение пожара (agents/tasks.js)'},
   {id: 'mul.wear', kind: 'mul', key: 'wear', label: 'Износ снаряжения', base: 1, reads: 'износ вещей поселенца (agents/equipment.js)'},
   {id: 'yield', kind: 'yield', keys: 'resources', label: 'Выход ресурса', base: 1, reads: 'добыча и урожай (settlement/mods.js yieldOf)', note: 'по ресурсу: рыба, мясо, ячмень…'},

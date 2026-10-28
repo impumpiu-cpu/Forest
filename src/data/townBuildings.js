@@ -198,6 +198,12 @@ TOWN_BUILDINGS.registerAll([
   // ── trade and ways
   B('ferry', 'перевоз', 'm', 'trade', 0, [...H, ...E, ...O], {trade: 0.05}, {needs: ['river'], jobs: 2, out: {gold: 20}}),
   B('bridge', 'мост', 'm', 'trade', 1, [...H, ...D], {trade: 0.15}, {needs: ['river'], requires: ['quarry'], in: {stone: 10}}),
+  // the humans' own (docs/WORLD.md «Асимметрия народов»): the tilt-yard raises knights (data/raids.js host: the knight, the
+  // champion), the hippodrome horse-knights, the den cutthroats; the trading post doubles a trade route's worth (atlas/diplomacy.js)
+  B('tiltyard', 'ристалище', 'n', 'defence', 1, H, {defence: 0.15, prestige: 0.15}, {requiresAny: ['forge', 'armory'], local: 'tiltyard', notable: true, jobs: 6, in: {arms: 2, armor: 3, food: 10}}),
+  B('hippodrome', 'ипподром', 'm', 'defence', 2, H, {defence: 0.15, prestige: 0.1}, {requires: ['tiltyard'], requiresAny: ['pen', 'pasture'], needs: ['flat'], notable: true, jobs: 8, in: {food: 20, grain: 20}, out: {beasts: 3}}),
+  B('den', 'притон', 'm', 'trade', 1, H, {trade: 0.05}, {needs: ['road'], local: 'den', jobs: 2, in: {drink: 60}, out: {gold: 30}}),
+  B('tradepost', 'торговый пост', 'm', 'trade', 1, H, {trade: 0.35}, {needs: ['road'], local: 'tradepost', notable: true, jobs: 3, in: {food: 5}, out: {gold: 40}}),
   B('inn', 'постоялый двор', 'm', 'trade', 1, [...H, ...D], {trade: 0.15}, {needs: ['road'], jobs: 3, in: {food: 4, wood: 30, drink: 100}, out: {gold: 60}}),
   B('toll', 'дорожная застава', 'f', 'trade', 1, [...H, ...D, ...O], {trade: 0.05, defence: 0.05}, {needs: ['road'], jobs: 3, out: {gold: 40}}),
   B('market', 'рынок', 'm', 'trade', 1, ALL, {trade: 0.3, prestige: 0.05}, {jobs: 4}),
@@ -247,7 +253,7 @@ TOWN_BUILDINGS.registerAll([
   B('eldershall', 'дом старейшин', 'm', 'power', 0, ALL, {prestige: 0.1}, {jobs: 2}),
   B('townhall', 'ратуша', 'f', 'power', 2, [...H, ...D], {prestige: 0.2, trade: 0.05}, {requires: ['eldershall'], jobs: 6}),
   B('palace', 'дворец', 'm', 'power', 2, [...H, ...E], {prestige: 0.4}, {requiresAny: ['townhall', 'eldershall'], pop: 800, capital: true, jobs: 20, in: {lux: 10, food: 10}}),
-  B('arena', 'бойцовская яма', 'f', 'power', 2, [...O, ...H], {prestige: 0.15, defence: 0.05}, {jobs: 4, in: {food: 5, drink: 100}}),
+  B('arena', 'арена', 'f', 'power', 2, [...O, ...H], {prestige: 0.15, defence: 0.05}, {jobs: 4, in: {food: 5, drink: 100}}),
   B('monument', 'памятник', 'm', 'power', 2, ALL, {prestige: 0.15}, {pop: 800, in: {stone: 20}}),
   // the throne hall crowns a people's seat: one per realm, only its capital builds it (data/peoples.js CAPITAL)
   B('throne', 'тронный зал', 'm', 'power', 2, ALL, {prestige: 0.3, trade: 0.1, defence: 0.1}, {pop: 800, capital: true, unique: true, requiresAny: ['eldershall', 'townhall', 'ancestorhall', 'warcamp'], notable: true, jobs: 10, in: {lux: 15}}),

@@ -54,7 +54,9 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
   check('не любят тесноты: шатры на 150, а не 200; грубое жильё коррупции не растит', Math.abs(fx.housing * 100 - 150) < 1e-6 && roughShare(hut) === 0, `жильё ${fx.housing * 100}, доля грубого ${roughShare(hut)}`);
 }
 {
-  const realm = a.realms.find(r => r.people === 'orcs'), rels = relationsOf(a, realm).filter(x => x.r.border && !x.r.war);
+  // a realm of greenskins with a neighbour at peace (a war on is ended first: the scene needs a peace to break)
+  const realm = a.realms.filter(r => r.people === 'orcs').find(r => relationsOf(a, r).some(x => x.r.border)) || a.realms.find(r => r.people === 'orcs');
+  const rels = relationsOf(a, realm).filter(x => x.r.border); for (const x of rels) x.r.war = null;
   if (rels.length) {
     const x = rels[0]; x.r.att = 3; x.r.peaceAt = -99;
     const plan = warOn.want(a, realm, {r: () => 0})?.find(o => o[0].cult)?.[0];

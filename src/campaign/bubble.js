@@ -6,6 +6,7 @@
 // on the road, a hunt.
 //
 // K.bubble = {next, things: [{id, kind, x, y, i, strength, label, born, sated, goods, seen}]}
+import {realmBand} from '../atlas/towns.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {townAt} from '../atlas/peoples.js';
@@ -121,7 +122,7 @@ export function worldThings(a, K) {
   for (const p of a.parties || []) {
     if (p.kind === 'caravan' || p.state === 'gone' || Math.hypot(p.x - K.x, p.y - K.y) > sense) continue;
     let kind = null, who = {};
-    if (p.kind === 'army') { kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? 'army' : null; who = {band: REALM_BANDS[p.people] || 'bandits'}; }
+    if (p.kind === 'army') { kind = K.realm && p.owner !== K.realm && (atWar(a, K.realm, p.owner) || !trades(a, K.realm, p.owner)) ? 'army' : null; who = {band: realmBand(a, p.owner, p.people) || 'bandits'}; }
     else if (p.kind === 'raid') { const l = (a.lairs || []).find(x => x.id === p.owner), L = l && LAIRS.get(l.kind); kind = L?.domain ? 'cultists' : L?.undead ? 'undead' : 'tribe'; who = l ? lairFoe(l.kind) : {}; if (who.band === 'cultists') who.pool = cultPool(a, p.i); }
     else if (p.kind === 'brood' || p.kind === 'dragon') { kind = 'lair'; const l = (a.lairs || []).find(x => x.id === p.owner); who = l ? lairFoe(l.kind) : {}; }
     // a leader of an old lair at the head of its own (atlas/leaders.js): on the local map it is the named one among them

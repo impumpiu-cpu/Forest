@@ -11,6 +11,7 @@
 // K.quest = {name, story, crown: {kind, at, i, label, guard, area, exact, state: 'lost'|'carried'|'taken',
 //   carrier}, clues: [{k, kind, at, i, label, guard, area, seen, found}], search, stormAt, next (pursuit)}
 //   area = {x, y, r} — a circle the place is known to lie in; guard = {kind, strength, label, band?, beast?}
+import {realmBand} from '../atlas/towns.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {moveCost} from '../atlas/roads.js';
 import {townLabel} from '../atlas/towns.js';
@@ -378,7 +379,7 @@ export function pursuit(a, K, rnd, say) {
     .map(r => ({r, d: Math.min(...(a.towns || []).filter(t => t.alive && t.realm === r.id).map(t => Math.hypot(t.x - K.x, t.y - K.y)))})).filter(e => Number.isFinite(e.d)).sort((p, q) => p.d - q.d)[0];
   const lair = (a.lairs || []).filter(l => l.alive && LAIRS.get(l.kind)?.tribe).sort((p, q) => Math.hypot(p.x - K.x, p.y - K.y) - Math.hypot(q.x - K.x, q.y - K.y))[0];
   let thing;
-  if (enemy && rnd() < P.army) thing = {kind: 'army', label: `погоня: войско ${realmLabelGen(a, enemy.r.id)}`, band: REALM_BANDS[enemy.r.people] || 'bandits'};
+  if (enemy && rnd() < P.army) thing = {kind: 'army', label: `погоня: войско ${realmLabelGen(a, enemy.r.id)}`, band: realmBand(a, enemy.r.id, enemy.r.people) || 'bandits'};
   else if (lair) thing = {kind: 'tribe', label: `погоня: ${lairName(lair)}`, ...lairFoe(lair.kind)};
   else thing = {kind: 'bandits', label: 'погоня: охотники за короной', band: 'bandits'};
   const B = bubbleOf(K), far = BUBBLE.far * scaleOf(a);

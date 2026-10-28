@@ -6,6 +6,7 @@
 //
 //   cellPlan(a, i) → {seed, ref, region, extra} — plain data, independent of the local map's size,
 //   kept in the game's settings as `cfg.cell` and turned into a site by makeSite.
+import {realmBand} from '../atlas/towns.js';
 import {cellBiomes, biomeAt} from '../atlas/biomes.js';
 import {cellGeology} from '../atlas/geology.js';
 import {faunaAt, faunaCell} from '../atlas/fauna.js';
@@ -144,7 +145,7 @@ export function cellNeighbours(a, i, race = 'human') {
     sources.push({band, d, wt: Math.max(0.2, l.strength), label: `${LAIRS.get(l.kind).label} «${l.name}»`});
   }
   for (const {t, d} of towns) {
-    const band = REALM_BANDS[t.people];
+    const band = realmBand(a, t.realm, t.people);
     if (band && (own && t.realm ? (t.realm !== own && (atWar(a, own, t.realm) || !trades(a, own, t.realm) && !WAR_ONLY_BANDS.includes(t.people))) : t.people === 'orcs'))
       sources.push({band, d, wt: Math.sqrt(t.pop) / 10, label: `${tLabel(t)} (${realmName(a, t.realm)})`});
   }

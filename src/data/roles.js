@@ -17,6 +17,7 @@
 //   mount  — the beast it rides (agents/mount.js; RIDE below): one fighter of two bodies
 //   versus — × its blows on a kind of creature ({beast: 1.3, monster: 1.3}: the greenskins' beast-driver)
 //   lead   — the war beasts of the land it brings into its band, [from, to] (data/raids.js: the beast-driver)
+//   tierUp — its kit is of a band this many levels higher (the knight's arms: a step of metal above the band's)
 //   maxTier — the best metal its kit takes, whatever the band's level (0: bone, wood, hide — the beast-driver wears no iron)
 //   frenzy — a wound throws it into a frenzy (FRENZY below: the berserker, agents/combat.js)
 // The behaviours of a role and how a mind changes them (sentient · mindless) come with the next step.
@@ -47,6 +48,12 @@ COMBAT_ROLES.registerAll([
   // the dwarves' hammer-smith: a two-handed hammer and a smith's arm — its blunt blows land harder; the first rank
   {id: 'smith', group: 'линия', label: 'мастер-кузнец', note: 'молотобоец: двуручный молот, дробящий удар сильнее на треть, стоит в первом ряду',
     hands: [[['warhammer'], 3], [['maul'], 1]], body: 'heavy', back: [], potions: 0, squad: 'front', place: 'front', blows: {blunt: 1.3}},
+  // the humans' knights (the tilt-yard; data/raids.js host): heavy armour, a good blade and a shield — the tank of the line,
+  // its arms a step of metal above the band's (`tierUp` levels); on a horse from the hippodrome — the horse-knight
+  {id: 'knight', group: 'линия', label: 'рыцарь', note: 'тяжёлый доспех, меч, булава или копьё со щитом: держит строй, бьёт неплохо',
+    hands: [[['sword', 'shield'], 3], [['mace', 'shield'], 2], [['spear', 'shield'], 1]], body: 'heavy', back: [], potions: 1, squad: 'front', place: 'front', tierUp: 8, linkOnly: true},
+  {id: 'horseknight', group: 'подвижные', label: 'конный рыцарь', note: 'рыцарь на боевом коне: копьё или меч со щитом, тяжёлый доспех; бьют оба — всадник и конь',
+    hands: [[['spear', 'shield'], 3], [['sword', 'shield'], 2]], body: 'heavy', back: [], potions: 1, squad: 'front', place: 'flank', tierUp: 8, mount: 'horse', linkOnly: true},
   // the greenskins' riders: a warg under an orc, a giant spider under a goblin — one fighter of two bodies (RIDE)
   {id: 'wargrider', group: 'подвижные', label: 'наездник на варге', note: 'орк верхом на боевом варге: бьют оба сразу; убит варг — бьётся пешим, убит всадник — варг дерётся сам',
     hands: [[['spear', 'shield'], 2], [['axe', 'shield'], 1], [['javelin', 'shield'], 1]], body: 'medium', back: [], potions: 0, squad: 'front', place: 'flank', mount: 'varg'},
@@ -99,6 +106,10 @@ LINKS.registerAll([
   {id: 'bones',   label: 'костяной строй', note: 'мертвецы: щиты и копья, лук позади; мертвяки без рук идут между ними', roles: ['shield', 'spearman', 'spearman', 'shield', 'archer']},
   {id: 'anvil',   label: 'наковальня',   note: 'дварфы: щит и два молотобойца впереди, мастер горна за ними, арбалет сзади', roles: ['shield', 'smith', 'smith', 'forgemaster', 'archer']},
   {id: 'berserks', label: 'бешеные',     note: 'дварфы: берсерки врезаются, молотобоец и щит следом', roles: ['berserker', 'berserker', 'smith', 'shield', 'archer']},
+  // the humans' host (data/raids.js host): the levy, the knights of the tilt-yard, the horse of the hippodrome, the cutthroats of the den
+  {id: 'levy',    label: 'ополчение',    note: 'люди: щит, копья, лучник, застрельщик', roles: ['shield', 'spearman', 'spearman', 'archer', 'skirmisher']},
+  {id: 'knights', label: 'рыцари',       note: 'люди (ристалище): рыцари держат строй, копьё из-за плеча, лучник', roles: ['knight', 'knight', 'spearman', 'archer', 'shield']},
+  {id: 'cavalry', label: 'конница',      note: 'люди (ипподром): конные рыцари с флангов', roles: ['horseknight', 'horseknight', 'horseknight', 'knight', 'archer']},
   {id: 'riders',  label: 'всадники',     note: 'зеленокожие: наездники на варгах и пауках, загонщик со зверями, берсерк', roles: ['wargrider', 'wargrider', 'spiderrider', 'beastmaster', 'berserker']},
   {id: 'volley',  label: 'стрелки',      note: 'луки, а впереди один щит', roles: ['archer', 'archer', 'archer', 'shield', 'skirmisher']},
 ]);
@@ -118,7 +129,7 @@ export const ARMOUR = {
 export const ROLE_TIERS = {from: [0, 8, 16, 26, 40], ramp: 0.06, share: 0.7};
 
 export const ROLE_MIX = {
-  human:       {shield: 2, spearman: 1.5, cleaver: 1.5, cutthroat: 1, skirmisher: 1, catcher: 0.3, archer: 1.2, healer: 0.3, best: 3},
+  human:       {shield: 2, spearman: 1.5, cleaver: 1.5, cutthroat: 1, skirmisher: 1, catcher: 0.3, archer: 1.2, healer: 0.3, knight: 1.5, horseknight: 1.5, best: 3},
   orc:         {shield: 2, spearman: 1, cleaver: 3, skirmisher: 0.7, catcher: 0.3, archer: 0.3, healer: 0.3, berserker: 0.8, wargrider: 0.8, beastmaster: 0.5, best: 2},
   goblin:      {shield: 0.3, spearman: 1, cutthroat: 2.5, skirmisher: 3, catcher: 0.5, archer: 2, healer: 0.3, spiderrider: 0.8, wargrider: 0.4, beastmaster: 0.4, best: 1},
   dwarf:       {shield: 2, spearman: 1, smith: 2, berserker: 0.8, forgemaster: 0.5, cleaver: 1, archer: 0.8, healer: 0.3, best: 4},
@@ -136,7 +147,8 @@ export const ROLE_MIX = {
 // the row of a species (the human row for one that has none)
 export const mixOf = species => ROLE_MIX[species] || ROLE_MIX.human;
 // the roles a species may take, [[role, weight], …]; `bias` ({role: ×}) — a band's own leaning
-export const rolesOf = (species, bias = null) => COMBAT_ROLES.all().map(r => [r.id, (mixOf(species)[r.id] || 0) * (bias?.[r.id] ?? 1)]).filter(([, v]) => v > 0);
+// (a role of a building's — `linkOnly`: the knights — comes only in the links of a band that has it, never drawn by itself)
+export const rolesOf = (species, bias = null) => COMBAT_ROLES.all().filter(r => !r.linkOnly).map(r => [r.id, (mixOf(species)[r.id] || 0) * (bias?.[r.id] ?? 1)]).filter(([, v]) => v > 0);
 
 // the role a member of a band takes: one the band still lacks by its `least` ({role: share of heads}) first, then by weight.
 // `have` — the roles already in the band
@@ -178,11 +190,12 @@ export function tierFor(rng, t, best = 4) {
 }
 
 // the kit of one fighter of a role: item ids for dress(); a species with a kit of its own carries that
-export function roleKit(species, role, rng, t) {
+export function roleKit(species, role, rng, t0) {
   const mix = mixOf(species);
   if (mix.fixed) return [...mix.fixed];
   const R = role && COMBAT_ROLES.has(role) ? COMBAT_ROLES.get(role) : null;
   if (!R) return [];
+  const t = t0 + (R.tierUp || 0);
   const best = Math.min(mix.best ?? 4, R.maxTier ?? 4), out = [];
   // the weapons of one metal; a set with a form not made so low (a mace, a sword before bronze) drops out
   const hand = tierFor(rng, t, best), sets = R.hands.filter(([fs]) => fs.every(f => !forms()[f] || hasBelow(f, hand, species) && mayWield(species, f)));   // nor one its race will not touch

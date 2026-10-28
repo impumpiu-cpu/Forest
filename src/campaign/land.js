@@ -1,6 +1,7 @@
 // The land as the caravan sees it: how much food a cell gives to those who hunt and gather there, and
 // what may find their camp at night. Both are read from the world's fields and things — the beasts
 // (atlas/fauna.js), the soils and biomes, the lairs and tribes, armies' foragers, the rot, the roads.
+import {realmBand} from '../atlas/towns.js';
 import {cellRegion as regionOf} from '../seam/cell.js';
 
 // a cell's region (seam/cell.js) is asked several times a day; the beasts in it change once a season, so it
@@ -97,7 +98,8 @@ export function peopleFoes(a, i, K) {
     const war = !!K.realm && (a.realms || []).some(r => r.people === pe.id && atWar(a, K.realm, r.id));
     if (!war && (!dislike || WAR_ONLY_BANDS.includes(pe.id))) continue;
     const x = Math.min(W.cap, v);
-    out.push({kind: 'raiders', p: W.p * x, strength: W.s[0] + W.s[1] * x, label: `${WORLD_PEOPLES.get(pe.id).label}-налётчики`, band, people: pe.id});
+    const host = (a.realms || []).find(r => r.people === pe.id && (war ? atWar(a, K.realm, r.id) : true));   // (the humans' host by what that realm has built)
+    out.push({kind: 'raiders', p: W.p * x, strength: W.s[0] + W.s[1] * x, label: `${WORLD_PEOPLES.get(pe.id).label}-налётчики`, band: host ? realmBand(a, host.id, pe.id) || band : band, people: pe.id});
   }
   return out;
 }

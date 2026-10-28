@@ -51,6 +51,10 @@ WORLD_PEOPLES.registerAll([
       last: ['эль', 'дор', 'риэль', 'ин', 'ион', 'алон', 'энна', 'ассэ', 'ориэн', 'улин']}},
   {id: 'dwarves', race: 'dwarf', label: 'дварфы', labelGen: 'дварфов', adj: 'дварфийский', era: 'elder', color: [220, 150, 70],
     hands: 0.55, eat: 1.15,
+    // strangers (atlas/diplomacy.js): the dwarves love only dwarves — a town of theirs takes in folk of other peoples at
+    // × `take` of the usual pace, and pushes them out by `expel` of its people a year; on shared land they press the others
+    // × `push` harder (atlas/peoples.js)
+    folk: {take: 0.25, expel: 0.03, push: 1.5},
     // digging and craft: the best miners, the hottest furnaces, masters' work; ancestors are poured beer, not wax;
     // under the mountain (steep slopes or caves at the town) they dig a quarter more
     flows: {ore: 1.5, stone: 1.5, gems: 1.5, metal: 1.25, coal: 1.25, tools: 1.25, arms: 1.25, armor: 1.25},
@@ -66,6 +70,10 @@ WORLD_PEOPLES.registerAll([
       last: ['-дум', 'гард', 'хейм', 'бар', 'зад', 'грим', 'тор', 'карак', 'дин', 'бунд']}},
   {id: 'humans', race: 'human', label: 'люди', labelGen: 'людей', adj: 'людской', era: 'young', color: [100, 150, 235],
     hands: 0.5, eat: 1,
+    // the middling people: no gift of their own, but every road leads to them — they take in strangers × `take` faster and
+    // trade warms them × `trade` (atlas/diplomacy.js); the crowd of many peoples breeds crime (data/kingdom.js crime `folk`)
+    folk: {take: 1.5},
+    trade: 1.25,
     arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast'},
     get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
