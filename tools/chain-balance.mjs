@@ -4,7 +4,8 @@
 //   fast: worlds are made once (their histories as they are), then for a candidate × of each good's `out` the towns' seasons
 //         of money and goods (atlas/treasury.js) are run on what they have built — `SEASONS` of them — and measured
 //   score: the value of what the buildings lacked over the value of what they asked for (food and gold aside), + IDLE × the
-//         share of working buildings under half strength, + NEAR × Σ |log ×| (keep near the table)
+//         share of working buildings under half strength, + WASTE × the share of what was made that was lost unsold, + NEEDS ×
+//         the share of the people's basic needs unmet, + NEAR × Σ |log ×| (keep near the table)
 //   --full: the best × are applied and whole histories run again on new seeds: the shortages before and after
 // Prints the × of each good and the buildings' `out` it gives.
 import {generateAtlas} from '../src/atlas/generate.js';
@@ -13,7 +14,7 @@ import {TOWN_BUILDINGS, TOWN_GOODS, goodPrice} from '../src/data/townBuildings.j
 
 const args = process.argv.slice(2), FULL = args.includes('--full');
 const SEEDS = (args.find(x => /^[\d,]+$/.test(x)) || '5,9,21').split(',');
-const SEASONS = 8, IDLE = 0.3, NEAR = 0.04, STEPS = [0.5, 0.7, 0.85, 1, 1.2, 1.5, 2, 3];
+const SEASONS = 8, IDLE = 0.3, WASTE = 0.2, NEEDS = 0.3, NEAR = 0.04, STEPS = [0.5, 0.7, 0.85, 1, 1.2, 1.5, 2, 3];
 const SKIP = new Set(['food', 'grain', 'stores', 'gold']);
 const GOODS = TOWN_GOODS.all().map(g => g.id).filter(g => !SKIP.has(g) && TOWN_BUILDINGS.all().some(b => b.out?.[g]));
 const BASE = new Map(TOWN_BUILDINGS.all().map(b => [b.id, {...(b.out || {})}]));
@@ -22,10 +23,12 @@ const apply = m => { for (const b of TOWN_BUILDINGS.all()) { const o = BASE.get(
 const world = seed => generateAtlas({seed, size: 'small', land: 1, plates: 1, hemisphere: 'north'});
 // the measure of worlds as they stand: lack, idle
 function measure(worlds) {
-  let lack = 0, ask = 0, idle = 0, rows = 0;
+  let lack = 0, ask = 0, idle = 0, rows = 0, waste = 0, made = 0, unmet = 0, towns = 0;
   const by = {};
   for (const a of worlds) for (const t of a.towns.filter(x => x.alive)) {
     const e = t.econ;
+    towns++; unmet += 1 - (t.needs?.basic ?? 1); waste += t.trade?.wasted || 0;
+    for (const [g, v] of Object.entries(e.made)) if (!SKIP.has(g)) made += v * goodPrice(g) / 4;
     for (const [g, d] of Object.entries(e.dem)) {
       if (SKIP.has(g)) continue;
       const v = d * goodPrice(g), s = (e.short[g] || 0) * v; ask += v; lack += s;
@@ -33,10 +36,10 @@ function measure(worlds) {
     }
     for (const r of e.rows) { const b = TOWN_BUILDINGS.get(r.id); if (b.cat === 'housing' || !(b.jobs || b.in)) continue; rows += r.n; if (r.eff < 0.5) idle += r.n; }
   }
-  return {lack: ask ? lack / ask : 0, idle: rows ? idle / rows : 0, by: Object.fromEntries(Object.entries(by).map(([g, [s, v]]) => [g, v ? s / v : 0]))};
+  return {lack: ask ? lack / ask : 0, idle: rows ? idle / rows : 0, waste: made ? waste / made : 0, unmet: towns ? unmet / towns : 0, by: Object.fromEntries(Object.entries(by).map(([g, [s, v]]) => [g, v ? s / v : 0]))};
 }
 // the fast stage: the worlds' towns run their seasons again from the stores and treasuries they had
-function snapshot(a) { return a.towns.filter(t => t.alive).map(t => [t, JSON.stringify({stock: t.stock || {}, gold: t.gold, unpaid: t.unpaid})]); }
+function snapshot(a) { return a.towns.filter(t => t.alive).map(t => [t, JSON.stringify({stock: t.stock || {}, gold: t.gold, peopleGold: t.peopleGold, makersGold: t.makersGold, unpaid: t.unpaid})]); }
 function rerun(worlds, snaps, m) {
   apply(m);
   worlds.forEach((a, k) => {
@@ -45,7 +48,7 @@ function rerun(worlds, snaps, m) {
     for (let q = 0; q < SEASONS; q++) seasonMoney(a, T);
   });
   const M = measure(worlds);
-  return {...M, score: M.lack + IDLE * M.idle + NEAR * Object.values(m).reduce((s, v) => s + Math.abs(Math.log(v)), 0)};
+  return {...M, score: M.lack + IDLE * M.idle + WASTE * M.waste + NEEDS * M.unmet + NEAR * Object.values(m).reduce((s, v) => s + Math.abs(Math.log(v)), 0)};
 }
 
 const t0 = Date.now();
@@ -54,7 +57,7 @@ console.log(`миры: ${SEEDS.join(', ')} (${((Date.now() - t0) / 1000).toFixed
 let m = Object.fromEntries(GOODS.map(g => [g, 1]));
 let best = rerun(worlds, snaps, m);
 const start = best;
-console.log(`как есть: нехватка ${(best.lack * 100).toFixed(1)}%, простаивает ${(best.idle * 100).toFixed(1)}%`);
+console.log(`как есть: нехватка ${(best.lack * 100).toFixed(1)}%, простаивает ${(best.idle * 100).toFixed(1)}%, пропадает ${(best.waste * 100).toFixed(1)}%, нужды не закрыты ${(best.unmet * 100).toFixed(1)}%`);
 // coordinate descent: each good in turn takes the step that scores best, till a pass changes nothing
 for (let pass = 0; pass < 4; pass++) {
   let moved = false;
@@ -65,7 +68,7 @@ for (let pass = 0; pass < 4; pass++) {
   }
   if (!moved) break;
 }
-console.log(`\nнайдено: нехватка ${(start.lack * 100).toFixed(1)}% → ${(best.lack * 100).toFixed(1)}%, простаивает ${(start.idle * 100).toFixed(1)}% → ${(best.idle * 100).toFixed(1)}%`);
+console.log(`\nнайдено: нехватка ${(start.lack * 100).toFixed(1)}% → ${(best.lack * 100).toFixed(1)}%, простаивает ${(start.idle * 100).toFixed(1)}% → ${(best.idle * 100).toFixed(1)}%, пропадает ${(start.waste * 100).toFixed(1)}% → ${(best.waste * 100).toFixed(1)}%, нужды ${(start.unmet * 100).toFixed(1)}% → ${(best.unmet * 100).toFixed(1)}%`);
 console.log('нехватка по благам (было → стало):', GOODS.filter(g => (start.by[g] || 0) > 0.02 || (best.by[g] || 0) > 0.02).map(g => `${g} ${Math.round((start.by[g] || 0) * 100)}→${Math.round((best.by[g] || 0) * 100)}%`).join(', '));
 console.log('множители:', JSON.stringify(Object.fromEntries(Object.entries(m).filter(([, v]) => v !== 1))));
 console.log('новые out:');

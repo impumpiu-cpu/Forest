@@ -101,9 +101,10 @@ export function realmWorks(a, t, material) {
 // the words of the metals the realm of a town works, of those some building opens (for the cards)
 export const realmMetalWords = (a, t) => { const built = realmBuilt(a, t); return gatedMetals().filter(m => metalBuildings(m).some(id => built.has(id))).map(m => METAL_WORDS[m] || m); };
 // (a dwarven town's guard golems count as people: atlas/golems.js golemMen)
-// a town's might: its people (with its guard golems, its war beasts and the beasts of its store — horses, war beasts: TOWN_FX.beastMen — as so many men: atlas/golems.js, atlas/beasts.js) × its
+// a town's might: its people (with its guard golems, its war beasts, the beasts of its store — horses, war beasts: TOWN_FX.beastMen —
+// and the garrison its realm pays: atlas/treasury.js realmSpend — as so many men: atlas/golems.js, atlas/beasts.js) × its
 // defence and craft, × a people's own fierceness (data/peoples.js warCult: the greenskins)
-export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.stock?.beasts || 0) * TF.beastMen) * (1 + fx.defence + TF.mightProd * fx.prod)
+export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.stock?.beasts || 0) * TF.beastMen + (t.garrison || 0)) * (1 + fx.defence + TF.mightProd * fx.prod)
   * (WORLD_PEOPLES.get(t.people)?.warCult?.might ?? 1) * (t.realmFx?.might ?? 1);   // and its realm's stability (atlas/kingdom.js)
 export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 
@@ -217,10 +218,13 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
     // of the people — a building that gives food; and no hands to work it — little use
     const E = ctx.econ;
     if (E) {
-      for (const g of Object.keys(b.out || {})) v += (E.short[g] || 0) * TF.flow.short;
+      for (const g of Object.keys(b.out || {})) v += (E.short[g] || 0) * TF.flow.short + (t.needs?.lack?.[g] || 0) * TF.flow.needs;   // its works lack it, its people do
       for (const g of Object.keys(b.in || {})) v += (E.spare?.[g] || 0) * TF.flow.spare;   // it takes what lies unused: the mill — spare grain
+      // it gives what fills the store already and nobody buys (the market's price of it at its floor): worth the less
+      const outs = Object.keys(b.out || {}).filter(g => g !== 'food' && g !== 'grain' && g !== 'gold');
+      if (outs.length && outs.every(g => (t.market?.[g] ?? 1) <= TOWN_MONEY.price.lo + 1e-9)) v *= TF.flow.glut;
       const fed = foodNet(b); if (fed > 0 && need.food > 0) v += need.food * TF.flow.food * fed / TF.flow.foodRef * (P.taste.food ?? 1);   // as much as it feeds
-      if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) v *= TF.flow.idle;
+      if (b.jobs && E.freeHands < b.jobs * TF.flow.hands) continue;   // nobody to work it: not built
       // a hard good it takes that no building of the realm makes and the town has none of: it would stand (salt, ore)
       if (Object.keys(b.in || {}).some(g => !TOWN_GOODS.get(g).soft && !(E.made[g] > 0) && !(t.stock?.[g] > 0) && !makersOf(g).some(id => inRealm.has(id)))) v *= TF.flow.idle;
     }

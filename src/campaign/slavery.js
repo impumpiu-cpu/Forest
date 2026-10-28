@@ -5,7 +5,7 @@
 // enough service to be close to freedom; it buys one while it has bonds, room and gold beyond its food money. A sale is taken ill by
 // the company: former slaves, companions and the freed lose loyalty, hirelings think less of the service, the
 // captives left grow readier to run.
-import {toTown, fromTown} from '../atlas/treasury.js';
+import {toTown, fromTown, townPurse} from '../atlas/treasury.js';
 import {SLAVE, captivePrice, lawOf} from '../data/slavery.js';
 import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {STANDING} from '../data/market.js';
@@ -48,7 +48,7 @@ function deal(a, K, t, st, L, r, parts) {
     if ((m.captive.service || 0) >= SLAVE.sell.service) continue;   // close to freedom: kept
     if (!short && (m.captive.resigned || (m.captive.will ?? 0) < SLAVE.sell.will)) continue;   // an unruly one, or anyone when food runs short
     const p = gold(priceOf(m) * L.k * STANDING[st].sell);
-    if (t.gold != null && t.gold < p) continue;   // the town has not the gold for one
+    if (townPurse(t) < p) continue;   // the town's makers have not the gold for one
     m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, sold: true};
     K.gold = gold(K.gold + fromTown(t, p)); K.stats.sold = (K.stats.sold || 0) + 1; famed(a, K, 'slaveSale', t.realm);   // infamy with the town's realm (campaign/road.js)
     parts.push(`${gw(m, 'продали пленного', 'продали пленную')} ${m.name} (${SPECIES.get(m.race).label}) за ${p} зол.`);

@@ -12,7 +12,7 @@ import {makeName} from '../data/names.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {pickOne} from '../data/chance.js';
 import {townFx, roughShare} from './towns.js';
-import {taxYear} from './treasury.js';
+import {taxYear, realmSpend} from './treasury.js';
 import {TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
@@ -39,6 +39,7 @@ export function baseStats(a, realm, towns) {
   const fx = {};
   for (const t of towns) for (const [k, v] of Object.entries(townFx(t))) fx[k] = (fx[k] || 0) + v / towns.length;
   // money: how well its towns' treasuries hold (their gold against the keep of their people, at most 1) — data/kingdom.js `from.money`
+  fx.needs = towns.reduce((s, t) => s + (t.needs?.basic ?? 1), 0) / towns.length;   // how well its people live (atlas/treasury.js)
   fx.money = towns.reduce((s, t) => s + Math.min(1, Math.max(0, t.gold || 0) / Math.max(1, TOWN_MONEY.tax.keep * t.pop)), 0) / towns.length;
   const align = realmAlign(a, realm.id) || {};
   const out = {};
@@ -103,6 +104,7 @@ export function stepKingdom(a, say) {
     }
     // the tax of the year, by last year's edict (atlas/treasury.js): the realm's treasury
     taxYear(realm, towns, K.edicts.taxes || 'usual');
+    realmSpend(realm, towns, war);   // garrisons and grants to build (atlas/treasury.js)
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;

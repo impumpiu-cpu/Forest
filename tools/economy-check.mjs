@@ -7,7 +7,7 @@ import {schismFactor} from '../src/atlas/kingdom.js';
 import {RUINS} from '../src/data/kingdom.js';
 import {townEconomy} from '../src/atlas/economy.js';
 import {seaFeed} from '../src/atlas/sea.js';
-import {roomOf, taxYear, marketK, toTown, fromTown} from '../src/atlas/treasury.js';
+import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, payBuild} from '../src/atlas/treasury.js';
 import {TOWN_BUILDINGS, TOWN_MONEY, foodNet} from '../src/data/townBuildings.js';
 import {rationPrice} from '../src/campaign/town.js';
 
@@ -52,8 +52,8 @@ const T = a.towns.filter(t => t.alive);
 // the money
 {
   const rich = T.filter(t => t.gold > 0).length, traded = T.filter(t => t.trade?.bought || t.trade?.sold).length;
-  const bought = T.reduce((s, t) => s + (t.trade?.bought || 0), 0), sold = T.reduce((s, t) => s + (t.trade?.sold || 0), 0);
-  check('у городов казна и склад; города покупают друг у друга — золото уходит продавцу', rich > T.length / 2 && traded > 0 && Math.abs(bought - sold) < 1 && T.some(t => Object.keys(t.stock || {}).length),
+  const bought = T.reduce((s, t) => s + (t.trade?.bought || 0) + (t.trade?.imported || 0), 0), sold = T.reduce((s, t) => s + (t.trade?.sold || 0), 0);
+  check('у городов казна и склад; мастерские и жители покупают у других городов — золото уходит продавцу', rich > T.length / 2 && traded > 0 && Math.abs(bought - sold) < 1 && T.some(t => Object.keys(t.stock || {}).length),
     `с деньгами ${rich} из ${T.length}, торговали ${traded}, оборот ${Math.round(bought)} зол.`);
   const over = T.flatMap(t => Object.entries(t.stock || {}).filter(([g, v]) => t.econ && v > roomOf(t, g) + 0.01).map(([g]) => `${t.name}:${g}`));
   check('склад не больше своей вместимости (лишнее уходит купцам)', !over.length, over.slice(0, 3).join(', '));
@@ -63,10 +63,10 @@ const T = a.towns.filter(t => t.alive);
 }
 // the caravan's market
 {
-  const t = T.find(x => x.market && Object.keys(x.market).length) || T[0], g0 = t.gold;
-  toTown(t, 10); const after = t.gold; const paid = fromTown({gold: 5}, 20);
+  const t = T.find(x => x.market && Object.keys(x.market).length) || T[0], g0 = t.makersGold;
+  toTown(t, 10); const after = t.makersGold; const paid = fromTown({makersGold: 5}, 20);
   const dear = Object.entries(t.market || {}).find(([, k]) => k > 1), cheap = Object.entries(t.market || {}).find(([, k]) => k < 1);
-  check('караван платит в казну города; город платит не больше своей казны; цены рынка — от склада и нехватки',
+  check('караван платит мастерам города; они платят не больше, чем у них есть; цены рынка — от склада и нехватки',
     Math.abs(after - g0 - 10) < 0.01 && paid === 5 && (!!dear || !!cheap) && marketK(t, dear?.[0]) > 1, `${t.name}: дороже ${dear?.join(' ×') || '—'}, дешевле ${cheap?.join(' ×') || '—'}`);
   const fed = {...t, supply: {own: 3 * t.pop, got: 0, gave: 0}}, hungry = {...t, supply: {own: 0.5 * t.pop, got: 0, gave: 0}};
   check('паёк дешевле, где у города излишек еды', rationPrice(fed, 'own') < rationPrice(hungry, 'own'), `${rationPrice(fed, 'own').toFixed(3)} против ${rationPrice(hungry, 'own').toFixed(3)}`);
@@ -83,6 +83,33 @@ const T = a.towns.filter(t => t.alive);
   const k0 = might(t, townFx(t)), keep = t.stock; t.stock = {...keep, beasts: (keep?.beasts || 0) + 50}; const k1 = might(t, townFx(t)); t.stock = keep;
   check('скот на складе — конница и боевые звери: сила города растёт', k1 > k0, `${k0.toFixed(1)} → ${k1.toFixed(1)}`);
   check('упадок растёт и от пустой казны державы', RUINS.get('decay').grows.broke > 0);
+}
+
+// the merchants' purse, the realm's spending
+{
+  const sold = T.reduce((s, t) => s + (t.trade?.merchants || 0), 0), purse = T.reduce((s, t) => s + TOWN_MONEY.merchants.purse * t.pop * (1 + townFx(t).trade), 0) * 1.05;
+  check('купцы берут не больше своего кошелька; что сверх — пропадает', sold <= purse && T.some(t => t.trade?.wasted > 0), `продано купцам ${Math.round(sold)} из ${Math.round(purse)}, пропало ${Math.round(T.reduce((s, t) => s + (t.trade?.wasted || 0), 0))}`);
+  const R = {gold: 1000}, ts = [{pop: 300}, {pop: 100}], sp = realmSpend(R, ts, false), war = realmSpend({gold: 1000}, [{pop: 300}, {pop: 100}], true);
+  check('держава тратит казну: гарнизоны городам по людям, золото на стройку; в войну — больше на войско',
+    sp.army > 0 && sp.build > 0 && R.gold < 1000 && ts[0].garrison === 3 * ts[1].garrison && ts[0].grant > 0 && war.army > sp.army, JSON.stringify(sp));
+  const t = T.find(x => x.garrison > 0); const g = t?.garrison; if (t) t.garrison = 0; const m0 = t ? might(t, townFx(t)) : 0; if (t) t.garrison = g;
+  check('гарнизон прибавляет городу силы', !!t && might(t, townFx(t)) > m0, t ? `${t.name}: гарнизон ${Math.round(g)}` : 'нет гарнизонов');
+  check('упадок растёт только от неоплаченного и пустой казны', !RUINS.get('decay').grows.upkeep && RUINS.get('decay').grows.unpaid > 0);
+}
+
+// the gold goes round: purses of the people and the makers, wages and taxes, the people's needs, paid building
+{
+  const w = T.reduce((s, t) => s + (t.trade?.wages || 0), 0), tx = T.reduce((s, t) => s + (t.trade?.tax || 0), 0), pp = T.reduce((s, t) => s + (t.trade?.people || 0) + (t.trade?.imported || 0), 0);
+  check('деньги ходят по кругу: мастера платят жителям, жители покупают, город берёт налоги', w > 0 && tx > 0 && pp > 0 && T.every(t => t.peopleGold >= 0 && t.makersGold >= 0),
+    `за сезон зарплат ${Math.round(w)}, налогов ${Math.round(tx)}, жители купили на ${Math.round(pp)}`);
+  const nb = T.reduce((s, t) => s + (t.needs?.basic ?? 0), 0) / T.length;
+  check('нужды жителей считаются, их нехватка тянет стройку', nb > 0 && T.some(t => Object.keys(t.needs?.lack || {}).length), `закрыто ${Math.round(nb * 100)}%`);
+  const x = {pop: 200, gold: 100, peopleGold: 0, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}}, B = {tier: 1, cat: 'housing'};
+  const ok = payBuild(x, B), poor = payBuild({pop: 200, gold: 0, peopleGold: 0, makersGold: 0, stock: {}, built: []}, B);
+  check('стройка оплачивается: материалы со склада мастерам, работа жителям; без денег не строят', ok && !poor && x.gold < 100 && x.makersGold > 0 && x.peopleGold >= 0 && x.stock.wood < 50,
+    `мастерам ${x.makersGold}, жителям ${x.peopleGold}`);
+  const l = [...a.net.links.values()];
+  check('связи сети крепнут и от товаров', l.length > 0);
 }
 
 if (fail.length) process.exit(1);

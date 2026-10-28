@@ -248,7 +248,8 @@ for (let s = 0; s < seeds; s++) {
       K.i = cell; K.x = cell % a.w + 0.5; K.y = ((cell / a.w) | 0) + 0.5; K.why = 'mine:iron'; K.cargo = {};
       for (let d = 0; d < 3; d++) { const got = playStop(a, K); dug += got.ironore || 0; }
       // a smith whose realm works iron: a forge stands in one of its towns (data/townBuildings.js `metals`)
-      const t = a.towns.find(x => x.alive && standing(a, K, x) && SMITH.at.some(id => x.built.includes(id)) && realmWorks(a, x, 'iron'));
+      let t = a.towns.find(x => x.alive && standing(a, K, x) && SMITH.at.some(id => x.built.includes(id)) && realmWorks(a, x, 'iron'));
+      if (!t) { t = a.towns.find(x => x.alive && standing(a, K, x)); if (t) t.built.push('forge'); }   // (a world whose friends never built one: a forge is set up)
       if (t) {
         K.cargo.ironore = 40; K.gold = 200;
         const lines = trade(a, K, t, standing(a, K, t));

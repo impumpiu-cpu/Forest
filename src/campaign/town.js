@@ -20,7 +20,7 @@ import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
 import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
 import {TOWN_MONEY} from '../data/townBuildings.js';
-import {goodOfRes, marketK, toTown, fromTown, intoStore, outOfStore} from '../atlas/treasury.js';
+import {goodOfRes, marketK, toTown, fromTown, intoStore, outOfStore, townPurse} from '../atlas/treasury.js';
 import {termsOf} from './road.js';
 import {RECIPES} from '../data/recipes.js';
 import {room} from './company.js';
@@ -219,7 +219,7 @@ export function trade(a, K, t, st) {
     let got = 0;
     for (const [id, all] of Object.entries(K.cargo)) { if (isBonds(id) || keep(id)) continue;   // bonds are kept for captives
       const kept = potionKeep(id, all), n = all - kept; if (n <= 0) continue;   // the potions, a few of each of their makings
-      const p = sellPrice(t, st, id) * n * T.sell, can = Math.min(P.left, t.gold ?? Infinity);   // the town pays from its treasury
+      const p = sellPrice(t, st, id) * n * T.sell, can = Math.min(P.left, townPurse(t));   // the town pays from its treasury
       if (p > 0 && p <= can) { got += fromTown(t, p); P.left -= p; intoStore(t, goodOf(id), n * (goodOfRes(id)?.[1] ?? 1)); if (kept) K.cargo[id] = kept; else delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); }
       else if (p > can && !unsold.includes(id)) unsold.push(id);
     }
@@ -227,7 +227,7 @@ export function trade(a, K, t, st) {
   };
   sell(id => ore.has(id));   // the ore for the smith kept (and the potions with a few of their makings: potionKeep)
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
-  if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > Math.min(P.left, t.gold ?? Infinity)) unsold.push('spoils');
+  if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > Math.min(P.left, townPurse(t))) unsold.push('spoils');
   else if (K.spoils?.length) { const p = fromTown(t, K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell); K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
   if (has(t, ALCHEMY.at)) done.push(...alchemy(a, K, t, st));

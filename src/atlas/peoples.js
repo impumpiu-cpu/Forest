@@ -14,12 +14,12 @@
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
-import {seasonMoney} from './treasury.js';
+import {seasonMoney, payBuild} from './treasury.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
 import {SPECIES} from '../data/species.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
-import {TOWN_FLOW, TOWN_BUILDINGS} from '../data/townBuildings.js';
+import {TOWN_FLOW, TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
 import {LAIRS} from '../data/lairs.js';
 import {ORE_GENESIS} from '../data/geology.js';
 import {RIVERS} from '../data/hydrology.js';
@@ -284,20 +284,24 @@ export function stepPeoples(a, rnd, say) {
     const fx = townFx(t);
     const feeds = feedsOf.get(t.id)[0] + t.supply.got - t.supply.gave;
     const target = Math.min(feeds, room(fx));
-    t.pop = Math.max(TL.minPop, t.pop + TL.growth * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
+    t.pop = Math.max(TL.minPop, t.pop + TL.growth * (1 + TL.prestige * fx.prestige) * (t.realmFx?.grow ?? 1) * needsGrow(t) * t.pop * (1 - t.pop / Math.max(TL.minTarget, target)) + TL.drift * rnd());
     t.peak = Math.max(t.peak || 0, t.pop);   // the most it ever had: the units of work it built then stay (atlas/towns.js unitsMax)
     // what the town needs most gets built; a big town builds faster
     const threat = threatAt(a, t);
-    for (let q = 0; q < (t.tier >= 2 ? 2 : 1) + Math.floor(t.pop / TOWN_FLOW.build); q++) {   // a big town builds more a year
-      if (rnd() > TL.build) continue;
+    // and as many more as the realm's grant pays for (atlas/treasury.js realmSpend), not left to chance
+    const own = (t.tier >= 2 ? 2 : 1) + Math.floor(t.pop / TOWN_FLOW.build), paid = Math.floor((t.grant || 0) / TOWN_MONEY.realm.build);
+    for (let q = 0; q < own + paid; q++) {   // a big town builds more a year
+      if (q < own && rnd() > TL.build) continue;
       const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i), econ: t.econ}, rnd);
       if (!b) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
+      if (!payBuild(t, b)) break;   // the town (or its realm's grant) pays for it: materials from its store, the work its people's (atlas/treasury.js)
       const sited = (t.sites || []).some(id => a.sites[id - 1]?.alive && a.sites[id - 1].kind === b.id);
       if (b.site && !sited && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js); more of it widen it
       const old = upgradeOf(t, b);   // housing built in place of an older one
       if (old) t.built.splice(t.built.indexOf(old), 1);
       t.built.push(b.id);
+      if (t.econ && b.jobs) t.econ.freeHands -= b.jobs;   // its hands are taken: the next choice of the year knows it
       if (b.id === 'bridge' || b.id === 'ferry') markCrossing(a, t.i, b.id === 'bridge' ? 1 : 0.5);
       if (first && b.id === 'throne') say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}: отныне это ${townLabel(t, 0)} державы «${realmLabel(a, t.realm)}».`);
       else if (first && (b.notable || b.pop)) say(`В ${where} ${t.name} ${APPEARED[b.g]} ${b.name}.`);
@@ -333,6 +337,9 @@ export function stepPeoples(a, rnd, say) {
   };
   stepDiplomacy(a, rnd, say, overlap);
 }
+
+// × a town's growth by how its people's needs were met (atlas/treasury.js t.needs; TOWN_MONEY.needs)
+const needsGrow = t => { const N = TOWN_MONEY.needs; return t.needs ? (N.grow[0] + N.grow[1] * t.needs.basic) * (1 + N.comfortGrow * t.needs.comfort) : 1; };
 
 // a bridge (or a ferry, half as good) at a town takes the ford out of the roads' cost on the river
 // cells beside it (atlas/roads.js stepCost reads a.f.bridge)
