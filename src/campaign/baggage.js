@@ -15,7 +15,7 @@ import {ORES} from '../data/ores.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {EFFECTS, NORM} from '../data/special.js';
-import {CELL, BOX, BEASTS, VEHICLES, CAMP_FX, FIELD_BUILD} from '../data/transport.js';
+import {CELL, BOX, BEASTS, VEHICLES, CAMP_FX, CAMP_KIT, FIELD_BUILD, kitOf} from '../data/transport.js';
 import {clamp} from '../core/util.js';
 import {potionKeep} from '../data/potions.js';
 
@@ -71,7 +71,7 @@ export function assign(K) {
 // ── room
 export function capacity(K) {
   let u = 0;
-  for (const m of alive(K)) u += (m.back ?? 1) * CELL;
+  for (const m of alive(K)) u += (m.back ?? 1) * CELL + (m.captive ? (kitOf(K).bearers || 0) * BOX : 0);   // (the greenskins' captives carry a box besides)
   for (const b of K.beasts) if (b.hp > 0) { const B = BEASTS[b.kind]; u += (B.cells || 0) * CELL + (B.boxes || 0) * BOX; }
   for (const v of K.vehicles) if (v.pulled) u += VEHICLES[v.kind].boxes * BOX;
   return u;
@@ -121,17 +121,23 @@ export const wheeled = K => K.vehicles.some(v => v.pulled);
 // when a building rode packed in a wagon (v.building) has it moved into the camp
 export function campOf(K) {
   if (!K.buildings) { K.buildings = []; for (const v of K.vehicles) if (v.building) { if (!K.buildings.includes(v.building)) K.buildings.push(v.building); delete v.building; } }
+  // (a camp from before the soldiers' camp: what it may no longer carry is left behind — data/transport.js CAMP_KIT)
+  if (K.buildings.some(id => !BUILDINGS.has(id) || !BUILDINGS.get(id).portable)) K.buildings = K.buildings.filter(id => BUILDINGS.has(id) && BUILDINGS.get(id).portable);
   return K.buildings;
 }
 export const hasBuilding = (K, id) => campOf(K).includes(id);
-// the camp's help (data/transport.js CAMP_FX)
+export const hutsOf = K => campOf(K).filter(id => id === 'hut').length;
+// the camp's help: its shelters by how many (data/transport.js CAMP_KIT.huts), its healer's hut (CAMP_FX), the people's dish
+// in the cauldron (CAMP_KIT.dish)
 export function campFx(K, key) {
-  let k = 1;
-  for (const id of campOf(K)) if (CAMP_FX[id]?.[key]) k *= CAMP_FX[id][key];
-  return k;
+  const H = CAMP_KIT.huts;
+  let k = H.by[Math.min(hutsOf(K), H.max)][key] ?? 1;
+  for (const id of new Set(campOf(K))) if (CAMP_FX[id]?.[key]) k *= CAMP_FX[id][key];
+  return k * (CAMP_KIT.dish[K.people]?.[key] ?? 1);
 }
-// the buildings of the camp that can be made in the field: portable and made of wood alone
-export const fieldBuildings = () => BUILDINGS.filter(b => b.portable && Object.keys(b.cost).every(r => r === 'wood'));
+// the buildings of the camp that can be made in the field: portable, of wood alone, while there is room for one more (the
+// shelters up to CAMP_KIT.huts.max, the rest one of each)
+export const fieldBuildings = K => BUILDINGS.filter(b => b.portable && Object.keys(b.cost).every(r => r === 'wood') && (b.id === 'hut' ? hutsOf(K) < CAMP_KIT.huts.max : !hasBuilding(K, b.id)));
 export const buildDays = b => Math.ceil(b.cost.wood / FIELD_BUILD.woodPerDay);
 
 // the best handler's way with beasts: 1 + Charisma's charm (data/special.js)

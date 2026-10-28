@@ -7,6 +7,7 @@
 // (campaign/fight.js autoFight). The brews (`home`) stay in the cargo, as many as their `stock` asks (homeRoom): drunk on
 // the camp's map out of its stock (settlement/potions.js), the strengthening one by the wounded on the world map
 // (mendDay), the sleeping one given to a captive set on running (campaign/captives.js).
+import {kitOf} from '../data/transport.js';
 import {inLine} from '../data/campaign.js';
 import {SPECIES} from '../data/species.js';
 import {POTION, POTIONS, POTION_RES, BELT_ORDER, HOME_BY_USE, hutGrades, potionOf, sameKind} from '../data/potions.js';
@@ -102,9 +103,11 @@ export function brewDay(K, r, wooded) {
   if (!hasBuilding(K, 'healerhut')) return 0;
   for (const [res, p] of Object.entries(POTION.camp.find)) if (r() < p * (wooded ? POTION.camp.wooded : 1) && (K.cargo[res] || 0) < POTION.camp.keep) K.cargo[res] = (K.cargo[res] || 0) + 1;
   let n = 0;
+  const herbsOnly = !!kitOf(K).noPots;   // the elves brew of herbs alone (data/transport.js PEOPLE_KIT)
   for (const {potion, grade} of hutGrades()) {
-    while (has(K, grade.cost) && roomFor(K, potion, grade.res) > 0) {
-      for (const [res, k] of Object.entries(grade.cost)) take(K, res, k);
+    const cost = herbsOnly ? Object.fromEntries(Object.entries(grade.cost).filter(([res]) => res !== 'pots')) : grade.cost;
+    while (has(K, cost) && roomFor(K, potion, grade.res) > 0) {
+      for (const [res, k] of Object.entries(cost)) take(K, res, k);
       K.cargo[grade.res] = (K.cargo[grade.res] || 0) + 1; n++;
     }
   }

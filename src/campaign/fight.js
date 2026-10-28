@@ -21,7 +21,7 @@ import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
-import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
+import {say, die, alive, caravanMight, gainBeast, shake, stopFood} from './march.js';
 import {afterFight} from './quest.js';
 import {topUp, quaffMember, effectsIn, woundsIn} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
@@ -83,18 +83,20 @@ function localFight(a, K, d, how) {
   return o.won;
 }
 
-// ── a day of a stop on the local map: the hunt, the gathering, the fishing; what the land gave is the day's food
+// ── a day of a stop on the local map: the hunt and the gathering (no fishing: the caravan carries no rod); what the land
+// gave is the day's food
 export function playStop(a, K) {
   const S = campSetup(a, K, {kind: 'stop', dayIn: K.dayIn});
   const o = play(K, S, 'stop', 'стоянка');
   const food0 = K.food;
   applyCamp(a, K, S, o, null, 'stop'); topUp(K); if (o.potions) K.stats.potions = (K.stats.potions || 0) + o.potions;
+  if (K.food > food0) K.food = food0 + (K.food - food0) * stopFood(a, K);   // the cauldron and the people's way of the land (data/transport.js)
   const kept = new Set(CAMP.carry), dug = Object.entries(o.got).filter(([id]) => kept.has(id) && id !== 'hide' && id !== 'leather' && id !== 'rope');
   const got = Object.entries(o.got).filter(([id]) => FOODS.has(id) || id === 'hide').map(([id, n]) => `${RESOURCES.get(id).label} ${n}`);
   K.stats.stopDays = (K.stats.stopDays || 0) + 1;
   for (const [id, n] of dug) K.stats.dug = (K.stats.dug || 0) + n;
   const digging = dug.length ? `; добыли ${names(dug.map(([id, n]) => `${RESOURCES.get(id).label} ${n}`))}` : '';
-  say(a, K, `День стоянки: ${K.why?.startsWith('mine:') ? 'копали и мыли' : 'охотились, собирали и рыбачили'} — ${got.length ? `принесли ${names(got)} (+${pieces(Math.max(0, Math.round(K.food - food0)), 'паёк', 'пайка', 'пайков')})` : 'еды земля почти не дала'}${digging}.`, 'stop');
+  say(a, K, `День стоянки: ${K.why?.startsWith('mine:') ? 'копали и мыли' : 'охотились и собирали'} — ${got.length ? `принесли ${names(got)} (+${pieces(Math.max(0, Math.round(K.food - food0)), 'паёк', 'пайка', 'пайков')})` : 'еды земля почти не дала'}${digging}.`, 'stop');
   return o.got;
 }
 

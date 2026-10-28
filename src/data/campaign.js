@@ -93,8 +93,8 @@ export const FOES = {
 //   lean   — the stats a fighter leans to by its role's group (agents/special.js rollCreature opts.lean: the better of two
 //            rolls, inside the people's limits): the line to Strength and Endurance, the shooters to Perception and Agility,
 //            the quick to Agility and Luck, the support to Intelligence and Charisma
-//   tools  — the camp's tools on the backs of the first fighters (an axe, a maul, a rod, a pan: the camp is built with them,
-//            the fish and the berries come with them)
+//   tools  — the camp's tools on the backs of the first fighters (an axe, a maul, a hatchet, a pan: the camp is built with
+//            them, the game is skinned and the gold washed)
 //   skip   — the roles never drawn for a core: the mounted (no horse at the start) and those of a link only
 export const RETINUE = {
   humans:  {title: ['ратник', 'ратники', 'ратников'], kinds: {human: 6, halfling: 1, giant: 0.5}},
@@ -104,7 +104,7 @@ export const RETINUE = {
   least: {line: 2, shooter: 1, healer: 1},
   big: {kinds: ['giant', 'ogre', 'troll'], max: 1},
   lean: {'линия': ['S', 'E'], 'дальний бой': ['P', 'A'], 'подвижные': ['A', 'L'], 'поддержка': ['I', 'C']},
-  tools: [['axe'], ['maul'], ['rod'], ['pan']],
+  tools: [['axe'], ['maul'], ['hatchet'], ['pan']],   // (no rod: the caravan does not fish — a hatchet for the hunt)
   level: 6,
   body: 'clothes',
 };

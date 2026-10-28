@@ -1,5 +1,5 @@
 // Buildings. Cost is paid when the council lays the site; colonists then add `work` labour.
-// `portable: true` — a simple building a campaign's wagon can carry packed (data/transport.js CAMP_FX).
+// `portable: true` — a building the caravan's camp may carry (data/transport.js CAMP_KIT): the shelters and the healer's hut.
 // `effects` are merged into world.mods when a building is finished (see settlement/mods.js):
 //   numbers under add.*  are summed, numbers under mul.* are multiplied,
 //   yield.<resource> and jobSpeed.<job> multiply production, toolWear.<job> how fast that job's tools wear,
@@ -132,7 +132,7 @@ BUILDINGS.registerAll([
     wish: 'хочет еду поближе к дому',
     motive: (a) => [[a.mem.hunger * 1.2, 'голодает'], [a.mem.walkFood, 'далеко ходить за ягодами'], [(a.prefs.gather - 1) * 0.6, 'любит возиться с ягодами']]},
 
-  {id: 'lodge', portable: true, name: 'Охотничий навес', gender: 'm', cost: {wood: 20}, furnish: true, work: 160, max: 1, wooden: true, color: '#9a7b56', mark: 'Н',
+  {id: 'lodge', name: 'Охотничий навес', gender: 'm', cost: {wood: 20}, furnish: true, work: 160, max: 1, wooden: true, color: '#9a7b56', mark: 'Н',
     effect: 'Луки бьют дальше на 2 клетки, каждый заяц даёт в полтора раза больше мяса.',
     effects: {add: {huntRange: 2}, yield: {meat: 1.5}},
     wish: 'хочет охотиться удачнее',
@@ -203,7 +203,7 @@ BUILDINGS.registerAll([
     motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
   // built by the water when it can be: the nearest lot within reach that touches a lake with fish
-  {id: 'fishhut', portable: true, name: 'Хижина рыбака', gender: 'f', cost: {wood: 16}, furnish: true, work: 160, max: 1, wooden: true, color: '#5d8fa8', mark: 'Ры',
+  {id: 'fishhut', name: 'Хижина рыбака', gender: 'f', cost: {wood: 16}, furnish: true, work: 160, max: 1, wooden: true, color: '#5d8fa8', mark: 'Ры',
     near: 'fish',
     effect: 'Сети и вешала для рыбы: рыбаки ловят на треть быстрее, каждая рыба даёт в полтора раза больше еды, удочки изнашиваются вдвое медленнее.',
     effects: {jobSpeed: {fish: 1.35}, yield: {fish: 1.5}, toolWear: {fish: 0.5}},
@@ -211,7 +211,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[c.fishLakes ? 0.15 : 0, 'в озере полно рыбы'], [(a.prefs.fish - 1) * 1.4 + (a.skill.fishing || 0) * 0.4, 'любит рыбачить'], [a.mem.walkFish * 0.8, 'далеко носить рыбу'], [c.fishLakes ? a.mem.hunger * 0.8 : 0, 'голодает, а рыба рядом'], [c.fishLakes && a.food?.likes === 'fish' ? 0.35 : 0, 'скучает по рыбе']],
     available: w => w.lakes.some(l => l.cap > 0)},
 
-  {id: 'crafthut', portable: true, name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, furnish: true, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
+  {id: 'crafthut', name: 'Хижина ремесленника', gender: 'f', cost: {wood: 22}, furnish: true, work: 180, max: 1, wooden: true, color: '#c08a4a', mark: 'Р', station: true, benches: 1,
     effect: 'Здесь делают одежду, оружие, луки, пращи, удочки, инструменты, колчаны и стрелы из дерева, кости и кожи.',
     effects: {},
     wish: 'хочет делать снаряжение',
@@ -250,7 +250,7 @@ BUILDINGS.registerAll([
     motive: (a, c) => [[(c.stock('ironore') + c.stock('bronzeOre') + c.stock('silverOre')) * 0.07 + c.stock('goldDust') * 0.03, 'руда лежит без дела'],
       [(a.prefs.smith - 1) * 1.4, 'хочет работать у горна'], [c.unarmed * 0.4, 'нужно оружие получше']]},
 
-  {id: 'forge', portable: true, name: 'Походная кузня', gender: 'f', cost: {stone: 18, wood: 16, iron: 2, anvil: 1}, key: 'anvil', furnish: true, work: 260, max: 1, wooden: false, color: '#8e8f96', mark: 'Кз', station: true, benches: 1, needs: 'smelter',
+  {id: 'forge', name: 'Походная кузня', gender: 'f', cost: {stone: 18, wood: 16, iron: 2, anvil: 1}, key: 'anvil', furnish: true, work: 260, max: 1, wooden: false, color: '#8e8f96', mark: 'Кз', station: true, benches: 1, needs: 'smelter',
     effect: 'Навес, горн и покупная наковальня: куют мечи, копья с железными наконечниками, железные топоры, ламеллярные доспехи и оковку для сундуков. Кольчуги и тонкие клинки — только у торговцев.',
     effects: {},
     wish: 'хочет железное оружие',

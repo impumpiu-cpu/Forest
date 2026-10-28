@@ -13,7 +13,7 @@ import {SPECIES} from '../data/species.js';
 import {RESOURCES} from '../data/resources.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
-import {BEASTS, CARAVAN_GOLEMS} from '../data/transport.js';
+import {BEASTS, CARAVAN_GOLEMS, CAMP_KIT, kitOf} from '../data/transport.js';
 import {golemMetal} from '../atlas/golems.js';
 import {golemOf} from '../data/constructs.js';
 import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
@@ -101,6 +101,8 @@ const forgeQ = t => (t.tier >= MARK.forge.cityTier ? MARK.forge.cityQ : MARK.for
 const reserveFor = (K, t, st, days, a = null) => days * alive(K).length * CAMPAIGN.ration * rationPrice(t, st, a ? termsOf(a, K, t).buy : 1);
 
 const golems = K => K.beasts.filter(b => BEASTS[b.kind]?.golem && b.hp > 0).length;
+const herdOf = K => K.beasts.filter(b => BEASTS[b.kind]?.use === 'food' && b.hp > 0).length;
+export const herdMax = K => Math.round(CAMP_KIT.herd.max * (kitOf(K).herd ?? 1));   // (the greenskins keep twice the herd, the elves none)
 
 // ── buying: what the caravan wants, in order, while the gold lasts beyond the food reserve
 function wants(a, K, t, st) {
@@ -112,7 +114,8 @@ function wants(a, K, t, st) {
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
   for (const o of offers(t, a)) {
     if (o.kind === 'item' && !free(K).some(m => !m.former && mayTake(m.race, o.id))) continue;   // nobody free of the caravan would carry it (the elves and iron): the same as equip() gives to
-    if (o.kind === 'beast' && BEASTS[o.id].golem) { if (golems(K) < CARAVAN_GOLEMS.max) out.push([6, o]); continue; }   // a golem: one guard of the caravan, after the arms
+    if (o.kind === 'beast' && BEASTS[o.id].golem) { if (golems(K) < CARAVAN_GOLEMS.max) out.push([6, o]); continue; }
+    if (o.kind === 'beast' && BEASTS[o.id].use === 'food') { if (herdOf(K) < herdMax(K)) out.push([4, o]); continue; }   // the herd: milk and meat on the way   // a golem: one guard of the caravan, after the arms
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && count(o.id) < 2) out.push([3, o]);
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) out.push([5, o]);
     if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
@@ -239,6 +242,7 @@ export function trade(a, K, t, st) {
     if (o.kind === 'building' && hasBuilding(K, o.id)) continue;
     if (o.kind === 'vehicle' && (o.id === 'cart' ? K.vehicles.length : K.vehicles.some(x => x.kind === 'wagon'))) continue;
     if (o.kind === 'beast' && BEASTS[o.id].golem && golems(K) >= CARAVAN_GOLEMS.max) continue;
+    if (o.kind === 'beast' && BEASTS[o.id].use === 'food' && herdOf(K) >= herdMax(K)) continue;
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && K.beasts.filter(b => b.kind === o.id && b.hp > 0).length >= 2) continue;
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length >= free(K).length) continue;
     if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) >= CAPTIVE.campaign.keep) continue;
