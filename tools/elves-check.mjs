@@ -21,6 +21,11 @@ import {forestGuard} from '../src/agents/combat.js';
 import {workRate} from '../src/agents/jobRunners.js';
 import {BY_CODE} from '../src/data/terrain.js';
 import {mulberry} from '../src/core/rng.js';
+import {trySummon, sylvanPool, isSummoner} from '../src/agents/summon.js';
+import {summoned} from '../src/agents/behaviours/summoned.js';
+import {SPECIES} from '../src/data/species.js';
+import {SUMMON} from '../src/data/roles.js';
+import {sideStrength, strengthOf} from '../src/agents/strength.js';
 
 const fail = [];
 const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   ${name}${info ? `: ${info}` : ''}`); if (!ok) fail.push(name); };
@@ -85,6 +90,30 @@ const metalOf = id => { const d = ITEMS.get(id.split(/[+@~$]/)[0]); return d && 
     `лес ${inWood}, поле ${inOpen}`);
   const pace = job => { const s = elf.species, a = workRate(w, elf, job); elf.species = 'human'; const b = workRate(w, elf, job); elf.species = s; return a / b; };
   check('эльф добывает камень вдвое медленнее, а в поле работает на четверть быстрее', Math.abs(pace('mine') - 0.5) < 1e-9 && Math.abs(pace('farm') - 1.25) < 1e-9, `камень ×${pace('mine')}, поле ×${pace('farm')}`);
+}
+
+// the caller of beasts: once a fight a quarter of its side's strength in forest beasts that live here; they fight the
+// caller's foes, then go back to the wood; a while later it may call again
+{
+  const w = game(); w.region = {...w.region, biomes: {forest: 0.7, taiga: 0.3}};
+  const cx = Math.floor(w.w / 2), cy = Math.floor(w.h / 2), elves = [0, 1, 2, 3].map(k => createAgent(w, 'elf', 'colony', cx + k, cy));
+  const caller = elves[0], foe = createAgent(w, 'human', 'raiders', cx + 6, cy);
+  const pool = sylvanPool(w).map(([id]) => id), share = elves.filter(e => isSummoner(w, e)).length;
+  const came = trySummon(w, caller, foe), again = trySummon(w, caller, foe);
+  const worth = came.reduce((s, b) => s + strengthOf(b), 0), side = sideStrength(elves);
+  const want = came.length ? summoned.want(w, came[0]) : null;
+  check('призыватель: лесные звери, что живут здесь, на четверть силы своих, на стороне колонии; второй раз в том же бою — нет',
+    came.length > 0 && came.every(b => SPECIES.get(b.species).sylvan && pool.includes(b.species) && b.faction === 'allies' && b.brain === 'summoned') && worth <= side * SUMMON.share * 1.6 && !again.length && want?.[0]?.[0]?.id === 'fight' && want[0][0].target === foe,
+    `пришли ${came.map(b => b.species).join(', ')}; сила ${worth.toFixed(0)} из ${side.toFixed(0)} своих; из этих четырёх эльфов призыватели — ${share}`);
+  foe.dead = true; w.agents = w.agents.filter(o => o !== foe);
+  w.tick += SUMMON.quiet + 1;
+  const after = came.length ? summoned.want(w, came[0]) : null;
+  w.tick += SUMMON.cooldown;
+  const foe2 = createAgent(w, 'human', 'raiders', cx + 6, cy), next = trySummon(w, caller, foe2);
+  check('бой кончился — звери уходят в лес; в следующем бою призыватель зовёт снова', after?.[0]?.[0]?.id === 'leave' && next.length > 0, `после боя: ${after?.[0]?.[0]?.id}, снова пришли ${next.length}`);
+  const r = mulberry(3); let n = 0, all = 0;
+  for (let k = 0; k < 400; k++) { const e = createAgent(w, 'elf', 'colony', 5, 5); all++; if (isSummoner(w, e)) n++; e.dead = true; }
+  check('призывателей среди эльфов около доли расы', Math.abs(n / all - SPECIES.get('elf').summons) < 0.06, `${n} из ${all}`);
 }
 
 if (fail.length) process.exit(1);

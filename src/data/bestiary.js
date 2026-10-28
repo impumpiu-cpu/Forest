@@ -51,7 +51,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['deer', 'goat', 'boar', 'hare', 'elk'], weakPrey: ['mule'], boldPeople: 0.35, groupFear: 4, meal: 2, bigMeal: 4})}),
 
   // Bear: a loner that only fights when bothered; in winter it sleeps in its den
-  beast({id: 'bear', kind: 'beast', label: 'медведь', labelAcc: 'медведя', plural: 'медведи', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, hibernates: true,
+  beast({id: 'bear', sylvan: true, kind: 'beast', label: 'медведь', labelAcc: 'медведя', plural: 'медведи', behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true, hibernates: true,
     arrive: {group: [1, 1], every: [3, 5], chance: 0.5, cap: 1, first: 4, message: 'в лес пришёл медведь. Не трогай — и он не тронет'},
     habitat: {forest: 'usual', taiga: 'usual', tundra: 'rare', foothills: 'rare'},
     look: {shape: 'bear', size: 0.9, color: '#5a3d28'},
@@ -60,7 +60,7 @@ export const BESTIARY = [
     grazes: {terrain: ['grass', 'forest'], eatsBerries: 0, shunZone: true}, leaveChance: 0.00015, mule: stands({kickRange: 1.2, charge: 1.9, chargeHit: 1.7, grudge: 500, giveUp: 26, fleeBelow: 0.2})}),
 
   // Lynx: an ambush from the branches, mostly hares and foxes; a lone person only when starving
-  beast({id: 'lynx', snowfoot: true, kind: 'beast', label: 'рысь', labelAcc: 'рысь', plural: 'рыси', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+  beast({id: 'lynx', sylvan: true, snowfoot: true, kind: 'beast', label: 'рысь', labelAcc: 'рысь', plural: 'рыси', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
     arrive: {group: [1, 1], every: [3, 4], chance: 0.5, cap: 1, first: 3, message: 'в чаще поселилась рысь'},
     habitat: {taiga: 'usual', forest: 'rare'},
     look: {shape: 'fox', size: 0.5, color: '#9a8f7a'},
@@ -69,7 +69,7 @@ export const BESTIARY = [
     predator: hunts({prey: ['hare', 'fox', 'goat'], boldPeople: 0.75, groupFear: 2, meal: 1.4, sight: 18})}),
 
   // Elk: the mule of the taiga — a lot of meat, and a bull that tramples hunters
-  beast({id: 'elk', kind: 'beast', label: 'лось', labelAcc: 'лося', plural: 'лоси', behaviours: [...WAYS.herdStander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
+  beast({id: 'elk', sylvan: true, kind: 'beast', label: 'лось', labelAcc: 'лося', plural: 'лоси', behaviours: [...WAYS.herdStander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
     arrive: {group: [1, 3], every: [2, 4], chance: 0.5, cap: 4, first: 2, message: 'к лесу вышли лоси: {n}. Бык топчет охотников'},
     habitat: {taiga: 'usual', swamp: 'usual', tundra: 'rare', forest: 'rare'},
     look: {shape: 'deer', size: 0.84, color: '#5e4630'},

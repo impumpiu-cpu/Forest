@@ -67,6 +67,8 @@ export const RACES = [
     jobPace: {mine: 0.5, farm: 1.25},
     // × the harm a blow does to them where they stand among trees (agents/combat.js)
     forestGuard: 0.8,
+    // the share of elves of a colony or a caravan that can call the forest beasts into a fight (agents/summon.js)
+    summons: 0.15,
     innate: [{label: 'транс', note: 'четыре часа полудрёмы заменяют сон'}, {label: 'лесной глаз', note: 'в лесу видит то, что другим не видно'},
       {label: 'дитя леса', note: 'в лесу удар ранит на пятую часть слабее; камень добывает вдвое медленнее, поле родит на четверть быстрее'}],
     peoples: [

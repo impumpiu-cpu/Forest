@@ -59,7 +59,7 @@ SPECIES.registerAll([
   // Wolves hunt hares in packs and may go for a person who wanders off alone, mostly at night
   // or when starving. They shun the lit camp, fire and groups of people, and leave when wounded
   // or when the hares run out. Like everyone else they only arrive and depart by migration.
-  {id: 'wolf', kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
+  {id: 'wolf', sylvan: true, kind: 'beast', label: 'волк', labelAcc: 'волка', plural: 'волки', needs: ['food'], behaviours: [...WAYS.predator], heart: BEAT.predator,
     habitat: {taiga: 'common', tundra: 'usual', steppe: 'usual', forest: 'usual', foothills: 'usual', highlands: 'rare', meadow: 'rare'},
     mods: {hunger: 0.9},
     heatHarm: 60, look: {shape: 'wolf', size: 0.58, color: '#8d8f96'},
@@ -87,7 +87,7 @@ SPECIES.registerAll([
     }},
 
   // Deer: the main game of the woods — skittish, fast, a lot of meat and a good hide.
-  {id: 'deer', kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer,
+  {id: 'deer', sylvan: true, kind: 'beast', label: 'олень', labelAcc: 'оленя', plural: 'олени', needs: [], behaviours: [...WAYS.herdGrazer], heart: BEAT.grazer,
     habitat: {taiga: 'common', tundra: 'usual', forest: 'usual', meadow: 'usual', steppe: 'rare'},
     heatHarm: 60, look: {shape: 'deer', size: 0.62, color: '#a8794a'},
     yields: {meat: 5, hide: 2, bone: 2},
@@ -97,7 +97,7 @@ SPECIES.registerAll([
     leaveChance: 0.0003},
 
   // Fox: small and quick, hunted for its fur, which traders pay well for.
-  {id: 'fox', kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer,
+  {id: 'fox', sylvan: true, kind: 'beast', label: 'лиса', labelAcc: 'лису', plural: 'лисы', needs: [], behaviours: [...WAYS.grazer], heart: BEAT.grazer,
     habitat: {taiga: 'common', forest: 'usual', steppe: 'usual', tundra: 'usual', meadow: 'rare', desert: 'rare', barrows: 'rare'},
     heatHarm: 60, look: {shape: 'fox', size: 0.42, color: '#d0703a'},
     yields: {meat: 1, furs: 1}, trophies: [{res: 'furs', n: 1, chance: 0.2}],
@@ -107,7 +107,7 @@ SPECIES.registerAll([
 
   // Boar: fat and dangerous. Like the mule it does not run: it kicks back with its tusks and charges
   // whoever shot it. Hunters go for it only when there is no gentler game about.
-  {id: 'boar', kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
+  {id: 'boar', sylvan: true, kind: 'beast', label: 'кабан', labelAcc: 'кабана', plural: 'кабаны', needs: [], behaviours: [...WAYS.stander], heart: BEAT.stander, restAt: 0.75, mends: 0.00025, big: true,
     habitat: {forest: 'common', shrubland: 'usual', swamp: 'rare', meadow: 'rare', taiga: 'rare', jungle: 'rare'},
     heatHarm: 60, look: {shape: 'boar', size: 0.62, color: '#4a3a30'},
     yields: {meat: 6, hide: 2, bone: 1}, trophies: [{res: 'hide', n: 1, chance: 0.2}],

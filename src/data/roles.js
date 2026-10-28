@@ -50,6 +50,9 @@ COMBAT_ROLES.registerAll([
   {id: 'archer', group: 'дальний бой', label: 'стрелок', note: 'лук или арбалет за спиной щитоносцев',
     hands: [[['bow'], 3], [['crossbow'], 1]], body: 'light', back: ['quiver'], potions: 0, squad: 'shooter', place: 'back'},
   // ── support
+  // the elves' caller of beasts: keeps back with a staff; once in a fight calls the forest beasts (agents/summon.js)
+  {id: 'summoner', group: 'поддержка', label: 'призыватель зверей', note: 'посох; раз за бой зовёт лесных зверей на подмогу',
+    hands: [[['staff'], 1]], body: 'light', back: [], potions: 1, squad: 'front', place: 'back', noChores: true},
   {id: 'healer', group: 'поддержка', label: 'знахарь', note: 'посох и зелья: держится сзади, перевязывает своих',
     hands: [[['staff'], 1]], body: 'light', back: [], potions: 2, squad: 'front', place: 'back', noChores: true},
 ]);
@@ -89,6 +92,7 @@ export const ROLE_MIX = {
   human:       {shield: 2, spearman: 1.5, cleaver: 1.5, cutthroat: 1, skirmisher: 1, catcher: 0.3, archer: 1.2, healer: 0.3, best: 3},
   orc:         {shield: 2, spearman: 1, cleaver: 3, skirmisher: 0.7, catcher: 0.3, archer: 0.3, healer: 0.3, best: 2},
   goblin:      {shield: 0.3, spearman: 1, cutthroat: 2.5, skirmisher: 3, catcher: 0.5, archer: 2, healer: 0.3, best: 1},
+  elf:         {shield: 0.5, spearman: 1, skirmisher: 1, archer: 3, healer: 0.4, summoner: 0.4, best: 4},
   darkelf:     {spearman: 1, cutthroat: 2, catcher: 1.5, skirmisher: 1, archer: 3, healer: 0.4, best: 3},
   gnoll:       {shield: 0.7, spearman: 2, cleaver: 1.5, skirmisher: 1.5, catcher: 0.7, archer: 0.7, best: 1},
   skeleton:    {shield: 2, spearman: 2, cleaver: 1, archer: 1.5, best: 1},
@@ -158,3 +162,12 @@ export function roleKit(species, role, rng, t) {
   for (const f of R.back || []) { const id = pieceOf(f, 0); if (id && (f !== 'quiver' || out.some(x => ITEMS.get(x).ranged?.ammo))) out.push(id); }   // a quiver only for what shoots from one
   return out;
 }
+
+// The caller of beasts (agents/summon.js; role `summoner`, or an elf of a colony or a caravan by the race's `summons`):
+//   share    — once a fight it calls forest beasts (tag «Лесной», data/tags.js sylvan) worth this share of its own side's
+//              strength (КС of its people within `reach`), drawn from those that live here (the habitat of the map's
+//              biomes, × `levels`), at most `max`
+//   cooldown — ticks before it calls again (one fight); `ring` — they come out of the wood this far from it
+//   sight    — a called beast goes for a foe of its caller this close; `quiet` ticks with no foe — it goes back to the wood
+export const SUMMON = {share: 0.25, reach: 20, max: 4, cooldown: 1200, ring: 3, sight: 14, quiet: 240, levels: {common: 1, usual: 0.6, rare: 0.25}};
+

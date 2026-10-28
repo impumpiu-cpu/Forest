@@ -35,6 +35,8 @@ export const WAYS = {
   // a raider: fallen senseless it lies; fire drives it; lost, burnt by the sun or badly hurt it leaves; else its band's
   // plan, the nearest foe, the stores (the mindless dead: the nearest living soul)
   raider: ['downed', 'fleeFire', 'retreat', 'capture', 'raid'],
+  // a forest beast called into a fight (agents/summon.js): it goes for the caller's foes, then back to the wood
+  summoned: ['fleeFire', 'summoned'],
   // a captive on the run: for the map's edge as fast as its bonds let it
   fugitive: ['downed', 'escape'],
   // a trader: with the caravan's phase — walks in, stands at the stall, sleeps by the fire, leaves; never fights
