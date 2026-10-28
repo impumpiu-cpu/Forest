@@ -104,9 +104,9 @@ WORLD_PEOPLES.registerAll([
     // they will not crowd: every house of theirs holds × `house` of its people (atlas/towns.js townFx); shacks and tents are
     // their homes, no rough housing to breed corruption (`roughHome`: atlas/towns.js roughShare)
     house: 0.75, roughHome: true,
-    // a horde: half its people go to war (× ARMY.levy), it breeds fast (its towns grow × `breed`: many children, not all live),
+    // a horde: a third of its people go to war (× ARMY.levy), it breeds fast (its towns grow × `breed`: many children, not all live),
     // it wants half the goods of the others to live content (× its people's needs, atlas/treasury.js)
-    levy: 5, breed: 1.8, needs: 0.5, beastLevy: 1,   // and it drives all its herds and war beasts into the fight (data/parties.js ARMY.beasts)
+    levy: 10 / 3, breed: 1.8, needs: 0.5, beastLevy: 1,   // and it brings all its trained war beasts into the fight (data/parties.js ARMY.beasts)
     // what they do without: brew poured to the spirits for honey and wax, meat smoked on the fire for salt, skulls and horns
     // for pots, rough logs for boards (atlas/economy.js swaps)
     swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'bone', k: 1}, planks: {to: 'wood', k: 1.5}},
@@ -246,4 +246,5 @@ export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandP
 // beast or a monster of the land about — the densest of those that live in its coarse cell, the bigger first (a beast's
 // worth: health × blow) — and breaks it to war, while it holds fewer than one for every `per` of its people; a war beast
 // counts as its worth × `men` of the town's people in its might and its armies. Never a thinking kind (a troll is a greenskin)
-export const WAR_BEASTS = {per: 200, men: 2, least: 0.002};
+export const WAR_BEASTS = {per: 200, men: 2, least: 0.002, work: 0.5,
+  dens: {wargden: {species: 'varg', every: 1}, spiderden: {species: 'spider', every: 2}, hyenadens: {species: 'hyena', every: 2}}};

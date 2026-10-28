@@ -54,7 +54,7 @@ const fromStore = t => { const o = {}; for (const [g, v] of Object.entries(t.sto
 export const roomOf = (t, g) => Math.max(M.least, ((t.econ?.made[g] || 0) + (t.econ?.dem[g] || 0)) * M.store);
 // what a town keeps of a good for its works (a season of what they take), and for its people's basic needs
 const keepOf = (t, g) => (t.econ?.dem[g] || 0) / S * M.keep;
-const safetyOf = (t, g) => (M.needs.basic[g] || 0) * t.pop * M.safety;
+const safetyOf = (t, g) => (goodsFor(t.people, M.needs.basic, t.pop * (peopleOf(t.people)?.needs ?? 1))[g] || 0) * M.safety;
 // what of it the town would let go: to its own people (over what its works keep), to others (over the people's safety too)
 const forPeople = (t, g) => Math.max(0, (t.stock[g] || 0) - keepOf(t, g));
 const forOthers = (t, g) => Math.max(0, (t.stock[g] || 0) - keepOf(t, g) - safetyOf(t, g));
@@ -74,13 +74,19 @@ function open(t) {
 // (× its people's `needs`: a horde wants less; a good its people do without is swapped as its buildings do — data/peoples.js)
 function wants(t) {
   const N = M.needs, P = peopleOf(t.people), k = P?.needs ?? 1, rich = Math.min(1, Math.max(0, t.peopleGold) / Math.max(1, t.pop * N.rich)), o = {basic: {}, comfort: {}};
-  const put = (to, g, v) => { const [h, x] = swapOf(P, g); to[h] = (to[h] || 0) + v * x; };
-  for (const [g, v] of Object.entries(N.basic)) put(o.basic, g, v * t.pop * k);
-  for (const [g, v] of Object.entries(N.comfort)) put(o.comfort, g, v * t.pop * rich * k);
+  o.basic = goodsFor(t.people, N.basic, t.pop * k);
+  o.comfort = goodsFor(t.people, N.comfort, t.pop * rich * k);
   return o;
 }
 // a good as a people takes it: [the good, × how much] (data/peoples.js swaps: the greenskins' bone for pots, wood for salt)
 const swapOf = (P, g) => { const s = P?.swaps?.[g]; return s ? [s.to, s.k] : [g, 1]; };
+// Normalize first: several goods may become the same material (the horde's wood and planks).
+// The basket is shared by consumption, the safety reserve and construction reservations.
+export function goodsFor(people, goods, k = 1) {
+  const P = peopleOf(people), out = {};
+  for (const [g, n] of Object.entries(goods)) { const [to, x] = swapOf(P, g); out[to] = (out[to] || 0) + n * x * k; }
+  return out;
+}
 // the towns a town is linked with, and how well: [other, link]
 const linksOf = (a, t) => [...(a.net?.links.values() || [])].filter(l => l.p.alive && l.q.alive && (l.p === t || l.q === t)).map(l => [l.p === t ? l.q : l.p, l]);
 // × the price between two towns: of one realm 1, of a realm that trades with it `foreign`, else 0 (no dealing)
@@ -223,10 +229,9 @@ export function planBuild(a, t, b) {
   open(t);
   const B = M.build, step = Math.min(b.tier, B.labor.length - 1);
   if (step === 0) return {t, cost: 0, own: [], bought: [], labor: 0};   // a hamlet's work: the people's own hands, of what they find
-  const own = [], bought = [], P = peopleOf(t.people);
+  const own = [], bought = [];
   let mats = 0, gather = 0, hands = 0;
-  for (const [g0, n0] of Object.entries(B.mats[b.cat] || B.mats.default)) {
-    const [g, x] = swapOf(P, g0), n = n0 * x;   // its people's own materials (the greenskins' rough logs for boards)
+  for (const [g, n] of Object.entries(goodsFor(t.people, B.mats[b.cat] || B.mats.default))) {
     let need = n;
     const k = Math.min(need, t.stock[g] || 0);
     if (k > 0) { own.push([g, k, k * priceAt(t, g)]); mats += k * priceAt(t, g); need -= k; }

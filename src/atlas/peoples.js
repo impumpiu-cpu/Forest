@@ -203,7 +203,23 @@ function holdField(a, pe) {
   return out;
 }
 
-// a year of the peoples: their fields, their towns, their wars with the wild, their meetings
+// A season of the towns' goods, purses and living works. Growth, founding and building stay yearly.
+export function seasonTowns(a, say) {
+  // the towns' economies first (atlas/economy.js, atlas/treasury.js): their stores, what they buy of each other, their gold
+  for (const t of a.towns) {
+    if (!t.alive) continue;
+    // the town's economy by its buildings' flows (atlas/economy.js): its hands, its goods, the food its works give;
+    // its slaves wear away (the orcs' raids keep them coming)
+    if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
+    if (t.slavesOf) for (const p of Object.keys(t.slavesOf)) t.slavesOf[p] = Math.min(t.slaves || 0, t.slavesOf[p] * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
+    { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
+    { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
+  }
+  seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
+  for (const t of a.towns) if (t.alive) keepWork(t);
+}
+
+// A year of the peoples: fields, founding, growth, construction and meetings.
 export function stepPeoples(a, rnd, say) {
   const F = a.fauna, N = F.W * F.H, tmp = new Float32Array(N), k = scaleOf(a);
   // towns are the hearths the fields grow from
@@ -253,18 +269,7 @@ export function stepPeoples(a, rnd, say) {
   // flows to the towns it is linked with that lack (atlas/sites.js)
   fadeScourge(a);
   const feedsOf = new Map();
-  // the towns' economies first (atlas/economy.js, atlas/treasury.js): their stores, what they buy of each other, their gold
-  for (const t of a.towns) {
-    if (!t.alive) continue;
-    // the town's economy by its buildings' flows (atlas/economy.js): its hands, its goods, the food its works give;
-    // its slaves wear away (the orcs' raids keep them coming)
-    if (t.slaves) t.slaves = Math.max(0, t.slaves * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
-    if (t.slavesOf) for (const p of Object.keys(t.slavesOf)) t.slavesOf[p] = Math.min(t.slaves || 0, t.slavesOf[p] * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
-    { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
-    { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
-  }
-  seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
-  for (const t of a.towns) if (t.alive) keepWork(t);
+  seasonTowns(a, say);
   for (const t of a.towns) {
     if (!t.alive) continue;
     const pe = a.peoples.find(p => p.id === t.people), j = faunaCell(a, t.i);

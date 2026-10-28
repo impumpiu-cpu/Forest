@@ -142,14 +142,14 @@ TOWN_BUILDINGS.registerAll([
   B('field', 'пашни', 'pl', 'food', 0, [...H, ...E, ...O], {}, {per: 150, max: 4, needs: ['fertile', 'flat'], local: 'field', site: true, jobs: 30, in: {tools: 5}, out: {grain: 110, fiber: 100}}),
   B('grove', 'плодовые рощи', 'pl', 'food', 1, E, {}, {per: 150, max: 4, needsAny: ['forest', 'fertile'], site: true, jobs: 12, out: {food: 45, wood: 40, herbs: 7, fiber: 30}}),
   B('mushrooms', 'грибные пещеры', 'pl', 'food', 1, D, {}, {per: 150, max: 4, needsAny: ['caves', 'steep'], local: 'mushcave', site: true, jobs: 15, out: {food: 50, grain: 20}}),   // and mushroom malt: the mill, the quern and the brewery live on it
-  B('pen', 'загоны', 'pl', 'food', 0, [...H, ...D], {}, {per: 300, max: 2, needs: ['pasture'], local: 'pen', site: true, jobs: 8, out: {food: 20, fiber: 120, hide: 30, beasts: 4}}),
+  B('pen', 'загоны', 'pl', 'food', 0, [...H, ...D], {}, {per: 300, max: 2, needs: ['pasture'], local: 'pen', site: true, jobs: 8, out: {fiber: 120, beasts: 4}}),
   // the greenskins' pens: big herds for meat and for war — more room, more food (on the local map their pen holds twice as
   // many: data/buildings.js penRoom)
-  B('grpens', 'загоны зеленокожих', 'pl', 'food', 0, O, {}, {per: 200, max: 4, needs: ['pasture'], local: 'pen', site: true, jobs: 10, out: {food: 40, fiber: 100, hide: 50, bone: 30, beasts: 8}}),
+  B('grpens', 'загоны зеленокожих', 'pl', 'food', 0, O, {}, {per: 200, max: 4, needs: ['pasture'], local: 'pen', site: true, jobs: 10, out: {fiber: 100, beasts: 8}}),
   // the kinds' own (data/peoples.js `kin`: each wants its kind in the town): the gnolls' hyena dens, the ogres' meat pots
-  B('hyenadens', 'гиеньи норы', 'pl', 'food', 0, O, {defence: 0.1}, {kin: 'gnoll', per: 600, max: 2, jobs: 4, out: {food: 15, bone: 40, beasts: 2}}),
+  B('hyenadens', 'гиеньи норы', 'pl', 'food', 0, O, {defence: 0.1}, {kin: 'gnoll', per: 600, max: 2, jobs: 4, out: {food: 15, bone: 40}}),
   B('meatpots', 'мясные котлы', 'pl', 'food', 1, O, {}, {kin: 'ogre', per: 800, requiresAny: ['lodge', 'grpens', 'pasture'], jobs: 3, in: {wood: 30}, out: {food: 40, bone: 20}}),
-  B('pasture', 'выгоны и стада', 'pl', 'food', 1, [...H, ...O], {prod: 0.05}, {per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, out: {food: 40, fiber: 200, hide: 60, beasts: 8}}),
+  B('pasture', 'выгоны и стада', 'pl', 'food', 1, [...H, ...O], {prod: 0.05}, {per: 300, max: 3, needs: ['pasture'], site: true, jobs: 15, out: {fiber: 200, beasts: 8}}),
   B('lodge', 'охотничий навес', 'm', 'food', 0, ALL, {}, {per: 400, needsAny: ['forest', 'pasture'], local: 'lodge', site: true, jobs: 10, in: {arms: 2}, out: {food: 25, hide: 80, bone: 80}}),
   B('fishhut', 'рыбацкие хижины', 'pl', 'food', 0, ALL, {}, {per: 300, max: 2, needs: ['water'], local: 'fishhut', site: true, jobs: 10, in: {fiber: 20}, out: {food: 30}}),
   B('pier', 'рыбная пристань', 'f', 'food', 1, ALL, {trade: 0.05}, {per: 600, needsAny: ['coast', 'lake'], site: true, jobs: 20, in: {planks: 15, fiber: 30}, out: {food: 70}}),
@@ -167,12 +167,12 @@ TOWN_BUILDINGS.registerAll([
   // ── raw materials
   B('woodcut', 'лесосека', 'f', 'raw', 0, [...H, ...D, ...O], {prod: 0.1}, {per: 400, needs: ['forest'], site: true, jobs: 8, in: {tools: 2}, out: {wood: 1200}}),
   // elves do not fell the wood: they take what it gives — honey, wax, resin, dyes
-  B('forestry', 'лесной промысел', 'm', 'raw', 0, E, {prod: 0.15, trade: 0.05}, {per: 300, needs: ['forest'], site: true, jobs: 8, out: {wood: 400, planks: 60, fiber: 60, hide: 20, herbs: 40, honey: 20, gems: 1}}),
+  B('forestry', 'лесной промысел', 'm', 'raw', 0, E, {prod: 0.15, trade: 0.05}, {per: 300, needs: ['forest'], site: true, jobs: 8, out: {wood: 400, planks: 60, fiber: 60, hide: 20, herbs: 40, honey: 20}}),
   B('sawmill', 'лесопилка', 'f', 'raw', 1, [...H, ...D, ...E], {prod: 0.15}, {per: 600, needs: ['forest'], local: 'sawmill', site: true, jobs: 4, in: {wood: 160, tools: 1}, out: {planks: 100}}),
   B('quarry', 'каменоломня', 'f', 'raw', 0, [...H, ...D, ...E, ...O], {prod: 0.1}, {per: 600, needs: ['stone'], local: 'quarry', site: true, jobs: 8, in: {tools: 3}, out: {stone: 500}}),
   B('claypit', 'глиняный карьер', 'm', 'raw', 0, [...H, ...D, ...E], {prod: 0.05}, {per: 800, needs: ['clay'], site: true, jobs: 4, out: {clay: 300}}),
-  B('mineshaft', 'рудник', 'm', 'raw', 0, [...H, ...D, ...O], {prod: 0.25, trade: 0.1}, {per: 600, needs: ['ore'], local: 'mineshaft', notable: true, site: true, jobs: 12, in: {tools: 6, wood: 40}, out: {ore: 240, gems: 4}}),
-  B('deepmine', 'глубокие шахты', 'pl', 'raw', 2, D, {prod: 0.3, trade: 0.15}, {per: 1000, needsAny: ['ore', 'gems', 'precious'], requires: ['mineshaft'], site: true, jobs: 20, in: {tools: 10, wood: 60}, out: {ore: 500, gems: 15}}),
+  B('mineshaft', 'рудник', 'm', 'raw', 0, [...H, ...D, ...O], {prod: 0.25, trade: 0.1}, {per: 600, needs: ['ore'], local: 'mineshaft', notable: true, site: true, jobs: 12, in: {tools: 6, wood: 40}, out: {ore: 240, gems: 0.4}}),
+  B('deepmine', 'глубокие шахты', 'pl', 'raw', 2, D, {prod: 0.3, trade: 0.15}, {per: 1000, needsAny: ['ore', 'gems', 'precious'], requires: ['mineshaft'], site: true, jobs: 20, in: {tools: 10, wood: 60}, out: {ore: 500, gems: 1.5}}),
   B('charpit', 'углежогная яма', 'f', 'raw', 1, [...H, ...D, ...O], {prod: 0.05}, {per: 800, needs: ['forest'], local: 'charpit', site: true, jobs: 3, in: {wood: 200}, out: {coal: 216}}),
   B('coalpit', 'угольные копи', 'pl', 'raw', 1, [...H, ...D], {prod: 0.15}, {per: 1000, needs: ['coal'], site: true, jobs: 8, in: {tools: 3}, out: {coal: 432}}),
   B('saltworks', 'солеварня', 'f', 'raw', 1, [...H, ...D, ...E], {trade: 0.2, food: 0.05}, {per: 1500, needs: ['salt'], site: true, jobs: 5, in: {wood: 80}, out: {salt: 200}}),
@@ -224,7 +224,7 @@ TOWN_BUILDINGS.registerAll([
   B('hiddenpaths', 'тайные тропы', 'pl', 'defence', 1, E, {defence: 0.35}, {needs: ['forest'], jobs: 3}),
   // the orcs' warg den: riders on wargs (data/raids.js wargrider); the goblins' spider den: riders on spiders, and silk;
   // the fighting pits: wild beasts and monsters of the land about broken to war (atlas/beasts.js), the beast-drivers
-  B('wargden', 'логово варгов', 'n', 'defence', 1, O, {defence: 0.15, prestige: 0.05}, {kin: 'orc', requiresAny: ['grpens', 'pasture'], local: 'wargden', notable: true, jobs: 4, in: {food: 30}, out: {beasts: 4}}),
+  B('wargden', 'логово варгов', 'n', 'defence', 1, O, {defence: 0.15, prestige: 0.05}, {kin: 'orc', requiresAny: ['grpens', 'pasture'], local: 'wargden', notable: true, jobs: 4, in: {food: 30}}),
   B('spiderden', 'логово пауков', 'n', 'defence', 1, O, {defence: 0.1, prod: 0.05}, {kin: 'goblin', needsAny: ['forest', 'caves', 'steep'], local: 'spiderden', notable: true, jobs: 3, in: {food: 15}, out: {cloth: 30, fiber: 40}}),
   B('fightpits', 'бойцовские ямы', 'pl', 'defence', 1, O, {defence: 0.15, prestige: 0.1}, {local: 'fightpits', notable: true, jobs: 6, in: {food: 20, arms: 2}}),
   B('trollgate', 'топь-застава', 'f', 'trade', 1, O, {trade: 0.2, defence: 0.05}, {kin: 'troll', needs: ['road'], jobs: 4, out: {lux: 4}}),   // the trolls' toll on a road through the marsh
@@ -237,7 +237,7 @@ TOWN_BUILDINGS.registerAll([
   // ── faith
   B('shrine', 'святилище', 'n', 'faith', 0, ALL, {faith: 0.15}, {local: 'shrine', jobs: 1, in: {honey: 5}}),
   B('shamanhut', 'хижина шамана', 'f', 'faith', 0, O, {faith: 0.15, health: 0.1}, {jobs: 1, in: {herbs: 15}}),
-  B('sacredgrove', 'священная роща', 'f', 'faith', 0, E, {faith: 0.3}, {needs: ['forest'], jobs: 2, out: {herbs: 13, gems: 2, gold: 10}}),
+  B('sacredgrove', 'священная роща', 'f', 'faith', 0, E, {faith: 0.3}, {needs: ['forest'], jobs: 2, out: {herbs: 13, gems: 0.2, gold: 10}}),
   B('stonecircle', 'каменный круг', 'm', 'faith', 0, [...H, ...O], {faith: 0.2}, {needsAny: ['stone', 'steep']}),
   B('ancestorhall', 'зал предков', 'm', 'faith', 1, D, {faith: 0.3, prestige: 0.1}, {requires: ['shrine'], jobs: 2, in: {honey: 5}}),
   B('temple', 'храм', 'm', 'faith', 1, [...H, ...E, ...D], {faith: 0.3, prestige: 0.1}, {requires: ['shrine'], jobs: 4, in: {honey: 15, lux: 1}}),
@@ -298,9 +298,11 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 // the food a building adds a year, in people-years: what it gives of food, grain (× TOWN_FLOW.grain) and stores less what it
 // takes of them (a field — its grain; a mill — the bread over the grain)
 const FOOD_GOODS = io => (io?.food || 0) + (io?.grain || 0) * TOWN_FLOW.grain + (io?.stores || 0);
-export const foodNet = b => FOOD_GOODS(b.out) - FOOD_GOODS(b.in);
+export const foodNet = b => FOOD_GOODS(b.out) - FOOD_GOODS(b.in) + (TOWN_FLOW.herd.at.includes(b.id) ? (b.out?.beasts || 0) * TOWN_FLOW.herd.food : 0);
 
 export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pier', 'harbor', 'riverpier']},
+  // Livestock is raised by pens, then actually consumed for meat. Keep breeders, limit seasonal slaughter.
+  herd: {at: ['pen', 'grpens', 'pasture'], keep: 2, slaughter: 12, food: 5, hide: 7.5, bone: 5},
   sea: {fishhut: 0.3, pier: 0.5, harbor: 0.7},
   order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
   rounds: 8, soft: 0.5, captured: 0.5, grain: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, build: 400, hands: 0.5, shortAt: 0.01,
@@ -368,7 +370,7 @@ export const GOLEMS = {
 
 // How a town's buildings work (atlas/towns.js), on top of their effects:
 //   room:      the people its houses hold: room[0] + Σ house (room[1] — people a point of the `housing` need stands for)
-//   might:     √(people + beastMen × the beasts of its store) × (1 + defence + mightProd × production) — its strength against raids
+//   might:     √(people + trained beasts + guard golems + garrison) × (1 + defence + mightProd × production) — its strength against raids
 //              and armies; work — the least share of its effects a building gives however badly it works
 //   raid:      the share of a raid's harm it takes: 1 − raidFaith × faith − raidHealth × health, never below raidFloor
 //   needs:     what it wants to build, 0 … ~1.5 an effect: housing and food fill as people reach full[0] of room or of
@@ -382,7 +384,7 @@ export const GOLEMS = {
 //   `idle` of itself; one whose goods all fill the store already (their price at the market's floor) is worth `glut` of itself;
 //   a building that wants `hands` × its jobs and finds
 //   fewer free is not built
-export const TOWN_FX = {room: [120, 100], work: 0.5, beastMen: 3, mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, flow: {short: 0.6, needs: 0.4, spare: 0.3, glut: 0.4, food: 0.4, foodRef: 50, scourged: 0.3, hands: 0.5, idle: 0.3},
+export const TOWN_FX = {room: [120, 100], work: 0.5, mightProd: 0.3, raidFloor: 0.4, raidFaith: 0.5, raidHealth: 0.5, flow: {short: 0.6, needs: 0.4, spare: 0.3, glut: 0.4, food: 0.4, foodRef: 50, scourged: 0.3, hands: 0.5, idle: 0.3},
   needs: {full: [0.55, 0.4], housing: [1.5], food: [1.3, 0.1], raided: 6, defence: [1.5, 0.8, 0.1], trade: [0.15, 0.6, 0.3], prod: [0.4, 0.1],
     faith: [0.25, 0.15], lore: [0.25, 0.1, 0.03], prestige: [0.15, 0.15], health: [0.25, 0.1, 0.3]}};
 

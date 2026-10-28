@@ -27,6 +27,7 @@ import {Registry} from '../core/registry.js';
 import {oreSeen} from '../world/ores.js';
 import {SPECIES} from './species.js';
 import {localPeoples} from './townBuildings.js';
+import {WORLD_PEOPLES} from './peoples.js';
 import {T as TERR} from './terrain.js';
 const ROCK = TERR.ROCK;
 
@@ -46,6 +47,8 @@ export const colonyRace = w => {
   for (const a of w.agents) if (a.faction === 'colony' && !a.dead && !a.captive && SPECIES.get(a.species).kind === 'race') n[a.species] = (n[a.species] || 0) + 1;
   return Object.entries(n).sort((p, q) => q[1] - p[1])[0]?.[0] || null;
 };
+// The same majority rule as the people's own buildings; captured buildings keep operating.
+export const colonyPeople = w => { const race = colonyRace(w); return race && SPECIES.get(race).rel === 'greenskin' ? 'orcs' : WORLD_PEOPLES.all().find(p => p.race === race)?.id || null; };
 // the elves' thorn hedge (`thorns`): whoever is not of the colony goes at `slow` of his pace inside its zone and loses `dmg`
 // of health a tick there (not much — it wears him down while the archers shoot)
 export const THORNS = {slow: 0.6, dmg: 0.0003};
@@ -297,7 +300,7 @@ BUILDINGS.registerAll([
   // ── herding: a fenced pen for tamed goats and mules (settlement/herd.js)
   {id: 'pen', name: 'Загон', gender: 'm', cost: {wood: 14, rope: 2}, work: 160, max: 2, wooden: true, color: '#9a8a5a', mark: 'Зг',
     lot: [4, 4], pen: 6,
-    effect: 'Изгородь на 6 мест: козе нужно одно, мулу два. Скотник приручает диких коз и мулов охапкой сена, доит коз, стрижёт шерсть; летом скот пасётся в загоне, зимой ест сено. Ручной мул возит брёвна и камень и тянет соху.',
+    effect: 'Изгородь на 6 мест: козе нужно одно, мулу два. Скотник приручает диких коз и мулов охапкой сена, доит коз, стрижёт шерсть. При нехватке припасов взрослый излишек идёт на мясо, пара остаётся для разведения; летом скот пасётся в загоне, зимой ест сено. Ручной мул возит брёвна и камень и тянет соху.',
     effects: {},
     // the first when there are wild goats or mules about; a second only when the first is full
     available: w => (w.buildings.some(b => b.key === 'pen') ? penRoom(w) < 2

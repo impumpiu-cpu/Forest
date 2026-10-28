@@ -28,7 +28,7 @@ export function stepGolems(a, t) {
   const metal = golemMetal(a, t); if (!metal) return null;
   // a golem is made of the forge's work and the metal of the store (data/townBuildings.js GOLEMS.make): an idle forge, or no
   // metal, makes none this season
-  if ((t.work?.golemforge ?? 1) < G.make.work || (t.stock && (t.stock.metal || 0) < G.make.metal)) return null;
+  if ((t.work?.golemforge ?? 1) < G.make.work || (t.stock?.metal || 0) < G.make.metal) return null;
   const pay = () => { if (t.stock) { t.stock.metal = Math.round((t.stock.metal - G.make.metal) * 100) / 100; if (t.stock.metal <= 0) delete t.stock.metal; } };
   for (const id of Object.keys(g.auto)) g.auto[id] = takersOf(t, id);   // the takers of units gone are gone with them
   const want = Math.max(1, Math.floor(t.pop / G.per));
@@ -43,7 +43,8 @@ export function stepGolems(a, t) {
     const l = g.auto[id] || [], k = l.findIndex(m => rank(m) < rank(metal));
     if (k >= 0) { const was = l[k]; l[k] = metal; pay(); return {kind: 'remake', id, metal, was}; }
   }
-  if (g.guard.length < want) { g.guard.push(metal); pay(); return {kind: 'guard', metal}; }
+  const away = (a.parties || []).filter(p => p.kind === 'army' && p.from === t.id && p.state !== 'gone' && !p.returned).reduce((s, p) => s + (p.golems?.length || 0), 0);
+  if (g.guard.length + away < want) { g.guard.push(metal); pay(); return {kind: 'guard', metal}; }
   const k = g.guard.findIndex(m => rank(m) < rank(metal));
   if (k >= 0) { g.guard[k] = metal; pay(); return {kind: 'remake', id: null, metal}; }
   return null;

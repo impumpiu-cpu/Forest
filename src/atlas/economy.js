@@ -14,8 +14,19 @@
 import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_FLOW as F, GOLEMS} from '../data/townBuildings.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {placeHas} from './towns.js';
+import {SEASONS_PER_YEAR as S} from '../data/atlas.js';
 
 const soft = g => !!TOWN_GOODS.get(g).soft;
+
+// Pens grow ordinary livestock; meat, hides and bones come only from animals actually slaughtered.
+// Trained beasts live in t.warBeasts and never enter this stock or this flow.
+function herdFlow(rows, imports) {
+  const H = F.herd, pens = rows.filter(r => H.at.includes(r.b.id)), work = pens.reduce((s, r) => s + r.n * r.eff, 0);
+  const births = rows.reduce((s, r) => s + (r.out.beasts || 0) * r.eff, 0);
+  const available = ((imports?.beasts || 0) + births) / S, keep = work * H.keep;
+  const n = Math.max(0, Math.min(available - keep, work * H.slaughter / S));
+  return {n, used: n * S, made: {food: n * S * H.food, hide: n * S * H.hide, bone: n * S * H.bone}};
+}
 
 // the climate's weight on a town's heat: cold ×1.6 at or below TOWN_FLOW.heat.cold °C, warm ×0.4 at or above .warm, between
 // the two in a line (the year's mean of the town's cell)
@@ -70,6 +81,9 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
       for (const [g, v] of Object.entries(r.out)) sup[g] = (sup[g] || 0) + v * r.eff * boat(r);
       for (const [g, v] of Object.entries(r.in)) dem[g] = (dem[g] || 0) + v * r.staff * r.own;
     }
+    const herd = herdFlow(rows, imports);
+    dem.beasts = (dem.beasts || 0) + herd.used;
+    for (const [g, v] of Object.entries(herd.made)) sup[g] = (sup[g] || 0) + v;
     const got = g => (dem[g] ? Math.min(1, (sup[g] || 0) / dem[g]) : 1);
     for (const r of rows) {
       if (r.b.cat === 'housing') { r.eff = r.staff * r.own; continue; }
@@ -83,6 +97,8 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
     for (const [g, v] of Object.entries(r.out)) made[g] = (made[g] || 0) + v * r.eff * boat(r);
     for (const [g, v] of Object.entries(r.in)) used[g] = (used[g] || 0) + v * r.staff * r.own * Math.min(1, dem[g] ? (sup[g] || 0) / dem[g] : 1);
   }
+  const herd = herdFlow(rows, imports);
+  if (herd.used > 0) { used.beasts = (used.beasts || 0) + herd.used; for (const [g, v] of Object.entries(herd.made)) made[g] = (made[g] || 0) + v; }
   // short: the share of what the buildings asked for and did not get, by good
   const short = {};
   for (const [g, d] of Object.entries(dem)) { const s = 1 - Math.min(1, (sup[g] || 0) / d); if (s > F.shortAt) short[g] = s; }
@@ -90,7 +106,7 @@ export function townEconomy(a, t, heatK = heatFactor(a, t), imports = null) {
   const spare = {};
   for (const [g, v] of Object.entries(made)) { const s = v > 0 ? 1 - Math.min(1, (used[g] || 0) / v) : 0; if (s > F.shortAt) spare[g] = s; }
   const food = Math.max(0, (made.food || 0) - (used.food || 0)) + Math.max(0, (made.grain || 0) - (used.grain || 0)) * F.grain + Math.max(0, (made.stores || 0) - (used.stores || 0));
-  return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, food, dem, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
+  return {hands: free0 + slaves0 * F.slaves.work, freeHands: free, slavesIdle: slaves, jobs, made, used, short, spare, food, dem, herd: {slaughtered: herd.n}, imports: imports || {}, boats: yard ? boat({b: {id: F.boats.fish[0]}}) : 1,
     feeds: food / (P.eat ?? 1), eat: P.eat ?? 1, rows: rows.map(r => ({id: r.b.id, n: r.n, staff: r.staff, eff: r.eff, slaves: r.slaveShare || 0, golems: r.golems}))};
 }
 

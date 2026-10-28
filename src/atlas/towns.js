@@ -101,10 +101,10 @@ export function realmWorks(a, t, material) {
 // the words of the metals the realm of a town works, of those some building opens (for the cards)
 export const realmMetalWords = (a, t) => { const built = realmBuilt(a, t); return gatedMetals().filter(m => metalBuildings(m).some(id => built.has(id))).map(m => METAL_WORDS[m] || m); };
 // (a dwarven town's guard golems count as people: atlas/golems.js golemMen)
-// a town's might: its people (with its guard golems, its war beasts, the beasts of its store — horses, war beasts: TOWN_FX.beastMen —
+// a town's might: its people (with its guard golems, its trained war beasts
 // and the garrison its realm pays: atlas/treasury.js realmSpend — as so many men: atlas/golems.js, atlas/beasts.js) × its
 // defence and craft, × a people's own fierceness (data/peoples.js warCult: the greenskins)
-export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.stock?.beasts || 0) * TF.beastMen + (t.garrison || 0)) * (1 + fx.defence + TF.mightProd * fx.prod)
+export const might = (t, fx) => Math.sqrt(t.pop + (t.golems?.guard || []).reduce((s, m) => s + (GOLEMS.men[m] || 0), 0) + (t.warBeasts?.men || 0) + (t.garrison || 0)) * (1 + fx.defence + TF.mightProd * fx.prod)
   * (WORLD_PEOPLES.get(t.people)?.warCult?.might ?? 1) * (t.realmFx?.might ?? 1);   // and its realm's stability (atlas/kingdom.js)
 export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 

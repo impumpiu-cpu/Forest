@@ -1,5 +1,5 @@
 // Construction: picking a lot, laying a site, finishing it, losing it to fire.
-import {BUILDINGS} from '../data/buildings.js';
+import {BUILDINGS, colonyPeople} from '../data/buildings.js';
 import {RESOURCES} from '../data/resources.js';
 import {T, OPEN} from '../data/terrain.js';
 import {log} from '../core/log.js';
@@ -28,8 +28,8 @@ export function missing(w, cost) {
 
 // can the colony consider this building at all (ignoring cost)?
 export function eligible(w, key) {
-  const d = BUILDINGS.get(key);
-  return !(typeof d.captureOnly === 'function' ? d.captureOnly(w) : d.captureOnly) && count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w))
+  const d = BUILDINGS.get(key), people = colonyPeople(w);
+  return (!people || !d.races || d.races.includes(people)) && !(typeof d.captureOnly === 'function' ? d.captureOnly(w) : d.captureOnly) && count(w, key, true) < d.max && (!d.needs || has(w, d.needs)) && (!d.available || d.available(w))
     && (!d.key || (w.stock[d.key] || 0) >= 1);   // a town-made tool it cannot be built without
 }
 

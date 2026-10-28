@@ -7,8 +7,8 @@
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
 import {plunder, plunderWords} from './treasury.js';
-import {TOWN_MONEY, TOWN_FX} from '../data/townBuildings.js';
-import {golemMen} from './golems.js';
+import {TOWN_MONEY} from '../data/townBuildings.js';
+import {sendArmy, refreshArmy, armyLosses, returnArmy} from './army.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {ROT} from '../data/lairs.js';
 import {WORLD_PEOPLES, TIERS} from '../data/peoples.js';
@@ -25,7 +25,7 @@ import {ARMY} from '../data/parties.js';
 import {SEASON_DAYS} from '../data/atlas.js';
 import {allianceStay} from './alliance.js';
 import {tell, fallToAlliance} from './calamity.js';
-import {BEHAVIOURS, sendParty, goHome} from './parties.js';
+import {BEHAVIOURS, goHome} from './parties.js';
 
 const D = DIPLOMACY;
 
@@ -146,19 +146,15 @@ export const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
 // Each day of the siege the besiegers burn the town's works and eat its stock; when the town is
 // starved or the siege has gone on long enough the army assaults. The foragers of a marching or
 // besieging army scourge the land around it (a.f.scourge): the works there yield nothing.
-const armyMight = (men, fx) => Math.sqrt(men) * (1 + 0.3 * fx.prod + 0.5 * fx.defence);
 export function muster(a, t, target, war, rnd, say) {
-  const A = ARMY, men = Math.round(A.levy * (WORLD_PEOPLES.get(t.people)?.levy ?? 1) * t.pop);   // a horde sends half its people (data/peoples.js levy)
+  const A = ARMY, men = Math.round(A.levy * (WORLD_PEOPLES.get(t.people)?.levy ?? 1) * t.pop);   // a horde sends a third of its people (data/peoples.js levy)
   if (men < A.minMen || !target.alive) return;
-  const fx = townFx(t), R = realmOf(a, t.realm);
-  // the beasts of its pens and stables go too: horses for the riders, and the horde drives all its herds and war beasts ahead
-  // of it to the slaughter (data/peoples.js beastLevy; each a TOWN_FX.beastMen of men)
-  const beasts = Math.floor((t.stock?.beasts || 0) * (WORLD_PEOPLES.get(t.people)?.beastLevy ?? A.beasts));
-  const p = sendParty(a, 'army', t.i, target.i, {owner: t.realm, from: t.id, target: target.id, war, men, men0: men, beasts, might: armyMight(men + (golemMen(t) + (t.warBeasts?.men || 0)) + beasts * TOWN_FX.beastMen, fx) * A.might,
-    supplies: A.supplies, people: t.people, speed: 'foot', label: `войско ${realmLabelGen(a, t.realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color, burnt: 0});
+  const R = realmOf(a, t.realm);
+  const p = sendArmy(a, t, target.i, men, {owner: t.realm, target: target.id, war,
+    label: `войско ${realmLabelGen(a, t.realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color});
   if (!p) return;
-  t.pop -= men; if (beasts) { t.stock.beasts -= beasts; if (t.stock.beasts <= 0) delete t.stock.beasts; }
-  say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов${beasts ? ` и погнали с ним ${beasts} зверей` : ''} и двинулись на ${townLabel(target, 1)} ${target.name}.`);
+  const beasts = Object.values(p.warBeasts).reduce((s, n) => s + n, 0);
+  say(`${cap1(realmLabel(a, t.realm))} собрали в ${townLabel(t, 3)} ${t.name} войско в ${men} бойцов${beasts ? ` и повели с ним ${beasts} боевых зверей` : ''} и двинулись на ${townLabel(target, 1)} ${target.name}.`);
 }
 // the foragers: the land around the army is scourged this season
 function scourge(a, p) {
@@ -174,7 +170,7 @@ function armyDay(a, p, rnd, say) {
     goHome(a, p); return;
   }
   p.supplies--;
-  if (p.supplies < 0) { p.men *= 1 - ARMY.attrition; if (p.state === 'go') goHome(a, p); }
+  if (p.supplies < 0) { armyLosses(p, ARMY.attrition, rnd); if (p.state === 'go') goHome(a, p); }
   if (p.state === 'stay' || p.days % 3 === 0) scourge(a, p);
 }
 BEHAVIOURS.army = {
@@ -200,6 +196,7 @@ BEHAVIOURS.army = {
     if (!t || !t.alive) { goHome(a, p); return; }
     if (rnd() < A.burn && raidSite(a, t, rnd)) { p.burnt++; p.supplies += A.forage; }   // the besiegers eat what they take
     if (S.stock > 0) S.stock--; else { const d = t.pop * A.starve; t.pop -= d; S.starved += d; }
+    refreshArmy(p);
     const fx = townFx(t), town = might(t, fx);
     const ready = p.might >= A.assaultAt * town || p.stay >= A.longest || p.supplies < 0;
     if (!ready) return;
@@ -209,22 +206,19 @@ BEHAVIOURS.army = {
     barrows(a, battlefield(a, t, {x: p.x, y: p.y}), DIPLOMACY.barrows * Math.max(1, Math.round(scaleOf(a))));
     if (we > they) {
       const loss = (D.battleLoss[0] + (D.battleLoss[1] - D.battleLoss[0]) * rnd()) * raidShare(fx);
-      t.pop *= 1 - loss; p.men *= 1 - A.winLoss; t.raided = a.hist.year;
+      t.pop *= 1 - loss; armyLosses(p, A.winLoss, rnd, 'won'); t.raided = a.hist.year;
       const loot = plunderWords(plunder(a.towns.find(o => o.id === p.from && o.alive), t, TOWN_MONEY.plunder.storm));   // the storm's loot goes home with the army
       if (t.pop < D.raze || t.pop < D.razeShare * TIERS[t.tier].pop || t.pop < A.broken * S.pop0) {   // beaten down, bled, or broken by the siege
         say(`${cap1(p.label)} взяло штурмом и сожгло ${townLabel(t, 1)} ${t.name}: осталось пепелище${burnt}${hunger}${loot}.`);
         raze(a, t, p.owner, 'war', rnd, say); if (r?.war) r.war.razed++;
       } else say(`${cap1(p.label)} взяло штурмом ${townLabel(t, 1)} ${t.name} и разграбило ${townLabel(t, 1)}: погибло ${Math.round(loss * 100)}% жителей${burnt}${hunger}${loot}.`);
     } else {
-      p.men *= 1 - A.beatenLoss;
+      armyLosses(p, A.beatenLoss, rnd, 'beaten');
       say(`${cap1(WORLD_PEOPLES.get(t.people).label)} ${townLabel(t, 2)} ${t.name} отбили штурм ${p.label.replace(/^войско /, 'войска ')} и сняли осаду${burnt}${hunger}.`);
     }
     goHome(a, p);
   },
-  home(a, p) {
-    const t = a.towns.find(t => t.id === p.from);
-    if (t && t.alive) { t.pop += Math.round(p.men); if (p.beasts && p.men0) { const back = Math.floor(p.beasts * p.men / p.men0); if (back > 0) (t.stock ||= {}).beasts = (t.stock.beasts || 0) + back; } }   // the beasts that lived come back with it
-  },
+  home(a, p) { returnArmy(a, p); },
   lost(a, p, rnd, say) { say(`${cap1(p.label)} не дошло до ${(() => { const t = a.towns.find(t => t.id === p.target); return t ? `${townLabel(t, 2)} ${t.name}` : 'цели'; })()} и повернуло назад.`); },
 };
 // the scourge of the foragers fades

@@ -20,9 +20,8 @@ export const PARTIES = {
 
 // Armies of realms at war (atlas/diplomacy.js → atlas/parties.js). Each year of a war the realm whose
 // turn it is musters an army at its town nearest the enemy: `levy` of the town's people march (× its people's `levy`, data/peoples.js:
-// a tenth of a human town, half of a greenskin horde) and `beasts` of the beasts of its store (the horde: all, data/peoples.js
-// beastLevy), with
-// the town's might × `might`; the army walks to the enemy's nearest town and besieges it.
+// a tenth of a human town, a third of a greenskin horde) and `beasts` of its trained beasts and guard golems (the horde
+// takes all its trained beasts: data/peoples.js beastLevy); the army walks to the enemy town and besieges it.
 //   siege: each day the besiegers burn one of the town's works with chance `burn`, so its food falls;
 //          the town eats its stock (`stock` seasons of food in granaries and cellars, ×(1 + `stockFood`
 //          × its food effects)); when the stock is gone the people starve by `starve` a day; the army assaults
@@ -35,7 +34,9 @@ export const PARTIES = {
 //            there yield nothing and no road is worn (a.f.scourge: 1 under the army, fading by `scourgeFade` a
 //            year; the works and the roads count the land as scourged above `scourged` — so a year after the
 //            army has gone, at exactly 0.45, it is clear again; the fade must stay ≤ the threshold)
-export const ARMY = {levy: 0.1, beasts: 0.25, might: 2.85, minMen: 16, burn: 0.08, stock: 1.5, stockFood: 0.25, starve: 0.008, assaultAt: 0.9, longest: 120, beatenLoss: 0.35, winLoss: 0.15, broken: 0.55,
+// Only trained war beasts march; ordinary stock.beasts is livestock for food and trade.
+// Kit is in town-good batches per soldier. Returned survivors lose more kit after a defeat.
+export const ARMY = {levy: 0.1, beasts: 0.25, might: 2.85, prod: 0.3, defence: 0.5, minMen: 16, kit: {arms: 0.1, armor: 0.05, herbs: 0.03}, wear: {won: 0.1, beaten: 0.35, retreat: 0.05}, heal: {perHerb: 2, share: 0.25}, burn: 0.08, stock: 1.5, stockFood: 0.25, starve: 0.008, assaultAt: 0.9, longest: 120, beatenLoss: 0.35, winLoss: 0.15, broken: 0.55,
   supplies: 120, forage: 15, attrition: 0.02, scourge: 2.5, scourgeFade: 0.45, scourged: 0.45, everyYears: 1};
 
 // The dragon (data/bestiary.js `dragon`; the lair kind in data/lairs.js): one or two in a world, in

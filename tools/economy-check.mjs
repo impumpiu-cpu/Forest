@@ -11,6 +11,8 @@ import {stepGolems} from '../src/atlas/golems.js';
 import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, planBuild, doBuild, plunder, lootOf} from '../src/atlas/treasury.js';
 import {TOWN_BUILDINGS, TOWN_MONEY, foodNet} from '../src/data/townBuildings.js';
 import {rationPrice} from '../src/campaign/town.js';
+import {stepHistory} from '../src/atlas/history.js';
+import {SEASONS_PER_YEAR} from '../src/data/atlas.js';
 
 const fail = [];
 const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   ${name}${info ? `: ${info}` : ''}`); if (!ok) fail.push(name); };
@@ -82,7 +84,7 @@ const T = a.towns.filter(t => t.alive);
   check('показатели державы правят миром: рост городов от экономики, сила — от стабильности, расколы — от лояльности и раздоров',
     t.realmFx && t.realmFx.grow > 0 && t.realmFx.might > 0 && schismFactor({kingdom: {stats: {loyalty: 0}, ruin: {strife: 5}}}) > 1, JSON.stringify(t.realmFx));
   const k0 = might(t, townFx(t)), keep = t.stock; t.stock = {...keep, beasts: (keep?.beasts || 0) + 50}; const k1 = might(t, townFx(t)); t.stock = keep;
-  check('скот на складе — конница и боевые звери: сила города растёт', k1 > k0, `${k0.toFixed(1)} → ${k1.toFixed(1)}`);
+  check('обычный скот — еда, его запас не увеличивает военную силу города', k1 === k0, `${k0.toFixed(1)} → ${k1.toFixed(1)}`);
   check('упадок растёт и от пустой казны державы', RUINS.get('decay').grows.broke > 0);
 }
 
@@ -151,4 +153,11 @@ const T = a.towns.filter(t => t.alive);
   check('голема не делают без металла на складе и без работы кузни; делают — металл уходит', !none && !!one && !idle && t.stock.metal === 50, `${JSON.stringify(one)}`);
 }
 
+// Goods and purses must advance in every season, not only with the annual founding and growth.
+for (let k = 0; k < SEASONS_PER_YEAR; k++) {
+  const refs = new Map(a.towns.filter(t => t.alive).map(t => [t.id, t.econ])), season = a.hist.season;
+  stepHistory(a);
+  const live = a.towns.filter(t => t.alive && refs.has(t.id));
+  check(`хозяйство пересчитано в сезоне ${season}`, live.length > 0 && live.every(t => t.econ !== refs.get(t.id)));
+}
 if (fail.length) process.exit(1);

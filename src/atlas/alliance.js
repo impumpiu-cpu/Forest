@@ -9,7 +9,7 @@
 //
 // a.alliances = [{id, calamity, members: [realm ids], since, tries, armies: [party ids], sent: [realm ids], before:
 //   {pair: att}, ended, peaceUntil, broken}]
-import {golemMen} from './golems.js';
+import {sendArmy, refreshArmy, armyLosses} from './army.js';
 import {LAIRS} from '../data/lairs.js';
 import {SPECIES} from '../data/species.js';
 import {ARMY} from '../data/parties.js';
@@ -17,15 +17,14 @@ import {ALLY} from '../data/calamities.js';
 import {scaleOf} from './tectonics.js';
 import {meet, relation} from './diplomacy.js';
 import {realmLabel, realmLabelGen, realmOf} from './realms.js';
-import {townFx, townLabel} from './towns.js';
-import {sendParty, goHome} from './parties.js';
+import {townLabel} from './towns.js';
+import {goHome} from './parties.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 
 const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const pairKey = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
 const power = sp => { const s = SPECIES.get(sp)?.special; return s ? (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2 : 10; };
-const armyMight = (men, fx) => Math.sqrt(men) * (1 + 0.3 * fx.prod + 0.5 * fx.defence) * ARMY.might;
 const names = (a, ids) => ids.map(id => realmLabel(a, id)).join(', ');
 
 // the realms that stand against a calamity: those with a living town in its reach, else the nearest
@@ -91,10 +90,10 @@ function muster(a, A, c, tell) {
     const men = Math.round(ALLY.levy * (WORLD_PEOPLES.get(t.people)?.levy ?? 1) * t.pop);
     if (men < ALLY.minMen) continue;
     const R = realmOf(a, realm);
-    const p = sendParty(a, 'army', t.i, lair.i, {owner: realm, from: t.id, target: null, lair: lair.id, ally: A.id, war: null, men, might: armyMight(men + (golemMen(t) + (t.warBeasts?.men || 0)), townFx(t)),
-      supplies: ARMY.supplies * 2, people: t.people, speed: 'foot', label: `войско ${realmLabelGen(a, realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color, burnt: 0});
+    const p = sendArmy(a, t, lair.i, men, {owner: realm, target: null, lair: lair.id, ally: A.id, war: null,
+      supplies: ARMY.supplies * 2, label: `войско ${realmLabelGen(a, realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color});
     if (!p) continue;
-    t.pop -= men; A.armies.push(p.id); if (!A.sent.includes(realm)) A.sent.push(realm);
+    A.armies.push(p.id); if (!A.sent.includes(realm)) A.sent.push(realm);
     went.push(`${realmLabel(a, realm)} — ${men} из ${townLabel(t, 2)} ${t.name}`);
   }
   if (went.length) tell(`Союз ${A.tries > 1 ? 'снова ' : ''}выступил на «${lair.name}»: ${went.join('; ')}.`);
@@ -113,13 +112,14 @@ export function allianceStay(a, p, rnd, say, fall) {
   const c = a.calamities.find(x => x.id === A.calamity), L = LAIRS.get(lair.kind);
   const retinue = a.lairs.filter(l => l.alive && l.retinue === c.id).length;
   const boss = lair.strength * power(L.species) * ALLY.boss + ALLY.retinue * retinue;
+  for (const q of waiting) refreshArmy(q);
   const we = waiting.reduce((s, q) => s + q.might, 0) * (0.6 + 0.8 * rnd()), they = boss * (0.6 + 0.8 * rnd());
   const who = names(a, [...new Set(waiting.map(q => q.owner))]);
   if (we > they) {
-    for (const q of waiting) { q.men *= 1 - ALLY.loss.won; goHome(a, q); }
+    for (const q of waiting) { armyLosses(q, ALLY.loss.won, rnd, 'won'); goHome(a, q); }
     fall(`Войска союза — ${who} — сошлись у «${lair.name}» и взяли его штурмом: ${c.boss.title[0]} ${c.boss.name} пал${c.boss.g === 'f' ? 'а' : ''} в битве.`);
   } else {
-    for (const q of waiting) { q.men *= 1 - ALLY.loss.beaten; goHome(a, q); }
+    for (const q of waiting) { armyLosses(q, ALLY.loss.beaten, rnd, 'beaten'); goHome(a, q); }
     A.nextTry = a.hist.year + ALLY.retry;
     say(`Войска союза — ${who} — разбиты у «${lair.name}»: ${c.boss.title[0]} ${c.boss.name} устоял${c.boss.g === 'f' ? 'а' : ''}. Уцелевшие отходят.`);
   }

@@ -129,14 +129,14 @@ const gtowns = a.towns.filter(t => t.alive && t.people === 'orcs');
     warg && !spider && v?.species === 'varg' && v.faction === 'allies' && broken && wolf.faction === 'allies' && wolf.hp > 0, `варг ${v?.faction}, волк ${wolf.faction}`);
 }
 
-// the horde: half its people to war, all its beasts driven ahead; it breeds fast, wants little
+// the horde: a third of its people to war, all its trained beasts; it breeds fast, wants little
 {
   const P = WORLD_PEOPLES.get('orcs'), H = WORLD_PEOPLES.get('humans');
   const t = gtowns.find(x => x.pop > 100) || gtowns[0], R = a.realms.find(r => r.id === t.realm), tg = a.towns.find(x => x.alive && x.realm !== t.realm);
-  t.stock = {...(t.stock || {}), beasts: 20}; const pop0 = t.pop, said = [];
+  t.stock = {...(t.stock || {}), beasts: 20}; t.warBeasts = {list: {varg: 2}, men: 1}; const pop0 = t.pop, said = [];
   muster(a, t, tg, null, () => 0.5, s => said.push(s));
   const army = (a.parties || []).find(p => p.kind === 'army' && p.from === t.id);
-  check('орда: в поход идёт половина города и весь скот; растёт почти вдвое быстрее, благ хочет вдвое меньше',
-    !!army && Math.abs(army.men - Math.round(0.5 * pop0)) <= 1 && army.beasts === 20 && !(t.stock.beasts > 0) && P.breed > 1.5 && P.needs < 1 && !H.levy, said.join(' '));
+  check('орда: в поход идёт треть города и боевые звери, скот остаётся дома; растёт почти вдвое быстрее, благ хочет вдвое меньше',
+    !!army && Math.abs(army.men - Math.round(pop0 / 3)) <= 1 && army.warBeasts?.varg === 2 && !t.warBeasts.list.varg && t.stock.beasts === 20 && P.breed > 1.5 && P.needs < 1 && !H.levy, said.join(' '));
 }
 
