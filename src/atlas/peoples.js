@@ -14,7 +14,7 @@
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
 import {keepWork} from './economy.js';
-import {seasonMoney, payBuild} from './treasury.js';
+import {seasonMoney, planBuild, doBuild} from './treasury.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
 import {SPECIES} from '../data/species.js';
@@ -292,12 +292,20 @@ export function stepPeoples(a, rnd, say) {
     const own = (t.tier >= 2 ? 2 : 1) + Math.floor(t.pop / TOWN_FLOW.build), paid = Math.floor((t.grant || 0) / TOWN_MONEY.realm.build);
     for (let q = 0; q < own + paid; q++) {   // a big town builds more a year
       if (q < own && rnd() > TL.build) continue;
-      const b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i), econ: t.econ}, rnd);
-      if (!b) break;
+      // the best it wants and can pay for — its materials to be had, its gold (atlas/treasury.js planBuild); what it cannot,
+      // it passes over for the next, a few times
+      const skip = new Set();
+      let b = null, plan = null;
+      for (let k = 0; k < TOWN_MONEY.build.tries && !plan; k++) {
+        b = chooseBuilding(a, t, {...pe.P, taste: realmTaste(a, t.realm)}, townFx(t), {feeds, threat, road: roadAccess(a, t.i), econ: t.econ, skip}, rnd);
+        if (!b) break;
+        plan = planBuild(a, t, b); if (!plan) skip.add(b.id);
+      }
+      if (!plan) break;
       const first = !t.built.includes(b.id), where = townLabel(t, 3);   // the word before the throne crowns it
-      if (!payBuild(t, b)) break;   // the town (or its realm's grant) pays for it: materials from its store, the work its people's (atlas/treasury.js)
       const sited = (t.sites || []).some(id => a.sites[id - 1]?.alive && a.sites[id - 1].kind === b.id);
       if (b.site && !sited && !placeSite(a, t, b, rnd)) break;   // an outlying work stands in its own cell (atlas/sites.js); more of it widen it
+      doBuild(plan);   // paid: the materials to their makers, the work to the people
       const old = upgradeOf(t, b);   // housing built in place of an older one
       if (old) t.built.splice(t.built.indexOf(old), 1);
       t.built.push(b.id);

@@ -6,6 +6,8 @@
 //
 // a.rel = {'rA:rB': {att, war: {since, battles, razed, turn, mustered} | null, wars, routes, met, border, front: [townA, townB] | null, kin}};  a.ruins = [{...}]
 // a.f.barrows — 0 … 1, the old graves of battles (the «barrows» biome share of a cell, atlas/biomes.js)
+import {plunder, plunderWords} from './treasury.js';
+import {TOWN_MONEY} from '../data/townBuildings.js';
 import {golemMen} from './golems.js';
 import {DIPLOMACY} from '../data/diplomacy.js';
 import {ROT} from '../data/lairs.js';
@@ -205,10 +207,11 @@ BEHAVIOURS.army = {
     if (we > they) {
       const loss = (D.battleLoss[0] + (D.battleLoss[1] - D.battleLoss[0]) * rnd()) * raidShare(fx);
       t.pop *= 1 - loss; p.men *= 1 - A.winLoss; t.raided = a.hist.year;
+      const loot = plunderWords(plunder(a.towns.find(o => o.id === p.from && o.alive), t, TOWN_MONEY.plunder.storm));   // the storm's loot goes home with the army
       if (t.pop < D.raze || t.pop < D.razeShare * TIERS[t.tier].pop || t.pop < A.broken * S.pop0) {   // beaten down, bled, or broken by the siege
-        say(`${cap1(p.label)} взяло штурмом и сожгло ${townLabel(t, 1)} ${t.name}: осталось пепелище${burnt}${hunger}.`);
+        say(`${cap1(p.label)} взяло штурмом и сожгло ${townLabel(t, 1)} ${t.name}: осталось пепелище${burnt}${hunger}${loot}.`);
         raze(a, t, p.owner, 'war', rnd, say); if (r?.war) r.war.razed++;
-      } else say(`${cap1(p.label)} взяло штурмом ${townLabel(t, 1)} ${t.name} и разграбило ${townLabel(t, 1)}: погибло ${Math.round(loss * 100)}% жителей${burnt}${hunger}.`);
+      } else say(`${cap1(p.label)} взяло штурмом ${townLabel(t, 1)} ${t.name} и разграбило ${townLabel(t, 1)}: погибло ${Math.round(loss * 100)}% жителей${burnt}${hunger}${loot}.`);
     } else {
       p.men *= 1 - A.beatenLoss;
       say(`${cap1(WORLD_PEOPLES.get(t.people).label)} ${townLabel(t, 2)} ${t.name} отбили штурм ${p.label.replace(/^войско /, 'войска ')} и сняли осаду${burnt}${hunger}.`);

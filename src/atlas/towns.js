@@ -210,7 +210,7 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd) {
   let best = null, bv = 0.02;
   const inRealm = realmBuilt(a, t);
   for (const b of TOWN_BUILDINGS.all()) {
-    if (!canBuild(a, t, b, inRealm)) continue;
+    if (ctx.skip?.has(b.id) || !canBuild(a, t, b, inRealm)) continue;   // (skip: what it could not pay for this time)
     let v = 0;
     const have = t.built.includes(b.id);   // a second field adds its work, not a second fame
     for (const k of KEYS) v += (k === 'housing' ? houseGain(t, b) / TF.room[1] : have ? 0 : fxOf(b, k)) * need[k] * (P.taste[k] ?? 1);

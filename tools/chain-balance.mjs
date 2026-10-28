@@ -39,12 +39,14 @@ function measure(worlds) {
   return {lack: ask ? lack / ask : 0, idle: rows ? idle / rows : 0, waste: made ? waste / made : 0, unmet: towns ? unmet / towns : 0, by: Object.fromEntries(Object.entries(by).map(([g, [s, v]]) => [g, v ? s / v : 0]))};
 }
 // the fast stage: the worlds' towns run their seasons again from the stores and treasuries they had
-function snapshot(a) { return a.towns.filter(t => t.alive).map(t => [t, JSON.stringify({stock: t.stock || {}, gold: t.gold, peopleGold: t.peopleGold, makersGold: t.makersGold, unpaid: t.unpaid})]); }
+// (everything a season changes: the stores and purses, the market's prices, the people's needs, the realms' treasuries)
+function snapshot(a) { return [...a.towns.filter(t => t.alive).map(t => [t, JSON.stringify({stock: t.stock || {}, gold: t.gold, peopleGold: t.peopleGold, makersGold: t.makersGold, unpaid: t.unpaid, market: t.market || {}, needs: t.needs || null, grant: t.grant || 0})]), ...(a.realms || []).map(r => [r, JSON.stringify({gold: r.gold || 0})])]; }
 function rerun(worlds, snaps, m) {
   apply(m);
   worlds.forEach((a, k) => {
     for (const [t, s] of snaps[k]) Object.assign(t, JSON.parse(s));
     const T = a.towns.filter(t => t.alive);
+    for (const l of a.net?.links.values() || []) l.goods = 0;
     for (let q = 0; q < SEASONS; q++) seasonMoney(a, T);
   });
   const M = measure(worlds);

@@ -106,7 +106,7 @@ WORLD_PEOPLES.registerAll([
     swaps: {honey: {to: 'drink', k: 1}, salt: {to: 'wood', k: 2}, pots: {to: 'bone', k: 1}, planks: {to: 'wood', k: 1.5}},
     // open land is theirs: by the steppe and the pasture their herds and hunts give more (atlas/economy.js placeFlows)
     placeFlows: {needsAny: ['pasture', 'flat'], flows: {food: 1.25, beasts: 1.25, hide: 1.25}},
-    warCult: {chance: 0.3, rest: 2, years: [2, 5], raid: 0.5, might: 1.15},
+    warCult: {chance: 0.3, rest: 2, years: [2, 5], raid: 0.5, might: 1.15, raids: 3},   // raids — × how often its towns raid and how many a year (war feeds them: atlas/treasury.js plunder)
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
     get home() { return raceHome('orc'); }, ores: 0.3,
     moves: {steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2}, movesElse: 0.5,

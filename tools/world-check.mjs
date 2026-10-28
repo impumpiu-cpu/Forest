@@ -302,7 +302,7 @@ scene_('W14', 'усталость от войны: мир — красная п�
   return (o?.[3].id === 'makePeace' && o[3].band === 'red' && !n.rel.war) || `предложено: ${o ? `${o[3].id} (${o[3].band})` : 'ничего'}`;
 });
 
-scene_('W15', 'набег державы: орки с воинами грабят нелюбимый город рядом (не больше raidsPerYear в год); люди набегами не ходят', () => {
+scene_('W15', 'набег державы: орки с воинами грабят нелюбимый город рядом (не больше raidsPerYear в год, у культа войны — × raids); люди набегами не ходят', () => {
   const a = world(), n = neighbours(a, 'orcs', 'humans', -3);
   if (!n) return 'соседи не высадились';
   n.t1.pop = 300; n.t1.built.push('palisade');
@@ -311,7 +311,7 @@ scene_('W15', 'набег державы: орки с воинами грабя�
   if (o?.[3].id !== 'raidTown') return `предложено: ${o ? o[3].id : 'ничего'}`;
   if (!(n.t2.pop < pop0) && !n.A.lines.some(t => /отбили набег/.test(t))) return `набег не состоялся: ${n.A.lines.join(' | ')}`;
   for (let k = 0; k < 6; k++) court(a, n.A, ['raidTown']);
-  if (n.A.raids.n > DIPLOMACY.raidsPerYear) return `набегов за год ${n.A.raids.n}`;
+  if (n.A.raids.n > DIPLOMACY.raidsPerYear * (WORLD_PEOPLES.get(n.A.people)?.warCult?.raids ?? 1)) return `набегов за год ${n.A.raids.n}`;   // (the cult of war raids the more: data/peoples.js warCult.raids)
   if (realmSpecies(a, n.B).deeds.realm.includes('raidTown')) return 'люди умеют ходить набегом';
   return true;
 });

@@ -15,7 +15,7 @@
 // a.sites = [{id, town, kind, i, x, y, built, alive, died, path}];  a.siteAt = Int32Array (site index + 1, 0 free)
 // a.net = {links: Map(key → {p, q, c, flow}), year};  per town: t.sites (ids), t.supply = {own, got, gave}
 import {SITES, NET} from '../data/sites.js';
-import {TOWN_BUILDINGS, TOWN_FX, foodNet, goodPrice} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_FX, TOWN_MONEY, foodNet} from '../data/townBuildings.js';
 import {placeHas} from './towns.js';
 import {findPath, tradeLinks} from './roads.js';
 import {ARMY} from '../data/parties.js';
@@ -165,9 +165,9 @@ export function stepNet(a, feeds) {
   };
   for (const l of L.values()) { send(l.p, l.q, l); send(l.q, l.p, l); }
   // the links thicken by the flow against the need of the fed town — the food, and the goods bought down them (atlas/treasury.js
-  // l.goods, gold, as people-years of food) — and waste a little every year
+  // l.goods: TOWN_MONEY.link gold of them count as a person fed) — and waste a little every year
   for (const l of L.values()) {
-    if (l.goods) { l.flow += l.goods / goodPrice('food'); l.goods = 0; }
+    if (l.goods) { l.flow += l.goods / TOWN_MONEY.link; l.goods = 0; }
     const need = Math.max(60, Math.min(l.p.pop, l.q.pop));
     l.c = Math.min(1, l.c * (1 - NET.decay) + NET.grow * Math.min(1, l.flow / need));
     if (l.c < NET.min) L.delete(linkKey(l.p, l.q));

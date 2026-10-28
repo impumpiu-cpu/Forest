@@ -9,6 +9,8 @@
 //   the realm (ctx.role 'realm'): a town with warriors raids the nearest disliked town in DIPLOMACY.raidReach (raidTown.js);
 //     a win takes `realm.loss` of its people — `grow` of them become the raiding town's slaves (t.slaves: they work in its
 //     buildings, atlas/economy.js), the realm counts them (realm.captives).
+import {plunder, plunderWords, lootOf} from '../treasury.js';
+import {TOWN_MONEY} from '../../data/townBuildings.js';
 import {WORLD_PEOPLES as WP_CULT} from '../../data/peoples.js';
 const cultOf = realm => WP_CULT.get(realm.people)?.warCult || null;   // (data/peoples.js warCult: the greenskins raid anyone, kin too)
 import {TRIBE_RAID, CAPTIVE_RAID as CR, LAIRS} from '../../data/lairs.js';
@@ -55,13 +57,19 @@ export const captives = {
     }
     if (role !== 'realm') return null;
     const y = a.hist.year;
-    if (actor.raids?.year === y && actor.raids.n >= D.raidsPerYear) return null;
+    const often = cultOf(actor)?.raids ?? 1;   // the cult of war raids the more (data/peoples.js warCult)
+    if (actor.raids?.year === y && actor.raids.n >= D.raidsPerYear * often) return null;
     const out = [], k = scaleOf(a), towns = a.towns.filter(t => t.alive);
     for (const t of liveTowns(a, actor)) {
-      if (!townFx(t).defence || r() > CR.realm.chance / SEASONS_PER_YEAR) continue;
+      if (!townFx(t).defence || r() > CR.realm.chance * often / SEASONS_PER_YEAR) continue;
       let target = null, bd = D.raidReach * k;
-      for (const o of towns) if (o.realm !== actor.id && o.pop >= 20 && relation(a, actor.id, o.realm) && (cultOf(actor) || attitude(a, actor.id, o.realm) < 0)) {
-        const d = Math.hypot(t.x - o.x, t.y - o.y); if (d < bd) { bd = d; target = o; }
+      // the nearest; the cult of war weighs what it would carry off against how likely it is to win (atlas/treasury.js lootOf)
+      const cult = cultOf(actor), mt = cult ? might(t, townFx(t)) : 0;
+      let bv = 0;
+      for (const o of towns) if (o.realm !== actor.id && o.pop >= 20 && relation(a, actor.id, o.realm) && (cult || attitude(a, actor.id, o.realm) < 0)) {
+        const d = Math.hypot(t.x - o.x, t.y - o.y); if (d >= D.raidReach * k) continue;
+        if (!cult) { if (d < bd) { bd = d; target = o; } continue; }
+        const v = (lootOf(o) + o.pop) * Math.min(TOWN_MONEY.plunder.dare, mt / Math.max(1, might(o, townFx(o)))); if (v > bv) { bv = v; target = o; }
       }
       if (target) out.push([{from: t.id, target: target.id}, 1, () => `${t.name}: в ${target.name} есть кого взять, ${realmLabel(a, target.realm)} нам не любы`]);
       // the greenskins raid the wild tribes for slaves too (data/peoples.js warCult)
@@ -108,7 +116,8 @@ export const captives = {
       (t.slavesOf ||= {})[target.people] = (t.slavesOf[target.people] || 0) + n * CR.realm.grow;   // whose kin they are (the dwarves free theirs: atlas/deeds/liberate.js)
       (actor.captives ||= {})[target.people] = (actor.captives[target.people] || 0) + n;
       barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);
-      return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}.`;
+      const got = plunder(t, target, TOWN_MONEY.plunder.raid);   // and what they could carry: goods and gold (atlas/treasury.js)
+      return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}${plunderWords(got)}.`;
     }
     t.pop *= 0.9;
     return `${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, actor.id)} на ${townLabel(target, 1)} ${target.name}: в полон никого не дали.`;

@@ -7,7 +7,7 @@ import {schismFactor} from '../src/atlas/kingdom.js';
 import {RUINS} from '../src/data/kingdom.js';
 import {townEconomy} from '../src/atlas/economy.js';
 import {seaFeed} from '../src/atlas/sea.js';
-import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, payBuild} from '../src/atlas/treasury.js';
+import {roomOf, taxYear, marketK, toTown, fromTown, realmSpend, planBuild, doBuild, plunder, lootOf} from '../src/atlas/treasury.js';
 import {TOWN_BUILDINGS, TOWN_MONEY, foodNet} from '../src/data/townBuildings.js';
 import {rationPrice} from '../src/campaign/town.js';
 
@@ -55,8 +55,8 @@ const T = a.towns.filter(t => t.alive);
   const bought = T.reduce((s, t) => s + (t.trade?.bought || 0) + (t.trade?.imported || 0), 0), sold = T.reduce((s, t) => s + (t.trade?.sold || 0), 0);
   check('у городов казна и склад; мастерские и жители покупают у других городов — золото уходит продавцу', rich > T.length / 2 && traded > 0 && Math.abs(bought - sold) < 1 && T.some(t => Object.keys(t.stock || {}).length),
     `с деньгами ${rich} из ${T.length}, торговали ${traded}, оборот ${Math.round(bought)} зол.`);
-  const over = T.flatMap(t => Object.entries(t.stock || {}).filter(([g, v]) => t.econ && v > roomOf(t, g) + 0.01).map(([g]) => `${t.name}:${g}`));
-  check('склад не больше своей вместимости (лишнее уходит купцам)', !over.length, over.slice(0, 3).join(', '));
+  const over = T.filter(t => !t.plunder).flatMap(t => Object.entries(t.stock || {}).filter(([g, v]) => t.econ && v > roomOf(t, g) + 0.01).map(([g]) => `${t.name}:${g}`));
+  check('склад не больше своей вместимости (лишнее уходит купцам; награбленное — со следующего сезона)', !over.length, over.slice(0, 3).join(', '));
   check('у держав своя казна', a.realms.some(r => r.fallen == null && r.gold > 0), a.realms.filter(r => r.fallen == null).map(r => Math.round(r.gold || 0)).join(' '));
   const t = {pop: 100, gold: 500}, R = {gold: 0}; const v = taxYear(R, [t], 'high');
   check('подати: держава берёт долю казны сверх запаса, тяжёлые — больше', v > 0 && R.gold === v && t.gold < 500 && taxYear({gold: 0}, [{pop: 100, gold: 500}], 'light') < v);
@@ -104,12 +104,30 @@ const T = a.towns.filter(t => t.alive);
     `за сезон зарплат ${Math.round(w)}, налогов ${Math.round(tx)}, жители купили на ${Math.round(pp)}`);
   const nb = T.reduce((s, t) => s + (t.needs?.basic ?? 0), 0) / T.length;
   check('нужды жителей считаются, их нехватка тянет стройку', nb > 0 && T.some(t => Object.keys(t.needs?.lack || {}).length), `закрыто ${Math.round(nb * 100)}%`);
-  const x = {pop: 200, gold: 100, peopleGold: 0, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}}, B = {tier: 1, cat: 'housing'};
-  const ok = payBuild(x, B), poor = payBuild({pop: 200, gold: 0, peopleGold: 0, makersGold: 0, stock: {}, built: []}, B);
-  check('стройка оплачивается: материалы со склада мастерам, работа жителям; без денег не строят', ok && !poor && x.gold < 100 && x.makersGold > 0 && x.peopleGold >= 0 && x.stock.wood < 50,
-    `мастерам ${x.makersGold}, жителям ${x.peopleGold}`);
+  const x = {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}}, B = {tier: 1, cat: 'housing'};
+  const pl = planBuild(a, x, B); if (pl) doBuild(pl);
+  const noPlanks = planBuild(a, {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {wood: 50}, built: [], market: {}, id: -1}, B);
+  const poor = planBuild(a, {pop: 200, gold: 0, peopleGold: 0, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}, id: -2}, B);
+  check('стройка требует материалов и денег: дома — на деньги жителей, материалы со склада мастерам; без тёса и без денег не строят',
+    !!pl && !noPlanks && !poor && x.stock.wood < 50 && x.stock.planks < 20 && x.makersGold > 0 && x.peopleGold < 100, `мастерам ${x.makersGold}, у жителей осталось ${x.peopleGold}`);
   const l = [...a.net.links.values()];
   check('связи сети крепнут и от товаров', l.length > 0);
+}
+
+// the people's needs: never over 100%; what a town makes and its works do not take, its people may buy
+{
+  check('нужды и достаток закрыты не больше чем на 100%', T.every(t => !t.needs || (t.needs.basic <= 1 && t.needs.comfort <= 1)));
+  const t = T.find(x => (x.econ?.made.cloth || 0) > 0 && !(x.econ?.dem.cloth > 0) && x.econ?.people?.cloth);
+  check('ткань, которую мастерские не берут, достаётся жителям (запас — только под нужды мастерских)', !t || t.econ.people.cloth.got > 0, t ? `${t.name}: хотели ${Math.round(t.econ.people.cloth.want)}, купили ${Math.round(t.econ.people.cloth.got)}` : 'нет такого города');
+  const dear = T.filter(x => Object.keys(x.needs?.lack || {}).some(g => (x.market?.[g] || 1) > 1)).length;
+  check('то, чего не хватает жителям, на рынке дороже', dear > 0, `городов ${dear}`);
+}
+// war feeds the cult: plunder
+{
+  const raider = {pop: 300, people: 'orcs', gold: 0, peopleGold: 0, makersGold: 0, stock: {}}, mk = () => ({pop: 500, people: 'humans', gold: 100, peopleGold: 100, makersGold: 100, stock: {tools: 10}});
+  const human = {...raider, people: 'humans', stock: {}}, v1 = mk(), v2 = mk();
+  const got = plunder(raider, v1, TOWN_MONEY.plunder.raid), got2 = plunder(human, v2, TOWN_MONEY.plunder.raid);
+  check('набег вывозит товары и золото; культ войны — больше', got && got[0] > 0 && raider.stock.tools > 0 && raider.peopleGold > raider.gold && got[0] > got2[0] && lootOf(v1) < lootOf(mk()), JSON.stringify(got));
 }
 
 if (fail.length) process.exit(1);

@@ -310,12 +310,19 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //   start     — a town's first gold in each purse (treasury, people, makers): × its people; dust — less than this of a good is none
 //   needs     — what the people buy a season, a head: `basic` all of them, `comfort` × how rich they are (their gold a head
 //               against `rich`); the town grows × (grow[0] + grow[1] × basic met) × (1 + comfortGrow × comfort met)
-//   makers    — the makers pay `wage` of what they hold to the people and `tax` of it to the treasury, a season; people — the
-//               people pay `tax` of theirs to the treasury, a season
-//   build     — what a building costs, by its step, and the materials of it by its kind out of the store (atlas/treasury.js payBuild)
+//   makers    — the makers pay `wage` a season for each free hand at work, as far as their purse goes; the treasury takes `tax` of
+//               the season's earnings of the makers and of the people; link — the gold of goods bought down a link that counts
+//               as a person fed down it (atlas/sites.js)
+//   plunder   — a raid won carries off `raid` of the beaten town's goods and gold, a storm `storm`; × `cult` for a people of the
+//               cult of war; `chief` of the gold to the raiders' treasury, the rest to their people; the cult picks its target by what it
+//               would carry off × its might against the target's (at most `dare`)
+//   build     — what a building takes: the materials by its kind (out of the store, or bought in the linked towns) and the people's
+//               work by its step (step 0 — the hamlet's own hands, free); a town that cannot pay the best one tries `tries` others
+//               (atlas/treasury.js planBuild); wood and stone not to be had the people gather by hand at × `gather.k` of their price
 //   store     — a good's room in the store: × a year of what the town makes and takes of it (at least `least`); food is not
 //               stored here (it goes by the net, atlas/sites.js) — the granary of the ration's price is the town's surplus
-//   reserve   — of its store a town keeps for itself; the rest it sells to the linked towns that lack it
+//   keep      — the seasons of what its works take a town keeps for them; safety — the seasons of its people's basic needs it
+//               keeps for them (they may draw on it, nobody else); the rest it sells to the linked towns that lack it
 //   buy       — the share of a season's lack a town buys, as far as its gold goes
 //   foreign   — a town of another realm that trades with it (atlas/diplomacy.js trades) pays × this (the road, the toll)
 //   merchants — what is over the store's room is sold off to passing merchants at × `cheap` of its price, × `fair` where a
@@ -329,17 +336,18 @@ export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pie
 //               of that `army` (more at war) pays its towns' garrisons — a man a year for `man` gold, shared by their people, each
 //               a man of the town's might — and the rest is granted to its towns to build: a building more for every `build` gold
 //               (a town holds at most `hoard` of them; what is over stays in the realm's treasury)
-//   price     — the caravan's market (campaign/town.js): a good the town lacks dearer, one it has in plenty cheaper, within lo … hi;
+//   price     — the market of the season: a good its works lack (`short`) or its people (`need`) dearer, one it has in plenty
+//               cheaper, within lo … hi;
 //               a ration cheaper by the town's surplus of food (its feeds over its people, at most `food` off)
-export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0.01, store: 1, least: 20, reserve: 0.3, buy: 1, foreign: 1.25,
+export const TOWN_MONEY = {start: {gold: 0.2, people: 0.3, makers: 0.2}, dust: 0.01, store: 1, least: 20, keep: 1, safety: 1, buy: 1, foreign: 1.25,
   merchants: {cheap: 0.4, fair: 0.7, purse: 0.03, at: ['market', 'tradepost', 'inn', 'caravanserai', 'harbor']},
   needs: {basic: {wood: 0.05, cloth: 0.01, pots: 0.004, salt: 0.002, leather: 0.004, drink: 0.02, tools: 0.002},
     comfort: {lux: 0.001, honey: 0.004, potions: 0.002, cloth: 0.01, drink: 0.02, herbs: 0.004}, rich: 1, grow: [0.95, 0.05], comfortGrow: 0.1, unmet: 0.1},
-  makers: {wage: 0.25, tax: 0.05}, people: {tax: 0.1},
-  build: {cost: [0, 20, 60], mats: {housing: {wood: 20, planks: 10}, defence: {stone: 30, wood: 10}, craft: {tools: 2, wood: 10, stone: 5},
-    raw: {tools: 2, wood: 10}, food: {wood: 10, tools: 1}, default: {wood: 10, stone: 10}}},
-  upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, man: 3, build: 400, hoard: 3}, tax: {keep: 0.1, rate: {high: 0.3, usual: 0.15, light: 0.05}},
-  price: {short: 0.6, plenty: 0.4, lo: 0.6, hi: 1.8, food: 0.4}};
+  makers: {wage: 0.15, tax: 0.15}, people: {tax: 0.1}, link: 2,
+  plunder: {raid: 0.15, storm: 0.4, cult: 2, chief: 0.3, dare: 1.5},
+  build: {labor: [0, 10, 30], tries: 3, payer: {housing: 'peopleGold', food: 'makersGold', raw: 'makersGold', craft: 'makersGold', default: 'gold'}, gather: {goods: ['wood', 'stone'], k: 3}, mats: {housing: {wood: 20, planks: 10}, defence: {stone: 30, wood: 10}, craft: {wood: 10, stone: 5}, raw: {wood: 10}, food: {wood: 10}, default: {wood: 10, stone: 10}}},
+  upkeep: {gold: 60, cut: 0.5}, realm: {spend: 0.4, army: {peace: 0.3, war: 0.7}, man: 3, build: 400, hoard: 3}, tax: {keep: 0.02, rate: {high: 0.3, usual: 0.15, light: 0.05}},
+  price: {short: 0.6, need: 0.4, plenty: 0.4, lo: 0.6, hi: 1.8, food: 0.4}};
 
 // The golems of a golem forge (atlas/golems.js): a season after the forge stands, a golem each season — of the best metal
 // its realm works (`tiers`, data/townBuildings.js `metals`). First it takes over a unit of work (`order`: the mine first),
