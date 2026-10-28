@@ -14,6 +14,8 @@ import {DAY} from '../core/time.js';
 import {refreshBody} from './special.js';
 import {lethal} from './wounds.js';
 import {quaff, drinkFor, stepPotionEffects} from './potions.js';
+import {thornedBy} from './movement.js';
+import {THORNS} from '../data/buildings.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 
@@ -24,6 +26,8 @@ const REMEMBER_BELOW = {food: 0.3, rest: 0.25, warmth: 0.4};
 // tick until it wears off; a spider's web only slows (agents/movement.js) and is dropped once it is over.
 // Called once a tick for every agent from sim.js; the undead never get venom in the first place.
 export function stepEffects(w, a) {
+  // the thorns of an elven hedge tear whoever comes through (data/buildings.js THORNS)
+  if (!a.dead && SPECIES.get(a.species).kind !== 'spirit' && !SPECIES.get(a.species).undead && thornedBy(w, a)) { a.hp -= THORNS.dmg; if (a.hp <= 0) { kill(w, a, 'шипов'); return; } }
   if (a.poison) {
     if (w.tick < a.poison.until) { a.hp -= a.poison.dmg; if (a.hp <= 0) kill(w, a, 'яда'); }
     else a.poison = null;

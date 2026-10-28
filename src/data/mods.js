@@ -52,6 +52,7 @@ COLONY_MODS.registerAll([
   {id: 'add.bedWarmth', kind: 'add', key: 'bedWarmth', label: 'Тёплые места', base: 0, reads: 'тепло во сне (agents/tasks.js)'},
   {id: 'mul.spoil', kind: 'mul', key: 'spoil', label: 'Порча припасов', base: 1, reads: 'склад (settlement/stock.js)', note: 'амбар, коптильня — меньше'},
   {id: 'mul.defense', kind: 'mul', key: 'defense', label: 'Урон по своим в зоне', base: 1, reads: 'бой у стен (agents/combat.js)', note: 'частокол — меньше'},
+  {id: 'add.thorns', kind: 'add', key: 'thorns', label: 'Колючки', base: 0, reads: 'шаг и раны чужих в зоне поселения (agents/movement.js, agents/body.js)', note: 'колючая изгородь эльфов: чужой в зоне идёт медленнее и ранится (числа — data/buildings.js THORNS)'},
   {id: 'mul.loot', kind: 'mul', key: 'loot', label: 'Что уносят налётчики', base: 1, reads: 'грабёж склада (settlement/stock.js)'},
   {id: 'mul.douse', kind: 'mul', key: 'douse', label: 'Тушение', base: 1, reads: 'тушение пожара (agents/tasks.js)'},
   {id: 'mul.wear', kind: 'mul', key: 'wear', label: 'Износ снаряжения', base: 1, reads: 'износ вещей поселенца (agents/equipment.js)'},

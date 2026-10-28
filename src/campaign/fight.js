@@ -4,7 +4,7 @@
 // stolen, broken, taken from the fallen foes. A campaign in the quick mode (K.mode 'auto': the balance
 // runs) settles it at once instead: the foe's might against the caravan's.
 import {CAMPAIGN, FOES} from '../data/campaign.js';
-import {gearDef, gearType, gearValue} from '../agents/equipment.js';
+import {gearDef, gearType, gearValue, mayTake} from '../agents/equipment.js';
 import {CAMP} from '../data/camp.js';
 import {AMBUSH} from '../data/bubble.js';
 import {BEASTS, VEHICLES, GETTING} from '../data/transport.js';
@@ -182,10 +182,11 @@ function stopDeath(m, why) {
 
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town
 export function takeGear(K, items) {
-  const ms = free(K).filter(m => !m.former), took = [];   // no arms or armour for a captive or a former slave
+  const all = free(K).filter(m => !m.former), took = [];   // no arms or armour for a captive or a former slave
   const armor = id => gearDef(id)?.armor ?? 0, dmg = m => Math.max(0, ...m.gear.hand.map(id => gearDef(id)?.melee?.dmg ?? 0));
   for (const id of items) {
     const it = gearDef(id); if (!it) continue;
+    const ms = all.filter(m => mayTake(m.race, id));   // not to one whose race will not touch it: the elves and iron
     if (it.slot === 'body') {
       const m = ms.slice().sort((p, q) => armor(p.gear.body) - armor(q.gear.body))[0];
       if (m && armor(m.gear.body) < (it.armor ?? 0)) { K.spoils = [...(K.spoils || []), m.gear.body]; m.gear.body = id; took.push(`${it.short} (${m.name})`); continue; }
@@ -242,9 +243,11 @@ function spoilsRest(a, K, d, r) {
   for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) { gainBeast(a, K, kind, 'У врагов отбили'); break; }
   const T = GETTING.spoilTool;
   if (T[d.kind] && toolTier(K) < 2 && r() < T[d.kind]) {
-    const m = free(K).find(x => x.role === 'squire') || free(K)[0], old = m.gear.hand[0];
-    m.gear.hand[0] = T.item;
-    say(a, K, `Среди брошенного врагами нашёлся ${gearDef(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${!!gearDef(old) ? gearDef(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
+    const may = free(K).filter(x => mayTake(x.race, T.item)), m = may.find(x => x.role === 'squire') || may[0], old = m?.gear.hand[0];
+    if (m) {
+      m.gear.hand[0] = T.item;
+      say(a, K, `Среди брошенного врагами нашёлся ${gearDef(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${!!gearDef(old) ? gearDef(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
+    }
   }
 }
 

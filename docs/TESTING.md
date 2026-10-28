@@ -26,7 +26,7 @@
 
 ```text
 check-layers · atlas-check 2 · atlas-save-check 1 · map-check 3 · seam-check 16 · campaign-check 2 ·
-check-data · check-tables · align-check · leaders-check · buildings-check · kinds-check · fight-check ·
+check-data · check-tables · align-check · leaders-check · buildings-check · elves-check · kinds-check · fight-check ·
 conditions-check · ranks-check · potions-check · checks-check · clock-check · kingdom-check · content-check · land-check · settle-check ·
 quest-hand-check · audit-check · logic-check · behaviour-check · world-check · determinism 2 · rng-check 3 · smoke 2
 ```
@@ -67,6 +67,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 | `npm run align` | `align-check.mjs` | мировоззрение: ярлыки, три слоя (раса → держава → пешка) в пределах, отношения держав по взглядам, дрейф |
 | `npm run leaders` | `leaders-check.mjs` | главари логов: кто, сколько, насколько сильнее; уход, данники, бедствие на главаре, встреча с караваном |
 | `npm run buildings` | `buildings-check.mjs` | таблица построек мира: потоки (целые числа, известные блага, у каждого блага цена и место), что народу разрешено, то он может построить, металлы открывают постройки, кузню строит город, в чьей державе стоит горн, металл работает вся держава, постройки поселения берут расы из таблицы городов |
+| `npm run elves` | `elves-check.mjs` | эльфы на локальной карте и в походе: не берут металл со склада, отряды и стражи без металла, караван не берёт меч и арбалет; луки без навеса из кожи, жил или волокна, простой лук слабее, плетёный доспех — только эльфу; людское поселение не ставит заказ на эльфийский лук; жилы с туши; эльфы растят колючую изгородь вместо частокола, чужой в зоне медленнее и ранится; люди — наоборот; в лесу удар слабее; камень вдвое медленнее, поле быстрее |
 | `npm run kinds` | `kinds-check.mjs` | материалы семейств: склад помнит породы, костёр берёт худшее, ремесло лучшее, святое дерево у мастера, «не делает» и «табу», сталь |
 | `npm run fight` | `fight-check.mjs` | бой: типы урона и «Урон по видам», свойства оружия, места попадания, травма по месту, КС видит это |
 | `npm run conditions` | `conditions-check.mjs` | состояния: раны и травмы — строки таблицы, кровотечение и оглушение идут и проходят, истощение |
@@ -108,7 +109,7 @@ quest-hand-check · audit-check · logic-check · behaviour-check · world-check
 
 Сид по умолчанию у `smoke`, `determinism`, `rng-check` — `DEFAULT_CFG.seed` из `data/presets.js`. Размеры мира — `small`, `medium`, `large` (`ATLAS_SIZES` в `data/atlas.js`).
 
-Ключи `--…`: `items-check.mjs` — `--csv файл.csv` (таблица ещё и в CSV), `--strict` (выход с ошибкой, если есть вещь с ✗); `check-layers.mjs` — `--numbers` (записать нынешние числа как новую линию). У остальных проверок (`check-data`, `check-tables`, `align`, `leaders`, `buildings`, `kinds`, `fight`, `conditions`, `checks`, `kingdom`, `content`, `land`, `settle`, `questhand`, `audit`, `logic`) ключей нет. Ключи `balance`, `campaign:balance`, `arena`, `stress` — в разделах ниже.
+Ключи `--…`: `items-check.mjs` — `--csv файл.csv` (таблица ещё и в CSV), `--strict` (выход с ошибкой, если есть вещь с ✗); `check-layers.mjs` — `--numbers` (записать нынешние числа как новую линию). У остальных проверок (`check-data`, `check-tables`, `align`, `leaders`, `buildings`, `elves`, `kinds`, `fight`, `conditions`, `checks`, `kingdom`, `content`, `land`, `settle`, `questhand`, `audit`, `logic`) ключей нет. Ключи `balance`, `campaign:balance`, `arena`, `stress` — в разделах ниже.
 
 ## Балансный прогон
 

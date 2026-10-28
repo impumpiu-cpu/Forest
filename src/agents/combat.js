@@ -24,7 +24,8 @@ import {NORM} from '../data/special.js';
 
 import {firstAttacker} from './lookup.js';
 import {KINDLE} from '../data/behaviour.js';
-import {T} from '../data/terrain.js';
+import {T, BY_CODE} from '../data/terrain.js';
+import {cellOf} from '../world/grid.js';
 import {quaff, drinkFor, bladeHit, silverCoat} from './potions.js';
 import {potionOf} from '../data/potions.js';
 import {NIGHT, nightSight} from '../data/tongues.js';
@@ -36,6 +37,9 @@ import {log} from '../core/log.js';
 const stunnedNow = (w, a) => !!a.stunned && w.tick < a.stunned.until;
 
 // an agent that is attacking one of ours counts as an enemy even without a war between factions
+// a race at home among trees takes a blow lighter there (data/races.js forestGuard: the elves)
+export const forestGuard = (w, t) => { const g = SPECIES.get(t.species).forestGuard; return g && BY_CODE[w.grid.terr[cellOf(w, t)]]?.kind === 'wood' ? g : 1; };
+
 export const aggressor = (a, o) => o.task?.id === 'maul' && o.task.target && (o.task.target === a || o.task.target.faction === a.faction);
 // who is attacking `a` right now: a beast that mauls (maul) or a raider that fights (fight) with `a` as its target
 // (agents/lookup.js keeps who attacks whom, so this is not a walk over every creature)
@@ -144,7 +148,7 @@ export function damage(w, by, t, raw, {melee = true, type = null, mix = null, q 
   if (snare && w.rngs.hits() < snare) { const N = COMBAT.net; t.webbed = {slow: N.slow, until: w.tick + N.ticks}; t.stunned = {until: Math.max(t.stunned?.until || 0, w.tick + N.hold)}; }
   const cs = w.chronicle.combat ||= {hits: 0, crits: 0}; cs.hits++; if (crit) cs.crits++;
   const home = by.faction === 'colony' && agentInZone(w, by) ? COMBAT.home : 1;
-  const wall = t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1;
+  const wall = (t.faction === 'colony' && agentInZone(w, t) ? w.mods.mul.defense : 1) * forestGuard(w, t);
   let dmg = mix ? raw * home * wall * mix.reduce((s, [ty, k]) => s + k * resistOf(tsp, ty, melee) * (1 - armorAgainst(g, ty) * pierce), 0)
     : raw * home * wall * (1 - armorAgainst(g, type) * pierce);
   taintBy(w, t, by);   // an undead's blow leaves the rot (agents/afflictions.js; 0 a blow — nothing)

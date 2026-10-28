@@ -79,6 +79,12 @@ const isWooden = d => !!MATERIALS[d.material]?.class.includes('wood');
 export const memberOf = inst => { const d = ITEMS.has(inst.type) ? ITEMS.get(inst.type) : null; return inst.of || (d && isWooden(d) ? KIND_LAND.wood : d ? MATERIALS[d.material]?.resource : null) || null; };
 // a piece «dirty» to its bearer: of a material its race does not get or make (data/kinds.js 'nomake') — it was made by others
 export const dirtyFor = (a, inst) => useOf(a.species, memberOf(inst)) === 'nomake';
+// may one of this race carry a piece (a gear word, data/kinds.js): not of a material it will not touch, not a form it will
+// not take in hand — the elves and iron, the elves and the crossbow (the campaign's buying, spoils and finds ask this)
+export function mayTake(species, token) {
+  const s = gearSpec(token); if (!ITEMS.has(s.type)) return true;
+  return mayUse(species, memberOf({type: s.type, of: s.of})) && mayWield(species, ITEMS.get(s.type).form);
+}
 
 // how much a mixed blow is worth on average against nothing (the strength rating: agents/strength.js)
 export const mixGain = attack => (attack?.mix ? attack.mix.reduce((s, [, k]) => s + k, 0) : 1);

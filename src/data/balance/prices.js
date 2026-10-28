@@ -46,6 +46,7 @@ export const RESOURCES = {
   stone:        {price: 0.1, stack: 10},
   bone:         {price: 0.2, stack: 10},
   hide:         {price: 0.5, stack: 10},
+  sinew:        {price: 0.4, stack: 10},
   leather:      {price: 1, stack: 10},
   silk:         {price: 3, stack: 10},
   feathers:     {price: 4, stack: 10},

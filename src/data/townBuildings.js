@@ -151,7 +151,7 @@ TOWN_BUILDINGS.registerAll([
   B('woodcut', 'лесосека', 'f', 'raw', 0, [...H, ...D, ...O], {prod: 0.1}, {needs: ['forest'], site: true, jobs: 8, in: {tools: 2}, out: {wood: 600}}),
   // elves do not fell the wood: they take what it gives — honey, wax, resin, dyes
   B('forestry', 'лесной промысел', 'm', 'raw', 0, E, {prod: 0.15, trade: 0.05}, {needs: ['forest'], site: true, jobs: 8, out: {wood: 200, planks: 60, fiber: 60, hide: 20, herbs: 40, honey: 20, gems: 1}}),
-  B('sawmill', 'лесопилка', 'f', 'raw', 1, [...H, ...D], {prod: 0.15}, {needs: ['forest'], local: 'sawmill', site: true, jobs: 4, in: {wood: 160, tools: 1}, out: {planks: 100}}),
+  B('sawmill', 'лесопилка', 'f', 'raw', 1, [...H, ...D, ...E], {prod: 0.15}, {needs: ['forest'], local: 'sawmill', site: true, jobs: 4, in: {wood: 160, tools: 1}, out: {planks: 100}}),
   B('quarry', 'каменоломня', 'f', 'raw', 0, [...H, ...D, ...E], {prod: 0.1}, {needs: ['stone'], local: 'quarry', site: true, jobs: 8, in: {tools: 3}, out: {stone: 500}}),
   B('claypit', 'глиняный карьер', 'm', 'raw', 0, [...H, ...D, ...E], {prod: 0.05}, {needs: ['clay'], site: true, jobs: 4, out: {clay: 300}}),
   B('mineshaft', 'рудник', 'm', 'raw', 0, [...H, ...D, ...O], {prod: 0.25, trade: 0.1}, {needs: ['ore'], local: 'mineshaft', notable: true, site: true, jobs: 12, in: {tools: 6, wood: 40}, out: {ore: 240, gems: 4}}),
@@ -194,7 +194,7 @@ TOWN_BUILDINGS.registerAll([
   // ── defence
   B('palisade', 'частокол', 'm', 'defence', 1, [...H, ...O], {defence: 0.25}, {needs: ['forest'], local: 'palisade', in: {wood: 40}}),
   // a hedge of thorn grown round the town instead of a palisade: it holds, slows and tears whoever comes through
-  B('thornhedge', 'колючая изгородь', 'f', 'defence', 1, E, {defence: 0.3}, {jobs: 1, in: {wood: 10}}),
+  B('thornhedge', 'колючая изгородь', 'f', 'defence', 1, E, {defence: 0.3}, {local: 'thornhedge', jobs: 1, in: {wood: 10}}),
   B('watchtower', 'сторожевая вышка', 'f', 'defence', 1, ALL, {defence: 0.15}, {local: 'watchtower', jobs: 2, in: {wood: 5}}),
   B('hiddenpaths', 'тайные тропы', 'pl', 'defence', 1, E, {defence: 0.35}, {needs: ['forest'], jobs: 3}),
   B('warcamp', 'боевой стан', 'm', 'defence', 1, O, {defence: 0.3, prestige: 0.1}, {jobs: 30, in: {arms: 4, armor: 1}}),

@@ -3,7 +3,7 @@
 // battlefield. What the land makes possible is read from the world: its roads, its lairs and wolves, its ruins
 // and fallen lairs, the graves of its battles and raids, the track of an army.
 import {roadAccess} from '../atlas/roads.js';
-import {gearDef} from '../agents/equipment.js';
+import {gearDef, mayTake} from '../agents/equipment.js';
 import {lairAt} from '../atlas/lairs.js';
 import {ruinAt} from '../atlas/diplomacy.js';
 import {faunaLevel} from '../world/region.js';
@@ -52,7 +52,7 @@ export function morningFind(a, K, r) {
   for (const id of [...items]) {
     const d = gearDef(id);
     if (!builds(d) || tier(d) <= toolTier(K)) continue;
-    const m = free(K).find(x => x.role === 'squire' && !x.former) || free(K).find(x => !x.former);
+    const may = free(K).filter(x => !x.former && mayTake(x.race, id)), m = may.find(x => x.role === 'squire') || may[0];
     if (!m) continue;
     const old = m.gear.hand[0]; m.gear.hand[0] = id; items.splice(items.indexOf(id), 1);
     if (old && !!gearDef(old)) K.spoils = [...(K.spoils || []), old];

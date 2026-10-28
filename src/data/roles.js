@@ -22,7 +22,8 @@ import {Registry} from '../core/registry.js';
 import {ITEMS} from './items.js';
 import {weighted, clamp} from '../core/util.js';
 import {onEdit} from './schema/layer.js';
-import {mayWield} from './kinds.js';
+import {mayWield, mayUse, KIND_LAND} from './kinds.js';
+import {MATERIALS} from './balance/materials.js';
 
 export const COMBAT_ROLES = new Registry('combat role');
 
@@ -117,17 +118,22 @@ export function drawRole(rng, species, {bias = null, least = null, have = []} = 
 let byForm = null;
 onEdit(() => { byForm = null; });
 const forms = () => byForm || (byForm = ITEMS.all().filter(d => !d.base && d.form).reduce((m, d) => ((m[d.form] ||= []).push(d), m), {}));
-// the piece of a form of tier `tier` or the nearest below it (above it, if the form has nothing so low)
-export function pieceOf(form, tier) {
-  const list = forms()[form];
-  if (!list) return ITEMS.has(form) ? form : null;
+// may a race carry a piece (data/kinds.js): its material — the wood of a wooden one, the metal's resource
+const mayCarry = (species, d) => !species || mayUse(species, MATERIALS[d.material]?.class.includes('wood') ? KIND_LAND.wood : MATERIALS[d.material]?.resource);
+// the piece of a form of tier `tier` or the nearest below it (above it, if the form has nothing so low); with a
+// species — only of what it may carry (none: no piece of that form for it)
+export function pieceOf(form, tier, species = null) {
+  const all = forms()[form];
+  if (!all) return ITEMS.has(form) ? form : null;
+  const list = all.filter(d => mayCarry(species, d));
+  if (!list.length) return null;
   const plain = list.filter(d => d.material !== 'silver');   // a silver knife is a weapon against the dead, no tier of metal
   const below = plain.filter(d => (d.tier ?? 0) <= tier);
   if (below.length) return below.reduce((b, d) => ((d.tier ?? 0) > (b.tier ?? 0) ? d : b)).id;
   return (plain.length ? plain : list).reduce((b, d) => ((d.tier ?? 0) < (b.tier ?? 0) ? d : b)).id;
 }
 // is there a piece of the form at this tier or lower (an armour form that does not begin so low drops out of its class)
-const hasBelow = (form, tier) => (forms()[form] || []).some(d => (d.tier ?? 0) <= tier);
+const hasBelow = (form, tier, species = null) => (forms()[form] || []).some(d => (d.tier ?? 0) <= tier && mayCarry(species, d));
 
 // the tier one piece of a band of level t is made of
 export function tierFor(rng, t, best = 4) {
@@ -145,10 +151,10 @@ export function roleKit(species, role, rng, t) {
   if (!R) return [];
   const best = mix.best ?? 4, out = [];
   // the weapons of one metal; a set with a form not made so low (a mace, a sword before bronze) drops out
-  const hand = tierFor(rng, t, best), sets = R.hands.filter(([fs]) => fs.every(f => !forms()[f] || hasBelow(f, hand) && mayWield(species, f)));   // nor one its race will not touch
-  for (const f of weighted(rng, sets.length ? sets : R.hands) || []) { const id = mayWield(species, f) ? pieceOf(f, hand) : null; if (id) out.push(id); }   // (a set of no tier: still never a form its race will not touch)
-  const tier = tierFor(rng, t, best), body = (ARMOUR[R.body] || []).filter(([f]) => hasBelow(f, tier));
-  if (body.length) { const id = pieceOf(weighted(rng, body), tier); if (id) out.push(id); }
+  const hand = tierFor(rng, t, best), sets = R.hands.filter(([fs]) => fs.every(f => !forms()[f] || hasBelow(f, hand, species) && mayWield(species, f)));   // nor one its race will not touch
+  for (const f of weighted(rng, sets.length ? sets : R.hands) || []) { const id = mayWield(species, f) ? pieceOf(f, hand, species) : null; if (id) out.push(id); }   // (a set of no tier: still never a form its race will not touch)
+  const tier = tierFor(rng, t, best), body = (ARMOUR[R.body] || []).filter(([f]) => hasBelow(f, tier, species));
+  if (body.length) { const id = pieceOf(weighted(rng, body), tier, species); if (id) out.push(id); }
   for (const f of R.back || []) { const id = pieceOf(f, 0); if (id && (f !== 'quiver' || out.some(x => ITEMS.get(x).ranged?.ammo))) out.push(id); }   // a quiver only for what shoots from one
   return out;
 }

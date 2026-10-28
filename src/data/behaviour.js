@@ -93,6 +93,7 @@ export const CARCASS = {
   eatAt: 0.9,          // eats from this close
   takeAt: 1.4,         // a hunter takes what is left from this close
   scare: 4,            // feeders this close to a hunter either give way or turn on him
+  sinew: 1,            // sinew a hunter cuts out with each hide he takes (a bowstring for the elves)
 };
 
 export const PACK = {

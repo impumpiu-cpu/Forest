@@ -84,7 +84,7 @@ export const RETINUE = {
   humans:  {knight: ['рыцарь', 'рыцари', 'рыцаря'], squire: ['оруженосец', 'оруженосцы', 'оруженосца'],
     knightGear: [['bronzespear', 'shield'], ['bronzeaxe', 'shield'], ['bronzespear', 'shield'], ['bow', 'quiver']]},
   elves:   {knight: ['страж', 'стражи', 'стража'], squire: ['помощник', 'помощники', 'помощника'],
-    knightGear: [['bow', 'quiver'], ['bronzespear', 'shield'], ['bow', 'quiver'], ['bronzespear', 'shield']]},
+    knightGear: [['bow', 'quiver'], ['spear', 'shield'], ['bow', 'quiver'], ['spear', 'shield']]},   // no metal: the elves do not touch it (data/kinds.js)
   dwarves: {knight: ['хирдман', 'хирдманы', 'хирдмана'], squire: ['подмастерье', 'подмастерья', 'подмастерья'],
     knightGear: [['bronzeaxe', 'shield'], ['bronzeaxe', 'shield'], ['bronzespear', 'shield'], ['bronzeaxe', 'shield']]},
   orcs:    {knight: ['рубака', 'рубаки', 'рубаки'], squire: ['прислужник', 'прислужники', 'прислужника'],

@@ -63,7 +63,12 @@ export const RACES = [
     heatHarm: 70, look: person(0.6, '#f1dcc0'),
     body: {adult: 50, life: 600, fertility: 0.08, diet: 'почти травоядный'},
     mods: {hunger: 0.8, cold: 1.3, sleep: 0.5},
-    innate: [{label: 'транс', note: 'четыре часа полудрёмы заменяют сон'}, {label: 'лесной глаз', note: 'в лесу видит то, что другим не видно'}],
+    // the pace of a job (agents/jobRunners.js workRate): stone they take humanely, the field answers them
+    jobPace: {mine: 0.5, farm: 1.25},
+    // × the harm a blow does to them where they stand among trees (agents/combat.js)
+    forestGuard: 0.8,
+    innate: [{label: 'транс', note: 'четыре часа полудрёмы заменяют сон'}, {label: 'лесной глаз', note: 'в лесу видит то, что другим не видно'},
+      {label: 'дитя леса', note: 'в лесу удар ранит на пятую часть слабее; камень добывает вдвое медленнее, поле родит на четверть быстрее'}],
     peoples: [
       {id: 'wood', label: 'лесной эльф', plural: 'лесные эльфы', gen: 'лесных эльфов', weight: 3},
       {id: 'high', label: 'высокий эльф', plural: 'высокие эльфы', gen: 'высоких эльфов', weight: 1,

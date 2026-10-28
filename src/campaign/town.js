@@ -3,7 +3,7 @@
 // what it has built allows; there the caravan works for gold when it has none, heals faster, hires a
 // guide or a sellsword, and meets those who would go along. In winter it may stay till spring.
 import {townFx, townLabel, realmWorks} from '../atlas/towns.js';
-import {gearDef, gearType, gearValue, gearToken} from '../agents/equipment.js';
+import {gearDef, gearType, gearValue, gearToken, mayTake} from '../agents/equipment.js';
 import {MARK, markOfPeople, markable} from '../data/balance/marks.js';
 import {trades, atWar, realmAlign} from '../atlas/diplomacy.js';
 import {realmLabel} from '../atlas/realms.js';
@@ -96,6 +96,7 @@ function wants(a, K, t, st) {
   const count = kind => K.beasts.filter(b => b.kind === kind && b.hp > 0).length;
   const riders = K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length;
   for (const o of offers(t, a)) {
+    if (o.kind === 'item' && !free(K).some(m => !m.former && mayTake(m.race, o.id))) continue;   // nobody free of the caravan would carry it (the elves and iron): the same as equip() gives to
     if (o.kind === 'beast' && BEASTS[o.id].use === 'pack' && count(o.id) < 2) out.push([3, o]);
     if (o.kind === 'beast' && BEASTS[o.id].use === 'ride' && riders < free(K).length) out.push([5, o]);
     if (o.kind === 'goods' && o.need === 'bonds' && bondsSets(K) < CAPTIVE.campaign.keep) out.push([9, o]);   // bonds for captives, last
@@ -117,7 +118,7 @@ const bestDmg = m => Math.max(0, ...m.gear.hand.map(id => gearDef(id)?.melee?.dm
 
 // a bought item goes to who gains most by it: armour and arms to the knights, a tool to a squire
 function equip(K, id) {
-  const d = gearDef(id), ms = free(K).filter(m => !m.former);   // no arms for a former slave
+  const d = gearDef(id), ms = free(K).filter(m => !m.former && mayTake(m.race, id));   // no arms for a former slave, nor for one whose race will not touch it
   if (d.slot === 'body') {
     const m = ms.filter(x => x.role === 'knight' || x.role === 'sellsword').sort((p, q) => (gearDef(p.gear.body)?.armor ?? 0) - (gearDef(q.gear.body)?.armor ?? 0))[0] || ms[0];
     m.gear.body = id; return m;

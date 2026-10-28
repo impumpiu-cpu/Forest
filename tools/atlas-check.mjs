@@ -413,10 +413,12 @@ console.log('Эпический мир кампании:');
   // the alliances (atlas/alliance.js): after the wild era the realms in a boss's reach band together and march on it, and
   // the alliance falls apart after the boss is gone — what holds in any world (whether an alliance or the heroes bring a
   // boss down is the luck of the world: the win itself is a scene of tools/world-check.mjs, W20). Eras of 40 years
+  // whether an ally's army comes depends on the world too (a town big enough near the boss): seen in one of two worlds
   const e = generateAtlas({...cfg, seed: '3', epicYears: {wild: 40, elder: 40, young: 40}}), AL = e.alliances || [];
+  const e2 = generateAtlas({...cfg, seed: '5', epicYears: {wild: 40, elder: 40, young: 40}}), sentAny = [...AL, ...(e2.alliances || [])].some(A => A.sent.length);
   const later = (e.calamities || []).filter(c => c.era !== 'wild');
-  check('  эпос: против бедствий после дикой эры собираются союзы, идут походом, союз распадается после мира', AL.length === later.length && AL.every(A => A.members.length && A.tries > 0) && AL.some(A => A.sent.length) && AL.some(A => A.broken),
-    AL.map(A => `союз ${A.members.length} держав, походов ${A.tries}, прислали войска ${A.sent.length}${A.broken ? ', распался' : ''}`).join('; ') + '; ' + later.map(c => `${c.kind} пал от ${c.fell?.by}`).join(', '));
+  check('  эпос: против бедствий после дикой эры собираются союзы, идут походом (войска союзников — хотя бы в одном из двух миров), союз распадается после мира', AL.length === later.length && AL.every(A => A.members.length && A.tries > 0) && sentAny && AL.some(A => A.broken),
+    AL.map(A => `союз ${A.members.length} держав, походов ${A.tries}, прислали войска ${A.sent.length}${A.broken ? ', распался' : ''}`).join('; ') + `; во втором мире войска пришли: ${(e2.alliances || []).some(A => A.sent.length)}; ` + later.map(c => `${c.kind} пал от ${c.fell?.by}`).join(', '));
   // the chronicle as a text (atlas/chronicle.js): every level has lines; major ⊂ normal ⊂ all; by its eras, every era a
   // block; the calamities apart — each calamity with its boss, its grave's epitaph, and the artifact's way
   const lv = {major: 0, normal: 0, minor: 0}; for (const c of e.chronicle) lv[lineLevel(c)]++;

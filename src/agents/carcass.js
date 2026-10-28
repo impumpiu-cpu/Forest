@@ -89,6 +89,7 @@ export function stepCarcasses(w) {
 export function butcher(w, c) {
   const k = Math.max(0.2, share(c)), got = {};
   for (const [r, n] of Object.entries(c.yields)) { const v = Math.round(n * (r === 'meat' ? k : 1)); if (v > 0) got[r] = v; }
+  if (got.hide && CARCASS.sinew) got.sinew = Math.round(got.hide * CARCASS.sinew);   // sinew comes away with the hide
   w.carcasses = w.carcasses.filter(x => x !== c);
   return got;
 }

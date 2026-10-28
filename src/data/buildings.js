@@ -35,6 +35,15 @@ const penRoom = w => w.buildings.reduce((s, b) => s + (b.done && b.key === 'pen'
 export const BUILDINGS = new Registry('building');
 
 export const ZONE = {camp: 8, building: 5};
+// the colony's people: the race most of its people are of (a building of a people's own, or one it will not raise)
+export const colonyRace = w => {
+  const n = {};
+  for (const a of w.agents) if (a.faction === 'colony' && !a.dead && !a.captive && SPECIES.get(a.species).kind === 'race') n[a.species] = (n[a.species] || 0) + 1;
+  return Object.entries(n).sort((p, q) => q[1] - p[1])[0]?.[0] || null;
+};
+// the elves' thorn hedge (`thorns`): whoever is not of the colony goes at `slow` of his pace inside its zone and loses `dmg`
+// of health a tick there (not much — it wears him down while the archers shoot)
+export const THORNS = {slow: 0.6, dmg: 0.0003};
 
 BUILDINGS.registerAll([
   // the shelter of the first season: poles and bark from what lies around. Drafty: in a hard
@@ -124,9 +133,19 @@ BUILDINGS.registerAll([
     wish: 'хочет воду рядом с лагерем',
     motive: (a, c) => [[a.mem.fire * 1.5, a.gender === 'f' ? 'видела пожар' : 'видел пожар'], [c.burnt > 0 ? 0.4 : 0, 'боится огня']]},
 
+  // the elves' thorn hedge instead of a palisade: grown, not raised — no stone; it holds like a palisade, and whoever
+  // comes in goes slowly and bleeds (THORNS)
+  {id: 'thornhedge', name: 'Колючая изгородь', gender: 'f', cost: {wood: 30, berries: 8}, work: 260, max: 1, wooden: true, color: '#4f7a3a', mark: 'Кл',
+    effect: 'Живая изгородь из терна вместо частокола: защитники получают на 30% меньше урона, налётчики уносят вдвое меньше; чужой в зоне поселения идёт медленнее и ранится о шипы.',
+    effects: {mul: {defense: 0.7, loot: 0.5}, add: {thorns: 1}},
+    available: w => colonyRace(w) === 'elf',
+    wish: 'хочет защиты от чужаков',
+    motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
+
   {id: 'palisade', name: 'Частокол', gender: 'm', cost: {wood: 45, stone: 10}, work: 300, max: 1, wooden: true, color: '#6f5a3c', mark: 'Ч', needs: 'quarry',
     effect: 'В лагере защитники получают на 40% меньше урона, налётчики уносят вдвое меньше.',
     effects: {mul: {defense: 0.6, loot: 0.5}},
+    available: w => colonyRace(w) !== 'elf',   // the elves grow a thorn hedge instead
     wish: 'хочет защиты от чужаков',
     motive: (a) => [[a.mem.raid * 1.5, a.gender === 'f' ? 'дралась с налётчиками' : 'дрался с налётчиками'], [a.mem.wolf * 1.4, 'боится волков']]},
 
