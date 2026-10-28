@@ -291,11 +291,34 @@ export const METAL_WORDS = {bronze: 'бронза', iron: 'железо', steel:
 //               each year `waste` of them are gone (dead, run off, freed)
 //   build     — a town builds one more thing a year for every `build` of its people (beyond the step's one or two)
 //   heat      — the climate's weight on the wood a town burns to keep warm (atlas/economy.js heatFactor)
+//   boats     — a shipyard's boats: its fishers (`fish`) give × k, as the yard works
+//   sea       — the sea around a town feeds as land would (atlas/sea.js seaFeed) × its best fishers: these shares
 export const TOWN_FLOW = {boats: {by: 'shipyard', k: 1.5, fish: ['fishhut', 'pier', 'harbor', 'riverpier']},
-  sea: {fishhut: 0.3, pier: 0.5, harbor: 0.7}, trade: {give: 0.8, keep: 0.1},
+  sea: {fishhut: 0.3, pier: 0.5, harbor: 0.7},
   order: ['food', 'raw', 'craft', 'life', 'housing', 'defence', 'faith', 'trade', 'lore', 'power'],
   rounds: 8, soft: 0.5, captured: 0.5, grain: 0.8, slaves: {work: 0.6, share: 0.8, waste: 0.1}, build: 400, hands: 0.5, shortAt: 0.01,
   heat: {cold: -2, warm: 14, k: [1.6, 0.4]}};   // heat × k[0] at or below `cold` °C, × k[1] at or above `warm` (a year's mean), between in a line
+
+// The money of the towns (atlas/treasury.js; docs/WORLD.md «Деньги городов»). Each town has a store of goods (t.stock) and a
+// treasury (t.gold); each realm a treasury (realm.gold).
+//   start     — a town's first gold: × its people; dust — less than this of a good is none
+//   store     — a good's room in the store: × a year of what the town makes and takes of it (at least `least`); food is not
+//               stored here (it goes by the net, atlas/sites.js) — the granary of the ration's price is the town's surplus
+//   reserve   — of its store a town keeps for itself; the rest it sells to the linked towns that lack it
+//   buy       — the share of a season's lack a town buys, as far as its gold goes
+//   foreign   — a town of another realm that trades with it (atlas/diplomacy.js trades) pays × this (the road, the toll)
+//   merchants — what is over the store's room is sold off to passing merchants at × `cheap` of its price, × `fair` where a
+//               market, a trading post, an inn, a caravanserai or a harbour stands (`at`)
+//   upkeep    — the gold a year a kind of building costs: data/kingdom.js UPKEEP × `gold`; what the town cannot pay — the realm's
+//               treasury pays; what neither can is unpaid (t.unpaid, a share): its buildings work × (1 − `cut` × unpaid), and the
+//               realm's decay grows by it
+//   tax       — the share of a town's treasury above `keep` × its people the realm takes a year, by its edict of taxes
+//   price     — the caravan's market (campaign/town.js): a good the town lacks dearer, one it has in plenty cheaper, within lo … hi;
+//               a ration cheaper by the town's surplus of food (its feeds over its people, at most `food` off)
+export const TOWN_MONEY = {start: 0.2, dust: 0.01, store: 1, least: 20, reserve: 0.3, buy: 1, foreign: 1.25,
+  merchants: {cheap: 0.4, fair: 0.7, at: ['market', 'tradepost', 'inn', 'caravanserai', 'harbor']},
+  upkeep: {gold: 200, cut: 0.5}, tax: {keep: 0.5, rate: {high: 0.3, usual: 0.15, light: 0.05}},
+  price: {short: 0.6, plenty: 0.4, lo: 0.6, hi: 1.8, food: 0.4}};
 
 // The golems of a golem forge (atlas/golems.js): a season after the forge stands, a golem each season — of the best metal
 // its realm works (`tiers`, data/townBuildings.js `metals`). First it takes over a unit of work (`order`: the mine first),

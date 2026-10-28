@@ -13,7 +13,8 @@
 // a.peoples = [{id, P, K, u, mob}];  a.towns = [{id, people, name, i, x, y, founded, pop, tier, built, alive}]
 import {WORLD_PEOPLES, TIERS, TIER_FALL, TOWN_WAR, TOWN_LIFE as TL, tierOf} from '../data/peoples.js';
 import {townFx, room, might, chooseBuilding, townLabel, upgradeOf} from './towns.js';
-import {townEconomy, tradeGoods, keepWork} from './economy.js';
+import {keepWork} from './economy.js';
+import {seasonMoney} from './treasury.js';
 import {stepGolems} from './golems.js';
 import {stepWarBeasts} from './beasts.js';
 import {SPECIES} from '../data/species.js';
@@ -252,7 +253,7 @@ export function stepPeoples(a, rnd, say) {
   // flows to the towns it is linked with that lack (atlas/sites.js)
   fadeScourge(a);
   const feedsOf = new Map();
-  // the towns' economies first (atlas/economy.js), then what the towns of a realm send each other down the net
+  // the towns' economies first (atlas/economy.js, atlas/treasury.js): their stores, what they buy of each other, their gold
   for (const t of a.towns) {
     if (!t.alive) continue;
     // the town's economy by its buildings' flows (atlas/economy.js): its hands, its goods, the food its works give;
@@ -261,9 +262,8 @@ export function stepPeoples(a, rnd, say) {
     if (t.slavesOf) for (const p of Object.keys(t.slavesOf)) t.slavesOf[p] = Math.min(t.slaves || 0, t.slavesOf[p] * (1 - TOWN_FLOW.slaves.waste / SEASONS_PER_YEAR));
     { const gm = stepGolems(a, t); if (gm) golemLine(a, t, gm, say); }   // a season of the dwarves' golem forge (atlas/golems.js)
     { const wb = stepWarBeasts(a, t); if (wb && t.warBeasts.list[wb] === 1) say(`В бойцовских ямах ${townLabel(t, 2)} ${t.name} теперь свои боевые звери: ${SPECIES.get(wb).plural}.`); }   // the greenskins' pits (atlas/beasts.js)
-    Object.defineProperty(t, 'econ', {value: townEconomy(a, t), writable: true, configurable: true, enumerable: false});   // worked out each season, never saved
   }
-  tradeGoods(a, a.towns.filter(t => t.alive));
+  seasonMoney(a, a.towns.filter(t => t.alive));   // the economies with the stores, the buying between towns, the upkeep (atlas/treasury.js)
   for (const t of a.towns) if (t.alive) keepWork(t);
   for (const t of a.towns) {
     if (!t.alive) continue;

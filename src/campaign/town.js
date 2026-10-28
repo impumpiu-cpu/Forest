@@ -19,6 +19,8 @@ import {golemOf} from '../data/constructs.js';
 import {CAMPAIGN as PRICES} from '../data/balance/prices.js';
 import {STANDING, MARKET, OFFERS, WANTS, HIRES, COMPANIONS, SMITH, ALCHEMY} from '../data/market.js';
 import {marketTierOf} from '../data/kingdom.js';
+import {TOWN_MONEY} from '../data/townBuildings.js';
+import {goodOfRes, marketK, toTown, fromTown, intoStore, outOfStore} from '../atlas/treasury.js';
 import {termsOf} from './road.js';
 import {RECIPES} from '../data/recipes.js';
 import {room} from './company.js';
@@ -52,17 +54,22 @@ export function standing(a, K, t) {
 export const townName = t => `${townLabel(t, 0)} ${t.name}`;
 
 // the price of a ration here: cheaper where the town feeds itself well
+// (and by its surplus of food: what it is fed with over its people, atlas/sites.js t.supply — TOWN_MONEY.price.food)
 export function rationPrice(t, st, terms = 1) {
-  const F = MARKET.food, fx = townFx(t);
-  return MARKET.ration * Math.max(F.floor, F.base - F.feeds * (fx.food || 0)) * STANDING[st].buy * terms;
+  const F = MARKET.food, fx = townFx(t), s = t.supply ? (t.supply.own + t.supply.got - t.supply.gave) / Math.max(1, t.pop) : 1;
+  const plenty = 1 - TOWN_MONEY.price.food * Math.max(0, Math.min(1, s - 1));
+  return MARKET.ration * Math.max(F.floor, F.base - F.feeds * (fx.food || 0)) * plenty * STANDING[st].buy * terms;
 }
+// the town good of a stock resource (all the ores are its ore) and of an offer
+const goodOf = id => goodOfRes(id)?.[0] || (ORES.all().some(o => o.resource === id) ? 'ore' : null);
+const offerGood = o => (o.kind === 'goods' ? goodOf(o.id) : o.kind === 'beast' ? 'beasts' : o.kind === 'item' ? (gearDef(o.id)?.tool ? 'tools' : gearDef(o.id)?.slot === 'body' || gearType(o.id) === 'shield' ? 'armor' : 'arms') : null);
 const sellPrice = (t, st, id) => {
   const v = RESOURCES.has(id) ? RESOURCES.get(id).value ?? 0 : 0;
-  let k = STANDING[st].sell;
+  let k = STANDING[st].sell * marketK(t, goodOf(id));   // the town's market this season (atlas/treasury.js)
   for (const [b, bonus] of Object.entries(MARKET.sellBonus)) if (t.built.includes(b)) k *= bonus[id] ?? bonus.all ?? 1;
   return v * k;
 };
-const offerPrice = (o, st) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.id).value * o.n : gearDef(o.id) ? gearValue(o.id) : 10)) * STANDING[st].buy;
+const offerPrice = (o, st, t = null) => (o.price ?? (o.kind === 'goods' ? RESOURCES.get(o.id).value * o.n : gearDef(o.id) ? gearValue(o.id) : 10)) * STANDING[st].buy * (t ? marketK(t, offerGood(o)) : 1);
 // what a town sells; its arms and armour are its smiths' work: they bear the mark of its people (data/balance/marks.js)
 // (with the world `a`: only the metals its realm works — a building that opens them stands in one of its towns,
 // data/townBuildings.js `metals`)
@@ -159,7 +166,7 @@ function alchemy(a, K, t, st) {
       const price = gold(RESOURCES.get(g.res).value * ALCHEMY.fee * STANDING[st].buy);
       if (K.gold - price < reserveFor(K, t, st, ALCHEMY.reserve)) break;
       for (const [r, n] of Object.entries(g.cost)) { K.cargo[r] -= n; if (K.cargo[r] <= 0) delete K.cargo[r]; }
-      K.cargo[g.res] = (K.cargo[g.res] || 0) + 1; K.gold = gold(K.gold - price); K.stats.alchemy = (K.stats.alchemy || 0) + 1;
+      K.cargo[g.res] = (K.cargo[g.res] || 0) + 1; K.gold = gold(K.gold - toTown(t, price)); K.stats.alchemy = (K.stats.alchemy || 0) + 1;
       done.push(`алхимик сварил из запасов каравана ${RESOURCES.get(g.res).label} — за работу ${price} зол.`);
     }
   }
@@ -183,12 +190,12 @@ function smithy(a, K, t, st) {
     // forged here: the town's quality and its people's mark (a human town: quality alone)
     const made = townMade({kind: 'item', id: type}, t, forgeQ(t)).id;
     // the price is that of the town's plain piece: the better work of its forge is what draws the caravan to it
-    const p = gold(offerPrice(o, st) * SMITH.discount);
+    const p = gold(offerPrice(o, st, t) * SMITH.discount);
     if (K.gold - p < reserveFor(K, t, st, SMITH.reserve)) continue;
     // still wanted after what the smith made before it
     if (!wants(a, K, anvil, st).some(x => x.kind === 'item' && x.id === o.id)) continue;
     K.cargo[B.ore] -= need; if (K.cargo[B.ore] <= 0) delete K.cargo[B.ore];
-    K.gold = gold(K.gold - p); K.stats.forged = (K.stats.forged || 0) + 1;
+    K.gold = gold(K.gold - toTown(t, p)); K.stats.forged = (K.stats.forged || 0) + 1;
     const m = equip(K, made);
     done.push(`кузнец перековал руду каравана (${RESOURCES.get(B.ore).label}, ${need}) в ${gearDef(made).label.toLowerCase()} для ${m.name} — всего за ${p} зол.`);
     assign(K);
@@ -212,16 +219,16 @@ export function trade(a, K, t, st) {
     let got = 0;
     for (const [id, all] of Object.entries(K.cargo)) { if (isBonds(id) || keep(id)) continue;   // bonds are kept for captives
       const kept = potionKeep(id, all), n = all - kept; if (n <= 0) continue;   // the potions, a few of each of their makings
-      const p = sellPrice(t, st, id) * n * T.sell;
-      if (p > 0 && p <= P.left) { got += p; P.left -= p; if (kept) K.cargo[id] = kept; else delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); }
-      else if (p > P.left && !unsold.includes(id)) unsold.push(id);
+      const p = sellPrice(t, st, id) * n * T.sell, can = Math.min(P.left, t.gold ?? Infinity);   // the town pays from its treasury
+      if (p > 0 && p <= can) { got += fromTown(t, p); P.left -= p; intoStore(t, goodOf(id), n * (goodOfRes(id)?.[1] ?? 1)); if (kept) K.cargo[id] = kept; else delete K.cargo[id]; done.push(`продали ${RESOURCES.get(id).label} (${n}) за ${gold(p)} зол.`); }
+      else if (p > can && !unsold.includes(id)) unsold.push(id);
     }
     K.gold = gold(K.gold + got);
   };
   sell(id => ore.has(id));   // the ore for the smith kept (and the potions with a few of their makings: potionKeep)
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
-  if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > P.left) unsold.push('spoils');
-  else if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell; K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
+  if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > Math.min(P.left, t.gold ?? Infinity)) unsold.push('spoils');
+  else if (K.spoils?.length) { const p = fromTown(t, K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell); K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
   if (has(t, ALCHEMY.at)) done.push(...alchemy(a, K, t, st));
   if (unsold.length) done.push(`город не потянул: ${unsold.map(id => (id === 'spoils' ? 'трофеи' : RESOURCES.get(id).label)).join(', ')} — нет денег`);
@@ -230,12 +237,12 @@ export function trade(a, K, t, st) {
   const need = alive(K).length * CAMPAIGN.ration, price = rationPrice(t, st, T.buy);
   const room = Math.max(0, capacity(K) - load(K)), want = Math.max(0, Math.min(room, need * WANTS.foodDays - K.food));
   const n = Math.floor(Math.min(want, K.gold / price));
-  if (n > 0) { K.food += n; K.gold = gold(K.gold - n * price); done.push(`купили ${pieces(n, 'паёк', 'пайка', 'пайков')} по ${gold(price)}`); }
+  if (n > 0) { K.food += n; K.gold = gold(K.gold - toTown(t, n * price)); done.push(`купили ${pieces(n, 'паёк', 'пайка', 'пайков')} по ${gold(price)}`); }
   const alms = Math.floor(Math.min(Math.max(0, capacity(K) - load(K)), need * WANTS.alms - K.food));
   if (K.hungry > 0 && alms > 0) { K.food += alms; K.stats.alms = (K.stats.alms || 0) + 1; done.push(`голодных накормили даром — ${pieces(alms, 'паёк', 'пайка', 'пайков')} на дорогу`); }
   // the rest, in order of need
   for (const o of wants(a, K, t, st)) {
-    const p = offerPrice(o, st) * T.buy;
+    const p = offerPrice(o, st, t) * T.buy;
     if (M.maxPrice != null && p > M.maxPrice) continue;   // too dear for a market of this step
     if (K.gold - p < reserveFor(K, t, st, WANTS.reserve, a)) continue;
     // still wanted after what was bought before it in this visit
@@ -250,7 +257,7 @@ export function trade(a, K, t, st) {
     if (o.kind === 'goods' && o.need === 'belt' && kindRoom(K, potionOf(o.id).potion, o.id) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'home' && homeRoom(K, potionOf(o.id).potion) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) >= ALCHEMY.pots) continue;
-    K.gold = gold(K.gold - p);
+    K.gold = gold(K.gold - toTown(t, p)); outOfStore(t, offerGood(o), o.kind === 'goods' ? o.n * (goodOfRes(o.id)?.[1] ?? 1) : 1);   // into the town's treasury, out of its store
     if (o.kind === 'beast') {
       K.beasts.push({id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null}); done.push(`${BEASTS[o.id].acc} за ${gold(p)}`);
       // the town spends what it chose: one of its guard golems goes with the caravan (atlas/golems.js)
@@ -266,7 +273,7 @@ export function trade(a, K, t, st) {
 }
 
 // a day of work in town: those with a tool work for hire, the other fighters guard
-export function labour(K) {
+export function labour(K, t = null) {
   const L = MARKET.labour, tier = toolTier(K);
   let g = 0;
   for (const m of alive(K)) {
@@ -274,6 +281,7 @@ export function labour(K) {
     else if (isFighter(m)) g += L.knight;
     else g += L.other;
   }
+  if (t) g = fromTown(t, g);   // the town pays the wages from its treasury: a poor town has little work
   K.gold = gold(K.gold + g);
   return g;
 }
@@ -288,7 +296,7 @@ export function hire(a, K, t, st, r) {
     if (!room(K, `hire:${id}`) || !hireAt(t, H)) continue;
     const days = Math.round(H.days[0] + r() * (H.days[1] - H.days[0])), cost = gold(H.wage * days * STANDING[st].buy);
     if (K.gold - cost < reserveFor(K, t, st, HIRES.reserve)) continue;
-    K.gold = gold(K.gold - cost);
+    K.gold = gold(K.gold - toTown(t, cost));
     const m = makeMember(K, r, {race: WORLD_PEOPLES.get(t.people).race, role: id, gear: H.gear, contract: {until: K.day + days, wage: H.wage}, align: t.realm ? realmAlign(a, t.realm) : null});
     K.members.push(m);
     said.push(`наняли ${H.label}а ${m.name} на ${pieces(days, 'день', 'дня', 'дней')} за ${cost} зол.`);
@@ -305,7 +313,7 @@ export function companion(a, K, t, st, r) {
   // of the town's people, or of a minor people living near (as their homes favour the land)
   const minor = r() < C.minor ? C.minorRaces[(r() * C.minorRaces.length) | 0] : null;
   const race = minor || WORLD_PEOPLES.get(t.people).race;
-  if (!gratis) K.gold = gold(K.gold - C.fee);
+  if (!gratis) K.gold = gold(K.gold - toTown(t, C.fee));
   const m = makeMember(K, r, {race, role: 'companion', gear: C.gear, loyalty: C.loyalty, align: !minor && t.realm ? realmAlign(a, t.realm) : null});
   K.members.push(m);
   const sp = SPECIES.get(race);

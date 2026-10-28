@@ -676,10 +676,10 @@ const STAT_MAP = {type: 'map', ref: 'realmStats'}, RUIN_MAP = {type: 'map', ref:
 TABLES.push(
   {id: 'realmStats', label: 'Держава: показатели', group: 'Народы', key: 'id', rows: () => REALM_STATS.all(),
     note: 'Четыре показателя державы, как в Kingmaker PF2 (data/kingdom.js): из чего складывается каждый — эффекты построек её городов (в среднем на город) × вес, мировоззрение (±5) × вес; к ним — должности, указы, событие года, минус разруха. Считаются раз в год, в конце года (atlas/kingdom.js).',
-    columns: [col('id', 'id'), col('label', 'Показатель'), col('from', 'Из построек', 'map', {ref: keysOf(TOWN_FX)}), col('compass', 'Из мировоззрения', 'map', {ref: keysOf({order: 1, mercy: 1})}), col('note', 'Описание')]},
+    columns: [col('id', 'id'), col('label', 'Показатель'), col('from', 'Из построек', 'map', {ref: keysOf({...TOWN_FX, money: 1}), note: 'money — казны городов: золото против запаса на жителя (atlas/treasury.js)'}), col('compass', 'Из мировоззрения', 'map', {ref: keysOf({order: 1, mercy: 1})}), col('note', 'Описание')]},
   {id: 'ruins', label: 'Держава: разруха', group: 'Народы', key: 'id', rows: () => RUINS.all(),
     note: 'Четыре вида разрухи: растёт каждый год от своих источников (towns — на город, pop — на 1000 жителей, upkeep — на очко содержания сверх экономики, wars — на войну, raided — на разорённый город), убывает от показателя, что её держит (× «правила» fall), и отнимает от показателя eats (× penalty на очко).',
-    columns: [col('id', 'id'), col('label', 'Разруха'), col('grows', 'Растёт от', 'map', {ref: keysOf({towns: 1, rough: 1, folk: 1, pop: 1, upkeep: 1, wars: 1, raided: 1}), min: 0, note: 'rough — за город × долю места в шалашах и шатрах'}),
+    columns: [col('id', 'id'), col('label', 'Разруха'), col('grows', 'Растёт от', 'map', {ref: keysOf({towns: 1, rough: 1, folk: 1, pop: 1, upkeep: 1, unpaid: 1, wars: 1, raided: 1}), min: 0, note: 'rough — за город × долю места в шалашах и шатрах; unpaid — сумма долей неоплаченного содержания городов'}),
       col('fall', 'Убывает от', 'ref', {ref: 'realmStats'}), col('eats', 'Отнимает', 'ref', {ref: 'realmStats'}), col('note', 'Описание')]},
   {id: 'edicts', label: 'Держава: указы', group: 'Народы', key: 'id', rows: () => EDICTS.all(),
     note: 'Что держава объявляет в этот год: первый уровень, чьё условие выполнено (последний — по умолчанию). Условие: war — на войне; below/above — показатель или разруха ниже/выше. adds — к показателям, ruin — к разрухе.',

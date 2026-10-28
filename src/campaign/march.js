@@ -8,6 +8,7 @@
 //             along the roads with the wheels, or straight on foot, leaving them;
 //   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
+import {toTown} from '../atlas/treasury.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {gearDef} from '../agents/equipment.js';
 import {townAt} from '../atlas/peoples.js';
@@ -642,10 +643,10 @@ export function caravanDay(a, K, day) {
   const town = K.inTown ? a.towns.find(x => x.id === K.inTown.id) : null;
   const camping = !town && (K.camp > 0 || !K.path || K.k >= K.path.length);
   if (town) {   // a day in town: work for hire, buy the day's food at the market (hired out for board: the town feeds them)
-    labour(K);
+    labour(K, town);
     if (K.inTown.work) K.food += mouths(K) * CAMPAIGN.ration;
     const st = standing(a, K, town), price = st ? rationPrice(town, st, termsOf(a, K, town).buy) : Infinity, want = Math.max(0, ms.length * CAMPAIGN.ration * 2 - K.food);
-    const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; }
+    const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - toTown(town, n * price)) * 10) / 10; }
   } else if (!camping) {
     const p = choosePace(a, K); if ((K.pace || 'normal') !== p) K.pace = p;
     // the brews of the day (campaign/potions.js): in frost everyone drinks a warming one — then the frost does not slow

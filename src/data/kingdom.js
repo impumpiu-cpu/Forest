@@ -13,7 +13,7 @@ import {Registry} from '../core/registry.js';
 export const REALM_STATS = new Registry('realmStat');
 REALM_STATS.registerAll([
   {id: 'culture', label: 'культура', from: {lore: 1, faith: 0.5, prestige: 1}, compass: {}, note: 'знание, вера, слава: чем держава гордится'},
-  {id: 'economy', label: 'экономика', from: {prod: 1, trade: 1, food: 0.5}, compass: {}, note: 'ремесло, торговля, хлеб'},
+  {id: 'economy', label: 'экономика', from: {prod: 1, trade: 1, food: 0.5, money: 0.5}, compass: {}, note: 'ремесло, торговля, хлеб, полные казны городов'},
   {id: 'loyalty', label: 'лояльность', from: {faith: 1, prestige: 0.5}, compass: {mercy: 0.05}, note: 'вера и слава; добрая держава милее подданным'},
   {id: 'stability', label: 'стабильность', from: {defence: 1, health: 0.5}, compass: {order: 0.05}, note: 'оборона и здоровье; закон держит порядок'},
 ]);
@@ -28,7 +28,7 @@ export const RUINS = new Registry('ruin');
 RUINS.registerAll([
   {id: 'corruption', label: 'коррупция', grows: {rough: 0.03}, fall: 'culture', eats: 'economy', note: 'чем больше городов и чем больше в них живут в шалашах и шатрах, тем больше рук, что берут; добротное жильё её сдерживает'},
   {id: 'crime', label: 'преступность', grows: {pop: 0.02, folk: 0.3}, fall: 'stability', eats: 'loyalty', note: 'людные города, пёстрая толпа чужих народов, слабая стража'},
-  {id: 'decay', label: 'упадок', grows: {upkeep: 0.5}, fall: 'economy', eats: 'stability', note: 'содержание построек сверх того, что даёт экономика'},
+  {id: 'decay', label: 'упадок', grows: {upkeep: 0.5, unpaid: 1}, fall: 'economy', eats: 'stability', note: 'содержание построек сверх того, что даёт экономика, и неоплаченное содержание (atlas/treasury.js)'},
   {id: 'strife', label: 'раздоры', grows: {wars: 0.3, raided: 0.15}, fall: 'loyalty', eats: 'culture', note: 'войны и набеги ссорят знать'},
 ]);
 export const RUIN_RULES = {fall: 0.1, penalty: 0.05, max: 20};

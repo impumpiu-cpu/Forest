@@ -29,7 +29,7 @@ import {biomeAt} from './biomes.js';
 import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 import {siteCell} from './sites.js';
-import {TOWN_FX as TF, PLACE_AT as PA} from '../data/townBuildings.js';
+import {TOWN_FX as TF, PLACE_AT as PA, TOWN_MONEY} from '../data/townBuildings.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -45,7 +45,7 @@ export function townFx(t) {
   // effects by kind (twelve fields feed more, not twelve times as famously: atlas/economy.js), the room by every house;
   // a building gives its effects as it works (t.work: its hands and goods, atlas/economy.js), never below TOWN_FX.work of them
   for (const id of new Set(t.built)) {
-    const b = TOWN_BUILDINGS.get(id), e = t.work?.[id], k0 = e == null ? 1 : TF.work + (1 - TF.work) * Math.min(1, e);
+    const b = TOWN_BUILDINGS.get(id), e = t.work?.[id], k0 = (e == null ? 1 : TF.work + (1 - TF.work) * Math.min(1, e)) * (1 - TOWN_MONEY.upkeep.cut * (t.unpaid || 0));   // unpaid upkeep: worse
     for (const k of KEYS) if (k !== 'housing') out[k] += fxOf(b, k) * k0;
   }
   const hk = WORLD_PEOPLES.get(t.people)?.house ?? 1;   // a people that will not crowd (data/peoples.js `house`: the greenskins)
