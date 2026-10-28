@@ -19,7 +19,7 @@ import {faunaLevel} from '../world/region.js';
 import {SEASONS, SEASON_DAYS} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
-import {CAMPAIGN, FOES, RETINUE, MINE} from '../data/campaign.js';
+import {CAMPAIGN, FOES, RETINUE, MINE, isFighter, inLine} from '../data/campaign.js';
 import {ORES} from '../data/ores.js';
 import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE} from '../data/transport.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
@@ -63,7 +63,7 @@ export const scratch = a => { let s = SCRATCH.get(a); if (!s) SCRATCH.set(a, s =
 
 export const alive = K => K.members.filter(m => m.alive);
 // the eight who set out from the capital (saves from before the joiners: the knights and squires)
-export const isCore = m => m.core ?? ['knight', 'squire'].includes(m.role);
+export const isCore = m => m.core ?? isFighter(m);
 export const core = K => K.members.filter(m => m.alive && isCore(m));
 const guided = K => alive(K).some(m => m.role === 'guide');
 // the years a campaign has: an epic one its own (data/calamities.js EPIC.years), any other CAMPAIGN.maxYears
@@ -71,7 +71,7 @@ export const yearsOf = K => K.years ?? CAMPAIGN.maxYears;
 export const ended = K => ['won', 'lost', 'timeout'].includes(K.phase);
 // ended, and its epilogue told (campaign/ending.js)
 export const finished = K => ended(K) && (!K.epilogue || K.epilogue.done);
-export const rank = (K, m) => (m.captive ? (m.gender === 'f' ? 'пленная' : 'пленный') : m.former ? (m.gender === 'f' ? 'бывшая рабыня' : 'бывший раб') : RETINUE[K.people][m.role]?.[0] || HIRES[m.role]?.label || ROLES[m.role] || 'спутник');
+export const rank = (K, m) => (m.captive ? (m.gender === 'f' ? 'пленная' : 'пленный') : m.former ? (m.gender === 'f' ? 'бывшая рабыня' : 'бывший раб') : (isFighter(m) ? RETINUE[K.people].title[0] : null) || HIRES[m.role]?.label || ROLES[m.role] || 'спутник');
 export {free};
 
 // a line of the campaign's log; `world` — also into the world's chronicle
@@ -97,7 +97,7 @@ export function memberMight(m) {
   const M = CAMPAIGN.might, s = m.special || {};
   const dmg = Math.max(0, ...m.gear.hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(m.gear.hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
   const armor = itemDef(m.gear.body)?.armor ?? 0;
-  return M[m.role] * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp);
+  return (M[m.role] ?? M.fighter) * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp);
 }
 // the share of its might a fighter keeps with this much health
 const hurtMight = hp => 0.3 + 0.7 * hp;
@@ -187,7 +187,7 @@ function campWork(a, K, r) {
     if (lvl > 0 && lacking(K, kind) && r() < GETTING.tame * Math.min(1.6, lvl) * handler(K)) gainBeast(a, K, kind, 'Приручили');
   }
   if ((wooded || (b?.trees ?? 0) >= 0.1) && r() < 0.5) {
-    const m = alive(K).filter(x => (x.back ?? 1) === 1).sort((p, q) => (p.role === 'squire') - (q.role === 'squire')).pop();
+    const m = alive(K).filter(x => (x.back ?? 1) === 1).sort((p, q) => !inLine(p) - !inLine(q)).pop();
     if (m) {
       m.back = 1 + GETTING.basket.cells;
       const done = alive(K).every(x => (x.back ?? 1) > 1), first = alive(K).filter(x => (x.back ?? 1) > 1).length === 1;

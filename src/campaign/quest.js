@@ -11,6 +11,7 @@
 // K.quest = {name, story, crown: {kind, at, i, label, guard, area, exact, state: 'lost'|'carried'|'taken',
 //   carrier}, clues: [{k, kind, at, i, label, guard, area, seen, found}], search, stormAt, next (pursuit)}
 //   area = {x, y, r} — a circle the place is known to lie in; guard = {kind, strength, label, band?, beast?}
+import {inLine} from '../data/campaign.js';
 import {realmBand} from '../atlas/towns.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {moveCost} from '../atlas/roads.js';
@@ -320,7 +321,7 @@ function takeCrown(a, K, say) {
 // who carries the crown: a knight first, the healthiest
 function bearer(K) {
   const ms = K.members.filter(m => m.alive && !m.captive);   // a captive never carries the crown
-  return ms.filter(m => m.role === 'knight').sort((p, q) => q.hp - p.hp)[0] || ms.filter(m => m.core).sort((p, q) => q.hp - p.hp)[0] || ms[0] || null;
+  return ms.filter(m => inLine(m)).sort((p, q) => q.hp - p.hp)[0] || ms.filter(m => m.core).sort((p, q) => q.hp - p.hp)[0] || ms[0] || null;
 }
 
 // after a fight: the carrier fell — another takes the crown, or, the fight lost, the foe takes it and makes

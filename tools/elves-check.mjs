@@ -43,7 +43,7 @@ const metalOf = id => { const d = ITEMS.get(id.split(/[+@~$]/)[0]); return d && 
   const r = mulberry(7); let bad = [], n = 0;
   for (let k = 0; k < 300; k++) for (const role of COMBAT_ROLES.ids()) { for (const id of roleKit('elf', role, r, 9)) { n++; const m = metalOf(id); if (m && m !== 'silver' && m !== 'mithril') bad.push(id); } }
   check('отряды эльфов: ни одной вещи из бронзы, железа или стали', !bad.length, bad.length ? [...new Set(bad)].join(', ') : `${n} вещей`);
-  const kit = RETINUE.elves.knightGear.flat();
+  const kit = COMBAT_ROLES.ids().flatMap(role => roleKit('elf', role, mulberry(5), RETINUE.level));   // (the caravan's core: its roles' kits)
   check('караван: эльфы берут лук, серебро; не берут меч и арбалет; стражи выходят без металла', mayTake('elf', 'bow') && mayTake('elf', 'silverknife') && !mayTake('elf', 'sword') && !mayTake('elf', 'crossbow') && mayTake('human', 'sword') && kit.every(id => mayTake('elf', id)), kit.join(', '));
 }
 

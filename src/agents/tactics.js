@@ -163,8 +163,13 @@ export function roleTactic(w, a, side, radius) {
 // shield-bearer (a race's own roles before it: the dwarves' forge-master by its fire, hammer-smith by a two-handed hammer,
 // berserker by two weapons and no armour); a paired weapon in the other hand — the cutthroat; a spear — the spearman; any other weapon — the
 // cleaver (a knight with it too: a knight never creeps). A captive or a former slave fights in no role.
-export function kitRole(a) {
+export function kitRole(a, pref = a.fightPref) {
   if (a.captive || a.former || !a.equip) return null;
+  // the role it was raised for (a fighter of the caravan's core: campaign/start.js), while what it holds still fits it
+  if (pref && COMBAT_ROLES.has(pref)) {
+    const held = new Set(handItems(a).flatMap(it => [def(it).form, def(it).id]));
+    if (COMBAT_ROLES.get(pref).hands.some(([fs]) => fs.every(f => held.has(f)))) return pref;
+  }
   if (a.master?.skill === 'medicine') return 'healer';
   const hs = handItems(a).map(def), form = f => hs.some(d => d.form === f);
   if (hs.some(d => traitOf(d.qualities, 'ensnare'))) return 'catcher';
@@ -175,11 +180,11 @@ export function kitRole(a) {
   if (form('spitfire') && own('forgemaster')) return 'forgemaster';
   // a knight of the caravan in heavy armour with a shield is a knight of the line (the humans: data/roles.js knight)
   const body = a.equip.body ? def(a.equip.body) : null;
-  if (a.place === 'knight' && form('shield') && body && ARMOUR.heavy.some(([f]) => f === body.form) && own('knight')) return 'knight';
+  if ((a.place === 'knight' || a.place === 'fighter') && form('shield') && body && ARMOUR.heavy.some(([f]) => f === body.form) && own('knight')) return 'knight';
   if ((form('warhammer') || form('maul')) && own('smith')) return 'smith';
   if (a.gear?.offhand && !(a.gear.armor > 0) && own('berserker')) return 'berserker';
   if (form('shield')) return 'shield';
-  if (a.gear?.offhand && a.place !== 'knight') return 'cutthroat';
+  if (a.gear?.offhand && a.place !== 'knight' && a.place !== 'fighter') return 'cutthroat';
   if (form('spear')) return 'spearman';
   if (hs.some(d => d.melee)) return 'cleaver';
   return null;

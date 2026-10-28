@@ -3,6 +3,7 @@
 // sent it — and what came out of it is taken back as it came out: the dead, the wounds, what was eaten,
 // stolen, broken, taken from the fallen foes. A campaign in the quick mode (K.mode 'auto': the balance
 // runs) settles it at once instead: the foe's might against the caravan's.
+import {isFighter, inLine, toolOf} from '../data/campaign.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
 import {gearDef, gearType, gearValue, mayTake} from '../agents/equipment.js';
 import {CAMP} from '../data/camp.js';
@@ -191,7 +192,7 @@ export function takeGear(K, items) {
       const m = ms.slice().sort((p, q) => armor(p.gear.body) - armor(q.gear.body))[0];
       if (m && armor(m.gear.body) < (it.armor ?? 0)) { K.spoils = [...(K.spoils || []), m.gear.body]; m.gear.body = id; took.push(`${it.short} (${m.name})`); continue; }
     } else if (it.melee && !it.tool && it.hands === 1 && !it.ranged) {
-      const m = ms.filter(x => x.role === 'knight' || x.role === 'sellsword').sort((p, q) => dmg(p) - dmg(q))[0];
+      const m = ms.filter(x => isFighter(x) || x.role === 'sellsword').sort((p, q) => dmg(p) - dmg(q))[0];
       const k = m ? m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield') : -1;
       if (m && k >= 0 && dmg(m) < it.melee.dmg) { K.spoils = [...(K.spoils || []), m.gear.hand[k]]; m.gear.hand[k] = id; took.push(`${it.short} (${m.name})`); continue; }
     }
@@ -243,9 +244,9 @@ function spoilsRest(a, K, d, r) {
   for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) { gainBeast(a, K, kind, 'У врагов отбили'); break; }
   const T = GETTING.spoilTool;
   if (T[d.kind] && toolTier(K) < 2 && r() < T[d.kind]) {
-    const may = free(K).filter(x => mayTake(x.race, T.item)), m = may.find(x => x.role === 'squire') || may[0], old = m?.gear.hand[0];
+    const may = free(K).filter(x => mayTake(x.race, T.item)), m = may.find(x => toolOf(x, gearDef)) || may[0], old = m ? toolOf(m, gearDef) : null;
     if (m) {
-      m.gear.hand[0] = T.item;
+      { const k = m.gear.hand.indexOf(old); if (k >= 0) m.gear.hand[k] = T.item; else m.gear.hand.push(T.item); }
       say(a, K, `Среди брошенного врагами нашёлся ${gearDef(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${!!gearDef(old) ? gearDef(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
     }
   }
@@ -257,11 +258,11 @@ function autoFight(a, K, d, r, how) {
   const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = might * (how === 'ambush' ? (K.alert === K.day ? 1 : AMBUSH.surprise) * paceOf(K).wary : 1);   // (an invigorating brew of the day: not caught napping)
   const share = P / (P + E), win = r() < share;
   K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.ceil(E * CAMP.quickHeads)), weight: Math.round(weight * 100) / 100};   // for the fight's record
-  // the blows: more when they lose, mostly on the knights, who shield the squires
+  // the blows: more when they lose, mostly on the first rank, who shield the rest
   let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);
   const hit = [];
   while (hurt > 0 && alive(K).length) {
-    const ms = alive(K), wts = ms.map(m => (m.role === 'knight' ? F.shield : m.captive ? F.captive : 1));   // a captive keeps out of it
+    const ms = alive(K), wts = ms.map(m => (inLine(m) ? F.shield : m.captive ? F.captive : 1));   // a captive keeps out of it
     let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
     for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;

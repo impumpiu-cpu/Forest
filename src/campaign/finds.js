@@ -2,6 +2,7 @@
 // by the road, an abandoned cart, a beast's den full of bones, a hiding place in the ashes of a burnt town, an old
 // battlefield. What the land makes possible is read from the world: its roads, its lairs and wolves, its ruins
 // and fallen lairs, the graves of its battles and raids, the track of an army.
+import {toolOf} from '../data/campaign.js';
 import {roadAccess} from '../atlas/roads.js';
 import {gearDef, mayTake} from '../agents/equipment.js';
 import {lairAt} from '../atlas/lairs.js';
@@ -47,14 +48,14 @@ export function morningFind(a, K, r) {
   }
   topUp(K);   // a healing potion found goes into a slot (campaign/potions.js)
   const items = Object.entries(F.items || {}).filter(([, p]) => r() < p).map(([id]) => id);
-  // a building tool better than the caravan's: a squire takes it in place of his own (as from a beaten foe)
+  // a building tool better than the caravan's: whoever carries a tool takes it in place of his own (as from a beaten foe)
   const tier = d => (d?.iron ? 2 : d?.bronze ? 1 : 0), builds = d => d?.tool && (d.tool.chop || d.tool.build);
   for (const id of [...items]) {
     const d = gearDef(id);
     if (!builds(d) || tier(d) <= toolTier(K)) continue;
-    const may = free(K).filter(x => !x.former && mayTake(x.race, id)), m = may.find(x => x.role === 'squire') || may[0];
+    const may = free(K).filter(x => !x.former && mayTake(x.race, id)), m = may.find(x => toolOf(x, gearDef)) || may[0];
     if (!m) continue;
-    const old = m.gear.hand[0]; m.gear.hand[0] = id; items.splice(items.indexOf(id), 1);
+    const old = toolOf(m, gearDef), k = m.gear.hand.indexOf(old); if (k >= 0) m.gear.hand[k] = id; else m.gear.hand.push(id); items.splice(items.indexOf(id), 1);
     if (old && !!gearDef(old)) K.spoils = [...(K.spoils || []), old];
     things.push(`${d.label.toLowerCase()} — ${m.name} взял${m.gender === 'f' ? 'а' : ''} его вместо своего`);
   }

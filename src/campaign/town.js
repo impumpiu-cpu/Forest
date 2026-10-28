@@ -2,6 +2,7 @@
 // caravan's goods and sells food, beasts, vehicles, iron, arms and armour, packed buildings, as far as
 // what it has built allows; there the caravan works for gold when it has none, heals faster, hires a
 // guide or a sellsword, and meets those who would go along. In winter it may stay till spring.
+import {isFighter, inLine, toolOf} from '../data/campaign.js';
 import {townFx, townLabel, realmWorks} from '../atlas/towns.js';
 import {gearDef, gearType, gearValue, gearToken, mayTake} from '../agents/equipment.js';
 import {MARK, markOfPeople, markable} from '../data/balance/marks.js';
@@ -121,8 +122,8 @@ function wants(a, K, t, st) {
     if (o.kind === 'vehicle' && o.id === 'cart' && !K.vehicles.length && K.goal != null && wheelsFit()) out.push([4, o]);
     if (o.kind === 'vehicle' && o.id === 'wagon' && !K.vehicles.some(v => v.kind === 'wagon') && K.beasts.some(b => BEASTS[b.kind].pulls >= 1) && K.goal != null && wheelsFit()) out.push([6, o]);
     if (o.kind === 'item' && gearDef(o.id).tool && tier < 2 && gearDef(o.id).iron) out.push([2, o]);
-    if (o.kind === 'item' && gearDef(o.id).slot === 'body' && ms.some(m => m.role === 'knight' && (gearDef(m.gear.body)?.armor ?? 0) < gearDef(o.id).armor)) out.push([7, o]);
-    if (o.kind === 'item' && gearDef(o.id).melee && !gearDef(o.id).tool && ms.some(m => m.role === 'knight' && bestDmg(m) < gearDef(o.id).melee.dmg)) out.push([8, o]);
+    if (o.kind === 'item' && gearDef(o.id).slot === 'body' && ms.some(m => inLine(m) && (gearDef(m.gear.body)?.armor ?? 0) < gearDef(o.id).armor)) out.push([7, o]);
+    if (o.kind === 'item' && gearDef(o.id).melee && !gearDef(o.id).tool && ms.some(m => isFighter(m) && bestDmg(m) < gearDef(o.id).melee.dmg)) out.push([8, o]);
     if (o.kind === 'building' && !hasBuilding(K, o.id)) out.push([6.5, o]);
     // healing potions for the empty slots, after the arms and armour (campaign/potions.js)
     if (o.kind === 'goods' && o.need === 'heal') for (let k = 0; k < Math.min(POTION.slot, potionRoom(K)); k++) out.push([8, o]);
@@ -131,15 +132,16 @@ function wants(a, K, t, st) {
 }
 const bestDmg = m => Math.max(0, ...m.gear.hand.map(id => gearDef(id)?.melee?.dmg ?? 0));
 
-// a bought item goes to who gains most by it: armour and arms to the knights, a tool to a squire
+// a bought item goes to who gains most by it: armour to the first rank, arms to the fighter with the weakest, a tool in place of a
+// tool (on whoever carries one)
 function equip(K, id) {
   const d = gearDef(id), ms = free(K).filter(m => !m.former && mayTake(m.race, id));   // no arms for a former slave, nor for one whose race will not touch it
   if (d.slot === 'body') {
-    const m = ms.filter(x => x.role === 'knight' || x.role === 'sellsword').sort((p, q) => (gearDef(p.gear.body)?.armor ?? 0) - (gearDef(q.gear.body)?.armor ?? 0))[0] || ms[0];
+    const m = ms.filter(x => inLine(x) || x.role === 'sellsword').sort((p, q) => (gearDef(p.gear.body)?.armor ?? 0) - (gearDef(q.gear.body)?.armor ?? 0))[0] || ms[0];
     m.gear.body = id; return m;
   }
-  if (d.tool) { const m = ms.find(x => x.role === 'squire') || ms[0]; m.gear.hand[0] = id; return m; }
-  const m = ms.filter(x => x.role === 'knight').sort((p, q) => bestDmg(p) - bestDmg(q))[0] || ms[0];
+  if (d.tool) { const m = ms.find(x => toolOf(x, gearDef)) || ms[0], k = m.gear.hand.indexOf(toolOf(m, gearDef)); if (k >= 0) m.gear.hand[k] = id; else m.gear.hand.push(id); return m; }
+  const m = ms.filter(x => isFighter(x) && !gearDef(x.gear.hand[0])?.ranged).sort((p, q) => bestDmg(p) - bestDmg(q))[0] || ms[0];
   const k = m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield');
   if (k >= 0) m.gear.hand[k] = id; else m.gear.hand[0] = id;
   return m;
@@ -259,13 +261,13 @@ export function trade(a, K, t, st) {
   return done;
 }
 
-// a day of work in town: those with a tool work for hire, the knights guard
+// a day of work in town: those with a tool work for hire, the other fighters guard
 export function labour(K) {
   const L = MARKET.labour, tier = toolTier(K);
   let g = 0;
   for (const m of alive(K)) {
-    if (m.role === 'squire' && m.gear.hand.some(id => gearDef(id)?.tool)) g += L.squire * (1 + L.perTier * tier);
-    else if (m.role === 'knight') g += L.knight;
+    if (!m.captive && toolOf(m, gearDef)) g += L.squire * (1 + L.perTier * tier);
+    else if (isFighter(m)) g += L.knight;
     else g += L.other;
   }
   K.gold = gold(K.gold + g);

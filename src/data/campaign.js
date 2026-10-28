@@ -2,13 +2,15 @@
 // day by day while the world's history goes on around it. Everything that can be counted lives here;
 // campaign/*.js only reads it. Numbers are first guesses for the balance run (tools/campaign-check.mjs).
 
+import {COMBAT_ROLES} from './roles.js';
+
 export const CAMPAIGN = {
   // a night with nothing in the cell's pool still sends a stray (campaign/march.js): wolves of this strength
   stray: {kind: 'beasts', strength: 0.7, beast: 'wolves', label: 'волки'},
   // the peoples whose capitals can send a caravan (the major ones; the minor join on the way, later)
   peoples: ['humans', 'elves', 'dwarves', 'orcs'],
-  // the core: those who set out; when all of them are dead the campaign is lost
-  knights: 4, squires: 4,
+  // the core: those who set out (all of them fighters, RETINUE below); when all of them are dead the campaign is lost
+  fighters: 8,
   // food in rations: a ration feeds one for a day and takes one unit of room (data/transport.js: a back is
   // one cell of 6 units, so each sets out with 6 days of food; the capital gives nothing else)
   ration: 1,
@@ -39,7 +41,7 @@ export const CAMPAIGN = {
   // and `partner` around the towns of the realms it trades with; on the way: `sight` cells around it
   fog: {known: 8, partner: 3, sight: 3},
   // a member's might in a fight: role × weapon × armour × health × Strength
-  might: {knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, former: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06,
+  might: {fighter: 0.7, knight: 1, squire: 0.4, sellsword: 1, guide: 0.5, companion: 0.5, freed: 0.3, former: 0.3, perDmg: 0.35, perArmor: 1, perStr: 0.06,
     golem: {bronze: 2, iron: 2.8, steel: 3.6, mithril: 5}},   // a golem of the caravan (data/transport.js), as so many knights, × its health
   // a night: what finds the camp comes out of the bubble (campaign/bubble.js); a stray nobody saw coming is
   // × `friendly` near a town of friends
@@ -79,26 +81,39 @@ export const FOES = {
   cultists: {label: 'культисты некроманта', might: 5},
 };
 
-// the core of each people: ranks (one, many, «four of») and the gear they set out in (data/items.js ids).
-// Knights: leather or hardened leather and a good weapon, not iron; squires: a plain tool, no armour.
+// The core of a caravan (campaign/start.js): CAMPAIGN.fighters fighters of the realm's kinds, each of a fighting role
+// (data/roles.js) drawn by the kind's weights in «Роли видов», in that role's kit (roleKit at `level`: bone and wood, now
+// and then bronze).
+//   title  — the people's word for a fighter of the core: one, many, of many («вышел караван: 8 хирдманов»)
+//   kinds  — whom it is drawn from: {species: weight}; `kin` — by the capital's shares of its kinds (the greenskins,
+//            data/peoples.js kin)
+// Shared by all:
+//   least  — the roles a core has at least: line (the first rank: shield, spear, cleaver…), a shooter, a healer — the rest drawn
+//   big    — the great kinds, at most `max` of them in a core (a giant, an ogre, a troll)
+//   lean   — the stats a fighter leans to by its role's group (agents/special.js rollCreature opts.lean: the better of two
+//            rolls, inside the people's limits): the line to Strength and Endurance, the shooters to Perception and Agility,
+//            the quick to Agility and Luck, the support to Intelligence and Charisma
+//   tools  — the camp's tools on the backs of the first fighters (an axe, a maul, a rod, a pan: the camp is built with them,
+//            the fish and the berries come with them)
+//   skip   — the roles never drawn for a core: the mounted (no horse at the start) and those of a link only
 export const RETINUE = {
-  humans:  {knight: ['рыцарь', 'рыцари', 'рыцаря'], squire: ['оруженосец', 'оруженосцы', 'оруженосца'],
-    knightGear: [['bronzespear', 'shield'], ['bronzeaxe', 'shield'], ['bronzespear', 'shield'], ['bow', 'quiver']]},
-  elves:   {knight: ['страж', 'стражи', 'стража'], squire: ['помощник', 'помощники', 'помощника'],
-    knightGear: [['bow', 'quiver'], ['spear', 'shield'], ['bow', 'quiver'], ['spear', 'shield']]},   // no metal: the elves do not touch it (data/kinds.js)
-  dwarves: {knight: ['хирдман', 'хирдманы', 'хирдмана'], squire: ['подмастерье', 'подмастерья', 'подмастерья'],
-    knightGear: [['bronzeaxe', 'shield'], ['bronzeaxe', 'shield'], ['bronzespear', 'shield'], ['bronzeaxe', 'shield']]},
-  orcs:    {knight: ['рубака', 'рубаки', 'рубаки'], squire: ['прислужник', 'прислужники', 'прислужника'],
-    knightGear: [['bronzeaxe'], ['bronzeaxe', 'shield'], ['bronzespear'], ['bronzeaxe']]},
-  // shared by all
-  // the stats each rank leans to (agents/special.js rollCreature opts.lean: the better of two rolls, inside the
-  // people's limits): the fighters to Strength, Endurance, Agility (a bowman — Perception too); the squires to
-  // Intelligence (they learn the crafts), Charisma (taming, rumours, companions), Perception (hunting, scouting), Luck
-  lean: {knight: ['S', 'E', 'A'], bowman: ['P'], squire: ['I', 'C', 'P', 'L']},
-  armour: ['jerkin', 'hardleather', 'jerkin', 'hardleather'],
-  squireGear: [['axe'], ['maul'], ['rod'], ['pan']],
-  squireBody: 'clothes',
+  humans:  {title: ['ратник', 'ратники', 'ратников'], kinds: {human: 6, halfling: 1, giant: 0.5}},
+  elves:   {title: ['страж', 'стражи', 'стражей'], kinds: {elf: 1}},
+  dwarves: {title: ['хирдман', 'хирдманы', 'хирдманов'], kinds: {dwarf: 1}},
+  orcs:    {title: ['рубака', 'рубаки', 'рубак'], kinds: 'kin'},
+  least: {line: 2, shooter: 1, healer: 1},
+  big: {kinds: ['giant', 'ogre', 'troll'], max: 1},
+  lean: {'линия': ['S', 'E'], 'дальний бой': ['P', 'A'], 'подвижные': ['A', 'L'], 'поддержка': ['I', 'C']},
+  tools: [['axe'], ['maul'], ['rod'], ['pan']],
+  level: 6,
+  body: 'clothes',
 };
+// the role a member of the caravan holds in the core (an old save's knight and squire are fighters too)
+export const isFighter = m => m.role === 'fighter' || m.role === 'knight' || m.role === 'squire';
+// a fighter of the first rank (its role's group «линия»: data/roles.js; an old save's knight) — it takes the blows, gets the armour
+export const inLine = m => m.role === 'knight' || (!!m.fight && COMBAT_ROLES.has(m.fight) && COMBAT_ROLES.get(m.fight).group === 'линия');
+// who carries a tool among its things (a camp's tool on the back: RETINUE.tools)
+export const toolOf = (m, def) => m.gear.hand.find(id => def(id)?.tool) || null;
 
 // The campaign's chronicle (campaign/chronicle.js): every line has a kind (campaign/march.js say), every kind a
 // theme and a level — the screen hides themes and colours the levels, as the settlement's journal does

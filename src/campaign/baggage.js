@@ -7,6 +7,7 @@
 //
 // K.beasts = [{id, kind, hp, job: 'ride' | 'pack' | 'draft', rider}];  K.vehicles = [{kind, pulled}];  K.buildings = [key] — the camp
 // K.cargo = {resource id → units} besides the food;  member.back — cells on the member's back
+import {inLine} from '../data/campaign.js';
 import {SPECIES} from '../data/species.js';
 import {gearDef} from '../agents/equipment.js';
 import {BONDS} from '../data/captives.js';
@@ -58,7 +59,7 @@ export function assign(K) {
   };
   for (const v of [...K.vehicles].sort((p, q) => (VEHICLES[q.kind].pull === 'draft') - (VEHICLES[p.kind].pull === 'draft'))) v.pulled = VEHICLES[v.kind].pull === 'draft' ? harness() : harness() ? 'beasts' : ms.length >= 2 ? 'people' : false;
   // riders: the wounded first, then the knights, then the rest; a captive only on a beast nobody free needs
-  const order = ms.filter(m => !m.captive).sort((p, q) => (p.hp < 0.5) - (q.hp < 0.5) || (p.role === 'knight') - (q.role === 'knight') || p.id - q.id).reverse();
+  const order = ms.filter(m => !m.captive).sort((p, q) => (p.hp < 0.5) - (q.hp < 0.5) || inLine(p) - inLine(q) || p.id - q.id).reverse();
   order.push(...ms.filter(m => m.captive));
   for (const m of order) {
     const b = free().find(x => BEASTS[x.kind].use === 'ride'); if (!b) break;
