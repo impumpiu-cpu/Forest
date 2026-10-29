@@ -32,6 +32,10 @@ import {tradeCaptives} from './slavery.js';
 import {CAPTIVE} from '../data/captives.js';
 import {KIND_GROVES, WOODS, useOf, mayWield} from '../data/kinds.js';
 import {MATERIALS} from '../data/balance/materials.js';
+import {takeStock} from '../atlas/economy.js';
+
+// the good of a town's stock a piece of gear is counted in (data/townBuildings.js: tools, arms and armour by worth)
+const gearGood = id => { const d = gearDef(id); return !d ? null : d.slot === 'body' ? 'armor' : d.melee || d.ranged || d.block ? 'arms' : 'tools'; };
 
 const alive = K => K.members.filter(m => m.alive);
 const has = (t, ids) => ids.some(id => t.built.includes(id));
@@ -200,7 +204,12 @@ export function trade(a, K, t, st) {
   sell(id => ore.has(id));   // the ore for the smith kept (and the potions with a few of their makings: potionKeep)
   // the spoils of the fights (campaign/fight.js): sold at their worth, as a town buys
   if (K.spoils?.length && K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell > P.left) unsold.push('spoils');
-  else if (K.spoils?.length) { const p = K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell; K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`); K.spoils = []; }
+  else if (K.spoils?.length) {
+    const p = K.spoils.reduce((v, id) => v + gearValue(id), 0) * STANDING[st].sell * MARKET.spoils * T.sell; K.gold = gold(K.gold + p); P.left -= p; done.push(`продали трофеи (${K.spoils.length}) за ${gold(p)} зол.`);
+    // the pieces go into the town's stock of arms, tools and armour by their worth (atlas/economy.js)
+    if (t.econ) for (const id of K.spoils) { const g = gearGood(id); if (g) t.econ.stock[g] = (t.econ.stock[g] || 0) + gearValue(id); }
+    K.spoils = [];
+  }
   if (smith) { done.push(...smithy(a, K, t, st)); sell(() => false); }
   if (has(t, ALCHEMY.at)) done.push(...alchemy(a, K, t, st));
   if (unsold.length) done.push(`город не потянул: ${unsold.map(id => (id === 'spoils' ? 'трофеи' : RESOURCES.get(id).label)).join(', ')} — нет денег`);
@@ -227,6 +236,8 @@ export function trade(a, K, t, st) {
     if (o.kind === 'goods' && o.need === 'belt' && kindRoom(K, potionOf(o.id).potion, o.id) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'home' && homeRoom(K, potionOf(o.id).potion) <= 0) continue;
     if (o.kind === 'goods' && o.need === 'pots' && (K.cargo.pots || 0) >= ALCHEMY.pots) continue;
+    // a piece of gear only as far as the town's stock holds its worth of arms, tools or armour: the stock pays it out
+    if (!['beast', 'vehicle', 'goods', 'building'].includes(o.kind) && gearGood(o.id) && !takeStock(t, gearGood(o.id), gearValue(o.id))) continue;
     K.gold = gold(K.gold - p);
     if (o.kind === 'beast') { K.beasts.push({id: K.nextBeast++, kind: o.id, hp: 1, job: null, rider: null}); done.push(`${BEASTS[o.id].acc} за ${gold(p)}`); }
     else if (o.kind === 'vehicle') { K.vehicles.push({kind: o.id, pulled: false}); done.push(`${o.id === 'cart' ? 'тележку' : 'повозку'} за ${gold(p)}`); }

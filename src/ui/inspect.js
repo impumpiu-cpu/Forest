@@ -6,7 +6,7 @@ import {LAIRS, LEADER} from '../data/lairs.js';
 import {necroLabel, zoneOf} from '../atlas/necro.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {SPECIES} from '../data/species.js';
-import {TOWN_BUILDINGS, EFFECTS, CATEGORIES} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, EFFECTS, CATEGORIES, CHAINS} from '../data/townBuildings.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {ARMY} from '../data/parties.js';
 import {seasonLabel} from '../atlas/history.js';
@@ -122,8 +122,24 @@ function townHtml(a, t) {
     row('даёт', gives || 'ничего сверх жилья') +
     row('набег', t.raided != null ? `последний в ${t.raided} г.` : 'не знал набегов') +
     row('осада', sieged ? `${esc(sieged.label)}: ${sieged.stay} дн., запас еды ${sieged.siege?.stock ?? '?'} дн., сожжено угодий ${sieged.burnt || 0}${sieged.siege?.starved ? `, умерло от голода ${Math.round(sieged.siege.starved)}` : ''}` : null) +
-    (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')));
+    (built ? `<div class="ir"><span>постройки</span></div><ul class="built">${built}</ul>` : row('постройки', 'нет')) +
+    economyHtml(t));
   return head + realmHtml(a, t.realm ? realmOf(a, t.realm) : null);
+}
+
+// the town's household (atlas/economy.js): for each good the rate a day (+ made, − used up) and the stock, by branch
+const num = v => (Math.abs(v) >= 100 ? Math.round(v) : Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)).toString().replace('.', ',');
+function economyHtml(t) {
+  const E = t.econ;
+  if (!E) return row('хозяйство', 'ещё не считалось');
+  const rows = TOWN_GOODS.all().filter(g => Math.abs(E.rate[g.id] || 0) > 0.001 || (E.stock[g.id] || 0) >= 0.5)
+    .sort((x, y) => Object.keys(CHAINS).indexOf(x.chain) - Object.keys(CHAINS).indexOf(y.chain))
+    .map(g => {
+      const r = E.rate[g.id] || 0, s = E.stock[g.id] || 0, low = E.short.includes(g.id);
+      return `<li class="${low ? 'short' : ''}"><span>${esc(g.label)}</span><b class="${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : r < 0 ? '−' : ''}${num(Math.abs(r))}/день</b><i>${num(s)}${g.unit === 'рацион' ? ' рац.' : g.unit === 'зол. ценности' ? ' зол.' : ''}</i></li>`;
+    }).join('');
+  return `<div class="ir"><span>хозяйство</span><b>загрузка ${Math.round(E.load * 100)}%, рук ${Math.round(E.hands * 100)}%${E.short.length ? `; не хватает: ${esc(E.short.map(id => TOWN_GOODS.get(id).label).join(', '))}` : ''}</b></div>
+    <ul class="econ"><li class="head"><span>благо</span><b>в день</b><i>на складе</i></li>${rows}</ul>`;
 }
 
 function lairHtml(a, l) {

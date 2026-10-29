@@ -3,7 +3,7 @@
 // buildings stand idle for want of something. The flows are drafts the towns do not run yet; this checks the table
 // before they do. `npm run chains` — the report; `node tools/chains.mjs --json file` — the model for a chain map.
 import fs from 'fs';
-import {TOWN_BUILDINGS, TOWN_GOODS, CATEGORIES, EFFECTS, CHAINS, TOOL_USES, worksOf, upkeepOf, townStart, townNeeds, goodPrice, fuelFor, FUEL} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, CATEGORIES, EFFECTS, CHAINS, TOOLS, worksOf, upkeepOf, townStart, townNeeds, goodPrice, fuelFor, FUEL} from '../src/data/townBuildings.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 
 const fxText = b => [b.house ? `жильё ${b.house}` : '', ...Object.entries(b.fx || {}).map(([k, v]) => `${EFFECTS[k]} +${v}`)].filter(Boolean).join(', ');
@@ -19,18 +19,18 @@ export function chainModel() {
     const keep = upkeepOf(b), ways = worksOf(b);
     // fire: units of fuel for the cycles of fire this way burns (FUEL.uses cycles a unit)
     for (const w of ways) procs.push({id: w.id, at: b.id, building: b.name, name: ways.length > 1 ? `${b.name}: ${w.label}` : b.name, way: ways.length > 1 ? w.label : null,
-      cat: CATEGORIES[b.cat], in: w.fire ? {...w.in, coal: (w.in.coal || 0) + fuelFor(w.fire)} : w.in, fire: w.fire || 0, out: w.out, keep, heat: b.heat || 0, repair: b.repair || {}, cycles: b.cycles || 0, herd: b.herd || 0,
+      cat: CATEGORIES[b.cat], in: w.fire ? {...w.in, coal: (w.in.coal || 0) + fuelFor(w.fire)} : w.in, fire: w.fire || 0, out: w.out, keep, heat: b.heat || 0, repair: b.repair || {}, tools: b.tools || 0, herd: b.herd || 0,
       quality: w.quality || null, wayPeoples: w.peoples || null, max: b.max, jobs: b.jobs || 0, house: b.house || 0, tier: b.tier, site: !!b.site, fx: fxText(b),
       needs: [...(b.needs || []), ...(b.needsAny ? ['одно из: ' + b.needsAny.join('/')] : [])]});
   }
-  procs.push({id: 'start', at: null, building: 'руки жителей', name: 'руки жителей (старт)', way: null, cat: 'старт', in: {}, out: townStart(), keep: {}, heat: 0, repair: {}, cycles: 0, herd: 0,
+  procs.push({id: 'start', at: null, building: 'руки жителей', name: 'руки жителей (старт)', way: null, cat: 'старт', in: {}, out: townStart(), keep: {}, heat: 0, repair: {}, tools: 0, herd: 0,
     max: 1, jobs: 0, house: 0, tier: 0, site: false, fx: '', needs: [], note: 'город делает сам, без построек: на первые постройки'});
   const sinks = [
-    {id: 'people', name: 'Жители (100 чел. за сезон)', in: [...Object.keys(townNeeds()), 'stores'], amounts: {...townNeeds(), stores: 'в голод и зимой'},
+    {id: 'people', name: 'Жители (100 чел. в день)', in: [...Object.keys(townNeeds()), 'stores'], amounts: {...townNeeds(), stores: 'в голод и зимой'},
       raw: Object.fromEntries(TOWN_GOODS.filter(g => g.eaten).map(g => [g.id, g.eaten]))},
     {id: 'treasury', name: 'Казна державы', in: ['gold']},
   ];
-  return {goods, gates, procs, sinks, chains: CHAINS, toolUses: TOOL_USES, fuelUses: FUEL.uses, peoples: WORLD_PEOPLES.ids()};
+  return {goods, gates, procs, sinks, chains: CHAINS, tools: TOOLS, fuelUses: FUEL.uses, peoples: WORLD_PEOPLES.ids()};
 }
 
 // what works for a people: a process works when its building is open to the people (race and realm) and every good it

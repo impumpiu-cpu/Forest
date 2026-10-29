@@ -390,6 +390,14 @@ dd.q4{color:#c58cff;font-weight:600}
 .inspect .ir b{font-weight:400}
 .inspect ul{margin:2px 0 4px;padding-left:1.2em}
 .inspect .rels li,.inspect .built li{margin:1px 0}
+.inspect .econ{list-style:none;margin:2px 0 4px;padding:0;font-variant-numeric:tabular-nums}
+.inspect .econ li{display:grid;grid-template-columns:1fr auto 5.5em;gap:8px;padding:0 0 0 4px}
+.inspect .econ li.head{color:var(--muted);font-size:.9em}
+.inspect .econ li b{font-weight:400;text-align:right}
+.inspect .econ li i{font-style:normal;text-align:right;color:var(--muted)}
+.inspect .econ b.up{color:#5aa85a}
+.inspect .econ b.down{color:#c0704a}
+.inspect .econ li.short span{text-decoration:underline dotted #c0704a}
 .inspect .thoughts{margin:2px 0 4px;padding-left:1.4em}
 .inspect .thoughts li{margin:2px 0}
 .inspect .thoughts small{font-family:var(--font-mono);color:var(--muted)}

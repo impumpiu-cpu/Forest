@@ -1,7 +1,7 @@
 // The table of the world's buildings (data/townBuildings.js) is the one truth about a building: who builds it, what its
 // realm must have first, what it houses, employs, takes and gives, the metals it opens; the local map reads its races
 // from it. `npm run buildings`.
-import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_WORKS, TOOL_USES, EFFECTS, goodPrice, metalBuildings, localPeoples, worksOf, upkeepOf} from '../src/data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, TOWN_WORKS, TOOLS, EFFECTS, goodPrice, metalBuildings, localPeoples, worksOf, upkeepOf} from '../src/data/townBuildings.js';
 import {BUILDINGS} from '../src/data/buildings.js';
 import {WORLD_PEOPLES} from '../src/data/peoples.js';
 import {MATERIALS} from '../src/data/balance/materials.js';
@@ -12,7 +12,7 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   
 const all = TOWN_BUILDINGS.all();
 const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
 
-// the flows: whole numbers of people, fuel, cycles and head; goods that exist, amounts above zero; room is `house`,
+// the flows: whole numbers of people, tools and head, rates ≥ 0 for warmth and fire; goods that exist, amounts above zero; room is `house`,
 // not an effect; a building that works by ways has its ways in TOWN_WORKS and no in/out of its own
 {
   const bad = [];
@@ -21,9 +21,11 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
     if (!(typeof n === 'number' && n > 0)) bad.push(`${where}.${g} = ${n}`);
   } };
   for (const b of all) {
-    for (const k of ['house', 'jobs', 'heat', 'fire', 'cycles', 'herd']) if (!isCount(b[k])) bad.push(`${b.id}: ${k} — не целое ≥ 0`);
+    for (const k of ['house', 'jobs', 'tools', 'herd']) if (!isCount(b[k])) bad.push(`${b.id}: ${k} — не целое ≥ 0`);
+    for (const k of ['heat', 'fire']) if (b[k] != null && !(b[k] >= 0)) bad.push(`${b.id}: ${k} — не число ≥ 0`);
+    if ('cycles' in b) bad.push(`${b.id}: cycles — теперь tools (орудий в работе)`);
     for (const k of ['in', 'out', 'repair']) goodsOk(`${b.id}: ${k}`, b[k]);
-    if (b.quality && !(b.quality in TOOL_USES)) bad.push(`${b.id}: материал изделий ${b.quality}`);
+    if (b.quality && !(b.quality in TOOLS)) bad.push(`${b.id}: материал изделий ${b.quality}`);
     if (b.works && (b.in || b.out)) bad.push(`${b.id}: работает переделами, но в нём самом есть in/out`);
     if (b.works && !worksOf(b).length) bad.push(`${b.id}: работает переделами, а их в «Переделах построек» нет`);
     if ('housing' in (b.fx || {})) bad.push(`${b.id}: жильё в эффектах — оно задаётся полем house`);
@@ -35,8 +37,8 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
     goodsOk(`передел ${w.id}: in`, w.in); goodsOk(`передел ${w.id}: out`, w.out);
     // (a rite gives nothing but its building's effect: an empty out is allowed)
     for (const P of w.peoples || []) if (!WORLD_PEOPLES.has(P)) bad.push(`передел ${w.id}: народ ${P}`);
-    if (w.quality && !(w.quality in TOOL_USES)) bad.push(`передел ${w.id}: материал ${w.quality}`);
-    if (!isCount(w.fire)) bad.push(`передел ${w.id}: жар не целое ≥ 0`);
+    if (w.quality && !(w.quality in TOOLS)) bad.push(`передел ${w.id}: материал ${w.quality}`);
+    if (w.fire != null && !(w.fire >= 0)) bad.push(`передел ${w.id}: жар не число ≥ 0`);
   }
   // a building that makes tools or arms says of what
   for (const b of all) for (const w of worksOf(b)) if ((w.out.tools || w.out.arms || w.out.armor) && !w.quality) bad.push(`${w.id}: делает орудия или оружие, а материал не указан`);
