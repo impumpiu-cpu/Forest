@@ -110,10 +110,11 @@ const T = a.towns.filter(t => t.alive);
   check('нужды жителей считаются, их нехватка тянет стройку', nb > 0 && T.some(t => Object.keys(t.needs?.lack || {}).length), `закрыто ${Math.round(nb * 100)}%`);
   const x = {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}}, B = {tier: 1, cat: 'housing'};
   const pl = planBuild(a, x, B); if (pl) doBuild(pl);
-  const noPlanks = planBuild(a, {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {wood: 50}, built: [], market: {}, id: -1}, B);
+  // (a home is raised of logs: no wood to be had — and none to gather, the town has no hands — it is not built; boards are the home's yearly take)
+  const noWood = planBuild(a, {pop: 200, gold: 100, peopleGold: 100, makersGold: 0, stock: {planks: 20}, built: [], market: {}, id: -1, econ: {freeHands: 0}}, B);
   const poor = planBuild(a, {pop: 200, gold: 0, peopleGold: 0, makersGold: 0, stock: {wood: 50, planks: 20}, built: [], market: {}, id: -2}, B);
-  check('стройка требует материалов и денег: дома — на деньги жителей, материалы со склада мастерам; без тёса и без денег не строят',
-    !!pl && !noPlanks && !poor && x.stock.wood < 50 && x.stock.planks < 20 && x.makersGold > 0 && x.peopleGold < 100, `мастерам ${x.makersGold}, у жителей осталось ${x.peopleGold}`);
+  check('стройка требует материалов и денег: дома — на деньги жителей, материалы со склада мастерам; без брёвен (и рук, чтобы их собрать) и без денег не строят',
+    !!pl && !noWood && !poor && x.stock.wood < 50 && x.stock.planks === 20 && x.makersGold > 0 && x.peopleGold < 100, `мастерам ${x.makersGold}, у жителей осталось ${x.peopleGold}`);
   const l = [...a.net.links.values()];
   check('связи сети крепнут и от товаров', l.length > 0);
 }
