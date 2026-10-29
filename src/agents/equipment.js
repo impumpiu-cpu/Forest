@@ -97,6 +97,8 @@ export function def(inst) {
   if (!n) {
     const base = wood ? woodenDef(d, inst) : d;
     n = M ? markedDef(base, M) : {...base};
+    // the sacred tree in its master's work bites what fears silver (data/kinds.js `silver`)
+    if (wood && WOODS.get(inst.of).silver && (!WOODS.get(inst.of).special || inst.master) && (base.melee || base.ranged)) n.silver = true;
     if (inst.silver) { n.silver = true; n.label = `${d.label} (посеребрённый)`; n.short = `${d.short} сер.`; n.dur = d.dur * 0.8; }
     if (inst.name) { n.label = `${inst.name} (${n.label})`; n.short = inst.name; }
     named.set(key, n);

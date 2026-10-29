@@ -33,7 +33,8 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
     const b = TOWN_BUILDINGS.has(w.at) ? TOWN_BUILDINGS.get(w.at) : null;
     if (!b) bad.push(`передел ${w.id}: нет постройки ${w.at}`); else if (!b.works) bad.push(`передел ${w.id}: ${w.at} не отмечена works`);
     goodsOk(`передел ${w.id}: in`, w.in); goodsOk(`передел ${w.id}: out`, w.out);
-    if (!Object.keys(w.out || {}).length) bad.push(`передел ${w.id}: ничего не даёт`);
+    // (a rite gives nothing but its building's effect: an empty out is allowed)
+    for (const P of w.peoples || []) if (!WORLD_PEOPLES.has(P)) bad.push(`передел ${w.id}: народ ${P}`);
     if (w.quality && !(w.quality in TOOL_USES)) bad.push(`передел ${w.id}: материал ${w.quality}`);
     if (!isCount(w.fire)) bad.push(`передел ${w.id}: жар не целое ≥ 0`);
   }
@@ -45,6 +46,8 @@ const isCount = v => v == null || (Number.isInteger(v) && v >= 0);
     if (!(goodPrice(G.id) > 0)) bad.push(`благо ${G.id}: нет цены`);
     if (!used.has(G.id)) bad.push(`благо ${G.id}: его никто не тратит и не даёт`);
     if (!['base', 'made'].includes(G.kind)) bad.push(`благо ${G.id}: не сказано, базовое или продвинутое`);
+    for (const P of [...(G.eaten || []), ...(G.buy || [])]) if (!WORLD_PEOPLES.has(P)) bad.push(`благо ${G.id}: народ ${P}`);
+    if (G.eaten && !G.raw) bad.push(`благо ${G.id}: «едят сырым», а оно не сырое`);
   }
   const housed = all.filter(b => b.house > 0).length, working = all.filter(b => b.jobs > 0).length;
   check('потоки построек: числа целые, блага известны, у каждого блага есть цена и место, переделы сходятся', !bad.length,

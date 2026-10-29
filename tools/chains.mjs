@@ -11,7 +11,7 @@ const fxText = b => [b.house ? `жильё ${b.house}` : '', ...Object.entries(b
 // the model: every way of work of a building is a process; the building's upkeep (repair, warmth, tools) it needs too
 export function chainModel() {
   const goods = TOWN_GOODS.all().map(g => ({id: g.id, label: g.label, unit: g.unit, kind: g.kind, raw: !!g.raw, chain: g.chain, note: g.note || null,
-    price: goodPrice(g.id), consumable: ['tools', 'arms', 'armor'].includes(g.id), start: g.start || 0, need: g.need || 0}));
+    price: goodPrice(g.id), consumable: ['tools', 'arms', 'armor'].includes(g.id), start: g.start || 0, need: g.need || 0, eaten: g.eaten || null, buy: g.buy || null}));
   const gates = TOWN_BUILDINGS.all().map(b => ({id: b.id, name: b.name, peoples: b.peoples, requires: b.requires || [], requiresAny: b.requiresAny || [], local: b.local || null,
     needsPlace: [...(b.needs || []), ...(b.needsAny || [])]}));
   const procs = [];
@@ -20,13 +20,14 @@ export function chainModel() {
     // fire: units of fuel for the cycles of fire this way burns (FUEL.uses cycles a unit)
     for (const w of ways) procs.push({id: w.id, at: b.id, building: b.name, name: ways.length > 1 ? `${b.name}: ${w.label}` : b.name, way: ways.length > 1 ? w.label : null,
       cat: CATEGORIES[b.cat], in: w.fire ? {...w.in, coal: (w.in.coal || 0) + fuelFor(w.fire)} : w.in, fire: w.fire || 0, out: w.out, keep, heat: b.heat || 0, repair: b.repair || {}, cycles: b.cycles || 0, herd: b.herd || 0,
-      quality: w.quality || null, max: b.max, jobs: b.jobs || 0, house: b.house || 0, tier: b.tier, site: !!b.site, fx: fxText(b),
+      quality: w.quality || null, wayPeoples: w.peoples || null, max: b.max, jobs: b.jobs || 0, house: b.house || 0, tier: b.tier, site: !!b.site, fx: fxText(b),
       needs: [...(b.needs || []), ...(b.needsAny ? ['одно из: ' + b.needsAny.join('/')] : [])]});
   }
   procs.push({id: 'start', at: null, building: 'руки жителей', name: 'руки жителей (старт)', way: null, cat: 'старт', in: {}, out: townStart(), keep: {}, heat: 0, repair: {}, cycles: 0, herd: 0,
     max: 1, jobs: 0, house: 0, tier: 0, site: false, fx: '', needs: [], note: 'город делает сам, без построек: на первые постройки'});
   const sinks = [
-    {id: 'people', name: 'Жители (100 чел. за сезон)', in: [...Object.keys(townNeeds()), 'stores'], amounts: {...townNeeds(), stores: 'в голод и зимой'}},
+    {id: 'people', name: 'Жители (100 чел. за сезон)', in: [...Object.keys(townNeeds()), 'stores'], amounts: {...townNeeds(), stores: 'в голод и зимой'},
+      raw: Object.fromEntries(TOWN_GOODS.filter(g => g.eaten).map(g => [g.id, g.eaten]))},
     {id: 'treasury', name: 'Казна державы', in: ['gold']},
   ];
   return {goods, gates, procs, sinks, chains: CHAINS, toolUses: TOOL_USES, fuelUses: FUEL.uses, peoples: WORLD_PEOPLES.ids()};
@@ -45,9 +46,12 @@ export function analyse(M, race = null) {
       can.add(g.id); ch = true;
     }
   }
-  const on = p => p.at == null || can.has(p.at);
+  const on = p => (p.at == null || can.has(p.at)) && (!race || !p.wayPeoples || p.wayPeoples.includes(race));
   const takes = p => [...new Set([...Object.keys(p.in), ...Object.keys(p.keep)])];
-  const supplied = new Set(), works = new Set();
+  // what the race buys at the market (and never makes) it has; what it eats raw feeds its people
+  const bought = new Set(race ? M.goods.filter(g => g.buy?.includes(race)).map(g => g.id) : []);
+  const supplied = new Set(bought), works = new Set();
+  const sinkTakes = (k, g) => k.in.includes(g) || !!(race && k.raw?.[g]?.includes(race));
   for (let ch = true; ch;) {
     ch = false;
     for (const p of M.procs) {
@@ -57,11 +61,11 @@ export function analyse(M, race = null) {
     }
   }
   const st = {}, issues = [];
-  for (const g of M.goods) st[g.id] = {prod: M.procs.filter(p => p.out[g.id]), cons: M.procs.filter(p => takes(p).includes(g.id)), sinks: M.sinks.filter(s => s.in.includes(g.id))};
+  for (const g of M.goods) st[g.id] = {prod: M.procs.filter(p => p.out[g.id]), cons: M.procs.filter(p => takes(p).includes(g.id)), sinks: M.sinks.filter(k => sinkTakes(k, g.id))};
   const names = l => [...new Set(l.map(p => p.building))].join(', ');
   for (const g of M.goods) {
     const s = st[g.id], prodOn = s.prod.filter(on), consOn = s.cons.filter(on);
-    Object.assign(s, {prodOn, consOn, supplied: supplied.has(g.id)});
+    Object.assign(s, {prodOn, consOn, supplied: supplied.has(g.id), bought: bought.has(g.id)});
     // a building that works another way (a kitchen on meat when there is no grain) does not miss this good
     const busy = new Set(M.procs.filter(p => works.has(p.id)).map(p => p.at));
     const needed = consOn.filter(p => !busy.has(p.at));
@@ -73,6 +77,7 @@ export function analyse(M, race = null) {
     else if (prodOn.length && !consOn.length && !s.sinks.length) status = 'dead';
     else if (s.supplied && !s.sinks.length && !consOn.some(p => works.has(p.id))) status = 'stuck';
     s.status = status;
+    if (s.bought && status !== 'na') status = 'bought';
     if (status === 'break') issues.push({sev: 'break', good: g.id, text: prodOn.length
       ? `«${g.label}»: делают (${names(prodOn)}), но сами стоят`
       : `«${g.label}» нужно (${names(needed) || s.sinks.map(k => k.name).join(', ')}), а взять негде`});
@@ -82,12 +87,13 @@ export function analyse(M, race = null) {
   // a building stands idle when none of its ways works
   for (const g of M.gates) {
     if (!can.has(g.id)) continue;
-    const ps = M.procs.filter(p => p.at === g.id);
+    const ps = M.procs.filter(p => p.at === g.id && on(p));
     if (ps.some(p => works.has(p.id))) continue;
     const miss = [...new Set(ps.flatMap(p => takes(p).filter(x => !supplied.has(x))))];
     const label = id => M.goods.find(x => x.id === id).label;
     issues.push({sev: 'stall', proc: ps[0].id, good: miss[0], text: `${g.name}: стоит — нет ${miss.map(x => '«' + label(x) + '»').join(ps.length > 1 ? ' или ' : ', ')}`});
   }
+  for (const g of bought) if (st[g].consOn.length) issues.push({sev: 'buy', good: g, text: `«${M.goods.find(x => x.id === g).label}» — только покупное (${names(st[g].consOn)})`});
   return {race, can, supplied, works, st, issues, on};
 }
 
@@ -99,6 +105,6 @@ if (process.argv[1]?.endsWith('chains.mjs')) {
     const A = analyse(M, race), cnt = k => A.issues.filter(i => i.sev === k).length;
     const at = l => new Set(l.map(p => p.at ?? p.id)).size;
     console.log(`\n── ${race || 'все народы вместе'}: работает ${at(M.procs.filter(p => A.works.has(p.id)))} из ${at(M.procs.filter(A.on))} построек; разрывов ${cnt('break')}, тупиков ${cnt('dead')}, стоят ${cnt('stall')}`);
-    for (const i of A.issues) console.log(`   ${i.sev === 'break' ? 'РАЗРЫВ' : i.sev === 'dead' ? 'тупик ' : 'стоит '} ${i.text}`);
+    for (const i of A.issues) console.log(`   ${{break: 'РАЗРЫВ', dead: 'тупик ', stall: 'стоит ', buy: 'купить'}[i.sev]} ${i.text}`);
   }
 }

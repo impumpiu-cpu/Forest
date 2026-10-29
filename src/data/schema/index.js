@@ -285,7 +285,7 @@ export const TABLES = [
       col('id', 'id'), col('label', 'Название'), col('biomes', 'Где растёт', 'map', {ref: 'biomes', min: 0}),
       col('dmg', 'Удар ×', 'num', {min: 0}), col('dur', 'Прочность ×', 'num', {min: 0}), col('weight', 'Вес ×', 'num', {min: 0}),
       col('fuel', 'Горит ×', 'num', {min: 0}), col('price', 'Цена ×', 'num', {min: 0}),
-      col('special', 'Особое', 'bool', {note: 'свои числа — только мастеру'}), col('plain', 'Для прочих как', 'ref', {ref: 'woods'}), col('color', 'Цвет', 'color'),
+      col('special', 'Особое', 'bool', {note: 'свои числа — только мастеру'}), col('silver', 'Как серебро', 'bool', {note: 'оружие из него, сделанное мастером, бьёт боящихся серебра (вампиров) как серебряное'}), col('plain', 'Для прочих как', 'ref', {ref: 'woods'}), col('color', 'Цвет', 'color'),
     ]},
   {id: 'stones', label: 'Камень', group: 'Вещи', key: 'id', rows: () => STONES.all(),
     note: 'Камень на выбор — породы мира (data/geology.js, data/kinds.js): какую породу дала клетка, такой камень и ломают. Постройка помнит свой камень и его цвет; прочность ×  — для износа построек (начнёт действовать, когда он появится).',
@@ -376,6 +376,8 @@ export const TABLES = [
       col('chain', 'Ветка', 'enum', {values: CHAINS}),
       col('start', 'Старт в год', 'num', {min: 0, note: 'сколько город делает сам, руками жителей, без построек: на первые постройки'}),
       col('need', 'Жители тратят', 'num', {min: 0, note: 'на 100 жителей за сезон'}),
+      col('eaten', 'Едят сырым', 'ids', {ref: 'peoples', note: 'народы, которые едят это сырым: для них оно кормит как еда'}),
+      col('buy', 'Только покупают', 'ids', {ref: 'peoples', note: 'народы, которые это не делают, а покупают на рынке'}),
       col('note', 'Заметка'),
     ]},
   {id: 'townWorks', label: 'Переделы построек', group: 'Народы', key: 'id', rows: () => TOWN_WORKS.all(),
@@ -386,6 +388,7 @@ export const TABLES = [
       col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0}), col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0}),
       col('quality', 'Материал изделий', 'enum', {values: Object.keys(TOOL_USES)}),
       col('fire', 'Жар', 'int', {min: 0, note: 'циклов жара в год; единица топлива даёт fuel.uses циклов'}),
+      col('peoples', 'Только расы', 'ids', {ref: 'peoples', note: 'передел только этих народов; пусто — всех'}),
     ]},
 
   // ── Караван
