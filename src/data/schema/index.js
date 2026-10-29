@@ -21,7 +21,7 @@ import {BODY_PLANS, HIT_LOCATIONS, planOf} from '../anatomy.js';
 import {MARKS, MARK} from '../balance/marks.js';
 import {QUALITY} from '../quality.js';
 import {ITEMS, rebuildItems} from '../items.js';
-import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings} from '../townBuildings.js';
+import {TOWN_BUILDINGS, CATEGORIES, EFFECTS as TOWN_FX, PLACE_NEEDS, TOWN_GOODS, goodPrice, metalBuildings, TOWN_WORKS, TOOL_USES, CHAINS, KITCHENS} from '../townBuildings.js';
 import {BUILDINGS} from '../buildings.js';
 import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
 import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
@@ -353,9 +353,14 @@ export const TABLES = [
       col('needs', 'Нужно место', 'ids', {ref: keysOf(PLACE_NEEDS)}), col('needsAny', 'Нужно одно из', 'ids', {ref: keysOf(PLACE_NEEDS)}),
       col('house', 'Жильё', 'int', {min: 0, note: 'сколько жителей вмещает; место города = 120 + сумма'}),
       col('jobs', 'Рабочих', 'int', {min: 0, note: 'сколько рук берёт у города при полной работе (черновик)'}),
-      col('heat', 'Топливо', 'int', {min: 0, note: 'брёвен в год на тепло, × климат: холодный 1,6, умеренный 1, тёплый 0,4 (черновик)'}),
-      col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
+      col('heat', 'Тепло', 'int', {min: 0, note: 'угля и дров в год на тепло, × климат: холодный 1,6, умеренный 1, тёплый 0,4; тепло берёт топливо первым (черновик)'}),
+      col('repair', 'Поддержание', 'map', {ref: 'townGoods', min: 0, note: 'в год: деревянная — брёвна или тёс, каменная — камень, шатры — шкуры (черновик)'}),
+      col('cycles', 'Циклов в год', 'int', {min: 0, note: 'выпусков товара за год; каждый тратит одно использование орудия, орудие даёт столько использований, сколько его материал («Заряды орудий» в «Жизни логов и городов»)'}),
+      col('herd', 'Голов', 'int', {min: 0, note: 'стадо при полной работе: молоко — от поголовья, приплод — на бойню'}),
+      col('works', 'Работает переделами', 'bool', {note: 'что берёт и даёт — в таблице «Переделы построек», а не здесь'}),
+      col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0, note: 'в работе, при полной работе (черновик)'}),
       col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0, note: 'при полной работе (черновик)'}),
+      col('quality', 'Материал изделий', 'enum', {values: Object.keys(TOOL_USES), note: 'из чего её орудия и оружие: сколько использований даёт орудие'}),
       col('metals', 'Металлы', 'ids', {ref: 'materials', note: 'металлы, которые кузнецы и рынки державы работают, пока такая постройка стоит в ней'}),
       col('fx', 'Даёт (эффекты)', 'map', {ref: keysOf(TOWN_FX), note: 'жильё здесь не задаётся: оно из «Жилья»'}), col('local', 'На локальной карте', 'ref', {ref: BUILDINGS}), col('site', 'Вне города', 'bool', {note: 'стоит в своей клетке рядом с городом: поля, пастбища, шахты'}), col('notable', 'В летописи', 'bool'),
     ]},
@@ -364,7 +369,21 @@ export const TABLES = [
     note: 'Что постройки городов тратят и дают (data/townBuildings.js TOWN_GOODS): единица и цена. Цена — от ресурса склада (balance/prices.js) или своя. Еда и зерно — в человеко-годах: прокорм одного жителя на год.',
     columns: [
       col('id', 'id'), col('label', 'Название'), col('unit', 'Единица'), col('res', 'Ресурс склада', 'ref', {ref: RESOURCES, note: 'по чьей цене считается'}),
-      col('price', 'Своя цена', 'num', {min: 0}), col('value', 'Цена, зол.', 'num', {computed: true}), col('note', 'Заметка'),
+      col('price', 'Своя цена', 'num', {min: 0}), col('value', 'Цена, зол.', 'num', {computed: true}),
+      col('kind', 'Вид', 'enum', {values: {base: 'базовое', made: 'продвинутое'}, note: 'базовое берут у земли без переработки, продвинутое делает постройка'}),
+      col('raw', 'Сырое', 'bool', {note: 'сырую еду не едят: её перерабатывают очаг, пекарня, коптильня, вешала'}),
+      col('chain', 'Ветка', 'enum', {values: CHAINS}),
+      col('start', 'Старт в год', 'num', {min: 0, note: 'сколько город делает сам, руками жителей, без построек: на первые постройки'}),
+      col('need', 'Жители тратят', 'num', {min: 0, note: 'на 100 жителей за сезон'}),
+      col('note', 'Заметка'),
+    ]},
+  {id: 'townWorks', label: 'Переделы построек', group: 'Народы', key: 'id', rows: () => TOWN_WORKS.all(),
+    target: (r, c) => [TOWN_WORKS.get(r.id), c.key],
+    note: 'Способы работы построек, у которых их несколько (data/townBuildings.js TOWN_WORKS): горн плавит ту руду, что есть, очаг варит то сырое, что есть. Постройка работает теми переделами, на которые есть сырьё. Числа — за год при полной работе (черновик).',
+    columns: [
+      col('id', 'id'), col('at', 'Постройка', 'ref', {ref: 'townBuildings'}), col('label', 'Название'),
+      col('in', 'Тратит в год', 'map', {ref: 'townGoods', min: 0}), col('out', 'Даёт в год', 'map', {ref: 'townGoods', min: 0}),
+      col('quality', 'Материал изделий', 'enum', {values: Object.keys(TOOL_USES)}),
     ]},
 
   // ── Караван
@@ -433,8 +452,8 @@ const grp = groups => params(() => paramGroups(groups));
 const kindsOf = mod => Object.fromEntries(Object.entries(mod).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)));
 TABLES.push(
   // Мир
-  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки).',
-    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT})},
+  {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки; TOOL_USES — сколько использований даёт орудие из каждого материала; KITCHENS — кухни трёх ступеней города: сколько сырья варят в год, топливо, сколько еды с единицы сырья).',
+    ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT, toolUses: TOOL_USES, kitchens: KITCHENS})},
   {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',
