@@ -31,7 +31,7 @@ export function limits(sp, people) {
 // racial traits the creature carries (the species' and its people's)
 export const innateOf = (sp, a) => [...(sp.innate || []), ...(peopleOf(sp, a)?.innate || [])];
 
-// a label like «глубинный гном»
+// a label like «глубинный дварф»
 export const raceLabel = (sp, a) => peopleOf(sp, a)?.label || sp.label;
 
 // keys that add up rather than multiply

@@ -9,7 +9,7 @@
 import {SLAVE, captivePrice} from '../data/slavery.js';
 import {CAPTIVE, bestBonds} from '../data/captives.js';
 import {SPECIES} from '../data/species.js';
-import {captives} from './captives.js';
+import {captives, letsGo} from './captives.js';
 import {formers} from './freedom.js';
 import {colonists, foodTotal} from './query.js';
 import {createAgent, hpShare} from '../agents/agent.js';
@@ -68,7 +68,7 @@ export function traderCaptive(rng) {
 
 // 2. buy one the trader brought, while there are bonds, room and gold to spare
 export function buyCaptive(w, c, deal, note, cash, spend, trader) {
-  const o = c.captive; if (!o) return;
+  const o = c.captive; if (!o || letsGo(w)) return;   // (the dwarves buy no one: data/slavery.js frees)
   const B = bestBonds(w.stock), have = captives(w).length;
   if (!B || have >= Math.min(CAPTIVE.max, SLAVE.buy.want)) return;
   const p = round1(captivePrice({hp: 1, S: 5, will: SLAVE.buy.will}) * SLAVE.trader.k * SLAVE.buy.mark);

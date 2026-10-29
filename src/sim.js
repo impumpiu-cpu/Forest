@@ -6,6 +6,8 @@ import {stepLakes} from './world/lakes.js';
 import {stepPlants} from './world/plants.js';
 import {stepFarms} from './settlement/farming.js';
 import {stepHerd} from './settlement/herd.js';
+import {stepColonyGolems} from './settlement/golems.js';
+import {stepWarBeasts} from './settlement/warbeasts.js';
 import {stepLife} from './settlement/life.js';
 import {stepCrafting} from './settlement/crafting.js';
 import {stepEffects} from './agents/body.js';
@@ -75,6 +77,8 @@ export function step(w) {
   stepPlants(w);
   stepFarms(w);
   stepHerd(w);
+  stepColonyGolems(w);   // a dwarven colony's golem forge (settlement/golems.js)
+  stepWarBeasts(w);   // the greenskins' dens and pits (settlement/warbeasts.js)
   stepLife(w);
   stepCrafting(w);
   stepPotions(w);   // the stock's healing potions into the people's slots (settlement/potions.js)

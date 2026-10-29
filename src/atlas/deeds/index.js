@@ -15,8 +15,9 @@ import {raidTown} from './raidTown.js';
 import {clearLair} from './clearLair.js';
 import {captives} from './captives.js';
 import {scout} from './scout.js';
+import {liberate} from './liberate.js';
 
-export const DOES = {raid, expand, subdue, rival, strike, makePeace, warOn, march, raidTown, clearLair, captives, scout};
+export const DOES = {raid, expand, subdue, rival, strike, makePeace, warOn, march, raidTown, clearLair, captives, scout, liberate};
 
 for (const d of DEEDS.all()) if (!DOES[d.id]?.want) throw new Error(`deed «${d.id}» is in the catalogue (data/deeds.js) but has no code (atlas/deeds/)`);
 for (const id of Object.keys(DOES)) if (!DEEDS.has(id)) throw new Error(`deed «${id}» has code but no row in data/deeds.js`);

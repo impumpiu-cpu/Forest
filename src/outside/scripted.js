@@ -26,7 +26,7 @@ import {faunaLevel} from '../world/region.js';
 import {ARRIVALS as A} from '../data/migrations.js';
 
 // the chance a due caravan sets out: a road close by brings more caravans (data/trade.js; the panel shows it)
-export const caravanChance = w => Math.min(TRADE.chanceMax, TRADE.chance * region(w).road);
+export const caravanChance = w => Math.min(TRADE.chanceMax, TRADE.chance * region(w).road * (w.mods?.mul?.caravans ?? 1));   // (a trading post draws them: data/buildings.js tradepost)
 
 // Who is beyond the edge: on a cell of the world map the site names its neighbours (seam/cell.js) —
 // how far the hostile are and which bands they send, where the kin and the market are; on the

@@ -2,6 +2,7 @@
 // repeating lines folded into one, and the whole of it as plain text — the header (who set out, for what), the
 // lines with their dates, the fates of those who walked. The text goes into a file from the campaign's screen;
 // a finished campaign kept in the world's archive (campaign/ending.js) is told the same way.
+import {isFighter} from '../data/campaign.js';
 import {SEASONS} from '../data/seasons.js';
 import {SPECIES} from '../data/species.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
@@ -44,7 +45,7 @@ export function chronicleText(a, K) {
   out.push(`Итог: ${result}; в пути ${Math.round(K.day ?? K.days ?? 0)} дней (${((K.day ?? K.days ?? 0) / 120).toFixed(1)} г.).`, '');
   out.push('Отряд:');
   for (const m of K.members) {
-    const core = m.core ?? ['knight', 'squire'].includes(m.role);
+    const core = m.core ?? isFighter(m);
     const end = m.fate || (m.died ? `${m.died.why}, ${m.died.year}-й год` : m.left ? `${m.left.taken ? (m.gender === 'f' ? 'уведена в плен' : 'уведён в плен') : m.gender === 'f' ? 'ушла' : 'ушёл'}, ${m.left.year}-й год` : m.alive ? 'жив' + (m.gender === 'f' ? 'а' : '') : '');
     out.push(`  ${m.name} — ${rankOf(m)}${core ? '' : ' (пристал в пути)'}, ${SPECIES.get(m.race)?.label || m.race}${end ? `: ${end}` : ''}`);
   }

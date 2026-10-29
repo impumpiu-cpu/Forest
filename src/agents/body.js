@@ -14,6 +14,9 @@ import {DAY} from '../core/time.js';
 import {refreshBody} from './special.js';
 import {lethal} from './wounds.js';
 import {quaff, drinkFor, stepPotionEffects} from './potions.js';
+import {thornedBy} from './movement.js';
+import {THORNS} from '../data/buildings.js';
+import {roleRow} from '../data/roles.js';
 
 const NEED_THOUGHT = {food: 'starving', warmth: 'freezing', rest: 'exhausted'};
 
@@ -24,6 +27,8 @@ const REMEMBER_BELOW = {food: 0.3, rest: 0.25, warmth: 0.4};
 // tick until it wears off; a spider's web only slows (agents/movement.js) and is dropped once it is over.
 // Called once a tick for every agent from sim.js; the undead never get venom in the first place.
 export function stepEffects(w, a) {
+  // the thorns of an elven hedge tear whoever comes through (data/buildings.js THORNS)
+  if (!a.dead && SPECIES.get(a.species).kind !== 'spirit' && !SPECIES.get(a.species).undead && thornedBy(w, a)) { a.hp -= THORNS.dmg; if (a.hp <= 0) { kill(w, a, 'шипов'); return; } }
   if (a.poison) {
     if (w.tick < a.poison.until) { a.hp -= a.poison.dmg; if (a.hp <= 0) kill(w, a, 'яда'); }
     else a.poison = null;
@@ -58,7 +63,7 @@ function stepExhaustion(a) {
 // body's answer to fire (data/balance/combat.js resistTo) × a fire-ward potion at work; one burning with such a potion
 // in its belt drinks it (`w` given). → true if it burnt
 export function heatHarm(a, sp, T, who, w = null) {
-  if (!(T > sp.heatHarm)) return false;
+  if (!(T > sp.heatHarm) || roleRow(a)?.fireproof) return false;   // (the forge-master: data/roles.js)
   const P = HEAT[who];
   if (w && a.belt?.length) drinkFor(w, a, 'fire');
   a.hp -= Math.min(P.max, (T - sp.heatHarm) * P.perDegree) * resistTo(sp, 'fire') * (a.effects ? effectResist(null, a, 'fire') : 1);
@@ -85,7 +90,8 @@ export function stepBody(w, a) {
   // brew's (mods.mend): the greater of the two works
   const regen = Math.max(a.mods.regen > 1 && T > 30 ? 1 : a.mods.regen ?? 1, a.mods.mend ?? 1);
   // the fallen do not mend by themselves: only a dressed wound stops the bleeding (agents/wounds.js)
-  if (comfy && T < 45 && !a.downed) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a) * regen);
+  // a mechanism (data/tags.js) never mends by itself: only at a forge (agents/golem.js)
+  if (comfy && T < 45 && !a.downed && !sp.mechanism) a.hp = Math.min(maxHp(a), a.hp + 0.0003 * maxHp(a) * regen);
   if (a.hp <= 0) kill(w, a, starving || (T > 60 ? 'пожара' : 'ран'));
   return T;
 }

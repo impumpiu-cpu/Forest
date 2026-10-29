@@ -31,12 +31,11 @@ import {faunaAt} from '../atlas/fauna.js';
 import {lairAt} from '../atlas/lairs.js';
 import {towers, seatMap} from '../atlas/necro.js';
 import {LAIRS} from '../data/lairs.js';
-import {TECHS} from '../data/tech.js';
 import {REALM_STATS, RUINS, OFFICES} from '../data/kingdom.js';
 import {WILD_YEARS} from '../data/history.js';
 import {SPECIES} from '../data/species.js';
 import {TOWN_BUILDINGS, EFFECTS} from '../data/townBuildings.js';
-import {townFx, room} from '../atlas/towns.js';
+import {townFx, room, realmMetalWords} from '../atlas/towns.js';
 import {esc} from '../core/util.js';
 import {offerText, latinTitle} from './store.js';
 import {worldChronicleText, calamityChronicleText} from '../atlas/chronicle.js';
@@ -707,7 +706,7 @@ export class MapView {
       const sup = town.supply, feed = sup ? (sup.got > 0.05 * town.pop ? `; привозят еды на ${Math.round(sup.got)}` : sup.gave > 0.05 * town.pop ? `; отправляют еды на ${Math.round(sup.gave)}` : '') : '';
       parts.push(`${townLabel(town)} ${town.name} (${town.realm ? realmLabel(a, town.realm) : P.label}), ${Math.round(town.pop)} жителей${folk ? `, среди них ${folk}` : ''}, дома на ${room(fx)}, основан в год ${town.founded}, угодья в ${siteRadius(a, town)} клетках; постройки: ${list || 'нет'}` + (gives ? `; даёт: ${gives}` : '') + feed);
       const R = town.realm ? a.realms.find(r => r.id === town.realm) : null;
-      if (R?.tech) parts.push(`держава знает: ${R.tech.length ? R.tech.map(id => TECHS.get(id).label.toLowerCase()).join(', ') : 'ничего сверх общего'}`);
+      if (R) parts.push(`держава работает металлы: ${realmMetalWords(a, town).join(', ') || 'никакие'}`);
       if (R?.captives && Object.values(R.captives).some(v => v > 0)) parts.push(`увели в полон за историю: ${captiveCount(R)}`);
       if (R?.why) parts.push(`последнее дело державы (${R.why.year} г.): ${deedLabel(R.why.deed)} — ${R.why.why}${R.why.alt ? `; иначе: ${deedLabel(R.why.alt)}` : ''}`);
       // the realm as a kingdom (atlas/kingdom.js): its attributes, its ruin, its court

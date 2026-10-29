@@ -5,6 +5,7 @@
 // enough service to be close to freedom; it buys one while it has bonds, room and gold beyond its food money. A sale is taken ill by
 // the company: former slaves, companions and the freed lose loyalty, hirelings think less of the service, the
 // captives left grow readier to run.
+import {toTown, fromTown, townPurse} from '../atlas/treasury.js';
 import {SLAVE, captivePrice, lawOf} from '../data/slavery.js';
 import {CAPTIVE, ESCAPE} from '../data/captives.js';
 import {STANDING} from '../data/market.js';
@@ -47,8 +48,9 @@ function deal(a, K, t, st, L, r, parts) {
     if ((m.captive.service || 0) >= SLAVE.sell.service) continue;   // close to freedom: kept
     if (!short && (m.captive.resigned || (m.captive.will ?? 0) < SLAVE.sell.will)) continue;   // an unruly one, or anyone when food runs short
     const p = gold(priceOf(m) * L.k * STANDING[st].sell);
+    if (townPurse(t) < p) continue;   // the town's makers have not the gold for one
     m.alive = false; m.ride = null; m.left = {day: K.day, year: a.hist.year, sold: true};
-    K.gold = gold(K.gold + p); K.stats.sold = (K.stats.sold || 0) + 1; famed(a, K, 'slaveSale', t.realm);   // infamy with the town's realm (campaign/road.js)
+    K.gold = gold(K.gold + fromTown(t, p)); K.stats.sold = (K.stats.sold || 0) + 1; famed(a, K, 'slaveSale', t.realm);   // infamy with the town's realm (campaign/road.js)
     parts.push(`${gw(m, 'продали пленного', 'продали пленную')} ${m.name} (${SPECIES.get(m.race).label}) за ${p} зол.`);
     // where it is frowned on, the town's realm thinks less of the caravan's
     if (L.law === 'frowned' && t.realm && K.realm && t.realm !== K.realm) { const rel = relation(a, K.realm, t.realm); if (rel) rel.att = Math.max(-5, rel.att + L.att); }
@@ -64,7 +66,7 @@ function deal(a, K, t, st, L, r, parts) {
   const R = SLAVE.buy.races, race = R[(r() * R.length) | 0];
   const B = bestBonds(K.cargo); K.cargo[B.resource] -= B.n; if (K.cargo[B.resource] <= 0) delete K.cargo[B.resource];
   const m = makeMember(K, r, {race, role: 'captive', gear: CAPTIVE.campaign.gear, captive: {since: K.day, bonds: B.id, from: 'bought', will: SLAVE.buy.will}});
-  K.members.push(m); K.gold = gold(K.gold - p); K.stats.bought = (K.stats.bought || 0) + 1;
+  K.members.push(m); K.gold = gold(K.gold - toTown(t, p)); K.stats.bought = (K.stats.bought || 0) + 1;
   parts.push(`${gw(m, 'купили пленного', 'купили пленную')} ${m.name} (${SPECIES.get(race).label}) за ${p} зол.`);
   assign(K);
   return parts;

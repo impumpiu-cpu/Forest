@@ -28,10 +28,19 @@ export const SLAVE = {
   law: {
     orcs:    {law: 'legal', k: 1.2},
     humans:  {law: 'legal', k: 1},
-    dwarves: {law: 'frowned', k: 0.85, att: -0.4},
+    dwarves: {law: 'banned'},   // they hate it: no slaves bought, sold or kept (docs/WORLD.md «Асимметрия народов»)
     elves:   {law: 'banned'},
   },
   trader: {law: 'legal', k: 0.9},
+  // the peoples (and their races) who keep no captives at all: a fallen foe is dressed and let go (settlement/captives.js),
+  // the caravan sets its captives free (campaign/slavery.js); none is ever sold or bought. Their one cause of war over
+  // slaves: their own kin in bondage (atlas/deeds/liberate.js)
+  frees: {peoples: ['dwarves'], races: ['dwarf']},
+  // their war of liberation (atlas/deeds/liberate.js): a town of theirs within `reach` × DIPLOMACY.raidReach of a town that
+  // holds their kin as slaves (t.slavesOf), or of a lair that holds them captive (lair.captives), goes to free them —
+  // `chance` a year; against a realm it is war (the standing falls by `att`). A win brings `home` of the freed to the town
+  // as free people; a loss costs the town `loss` of its people
+  liberate: {reach: 1.5, chance: 0.6, att: 2, home: 0.8, loss: 0.08, least: 3},
   sell: {will: 0.6, foodDays: 3, service: 1},
   buy: {offer: 0.35, trader: 0.3, want: 2, mark: 1.3, will: 0.45, races: ['human', 'orc', 'goblin', 'gnoll', 'halfling']},
   upset: {former: -0.15, joined: -0.05, hired: -0.04, fear: 0.1},
@@ -47,3 +56,6 @@ export function captivePrice({hp = 1, S = 5, skill = null, resigned = false, wil
 }
 // the law of a people; an unknown one is taken as legal at par
 export const lawOf = people => SLAVE.law[people] || {law: 'legal', k: 1};
+// does a people (or a colony of a race) let its captives go
+export const freesCaptives = people => SLAVE.frees.peoples.includes(people);
+export const raceFrees = race => SLAVE.frees.races.includes(race);

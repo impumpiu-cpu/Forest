@@ -51,9 +51,9 @@ export const CAMP = {
   // at least `atLeast` come; the strongest of its own kind is grown into it. It stands while it lives, and its side
   // holds with it (agents/auras.js: the aura `lead`)
   boss: {atLeast: 2},
-  // the skills the ranks bring (data/skills.js, 0 … 1): the knights fight, the squires work their tools
-  skills: {knight: {melee: 0.35, ranged: 0.3}, squire: {}, sellsword: {melee: 0.4, ranged: 0.2}, guide: {hunting: 0.3, ranged: 0.2}},
-  tools: {axe: 'woodcutting', ironaxe: 'woodcutting', maul: 'construction', rod: 'fishing', pan: 'gathering'},
+  // the skills the ranks bring (data/skills.js, 0 … 1): the fighters fight (a tool on the back: its own skill, `tools`)
+  skills: {fighter: {melee: 0.35, ranged: 0.3}, knight: {melee: 0.35, ranged: 0.3}, squire: {}, sellsword: {melee: 0.4, ranged: 0.2}, guide: {hunting: 0.3, ranged: 0.2}},
+  tools: {axe: 'woodcutting', ironaxe: 'woodcutting', maul: 'construction', hatchet: 'hunting', pan: 'gathering'},
   toolSkill: 0.3,
   // the quiver of a bowman
   arrows: 14,

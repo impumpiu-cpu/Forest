@@ -15,7 +15,7 @@
 // a.sites = [{id, town, kind, i, x, y, built, alive, died, path}];  a.siteAt = Int32Array (site index + 1, 0 free)
 // a.net = {links: Map(key → {p, q, c, flow}), year};  per town: t.sites (ids), t.supply = {own, got, gave}
 import {SITES, NET} from '../data/sites.js';
-import {TOWN_BUILDINGS} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_FX, TOWN_MONEY, foodNet} from '../data/townBuildings.js';
 import {placeHas} from './towns.js';
 import {findPath, tradeLinks} from './roads.js';
 import {ARMY} from '../data/parties.js';
@@ -87,12 +87,17 @@ export function placeSite(a, t, b, rnd) {
   return s;
 }
 
-// a site burns: the town loses the building and wants it again; the stump stays a while
+// a site burns: the town loses one unit of the building (atlas/economy.js: twelve fields are one farmland) and wants it
+// again; while units of it are left the site stands, the last one gone leaves a stump a while
 export function razeSite(a, s, year) {
   if (!s.alive) return;
-  s.alive = false; s.died = year; a.siteAt[s.i] = 0;
   const t = a.towns.find(t => t.id === s.town);
-  if (t) { const k = t.built.indexOf(s.kind); if (k >= 0) t.built.splice(k, 1); t.sites = (t.sites || []).filter(id => id !== s.id); }
+  if (t) {
+    const k = t.built.indexOf(s.kind); if (k >= 0) t.built.splice(k, 1);
+    if (t.alive !== false && t.built.includes(s.kind)) return;   // the rest of the farmland stands
+    t.sites = (t.sites || []).filter(id => id !== s.id);
+  }
+  s.alive = false; s.died = year; a.siteAt[s.i] = 0;
 }
 // a raid on a town burns one of its works, sometimes; returns the building burnt or null
 export function raidSite(a, t, rnd) {
@@ -159,8 +164,10 @@ export function stepNet(a, feeds) {
     from.supply.gave += f; to.supply.got += f; l.flow += f;
   };
   for (const l of L.values()) { send(l.p, l.q, l); send(l.q, l.p, l); }
-  // the links thicken by the flow against the need of the fed town, and waste a little every year
+  // the links thicken by the flow against the need of the fed town — the food, and the goods bought down them (atlas/treasury.js
+  // l.goods: TOWN_MONEY.link gold of them count as a person fed) — and waste a little every year
   for (const l of L.values()) {
+    if (l.goods) { l.flow += l.goods / TOWN_MONEY.link; l.goods = 0; }
     const need = Math.max(60, Math.min(l.p.pop, l.q.pop));
     l.c = Math.min(1, l.c * (1 - NET.decay) + NET.grow * Math.min(1, l.flow / need));
     if (l.c < NET.min) L.delete(linkKey(l.p, l.q));
@@ -190,13 +197,13 @@ export function fedTowns(a) {
 export function scourgedFood(a, t) {
   if (!a.f.scourge) return 0;
   let v = 0;
-  for (const s of townSites(a, t)) if (a.f.scourge[s.i] > ARMY.scourged) v += TOWN_BUILDINGS.get(s.kind).fx.food || 0;
+  for (const s of townSites(a, t)) if (a.f.scourge[s.i] > ARMY.scourged) v += Math.max(0, foodNet(TOWN_BUILDINGS.get(s.kind))) / TOWN_FX.flow.foodRef * TOWN_FX.flow.scourged;
   return v;
 }
 
 // what a town's works yield, for the panel: {food, raw} as shares of its land's feed and of its craft
 export function siteYields(a, t) {
   const out = {food: 0, raw: 0};
-  for (const s of townSites(a, t)) { const b = TOWN_BUILDINGS.get(s.kind); out.food += b.fx.food || 0; out.raw += (b.fx.prod || 0) + (b.fx.trade || 0); }
+  for (const s of townSites(a, t)) { const b = TOWN_BUILDINGS.get(s.kind); out.food += Math.max(0, foodNet(b)) / TOWN_FX.flow.foodRef * TOWN_FX.flow.scourged; out.raw += (b.fx.prod || 0) + (b.fx.trade || 0); }
   return out;
 }

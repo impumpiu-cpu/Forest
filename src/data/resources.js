@@ -58,6 +58,8 @@ RESOURCES.registerAll([
     map: (w, i) => (w.grid.terr[i] === T.ROCK && !w.grid.ore?.[i] ? 0.6 : 0), mapColor: [215, 210, 196]},
   {id: 'bone',    label: 'кости',   short: 'кости',   group: 'Материалы', loot: 1, keep: 12, color: '#e8e2cf'},
   {id: 'hide',    label: 'шкуры',   short: 'шкуры',   group: 'Материалы', loot: 1, keep: 6, color: '#9b7650'},
+  // sinew from a butchered beast (agents/carcass.js, one with each hide): the elves' bowstring
+  {id: 'sinew',   label: 'жилы',    short: 'жилы',    group: 'Материалы', loot: 1, keep: 4, color: '#c9a98a'},
   {id: 'leather', label: 'кожа',    short: 'кожа',    group: 'Материалы', loot: 1, keep: 8, color: '#7a4d26'},
   // what the bestiary's beasts leave (data/bestiary.js): reagents for the alchemy to come, rarities for the traders
   {id: 'silk',     label: 'паучий шёлк', short: 'шёлк', group: 'Материалы', loot: 1, keep: 4, color: '#e9e6f2'},
@@ -123,7 +125,7 @@ RESOURCES.registerAll([
   // metal: bars from the furnace
   {id: 'iron',    label: 'железо',  short: 'железо',  group: 'Металл', loot: 1, keep: 8, color: '#a9b0b6'},
   {id: 'bronze',  label: 'бронза',  short: 'бронза',  group: 'Металл', loot: 1, keep: 8, color: '#c89048'},
-  // steel: the towns' foundries make it (data/tech.js 'steelmaking'); the outpost only buys it
+  // steel: the towns' foundries make it (data/townBuildings.js foundry `metals`); the outpost only buys it
   {id: 'steel',   label: 'сталь',   short: 'сталь',   group: 'Металл', loot: 1, keep: 8, color: '#c4ccd4'},
 
   // ── precious metals. Gold is washed from river sand (data/plants.js 'placer') and now and then dug

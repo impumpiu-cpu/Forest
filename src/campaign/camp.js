@@ -25,6 +25,7 @@ import {wake} from '../agents/attention.js';
 import {sideStrength, expectedStrength} from '../agents/strength.js';
 import {dress, def, gearDef, gearToken, gearType} from '../agents/equipment.js';
 import {makeTame} from '../settlement/herd.js';
+import {makeGolem} from '../agents/golem.js';
 import {putUp} from '../settlement/buildings.js';
 import {campOf} from './baggage.js';
 import {POTION} from '../data/potions.js';
@@ -117,7 +118,7 @@ export function openCamp(S) {
   S.members.forEach((m, k) => {
     const [x, y] = ring(k, S.members.length, 2);
     const ag = createAgent(w, m.race, 'colony', x, y);
-    ag.member = m.id; ag.place = m.role; w.campaign.people.set(m.id, ag); ag.name = m.name; ag.gender = m.gender; ag.people = m.people;   // (ag.place: its place in the company, docs/BEHAVIOUR.md «Словарь»)
+    ag.member = m.id; ag.place = m.role; ag.fightPref = m.fight || null; w.campaign.people.set(m.id, ag); ag.name = m.name; ag.gender = m.gender; ag.people = m.people;   // (ag.place: its place in the company, docs/BEHAVIOUR.md «Словарь»)
     ag.special = {...m.special}; if (m.align) ag.align = {...m.align}; if (m.values) ag.values = [...m.values];
     const L = m.local;
     if (L) Object.assign(ag, {likes: L.likes, dislikes: L.dislikes, prefs: {...L.prefs}, traits: [...L.traits], food: {...L.food}, own: {...L.own}, skill: {...L.skill}});
@@ -146,7 +147,10 @@ export function openCamp(S) {
   // the beasts by the camp
   S.beasts.forEach((b, k) => {
     const [x, y] = ring(k + 0.5, Math.max(3, S.beasts.length), 4);
-    const sp = BEASTS[b.kind].species || b.kind, ag = createAgent(w, sp, 'herd', x, y);
+    const sp = BEASTS[b.kind].species || b.kind;
+    // a golem stands guard over the camp (agents/golem.js), it is no tame beast
+    if (BEASTS[b.kind].golem) { const ag = makeGolem(w, SPECIES.get(sp).metal, x, y, {x: w.camp?.x ?? x, y: w.camp?.y ?? y}); ag.beast = b.id; w.campaign.herd.set(b.id, ag); ag.hp = maxHp(ag) * Math.max(0.1, Math.min(1, b.hp)); return; }
+    const ag = createAgent(w, sp, 'herd', x, y);
     makeTame(w, ag, null, true);
     ag.age = SPECIES.get(sp).tame?.grownDays || 0; ag.wool = 0; ag.beast = b.id; w.campaign.herd.set(b.id, ag);
     ag.hp = maxHp(ag) * Math.max(0.1, Math.min(1, b.hp));
@@ -343,7 +347,7 @@ export function campOutcome(w) {
     const ag = C.herd.get(b.id);
     if (!ag) return {id: b.id, alive: false, stolen: false};
     if (ag.stolen) return {id: b.id, alive: false, stolen: true};
-    if (ag.dead || !ag.tame || ag.gone || ag.hp / maxHp(ag) <= CAMP.beastGone) return {id: b.id, alive: false, stolen: false, bolted: !ag.dead};
+    if (ag.dead || (!ag.tame && !SPECIES.get(ag.species).mechanism) || ag.gone || ag.hp / maxHp(ag) <= CAMP.beastGone) return {id: b.id, alive: false, stolen: false, bolted: !ag.dead};
     return {id: b.id, alive: true, hp: Math.min(1, ag.hp / maxHp(ag))};
   });
   // the stores: food back as rations, goods as they are (with what the dead foes and the hunt gave)

@@ -6,6 +6,7 @@
 //
 //   cellPlan(a, i) → {seed, ref, region, extra} — plain data, independent of the local map's size,
 //   kept in the game's settings as `cfg.cell` and turned into a site by makeSite.
+import {realmBand} from '../atlas/towns.js';
 import {cellBiomes, biomeAt} from '../atlas/biomes.js';
 import {cellGeology} from '../atlas/geology.js';
 import {faunaAt, faunaCell} from '../atlas/fauna.js';
@@ -26,7 +27,7 @@ import {REGIONS, LEVELS} from '../data/regions.js';
 import {SPECIES} from '../data/species.js';
 import {BIOMES} from '../data/biomes.js';
 import {faunaLevel} from '../world/region.js';
-import {SEAM, LAIR_BANDS, REALM_BANDS, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEPS} from '../data/seam.js';
+import {SEAM, LAIR_BANDS, REALM_BANDS, WAR_ONLY_BANDS, OUTLAWS, FOLK_RAIDS, FLORA, FLORA_STEPS} from '../data/seam.js';
 // the raid band of a tribe's folk (by the lair kinds of its species)
 const FOLK_BAND = Object.fromEntries(LAIRS.filter(L => L.tribe && LAIR_BANDS[L.id]).map(L => [L.species, LAIR_BANDS[L.id]]));
 
@@ -144,8 +145,8 @@ export function cellNeighbours(a, i, race = 'human') {
     sources.push({band, d, wt: Math.max(0.2, l.strength), label: `${LAIRS.get(l.kind).label} «${l.name}»`});
   }
   for (const {t, d} of towns) {
-    const band = REALM_BANDS[t.people];
-    if (band && (own && t.realm ? (t.realm !== own && (atWar(a, own, t.realm) || !trades(a, own, t.realm))) : t.people === 'orcs'))
+    const band = realmBand(a, t.realm, t.people);
+    if (band && (own && t.realm ? (t.realm !== own && (atWar(a, own, t.realm) || !trades(a, own, t.realm) && !WAR_ONLY_BANDS.includes(t.people))) : t.people === 'orcs'))
       sources.push({band, d, wt: Math.sqrt(t.pop) / 10, label: `${tLabel(t)} (${realmName(a, t.realm)})`});
   }
   // the tribes' folk about (atlas/lairs.js lairFolk), a lair of theirs near or not: where they are thickest for the way

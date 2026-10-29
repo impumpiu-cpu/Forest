@@ -15,6 +15,7 @@ const role = (id, behaviours, more = {}) => { const b = {id, behaviours, ...more
 BRAINS.registerAll([tabledBrain,
   role('livestock', WAYS.livestock, {heart: BEAT.livestock}), role('leaver', WAYS.leaver), role('led', WAYS.led),
   role('raider', WAYS.raider, {body: raidBody}), role('fugitive', WAYS.fugitive, {body: roadBody}),
+  role('summoned', WAYS.summoned), role('golem', WAYS.golem),
   role('trader', WAYS.trader, {body: roadBody}), role('guard', WAYS.guard, {body: roadBody}),
   role('colonist', WAYS.colonist, colonistRole), role('captive', WAYS.captive, colonistRole), role('former', WAYS.former, colonistRole)]);
 // the roles that run their tasks through TASKS (world/save.js: an unknown task id would stop the game)

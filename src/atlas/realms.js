@@ -19,7 +19,6 @@ import {scaleOf} from './tectonics.js';
 import {DIRS8, Heap} from './heap.js';
 import {ALIGN_DRIFT, alignNear, shiftAlign, spreadOf} from '../data/values.js';
 import {mulberry, seedNumber} from '../core/rng.js';
-import {TECH_RULES} from '../data/tech.js';
 import {schismFactor} from './kingdom.js';
 
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -80,8 +79,7 @@ export function foundRealm(a, t, subId = null, from = null) {
   const id = `r${a.realms.length + 1}`;
   const align = alignNear(from?.align || SPECIES.get(P.race).align, spreadOf(SPECIES.get(P.race), 'realm'), mulberry(seedNumber(`${a.cfg.seed}:align:${id}`)));
   const r = {id, people: t.people, sub: sub?.id || null, name, capital: t.id, founded: a.hist.year, color, align, root: {...align}, seatSince: a.hist.year,
-    // what it knows (data/tech.js, atlas/tech.js): a realm of a schism keeps what the old one knew
-    tech: from?.tech && TECH_RULES.inherit ? [...from.tech] : [], from: from ? from.id : null};   // (from: the realm it broke away from, for the card)
+    from: from ? from.id : null};   // (from: the realm it broke away from, for the card)
   a.realms.push(r);
   t.realm = r.id; t.capital = true;
   return r;

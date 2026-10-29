@@ -3,8 +3,9 @@
 // sent it — and what came out of it is taken back as it came out: the dead, the wounds, what was eaten,
 // stolen, broken, taken from the fallen foes. A campaign in the quick mode (K.mode 'auto': the balance
 // runs) settles it at once instead: the foe's might against the caravan's.
+import {isFighter, inLine, toolOf} from '../data/campaign.js';
 import {CAMPAIGN, FOES} from '../data/campaign.js';
-import {gearDef, gearType, gearValue} from '../agents/equipment.js';
+import {gearDef, gearType, gearValue, mayTake} from '../agents/equipment.js';
 import {CAMP} from '../data/camp.js';
 import {AMBUSH} from '../data/bubble.js';
 import {BEASTS, VEHICLES, GETTING} from '../data/transport.js';
@@ -20,7 +21,7 @@ import {plural} from '../core/util.js';
 import {assign, toolTier, campOf, hasBuilding} from './baggage.js';
 import {makeMember} from './start.js';
 import {campSetup, runCamp, campOutcome, outcomeHash, foeWeight} from './camp.js';
-import {say, die, alive, caravanMight, gainBeast, shake} from './march.js';
+import {say, die, alive, caravanMight, gainBeast, shake, stopFood} from './march.js';
 import {afterFight} from './quest.js';
 import {topUp, quaffMember, effectsIn, woundsIn} from './potions.js';
 import {free, takeAuto, takeFromCamp, captivesInFight, escaped, formersFought} from './captives.js';
@@ -82,18 +83,20 @@ function localFight(a, K, d, how) {
   return o.won;
 }
 
-// ── a day of a stop on the local map: the hunt, the gathering, the fishing; what the land gave is the day's food
+// ── a day of a stop on the local map: the hunt and the gathering (no fishing: the caravan carries no rod); what the land
+// gave is the day's food
 export function playStop(a, K) {
   const S = campSetup(a, K, {kind: 'stop', dayIn: K.dayIn});
   const o = play(K, S, 'stop', 'стоянка');
   const food0 = K.food;
   applyCamp(a, K, S, o, null, 'stop'); topUp(K); if (o.potions) K.stats.potions = (K.stats.potions || 0) + o.potions;
+  if (K.food > food0) K.food = food0 + (K.food - food0) * stopFood(a, K);   // the cauldron and the people's way of the land (data/transport.js)
   const kept = new Set(CAMP.carry), dug = Object.entries(o.got).filter(([id]) => kept.has(id) && id !== 'hide' && id !== 'leather' && id !== 'rope');
   const got = Object.entries(o.got).filter(([id]) => FOODS.has(id) || id === 'hide').map(([id, n]) => `${RESOURCES.get(id).label} ${n}`);
   K.stats.stopDays = (K.stats.stopDays || 0) + 1;
   for (const [id, n] of dug) K.stats.dug = (K.stats.dug || 0) + n;
   const digging = dug.length ? `; добыли ${names(dug.map(([id, n]) => `${RESOURCES.get(id).label} ${n}`))}` : '';
-  say(a, K, `День стоянки: ${K.why?.startsWith('mine:') ? 'копали и мыли' : 'охотились, собирали и рыбачили'} — ${got.length ? `принесли ${names(got)} (+${pieces(Math.max(0, Math.round(K.food - food0)), 'паёк', 'пайка', 'пайков')})` : 'еды земля почти не дала'}${digging}.`, 'stop');
+  say(a, K, `День стоянки: ${K.why?.startsWith('mine:') ? 'копали и мыли' : 'охотились и собирали'} — ${got.length ? `принесли ${names(got)} (+${pieces(Math.max(0, Math.round(K.food - food0)), 'паёк', 'пайка', 'пайков')})` : 'еды земля почти не дала'}${digging}.`, 'stop');
   return o.got;
 }
 
@@ -182,15 +185,16 @@ function stopDeath(m, why) {
 
 // gear from the fallen foes: armour and arms to whoever gains most by them, the rest sold in a town
 export function takeGear(K, items) {
-  const ms = free(K).filter(m => !m.former), took = [];   // no arms or armour for a captive or a former slave
+  const all = free(K).filter(m => !m.former), took = [];   // no arms or armour for a captive or a former slave
   const armor = id => gearDef(id)?.armor ?? 0, dmg = m => Math.max(0, ...m.gear.hand.map(id => gearDef(id)?.melee?.dmg ?? 0));
   for (const id of items) {
     const it = gearDef(id); if (!it) continue;
+    const ms = all.filter(m => mayTake(m.race, id));   // not to one whose race will not touch it: the elves and iron
     if (it.slot === 'body') {
       const m = ms.slice().sort((p, q) => armor(p.gear.body) - armor(q.gear.body))[0];
       if (m && armor(m.gear.body) < (it.armor ?? 0)) { K.spoils = [...(K.spoils || []), m.gear.body]; m.gear.body = id; took.push(`${it.short} (${m.name})`); continue; }
     } else if (it.melee && !it.tool && it.hands === 1 && !it.ranged) {
-      const m = ms.filter(x => x.role === 'knight' || x.role === 'sellsword').sort((p, q) => dmg(p) - dmg(q))[0];
+      const m = ms.filter(x => isFighter(x) || x.role === 'sellsword').sort((p, q) => dmg(p) - dmg(q))[0];
       const k = m ? m.gear.hand.findIndex(x => gearDef(x)?.melee && !gearDef(x)?.ranged && gearType(x) !== 'shield') : -1;
       if (m && k >= 0 && dmg(m) < it.melee.dmg) { K.spoils = [...(K.spoils || []), m.gear.hand[k]]; m.gear.hand[k] = id; took.push(`${it.short} (${m.name})`); continue; }
     }
@@ -242,9 +246,11 @@ function spoilsRest(a, K, d, r) {
   for (const [kind, p] of Object.entries(GETTING.spoil[d.kind] || {})) if (r() < p) { gainBeast(a, K, kind, 'У врагов отбили'); break; }
   const T = GETTING.spoilTool;
   if (T[d.kind] && toolTier(K) < 2 && r() < T[d.kind]) {
-    const m = free(K).find(x => x.role === 'squire') || free(K)[0], old = m.gear.hand[0];
-    m.gear.hand[0] = T.item;
-    say(a, K, `Среди брошенного врагами нашёлся ${gearDef(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${!!gearDef(old) ? gearDef(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
+    const may = free(K).filter(x => mayTake(x.race, T.item)), m = may.find(x => toolOf(x, gearDef)) || may[0], old = m ? toolOf(m, gearDef) : null;
+    if (m) {
+      { const k = m.gear.hand.indexOf(old); if (k >= 0) m.gear.hand[k] = T.item; else m.gear.hand.push(T.item); }
+      say(a, K, `Среди брошенного врагами нашёлся ${gearDef(T.item).label.toLowerCase()}: ${m.name} сменил${m.gender === 'f' ? 'а' : ''} на него ${!!gearDef(old) ? gearDef(old).short : 'свой инструмент'}. С железом можно сколотить повозку.`, 'build');
+    }
   }
 }
 
@@ -254,11 +260,11 @@ function autoFight(a, K, d, r, how) {
   const F = CAMPAIGN.fight, foe = FOES[d.kind], might = caravanMight(K), weight = foeWeight(r, d, how), E = might * weight, P = might * (how === 'ambush' ? (K.alert === K.day ? 1 : AMBUSH.surprise) * paceOf(K).wary : 1);   // (an invigorating brew of the day: not caught napping)
   const share = P / (P + E), win = r() < share;
   K.lastAuto = {E: Math.round(E * 100) / 100, P: Math.round(P * 100) / 100, heads: Math.max(1, Math.ceil(E * CAMP.quickHeads)), weight: Math.round(weight * 100) / 100};   // for the fight's record
-  // the blows: more when they lose, mostly on the knights, who shield the squires
+  // the blows: more when they lose, mostly on the first rank, who shield the rest
   let hurt = E * (F.hurt[0] + (F.hurt[1] - F.hurt[0]) * (1 - share)) * (win ? 1 : F.lostHurt);
   const hit = [];
   while (hurt > 0 && alive(K).length) {
-    const ms = alive(K), wts = ms.map(m => (m.role === 'knight' ? F.shield : m.captive ? F.captive : 1));   // a captive keeps out of it
+    const ms = alive(K), wts = ms.map(m => (inLine(m) ? F.shield : m.captive ? F.captive : 1));   // a captive keeps out of it
     let x = r() * wts.reduce((s, v) => s + v, 0), m = ms[0];
     for (let q = 0; q < ms.length; q++) { x -= wts[q]; if (x <= 0) { m = ms[q]; break; } }
     const b = between(r, F.blow); m.hp -= b; hurt -= b * 2;

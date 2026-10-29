@@ -5,14 +5,15 @@
 //
 // realm.kingdom = {stats: {culture, economy, loyalty, stability}, ruin: {corruption, crime, decay, strife}, upkeep,
 //                  edicts: {taxes: level, …}, court: {ruler: {name, since, until} | null, …}, event: id | null}
-// What it does back to the world: data/kingdom.js FEEDBACK (0 — nothing; schismFactor for atlas/realms.js).
+// What it does back to the world: data/kingdom.js FEEDBACK — schismFactor (atlas/realms.js), t.realmFx (growth, might).
 import {REALM_STATS, RUINS, RUIN_RULES, UPKEEP, EDICTS, OFFICES, COURT, REALM_EVENTS, EVENTS_RULE, FEEDBACK} from '../data/kingdom.js';
-import {TOWN_BUILDINGS} from '../data/townBuildings.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 import {makeName} from '../data/names.js';
 import {mulberry, seedNumber} from '../core/rng.js';
 import {pickOne} from '../data/chance.js';
-import {townFx} from './towns.js';
+import {townFx, roughShare} from './towns.js';
+import {taxYear, realmSpend} from './treasury.js';
+import {TOWN_BUILDINGS, TOWN_MONEY} from '../data/townBuildings.js';
 import {realmTowns, realmLabelGen, realmLabel} from './realms.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 
@@ -37,6 +38,9 @@ const addTo = (to, adds, k = 1) => { for (const [s, v] of Object.entries(adds ||
 export function baseStats(a, realm, towns) {
   const fx = {};
   for (const t of towns) for (const [k, v] of Object.entries(townFx(t))) fx[k] = (fx[k] || 0) + v / towns.length;
+  // money: how well its towns' treasuries hold (their gold against the keep of their people, at most 1) — data/kingdom.js `from.money`
+  fx.needs = towns.reduce((s, t) => s + (t.needs?.basic ?? 1), 0) / towns.length;   // how well its people live (atlas/treasury.js)
+  fx.money = towns.reduce((s, t) => s + Math.min(1, Math.max(0, t.gold || 0) / Math.max(1, TOWN_MONEY.tax.keep * t.pop)), 0) / towns.length;
   const align = realmAlign(a, realm.id) || {};
   const out = {};
   for (const S of REALM_STATS.all()) {
@@ -48,7 +52,8 @@ export function baseStats(a, realm, towns) {
   return out;
 }
 // the upkeep of a realm's buildings: the average over its towns
-export const upkeepOf = towns => towns.reduce((s, t) => s + t.built.reduce((u, id) => u + (UPKEEP[TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id).cat : ''] || 0), 0), 0) / Math.max(1, towns.length);
+// (by kind, as the effects: twelve fields are one farmland to keep — atlas/towns.js townFx)
+export const upkeepOf = towns => towns.reduce((s, t) => s + [...new Set(t.built)].reduce((u, id) => u + (UPKEEP[TOWN_BUILDINGS.has(id) ? TOWN_BUILDINGS.get(id).cat : ''] || 0), 0), 0) / Math.max(1, towns.length);
 
 export function stepKingdom(a, say) {
   if (!a.realms?.length || a.hist.season !== SEASONS_PER_YEAR - 1) return;
@@ -97,10 +102,13 @@ export function stepKingdom(a, say) {
         tell(E.text.replace('{Realm}', Name).replace('{realm}', name));
       }
     }
+    // the tax of the year, by last year's edict (atlas/treasury.js): the realm's treasury
+    taxYear(realm, towns, K.edicts.taxes || 'usual');
+    realmSpend(realm, towns, war);   // garrisons and grants to build (atlas/treasury.js)
     // ruin grows by its sources and falls by the attribute that holds it back
     const upkeep = upkeepOf(towns), pop = towns.reduce((s, t) => s + t.pop, 0) / 1000;
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
-    const src = {towns: towns.length, pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
+    const src = {unpaid: towns.reduce((s, t) => s + (t.unpaid || 0), 0), broke: (realm.gold || 0) < TOWN_MONEY.dust ? 1 : 0, towns: towns.length, rough: towns.reduce((s, t) => s + roughShare(t), 0), folk: towns.reduce((s, t) => s + Object.values(t.folk || {}).reduce((x, v) => x + v, 0), 0), pop, upkeep: Math.max(0, upkeep - stats.economy), wars, raided};
     for (const R of RUINS.all()) {
       let v = K.ruin[R.id] || 0;
       for (const [k, w] of Object.entries(R.grows)) v += (src[k] || 0) * w;
@@ -109,11 +117,14 @@ export function stepKingdom(a, say) {
     }
     K.upkeep = r3(upkeep);
     K.stats = Object.fromEntries(Object.entries(stats).map(([k, v]) => [k, r3(v)]));
+    // back to the world for a year: its towns' growth by the economy, their might by the stability (saved on each town)
+    const [lo, hi] = FEEDBACK.range, k = v => r3(Math.max(lo, Math.min(hi, v)));
+    for (const t of towns) t.realmFx = {grow: k(1 + FEEDBACK.growthByEconomy * K.stats.economy), might: k(1 + FEEDBACK.mightByStability * K.stats.stability)};
   }
   a.kingdomRnd = r.state;
 }
 
-// × a contender's chance to break away from this realm (atlas/realms.js): 1 while FEEDBACK is at 0
+// × a contender's chance to break away from this realm (atlas/realms.js): by its strife and loyalty (FEEDBACK)
 export function schismFactor(realm) {
   const K = realm?.kingdom;
   if (!K) return 1;

@@ -247,7 +247,7 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
   const drake = pickBelt(all, any, threatOf({drake: 1}), 'human');
   expect(drake.includes('firewardBrew'), `против огнедышащего пояс: ${drake}`);
   const human = pickBelt(all, any, threatOf({}), 'human'), dwarf = pickBelt(r => (r === 'catEye' || r === 'lightStep' ? 3 : 0), any, threatOf({}), 'dwarf');
-  expect(!dwarf.includes('catEye') && human.length === POTION.belt, `гному кошачий глаз: ${dwarf}; человеку: ${human}`);
+  expect(!dwarf.includes('catEye') && human.length === POTION.belt, `дварфу кошачий глаз: ${dwarf}; человеку: ${human}`);
   const a = {belt: ['bearBrew', 'lightStep']}, S = {silverOil: 1};
   rebelt(a, 'human', r => S[r] || 0, r => { S[r]--; }, r => { S[r] = (S[r] || 0) + 1; }, any, threatOf({vampire: 2}));
   expect(a.belt.includes('silverOil') && a.belt.includes('bearBrew') && S.lightStep === 1, `пояс не сменился под вампиров: ${a.belt}`);
@@ -255,7 +255,7 @@ expect(RECIPES.all().filter(r => r.at === 'healerhut').every(r => r.tier <= POTI
   const w = scene(), h = put(w, 'human', 'colony'), d = put(w, 'dwarf', 'colony');
   w.tick = Math.round(DAY * 0.02); const night = darkness(w, h); w.tick = Math.round(DAY / 2); const day = darkness(w, h);
   w.tick = Math.round(DAY * 0.02);
-  expect(night < 1 && day === 1 && darkness(w, d) === 1, `ночь: человек ${night}, днём ${day}, гном ${darkness(w, d)}`);
+  expect(night < 1 && day === 1 && darkness(w, d) === 1, `ночь: человек ${night}, днём ${day}, дварф ${darkness(w, d)}`);
 }
 
 // the caravan's economy: a few of each making kept, the rest is goods; a belt potion nobody would wear takes no room;

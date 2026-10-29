@@ -15,7 +15,7 @@
 export const MARKS = {
   elf:   {id: 'elf', people: 'elves', blow: 'pierce', label: 'эльфийской работы', short: 'эльф.'},
   orc:   {id: 'orc', people: 'orcs', blow: 'slash', label: 'орочьей работы', short: 'орк.'},
-  dwarf: {id: 'dwarf', people: 'dwarves', blow: 'blunt', label: 'гномьей работы', short: 'гном.'},
+  dwarf: {id: 'dwarf', people: 'dwarves', blow: 'blunt', label: 'дварфийской работы', short: 'дварф.'},
 };
 
 export const MARK = {hit: 0.25, guard: 0.25, share: 0.3, price: 1.5, trader: 0.35, forge: {q: 1, cityQ: 2, cityTier: 2}};

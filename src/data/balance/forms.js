@@ -66,6 +66,12 @@ export const FORMS = {
   torch:    {blow: 'blunt', scale: {S: 1}, slot: 'hand', hands: 1, of: ['wood'], ref: 'wood', melee: {dmg: 0.5, cd: 12},
     ranged: {dmg: 0, range: 5, cd: 20, ammo: null, type: 'blunt'}, qualities: {thrown: 1, burn: 0.3}, dur: 20, quality: false,
     parts: {material: 1, fiber: 1}, work: 120, ids: {wood: 'torch'}, names: {wood: ['Факел', 'факел']}, name: m => ['Факел', 'факел'], glyph: 'club'},
+  // the forge-master's fire (data/roles.js forgemaster, the dwarves): a mouthful of lamp oil blown across a coal held in
+  // tongs — no magic, a smith's trick. Thrown at a javelin's reach, it sets the struck one and the ground under it alight
+  // (quality `burn`); three breaths, then a long wait. No town sells it and no outpost makes it
+  spitfire: {slot: 'hand', hands: 1, of: ['wood'], ref: 'wood', ranged: {dmg: 1.2, range: 5, cd: 70, ammo: null, type: 'blunt'},
+    qualities: {thrown: 3, burn: 1}, dur: 40, quality: false, tradeOnly: true, sold: false,
+    parts: {material: 1, coal: 2}, work: 300, ids: {wood: 'spitfire'}, names: {wood: ['Горновой огонь', 'огонь горна']}, name: () => ['Горновой огонь', 'огонь горна'], glyph: 'club'},
   shield:   {vs: {pierce: 1.1, slash: 1.05, blunt: 0.8}, slot: 'hand', hands: 1, of: ['wood', 'metal'], ref: 'wood', block: 0.32, cover: 0.5, dur: 35,
     parts: {material: 3, hide: 2}, work: 700, ids: {wood: 'shield'}, names: {wood: ['Щит из жердей и шкуры', 'щит']}, name: m => [`${cap(m.adj.m)} щит`, `${m.short} щит`], glyph: 'shield'},
   // ── two-handed: each makes up for the shield it leaves no hand for
@@ -78,6 +84,9 @@ export const FORMS = {
   // bows and slings lose a duel to a club on purpose: they shoot from afar while others hold the line
   bow:      {blow: 'blunt', slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', melee: {dmg: 0.6, cd: 14}, ranged: {dmg: 1.7, range: 7, cd: 22, ammo: 'arrows', type: 'pierce'}, dur: 90,
     parts: {material: 3, leather: 1, rope: 1}, work: 800, ids: {wood: 'bow'}, names: {wood: ['Лук', 'лук']}, name: m => [`${cap(m.adj.m)} лук`, `${m.short} лук`], glyph: 'bow'},
+  // a plain bow of a single stave and a string of whatever there was: the elves' first bow, weaker than a made one
+  selfbow:  {blow: 'blunt', slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', melee: {dmg: 0.6, cd: 14}, ranged: {dmg: 1.45, range: 6.5, cd: 22, ammo: 'arrows', type: 'pierce'}, dur: 70,
+    parts: {material: 5}, work: 600, ids: {wood: 'selfbow'}, names: {wood: ['Простой лук', 'простой лук']}, name: m => [`${cap(m.adj.m)} простой лук`, `${m.short} простой лук`], glyph: 'bow'},
   // a bow on a stock: slow to span, but it strikes hard and goes through armour (quality `piercing`); iron in the lock,
   // so a tier above its wood. The elves will not touch it (data/kinds.js RACE_FORMS)
   crossbow: {blow: 'blunt', slot: 'hand', hands: 2, of: ['wood'], ref: 'wood', tier: 1, melee: {dmg: 0.6, cd: 15},
@@ -111,6 +120,10 @@ export const FORMS = {
     parts: {material: 4, leather: 2}, work: 1600, ids: {bone: 'hardleather', iron: 'lamellar'},
     names: {bone: ['Кожа с костяными пластинами', 'укреплённая кожа'], iron: ['Ламеллярный доспех', 'ламеляр']},
     name: m => [`${cap(m.adj.m)} ламеллярный доспех`, `${m.short} ламеляр`], colors: {iron: '#8f989f'}},
+  // bark and withies woven over a leather coat: the elves' armour (of the sacred tree in a master's hands it lasts far longer)
+  wicker:   {vs: {pierce: 0.95, slash: 1, blunt: 1.05}, slot: 'body', of: ['wood'], ref: 'wood', armor: 0.3, warmth: 0.4, speed: 0.97, dur: 90,
+    parts: {material: 4, fiber: 2, leather: 1}, work: 1400, ids: {wood: 'wicker'}, names: {wood: ['Плетёный доспех', 'плетёнка']},
+    name: m => [`${cap(m.adj.m)} плетёный доспех`, `${m.short} плетёнка`], colors: {wood: '#7d8a4a'}},
   // imperial armour: the outpost cannot make it, only buy it from a trader (or find it)
   scale:    {vs: {pierce: 1.1, slash: 1.1, blunt: 0.75}, slot: 'body', of: ['metal'], ref: 'iron', armor: 0.48, warmth: 0.35, speed: 0.94, dur: 190, tradeOnly: true,
     parts: {material: 5, leather: 1}, work: 2000, ids: {iron: 'scalemail'}, names: {iron: ['Чешуйчатый доспех', 'чешуя']},

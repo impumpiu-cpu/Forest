@@ -647,7 +647,7 @@ check('T44', 'плавка серебра из руды ждёт интелле�
     && recipeAccess(dull, RECIPES.get('silverOreBar')).reasons[0].stat === 'I') || 'тиры горна считаются не по интеллекту';
 });
 
-check('T45', 'гном по абсолютной шкале куёт то, что недоступно человеку', () => {
+check('T45', 'дварф по абсолютной шкале куёт то, что недоступно человеку', () => {
   const w = scene();
   const dwarf = put(w, 'dwarf', 'colony', 31.5, 30.5), man = human(w, {S: 7});
   dwarf.special.S = 9; refreshBody(dwarf);
@@ -1967,8 +1967,8 @@ check('T134', 'цена пленного: смирившийся дороже, �
   return p({skill: {smithing: 0.6}}) > p({}) || 'умелый не дороже';
 });
 
-check('T135', 'закон: у эльфов не торгуют, у гномов терпят — продажа портит отношения державы, у людей — свободно', () => {
-  if (lawOf('elves').law !== 'banned' || lawOf('dwarves').law !== 'frowned' || lawOf('humans').law !== 'legal') return 'законы не те';
+check('T135', 'закон: у эльфов и дварфов не торгуют, где терпят — продажа портит отношения державы, у людей — свободно', () => {
+  if (lawOf('elves').law !== 'banned' || lawOf('dwarves').law !== 'banned' || lawOf('humans').law !== 'legal') return 'законы не те';
   const make = () => {
     const m = {id: 1, name: 'Гнырк', gender: 'm', race: 'goblin', role: 'captive', alive: true, hp: 1, special: {S: 5}, gear: {hand: [], body: 'clothes'},
       captive: {since: 0, bonds: 'rope', will: 0.9}};
@@ -1979,9 +1979,14 @@ check('T135', 'закон: у эльфов не торгуют, у гномов 
   };
   const e = make(); tradeCaptives(e.a, e.K, {people: 'elves', realm: 2}, 'friend');
   if (!e.m.alive || e.K.gold) return 'у эльфов продали пленного';
-  const d = make(); tradeCaptives(d.a, d.K, {people: 'dwarves', realm: 2}, 'friend');
-  if (d.m.alive || !(d.K.gold > 0)) return 'у гномов буйного не продали';
-  if (!(d.a.rel['1:2'].att < 1)) return 'продажа у гномов не задела отношения державы';
+  const g = make(); tradeCaptives(g.a, g.K, {people: 'dwarves', realm: 2}, 'friend');
+  if (!g.m.alive || g.K.gold) return 'у дварфов продали пленного';
+  // a law that frowns (no people holds it now: a test people)
+  SLAVE.law.frowners = {law: 'frowned', k: 0.8, att: -0.3};
+  const d = make(); tradeCaptives(d.a, d.K, {people: 'frowners', realm: 2}, 'friend');
+  delete SLAVE.law.frowners;
+  if (d.m.alive || !(d.K.gold > 0)) return 'где терпят, буйного не продали';
+  if (!(d.a.rel['1:2'].att < 1)) return 'продажа, где терпят, не задела отношения державы';
   if (!(d.f.loyalty < 0.7)) return 'бывший раб не огорчён продажей';
   const h = make(); tradeCaptives(h.a, h.K, {people: 'humans', realm: 2}, 'friend');
   return (!h.m.alive && h.a.rel['1:2'].att === 1) || 'у людей продажа задела отношения или не случилась';
@@ -2067,12 +2072,12 @@ const hitWith = (w, a, t, kit) => {
   t.equip && (t.equip.body = kit.body ? newItem(kit.body.type, kit.body) : null); t.equip && recalcGear(t);
   t.hp = 50; damage(w, a, t, 1, {type: a.gear.melee.type, mix: a.gear.melee.mix || null}); return 50 - t.hp;
 };
-check('T141', 'гномий меч рубит и дробит: скелету он страшнее простого меча; эльфийское копьё колет сильнее простого', () => {
+check('T141', 'дварфийский меч рубит и дробит: скелету он страшнее простого меча; эльфийское копьё колет сильнее простого', () => {
   const w = scene(); fixedRng(w, 0.99);
   const a = put(w, 'human', 'colony', 30.5, 30.5), s = put(w, 'skeleton', 'raiders', 31.5, 30.5), h = put(w, 'human', 'raiders', 31.5, 31.5);
   const plain = hitWith(w, a, s, {right: {type: 'sword'}}), dwarf = hitWith(w, a, s, {right: {type: 'sword', mark: 'dwarf'}});
-  if (!(dwarf > plain * 1.2)) return `скелету: простой меч ${plain.toFixed(3)}, гномий ${dwarf.toFixed(3)}`;
-  if (!a.gear.melee.mix || a.gear.melee.mix[0][0] !== 'slash') return 'гномий меч перестал быть рубящим';
+  if (!(dwarf > plain * 1.2)) return `скелету: простой меч ${plain.toFixed(3)}, дварфийский ${dwarf.toFixed(3)}`;
+  if (!a.gear.melee.mix || a.gear.melee.mix[0][0] !== 'slash') return 'дварфийский меч перестал быть рубящим';
   // its own kind: the blow itself is stronger (the damage of a blow is weapon × the rest: combat.js attack)
   a.equip.right = newItem('ironspear'); recalcGear(a); const sp = a.gear.melee.dmg;
   a.equip.right = newItem('ironspear', {mark: 'elf'}); recalcGear(a); const el = a.gear.melee.dmg;
@@ -2092,7 +2097,7 @@ check('T143', 'клеймо входит в цену и в коэффициен�
   const a = put(w, 'human', 'colony', 30.5, 30.5);
   a.equip.right = newItem('sword'); recalcGear(a); const s0 = strengthOf(a);
   a.equip.right = newItem('sword', {mark: 'dwarf'}); recalcGear(a); const s1 = strengthOf(a);
-  if (!(s1 > s0)) return `КС: простой меч ${s0.toFixed(1)}, гномий ${s1.toFixed(1)}`;
+  if (!(s1 > s0)) return `КС: простой меч ${s0.toFixed(1)}, дварфийский ${s1.toFixed(1)}`;
   return itemPrice('sword', 0, false, 'dwarf') > itemPrice('sword') || 'клеймо не дороже простого';
 });
 

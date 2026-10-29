@@ -10,7 +10,7 @@ import {townLabel} from '../atlas/towns.js';
 import {realmLabel, realmLabelGen, realmTowns} from '../atlas/realms.js';
 import {relation} from '../atlas/diplomacy.js';
 import {SPECIES} from '../data/species.js';
-import {RETINUE} from '../data/campaign.js';
+import {RETINUE, inLine} from '../data/campaign.js';
 import {EPILOGUE, FATES, fate} from '../data/epilogue.js';
 import {draw} from './start.js';
 import {say, isCore, rank} from './march.js';
@@ -24,7 +24,7 @@ function words(a, K, m, r) {
   const capital = a.towns.find(t => t.id === K.capital && t.alive) || null, towns = K.realm ? realmTowns(a, K.realm) : [];
   const Q = K.quest, town = towns.length ? towns[(r() * towns.length) | 0] : capital;
   return {g: (male, female) => (m.gender === 'f' ? female : male), town: cases(town), capital: cases(capital), crown: Q?.name || 'корона', crownAcc: Q?.acc || Q?.name || 'корону',
-    knights: RETINUE[K.people].knight[1], where: SIDES[(r() * SIDES.length) | 0], race: SPECIES.get(m.race)?.label || m.race};
+    knights: RETINUE[K.people].title[1], where: SIDES[(r() * SIDES.length) | 0], race: SPECIES.get(m.race)?.label || m.race};
 }
 
 // the crown, when it did not come home
@@ -59,7 +59,7 @@ export function finish(a, K) {
       for (const o of a.realms) { const rel = o.id !== R.id && relation(a, R.id, o.id); if (rel) { rel.att = Math.min(E.attMax, rel.att + E.att); friends++; } }
     }
     lines.push({text: `В ${capital ? `${townLabel(capital, 3)} ${capital.name}` : 'столице'} празднуют возвращение короны. Слава державы ${R ? realmLabelGen(a, R.id) : ''} растёт${friends ? `; ${friends === 1 ? 'соседи ищут' : 'соседние державы ищут'} с ней дружбы` : ''}, в столицу тянутся новые жители.`.replace('державы  растёт', 'державы растёт'), world: true});
-    for (const m of K.members.filter(x => x.alive)) tellFate(m, m.captive ? FATES.captive.won : isCore(m) ? FATES.won[m.role === 'knight' ? 'knight' : 'squire'] : FATES.won.other);
+    for (const m of K.members.filter(x => x.alive)) tellFate(m, m.captive ? FATES.captive.won : isCore(m) ? FATES.won[inLine(m) ? 'knight' : 'squire'] : FATES.won.other);
     const fallen = K.members.filter(m => isCore(m) && m.died);
     if (fallen.length) lines.push({text: `У ворот ${capital ? `${townLabel(capital, 2)} ${capital.name}` : 'столицы'} поставили камень в память о тех, кто не вернулся: ${fallen.map(m => `${m.name}, ${rank(K, m)}`).join('; ')}.`, who: fallen.map(m => m.id)});
   } else {

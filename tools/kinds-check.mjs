@@ -12,7 +12,6 @@ import {RACE_MATERIALS, WOODS} from '../src/data/kinds.js';
 import {ITEMS} from '../src/data/items.js';
 import {saveWorld, loadWorld} from '../src/world/save.js';
 import {offers} from '../src/campaign/town.js';
-import {techOfMaterial} from '../src/data/tech.js';
 
 const fail = [];
 const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'}   ${name}${info ? `: ${info}` : ''}`); if (!ok) fail.push(name); };
@@ -57,13 +56,16 @@ w.kinds.stone = {granite: 30}; w.stock.stone = 30;
 const s0 = takeKind(w, 'stone', 18, 'make');
 const back = loadWorld(JSON.parse(JSON.stringify(saveWorld(w))));
 check('камень постройки и состав склада сохраняются с игрой', s0 === 'granite' && JSON.stringify(back.kinds) === JSON.stringify(w.kinds));
-// the towns: steel only where its realm knows steelmaking; the elves' grove towns sell bows of the sacred tree
-const fakeWorld = {realms: [{id: 'r1', people: 'humans', tech: ['iron', 'bronze', 'casting']}], towns: []};
-const town = {people: 'humans', built: ['foundry', 'forge', 'armory'], tier: 2, realm: 'r1'};
-const noSteel = offers(town, fakeWorld).filter(o => o.kind === 'item' && techOfMaterial(ITEMS.get(o.id.split(/[+@~]/)[0]).material) === 'steelmaking').length;
-fakeWorld.realms[0].tech.push('steelmaking');
-const withSteel = offers(town, fakeWorld).filter(o => o.kind === 'item' && techOfMaterial(ITEMS.get(o.id.split(/[+@~]/)[0]).material) === 'steelmaking').length;
+// the towns: a metal only where its realm works it — a building that opens it stands in one of its towns
+// (data/townBuildings.js `metals`); the elves' grove towns sell bows of the sacred tree
+const isIron = o => o.kind === 'item' && ITEMS.get(o.id.split(/[+@~$]/)[0]).material === 'iron';
+const elfTown = {id: 'e1', people: 'elves', built: ['armory'], tier: 2, realm: 'r1', alive: true};
+const world = {realms: [{id: 'r1', people: 'elves'}], towns: [elfTown]};
+const noIron = offers(elfTown, world).filter(isIron).length;
+const humanTown = {id: 'h1', people: 'humans', built: ['armory'], tier: 2, realm: 'r2', alive: true}, forgeTown = {id: 'h2', people: 'humans', built: ['forge'], tier: 1, realm: 'r2', alive: true};
+const world2 = {realms: [{id: 'r2', people: 'humans'}], towns: [humanTown, forgeTown]};
+const withIron = offers(humanTown, world2).filter(isIron).length;
 const elfBow = offers({people: 'elves', built: ['bowyer', 'sacredgrove'], tier: 1, realm: null}).find(o => o.id.startsWith('bow'));
-check('рынок: сталь — только при знании стали; эльфы у священной рощи продают луки из святого дерева', noSteel === 0 && withSteel > 0 && /holywood!/.test(elfBow?.id || ''), `без ${noSteel}, со сталью ${withSteel}, лук ${elfBow?.id}`);
+check('рынок: железо — только если кузня стоит где-то в державе; эльфы у священной рощи продают луки из святого дерева', noIron === 0 && withIron > 0 && /holywood!/.test(elfBow?.id || ''), `без кузни ${noIron}, с кузней в соседнем городе ${withIron}, лук ${elfBow?.id}`);
 
 if (fail.length) process.exit(1);

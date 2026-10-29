@@ -124,7 +124,7 @@ JOBS.registerAll([
   // made at the craftsman's hut. The fisherman's hut only makes it better, as the lodge does for hunting
   {id: 'fish', skill: 'fishing', label: 'рыбачить', short: 'рыбалка', verb: 'рыбачит', preferable: true,
     runner: 'harvest', nav: 'shore', resource: 'fish', food: 'fish', carry: 3, time: 50, memory: 'walkFish',
-    canDo: (w, a) => !!a.gear?.tool.fish,
+    canDo: (w, a) => !w.campaign && !!a.gear?.tool.fish,   // (a caravan does not fish: data/transport.js CAMP_KIT)
     desire: (w, ctx, job) => (w.lakes.some(fishable) ? foodWant(w, ctx, job, 0.95, 0.08) : -1),
     valid: (w, i) => !!lakeBeside(w, i),
     take: (w, i) => { const l = lakeBeside(w, i); if (l) { l.fish -= 1; if (!fishable(l)) w.nav.dirty('shore'); } }},

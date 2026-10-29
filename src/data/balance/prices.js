@@ -46,6 +46,7 @@ export const RESOURCES = {
   stone:        {price: 0.1, stack: 10},
   bone:         {price: 0.2, stack: 10},
   hide:         {price: 0.5, stack: 10},
+  sinew:        {price: 0.4, stack: 10},
   leather:      {price: 1, stack: 10},
   silk:         {price: 3, stack: 10},
   feathers:     {price: 4, stack: 10},
@@ -197,7 +198,7 @@ export const CAMPAIGN = {
   sellBonus: {tannery: {hide: 1.3}, market: {all: 1.15}},   // a tannery pays more for hides, a market for everything
   // gold a day for work in town; × (1 + perTier × the tool's metal)
   wages: {squire: 0.45, knight: 0.4, other: 0.3, perTier: 0.25},
-  beasts: {horse: 20, mule: 12, camel: 20},
+  beasts: {horse: 20, mule: 12, camel: 20, goat: 5, sheep: 5, bronzegolem: 60, irongolem: 90, steelgolem: 130, mithrilgolem: 200},
   vehicles: {cart: 10, wagon: 25},
   services: {healerhut: 15, forge: 30, crafthut: 12},       // a town's building put to the caravan's use
   hires: {guide: 0.6, sellsword: 0.9},                      // a day

@@ -8,6 +8,7 @@
 //             along the roads with the wheels, or straight on foot, leaving them;
 //   night   — something may find the camp: the fight is played on the local map (campaign/fight.js, camp.js).
 // The campaign ends when the goal is reached and the caravan is home, or when all eight are dead.
+import {toTown} from '../atlas/treasury.js';
 import {scaleOf} from '../atlas/tectonics.js';
 import {gearDef} from '../agents/equipment.js';
 import {townAt} from '../atlas/peoples.js';
@@ -19,9 +20,9 @@ import {faunaLevel} from '../world/region.js';
 import {SEASONS, SEASON_DAYS} from '../data/seasons.js';
 import {BUILDINGS} from '../data/buildings.js';
 import {NORM} from '../data/special.js';
-import {CAMPAIGN, FOES, RETINUE, MINE} from '../data/campaign.js';
+import {CAMPAIGN, FOES, RETINUE, MINE, isFighter, inLine} from '../data/campaign.js';
 import {ORES} from '../data/ores.js';
-import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE} from '../data/transport.js';
+import {BEASTS, VEHICLES, GETTING, FODDER, ROUTE, CAMP_KIT, kitOf} from '../data/transport.js';
 import {SEASONS_PER_YEAR} from '../data/atlas.js';
 import {plural} from '../core/util.js';
 import {richness, seasonFood, dangers, nightRisk, pasture, cellRegion, withCompany} from './land.js';
@@ -42,6 +43,7 @@ import {standing, townName, townLine, trade, labour, healHere, hire, companion, 
 import {HIRES, ROLES, LOYALTY, SMITH, VISIT, EARN, WANTS, MARKET, CONTRACT} from '../data/market.js';
 import {room} from './company.js';
 import {SPECIES} from '../data/species.js';
+import {GOLEM_REPAIR} from '../data/constructs.js';
 import {free, unbind, mouths, captivesEvening, freedomEvening} from './captives.js';
 import {nameCaravanMasters} from './masters.js';
 import {morningFind} from './finds.js';
@@ -62,7 +64,7 @@ export const scratch = a => { let s = SCRATCH.get(a); if (!s) SCRATCH.set(a, s =
 
 export const alive = K => K.members.filter(m => m.alive);
 // the eight who set out from the capital (saves from before the joiners: the knights and squires)
-export const isCore = m => m.core ?? ['knight', 'squire'].includes(m.role);
+export const isCore = m => m.core ?? isFighter(m);
 export const core = K => K.members.filter(m => m.alive && isCore(m));
 const guided = K => alive(K).some(m => m.role === 'guide');
 // the years a campaign has: an epic one its own (data/calamities.js EPIC.years), any other CAMPAIGN.maxYears
@@ -70,7 +72,7 @@ export const yearsOf = K => K.years ?? CAMPAIGN.maxYears;
 export const ended = K => ['won', 'lost', 'timeout'].includes(K.phase);
 // ended, and its epilogue told (campaign/ending.js)
 export const finished = K => ended(K) && (!K.epilogue || K.epilogue.done);
-export const rank = (K, m) => (m.captive ? (m.gender === 'f' ? 'пленная' : 'пленный') : m.former ? (m.gender === 'f' ? 'бывшая рабыня' : 'бывший раб') : RETINUE[K.people][m.role]?.[0] || HIRES[m.role]?.label || ROLES[m.role] || 'спутник');
+export const rank = (K, m) => (m.captive ? (m.gender === 'f' ? 'пленная' : 'пленный') : m.former ? (m.gender === 'f' ? 'бывшая рабыня' : 'бывший раб') : (isFighter(m) ? RETINUE[K.people].title[0] : null) || HIRES[m.role]?.label || ROLES[m.role] || 'спутник');
 export {free};
 
 // a line of the campaign's log; `world` — also into the world's chronicle
@@ -89,6 +91,11 @@ export function reveal(a, K, i, r) {
     if ((x - x0) ** 2 + (y - y0) ** 2 <= r * r) K.seen[y * a.w + x] = 1;
 }
 
+// a stop's food: × the people's dish in the cauldron (data/transport.js CAMP_KIT.dish), × the people's way with wooded land
+// (PEOPLE_KIT forage.wood: the elves)
+export const stopFood = (a, K) => campFx(K, 'food') * ((biomeAt(a, K.i)?.trees ?? 0) >= WOODED ? kitOf(K).forage?.wood ?? 1 : 1);
+const WOODED = 0.3;   // (the same share of trees the council builds and gathers bark at: campWork)
+
 // ── the members
 const itemDef = id => gearDef(id);
 export function memberMight(m) {
@@ -96,9 +103,12 @@ export function memberMight(m) {
   const M = CAMPAIGN.might, s = m.special || {};
   const dmg = Math.max(0, ...m.gear.hand.map(id => itemDef(id)?.melee?.dmg ?? 0), itemDef(m.gear.hand.find(id => itemDef(id)?.ranged))?.ranged?.dmg ?? 0);
   const armor = itemDef(m.gear.body)?.armor ?? 0;
-  return M[m.role] * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * (0.3 + 0.7 * m.hp);
+  return (M[m.role] ?? M.fighter) * (1 + M.perDmg * Math.max(0, dmg - 1)) * (1 + M.perArmor * armor) * (1 + M.perStr * ((s.S ?? NORM) - NORM)) * hurtMight(m.hp);
 }
-export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0);
+// the share of its might a fighter keeps with this much health
+const hurtMight = hp => 0.3 + 0.7 * hp;
+export const caravanMight = K => alive(K).reduce((s, m) => s + memberMight(m), 0)
+  + K.beasts.reduce((s, b) => s + (BEASTS[b.kind]?.golem && b.hp > 0 ? (CAMPAIGN.might.golem[SPECIES.get(b.kind).metal] || 0) * hurtMight(b.hp) : 0), 0);   // its golems stand in a fight too
 
 export const frosty = (a, K, seasonId) => seasonId === 'winter' && a.f.temp[K.i] - a.f.trange[K.i] / 2 < 0;
 // cells a day: as the slowest who walks (campaign/baggage.js), slower hungry and in frost
@@ -178,11 +188,12 @@ function campWork(a, K, r) {
   const brewed = brewDay(K, r, wooded);
   if (brewed) { K.stats.brewed = (K.stats.brewed || 0) + brewed; if (!K.brewTold || K.day - K.brewTold > 60) { K.brewTold = K.day; say(a, K, `В хижине лекаря сварили зелье лечения${brewed > 1 ? ` (${brewed})` : ''}: зелий в поясах ${alive(K).reduce((s, m) => s + (m.potions || 0), 0)}.`, 'build'); } }
   for (const kind of Object.keys(BEASTS)) {
-    const lvl = faunaLevel({region: reg}, kind);
-    if (lvl > 0 && lacking(K, kind) && r() < GETTING.tame * Math.min(1.6, lvl) * handler(K)) gainBeast(a, K, kind, 'Приручили');
+    if (BEASTS[kind].golem) continue;   // a golem is bought, never tamed
+    const lvl = faunaLevel({region: reg}, kind), hitch = BEASTS[kind].use === 'ride' ? kitOf(K).tame ?? 1 : 1;   // (the humans' hitching post)
+    if (lvl > 0 && lacking(K, kind) && r() < GETTING.tame * Math.min(1.6, lvl) * handler(K) * hitch) gainBeast(a, K, kind, 'Приручили');
   }
   if ((wooded || (b?.trees ?? 0) >= 0.1) && r() < 0.5) {
-    const m = alive(K).filter(x => (x.back ?? 1) === 1).sort((p, q) => (p.role === 'squire') - (q.role === 'squire')).pop();
+    const m = alive(K).filter(x => (x.back ?? 1) === 1).sort((p, q) => !inLine(p) - !inLine(q)).pop();
     if (m) {
       m.back = 1 + GETTING.basket.cells;
       const done = alive(K).every(x => (x.back ?? 1) > 1), first = alive(K).filter(x => (x.back ?? 1) > 1).length === 1;
@@ -203,7 +214,7 @@ function campWork(a, K, r) {
     if (K.build.days <= 0) {
       const B = K.build; K.build = null; K.stats.built++;
       if (B.kind === 'building') {
-        if (!hasBuilding(K, B.id)) { campOf(K).push(B.id); { const d = BUILDINGS.get(B.id), it = d.gender === 'f' ? 'она' : d.gender === 'n' ? 'оно' : 'он'; say(a, K, `Срубили «${d.name}»: теперь ${it} с караваном и встаёт на каждой стоянке.`, 'build'); } }
+        if (fieldBuildings(K).some(x => x.id === B.id)) { campOf(K).push(B.id); { const d = BUILDINGS.get(B.id), it = d.gender === 'f' ? 'она' : d.gender === 'n' ? 'оно' : 'он'; say(a, K, `Срубили «${d.name}»: теперь ${it} с караваном и встаёт на каждой стоянке.`, 'build'); } }
       } else {
         K.vehicles.push({kind: B.kind, pulled: false});
         say(a, K, `Сколотили ${VEHICLES[B.kind].label === 'тележка' ? 'тележку' : 'повозку'}: ${VEHICLES[B.kind].boxes} ящика груза. Теперь в обозе: ${baggageText(K)}.`, 'build');
@@ -218,6 +229,7 @@ function campWork(a, K, r) {
 function lacking(K, kind) {
   const have = K.beasts.filter(b => b.kind === kind && b.hp > 0).length, B = BEASTS[kind];
   if (B.use === 'ride') return K.beasts.filter(b => BEASTS[b.kind].use === 'ride' && b.hp > 0).length < free(K).length;   // captives walk
+  if (B.use === 'food') return K.beasts.filter(b => BEASTS[b.kind].use === 'food' && b.hp > 0).length < Math.round(CAMP_KIT.herd.max * (kitOf(K).herd ?? 1));   // the herd (the elves keep none)
   const wagon = K.vehicles.some(v => v.kind === 'wagon') ? 1 : 0;
   return have < 2 + wagon;
 }
@@ -248,7 +260,7 @@ function autoMine(a, K, r) {
   const ore = K.why.slice(5), reg = cellRegion(a, K.i), lvl = ore === 'placer' ? reg.placer : reg.ores?.[ore] ?? 0, res = mineRes(ore);
   const diggers = ore === 'placer' ? (free(K).some(m => m.gear.hand.includes('pan')) ? 1 : 0) : free(K).filter(m => (m.special?.S ?? NORM) >= MINE.strength && m.hp >= 0.5).length;
   const room = Math.floor(digRoom(K) / (RESOURCES.get(res).bulk || 1));
-  const n = Math.min(room, Math.round(MINE.auto[ore] * lvl * diggers * (0.6 + 0.8 * r())));
+  const n = Math.min(room, Math.round(MINE.auto[ore] * lvl * diggers * (0.6 + 0.8 * r()) * (kitOf(K).mine ?? 1)));   // (the dwarves dig more: data/transport.js PEOPLE_KIT)
   if (n > 0) K.cargo[res] = (K.cargo[res] || 0) + n;
   return n;
 }
@@ -290,7 +302,7 @@ function wantBuild(a, K) {
   const draft = K.beasts.some(b => BEASTS[b.kind].pulls >= 1) || K.beasts.filter(b => BEASTS[b.kind].pulls > 0).length >= 2;
   if (!has('wagon') && tier >= VEHICLES.wagon.tool && draft && fit()) return {kind: 'wagon', days: days(VEHICLES.wagon.days)};
   if (!has('wagon') && !has('cart') && tier >= VEHICLES.cart.tool && fit()) return {kind: 'cart', days: days(VEHICLES.cart.days)};
-  const b = fieldBuildings().find(x => !hasBuilding(K, x.id));
+  const b = fieldBuildings(K)[0];
   return b ? {kind: 'building', id: b.id, days: days(buildDays(b))} : null;
 }
 
@@ -503,7 +515,7 @@ function evening(a, K) {
     if (!why && !K.hungry && calm && K.food >= need * C.foodDays && K.day >= (K.nextThink ?? 0)) {
       K.nextThink = K.day + C.think;
       const B = wantBuild(a, K), reg = cellRegion(a, K.i);
-      const tame = K.day - (K.tamedAt ?? -999) >= GETTING.tameEvery && Object.keys(BEASTS).find(kind => lacking(K, kind) && faunaLevel({region: reg}, kind) >= GETTING.tameLand);
+      const tame = K.day - (K.tamedAt ?? -999) >= GETTING.tameEvery && Object.keys(BEASTS).find(kind => !BEASTS[kind].golem && lacking(K, kind) && faunaLevel({region: reg}, kind) >= GETTING.tameLand);
       if (B) { K.build = B; why = 'build'; }
       else if (tame) { why = 'tame:' + tame; K.tamedAt = K.day; }
     }
@@ -631,10 +643,10 @@ export function caravanDay(a, K, day) {
   const town = K.inTown ? a.towns.find(x => x.id === K.inTown.id) : null;
   const camping = !town && (K.camp > 0 || !K.path || K.k >= K.path.length);
   if (town) {   // a day in town: work for hire, buy the day's food at the market (hired out for board: the town feeds them)
-    labour(K);
+    labour(K, town);
     if (K.inTown.work) K.food += mouths(K) * CAMPAIGN.ration;
     const st = standing(a, K, town), price = st ? rationPrice(town, st, termsOf(a, K, town).buy) : Infinity, want = Math.max(0, ms.length * CAMPAIGN.ration * 2 - K.food);
-    const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - n * price) * 10) / 10; }
+    const n = Math.min(want, Math.floor(K.gold / price)); if (n > 0) { K.food += n; K.gold = Math.round((K.gold - toTown(town, n * price)) * 10) / 10; }
   } else if (!camping) {
     const p = choosePace(a, K); if ((K.pace || 'normal') !== p) K.pace = p;
     // the brews of the day (campaign/potions.js): in frost everyone drinks a warming one — then the frost does not slow
@@ -652,8 +664,13 @@ export function caravanDay(a, K, day) {
   if (onMap) { K.stopPlayed = (K.stopPlayed ?? 0) + 1; const got = playStop(a, K); if (K.why.startsWith('mine:')) { K.mineDay = got[mineRes(K.why.slice(5))] || 0; K.mineGot = (K.mineGot || 0) + K.mineDay; } }
   else if (camping && K.why.startsWith('mine:')) { K.mineDay = autoMine(a, K, r); K.mineGot = (K.mineGot || 0) + K.mineDay; }
   if (!town && core(K).length) { const rb = draw(K, 'bubble'); dayMeetings(a, K, rb.r, !camping); rb.done(); }
-  const forage = ms.length * (camping ? Fo.camp * campFx(K, 'forage') : Fo.march * paceOf(K).forage) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
+  const forage = ms.length * (camping ? Fo.camp * stopFood(a, K) : Fo.march * paceOf(K).forage) * rich * (1 - Fo.spread / 2 + Fo.spread * r());
   if (!town && !onMap) K.food += forage;
+  // the herd in hunger: one is slaughtered for its meat (data/transport.js CAMP_KIT.herd)
+  if (K.food < mouths(K) * CAMPAIGN.ration) {
+    const b = K.beasts.find(x => BEASTS[x.kind].use === 'food' && x.hp > 0);
+    if (b) { K.beasts = K.beasts.filter(x => x !== b); K.food += CAMP_KIT.herd.meat * campFx(K, 'food'); say(a, K, `Еды не осталось: зарезали ${BEASTS[b.kind].acc} — мяса на несколько дней.`, 'hunger'); }
+  }
   // the meal
   const need = mouths(K) * CAMPAIGN.ration, eat = Math.min(K.food, need), fed = eat / need;   // a captive on a cut ration eats less (campaign/captives.js)
   K.food = Math.max(0, K.food - eat);
@@ -673,7 +690,10 @@ export function caravanDay(a, K, day) {
   // the beasts graze where grass grows and starve where it does not
   const grass = pasture(a, K.i, seasonId);
   for (const b of [...K.beasts]) {
-    b.hp = grass ? Math.min(1, b.hp + FODDER.regain) : b.hp - FODDER.starve * (0.5 + r());
+    // a golem eats nothing and mends only at a forge: a town's, or the camp's own (data/constructs.js GOLEM_REPAIR)
+    if (BEASTS[b.kind]?.golem) { if ((town && town.built.includes('forge')) || (camping && kitOf(K).forge)) b.hp = Math.min(1, b.hp + GOLEM_REPAIR.day); continue; }   // (the dwarves' field forge)
+    b.hp = grass ? Math.min(1, b.hp + FODDER.regain * (BEASTS[b.kind].use === 'ride' ? kitOf(K).regain ?? 1 : 1)) : b.hp - FODDER.starve * (0.5 + r());
+    if (grass && BEASTS[b.kind].use === 'food' && b.hp > 0) K.food += CAMP_KIT.herd.milk;   // the herd's milk
     if (b.hp <= 0) loseBeast(a, K, b, 'Бескормица: пал');
   }
   done();

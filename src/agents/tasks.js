@@ -1,6 +1,7 @@
 // Tasks are what an agent is doing right now: {id, ...state}. Brains choose them, TASKS run them. `quiet`: a task that
 // winds down when something else is chosen (a meal giving way to sleep) — closed as done, not as dropped (agents/brains/tabled.js).
 // Shared by every brain, so a new creature can reuse 'fight', 'flee' or 'idle' as they are.
+import {isSummoner, trySummon} from './summon.js';
 import {endTask, skipped} from './lifecycle.js';
 import {maxHp} from './agent.js';
 import {Registry} from '../core/registry.js';
@@ -134,6 +135,8 @@ TASKS.registerAll([
       return;
     }
     task.lost = null;
+    // an elf who calls the forest beasts does it once a fight (agents/summon.js)
+    if (isSummoner(w, a)) trySummon(w, a, t);
     // a runaway caught by someone else is one of ours again: the chase is over, nobody hits it (settlement/escape.js)
     if (t.captive && !t.fugitive && t.faction === a.faction && !task.reflex) { done(w, a); return; }
     // a runaway captive (settlement/escape.js) is not fought: whoever gets within reach grabs it

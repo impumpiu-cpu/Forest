@@ -5,6 +5,7 @@
 //   the joined (companions, the freed, former slaves, hirelings who stayed: all who keep by loyalty) — at most JOINED_MAX;
 //   hirelings — at most HIRES.max of each kind;
 //   captives — at most CAPTIVE.max, outside the company's count.
+import {isFighter} from '../data/campaign.js';
 import {COMPANY_MAX, JOINED_MAX, HIRES} from '../data/market.js';
 import {CAPTIVE} from '../data/captives.js';
 
@@ -12,7 +13,7 @@ const living = K => K.members.filter(m => m.alive);
 export const freeOf = K => living(K).filter(m => !m.captive);
 export const heldOf = K => living(K).filter(m => m.captive);
 // the joined: those who stay by loyalty (not the eight, not a hireling under contract)
-const core = m => m.core ?? ['knight', 'squire'].includes(m.role);   // saves from before the joiners
+const core = m => m.core ?? isFighter(m);   // saves from before the joiners
 export const joinedOf = K => freeOf(K).filter(m => !core(m) && !m.contract && m.loyalty != null);
 
 // A member's place in the company (docs/BEHAVIOUR.md «Словарь»: место в дружине) and its record go together: a captive
