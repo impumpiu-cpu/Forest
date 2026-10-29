@@ -13,6 +13,7 @@
     "chains": "node tools/chains.mjs",
     "economy": "node tools/economy-report.mjs",
     "macro": "node tools/macro-probe.mjs",
+    "mind": "node tools/mind-probe.mjs",
     "macro:check": "node tools/macro-check.mjs",
     "stress": "node tools/stress.mjs",
     "stress:full": "node tools/stress.mjs --full",

@@ -10,7 +10,7 @@
 //     the worth of its tools), the stock counting for its share of the days: a few passes settle the loads together;
 //   - the people use up their needs (TOWN_GOODS `need`, a day per 100 of them) as far as there is of each; a people that
 //     eats something raw (`eaten`) eats it where ready food runs short;
-//   - a people that sells some goods at once (TRADE_UP: the orcs) sells them for its own good at `rate` of the worth;
+//   - a people that sells some goods at once (data/peoples.js tradeUp: the orcs) sells them for its own good at `rate` of the worth;
 //   - the loads settle on what the realm makes and holds together; a town that runs short of a good gets it from the towns
 //     of its realm with a surplus, ECONOMY.haul of it arriving (`t.econ.trade`: + brought, − sent, a day);
 //   - the stock takes rate × days, rots by each good's `spoil` a day (a granary or a cellar keeps some: STORAGE) and
@@ -19,8 +19,9 @@
 // from atlas/towns.js. What it is good for now: the town's card shows it, a caravan buys arms, tools and armour only
 // as far as the town has their worth in the stock (campaign/town.js).
 import {goodPrice} from '../data/townBuildings.js';
-import {TOWN_BUILDINGS, TOWN_GOODS, worksOf, upkeepOf, townStart, fuelFor, STORAGE, TRADE_UP} from '../data/townBuildings.js';
+import {TOWN_BUILDINGS, TOWN_GOODS, worksOf, upkeepOf, townStart, fuelFor, STORAGE} from '../data/townBuildings.js';
 import {keepOf, armyEats, ECONOMY} from '../data/macro.js';
+import {WORLD_PEOPLES} from '../data/peoples.js';
 
 export {ECONOMY};   // the numbers live in data/macro.js (the table «Хозяйство и казна»)
 
@@ -205,7 +206,7 @@ function stepTowns(a, towns, days) {
     const reserve = ECONOMY.reserve * (X.needs.food || 0) * X.heads, lack = reserve - (E.stock.stores || 0);
     if (lack > 0) add(X.want, 'stores', lack / ECONOMY.reserveFill);
     // a people that trades some goods at once for another: what it makes of them goes to the market, the worth comes back
-    const TU = TRADE_UP[t.people];
+    const TU = WORLD_PEOPLES.get(t.people)?.tradeUp;
     if (TU) for (const g of TU.sells) {
       const have = Math.max(0, (rate[g] || 0) + (E.stock[g] || 0) / days);
       if (have <= 0) continue;
@@ -308,6 +309,15 @@ export function drawRealm(a, realm, g, amount, first = null) {
   return amount - left;
 }
 // putting goods into a town's stock (a trade caravan's arrival)
+// how much of a good a town's stores hold (as its household caps them: ECONOMY.hold days of what it asks and makes, a
+// granary's or a cellar's goods more, at least holdMin gold's worth); gold has no limit
+export function holdOf(t, g) {
+  if (g === 'gold') return Infinity;
+  const E = t.econ || {}, built = new Set(t.built);
+  let d = ECONOMY.hold;
+  for (const [b, S] of Object.entries(STORAGE)) if (built.has(b) && S.goods.includes(g)) d *= ECONOMY.holdStore;
+  return d * ((E.want?.[g] || 0) + (E.prod?.[g] || 0)) + ECONOMY.holdMin / goodWorth(g);
+}
 export function giveStock(t, g, v) {
   if (!t.econ || !(v > 0)) return;
   t.econ.stock[g] = (t.econ.stock[g] || 0) + v;

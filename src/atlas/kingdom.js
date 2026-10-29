@@ -112,7 +112,7 @@ export function stepKingdom(a, say) {
     const wars = Object.entries(a.rel || {}).filter(([k, x]) => x.war && k.split(':').includes(String(realm.id))).length, raided = towns.filter(t => t.raided === year).length;
     const C = WORLD_PEOPLES.get(realm.people).crime || {per: 0.02, pow: 1};
     const crowd = towns.reduce((s, t) => s + C.per * Math.pow(Math.max(0, t.pop) / 1000, C.pow), 0);
-    const src = {towns: towns.length, pop, crowd, upkeep: Math.max(0, upkeep - stats.economy), unpaid: Tr.year.unpaidShare, wars, raided};
+    const src = {towns: towns.length * (WORLD_PEOPLES.get(realm.people).bureau ?? 1), pop, crowd, upkeep: Math.max(0, upkeep - stats.economy), unpaid: Tr.year.unpaidShare, wars, raided};
     for (const R of RUINS.all()) {
       let v = K.ruin[R.id] || 0;
       for (const [k, w] of Object.entries(R.grows)) v += (src[k] || 0) * w;

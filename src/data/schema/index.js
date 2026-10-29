@@ -28,6 +28,7 @@ import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js'
 import {CALAMITIES} from '../calamities.js';
 import {DIPLOMACY} from '../diplomacy.js';
 import {ECONOMY, BUILD, ARMY_KEEP, TRADE as MACRO_TRADE, TREASURY, PLOTS} from '../macro.js';
+import {VECTORS, VEC_RULES, DEED_VEC, MIND} from '../mind.js';
 import {ERAS} from '../history.js';
 import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, RACE_FORMS, USES} from '../kinds.js';
@@ -46,7 +47,7 @@ import * as BEHAVIOUR from '../behaviour.js';
 import * as NATURE from '../nature.js';
 import {LAIR_LIFE} from '../lairs.js';
 import {TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL} from '../peoples.js';
-import {TOWN_FX as TOWN_WORK, PLACE_AT, STORAGE, TRADE_UP, LUX, MINT, RITE_WORTH} from '../townBuildings.js';
+import {TOWN_FX as TOWN_WORK, PLACE_AT, STORAGE, LUX, MINT, RITE_WORTH} from '../townBuildings.js';
 import {CAL, ALLY, EPIC} from '../calamities.js';
 import {FAUNA, FREE, EPIC_YEARS} from '../history.js';
 import {ARMY, DRAGON, PARTIES} from '../parties.js';
@@ -356,6 +357,14 @@ export const TABLES = [
       col('crime.pow', 'Преступность: степень', 'num', {min: 0, note: '1 — по числу жителей; больше — людные города хуже (у людей)'}),
       col('moves', 'Проходимость', 'map', {ref: 'biomes', min: 0}), col('movesElse', 'Прочие биомы', 'num', {min: 0}),
       col('site', 'Место города', 'map', {ref: keysOf({water: 1, coast: 1, fert: 1, trees: 1, ores: 1, steep: 1})}),
+      col('needs', 'Свои нужды', 'map', {ref: 'townGoods', min: 0, note: 'сколько 100 жителей тратят блага в день вместо общего «Жители тратят» («Блага городов»): орки роскоши не хотят, хотят оружие'}),
+      col('eatsRaw', 'Едят сырым', 'ids', {ref: 'townGoods', note: 'сырые блага, которые народ ест как еду (эльфы — плоды)'}),
+      col('buys', 'Только покупают', 'ids', {ref: 'townGoods', note: 'блага, которые народ не делает, а покупает (эльфы — серебро)'}),
+      col('tradeUp.sells', 'Сразу продают', 'ids', {ref: 'townGoods', nullable: true, note: 'что народ меняет, как только сделал (орки — роскошь, самоцветы, серебро)'}),
+      col('tradeUp.buys', 'Меняют на', 'ref', {ref: 'townGoods', nullable: true}),
+      col('tradeUp.rate', 'Мена: доля цены', 'num', {min: 0, max: 1, nullable: true, note: 'сколько стоимости доходит при мене'}),
+      col('rose', 'Роза векторов', 'map', {ref: keysOf(VECTORS), min: 0, note: 'куда народ держит курс державы годами: агрессия, рост, экономика (доли, data/mind.js); совет тянет державу к розе («Совет державы»)'}),
+      col('bureau', 'Бюрократия', 'num', {min: 0, note: '× рост коррупции от размера державы (data/kingdom.js RUINS corruption): чем больше держава, тем больше рук, что берут'}),
       col('taste', 'Вкус построек', 'map', {ref: keysOf(TOWN_FX), min: 0}),
       col('density', 'Плотность расселения', 'num', {min: 0, note: 'под асимметрию: сколько народа помещается на клетку (гномы кучно, эльфы и орки вольготно); пока не действует'}),
       col('color', 'Цвет', 'color'),
@@ -365,6 +374,7 @@ export const TABLES = [
     note: 'Одна истина о постройке мира (data/townBuildings.js): кто строит, что нужно в державе, место, сколько жителей вмещает, сколько рук берёт, что тратит и даёт за год. «Постройки поселения» берут расы отсюда, кузнецы и рынки каравана — металлы. Потоки (руки, топливо, тратит, даёт) пока черновые и городом не считаются.',
     columns: [
       col('id', 'id'), col('name', 'Название'), col('cat', 'Категория', 'enum', {values: CATEGORIES}),
+      col('vec', 'Вектор', 'map', {ref: keysOf(VECTORS), min: 0, nullable: true, note: 'куда постройка тянет державу: агрессия, рост, экономика; пусто — из эффектов и того, что она делает («Совет державы»)'}),
       col('peoples', 'Расы', 'ids', {ref: 'peoples', note: 'народы, которые её строят; пусто — все'}),
       col('requires', 'Нужно в державе', 'ids', {ref: 'townBuildings', note: 'все эти постройки стоят в каком-нибудь городе державы'}),
       col('requiresAny', 'Одна из в державе', 'ids', {ref: 'townBuildings', note: 'хотя бы одна из них стоит в каком-нибудь городе державы'}),
@@ -395,8 +405,8 @@ export const TABLES = [
       col('chain', 'Ветка', 'enum', {values: CHAINS}),
       col('start', 'Старт в день', 'num', {min: 0, note: 'сколько город делает сам, руками жителей, без построек: на первые постройки'}),
       col('need', 'Жители тратят', 'num', {min: 0, note: 'на 100 жителей в день'}),
-      col('eaten', 'Едят сырым', 'ids', {ref: 'peoples', note: 'народы, которые едят это сырым: для них оно кормит как еда'}),
-      col('buy', 'Только покупают', 'ids', {ref: 'peoples', note: 'народы, которые это не делают, а покупают на рынке'}),
+      col('eaten', 'Едят сырым', 'ids', {ref: 'peoples', computed: true, note: 'народы, которые едят это сырым; правится в «Народах мира» (столбец «Едят сырым»)'}),
+      col('buy', 'Только покупают', 'ids', {ref: 'peoples', computed: true, note: 'народы, которые это не делают, а покупают; правится в «Народах мира» (столбец «Только покупают»)'}),
       col('note', 'Заметка'),
     ]},
   {id: 'townWorks', label: 'Переделы построек', group: 'Народы', key: 'id', rows: () => TOWN_WORKS.all(),
@@ -478,8 +488,10 @@ TABLES.push(
   // Мир
   {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки; TOOLS — сколько рабочих дней служит орудие из каждого материала и сколько оно стоит; KITCHENS — кухни трёх ступеней города: сколько сырья варят в год, циклы жара, сколько еды с единицы сырья; fuel.uses — сколько циклов тепла или жара даёт единица топлива).',
     ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT, tools: TOOLS, kitchens: KITCHENS, fuel: FUEL})},
-  {id: 'macroRules', label: 'Хозяйство и казна', group: 'Народы', note: 'Числа хозяйства городов и держав (data/macro.js; docs/WORLD.md «Потоки построек», «Стройка», «Содержание войска», «Торговля держав», «Казна»): economy — руки, переделы, склад с пределом, запас заготовок, сбор еды с земли; build — стройка и поселенцы; armyKeep — сбор войска, обоз, дезертирство, дружина; trade — торговля держав; treasury — подати, коррупция, пошлины, добыча, двор, мастера, совет казны, дань и выкуп; plots — участки в черте города. storage — что берегут амбар и погреб; tradeUp — кто сразу меняет блага (орки — на оружие); lux, mint, riteWorth — ценность роскоши, монеты и обрядов. Что у каждого народа своё (прирост, довольство, переезд, поселенцы, содержание бойца, преступность) — в «Народах мира».',
-    ...grp({economy: ECONOMY, build: BUILD, armyKeep: ARMY_KEEP, trade: MACRO_TRADE, treasury: TREASURY, plots: PLOTS, storage: STORAGE, tradeUp: TRADE_UP, lux: LUX, mint: MINT, riteWorth: RITE_WORTH})},
+  {id: 'macroRules', label: 'Хозяйство и казна', group: 'Народы', note: 'Числа хозяйства городов и держав (data/macro.js; docs/WORLD.md «Потоки построек», «Стройка», «Содержание войска», «Торговля держав», «Казна»): economy — руки, переделы, склад с пределом, запас заготовок, сбор еды с земли; build — стройка и поселенцы; armyKeep — сбор войска, обоз, дезертирство, дружина; trade — торговля держав; treasury — подати, коррупция, пошлины, добыча, двор, мастера, совет казны, дань и выкуп; plots — участки в черте города. storage — что берегут амбар и погреб; lux, mint, riteWorth — ценность роскоши, монеты и обрядов. Что у каждого народа своё (прирост, довольство, переезд, поселенцы, содержание бойца, преступность, свои нужды, что едят сырым и только покупают, что сразу меняют, роза векторов и бюрократия) — в «Народах мира».',
+    ...grp({economy: ECONOMY, build: BUILD, armyKeep: ARMY_KEEP, trade: MACRO_TRADE, treasury: TREASURY, plots: PLOTS, storage: STORAGE, lux: LUX, mint: MINT, riteWorth: RITE_WORTH})},
+  {id: 'mindRules', label: 'Совет державы', group: 'Народы', note: 'Мозг державы (data/mind.js, atlas/mind.js; docs/WORLD.md «Совет державы»): три вектора — агрессия, рост, экономика. vecRules — как вектор постройки считается из её эффектов и того, что она делает, если в «Постройках городов» он не задан; deedVec — вектор дел двора и поселенцев; mind — курс, ветер, нужды сезона, траты свободных денег, роли городов, послушание. Роза каждого народа и его бюрократия — в «Народах мира».',
+    ...grp({vecRules: VEC_RULES, deedVec: DEED_VEC, mind: MIND})},
   {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',

@@ -29,6 +29,7 @@ import {siteCell} from './sites.js';
 import {TOWN_FX as TF, PLACE_AT as PA} from '../data/townBuildings.js';
 import {PLOTS, ARMY_KEEP} from '../data/macro.js';
 import {ARMY} from '../data/parties.js';
+import {vectorOf, along} from '../data/mind.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -175,11 +176,13 @@ function econPull(t, b) {
   return Math.min(TF.econ[1], TF.econ[0] * n);
 }
 
-// how much the town wants a building now: Σ need × taste × effect, and what its household lacks (no die)
-export function wantOf(t, b, need, P) {
+// how much the town wants a building now: Σ need × taste × effect, and what its household lacks (no die);
+// `lean` — the realm's role for the town or its wind (atlas/mind.js leanOf): × (1 + k × how the building leans with it)
+export function wantOf(t, b, need, P, lean = null) {
   let v = 0;
   for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
-  return v + econPull(t, b);
+  v += econPull(t, b);
+  return lean ? v * (1 + lean.k * along(vectorOf(b), lean.vec)) : v;
 }
 // the building the town wants most, or null; with `cur` (a building under way) also how much it wants that one
 // ({b, v, cv}: atlas/build.js weighs leaving it)
@@ -189,8 +192,8 @@ export function chooseBuilding(a, t, P, fx, ctx, rnd, cur = null) {
   const inRealm = realmBuilt(a, t);
   for (const b of TOWN_BUILDINGS.all()) {
     if (!canBuild(a, t, b, inRealm)) continue;
-    const v = wantOf(t, b, need, P) * (0.85 + 0.3 * rnd());
+    const v = wantOf(t, b, need, P, ctx.lean) * (0.85 + 0.3 * rnd());
     if (v > bv) { bv = v; best = b; }
   }
-  return {b: best, v: bv, cv: cur ? wantOf(t, cur, need, P) : 0};
+  return {b: best, v: bv, cv: cur ? wantOf(t, cur, need, P, ctx.lean) : 0};
 }

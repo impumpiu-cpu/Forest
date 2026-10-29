@@ -15,10 +15,11 @@ const ALARMS = DEED_BANDS.slice(0, 2);
 const THOUGHTS = 8;   // how many of an actor's last choices are kept for its card
 
 // the lanes on offer, first that has anything: [band, [[plan, weight, why, deed], …]]
-function offers(a, actor, ctx, lanes, from) {
+// (`weigh(a, actor, deed)` — the role's own × on a deed's weight: a realm's council leans its court, atlas/court.js)
+function offers(a, actor, ctx, lanes, from, weigh) {
   for (const band of from) {
     let opts = null;
-    for (const d of lanes[band]) { const o = DOES[d.id].want(a, actor, ctx); if (o) for (const x of o) (opts ||= []).push([x[0], x[1], x[2], d]); }
+    for (const d of lanes[band]) { const o = DOES[d.id].want(a, actor, ctx); if (o) { const k = weigh ? weigh(a, actor, d) : 1; for (const x of o) (opts ||= []).push([x[0], x[1] * k, x[2], d]); } }
     if (opts) return [band, opts];
   }
   return null;
@@ -28,7 +29,7 @@ function offers(a, actor, ctx, lanes, from) {
 // `ctx` carries what the deeds read and the stream to draw from (`r`). Returns the choice [plan, weight, why, deed] or null
 export function actorStep(a, actor, brain, ctx) {
   const out = brain.party?.(a, actor) || null;
-  const found = offers(a, actor, ctx, deedLanes(brain.list), out ? ALARMS : DEED_BANDS);
+  const found = offers(a, actor, ctx, deedLanes(brain.list), out ? ALARMS : DEED_BANDS, brain.weigh);
   if (!found) return null;
   const [band, opts] = found;
   // the world's choice: a draw by weight, in the list's order (a single offer draws nothing)
