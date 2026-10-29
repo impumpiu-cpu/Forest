@@ -211,8 +211,9 @@ export const ELDER_YEARS = [
 //              brings with it;  abroad — how much a town of another realm draws against one of their own;  moveReach — how
 //              far folk move to another realm, in steps of their people's spacing;  fedOk — the share of their food at
 //              which the people are content and nobody starves;  starve — share of the people that die a year with no food
-//              at all (× how far the share they got is below fedOk)
+//              at all (× how far the share they got is below fedOk);  overflow — share of the people over a town's room that
+//              leave it a season;  settleNear — how much nearness counts for the settlers' spot (× its share of the reach)
 export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15], hunt: {predator: 0.3, other: 0.12},
   foundLand: 0.25,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
-  minTarget: 60, abandon: 10, bandStores: 120, abroad: 0.6, moveReach: 3, fedOk: 0.75, starve: 0.3};
+  minTarget: 60, abandon: 10, bandStores: 120, abroad: 0.6, moveReach: 3, fedOk: 0.75, starve: 0.3, overflow: 0.5, settleNear: 0.2};

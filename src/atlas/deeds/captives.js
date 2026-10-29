@@ -86,7 +86,7 @@ export const captives = {
       barrows(a, target.i, Math.max(1, Math.round(scaleOf(a))), ROT.raidGraves * CR.graves);
       return `${cap1(realmLabel(a, actor.id))} из ${townLabel(t, 2)} ${t.name} увели в полон ${heads(n)} из ${townLabel(target, 2)} ${target.name}.`;
     }
-    t.pop *= 0.9;
+    t.pop *= 1 - D.repelled;   // a beaten raid costs the raiders
     return `${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, actor.id)} на ${townLabel(target, 1)} ${target.name}: в полон никого не дали.`;
   },
   // the lair's party at the town

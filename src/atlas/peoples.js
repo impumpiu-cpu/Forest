@@ -303,7 +303,7 @@ export function settleSpot(a, t) {
     if (d > R || d < sp) continue;
     const i = y * a.w + x, v = pe.site[i];
     if (!(v > TL.siteBar) || pe.K[faunaCell(a, i)] < TL.foundLand) continue;
-    cand.push([i, v - 0.2 * d / R]);
+    cand.push([i, v - TL.settleNear * d / R]);
   }
   cand.sort((p, q) => q[1] - p[1] || p[0] - q[0]);
   for (const [i] of cand) if (farFromTowns(a, i % a.w, (i / a.w) | 0, sp)) return i;

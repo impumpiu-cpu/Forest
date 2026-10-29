@@ -14,7 +14,7 @@ import {RELATIONS} from '../data/relations.js';
 import {SPECIES} from '../data/species.js';
 import {ALIGN, ALIGN_DRIFT, shiftAlign} from '../data/values.js';
 import {scaleOf} from './tectonics.js';
-import {townFx, might, raidShare, townLabel} from './towns.js';
+import {townFx, might, armyMight, raidShare, townLabel} from './towns.js';
 import {raidSite, razeSites} from './sites.js';
 import {realmOf, realmPeople, realmLabel, realmLabelGen, seatFallen, stepRealms} from './realms.js';
 import {laneBetween} from './sea.js';
@@ -147,7 +147,6 @@ export const fight = (t, rnd) => might(t, townFx(t)) * (0.6 + 0.8 * rnd());
 // Each day of the siege the besiegers burn the town's works and eat its stock; when the town is
 // starved or the siege has gone on long enough the army assaults. The foragers of a marching or
 // besieging army scourge the land around it (a.f.scourge): the works there yield nothing.
-const armyMight = (men, fx) => Math.sqrt(men) * (1 + 0.3 * fx.prod + 0.5 * fx.defence);
 export function muster(a, t, target, war, rnd, say) {
   const A = ARMY, K = ARMY_KEEP;
   if (!target.alive) return;
@@ -187,7 +186,7 @@ export function muster(a, t, target, war, rnd, say) {
     from[o.id] = n; o.pop -= n;
     pros += Math.min(n, (o.guard ?? 1) * o.built.filter(id => K.pro.at.includes(id)).reduce((x, id) => x + (TOWN_BUILDINGS.get(id).jobs || 0), 0));   // the guard the treasury keeps (atlas/treasury.js)
   }
-  const fx = townFx(t), R = realmOf(a, t.realm), might = armyMight(men + pros * (K.pro.might - 1), fx) * A.might;
+  const fx = townFx(t), R = realmOf(a, t.realm), might = armyMight(men + pros * (K.pro.might - 1), fx);
   const p = sendParty(a, 'army', t.i, target.i, {owner: t.realm, from: t.id, levy: from, pros: Math.round(pros), target: target.id, war, men, might, loyal: 1, kit: 1, mf: 1,
     supplies, people: t.people, speed: 'foot', label: `войско ${realmLabelGen(a, t.realm)}`, color: R?.color || WORLD_PEOPLES.get(t.people).color, burnt: 0});
   if (!p) { for (const o of towns) o.pop += from[o.id] || 0; return; }

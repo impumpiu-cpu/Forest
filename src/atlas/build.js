@@ -16,7 +16,7 @@
 import {BUILD} from '../data/macro.js';
 import {SEASON_DAYS} from '../data/atlas.js';
 import {TOWN_BUILDINGS, goodPrice} from '../data/townBuildings.js';
-import {WORLD_PEOPLES} from '../data/peoples.js';
+import {WORLD_PEOPLES, TOWN_LIFE} from '../data/peoples.js';
 import {townFx, canBuild, chooseBuilding, room} from './towns.js';
 import {realmTaste} from './realms.js';
 import {roadAccess} from './roads.js';
@@ -53,7 +53,7 @@ function settlersWant(a, t) {
   if (!S || t.pop < S.from) return 0;
   const target = Math.min(t.wants.feeds, room(townFx(t)));
   // a town wants settlers as it fills its room — or simply grows big: twice `from` and more wants them fully
-  const full = Math.max(0, Math.min(1, Math.max((t.pop / Math.max(1, target) - 0.6) / 0.3, (t.pop - S.from) / S.from)));
+  const full = Math.max(0, Math.min(1, Math.max((t.pop / Math.max(1, target) - BUILD.settle.full) / BUILD.settle.span, (t.pop - S.from) / S.from)));
   if (full <= 0) return 0;
   if (t.spot?.year !== a.hist.year) t.spot = {year: a.hist.year, i: settleSpot(a, t)};   // looked for once a year
   return t.spot.i >= 0 ? S.want * full : 0;
@@ -99,7 +99,7 @@ function work(a, t, rnd, say) {
   // (TREASURY.wage); settlers gather for themselves
   let done = use;
   const R = (P.b?.tier || 0) >= 1 ? realmTreasury(a, t.realm) : null;
-  if (R && use > 0) { const due = use * TREASURY.wage, paid = payWorth(R, due, 'wage'); done = use * (0.5 + 0.5 * paid / due); }
+  if (R && use > 0) { const due = use * TREASURY.wage, paid = payWorth(R, due, 'wage'); done = use * (TREASURY.unpaidPace + (1 - TREASURY.unpaidPace) * paid / due); }
   w.done += done; labour -= use;
   // what the realm neither makes nor holds, what has not come for two seasons, and the rest once the work itself is
   // done — the builders, idle else, gather by hand
@@ -115,7 +115,7 @@ function work(a, t, rnd, say) {
   if (P.id === SETTLERS) {
     // the settlers go with the goods raised for them; a town that has lost its people meanwhile waits for them
     const S = WORLD_PEOPLES.get(t.people).settlers;
-    if (t.pop < S.pop + 10) return;
+    if (t.pop < S.pop + TOWN_LIFE.abandon) return;
     const made = foundFrom(a, t, rnd, say, S.goods);
     delete t.works[P.id]; t.project = null; t.spot = null;
     if (!made) t.econ && Object.entries(S.goods).forEach(([g, v]) => { t.econ.stock[g] = (t.econ.stock[g] || 0) + v; });   // no spot left: the goods go back

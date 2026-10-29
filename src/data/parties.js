@@ -33,7 +33,7 @@ export const PARTIES = {
 //            there yield nothing and no road is worn (a.f.scourge: 1 under the army, fading by `scourgeFade` a
 //            year; the works and the roads count the land as scourged above `scourged` — so a year after the
 //            army has gone, at exactly 0.45, it is clear again; the fade must stay ≤ the threshold)
-export const ARMY = {levy: 0.25, might: 1.8, minMen: 40, burn: 0.08, stock: 1.5, stockFood: 0.25, starve: 0.008, assaultAt: 0.9, longest: 120, beatenLoss: 0.35, winLoss: 0.15, broken: 0.55,
+export const ARMY = {levy: 0.25, might: 1.8, mightFx: {prod: 0.3, defence: 0.5}, minMen: 40, burn: 0.08, stock: 1.5, stockFood: 0.25, starve: 0.008, assaultAt: 0.9, longest: 120, beatenLoss: 0.35, winLoss: 0.15, broken: 0.55,
   supplies: 120, forage: 15, attrition: 0.02, scourge: 2.5, scourgeFade: 0.45, scourged: 0.45, everyYears: 1};
 
 // The dragon (data/bestiary.js `dragon`; the lair kind in data/lairs.js): one or two in a world, in

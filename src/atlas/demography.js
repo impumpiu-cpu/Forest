@@ -73,7 +73,7 @@ export function migrate(a) {
     }
     if (!to.length) continue;
     const best = Math.max(...to.map(x => x[1]));
-    let go = s.over * 0.5 + rate * s.t.pop * (1 - s.A / best);
+    let go = s.over * TL.overflow + rate * s.t.pop * (1 - s.A / best);
     go = Math.min(go, Math.max(0, s.t.pop - TL.minTarget));
     if (go <= 0.5) continue;
     const W = to.reduce((sum, [d, A]) => sum + A * d.free, 0);

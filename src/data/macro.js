@@ -3,6 +3,26 @@ import {WORLD_PEOPLES} from './peoples.js';
 // The towns and realms as households that pay their way (docs/WORLD.md «Стройка, войско, торговля»): what a building
 // costs to raise, what an army costs to keep, what goes down the trade routes between realms. All rates are a day.
 
+// A town's household (atlas/economy.js): its hands, its buildings' loads, its stocks and their limits, all a day.
+//   work          share of the people who work in the buildings
+//   passes        passes that settle the loads of the buildings together
+//   maxScale      how far spare hands can widen a building (× its jobs)
+//   keepWay       a way has its makings when at least this share of a full load of them is to hand
+//   switchWay     a building leaves its way for another only when that one's lacking worth is this much (gold a day) more
+//   stockDays     the stock is drawn on over so many days (a season): its share of a day
+//   haul          of what a town sends to another of its realm, this much arrives
+//   reserve       days of its people's food a town keeps in stores (smoked, salted, dried: the hungry eat them, armies march
+//                 on them, settlers carry them, a besieged town lives on them); short of it, it asks for more…
+//   reserveFill   …filling what it lacks over so many days (stores come second to the daily bread)
+//   forage        rations a head a day the people get off their land by their own hands, up to as many as it feeds
+//   hold          a town's stores hold this many days of what it asks and makes of a good (gold aside: the treasury takes
+//                 it); holdStore — × for a granary's or a cellar's goods; holdMin — at least this gold's worth of any good;
+//                 holdLoss — of what is over, this share goes a season (sold off, stolen, rotten)
+//   cold, warm    the cell's mean °C below which warmth costs climate.cold, above which climate.warm
+export const ECONOMY = {work: 0.5, passes: 5, maxScale: 40, keepWay: 0.5, switchWay: 0.2, stockDays: 30, haul: 0.85,
+  reserve: 30, reserveFill: 240, forage: 0.6, hold: 120, holdStore: 2, holdMin: 200, holdLoss: 0.5,
+  cold: 2, warm: 12, climate: {cold: 1.6, mild: 1, warm: 0.4}};
+
 // Building. A town builds one thing at a time: its council picks what it needs most (atlas/towns.js chooseBuilding),
 // and it is raised by the town's builders out of materials from the realm's stocks (atlas/build.js). Every season
 // (a month of the world) the council looks again: another building is taken up when it is wanted `switch` more than the
@@ -13,9 +33,10 @@ import {WORLD_PEOPLES} from './peoples.js';
 //   matDays    materials: the building's own upkeep (`repair`) × this many days — logs, boards, stone or hides
 //   hand       work-days for each gold of worth of a material the realm neither has nor makes: gathered by hand
 //   switch     how much more another building must be wanted to leave the one under way
+//   settle     a town wants settlers from `full` of its target, fully `span` above it (or at twice its people's `from`)
 //   instead    what stands in for a material the household did not meet, taken from the realm's stocks one for one:
 //              settlers take ready food for the stores they lack
-export const BUILD = {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, matDays: 300, hand: 12, switch: 0.3, instead: {stores: ['food', 'produce']}};
+export const BUILD = {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.006, matDays: 300, hand: 12, switch: 0.3, settle: {full: 0.6, span: 0.3}, instead: {stores: ['food', 'produce']}};
 
 // An army's keep, a day per fighter: each people's own (data/peoples.js `army`, the table «Народы мира»): gold (pay), arms
 // and armour (their wear, by worth) and rations of food, eaten of the first of `eats` the realm has a season of (stores
@@ -28,7 +49,8 @@ export const BUILD = {days: [60, 180, 480], jobsPer: 20, housePer: 400, crew: 0.
 //   unarmed    might lost without arms or armour (each, × the share missing)
 //   reach      the realm's towns within so many cells (of a 192-cell world) of the mustering town send their levy too
 //   pro        the trained core: the men of these buildings (their jobs) march among the levy and count `might` times
-export const ARMY_KEEP = {pack: 60, packMin: 20, desert: 0.004, unarmed: 0.25, reach: 30, pro: {at: ['barracks', 'warcamp'], might: 2}};
+//   guardFloor what the barracks and war camps give with their guard unpaid (× their effects; atlas/treasury.js t.guard)
+export const ARMY_KEEP = {pack: 60, packMin: 20, desert: 0.004, unarmed: 0.25, reach: 30, pro: {at: ['barracks', 'warcamp'], might: 2}, guardFloor: 0.5};
 const NO_KEEP = {gold: 0, arms: 0, armor: 0, food: 1, eats: ['food']};
 const armyOf = people => (WORLD_PEOPLES.has(people) && WORLD_PEOPLES.get(people).army) || NO_KEEP;
 // what a fighter takes a day: {gold, arms, armor, food} (food in rations, whatever it eats)
@@ -53,7 +75,7 @@ export const TRADE = {perRoute: 40, keep: 60, haul: 0.85, pay: ['gold', 'lux']};
 //   corrupt    of what is paid, corruption (data/kingdom.js RUINS) takes `corrupt` × its points, no more than corruptMax
 //   duty       share of the goods that come into a realm by its trade routes that its customs take (atlas/trade.js)
 //   loot       share of the keeping stock of a town taken by storm (seat: of the treasury too) or raided, to the winner's
-//   wage       gold a work-day for the builders of a building of the village step and up; unpaid, they work at half speed
+//   wage       gold a work-day for the builders of a building of the village step and up; unpaid, they work at `unpaidPace`
 //   court      gold a day for each office held (data/kingdom.js OFFICES), per 1000 people of the realm
 //   payIn      what the treasury pays gold's worth in when gold is short, in order; then any other good that keeps, dearest first
 //   reserve    seasons of the realm's armies and court the treasury keeps before it gives to the towns
@@ -66,7 +88,7 @@ export const TRADE = {perRoute: 40, keep: 60, haul: 0.85, pay: ['gold', 'lux']};
 //   econ       the kingdom's economy (data/kingdom.js REALM_STATS) from the treasury: × the worth a day of its dues per
 //              100 people; the buildings' trade and craft count `fx` of what they did
 export const TREASURY = {tax: {light: 0.05, rich: 0.05, usual: 0.1, high: 0.15, need: 0.15}, keeps: 0.001, corrupt: 0.03, corruptMax: 0.5, duty: 0.05,
-  loot: {seat: 0.5, assault: 0.3, raid: 0.1}, wage: 0.05, court: 0.15, payIn: ['gold', 'silver', 'lux', 'gems'], reserve: 2, help: 0.5, econ: 0.5, fx: 0.5,
+  loot: {seat: 0.5, assault: 0.3, raid: 0.1}, wage: 0.05, unpaidPace: 0.5, court: 0.15, payIn: ['gold', 'silver', 'lux', 'gems'], reserve: 2, help: 0.5, econ: 0.5, fx: 0.5,
   guardWear: 0.5, works: 0.5, tribute: {below: -1.5, ratio: 2.5, share: 0.05, calm: 0.4}, ransom: 3};
 
 // Plots: how many buildings stand within a town (data/townBuildings.js; the outlying works — fields, mines, pastures —

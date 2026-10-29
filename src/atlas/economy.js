@@ -20,27 +20,9 @@
 // as far as the town has their worth in the stock (campaign/town.js).
 import {goodPrice} from '../data/townBuildings.js';
 import {TOWN_BUILDINGS, TOWN_GOODS, worksOf, upkeepOf, townStart, fuelFor, STORAGE, TRADE_UP} from '../data/townBuildings.js';
-import {keepOf, armyEats} from '../data/macro.js';
+import {keepOf, armyEats, ECONOMY} from '../data/macro.js';
 
-export const ECONOMY = {
-  work: 0.5,             // share of the people who work in the buildings
-  passes: 5,             // passes that settle the loads of the buildings together
-  maxScale: 40,          // how far spare hands can widen a building (× its jobs)
-  keepWay: 0.5,          // a way has its makings when at least this share of a full load of them is to hand
-  switchWay: 0.2,        // a building leaves its way for another only when that one's lacking worth is this much (gold a day) more
-  stockDays: 30,         // the stock is drawn on over so many days (a season): its share of a day
-  haul: 0.85,            // of what a town sends to another of its realm, this much arrives
-  reserve: 30,           // days of its people's food a town keeps in stores (smoked, salted, dried: the hungry eat them, armies
-                         // march on them, settlers carry them, a besieged town lives on them); short of it, it asks for more
-  reserveFill: 240,
-  forage: 0.6,           // rations a head a day the people get off their land by their own hands, up to what it feeds
-  hold: 120,             // a town's stores hold this many days of what it asks and makes of a good (gold aside: the treasury
-  holdStore: 2,          //   takes it); a granary or a cellar ×holdStore for its goods; at least holdMin gold's worth of any
-  holdMin: 200,          //   good; what is over goes — holdLoss of it a season (atlas/economy.js; tools/macro-probe.mjs)
-  holdLoss: 0.5,      // …filling what it lacks over so many days (stores come second to the daily bread)
-  cold: 2, warm: 12,     // the cell's mean °C below which warmth costs climate.cold, above which climate.warm
-  climate: {cold: 1.6, mild: 1, warm: 0.4},
-};
+export {ECONOMY};   // the numbers live in data/macro.js (the table «Хозяйство и казна»)
 
 const goodWorth = g => goodPrice(g) || 1;
 const raceOk = (w, people) => !w.peoples || w.peoples.includes(people);
