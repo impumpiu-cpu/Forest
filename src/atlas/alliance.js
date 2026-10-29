@@ -16,7 +16,7 @@ import {ALLY} from '../data/calamities.js';
 import {scaleOf} from './tectonics.js';
 import {meet, relation} from './diplomacy.js';
 import {realmLabel, realmLabelGen, realmOf} from './realms.js';
-import {townFx, townLabel} from './towns.js';
+import {townFx, townLabel, armyMight} from './towns.js';
 import {sendParty, goHome} from './parties.js';
 import {WORLD_PEOPLES} from '../data/peoples.js';
 
@@ -24,7 +24,6 @@ const between = (r, [lo, hi]) => lo + r() * (hi - lo);
 const cap1 = s => s[0].toUpperCase() + s.slice(1);
 const pairKey = (p, q) => (p < q ? `${p}:${q}` : `${q}:${p}`);
 const power = sp => { const s = SPECIES.get(sp)?.special; return s ? (s.S[0] + s.S[1]) / 2 + (s.E[0] + s.E[1]) / 2 : 10; };
-const armyMight = (men, fx) => Math.sqrt(men) * (1 + 0.3 * fx.prod + 0.5 * fx.defence) * ARMY.might;
 const names = (a, ids) => ids.map(id => realmLabel(a, id)).join(', ');
 
 // the realms that stand against a calamity: those with a living town in its reach, else the nearest

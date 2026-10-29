@@ -102,7 +102,7 @@ TOWN_GOODS.registerAll([
   {id: 'milk', label: 'молоко', unit: 'рацион', kind: 'base', raw: true, spoil: 0.05, chain: 'food', get price() { return RATION() * 0.6; }},
   {id: 'flour', label: 'мука', unit: 'рацион', kind: 'made', spoil: 0.003, chain: 'food', get price() { return RATION() * 0.8; }},
   {id: 'food', label: 'готовая еда', unit: 'рацион', kind: 'made', spoil: 0.02, chain: 'food', start: 12, need: 100, get price() { return RATION(); }, note: 'хлеб, каша, похлёбка: только её и заготовки едят жители'},
-  {id: 'stores', label: 'заготовки', unit: 'рацион', kind: 'made', spoil: 0.0005, chain: 'food', price: 150, note: 'вяленое, солёное, копчёное: не портится, едят в голод и зимой'},
+  {id: 'stores', label: 'заготовки', unit: 'рацион', kind: 'made', spoil: 0.0005, chain: 'food', get price() { return RATION() * 1.6; }, note: 'вяленое, солёное, копчёное: не портится, едят в голод и зимой'},
   {id: 'salt', label: 'соль', unit: 'шт.', kind: 'base', chain: 'food', res: 'salt'},
   {id: 'drink', needFrom: 1, label: 'брага и пиво', unit: 'шт.', kind: 'made', chain: 'food', need: 2, res: 'braga'},
   {id: 'honey', label: 'мёд и воск', unit: 'шт.', kind: 'base', chain: 'lux', price: 1.2},

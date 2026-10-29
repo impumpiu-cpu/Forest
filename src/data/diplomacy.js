@@ -27,7 +27,7 @@ export const DIPLOMACY = {
   drift: 0.2, pressure: 1.2, trade: 0.1, tradeMax: 0.35, tradeCeil: 2.5, raid: 0.8, warAt: -3.2, weariness: 0.5, peaceAt: -1.8, longest: 12, afterPeace: -1.2,
   compete: {war: 0.35, hostile: 0.25, tense: 0.12, peace: 0.06, friends: 0.02},
   mingle: 0.012, mingleMax: 0.3, front: 40, battleLoss: [0.12, 0.3], raze: 70, razeShare: 0.3,
-  raidReach: 45, raidChance: 0.15, raidsPerYear: 2, raidLoss: 0.15, barrows: 3,
+  raidReach: 45, raidChance: 0.15, raidsPerYear: 2, raidLoss: 0.15, raidTake: 0.3, repelled: 0.1, barrows: 3,
   states: [
     {id: 'friends', from: 2, label: 'дружба'},
     {id: 'peace', from: -0.5, label: 'мир'},

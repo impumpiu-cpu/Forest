@@ -27,6 +27,7 @@ import {CAMP_FX, BEASTS, VEHICLES} from '../transport.js';
 import {LAIRS, LAIR_AGE, LEADER, ROT, TRIBE_HOME, TRIBE_RAID} from '../lairs.js';
 import {CALAMITIES} from '../calamities.js';
 import {DIPLOMACY} from '../diplomacy.js';
+import {ECONOMY, BUILD, ARMY_KEEP, TRADE as MACRO_TRADE, TREASURY, PLOTS} from '../macro.js';
 import {ERAS} from '../history.js';
 import {PERSON, PET, NICK, TITLE, BOSS, personNames} from '../names.js';
 import {WOODS, STONES, FAMILIES, RACE_MATERIALS, RACE_FORMS, USES} from '../kinds.js';
@@ -45,7 +46,7 @@ import * as BEHAVIOUR from '../behaviour.js';
 import * as NATURE from '../nature.js';
 import {LAIR_LIFE} from '../lairs.js';
 import {TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL} from '../peoples.js';
-import {TOWN_FX as TOWN_WORK, PLACE_AT} from '../townBuildings.js';
+import {TOWN_FX as TOWN_WORK, PLACE_AT, STORAGE, TRADE_UP, LUX, MINT, RITE_WORTH} from '../townBuildings.js';
 import {CAL, ALLY, EPIC} from '../calamities.js';
 import {FAUNA, FREE, EPIC_YEARS} from '../history.js';
 import {ARMY, DRAGON, PARTIES} from '../parties.js';
@@ -333,8 +334,26 @@ export const TABLES = [
     columns: [
       col('id', 'id'), col('label', 'Название'), col('race', 'Раса', 'ref', {ref: 'races'}), col('era', 'Эпоха', 'ref', {ref: ERAS}),
       col('arrive.groups', 'Групп на старте', 'int', {min: 1}), col('arrive.mode', 'Откуда приходят'),
-      col('spread', 'Расселение', 'num', {min: 0}), col('growth', 'Рост', 'num', {min: 0}), col('found', 'Плотность города', 'num', {min: 0}),
+      col('spread', 'Расселение поля', 'num', {min: 0, note: 'как быстро поле народа расползается по земле (земля, а не жители)'}),
+      col('growth', 'Рост поля', 'num', {min: 0, note: 'логистический рост поля народа в год (земля, которую народ держит)'}),
       col('spacing', 'Между городами', 'int', {min: 0}), col('ores', 'Вес руд', 'num', {min: 0}),
+      col('born', 'Прирост жителей', 'num', {min: 0, max: 1, note: 'наибольший прирост города в год при полном довольстве (эльфы и гномы медленно, орки быстро)'}),
+      col('content', 'Довольство', 'map', {ref: keysOf({base: 1, culture: 1, economy: 1, loyalty: 1, stability: 1}), note: 'base + вес × показатель державы, 0…1; × доля еды, что досталась'}),
+      col('migrate', 'Тяга к переезду', 'num', {min: 0, max: 1, note: 'доля жителей в сезон, готовая уехать в город получше (слава и еда): своей державы или торгующей соседней'}),
+      col('welcome', 'Принимают', 'ids', {ref: 'peoples', note: 'чужие народы, которых пускают жить в свои города (свой народ из других держав — всегда); пусто — никого'}),
+      col('settlers.pop', 'Поселенцев', 'int', {min: 1, note: 'сколько жителей уходит основывать новый город'}),
+      col('settlers.from', 'Поселенцы с', 'int', {min: 0, note: 'сколько жителей нужно городу, чтобы собирать поселенцев'}),
+      col('settlers.days', 'Поселенцы: работа', 'int', {min: 0, note: 'человеко-дней на сборы'}),
+      col('settlers.goods', 'Поселенцы: блага', 'map', {ref: 'townGoods', min: 0, note: 'что берут со складов державы и несут в новый город'}),
+      col('settlers.reach', 'Поселенцы: дальность', 'num', {min: 1, note: 'в шагах расселения от своего города'}),
+      col('settlers.want', 'Поселенцы: охота', 'num', {min: 0, note: 'как сильно совет хочет поселенцев, когда город полон'}),
+      col('army.gold', 'Войско: золото', 'num', {min: 0, note: 'жалованье бойца в день'}),
+      col('army.arms', 'Войско: оружие', 'num', {min: 0, note: 'износ оружия бойца в день, по стоимости'}),
+      col('army.armor', 'Войско: броня', 'num', {min: 0, note: 'износ брони бойца в день, по стоимости'}),
+      col('army.food', 'Войско: рацион', 'num', {min: 0, note: 'рационов на бойца в день'}),
+      col('army.eats', 'Войско: ест', 'ids', {ref: 'townGoods', note: 'первое, чего у державы есть на сезон'}),
+      col('crime.per', 'Преступность', 'num', {min: 0, note: 'в год с города: per × (жители / 1000) ^ степень'}),
+      col('crime.pow', 'Преступность: степень', 'num', {min: 0, note: '1 — по числу жителей; больше — людные города хуже (у людей)'}),
       col('moves', 'Проходимость', 'map', {ref: 'biomes', min: 0}), col('movesElse', 'Прочие биомы', 'num', {min: 0}),
       col('site', 'Место города', 'map', {ref: keysOf({water: 1, coast: 1, fert: 1, trees: 1, ores: 1, steep: 1})}),
       col('taste', 'Вкус построек', 'map', {ref: keysOf(TOWN_FX), min: 0}),
@@ -459,6 +478,8 @@ TABLES.push(
   // Мир
   {id: 'worldLife', label: 'Жизнь логов и городов', group: 'Мир', note: 'Как логова набирают и теряют силу, плодятся и дерутся (data/lairs.js LAIR_LIFE); как растут и строятся города (data/peoples.js TOWN_LIFE, TOWN_WAR, SCHISM, CAPITAL; data/townBuildings.js TOWN_FX — дома, сила, нужды; PLACE_AT — что нужно месту постройки; TOOLS — сколько рабочих дней служит орудие из каждого материала и сколько оно стоит; KITCHENS — кухни трёх ступеней города: сколько сырья варят в год, циклы жара, сколько еды с единицы сырья; fuel.uses — сколько циклов тепла или жара даёт единица топлива).',
     ...grp({lairLife: LAIR_LIFE, townLife: TOWN_LIFE, townWar: TOWN_WAR, schism: SCHISM, capital: CAPITAL, townFx: TOWN_WORK, placeAt: PLACE_AT, tools: TOOLS, kitchens: KITCHENS, fuel: FUEL})},
+  {id: 'macroRules', label: 'Хозяйство и казна', group: 'Народы', note: 'Числа хозяйства городов и держав (data/macro.js; docs/WORLD.md «Потоки построек», «Стройка», «Содержание войска», «Торговля держав», «Казна»): economy — руки, переделы, склад с пределом, запас заготовок, сбор еды с земли; build — стройка и поселенцы; armyKeep — сбор войска, обоз, дезертирство, дружина; trade — торговля держав; treasury — подати, коррупция, пошлины, добыча, двор, мастера, совет казны, дань и выкуп; plots — участки в черте города. storage — что берегут амбар и погреб; tradeUp — кто сразу меняет блага (орки — на оружие); lux, mint, riteWorth — ценность роскоши, монеты и обрядов. Что у каждого народа своё (прирост, довольство, переезд, поселенцы, содержание бойца, преступность) — в «Народах мира».',
+    ...grp({economy: ECONOMY, build: BUILD, armyKeep: ARMY_KEEP, trade: MACRO_TRADE, treasury: TREASURY, plots: PLOTS, storage: STORAGE, tradeUp: TRADE_UP, lux: LUX, mint: MINT, riteWorth: RITE_WORTH})},
   {id: 'calamityRules', label: 'Правила бедствий', group: 'Мир', note: 'Бедствия эпического и заселённого мира (data/calamities.js CAL), союзы против них (ALLY), квест похода за артефактом (EPIC), длина эпох эпического мира (data/history.js EPIC_YEARS), «Заселение мира» (FREE).',
     ...grp({cal: CAL, ally: ALLY, epic: EPIC, epicYears: EPIC_YEARS, free: FREE})},
   {id: 'historyRules', label: 'История мира', group: 'Мир', note: 'Звери карты мира (data/history.js FAUNA), войска и драконы (data/parties.js), дороги и морские пути (data/roads.js), угодья и сеть подвоза (data/sites.js), шов карты мира и поселения (data/seam.js).',
@@ -698,7 +719,7 @@ TABLES.push(
     columns: [col('id', 'id'), col('label', 'Показатель'), col('from', 'Из построек', 'map', {ref: keysOf(TOWN_FX)}), col('compass', 'Из мировоззрения', 'map', {ref: keysOf({order: 1, mercy: 1})}), col('note', 'Описание')]},
   {id: 'ruins', label: 'Держава: разруха', group: 'Народы', key: 'id', rows: () => RUINS.all(),
     note: 'Четыре вида разрухи: растёт каждый год от своих источников (towns — на город, pop — на 1000 жителей, upkeep — на очко содержания сверх экономики, wars — на войну, raided — на разорённый город), убывает от показателя, что её держит (× «правила» fall), и отнимает от показателя eats (× penalty на очко).',
-    columns: [col('id', 'id'), col('label', 'Разруха'), col('grows', 'Растёт от', 'map', {ref: keysOf({towns: 1, pop: 1, upkeep: 1, wars: 1, raided: 1}), min: 0}),
+    columns: [col('id', 'id'), col('label', 'Разруха'), col('grows', 'Растёт от', 'map', {ref: keysOf({towns: 1, pop: 1, crowd: 1, upkeep: 1, unpaid: 1, wars: 1, raided: 1}), min: 0}),
       col('fall', 'Убывает от', 'ref', {ref: 'realmStats'}), col('eats', 'Отнимает', 'ref', {ref: 'realmStats'}), col('note', 'Описание')]},
   {id: 'edicts', label: 'Держава: указы', group: 'Народы', key: 'id', rows: () => EDICTS.all(),
     note: 'Что держава объявляет в этот год: первый уровень, чьё условие выполнено (последний — по умолчанию). Условие: war — на войне; below/above — показатель или разруха ниже/выше. adds — к показателям, ruin — к разрухе.',

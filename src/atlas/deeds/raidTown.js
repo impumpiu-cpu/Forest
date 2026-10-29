@@ -2,6 +2,8 @@
 // has met and dislikes within DIPLOMACY.raidReach — a few times a year for the realm (raidsPerYear), each town with the
 // year's chance spread over the seasons. The loot grows the raiders' town, the beaten town loses `raidLoss`; either way
 // the standing between the two sinks by `raid`.
+import {plunder} from '../treasury.js';
+import {TREASURY} from '../../data/macro.js';
 import {DIPLOMACY as D} from '../../data/diplomacy.js';
 import {SEASONS_PER_YEAR} from '../../data/atlas.js';
 import {relation, attitude, meet, fight, raidGraves} from '../diplomacy.js';
@@ -38,11 +40,13 @@ export const raidTown = {
     rel.att = Math.max(-5, rel.att - D.raid);
     if (fight(t, r) > fight(target, r)) {
       const loss = D.raidLoss * raidShare(townFx(target));
-      target.pop *= 1 - loss; t.pop += target.pop * loss * 0.3; raidGraves(a, target);
+      const lost = target.pop * loss;   // the raiders carry off D.raidTake of those lost as captives
+      target.pop -= lost; t.pop += lost * D.raidTake; raidGraves(a, target);
+      plunder(a, target, realm.id, TREASURY.loot.raid);   // the raiders carry off what keeps, to their realm's treasury
       const burnt = raidSite(a, target, r);
       return `${cap1(realmLabel(a, realm.id))} из ${townLabel(t, 2)} ${t.name} разграбили ${townLabel(target, 1)} ${target.name}${burnt ? `: ${BURNT[burnt.g]} ${burnt.name}` : ''}.`;
     }
-    t.pop *= 0.9;
+    t.pop *= 1 - D.repelled;   // a beaten raid costs the raiders
     return `${cap1(realmLabel(a, target.realm))} отбили набег ${realmLabelGen(a, realm.id)} на ${townLabel(target, 1)} ${target.name}.`;
   },
 };

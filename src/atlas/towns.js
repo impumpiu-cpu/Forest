@@ -27,6 +27,8 @@ import {scaleOf} from './tectonics.js';
 import {DIRS8} from './heap.js';
 import {siteCell} from './sites.js';
 import {TOWN_FX as TF, PLACE_AT as PA} from '../data/townBuildings.js';
+import {PLOTS, ARMY_KEEP} from '../data/macro.js';
+import {ARMY} from '../data/parties.js';
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lv = id => ORE_GENESIS.get(id).levels;
@@ -43,7 +45,9 @@ export function townFx(t) {
   // gives less; one not counted yet gives all
   const seen = {}, L = t.econ?.loads;
   for (const id of t.built) {
-    const b = TOWN_BUILDINGS.get(id), n = seen[id] = (seen[id] || 0) + 1, load = L?.[`${id}#${n}`] ?? 1;
+    const b = TOWN_BUILDINGS.get(id), n = seen[id] = (seen[id] || 0) + 1;
+    // the barracks and war camps hold the standing guard: an unpaid guard thins out (atlas/treasury.js t.guard)
+    const load = (L?.[`${id}#${n}`] ?? 1) * (ARMY_KEEP.pro.at.includes(id) ? ARMY_KEEP.guardFloor + (1 - ARMY_KEEP.guardFloor) * (t.guard ?? 1) : 1);
     for (const k of KEYS) out[k] += fxOf(b, k, load);
   }
   return out;
@@ -69,6 +73,8 @@ export function realmWorks(a, t, material) {
 // the words of the metals the realm of a town works, of those some building opens (for the cards)
 export const realmMetalWords = (a, t) => { const built = realmBuilt(a, t); return gatedMetals().filter(m => metalBuildings(m).some(id => built.has(id))).map(m => METAL_WORDS[m] || m); };
 export const might = (t, fx) => Math.sqrt(t.pop) * (1 + fx.defence + TF.mightProd * fx.prod);
+// an army's might: √men × (1 + the town's craft and defence, ARMY.mightFx) × ARMY.might (data/parties.js)
+export const armyMight = (men, fx) => Math.sqrt(men) * (1 + ARMY.mightFx.prod * fx.prod + ARMY.mightFx.defence * fx.defence) * ARMY.might;
 export const raidShare = fx => Math.max(TF.raidFloor, 1 - TF.raidFaith * fx.faith - TF.raidHealth * fx.health);
 
 // ── the place
@@ -116,6 +122,10 @@ export function placeHas(a, i, need) {
   throw new Error(`town building: unknown place need «${need}»`);
 }
 
+// the plots of a town: how many buildings stand within it (outlying works aside) and how many it can hold
+export const plotsOf = t => PLOTS.tier[Math.min(PLOTS.tier.length - 1, t.tier || 0)] + (t.capital ? PLOTS.capital : 0);
+export const plotsUsed = t => t.built.reduce((n, id) => n + (TOWN_BUILDINGS.has(id) && !TOWN_BUILDINGS.get(id).site ? 1 : 0), 0);
+
 // can this town build this now: its people, what its realm has, its size, how many it has, the place
 // (`inRealm` — realmBuilt(a, t), passed in when many buildings are asked about at once)
 export function canBuild(a, t, b, inRealm = null) {
@@ -130,6 +140,7 @@ export function canBuild(a, t, b, inRealm = null) {
   if (b.capital && !t.capital) return false;
   if (b.unique && a.towns.some(o => o !== t && o.alive && o.realm === t.realm && o.built.includes(b.id))) return false;
   if (t.built.filter(id => id === b.id).length >= b.max) return false;
+  if (!b.site && plotsUsed(t) >= plotsOf(t)) return false;   // no free plot within the town (data/macro.js PLOTS)
   if (b.site) return siteCell(a, t, b) >= 0;   // an outlying work: a free cell that fits it within the town's reach (atlas/sites.js)
   const pk = t.place ||= {};
   const has = need => (need === 'road' || need === 'graves' ? placeHas(a, t.i, need) : (pk[need] ??= placeHas(a, t.i, need)));   // the land does not change; roads and graves do
@@ -164,18 +175,22 @@ function econPull(t, b) {
   return Math.min(TF.econ[1], TF.econ[0] * n);
 }
 
-// the building the town wants most, or null
-export function chooseBuilding(a, t, P, fx, ctx, rnd) {
+// how much the town wants a building now: Σ need × taste × effect, and what its household lacks (no die)
+export function wantOf(t, b, need, P) {
+  let v = 0;
+  for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
+  return v + econPull(t, b);
+}
+// the building the town wants most, or null; with `cur` (a building under way) also how much it wants that one
+// ({b, v, cv}: atlas/build.js weighs leaving it)
+export function chooseBuilding(a, t, P, fx, ctx, rnd, cur = null) {
   const need = townNeeds(a, t, fx, ctx);
   let best = null, bv = 0.02;
   const inRealm = realmBuilt(a, t);
   for (const b of TOWN_BUILDINGS.all()) {
     if (!canBuild(a, t, b, inRealm)) continue;
-    let v = 0;
-    for (const k of KEYS) v += fxOf(b, k) * need[k] * (P.taste[k] ?? 1);
-    v += econPull(t, b);
-    v *= 0.85 + 0.3 * rnd();
+    const v = wantOf(t, b, need, P) * (0.85 + 0.3 * rnd());
     if (v > bv) { bv = v; best = b; }
   }
-  return best;
+  return {b: best, v: bv, cv: cur ? wantOf(t, cur, need, P) : 0};
 }

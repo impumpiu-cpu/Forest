@@ -222,9 +222,12 @@ for (let s = 0; s < seeds; s++) {
     hire('Остался', 0.95); hire('Продлил', 0.6); hire('Ушёл', 0.1);
     stepCampaign(a);
     const by = n => K.members.find(m => m.name === n);
-    const ends = [by('Остался').alive && !by('Остался').contract, by('Продлил').alive && by('Продлил').contract?.until > 1, !by('Ушёл').alive || !!by('Ушёл').left];
+    // the day is walked in the world: a hireling may fall in a fight before his term ends — that one tells nothing
+    const fell = n => !by(n).alive && !by(n).left;
+    const ends = [fell('Остался') || (by('Остался').alive && !by('Остался').contract), fell('Продлил') || (by('Продлил').alive && by('Продлил').contract?.until > 1), !by('Ушёл').alive || !!by('Ушёл').left];
     got.hireEnds += ends.filter(Boolean).length;
-    check(`сид ${seed}: конец срока наёмника — остался, продлил, ушёл`, ends.every(Boolean), ends.join(', '));
+    const fallen = ['Остался', 'Продлил'].filter(fell);
+    check(`сид ${seed}: конец срока наёмника — остался, продлил, ушёл${fallen.length ? ` (пал в бою: ${fallen.join(', ')})` : ''}`, ends.every(Boolean), ends.join(', '));
   }
 
   // digging (data/campaign.js MINE): on the local map the caravan works the outcrop of the ore it stopped for and

@@ -11,9 +11,26 @@
 //             the race's `home` (data/races.js), so the local and the world map agree on where a
 //             race belongs; `ores`: weight of the rock's ore wealth (dwarves live off the mountains)
 //   moves:    how easily they spread through a biome (×), the rest at `movesElse`
-//   spread / growth: diffusion and logistic growth of the people field a year (Fisher–KPP)
-//   found:    a town is founded where the people field is this dense, at least `spacing` cells
-//             (of a 192-cell-high world) from any other town
+//   spread / growth: diffusion and logistic growth of the people field a year (Fisher–KPP): the land the people
+//             holds and spreads over, not people — the towns' people are counted in the towns
+//   spacing:  the least distance between two towns, cells of a 192-cell-high world
+// The people of the towns (atlas/demography.js; docs/WORLD.md «Демография») — people are a good like any other: they
+// are born in the towns, move between them and die; nothing makes them out of nothing.
+//   born:     the most a town's people grow in a year (× contentment; logistic towards what feeds and houses them):
+//             elves and dwarves slowly, orcs fast
+//   content:  contentment 0…1 = base + Σ weight × the realm's attribute (data/kingdom.js REALM_STATS: culture, economy,
+//             loyalty, stability), × the share of their food the town got
+//   migrate:  share of a town's people ready to move in a season to a better town (fame and food draw them): of their
+//             realm, or of another realm that trades with it, nearby — of their own people, or of a people that welcomes
+//             them
+//   welcome:  the other peoples whose folk this people takes into its towns (its own kin of other realms always):
+//             humans and orcs take everyone, dwarves no one; the elves keep to themselves for now
+//   settlers: a town raises settlers as it raises a building (atlas/build.js): `days` of work, `goods` from the realm's
+//             stocks, `pop` people (the town needs `from` at least); they found a town within reach × spacing of it,
+//             carrying the goods; `want` — how much the council wants them when the town is full
+//   army:     an army's keep a day per fighter (data/macro.js ARMY_KEEP): gold, arms and armour by worth, rations of
+//             `food`, eaten of `eats` — the first the realm holds a season of
+//   crime:    crime a realm's towns breed a year (data/kingdom.js): per × (people of the town / 1000) ^ pow
 //   site:     what makes a good spot for a town, beyond the biome: water, coast, fertility, ores, steep
 //   taste:    how much the people care for each kind of effect when a town chooses what to build
 //             (data/townBuildings.js EFFECTS, atlas/towns.js); who builds what is in data/townBuildings.js
@@ -31,7 +48,11 @@ WORLD_PEOPLES.registerAll([
     arrive: {verb: 'пробудились', groups: 2, where: 'в самой древней чаще'},
     get home() { return raceHome('elf'); },
     moves: {forest: 1.4, jungle: 1.2, taiga: 1.2, meadow: 1, swamp: 0.6}, movesElse: 0.25,
-    spread: 0.22, growth: 0.18, found: 0.32, spacing: 16,
+    spread: 0.22, growth: 0.18, spacing: 16,
+    born: 0.24, content: {base: 0.55, culture: 0.1, loyalty: 0.1}, migrate: 0.005, welcome: [],
+    settlers: {pop: 30, from: 150, days: 240, reach: 2.5, want: 3, goods: {stores: 600, wood: 30, tools: 3}},
+    army: {gold: 0.08, arms: 0.02, armor: 0.01, food: 1, eats: ['produce']},
+    crime: {per: 0.02, pow: 1},
     site: {water: 0.35, coast: 0.15, fert: 0.3, trees: 0.5, ores: 0, steep: -0.4},
     taste: {housing: 1, food: 1, prod: 0.6, trade: 0.8, defence: 0.9, faith: 1.3, lore: 1.3, prestige: 1, health: 1.1},
     names: {first: ['Ла', 'Эль', 'Ми', 'Ти', 'Ан', 'Иль', 'Си', 'Ар', 'Фе', 'Лин', 'Ни', 'Ло'], mid: ['', 'ри', 'нэ', 'ла', 'во', 'ми', 'ан', 'ли'],
@@ -40,7 +61,11 @@ WORLD_PEOPLES.registerAll([
     arrive: {verb: 'вышли из-под гор', groups: 2, where: 'у самых богатых жил'},
     get home() { return raceHome('dwarf'); }, ores: 0.4,
     moves: {foothills: 1.4, highlands: 1.3, volcano: 1}, movesElse: 0.3,
-    spread: 0.18, growth: 0.16, found: 0.3, spacing: 14,
+    spread: 0.18, growth: 0.16, spacing: 14,
+    born: 0.26, content: {base: 0.5, economy: 0.06, stability: 0.08}, migrate: 0.005, welcome: [],
+    settlers: {pop: 30, from: 150, days: 240, reach: 2.5, want: 3, goods: {stores: 600, stone: 30, tools: 4}},
+    army: {gold: 0.2, arms: 0.03, armor: 0.04, food: 1.2, eats: ['stores', 'food']},
+    crime: {per: 0.02, pow: 1},
     site: {water: 0.2, coast: 0, fert: 0.05, trees: 0, ores: 0.8, steep: 0.3},
     taste: {housing: 1, food: 1, prod: 1.4, trade: 1, defence: 1.2, faith: 1, lore: 0.8, prestige: 1.2, health: 0.9},
     names: {first: ['Кхаз', 'Бар', 'Дур', 'Гра', 'Тор', 'Ка', 'Бо', 'Гим', 'Дол', 'Мор', 'Ун', 'Зир'], mid: ['', 'ак', 'ин', 'ум', 'ар', 'ек', 'од'],
@@ -49,7 +74,11 @@ WORLD_PEOPLES.registerAll([
     arrive: {verb: 'приплыли из-за моря', groups: 2, where: 'к самому удобному берегу', mode: 'coast'},
     get home() { return raceHome('human'); },
     moves: {meadow: 1.4, steppe: 1.4, shrubland: 1.2, savanna: 1.2, forest: 1}, movesElse: 0.4,
-    spread: 0.26, growth: 0.24, found: 0.28, spacing: 12,
+    spread: 0.26, growth: 0.24, spacing: 12,
+    born: 0.34, content: {base: 0.55, economy: 0.08, loyalty: 0.12}, migrate: 0.02, welcome: ['elves', 'dwarves', 'orcs'],
+    settlers: {pop: 30, from: 130, days: 150, reach: 2.5, want: 3, goods: {stores: 600, wood: 30, tools: 3}},
+    army: {gold: 0.12, arms: 0.02, armor: 0.02, food: 1, eats: ['stores', 'food']},
+    crime: {per: 0.03, pow: 1.6},
     site: {water: 0.35, coast: 0.25, fert: 0.5, trees: 0.1, ores: 0.2, steep: -0.2},
     taste: {housing: 1, food: 1.2, prod: 1, trade: 1.3, defence: 1, faith: 1, lore: 0.9, prestige: 1.1, health: 1},
     names: {first: ['Бел', 'Яр', 'Вел', 'Свят', 'Мир', 'Глад', 'Рад', 'Ост', 'Лю', 'Звени', 'Добр', 'Влад'], mid: ['', 'о', 'е', 'ино'],
@@ -58,7 +87,11 @@ WORLD_PEOPLES.registerAll([
     arrive: {verb: 'пришли с диких окраин', groups: 2, where: 'туда, где никто их не ждал', mode: 'far'},
     get home() { return raceHome('orc'); }, ores: 0.3,
     moves: {steppe: 1.5, savanna: 1.4, tundra: 1.2, swamp: 1, meadow: 1.2}, movesElse: 0.5,
-    spread: 0.3, growth: 0.26, found: 0.3, spacing: 13,
+    spread: 0.3, growth: 0.26, spacing: 13,
+    born: 0.44, content: {base: 0.6, stability: 0.12, loyalty: 0.1}, migrate: 0.03, welcome: ['elves', 'dwarves', 'humans'],
+    settlers: {pop: 25, from: 110, days: 100, reach: 2.5, want: 3, goods: {stores: 500, hide: 20, arms: 3}},
+    army: {gold: 0, arms: 0.015, armor: 0.004, food: 0.8, eats: ['stores', 'food']},
+    crime: {per: 0.02, pow: 1},
     site: {water: 0.3, coast: 0, fert: 0.1, trees: 0.1, ores: 0.3, steep: 0.1},
     taste: {housing: 1, food: 1, prod: 0.9, trade: 0.6, defence: 1.4, faith: 0.9, lore: 0.3, prestige: 1.3, health: 0.8},
     names: {first: ['Гор', 'Груш', 'Мор', 'Ург', 'Зог', 'Крах', 'Шаг', 'Буг', 'Гра', 'Ног'], mid: ['', 'ак', 'ук', 'аг', 'ор'],
@@ -164,19 +197,23 @@ export const ELDER_YEARS = [
 //   band:      the field a founding band (or a band landed by hand) wakes around it; bandPop — its town's people,
 //              bandPop[0] + bandPop[1] × a roll;  siteBar — the least a spot is worth for a band to settle there
 //   oresAway:  how much the ores count off a people's home biomes (dwarves)
-//   hearth:    a town keeps its people's field up around it: hearth[0] + hearth[1] × its tier + hearth[2] × its fame
+//   hearth:    a town keeps its people's field up around it: hearth[0] + hearth[1] × its tier
 //   hunt:      people thin the beasts where they live: predators and monsters, the others
-//   found:     a new town where the field is dense and the land at least foundLand; at most foundMax a year per people,
-//              each with foundChance; newPop — its first people, newPop[0] + newPop[1] × a roll
+//   foundLand: the least carrying capacity of the land under a new town (atlas/demography.js settlers)
 //   feeds:     the people a town's land feeds: feeds × the land's share × (fert[0] + fert[1] × the soil) × (home[0] +
 //              home[1] × how its realm likes the biome) × (1 + road × the road or harbour) × capital for a capital ×
 //              (1 + its food − what armies took + trade × its trade)
 //   hold:      a people holds its land only near its living towns: within near × its spacing the field lives as it
 //              will, past far × spacing it fades by `fade` of itself a year (between — in part); a burnt people's land
 //              goes with its towns
-//   growth:    a year: + growth × (1 + prestige × fame) × pop × (1 − pop / the target, at least minTarget) + drift × a
-//              roll; never below minPop;  build — the chance a year a town builds what it needs most
-export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15, 0.2], hunt: {predator: 0.3, other: 0.12},
-  foundLand: 0.25, foundMax: 2, foundChance: 0.35, newPop: [40, 40],
+//   minTarget: the least a town's target is counted at (atlas/demography.js growTown); abandon — a town with fewer
+//              people is left, they go to the nearest town of the realm;  bandStores — days of stores a founding band
+//              brings with it;  abroad — how much a town of another realm draws against one of their own;  moveReach — how
+//              far folk move to another realm, in steps of their people's spacing;  fedOk — the share of their food at
+//              which the people are content and nobody starves;  starve — share of the people that die a year with no food
+//              at all (× how far the share they got is below fedOk);  overflow — share of the people over a town's room that
+//              leave it a season;  settleNear — how much nearness counts for the settlers' spot (× its share of the reach)
+export const TOWN_LIFE = {hold: {near: 2.5, far: 4, fade: 0.3}, band: 0.6, bandPop: [90, 60], siteBar: 0.4, oresAway: 0.3, hearth: [0.45, 0.15], hunt: {predator: 0.3, other: 0.12},
+  foundLand: 0.25,
   feeds: 1400, fert: [0.6, 0.4], home: [0.7, 0.3], road: 0.6, capital: 1.4, trade: 0.3,
-  growth: 0.14, prestige: 0.6, minTarget: 60, minPop: 10, drift: 4, build: 0.65};
+  minTarget: 60, abandon: 10, bandStores: 120, abroad: 0.6, moveReach: 3, fedOk: 0.75, starve: 0.3, overflow: 0.5, settleNear: 0.2};
